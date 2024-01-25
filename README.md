@@ -19,7 +19,8 @@ The project is intended to help Virtualbox's users interact with VirtualBox serv
 All platforms
 1. Download an appropriate VirtualBox SDK as a standalone package and unpack it.
 
-    [!NOTE] if you have a development environment you might install Python binding from there. There is no need to download SDK in this case.
+    > **NOTE!** 
+    > If you have a development environment you might install Python binding from there. There is no need to download SDK in this case.
 
 2. Go to a folder where the project will live
 
@@ -110,8 +111,7 @@ Extract them into your project folder (folder <your-env-name>)
 
     If all is correct you will see the home page with Swagger UI displaying VBox REST API home page
 
-    ![Example: VirtualBox Swagger UI page](/vboxrestapi/home_page_example.png)
-
+    ![Example: VirtualBox Swagger UI page](https://linux-git.oraclecorp.com/vportnya/vboxrestapi)
 ## Roadmap
 
 ## Authors and acknowledgment
