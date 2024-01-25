@@ -1,0 +1,1373 @@
+# pylint: disable=invalid-name
+# pylint: disable=consider-using-f-string
+# pylint: disable=line-too-long
+# pylint: disable=undefined-variable
+import sys
+import platform
+import connexion
+import logging
+# import base64
+from http import HTTPStatus
+from flask import jsonify
+# from flask.json import loads
+from connexion.lifecycle import ConnexionResponse
+from werkzeug.datastructures import Headers
+
+from vbox_server.global_settings import *
+from vbox_server.utils.vbox_utils import *
+from vbox_server.utils.restapi_objects_functions import *
+
+from vbox_server.models.device_type import DeviceType
+from vbox_server.models.error import Error
+from vbox_server.models.progress import Progress
+
+#################################################################################
+from vbox_server.models.machine_getguestproperty_response import MachineGetguestpropertyResponse  # noqa: E501
+from vbox_server.models.machine_querylogfilename_response import MachineQuerylogfilenameResponse  # noqa: E501
+from vbox_server.models.machine_readlog_response import MachineReadlogResponse  # noqa: E501
+from vbox_server.models.medium_array_response import MediumArrayResponse  # noqa: E501
+from vbox_server.models.medium_getproperty_response import MediumGetpropertyResponse  # noqa: E501
+from vbox_server.models.virtualbox_getextradatakeys_response import VirtualboxGetextradatakeysResponse  # noqa: E501
+
+# Set logging level for module
+logging.getLogger().setLevel(logging.INFO)
+
+# Python 3 hacks:
+if sys.version_info[0] >= 3:
+    long = int    # pylint: disable=redefined-builtin,invalid-name
+    xrange = range; # pylint: disable=redefined-builtin,invalid-name
+
+
+def i_machine_action(vmid, action, *var_args_tuple):  # noqa: E501
+    """machine_action
+
+    Performs one of the following power actions on the specified machine: 
+    - STOP - Machine is being normally stopped powering it off, or after the guest OS has initiated a shutdown sequence. 
+    - SAVE - Machine is saving its execution state to a file. 
+    - RESTORE - Execution state of the machine is being restored from a file after powering it on from the saved execution state. 
+    - PAUSE - Machine is being paused.
+
+    :param machineId: The Id of the machine.
+    :type machineId: str
+    :param action: The action to perform on the machine.
+    :type action: str
+
+    :rtype: Machine
+    """
+
+    httpCode = HTTPStatus.OK
+
+    vbox_utils_commonChecks()
+
+    logging.info('Passed machine Id is ' + vmid)
+    logging.info('Passed action type is ' + action)
+
+    oError = Error()
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError:
+        logging.info (oError)
+        httpCode = HTTPStatus.NOT_FOUND
+        return jsonify(oError), httpCode
+
+    vbox_utils_logVmInfo(oVM)
+
+    # Open session
+    oSession = None
+    try:
+        oSession = ctx['global'].openMachineSession(oVM)
+    except Exception as e:
+        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    if oSession.state != ctx['const'].SessionState_Locked:
+        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        oSession.unlockMachine()
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        return jsonify(oError), httpCode
+
+    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
+    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+
+    oProgress = None
+    oCurrMachine = oSession.machine
+
+    oConsole = oSession.console
+    ops = { 'PAUSE':            lambda: oConsole.pause(),
+            'RESTORE':          lambda: oConsole.resume(),
+            'STOP':             lambda: oConsole.powerDown(),
+            'ACPIPOWERBUTTON':  lambda: oConsole.powerButton(),
+            'STARTANDPAUSE':    lambda: oConsole.powerUpPaused(),
+            'ACPISLEEP':        lambda: oConsole.sleepButton(),#doesn't work#
+            'RESET':            lambda: oConsole.reset(),
+            'SAVE':             lambda: oCurrMachine.saveState(),
+            }
+
+    try:
+        ops[action]()
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    #Close the machine session
+    if oSession is not None:
+        # Try close it.
+        try:
+            if oSession.state == ctx['const'].SessionState_Locked:
+                oSession.unlockMachine()
+                logging.info ('Unlocked the current machine ' + oVM.id)
+                oSession = None
+        except:
+            logging.info ('Exception trying unlock machine, close session or set session name')
+            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
+            except: fIgnore = False
+        
+            if fIgnore:
+                oSession  = None # Must prevent a retry during GC.
+            else:
+                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
+
+    data = {
+        'progress id': oProgress.id if (oProgress is not None and action=='STOP') else 'Null',
+    }
+
+    response = jsonify(oError if oError is not None else data)
+
+    print(response)
+    return response, httpCode
+
+
+def i_console_pause(vmid):  # noqa: E501
+      """
+      Call interface method IConsole::pause
+
+      :param vmid: The Id of vm
+      :type vmid: str
+
+      :rtype: None
+      """
+      return i_machine_action(vmid, "PAUSE")
+
+
+def i_console_powerbutton(vmid):  # noqa: E501
+      """
+      Call interface method IConsole::powerButton
+
+      :param vmid: The Id of vm
+      :type vmid: str
+
+      :rtype: None
+      """
+      return i_machine_action(vmid, "ACPIPOWERBUTTON")
+
+
+def i_console_powerdown(vmid):  # noqa: E501
+    """
+    Call interface method IConsole::powerDown
+
+    :param vmid: The Id of vm
+    :type vmid: str
+
+    :rtype: ProgressResponse
+    """
+    return i_machine_action(vmid, "STOP")
+
+
+def i_console_powerup(vmid):  # noqa: E501
+    """
+    Call interface method IConsole::powerUp
+
+    :param vmid: The Id of vm
+    :type vmid: str
+
+    :rtype: ProgressResponse
+    """
+    return i_machine_action(vmid, "POWERUP")
+
+
+def i_console_poweruppaused(vmid):  # noqa: E501
+    """
+    Call interface method IConsole::powerUpPaused
+
+    :param vmid: The Id of vm
+    :type vmid: str
+
+    :rtype: ProgressResponse
+    """
+    return i_machine_action(vmid, "STARTANDPAUSE")
+
+
+def i_console_reset(vmid):  # noqa: E501
+    """
+    Call interface method IConsole::reset
+
+    :param vmid: The Id of vm
+    :type vmid: str
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_console_resume(vmid):  # noqa: E501
+    """
+    Call interface method IConsole::resume
+
+    :param vmid: The Id of vm
+    :type vmid: str
+
+    :rtype: None
+    """
+    return i_machine_action(vmid, "RESTORE")
+
+
+def i_console_sleepbutton(vmid):  # noqa: E501
+    """
+    Call interface method IConsole::sleepButton
+
+    :param vmid: The Id of vm
+    :type vmid: str
+
+    :rtype: None
+    """
+    return i_machine_action(vmid, "ACPISLEEP")
+
+
+def i_machine_deleteconfig(vmid, media=None, *var_args_tuple):
+    """
+    Call interface method IMachine::deleteConfig
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param media: Put here an ID of requested IMedium VirtualBox object
+    :type media: List[str]
+    """
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    vbox_utils_commonChecks()
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError:
+        logging.info (oError)
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    vbox_utils_logVmInfo(oVM)
+
+    logging.info("Try to remove the machine " + oVM.name + " (UUID " + oVM.id + ")")
+
+    oProgress = None
+    olDisks = []
+    try:
+        vbox_utils_detachVmDevice(oVM)
+        olDisks = oVM.unregister(ctx['const'].CleanupMode_Full)
+    except Exception as e:
+        logging.info("Can't delete VM '%s': %s" % (oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is None:
+        try:
+            oProgress = oVM.deleteConfig(olDisks)
+        except Exception as e:
+            logging.info("Can't delete VM '%s': %s" % (oVM.name, str(e)))
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR            
+            oError = Error(httpCode, str(e))
+
+    data = {
+        'progress id': oProgress.id if oProgress is not None else 'Null',
+    }
+
+    response = jsonify(oError if oError is not None else data)
+
+    return response, httpCode
+
+
+def i_machine_getbootorder(vmid, position=None):  # noqa: E501
+    """
+    Call interface method IMachine::getBootOrder
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param position: 
+    :type position: int
+
+    :rtype: DeviceTypeResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oVM = None
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError is not None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    oDeviceType = DeviceType()
+    if oVM is not None:
+        try:
+            oVBoxMediumdeviceType = oVM.getBootOrder(position)
+            oDeviceType = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMediumdeviceType)
+            logging.info('The command result is ' + str(oDeviceType))            
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oDeviceType)
+    return response, httpCode
+
+
+def i_machine_getextradata(vmid, key=None):  # noqa: E501
+    """
+    Call interface method IMachine::getExtraData
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param key: 
+    :type key: str
+
+    :rtype: MediumGetpropertyResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oVM = None
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError is not None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    oMediumGetpropertyResponse = MediumGetpropertyResponse()
+    if oVM is not None:
+        try:
+            res = oVM.getExtraData(key)
+            oMediumGetpropertyResponse.value = res
+            if res!='':
+                logging.info('Successfully get the value of VM extra data ' + key)
+                logging.info('The command result is ' + res)
+            else:
+                logging.info('Unknown extra data or the value is empty ')
+
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMediumGetpropertyResponse)
+    return response, httpCode
+
+
+def i_machine_getextradatakeys(vmid):  # noqa: E501
+    """
+    Call interface method IMachine::getExtraDataKeys
+
+    :param vmid: The Id of vm
+    :type vmid: str
+
+    :rtype: VirtualboxGetextradatakeysResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oVM = None
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError is not None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    oVirtualboxGetextradatakeysResponse = VirtualboxGetextradatakeysResponse()
+    if oVM is not None:
+        try:
+            olKeys = oVM.getExtraDataKeys()
+            keys = []
+            for item in olKeys:
+                logging.info(item)
+                keys.append(item)
+
+            oVirtualboxGetextradatakeysResponse.keys = keys
+
+            logging.info('Successfully get the list of extra keys')
+
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oVirtualboxGetextradatakeysResponse)
+    return response, httpCode
+
+
+def i_machine_getguestproperty(vmid, name=None):  # noqa: E501
+    """
+    Call interface method IMachine::getGuestProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param name: 
+    :type name: str
+
+    :rtype: MachineGetguestpropertyResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oVM = None
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError is not None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    oMachineGetguestpropertyResponse = MachineGetguestpropertyResponse()
+    if oVM is not None:
+        try:
+            [v,t,f] = oVM.getGuestProperty(name)
+            oMachineGetguestpropertyResponse.value = v
+            oMachineGetguestpropertyResponse.timestamp = t
+            oMachineGetguestpropertyResponse.flags = f
+            logging.info('The command result is ' + str(oMachineGetguestpropertyResponse))
+            logging.info('Successfully get the value ' + v + ' of VM guest property ' + name)
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMachineGetguestpropertyResponse)
+    return response, httpCode
+
+
+def i_machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::launchVMProcess
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineLaunchVMProcessRequestBody:
+    :type oMachineLaunchVMProcessRequestBody: dict | bytes
+
+    :rtype: ProgressResponse
+    """
+    o = oMachineLaunchVMProcessRequestBody
+    print (o)
+    httpCode = HTTPStatus.OK
+    oSessionId = o.session
+    name = o.name
+    environmentChanges = o.environment_changes
+
+    vbox_utils_commonChecks()
+
+    print ('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError is not None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    vbox_utils_logVmInfo(oVM)
+    
+    #todo: uuid conversion and check should be here
+    if oSessionId is None or oSessionId=="None" or oSessionId=="":
+        oSession = ctx['global'].getSessionObject() 
+    oProgress = None
+
+    try:  
+        logging.info ('Trying to call oVM.launchVMProcess()')
+        oProgress = oVM.launchVMProcess(oSession, name, environmentChanges)
+
+        if oProgress is not None: logging.info ('Progress Id is ' + oProgress.id)
+        oProgress.waitForCompletion(-1)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR  
+        oError = Error(httpCode, str(e))  
+
+    logging.info ('Session name is ' + oSession.name)# returns GUI/Qt always
+    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+
+    if oSession is not None:
+        # Try close it.
+        try:
+            if oSession.state == ctx['const'].SessionState_Locked:
+                oSession.unlockMachine()
+                logging.info ('Unlocked the current machine ' + oVM.id)
+                oSession = None
+        except:
+            logging.info('Exception trying unlock machine, close session or set session name')
+            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
+            except: fIgnore = False
+        
+            if fIgnore:
+                oSession  = None # Must prevent a retry during GC.
+            else:
+                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
+
+    resProgress = Progress(oProgress.id)
+
+    response = jsonify(oError if oError is not None else resProgress)
+
+    return response, httpCode
+
+
+def i_machine_querylogfilename(vmid, idx=None):  # noqa: E501
+    """
+    Call interface method IMachine::queryLogFilename
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param idx: 
+    :type idx: int
+
+    :rtype: MachineQuerylogfilenameResponse
+    """
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError is not None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    oMachineQuerylogfilenameResponse = MachineQuerylogfilenameResponse()
+
+    try:
+        if idx is None:
+            idx = 0
+        sFilename = oVM.queryLogFilename(idx)
+        oMachineQuerylogfilenameResponse.filename = sFilename
+
+    except Exception as e:
+        logging.info("Can't find VM's log file '%d': %s" % (idx, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMachineQuerylogfilenameResponse)
+    return response, httpCode
+
+
+def i_machine_readlog(vmid, idx=None, offset=None, size=None):  # noqa: E501
+    """
+    Call interface method IMachine::readLog
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param idx:
+    :type idx: int
+    :param offset:
+    :type offset: int
+    :param size:
+    :type size: int
+
+    :rtype: MachineReadlogResponse
+    """
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError is not None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    oMachineReadlogResponse = MachineReadlogResponse()
+    try:
+        if (idx is not None and idx < 0) \
+            or (offset is not None and offset < 0) \
+            or (size is not None and size <= 0):
+            raise ValueError
+
+    except Exception as e:
+        logging.info("One of the passed parameters has an inappropriate value")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, "One of the passed parameters has an inappropriate value")
+
+    if oError is not None:
+        return jsonify(oError), httpCode
+
+    try:
+        if idx is None:
+            idx = 0
+        if offset is None:
+            offset = 0
+        if size is None:
+            size = 4096
+        data = oVM.readLog(idx, offset, size)
+
+        oMachineReadlogResponse.data = data
+        if platform.system() == "Windows":
+            oMachineReadlogResponse.data = data.tobytes()
+
+    except Exception as e:
+        logging.info("Can't read VM's log file '%d': %s" % (idx, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is not None:
+        response = jsonify(oError)
+    else:
+        contentType = 'application/octet-stream'
+        if offset!=0 and size!=0:
+            if oMachineReadlogResponse.data != 0:
+                httpCode = HTTPStatus.PARTIAL_CONTENT
+                contentType = 'multipart/byteranges'
+            else:
+                httpCode = HTTPStatus.OK
+                contentType = 'application/octet-stream'
+
+        response = oMachineReadlogResponse.data
+        contentRange = 'bytes ' + str(offset) + '-' + str(offset+size)
+        h = Headers()
+        h.add('Content-Range', contentRange)
+        return ConnexionResponse(
+            status_code=httpCode,
+            content_type=contentType,
+            body=response,
+            headers=h
+            )
+
+    return response, httpCode
+
+
+def i_machine_createsharedfolder(vmid, oMachineCreateSharedFolderRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::createSharedFolder
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineCreateSharedFolderRequestBody: 
+    :type oMachineCreateSharedFolderRequestBody: dict | bytes
+
+    :rtype: None
+    """
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError:
+        logging.info (oError)
+        httpCode = HTTPStatus.NOT_FOUND
+        return jsonify(oError), httpCode
+
+    vbox_utils_logVmInfo(oVM)
+
+    o = oMachineCreateSharedFolderRequestBody
+    print (o)
+    name = o.name
+    host_path = o.host_path
+    fWritable = o.writable
+    fAutomount = o.automount
+    auto_mount_point = o.auto_mount_point
+
+    # Open session
+    oSession = None
+    try:
+        oSession = ctx['global'].openMachineSession(oVM)
+    except Exception as e:
+        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    if oSession.state != ctx['const'].SessionState_Locked:
+        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        oSession.unlockMachine()
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        return jsonify(oError), httpCode
+
+    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
+    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+
+    logging.info("Try to create the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
+
+    oCurrMachine = oSession.machine
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    found = False
+    for sf in ctx['global'].getArray(oVM, 'sharedFolders'):
+        if sf.name == name:
+            logging.info("The shared folder with the name %s exists" % (name))
+            httpCode = HTTPStatus.PRECONDITION_FAILED
+            oError = Error(httpCode, "The shared folder with the name %s exists" % (name))
+            found = True
+            break
+
+    if oError is None:
+        try:
+            # No return result check
+            oCurrMachine.createSharedFolder(name, host_path, fWritable, fAutomount, auto_mount_point)
+            logging.info("Created the shared folder %s" % (name))
+
+            #Don't forget to save
+            oCurrMachine.saveSettings()
+
+        except Exception as e:
+            logging.info("Can't create shared folder %s" % (name))
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    #Close the machine session
+    if oSession is not None:
+        # Try close it.
+        try:
+            if oSession.state == ctx['const'].SessionState_Locked:
+                oSession.unlockMachine()
+                logging.info ('Unlocked the current machine ' + oVM.id)
+                oSession = None
+        except:
+            logging.info ('Exception trying unlock machine, close session or set session name')
+            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
+            except: fIgnore = False
+        
+            if fIgnore:
+                oSession  = None # Must prevent a retry during GC.
+            else:
+                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
+
+    response = jsonify(oError if oError is not None else "Successfully created the shared folder")
+    return response, httpCode
+
+
+def i_machine_removesharedfolder(vmid, name=None):  # noqa: E501
+    """
+    Call interface method IMachine::removeSharedFolder
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param name: 
+    :type name: str
+
+    :rtype: None
+    """
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError:
+        logging.info (oError)
+        httpCode = HTTPStatus.NOT_FOUND
+        return jsonify(oError), httpCode
+
+    vbox_utils_logVmInfo(oVM)
+
+    # Open session
+    oSession = None
+    try:
+        oSession = ctx['global'].openMachineSession(oVM)
+    except Exception as e:
+        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    if oSession.state != ctx['const'].SessionState_Locked:
+        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        oSession.unlockMachine()
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        return jsonify(oError), httpCode
+
+    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
+    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+
+    logging.info("Try to remove the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
+
+    oCurrMachine = oSession.machine
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    found = False
+    for sf in ctx['global'].getArray(oVM, 'sharedFolders'):
+        if sf.name == name:
+            try:
+                # No return result check.
+                # removeSharedFolder returns None instead of the result S_OK.
+                oCurrMachine.removeSharedFolder(name)
+                logging.info("1. Removed the shared folder %s" % (name))
+
+                #Don't forget to save
+                oCurrMachine.saveSettings()
+                found = True
+                break
+
+            except Exception as e:
+                logging.info("Can't remove shared folder %s" % (name))
+                httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+                oError = Error(httpCode, str(e))
+
+    #Close the machine session
+    if oSession is not None:
+        # Try close it.
+        try:
+            if oSession.state == ctx['const'].SessionState_Locked:
+                oSession.unlockMachine()
+                logging.info ('Unlocked the current machine ' + oVM.id)
+                oSession = None
+        except:
+            logging.info ('Exception trying unlock machine, close session or set session name')
+            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
+            except: fIgnore = False
+        
+            if fIgnore:
+                oSession  = None # Must prevent a retry during GC.
+            else:
+                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
+
+    response = jsonify(oError if oError is not None else "Successfully removed the shared folder")
+    return response, httpCode
+
+
+def i_machine_savesettings(vmid):  # noqa: E501
+    """
+    Call interface method IMachine::saveSettings
+
+    :param vmid: The Id of vm
+    :type vmid: str
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError:
+        logging.info (oError)
+        httpCode = HTTPStatus.NOT_FOUND
+        return jsonify(oError), httpCode
+
+    vbox_utils_logVmInfo(oVM)
+
+    # Open session
+    oSession = None
+    try:
+        oSession = ctx['global'].openMachineSession(oVM)
+    except Exception as e:
+        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    if oSession.state != ctx['const'].SessionState_Locked:
+        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        oSession.unlockMachine()
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        return jsonify(oError), httpCode
+
+    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
+    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+
+    oCurrMachine = oSession.machine
+
+    if oCurrMachine is not None:
+        try:
+            oCurrMachine.saveSettings()
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    #Close the machine session
+    if oSession is not None:
+        # Try close it.
+        try:
+            if oSession.state == ctx['const'].SessionState_Locked:
+                oSession.unlockMachine()
+                logging.info ('Unlocked the current machine ' + oVM.id)
+                oSession = None
+        except:
+            logging.info ('Exception trying unlock machine, close session or set session name')
+            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
+            except: fIgnore = False
+        
+            if fIgnore:
+                oSession  = None # Must prevent a retry during GC.
+            else:
+                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
+
+    if oError is not None:
+        return jsonify(oError), httpCode
+
+    return "Machine's settings has been successfully saved " + "(uuid " + vmid + ")"
+
+
+def i_machine_savestate(vmid):  # noqa: E501
+    """
+    Call interface method IMachine::saveState
+
+    :param vmid: The Id of vm
+    :type vmid: str
+
+    :rtype: ProgressResponse
+    """
+    return i_machine_action(vmid, 'SAVE')
+
+
+def i_machine_setbootorder(vmid, oMachineSetBootOrderRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::setBootOrder
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetBootOrderRequestBody:
+    :type oMachineSetBootOrderRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError:
+        logging.info (oError)
+        httpCode = HTTPStatus.NOT_FOUND
+        return jsonify(oError), httpCode
+
+    vbox_utils_logVmInfo(oVM)
+
+    # Open session
+    oSession = None
+    try:
+        oSession = ctx['global'].openMachineSession(oVM)
+    except Exception as e:
+        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    if oSession.state != ctx['const'].SessionState_Locked:
+        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        oSession.unlockMachine()
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        return jsonify(oError), httpCode
+
+    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
+    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+
+    oCurrMachine = oSession.machine
+
+    o = oMachineSetBootOrderRequestBody
+    device = o.device
+    position = o.position
+
+    if oCurrMachine is not None:
+        try:
+            if device == "FLOPPY":
+                device = ctx['const'].DeviceType_Floppy
+            elif device == "DVD":
+                device = ctx['const'].DeviceType_DVD
+            elif device == "HARDDISK":
+                device = ctx['const'].DeviceType_HardDisk
+            elif device == "NETWORK":
+                device = ctx['const'].DeviceType_Network
+            else:
+                return "The requested device " + str(o.device) + " is not supported for booting", HTTPStatus.NOT_FOUND
+
+            oCurrMachine.setBootOrder(position, device)
+            oCurrMachine.saveSettings()
+            logging.info('Set boot order [%d] for device %s' % (position, str(device)))
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    #Close the machine session
+    if oSession is not None:
+        # Try close it.
+        try:
+            if oSession.state == ctx['const'].SessionState_Locked:
+                oSession.unlockMachine()
+                logging.info ('Unlocked the current machine ' + oVM.id)
+                oSession = None
+        except:
+            logging.info ('Exception trying unlock machine, close session or set session name')
+            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
+            except: fIgnore = False
+        
+            if fIgnore:
+                oSession  = None # Must prevent a retry during GC.
+            else:
+                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
+
+    if oError is not None:
+        return jsonify(oError), httpCode
+
+    return 'Set boot order [' + str(position) + '] for device ' + str(o.device) + ' has been done'
+
+
+def i_machine_setextradata(vmid, oMachineSetExtraDataRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::setExtraData
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetExtraDataRequestBody:
+    :type oMachineSetExtraDataRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError:
+        logging.info (oError)
+        httpCode = HTTPStatus.NOT_FOUND
+        return jsonify(oError), httpCode
+
+    vbox_utils_logVmInfo(oVM)
+
+    # Open session
+    oSession = None
+    try:
+        oSession = ctx['global'].openMachineSession(oVM)
+    except Exception as e:
+        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    if oSession.state != ctx['const'].SessionState_Locked:
+        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        oSession.unlockMachine()
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        return jsonify(oError), httpCode
+
+    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
+    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+
+    oCurrMachine = oSession.machine
+
+    o = oMachineSetExtraDataRequestBody
+    if oCurrMachine is not None:
+        try:
+            oCurrMachine.setExtraData(o.key, o.value)
+            oCurrMachine.saveSettings()
+            logging.info("Successfully set VM extra data key " + "'" + o.key + "'" + " to value " + "'" + o.value + "'")
+
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    #Close the machine session
+    if oSession is not None:
+        # Try close it.
+        try:
+            if oSession.state == ctx['const'].SessionState_Locked:
+                oSession.unlockMachine()
+                logging.info ('Unlocked the current machine ' + oVM.id)
+                oSession = None
+        except:
+            logging.info ('Exception trying unlock machine, close session or set session name')
+            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
+            except: fIgnore = False
+        
+            if fIgnore:
+                oSession  = None # Must prevent a retry during GC.
+            else:
+                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
+
+    if oError is not None:
+        return jsonify(oError), httpCode
+
+    return "Successfully set VM extra data key " + "'" + o.key + "'" + " to value " + "'" + o.value + "'"
+
+
+def i_machine_setguestproperty(vmid, oMachineSetGuestPropertyRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::setGuestProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetGuestPropertyRequestBody:
+    :type oMachineSetGuestPropertyRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError:
+        logging.info (oError)
+        httpCode = HTTPStatus.NOT_FOUND
+        return jsonify(oError), httpCode
+
+    vbox_utils_logVmInfo(oVM)
+
+    # Open session
+    oSession = None
+    try:
+        oSession = ctx['global'].openMachineSession(oVM)
+    except Exception as e:
+        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    if oSession.state != ctx['const'].SessionState_Locked:
+        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        oSession.unlockMachine()
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        return jsonify(oError), httpCode
+
+    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
+    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+
+    oCurrMachine = oSession.machine
+
+    o = oMachineSetGuestPropertyRequestBody
+    if oCurrMachine is not None:
+        try:
+            logging.info(o)
+            logging.info(o._property)
+            logging.info(o.value)
+            oCurrMachine.setGuestProperty(o._property, o.value, '')
+            oCurrMachine.saveSettings()
+            logging.info("Successfully set VM guest property "  + "'" + o._property  + "'" + " to value " + "'" + o.value + "'")
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    #Close the machine session
+    if oSession is not None:
+        # Try close it.
+        try:
+            if oSession.state == ctx['const'].SessionState_Locked:
+                oSession.unlockMachine()
+                logging.info ('Unlocked the current machine ' + oVM.id)
+                oSession = None
+        except:
+            logging.info ('Exception trying unlock machine, close session or set session name')
+            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
+            except: fIgnore = False
+        
+            if fIgnore:
+                oSession  = None # Must prevent a retry during GC.
+            else:
+                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
+
+    if oError is not None:
+        return jsonify(oError), httpCode
+
+    return "Successfully set VM guest property "  + "'" + o._property  + "'" + " to value " + "'" + o.value + "'"
+
+
+def i_machine_unregister(vmid, cleanupMode=None):  # noqa: E501
+    """
+    Call interface method IMachine::unregister
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param cleanupMode: For the possible values of enumeration look into #/definitions/CleanupMode
+    :type cleanupMode: str
+
+    :rtype: MediumArrayResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oVM = None
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    print ('Passed machine Id is ' + vmid)
+    if cleanupMode is not None: logging.info ('Passed cleanupMode is ' + cleanupMode)
+    else: cleanupMode = 'FULL'
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError is not None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    oMediumList = []
+    oMediumArrayResponse = None
+
+    if oVM is not None:
+        vbox_utils_logVmInfo(oVM)
+
+        try:
+            if cleanupMode == 'FULL':
+                cleanupMode = ctx['const'].CleanupMode_Full
+            elif cleanupMode == 'UNREGISTERONLY':
+                cleanupMode = ctx['const'].CleanupMode_UnregisterOnly
+            elif cleanupMode == 'DETACHALLRETURNNONE':
+                cleanupMode = ctx['const'].CleanupMode_DetachAllReturnNone
+            elif cleanupMode == 'DETACHALLRETURNHARDDISKSONLY':
+                cleanupMode = ctx['const'].CleanupMode_DetachAllReturnHardDisksOnly
+            else:
+                return "The requested cleanup mode " + str(cleanupMode) + " wasn't found", HTTPStatus.NOT_FOUND
+
+            olDisks = oVM.unregister(cleanupMode)
+            try:
+                oMediumArrayResponse = MediumArrayResponse()
+                oMediumArrayResponse.media = oMediumList
+            except Exception as e:
+                oMediumArrayResponse = None
+                httpCode = HTTPStatus.OK
+                oError = Error(httpCode, str(e))
+
+            logging.info ('Successfully unregistered VM %s' + vmid)
+
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    response = jsonify(oMediumArrayResponse if oMediumArrayResponse is not None else oError)
+
+    return response, httpCode
+
+
+def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody):  # noqa: E501
+    """
+    Call interface method IVirtualBox::createMachine
+
+    :param oVirtualBoxCreateMachineRequestBody: 
+    :type oVirtualBoxCreateMachineRequestBody: dict | bytes
+
+    :rtype: MachineResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oVM = None
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    o = oVirtualBoxCreateMachineRequestBody
+    print(o)
+    name = o.name
+    osTypeId = o.os_type_id
+    groups = o.groups
+    flags = o.flags
+    settingsFile = o.settings_file# check or ignore?
+
+    platform = o.platform
+    logging.info('The passed PlatformArchitecture is ' + str(platform))
+
+    if platform == "X86":
+        platform = ctx['const'].PlatformArchitecture_x86
+    elif platform == "ARM":
+        platform = ctx['const'].PlatformArchitecture_ARM
+    else:#default is NONE
+        platform = ctx['const'].PlatformArchitecture_None
+
+    logging.info('The converted PlatformArchitecture is ' + str(platform))
+
+    cipher = o.cipher
+    password_id = o.password_id
+    password = o.password
+
+    oVM, oError = vbox_utils_find_machine(name)
+    if oError is None and oVM is not None:
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, "Machine with the name %s has already registered in VirtualBox" % (name))
+        return jsonify(oError), httpCode
+
+    try:
+        ctx['vb'].getGuestOSType(osTypeId)
+    except Exception as e:
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode 
+
+    oVBox = ctx['vb']
+
+    try:
+        oVM = oVBox.createMachine(settingsFile, name, platform, groups, osTypeId, flags, cipher, password_id, password)
+        oVM.saveSettings()
+        logging.info("created machine with UUID", str(oVM.id))
+        oVBox.registerMachine(oVM)
+        logging.info("registered machine with UUID", str(oVM.id))
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    if oVM is not None:
+        vbox_utils_logVmInfo(oVM)
+
+        oMachine = None
+        try:
+            oMachine = i_fill_machine(oVM)
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            return jsonify(oError), httpCode
+
+    response = jsonify(oMachine if oMachine is not None else oError)
+    return response, httpCode
+
+
+def i_virtualbox_findmachine(vmid, select=None, nameOrId=None):  # noqa: E501
+    """
+    Call interface method IVirtualBox::findMachine
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param nameOrId: 
+    :type nameOrId: str
+
+    :rtype: MachineResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oVM = None
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info ('Passed machine Id is ' + vmid)
+    if select is not None: logging.info ('Passed attributes are ' + select)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError is not None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    if oVM is not None:
+        vbox_utils_logVmInfo(oVM)
+
+        oMachine = None
+        try:
+            oMachine = i_fill_machine(oVM, select)
+            logging.info ('Successful i_fill_machine(oVM, select)')
+
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    response = jsonify(oMachine if oMachine is not None else oError)
+
+    return response, httpCode
