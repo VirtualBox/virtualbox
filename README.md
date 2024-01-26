@@ -104,6 +104,9 @@ All platforms
 
     [Current API version](#current-api-version)
 
+    Example:\
+    _http://localhost:8080/virtualbox/0.0.1/api_
+
     If all is correct you will see the home page with Swagger UI displaying VBox REST API home page
 
     ![Example: VirtualBox Swagger UI page](https://linux-git.oraclecorp.com/vportnya/vboxrestapi/-/blob/170b3a9b0666464358b2d8588bc3d62dfaed5081/home_page_example.png)
