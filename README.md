@@ -1,7 +1,7 @@
-# VBox REST API
+# VirtualBox Swagger/OpenAPI server
 
 ## Name
-VirtualBox REST API server
+VirtualBox Swagger/OpenAPI server
 
 ## Description
 The project is intended to help Virtualbox's users interact with VirtualBox server remotely. The standard example is web browser where user opens the home page of VirtualBox server and does some actions with VMs or get\set some information related to VMs.
@@ -22,19 +22,19 @@ All platforms
     > **NOTE!** 
     > If you have a development environment you might install Python binding from there. There is no need to download SDK in this case.
 
-2. Go to a folder where the project will live
-
-3. Create a project as python virtual environment
-	```
-    python -m venv <your-env-name>
+8. Clone the project
+    ```
+    git clone https://linux-git.oraclecorp.com/vportnya/vboxrestapi.git
     ```
 
-4. Go to the project folder
+2. Go to a folder "vboxrestapi" where the project has been cloned
+
+3. Create a python virtual environment in this folder
 	```
-    cd <your-env-name>
+    python -m venv ./
     ```
 
-5. Activate this environment 
+5. Activate the environment 
 
     - Windows:
     ```Script\activate```
@@ -44,22 +44,17 @@ All platforms
 
 6. Install VirtualBox python binding inside the project python environment
     ```
-    cd <virualbox-sdk-folder>/sdk/installer
+    cd /path/to/<virualbox-sdk-folder>/sdk/installer
     ```
 	and run 
     ```
     python vboxapisetup.py install
     ```
 
-7. Return to your environment folder
+7. Return to the project folder "vboxrestapi"
 	```
-    cd <your-env-name>
+    cd /path/to/vboxrestapi
     ```
-
-8. Unpack the archive with the prepared code
-
-    The archive contains one folder "vbox_server" + the file requirements.txt. 
-Extract them into your project folder (folder <your-env-name>)
 
 9. Install the requirements
     ```
@@ -105,7 +100,7 @@ Extract them into your project folder (folder <your-env-name>)
     * Running on http://10.172.69.124:8080
     </em>
 
-13. open web browser on the page http://localhost:8080/virtualbox/{api version}/api
+13. open web browser on the page http://localhost:8080/virtualbox/{apiversion}/api
 
     [Current API version](#current-api-version)
 
