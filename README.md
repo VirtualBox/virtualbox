@@ -37,7 +37,7 @@ All platforms
 5. Activate the environment 
 
     - Windows:
-    ```Script\activate```
+    ```Scripts\activate```
 	- Linux:
     ```source bin/activate```
 
