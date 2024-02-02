@@ -65,19 +65,21 @@ def i_list_machines(fAll=False, select=None, groups=None):  # noqa: E501
             logging.info('The result may be an empty list because the list of the passed groups is empty')
 
         if len(lIntersect) > 0:               
-            oMachine = None
             try:
-                oMachine = i_fill_machine(item, select)
-                outlMachines.append(oMachine)
+                oMachine.accessible = item.accessible
+                if oMachine.accessible:
+                    oMachine = i_fill_machine(item, select)
+                    outlMachines.append(oMachine)
             except Exception as e:
                 httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
                 oError = Error(httpCode, str(e))
                 break
-        elif fAll == True and len(olPassedGroupsList) == 0:             
-            oMachine = None
+        elif fAll == True and len(olPassedGroupsList) == 0:
             try:
-                oMachine = i_fill_machine(item, select)
-                outlMachines.append(oMachine)
+                oMachine.accessible = item.accessible
+                if oMachine.accessible:
+                    oMachine = i_fill_machine(item, select)
+                    outlMachines.append(oMachine)
             except Exception as e:
                 httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
                 oError = Error(httpCode, str(e))
