@@ -58,7 +58,7 @@ All platforms
 
 9. Install the requirements
     ```
-    pip3 install -r requirements.txt
+    pip install -r requirements.txt
     ```
 
 10. Check the packages versions
@@ -88,7 +88,11 @@ All platforms
 
 12. Start server
 
-    ```python -m flask run --port=8080 --host=0.0.0.0```
+    ```python -m flask run --port=8080```
+    or
+    ```flask --app=vbox_server.wsgi run --port=8080```
+    or
+    ```flask run --port=8080```
 
     If all is correct you will see the output like:
     <em>
@@ -97,8 +101,9 @@ All platforms
     [_internal.py:187 -  _log() ] WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.←[0m
     * Running on all addresses (0.0.0.0)
     * Running on http://127.0.0.1:8080
-    * Running on http://10.172.69.124:8080
     </em>
+
+    If you want a server to be visible across the network you can add "--host=0.0.0.0" to the command line. 
 
 13. open web browser on the page http://localhost:8080/virtualbox/{apiversion}/api
 
