@@ -1371,3 +1371,287 @@ def i_virtualbox_findmachine(vmid, select=None, nameOrId=None):  # noqa: E501
     response = jsonify(oMachine if oMachine is not None else oError)
 
     return response, httpCode
+
+
+def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::attachDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineAttachDeviceRequestBody:
+    :type oMachineAttachDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError:
+        logging.info (oError)
+        httpCode = HTTPStatus.NOT_FOUND
+        return jsonify(oError), httpCode
+
+    vbox_utils_logVmInfo(oVM)
+
+    # Open session
+    oSession = None
+    try:
+        oSession = ctx['global'].openMachineSession(oVM)
+    except Exception as e:
+        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    if oSession.state != ctx['const'].SessionState_Locked:
+        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        oSession.unlockMachine()
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        return jsonify(oError), httpCode
+
+    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
+    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+
+    oCurrMachine = oSession.machine
+
+    o = oMachineAttachDeviceRequestBody
+    name = o.name
+    port = o.controller_port
+    slot = o.device
+    devtype = o.type
+    mediumPath = o.medium
+
+    machineState = oSession.machine.state
+
+    if machineState != ctx['const'].MachineState_PoweredOff and \
+        machineState != ctx['const'].MachineState_Aborted and \
+        machineState != ctx['const'].MachineState_AbortedSaved and \
+        machineState != ctx['const'].MachineState_Saved:
+            httpCode = HTTPStatus.PRECONDITION_FAILED
+            oError = Error(httpCode, "Machine must be in one of the states - PoweredOff, Aborted, AbortedSaved, Saved")
+            return jsonify(oError), httpCode
+
+    if devtype == "FLOPPY":
+        devtype = ctx['const'].DeviceType_Floppy
+    elif devtype == "DVD":
+        devtype = ctx['const'].DeviceType_DVD
+    elif devtype == "HARDDISK":
+        devtype = ctx['const'].DeviceType_HardDisk
+    else:
+        return "The requested type " + str(devtype) + " is not supported", HTTPStatus.NOT_FOUND
+
+    oVboxMedium = None
+    try:
+        if mediumPath is not None or len(mediumPath)>0:
+            oVboxMedium = ctx['vb'].openMedium(mediumPath, ctx['global'].constants.DeviceType_HardDisk, ctx['global'].constants.AccessMode_ReadWrite, False)
+            if oVboxMedium is not None:
+                oCurrMachine.attachDevice(name, port, slot, devtype, oVboxMedium)
+            else:
+                httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+                oError = Error(httpCode, "Something went wrong during opening the medium " + str(mediumPath))
+        else:
+            oCurrMachine.attachDevice(name, port, slot, devtype, None)
+
+        oCurrMachine.saveSettings()
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        logging.info("Exception during attaching the device to the controller " + name +
+        " (port " + str(port) + "; slot " + str(slot) + ")")
+        oError = Error(httpCode, str(e))
+
+    #Close the machine session
+    if oSession is not None:
+        # Try close it.
+        try:
+            if oSession.state == ctx['const'].SessionState_Locked:
+                oSession.unlockMachine()
+                logging.info ('Unlocked the current machine ' + oVM.id)
+                oSession = None
+        except:
+            logging.info ('Exception trying unlock machine, close session or set session name')
+            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
+            except: fIgnore = False
+
+            if fIgnore:
+                oSession  = None # Must prevent a retry during GC.
+            else:
+                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
+
+    if oError is not None:
+        response = jsonify(oError)
+    else:
+        response = "Successfully attached the device to the controller " + name + \
+        " (port " + str(port) + "; slot " + str(slot) + ")."
+        if oVboxMedium is not None:
+            response = response + " The device is " + mediumPath
+
+    return response, httpCode
+
+
+def i_machine_detachdevice(vmid, oMachineDetachDeviceRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::detachDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineDetachDeviceRequestBody:
+    :type oMachineDetachDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError:
+        logging.info (oError)
+        httpCode = HTTPStatus.NOT_FOUND
+        return jsonify(oError), httpCode
+
+    vbox_utils_logVmInfo(oVM)
+
+    # Open session
+    oSession = None
+    try:
+        oSession = ctx['global'].openMachineSession(oVM)
+    except Exception as e:
+        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    if oSession.state != ctx['const'].SessionState_Locked:
+        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        oSession.unlockMachine()
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        return jsonify(oError), httpCode
+
+    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
+    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+
+    oCurrMachine = oSession.machine
+
+    o = oMachineDetachDeviceRequestBody
+    name = o.name
+    port = o.controller_port
+    slot = o.device
+
+    machineState = oCurrMachine.state
+
+    if machineState != ctx['const'].MachineState_PoweredOff and \
+        machineState != ctx['const'].MachineState_Aborted and \
+        machineState != ctx['const'].MachineState_AbortedSaved and \
+        machineState != ctx['const'].MachineState_Saved:
+            httpCode = HTTPStatus.PRECONDITION_FAILED
+            oError = Error(httpCode, "Machine must be in one of the states - PoweredOff, Aborted, AbortedSaved, Saved")
+            return jsonify(oError), httpCode
+
+    oMediumAttachment = None
+    try:
+        oResponse, httpCode = i_machine_getmediumattachment(vmid, None, name, port, slot)
+
+        if oResponse.is_json is True: logging.info(oResponse.get_json())
+
+        if httpCode == HTTPStatus.OK:
+            logging.info("Try to detach device from the machine " + oVM.name + " (UUID " + oVM.id + ")")
+            oMediumAttachment = MediumAttachment.from_dict(oResponse.get_json())
+            oCurrMachine.detachDevice(name, port, slot)
+            oCurrMachine.saveSettings()
+        else:
+            oError = oResponse
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        logging.info("Exception during detaching the device from the controller " + name +
+         " (port " + str(port) + "; slot " + str(slot) + ")")
+        oError = Error(httpCode, str(e))
+
+    #Close the machine session
+    if oSession is not None:
+        # Try close it.
+        try:
+            if oSession.state == ctx['const'].SessionState_Locked:
+                oSession.unlockMachine()
+                logging.info ('Unlocked the current machine ' + oVM.id)
+                oSession = None
+        except:
+            logging.info ('Exception trying unlock machine, close session or set session name')
+            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
+            except: fIgnore = False
+
+            if fIgnore:
+                oSession  = None # Must prevent a retry during GC.
+            else:
+                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
+
+    if oError is not None:
+        response = jsonify(oError)
+    else:
+        response = "Successfuly detached the device from the controller " + name + \
+        " (port " + str(port) + "; slot " + str(slot) + ")."
+        if oMediumAttachment is not None:
+            response = response + " The device has uuid " + oMediumAttachment.medium
+
+    return response, httpCode
+
+
+def i_machine_getmediumattachment(vmid, select=None, name=None, controllerPort=None, device=None):
+    """
+    Call interface method IMachine::getMediumAttachment
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param name: 
+    :type name: str
+    :param controllerPort: controller port
+    :type controllerPort: int
+    :param device: device number
+    :type device: int
+
+    :rtype: MediumAttachmentResponse
+    """
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    vbox_utils_commonChecks()
+
+    logging.info('Passed machine Id is ' + vmid)
+    logging.info('Passed name is ' + name)
+    logging.info('Passed controllerPort is ' + str(controllerPort))
+    logging.info('Passed device is ' + str(device))
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oError is not None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    oMediumAttachment = MediumAttachment()
+    try:
+        olAttachments = ctx['global'].getArray(oVM, 'mediumAttachments')
+        for item in olAttachments:
+            if item.controller==name and item.port==controllerPort and item.device==device:
+                oMediumAttachment = i_fill_medium_attachment(item, select)
+    except Exception as e:
+        oMediumAttachment = None
+        logging.info("Can't get medium attachment for VM '%s': %s" % (oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMediumAttachment)
+    return response, httpCode
