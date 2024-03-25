@@ -1855,6 +1855,264 @@ paths:
           schema:
             $ref: "#/definitions/Error"
       x-swagger-router-controller: "vbox_server.controllers.vm_controller"
+  /vms/{vmid}/configuration/attachdevice:
+    post:
+      tags:
+      - "vm"
+      summary: "Call interface method IMachine::attachDevice"
+      description: " Attaches a device and optionally mounts a medium to the given\
+        \ storage controller (IStorageController, identified by @a name), at the indicated\
+        \ port and device.\nThis method is intended for managing storage devices in\
+        \ general while a machine is powered off. It can be used to attach and detach\
+        \ fixed and removable media. The following kind of media can be attached to\
+        \ a machine:\n<ul> <li>For fixed and removable media, you can pass in a medium\
+        \ that was previously opened using IVirtualBox::openMedium. </li> <li>Only\
+        \ for storage devices supporting removable media (such as DVDs and floppies),\
+        \ you can also specify a null pointer to indicate an empty drive or one of\
+        \ the medium objects listed in the IHost::DVDDrives and IHost::floppyDrives\
+        \ arrays to indicate a host drive. For removable devices, you can also use\
+        \ IMachine::mountMedium to change the media while the machine is running.\
+        \ </li> </ul>\n\nIn a VM's default configuration of virtual machines, the\
+        \ secondary master of the IDE controller is used for a CD/DVD drive.\nAfter\
+        \ calling this returns successfully, a new instance of IMediumAttachment will\
+        \ appear in the machine's list of medium attachments (see IMachine::mediumAttachments).\n\
+        See IMedium and IMediumAttachment for more information about attaching media.\n\
+        The specified device slot must not have a device attached to it, or this method\
+        \ will fail.\nNote! You cannot attach a device to a newly created machine\
+        \ until this machine's settings are saved to disk using #saveSettings. Note!\
+        \ If the medium is being attached indirectly, a new differencing medium will\
+        \ implicitly be created for it and attached instead. If the changes made to\
+        \ the machine settings (including this indirect attachment) are later cancelled\
+        \ using #discardSettings, this implicitly created differencing medium will\
+        \ implicitly be deleted.\n<h3>Possible results</h3> E_INVALIDARG: SATA device,\
+        \ SATA port, IDE port or IDE slot out of range, or file or UUID not found.\n\
+        VBOX_E_INVALID_OBJECT_STATE: Machine must be registered before media can be\
+        \ attached.\nVBOX_E_INVALID_VM_STATE: Invalid machine state.\nVBOX_E_OBJECT_IN_USE:\
+        \ A medium is already attached to this or another virtual machine. "
+      operationId: "machine_attachdevice"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "vmid"
+        in: "path"
+        description: "The Id of vm"
+        required: true
+        type: "string"
+      - in: "body"
+        name: "oMachineAttachDeviceRequestBody"
+        required: true
+        schema:
+          $ref: "#/definitions/MachineAttachDeviceRequestBody"
+      responses:
+        "200":
+          description: "Successful operation"
+        "400":
+          description: "Bad Request"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "401":
+          description: "Unauthorized"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "403":
+          description: "Forbidden"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "404":
+          description: "Not Found"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "405":
+          description: "Method Not Allowed"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "409":
+          description: "Conflict"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "411":
+          description: "Content-Length Required"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "412":
+          description: "Precondition Failed"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "429":
+          description: "Too Many Requests"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "500":
+          description: "Internal Server Error"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "501":
+          description: "Not Implemented"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "503":
+          description: "Server Unavailable"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+      x-swagger-router-controller: "vbox_server.controllers.vm_controller"
+  /vms/{vmid}/configuration/detachdevice:
+    post:
+      tags:
+      - "vm"
+      summary: "Call interface method IMachine::detachDevice"
+      description: " Detaches the device attached to a device slot of the specified\
+        \ bus.\nDetaching the device from the virtual machine is deferred. This means\
+        \ that the medium remains associated with the machine when this method returns\
+        \ and gets actually de-associated only after a successful #saveSettings call.\
+        \ See IMedium for more detailed information about attaching media.\nNote!\
+        \ You cannot detach a device from a running machine. Note! Detaching differencing\
+        \ media implicitly created by #attachDevice for the indirect attachment using\
+        \ this method will  <b>not </b> implicitly delete them. The IMedium::deleteStorage\
+        \ operation should be explicitly performed by the caller after the medium\
+        \ is successfully detached and the settings are saved with #saveSettings,\
+        \ if it is the desired action.\n<h3>Possible results</h3> VBOX_E_INVALID_VM_STATE:\
+        \ Attempt to detach medium from a running virtual machine.\nVBOX_E_OBJECT_NOT_FOUND:\
+        \ No medium attached to given slot/bus.\nVBOX_E_NOT_SUPPORTED: Medium format\
+        \ does not support storage deletion (only for implicitly created differencing\
+        \ media, should not happen). "
+      operationId: "machine_detachdevice"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "vmid"
+        in: "path"
+        description: "The Id of vm"
+        required: true
+        type: "string"
+      - in: "body"
+        name: "oMachineDetachDeviceRequestBody"
+        required: true
+        schema:
+          $ref: "#/definitions/MachineDetachDeviceRequestBody"
+      responses:
+        "200":
+          description: "Successful operation"
+        "400":
+          description: "Bad Request"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "401":
+          description: "Unauthorized"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "403":
+          description: "Forbidden"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "404":
+          description: "Not Found"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "405":
+          description: "Method Not Allowed"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "409":
+          description: "Conflict"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "411":
+          description: "Content-Length Required"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "412":
+          description: "Precondition Failed"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "429":
+          description: "Too Many Requests"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "500":
+          description: "Internal Server Error"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "501":
+          description: "Not Implemented"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "503":
+          description: "Server Unavailable"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+      x-swagger-router-controller: "vbox_server.controllers.vm_controller"
 
   /vms/{vmid}/console/actions/pause:
     post:
@@ -9917,6 +10175,29 @@ definitions:
         supportedPropertyNames:
         - "supportedPropertyNames"
         - "supportedPropertyNames"
+  MachineDetachDeviceRequestBody:
+    type: "object"
+    properties:
+      name:
+        type: "string"
+      controllerPort:
+        type: "integer"
+      device:
+        type: "integer"
+  MachineAttachDeviceRequestBody:
+    type: "object"
+    properties:
+      name:
+        type: "string"
+      controllerPort:
+        type: "integer"
+      device:
+        type: "integer"
+      type:
+        $ref: "#/definitions/DeviceType"
+      medium:
+        type: "string"
+        description: "UUID of object"
   Appliance_response:
     type: "object"
     properties:
