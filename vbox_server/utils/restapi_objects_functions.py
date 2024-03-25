@@ -5,7 +5,9 @@ from vbox_server.global_settings import *
 from vbox_server.models.virtual_box import VirtualBox
 from vbox_server.models.machine import Machine
 from vbox_server.models.shared_folder import SharedFolder
-
+from vbox_server.models.medium_attachment import MediumAttachment
+from vbox_server.models.bandwidth_group_type import BandwidthGroupType
+from vbox_server.models.bandwidth_group import BandwidthGroup
 
 def i_fill_virtual_box(oVBoxVirtualBox, select=None):
   """Convert the passed VirtualBox object oVBoxVirtualBox with interface IVirtualBox into Swagger object oVirtualBox"""
@@ -908,3 +910,296 @@ def i_fill_partial_shared_folder(oVBoxSharedFolder, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oSharedFolder
+
+
+def i_fill_medium_attachment(oVBoxMediumAttachment, select=None):
+  """Convert the passed VirtualBox object oVBoxMediumAttachment with interface IMediumAttachment into Swagger object oMediumAttachment"""
+
+  logging.info('Enter function ')
+  oMediumAttachment = MediumAttachment()
+  try:
+    if oVBoxMediumAttachment is not None:
+      if select is not None and len(select)>0:
+        oMediumAttachment = i_fill_partial_medium_attachment(oVBoxMediumAttachment, select)
+      else:
+        oMediumAttachment = i_fill_whole_medium_attachment(oVBoxMediumAttachment)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oMediumAttachment = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxMediumAttachment into Swagger object oMediumAttachment. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oMediumAttachment
+
+def i_fill_whole_medium_attachment(oVBoxMediumAttachment):
+  logging.info('Enter function ')
+  oMediumAttachment = MediumAttachment()
+  try:
+    if oVBoxMediumAttachment is not None:
+      try:
+        oMediumAttachment.machine = oVBoxMediumAttachment.machine.id
+      except Exception as e:
+        logging.info('Error getting the attribute "machine"')
+      try:
+        oMediumAttachment.medium = oVBoxMediumAttachment.medium.id
+      except Exception as e:
+        logging.info('Error getting the attribute "medium"')
+      try:
+        oMediumAttachment.controller = oVBoxMediumAttachment.controller
+      except Exception as e:
+        logging.info('Error getting the attribute "controller"')
+      try:
+        oMediumAttachment.port = oVBoxMediumAttachment.port
+      except Exception as e:
+        logging.info('Error getting the attribute "port"')
+      try:
+        oMediumAttachment.device = oVBoxMediumAttachment.device
+      except Exception as e:
+        logging.info('Error getting the attribute "device"')
+      oMediumAttachment.type = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMediumAttachment.type)
+      try:
+        oMediumAttachment.passthrough = oVBoxMediumAttachment.passthrough
+      except Exception as e:
+        logging.info('Error getting the attribute "passthrough"')
+      try:
+        oMediumAttachment.temporary_eject = oVBoxMediumAttachment.temporaryEject
+      except Exception as e:
+        logging.info('Error getting the attribute "temporaryEject"')
+      try:
+        oMediumAttachment.is_ejected = oVBoxMediumAttachment.isEjected
+      except Exception as e:
+        logging.info('Error getting the attribute "isEjected"')
+      try:
+        oMediumAttachment.non_rotational = oVBoxMediumAttachment.nonRotational
+      except Exception as e:
+        logging.info('Error getting the attribute "nonRotational"')
+      try:
+        oMediumAttachment.discard = oVBoxMediumAttachment.discard
+      except Exception as e:
+        logging.info('Error getting the attribute "discard"')
+      try:
+        oMediumAttachment.hot_pluggable = oVBoxMediumAttachment.hotPluggable
+      except Exception as e:
+        logging.info('Error getting the attribute "hotPluggable"')
+      try:
+        o_bandwidth_group = oVBoxMediumAttachment.bandwidthGroup if oVBoxMediumAttachment.bandwidthGroup is not None else None
+        if o_bandwidth_group is not None:
+          oMediumAttachment.bandwidth_group = i_fill_bandwidth_group(o_bandwidth_group)
+        else:
+          oMediumAttachment.bandwidth_group = None
+      except Exception as e:
+        logging.info('Error getting the interface object "bandwidthGroup"')
+
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oMediumAttachment = None
+    text = 'Exception trying to fill the object oMediumAttachment. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oMediumAttachment
+
+def i_fill_partial_medium_attachment(oVBoxMediumAttachment, select):
+  logging.info('Enter function ')
+  oMediumAttachment = MediumAttachment()
+  try:
+    if oVBoxMediumAttachment is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='machine':
+            try:
+              oMediumAttachment.machine = oVBoxMediumAttachment.machine.id
+            except Exception as e:
+              logging.info('Error getting the attribute "machine"')
+              raise Exception('Error getting the attribute "machine"')
+
+          if currAttr=='medium':
+            try:
+              oMediumAttachment.medium = oVBoxMediumAttachment.medium.id
+            except Exception as e:
+              logging.info('Error getting the attribute "medium"')
+              raise Exception('Error getting the attribute "medium"')
+
+          if currAttr=='controller':
+            try:
+              oMediumAttachment.controller = oVBoxMediumAttachment.controller
+            except Exception as e:
+              logging.info('Error getting the attribute "controller"')
+              raise Exception('Error getting the attribute "controller"')
+
+          if currAttr=='port':
+            try:
+              oMediumAttachment.port = oVBoxMediumAttachment.port
+            except Exception as e:
+              logging.info('Error getting the attribute "port"')
+              raise Exception('Error getting the attribute "port"')
+
+          if currAttr=='device':
+            try:
+              oMediumAttachment.device = oVBoxMediumAttachment.device
+            except Exception as e:
+              logging.info('Error getting the attribute "device"')
+              raise Exception('Error getting the attribute "device"')
+
+          if currAttr=='type':
+            oMediumAttachment.type = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMediumAttachment.type)
+
+          if currAttr=='passthrough':
+            try:
+              oMediumAttachment.passthrough = oVBoxMediumAttachment.passthrough
+            except Exception as e:
+              logging.info('Error getting the attribute "passthrough"')
+              raise Exception('Error getting the attribute "passthrough"')
+
+          if currAttr=='temporaryEject':
+            try:
+              oMediumAttachment.temporary_eject = oVBoxMediumAttachment.temporaryEject
+            except Exception as e:
+              logging.info('Error getting the attribute "temporaryEject"')
+              raise Exception('Error getting the attribute "temporaryEject"')
+
+          if currAttr=='isEjected':
+            try:
+              oMediumAttachment.is_ejected = oVBoxMediumAttachment.isEjected
+            except Exception as e:
+              logging.info('Error getting the attribute "isEjected"')
+              raise Exception('Error getting the attribute "isEjected"')
+
+          if currAttr=='nonRotational':
+            try:
+              oMediumAttachment.non_rotational = oVBoxMediumAttachment.nonRotational
+            except Exception as e:
+              logging.info('Error getting the attribute "nonRotational"')
+              raise Exception('Error getting the attribute "nonRotational"')
+
+          if currAttr=='discard':
+            try:
+              oMediumAttachment.discard = oVBoxMediumAttachment.discard
+            except Exception as e:
+              logging.info('Error getting the attribute "discard"')
+              raise Exception('Error getting the attribute "discard"')
+
+          if currAttr=='hotPluggable':
+            try:
+              oMediumAttachment.hot_pluggable = oVBoxMediumAttachment.hotPluggable
+            except Exception as e:
+              logging.info('Error getting the attribute "hotPluggable"')
+              raise Exception('Error getting the attribute "hotPluggable"')
+
+          if currAttr=='bandwidthGroup':
+            try:
+              o_bandwidth_group = oVBoxMediumAttachment.bandwidthGroup if oVBoxMediumAttachment.bandwidthGroup is not None else None
+              if o_bandwidth_group is not None:
+                oMediumAttachment.bandwidth_group = i_fill_bandwidth_group(o_bandwidth_group)
+              else:
+                oMediumAttachment.bandwidth_group = None
+            except Exception as e:
+              logging.info('Error getting the interface object "bandwidthGroup"')
+              raise Exception('Error getting the interface object "bandwidthGroup"')
+
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oMediumAttachment = None
+    text = 'Exception trying to fill the object oMediumAttachment. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oMediumAttachment
+
+
+def i_fill_bandwidth_group(oVBoxBandwidthGroup, select=None):
+  """Convert the passed VirtualBox object oVBoxBandwidthGroup with interface IBandwidthGroup into Swagger object oBandwidthGroup"""
+
+  logging.info('Enter function ')
+  oBandwidthGroup = BandwidthGroup()
+  try:
+    if oVBoxBandwidthGroup is not None:
+      if select is not None and len(select)>0:
+        oBandwidthGroup = i_fill_partial_bandwidth_group(oVBoxBandwidthGroup, select)
+      else:
+        oBandwidthGroup = i_fill_whole_bandwidth_group(oVBoxBandwidthGroup)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oBandwidthGroup = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxBandwidthGroup into Swagger object oBandwidthGroup. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oBandwidthGroup
+
+def i_fill_whole_bandwidth_group(oVBoxBandwidthGroup):
+  logging.info('Enter function ')
+  oBandwidthGroup = BandwidthGroup()
+  try:
+    if oVBoxBandwidthGroup is not None:
+      try:
+        oBandwidthGroup.name = oVBoxBandwidthGroup.name
+      except Exception as e:
+        logging.info('Error getting the attribute "name"')
+      oBandwidthGroup.type = ctx[ 'global'].getEnumValueName('BandwidthGroupType', oVBoxBandwidthGroup.type)
+      try:
+        oBandwidthGroup.reference = oVBoxBandwidthGroup.reference
+      except Exception as e:
+        logging.info('Error getting the attribute "reference"')
+      try:
+        oBandwidthGroup.max_bytes_per_sec = oVBoxBandwidthGroup.maxBytesPerSec
+      except Exception as e:
+        logging.info('Error getting the attribute "maxBytesPerSec"')
+
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oBandwidthGroup = None
+    text = 'Exception trying to fill the object oBandwidthGroup. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oBandwidthGroup
+
+def i_fill_partial_bandwidth_group(oVBoxBandwidthGroup, select):
+  logging.info('Enter function ')
+  oBandwidthGroup = BandwidthGroup()
+  try:
+    if oVBoxBandwidthGroup is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='name':
+            try:
+              oBandwidthGroup.name = oVBoxBandwidthGroup.name
+            except Exception as e:
+              logging.info('Error getting the attribute "name"')
+              raise Exception('Error getting the attribute "name"')
+
+          if currAttr=='type':
+            oBandwidthGroup.type = ctx[ 'global'].getEnumValueName('BandwidthGroupType', oVBoxBandwidthGroup.type)
+
+          if currAttr=='reference':
+            try:
+              oBandwidthGroup.reference = oVBoxBandwidthGroup.reference
+            except Exception as e:
+              logging.info('Error getting the attribute "reference"')
+              raise Exception('Error getting the attribute "reference"')
+
+          if currAttr=='maxBytesPerSec':
+            try:
+              oBandwidthGroup.max_bytes_per_sec = oVBoxBandwidthGroup.maxBytesPerSec
+            except Exception as e:
+              logging.info('Error getting the attribute "maxBytesPerSec"')
+              raise Exception('Error getting the attribute "maxBytesPerSec"')
+
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oBandwidthGroup = None
+    text = 'Exception trying to fill the object oBandwidthGroup. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oBandwidthGroup
