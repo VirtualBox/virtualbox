@@ -16,7 +16,7 @@ from werkzeug.datastructures import Headers
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
 from vbox_server.utils.restapi_objects_functions import *
-
+from vbox_server.utils.decorators import session_decorator as sessionDecorator
 from vbox_server.models.device_type import DeviceType
 from vbox_server.models.error import Error
 from vbox_server.models.progress import Progress
@@ -38,6 +38,7 @@ if sys.version_info[0] >= 3:
     xrange = range; # pylint: disable=redefined-builtin,invalid-name
 
 
+@sessionDecorator
 def i_machine_action(vmid, action, *var_args_tuple):  # noqa: E501
     """machine_action
 
@@ -63,35 +64,11 @@ def i_machine_action(vmid, action, *var_args_tuple):  # noqa: E501
     logging.info('Passed action type is ' + action)
 
     oError = Error()
-
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oError:
-        logging.info (oError)
-        httpCode = HTTPStatus.NOT_FOUND
-        return jsonify(oError), httpCode
+    oVM = var_args_tuple[0]
 
     vbox_utils_logVmInfo(oVM)
 
-    # Open session
-    oSession = None
-    try:
-        oSession = ctx['global'].openMachineSession(oVM)
-    except Exception as e:
-        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-        return jsonify(oError), httpCode
-
-    if oSession.state != ctx['const'].SessionState_Locked:
-        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        oSession.unlockMachine()
-        httpCode = HTTPStatus.PRECONDITION_FAILED
-        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        return jsonify(oError), httpCode
-
-    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
-    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
-
+    oSession = var_args_tuple[1]
     oProgress = None
     oCurrMachine = oSession.machine
 
@@ -111,24 +88,6 @@ def i_machine_action(vmid, action, *var_args_tuple):  # noqa: E501
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
-
-    #Close the machine session
-    if oSession is not None:
-        # Try close it.
-        try:
-            if oSession.state == ctx['const'].SessionState_Locked:
-                oSession.unlockMachine()
-                logging.info ('Unlocked the current machine ' + oVM.id)
-                oSession = None
-        except:
-            logging.info ('Exception trying unlock machine, close session or set session name')
-            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
-            except: fIgnore = False
-        
-            if fIgnore:
-                oSession  = None # Must prevent a retry during GC.
-            else:
-                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
 
     data = {
         'progress id': oProgress.id if (oProgress is not None and action=='STOP') else 'Null',
@@ -237,6 +196,7 @@ def i_console_sleepbutton(vmid):  # noqa: E501
     return i_machine_action(vmid, "ACPISLEEP")
 
 
+@sessionDecorator
 def i_machine_deleteconfig(vmid, media=None, *var_args_tuple):
     """
     Call interface method IMachine::deleteConfig
@@ -247,6 +207,7 @@ def i_machine_deleteconfig(vmid, media=None, *var_args_tuple):
     :type media: List[str]
     """
 
+    oVM = var_args_tuple[0]
     oError = None
     httpCode = HTTPStatus.OK
 
@@ -254,20 +215,15 @@ def i_machine_deleteconfig(vmid, media=None, *var_args_tuple):
 
     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oError:
-        logging.info (oError)
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-
-    vbox_utils_logVmInfo(oVM)
-
     logging.info("Try to remove the machine " + oVM.name + " (UUID " + oVM.id + ")")
 
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
     oProgress = None
     olDisks = []
     try:
-        vbox_utils_detachVmDevice(oVM)
-        olDisks = oVM.unregister(ctx['const'].CleanupMode_Full)
+        vbox_utils_detachVmDevice(oCurrMachine)
+        olDisks = oCurrMachine.unregister(ctx['const'].CleanupMode_Full)
     except Exception as e:
         logging.info("Can't delete VM '%s': %s" % (oVM.name, str(e)))
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -275,7 +231,7 @@ def i_machine_deleteconfig(vmid, media=None, *var_args_tuple):
 
     if oError is None:
         try:
-            oProgress = oVM.deleteConfig(olDisks)
+            oProgress = oCurrMachine.deleteConfig(olDisks)
         except Exception as e:
             logging.info("Can't delete VM '%s': %s" % (oVM.name, str(e)))
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR            
@@ -642,7 +598,8 @@ def i_machine_readlog(vmid, idx=None, offset=None, size=None):  # noqa: E501
     return response, httpCode
 
 
-def i_machine_createsharedfolder(vmid, oMachineCreateSharedFolderRequestBody):  # noqa: E501
+@sessionDecorator
+def i_machine_createsharedfolder(vmid, oMachineCreateSharedFolderRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::createSharedFolder
 
@@ -653,45 +610,20 @@ def i_machine_createsharedfolder(vmid, oMachineCreateSharedFolderRequestBody):  
 
     :rtype: None
     """
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oError:
-        logging.info (oError)
-        httpCode = HTTPStatus.NOT_FOUND
-        return jsonify(oError), httpCode
 
-    vbox_utils_logVmInfo(oVM)
+    oVM = var_args_tuple[0]
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
 
     o = oMachineCreateSharedFolderRequestBody
-    print (o)
     name = o.name
     host_path = o.host_path
     fWritable = o.writable
     fAutomount = o.automount
     auto_mount_point = o.auto_mount_point
 
-    # Open session
-    oSession = None
-    try:
-        oSession = ctx['global'].openMachineSession(oVM)
-    except Exception as e:
-        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-        return jsonify(oError), httpCode
-
-    if oSession.state != ctx['const'].SessionState_Locked:
-        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        oSession.unlockMachine()
-        httpCode = HTTPStatus.PRECONDITION_FAILED
-        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        return jsonify(oError), httpCode
-
-    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
-    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
-
     logging.info("Try to create the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
 
-    oCurrMachine = oSession.machine
     oError = None
     httpCode = HTTPStatus.OK
 
@@ -718,29 +650,12 @@ def i_machine_createsharedfolder(vmid, oMachineCreateSharedFolderRequestBody):  
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, str(e))
 
-    #Close the machine session
-    if oSession is not None:
-        # Try close it.
-        try:
-            if oSession.state == ctx['const'].SessionState_Locked:
-                oSession.unlockMachine()
-                logging.info ('Unlocked the current machine ' + oVM.id)
-                oSession = None
-        except:
-            logging.info ('Exception trying unlock machine, close session or set session name')
-            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
-            except: fIgnore = False
-        
-            if fIgnore:
-                oSession  = None # Must prevent a retry during GC.
-            else:
-                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
-
     response = jsonify(oError if oError is not None else "Successfully created the shared folder")
     return response, httpCode
 
 
-def i_machine_removesharedfolder(vmid, name=None):  # noqa: E501
+@sessionDecorator
+def i_machine_removesharedfolder(vmid, name=None, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::removeSharedFolder
 
@@ -752,33 +667,11 @@ def i_machine_removesharedfolder(vmid, name=None):  # noqa: E501
     :rtype: None
     """
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oError:
-        logging.info (oError)
-        httpCode = HTTPStatus.NOT_FOUND
-        return jsonify(oError), httpCode
-
-    vbox_utils_logVmInfo(oVM)
-
-    # Open session
-    oSession = None
-    try:
-        oSession = ctx['global'].openMachineSession(oVM)
-    except Exception as e:
-        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-        return jsonify(oError), httpCode
-
-    if oSession.state != ctx['const'].SessionState_Locked:
-        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        oSession.unlockMachine()
-        httpCode = HTTPStatus.PRECONDITION_FAILED
-        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        return jsonify(oError), httpCode
-
-    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
-    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+    oVM = var_args_tuple[0]
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+    oError = None
+    httpCode = HTTPStatus.OK
 
     logging.info("Try to remove the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
 
@@ -805,29 +698,12 @@ def i_machine_removesharedfolder(vmid, name=None):  # noqa: E501
                 httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
                 oError = Error(httpCode, str(e))
 
-    #Close the machine session
-    if oSession is not None:
-        # Try close it.
-        try:
-            if oSession.state == ctx['const'].SessionState_Locked:
-                oSession.unlockMachine()
-                logging.info ('Unlocked the current machine ' + oVM.id)
-                oSession = None
-        except:
-            logging.info ('Exception trying unlock machine, close session or set session name')
-            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
-            except: fIgnore = False
-        
-            if fIgnore:
-                oSession  = None # Must prevent a retry during GC.
-            else:
-                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
-
     response = jsonify(oError if oError is not None else "Successfully removed the shared folder")
     return response, httpCode
 
 
-def i_machine_savesettings(vmid):  # noqa: E501
+@sessionDecorator
+def i_machine_savesettings(vmid, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::saveSettings
 
@@ -844,34 +720,7 @@ def i_machine_savesettings(vmid):  # noqa: E501
 
     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oError:
-        logging.info (oError)
-        httpCode = HTTPStatus.NOT_FOUND
-        return jsonify(oError), httpCode
-
-    vbox_utils_logVmInfo(oVM)
-
-    # Open session
-    oSession = None
-    try:
-        oSession = ctx['global'].openMachineSession(oVM)
-    except Exception as e:
-        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-        return jsonify(oError), httpCode
-
-    if oSession.state != ctx['const'].SessionState_Locked:
-        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        oSession.unlockMachine()
-        httpCode = HTTPStatus.PRECONDITION_FAILED
-        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        return jsonify(oError), httpCode
-
-    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
-    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
-
+    oSession = var_args_tuple[1]
     oCurrMachine = oSession.machine
 
     if oCurrMachine is not None:
@@ -880,24 +729,6 @@ def i_machine_savesettings(vmid):  # noqa: E501
         except Exception as e:
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, str(e))
-
-    #Close the machine session
-    if oSession is not None:
-        # Try close it.
-        try:
-            if oSession.state == ctx['const'].SessionState_Locked:
-                oSession.unlockMachine()
-                logging.info ('Unlocked the current machine ' + oVM.id)
-                oSession = None
-        except:
-            logging.info ('Exception trying unlock machine, close session or set session name')
-            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
-            except: fIgnore = False
-        
-            if fIgnore:
-                oSession  = None # Must prevent a retry during GC.
-            else:
-                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
 
     if oError is not None:
         return jsonify(oError), httpCode
@@ -917,7 +748,8 @@ def i_machine_savestate(vmid):  # noqa: E501
     return i_machine_action(vmid, 'SAVE')
 
 
-def i_machine_setbootorder(vmid, oMachineSetBootOrderRequestBody):  # noqa: E501
+@sessionDecorator
+def i_machine_setbootorder(vmid, oMachineSetBootOrderRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::setBootOrder
 
@@ -936,34 +768,7 @@ def i_machine_setbootorder(vmid, oMachineSetBootOrderRequestBody):  # noqa: E501
 
     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oError:
-        logging.info (oError)
-        httpCode = HTTPStatus.NOT_FOUND
-        return jsonify(oError), httpCode
-
-    vbox_utils_logVmInfo(oVM)
-
-    # Open session
-    oSession = None
-    try:
-        oSession = ctx['global'].openMachineSession(oVM)
-    except Exception as e:
-        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-        return jsonify(oError), httpCode
-
-    if oSession.state != ctx['const'].SessionState_Locked:
-        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        oSession.unlockMachine()
-        httpCode = HTTPStatus.PRECONDITION_FAILED
-        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        return jsonify(oError), httpCode
-
-    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
-    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
-
+    oSession = var_args_tuple[1]
     oCurrMachine = oSession.machine
 
     o = oMachineSetBootOrderRequestBody
@@ -990,31 +795,14 @@ def i_machine_setbootorder(vmid, oMachineSetBootOrderRequestBody):  # noqa: E501
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, str(e))
 
-    #Close the machine session
-    if oSession is not None:
-        # Try close it.
-        try:
-            if oSession.state == ctx['const'].SessionState_Locked:
-                oSession.unlockMachine()
-                logging.info ('Unlocked the current machine ' + oVM.id)
-                oSession = None
-        except:
-            logging.info ('Exception trying unlock machine, close session or set session name')
-            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
-            except: fIgnore = False
-        
-            if fIgnore:
-                oSession  = None # Must prevent a retry during GC.
-            else:
-                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
-
     if oError is not None:
         return jsonify(oError), httpCode
 
     return 'Set boot order [' + str(position) + '] for device ' + str(o.device) + ' has been done'
 
 
-def i_machine_setextradata(vmid, oMachineSetExtraDataRequestBody):  # noqa: E501
+@sessionDecorator
+def i_machine_setextradata(vmid, oMachineSetExtraDataRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::setExtraData
 
@@ -1033,34 +821,7 @@ def i_machine_setextradata(vmid, oMachineSetExtraDataRequestBody):  # noqa: E501
 
     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oError:
-        logging.info (oError)
-        httpCode = HTTPStatus.NOT_FOUND
-        return jsonify(oError), httpCode
-
-    vbox_utils_logVmInfo(oVM)
-
-    # Open session
-    oSession = None
-    try:
-        oSession = ctx['global'].openMachineSession(oVM)
-    except Exception as e:
-        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-        return jsonify(oError), httpCode
-
-    if oSession.state != ctx['const'].SessionState_Locked:
-        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        oSession.unlockMachine()
-        httpCode = HTTPStatus.PRECONDITION_FAILED
-        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        return jsonify(oError), httpCode
-
-    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
-    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
-
+    oSession = var_args_tuple[1]
     oCurrMachine = oSession.machine
 
     o = oMachineSetExtraDataRequestBody
@@ -1074,31 +835,14 @@ def i_machine_setextradata(vmid, oMachineSetExtraDataRequestBody):  # noqa: E501
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, str(e))
 
-    #Close the machine session
-    if oSession is not None:
-        # Try close it.
-        try:
-            if oSession.state == ctx['const'].SessionState_Locked:
-                oSession.unlockMachine()
-                logging.info ('Unlocked the current machine ' + oVM.id)
-                oSession = None
-        except:
-            logging.info ('Exception trying unlock machine, close session or set session name')
-            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
-            except: fIgnore = False
-        
-            if fIgnore:
-                oSession  = None # Must prevent a retry during GC.
-            else:
-                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
-
     if oError is not None:
         return jsonify(oError), httpCode
 
     return "Successfully set VM extra data key " + "'" + o.key + "'" + " to value " + "'" + o.value + "'"
 
 
-def i_machine_setguestproperty(vmid, oMachineSetGuestPropertyRequestBody):  # noqa: E501
+@sessionDecorator
+def i_machine_setguestproperty(vmid, oMachineSetGuestPropertyRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::setGuestProperty
 
@@ -1117,34 +861,7 @@ def i_machine_setguestproperty(vmid, oMachineSetGuestPropertyRequestBody):  # no
 
     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oError:
-        logging.info (oError)
-        httpCode = HTTPStatus.NOT_FOUND
-        return jsonify(oError), httpCode
-
-    vbox_utils_logVmInfo(oVM)
-
-    # Open session
-    oSession = None
-    try:
-        oSession = ctx['global'].openMachineSession(oVM)
-    except Exception as e:
-        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-        return jsonify(oError), httpCode
-
-    if oSession.state != ctx['const'].SessionState_Locked:
-        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        oSession.unlockMachine()
-        httpCode = HTTPStatus.PRECONDITION_FAILED
-        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        return jsonify(oError), httpCode
-
-    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
-    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
-
+    oSession = var_args_tuple[1]
     oCurrMachine = oSession.machine
 
     o = oMachineSetGuestPropertyRequestBody
@@ -1159,24 +876,6 @@ def i_machine_setguestproperty(vmid, oMachineSetGuestPropertyRequestBody):  # no
         except Exception as e:
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, str(e))
-
-    #Close the machine session
-    if oSession is not None:
-        # Try close it.
-        try:
-            if oSession.state == ctx['const'].SessionState_Locked:
-                oSession.unlockMachine()
-                logging.info ('Unlocked the current machine ' + oVM.id)
-                oSession = None
-        except:
-            logging.info ('Exception trying unlock machine, close session or set session name')
-            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
-            except: fIgnore = False
-        
-            if fIgnore:
-                oSession  = None # Must prevent a retry during GC.
-            else:
-                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
 
     if oError is not None:
         return jsonify(oError), httpCode
@@ -1373,7 +1072,8 @@ def i_virtualbox_findmachine(vmid, select=None, nameOrId=None):  # noqa: E501
     return response, httpCode
 
 
-def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody):  # noqa: E501
+@sessionDecorator
+def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::attachDevice
 
@@ -1391,36 +1091,6 @@ def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody):  # noqa: E501
 
     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oError:
-        logging.info (oError)
-        httpCode = HTTPStatus.NOT_FOUND
-        return jsonify(oError), httpCode
-
-    vbox_utils_logVmInfo(oVM)
-
-    # Open session
-    oSession = None
-    try:
-        oSession = ctx['global'].openMachineSession(oVM)
-    except Exception as e:
-        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-        return jsonify(oError), httpCode
-
-    if oSession.state != ctx['const'].SessionState_Locked:
-        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        oSession.unlockMachine()
-        httpCode = HTTPStatus.PRECONDITION_FAILED
-        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        return jsonify(oError), httpCode
-
-    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
-    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
-
-    oCurrMachine = oSession.machine
-
     o = oMachineAttachDeviceRequestBody
     name = o.name
     port = o.controller_port
@@ -1428,6 +1098,8 @@ def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody):  # noqa: E501
     devtype = o.type
     mediumPath = o.medium
 
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
     machineState = oSession.machine.state
 
     if machineState != ctx['const'].MachineState_PoweredOff and \
@@ -1467,24 +1139,6 @@ def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody):  # noqa: E501
         " (port " + str(port) + "; slot " + str(slot) + ")")
         oError = Error(httpCode, str(e))
 
-    #Close the machine session
-    if oSession is not None:
-        # Try close it.
-        try:
-            if oSession.state == ctx['const'].SessionState_Locked:
-                oSession.unlockMachine()
-                logging.info ('Unlocked the current machine ' + oVM.id)
-                oSession = None
-        except:
-            logging.info ('Exception trying unlock machine, close session or set session name')
-            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
-            except: fIgnore = False
-
-            if fIgnore:
-                oSession  = None # Must prevent a retry during GC.
-            else:
-                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
-
     if oError is not None:
         response = jsonify(oError)
     else:
@@ -1496,7 +1150,8 @@ def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody):  # noqa: E501
     return response, httpCode
 
 
-def i_machine_detachdevice(vmid, oMachineDetachDeviceRequestBody):  # noqa: E501
+@sessionDecorator
+def i_machine_detachdevice(vmid, oMachineDetachDeviceRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::detachDevice
 
@@ -1515,35 +1170,10 @@ def i_machine_detachdevice(vmid, oMachineDetachDeviceRequestBody):  # noqa: E501
 
     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oError:
-        logging.info (oError)
-        httpCode = HTTPStatus.NOT_FOUND
-        return jsonify(oError), httpCode
-
-    vbox_utils_logVmInfo(oVM)
-
-    # Open session
-    oSession = None
-    try:
-        oSession = ctx['global'].openMachineSession(oVM)
-    except Exception as e:
-        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-        return jsonify(oError), httpCode
-
-    if oSession.state != ctx['const'].SessionState_Locked:
-        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        oSession.unlockMachine()
-        httpCode = HTTPStatus.PRECONDITION_FAILED
-        oError = Error(httpCode, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
-        return jsonify(oError), httpCode
-
-    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
-    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
-
+    oVM = var_args_tuple[0]
+    oSession = var_args_tuple[1]
     oCurrMachine = oSession.machine
+    machineState = oSession.machine.state
 
     o = oMachineDetachDeviceRequestBody
     name = o.name
@@ -1579,24 +1209,6 @@ def i_machine_detachdevice(vmid, oMachineDetachDeviceRequestBody):  # noqa: E501
         logging.info("Exception during detaching the device from the controller " + name +
          " (port " + str(port) + "; slot " + str(slot) + ")")
         oError = Error(httpCode, str(e))
-
-    #Close the machine session
-    if oSession is not None:
-        # Try close it.
-        try:
-            if oSession.state == ctx['const'].SessionState_Locked:
-                oSession.unlockMachine()
-                logging.info ('Unlocked the current machine ' + oVM.id)
-                oSession = None
-        except:
-            logging.info ('Exception trying unlock machine, close session or set session name')
-            try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
-            except: fIgnore = False
-
-            if fIgnore:
-                oSession  = None # Must prevent a retry during GC.
-            else:
-                logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
 
     if oError is not None:
         response = jsonify(oError)
