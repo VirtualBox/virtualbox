@@ -8,6 +8,8 @@ from vbox_server.models.machine_set_boot_order_request_body import MachineSetBoo
 from vbox_server.models.machine_create_shared_folder_request_body import MachineCreateSharedFolderRequestBody  # noqa: E501
 from vbox_server.models.machine_attach_device_request_body import MachineAttachDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_detach_device_request_body import MachineDetachDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_unmount_medium_request_body import MachineUnmountMediumRequestBody  # noqa: E501
+from vbox_server.models.machine_mount_medium_request_body import MachineMountMediumRequestBody  # noqa: E501
 
 from vbox_server.controllers.internal.i_vm_controller import *
 
@@ -405,3 +407,40 @@ def machine_detachdevice(vmid, oMachineDetachDeviceRequestBody):  # noqa: E501
         oMachineDetachDeviceRequestBody = MachineDetachDeviceRequestBody.from_dict(connexion.request.get_json())  # noqa: E501
     return i_machine_detachdevice(vmid, oMachineDetachDeviceRequestBody)
  
+
+def machine_mountmedium(vmid, mediumid, oMachineMountMediumRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::mountMedium
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param oMachineMountMediumRequestBody:
+    :type oMachineMountMediumRequestBody: dict | bytes
+
+    :rtype: None
+    """
+    if connexion.request.is_json:
+        oMachineMountMediumRequestBody = MachineMountMediumRequestBody.from_dict(connexion.request.get_json())  # noqa: E501
+
+    return i_machine_mountmedium(vmid, mediumid, oMachineMountMediumRequestBody)
+
+
+def machine_unmountmedium(vmid, mediumid, oMachineUnmountMediumRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::unmountMedium
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param oMachineUnmountMediumRequestBody:
+    :type oMachineUnmountMediumRequestBody: dict | bytes
+
+    :rtype: None
+    """
+    if connexion.request.is_json:
+        oMachineUnmountMediumRequestBody = MachineUnmountMediumRequestBody.from_dict(connexion.request.get_json())  # noqa: E501
+
+    return i_machine_unmountmedium(vmid, mediumid, oMachineUnmountMediumRequestBody)
