@@ -3442,6 +3442,262 @@ paths:
           schema:
             $ref: "#/definitions/Error"
       x-swagger-router-controller: "vbox_server.controllers.vm_controller"
+  /vms/{vmid}/media/{mediumid}/actions/mount:
+    post:
+      tags:
+      - "vm"
+      summary: "Call interface method IMachine::mountMedium"
+      description: " Mounts a medium (IMedium, identified by the given UUID @a id)\
+        \ to the given storage controller (IStorageController, identified by @a name),\
+        \ at the indicated port and device. The device must already exist; see IMachine::attachDevice\
+        \ for how to attach a new device.\nThis method is intended only for managing\
+        \ removable media, where the device is fixed but media is changeable at runtime\
+        \ (such as DVDs and floppies). It cannot be used for fixed media such as hard\
+        \ disks.\nThe @a controllerPort and @a device parameters specify the device\
+        \ slot and have have the same meaning as with IMachine::attachDevice.\nThe\
+        \ specified device slot can have a medium mounted, which will be unmounted\
+        \ first. Specifying a zero UUID (or an empty string) for @a medium does just\
+        \ an unmount.\nSee IMedium for more detailed information about attaching media.\n\
+        \n<h3>Possible results</h3> E_INVALIDARG: SATA device, SATA port, IDE port\
+        \ or IDE slot out of range.\nVBOX_E_INVALID_OBJECT_STATE: Attempt to attach\
+        \ medium to an unregistered virtual machine.\nVBOX_E_INVALID_VM_STATE: Invalid\
+        \ machine state.\nVBOX_E_OBJECT_IN_USE: Medium already attached to this or\
+        \ another virtual machine. "
+      operationId: "machine_mountmedium"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "vmid"
+        in: "path"
+        description: "The Id of vm"
+        required: true
+        type: "string"
+      - name: "mediumid"
+        in: "path"
+        description: "The Id of medium"
+        required: true
+        type: "string"
+      - in: "body"
+        name: "oMachineMountMediumRequestBody"
+        required: true
+        schema:
+          $ref: "#/definitions/MachineMountMediumRequestBody"
+      responses:
+        "200":
+          description: "Successful operation"
+        "400":
+          description: "Bad Request"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "401":
+          description: "Unauthorized"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "403":
+          description: "Forbidden"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "404":
+          description: "Not Found"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "405":
+          description: "Method Not Allowed"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "409":
+          description: "Conflict"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "411":
+          description: "Content-Length Required"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "412":
+          description: "Precondition Failed"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "429":
+          description: "Too Many Requests"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "500":
+          description: "Internal Server Error"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "501":
+          description: "Not Implemented"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "503":
+          description: "Server Unavailable"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+      x-swagger-router-controller: "vbox_server.controllers.vm_controller"
+  /vms/{vmid}/media/{mediumid}/actions/unmount:
+    post:
+      tags:
+      - "vm"
+      summary: "Call interface method IMachine::unmountMedium"
+      description: " Unmounts any currently mounted medium (IMedium, identified by\
+        \ the given UUID @a id) to the given storage controller (IStorageController,\
+        \ identified by @a name), at the indicated port and device. The device must\
+        \ already exist;\nThis method is intended only for managing removable media,\
+        \ where the device is fixed but media is changeable at runtime (such as DVDs\
+        \ and floppies). It cannot be used for fixed media such as hard disks.\nThe\
+        \ @a controllerPort and @a device parameters specify the device slot and have\
+        \ have the same meaning as with IMachine::attachDevice.\nThe specified device\
+        \ slot must have a medium mounted, which will be unmounted. If there is no\
+        \ mounted medium it will do nothing. See IMedium for more detailed information\
+        \ about attaching/unmounting media.\n\n<h3>Possible results</h3> E_INVALIDARG:\
+        \ SATA device, SATA port, IDE port or IDE slot out of range.\nVBOX_E_INVALID_OBJECT_STATE:\
+        \ Attempt to unmount medium that is not removable - not DVD or floppy.\nVBOX_E_INVALID_VM_STATE:\
+        \ Invalid machine state.\nVBOX_E_OBJECT_IN_USE: Medium already attached to\
+        \ this or another virtual machine.\nVBOX_E_OBJECT_NOT_FOUND: Medium not attached\
+        \ to specified port, device, controller. "
+      operationId: "machine_unmountmedium"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "vmid"
+        in: "path"
+        description: "The Id of vm"
+        required: true
+        type: "string"
+      - name: "mediumid"
+        in: "path"
+        description: "The Id of medium"
+        required: true
+        type: "string"
+      - in: "body"
+        name: "oMachineUnmountMediumRequestBody"
+        required: true
+        schema:
+          $ref: "#/definitions/MachineUnmountMediumRequestBody"
+      responses:
+        "200":
+          description: "Successful operation"
+        "400":
+          description: "Bad Request"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "401":
+          description: "Unauthorized"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "403":
+          description: "Forbidden"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "404":
+          description: "Not Found"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "405":
+          description: "Method Not Allowed"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "409":
+          description: "Conflict"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "411":
+          description: "Content-Length Required"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "412":
+          description: "Precondition Failed"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "429":
+          description: "Too Many Requests"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "500":
+          description: "Internal Server Error"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "501":
+          description: "Not Implemented"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+        "503":
+          description: "Server Unavailable"
+          headers:
+            vbox-request-id:
+              type: "string"
+          schema:
+            $ref: "#/definitions/Error"
+      x-swagger-router-controller: "vbox_server.controllers.vm_controller"
 
 definitions:
   Error:
@@ -10198,6 +10454,31 @@ definitions:
       medium:
         type: "string"
         description: "UUID of object"
+  MachineMountMediumRequestBody:
+    type: "object"
+    properties:
+      name:
+        type: "string"
+      controllerPort:
+        type: "integer"
+      device:
+        type: "integer"
+      medium:
+        type: "string"
+        description: "UUID of object"
+      force:
+        type: "boolean"
+  MachineUnmountMediumRequestBody:
+    type: "object"
+    properties:
+      name:
+        type: "string"
+      controllerPort:
+        type: "integer"
+      device:
+        type: "integer"
+      force:
+        type: "boolean"
   Appliance_response:
     type: "object"
     properties:
