@@ -21,13 +21,41 @@ from vbox_server.models.device_type import DeviceType
 from vbox_server.models.error import Error
 from vbox_server.models.progress import Progress
 
-#################################################################################
+############################ Implemented ############################
 from vbox_server.models.machine_getguestproperty_response import MachineGetguestpropertyResponse  # noqa: E501
 from vbox_server.models.machine_querylogfilename_response import MachineQuerylogfilenameResponse  # noqa: E501
 from vbox_server.models.machine_readlog_response import MachineReadlogResponse  # noqa: E501
 from vbox_server.models.medium_array_response import MediumArrayResponse  # noqa: E501
 from vbox_server.models.medium_getproperty_response import MediumGetpropertyResponse  # noqa: E501
 from vbox_server.models.virtualbox_getextradatakeys_response import VirtualboxGetextradatakeysResponse  # noqa: E501
+
+############################# Not implemented yet #############################
+from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
+from vbox_server.models.console_add_encryption_passwords_request_body import ConsoleAddEncryptionPasswordsRequestBody  # noqa: E501
+from vbox_server.models.console_attach_usb_device_request_body import ConsoleAttachUSBDeviceRequestBody  # noqa: E501
+from vbox_server.models.console_create_shared_folder_request_body import ConsoleCreateSharedFolderRequestBody  # noqa: E501
+from vbox_server.models.machine_add_storage_controller_request_body import MachineAddStorageControllerRequestBody  # noqa: E501
+from vbox_server.models.machine_add_usb_controller_request_body import MachineAddUSBControllerRequestBody  # noqa: E501
+from vbox_server.models.machine_attach_device_without_medium_request_body import MachineAttachDeviceWithoutMediumRequestBody  # noqa: E501
+from vbox_server.models.machine_attach_host_pci_device_request_body import MachineAttachHostPCIDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_clone_to_request_body import MachineCloneToRequestBody  # noqa: E501
+from vbox_server.models.machine_delete_snapshot_range_request_body import MachineDeleteSnapshotRangeRequestBody  # noqa: E501
+from vbox_server.models.machine_export_to_request_body import MachineExportToRequestBody  # noqa: E501
+from vbox_server.models.machine_lock_machine_request_body import MachineLockMachineRequestBody  # noqa: E501
+from vbox_server.models.machine_move_to_request_body import MachineMoveToRequestBody  # noqa: E501
+from vbox_server.models.machine_non_rotational_device_request_body import MachineNonRotationalDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_passthrough_device_request_body import MachinePassthroughDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_set_auto_discard_for_device_request_body import MachineSetAutoDiscardForDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_set_bandwidth_group_for_device_request_body import MachineSetBandwidthGroupForDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_set_hot_pluggable_for_device_request_body import MachineSetHotPluggableForDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_set_no_bandwidth_group_for_device_request_body import MachineSetNoBandwidthGroupForDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_set_storage_controller_bootable_request_body import MachineSetStorageControllerBootableRequestBody  # noqa: E501
+from vbox_server.models.machine_take_snapshot_request_body import MachineTakeSnapshotRequestBody  # noqa: E501
+from vbox_server.models.machine_temporary_eject_device_request_body import MachineTemporaryEjectDeviceRequestBody  # noqa: E501
+from vbox_server.models.platform_x86_set_cpu_property_request_body import PlatformX86SetCPUPropertyRequestBody  # noqa: E501
+from vbox_server.models.platform_x86_set_hw_virt_ex_property_request_body import PlatformX86SetHWVirtExPropertyRequestBody  # noqa: E501
+from vbox_server.models.virtual_box_open_machine_request_body import VirtualBoxOpenMachineRequestBody  
+############################# Not implemented yet #############################
 
 # Set logging level for module
 logging.getLogger().setLevel(logging.INFO)
@@ -1340,7 +1368,6 @@ def i_machine_mountmedium(vmid, mediumid, oMachineMountMediumRequestBody, *var_a
     return 'The passed medium with uuid ' + mediumid +' has been successfully mounted', httpCode
 
 
-
 @sessionDecorator
 def i_machine_unmountmedium(vmid, mediumid, oMachineUnmountMediumRequestBody, *var_args_tuple):  # noqa: E501
     """
@@ -1426,3 +1453,943 @@ def i_machine_unmountmedium(vmid, mediumid, oMachineUnmountMediumRequestBody, *v
         return jsonify(oError), httpCode
 
     return 'The passed medium with uuid ' + mediumid +' has been successfully unmounted', httpCode
+
+
+############################# Not implemented yet #############################
+def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
+    """
+    Call interface method IConsole::addEncryptionPassword
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oConsoleAddEncryptionPasswordRequestBody: 
+    :type oConsoleAddEncryptionPasswordRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_console_addencryptionpasswords(vmid, oConsoleAddEncryptionPasswordsRequestBody):  # noqa: E501
+    """
+    Call interface method IConsole::addEncryptionPasswords
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oConsoleAddEncryptionPasswordsRequestBody: 
+    :type oConsoleAddEncryptionPasswordsRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_console_attachusbdevice(vmid, oConsoleAttachUSBDeviceRequestBody):  # noqa: E501
+    """
+    Call interface method IConsole::attachUSBDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oConsoleAttachUSBDeviceRequestBody: 
+    :type oConsoleAttachUSBDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_console_clearallencryptionpasswords(vmid):  # noqa: E501
+    """
+    Call interface method IConsole::clearAllEncryptionPasswords
+
+    :param vmid: The Id of vm
+    :type vmid: str
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_console_createsharedfolder(vmid, oConsoleCreateSharedFolderRequestBody):  # noqa: E501
+    """
+    Call interface method IConsole::createSharedFolder
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oConsoleCreateSharedFolderRequestBody: 
+    :type oConsoleCreateSharedFolderRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_console_detachusbdevice(vmid, id=None):  # noqa: E501
+    """
+    Call interface method IConsole::detachUSBDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param id: 
+    :type id: str
+
+    :rtype: USBDeviceResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_console_findusbdevicebyaddress(vmid, select=None, name=None):  # noqa: E501
+    """
+    Call interface method IConsole::findUSBDeviceByAddress
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param name: 
+    :type name: str
+
+    :rtype: USBDeviceResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_console_findusbdevicebyid(vmid, select=None, id=None):  # noqa: E501
+    """
+    Call interface method IConsole::findUSBDeviceById
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param id: 
+    :type id: str
+
+    :rtype: USBDeviceResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_console_removeencryptionpassword(vmid, id=None):  # noqa: E501
+    """
+    Call interface method IConsole::removeEncryptionPassword
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param id: 
+    :type id: str
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_console_removesharedfolder(vmid, name=None):  # noqa: E501
+    """
+    Call interface method IConsole::removeSharedFolder
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param name: 
+    :type name: str
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_addstoragecontroller(vmid, oMachineAddStorageControllerRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::addStorageController
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineAddStorageControllerRequestBody: 
+    :type oMachineAddStorageControllerRequestBody: dict | bytes
+
+    :rtype: StorageControllerResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_addusbcontroller(vmid, oMachineAddUSBControllerRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::addUSBController
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineAddUSBControllerRequestBody: 
+    :type oMachineAddUSBControllerRequestBody: dict | bytes
+
+    :rtype: USBControllerResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_applydefaults(vmid, flags=None):  # noqa: E501
+    """
+    Call interface method IMachine::applyDefaults
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param flags: 
+    :type flags: str
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_attachdevicewithoutmedium(vmid, oMachineAttachDeviceWithoutMediumRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::attachDeviceWithoutMedium
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineAttachDeviceWithoutMediumRequestBody: 
+    :type oMachineAttachDeviceWithoutMediumRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_attachhostpcidevice(vmid, oMachineAttachHostPCIDeviceRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::attachHostPCIDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineAttachHostPCIDeviceRequestBody: 
+    :type oMachineAttachHostPCIDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_cloneto(vmid, oMachineCloneToRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::cloneTo
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineCloneToRequestBody: 
+    :type oMachineCloneToRequestBody: dict | bytes
+
+    :rtype: ProgressResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_deleteguestproperty(vmid, name=None):  # noqa: E501
+    """
+    Call interface method IMachine::deleteGuestProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param name: 
+    :type name: str
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_deletesnapshot(vmid, id=None):  # noqa: E501
+    """
+    Call interface method IMachine::deleteSnapshot
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param id: 
+    :type id: str
+
+    :rtype: ProgressResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_deletesnapshotandallchildren(vmid, id=None):  # noqa: E501
+    """
+    Call interface method IMachine::deleteSnapshotAndAllChildren
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param id: 
+    :type id: str
+
+    :rtype: ProgressResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_deletesnapshotrange(vmid, oMachineDeleteSnapshotRangeRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::deleteSnapshotRange
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineDeleteSnapshotRangeRequestBody: 
+    :type oMachineDeleteSnapshotRangeRequestBody: dict | bytes
+
+    :rtype: ProgressResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_detachhostpcidevice(vmid, hostAddress=None):  # noqa: E501
+    """
+    Call interface method IMachine::detachHostPCIDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param hostAddress: 
+    :type hostAddress: int
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_discardsavedstate(vmid, fRemoveFile=None):  # noqa: E501
+    """
+    Call interface method IMachine::discardSavedState
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param fRemoveFile: 
+    :type fRemoveFile: bool
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_discardsettings(vmid):  # noqa: E501
+    """
+    Call interface method IMachine::discardSettings
+
+    :param vmid: The Id of vm
+    :type vmid: str
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_exportto(vmid, oMachineExportToRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::exportTo
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineExportToRequestBody: 
+    :type oMachineExportToRequestBody: dict | bytes
+
+    :rtype: VirtualSystemDescriptionResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_findsnapshot(vmid, select=None, nameOrId=None):  # noqa: E501
+    """
+    Call interface method IMachine::findSnapshot
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param nameOrId: 
+    :type nameOrId: str
+
+    :rtype: SnapshotResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_getcpustatus(vmid, cpu=None):  # noqa: E501
+    """
+    Call interface method IMachine::getCPUStatus
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param cpu: 
+    :type cpu: int
+
+    :rtype: MachineGetcpustatusResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_geteffectiveparavirtprovider(vmid):  # noqa: E501
+    """
+    Call interface method IMachine::getEffectiveParavirtProvider
+
+    :param vmid: The Id of vm
+    :type vmid: str
+
+    :rtype: ParavirtProviderResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_getmedium(vmid, mediumid, select=None, name=None, controllerPort=None, device=None):  # noqa: E501
+    """
+    Call interface method IMachine::getMedium
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param name: 
+    :type name: str
+    :param controllerPort: 
+    :type controllerPort: int
+    :param device: 
+    :type device: int
+
+    :rtype: MediumResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_getmediumattachmentsofcontroller(vmid, select=None, name=None):  # noqa: E501
+    """
+    Call interface method IMachine::getMediumAttachmentsOfController
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param name: 
+    :type name: str
+
+    :rtype: MediumAttachmentArrayResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_getnetworkadapter(vmid, select=None, slot=None):  # noqa: E501
+    """
+    Call interface method IMachine::getNetworkAdapter
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param slot: 
+    :type slot: int
+
+    :rtype: NetworkAdapterResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_getparallelport(vmid, select=None, slot=None):  # noqa: E501
+    """
+    Call interface method IMachine::getParallelPort
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param slot: 
+    :type slot: int
+
+    :rtype: ParallelPortResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_getserialport(vmid, select=None, slot=None):  # noqa: E501
+    """
+    Call interface method IMachine::getSerialPort
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param slot: 
+    :type slot: int
+
+    :rtype: SerialPortResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_getstoragecontrollerbyinstance(vmid, select=None, connectionType=None, instance=None):  # noqa: E501
+    """
+    Call interface method IMachine::getStorageControllerByInstance
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param connectionType: For the possible values of enumeration look into #/definitions/StorageBus
+    :type connectionType: str
+    :param instance: 
+    :type instance: int
+
+    :rtype: StorageControllerResponse1
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_getstoragecontrollerbyname(vmid, select=None, name=None):  # noqa: E501
+    """
+    Call interface method IMachine::getStorageControllerByName
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param name: 
+    :type name: str
+
+    :rtype: StorageControllerResponse1
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_getusbcontrollerbyname(vmid, select=None, name=None):  # noqa: E501
+    """
+    Call interface method IMachine::getUSBControllerByName
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param name: 
+    :type name: str
+
+    :rtype: USBControllerResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_getusbcontrollercountbytype(vmid, type=None):  # noqa: E501
+    """
+    Call interface method IMachine::getUSBControllerCountByType
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param type: For the possible values of enumeration look into #/definitions/USBControllerType
+    :type type: str
+
+    :rtype: MachineGetusbcontrollercountbytypeResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_hotplugcpu(vmid, cpu=None):  # noqa: E501
+    """
+    Call interface method IMachine::hotPlugCPU
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param cpu: 
+    :type cpu: int
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_hotunplugcpu(vmid, cpu=None):  # noqa: E501
+    """
+    Call interface method IMachine::hotUnplugCPU
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param cpu: 
+    :type cpu: int
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_lockmachine(vmid, oMachineLockMachineRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::lockMachine
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineLockMachineRequestBody: 
+    :type oMachineLockMachineRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_moveto(vmid, oMachineMoveToRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::moveTo
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineMoveToRequestBody: 
+    :type oMachineMoveToRequestBody: dict | bytes
+
+    :rtype: ProgressResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::nonRotationalDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineNonRotationalDeviceRequestBody: 
+    :type oMachineNonRotationalDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_passthroughdevice(vmid, oMachinePassthroughDeviceRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::passthroughDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachinePassthroughDeviceRequestBody: 
+    :type oMachinePassthroughDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::nonRotationalDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineNonRotationalDeviceRequestBody: 
+    :type oMachineNonRotationalDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_passthroughdevice(vmid, oMachinePassthroughDeviceRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::passthroughDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachinePassthroughDeviceRequestBody: 
+    :type oMachinePassthroughDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_removestoragecontroller(vmid, name=None):  # noqa: E501
+    """
+    Call interface method IMachine::removeStorageController
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param name: 
+    :type name: str
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_removeusbcontroller(vmid, name=None):  # noqa: E501
+    """
+    Call interface method IMachine::removeUSBController
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param name: 
+    :type name: str
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_restoresnapshot(vmid, snapshot=None):  # noqa: E501
+    """
+    Call interface method IMachine::restoreSnapshot
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param snapshot: Put here an ID of requested ISnapshot VirtualBox object
+    :type snapshot: str
+
+    :rtype: ProgressResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_setautodiscardfordevice(vmid, oMachineSetAutoDiscardForDeviceRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::setAutoDiscardForDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetAutoDiscardForDeviceRequestBody: 
+    :type oMachineSetAutoDiscardForDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_setbandwidthgroupfordevice(vmid, oMachineSetBandwidthGroupForDeviceRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::setBandwidthGroupForDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetBandwidthGroupForDeviceRequestBody: 
+    :type oMachineSetBandwidthGroupForDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_sethotpluggablefordevice(vmid, oMachineSetHotPluggableForDeviceRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::setHotPluggableForDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetHotPluggableForDeviceRequestBody: 
+    :type oMachineSetHotPluggableForDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_setnobandwidthgroupfordevice(vmid, oMachineSetNoBandwidthGroupForDeviceRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::setNoBandwidthGroupForDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetNoBandwidthGroupForDeviceRequestBody: 
+    :type oMachineSetNoBandwidthGroupForDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_setsettingsfilepath(vmid, settingsFilePath=None):  # noqa: E501
+    """
+    Call interface method IMachine::setSettingsFilePath
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param settingsFilePath: 
+    :type settingsFilePath: str
+
+    :rtype: ProgressResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_setstoragecontrollerbootable(vmid, oMachineSetStorageControllerBootableRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::setStorageControllerBootable
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetStorageControllerBootableRequestBody: 
+    :type oMachineSetStorageControllerBootableRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::takeSnapshot
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineTakeSnapshotRequestBody: 
+    :type oMachineTakeSnapshotRequestBody: dict | bytes
+
+    :rtype: MachineTakesnapshotResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_temporaryejectdevice(vmid, oMachineTemporaryEjectDeviceRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::temporaryEjectDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineTemporaryEjectDeviceRequestBody: 
+    :type oMachineTemporaryEjectDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_platformx86_getcpuproperty(vmid, _property=None):  # noqa: E501
+    """
+    Call interface method IPlatformX86::getCPUProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param _property: For the possible values of enumeration look into #/definitions/CPUPropertyTypeX86
+    :type _property: str
+
+    :rtype: Platformx86GetcpupropertyResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_platformx86_gethwvirtexproperty(vmid, _property=None):  # noqa: E501
+    """
+    Call interface method IPlatformX86::getHWVirtExProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param _property: For the possible values of enumeration look into #/definitions/HWVirtExPropertyType
+    :type _property: str
+
+    :rtype: Platformx86GetcpupropertyResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_platformx86_setcpuproperty(vmid, oPlatformX86SetCPUPropertyRequestBody):  # noqa: E501
+    """
+    Call interface method IPlatformX86::setCPUProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oPlatformX86SetCPUPropertyRequestBody: 
+    :type oPlatformX86SetCPUPropertyRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_platformx86_sethwvirtexproperty(vmid, oPlatformX86SetHWVirtExPropertyRequestBody):  # noqa: E501
+    """
+    Call interface method IPlatformX86::setHWVirtExProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oPlatformX86SetHWVirtExPropertyRequestBody: 
+    :type oPlatformX86SetHWVirtExPropertyRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_virtualbox_openmachine(vmid, oVirtualBoxOpenMachineRequestBody):  # noqa: E501
+    """
+    Call interface method IVirtualBox::openMachine
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oVirtualBoxOpenMachineRequestBody: 
+    :type oVirtualBoxOpenMachineRequestBody: dict | bytes
+
+    :rtype: MachineResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_virtualbox_registermachine(vmid, machine=None):  # noqa: E501
+    """
+    Call interface method IVirtualBox::registerMachine
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param machine: Put here an ID of requested IMachine VirtualBox object
+    :type machine: str
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED

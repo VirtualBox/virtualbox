@@ -1,6 +1,9 @@
 import connexion
 import six
 
+from vbox_server.models.virtual_box_open_medium_request_body import VirtualBoxOpenMediumRequestBody  # noqa: E501
+from vbox_server.models.virtual_box_set_extra_data_request_body import VirtualBoxSetExtraDataRequestBody  
+
 from vbox_server.controllers.internal.i_server_controller import *
 
 
@@ -16,6 +19,20 @@ def synthetic_getserver(select=None):  # noqa: E501
     return i_synthetic_getserver(select)
 
 
+def virtualbox_getmachinesbygroups(select=None, groups=None):  # noqa: E501
+    """
+    Call interface method IVirtualBox::getMachinesByGroups
+
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param groups: 
+    :type groups: str
+
+    :rtype: MachineArrayResponse
+    """
+    return i_virtualbox_getmachinesbygroups(select, groups)
+
+
 def virtualbox_checkfirmwarepresent(platformArchitecture=None, firmwareType=None, version=None):  # noqa: E501
     """
     Call interface method IVirtualBox::checkFirmwarePresent
@@ -29,7 +46,7 @@ def virtualbox_checkfirmwarepresent(platformArchitecture=None, firmwareType=None
 
     :rtype: VirtualboxCheckfirmwarepresentResponse
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    return i_virtualbox_checkfirmwarepresent(platformArchitecture, firmwareType, version)
 
 
 def virtualbox_composemachinefilename(name=None, group=None, createFlags=None, baseFolder=None):  # noqa: E501
@@ -47,7 +64,7 @@ def virtualbox_composemachinefilename(name=None, group=None, createFlags=None, b
 
     :rtype: VirtualboxComposemachinefilenameResponse
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    return i_virtualbox_composemachinefilename(name, group, createFlags, baseFolder)
 
 
 def virtualbox_createunattendedinstaller():  # noqa: E501
@@ -57,7 +74,7 @@ def virtualbox_createunattendedinstaller():  # noqa: E501
 
     :rtype: UnattendedResponse
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    return i_virtualbox_createunattendedinstaller()
 
 
 def virtualbox_getextradata(key=None):  # noqa: E501
@@ -69,7 +86,7 @@ def virtualbox_getextradata(key=None):  # noqa: E501
 
     :rtype: MediumGetpropertyResponse
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    return i_virtualbox_getextradata(key)
 
 
 def virtualbox_getextradatakeys():  # noqa: E501
@@ -79,7 +96,7 @@ def virtualbox_getextradatakeys():  # noqa: E501
 
     :rtype: VirtualboxGetextradatakeysResponse
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    return i_virtualbox_getextradatakeys()
 
 
 def virtualbox_getguestosdescsbysubtype(OSSubtype=None):  # noqa: E501
@@ -91,7 +108,7 @@ def virtualbox_getguestosdescsbysubtype(OSSubtype=None):  # noqa: E501
 
     :rtype: VirtualboxGetguestosdescsbysubtypeResponse
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    return i_virtualbox_getguestosdescsbysubtype(OSSubtype)
 
 
 def virtualbox_getguestossubtypesbyfamilyid(family=None):  # noqa: E501
@@ -103,7 +120,7 @@ def virtualbox_getguestossubtypesbyfamilyid(family=None):  # noqa: E501
 
     :rtype: VirtualboxGetguestossubtypesbyfamilyidResponse
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    return i_virtualbox_getguestossubtypesbyfamilyid(family)
 
 
 def virtualbox_getguestostype(select=None, id=None):  # noqa: E501
@@ -117,7 +134,7 @@ def virtualbox_getguestostype(select=None, id=None):  # noqa: E501
 
     :rtype: GuestOSTypeResponse
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    return i_virtualbox_getguestostype(select, id)
 
 
 def virtualbox_getmachinesbygroups(select=None, groups=None):  # noqa: E501
@@ -143,7 +160,7 @@ def virtualbox_getmachinestates(machines=None):  # noqa: E501
 
     :rtype: MachineStateArrayResponse
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    return i_virtualbox_getmachinestates(machines)
 
 
 def virtualbox_openmedium(oVirtualBoxOpenMediumRequestBody):  # noqa: E501
@@ -155,7 +172,9 @@ def virtualbox_openmedium(oVirtualBoxOpenMediumRequestBody):  # noqa: E501
 
     :rtype: MediumResponse
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    if connexion.request.is_json:
+        oVirtualBoxOpenMediumRequestBody = VirtualBoxOpenMediumRequestBody.from_dict(connexion.request.get_json())  # noqa: E501
+    return i_virtualbox_openmedium(oVirtualBoxOpenMediumRequestBody)
 
 
 def virtualbox_setextradata(oVirtualBoxSetExtraDataRequestBody):  # noqa: E501
@@ -167,4 +186,6 @@ def virtualbox_setextradata(oVirtualBoxSetExtraDataRequestBody):  # noqa: E501
 
     :rtype: None
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    if connexion.request.is_json:
+        oVirtualBoxSetExtraDataRequestBody = VirtualBoxSetExtraDataRequestBody.from_dict(connexion.request.get_json())  # noqa: E501
+    return i_virtualbox_setextradata(oVirtualBoxSetExtraDataRequestBody)
