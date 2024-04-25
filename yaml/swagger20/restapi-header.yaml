@@ -1,0 +1,38 @@
+---
+swagger: "2.0"
+info:
+  description: "This is VirtualBox REST API.\n"
+  version: 0.0.1
+  title: VirtualBox REST API
+  termsOfService: http://swagger.io/terms/
+  contact:
+    email: valery.portnyagin@oracle.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+
+
+host: localhost:8080
+basePath: /virtualbox/0.0.1
+
+schemes:
+- http
+- https
+
+#==========[ Definitions ]================================================================
+definitions:
+  Error:
+    type: "object"
+    required:
+    - "code"
+    - "message"
+    properties:
+      code:
+        type: "integer"
+        description: "API specific error code"
+      message:
+        type: "string"
+        example: "Something is broken"
+        description: "User-friendly description of error"
+
+

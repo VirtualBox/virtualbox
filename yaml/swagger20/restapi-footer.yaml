@@ -1,0 +1,112 @@
+#==========[ Responses ]=======================================================================
+responses:
+
+  DefaultError:
+    description: |
+      An error has occurred.
+    headers:
+      opc-request-id:
+        type: string
+        description: |
+          Unique Oracle-assigned identifier for the request. If you need to contact Oracle about a
+          particular request, please provide the request ID.
+    schema:
+      $ref: '#/definitions/Error'
+      
+  # 400
+  BadRequest:
+    description: Bad Request
+    headers:
+      vbox-request-id:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+  # 401
+  Unauthorized:
+    description: Unauthorized
+    headers:
+      vbox-request-id:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+  # 403
+  Forbidden:
+    description: Forbidden
+    headers:
+      vbox-request-id:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+  # 404
+  NotFound:
+    description: Not Found
+    headers:
+      vbox-request-id:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+  # 405
+  MethodNotAllowed:
+    description: Method Not Allowed
+    headers:
+      vbox-request-id:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+  # 409
+  Conflict:
+    description: Conflict
+    headers:
+      vbox-request-id:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+  # 411
+  ContentLengthRequired:
+    description: Content-Length Required
+    headers:
+      vbox-request-id:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+  # 412
+  PreconditionFailed:
+    description: Precondition Failed
+    headers:
+      vbox-request-id:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+  # 429
+  TooManyRequests:
+    description: Too Many Requests
+    headers:
+      vbox-request-id:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+  # 500
+  InternalServerError:
+    description: Internal Server Error
+    headers:
+      vbox-request-id:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+  # 501
+  NotImplemented:
+    description: Not Implemented
+    headers:
+      vbox-request-id:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+  # 503
+  ServerUnavailable:
+    description: Server Unavailable
+    headers:
+      vbox-request-id:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+
