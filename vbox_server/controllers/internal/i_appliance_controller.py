@@ -1,0 +1,157 @@
+# pylint: disable=invalid-name
+# pylint: disable=consider-using-f-string
+# pylint: disable=line-too-long
+# pylint: disable=undefined-variable
+import logging
+from http import HTTPStatus
+from flask import jsonify
+
+from vbox_server.models.appliance_add_passwords_request_body import ApplianceAddPasswordsRequestBody  # noqa: E501
+from vbox_server.models.appliance_createvirtualsystemdescriptions_response import ApplianceCreatevirtualsystemdescriptionsResponse  # noqa: E501
+from vbox_server.models.appliance_getmediumidsforpasswordid_response import ApplianceGetmediumidsforpasswordidResponse  # noqa: E501
+from vbox_server.models.appliance_getwarnings_response import ApplianceGetwarningsResponse  # noqa: E501
+from vbox_server.models.appliance_response import ApplianceResponse  # noqa: E501
+from vbox_server.models.appliance_write_request_body import ApplianceWriteRequestBody  # noqa: E501
+from vbox_server.models.error import Error  # noqa: E501
+from vbox_server.models.progress_response import ProgressResponse  # noqa: E501
+from vbox_server import util
+
+
+def i_appliance_addpasswords(applianceid, oApplianceAddPasswordsRequestBody):  # noqa: E501
+    """
+    Call interface method IAppliance::addPasswords
+
+    :param applianceid: The Id of appliance
+    :type applianceid: str
+    :param oApplianceAddPasswordsRequestBody: 
+    :type oApplianceAddPasswordsRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_appliance_createvirtualsystemdescriptions(applianceid, requested=None):  # noqa: E501
+    """
+    Call interface method IAppliance::createVirtualSystemDescriptions
+
+    :param applianceid: The Id of appliance
+    :type applianceid: str
+    :param requested: 
+    :type requested: int
+
+    :rtype: ApplianceCreatevirtualsystemdescriptionsResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_appliance_getmediumidsforpasswordid(applianceid, passwordId=None):  # noqa: E501
+    """
+    Call interface method IAppliance::getMediumIdsForPasswordId
+
+    :param applianceid: The Id of appliance
+    :type applianceid: str
+    :param passwordId: 
+    :type passwordId: str
+
+    :rtype: ApplianceGetmediumidsforpasswordidResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_appliance_getpasswordids(applianceid):  # noqa: E501
+    """
+    Call interface method IAppliance::getPasswordIds
+
+    :param applianceid: The Id of appliance
+    :type applianceid: str
+
+    :rtype: ApplianceGetmediumidsforpasswordidResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_appliance_getwarnings(applianceid):  # noqa: E501
+    """
+    Call interface method IAppliance::getWarnings
+
+    :param applianceid: The Id of appliance
+    :type applianceid: str
+
+    :rtype: ApplianceGetwarningsResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_appliance_importmachines(applianceid, options=None):  # noqa: E501
+    """
+    Call interface method IAppliance::importMachines
+
+    :param applianceid: The Id of appliance
+    :type applianceid: str
+    :param options: For the possible values of enumeration look into #/definitions/ImportOptions
+    :type options: List[str]
+
+    :rtype: ProgressResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_appliance_interpret(applianceid):  # noqa: E501
+    """
+    Call interface method IAppliance::interpret
+
+    :param applianceid: The Id of appliance
+    :type applianceid: str
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_appliance_read(applianceid, file=None):  # noqa: E501
+    """
+    Call interface method IAppliance::read
+
+    :param applianceid: The Id of appliance
+    :type applianceid: str
+    :param file: 
+    :type file: str
+
+    :rtype: ProgressResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_appliance_write(applianceid, oApplianceWriteRequestBody):  # noqa: E501
+    """
+    Call interface method IAppliance::write
+
+    :param applianceid: The Id of appliance
+    :type applianceid: str
+    :param oApplianceWriteRequestBody: 
+    :type oApplianceWriteRequestBody: dict | bytes
+
+    :rtype: ProgressResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_virtualbox_createappliance():  # noqa: E501
+    """
+    Call interface method IVirtualBox::createAppliance
+
+
+    :rtype: ApplianceResponse
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
