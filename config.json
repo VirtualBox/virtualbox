@@ -1,0 +1,6 @@
+{
+  "apiPackage" : "VBoxRestAPI",
+  "serverPort" : 8080,
+  "packageVersion": "0.0.1",
+  "packageName": "vbox_server"
+}
