@@ -1,0 +1,159 @@
+<!--
+     Unofficial DTD for the VirtualBox.xidl file. This is not currently used:
+     neither by the VirtualBox build process nor at runtime, so it's not shipped
+     with the product either, and thus not guaranteed to be up to date.
+     It is still the only sort-of-documentation available about what is valid
+     XIDL syntax.
+-->
+<!--
+    Copyright (C) 2008-2023 Oracle and/or its affiliates.
+
+    This file is part of VirtualBox base platform packages, as
+    available from https://www.virtualbox.org.
+
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation, in version 3 of the
+    License.
+
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, see <https://www.gnu.org/licenses>.
+
+    SPDX-License-Identifier: GPL-3.0-only
+-->
+  <!ELEMENT idl (desc|if|library)*>                           <!-- done -->
+  <!ELEMENT if ANY>                                           <!-- done -->
+    <!ATTLIST if target (midl|xpidl|wsdl) #REQUIRED>
+  <!ELEMENT cpp ANY>                                          <!-- done -->
+    <!ATTLIST cpp line CDATA #IMPLIED>
+  <!ELEMENT library (application|if)*>                        <!-- done -->
+    <!ATTLIST library name CDATA #REQUIRED>
+    <!ATTLIST library uuid CDATA #REQUIRED>
+    <!ATTLIST library version CDATA #REQUIRED>
+  <!ELEMENT application (descGroup|if|result|enum|interface|module)*>   <!-- done -->
+    <!ATTLIST application name CDATA #REQUIRED>
+    <!ATTLIST application uuid CDATA #REQUIRED>
+    <!ATTLIST application supportsErrorInfo CDATA #REQUIRED>
+  <!ELEMENT result (#PCDATA|desc|link)*>                      <!-- done -->
+    <!ATTLIST result name CDATA #REQUIRED>
+    <!ATTLIST result value CDATA #IMPLIED>
+  <!ELEMENT module (class)*>                                  <!-- done -->
+    <!ATTLIST module name CDATA #REQUIRED>
+    <!ATTLIST module context CDATA #REQUIRED>
+    <!ATTLIST module threadingModel CDATA #IMPLIED>
+  <!ELEMENT enum (desc?, const+)>                             <!-- done -->
+    <!ATTLIST enum name CDATA #REQUIRED>
+    <!ATTLIST enum uuid CDATA #REQUIRED>
+  <!ELEMENT const (desc?)>                                    <!-- done -->
+    <!ATTLIST const name CDATA #REQUIRED>
+    <!ATTLIST const value CDATA #REQUIRED>
+    <!ATTLIST const wsmap (managed|suppress) "managed">
+  <!ELEMENT interface (desc?, (attribute|method|class|if)*)>  <!-- done -->
+    <!ATTLIST interface name CDATA #REQUIRED>
+    <!ATTLIST interface extends CDATA #IMPLIED>
+    <!ATTLIST interface uuid CDATA #IMPLIED>
+    <!ATTLIST interface supportsErrorInfo (yes|no) #IMPLIED>
+    <!ATTLIST interface default (yes|no) "no">
+    <!ATTLIST interface internal (yes|no) "no">
+    <!ATTLIST interface wsmap (fail|global|struct|managed|suppress) "fail">
+                <!-- wsmap specifies how this interface is mapped to the
+                     web services API (WSDL). One of the following must be specified:
+                        fail: the default value, for which vboxweb.xsl will raise an error and die.
+                        global: object is a singleton and resides in global variable in the web service.
+                        managed: objects of this type are referenced by managed object referenced
+                        struct: object is a simple struct and can be copied as such
+                        suppress: Skip this interface entirely, and all methods that use it -->
+    <!ATTLIST interface wscpp (generate|hardcoded) "generate">
+                <!-- wscpp specifies whether C++ code should be generated in methodmaps.cpp
+                     as a mapper to COM APIs. By default, this is "generate"; however, if set
+                     to "hardcoded", then no automatic C++ code should be generated. This is done
+                     for webservice APIs that have no counterpart in COM and are hard-coded in
+                     the webservice server, such as IManagedObjectReference and ISessionManager. -->
+    <!ATTLIST interface rest (managed|suppress) "suppress">
+                <!-- rest specifies how this interface is mapped to the
+                     web services API (RESTful). One of the following must be specified:
+                        managed: objects of this type are represented
+                        suppress: the default value, skip this interface entirely -->
+    <!ATTLIST interface autogen CDATA #IMPLIED>
+                <!-- autogen names the style of code auto-generation for this
+                     interface (currently only VBoxEvent). -->
+    <!ATTLIST interface autogenflags CDATA #IMPLIED>
+                <!-- autogenflags contains autogen tweaks.
+                     For autoget=VBoxEvent: 'BSTR' - generate IN_BSTR variants of the functions. -->
+    <!ATTLIST interface id CDATA #IMPLIED>
+                <!-- id is only relevant for event interfaces, and specifies
+                     which const name will be generated. -->
+    <!ATTLIST interface waitable (yes|no) "no">
+                <!-- waitable is only relevant for event interfaces, and
+                     specifies that this event can be waited for. -->
+    <!ATTLIST interface wrap-hint-server-addinterfaces CDATA #IMPLIED>
+    <!ATTLIST interface wrap-hint-server CDATA #IMPLIED>
+    <!ATTLIST interface wrap-gen-hook (yes|no) "no">
+    <!ATTLIST interface notdual (yes|no) "no">
+    <!-- DTrace has a probe name length limit, so dtracename helps dealing with excessivly long names. -->
+    <!ATTLIST interface dtracename CDATA #IMPLIED>
+    <!ATTLIST interface reservedAttributes CDATA #IMPLIED>
+    <!ATTLIST interface reservedMethods CDATA #IMPLIED>
+  <!ELEMENT class (interface)>                                <!-- done -->
+    <!ATTLIST class name CDATA #REQUIRED>
+    <!ATTLIST class uuid CDATA #REQUIRED>
+    <!ATTLIST class namespace CDATA #REQUIRED>
+  <!ELEMENT attribute (desc?)>                                <!-- done -->
+    <!ATTLIST attribute name CDATA #REQUIRED>
+    <!ATTLIST attribute type CDATA #REQUIRED>
+    <!ATTLIST attribute default CDATA #IMPLIED>
+    <!ATTLIST attribute readonly (yes|no) "no">
+    <!ATTLIST attribute mod (ptr|string) #IMPLIED>
+    <!ATTLIST attribute internal (yes|no) "no">
+    <!ATTLIST attribute safearray (yes|no) "no">
+    <!ATTLIST attribute wsmap (managed|suppress) "managed">
+    <!ATTLIST attribute rest (uuid|suppress|default) "default">
+    <!ATTLIST attribute wrap-hint-server CDATA #IMPLIED>
+    <!-- DTrace has a probe name length limit, so dtracename helps dealing with excessivly long names. -->
+    <!ATTLIST attribute dtracename CDATA #IMPLIED>
+  <!ELEMENT method (rest?,desc?,param*,result*)>                    <!-- done -->
+    <!ATTLIST method name CDATA #REQUIRED>
+    <!ATTLIST method const CDATA "no">
+    <!ATTLIST method internal (yes|no) "no">
+    <!ATTLIST method wsmap (managed|suppress) "managed">
+    <!ATTLIST method wrap-hint-server CDATA #IMPLIED>
+    <!-- DTrace has a probe name length limit, so dtracename helps dealing with excessivly long names. -->
+    <!ATTLIST method dtracename CDATA #IMPLIED>
+  <!ELEMENT rest ANY>                                         <!-- done -->
+    <!ATTLIST rest name CDATA #IMPLIED>
+    <!ATTLIST rest request (get|put|post|delete|patch) "get">
+    <!ATTLIST rest path CDATA #REQUIRED>
+  <!ELEMENT param (desc?)>                                    <!-- done -->
+    <!ATTLIST param name CDATA #REQUIRED>
+    <!ATTLIST param type CDATA #REQUIRED>
+    <!ATTLIST param dir (in|out|return) #REQUIRED>
+    <!ATTLIST param mod (ptr|string) #IMPLIED>
+    <!ATTLIST param safearray (yes|no) "no">
+  <!ELEMENT descGroup (desc)*>                                <!-- done (ignoring, butt-ugly hack, improper nesting enforced all over the .xsl files!) -->
+    <!ATTLIST descGroup id CDATA #IMPLIED>
+    <!ATTLIST descGroup title CDATA #IMPLIED>
+  <!ELEMENT desc (#PCDATA|link|note|see|b|tt|i|pre|para|ul|ol|h3|table|result)*>   <!-- done (ignoring) -->
+  <!-- the following only appear within descriptions -->
+  <!ELEMENT link (#PCDATA)>
+    <!ATTLIST link to CDATA #REQUIRED>
+  <!ELEMENT h3 ANY>
+  <!ELEMENT para ANY>
+  <!ELEMENT b ANY>
+  <!ELEMENT i ANY>
+  <!ELEMENT ul (#PCDATA|li)*>
+  <!ELEMENT ol (#PCDATA|li)*>
+  <!ELEMENT li ANY>
+  <!ELEMENT pre ANY>
+  <!ELEMENT tt ANY>
+  <!ELEMENT see (#PCDATA|link)*>
+  <!ELEMENT note ANY>
+    <!ATTLIST note internal (yes|no) "no">
+  <!ELEMENT table (tr)+>
+  <!ELEMENT tr (td|th)+>
+  <!ELEMENT th ANY>
+  <!ELEMENT td ANY>
