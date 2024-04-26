@@ -43,7 +43,7 @@ CASE_STYLE=camel #available values are 'snake' and 'camel'
 SRC_DIR=$(CURDIR)/vbox_server
 TOOLS_DIR=$(CURDIR)/tools
 
-SRC_XSL_DIR=$(CURDIR)/xlst/$(GENERATOR_TYPE)
+SRC_XSL_DIR=$(CURDIR)/xslt/$(GENERATOR_TYPE)
 SRC_YAML_DIR=$(CURDIR)/yaml/$(GENERATOR_TYPE)
 
 SRC_MODEL_DIR=$(SRC_DIR)/models
