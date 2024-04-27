@@ -1,8 +1,9 @@
-# File ".env" contains the next variables:
-# IDL_DIR - Folder where VirtualBox API XIDL file lives (VirtualBox.xidl)
-# DEST_REMOTE_PYTHON_DIR - Folder where you flask server will live
-include .env
-export
+# Set the environment variable VBOX_XIDL_FILE globally for all users on the machine where the GitLab runner lives
+# to use your own variant of VirtualBox.xidl. Or specially for gitlab-runner users.
+# Othertwise VirtualBox.xidl from the local "idl" folder will be used as fallback.
+ifndef VBOX_XIDL_FILE
+	VBOX_XIDL_FILE=./idl/VirtualBox.xidl
+endif
 
 # The PYTHON_PACKAGE_NAME must be equal to the string "packageName" in the file config.json.
 # Example:
@@ -90,8 +91,11 @@ preparations:
 	mkdir -p $(DEST_INT_MODEL_DIR)
 	mkdir -p $(DEST_INT_CONTROLLER_DIR)
 
-	echo $$CLASSPATH
-	echo $$CURDIR
+	@echo ""
+	@echo CLASSPATH is $$CLASSPATH
+	@echo CURDIR is $$CURDIR
+	@echo VBOX_XIDL_FILE is $$VBOX_XIDL_FILE
+	@echo ""
 
 api_generation: enums objects methods requestbody fullapi
 
@@ -115,28 +119,28 @@ final: copy
 enums:
 	java -classpath $(TOOLS_DIR)/bin/xalan-2.4.1.jar org.apache.xalan.xslt.Process \
 	$(COMMON_XSLT_OPTIONS) \
-	-in $(IDL_DIR)/VirtualBox.xidl \
+	-in $(VBOX_XIDL_FILE) \
 	-xsl $(SRC_XSL_DIR)/restapi-enumerations.xsl \
 	-out $(DEST_YAML_DIR)/restapi-enumerations.yaml
 
 objects:
 	java -classpath $(TOOLS_DIR)/bin/xalan-2.4.1.jar org.apache.xalan.xslt.Process \
 	$(COMMON_XSLT_OPTIONS) \
-	-in $(IDL_DIR)/VirtualBox.xidl \
+	-in $(VBOX_XIDL_FILE) \
 	-xsl $(SRC_XSL_DIR)/restapi-objects.xsl \
 	-out $(DEST_YAML_DIR)/restapi-objects.yaml
 
 methods:
 	java -classpath $(TOOLS_DIR)/bin/xalan-2.4.1.jar org.apache.xalan.xslt.Process \
 	$(COMMON_XSLT_OPTIONS) \
-	-in $(IDL_DIR)/VirtualBox.xidl \
+	-in $(VBOX_XIDL_FILE) \
 	-xsl $(SRC_XSL_DIR)/restapi-methods.xsl \
 	-out $(DEST_YAML_DIR)/restapi-methods.yaml
 
 requestbody:
 	java -classpath $(TOOLS_DIR)/bin/xalan-2.4.1.jar org.apache.xalan.xslt.Process \
 	$(COMMON_XSLT_OPTIONS) \
-	-in $(IDL_DIR)/VirtualBox.xidl \
+	-in $(VBOX_XIDL_FILE) \
 	-xsl $(SRC_XSL_DIR)/restapi-request-body-definitions.xsl \
 	-out $(DEST_YAML_DIR)/restapi-request-body-definitions.yaml
 
@@ -150,7 +154,7 @@ fullapi:
 	> $(DEST_YAML_DIR)/restapi.yaml
 
 code:
-	@echo "@@@@@@@@@@@@@@@@ Used $(GENERATOR) @@@@@@@@@@@@@@@@"
+	@echo "@@@@@@@@@@@@@@@@ $(GENERATOR) @@@@@@@@@@@@@@@@"
 	java -jar $(TOOLS_DIR)/bin/$(GENERATOR) generate $(OPTIONS) -i $(DEST_YAML_DIR)/restapi.yaml -o $(DEST_DIR)
 
 docs: html_generation
