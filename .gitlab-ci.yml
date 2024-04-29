@@ -19,7 +19,6 @@ build-job:
   script:
     - echo "Do your build here"
     - make
-    - make copy
 
 deploy-job:
   stage: deploy
