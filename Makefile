@@ -1,7 +1,12 @@
+# GitLab build (runner) case:
 # Set the environment variable VBOX_XIDL_FILE globally for all users on the machine where the GitLab runner lives
-# to use your own variant of VirtualBox.xidl. Or specially for gitlab-runner users.
+# to use your own variant of VirtualBox.xidl. Or specially for gitlab-runner user.
+# gitlab-runner user must have the access to this file.
 # Othertwise VirtualBox.xidl from the local "idl" folder will be used as fallback.
-ifndef VBOX_XIDL_FILE
+#
+# Default case:
+# Copy your VirtualBox.xidl into the folder "idl".
+ifndef $$VBOX_XIDL_FILE
 	VBOX_XIDL_FILE=./idl/VirtualBox.xidl
 endif
 
@@ -80,7 +85,7 @@ COMMON_XSLT_OPTIONS += -param case_style $(CASE_STYLE)
 
 export CLASSPATH=$(TOOLS_DIR)/bin/xalan-2.4.1.jar:$(TOOLS_DIR)/bin/xercesImpl-2.2.1.jar:$(TOOLS_DIR)/bin/xml-apis.jar
 
-all: preparations api_generation code_generation docs
+all: preparations api-generation code-generation docs copy
 
 preparations:
 	mkdir -p $(DEST_DIR)
@@ -94,16 +99,12 @@ preparations:
 	@echo ""
 	@echo CLASSPATH is $$CLASSPATH
 	@echo CURDIR is $$CURDIR
-	@echo VBOX_XIDL_FILE is $$VBOX_XIDL_FILE
+	@echo VBOX_XIDL_FILE is $(VBOX_XIDL_FILE)
 	@echo ""
 
-api_generation: enums objects methods requestbody fullapi
+api-generation: enums objects methods requestbody fullapi
 
-code_generation: code
-
-test: test_schemas
-
-final: copy
+code-generation: flask-connexion
 
 # The variable CLASSPATH isn't picked up properly on Windows
 # That's why the path to Xalan is added directly via the parameter "-classpath"
@@ -153,13 +154,13 @@ fullapi:
 	$(SRC_YAML_DIR)/restapi-footer.yaml \
 	> $(DEST_YAML_DIR)/restapi.yaml
 
-code:
+flask-connexion:
 	@echo "@@@@@@@@@@@@@@@@ $(GENERATOR) @@@@@@@@@@@@@@@@"
 	java -jar $(TOOLS_DIR)/bin/$(GENERATOR) generate $(OPTIONS) -i $(DEST_YAML_DIR)/restapi.yaml -o $(DEST_DIR)
 
-docs: html_generation
+docs: html-docs
 
-html_generation:
+html-docs:
 	java -jar $(TOOLS_DIR)/bin/$(GENERATOR) generate \
 	-i $(DEST_YAML_DIR)/restapi.yaml \
 	-c $(GENERATOR_CONFIG_FILE) $(GENERATOR_FLAG) html \
@@ -184,6 +185,9 @@ copy:
 	mkdir -p $(DEST_CODE_DIR)/static
 	mv $(DEST_CODE_DIR)/swagger/swagger.yaml $(DEST_CODE_DIR)/static/virtualbox.yaml
 	rmdir $(DEST_CODE_DIR)/swagger
+
+# Copy requirements.txt file to the output folder
+	cp requirements.txt $(DEST_DIR)
 
 # Copy the rest to the output folder
 	cp -r $(SRC_DIR)/utils $(DEST_CODE_DIR)

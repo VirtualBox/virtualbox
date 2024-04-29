@@ -3034,7 +3034,7 @@
     </method>
 
     <method name="getPlatformProperties">
-      <rest name="getPlatformProperties" request="get" path="/platform/properties"/>
+      <rest name="getPlatformProperties" request="get" path="/platform/"/>
       <desc>
         Gets the associated properties object for the given VM platform architecture.
       </desc>
