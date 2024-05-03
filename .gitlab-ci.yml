@@ -17,7 +17,6 @@ after_script:
 build-job:
   stage: build
   script:
-    - echo "Do your build here"
     - make
 
 deploy-job:
