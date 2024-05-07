@@ -4,12 +4,12 @@
 VirtualBox Swagger/OpenAPI server
 
 ## Description
-The project is intended to help Virtualbox's users interact with VirtualBox server remotely. The standard example is web browser where user opens the home page of VirtualBox server and does some actions with VMs or get\set some information related to VMs.
+The project is intended to help VirtualBox users interact with VirtualBox server remotely. The standard example is web browser where user opens the home page of VirtualBox server and does some actions with VMs or get\set some information related to VMs.
 
 ## Prerequisities
-- Python 3.8 and above
-- Connexion below 2.14.1
-- Flask below 2.3.0
+- Python 3.8, 3.9, 3.10, 3.11
+- Connexion 2.14.1 or below
+- Flask 2.3.0 or below
 
 ## Current API version
 0.0.1
@@ -41,6 +41,7 @@ Copy your VirtualBox.xidl into the folder "idl".
 3. Default\
 Default VirtualBox.xidl from the folder "idl" is used.
 ### Check Java on the machine
+Java must be installed. Simple check is to run on of the next commands:\
 ```
 java --version
 javac --version
