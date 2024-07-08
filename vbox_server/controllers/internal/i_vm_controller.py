@@ -17,9 +17,11 @@ from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
 from vbox_server.utils.restapi_objects_functions import *
 from vbox_server.utils.decorators import session_decorator as sessionDecorator
+from vbox_server.utils.decorators import open_exclusive_session as openExclusiveSession
 from vbox_server.models.device_type import DeviceType
 from vbox_server.models.error import Error
 from vbox_server.models.progress import Progress
+from vbox_server.models.progress_response import ProgressResponse
 
 ############################ Implemented ############################
 from vbox_server.models.machine_getguestproperty_response import MachineGetguestpropertyResponse  # noqa: E501
@@ -224,7 +226,7 @@ def i_console_sleepbutton(vmid):  # noqa: E501
     return i_machine_action(vmid, "ACPISLEEP")
 
 
-@sessionDecorator
+@openExclusiveSession
 def i_machine_deleteconfig(vmid, media=None, *var_args_tuple):
     """
     Call interface method IMachine::deleteConfig
@@ -295,7 +297,7 @@ def i_machine_getbootorder(vmid, position=None):  # noqa: E501
     logging.info('Passed machine Id is ' + vmid)
 
     oVM, oError = vbox_utils_find_machine(vmid)
-    if oError is not None:
+    if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
 
     oDeviceType = DeviceType()
@@ -333,7 +335,7 @@ def i_machine_getextradata(vmid, key=None):  # noqa: E501
     logging.info('Passed machine Id is ' + vmid)
 
     oVM, oError = vbox_utils_find_machine(vmid)
-    if oError is not None:
+    if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
 
     oMediumGetpropertyResponse = MediumGetpropertyResponse()
@@ -374,7 +376,7 @@ def i_machine_getextradatakeys(vmid):  # noqa: E501
     logging.info('Passed machine Id is ' + vmid)
 
     oVM, oError = vbox_utils_find_machine(vmid)
-    if oError is not None:
+    if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
 
     oVirtualboxGetextradatakeysResponse = VirtualboxGetextradatakeysResponse()
@@ -419,7 +421,7 @@ def i_machine_getguestproperty(vmid, name=None):  # noqa: E501
     logging.info('Passed machine Id is ' + vmid)
 
     oVM, oError = vbox_utils_find_machine(vmid)
-    if oError is not None:
+    if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
 
     oMachineGetguestpropertyResponse = MachineGetguestpropertyResponse()
@@ -462,22 +464,28 @@ def i_machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody):  # noqa
     print ('Passed machine Id is ' + vmid)
 
     oVM, oError = vbox_utils_find_machine(vmid)
-    if oError is not None:
+    if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
 
     vbox_utils_logVmInfo(oVM)
     
     #todo: uuid conversion and check should be here
     if oSessionId is None or oSessionId=="None" or oSessionId=="":
-        oSession = ctx['global'].getSessionObject() 
+        oSession = ctx['global'].getSessionObject()
+
     oProgress = None
+    oError = None
 
     try:  
         logging.info ('Trying to call oVM.launchVMProcess()')
         oProgress = oVM.launchVMProcess(oSession, name, environmentChanges)
 
-        if oProgress is not None: logging.info ('Progress Id is ' + oProgress.id)
-        oProgress.waitForCompletion(-1)
+        if oProgress is not None:
+            logging.info ('Progress Id is ' + oProgress.id)
+
+            # with session observer there is no need to wait progress completion, but we wait so far
+            oProgress.waitForCompletion(-1)
+
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR  
         oError = Error(httpCode, str(e))  
@@ -486,23 +494,25 @@ def i_machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody):  # noqa
     logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
 
     if oSession is not None:
-        # Try close it.
+        resProgress = Progress(oProgress.id)
+        # Try to unlock session because we don't need that here
         try:
             if oSession.state == ctx['const'].SessionState_Locked:
+                # logging.info (" BEFORE oSession.unlockMachine(): %s" % (ctx['global'].getEnumValueName('SessionState', oVM.sessionState),))
+                # logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
                 oSession.unlockMachine()
-                logging.info ('Unlocked the current machine ' + oVM.id)
+                # logging.info (" AFTER oSession.unlockMachine(): %s" % (ctx['global'].getEnumValueName('SessionState', oVM.sessionState),))
+                # logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
                 oSession = None
         except:
-            logging.info('Exception trying unlock machine, close session or set session name')
+            # logging.info('Exception trying unlock session')
             try:    fIgnore = oSession.state == ctx['const'].SessionState_Unlocked
             except: fIgnore = False
         
             if fIgnore:
-                oSession  = None # Must prevent a retry during GC.
+                oSession  = None
             else:
                 logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
-
-    resProgress = Progress(oProgress.id)
 
     response = jsonify(oError if oError is not None else resProgress)
 
@@ -524,7 +534,7 @@ def i_machine_querylogfilename(vmid, idx=None):  # noqa: E501
     httpCode = HTTPStatus.OK
 
     oVM, oError = vbox_utils_find_machine(vmid)
-    if oError is not None:
+    if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
 
     oMachineQuerylogfilenameResponse = MachineQuerylogfilenameResponse()
@@ -564,7 +574,7 @@ def i_machine_readlog(vmid, idx=None, offset=None, size=None):  # noqa: E501
     httpCode = HTTPStatus.OK
 
     oVM, oError = vbox_utils_find_machine(vmid)
-    if oError is not None:
+    if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
 
     oMachineReadlogResponse = MachineReadlogResponse()
@@ -934,7 +944,7 @@ def i_machine_unregister(vmid, cleanupMode=None):  # noqa: E501
     else: cleanupMode = 'FULL'
 
     oVM, oError = vbox_utils_find_machine(vmid)
-    if oError is not None:
+    if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
 
     oMediumList = []
@@ -1016,7 +1026,7 @@ def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody):  # noqa: E5
     password = o.password
 
     oVM, oError = vbox_utils_find_machine(name)
-    if oError is None and oVM is not None:
+    if oVM is not None:
         httpCode = HTTPStatus.PRECONDITION_FAILED
         oError = Error(httpCode, "Machine with the name %s has already registered in VirtualBox" % (name))
         return jsonify(oError), httpCode
@@ -1080,7 +1090,7 @@ def i_virtualbox_findmachine(vmid, select=None, nameOrId=None):  # noqa: E501
     if select is not None: logging.info ('Passed attributes are ' + select)
 
     oVM, oError = vbox_utils_find_machine(vmid)
-    if oError is not None:
+    if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
 
     if oVM is not None:
@@ -1278,7 +1288,7 @@ def i_machine_getmediumattachment(vmid, select=None, name=None, controllerPort=N
     logging.info('Passed device is ' + str(device))
 
     oVM, oError = vbox_utils_find_machine(vmid)
-    if oError is not None:
+    if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
 
     oMediumAttachment = MediumAttachment()
@@ -1453,6 +1463,63 @@ def i_machine_unmountmedium(vmid, mediumid, oMachineUnmountMediumRequestBody, *v
         return jsonify(oError), httpCode
 
     return 'The passed medium with uuid ' + mediumid +' has been successfully unmounted', httpCode
+
+
+@openExclusiveSession
+def i_machine_moveto(vmid, oMachineMoveToRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::moveTo
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineMoveToRequestBody:
+    :type oMachineMoveToRequestBody: dict | bytes
+
+    :rtype: ProgressResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    o = oMachineMoveToRequestBody
+    sLocation = o.folder
+    sType = o.type
+
+    oVM = var_args_tuple[0]
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+    machineState = oSession.machine.state
+
+    if machineState != ctx['const'].MachineState_PoweredOff and \
+        machineState != ctx['const'].MachineState_Aborted and \
+        machineState != ctx['const'].MachineState_AbortedSaved and \
+        machineState != ctx['const'].MachineState_Saved:
+            httpCode = HTTPStatus.PRECONDITION_FAILED
+            oError = Error(httpCode, "Machine must be in one of the states - PoweredOff, Aborted, AbortedSaved, Saved")
+            return jsonify(oError), httpCode
+
+    oProgressResponse = ProgressResponse()
+
+    try:
+        oVBoxProgress = oCurrMachine.moveTo(sLocation, sType)
+
+        if oVBoxProgress is not None:
+            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            logging.info('The moving machine has been successfully started')
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "Something wrong with the Progress object")
+
+    except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
 
 
 ############################# Not implemented yet #############################
@@ -2060,21 +2127,6 @@ def i_machine_lockmachine(vmid, oMachineLockMachineRequestBody):  # noqa: E501
     :type oMachineLockMachineRequestBody: dict | bytes
 
     :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_moveto(vmid, oMachineMoveToRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::moveTo
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineMoveToRequestBody: 
-    :type oMachineMoveToRequestBody: dict | bytes
-
-    :rtype: ProgressResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
