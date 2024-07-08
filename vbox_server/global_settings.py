@@ -11,5 +11,6 @@ ctx = {
     'const':        oVBoxMgr.constants,
     'remote':       oVBoxMgr.remote,
     'type':         oVBoxMgr.type,
+    'tracker':      dict(),
+    'vms':          dict(),
 }
-
