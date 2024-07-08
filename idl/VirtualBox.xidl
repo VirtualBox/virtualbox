@@ -2726,7 +2726,7 @@
     wsmap="managed"
     rest="managed"
     wrap-gen-hook="yes"
-    reservedMethods="8" reservedAttributes="12"
+    reservedMethods="6" reservedAttributes="12"
     >
     <desc>
       The IVirtualBox interface represents the main interface exposed by the
@@ -2975,6 +2975,32 @@
       </desc>
     </attribute>
 
+    <method name="getTrackedObject">
+      <rest request="get" path="/server/methods/"/>
+      <desc>
+        Queries the IUnknown interface to an object from the tracked object list
+      </desc>
+      <param name="trObjId" type="wstring" dir="in">
+        <desc>The object Id.</desc>
+      </param>
+      <param name="pIface" type="$unknown" dir="return">
+        <desc>The found interface.</desc>
+      </param>
+    </method>
+
+    <method name="getTrackedObjectIdsByIID">
+      <rest request="get" path="/server/methods/"/>
+      <desc>
+        Returns the tracked object Ids list associated with the passed Class IID
+      </desc>
+      <param name="classIID" type="wstring" dir="in">
+        <desc>The Class IID.</desc>
+      </param>
+      <param name="objIdsList" type="wstring" safearray="yes" dir="return">
+        <desc>Array of the tracked object Ids associated with the specified Class IID.</desc>
+      </param>
+    </method>
+
     <method name="composeMachineFilename">
       <rest request="get" path="/server/methods/"/>
       <desc>
@@ -3034,7 +3060,7 @@
     </method>
 
     <method name="getPlatformProperties">
-      <rest name="getPlatformProperties" request="get" path="/platform/"/>
+      <rest name="find" request="get" path="/platform/properties"/>
       <desc>
         Gets the associated properties object for the given VM platform architecture.
       </desc>
@@ -12823,7 +12849,7 @@
   <interface
     name="IPlatformProperties"
     extends="$unknown"
-    uuid="45def725-ab32-4a0a-a85e-fae56249d547"
+    uuid="a23502e4-cc54-490f-a344-c8ca8813f906"
     wsmap="managed"
     rest="managed"
     reservedMethods="4" reservedAttributes="16"
@@ -13080,6 +13106,34 @@
 
       <param name="maxInstances" type="unsigned long" dir="return">
         <desc>The maximum number of instances for the given storage bus.</desc>
+      </param>
+    </method>
+
+    <method name="getSupportedVRAMRange">
+      <desc>
+        Returns the VRAM range of a given graphics controller.
+      </desc>
+
+      <param name="graphicsControllerType" type="GraphicsControllerType" dir="in">
+        <desc>Graphics controller type to return VRAM range for.</desc>
+      </param>
+
+      <param name="accelerate3DEnabled" type="boolean" dir="in">
+        <desc>Whether 3D acceleration for the graphics controller type is enabled or not.
+          Ignored if the given graphics controller does not support 3D acceleration.</desc>
+      </param>
+
+      <param name="minMB" type="unsigned long" dir="out">
+        <desc>The minimum size (in MB) the graphics controller supports.</desc>
+      </param>
+
+      <param name="maxMB" type="unsigned long" dir="out">
+        <desc>The maximum size (in MB) the graphics controller supports.</desc>
+      </param>
+
+      <param name="strideSizeMB" type="unsigned long" dir="return">
+        <desc>The stride size the graphics controller supports. This marks the allowed steps between the values
+          when increasing / decreasing the VRAM size.</desc>
       </param>
     </method>
 
