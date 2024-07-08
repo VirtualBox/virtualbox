@@ -1,8 +1,8 @@
 import connexion
 import six
 
-from vbox_server.models.virtual_box_open_medium_request_body import VirtualBoxOpenMediumRequestBody  # noqa: E501
-from vbox_server.models.virtual_box_set_extra_data_request_body import VirtualBoxSetExtraDataRequestBody  
+from vbox_server.models.virtual_box_open_medium_request_body import VirtualBoxOpenMediumRequestBody
+from vbox_server.models.virtual_box_set_extra_data_request_body import VirtualBoxSetExtraDataRequestBody
 
 from vbox_server.controllers.internal.i_server_controller import *
 
@@ -17,20 +17,6 @@ def synthetic_getserver(select=None):  # noqa: E501
     :rtype: VirtualBoxResponse
     """
     return i_synthetic_getserver(select)
-
-
-def virtualbox_getmachinesbygroups(select=None, groups=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::getMachinesByGroups
-
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param groups: 
-    :type groups: str
-
-    :rtype: MachineArrayResponse
-    """
-    return i_virtualbox_getmachinesbygroups(select, groups)
 
 
 def virtualbox_checkfirmwarepresent(platformArchitecture=None, firmwareType=None, version=None):  # noqa: E501
@@ -161,6 +147,30 @@ def virtualbox_getmachinestates(machines=None):  # noqa: E501
     :rtype: MachineStateArrayResponse
     """
     return i_virtualbox_getmachinestates(machines)
+
+
+def virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
+    """
+    Call interface method IVirtualBox::getTrackedObject
+
+    :param trObjId:
+    :type trObjId: str
+
+    :rtype: VirtualboxGettrackedobjectResponse
+    """
+    return i_virtualbox_gettrackedobject(trObjId)
+
+
+def virtualbox_gettrackedobjectidsbyiid(classIID=None):  # noqa: E501
+    """
+    Call interface method IVirtualBox::getTrackedObjectIdsByIID
+
+    :param classIID:
+    :type classIID: str
+
+    :rtype: VirtualboxGettrackedobjectidsbyiidResponse
+    """
+    return i_virtualbox_gettrackedobjectidsbyiid(classIID)
 
 
 def virtualbox_openmedium(oVirtualBoxOpenMediumRequestBody):  # noqa: E501
