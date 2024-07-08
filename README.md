@@ -41,7 +41,7 @@ Copy your VirtualBox.xidl into the folder "idl".
 3. Default\
 Default VirtualBox.xidl from the folder "idl" is used.
 ### Check Java on the machine
-Java must be installed. Simple check is to run on of the next commands:\
+Java must be installed. Simple check is to run on of the next commands:
 ```
 java --version
 javac --version
@@ -72,7 +72,7 @@ and run\
 - Copy the code from the `<project folder>/out/vbox_server` into the destination folder\
 ```cp -r <project folder>/out/vbox_server ./```
 - Copy requirements.txt file into the destination folder\
-```cp <project folder>/out/vbox_server/requirements.txt ./```
+```cp <project folder>/out/requirements.txt ./```
 ## Install the requirements
 - Run ```pip install -r requirements.txt```
 - Check the packages versions
