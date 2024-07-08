@@ -11,6 +11,8 @@ from vbox_server import global_settings
 from flask_swagger_ui import get_swaggerui_blueprint
 from flask_cors import CORS
 
+from vbox_server.utils.session_observer import SessionObserver
+
 FORMAT = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
 logging.basicConfig(format=FORMAT)
 
@@ -37,7 +39,12 @@ def create_app():
     return app
 
 if __name__ == '__main__':
+
     application = create_app()
+
+    oSO = SessionObserver()
+    oSO.start()
+
     application.run()
 
     for sKey in list(global_settings.ctx.keys()):
@@ -45,6 +52,10 @@ if __name__ == '__main__':
     global_settings.ctx = None
     
     gc.collect()
+
+    # close all threads before exit
+    oSO.myStop()
+    oSO.join()
 
     global_settings.oVBoxMgr.deinit()
     del global_settings.oVBoxMgr
