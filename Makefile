@@ -183,7 +183,7 @@ copy:
 # this step is needed for a correct work with Flask Swagger UI. Swagger UI works properly only when the
 # the API definition sits in this folder.
 	mkdir -p $(DEST_CODE_DIR)/static
-	cp $(DEST_CODE_DIR)/swagger/swagger.yaml $(DEST_CODE_DIR)/static/virtualbox.yaml
+	mv $(DEST_CODE_DIR)/swagger/swagger.yaml $(DEST_CODE_DIR)/static/virtualbox.yaml
 	rmdir $(DEST_CODE_DIR)/swagger
 
 # Copy requirements.txt file to the output folder
