@@ -13,6 +13,8 @@ from vbox_server.models.machine import Machine  # noqa: E501
 from vbox_server.models.virtual_box_response import VirtualBoxResponse  # noqa: E501
 from vbox_server.models.error import Error  # noqa: E501
 
+from vbox_server.models.virtualbox_gettrackedobject_response import VirtualboxGettrackedobjectResponse  # noqa: E501
+from vbox_server.models.virtualbox_gettrackedobjectidsbyiid_response import VirtualboxGettrackedobjectidsbyiidResponse  # noqa: E501
 
 def i_list_machines(fAll=False, select=None, groups=None):  # noqa: E501
     """List VirtualBox machines.
@@ -290,4 +292,54 @@ def i_virtualbox_setextradata(oVirtualBoxSetExtraDataRequestBody):  # noqa: E501
     :rtype: None
     """
 
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
+    """
+    Call interface method IVirtualBox::getTrackedObject
+
+    :param trObjId:
+    :type trObjId: str
+
+    :rtype: VirtualboxGettrackedobjectResponse
+    """
+    oError = None
+    httpCode = 200 #(OK)
+
+    vbox_utils_commonChecks()
+
+    try:
+        oVBox = ctx['vb']
+        oVBoxMgr = ctx['global']
+
+    except Exception as e:
+        logging.info ('couldn\'t get the VirtualBox object')
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    oVirtualboxGettrackedobjectResponse = VirtualboxGettrackedobjectResponse()
+    try:
+        oIUnknown = oVBox.getTrackedObject(trObjId)
+        oProgress = oVBoxMgr.queryInterface(oIUnknown, 'IProgress')
+        if oProgress is not None: logging.info ('Progress Id is ' + oProgress.id)
+        else: logging.info ('Can\'t convert IUnknown to IProgress interface')
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oVirtualboxGettrackedobjectResponse)
+    return response, httpCode
+
+
+def i_virtualbox_gettrackedobjectidsbyiid(classIID=None):  # noqa: E501
+    """
+    Call interface method IVirtualBox::getTrackedObjectIdsByIID
+
+    :param classIID:
+    :type classIID: str
+
+    :rtype: VirtualboxGettrackedobjectidsbyiidResponse
+    """
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
