@@ -10,6 +10,7 @@ from vbox_server.global_settings import *
 
 from vbox_server.models.error import Error  # noqa: E501
 from vboxapi import VirtualBoxManager
+from vbox_server.models.session import Session
 
 # Set logging level for module
 logging.getLogger().setLevel(logging.INFO)
@@ -39,7 +40,7 @@ def vbox_utils_logVmInfo(oVM):
 
 
 def vbox_utils_find_machine(vmid):
-    oError = None
+    oError = Error()
     oVM = None
     try:
         oVM = ctx['vb'].findMachine(vmid)
@@ -65,9 +66,49 @@ def vbox_utils_commonChecks():
     logging.info ('VirtualBox version is ' + str(ctx['global'].getVirtualBox()))    
     logging.info ('Python binding version is ' + str(sPyVer))
 
+
 def vbox_utils_detachVmDevice(oVM, mediumid='ALL'):
     olVBoxMediumAttachments = ctx['global'].getArray(oVM, 'mediumAttachments')
     for item in olVBoxMediumAttachments:
         if item.medium:
             if mediumid == "ALL" or item.medium.id == mediumid:
                 oVM.detachDevice(item.controller, item.port, item.device)
+
+
+def vbox_utils_unlockAndDeleteSession(oSession: Session):
+    res = False
+    if oSession is not None:
+        res = vbox_utils_unlockSession(oSession)
+        if res:
+            oSession  = None
+    return res
+
+
+def vbox_utils_unlockSession(oSession: Session):
+    """
+    oSession object is not deleted
+    """
+
+    res = False
+    if oSession is not None:
+        logging.info ("Session.state is %s" % (ctx['global'].getEnumValueName('SessionState', oSession.state),))
+
+        if oSession.state == ctx['const'].SessionState_Unlocked: return True
+
+        # Try close it.
+        try:
+            if oSession.state == ctx['const'].SessionState_Locked:
+                id = oSession.machine.id
+                oSession.unlockMachine()
+                logging.info ('Unlocked the machine ' + id)
+                res = True
+        except:
+            try: res = oSession.state == ctx['const'].SessionState_Unlocked
+            except: res = False
+
+            # if res == False:
+            #     logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
+            # else:
+            #     logging.info ('Exception trying unlock a session. Anyway, the session is unlocked.')
+
+    return res
