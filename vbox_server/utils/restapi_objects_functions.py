@@ -10,6 +10,10 @@ from vbox_server.models.bandwidth_group_type import BandwidthGroupType
 from vbox_server.models.bandwidth_group import BandwidthGroup
 from vbox_server.models.medium import Medium
 from vbox_server.models.medium_format import MediumFormat
+from vbox_server.models.progress import Progress
+from vbox_server.models.session import Session
+
+from vbox_server.models.virtual_box_error_info import VirtualBoxErrorInfo
 
 def i_fill_virtual_box(oVBoxVirtualBox, select=None):
   """Convert the passed VirtualBox object oVBoxVirtualBox with interface IVirtualBox into Swagger object oVirtualBox"""
@@ -1679,3 +1683,445 @@ def i_fill_partial_medium_format(oVBoxMediumFormat, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oMediumFormat
+
+def i_fill_progress(oVBoxProgress, select=None):
+  """Convert the passed VirtualBox object oVBoxProgress with interface IProgress into Swagger object oProgress"""
+
+  logging.info('Enter function ')
+  oProgress = Progress()
+  try:
+    if oVBoxProgress is not None:
+      if select is not None and len(select)>0:
+        oProgress = i_fill_partial_progress(oVBoxProgress, select)
+      else:
+        oProgress = i_fill_whole_progress(oVBoxProgress)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oProgress = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxProgress into Swagger object oProgress. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oProgress
+
+def i_fill_whole_progress(oVBoxProgress):
+  logging.info('Enter function ')
+  oProgress = Progress()
+  try:
+    if oVBoxProgress is not None:
+      try:
+        oProgress.id = oVBoxProgress.id
+      except Exception as e:
+        logging.info('Error getting the attribute "id"')
+      try:
+        oProgress.description = oVBoxProgress.description
+      except Exception as e:
+        logging.info('Error getting the attribute "description"')
+      try:
+        oProgress.cancelable = oVBoxProgress.cancelable
+      except Exception as e:
+        logging.info('Error getting the attribute "cancelable"')
+      try:
+        oProgress.percent = oVBoxProgress.percent
+      except Exception as e:
+        logging.info('Error getting the attribute "percent"')
+      try:
+        oProgress.time_remaining = oVBoxProgress.timeRemaining
+      except Exception as e:
+        logging.info('Error getting the attribute "timeRemaining"')
+      try:
+        oProgress.completed = oVBoxProgress.completed
+      except Exception as e:
+        logging.info('Error getting the attribute "completed"')
+      try:
+        oProgress.canceled = oVBoxProgress.canceled
+      except Exception as e:
+        logging.info('Error getting the attribute "canceled"')
+      try:
+        oProgress.result_code = oVBoxProgress.resultCode
+      except Exception as e:
+        logging.info('Error getting the attribute "resultCode"')
+      try:
+        o_error_info = oVBoxProgress.errorInfo if oVBoxProgress.errorInfo is not None else None
+        if o_error_info is not None:
+          oProgress.error_info = i_fill_virtual_box_error_info(o_error_info)
+        else:
+          oProgress.error_info = None
+      except Exception as e:
+        logging.info('Error getting the interface object "errorInfo"')
+      try:
+        oProgress.operation_count = oVBoxProgress.operationCount
+      except Exception as e:
+        logging.info('Error getting the attribute "operationCount"')
+      try:
+        oProgress.operation = oVBoxProgress.operation
+      except Exception as e:
+        logging.info('Error getting the attribute "operation"')
+      try:
+        oProgress.operation_description = oVBoxProgress.operationDescription
+      except Exception as e:
+        logging.info('Error getting the attribute "operationDescription"')
+      try:
+        oProgress.operation_percent = oVBoxProgress.operationPercent
+      except Exception as e:
+        logging.info('Error getting the attribute "operationPercent"')
+      try:
+        oProgress.operation_weight = oVBoxProgress.operationWeight
+      except Exception as e:
+        logging.info('Error getting the attribute "operationWeight"')
+      try:
+        oProgress.timeout = oVBoxProgress.timeout
+      except Exception as e:
+        logging.info('Error getting the attribute "timeout"')
+
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oProgress = None
+    text = 'Exception trying to fill the object oProgress. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oProgress
+
+def i_fill_partial_progress(oVBoxProgress, select):
+  logging.info('Enter function ')
+  oProgress = Progress()
+  try:
+    if oVBoxProgress is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='id':
+            try:
+              oProgress.id = oVBoxProgress.id
+            except Exception as e:
+              logging.info('Error getting the attribute "id"')
+              raise Exception('Error getting the attribute "id"')
+
+          if currAttr=='description':
+            try:
+              oProgress.description = oVBoxProgress.description
+            except Exception as e:
+              logging.info('Error getting the attribute "description"')
+              raise Exception('Error getting the attribute "description"')
+
+          if currAttr=='cancelable':
+            try:
+              oProgress.cancelable = oVBoxProgress.cancelable
+            except Exception as e:
+              logging.info('Error getting the attribute "cancelable"')
+              raise Exception('Error getting the attribute "cancelable"')
+
+          if currAttr=='percent':
+            try:
+              oProgress.percent = oVBoxProgress.percent
+            except Exception as e:
+              logging.info('Error getting the attribute "percent"')
+              raise Exception('Error getting the attribute "percent"')
+
+          if currAttr=='timeRemaining':
+            try:
+              oProgress.time_remaining = oVBoxProgress.timeRemaining
+            except Exception as e:
+              logging.info('Error getting the attribute "timeRemaining"')
+              raise Exception('Error getting the attribute "timeRemaining"')
+
+          if currAttr=='completed':
+            try:
+              oProgress.completed = oVBoxProgress.completed
+            except Exception as e:
+              logging.info('Error getting the attribute "completed"')
+              raise Exception('Error getting the attribute "completed"')
+
+          if currAttr=='canceled':
+            try:
+              oProgress.canceled = oVBoxProgress.canceled
+            except Exception as e:
+              logging.info('Error getting the attribute "canceled"')
+              raise Exception('Error getting the attribute "canceled"')
+
+          if currAttr=='resultCode':
+            try:
+              oProgress.result_code = oVBoxProgress.resultCode
+            except Exception as e:
+              logging.info('Error getting the attribute "resultCode"')
+              raise Exception('Error getting the attribute "resultCode"')
+
+          if currAttr=='errorInfo':
+            try:
+              o_error_info = oVBoxProgress.errorInfo if oVBoxProgress.errorInfo is not None else None
+              if o_error_info is not None:
+                oProgress.error_info = i_fill_virtual_box_error_info(o_error_info)
+              else:
+                oProgress.error_info = None
+            except Exception as e:
+              logging.info('Error getting the interface object "errorInfo"')
+              raise Exception('Error getting the interface object "errorInfo"')
+
+          if currAttr=='operationCount':
+            try:
+              oProgress.operation_count = oVBoxProgress.operationCount
+            except Exception as e:
+              logging.info('Error getting the attribute "operationCount"')
+              raise Exception('Error getting the attribute "operationCount"')
+
+          if currAttr=='operation':
+            try:
+              oProgress.operation = oVBoxProgress.operation
+            except Exception as e:
+              logging.info('Error getting the attribute "operation"')
+              raise Exception('Error getting the attribute "operation"')
+
+          if currAttr=='operationDescription':
+            try:
+              oProgress.operation_description = oVBoxProgress.operationDescription
+            except Exception as e:
+              logging.info('Error getting the attribute "operationDescription"')
+              raise Exception('Error getting the attribute "operationDescription"')
+
+          if currAttr=='operationPercent':
+            try:
+              oProgress.operation_percent = oVBoxProgress.operationPercent
+            except Exception as e:
+              logging.info('Error getting the attribute "operationPercent"')
+              raise Exception('Error getting the attribute "operationPercent"')
+
+          if currAttr=='operationWeight':
+            try:
+              oProgress.operation_weight = oVBoxProgress.operationWeight
+            except Exception as e:
+              logging.info('Error getting the attribute "operationWeight"')
+              raise Exception('Error getting the attribute "operationWeight"')
+
+          if currAttr=='timeout':
+            try:
+              oProgress.timeout = oVBoxProgress.timeout
+            except Exception as e:
+              logging.info('Error getting the attribute "timeout"')
+              raise Exception('Error getting the attribute "timeout"')
+
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oProgress = None
+    text = 'Exception trying to fill the object oProgress. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oProgress
+
+def i_fill_virtual_box_error_info(oVBoxVirtualBoxErrorInfo, select=None):
+  """Convert the passed VirtualBox object oVBoxVirtualBoxErrorInfo with interface IVirtualBoxErrorInfo into Swagger object oVirtualBoxErrorInfo"""
+
+  logging.info('Enter function ')
+  oVirtualBoxErrorInfo = VirtualBoxErrorInfo()
+  try:
+    if oVBoxVirtualBoxErrorInfo is not None:
+      if select is not None and len(select)>0:
+        oVirtualBoxErrorInfo = i_fill_partial_virtual_box_error_info(oVBoxVirtualBoxErrorInfo, select)
+      else:
+        oVirtualBoxErrorInfo = i_fill_whole_virtual_box_error_info(oVBoxVirtualBoxErrorInfo)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oVirtualBoxErrorInfo = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxVirtualBoxErrorInfo into Swagger object oVirtualBoxErrorInfo. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oVirtualBoxErrorInfo
+
+def i_fill_whole_virtual_box_error_info(oVBoxVirtualBoxErrorInfo):
+  logging.info('Enter function ')
+  oVirtualBoxErrorInfo = VirtualBoxErrorInfo()
+  try:
+    if oVBoxVirtualBoxErrorInfo is not None:
+      try:
+        oVirtualBoxErrorInfo.result_code = oVBoxVirtualBoxErrorInfo.resultCode
+      except Exception as e:
+        logging.info('Error getting the attribute "resultCode"')
+      try:
+        oVirtualBoxErrorInfo.result_detail = oVBoxVirtualBoxErrorInfo.resultDetail
+      except Exception as e:
+        logging.info('Error getting the attribute "resultDetail"')
+      try:
+        oVirtualBoxErrorInfo.interface_id = oVBoxVirtualBoxErrorInfo.interfaceID
+      except Exception as e:
+        logging.info('Error getting the attribute "interfaceID"')
+      try:
+        oVirtualBoxErrorInfo.component = oVBoxVirtualBoxErrorInfo.component
+      except Exception as e:
+        logging.info('Error getting the attribute "component"')
+      try:
+        oVirtualBoxErrorInfo.text = oVBoxVirtualBoxErrorInfo.text
+      except Exception as e:
+        logging.info('Error getting the attribute "text"')
+      try:
+        o_next = oVBoxVirtualBoxErrorInfo.next if oVBoxVirtualBoxErrorInfo.next is not None else None
+        if o_next is not None:
+          oVirtualBoxErrorInfo.next = i_fill_virtual_box_error_info(o_next)
+        else:
+          oVirtualBoxErrorInfo.next = None
+      except Exception as e:
+        logging.info('Error getting the interface object "next"')
+
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oVirtualBoxErrorInfo = None
+    text = 'Exception trying to fill the object oVirtualBoxErrorInfo. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oVirtualBoxErrorInfo
+
+def i_fill_partial_virtual_box_error_info(oVBoxVirtualBoxErrorInfo, select):
+  logging.info('Enter function ')
+  oVirtualBoxErrorInfo = VirtualBoxErrorInfo()
+  try:
+    if oVBoxVirtualBoxErrorInfo is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='resultCode':
+            try:
+              oVirtualBoxErrorInfo.result_code = oVBoxVirtualBoxErrorInfo.resultCode
+            except Exception as e:
+              logging.info('Error getting the attribute "resultCode"')
+              raise Exception('Error getting the attribute "resultCode"')
+
+          if currAttr=='resultDetail':
+            try:
+              oVirtualBoxErrorInfo.result_detail = oVBoxVirtualBoxErrorInfo.resultDetail
+            except Exception as e:
+              logging.info('Error getting the attribute "resultDetail"')
+              raise Exception('Error getting the attribute "resultDetail"')
+
+          if currAttr=='interfaceID':
+            try:
+              oVirtualBoxErrorInfo.interface_id = oVBoxVirtualBoxErrorInfo.interfaceID
+            except Exception as e:
+              logging.info('Error getting the attribute "interfaceID"')
+              raise Exception('Error getting the attribute "interfaceID"')
+
+          if currAttr=='component':
+            try:
+              oVirtualBoxErrorInfo.component = oVBoxVirtualBoxErrorInfo.component
+            except Exception as e:
+              logging.info('Error getting the attribute "component"')
+              raise Exception('Error getting the attribute "component"')
+
+          if currAttr=='text':
+            try:
+              oVirtualBoxErrorInfo.text = oVBoxVirtualBoxErrorInfo.text
+            except Exception as e:
+              logging.info('Error getting the attribute "text"')
+              raise Exception('Error getting the attribute "text"')
+
+          if currAttr=='next':
+            try:
+              o_next = oVBoxVirtualBoxErrorInfo.next if oVBoxVirtualBoxErrorInfo.next is not None else None
+              if o_next is not None:
+                oVirtualBoxErrorInfo.next = i_fill_virtual_box_error_info(o_next)
+              else:
+                oVirtualBoxErrorInfo.next = None
+            except Exception as e:
+              logging.info('Error getting the interface object "next"')
+              raise Exception('Error getting the interface object "next"')
+
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oVirtualBoxErrorInfo = None
+    text = 'Exception trying to fill the object oVirtualBoxErrorInfo. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oVirtualBoxErrorInfo
+
+def i_fill_session(oVBoxSession, select=None):
+  """Convert the passed VirtualBox object oVBoxSession with interface ISession into Swagger object oSession"""
+
+  logging.info('Enter function ')
+  oSession = Session()
+  try:
+    if oVBoxSession is not None:
+      if select is not None and len(select)>0:
+        oSession = i_fill_partial_session(oVBoxSession, select)
+      else:
+        oSession = i_fill_whole_session(oVBoxSession)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oSession = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxSession into Swagger object oSession. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oSession
+
+def i_fill_whole_session(oVBoxSession):
+  logging.info('Enter function ')
+  oSession = Session()
+  try:
+    if oVBoxSession is not None:
+      oSession.state = ctx[ 'global'].getEnumValueName('SessionState', oVBoxSession.state)
+      oSession.type = ctx[ 'global'].getEnumValueName('SessionType', oVBoxSession.type)
+      try:
+        oSession.name = oVBoxSession.name
+      except Exception as e:
+        logging.info('Error getting the attribute "name"')
+      try:
+        oSession.machine = oVBoxSession.machine.id
+      except Exception as e:
+        logging.info('Error getting the attribute "machine"')
+
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oSession = None
+    text = 'Exception trying to fill the object oSession. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oSession
+
+def i_fill_partial_session(oVBoxSession, select):
+  logging.info('Enter function ')
+  oSession = Session()
+  try:
+    if oVBoxSession is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='state':
+            oSession.state = ctx[ 'global'].getEnumValueName('SessionState', oVBoxSession.state)
+
+          if currAttr=='type':
+            oSession.type = ctx[ 'global'].getEnumValueName('SessionType', oVBoxSession.type)
+
+          if currAttr=='name':
+            try:
+              oSession.name = oVBoxSession.name
+            except Exception as e:
+              logging.info('Error getting the attribute "name"')
+              raise Exception('Error getting the attribute "name"')
+
+          if currAttr=='machine':
+            try:
+              oSession.machine = oVBoxSession.machine.id
+            except Exception as e:
+              logging.info('Error getting the attribute "machine"')
+              raise Exception('Error getting the attribute "machine"')
+
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oSession = None
+    text = 'Exception trying to fill the object oSession. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oSession
