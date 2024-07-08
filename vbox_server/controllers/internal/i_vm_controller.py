@@ -262,6 +262,9 @@ def i_machine_deleteconfig(vmid, media=None, *var_args_tuple):
     if oError is None:
         try:
             oProgress = oCurrMachine.deleteConfig(olDisks)
+            # Add Progress Id and Session object into the tracking lists
+            ctx['tracker'][oProgress.id] = oSession
+            ctx['vms'][oSession.machine.id] = oProgress.id
         except Exception as e:
             logging.info("Can't delete VM '%s': %s" % (oVM.name, str(e)))
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR            
@@ -503,6 +506,11 @@ def i_machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody):  # noqa
                 oSession.unlockMachine()
                 # logging.info (" AFTER oSession.unlockMachine(): %s" % (ctx['global'].getEnumValueName('SessionState', oVM.sessionState),))
                 # logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+
+                # Add Progress Id and Session object into the tracking lists
+                ctx['tracker'][oProgress.id] = oSession
+                ctx['vms'][oVM.id] = oProgress.id
+
                 oSession = None
         except:
             # logging.info('Exception trying unlock session')
@@ -1510,6 +1518,10 @@ def i_machine_moveto(vmid, oMachineMoveToRequestBody, *var_args_tuple):  # noqa:
         if oVBoxProgress is not None:
             oProgressResponse.progress = i_fill_progress(oVBoxProgress)
             logging.info('The moving machine has been successfully started')
+
+            # todo: Add Progress Id and Session object into the tracking lists
+            ctx['tracker'][oProgressResponse.progress.id] = oSession
+            ctx['vms'][oSession.machine.id] = oProgressResponse.progress.id
         else:
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, "Something wrong with the Progress object")
