@@ -5,6 +5,7 @@
 
 import sys
 import logging
+from http import HTTPStatus
 
 from vbox_server.global_settings import *
 
@@ -46,7 +47,7 @@ def vbox_utils_find_machine(vmid):
         oVM = ctx['vb'].findMachine(vmid)
         logging.info ('Found id ' + oVM.id)      
     except Exception as e:
-        oError = Error(404, str(e))
+        oError = Error(HTTPStatus.NOT_FOUND, str(e))
     
     return oVM, oError
 
@@ -68,11 +69,84 @@ def vbox_utils_commonChecks():
 
 
 def vbox_utils_detachVmDevice(oVM, mediumid='ALL'):
+    oError = None
     olVBoxMediumAttachments = ctx['global'].getArray(oVM, 'mediumAttachments')
     for item in olVBoxMediumAttachments:
         if item.medium:
             if mediumid == "ALL" or item.medium.id == mediumid:
-                oVM.detachDevice(item.controller, item.port, item.device)
+                try:
+                    oVM.detachDevice(item.controller, item.port, item.device)
+                except Exception as e:
+                    logging.info("Can\'t detach medium %s from VM %s" % (item.medium.id, oVM.id))
+                    oError = Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
+
+    return oError
+
+
+def vbox_utils_lockMachine(vmId: str):
+    """
+    Open a session for VM
+    The parameter must be VM uuid always.
+    """
+
+    oSession = None
+    oError = Error()
+    oVM, oError = vbox_utils_find_machine(vmId)
+    if oVM is None:
+        logging.info (oError)
+        return oSession, oError
+
+    #Open machine session
+    try:
+        oSession = ctx['global'].openMachineSession(oVM)
+    except Exception as e:
+        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
+        oError = Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
+        oSession = None
+        return oSession, oError
+
+    if oSession.state != ctx['const'].SessionState_Locked:
+        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        oSession.unlockMachine()
+        oSession = None
+        oError = Error(HTTPStatus.PRECONDITION_FAILED, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        return oSession, oError
+
+    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
+    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+
+    return oSession, oError
+
+
+def vbox_utils_tryLockMachine(oVM):
+    """
+    Open a session for VM
+    The parameter must be VM uuid always.
+    """
+
+    oSession = None
+    oError = Error()
+
+    #Open machine session
+    try:
+        oSession = ctx['global'].openMachineSession(oVM)
+    except Exception as e:
+        logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
+        oError = Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
+        oSession = None
+        return oSession, oError
+
+    if oSession.state != ctx['const'].SessionState_Locked:
+        logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        oSession.unlockMachine()
+        oSession = None
+        oError = Error(HTTPStatus.PRECONDITION_FAILED, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+        return oSession, oError
+
+    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
+    logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+
+    return oSession, oError
 
 
 def vbox_utils_unlockAndDeleteSession(oSession: Session):
@@ -105,10 +179,5 @@ def vbox_utils_unlockSession(oSession: Session):
         except:
             try: res = oSession.state == ctx['const'].SessionState_Unlocked
             except: res = False
-
-            # if res == False:
-            #     logging.warning ('ISession::unlockMachine failed on %s' % (oSession))
-            # else:
-            #     logging.info ('Exception trying unlock a session. Anyway, the session is unlocked.')
 
     return res
