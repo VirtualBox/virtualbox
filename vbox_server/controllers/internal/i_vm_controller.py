@@ -15,23 +15,40 @@ from werkzeug.datastructures import Headers
 
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
+from vbox_server.utils.vbox_utils import vbox_utils_tryLockMachine as tryLockMachine
+from vbox_server.utils.vbox_utils import vbox_utils_unlockAndDeleteSession as unlockAndDeleteSession
+from vbox_server.utils.vbox_utils import vbox_utils_unlockSession as unlockSession
 from vbox_server.utils.restapi_objects_functions import *
 from vbox_server.utils.decorators import session_decorator as sessionDecorator
 from vbox_server.utils.decorators import open_exclusive_session as openExclusiveSession
+from vbox_server.utils.decorators import open_session as openSession
 from vbox_server.models.device_type import DeviceType
 from vbox_server.models.error import Error
 from vbox_server.models.progress import Progress
 from vbox_server.models.progress_response import ProgressResponse
+from vbox_server.models.cleanup_mode import CleanupMode
 
-############################ Implemented ############################
+############################ Implemented or used ############################
 from vbox_server.models.machine_getguestproperty_response import MachineGetguestpropertyResponse  # noqa: E501
 from vbox_server.models.machine_querylogfilename_response import MachineQuerylogfilenameResponse  # noqa: E501
 from vbox_server.models.machine_readlog_response import MachineReadlogResponse  # noqa: E501
 from vbox_server.models.medium_array_response import MediumArrayResponse  # noqa: E501
 from vbox_server.models.medium_getproperty_response import MediumGetpropertyResponse  # noqa: E501
 from vbox_server.models.virtualbox_getextradatakeys_response import VirtualboxGetextradatakeysResponse  # noqa: E501
+from vbox_server.models.machine_mount_medium_request_body import MachineMountMediumRequestBody  # noqa: E501
+from vbox_server.models.machine_clone_to_request_body import MachineCloneToRequestBody  # noqa: E501
+from vbox_server.models.machine_move_to_request_body import MachineMoveToRequestBody  # noqa: E501
+from vbox_server.models.machine_unmount_medium_request_body import MachineUnmountMediumRequestBody  # noqa: E501
+from vbox_server.models.machine_launch_vm_process_request_body import MachineLaunchVMProcessRequestBody  # noqa: E501
+from vbox_server.models.machine_create_shared_folder_request_body import MachineCreateSharedFolderRequestBody  # noqa: E501
+from vbox_server.models.machine_set_boot_order_request_body import MachineSetBootOrderRequestBody  # noqa: E501
+from vbox_server.models.machine_set_extra_data_request_body import MachineSetExtraDataRequestBody  # noqa: E501
+from vbox_server.models.machine_set_guest_property_request_body import MachineSetGuestPropertyRequestBody  # noqa: E501
+from vbox_server.models.virtual_box_create_machine_request_body import VirtualBoxCreateMachineRequestBody  # noqa: E501
+from vbox_server.models.machine_attach_device_request_body import MachineAttachDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_detach_device_request_body import MachineDetachDeviceRequestBody  # noqa: E501
 
-############################# Not implemented yet #############################
+############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
 from vbox_server.models.console_add_encryption_passwords_request_body import ConsoleAddEncryptionPasswordsRequestBody  # noqa: E501
 from vbox_server.models.console_attach_usb_device_request_body import ConsoleAttachUSBDeviceRequestBody  # noqa: E501
@@ -40,11 +57,9 @@ from vbox_server.models.machine_add_storage_controller_request_body import Machi
 from vbox_server.models.machine_add_usb_controller_request_body import MachineAddUSBControllerRequestBody  # noqa: E501
 from vbox_server.models.machine_attach_device_without_medium_request_body import MachineAttachDeviceWithoutMediumRequestBody  # noqa: E501
 from vbox_server.models.machine_attach_host_pci_device_request_body import MachineAttachHostPCIDeviceRequestBody  # noqa: E501
-from vbox_server.models.machine_clone_to_request_body import MachineCloneToRequestBody  # noqa: E501
 from vbox_server.models.machine_delete_snapshot_range_request_body import MachineDeleteSnapshotRangeRequestBody  # noqa: E501
 from vbox_server.models.machine_export_to_request_body import MachineExportToRequestBody  # noqa: E501
 from vbox_server.models.machine_lock_machine_request_body import MachineLockMachineRequestBody  # noqa: E501
-from vbox_server.models.machine_move_to_request_body import MachineMoveToRequestBody  # noqa: E501
 from vbox_server.models.machine_non_rotational_device_request_body import MachineNonRotationalDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_passthrough_device_request_body import MachinePassthroughDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_set_auto_discard_for_device_request_body import MachineSetAutoDiscardForDeviceRequestBody  # noqa: E501
@@ -226,8 +241,7 @@ def i_console_sleepbutton(vmid):  # noqa: E501
     return i_machine_action(vmid, "ACPISLEEP")
 
 
-@openExclusiveSession
-def i_machine_deleteconfig(vmid, media=None, *var_args_tuple):
+def i_machine_deleteconfig(vmid, media=None):
     """
     Call interface method IMachine::deleteConfig
 
@@ -237,34 +251,36 @@ def i_machine_deleteconfig(vmid, media=None, *var_args_tuple):
     :type media: List[str]
     """
 
-    oVM = var_args_tuple[0]
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        logging.info (oError)
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    
     oError = None
     httpCode = HTTPStatus.OK
 
     vbox_utils_commonChecks()
 
     logging.info('Passed machine Id is ' + vmid)
-
     logging.info("Try to remove the machine " + oVM.name + " (UUID " + oVM.id + ")")
 
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
-    oProgress = None
-    olDisks = []
+    oCurrMachine = oVM
+    oVBoxMediumList = []
+
     try:
-        vbox_utils_detachVmDevice(oCurrMachine)
-        olDisks = oCurrMachine.unregister(ctx['const'].CleanupMode_Full)
+        olVBoxMediumAttachments = ctx['global'].getArray(oCurrMachine, 'mediumAttachments')
     except Exception as e:
-        logging.info("Can't delete VM '%s': %s" % (oVM.name, str(e)))
+        logging.info("Can't delete VM '%s': %s" % (oCurrMachine.name, str(e)))
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
 
+    oProgress = None
+
     if oError is None:
         try:
-            oProgress = oCurrMachine.deleteConfig(olDisks)
-            # Add Progress Id and Session object into the tracking lists
-            ctx['tracker'][oProgress.id] = oSession
-            ctx['vms'][oSession.machine.id] = oProgress.id
+            logging.info ('Nobody locks the machine. Try to get the lock back for ' + oVM.id)
+            oVBoxMediumList = oVM.unregister(ctx['const'].CleanupMode_Full)
+            oProgress = oVM.deleteConfig(oVBoxMediumList)
         except Exception as e:
             logging.info("Can't delete VM '%s': %s" % (oVM.name, str(e)))
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR            
@@ -444,7 +460,7 @@ def i_machine_getguestproperty(vmid, name=None):  # noqa: E501
     return response, httpCode
 
 
-def i_machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody):  # noqa: E501
+def i_machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody: MachineLaunchVMProcessRequestBody):  # noqa: E501
     """
     Call interface method IMachine::launchVMProcess
 
@@ -645,7 +661,7 @@ def i_machine_readlog(vmid, idx=None, offset=None, size=None):  # noqa: E501
 
 
 @sessionDecorator
-def i_machine_createsharedfolder(vmid, oMachineCreateSharedFolderRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_createsharedfolder(vmid, oMachineCreateSharedFolderRequestBody: MachineCreateSharedFolderRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::createSharedFolder
 
@@ -795,7 +811,7 @@ def i_machine_savestate(vmid):  # noqa: E501
 
 
 @sessionDecorator
-def i_machine_setbootorder(vmid, oMachineSetBootOrderRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_setbootorder(vmid, oMachineSetBootOrderRequestBody: MachineSetBootOrderRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::setBootOrder
 
@@ -848,7 +864,7 @@ def i_machine_setbootorder(vmid, oMachineSetBootOrderRequestBody, *var_args_tupl
 
 
 @sessionDecorator
-def i_machine_setextradata(vmid, oMachineSetExtraDataRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_setextradata(vmid, oMachineSetExtraDataRequestBody: MachineSetExtraDataRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::setExtraData
 
@@ -888,7 +904,7 @@ def i_machine_setextradata(vmid, oMachineSetExtraDataRequestBody, *var_args_tupl
 
 
 @sessionDecorator
-def i_machine_setguestproperty(vmid, oMachineSetGuestPropertyRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_setguestproperty(vmid, oMachineSetGuestPropertyRequestBody: MachineSetGuestPropertyRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::setGuestProperty
 
@@ -955,7 +971,7 @@ def i_machine_unregister(vmid, cleanupMode=None):  # noqa: E501
     if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
 
-    oMediumList = []
+    oMediumList = list[Medium]()
     oMediumArrayResponse = None
 
     if oVM is not None:
@@ -973,16 +989,16 @@ def i_machine_unregister(vmid, cleanupMode=None):  # noqa: E501
             else:
                 return "The requested cleanup mode " + str(cleanupMode) + " wasn't found", HTTPStatus.NOT_FOUND
 
-            olDisks = oVM.unregister(cleanupMode)
-            try:
+            oVBoxMediumList, oError = __machine_unregister(oVM, cleanupMode)
+            if oVBoxMediumList:
+                for item in oVBoxMediumList:
+                    oMediumList.append(i_fill_medium(item))
+
                 oMediumArrayResponse = MediumArrayResponse()
                 oMediumArrayResponse.media = oMediumList
-            except Exception as e:
-                oMediumArrayResponse = None
-                httpCode = HTTPStatus.OK
-                oError = Error(httpCode, str(e))
-
-            logging.info ('Successfully unregistered VM %s' + vmid)
+                logging.info ('VM ' + vmid + ' was successfully unregistered')
+            else:
+                logging.info ('Can\'t unregister VM ' + vmid)
 
         except Exception as e:
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -993,7 +1009,19 @@ def i_machine_unregister(vmid, cleanupMode=None):  # noqa: E501
     return response, httpCode
 
 
-def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody):  # noqa: E501
+def __machine_unregister(oVM, cleanupMode: CleanupMode):
+    oError = None
+    try:
+        olDisks = oVM.unregister(cleanupMode)
+    except Exception as e:
+        olDisks = None
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    return olDisks, oError
+
+
+def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody: VirtualBoxCreateMachineRequestBody):  # noqa: E501
     """
     Call interface method IVirtualBox::createMachine
 
@@ -1119,7 +1147,7 @@ def i_virtualbox_findmachine(vmid, select=None, nameOrId=None):  # noqa: E501
 
 
 @sessionDecorator
-def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody: MachineAttachDeviceRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::attachDevice
 
@@ -1197,7 +1225,7 @@ def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody, *var_args_tupl
 
 
 @sessionDecorator
-def i_machine_detachdevice(vmid, oMachineDetachDeviceRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_detachdevice(vmid, oMachineDetachDeviceRequestBody: MachineDetachDeviceRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::detachDevice
 
@@ -1316,7 +1344,7 @@ def i_machine_getmediumattachment(vmid, select=None, name=None, controllerPort=N
 
 
 @sessionDecorator
-def i_machine_mountmedium(vmid, mediumid, oMachineMountMediumRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_mountmedium(vmid, mediumid, oMachineMountMediumRequestBody: MachineMountMediumRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::mountMedium
 
@@ -1387,7 +1415,7 @@ def i_machine_mountmedium(vmid, mediumid, oMachineMountMediumRequestBody, *var_a
 
 
 @sessionDecorator
-def i_machine_unmountmedium(vmid, mediumid, oMachineUnmountMediumRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_unmountmedium(vmid, mediumid, oMachineUnmountMediumRequestBody: MachineUnmountMediumRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::unmountMedium
 
@@ -1474,7 +1502,7 @@ def i_machine_unmountmedium(vmid, mediumid, oMachineUnmountMediumRequestBody, *v
 
 
 @openExclusiveSession
-def i_machine_moveto(vmid, oMachineMoveToRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_moveto(vmid, oMachineMoveToRequestBody: MachineMoveToRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::moveTo
 
@@ -1531,6 +1559,7 @@ def i_machine_moveto(vmid, oMachineMoveToRequestBody, *var_args_tuple):  # noqa:
             oError = Error(httpCode, str(e))
 
     response = jsonify(oError if oError is not None else oProgressResponse)
+
     return response, httpCode
 
 
