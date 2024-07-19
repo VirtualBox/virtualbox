@@ -153,7 +153,7 @@ def virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
     """
     Call interface method IVirtualBox::getTrackedObject
 
-    :param trObjId:
+    :param trObjId: 
     :type trObjId: str
 
     :rtype: VirtualboxGettrackedobjectResponse
@@ -161,16 +161,16 @@ def virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
     return i_virtualbox_gettrackedobject(trObjId)
 
 
-def virtualbox_gettrackedobjectidsbyiid(classIID=None):  # noqa: E501
+def virtualbox_gettrackedobjectids(name=None):  # noqa: E501
     """
-    Call interface method IVirtualBox::getTrackedObjectIdsByIID
+    Call interface method IVirtualBox::getTrackedObjectIds
 
-    :param classIID:
-    :type classIID: str
+    :param name: 
+    :type name: str
 
-    :rtype: VirtualboxGettrackedobjectidsbyiidResponse
+    :rtype: VirtualboxGettrackedobjectidsResponse
     """
-    return i_virtualbox_gettrackedobjectidsbyiid(classIID)
+    return i_virtualbox_gettrackedobjectids(name)
 
 
 def virtualbox_openmedium(oVirtualBoxOpenMediumRequestBody):  # noqa: E501
