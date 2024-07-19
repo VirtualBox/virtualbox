@@ -1563,6 +1563,118 @@ def i_machine_moveto(vmid, oMachineMoveToRequestBody: MachineMoveToRequestBody, 
     return response, httpCode
 
 
+def i_machine_cloneto(vmid, oMachineCloneToRequestBody: MachineCloneToRequestBody):
+    """
+    Call interface method IMachine::cloneTo
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineCloneToRequestBody: 
+    :type oMachineCloneToRequestBody: dict | bytes
+
+    :rtype: ProgressResponse
+    """
+    oSourceMachine, oError = vbox_utils_find_machine(vmid)
+    if oSourceMachine is None:
+        logging.info (oError)
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    
+    vbox_utils_commonChecks()
+    vbox_utils_logVmInfo(oSourceMachine)
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed source machine Id is ' + vmid)
+
+    o = oMachineCloneToRequestBody
+    
+    mode = "MACHINESTATE" #default state
+    if o.mode == "MACHINESTATE":
+        mode = ctx['const'].CloneMode_MachineState
+    elif o.mode == "MACHINEANDCHILDSTATES":
+        mode = ctx['const'].CloneMode_MachineAndChildStates
+    elif o.mode == "ALLSTATES":
+        mode = ctx['const'].CloneMode_AllStates
+    else:
+        return "The requested type " + str(mode) + " is not supported", HTTPStatus.NOT_FOUND
+
+    options = list() # List[CloneOptions]
+    for item in o.options:
+        if item == "LINK":
+            options.append(ctx['const'].CloneOptions_Link)
+        elif item == "KEEPALLMACS":
+            options.append(ctx['const'].CloneOptions_KeepAllMACs)
+        elif item == "KEEPNATMACS":
+            options.append(ctx['const'].CloneOptions_KeepNATMACs)
+        elif item == "KEEPDISKNAMES":
+            options.append(ctx['const'].CloneOptions_KeepDiskNames)
+        elif item == "KEEPHWUUIDS":
+            options.append(ctx['const'].CloneOptions_KeepHwUUIDs)
+
+    logging.info('Passed target machine Id is ' + o.target)
+
+    oTargetMachine, oError = vbox_utils_find_machine(o.target)
+    if oTargetMachine is None:
+        logging.info (oError)
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    vbox_utils_logVmInfo(oTargetMachine)
+
+    try:
+        # Produces an exception with the flag CleanupMode_UnregisterOnly if there are some disks attached to this VM
+        # It's suitable for us
+        olDisks = oTargetMachine.unregister(ctx['const'].CleanupMode_UnregisterOnly)
+    except Exception as e:
+        logging.info("Can't unregister VM '%s': %s" % (oTargetMachine.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    vbox_utils_logVmInfo(oTargetMachine)
+    targetMachineState = oTargetMachine.state
+
+    if targetMachineState != ctx['const'].MachineState_PoweredOff and \
+        targetMachineState != ctx['const'].MachineState_Aborted and \
+        targetMachineState != ctx['const'].MachineState_AbortedSaved and \
+        targetMachineState != ctx['const'].MachineState_Saved:
+            httpCode = HTTPStatus.PRECONDITION_FAILED
+            oError = Error(httpCode, "Target machine must be in one of the states - PoweredOff, Aborted, AbortedSaved, Saved")
+            return jsonify(oError), httpCode
+
+    sourceMachineState = oSourceMachine.state
+    if sourceMachineState != ctx['const'].MachineState_PoweredOff and \
+        sourceMachineState != ctx['const'].MachineState_Aborted and \
+        sourceMachineState != ctx['const'].MachineState_AbortedSaved and \
+        sourceMachineState != ctx['const'].MachineState_Saved:
+            httpCode = HTTPStatus.PRECONDITION_FAILED
+            oError = Error(httpCode, "Source machine must be in one of the states - PoweredOff, Aborted, AbortedSaved, Saved")
+            return jsonify(oError), httpCode
+
+    oProgressResponse = ProgressResponse()
+
+    try:
+        oVBoxProgress = oSourceMachine.cloneTo(oTargetMachine, mode, options)
+
+        if oVBoxProgress is not None:
+            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            logging.info('The machine cloning has been successfully started')
+
+            ctx['vb'].registerMachine(oTargetMachine)
+            logging.info("registered machine with UUID " + oTargetMachine.id)
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "Something wrong with the Progress object")
+
+    except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    print(response)
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -1786,21 +1898,6 @@ def i_machine_attachhostpcidevice(vmid, oMachineAttachHostPCIDeviceRequestBody):
     :type oMachineAttachHostPCIDeviceRequestBody: dict | bytes
 
     :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_cloneto(vmid, oMachineCloneToRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::cloneTo
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineCloneToRequestBody: 
-    :type oMachineCloneToRequestBody: dict | bytes
-
-    :rtype: ProgressResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
