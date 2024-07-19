@@ -379,13 +379,50 @@ def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
     return response, httpCode
 
 
-def i_virtualbox_gettrackedobjectidsbyiid(classIID=None):  # noqa: E501
+def i_virtualbox_gettrackedobjectids(name=None):
     """
-    Call interface method IVirtualBox::getTrackedObjectIdsByIID
+    Call interface method IVirtualBox::getTrackedObjectIds
 
-    :param classIID:
-    :type classIID: str
+    :param name: 
+    :type name: str
 
-    :rtype: VirtualboxGettrackedobjectidsbyiidResponse
+    :rtype: VirtualboxGettrackedobjectidsResponse
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+    oError = None
+    httpCode = 200 #(OK)
+
+    vbox_utils_commonChecks()
+
+    try:
+        oVBox = ctx['vb']
+        oVBoxMgr = ctx['global']
+
+    except Exception as e:
+        logging.info ('couldn\'t get the VirtualBox object')
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    oVirtualboxGettrackedobjectidsResponse = VirtualboxGettrackedobjectidsResponse()
+    try:
+        if name and len(name) != 0 :
+            oObjIdList = oVBox.getTrackedObjectIds(name)
+            if len(oObjIdList) !=0:
+                oVirtualboxGettrackedobjectidsResponse.obj_ids_list = list()
+                for i in oObjIdList:
+                    oVirtualboxGettrackedobjectidsResponse.obj_ids_list.append(i)
+            else: 
+                logging.info ('No objects were found for the passed interface name')
+                httpCode = HTTPStatus.NOT_FOUND
+                oError = Error(httpCode, 'No objects were found for the passed interface name')
+        else: 
+            logging.info ('The passed interface name string is Null or empty')
+            httpCode = HTTPStatus.BAD_REQUEST
+            oError = Error(httpCode, 'The passed interface name string is Null or empty')
+    except (COMException, Exception) as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oVirtualboxGettrackedobjectidsResponse)
+    return response, httpCode
