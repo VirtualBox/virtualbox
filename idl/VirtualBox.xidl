@@ -315,7 +315,7 @@
 
 <application
   name="VirtualBox"
-  uuid="a89ce63a-c7c9-4380-a62a-ffb9052ddb37"
+  uuid="61ff179a-5f10-4077-81f4-060beba09dec"
   supportsErrorInfo="yes"
 >
 
@@ -488,6 +488,12 @@
     </desc>
   </result>
 
+  <result name="VBOX_E_RECORDING_ERROR" value="0x80BB0013">
+    <desc>
+      A recording error has occurred.
+    </desc>
+  </result>
+
   <!--
     Note that src/VBox/Runtime/common/err/errmsgvboxcom.xsl will ignore
     everything in <result>/<desc> after (and including) the first dot, so express
@@ -656,15 +662,18 @@
     <const name="v1_20" value="22">
       <desc>Settings version "1.20", written by VirtualBox 7.1.x.</desc>
       <!--
-          Adds VM platform support: Non-platform-specific
-          settings were moved to the new Platform element, which now contains
-          the platform architecture for this VM. x86-specific
-          settings were moved from Machine to a new, dedicated Platform/x86 element.
-          BIOSSettings were renamed to FirmwareSettings. ARM-specific settings
-          were added to a new, dedicated Platform/ARM element. This settings
-          version only will be written if the ARM platform architecture is being
-          selected. Only affects the machine settings (not main configuration
-          settings).
+        - Machine changes:
+          + Adds VM platform support: Non-platform-specific
+            settings were moved to the new Platform element, which now contains
+            the platform architecture for this VM. x86-specific
+            settings were moved from Machine to a new, dedicated Platform/x86 element.
+            BIOSSettings were renamed to FirmwareSettings. ARM-specific settings
+            were added to a new, dedicated Platform/ARM element. This settings
+            version only will be written if the ARM platform architecture is being
+            selected. Only affects the machine settings (not main configuration
+            settings).
+          + Adds support for Shared Folder symbolic link configuration. (Machine
+            settings only).
       -->
     </const>
     <const name="Future" value="99999">
@@ -2988,16 +2997,16 @@
       </param>
     </method>
 
-    <method name="getTrackedObjectIdsByIID">
+    <method name="getTrackedObjectIds">
       <rest request="get" path="/server/methods/"/>
       <desc>
-        Returns the tracked object Ids list associated with the passed Class IID
+        Returns the tracked object Ids list associated with the passed interface name
       </desc>
-      <param name="classIID" type="wstring" dir="in">
-        <desc>The Class IID.</desc>
+      <param name="name" type="wstring" dir="in">
+        <desc>The interface name.</desc>
       </param>
       <param name="objIdsList" type="wstring" safearray="yes" dir="return">
-        <desc>Array of the tracked object Ids associated with the specified Class IID.</desc>
+        <desc>Array of the tracked object Ids associated with the specified interface.</desc>
       </param>
     </method>
 
@@ -3060,7 +3069,7 @@
     </method>
 
     <method name="getPlatformProperties">
-      <rest name="find" request="get" path="/platform/properties"/>
+      <rest name="getPlatformProperties" request="get" path="/platform/properties"/>
       <desc>
         Gets the associated properties object for the given VM platform architecture.
       </desc>
@@ -6392,7 +6401,7 @@
 
   <interface
     name="IRecordingSettings" extends="$unknown"
-    uuid="D88F2A5A-47C7-4A3F-AAE1-1B516817DB41"
+    uuid="bea3ef5c-de2f-4b74-aa3a-15d6249371a0"
     wsmap="managed"
     rest="managed"
     >
@@ -6413,16 +6422,47 @@
       </param>
     </method>
 
+    <method name="start">
+      <desc>Starts recording and returns a progress object.</desc>
+      <param name="progress" type="IProgress" dir="return">
+        <desc>The recording progress object for this VM.</desc>
+      </param>
+      <result name="E_FAIL">
+        Unable to start recording due to recording already being started or not
+        available. See error message for more information.
+      </result>
+    </method>
+
     <attribute name="enabled" type="boolean" default="false">
       <desc>
-        This setting determines whether VirtualBox uses recording to record a
-        VM session.</desc>
+        This setting determines whether recording is enabled for this VM.
+
+        Note that this attribute does not actually start or stop recording.
+        For starting recording, use <link to="IRecordingSettings::start"/>, for
+        stopping, use the the progress object via <link to="IRecordingSettings::progress"/>.
+
+        If a VM is being started with this setting enabled, recording automatically
+        will be started with the currently configured recording settings.
+      </desc>
     </attribute>
 
     <attribute name="screens" type="IRecordingScreenSettings" readonly="yes" safearray="yes">
       <desc>
         This setting returns an array for recording settings of all configured
         virtual screens.</desc>
+    </attribute>
+
+    <attribute name="progress" type="IProgress" readonly="yes">
+      <desc>
+        Returns the recording progress object.
+
+        Cancelling the progress will stop the recording.
+
+        <result name="E_FAIL">
+          Failed to get the recording progress object due to not (yet) started
+          recording.
+        </result>
+      </desc>
     </attribute>
 
   </interface>
@@ -10245,7 +10285,7 @@
     </method>
 
     <method name="cloneTo">
-      <rest name="clone" request="put" path="/vms/{vmid}/actions/"/>
+      <rest name="clone" request="post" path="/vms/{vmid}/actions/"/>
       <desc>
         Creates a clone of this machine, either as a full clone (which means
         creating independent copies of the hard disk media, save states and so
@@ -12335,7 +12375,7 @@
 
   <interface
     name="IHost" extends="$unknown"
-    uuid="e54f6256-97a7-4947-8a78-10c013ddf4b8"
+    uuid="89b05229-cecf-4ef6-816f-c0c13f2c4da3"
     wsmap="managed"
     rest="managed"
     reservedMethods="6" reservedAttributes="12"
@@ -12819,6 +12859,23 @@
     <attribute name="updateGuestAdditions" type="IUpdateAgent" readonly="yes">
         <desc>Checks for new Guest Additions versions.</desc>
     </attribute>
+
+    <method name="isExecutionEngineSupported">
+      <desc>
+        Returns whether the given execution engine is supported on the host.
+        This is primarily to check whether the native API is supported (think
+        of Hyper-V not being available due to not running in a Hyper-V root partition).
+      </desc>
+      <param name="cpuArchitecture" type="CPUArchitecture" dir="in">
+        <desc>The guest CPU architecture to check the execution engine for.</desc>
+      </param>
+      <param name="executionEngine" type="VMExecutionEngine" dir="in">
+        <desc>The execution engine to check.</desc>
+      </param>
+      <param name="isSupported" type="boolean" dir="return">
+        <desc>Flag indicating whether the given execution engine is supported on the host.</desc>
+      </param>
+    </method>
 
   </interface>
 
@@ -24454,7 +24511,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
 
   <interface
     name="ISharedFolder" extends="$unknown"
-    uuid="9622225a-5409-414b-bd16-77df7ba3451e"
+    uuid="0b108b8c-62e0-4e06-9dfa-2f1a2ad70774"
     wsmap="managed"
     rest="managed"
     reservedAttributes="8"
@@ -24568,6 +24625,13 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
       </desc>
     </attribute>
 
+    <attribute name="symlinkPolicy" type="SymlinkPolicy">
+      <desc>
+        The security policy for allowing guest VMs to create symbolic links
+        within a Shared Folder.
+      </desc>
+    </attribute>
+
   </interface>
 
   <!--
@@ -24602,7 +24666,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
 
   <interface
     name="IInternalSessionControl" extends="$unknown"
-    uuid="5045c372-2e8f-4d9e-ad9d-121ab1661146"
+    uuid="739160a6-53ea-465b-bb6b-5326c20a3c0c"
     internal="yes"
     wsmap="suppress"
     >
@@ -24958,12 +25022,33 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
       </param>
     </method>
 
-    <method name="onRecordingChange">
+    <method name="onRecordingStateChange">
       <desc>
-        Triggered when recording settings have changed.
+        Triggered when a recording state got changed.
       </desc>
-      <param name="enable" type="boolean" dir="in">
-        <desc>TODO</desc>
+      <param name="enabled" type="boolean" dir="in">
+        <desc>
+          Whether recording was enabled or disabled.
+        </desc>
+      </param>
+      <param name="progress" type="IProgress" dir="out">
+        <desc>Progress object.</desc>
+      </param>
+    </method>
+
+    <method name="onRecordingScreenStateChange">
+      <desc>
+        Triggered when a recording screen state got changed.
+      </desc>
+      <param name="enabled" type="boolean" dir="in">
+        <desc>
+          Whether recording for that screen was enabled or disabled.
+        </desc>
+      </param>
+      <param name="screen" type="unsigned long" dir="in">
+        <desc>
+          Number of screen for which the event has happened.
+        </desc>
       </param>
     </method>
 
@@ -25424,6 +25509,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </attribute>
 
     <method name="unlockMachine">
+    <rest request="post" path="/sessions/{sessionId}/"/>
       <desc>
         Unlocks a machine that was previously locked for the current session.
 
@@ -26921,7 +27007,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
   -->
   <enum
     name="VBoxEventType"
-    uuid="f698ab32-91e4-4379-b99c-174cebecfa5e"
+    uuid="0c8f8bd7-c5d8-4085-83c2-558a4025b215"
     >
 
     <desc>
@@ -27280,9 +27366,9 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
           not unnecessarily overflow the event queue.</note>
       </desc>
     </const>
-    <const name="OnRecordingChanged" value="91">
+    <const name="OnRecordingStateChanged" value="91">
       <desc>
-        See <link to="IRecordingChangedEvent">IRecordingChangeEvent</link>.
+        See <link to="IRecordingStateChangedEvent">IRecordingStateChangeEvent</link>.
       </desc>
     </const>
     <const name="OnGuestUserStateChanged" value="92">
@@ -27452,8 +27538,13 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
         See <link to="IExtPackUninstalledEvent">IExtPackUninstalledEvent</link>.
       </desc>
     </const>
+    <const name="OnRecordingScreenStateChanged" value="125">
+      <desc>
+        See <link to="IRecordingScreenStateChangedEvent">IRecordingScreenStateChangeEvent</link>.
+      </desc>
+    </const>
     <!-- End event marker -->
-    <const name="End" value="125">
+    <const name="End" value="126">
       <desc>
         Must be last event, used for iterations and structures relying on numerical event values.
       </desc>
@@ -28999,14 +29090,38 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
   </interface>
 
   <interface
-    name="IRecordingChangedEvent" extends="IEvent"
-    uuid="B5DDB370-08A7-4C8F-910D-47AABD67253A"
-    wsmap="managed" autogen="VBoxEvent" id="OnRecordingChanged"
+    name="IRecordingStateChangedEvent" extends="IEvent"
+    uuid="e578bb9c-e88d-416b-bb45-08a4e7a5b463"
+    wsmap="managed" autogen="VBoxEvent" id="OnRecordingStateChanged"
     >
     <desc>
-      Notification when recording settings have changed.
+      Notification when the machine's recording state has changed.
     </desc>
-    <attribute name="midlDoesNotLikeEmptyInterfaces" readonly="yes" type="boolean"/>
+    <attribute name="enabled" type="boolean" readonly="yes">
+      <desc>
+        Whether recording was enabled or disabled.
+      </desc>
+    </attribute>
+    <attribute name="error" type="IVirtualBoxErrorInfo" readonly="yes">
+      <desc>
+        Error information in case the event is indicating an error.
+      </desc>
+    </attribute>
+  </interface>
+
+  <interface
+    name="IRecordingScreenStateChangedEvent" extends="IRecordingStateChangedEvent"
+    uuid="5900472f-cc58-48ac-a088-b571b77f839b"
+    wsmap="managed" autogen="VBoxEvent" id="OnRecordingScreenStateChanged"
+    >
+    <desc>
+      Notification when a screen recording state has changed.
+    </desc>
+    <attribute name="screen" type="unsigned long" readonly="yes">
+      <desc>
+        Number of screen for which the event has happened.
+      </desc>
+    </attribute>
   </interface>
 
   <interface
@@ -30230,6 +30345,34 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </const>
 </enum>
 
+  <enum
+    name="SymlinkPolicy"
+    uuid="a818472e-215d-4279-8af8-eac4c0517bcc"
+    >
+    <desc>Shared Folder Symbolic Link Security Policies</desc>
+    <const name="None"                       value="0">
+      <desc>No symlink policy set (never used by the API).</desc>
+    </const>
+    <const name="Forbidden"                  value="1">
+      <desc>Users in the guest VM are not able to create symbolic links inside the Shared Folder.</desc>
+    </const>
+    <const name="AllowedInShareSubtree"      value="2">
+      <desc>Users in the guest VM are allowed to create symbolic links within the Shared Folder so long
+          as the target remains in the Shared Folder or within the subtree of the Shared Folder.
+      </desc>
+    </const>
+    <const name="AllowedToRelativeTargets"   value="3">
+      <desc>Users in the guest VM are allowed to create symbolic links within the Shared Folder to
+          targets within the Shared Folder and its subtree as well as to relative targets (../) outside of
+          the Shared Folder.
+      </desc>
+    </const>
+    <const name="AllowedToAnyTarget"         value="4">
+      <desc>Users in the guest VM are allowed to create symbolic links within the Shared Folder and
+          its subtree as well as to other targets via either relative pathnames or absolute pathnames.
+      </desc>
+    </const>
+</enum>
 
   <interface name="ICloudNetworkGatewayInfo" extends="$unknown"
              uuid="89a63ace-0c65-11ea-ad23-0ff257c71a7f"
