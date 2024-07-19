@@ -1,5 +1,12 @@
+import os
+import platform
 import logging
 from vbox_server.global_settings import *
+
+if os.name == 'nt' or platform.system() == 'Windows':
+    from pywintypes import com_error as COMException
+else:
+    from xpcom import COMException
 
 # import interfaces
 from vbox_server.models.virtual_box import VirtualBox
@@ -73,32 +80,75 @@ def i_fill_whole_virtual_box(oVBoxVirtualBox):
         oVirtualBox.settings_file_path = oVBoxVirtualBox.settingsFilePath
       except Exception as e:
         logging.info('Error getting the attribute "settingsFilePath"')
-
-      oVirtualBox.hard_disks = list()
+      try:
+        ol_machine_groups = ctx['global'].getArray(oVBoxVirtualBox,'machineGroups')
+        oVirtualBox.machine_groups = list()
+        for count, item in enumerate(ol_machine_groups):
+          oVirtualBox.machine_groups.append(item)
+      except Exception as e:
+        logging.info('Error getting the array of "machineGroups"')
       try:
         ol_hard_disks = ctx['global'].getArray(oVBoxVirtualBox,'hardDisks')
+        oVirtualBox.hard_disks = list()
         for count, item in enumerate(ol_hard_disks):
           o = i_fill_medium(item)
           oVirtualBox.hard_disks.append(o)
       except Exception as e:
         logging.info('Error getting the array of "hardDisks"')
-      oVirtualBox.dvd_images = list()
       try:
         ol_dvd_images = ctx['global'].getArray(oVBoxVirtualBox,'DVDImages')
+        oVirtualBox.dvd_images = list()
         for count, item in enumerate(ol_dvd_images):
           o = i_fill_medium(item)
           oVirtualBox.dvd_images.append(o)
       except Exception as e:
         logging.info('Error getting the array of "DVDImages"')
-      oVirtualBox.floppy_images = list()
       try:
         ol_floppy_images = ctx['global'].getArray(oVBoxVirtualBox,'floppyImages')
+        oVirtualBox.floppy_images = list()
         for count, item in enumerate(ol_floppy_images):
           o = i_fill_medium(item)
           oVirtualBox.floppy_images.append(o)
       except Exception as e:
         logging.info('Error getting the array of "floppyImages"')
-
+      try:
+        ol_progress_operations = ctx['global'].getArray(oVBoxVirtualBox,'progressOperations')
+        oVirtualBox.progress_operations = list()
+        for count, item in enumerate(ol_progress_operations):
+          o = i_fill_progress(item)
+          oVirtualBox.progress_operations.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "progressOperations"')
+      try:
+        ol_guest_os_families = ctx['global'].getArray(oVBoxVirtualBox,'guestOSFamilies')
+        oVirtualBox.guest_os_families = list()
+        for count, item in enumerate(ol_guest_os_families):
+          oVirtualBox.guest_os_families.append(item)
+      except Exception as e:
+        logging.info('Error getting the array of "guestOSFamilies"')
+      try:
+        ol_shared_folders = ctx['global'].getArray(oVBoxVirtualBox,'sharedFolders')
+        oVirtualBox.shared_folders = list()
+        for count, item in enumerate(ol_shared_folders):
+          o = i_fill_shared_folder(item)
+          oVirtualBox.shared_folders.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "sharedFolders"')
+      try:
+        ol_internal_networks = ctx['global'].getArray(oVBoxVirtualBox,'internalNetworks')
+        oVirtualBox.internal_networks = list()
+        for count, item in enumerate(ol_internal_networks):
+          oVirtualBox.internal_networks.append(item)
+      except Exception as e:
+        logging.info('Error getting the array of "internalNetworks"')
+      try:
+        ol_generic_network_drivers = ctx['global'].getArray(oVBoxVirtualBox,'genericNetworkDrivers')
+        oVirtualBox.generic_network_drivers = list()
+        for count, item in enumerate(ol_generic_network_drivers):
+          oVirtualBox.generic_network_drivers.append(item)
+      except Exception as e:
+        logging.info('Error getting the array of "genericNetworkDrivers"')
+      
   except Exception as e:
     logging.info('Abnormal function exit')
     oVirtualBox = None
@@ -107,7 +157,6 @@ def i_fill_whole_virtual_box(oVBoxVirtualBox):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oVirtualBox
-
 
 def i_fill_partial_virtual_box(oVBoxVirtualBox, select):
   logging.info('Enter function ')
@@ -126,82 +175,92 @@ def i_fill_partial_virtual_box(oVBoxVirtualBox, select):
             except Exception as e:
               logging.info('Error getting the attribute "version"')
               raise Exception('Error getting the attribute "version"')
-
+            
           if currAttr=='versionNormalized':
             try:
               oVirtualBox.version_normalized = oVBoxVirtualBox.versionNormalized
             except Exception as e:
               logging.info('Error getting the attribute "versionNormalized"')
               raise Exception('Error getting the attribute "versionNormalized"')
-
+            
           if currAttr=='revision':
             try:
               oVirtualBox.revision = oVBoxVirtualBox.revision
             except Exception as e:
               logging.info('Error getting the attribute "revision"')
               raise Exception('Error getting the attribute "revision"')
-
+            
           if currAttr=='packageType':
             try:
               oVirtualBox.package_type = oVBoxVirtualBox.packageType
             except Exception as e:
               logging.info('Error getting the attribute "packageType"')
               raise Exception('Error getting the attribute "packageType"')
-
+            
           if currAttr=='APIVersion':
             try:
               oVirtualBox.api_version = oVBoxVirtualBox.APIVersion
             except Exception as e:
               logging.info('Error getting the attribute "APIVersion"')
               raise Exception('Error getting the attribute "APIVersion"')
-
+            
           if currAttr=='APIRevision':
             try:
               oVirtualBox.api_revision = oVBoxVirtualBox.APIRevision
             except Exception as e:
               logging.info('Error getting the attribute "APIRevision"')
               raise Exception('Error getting the attribute "APIRevision"')
-
+            
           if currAttr=='homeFolder':
             try:
               oVirtualBox.home_folder = oVBoxVirtualBox.homeFolder
             except Exception as e:
               logging.info('Error getting the attribute "homeFolder"')
               raise Exception('Error getting the attribute "homeFolder"')
-
+            
           if currAttr=='settingsFilePath':
             try:
               oVirtualBox.settings_file_path = oVBoxVirtualBox.settingsFilePath
             except Exception as e:
               logging.info('Error getting the attribute "settingsFilePath"')
               raise Exception('Error getting the attribute "settingsFilePath"')
-
+            
+          if currAttr=='machineGroups':
+            try:
+              ol_machine_groups = ctx['global'].getArray(oVBoxVirtualBox,'machineGroups')
+              oVirtualBox.machine_groups = list()
+              for count, item in enumerate(ol_machine_groups):
+                oVirtualBox.machine_groups.append(item)
+            except Exception as e:
+              logging.info('Error getting the array of "machineGroups"')
+              raise Exception('Error getting the array of "machineGroups"')
+            
           if currAttr=='hardDisks':
-            oVirtualBox.hard_disks = list()
             try:
               ol_hard_disks = ctx['global'].getArray(oVBoxVirtualBox,'hardDisks')
+              oVirtualBox.hard_disks = list()
               for count, item in enumerate(ol_hard_disks):
                 o = i_fill_medium(item)
                 oVirtualBox.hard_disks.append(o)
             except Exception as e:
               logging.info('Error getting the array of "hardDisks"')
               raise Exception('Error getting the array of "hardDisks"')
-
+            
           if currAttr=='DVDImages':
-            oVirtualBox.dvd_images = list()
             try:
               ol_dvd_images = ctx['global'].getArray(oVBoxVirtualBox,'DVDImages')
+              oVirtualBox.dvd_images = list()
               for count, item in enumerate(ol_dvd_images):
                 o = i_fill_medium(item)
                 oVirtualBox.dvd_images.append(o)
             except Exception as e:
               logging.info('Error getting the array of "DVDImages"')
               raise Exception('Error getting the array of "DVDImages"')
-
+            
           if currAttr=='floppyImages':
-            oVirtualBox.floppy_images = list()
             try:
               ol_floppy_images = ctx['global'].getArray(oVBoxVirtualBox,'floppyImages')
+              oVirtualBox.floppy_images = list()
               for count, item in enumerate(ol_floppy_images):
                 o = i_fill_medium(item)
                 oVirtualBox.floppy_images.append(o)
@@ -209,6 +268,58 @@ def i_fill_partial_virtual_box(oVBoxVirtualBox, select):
               logging.info('Error getting the array of "floppyImages"')
               raise Exception('Error getting the array of "floppyImages"')
             
+          if currAttr=='progressOperations':
+            try:
+              ol_progress_operations = ctx['global'].getArray(oVBoxVirtualBox,'progressOperations')
+              oVirtualBox.progress_operations = list()
+              for count, item in enumerate(ol_progress_operations):
+                o = i_fill_progress(item)
+                oVirtualBox.progress_operations.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "progressOperations"')
+              raise Exception('Error getting the array of "progressOperations"')
+            
+          if currAttr=='guestOSFamilies':
+            try:
+              ol_guest_os_families = ctx['global'].getArray(oVBoxVirtualBox,'guestOSFamilies')
+              oVirtualBox.guest_os_families = list()
+              for count, item in enumerate(ol_guest_os_families):
+                oVirtualBox.guest_os_families.append(item)
+            except Exception as e:
+              logging.info('Error getting the array of "guestOSFamilies"')
+              raise Exception('Error getting the array of "guestOSFamilies"')
+            
+          if currAttr=='sharedFolders':
+            try:
+              ol_shared_folders = ctx['global'].getArray(oVBoxVirtualBox,'sharedFolders')
+              oVirtualBox.shared_folders = list()
+              for count, item in enumerate(ol_shared_folders):
+                o = i_fill_shared_folder(item)
+                oVirtualBox.shared_folders.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "sharedFolders"')
+              raise Exception('Error getting the array of "sharedFolders"')
+          
+          if currAttr=='internalNetworks':
+            try:
+              ol_internal_networks = ctx['global'].getArray(oVBoxVirtualBox,'internalNetworks')
+              oVirtualBox.internal_networks = list()
+              for count, item in enumerate(ol_internal_networks):
+                oVirtualBox.internal_networks.append(item)
+            except Exception as e:
+              logging.info('Error getting the array of "internalNetworks"')
+              raise Exception('Error getting the array of "internalNetworks"')
+
+          if currAttr=='genericNetworkDrivers':
+            try:
+              ol_generic_network_drivers = ctx['global'].getArray(oVBoxVirtualBox,'genericNetworkDrivers')
+              oVirtualBox.generic_network_drivers = list()
+              for count, item in enumerate(ol_generic_network_drivers):
+                oVirtualBox.generic_network_drivers.append(item)
+            except Exception as e:
+              logging.info('Error getting the array of "genericNetworkDrivers"')
+              raise Exception('Error getting the array of "genericNetworkDrivers"')
+
   except Exception as e:
     logging.info('Abnormal function exit')
     oVirtualBox = None
@@ -245,9 +356,9 @@ def i_fill_whole_machine(oVBoxMachine):
   oMachine = Machine()
   try:
     if oVBoxMachine is not None:
-      oMachine.icon = list()
       try:
         ol_icon = ctx['global'].getArray(oVBoxMachine,'icon')
+        oMachine.icon = list()
         for count, item in enumerate(ol_icon):
           oMachine.icon.append(item)
       except Exception as e:
@@ -256,6 +367,14 @@ def i_fill_whole_machine(oVBoxMachine):
         oMachine.accessible = oVBoxMachine.accessible
       except Exception as e:
         logging.info('Error getting the attribute "accessible"')
+      try:
+        o_access_error = oVBoxMachine.accessError if oVBoxMachine.accessError is not None else None
+        if o_access_error is not None:
+          oMachine.access_error = i_fill_virtual_box_error_info(o_access_error)
+        else:
+          oMachine.access_error = None
+      except Exception as e:
+        logging.info('Error getting the interface object "accessError"')
       try:
         oMachine.name = oVBoxMachine.name
       except Exception as e:
@@ -268,9 +387,9 @@ def i_fill_whole_machine(oVBoxMachine):
         oMachine.id = oVBoxMachine.id
       except Exception as e:
         logging.info('Error getting the attribute "id"')
-      oMachine.groups = list()
       try:
         ol_groups = ctx['global'].getArray(oVBoxMachine,'groups')
+        oMachine.groups = list()
         for count, item in enumerate(ol_groups):
           oMachine.groups.append(item)
       except Exception as e:
@@ -316,6 +435,14 @@ def i_fill_whole_machine(oVBoxMachine):
       except Exception as e:
         logging.info('Error getting the attribute "pageFusionEnabled"')
       try:
+        oMachine.pointing_hid_type = ctx[ 'global'].getEnumValueName('PointingHIDType', oVBoxMachine.pointingHIDType)
+      except Exception as e:
+        logging.info('Error getting the attribute "pointingHIDType"')
+      try:
+        oMachine.keyboard_hid_type = ctx[ 'global'].getEnumValueName('KeyboardHIDType', oVBoxMachine.keyboardHIDType)
+      except Exception as e:
+        logging.info('Error getting the attribute "keyboardHIDType"')
+      try:
         oMachine.snapshot_folder = oVBoxMachine.snapshotFolder
       except Exception as e:
         logging.info('Error getting the attribute "snapshotFolder"')
@@ -324,9 +451,21 @@ def i_fill_whole_machine(oVBoxMachine):
       except Exception as e:
         logging.info('Error getting the attribute "emulatedUSBCardReaderEnabled"')
       try:
+        ol_medium_attachments = ctx['global'].getArray(oVBoxMachine,'mediumAttachments')
+        oMachine.medium_attachments = list()
+        for count, item in enumerate(ol_medium_attachments):
+          o = i_fill_medium_attachment(item)
+          oMachine.medium_attachments.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "mediumAttachments"')
+      try:
         oMachine.settings_file_path = oVBoxMachine.settingsFilePath
       except Exception as e:
         logging.info('Error getting the attribute "settingsFilePath"')
+      try:
+        oMachine.session_state = ctx[ 'global'].getEnumValueName('SessionState', oVBoxMachine.sessionState)
+      except Exception as e:
+        logging.info('Error getting the attribute "sessionState"')
       try:
         oMachine.session_name = oVBoxMachine.sessionName
       except Exception as e:
@@ -335,6 +474,10 @@ def i_fill_whole_machine(oVBoxMachine):
         oMachine.session_pid = oVBoxMachine.sessionPID
       except Exception as e:
         logging.info('Error getting the attribute "sessionPID"')
+      try:
+        oMachine.state = ctx[ 'global'].getEnumValueName('MachineState', oVBoxMachine.state)
+      except Exception as e:
+        logging.info('Error getting the attribute "state"')
       try:
         oMachine.last_state_change = oVBoxMachine.lastStateChange
       except Exception as e:
@@ -356,9 +499,25 @@ def i_fill_whole_machine(oVBoxMachine):
       except Exception as e:
         logging.info('Error getting the attribute "currentStateModified"')
       try:
+        ol_shared_folders = ctx['global'].getArray(oVBoxMachine,'sharedFolders')
+        oMachine.shared_folders = list()
+        for count, item in enumerate(ol_shared_folders):
+          o = i_fill_shared_folder(item)
+          oMachine.shared_folders.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "sharedFolders"')
+      try:
+        oMachine.clipboard_mode = ctx[ 'global'].getEnumValueName('ClipboardMode', oVBoxMachine.clipboardMode)
+      except Exception as e:
+        logging.info('Error getting the attribute "clipboardMode"')
+      try:
         oMachine.clipboard_file_transfers_enabled = oVBoxMachine.clipboardFileTransfersEnabled
       except Exception as e:
         logging.info('Error getting the attribute "clipboardFileTransfersEnabled"')
+      try:
+        oMachine.dn_d_mode = ctx[ 'global'].getEnumValueName('DnDMode', oVBoxMachine.dnDMode)
+      except Exception as e:
+        logging.info('Error getting the attribute "dnDMode"')
       try:
         oMachine.teleporter_enabled = oVBoxMachine.teleporterEnabled
       except Exception as e:
@@ -375,6 +534,10 @@ def i_fill_whole_machine(oVBoxMachine):
         oMachine.teleporter_password = oVBoxMachine.teleporterPassword
       except Exception as e:
         logging.info('Error getting the attribute "teleporterPassword"')
+      try:
+        oMachine.paravirt_provider = ctx[ 'global'].getEnumValueName('ParavirtProvider', oVBoxMachine.paravirtProvider)
+      except Exception as e:
+        logging.info('Error getting the attribute "paravirtProvider"')
       try:
         oMachine.io_cache_enabled = oVBoxMachine.IOCacheEnabled
       except Exception as e:
@@ -404,6 +567,10 @@ def i_fill_whole_machine(oVBoxMachine):
       except Exception as e:
         logging.info('Error getting the attribute "autostartDelay"')
       try:
+        oMachine.autostop_type = ctx[ 'global'].getEnumValueName('AutostopType', oVBoxMachine.autostopType)
+      except Exception as e:
+        logging.info('Error getting the attribute "autostopType"')
+      try:
         oMachine.default_frontend = oVBoxMachine.defaultFrontend
       except Exception as e:
         logging.info('Error getting the attribute "defaultFrontend"')
@@ -411,6 +578,14 @@ def i_fill_whole_machine(oVBoxMachine):
         oMachine.usb_proxy_available = oVBoxMachine.USBProxyAvailable
       except Exception as e:
         logging.info('Error getting the attribute "USBProxyAvailable"')
+      try:
+        oMachine.vm_process_priority = ctx[ 'global'].getEnumValueName('VMProcPriority', oVBoxMachine.VMProcessPriority)
+      except Exception as e:
+        logging.info('Error getting the attribute "VMProcessPriority"')
+      try:
+        oMachine.vm_execution_engine = ctx[ 'global'].getEnumValueName('VMExecutionEngine', oVBoxMachine.VMExecutionEngine)
+      except Exception as e:
+        logging.info('Error getting the attribute "VMExecutionEngine"')
       try:
         oMachine.paravirt_debug = oVBoxMachine.paravirtDebug
       except Exception as e:
@@ -435,34 +610,7 @@ def i_fill_whole_machine(oVBoxMachine):
         oMachine.log_key_store = oVBoxMachine.logKeyStore
       except Exception as e:
         logging.info('Error getting the attribute "logKeyStore"')
-
-      oMachine.vm_process_priority = ctx[ 'global'].getEnumValueName('VMProcPriority', oVBoxMachine.VMProcessPriority)
-      oMachine.autostop_type = ctx[ 'global'].getEnumValueName('AutostopType', oVBoxMachine.autostopType)
-      oMachine.paravirt_provider = ctx[ 'global'].getEnumValueName('ParavirtProvider', oVBoxMachine.paravirtProvider)
-      oMachine.dn_d_mode = ctx[ 'global'].getEnumValueName('DnDMode', oVBoxMachine.dnDMode)
-      oMachine.clipboard_mode = ctx[ 'global'].getEnumValueName('ClipboardMode', oVBoxMachine.clipboardMode)
-      oMachine.state = ctx[ 'global'].getEnumValueName('MachineState', oVBoxMachine.state)
-      oMachine.session_state = ctx[ 'global'].getEnumValueName('SessionState', oVBoxMachine.sessionState)
-      oMachine.pointing_hid_type = ctx[ 'global'].getEnumValueName('PointingHIDType', oVBoxMachine.pointingHIDType)
-      oMachine.keyboard_hid_type = ctx[ 'global'].getEnumValueName('KeyboardHIDType', oVBoxMachine.keyboardHIDType)
-
-      oMachine.shared_folders = list()
-      try:
-        ol_shared_folders = ctx['global'].getArray(oVBoxMachine,'sharedFolders')
-        for count, item in enumerate(ol_shared_folders):
-          o = i_fill_shared_folder(item)
-          oMachine.shared_folders.append(o)
-      except Exception as e:
-        logging.info('Error getting the array of "sharedFolders"')
-      oMachine.medium_attachments = list()
-      try:
-        ol_medium_attachments = ctx['global'].getArray(oVBoxMachine,'mediumAttachments')
-        for count, item in enumerate(ol_medium_attachments):
-          o = i_fill_medium_attachment(item)
-          oMachine.medium_attachments.append(o)
-      except Exception as e:
-        logging.info('Error getting the array of "mediumAttachments"')
-
+      
   except Exception as e:
     logging.info('Abnormal function exit')
     oMachine = None
@@ -484,116 +632,127 @@ def i_fill_partial_machine(oVBoxMachine, select):
         for attr in olAttributesList:
           currAttr = attr
           if currAttr=='icon':
-            oMachine.icon = list()
             try:
               ol_icon = ctx['global'].getArray(oVBoxMachine,'icon')
+              oMachine.icon = list()
               for count, item in enumerate(ol_icon):
                 oMachine.icon.append(item)
             except Exception as e:
               logging.info('Error getting the array of "icon"')
               raise Exception('Error getting the array of "icon"')
-
+            
           if currAttr=='accessible':
             try:
               oMachine.accessible = oVBoxMachine.accessible
             except Exception as e:
               logging.info('Error getting the attribute "accessible"')
               raise Exception('Error getting the attribute "accessible"')
-
+            
+          if currAttr=='accessError':
+            try:
+              o_access_error = oVBoxMachine.accessError if oVBoxMachine.accessError is not None else None
+              if o_access_error is not None:
+                oMachine.access_error = i_fill_virtual_box_error_info(o_access_error)
+              else:
+                oMachine.access_error = None
+            except Exception as e:
+              logging.info('Error getting the interface object "accessError"')
+              raise Exception('Error getting the interface object "accessError"')
+            
           if currAttr=='name':
             try:
               oMachine.name = oVBoxMachine.name
             except Exception as e:
               logging.info('Error getting the attribute "name"')
               raise Exception('Error getting the attribute "name"')
-
+            
           if currAttr=='description':
             try:
               oMachine.description = oVBoxMachine.description
             except Exception as e:
               logging.info('Error getting the attribute "description"')
               raise Exception('Error getting the attribute "description"')
-
+            
           if currAttr=='id':
             try:
               oMachine.id = oVBoxMachine.id
             except Exception as e:
               logging.info('Error getting the attribute "id"')
               raise Exception('Error getting the attribute "id"')
-
+            
           if currAttr=='groups':
-            oMachine.groups = list()
             try:
               ol_groups = ctx['global'].getArray(oVBoxMachine,'groups')
+              oMachine.groups = list()
               for count, item in enumerate(ol_groups):
                 oMachine.groups.append(item)
             except Exception as e:
               logging.info('Error getting the array of "groups"')
               raise Exception('Error getting the array of "groups"')
-
+            
           if currAttr=='OSTypeId':
             try:
               oMachine.os_type_id = oVBoxMachine.OSTypeId
             except Exception as e:
               logging.info('Error getting the attribute "OSTypeId"')
               raise Exception('Error getting the attribute "OSTypeId"')
-
+            
           if currAttr=='hardwareVersion':
             try:
               oMachine.hardware_version = oVBoxMachine.hardwareVersion
             except Exception as e:
               logging.info('Error getting the attribute "hardwareVersion"')
               raise Exception('Error getting the attribute "hardwareVersion"')
-
+            
           if currAttr=='hardwareUUID':
             try:
               oMachine.hardware_uuid = oVBoxMachine.hardwareUUID
             except Exception as e:
               logging.info('Error getting the attribute "hardwareUUID"')
               raise Exception('Error getting the attribute "hardwareUUID"')
-
+            
           if currAttr=='CPUCount':
             try:
               oMachine.cpu_count = oVBoxMachine.CPUCount
             except Exception as e:
               logging.info('Error getting the attribute "CPUCount"')
               raise Exception('Error getting the attribute "CPUCount"')
-
+            
           if currAttr=='CPUHotPlugEnabled':
             try:
               oMachine.cpu_hot_plug_enabled = oVBoxMachine.CPUHotPlugEnabled
             except Exception as e:
               logging.info('Error getting the attribute "CPUHotPlugEnabled"')
               raise Exception('Error getting the attribute "CPUHotPlugEnabled"')
-
+            
           if currAttr=='CPUExecutionCap':
             try:
               oMachine.cpu_execution_cap = oVBoxMachine.CPUExecutionCap
             except Exception as e:
               logging.info('Error getting the attribute "CPUExecutionCap"')
               raise Exception('Error getting the attribute "CPUExecutionCap"')
-
+            
           if currAttr=='CPUIDPortabilityLevel':
             try:
               oMachine.cpuid_portability_level = oVBoxMachine.CPUIDPortabilityLevel
             except Exception as e:
               logging.info('Error getting the attribute "CPUIDPortabilityLevel"')
               raise Exception('Error getting the attribute "CPUIDPortabilityLevel"')
-
+            
           if currAttr=='memorySize':
             try:
               oMachine.memory_size = oVBoxMachine.memorySize
             except Exception as e:
               logging.info('Error getting the attribute "memorySize"')
               raise Exception('Error getting the attribute "memorySize"')
-
+            
           if currAttr=='memoryBalloonSize':
             try:
               oMachine.memory_balloon_size = oVBoxMachine.memoryBalloonSize
             except Exception as e:
               logging.info('Error getting the attribute "memoryBalloonSize"')
               raise Exception('Error getting the attribute "memoryBalloonSize"')
-
+            
           if currAttr=='pageFusionEnabled':
             try:
               oMachine.page_fusion_enabled = oVBoxMachine.pageFusionEnabled
@@ -601,250 +760,38 @@ def i_fill_partial_machine(oVBoxMachine, select):
               logging.info('Error getting the attribute "pageFusionEnabled"')
               raise Exception('Error getting the attribute "pageFusionEnabled"')
 
+          if currAttr=='pointingHIDType':
+            try:
+              oMachine.pointing_hid_type = ctx[ 'global'].getEnumValueName('PointingHIDType', oVBoxMachine.pointingHIDType)
+            except Exception as e:
+              logging.info('Error getting the attribute "pointingHIDType"')
+              raise Exception('Error getting the array of "pointingHIDType"')
+            
+          if currAttr=='keyboardHIDType':
+            try:
+              oMachine.keyboard_hid_type = ctx[ 'global'].getEnumValueName('KeyboardHIDType', oVBoxMachine.keyboardHIDType)
+            except Exception as e:
+              logging.info('Error getting the attribute "keyboardHIDType"')
+              raise Exception('Error getting the array of "keyboardHIDType"')
+            
           if currAttr=='snapshotFolder':
             try:
               oMachine.snapshot_folder = oVBoxMachine.snapshotFolder
             except Exception as e:
               logging.info('Error getting the attribute "snapshotFolder"')
               raise Exception('Error getting the attribute "snapshotFolder"')
-
+            
           if currAttr=='emulatedUSBCardReaderEnabled':
             try:
               oMachine.emulated_usb_card_reader_enabled = oVBoxMachine.emulatedUSBCardReaderEnabled
             except Exception as e:
               logging.info('Error getting the attribute "emulatedUSBCardReaderEnabled"')
               raise Exception('Error getting the attribute "emulatedUSBCardReaderEnabled"')
-
-          if currAttr=='settingsFilePath':
-            try:
-              oMachine.settings_file_path = oVBoxMachine.settingsFilePath
-            except Exception as e:
-              logging.info('Error getting the attribute "settingsFilePath"')
-              raise Exception('Error getting the attribute "settingsFilePath"')
-
-          if currAttr=='sessionName':
-            try:
-              oMachine.session_name = oVBoxMachine.sessionName
-            except Exception as e:
-              logging.info('Error getting the attribute "sessionName"')
-              raise Exception('Error getting the attribute "sessionName"')
-
-          if currAttr=='sessionPID':
-            try:
-              oMachine.session_pid = oVBoxMachine.sessionPID
-            except Exception as e:
-              logging.info('Error getting the attribute "sessionPID"')
-              raise Exception('Error getting the attribute "sessionPID"')
-
-          if currAttr=='lastStateChange':
-            try:
-              oMachine.last_state_change = oVBoxMachine.lastStateChange
-            except Exception as e:
-              logging.info('Error getting the attribute "lastStateChange"')
-              raise Exception('Error getting the attribute "lastStateChange"')
-
-          if currAttr=='stateFilePath':
-            try:
-              oMachine.state_file_path = oVBoxMachine.stateFilePath
-            except Exception as e:
-              logging.info('Error getting the attribute "stateFilePath"')
-              raise Exception('Error getting the attribute "stateFilePath"')
-
-          if currAttr=='logFolder':
-            try:
-              oMachine.log_folder = oVBoxMachine.logFolder
-            except Exception as e:
-              logging.info('Error getting the attribute "logFolder"')
-              raise Exception('Error getting the attribute "logFolder"')
-
-          if currAttr=='snapshotCount':
-            try:
-              oMachine.snapshot_count = oVBoxMachine.snapshotCount
-            except Exception as e:
-              logging.info('Error getting the attribute "snapshotCount"')
-              raise Exception('Error getting the attribute "snapshotCount"')
-
-          if currAttr=='currentStateModified':
-            try:
-              oMachine.current_state_modified = oVBoxMachine.currentStateModified
-            except Exception as e:
-              logging.info('Error getting the attribute "currentStateModified"')
-              raise Exception('Error getting the attribute "currentStateModified"')
-
-          if currAttr=='clipboardFileTransfersEnabled':
-            try:
-              oMachine.clipboard_file_transfers_enabled = oVBoxMachine.clipboardFileTransfersEnabled
-            except Exception as e:
-              logging.info('Error getting the attribute "clipboardFileTransfersEnabled"')
-              raise Exception('Error getting the attribute "clipboardFileTransfersEnabled"')
-
-          if currAttr=='teleporterEnabled':
-            try:
-              oMachine.teleporter_enabled = oVBoxMachine.teleporterEnabled
-            except Exception as e:
-              logging.info('Error getting the attribute "teleporterEnabled"')
-              raise Exception('Error getting the attribute "teleporterEnabled"')
-
-          if currAttr=='teleporterPort':
-            try:
-              oMachine.teleporter_port = oVBoxMachine.teleporterPort
-            except Exception as e:
-              logging.info('Error getting the attribute "teleporterPort"')
-              raise Exception('Error getting the attribute "teleporterPort"')
-
-          if currAttr=='teleporterAddress':
-            try:
-              oMachine.teleporter_address = oVBoxMachine.teleporterAddress
-            except Exception as e:
-              logging.info('Error getting the attribute "teleporterAddress"')
-              raise Exception('Error getting the attribute "teleporterAddress"')
-
-          if currAttr=='teleporterPassword':
-            try:
-              oMachine.teleporter_password = oVBoxMachine.teleporterPassword
-            except Exception as e:
-              logging.info('Error getting the attribute "teleporterPassword"')
-              raise Exception('Error getting the attribute "teleporterPassword"')
-
-          if currAttr=='IOCacheEnabled':
-            try:
-              oMachine.io_cache_enabled = oVBoxMachine.IOCacheEnabled
-            except Exception as e:
-              logging.info('Error getting the attribute "IOCacheEnabled"')
-              raise Exception('Error getting the attribute "IOCacheEnabled"')
-
-          if currAttr=='IOCacheSize':
-            try:
-              oMachine.io_cache_size = oVBoxMachine.IOCacheSize
-            except Exception as e:
-              logging.info('Error getting the attribute "IOCacheSize"')
-              raise Exception('Error getting the attribute "IOCacheSize"')
-
-          if currAttr=='tracingEnabled':
-            try:
-              oMachine.tracing_enabled = oVBoxMachine.tracingEnabled
-            except Exception as e:
-              logging.info('Error getting the attribute "tracingEnabled"')
-              raise Exception('Error getting the attribute "tracingEnabled"')
-
-          if currAttr=='tracingConfig':
-            try:
-              oMachine.tracing_config = oVBoxMachine.tracingConfig
-            except Exception as e:
-              logging.info('Error getting the attribute "tracingConfig"')
-              raise Exception('Error getting the attribute "tracingConfig"')
-
-          if currAttr=='allowTracingToAccessVM':
-            try:
-              oMachine.allow_tracing_to_access_vm = oVBoxMachine.allowTracingToAccessVM
-            except Exception as e:
-              logging.info('Error getting the attribute "allowTracingToAccessVM"')
-              raise Exception('Error getting the attribute "allowTracingToAccessVM"')
-
-          if currAttr=='autostartEnabled':
-            try:
-              oMachine.autostart_enabled = oVBoxMachine.autostartEnabled
-            except Exception as e:
-              logging.info('Error getting the attribute "autostartEnabled"')
-              raise Exception('Error getting the attribute "autostartEnabled"')
-
-          if currAttr=='autostartDelay':
-            try:
-              oMachine.autostart_delay = oVBoxMachine.autostartDelay
-            except Exception as e:
-              logging.info('Error getting the attribute "autostartDelay"')
-              raise Exception('Error getting the attribute "autostartDelay"')
-
-          if currAttr=='defaultFrontend':
-            try:
-              oMachine.default_frontend = oVBoxMachine.defaultFrontend
-            except Exception as e:
-              logging.info('Error getting the attribute "defaultFrontend"')
-              raise Exception('Error getting the attribute "defaultFrontend"')
-
-          if currAttr=='USBProxyAvailable':
-            try:
-              oMachine.usb_proxy_available = oVBoxMachine.USBProxyAvailable
-            except Exception as e:
-              logging.info('Error getting the attribute "USBProxyAvailable"')
-              raise Exception('Error getting the attribute "USBProxyAvailable"')
-
-          if currAttr=='paravirtDebug':
-            try:
-              oMachine.paravirt_debug = oVBoxMachine.paravirtDebug
-            except Exception as e:
-              logging.info('Error getting the attribute "paravirtDebug"')
-              raise Exception('Error getting the attribute "paravirtDebug"')
-
-          if currAttr=='CPUProfile':
-            try:
-              oMachine.cpu_profile = oVBoxMachine.CPUProfile
-            except Exception as e:
-              logging.info('Error getting the attribute "CPUProfile"')
-              raise Exception('Error getting the attribute "CPUProfile"')
-
-          if currAttr=='stateKeyId':
-            try:
-              oMachine.state_key_id = oVBoxMachine.stateKeyId
-            except Exception as e:
-              logging.info('Error getting the attribute "stateKeyId"')
-              raise Exception('Error getting the attribute "stateKeyId"')
-
-          if currAttr=='stateKeyStore':
-            try:
-              oMachine.state_key_store = oVBoxMachine.stateKeyStore
-            except Exception as e:
-              logging.info('Error getting the attribute "stateKeyStore"')
-              raise Exception('Error getting the attribute "stateKeyStore"')
-
-          if currAttr=='logKeyId':
-            try:
-              oMachine.log_key_id = oVBoxMachine.logKeyId
-            except Exception as e:
-              logging.info('Error getting the attribute "logKeyId"')
-              raise Exception('Error getting the attribute "logKeyId"')
-
-          if currAttr=='logKeyStore':
-            try:
-              oMachine.log_key_store = oVBoxMachine.logKeyStore
-            except Exception as e:
-              logging.info('Error getting the attribute "logKeyStore"')
-              raise Exception('Error getting the attribute "logKeyStore"')
-
-          if currAttr=='VMProcessPriority':
-            oMachine.vm_process_priority = ctx[ 'global'].getEnumValueName('VMProcPriority', oVBoxMachine.VMProcessPriority)
-          if currAttr=='autostopType':
-            oMachine.autostop_type = ctx[ 'global'].getEnumValueName('AutostopType', oVBoxMachine.autostopType)
-          if currAttr=='paravirtProvider':
-            oMachine.paravirt_provider = ctx[ 'global'].getEnumValueName('ParavirtProvider', oVBoxMachine.paravirtProvider)
-          if currAttr=='dnDMode':
-            oMachine.dn_d_mode = ctx[ 'global'].getEnumValueName('DnDMode', oVBoxMachine.dnDMode)
-          if currAttr=='clipboardMode':
-            oMachine.clipboard_mode = ctx[ 'global'].getEnumValueName('ClipboardMode', oVBoxMachine.clipboardMode)
-          if currAttr=='state':
-            oMachine.state = ctx[ 'global'].getEnumValueName('MachineState', oVBoxMachine.state)
-          if currAttr=='sessionState':
-            oMachine.session_state = ctx[ 'global'].getEnumValueName('SessionState', oVBoxMachine.sessionState)
-          if currAttr=='pointingHIDType':
-            oMachine.pointing_hid_type = ctx[ 'global'].getEnumValueName('PointingHIDType', oVBoxMachine.pointingHIDType)
-          if currAttr=='keyboardHIDType':
-            oMachine.keyboard_hid_type = ctx[ 'global'].getEnumValueName('KeyboardHIDType', oVBoxMachine.keyboardHIDType)
-
-          if currAttr=='sharedFolders':
-            oMachine.shared_folders = list()
-            try:
-              ol_shared_folders = ctx['global'].getArray(oVBoxMachine,'sharedFolders')
-              for count, item in enumerate(ol_shared_folders):
-                o = i_fill_shared_folder(item)
-                oMachine.shared_folders.append(o)
-            except Exception as e:
-              logging.info('Error getting the array of "sharedFolders"')
-              raise Exception('Error getting the array of "sharedFolders"')
-
+            
           if currAttr=='mediumAttachments':
-            oMachine.medium_attachments = list()
             try:
               ol_medium_attachments = ctx['global'].getArray(oVBoxMachine,'mediumAttachments')
+              oMachine.medium_attachments = list()
               for count, item in enumerate(ol_medium_attachments):
                 o = i_fill_medium_attachment(item)
                 oMachine.medium_attachments.append(o)
@@ -852,6 +799,269 @@ def i_fill_partial_machine(oVBoxMachine, select):
               logging.info('Error getting the array of "mediumAttachments"')
               raise Exception('Error getting the array of "mediumAttachments"')
 
+          if currAttr=='settingsFilePath':
+            try:
+              oMachine.settings_file_path = oVBoxMachine.settingsFilePath
+            except Exception as e:
+              logging.info('Error getting the attribute "settingsFilePath"')
+              raise Exception('Error getting the attribute "settingsFilePath"')
+            
+          if currAttr=='sessionState':
+            try:
+              oMachine.session_state = ctx[ 'global'].getEnumValueName('SessionState', oVBoxMachine.sessionState)
+            except Exception as e:
+              logging.info('Error getting the attribute "sessionState"')
+              raise Exception('Error getting the array of "sessionState"')
+            
+          if currAttr=='sessionName':
+            try:
+              oMachine.session_name = oVBoxMachine.sessionName
+            except Exception as e:
+              logging.info('Error getting the attribute "sessionName"')
+              raise Exception('Error getting the attribute "sessionName"')
+            
+          if currAttr=='sessionPID':
+            try:
+              oMachine.session_pid = oVBoxMachine.sessionPID
+            except Exception as e:
+              logging.info('Error getting the attribute "sessionPID"')
+              raise Exception('Error getting the attribute "sessionPID"')
+            
+          if currAttr=='state':
+            try:
+              oMachine.state = ctx[ 'global'].getEnumValueName('MachineState', oVBoxMachine.state)
+            except Exception as e:
+              logging.info('Error getting the attribute "state"')
+              raise Exception('Error getting the array of "state"')
+            
+          if currAttr=='lastStateChange':
+            try:
+              oMachine.last_state_change = oVBoxMachine.lastStateChange
+            except Exception as e:
+              logging.info('Error getting the attribute "lastStateChange"')
+              raise Exception('Error getting the attribute "lastStateChange"')
+            
+          if currAttr=='stateFilePath':
+            try:
+              oMachine.state_file_path = oVBoxMachine.stateFilePath
+            except Exception as e:
+              logging.info('Error getting the attribute "stateFilePath"')
+              raise Exception('Error getting the attribute "stateFilePath"')
+            
+          if currAttr=='logFolder':
+            try:
+              oMachine.log_folder = oVBoxMachine.logFolder
+            except Exception as e:
+              logging.info('Error getting the attribute "logFolder"')
+              raise Exception('Error getting the attribute "logFolder"')
+            
+          if currAttr=='snapshotCount':
+            try:
+              oMachine.snapshot_count = oVBoxMachine.snapshotCount
+            except Exception as e:
+              logging.info('Error getting the attribute "snapshotCount"')
+              raise Exception('Error getting the attribute "snapshotCount"')
+            
+          if currAttr=='currentStateModified':
+            try:
+              oMachine.current_state_modified = oVBoxMachine.currentStateModified
+            except Exception as e:
+              logging.info('Error getting the attribute "currentStateModified"')
+              raise Exception('Error getting the attribute "currentStateModified"')
+            
+          if currAttr=='sharedFolders':
+            try:
+              ol_shared_folders = ctx['global'].getArray(oVBoxMachine,'sharedFolders')
+              oMachine.shared_folders = list()
+              for count, item in enumerate(ol_shared_folders):
+                o = i_fill_shared_folder(item)
+                oMachine.shared_folders.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "sharedFolders"')
+              raise Exception('Error getting the array of "sharedFolders"')
+            
+          if currAttr=='clipboardMode':
+            try:
+              oMachine.clipboard_mode = ctx[ 'global'].getEnumValueName('ClipboardMode', oVBoxMachine.clipboardMode)
+            except Exception as e:
+              logging.info('Error getting the attribute "clipboardMode"')
+              raise Exception('Error getting the array of "clipboardMode"')
+            
+          if currAttr=='clipboardFileTransfersEnabled':
+            try:
+              oMachine.clipboard_file_transfers_enabled = oVBoxMachine.clipboardFileTransfersEnabled
+            except Exception as e:
+              logging.info('Error getting the attribute "clipboardFileTransfersEnabled"')
+              raise Exception('Error getting the attribute "clipboardFileTransfersEnabled"')
+            
+          if currAttr=='dnDMode':
+            try:
+              oMachine.dn_d_mode = ctx[ 'global'].getEnumValueName('DnDMode', oVBoxMachine.dnDMode)
+            except Exception as e:
+              logging.info('Error getting the attribute "dnDMode"')
+              raise Exception('Error getting the array of "dnDMode"')
+            
+          if currAttr=='teleporterEnabled':
+            try:
+              oMachine.teleporter_enabled = oVBoxMachine.teleporterEnabled
+            except Exception as e:
+              logging.info('Error getting the attribute "teleporterEnabled"')
+              raise Exception('Error getting the attribute "teleporterEnabled"')
+            
+          if currAttr=='teleporterPort':
+            try:
+              oMachine.teleporter_port = oVBoxMachine.teleporterPort
+            except Exception as e:
+              logging.info('Error getting the attribute "teleporterPort"')
+              raise Exception('Error getting the attribute "teleporterPort"')
+            
+          if currAttr=='teleporterAddress':
+            try:
+              oMachine.teleporter_address = oVBoxMachine.teleporterAddress
+            except Exception as e:
+              logging.info('Error getting the attribute "teleporterAddress"')
+              raise Exception('Error getting the attribute "teleporterAddress"')
+            
+          if currAttr=='teleporterPassword':
+            try:
+              oMachine.teleporter_password = oVBoxMachine.teleporterPassword
+            except Exception as e:
+              logging.info('Error getting the attribute "teleporterPassword"')
+              raise Exception('Error getting the attribute "teleporterPassword"')
+            
+          if currAttr=='paravirtProvider':
+            try:
+              oMachine.paravirt_provider = ctx[ 'global'].getEnumValueName('ParavirtProvider', oVBoxMachine.paravirtProvider)
+            except Exception as e:
+              logging.info('Error getting the attribute "paravirtProvider"')
+              raise Exception('Error getting the array of "paravirtProvider"')
+            
+          if currAttr=='IOCacheEnabled':
+            try:
+              oMachine.io_cache_enabled = oVBoxMachine.IOCacheEnabled
+            except Exception as e:
+              logging.info('Error getting the attribute "IOCacheEnabled"')
+              raise Exception('Error getting the attribute "IOCacheEnabled"')
+            
+          if currAttr=='IOCacheSize':
+            try:
+              oMachine.io_cache_size = oVBoxMachine.IOCacheSize
+            except Exception as e:
+              logging.info('Error getting the attribute "IOCacheSize"')
+              raise Exception('Error getting the attribute "IOCacheSize"')
+            
+          if currAttr=='tracingEnabled':
+            try:
+              oMachine.tracing_enabled = oVBoxMachine.tracingEnabled
+            except Exception as e:
+              logging.info('Error getting the attribute "tracingEnabled"')
+              raise Exception('Error getting the attribute "tracingEnabled"')
+            
+          if currAttr=='tracingConfig':
+            try:
+              oMachine.tracing_config = oVBoxMachine.tracingConfig
+            except Exception as e:
+              logging.info('Error getting the attribute "tracingConfig"')
+              raise Exception('Error getting the attribute "tracingConfig"')
+            
+          if currAttr=='allowTracingToAccessVM':
+            try:
+              oMachine.allow_tracing_to_access_vm = oVBoxMachine.allowTracingToAccessVM
+            except Exception as e:
+              logging.info('Error getting the attribute "allowTracingToAccessVM"')
+              raise Exception('Error getting the attribute "allowTracingToAccessVM"')
+            
+          if currAttr=='autostartEnabled':
+            try:
+              oMachine.autostart_enabled = oVBoxMachine.autostartEnabled
+            except Exception as e:
+              logging.info('Error getting the attribute "autostartEnabled"')
+              raise Exception('Error getting the attribute "autostartEnabled"')
+            
+          if currAttr=='autostartDelay':
+            try:
+              oMachine.autostart_delay = oVBoxMachine.autostartDelay
+            except Exception as e:
+              logging.info('Error getting the attribute "autostartDelay"')
+              raise Exception('Error getting the attribute "autostartDelay"')
+            
+          if currAttr=='autostopType':
+            try:
+              oMachine.autostop_type = ctx[ 'global'].getEnumValueName('AutostopType', oVBoxMachine.autostopType)
+            except Exception as e:
+              logging.info('Error getting the attribute "autostopType"')
+              raise Exception('Error getting the array of "autostopType"')
+            
+          if currAttr=='defaultFrontend':
+            try:
+              oMachine.default_frontend = oVBoxMachine.defaultFrontend
+            except Exception as e:
+              logging.info('Error getting the attribute "defaultFrontend"')
+              raise Exception('Error getting the attribute "defaultFrontend"')
+            
+          if currAttr=='USBProxyAvailable':
+            try:
+              oMachine.usb_proxy_available = oVBoxMachine.USBProxyAvailable
+            except Exception as e:
+              logging.info('Error getting the attribute "USBProxyAvailable"')
+              raise Exception('Error getting the attribute "USBProxyAvailable"')
+            
+          if currAttr=='VMProcessPriority':
+            try:
+              oMachine.vm_process_priority = ctx[ 'global'].getEnumValueName('VMProcPriority', oVBoxMachine.VMProcessPriority)
+            except Exception as e:
+              logging.info('Error getting the attribute "VMProcessPriority"')
+              raise Exception('Error getting the array of "VMProcessPriority"')
+            
+          if currAttr=='VMExecutionEngine':
+            try:
+              oMachine.vm_execution_engine = ctx[ 'global'].getEnumValueName('VMExecutionEngine', oVBoxMachine.VMExecutionEngine)
+            except Exception as e:
+              logging.info('Error getting the attribute "VMExecutionEngine"')
+              raise Exception('Error getting the array of "VMExecutionEngine"')
+            
+          if currAttr=='paravirtDebug':
+            try:
+              oMachine.paravirt_debug = oVBoxMachine.paravirtDebug
+            except Exception as e:
+              logging.info('Error getting the attribute "paravirtDebug"')
+              raise Exception('Error getting the attribute "paravirtDebug"')
+            
+          if currAttr=='CPUProfile':
+            try:
+              oMachine.cpu_profile = oVBoxMachine.CPUProfile
+            except Exception as e:
+              logging.info('Error getting the attribute "CPUProfile"')
+              raise Exception('Error getting the attribute "CPUProfile"')
+            
+          if currAttr=='stateKeyId':
+            try:
+              oMachine.state_key_id = oVBoxMachine.stateKeyId
+            except Exception as e:
+              logging.info('Error getting the attribute "stateKeyId"')
+              raise Exception('Error getting the attribute "stateKeyId"')
+            
+          if currAttr=='stateKeyStore':
+            try:
+              oMachine.state_key_store = oVBoxMachine.stateKeyStore
+            except Exception as e:
+              logging.info('Error getting the attribute "stateKeyStore"')
+              raise Exception('Error getting the attribute "stateKeyStore"')
+            
+          if currAttr=='logKeyId':
+            try:
+              oMachine.log_key_id = oVBoxMachine.logKeyId
+            except Exception as e:
+              logging.info('Error getting the attribute "logKeyId"')
+              raise Exception('Error getting the attribute "logKeyId"')
+            
+          if currAttr=='logKeyStore':
+            try:
+              oMachine.log_key_store = oVBoxMachine.logKeyStore
+            except Exception as e:
+              logging.info('Error getting the attribute "logKeyStore"')
+              raise Exception('Error getting the attribute "logKeyStore"')
+            
   except Exception as e:
     logging.info('Abnormal function exit')
     oMachine = None
@@ -915,7 +1125,11 @@ def i_fill_whole_shared_folder(oVBoxSharedFolder):
         oSharedFolder.last_access_error = oVBoxSharedFolder.lastAccessError
       except Exception as e:
         logging.info('Error getting the attribute "lastAccessError"')
-
+      try:
+        oSharedFolder.symlink_policy = ctx[ 'global'].getEnumValueName('SymlinkPolicy', oVBoxSharedFolder.symlinkPolicy)
+      except Exception as e:
+        logging.info('Error getting the attribute "symlinkPolicy"')
+      
   except Exception as e:
     logging.info('Abnormal function exit')
     oSharedFolder = None
@@ -942,49 +1156,56 @@ def i_fill_partial_shared_folder(oVBoxSharedFolder, select):
             except Exception as e:
               logging.info('Error getting the attribute "name"')
               raise Exception('Error getting the attribute "name"')
-
+            
           if currAttr=='hostPath':
             try:
               oSharedFolder.host_path = oVBoxSharedFolder.hostPath
             except Exception as e:
               logging.info('Error getting the attribute "hostPath"')
               raise Exception('Error getting the attribute "hostPath"')
-
+            
           if currAttr=='accessible':
             try:
               oSharedFolder.accessible = oVBoxSharedFolder.accessible
             except Exception as e:
               logging.info('Error getting the attribute "accessible"')
               raise Exception('Error getting the attribute "accessible"')
-
+            
           if currAttr=='writable':
             try:
               oSharedFolder.writable = oVBoxSharedFolder.writable
             except Exception as e:
               logging.info('Error getting the attribute "writable"')
               raise Exception('Error getting the attribute "writable"')
-
+            
           if currAttr=='autoMount':
             try:
               oSharedFolder.auto_mount = oVBoxSharedFolder.autoMount
             except Exception as e:
               logging.info('Error getting the attribute "autoMount"')
               raise Exception('Error getting the attribute "autoMount"')
-
+            
           if currAttr=='autoMountPoint':
             try:
               oSharedFolder.auto_mount_point = oVBoxSharedFolder.autoMountPoint
             except Exception as e:
               logging.info('Error getting the attribute "autoMountPoint"')
               raise Exception('Error getting the attribute "autoMountPoint"')
-
+            
           if currAttr=='lastAccessError':
             try:
               oSharedFolder.last_access_error = oVBoxSharedFolder.lastAccessError
             except Exception as e:
               logging.info('Error getting the attribute "lastAccessError"')
               raise Exception('Error getting the attribute "lastAccessError"')
-
+            
+          if currAttr=='symlinkPolicy':
+            try:
+              oSharedFolder.symlink_policy = ctx[ 'global'].getEnumValueName('SymlinkPolicy', oVBoxSharedFolder.symlinkPolicy)
+            except Exception as e:
+              logging.info('Error getting the attribute "symlinkPolicy"')
+              raise Exception('Error getting the array of "symlinkPolicy"')
+            
   except Exception as e:
     logging.info('Abnormal function exit')
     oSharedFolder = None
@@ -1040,7 +1261,10 @@ def i_fill_whole_medium_attachment(oVBoxMediumAttachment):
         oMediumAttachment.device = oVBoxMediumAttachment.device
       except Exception as e:
         logging.info('Error getting the attribute "device"')
-      oMediumAttachment.type = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMediumAttachment.type)
+      try:
+        oMediumAttachment.type = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMediumAttachment.type)
+      except Exception as e:
+        logging.info('Error getting the attribute "type"')
       try:
         oMediumAttachment.passthrough = oVBoxMediumAttachment.passthrough
       except Exception as e:
@@ -1073,7 +1297,7 @@ def i_fill_whole_medium_attachment(oVBoxMediumAttachment):
           oMediumAttachment.bandwidth_group = None
       except Exception as e:
         logging.info('Error getting the interface object "bandwidthGroup"')
-
+      
   except Exception as e:
     logging.info('Abnormal function exit')
     oMediumAttachment = None
@@ -1100,80 +1324,84 @@ def i_fill_partial_medium_attachment(oVBoxMediumAttachment, select):
             except Exception as e:
               logging.info('Error getting the attribute "machine"')
               raise Exception('Error getting the attribute "machine"')
-
+            
           if currAttr=='medium':
             try:
               oMediumAttachment.medium = oVBoxMediumAttachment.medium.id
             except Exception as e:
               logging.info('Error getting the attribute "medium"')
               raise Exception('Error getting the attribute "medium"')
-
+            
           if currAttr=='controller':
             try:
               oMediumAttachment.controller = oVBoxMediumAttachment.controller
             except Exception as e:
               logging.info('Error getting the attribute "controller"')
               raise Exception('Error getting the attribute "controller"')
-
+            
           if currAttr=='port':
             try:
               oMediumAttachment.port = oVBoxMediumAttachment.port
             except Exception as e:
               logging.info('Error getting the attribute "port"')
               raise Exception('Error getting the attribute "port"')
-
+            
           if currAttr=='device':
             try:
               oMediumAttachment.device = oVBoxMediumAttachment.device
             except Exception as e:
               logging.info('Error getting the attribute "device"')
               raise Exception('Error getting the attribute "device"')
-
+            
           if currAttr=='type':
-            oMediumAttachment.type = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMediumAttachment.type)
-
+            try:
+              oMediumAttachment.type = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMediumAttachment.type)
+            except Exception as e:
+              logging.info('Error getting the attribute "type"')
+              raise Exception('Error getting the array of "type"')
+            
           if currAttr=='passthrough':
             try:
               oMediumAttachment.passthrough = oVBoxMediumAttachment.passthrough
             except Exception as e:
               logging.info('Error getting the attribute "passthrough"')
               raise Exception('Error getting the attribute "passthrough"')
-
+            
           if currAttr=='temporaryEject':
             try:
               oMediumAttachment.temporary_eject = oVBoxMediumAttachment.temporaryEject
             except Exception as e:
               logging.info('Error getting the attribute "temporaryEject"')
               raise Exception('Error getting the attribute "temporaryEject"')
-
+            
           if currAttr=='isEjected':
             try:
               oMediumAttachment.is_ejected = oVBoxMediumAttachment.isEjected
             except Exception as e:
               logging.info('Error getting the attribute "isEjected"')
               raise Exception('Error getting the attribute "isEjected"')
-
+            
           if currAttr=='nonRotational':
             try:
               oMediumAttachment.non_rotational = oVBoxMediumAttachment.nonRotational
             except Exception as e:
               logging.info('Error getting the attribute "nonRotational"')
               raise Exception('Error getting the attribute "nonRotational"')
-
+            
           if currAttr=='discard':
             try:
               oMediumAttachment.discard = oVBoxMediumAttachment.discard
             except Exception as e:
               logging.info('Error getting the attribute "discard"')
               raise Exception('Error getting the attribute "discard"')
-
+            
           if currAttr=='hotPluggable':
             try:
               oMediumAttachment.hot_pluggable = oVBoxMediumAttachment.hotPluggable
             except Exception as e:
               logging.info('Error getting the attribute "hotPluggable"')
               raise Exception('Error getting the attribute "hotPluggable"')
-
+            
           if currAttr=='bandwidthGroup':
             try:
               o_bandwidth_group = oVBoxMediumAttachment.bandwidthGroup if oVBoxMediumAttachment.bandwidthGroup is not None else None
@@ -1184,7 +1412,7 @@ def i_fill_partial_medium_attachment(oVBoxMediumAttachment, select):
             except Exception as e:
               logging.info('Error getting the interface object "bandwidthGroup"')
               raise Exception('Error getting the interface object "bandwidthGroup"')
-
+            
   except Exception as e:
     logging.info('Abnormal function exit')
     oMediumAttachment = None
@@ -1224,7 +1452,10 @@ def i_fill_whole_bandwidth_group(oVBoxBandwidthGroup):
         oBandwidthGroup.name = oVBoxBandwidthGroup.name
       except Exception as e:
         logging.info('Error getting the attribute "name"')
-      oBandwidthGroup.type = ctx[ 'global'].getEnumValueName('BandwidthGroupType', oVBoxBandwidthGroup.type)
+      try:
+        oBandwidthGroup.type = ctx[ 'global'].getEnumValueName('BandwidthGroupType', oVBoxBandwidthGroup.type)
+      except Exception as e:
+        logging.info('Error getting the attribute "type"')
       try:
         oBandwidthGroup.reference = oVBoxBandwidthGroup.reference
       except Exception as e:
@@ -1233,7 +1464,7 @@ def i_fill_whole_bandwidth_group(oVBoxBandwidthGroup):
         oBandwidthGroup.max_bytes_per_sec = oVBoxBandwidthGroup.maxBytesPerSec
       except Exception as e:
         logging.info('Error getting the attribute "maxBytesPerSec"')
-
+      
   except Exception as e:
     logging.info('Abnormal function exit')
     oBandwidthGroup = None
@@ -1260,24 +1491,28 @@ def i_fill_partial_bandwidth_group(oVBoxBandwidthGroup, select):
             except Exception as e:
               logging.info('Error getting the attribute "name"')
               raise Exception('Error getting the attribute "name"')
-
+            
           if currAttr=='type':
-            oBandwidthGroup.type = ctx[ 'global'].getEnumValueName('BandwidthGroupType', oVBoxBandwidthGroup.type)
-
+            try:
+              oBandwidthGroup.type = ctx[ 'global'].getEnumValueName('BandwidthGroupType', oVBoxBandwidthGroup.type)
+            except Exception as e:
+              logging.info('Error getting the attribute "type"')
+              raise Exception('Error getting the array of "type"')
+            
           if currAttr=='reference':
             try:
               oBandwidthGroup.reference = oVBoxBandwidthGroup.reference
             except Exception as e:
               logging.info('Error getting the attribute "reference"')
               raise Exception('Error getting the attribute "reference"')
-
+            
           if currAttr=='maxBytesPerSec':
             try:
               oBandwidthGroup.max_bytes_per_sec = oVBoxBandwidthGroup.maxBytesPerSec
             except Exception as e:
               logging.info('Error getting the attribute "maxBytesPerSec"')
               raise Exception('Error getting the attribute "maxBytesPerSec"')
-
+            
   except Exception as e:
     logging.info('Abnormal function exit')
     oBandwidthGroup = None
@@ -1286,6 +1521,7 @@ def i_fill_partial_bandwidth_group(oVBoxBandwidthGroup, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oBandwidthGroup
+
 
 def i_fill_medium(oVBoxMedium, select=None):
   """Convert the passed VirtualBox object oVBoxMedium with interface IMedium into Swagger object oMedium"""
@@ -1298,6 +1534,14 @@ def i_fill_medium(oVBoxMedium, select=None):
         oMedium = i_fill_partial_medium(oVBoxMedium, select)
       else:
         oMedium = i_fill_whole_medium(oVBoxMedium)
+
+  except COMException as e:
+    logging.info('Abnormal function exit')
+    oMedium = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxMedium into Swagger object oMedium. '
+    exceptionText = str(e)
+    raise COMException(e.errno, text +  ' {Original: ' + exceptionText + '} ')
+
   except Exception as e:
     logging.info('Abnormal function exit')
     oMedium = None
@@ -1320,10 +1564,13 @@ def i_fill_whole_medium(oVBoxMedium):
         oMedium.description = oVBoxMedium.description
       except Exception as e:
         logging.info('Error getting the attribute "description"')
-      oMedium.state = ctx[ 'global'].getEnumValueName('MediumState', oVBoxMedium.state)
-      oMedium.variant = list()
+      try:
+        oMedium.state = ctx[ 'global'].getEnumValueName('MediumState', oVBoxMedium.state)
+      except Exception as e:
+        logging.info('Error getting the attribute "state"')
       try:
         ol_variant = ctx['global'].getArray(oVBoxMedium, 'variant')
+        oMedium.variant = list()
         for count, item in enumerate(ol_variant):
           o = ctx['global'].getEnumValueName('MediumVariant', item)
           if oMedium.variant.count(o) == 0 : oMedium.variant.append(o)
@@ -1337,7 +1584,10 @@ def i_fill_whole_medium(oVBoxMedium):
         oMedium.name = oVBoxMedium.name
       except Exception as e:
         logging.info('Error getting the attribute "name"')
-      oMedium.device_type = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMedium.deviceType)
+      try:
+        oMedium.device_type = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMedium.deviceType)
+      except Exception as e:
+        logging.info('Error getting the attribute "deviceType"')
       try:
         oMedium.host_drive = oVBoxMedium.hostDrive
       except Exception as e:
@@ -1358,10 +1608,13 @@ def i_fill_whole_medium(oVBoxMedium):
           oMedium.medium_format = None
       except Exception as e:
         logging.info('Error getting the interface object "mediumFormat"')
-      oMedium.type = ctx[ 'global'].getEnumValueName('MediumType', oVBoxMedium.type)
-      oMedium.allowed_types = list()
+      try:
+        oMedium.type = ctx[ 'global'].getEnumValueName('MediumType', oVBoxMedium.type)
+      except Exception as e:
+        logging.info('Error getting the attribute "type"')
       try:
         ol_allowed_types = ctx['global'].getArray(oVBoxMedium, 'allowedTypes')
+        oMedium.allowed_types = list()
         for count, item in enumerate(ol_allowed_types):
           o = ctx['global'].getEnumValueName('MediumType', item)
           if oMedium.allowed_types.count(o) == 0 : oMedium.allowed_types.append(o)
@@ -1371,9 +1624,9 @@ def i_fill_whole_medium(oVBoxMedium):
         oMedium.parent = oVBoxMedium.parent.id
       except Exception as e:
         logging.info('Error getting the attribute "parent"')
-      oMedium.children = list()
       try:
         ol_children = ctx['global'].getArray(oVBoxMedium,'children')
+        oMedium.children = list()
         for count, item in enumerate(ol_children):
           oMedium.children.append(item.id)
       except Exception as e:
@@ -1398,14 +1651,14 @@ def i_fill_whole_medium(oVBoxMedium):
         oMedium.last_access_error = oVBoxMedium.lastAccessError
       except Exception as e:
         logging.info('Error getting the attribute "lastAccessError"')
-      oMedium.machine_ids = list()
       try:
         ol_machine_ids = ctx['global'].getArray(oVBoxMedium,'machineIds')
+        oMedium.machine_ids = list()
         for count, item in enumerate(ol_machine_ids):
           oMedium.machine_ids.append(item)
       except Exception as e:
         logging.info('Error getting the array of "machineIds"')
-
+      
   except Exception as e:
     logging.info('Abnormal function exit')
     oMedium = None
@@ -1432,66 +1685,74 @@ def i_fill_partial_medium(oVBoxMedium, select):
             except Exception as e:
               logging.info('Error getting the attribute "id"')
               raise Exception('Error getting the attribute "id"')
-
+            
           if currAttr=='description':
             try:
               oMedium.description = oVBoxMedium.description
             except Exception as e:
               logging.info('Error getting the attribute "description"')
               raise Exception('Error getting the attribute "description"')
-
+            
           if currAttr=='state':
-            oMedium.state = ctx[ 'global'].getEnumValueName('MediumState', oVBoxMedium.state)
-
+            try:
+              oMedium.state = ctx[ 'global'].getEnumValueName('MediumState', oVBoxMedium.state)
+            except Exception as e:
+              logging.info('Error getting the attribute "state"')
+              raise Exception('Error getting the array of "state"')
+            
           if currAttr=='variant':
-            oMedium.variant = list()
             try:
               ol_variant = ctx['global'].getArray(oVBoxMedium, 'variant')
+              oMedium.variant = list()
               for count, item in enumerate(ol_variant):
                 o = ctx['global'].getEnumValueName('MediumVariant', item)
                 if oMedium.variant.count(o) == 0 : oMedium.variant.append(o)
             except Exception as e:
               logging.info('Error getting the array of "variant"')
               raise Exception('Error getting the array of "variant"')
-
+            
           if currAttr=='location':
             try:
               oMedium.location = oVBoxMedium.location
             except Exception as e:
               logging.info('Error getting the attribute "location"')
               raise Exception('Error getting the attribute "location"')
-
+            
           if currAttr=='name':
             try:
               oMedium.name = oVBoxMedium.name
             except Exception as e:
               logging.info('Error getting the attribute "name"')
               raise Exception('Error getting the attribute "name"')
-
+            
           if currAttr=='deviceType':
-            oMedium.device_type = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMedium.deviceType)
-
+            try:
+              oMedium.device_type = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMedium.deviceType)
+            except Exception as e:
+              logging.info('Error getting the attribute "deviceType"')
+              raise Exception('Error getting the array of "deviceType"')
+            
           if currAttr=='hostDrive':
             try:
               oMedium.host_drive = oVBoxMedium.hostDrive
             except Exception as e:
               logging.info('Error getting the attribute "hostDrive"')
               raise Exception('Error getting the attribute "hostDrive"')
-
+            
           if currAttr=='size':
             try:
               oMedium.size = oVBoxMedium.size
             except Exception as e:
               logging.info('Error getting the attribute "size"')
               raise Exception('Error getting the attribute "size"')
-
+            
           if currAttr=='format':
             try:
               oMedium.format = oVBoxMedium.format
             except Exception as e:
               logging.info('Error getting the attribute "format"')
               raise Exception('Error getting the attribute "format"')
-
+            
           if currAttr=='mediumFormat':
             try:
               o_medium_format = oVBoxMedium.mediumFormat if oVBoxMedium.mediumFormat is not None else None
@@ -1502,83 +1763,87 @@ def i_fill_partial_medium(oVBoxMedium, select):
             except Exception as e:
               logging.info('Error getting the interface object "mediumFormat"')
               raise Exception('Error getting the interface object "mediumFormat"')
-
+            
           if currAttr=='type':
-            oMedium.type = ctx[ 'global'].getEnumValueName('MediumType', oVBoxMedium.type)
-
+            try:
+              oMedium.type = ctx[ 'global'].getEnumValueName('MediumType', oVBoxMedium.type)
+            except Exception as e:
+              logging.info('Error getting the attribute "type"')
+              raise Exception('Error getting the array of "type"')
+            
           if currAttr=='allowedTypes':
-            oMedium.allowed_types = list()
             try:
               ol_allowed_types = ctx['global'].getArray(oVBoxMedium, 'allowedTypes')
+              oMedium.allowed_types = list()
               for count, item in enumerate(ol_allowed_types):
                 o = ctx['global'].getEnumValueName('MediumType', item)
                 if oMedium.allowed_types.count(o) == 0 : oMedium.allowed_types.append(o)
             except Exception as e:
               logging.info('Error getting the array of "allowedTypes"')
               raise Exception('Error getting the array of "allowedTypes"')
-
+            
           if currAttr=='parent':
             try:
               oMedium.parent = oVBoxMedium.parent.id
             except Exception as e:
               logging.info('Error getting the attribute "parent"')
               raise Exception('Error getting the attribute "parent"')
-
+            
           if currAttr=='children':
-            oMedium.children = list()
             try:
               ol_children = ctx['global'].getArray(oVBoxMedium,'children')
+              oMedium.children = list()
               for count, item in enumerate(ol_children):
                 oMedium.children.append(item.id)
             except Exception as e:
               logging.info('Error getting the array of "children"')
               raise Exception('Error getting the array of "children"')
-
+            
           if currAttr=='base':
             try:
               oMedium.base = oVBoxMedium.base.id
             except Exception as e:
               logging.info('Error getting the attribute "base"')
               raise Exception('Error getting the attribute "base"')
-
+            
           if currAttr=='readOnly':
             try:
               oMedium.read_only = oVBoxMedium.readOnly
             except Exception as e:
               logging.info('Error getting the attribute "readOnly"')
               raise Exception('Error getting the attribute "readOnly"')
-
+            
           if currAttr=='logicalSize':
             try:
               oMedium.logical_size = oVBoxMedium.logicalSize
             except Exception as e:
               logging.info('Error getting the attribute "logicalSize"')
               raise Exception('Error getting the attribute "logicalSize"')
-
+            
           if currAttr=='autoReset':
             try:
               oMedium.auto_reset = oVBoxMedium.autoReset
             except Exception as e:
               logging.info('Error getting the attribute "autoReset"')
               raise Exception('Error getting the attribute "autoReset"')
-
+            
           if currAttr=='lastAccessError':
             try:
               oMedium.last_access_error = oVBoxMedium.lastAccessError
             except Exception as e:
               logging.info('Error getting the attribute "lastAccessError"')
               raise Exception('Error getting the attribute "lastAccessError"')
-
+            
           if currAttr=='machineIds':
-            oMedium.machine_ids = list()
             try:
               ol_machine_ids = ctx['global'].getArray(oVBoxMedium,'machineIds')
+              oMedium.machine_ids = list()
               for count, item in enumerate(ol_machine_ids):
                 oMedium.machine_ids.append(item)
             except Exception as e:
               logging.info('Error getting the array of "machineIds"')
               raise Exception('Error getting the array of "machineIds"')
-
+            
   except Exception as e:
     logging.info('Abnormal function exit')
     oMedium = None
@@ -1587,6 +1852,7 @@ def i_fill_partial_medium(oVBoxMedium, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oMedium
+
 
 def i_fill_medium_format(oVBoxMediumFormat, select=None):
   """Convert the passed VirtualBox object oVBoxMediumFormat with interface IMediumFormat into Swagger object oMediumFormat"""
@@ -1621,15 +1887,15 @@ def i_fill_whole_medium_format(oVBoxMediumFormat):
         oMediumFormat.name = oVBoxMediumFormat.name
       except Exception as e:
         logging.info('Error getting the attribute "name"')
-      oMediumFormat.capabilities = list()
       try:
         ol_capabilities = ctx['global'].getArray(oVBoxMediumFormat, 'capabilities')
+        oMediumFormat.capabilities = list()
         for count, item in enumerate(ol_capabilities):
           o = ctx['global'].getEnumValueName('MediumFormatCapabilities', item)
           if oMediumFormat.capabilities.count(o) == 0 : oMediumFormat.capabilities.append(o)
       except Exception as e:
         logging.info('Error getting the array of "capabilities"')
-
+      
   except Exception as e:
     logging.info('Abnormal function exit')
     oMediumFormat = None
@@ -1656,25 +1922,25 @@ def i_fill_partial_medium_format(oVBoxMediumFormat, select):
             except Exception as e:
               logging.info('Error getting the attribute "id"')
               raise Exception('Error getting the attribute "id"')
-
+            
           if currAttr=='name':
             try:
               oMediumFormat.name = oVBoxMediumFormat.name
             except Exception as e:
               logging.info('Error getting the attribute "name"')
               raise Exception('Error getting the attribute "name"')
-
+            
           if currAttr=='capabilities':
-            oMediumFormat.capabilities = list()
             try:
               ol_capabilities = ctx['global'].getArray(oVBoxMediumFormat, 'capabilities')
+              oMediumFormat.capabilities = list()
               for count, item in enumerate(ol_capabilities):
                 o = ctx['global'].getEnumValueName('MediumFormatCapabilities', item)
                 if oMediumFormat.capabilities.count(o) == 0 : oMediumFormat.capabilities.append(o)
             except Exception as e:
               logging.info('Error getting the array of "capabilities"')
               raise Exception('Error getting the array of "capabilities"')
-
+            
   except Exception as e:
     logging.info('Abnormal function exit')
     oMediumFormat = None
@@ -1683,6 +1949,7 @@ def i_fill_partial_medium_format(oVBoxMediumFormat, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oMediumFormat
+
 
 def i_fill_progress(oVBoxProgress, select=None):
   """Convert the passed VirtualBox object oVBoxProgress with interface IProgress into Swagger object oProgress"""
@@ -1773,7 +2040,7 @@ def i_fill_whole_progress(oVBoxProgress):
         oProgress.timeout = oVBoxProgress.timeout
       except Exception as e:
         logging.info('Error getting the attribute "timeout"')
-
+      
   except Exception as e:
     logging.info('Abnormal function exit')
     oProgress = None
@@ -1800,56 +2067,56 @@ def i_fill_partial_progress(oVBoxProgress, select):
             except Exception as e:
               logging.info('Error getting the attribute "id"')
               raise Exception('Error getting the attribute "id"')
-
+            
           if currAttr=='description':
             try:
               oProgress.description = oVBoxProgress.description
             except Exception as e:
               logging.info('Error getting the attribute "description"')
               raise Exception('Error getting the attribute "description"')
-
+          
           if currAttr=='cancelable':
             try:
               oProgress.cancelable = oVBoxProgress.cancelable
             except Exception as e:
               logging.info('Error getting the attribute "cancelable"')
               raise Exception('Error getting the attribute "cancelable"')
-
+            
           if currAttr=='percent':
             try:
               oProgress.percent = oVBoxProgress.percent
             except Exception as e:
               logging.info('Error getting the attribute "percent"')
               raise Exception('Error getting the attribute "percent"')
-
+            
           if currAttr=='timeRemaining':
             try:
               oProgress.time_remaining = oVBoxProgress.timeRemaining
             except Exception as e:
               logging.info('Error getting the attribute "timeRemaining"')
               raise Exception('Error getting the attribute "timeRemaining"')
-
+            
           if currAttr=='completed':
             try:
               oProgress.completed = oVBoxProgress.completed
             except Exception as e:
               logging.info('Error getting the attribute "completed"')
               raise Exception('Error getting the attribute "completed"')
-
+            
           if currAttr=='canceled':
             try:
               oProgress.canceled = oVBoxProgress.canceled
             except Exception as e:
               logging.info('Error getting the attribute "canceled"')
               raise Exception('Error getting the attribute "canceled"')
-
+            
           if currAttr=='resultCode':
             try:
               oProgress.result_code = oVBoxProgress.resultCode
             except Exception as e:
               logging.info('Error getting the attribute "resultCode"')
               raise Exception('Error getting the attribute "resultCode"')
-
+            
           if currAttr=='errorInfo':
             try:
               o_error_info = oVBoxProgress.errorInfo if oVBoxProgress.errorInfo is not None else None
@@ -1860,49 +2127,49 @@ def i_fill_partial_progress(oVBoxProgress, select):
             except Exception as e:
               logging.info('Error getting the interface object "errorInfo"')
               raise Exception('Error getting the interface object "errorInfo"')
-
+            
           if currAttr=='operationCount':
             try:
               oProgress.operation_count = oVBoxProgress.operationCount
             except Exception as e:
               logging.info('Error getting the attribute "operationCount"')
               raise Exception('Error getting the attribute "operationCount"')
-
+            
           if currAttr=='operation':
             try:
               oProgress.operation = oVBoxProgress.operation
             except Exception as e:
               logging.info('Error getting the attribute "operation"')
               raise Exception('Error getting the attribute "operation"')
-
+            
           if currAttr=='operationDescription':
             try:
               oProgress.operation_description = oVBoxProgress.operationDescription
             except Exception as e:
               logging.info('Error getting the attribute "operationDescription"')
               raise Exception('Error getting the attribute "operationDescription"')
-
+            
           if currAttr=='operationPercent':
             try:
               oProgress.operation_percent = oVBoxProgress.operationPercent
             except Exception as e:
               logging.info('Error getting the attribute "operationPercent"')
               raise Exception('Error getting the attribute "operationPercent"')
-
+            
           if currAttr=='operationWeight':
             try:
               oProgress.operation_weight = oVBoxProgress.operationWeight
             except Exception as e:
               logging.info('Error getting the attribute "operationWeight"')
               raise Exception('Error getting the attribute "operationWeight"')
-
+            
           if currAttr=='timeout':
             try:
               oProgress.timeout = oVBoxProgress.timeout
             except Exception as e:
               logging.info('Error getting the attribute "timeout"')
               raise Exception('Error getting the attribute "timeout"')
-
+            
   except Exception as e:
     logging.info('Abnormal function exit')
     oProgress = None
@@ -1911,6 +2178,7 @@ def i_fill_partial_progress(oVBoxProgress, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oProgress
+
 
 def i_fill_virtual_box_error_info(oVBoxVirtualBoxErrorInfo, select=None):
   """Convert the passed VirtualBox object oVBoxVirtualBoxErrorInfo with interface IVirtualBoxErrorInfo into Swagger object oVirtualBoxErrorInfo"""
@@ -2066,8 +2334,14 @@ def i_fill_whole_session(oVBoxSession):
   oSession = Session()
   try:
     if oVBoxSession is not None:
-      oSession.state = ctx[ 'global'].getEnumValueName('SessionState', oVBoxSession.state)
-      oSession.type = ctx[ 'global'].getEnumValueName('SessionType', oVBoxSession.type)
+      try:
+        oSession.state = ctx[ 'global'].getEnumValueName('SessionState', oVBoxSession.state)
+      except Exception as e:
+        logging.info('Error getting the attribute "state"')
+      try:
+        oSession.type = ctx[ 'global'].getEnumValueName('SessionType', oVBoxSession.type)
+      except Exception as e:
+        logging.info('Error getting the attribute "type"')
       try:
         oSession.name = oVBoxSession.name
       except Exception as e:
@@ -2076,7 +2350,7 @@ def i_fill_whole_session(oVBoxSession):
         oSession.machine = oVBoxSession.machine.id
       except Exception as e:
         logging.info('Error getting the attribute "machine"')
-
+      
   except Exception as e:
     logging.info('Abnormal function exit')
     oSession = None
@@ -2098,25 +2372,33 @@ def i_fill_partial_session(oVBoxSession, select):
         for attr in olAttributesList:
           currAttr = attr
           if currAttr=='state':
-            oSession.state = ctx[ 'global'].getEnumValueName('SessionState', oVBoxSession.state)
-
+            try:
+              oSession.state = ctx[ 'global'].getEnumValueName('SessionState', oVBoxSession.state)
+            except Exception as e:
+              logging.info('Error getting the attribute "state"')
+              raise Exception('Error getting the array of "state"')
+            
           if currAttr=='type':
-            oSession.type = ctx[ 'global'].getEnumValueName('SessionType', oVBoxSession.type)
-
+            try:
+              oSession.type = ctx[ 'global'].getEnumValueName('SessionType', oVBoxSession.type)
+            except Exception as e:
+              logging.info('Error getting the attribute "type"')
+              raise Exception('Error getting the array of "type"')
+            
           if currAttr=='name':
             try:
               oSession.name = oVBoxSession.name
             except Exception as e:
               logging.info('Error getting the attribute "name"')
               raise Exception('Error getting the attribute "name"')
-
+            
           if currAttr=='machine':
             try:
               oSession.machine = oVBoxSession.machine.id
             except Exception as e:
               logging.info('Error getting the attribute "machine"')
               raise Exception('Error getting the attribute "machine"')
-
+            
   except Exception as e:
     logging.info('Abnormal function exit')
     oSession = None
