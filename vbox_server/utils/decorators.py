@@ -124,3 +124,52 @@ def open_exclusive_session(func):
         return value
 
     return wrapper_decorator
+
+def open_session(func):
+    """
+    Automatically open a session for VM.
+    Try to get a shared access rights to a machine (LockType_Shared)
+    The first parameter must be VM uuid always.
+    Appends the arguments list by the VirtualBox objects Machine and Session
+    """
+    @functools.wraps(func)
+    def wrapper_decorator(*args, **kwargs):
+        args_repr = [a for a in args]
+        vmid = args_repr[0]
+        oVM, oError = vbox_utils_find_machine(vmid)
+        if oVM:
+            #append the Machine object at the end of the argument's list
+            args_repr.append(oVM)
+        else:
+            logging.info (oError)
+            return jsonify(oError), HTTPStatus.NOT_FOUND
+
+        oSession = None
+        try:
+            oSession = ctx['global'].openMachineSession(oVM)
+        except Exception as e:
+            logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
+            oError = Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
+            return jsonify(oError), HTTPStatus.INTERNAL_SERVER_ERROR
+
+        if oSession.state != ctx['const'].SessionState_Locked:
+            logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+            oSession.unlockMachine()
+            oError = Error(HTTPStatus.PRECONDITION_FAILED, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+            return jsonify(oError), HTTPStatus.PRECONDITION_FAILED
+
+        logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
+        logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+        logging.info ('Session type is ' + ctx['global'].getEnumValueName('SessionType', oSession.type))
+
+        #Add the Session object into args list, next create new tuple from the updated list
+        #and pass it to the func
+        args_repr.append(oSession)
+        new_args_repr=[a for a in args_repr]
+
+        #Call the general function with the updated arguments list
+        value = func(*new_args_repr, **kwargs)
+
+        return value
+
+    return wrapper_decorator
