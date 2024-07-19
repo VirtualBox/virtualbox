@@ -2,19 +2,29 @@
 # pylint: disable=consider-using-f-string
 # pylint: disable=line-too-long
 # pylint: disable=undefined-variable
+import os
+import platform
 import logging
 from http import HTTPStatus
 from flask import jsonify
+
+if os.name == 'nt' or platform.system() == 'Windows':
+    from pywintypes import com_error as COMException
+else:
+    from xpcom import COMException
 
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
 from vbox_server.utils.restapi_objects_functions import *
 from vbox_server.models.machine import Machine  # noqa: E501
 from vbox_server.models.virtual_box_response import VirtualBoxResponse  # noqa: E501
+from vbox_server.models.progress_response import ProgressResponse  # noqa: E501
+from vbox_server.models.progress import Progress  # noqa: E501
+from vbox_server.models.session import Session
 from vbox_server.models.error import Error  # noqa: E501
 
 from vbox_server.models.virtualbox_gettrackedobject_response import VirtualboxGettrackedobjectResponse  # noqa: E501
-from vbox_server.models.virtualbox_gettrackedobjectidsbyiid_response import VirtualboxGettrackedobjectidsbyiidResponse  # noqa: E501
+from vbox_server.models.virtualbox_gettrackedobjectids_response import VirtualboxGettrackedobjectidsResponse  # noqa: E501
 
 def i_list_machines(fAll=False, select=None, groups=None):  # noqa: E501
     """List VirtualBox machines.
@@ -319,17 +329,53 @@ def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
         oError = Error(httpCode, str(e))
         return jsonify(oError), httpCode
 
-    oVirtualboxGettrackedobjectResponse = VirtualboxGettrackedobjectResponse()
+    oProgressResponse = ProgressResponse()
+
     try:
         oIUnknown = oVBox.getTrackedObject(trObjId)
-        oProgress = oVBoxMgr.queryInterface(oIUnknown, 'IProgress')
-        if oProgress is not None: logging.info ('Progress Id is ' + oProgress.id)
-        else: logging.info ('Can\'t convert IUnknown to IProgress interface')
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+        oError = Error(httpCode, str("Can\'t get object with Id " + trObjId + ' from the server'))
+        return jsonify(oError), httpCode
 
-    response = jsonify(oError if oError is not None else oVirtualboxGettrackedobjectResponse)
+    fContinue = False
+
+    alInterfaceName = {'IProgress', 'ISession', 'IMedium', 'IMachine'}
+    oRes = None
+    obj = None
+
+    for i in alInterfaceName:
+        try:
+            obj = oVBoxMgr.queryInterface(oIUnknown, i)
+        except COMException as e:
+            # The error 0x80004002 is "'Interface not supported (NS_ERROR_NO_INTERFACE)'"
+            if e.errno == -2147467262:
+                continue
+
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            break
+
+        try:
+            if obj is not None:
+                if i == 'IProgress':
+                    oRes = i_fill_progress(obj)
+                elif i == 'ISession':
+                    oRes = i_fill_session(obj)
+                elif i == 'IMedium':
+                    oRes = i_fill_medium(obj)
+                elif i == 'IMachine':
+                    oRes = i_fill_machine(obj)
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            break
+
+        if oRes: break
+
+    if oRes is None: oRes = VirtualboxGettrackedobjectResponse()
+
+    response = jsonify(oError if oError is not None else oRes)
     return response, httpCode
 
 
