@@ -19,6 +19,7 @@ from vbox_server.models.medium import Medium
 from vbox_server.models.medium_format import MediumFormat
 from vbox_server.models.progress import Progress
 from vbox_server.models.session import Session
+from vbox_server.models.usb_device import USBDevice
 
 from vbox_server.models.virtual_box_error_info import VirtualBoxErrorInfo
 
@@ -2407,3 +2408,230 @@ def i_fill_partial_session(oVBoxSession, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oSession
+
+
+def i_fill_usb_device(oVBoxUSBDevice, select=None):
+  """Convert the passed VirtualBox object oVBoxUSBDevice with interface IUSBDevice into Swagger object oUSBDevice"""
+  
+  logging.info('Enter function ')
+  oUSBDevice = USBDevice()
+  try:
+    if oVBoxUSBDevice is not None:
+      if select is not None and len(select)>0:
+        oUSBDevice = i_fill_partial_usb_device(oVBoxUSBDevice, select)
+      else:
+        oUSBDevice = i_fill_whole_usb_device(oVBoxUSBDevice)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oUSBDevice = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxUSBDevice into Swagger object oUSBDevice. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oUSBDevice
+
+def i_fill_whole_usb_device(oVBoxUSBDevice):
+  logging.info('Enter function ')
+  oUSBDevice = USBDevice()
+  try:
+    if oVBoxUSBDevice is not None:
+      try:
+        oUSBDevice.id = oVBoxUSBDevice.id
+      except Exception as e:
+        logging.info('Error getting the attribute "id"')
+      try:
+        oUSBDevice.vendor_id = oVBoxUSBDevice.vendorId
+      except Exception as e:
+        logging.info('Error getting the attribute "vendorId"')
+      try:
+        oUSBDevice.product_id = oVBoxUSBDevice.productId
+      except Exception as e:
+        logging.info('Error getting the attribute "productId"')
+      try:
+        oUSBDevice.revision = oVBoxUSBDevice.revision
+      except Exception as e:
+        logging.info('Error getting the attribute "revision"')
+      try:
+        oUSBDevice.manufacturer = oVBoxUSBDevice.manufacturer
+      except Exception as e:
+        logging.info('Error getting the attribute "manufacturer"')
+      try:
+        oUSBDevice.product = oVBoxUSBDevice.product
+      except Exception as e:
+        logging.info('Error getting the attribute "product"')
+      try:
+        oUSBDevice.serial_number = oVBoxUSBDevice.serialNumber
+      except Exception as e:
+        logging.info('Error getting the attribute "serialNumber"')
+      try:
+        oUSBDevice.address = oVBoxUSBDevice.address
+      except Exception as e:
+        logging.info('Error getting the attribute "address"')
+      try:
+        oUSBDevice.port = oVBoxUSBDevice.port
+      except Exception as e:
+        logging.info('Error getting the attribute "port"')
+      try:
+        oUSBDevice.port_path = oVBoxUSBDevice.portPath
+      except Exception as e:
+        logging.info('Error getting the attribute "portPath"')
+      try:
+        oUSBDevice.version = oVBoxUSBDevice.version
+      except Exception as e:
+        logging.info('Error getting the attribute "version"')
+      try:
+        oUSBDevice.speed = ctx[ 'global'].getEnumValueName('USBConnectionSpeed', oVBoxUSBDevice.speed)
+      except Exception as e:
+        logging.info('Error getting the attribute "speed"')
+      try:
+        oUSBDevice.remote = oVBoxUSBDevice.remote
+      except Exception as e:
+        logging.info('Error getting the attribute "remote"')
+      try:
+        ol_device_info = ctx['global'].getArray(oVBoxUSBDevice,'deviceInfo')
+        oUSBDevice.device_info = list()
+        for count, item in enumerate(ol_device_info):
+          oUSBDevice.device_info.append(item)
+      except Exception as e:
+        logging.info('Error getting the array of "deviceInfo"')
+      try:
+        oUSBDevice.backend = oVBoxUSBDevice.backend
+      except Exception as e:
+        logging.info('Error getting the attribute "backend"')
+      
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oUSBDevice = None
+    text = 'Exception trying to fill the object oUSBDevice. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oUSBDevice
+
+def i_fill_partial_usb_device(oVBoxUSBDevice, select):
+  logging.info('Enter function ')
+  oUSBDevice = USBDevice()
+  try:
+    if oVBoxUSBDevice is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='id':
+            try:
+              oUSBDevice.id = oVBoxUSBDevice.id
+            except Exception as e:
+              logging.info('Error getting the attribute "id"')
+              raise Exception('Error getting the attribute "id"')
+            
+          if currAttr=='vendorId':
+            try:
+              oUSBDevice.vendor_id = oVBoxUSBDevice.vendorId
+            except Exception as e:
+              logging.info('Error getting the attribute "vendorId"')
+              raise Exception('Error getting the attribute "vendorId"')
+            
+          if currAttr=='productId':
+            try:
+              oUSBDevice.product_id = oVBoxUSBDevice.productId
+            except Exception as e:
+              logging.info('Error getting the attribute "productId"')
+              raise Exception('Error getting the attribute "productId"')
+            
+          if currAttr=='revision':
+            try:
+              oUSBDevice.revision = oVBoxUSBDevice.revision
+            except Exception as e:
+              logging.info('Error getting the attribute "revision"')
+              raise Exception('Error getting the attribute "revision"')
+            
+          if currAttr=='manufacturer':
+            try:
+              oUSBDevice.manufacturer = oVBoxUSBDevice.manufacturer
+            except Exception as e:
+              logging.info('Error getting the attribute "manufacturer"')
+              raise Exception('Error getting the attribute "manufacturer"')
+            
+          if currAttr=='product':
+            try:
+              oUSBDevice.product = oVBoxUSBDevice.product
+            except Exception as e:
+              logging.info('Error getting the attribute "product"')
+              raise Exception('Error getting the attribute "product"')
+            
+          if currAttr=='serialNumber':
+            try:
+              oUSBDevice.serial_number = oVBoxUSBDevice.serialNumber
+            except Exception as e:
+              logging.info('Error getting the attribute "serialNumber"')
+              raise Exception('Error getting the attribute "serialNumber"')
+            
+          if currAttr=='address':
+            try:
+              oUSBDevice.address = oVBoxUSBDevice.address
+            except Exception as e:
+              logging.info('Error getting the attribute "address"')
+              raise Exception('Error getting the attribute "address"')
+            
+          if currAttr=='port':
+            try:
+              oUSBDevice.port = oVBoxUSBDevice.port
+            except Exception as e:
+              logging.info('Error getting the attribute "port"')
+              raise Exception('Error getting the attribute "port"')
+            
+          if currAttr=='portPath':
+            try:
+              oUSBDevice.port_path = oVBoxUSBDevice.portPath
+            except Exception as e:
+              logging.info('Error getting the attribute "portPath"')
+              raise Exception('Error getting the attribute "portPath"')
+            
+          if currAttr=='version':
+            try:
+              oUSBDevice.version = oVBoxUSBDevice.version
+            except Exception as e:
+              logging.info('Error getting the attribute "version"')
+              raise Exception('Error getting the attribute "version"')
+            
+          if currAttr=='speed':
+            try:
+              oUSBDevice.speed = ctx[ 'global'].getEnumValueName('USBConnectionSpeed', oVBoxUSBDevice.speed)
+            except Exception as e:
+              logging.info('Error getting the attribute "speed"')
+              raise Exception('Error getting the array of "speed"')
+            
+          if currAttr=='remote':
+            try:
+              oUSBDevice.remote = oVBoxUSBDevice.remote
+            except Exception as e:
+              logging.info('Error getting the attribute "remote"')
+              raise Exception('Error getting the attribute "remote"')
+            
+          if currAttr=='deviceInfo':
+            try:
+              ol_device_info = ctx['global'].getArray(oVBoxUSBDevice,'deviceInfo')
+              oUSBDevice.device_info = list()
+              for count, item in enumerate(ol_device_info):
+                oUSBDevice.device_info.append(item)
+            except Exception as e:
+              logging.info('Error getting the array of "deviceInfo"')
+              raise Exception('Error getting the array of "deviceInfo"')
+            
+          if currAttr=='backend':
+            try:
+              oUSBDevice.backend = oVBoxUSBDevice.backend
+            except Exception as e:
+              logging.info('Error getting the attribute "backend"')
+              raise Exception('Error getting the attribute "backend"')
+            
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oUSBDevice = None
+    text = 'Exception trying to fill the object oUSBDevice. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oUSBDevice
