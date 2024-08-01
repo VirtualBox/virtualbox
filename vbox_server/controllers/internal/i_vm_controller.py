@@ -29,6 +29,7 @@ from vbox_server.models.error import Error
 from vbox_server.models.progress import Progress
 from vbox_server.models.progress_response import ProgressResponse
 from vbox_server.models.cleanup_mode import CleanupMode
+from vbox_server.models.usb_device_response import USBDeviceResponse
 from vbox_server.models.machine_getguestproperty_response import MachineGetguestpropertyResponse  # noqa: E501
 from vbox_server.models.machine_querylogfilename_response import MachineQuerylogfilenameResponse  # noqa: E501
 from vbox_server.models.machine_readlog_response import MachineReadlogResponse  # noqa: E501
@@ -279,7 +280,7 @@ def i_machine_deleteconfig(vmid, media=None):
     if oError is None:
         try:
             logging.info ('Nobody locks the machine. Try to get the lock back for ' + oVM.id)
-            oVBoxMediumList = oVM.unregister(ctx['const'].CleanupMode_Full)
+            oVBoxMediumList = oVM.unregister(ctx['const'].CleanupMode_DetachAllReturnHardDisksOnly)
             oProgress = oVM.deleteConfig(oVBoxMediumList)
         except Exception as e:
             logging.info("Can't delete VM '%s': %s" % (oVM.name, str(e)))
