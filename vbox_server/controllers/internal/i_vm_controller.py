@@ -22,13 +22,13 @@ from vbox_server.utils.restapi_objects_functions import *
 from vbox_server.utils.decorators import session_decorator as sessionDecorator
 from vbox_server.utils.decorators import open_exclusive_session as openExclusiveSession
 from vbox_server.utils.decorators import open_session as openSession
+
+############################ Implemented or used ############################
 from vbox_server.models.device_type import DeviceType
 from vbox_server.models.error import Error
 from vbox_server.models.progress import Progress
 from vbox_server.models.progress_response import ProgressResponse
 from vbox_server.models.cleanup_mode import CleanupMode
-
-############################ Implemented or used ############################
 from vbox_server.models.machine_getguestproperty_response import MachineGetguestpropertyResponse  # noqa: E501
 from vbox_server.models.machine_querylogfilename_response import MachineQuerylogfilenameResponse  # noqa: E501
 from vbox_server.models.machine_readlog_response import MachineReadlogResponse  # noqa: E501
@@ -72,7 +72,7 @@ from vbox_server.models.machine_temporary_eject_device_request_body import Machi
 from vbox_server.models.platform_x86_set_cpu_property_request_body import PlatformX86SetCPUPropertyRequestBody  # noqa: E501
 from vbox_server.models.platform_x86_set_hw_virt_ex_property_request_body import PlatformX86SetHWVirtExPropertyRequestBody  # noqa: E501
 from vbox_server.models.virtual_box_open_machine_request_body import VirtualBoxOpenMachineRequestBody  
-############################# Not implemented yet #############################
+
 
 # Set logging level for module
 logging.getLogger().setLevel(logging.INFO)
@@ -1675,6 +1675,105 @@ def i_machine_cloneto(vmid, oMachineCloneToRequestBody: MachineCloneToRequestBod
     return response, httpCode
 
 
+@sessionDecorator
+def i_console_attachusbdevice(vmid, oConsoleAttachUSBDeviceRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IConsole::attachUSBDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oConsoleAttachUSBDeviceRequestBody: 
+    :type oConsoleAttachUSBDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oVM = None
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM = var_args_tuple[0]
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+    oConsole = oSession.console
+
+    o = oConsoleAttachUSBDeviceRequestBody
+    try:
+        logging.info("Try to attach USB device to the machine " + oVM.name + " (UUID " + oVM.id + ")")
+
+        ol_usb_devices = ctx['global'].getArray(oConsole,'USBDevices')
+        for item in ol_usb_devices:
+            oUsb = i_fill_usb_device(item)
+
+        if o.capture_filename is None or o.capture_filename == '':
+            oConsole.attachUSBDevice(o.id, '')
+        else:
+            oConsole.attachUSBDevice(o.id, o.capture_filename)
+
+        oCurrMachine.saveSettings()
+
+    except Exception as e:
+        logging.info("Exception during attaching USB device to the machine " + oVM.name + " (UUID " + oVM.id + ")")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is not None:
+        response = jsonify(oError)
+        return response, httpCode
+
+    return "Successfully attached USB device with id " + str(o.id) + " to the machine " + oVM.name
+
+
+@sessionDecorator
+def i_console_detachusbdevice(vmid, id=None, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IConsole::detachUSBDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param id: 
+    :type id: str
+
+    :rtype: USBDeviceResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM = var_args_tuple[0]
+    oSession = var_args_tuple[1]
+    oConsole = oSession.console
+
+    oUSBDeviceResponse = USBDeviceResponse()
+    try:
+        if id is not None and id != '':
+            logging.info("Try to detach USB device from the machine " + oVM.name + " (UUID " + oVM.id + ")")
+            oUsbDev = oConsole.detachUSBDevice(id)
+            o = i_fill_usb_device(oUsbDev)
+            oUSBDeviceResponse.device = o
+        else:
+            httpCode = HTTPStatus.NOT_FOUND
+            oError = Error(httpCode, "The passed USB id is empty or hasn't been passed at all")
+            return jsonify(oError), httpCode
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        logging.info("Exception during detaching USB device with id " + id)
+        oError = Error(1000, str(e))
+
+    response = jsonify(oError if oError is not None else oUSBDeviceResponse)
+
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -1706,21 +1805,6 @@ def i_console_addencryptionpasswords(vmid, oConsoleAddEncryptionPasswordsRequest
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_console_attachusbdevice(vmid, oConsoleAttachUSBDeviceRequestBody):  # noqa: E501
-    """
-    Call interface method IConsole::attachUSBDevice
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oConsoleAttachUSBDeviceRequestBody: 
-    :type oConsoleAttachUSBDeviceRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
 def i_console_clearallencryptionpasswords(vmid):  # noqa: E501
     """
     Call interface method IConsole::clearAllEncryptionPasswords
@@ -1744,21 +1828,6 @@ def i_console_createsharedfolder(vmid, oConsoleCreateSharedFolderRequestBody):  
     :type oConsoleCreateSharedFolderRequestBody: dict | bytes
 
     :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_console_detachusbdevice(vmid, id=None):  # noqa: E501
-    """
-    Call interface method IConsole::detachUSBDevice
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param id: 
-    :type id: str
-
-    :rtype: USBDeviceResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
