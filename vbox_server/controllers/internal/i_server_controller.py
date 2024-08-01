@@ -315,7 +315,7 @@ def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
     :rtype: VirtualboxGettrackedobjectResponse
     """
     oError = None
-    httpCode = 200 #(OK)
+    httpCode = HTTPStatus.OK
 
     vbox_utils_commonChecks()
 
@@ -329,8 +329,6 @@ def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
         oError = Error(httpCode, str(e))
         return jsonify(oError), httpCode
 
-    oProgressResponse = ProgressResponse()
-
     try:
         oIUnknown = oVBox.getTrackedObject(trObjId)
     except Exception as e:
@@ -338,20 +336,36 @@ def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
         oError = Error(httpCode, str("Can\'t get object with Id " + trObjId + ' from the server'))
         return jsonify(oError), httpCode
 
-    fContinue = False
-
-    alInterfaceName = {'IProgress', 'ISession', 'IMedium', 'IMachine'}
+    alInterfaceName = ['IProgress', 'ISession', 'IMedium', 'IMachine']
     oRes = None
     obj = None
 
     for i in alInterfaceName:
         try:
             obj = oVBoxMgr.queryInterface(oIUnknown, i)
+
+            # Windows hack, on Windows queryInterface() ALWAYS returns an object
+            # if there is a way to convert one interface to another one.
+            if platform.system() == "Windows":
+                if oIUnknown.CLSID != obj.CLSID:
+                    continue
+
         except COMException as e:
-            # The error 0x80004002 is "'Interface not supported (NS_ERROR_NO_INTERFACE)'"
-            if e.errno == -2147467262:
+            # This branch for XPCOM (Linux).
+            # queryInterface() on Linux throws an exception if the inquired interface wasn't found.
+            # The returned value is negative. In instance, negative -2147467262 is equal to positive 0x80004002.
+            # The conversion to unsigned integer is required for comparison with 0x80004002.
+            # The error 0x80004002 is "'Interface not supported (NS_ERROR_NO_INTERFACE)'".
+            from ctypes import c_uint32
+            comErrorHex = c_uint32(e.args[0]).value
+            if comErrorHex == 0x80004002:
                 continue
 
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            break
+
+        except Exception as e:
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, str(e))
             break
@@ -390,13 +404,12 @@ def i_virtualbox_gettrackedobjectids(name=None):
     """
 
     oError = None
-    httpCode = 200 #(OK)
+    httpCode = HTTPStatus.OK
 
     vbox_utils_commonChecks()
 
     try:
         oVBox = ctx['vb']
-        oVBoxMgr = ctx['global']
 
     except Exception as e:
         logging.info ('couldn\'t get the VirtualBox object')
@@ -412,17 +425,26 @@ def i_virtualbox_gettrackedobjectids(name=None):
                 oVirtualboxGettrackedobjectidsResponse.obj_ids_list = list()
                 for i in oObjIdList:
                     oVirtualboxGettrackedobjectidsResponse.obj_ids_list.append(i)
-            else: 
-                logging.info ('No objects were found for the passed interface name')
+            else:
                 httpCode = HTTPStatus.NOT_FOUND
-                oError = Error(httpCode, 'No objects were found for the passed interface name')
-        else: 
-            logging.info ('The passed interface name string is Null or empty')
+                oError = Error(httpCode, 'Unknown interface or no objects were found for the passed interface name')
+        else:
             httpCode = HTTPStatus.BAD_REQUEST
             oError = Error(httpCode, 'The passed interface name string is Null or empty')
-    except (COMException, Exception) as e:
+
+    except COMException as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        from ctypes import c_uint32
+        comErrorHex = c_uint32(e.args[0]).value
+        if platform.system() == "Windows":
+            logging.info ('COM error 0x%X' % (comErrorHex))
+        else:
+            logging.info ('XPCOM error %X' % (comErrorHex))
         oError = Error(httpCode, str(e))
 
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        e.msg = e.msg + ' At least, check that VirtualBox is running.'
+        oError = Error(httpCode, str(e))
     response = jsonify(oError if oError is not None else oVirtualboxGettrackedobjectidsResponse)
     return response, httpCode
