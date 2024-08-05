@@ -1775,6 +1775,54 @@ def i_console_detachusbdevice(vmid, id=None, *var_args_tuple):  # noqa: E501
     return response, httpCode
 
 
+@sessionDecorator
+def i_console_findusbdevicebyid(vmid, select=None, id=None, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IConsole::findUSBDeviceById
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param id: 
+    :type id: str
+
+    :rtype: USBDeviceResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    # oVM = var_args_tuple[0]
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oSession = var_args_tuple[1]
+    oConsole = oSession.console
+
+    oUSBDeviceResponse = USBDeviceResponse()
+    try:
+        if id is not None and id!='':
+            logging.info("Try to find USB device by id " + id)
+            oUsbDev = oConsole.findUSBDeviceById(id)
+            o = i_fill_usb_device(oUsbDev, select)
+            oUSBDeviceResponse.device = o
+        else:
+            httpCode = HTTPStatus.PRECONDITION_FAILED
+            oError = Error(httpCode, "The passed USB id is empty or hasn't been passed at all")
+            return jsonify(oError), httpCode
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        logging.info("Exception during finding USB device by id " + id)
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oUSBDeviceResponse)
+
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -1844,23 +1892,6 @@ def i_console_findusbdevicebyaddress(vmid, select=None, name=None):  # noqa: E50
     :type select: str
     :param name: 
     :type name: str
-
-    :rtype: USBDeviceResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_console_findusbdevicebyid(vmid, select=None, id=None):  # noqa: E501
-    """
-    Call interface method IConsole::findUSBDeviceById
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param id: 
-    :type id: str
 
     :rtype: USBDeviceResponse
     """
