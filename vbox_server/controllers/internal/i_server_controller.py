@@ -331,6 +331,10 @@ def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
 
     try:
         oIUnknown = oVBox.getTrackedObject(trObjId)
+        if oIUnknown is None:
+            httpCode = HTTPStatus.NOT_FOUND
+            oError = Error(httpCode, str("Can\'t find the object with Id " + trObjId + ' on the server'))
+            return jsonify(oError), httpCode
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str("Can\'t get object with Id " + trObjId + ' from the server'))
@@ -419,9 +423,9 @@ def i_virtualbox_gettrackedobjectids(name=None):
 
     oVirtualboxGettrackedobjectidsResponse = VirtualboxGettrackedobjectidsResponse()
     try:
-        if name and len(name) != 0 :
+        if name and len(name) != 0:
             oObjIdList = oVBox.getTrackedObjectIds(name)
-            if len(oObjIdList) !=0:
+            if len(oObjIdList) != 0:
                 oVirtualboxGettrackedobjectidsResponse.obj_ids_list = list()
                 for i in oObjIdList:
                     oVirtualboxGettrackedobjectidsResponse.obj_ids_list.append(i)
@@ -433,7 +437,7 @@ def i_virtualbox_gettrackedobjectids(name=None):
             oError = Error(httpCode, 'The passed interface name string is Null or empty')
 
     except COMException as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        httpCode = HTTPStatus.NOT_FOUND
         from ctypes import c_uint32
         comErrorHex = c_uint32(e.args[0]).value
         if platform.system() == "Windows":
