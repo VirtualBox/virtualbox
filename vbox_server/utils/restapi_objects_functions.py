@@ -20,6 +20,8 @@ from vbox_server.models.medium_format import MediumFormat
 from vbox_server.models.progress import Progress
 from vbox_server.models.session import Session
 from vbox_server.models.usb_device import USBDevice
+from vbox_server.models.serial_port import SerialPort
+from vbox_server.models.parallel_port import ParallelPort
 
 from vbox_server.models.virtual_box_error_info import VirtualBoxErrorInfo
 
@@ -2634,3 +2636,256 @@ def i_fill_partial_usb_device(oVBoxUSBDevice, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oUSBDevice
+
+def i_fill_serial_port(oVBoxSerialPort, select=None):
+  """Convert the passed VirtualBox object oVBoxSerialPort with interface ISerialPort into Swagger object oSerialPort"""
+  
+  logging.info('Enter function ')
+  oSerialPort = SerialPort()
+  try:
+    if oVBoxSerialPort is not None:
+      if select is not None and len(select)>0:
+        oSerialPort = i_fill_partial_serial_port(oVBoxSerialPort, select)
+      else:
+        oSerialPort = i_fill_whole_serial_port(oVBoxSerialPort)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oSerialPort = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxSerialPort into Swagger object oSerialPort. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oSerialPort
+
+def i_fill_whole_serial_port(oVBoxSerialPort):
+  logging.info('Enter function ')
+  oSerialPort = SerialPort()
+  try:
+    if oVBoxSerialPort is not None:
+      try:
+        oSerialPort.slot = oVBoxSerialPort.slot
+      except Exception as e:
+        logging.info('Error getting the attribute "slot"')
+      try:
+        oSerialPort.enabled = oVBoxSerialPort.enabled
+      except Exception as e:
+        logging.info('Error getting the attribute "enabled"')
+      try:
+        oSerialPort.io_address = oVBoxSerialPort.IOAddress
+      except Exception as e:
+        logging.info('Error getting the attribute "IOAddress"')
+      try:
+        oSerialPort.irq = oVBoxSerialPort.IRQ
+      except Exception as e:
+        logging.info('Error getting the attribute "IRQ"')
+      try:
+        oSerialPort.host_mode = ctx[ 'global'].getEnumValueName('PortMode', oVBoxSerialPort.hostMode)
+      except Exception as e:
+        logging.info('Error getting the attribute "hostMode"')
+      try:
+        oSerialPort.server = oVBoxSerialPort.server
+      except Exception as e:
+        logging.info('Error getting the attribute "server"')
+      try:
+        oSerialPort.path = oVBoxSerialPort.path
+      except Exception as e:
+        logging.info('Error getting the attribute "path"')
+      try:
+        oSerialPort.uart_type = ctx[ 'global'].getEnumValueName('UartType', oVBoxSerialPort.uartType)
+      except Exception as e:
+        logging.info('Error getting the attribute "uartType"')
+      
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oSerialPort = None
+    text = 'Exception trying to fill the object oSerialPort. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oSerialPort
+
+def i_fill_partial_serial_port(oVBoxSerialPort, select):
+  logging.info('Enter function ')
+  oSerialPort = SerialPort()
+  try:
+    if oVBoxSerialPort is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='slot':
+            try:
+              oSerialPort.slot = oVBoxSerialPort.slot
+            except Exception as e:
+              logging.info('Error getting the attribute "slot"')
+              raise Exception('Error getting the attribute "slot"')
+            
+          if currAttr=='enabled':
+            try:
+              oSerialPort.enabled = oVBoxSerialPort.enabled
+            except Exception as e:
+              logging.info('Error getting the attribute "enabled"')
+              raise Exception('Error getting the attribute "enabled"')
+            
+          if currAttr=='IOAddress':
+            try:
+              oSerialPort.io_address = oVBoxSerialPort.IOAddress
+            except Exception as e:
+              logging.info('Error getting the attribute "IOAddress"')
+              raise Exception('Error getting the attribute "IOAddress"')
+            
+          if currAttr=='IRQ':
+            try:
+              oSerialPort.irq = oVBoxSerialPort.IRQ
+            except Exception as e:
+              logging.info('Error getting the attribute "IRQ"')
+              raise Exception('Error getting the attribute "IRQ"')
+            
+          if currAttr=='hostMode':
+            try:
+              oSerialPort.host_mode = ctx[ 'global'].getEnumValueName('PortMode', oVBoxSerialPort.hostMode)
+            except Exception as e:
+              logging.info('Error getting the attribute "hostMode"')
+              raise Exception('Error getting the array of "hostMode"')
+            
+          if currAttr=='server':
+            try:
+              oSerialPort.server = oVBoxSerialPort.server
+            except Exception as e:
+              logging.info('Error getting the attribute "server"')
+              raise Exception('Error getting the attribute "server"')
+            
+          if currAttr=='path':
+            try:
+              oSerialPort.path = oVBoxSerialPort.path
+            except Exception as e:
+              logging.info('Error getting the attribute "path"')
+              raise Exception('Error getting the attribute "path"')
+            
+          if currAttr=='uartType':
+            try:
+              oSerialPort.uart_type = ctx[ 'global'].getEnumValueName('UartType', oVBoxSerialPort.uartType)
+            except Exception as e:
+              logging.info('Error getting the attribute "uartType"')
+              raise Exception('Error getting the array of "uartType"')
+            
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oSerialPort = None
+    text = 'Exception trying to fill the object oSerialPort. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oSerialPort
+
+def i_fill_parallel_port(oVBoxParallelPort, select=None):
+  """Convert the passed VirtualBox object oVBoxParallelPort with interface IParallelPort into Swagger object oParallelPort"""
+  
+  logging.info('Enter function ')
+  oParallelPort = ParallelPort()
+  try:
+    if oVBoxParallelPort is not None:
+      if select is not None and len(select)>0:
+        oParallelPort = i_fill_partial_parallel_port(oVBoxParallelPort, select)
+      else:
+        oParallelPort = i_fill_whole_parallel_port(oVBoxParallelPort)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oParallelPort = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxParallelPort into Swagger object oParallelPort. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oParallelPort
+
+def i_fill_whole_parallel_port(oVBoxParallelPort):
+  logging.info('Enter function ')
+  oParallelPort = ParallelPort()
+  try:
+    if oVBoxParallelPort is not None:
+      try:
+        oParallelPort.slot = oVBoxParallelPort.slot
+      except Exception as e:
+        logging.info('Error getting the attribute "slot"')
+      try:
+        oParallelPort.enabled = oVBoxParallelPort.enabled
+      except Exception as e:
+        logging.info('Error getting the attribute "enabled"')
+      try:
+        oParallelPort.io_base = oVBoxParallelPort.IOBase
+      except Exception as e:
+        logging.info('Error getting the attribute "IOBase"')
+      try:
+        oParallelPort.irq = oVBoxParallelPort.IRQ
+      except Exception as e:
+        logging.info('Error getting the attribute "IRQ"')
+      try:
+        oParallelPort.path = oVBoxParallelPort.path
+      except Exception as e:
+        logging.info('Error getting the attribute "path"')
+      
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oParallelPort = None
+    text = 'Exception trying to fill the object oParallelPort. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oParallelPort
+
+def i_fill_partial_parallel_port(oVBoxParallelPort, select):
+  logging.info('Enter function ')
+  oParallelPort = ParallelPort()
+  try:
+    if oVBoxParallelPort is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='slot':
+            try:
+              oParallelPort.slot = oVBoxParallelPort.slot
+            except Exception as e:
+              logging.info('Error getting the attribute "slot"')
+              raise Exception('Error getting the attribute "slot"')
+            
+          if currAttr=='enabled':
+            try:
+              oParallelPort.enabled = oVBoxParallelPort.enabled
+            except Exception as e:
+              logging.info('Error getting the attribute "enabled"')
+              raise Exception('Error getting the attribute "enabled"')
+            
+          if currAttr=='IOBase':
+            try:
+              oParallelPort.io_base = oVBoxParallelPort.IOBase
+            except Exception as e:
+              logging.info('Error getting the attribute "IOBase"')
+              raise Exception('Error getting the attribute "IOBase"')
+            
+          if currAttr=='IRQ':
+            try:
+              oParallelPort.irq = oVBoxParallelPort.IRQ
+            except Exception as e:
+              logging.info('Error getting the attribute "IRQ"')
+              raise Exception('Error getting the attribute "IRQ"')
+            
+          if currAttr=='path':
+            try:
+              oParallelPort.path = oVBoxParallelPort.path
+            except Exception as e:
+              logging.info('Error getting the attribute "path"')
+              raise Exception('Error getting the attribute "path"')
+            
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oParallelPort = None
+    text = 'Exception trying to fill the object oParallelPort. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oParallelPort
