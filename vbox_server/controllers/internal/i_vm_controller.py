@@ -48,6 +48,8 @@ from vbox_server.models.machine_set_guest_property_request_body import MachineSe
 from vbox_server.models.virtual_box_create_machine_request_body import VirtualBoxCreateMachineRequestBody  # noqa: E501
 from vbox_server.models.machine_attach_device_request_body import MachineAttachDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_detach_device_request_body import MachineDetachDeviceRequestBody  # noqa: E501
+from vbox_server.models.parallel_port_response import ParallelPortResponse  # noqa: E501
+from vbox_server.models.serial_port_response import SerialPortResponse  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
@@ -1871,6 +1873,86 @@ def i_console_findusbdevicebyaddress(vmid, select=None, name=None, *var_args_tup
     return response, httpCode
 
 
+def i_machine_getparallelport(vmid, select=None, slot=None):  # noqa: E501
+    """
+    Call interface method IMachine::getParallelPort
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param slot: 
+    :type slot: int
+
+    :rtype: ParallelPortResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oVM = None
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, _ = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    oParallelPortResponse = ParallelPortResponse()
+
+    try:
+        oVBoxParallelPort = oVM.getParallelPort(slot)
+        oParallelPortResponse.port = i_fill_parallel_port(oVBoxParallelPort, select)
+        logging.info('Successfully get the parallel port')
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oParallelPortResponse)
+    return response, httpCode
+
+
+def i_machine_getserialport(vmid, select=None, slot=None):  # noqa: E501
+    """
+    Call interface method IMachine::getSerialPort
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param slot: 
+    :type slot: int
+
+    :rtype: SerialPortResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oVM = None
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, _ = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    oSerialPortResponse = SerialPortResponse()
+
+    try:
+        oVBoxSerialPort = oVM.getSerialPort(slot)
+        oSerialPortResponse.port = i_fill_serial_port(oVBoxSerialPort, select)
+        logging.info('Successfully get the serial port')
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oSerialPortResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -2250,40 +2332,6 @@ def i_machine_getnetworkadapter(vmid, select=None, slot=None):  # noqa: E501
     :type slot: int
 
     :rtype: NetworkAdapterResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_getparallelport(vmid, select=None, slot=None):  # noqa: E501
-    """
-    Call interface method IMachine::getParallelPort
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param slot: 
-    :type slot: int
-
-    :rtype: ParallelPortResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_getserialport(vmid, select=None, slot=None):  # noqa: E501
-    """
-    Call interface method IMachine::getSerialPort
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param slot: 
-    :type slot: int
-
-    :rtype: SerialPortResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
