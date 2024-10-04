@@ -1349,14 +1349,12 @@ def i_machine_getmediumattachment(vmid, select=None, name=None, controllerPort=N
 
 
 @sessionDecorator
-def i_machine_mountmedium(vmid, mediumid, oMachineMountMediumRequestBody: MachineMountMediumRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_mountmedium(vmid, oMachineMountMediumRequestBody: MachineMountMediumRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::mountMedium
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param mediumid: The Id of medium
-    :type mediumid: str
     :param oMachineMountMediumRequestBody:
     :type oMachineMountMediumRequestBody: dict | bytes
 
@@ -1372,9 +1370,10 @@ def i_machine_mountmedium(vmid, mediumid, oMachineMountMediumRequestBody: Machin
     o = oMachineMountMediumRequestBody
     print(o)
     name = o.name
-    controller_port = o.controller_port
+    controllerPort = o.controller_port
     device = o.device
     force = o.force
+    mediumId = o.medium
 
     oFoundMedium = None
     try:
@@ -1382,12 +1381,12 @@ def i_machine_mountmedium(vmid, mediumid, oMachineMountMediumRequestBody: Machin
         oVBoxVirtualBox = ctx['vb']
 
         for disktype in lTypes:
-            ol_disks = ctx['global'].getArray(oVBoxVirtualBox, disktype)
-            for item in ol_disks:
+            olDisks = ctx['global'].getArray(oVBoxVirtualBox, disktype)
+            for item in olDisks:
                 o = i_fill_partial_medium(item, 'id')
-                if o.id == mediumid:
+                if o.id == mediumId:
                     oFoundMedium = item
-                    logging.info('Found medium with id ' + mediumid)
+                    logging.info('Found medium with id ' + mediumId)
                     break
 
             if oFoundMedium is not None:
@@ -1395,19 +1394,19 @@ def i_machine_mountmedium(vmid, mediumid, oMachineMountMediumRequestBody: Machin
 
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        logging.info('Exception during finding the passed medium with uuid ' + mediumid)
-        oError = Error(httpCode, 'Exception during finding the passed medium with uuid ' + mediumid)
+        logging.info('Exception during finding the passed medium with uuid ' + mediumId)
+        oError = Error(httpCode, 'Exception during finding the passed medium with uuid ' + mediumId)
         return jsonify(oError), httpCode
 
     if oFoundMedium is None:
         httpCode = HTTPStatus.NOT_FOUND
-        oError = Error(httpCode, 'The passed medium with uuid ' + mediumid + ' wasn\'t found among DVD or floppy images')
+        oError = Error(httpCode, 'The passed medium with uuid ' + mediumId + ' wasn\'t found among DVD or floppy images')
         return jsonify(oError), httpCode
 
     oCurrMachine = oSession.machine
 
     try:
-        oCurrMachine.mountMedium(name, controller_port, device, oFoundMedium, force)
+        oCurrMachine.mountMedium(name, controllerPort, device, oFoundMedium, force)
         oCurrMachine.saveSettings()
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -1416,18 +1415,16 @@ def i_machine_mountmedium(vmid, mediumid, oMachineMountMediumRequestBody: Machin
     if oError is not None:
         return jsonify(oError), httpCode
 
-    return 'The passed medium with uuid ' + mediumid +' has been successfully mounted', httpCode
+    return 'The passed medium with uuid ' + mediumId +' has been successfully mounted', httpCode
 
 
 @sessionDecorator
-def i_machine_unmountmedium(vmid, mediumid, oMachineUnmountMediumRequestBody: MachineUnmountMediumRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_unmountmedium(vmid, oMachineUnmountMediumRequestBody: MachineUnmountMediumRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::unmountMedium
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param mediumid: The Id of medium
-    :type mediumid: str
     :param oMachineUnmountMediumRequestBody:
     :type oMachineUnmountMediumRequestBody: dict | bytes
 
@@ -1443,58 +1440,40 @@ def i_machine_unmountmedium(vmid, mediumid, oMachineUnmountMediumRequestBody: Ma
     o = oMachineUnmountMediumRequestBody
     print(o)
     name = o.name
-    controller_port = o.controller_port
+    controllerPort = o.controller_port
     device = o.device
     force = o.force
 
-    oMediumAttachement = None
     oMedium = None
     found = False
 
     if oVM is not None:
         try:
-            if mediumid is None or mediumid=='' or mediumid=='noid':
-                oVBoxMedium = oVM.getMedium(name, controller_port, device)
-                oMedium = i_fill_medium(oVBoxMedium)
-                if oMedium.device_type == 'HardDisk':
-                    raise 'Wrong medium device type. Must be DVD or Floppy.'
-                logging.info('Successfully found the medium on the controller ' + name + ' on port ' + str(controller_port) + ' on device ' + str(device))
-                found = True
-            else:
-                ol_medium_attachments = ctx['global'].getArray(oVM,'mediumAttachments')
-                for item in ol_medium_attachments:
-                    oMediumAttachement = i_fill_medium_attachment(item)
-                    if oMediumAttachement.medium == mediumid:
-                        if oMediumAttachement.type == 'HardDisk':
-                            raise 'Wrong medium device type. Must be DVD or Floppy.'
-                        logging.info('Successfully found the medium with id ' + mediumid)
-                        found = True
-                        break
+            oVBoxMedium = oVM.getMedium(name, controllerPort, device)
+            oMedium = i_fill_medium(oVBoxMedium)
+            if oMedium.device_type == 'HardDisk':
+                raise 'Wrong medium device type. Must be DVD or Floppy.'
+            logging.info('Successfully found the medium on the controller ' + name + ' on port ' + str(controllerPort) + ' on device ' + str(device))
+            found = True
 
         except Exception as e:
-            logging.info("Exception during finding the medium with uuid " + mediumid + '. (' + str(e) + ')')
+            logging.info('Exception during finding the medium on the controller ' + name + ' on port ' + str(controllerPort) + ' on device ' + str(device))
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, str(e))
             return jsonify(oError), httpCode
 
     if found != True:
         httpCode = HTTPStatus.NOT_FOUND
-        logging.info("Couldn't find the medium with uuid " + mediumid)
-        oError = Error(httpCode, "Couldn't find the medium with uuid " + mediumid)
+        logging.info("Couldn\'t find the medium on the controller " + name + ' on port ' + str(controllerPort) + ' on device ' + str(device))
+        oError = Error(httpCode, "Couldn\'t find the medium on the controller " + name + ' on port ' + str(controllerPort) + ' on device ' + str(device))
         return jsonify(oError), httpCode
 
     oSession = var_args_tuple[1]
     oCurrMachine = oSession.machine
 
     try:
-        if httpCode == HTTPStatus.OK:
-            if oMediumAttachement is not None:
-                name = oMediumAttachement.controller
-                controller_port = oMediumAttachement.port
-                device = oMediumAttachement.device
-                print (name, controller_port, device)
-            oCurrMachine.unmountMedium(name, controller_port, device, force)
-            oCurrMachine.saveSettings()
+        oCurrMachine.unmountMedium(name, controllerPort, device, force)
+        oCurrMachine.saveSettings()
 
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -1503,7 +1482,8 @@ def i_machine_unmountmedium(vmid, mediumid, oMachineUnmountMediumRequestBody: Ma
     if oError is not None:
         return jsonify(oError), httpCode
 
-    return 'The passed medium with uuid ' + mediumid +' has been successfully unmounted', httpCode
+    return 'The medium on the controller ' + name + ' on port ' + str(controllerPort) + \
+            ' on device ' + str(device) + ' has been successfully unmounted', httpCode
 
 
 @openExclusiveSession
