@@ -1,7 +1,7 @@
 <?xml version="1.0"  encoding="utf-8"?>
 
 <!--
-    Copyright (C) 2006-2023 Oracle and/or its affiliates.
+    Copyright (C) 2006-2024 Oracle and/or its affiliates.
 
     This file is part of VirtualBox base platform packages, as
     available from https://www.virtualbox.org.
@@ -2072,10 +2072,10 @@
       <param name="ruleName" type="wstring" dir="in"/>
     </method>
     <method name="start">
-      <rest request="post" path="/natnetworks/{networkid}/actions/"/>
+      <rest request="post" path="/natnetworks/{networkid}/action/"/>
     </method>
     <method name="stop">
-      <rest request="post" path="/natnetworks/{networkid}/actions/"/>
+      <rest request="post" path="/natnetworks/{networkid}/action/"/>
     </method>
   </interface>
 
@@ -2400,7 +2400,7 @@
     </method>
 
     <method name="start">
-      <rest request="post" path="/dhcpservers/{serverid}/actions/"/>
+      <rest request="post" path="/dhcpservers/{serverid}/action/"/>
       <desc>
         Starts DHCP server process.
         <result name="E_FAIL">
@@ -2420,7 +2420,7 @@
     </method>
 
     <method name="stop">
-      <rest request="post" path="/dhcpservers/{serverid}/actions/"/>
+      <rest request="post" path="/dhcpservers/{serverid}/action/"/>
       <desc>
         Stops DHCP server process.
         <result name="E_FAIL">
@@ -2430,7 +2430,7 @@
     </method>
 
     <method name="restart">
-      <rest request="post" path="/dhcpservers/{serverid}/actions/"/>
+      <rest request="post" path="/dhcpservers/{serverid}/action/"/>
       <desc>
         Restart running DHCP server process.
         <result name="E_FAIL">
@@ -2984,34 +2984,8 @@
       </desc>
     </attribute>
 
-    <method name="getTrackedObject">
-      <rest request="get" path="/server/methods/"/>
-      <desc>
-        Queries the IUnknown interface to an object from the tracked object list
-      </desc>
-      <param name="trObjId" type="wstring" dir="in">
-        <desc>The object Id.</desc>
-      </param>
-      <param name="pIface" type="$unknown" dir="return">
-        <desc>The found interface.</desc>
-      </param>
-    </method>
-
-    <method name="getTrackedObjectIds">
-      <rest request="get" path="/server/methods/"/>
-      <desc>
-        Returns the tracked object Ids list associated with the passed interface name
-      </desc>
-      <param name="name" type="wstring" dir="in">
-        <desc>The interface name.</desc>
-      </param>
-      <param name="objIdsList" type="wstring" safearray="yes" dir="return">
-        <desc>Array of the tracked object Ids associated with the specified interface.</desc>
-      </param>
-    </method>
-
     <method name="composeMachineFilename">
-      <rest request="get" path="/server/methods/"/>
+      <rest request="get" path="/server/method/"/>
       <desc>
         Returns a recommended full path of the settings file name for a new virtual
         machine.
@@ -3211,7 +3185,7 @@
     </method>
 
     <method name="openMachine">
-      <rest name="open" request="post" path="/vms/{vmid}/actions/"/>
+      <rest name="open" request="post" path="/vms/{vmid}/action/"/>
       <desc>
         Opens a virtual machine from the existing settings file.
         The opened machine remains unregistered until you call
@@ -3257,7 +3231,7 @@
     </method>
 
     <method name="registerMachine">
-      <rest name="register" request="post" path="/vms/{vmid}/actions/"/>
+      <rest name="register" request="post" path="/vms/{vmid}/action/"/>
       <desc>
 
         Registers the machine previously created using
@@ -3304,7 +3278,7 @@
     </method>
 
     <method name="getMachinesByGroups">
-      <rest request="get" path="/server/methods/"/>
+      <rest request="get" path="/server/method/"/>
       <desc>
         Gets all machine references which are in one of the specified groups.
       </desc>
@@ -3319,7 +3293,7 @@
     </method>
 
     <method name="getMachineStates">
-      <rest request="get" path="/server/methods/"/>
+      <rest request="get" path="/server/method/"/>
       <desc>
         Gets the state of several machines in a single operation.
       </desc>
@@ -3344,7 +3318,7 @@
     </method>
 
     <method name="createUnattendedInstaller">
-      <rest request="post" path="/server/methods/"/>
+      <rest request="post" path="/server/method/"/>
       <desc>
         Creates a new <link to="IUnattended"/> guest installation object.  This can be used to
         analyze an installation ISO to create and configure a new machine for it to be installed
@@ -3435,7 +3409,7 @@
     </method>
 
     <method name="openMedium">
-      <rest request="post" path="/server/methods/"/>
+      <rest request="post" path="/server/method/"/>
       <desc>
         Finds existing media or opens a medium from an existing storage location.
 
@@ -3532,7 +3506,7 @@
     </method>
 
     <method name="getGuestOSType">
-      <rest request="get" path="/server/methods/"/>
+      <rest request="get" path="/server/method/"/>
       <desc>
         Returns an object describing the specified guest OS type.
 
@@ -3565,7 +3539,7 @@
     </method>
 
     <method name="getGuestOSSubtypesByFamilyId">
-      <rest request="get" path="/server/methods/"/>
+      <rest request="get" path="/server/method/"/>
       <desc>
         Returns a list of guest OS family subtypes for a corresponding
         guest OS family ID type.
@@ -3591,7 +3565,7 @@
     </method>
 
     <method name="getGuestOSDescsBySubtype">
-      <rest request="get" path="/server/methods/"/>
+      <rest request="get" path="/server/method/"/>
       <desc>
         Returns a list of guest OS family descriptions for a corresponding
         guest OS family subtype.
@@ -3666,7 +3640,7 @@
     </method>
 
     <method name="getExtraDataKeys">
-      <rest request="get" path="/server/methods/"/>
+      <rest request="get" path="/server/method/"/>
       <desc>
         Returns an array representing the global extra data keys which currently
         have values defined.
@@ -3677,7 +3651,7 @@
     </method>
 
     <method name="getExtraData">
-      <rest request="get" path="/server/methods/"/>
+      <rest request="get" path="/server/method/"/>
       <desc>
         Returns associated global extra data.
 
@@ -3701,7 +3675,7 @@
     </method>
 
     <method name="setExtraData">
-      <rest request="put" path="/server/methods/"/>
+      <rest request="put" path="/server/method/"/>
       <desc>
         Sets associated global extra data.
 
@@ -3939,7 +3913,7 @@
     </method>
 
     <method name="checkFirmwarePresent">
-      <rest request="get" path="/server/methods/"/>
+      <rest request="get" path="/server/method/"/>
       <desc>
         Check if this VirtualBox installation has a firmware
         of the given type available, either system-wide or per-user.
@@ -3992,6 +3966,32 @@
       </param>
       <param name="progressObject" type="IProgress" dir="return">
         <desc>Found progress object.</desc>
+      </param>
+    </method>
+
+    <method name="getTrackedObject">
+      <rest request="get" path="/server/methods/"/>
+      <desc>
+        Queries the IUnknown interface to an object from the tracked object list
+      </desc>
+      <param name="trObjId" type="wstring" dir="in">
+        <desc>The object Id.</desc>
+      </param>
+      <param name="pIface" type="$unknown" dir="return">
+        <desc>The found interface.</desc>
+      </param>
+    </method>
+
+    <method name="getTrackedObjectIds">
+      <rest request="get" path="/server/methods/"/>
+      <desc>
+        Returns the tracked object Ids list associated with the passed interface name
+      </desc>
+      <param name="name" type="wstring" dir="in">
+        <desc>The interface name.</desc>
+      </param>
+      <param name="objIdsList" type="wstring" safearray="yes" dir="return">
+        <desc>Array of the tracked object Ids associated with the specified interface.</desc>
       </param>
     </method>
 
@@ -4443,7 +4443,7 @@
     </attribute>
 
     <method name="read">
-      <rest request="post" path="/appliances/{applianceid}/actions/"/>
+      <rest request="post" path="/appliances/{applianceid}/action/"/>
       <desc>
         Reads an OVF file into the appliance object.
 
@@ -4463,7 +4463,7 @@
     </method>
 
     <method name="interpret">
-      <rest request="post" path="/appliances/{applianceid}/actions/"/>
+      <rest request="post" path="/appliances/{applianceid}/action/"/>
       <desc>
         Interprets the OVF data that was read when the appliance was constructed. After
         calling this method, one can inspect the
@@ -4481,7 +4481,7 @@
     </method>
 
     <method name="importMachines">
-      <rest request="post" path="/appliances/{applianceid}/actions/"/>
+      <rest request="post" path="/appliances/{applianceid}/action/"/>
       <desc>
         Imports the appliance into VirtualBox by creating instances of <link to="IMachine" />
         and other interfaces that match the information contained in the appliance as
@@ -4521,7 +4521,7 @@
     </method>
 
     <method name="write">
-      <rest request="post" path="/appliances/{applianceid}/actions/"/>
+      <rest request="post" path="/appliances/{applianceid}/action/"/>
       <desc>
           Writes the contents of the appliance exports into a new OVF file.
 
@@ -5838,7 +5838,7 @@
 
   <interface
     name="IGraphicsAdapter" extends="$unknown"
-    uuid="f692806f-febe-4049-b476-1292a8e45b09"
+    uuid="13ee6eb4-06fe-406b-ad69-f6e08b0587a3"
     wsmap="managed"
     rest="managed"
     reservedMethods="4" reservedAttributes="8"
@@ -5856,18 +5856,6 @@
       <desc>Video memory size in megabytes.</desc>
     </attribute>
 
-    <attribute name="accelerate3DEnabled" type="boolean" default="false">
-      <desc>
-        This setting determines whether VirtualBox allows this machine to make
-        use of the 3D graphics support available on the host.</desc>
-    </attribute>
-
-    <attribute name="accelerate2DVideoEnabled" type="boolean" default="false">
-      <desc>
-        This setting determines whether VirtualBox allows this machine to make
-        use of the 2D video acceleration support available on the host.</desc>
-    </attribute>
-
     <attribute name="monitorCount" type="unsigned long">
       <desc>
         Number of virtual monitors.
@@ -5877,6 +5865,35 @@
         </note>
       </desc>
     </attribute>
+
+    <method name="setFeature">
+      <desc>Sets a graphics controller feature.
+        <result name="VBOX_E_NOT_SUPPORTED">
+          The feature is not supported on the current platform.
+        </result>
+      </desc>
+      <param name="feature" type="GraphicsFeature" dir="in">
+        <desc>
+          Graphics controller feature to set.
+        </desc>
+      </param>
+      <param name="enabled" type="boolean" dir="in">
+        <desc>
+          Whether to enable or disable the feature.
+        </desc>
+      </param>
+    </method>
+
+    <method name="isFeatureEnabled" const="yes">
+      <desc>Returns whether a particular feature is enabled for this adapter
+        or not.</desc>
+      <param name="feature" type="GraphicsFeature" dir="in">
+        <desc>Feature to check for.</desc>
+      </param>
+      <param name="enabled" type="boolean" dir="return">
+        <desc>@c true if the feature is enabled, @c false if not.</desc>
+      </param>
+    </method>
 
   </interface>
 
@@ -6854,6 +6871,22 @@
   </enum>
 
   <enum
+    name="GraphicsFeature"
+    uuid="5cd900a5-ec77-4a08-8f8d-c0a36f462a7c"
+    >
+    <desc>Graphics features.</desc>
+    <const name="None"          value="0">
+      <desc>No feature specified, invalid.</desc>
+    </const>
+    <const name="Acceleration2DVideo" value="1">
+      <desc>2D video acceleration.</desc>
+    </const>
+    <const name="Acceleration3D" value="2">
+      <desc>3D acceleration.</desc>
+    </const>
+  </enum>
+
+  <enum
     name="CleanupMode"
     uuid="67897c50-7cca-47a9-83f6-ce8fd8eb5441"
     >
@@ -7662,11 +7695,11 @@
     </attribute>
 
     <attribute name="CPUIDPortabilityLevel" type="unsigned long">
-      <desc>Virtual CPUID portability level, the higher number the fewer newer
-        or vendor specific CPU feature is reported to the guest (via the CPUID
+      <desc>Virtual CPUID portability level. The higher the number the fewer
+        vendor-specific or recent CPU features are reported to the guest (via the CPUID
         instruction).  The default level of zero (0) means that all virtualized
-        features supported by the host is pass thru to the guest.  While the
-        three (3) is currently the level supressing the most features.
+        features supported by the host are passed through to the guest.  While the
+        value of three (3) is currently the level suppressing the most features.
 
         Exactly which of the CPUID features are left out by the VMM at which
         level is subject to change with each major version.
@@ -8206,7 +8239,7 @@
     </attribute>
 
     <method name="lockMachine">
-      <rest name="lock" request="post" path="/vms/{vmid}/actions/"/>
+      <rest name="lock" request="post" path="/vms/{vmid}/action/"/>
       <desc>
         Locks the machine for the given session to enable the caller
         to make changes to the machine or start the VM or control
@@ -8306,7 +8339,7 @@
     </method>
 
     <method name="launchVMProcess">
-      <rest name="launch" request="post" path="/vms/{vmid}/actions/"/>
+      <rest name="launch" request="post" path="/vms/{vmid}/action/"/>
       <desc>
         Spawns a new process that will execute the virtual machine and obtains a shared
         lock on the machine for the calling session.
@@ -8971,7 +9004,7 @@
     </method>
 
     <method name="unmountMedium">
-      <rest name="unmount" request="post" path="/vms/{vmid}/media/{mediumid}/actions/"/>
+      <rest name="unmount" request="post" path="/vms/{vmid}/media/action/"/>
       <desc>
         Unmounts any currently mounted medium (<link to="IMedium" />,
         identified by the given UUID @a id) to the given storage controller
@@ -9024,7 +9057,7 @@
     </method>
 
     <method name="mountMedium">
-      <rest name="mount" request="post" path="/vms/{vmid}/media/{mediumid}/actions/"/>
+      <rest name="mount" request="post" path="/vms/{vmid}/media/action/"/>
       <desc>
         Mounts a medium (<link to="IMedium" />, identified
         by the given UUID @a id) to the given storage controller
@@ -9079,7 +9112,7 @@
     </method>
 
     <method name="getMedium" const="yes">
-      <rest name="find" request="get" path="/vms/{vmid}/media/{mediumid}/"/>
+      <rest name="find" request="get" path="/vms/{vmid}/media/"/>
       <desc>
         Returns the virtual medium attached to a device slot of the specified
         bus.
@@ -9566,7 +9599,7 @@
     </method>
 
     <method name="unregister" wrap-hint-server="limitedcaller,passcaller">
-      <rest request="post" path="/vms/{vmid}/actions/"/>
+      <rest request="post" path="/vms/{vmid}/action/"/>
       <desc>
         Unregisters a machine previously registered with
         <link to="IVirtualBox::registerMachine"/> and optionally do additional
@@ -9701,7 +9734,7 @@
     </method>
 
     <method name="exportTo">
-      <rest name="export" request="post" path="/vms/{vmid}/actions/"/>
+      <rest name="export" request="post" path="/vms/{vmid}/action/"/>
       <desc>Exports the machine to an OVF appliance. See <link to="IAppliance" /> for the
             steps required to export VirtualBox machines to OVF.
       </desc>
@@ -9742,7 +9775,7 @@
     </method>
 
     <method name="createSharedFolder">
-      <rest request="post" path="/vms/{vmid}/methods/"/>
+      <rest request="post" path="/vms/{vmid}/method/"/>
       <desc>
         Creates a new permanent shared folder by associating the given logical
         name with the given host path, adds it to the collection of shared
@@ -9779,7 +9812,7 @@
     </method>
 
     <method name="removeSharedFolder">
-      <rest request="delete" path="/vms/{vmid}/methods/"/>
+      <rest request="delete" path="/vms/{vmid}/method/"/>
       <desc>
         Removes the permanent shared folder with the given name previously
         created by <link to="#createSharedFolder"/> from the collection of
@@ -10285,7 +10318,7 @@
     </method>
 
     <method name="cloneTo">
-      <rest name="clone" request="post" path="/vms/{vmid}/actions/"/>
+      <rest name="clone" request="post" path="/vms/{vmid}/action/"/>
       <desc>
         Creates a clone of this machine, either as a full clone (which means
         creating independent copies of the hard disk media, save states and so
@@ -10321,7 +10354,7 @@
     </method>
 
     <method name="moveTo">
-      <rest name="move" request="post" path="/vms/{vmid}/actions/"/>
+      <rest name="move" request="post" path="/vms/{vmid}/action/"/>
       <desc>
         Move machine on to new place/folder
       </desc>
@@ -10348,7 +10381,7 @@
     </method>
 
     <method name="saveState">
-      <rest name="save" request="post" path="/vms/{vmid}/actions/"/>
+      <rest name="save" request="post" path="/vms/{vmid}/action/"/>
       <desc>
         Saves the current execution state of a running virtual machine
         and stops its execution.
@@ -10422,7 +10455,7 @@
     </method>
 
     <method name="discardSavedState">
-      <rest request="post" path="/vms/{vmid}/actions/"/>
+      <rest request="post" path="/vms/{vmid}/action/"/>
       <desc>
         Forcibly resets the machine to "Powered Off" state if it is
         currently in the "Saved" state previously created by <link to="#saveState"/>)
@@ -10450,7 +10483,7 @@
     </method>
 
     <method name="takeSnapshot">
-      <rest request="put" path="/vms/{vmid}/actions/"/>
+      <rest request="put" path="/vms/{vmid}/action/"/>
       <desc>
         Saves the current execution state
         and all settings of the machine and creates differencing images
@@ -10498,7 +10531,7 @@
     </method>
 
     <method name="deleteSnapshot">
-      <rest request="delete" path="/vms/{vmid}/actions/"/>
+      <rest request="delete" path="/vms/{vmid}/action/"/>
       <desc>
         Starts deleting the specified snapshot asynchronously.
         See <link to="ISnapshot" /> for an introduction to snapshots.
@@ -10570,7 +10603,7 @@
     </method>
 
     <method name="deleteSnapshotAndAllChildren">
-      <rest request="post" path="/vms/{vmid}/actions/"/>
+      <rest request="post" path="/vms/{vmid}/action/"/>
       <desc>
         Starts deleting the specified snapshot and all its children
         asynchronously. See <link to="ISnapshot" /> for an introduction to
@@ -10604,7 +10637,7 @@
     </method>
 
     <method name="deleteSnapshotRange">
-      <rest request="post" path="/vms/{vmid}/actions/"/>
+      <rest request="post" path="/vms/{vmid}/action/"/>
       <desc>
         Starts deleting the specified snapshot range. This is limited to
         linear snapshot lists, which means there may not be any other child
@@ -10643,7 +10676,7 @@
     </method>
 
     <method name="restoreSnapshot">
-      <rest request="post" path="/vms/{vmid}/actions/"/>
+      <rest request="post" path="/vms/{vmid}/action/"/>
       <desc>
         Starts resetting the machine's current state to the state contained
         in the given snapshot, asynchronously. All current settings of the
@@ -11176,7 +11209,7 @@
     </attribute>
 
     <method name="powerUp">
-      <rest request="post" path="/vms/{vmid}/console/actions/"/>
+      <rest request="post" path="/vms/{vmid}/console/action/"/>
       <desc>
         Starts the virtual machine execution using the current machine
         state (that is, its current execution state, current settings and
@@ -11229,7 +11262,7 @@
     </method>
 
     <method name="powerUpPaused">
-      <rest request="post" path="/vms/{vmid}/console/actions/"/>
+      <rest request="post" path="/vms/{vmid}/console/action/"/>
       <desc>
         Identical to powerUp except that the VM will enter the
         <link to="MachineState_Paused"/> state, instead of
@@ -11252,7 +11285,7 @@
     </method>
 
     <method name="powerDown">
-      <rest request="post" path="/vms/{vmid}/console/actions/"/>
+      <rest request="post" path="/vms/{vmid}/console/action/"/>
       <desc>
         Initiates the power down procedure to stop the virtual machine
         execution.
@@ -11270,7 +11303,7 @@
     </method>
 
     <method name="reset">
-      <rest request="post" path="/vms/{vmid}/console/actions/"/>
+      <rest request="post" path="/vms/{vmid}/console/action/"/>
       <desc>Resets the virtual machine.
         <result name="VBOX_E_INVALID_VM_STATE">
           Virtual machine not in Running state.
@@ -11282,7 +11315,7 @@
     </method>
 
     <method name="pause">
-      <rest request="post" path="/vms/{vmid}/console/actions/"/>
+      <rest request="post" path="/vms/{vmid}/console/action/"/>
       <desc>Pauses the virtual machine execution.
         <result name="VBOX_E_INVALID_VM_STATE">
           Virtual machine not in Running state.
@@ -11294,7 +11327,7 @@
     </method>
 
     <method name="resume">
-      <rest request="post" path="/vms/{vmid}/console/actions/"/>
+      <rest request="post" path="/vms/{vmid}/console/action/"/>
       <desc>Resumes the virtual machine execution.
         <result name="VBOX_E_INVALID_VM_STATE">
           Virtual machine not in Paused state.
@@ -11306,7 +11339,7 @@
     </method>
 
     <method name="powerButton">
-      <rest request="post" path="/vms/{vmid}/console/actions/"/>
+      <rest request="post" path="/vms/{vmid}/console/action/"/>
       <desc>Sends the ACPI power button event to the guest.
         <result name="VBOX_E_INVALID_VM_STATE">
           Virtual machine not in Running state.
@@ -11318,7 +11351,7 @@
     </method>
 
     <method name="sleepButton">
-      <rest request="post" path="/vms/{vmid}/console/actions/"/>
+      <rest request="post" path="/vms/{vmid}/console/action/"/>
       <desc>Sends the ACPI sleep button event to the guest.
         <result name="VBOX_E_INVALID_VM_STATE">
           Virtual machine not in Running state.
@@ -11464,7 +11497,7 @@
     </method>
 
     <method name="createSharedFolder">
-      <rest request="post" path="/vms/{vmid}/console/methods/"/>
+      <rest request="post" path="/vms/{vmid}/console/method/"/>
       <desc>
         Creates a transient new shared folder by associating the given logical
         name with the given host path, adds it to the collection of shared
@@ -11500,7 +11533,7 @@
     </method>
 
     <method name="removeSharedFolder">
-      <rest request="post" path="/vms/{vmid}/console/methods/"/>
+      <rest request="post" path="/vms/{vmid}/console/method/"/>
       <desc>
         Removes a transient shared folder with the given name previously
         created by <link to="#createSharedFolder"/> from the collection of
@@ -11557,7 +11590,7 @@
     </method>
 
     <method name="addEncryptionPassword">
-      <rest request="post" path="/vms/{vmid}/console/methods/"/>
+      <rest request="post" path="/vms/{vmid}/console/method/"/>
       <desc>
         Adds a password used for encryption/decryption.
 
@@ -11584,7 +11617,7 @@
     </method>
 
     <method name="addEncryptionPasswords">
-      <rest request="post" path="/vms/{vmid}/console/methods/"/>
+      <rest request="post" path="/vms/{vmid}/console/method/"/>
       <desc>
         Adds a password used for encryption/decryption.
 
@@ -11611,7 +11644,7 @@
     </method>
 
     <method name="removeEncryptionPassword">
-      <rest request="post" path="/vms/{vmid}/console/methods/"/>
+      <rest request="post" path="/vms/{vmid}/console/method/"/>
       <desc>
         Removes a password used for hard disk encryption/decryption from
         the running VM. As soon as the medium requiring this password
@@ -11627,7 +11660,7 @@
     </method>
 
     <method name="clearAllEncryptionPasswords">
-      <rest request="post" path="/vms/{vmid}/console/methods/"/>
+      <rest request="post" path="/vms/{vmid}/console/method/"/>
       <desc>Clears all provided supplied encryption passwords.</desc>
     </method>
   </interface>
@@ -12375,7 +12408,7 @@
 
   <interface
     name="IHost" extends="$unknown"
-    uuid="89b05229-cecf-4ef6-816f-c0c13f2c4da3"
+    uuid="d5dcece0-b202-4416-a138-03502784cc07"
     wsmap="managed"
     rest="managed"
     reservedMethods="6" reservedAttributes="12"
@@ -12558,10 +12591,6 @@
 
     <attribute name="UTCTime" type="long long" readonly="yes">
       <desc>Returns the current host time in milliseconds since 1970-01-01 UTC.</desc>
-    </attribute>
-
-    <attribute name="acceleration3DAvailable" type="boolean" readonly="yes">
-      <desc>Returns @c true when the host supports 3D hardware acceleration.</desc>
     </attribute>
 
     <method name="createHostOnlyNetworkInterface">
@@ -12906,7 +12935,7 @@
   <interface
     name="IPlatformProperties"
     extends="$unknown"
-    uuid="a23502e4-cc54-490f-a344-c8ca8813f906"
+    uuid="5bae19d0-ca40-4ca2-a485-c8065190bbe5"
     wsmap="managed"
     rest="managed"
     reservedMethods="4" reservedAttributes="16"
@@ -12985,7 +13014,7 @@
       </desc>
     </attribute>
 
-    <attribute name="supportedGraphicsControllerTypes" type="GraphicsControllerType" safearray="yes" readonly="yes">
+    <attribute name="supportedGfxControllerTypes" type="GraphicsControllerType" safearray="yes" readonly="yes">
       <desc>
         Returns an array of officially supported values for enum <link to="GraphicsControllerType"/>,
         in the sense of what is e.g. worth offering in the VirtualBox GUI.
@@ -13194,6 +13223,20 @@
       </param>
     </method>
 
+    <method name="getSupportedGfxFeaturesForType">
+      <desc>
+        Returns the supported features of a given graphics controller.
+      </desc>
+
+      <param name="graphicsControllerType" type="GraphicsControllerType" dir="in">
+        <desc>Graphics controller type to return features for.</desc>
+      </param>
+
+      <param name="supportedControllerFeatures" type="GraphicsFeature" safearray="yes" dir="return">
+        <desc>The graphics controller features which are valid.</desc>
+      </param>
+    </method>
+
     <method name="getDeviceTypesForStorageBus">
       <desc>Returns list of all the supported device types
         (<link to="DeviceType"/>) for the given type of storage
@@ -13290,7 +13333,7 @@
   <interface
     name="ISystemProperties"
     extends="$unknown"
-    uuid="c61e666e-34ab-403a-8160-78bd4512ca86"
+    uuid="925084b0-625f-422f-a67d-0ede1880a56c"
     wsmap="managed"
     rest="managed"
     reservedMethods="4" reservedAttributes="16"
@@ -13656,6 +13699,14 @@
       <desc>
         Returns an array of officially supported values for enum <link to="ExportOptions"/>,
         in the sense of what is e.g. worth offering in the VirtualBox GUI.
+      </desc>
+    </attribute>
+
+    <attribute name="supportedGraphicsFeatures" type="GraphicsFeature" safearray="yes" readonly="yes">
+      <desc>
+        Returns an array of officially supported values for enum <link to="GraphicsFeature"/> on the host side.
+        For querying supported features of a specific graphics controller, use
+        <link to="IPlatformProperties::getSupportedGfxFeaturesForType"/>.
       </desc>
     </attribute>
 
@@ -15120,9 +15171,10 @@
     </const>
   </enum>
 
+  <!-- Note: Must match GSTCTLDIR_F_XXX. -->
   <enum
     name="DirectoryOpenFlag"
-    uuid="5138837a-8fd2-4194-a1b0-08f7bc3949d0"
+    uuid="92f838f6-cbf9-4760-bb63-92c567773366"
     >
     <desc>
       Directory open flags.
@@ -15133,7 +15185,16 @@
     <const name="NoSymlinks"            value="1">
       <desc>Don't allow symbolic links as part of the path.</desc>
     </const>
-<!-- r=bird: need a "NoFollowSymlinks" value here.  IPRT probably needs that too. -->
+    <const name="DenyAscent"            value="2">
+      <desc>Deny relative opening of anything above this directory.
+
+      Not implemented yet.</desc>
+    </const>
+    <const name="NoFollowSymlinks"      value="4">
+      <desc>Don't follow symbolic links in the final component.
+
+      Not implemented yet.</desc>
+    </const>
   </enum>
 
   <interface
@@ -18153,7 +18214,7 @@
     <attribute name="eventSource" type="IEventSource" readonly="yes" rest="suppress"/>
 
     <method name="waitForCompletion">
-      <rest request="post" path="/progresses/{progressid}/actions/"/>
+      <rest request="post" path="/progresses/{progressid}/action/"/>
       <desc>
           Waits until the task is done (including all sub-operations)
           with a given timeout in milliseconds; specify -1 for an indefinite wait.
@@ -18179,7 +18240,7 @@
     </method>
 
     <method name="waitForOperationCompletion">
-      <rest request="post" path="/progresses/{progressid}/actions/"/>
+      <rest request="post" path="/progresses/{progressid}/action/"/>
       <desc>
           Waits until the given operation is done with a given timeout in
           milliseconds; specify -1 for an indefinite wait.
@@ -18205,7 +18266,7 @@
     </method>
 
     <method name="cancel">
-      <rest request="post" path="/progresses/{progressid}/actions/"/>
+      <rest request="post" path="/progresses/{progressid}/action/"/>
       <desc>
         Cancels the task.
         <note>
@@ -19561,7 +19622,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="close" wrap-hint-server="passcaller">
-      <rest request="post" path="/media/{mediumid}/actions/"/>
+      <rest request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Closes this medium.
 
@@ -19722,7 +19783,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <!-- storage methods -->
 
     <method name="createBaseStorage">
-      <rest request="post" path="/media/{mediumid}/actions/"/>
+      <rest request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Starts creating a hard disk storage unit (fixed/dynamic, according
         to the variant flags) in the background. The previous storage unit
@@ -19757,7 +19818,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="deleteStorage">
-      <rest request="post" path="/media/{mediumid}/actions/"/>
+      <rest request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Starts deleting the storage unit of this medium.
 
@@ -19804,7 +19865,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <!-- diff methods -->
 
     <method name="createDiffStorage" wrap-hint-server="passcaller">
-      <rest request="post" path="/media/{mediumid}/actions/"/>
+      <rest request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Starts creating an empty differencing storage unit based on this
         medium in the format and at the location defined by the @a target
@@ -19842,7 +19903,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="mergeTo">
-      <rest request="post" path="/media/{mediumid}/actions/"/>
+      <rest request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Starts merging the contents of this medium and all intermediate
         differencing media in the chain to the given target medium.
@@ -19925,7 +19986,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <!-- clone method -->
 
     <method name="cloneTo">
-      <rest request="post" path="/media/{mediumid}/actions/"/>
+      <rest request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Starts creating a clone of this medium in the format and at the
         location defined by the @a target argument.
@@ -19975,7 +20036,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="cloneToBase">
-      <rest request="post" path="/media/{mediumid}/actions/"/>
+      <rest request="post" path="/media/{mediumid}/action/"/>
     <desc>
     Starts creating a clone of this medium in the format and at the
     location defined by the @a target argument.
@@ -20023,7 +20084,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <!-- other methods -->
 
     <method name="moveTo" wrap-hint-server="passcaller">
-      <rest request="post" path="/media/{mediumid}/actions/"/>
+      <rest request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Changes the location of this medium. Some medium types may support
         changing the storage unit location by simply changing the value of the
@@ -20060,7 +20121,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="compact">
-      <rest request="post" path="/media/{mediumid}/actions/"/>
+      <rest request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Starts compacting of this medium. This means that the medium is
         transformed into a possibly more compact storage representation.
@@ -20087,7 +20148,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="resize">
-      <rest request="post" path="/media/{mediumid}/actions/"/>
+      <rest request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Starts resizing this medium. This means that the nominal size of the
         medium is set to the new value. Both increasing and decreasing the
@@ -20119,7 +20180,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="reset" wrap-hint-server="passcaller">
-      <rest request="post" path="/media/{mediumid}/actions/"/>
+      <rest request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Starts erasing the contents of this differencing medium.
 
@@ -20146,7 +20207,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="changeEncryption">
-      <rest request="post" path="/media/{mediumid}/actions/"/>
+      <rest request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Starts encryption of this medium. This means that the stored data in the
         medium is encrypted.
@@ -20240,7 +20301,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="resizeAndCloneTo">
-      <rest request="post" path="/media/{mediumid}/actions/"/>
+      <rest request="post" path="/media/{mediumid}/action/"/>
 
       <desc>
         This is a helper function that combines the functionality of
@@ -21967,6 +22028,10 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
             Unless you are writing a new VM frontend use
             <link to="#takeScreenShotToArray" />.
         </note>
+        <result name="VBOX_E_NOT_SUPPORTED">
+          Current screen configuration does not support taking a screen shot
+          (typically because it is 0x0 in size).
+        </result>
       </desc>
       <param name="screenId" type="unsigned long" dir="in"/>
       <param name="address" type="octet" mod="ptr" dir="in"/>
@@ -25509,7 +25574,6 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </attribute>
 
     <method name="unlockMachine">
-    <rest request="post" path="/sessions/{sessionId}/"/>
       <desc>
         Unlocks a machine that was previously locked for the current session.
 
