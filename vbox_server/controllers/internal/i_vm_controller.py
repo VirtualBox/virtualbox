@@ -50,6 +50,8 @@ from vbox_server.models.machine_attach_device_request_body import MachineAttachD
 from vbox_server.models.machine_detach_device_request_body import MachineDetachDeviceRequestBody  # noqa: E501
 from vbox_server.models.parallel_port_response import ParallelPortResponse  # noqa: E501
 from vbox_server.models.serial_port_response import SerialPortResponse  # noqa: E501
+from vbox_server.models.medium_attachment_array_response import MediumAttachmentArrayResponse  # noqa: E501
+from vbox_server.models.medium_response import MediumResponse  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
@@ -1950,6 +1952,106 @@ def i_machine_getserialport(vmid, select=None, slot=None):  # noqa: E501
         oError = Error(httpCode, str(e))
 
     response = jsonify(oError if oError is not None else oSerialPortResponse)
+    return response, httpCode
+
+
+def i_machine_getmedium(vmid, select=None, name=None, controllerPort=None, device=None):  # noqa: E501
+    """
+    Call interface method IMachine::getMedium
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param name: 
+    :type name: str
+    :param controllerPort: 
+    :type controllerPort: int
+    :param device: 
+    :type device: int
+
+    :rtype: MediumResponse
+    """
+
+    httpCode = 200 #(OK)
+
+    vbox_utils_commonChecks()
+
+    logging.info('Passed machine Id is ' + vmid)
+    logging.info('Passed name is ' + name)
+    logging.info('Passed controllerPort is ' + str(controllerPort))
+    logging.info('Passed device is ' + str(device))
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    fFound = False
+    oMediumResponse = MediumResponse()
+    try:
+        oVBoxMedium = oVM.getMedium(name, controllerPort, device)
+        oMediumResponse.medium = i_fill_medium(oVBoxMedium)
+        fFound = True
+    except Exception as e:
+        logging.info(str(e))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if fFound == False:
+        httpCode = HTTPStatus.NOT_FOUND
+        oError = Error(httpCode, str("The Medium wasn't found"))
+
+    response = jsonify(oError if oError is not None else oMediumResponse)
+    return response, httpCode
+
+
+def i_machine_getmediumattachmentsofcontroller(vmid, select=None, name=None):  # noqa: E501
+    """
+    Call interface method IMachine::getMediumAttachmentsOfController
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param name:
+    :type name: str
+
+    :rtype: MediumAttachmentArrayResponse
+    """
+
+    httpCode = HTTPStatus.OK
+
+    vbox_utils_commonChecks()
+
+    logging.info('Passed machine Id is ' + vmid)
+    logging.info('Passed name is ' + name)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oMediumAttachmentArrayResponse = MediumAttachmentArrayResponse()
+    olMediumAttachment = list()
+    try:
+        oVmMediumAttch = oVM.getMediumAttachmentsOfController(name)
+        for item in oVmMediumAttch:
+            oMediumAttachment = i_fill_medium_attachment(item)
+            olMediumAttachment.append(oMediumAttachment)
+
+        oMediumAttachmentArrayResponse.medium_attachments = olMediumAttachment
+
+    except Exception as e:
+        logging.info("Can't get medium attachments for VM '%s': %s" % (oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMediumAttachmentArrayResponse)
     return response, httpCode
 
 
