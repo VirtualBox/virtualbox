@@ -2382,46 +2382,6 @@ def i_machine_geteffectiveparavirtprovider(vmid):  # noqa: E501
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_machine_getmedium(vmid, mediumid, select=None, name=None, controllerPort=None, device=None):  # noqa: E501
-    """
-    Call interface method IMachine::getMedium
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param name: 
-    :type name: str
-    :param controllerPort: 
-    :type controllerPort: int
-    :param device: 
-    :type device: int
-
-    :rtype: MediumResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_getmediumattachmentsofcontroller(vmid, select=None, name=None):  # noqa: E501
-    """
-    Call interface method IMachine::getMediumAttachmentsOfController
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param name: 
-    :type name: str
-
-    :rtype: MediumAttachmentArrayResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
 def i_machine_getnetworkadapter(vmid, select=None, slot=None):  # noqa: E501
     """
     Call interface method IMachine::getNetworkAdapter
