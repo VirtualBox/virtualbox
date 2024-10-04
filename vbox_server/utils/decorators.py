@@ -17,13 +17,15 @@ def session_decorator(func):
     def wrapper_decorator(*args, **kwargs):
         args_repr = [a for a in args]
         vmid = args_repr[0]
-        oVM, oError = vbox_utils_find_machine(vmid)
+        oError = None
+
+        oVM, oErr = vbox_utils_find_machine(vmid)
         if oVM:
             #append the Machine object at the end of the argument's list
             args_repr.append(oVM)
         else:
-            logging.info (oError)
-            return jsonify(oError), HTTPStatus.NOT_FOUND
+            logging.info (oErr)
+            return jsonify(oErr), HTTPStatus.NOT_FOUND
 
         #Open machine session
         oSession = None
@@ -86,13 +88,15 @@ def open_exclusive_session(func):
     def wrapper_decorator(*args, **kwargs):
         args_repr = [a for a in args]
         vmid = args_repr[0]
-        oVM, oError = vbox_utils_find_machine(vmid)
+        oError = None
+
+        oVM, oErr = vbox_utils_find_machine(vmid)
         if oVM:
             #append the Machine object at the end of the argument's list
             args_repr.append(oVM)
         else:
-            logging.info (oError)
-            return jsonify(oError), HTTPStatus.NOT_FOUND
+            logging.info (oErr)
+            return jsonify(oErr), HTTPStatus.NOT_FOUND
 
         #Open machine session with LockType_Write (call openMachineSession with False)
         oSession = None
@@ -136,13 +140,15 @@ def open_session(func):
     def wrapper_decorator(*args, **kwargs):
         args_repr = [a for a in args]
         vmid = args_repr[0]
-        oVM, oError = vbox_utils_find_machine(vmid)
+        oError = None
+
+        oVM, oErr = vbox_utils_find_machine(vmid)
         if oVM:
             #append the Machine object at the end of the argument's list
             args_repr.append(oVM)
         else:
-            logging.info (oError)
-            return jsonify(oError), HTTPStatus.NOT_FOUND
+            logging.info (oErr)
+            return jsonify(oErr), HTTPStatus.NOT_FOUND
 
         oSession = None
         try:
