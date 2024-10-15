@@ -199,3 +199,84 @@ def swagger_to_vbox_machine_state(machineState: str):
         vBoxMachineState = None
 
     return vBoxMachineState
+
+
+def swagger_to_vbox_hw_virt_ex_property(property: str):
+    if property == "ENABLED":
+        vBoxHWVirtExProperty = ctx['const'].HWVirtExPropertyType_Enabled
+    elif property == "VPID":
+        vBoxHWVirtExProperty = ctx['const'].HWVirtExPropertyType_VPID
+    elif property == "NESTEDPAGING":
+        vBoxHWVirtExProperty = ctx['const'].HWVirtExPropertyType_NestedPaging
+    elif property == "LARGEPAGES":
+        vBoxHWVirtExProperty = ctx['const'].HWVirtExPropertyType_LargePages
+    elif property == "FORCE":
+        vBoxHWVirtExProperty = ctx['const'].HWVirtExPropertyType_Force
+    elif property == "USENATIVEAPI":
+        vBoxHWVirtExProperty = ctx['const'].HWVirtExPropertyType_UseNativeApi
+    elif property == "VIRTVMSAVEVMLOAD":
+        vBoxHWVirtExProperty = ctx['const'].HWVirtExPropertyType_VirtVmsaveVmload
+    elif property == "UNRESTRICTEDEXECUTION":
+        vBoxHWVirtExProperty = ctx['const'].HWVirtExPropertyType_UnrestrictedExecution
+    else:
+        vBoxHWVirtExProperty = None # ctx['const'].HWVirtExPropertyType_Null
+    
+    return vBoxHWVirtExProperty
+
+
+def swagger_to_vbox_cpu_x86_property(property: str):
+    if property == "PAE":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_PAE
+    elif property == "LONGMODE":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_LongMode
+    elif property == "TRIPLEFAULTRESET":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_TripleFaultReset
+    elif property == "APIC":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_APIC
+    elif property == "X2APIC":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_X2APIC
+    elif property == "IBPBONVMEXIT":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_IBPBOnVMExit
+    elif property == "IBPBONVMENTRY":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_IBPBOnVMEntry
+    elif property == "HWVIRT":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_HWVirt
+    elif property == "SPECCTRL":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_SpecCtrl
+    elif property == "SPECCTRLBYHOST":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_SpecCtrlByHost
+    elif property == "L1DFLUSHONEMTSCHEDULING":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_L1DFlushOnEMTScheduling
+    elif property == "L1DFLUSHONVMENTRY":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_L1DFlushOnVMEntry
+    elif property == "MDSCLEARONEMTSCHEDULING":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_MDSClearOnEMTScheduling
+    elif property == "MDSCLEARONVMENTRY":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_MDSClearOnVMEntry
+    else:
+        vBoxCPUProperty = None # ctx['const'].CPUPropertyTypeX86_Null
+
+    return vBoxCPUProperty
+
+
+def swagger_to_vbox_storage_bus(storageBus: str):
+    if storageBus == "IDE":
+        vBoxStorageBus = ctx['const'].StorageBus_IDE
+    elif storageBus == "SATA":
+        vBoxStorageBus = ctx['const'].StorageBus_SATA
+    elif storageBus == "SCSI":
+        vBoxStorageBus = ctx['const'].StorageBus_SCSI
+    elif storageBus == "FLOPPY":
+        vBoxStorageBus = ctx['const'].StorageBus_Floppy
+    elif storageBus == "SAS":
+        vBoxStorageBus = ctx['const'].StorageBus_SAS
+    elif storageBus == "USB":
+        vBoxStorageBus = ctx['const'].StorageBus_USB
+    elif storageBus == "PCIE":
+        vBoxStorageBus = ctx['const'].StorageBus_PCIe
+    elif storageBus == "VIRTIOSCSI":
+        vBoxStorageBus = ctx['const'].StorageBus_VirtioSCSI
+    else:
+        vBoxStorageBus = None
+
+    return vBoxStorageBus
