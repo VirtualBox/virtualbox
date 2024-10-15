@@ -2269,6 +2269,38 @@ def i_machine_restoresnapshot(vmid, snapshot=None, *var_args_tuple):  # noqa: E5
     return response, httpCode
 
 
+def i_machine_deletesnapshotandallchildren(vmid, id=None):  # noqa: E501
+    """
+    Call interface method IMachine::deleteSnapshotAndAllChildren
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param id: 
+    :type id: str
+
+    :rtype: ProgressResponse
+    """
+
+    # This API method is right now not implemented! See the official VirtualBox.xidl
+    return "This API method is right now not implemented!", HTTPStatus.NOT_IMPLEMENTED
+
+
+def i_machine_deletesnapshotrange(vmid, oMachineDeleteSnapshotRangeRequestBody):  # noqa: E501
+    """
+    Call interface method IMachine::deleteSnapshotRange
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineDeleteSnapshotRangeRequestBody:
+    :type oMachineDeleteSnapshotRangeRequestBody: dict | bytes
+
+    :rtype: ProgressResponse
+    """
+
+    # This API method is right now not implemented! See the official VirtualBox.xidl
+    return "This API method is right now not implemented!", HTTPStatus.NOT_IMPLEMENTED
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -2443,36 +2475,6 @@ def i_machine_deleteguestproperty(vmid, name=None):  # noqa: E501
     :type name: str
 
     :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_deletesnapshotandallchildren(vmid, id=None):  # noqa: E501
-    """
-    Call interface method IMachine::deleteSnapshotAndAllChildren
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param id: 
-    :type id: str
-
-    :rtype: ProgressResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_deletesnapshotrange(vmid, oMachineDeleteSnapshotRangeRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::deleteSnapshotRange
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineDeleteSnapshotRangeRequestBody: 
-    :type oMachineDeleteSnapshotRangeRequestBody: dict | bytes
-
-    :rtype: ProgressResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
