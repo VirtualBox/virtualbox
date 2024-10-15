@@ -3043,7 +3043,7 @@
     </method>
 
     <method name="getPlatformProperties">
-      <rest name="getPlatformProperties" request="get" path="/platform/properties"/>
+      <rest name="getPlatformProperties" request="get" path="/platforms/properties/"/>
       <desc>
         Gets the associated properties object for the given VM platform architecture.
       </desc>
@@ -9887,7 +9887,7 @@
     </method>
 
     <method name="getGuestProperty" const="yes">
-      <rest name="Property" request="get" path="/vms/{vmid}/guest/"/>
+      <rest name="property" request="get" path="/vms/{vmid}/guest/configuration/"/>
 
       <desc>
         Reads an entry from the machine's guest property store.
@@ -9923,6 +9923,7 @@
     </method>
 
     <method name="getGuestPropertyValue" const="yes">
+      <rest name="propertyvalue" request="get" path="/vms/{vmid}/guest/configuration/"/>
       <desc>
         Reads a value from the machine's guest property store.
 
@@ -9945,6 +9946,7 @@
     </method>
 
     <method name="getGuestPropertyTimestamp" const="yes">
+      <rest name="propertytimestamp" request="get" path="/vms/{vmid}/guest/configuration/"/>
       <desc>
         Reads a property timestamp from the machine's guest property store.
 
@@ -9967,7 +9969,7 @@
     </method>
 
     <method name="setGuestProperty">
-      <rest name="Property" request="patch" path="/vms/{vmid}/guest/"/>
+      <rest name="property" request="post" path="/vms/{vmid}/guest/configuration/"/>
       <desc>
         Sets, changes or deletes an entry in the machine's guest property
         store.
@@ -10008,6 +10010,7 @@
     </method>
 
     <method name="setGuestPropertyValue">
+      <rest name="propertyvalue" request="post" path="/vms/{vmid}/guest/configuration/"/>
       <desc>
         Sets or changes a value in the machine's guest property
         store. The flags field will be left unchanged or created empty for a
@@ -10039,7 +10042,7 @@
     </method>
 
     <method name="deleteGuestProperty" const="yes">
-      <rest name="Property" request="delete" path="/vms/{vmid}/guest/"/>
+      <rest name="property" request="delete" path="/vms/{vmid}/guest/configuration/"/>
       <desc>
         Deletes an entry from the machine's guest property store.
 
@@ -10056,6 +10059,7 @@
     </method>
 
     <method name="enumerateGuestProperties" const="yes">
+      <rest request="get" path="/vms/{vmid}/guest/configuration/"/>
       <desc>
         Return a list of the guest properties matching a set of patterns along
         with their values, timestamps and flags.
@@ -23400,6 +23404,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </attribute>
 
     <method name="createDeviceFilter">
+      <rest name='create' request="post" path="/usbs/{vmid}/devicefilter/"/>
       <desc>
         Creates a new USB device filter. All attributes except
         the filter name are set to empty (any match),
@@ -23426,6 +23431,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="insertDeviceFilter">
+      <rest name='insert' request="patch" path="/usbs/{vmid}/devicefilter/{filterid}/action/"/>
       <desc>
         Inserts the given USB device to the specified position
         in the list of filters.
@@ -23461,6 +23467,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="removeDeviceFilter">
+      <rest name='remove' request="delete" path="/usbs/devicefilter/"/>
       <desc>
         Removes a USB device filter from the specified position in the
         list of filters.
