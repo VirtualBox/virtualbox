@@ -22,6 +22,7 @@ from vbox_server.models.session import Session
 from vbox_server.models.usb_device import USBDevice
 from vbox_server.models.serial_port import SerialPort
 from vbox_server.models.parallel_port import ParallelPort
+from vbox_server.models.snapshot import Snapshot
 
 from vbox_server.models.virtual_box_error_info import VirtualBoxErrorInfo
 
@@ -2889,3 +2890,163 @@ def i_fill_partial_parallel_port(oVBoxParallelPort, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oParallelPort
+
+def i_fill_snapshot(oVBoxSnapshot, select=None):
+  """Convert the passed VirtualBox object oVBoxSnapshot with interface ISnapshot into Swagger object oSnapshot"""
+  
+  logging.info('Enter function ')
+  oSnapshot = Snapshot()
+  try:
+    if oVBoxSnapshot is not None:
+      if select is not None and len(select)>0:
+        oSnapshot = i_fill_partial_snapshot(oVBoxSnapshot, select)
+      else:
+        oSnapshot = i_fill_whole_snapshot(oVBoxSnapshot)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oSnapshot = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxSnapshot into Swagger object oSnapshot. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oSnapshot
+
+def i_fill_whole_snapshot(oVBoxSnapshot):
+  logging.info('Enter function ')
+  oSnapshot = Snapshot()
+  try:
+    if oVBoxSnapshot is not None:
+      try:
+        oSnapshot.id = oVBoxSnapshot.id
+      except Exception as e:
+        logging.info('Error getting the attribute "id"')
+      try:
+        oSnapshot.name = oVBoxSnapshot.name
+      except Exception as e:
+        logging.info('Error getting the attribute "name"')
+      try:
+        oSnapshot.description = oVBoxSnapshot.description
+      except Exception as e:
+        logging.info('Error getting the attribute "description"')
+      try:
+        oSnapshot.time_stamp = oVBoxSnapshot.timeStamp
+      except Exception as e:
+        logging.info('Error getting the attribute "timeStamp"')
+      try:
+        oSnapshot.online = oVBoxSnapshot.online
+      except Exception as e:
+        logging.info('Error getting the attribute "online"')
+      try:
+        oSnapshot.machine = oVBoxSnapshot.machine.id
+      except Exception as e:
+        logging.info('Error getting the attribute "machine"')
+      try:
+        oSnapshot.parent = oVBoxSnapshot.parent.id
+      except Exception as e:
+        logging.info('Error getting the attribute "parent"')
+      try:
+        ol_children = ctx['global'].getArray(oVBoxSnapshot,'children')
+        oSnapshot.children = list()
+        for count, item in enumerate(ol_children):
+          oSnapshot.children.append(item.id)
+      except Exception as e:
+        logging.info('Error getting the array of "children"')
+      try:
+        oSnapshot.children_count = oVBoxSnapshot.childrenCount
+      except Exception as e:
+        logging.info('Error getting the attribute "childrenCount"')
+      
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oSnapshot = None
+    text = 'Exception trying to fill the object oSnapshot. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oSnapshot
+
+def i_fill_partial_snapshot(oVBoxSnapshot, select):
+  logging.info('Enter function ')
+  oSnapshot = Snapshot()
+  try:
+    if oVBoxSnapshot is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='id':
+            try:
+              oSnapshot.id = oVBoxSnapshot.id
+            except Exception as e:
+              logging.info('Error getting the attribute "id"')
+              raise Exception('Error getting the attribute "id"')
+            
+          if currAttr=='name':
+            try:
+              oSnapshot.name = oVBoxSnapshot.name
+            except Exception as e:
+              logging.info('Error getting the attribute "name"')
+              raise Exception('Error getting the attribute "name"')
+            
+          if currAttr=='description':
+            try:
+              oSnapshot.description = oVBoxSnapshot.description
+            except Exception as e:
+              logging.info('Error getting the attribute "description"')
+              raise Exception('Error getting the attribute "description"')
+            
+          if currAttr=='timeStamp':
+            try:
+              oSnapshot.time_stamp = oVBoxSnapshot.timeStamp
+            except Exception as e:
+              logging.info('Error getting the attribute "timeStamp"')
+              raise Exception('Error getting the attribute "timeStamp"')
+            
+          if currAttr=='online':
+            try:
+              oSnapshot.online = oVBoxSnapshot.online
+            except Exception as e:
+              logging.info('Error getting the attribute "online"')
+              raise Exception('Error getting the attribute "online"')
+            
+          if currAttr=='machine':
+            try:
+              oSnapshot.machine = oVBoxSnapshot.machine.id
+            except Exception as e:
+              logging.info('Error getting the attribute "machine"')
+              raise Exception('Error getting the attribute "machine"')
+            
+          if currAttr=='parent':
+            try:
+              oSnapshot.parent = oVBoxSnapshot.parent.id
+            except Exception as e:
+              logging.info('Error getting the attribute "parent"')
+              raise Exception('Error getting the attribute "parent"')
+            
+          if currAttr=='children':
+            try:
+              ol_children = ctx['global'].getArray(oVBoxSnapshot,'children')
+              oSnapshot.children = list()
+              for count, item in enumerate(ol_children):
+                oSnapshot.children.append(item.id)
+            except Exception as e:
+              logging.info('Error getting the array of "children"')
+              raise Exception('Error getting the array of "children"')
+            
+          if currAttr=='childrenCount':
+            try:
+              oSnapshot.children_count = oVBoxSnapshot.childrenCount
+            except Exception as e:
+              logging.info('Error getting the attribute "childrenCount"')
+              raise Exception('Error getting the attribute "childrenCount"')
+            
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oSnapshot = None
+    text = 'Exception trying to fill the object oSnapshot. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oSnapshot
