@@ -52,6 +52,7 @@ from vbox_server.models.parallel_port_response import ParallelPortResponse  # no
 from vbox_server.models.serial_port_response import SerialPortResponse  # noqa: E501
 from vbox_server.models.medium_attachment_array_response import MediumAttachmentArrayResponse  # noqa: E501
 from vbox_server.models.medium_response import MediumResponse  # noqa: E501
+from vbox_server.models.machine_takesnapshot_response import MachineTakesnapshotResponse  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
@@ -2035,6 +2036,70 @@ def i_machine_getmediumattachmentsofcontroller(vmid, select=None, name=None):  #
     return response, httpCode
 
 
+# close the session is done inside session_observer.py in SessionObserver::run()
+@openSession
+def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::takeSnapshot
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineTakeSnapshotRequestBody: 
+    :type oMachineTakeSnapshotRequestBody: dict | bytes
+
+    :rtype: MachineTakesnapshotResponse
+    """
+
+    httpCode = HTTPStatus.OK
+    oError = None
+
+    oVM = var_args_tuple[0]
+    vbox_utils_logVmInfo(oVM)
+
+    oSession = var_args_tuple[1]
+    oProgress = None
+    oCurrMachine = oSession.machine
+
+    fPause = oMachineTakeSnapshotRequestBody.pause
+    sName = oMachineTakeSnapshotRequestBody.name
+    sDescription = oMachineTakeSnapshotRequestBody.description
+
+    oMachineTakesnapshotResponse = MachineTakesnapshotResponse()
+
+    logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oCurrMachine.state))
+    
+    if oCurrMachine.state is ctx['const'].MachineState_Running:
+        sResponse = "REST API doesn't support snapshotting when machine is running"
+        logging.info (sResponse)
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, sResponse)
+
+    if oError is None:
+        try:
+            oProgress, uuidSnapshot = oCurrMachine.takeSnapshot(sName, sDescription, fPause)
+        except Exception as e:
+            logging.info("Exception during taking the snapshot '%s' for the machine with UUID '%s'" % (sName, oCurrMachine.id))
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    if oError is None:
+        try:
+            # Add Progress Id and Session object into the tracking lists
+            ctx['tracker'][oProgress.id] = oSession
+            ctx['vms'][oVM.id] = oProgress.id
+            oSession = None
+
+            oMachineTakesnapshotResponse.id = uuidSnapshot
+            oMachineTakesnapshotResponse.progress = i_fill_progress(oProgress)
+        except Exception as e:
+            logging.info("The action was successful. But an exception occurred while composing the response.")
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e) + " The action was successful. But an exception occurred while composing the response.")
+
+    response = jsonify(oError if oError is not None else oMachineTakesnapshotResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -2682,21 +2747,6 @@ def i_machine_setstoragecontrollerbootable(vmid, oMachineSetStorageControllerBoo
     :type oMachineSetStorageControllerBootableRequestBody: dict | bytes
 
     :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::takeSnapshot
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineTakeSnapshotRequestBody: 
-    :type oMachineTakeSnapshotRequestBody: dict | bytes
-
-    :rtype: MachineTakesnapshotResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
