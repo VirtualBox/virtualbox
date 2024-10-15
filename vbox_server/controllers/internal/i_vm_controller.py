@@ -53,6 +53,7 @@ from vbox_server.models.serial_port_response import SerialPortResponse  # noqa: 
 from vbox_server.models.medium_attachment_array_response import MediumAttachmentArrayResponse  # noqa: E501
 from vbox_server.models.medium_response import MediumResponse  # noqa: E501
 from vbox_server.models.machine_takesnapshot_response import MachineTakesnapshotResponse  # noqa: E501
+from vbox_server.models.snapshot_response import SnapshotResponse  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
@@ -2100,6 +2101,54 @@ def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody, *var_args_tupl
     return response, httpCode
 
 
+def i_machine_findsnapshot(vmid, select=None, nameOrId=None):  # noqa: E501
+    """
+    Call interface method IMachine::findSnapshot
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param nameOrId: 
+    :type nameOrId: str
+
+    :rtype: SnapshotResponse
+    """
+
+    httpCode = HTTPStatus.OK
+
+    vbox_utils_commonChecks()
+
+    logging.info('Passed machine Id is ' + vmid)
+    if nameOrId is None:
+        nameOrId = ''
+    logging.info('Passed nameOrId is ' + nameOrId)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oSnapshotResponse = SnapshotResponse()
+    try:
+        oSnapshot = oVM.findSnapshot(nameOrId)
+        if oSnapshot is None:
+            httpCode = HTTPStatus.NOT_FOUND
+            oError = Error(httpCode, "Snapshot with the name or Id %s wasn\'t found" % (nameOrId))
+            return jsonify(oError), httpCode
+
+        oSnapshotResponse.snapshot = i_fill_snapshot(oSnapshot)
+    except Exception as e:
+        logging.info("Exception during finding the snapshot '%s' for VM '%s': %s" % (nameOrId, oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oSnapshotResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -2377,23 +2426,6 @@ def i_machine_exportto(vmid, oMachineExportToRequestBody):  # noqa: E501
     :type oMachineExportToRequestBody: dict | bytes
 
     :rtype: VirtualSystemDescriptionResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_findsnapshot(vmid, select=None, nameOrId=None):  # noqa: E501
-    """
-    Call interface method IMachine::findSnapshot
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param nameOrId: 
-    :type nameOrId: str
-
-    :rtype: SnapshotResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
