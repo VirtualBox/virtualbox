@@ -1,4 +1,4 @@
-/* $Id: ExtPackManagerImpl.h 104702 2024-05-17 09:15:08Z andreas.loeffler@oracle.com $ */
+/* $Id: ExtPackManagerImpl.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VirtualBox Main - interface for Extension Packs, VBoxSVC & VBoxC.
  */

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: setup.sh 106225 2024-10-07 13:38:48Z klaus.espenlaub@oracle.com $
+# $Id: setup.sh 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ## @file
 # VirtualBox Validation Kit - TestBoxScript Service Setup on Unixy platforms.
 #
@@ -624,7 +624,7 @@ do
             exit 0;
             ;;
         -V|--version)
-            echo '$Revision: 106225 $'
+            echo '$Revision: 106320 $'
             exit 0;
             ;;
 

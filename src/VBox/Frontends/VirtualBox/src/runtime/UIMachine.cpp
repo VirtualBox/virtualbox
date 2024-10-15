@@ -1,4 +1,4 @@
-/* $Id: UIMachine.cpp 106292 2024-10-10 15:15:38Z sergey.dubov@oracle.com $ */
+/* $Id: UIMachine.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachine class implementation.
  */

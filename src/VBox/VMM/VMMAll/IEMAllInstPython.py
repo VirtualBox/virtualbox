@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# $Id: IEMAllInstPython.py 106181 2024-09-30 15:24:34Z knut.osmundsen@oracle.com $
+# $Id: IEMAllInstPython.py 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 
 """
 IEM instruction extractor.
@@ -43,7 +43,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 106181 $"
+__version__ = "$Revision: 106320 $"
 
 # pylint: disable=anomalous-backslash-in-string,too-many-lines
 

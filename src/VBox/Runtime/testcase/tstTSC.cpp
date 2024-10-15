@@ -1,4 +1,4 @@
-/* $Id: tstTSC.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: tstTSC.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT Testcase - SMP TSC testcase.
  */
@@ -447,7 +447,7 @@ int main(int argc, char **argv)
                 return 1;
 
             case 'V':
-                RTPrintf("$Revision: 106061 $\n");
+                RTPrintf("$Revision: 106320 $\n");
                 return 0;
 
             default:

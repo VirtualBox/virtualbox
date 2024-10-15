@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: clienttest.pl 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+# $Id: clienttest.pl 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ## @file
 # This little perl program attempts to connect to a running VirtualBox
 # webservice and calls various methods on it. Please refer to the SDK

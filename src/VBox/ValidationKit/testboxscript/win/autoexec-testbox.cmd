@@ -1,5 +1,5 @@
 @echo off
-REM $Id: autoexec-testbox.cmd 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+REM $Id: autoexec-testbox.cmd 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 REM REM @file
 REM VirtualBox Validation Kit - testbox script, automatic execution wrapper.
 REM
@@ -35,7 +35,7 @@ REM
 REM SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 REM
 
-@echo "$Id: autoexec-testbox.cmd 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $"
+@echo "$Id: autoexec-testbox.cmd 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $"
 @echo on
 setlocal EnableExtensions
 set exe=python.exe

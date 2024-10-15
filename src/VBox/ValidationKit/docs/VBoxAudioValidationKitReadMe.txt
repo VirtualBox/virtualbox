@@ -203,5 +203,5 @@ Troubleshooting
   "ValKit:" prefix.
 
 
-:Status: $Id: VBoxAudioValidationKitReadMe.txt 106065 2024-09-16 21:42:41Z knut.osmundsen@oracle.com $
+:Status: $Id: VBoxAudioValidationKitReadMe.txt 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 :Copyright: Copyright (C) 2021-2024 Oracle Corporation.

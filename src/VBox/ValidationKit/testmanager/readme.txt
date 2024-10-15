@@ -1,4 +1,4 @@
-$Id: readme.txt 82938 2020-01-31 00:10:15Z knut.osmundsen@oracle.com $
+$Id: readme.txt 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 
 Directory descriptions:
     ./                  The Test Manager.

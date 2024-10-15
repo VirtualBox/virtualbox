@@ -1,4 +1,4 @@
-# $Id: dwarfdump-to-offsets.sed 104367 2024-04-18 22:38:19Z knut.osmundsen@oracle.com $
+# $Id: dwarfdump-to-offsets.sed 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ## @file
 # For defining member offsets for selected struct so the ARM64 assembler can use them.
 #

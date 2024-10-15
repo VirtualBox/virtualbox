@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# $Id: bs3-cpu-basic-3-high-lea64.py 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+# $Id: bs3-cpu-basic-3-high-lea64.py 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 # pylint: disable=invalid-name
 
 """
@@ -44,7 +44,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 106061 $"
+__version__ = "$Revision: 106320 $"
 
 # Standard python imports.
 import random;

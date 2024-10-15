@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# $Id: config.py 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+# $Id: config.py 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 
 """
 Test Manager Configuration.
@@ -36,14 +36,14 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 106061 $"
+__version__ = "$Revision: 106320 $"
 
 import os;
 
 ## Test Manager version string.
 g_ksVersion             = 'v0.1.0';
 ## Test Manager revision string.
-g_ksRevision            = ('$Revision: 106061 $')[11:-2];
+g_ksRevision            = ('$Revision: 106320 $')[11:-2];
 
 ## Enable VBox specific stuff.
 g_kfVBoxSpecific        = True;

@@ -1,4 +1,4 @@
-; $Id: bs3-c64-Syscall64Generic.asm 105094 2024-07-02 09:33:52Z knut.osmundsen@oracle.com $
+; $Id: bs3-c64-Syscall64Generic.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;; @file
 ; BS3Kit - Syscall, 64-bit assembly handlers.
 ;

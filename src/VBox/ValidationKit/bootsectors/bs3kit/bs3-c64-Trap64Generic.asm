@@ -1,4 +1,4 @@
-; $Id: bs3-c64-Trap64Generic.asm 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+; $Id: bs3-c64-Trap64Generic.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;; @file
 ; BS3Kit - Trap, 64-bit assembly handlers.
 ;

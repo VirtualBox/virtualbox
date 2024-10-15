@@ -1,4 +1,4 @@
-/* $Id: UIWizardExportAppPageExpert.h 105742 2024-08-20 18:18:33Z sergey.dubov@oracle.com $ */
+/* $Id: UIWizardExportAppPageExpert.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardExportAppPageExpert class declaration.
  */

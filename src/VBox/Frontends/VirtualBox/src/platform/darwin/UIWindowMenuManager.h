@@ -1,4 +1,4 @@
-/* $Id: UIWindowMenuManager.h 104880 2024-06-10 16:24:42Z sergey.dubov@oracle.com $ */
+/* $Id: UIWindowMenuManager.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWindowMenuManager class declaration.
  */

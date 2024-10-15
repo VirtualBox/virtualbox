@@ -1,4 +1,4 @@
-/* $Id: VBoxGuest-linux.c 106193 2024-10-01 13:29:16Z vadim.galitsyn@oracle.com $ */
+/* $Id: VBoxGuest-linux.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBoxGuest - Linux specifics.
  *

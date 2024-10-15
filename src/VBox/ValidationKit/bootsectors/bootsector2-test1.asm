@@ -1,4 +1,4 @@
-; $Id: bootsector2-test1.asm 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+; $Id: bootsector2-test1.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;; @file
 ; Bootsector that benchmarks I/O and MMIO roundtrip time.
 ;   VBoxManage setextradata bs-test1 VBoxInternal/Devices/VMMDev/0/Config/TestingEnabled  1

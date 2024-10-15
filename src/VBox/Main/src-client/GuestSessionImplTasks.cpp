@@ -1,4 +1,4 @@
-/* $Id: GuestSessionImplTasks.cpp 106291 2024-10-10 13:37:53Z vadim.galitsyn@oracle.com $ */
+/* $Id: GuestSessionImplTasks.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VirtualBox Main - Guest session tasks.
  */

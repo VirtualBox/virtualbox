@@ -1,4 +1,4 @@
-# $Id: Config.kmk 102914 2024-01-17 10:40:08Z andreas.loeffler@oracle.com $
+# $Id: Config.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ## @file
 # kBuild Configuration file for VBoxShell.
 #

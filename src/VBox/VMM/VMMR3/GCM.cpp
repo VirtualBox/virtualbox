@@ -1,4 +1,4 @@
-/* $Id: GCM.cpp 106072 2024-09-17 12:47:24Z knut.osmundsen@oracle.com $ */
+/* $Id: GCM.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * GCM - Guest Compatibility Manager.
  */

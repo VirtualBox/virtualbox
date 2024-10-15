@@ -1,4 +1,4 @@
-#$Id: mkerrtags.sed 53658 2015-01-02 12:31:02Z knut.osmundsen@oracle.com $
+#$Id: mkerrtags.sed 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ## @file
 # pure sed version of mkerrtags.sh.
 #

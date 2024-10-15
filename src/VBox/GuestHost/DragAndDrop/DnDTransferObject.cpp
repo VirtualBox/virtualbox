@@ -1,4 +1,4 @@
-/* $Id: DnDTransferObject.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: DnDTransferObject.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * DnD - Transfer object implemenation for handling creation/reading/writing to files and directories on host or guest side.
  */

@@ -1,4 +1,4 @@
-$Id: readme.txt 72214 2018-05-15 09:31:45Z klaus.espenlaub@oracle.com $
+$Id: readme.txt 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 
 
 Preparations:

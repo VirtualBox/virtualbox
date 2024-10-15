@@ -1,4 +1,4 @@
-/* $Id: bldAddSignedDummy.cpp 106266 2024-10-09 21:05:23Z knut.osmundsen@oracle.com $ */
+/* $Id: bldAddSignedDummy.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBoxWindowsAdditions - Dummy program for extracting signing certificate.
  */

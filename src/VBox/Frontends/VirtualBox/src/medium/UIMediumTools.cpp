@@ -1,4 +1,4 @@
-/* $Id: UIMediumTools.cpp 105820 2024-08-22 14:21:54Z sergey.dubov@oracle.com $ */
+/* $Id: UIMediumTools.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMediumTools class implementation.
  */

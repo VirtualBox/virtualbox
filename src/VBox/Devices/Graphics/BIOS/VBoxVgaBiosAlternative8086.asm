@@ -1,4 +1,4 @@
-; $Id: VBoxVgaBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $ 
+; $Id: VBoxVgaBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ 
 ;; @file
 ; Auto Generated source file. Do not edit.
 ;

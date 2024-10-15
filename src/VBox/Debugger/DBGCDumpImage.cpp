@@ -1,4 +1,4 @@
-/* $Id: DBGCDumpImage.cpp 106073 2024-09-17 14:47:42Z knut.osmundsen@oracle.com $ */
+/* $Id: DBGCDumpImage.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * DBGC - Debugger Console, Native Commands.
  */

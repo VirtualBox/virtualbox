@@ -1,4 +1,4 @@
-/* $Id: mime-type-converter.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: mime-type-converter.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * Mime-type converter for Shared Clipboard and Drag-and-Drop code.
  */

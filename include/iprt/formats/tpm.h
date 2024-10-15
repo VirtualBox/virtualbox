@@ -1,4 +1,4 @@
-/* $Id: tpm.h 104974 2024-06-20 09:30:46Z alexander.eichner@oracle.com $ */
+/* $Id: tpm.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT, TPM common definitions (this is actually a protocol and not a format).
  */

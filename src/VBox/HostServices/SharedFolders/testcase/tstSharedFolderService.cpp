@@ -1,4 +1,4 @@
-/* $Id: tstSharedFolderService.cpp 106238 2024-10-08 14:16:19Z brent.paulson@oracle.com $ */
+/* $Id: tstSharedFolderService.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * Testcase for the shared folder service vbsf API.
  *

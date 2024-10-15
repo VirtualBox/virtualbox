@@ -1,4 +1,4 @@
-/* $Id: AMD_FX_8150_Eight_Core.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: AMD_FX_8150_Eight_Core.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * CPU database entry "AMD FX-8150 Eight-Core".
  * Generated at 2013-12-09T11:27:04Z by VBoxCpuReport v4.3.51r91084 on win.amd64.

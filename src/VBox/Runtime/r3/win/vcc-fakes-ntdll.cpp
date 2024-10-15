@@ -1,4 +1,4 @@
-/* $Id: vcc-fakes-ntdll.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: vcc-fakes-ntdll.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - Tricks to make the Visual C++ 2010 CRT work on NT4, W2K and XP - NTDLL.DLL.
  */

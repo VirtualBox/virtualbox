@@ -1,4 +1,4 @@
-/* $Id: internal-r3-registry-win.h 105788 2024-08-21 17:36:21Z andreas.loeffler@oracle.com $ */
+/* $Id: internal-r3-registry-win.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - Registy functions for Windows.
  */

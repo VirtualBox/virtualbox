@@ -1,4 +1,4 @@
-﻿/* $Id: RTNtDbgHelp.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+﻿/* $Id: RTNtDbgHelp.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - RTNtDbgHelp -  Tool for working/exploring DbgHelp.dll.
  */
@@ -371,7 +371,7 @@ int main(int argc, char **argv)
 
 
             case 'V':
-                RTPrintf("$Revision: 106061 $");
+                RTPrintf("$Revision: 106320 $");
                 break;
 
             case 'h':

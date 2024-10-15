@@ -1,4 +1,4 @@
-/* $Id: VirtioCore.h 106294 2024-10-10 17:42:05Z aleksey.ilyushin@oracle.com $ */
+/* $Id: VirtioCore.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 
 /** @file
  * VirtioCore.h - Virtio Declarations

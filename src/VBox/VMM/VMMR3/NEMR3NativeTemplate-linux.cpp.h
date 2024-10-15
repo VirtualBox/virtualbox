@@ -1,4 +1,4 @@
-/* $Id: NEMR3NativeTemplate-linux.cpp.h 104840 2024-06-05 00:59:51Z knut.osmundsen@oracle.com $ */
+/* $Id: NEMR3NativeTemplate-linux.cpp.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 Linux backend, common bits for x86 and arm64.
  */

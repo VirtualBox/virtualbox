@@ -1,4 +1,4 @@
-/* $Id: RTEfiFatExtract.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: RTEfiFatExtract.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - Utility for extracting single files from a fat EFI binary.
  */
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
                          , RTPathFilename(argv[0]));
                 return RTEXITCODE_SUCCESS;
             case 'V':
-                RTPrintf("$Revision: 106061 $\n");
+                RTPrintf("$Revision: 106320 $\n");
                 return RTEXITCODE_SUCCESS;
 
             case 'i':

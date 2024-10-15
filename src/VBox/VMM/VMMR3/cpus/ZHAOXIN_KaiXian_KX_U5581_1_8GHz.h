@@ -1,4 +1,4 @@
-/* $Id: ZHAOXIN_KaiXian_KX_U5581_1_8GHz.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: ZHAOXIN_KaiXian_KX_U5581_1_8GHz.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * CPU database entry "ZHAOXIN KaiXian KX-U5581 1.8GHz"
  * Generated at 2019-01-15T08:37:25Z by VBoxCpuReport v5.2.22r126460 on linux.amd64.

@@ -1,4 +1,4 @@
-/* $Id: xptc_arm64_vbox.h 104218 2024-04-07 18:47:10Z alexander.eichner@oracle.com $ */
+/* $Id: xptc_arm64_vbox.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * XPCOM - Common stuff for xptcinvoke/xptcstubs for arm64.
  */

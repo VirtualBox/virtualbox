@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id: xcode-6.2-extractor.sh 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+# $Id: xcode-6.2-extractor.sh 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ## @file
 # Extracts the necessary bits from the Xcode 6.2 (Xcode_6.2.dmg,
 # md5sum fe4c6c99182668cf14bfa5703bedeed6) and the Command Line

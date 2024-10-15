@@ -1,4 +1,4 @@
-/* $Id: RTFileDelete-r3-nt.cpp 104285 2024-04-11 00:06:14Z knut.osmundsen@oracle.com $ */
+/* $Id: RTFileDelete-r3-nt.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - RTFileDelete, Native NT.
  */

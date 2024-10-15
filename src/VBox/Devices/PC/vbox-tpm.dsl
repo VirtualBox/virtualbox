@@ -1,4 +1,4 @@
-/* $Id: vbox-tpm.dsl 105047 2024-06-27 09:05:56Z alexander.eichner@oracle.com $ */
+/* $Id: vbox-tpm.dsl 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VirtualBox ACPI - TPM ACPI device.
  */

@@ -13,7 +13,7 @@
   <doc:reference xmlns="">
     <referenceinfo>
       <releaseinfo role="meta">
-	$Id: string.xsl 69482 2017-10-28 13:30:36Z knut.osmundsen@oracle.com $
+	$Id: string.xsl 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
       </releaseinfo>
       <author>
 	<surname>Ball</surname>

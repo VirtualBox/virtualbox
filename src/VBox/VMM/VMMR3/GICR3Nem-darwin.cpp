@@ -1,4 +1,4 @@
-/* $Id: GICR3Nem-darwin.cpp 105687 2024-08-15 12:45:46Z alexander.eichner@oracle.com $ */
+/* $Id: GICR3Nem-darwin.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GICv3) - Hypervisor.framework in kernel interface.
  */

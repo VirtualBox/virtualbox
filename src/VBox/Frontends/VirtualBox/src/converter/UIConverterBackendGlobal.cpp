@@ -1,4 +1,4 @@
-/* $Id: UIConverterBackendGlobal.cpp 106163 2024-09-26 10:33:53Z sergey.dubov@oracle.com $ */
+/* $Id: UIConverterBackendGlobal.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIConverterBackendGlobal implementation.
  */

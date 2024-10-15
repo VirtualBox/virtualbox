@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# $Id: build_id_to_file_mapping.py 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+# $Id: build_id_to_file_mapping.py 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 
 """
 Scans the given files (globbed) for topic id and stores records the filename
@@ -31,7 +31,7 @@ along with this program; if not, see <https://www.gnu.org/licenses>.
 
 SPDX-License-Identifier: GPL-3.0-only
 """
-__version__ = "$Revision: 106061 $"
+__version__ = "$Revision: 106320 $"
 
 
 # Standard python imports.

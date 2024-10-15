@@ -1,4 +1,4 @@
-# $Id: Version.kmk 106295 2024-10-11 19:15:44Z klaus.espenlaub@oracle.com $
+# $Id: Version.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ## @file
 # The VirtualBox version.
 #
@@ -45,4 +45,4 @@ VBOX_VERSION_PRERELEASE =
 VBOX_RELEASE_EXACT_MATCH =
 
 # Fallback revision when there is no other source. See Config.kmk.
-VBOX_SVN_REV_VERSION_FALLBACK := $(patsubst %:,,  $Rev: 106295 $  )
+VBOX_SVN_REV_VERSION_FALLBACK := $(patsubst %:,,  $Rev: 106320 $  )

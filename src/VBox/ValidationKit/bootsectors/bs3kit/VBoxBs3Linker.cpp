@@ -1,4 +1,4 @@
-/* $Id: VBoxBs3Linker.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxBs3Linker.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VirtualBox Validation Kit - Boot Sector 3 "linker".
  */
@@ -879,7 +879,7 @@ int main(int argc, char **argv)
             }
 
             case 'V':
-                printf("%s\n", "$Revision: 106061 $");
+                printf("%s\n", "$Revision: 106320 $");
                 return RTEXITCODE_SUCCESS;
 
             case 'h':

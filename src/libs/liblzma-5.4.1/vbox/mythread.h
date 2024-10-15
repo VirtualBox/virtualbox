@@ -1,4 +1,4 @@
-/* $Id: mythread.h 98736 2023-02-25 18:55:59Z alexander.eichner@oracle.com $ */
+/* $Id: mythread.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * mythread.h - Thread implementation based on IPRT
  */

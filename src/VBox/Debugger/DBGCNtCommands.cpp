@@ -1,4 +1,4 @@
-/* $Id: DBGCNtCommands.cpp 105580 2024-08-02 21:18:57Z knut.osmundsen@oracle.com $ */
+/* $Id: DBGCNtCommands.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * DBGC - Debugger Console, Windows NT Related Commands.
  */

@@ -1,4 +1,4 @@
-# $Id: Config.kmk 103028 2024-01-24 15:53:59Z andreas.loeffler@oracle.com $
+# $Id: Config.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ## @file
 # kBuild Configuration file for common installer parts.
 #

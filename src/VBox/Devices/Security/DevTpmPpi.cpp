@@ -1,4 +1,4 @@
-/* $Id: DevTpmPpi.cpp 105041 2024-06-27 08:52:03Z alexander.eichner@oracle.com $ */
+/* $Id: DevTpmPpi.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * DevTpmPpi - Guest platform <-> VirtualBox TPM Physical Presence Interface Integration Framework.
  *

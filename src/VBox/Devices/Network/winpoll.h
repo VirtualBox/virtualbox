@@ -1,4 +1,4 @@
-/* $Id: winpoll.h 106130 2024-09-23 23:49:53Z jack.doherty@oracle.com $ */
+/* $Id: winpoll.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * NAT Network - poll(2) for winsock, definitions and declarations.
  */

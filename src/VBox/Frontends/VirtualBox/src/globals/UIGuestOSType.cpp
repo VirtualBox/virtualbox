@@ -1,4 +1,4 @@
-/* $Id: UIGuestOSType.cpp 105523 2024-07-26 15:17:22Z sergey.dubov@oracle.com $ */
+/* $Id: UIGuestOSType.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIGuestOSType class implementation.
  */

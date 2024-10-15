@@ -1,4 +1,4 @@
-; $Id: bs3-cpu-instr-4-template.mac 106317 2024-10-15 05:50:07Z bela.lubkin@oracle.com $
+; $Id: bs3-cpu-instr-4-template.mac 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;; @file
 ; BS3Kit - bs3-cpu-instr-4 - SSE, AVX FPU instructions, assembly template.
 ;

@@ -1,4 +1,4 @@
-/* $Id: Intel_Core2_X6800_2_93GHz.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: Intel_Core2_X6800_2_93GHz.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * CPU database entry "Intel Core2 X6800 2.93GHz".
  * Generated at 2017-11-04T22:32:41Z by VBoxCpuReport v5.2.1r118907 on linux.amd64.

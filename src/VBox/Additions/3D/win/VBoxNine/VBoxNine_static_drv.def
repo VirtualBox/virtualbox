@@ -1,4 +1,4 @@
-; $Id: VBoxNine_static_drv.def 103999 2024-03-22 12:38:39Z vitali.pelenjow@oracle.com $;
+; $Id: VBoxNine_static_drv.def 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $;
 ;; @file
 ; Export definition file for the VBoxNine D3D9 state tracker.
 ;

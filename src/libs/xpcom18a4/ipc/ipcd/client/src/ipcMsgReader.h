@@ -1,4 +1,4 @@
-/* $Id: ipcMsgReader.h 103571 2024-02-26 13:19:44Z alexander.eichner@oracle.com $ */
+/* $Id: ipcMsgReader.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * XPCOM - IPC message reader helper.
  */

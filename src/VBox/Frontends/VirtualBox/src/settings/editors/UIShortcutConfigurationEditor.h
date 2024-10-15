@@ -1,4 +1,4 @@
-/* $Id: UIShortcutConfigurationEditor.h 105059 2024-06-27 12:50:28Z sergey.dubov@oracle.com $ */
+/* $Id: UIShortcutConfigurationEditor.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIShortcutConfigurationEditor class declaration.
  */

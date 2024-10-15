@@ -1,4 +1,4 @@
-/* $Id: VirtualBoxBase.cpp 106077 2024-09-17 19:36:17Z knut.osmundsen@oracle.com $ */
+/* $Id: VirtualBoxBase.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VirtualBox COM base classes implementation
  */

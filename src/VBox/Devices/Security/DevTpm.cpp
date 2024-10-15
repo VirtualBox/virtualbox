@@ -1,4 +1,4 @@
-/* $Id: DevTpm.cpp 106271 2024-10-10 07:36:47Z alexander.eichner@oracle.com $ */
+/* $Id: DevTpm.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * DevTpm - Trusted Platform Module emulation.
  *

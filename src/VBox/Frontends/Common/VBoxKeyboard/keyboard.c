@@ -1,4 +1,4 @@
-/* $Id: keyboard.c 99826 2023-05-17 12:36:44Z serkan.bayraktar@oracle.com $ */
+/* $Id: keyboard.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox/Frontends/Common - X11 keyboard handler library.
  */

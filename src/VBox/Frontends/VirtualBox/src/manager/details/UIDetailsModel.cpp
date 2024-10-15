@@ -1,4 +1,4 @@
-/* $Id: UIDetailsModel.cpp 106207 2024-10-02 12:16:13Z sergey.dubov@oracle.com $ */
+/* $Id: UIDetailsModel.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIDetailsModel class implementation.
  */

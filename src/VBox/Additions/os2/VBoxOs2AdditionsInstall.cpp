@@ -1,4 +1,4 @@
-/** $Id: VBoxOs2AdditionsInstall.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/** $Id: VBoxOs2AdditionsInstall.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBoxOs2AdditionsInstall - Barebone OS/2 Guest Additions Installer.
  */
@@ -1592,7 +1592,7 @@ static RTEXITCODE ShowVersion(void)
 {
     DoWriteNStr(g_hStdOut, RT_STR_TUPLE(VBOX_VERSION_STRING " r"));
 
-    const char *pszRev = "$Rev: 106061 $";
+    const char *pszRev = "$Rev: 106320 $";
     while (!RT_C_IS_DIGIT(*pszRev))
         pszRev++;
     size_t cchRev = 1;

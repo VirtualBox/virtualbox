@@ -1,4 +1,4 @@
-/* $Id: tstIEMAImplDataSseBinary.S 105275 2024-07-11 16:56:45Z alexander.eichner@oracle.com $ */
+/* $Id: tstIEMAImplDataSseBinary.S 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * tstIEMAImplDataSseBinary - Test data for SSE binary instructions.
  */

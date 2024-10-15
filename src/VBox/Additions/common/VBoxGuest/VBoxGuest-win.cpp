@@ -1,4 +1,4 @@
-/* $Id: VBoxGuest-win.cpp 106173 2024-09-27 23:18:49Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxGuest-win.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBoxGuest - Windows specifics.
  */

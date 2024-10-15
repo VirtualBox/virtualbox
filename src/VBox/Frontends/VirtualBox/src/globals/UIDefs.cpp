@@ -1,4 +1,4 @@
-/* $Id: UIDefs.cpp 104692 2024-05-16 15:51:25Z sergey.dubov@oracle.com $ */
+/* $Id: UIDefs.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - Global definitions.
  */

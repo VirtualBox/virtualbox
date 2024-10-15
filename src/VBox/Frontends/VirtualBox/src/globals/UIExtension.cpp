@@ -1,4 +1,4 @@
-/* $Id: UIExtension.cpp 103783 2024-03-11 17:29:21Z sergey.dubov@oracle.com $ */
+/* $Id: UIExtension.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIExtension namespace implementation.
  */

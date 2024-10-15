@@ -1,4 +1,4 @@
-/* $Id: UINativeWizard.h 105586 2024-08-05 14:28:46Z sergey.dubov@oracle.com $ */
+/* $Id: UINativeWizard.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINativeWizard class declaration.
  */

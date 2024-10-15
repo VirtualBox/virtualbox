@@ -1,4 +1,4 @@
-/* $Id: SSM.cpp 106211 2024-10-03 02:35:14Z knut.osmundsen@oracle.com $ */
+/* $Id: SSM.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * SSM - Saved State Manager.
  */

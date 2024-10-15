@@ -1,4 +1,4 @@
-/* $Id: SUPHardenedVerifyProcess-win.cpp 106267 2024-10-09 23:59:02Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPHardenedVerifyProcess-win.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VirtualBox Support Library/Driver - Hardened Process Verification, Windows.
  */

@@ -38,5 +38,5 @@ and they take up space:
         ./QuarkSocPkg/ \
         ./AppPkg/Applications/Python/Python-*/ \
 
-:Status: $Id: ReadMe.vbox 105681 2024-08-15 07:27:48Z alexander.eichner@oracle.com $
+:Status: $Id: ReadMe.vbox 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 

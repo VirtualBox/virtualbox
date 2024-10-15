@@ -1,4 +1,4 @@
-/* $Id: UIChooserModel.cpp 106143 2024-09-24 19:53:49Z sergey.dubov@oracle.com $ */
+/* $Id: UIChooserModel.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIChooserModel class implementation.
  */

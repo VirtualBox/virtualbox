@@ -1,4 +1,4 @@
-/* $Id: biosint.h 106071 2024-09-17 12:08:24Z michal.necasek@oracle.com $ */
+/* $Id: biosint.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * PC BIOS - BIOS internal definitions.
  */

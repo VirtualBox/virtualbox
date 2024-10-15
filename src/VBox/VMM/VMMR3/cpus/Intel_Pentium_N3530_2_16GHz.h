@@ -1,4 +1,4 @@
-/* $Id: Intel_Pentium_N3530_2_16GHz.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: Intel_Pentium_N3530_2_16GHz.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * CPU database entry "Intel Pentium N3530 2.16GHz".
  * Generated at 2016-04-29T13:34:27Z by VBoxCpuReport v5.0.51r106929 on win.amd64.

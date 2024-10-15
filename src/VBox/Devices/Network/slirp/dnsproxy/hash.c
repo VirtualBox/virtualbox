@@ -1,4 +1,4 @@
-/* $Id: hash.c 45321 2013-04-04 04:47:30Z noreply@oracle.com $ */
+/* $Id: hash.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /*
  * Copyright (c) 2003,2004 Armin Wolfermann
  *

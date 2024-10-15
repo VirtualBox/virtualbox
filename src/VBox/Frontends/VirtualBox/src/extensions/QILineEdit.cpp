@@ -1,4 +1,4 @@
-/* $Id: QILineEdit.cpp 104983 2024-06-20 13:33:10Z sergey.dubov@oracle.com $ */
+/* $Id: QILineEdit.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - Qt extensions: QILineEdit class implementation.
  */

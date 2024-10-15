@@ -1,4 +1,4 @@
-/* $Id: sysdefs.h 98737 2023-02-25 20:51:38Z alexander.eichner@oracle.com $ */
+/* $Id: sysdefs.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * sysdefs.h - System definitions using IPRT.
  */

@@ -1,4 +1,4 @@
-/* $Id: UIWizardNewVMExpertPage.cpp 106118 2024-09-23 13:59:37Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIWizardNewVMExpertPage.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardNewVMExpertPage class implementation.
  */

@@ -1,4 +1,4 @@
-/* $Id: QIStatusBarIndicator.cpp 105327 2024-07-15 14:48:33Z sergey.dubov@oracle.com $ */
+/* $Id: QIStatusBarIndicator.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - Qt extensions: QIStatusBarIndicator interface implementation.
  */

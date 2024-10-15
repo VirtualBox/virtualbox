@@ -1,4 +1,4 @@
-/* $Id: UIUSBTools.h 105165 2024-07-05 15:23:48Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIUSBTools.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIUSBTools namespace declaration.
  */

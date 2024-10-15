@@ -1,4 +1,4 @@
-/* $Id: vbsfmount.c 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: vbsfmount.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * vbsfmount - Commonly used code to mount shared folders on Linux-based
  *             systems.  Currently used by mount.vboxsf and VBoxService.

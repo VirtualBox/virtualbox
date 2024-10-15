@@ -1,4 +1,4 @@
-/* $Id: UILocalMachineStuff.h 105081 2024-07-01 15:38:32Z sergey.dubov@oracle.com $ */
+/* $Id: UILocalMachineStuff.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UILocalMachineStuff namespace declaration.
  */

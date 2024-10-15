@@ -3,7 +3,7 @@
 # pylint: disable=line-too-long
 # pylint: disable=too-many-statements
 # pylint: disable=deprecated-module
-# $Id: vboxshell.py 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+# $Id: vboxshell.py 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 
 # The following checks for the right (i.e. most recent) Python binary available
 # and re-starts the script using that binary (like a shell wrapper).
@@ -63,7 +63,7 @@ along with this program; if not, see <https://www.gnu.org/licenses>.
 
 SPDX-License-Identifier: GPL-3.0-only
 """
-__version__ = "$Revision: 106061 $"
+__version__ = "$Revision: 106320 $"
 
 
 import gc

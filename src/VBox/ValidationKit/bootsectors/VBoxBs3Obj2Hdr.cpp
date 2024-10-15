@@ -1,4 +1,4 @@
-/* $Id: VBoxBs3Obj2Hdr.cpp 104480 2024-05-02 14:17:45Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxBs3Obj2Hdr.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VirtualBox Validation Kit - Boot Sector 3 Assembly Object file to C-Header converter.
  */

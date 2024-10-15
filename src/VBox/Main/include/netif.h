@@ -1,4 +1,4 @@
-/* $Id: netif.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: netif.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * Main - Network Interfaces.
  */

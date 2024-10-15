@@ -1,4 +1,4 @@
-; $Id: VBoxSFUtilA.asm 75337 2018-11-09 01:39:01Z knut.osmundsen@oracle.com $
+; $Id: VBoxSFUtilA.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;; @file
 ; VBoxSF - OS/2 Shared Folders Utility, Assembly code for calling 16-bit APIs.
 ;

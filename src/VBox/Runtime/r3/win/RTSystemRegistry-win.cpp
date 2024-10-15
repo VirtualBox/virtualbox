@@ -1,4 +1,4 @@
-/* $Id: RTSystemRegistry-win.cpp 105786 2024-08-21 17:27:35Z andreas.loeffler@oracle.com $ */
+/* $Id: RTSystemRegistry-win.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - Windows registry access functions.
  */

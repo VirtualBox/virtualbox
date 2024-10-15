@@ -1,4 +1,4 @@
-# $Id: soap-header-strip-inline.sed 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+# $Id: soap-header-strip-inline.sed 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ## @file
 # WebService - SED script for stripping inlined bodies from soapH.h.
 #

@@ -1,4 +1,4 @@
-/* $Id: USBIdDatabaseGenerator.cpp 106065 2024-09-16 21:42:41Z knut.osmundsen@oracle.com $ */
+/* $Id: USBIdDatabaseGenerator.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * USB device vendor and product ID database - generator.
  */

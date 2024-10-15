@@ -1,4 +1,4 @@
-/** $Id: VBoxSFInternal.h 93071 2021-12-24 00:12:04Z knut.osmundsen@oracle.com $ */
+/** $Id: VBoxSFInternal.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBoxSF - OS/2 Shared Folder IFS, Internal Header.
  */

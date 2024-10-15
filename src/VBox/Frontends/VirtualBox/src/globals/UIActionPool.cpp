@@ -1,4 +1,4 @@
-/* $Id: UIActionPool.cpp 105801 2024-08-21 22:27:44Z sergey.dubov@oracle.com $ */
+/* $Id: UIActionPool.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIActionPool class implementation.
  */

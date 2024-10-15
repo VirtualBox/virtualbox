@@ -1,4 +1,4 @@
-/* $Id: dnsproxy.h 53624 2014-12-31 14:59:44Z knut.osmundsen@oracle.com $ */
+/* $Id: dnsproxy.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /*
  * Copyright (c) 2003,2004,2005 Armin Wolfermann
  *

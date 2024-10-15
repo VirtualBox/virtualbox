@@ -1,4 +1,4 @@
-/* $Id: os2_util.c 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: os2_util.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * Os2Util - Unattended Installation Helper Utility for OS/2.
  *
@@ -424,7 +424,7 @@ static void CopyFileToBackdoorAndQuit(PSZ psz, BOOL fLongOpt, PSZ pszBuf, USHORT
 /** Displays version string and quits.   */
 static DECL_NO_RETURN(void) ShowVersionAndQuit(void)
 {
-    CHAR szVer[] = "$Rev: 106061 $\r\n";
+    CHAR szVer[] = "$Rev: 106320 $\r\n";
     USHORT usIgnored;
     DosWrite(g_hStdOut, szVer, sizeof(szVer) - 1, &usIgnored);
     DosExit(EXIT_PROCESS, 0);

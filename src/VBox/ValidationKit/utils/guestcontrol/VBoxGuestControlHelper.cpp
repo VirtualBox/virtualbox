@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestControlHelper.cpp 104375 2024-04-19 12:47:54Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxGuestControlHelper.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * Helper binary for Guest Control tests.
  */

@@ -1,4 +1,4 @@
-/* $Id: tuklib_physmem.h 98730 2023-02-25 18:05:08Z alexander.eichner@oracle.com $ */
+/* $Id: tuklib_physmem.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * tuklib_physmem.h - Memory information.
  */

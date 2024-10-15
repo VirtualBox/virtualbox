@@ -1,4 +1,4 @@
-/* $Id: fsw_hfs.c 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: fsw_hfs.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * fsw_hfs.c - HFS file system driver code, see
  *

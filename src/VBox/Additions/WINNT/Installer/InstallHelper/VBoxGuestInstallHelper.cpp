@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestInstallHelper.cpp 106147 2024-09-25 08:50:51Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxGuestInstallHelper.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBoxGuestInstallHelper - Various helper routines for Windows guest installer.
  *                          Works with NSIS 3.x.

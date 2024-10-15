@@ -1,4 +1,4 @@
-﻿/* $Id: ntBldSymDb.cpp 106065 2024-09-16 21:42:41Z knut.osmundsen@oracle.com $ */
+﻿/* $Id: ntBldSymDb.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - RTDirCreateUniqueNumbered, generic implementation.
  */
@@ -1177,7 +1177,7 @@ int main(int argc, char **argv)
                 break;
 
             case 'V':
-                RTPrintf("$Revision: 106065 $");
+                RTPrintf("$Revision: 106320 $");
                 break;
 
             case 'h':

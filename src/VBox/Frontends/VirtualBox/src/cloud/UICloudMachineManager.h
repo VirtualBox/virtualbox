@@ -1,4 +1,4 @@
-/* $Id: UICloudMachineManager.h 105159 2024-07-05 11:42:30Z sergey.dubov@oracle.com $ */
+/* $Id: UICloudMachineManager.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UICloudMachineManager class declaration.
  */

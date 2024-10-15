@@ -3,7 +3,7 @@ Etherboot -  BOOTP/TFTP Bootstrap Program
 Prism2 NIC driver for Etherboot
 
 Written by Michael Brown of Fen Systems Ltd
-$Id: prism2.c 95666 2022-07-15 18:50:58Z alexander.eichner@oracle.com $
+$Id: prism2.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ***************************************************************************/
 
 /*

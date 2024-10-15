@@ -2,7 +2,7 @@ diff -Nru TestFloat-3e-virgin/Makefile.kmk TestFloat-3e/Makefile.kmk
 --- TestFloat-3e-virgin/Makefile.kmk	1970-01-01 01:00:00.000000000 +0100
 +++ TestFloat-3e/Makefile.kmk	2022-08-22 21:44:59.264546989 +0200
 @@ -0,0 +1,271 @@
-+# $Id: TestFloat-3e-patch.diff 96411 2022-08-22 19:47:58Z klaus.espenlaub@oracle.com $
++# $Id: TestFloat-3e-patch.diff 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 +## @file
 +# Sub-Makefile for TestFloat-3e.
 +#

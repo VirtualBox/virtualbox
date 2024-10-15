@@ -1,4 +1,4 @@
-/* $Id: DevFlashCFI.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: DevFlashCFI.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * DevFlashCFI - A simple Flash device implementing the Common Flash Interface
  * using the sepc from https://ia803103.us.archive.org/30/items/m30l0r7000t0/m30l0r7000t0.pdf

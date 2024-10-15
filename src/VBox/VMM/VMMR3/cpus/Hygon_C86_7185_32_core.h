@@ -1,4 +1,4 @@
-/* $Id: Hygon_C86_7185_32_core.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: Hygon_C86_7185_32_core.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * CPU database entry "Hygon C86 7185 32-core".
  * Generated at 2019-09-25T11:07:33Z by VBoxCpuReport v6.1.0_BETA1r80830 on linux.amd64.

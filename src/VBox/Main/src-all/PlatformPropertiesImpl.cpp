@@ -1,4 +1,4 @@
-/* $Id: PlatformPropertiesImpl.cpp 106139 2024-09-24 12:52:06Z knut.osmundsen@oracle.com $ */
+/* $Id: PlatformPropertiesImpl.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation - Platform properties.
  */

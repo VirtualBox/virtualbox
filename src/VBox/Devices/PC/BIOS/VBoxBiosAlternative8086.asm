@@ -1,4 +1,4 @@
-; $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $ 
+; $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ 
 ;; @file
 ; Auto Generated source file. Do not edit.
 ;
@@ -6,7 +6,7 @@
 ;
 ; Source file: post.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  BIOS POST routines. Used only during initialization.
 ;  
 ;  
@@ -34,7 +34,7 @@
 ;
 ; Source file: bios.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -90,7 +90,7 @@
 ;
 ; Source file: print.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -146,7 +146,7 @@
 ;
 ; Source file: ata.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ATA disk support.
 ;  
 ;  
@@ -202,7 +202,7 @@
 ;
 ; Source file: floppy.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -258,7 +258,7 @@
 ;
 ; Source file: floppyt.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  Floppy drive tables.
 ;  
 ;  
@@ -286,7 +286,7 @@
 ;
 ; Source file: eltorito.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -342,7 +342,7 @@
 ;
 ; Source file: boot.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -398,7 +398,7 @@
 ;
 ; Source file: keyboard.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -454,7 +454,7 @@
 ;
 ; Source file: disk.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -510,7 +510,7 @@
 ;
 ; Source file: serial.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -566,7 +566,7 @@
 ;
 ; Source file: system.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -622,7 +622,7 @@
 ;
 ; Source file: invop.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  Real mode invalid opcode handler.
 ;  
 ;  
@@ -702,7 +702,7 @@
 ;
 ; Source file: ps2mouse.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -758,7 +758,7 @@
 ;
 ; Source file: parallel.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -814,7 +814,7 @@
 ;
 ; Source file: logo.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  Stuff for drawing the BIOS logo.
 ;  
 ;  
@@ -842,7 +842,7 @@
 ;
 ; Source file: apm.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  APM BIOS support. Implements APM version 1.2.
 ;  
 ;  
@@ -870,7 +870,7 @@
 ;
 ; Source file: __U4M.asm
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  Compiler support routines.
 ;  
 ;  
@@ -899,7 +899,7 @@
 ;
 ; Source file: __U4D.asm
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  Compiler support routines.
 ;  
 ;  
@@ -928,7 +928,7 @@
 ;
 ; Source file: __U8RS.asm
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  Compiler support routines.
 ;  
 ;  
@@ -957,7 +957,7 @@
 ;
 ; Source file: __U8LS.asm
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  Compiler support routines.
 ;  
 ;  
@@ -986,7 +986,7 @@
 ;
 ; Source file: fmemset.asm
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  Compiler support routines.
 ;  
 ;  
@@ -1015,7 +1015,7 @@
 ;
 ; Source file: fmemcpy.asm
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  Compiler support routines.
 ;  
 ;  
@@ -1044,7 +1044,7 @@
 ;
 ; Source file: orgs.asm
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  ???
 ;  
 ;  
@@ -1100,7 +1100,7 @@
 ;
 ; Source file: DoUInt32Div.c
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  AHCI host adapter driver to boot from SATA disks.
 ;  
 ;  
@@ -1128,7 +1128,7 @@
 ;
 ; Source file: ASMBitLastSetU16.asm
 ;
-;  $Id: VBoxBiosAlternative8086.asm 106293 2024-10-10 16:55:02Z samuel.burchill@oracle.com $
+;  $Id: VBoxBiosAlternative8086.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;  BiosCommonCode - ASMBitLastSetU16() - borrowed from IPRT.
 ;  
 ;  

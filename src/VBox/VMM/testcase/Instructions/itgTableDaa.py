@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# $Id: itgTableDaa.py 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+# $Id: itgTableDaa.py 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 
 """
 DAA (instruction) result table.
@@ -28,7 +28,7 @@ along with this program; if not, see <https://www.gnu.org/licenses>.
 
 SPDX-License-Identifier: GPL-3.0-only
 """
-__version__ = "$Revision: 106061 $";
+__version__ = "$Revision: 106320 $";
 
 
 ## The 32-bit GCC (C99) program that produced the table below.

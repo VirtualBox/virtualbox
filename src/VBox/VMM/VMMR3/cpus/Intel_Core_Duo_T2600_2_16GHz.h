@@ -1,4 +1,4 @@
-/* $Id: Intel_Core_Duo_T2600_2_16GHz.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: Intel_Core_Duo_T2600_2_16GHz.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * CPU database entry "Intel Core Duo T2600 2.16GHz".
  * Generated at 2017-11-02T10:39:16Z by VBoxCpuReport v5.2.0_RC1r118339 on linux.x86.

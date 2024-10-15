@@ -1,4 +1,4 @@
-/* $Id: STAM.cpp 106308 2024-10-14 14:46:30Z knut.osmundsen@oracle.com $ */
+/* $Id: STAM.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * STAM - The Statistics Manager.
  */

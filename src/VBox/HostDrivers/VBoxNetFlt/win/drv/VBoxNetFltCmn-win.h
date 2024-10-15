@@ -1,4 +1,4 @@
-/* $Id: VBoxNetFltCmn-win.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxNetFltCmn-win.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBoxNetFltCmn-win.h - Bridged Networking Driver, Windows Specific Code.
  * Common header with configuration defines and global defs

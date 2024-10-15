@@ -1,4 +1,4 @@
-; $Id: IEMInternalStruct.mac 104379 2024-04-19 14:43:32Z knut.osmundsen@oracle.com $
+; $Id: IEMInternalStruct.mac 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;; @file
 ; IEM - Internal header file (asm), manually maintained structures.
 ;

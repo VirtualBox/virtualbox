@@ -1,4 +1,4 @@
-; $Id: bs3-cmn-TestQueryCfgU32.asm 104071 2024-03-26 20:20:34Z knut.osmundsen@oracle.com $
+; $Id: bs3-cmn-TestQueryCfgU32.asm 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;; @file
 ; BS3Kit - Bs3TestQueryCfgU32.
 ;

@@ -1,4 +1,4 @@
-/* $Id: UIMediumEnumerator.h 104915 2024-06-13 13:18:04Z sergey.dubov@oracle.com $ */
+/* $Id: UIMediumEnumerator.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMediumEnumerator class declaration.
  */

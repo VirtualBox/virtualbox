@@ -1,4 +1,4 @@
-/* $Id: UIExtraDataManager.h 106001 2024-09-10 11:15:32Z brent.paulson@oracle.com $ */
+/* $Id: UIExtraDataManager.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIExtraDataManager class declaration.
  */

@@ -1,4 +1,4 @@
-/* $Id: main.c 76026 2018-12-06 19:56:16Z klaus.espenlaub@oracle.com $ */
+/* $Id: main.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * svnsync tool. Modified by Oracle.
  */

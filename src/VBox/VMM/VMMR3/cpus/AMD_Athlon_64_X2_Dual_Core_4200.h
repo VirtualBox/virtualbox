@@ -1,4 +1,4 @@
-/* $Id: AMD_Athlon_64_X2_Dual_Core_4200.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: AMD_Athlon_64_X2_Dual_Core_4200.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * CPU database entry "AMD Athlon 64 X2 Dual Core 4200+".
  * Generated at 2014-02-28T15:19:16Z by VBoxCpuReport v4.3.53r92578 on linux.amd64                                                        .

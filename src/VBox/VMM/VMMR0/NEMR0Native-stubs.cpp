@@ -1,4 +1,4 @@
-/* $Id: NEMR0Native-stubs.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: NEMR0Native-stubs.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * NEM - Native execution manager, ring-0 stubs until there is a driverless mode.
  */

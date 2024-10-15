@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# $Id: testboxscript_real.py 106275 2024-10-10 08:09:48Z alex.hasani@oracle.com $
+# $Id: testboxscript_real.py 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 
 """
 TestBox Script - main().
@@ -37,7 +37,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 106275 $"
+__version__ = "$Revision: 106320 $"
 
 
 # Standard python imports.

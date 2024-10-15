@@ -1,4 +1,4 @@
-/* $Id: VMMR0TripleFaultHack.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: VMMR0TripleFaultHack.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VMM - Host Context Ring 0, Triple Fault Debugging Hack.
  *

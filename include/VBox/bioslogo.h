@@ -1,4 +1,4 @@
-/* $Id: bioslogo.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: bioslogo.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * BiosLogo - The Private BIOS Logo Interface. (DEV)
  */

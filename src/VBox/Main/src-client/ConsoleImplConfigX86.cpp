@@ -1,4 +1,4 @@
-/* $Id: ConsoleImplConfigX86.cpp 105621 2024-08-08 12:29:52Z alexander.eichner@oracle.com $ */
+/* $Id: ConsoleImplConfigX86.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Console COM Class implementation - VM Configuration Bits.
  *

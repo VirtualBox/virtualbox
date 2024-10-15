@@ -1,4 +1,4 @@
-/* $Id: DevBusLogic.cpp 106274 2024-10-10 08:07:33Z michal.necasek@oracle.com $ */
+/* $Id: DevBusLogic.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox storage devices - BusLogic SCSI host adapter BT-958.
  *

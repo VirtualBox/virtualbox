@@ -1,4 +1,4 @@
-/* $Id: VBoxTraceLogDecoders.cpp 105046 2024-06-27 09:05:03Z alexander.eichner@oracle.com $ */
+/* $Id: VBoxTraceLogDecoders.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * RTTraceLogDecoders - Implement decoders for the tracing driver.
  */

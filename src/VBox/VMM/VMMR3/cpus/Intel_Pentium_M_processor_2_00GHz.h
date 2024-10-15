@@ -1,4 +1,4 @@
-/* $Id: Intel_Pentium_M_processor_2_00GHz.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: Intel_Pentium_M_processor_2_00GHz.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * CPU database entry "Intel Pentium M processor 2.00GHz".
  * Generated at 2013-12-09T14:18:00Z by VBoxCpuReport v4.3.51r91027 on win.x86.

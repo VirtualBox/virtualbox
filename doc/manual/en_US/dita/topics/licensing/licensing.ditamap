@@ -50,8 +50,8 @@
          to add a line entry under [auto-props]:
          *.ditamap = svn:mime-type=text/xml;svn:keywords=Author Date Id Rev URL;
       -->
-    <othermeta name="revision" content="$Rev: 106040 $"/>
-    <othermeta name="rev-date" content="$Date: 2024-09-13 10:44:00 +0200 (Fri, 13 Sep 2024) $"/>
+    <othermeta name="revision" content="$Rev: 106320 $"/>
+    <othermeta name="rev-date" content="$Date: 2024-10-15 14:08:41 +0200 (Tue, 15 Oct 2024) $"/>
     <!-- If this publication has profiling enabled, specify ditaval below -->
     <!-- The bookpartno matches the part and revision in PDB  -->
     <bookid>

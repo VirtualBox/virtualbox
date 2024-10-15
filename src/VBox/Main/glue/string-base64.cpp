@@ -1,4 +1,4 @@
-/* $Id: string-base64.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: string-base64.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * MS COM / XPCOM Abstraction Layer - UTF-8 and UTF-16 string classes, BASE64 bits.
  */

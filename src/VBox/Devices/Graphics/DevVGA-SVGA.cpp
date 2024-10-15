@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 106287 2024-10-10 10:58:09Z dmitrii.grigorev@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *

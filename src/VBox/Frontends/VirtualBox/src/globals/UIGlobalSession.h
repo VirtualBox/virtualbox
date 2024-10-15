@@ -1,4 +1,4 @@
-/* $Id: UIGlobalSession.h 105120 2024-07-03 16:15:34Z sergey.dubov@oracle.com $ */
+/* $Id: UIGlobalSession.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIGlobalSession class declaration.
  */

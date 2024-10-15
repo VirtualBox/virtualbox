@@ -1,4 +1,4 @@
-/* $Id: UIStorageSettingsEditor.h 106138 2024-09-24 12:36:53Z sergey.dubov@oracle.com $ */
+/* $Id: UIStorageSettingsEditor.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIStorageSettingsEditor class declaration.
  */

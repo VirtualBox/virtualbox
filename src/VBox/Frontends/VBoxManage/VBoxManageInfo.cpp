@@ -1,4 +1,4 @@
-/* $Id: VBoxManageInfo.cpp 106209 2024-10-02 21:05:12Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxManageInfo.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBoxManage - The 'showvminfo' command and helper routines.
  */

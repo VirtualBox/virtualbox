@@ -1,6 +1,6 @@
 @@VBOX_SPLITTER_START[CONFIG.SYS]@@
 REM
-REM $Id: os2_response_files.rsp 93154 2022-01-09 10:33:42Z knut.osmundsen@oracle.com $
+REM $Id: os2_response_files.rsp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 REM VirtualBox CID Installation CONFIG.SYS for boot CD/floppy.
 REM
 
@@ -65,7 +65,7 @@ Y
 #
 @@VBOX_SPLITTER_START[STARTUP.CMD]@@
 @REM
-@REM $Id: os2_response_files.rsp 93154 2022-01-09 10:33:42Z knut.osmundsen@oracle.com $
+@REM $Id: os2_response_files.rsp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 @REM The startup file for C: for use after the successful install.
 @REM
 @@VBOX_COND_IS_INSTALLING_ADDITIONS@@

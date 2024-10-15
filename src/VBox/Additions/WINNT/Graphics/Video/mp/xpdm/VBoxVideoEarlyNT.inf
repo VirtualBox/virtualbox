@@ -1,4 +1,4 @@
-; $Id: VBoxVideoEarlyNT.inf 106210 2024-10-02 21:21:10Z knut.osmundsen@oracle.com $
+; $Id: VBoxVideoEarlyNT.inf 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ;; @file
 ; VirtualBox Video miniport driver, Windows 2000 and NT4 edition.
 ;

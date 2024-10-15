@@ -1,4 +1,4 @@
-/* $Id: UISession.cpp 106312 2024-10-14 16:38:55Z sergey.dubov@oracle.com $ */
+/* $Id: UISession.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UISession class implementation.
  */

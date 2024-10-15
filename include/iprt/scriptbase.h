@@ -1,4 +1,4 @@
-/* $Id: scriptbase.h 105757 2024-08-21 11:42:13Z alexander.eichner@oracle.com $ */
+/* $Id: scriptbase.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - RTScript, Script language support in IPRT.
  */

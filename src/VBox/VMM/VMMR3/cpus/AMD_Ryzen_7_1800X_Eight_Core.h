@@ -1,4 +1,4 @@
-/* $Id: AMD_Ryzen_7_1800X_Eight_Core.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: AMD_Ryzen_7_1800X_Eight_Core.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * CPU database entry "AMD Ryzen 7 1800X Eight-Core".
  * Generated at 2020-07-15T16:30:16Z by VBoxCpuReport v6.1.97r139174 on linux.amd64.

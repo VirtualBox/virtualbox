@@ -1,4 +1,4 @@
-/* $Id: old-solaris-asm-trick.h 105943 2024-09-04 11:14:19Z alexander.rudnev@oracle.com $ */
+/* $Id: old-solaris-asm-trick.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * OpenSSL - Hack for older binutils/gas on solaris (10).
  *

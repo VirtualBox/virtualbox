@@ -1,4 +1,4 @@
-/* $Id: UIVisoCreator.cpp 105901 2024-08-29 12:39:07Z sergey.dubov@oracle.com $ */
+/* $Id: UIVisoCreator.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVisoCreator classes implementation.
  */

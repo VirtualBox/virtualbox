@@ -1,4 +1,4 @@
-/* $Id: VBoxTpG.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxTpG.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Build Tool - VBox Tracepoint Generator.
  */
@@ -454,7 +454,7 @@ static RTEXITCODE generateAssembly(PSCMSTREAM pStrm)
      * Write the file header.
      */
     ScmStreamPrintf(pStrm,
-                    "; $Id: VBoxTpG.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ \n"
+                    "; $Id: VBoxTpG.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ \n"
                     ";; @file\n"
                     "; Automatically generated from %s. Do NOT edit!\n"
                     ";\n"
@@ -978,7 +978,7 @@ static RTEXITCODE generateHeader(PSCMSTREAM pStrm)
     }
 
     ScmStreamPrintf(pStrm,
-                    "/* $Id: VBoxTpG.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */\n"
+                    "/* $Id: VBoxTpG.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */\n"
                     "/** @file\n"
                     " * Automatically generated from %s.  Do NOT edit!\n"
                     " */\n"
@@ -1184,7 +1184,7 @@ static RTEXITCODE generateWrapperHeader(PSCMSTREAM pStrm)
     }
 
     ScmStreamPrintf(pStrm,
-                    "/* $Id: VBoxTpG.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */\n"
+                    "/* $Id: VBoxTpG.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */\n"
                     "/** @file\n"
                     " * Automatically generated from %s.  Do NOT edit!\n"
                     " */\n"
@@ -2512,7 +2512,7 @@ static RTEXITCODE parseArguments(int argc,  char **argv)
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                static const char s_szRev[] = "$Revision: 106061 $";
+                static const char s_szRev[] = "$Revision: 106320 $";
                 const char *psz = RTStrStripL(strchr(s_szRev, ' '));
                 RTPrintf("r%.*s\n", strchr(psz, ' ') - psz, psz);
                 return RTEXITCODE_SUCCESS;

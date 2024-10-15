@@ -1,4 +1,4 @@
-/* $Id: acpi-aml.h 106070 2024-09-17 11:20:00Z alexander.eichner@oracle.com $ */
+/* $Id: acpi-aml.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT, ACPI (Advanced Configuration and Power Interface) Machine Language (AML) format.
  *

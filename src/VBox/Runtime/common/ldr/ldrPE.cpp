@@ -1,4 +1,4 @@
-/* $Id: ldrPE.cpp 106248 2024-10-08 21:50:22Z knut.osmundsen@oracle.com $ */
+/* $Id: ldrPE.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - Binary Image Loader, Portable Executable (PE).
  */

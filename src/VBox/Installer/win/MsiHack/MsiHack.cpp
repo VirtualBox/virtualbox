@@ -1,4 +1,4 @@
-/* $Id: MsiHack.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: MsiHack.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * MsiHack - Exterimental DLL that intercept small ReadFile calls from
  *           MSI, CABINET and WINTEROP, buffering them using memory mapped files.

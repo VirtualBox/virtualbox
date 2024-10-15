@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA-cmd.cpp 106263 2024-10-09 19:07:30Z dmitrii.grigorev@oracle.com $ */
+/* $Id: DevVGA-SVGA-cmd.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VMware SVGA device - implementation of VMSVGA commands.
  */

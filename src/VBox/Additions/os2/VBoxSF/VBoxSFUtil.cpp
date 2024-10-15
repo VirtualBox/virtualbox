@@ -1,4 +1,4 @@
-/** $Id: VBoxSFUtil.cpp 79110 2019-06-13 00:17:25Z knut.osmundsen@oracle.com $ */
+/** $Id: VBoxSFUtil.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBoxSF - OS/2 Shared Folders, Utility for attaching and testing.
  */

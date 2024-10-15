@@ -1,4 +1,4 @@
-/* $Id: HMVMXCommon.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: HMVMXCommon.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * HM/VMX - Internal header file for sharing common bits between the
  *          VMX template code (which is also used with NEM on darwin) and HM.

@@ -1,4 +1,4 @@
-/* $Id: VBoxDXDDI.cpp 106085 2024-09-18 20:31:48Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxDXDDI.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VirtualBox D3D11 user mode DDI interface.
  */

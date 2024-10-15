@@ -1,4 +1,4 @@
-# $Id: various.sed 106033 2024-09-12 13:26:05Z knut.osmundsen@oracle.com $
+# $Id: various.sed 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
 ## @file
 # Converts some C header elements into nasm/yasm syntax.
 #

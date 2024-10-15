@@ -1,4 +1,4 @@
-/* $Id: Intel_Core_i7_3960X.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: Intel_Core_i7_3960X.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * CPU database entry "Intel Core i7-3960X".
  * Generated at 2013-12-12T15:29:11Z by VBoxCpuReport v4.3.53r91237 on win.amd64.

@@ -1,4 +1,4 @@
-/* $Id: GraphicsAdapterImpl.h 106080 2024-09-18 12:38:27Z andreas.loeffler@oracle.com $ */
+/* $Id: GraphicsAdapterImpl.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * Implementation of IGraphicsAdapter in VBoxSVC - Header.
  */

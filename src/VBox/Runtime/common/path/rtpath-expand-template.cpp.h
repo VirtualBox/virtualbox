@@ -1,4 +1,4 @@
-/* $Id: rtpath-expand-template.cpp.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: rtpath-expand-template.cpp.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - RTPath - Internal header that includes RTPATH_TEMPLATE_CPP_H multiple
  *                 times to expand the code for different path styles.

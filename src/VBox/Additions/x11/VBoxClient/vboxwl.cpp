@@ -1,4 +1,4 @@
-/* $Id: vboxwl.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: vboxwl.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * Guest Additions - Helper tool for grabbing input focus and perform
  * drag-n-drop and clipboard sharing in Wayland.

@@ -1,4 +1,4 @@
-/* $Id: RTWinPollLibslirp.cpp 106129 2024-09-23 23:46:42Z jack.doherty@oracle.com $ */
+/* $Id: RTWinPollLibslirp.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
 /** @file
  * NAT Network - poll(2) implementation for winsock.
  */
