@@ -6,6 +6,7 @@ import sys
 import platform
 import connexion
 import logging
+import time
 # import base64
 from http import HTTPStatus
 from flask import jsonify
@@ -2206,6 +2207,68 @@ def i_machine_deletesnapshot(vmid, id=None, *var_args_tuple):  # noqa: E501
     return response, httpCode
 
 
+# close the session is done inside session_observer.py in SessionObserver::run()
+@openSession
+def i_machine_restoresnapshot(vmid, snapshot=None, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::restoreSnapshot
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param snapshot: Put here an ID of requested ISnapshot VirtualBox object
+    :type snapshot: str
+
+    :rtype: ProgressResponse
+    """
+
+    httpCode = HTTPStatus.OK
+    oError = None
+
+    oVM = var_args_tuple[0]
+    vbox_utils_logVmInfo(oVM)
+
+    oSession = var_args_tuple[1]
+    oProgress = None
+    oCurrMachine = oSession.machine
+
+    oProgressResponse = ProgressResponse()
+    oSnapshot = None
+    try:
+        oSnapshot = oCurrMachine.findSnapshot(snapshot)
+    except Exception as e:
+        logging.info("Exception during finding the snapshot '%s' for VM '%s': %s" % (snapshot, oVM.name, str(e)))
+        httpCode = HTTPStatus.NOT_FOUND
+        oError = Error(httpCode, "Snapshot with the name or Id %s wasn\'t found" % (snapshot))
+        return jsonify(oError), httpCode
+
+    try:
+        oProgress = oCurrMachine.restoreSnapshot(oSnapshot)
+        # This delay is necessary because VirtualBox fails on debug build.
+        # Apparently, some actions related to saving or changing the machine state are in progress
+        # and take some time to complete.
+        time.sleep(0.2)
+    except Exception as e:
+        logging.info("Exception during restoring the snapshot '%s' for VM '%s': %s" % (snapshot, oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is None:
+        try:
+            # Add Progress Id and Session object into the tracking lists
+            ctx['tracker'][oProgress.id] = oSession
+            ctx['vms'][oVM.id] = oProgress.id
+            oSession = None
+
+            oProgressResponse.progress = i_fill_progress(oProgress)
+        except Exception as e:
+            logging.info("The action was successful. But an exception occurred while composing the response.")
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e) + " The action was successful. But an exception occurred while composing the response.")
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -2716,21 +2779,6 @@ def i_machine_removeusbcontroller(vmid, name=None):  # noqa: E501
     :type name: str
 
     :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_restoresnapshot(vmid, snapshot=None):  # noqa: E501
-    """
-    Call interface method IMachine::restoreSnapshot
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param snapshot: Put here an ID of requested ISnapshot VirtualBox object
-    :type snapshot: str
-
-    :rtype: ProgressResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
