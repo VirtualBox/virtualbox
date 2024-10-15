@@ -2149,6 +2149,63 @@ def i_machine_findsnapshot(vmid, select=None, nameOrId=None):  # noqa: E501
     return response, httpCode
 
 
+# close the session is done inside session_observer.py in SessionObserver::run()
+@openSession
+def i_machine_deletesnapshot(vmid, id=None, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::deleteSnapshot
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param id: 
+    :type id: str
+
+    :rtype: ProgressResponse
+    """
+
+    httpCode = HTTPStatus.OK
+    oError = None
+
+    oVM = var_args_tuple[0]
+    vbox_utils_logVmInfo(oVM)
+
+    oSession = var_args_tuple[1]
+    oProgress = None
+    oCurrMachine = oSession.machine
+
+    oProgressResponse = ProgressResponse()
+
+    try:
+        oSnapshot = oCurrMachine.findSnapshot(id)
+        if oSnapshot is None:
+            httpCode = HTTPStatus.NOT_FOUND
+            oError = Error(httpCode, "Snapshot with the name or Id %s wasn\'t found" % (id))
+            return jsonify(oError), httpCode
+
+        oProgress = oCurrMachine.deleteSnapshot(id)
+
+    except Exception as e:
+        logging.info("Exception during deleting the snapshot '%s' for VM '%s': %s" % (id, oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is None:
+        try:
+            # Add Progress Id and Session object into the tracking lists
+            ctx['tracker'][oProgress.id] = oSession
+            ctx['vms'][oVM.id] = oProgress.id
+            oSession = None
+
+            oProgressResponse.progress = i_fill_progress(oProgress)
+        except Exception as e:
+            logging.info("The action was successful. But an exception occurred while composing the response.")
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e) + " The action was successful. But an exception occurred while composing the response.")
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -2323,21 +2380,6 @@ def i_machine_deleteguestproperty(vmid, name=None):  # noqa: E501
     :type name: str
 
     :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_deletesnapshot(vmid, id=None):  # noqa: E501
-    """
-    Call interface method IMachine::deleteSnapshot
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param id: 
-    :type id: str
-
-    :rtype: ProgressResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
