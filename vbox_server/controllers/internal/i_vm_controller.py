@@ -58,6 +58,7 @@ from vbox_server.models.machine_takesnapshot_response import MachineTakesnapshot
 from vbox_server.models.snapshot_response import SnapshotResponse  # noqa: E501
 from vbox_server.models.device_type_response import DeviceTypeResponse  # noqa: E501
 from vbox_server.models.machine_response import MachineResponse  # noqa: E501
+from vbox_server.models.medium_attachment_response import MediumAttachmentResponse  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
@@ -1301,33 +1302,27 @@ def i_machine_getmediumattachment(vmid, select=None, name=None, controllerPort=N
     :rtype: MediumAttachmentResponse
     """
 
-    oError = None
     httpCode = HTTPStatus.OK
 
     vbox_utils_commonChecks()
 
-    logging.info('Passed machine Id is ' + vmid)
-    logging.info('Passed name is ' + name)
-    logging.info('Passed controllerPort is ' + str(controllerPort))
-    logging.info('Passed device is ' + str(device))
-
     oVM, oError = vbox_utils_find_machine(vmid)
     if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
 
-    oMediumAttachment = MediumAttachment()
+    oMediumAttachmentResponse = MediumAttachmentResponse()
     try:
-        olAttachments = ctx['global'].getArray(oVM, 'mediumAttachments')
-        for item in olAttachments:
-            if item.controller==name and item.port==controllerPort and item.device==device:
-                oMediumAttachment = i_fill_medium_attachment(item, select)
+        oVBoxMedium = oVM.getMediumAttachment(name, controllerPort, device)
+        oMediumAttachmentResponse.attachment = i_fill_medium_attachment(oVBoxMedium, select)
     except Exception as e:
-        oMediumAttachment = None
         logging.info("Can't get medium attachment for VM '%s': %s" % (oVM.name, str(e)))
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oMediumAttachment)
+    response = jsonify(oError if oError is not None else oMediumAttachmentResponse)
     return response, httpCode
 
 
