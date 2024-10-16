@@ -1653,9 +1653,8 @@ def i_console_attachusbdevice(vmid, oConsoleAttachUSBDeviceRequestBody, *var_arg
 
     vbox_utils_commonChecks()
 
-    oVM = None
-    oError = None
     httpCode = HTTPStatus.OK
+    oError = None
 
     logging.info('Passed machine Id is ' + vmid)
 
