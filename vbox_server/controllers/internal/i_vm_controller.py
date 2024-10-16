@@ -1848,15 +1848,16 @@ def i_machine_getparallelport(vmid, select=None, slot=None):  # noqa: E501
 
     vbox_utils_commonChecks()
 
-    oVM = None
-    oError = None
     httpCode = HTTPStatus.OK
 
     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, _ = vbox_utils_find_machine(vmid)
+    oVM, oError = vbox_utils_find_machine(vmid)
     if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
 
     oParallelPortResponse = ParallelPortResponse()
 
