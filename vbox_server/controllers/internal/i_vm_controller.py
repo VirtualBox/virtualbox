@@ -1729,7 +1729,7 @@ def i_console_detachusbdevice(vmid, id=None, *var_args_tuple):  # noqa: E501
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         logging.info("Exception during detaching USB device with id " + id)
-        oError = Error(1000, str(e))
+        oError = Error(httpCode, str(e))
 
     response = jsonify(oError if oError is not None else oUSBDeviceResponse)
 
