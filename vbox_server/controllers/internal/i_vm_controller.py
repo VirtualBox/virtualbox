@@ -1537,30 +1537,27 @@ def i_machine_cloneto(vmid, oMachineCloneToRequestBody: MachineCloneToRequestBod
 
     :rtype: ProgressResponse
     """
+
     oSourceMachine, oError = vbox_utils_find_machine(vmid)
     if oSourceMachine is None:
         logging.info (oError)
         return jsonify(oError), HTTPStatus.NOT_FOUND
-    
+    else:
+        #set to None
+        oError = None
+
     vbox_utils_commonChecks()
     vbox_utils_logVmInfo(oSourceMachine)
 
-    oError = None
     httpCode = HTTPStatus.OK
 
     logging.info('Passed source machine Id is ' + vmid)
 
     o = oMachineCloneToRequestBody
     
-    mode = "MACHINESTATE" #default state
-    if o.mode == "MACHINESTATE":
-        mode = ctx['const'].CloneMode_MachineState
-    elif o.mode == "MACHINEANDCHILDSTATES":
-        mode = ctx['const'].CloneMode_MachineAndChildStates
-    elif o.mode == "ALLSTATES":
-        mode = ctx['const'].CloneMode_AllStates
-    else:
-        return "The requested type " + str(mode) + " is not supported", HTTPStatus.NOT_FOUND
+    mode = swagger_to_vbox_clone_mode(o.mode)
+    if mode is None:
+        return "The requested type " + str(o.mode) + " is not supported", HTTPStatus.NOT_FOUND
 
     options = list() # List[CloneOptions]
     for item in o.options:
@@ -1581,6 +1578,9 @@ def i_machine_cloneto(vmid, oMachineCloneToRequestBody: MachineCloneToRequestBod
     if oTargetMachine is None:
         logging.info (oError)
         return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
 
     vbox_utils_logVmInfo(oTargetMachine)
 
