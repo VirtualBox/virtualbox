@@ -899,15 +899,15 @@ def i_machine_setextradata(vmid, oMachineSetExtraDataRequestBody: MachineSetExtr
     oCurrMachine = oSession.machine
 
     o = oMachineSetExtraDataRequestBody
-    if oCurrMachine is not None:
-        try:
-            oCurrMachine.setExtraData(o.key, o.value)
-            oCurrMachine.saveSettings()
-            logging.info("Successfully set VM extra data key " + "'" + o.key + "'" + " to value " + "'" + o.value + "'")
 
-        except Exception as e:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, str(e))
+    try:
+        oCurrMachine.setExtraData(o.key, o.value)
+        oCurrMachine.saveSettings()
+        logging.info("Successfully set VM extra data key " + "'" + o.key + "'" + " to value " + "'" + o.value + "'")
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
 
     if oError is not None:
         return jsonify(oError), httpCode
