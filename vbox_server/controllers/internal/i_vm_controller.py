@@ -755,28 +755,29 @@ def i_machine_removesharedfolder(vmid, name=None, *var_args_tuple):  # noqa: E50
 
     logging.info("Try to remove the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
 
-    oCurrMachine = oSession.machine
-    oError = None
-    httpCode = HTTPStatus.OK
-
-    found = False
+    fFound = False
     for sf in ctx['global'].getArray(oVM, 'sharedFolders'):
         if sf.name == name:
             try:
+                fFound = True
                 # No return result check.
                 # removeSharedFolder returns None instead of the result S_OK.
                 oCurrMachine.removeSharedFolder(name)
-                logging.info("1. Removed the shared folder %s" % (name))
+                logging.info("Removed the shared folder %s" % (name))
 
                 #Don't forget to save
                 oCurrMachine.saveSettings()
-                found = True
                 break
 
             except Exception as e:
-                logging.info("Can't remove shared folder %s" % (name))
+                logging.info("Exception during removing the shared folder %s" % (name))
                 httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
                 oError = Error(httpCode, str(e))
+
+    if fFound is False and oError is None:
+        logging.info("The shared folder with the name %s doesn\'t exists" % (name))
+        httpCode = HTTPStatus.NOT_FOUND
+        oError = Error(httpCode, "The shared folder with the name %s doesn\'t exists" % (name))
 
     response = jsonify(oError if oError is not None else "Successfully removed the shared folder")
     return response, httpCode
