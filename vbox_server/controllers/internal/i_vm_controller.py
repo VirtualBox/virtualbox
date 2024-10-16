@@ -398,8 +398,6 @@ def i_machine_getextradatakeys(vmid):  # noqa: E501
 
     vbox_utils_commonChecks()
 
-    oVM = None
-    oError = None
     httpCode = HTTPStatus.OK
 
     logging.info('Passed machine Id is ' + vmid)
@@ -407,8 +405,12 @@ def i_machine_getextradatakeys(vmid):  # noqa: E501
     oVM, oError = vbox_utils_find_machine(vmid)
     if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
 
     oVirtualboxGetextradatakeysResponse = VirtualboxGetextradatakeysResponse()
+
     if oVM is not None:
         try:
             olKeys = oVM.getExtraDataKeys()
