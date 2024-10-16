@@ -571,20 +571,21 @@ def i_machine_querylogfilename(vmid, idx=None):  # noqa: E501
 
     :rtype: MachineQuerylogfilenameResponse
     """
-    oError = None
+
     httpCode = HTTPStatus.OK
 
     oVM, oError = vbox_utils_find_machine(vmid)
     if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
 
     oMachineQuerylogfilenameResponse = MachineQuerylogfilenameResponse()
 
     try:
-        if idx is None:
-            idx = 0
-        sFilename = oVM.queryLogFilename(idx)
-        oMachineQuerylogfilenameResponse.filename = sFilename
+        if idx is None: idx = 0
+        oMachineQuerylogfilenameResponse.filename = oVM.queryLogFilename(idx)
 
     except Exception as e:
         logging.info("Can't find VM's log file '%d': %s" % (idx, str(e)))
