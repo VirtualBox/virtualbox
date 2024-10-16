@@ -356,8 +356,6 @@ def i_machine_getextradata(vmid, key=None):  # noqa: E501
 
     vbox_utils_commonChecks()
 
-    oVM = None
-    oError = None
     httpCode = HTTPStatus.OK
 
     logging.info('Passed machine Id is ' + vmid)
@@ -365,21 +363,24 @@ def i_machine_getextradata(vmid, key=None):  # noqa: E501
     oVM, oError = vbox_utils_find_machine(vmid)
     if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
 
     oMediumGetpropertyResponse = MediumGetpropertyResponse()
-    if oVM is not None:
-        try:
-            res = oVM.getExtraData(key)
-            oMediumGetpropertyResponse.value = res
-            if res!='':
-                logging.info('Successfully get the value of VM extra data ' + key)
-                logging.info('The command result is ' + res)
-            else:
-                logging.info('Unknown extra data or the value is empty ')
 
-        except Exception as e:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, str(e))
+    try:
+        oMediumGetpropertyResponse.value = oVM.getExtraData(key)
+        if oMediumGetpropertyResponse.value!='':
+            logging.info("Successfully get the value '" + oMediumGetpropertyResponse.value + "' of VM extra data key '" + key + "'")
+        else:
+            logging.info("Unknown extra data key '" + key + "' or the value is empty ")
+            httpCode = HTTPStatus.NOT_FOUND
+            oError = Error(httpCode, "Unknown extra data key '" + key + "' or the value is empty ")
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
 
     response = jsonify(oError if oError is not None else oMediumGetpropertyResponse)
     return response, httpCode
