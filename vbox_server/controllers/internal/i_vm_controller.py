@@ -1152,6 +1152,7 @@ def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody: MachineAttachD
 
     :rtype: None
     """
+
     vbox_utils_commonChecks()
 
     oError = None
@@ -1163,7 +1164,9 @@ def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody: MachineAttachD
     name = o.name
     port = o.controller_port
     slot = o.device
-    devtype = o.type
+    devType = swagger_to_vbox_device_type(o.type)
+    if devType is None:
+        return "The requested type " + str(o.type) + " is not supported", HTTPStatus.NOT_FOUND
     mediumPath = o.medium
 
     oSession = var_args_tuple[1]
@@ -1178,26 +1181,17 @@ def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody: MachineAttachD
             oError = Error(httpCode, "Machine must be in one of the states - PoweredOff, Aborted, AbortedSaved, Saved")
             return jsonify(oError), httpCode
 
-    if devtype == "FLOPPY":
-        devtype = ctx['const'].DeviceType_Floppy
-    elif devtype == "DVD":
-        devtype = ctx['const'].DeviceType_DVD
-    elif devtype == "HARDDISK":
-        devtype = ctx['const'].DeviceType_HardDisk
-    else:
-        return "The requested type " + str(devtype) + " is not supported", HTTPStatus.NOT_FOUND
-
-    oVboxMedium = None
+    oVBoxMedium = None
     try:
         if mediumPath is not None or len(mediumPath)>0:
-            oVboxMedium = ctx['vb'].openMedium(mediumPath, ctx['global'].constants.DeviceType_HardDisk, ctx['global'].constants.AccessMode_ReadWrite, False)
-            if oVboxMedium is not None:
-                oCurrMachine.attachDevice(name, port, slot, devtype, oVboxMedium)
+            oVBoxMedium = ctx['vb'].openMedium(mediumPath, ctx['global'].constants.DeviceType_HardDisk, ctx['global'].constants.AccessMode_ReadWrite, False)
+            if oVBoxMedium is not None:
+                oCurrMachine.attachDevice(name, port, slot, devType, oVBoxMedium)
             else:
                 httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
                 oError = Error(httpCode, "Something went wrong during opening the medium " + str(mediumPath))
         else:
-            oCurrMachine.attachDevice(name, port, slot, devtype, None)
+            oCurrMachine.attachDevice(name, port, slot, devType, None)
 
         oCurrMachine.saveSettings()
 
@@ -1212,7 +1206,7 @@ def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody: MachineAttachD
     else:
         response = "Successfully attached the device to the controller " + name + \
         " (port " + str(port) + "; slot " + str(slot) + ")."
-        if oVboxMedium is not None:
+        if oVBoxMedium is not None:
             response = response + " The device is " + mediumPath
 
     return response, httpCode
