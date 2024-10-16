@@ -699,36 +699,34 @@ def i_machine_createsharedfolder(vmid, oMachineCreateSharedFolderRequestBody: Ma
 
     o = oMachineCreateSharedFolderRequestBody
     name = o.name
-    host_path = o.host_path
+    hostPath = o.host_path
     fWritable = o.writable
     fAutomount = o.automount
-    auto_mount_point = o.auto_mount_point
+    autoMountPoint = o.auto_mount_point
 
     logging.info("Try to create the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
 
     oError = None
     httpCode = HTTPStatus.OK
 
-    found = False
     for sf in ctx['global'].getArray(oVM, 'sharedFolders'):
         if sf.name == name:
             logging.info("The shared folder with the name %s exists" % (name))
             httpCode = HTTPStatus.PRECONDITION_FAILED
             oError = Error(httpCode, "The shared folder with the name %s exists" % (name))
-            found = True
             break
 
     if oError is None:
         try:
             # No return result check
-            oCurrMachine.createSharedFolder(name, host_path, fWritable, fAutomount, auto_mount_point)
+            oCurrMachine.createSharedFolder(name, hostPath, fWritable, fAutomount, autoMountPoint)
             logging.info("Created the shared folder %s" % (name))
 
             #Don't forget to save
             oCurrMachine.saveSettings()
 
         except Exception as e:
-            logging.info("Can't create shared folder %s" % (name))
+            logging.info("Exception during creation the shared folder %s" % (name))
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, str(e))
 
