@@ -969,8 +969,6 @@ def i_machine_unregister(vmid, cleanupMode=None):  # noqa: E501
 
     vbox_utils_commonChecks()
 
-    oVM = None
-    oError = None
     httpCode = HTTPStatus.OK
 
     print ('Passed machine Id is ' + vmid)
@@ -980,39 +978,34 @@ def i_machine_unregister(vmid, cleanupMode=None):  # noqa: E501
     oVM, oError = vbox_utils_find_machine(vmid)
     if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
 
     oMediumList = list[Medium]()
     oMediumArrayResponse = None
 
-    if oVM is not None:
-        vbox_utils_logVmInfo(oVM)
+    vbox_utils_logVmInfo(oVM)
 
-        try:
-            if cleanupMode == 'FULL':
-                cleanupMode = ctx['const'].CleanupMode_Full
-            elif cleanupMode == 'UNREGISTERONLY':
-                cleanupMode = ctx['const'].CleanupMode_UnregisterOnly
-            elif cleanupMode == 'DETACHALLRETURNNONE':
-                cleanupMode = ctx['const'].CleanupMode_DetachAllReturnNone
-            elif cleanupMode == 'DETACHALLRETURNHARDDISKSONLY':
-                cleanupMode = ctx['const'].CleanupMode_DetachAllReturnHardDisksOnly
-            else:
-                return "The requested cleanup mode " + str(cleanupMode) + " wasn't found", HTTPStatus.NOT_FOUND
+    try:
+        vBoxCleanupMode = swagger_to_vbox_cleanup_mode(cleanupMode)
+        if vBoxCleanupMode is None:
+            return "The requested cleanup mode " + str(cleanupMode) + " wasn't found", HTTPStatus.NOT_FOUND
 
-            oVBoxMediumList, oError = __machine_unregister(oVM, cleanupMode)
-            if oVBoxMediumList:
-                for item in oVBoxMediumList:
-                    oMediumList.append(i_fill_medium(item))
+        oVBoxMediumList, oError = __machine_unregister(oVM, cleanupMode)
+        if oVBoxMediumList:
+            for item in oVBoxMediumList:
+                oMediumList.append(i_fill_medium(item))
 
-                oMediumArrayResponse = MediumArrayResponse()
-                oMediumArrayResponse.media = oMediumList
-                logging.info ('VM ' + vmid + ' was successfully unregistered')
-            else:
-                logging.info ('Can\'t unregister VM ' + vmid)
+            oMediumArrayResponse = MediumArrayResponse()
+            oMediumArrayResponse.media = oMediumList
+            logging.info ('VM ' + vmid + ' was successfully unregistered')
+        else:
+            logging.info ('Can\'t unregister VM ' + vmid)
 
-        except Exception as e:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, str(e))
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
 
     response = jsonify(oMediumArrayResponse if oMediumArrayResponse is not None else oError)
 
