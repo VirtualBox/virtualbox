@@ -445,8 +445,6 @@ def i_machine_getguestproperty(vmid, name=None):  # noqa: E501
 
     vbox_utils_commonChecks()
 
-    oVM = None
-    oError = None
     httpCode = HTTPStatus.OK
 
     logging.info('Passed machine Id is ' + vmid)
@@ -454,8 +452,12 @@ def i_machine_getguestproperty(vmid, name=None):  # noqa: E501
     oVM, oError = vbox_utils_find_machine(vmid)
     if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
 
     oMachineGetguestpropertyResponse = MachineGetguestpropertyResponse()
+
     if oVM is not None:
         try:
             [v,t,f] = oVM.getGuestProperty(name)
