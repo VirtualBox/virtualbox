@@ -16,6 +16,7 @@ from werkzeug.datastructures import Headers
 
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
+from vbox_server.utils.enum_conversion import *
 from vbox_server.utils.vbox_utils import vbox_utils_tryLockMachine as tryLockMachine
 from vbox_server.utils.vbox_utils import vbox_utils_unlockAndDeleteSession as unlockAndDeleteSession
 from vbox_server.utils.vbox_utils import vbox_utils_unlockSession as unlockSession
@@ -856,25 +857,17 @@ def i_machine_setbootorder(vmid, oMachineSetBootOrderRequestBody: MachineSetBoot
     device = o.device
     position = o.position
 
-    if oCurrMachine is not None:
-        try:
-            if device == "FLOPPY":
-                device = ctx['const'].DeviceType_Floppy
-            elif device == "DVD":
-                device = ctx['const'].DeviceType_DVD
-            elif device == "HARDDISK":
-                device = ctx['const'].DeviceType_HardDisk
-            elif device == "NETWORK":
-                device = ctx['const'].DeviceType_Network
-            else:
-                return "The requested device " + str(o.device) + " is not supported for booting", HTTPStatus.NOT_FOUND
+    try:
+        device = swagger_to_vbox_device_type(o.device)
+        if device is None:
+            return "The requested device " + str(o.device) + " is not supported for booting", HTTPStatus.PRECONDITION_FAILED
 
-            oCurrMachine.setBootOrder(position, device)
-            oCurrMachine.saveSettings()
-            logging.info('Set boot order [%d] for device %s' % (position, str(device)))
-        except Exception as e:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, str(e))
+        oCurrMachine.setBootOrder(position, device)
+        oCurrMachine.saveSettings()
+        logging.info('Set boot order [%d] for device %s' % (position, str(device)))
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
 
     if oError is not None:
         return jsonify(oError), httpCode
