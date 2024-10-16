@@ -1036,8 +1036,6 @@ def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody: VirtualBoxCr
 
     vbox_utils_commonChecks()
 
-    oVM = None
-    oError = None
     httpCode = HTTPStatus.OK
 
     o = oVirtualBoxCreateMachineRequestBody
@@ -1048,20 +1046,11 @@ def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody: VirtualBoxCr
     flags = o.flags
     settingsFile = o.settings_file# check or ignore?
 
-    platform = o.platform
+    platform = swagger_to_vbox_platform_architecture(o.platform)
     logging.info('The passed PlatformArchitecture is ' + str(platform))
 
-    if platform == "X86":
-        platform = ctx['const'].PlatformArchitecture_x86
-    elif platform == "ARM":
-        platform = ctx['const'].PlatformArchitecture_ARM
-    else:#default is NONE
-        platform = ctx['const'].PlatformArchitecture_None
-
-    logging.info('The converted PlatformArchitecture is ' + str(platform))
-
     cipher = o.cipher
-    password_id = o.password_id
+    passwordId = o.password_id
     password = o.password
 
     oVM, oError = vbox_utils_find_machine(name)
@@ -1069,6 +1058,9 @@ def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody: VirtualBoxCr
         httpCode = HTTPStatus.PRECONDITION_FAILED
         oError = Error(httpCode, "Machine with the name %s has already registered in VirtualBox" % (name))
         return jsonify(oError), httpCode
+    else:
+        #set to None
+        oError = None
 
     try:
         ctx['vb'].getGuestOSType(osTypeId)
@@ -1080,7 +1072,7 @@ def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody: VirtualBoxCr
     oVBox = ctx['vb']
 
     try:
-        oVM = oVBox.createMachine(settingsFile, name, platform, groups, osTypeId, flags, cipher, password_id, password)
+        oVM = oVBox.createMachine(settingsFile, name, platform, groups, osTypeId, flags, cipher, passwordId, password)
         oVM.saveSettings()
         logging.info("created machine with UUID", str(oVM.id))
         oVBox.registerMachine(oVM)
