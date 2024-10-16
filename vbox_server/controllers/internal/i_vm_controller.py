@@ -928,8 +928,6 @@ def i_machine_setguestproperty(vmid, oMachineSetGuestPropertyRequestBody: Machin
     :rtype: None
     """
 
-    vbox_utils_commonChecks()
-
     oError = None
     httpCode = HTTPStatus.OK
 
@@ -939,22 +937,22 @@ def i_machine_setguestproperty(vmid, oMachineSetGuestPropertyRequestBody: Machin
     oCurrMachine = oSession.machine
 
     o = oMachineSetGuestPropertyRequestBody
-    if oCurrMachine is not None:
-        try:
-            logging.info(o)
-            logging.info(o._property)
-            logging.info(o.value)
-            oCurrMachine.setGuestProperty(o._property, o.value, '')
-            oCurrMachine.saveSettings()
-            logging.info("Successfully set VM guest property "  + "'" + o._property  + "'" + " to value " + "'" + o.value + "'")
-        except Exception as e:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, str(e))
+    sProperty = o._property
+    sValue = o.value
+    sFlags = o.flags
+
+    try:
+        oCurrMachine.setGuestProperty(sProperty, sValue, sFlags)
+        oCurrMachine.saveSettings()
+        logging.info("Successfully set VM guest property " + "'" + sProperty + "'" + " to value " + "'" + sValue + "'")
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
 
     if oError is not None:
         return jsonify(oError), httpCode
 
-    return "Successfully set VM guest property "  + "'" + o._property  + "'" + " to value " + "'" + o.value + "'"
+    return "Successfully set VM guest property " + "'" + sProperty + "'" + " to value " + "'" + sValue + "'"
 
 
 def i_machine_unregister(vmid, cleanupMode=None):  # noqa: E501
