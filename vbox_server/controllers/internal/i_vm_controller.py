@@ -612,12 +612,14 @@ def i_machine_readlog(vmid, idx=None, offset=None, size=None):  # noqa: E501
     :rtype: MachineReadlogResponse
     """
 
-    oError = None
     httpCode = HTTPStatus.OK
 
     oVM, oError = vbox_utils_find_machine(vmid)
     if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
 
     oMachineReadlogResponse = MachineReadlogResponse()
     try:
