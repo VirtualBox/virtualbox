@@ -55,6 +55,7 @@ from vbox_server.models.medium_attachment_array_response import MediumAttachment
 from vbox_server.models.medium_response import MediumResponse  # noqa: E501
 from vbox_server.models.machine_takesnapshot_response import MachineTakesnapshotResponse  # noqa: E501
 from vbox_server.models.snapshot_response import SnapshotResponse  # noqa: E501
+from vbox_server.models.device_type_response import DeviceTypeResponse  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
@@ -317,8 +318,6 @@ def i_machine_getbootorder(vmid, position=None):  # noqa: E501
 
     vbox_utils_commonChecks()
 
-    oVM = None
-    oError = None
     httpCode = HTTPStatus.OK
 
     logging.info('Passed machine Id is ' + vmid)
@@ -326,18 +325,20 @@ def i_machine_getbootorder(vmid, position=None):  # noqa: E501
     oVM, oError = vbox_utils_find_machine(vmid)
     if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
 
-    oDeviceType = DeviceType()
-    if oVM is not None:
-        try:
-            oVBoxMediumdeviceType = oVM.getBootOrder(position)
-            oDeviceType = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMediumdeviceType)
-            logging.info('The command result is ' + str(oDeviceType))            
-        except Exception as e:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, str(e))
+    oDeviceTypeResponse = DeviceTypeResponse()
+    try:
+        oVBoxMediumdeviceType = oVM.getBootOrder(position)
+        oDeviceTypeResponse.device = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMediumdeviceType)
+        logging.info('The command result is ' + str(oDeviceTypeResponse.device))            
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oDeviceType)
+    response = jsonify(oError if oError is not None else oDeviceTypeResponse)
     return response, httpCode
 
 
