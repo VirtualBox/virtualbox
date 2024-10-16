@@ -499,6 +499,9 @@ def i_machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody: MachineL
     oVM, oError = vbox_utils_find_machine(vmid)
     if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
 
     vbox_utils_logVmInfo(oVM)
     
