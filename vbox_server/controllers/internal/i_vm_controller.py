@@ -1932,14 +1932,9 @@ def i_machine_getmedium(vmid, select=None, name=None, controllerPort=None, devic
     :rtype: MediumResponse
     """
 
-    httpCode = 200 #(OK)
+    httpCode = HTTPStatus.OK
 
     vbox_utils_commonChecks()
-
-    logging.info('Passed machine Id is ' + vmid)
-    logging.info('Passed name is ' + name)
-    logging.info('Passed controllerPort is ' + str(controllerPort))
-    logging.info('Passed device is ' + str(device))
 
     oVM, oError = vbox_utils_find_machine(vmid)
     if oVM is None:
@@ -1962,7 +1957,7 @@ def i_machine_getmedium(vmid, select=None, name=None, controllerPort=None, devic
     if fFound == False:
         httpCode = HTTPStatus.NOT_FOUND
         oError = Error(httpCode, str("The Medium wasn't found"))
-
+        
     response = jsonify(oError if oError is not None else oMediumResponse)
     return response, httpCode
 
