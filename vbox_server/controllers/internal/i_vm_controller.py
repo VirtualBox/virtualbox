@@ -57,6 +57,7 @@ from vbox_server.models.medium_response import MediumResponse  # noqa: E501
 from vbox_server.models.machine_takesnapshot_response import MachineTakesnapshotResponse  # noqa: E501
 from vbox_server.models.snapshot_response import SnapshotResponse  # noqa: E501
 from vbox_server.models.device_type_response import DeviceTypeResponse  # noqa: E501
+from vbox_server.models.machine_response import MachineResponse  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
@@ -1113,30 +1114,28 @@ def i_virtualbox_findmachine(vmid, select=None, nameOrId=None):  # noqa: E501
 
     vbox_utils_commonChecks()
 
-    oVM = None
-    oError = None
     httpCode = HTTPStatus.OK
 
     logging.info ('Passed machine Id is ' + vmid)
-    if select is not None: logging.info ('Passed attributes are ' + select)
 
     oVM, oError = vbox_utils_find_machine(vmid)
     if oVM is None:
         return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
 
-    if oVM is not None:
-        vbox_utils_logVmInfo(oVM)
+    vbox_utils_logVmInfo(oVM)
 
-        oMachine = None
-        try:
-            oMachine = i_fill_machine(oVM, select)
-            logging.info ('Successful i_fill_machine(oVM, select)')
+    oMachineResponse = MachineResponse()
 
-        except Exception as e:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, str(e))
+    try:
+        oMachineResponse.machine = i_fill_machine(oVM, select)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
 
-    response = jsonify(oMachine if oMachine is not None else oError)
+    response = jsonify(oError if oError is not None else oMachineResponse)
 
     return response, httpCode
 
