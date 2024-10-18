@@ -1,4 +1,4 @@
-/* $Id: UIVisoContentBrowser.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIVisoContentBrowser.h 106472 2024-10-18 10:12:57Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVisoContentBrowser class declaration.
  */
@@ -88,6 +88,7 @@ public:
     bool hasContent() const;
 
     void setSortCaseSensitive(bool fCaseSensitive);
+    static QString sanitizePath(const QString &strOriginal);
 
 public slots:
 
@@ -156,12 +157,13 @@ private:
     void        goUp();
     void        createLoadedFileEntries(const QMap<QString, QString> &fileEntries);
     /* Processes a list of VISO paths that are loaded from a file and indicate file object to be removed from VISO content. */
-    void        processRemovedEntries(const QStringList &removedEntries);
-    void        markRemovedUnremovedItemParents(UIFileSystemItem *pItem, bool fRemoved);
-    void        enableDisableSelectionDependentActions();
-    void        updateNavigationWidgetPath(const QString &strPath);
-    void        setFileTableLabelText(const QString &strText);
-    void        enableForwardBackwardActions();
+    void           processRemovedEntries(const QStringList &removedEntries);
+    void           markRemovedUnremovedItemParents(UIFileSystemItem *pItem, bool fRemoved);
+    void           enableDisableSelectionDependentActions();
+    void           updateNavigationWidgetPath(const QString &strPath);
+    void           setFileTableLabelText(const QString &strText);
+    void           enableForwardBackwardActions();
+
     UIVisoContentTableView *m_pTableView;
     UIFileSystemModel      *m_pModel;
     UIFileSystemProxyModel *m_pProxyModel;

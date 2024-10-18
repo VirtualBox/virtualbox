@@ -1,4 +1,4 @@
-/* $Id: UIVisoContentBrowser.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIVisoContentBrowser.cpp 106472 2024-10-18 10:12:57Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVisoContentBrowser class implementation.
  */
@@ -421,6 +421,20 @@ void UIVisoContentBrowser::createVisoEntry(const QString &strPath, const QString
         m_entryMap.insert(strPath, cRemoveText);
 }
 
+/* static */
+QString UIVisoContentBrowser::sanitizePath(const QString &strOriginal)
+{
+    /* Look for white space and double quote: */
+    QRegularExpression regex("[\\s\"]");
+    if (!regex.match(strOriginal).hasMatch())
+        return strOriginal;
+    QString strNew(strOriginal);
+    strNew.replace("\"", "\\\"");
+    strNew.append("\"");
+    strNew.prepend("\"");
+    return strNew;
+}
+
 QStringList UIVisoContentBrowser::entryList()
 {
     QStringList entryList;
@@ -428,7 +442,7 @@ QStringList UIVisoContentBrowser::entryList()
     {
         if (iterator.value().isEmpty())
             continue;
-        QString strEntry = QString("%1=%2").arg(iterator.key()).arg(iterator.value());
+        QString strEntry = QString("%1=%2").arg(sanitizePath(iterator.key())).arg(sanitizePath(iterator.value()));
         entryList << strEntry;
     }
     return entryList;
