@@ -89,6 +89,39 @@ Rules for adding a changelog entry to make them look more uniform:
 
   <sect1>
 
+    <title>Version 7.1.6 (date tbd)</title>
+
+    <para>This is a maintenance release. The following items were fixed and/or
+      added:</para>
+
+    <itemizedlist>
+
+      <listitem>
+        <para>GUI: Make sure disabled preferences contents have more
+          obvious representation (mask+font), useful for certain Linux
+          themes</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Make sure seamless mode is properly enabled/disabled
+          in appropriate time according to GA status events</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: fixed rare crash on macOS hosts on application
+          exit</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: fixed small 7.1.4 regression in preferences and settings
+          windows, filter editor was not focusable/animated</para>
+      </listitem>
+
+    </itemizedlist>
+  </sect1>
+
+  <sect1>
+
     <title>Version 7.1.4 (2024-10-15)</title>
 
     <para>This is a maintenance release. The following items were fixed and/or
