@@ -18,7 +18,11 @@ void udp6_input(struct mbuf *m)
     int iphlen = sizeof(struct ip6);
     int len;
     struct socket *so;
+#ifdef VBOX
+    struct sockaddr_in6 lhost = { 0 }; /* Initialize everything to zero, just to be on the safe side. */
+#else
     struct sockaddr_in6 lhost;
+#endif
     int hop_limit;
 
     DEBUG_CALL("udp6_input");

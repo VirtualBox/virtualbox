@@ -44,7 +44,11 @@ static int icmp6_send(struct socket *so, struct mbuf *m, int hlen)
 {
     Slirp *slirp = m->slirp;
 
+#ifdef VBOX
+    struct sockaddr_in6 addr = { 0 }; /* Must zero all fields not explictly initialized below or sendto fails on windows. */
+#else
     struct sockaddr_in6 addr;
+#endif
 
     /*
      * The behavior of reading SOCK_DGRAM+IPPROTO_ICMP sockets is inconsistent
