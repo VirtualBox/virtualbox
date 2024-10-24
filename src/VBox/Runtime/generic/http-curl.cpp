@@ -1,4 +1,4 @@
-/* $Id: http-curl.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: http-curl.cpp 106673 2024-10-24 15:04:21Z brent.paulson@oracle.com $ */
 /** @file
  * IPRT - HTTP client API, cURL based.
  *
@@ -938,6 +938,9 @@ RTR3DECL(int) RTHttpSetProxyByUrl(RTHTTP hHttp, const char *pszUrl)
 
     if (!pszUrl || !*pszUrl)
         return RTHttpUseSystemProxySettings(pThis);
+
+    pThis->fUseSystemProxySettings = false;
+
     if (RTStrNICmpAscii(pszUrl, RT_STR_TUPLE("direct://")) == 0)
         return rtHttpUpdateAutomaticProxyDisable(pThis);
     return rtHttpConfigureProxyFromUrl(pThis, pszUrl);
