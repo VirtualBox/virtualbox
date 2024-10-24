@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 106686 2024-10-24 23:01:45Z jack.doherty@oracle.com $
 ## @file
 # Top-level sub-makefile for the devices, drivers and services.
 #
@@ -778,7 +778,7 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
   VBoxDD_SOURCES += \
   	Network/DrvNATlibslirp.cpp
   VBoxDD_SOURCES.win += \
-  	Network/RTWinPollLibslirp.cpp
+  	Network/RTWinSocketPair.cpp
   Network/DrvNATlibslirp.cpp_INCS   += \
   	$(PATH_ROOT)/src/libs/libslirp-4.8.0/src \
   	$(PATH_OUT)/obj/VBox-libslirp

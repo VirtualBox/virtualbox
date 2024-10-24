@@ -1,4 +1,4 @@
-/* $Id: DrvNATlibslirp.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: DrvNATlibslirp.cpp 106686 2024-10-24 23:01:45Z jack.doherty@oracle.com $ */
 /** @file
  * DrvNATlibslirp - NATlibslirp network transport driver.
  */
@@ -36,6 +36,9 @@
 #ifdef RT_OS_WINDOWS
 # include <iprt/win/winsock2.h>
 # include <iprt/win/ws2tcpip.h>
+# include "winutils.h"
+# define inet_aton(x, y) inet_pton(2, x, y)
+# define AF_INET6 23
 #endif
 
 #include <libslirp.h>
@@ -51,17 +54,12 @@
 # include <poll.h>
 # include <errno.h>
 #endif
+
 #ifdef RT_OS_FREEBSD
 # include <netinet/in.h>
 #endif
 
-#ifdef RT_OS_WINDOWS
-# include <iprt/win/winsock2.h>
-# include "winpoll.h"
-# define inet_aton(x, y) inet_pton(2, x, y)
-# define AF_INET6 23
-#endif
-
+#include <iprt/asm.h>
 #include <iprt/assert.h>
 #include <iprt/critsect.h>
 #include <iprt/cidr.h>
@@ -220,13 +218,12 @@ typedef struct DRVNAT
     RTPIPE                  hPipeWrite;
     /** The read end of the control pipe. */
     RTPIPE                  hPipeRead;
-# if HC_ARCH_BITS == 32
-    uint32_t                u32Padding;
-# endif
 #else
-    /** for external notification */
-    HANDLE                  hWakeupEvent;
+    /* wakeup socket pair for NAT thread */
+    SOCKET                  pWakeupSockPair[2];
 #endif
+    /* count of bytes sent to notify NAT thread */
+    volatile uint64_t       cbWakeupNotifs;
 
 #define DRV_PROFILE_COUNTER(name, dsc)     STAMPROFILE Stat ## name
 #define DRV_COUNTING_COUNTER(name, dsc)    STAMCOUNTER Stat ## name
@@ -602,9 +599,23 @@ static void drvNATNotifyNATThread(PDRVNAT pThis, const char *pszWho)
     /* kick poll() */
     size_t cbIgnored;
     rc = RTPipeWrite(pThis->hPipeWrite, "", 1, &cbIgnored);
+    if (RT_SUCCESS(rc))
+    {
+        /* Count how many bites we send down the socket */
+        ASMAtomicIncU64(&pThis->cbWakeupNotifs);
+    }
 #else
-    /* kick WSAWaitForMultipleEvents */
-    rc = WSASetEvent(pThis->hWakeupEvent);
+    int cbWritten = send(pThis->pWakeupSockPair[0], "", 1, NULL);
+    if (cbWritten == SOCKET_ERROR)
+    {
+        int error = WSAGetLastError();
+        Log4(("Notify NAT Thread Error %d\n", error));
+    }
+    else
+    {
+        /* Count how many bites we send down the socket */
+        ASMAtomicIncU64(&pThis->cbWakeupNotifs);
+    }
 #endif
     AssertRC(rc);
 }
@@ -703,10 +714,10 @@ static DECLCALLBACK(void) drvNATNetworkUp_NotifyLinkChanged(PPDMINETWORKUP pInte
 static DECLCALLBACK(int) drvNATAsyncIoThread(PPDMDRVINS pDrvIns, PPDMTHREAD pThread)
 {
     PDRVNAT pThis = PDMINS_2_DATA(pDrvIns, PDRVNAT);
-#ifdef VBOX_NAT_DELAY_HACK
-    unsigned int cBreak = 0;
-#endif
-#ifndef RT_OS_WINDOWS
+#ifdef RT_OS_WINDOWS
+    drvNAT_AddPollCb(pThis->pWakeupSockPair[1], SLIRP_POLL_IN | SLIRP_POLL_HUP, pThis);
+    pThis->pNATState->polls[0].fd = pThis->pWakeupSockPair[1];
+#else
     unsigned int cPollNegRet = 0;
     drvNAT_AddPollCb(RTPipeToNative(pThis->hPipeRead), SLIRP_POLL_IN | SLIRP_POLL_HUP, pThis);
     pThis->pNATState->polls[0].fd = RTPipeToNative(pThis->hPipeRead);
@@ -763,16 +774,21 @@ static DECLCALLBACK(int) drvNATAsyncIoThread(PPDMDRVINS pDrvIns, PPDMTHREAD pThr
              * Note! drvNATSend decoupled so we don't know how many times
              * device's thread sends before we've entered multiplex,
              * so to avoid false alarm drain pipe here to the very end
-             *
-             * @todo: Probably we should counter drvNATSend to count how
-             * deep pipe has been filed before drain.
-             *
              */
-            /** @todo XXX: Make it reading exactly we need to drain the
-             * pipe.*/
-            char ch;
+            char ch[1024];
             size_t cbRead;
-            RTPipeRead(pThis->hPipeRead, &ch, 1, &cbRead);
+            uint64_t cbWakeupNotifs = ASMAtomicReadU64(&pThis->cbWakeupNotifs);
+
+            if (cbWakeupNotifs > 1024)
+            {
+                RTPipeRead(pThis->hPipeRead, &ch, 1024, &cbRead);
+                ASMAtomicSubU64(&pThis->cbWakeupNotifs, 1024);
+            }
+            else
+            {
+                RTPipeRead(pThis->hPipeRead, &ch, cbWakeupNotifs, &cbRead);
+                ASMAtomicSubU64(&pThis->cbWakeupNotifs, cbRead);
+            }
         }
 
         /* process _all_ outstanding requests but don't wait */
@@ -781,17 +797,40 @@ static DECLCALLBACK(int) drvNATAsyncIoThread(PPDMDRVINS pDrvIns, PPDMTHREAD pThr
 
 #else /* RT_OS_WINDOWS */
         uint32_t msTimeout = DRVNAT_DEFAULT_TIMEOUT;
-        pThis->pNATState->nsock = 0;
+        pThis->pNATState->nsock = 1;
         slirp_pollfds_fill(pThis->pNATState->pSlirp, &msTimeout, drvNAT_AddPollCb /* SlirpAddPollCb */, pThis /* opaque */);
         drvNAT_UpdateTimeout(&msTimeout, pThis);
-
-        int cChangedFDs = 0;
-        int vrc = RTWinPoll(pThis->pNATState->polls, pThis->pNATState->nsock, msTimeout, &cChangedFDs, pThis->hWakeupEvent);
-        if (vrc != VINF_SUCCESS)
+.h
+        int cChangedFDs = WSAPoll(pThis->pNATState->polls, pThis->pNATState->nsock, msTimeout /* timeout */);
+        int error = WSAGetLastError();
+        if (cChangedFDs == SOCKET_ERROR)
         {
-            if (vrc != VERR_TIMEOUT)
-                LogRel(("NAT: RTWinPoll returned vrc=%Rrc (cChangedFDs=%d)\n", vrc, cChangedFDs));
+            LogRel(("NAT: RTWinPoll returned error=%Rrc (cChangedFDs=%d)\n", error, cChangedFDs));
             Log4(("NAT: NSOCK = %d\n", pThis->pNATState->nsock));
+        }
+
+        if (pThis->pNATState->polls[0].revents & (POLLIN))
+        {
+            /* drain the pipe
+             *
+             * Note! drvNATSend decoupled so we don't know how many times
+             * device's thread sends before we've entered multiplex,
+             * so to avoid false alarm drain pipe here to the very end
+             */
+            char ch[1024];
+            size_t cbRead;
+            uint64_t cbWakeupNotifs = ASMAtomicReadU64(&pThis->cbWakeupNotifs);
+
+            if (cbWakeupNotifs > 1024)
+            {
+                cbRead = recv(pThis->pWakeupSockPair[1], &ch, 1024, NULL);
+                ASMAtomicSubU64(&pThis->cbWakeupNotifs, 1024);
+            }
+            else
+            {
+                cbRead = recv(pThis->pWakeupSockPair[1], &ch, cbWakeupNotifs, NULL);
+                ASMAtomicSubU64(&pThis->cbWakeupNotifs, cbRead);
+            }
         }
 
         if (cChangedFDs == 0)
@@ -808,13 +847,6 @@ static DECLCALLBACK(int) drvNATAsyncIoThread(PPDMDRVINS pDrvIns, PPDMTHREAD pThr
         /* process _all_ outstanding requests but don't wait */
         RTReqQueueProcess(pThis->hSlirpReqQueue, 0);
         drvNAT_CheckTimeout(pThis);
-# ifdef VBOX_NAT_DELAY_HACK
-        if (cBreak++ > 128)
-        {
-            cBreak = 0;
-            RTThreadSleep(2);
-        }
-# endif
 #endif /* RT_OS_WINDOWS */
     }
 
@@ -1702,11 +1734,16 @@ static DECLCALLBACK(int) drvNATConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg, uin
     rc = RTPipeCreate(&pThis->hPipeRead, &pThis->hPipeWrite, 0 /*fFlags*/);
     AssertRCReturn(rc, rc);
 #else
-    // Create the wakeup event handle.
-    pThis->hWakeupEvent = NULL;
-    pThis->hWakeupEvent = CreateEvent(NULL, FALSE, FALSE, NULL); /* auto-reset event */
-    Assert(pThis->hWakeupEvent != NULL);
+    // Create the wakeup socket pair.
+    pThis->pWakeupSockPair[0] = NULL;
+    pThis->pWakeupSockPair[1] = NULL;
+
+    /* idx=0 is write, idx=1 is read */
+    rc = RTWinSocketPair(AF_INET, SOCK_DGRAM, 0, pThis->pWakeupSockPair);
+    AssertRCReturn(rc, rc);
 #endif
+    /* initalize the notifier counter */
+    pThis->cbWakeupNotifs = 0;
 
     rc = PDMDrvHlpThreadCreate(pDrvIns, &pThis->pSlirpThread, pThis, drvNATAsyncIoThread,
                                drvNATAsyncIoWakeup, 256 * _1K, RTTHREADTYPE_IO, "NAT");
