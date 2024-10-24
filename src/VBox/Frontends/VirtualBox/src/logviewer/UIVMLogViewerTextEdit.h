@@ -1,4 +1,4 @@
-/* $Id: UIVMLogViewerTextEdit.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIVMLogViewerTextEdit.h 106658 2024-10-24 10:58:59Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVMLogViewer class declaration.
  */
@@ -112,6 +112,7 @@ private:
     void setMouseCursorLine(int lineNumber);
     /** If bookmark exists this function removes it, if not it adds the bookmark. */
     void toggleBookmark(const UIVMLogBookmark& bookmark);
+    void repositionToBottomToUpButtons();
 
     UIVMLogBookmark  m_iContextMenuBookmark;
     QWidget             *m_pLineNumberArea;

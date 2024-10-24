@@ -1,4 +1,4 @@
-/* $Id: UIVMLogViewerTextEdit.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIVMLogViewerTextEdit.cpp 106658 2024-10-24 10:58:59Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVMLogViewer class implementation.
  */
@@ -492,31 +492,34 @@ void UIVMLogViewerTextEdit::resizeEvent(QResizeEvent *pEvent)
         QRect cr = contentsRect();
         m_pLineNumberArea->setGeometry(QRect(cr.left(), cr.top(), lineNumberAreaWidth(), cr.height()));
     }
+    repositionToBottomToUpButtons();
+}
 
-   if (m_pScrollToBottomLabel && m_pScrollToTopLabel)
-   {
-       QScrollBar *pVScrollBar = verticalScrollBar();
-       QScrollBar *pHScrollBar = horizontalScrollBar();
+void UIVMLogViewerTextEdit::repositionToBottomToUpButtons()
+{
+    if (m_pScrollToBottomLabel && m_pScrollToTopLabel)
+    {
+        QScrollBar *pVScrollBar = verticalScrollBar();
+        QScrollBar *pHScrollBar = horizontalScrollBar();
+        QSize iconSize = m_pScrollToBottomLabel->pixmap().size();
+        int iMarginX = 0;
+        if (pVScrollBar)
+            iMarginX = pVScrollBar->width();
+        if (iMarginX == 0)
+            iMarginX = iconSize.width();
+        iMarginX += 2 * QApplication::style()->pixelMetric(QStyle::PM_FocusFrameHMargin);
+        int iMarginY = 0;
+        if (pHScrollBar)
+            iMarginY = pHScrollBar->height();
+        if (iMarginY == 0)
+            iMarginY = iconSize.height();
 
-       int iMarginX = 0;
-       if (pVScrollBar)
-           iMarginX = pVScrollBar->width();
-       if (iMarginX == 0)
-           iMarginX = m_pScrollToBottomLabel->width();
-       iMarginX += 2 * QApplication::style()->pixelMetric(QStyle::PM_FocusFrameHMargin);
-       int iMarginY = 0;
-       if (pHScrollBar)
-           iMarginY = pHScrollBar->height();
-       if (iMarginY == 0)
-           iMarginY = m_pScrollToTopLabel->height();
-
-
-       m_pScrollToBottomLabel->move(width() - iMarginX - m_pScrollToBottomLabel->width(),
+         m_pScrollToBottomLabel->move(width() - iMarginX - iconSize.width(),
                                      0.5 * m_pScrollToBottomLabel->height());
 
-       m_pScrollToTopLabel->move(width() - iMarginX - m_pScrollToTopLabel->width(),
-                                  height() - iMarginY - 1.5 * m_pScrollToTopLabel->height());
-   }
+        m_pScrollToTopLabel->move(width() - iMarginX - iconSize.width(),
+                                  height() - iMarginY - 1.5 * iconSize.height());
+    }
 }
 
 void UIVMLogViewerTextEdit::mouseMoveEvent(QMouseEvent *pEvent)
