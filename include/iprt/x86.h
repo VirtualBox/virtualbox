@@ -710,6 +710,9 @@ typedef const X86CPUIDFEATEDX *PCX86CPUIDFEATEDX;
 /** ECX Bit 30 - SGX_LC - Supports SGX launch configuration. */
 #define X86_CPUID_STEXT_FEATURE_ECX_SGX_LC            RT_BIT_32(30)
 
+/** EDX bit 9 - SRBDS_CTRL - (Special Register Buffer Data Sample Control)
+ *  Supports IA32_MCU_OPT_CTRL and IA32_MCU_OPT_CTRL.RNGDS_MITG_DIS. */
+#define X86_CPUID_STEXT_FEATURE_EDX_SRBDS_CTRL        RT_BIT_32(9)
 /** EDX Bit 10 - MD_CLEAR - Supports flushing MDS related buffers. */
 #define X86_CPUID_STEXT_FEATURE_EDX_MD_CLEAR          RT_BIT_32(10)
 /** EDX Bit 20 - CET_IBT - Supports CET indirect branch tracking features. */
@@ -1618,6 +1621,19 @@ typedef const X86MTRRVAR *PCX86MTRRVAR;
 
 /** Cache control/info. */
 #define MSR_BBL_CR_CTL3                     UINT32_C(0x11e)
+
+/** Microcode Update Operation Control (R/W). */
+#define MSR_IA32_MCU_OPT_CTRL                       0x123
+#define MSR_IA32_MCU_OPT_CTRL_RNGDS_MITG_DIS        RT_BIT_64(0)
+#define MSR_IA32_MCU_OPT_CTRL_RTM_ALLOW             RT_BIT_64(1)
+#define MSR_IA32_MCU_OPT_CTRL_RTM_LOCKED            RT_BIT_64(2)
+#define MSR_IA32_MCU_OPT_CTRL_FB_CLEAR_DIS          RT_BIT_64(3)
+#define MSR_IA32_MCU_OPT_CTRL_GDS_MITG_DIS          RT_BIT_64(4)
+#define MSR_IA32_MCU_OPT_CTRL_GDS_MITG_LOCK         RT_BIT_64(5)
+#define MSR_IA32_MCU_OPT_CTRL_IGN_UMONITOR          RT_BIT_64(6)
+#define MSR_IA32_MCU_OPT_CTRL_MON_UMON_MITG         RT_BIT_64(7)
+/* Bits 63:7 reserved. */
+#define MSR_IA32_MCU_OPT_CTRL_RSVD_MASK             UINT64_C(0xffffffffffffff80)
 
 #ifndef MSR_IA32_SYSENTER_CS /* qemu cpu.h kludge */
 /** SYSENTER_CS - the R0 CS, indirectly giving R0 SS, R3 CS and R3 DS.
