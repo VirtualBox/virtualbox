@@ -1,4 +1,4 @@
-/* $Id: DrvNATlibslirp.cpp 106690 2024-10-25 07:43:30Z jack.doherty@oracle.com $ */
+/* $Id: DrvNATlibslirp.cpp 106722 2024-10-25 19:35:42Z jack.doherty@oracle.com $ */
 /** @file
  * DrvNATlibslirp - NATlibslirp network transport driver.
  */
@@ -608,8 +608,7 @@ static void drvNATNotifyNATThread(PDRVNAT pThis, const char *pszWho)
     int cbWritten = send(pThis->pWakeupSockPair[0], "", 1, NULL);
     if (cbWritten == SOCKET_ERROR)
     {
-        int error = WSAGetLastError();
-        Log4(("Notify NAT Thread Error %d\n", error));
+        Log4(("Notify NAT Thread Error %d\n", WSAGetLastError()));
     }
     else
     {
