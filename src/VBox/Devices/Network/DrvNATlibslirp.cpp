@@ -1,4 +1,4 @@
-/* $Id: DrvNATlibslirp.cpp 106686 2024-10-24 23:01:45Z jack.doherty@oracle.com $ */
+/* $Id: DrvNATlibslirp.cpp 106690 2024-10-25 07:43:30Z jack.doherty@oracle.com $ */
 /** @file
  * DrvNATlibslirp - NATlibslirp network transport driver.
  */
@@ -778,17 +778,8 @@ static DECLCALLBACK(int) drvNATAsyncIoThread(PPDMDRVINS pDrvIns, PPDMTHREAD pThr
             char ch[1024];
             size_t cbRead;
             uint64_t cbWakeupNotifs = ASMAtomicReadU64(&pThis->cbWakeupNotifs);
-
-            if (cbWakeupNotifs > 1024)
-            {
-                RTPipeRead(pThis->hPipeRead, &ch, 1024, &cbRead);
-                ASMAtomicSubU64(&pThis->cbWakeupNotifs, 1024);
-            }
-            else
-            {
-                RTPipeRead(pThis->hPipeRead, &ch, cbWakeupNotifs, &cbRead);
-                ASMAtomicSubU64(&pThis->cbWakeupNotifs, cbRead);
-            }
+            RTPipeRead(pThis->hPipeRead, &ch[0], RT_MIN(cbWakeupNotifs, 1024), &cbRead);
+            ASMAtomicSubU64(&pThis->cbWakeupNotifs, cbRead);
         }
 
         /* process _all_ outstanding requests but don't wait */
@@ -800,7 +791,7 @@ static DECLCALLBACK(int) drvNATAsyncIoThread(PPDMDRVINS pDrvIns, PPDMTHREAD pThr
         pThis->pNATState->nsock = 1;
         slirp_pollfds_fill(pThis->pNATState->pSlirp, &msTimeout, drvNAT_AddPollCb /* SlirpAddPollCb */, pThis /* opaque */);
         drvNAT_UpdateTimeout(&msTimeout, pThis);
-.h
+
         int cChangedFDs = WSAPoll(pThis->pNATState->polls, pThis->pNATState->nsock, msTimeout /* timeout */);
         int error = WSAGetLastError();
         if (cChangedFDs == SOCKET_ERROR)
@@ -820,17 +811,8 @@ static DECLCALLBACK(int) drvNATAsyncIoThread(PPDMDRVINS pDrvIns, PPDMTHREAD pThr
             char ch[1024];
             size_t cbRead;
             uint64_t cbWakeupNotifs = ASMAtomicReadU64(&pThis->cbWakeupNotifs);
-
-            if (cbWakeupNotifs > 1024)
-            {
-                cbRead = recv(pThis->pWakeupSockPair[1], &ch, 1024, NULL);
-                ASMAtomicSubU64(&pThis->cbWakeupNotifs, 1024);
-            }
-            else
-            {
-                cbRead = recv(pThis->pWakeupSockPair[1], &ch, cbWakeupNotifs, NULL);
-                ASMAtomicSubU64(&pThis->cbWakeupNotifs, cbRead);
-            }
+            cbRead = recv(pThis->pWakeupSockPair[1], &ch[0], RT_MIN(cbWakeupNotifs, 1024), NULL);
+            ASMAtomicSubU64(&pThis->cbWakeupNotifs, cbRead);
         }
 
         if (cChangedFDs == 0)
