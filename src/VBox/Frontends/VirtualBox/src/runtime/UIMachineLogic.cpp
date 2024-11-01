@@ -1,4 +1,4 @@
-/* $Id: UIMachineLogic.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIMachineLogic.cpp 106832 2024-11-01 12:16:23Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineLogic class implementation.
  */
@@ -30,6 +30,7 @@
 #include <QApplication>
 #include <QDateTime>
 #include <QDir>
+#include <QEventLoop>
 #include <QFileInfo>
 #include <QImageWriter>
 #include <QPainter>
@@ -313,6 +314,18 @@ void UIMachineLogic::sendMachineWindowsSizeHints()
      * send machine-view(s) size-hint(s) to the guest: */
     foreach(UIMachineWindow *pMachineWindow, machineWindows())
         pMachineWindow->sendMachineViewSizeHint();
+}
+
+void UIMachineLogic::openNetworkSettingsDialogTheModalWay()
+{
+    /* Open VM settings : Network page: */
+    openSettingsDialog("#network", QString(), true /* app modal */);
+    /* Create event loop to listen to VM settings dialog destroy signal: */
+    QEventLoop loop;
+    connect(m_settings.value(UIAdvancedSettingsDialog::Type_Machine),
+            &QObject::destroyed, &loop, &QEventLoop::quit);
+    /* Execute loop finally: */
+    loop.exec();
 }
 
 #ifdef VBOX_WS_MAC
@@ -1518,33 +1531,6 @@ void UIMachineLogic::sltHandleMenuPrepare(int iIndex, QMenu *pMenu)
         (this->*(m_menuUpdateHandlers.value(iIndex)))(pMenu);
 }
 
-void UIMachineLogic::sltOpenPreferencesDialog(const QString &strCategory /* = QString() */,
-                                              const QString &strControl /* = QString() */)
-{
-    /* Do not process if window(s) missed! */
-    if (!isMachineWindowsCreated())
-        return;
-
-    /* Create instance if not yet created: */
-    if (!m_settings.contains(UIAdvancedSettingsDialog::Type_Global))
-    {
-        m_settings[UIAdvancedSettingsDialog::Type_Global] = new UIAdvancedSettingsDialogGlobal(activeMachineWindow(),
-                                                                                               strCategory,
-                                                                                               strControl);
-        connect(m_settings[UIAdvancedSettingsDialog::Type_Global], &UIAdvancedSettingsDialog::sigClose,
-                this, &UIMachineLogic::sltClosePreferencesDialog);
-        const bool fSuccess = m_settings.value(UIAdvancedSettingsDialog::Type_Global)->load();
-        if (!fSuccess)
-        {
-            delete m_settings.take(UIAdvancedSettingsDialog::Type_Global);
-            return;
-        }
-    }
-
-    /* Expose instance: */
-    UIDesktopWidgetWatchdog::restoreWidget(m_settings.value(UIAdvancedSettingsDialog::Type_Global));
-}
-
 void UIMachineLogic::sltClosePreferencesDialog()
 {
     /* Remove instance if exist: */
@@ -1563,35 +1549,6 @@ void UIMachineLogic::sltClose()
     /* Try to close active machine-window: */
     LogRel(("GUI: Request to close active machine-window.\n"));
     activeMachineWindow()->close();
-}
-
-void UIMachineLogic::sltOpenSettingsDialog(const QString &strCategory /* = QString() */,
-                                           const QString &strControl /* = QString()*/)
-{
-    /* Do not process if window(s) missed! */
-    if (!isMachineWindowsCreated())
-        return;
-
-    /* Create instance if not yet created: */
-    if (!m_settings.contains(UIAdvancedSettingsDialog::Type_Machine))
-    {
-        m_settings[UIAdvancedSettingsDialog::Type_Machine] = new UIAdvancedSettingsDialogMachine(activeMachineWindow(),
-                                                                                                 uiCommon().managedVMUuid(),
-                                                                                                 actionPool(),
-                                                                                                 strCategory,
-                                                                                                 strControl);
-        connect(m_settings[UIAdvancedSettingsDialog::Type_Machine], &UIAdvancedSettingsDialog::sigClose,
-                this, &UIMachineLogic::sltCloseSettingsDialog);
-        const bool fSuccess = m_settings.value(UIAdvancedSettingsDialog::Type_Machine)->load();
-        if (!fSuccess)
-        {
-            delete m_settings.take(UIAdvancedSettingsDialog::Type_Machine);
-            return;
-        }
-    }
-
-    /* Expose instance: */
-    UIDesktopWidgetWatchdog::restoreWidget(m_settings.value(UIAdvancedSettingsDialog::Type_Machine));
 }
 
 void UIMachineLogic::sltCloseSettingsDialog()
@@ -1944,7 +1901,7 @@ void UIMachineLogic::sltTakeScreenshot()
 void UIMachineLogic::sltOpenRecordingOptions()
 {
     /* Open VM settings : Display page : Recording tab: */
-    sltOpenSettingsDialog("#display", "m_pCheckboxVideoCapture");
+    openSettingsDialog("#display", "m_pCheckboxVideoCapture");
 }
 
 void UIMachineLogic::sltToggleRecording(bool fEnabled)
@@ -1994,7 +1951,7 @@ void UIMachineLogic::sltToggleVRDE(bool fEnabled)
 void UIMachineLogic::sltShowKeyboardSettings()
 {
     /* Global preferences: Input page: */
-    sltOpenPreferencesDialog("#input", "m_pMachineTable");
+    openPreferencesDialog("#input", "m_pMachineTable");
 }
 
 void UIMachineLogic::sltShowSoftKeyboard()
@@ -2132,7 +2089,7 @@ void UIMachineLogic::sltToggleMouseIntegration(bool fEnabled)
 void UIMachineLogic::sltOpenSettingsDialogStorage()
 {
     /* Machine settings: Storage page: */
-    sltOpenSettingsDialog("#storage");
+    openSettingsDialog("#storage");
 }
 
 void UIMachineLogic::sltMountStorageMedium()
@@ -2201,13 +2158,13 @@ void UIMachineLogic::sltToggleAudioInput(bool fEnabled)
 void UIMachineLogic::sltOpenSettingsDialogNetwork()
 {
     /* Open VM settings : Network page: */
-    sltOpenSettingsDialog("#network");
+    openSettingsDialog("#network");
 }
 
 void UIMachineLogic::sltOpenSettingsDialogUSBDevices()
 {
     /* Machine settings: Storage page: */
-    sltOpenSettingsDialog("#usb");
+    openSettingsDialog("#usb");
 }
 
 void UIMachineLogic::sltOpenSettingsDialogSharedFolders()
@@ -2217,7 +2174,7 @@ void UIMachineLogic::sltOpenSettingsDialogSharedFolders()
         UINotificationMessage::remindAboutGuestAdditionsAreNotActive();
 
     /* Open VM settings : Shared folders page: */
-    sltOpenSettingsDialog("#sharedFolders");
+    openSettingsDialog("#sharedFolders");
 }
 
 void UIMachineLogic::sltAttachUSBDevice()
@@ -2960,6 +2917,68 @@ void UIMachineLogic::askUserForTheDiskEncryptionPasswords()
             }
         }
     }
+}
+
+void UIMachineLogic::openPreferencesDialog(const QString &strCategory /* = QString() */,
+                                           const QString &strControl /* = QString() */,
+                                           bool fAppModal /* = false */)
+{
+    /* Do not process if window(s) missed! */
+    if (!isMachineWindowsCreated())
+        return;
+
+    /* Create instance if not yet created: */
+    if (!m_settings.contains(UIAdvancedSettingsDialog::Type_Global))
+    {
+        m_settings[UIAdvancedSettingsDialog::Type_Global] = new UIAdvancedSettingsDialogGlobal(activeMachineWindow(),
+                                                                                               strCategory,
+                                                                                               strControl);
+        if (fAppModal)
+            m_settings.value(UIAdvancedSettingsDialog::Type_Machine)->setWindowModality(Qt::ApplicationModal);
+        connect(m_settings.value(UIAdvancedSettingsDialog::Type_Global), &UIAdvancedSettingsDialog::sigClose,
+                this, &UIMachineLogic::sltClosePreferencesDialog);
+        const bool fSuccess = m_settings.value(UIAdvancedSettingsDialog::Type_Global)->load();
+        if (!fSuccess)
+        {
+            delete m_settings.take(UIAdvancedSettingsDialog::Type_Global);
+            return;
+        }
+    }
+
+    /* Expose instance: */
+    UIDesktopWidgetWatchdog::restoreWidget(m_settings.value(UIAdvancedSettingsDialog::Type_Global));
+}
+
+void UIMachineLogic::openSettingsDialog(const QString &strCategory /* = QString() */,
+                                        const QString &strControl /* = QString()*/,
+                                        bool fAppModal /* = false */)
+{
+    /* Do not process if window(s) missed! */
+    if (!isMachineWindowsCreated())
+        return;
+
+    /* Create instance if not yet created: */
+    if (!m_settings.contains(UIAdvancedSettingsDialog::Type_Machine))
+    {
+        m_settings[UIAdvancedSettingsDialog::Type_Machine] = new UIAdvancedSettingsDialogMachine(activeMachineWindow(),
+                                                                                                 uiCommon().managedVMUuid(),
+                                                                                                 actionPool(),
+                                                                                                 strCategory,
+                                                                                                 strControl);
+        if (fAppModal)
+            m_settings.value(UIAdvancedSettingsDialog::Type_Machine)->setWindowModality(Qt::ApplicationModal);
+        connect(m_settings.value(UIAdvancedSettingsDialog::Type_Machine), &UIAdvancedSettingsDialog::sigClose,
+                this, &UIMachineLogic::sltCloseSettingsDialog);
+        const bool fSuccess = m_settings.value(UIAdvancedSettingsDialog::Type_Machine)->load();
+        if (!fSuccess)
+        {
+            delete m_settings.take(UIAdvancedSettingsDialog::Type_Machine);
+            return;
+        }
+    }
+
+    /* Expose instance: */
+    UIDesktopWidgetWatchdog::restoreWidget(m_settings.value(UIAdvancedSettingsDialog::Type_Machine));
 }
 
 void UIMachineLogic::takeScreenshot(const QString &strFile, const QString &strFormat /* = "png" */) const
