@@ -1,4 +1,4 @@
-/* $Id: UIUpdateSettingsEditor.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIUpdateSettingsEditor.cpp 106831 2024-11-01 11:33:26Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIUpdateSettingsEditor class implementation.
  */
@@ -39,14 +39,13 @@
 
 UIUpdateSettingsEditor::UIUpdateSettingsEditor(QWidget *pParent /* = 0 */)
     : UIEditor(pParent, true /* show in basic mode? */)
+    , m_pRadioButtonGroup(0)
     , m_pCheckBox(0)
     , m_pWidgetUpdateSettings(0)
     , m_pLabelUpdatePeriod(0)
     , m_pComboUpdatePeriod(0)
     , m_pLabelUpdateDate(0)
     , m_pFieldUpdateDate(0)
-    , m_pLabelUpdateFilter(0)
-    , m_pRadioButtonGroup(0)
 {
     prepare();
 }
@@ -68,31 +67,6 @@ VBoxUpdateData UIUpdateSettingsEditor::value() const
 
 void UIUpdateSettingsEditor::sltRetranslateUI()
 {
-    /* Translate check-box: */
-    if (m_pCheckBox)
-    {
-        m_pCheckBox->setToolTip(tr("When checked, the application will periodically connect to the VirtualBox "
-                                   "website and check whether a new VirtualBox version is available."));
-        m_pCheckBox->setText(tr("&Check for Updates"));
-    }
-
-    /* Translate period widgets: */
-    if (m_pLabelUpdatePeriod)
-        m_pLabelUpdatePeriod->setText(tr("&Once per:"));
-    if (m_pComboUpdatePeriod)
-    {
-        m_pComboUpdatePeriod->setToolTip(tr("Selects how often the new version check should be performed."));
-        const int iCurrenIndex = m_pComboUpdatePeriod->currentIndex();
-        m_pComboUpdatePeriod->clear();
-        VBoxUpdateData::populate();
-        m_pComboUpdatePeriod->insertItems(0, VBoxUpdateData::list());
-        m_pComboUpdatePeriod->setCurrentIndex(iCurrenIndex == -1 ? 0 : iCurrenIndex);
-    }
-    if (m_pLabelUpdateDate)
-        m_pLabelUpdateDate->setText(tr("Next Check:"));
-    if (m_pLabelUpdateFilter)
-        m_pLabelUpdateFilter->setText(tr("Check for:"));
-
     /* Translate branch widgets: */
     if (m_mapRadioButtons.value(KUpdateChannel_Stable))
     {
@@ -121,6 +95,29 @@ void UIUpdateSettingsEditor::sltRetranslateUI()
                                                                            "pre-release versions and testing builds of "
                                                                            "VirtualBox."));
     }
+
+    /* Translate check-box: */
+    if (m_pCheckBox)
+    {
+        m_pCheckBox->setToolTip(tr("When checked, the application will periodically connect to the VirtualBox "
+                                   "website and check whether a new VirtualBox version is available."));
+        m_pCheckBox->setText(tr("&Check for Updates"));
+    }
+
+    /* Translate period widgets: */
+    if (m_pLabelUpdatePeriod)
+        m_pLabelUpdatePeriod->setText(tr("&Once per:"));
+    if (m_pComboUpdatePeriod)
+    {
+        m_pComboUpdatePeriod->setToolTip(tr("Selects how often the new version check should be performed."));
+        const int iCurrenIndex = m_pComboUpdatePeriod->currentIndex();
+        m_pComboUpdatePeriod->clear();
+        VBoxUpdateData::populate();
+        m_pComboUpdatePeriod->insertItems(0, VBoxUpdateData::list());
+        m_pComboUpdatePeriod->setCurrentIndex(iCurrenIndex == -1 ? 0 : iCurrenIndex);
+    }
+    if (m_pLabelUpdateDate)
+        m_pLabelUpdateDate->setText(tr("Next Check:"));
 }
 
 void UIUpdateSettingsEditor::handleFilterChange()
@@ -169,17 +166,55 @@ void UIUpdateSettingsEditor::prepareWidgets()
     if (pLayout)
     {
         pLayout->setContentsMargins(0, 0, 0, 0);
-        pLayout->setRowStretch(2, 1);
+        pLayout->setColumnStretch(1, 1);
+
+        /* Prepare radio-button group: */
+        m_pRadioButtonGroup = new QButtonGroup(m_pWidgetUpdateSettings);
+        if (m_pRadioButtonGroup)
+        {
+            /* Prepare 'update to "stable"' radio-button: */
+            m_mapRadioButtons[KUpdateChannel_Stable] = new QRadioButton(m_pWidgetUpdateSettings);
+            if (m_mapRadioButtons.value(KUpdateChannel_Stable))
+            {
+                m_mapRadioButtons.value(KUpdateChannel_Stable)->setVisible(false);
+                m_pRadioButtonGroup->addButton(m_mapRadioButtons.value(KUpdateChannel_Stable));
+                pLayout->addWidget(m_mapRadioButtons.value(KUpdateChannel_Stable), 0, 0, 1, 2);
+            }
+            /* Prepare 'update to "all release"' radio-button: */
+            m_mapRadioButtons[KUpdateChannel_All] = new QRadioButton(m_pWidgetUpdateSettings);
+            if (m_mapRadioButtons.value(KUpdateChannel_All))
+            {
+                m_mapRadioButtons.value(KUpdateChannel_All)->setVisible(false);
+                m_pRadioButtonGroup->addButton(m_mapRadioButtons.value(KUpdateChannel_All));
+                pLayout->addWidget(m_mapRadioButtons.value(KUpdateChannel_All), 1, 0, 1, 2);
+            }
+            /* Prepare 'update to "with betas"' radio-button: */
+            m_mapRadioButtons[KUpdateChannel_WithBetas] = new QRadioButton(m_pWidgetUpdateSettings);
+            if (m_mapRadioButtons.value(KUpdateChannel_WithBetas))
+            {
+                m_mapRadioButtons.value(KUpdateChannel_WithBetas)->setVisible(false);
+                m_pRadioButtonGroup->addButton(m_mapRadioButtons.value(KUpdateChannel_WithBetas));
+                pLayout->addWidget(m_mapRadioButtons.value(KUpdateChannel_WithBetas), 2, 0, 1, 2);
+            }
+            /* Prepare 'update to "with testing"' radio-button: */
+            m_mapRadioButtons[KUpdateChannel_WithTesting] = new QRadioButton(m_pWidgetUpdateSettings);
+            if (m_mapRadioButtons.value(KUpdateChannel_WithTesting))
+            {
+                m_mapRadioButtons.value(KUpdateChannel_WithTesting)->setVisible(false);
+                m_pRadioButtonGroup->addButton(m_mapRadioButtons.value(KUpdateChannel_WithTesting));
+                pLayout->addWidget(m_mapRadioButtons.value(KUpdateChannel_WithTesting), 3, 0, 1, 2);
+            }
+        }
 
         /* Prepare update check-box: */
         m_pCheckBox = new QCheckBox(this);
         if (m_pCheckBox)
-            pLayout->addWidget(m_pCheckBox, 0, 0, 1, 2);
+            pLayout->addWidget(m_pCheckBox, 4, 0, 1, 2);
 
         /* Prepare 20-px shifting spacer: */
         QSpacerItem *pSpacerItem = new QSpacerItem(20, 0, QSizePolicy::Fixed, QSizePolicy::Minimum);
         if (pSpacerItem)
-            pLayout->addItem(pSpacerItem, 1, 0);
+            pLayout->addItem(pSpacerItem, 5, 0);
 
         /* Prepare update settings widget: */
         m_pWidgetUpdateSettings = new QWidget(this);
@@ -226,54 +261,9 @@ void UIUpdateSettingsEditor::prepareWidgets()
                     m_pLabelUpdateDate->setBuddy(m_pFieldUpdateDate);
                     pLayoutUpdateSettings->addWidget(m_pFieldUpdateDate, 1, 1);
                 }
-
-                /* Prepare update date label: */
-                m_pLabelUpdateFilter = new QLabel(m_pWidgetUpdateSettings);
-                if (m_pLabelUpdateFilter)
-                {
-                    m_pLabelUpdateFilter->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-                    pLayoutUpdateSettings->addWidget(m_pLabelUpdateFilter, 2, 0);
-                }
-                /* Prepare radio-button group: */
-                m_pRadioButtonGroup = new QButtonGroup(m_pWidgetUpdateSettings);
-                if (m_pRadioButtonGroup)
-                {
-                    /* Prepare 'update to "stable"' radio-button: */
-                    m_mapRadioButtons[KUpdateChannel_Stable] = new QRadioButton(m_pWidgetUpdateSettings);
-                    if (m_mapRadioButtons.value(KUpdateChannel_Stable))
-                    {
-                        m_mapRadioButtons.value(KUpdateChannel_Stable)->setVisible(false);
-                        m_pRadioButtonGroup->addButton(m_mapRadioButtons.value(KUpdateChannel_Stable));
-                        pLayoutUpdateSettings->addWidget(m_mapRadioButtons.value(KUpdateChannel_Stable), 2, 1);
-                    }
-                    /* Prepare 'update to "all release"' radio-button: */
-                    m_mapRadioButtons[KUpdateChannel_All] = new QRadioButton(m_pWidgetUpdateSettings);
-                    if (m_mapRadioButtons.value(KUpdateChannel_All))
-                    {
-                        m_mapRadioButtons.value(KUpdateChannel_All)->setVisible(false);
-                        m_pRadioButtonGroup->addButton(m_mapRadioButtons.value(KUpdateChannel_All));
-                        pLayoutUpdateSettings->addWidget(m_mapRadioButtons.value(KUpdateChannel_All), 3, 1);
-                    }
-                    /* Prepare 'update to "with betas"' radio-button: */
-                    m_mapRadioButtons[KUpdateChannel_WithBetas] = new QRadioButton(m_pWidgetUpdateSettings);
-                    if (m_mapRadioButtons.value(KUpdateChannel_WithBetas))
-                    {
-                        m_mapRadioButtons.value(KUpdateChannel_WithBetas)->setVisible(false);
-                        m_pRadioButtonGroup->addButton(m_mapRadioButtons.value(KUpdateChannel_WithBetas));
-                        pLayoutUpdateSettings->addWidget(m_mapRadioButtons.value(KUpdateChannel_WithBetas), 4, 1);
-                    }
-                    /* Prepare 'update to "with testing"' radio-button: */
-                    m_mapRadioButtons[KUpdateChannel_WithTesting] = new QRadioButton(m_pWidgetUpdateSettings);
-                    if (m_mapRadioButtons.value(KUpdateChannel_WithTesting))
-                    {
-                        m_mapRadioButtons.value(KUpdateChannel_WithTesting)->setVisible(false);
-                        m_pRadioButtonGroup->addButton(m_mapRadioButtons.value(KUpdateChannel_WithTesting));
-                        pLayoutUpdateSettings->addWidget(m_mapRadioButtons.value(KUpdateChannel_WithTesting), 5, 1);
-                    }
-                }
             }
 
-            pLayout->addWidget(m_pWidgetUpdateSettings, 1, 1);
+            pLayout->addWidget(m_pWidgetUpdateSettings, 5, 1);
         }
     }
 }
@@ -319,9 +309,10 @@ void UIUpdateSettingsEditor::fetchValue()
         {
             if (m_pComboUpdatePeriod)
                 m_pComboUpdatePeriod->setCurrentIndex(m_guiValue.updatePeriod());
-            if (m_mapRadioButtons.value(m_guiValue.updateChannel()))
-                m_mapRadioButtons.value(m_guiValue.updateChannel())->setChecked(true);
         }
+
+        if (m_mapRadioButtons.value(m_guiValue.updateChannel()))
+            m_mapRadioButtons.value(m_guiValue.updateChannel())->setChecked(true);
 
         sltHandleUpdateToggle(m_pCheckBox->isChecked());
     }

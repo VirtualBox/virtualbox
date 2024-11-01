@@ -1,4 +1,4 @@
-/* $Id: UIUpdateSettingsEditor.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIUpdateSettingsEditor.h 106831 2024-11-01 11:33:26Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIUpdateSettingsEditor class declaration.
  */
@@ -98,6 +98,11 @@ private:
 
     /** @name Widgets
      * @{ */
+        /** Holds the radio button group instance. */
+        QButtonGroup                           *m_pRadioButtonGroup;
+        /** Holds the radio button map instance. */
+        QMap<KUpdateChannel, QAbstractButton*>  m_mapRadioButtons;
+
         /** Holds the update check-box instance. */
         QCheckBox *m_pCheckBox;
         /** Holds the update settings widget instance. */
@@ -110,13 +115,6 @@ private:
         QLabel    *m_pLabelUpdateDate;
         /** Holds the update date field instance. */
         QLabel    *m_pFieldUpdateDate;
-        /** Holds the update filter label instance. */
-        QLabel    *m_pLabelUpdateFilter;
-
-        /** Holds the radio button group instance. */
-        QButtonGroup                           *m_pRadioButtonGroup;
-        /** Holds the radio button map instance. */
-        QMap<KUpdateChannel, QAbstractButton*>  m_mapRadioButtons;
     /** @} */
 };
 
