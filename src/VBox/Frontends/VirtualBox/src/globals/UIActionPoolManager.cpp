@@ -1,4 +1,4 @@
-/* $Id: UIActionPoolManager.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIActionPoolManager.cpp 106835 2024-11-04 14:02:08Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIActionPoolManager class implementation.
  */
@@ -1045,17 +1045,6 @@ protected:
             }
             default:
                 break;
-        }
-    }
-
-    /** Handles state change. */
-    virtual void handleStateChange() RT_OVERRIDE
-    {
-        switch (state())
-        {
-            case 0: showMenu(); break;
-            case 1: hideMenu(); break;
-            default: break;
         }
     }
 };

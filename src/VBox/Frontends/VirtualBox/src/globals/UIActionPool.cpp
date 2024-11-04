@@ -1,4 +1,4 @@
-/* $Id: UIActionPool.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIActionPool.cpp 106835 2024-11-04 14:02:08Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIActionPool class implementation.
  */
@@ -302,11 +302,6 @@ UIActionMenu::UIActionMenu(UIActionPool *pParent,
 
 UIActionMenu::~UIActionMenu()
 {
-#if !defined(VBOX_IS_QT6_OR_LATER) || !defined(RT_OS_DARWIN) /** @todo qt6: Tcrashes in QCocoaMenuBar::menuForTag during GUI
-                                                              * termination, so disabled it for now and hope it isn't needed. */
-    /* Hide menu: */
-    hideMenu();
-#endif
     /* Delete menu: */
     delete m_pMenu;
     m_pMenu = 0;
@@ -318,31 +313,15 @@ void UIActionMenu::setShowToolTip(bool fShowToolTip)
     m_pMenu->setShowToolTip(fShowToolTip);
 }
 
-void UIActionMenu::showMenu()
-{
-    /* Show menu if necessary: */
-    if (!menu())
-        setMenu(m_pMenu);
-}
-
-void UIActionMenu::hideMenu()
-{
-    /* Hide menu if necessary: */
-    if (menu())
-        setMenu((QMenu *)0);
-}
-
 void UIActionMenu::prepare()
 {
-    /* Create menu: */
+    /* Prepare menu: */
     m_pMenu = new UIMenu;
     AssertPtrReturnVoid(m_pMenu);
     {
-        /* Prepare menu: */
+        setMenu(m_pMenu);
         connect(m_pMenu, &UIMenu::aboutToShow,
                 actionPool(), &UIActionPool::sltHandleMenuPrepare);
-        /* Show menu: */
-        showMenu();
     }
 }
 

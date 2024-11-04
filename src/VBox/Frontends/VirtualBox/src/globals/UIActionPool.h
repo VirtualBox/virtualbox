@@ -1,4 +1,4 @@
-/* $Id: UIActionPool.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIActionPool.h 106835 2024-11-04 14:02:08Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIActionPool class declaration.
  */
@@ -374,11 +374,6 @@ protected:
 
     /** Defines whether tool-tip should be shown. */
     void setShowToolTip(bool fShowToolTip);
-
-    /** Shows menu. */
-    void showMenu();
-    /** Hides menu. */
-    void hideMenu();
 
 private:
 
