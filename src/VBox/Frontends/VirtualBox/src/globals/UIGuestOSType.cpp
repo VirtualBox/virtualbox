@@ -1,4 +1,4 @@
-/* $Id: UIGuestOSType.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIGuestOSType.cpp 106834 2024-11-04 13:57:33Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIGuestOSType class implementation.
  */
@@ -88,7 +88,7 @@ quint64 UIGuestOSTypeHelpers::requiredVideoMemory(const QString &strGuestOSTypeI
     for (int i = 0; i < cMonitors; ++i)
     {
         /* Calculate summary required memory amount in bits: */
-        uNeedBits += (screenSize.at(i) * /* with x height */
+        uNeedBits += (screenSize.at(i) * /* width x height */
                      32 + /* we will take the maximum possible bpp for now */
                      8 * _1M) + /* current cache per screen - may be changed in future */
                      8 * 4096; /* adapter info */
