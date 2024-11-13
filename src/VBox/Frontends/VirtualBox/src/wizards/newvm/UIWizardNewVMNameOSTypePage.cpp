@@ -1,4 +1,4 @@
-/* $Id: UIWizardNewVMNameOSTypePage.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIWizardNewVMNameOSTypePage.cpp 107002 2024-11-13 12:21:13Z brent.paulson@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardNewVMPageBasicNameOSStype class implementation.
  */
@@ -75,6 +75,8 @@ static const osTypePattern gs_OSTypePattern[] =
     { QRegularExpression("((Wi.*2003)|(W2K3)|(Win2K3)).*32", QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_X86("Windows2003") },
     { QRegularExpression("((Wi.*Vis)|(Vista)).*64",          QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_X64("WindowsVista") },
     { QRegularExpression("((Wi.*Vis)|(Vista)).*32",          QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_X86("WindowsVista") },
+    { QRegularExpression( "(Wi.*2025)|(W2K25)|(Win2K25)",    QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_X64("Windows2025") },
+    { QRegularExpression( "(Wi.*2022)|(W2K22)|(Win2K22)",    QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_X64("Windows2022") },
     { QRegularExpression( "(Wi.*2016)|(W2K16)|(Win2K16)",    QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_X64("Windows2016") },
     { QRegularExpression( "(Wi.*2012)|(W2K12)|(Win2K12)",    QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_X64("Windows2012") },
     { QRegularExpression("((Wi.*2008)|(W2K8)|(Win2k8)).*64", QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_X64("Windows2008") },

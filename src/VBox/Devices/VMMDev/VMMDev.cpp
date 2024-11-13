@@ -1,4 +1,4 @@
-/* $Id: VMMDev.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VMMDev.cpp 107002 2024-11-13 12:21:13Z brent.paulson@oracle.com $ */
 /** @file
  * VMMDev - Guest <-> VMM/Host communication device.
  */
@@ -208,6 +208,8 @@ static void vmmdevLogGuestOsInfo(VBoxGuestInfo *pGuestInfo)
         case VBOXOSTYPE_Win10:                            pszOs = "Windows 10";     break;
         case VBOXOSTYPE_Win2k16_x64 & ~VBOXOSTYPE_x64:    pszOs = "Windows 2k16";   break;
         case VBOXOSTYPE_Win2k19_x64 & ~VBOXOSTYPE_x64:    pszOs = "Windows 2k19";   break;
+        case VBOXOSTYPE_Win2k22_x64 & ~VBOXOSTYPE_x64:    pszOs = "Windows 2k22";   break;
+        case VBOXOSTYPE_Win2k25_x64 & ~VBOXOSTYPE_x64:    pszOs = "Windows 2k25";   break;
         case VBOXOSTYPE_Win11_x64 & ~VBOXOSTYPE_x64:      pszOs = "Windows 11";     break;
         case VBOXOSTYPE_OS2:                              pszOs = "OS/2";           break;
         case VBOXOSTYPE_OS2Warp3:                         pszOs = "OS/2 Warp 3";    break;

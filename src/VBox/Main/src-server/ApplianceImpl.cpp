@@ -1,4 +1,4 @@
-/* $Id: ApplianceImpl.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: ApplianceImpl.cpp 107002 2024-11-13 12:21:13Z brent.paulson@oracle.com $ */
 /** @file
  * IAppliance and IVirtualSystem COM class implementations.
  */
@@ -287,8 +287,9 @@ static struct
     { ovf::CIMOSType_CIMOS_WindowsServer2016,                    VBOXOSTYPE_Win2k16_x64 },
     { ovf::CIMOSType_CIMOS_Windows10,                            VBOXOSTYPE_Win10 },
     { ovf::CIMOSType_CIMOS_Windows10_64,                         VBOXOSTYPE_Win10_x64 },
-    { ovf::CIMOSType_CIMOS_Windows10_64,                         VBOXOSTYPE_Win10_x64 },
     { ovf::CIMOSType_CIMOS_WindowsServer2016,                    VBOXOSTYPE_Win2k19_x64 },      // no CIM type for this yet
+    { ovf::CIMOSType_CIMOS_WindowsServer2016,                    VBOXOSTYPE_Win2k22_x64 },      // no CIM type for this yet
+    { ovf::CIMOSType_CIMOS_WindowsServer2016,                    VBOXOSTYPE_Win2k25_x64 },      // no CIM type for this yet
 
     // there are no CIM types for these, so these turn to "other" on export:
     //      VBOXOSTYPE_OpenBSD
