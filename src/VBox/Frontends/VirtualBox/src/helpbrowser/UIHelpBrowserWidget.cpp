@@ -1,4 +1,4 @@
-/* $Id: UIHelpBrowserWidget.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIHelpBrowserWidget.cpp 107021 2024-11-14 11:54:16Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIHelpBrowserWidget class implementation.
  */
@@ -51,6 +51,7 @@
 #include "QITabWidget.h"
 #include "QIToolBar.h"
 #include "QIToolButton.h"
+#include "UICommon.h"
 #include "UIExtraDataManager.h"
 #include "UIHelpViewer.h"
 #include "UIHelpBrowserWidget.h"
@@ -1368,6 +1369,7 @@ UIHelpBrowserWidget::UIHelpBrowserWidget(EmbedTo enmEmbedding, const QString &st
     , m_pZoomMenuAction(0)
     , m_fModelContentCreated(false)
     , m_fIndexingFinished(false)
+    , m_fCommitDataSignalReceived(false)
 {
     qRegisterMetaType<HelpBrowserTabs>("HelpBrowserTabs");
     prepare();
@@ -1430,6 +1432,8 @@ void UIHelpBrowserWidget::prepare()
     sltRetranslateUI();
     connect(&translationEventListener(), &UITranslationEventListener::sigRetranslateUI,
         this, &UIHelpBrowserWidget::sltRetranslateUI);
+    connect(&uiCommon(), &UICommon::sigAskToCommitData,
+            this, &UIHelpBrowserWidget::sltCommitDataSignalReceived);
 }
 
 void UIHelpBrowserWidget::prepareActions()
@@ -1790,6 +1794,8 @@ QUrl UIHelpBrowserWidget::contentWidgetUrl(const QModelIndex &itemIndex)
 
 void UIHelpBrowserWidget::cleanup()
 {
+    if (m_fCommitDataSignalReceived)
+        return;
     saveOptions();
     saveBookmarks();
 }
@@ -1837,6 +1843,11 @@ void UIHelpBrowserWidget::sltRetranslateUI()
         m_pAddBookmarkAction->setText(tr("Add Bookmark"));
 }
 
+void UIHelpBrowserWidget::sltCommitDataSignalReceived()
+{
+    cleanup();
+    m_fCommitDataSignalReceived = true;
+}
 
 void UIHelpBrowserWidget::showEvent(QShowEvent *pEvent)
 {
