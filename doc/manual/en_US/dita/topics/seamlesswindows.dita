@@ -4,16 +4,8 @@
   <title>Seamless Windows</title>
   
   <body>
-    <p>With the <i>seamless windows</i> feature of <ph conkeyref="vbox-conkeyref-phrases/product-name"/>, you can have the windows that are displayed within a virtual machine appear side by side next to the windows of your host. This feature is supported for the following x86 or x86_64 guest operating systems, provided that the Guest Additions are installed: </p>
-    <ul>
-      <li>
-        <p>Legacy Windows guests (prior to Windows 10). </p>
-      </li>
-      <li>
-        <p>Supported Linux or Oracle Solaris guests running the X Window System. </p>
-      </li>
-    </ul>
-    <p>After seamless windows are enabled, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> suppresses the display of the desktop background of your guest, allowing you to run the windows of your guest operating system seamlessly next to the windows of your host. </p>
+    <p>With seamless windows enabled, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> enlarges the size of the VM's display to the size of the host desktop, and masks out the guest OS's background, so the windows of the guest appear seamlessly next to the windows of the host. </p>
+    <p>In <xref href="#seamlesswindows/fig-seamless-windows"/> you can see two calculator applications side by side, one running on the host and the other running on the VM.</p>
     <fig id="fig-seamless-windows">
       <title>Seamless Windows on a Host Desktop</title>
       <xref href="images/seamless.png" format="png" platform="htmlhelp">
@@ -25,7 +17,8 @@
         <alt>Seamless Windows on a Host Desktop</alt>
       </image>
     </fig>
-    <p>To enable seamless mode, after starting the virtual machine, press the <b outputclass="bold">Host key + L</b>. The Host key is normally the right control key. This will enlarge the size of the VM's display to the size of your host screen and mask out the guest operating system's background. To disable seamless windows and go back to the normal VM display, press the Host key + L again. </p>
+    <p>To enable seamless windows, on the virtual machine, press the <b outputclass="bold">Host key + L</b>. The Host key is displayed on the taskbar and is normally the right control key.</p>
+    <p>To disable seamless windows and go back to the normal VM display, press the <b outputclass="bold">Host key + L</b> again.</p>
   </body>
   
 </topic>

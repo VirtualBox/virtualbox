@@ -8,12 +8,7 @@
         conkeyref="vbox-conkeyref-phrases/product-name"/>. Unless marked otherwise, these issues are planned to be fixed
       in later releases. </p>
     <ul>
-      <li>
-        <p>The macOS installer packages for <ph conkeyref="vbox-conkeyref-phrases/product-name"/> 7 currently do not
-          include the Internal Networking feature, which is available on all other platforms. This will be addressed
-          with an update of <ph conkeyref="vbox-conkeyref-phrases/product-name"/> 7. For setups which depend on this
-          functionality it is best to keep using <ph conkeyref="vbox-conkeyref-phrases/product-name"/> 6.1. </p>
-      </li>
+      <li>Internal networking on macOS hosts doesn't work between VMs run by different users.</li>
       <li>
         <p>Poor performance when using <ph conkeyref="vbox-conkeyref-phrases/product-name"/> and <b outputclass="bold"
             >Hyper-V</b> on the same host. To fix this, certain Windows features like "Hyper-V Platform", "Virtual

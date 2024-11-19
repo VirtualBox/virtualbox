@@ -77,11 +77,8 @@
         </ul>
       </li>
       <li>
-        <p><b outputclass="bold">Enable 3D Acceleration:</b> If
-            a virtual machine has Guest Additions installed, you can
-            select here whether the guest should support accelerated 3D
-            graphics. See <xref href="guestadd-3d.dita#guestadd-3d"/>.
-          </p>
+        <p><b outputclass="bold">Enable 3D Acceleration:</b> If a virtual machine has Guest Additions installed, you can enable accelerated 3D graphics on the VM. See <xref href="guestadd-3d.dita#guestadd-3d"/>. </p>
+        <p>With 3D acceleration enabled, the VM also uses video decoding acceleration if the host also supports video decoding acceleration. The host must be x86_64 running Windows, and the VM must be x86_64 running Windows 10 or Windows 11. The VM can use video decoding of all media formats that are supported by the host, and CPU load is reduced during playback of these media formats.</p>
       </li>
     </ul>
   </body>

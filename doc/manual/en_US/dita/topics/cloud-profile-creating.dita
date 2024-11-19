@@ -45,5 +45,6 @@
                         conkeyref="vbox-conkeyref-phrases/product-name"/> global settings directory. </p>
             </li>
         </ol>
+        <p>You can also use <codeph>VBoxManage cloudprofile</codeph> to create a cloud profile. See <xref href="cloud-using-cli.dita"/>.</p>
     </body>
 </topic>
