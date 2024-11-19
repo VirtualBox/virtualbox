@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 107066 2024-11-19 17:21:14Z dmitrii.grigorev@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -6703,6 +6703,13 @@ static int vmsvgaR3Init3dInterfaces(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTA
     {
         VMSVGA3DINTERFACE *p = &a3dInterface[i];
 
+        if (pThis->svga.fVMSVGA2dGBO &&
+            RTStrCmp(p->pcszName, VMSVGA3D_BACKEND_INTERFACE_NAME_MAP) &&
+            RTStrCmp(p->pcszName, VMSVGA3D_BACKEND_INTERFACE_NAME_GBO))
+        {
+            continue;
+        }
+
         int rc2 = pBackend->pfnQueryInterface(pThisCC, p->pcszName, NULL, p->cbFuncs);
         if (RT_SUCCESS(rc2))
         {
@@ -6791,7 +6798,7 @@ static void vmsvgaR3GetCaps(PVGASTATE pThis, PVGASTATECC pThisCC, uint32_t *pu32
     }
 
 # ifdef VBOX_WITH_VMSVGA3D
-  if (pThisCC->svga.pSvgaR3State->pFuncs3D)
+    if (pThisCC->svga.pSvgaR3State->pFuncs3D)
         *pu32DeviceCaps |= SVGA_CAP_3D;
 # endif
 
@@ -7073,20 +7080,29 @@ static void vmsvgaR3Init3DCaps(PVGASTATE pThis, PVGASTATECC pThisCC)
     uint32_t au32FailedCapsBitmap[(RT_ELEMENTS(pThis->svga.au32DevCaps) + 31) / 32];
     RT_ZERO(au32FailedCapsBitmap);
 
-    for (unsigned i = 0; i < RT_ELEMENTS(pThis->svga.au32DevCaps); ++i)
+    if (!pThis->svga.fVMSVGA2dGBO)
     {
-        uint32_t val = 0;
-        int rc = vmsvga3dQueryCaps(pThisCC, (SVGA3dDevCapIndex)i, &val);
-        if (RT_SUCCESS(rc))
-            pThis->svga.au32DevCaps[i] = val;
-        else
+        for (unsigned i = 0; i <= RT_ELEMENTS(pThis->svga.au32DevCaps); ++i)
         {
-            ASMBitSet(au32FailedCapsBitmap, i);
-            pThis->svga.au32DevCaps[i] = 0;
+            uint32_t val = 0;
+            int rc = vmsvga3dQueryCaps(pThisCC, (SVGA3dDevCapIndex)i, &val);
+            if (RT_SUCCESS(rc))
+                pThis->svga.au32DevCaps[i] = val;
+            else
+            {
+                ASMBitSet(au32FailedCapsBitmap, i);
+                pThis->svga.au32DevCaps[i] = 0;
+            }
         }
-    }
 
-    vmsvgaR3Censor3DCaps(pThis, pThisCC);
+        vmsvgaR3Censor3DCaps(pThis, pThisCC);
+    }
+    else
+    {
+        pThis->svga.au32DevCaps[SVGA3D_DEVCAP_MAX_TEXTURE_WIDTH]  = 4096;
+        pThis->svga.au32DevCaps[SVGA3D_DEVCAP_MAX_TEXTURE_HEIGHT] = 4096;
+        pThis->svga.au32DevCaps[SVGA3D_DEVCAP_DXFMT_X8R8G8B8] = 0x3f7;
+    }
 
     bool const fSavedBuffering = RTLogRelSetBuffering(true);
 
@@ -7691,8 +7707,12 @@ static void vmsvgaR3PowerOnDevice(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATE
 # ifdef VBOX_WITH_VMSVGA3D
     if (pThis->svga.f3DEnabled || pThis->svga.fVMSVGA2dGBO)
     {
+        int rc = VINF_SUCCESS;
+
         PVMSVGAR3STATE pSVGAState = pThisCC->svga.pSvgaR3State;
-        int rc = pSVGAState->pFuncs3D->pfnPowerOn(pDevIns, pThis, pThisCC);
+        if (pSVGAState->pFuncs3D)
+            rc = pSVGAState->pFuncs3D->pfnPowerOn(pDevIns, pThis, pThisCC);
+
         if (RT_SUCCESS(rc))
         {
             /* Initialize 3D capabilities. */

@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 107066 2024-11-19 17:21:14Z dmitrii.grigorev@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -4060,7 +4060,7 @@ static DECLCALLBACK(int) vmsvga3dScreenTargetBind(PVGASTATECC pThisCC, VMSVGASCR
         rc = vmsvga3dSurfaceFromSid(pState, sid, &pSurface);
         AssertRCReturn(rc, rc);
 
-        if (!VMSVGA3DSURFACE_HAS_HW_SURFACE(pSurface))
+        if (!VMSVGA3DSURFACE_HAS_HW_SURFACE(pSurface) && !pState->fVMSVGA2dGBO)
         {
             /* Create the actual texture. */
             rc = vmsvga3dBackSurfaceCreateTexture(pThisCC, pSurface);
