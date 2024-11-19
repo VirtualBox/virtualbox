@@ -1,4 +1,4 @@
-/* $Id: VirtioCore.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VirtioCore.cpp 107056 2024-11-19 09:20:28Z aleksey.ilyushin@oracle.com $ */
 
 /** @file
  * VirtioCore - Virtio Core (PCI, feature & config mgt, queue mgt & proxy, notification mgt)
@@ -1392,6 +1392,7 @@ static void virtioResetDevice(PPDMDEVINS pDevIns, PVIRTIOCORE pVirtio)
 {
     LogFunc(("Resetting device VirtIO state\n"));
     pVirtio->fLegacyDriver          = pVirtio->fOfferLegacy;   /* Cleared if VIRTIO_F_VERSION_1 feature ack'd */
+    pVirtio->fDriverFeaturesWritten = 0;    /* Features can be re-negotiated after reset! */
     pVirtio->uDeviceFeaturesSelect  = 0;
     pVirtio->uDriverFeaturesSelect  = 0;
     pVirtio->uConfigGeneration      = 0;
