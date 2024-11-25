@@ -2,6 +2,7 @@ _Debian_sid      = DEBIAN_12_0
 _Debian_bookworm = DEBIAN_12_0
 _Debian_bullseye = DEBIAN_11_0
 _Debian_buster   = DEBIAN_10_0
+_Ubuntu_oracular = UBUNTU_24_10
 _Ubuntu_noble    = UBUNTU_24_04
 _Ubuntu_jammy    = UBUNTU_22_04
 _Ubuntu_focal    = UBUNTU_20_04
