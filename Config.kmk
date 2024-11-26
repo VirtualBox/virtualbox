@@ -1,4 +1,4 @@
-# $Id: Config.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: Config.kmk 107183 2024-11-26 15:15:21Z andreas.loeffler@oracle.com $
 ## @file
 # The global build configuration file for VBox.
 #
@@ -2669,7 +2669,6 @@ else
  VBOX_PATH_WISUBSTG ?= $(KBUILD_DEVTOOLS)/win.x86/sdk/v7.1/Samples/sysmgmt/msi/scripts/WiSubStg.vbs
  VBOX_PATH_WISUMINFO ?= $(KBUILD_DEVTOOLS)/win.x86/sdk/v7.1/Samples/sysmgmt/msi/scripts/WiSumInf.vbs
 endif
-VBOX_PATH_DIFX      ?= $(KBUILD_DEVTOOLS)/win.$(KBUILD_TARGET_ARCH)/DIFx/v2.1-r3
 
 ifdef VBOX_OSE ## @todo try get rid of this crap! People can use the latest and greatest Yasm release, no need to check in the binary for OSE.
  # We need to export YASM for OSE, but since it was converted to .zip we need to
@@ -9286,7 +9285,7 @@ endif
 SVN                    ?= svn$(HOSTSUFF_EXE)
 VBOX_SVN_REV_KMK        = $(PATH_OUT)/revision.kmk
 ifndef VBOX_SVN_REV
- VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 106320 $  )
+ VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 107183 $  )
  VBOX_SVN_REV_FALLBACK := $(if-expr $(VBOX_SVN_REV_CONFIG_FALLBACK) > $(VBOX_SVN_REV_VERSION_FALLBACK),$(VBOX_SVN_REV_CONFIG_FALLBACK),$(VBOX_SVN_REV_VERSION_FALLBACK))
  VBOX_SVN_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.svn/wc.db $(abspath $(PATH_ROOT)/../.svn/wc.db) $(abspath $(PATH_ROOT)/../../.svn/wc.db) $(PATH_ROOT)/.svn/entries))
  ifeq ($(which $(SVN)),)
