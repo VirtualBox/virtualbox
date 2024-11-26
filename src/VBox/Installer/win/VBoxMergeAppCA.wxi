@@ -25,13 +25,13 @@
 
 <Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
-    <CustomAction Id="ca_VBoxSupDrvInst" DllEntry="DriverInstall" Execute="immediate" Return="ignore" Impersonate="no" BinaryRef="VBoxInstallHelper" />
+    <CustomAction Id="ca_VBoxSupDrvInst" DllEntry="DriverInstall" Execute="immediate" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
     <CustomAction Id="ca_VBoxSupDrvInstArgInfFile" Property="VBoxDrvInstInfFile" Value="[#file_VBoxSup.inf]" Execute="immediate" />
     <CustomAction Id="ca_VBoxSupDrvInstArgModel" Property="VBoxDrvInstModel" Value="VBoxSup" Execute="immediate" />
     <CustomAction Id="ca_VBoxSupDrvInstArgFlagForce" Property="VBoxDrvInstFlagForce" Value="1" Execute="immediate" />
     <CustomAction Id="ca_VBoxSupDrvInstArgFlagSilent" Property="VBoxDrvInstFlagSilent" Value="1" Execute="immediate" />
 
-    <CustomAction Id="ca_VBoxSupDrvUninst" DllEntry="DriverUninstall" Execute="immediate" Return="ignore" Impersonate="no" BinaryRef="VBoxInstallHelper" />
+    <CustomAction Id="ca_VBoxSupDrvUninst" DllEntry="DriverUninstall" Execute="immediate" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
     <CustomAction Id="ca_VBoxSupDrvUninstArgModel" Property="VBoxDrvUninstModel" Value="VBoxSup*" Execute="immediate" />
 
 <?if $(env.VBOX_WITH_CRT_PACKING) = "no" ?>

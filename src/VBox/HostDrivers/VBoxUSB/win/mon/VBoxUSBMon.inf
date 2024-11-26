@@ -1,4 +1,4 @@
-; $Id: VBoxUSBMon.inf 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
+; $Id: VBoxUSBMon.inf 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $
 ;; @file
 ; VBox USB Monitor driver - Installation file
 ;
@@ -44,26 +44,25 @@ DriverPackageType=KernelService
 ;cat CatalogFile=VBoxUSBMon.cat
 ;PnpLockdown=1
 
-[DestinationDirs]
-DefaultDestDir = 12
-
-[Manufacturer]
-%ORACLE%=VBoxUSBMon@COMMA-NT-ARCH@
-
-[VBoxUSBMon@DOT-NT-ARCH@]
-%VBoxUSBMon_DrvDesc%=VBoxUSBMonDev
-
-[VBoxUSBMon@DOT-NT-ARCH@.Services]
-AddService=VBoxUSBMon,0x00000002,VBoxUSBMon_Service,VBoxUSBMon_AddEventLog
-
-[VBoxUSBMonDev@DOT-NT-ARCH@]
-CopyFiles=VBoxUSBMon_CopyFiles
+[SourceDisksNames]
+1=%VBoxUSBMon_DiskDesc%,
 
 [SourceDisksFiles]
 VBoxUSBMon.sys=1
 
-[SourceDisksNames]
-1=%VBoxUSBMon_DiskDesc%,
+[DestinationDirs]
+DefaultDestDir = 12
+
+[DefaultInstall@DOT-NT-ARCH@]
+CopyFiles=VBoxUSBMon_CopyFiles
+
+[DefaultInstall@DOT-NT-ARCH@.Services]
+AddService=VBoxUSBMon,0x00000002,VBoxUSBMon_Service,VBoxUSBMon_AddEventLog
+
+[DefaultUninstall@DOT-NT-ARCH@.Services]
+DelService = VBoxUSBMon
+DelReg     = VBoxUSBMon_AddEventLogRegistry
+LegacyUninstall=1
 
 [VBoxUSBMon_CopyFiles]
 VBoxUSBMon.sys
@@ -95,4 +94,3 @@ SERVICE_STARTTYPE_AUTO = 1
 SERVICE_STARTTYPE_DEMAND = 3
 SERVICE_ERRORCTL_IGNORE = 0
 SERVICE_ERRORCTL_NORMAL = 1
-

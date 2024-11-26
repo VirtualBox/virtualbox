@@ -250,6 +250,7 @@
 <?if $(env.VBOX_WITH_HOST_SHIPPING_AUDIO_TEST) = "yes" ?>
         <File Id="file_VBoxAudioTest.exe" Name="VBoxAudioTest.exe" Source="$(env.PATH_OUT)\bin\VBoxAudioTest.exe" />
 <?endif?>
+        <File Id="file_VBoxDrvInst.exe" Name="VBoxDrvInst.exe" Source="$(env.PATH_OUT)\bin\VBoxDrvInst.exe" />
 <?if $(env.VBOX_WITH_VRDP) = "yes" ?>
         <File Id="file_VBoxVRDP.dll" Name="VBoxVRDP.dll" Source="$(env.PATH_OUT)\bin\VBoxVRDP.dll" />
 <?endif?>

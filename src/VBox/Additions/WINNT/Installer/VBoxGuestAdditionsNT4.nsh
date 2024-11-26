@@ -1,4 +1,4 @@
-; $Id: VBoxGuestAdditionsNT4.nsh 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+; $Id: VBoxGuestAdditionsNT4.nsh 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $
 ;; @file
 ; VBoxGuestAdditionsNT4.nsh - Guest Additions installation for NT4.
 ;
@@ -122,6 +122,8 @@ Function NT4_CopyFiles
   ${LogVerbose} "Copying files for NT4 ..."
 
   SetOutPath "$INSTDIR"
+  FILE "$%PATH_OUT%\bin\additions\VBoxGuestInstallHelper.exe"
+  AccessControl::SetOnFile "$INSTDIR\VBoxGuestInstallHelper.exe" "(BU)" "GenericRead"
   FILE "$%PATH_OUT%\bin\additions\RegCleanup.exe"
   AccessControl::SetOnFile "$INSTDIR\RegCleanup.exe" "(BU)" "GenericRead"
 !ifdef VBOX_WITH_ADDITIONS_SHIPPING_AUDIO_TEST
@@ -161,7 +163,7 @@ Function NT4_InstallFiles
   ${LogVerbose} "Installing drivers for NT4 ..."
 
   ; Install guest driver
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service create $\"VBoxGuest$\" $\"VBoxGuest Support Driver$\" 1 1 $\"$SYSDIR\drivers\VBoxGuest.sys$\" $\"Base$\"" 'non-zero-exitcode=abort'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service create $\"VBoxGuest$\" $\"VBoxGuest Support Driver$\" 1 1 $\"$SYSDIR\drivers\VBoxGuest.sys$\" $\"Base$\"" 'non-zero-exitcode=abort'
 
   ; Bugfix: Set "Start" to 1, otherwise, VBoxGuest won't start on boot-up!
   ; Bugfix: Correct invalid "ImagePath" (\??\C:\WINNT\...)
@@ -172,12 +174,12 @@ Function NT4_InstallFiles
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "VBoxTray" '"$SYSDIR\VBoxTray.exe"'
 
   ; Video driver
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" driver nt4-install-video" 'non-zero-exitcode=abort'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" driver nt4-install-video" 'non-zero-exitcode=abort'
 
   ; Create the VBoxService service
   ; No need to stop/remove the service here! Do this only on uninstallation!
   ${LogVerbose} "Installing VirtualBox service ..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service create $\"VBoxService$\" $\"VirtualBox Guest Additions Service$\" 16 2 $\"%SystemRoot%\system32\VBoxService.exe$\" $\"Base$\"" 'non-zero-exitcode=abort'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service create $\"VBoxService$\" $\"VirtualBox Guest Additions Service$\" 16 2 $\"%SystemRoot%\system32\VBoxService.exe$\" $\"Base$\"" 'non-zero-exitcode=abort'
 
    ; Create the Shared Folders service ...
   ;nsSCM::Install /NOUNLOAD "VBoxSF" "VirtualBox Shared Folders" 1 1 "$SYSDIR\drivers\VBoxSFNT.sys" "Network" "" "" ""
@@ -195,7 +197,7 @@ Function NT4_InstallFiles
   ;WriteRegStr HKLM "SYSTEM\CurrentControlSet\Services\VBoxSF\NetworkProvider" "ProviderPath" "$SYSDIR\VBoxMRXNP.dll"
 
   ; Add the shared folders network provider
-  ;${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" netprovider add VBoxSF" 'non-zero-exitcode=abort'
+  ;${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" netprovider add VBoxSF" 'non-zero-exitcode=abort'
 
 FunctionEnd
 
@@ -236,12 +238,12 @@ Function ${un}NT4_Uninstall
   Push $0
 
   ; Remove the guest driver service
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service delete VBoxGuest" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxGuest" 'non-zero-exitcode=log'
   Delete /REBOOTOK "$SYSDIR\drivers\VBoxGuest.sys"
 
   ; Delete the VBoxService service
   Call ${un}StopVBoxService
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service delete VBoxService" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxService" 'non-zero-exitcode=log'
   DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "VBoxService"
   Delete /REBOOTOK "$SYSDIR\VBoxService.exe"
 
@@ -256,7 +258,7 @@ Function ${un}NT4_Uninstall
   Delete /REBOOTOK "$SYSDIR\VBoxControl.exe"
 
   ; Delete the VBoxVideo service
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service delete VBoxVideo" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxVideo" 'non-zero-exitcode=log'
 
   ; Delete the VBox video driver files
   Delete /REBOOTOK "$SYSDIR\drivers\VBoxVideo.sys"

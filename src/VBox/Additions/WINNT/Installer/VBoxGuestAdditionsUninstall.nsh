@@ -1,4 +1,4 @@
-; $Id: VBoxGuestAdditionsUninstall.nsh 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
+; $Id: VBoxGuestAdditionsUninstall.nsh 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $
 ;; @file
 ; VBoxGuestAdditionsUninstall.nsh - Guest Additions uninstallation.
 ;
@@ -34,6 +34,7 @@ Function ${un}UninstallCommon
 
   ; Remove common files
   Delete /REBOOTOK "$INSTDIR\VBoxDrvInst.exe"
+  Delete /REBOOTOK "$INSTDIR\VBoxGuestInstallHelper.exe"
 
   Delete /REBOOTOK "$INSTDIR\VBoxVideo.inf"
 !ifdef VBOX_SIGN_ADDITIONS
@@ -82,7 +83,11 @@ Function ${un}Uninstall
 !ifdef _DEBUG
   ${LogVerbose} "Detected OS version: Windows $g_strWinVersion"
   ${LogVerbose} "System Directory: $g_strSystemDir"
+  ${LogVerbose} "Temp Directory: $TEMP"
 !endif
+
+  ; Create temp directory where we can store uninstallation logs.
+  CreateDirectory "$TEMP\${PRODUCT_NAME}"
 
   ; Which OS are we using?
 !if $%KBUILD_TARGET_ARCH% == "x86"       ; 32-bit

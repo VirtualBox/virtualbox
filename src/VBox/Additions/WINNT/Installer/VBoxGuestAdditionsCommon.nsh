@@ -1,4 +1,4 @@
-; $Id: VBoxGuestAdditionsCommon.nsh 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
+; $Id: VBoxGuestAdditionsCommon.nsh 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $
 ;; @file
 ; VBoxGuestAdditionsCommon.nsh - Common / shared utility functions.
 ;
@@ -56,6 +56,7 @@ Function Common_CopyFiles
 !endif
 
   FILE "$%PATH_OUT%\bin\additions\VBoxDrvInst.exe"
+  FILE "$%PATH_OUT%\bin\additions\VBoxGuestInstallHelper.exe"
 
   FILE "$%PATH_OUT%\bin\additions\VBoxVideo.inf"
 !if $%KBUILD_TARGET_ARCH% == "x86"
@@ -213,6 +214,7 @@ Function ExtractFiles
   ; Misc tools
   SetOutPath "$0\Tools"
   FILE "$%PATH_OUT%\bin\additions\VBoxDrvInst.exe"
+  FILE "$%PATH_OUT%\bin\additions\VBoxGuestInstallHelper.exe"
 !ifdef VBOX_WITH_ADDITIONS_SHIPPING_AUDIO_TEST
   FILE "$%PATH_OUT%\bin\additions\VBoxAudioTest.exe"
 !endif

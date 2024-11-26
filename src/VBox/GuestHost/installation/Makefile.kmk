@@ -1,10 +1,10 @@
 # $Id: Makefile.kmk 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $
 ## @file
-# Sub-Makefile for the VirtualBox Guest/Host part
+# Makefile for common Windows installation code.
 #
 
 #
-# Copyright (C) 2008-2024 Oracle and/or its affiliates.
+# Copyright (C) 2024 Oracle and/or its affiliates.
 #
 # This file is part of VirtualBox base platform packages, as
 # available from https://www.virtualbox.org.
@@ -25,24 +25,30 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 
-SUB_DEPTH = ../../..
+SUB_DEPTH = ../../../..
 include $(KBUILD_PATH)/subheader.kmk
 
-# Include sub-makefile(s).
-ifdef VBOX_WITH_HGSMI
- include $(PATH_SUB_CURRENT)/HGSMI/Makefile.kmk
+ifdef VBOX_WITH_TESTCASES
+ include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
 endif
 
-ifdef VBOX_WITH_DRAG_AND_DROP
- include $(PATH_SUB_CURRENT)/DragAndDrop/Makefile.kmk
-endif
-
-ifdef VBOX_WITH_HGCM
- include $(PATH_SUB_CURRENT)/SharedClipboard/Makefile.kmk
-endif
-
-ifndef VBOX_ONLY_SDK
- include $(PATH_SUB_CURRENT)/installation/Makefile.kmk
+ifndef VBOX_ONLY_ADDITIONS
+ #
+ # The host variant of VBoxDrvInst.
+ #
+ PROGRAMS.win += VBoxDrvInstHost
+ VBoxDrvInstHost_TEMPLATE    = VBoxR3Exe
+ VBoxDrvInstHost_DEFS        = _WIN32_WINNT=0x0400 _UNICODE UNICODE VBOX_SVN_REV=$(VBOX_SVN_REV)
+ VBoxDrvInstHost_INST       := $(INST_BIN)
+ VBoxDrvInstHost_NAME       := VBoxDrvInst
+ VBoxDrvInstHost_SOURCES     = \
+ 	VBoxWinDrvCommon.cpp \
+ 	VBoxWinDrvInst.cpp \
+ 	VBoxWinDrvStore.cpp \
+ 	VBoxDrvInst.cpp \
+ 	VBoxDrvInst.rc
+ VBoxDrvInstHost_LIBS        = \
+ 	$(LIB_RUNTIME)
 endif
 
 include $(FILE_KBUILD_SUB_FOOTER)

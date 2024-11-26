@@ -1,4 +1,4 @@
-; $Id: VBoxGuest.inf 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
+; $Id: VBoxGuest.inf 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $
 ;; @file
 ; INF file for installing the VirtualBox Windows guest driver, XP and later.
 ;
@@ -60,11 +60,14 @@ VBoxTray_CopyFiles = 11 ; system32
 %ORACLE%=VBoxGuest@COMMA-NT-ARCH@
 
 [VBoxGuest@DOT-NT-ARCH@]
-%VBoxGuest.DeviceDesc%=VBoxGuest_Install,PCI\VEN_80ee&DEV_cafe
+%VBoxGuest_DeviceDesc%=VBoxGuest,PCI\VEN_80ee&DEV_cafe
+CopyFiles = VBoxGuest_CopyFiles
+CopyFiles = VBoxTray_CopyFiles ; Separate CopyFiles directive to make InfVerif.exe happy. Bug?
+AddReg = VBoxTray_Registry
 
-[VBoxGuest_Install]
-CopyFiles = VBoxGuest_CopyFiles, VBoxTray_CopyFiles
-AddReg = VBoxTray_AddReg
+[VBoxGuest@DOT-NT-ARCH@.Services]
+AddService = VBoxGuest, 0x00000002, VBoxGuest_AddService
+DelService = VBoxTray, 0x00000004
 
 [VBoxGuest_CopyFiles]
 VBoxGuest.sys,,,0x4000          ; COPYFLG_IN_USE_TRY_RENAME
@@ -72,10 +75,6 @@ VBoxGuest.sys,,,0x4000          ; COPYFLG_IN_USE_TRY_RENAME
 [VBoxTray_CopyFiles]
 VBoxTray.exe,,,0x4000           ; COPYFLG_IN_USE_TRY_RENAME
 VBoxControl.exe,,,0x4000        ; COPYFLG_IN_USE_TRY_RENAME
-
-[VBoxGuest_Install.Services]
-AddService = VBoxGuest, 0x00000002, VBoxGuest_AddService
-DelService = VBoxTray, 0x00000004
 
 [VBoxGuest_AddService]
 DisplayName    = %VBoxGuest_SvcDesc%
@@ -85,7 +84,12 @@ ErrorControl   = %SERVICE_ERRORCTL_NORMAL%
 LoadOrderGroup = Base
 ServiceBinary  = %12%\VBoxGuest.sys
 
-[VBoxTray_AddReg]
+[DefaultUninstall@DOT-NT-ARCH@.Services]
+DelService = VBoxGuest,0x00000200
+DelReg     = VBoxTray_Registry
+LegacyUninstall=1
+
+[VBoxTray_Registry]
 HKLM, SOFTWARE\Microsoft\Windows\CurrentVersion\Run, VBoxTray, 0x00020000, %%SystemRoot%%\system32\VBoxTray.exe
 
 [ClassInstall32]
@@ -93,7 +97,7 @@ HKLM, SOFTWARE\Microsoft\Windows\CurrentVersion\Run, VBoxTray, 0x00020000, %%Sys
 
 [Strings]
 ORACLE = "Oracle Corporation"
-VBoxGuest.DeviceDesc = "VirtualBox Guest Device"
+VBoxGuest_DeviceDesc = "VirtualBox Guest Device"
 VBoxGuest_SvcDesc = "VirtualBox Guest Driver"
 VBoxTray_SvcDesc = "VirtualBox Guest Tray"
 VBoxGuest_MediaDesc = "VirtualBox Guest Driver Installation Disk"

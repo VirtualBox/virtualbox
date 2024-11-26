@@ -1,10 +1,10 @@
-/* $Id: VBoxGuestInstallHelper.rc 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxDrvInst.rc 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
 /** @file
- * VBoxGuestInstallHelper - Resource file containing version info and icon.
+ * VBoxDrvInst - Resource file containing version info and icon.
  */
 
 /*
- * Copyright (C) 2006-2024 Oracle and/or its affiliates.
+ * Copyright (C) 2024 Oracle and/or its affiliates.
  *
  * This file is part of VirtualBox base platform packages, as
  * available from https://www.virtualbox.org.
@@ -44,8 +44,8 @@ BEGIN
       BLOCK "040904b0"
       BEGIN
          VALUE "FileDescription",  "VirtualBox Driver Installer\0"
-         VALUE "InternalName",     "VBoxGuestInstallHelper\0"
-         VALUE "OriginalFilename", "VBoxGuestInstallHelper.exe\0"
+         VALUE "InternalName",     "VBoxDrvInst\0"
+         VALUE "OriginalFilename", "VBoxDrvInst.exe\0"
          VALUE "CompanyName",      VBOX_RC_COMPANY_NAME
          VALUE "FileVersion",      VBOX_RC_FILE_VERSION_STR
          VALUE "LegalCopyright",   VBOX_RC_LEGAL_COPYRIGHT

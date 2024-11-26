@@ -1,4 +1,4 @@
-/* $Id: VBoxInstallHelper.cpp 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxInstallHelper.cpp 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxInstallHelper - Various helper routines for Windows host installer.
  */
@@ -1471,34 +1471,42 @@ UINT __stdcall DriverInstall(MSIHANDLE hModule)
         if (   RT_SUCCESS(rc)
             || rc == VERR_NOT_FOUND) /* VBoxDrvInstInfSection is optional. */
         {
-            char *pszPnpId = NULL;
-            rc = VBoxMsiQueryPropUtf8(hModule, "VBoxDrvInstPnpId", &pszPnpId);
+            char *pszModel = NULL;
+            rc = VBoxMsiQueryPropUtf8(hModule, "VBoxDrvInstModel", &pszModel);
             if (   RT_SUCCESS(rc)
-                || rc == VERR_NOT_FOUND) /* VBoxDrvInstHwId is optional. */
+                || rc == VERR_NOT_FOUND) /* VBoxDrvInstModel is optional. */
             {
-                uint32_t fFlags = VBOX_WIN_DRIVERINSTALL_F_NONE;
-
-                DWORD dwVal;
-                rc = VBoxMsiQueryPropInt32(hModule, "VBoxDrvInstFlagForce", &dwVal);
-                if (RT_SUCCESS(rc))
-                    fFlags |= VBOX_WIN_DRIVERINSTALL_F_FORCE;
-                rc = VBoxMsiQueryPropInt32(hModule, "VBoxDrvInstFlagSilent", &dwVal);
-                if (RT_SUCCESS(rc))
-                    fFlags |= VBOX_WIN_DRIVERINSTALL_F_SILENT;
-
-                VBOXWINDRVINST hWinDrvInst;
-                rc = VBoxWinDrvInstCreateEx(&hWinDrvInst, 1 /* uVerbostiy */, &vboxWinDrvInstLogCallback, &hModule /* pvUser */);
-                if (RT_SUCCESS(rc))
+                char *pszPnpId = NULL;
+                rc = VBoxMsiQueryPropUtf8(hModule, "VBoxDrvInstPnpId", &pszPnpId);
+                if (   RT_SUCCESS(rc)
+                    || rc == VERR_NOT_FOUND) /* VBoxDrvInstPnpId is optional. */
                 {
-                    if (pszInfSection && *pszInfSection)
-                        rc = VBoxWinDrvInstInstallExecuteInf(hWinDrvInst, pszInfFile, pszInfSection, fFlags);
-                    else
-                        rc = VBoxWinDrvInstInstall(hWinDrvInst, pszInfFile, pszPnpId, fFlags);
+                    uint32_t fFlags = VBOX_WIN_DRIVERINSTALL_F_NONE;
 
-                    VBoxWinDrvInstDestroy(hWinDrvInst);
+                    DWORD dwVal;
+                    rc = VBoxMsiQueryPropInt32(hModule, "VBoxDrvInstFlagForce", &dwVal);
+                    if (RT_SUCCESS(rc))
+                        fFlags |= VBOX_WIN_DRIVERINSTALL_F_FORCE;
+                    rc = VBoxMsiQueryPropInt32(hModule, "VBoxDrvInstFlagSilent", &dwVal);
+                    if (RT_SUCCESS(rc))
+                        fFlags |= VBOX_WIN_DRIVERINSTALL_F_SILENT;
+
+                    VBOXWINDRVINST hWinDrvInst;
+                    rc = VBoxWinDrvInstCreateEx(&hWinDrvInst, 1 /* uVerbostiy */, &vboxWinDrvInstLogCallback, &hModule /* pvUser */);
+                    if (RT_SUCCESS(rc))
+                    {
+                        if (pszInfSection && *pszInfSection)
+                            rc = VBoxWinDrvInstInstallExecuteInf(hWinDrvInst, pszInfFile, pszInfSection, fFlags);
+                        else
+                            rc = VBoxWinDrvInstInstallEx(hWinDrvInst, pszInfFile, pszModel, pszPnpId, fFlags);
+
+                        VBoxWinDrvInstDestroy(hWinDrvInst);
+                    }
+
+                    RTStrFree(pszPnpId);
                 }
 
-                RTStrFree(pszPnpId);
+                RTStrFree(pszModel);
             }
 
             RTStrFree(pszInfSection);
@@ -1513,8 +1521,8 @@ UINT __stdcall DriverInstall(MSIHANDLE hModule)
             rc = VERR_INVALID_PARAMETER;
     }
 
-    logStringF(hModule, "DriverInstall: Handling done. rc=%Rrc (ignored)", rc);
-    return ERROR_SUCCESS; /* Do not fail here. */
+    logStringF(hModule, "DriverInstall: Handling done (rc=%Rrc)", rc);
+    return RT_SUCCESS(rc) ? ERROR_SUCCESS : ERROR_DRIVER_INSTALL_BLOCKED /* Close enough */;
 }
 
 UINT __stdcall DriverUninstall(MSIHANDLE hModule)
@@ -1566,8 +1574,8 @@ UINT __stdcall DriverUninstall(MSIHANDLE hModule)
         RTStrFree(pszInfFile);
     }
 
-    logStringF(hModule, "DriverUninstall: Handling done. rc=%Rrc (ignored)", rc);
-    return ERROR_SUCCESS; /* Do not fail here. */
+    logStringF(hModule, "DriverUninstall: Handling done (rc=%Rrc)", rc);
+    return RT_SUCCESS(rc) ? ERROR_SUCCESS : ERROR_DRIVER_STORE_DELETE_FAILED /* Close enough */;
 }
 
 #if defined(VBOX_WITH_NETFLT) || defined(VBOX_WITH_NETADP)

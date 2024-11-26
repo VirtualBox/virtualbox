@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvCommon.h 107167 2024-11-26 09:06:00Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvCommon.h 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvCommon - Common Windows driver functions.
  */
@@ -38,16 +38,41 @@
 
 #include <VBox/GuestHost/VBoxWinDrvDefs.h>
 
+/**
+ * Enumeration specifying the INF (driver) type.
+ */
+typedef enum VBOXWINDRVINFTYPE
+{
+    /** Invalid type. */
+    VBOXWINDRVINFTYPE_INVALID = 0,
+    /** Primitive driver.
+     *  This uses a "DefaultInstall" (plus optionally "DefaultUninstall") sections
+     *  and does not have a PnP ID. */
+    VBOXWINDRVINFTYPE_PRIMITIVE,
+    /** Normal driver.
+     *  Uses a "Manufacturer" section and can have a PnP ID. */
+    VBOXWINDRVINFTYPE_NORMAL
+} VBOXWINDRVINFTYPE;
+
 int VBoxWinDrvInfOpenEx(PCRTUTF16 pwszInfFile, PRTUTF16 pwszClassName, HINF *phInf);
 int VBoxWinDrvInfOpen(PCRTUTF16 pwszInfFile, HINF *phInf);
 int VBoxWinDrvInfOpenUtf8(const char *pszInfFile, HINF *phInf);
 int VBoxWinDrvInfClose(HINF hInf);
-int VBoxWinDrvInfQueryFirstModel(HINF hInf, PRTUTF16 *ppwszModel);
+VBOXWINDRVINFTYPE VBoxWinDrvInfGetTypeEx(HINF hInf, PRTUTF16 *ppwszSection);
+VBOXWINDRVINFTYPE VBoxWinDrvInfGetType(HINF hInf);
+int VBoxWinDrvInfQueryFirstModel(HINF hInf, PCRTUTF16 pwszSection, PRTUTF16 *ppwszModel);
 int VBoxWinDrvInfQueryFirstPnPId(HINF hInf, PRTUTF16 pwszModel, PRTUTF16 *ppwszPnPId);
 int VBoxWinDrvInfQueryKeyValue(PINFCONTEXT pCtx, DWORD iValue, PRTUTF16 *ppwszValue, PDWORD pcwcValue);
-int VBoxWinDrvInfQueryModelsSectionName(HINF hInf, PRTUTF16 *ppwszValue, PDWORD pcwcValue);
+int VBoxWinDrvInfQueryModelEx(HINF hInf, PCRTUTF16 pwszSection, unsigned uIndex, PRTUTF16 *ppwszValue, PDWORD pcwcValue);
+int VBoxWinDrvInfQueryModel(HINF hInf, PCRTUTF16 pwszSection, unsigned uIndex, PRTUTF16 *ppwszValue, PDWORD pcwcValue);
+int VBoxWinDrvInfQueryInstallSectionEx(HINF hInf, PCRTUTF16 pwszModel, PRTUTF16 *ppwszValue, PDWORD pcwcValue);
+int VBoxWinDrvInfQueryInstallSection(HINF hInf, PCRTUTF16 pwszModel, PRTUTF16 *ppwszValue);
 int VBoxWinDrvInfQuerySectionVerEx(HINF hInf, UINT uIndex, PVBOXWINDRVINFSEC_VERSION pVer);
 int VBoxWinDrvInfQuerySectionVer(HINF hInf, PVBOXWINDRVINFSEC_VERSION pVer);
+
+const char *VBoxWinDrvSetupApiErrToStr(const DWORD dwErr);
+const char *VBoxWinDrvWinErrToStr(const DWORD dwErr);
+int VBoxWinDrvInstErrorFromWin32(unsigned uNativeCode);
 
 #endif /* !VBOX_INCLUDED_SRC_installation_VBoxWinDrvCommon_h */
 

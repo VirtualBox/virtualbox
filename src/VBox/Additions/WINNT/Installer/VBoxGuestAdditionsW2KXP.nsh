@@ -1,4 +1,4 @@
-; $Id: VBoxGuestAdditionsW2KXP.nsh 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
+; $Id: VBoxGuestAdditionsW2KXP.nsh 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $
 ;; @file
 ; VBoxGuestAdditionsW2KXP.nsh - Guest Additions installation for Windows 2000/XP.
 ;
@@ -140,9 +140,9 @@ change_res:
   ${EndIf}
 
   ; Write the new value in the adapter config (VBoxVideo.sys) using hex values in binary format
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" registry write HKLM $reg_path_device CustomXRes REG_BIN $g_iScreenX DWORD"  'non-zero-exitcode=abort'
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" registry write HKLM $reg_path_device CustomYRes REG_BIN $g_iScreenY DWORD"  'non-zero-exitcode=abort'
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" registry write HKLM $reg_path_device CustomBPP REG_BIN $g_iScreenBpp DWORD" 'non-zero-exitcode=abort'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" registry write HKLM $reg_path_device CustomXRes REG_BIN $g_iScreenX DWORD"  'non-zero-exitcode=abort'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" registry write HKLM $reg_path_device CustomYRes REG_BIN $g_iScreenY DWORD"  'non-zero-exitcode=abort'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" registry write HKLM $reg_path_device CustomBPP REG_BIN $g_iScreenBpp DWORD" 'non-zero-exitcode=abort'
 
   ; ... and tell Windows to use that mode on next start!
   WriteRegDWORD HKCC $reg_path_device "DefaultSettings.XResolution" "$g_iScreenX"
@@ -510,7 +510,7 @@ Function W2K_InstallFiles
 
   ${If} $g_bNoGuestDrv == "false"
     ${LogVerbose} "Installing guest driver ..."
-    ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" driver install $\"$INSTDIR\VBoxGuest$g_strEarlyNTDrvInfix.inf$\" $\"PCI\VEN_80EE&DEV_CAFE$\" $\"$INSTDIR\install_drivers.log$\"" 'non-zero-exitcode=abort'
+    ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$INSTDIR\install_drivers.log$\" install --inf-file $\"$INSTDIR\VBoxGuest$g_strEarlyNTDrvInfix.inf$\"" 'non-zero-exitcode=abort'
   ${Else}
     ${LogVerbose} "Guest driver installation skipped!"
   ${EndIf}
@@ -518,10 +518,10 @@ Function W2K_InstallFiles
   ${If} $g_bNoVideoDrv == "false"
     ${If} $g_bWithWDDM == "true"
       ${LogVerbose} "Installing WDDM video driver..."
-      ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" driver install $\"$INSTDIR\VBoxWddm.inf$\" $\"$\" $\"$INSTDIR\install_drivers.log$\"" 'non-zero-exitcode=abort'
+      ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$INSTDIR\install_drivers.log$\" install --inf-file $\"$INSTDIR\VBoxWddm.inf$\"" 'non-zero-exitcode=abort'
     ${Else}
       ${LogVerbose} "Installing video driver ..."
-      ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" driver install $\"$INSTDIR\VBoxVideo$g_strEarlyNTDrvInfix.inf$\" $\"$\" $\"$INSTDIR\install_drivers.log$\"" 'non-zero-exitcode=abort'
+      ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$INSTDIR\install_drivers.log$\" install --inf-file $\"$INSTDIR\VBoxVideo$g_strEarlyNTDrvInfix.inf$\"" 'non-zero-exitcode=abort'
     ${EndIf}
   ${Else}
     ${LogVerbose} "Video driver installation skipped!"
@@ -532,7 +532,7 @@ Function W2K_InstallFiles
   ;
   ${If} $g_bNoMouseDrv == "false"
     ${LogVerbose} "Installing mouse driver ..."
-    ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" driver executeinf $\"$INSTDIR\VBoxMouse.inf$\" $\"DefaultInstall.NT$%KBUILD_TARGET_ARCH%$\" $\"$INSTDIR\install_drivers.log$\"" 'non-zero-exitcode=abort'
+    ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$INSTDIR\install_drivers.log$\" install --inf-file $\"$INSTDIR\VBoxMouse.inf$\"" 'non-zero-exitcode=abort'
   ${Else}
     ${LogVerbose} "Mouse driver installation skipped!"
   ${EndIf}
@@ -542,7 +542,7 @@ Function W2K_InstallFiles
   ; No need to stop/remove the service here! Do this only on uninstallation!
   ;
   ${LogVerbose} "Installing VirtualBox service ..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service create $\"VBoxService$\" $\"VirtualBox Guest Additions Service$\" 16 2 $\"%SystemRoot%\System32\VBoxService.exe$\" $\"Base$\"" 'non-zero-exitcode=abort'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service create $\"VBoxService$\" $\"VirtualBox Guest Additions Service$\" 16 2 $\"%SystemRoot%\System32\VBoxService.exe$\" $\"Base$\"" 'non-zero-exitcode=abort'
 
   ; Set service description
   WriteRegStr HKLM "SYSTEM\CurrentControlSet\Services\VBoxService" "Description" "Manages VM runtime information, time synchronization, remote sysprep execution and miscellaneous utilities for guest operating systems."
@@ -555,7 +555,7 @@ Function W2K_InstallFiles
 
   ; Create the Shared Folders service ...
   ; No need to stop/remove the service here! Do this only on uninstallation!
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service create $\"VBoxSF$\" $\"VirtualBox Shared Folders$\" 2 1 $\"\SystemRoot\System32\drivers\VBoxSF.sys$\" $\"NetworkProvider$\"" 'non-zero-exitcode=abort'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service create $\"VBoxSF$\" $\"VirtualBox Shared Folders$\" 2 1 $\"\SystemRoot\System32\drivers\VBoxSF.sys$\" $\"NetworkProvider$\"" 'non-zero-exitcode=abort'
 
   ; ... and the link to the network provider
   WriteRegStr HKLM "SYSTEM\CurrentControlSet\Services\VBoxSF\NetworkProvider" "DeviceName" "\Device\VBoxMiniRdr"
@@ -563,13 +563,13 @@ Function W2K_InstallFiles
   WriteRegStr HKLM "SYSTEM\CurrentControlSet\Services\VBoxSF\NetworkProvider" "ProviderPath" "$SYSDIR\VBoxMRXNP.dll"
 
   ; Add default network providers (if not present or corrupted)
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" netprovider add WebClient"         'non-zero-exitcode=abort'
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" netprovider add LanmanWorkstation" 'non-zero-exitcode=abort'
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" netprovider add RDPNP"             'non-zero-exitcode=abort'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" netprovider add WebClient"         'non-zero-exitcode=abort'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" netprovider add LanmanWorkstation" 'non-zero-exitcode=abort'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" netprovider add RDPNP"             'non-zero-exitcode=abort'
 
   ; Add the shared folders network provider
   ${LogVerbose} "Adding network provider (Order = $g_iSfOrder) ..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" netprovider add VBoxSF $g_iSfOrder" 'non-zero-exitcode=abort'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" netprovider add VBoxSF $g_iSfOrder" 'non-zero-exitcode=abort'
 
 
   Pop $0
@@ -683,8 +683,8 @@ Function ${un}W2K_Uninstall
 
   ; Remove VirtualBox video driver
   ${LogVerbose} "Uninstalling video driver ..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" driver uninstall $\"$INSTDIR\VBoxVideo$g_strEarlyNTDrvInfix.inf$\" $\"VBoxVideo*$\"" 'non-zero-exitcode=log'
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service delete VBoxVideo" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxVideo*$\"" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxVideo" 'non-zero-exitcode=log'
   Delete /REBOOTOK "$g_strSystemDir\drivers\VBoxVideo.sys"
   Delete /REBOOTOK "$g_strSystemDir\VBoxDisp.dll"
 
@@ -692,26 +692,26 @@ Function ${un}W2K_Uninstall
 !if $%VBOX_WITH_WDDM% == "1"
 
   ${LogVerbose} "Uninstalling WDDM video driver..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" driver uninstall $\"$INSTDIR\VBoxWddm.inf$\" $\"VBoxWddm*$\"" 'non-zero-exitcode=log'
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service delete VBoxWddm" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxWddm*$\"" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxWddm" 'non-zero-exitcode=log'
   ;misha> @todo driver file removal (as well as service removal) should be done as driver package uninstall
-  ;       could be done with "VBoxDrvInst.exe /u", e.g. by passing additional arg to it denoting that driver package is to be uninstalled
+  ;       could be done with "VBoxGuestInstallHelper.exe /u", e.g. by passing additional arg to it denoting that driver package is to be uninstalled
   Delete /REBOOTOK "$g_strSystemDir\drivers\VBoxWddm.sys"
 
   ; Obsolete files begin
   ${LogVerbose} "Uninstalling WDDM video driver for Windows 8..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" driver uninstall $\"$INSTDIR\VBoxVideoW8.inf$\" $\"VBoxVideoW8*$\"" 'non-zero-exitcode=log'
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service delete VBoxVideoW8" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxVideoW8*$\"" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxVideoW8" 'non-zero-exitcode=log'
   ;misha> @todo driver file removal (as well as service removal) should be done as driver package uninstall
-  ;       could be done with "VBoxDrvInst.exe /u", e.g. by passing additional arg to it denoting that driver package is to be uninstalled
+  ;       could be done with "VBoxGuestInstallHelper.exe /u", e.g. by passing additional arg to it denoting that driver package is to be uninstalled
   Delete /REBOOTOK "$g_strSystemDir\drivers\VBoxVideoW8.sys"
 
   ${LogVerbose} "Uninstalling WDDM video driver for Windows Vista and 7..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" driver uninstall $\"$INSTDIR\VBoxVideoWddm.inf$\" $\"VBoxVideoWddm*$\"" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxVideoWddm*$\"" 'non-zero-exitcode=log'
   ; Always try to remove both VBoxVideoWddm & VBoxVideo services no matter what is installed currently
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service delete VBoxVideoWddm" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxVideoWddm" 'non-zero-exitcode=log'
   ;misha> @todo driver file removal (as well as service removal) should be done as driver package uninstall
-  ;       could be done with "VBoxDrvInst.exe /u", e.g. by passing additional arg to it denoting that driver package is to be uninstalled
+  ;       could be done with "VBoxGuestInstallHelper.exe /u", e.g. by passing additional arg to it denoting that driver package is to be uninstalled
   Delete /REBOOTOK "$g_strSystemDir\drivers\VBoxVideoWddm.sys"
   ; Obsolete files end
 
@@ -744,13 +744,13 @@ Function ${un}W2K_Uninstall
 
   ; Remove mouse driver
   ${LogVerbose} "Removing mouse driver ..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" driver uninstall $\"$INSTDIR\VBoxMouse.inf$\" $\"VBoxMouse*$\"" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxMouse*$\"" 'non-zero-exitcode=log'
   ; @todo Fix VBoxMouse.inf to also take care of the next line!
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" registry delmultisz $\"SYSTEM\CurrentControlSet\Control\Class\{4D36E96F-E325-11CE-BFC1-08002BE10318}$\" $\"UpperFilters$\" $\"VBoxMouse$\"" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" registry delmultisz $\"SYSTEM\CurrentControlSet\Control\Class\{4D36E96F-E325-11CE-BFC1-08002BE10318}$\" $\"UpperFilters$\" $\"VBoxMouse$\"" 'non-zero-exitcode=log'
 
   ; Delete the VBoxService service
   Call ${un}StopVBoxService
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service delete VBoxService" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxService" 'non-zero-exitcode=log'
   DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "VBoxService"
   Delete /REBOOTOK "$g_strSystemDir\VBoxService.exe"
 
@@ -767,11 +767,11 @@ Function ${un}W2K_Uninstall
   Call ${un}StopVBoxTray
   DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "VBoxTray"
 
-  ; Remove guest driver
+  ; Remove guest driver. Needs to be done last.
   ${LogVerbose} "Removing guest driver ..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" driver uninstall $\"$INSTDIR\VBoxGuest$g_strEarlyNTDrvInfix.inf$\" $\"VBoxGuest*$\"" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxGuest*$\"" 'non-zero-exitcode=log'
 
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service delete VBoxGuest" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxGuest" 'non-zero-exitcode=log'
   Delete /REBOOTOK "$g_strSystemDir\drivers\VBoxGuest.sys"
   Delete /REBOOTOK "$g_strSystemDir\VBCoInst.dll" ; Deprecated, does not get installed anymore
   Delete /REBOOTOK "$g_strSystemDir\VBoxTray.exe"
@@ -781,8 +781,8 @@ Function ${un}W2K_Uninstall
 
   ; Remove shared folders driver
   ${LogVerbose} "Removing shared folders driver ..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" netprovider remove VBoxSF" 'non-zero-exitcode=log'
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" service delete VBoxSF" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" netprovider remove VBoxSF" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxSF" 'non-zero-exitcode=log'
   Delete /REBOOTOK "$g_strSystemDir\VBoxMRXNP.dll" ; The network provider DLL will be locked
   !if $%KBUILD_TARGET_ARCH% == "amd64"
     ; Only 64-bit installer: Also remove 32-bit DLLs on 64-bit target arch in Wow64 node

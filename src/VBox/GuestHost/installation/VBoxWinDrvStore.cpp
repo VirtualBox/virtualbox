@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvStore.cpp 107167 2024-11-26 09:06:00Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvStore.cpp 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvStore - Windows driver store handling.
  */
@@ -413,25 +413,34 @@ static int vboxWinDrvStoreEntryInitFromInf(PVBOXWINDRVSTOREENTRY pEntry, const c
         rc = RTUtf16Copy(pEntry->wszInfFile, RT_ELEMENTS(pEntry->wszInfFile), pwszFile);
         if (RT_SUCCESS(rc))
         {
-            PRTUTF16 pwszModel;
-            rc = VBoxWinDrvInfQueryFirstModel(hInf, &pwszModel);
-            if (RT_SUCCESS(rc))
+            PRTUTF16 pwszMainSection;
+            VBOXWINDRVINFTYPE enmType = VBoxWinDrvInfGetTypeEx(hInf, &pwszMainSection);
+            if (enmType != VBOXWINDRVINFTYPE_INVALID)
             {
-                rc = RTUtf16Copy(pEntry->wszModel, RT_ELEMENTS(pEntry->wszModel), pwszModel);
+                PRTUTF16 pwszModel;
+                rc = VBoxWinDrvInfQueryFirstModel(hInf, pwszMainSection, &pwszModel);
                 if (RT_SUCCESS(rc))
                 {
-                    /* PnP ID is optional. */
-                    PRTUTF16 pwszPnpId;
-                    int rc2 = VBoxWinDrvInfQueryFirstPnPId(hInf, pEntry->wszModel, &pwszPnpId);
-                    if (RT_SUCCESS(rc2))
+                    rc = RTUtf16Copy(pEntry->wszModel, RT_ELEMENTS(pEntry->wszModel), pwszModel);
+                    if (RT_SUCCESS(rc))
                     {
-                        rc = RTUtf16Copy(pEntry->wszPnpId, RT_ELEMENTS(pEntry->wszPnpId), pwszPnpId);
-                        RTUtf16Free(pwszPnpId);
+                        /* PnP ID is optional. */
+                        PRTUTF16 pwszPnpId;
+                        int rc2 = VBoxWinDrvInfQueryFirstPnPId(hInf, pEntry->wszModel, &pwszPnpId);
+                        if (RT_SUCCESS(rc2))
+                        {
+                            rc = RTUtf16Copy(pEntry->wszPnpId, RT_ELEMENTS(pEntry->wszPnpId), pwszPnpId);
+                            RTUtf16Free(pwszPnpId);
+                        }
                     }
+
+                    RTUtf16Free(pwszModel);
                 }
 
-                RTUtf16Free(pwszModel);
+                RTUtf16Free(pwszMainSection);
             }
+            else
+                rc = VERR_INVALID_PARAMETER;
         }
 
         int rc2 = VBoxWinDrvInfQuerySectionVer(hInf, &pEntry->Ver);

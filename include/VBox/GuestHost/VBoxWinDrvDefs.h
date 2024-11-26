@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvDefs.h 107167 2024-11-26 09:06:00Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvDefs.h 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvDefs - Common definitions for Windows driver functions.
  */
@@ -42,25 +42,44 @@
 
 #include <iprt/utf16.h>
 
-#if defined(RT_ARCH_AMD64)
-# define VBOXWINDRVINF_NATIVE_ARCH_STR     "AMD64"
-#elif defined(RT_ARCH_X86)
-# define VBOXWINDRVINF_NATIVE_ARCH_STR     "X86"
-#elif defined(RT_ARCH_ARM64)
-# define VBOXWINDRVINF_NATIVE_ARCH_STR     "ARM64"
-#else
-# error "Port me!"
+/* If not defined explicitly, use the given / current target architecture. */
+#ifndef VBOXWINDRVINF_NATIVE_ARCH_STR /* For cross testing and testcases. */
+# if defined(RT_ARCH_AMD64)
+#  define VBOXWINDRVINF_NATIVE_ARCH_STR     "AMD64"
+# elif defined(RT_ARCH_X86)
+#  define VBOXWINDRVINF_NATIVE_ARCH_STR     "X86"
+# elif defined(RT_ARCH_ARM64)
+#  define VBOXWINDRVINF_NATIVE_ARCH_STR     "ARM64"
+# else
+#  error "Port me!"
+# endif
 #endif
 
-/** Defines a string which emits the bulld target's native architeture, e.g. ".NTAMD64". */
-#define VBOXWINDRVINF_DOT_NT_NATIVE_ARCH_STR ".NT" VBOXWINDRVINF_NATIVE_ARCH_STR
+/** Defines a string which emits the decoration separator. */
+#define VBOXWINDRVINF_DECORATION_SEP_STR "."
 
-/** Maximum catalog file (.cat) length (in characters). */
-#define VBOXWINDRVINF_MAX_CATALOG_FILE     255
-/** Maximum driver version length (in characters). */
-#define VBOXWINDRVINF_MAX_DRIVER_VER       255
-/** Maximum provider name length (in characters). */
-#define VBOXWINDRVINF_MAX_PROVIDER_FILE    255
+/** Defines a string which emits the decoration separator (UTF-16 version). */
+#define VBOXWINDRVINF_DECORATION_SEP_UTF16_STR L"."
+
+/** Defines a string which emits the bulld target's native architeture, e.g. "NTAMD64". */
+#define VBOXWINDRVINF_NT_NATIVE_ARCH_STR "NT" VBOXWINDRVINF_NATIVE_ARCH_STR
+
+/** Defines a string which emits the bulld target's native architeture, e.g. ".NTAMD64". */
+#define VBOXWINDRVINF_DOT_NT_NATIVE_ARCH_STR VBOXWINDRVINF_DECORATION_SEP_STR VBOXWINDRVINF_NT_NATIVE_ARCH_STR
+
+/** Maximum INF catalog file (.cat) length (in characters). */
+#define VBOXWINDRVINF_MAX_CATALOG_FILE_LEN     255
+/** Maximum INF driver version length (in characters). */
+#define VBOXWINDRVINF_MAX_DRIVER_VER_LEN       255
+/** Maximum INF provider name length (in characters). */
+#define VBOXWINDRVINF_MAX_PROVIDER_NAME_LEN    255
+/** Maximum INF section name length (in characters). */
+#define VBOXWINDRVINF_MAX_SECTION_NAME_LEN     255
+/** Maximum INF model name length (in characters). */
+#define VBOXWINDRVINF_MAX_MODEL_NAME_LEN       255
+/** Maximum INF PnP ID length (in characters). */
+#define VBOXWINDRVINF_MAX_PNP_ID_LEN           255
+
 
 /**
  * Structure for keeping INF Version section information.
@@ -68,11 +87,11 @@
 typedef struct _VBOXWINDRVINFSEC_VERSION
 {
     /** Catalog (.cat) file. */
-    RTUTF16 wszCatalogFile[VBOXWINDRVINF_MAX_CATALOG_FILE];
+    RTUTF16 wszCatalogFile[VBOXWINDRVINF_MAX_CATALOG_FILE_LEN];
     /** Driver version. */
-    RTUTF16 wszDriverVer[VBOXWINDRVINF_MAX_DRIVER_VER];
+    RTUTF16 wszDriverVer[VBOXWINDRVINF_MAX_DRIVER_VER_LEN];
     /** Provider name. */
-    RTUTF16 wszProvider[VBOXWINDRVINF_MAX_PROVIDER_FILE];
+    RTUTF16 wszProvider[VBOXWINDRVINF_MAX_PROVIDER_NAME_LEN];
 } VBOXWINDRVINFSEC_VERSION;
 /** Pointer to structure for keeping INF Version section information. */
 typedef VBOXWINDRVINFSEC_VERSION *PVBOXWINDRVINFSEC_VERSION;

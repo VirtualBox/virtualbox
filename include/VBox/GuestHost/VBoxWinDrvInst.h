@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvInst.h 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvInst.h 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvInst - Header for Windows driver installation handling.
  */
@@ -84,8 +84,13 @@ typedef FNVBOXWINDRIVERLOGMSG *PFNVBOXWINDRIVERLOGMSG;
 #define VBOX_WIN_DRIVERINSTALL_F_SILENT     RT_BIT(0)
 /** Force driver installation, even if a newer driver version already is installed (overwrite). */
 #define VBOX_WIN_DRIVERINSTALL_F_FORCE      RT_BIT(1)
+/** Run in dry mode (no real (un)installation performed). */
+#define VBOX_WIN_DRIVERINSTALL_F_DRYRUN     RT_BIT(2)
+/** Do not destroy internal data for later inspection.
+ *  Only used by testcases and should be avoided in general. */
+#define VBOX_WIN_DRIVERINSTALL_F_NO_DESTROY RT_BIT(3)
 /** Validation mask. */
-#define VBOX_WIN_DRIVERINSTALL_F_VALID_MASK 0x3
+#define VBOX_WIN_DRIVERINSTALL_F_VALID_MASK 0xf
 
 int VBoxWinDrvInstCreate(PVBOXWINDRVINST hDrvInst);
 int VBoxWinDrvInstCreateEx(PVBOXWINDRVINST phDrvInst, unsigned uVerbosity, PFNVBOXWINDRIVERLOGMSG pfnLog, void *pvUser);
@@ -94,7 +99,8 @@ unsigned VBoxWinDrvInstGetWarnings(VBOXWINDRVINST hDrvInst);
 unsigned VBoxWinDrvInstGetErrors(VBOXWINDRVINST hDrvInst);
 unsigned VBoxWinDrvInstSetVerbosity(VBOXWINDRVINST hDrvInst, uint8_t uVerbosity);
 void VBoxWinDrvInstSetLogCallback(VBOXWINDRVINST hDrvInst, PFNVBOXWINDRIVERLOGMSG pfnLog, void *pvUser);
-int VBoxWinDrvInstInstall(VBOXWINDRVINST hDrvInst, const char *pszInfFile, const char *pszPnpId, uint32_t fFlags);
+int VBoxWinDrvInstInstallEx(VBOXWINDRVINST hDrvInst, const char *pszInfFile, const char *pszModel, const char *pszPnpId, uint32_t fFlags);
+int VBoxWinDrvInstInstall(VBOXWINDRVINST hDrvInst, const char *pszInfFile, uint32_t fFlags);
 int VBoxWinDrvInstInstallExecuteInf(VBOXWINDRVINST hDrvInst, const char *pszInfFile, const char *pszSection, uint32_t fFlags);
 int VBoxWinDrvInstUninstall(VBOXWINDRVINST hDrvInst, const char *pszInfFile, const char *pszModel, const char *pszPnPId, uint32_t fFlags);
 int VBoxWinDrvInstUninstallExecuteInf(VBOXWINDRVINST hDrvInst, const char *pszInfFile, const char *pszSection, uint32_t fFlags);

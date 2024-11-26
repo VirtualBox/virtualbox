@@ -1,0 +1,52 @@
+# $Id: Makefile.kmk 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $
+## @file
+# Sub-Makefile for the VBox driver installation testcases.
+#
+
+#
+# Copyright (C) 2024 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_ADDITIONS) && !defined(VBOX_ONLY_SDK)
+ PROGRAMS.win += tstVBoxWinDrvInstInf
+ TESTING.win  += $(tstVBoxWinDrvInstInf_0_OUTDIR)/tstVBoxWinDrvInstInf.run
+
+ tstVBoxWinDrvInstInf_TEMPLATE = VBoxR3TstExe
+ # Only test AMD64 on all platform for now, as the INF test files have the architecture hardcoded.
+ tstVBoxWinDrvInstInf_DEFS     = TESTCASE VBOXWINDRVINF_NATIVE_ARCH_STR="AMD64"
+ tstVBoxWinDrvInstInf_SOURCES  = \
+ 	tstVBoxWinDrvInstInf.cpp \
+ 	../VBoxWinDrvCommon.cpp \
+ 	../VBoxWinDrvStore.cpp \
+ 	../VBoxWinDrvInst.cpp
+ tstVBoxWinDrvInstInf_INCS += ../
+
+ # Install required INF files into testcase/ directory.
+ INSTALLS.win += tstVBoxWinDrvInstInfFiles
+ tstVBoxWinDrvInstInfFiles_INST     = $(INST_TESTCASE)inf/
+ tstVBoxWinDrvInstInfFiles_SOURCES := $(wildcard $(PATH_SUB_CURRENT)/inf/*.inf)
+
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)
