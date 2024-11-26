@@ -1,4 +1,4 @@
-/* $Id: VBoxTray.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxTray.cpp 107164 2024-11-26 07:15:16Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxTray - Guest Additions Tray Application
  */
@@ -1148,7 +1148,20 @@ int main(int cArgs, char **papszArgs)
         VbglR3Term();
     }
     else
-        VBoxTrayShowError("VbglR3Init failed: %Rrc\n", rc);
+    {
+        /* Only show something if started in verbose mode.
+         * Otherwise just fail silently as we ever did. Needed in order to not break installs on non-VMs. */
+        if (g_cVerbosity)
+        {
+            if (rc == VERR_OPEN_FAILED)
+                VBoxTrayShowError("Error opening a connection to the VBoxGuest.sys driver.\n\n"
+                                  "This might be due to not having the Windows Guest Additions installed\n"
+                                  "or that something went wrong when installing those.\n\n"
+                                  "Re-installing the Guest Additions might resolve the issue.\n");
+            else
+                VBoxTrayShowError("VbglR3Init failed: %Rrc\n", rc);
+        }
+    }
 
     /* Release instance mutex. */
     if (hMutexAppRunning != NULL)
