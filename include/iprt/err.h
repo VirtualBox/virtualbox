@@ -407,6 +407,12 @@
 #define VERR_FLOAT_OVERFLOW                 (-22427)
 /** Floating pointer overflow. */
 #define VWRN_FLOAT_OVERFLOW                 (22427)
+/** A reboot is needed. */
+#define VERR_REBOOT_NEEDED                  (-22428)
+/** A reboot is needed. */
+#define VINF_REBOOT_NEEDED                  (22428)
+/** Installation has failed. */
+#define VERR_INSTALLATION_FAILED            (-22429)
 /** @} */
 
 

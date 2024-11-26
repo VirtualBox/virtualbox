@@ -1,4 +1,4 @@
-/* $Id: VBoxCommon.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxCommon.cpp 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxCommon - Misc helper routines for install helper.
  *
@@ -41,24 +41,56 @@
 #include "VBoxCommon.h"
 
 
-#ifndef TESTCASE
 /**
- * Retrieves a MSI property (in UTF-16).
- *
- * Convenience function for VBoxGetMsiProp().
+ * Retrieves a MSI property (in UTF-16), extended version.
  *
  * @returns VBox status code.
  * @param   hMsi                MSI handle to use.
  * @param   pwszName            Name of property to retrieve.
- * @param   pwszValueBuf        Where to store the allocated value on success.
- * @param   cwcValueBuf         Size (in WCHARs) of \a pwszValueBuf.
+ * @param   pwszVal             Where to store the allocated value on success.
+ * @param   pcwVal              Input and output size (in WCHARs) of \a pwszVal.
  */
-UINT VBoxGetMsiProp(MSIHANDLE hMsi, const WCHAR *pwszName, WCHAR *pwszValueBuf, DWORD cwcValueBuf)
+int VBoxMsiQueryPropEx(MSIHANDLE hMsi, const WCHAR *pwszName, WCHAR *pwszVal, DWORD *pcwVal)
 {
-    RT_BZERO(pwszValueBuf, cwcValueBuf * sizeof(WCHAR));
-    return MsiGetPropertyW(hMsi, pwszName, pwszValueBuf, &cwcValueBuf);
+    AssertPtrReturn(pwszName, VERR_INVALID_POINTER);
+    AssertPtrReturn(pwszVal, VERR_INVALID_POINTER);
+    AssertPtrReturn(pcwVal, VERR_INVALID_POINTER);
+    AssertReturn(*pcwVal, VERR_INVALID_PARAMETER);
+
+    int rc;
+
+    RT_BZERO(pwszVal, *pcwVal * sizeof(WCHAR));
+    UINT uRc = MsiGetPropertyW(hMsi, pwszName, pwszVal, pcwVal);
+    if (uRc == ERROR_SUCCESS)
+    {
+        if (*pcwVal > 0)
+        {
+            rc = VINF_SUCCESS;
+        }
+        else /* Indicates value not found. */
+            rc = VERR_NOT_FOUND;
+    }
+    else
+        rc = RTErrConvertFromWin32(uRc);
+
+    return rc;
 }
-#endif
+
+#ifndef TESTCASE
+/**
+ * Retrieves a MSI property (in UTF-16).
+ *
+ * @returns VBox status code.
+ * @param   hMsi                MSI handle to use.
+ * @param   pwszName            Name of property to retrieve.
+ * @param   pwszVal             Where to store the allocated value on success.
+ * @param   cwVal               Input size (in WCHARs) of \a pwszVal.
+ */
+int VBoxMsiQueryProp(MSIHANDLE hMsi, const WCHAR *pwszName, WCHAR *pwszVal, DWORD cwVal)
+{
+    return VBoxMsiQueryPropEx(hMsi, pwszName, pwszVal, &cwVal);
+}
+#endif /* !TESTCASE */
 
 /**
  * Retrieves a MSI property (in UTF-8).
@@ -67,21 +99,23 @@ UINT VBoxGetMsiProp(MSIHANDLE hMsi, const WCHAR *pwszName, WCHAR *pwszValueBuf, 
  *
  * @returns VBox status code.
  * @param   hMsi                MSI handle to use.
- * @param   pcszName            Name of property to retrieve.
+ * @param   pszName             Name of property to retrieve.
  * @param   ppszValue           Where to store the allocated value on success.
  *                              Must be free'd using RTStrFree() by the caller.
  */
-int VBoxGetMsiPropUtf8(MSIHANDLE hMsi, const char *pcszName, char **ppszValue)
+int VBoxMsiQueryPropUtf8(MSIHANDLE hMsi, const char *pszName, char **ppszValue)
 {
+   AssertPtrReturn(pszName, VERR_INVALID_POINTER);
+   AssertPtrReturn(ppszValue, VERR_INVALID_POINTER);
+
     PRTUTF16 pwszName;
-    int rc = RTStrToUtf16(pcszName, &pwszName);
+    int rc = RTStrToUtf16(pszName, &pwszName);
     if (RT_SUCCESS(rc))
     {
         WCHAR wszValue[1024]; /* 1024 should be enough for everybody (tm). */
-        if (VBoxGetMsiProp(hMsi, pwszName, wszValue, RT_ELEMENTS(wszValue)) == ERROR_SUCCESS)
+        rc = VBoxMsiQueryProp(hMsi, pwszName, wszValue, RT_ELEMENTS(wszValue));
+        if (RT_SUCCESS(rc))
             rc = RTUtf16ToUtf8(wszValue, ppszValue);
-        else
-            rc = VERR_NOT_FOUND;
 
         RTUtf16Free(pwszName);
     }
@@ -90,16 +124,37 @@ int VBoxGetMsiPropUtf8(MSIHANDLE hMsi, const char *pcszName, char **ppszValue)
 }
 
 #ifndef TESTCASE
-UINT VBoxSetMsiProp(MSIHANDLE hMsi, const WCHAR *pwszName, const WCHAR *pwszValue)
+int VBoxMsiQueryPropInt32(MSIHANDLE hMsi, const char *pszName, DWORD *pdwValue)
+{
+   AssertPtrReturn(pszName, VERR_INVALID_POINTER);
+   AssertPtrReturn(pdwValue, VERR_INVALID_POINTER);
+
+    PRTUTF16 pwszName;
+    int rc = RTStrToUtf16(pszName, &pwszName);
+    if (RT_SUCCESS(rc))
+    {
+        char *pszTemp;
+        rc = VBoxMsiQueryPropUtf8(hMsi, pszName, &pszTemp);
+        if (RT_SUCCESS(rc))
+        {
+            *pdwValue = RTStrToInt32(pszTemp);
+            RTStrFree(pszTemp);
+        }
+    }
+
+    return rc;
+}
+
+UINT VBoxMsiSetProp(MSIHANDLE hMsi, const WCHAR *pwszName, const WCHAR *pwszValue)
 {
     return MsiSetPropertyW(hMsi, pwszName, pwszValue);
 }
 #endif
 
-UINT VBoxSetMsiPropDWORD(MSIHANDLE hMsi, const WCHAR *pwszName, DWORD dwVal)
+UINT VBoxMsiSetPropDWORD(MSIHANDLE hMsi, const WCHAR *pwszName, DWORD dwVal)
 {
     wchar_t wszTemp[32];
     RTUtf16Printf(wszTemp, RT_ELEMENTS(wszTemp), "%u", dwVal);
-    return VBoxSetMsiProp(hMsi, pwszName, wszTemp);
+    return VBoxMsiSetProp(hMsi, pwszName, wszTemp);
 }
 

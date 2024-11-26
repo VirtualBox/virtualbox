@@ -25,6 +25,17 @@
 
 <Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
+    <Custom Action="ca_VBoxSupDrvInstArgFlagSilent" Before="ca_VBoxSupDrvInstArgFlagForce" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxSupDrvInstArgFlagForce" Before="ca_VBoxSupDrvInstArgModel" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxSupDrvInstArgInfFile" Before="ca_VBoxSupDrvInstArgModel" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxSupDrvInstArgModel" Before="ca_VBoxSupDrvInst" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxSupDrvInst" After="InstallFinalize" Condition="NOT REMOVE" />
+
+    <Custom Action="ca_VBoxSupDrvUninstArgModel" Before="ca_VBoxSupDrvUninst"
+            Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
+    <Custom Action="ca_VBoxSupDrvUninst" After="InstallInitialize"
+            Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
+
 <?if $(env.VBOX_WITH_CRT_PACKING) = "no" ?>
     <Custom Action="ca_IsMSCRTInstalled" Before="LaunchConditions"/>
 <?endif?>

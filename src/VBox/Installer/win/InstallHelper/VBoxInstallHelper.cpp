@@ -1,4 +1,4 @@
-/* $Id: VBoxInstallHelper.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxInstallHelper.cpp 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxInstallHelper - Various helper routines for Windows host installer.
  */
@@ -59,12 +59,15 @@
 #include <iprt/dir.h>
 #include <iprt/err.h>
 #include <iprt/file.h>
+#include <iprt/initterm.h>
 #include <iprt/mem.h>
 #include <iprt/path.h>   /* RTPATH_MAX, RTPATH_IS_SLASH */
 #include <iprt/string.h> /* RT_ZERO */
 #include <iprt/stream.h>
 #include <iprt/thread.h>
 #include <iprt/utf16.h>
+
+#include <VBox/GuestHost/VBoxWinDrvInst.h>
 
 #include "VBoxCommon.h"
 #ifndef VBOX_OSE
@@ -133,7 +136,7 @@ static TGTDIRSECCTX g_TargetDirSecCtx = { 0 };
  */
 BOOL WINAPI DllMain(HANDLE hInst, ULONG uReason, LPVOID pReserved)
 {
-    RT_NOREF(hInst, uReason, pReserved);
+    RT_NOREF(hInst, pReserved);
 
 #ifdef DEBUG
     WCHAR wszMsg[128];
@@ -146,6 +149,10 @@ BOOL WINAPI DllMain(HANDLE hInst, ULONG uReason, LPVOID pReserved)
     {
         case DLL_PROCESS_ATTACH:
         {
+            int rc = RTR3InitDll(RTR3INIT_FLAGS_UNOBTRUSIVE);
+            if (RT_FAILURE(rc))
+                return FALSE;
+
             g_cRef++;
 #if 0
             /*
@@ -156,8 +163,6 @@ BOOL WINAPI DllMain(HANDLE hInst, ULONG uReason, LPVOID pReserved)
              * the message below appear.  This will happen 3-4 times during install,
              * and 2-3 times during uninstall.
              *
-             * Note! The DIFxApp.DLL will automatically trigger breakpoints when a
-             *       debugger is attached.  Just continue on these.
              */
             RTUtf16Printf(wszMsg, RT_ELEMENTS(wszMsg), "Waiting for debugger to attach: windbg -g -G -p %u\n", GetCurrentProcessId());
             for (unsigned i = 0; i < 128 && !IsDebuggerPresent(); i++)
@@ -173,6 +178,8 @@ BOOL WINAPI DllMain(HANDLE hInst, ULONG uReason, LPVOID pReserved)
 
         case DLL_PROCESS_DETACH:
         {
+            /** @todo RTR3Term(); */
+
             g_cRef--;
             break;
         }
@@ -648,66 +655,65 @@ UINT __stdcall CheckTargetDir(MSIHANDLE hModule)
 {
     char *pszTargetDir;
 
-    int vrc = VBoxGetMsiPropUtf8(hModule, "INSTALLDIR", &pszTargetDir);
-    if (RT_SUCCESS(vrc))
+    int vrc = VBoxMsiQueryPropUtf8(hModule, "INSTALLDIR", &pszTargetDir);
+    if (vrc == VERR_NOT_FOUND) /* Target directory might not set yet. */
+    {
+        logStringF(hModule, "CheckTargetDir: No INSTALLDIR set (yet), skipping ...");
+
+        VBoxMsiSetProp(hModule, L"VBox_Target_Dir_Is_Valid", L"1");
+        vrc = VINF_SUCCESS;
+    }
+    else if (RT_SUCCESS(vrc))
     {
         logStringF(hModule, "CheckTargetDir: Checking target directory '%s' ...", pszTargetDir);
 
-        if (!RTStrNLen(pszTargetDir, RTPATH_MAX))
+        union
         {
-            logStringF(hModule, "CheckTargetDir: No INSTALLDIR set (yet), skipping ...");
-            VBoxSetMsiProp(hModule, L"VBox_Target_Dir_Is_Valid", L"1");
-        }
-        else
-        {
-            union
-            {
-                RTPATHPARSED    Parsed;
-                uint8_t         ab[RTPATH_MAX];
-            } u;
+            RTPATHPARSED    Parsed;
+            uint8_t         ab[RTPATH_MAX];
+        } u;
 
-            vrc = RTPathParse(pszTargetDir, &u.Parsed, sizeof(u), RTPATH_STR_F_STYLE_DOS);
+        vrc = RTPathParse(pszTargetDir, &u.Parsed, sizeof(u), RTPATH_STR_F_STYLE_DOS);
+        if (RT_SUCCESS(vrc))
+        {
+            if (u.Parsed.fProps & RTPATH_PROP_DOTDOT_REFS)
+                vrc = VERR_INVALID_PARAMETER;
             if (RT_SUCCESS(vrc))
             {
-                if (u.Parsed.fProps & RTPATH_PROP_DOTDOT_REFS)
-                    vrc = VERR_INVALID_PARAMETER;
+                vrc = initTargetDirSecurityCtx(&g_TargetDirSecCtx, hModule, pszTargetDir);
                 if (RT_SUCCESS(vrc))
                 {
-                    vrc = initTargetDirSecurityCtx(&g_TargetDirSecCtx, hModule, pszTargetDir);
-                    if (RT_SUCCESS(vrc))
+                    uint16_t idxComp = u.Parsed.cComps;
+                    char     szPathToCheck[RTPATH_MAX];
+                    while (idxComp > 1) /* We traverse backwards from INSTALLDIR and leave out the root (e.g. C:\"). */
                     {
-                        uint16_t idxComp = u.Parsed.cComps;
-                        char     szPathToCheck[RTPATH_MAX];
-                        while (idxComp > 1) /* We traverse backwards from INSTALLDIR and leave out the root (e.g. C:\"). */
+                        u.Parsed.cComps = idxComp;
+                        vrc = RTPathParsedReassemble(pszTargetDir, &u.Parsed, RTPATH_STR_F_STYLE_DOS,
+                                                     szPathToCheck, sizeof(szPathToCheck));
+                        if (RT_FAILURE(vrc))
+                            break;
+                        if (RTDirExists(szPathToCheck))
                         {
-                            u.Parsed.cComps = idxComp;
-                            vrc = RTPathParsedReassemble(pszTargetDir, &u.Parsed, RTPATH_STR_F_STYLE_DOS,
-                                                         szPathToCheck, sizeof(szPathToCheck));
+                            vrc = checkTargetDirOne(hModule, &g_TargetDirSecCtx, szPathToCheck);
                             if (RT_FAILURE(vrc))
                                 break;
-                            if (RTDirExists(szPathToCheck))
-                            {
-                                vrc = checkTargetDirOne(hModule, &g_TargetDirSecCtx, szPathToCheck);
-                                if (RT_FAILURE(vrc))
-                                    break;
-                            }
-                            else
-                                logStringF(hModule, "CheckTargetDir: Path '%s' does not exist (yet)", szPathToCheck);
-                            idxComp--;
                         }
-
-                        destroyTargetDirSecurityCtx(&g_TargetDirSecCtx);
+                        else
+                            logStringF(hModule, "CheckTargetDir: Path '%s' does not exist (yet)", szPathToCheck);
+                        idxComp--;
                     }
-                    else
-                        logStringF(hModule, "CheckTargetDir: initTargetDirSecurityCtx failed with %Rrc\n", vrc);
 
-                    if (RT_SUCCESS(vrc))
-                        VBoxSetMsiProp(hModule, L"VBox_Target_Dir_Is_Valid", L"1");
+                    destroyTargetDirSecurityCtx(&g_TargetDirSecCtx);
                 }
+                else
+                    logStringF(hModule, "CheckTargetDir: initTargetDirSecurityCtx failed with %Rrc\n", vrc);
+
+                if (RT_SUCCESS(vrc))
+                    VBoxMsiSetProp(hModule, L"VBox_Target_Dir_Is_Valid", L"1");
             }
-            else
-                logStringF(hModule, "CheckTargetDir: Parsing path failed with %Rrc", vrc);
         }
+        else
+            logStringF(hModule, "CheckTargetDir: Parsing path failed with %Rrc", vrc);
 
         RTStrFree(pszTargetDir);
     }
@@ -715,7 +721,7 @@ UINT __stdcall CheckTargetDir(MSIHANDLE hModule)
     if (RT_FAILURE(vrc)) /* On failure (or when in doubt), mark the installation directory as invalid. */
     {
         logStringF(hModule, "CheckTargetDir: Checking failed with %Rrc", vrc);
-        VBoxSetMsiProp(hModule, L"VBox_Target_Dir_Is_Valid", L"0");
+        VBoxMsiSetProp(hModule, L"VBox_Target_Dir_Is_Valid", L"0");
     }
 
     /* Return back outcome to the MSI engine. */
@@ -987,14 +993,14 @@ UINT __stdcall IsPythonInstalled(MSIHANDLE hModule)
     if (rcWin == ERROR_SUCCESS)
     {
         logStringF(hModule, "IsPythonInstalled: Python installation found at \"%ls\"", wszPythonPath);
-        VBoxSetMsiProp(hModule, L"VBOX_PYTHON_PATH", wszPythonPath);
-        VBoxSetMsiProp(hModule, L"VBOX_PYTHON_INSTALLED", L"1");
+        VBoxMsiSetProp(hModule, L"VBOX_PYTHON_PATH", wszPythonPath);
+        VBoxMsiSetProp(hModule, L"VBOX_PYTHON_INSTALLED", L"1");
     }
     else
     {
         logStringF(hModule, "IsPythonInstalled: Error: No suitable Python installation found (%u), skipping installation.", rcWin);
         logStringF(hModule, "IsPythonInstalled: Python seems not to be installed; please download + install the Python Core package.");
-        VBoxSetMsiProp(hModule, L"VBOX_PYTHON_INSTALLED", L"0");
+        VBoxMsiSetProp(hModule, L"VBOX_PYTHON_INSTALLED", L"0");
     }
 
     return ERROR_SUCCESS; /* Never return failure. */
@@ -1024,7 +1030,7 @@ UINT __stdcall ArePythonAPIDepsInstalled(MSIHANDLE hModule)
     if (dwErr != ERROR_SUCCESS)
         logStringF(hModule, "ArePythonAPIDepsInstalled: Failed with dwErr=%u", dwErr);
 
-    VBoxSetMsiProp(hModule, L"VBOX_PYTHON_DEPS_INSTALLED", dwErr == ERROR_SUCCESS ? L"1" : L"0");
+    VBoxMsiSetProp(hModule, L"VBOX_PYTHON_DEPS_INSTALLED", dwErr == ERROR_SUCCESS ? L"1" : L"0");
     return ERROR_SUCCESS; /* Never return failure. */
 }
 
@@ -1063,19 +1069,19 @@ UINT __stdcall IsMSCRTInstalled(MSIHANDLE hModule)
                 lrc = RegQueryValueExW(hKeyVS, L"Major", NULL, &dwValueType, (LPBYTE)&dwMaj, &cbVal);
                 if (lrc == ERROR_SUCCESS)
                 {
-                    VBoxSetMsiPropDWORD(hModule, L"VBOX_MSCRT_VER_MAJ", dwMaj);
+                    VBoxMsiSetPropDWORD(hModule, L"VBOX_MSCRT_VER_MAJ", dwMaj);
 
                     DWORD dwMin = 0;
                     lrc = RegQueryValueExW(hKeyVS, L"Minor", NULL, &dwValueType, (LPBYTE)&dwMin, &cbVal);
                     if (lrc == ERROR_SUCCESS)
                     {
-                        VBoxSetMsiPropDWORD(hModule, L"VBOX_MSCRT_VER_MIN", dwMin);
+                        VBoxMsiSetPropDWORD(hModule, L"VBOX_MSCRT_VER_MIN", dwMin);
 
                         logStringF(hModule, "IsMSCRTInstalled: Found v%u.%u\n", dwMaj, dwMin);
 
                         /* Check for at least 2019. */
                         if (dwMaj > 14 || (dwMaj == 14 && dwMin >= 20))
-                            VBoxSetMsiProp(hModule, L"VBOX_MSCRT_INSTALLED", L"1");
+                            VBoxMsiSetProp(hModule, L"VBOX_MSCRT_INSTALLED", L"1");
                     }
                     else
                         logStringF(hModule, "IsMSCRTInstalled: Found, but 'Minor' key not present (lrc=%d)", lrc);
@@ -1128,7 +1134,7 @@ UINT __stdcall IsWindows10(MSIHANDLE hModule)
         {
             logStringF(hModule, "IsWindows10/CurrentMajorVersionNumber: %u", dwVal);
 
-            VBoxSetMsiProp(hModule, L"VBOX_IS_WINDOWS_10", dwVal >= 10 ? L"1" : L"");
+            VBoxMsiSetProp(hModule, L"VBOX_IS_WINDOWS_10", dwVal >= 10 ? L"1" : L"");
         }
         else
             logStringF(hModule, "IsWindows10/RegOpenKeyExW: Error reading CurrentMajorVersionNumber (%ld)", lrc);
@@ -1160,7 +1166,7 @@ UINT __stdcall InstallPythonAPI(MSIHANDLE hModule)
     UINT rcWin = getPythonExe(hModule, wszPythonExe, RTPATH_MAX);
     if (rcWin != ERROR_SUCCESS)
     {
-        VBoxSetMsiProp(hModule, L"VBOX_API_INSTALLED", L"0");
+        VBoxMsiSetProp(hModule, L"VBOX_API_INSTALLED", L"0");
         return ERROR_SUCCESS;
     }
 
@@ -1169,8 +1175,8 @@ UINT __stdcall InstallPythonAPI(MSIHANDLE hModule)
      */
     /* Get the VBox API setup string. */
     WCHAR wszVBoxPythonInstallerPath[RTPATH_MAX];
-    rcWin = VBoxGetMsiProp(hModule, L"CustomActionData", wszVBoxPythonInstallerPath, RT_ELEMENTS(wszVBoxPythonInstallerPath));
-    if (rcWin == ERROR_SUCCESS)
+    int rc = VBoxMsiQueryProp(hModule, L"CustomActionData", wszVBoxPythonInstallerPath, RT_ELEMENTS(wszVBoxPythonInstallerPath));
+    if (RT_SUCCESS(rc))
     {
         /* Make sure our current working directory is the VBox installation path. */
         if (SetCurrentDirectoryW(wszVBoxPythonInstallerPath))
@@ -1198,7 +1204,7 @@ UINT __stdcall InstallPythonAPI(MSIHANDLE hModule)
                     if (rcWin == ERROR_SUCCESS)
                     {
                         logStringF(hModule, "InstallPythonAPI: VBox API looks good.");
-                        VBoxSetMsiProp(hModule, L"VBOX_API_INSTALLED", L"1");
+                        VBoxMsiSetProp(hModule, L"VBOX_API_INSTALLED", L"1");
                         return ERROR_SUCCESS;
                     }
 
@@ -1217,9 +1223,9 @@ UINT __stdcall InstallPythonAPI(MSIHANDLE hModule)
                        wszVBoxPythonInstallerPath, GetLastError());
     }
     else
-        logStringF(hModule, "InstallPythonAPI: Unable to retrieve VBox installation directory: rcWin=%u (%#x)", rcWin, rcWin);
+        logStringF(hModule, "InstallPythonAPI: Unable to retrieve VBox installation directory: rc=%Rrc", rc);
 
-    VBoxSetMsiProp(hModule, L"VBOX_API_INSTALLED", L"0");
+    VBoxMsiSetProp(hModule, L"VBOX_API_INSTALLED", L"0");
     logStringF(hModule, "InstallPythonAPI: Installation failed");
     return ERROR_SUCCESS; /* Do not fail here. */
 }
@@ -1372,8 +1378,8 @@ UINT __stdcall UninstallBranding(MSIHANDLE hModule)
     logStringF(hModule, "UninstallBranding: Handling branding file ...");
 
     WCHAR wszPath[RTPATH_MAX];
-    UINT rc = VBoxGetMsiProp(hModule, L"CustomActionData", wszPath, RT_ELEMENTS(wszPath));
-    if (rc == ERROR_SUCCESS)
+    int rc = VBoxMsiQueryProp(hModule, L"CustomActionData", wszPath, RT_ELEMENTS(wszPath));
+    if (RT_SUCCESS(rc))
     {
         size_t const cwcPath = RTUtf16Len(wszPath);
         rc = AppendToPath(wszPath, RTPATH_MAX, L"custom", true /*fDoubleTerm*/);
@@ -1387,7 +1393,7 @@ UINT __stdcall UninstallBranding(MSIHANDLE hModule)
             rc = RemoveDir(hModule, wszPath);
     }
 
-    logStringF(hModule, "UninstallBranding: Handling done. (rc=%u (ignored))", rc);
+    logStringF(hModule, "UninstallBranding: Handling done. (rc=%Rrc (ignored))", rc);
     return ERROR_SUCCESS; /* Do not fail here. */
 }
 
@@ -1399,38 +1405,168 @@ UINT __stdcall InstallBranding(MSIHANDLE hModule)
      * Get the paths.
      */
     wchar_t wszSrcPath[RTPATH_MAX];
-    UINT rc = VBoxGetMsiProp(hModule, L"SOURCEDIR", wszSrcPath, RT_ELEMENTS(wszSrcPath));
-    if (rc == ERROR_SUCCESS)
+    int rc = VBoxMsiQueryProp(hModule, L"SOURCEDIR", wszSrcPath, RT_ELEMENTS(wszSrcPath));
+    if (RT_SUCCESS(rc))
     {
         wchar_t wszDstPath[RTPATH_MAX];
-        rc = VBoxGetMsiProp(hModule, L"CustomActionData", wszDstPath, RT_ELEMENTS(wszDstPath) - 1);
-        if (rc == ERROR_SUCCESS)
+        rc = VBoxMsiQueryProp(hModule, L"CustomActionData", wszDstPath, RT_ELEMENTS(wszDstPath));
+        if (RT_SUCCESS(rc))
         {
             /*
              * First we copy the src\.custom dir to the target.
              */
-            rc = AppendToPath(wszSrcPath, RT_ELEMENTS(wszSrcPath) - 1, L".custom", true /*fDoubleTerm*/);
-            if (rc == ERROR_SUCCESS)
+            UINT rcWin = AppendToPath(wszSrcPath, RT_ELEMENTS(wszSrcPath) - 1, L".custom", true /*fDoubleTerm*/);
+            if (rcWin == ERROR_SUCCESS)
             {
-                rc = CopyDir(hModule, wszDstPath, wszSrcPath);
-                if (rc == ERROR_SUCCESS)
+                rcWin = CopyDir(hModule, wszDstPath, wszSrcPath);
+                if (rcWin == ERROR_SUCCESS)
                 {
                     /*
                      * The rename the '.custom' directory we now got in the target area to 'custom'.
                      */
-                    rc = JoinPaths(wszSrcPath, RT_ELEMENTS(wszSrcPath), wszDstPath, L".custom", true /*fDoubleTerm*/);
+                    rcWin = JoinPaths(wszSrcPath, RT_ELEMENTS(wszSrcPath), wszDstPath, L".custom", true /*fDoubleTerm*/);
                     if (rc == ERROR_SUCCESS)
                     {
-                        rc = AppendToPath(wszDstPath, RT_ELEMENTS(wszDstPath), L"custom", true /*fDoubleTerm*/);
+                        rcWin = AppendToPath(wszDstPath, RT_ELEMENTS(wszDstPath), L"custom", true /*fDoubleTerm*/);
                         if (rc == ERROR_SUCCESS)
-                            rc = RenameDir(hModule, wszDstPath, wszSrcPath);
+                            rcWin = RenameDir(hModule, wszDstPath, wszSrcPath);
                     }
                 }
             }
+
+            logStringF(hModule, "InstallBranding: Handling done. (rc=%Rrc (ignored))", rc);
         }
     }
 
-    logStringF(hModule, "InstallBranding: Handling done. (rc=%u (ignored))", rc);
+    logStringF(hModule, "InstallBranding: Handling done. (rc=%Rrc (ignored))", rc);
+    return ERROR_SUCCESS; /* Do not fail here. */
+}
+
+static DECLCALLBACK(void) vboxWinDrvInstLogCallback(VBOXWINDRIVERLOGTYPE enmType, const char *pszMsg, void *pvUser)
+{
+    MSIHANDLE *phModule = (MSIHANDLE *)pvUser;
+
+    switch (enmType)
+    {
+        case VBOXWINDRIVERLOGTYPE_ERROR:
+            logStringF(*phModule, "*** Error: %s", pszMsg);
+            break;
+
+        default:
+            logStringF(*phModule, "%s", pszMsg);
+            break;
+    }
+}
+
+UINT __stdcall DriverInstall(MSIHANDLE hModule)
+{
+    logStringF(hModule, "Installing driver ...");
+
+    char *pszInfFile = NULL;
+    int rc = VBoxMsiQueryPropUtf8(hModule, "VBoxDrvInstInfFile", &pszInfFile);
+    if (RT_SUCCESS(rc))
+    {
+        char *pszInfSection = NULL;
+        rc = VBoxMsiQueryPropUtf8(hModule, "VBoxDrvInstInfSection", &pszInfSection);
+        if (   RT_SUCCESS(rc)
+            || rc == VERR_NOT_FOUND) /* VBoxDrvInstInfSection is optional. */
+        {
+            char *pszPnpId = NULL;
+            rc = VBoxMsiQueryPropUtf8(hModule, "VBoxDrvInstPnpId", &pszPnpId);
+            if (   RT_SUCCESS(rc)
+                || rc == VERR_NOT_FOUND) /* VBoxDrvInstHwId is optional. */
+            {
+                uint32_t fFlags = VBOX_WIN_DRIVERINSTALL_F_NONE;
+
+                DWORD dwVal;
+                rc = VBoxMsiQueryPropInt32(hModule, "VBoxDrvInstFlagForce", &dwVal);
+                if (RT_SUCCESS(rc))
+                    fFlags |= VBOX_WIN_DRIVERINSTALL_F_FORCE;
+                rc = VBoxMsiQueryPropInt32(hModule, "VBoxDrvInstFlagSilent", &dwVal);
+                if (RT_SUCCESS(rc))
+                    fFlags |= VBOX_WIN_DRIVERINSTALL_F_SILENT;
+
+                VBOXWINDRVINST hWinDrvInst;
+                rc = VBoxWinDrvInstCreateEx(&hWinDrvInst, 1 /* uVerbostiy */, &vboxWinDrvInstLogCallback, &hModule /* pvUser */);
+                if (RT_SUCCESS(rc))
+                {
+                    if (pszInfSection && *pszInfSection)
+                        rc = VBoxWinDrvInstInstallExecuteInf(hWinDrvInst, pszInfFile, pszInfSection, fFlags);
+                    else
+                        rc = VBoxWinDrvInstInstall(hWinDrvInst, pszInfFile, pszPnpId, fFlags);
+
+                    VBoxWinDrvInstDestroy(hWinDrvInst);
+                }
+
+                RTStrFree(pszPnpId);
+            }
+
+            RTStrFree(pszInfSection);
+        }
+
+        RTStrFree(pszInfFile);
+    }
+    else
+    {
+        logStringF(hModule, "DriverInstall: No INF or invalid file to install specified!");
+        if (rc == VERR_NOT_FOUND) /* Give a better clue. */
+            rc = VERR_INVALID_PARAMETER;
+    }
+
+    logStringF(hModule, "DriverInstall: Handling done. rc=%Rrc (ignored)", rc);
+    return ERROR_SUCCESS; /* Do not fail here. */
+}
+
+UINT __stdcall DriverUninstall(MSIHANDLE hModule)
+{
+    char *pszInfFile = NULL;
+    int rc = VBoxMsiQueryPropUtf8(hModule, "VBoxDrvUninstInfFile", &pszInfFile);
+    if (   RT_SUCCESS(rc)
+        || rc == VERR_NOT_FOUND) /* VBoxDrvUninstInfFile is optional. */
+    {
+        char *pszInfSection = NULL;
+        rc = VBoxMsiQueryPropUtf8(hModule, "VBoxDrvUninstInfSection", &pszInfSection);
+        if (   RT_SUCCESS(rc)
+            || rc == VERR_NOT_FOUND) /* VBoxDrvUninstInfSection is optional. */
+        {
+            char *pszModel = NULL;
+            rc = VBoxMsiQueryPropUtf8(hModule, "VBoxDrvUninstModel", &pszModel);
+            if (   RT_SUCCESS(rc)
+                || rc == VERR_NOT_FOUND) /* VBoxDrvUninstModel is optional. */
+            {
+                char *pszPnpId = NULL;
+                rc = VBoxMsiQueryPropUtf8(hModule, "VBoxDrvUninstPnpId", &pszPnpId);
+                if (   RT_SUCCESS(rc)
+                    || rc == VERR_NOT_FOUND) /* VBoxDrvUninstPnpId is optional. */
+                {
+                    VBOXWINDRVINST hWinDrvInst;
+                    rc = VBoxWinDrvInstCreateEx(&hWinDrvInst, 1 /* uVerbostiy */,
+                                                &vboxWinDrvInstLogCallback, &hModule /* pvUser */);
+                    if (RT_SUCCESS(rc))
+                    {
+                        if (pszInfSection && *pszInfSection)
+                            rc = VBoxWinDrvInstUninstallExecuteInf(hWinDrvInst, pszInfFile, pszInfSection,
+                                                                   VBOX_WIN_DRIVERINSTALL_F_NONE);
+                        else
+                            rc = VBoxWinDrvInstUninstall(hWinDrvInst, pszInfFile, pszModel, pszPnpId,
+                                                         VBOX_WIN_DRIVERINSTALL_F_NONE);
+
+                        VBoxWinDrvInstDestroy(hWinDrvInst);
+                    }
+
+                    RTStrFree(pszPnpId);
+                }
+
+                RTStrFree(pszModel);
+            }
+
+            RTStrFree(pszInfSection);
+        }
+
+        RTStrFree(pszInfFile);
+    }
+
+    logStringF(hModule, "DriverUninstall: Handling done. rc=%Rrc (ignored)", rc);
     return ERROR_SUCCESS; /* Do not fail here. */
 }
 

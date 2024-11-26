@@ -23,7 +23,7 @@
     SPDX-License-Identifier: GPL-3.0-only
 -->
 
-<Include xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:difxapp="http://wixtoolset.org/schemas/v4/wxs/difxapp">
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
     <Directory Id="dir_VBoxUSBFilter" Name="filter">
 <?if $(env.VBOX_SIGNING_MODE) != none ?>
@@ -37,7 +37,6 @@
         </Component>
 <?endif?>
         <Component Id="cp_USBFilterDriver" Guid="B7D782D2-96DF-4775-A0E1-A76CF7B04B65" Bitness="$(var.Property_Bitness)">
-            <difxapp:Driver AddRemovePrograms="no" ForceInstall="yes" DeleteFiles="yes" Legacy="$(var.Property_DriverLegacy)" Sequence="3" PlugAndPlayPrompt="no" />
             <File Id="file_VBoxUSBMon.sys" Name="VBoxUSBMon.sys" Source="$(env.PATH_OUT)\bin\VBoxUSBMon.sys" />
             <File Id="file_VBoxUSBMon.inf" Name="VBoxUSBMon.inf" Source="$(env.PATH_OUT)\bin\VBoxUSBMon.inf" />
         </Component>
@@ -55,7 +54,6 @@
         </Component>
 <?endif?>
         <Component Id="cp_USBDeviceDriver" Guid="010FE46A-E358-43E2-8BDC-38BC8BEC82E0" Bitness="$(var.Property_Bitness)">
-            <difxapp:Driver AddRemovePrograms="no" ForceInstall="yes" DeleteFiles="yes" Legacy="$(var.Property_DriverLegacy)" Sequence="3" PlugAndPlayPrompt="no" />
             <File Id="file_VBoxUSB.sys" Name="VBoxUSB.sys" Source="$(env.PATH_OUT)\bin\VBoxUSB.sys" />
             <File Id="file_VBoxUSB.inf" Name="VBoxUSB.inf" Source="$(env.PATH_OUT)\bin\VBoxUSB.inf" />
         </Component>

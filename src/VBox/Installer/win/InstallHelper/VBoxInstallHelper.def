@@ -1,4 +1,4 @@
-; $Id: VBoxInstallHelper.def 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+; $Id: VBoxInstallHelper.def 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
 ;; @file
 ; VBoxInstallHelper - Defines the exports the MSI engine uses.
 ;
@@ -44,6 +44,8 @@ EXPORTS
     UninstallNetLwf
     UninstallTAPInstances
     UninstallVBoxDrv
+    DriverInstall
+    DriverUninstall
     CreateHostOnlyInterface
     StopHostOnlyInterfaces
     UpdateHostOnlyInterfaces

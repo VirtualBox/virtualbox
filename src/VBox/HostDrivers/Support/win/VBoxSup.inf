@@ -1,4 +1,4 @@
-; $Id: VBoxSup.inf 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+; $Id: VBoxSup.inf 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
 ;; @file
 ; VirtualBox Support Driver - Windows Driver INF file.
 ;
@@ -42,11 +42,13 @@ Provider=%ORACLE%
 ;edit-DriverVer=08/26/2008,2.00.0000
 DriverPackageType=KernelService
 ;cat CatalogFile=VBoxSup.cat
+;PnpLockdown=1
 
 [DestinationDirs]
 DefaultDestDir = 12
 
 [DefaultInstall@DOT-NT-ARCH@]
+%ORACLE%=VBoxSup@COMMA-NT-ARCH@
 CopyFiles=VBoxSup_CopyFiles
 
 [DefaultInstall@DOT-NT-ARCH@.Services]
@@ -60,21 +62,17 @@ LegacyUninstall=1
 DelService=VBoxSup,0x00000200
 LegacyUninstall=1
 
-;; This does not actually work either (see VBoxUSBMon), though it triggers in the
-;; installer rather at manual installation on my test system (could be polluted & confused).
-;; This may apparently also causes unloading trouble due to 'root\VBoxSup' or something related to that.
-;; [Manufacturer]
-;; %ORACLE%=VBoxSup@COMMA-NT-ARCH@
-;;
-;; ; Models section (referenced by [Manufacturer]).
-;; [VBoxSup@DOT-NT-ARCH@]
-;; %VBoxSup.DRVDESC%=VBoxSup_Install,root\VBoxSup
-;;
-;; [VBoxSup_Install@DOT-NT-ARCH@]
-;; CopyFiles=VBoxSup_CopyFiles
-;;
-;; [VBoxSup_Install@DOT-NT-ARCH@.Services]
-;; AddService=VBoxSup,0x00000002,VBoxSup_Service
+[Manufacturer]
+%ORACLE%=VBoxSup@COMMA-NT-ARCH@
+
+[VBoxSup@DOT-NT-ARCH@]
+%VBoxSup.DRVDESC%=VBoxSup_Install
+
+[VBoxSup_Install@DOT-NT-ARCH@]
+CopyFiles=VBoxSup_CopyFiles
+
+[VBoxSup_Install@DOT-NT-ARCH@.Services]
+AddService=VBoxSup,0x00000002,VBoxSup_Service
 
 [SourceDisksFiles]
 VBoxSup.sys=1
@@ -87,10 +85,9 @@ VBoxSup.sys
 
 [VBoxSup_Service]
 DisplayName    = %VBoxSup.SVCDESC%
-ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
-;StartType      = 3                  ; SERVICE_DEMAND_START
-StartType      = 1                  ; autostart to fix Vista problem
-ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceType    = %SERVICE_TYPE_KERNEL_DRIVER%
+StartType      = %SERVICE_STARTTYPE_AUTO%
+ErrorControl   = %SERVICE_ERRORCTL_NORMAL%
 ServiceBinary  = %12%\VBoxSup.sys
 
 [Strings]
@@ -98,3 +95,12 @@ ORACLE = "Oracle Corporation"
 VBoxSup.SVCDESC = "VirtualBox Service"
 VBoxSup.DRVDESC = "VirtualBox Support Driver"
 VBoxSup.DSKDESC = "VirtualBox Support Driver Installation Disk"
+
+; Useful constants
+SERVICE_TYPE_KERNEL_DRIVER = 1
+SERVICE_STARTTYPE_BOOT = 0
+SERVICE_STARTTYPE_AUTO = 1
+SERVICE_STARTTYPE_DEMAND = 3
+SERVICE_ERRORCTL_IGNORE = 0
+SERVICE_ERRORCTL_NORMAL = 1
+

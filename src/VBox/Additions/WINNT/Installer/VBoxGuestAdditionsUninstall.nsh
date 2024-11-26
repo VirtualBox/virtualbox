@@ -1,4 +1,4 @@
-; $Id: VBoxGuestAdditionsUninstall.nsh 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+; $Id: VBoxGuestAdditionsUninstall.nsh 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
 ;; @file
 ; VBoxGuestAdditionsUninstall.nsh - Guest Additions uninstallation.
 ;
@@ -34,7 +34,6 @@ Function ${un}UninstallCommon
 
   ; Remove common files
   Delete /REBOOTOK "$INSTDIR\VBoxDrvInst.exe"
-  Delete /REBOOTOK "$INSTDIR\DIFxAPI.dll"
 
   Delete /REBOOTOK "$INSTDIR\VBoxVideo.inf"
 !ifdef VBOX_SIGN_ADDITIONS
@@ -130,6 +129,21 @@ notsupported:
 common:
 
 exit:
+
+  ;
+  ; Dump UI log to on success too. Only works with non-silent installs.
+  ; (This has to be done here rather than in .onUninstSuccess, because by
+  ; then the log is no longer visible in the UI.)
+  ;
+  ${IfNot} ${Silent}
+  !if $%VBOX_WITH_GUEST_INSTALL_HELPER% == "1"
+    VBoxGuestInstallHelper::DumpLog "$TEMP\vbox_uninstall_ui.log"
+  !else
+    StrCpy $0 "$TEMP\vbox_uninstall_ui.log"
+    Push $0
+    Call DumpLog
+  !endif
+  ${EndIf}
 
 FunctionEnd
 !macroend

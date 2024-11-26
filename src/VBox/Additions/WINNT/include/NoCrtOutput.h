@@ -1,4 +1,4 @@
-/* $Id: NoCrtOutput.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: NoCrtOutput.h 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $ */
 /** @file
  * NoCrtOutput - ErrorMsgXxx and PrintXxx functions for small EXEs.
  */
@@ -485,6 +485,21 @@ DECLINLINE(void) PrintX64(uint64_t uValue)
     char szVal[128];
     RTStrFormatU64(szVal, sizeof(szVal), uValue, 16, 0, 0, RTSTR_F_64BIT | RTSTR_F_SPECIAL);
     PrintStr(szVal);
+}
+
+
+DECLINLINE(void) PrintSS(const char *pszMsg1, const char *pszMsg2)
+{
+    PrintStr(pszMsg1);
+    PrintStr(pszMsg2);
+}
+
+
+DECLINLINE(void) PrintSSS(const char *pszMsg1, const char *pszMsg2, const char *pszMsg3)
+{
+    PrintStr(pszMsg1);
+    PrintStr(pszMsg2);
+    PrintStr(pszMsg3);
 }
 
 

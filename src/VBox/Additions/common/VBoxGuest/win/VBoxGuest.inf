@@ -1,4 +1,4 @@
-; $Id: VBoxGuest.inf 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+; $Id: VBoxGuest.inf 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
 ;; @file
 ; INF file for installing the VirtualBox Windows guest driver, XP and later.
 ;
@@ -42,9 +42,10 @@ Class=System
 DriverPackageType=PlugAndPlay
 ;edit-DriverVer=08/26/2008,2.00.0000
 ;cat CatalogFile=VBoxGuest.cat
+;PnpLockdown=1
 
 [SourceDisksNames]
-1 = %VBoxGuest.MediaDesc%
+1 = %VBoxGuest_MediaDesc%,,,
 
 [SourceDisksFiles]
 VBoxGuest.sys = 1
@@ -52,7 +53,7 @@ VBoxControl.exe = 1
 VBoxTray.exe = 1
 
 [DestinationDirs]
-DefaultDestDir = 12 ; drivers
+VBoxGuest_CopyFiles = 12 ; drivers
 VBoxTray_CopyFiles = 11 ; system32
 
 [Manufacturer]
@@ -63,7 +64,7 @@ VBoxTray_CopyFiles = 11 ; system32
 
 [VBoxGuest_Install]
 CopyFiles = VBoxGuest_CopyFiles, VBoxTray_CopyFiles
-AddReg = VBoxTray_Add_Reg
+AddReg = VBoxTray_AddReg
 
 [VBoxGuest_CopyFiles]
 VBoxGuest.sys,,,0x4000          ; COPYFLG_IN_USE_TRY_RENAME
@@ -73,18 +74,18 @@ VBoxTray.exe,,,0x4000           ; COPYFLG_IN_USE_TRY_RENAME
 VBoxControl.exe,,,0x4000        ; COPYFLG_IN_USE_TRY_RENAME
 
 [VBoxGuest_Install.Services]
-AddService = VBoxGuest, 0x00000002, VBoxGuest_ServiceInstallSection
+AddService = VBoxGuest, 0x00000002, VBoxGuest_AddService
 DelService = VBoxTray, 0x00000004
 
-[VBoxGuest_ServiceInstallSection]
-DisplayName    = %VBoxGuest_svcdesc%
-ServiceType    = 0x00000001 ; kernel driver
-StartType      = 0x00000000 ; boot start
-ErrorControl   = 0x00000001 ; normal error handling
+[VBoxGuest_AddService]
+DisplayName    = %VBoxGuest_SvcDesc%
+ServiceType    = %SERVICE_TYPE_KERNEL_DRIVER%
+StartType      = %SERVICE_STARTTYPE_BOOT%
+ErrorControl   = %SERVICE_ERRORCTL_NORMAL%
 LoadOrderGroup = Base
 ServiceBinary  = %12%\VBoxGuest.sys
 
-[VBoxTray_Add_Reg]
+[VBoxTray_AddReg]
 HKLM, SOFTWARE\Microsoft\Windows\CurrentVersion\Run, VBoxTray, 0x00020000, %%SystemRoot%%\system32\VBoxTray.exe
 
 [ClassInstall32]
@@ -93,6 +94,14 @@ HKLM, SOFTWARE\Microsoft\Windows\CurrentVersion\Run, VBoxTray, 0x00020000, %%Sys
 [Strings]
 ORACLE = "Oracle Corporation"
 VBoxGuest.DeviceDesc = "VirtualBox Guest Device"
-VBoxGuest_svcdesc = "VirtualBox Guest Driver"
-VBoxTray_svcdesc = "VirtualBox Guest Tray"
-VBoxGuest.MediaDesc = "VirtualBox Guest Driver Installation Disk"
+VBoxGuest_SvcDesc = "VirtualBox Guest Driver"
+VBoxTray_SvcDesc = "VirtualBox Guest Tray"
+VBoxGuest_MediaDesc = "VirtualBox Guest Driver Installation Disk"
+
+; Useful constants
+SERVICE_TYPE_KERNEL_DRIVER = 1
+SERVICE_STARTTYPE_BOOT    = 0
+SERVICE_STARTTYPE_DEMAND  = 3
+SERVICE_ERRORCTL_IGNORE  = 0
+SERVICE_ERRORCTL_NORMAL  = 1
+

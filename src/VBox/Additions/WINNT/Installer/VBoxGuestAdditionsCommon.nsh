@@ -1,4 +1,4 @@
-; $Id: VBoxGuestAdditionsCommon.nsh 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+; $Id: VBoxGuestAdditionsCommon.nsh 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
 ;; @file
 ; VBoxGuestAdditionsCommon.nsh - Common / shared utility functions.
 ;
@@ -55,7 +55,6 @@ Function Common_CopyFiles
   FILE "/oname=${LICENSE_FILE_RTF}" "$%VBOX_BRAND_LICENSE_RTF%"
 !endif
 
-  FILE "$%VBOX_PATH_DIFX%\DIFxAPI.dll"
   FILE "$%PATH_OUT%\bin\additions\VBoxDrvInst.exe"
 
   FILE "$%PATH_OUT%\bin\additions\VBoxVideo.inf"
@@ -214,7 +213,6 @@ Function ExtractFiles
   ; Misc tools
   SetOutPath "$0\Tools"
   FILE "$%PATH_OUT%\bin\additions\VBoxDrvInst.exe"
-  FILE "$%VBOX_PATH_DIFX%\DIFxAPI.dll"
 !ifdef VBOX_WITH_ADDITIONS_SHIPPING_AUDIO_TEST
   FILE "$%PATH_OUT%\bin\additions\VBoxAudioTest.exe"
 !endif

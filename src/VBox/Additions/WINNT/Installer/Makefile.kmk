@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the Windows Guest Additions Installer.
 #
@@ -61,13 +61,14 @@ ifdef VBOX_WITH_WDDM
  VBoxDrvInst_DEFS  += VBOX_WITH_WDDM
 endif
 VBoxDrvInst_DEPS    = $(VBOX_SVN_REV_KMK)
-VBoxDrvInst_SDKS    = ReorderCompilerIncs $(VBOX_WINPSDK_GST) $(VBOX_WINDDK_GST) VBoxWinNewDevLib
+VBoxDrvInst_SDKS    = ReorderCompilerIncs $(VBOX_WINPSDK_GST) $(VBOX_WINDDK_GST)
 VBoxDrvInst_INCS    = ../include
-VBoxDrvInst_LIBS    = \
-	$(PATH_SDK_$(VBOX_WINPSDK)_LIB)/setupapi.lib
 VBoxDrvInst_SOURCES = \
 	VBoxDrvInst.cpp \
-	VBoxDrvInst.rc
+	VBoxDrvInst.rc \
+	$(PATH_ROOT)/src/VBox/GuestHost/Installation/VBoxWinDrvCommon.cpp \
+	$(PATH_ROOT)/src/VBox/GuestHost/Installation/VBoxWinDrvInst.cpp \
+	$(PATH_ROOT)/src/VBox/GuestHost/Installation/VBoxWinDrvStore.cpp
 VBoxDrvInst_VBOX_IMPORT_CHECKER.win.x86 := nt4 # setupapi was introduced in NT4
 
 
@@ -262,7 +263,6 @@ VBOX_WINDOWS_ADDITIONS_OTHER_FILES += $(addprefix $(PATH_STAGE_BIN)/additions/, 
 VB_WIN_ADD_NSIS_ENV := \
 	-E 'PATH_OUT=$(subst /,\,$(PATH_OUT))' \
 	-E 'PATH_TARGET=$(subst /,\,$(PATH_TARGET))' \
-	-E 'VBOX_PATH_DIFX=$(subst /,\,$(VBOX_PATH_DIFX))' \
 	-E 'VBOX_VENDOR=$(VBOX_VENDOR)' \
 	-E 'VBOX_VENDOR_SHORT=$(VBOX_VENDOR_SHORT)' \
 	-E 'VBOX_PRODUCT=$(VBOX_PRODUCT)' \

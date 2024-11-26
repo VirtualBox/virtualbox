@@ -1,4 +1,4 @@
-; $Id: VBoxUSBMon.inf 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+; $Id: VBoxUSBMon.inf 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
 ;; @file
 ; VBox USB Monitor driver - Installation file
 ;
@@ -42,45 +42,37 @@ Provider=%ORACLE%
 ;edit-DriverVer=08/26/2008,2.00.0000
 DriverPackageType=KernelService
 ;cat CatalogFile=VBoxUSBMon.cat
+;PnpLockdown=1
 
 [DestinationDirs]
 DefaultDestDir = 12
 
-[DefaultInstall@DOT-NT-ARCH@]
-CopyFiles=VBoxUSBMon_CopyFiles
+[Manufacturer]
+%ORACLE%=VBoxUSBMon@COMMA-NT-ARCH@
 
-[DefaultInstall@DOT-NT-ARCH@.Services]
+[VBoxUSBMon@DOT-NT-ARCH@]
+%VBoxUSBMon_DrvDesc%=VBoxUSBMonDev
+
+[VBoxUSBMon@DOT-NT-ARCH@.Services]
 AddService=VBoxUSBMon,0x00000002,VBoxUSBMon_Service,VBoxUSBMon_AddEventLog
 
-;; Cannot get this to work (same works fine for VBoxDrv):
-;; [Manufacturer]
-;; %ORACLE%=VBoxUSBMon@COMMA-NT-ARCH@
-;;
-;; ; Models section (referenced by [Manufacturer]).
-;; [VBoxUSBMon@DOT-NT-ARCH@]
-;; %VBoxUSBMon.DRVDESC%=VBoxUSBMon_Install,root\VBoxUSBMon
-;;
-;; [VBoxUSBMon_Install@DOT-NT-ARCH@]
-;; CopyFiles=VBoxUSBMon_CopyFiles
-;;
-;; [VBoxUSBMon_Install@DOT-NT-ARCH@.Services]
-;; AddService=VBoxUSBMon,0x00000002,VBoxUSBMon_Service,VBoxUSBMon_AddEventLog
+[VBoxUSBMonDev@DOT-NT-ARCH@]
+CopyFiles=VBoxUSBMon_CopyFiles
 
 [SourceDisksFiles]
 VBoxUSBMon.sys=1
 
 [SourceDisksNames]
-1=%VBoxUSBMon.DSKDESC%,
+1=%VBoxUSBMon_DiskDesc%,
 
 [VBoxUSBMon_CopyFiles]
 VBoxUSBMon.sys
 
 [VBoxUSBMon_Service]
-DisplayName    = %VBoxUSBMon.SVCDESC%
-ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
-;StartType      = 3                  ; SERVICE_DEMAND_START
-StartType      = 1                  ; autostart to fix Vista problem
-ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+DisplayName    = %VBoxUSBMon_SvcDesc%
+ServiceType    = %SERVICE_TYPE_KERNEL_DRIVER%
+StartType      = %SERVICE_STARTTYPE_AUTO%
+ErrorControl   = %SERVICE_ERRORCTL_NORMAL%
 ServiceBinary  = %12%\VBoxUSBMon.sys
 
 [VBoxUSBMon_AddEventLog]
@@ -92,7 +84,15 @@ HKR,,TypesSupported,0x00010001,7
 
 [Strings]
 ORACLE = "Oracle Corporation"
-VBoxUSBMon.SVCDESC = "VirtualBox USB Monitor Service"
-VBoxUSBMon.DRVDESC = "VirtualBox USB Monitor Driver"
-VBoxUSBMon.DSKDESC = "VirtualBox USB Monitor Driver Installation Disk"
+VBoxUSBMon_SvcDesc = "VirtualBox USB Monitor Service"
+VBoxUSBMon_DrvDesc = "VirtualBox USB Monitor Driver"
+VBoxUSBMon_DiskDesc = "VirtualBox USB Monitor Driver Installation Disk"
+
+; Useful constants
+SERVICE_TYPE_KERNEL_DRIVER = 1
+SERVICE_STARTTYPE_BOOT = 0
+SERVICE_STARTTYPE_AUTO = 1
+SERVICE_STARTTYPE_DEMAND = 3
+SERVICE_ERRORCTL_IGNORE = 0
+SERVICE_ERRORCTL_NORMAL = 1
 

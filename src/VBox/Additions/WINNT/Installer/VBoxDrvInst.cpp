@@ -1,4 +1,4 @@
-/* $Id: VBoxDrvInst.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxDrvInst.cpp 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxDrvInst - Driver and service installation helper for Windows guests.
  */
@@ -38,6 +38,8 @@
 
 #include <iprt/win/windows.h>
 #include <iprt/win/setupapi.h>
+#include <newdev.h> /* For INSTALLFLAG_XXX. */
+#include <cfgmgr32.h> /* For MAX_DEVICE_ID_LEN. */
 #include <devguid.h>
 #include <RegStr.h>
 #ifdef RT_ARCH_X86
@@ -46,10 +48,19 @@
 #endif
 
 #include <iprt/asm.h>
+#include <iprt/err.h>
+#include <iprt/initterm.h>
+#include <iprt/ldr.h>
 #include <iprt/mem.h>
+#include <iprt/message.h>
+#include <iprt/once.h>
 #include <iprt/path.h>      /* RTPATH_IS_SEP */
+#include <iprt/stream.h>
 #include <iprt/string.h>
+#include <iprt/system.h>
 #include <iprt/utf16.h>
+
+#include <VBox/GuestHost/VBoxWinDrvInst.h>
 
 /* Exit codes */
 #define EXIT_OK      (0)
@@ -64,29 +75,9 @@
 /*********************************************************************************************************************************
 *   Defines                                                                                                                      *
 *********************************************************************************************************************************/
-/* Defines */
-#define DRIVER_PACKAGE_REPAIR                   0x00000001
-#define DRIVER_PACKAGE_SILENT                   0x00000002
-#define DRIVER_PACKAGE_FORCE                    0x00000004
-#define DRIVER_PACKAGE_ONLY_IF_DEVICE_PRESENT   0x00000008
-#define DRIVER_PACKAGE_LEGACY_MODE              0x00000010
-#define DRIVER_PACKAGE_DELETE_FILES             0x00000020
-
-/* DIFx error codes */
-/** @todo any reason why we're not using difxapi.h instead of these redefinitions? */
-#ifndef ERROR_DRIVER_STORE_ADD_FAILED
-# define ERROR_DRIVER_STORE_ADD_FAILED          (APPLICATION_ERROR_MASK | ERROR_SEVERITY_ERROR | 0x0247L)
-#endif
-#define ERROR_DEPENDENT_APPLICATIONS_EXIST      (APPLICATION_ERROR_MASK | ERROR_SEVERITY_ERROR | 0x300)
-#define ERROR_DRIVER_PACKAGE_NOT_IN_STORE       (APPLICATION_ERROR_MASK | ERROR_SEVERITY_ERROR | 0x302)
-
 /* Registry string list flags */
 #define VBOX_REG_STRINGLIST_NONE                0x00000000        /**< No flags set. */
 #define VBOX_REG_STRINGLIST_ALLOW_DUPLICATES    0x00000001        /**< Allows duplicates in list when adding a value. */
-
-#ifdef DEBUG
-# define VBOX_DRVINST_LOGFILE                   "C:\\Temp\\VBoxDrvInstDIFx.log"
-#endif
 
 /** NT4: The video service name. */
 #define VBOXGUEST_NT4_VIDEO_NAME                "VBoxVideo"
@@ -95,40 +86,8 @@
 
 
 /*********************************************************************************************************************************
-*   Structures and Typedefs                                                                                                      *
-*********************************************************************************************************************************/
-typedef struct
-{
-    PCWSTR pApplicationId;
-    PCWSTR pDisplayName;
-    PCWSTR pProductName;
-    PCWSTR pMfgName;
-} INSTALLERINFO, *PINSTALLERINFO;
-typedef const PINSTALLERINFO PCINSTALLERINFO;
-
-typedef enum
-{
-    DIFXAPI_SUCCESS,
-    DIFXAPI_INFO,
-    DIFXAPI_WARNING,
-    DIFXAPI_ERROR
-} DIFXAPI_LOG;
-
-typedef void (__cdecl *DIFXAPILOGCALLBACK_W)(DIFXAPI_LOG Event, DWORD Error, PCWSTR EventDescription, PVOID CallbackContext);
-typedef DWORD (WINAPI *PFN_DriverPackageInstall_T)(PCTSTR DriverPackageInfPath, DWORD Flags, PCINSTALLERINFO pInstallerInfo, BOOL *pNeedReboot);
-typedef DWORD (WINAPI *PFN_DriverPackageUninstall_T)(PCTSTR DriverPackageInfPath, DWORD Flags, PCINSTALLERINFO pInstallerInfo, BOOL *pNeedReboot);
-typedef VOID  (WINAPI *PFN_DIFXAPISetLogCallback_T)(DIFXAPILOGCALLBACK_W LogCallback, PVOID CallbackContext);
-
-
-/*********************************************************************************************************************************
 *   Global Variables                                                                                                             *
 *********************************************************************************************************************************/
-static PFN_DriverPackageInstall_T   g_pfnDriverPackageInstall   = NULL;
-static PFN_DriverPackageUninstall_T g_pfnDriverPackageUninstall = NULL;
-static PFN_DIFXAPISetLogCallback_T  g_pfnDIFXAPISetLogCallback  = NULL;
-
-
-
 static char *ArgToUtf8(wchar_t const *pwszString, const char *pszArgName)
 {
     char *pszUtf8 = NULL;
@@ -197,129 +156,6 @@ static bool GetErrorMsg(DWORD dwLastError, wchar_t *pwszMsg, DWORD cwcMsg)
     return true;
 }
 
-
-/**
- * Log callback for DIFxAPI calls.
- *
- * @param   enmEvent        Event logging level.
- * @param   dwError         Event error number.
- * @param   pwszEventDesc   Event description text.
- * @param   pvCtx           Log file handle, if we've got one.
- */
-static void __cdecl VBoxDIFxLogCallback(DIFXAPI_LOG enmEvent, DWORD dwError, PCWSTR pwszEventDesc, PVOID pvCtx)
-{
-    const char *pszEvent;
-    switch (enmEvent)
-    {
-        case DIFXAPI_SUCCESS:   pszEvent  =  "DIFXAPI_SUCCESS"; break;
-        case DIFXAPI_INFO:      pszEvent  =  "DIFXAPI_INFO";    break;
-        case DIFXAPI_WARNING:   pszEvent  =  "DIFXAPI_WARNING"; break;
-        case DIFXAPI_ERROR:     pszEvent  =  "DIFXAPI_ERROR";   break;
-        default:                pszEvent  =  "DIFXAPI_<unknown>"; break;
-    }
-
-    /*
-     * Log to standard output:
-     */
-    PrintStr(pszEvent);
-    if (dwError == 0)
-        PrintStr(": ");
-    else
-    {
-        PrintStr(": ERROR: ");
-        PrintX64(dwError);
-        PrintStr(" - ");
-    }
-    PrintWStr(pwszEventDesc);
-    PrintStr("\r\n");
-
-    /*
-     * Write to the log file if we have one - have to convert the input to UTF-8.
-     */
-    HANDLE const hLogFile = (HANDLE)pvCtx;
-    if (hLogFile != INVALID_HANDLE_VALUE)
-    {
-        /* "event: err - desc\r\n" */
-        char szBuf[256];
-        RTStrCopy(szBuf, sizeof(szBuf), pszEvent);
-        RTStrCat(szBuf, sizeof(szBuf), ": ");
-        size_t offVal = strlen(szBuf);
-        RTStrFormatU32(&szBuf[offVal], sizeof(szBuf) - offVal, dwError, 16, 0, 0, dwError ? RTSTR_F_SPECIAL : 0);
-        RTStrCat(szBuf, sizeof(szBuf), " - ");
-        DWORD dwIgn;
-        WriteFile(hLogFile, szBuf, (DWORD)strlen(szBuf), &dwIgn, NULL);
-
-        char *pszUtf8 = NULL;
-        int vrc = RTUtf16ToUtf8(pwszEventDesc, &pszUtf8);
-        if (RT_SUCCESS(vrc))
-        {
-            WriteFile(hLogFile, pszUtf8, (DWORD)strlen(pszUtf8), &dwIgn, NULL);
-            RTStrFree(pszUtf8);
-            WriteFile(hLogFile, RT_STR_TUPLE("\r\n"), &dwIgn, NULL);
-        }
-        else
-            WriteFile(hLogFile, RT_STR_TUPLE("<RTUtf16ToUtf8 failed>\r\n"), &dwIgn, NULL);
-    }
-}
-
-
-/**
- * Writes a header to the DIFx log file.
- */
-static void VBoxDIFxWriteLogHeader(HANDLE hLogFile, char const *pszOperation, wchar_t const *pwszInfFile)
-{
-    /* Don't want to use RTStrPrintf here as it drags in a lot of code, thus this tedium... */
-    char   szBuf[256];
-    size_t offBuf = 2;
-    RTStrCopy(szBuf, sizeof(szBuf), "\r\n");
-
-    SYSTEMTIME SysTime = {0};
-    GetSystemTime(&SysTime);
-
-    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wYear, 10, 4, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
-    offBuf += strlen(&szBuf[offBuf]);
-    szBuf[offBuf++] = '-';
-
-    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wMonth, 10, 2, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
-    offBuf += strlen(&szBuf[offBuf]);
-    szBuf[offBuf++] = '-';
-
-    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wDay, 10, 2, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
-    offBuf += strlen(&szBuf[offBuf]);
-    szBuf[offBuf++] = 'T';
-
-    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wHour, 10, 2, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
-    offBuf += strlen(&szBuf[offBuf]);
-    szBuf[offBuf++] = ':';
-
-    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wMinute, 10, 2, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
-    offBuf += strlen(&szBuf[offBuf]);
-    szBuf[offBuf++] = ':';
-
-    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wSecond, 10, 2, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
-    offBuf += strlen(&szBuf[offBuf]);
-    szBuf[offBuf++] = '.';
-
-    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wMilliseconds, 10, 3, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
-    offBuf += strlen(&szBuf[offBuf]);
-    RTStrCat(&szBuf[offBuf], sizeof(szBuf) - offBuf, "Z: Opened log file for ");
-    RTStrCat(&szBuf[offBuf], sizeof(szBuf) - offBuf, pszOperation);
-    RTStrCat(&szBuf[offBuf], sizeof(szBuf) - offBuf, " of '");
-
-    DWORD dwIgn;
-    WriteFile(hLogFile, szBuf, (DWORD)strlen(szBuf), &dwIgn, NULL);
-
-    char *pszUtf8 = NULL;
-    int vrc = RTUtf16ToUtf8(pwszInfFile, &pszUtf8);
-    if (RT_SUCCESS(vrc))
-    {
-        WriteFile(hLogFile, pszUtf8, (DWORD)strlen(pszUtf8), &dwIgn, NULL);
-        RTStrFree(pszUtf8);
-        WriteFile(hLogFile, RT_STR_TUPLE("'\r\n"), &dwIgn, NULL);
-    }
-    else
-        WriteFile(hLogFile, RT_STR_TUPLE("<RTUtf16ToUtf8 failed>'\r\n"), &dwIgn, NULL);
-}
 
 #ifdef RT_ARCH_X86
 
@@ -617,340 +453,270 @@ static HMODULE LoadAppDll(const wchar_t *pwszName)
     return hMod;
 }
 
-
 /**
- * Installs or uninstalls a driver.
- *
- * @return  Exit code (EXIT_OK, EXIT_FAIL)
- * @param   fInstall            Set to @c true for installation, and @c false
- *                              for uninstallation.
- * @param   pwszDriverPath      Path to the driver's .INF file.
- * @param   fSilent             Set to @c true for silent installation.
- * @param   pwszLogFile         Pointer to full qualified path to log file to be
- *                              written during installation. Optional.
+ * Logging callback for the Windows driver (un)installation code.
  */
-static int VBoxInstallDriver(const BOOL fInstall, const wchar_t *pwszDriverPath, bool fSilent, const wchar_t *pwszLogFile)
+static DECLCALLBACK(void) vboxWinDrvInstLogCallback(VBOXWINDRIVERLOGTYPE enmType, const char *pszMsg, void *pvUser)
 {
-    /*
-     * Windows 2000 and later.
-     */
-    OSVERSIONINFOW VerInfo = { sizeof(VerInfo) };
-    GetVersionExW(&VerInfo);
-    if (VerInfo.dwPlatformId != VER_PLATFORM_WIN32_NT)
-        return ErrorMsg("Platform not supported for driver (un)installation!");
-    if (VerInfo.dwMajorVersion < 5)
-        return ErrorMsg("Platform too old to be supported for driver (un)installation!");
+    HANDLE const hLog = (HANDLE)pvUser;
 
     /*
-     * Get the full path to the INF file.
+     * Log to standard output:
      */
-    wchar_t wszFullDriverInf[MAX_PATH];
-    if (GetFullPathNameW(pwszDriverPath, MAX_PATH, wszFullDriverInf, NULL) ==0 )
-        return ErrorMsgLastErrSWS("GetFullPathNameW failed on '", pwszDriverPath, "'");
-
-    /*
-     * Load DIFxAPI.dll from our application directory and resolve the symbols we need
-     * from it.  We always resolve all for reasons of simplicity and general paranoia.
-     */
-    HMODULE hModDifXApi = LoadAppDll(L"DIFxAPI.dll");
-    if (!hModDifXApi)
-        return EXIT_FAIL;
-
-    static struct { FARPROC *ppfn; const char *pszName; } const s_aFunctions[] =
+    switch (enmType)
     {
-        { (FARPROC *)&g_pfnDriverPackageInstall,   "DriverPackageInstallW" },
-        { (FARPROC *)&g_pfnDriverPackageUninstall, "DriverPackageUninstallW" },
-        { (FARPROC *)&g_pfnDIFXAPISetLogCallback,  "DIFXAPISetLogCallbackW" },
-    };
-    for (size_t i = 0; i < RT_ELEMENTS(s_aFunctions); i++)
-    {
-        FARPROC pfn = *s_aFunctions[i].ppfn = GetProcAddress(hModDifXApi, s_aFunctions[i].pszName);
-        if (!pfn)
-            return ErrorMsgLastErrSSS("Failed to find symbol '", s_aFunctions[i].pszName, "' in DIFxAPI.dll");
-    }
-
-    /*
-     * Try open the log file and register a logger callback with DIFx.
-     * Failures here are non-fatal.
-     */
-    HANDLE hLogFile = INVALID_HANDLE_VALUE;
-    if (pwszLogFile)
-    {
-        hLogFile = CreateFileW(pwszLogFile, FILE_GENERIC_WRITE & ~FILE_WRITE_DATA /* append mode */, FILE_SHARE_READ,
-                               NULL /*pSecAttr*/, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL /*hTemplateFile*/);
-        if (hLogFile != INVALID_HANDLE_VALUE)
-            VBoxDIFxWriteLogHeader(hLogFile, fInstall ? "install" : "uninstall", pwszDriverPath);
-        else
-            ErrorMsgLastErrSWS("Failed to open/create log file '", pwszLogFile, "'");
-        g_pfnDIFXAPISetLogCallback(VBoxDIFxLogCallback, (void *)hLogFile);
-    }
-
-    PrintStr(fInstall ? "Installing driver ...\r\n" : "Uninstalling driver ...\r\n");
-    PrintSWS("INF-File: '", wszFullDriverInf, "'\r\n");
-#ifdef RT_ARCH_X86
-    InstallWinVerifyTrustInterceptorInSetupApi();
-#endif
-
-    INSTALLERINFO InstInfo =
-    {
-        L"{7d2c708d-c202-40ab-b3e8-de21da1dc629}", /* Our GUID for representing this installation tool. */
-        L"VirtualBox Guest Additions Install Helper",
-        L"VirtualBox Guest Additions", /** @todo Add version! */
-        L"Oracle Corporation"
-    };
-
-    /* Flags */
-    DWORD dwFlags = DRIVER_PACKAGE_FORCE;
-    if (!fInstall)
-        dwFlags |= DRIVER_PACKAGE_DELETE_FILES;
-    if (VerInfo.dwMajorVersion < 6 && fInstall)
-    {
-        PrintStr("Using legacy mode for install ...\r\n");
-        dwFlags |= DRIVER_PACKAGE_LEGACY_MODE;
-    }
-    if (fSilent)
-    {
-        /* Don't add DRIVER_PACKAGE_SILENT to dwFlags here, otherwise the
-           installation will fail because we don't have WHQL certified drivers.
-           See CERT_E_WRONG_USAGE on MSDN for more information. */
-        PrintStr("Installation is silent ...\r\n");
-    }
-
-    /* Do the install/uninstall: */
-    BOOL  fReboot = FALSE;
-    DWORD dwErr;
-    if (fInstall)
-        dwErr = g_pfnDriverPackageInstall(wszFullDriverInf, dwFlags, &InstInfo, &fReboot);
-    else
-        dwErr = g_pfnDriverPackageUninstall(wszFullDriverInf, dwFlags, &InstInfo, &fReboot);
-
-    /*
-     * Report error
-     */
-    int         rcExit = EXIT_FAIL;
-    const char *psz    = NULL;
-    switch (dwErr)
-    {
-        case ERROR_SUCCESS:
-            rcExit = EXIT_OK;
-            break;
-
-        case CRYPT_E_FILE_ERROR:
-            psz = "The catalog file for the specified driver package was not found!";
-            break;
-        case ERROR_ACCESS_DENIED:
-            psz = fInstall ? "Caller is not in Administrators group to install this driver package!"
-                           : "Caller is not in Administrators group to uninstall this driver package!";
-            break;
-        case ERROR_BAD_ENVIRONMENT:
-            psz = "The current Microsoft Windows version does not support this operation!";
-            break;
-        case ERROR_CANT_ACCESS_FILE:
-            psz = "The driver package files could not be accessed!";
-            break;
-        case ERROR_DEPENDENT_APPLICATIONS_EXIST:
-            psz = "DriverPackageUninstall removed an association between the driver package and the specified application but the function did not uninstall the driver package because other applications are associated with the driver package!";
-            break;
-        case ERROR_DRIVER_PACKAGE_NOT_IN_STORE:
-            psz = fInstall ? "There is no INF file in the DIFx driver store that corresponds to the INF file being installed!"
-                           : "There is no INF file in the DIFx driver store that corresponds to the INF file being uninstalled!";
-            break;
-        case ERROR_FILE_NOT_FOUND:
-            psz = "INF-file not found!";
-            break;
-        case ERROR_IN_WOW64:
-            psz = "The calling application is a 32-bit application attempting to execute in a 64-bit environment, which is not allowed!";
-            break;
-        case ERROR_INVALID_FLAGS:
-            psz = "The flags specified are invalid!";
-            break;
-        case ERROR_INSTALL_FAILURE:
-            psz = fInstall ? "The install operation failed! Consult the Setup API logs for more information."
-                           : "The uninstall operation failed! Consult the Setup API logs for more information.";
-            break;
-        case ERROR_NO_MORE_ITEMS:
-            psz = "The function found a match for the HardwareId value, but the specified driver was not a better match than the current driver and the caller did not specify the INSTALLFLAG_FORCE flag!";
-            break;
-        case ERROR_NO_DRIVER_SELECTED:
-            psz = "No driver in .INF-file selected!";
-            break;
-        case ERROR_SECTION_NOT_FOUND:
-            psz = "Section in .INF-file was not found!";
-            break;
-        case ERROR_SHARING_VIOLATION:
-            psz = "A component of the driver package in the DIFx driver store is locked by a thread or process!";
-            break;
-
-        /*
-         * !    sig:           Verifying file against specific Authenticode(tm) catalog failed! (0x800b0109)
-         * !    sig:           Error 0x800b0109: A certificate chain processed, but terminated in a root certificate which is not trusted by the trust provider.
-         * !!!  sto:           No error message will be displayed as client is running in non-interactive mode.
-         * !!!  ndv:           Driver package failed signature validation. Error = 0xE0000247
-         */
-        case ERROR_DRIVER_STORE_ADD_FAILED:
-            psz = "Adding driver to the driver store failed!!";
-            break;
-        case ERROR_UNSUPPORTED_TYPE:
-            psz = "The driver package type is not supported of INF-file!";
-            break;
-        case ERROR_NO_SUCH_DEVINST:
-            psz = "The driver package was installed but no matching devices found in the device tree (ERROR_NO_SUCH_DEVINST).";
-            /* GA installer should ignore this error code and continue */
-            rcExit = EXIT_OK;
+        case VBOXWINDRIVERLOGTYPE_ERROR:
+            PrintSSS("*** Error: ", pszMsg, "\r\n");
             break;
 
         default:
-        {
-            /* Try error lookup with GetErrorMsg(). */
-            ErrorMsgSWS(fInstall ? "Installation of '" : "Uninstallation of '", wszFullDriverInf, "' failed!");
-            ErrorMsgBegin("dwErr=");
-            ErrorMsgErrVal(dwErr, false);
-            WCHAR wszErrMsg[1024];
-            if (GetErrorMsg(dwErr, wszErrMsg, RT_ELEMENTS(wszErrMsg)))
-            {
-                ErrorMsgStr(": ");
-                ErrorMsgWStr(wszErrMsg);
-            }
-            ErrorMsgEnd(NULL);
+            PrintSS(pszMsg, "\r\n");
             break;
-        }
-    }
-    if (psz)
-    {
-        ErrorMsgSWS(fInstall ? "Installation of '" : "Uninstallation of '", wszFullDriverInf, "' failed!");
-        ErrorMsgBegin("dwErr=");
-        ErrorMsgErrVal(dwErr, false);
-        ErrorMsgStr(": ");
-        ErrorMsgEnd(psz);
     }
 
-    /* Close the log file. */
-    if (pwszLogFile)
+    /*
+     * Log to file (if any):
+     */
+    if (hLog != INVALID_HANDLE_VALUE)
     {
-        g_pfnDIFXAPISetLogCallback(NULL, NULL);
-        if (hLogFile != INVALID_HANDLE_VALUE)
-            CloseHandle(hLogFile);
+        char szBuf[1024];
+        RTStrCopy(szBuf, sizeof(szBuf), enmType == VBOXWINDRIVERLOGTYPE_ERROR ? "*** Error: " : "");
+        DWORD dwIgn;
+        WriteFile(hLog, szBuf, (DWORD)strlen(szBuf), &dwIgn, NULL);
+        WriteFile(hLog, pszMsg, (DWORD)strlen(pszMsg), &dwIgn, NULL);
+        WriteFile(hLog, RT_STR_TUPLE("\r\n"), &dwIgn, NULL);
     }
-    if (rcExit == EXIT_OK)
-    {
-        PrintStr(fInstall ? "Driver was installed successfully!\r\n"
-                          : "Driver was uninstalled successfully!\r\n");
-        if (fReboot)
-        {
-            PrintStr(fInstall ? "A reboot is needed to complete the driver installation!\r\n"
-                              : "A reboot is needed to complete the driver uninstallation!\r\n");
-            /** @todo r=bird: We don't set EXIT_REBOOT here for some reason... The
-             *        ExecuteInf didn't use EXIT_REBOOT either untill the no-CRT rewrite,
-             *        so perhaps the EXIT_REBOOT stuff can be removed? */
-        }
-    }
-
-    return rcExit;
 }
 
+/**
+ * Writes the driver log file header.
+ *
+ * @returns VBox status code.
+ * @param   hLog                Handle to log file.
+ * @param   pwszInfFile         INF file this log belongs to.
+ */
+static void driverLogWriteHeader(HANDLE hLog, const wchar_t *pwszInfFile)
+{
+    /* Don't want to use RTStrPrintf here as it drags in a lot of code, thus this tedium... */
+    char   szBuf[256];
+    size_t offBuf = 2;
+    RTStrCopy(szBuf, sizeof(szBuf), "\r\n");
+
+    SYSTEMTIME SysTime = {0};
+    GetSystemTime(&SysTime);
+
+    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wYear, 10, 4, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
+    offBuf += strlen(&szBuf[offBuf]);
+    szBuf[offBuf++] = '-';
+
+    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wMonth, 10, 2, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
+    offBuf += strlen(&szBuf[offBuf]);
+    szBuf[offBuf++] = '-';
+
+    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wDay, 10, 2, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
+    offBuf += strlen(&szBuf[offBuf]);
+    szBuf[offBuf++] = 'T';
+
+    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wHour, 10, 2, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
+    offBuf += strlen(&szBuf[offBuf]);
+    szBuf[offBuf++] = ':';
+
+    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wMinute, 10, 2, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
+    offBuf += strlen(&szBuf[offBuf]);
+    szBuf[offBuf++] = ':';
+
+    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wSecond, 10, 2, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
+    offBuf += strlen(&szBuf[offBuf]);
+    szBuf[offBuf++] = '.';
+
+    RTStrFormatU32(&szBuf[offBuf], sizeof(szBuf) - offBuf, SysTime.wMilliseconds, 10, 3, 0, RTSTR_F_ZEROPAD | RTSTR_F_WIDTH);
+    offBuf += strlen(&szBuf[offBuf]);
+    RTStrCat(&szBuf[offBuf], sizeof(szBuf) - offBuf, "Z: Opened log file ");
+
+    DWORD dwIgn;
+    WriteFile(hLog, szBuf, (DWORD)strlen(szBuf), &dwIgn, NULL);
+
+    char *pszUtf8 = NULL;
+    int vrc = RTUtf16ToUtf8(pwszInfFile, &pszUtf8);
+    if (RT_SUCCESS(vrc))
+    {
+        WriteFile(hLog, pszUtf8, (DWORD)strlen(pszUtf8), &dwIgn, NULL);
+        RTStrFree(pszUtf8);
+        WriteFile(hLog, RT_STR_TUPLE("'\r\n"), &dwIgn, NULL);
+    }
+    else
+        WriteFile(hLog, RT_STR_TUPLE("<RTUtf16ToUtf8 failed>'\r\n"), &dwIgn, NULL);
+}
+
+/**
+ * Opens (creates / appends) the driver (un)installation log.
+ *
+ * @returns VBox status code.
+ * @param   pwszLogFile         Path to log file to create / open. If set to NULL, no logging will be performed.
+ * @param   phLog               Where to return the log handle on success.
+ */
+static int driverLogOpen(const wchar_t *pwszLogFile, PHANDLE phLog)
+{
+    int rc = VINF_SUCCESS;
+
+    /* Failures here are non-fatal. */
+    if (pwszLogFile)
+    {
+        HANDLE hLog = INVALID_HANDLE_VALUE;
+        hLog = CreateFileW(pwszLogFile, FILE_GENERIC_WRITE & ~FILE_WRITE_DATA /* append mode */, FILE_SHARE_READ,
+                           NULL /*pSecAttr*/, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL /*hTemplateFile*/);
+        if (hLog != INVALID_HANDLE_VALUE)
+        {
+            driverLogWriteHeader(hLog, pwszLogFile);
+
+            *phLog = hLog;
+        }
+        else
+        {
+            ErrorMsgLastErrSWS("Failed to open/create log file '", pwszLogFile, "'");
+            rc = VERR_CANT_CREATE;
+        }
+    }
+
+    return rc;
+}
+
+/**
+ * Closes the driver (un)installation log.
+ *
+ * @returns VBox status code.
+ * @param   hLog                Handle of log to close.
+ */
+static int driverLogClose(HANDLE hLog)
+{
+    if (hLog != INVALID_HANDLE_VALUE)
+        CloseHandle(hLog);
+
+    return VINF_SUCCESS;
+}
 
 /** Handles 'driver install'. */
 static int handleDriverInstall(unsigned cArgs, wchar_t **papwszArgs)
 {
-    return VBoxInstallDriver(true /*fInstall*/, papwszArgs[0], false /*fSilent*/,
-                             cArgs > 1 && papwszArgs[1][0] ? papwszArgs[1] : NULL /* pwszLogFile*/);
-}
+    char *pszInfFile = NULL;
+    int rc = RTUtf16ToUtf8(papwszArgs[0], &pszInfFile);
+    if (RT_SUCCESS(rc))
+    {
+        char *pszPnpId = NULL; /* PnP ID can be optional. */
+        if (cArgs >= 2)
+            rc = RTUtf16ToUtf8(papwszArgs[1], &pszPnpId);
+        if (RT_SUCCESS(rc))
+        {
+            HANDLE hLog = INVALID_HANDLE_VALUE;
+            if (cArgs >= 3)
+                /* ignore rc, non-fatal */ driverLogOpen(papwszArgs[2], &hLog);
+#ifdef DEBUG
+            PrintSSS("INF File: ", pszInfFile, "\r\n");
+            PrintSSS("  PnP ID: ", pszPnpId ? pszPnpId : "<None>", "\r\n");
+#endif
+            VBOXWINDRVINST hWinDrvInst;
+            rc = VBoxWinDrvInstCreateEx(&hWinDrvInst, 4 /* Verbosity */, &vboxWinDrvInstLogCallback, hLog /* pvUser */);
+            if (RT_SUCCESS(rc))
+            {
+                rc = VBoxWinDrvInstInstall(hWinDrvInst, pszInfFile, pszPnpId,
+                                           VBOX_WIN_DRIVERINSTALL_F_SILENT | VBOX_WIN_DRIVERINSTALL_F_FORCE);
 
+                VBoxWinDrvInstDestroy(hWinDrvInst);
+            }
+
+            driverLogClose(hLog);
+            hLog = INVALID_HANDLE_VALUE;
+
+            RTStrFree(pszPnpId);
+        }
+        RTStrFree(pszInfFile);
+    }
+
+    return rc == VINF_REBOOT_NEEDED ? EXIT_REBOOT : RT_SUCCESS(rc) ? EXIT_OK : EXIT_FAIL;
+}
 
 /** Handles 'driver uninstall'. */
 static int handleDriverUninstall(unsigned cArgs, wchar_t **papwszArgs)
 {
-    return VBoxInstallDriver(false /*fInstall*/, papwszArgs[0], false /*fSilent*/,
-                             cArgs > 1 && papwszArgs[1][0] ? papwszArgs[1] : NULL /* pwszLogFile*/);
-}
-
-
-/**
- * Implementes PSP_FILE_CALLBACK_W, used by ExecuteInfFile.
- */
-static UINT CALLBACK
-vboxDrvInstExecuteInfFileCallback(PVOID pvContext, UINT uNotification, UINT_PTR uParam1, UINT_PTR uParam2) RT_NOTHROW_DEF
-{
-#ifdef DEBUG
-    PrintSXS("Got installation notification ", uNotification, "\r\n");
-#endif
-
-    switch (uNotification)
+    char *pszInfFile = NULL;
+    int rc = RTUtf16ToUtf8(papwszArgs[0], &pszInfFile);
+    if (RT_SUCCESS(rc))
     {
-        case SPFILENOTIFY_NEEDMEDIA:
-            PrintStr("Requesting installation media ...\r\n");
-            break;
-
-        case SPFILENOTIFY_STARTCOPY:
-            PrintStr("Copying driver files to destination ...\r\n");
-            break;
-
-        case SPFILENOTIFY_TARGETNEWER:
-        case SPFILENOTIFY_TARGETEXISTS:
-            return TRUE;
-    }
-
-    return SetupDefaultQueueCallbackW(pvContext, uNotification, uParam1, uParam2);
-}
-
-
-/**
- * Executes a specific .INF section to install/uninstall drivers and/or
- * services.
- *
- * @return  Exit code (EXIT_OK, EXIT_FAIL, EXIT_REBOOT)
- * @param   pwszSection Section to execute; usually it's L"DefaultInstall".
- * @param   pwszInf     Path of the .INF file to use.
- */
-static int ExecuteInfFile(const wchar_t *pwszSection, const wchar_t *pwszInf)
-{
-    PrintSWSWS("Installing from INF-File: '", pwszInf, "', Section: '", pwszSection, "' ...\r\n");
-#ifdef RT_ARCH_X86
-    InstallWinVerifyTrustInterceptorInSetupApi();
-#endif
-
-    UINT uErrorLine = 0;
-    HINF hInf = SetupOpenInfFileW(pwszInf, NULL, INF_STYLE_WIN4, &uErrorLine);
-    if (hInf == INVALID_HANDLE_VALUE)
-        return ErrorMsgLastErrSWSRSUS("SetupOpenInfFileW failed to open '", pwszInf, "' ", ", error line ", uErrorLine, NULL);
-
-    int   rcExit  = EXIT_FAIL;
-    PVOID pvQueue = SetupInitDefaultQueueCallback(NULL);
-    if (pvQueue)
-    {
-        if (SetupInstallFromInfSectionW(NULL /*hWndOwner*/, hInf, pwszSection, SPINST_ALL, HKEY_LOCAL_MACHINE,
-                                        NULL /*pwszSrcRootPath*/, SP_COPY_NEWER_OR_SAME | SP_COPY_NOSKIP,
-                                        vboxDrvInstExecuteInfFileCallback, pvQueue, NULL /*hDevInfoSet*/, NULL /*pDevInfoData*/))
+        char *pszModel = NULL; /* Model is optional. */
+        if (cArgs >= 2)
+            rc = RTUtf16ToUtf8(papwszArgs[1], &pszModel);
+        char *pszPnpId = NULL; /* PnP ID is optional. */
+        if (cArgs >= 3)
+            rc = RTUtf16ToUtf8(papwszArgs[2], &pszPnpId);
+        if (RT_SUCCESS(rc))
         {
-            PrintStr("File installation stage successful\r\n");
+            HANDLE hLog = INVALID_HANDLE_VALUE;
+            if (cArgs >= 3)
+                /* ignore rc, non-fatal */ driverLogOpen(papwszArgs[2], &hLog);
 
-            if (SetupInstallServicesFromInfSectionW(hInf, L"DefaultInstall.Services", 0 /* Flags */))
+#ifdef DEBUG
+            PrintSSS("INF File: ", pszInfFile, "\r\n");
+            PrintSSS("   Model: ", pszModel ? pszModel : "<None>", "\r\n");
+            PrintSSS("  PnP ID: ", pszPnpId ? pszPnpId : "<None>", "\r\n");
+#endif
+            VBOXWINDRVINST hWinDrvInst;
+            rc = VBoxWinDrvInstCreateEx(&hWinDrvInst, 4 /* Verbosity */, &vboxWinDrvInstLogCallback, hLog /* pvUser */);
+            if (RT_SUCCESS(rc))
             {
-                PrintStr("Service installation stage successful. Installation completed.\r\n");
-                rcExit = EXIT_OK;
+                rc = VBoxWinDrvInstUninstall(hWinDrvInst, pszInfFile, pszModel, pszPnpId,
+                                             VBOX_WIN_DRIVERINSTALL_F_SILENT | VBOX_WIN_DRIVERINSTALL_F_FORCE);
+
+                VBoxWinDrvInstDestroy(hWinDrvInst);
             }
-            else if (GetLastError() == ERROR_SUCCESS_REBOOT_REQUIRED)
-            {
-                PrintStr("A reboot is required to complete the installation\r\n");
-                rcExit = EXIT_REBOOT;
-            }
-            else
-                ErrorMsgLastErrSWSWS("SetupInstallServicesFromInfSectionW failed on '", pwszSection, "' in '", pwszInf, "'");
+
+            driverLogClose(hLog);
+            hLog = INVALID_HANDLE_VALUE;
+
+            RTStrFree(pszPnpId);
         }
-        SetupTermDefaultQueueCallback(pvQueue);
+        RTStrFree(pszInfFile);
     }
-    else
-        ErrorMsgLastErr("SetupInitDefaultQueueCallback failed");
-    SetupCloseInfFile(hInf);
-    return rcExit;
+
+    return rc == VINF_REBOOT_NEEDED ? EXIT_REBOOT : RT_SUCCESS(rc) ? EXIT_OK : EXIT_FAIL;
 }
 
 
 /** Handles 'driver executeinf'. */
 static int handleDriverExecuteInf(unsigned cArgs, wchar_t **papwszArgs)
 {
-    RT_NOREF(cArgs);
-    return ExecuteInfFile(L"DefaultInstall", papwszArgs[0]);
+    char *pszInfFile = NULL;
+    int rc = RTUtf16ToUtf8(papwszArgs[0], &pszInfFile);
+    if (RT_SUCCESS(rc))
+    {
+        char *pszSection = NULL; /* Section is optional. */
+        if (cArgs >= 2)
+            rc = RTUtf16ToUtf8(papwszArgs[1], &pszSection);
+        if (RT_SUCCESS(rc))
+        {
+            HANDLE hLog = INVALID_HANDLE_VALUE;
+            if (cArgs >= 3)
+                /* ignore rc, non-fatal */ driverLogOpen(papwszArgs[2], &hLog);
+
+#ifdef DEBUG
+            PrintSSS("INF File: ", pszInfFile, "\r\n");
+            PrintSSS(" Section: ", pszSection ? pszSection : "DefaultInstall", "\r\n");
+#endif
+            VBOXWINDRVINST hWinDrvInst;
+            rc = VBoxWinDrvInstCreateEx(&hWinDrvInst, 4 /* Verbosity */, &vboxWinDrvInstLogCallback, hLog /* pvUser */);
+            if (RT_SUCCESS(rc))
+            {
+                rc = VBoxWinDrvInstInstallExecuteInf(hWinDrvInst, pszInfFile, pszSection ? pszSection : "DefaultInstall",
+                                                     VBOX_WIN_DRIVERINSTALL_F_SILENT | VBOX_WIN_DRIVERINSTALL_F_FORCE);
+                VBoxWinDrvInstDestroy(hWinDrvInst);
+            }
+
+            driverLogClose(hLog);
+            hLog = INVALID_HANDLE_VALUE;
+        }
+        RTStrFree(pszInfFile);
+    }
+
+    return rc == VINF_REBOOT_NEEDED ? EXIT_REBOOT : RT_SUCCESS(rc) ? EXIT_OK : EXIT_FAIL;
 }
 
 
@@ -2457,9 +2223,9 @@ static int handleHelp(unsigned cArgs, wchar_t **papwszArgs)
              "Syntax: VBoxDrvInst <command> <subcommand>\r\n"
              "\r\n"
              "Drivers:\r\n"
-             "    VBoxDrvInst driver install <inf-file> [log-file]\r\n"
-             "    VBoxDrvInst driver uninstall <inf-file> [log-file]\r\n"
-             "    VBoxDrvInst driver executeinf <inf-file>\r\n"
+             "    VBoxDrvInst driver install <inf-file> [pnp-id] [log-file]\r\n"
+             "    VBoxDrvInst driver uninstall <inf-file> <model> [pnp-id] [log-file]\r\n"
+             "    VBoxDrvInst driver executeinf <inf-file> [section]\r\n"
              "    VBoxDrvInst driver nt4-install-video [install-dir]\r\n"
              "\r\n"
              "Service:\r\n"
@@ -2493,8 +2259,9 @@ static int handleHelp(unsigned cArgs, wchar_t **papwszArgs)
 
 int wmain(int argc, wchar_t **argv)
 {
-    /* Not initializing IPRT here, ASSUMING the little bit we use of it does
-       not need any initialization.  Reduces the binary size a little. */
+    int rc = RTR3InitExeNoArguments(0);
+    if (RT_FAILURE(rc))
+        return RTMsgInitFailure(rc);
 
     static struct
     {
@@ -2504,9 +2271,9 @@ int wmain(int argc, wchar_t **argv)
         int       (*pfnHandler)(unsigned cArgs, wchar_t **papwszArgs);
     } s_aActions[] =
     {
-        { "driver",         "install",              1,  2, handleDriverInstall },
-        { "driver",         "uninstall",            1,  2, handleDriverUninstall },
-        { "driver",         "executeinf",           1,  1, handleDriverExecuteInf },
+        { "driver",         "install",              1,  3, handleDriverInstall },
+        { "driver",         "uninstall",            2,  4, handleDriverUninstall },
+        { "driver",         "executeinf",           1,  3, handleDriverExecuteInf },
         { "driver",         "nt4-install-video",    0,  1, handleDriverNt4InstallVideo },
         { "service",        "create",               5,  9, handleServiceCreate },
         { "service",        "delete",               1,  1, handleServiceDelete },

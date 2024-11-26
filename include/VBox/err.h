@@ -3298,6 +3298,10 @@
 #define VERR_GCM_NOT_HANDLED                        (-7602)
 /** @} */
 
+/** A reboot is needed for completing driver (un)installation. */
+#define VERR_DRIVER_REBOOT_NEEDED                  (-1028)
+/** A reboot is needed for completing driver (un)installation. */
+#define VINF_DRIVER_REBOOT_NEEDED                  (1028)
 /* SED-END */
 
 /** @} */

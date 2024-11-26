@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for VBoxInstallHelper.dll.
 #
@@ -49,7 +49,10 @@ VBoxInstallHelper_SOURCES  = \
 	VBoxInstallHelper.cpp \
 	VBoxInstallHelper.def \
 	VBoxInstallHelper.rc \
-	VBoxCommon.cpp
+	VBoxCommon.cpp \
+	$(PATH_ROOT)/src/VBox/GuestHost/Installation/VBoxWinDrvCommon.cpp \
+	$(PATH_ROOT)/src/VBox/GuestHost/Installation/VBoxWinDrvInst.cpp \
+	$(PATH_ROOT)/src/VBox/GuestHost/Installation/VBoxWinDrvStore.cpp
 ifndef VBOX_OSE
  VBoxInstallHelper_SOURCES += \
  	internal/VBoxSerial.cpp

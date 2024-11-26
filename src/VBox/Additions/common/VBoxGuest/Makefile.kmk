@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
 ## @file
 # Makefile for the Cross Platform Guest Additions Driver.
 #
@@ -52,10 +52,10 @@ if defined(VBOX_WITH_ADDITION_DRIVERS) && "$(intersects $(KBUILD_TARGET), darwin
  VBoxGuest_NAME.netbsd   = vboxguest
  VBoxGuest_NAME.solaris  = vboxguest
  VBoxGuest_INST.darwin   = $(INST_ADDITIONS)VBoxGuest.kext/Contents/MacOS/
- if defined(VBOX_SIGNING_MODE) && defined(VBOX_SIGN_ADDITIONS) # See Additions/WINNT/Makefile.kmk?
-  VBoxGuest_INSTTYPE.win = none
-  VBoxGuest_DEBUG_INSTTYPE.win = both
- endif
+ #if defined(VBOX_SIGNING_MODE) && defined(VBOX_SIGN_ADDITIONS) # See Additions/WINNT/Makefile.kmk?
+ VBoxGuest_INSTTYPE.win  = none
+ VBoxGuest_DEBUG_INSTTYPE.win  = both
+ #endif
  VBoxGuest_DEFS.haiku    = VBOX_SVN_REV=$(VBOX_SVN_REV) _KERNEL_MODE=1
  VBoxGuest_DEFS.solaris  = VBOX_SVN_REV=$(VBOX_SVN_REV)
  VBoxGuest_DEFS.win      = VBOX_GUESTDRV_WITH_RELEASE_LOGGER
@@ -113,9 +113,9 @@ if defined(VBOX_WITH_ADDITION_DRIVERS) && "$(intersects $(KBUILD_TARGET), darwin
    VBoxGuest_VBOX_IMPORT_CHECKER.win.amd64 = xp64/r0
   endif # win
   ifn1of ($(KBUILD_TARGET), linux freebsd netbsd solaris haiku)
-   VBoxGuest_SOURCES    = VBoxGuest-$(KBUILD_TARGET).cpp
+   VBoxGuest_SOURCES   += VBoxGuest-$(KBUILD_TARGET).cpp
   else
-   VBoxGuest_SOURCES    = VBoxGuest-$(KBUILD_TARGET).c
+   VBoxGuest_SOURCES   += VBoxGuest-$(KBUILD_TARGET).c
    VBoxGuest_$(KBUILD_TARGET).c_DEPS = $(VBOX_SVN_REV_HEADER)
    ifeq ($(KBUILD_TARGET),freebsd)
     VBoxGuest-$(KBUILD_TARGET).c_CFLAGS = -Wno-sign-compare # /usr/src/sys/sys/vmmeter.h: In function 'vm_paging_needed'
@@ -124,6 +124,7 @@ if defined(VBOX_WITH_ADDITION_DRIVERS) && "$(intersects $(KBUILD_TARGET), darwin
   VBoxGuest_SOURCES     += \
   	VBoxGuest.cpp
   VBoxGuest_SOURCES.win += \
+  	win/VBoxGuest.inf \
   	win/VBoxGuest.rc
   VBoxGuest_SOURCES.win.x86 += \
   	../../../Runtime/common/string/strcmp.asm \
