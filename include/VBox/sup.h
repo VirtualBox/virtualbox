@@ -2774,13 +2774,19 @@ typedef struct SUPTAENTRY
     /** Pointer to the raw bytes. */
     const unsigned char    *pch;
     /** Number of bytes. */
-    unsigned                cb;
+    uint32_t                cb;
+    /** Value in RTCRCERTCTX_F_ENC_MASK: RTCRCERTCTX_F_ENC_TAF_DER,
+     *  RTCRCERTCTX_F_ENC_X509_DER. */
+    uint32_t                fEnc;
 } SUPTAENTRY;
 /** Pointer to a trust anchor table entry. */
 typedef SUPTAENTRY const *PCSUPTAENTRY;
 
-/** Macro for simplifying generating the trust anchor tables. */
-#define SUPTAENTRY_GEN(a_abTA)      { &a_abTA[0], sizeof(a_abTA) }
+/** Macro for a TAF entry. */
+#define SUPTAENTRY_TAF(a_abTA)      { &a_abTA[0], sizeof(a_abTA), RTCRCERTCTX_F_ENC_TAF_DER }
+
+/** Macro for a X.509 certificate entry. */
+#define SUPTAENTRY_CER(a_abCertTA)  { &a_abCertTA[0], sizeof(a_abCertTA), RTCRCERTCTX_F_ENC_X509_DER }
 
 /** All certificates we know. */
 extern SUPTAENTRY const             g_aSUPAllTAs[];

@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 107180 2024-11-26 14:50:02Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 107182 2024-11-26 15:13:22Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for the support library and the drivers/modules/kexts it uses.
 #
@@ -133,12 +133,12 @@ VBOX_SUP_WIN_CERT_NAMES := $(foreach cert,$(VBOX_SUP_WIN_CERTS),$(firstword $(su
 # 1=name, 2=filter, 3=buildcert?.
 if "$(KBUILD_TARGET)" == "win" && defined(VBOX_WITH_HARDENING)
  VBOX_SUP_GEN_CERT_MACRO = 'SUPTAENTRY const g_aSUP$(1)TAs[] =' '{' \
- 	$(if-expr "$(3)" == "",,'    SUPTAENTRY_GEN(g_abSUPBuildCert),') \
- 	$(foreach certnm,$(filter $(2),$(VBOX_SUP_WIN_CERT_NAMES)), '    SUPTAENTRY_GEN(g_abSUP$(certnm)),') \
+ 	$(if-expr "$(3)" == "",,'    SUPTAENTRY_CER(g_abSUPBuildCert),') \
+ 	$(foreach certnm,$(filter $(2),$(VBOX_SUP_WIN_CERT_NAMES)), '    SUPTAENTRY_TAF(g_abSUP$(certnm)),') \
  	'};' 'unsigned const g_cSUP$(1)TAs = RT_ELEMENTS(g_aSUP$(1)TAs);' '' ''
 else
  VBOX_SUP_GEN_CERT_MACRO = 'SUPTAENTRY const g_aSUP$(1)TAs[] =' '{' \
- 	$(foreach certnm,$(filter $(2),$(VBOX_SUP_WIN_CERT_NAMES)), '    SUPTAENTRY_GEN(g_abSUP$(certnm)),') \
+ 	$(foreach certnm,$(filter $(2),$(VBOX_SUP_WIN_CERT_NAMES)), '    SUPTAENTRY_TAF(g_abSUP$(certnm)),') \
  	'};' 'unsigned const g_cSUP$(1)TAs = RT_ELEMENTS(g_aSUP$(1)TAs);' '' ''
 endif
 
@@ -161,6 +161,7 @@ $$(VBOX_SUP_WIN_CERTS_FILE): $(MAKEFILE_CURRENT) \
 	$(QUIET)$(APPEND) -n "$@" \
        	'' \
        	'#include <VBox/sup.h>' \
+       	'#include <iprt/crypto/store.h>' \
                ''
 	$(foreach cert,$(VBOX_SUP_WIN_CERTS), $(NLTAB)$(VBOX_BIN2C) -ascii --append --static --no-size \
 		"SUP$(firstword $(subst =,$(SP) ,$(cert)))" \

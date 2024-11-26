@@ -1,4 +1,4 @@
-/* $Id: SUPHardenedVerifyImage-win.cpp 107180 2024-11-26 14:50:02Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPHardenedVerifyImage-win.cpp 107182 2024-11-26 15:13:22Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library/Driver - Hardened Image Verification, Windows.
  */
@@ -1733,50 +1733,52 @@ static int supHardNtViCertInit(PRTCRX509CERTIFICATE pCert, unsigned char const *
 }
 
 
-static int supHardNtViCertStoreAddArray(RTCRSTORE hStore, PCSUPTAENTRY paCerts, unsigned cCerts, PRTERRINFO pErrInfo)
-{
-    for (uint32_t i = 0; i < cCerts; i++)
-    {
-        int rc = RTCrStoreCertAddEncoded(hStore, !paCerts[i].fIsCert ? RTCRCERTCTX_F_ENC_TAF_DER : RTCRCERTCTX_F_ENC_X509_DER,
-                                         paCerts[i].pch, paCerts[i].cb, pErrInfo);
-        if (RT_FAILURE(rc))
-            return rc;
-    }
-    return VINF_SUCCESS;
-}
-
-
 /**
  * Initialize a certificate table.
  *
  * @param   phStore             Where to return the store pointer.
- * @param   paCerts1            Pointer to the first certificate table.
- * @param   cCerts1             Entries in the first certificate table.
- * @param   paCerts2            Pointer to the second certificate table.
- * @param   cCerts2             Entries in the second certificate table.
- * @param   paCerts3            Pointer to the third certificate table.
- * @param   cCerts3             Entries in the third certificate table.
  * @param   pErrInfo            Where to return extended error info. Optional.
  * @param   pszErrorTag         Error tag.
+ * @param   cTables             Number of table pairs.
+ * @param   ...                 Pairs of PCSUPTAENTRY and unsigned.
+ *
  */
-static int supHardNtViCertStoreInit(PRTCRSTORE phStore,
-                                    PCSUPTAENTRY paCerts1, unsigned cCerts1,
-                                    PCSUPTAENTRY paCerts2, unsigned cCerts2,
-                                    PCSUPTAENTRY paCerts3, unsigned cCerts3,
-                                    PRTERRINFO pErrInfo, const char *pszErrorTag)
+static int supHardNtViCertStoreInit(PRTCRSTORE phStore, PRTERRINFO pErrInfo, const char *pszErrorTag, unsigned cTables, ...)
 {
     AssertReturn(*phStore == NIL_RTCRSTORE, VERR_WRONG_ORDER);
     RT_NOREF1(pszErrorTag);
 
-    int rc = RTCrStoreCreateInMem(phStore, cCerts1 + cCerts2);
+    va_list va;
+    va_start(va, cTables);
+    unsigned cTotalCerts = 0;
+    for (unsigned iTable = 0; iTable < cTables; iTable++)
+    {
+        va_arg(va, PCSUPTAENTRY);
+        cTotalCerts += va_arg(va, unsigned);
+    }
+
+    int rc = RTCrStoreCreateInMem(phStore, cTotalCerts);
     if (RT_FAILURE(rc))
         return RTErrInfoSetF(pErrInfo, rc, "RTCrStoreCreateMemoryStore failed: %Rrc", rc);
 
-    rc = supHardNtViCertStoreAddArray(*phStore, paCerts1, cCerts1, pErrInfo);
-    if (RT_SUCCESS(rc))
-        rc = supHardNtViCertStoreAddArray(*phStore, paCerts2, cCerts2, pErrInfo);
-    if (RT_SUCCESS(rc))
-        rc = supHardNtViCertStoreAddArray(*phStore, paCerts3, cCerts3, pErrInfo);
+    va_start(va, cTables);
+    for (unsigned iTable = 0; iTable < cTables; iTable++)
+    {
+        PCSUPTAENTRY const paCerts = va_arg(va, PCSUPTAENTRY);
+        unsigned     const cCerts  = va_arg(va, unsigned);
+        for (unsigned iCert = 0; iCert < cCerts; iCert++)
+        {
+            rc = RTCrStoreCertAddEncoded(*phStore, paCerts[iCert].fEnc, paCerts[iCert].pch, paCerts[iCert].cb, pErrInfo);
+            if (RT_FAILURE(rc))
+            {
+                SUP_DPRINTF(("supHardNtViCertStoreInit: %s: iTable=%u iCert=%u: fEnc=%#x cb=%#x rc=%Rrc\n",
+                             pszErrorTag, iTable, iCert, paCerts[iCert].fEnc, paCerts[iCert].cb, rc));
+                va_end(va);
+                return rc;
+            }
+        }
+    }
+    va_end(va);
     return rc;
 }
 
@@ -2001,41 +2003,25 @@ DECLHIDDEN(int) supHardenedWinInitImageVerifier(PRTERRINFO pErrInfo)
          * Initialize it, leaving the cleanup to the termination call.
          */
         rc = supHardNtViCertInit(&g_BuildX509Cert, g_abSUPBuildCert, g_cbSUPBuildCert, pErrInfo, "BuildCertificate");
-        SUPTAENTRY const aBuildCerts[1] = { { g_abSUPBuildCert, g_cbSUPBuildCert, true }, };
         if (RT_SUCCESS(rc))
-            rc = supHardNtViCertStoreInit(&g_hSpecialTrustStore,
-                                          aBuildCerts, RT_ELEMENTS(aBuildCerts),
-                                          g_aSUPTrustedTAs, g_cSUPTrustedTAs,
-                                          NULL, 0,
-                                          pErrInfo, "SpecialTrustStore");
+            rc = supHardNtViCertStoreInit(&g_hSpecialTrustStore, pErrInfo, "SpecialTrustStore", 1,
+                                          g_aSUPTrustedTAs, g_cSUPTrustedTAs);
         if (RT_SUCCESS(rc))
-            rc = supHardNtViCertStoreInit(&g_hSpcRootStore, g_aSUPSpcRootTAs, g_cSUPSpcRootTAs,
-                                          NULL, 0, NULL, 0, pErrInfo, "SpcRoot");
+            rc = supHardNtViCertStoreInit(&g_hSpcRootStore, pErrInfo, "SpcRoot", 1, g_aSUPSpcRootTAs, g_cSUPSpcRootTAs);
         if (RT_SUCCESS(rc))
-            rc = supHardNtViCertStoreInit(&g_hNtKernelRootStore, g_aSUPNtKernelRootTAs, g_cSUPNtKernelRootTAs,
-                                          NULL, 0, NULL, 0, pErrInfo, "NtKernelRoot");
+            rc = supHardNtViCertStoreInit(&g_hNtKernelRootStore, pErrInfo, "NtKernelRoot", 1,
+                                          g_aSUPNtKernelRootTAs, g_cSUPNtKernelRootTAs);
         if (RT_SUCCESS(rc))
-            rc = supHardNtViCertStoreInit(&g_hSpcAndNtKernelRootStore,
+        {
+            SUPTAENTRY const aBuildCerts[] = { { g_abSUPBuildCert, g_cbSUPBuildCert, RTCRCERTCTX_F_ENC_X509_DER }, };
+            rc = supHardNtViCertStoreInit(&g_hSpcAndNtKernelRootStore, pErrInfo, "SpcAndNtKernelRoot", 4,
                                           g_aSUPSpcRootTAs, g_cSUPSpcRootTAs,
                                           g_aSUPNtKernelRootTAs, g_cSUPNtKernelRootTAs,
                                           g_aSUPTimestampTAs, g_cSUPTimestampTAs,
-                                          pErrInfo, "SpcAndNtKernelRoot");
+                                          aBuildCerts, (unsigned)RT_ELEMENTS(aBuildCerts));
+        }
         if (RT_SUCCESS(rc))
-            rc = supHardNtViCertStoreInit(&g_hSpcAndNtKernelSuppStore,
-                                          NULL, 0, NULL, 0, NULL, 0,
-                                          pErrInfo, "SpcAndNtKernelSupplemental");
-
-#if 0 /* For the time being, always trust the build certificate. It bypasses the timestamp issues of CRT and SDL. */
-        /* If the build certificate is a test singing certificate, it must be a
-           trusted root or we'll fail to validate anything. */
-        if (   RT_SUCCESS(rc)
-            && RTCrX509Name_Compare(&g_BuildX509Cert.TbsCertificate.Subject, &g_BuildX509Cert.TbsCertificate.Issuer) == 0)
-#else
-        if (RT_SUCCESS(rc))
-#endif
-            rc = RTCrStoreCertAddEncoded(g_hSpcAndNtKernelRootStore, RTCRCERTCTX_F_ENC_X509_DER,
-                                         g_abSUPBuildCert, g_cbSUPBuildCert, pErrInfo);
-
+            rc = supHardNtViCertStoreInit(&g_hSpcAndNtKernelSuppStore, pErrInfo, "SpcAndNtKernelSupplemental", 0);
         if (RT_SUCCESS(rc))
         {
             /*
