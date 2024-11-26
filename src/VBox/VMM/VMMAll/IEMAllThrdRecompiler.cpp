@@ -1,4 +1,4 @@
-/* $Id: IEMAllThrdRecompiler.cpp 107184 2024-11-26 22:32:44Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMAllThrdRecompiler.cpp 107185 2024-11-26 22:43:27Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Instruction Decoding and Threaded Recompilation.
  *
@@ -113,9 +113,6 @@
 # error The setjmp approach must be enabled for the recompiler.
 #endif
 
-#if defined(IEMNATIVE_WITH_SIMD_FP_NATIVE_EMITTERS) && !defined(IEMNATIVE_WITH_SIMD_REG_ALLOCATOR)
-# error "IEMNATIVE_WITH_SIMD_FP_NATIVE_EMITTERS requires IEMNATIVE_WITH_SIMD_REG_ALLOCATOR"
-#endif
 
 
 /*********************************************************************************************************************************

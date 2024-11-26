@@ -1,4 +1,4 @@
-/* $Id: IEMInternal.h 107184 2024-11-26 22:32:44Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMInternal.h 107185 2024-11-26 22:43:27Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Internal header file.
  */
@@ -119,12 +119,8 @@ RT_C_DECLS_BEGIN
 # define IEMNATIVE_WITH_DELAYED_PC_UPDATING_DEBUG
 #endif
 
-/** Enables the SIMD register allocator @bugref{10614}.  */
-#if defined(DOXYGEN_RUNNING) || 1
-# define IEMNATIVE_WITH_SIMD_REG_ALLOCATOR
-#endif
 /** Enables access to even callee saved registers. */
-//# define IEMNATIVE_WITH_SIMD_REG_ACCESS_ALL_REGISTERS
+/*# define IEMNATIVE_WITH_SIMD_REG_ACCESS_ALL_REGISTERS*/
 
 #if defined(DOXYGEN_RUNNING) || 1
 /** @def IEMNATIVE_WITH_DELAYED_REGISTER_WRITEBACK
@@ -2276,7 +2272,6 @@ typedef struct IEMCPU
      *  register situations with the other branch in IEM_MC_ENDIF. */
     STAMCOUNTER             StatNativeEndIfOtherBranchDirty;
 
-//#ifdef IEMNATIVE_WITH_SIMD_REG_ALLOCATOR
     /** Native recompiler: Number of calls to iemNativeSimdRegAllocFindFree. */
     STAMCOUNTER             StatNativeSimdRegFindFree;
     /** Native recompiler: Number of times iemNativeSimdRegAllocFindFree needed
@@ -2309,7 +2304,6 @@ typedef struct IEMCPU
     STAMCOUNTER             StatNativeMaybeSseXcptCheckOmitted;
     /** Native recompiler: Number of IEM_MC_MAYBE_RAISE_AVX_RELATED_XCPT() checks omitted. */
     STAMCOUNTER             StatNativeMaybeAvxXcptCheckOmitted;
-//#endif
 
     /** Native recompiler: The TB finished executing completely without jumping to a an exit label.
      * Not availabe in release builds. */

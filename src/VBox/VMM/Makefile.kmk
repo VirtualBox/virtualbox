@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 107185 2024-11-26 22:43:27Z knut.osmundsen@oracle.com $
 ## @file
 # Top-level makefile for the VMM.
 #
@@ -99,6 +99,9 @@ VBoxVMM_INCS     = \
 VBoxVMM_ASINCS   = .
 VBoxVMM_ASFLAGS.amd64  = -Werror
 VBoxVMM_ASFLAGS.x86    = -Werror
+if "$(VBOX_VCC_TOOL_STEM)" >= "VCC142" && "$(KBUILD_TYPE)" != "debug" # Agressive inlining for IEM performance. Adds ~2.6 MB.
+ VBoxVMM_CXXFLAGS.win  = -Ob3
+endif
 
 VBoxVMM_SOURCES  = \
 	VBoxVMM.d \
@@ -348,12 +351,28 @@ if "$(USERNAME)" == "bird" && "$(KBUILD_TARGET)" == "win"
  VBoxVMM_VMMAll/IEMAll.cpp_CXXFLAGS                  = /FAcs /Fa$(subst /,\\,$(outbase).cod)
  VBoxVMM_VMMAll/IEMAllIntprTables1.cpp_CXXFLAGS      = /FAcs /Fa$(subst /,\\,$(outbase).cod)
  VBoxVMM_VMMAll/IEMAllIntprTables2.cpp_CXXFLAGS      = /FAcs /Fa$(subst /,\\,$(outbase).cod)
- VBoxVMM_VMMAll/IEMAllIntprTables3.cpp_CXXFLAGS      = /FAcs /Fa$(subst /,\\,$(outbase).cod)
- VBoxVMM_VMMAll/IEMAllIntprTables4.cpp_CXXFLAGS      = /FAcs /Fa$(subst /,\\,$(outbase).cod)
+ #VBoxVMM_VMMAll/IEMAllIntprTables3.cpp_CXXFLAGS      = /FAcs /Fa$(subst /,\\,$(outbase).cod)
+ #VBoxVMM_VMMAll/IEMAllIntprTables4.cpp_CXXFLAGS      = /FAcs /Fa$(subst /,\\,$(outbase).cod)
  VBoxVMM_VMMAll/IEMAllAImplC.cpp_CXXFLAGS            = /FAcs /Fa$(subst /,\\,$(outbase).cod)
+ VBoxVMM_VMMAll/IEMAllN8veExecMem.cpp_CXXFLAGS       = /FAcs /Fa$(subst /,\\,$(outbase).cod)
+ VBoxVMM_VMMAll/IEMAllN8veRecompiler.cpp_CXXFLAGS    = /FAcs /Fa$(subst /,\\,$(outbase).cod)
+ VBoxVMM_VMMAll/IEMAllN8veRecompFuncs1.cpp_CXXFLAGS  = /FAcs /Fa$(subst /,\\,$(outbase).cod)
+ #VBoxVMM_VMMAll/IEMAllN8veRecompFuncs2.cpp_CXXFLAGS  = /FAcs /Fa$(subst /,\\,$(outbase).cod)
+ VBoxVMM_VMMAll/IEMAllN8veRecompBltIn.cpp_CXXFLAGS   = /FAcs /Fa$(subst /,\\,$(outbase).cod)
+ VBoxVMM_VMMAll/IEMAllN8veLiveness1.cpp_CXXFLAGS     = /FAcs /Fa$(subst /,\\,$(outbase).cod)
+ #VBoxVMM_VMMAll/IEMAllN8veLiveness2.cpp_CXXFLAGS     = /FAcs /Fa$(subst /,\\,$(outbase).cod)
+ VBoxVMM_VMMAll/IEMAllThrdRecompiler.cpp_CXXFLAGS    = /FAcs /Fa$(subst /,\\,$(outbase).cod)
+ VBoxVMM_VMMAll/IEMAllThrdFuncsBltIn.cpp_CXXFLAGS    = /FAcs /Fa$(subst /,\\,$(outbase).cod)
+ VBoxVMM_VMMAll/IEMAllThrdTables1.cpp_CXXFLAGS       = /FAcs /Fa$(subst /,\\,$(outbase).cod)
+ #VBoxVMM_VMMAll/IEMAllThrdFuncs.cpp_CXXFLAGS         = /FAcs /Fa$(subst /,\\,$(outbase).cod)
  VBoxVMM_VMMAll/PGMAll.cpp_CXXFLAGS                  = /FAcs /Fa$(subst /,\\,$(outbase).cod)
  VBoxVMM_VMMAll/PDMAllCritSect.cpp_CXXFLAGS          = /FAcs /Fa$(subst /,\\,$(outbase).cod)
- VBoxVMM_CLEAN += $(addprefix $(VBoxVMM_0_OUTDIR)/VMMAll/, IEMAll.cod IEMAllAImplC.cod IEMAllInstInterpretOnly.cod PGMAll.cod PDMAllCritSect.cod)
+
+ VBoxVMM_CLEAN += $(addprefix $(VBoxVMM_0_OUTDIR)/VMMAll/, \
+ 		IEMAll.cod IEMAllIntprTables1.cod IEMAllIntprTables2.cod IEMAllIntprTables3.cod IEMAllIntprTables4.cod IEMAllAImplC.cod \
+ 		IEMAllN8veExecMem.cod IEMAllN8veRecompiler.cod IEMAllN8veRecompFuncs1.cod IEMAllN8veRecompFuncs2.cod \
+ 		IEMAllThrdRecompiler.cod IEMAllThrdFuncsBltIn.cod IEMAllThrdTables1.cod IEMAllThrdFuncs.cod \
+ 		IEMAllN8veRecompBltIn.cod IEMAllN8veLiveness1.cod IEMAllN8veLiveness2.cod PGMAll.cod PDMAllCritSect.cod)
 endif
 
 $(call VBOX_SET_VER_INFO_DLL,VBoxVMM,VirtualBox VMM) # Version info / description.

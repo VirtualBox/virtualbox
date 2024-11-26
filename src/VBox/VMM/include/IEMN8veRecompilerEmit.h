@@ -1,4 +1,4 @@
-/* $Id: IEMN8veRecompilerEmit.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: IEMN8veRecompilerEmit.h 107185 2024-11-26 22:43:27Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager - Native Recompiler Inlined Emitters.
  */
@@ -934,7 +934,8 @@ iemNativeEmitStoreGprToVCpuU64(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint
  * @note Limited range on ARM64.
  */
 DECL_INLINE_THROW(uint32_t)
-iemNativeEmitStoreGprToVCpuU32Ex(PIEMNATIVEINSTR pCodeBuf, uint32_t off, uint8_t iGpr, uint32_t offVCpu)
+iemNativeEmitStoreGprToVCpuU32Ex(PIEMNATIVEINSTR pCodeBuf, uint32_t off, uint8_t iGpr, uint32_t offVCpu,
+                                 uint8_t iGprTmp = UINT8_MAX)
 {
 #ifdef RT_ARCH_AMD64
     /* mov mem32, reg32 */
@@ -942,9 +943,10 @@ iemNativeEmitStoreGprToVCpuU32Ex(PIEMNATIVEINSTR pCodeBuf, uint32_t off, uint8_t
         pCodeBuf[off++] = X86_OP_REX_R;
     pCodeBuf[off++] = 0x89;
     off = iemNativeEmitGprByVCpuDisp(pCodeBuf, off, iGpr, offVCpu);
+    RT_NOREF(iGprTmp);
 
 #elif defined(RT_ARCH_ARM64)
-    off = iemNativeEmitGprByVCpuLdStEx(pCodeBuf, off, iGpr, offVCpu, kArmv8A64InstrLdStType_St_Word, sizeof(uint32_t));
+    off = iemNativeEmitGprByVCpuLdStEx(pCodeBuf, off, iGpr, offVCpu, kArmv8A64InstrLdStType_St_Word, sizeof(uint32_t), iGprTmp);
 
 #else
 # error "port me"
@@ -970,6 +972,34 @@ iemNativeEmitStoreGprToVCpuU32(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint
 
 #elif defined(RT_ARCH_ARM64)
     off = iemNativeEmitGprByVCpuLdSt(pReNative, off, iGpr, offVCpu, kArmv8A64InstrLdStType_St_Word, sizeof(uint32_t));
+
+#else
+# error "port me"
+#endif
+    return off;
+}
+
+
+/**
+ * Emits a store of a GPR value to a 16-bit VCpu field.
+ *
+ * @note Limited range on ARM64.
+ */
+DECL_INLINE_THROW(uint32_t)
+iemNativeEmitStoreGprToVCpuU16Ex(PIEMNATIVEINSTR pCodeBuf, uint32_t off, uint8_t iGpr, uint32_t offVCpu,
+                                 uint8_t iGprTmp = UINT8_MAX)
+{
+#ifdef RT_ARCH_AMD64
+    /* mov mem16, reg16 */
+    pCodeBuf[off++] = X86_OP_PRF_SIZE_OP;
+    if (iGpr >= 8)
+        pCodeBuf[off++] = X86_OP_REX_R;
+    pCodeBuf[off++] = 0x89;
+    off = iemNativeEmitGprByVCpuDisp(pCodeBuf, off, iGpr, offVCpu);
+    RT_NOREF(iGprTmp);
+
+#elif defined(RT_ARCH_ARM64)
+    off = iemNativeEmitGprByVCpuLdStEx(pCodeBuf, off, iGpr, offVCpu, kArmv8A64InstrLdStType_St_Half, sizeof(uint16_t), iGprTmp);
 
 #else
 # error "port me"
@@ -2353,7 +2383,6 @@ iemNativeEmitLoadGprByBpU8(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t 
 }
 
 
-#ifdef IEMNATIVE_WITH_SIMD_REG_ALLOCATOR
 /**
  * Emits a 128-bit vector register load instruction with an BP relative source address.
  */
@@ -2401,8 +2430,6 @@ iemNativeEmitLoadVecRegByBpU256(PIEMRECOMPILERSTATE pReNative, uint32_t off, uin
 # error "port me"
 #endif
 }
-
-#endif
 
 
 /**
@@ -2553,7 +2580,6 @@ iemNativeEmitStoreImm64ByBp(PIEMRECOMPILERSTATE pReNative, uint32_t off, int32_t
     return iemNativeEmitStoreGprByBp(pReNative, off, offDisp, IEMNATIVE_REG_FIXED_TMP0);
 }
 
-#ifdef IEMNATIVE_WITH_SIMD_REG_ALLOCATOR
 
 /**
  * Emits a 128-bit vector register store with an BP relative destination address.
@@ -2637,7 +2663,6 @@ iemNativeEmitStoreVecRegByBpU256(PIEMRECOMPILERSTATE pReNative, uint32_t off, in
 #endif
 }
 
-#endif /* IEMNATIVE_WITH_SIMD_REG_ALLOCATOR */
 #if defined(RT_ARCH_ARM64)
 
 /**
@@ -2713,7 +2738,6 @@ iemNativeEmitGprByGprLdSt(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t i
     return off;
 }
 
-# ifdef IEMNATIVE_WITH_SIMD_REG_ALLOCATOR
 /**
  * Common bit of iemNativeEmitLoadVecRegByGprU128 and friends.
  *
@@ -2749,7 +2773,6 @@ iemNativeEmitVecRegByGprLdStEx(PIEMNATIVEINSTR pCodeBuf, uint32_t off, uint8_t i
 # endif
     return off;
 }
-# endif
 
 
 /**
@@ -3175,7 +3198,6 @@ iemNativeEmitLoadGprByGprU16SignExtendedFromS8Ex(PIEMNATIVEINSTR pCodeBuf, uint3
 }
 
 
-#ifdef IEMNATIVE_WITH_SIMD_REG_ALLOCATOR
 /**
  * Emits a 128-bit vector register load via a GPR base address with a displacement.
  *
@@ -3288,7 +3310,6 @@ iemNativeEmitLoadVecRegByGprU256(PIEMRECOMPILERSTATE pReNative, uint32_t off, ui
 #endif
     return off;
 }
-#endif
 
 
 /**
@@ -3604,7 +3625,6 @@ iemNativeEmitStoreImm8ByGprEx(PIEMNATIVEINSTR pCodeBuf, uint32_t off, uint8_t uI
 }
 
 
-#ifdef IEMNATIVE_WITH_SIMD_REG_ALLOCATOR
 /**
  * Emits a 128-bit vector register store via a GPR base address with a displacement.
  *
@@ -3717,7 +3737,6 @@ iemNativeEmitStoreVecRegByGprU256(PIEMRECOMPILERSTATE pReNative, uint32_t off, u
 #endif
     return off;
 }
-#endif
 
 
 
@@ -8945,11 +8964,10 @@ iemNativeEmitTbExitIfGprIsZero(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint
 }
 
 
-#ifdef IEMNATIVE_WITH_SIMD_REG_ALLOCATOR
+
 /*********************************************************************************************************************************
 *   SIMD helpers.                                                                                                                *
 *********************************************************************************************************************************/
-
 
 /**
  * Emits code to load the variable address into an argument GPR.
@@ -10542,7 +10560,6 @@ iemNativeEmitSimdBroadcastVecRegU128ToVecReg(PIEMRECOMPILERSTATE pReNative, uint
     return off;
 }
 
-#endif /* IEMNATIVE_WITH_SIMD_REG_ALLOCATOR */
 
 /** @} */
 
