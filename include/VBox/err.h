@@ -2950,6 +2950,9 @@
 #define VERR_SUP_VP_QUERY_HANDLE_TYPE               (-5677)
 /** NtSetInformationObject/NoInherit failed. */
 #define VERR_SUP_VP_SET_HANDLE_NOINHERIT            (-5678)
+/** The image is required to be signed with the same certificate as the rest
+ * of VirtualBox or one of the special trusted (Oracle) certificates. */
+#define VERR_SUP_VP_NOT_SIGNED_WITH_SPECIALLY_TRUSTED_CERT (-5679)
 
 /** We are in driverless mode. */
 #define VERR_SUP_DRIVERLESS                         (-5699)

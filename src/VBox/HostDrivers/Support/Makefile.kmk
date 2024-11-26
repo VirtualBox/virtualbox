@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 107180 2024-11-26 14:50:02Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for the support library and the drivers/modules/kexts it uses.
 #
@@ -119,6 +119,7 @@ VBOX_SUP_WIN_CERTS := \
 	TimeRootOracle0=Timestamp-VBoxLegacyWinCA.taf \
 	TimeRootOracle1=Timestamp-VBoxLegacyWinSha1CA.taf \
 	TrustedCertVBox0=Trusted-OracleCorporationVirtualBox-05308b76ac2e15b29720fb4395f65f38.taf \
+	TrustedCertVBox1=Trusted-OracleAmerica-060e2f8f9e1b8be518d5fe2b69cfccb1.taf \
 	AppleRoot0=AppleRoot-2bd06947947609fef46b8d2e40a6f7474d7f085e.taf \
 	AppleRoot1=AppleRoot-G2-c499136c1803c27bc0a3a00d7f72807a1c77268d.taf
 # Hack Alert! Because the DigiCert cross signing certificate we use expired 2020-04-15, we add it as a trusted NT kernel

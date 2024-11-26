@@ -2807,7 +2807,7 @@ extern SUPTAENTRY const             g_aSUPAppleRootTAs[];
 /** Number of entries in g_cSUPAppleRootTAs. */
 extern unsigned const               g_cSUPAppleRootTAs;
 
-/** TAs we trust (the build certificate, Oracle VirtualBox). */
+/** TAs we put special trust in (the build certificate, Oracle VirtualBox). */
 extern SUPTAENTRY const             g_aSUPTrustedTAs[];
 /** Number of entries in g_aSUPTrustedTAs. */
 extern unsigned const               g_cSUPTrustedTAs;

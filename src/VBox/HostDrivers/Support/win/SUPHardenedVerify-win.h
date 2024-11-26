@@ -1,4 +1,4 @@
-/* $Id: SUPHardenedVerify-win.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: SUPHardenedVerify-win.h 107180 2024-11-26 14:50:02Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library/Driver - Hardened Verification, Windows.
  */
@@ -145,15 +145,20 @@ DECLHIDDEN(int)  supHardenedWinVerifyImageByLdrMod(RTLDRMOD hLdrMod, PCRTUTF16 p
 /** The signing certificate must be the same as the one the VirtualBox build
  * was signed with. */
 #  define SUPHNTVI_F_REQUIRE_BUILD_CERT             RT_BIT(0)
+/** The signing certificate must be one the build certificate or one of the
+ * one used by Oracle to sign the extension pack. */
+#  define SUPHNTVI_F_REQUIRE_SPECIAL_TRUST_CERT     RT_BIT(1)
+/** Require regular code signing. */
+#  define SUPHNTVI_F_REQUIRE_CODE_SIGNING           RT_BIT(2)
 /** Require kernel code signing level. */
-#  define SUPHNTVI_F_REQUIRE_KERNEL_CODE_SIGNING    RT_BIT(1)
+#  define SUPHNTVI_F_REQUIRE_KERNEL_CODE_SIGNING    RT_BIT(3)
 /** Require the image to force the memory mapper to do signature checking. */
-#  define SUPHNTVI_F_REQUIRE_SIGNATURE_ENFORCEMENT  RT_BIT(2)
+#  define SUPHNTVI_F_REQUIRE_SIGNATURE_ENFORCEMENT  RT_BIT(4)
 /** Whether to allow image verification by catalog file. */
-#  define SUPHNTVI_F_ALLOW_CAT_FILE_VERIFICATION    RT_BIT(3)
+#  define SUPHNTVI_F_ALLOW_CAT_FILE_VERIFICATION    RT_BIT(5)
 /** The file owner must be TrustedInstaller, Builtin\\Administrators
  *  (S-1-5-32-544) or local system (S-1-5-21) on Vista+. */
-#  define SUPHNTVI_F_TRUSTED_INSTALLER_OR_SIMILAR_OWNER RT_BIT(4)
+#  define SUPHNTVI_F_TRUSTED_INSTALLER_OR_SIMILAR_OWNER RT_BIT(6)
 /** Ignore the image architecture (otherwise it must match the verification
  * code).  Used with resource images and such. */
 #  define SUPHNTVI_F_IGNORE_ARCHITECTURE            RT_BIT(30)
@@ -228,7 +233,6 @@ extern SUPSYSROOTDIRBUF g_CommonFilesX86NtPath;
 # endif
 #endif /* IN_RING3 && !VBOX_PERMIT_EVEN_MORE */
 extern SUPSYSROOTDIRBUF g_SupLibHardenedExeNtPath;
-extern SUPSYSROOTDIRBUF g_SupLibHardenedAppBinNtPath;
 
 #   ifdef IN_RING0
 /** Pointer to NtQueryVirtualMemory. */

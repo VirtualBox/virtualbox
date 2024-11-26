@@ -1,4 +1,4 @@
-/* $Id: SUPHardenedVerifyImage-win.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: SUPHardenedVerifyImage-win.cpp 107180 2024-11-26 14:50:02Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library/Driver - Hardened Image Verification, Windows.
  */
@@ -129,6 +129,10 @@ typedef DECLCALLBACKPTR_EX(NTSTATUS, WINAPI, PFNBCRYPTOPENALGORTIHMPROVIDER,(BCR
 *********************************************************************************************************************************/
 /** The build certificate. */
 static RTCRX509CERTIFICATE  g_BuildX509Cert;
+
+/** Store for certificates that we put special trust it, like the build
+ * certificate and the ones used by the Oracle extension pack. */
+static RTCRSTORE            g_hSpecialTrustStore = NIL_RTCRSTORE;
 
 /** Store for root software publisher certificates. */
 static RTCRSTORE            g_hSpcRootStore = NIL_RTCRSTORE;
@@ -770,7 +774,10 @@ static int supHardNtViCheckIfNotSignedOk(RTLDRMOD hLdrMod, PCRTUTF16 pwszName, u
 {
     RT_NOREF1(hLdrMod);
 
-    if (fFlags & (SUPHNTVI_F_REQUIRE_BUILD_CERT | SUPHNTVI_F_REQUIRE_KERNEL_CODE_SIGNING))
+    if (fFlags & (  SUPHNTVI_F_REQUIRE_BUILD_CERT
+                  | SUPHNTVI_F_REQUIRE_SPECIAL_TRUST_CERT
+                  | SUPHNTVI_F_REQUIRE_CODE_SIGNING
+                  | SUPHNTVI_F_REQUIRE_KERNEL_CODE_SIGNING))
         return rc;
 
     /*
@@ -1041,7 +1048,7 @@ static DECLCALLBACK(int) supHardNtViCertVerifyCallback(PCRTCRX509CERTIFICATE pCe
     }
 
     /*
-     * Standard code signing capabilites required.
+     * Standard code signing capabilites required (SUPHNTVI_F_REQUIRE_CODE_SIGNING is implied here).
      */
     int rc = RTCrPkcs7VerifyCertCallbackCodeSigning(pCert, hCertPaths, fFlags, NULL, pErrInfo);
     if (   RT_SUCCESS(rc)
@@ -1190,6 +1197,22 @@ static DECLCALLBACK(int) supHardNtViCallback(RTLDRMOD hLdrMod, PCRTLDRSIGNATUREI
                                  g_BuildX509Cert.TbsCertificate.SerialNumber.Asn1Core.cb,
                                  g_BuildX509Cert.TbsCertificate.SerialNumber.Asn1Core.uData.pv);
     }
+    /** @todo apply these to all signatures, but don't fail in a bad way for
+     *        stuff with extra signatures (typically from microsoft). */
+    else if (   (pNtViRdr->fFlags & SUPHNTVI_F_REQUIRE_SPECIAL_TRUST_CERT)
+             && pInfo->iSignature == 0)
+    {
+        PCRTCRCERTCTX const pCertCtx = RTCrStoreCertByIssuerAndSerialNo(g_hSpecialTrustStore,
+                                                                        &pSignerInfo->IssuerAndSerialNumber.Name,
+                                                                        &pSignerInfo->IssuerAndSerialNumber.SerialNumber);
+        if (!pCertCtx)
+            return RTErrInfoSetF(pErrInfo, VERR_SUP_VP_NOT_SIGNED_WITH_SPECIALLY_TRUSTED_CERT,
+                                 "Signature #%u/%u: Not signed with the build certificate or any of the specially trusted ones (serial %.*Rhxs)",
+                                 pInfo->iSignature + 1, pInfo->cSignatures,
+                                 pSignerInfo->IssuerAndSerialNumber.SerialNumber.Asn1Core.cb,
+                                 pSignerInfo->IssuerAndSerialNumber.SerialNumber.Asn1Core.uData.pv);
+        RTCrCertCtxRelease(pCertCtx);
+    }
 
     /*
      * We instruction the verifier to use the signing time counter signature
@@ -1261,7 +1284,9 @@ static DECLCALLBACK(int) supHardNtViCallback(RTLDRMOD hLdrMod, PCRTLDRSIGNATUREI
             pNtViRdr->cOkaySignatures++;
 
 #ifdef IN_RING3 /* Hack alert! (see above) */
-            if ((pNtViRdr->fFlags & SUPHNTVI_F_REQUIRE_BUILD_CERT) && g_uBuildTimestampHack == 0 && cTimes > 1)
+            if (   (pNtViRdr->fFlags & (SUPHNTVI_F_REQUIRE_BUILD_CERT | SUPHNTVI_F_REQUIRE_SPECIAL_TRUST_CERT))
+                && g_uBuildTimestampHack == 0
+                && cTimes > 1)
                 g_uBuildTimestampHack = uTimestamp;
 #endif
             return VINF_SUCCESS;
@@ -1314,7 +1339,7 @@ static DECLCALLBACK(int) supHardNtViCallback(RTLDRMOD hLdrMod, PCRTLDRSIGNATUREI
                              rc, RTTimeSpecGetSeconds(&aTimes[i].TimeSpec), aTimes[i].pszDesc));
 
                 /* This leniency is not applicable to build certificate requirements (signature #1 only). */
-                if (  !(pNtViRdr->fFlags & SUPHNTVI_F_REQUIRE_BUILD_CERT)
+                if (  !(pNtViRdr->fFlags & (SUPHNTVI_F_REQUIRE_BUILD_CERT | SUPHNTVI_F_REQUIRE_SPECIAL_TRUST_CERT))
                     || pInfo->iSignature != 0)
                 {
                     pNtViRdr->cNokSignatures++;
@@ -1712,7 +1737,8 @@ static int supHardNtViCertStoreAddArray(RTCRSTORE hStore, PCSUPTAENTRY paCerts, 
 {
     for (uint32_t i = 0; i < cCerts; i++)
     {
-        int rc = RTCrStoreCertAddEncoded(hStore, RTCRCERTCTX_F_ENC_TAF_DER, paCerts[i].pch, paCerts[i].cb, pErrInfo);
+        int rc = RTCrStoreCertAddEncoded(hStore, !paCerts[i].fIsCert ? RTCRCERTCTX_F_ENC_TAF_DER : RTCRCERTCTX_F_ENC_X509_DER,
+                                         paCerts[i].pch, paCerts[i].cb, pErrInfo);
         if (RT_FAILURE(rc))
             return rc;
     }
@@ -1975,6 +2001,13 @@ DECLHIDDEN(int) supHardenedWinInitImageVerifier(PRTERRINFO pErrInfo)
          * Initialize it, leaving the cleanup to the termination call.
          */
         rc = supHardNtViCertInit(&g_BuildX509Cert, g_abSUPBuildCert, g_cbSUPBuildCert, pErrInfo, "BuildCertificate");
+        SUPTAENTRY const aBuildCerts[1] = { { g_abSUPBuildCert, g_cbSUPBuildCert, true }, };
+        if (RT_SUCCESS(rc))
+            rc = supHardNtViCertStoreInit(&g_hSpecialTrustStore,
+                                          aBuildCerts, RT_ELEMENTS(aBuildCerts),
+                                          g_aSUPTrustedTAs, g_cSUPTrustedTAs,
+                                          NULL, 0,
+                                          pErrInfo, "SpecialTrustStore");
         if (RT_SUCCESS(rc))
             rc = supHardNtViCertStoreInit(&g_hSpcRootStore, g_aSUPSpcRootTAs, g_cSUPSpcRootTAs,
                                           NULL, 0, NULL, 0, pErrInfo, "SpcRoot");
@@ -2058,6 +2091,9 @@ DECLHIDDEN(void) supHardenedWinTermImageVerifier(void)
     g_hNtKernelRootStore = NIL_RTCRSTORE;
     RTCrStoreRelease(g_hSpcRootStore);
     g_hSpcRootStore = NIL_RTCRSTORE;
+
+    RTCrStoreRelease(g_hSpecialTrustStore);
+    g_hSpecialTrustStore = NIL_RTCRSTORE;
 }
 
 #ifdef IN_RING3
