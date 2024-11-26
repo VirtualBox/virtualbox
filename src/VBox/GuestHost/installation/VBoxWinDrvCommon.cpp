@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvCommon.cpp 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvCommon.cpp 107167 2024-11-26 09:06:00Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvCommon - Common Windows driver functions.
  */
@@ -248,6 +248,92 @@ int VBoxWinDrvInfQueryModelsSectionName(HINF hInf, PRTUTF16 *ppwszValue, PDWORD 
     }
 
     return rc;
+}
+
+/**
+ * Queries the "Version" section of an INF file, extended version.
+ *
+ * @returns VBox status code.
+ * @param   hInf                INF handle to use.
+ * @param   uIndex              Index of version information to query. Usually 0.
+ * @param   pVer                Where to return the Version section information on success.
+ */
+int VBoxWinDrvInfQuerySectionVerEx(HINF hInf, UINT uIndex, PVBOXWINDRVINFSEC_VERSION pVer)
+{
+    DWORD dwSize = 0;
+    bool fRc = SetupGetInfInformationW(hInf, INFINFO_INF_SPEC_IS_HINF, NULL, 0, &dwSize);
+    if (!fRc || !dwSize)
+        return VERR_NOT_FOUND;
+
+    int rc = VINF_SUCCESS;
+
+    PSP_INF_INFORMATION pInfo = (PSP_INF_INFORMATION)RTMemAlloc(dwSize);
+    AssertPtrReturn(pInfo, VERR_NO_MEMORY);
+    fRc = SetupGetInfInformationW(hInf, INFINFO_INF_SPEC_IS_HINF, pInfo, dwSize, NULL);
+    if (fRc)
+    {
+        if (pInfo->InfStyle == INF_STYLE_WIN4)
+        {
+            dwSize = 0;
+            fRc = SetupQueryInfVersionInformationW(pInfo, uIndex, NULL /* Key, NULL means all */,
+                                                   NULL, 0, &dwSize);
+            if (fRc)
+            {
+                PRTUTF16 pwszInfo = (PRTUTF16)RTMemAlloc(dwSize * sizeof(RTUTF16));
+                if (pwszInfo)
+                {
+                    fRc = SetupQueryInfVersionInformationW(pInfo, uIndex, NULL /* Key, NULL means all */,
+                                                           pwszInfo, dwSize, NULL);
+
+/** Macro to find a specific key and assign its value to the given string. */
+#define GET_VALUE(a_Key, a_String) \
+    if (!RTUtf16ICmp(pwsz, a_Key)) \
+    { \
+        rc = RTUtf16Printf(a_String, RT_ELEMENTS(a_String), "%ls", pwsz + cch + 1 /* SKip key + terminator */); \
+        AssertRCBreak(rc); \
+    }
+                    PRTUTF16 pwsz = pwszInfo;
+                    while (dwSize)
+                    {
+                        size_t const cch = RTUtf16Len(pwsz);
+
+                        GET_VALUE(L"DriverVer", pVer->wszDriverVer);
+                        GET_VALUE(L"Provider", pVer->wszProvider);
+                        GET_VALUE(L"CatalogFile", pVer->wszCatalogFile);
+
+                        dwSize -= (DWORD)cch + 1;
+                        pwsz   += cch + 1;
+                    }
+                    Assert(dwSize == 0);
+#undef GET_VALUE
+                    RTMemFree(pwszInfo);
+                }
+                else
+                    rc = VERR_NO_MEMORY;
+            }
+            else
+                rc = RTErrConvertFromWin32(GetLastError());
+        }
+        else /* Legacy INF files are not supported. */
+            rc = VERR_NOT_SUPPORTED;
+    }
+    else
+        rc = RTErrConvertFromWin32(GetLastError());
+
+    RTMemFree(pInfo);
+    return rc;
+}
+
+/**
+ * Queries the "Version" section of an INF file.
+ *
+ * @returns VBox status code.
+ * @param   hInf                INF handle to use.
+ * @param   pVer                Where to return the Version section information on success.
+ */
+int VBoxWinDrvInfQuerySectionVer(HINF hInf, PVBOXWINDRVINFSEC_VERSION pVer)
+{
+    return VBoxWinDrvInfQuerySectionVerEx(hInf, 0 /* uIndex */, pVer);
 }
 
 /**

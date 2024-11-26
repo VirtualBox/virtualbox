@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvStore.cpp 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvStore.cpp 107167 2024-11-26 09:06:00Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvStore - Windows driver store handling.
  */
@@ -50,7 +50,9 @@
 # include <iprt/stream.h>
 #endif
 
+#include <VBox/GuestHost/VBoxWinDrvDefs.h>
 #include <VBox/GuestHost/VBoxWinDrvStore.h>
+
 #include "VBoxWinDrvCommon.h"
 
 
@@ -431,6 +433,10 @@ static int vboxWinDrvStoreEntryInitFromInf(PVBOXWINDRVSTOREENTRY pEntry, const c
                 RTUtf16Free(pwszModel);
             }
         }
+
+        int rc2 = VBoxWinDrvInfQuerySectionVer(hInf, &pEntry->Ver);
+        if (RT_SUCCESS(rc))
+            rc = rc2;
 
         RTUtf16Free(pwszFile);
     }

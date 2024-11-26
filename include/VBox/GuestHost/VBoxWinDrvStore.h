@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvStore.h 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvStore.h 107167 2024-11-26 09:06:00Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvInst - Header for Windows driver store handling.
  */
@@ -44,6 +44,8 @@
 #include <iprt/path.h>
 #include <iprt/utf16.h>
 
+#include <VBox/GuestHost/VBoxWinDrvDefs.h>
+
 /** Maximum model PnP ID length (in characters). */
 #define VBOXWINDRVSTORE_MAX_PNP_ID          255
 /** Maximum model name length (in characters). */
@@ -70,17 +72,19 @@ typedef VBOXWINDRVSTORELIST *PVBOXWINDRVSTORELIST;
 typedef struct _VBOXWINDRVSTOREENTRY
 {
     RTLISTNODE Node;
+    /** Version section information. */
+    VBOXWINDRVINFSEC_VERSION Ver;
     /** Full path to the oemXXX.inf file within the driver store. */
-    RTUTF16   wszInfFile[RTPATH_MAX];
+    RTUTF16                  wszInfFile[RTPATH_MAX];
     /** PnP ID of the driver.
      *  Only the first (valid) PnP ID is supported for now */
-    RTUTF16   wszPnpId[VBOXWINDRVSTORE_MAX_PNP_ID];
+    RTUTF16                  wszPnpId[VBOXWINDRVSTORE_MAX_PNP_ID];
     /** Model name of the driver.
      *  Only the first (valid) model name is supported for now */
-    RTUTF16   wszModel[VBOXWINDRVSTORE_MAX_MODEL_NAME];
+    RTUTF16                  wszModel[VBOXWINDRVSTORE_MAX_MODEL_NAME];
     /** Driver name (.sys).
      *  Only the first (valid) driver name is supported for now */
-    RTUTF16   wszDriverName[VBOXWINDRVSTORE_MAX_DRIVER_NAME];
+    RTUTF16                  wszDriverName[VBOXWINDRVSTORE_MAX_DRIVER_NAME];
 } VBOXWINDRVSTOREENTRY;
 /** Pointer to a Windows driver store entry. */
 typedef VBOXWINDRVSTOREENTRY *PVBOXWINDRVSTOREENTRY;

@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvInst.cpp 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvInst.cpp 107167 2024-11-26 09:06:00Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvInst - Windows driver installation handling.
  */
@@ -53,8 +53,10 @@
 
 #include <VBox/version.h>
 
+#include <VBox/GuestHost/VBoxWinDrvDefs.h>
 #include <VBox/GuestHost/VBoxWinDrvInst.h>
 #include <VBox/GuestHost/VBoxWinDrvStore.h>
+
 #include "VBoxWinDrvCommon.h"
 
 

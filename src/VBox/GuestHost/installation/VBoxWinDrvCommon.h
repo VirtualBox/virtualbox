@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvCommon.h 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvCommon.h 107167 2024-11-26 09:06:00Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvCommon - Common Windows driver functions.
  */
@@ -31,17 +31,12 @@
 # pragma once
 #endif
 
-#if defined(RT_ARCH_AMD64)
-# define VBOXWINDRVINF_NATIVE_ARCH_STR     "AMD64"
-#elif defined(RT_ARCH_X86)
-# define VBOXWINDRVINF_NATIVE_ARCH_STR     "X86"
-#elif defined(RT_ARCH_ARM64)
-# define VBOXWINDRVINF_NATIVE_ARCH_STR     "ARM64"
-#else
-# error "Port me!"
-#endif
+#include <iprt/win/windows.h>
+#include <iprt/win/setupapi.h>
 
-#define VBOXWINDRVINF_DOT_NT_NATIVE_ARCH_STR ".NT" VBOXWINDRVINF_NATIVE_ARCH_STR
+#include <iprt/utf16.h>
+
+#include <VBox/GuestHost/VBoxWinDrvDefs.h>
 
 int VBoxWinDrvInfOpenEx(PCRTUTF16 pwszInfFile, PRTUTF16 pwszClassName, HINF *phInf);
 int VBoxWinDrvInfOpen(PCRTUTF16 pwszInfFile, HINF *phInf);
@@ -51,6 +46,8 @@ int VBoxWinDrvInfQueryFirstModel(HINF hInf, PRTUTF16 *ppwszModel);
 int VBoxWinDrvInfQueryFirstPnPId(HINF hInf, PRTUTF16 pwszModel, PRTUTF16 *ppwszPnPId);
 int VBoxWinDrvInfQueryKeyValue(PINFCONTEXT pCtx, DWORD iValue, PRTUTF16 *ppwszValue, PDWORD pcwcValue);
 int VBoxWinDrvInfQueryModelsSectionName(HINF hInf, PRTUTF16 *ppwszValue, PDWORD pcwcValue);
+int VBoxWinDrvInfQuerySectionVerEx(HINF hInf, UINT uIndex, PVBOXWINDRVINFSEC_VERSION pVer);
+int VBoxWinDrvInfQuerySectionVer(HINF hInf, PVBOXWINDRVINFSEC_VERSION pVer);
 
 #endif /* !VBOX_INCLUDED_SRC_installation_VBoxWinDrvCommon_h */
 
