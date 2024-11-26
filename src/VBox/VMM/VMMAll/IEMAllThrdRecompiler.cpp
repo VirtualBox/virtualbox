@@ -1,4 +1,4 @@
-/* $Id: IEMAllThrdRecompiler.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: IEMAllThrdRecompiler.cpp 107184 2024-11-26 22:32:44Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Instruction Decoding and Threaded Recompilation.
  *
@@ -911,10 +911,19 @@ DECLCALLBACK(int) iemTbInit(PVMCC pVM, uint32_t cInitialTbs, uint32_t cMaxTbs,
 
 /**
  * Inner free worker.
+ *
+ * The @a a_fType parameter allows us to eliminate the type check when we know
+ * which type of TB is being freed.
  */
-static void iemTbAllocatorFreeInner(PVMCPUCC pVCpu, PIEMTBALLOCATOR pTbAllocator,
-                                    PIEMTB pTb, uint32_t idxChunk, uint32_t idxInChunk)
+template<uint32_t a_fType>
+DECL_FORCE_INLINE(void)
+iemTbAllocatorFreeInner(PVMCPUCC pVCpu, PIEMTBALLOCATOR pTbAllocator, PIEMTB pTb, uint32_t idxChunk, uint32_t idxInChunk)
 {
+#ifdef VBOX_WITH_IEM_NATIVE_RECOMPILER
+    AssertCompile(a_fType == 0 || a_fType == IEMTB_F_TYPE_THREADED || a_fType == IEMTB_F_TYPE_NATIVE);
+#else
+    AssertCompile(a_fType == 0 || a_fType == IEMTB_F_TYPE_THREADED);
+#endif
     Assert(idxChunk < pTbAllocator->cAllocatedChunks); RT_NOREF(idxChunk);
     Assert(idxInChunk < pTbAllocator->cTbsPerChunk); RT_NOREF(idxInChunk);
     Assert((uintptr_t)(pTb - pTbAllocator->aChunks[idxChunk].paTbs) == idxInChunk);
@@ -931,22 +940,39 @@ static void iemTbAllocatorFreeInner(PVMCPUCC pVCpu, PIEMTBALLOCATOR pTbAllocator
     /*
      * Free the TB itself.
      */
-    switch (pTb->fFlags & IEMTB_F_TYPE_MASK)
-    {
-        case IEMTB_F_TYPE_THREADED:
-            pTbAllocator->cThreadedTbs -= 1;
-            RTMemFree(pTb->Thrd.paCalls);
-            break;
+    if RT_CONSTEXPR_IF(a_fType == 0)
+        switch (pTb->fFlags & IEMTB_F_TYPE_MASK)
+        {
+            case IEMTB_F_TYPE_THREADED:
+                pTbAllocator->cThreadedTbs -= 1;
+                RTMemFree(pTb->Thrd.paCalls);
+                break;
 #ifdef VBOX_WITH_IEM_NATIVE_RECOMPILER
-        case IEMTB_F_TYPE_NATIVE:
-            pTbAllocator->cNativeTbs -= 1;
-            iemExecMemAllocatorFree(pVCpu, pTb->Native.paInstructions,
-                                    pTb->Native.cInstructions * sizeof(pTb->Native.paInstructions[0]));
-            pTb->Native.paInstructions = NULL; /* required by iemExecMemAllocatorPrune */
-            break;
+            case IEMTB_F_TYPE_NATIVE:
+                pTbAllocator->cNativeTbs -= 1;
+                iemExecMemAllocatorFree(pVCpu, pTb->Native.paInstructions,
+                                        pTb->Native.cInstructions * sizeof(pTb->Native.paInstructions[0]));
+                pTb->Native.paInstructions = NULL; /* required by iemExecMemAllocatorPrune */
+                break;
 #endif
-        default:
-            AssertFailed();
+            default:
+                AssertFailed();
+        }
+#ifdef VBOX_WITH_IEM_NATIVE_RECOMPILER
+    else if RT_CONSTEXPR_IF(a_fType == IEMTB_F_TYPE_NATIVE)
+    {
+        Assert((pTb->fFlags & IEMTB_F_TYPE_MASK) == IEMTB_F_TYPE_NATIVE);
+        pTbAllocator->cNativeTbs -= 1;
+        iemExecMemAllocatorFree(pVCpu, pTb->Native.paInstructions,
+                                pTb->Native.cInstructions * sizeof(pTb->Native.paInstructions[0]));
+        pTb->Native.paInstructions = NULL; /* required by iemExecMemAllocatorPrune */
+    }
+#endif
+    else
+    {
+        Assert((pTb->fFlags & IEMTB_F_TYPE_MASK) == IEMTB_F_TYPE_THREADED);
+        pTbAllocator->cThreadedTbs -= 1;
+        RTMemFree(pTb->Thrd.paCalls);
     }
 
     RTMemFree(IEMTB_GET_TB_LOOKUP_TAB_ENTRY(pTb, 0)); /* Frees both the TB lookup table and opcode bytes. */
@@ -992,9 +1018,44 @@ DECLHIDDEN(void) iemTbAllocatorFree(PVMCPUCC pVCpu, PIEMTB pTb)
      * Invalidate the TB lookup pointer and call the inner worker.
      */
     pVCpu->iem.s.ppTbLookupEntryR3 = &pVCpu->iem.s.pTbLookupEntryDummyR3;
-    iemTbAllocatorFreeInner(pVCpu, pTbAllocator, pTb, idxChunk, (uint32_t)idxInChunk);
+    iemTbAllocatorFreeInner<0>(pVCpu, pTbAllocator, pTb, idxChunk, (uint32_t)idxInChunk);
 }
 
+#ifdef VBOX_WITH_IEM_NATIVE_RECOMPILER
+
+/**
+ * Interface used by iemExecMemAllocatorPrune.
+ */
+DECLHIDDEN(void) iemTbAllocatorFreeBulk(PVMCPUCC pVCpu, PIEMTBALLOCATOR pTbAllocator, PIEMTB pTb)
+{
+    Assert(pTbAllocator->uMagic == IEMTBALLOCATOR_MAGIC);
+
+    uint8_t const idxChunk = pTb->idxAllocChunk;
+    AssertLogRelReturnVoid(idxChunk < pTbAllocator->cAllocatedChunks);
+    uintptr_t const idxInChunk = pTb - pTbAllocator->aChunks[idxChunk].paTbs;
+    AssertLogRelReturnVoid(idxInChunk < pTbAllocator->cTbsPerChunk);
+
+    iemTbAllocatorFreeInner<IEMTB_F_TYPE_NATIVE>(pVCpu, pTbAllocator, pTb, idxChunk, (uint32_t)idxInChunk);
+}
+
+
+/**
+ * Interface used by iemExecMemAllocatorPrune.
+ */
+DECLHIDDEN(PIEMTBALLOCATOR) iemTbAllocatorFreeBulkStart(PVMCPUCC pVCpu)
+{
+    PIEMTBALLOCATOR const pTbAllocator = pVCpu->iem.s.pTbAllocatorR3;
+    Assert(pTbAllocator && pTbAllocator->uMagic == IEMTBALLOCATOR_MAGIC);
+
+    iemTbAllocatorProcessDelayedFrees(pVCpu, pTbAllocator);
+
+    /* It should be sufficient to do this once. */
+    pVCpu->iem.s.ppTbLookupEntryR3 = &pVCpu->iem.s.pTbLookupEntryDummyR3;
+
+    return pTbAllocator;
+}
+
+#endif /* VBOX_WITH_IEM_NATIVE_RECOMPILER */
 
 /**
  * Schedules a TB for freeing when it's not longer being executed and/or part of
@@ -1082,7 +1143,7 @@ static int iemTbAllocatorFreeAll(PVMCPUCC pVCpu)
         {
             PIEMTB const pTb = &paTbs[idxTb];
             if (pTb->fFlags)
-                iemTbAllocatorFreeInner(pVCpu, pTbAllocator, pTb, idxChunk, idxTb);
+                iemTbAllocatorFreeInner<0>(pVCpu, pTbAllocator, pTb, idxChunk, idxTb);
         }
     }
 
@@ -1246,7 +1307,7 @@ static PIEMTB iemTbAllocatorAllocSlow(PVMCPUCC pVCpu, PIEMTBALLOCATOR const pTbA
         }
 
         /* Free the TB. */
-        iemTbAllocatorFreeInner(pVCpu, pTbAllocator, pTb, idxChunk, idxInChunk);
+        iemTbAllocatorFreeInner<0>(pVCpu, pTbAllocator, pTb, idxChunk, idxInChunk);
         cFreedTbs++; /* paranoia */
     }
     pTbAllocator->iPruneFrom = idxTbPruneFrom;
@@ -1292,6 +1353,7 @@ DECL_FORCE_INLINE(PIEMTB) iemTbAllocatorAlloc(PVMCPUCC pVCpu, bool fThreaded)
 }
 
 
+#if 0 /*def VBOX_WITH_IEM_NATIVE_RECOMPILER*/
 /**
  * This is called when we're out of space for native TBs.
  *
@@ -1369,7 +1431,7 @@ void iemTbAllocatorFreeupNativeSpace(PVMCPUCC pVCpu, uint32_t cNeededInstrs)
         if (cNativeTbs >= 2)
         {
             cMaxInstrs = RT_MAX(cMaxInstrs, pTb->Native.cInstructions);
-            iemTbAllocatorFreeInner(pVCpu, pTbAllocator, pTb, idxChunk, idxInChunk);
+            iemTbAllocatorFreeInner<IEMTB_F_TYPE_NATIVE>(pVCpu, pTbAllocator, pTb, idxChunk, idxInChunk);
             cFreedTbs++;
             if (cFreedTbs >= 8 && cMaxInstrs >= cNeededInstrs)
                 break;
@@ -1379,6 +1441,7 @@ void iemTbAllocatorFreeupNativeSpace(PVMCPUCC pVCpu, uint32_t cNeededInstrs)
 
     STAM_REL_PROFILE_STOP(&pTbAllocator->StatPruneNative, a);
 }
+#endif /* unused / VBOX_WITH_IEM_NATIVE_RECOMPILER */
 
 
 /*********************************************************************************************************************************
@@ -2791,7 +2854,8 @@ static bool iemThreadedCompileCheckIrqAfter(PVMCPUCC pVCpu, PIEMTB pTb)
  * @param   fExtraFlags Extra translation block flags: IEMTB_F_INHIBIT_SHADOW,
  *                      IEMTB_F_INHIBIT_NMI, IEMTB_F_CS_LIM_CHECKS.
  */
-static VBOXSTRICTRC iemThreadedCompile(PVMCC pVM, PVMCPUCC pVCpu, RTGCPHYS GCPhysPc, uint32_t fExtraFlags) IEM_NOEXCEPT_MAY_LONGJMP
+static IEM_DECL_MSC_GUARD_IGNORE VBOXSTRICTRC
+iemThreadedCompile(PVMCC pVM, PVMCPUCC pVCpu, RTGCPHYS GCPhysPc, uint32_t fExtraFlags) IEM_NOEXCEPT_MAY_LONGJMP
 {
     IEMTLBTRACE_TB_COMPILE(pVCpu, GCPhysPc);
     Assert(!(fExtraFlags & IEMTB_F_TYPE_MASK));
@@ -3511,7 +3575,7 @@ DECL_FORCE_INLINE(PIEMTB *) iemTbGetTbLookupEntryWithRip(PCIEMTB pTb, uint8_t uT
  *                  thread.
  * @param   pTb     The translation block to execute.
  */
-static VBOXSTRICTRC iemTbExec(PVMCPUCC pVCpu, PIEMTB pTb) IEM_NOEXCEPT_MAY_LONGJMP
+static IEM_DECL_MSC_GUARD_IGNORE VBOXSTRICTRC iemTbExec(PVMCPUCC pVCpu, PIEMTB pTb) IEM_NOEXCEPT_MAY_LONGJMP
 {
     Assert(!(pVCpu->iem.s.GCPhysInstrBuf & (RTGCPHYS)GUEST_PAGE_OFFSET_MASK));
 

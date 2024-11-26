@@ -1,4 +1,4 @@
-/* $Id: IEMN8veRecompilerTlbLookup.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: IEMN8veRecompilerTlbLookup.h 107184 2024-11-26 22:32:44Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager - Native Recompiler TLB Lookup Code Emitter.
  */
@@ -94,7 +94,7 @@ typedef struct IEMNATIVEEMITTLBSTATE
     uint64_t const  uAbsPtr;
 
     IEMNATIVEEMITTLBSTATE(PIEMRECOMPILERSTATE a_pReNative, uint32_t *a_poff, uint8_t a_idxVarGCPtrMem,
-                          uint8_t a_iSegReg, uint8_t a_cbMem, uint8_t a_offDisp = 0)
+                          uint8_t const a_iSegReg, bool const a_fFlat, uint8_t const a_cbMem, uint8_t const a_offDisp = 0)
 #ifdef IEMNATIVE_WITH_TLB_LOOKUP
         /* 32-bit and 64-bit wraparound will require special handling, so skip these for absolute addresses. */
         :           fSkip(      a_pReNative->Core.aVars[IEMNATIVE_VAR_IDX_UNPACK(a_idxVarGCPtrMem)].enmKind
@@ -119,16 +119,16 @@ typedef struct IEMNATIVEEMITTLBSTATE
         ,       idxRegPtr(      a_pReNative->Core.aVars[IEMNATIVE_VAR_IDX_UNPACK(a_idxVarGCPtrMem)].enmKind
                              != kIemNativeVarKind_Immediate
                           && !fSkip
-                          ? iemNativeVarRegisterAcquire(a_pReNative, a_idxVarGCPtrMem, a_poff,
-                                                        true /*fInitialized*/, IEMNATIVE_CALL_ARG2_GREG)
+                          ? iemNativeVarRegisterAcquireInitedWithPref(a_pReNative, a_idxVarGCPtrMem, a_poff,
+                                                                      IEMNATIVE_CALL_ARG2_GREG)
                           : idxRegPtrHlp)
-        ,   idxRegSegBase(a_iSegReg == UINT8_MAX || fSkip
+        ,   idxRegSegBase(a_fFlat || a_iSegReg == UINT8_MAX || fSkip
                           ? UINT8_MAX
                           : iemNativeRegAllocTmpForGuestReg(a_pReNative, a_poff, IEMNATIVEGSTREG_SEG_BASE(a_iSegReg)))
-        ,  idxRegSegLimit((a_iSegReg == UINT8_MAX || (a_pReNative->fExec & IEM_F_MODE_CPUMODE_MASK) == IEMMODE_64BIT) || fSkip
+        ,  idxRegSegLimit(a_fFlat || a_iSegReg == UINT8_MAX || (a_pReNative->fExec & IEM_F_MODE_CPUMODE_MASK) == IEMMODE_64BIT || fSkip
                           ? UINT8_MAX
                           : iemNativeRegAllocTmpForGuestReg(a_pReNative, a_poff, IEMNATIVEGSTREG_SEG_LIMIT(a_iSegReg)))
-        , idxRegSegAttrib((a_iSegReg == UINT8_MAX || (a_pReNative->fExec & IEM_F_MODE_CPUMODE_MASK) == IEMMODE_64BIT) || fSkip
+        , idxRegSegAttrib(a_fFlat || a_iSegReg == UINT8_MAX || (a_pReNative->fExec & IEM_F_MODE_CPUMODE_MASK) == IEMMODE_64BIT || fSkip
                           ? UINT8_MAX
                           : iemNativeRegAllocTmpForGuestReg(a_pReNative, a_poff, IEMNATIVEGSTREG_SEG_ATTRIB(a_iSegReg)))
         ,         idxReg1(!fSkip ? iemNativeRegAllocTmp(a_pReNative, a_poff) : UINT8_MAX)
@@ -147,7 +147,8 @@ typedef struct IEMNATIVEEMITTLBSTATE
                           : a_pReNative->Core.aVars[IEMNATIVE_VAR_IDX_UNPACK(a_idxVarGCPtrMem)].u.uValue)
 
     {
-        RT_NOREF(a_cbMem, a_offDisp);
+        Assert(a_fFlat ? a_iSegReg == UINT8_MAX : a_iSegReg != UINT8_MAX);
+        RT_NOREF(a_offDisp);
     }
 
     /* Alternative constructor for PUSH and POP where we don't have a GCPtrMem
@@ -304,8 +305,12 @@ DECLASM(void) iemNativeHlpAsmSafeWrapCheckTlbLookup(void);
  * @param   off                 .
  * @param   pTlbState           .
  * @param   iSegReg             .
- * @param   cbMem               .
- * @param   fAlignMaskAndCtl    The low 8-bit is the alignment mask, ie. a
+ * @param   idxLabelTlbLookup   .
+ * @param   idxLabelTlbMiss     .
+ * @param   idxRegMemResult     .
+ * @param   offDisp             .
+ * @tparam  a_cbMem               .
+ * @tparam  a_fAlignMaskAndCtl  The low 8-bit is the alignment mask, ie. a
  *                              128-bit aligned access passes 15.  This is only
  *                              applied to ring-3 code, when dictated by the
  *                              control bits and for atomic accesses.
@@ -317,19 +322,15 @@ DECLASM(void) iemNativeHlpAsmSafeWrapCheckTlbLookup(void);
  *                              Any non-zero upper bits means we will go to
  *                              tlbmiss on anything out of alignment according
  *                              to the mask in the low 8 bits.
- * @param   fAccess             .
- * @param   idxLabelTlbLookup   .
- * @param   idxLabelTlbMiss     .
- * @param   idxRegMemResult     .
- * @param   offDisp             .
+ * @tparam  a_fAccess            .
  * @tparam  a_fDataTlb          .
  * @tparam  a_fNoReturn         .
  */
-template<bool const a_fDataTlb, bool const a_fNoReturn = false>
+template<bool const a_fDataTlb, const uint8_t a_cbMem, uint32_t a_fAlignMaskAndCtl, uint32_t a_fAccess,
+         bool const a_fNoReturn = false>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMITTLBSTATE const * const pTlbState,
-                       uint8_t iSegReg, uint8_t cbMem, uint32_t fAlignMaskAndCtl, uint32_t fAccess,
-                       uint32_t idxLabelTlbLookup, uint32_t idxLabelTlbMiss, uint8_t idxRegMemResult,
+                       uint8_t iSegReg, uint32_t idxLabelTlbLookup, uint32_t idxLabelTlbMiss, uint8_t idxRegMemResult,
                        uint8_t offDisp = 0)
 {
     Assert(!pTlbState->fSkip);
@@ -355,7 +356,7 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
         else if (pTlbState->idxRegPtr == UINT8_MAX)
             off = iemNativeEmitCmpGpr32WithImmEx(pCodeBuf, off, pTlbState->idxRegSegLimit,
                                                  (uint32_t)(pTlbState->uAbsPtr + offDisp));
-        else if (cbMem == 1)
+        else if RT_CONSTEXPR_IF(a_cbMem == 1)
             off = iemNativeEmitCmpGpr32WithGprEx(pCodeBuf, off, pTlbState->idxRegSegLimit, pTlbState->idxReg2);
         else
         {   /* use idxRegMemResult to calc the displaced address. */
@@ -377,10 +378,10 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
         /* cmp  reg1, reg2 (64-bit) / imm (32-bit) */
         if (pTlbState->idxRegPtr != UINT8_MAX)
             off = iemNativeEmitCmpGprWithGprEx(pCodeBuf, off, pTlbState->idxReg1,
-                                               cbMem > 1 || offDisp != 0 ? pTlbState->idxReg2 : pTlbState->idxRegPtr);
+                                               a_cbMem > 1 || offDisp != 0 ? pTlbState->idxReg2 : pTlbState->idxRegPtr);
         else
             off = iemNativeEmitCmpGpr32WithImmEx(pCodeBuf, off, pTlbState->idxReg1,
-                                                 (uint32_t)(pTlbState->uAbsPtr + offDisp + cbMem - 1)); /* fSkip=true on overflow. */
+                                                 (uint32_t)(pTlbState->uAbsPtr + offDisp + a_cbMem - 1)); /* fSkip=true on overflow. */
         /* jbe  tlbmiss */
         off = iemNativeEmitJccToLabelEx(pReNative, pCodeBuf, off, idxLabelTlbMiss, kIemNativeInstrCond_be);
         /* jmp  limitdone */
@@ -399,30 +400,31 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
      */
     uint8_t const idxRegFlatPtr = iSegReg != UINT8_MAX || pTlbState->idxRegPtr == UINT8_MAX || offDisp != 0
                                 ? idxRegMemResult : pTlbState->idxRegPtr; /* (not immediately ready for tlblookup use) */
-    uint8_t const fAlignMask    = a_fDataTlb ? (uint8_t)fAlignMaskAndCtl : 0;
+    RT_CONSTEXPR
+    uint8_t const fAlignMask    = a_fDataTlb ? (uint8_t)(a_fAlignMaskAndCtl & 0xff) : 0;
     if (a_fDataTlb)
     {
-        Assert(!(fAlignMaskAndCtl & ~(UINT32_C(0xff) | IEM_MEMMAP_F_ALIGN_SSE | IEM_MEMMAP_F_ALIGN_GP | IEM_MEMMAP_F_ALIGN_GP_OR_AC)));
+        AssertCompile(!(a_fAlignMaskAndCtl & ~(UINT32_C(0xff) | IEM_MEMMAP_F_ALIGN_SSE | IEM_MEMMAP_F_ALIGN_GP | IEM_MEMMAP_F_ALIGN_GP_OR_AC)));
         Assert(RT_IS_POWER_OF_TWO(fAlignMask + 1U));
-        Assert(cbMem == fAlignMask + 1U || !(fAccess & IEM_ACCESS_ATOMIC));
-        Assert(cbMem < 128); /* alignment test assumptions */
+        Assert(a_cbMem == fAlignMask + 1U || !(a_fAccess & IEM_ACCESS_ATOMIC));
+        Assert(a_cbMem < 128); /* alignment test assumptions */
     }
 
     uint32_t offMisalignedAccess             = UINT32_MAX;
     uint32_t offFixupMisalignedAccessJmpBack = UINT32_MAX;
     if (   a_fDataTlb
-        && !(fAlignMaskAndCtl & ~UINT32_C(0xff))
-        && !(fAccess & IEM_ACCESS_ATOMIC)
-        && cbMem > 1
-        && RT_IS_POWER_OF_TWO(cbMem)
+        && !(a_fAlignMaskAndCtl & ~UINT32_C(0xff))
+        && !(a_fAccess & IEM_ACCESS_ATOMIC)
+        && a_cbMem > 1
+        && RT_IS_POWER_OF_TWO(a_cbMem)
         && !(pReNative->fExec & IEM_F_X86_AC))
     {
         /* tlbmisaligned: */
         offMisalignedAccess = off;
         /* reg1 = regflat & 0xfff */
         off = iemNativeEmitGpr32EqGprAndImmEx(pCodeBuf, off, pTlbState->idxReg1,/*=*/ idxRegFlatPtr,/*&*/ GUEST_PAGE_OFFSET_MASK);
-        /* cmp reg1, GUEST_PAGE_SIZE - cbMem */
-        off = iemNativeEmitCmpGpr32WithImmEx(pCodeBuf, off, pTlbState->idxReg1, GUEST_PAGE_SIZE - cbMem);
+        /* cmp reg1, GUEST_PAGE_SIZE - a_cbMem */
+        off = iemNativeEmitCmpGpr32WithImmEx(pCodeBuf, off, pTlbState->idxReg1, GUEST_PAGE_SIZE - a_cbMem);
         /* jbe short jmpback */
         offFixupMisalignedAccessJmpBack = off;
         off = iemNativeEmitJccToFixedEx(pCodeBuf, off, off + 256 /*near*/, kIemNativeInstrCond_be);
@@ -541,7 +543,7 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
         /* Check that we've got a segment loaded and that it allows the access.
            For write access this means a writable data segment.
            For read-only accesses this means a readable code segment or any data segment. */
-        if (fAccess & IEM_ACCESS_TYPE_WRITE)
+        if RT_CONSTEXPR_IF((a_fAccess & IEM_ACCESS_TYPE_WRITE) != 0)
         {
             uint32_t const fMustBe1 = X86DESCATTR_P        | X86DESCATTR_DT    | X86_SEL_TYPE_WRITE;
             uint32_t const fMustBe0 = X86DESCATTR_UNUSABLE | X86_SEL_TYPE_CODE;
@@ -588,17 +590,18 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
 
         /* If we're accessing more than one byte or if we're working with a non-zero offDisp,
            put the last address we'll be accessing in idxReg2 (64-bit). */
-        if ((cbMem > 1 || offDisp != 0) && pTlbState->idxRegPtr != UINT8_MAX)
+        if ((a_cbMem > 1 || offDisp != 0) && pTlbState->idxRegPtr != UINT8_MAX)
         {
             if (!offDisp)
-                /* reg2 = regptr + cbMem - 1; 64-bit result so we can fend of wraparounds/overflows. */
-                off = iemNativeEmitGprEqGprPlusImmEx(pCodeBuf, off, pTlbState->idxReg2,/*=*/ pTlbState->idxRegPtr,/*+*/ cbMem - 1);
+                /* reg2 = regptr + a_cbMem - 1; 64-bit result so we can fend of wraparounds/overflows. */
+                off = iemNativeEmitGprEqGprPlusImmEx(pCodeBuf, off,
+                                                     pTlbState->idxReg2,/*=*/ pTlbState->idxRegPtr,/*+*/ a_cbMem - 1);
             else
             {
-                /* reg2 = (uint32_t)(regptr + offDisp) + cbMem - 1;. */
+                /* reg2 = (uint32_t)(regptr + offDisp) + a_cbMem - 1;. */
                 off = iemNativeEmitGpr32EqGprPlusImmEx(pCodeBuf, off,
                                                        pTlbState->idxReg2,/*=*/ pTlbState->idxRegPtr,/*+*/ + offDisp);
-                off = iemNativeEmitAddGprImmEx(pCodeBuf, off, pTlbState->idxReg2, cbMem - 1);
+                off = iemNativeEmitAddGprImmEx(pCodeBuf, off, pTlbState->idxReg2, a_cbMem - 1);
             }
         }
 
@@ -607,7 +610,7 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
          * data segment and includes the expand_down bit.  For read-only accesses
          * we need to check that code/data=0 and expanddown=1 before continuing.
          */
-        if (fAccess & IEM_ACCESS_TYPE_WRITE)
+        if RT_CONSTEXPR_IF((a_fAccess & IEM_ACCESS_TYPE_WRITE) != 0)
         {
             /* test segattrs, X86_SEL_TYPE_DOWN */
             AssertCompile(X86_SEL_TYPE_DOWN < 128);
@@ -630,10 +633,10 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
            cmp  seglim, regptr/reg2/imm */
         if (pTlbState->idxRegPtr != UINT8_MAX)
             off = iemNativeEmitCmpGprWithGprEx(pCodeBuf, off, pTlbState->idxRegSegLimit,
-                                               cbMem > 1 || offDisp != 0 ? pTlbState->idxReg2 : pTlbState->idxRegPtr);
+                                               a_cbMem > 1 || offDisp != 0 ? pTlbState->idxReg2 : pTlbState->idxRegPtr);
         else
             off = iemNativeEmitCmpGpr32WithImmEx(pCodeBuf, off, pTlbState->idxRegSegLimit,
-                                                 (uint32_t)pTlbState->uAbsPtr + offDisp + cbMem - 1U); /* fSkip=true on overflow. */
+                                                 (uint32_t)pTlbState->uAbsPtr + offDisp + a_cbMem - 1U); /* fSkip=true on overflow. */
         /* jbe  tlbmiss */
         off = iemNativeEmitJccToLabelEx(pReNative, pCodeBuf, off, idxLabelTlbMiss, kIemNativeInstrCond_be);
 
@@ -698,14 +701,14 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
      *    checking is indicated by IEM_F_X86_AC in IEMCPU::fExec.
      *
      *    The caller informs us about about SSE/AVX aligned accesses via the
-     *    upper bits of fAlignMaskAndCtl and atomic accesses via fAccess.
+     *    upper bits of a_fAlignMaskAndCtl and atomic accesses via a_fAccess.
      */
     if (a_fDataTlb)
     {
         if (offMisalignedAccess != UINT32_MAX)
         {
 #ifdef RT_ARCH_ARM64
-            if (cbMem == 2)
+            if RT_CONSTEXPR_IF(a_cbMem == 2)
             {
                 /* tbnz regflatptr, #0, tlbmiss */
                 pCodeBuf[off++] = Armv8A64MkInstrTbnz((int32_t)offMisalignedAccess - (int32_t)off, idxRegFlatPtr, 0);
@@ -714,7 +717,7 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
 #endif
             {
                 /* test regflat, fAlignMask */
-                off = iemNativeEmitTestAnyBitsInGpr8Ex(pCodeBuf, off, idxRegFlatPtr, cbMem - 1);
+                off = iemNativeEmitTestAnyBitsInGpr8Ex(pCodeBuf, off, idxRegFlatPtr, a_cbMem - 1);
                 /* jnz tlbmiss */
                 off = iemNativeEmitJccToFixedEx(pCodeBuf, off, offMisalignedAccess, kIemNativeInstrCond_ne);
             }
@@ -728,8 +731,8 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
              *     aligned stuff (SSE & AVX) and AC=1 (ring-3).
              */
             bool const fStrictAlignmentCheck = fAlignMask
-                                            && (   (fAlignMaskAndCtl & ~UINT32_C(0xff))
-                                                || (fAccess & IEM_ACCESS_ATOMIC)
+                                            && (   (a_fAlignMaskAndCtl & ~UINT32_C(0xff))
+                                                || (a_fAccess & IEM_ACCESS_ATOMIC)
                                                 || (pReNative->fExec & IEM_F_X86_AC) );
             if (fStrictAlignmentCheck)
             {
@@ -755,14 +758,14 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
              *     larger than the aligment mask or if we didn't do the strict
              *     alignment check above.
              */
-            if (   cbMem > 1
+            if (   a_cbMem > 1
                 && (   !fStrictAlignmentCheck
-                    || cbMem > fAlignMask + 1U))
+                    || a_cbMem > fAlignMask + 1U))
             {
                 /* reg1 = regflat & 0xfff */
                 off = iemNativeEmitGpr32EqGprAndImmEx(pCodeBuf, off, pTlbState->idxReg1,/*=*/ idxRegFlatPtr,/*&*/ GUEST_PAGE_OFFSET_MASK);
-                /* cmp reg1, GUEST_PAGE_SIZE - cbMem */
-                off = iemNativeEmitCmpGpr32WithImmEx(pCodeBuf, off, pTlbState->idxReg1, GUEST_PAGE_SIZE - cbMem);
+                /* cmp reg1, GUEST_PAGE_SIZE - a_cbMem */
+                off = iemNativeEmitCmpGpr32WithImmEx(pCodeBuf, off, pTlbState->idxReg1, GUEST_PAGE_SIZE - a_cbMem);
 #ifndef IEM_WITH_TLB_STATISTICS
                 /* ja  tlbmiss */
                 off = iemNativeEmitJccToLabelEx(pReNative, pCodeBuf, off, idxLabelTlbMiss, kIemNativeInstrCond_nbe);
@@ -779,7 +782,7 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
         }
     }
     else
-        Assert(fAlignMaskAndCtl == 0);
+        Assert(a_fAlignMaskAndCtl == 0);
 
     /*
      * 3. TLB lookup.
@@ -1002,11 +1005,11 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
     uint64_t const fNoUser = (((pReNative->fExec >> IEM_F_X86_CPL_SHIFT) & IEM_F_X86_CPL_SMASK) + 1) & IEMTLBE_F_PT_NO_USER;
     uint64_t       fTlbe   = IEMTLBE_F_PHYS_REV | IEMTLBE_F_NO_MAPPINGR3 | IEMTLBE_F_PG_UNASSIGNED | IEMTLBE_F_PT_NO_ACCESSED
                            | fNoUser;
-    if (fAccess & IEM_ACCESS_TYPE_EXEC)
+    if RT_CONSTEXPR_IF((a_fAccess & IEM_ACCESS_TYPE_EXEC) != 0)
         fTlbe |= IEMTLBE_F_PT_NO_EXEC /*| IEMTLBE_F_PG_NO_READ?*/;
-    if (fAccess & IEM_ACCESS_TYPE_READ)
+    if RT_CONSTEXPR_IF((a_fAccess & IEM_ACCESS_TYPE_READ) != 0)
         fTlbe |= IEMTLBE_F_PG_NO_READ;
-    if (fAccess & IEM_ACCESS_TYPE_WRITE)
+    if RT_CONSTEXPR_IF((a_fAccess & IEM_ACCESS_TYPE_WRITE) != 0)
         fTlbe |= IEMTLBE_F_PT_NO_WRITE | IEMTLBE_F_PG_NO_WRITE | IEMTLBE_F_PT_NO_DIRTY;
     off = iemNativeEmitLoadGprImmEx(pCodeBuf, off, pTlbState->idxReg1, fTlbe);
 # if defined(RT_ARCH_AMD64)
@@ -1182,25 +1185,25 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
      * To verify the result we call iemNativeHlpCheckTlbLookup via a wrapper.
      *
      * It's like the state logging, so parameters are passed on the stack.
-     * iemNativeHlpAsmSafeWrapCheckTlbLookup(pVCpu, result, addr, seg | (cbMem << 8) | (fAccess << 16))
+     * iemNativeHlpAsmSafeWrapCheckTlbLookup(pVCpu, result, addr, seg | (a_cbMem << 8) | (a_fAccess << 16))
      */
     if (a_fDataTlb)
     {
 #  ifdef RT_ARCH_AMD64
-        if (!offDisp && !(fAccess & 0x8000))
+        if (!offDisp && !(a_fAccess & 0x8000))
         {
-            /* push     seg | (cbMem << 8) | (fAccess << 16) */
+            /* push     seg | (a_cbMem << 8) | (a_fAccess << 16) */
             pCodeBuf[off++] = 0x68;
             pCodeBuf[off++] = iSegReg;
-            pCodeBuf[off++] = cbMem;
-            pCodeBuf[off++] = RT_BYTE1(fAccess);
-            pCodeBuf[off++] = RT_BYTE2(fAccess);
+            pCodeBuf[off++] = a_cbMem;
+            pCodeBuf[off++] = RT_BYTE1(a_fAccess);
+            pCodeBuf[off++] = RT_BYTE2(a_fAccess);
         }
         else
         {
-            /* mov   reg1, seg | (cbMem << 8) | (fAccess << 16) | (offDisp << 32) */
+            /* mov   reg1, seg | (a_cbMem << 8) | (a_fAccess << 16) | (offDisp << 32) */
             off = iemNativeEmitLoadGprImmEx(pCodeBuf, off, pTlbState->idxReg1,
-                                            iSegReg | ((uint32_t)cbMem << 8) | (fAccess << 16) | ((uint64_t)offDisp << 32));
+                                            iSegReg | ((uint32_t)a_cbMem << 8) | (a_fAccess << 16) | ((uint64_t)offDisp << 32));
             /* push   reg1 */
             if (pTlbState->idxReg1 >= 8)
                 pCodeBuf[off++] = X86_OP_REX_B;
@@ -1232,9 +1235,9 @@ iemNativeEmitTlbLookup(PIEMRECOMPILERSTATE pReNative, uint32_t off, IEMNATIVEEMI
 
 #  elif defined(RT_ARCH_ARM64)
         /* Use the temporary registers for setting up the "call frame" and making the call. */
-        /* reg1 = seg | (cbMem << 8) | (fAccess << 16) */
-        pCodeBuf[off++] = Armv8A64MkInstrMovZ(pTlbState->idxReg1, RT_MAKE_U16(iSegReg, cbMem));
-        pCodeBuf[off++] = Armv8A64MkInstrMovK(pTlbState->idxReg1, RT_LO_U16(fAccess), 1);
+        /* reg1 = seg | (a_cbMem << 8) | (a_fAccess << 16) */
+        pCodeBuf[off++] = Armv8A64MkInstrMovZ(pTlbState->idxReg1, RT_MAKE_U16(iSegReg, a_cbMem));
+        pCodeBuf[off++] = Armv8A64MkInstrMovK(pTlbState->idxReg1, RT_LO_U16(a_fAccess), 1);
         if (offDisp)
             pCodeBuf[off++] = Armv8A64MkInstrMovK(pTlbState->idxReg1, offDisp, 2);
         if (pTlbState->idxRegPtr != UINT8_MAX)

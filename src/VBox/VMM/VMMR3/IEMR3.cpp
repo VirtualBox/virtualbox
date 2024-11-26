@@ -1,4 +1,4 @@
-/* $Id: IEMR3.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: IEMR3.cpp 107184 2024-11-26 22:32:44Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager.
  */
@@ -1061,6 +1061,11 @@ VMMR3DECL(int)      IEMR3Init(PVM pVM)
             STAMR3RegisterF(pVM, &pVCpu->iem.s.acThreadedFuncStats[i], STAMTYPE_U32_RESET, STAMVISIBILITY_USED,
                             STAMUNIT_COUNT, NULL, "/IEM/CPU%u/ThrdFuncs/%s", idCpu, g_apszIemThreadedFunctionStats[i]);
 # endif
+
+
+        for (unsigned i = 1; i < RT_ELEMENTS(pVCpu->iem.s.aStatAdHoc); i++)
+            STAMR3RegisterF(pVM, &pVCpu->iem.s.aStatAdHoc[i], STAMTYPE_COUNTER, STAMVISIBILITY_USED,
+                            STAMUNIT_COUNT, NULL, "/IEM/CPU%u/AdHoc/%02u", idCpu, i);
 
 #endif /* !defined(VBOX_VMM_TARGET_ARMV8) && defined(VBOX_WITH_NESTED_HWVIRT_VMX) - quick fix for stupid structure duplication non-sense */
     }

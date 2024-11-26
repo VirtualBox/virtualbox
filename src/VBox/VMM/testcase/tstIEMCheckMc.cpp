@@ -1,4 +1,4 @@
-/* $Id: tstIEMCheckMc.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: tstIEMCheckMc.cpp 107184 2024-11-26 22:32:44Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM Testcase - Check the "Microcode".
  */
@@ -616,7 +616,7 @@ typedef VBOXSTRICTRC (* PFNIEMOPRM)(PVMCPU pVCpu, uint8_t bRm);
 #define IEM_MC_IND_CALL_U16_AND_FINISH(a_u16NewIP)      do { (void)fMcBegin; CHK_TYPE(uint16_t, a_u16NewIP); return VINF_SUCCESS; } while (0)
 #define IEM_MC_IND_CALL_U32_AND_FINISH(a_u32NewIP)      do { (void)fMcBegin; CHK_TYPE(uint32_t, a_u32NewIP); return VINF_SUCCESS; } while (0)
 #define IEM_MC_IND_CALL_U64_AND_FINISH(a_u64NewIP)      do { (void)fMcBegin; CHK_TYPE(uint64_t, a_u64NewIP); return VINF_SUCCESS; } while (0)
-#define IEM_MC_RETN_AND_FINISH(a_u16Pop)                do { (void)fMcBegin; return VINF_SUCCESS; } while (0)
+#define IEM_MC_RETN_AND_FINISH(a_cbPopArgs)             do { (void)fMcBegin; return VINF_SUCCESS; } while (0)
 #define IEM_MC_RAISE_DIVIDE_ERROR_IF_LOCAL_IS_ZERO(a_uVar) do { (void)fMcBegin; CHK_VAR(a_uVar); if (a_uVar == 0) return VERR_TRPM_ACTIVE_TRAP; } while (0)
 #define IEM_MC_MAYBE_RAISE_DEVICE_NOT_AVAILABLE()       do { (void)fMcBegin; } while (0)
 #define IEM_MC_MAYBE_RAISE_WAIT_DEVICE_NOT_AVAILABLE()  do { (void)fMcBegin; } while (0)

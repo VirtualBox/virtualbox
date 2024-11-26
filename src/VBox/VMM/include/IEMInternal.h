@@ -1,4 +1,4 @@
-/* $Id: IEMInternal.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: IEMInternal.h 107184 2024-11-26 22:32:44Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Internal header file.
  */
@@ -2400,6 +2400,9 @@ typedef struct IEMCPU
     STAMPROFILE             StatTimerPollFactorMultiplication;
     /** @} */
 
+
+    STAMCOUNTER             aStatAdHoc[8];
+
 #ifdef IEM_WITH_TLB_TRACE
     /*uint64_t                au64Padding[0];*/
 #else
@@ -2976,6 +2979,25 @@ DECLCALLBACK(FNPGMRZPHYSPFHANDLER)  iemVmxApicAccessPagePfHandler;
 #define IEMOP_VERIFICATION_UNDEFINED_EFLAGS(a_fEfl) do { } while (0)
 
 
+/** @def IEM_DECL_MSC_GUARD_IGNORE
+ * Disables control flow guards checks inside a method and any function pointers
+ * referenced by it. */
+#if defined(_MSC_VER) && !defined(IN_RING0)
+# define IEM_DECL_MSC_GUARD_IGNORE  __declspec(guard(ignore))
+#else
+# define IEM_DECL_MSC_GUARD_IGNORE
+#endif
+
+/** @def IEM_DECL_MSC_GUARD_NONE
+ * Disables control flow guards checks inside a method and but continue track
+ * function pointers references by it. */
+#if defined(_MSC_VER) && !defined(IN_RING0)
+# define IEM_DECL_MSC_GUARD_NONE    __declspec(guard(nocf))
+#else
+# define IEM_DECL_MSC_GUARD_NONE
+#endif
+
+
 /** @def IEM_DECL_IMPL_TYPE
  * For typedef'ing an instruction implementation function.
  *
@@ -3004,25 +3026,25 @@ DECLCALLBACK(FNPGMRZPHYSPFHANDLER)  iemVmxApicAccessPagePfHandler;
 # define IEM_DECL_IMPL_TYPE(a_RetType, a_Name, a_ArgList) \
     a_RetType (__fastcall a_Name) a_ArgList
 # define IEM_DECL_IMPL_DEF(a_RetType, a_Name, a_ArgList) \
-    a_RetType __fastcall a_Name a_ArgList RT_NOEXCEPT
+    IEM_DECL_MSC_GUARD_IGNORE a_RetType __fastcall a_Name a_ArgList RT_NOEXCEPT
 # define IEM_DECL_IMPL_PROTO(a_RetType, a_Name, a_ArgList) \
-    a_RetType __fastcall a_Name a_ArgList RT_NOEXCEPT
+    IEM_DECL_MSC_GUARD_IGNORE a_RetType __fastcall a_Name a_ArgList RT_NOEXCEPT
 
 #elif __cplusplus >= 201700 /* P0012R1 support */
 # define IEM_DECL_IMPL_TYPE(a_RetType, a_Name, a_ArgList) \
     a_RetType (VBOXCALL a_Name) a_ArgList RT_NOEXCEPT
 # define IEM_DECL_IMPL_DEF(a_RetType, a_Name, a_ArgList) \
-    DECL_HIDDEN_ONLY(a_RetType) VBOXCALL a_Name a_ArgList RT_NOEXCEPT
+    IEM_DECL_MSC_GUARD_IGNORE DECL_HIDDEN_ONLY(a_RetType) VBOXCALL a_Name a_ArgList RT_NOEXCEPT
 # define IEM_DECL_IMPL_PROTO(a_RetType, a_Name, a_ArgList) \
-    DECL_HIDDEN_ONLY(a_RetType) VBOXCALL a_Name a_ArgList RT_NOEXCEPT
+    IEM_DECL_MSC_GUARD_IGNORE DECL_HIDDEN_ONLY(a_RetType) VBOXCALL a_Name a_ArgList RT_NOEXCEPT
 
 #else
 # define IEM_DECL_IMPL_TYPE(a_RetType, a_Name, a_ArgList) \
     a_RetType (VBOXCALL a_Name) a_ArgList
 # define IEM_DECL_IMPL_DEF(a_RetType, a_Name, a_ArgList) \
-    DECL_HIDDEN_ONLY(a_RetType) VBOXCALL a_Name a_ArgList
+    IEM_DECL_MSC_GUARD_IGNORE DECL_HIDDEN_ONLY(a_RetType) VBOXCALL a_Name a_ArgList
 # define IEM_DECL_IMPL_PROTO(a_RetType, a_Name, a_ArgList) \
-    DECL_HIDDEN_ONLY(a_RetType) VBOXCALL a_Name a_ArgList
+    IEM_DECL_MSC_GUARD_IGNORE DECL_HIDDEN_ONLY(a_RetType) VBOXCALL a_Name a_ArgList
 
 #endif
 
@@ -5393,11 +5415,11 @@ typedef VBOXSTRICTRC (* PFNIEMOPRM)(PVMCPUCC pVCpu, uint8_t bRm);
 typedef VBOXSTRICTRC (* PFNIEMOP)(PVMCPUCC pVCpu);
 typedef VBOXSTRICTRC (* PFNIEMOPRM)(PVMCPUCC pVCpu, uint8_t bRm);
 # define FNIEMOP_DEF(a_Name) \
-    IEM_STATIC VBOXSTRICTRC a_Name(PVMCPUCC pVCpu) IEM_NOEXCEPT_MAY_LONGJMP
+    IEM_STATIC IEM_DECL_MSC_GUARD_IGNORE VBOXSTRICTRC a_Name(PVMCPUCC pVCpu) IEM_NOEXCEPT_MAY_LONGJMP
 # define FNIEMOP_DEF_1(a_Name, a_Type0, a_Name0) \
-    IEM_STATIC VBOXSTRICTRC a_Name(PVMCPUCC pVCpu, a_Type0 a_Name0) IEM_NOEXCEPT_MAY_LONGJMP
+    IEM_STATIC IEM_DECL_MSC_GUARD_IGNORE VBOXSTRICTRC a_Name(PVMCPUCC pVCpu, a_Type0 a_Name0) IEM_NOEXCEPT_MAY_LONGJMP
 # define FNIEMOP_DEF_2(a_Name, a_Type0, a_Name0, a_Type1, a_Name1) \
-    IEM_STATIC VBOXSTRICTRC a_Name(PVMCPUCC pVCpu, a_Type0 a_Name0, a_Type1 a_Name1) IEM_NOEXCEPT_MAY_LONGJMP
+    IEM_STATIC IEM_DECL_MSC_GUARD_IGNORE VBOXSTRICTRC a_Name(PVMCPUCC pVCpu, a_Type0 a_Name0, a_Type1 a_Name1) IEM_NOEXCEPT_MAY_LONGJMP
 
 #endif
 #define FNIEMOPRM_DEF(a_Name) FNIEMOP_DEF_1(a_Name, uint8_t, bRm)
@@ -6703,6 +6725,8 @@ void                iemThreadedTbObsolete(PVMCPUCC pVCpu, PIEMTB pTb, bool fSafe
 DECLHIDDEN(void)    iemTbAllocatorFree(PVMCPUCC pVCpu, PIEMTB pTb);
 void                iemTbAllocatorProcessDelayedFrees(PVMCPUCC pVCpu, PIEMTBALLOCATOR pTbAllocator);
 void                iemTbAllocatorFreeupNativeSpace(PVMCPUCC pVCpu, uint32_t cNeededInstrs);
+DECLHIDDEN(PIEMTBALLOCATOR) iemTbAllocatorFreeBulkStart(PVMCPUCC pVCpu);
+DECLHIDDEN(void)    iemTbAllocatorFreeBulk(PVMCPUCC pVCpu, PIEMTBALLOCATOR pTbAllocator, PIEMTB pTb);
 DECLHIDDEN(const char *) iemTbFlagsToString(uint32_t fFlags, char *pszBuf, size_t cbBuf) RT_NOEXCEPT;
 DECLHIDDEN(void)    iemThreadedDisassembleTb(PCIEMTB pTb, PCDBGFINFOHLP pHlp) RT_NOEXCEPT;
 #if defined(VBOX_WITH_IEM_NATIVE_RECOMPILER) && defined(VBOX_WITH_SAVE_THREADED_TBS_FOR_PROFILING)
@@ -6723,9 +6747,9 @@ typedef FNIEMTHREADEDFUNC *PFNIEMTHREADEDFUNC;
 typedef VBOXSTRICTRC (FNIEMTHREADEDFUNC)(PVMCPU pVCpu, uint64_t uParam0, uint64_t uParam1, uint64_t uParam2);
 typedef FNIEMTHREADEDFUNC *PFNIEMTHREADEDFUNC;
 # define IEM_DECL_IEMTHREADEDFUNC_DEF(a_Name) \
-    VBOXSTRICTRC a_Name(PVMCPU pVCpu, uint64_t uParam0, uint64_t uParam1, uint64_t uParam2) IEM_NOEXCEPT_MAY_LONGJMP
+    IEM_DECL_MSC_GUARD_IGNORE VBOXSTRICTRC a_Name(PVMCPU pVCpu, uint64_t uParam0, uint64_t uParam1, uint64_t uParam2) IEM_NOEXCEPT_MAY_LONGJMP
 # define IEM_DECL_IEMTHREADEDFUNC_PROTO(a_Name) \
-    VBOXSTRICTRC a_Name(PVMCPU pVCpu, uint64_t uParam0, uint64_t uParam1, uint64_t uParam2) IEM_NOEXCEPT_MAY_LONGJMP
+    IEM_DECL_MSC_GUARD_IGNORE VBOXSTRICTRC a_Name(PVMCPU pVCpu, uint64_t uParam0, uint64_t uParam1, uint64_t uParam2) IEM_NOEXCEPT_MAY_LONGJMP
 #endif
 
 

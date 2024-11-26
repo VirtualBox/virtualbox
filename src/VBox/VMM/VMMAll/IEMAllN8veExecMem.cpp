@@ -1,4 +1,4 @@
-/* $Id: IEMAllN8veExecMem.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: IEMAllN8veExecMem.cpp 107184 2024-11-26 22:32:44Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Native Recompiler, Executable Memory Allocator.
  */
@@ -322,10 +322,18 @@ typedef IEMEXECMEMALLOCATOR *PIEMEXECMEMALLOCATOR;
  */
 typedef struct IEMEXECMEMALLOCHDR
 {
-    /** Magic value / eyecatcher (IEMEXECMEMALLOCHDR_MAGIC). */
-    uint32_t        uMagic;
-    /** The allocation chunk (for speeding up freeing). */
-    uint32_t        idxChunk;
+    union
+    {
+        struct
+        {
+            /** Magic value / eyecatcher (IEMEXECMEMALLOCHDR_MAGIC). */
+            uint32_t        uMagic;
+            /** The allocation chunk (for speeding up freeing). */
+            uint32_t        idxChunk;
+        };
+        /** Combined magic and chunk index, for the pruning scanner code. */
+        uint64_t u64MagicAndChunkIdx;
+    };
     /** Pointer to the translation block the allocation belongs to.
      * This is the whole point of the header. */
     PIEMTB          pTb;
@@ -358,7 +366,11 @@ static void iemExecMemAllocatorPrune(PVMCPU pVCpu, PIEMEXECMEMALLOCATOR pExecMem
     /*
      * Before we can start, we must process delayed frees.
      */
+#if 1
+    PIEMTBALLOCATOR const pTbAllocator = iemTbAllocatorFreeBulkStart(pVCpu);
+#else
     iemTbAllocatorProcessDelayedFrees(pVCpu, pVCpu->iem.s.pTbAllocatorR3);
+#endif
 
     AssertCompile(RT_IS_POWER_OF_TWO(IEMEXECMEM_ALT_SUB_ALLOC_UNIT_SIZE));
 
@@ -403,40 +415,62 @@ static void iemExecMemAllocatorPrune(PVMCPU pVCpu, PIEMEXECMEMALLOCATOR pExecMem
         idxChunk = 0;
     }
 
-    uint32_t const offPruneEnd = RT_MIN(offChunk + cbToPrune, cbChunk);
+    uint32_t const offPruneStart = offChunk;
+    uint32_t const offPruneEnd   = RT_MIN(offChunk + cbToPrune, cbChunk);
 
     /*
      * Do the pruning.  The current approach is the sever kind.
+     *
+     * This is memory bound, as we must load both the allocation header and the
+     * associated TB and then modify them. So, the CPU isn't all that unitilized
+     * here.  Try apply some prefetching to speed it up a tiny bit.
      */
-    uint64_t            cbPruned = 0;
-    uint8_t * const     pbChunk  = (uint8_t *)pExecMemAllocator->aChunks[idxChunk].pvChunkRx;
+    uint64_t            cbPruned            = 0;
+    uint64_t const      u64MagicAndChunkIdx = RT_MAKE_U64(IEMEXECMEMALLOCHDR_MAGIC, idxChunk);
+    uint8_t * const     pbChunk             = (uint8_t *)pExecMemAllocator->aChunks[idxChunk].pvChunkRx;
     while (offChunk < offPruneEnd)
     {
         PIEMEXECMEMALLOCHDR pHdr = (PIEMEXECMEMALLOCHDR)&pbChunk[offChunk];
 
-        /* Is this the start of an allocation block for TB? (We typically have
-           one allocation at the start of each chunk for the unwind info where
-           pTb is NULL.)  */
-        if (   pHdr->uMagic   == IEMEXECMEMALLOCHDR_MAGIC
-            && pHdr->pTb      != NULL
-            && pHdr->idxChunk == idxChunk)
+        /* Is this the start of an allocation block for a TB? (We typically
+           have one allocation at the start of each chunk for the unwind info
+           where pTb is NULL.)  */
+        PIEMTB pTb;
+        if (   pHdr->u64MagicAndChunkIdx == u64MagicAndChunkIdx
+            && RT_LIKELY((pTb = pHdr->pTb) != NULL))
         {
-            PIEMTB const pTb = pHdr->pTb;
             AssertPtr(pTb);
 
             uint32_t const cbBlock = RT_ALIGN_32(pTb->Native.cInstructions * sizeof(IEMNATIVEINSTR) + sizeof(*pHdr),
                                                  IEMEXECMEM_ALT_SUB_ALLOC_UNIT_SIZE);
-            AssertBreakStmt(offChunk + cbBlock <= cbChunk, offChunk += IEMEXECMEM_ALT_SUB_ALLOC_UNIT_SIZE); /* paranoia */
 
-            iemTbAllocatorFree(pVCpu, pTb);
-
-            cbPruned += cbBlock;
+            /* Prefetch the next header before freeing the current one and its TB. */
+            /** @todo Iff the block size was part of the header in some way, this could be
+             *        a tiny bit faster. */
             offChunk += cbBlock;
+#if defined(_MSC_VER) && defined(RT_ARCH_AMD64)
+            _mm_prefetch((char *)&pbChunk[offChunk], _MM_HINT_T0);
+#elif defined(_MSC_VER) && defined(RT_ARCH_ARM64)
+            __prefetch(&pbChunk[offChunk]);
+#else
+            __builtin_prefetch(&pbChunk[offChunk], 1 /*rw*/);
+#endif
+            /* Some paranoia first, though.  */
+            AssertBreakStmt(offChunk <= cbChunk, offChunk -= cbBlock - IEMEXECMEM_ALT_SUB_ALLOC_UNIT_SIZE);
+            cbPruned += cbBlock;
+
+#if 1
+            iemTbAllocatorFreeBulk(pVCpu, pTbAllocator, pTb);
+#else
+            iemTbAllocatorFree(pVCpu, pTb);
+#endif
         }
         else
             offChunk += IEMEXECMEM_ALT_SUB_ALLOC_UNIT_SIZE;
     }
     STAM_REL_PROFILE_ADD_PERIOD(&pExecMemAllocator->StatPruneRecovered, cbPruned);
+
+    pVCpu->iem.s.ppTbLookupEntryR3 = &pVCpu->iem.s.pTbLookupEntryDummyR3;
 
     /*
      * Save the current pruning point.
@@ -446,7 +480,7 @@ static void iemExecMemAllocatorPrune(PVMCPU pVCpu, PIEMEXECMEMALLOCATOR pExecMem
 
     /* Set the hint to the start of the pruned region. */
     pExecMemAllocator->idxChunkHint  = idxChunk;
-    pExecMemAllocator->aChunks[idxChunk].idxFreeHint = offChunk / IEMEXECMEM_ALT_SUB_ALLOC_UNIT_SIZE;
+    pExecMemAllocator->aChunks[idxChunk].idxFreeHint = offPruneStart / IEMEXECMEM_ALT_SUB_ALLOC_UNIT_SIZE;
 
     STAM_REL_PROFILE_STOP(&pExecMemAllocator->StatPruneProf, a);
 }
@@ -807,7 +841,14 @@ iemExecMemAllocatorAllocInChunkInt(PIEMEXECMEMALLOCATOR pExecMemAllocator, uint6
     uint32_t const iBit = cReqUnits < 64
                         ? iemExecMemAllocatorFindReqFreeUnits<false>(pbmAlloc, cToScan / 64, cReqUnits)
                         : iemExecMemAllocatorFindReqFreeUnits<true>( pbmAlloc, cToScan / 64, cReqUnits);
-    Assert(iBit == iemExecMemAllocatorFindReqFreeUnitsOld(pbmAlloc, cToScan, cReqUnits));
+# ifdef VBOX_STRICT
+    uint32_t const iBitOld = iemExecMemAllocatorFindReqFreeUnitsOld(pbmAlloc, cToScan, cReqUnits);
+    AssertMsg(   iBit == iBitOld
+              || (iBit / 64) == (iBitOld / 64), /* New algorithm will return trailing hit before middle. */
+              ("iBit=%#x (%#018RX64); iBitOld=%#x (%#018RX64); cReqUnits=%#x\n",
+               iBit, iBit != UINT32_MAX ? pbmAlloc[iBit / 64] : 0,
+               iBitOld, iBitOld != UINT32_MAX ? pbmAlloc[iBitOld / 64] : 0, cReqUnits));
+# endif
 #else
     uint32_t const iBit = iemExecMemAllocatorFindReqFreeUnitsOld(pbmAlloc, cToScan, cReqUnits);
 #endif

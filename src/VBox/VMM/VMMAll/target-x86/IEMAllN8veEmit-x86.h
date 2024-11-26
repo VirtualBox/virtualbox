@@ -1,4 +1,4 @@
-/* $Id: IEMAllN8veEmit-x86.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: IEMAllN8veEmit-x86.h 107184 2024-11-26 22:32:44Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Native Recompiler, x86 Target - Code Emitters.
  */
@@ -610,7 +610,7 @@ iemNativeEmitEFlagsForLogical(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8
     else
 #endif
     {
-        uint8_t const         idxRegEfl = iemNativeVarRegisterAcquire(pReNative, idxVarEfl, &off, true /*fInitialized*/);
+        uint8_t const         idxRegEfl = iemNativeVarRegisterAcquireInited(pReNative, idxVarEfl, &off);
         uint8_t const         idxRegTmp = iemNativeRegAllocTmp(pReNative, &off);
 #ifdef RT_ARCH_AMD64
         PIEMNATIVEINSTR const pCodeBuf  = iemNativeInstrBufEnsure(pReNative, off, 32);
@@ -682,7 +682,7 @@ iemNativeEmitEFlagsForArithmetic(PIEMRECOMPILERSTATE pReNative, uint32_t off, ui
         pCodeBuf[off++] = 0x9c;
 
         uint8_t const idxRegEfl = idxRegEflIn != UINT8_MAX ? idxRegEflIn
-                                : iemNativeVarRegisterAcquire(pReNative, idxVarEfl, &off, true /*fInitialized*/);
+                                : iemNativeVarRegisterAcquireInited(pReNative, idxVarEfl, &off);
         uint8_t const idxTmpReg = iemNativeRegAllocTmp(pReNative, &off);
         pCodeBuf = iemNativeInstrBufEnsure(pReNative, off, 2 + 7 + 7 + 3);
         /* pop   tmp */
@@ -704,7 +704,7 @@ iemNativeEmitEFlagsForArithmetic(PIEMRECOMPILERSTATE pReNative, uint32_t off, ui
          * Calculate flags.
          */
         uint8_t const         idxRegEfl  = idxRegEflIn != UINT8_MAX ? idxRegEflIn
-                                         : iemNativeVarRegisterAcquire(pReNative, idxVarEfl, &off, true /*fInitialized*/);
+                                         : iemNativeVarRegisterAcquireInited(pReNative, idxVarEfl, &off);
         uint8_t const         idxTmpReg  = iemNativeRegAllocTmp(pReNative, &off);
         uint8_t const         idxTmpReg2 = cOpBits >= 32 ? UINT8_MAX : iemNativeRegAllocTmp(pReNative, &off);
         PIEMNATIVEINSTR const pCodeBuf   = iemNativeInstrBufEnsure(pReNative, off, 20);
@@ -854,8 +854,8 @@ template<uint8_t const a_cOpBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_and_r_r_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint8_t idxVarSrc, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
-    uint8_t const idxRegSrc = iemNativeVarRegisterAcquire(pReNative, idxVarSrc, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
+    uint8_t const idxRegSrc = iemNativeVarRegisterAcquireInited(pReNative, idxVarSrc, &off);
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized AND instruction harvest the EFLAGS. */
     off = iemNativeEmitAmd64OneByteModRmInstrRREx(iemNativeInstrBufEnsure(pReNative, off, 4), off,
@@ -888,7 +888,7 @@ template<uint8_t const a_cOpBits, uint8_t const a_cImmBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_and_r_i_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint64_t uImmOp, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized AND instruction harvest the EFLAGS. */
     PIEMNATIVEINSTR const pCodeBuf = iemNativeInstrBufEnsure(pReNative, off, 8);
@@ -941,9 +941,9 @@ template<uint8_t const a_cOpBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_test_r_r_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint8_t idxVarSrc, uint8_t idxVarEfl)
 {
-    uint8_t const         idxRegDst    = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
+    uint8_t const         idxRegDst    = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
     uint8_t const         idxRegSrc    = idxVarSrc == idxVarDst ? idxRegDst /* special case of 'test samereg,samereg' */
-                                       : iemNativeVarRegisterAcquire(pReNative, idxVarSrc, &off, true /*fInitialized*/);
+                                       : iemNativeVarRegisterAcquireInited(pReNative, idxVarSrc, &off);
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized TEST instruction harvest the EFLAGS. */
     off = iemNativeEmitAmd64OneByteModRmInstrRREx(iemNativeInstrBufEnsure(pReNative, off, 4), off,
@@ -988,7 +988,7 @@ template<uint8_t const a_cOpBits, uint8_t const a_cImmBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_test_r_i_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint64_t uImmOp, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized AND instruction harvest the EFLAGS. */
     PIEMNATIVEINSTR const pCodeBuf = iemNativeInstrBufEnsure(pReNative, off, 8);
@@ -1046,8 +1046,8 @@ template<uint8_t const a_cOpBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_or_r_r_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint8_t idxVarSrc, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
-    uint8_t const idxRegSrc = iemNativeVarRegisterAcquire(pReNative, idxVarSrc, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
+    uint8_t const idxRegSrc = iemNativeVarRegisterAcquireInited(pReNative, idxVarSrc, &off);
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized OR instruction harvest the EFLAGS. */
     off = iemNativeEmitAmd64OneByteModRmInstrRREx(iemNativeInstrBufEnsure(pReNative, off, 4), off,
@@ -1081,7 +1081,7 @@ template<uint8_t const a_cOpBits, uint8_t const a_cImmBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_or_r_i_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint64_t uImmOp, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized OR instruction harvest the EFLAGS. */
     PIEMNATIVEINSTR const pCodeBuf = iemNativeInstrBufEnsure(pReNative, off, 8);
@@ -1128,8 +1128,8 @@ template<uint8_t const a_cOpBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_xor_r_r_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint8_t idxVarSrc, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
-    uint8_t const idxRegSrc = iemNativeVarRegisterAcquire(pReNative, idxVarSrc, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
+    uint8_t const idxRegSrc = iemNativeVarRegisterAcquireInited(pReNative, idxVarSrc, &off);
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized OR instruction harvest the EFLAGS. */
     off = iemNativeEmitAmd64OneByteModRmInstrRREx(iemNativeInstrBufEnsure(pReNative, off, 4), off,
@@ -1163,7 +1163,7 @@ template<uint8_t const a_cOpBits, uint8_t const a_cImmBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_xor_r_i_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint64_t uImmOp, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized XOR instruction harvest the EFLAGS. */
     PIEMNATIVEINSTR const pCodeBuf = iemNativeInstrBufEnsure(pReNative, off, 8);
@@ -1214,8 +1214,8 @@ template<uint8_t const a_cOpBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_add_r_r_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint8_t idxVarSrc, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
-    uint8_t const idxRegSrc = iemNativeVarRegisterAcquire(pReNative, idxVarSrc, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
+    uint8_t const idxRegSrc = iemNativeVarRegisterAcquireInited(pReNative, idxVarSrc, &off);
 
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized ADD instruction to get the right EFLAGS.SF value. */
@@ -1272,7 +1272,7 @@ template<uint8_t const a_cOpBits, uint8_t const a_cImmBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_add_r_i_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint64_t uImmOp, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
 
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized ADD instruction to get the right EFLAGS.SF value. */
@@ -1340,9 +1340,9 @@ template<uint8_t const a_cOpBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_adc_r_r_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint8_t idxVarSrc, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
-    uint8_t const idxRegSrc = iemNativeVarRegisterAcquire(pReNative, idxVarSrc, &off, true /*fInitialized*/);
-    uint8_t const idxRegEfl = iemNativeVarRegisterAcquire(pReNative, idxVarEfl, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
+    uint8_t const idxRegSrc = iemNativeVarRegisterAcquireInited(pReNative, idxVarSrc, &off);
+    uint8_t const idxRegEfl = iemNativeVarRegisterAcquireInited(pReNative, idxVarEfl, &off);
 
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we use BT to set EFLAGS.CF and then issue an ADC instruction
@@ -1405,8 +1405,8 @@ template<uint8_t const a_cOpBits, uint8_t const a_cImmBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_adc_r_i_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint64_t uImmOp, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
-    uint8_t const idxRegEfl = iemNativeVarRegisterAcquire(pReNative, idxVarEfl, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
+    uint8_t const idxRegEfl = iemNativeVarRegisterAcquireInited(pReNative, idxVarEfl, &off);
 
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we use BT to set EFLAGS.CF and then issue an ADC instruction
@@ -1469,8 +1469,8 @@ template<uint8_t const a_cOpBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_sub_r_r_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint8_t idxVarSrc, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
-    uint8_t const idxRegSrc = iemNativeVarRegisterAcquire(pReNative, idxVarSrc, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
+    uint8_t const idxRegSrc = iemNativeVarRegisterAcquireInited(pReNative, idxVarSrc, &off);
 
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized SUB instruction to get the right EFLAGS.SF value. */
@@ -1527,7 +1527,7 @@ template<uint8_t const a_cOpBits, uint8_t const a_cImmBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_sub_r_i_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint64_t uImmOp, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
 
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized SUB instruction to get the right EFLAGS.SF value. */
@@ -1597,8 +1597,8 @@ template<uint8_t const a_cOpBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_cmp_r_r_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint8_t idxVarSrc, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
-    uint8_t const idxRegSrc = iemNativeVarRegisterAcquire(pReNative, idxVarSrc, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
+    uint8_t const idxRegSrc = iemNativeVarRegisterAcquireInited(pReNative, idxVarSrc, &off);
 
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized CMP instruction to get the right EFLAGS.SF value. */
@@ -1651,7 +1651,7 @@ template<uint8_t const a_cOpBits, uint8_t const a_cImmBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_cmp_r_i_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint64_t uImmOp, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
 
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we just use the correctly sized CMP instruction to get the right EFLAGS.SF value. */
@@ -1719,9 +1719,9 @@ template<uint8_t const a_cOpBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_sbb_r_r_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint8_t idxVarSrc, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
-    uint8_t const idxRegSrc = iemNativeVarRegisterAcquire(pReNative, idxVarSrc, &off, true /*fInitialized*/);
-    uint8_t const idxRegEfl = iemNativeVarRegisterAcquire(pReNative, idxVarEfl, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
+    uint8_t const idxRegSrc = iemNativeVarRegisterAcquireInited(pReNative, idxVarSrc, &off);
+    uint8_t const idxRegEfl = iemNativeVarRegisterAcquireInited(pReNative, idxVarEfl, &off);
 
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we use BT to set EFLAGS.CF and then issue an SBB instruction
@@ -1785,8 +1785,8 @@ template<uint8_t const a_cOpBits, uint8_t const a_cImmBits>
 DECL_INLINE_THROW(uint32_t)
 iemNativeEmit_sbb_r_i_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off, uint8_t idxVarDst, uint64_t uImmOp, uint8_t idxVarEfl)
 {
-    uint8_t const idxRegDst = iemNativeVarRegisterAcquire(pReNative, idxVarDst, &off, true /*fInitialized*/);
-    uint8_t const idxRegEfl = iemNativeVarRegisterAcquire(pReNative, idxVarEfl, &off, true /*fInitialized*/);
+    uint8_t const idxRegDst = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
+    uint8_t const idxRegEfl = iemNativeVarRegisterAcquireInited(pReNative, idxVarEfl, &off);
 
 #ifdef RT_ARCH_AMD64
     /* On AMD64 we use BT to set EFLAGS.CF and then issue an SBB instruction
@@ -2105,9 +2105,9 @@ iemNativeEmit_shl_r_CL_efl(PIEMRECOMPILERSTATE pReNative, uint32_t off,
              registers we need before the jump or we may end up with invalid
              register state if the branch is taken. */
     uint8_t const idxRegTmp   = iemNativeRegAllocTmp(pReNative, &off); /* Do this first in hope we'll get EAX. */
-    uint8_t const idxRegCount = iemNativeVarRegisterAcquire(pReNative, idxVarCount, &off, true /*fInitialized*/); /* modified on arm64 */
-    uint8_t const idxRegDst   = iemNativeVarRegisterAcquire(pReNative, idxVarDst,   &off, true /*fInitialized*/);
-    uint8_t const idxRegEfl   = iemNativeVarRegisterAcquire(pReNative, idxVarEfl,   &off, true /*fInitialized*/);
+    uint8_t const idxRegCount = iemNativeVarRegisterAcquireInited(pReNative, idxVarCount, &off); /* modified on arm64 */
+    uint8_t const idxRegDst   = iemNativeVarRegisterAcquireInited(pReNative, idxVarDst, &off);
+    uint8_t const idxRegEfl   = iemNativeVarRegisterAcquireInited(pReNative, idxVarEfl, &off);
 
 #ifdef RT_ARCH_AMD64
     /* Make sure IEM_MC_NATIVE_AMD64_HOST_REG_FOR_LOCAL was used. */
@@ -2860,7 +2860,7 @@ iemNativeEmit_packuswb_rv_u128(PIEMRECOMPILERSTATE pReNative, uint32_t off,
     { \
         uint8_t const idxSimdRegDst = iemNativeSimdRegAllocTmpForGuestSimdReg(pReNative, &off, IEMNATIVEGSTSIMDREG_SIMD(idxSimdGstRegDst), \
                                                                               kIemNativeGstSimdRegLdStSz_Low128, kIemNativeGstRegUse_ForFullWrite); \
-        uint8_t const idxRegSrc = iemNativeVarRegisterAcquire(pReNative, idxVarSrc, &off, true /*fInitialized*/); \
+        uint8_t const idxRegSrc = iemNativeVarRegisterAcquireInited(pReNative, idxVarSrc, &off); \
         PIEMNATIVEINSTR const pCodeBuf = iemNativeInstrBufEnsure(pReNative, off, 7 + 6); \
         pCodeBuf[off++] = X86_OP_PRF_SIZE_OP; /* Transfer value from GPR to temporary vector register using pinsrq. */ \
         pCodeBuf[off++] =   X86_OP_REX_W \
@@ -2919,7 +2919,7 @@ iemNativeEmit_packuswb_rv_u128(PIEMRECOMPILERSTATE pReNative, uint32_t off,
     { \
         uint8_t const idxSimdRegDst = iemNativeSimdRegAllocTmpForGuestSimdReg(pReNative, &off, IEMNATIVEGSTSIMDREG_SIMD(idxSimdGstRegDst), \
                                                                               kIemNativeGstSimdRegLdStSz_Low128, kIemNativeGstRegUse_ForFullWrite); \
-        uint8_t const idxRegSrc = iemNativeVarRegisterAcquire(pReNative, idxVarSrc, &off, true /*fInitialized*/); \
+        uint8_t const idxRegSrc = iemNativeVarRegisterAcquireInited(pReNative, idxVarSrc, &off); \
         PIEMNATIVEINSTR const pCodeBuf = iemNativeInstrBufEnsure(pReNative, off, 2); \
         pCodeBuf[off++] = Armv8A64MkVecInstrIns(IEMNATIVE_SIMD_REG_FIXED_TMP0, idxRegSrc, 0 /*idxElem*/); /* Transfer value from GPR to temporary vector register. */ \
         pCodeBuf[off++] = Armv8A64MkVecInstrUShll(idxSimdRegDst, IEMNATIVE_SIMD_REG_FIXED_TMP0, 0, (a_ArmElemSz), (a_fArmUnsigned)); \

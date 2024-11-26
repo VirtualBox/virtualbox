@@ -1,4 +1,4 @@
-/* $Id: IEMAllN8veRecompiler.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: IEMAllN8veRecompiler.cpp 107184 2024-11-26 22:32:44Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Native Recompiler
  *
@@ -156,7 +156,7 @@ DECL_FORCE_INLINE(bool) iemNativeHlpReturnBreakViaLookupIsIrqOrForceFlagPending(
 /**
  * Used by TB code when encountering a non-zero status or rcPassUp after a call.
  */
-template <bool const a_fWithIrqCheck>
+template<bool const a_fWithIrqCheck>
 IEM_DECL_NATIVE_HLP_DEF(uintptr_t, iemNativeHlpReturnBreakViaLookup,(PVMCPUCC pVCpu, uint8_t idxTbLookup,
                                                                      uint32_t fFlags, RTGCPHYS GCPhysPc))
 {
@@ -3467,13 +3467,15 @@ DECL_HIDDEN_THROW(uint32_t) iemNativeRegMoveOrSpillStackVar(PIEMRECOMPILERSTATE 
  *
  * @returns The host register number; throws VBox status code on failure,
  *          so no need to check the return value.
- * @param   pReNative       The native recompile state.
- * @param   poff            Pointer to the variable with the code buffer position.
- *                          This will be update if we need to move a variable from
- *                          register to stack in order to satisfy the request.
- * @param   a_fPreferVolatile Whether to prefer volatile over non-volatile
- *                          registers (@c true, default) or the other way around
- *                          (@c false, for iemNativeRegAllocTmpForGuestReg()).
+ * @param   pReNative           The native recompile state.
+ * @param   poff                Pointer to the variable with the code buffer
+ *                              position. This will be update if we need to move
+ *                              a variable from register to stack in order to
+ *                              satisfy the request.
+ * @tparam  a_fPreferVolatile   Whether to prefer volatile over non-volatile
+ *                              registers (@c true, default) or the other way
+ *                              around (@c false, for
+ *                              iemNativeRegAllocTmpForGuestReg()).
  *
  * @note    Must not modify the host status flags!
  */
@@ -3529,14 +3531,16 @@ DECL_HIDDEN_THROW(uint8_t) iemNativeRegAllocTmpPreferNonVolatile(PIEMRECOMPILERS
  *
  * @returns The host register number; throws VBox status code on failure,
  *          so no need to check the return value.
- * @param   pReNative       The native recompile state.
- * @param   poff            Pointer to the variable with the code buffer position.
- *                          This will be update if we need to move a variable from
- *                          register to stack in order to satisfy the request.
- * @param   fRegMask        Mask of acceptable registers.
- * @param   fPreferVolatile Whether to prefer volatile over non-volatile
- *                          registers (@c true, default) or the other way around
- *                          (@c false, for iemNativeRegAllocTmpForGuestReg()).
+ * @param   pReNative           The native recompile state.
+ * @param   poff                Pointer to the variable with the code buffer
+ *                              position. This will be update if we need to move
+ *                              a variable from register to stack in order to
+ *                              satisfy the request.
+ * @param   fRegMask            Mask of acceptable registers.
+ * @tparam   a_fPreferVolatile  Whether to prefer volatile over non-volatile
+ *                              registers (@c true, default) or the other way
+ *                              around (@c false, for
+ *                              iemNativeRegAllocTmpForGuestReg()).
  */
 template<bool const a_fPreferVolatile>
 DECL_FORCE_INLINE_THROW(uint8_t) iemNativeRegAllocTmpExInt(PIEMRECOMPILERSTATE pReNative, uint32_t *poff, uint32_t fRegMask)
@@ -3849,18 +3853,19 @@ static uint8_t iemNativeRegAllocTmpForGuestRegCommon(PIEMRECOMPILERSTATE pReNati
  *
  * @returns The host register number; throws VBox status code on failure, so no
  *          need to check the return value.
- * @param   pReNative       The native recompile state.
- * @param   poff            Pointer to the variable with the code buffer
- *                          position. This will be update if we need to move a
- *                          variable from register to stack in order to satisfy
- *                          the request.
- * @param   enmGstReg       The guest register that will is to be updated.
- * @param   a_enmIntendedUse How the caller will be using the host register.
- * @param   a_fNonVolatileRegs Set if no volatile register allowed, clear if any
- *                          register is okay (default).  The ASSUMPTION here is
- *                          that the caller has already flushed all volatile
- *                          registers, so this is only applied if we allocate a
- *                          new register.
+ * @param   pReNative           The native recompile state.
+ * @param   poff                Pointer to the variable with the code buffer
+ *                              position. This will be update if we need to move
+ *                              a variable from register to stack in order to
+ *                              satisfy the request.
+ * @param   enmGstReg           The guest register that will is to be updated.
+ * @tparam  a_enmIntendedUse    How the caller will be using the host register.
+ * @tparam  a_fNonVolatileRegs  Set if no volatile register allowed, clear if
+ *                              any register is okay (default).
+ *                              The ASSUMPTION here is that the caller has
+ *                              already flushed all volatile registers,
+ *                              so this is only applied if we allocate a new
+ *                              register.
  * @sa      iemNativeRegAllocTmpForGuestRegIfAlreadyPresent
  */
 template<IEMNATIVEGSTREGUSE const a_enmIntendedUse, bool const a_fNonVolatileRegs>
@@ -3987,13 +3992,11 @@ iemNativeRegAllocTmpForGuestEFlags(PIEMRECOMPILERSTATE pReNative, uint32_t *poff
     AssertCompile(a_enmIntendedUse == kIemNativeGstRegUse_ReadOnly || a_enmIntendedUse == kIemNativeGstRegUse_ForUpdate);
     if RT_CONSTEXPR_IF(a_enmIntendedUse == kIemNativeGstRegUse_ReadOnly)
         return iemNativeRegAllocTmpForGuestRegCommon<kIemNativeGstRegUse_ReadOnly,
-                                                       IEMNATIVE_CALL_VOLATILE_GREG_MASK
-                                                     & IEMNATIVE_HST_GREG_MASK
+                                                       IEMNATIVE_HST_GREG_MASK
                                                      & ~IEMNATIVE_REG_FIXED_MASK>(pReNative, poff, kIemNativeGstReg_EFlags);
     else /* keep else, is required by MSC */
         return iemNativeRegAllocTmpForGuestRegCommon<kIemNativeGstRegUse_ForUpdate,
-                                                       IEMNATIVE_CALL_VOLATILE_GREG_MASK
-                                                     & IEMNATIVE_HST_GREG_MASK
+                                                       IEMNATIVE_HST_GREG_MASK
                                                      & ~IEMNATIVE_REG_FIXED_MASK>(pReNative, poff, kIemNativeGstReg_EFlags);
 }
 
@@ -7449,8 +7452,8 @@ DECL_HIDDEN_THROW(uint8_t) iemNativeVarAllocAssign(PIEMRECOMPILERSTATE pReNative
     uint8_t const idxVar = IEMNATIVE_VAR_IDX_PACK(iemNativeVarAllocInt(pReNative, cbType));
     iemNativeVarSetKindToStack(pReNative, IEMNATIVE_VAR_IDX_PACK(idxVar));
 
-    uint8_t const idxVarOtherReg = iemNativeVarRegisterAcquire(pReNative, idxVarOther, poff, true /*fInitialized*/);
-    uint8_t const idxVarReg = iemNativeVarRegisterAcquire(pReNative, idxVar, poff);
+    uint8_t const idxVarOtherReg = iemNativeVarRegisterAcquireInited(pReNative, idxVarOther, poff);
+    uint8_t const idxVarReg      = iemNativeVarRegisterAcquire(pReNative, idxVar, poff);
 
 /** @todo combine MOV and AND using MOVZX/similar. */
     *poff = iemNativeEmitLoadGprFromGpr(pReNative, *poff, idxVarReg, idxVarOtherReg);
@@ -7479,29 +7482,28 @@ DECL_HIDDEN_THROW(uint8_t) iemNativeVarAllocAssign(PIEMRECOMPILERSTATE pReNative
  * @param   poff            Pointer to the instruction buffer offset.
  *                          In case a register needs to be freed up or the value
  *                          loaded off the stack.
- * @param   fInitialized    Set if the variable must already have been
+ * @param   idxRegPref      Preferred register number or UINT8_MAX.
+ *
+ * @tparam  a_fInitialized  Set if the variable must already have been
  *                          initialized. Will throw VERR_IEM_VAR_NOT_INITIALIZED
  *                          if this is not the case.
- * @param   idxRegPref      Preferred register number or UINT8_MAX.
+ * @tparam  a_fWithRegPref  If idxRegPref is valid.
  *
  * @note    Must not modify the host status flags!
  */
-DECL_HIDDEN_THROW(uint8_t) iemNativeVarRegisterAcquire(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff,
-                                                       bool fInitialized /*= false*/, uint8_t idxRegPref /*= UINT8_MAX*/)
+template<bool const a_fInitialized, bool const a_fWithRegPref>
+DECL_FORCE_INLINE_THROW(uint8_t)
+iemNativeVarRegisterAcquireSlowInt(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff, uint8_t idxRegPref)
 {
     IEMNATIVE_ASSERT_VAR_IDX(pReNative, idxVar);
     PIEMNATIVEVAR const pVar = &pReNative->Core.aVars[IEMNATIVE_VAR_IDX_UNPACK(idxVar)];
     Assert(pVar->cbVar <= 8);
     Assert(!pVar->fRegAcquired);
+    Assert(!a_fWithRegPref || idxRegPref < RT_ELEMENTS(pReNative->Core.aHstRegs));
 
-    uint8_t idxReg = pVar->idxReg;
-    if (idxReg < RT_ELEMENTS(pReNative->Core.aHstRegs))
-    {
-        Assert(   pVar->enmKind > kIemNativeVarKind_Invalid
-               && pVar->enmKind < kIemNativeVarKind_End);
-        pVar->fRegAcquired = true;
-        return idxReg;
-    }
+    /* This slow code path only handles the case where no register have been
+       allocated for the variable yet. */
+    Assert(pVar->idxReg == UINT8_MAX);
 
     /*
      * If the kind of variable has not yet been set, default to 'stack'.
@@ -7529,6 +7531,7 @@ DECL_HIDDEN_THROW(uint8_t) iemNativeVarRegisterAcquire(PIEMRECOMPILERSTATE pReNa
     /** @todo Detect too early argument value fetches and warn about hidden
      * calls causing less optimal code to be generated in the python script. */
 
+    uint8_t       idxReg;
     uint8_t const uArgNo = pVar->uArgNo;
     if (   uArgNo < RT_ELEMENTS(g_aidxIemNativeCallRegs)
         && !(pReNative->Core.bmHstRegs & RT_BIT_32(g_aidxIemNativeCallRegs[uArgNo])))
@@ -7543,7 +7546,7 @@ DECL_HIDDEN_THROW(uint8_t) iemNativeVarRegisterAcquire(PIEMRECOMPILERSTATE pReNa
         iemNativeRegClearGstRegShadowing(pReNative, idxReg, *poff);
         Log11(("iemNativeVarRegisterAcquire: idxVar=%#x idxReg=%u (matching arg %u)\n", idxVar, idxReg, uArgNo));
     }
-    else if (   idxRegPref >= RT_ELEMENTS(pReNative->Core.aHstRegs)
+    else if (   !a_fWithRegPref
              || (pReNative->Core.bmHstRegs & RT_BIT_32(idxRegPref)))
     {
         /** @todo there must be a better way for this and boot cArgsX?   */
@@ -7588,7 +7591,7 @@ DECL_HIDDEN_THROW(uint8_t) iemNativeVarRegisterAcquire(PIEMRECOMPILERSTATE pReNa
     uint8_t const idxStackSlot = pVar->idxStackSlot;
     if (idxStackSlot < IEMNATIVE_FRAME_VAR_SLOTS)
     {
-        Assert(fInitialized);
+        Assert(a_fInitialized);
         int32_t const offDispBp = iemNativeStackCalcBpDisp(idxStackSlot);
         switch (pVar->cbVar)
         {
@@ -7604,7 +7607,7 @@ DECL_HIDDEN_THROW(uint8_t) iemNativeVarRegisterAcquire(PIEMRECOMPILERSTATE pReNa
     {
         Assert(idxStackSlot == UINT8_MAX);
         if (pVar->enmKind != kIemNativeVarKind_Immediate)
-            AssertStmt(!fInitialized, IEMNATIVE_DO_LONGJMP(pReNative, VERR_IEM_VAR_NOT_INITIALIZED));
+            AssertStmt(!a_fInitialized, IEMNATIVE_DO_LONGJMP(pReNative, VERR_IEM_VAR_NOT_INITIALIZED));
         else
         {
             /*
@@ -7612,7 +7615,7 @@ DECL_HIDDEN_THROW(uint8_t) iemNativeVarRegisterAcquire(PIEMRECOMPILERSTATE pReNa
              * required by IEM_MC_ADD_LOCAL_S16_TO_EFF_ADDR, IEM_MC_ADD_LOCAL_S32_TO_EFF_ADDR
              * and IEM_MC_ADD_LOCAL_S64_TO_EFF_ADDR in connection with BT, BTS, BTR, and BTC.
              */
-            AssertStmt(fInitialized, IEMNATIVE_DO_LONGJMP(pReNative, VERR_IEM_VAR_NOT_INITIALIZED));
+            AssertStmt(a_fInitialized, IEMNATIVE_DO_LONGJMP(pReNative, VERR_IEM_VAR_NOT_INITIALIZED));
             Log11(("iemNativeVarRegisterAcquire: idxVar=%#x idxReg=%u uValue=%RX64 converting from immediate to stack\n",
                    idxVar, idxReg, pVar->u.uValue));
             *poff = iemNativeEmitLoadGprImm64(pReNative, *poff, idxReg, pVar->u.uValue);
@@ -7622,6 +7625,44 @@ DECL_HIDDEN_THROW(uint8_t) iemNativeVarRegisterAcquire(PIEMRECOMPILERSTATE pReNa
 
     pVar->fRegAcquired = true;
     return idxReg;
+}
+
+
+/** See iemNativeVarRegisterAcquireSlowInt for details. */
+DECL_HIDDEN_THROW(uint8_t) iemNativeVarRegisterAcquireSlow(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff)
+{
+    /* very likely */
+    //STAM_REL_COUNTER_INC(&pReNative->pVCpu->iem.s.aStatAdHoc[(pReNative->Core.aVars[IEMNATIVE_VAR_IDX_UNPACK(idxVar)].idxReg < RT_ELEMENTS(pReNative->Core.aHstRegs)) + 0]);
+    return iemNativeVarRegisterAcquireSlowInt<false, false>(pReNative, idxVar, poff, UINT8_MAX);
+}
+
+
+/** See iemNativeVarRegisterAcquireSlowInt for details. */
+DECL_HIDDEN_THROW(uint8_t) iemNativeVarRegisterAcquireInitedSlow(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff)
+{
+    /* even more likely */
+    //STAM_REL_COUNTER_INC(&pReNative->pVCpu->iem.s.aStatAdHoc[(pReNative->Core.aVars[IEMNATIVE_VAR_IDX_UNPACK(idxVar)].idxReg < RT_ELEMENTS(pReNative->Core.aHstRegs)) + 2]);
+    return iemNativeVarRegisterAcquireSlowInt<true, false>(pReNative, idxVar, poff, UINT8_MAX);
+}
+
+
+/** See iemNativeVarRegisterAcquireSlowInt for details. */
+DECL_HIDDEN_THROW(uint8_t)
+iemNativeVarRegisterAcquireWithPrefSlow(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff, uint8_t idxRegPref)
+{
+    /* unused */
+    //STAM_REL_COUNTER_INC(&pReNative->pVCpu->iem.s.aStatAdHoc[(pReNative->Core.aVars[IEMNATIVE_VAR_IDX_UNPACK(idxVar)].idxReg < RT_ELEMENTS(pReNative->Core.aHstRegs)) + 4]);
+    return iemNativeVarRegisterAcquireSlowInt<false, true>(pReNative, idxVar, poff, idxRegPref);
+}
+
+
+/** See iemNativeVarRegisterAcquireSlowInt for details. */
+DECL_HIDDEN_THROW(uint8_t)
+iemNativeVarRegisterAcquireInitedWithPrefSlow(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff, uint8_t idxRegPref)
+{
+    /* very very likely */
+    //STAM_REL_COUNTER_INC(&pReNative->pVCpu->iem.s.aStatAdHoc[(pReNative->Core.aVars[IEMNATIVE_VAR_IDX_UNPACK(idxVar)].idxReg < RT_ELEMENTS(pReNative->Core.aHstRegs)) + 6]);
+    return iemNativeVarRegisterAcquireSlowInt<true, true>(pReNative, idxVar, poff, idxRegPref);
 }
 
 
@@ -10063,7 +10104,7 @@ DECLHIDDEN(int) iemNativeRecompileAttachExecMemChunkCtx(PVMCPU pVCpu, uint32_t i
  *                  thread.
  * @param   pTb     The threaded translation to recompile to native.
  */
-DECLHIDDEN(PIEMTB) iemNativeRecompile(PVMCPUCC pVCpu, PIEMTB pTb) RT_NOEXCEPT
+IEM_DECL_MSC_GUARD_IGNORE DECLHIDDEN(PIEMTB) iemNativeRecompile(PVMCPUCC pVCpu, PIEMTB pTb) RT_NOEXCEPT
 {
 #if 0 /* For profiling the native recompiler code. */
 l_profile_again:

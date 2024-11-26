@@ -1,4 +1,4 @@
-/* $Id: IEMMc.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: IEMMc.h 107184 2024-11-26 22:32:44Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager - IEM_MC_XXX.
  */
@@ -104,8 +104,8 @@
 
 /** Fetches the near return address from the stack, sets RIP and RSP (may trigger
  * \#GP or \#SS), finishes the instruction and returns. */
-#define IEM_MC_RETN_AND_FINISH(a_u16Pop) \
-    return iemRegRipNearReturnAndFinishClearingRF((pVCpu), IEM_GET_INSTR_LEN(pVCpu), (a_u16Pop), pVCpu->iem.s.enmEffOpSize)
+#define IEM_MC_RETN_AND_FINISH(a_cbPopArgs) \
+    return iemRegRipNearReturnAndFinishClearingRF((pVCpu), IEM_GET_INSTR_LEN(pVCpu), (a_cbPopArgs), pVCpu->iem.s.enmEffOpSize)
 
 
 #define IEM_MC_RAISE_DIVIDE_ERROR_IF_LOCAL_IS_ZERO(a_uVar) \

@@ -1,4 +1,4 @@
-/* $Id: IEMN8veRecompiler.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: IEMN8veRecompiler.h 107184 2024-11-26 22:32:44Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager - Native Recompiler Internals.
  */
@@ -2148,7 +2148,8 @@ typedef FNIEMNATIVERECOMPFUNC *PFNIEMNATIVERECOMPFUNC;
 /** Defines a native recompiler worker for a threaded function.
  * @see FNIEMNATIVERECOMPFUNC  */
 #define IEM_DECL_IEMNATIVERECOMPFUNC_DEF(a_Name) \
-    uint32_t VBOXCALL a_Name(PIEMRECOMPILERSTATE pReNative, uint32_t off, PCIEMTHRDEDCALLENTRY pCallEntry)
+    IEM_DECL_MSC_GUARD_IGNORE uint32_t VBOXCALL \
+    a_Name(PIEMRECOMPILERSTATE pReNative, uint32_t off, PCIEMTHRDEDCALLENTRY pCallEntry)
 
 /** Prototypes a native recompiler function for a threaded function.
  * @see FNIEMNATIVERECOMPFUNC  */
@@ -2170,7 +2171,8 @@ typedef FNIEMNATIVELIVENESSFUNC *PFNIEMNATIVELIVENESSFUNC;
 /** Defines a native recompiler liveness analysis worker for a threaded function.
  * @see FNIEMNATIVELIVENESSFUNC  */
 #define IEM_DECL_IEMNATIVELIVENESSFUNC_DEF(a_Name) \
-    DECLCALLBACK(void) a_Name(PCIEMTHRDEDCALLENTRY pCallEntry, PCIEMLIVENESSENTRY pIncoming, PIEMLIVENESSENTRY pOutgoing)
+    IEM_DECL_MSC_GUARD_IGNORE DECLCALLBACK(void) \
+    a_Name(PCIEMTHRDEDCALLENTRY pCallEntry, PCIEMLIVENESSENTRY pIncoming, PIEMLIVENESSENTRY pOutgoing)
 
 /** Prototypes a native recompiler liveness analysis function for a threaded function.
  * @see FNIEMNATIVELIVENESSFUNC  */
@@ -2340,8 +2342,12 @@ DECL_HIDDEN_THROW(void)     iemNativeVarSetKindToConst(PIEMRECOMPILERSTATE pReNa
 DECL_HIDDEN_THROW(void)     iemNativeVarSetKindToGstRegRef(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar,
                                                            IEMNATIVEGSTREGREF enmRegClass, uint8_t idxReg);
 DECL_HIDDEN_THROW(uint8_t)  iemNativeVarGetStackSlot(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar);
-DECL_HIDDEN_THROW(uint8_t)  iemNativeVarRegisterAcquire(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff,
-                                                        bool fInitialized = false, uint8_t idxRegPref = UINT8_MAX);
+DECL_HIDDEN_THROW(uint8_t)  iemNativeVarRegisterAcquireSlow(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff);
+DECL_HIDDEN_THROW(uint8_t)  iemNativeVarRegisterAcquireWithPrefSlow(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar,
+                                                                    uint32_t *poff, uint8_t idxRegPref);
+DECL_HIDDEN_THROW(uint8_t)  iemNativeVarRegisterAcquireInitedSlow(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff);
+DECL_HIDDEN_THROW(uint8_t)  iemNativeVarRegisterAcquireInitedWithPrefSlow(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar,
+                                                                          uint32_t *poff, uint8_t idxRegPref);
 #ifdef IEMNATIVE_WITH_SIMD_REG_ALLOCATOR
 DECL_HIDDEN_THROW(uint8_t)  iemNativeVarSimdRegisterAcquire(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff,
                                                             bool fInitialized = false, uint8_t idxRegPref = UINT8_MAX);
@@ -2668,6 +2674,138 @@ DECL_INLINE_THROW(void) iemNativeVarSimdRegisterRelease(PIEMRECOMPILERSTATE pReN
     iemNativeVarRegisterRelease(pReNative, idxVar);
 }
 #endif
+
+
+/**
+ * Makes sure variable @a idxVar has a register assigned to it and that it stays
+ * fixed till we call iemNativeVarRegisterRelease.
+ *
+ * @returns The host register number.
+ * @param   pReNative       The recompiler state.
+ * @param   idxVar          The variable.
+ * @param   poff            Pointer to the instruction buffer offset.
+ *                          In case a register needs to be freed up or the value
+ *                          loaded off the stack.
+ * @note    Must not modify the host status flags!
+ */
+DECL_INLINE_THROW(uint8_t) iemNativeVarRegisterAcquire(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff)
+{
+    IEMNATIVE_ASSERT_VAR_IDX(pReNative, idxVar);
+    PIEMNATIVEVAR const pVar = &pReNative->Core.aVars[IEMNATIVE_VAR_IDX_UNPACK(idxVar)];
+    Assert(pVar->cbVar <= 8);
+    Assert(!pVar->fRegAcquired);
+    uint8_t const idxReg = pVar->idxReg;
+    if (idxReg < RT_ELEMENTS(pReNative->Core.aHstRegs))
+    {
+        Assert(   pVar->enmKind > kIemNativeVarKind_Invalid
+               && pVar->enmKind < kIemNativeVarKind_End);
+        pVar->fRegAcquired = true;
+        return idxReg;
+    }
+    return iemNativeVarRegisterAcquireSlow(pReNative, idxVar, poff);
+}
+
+
+/**
+ * Makes sure variable @a idxVar has a register assigned to it and that it stays
+ * fixed till we call iemNativeVarRegisterRelease.
+ *
+ * @returns The host register number.
+ * @param   pReNative       The recompiler state.
+ * @param   idxVar          The variable.
+ * @param   poff            Pointer to the instruction buffer offset.
+ *                          In case a register needs to be freed up or the value
+ *                          loaded off the stack.
+ * @param   idxRegPref      Preferred register number.
+ * @note    Must not modify the host status flags!
+ */
+DECL_INLINE_THROW(uint8_t)
+iemNativeVarRegisterAcquireWithPref(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff, uint8_t idxRegPref)
+{
+    IEMNATIVE_ASSERT_VAR_IDX(pReNative, idxVar);
+    PIEMNATIVEVAR const pVar = &pReNative->Core.aVars[IEMNATIVE_VAR_IDX_UNPACK(idxVar)];
+    Assert(pVar->cbVar <= 8);
+    Assert(!pVar->fRegAcquired);
+    Assert(idxRegPref < RT_ELEMENTS(pReNative->Core.aHstRegs));
+    uint8_t const idxReg = pVar->idxReg;
+    if (idxReg < RT_ELEMENTS(pReNative->Core.aHstRegs))
+    {
+        Assert(   pVar->enmKind > kIemNativeVarKind_Invalid
+               && pVar->enmKind < kIemNativeVarKind_End);
+        pVar->fRegAcquired = true;
+        return idxReg;
+    }
+    return iemNativeVarRegisterAcquireWithPrefSlow(pReNative, idxVar, poff, idxRegPref);
+}
+
+
+/**
+ * Makes sure variable @a idxVar has a register assigned to it and that it stays
+ * fixed till we call iemNativeVarRegisterRelease.
+ *
+ * The variable must be initialized or VERR_IEM_VAR_NOT_INITIALIZED will be
+ * thrown.
+ *
+ * @returns The host register number.
+ * @param   pReNative       The recompiler state.
+ * @param   idxVar          The variable.
+ * @param   poff            Pointer to the instruction buffer offset.
+ *                          In case a register needs to be freed up or the value
+ *                          loaded off the stack.
+ * @note    Must not modify the host status flags!
+ */
+DECL_INLINE_THROW(uint8_t) iemNativeVarRegisterAcquireInited(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff)
+{
+    IEMNATIVE_ASSERT_VAR_IDX(pReNative, idxVar);
+    PIEMNATIVEVAR const pVar = &pReNative->Core.aVars[IEMNATIVE_VAR_IDX_UNPACK(idxVar)];
+    Assert(pVar->cbVar <= 8);
+    Assert(!pVar->fRegAcquired);
+    uint8_t const idxReg = pVar->idxReg;
+    if (idxReg < RT_ELEMENTS(pReNative->Core.aHstRegs))
+    {
+        Assert(   pVar->enmKind > kIemNativeVarKind_Invalid
+               && pVar->enmKind < kIemNativeVarKind_End);
+        pVar->fRegAcquired = true;
+        return idxReg;
+    }
+    return iemNativeVarRegisterAcquireInitedSlow(pReNative, idxVar, poff);
+}
+
+
+/**
+ * Makes sure variable @a idxVar has a register assigned to it and that it stays
+ * fixed till we call iemNativeVarRegisterRelease.
+ *
+ * The variable must be initialized or VERR_IEM_VAR_NOT_INITIALIZED will be
+ * thrown.
+ *
+ * @returns The host register number.
+ * @param   pReNative       The recompiler state.
+ * @param   idxVar          The variable.
+ * @param   poff            Pointer to the instruction buffer offset.
+ *                          In case a register needs to be freed up or the value
+ *                          loaded off the stack.
+ * @param   idxRegPref      Preferred register number.
+ * @note    Must not modify the host status flags!
+ */
+DECL_INLINE_THROW(uint8_t)
+iemNativeVarRegisterAcquireInitedWithPref(PIEMRECOMPILERSTATE pReNative, uint8_t idxVar, uint32_t *poff, uint8_t idxRegPref)
+{
+    IEMNATIVE_ASSERT_VAR_IDX(pReNative, idxVar);
+    PIEMNATIVEVAR const pVar = &pReNative->Core.aVars[IEMNATIVE_VAR_IDX_UNPACK(idxVar)];
+    Assert(pVar->cbVar <= 8);
+    Assert(!pVar->fRegAcquired);
+    Assert(idxRegPref < RT_ELEMENTS(pReNative->Core.aHstRegs));
+    uint8_t const idxReg = pVar->idxReg;
+    if (idxReg < RT_ELEMENTS(pReNative->Core.aHstRegs))
+    {
+        Assert(   pVar->enmKind > kIemNativeVarKind_Invalid
+               && pVar->enmKind < kIemNativeVarKind_End);
+        pVar->fRegAcquired = true;
+        return idxReg;
+    }
+    return iemNativeVarRegisterAcquireInitedWithPrefSlow(pReNative, idxVar, poff, idxRegPref);
+}
 
 
 /**
