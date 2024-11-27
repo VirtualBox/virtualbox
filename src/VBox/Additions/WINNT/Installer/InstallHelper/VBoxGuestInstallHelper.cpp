@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestInstallHelper.cpp 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxGuestInstallHelper.cpp 107188 2024-11-27 09:23:39Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxGuestInstallHelper - Driver and service installation helper for Windows guests.
  */
@@ -492,7 +492,6 @@ static DECLCALLBACK(void) vboxWinDrvInstLogCallback(VBOXWINDRIVERLOGTYPE enmType
 /**
  * Writes the driver log file header.
  *
- * @returns VBox status code.
  * @param   hLog                Handle to log file.
  * @param   pwszInfFile         INF file this log belongs to.
  */
@@ -2397,4 +2396,3 @@ int main(int argc, char **argv)
     return wmain(argc, papwszArgs);
 }
 #endif
-
