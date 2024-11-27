@@ -1,4 +1,4 @@
-/* $Id: IEMAllN8veRecompiler.cpp 107185 2024-11-26 22:43:27Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMAllN8veRecompiler.cpp 107186 2024-11-27 01:20:06Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Native Recompiler
  *
@@ -5565,6 +5565,7 @@ static uint32_t iemNativeSimdRegAllocLoadVecRegFromVecRegSz(PIEMRECOMPILERSTATE 
  *                          variable from register to stack in order to satisfy
  *                          the request.
  * @param   enmGstSimdReg   The guest SIMD register that will is to be updated.
+ * @param   enmLoadSz       Load/store size.
  * @param   enmIntendedUse  How the caller will be using the host register.
  * @param   fNoVolatileRegs Set if no volatile register allowed, clear if any
  *                          register is okay (default).  The ASSUMPTION here is
@@ -5575,7 +5576,8 @@ static uint32_t iemNativeSimdRegAllocLoadVecRegFromVecRegSz(PIEMRECOMPILERSTATE 
  */
 DECL_HIDDEN_THROW(uint8_t)
 iemNativeSimdRegAllocTmpForGuestSimdReg(PIEMRECOMPILERSTATE pReNative, uint32_t *poff, IEMNATIVEGSTSIMDREG enmGstSimdReg,
-                                        IEMNATIVEGSTSIMDREGLDSTSZ enmLoadSz, IEMNATIVEGSTREGUSE enmIntendedUse /*= kIemNativeGstRegUse_ReadOnly*/,
+                                        IEMNATIVEGSTSIMDREGLDSTSZ enmLoadSz,
+                                        IEMNATIVEGSTREGUSE enmIntendedUse /*= kIemNativeGstRegUse_ReadOnly*/,
                                         bool fNoVolatileRegs /*= false*/)
 {
     Assert(enmGstSimdReg < kIemNativeGstSimdReg_End);
