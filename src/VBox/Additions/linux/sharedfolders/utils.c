@@ -1,4 +1,4 @@
-/* $Id: utils.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: utils.c 107277 2024-12-05 11:40:42Z vadim.galitsyn@oracle.com $ */
 /** @file
  * vboxsf - VBox Linux Shared Folders VFS, utility functions.
  *
@@ -724,7 +724,7 @@ int vbsf_inode_revalidate_with_handle(struct dentry *dentry, SHFLHANDLE hHostFil
    has inode at all) from these new attributes we derive [kstat] via
    [generic_fillattr] */
 #if RTLNX_VER_MIN(2,5,18)
-# if RTLNX_VER_MIN(6,3,0)
+# if RTLNX_VER_MIN(6,3,0) || RTLNX_RHEL_RANGE(9,6, 9,99)
 int vbsf_inode_getattr(struct mnt_idmap *idmap, const struct path *path,
                        struct kstat *kstat, u32 request_mask, unsigned int flags)
 # elif RTLNX_VER_MIN(5,12,0)
@@ -772,7 +772,7 @@ int vbsf_inode_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat
         /* Do generic filling in of info. */
 # if RTLNX_VER_MIN(6,6,0)
         generic_fillattr(idmap, request_mask, dentry->d_inode, kstat);
-# elif RTLNX_VER_MIN(6,3,0)
+# elif RTLNX_VER_MIN(6,3,0) || RTLNX_RHEL_RANGE(9,6, 9,99)
         generic_fillattr(idmap, dentry->d_inode, kstat);
 # elif RTLNX_VER_MIN(5,12,0)
         generic_fillattr(ns, dentry->d_inode, kstat);
@@ -824,7 +824,7 @@ int vbsf_inode_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat
 /**
  * Modify inode attributes.
  */
-#if RTLNX_VER_MIN(6,3,0)
+#if RTLNX_VER_MIN(6,3,0) || RTLNX_RHEL_RANGE(9,6, 9,99)
 int vbsf_inode_setattr(struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *iattr)
 #elif RTLNX_VER_MIN(5,12,0)
 int vbsf_inode_setattr(struct user_namespace *ns, struct dentry *dentry, struct iattr *iattr)
@@ -850,7 +850,7 @@ int vbsf_inode_setattr(struct dentry *dentry, struct iattr *iattr)
      */
     iattr->ia_valid |= ATTR_FORCE;
 #if (RTLNX_VER_RANGE(3,16,39,  3,17,0)) || RTLNX_VER_MIN(4,9,0) || (RTLNX_VER_RANGE(4,1,37,  4,2,0)) || RTLNX_UBUNTU_ABI_MIN(4,4,255,208)
-# if RTLNX_VER_MIN(6,3,0)
+# if RTLNX_VER_MIN(6,3,0) || RTLNX_RHEL_RANGE(9,6, 9,99)
     rc = setattr_prepare(idmap, dentry, iattr);
 # elif RTLNX_VER_MIN(5,12,0)
     rc = setattr_prepare(ns, dentry, iattr);
