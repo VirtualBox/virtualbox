@@ -1,4 +1,4 @@
-/*  $Id: vbox_drv.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/*  $Id: vbox_drv.c 107278 2024-12-05 11:41:35Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VirtualBox Additions Linux kernel video driver
  */
@@ -43,7 +43,7 @@
 # include <drm/drm_probe_helper.h>
 #endif
 
-#if RTLNX_VER_MIN(5,14,0) || RTLNX_RHEL_RANGE(8,6, 8,99)
+#if RTLNX_VER_RANGE(5,14,0, 6,13,0) || RTLNX_RHEL_RANGE(8,6, 8,99)
 # include <drm/drm_aperture.h>
 #endif
 
@@ -84,7 +84,7 @@ static int vbox_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	struct drm_device *dev = NULL;
 	int ret = 0;
 
-# if RTLNX_VER_MIN(5,14,0) || RTLNX_RHEL_RANGE(8,6, 8,99)
+# if RTLNX_VER_RANGE(5,14,0, 6,13,0) || RTLNX_RHEL_RANGE(8,6, 8,99)
 #  if RTLNX_VER_MIN(5,15,0) || RTLNX_RHEL_RANGE(8,7, 8,99) || RTLNX_RHEL_MIN(9,1) || RTLNX_SUSE_MAJ_PREREQ(15,4)
 	ret = drm_aperture_remove_conflicting_pci_framebuffers(pdev, &driver);
 #  else
