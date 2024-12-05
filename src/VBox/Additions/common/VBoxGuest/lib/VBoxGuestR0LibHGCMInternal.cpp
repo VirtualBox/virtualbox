@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestR0LibHGCMInternal.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxGuestR0LibHGCMInternal.cpp 107274 2024-12-05 11:35:38Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VBoxGuestLib - Host-Guest Communication Manager internal functions, implemented by VBoxGuest
  */
@@ -436,7 +436,7 @@ static int vbglR0HGCMInternalPreprocessCall(PCVBGLIOCHGCMCALL pCallInfo, uint32_
                     if (VBGLR0_CAN_USE_PHYS_PAGE_LIST(/*a_fLocked =*/ false))
                     {
                         size_t const cPages = RTR0MemObjSize(hObj) >> PAGE_SHIFT;
-                        *pcbExtra += RT_UOFFSETOF_DYN(HGCMPageListInfo, aPages[cPages]);
+                        *pcbExtra += RT_UOFFSETOF_FLEX_ARRAY(HGCMPageListInfo, aPages, cPages);
                     }
                 }
                 else
@@ -644,7 +644,7 @@ static void vbglR0HGCMInternalInitCall(VMMDevHGCMCall *pHGCMCall, PCVBGLIOCHGCMC
                             Assert(pDstPgLst->aPages[iPage] != NIL_RTHCPHYS);
                         }
 
-                        offExtra += RT_UOFFSETOF_DYN(HGCMPageListInfo, aPages[cPages]);
+                        offExtra += (uint32_t)RT_UOFFSETOF_FLEX_ARRAY(HGCMPageListInfo, aPages, cPages);
                     }
                     else
                     {

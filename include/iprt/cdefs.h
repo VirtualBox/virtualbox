@@ -2943,12 +2943,25 @@
  * @returns offset into the structure of the specified member. signed.
  * @param   type        Structure type.
  * @param   memberarray Member.
+ * @deprecated Use RT_UOFFSETOF_FLEX_ARRAY when possible.
  */
 #if defined(__cplusplus) && RT_GNUC_PREREQ(4, 4)
 # define RT_UOFFSETOF_DYN(type, memberarray)    ( (uintptr_t)&( ((type *)(void *)0x1000)->memberarray) - 0x1000 )
 #else
 # define RT_UOFFSETOF_DYN(type, memberarray)    ( (uintptr_t)&( ((type *)(void *)0)->memberarray) )
 #endif
+
+/** @def RT_UOFFSETOF_FLEX_ARRAY
+ * Calculates the size of a structure that ends with a flexible array.
+ *
+ * @returns offset into the structure of the specified member. signed.
+ * @param   a_Type          Structure type.
+ * @param   a_ArrayMember   The name of flexible array member.
+ * @param   a_cEntries      The number of array entries to include in the
+ *                          offset.
+ */
+#define RT_UOFFSETOF_FLEX_ARRAY(a_Type, a_ArrayMember, a_cEntries) \
+        ( RT_UOFFSETOF(a_Type, a_ArrayMember) + RT_SIZEOFMEMB(a_Type, a_ArrayMember[0]) * (a_cEntries) )
 
 
 /** @def RT_SIZEOFMEMB
