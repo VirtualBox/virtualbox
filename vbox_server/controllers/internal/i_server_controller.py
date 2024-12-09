@@ -264,7 +264,26 @@ def i_virtualbox_getextradata(key=None):  # noqa: E501
     :rtype: MediumGetpropertyResponse
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    try:
+        oVBox = ctx['vb']
+        res = oVBox.getExtraData(key)
+        if res!='':
+            logging.info('Successfully get the value of VirtualBox extra data ' + key)
+            logging.info('The command result is ' + res)
+        else:
+            logging.info('Unknown extra data or the value is empty ')
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else res)
+    return response, httpCode
 
 
 def i_virtualbox_getextradatakeys():  # noqa: E501
