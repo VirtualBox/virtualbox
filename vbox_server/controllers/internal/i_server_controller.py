@@ -26,6 +26,7 @@ from vbox_server.models.error import Error  # noqa: E501
 from vbox_server.models.virtualbox_checkfirmwarepresent_response import VirtualboxCheckfirmwarepresentResponse # noqa: E501
 from vbox_server.models.virtualbox_composemachinefilename_response import VirtualboxComposemachinefilenameResponse  # noqa: E501
 from vbox_server.models.virtualbox_getextradatakeys_response import VirtualboxGetextradatakeysResponse  # noqa: E501
+from vbox_server.models.guest_os_type_response import GuestOSTypeResponse # noqa: E501
 
 from vbox_server.models.virtualbox_gettrackedobject_response import VirtualboxGettrackedobjectResponse  # noqa: E501
 from vbox_server.models.virtualbox_gettrackedobjectids_response import VirtualboxGettrackedobjectidsResponse  # noqa: E501
@@ -373,7 +374,22 @@ def i_virtualbox_getguestostype(select=None, id=None):  # noqa: E501
     :rtype: GuestOSTypeResponse
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    vbox_utils_commonChecks()
+
+    oGuestOSTypeResponse = GuestOSTypeResponse()
+    try:
+        oVBox = ctx['vb']
+        oVBoxGuestOSType = oVBox.getGuestOSType(id)
+        oGuestOSTypeResponse = i_fill_guest_os_type(oVBoxGuestOSType, select)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oGuestOSTypeResponse)
+    return response, httpCode
 
 
 def i_virtualbox_getmachinestates(machines=None):  # noqa: E501
