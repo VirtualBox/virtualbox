@@ -59,6 +59,7 @@ from vbox_server.models.snapshot_response import SnapshotResponse  # noqa: E501
 from vbox_server.models.device_type_response import DeviceTypeResponse  # noqa: E501
 from vbox_server.models.machine_response import MachineResponse  # noqa: E501
 from vbox_server.models.medium_attachment_response import MediumAttachmentResponse  # noqa: E501
+from vbox_server.models.network_adapter_response import NetworkAdapterResponse  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
@@ -2551,7 +2552,33 @@ def i_machine_getnetworkadapter(vmid, select=None, slot=None):  # noqa: E501
     :rtype: NetworkAdapterResponse
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    vbox_utils_commonChecks()
+
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oNetworkAdapterResponse = NetworkAdapterResponse()
+
+    try:
+        if slot is None or slot=="": slot = 0
+        oVBoxNetworkAdapter = oVM.getNetworkAdapter(slot)
+        oNetworkAdapterResponse.adapter = i_fill_network_adapter(oVBoxNetworkAdapter, select)
+        logging.info('Successfully get the network adapter')
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oNetworkAdapterResponse)
+    return response, httpCode
+
 
 
 def i_machine_getstoragecontrollerbyinstance(vmid, select=None, connectionType=None, instance=None):  # noqa: E501
