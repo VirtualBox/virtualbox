@@ -16,12 +16,14 @@ else:
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
 from vbox_server.utils.restapi_objects_functions import *
+from vbox_server.utils.enum_conversion import *
 from vbox_server.models.machine import Machine  # noqa: E501
 from vbox_server.models.virtual_box_response import VirtualBoxResponse  # noqa: E501
 from vbox_server.models.progress_response import ProgressResponse  # noqa: E501
 from vbox_server.models.progress import Progress  # noqa: E501
 from vbox_server.models.session import Session
 from vbox_server.models.error import Error  # noqa: E501
+from vbox_server.models.virtualbox_checkfirmwarepresent_response import VirtualboxCheckfirmwarepresentResponse # noqa: E501
 
 from vbox_server.models.virtualbox_gettrackedobject_response import VirtualboxGettrackedobjectResponse  # noqa: E501
 from vbox_server.models.virtualbox_gettrackedobjectids_response import VirtualboxGettrackedobjectidsResponse  # noqa: E501
@@ -168,7 +170,36 @@ def i_virtualbox_checkfirmwarepresent(platformArchitecture=None, firmwareType=No
     :rtype: VirtualboxCheckfirmwarepresentResponse
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    vBoxPlatformArchitecture = swagger_to_vbox_platform_architecture(platformArchitecture)
+    vBoxFirmwareType = swagger_to_vbox_firmware_type(firmwareType)
+    if vBoxFirmwareType is None:
+        return "The requested firmware type " + str(firmwareType) + " wasn't found", HTTPStatus.NOT_FOUND
+    
+    if version is None: version=''
+
+    oVirtualboxCheckfirmwarepresentResponse = VirtualboxCheckfirmwarepresentResponse()
+    try:
+        oVBox = ctx['vb']
+        bRes, sFile, sUrl = oVBox.checkFirmwarePresent(vBoxPlatformArchitecture, firmwareType, version)
+        if bRes == True:
+            logging.info('Successfully get the information about firmware')
+            logging.info('The command result is ' + str(bRes))
+            oVirtualboxCheckfirmwarepresentResponse.url = sUrl
+            oVirtualboxCheckfirmwarepresentResponse.file = sFile
+            oVirtualboxCheckfirmwarepresentResponse.result = bRes
+        else:
+            logging.info('Something is wrong with the passed data or some values are empty ')
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oVirtualboxCheckfirmwarepresentResponse)
+    return response, httpCode
 
 
 def i_virtualbox_composemachinefilename(name=None, group=None, createFlags=None, baseFolder=None):  # noqa: E501
