@@ -10,57 +10,8 @@ from vbox_server.models.machine_state import MachineState  # noqa: E501
 ########################### VirtualBox -> Swagger enumeration ###########################
 def vbox_to_swagger_machine_state(machineState):
     swaggerMachineState = MachineState()
-
-    if machineState == ctx['const'].MachineState_PoweredOff:
-        swaggerMachineState = MachineState.POWEREDOFF
-    elif machineState == ctx['const'].MachineState_Saved:
-        swaggerMachineState = MachineState.SAVED
-    elif machineState == ctx['const'].MachineState_Teleported:
-        swaggerMachineState = MachineState.TELEPORTED
-    elif machineState == ctx['const'].MachineState_Aborted:
-        swaggerMachineState = MachineState.ABORTED
-    elif machineState == ctx['const'].MachineState_AbortedSaved:
-        swaggerMachineState = MachineState.ABORTEDSAVED
-    elif machineState == ctx['const'].MachineState_Running:
-        swaggerMachineState = MachineState.RUNNING
-    elif machineState == ctx['const'].MachineState_Paused:
-        swaggerMachineState = MachineState.PAUSED
-    elif machineState == ctx['const'].MachineState_Stuck:
-        swaggerMachineState = MachineState.STUCK
-    elif machineState == ctx['const'].MachineState_Teleporting:
-        swaggerMachineState = MachineState.TELEPORTING
-    elif machineState == ctx['const'].MachineState_LiveSnapshotting:
-        swaggerMachineState = MachineState.LIVESNAPSHOTTING
-    elif machineState == ctx['const'].MachineState_Starting:
-        swaggerMachineState = MachineState.STARTING
-    elif machineState == ctx['const'].MachineState_Stopping:
-        swaggerMachineState = MachineState.STOPPING
-    elif machineState == ctx['const'].MachineState_Saving:
-        swaggerMachineState = MachineState.SAVING
-    elif machineState == ctx['const'].MachineState_Restoring:
-        swaggerMachineState = MachineState.RESTORING
-    elif machineState == ctx['const'].MachineState_TeleportingPausedVM:
-        swaggerMachineState = MachineState.TELEPORTINGPAUSEDVM
-    elif machineState == ctx['const'].MachineState_TeleportingIn:
-        swaggerMachineState = MachineState.TELEPORTINGIN
-    elif machineState == ctx['const'].MachineState_DeletingSnapshotOnline:
-        swaggerMachineState = MachineState.DELETINGSNAPSHOTONLINE
-    elif machineState == ctx['const'].MachineState_DeletingSnapshotPaused:
-        swaggerMachineState = MachineState.DELETINGSNAPSHOTPAUSED
-    elif machineState == ctx['const'].MachineState_OnlineSnapshotting:
-        swaggerMachineState = MachineState.ONLINESNAPSHOTTING
-    elif machineState == ctx['const'].MachineState_RestoringSnapshot:
-        swaggerMachineState = MachineState.RESTORINGSNAPSHOT
-    elif machineState == ctx['const'].MachineState_DeletingSnapshot:
-        swaggerMachineState = MachineState.DELETINGSNAPSHOT
-    elif machineState == ctx['const'].MachineState_SettingUp:
-        swaggerMachineState = MachineState.SETTINGUP
-    elif machineState == ctx['const'].MachineState_Snapshotting:
-        swaggerMachineState = MachineState.SNAPSHOTTING
-    else:
-        swaggerMachineState = MachineState.NULL
-
-    return swaggerMachineState
+    swaggerMachineState = ctx[ 'global'].getEnumValueName('MachineState', machineState)
+    return swaggerMachineState.upper()
 
 
 ###########################  Swagger -> VirtualBox enumeration ###########################
