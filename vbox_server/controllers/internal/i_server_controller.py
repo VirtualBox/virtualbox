@@ -28,6 +28,7 @@ from vbox_server.models.virtualbox_composemachinefilename_response import Virtua
 from vbox_server.models.virtualbox_getextradatakeys_response import VirtualboxGetextradatakeysResponse  # noqa: E501
 from vbox_server.models.guest_os_type_response import GuestOSTypeResponse # noqa: E501
 from vbox_server.models.machine_state_array_response import MachineStateArrayResponse  # noqa: E501
+from vbox_server.models.medium_response import MediumResponse  # noqa: E501
 
 from vbox_server.models.virtualbox_gettrackedobject_response import VirtualboxGettrackedobjectResponse  # noqa: E501
 from vbox_server.models.virtualbox_gettrackedobjectids_response import VirtualboxGettrackedobjectidsResponse  # noqa: E501
@@ -449,7 +450,33 @@ def i_virtualbox_openmedium(oVirtualBoxOpenMediumRequestBody):  # noqa: E501
     :rtype: MediumResponse
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    oError = None
+    httpCode = 200 #(OK)
+
+    vbox_utils_commonChecks()
+
+    location = oVirtualBoxOpenMediumRequestBody.location
+
+    oMediumResponse = MediumResponse()
+
+    accessMode = swagger_to_vbox_access_mode(oVirtualBoxOpenMediumRequestBody.access_mode)
+    if accessMode is None:
+        return "Unknown access mode " + str(accessMode), HTTPStatus.NOT_FOUND
+
+    deviceType = swagger_to_vbox_device_type(oVirtualBoxOpenMediumRequestBody.device_type)
+    if deviceType is None or deviceType == ctx['const'].DeviceType_Network:
+        return "Unknown or unsupported device type " + str(deviceType), HTTPStatus.NOT_FOUND
+
+    try:
+        oVBox = ctx['vb']
+        oMedium = oVBox.openMedium(location, deviceType, accessMode, False)
+        oMediumResponse.medium = i_fill_medium(oMedium)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMediumResponse)
+    return response, httpCode
 
 
 def i_virtualbox_setextradata(oVirtualBoxSetExtraDataRequestBody):  # noqa: E501
