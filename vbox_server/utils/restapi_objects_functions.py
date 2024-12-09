@@ -23,6 +23,7 @@ from vbox_server.models.usb_device import USBDevice
 from vbox_server.models.serial_port import SerialPort
 from vbox_server.models.parallel_port import ParallelPort
 from vbox_server.models.snapshot import Snapshot
+from vbox_server.models.guest_os_type import GuestOSType
 
 from vbox_server.models.virtual_box_error_info import VirtualBoxErrorInfo
 
@@ -3050,3 +3051,498 @@ def i_fill_partial_snapshot(oVBoxSnapshot, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oSnapshot
+
+def i_fill_guest_os_type(oVBoxGuestOSType, select=None):
+  """Convert the passed VirtualBox object oVBoxGuestOSType with interface IGuestOSType into Swagger object oGuestOSType"""
+  
+  logging.info('Enter function ')
+  oGuestOSType = GuestOSType()
+  try:
+    if oVBoxGuestOSType is not None:
+      if select is not None and len(select)>0:
+        oGuestOSType = i_fill_partial_guest_os_type(oVBoxGuestOSType, select)
+      else:
+        oGuestOSType = i_fill_whole_guest_os_type(oVBoxGuestOSType)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oGuestOSType = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxGuestOSType into Swagger object oGuestOSType. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oGuestOSType
+
+def i_fill_whole_guest_os_type(oVBoxGuestOSType):
+  logging.info('Enter function ')
+  oGuestOSType = GuestOSType()
+  try:
+    if oVBoxGuestOSType is not None:
+      try:
+        oGuestOSType.family_id = oVBoxGuestOSType.familyId
+      except Exception as e:
+        logging.info('Error getting the attribute "familyId"')
+      try:
+        oGuestOSType.family_description = oVBoxGuestOSType.familyDescription
+      except Exception as e:
+        logging.info('Error getting the attribute "familyDescription"')
+      try:
+        oGuestOSType.id = oVBoxGuestOSType.id
+      except Exception as e:
+        logging.info('Error getting the attribute "id"')
+      try:
+        oGuestOSType.subtype = oVBoxGuestOSType.subtype
+      except Exception as e:
+        logging.info('Error getting the attribute "subtype"')
+      try:
+        oGuestOSType.description = oVBoxGuestOSType.description
+      except Exception as e:
+        logging.info('Error getting the attribute "description"')
+      try:
+        oGuestOSType.is64_bit = oVBoxGuestOSType.is64Bit
+      except Exception as e:
+        logging.info('Error getting the attribute "is64Bit"')
+      try:
+        oGuestOSType.platform_architecture = ctx[ 'global'].getEnumValueName('PlatformArchitecture', oVBoxGuestOSType.platformArchitecture)
+      except Exception as e:
+        logging.info('Error getting the attribute "platformArchitecture"')
+      try:
+        oGuestOSType.recommended_ioapic = oVBoxGuestOSType.recommendedIOAPIC
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedIOAPIC"')
+      try:
+        oGuestOSType.recommended_virt_ex = oVBoxGuestOSType.recommendedVirtEx
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedVirtEx"')
+      try:
+        oGuestOSType.recommended_ram = oVBoxGuestOSType.recommendedRAM
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedRAM"')
+      try:
+        oGuestOSType.recommended_graphics_controller = ctx[ 'global'].getEnumValueName('GraphicsControllerType', oVBoxGuestOSType.recommendedGraphicsController)
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedGraphicsController"')
+      try:
+        oGuestOSType.recommended_vram = oVBoxGuestOSType.recommendedVRAM
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedVRAM"')
+      try:
+        oGuestOSType.recommended2d_video_acceleration = oVBoxGuestOSType.recommended2DVideoAcceleration
+      except Exception as e:
+        logging.info('Error getting the attribute "recommended2DVideoAcceleration"')
+      try:
+        oGuestOSType.recommended3d_acceleration = oVBoxGuestOSType.recommended3DAcceleration
+      except Exception as e:
+        logging.info('Error getting the attribute "recommended3DAcceleration"')
+      try:
+        oGuestOSType.recommended_hdd = oVBoxGuestOSType.recommendedHDD
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedHDD"')
+      try:
+        oGuestOSType.adapter_type = ctx[ 'global'].getEnumValueName('NetworkAdapterType', oVBoxGuestOSType.adapterType)
+      except Exception as e:
+        logging.info('Error getting the attribute "adapterType"')
+      try:
+        oGuestOSType.recommended_pae = oVBoxGuestOSType.recommendedPAE
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedPAE"')
+      try:
+        oGuestOSType.recommended_dvd_storage_controller = ctx[ 'global'].getEnumValueName('StorageControllerType', oVBoxGuestOSType.recommendedDVDStorageController)
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedDVDStorageController"')
+      try:
+        oGuestOSType.recommended_dvd_storage_bus = ctx[ 'global'].getEnumValueName('StorageBus', oVBoxGuestOSType.recommendedDVDStorageBus)
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedDVDStorageBus"')
+      try:
+        oGuestOSType.recommended_hd_storage_controller = ctx[ 'global'].getEnumValueName('StorageControllerType', oVBoxGuestOSType.recommendedHDStorageController)
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedHDStorageController"')
+      try:
+        oGuestOSType.recommended_hd_storage_bus = ctx[ 'global'].getEnumValueName('StorageBus', oVBoxGuestOSType.recommendedHDStorageBus)
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedHDStorageBus"')
+      try:
+        oGuestOSType.recommended_firmware = ctx[ 'global'].getEnumValueName('FirmwareType', oVBoxGuestOSType.recommendedFirmware)
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedFirmware"')
+      try:
+        oGuestOSType.recommended_usbhid = oVBoxGuestOSType.recommendedUSBHID
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedUSBHID"')
+      try:
+        oGuestOSType.recommended_hpet = oVBoxGuestOSType.recommendedHPET
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedHPET"')
+      try:
+        oGuestOSType.recommended_usb_tablet = oVBoxGuestOSType.recommendedUSBTablet
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedUSBTablet"')
+      try:
+        oGuestOSType.recommended_rtc_use_utc = oVBoxGuestOSType.recommendedRTCUseUTC
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedRTCUseUTC"')
+      try:
+        oGuestOSType.recommended_chipset = ctx[ 'global'].getEnumValueName('ChipsetType', oVBoxGuestOSType.recommendedChipset)
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedChipset"')
+      try:
+        oGuestOSType.recommended_iommu_type = ctx[ 'global'].getEnumValueName('IommuType', oVBoxGuestOSType.recommendedIommuType)
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedIommuType"')
+      try:
+        oGuestOSType.recommended_audio_controller = ctx[ 'global'].getEnumValueName('AudioControllerType', oVBoxGuestOSType.recommendedAudioController)
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedAudioController"')
+      try:
+        oGuestOSType.recommended_audio_codec = ctx[ 'global'].getEnumValueName('AudioCodecType', oVBoxGuestOSType.recommendedAudioCodec)
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedAudioCodec"')
+      try:
+        oGuestOSType.recommended_floppy = oVBoxGuestOSType.recommendedFloppy
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedFloppy"')
+      try:
+        oGuestOSType.recommended_usb = oVBoxGuestOSType.recommendedUSB
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedUSB"')
+      try:
+        oGuestOSType.recommended_usb3 = oVBoxGuestOSType.recommendedUSB3
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedUSB3"')
+      try:
+        oGuestOSType.recommended_tf_reset = oVBoxGuestOSType.recommendedTFReset
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedTFReset"')
+      try:
+        oGuestOSType.recommended_x2apic = oVBoxGuestOSType.recommendedX2APIC
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedX2APIC"')
+      try:
+        oGuestOSType.recommended_cpu_count = oVBoxGuestOSType.recommendedCPUCount
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedCPUCount"')
+      try:
+        oGuestOSType.recommended_tpm_type = ctx[ 'global'].getEnumValueName('TpmType', oVBoxGuestOSType.recommendedTpmType)
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedTpmType"')
+      try:
+        oGuestOSType.recommended_secure_boot = oVBoxGuestOSType.recommendedSecureBoot
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedSecureBoot"')
+      try:
+        oGuestOSType.recommended_wddm_graphics = oVBoxGuestOSType.recommendedWDDMGraphics
+      except Exception as e:
+        logging.info('Error getting the attribute "recommendedWDDMGraphics"')
+      try:
+        oGuestOSType.guest_additions_install_package_name = oVBoxGuestOSType.guestAdditionsInstallPackageName
+      except Exception as e:
+        logging.info('Error getting the attribute "guestAdditionsInstallPackageName"')
+      
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oGuestOSType = None
+    text = 'Exception trying to fill the object oGuestOSType. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oGuestOSType
+
+def i_fill_partial_guest_os_type(oVBoxGuestOSType, select):
+  logging.info('Enter function ')
+  oGuestOSType = GuestOSType()
+  try:
+    if oVBoxGuestOSType is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='familyId':
+            try:
+              oGuestOSType.family_id = oVBoxGuestOSType.familyId
+            except Exception as e:
+              logging.info('Error getting the attribute "familyId"')
+              raise Exception('Error getting the attribute "familyId"')
+            
+          if currAttr=='familyDescription':
+            try:
+              oGuestOSType.family_description = oVBoxGuestOSType.familyDescription
+            except Exception as e:
+              logging.info('Error getting the attribute "familyDescription"')
+              raise Exception('Error getting the attribute "familyDescription"')
+            
+          if currAttr=='id':
+            try:
+              oGuestOSType.id = oVBoxGuestOSType.id
+            except Exception as e:
+              logging.info('Error getting the attribute "id"')
+              raise Exception('Error getting the attribute "id"')
+            
+          if currAttr=='subtype':
+            try:
+              oGuestOSType.subtype = oVBoxGuestOSType.subtype
+            except Exception as e:
+              logging.info('Error getting the attribute "subtype"')
+              raise Exception('Error getting the attribute "subtype"')
+            
+          if currAttr=='description':
+            try:
+              oGuestOSType.description = oVBoxGuestOSType.description
+            except Exception as e:
+              logging.info('Error getting the attribute "description"')
+              raise Exception('Error getting the attribute "description"')
+            
+          if currAttr=='is64Bit':
+            try:
+              oGuestOSType.is64_bit = oVBoxGuestOSType.is64Bit
+            except Exception as e:
+              logging.info('Error getting the attribute "is64Bit"')
+              raise Exception('Error getting the attribute "is64Bit"')
+            
+          if currAttr=='platformArchitecture':
+            try:
+              oGuestOSType.platform_architecture = ctx[ 'global'].getEnumValueName('PlatformArchitecture', oVBoxGuestOSType.platformArchitecture)
+            except Exception as e:
+              logging.info('Error getting the attribute "platformArchitecture"')
+              raise Exception('Error getting the array of "platformArchitecture"')
+            
+          if currAttr=='recommendedIOAPIC':
+            try:
+              oGuestOSType.recommended_ioapic = oVBoxGuestOSType.recommendedIOAPIC
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedIOAPIC"')
+              raise Exception('Error getting the attribute "recommendedIOAPIC"')
+            
+          if currAttr=='recommendedVirtEx':
+            try:
+              oGuestOSType.recommended_virt_ex = oVBoxGuestOSType.recommendedVirtEx
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedVirtEx"')
+              raise Exception('Error getting the attribute "recommendedVirtEx"')
+            
+          if currAttr=='recommendedRAM':
+            try:
+              oGuestOSType.recommended_ram = oVBoxGuestOSType.recommendedRAM
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedRAM"')
+              raise Exception('Error getting the attribute "recommendedRAM"')
+            
+          if currAttr=='recommendedGraphicsController':
+            try:
+              oGuestOSType.recommended_graphics_controller = ctx[ 'global'].getEnumValueName('GraphicsControllerType', oVBoxGuestOSType.recommendedGraphicsController)
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedGraphicsController"')
+              raise Exception('Error getting the array of "recommendedGraphicsController"')
+            
+          if currAttr=='recommendedVRAM':
+            try:
+              oGuestOSType.recommended_vram = oVBoxGuestOSType.recommendedVRAM
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedVRAM"')
+              raise Exception('Error getting the attribute "recommendedVRAM"')
+            
+          if currAttr=='recommended2DVideoAcceleration':
+            try:
+              oGuestOSType.recommended2d_video_acceleration = oVBoxGuestOSType.recommended2DVideoAcceleration
+            except Exception as e:
+              logging.info('Error getting the attribute "recommended2DVideoAcceleration"')
+              raise Exception('Error getting the attribute "recommended2DVideoAcceleration"')
+            
+          if currAttr=='recommended3DAcceleration':
+            try:
+              oGuestOSType.recommended3d_acceleration = oVBoxGuestOSType.recommended3DAcceleration
+            except Exception as e:
+              logging.info('Error getting the attribute "recommended3DAcceleration"')
+              raise Exception('Error getting the attribute "recommended3DAcceleration"')
+            
+          if currAttr=='recommendedHDD':
+            try:
+              oGuestOSType.recommended_hdd = oVBoxGuestOSType.recommendedHDD
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedHDD"')
+              raise Exception('Error getting the attribute "recommendedHDD"')
+            
+          if currAttr=='adapterType':
+            try:
+              oGuestOSType.adapter_type = ctx[ 'global'].getEnumValueName('NetworkAdapterType', oVBoxGuestOSType.adapterType)
+            except Exception as e:
+              logging.info('Error getting the attribute "adapterType"')
+              raise Exception('Error getting the array of "adapterType"')
+            
+          if currAttr=='recommendedPAE':
+            try:
+              oGuestOSType.recommended_pae = oVBoxGuestOSType.recommendedPAE
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedPAE"')
+              raise Exception('Error getting the attribute "recommendedPAE"')
+            
+          if currAttr=='recommendedDVDStorageController':
+            try:
+              oGuestOSType.recommended_dvd_storage_controller = ctx[ 'global'].getEnumValueName('StorageControllerType', oVBoxGuestOSType.recommendedDVDStorageController)
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedDVDStorageController"')
+              raise Exception('Error getting the array of "recommendedDVDStorageController"')
+            
+          if currAttr=='recommendedDVDStorageBus':
+            try:
+              oGuestOSType.recommended_dvd_storage_bus = ctx[ 'global'].getEnumValueName('StorageBus', oVBoxGuestOSType.recommendedDVDStorageBus)
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedDVDStorageBus"')
+              raise Exception('Error getting the array of "recommendedDVDStorageBus"')
+            
+          if currAttr=='recommendedHDStorageController':
+            try:
+              oGuestOSType.recommended_hd_storage_controller = ctx[ 'global'].getEnumValueName('StorageControllerType', oVBoxGuestOSType.recommendedHDStorageController)
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedHDStorageController"')
+              raise Exception('Error getting the array of "recommendedHDStorageController"')
+            
+          if currAttr=='recommendedHDStorageBus':
+            try:
+              oGuestOSType.recommended_hd_storage_bus = ctx[ 'global'].getEnumValueName('StorageBus', oVBoxGuestOSType.recommendedHDStorageBus)
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedHDStorageBus"')
+              raise Exception('Error getting the array of "recommendedHDStorageBus"')
+            
+          if currAttr=='recommendedFirmware':
+            try:
+              oGuestOSType.recommended_firmware = ctx[ 'global'].getEnumValueName('FirmwareType', oVBoxGuestOSType.recommendedFirmware)
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedFirmware"')
+              raise Exception('Error getting the array of "recommendedFirmware"')
+            
+          if currAttr=='recommendedUSBHID':
+            try:
+              oGuestOSType.recommended_usbhid = oVBoxGuestOSType.recommendedUSBHID
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedUSBHID"')
+              raise Exception('Error getting the attribute "recommendedUSBHID"')
+            
+          if currAttr=='recommendedHPET':
+            try:
+              oGuestOSType.recommended_hpet = oVBoxGuestOSType.recommendedHPET
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedHPET"')
+              raise Exception('Error getting the attribute "recommendedHPET"')
+            
+          if currAttr=='recommendedUSBTablet':
+            try:
+              oGuestOSType.recommended_usb_tablet = oVBoxGuestOSType.recommendedUSBTablet
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedUSBTablet"')
+              raise Exception('Error getting the attribute "recommendedUSBTablet"')
+            
+          if currAttr=='recommendedRTCUseUTC':
+            try:
+              oGuestOSType.recommended_rtc_use_utc = oVBoxGuestOSType.recommendedRTCUseUTC
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedRTCUseUTC"')
+              raise Exception('Error getting the attribute "recommendedRTCUseUTC"')
+            
+          if currAttr=='recommendedChipset':
+            try:
+              oGuestOSType.recommended_chipset = ctx[ 'global'].getEnumValueName('ChipsetType', oVBoxGuestOSType.recommendedChipset)
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedChipset"')
+              raise Exception('Error getting the array of "recommendedChipset"')
+            
+          if currAttr=='recommendedIommuType':
+            try:
+              oGuestOSType.recommended_iommu_type = ctx[ 'global'].getEnumValueName('IommuType', oVBoxGuestOSType.recommendedIommuType)
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedIommuType"')
+              raise Exception('Error getting the array of "recommendedIommuType"')
+            
+          if currAttr=='recommendedAudioController':
+            try:
+              oGuestOSType.recommended_audio_controller = ctx[ 'global'].getEnumValueName('AudioControllerType', oVBoxGuestOSType.recommendedAudioController)
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedAudioController"')
+              raise Exception('Error getting the array of "recommendedAudioController"')
+            
+          if currAttr=='recommendedAudioCodec':
+            try:
+              oGuestOSType.recommended_audio_codec = ctx[ 'global'].getEnumValueName('AudioCodecType', oVBoxGuestOSType.recommendedAudioCodec)
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedAudioCodec"')
+              raise Exception('Error getting the array of "recommendedAudioCodec"')
+            
+          if currAttr=='recommendedFloppy':
+            try:
+              oGuestOSType.recommended_floppy = oVBoxGuestOSType.recommendedFloppy
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedFloppy"')
+              raise Exception('Error getting the attribute "recommendedFloppy"')
+            
+          if currAttr=='recommendedUSB':
+            try:
+              oGuestOSType.recommended_usb = oVBoxGuestOSType.recommendedUSB
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedUSB"')
+              raise Exception('Error getting the attribute "recommendedUSB"')
+            
+          if currAttr=='recommendedUSB3':
+            try:
+              oGuestOSType.recommended_usb3 = oVBoxGuestOSType.recommendedUSB3
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedUSB3"')
+              raise Exception('Error getting the attribute "recommendedUSB3"')
+            
+          if currAttr=='recommendedTFReset':
+            try:
+              oGuestOSType.recommended_tf_reset = oVBoxGuestOSType.recommendedTFReset
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedTFReset"')
+              raise Exception('Error getting the attribute "recommendedTFReset"')
+            
+          if currAttr=='recommendedX2APIC':
+            try:
+              oGuestOSType.recommended_x2apic = oVBoxGuestOSType.recommendedX2APIC
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedX2APIC"')
+              raise Exception('Error getting the attribute "recommendedX2APIC"')
+            
+          if currAttr=='recommendedCPUCount':
+            try:
+              oGuestOSType.recommended_cpu_count = oVBoxGuestOSType.recommendedCPUCount
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedCPUCount"')
+              raise Exception('Error getting the attribute "recommendedCPUCount"')
+            
+          if currAttr=='recommendedTpmType':
+            try:
+              oGuestOSType.recommended_tpm_type = ctx[ 'global'].getEnumValueName('TpmType', oVBoxGuestOSType.recommendedTpmType)
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedTpmType"')
+              raise Exception('Error getting the array of "recommendedTpmType"')
+            
+          if currAttr=='recommendedSecureBoot':
+            try:
+              oGuestOSType.recommended_secure_boot = oVBoxGuestOSType.recommendedSecureBoot
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedSecureBoot"')
+              raise Exception('Error getting the attribute "recommendedSecureBoot"')
+            
+          if currAttr=='recommendedWDDMGraphics':
+            try:
+              oGuestOSType.recommended_wddm_graphics = oVBoxGuestOSType.recommendedWDDMGraphics
+            except Exception as e:
+              logging.info('Error getting the attribute "recommendedWDDMGraphics"')
+              raise Exception('Error getting the attribute "recommendedWDDMGraphics"')
+            
+          if currAttr=='guestAdditionsInstallPackageName':
+            try:
+              oGuestOSType.guest_additions_install_package_name = oVBoxGuestOSType.guestAdditionsInstallPackageName
+            except Exception as e:
+              logging.info('Error getting the attribute "guestAdditionsInstallPackageName"')
+              raise Exception('Error getting the attribute "guestAdditionsInstallPackageName"')
+            
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oGuestOSType = None
+    text = 'Exception trying to fill the object oGuestOSType. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oGuestOSType
