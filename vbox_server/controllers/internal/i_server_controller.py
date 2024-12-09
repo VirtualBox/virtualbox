@@ -24,6 +24,7 @@ from vbox_server.models.progress import Progress  # noqa: E501
 from vbox_server.models.session import Session
 from vbox_server.models.error import Error  # noqa: E501
 from vbox_server.models.virtualbox_checkfirmwarepresent_response import VirtualboxCheckfirmwarepresentResponse # noqa: E501
+from vbox_server.models.virtualbox_composemachinefilename_response import VirtualboxComposemachinefilenameResponse  # noqa: E501
 
 from vbox_server.models.virtualbox_gettrackedobject_response import VirtualboxGettrackedobjectResponse  # noqa: E501
 from vbox_server.models.virtualbox_gettrackedobjectids_response import VirtualboxGettrackedobjectidsResponse  # noqa: E501
@@ -218,7 +219,28 @@ def i_virtualbox_composemachinefilename(name=None, group=None, createFlags=None,
     :rtype: VirtualboxComposemachinefilenameResponse
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    oVirtualboxComposemachinefilenameResponse = VirtualboxComposemachinefilenameResponse()
+    try:
+        oVBox = ctx['vb']
+        sFullSettingFilePath = oVBox.composeMachineFilename(name, group, createFlags, baseFolder)
+        if sFullSettingFilePath!='':
+            logging.info('Successfully get the full path of the settings file name')
+            logging.info('The command result is ' + sFullSettingFilePath)
+            oVirtualboxComposemachinefilenameResponse.file = sFullSettingFilePath
+        else:
+            logging.info('Weird! The full path of the settings file name is empty')
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oVirtualboxComposemachinefilenameResponse)
+    return response, httpCode
 
 
 def i_virtualbox_createunattendedinstaller():  # noqa: E501
