@@ -24,6 +24,8 @@ from vbox_server.models.serial_port import SerialPort
 from vbox_server.models.parallel_port import ParallelPort
 from vbox_server.models.snapshot import Snapshot
 from vbox_server.models.guest_os_type import GuestOSType
+from vbox_server.models.nat_engine import NATEngine
+from vbox_server.models.network_adapter import NetworkAdapter
 
 from vbox_server.models.virtual_box_error_info import VirtualBoxErrorInfo
 
@@ -3546,3 +3548,476 @@ def i_fill_partial_guest_os_type(oVBoxGuestOSType, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oGuestOSType
+
+def i_fill_nat_engine(oVBoxNATEngine, select=None):
+  """Convert the passed VirtualBox object oVBoxNATEngine with interface INATEngine into Swagger object oNATEngine"""
+  
+  logging.info('Enter function ')
+  oNATEngine = NATEngine()
+  try:
+    if oVBoxNATEngine is not None:
+      if select is not None and len(select)>0:
+        oNATEngine = i_fill_partial_nat_engine(oVBoxNATEngine, select)
+      else:
+        oNATEngine = i_fill_whole_nat_engine(oVBoxNATEngine)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oNATEngine = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxNATEngine into Swagger object oNATEngine. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oNATEngine
+
+def i_fill_whole_nat_engine(oVBoxNATEngine):
+  logging.info('Enter function ')
+  oNATEngine = NATEngine()
+  try:
+    if oVBoxNATEngine is not None:
+      try:
+        oNATEngine.network = oVBoxNATEngine.network
+      except Exception as e:
+        logging.info('Error getting the attribute "network"')
+      try:
+        oNATEngine.host_ip = oVBoxNATEngine.hostIP
+      except Exception as e:
+        logging.info('Error getting the attribute "hostIP"')
+      try:
+        oNATEngine.tftp_prefix = oVBoxNATEngine.TFTPPrefix
+      except Exception as e:
+        logging.info('Error getting the attribute "TFTPPrefix"')
+      try:
+        oNATEngine.tftp_boot_file = oVBoxNATEngine.TFTPBootFile
+      except Exception as e:
+        logging.info('Error getting the attribute "TFTPBootFile"')
+      try:
+        oNATEngine.tftp_next_server = oVBoxNATEngine.TFTPNextServer
+      except Exception as e:
+        logging.info('Error getting the attribute "TFTPNextServer"')
+      try:
+        oNATEngine.alias_mode = oVBoxNATEngine.aliasMode
+      except Exception as e:
+        logging.info('Error getting the attribute "aliasMode"')
+      try:
+        oNATEngine.dns_pass_domain = oVBoxNATEngine.DNSPassDomain
+      except Exception as e:
+        logging.info('Error getting the attribute "DNSPassDomain"')
+      try:
+        oNATEngine.dns_proxy = oVBoxNATEngine.DNSProxy
+      except Exception as e:
+        logging.info('Error getting the attribute "DNSProxy"')
+      try:
+        oNATEngine.dns_use_host_resolver = oVBoxNATEngine.DNSUseHostResolver
+      except Exception as e:
+        logging.info('Error getting the attribute "DNSUseHostResolver"')
+      try:
+        ol_redirects = ctx['global'].getArray(oVBoxNATEngine,'redirects')
+        oNATEngine.redirects = list()
+        for count, item in enumerate(ol_redirects):
+          oNATEngine.redirects.append(item)
+      except Exception as e:
+        logging.info('Error getting the array of "redirects"')
+      try:
+        oNATEngine.localhost_reachable = oVBoxNATEngine.localhostReachable
+      except Exception as e:
+        logging.info('Error getting the attribute "localhostReachable"')
+      
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oNATEngine = None
+    text = 'Exception trying to fill the object oNATEngine. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oNATEngine
+
+def i_fill_partial_nat_engine(oVBoxNATEngine, select):
+  logging.info('Enter function ')
+  oNATEngine = NATEngine()
+  try:
+    if oVBoxNATEngine is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='network':
+            try:
+              oNATEngine.network = oVBoxNATEngine.network
+            except Exception as e:
+              logging.info('Error getting the attribute "network"')
+              raise Exception('Error getting the attribute "network"')
+            
+          if currAttr=='hostIP':
+            try:
+              oNATEngine.host_ip = oVBoxNATEngine.hostIP
+            except Exception as e:
+              logging.info('Error getting the attribute "hostIP"')
+              raise Exception('Error getting the attribute "hostIP"')
+            
+          if currAttr=='TFTPPrefix':
+            try:
+              oNATEngine.tftp_prefix = oVBoxNATEngine.TFTPPrefix
+            except Exception as e:
+              logging.info('Error getting the attribute "TFTPPrefix"')
+              raise Exception('Error getting the attribute "TFTPPrefix"')
+            
+          if currAttr=='TFTPBootFile':
+            try:
+              oNATEngine.tftp_boot_file = oVBoxNATEngine.TFTPBootFile
+            except Exception as e:
+              logging.info('Error getting the attribute "TFTPBootFile"')
+              raise Exception('Error getting the attribute "TFTPBootFile"')
+            
+          if currAttr=='TFTPNextServer':
+            try:
+              oNATEngine.tftp_next_server = oVBoxNATEngine.TFTPNextServer
+            except Exception as e:
+              logging.info('Error getting the attribute "TFTPNextServer"')
+              raise Exception('Error getting the attribute "TFTPNextServer"')
+            
+          if currAttr=='aliasMode':
+            try:
+              oNATEngine.alias_mode = oVBoxNATEngine.aliasMode
+            except Exception as e:
+              logging.info('Error getting the attribute "aliasMode"')
+              raise Exception('Error getting the attribute "aliasMode"')
+            
+          if currAttr=='DNSPassDomain':
+            try:
+              oNATEngine.dns_pass_domain = oVBoxNATEngine.DNSPassDomain
+            except Exception as e:
+              logging.info('Error getting the attribute "DNSPassDomain"')
+              raise Exception('Error getting the attribute "DNSPassDomain"')
+            
+          if currAttr=='DNSProxy':
+            try:
+              oNATEngine.dns_proxy = oVBoxNATEngine.DNSProxy
+            except Exception as e:
+              logging.info('Error getting the attribute "DNSProxy"')
+              raise Exception('Error getting the attribute "DNSProxy"')
+            
+          if currAttr=='DNSUseHostResolver':
+            try:
+              oNATEngine.dns_use_host_resolver = oVBoxNATEngine.DNSUseHostResolver
+            except Exception as e:
+              logging.info('Error getting the attribute "DNSUseHostResolver"')
+              raise Exception('Error getting the attribute "DNSUseHostResolver"')
+            
+          if currAttr=='redirects':
+            try:
+              ol_redirects = ctx['global'].getArray(oVBoxNATEngine,'redirects')
+              oNATEngine.redirects = list()
+              for count, item in enumerate(ol_redirects):
+                oNATEngine.redirects.append(item)
+            except Exception as e:
+              logging.info('Error getting the array of "redirects"')
+              raise Exception('Error getting the array of "redirects"')
+            
+          if currAttr=='localhostReachable':
+            try:
+              oNATEngine.localhost_reachable = oVBoxNATEngine.localhostReachable
+            except Exception as e:
+              logging.info('Error getting the attribute "localhostReachable"')
+              raise Exception('Error getting the attribute "localhostReachable"')
+            
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oNATEngine = None
+    text = 'Exception trying to fill the object oNATEngine. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oNATEngine
+
+def i_fill_network_adapter(oVBoxNetworkAdapter, select=None):
+  """Convert the passed VirtualBox object oVBoxNetworkAdapter with interface INetworkAdapter into Swagger object oNetworkAdapter"""
+  
+  logging.info('Enter function ')
+  oNetworkAdapter = NetworkAdapter()
+  try:
+    if oVBoxNetworkAdapter is not None:
+      if select is not None and len(select)>0:
+        oNetworkAdapter = i_fill_partial_network_adapter(oVBoxNetworkAdapter, select)
+      else:
+        oNetworkAdapter = i_fill_whole_network_adapter(oVBoxNetworkAdapter)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oNetworkAdapter = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxNetworkAdapter into Swagger object oNetworkAdapter. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oNetworkAdapter
+
+def i_fill_whole_network_adapter(oVBoxNetworkAdapter):
+  logging.info('Enter function ')
+  oNetworkAdapter = NetworkAdapter()
+  try:
+    if oVBoxNetworkAdapter is not None:
+      try:
+        oNetworkAdapter.adapter_type = ctx[ 'global'].getEnumValueName('NetworkAdapterType', oVBoxNetworkAdapter.adapterType)
+      except Exception as e:
+        logging.info('Error getting the attribute "adapterType"')
+      try:
+        oNetworkAdapter.slot = oVBoxNetworkAdapter.slot
+      except Exception as e:
+        logging.info('Error getting the attribute "slot"')
+      try:
+        oNetworkAdapter.enabled = oVBoxNetworkAdapter.enabled
+      except Exception as e:
+        logging.info('Error getting the attribute "enabled"')
+      try:
+        oNetworkAdapter.mac_address = oVBoxNetworkAdapter.MACAddress
+      except Exception as e:
+        logging.info('Error getting the attribute "MACAddress"')
+      try:
+        oNetworkAdapter.attachment_type = ctx[ 'global'].getEnumValueName('NetworkAttachmentType', oVBoxNetworkAdapter.attachmentType)
+      except Exception as e:
+        logging.info('Error getting the attribute "attachmentType"')
+      try:
+        oNetworkAdapter.bridged_interface = oVBoxNetworkAdapter.bridgedInterface
+      except Exception as e:
+        logging.info('Error getting the attribute "bridgedInterface"')
+      try:
+        oNetworkAdapter.host_only_interface = oVBoxNetworkAdapter.hostOnlyInterface
+      except Exception as e:
+        logging.info('Error getting the attribute "hostOnlyInterface"')
+      try:
+        oNetworkAdapter.host_only_network = oVBoxNetworkAdapter.hostOnlyNetwork
+      except Exception as e:
+        logging.info('Error getting the attribute "hostOnlyNetwork"')
+      try:
+        oNetworkAdapter.internal_network = oVBoxNetworkAdapter.internalNetwork
+      except Exception as e:
+        logging.info('Error getting the attribute "internalNetwork"')
+      try:
+        oNetworkAdapter.nat_network = oVBoxNetworkAdapter.NATNetwork
+      except Exception as e:
+        logging.info('Error getting the attribute "NATNetwork"')
+      try:
+        oNetworkAdapter.generic_driver = oVBoxNetworkAdapter.genericDriver
+      except Exception as e:
+        logging.info('Error getting the attribute "genericDriver"')
+      try:
+        oNetworkAdapter.cloud_network = oVBoxNetworkAdapter.cloudNetwork
+      except Exception as e:
+        logging.info('Error getting the attribute "cloudNetwork"')
+      try:
+        oNetworkAdapter.cable_connected = oVBoxNetworkAdapter.cableConnected
+      except Exception as e:
+        logging.info('Error getting the attribute "cableConnected"')
+      try:
+        oNetworkAdapter.line_speed = oVBoxNetworkAdapter.lineSpeed
+      except Exception as e:
+        logging.info('Error getting the attribute "lineSpeed"')
+      try:
+        oNetworkAdapter.promisc_mode_policy = ctx[ 'global'].getEnumValueName('NetworkAdapterPromiscModePolicy', oVBoxNetworkAdapter.promiscModePolicy)
+      except Exception as e:
+        logging.info('Error getting the attribute "promiscModePolicy"')
+      try:
+        oNetworkAdapter.trace_enabled = oVBoxNetworkAdapter.traceEnabled
+      except Exception as e:
+        logging.info('Error getting the attribute "traceEnabled"')
+      try:
+        oNetworkAdapter.trace_file = oVBoxNetworkAdapter.traceFile
+      except Exception as e:
+        logging.info('Error getting the attribute "traceFile"')
+      try:
+        o_nat_engine = oVBoxNetworkAdapter.NATEngine if oVBoxNetworkAdapter.NATEngine is not None else None
+        if o_nat_engine is not None:
+          oNetworkAdapter.nat_engine = i_fill_nat_engine(o_nat_engine)
+        else:
+          oNetworkAdapter.nat_engine = None
+      except Exception as e:
+        logging.info('Error getting the interface object "NATEngine"')
+      try:
+        oNetworkAdapter.boot_priority = oVBoxNetworkAdapter.bootPriority
+      except Exception as e:
+        logging.info('Error getting the attribute "bootPriority"')
+      try:
+        o_bandwidth_group = oVBoxNetworkAdapter.bandwidthGroup if oVBoxNetworkAdapter.bandwidthGroup is not None else None
+        if o_bandwidth_group is not None:
+          oNetworkAdapter.bandwidth_group = i_fill_bandwidth_group(o_bandwidth_group)
+        else:
+          oNetworkAdapter.bandwidth_group = None
+      except Exception as e:
+        logging.info('Error getting the interface object "bandwidthGroup"')
+      
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oNetworkAdapter = None
+    text = 'Exception trying to fill the object oNetworkAdapter. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oNetworkAdapter
+
+def i_fill_partial_network_adapter(oVBoxNetworkAdapter, select):
+  logging.info('Enter function ')
+  oNetworkAdapter = NetworkAdapter()
+  try:
+    if oVBoxNetworkAdapter is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='adapterType':
+            try:
+              oNetworkAdapter.adapter_type = ctx[ 'global'].getEnumValueName('NetworkAdapterType', oVBoxNetworkAdapter.adapterType)
+            except Exception as e:
+              logging.info('Error getting the attribute "adapterType"')
+              raise Exception('Error getting the array of "adapterType"')
+            
+          if currAttr=='slot':
+            try:
+              oNetworkAdapter.slot = oVBoxNetworkAdapter.slot
+            except Exception as e:
+              logging.info('Error getting the attribute "slot"')
+              raise Exception('Error getting the attribute "slot"')
+            
+          if currAttr=='enabled':
+            try:
+              oNetworkAdapter.enabled = oVBoxNetworkAdapter.enabled
+            except Exception as e:
+              logging.info('Error getting the attribute "enabled"')
+              raise Exception('Error getting the attribute "enabled"')
+            
+          if currAttr=='MACAddress':
+            try:
+              oNetworkAdapter.mac_address = oVBoxNetworkAdapter.MACAddress
+            except Exception as e:
+              logging.info('Error getting the attribute "MACAddress"')
+              raise Exception('Error getting the attribute "MACAddress"')
+            
+          if currAttr=='attachmentType':
+            try:
+              oNetworkAdapter.attachment_type = ctx[ 'global'].getEnumValueName('NetworkAttachmentType', oVBoxNetworkAdapter.attachmentType)
+            except Exception as e:
+              logging.info('Error getting the attribute "attachmentType"')
+              raise Exception('Error getting the array of "attachmentType"')
+            
+          if currAttr=='bridgedInterface':
+            try:
+              oNetworkAdapter.bridged_interface = oVBoxNetworkAdapter.bridgedInterface
+            except Exception as e:
+              logging.info('Error getting the attribute "bridgedInterface"')
+              raise Exception('Error getting the attribute "bridgedInterface"')
+            
+          if currAttr=='hostOnlyInterface':
+            try:
+              oNetworkAdapter.host_only_interface = oVBoxNetworkAdapter.hostOnlyInterface
+            except Exception as e:
+              logging.info('Error getting the attribute "hostOnlyInterface"')
+              raise Exception('Error getting the attribute "hostOnlyInterface"')
+            
+          if currAttr=='hostOnlyNetwork':
+            try:
+              oNetworkAdapter.host_only_network = oVBoxNetworkAdapter.hostOnlyNetwork
+            except Exception as e:
+              logging.info('Error getting the attribute "hostOnlyNetwork"')
+              raise Exception('Error getting the attribute "hostOnlyNetwork"')
+            
+          if currAttr=='internalNetwork':
+            try:
+              oNetworkAdapter.internal_network = oVBoxNetworkAdapter.internalNetwork
+            except Exception as e:
+              logging.info('Error getting the attribute "internalNetwork"')
+              raise Exception('Error getting the attribute "internalNetwork"')
+            
+          if currAttr=='NATNetwork':
+            try:
+              oNetworkAdapter.nat_network = oVBoxNetworkAdapter.NATNetwork
+            except Exception as e:
+              logging.info('Error getting the attribute "NATNetwork"')
+              raise Exception('Error getting the attribute "NATNetwork"')
+            
+          if currAttr=='genericDriver':
+            try:
+              oNetworkAdapter.generic_driver = oVBoxNetworkAdapter.genericDriver
+            except Exception as e:
+              logging.info('Error getting the attribute "genericDriver"')
+              raise Exception('Error getting the attribute "genericDriver"')
+            
+          if currAttr=='cloudNetwork':
+            try:
+              oNetworkAdapter.cloud_network = oVBoxNetworkAdapter.cloudNetwork
+            except Exception as e:
+              logging.info('Error getting the attribute "cloudNetwork"')
+              raise Exception('Error getting the attribute "cloudNetwork"')
+            
+          if currAttr=='cableConnected':
+            try:
+              oNetworkAdapter.cable_connected = oVBoxNetworkAdapter.cableConnected
+            except Exception as e:
+              logging.info('Error getting the attribute "cableConnected"')
+              raise Exception('Error getting the attribute "cableConnected"')
+            
+          if currAttr=='lineSpeed':
+            try:
+              oNetworkAdapter.line_speed = oVBoxNetworkAdapter.lineSpeed
+            except Exception as e:
+              logging.info('Error getting the attribute "lineSpeed"')
+              raise Exception('Error getting the attribute "lineSpeed"')
+            
+          if currAttr=='promiscModePolicy':
+            try:
+              oNetworkAdapter.promisc_mode_policy = ctx[ 'global'].getEnumValueName('NetworkAdapterPromiscModePolicy', oVBoxNetworkAdapter.promiscModePolicy)
+            except Exception as e:
+              logging.info('Error getting the attribute "promiscModePolicy"')
+              raise Exception('Error getting the array of "promiscModePolicy"')
+            
+          if currAttr=='traceEnabled':
+            try:
+              oNetworkAdapter.trace_enabled = oVBoxNetworkAdapter.traceEnabled
+            except Exception as e:
+              logging.info('Error getting the attribute "traceEnabled"')
+              raise Exception('Error getting the attribute "traceEnabled"')
+            
+          if currAttr=='traceFile':
+            try:
+              oNetworkAdapter.trace_file = oVBoxNetworkAdapter.traceFile
+            except Exception as e:
+              logging.info('Error getting the attribute "traceFile"')
+              raise Exception('Error getting the attribute "traceFile"')
+            
+          if currAttr=='NATEngine':
+            try:
+              o_nat_engine = oVBoxNetworkAdapter.NATEngine if oVBoxNetworkAdapter.NATEngine is not None else None
+              if o_nat_engine is not None:
+                oNetworkAdapter.nat_engine = i_fill_nat_engine(o_nat_engine)
+              else:
+                oNetworkAdapter.nat_engine = None
+            except Exception as e:
+              logging.info('Error getting the interface object "NATEngine"')
+              raise Exception('Error getting the interface object "NATEngine"')
+            
+          if currAttr=='bootPriority':
+            try:
+              oNetworkAdapter.boot_priority = oVBoxNetworkAdapter.bootPriority
+            except Exception as e:
+              logging.info('Error getting the attribute "bootPriority"')
+              raise Exception('Error getting the attribute "bootPriority"')
+            
+          if currAttr=='bandwidthGroup':
+            try:
+              o_bandwidth_group = oVBoxNetworkAdapter.bandwidthGroup if oVBoxNetworkAdapter.bandwidthGroup is not None else None
+              if o_bandwidth_group is not None:
+                oNetworkAdapter.bandwidth_group = i_fill_bandwidth_group(o_bandwidth_group)
+              else:
+                oNetworkAdapter.bandwidth_group = None
+            except Exception as e:
+              logging.info('Error getting the interface object "bandwidthGroup"')
+              raise Exception('Error getting the interface object "bandwidthGroup"')
+            
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oNetworkAdapter = None
+    text = 'Exception trying to fill the object oNetworkAdapter. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oNetworkAdapter
