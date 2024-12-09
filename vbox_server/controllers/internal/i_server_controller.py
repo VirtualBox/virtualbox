@@ -361,7 +361,20 @@ def i_virtualbox_getguestossubtypesbyfamilyid(family=None):  # noqa: E501
     :rtype: VirtualboxGetguestossubtypesbyfamilyidResponse
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    vbox_utils_commonChecks()
+
+    try:
+        oVBox = ctx['vb']
+        olVBoxGuestOSSubtype = oVBox.getGuestOSSubtypesByFamilyId(family)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else olVBoxGuestOSSubtype)
+    return response, httpCode
 
 
 def i_virtualbox_getguestostype(select=None, id=None):  # noqa: E501
