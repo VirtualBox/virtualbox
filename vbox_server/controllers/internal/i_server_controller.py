@@ -27,6 +27,7 @@ from vbox_server.models.virtualbox_checkfirmwarepresent_response import Virtualb
 from vbox_server.models.virtualbox_composemachinefilename_response import VirtualboxComposemachinefilenameResponse  # noqa: E501
 from vbox_server.models.virtualbox_getextradatakeys_response import VirtualboxGetextradatakeysResponse  # noqa: E501
 from vbox_server.models.guest_os_type_response import GuestOSTypeResponse # noqa: E501
+from vbox_server.models.machine_state_array_response import MachineStateArrayResponse  # noqa: E501
 
 from vbox_server.models.virtualbox_gettrackedobject_response import VirtualboxGettrackedobjectResponse  # noqa: E501
 from vbox_server.models.virtualbox_gettrackedobjectids_response import VirtualboxGettrackedobjectidsResponse  # noqa: E501
@@ -402,7 +403,40 @@ def i_virtualbox_getmachinestates(machines=None):  # noqa: E501
     :rtype: MachineStateArrayResponse
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    vbox_utils_commonChecks()
+
+    lMachine = []
+
+    for vmid in machines:
+        # reset oError to None after this call
+        oVM, oError = vbox_utils_find_machine(vmid)
+        if oVM is None:
+            httpCode = HTTPStatus.PRECONDITION_FAILED
+            oError = Error(httpCode, "Machine with the id %vmid hasn\'t registered in VirtualBox" % (vmid))
+            return jsonify(oError), httpCode
+        else:
+            oError = None
+            lMachine.append(oVM)
+    
+    oMachineStateArrayResponse = MachineStateArrayResponse()
+    try:
+        oVBox = ctx['vb']
+        oVMStateList = oVBox.getMachineStates(lMachine)
+        lMachineState = []
+        for state in oVMStateList:
+            sState = vbox_to_swagger_machine_state(state)
+            lMachineState.append(sState)
+
+        oMachineStateArrayResponse.states = lMachineState
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMachineStateArrayResponse)
+    return response, httpCode
 
 
 def i_virtualbox_openmedium(oVirtualBoxOpenMediumRequestBody):  # noqa: E501
