@@ -13,6 +13,8 @@ if os.name == 'nt' or platform.system() == 'Windows':
 else:
     from xpcom import COMException
 
+from typing import List, Dict  # noqa: F401
+
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
 from vbox_server.utils.restapi_objects_functions import *
