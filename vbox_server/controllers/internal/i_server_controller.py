@@ -25,6 +25,7 @@ from vbox_server.models.session import Session
 from vbox_server.models.error import Error  # noqa: E501
 from vbox_server.models.virtualbox_checkfirmwarepresent_response import VirtualboxCheckfirmwarepresentResponse # noqa: E501
 from vbox_server.models.virtualbox_composemachinefilename_response import VirtualboxComposemachinefilenameResponse  # noqa: E501
+from vbox_server.models.virtualbox_getextradatakeys_response import VirtualboxGetextradatakeysResponse  # noqa: E501
 
 from vbox_server.models.virtualbox_gettrackedobject_response import VirtualboxGettrackedobjectResponse  # noqa: E501
 from vbox_server.models.virtualbox_gettrackedobjectids_response import VirtualboxGettrackedobjectidsResponse  # noqa: E501
@@ -294,7 +295,31 @@ def i_virtualbox_getextradatakeys():  # noqa: E501
     :rtype: VirtualboxGetextradatakeysResponse
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    vbox_utils_commonChecks()
+
+    oVM = None
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    oVirtualboxGetextradatakeysResponse = VirtualboxGetextradatakeysResponse()
+
+    try:
+        oVBox = ctx['vb']
+        olKeys = oVBox.getExtraDataKeys()
+        keys = []
+        for item in olKeys:
+            logging.info(item)
+            keys.append(item)
+
+        oVirtualboxGetextradatakeysResponse.keys = keys
+        logging.info('Successfully get the list of VirtualBox extra keys')
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oVirtualboxGetextradatakeysResponse)
+    return response, httpCode
 
 
 def i_virtualbox_getguestosdescsbysubtype(OSSubtype=None):  # noqa: E501
