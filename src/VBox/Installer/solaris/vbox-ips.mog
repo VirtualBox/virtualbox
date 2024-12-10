@@ -37,6 +37,10 @@ depend fmri=pkg:/system/font/truetype/dejavu type=require
 <transform file path=opt/VirtualBox/VBoxPython2\.so.*$ -> drop>
 <transform file path=opt/VirtualBox/VBoxPython2_[^7].*\.so.*$ -> drop>
 
+# Drop GTK2 theme/style support since GTK2 no longer available as of st_186/S11.4 SRU78
+<transform file path=opt/VirtualBox/amd64/plugins/platformthemes/libqgtk2VBox.so$ -> drop>
+<transform file path=opt/VirtualBox/amd64/plugins/styles/libqgtk2styleVBox.so$ -> drop>
+
 # Ignore dependencies of vboxshell.py
 <transform file path=opt/VirtualBox/vboxshell.py$ -> set pkg.depend.bypass-generate .*>
 

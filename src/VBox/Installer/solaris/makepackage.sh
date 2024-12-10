@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: makepackage.sh 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: makepackage.sh 107327 2024-12-10 20:03:52Z brent.paulson@oracle.com $
 ## @file
 # VirtualBox package creation script, Solaris hosts.
 #
@@ -188,8 +188,9 @@ package_spec_append_info()
 package_spec_append_content()
 {
     cd "$1"
-    # Exclude directories to not cause install-time conflicts with existing system directories
-    find . ! -type d | "$VBOX_EGREP" -v '^\./(LICENSE|prototype|makepackage\.sh|vbox\.pkginfo|postinstall\.sh|checkinstall\.sh|preremove\.sh|vbox\.space|vbox-ips.mog|virtualbox\.p5m.*)$' | LC_COLLATE=C sort | pkgproto >> "$PACKAGE_SPEC"
+    # Exclude directories to not cause install-time conflicts with existing system directories.
+    # Also exclude various unpackaged files as well as two unnecessary GTK2 shared objects.
+    find . ! -type d | "$VBOX_EGREP" -v '^\./(LICENSE|prototype|makepackage\.sh|vbox\.pkginfo|postinstall\.sh|checkinstall\.sh|preremove\.sh|vbox\.space|vbox-ips.mog|virtualbox\.p5m.*)$|libqgtk2styleVBox\.so|libqgtk2VBox\.so' | LC_COLLATE=C sort | pkgproto >> "$PACKAGE_SPEC"
     cd -
     "$VBOX_AWK" 'NF == 3 && $1 == "s" && $2 == "none" { $3="/"$3 } { print }' "$PACKAGE_SPEC" > "$PACKAGE_SPEC.tmp"
     mv -f "$PACKAGE_SPEC.tmp" "$PACKAGE_SPEC"
