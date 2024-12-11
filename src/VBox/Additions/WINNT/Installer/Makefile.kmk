@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 107329 2024-12-11 08:46:09Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 107330 2024-12-11 08:51:45Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the Windows Guest Additions Installer.
 #
@@ -258,6 +258,10 @@ VBOX_WINDOWS_ADDITIONS_OTHER_FILES += $(addprefix $(PATH_STAGE_BIN)/additions/, 
 		$(VBOX_GA_CERT_ROOT_SHA2_R3) \
 		$(VBOX_GA_CERT_ROOT_SHA2_R3_TS))
 
+# Tool is needed in order to repair the NSIS installer .exe's internal CRC32 checksum
+# after touching it via $(VBOX_PE_SET_VERSION).
+VBOX_NSIS_TOOL := $(PATH_OBJ)/VBoxNSISTool/VBoxNSISTool$(HOSTSUFF_EXE)
+
 VB_WIN_ADD_NSIS_ENV := \
 	-E 'PATH_OUT=$(subst /,\,$(PATH_OUT))' \
 	-E 'PATH_TARGET=$(subst /,\,$(PATH_TARGET))' \
@@ -330,6 +334,7 @@ endif
 			$(if $(VBOX_INSTALLER_ADD_LANGUAGES),'/DVBOX_INSTALLER_ADD_LANGUAGES=1') \
 			$(foreach lang,$(VBOX_INSTALLER_ADD_LANGUAGES),'/DVBOX_BRAND_$(lang)_LICENSE_RTF=1') \
 			'$(subst /,\,$<)'
+	$(REDIRECT) -- $(VBOX_NSIS_TOOL) repair $@
 	$(call VBOX_SIGN_IMAGE_FN,$@)
 
 
@@ -375,6 +380,7 @@ ifdef VBOX_SIGNING_MODE
 			$(foreach lang,$(VBOX_INSTALLER_ADD_LANGUAGES),'/DVBOX_BRAND_$(lang)_LICENSE_RTF=1') \
 			'/DUNINSTALLER_ONLY=1' \
 			'$(subst /,\,$<)'
+	$(QUIET)$(REDIRECT) -- $(VBOX_NSIS_TOOL) repair $@
 
  $(PATH_TARGET)/uninst.exe: \
  		$(PATH_TARGET)/VBoxWindowsAdditions-$(KBUILD_TARGET_ARCH)-uninst.exe | $$(dir $$@) $(VBOX_SIGN_IMAGE_ORDERDEPS)

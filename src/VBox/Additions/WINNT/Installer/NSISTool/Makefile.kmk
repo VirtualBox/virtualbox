@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 107329 2024-12-11 08:46:09Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 107330 2024-12-11 08:51:45Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the VBoxNSISTool binary.
 #
@@ -32,12 +32,9 @@ include $(KBUILD_PATH)/subheader.kmk
 # VBoxNSISTool - Helps with various NSIS installer tasks.
 # Only used on the host at build time.
 #
-PROGRAMS += VBoxNSISTool
-VBoxNSISTool_TEMPLATE = VBoxR3Exe
-VBoxNSISTool_DEFS     = _WIN32_WINNT=0x0400 VBOX_SVN_REV=$(VBOX_SVN_REV) $(VBOX_SVN_REV_KMK)
+BLDPROGS += VBoxNSISTool
+VBoxNSISTool_TEMPLATE = VBoxAdvBldProg
 VBoxNSISTool_SOURCES  = \
 	VBoxNSISTool.cpp
-VBoxNSISTool_LIBS     = \
-	$(LIB_RUNTIME)
 
 include $(FILE_KBUILD_SUB_FOOTER)
