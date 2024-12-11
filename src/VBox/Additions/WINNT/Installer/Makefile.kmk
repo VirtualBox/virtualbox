@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 107329 2024-12-11 08:46:09Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the Windows Guest Additions Installer.
 #
@@ -33,6 +33,7 @@ include $(KBUILD_PATH)/subheader.kmk
 #
 include $(PATH_SUB_CURRENT)/Loader/Makefile.kmk
 include $(PATH_SUB_CURRENT)/InstallHelper/Makefile.kmk
+include $(PATH_SUB_CURRENT)/NSISTool/Makefile.kmk
 
 
 #
@@ -507,4 +508,3 @@ VBoxAddInstallNt3x.cpp_DEPS = $(VBOX_SVN_REV_HEADER)
 
 
 include $(FILE_KBUILD_SUB_FOOTER)
-
