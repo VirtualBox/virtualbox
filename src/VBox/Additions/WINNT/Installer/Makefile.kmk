@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 107330 2024-12-11 08:51:45Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 107331 2024-12-11 09:02:46Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the Windows Guest Additions Installer.
 #
@@ -334,6 +334,7 @@ endif
 			$(if $(VBOX_INSTALLER_ADD_LANGUAGES),'/DVBOX_INSTALLER_ADD_LANGUAGES=1') \
 			$(foreach lang,$(VBOX_INSTALLER_ADD_LANGUAGES),'/DVBOX_BRAND_$(lang)_LICENSE_RTF=1') \
 			'$(subst /,\,$<)'
+	$(REDIRECT) -- $(VBOX_PE_SET_VERSION) $@
 	$(REDIRECT) -- $(VBOX_NSIS_TOOL) repair $@
 	$(call VBOX_SIGN_IMAGE_FN,$@)
 
@@ -380,6 +381,7 @@ ifdef VBOX_SIGNING_MODE
 			$(foreach lang,$(VBOX_INSTALLER_ADD_LANGUAGES),'/DVBOX_BRAND_$(lang)_LICENSE_RTF=1') \
 			'/DUNINSTALLER_ONLY=1' \
 			'$(subst /,\,$<)'
+	$(QUIET)$(REDIRECT) -- $(VBOX_PE_SET_VERSION) $@
 	$(QUIET)$(REDIRECT) -- $(VBOX_NSIS_TOOL) repair $@
 
  $(PATH_TARGET)/uninst.exe: \
