@@ -1,4 +1,4 @@
-/* $Id: ApplianceImplExport.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: ApplianceImplExport.cpp 107347 2024-12-12 14:01:47Z brent.paulson@oracle.com $ */
 /** @file
  * IAppliance and IVirtualSystem COM class implementations.
  */
@@ -146,20 +146,26 @@ HRESULT Machine::exportTo(const ComPtr<IAppliance> &aAppliance, const com::Utf8S
         // memory size in MB
         uint32_t ulMemSizeMB = mHWData->mMemorySize;
 
-        ComPtr<IPlatformX86> pPlatformX86;
-        mPlatform->COMGETTER(X86)(pPlatformX86.asOutParam());
+        PlatformArchitecture_T enmPlatformArch;
+        mPlatform->COMGETTER(Architecture)(&enmPlatformArch);
 
-        // VRAM size?
-        // BIOS settings?
-        // 3D acceleration enabled?
-        // hardware virtualization enabled?
-        // nested paging enabled?
-        // HWVirtExVPIDEnabled?
-        // PAEEnabled?
-        // Long mode enabled?
-        BOOL fLongMode;
-        hrc = pPlatformX86->GetCPUProperty(CPUPropertyTypeX86_LongMode, &fLongMode);
-        if (FAILED(hrc)) throw hrc;
+        BOOL fLongMode = false;
+        if (enmPlatformArch == PlatformArchitecture_x86)
+        {
+            ComPtr<IPlatformX86> pPlatformX86;
+            mPlatform->COMGETTER(X86)(pPlatformX86.asOutParam());
+
+            // VRAM size?
+            // BIOS settings?
+            // 3D acceleration enabled?
+            // hardware virtualization enabled?
+            // nested paging enabled?
+            // HWVirtExVPIDEnabled?
+            // PAEEnabled?
+            // Long mode enabled?
+            hrc = pPlatformX86->GetCPUProperty(CPUPropertyTypeX86_LongMode, &fLongMode);
+            if (FAILED(hrc)) throw hrc;
+        }
 
         // snapshotFolder?
         // VRDPServer?
