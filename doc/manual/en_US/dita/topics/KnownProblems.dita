@@ -8,6 +8,7 @@
         conkeyref="vbox-conkeyref-phrases/product-name"/>. Unless marked otherwise, these issues are planned to be fixed
       in later releases. </p>
     <ul>
+      <li>Saved states and online snapshots created on Arm VMs in <ph conkeyref="vbox-conkeyref-phrases/product-name"/> 7.1 will not be usable in later releases. Saved states within 7.1 are working as expected.</li>
       <li>Internal networking on macOS hosts doesn't work between VMs run by different users.</li>
       <li>
         <p>Poor performance when using <ph conkeyref="vbox-conkeyref-phrases/product-name"/> and <b outputclass="bold"

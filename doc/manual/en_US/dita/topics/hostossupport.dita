@@ -67,7 +67,7 @@
         <p><b outputclass="bold">x86-64 Linux hosts.</b> Includes the following: </p>
         <ul>
           <li>
-            <p>Ubuntu 24.04 LTS, 22.04 LTS and 20.04 LTS</p>
+            <p>Ubuntu 24.10 LTS, Ubuntu 24.04 LTS, 22.04 LTS and 20.04 LTS</p>
           </li>
           <li>
             <p>Debian GNU/Linux 12 (Bookworm) and 11 (Bullseye)</p>
@@ -79,7 +79,7 @@
             <p>CentOS/Red Hat Enterprise Linux 9 and 8</p>
           </li>
           <li>
-            <p>Fedora 40 and 39</p>
+            <p>Fedora 41 and 40</p>
           </li>
           <li>
             <p>SUSE Linux Enterprise server 15</p>

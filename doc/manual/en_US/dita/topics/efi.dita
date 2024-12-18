@@ -1,26 +1,15 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
 <topic xml:lang="en-us" id="efi">
-  <title>Alternative Firmware (EFI)</title>
+  <title>Alternative Firmware (UEFI)</title>
   
   <body>
-    <p><ph conkeyref="vbox-conkeyref-phrases/product-name"/> includes experimental support for the Extensible Firmware
-      Interface (EFI), which is an industry standard intended to replace the legacy BIOS as the primary interface for
-      bootstrapping computers and certain system services later. </p>
-    <p>By default, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> uses the BIOS firmware for virtual machines. To
-      use EFI for a given virtual machine, you can enable EFI in the machine's <b outputclass="bold">Settings</b>
-      window. See <xref href="settings-motherboard.dita#settings-motherboard"/>. Alternatively, use the
-        <userinput>VBoxManage</userinput> command line interface as follows: </p>
+    <p><ph conkeyref="vbox-conkeyref-phrases/product-name"/> includes support for the Unified Extensible Firmware Interface (UEFI), which is an industry standard intended to replace the legacy BIOS as the primary interface for bootstrapping computers and certain system services later.</p>
+    <p>By default, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> uses the BIOS firmware for virtual machines. To use UEFI for a given virtual machine, you can enable EFI in the machine's <b outputclass="bold">Settings</b>. See <xref href="settings-motherboard.dita#settings-motherboard"/>. Alternatively, use the <userinput>VBoxManage</userinput> command line interface as follows:</p>
     <pre xml:space="preserve">VBoxManage modifyvm "VM name" --firmware efi</pre>
-    <p>To switch back to using the BIOS: </p>
+    <p>To switch back to using the BIOS:</p>
     <pre xml:space="preserve">VBoxManage modifyvm "VM name" --firmware bios</pre>
-    <p>One notable user of EFI is Apple Mac OS X. More recent Linux versions and Windows releases, starting with Vista,
-      also offer special versions that can be booted using EFI. </p>
-    <p>Another possible use of EFI in <ph conkeyref="vbox-conkeyref-phrases/product-name"/> is development and testing
-      of EFI applications, without booting any OS. </p>
-    <p>Note that the <ph conkeyref="vbox-conkeyref-phrases/product-name"/> EFI support is experimental and will be
-      enhanced as EFI matures and becomes more widespread. Mac OS X, Linux, and newer Windows guests are known to work
-      fine. Windows 7 guests are unable to boot with the <ph conkeyref="vbox-conkeyref-phrases/product-name"/> EFI
-      implementation. </p>
+    <p>Most modern macOS and Windows releases require UEFI.</p>
+    <p>Another possible use of UEFI in <ph conkeyref="vbox-conkeyref-phrases/product-name"/> is development and testing of UEFI applications, without booting any OS.</p>
   </body>
 </topic>
