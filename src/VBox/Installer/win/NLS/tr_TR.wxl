@@ -66,6 +66,7 @@
 
     <!---->
 
+    <String Id="UsedByOtherApp" Value="Şu anda yüklü olan VirtualBox sürümünü kullanan bir uygulama tespit edildi. Kuruluma devam etmeden önce bu uygulamayı kaldırmalısınız. Ayrıntılar için VirtualBox kurulum dizinindeki dependency.dep dosyasına bakın." />
     <String Id="NeedAdmin" Value="[ProductName] uygulamasını yüklemek(kaldırmak) için yönetici haklarına sahip olmanız gerekir! Bu kur şimdi iptal edilecek." />
     <String Id="NeedMSCRT" Value="[ProductName] uygulamasının öncelikle Microsoft Visual C++ 2019 Yeniden Dağıtılabilir Paketinin yüklenmesine ihtiyacı var. Lütfen [ProductName] uygulamasının kurulumunu yeniden başlatın ve yükleyin." />
     <String Id="WrongOS" Value="Bu uygulama yalnızca Windows XP veya üzerinde çalışır." />

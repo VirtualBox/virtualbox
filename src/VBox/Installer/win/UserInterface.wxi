@@ -638,10 +638,12 @@
             </Control>
             <!-- Currently we don't want to let the users ignore a running VirtualBox installation, as this
                  will result in an unstable mix of the old and new installation until a reboot is performed. See #9139.
-            <Control Id="Ignore" Type="PushButton" X="235" Y="243" Width="56" Height="17" Text="!(loc.ButtonText_Ignore)">
-                <Publish Event="EndDialog" Value="Ignore">1</Publish>
+
+                 WIX v4 will report an error (ICE20) when simply commenting out the following button, as this button
+                 needs to be defined for that standard dialog. So we simply disable the button instead. -->
+            <Control Id="Ignore" Type="PushButton" X="235" Y="243" Width="56" Height="17" Text="!(loc.ButtonText_Ignore)" Disabled="yes">
+                <Publish Event="EndDialog" Value="Ignore" />
             </Control>
-            -->
             <Control Id="Exit" Type="PushButton" X="235" Y="243" Width="56" Height="17" Text="!(loc.ButtonText_Exit)">
                 <Publish Event="EndDialog" Value="Exit" />
             </Control>
@@ -1219,7 +1221,6 @@
 
         <Publish Dialog="VBoxVerifyReadyDlg" Control="Back" Event="NewDialog" Value="VBoxCustomize2Dlg" Condition="VBOX_SHOW_CUSTOMIZE2_DLG" />
         <Publish Dialog="VBoxVerifyReadyDlg" Control="Back" Event="NewDialog" Value="VBoxCustomizeDlg" Condition="NOT VBOX_SHOW_CUSTOMIZE2_DLG" />
-        <Publish Dialog="VBoxVerifyReadyDlg" Control="Next" Event="NewDialog" Value="VBoxVerifyReadyDlg" />
 
         <!-- This defines the order in which the GUI panels will be shown to the user. -->
         <InstallUISequence>

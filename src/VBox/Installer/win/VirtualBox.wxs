@@ -203,10 +203,7 @@
     not final                  1       0        1
     -->
 
-    <Launch Condition="NOT (VBOXDEPENDENCY AND UPGRADINGPRODUCTCODE)"
-            Message="It was detected an application which has been using currently installed VirtualBox version.
-                     You must remove this application before continuing installation.
-                     See the file dependency.dep in the VirtualBox installation directory for details. " />
+    <Launch Condition="NOT (VBOXDEPENDENCY AND UPGRADINGPRODUCTCODE)" Message="!(loc.UsedByOtherApp)" />
 
     <!-- Detect old Sun installation -->
     <!-- Force a manual uninstall of an already installed Sun VirtualBox version first -->

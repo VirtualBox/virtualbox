@@ -66,6 +66,7 @@
 
     <!---->
 
+    <String Id="UsedByOtherApp" Value="It was detected an application which has been using currently installed VirtualBox version. You must remove this application before continuing installation. See the file dependency.dep in the VirtualBox installation directory for details." />
     <String Id="NeedAdmin" Value="Πρέπει να έχετε δικαιώματα διαχειριστή για την (απ)εγκατάσταση του [ProductName]! Η εφαρμογή θα τερματιστεί τώρα." />
     <String Id="NeedMSCRT" Value="[ProductName] needs the Microsoft Visual C++ 2019 Redistributable Package being installed first. Please install and restart the installation of [ProductName]." />
     <String Id="WrongOS" Value="Αυτή η εφαρμογή τρέχει μόνο σε Windows XP ή παραπάνω." />
