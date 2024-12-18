@@ -1,5 +1,5 @@
 #!/usr/bin/make -f
-# $Id: rules 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: rules 107425 2024-12-18 21:01:50Z klaus.espenlaub@oracle.com $
 ## @file
 # VirtualBox rules.
 #
@@ -254,7 +254,6 @@ binary: build $(if $(NOMODS),,$(bldbase)/modules-stamp)
 	if [ -r $(archdir)/VBoxDTrace ]; then \
 	    mv $(archdir)/VBoxDTrace $(prefix)/usr/bin; \
 	fi
-	mv $(archdir)/VBoxTunctl $(prefix)/usr/bin
 	$(if $(NOMODS),,for d in $(moddir)/*; do \
 	    if [ -f $$d/vboxdrv.ko -a -f $$d/vboxnetflt.ko -a -f $$d/vboxnetadp.ko ]; then \
 	        install -D -g 0 -o 0 -m 0644 \
@@ -269,25 +268,24 @@ binary: build $(if $(NOMODS),,$(bldbase)/modules-stamp)
 	        fi \
 	    fi \
 	    done)
-	dh_installdocs $(addprefix $(archdir)/,UserManual*.pdf LICENSE)
-	mv $(addprefix $(archdir)/,$(if $(HEADLESS),,rdesktop-vrdp.tar.gz) additions/VBoxGuestAdditions.iso) $(prefix)/usr/share/$(package)
-	$(if $(HEADLESS),,mv $(archdir)/rdesktop-vrdp $(prefix)/usr/bin)
-	$(if $(HEADLESS),,mv $(archdir)/rdesktop-vrdp-keymaps $(prefix)/usr/share/$(package))
+	dh_installdocs $(addprefix $(archdir)/,UserManual*.pdf UserManual*.qch UserManual*.qhc LICENSE)
+	# Remove User Manual duplicated files, only keep them under location which was used by dh_installdocs.
+	rm -f $(addprefix $(archdir)/,UserManual*.pdf UserManual*.qch UserManual*.qhc LICENSE)
+	mv $(addprefix $(archdir)/,additions/VBoxGuestAdditions.iso) $(prefix)/usr/share/$(package)
 	mv $(archdir) $(prefix)/usr/lib/$(package)
-	if [ -f $(prefix)/usr/lib/$(package)/libQt5CoreVBox.so.5 ]; then \
+	if [ -f $(prefix)/usr/lib/$(package)/libQt6CoreVBox.so.6 ]; then \
 	    $(vboxroot)/tools/linux.$(chrarch)/bin/chrpath \
 	        --keepgoing --replace /usr/lib/$(package) \
-	        $(prefix)/usr/lib/$(package)/*.so.5 \
+	        $(prefix)/usr/lib/$(package)/*.so.6 \
 	        $(prefix)/usr/lib/$(package)/plugins/platforms/*.so; \
 	        $(prefix)/usr/lib/$(package)/plugins/platformthemes/*.so; \
 	        $(prefix)/usr/lib/$(package)/plugins/sqldrivers/*.so; \
 	        $(prefix)/usr/lib/$(package)/plugins/styles/*.so; \
-	        $(prefix)/usr/lib/$(package)/plugins/xcbglintegrations/*.so; \
 	    echo "[Paths]" > $(prefix)/usr/lib/$(package)/qt.conf; \
 	    echo "Plugins = /usr/lib/$(package)/plugins" >> $(prefix)/usr/lib/$(package)/qt.conf; \
 	fi
 	export VBOX_INSTALL_PATH=/usr/lib/$(package) && \
-	    cd $(builddir)/bin/sdk/installer && \
+	    cd $(builddir)/bin/sdk/installer/python && \
 	    $(PYTHON) ./vboxapisetup.py install --root $(prefix)
 	rm -rf $(prefix)/usr/lib/$(package)/sdk/installer
 	ln -s ../VBoxVMM.so $(prefix)/usr/lib/$(package)/components/VBoxVMM.so
@@ -321,8 +319,8 @@ binary: build $(if $(NOMODS),,$(bldbase)/modules-stamp)
 	dh_link
   ifeq ($(DEBUG),)
 	dh_strip --keep-debug \
-	    $(addprefix --exclude=lib,$(addsuffix VBox.so.5,\
-	      Qt5Core Qt5Gui Qt5Widgets Qt5PrintSupport Qt5OpenGL Qt5DBus Qt5XcbQpa Qt5X11Extras))
+	    $(addprefix --exclude=lib,$(addsuffix VBox.so.6,\
+	      Qt6Core Qt6Gui Qt6Widgets Qt6PrintSupport Qt6StateMachine Qt6DBus Qt6Xml Qt6XcbQpa Qt6Help Qt6Network Qt6Sql))
   endif
 	mkdir -p $(bldbase)/$(verpkg)-dbg/usr/lib/$(package)
 	mv $(prefix)/usr/lib/$(package)/*.debug $(bldbase)/$(verpkg)-dbg/usr/lib/$(package)
