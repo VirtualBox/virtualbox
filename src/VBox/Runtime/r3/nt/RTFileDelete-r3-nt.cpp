@@ -1,4 +1,4 @@
-/* $Id: RTFileDelete-r3-nt.cpp 106597 2024-10-23 00:03:29Z knut.osmundsen@oracle.com $ */
+/* $Id: RTFileDelete-r3-nt.cpp 107437 2024-12-19 14:03:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - RTFileDelete, Native NT.
  */
@@ -75,7 +75,7 @@ RTDECL(int) RTFileDelete(const char *pszFilename)
         HANDLE              hPath   = RTNT_INVALID_HANDLE_VALUE;
         IO_STATUS_BLOCK     Ios     = RTNT_IO_STATUS_BLOCK_INITIALIZER;
         OBJECT_ATTRIBUTES   ObjAttr;
-        InitializeObjectAttributes(&ObjAttr, &NtName, 0 /*fAttrib*/, hRootDir, NULL);
+        InitializeObjectAttributes(&ObjAttr, &NtName, OBJ_CASE_INSENSITIVE /*fAttrib*/, hRootDir, NULL);
 
         ULONG fOpenOptions = FILE_NON_DIRECTORY_FILE | FILE_OPEN_FOR_BACKUP_INTENT | FILE_OPEN_REPARSE_POINT
                            | FILE_SYNCHRONOUS_IO_NONALERT;
@@ -110,6 +110,10 @@ RTDECL(int) RTFileDelete(const char *pszFilename)
              * more or less the same across the platforms.  (Code is #if 0'ed below.)
              *
              * See @bugref{10632}.
+             *
+             * Note! On NT4 the value later used for FileAttributeTagInformation was
+             *       called FileObjectIdInformation, but fortunately that could only
+             *       be set and will fail with STATUS_INVALID_INFO_CLASS when queried.
              */
             FILE_ATTRIBUTE_TAG_INFORMATION TagInfo = {0, 0};
             RTNT_IO_STATUS_BLOCK_REINIT(&Ios);
@@ -133,7 +137,9 @@ RTDECL(int) RTFileDelete(const char *pszFilename)
                     }
                 }
             }
-            else if (rcNt == STATUS_INVALID_PARAMETER || rcNt == STATUS_NOT_IMPLEMENTED)
+            else if (   rcNt == STATUS_INVALID_PARAMETER
+                     || rcNt == STATUS_NOT_IMPLEMENTED
+                     || rcNt == STATUS_INVALID_INFO_CLASS /* NT4 and earlier */)
                 rcNt = STATUS_SUCCESS;
             else
             {

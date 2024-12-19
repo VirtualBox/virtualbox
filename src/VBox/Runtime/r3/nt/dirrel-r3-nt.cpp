@@ -1,4 +1,4 @@
-/* $Id: dirrel-r3-nt.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: dirrel-r3-nt.cpp 107437 2024-12-19 14:03:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Directory relative base APIs, NT implementation
  */
@@ -318,7 +318,7 @@ RTDECL(int) RTDirRelDirCreate(RTDIR hDir, const char *pszRelPath, RTFMODE fMode,
         HANDLE              hNewDir = RTNT_INVALID_HANDLE_VALUE;
         IO_STATUS_BLOCK     Ios     = RTNT_IO_STATUS_BLOCK_INITIALIZER;
         OBJECT_ATTRIBUTES   ObjAttr;
-        InitializeObjectAttributes(&ObjAttr, &NtName, 0 /*fAttrib*/, hRoot, NULL);
+        InitializeObjectAttributes(&ObjAttr, &NtName, OBJ_CASE_INSENSITIVE, hRoot, NULL);
 
         ULONG fDirAttribs = (fCreate & RTFS_DOS_MASK_NT) >> RTFS_DOS_SHIFT;
         if (!(fCreate & RTDIRCREATE_FLAGS_NOT_CONTENT_INDEXED_DONT_SET))
@@ -409,7 +409,7 @@ RTDECL(int) RTDirRelDirRemove(RTDIR hDir, const char *pszRelPath)
         HANDLE              hSubDir = RTNT_INVALID_HANDLE_VALUE;
         IO_STATUS_BLOCK     Ios     = RTNT_IO_STATUS_BLOCK_INITIALIZER;
         OBJECT_ATTRIBUTES   ObjAttr;
-        InitializeObjectAttributes(&ObjAttr, &NtName, 0 /*fAttrib*/, hRoot, NULL);
+        InitializeObjectAttributes(&ObjAttr, &NtName, OBJ_CASE_INSENSITIVE, hRoot, NULL);
 
         NTSTATUS rcNt = NtCreateFile(&hSubDir,
                                      DELETE | SYNCHRONIZE,
@@ -502,7 +502,7 @@ RTDECL(int) RTDirRelPathSetMode(RTDIR hDir, const char *pszRelPath, RTFMODE fMod
         HANDLE              hSubDir = RTNT_INVALID_HANDLE_VALUE;
         IO_STATUS_BLOCK     Ios     = RTNT_IO_STATUS_BLOCK_INITIALIZER;
         OBJECT_ATTRIBUTES   ObjAttr;
-        InitializeObjectAttributes(&ObjAttr, &NtName, 0 /*fAttrib*/, hRoot, NULL);
+        InitializeObjectAttributes(&ObjAttr, &NtName, OBJ_CASE_INSENSITIVE, hRoot, NULL);
 
         ULONG fOpenOptions = FILE_OPEN_FOR_BACKUP_INTENT | FILE_SYNCHRONOUS_IO_NONALERT | FILE_OPEN_REPARSE_POINT;
         if (fFlags & RTPATH_F_ON_LINK)

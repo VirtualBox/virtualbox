@@ -1,4 +1,4 @@
-/* $Id: RTPathSetMode-r3-nt.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: RTPathSetMode-r3-nt.cpp 107437 2024-12-19 14:03:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - RTPathSetMode, Native NT.
  */
@@ -64,7 +64,7 @@ RTDECL(int) RTPathSetMode(const char *pszPath, RTFMODE fMode)
         HANDLE              hPath   = RTNT_INVALID_HANDLE_VALUE;
         IO_STATUS_BLOCK     Ios     = RTNT_IO_STATUS_BLOCK_INITIALIZER;
         OBJECT_ATTRIBUTES   ObjAttr;
-        InitializeObjectAttributes(&ObjAttr, &NtName, 0 /*fAttrib*/, hRootDir, NULL);
+        InitializeObjectAttributes(&ObjAttr, &NtName, OBJ_CASE_INSENSITIVE, hRootDir, NULL);
 
         ULONG fOpenOptions = FILE_OPEN_FOR_BACKUP_INTENT | FILE_SYNCHRONOUS_IO_NONALERT | FILE_OPEN_REPARSE_POINT;
         //if (fFlags & RTPATH_F_ON_LINK)
