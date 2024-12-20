@@ -1225,6 +1225,25 @@
   </enum>
 
   <enum
+    name="CPUPropertyTypeARM"
+    uuid="c84685f6-6bd3-4071-97c6-86f34595648f"
+    >
+    <desc>
+      Virtual CPU property type for ARM-based CPUs. This enumeration represents possible values of the
+      IPlatformARM get- and setCPUProperty methods.
+    </desc>
+    <const name="Null"                  value="0">
+      <desc>Null value (never used by the API).</desc>
+    </const>
+    <const name="HWVirt"                value="1">
+      <desc>
+        Enables the hardware virtualization feature on the guest CPU.
+        This requires the nested virtualization feature on the host CPU.
+      </desc>
+    </const>
+  </enum>
+
+  <enum
     name="HWVirtExPropertyType"
     uuid="00069d9c-00b5-460c-00dd-64250024f7aa"
     >
@@ -1854,6 +1873,19 @@
     <const name="CephOSDDmcLUKS"        value="854"><desc>Ceph dm-crypt Linux unitified key setup (LUKS) object storage deamon (OSD) partition.</desc></const>
   </enum>
 
+  <enum
+    name="TrackedObjectState"
+    uuid="a5ee031d-aba8-4a7f-887a-9a1f12e7cc6c"
+    >
+    <desc>
+      Tracked Object State.
+    </desc>
+
+    <const name="None"              value="0"/>
+    <const name="Alive"             value="1"/>
+    <const name="Deleted"           value="2"/>
+    <const name="Invalid"           value="3"/>
+  </enum>
 
   <!--
   // IVirtualBoxErrorInfo
@@ -3043,7 +3075,7 @@
     </method>
 
     <method name="getPlatformProperties">
-      <rest name="getPlatformProperties" request="get" path="/platforms/properties/"/>
+      <rest name="find" request="get" path="/platforms/properties/"/>
       <desc>
         Gets the associated properties object for the given VM platform architecture.
       </desc>
@@ -3972,13 +4004,22 @@
     <method name="getTrackedObject">
       <rest request="get" path="/server/methods/"/>
       <desc>
-        Queries the IUnknown interface to an object from the tracked object list
+        Queries the IUnknown interface to an object from the tracked object list.
       </desc>
       <param name="trObjId" type="wstring" dir="in">
         <desc>The object Id.</desc>
       </param>
-      <param name="pIface" type="$unknown" dir="return">
+      <param name="pIface" type="$unknown" dir="out">
         <desc>The found interface.</desc>
+      </param>
+      <param name="state" type="TrackedObjectState" dir="out">
+        <desc>The object state.</desc>
+      </param>
+      <param name="creationTime" type="long long" dir="out">
+        <desc>Creation time.</desc>
+      </param>
+      <param name="deletionTime" type="long long" dir="out">
+        <desc>Deletion time.</desc>
       </param>
     </method>
 
@@ -3994,7 +4035,6 @@
         <desc>Array of the tracked object Ids associated with the specified interface.</desc>
       </param>
     </method>
-
   </interface>
 
   <!--
@@ -7417,7 +7457,7 @@
 
   <interface
     name="IPlatformARM" extends="$unknown"
-    uuid="75dff9be-6cb3-4857-bde6-2faf82ed9a8d"
+    uuid="002c75fe-3316-4920-aece-7d21ce6f624b"
     wsmap="managed"
     rest="managed"
     reservedMethods="8" reservedAttributes="16">
@@ -7428,8 +7468,49 @@
       Accessed via <link to="IMachine::platform"/> and <link to="IPlatform::ARM"/>.
     </desc>
 
-    <!-- Currently empty, but that should change before long... -->
-    <attribute name="midlDoesNotLikeEmptyInterfaces" readonly="yes" type="boolean"/>
+    <method name="getCPUProperty" const="yes">
+      <rest request="get" path="/vms/{vmid}/configuration/"/>
+      <desc>
+        Returns the virtual CPU boolean value of the specified property.
+
+        <result name="E_INVALIDARG">
+          Invalid property.
+        </result>
+
+      </desc>
+      <param name="property" type="CPUPropertyTypeARM" dir="in">
+        <desc>
+          Property type to query.
+        </desc>
+      </param>
+      <param name="value" type="boolean" dir="return">
+        <desc>
+          Property value.
+        </desc>
+      </param>
+    </method>
+
+    <method name="setCPUProperty">
+      <rest request="post" path="/vms/{vmid}/configuration/"/>
+      <desc>
+        Sets the virtual CPU boolean value of the specified property.
+
+        <result name="E_INVALIDARG">
+          Invalid property.
+        </result>
+
+      </desc>
+      <param name="property" type="CPUPropertyTypeARM" dir="in">
+        <desc>
+          Property type to query.
+        </desc>
+      </param>
+      <param name="value" type="boolean" dir="in">
+        <desc>
+          Property value.
+        </desc>
+      </param>
+    </method>
 
   </interface>
 
