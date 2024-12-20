@@ -1,4 +1,4 @@
-; $Id: VBoxGuestAdditionsW2KXP.nsh 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $
+; $Id: VBoxGuestAdditionsW2KXP.nsh 107450 2024-12-20 09:53:27Z andreas.loeffler@oracle.com $
 ;; @file
 ; VBoxGuestAdditionsW2KXP.nsh - Guest Additions installation for Windows 2000/XP.
 ;
@@ -510,7 +510,7 @@ Function W2K_InstallFiles
 
   ${If} $g_bNoGuestDrv == "false"
     ${LogVerbose} "Installing guest driver ..."
-    ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$INSTDIR\install_drivers.log$\" install --inf-file $\"$INSTDIR\VBoxGuest$g_strEarlyNTDrvInfix.inf$\"" 'non-zero-exitcode=abort'
+    ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$INSTDIR\install_drivers.log$\" install --inf-file $\"$INSTDIR\VBoxGuest$g_strEarlyNTDrvInfix.inf$\" --ignore-reboot" 'non-zero-exitcode=abort'
   ${Else}
     ${LogVerbose} "Guest driver installation skipped!"
   ${EndIf}
@@ -518,10 +518,10 @@ Function W2K_InstallFiles
   ${If} $g_bNoVideoDrv == "false"
     ${If} $g_bWithWDDM == "true"
       ${LogVerbose} "Installing WDDM video driver..."
-      ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$INSTDIR\install_drivers.log$\" install --inf-file $\"$INSTDIR\VBoxWddm.inf$\"" 'non-zero-exitcode=abort'
+      ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$INSTDIR\install_drivers.log$\" install --inf-file $\"$INSTDIR\VBoxWddm.inf$\" --ignore-reboot" 'non-zero-exitcode=abort'
     ${Else}
       ${LogVerbose} "Installing video driver ..."
-      ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$INSTDIR\install_drivers.log$\" install --inf-file $\"$INSTDIR\VBoxVideo$g_strEarlyNTDrvInfix.inf$\"" 'non-zero-exitcode=abort'
+      ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$INSTDIR\install_drivers.log$\" install --inf-file $\"$INSTDIR\VBoxVideo$g_strEarlyNTDrvInfix.inf$\" --ignore-reboot" 'non-zero-exitcode=abort'
     ${EndIf}
   ${Else}
     ${LogVerbose} "Video driver installation skipped!"
@@ -532,7 +532,7 @@ Function W2K_InstallFiles
   ;
   ${If} $g_bNoMouseDrv == "false"
     ${LogVerbose} "Installing mouse driver ..."
-    ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$INSTDIR\install_drivers.log$\" install --inf-file $\"$INSTDIR\VBoxMouse.inf$\"" 'non-zero-exitcode=abort'
+    ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$INSTDIR\install_drivers.log$\" install --inf-file $\"$INSTDIR\VBoxMouse.inf$\" --ignore-reboot" 'non-zero-exitcode=abort'
   ${Else}
     ${LogVerbose} "Mouse driver installation skipped!"
   ${EndIf}
@@ -683,7 +683,7 @@ Function ${un}W2K_Uninstall
 
   ; Remove VirtualBox video driver
   ${LogVerbose} "Uninstalling video driver ..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxVideo*$\"" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxVideo*$\" --ignore-reboot" 'non-zero-exitcode=log'
   ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxVideo" 'non-zero-exitcode=log'
   Delete /REBOOTOK "$g_strSystemDir\drivers\VBoxVideo.sys"
   Delete /REBOOTOK "$g_strSystemDir\VBoxDisp.dll"
@@ -692,7 +692,7 @@ Function ${un}W2K_Uninstall
 !if $%VBOX_WITH_WDDM% == "1"
 
   ${LogVerbose} "Uninstalling WDDM video driver..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxWddm*$\"" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxWddm*$\" --ignore-reboot" 'non-zero-exitcode=log'
   ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxWddm" 'non-zero-exitcode=log'
   ;misha> @todo driver file removal (as well as service removal) should be done as driver package uninstall
   ;       could be done with "VBoxGuestInstallHelper.exe /u", e.g. by passing additional arg to it denoting that driver package is to be uninstalled
@@ -700,14 +700,14 @@ Function ${un}W2K_Uninstall
 
   ; Obsolete files begin
   ${LogVerbose} "Uninstalling WDDM video driver for Windows 8..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxVideoW8*$\"" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxVideoW8*$\" --ignore-reboot" 'non-zero-exitcode=log'
   ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxVideoW8" 'non-zero-exitcode=log'
   ;misha> @todo driver file removal (as well as service removal) should be done as driver package uninstall
   ;       could be done with "VBoxGuestInstallHelper.exe /u", e.g. by passing additional arg to it denoting that driver package is to be uninstalled
   Delete /REBOOTOK "$g_strSystemDir\drivers\VBoxVideoW8.sys"
 
   ${LogVerbose} "Uninstalling WDDM video driver for Windows Vista and 7..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxVideoWddm*$\"" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxVideoWddm*$\" --ignore-reboot" 'non-zero-exitcode=log'
   ; Always try to remove both VBoxVideoWddm & VBoxVideo services no matter what is installed currently
   ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxVideoWddm" 'non-zero-exitcode=log'
   ;misha> @todo driver file removal (as well as service removal) should be done as driver package uninstall
@@ -744,7 +744,7 @@ Function ${un}W2K_Uninstall
 
   ; Remove mouse driver
   ${LogVerbose} "Removing mouse driver ..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxMouse*$\"" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxMouse*$\" --ignore-reboot" 'non-zero-exitcode=log'
   ; @todo Fix VBoxMouse.inf to also take care of the next line!
   ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" registry delmultisz $\"SYSTEM\CurrentControlSet\Control\Class\{4D36E96F-E325-11CE-BFC1-08002BE10318}$\" $\"UpperFilters$\" $\"VBoxMouse$\"" 'non-zero-exitcode=log'
 
@@ -769,7 +769,7 @@ Function ${un}W2K_Uninstall
 
   ; Remove guest driver. Needs to be done last.
   ${LogVerbose} "Removing guest driver ..."
-  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxGuest*$\"" 'non-zero-exitcode=log'
+  ${CmdExecute} "$\"$INSTDIR\VBoxDrvInst.exe$\" --logfile $\"$TEMP\${PRODUCT_NAME}\uninstall_drivers.log$\" uninstall --model $\"VBoxGuest*$\" --ignore-reboot" 'non-zero-exitcode=log'
 
   ${CmdExecute} "$\"$INSTDIR\VBoxGuestInstallHelper.exe$\" service delete VBoxGuest" 'non-zero-exitcode=log'
   Delete /REBOOTOK "$g_strSystemDir\drivers\VBoxGuest.sys"

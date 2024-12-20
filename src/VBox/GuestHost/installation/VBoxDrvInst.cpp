@@ -1,4 +1,4 @@
-/* $Id: VBoxDrvInst.cpp 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxDrvInst.cpp 107450 2024-12-20 09:53:27Z andreas.loeffler@oracle.com $ */
 /** @file
  * Driver installation utility for Windows hosts and guests.
  */
@@ -139,7 +139,8 @@ enum
     VBOXDRVINST_INSTALL_OPT_MODEL,
     VBOXDRVINST_INSTALL_OPT_PNPID,
     VBOXDRVINST_INSTALL_OPT_NOT_FORCE,
-    VBOXDRVINST_INSTALL_OPT_NOT_SILENT
+    VBOXDRVINST_INSTALL_OPT_NOT_SILENT,
+    VBOXDRVINST_INSTALL_OPT_IGNORE_REBOOT
 };
 
 /**
@@ -147,14 +148,15 @@ enum
  */
 static const RTGETOPTDEF g_aCmdInstallOptions[] =
 {
-    { "--inf-file",    VBOXDRVINST_INSTALL_OPT_INF_FILE,    RTGETOPT_REQ_STRING   },
-    { "--inf-section", VBOXDRVINST_INSTALL_OPT_INF_SECTION, RTGETOPT_REQ_STRING   },
-    { "--model",       VBOXDRVINST_INSTALL_OPT_MODEL,       RTGETOPT_REQ_STRING   },
-    { "--pnp",         VBOXDRVINST_INSTALL_OPT_PNPID,       RTGETOPT_REQ_STRING   },
-    { "--pnpid" ,      VBOXDRVINST_INSTALL_OPT_PNPID,       RTGETOPT_REQ_STRING   },
-    { "--pnp-id",      VBOXDRVINST_INSTALL_OPT_PNPID,       RTGETOPT_REQ_STRING   },
-    { "--not-force",   VBOXDRVINST_INSTALL_OPT_NOT_FORCE,   RTGETOPT_REQ_NOTHING  },
-    { "--not-silent",  VBOXDRVINST_INSTALL_OPT_NOT_SILENT,  RTGETOPT_REQ_NOTHING  }
+    { "--inf-file",      VBOXDRVINST_INSTALL_OPT_INF_FILE,      RTGETOPT_REQ_STRING  },
+    { "--inf-section",   VBOXDRVINST_INSTALL_OPT_INF_SECTION,   RTGETOPT_REQ_STRING  },
+    { "--model",         VBOXDRVINST_INSTALL_OPT_MODEL,         RTGETOPT_REQ_STRING  },
+    { "--pnp",           VBOXDRVINST_INSTALL_OPT_PNPID,         RTGETOPT_REQ_STRING  },
+    { "--pnpid" ,        VBOXDRVINST_INSTALL_OPT_PNPID,         RTGETOPT_REQ_STRING  },
+    { "--pnp-id",        VBOXDRVINST_INSTALL_OPT_PNPID,         RTGETOPT_REQ_STRING  },
+    { "--not-force",     VBOXDRVINST_INSTALL_OPT_NOT_FORCE,     RTGETOPT_REQ_NOTHING },
+    { "--not-silent",    VBOXDRVINST_INSTALL_OPT_NOT_SILENT,    RTGETOPT_REQ_NOTHING },
+    { "--ignore-reboot", VBOXDRVINST_INSTALL_OPT_IGNORE_REBOOT, RTGETOPT_REQ_NOTHING }
 };
 
 /**
@@ -178,7 +180,9 @@ enum
     VBOXDRVINST_UNINSTALL_OPT_INF_FILE = 900,
     VBOXDRVINST_UNINSTALL_OPT_INF_SECTION,
     VBOXDRVINST_UNINSTALL_OPT_MODEL,
-    VBOXDRVINST_UNINSTALL_OPT_PNPID
+    VBOXDRVINST_UNINSTALL_OPT_PNPID,
+    VBOXDRVINST_UNINSTALL_OPT_NOT_SILENT,
+    VBOXDRVINST_UNINSTALL_OPT_IGNORE_REBOOT
 };
 
 /**
@@ -186,12 +190,14 @@ enum
  */
 static const RTGETOPTDEF g_aCmdUninstallOptions[] =
 {
-    { "--inf-file",    VBOXDRVINST_UNINSTALL_OPT_INF_FILE,    RTGETOPT_REQ_STRING  },
-    { "--inf-section", VBOXDRVINST_UNINSTALL_OPT_INF_SECTION, RTGETOPT_REQ_STRING  },
-    { "--model",       VBOXDRVINST_UNINSTALL_OPT_MODEL,       RTGETOPT_REQ_STRING  },
-    { "--pnp",         VBOXDRVINST_UNINSTALL_OPT_PNPID,       RTGETOPT_REQ_STRING  },
-    { "--pnpid" ,      VBOXDRVINST_UNINSTALL_OPT_PNPID,       RTGETOPT_REQ_STRING  },
-    { "--pnp-id",      VBOXDRVINST_UNINSTALL_OPT_PNPID,       RTGETOPT_REQ_STRING  }
+    { "--inf-file",      VBOXDRVINST_UNINSTALL_OPT_INF_FILE,      RTGETOPT_REQ_STRING  },
+    { "--inf-section",   VBOXDRVINST_UNINSTALL_OPT_INF_SECTION,   RTGETOPT_REQ_STRING  },
+    { "--model",         VBOXDRVINST_UNINSTALL_OPT_MODEL,         RTGETOPT_REQ_STRING  },
+    { "--pnp",           VBOXDRVINST_UNINSTALL_OPT_PNPID,         RTGETOPT_REQ_STRING  },
+    { "--pnpid" ,        VBOXDRVINST_UNINSTALL_OPT_PNPID,         RTGETOPT_REQ_STRING  },
+    { "--pnp-id",        VBOXDRVINST_UNINSTALL_OPT_PNPID,         RTGETOPT_REQ_STRING  },
+    { "--not-silent",    VBOXDRVINST_UNINSTALL_OPT_NOT_SILENT,    RTGETOPT_REQ_NOTHING },
+    { "--ignore-reboot", VBOXDRVINST_UNINSTALL_OPT_IGNORE_REBOOT, RTGETOPT_REQ_NOTHING }
 };
 
 /**
@@ -400,12 +406,13 @@ static DECLCALLBACK(const char *) vboxDrvInstCmdInstallHelp(PCRTGETOPTDEF pOpt)
 {
     switch (pOpt->iShort)
     {
-        case VBOXDRVINST_INSTALL_OPT_INF_FILE:    return "Specifies the INF file to install";
-        case VBOXDRVINST_INSTALL_OPT_INF_SECTION: return "Specifies the INF section to install";
-        case VBOXDRVINST_INSTALL_OPT_MODEL:       return "Specifies the driver model";
-        case VBOXDRVINST_INSTALL_OPT_PNPID:       return "Specifies the PnP (device) ID";
-        case VBOXDRVINST_INSTALL_OPT_NOT_FORCE:   return "Installation will not be forced";
-        case VBOXDRVINST_INSTALL_OPT_NOT_SILENT:  return "Installation will not run in silent mode";
+        case VBOXDRVINST_INSTALL_OPT_INF_FILE:      return "Specifies the INF file to install";
+        case VBOXDRVINST_INSTALL_OPT_INF_SECTION:   return "Specifies the INF section to install";
+        case VBOXDRVINST_INSTALL_OPT_MODEL:         return "Specifies the driver model";
+        case VBOXDRVINST_INSTALL_OPT_PNPID:         return "Specifies the PnP (device) ID";
+        case VBOXDRVINST_INSTALL_OPT_NOT_FORCE:     return "Installation will not be forced";
+        case VBOXDRVINST_INSTALL_OPT_NOT_SILENT:    return "Installation will not run in silent mode";
+        case VBOXDRVINST_INSTALL_OPT_IGNORE_REBOOT: return "Ignores reboot requirements";
         default:
             break;
     }
@@ -427,6 +434,9 @@ static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdInstallMain(PRTGETOPTSTATE pGetSta
 
     /* By default we want to force an installation and be silent. */
     uint32_t fInstall = VBOX_WIN_DRIVERINSTALL_F_SILENT | VBOX_WIN_DRIVERINSTALL_F_FORCE;
+
+    /* Whether to ignore reboot messages or not. This will also affect the returned exit code. */
+    bool fIgnoreReboot = false;
 
     int rc = VINF_SUCCESS;
 
@@ -472,6 +482,10 @@ static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdInstallMain(PRTGETOPTSTATE pGetSta
                 fInstall &= ~VBOX_WIN_DRIVERINSTALL_F_SILENT;
                 break;
 
+            case VBOXDRVINST_INSTALL_OPT_IGNORE_REBOOT:
+                fIgnoreReboot = true;
+                break;
+
             default:
                 return RTGetOptPrintError(ch, &ValueUnion);
         }
@@ -491,7 +505,8 @@ static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdInstallMain(PRTGETOPTSTATE pGetSta
         rc = VBoxWinDrvInstInstallEx(hWinDrvInst, pszInfFile, pszModel, pszPnpId, fInstall);
         if (RT_SUCCESS(rc))
         {
-            if (rc == VINF_REBOOT_NEEDED)
+            if (   rc == VINF_REBOOT_NEEDED
+                && !fIgnoreReboot)
                 rcExit = (RTEXITCODE)VBOXDRVINSTEXITCODE_REBOOT_NEEDED;
         }
         else
@@ -513,10 +528,11 @@ static DECLCALLBACK(const char *) vboxDrvInstCmdUninstallHelp(PCRTGETOPTDEF pOpt
 {
     switch (pOpt->iShort)
     {
-        case VBOXDRVINST_UNINSTALL_OPT_INF_FILE:    return "Specifies the INF File to install";
-        case VBOXDRVINST_UNINSTALL_OPT_INF_SECTION: return "Specifies the INF section to install";
-        case VBOXDRVINST_UNINSTALL_OPT_MODEL:       return "Specifies the driver model to install";
-        case VBOXDRVINST_UNINSTALL_OPT_PNPID:       return "Specifies the PnP (device) ID to install";
+        case VBOXDRVINST_UNINSTALL_OPT_INF_FILE:      return "Specifies the INF File to install";
+        case VBOXDRVINST_UNINSTALL_OPT_INF_SECTION:   return "Specifies the INF section to install";
+        case VBOXDRVINST_UNINSTALL_OPT_MODEL:         return "Specifies the driver model to install";
+        case VBOXDRVINST_UNINSTALL_OPT_PNPID:         return "Specifies the PnP (device) ID to install";
+        case VBOXDRVINST_UNINSTALL_OPT_IGNORE_REBOOT: return "Ignores reboot requirements";
         default:
             break;
     }
@@ -539,6 +555,9 @@ static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdUninstallMain(PRTGETOPTSTATE pGetS
     /* By default we want a silent uninstallation. */
     uint32_t fInstall = VBOX_WIN_DRIVERINSTALL_F_SILENT;
 
+    /* Whether to ignore reboot messages or not. This will also affect the returned exit code. */
+    bool fIgnoreReboot = false;
+
     int rc = VINF_SUCCESS;
 
 #define DUP_ARG_TO_STR(a_Str) \
@@ -559,24 +578,28 @@ static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdUninstallMain(PRTGETOPTSTATE pGetS
             case 'h':
                 return vboxDrvInstShowUsage(g_pStdOut, &g_CmdUninstall);
 
-           case VBOXDRVINST_INSTALL_OPT_INF_FILE:
+            case VBOXDRVINST_UNINSTALL_OPT_INF_FILE:
                 DUP_ARG_TO_STR(pszInfFile);
                 break;
 
-            case VBOXDRVINST_INSTALL_OPT_INF_SECTION:
+            case VBOXDRVINST_UNINSTALL_OPT_INF_SECTION:
                 DUP_ARG_TO_STR(pszInfSection);
                 break;
 
-            case VBOXDRVINST_INSTALL_OPT_MODEL:
+            case VBOXDRVINST_UNINSTALL_OPT_MODEL:
                 DUP_ARG_TO_STR(pszModel);
                 break;
 
-            case VBOXDRVINST_INSTALL_OPT_PNPID:
+            case VBOXDRVINST_UNINSTALL_OPT_PNPID:
                 DUP_ARG_TO_STR(pszPnpId);
                 break;
 
-            case VBOXDRVINST_INSTALL_OPT_NOT_SILENT:
+            case VBOXDRVINST_UNINSTALL_OPT_NOT_SILENT:
                 fInstall &= ~VBOX_WIN_DRIVERINSTALL_F_SILENT;
+                break;
+
+            case VBOXDRVINST_UNINSTALL_OPT_IGNORE_REBOOT:
+                fIgnoreReboot = true;
                 break;
 
             default:
@@ -598,7 +621,8 @@ static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdUninstallMain(PRTGETOPTSTATE pGetS
         rc = VBoxWinDrvInstUninstall(hWinDrvInst, pszInfFile, pszModel, pszPnpId, fInstall);
         if (RT_SUCCESS(rc))
         {
-            if (rc == VINF_REBOOT_NEEDED)
+            if (   rc == VINF_REBOOT_NEEDED
+                && !fIgnoreReboot)
                 rcExit = (RTEXITCODE)VBOXDRVINSTEXITCODE_REBOOT_NEEDED;
         }
         else
