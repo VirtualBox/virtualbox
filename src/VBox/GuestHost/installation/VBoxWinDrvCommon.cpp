@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvCommon.cpp 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvCommon.cpp 107452 2024-12-20 12:47:54Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvCommon - Common Windows driver functions.
  */
@@ -661,6 +661,11 @@ const char *VBoxWinDrvWinErrToStr(const DWORD dwErr)
     {
         RT_CASE_RET_STR(ERROR_BADKEY                            );
         RT_CASE_RET_STR(ERROR_SERVICE_MARKED_FOR_DELETE         );
+        RT_CASE_RET_STR(CERT_E_EXPIRED                          );
+        RT_CASE_RET_STR(CERT_E_UNTRUSTEDTESTROOT                );
+        RT_CASE_RET_STR(CERT_E_CHAINING                         );
+        RT_CASE_RET_STR(CERT_E_REVOKED                          );
+        RT_CASE_RET_STR(CERT_E_WRONG_USAGE                      );
         default:
             break;
     }
