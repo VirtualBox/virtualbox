@@ -2345,6 +2345,48 @@ def i_machine_hotunplugcpu(vmid, cpu=None, *var_args_tuple):  # noqa: E501
     return response, httpCode
 
 
+def i_machine_getnetworkadapter(vmid, select=None, slot=None):  # noqa: E501
+    """
+    Call interface method IMachine::getNetworkAdapter
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param slot:
+    :type slot: int
+
+    :rtype: NetworkAdapterResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oNetworkAdapterResponse = NetworkAdapterResponse()
+
+    try:
+        if slot is None or slot=="": slot = 0
+        oVBoxNetworkAdapter = oVM.getNetworkAdapter(slot)
+        oNetworkAdapterResponse.adapter = i_fill_network_adapter(oVBoxNetworkAdapter, select)
+        logging.info('Successfully get the network adapter')
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oNetworkAdapterResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -2608,49 +2650,6 @@ def i_machine_geteffectiveparavirtprovider(vmid):  # noqa: E501
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_getnetworkadapter(vmid, select=None, slot=None):  # noqa: E501
-    """
-    Call interface method IMachine::getNetworkAdapter
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param slot: 
-    :type slot: int
-
-    :rtype: NetworkAdapterResponse
-    """
-
-    vbox_utils_commonChecks()
-
-    httpCode = HTTPStatus.OK
-
-    logging.info('Passed machine Id is ' + vmid)
-
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
-
-    oNetworkAdapterResponse = NetworkAdapterResponse()
-
-    try:
-        if slot is None or slot=="": slot = 0
-        oVBoxNetworkAdapter = oVM.getNetworkAdapter(slot)
-        oNetworkAdapterResponse.adapter = i_fill_network_adapter(oVBoxNetworkAdapter, select)
-        logging.info('Successfully get the network adapter')
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else oNetworkAdapterResponse)
-    return response, httpCode
-
 
 
 def i_machine_getstoragecontrollerbyinstance(vmid, select=None, connectionType=None, instance=None):  # noqa: E501
