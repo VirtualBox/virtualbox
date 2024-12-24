@@ -66,6 +66,8 @@ class SessionObserver(Thread):
 
                             try:
                                 if fExclusiveLock or fTryUnlock:
+                                    # todo: save settings before trying to unlock the session?
+                                    # oSession.machine.saveSettings()
                                     res = tryUnlockSession(oSession)
                                     if res:
                                         obsoleteSessions.append(progressId)
