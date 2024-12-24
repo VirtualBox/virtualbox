@@ -2273,6 +2273,78 @@ def i_machine_deletesnapshotrange(vmid, oMachineDeleteSnapshotRangeRequestBody):
     return "This API method is right now not implemented!", HTTPStatus.NOT_IMPLEMENTED
 
 
+@sessionDecorator
+def i_machine_hotplugcpu(vmid, cpu=None, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::hotPlugCPU
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param cpu:
+    :type cpu: int
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    try:
+        # No return value
+        oCurrMachine.hotPlugCPU(cpu)
+        oCurrMachine.saveSettings()
+        logging.info('Successfully plugged CPU ' + str(cpu))
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else 'Successfully plugged CPU ' + str(cpu))
+    return response, httpCode
+
+
+@sessionDecorator
+def i_machine_hotunplugcpu(vmid, cpu=None, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::hotUnplugCPU
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param cpu:
+    :type cpu: int
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    try:
+        # No return value
+        oCurrMachine.hotUnplugCPU(cpu)
+        oCurrMachine.saveSettings()
+        logging.info('Successfully unplugged CPU ' + str(cpu))
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else 'Successfully unplugged CPU ' + str(cpu))
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -2644,36 +2716,6 @@ def i_machine_getusbcontrollercountbytype(vmid, type=None):  # noqa: E501
     :type type: str
 
     :rtype: MachineGetusbcontrollercountbytypeResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_hotplugcpu(vmid, cpu=None):  # noqa: E501
-    """
-    Call interface method IMachine::hotPlugCPU
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param cpu: 
-    :type cpu: int
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_hotunplugcpu(vmid, cpu=None):  # noqa: E501
-    """
-    Call interface method IMachine::hotUnplugCPU
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param cpu: 
-    :type cpu: int
-
-    :rtype: None
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
