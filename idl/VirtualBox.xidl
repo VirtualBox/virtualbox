@@ -7188,7 +7188,7 @@
     </attribute>
 
     <method name="getCPUProperty" const="yes">
-      <rest request="get" path="/vms/{vmid}/configuration/"/>
+      <rest name="CPUPropertyX86" request="get" path="/vms/{vmid}/configuration/"/>
       <desc>
         Returns the virtual CPU boolean value of the specified property.
 
@@ -7210,7 +7210,7 @@
     </method>
 
     <method name="setCPUProperty">
-      <rest request="post" path="/vms/{vmid}/configuration/"/>
+      <rest name="CPUPropertyX86" request="post" path="/vms/{vmid}/configuration/"/>
       <desc>
         Sets the virtual CPU boolean value of the specified property.
 
@@ -7469,7 +7469,7 @@
     </desc>
 
     <method name="getCPUProperty" const="yes">
-      <rest request="get" path="/vms/{vmid}/configuration/"/>
+      <rest name="CPUPropertyARM" request="get" path="/vms/{vmid}/configuration/"/>
       <desc>
         Returns the virtual CPU boolean value of the specified property.
 
@@ -7491,7 +7491,7 @@
     </method>
 
     <method name="setCPUProperty">
-      <rest request="post" path="/vms/{vmid}/configuration/"/>
+      <rest name="CPUPropertyARM" request="post" path="/vms/{vmid}/configuration/"/>
       <desc>
         Sets the virtual CPU boolean value of the specified property.
 
