@@ -6,6 +6,7 @@
 from vbox_server.global_settings import *
 
 from vbox_server.models.machine_state import MachineState  # noqa: E501
+from vbox_server.models.tracked_object_state import TrackedObjectState  # noqa: E501
 
 ########################### VirtualBox -> Swagger enumeration ###########################
 def vbox_to_swagger_machine_state(machineState):
@@ -13,6 +14,10 @@ def vbox_to_swagger_machine_state(machineState):
     swaggerMachineState = ctx[ 'global'].getEnumValueName('MachineState', machineState)
     return swaggerMachineState.upper()
 
+def vbox_to_swagger_tracked_object_state(trackedObjectState):
+    swaggerObjState = TrackedObjectState()
+    swaggerObjState = ctx[ 'global'].getEnumValueName('TrackedObjectState', trackedObjectState)
+    return swaggerObjState.upper()
 
 ###########################  Swagger -> VirtualBox enumeration ###########################
 def swagger_to_vbox_firmware_type(firmwareType: str):
@@ -33,9 +38,9 @@ def swagger_to_vbox_firmware_type(firmwareType: str):
 
 
 def swagger_to_vbox_platform_architecture(platformArchitecture: str):
-    if platformArchitecture == 'x86':
+    if platformArchitecture == 'X86':
         vBoxPlatformArchitecture = ctx['const'].PlatformArchitecture_x86
-    elif platformArchitecture == 'EFI':
+    elif platformArchitecture == 'ARM':
         vBoxPlatformArchitecture = ctx['const'].PlatformArchitecture_ARM
     else:
         vBoxPlatformArchitecture = ctx['const'].PlatformArchitecture_None
@@ -206,6 +211,15 @@ def swagger_to_vbox_cpu_x86_property(property: str):
         vBoxCPUProperty = ctx['const'].CPUPropertyTypeX86_MDSClearOnVMEntry
     else:
         vBoxCPUProperty = None # ctx['const'].CPUPropertyTypeX86_Null
+
+    return vBoxCPUProperty
+
+
+def swagger_to_vbox_cpu_arm_property(property: str):
+    if property == "HWVIRT":
+        vBoxCPUProperty = ctx['const'].CPUPropertyTypeARM_HWVirt
+    else:
+        vBoxCPUProperty = None # ctx['const'].CPUPropertyTypeARM_Null
 
     return vBoxCPUProperty
 
