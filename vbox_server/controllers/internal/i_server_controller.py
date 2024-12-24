@@ -507,6 +507,7 @@ def i_virtualbox_setextradata(oVirtualBoxSetExtraDataRequestBody):  # noqa: E501
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
+from datetime import datetime
 def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
     """
     Call interface method IVirtualBox::getTrackedObject
@@ -531,8 +532,18 @@ def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
         oError = Error(httpCode, str(e))
         return jsonify(oError), httpCode
 
+    o = VirtualboxGettrackedobjectResponse()
     try:
-        oIUnknown = oVBox.getTrackedObject(trObjId)
+        oIUnknown, enmState, creationTime, deletionTime = oVBox.getTrackedObject(trObjId)
+        o.state = vbox_to_swagger_tracked_object_state(enmState)
+        o.creation_time = creationTime/1000
+        if (deletionTime != 0):
+            o.deletion_time = deletionTime/1000
+        else:
+            o.deletion_time = 0
+        logging.info('state ' + o.state)
+        logging.info('creation time ' + str(datetime.fromtimestamp(o.creation_time)))
+        logging.info('deletion time ' + str(datetime.fromtimestamp(o.deletion_time)))
         if oIUnknown is None:
             httpCode = HTTPStatus.NOT_FOUND
             oError = Error(httpCode, str("Can\'t find the object with Id " + trObjId + ' on the server'))
@@ -593,9 +604,10 @@ def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
 
         if oRes: break
 
-    if oRes is None: oRes = VirtualboxGettrackedobjectResponse()
+    if oRes: o.p_iface = oRes
+    # if oRes is None: oRes = VirtualboxGettrackedobjectResponse()
 
-    response = jsonify(oError if oError is not None else oRes)
+    response = jsonify(oError if oError is not None else o)
     return response, httpCode
 
 
