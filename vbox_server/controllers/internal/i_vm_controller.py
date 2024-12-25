@@ -60,6 +60,11 @@ from vbox_server.models.device_type_response import DeviceTypeResponse  # noqa: 
 from vbox_server.models.machine_response import MachineResponse  # noqa: E501
 from vbox_server.models.medium_attachment_response import MediumAttachmentResponse  # noqa: E501
 from vbox_server.models.network_adapter_response import NetworkAdapterResponse  # noqa: E501
+from vbox_server.models.platform_arm_set_cpu_property_request_body import PlatformARMSetCPUPropertyRequestBody  # noqa: E501
+from vbox_server.models.platform_x86_set_cpu_property_request_body import PlatformX86SetCPUPropertyRequestBody  # noqa: E501
+from vbox_server.models.platformarm_getcpuproperty_response import PlatformarmGetcpupropertyResponse  # noqa: E501
+from vbox_server.models.platformarm_getcpuproperty_response import PlatformarmGetcpupropertyResponse as Platformx86GetcpupropertyResponse # noqa: E501
+from vbox_server.models.platform_x86_set_hw_virt_ex_property_request_body import PlatformX86SetHWVirtExPropertyRequestBody  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
@@ -2387,6 +2392,278 @@ def i_machine_getnetworkadapter(vmid, select=None, slot=None):  # noqa: E501
     return response, httpCode
 
 
+def i_platformx86_getcpuproperty(vmid, property=None):  # noqa: E501
+    """
+    Call interface method IPlatformX86::getCPUProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param property: For the possible values of enumeration look into #/definitions/CPUPropertyTypeX86
+    :type property: str
+
+    :rtype: Platformx86GetcpupropertyResponse
+    """
+
+    vbox_utils_commonChecks()
+
+
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oPlatformx86GetcpupropertyResponse = Platformx86GetcpupropertyResponse()
+
+    try:
+        vBoxCPUProperty = swagger_to_vbox_cpu_x86_property(property)
+        if vBoxCPUProperty is None:
+            return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
+        
+        oPlatformX86 = oVM.platform.x86
+        oPlatformx86GetcpupropertyResponse.value = oPlatformX86.getCPUProperty(vBoxCPUProperty)
+        logging.info('The CPU property ' + property + ' is ' + str(oPlatformx86GetcpupropertyResponse.value))
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oPlatformx86GetcpupropertyResponse)
+    return response, httpCode
+
+
+def i_platformarm_getcpuproperty(vmid, property=None):  # noqa: E501
+    """
+    Call interface method IPlatformARM::getCPUProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param property: For the possible values of enumeration look into #/definitions/CPUPropertyTypeARM
+    :type property: str
+
+    :rtype: PlatformarmGetcpupropertyResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oPlatformARMGetcpupropertyResponse = PlatformarmGetcpupropertyResponse()
+
+    try:
+        vBoxCPUProperty = swagger_to_vbox_cpu_x86_property(property)
+        if vBoxCPUProperty is None:
+            return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
+        
+        oPlatformARM = oVM.platform.arm
+        oPlatformARMGetcpupropertyResponse.value = oPlatformARM.getCPUProperty(vBoxCPUProperty)
+        logging.info('The CPU property ' + property + ' is ' + str(oPlatformARMGetcpupropertyResponse.value))
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oPlatformARMGetcpupropertyResponse)
+    return response, httpCode
+
+
+def i_platformx86_gethwvirtexproperty(vmid, property=None):  # noqa: E501
+    """
+    Call interface method IPlatformX86::getHWVirtExProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param property: For the possible values of enumeration look into #/definitions/HWVirtExPropertyType
+    :type property: str
+
+    :rtype: Platformx86GetcpupropertyResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oPlatformx86GetcpupropertyResponse = Platformx86GetcpupropertyResponse()
+
+    try:
+        vBoxHWVirtExProperty = swagger_to_vbox_hw_virt_ex_property(property)
+        if vBoxHWVirtExProperty is None:
+            return "The requested hardware property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
+        
+        oPlatformX86 = oVM.platform.x86
+        oPlatformx86GetcpupropertyResponse.value = oPlatformX86.getHWVirtExProperty(vBoxHWVirtExProperty)
+        logging.info('The property ' + property + ' is ' + str(oPlatformx86GetcpupropertyResponse.value))
+    except Exception as e:
+        logging.info('Exception during obtaining the specified hardware virtualization property ' + property)
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oPlatformx86GetcpupropertyResponse)
+    return response, httpCode
+
+
+@sessionDecorator
+def i_platformx86_sethwvirtexproperty(vmid, oPlatformX86SetHWVirtExPropertyRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IPlatformX86::setHWVirtExProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oPlatformX86SetHWVirtExPropertyRequestBody: 
+    :type oPlatformX86SetHWVirtExPropertyRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    property = oPlatformX86SetHWVirtExPropertyRequestBody._property
+    value = oPlatformX86SetHWVirtExPropertyRequestBody.value
+
+    try:
+        vBoxHWVirtExProperty = swagger_to_vbox_hw_virt_ex_property(property)
+        if vBoxHWVirtExProperty is None:
+            return "The requested hardware property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
+
+        oPlatformX86 = oCurrMachine.platform.x86
+        oPlatformX86.setHWVirtExProperty(vBoxHWVirtExProperty, value)
+        oCurrMachine.saveSettings()
+        logging.info("Successfully set VM hardware virtualization property "  + "'" \
+            + property  + "'" + " to value " + "'" + str(value) + "'")
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is not None:
+        return jsonify(oError), httpCode
+
+    return "Successfully set VM hardware virtualization property "  + "'" \
+        + property  + "'" + " to value " + "'" + str(value) + "'"
+
+
+@sessionDecorator
+def i_platformx86_setcpuproperty(vmid, oPlatformX86SetCPUPropertyRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IPlatformX86::setCPUProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oPlatformX86SetCPUPropertyRequestBody: 
+    :type oPlatformX86SetCPUPropertyRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    property = oPlatformX86SetCPUPropertyRequestBody._property
+    value = oPlatformX86SetCPUPropertyRequestBody.value
+    logging.info('The passed CPU property ' + property + ' is ' + str(value))
+
+    try:
+        vBoxCPUProperty = swagger_to_vbox_cpu_x86_property(property)
+        if vBoxCPUProperty is None:
+            return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
+
+        oPlatformX86 = oCurrMachine.platform.x86
+        oPlatformX86.setCPUProperty(vBoxCPUProperty, value)
+        oCurrMachine.saveSettings()
+        logging.info('Successfully set the virtual CPU property ' + property + ' to ' + str(value))
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is not None:
+        return jsonify(oError), httpCode
+
+    return 'Successfully set the virtual CPU property ' + property + ' to ' + str(value)
+
+
+@sessionDecorator
+def i_platformarm_setcpuproperty(vmid, oPlatformARMSetCPUPropertyRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IPlatformARM::setCPUProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oPlatformARMSetCPUPropertyRequestBody: 
+    :type oPlatformARMSetCPUPropertyRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    property = oPlatformARMSetCPUPropertyRequestBody._property
+    value = oPlatformARMSetCPUPropertyRequestBody.value
+    logging.info('The passed CPU property ' + property + ' is ' + str(value))
+
+    try:
+        vBoxCPUProperty = swagger_to_vbox_cpu_arm_property(property)
+        if vBoxCPUProperty is None:
+            return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
+
+        oPlatformARM = oCurrMachine.platform.arm
+        oPlatformARM.setCPUProperty(vBoxCPUProperty, value)
+        oCurrMachine.saveSettings()
+        logging.info('Successfully set the virtual CPU property ' + property + ' to ' + str(value))
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is not None:
+        return jsonify(oError), httpCode
+
+    return 'Successfully set the virtual CPU property ' + property + ' to ' + str(value)
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -2923,66 +3200,6 @@ def i_machine_temporaryejectdevice(vmid, oMachineTemporaryEjectDeviceRequestBody
     :type vmid: str
     :param oMachineTemporaryEjectDeviceRequestBody: 
     :type oMachineTemporaryEjectDeviceRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_platformx86_getcpuproperty(vmid, _property=None):  # noqa: E501
-    """
-    Call interface method IPlatformX86::getCPUProperty
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param _property: For the possible values of enumeration look into #/definitions/CPUPropertyTypeX86
-    :type _property: str
-
-    :rtype: Platformx86GetcpupropertyResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_platformx86_gethwvirtexproperty(vmid, _property=None):  # noqa: E501
-    """
-    Call interface method IPlatformX86::getHWVirtExProperty
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param _property: For the possible values of enumeration look into #/definitions/HWVirtExPropertyType
-    :type _property: str
-
-    :rtype: Platformx86GetcpupropertyResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_platformx86_setcpuproperty(vmid, oPlatformX86SetCPUPropertyRequestBody):  # noqa: E501
-    """
-    Call interface method IPlatformX86::setCPUProperty
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oPlatformX86SetCPUPropertyRequestBody: 
-    :type oPlatformX86SetCPUPropertyRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_platformx86_sethwvirtexproperty(vmid, oPlatformX86SetHWVirtExPropertyRequestBody):  # noqa: E501
-    """
-    Call interface method IPlatformX86::setHWVirtExProperty
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oPlatformX86SetHWVirtExPropertyRequestBody: 
-    :type oPlatformX86SetHWVirtExPropertyRequestBody: dict | bytes
 
     :rtype: None
     """
