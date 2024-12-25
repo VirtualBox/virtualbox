@@ -23,9 +23,10 @@ from vbox_server.models.usb_device import USBDevice
 from vbox_server.models.serial_port import SerialPort
 from vbox_server.models.parallel_port import ParallelPort
 from vbox_server.models.snapshot import Snapshot
+from vbox_server.models.platform_properties import PlatformProperties
+from vbox_server.models.network_adapter import NetworkAdapter
 from vbox_server.models.guest_os_type import GuestOSType
 from vbox_server.models.nat_engine import NATEngine
-from vbox_server.models.network_adapter import NetworkAdapter
 
 from vbox_server.models.virtual_box_error_info import VirtualBoxErrorInfo
 
@@ -3548,6 +3549,401 @@ def i_fill_partial_guest_os_type(oVBoxGuestOSType, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oGuestOSType
+
+def i_fill_platform_properties(oVBoxPlatformProperties, select=None):
+  """Convert the passed VirtualBox object oVBoxPlatformProperties with interface IPlatformProperties into Swagger object oPlatformProperties"""
+  
+  logging.info('Enter function ')
+  oPlatformProperties = PlatformProperties()
+  try:
+    if oVBoxPlatformProperties is not None:
+      if select is not None and len(select)>0:
+        oPlatformProperties = i_fill_partial_platform_properties(oVBoxPlatformProperties, select)
+      else:
+        oPlatformProperties = i_fill_whole_platform_properties(oVBoxPlatformProperties)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oPlatformProperties = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxPlatformProperties into Swagger object oPlatformProperties. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oPlatformProperties
+
+def i_fill_whole_platform_properties(oVBoxPlatformProperties):
+  logging.info('Enter function ')
+  oPlatformProperties = PlatformProperties()
+  try:
+    if oVBoxPlatformProperties is not None:
+      try:
+        oPlatformProperties.raw_mode_supported = oVBoxPlatformProperties.rawModeSupported
+      except Exception as e:
+        logging.info('Error getting the attribute "rawModeSupported"')
+      try:
+        oPlatformProperties.exclusive_hw_virt = oVBoxPlatformProperties.exclusiveHwVirt
+      except Exception as e:
+        logging.info('Error getting the attribute "exclusiveHwVirt"')
+      try:
+        oPlatformProperties.serial_port_count = oVBoxPlatformProperties.serialPortCount
+      except Exception as e:
+        logging.info('Error getting the attribute "serialPortCount"')
+      try:
+        oPlatformProperties.parallel_port_count = oVBoxPlatformProperties.parallelPortCount
+      except Exception as e:
+        logging.info('Error getting the attribute "parallelPortCount"')
+      try:
+        oPlatformProperties.max_boot_position = oVBoxPlatformProperties.maxBootPosition
+      except Exception as e:
+        logging.info('Error getting the attribute "maxBootPosition"')
+      try:
+        ol_supported_paravirt_providers = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedParavirtProviders')
+        oPlatformProperties.supported_paravirt_providers = list()
+        for count, item in enumerate(ol_supported_paravirt_providers):
+          o = ctx['global'].getEnumValueName('ParavirtProvider', item)
+          if oPlatformProperties.supported_paravirt_providers.count(o) == 0 : oPlatformProperties.supported_paravirt_providers.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedParavirtProviders"')
+      try:
+        ol_supported_firmware_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedFirmwareTypes')
+        oPlatformProperties.supported_firmware_types = list()
+        for count, item in enumerate(ol_supported_firmware_types):
+          o = ctx['global'].getEnumValueName('FirmwareType', item)
+          if oPlatformProperties.supported_firmware_types.count(o) == 0 : oPlatformProperties.supported_firmware_types.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedFirmwareTypes"')
+      try:
+        ol_supported_guest_os_types = ctx['global'].getArray(oVBoxPlatformProperties,'supportedGuestOSTypes')
+        oPlatformProperties.supported_guest_os_types = list()
+        for count, item in enumerate(ol_supported_guest_os_types):
+          o = i_fill_guest_os_type(item)
+          oPlatformProperties.supported_guest_os_types.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedGuestOSTypes"')
+      try:
+        ol_supported_gfx_controller_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedGfxControllerTypes')
+        oPlatformProperties.supported_gfx_controller_types = list()
+        for count, item in enumerate(ol_supported_gfx_controller_types):
+          o = ctx['global'].getEnumValueName('GraphicsControllerType', item)
+          if oPlatformProperties.supported_gfx_controller_types.count(o) == 0 : oPlatformProperties.supported_gfx_controller_types.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedGfxControllerTypes"')
+      try:
+        ol_supported_net_adp_promisc_mode_pols = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedNetAdpPromiscModePols')
+        oPlatformProperties.supported_net_adp_promisc_mode_pols = list()
+        for count, item in enumerate(ol_supported_net_adp_promisc_mode_pols):
+          o = ctx['global'].getEnumValueName('NetworkAdapterPromiscModePolicy', item)
+          if oPlatformProperties.supported_net_adp_promisc_mode_pols.count(o) == 0 : oPlatformProperties.supported_net_adp_promisc_mode_pols.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedNetAdpPromiscModePols"')
+      try:
+        ol_supported_network_adapter_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedNetworkAdapterTypes')
+        oPlatformProperties.supported_network_adapter_types = list()
+        for count, item in enumerate(ol_supported_network_adapter_types):
+          o = ctx['global'].getEnumValueName('NetworkAdapterType', item)
+          if oPlatformProperties.supported_network_adapter_types.count(o) == 0 : oPlatformProperties.supported_network_adapter_types.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedNetworkAdapterTypes"')
+      try:
+        ol_supported_uart_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedUartTypes')
+        oPlatformProperties.supported_uart_types = list()
+        for count, item in enumerate(ol_supported_uart_types):
+          o = ctx['global'].getEnumValueName('UartType', item)
+          if oPlatformProperties.supported_uart_types.count(o) == 0 : oPlatformProperties.supported_uart_types.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedUartTypes"')
+      try:
+        ol_supported_usb_controller_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedUSBControllerTypes')
+        oPlatformProperties.supported_usb_controller_types = list()
+        for count, item in enumerate(ol_supported_usb_controller_types):
+          o = ctx['global'].getEnumValueName('USBControllerType', item)
+          if oPlatformProperties.supported_usb_controller_types.count(o) == 0 : oPlatformProperties.supported_usb_controller_types.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedUSBControllerTypes"')
+      try:
+        ol_supported_audio_controller_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedAudioControllerTypes')
+        oPlatformProperties.supported_audio_controller_types = list()
+        for count, item in enumerate(ol_supported_audio_controller_types):
+          o = ctx['global'].getEnumValueName('AudioControllerType', item)
+          if oPlatformProperties.supported_audio_controller_types.count(o) == 0 : oPlatformProperties.supported_audio_controller_types.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedAudioControllerTypes"')
+      try:
+        ol_supported_boot_devices = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedBootDevices')
+        oPlatformProperties.supported_boot_devices = list()
+        for count, item in enumerate(ol_supported_boot_devices):
+          o = ctx['global'].getEnumValueName('DeviceType', item)
+          if oPlatformProperties.supported_boot_devices.count(o) == 0 : oPlatformProperties.supported_boot_devices.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedBootDevices"')
+      try:
+        ol_supported_storage_buses = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedStorageBuses')
+        oPlatformProperties.supported_storage_buses = list()
+        for count, item in enumerate(ol_supported_storage_buses):
+          o = ctx['global'].getEnumValueName('StorageBus', item)
+          if oPlatformProperties.supported_storage_buses.count(o) == 0 : oPlatformProperties.supported_storage_buses.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedStorageBuses"')
+      try:
+        ol_supported_storage_controller_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedStorageControllerTypes')
+        oPlatformProperties.supported_storage_controller_types = list()
+        for count, item in enumerate(ol_supported_storage_controller_types):
+          o = ctx['global'].getEnumValueName('StorageControllerType', item)
+          if oPlatformProperties.supported_storage_controller_types.count(o) == 0 : oPlatformProperties.supported_storage_controller_types.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedStorageControllerTypes"')
+      try:
+        ol_supported_chipset_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedChipsetTypes')
+        oPlatformProperties.supported_chipset_types = list()
+        for count, item in enumerate(ol_supported_chipset_types):
+          o = ctx['global'].getEnumValueName('ChipsetType', item)
+          if oPlatformProperties.supported_chipset_types.count(o) == 0 : oPlatformProperties.supported_chipset_types.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedChipsetTypes"')
+      try:
+        ol_supported_iommu_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedIommuTypes')
+        oPlatformProperties.supported_iommu_types = list()
+        for count, item in enumerate(ol_supported_iommu_types):
+          o = ctx['global'].getEnumValueName('IommuType', item)
+          if oPlatformProperties.supported_iommu_types.count(o) == 0 : oPlatformProperties.supported_iommu_types.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedIommuTypes"')
+      try:
+        ol_supported_tpm_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedTpmTypes')
+        oPlatformProperties.supported_tpm_types = list()
+        for count, item in enumerate(ol_supported_tpm_types):
+          o = ctx['global'].getEnumValueName('TpmType', item)
+          if oPlatformProperties.supported_tpm_types.count(o) == 0 : oPlatformProperties.supported_tpm_types.append(o)
+      except Exception as e:
+        logging.info('Error getting the array of "supportedTpmTypes"')
+      
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oPlatformProperties = None
+    text = 'Exception trying to fill the object oPlatformProperties. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oPlatformProperties
+
+def i_fill_partial_platform_properties(oVBoxPlatformProperties, select):
+  logging.info('Enter function ')
+  oPlatformProperties = PlatformProperties()
+  try:
+    if oVBoxPlatformProperties is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='rawModeSupported':
+            try:
+              oPlatformProperties.raw_mode_supported = oVBoxPlatformProperties.rawModeSupported
+            except Exception as e:
+              logging.info('Error getting the attribute "rawModeSupported"')
+              raise Exception('Error getting the attribute "rawModeSupported"')
+            
+          if currAttr=='exclusiveHwVirt':
+            try:
+              oPlatformProperties.exclusive_hw_virt = oVBoxPlatformProperties.exclusiveHwVirt
+            except Exception as e:
+              logging.info('Error getting the attribute "exclusiveHwVirt"')
+              raise Exception('Error getting the attribute "exclusiveHwVirt"')
+            
+          if currAttr=='serialPortCount':
+            try:
+              oPlatformProperties.serial_port_count = oVBoxPlatformProperties.serialPortCount
+            except Exception as e:
+              logging.info('Error getting the attribute "serialPortCount"')
+              raise Exception('Error getting the attribute "serialPortCount"')
+            
+          if currAttr=='parallelPortCount':
+            try:
+              oPlatformProperties.parallel_port_count = oVBoxPlatformProperties.parallelPortCount
+            except Exception as e:
+              logging.info('Error getting the attribute "parallelPortCount"')
+              raise Exception('Error getting the attribute "parallelPortCount"')
+            
+          if currAttr=='maxBootPosition':
+            try:
+              oPlatformProperties.max_boot_position = oVBoxPlatformProperties.maxBootPosition
+            except Exception as e:
+              logging.info('Error getting the attribute "maxBootPosition"')
+              raise Exception('Error getting the attribute "maxBootPosition"')
+            
+          if currAttr=='supportedParavirtProviders':
+            try:
+              ol_supported_paravirt_providers = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedParavirtProviders')
+              oPlatformProperties.supported_paravirt_providers = list()
+              for count, item in enumerate(ol_supported_paravirt_providers):
+                o = ctx['global'].getEnumValueName('ParavirtProvider', item)
+                if oPlatformProperties.supported_paravirt_providers.count(o) == 0 : oPlatformProperties.supported_paravirt_providers.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedParavirtProviders"')
+              raise Exception('Error getting the array of "supportedParavirtProviders"')
+            
+          if currAttr=='supportedFirmwareTypes':
+            try:
+              ol_supported_firmware_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedFirmwareTypes')
+              oPlatformProperties.supported_firmware_types = list()
+              for count, item in enumerate(ol_supported_firmware_types):
+                o = ctx['global'].getEnumValueName('FirmwareType', item)
+                if oPlatformProperties.supported_firmware_types.count(o) == 0 : oPlatformProperties.supported_firmware_types.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedFirmwareTypes"')
+              raise Exception('Error getting the array of "supportedFirmwareTypes"')
+            
+          if currAttr=='supportedGuestOSTypes':
+            try:
+              ol_supported_guest_os_types = ctx['global'].getArray(oVBoxPlatformProperties,'supportedGuestOSTypes')
+              oPlatformProperties.supported_guest_os_types = list()
+              for count, item in enumerate(ol_supported_guest_os_types):
+                o = i_fill_guest_os_type(item)
+                oPlatformProperties.supported_guest_os_types.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedGuestOSTypes"')
+              raise Exception('Error getting the array of "supportedGuestOSTypes"')
+            
+          if currAttr=='supportedGfxControllerTypes':
+            try:
+              ol_supported_gfx_controller_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedGfxControllerTypes')
+              oPlatformProperties.supported_gfx_controller_types = list()
+              for count, item in enumerate(ol_supported_gfx_controller_types):
+                o = ctx['global'].getEnumValueName('GraphicsControllerType', item)
+                if oPlatformProperties.supported_gfx_controller_types.count(o) == 0 : oPlatformProperties.supported_gfx_controller_types.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedGfxControllerTypes"')
+              raise Exception('Error getting the array of "supportedGfxControllerTypes"')
+            
+          if currAttr=='supportedNetAdpPromiscModePols':
+            try:
+              ol_supported_net_adp_promisc_mode_pols = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedNetAdpPromiscModePols')
+              oPlatformProperties.supported_net_adp_promisc_mode_pols = list()
+              for count, item in enumerate(ol_supported_net_adp_promisc_mode_pols):
+                o = ctx['global'].getEnumValueName('NetworkAdapterPromiscModePolicy', item)
+                if oPlatformProperties.supported_net_adp_promisc_mode_pols.count(o) == 0 : oPlatformProperties.supported_net_adp_promisc_mode_pols.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedNetAdpPromiscModePols"')
+              raise Exception('Error getting the array of "supportedNetAdpPromiscModePols"')
+            
+          if currAttr=='supportedNetworkAdapterTypes':
+            try:
+              ol_supported_network_adapter_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedNetworkAdapterTypes')
+              oPlatformProperties.supported_network_adapter_types = list()
+              for count, item in enumerate(ol_supported_network_adapter_types):
+                o = ctx['global'].getEnumValueName('NetworkAdapterType', item)
+                if oPlatformProperties.supported_network_adapter_types.count(o) == 0 : oPlatformProperties.supported_network_adapter_types.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedNetworkAdapterTypes"')
+              raise Exception('Error getting the array of "supportedNetworkAdapterTypes"')
+            
+          if currAttr=='supportedUartTypes':
+            try:
+              ol_supported_uart_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedUartTypes')
+              oPlatformProperties.supported_uart_types = list()
+              for count, item in enumerate(ol_supported_uart_types):
+                o = ctx['global'].getEnumValueName('UartType', item)
+                if oPlatformProperties.supported_uart_types.count(o) == 0 : oPlatformProperties.supported_uart_types.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedUartTypes"')
+              raise Exception('Error getting the array of "supportedUartTypes"')
+            
+          if currAttr=='supportedUSBControllerTypes':
+            try:
+              ol_supported_usb_controller_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedUSBControllerTypes')
+              oPlatformProperties.supported_usb_controller_types = list()
+              for count, item in enumerate(ol_supported_usb_controller_types):
+                o = ctx['global'].getEnumValueName('USBControllerType', item)
+                if oPlatformProperties.supported_usb_controller_types.count(o) == 0 : oPlatformProperties.supported_usb_controller_types.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedUSBControllerTypes"')
+              raise Exception('Error getting the array of "supportedUSBControllerTypes"')
+            
+          if currAttr=='supportedAudioControllerTypes':
+            try:
+              ol_supported_audio_controller_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedAudioControllerTypes')
+              oPlatformProperties.supported_audio_controller_types = list()
+              for count, item in enumerate(ol_supported_audio_controller_types):
+                o = ctx['global'].getEnumValueName('AudioControllerType', item)
+                if oPlatformProperties.supported_audio_controller_types.count(o) == 0 : oPlatformProperties.supported_audio_controller_types.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedAudioControllerTypes"')
+              raise Exception('Error getting the array of "supportedAudioControllerTypes"')
+            
+          if currAttr=='supportedBootDevices':
+            try:
+              ol_supported_boot_devices = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedBootDevices')
+              oPlatformProperties.supported_boot_devices = list()
+              for count, item in enumerate(ol_supported_boot_devices):
+                o = ctx['global'].getEnumValueName('DeviceType', item)
+                if oPlatformProperties.supported_boot_devices.count(o) == 0 : oPlatformProperties.supported_boot_devices.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedBootDevices"')
+              raise Exception('Error getting the array of "supportedBootDevices"')
+            
+          if currAttr=='supportedStorageBuses':
+            try:
+              ol_supported_storage_buses = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedStorageBuses')
+              oPlatformProperties.supported_storage_buses = list()
+              for count, item in enumerate(ol_supported_storage_buses):
+                o = ctx['global'].getEnumValueName('StorageBus', item)
+                if oPlatformProperties.supported_storage_buses.count(o) == 0 : oPlatformProperties.supported_storage_buses.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedStorageBuses"')
+              raise Exception('Error getting the array of "supportedStorageBuses"')
+            
+          if currAttr=='supportedStorageControllerTypes':
+            try:
+              ol_supported_storage_controller_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedStorageControllerTypes')
+              oPlatformProperties.supported_storage_controller_types = list()
+              for count, item in enumerate(ol_supported_storage_controller_types):
+                o = ctx['global'].getEnumValueName('StorageControllerType', item)
+                if oPlatformProperties.supported_storage_controller_types.count(o) == 0 : oPlatformProperties.supported_storage_controller_types.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedStorageControllerTypes"')
+              raise Exception('Error getting the array of "supportedStorageControllerTypes"')
+            
+          if currAttr=='supportedChipsetTypes':
+            try:
+              ol_supported_chipset_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedChipsetTypes')
+              oPlatformProperties.supported_chipset_types = list()
+              for count, item in enumerate(ol_supported_chipset_types):
+                o = ctx['global'].getEnumValueName('ChipsetType', item)
+                if oPlatformProperties.supported_chipset_types.count(o) == 0 : oPlatformProperties.supported_chipset_types.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedChipsetTypes"')
+              raise Exception('Error getting the array of "supportedChipsetTypes"')
+            
+          if currAttr=='supportedIommuTypes':
+            try:
+              ol_supported_iommu_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedIommuTypes')
+              oPlatformProperties.supported_iommu_types = list()
+              for count, item in enumerate(ol_supported_iommu_types):
+                o = ctx['global'].getEnumValueName('IommuType', item)
+                if oPlatformProperties.supported_iommu_types.count(o) == 0 : oPlatformProperties.supported_iommu_types.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedIommuTypes"')
+              raise Exception('Error getting the array of "supportedIommuTypes"')
+            
+          if currAttr=='supportedTpmTypes':
+            try:
+              ol_supported_tpm_types = ctx['global'].getArray(oVBoxPlatformProperties, 'supportedTpmTypes')
+              oPlatformProperties.supported_tpm_types = list()
+              for count, item in enumerate(ol_supported_tpm_types):
+                o = ctx['global'].getEnumValueName('TpmType', item)
+                if oPlatformProperties.supported_tpm_types.count(o) == 0 : oPlatformProperties.supported_tpm_types.append(o)
+            except Exception as e:
+              logging.info('Error getting the array of "supportedTpmTypes"')
+              raise Exception('Error getting the array of "supportedTpmTypes"')
+            
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oPlatformProperties = None
+    text = 'Exception trying to fill the object oPlatformProperties. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oPlatformProperties
 
 def i_fill_nat_engine(oVBoxNATEngine, select=None):
   """Convert the passed VirtualBox object oVBoxNATEngine with interface INATEngine into Swagger object oNATEngine"""
