@@ -1,4 +1,4 @@
-/* $Id: UIVMActivityMonitor.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIVMActivityMonitor.cpp 107466 2025-01-02 08:13:27Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVMActivityMonitor class implementation.
  */
@@ -1400,6 +1400,10 @@ void UIVMActivityMonitorLocal::obtainDataAndUpdate()
         UIMonitorCommon::getVMMExitCount(m_comMachineDebugger, cTotalVMExits);
         updateVMExitMetric(cTotalVMExits);
     }
+    /* In case of Manager UI we don't get addition state chage event, since it needs a new session etc.
+    * thus we check explicitly: */
+    if (uiCommon().uiType() == UIType_ManagerUI && m_iTimeStep % 5 == 0)
+        guestAdditionsStateChange();
 }
 
 void UIVMActivityMonitorLocal::sltMachineStateChange(const QUuid &uId)
@@ -1548,12 +1552,14 @@ void UIVMActivityMonitorLocal::configureCOMPerformanceCollector()
                 if (strName.contains("RAM", Qt::CaseInsensitive) && strName.contains("Free", Qt::CaseInsensitive))
                 {
                     if (m_metrics.contains(Metric_Type_RAM))
+                    {
                         m_metrics[Metric_Type_RAM].setUnit(metrics[i].GetUnit());
+                        m_fCOMPerformanceCollectorConfigured = true;
+                    }
                 }
             }
         }
     }
-    m_fCOMPerformanceCollectorConfigured = true;
 }
 
 void UIVMActivityMonitorLocal::prepareMetrics()
@@ -1667,12 +1673,18 @@ void UIVMActivityMonitorLocal::updateVMExitMetric(quint64 uTotalVMExits)
         m_charts[Metric_Type_VM_Exits]->update();
 }
 
-void UIVMActivityMonitorLocal::updateCPUChart(quint64 iExecutingPercentage, ULONG iOtherPercentage)
+void UIVMActivityMonitorLocal::updateCPUChart(ULONG iExecutingPercentage, ULONG iOtherPercentage)
 {
+    ULONG uMax = 100;
+    ULONG uEx = qMin(iExecutingPercentage, uMax);
+    ULONG uOther = qMin(iOtherPercentage, uMax);
+    if (uEx + uOther > uMax)
+        uOther = uMax - uEx;
+
     UIMetric &CPUMetric = m_metrics[Metric_Type_CPU];
-    CPUMetric.addData(0, iExecutingPercentage);
-    CPUMetric.addData(1, iOtherPercentage);
-    CPUMetric.setMaximum(100);
+    CPUMetric.addData(0, uEx);
+    CPUMetric.addData(1, uOther);
+    CPUMetric.setMaximum(uMax);
     if (m_infoLabels.contains(Metric_Type_CPU)  && m_infoLabels[Metric_Type_CPU])
     {
         QString strInfo;
@@ -1680,9 +1692,9 @@ void UIVMActivityMonitorLocal::updateCPUChart(quint64 iExecutingPercentage, ULON
         strInfo = QString("<b>%1</b></b><br/><font color=\"%2\">%3: %4%5</font><br/><font color=\"%6\">%7: %8%9</font>")
             .arg(m_strCPUInfoLabelTitle)
             .arg(dataColorString(Metric_Type_CPU, 0))
-            .arg(m_strCPUInfoLabelGuest).arg(QString::number(iExecutingPercentage)).arg(CPUMetric.unit())
+            .arg(m_strCPUInfoLabelGuest).arg(QString::number(uEx)).arg(CPUMetric.unit())
             .arg(dataColorString(Metric_Type_CPU, 1))
-            .arg(m_strCPUInfoLabelVMM).arg(QString::number(iOtherPercentage)).arg(CPUMetric.unit());
+            .arg(m_strCPUInfoLabelVMM).arg(QString::number(uOther)).arg(CPUMetric.unit());
         m_infoLabels[Metric_Type_CPU]->setText(strInfo);
     }
 
