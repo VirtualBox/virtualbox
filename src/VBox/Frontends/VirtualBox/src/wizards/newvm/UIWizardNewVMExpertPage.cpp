@@ -1,4 +1,4 @@
-/* $Id: UIWizardNewVMExpertPage.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIWizardNewVMExpertPage.cpp 107506 2025-01-07 09:10:25Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardNewVMExpertPage class implementation.
  */
@@ -467,10 +467,13 @@ void UIWizardNewVMExpertPage::markWidgets() const
 {
     if (m_pNameAndSystemEditor)
     {
-        m_pNameAndSystemEditor->markNameEditor(m_pNameAndSystemEditor->name().isEmpty());
+        m_pNameAndSystemEditor->markNameEditor(m_pNameAndSystemEditor->name().isEmpty(),
+                                               tr("Guest machine name cannot be empty"), tr("Guest machine name is valid"));
         m_pNameAndSystemEditor->markImageEditor(!UIWizardNewVMNameOSTypeCommon::checkISOFile(m_pNameAndSystemEditor),
                                                 UIWizardNewVM::tr("Invalid file path or unreadable file"),
                                                 UIWizardNewVM::tr("File path is valid"));
+        m_pNameAndSystemEditor->markNameEditor((QDir(m_pNameAndSystemEditor->fullPath()).exists()),
+                                               tr("Guest machine path is not unique"), tr("Guest machine name is valid"));
     }
     UIWizardNewVM *pWizard = wizardWindow<UIWizardNewVM>();
     if (pWizard && pWizard->installGuestAdditions() && m_pGAInstallationISOContainer)
@@ -628,6 +631,13 @@ bool UIWizardNewVMExpertPage::isComplete() const
             m_pToolBox->setPageTitleIcon(ExpertToolboxItems_NameAndOSType,
                                          UIIconPool::iconSet(":/status_error_16px.png"),
                                          UIWizardNewVM::tr("Invalid ISO file"));
+            fIsComplete = false;
+        }
+        if (QDir(m_pNameAndSystemEditor->fullPath()).exists())
+        {
+            m_pToolBox->setPageTitleIcon(ExpertToolboxItems_NameAndOSType,
+                                         UIIconPool::iconSet(":/status_error_16px.png"),
+                                         UIWizardNewVM::tr("Guest machine path is not unique"));
             fIsComplete = false;
         }
     }

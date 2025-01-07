@@ -1,4 +1,4 @@
-/* $Id: UINameAndSystemEditor.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UINameAndSystemEditor.cpp 107506 2025-01-07 09:10:25Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINameAndSystemEditor class implementation.
  */
@@ -27,6 +27,7 @@
 
 /* Qt includes: */
 #include <QComboBox>
+#include <QDir>
 #include <QGridLayout>
 #include <QLabel>
 #include <QVBoxLayout>
@@ -166,6 +167,13 @@ QString UINameAndSystemEditor::path() const
     return m_pSelectorPath->path();
 }
 
+QString UINameAndSystemEditor::fullPath() const
+{
+    QDir dir(path());
+    QString strFullPath = dir.filePath(name());
+    return QDir::cleanPath(strFullPath);
+}
+
 void UINameAndSystemEditor::setISOImagePath(const QString &strPath)
 {
     if (m_pSelectorImage)
@@ -233,10 +241,10 @@ QString UINameAndSystemEditor::typeId() const
            : m_distributionToType.value(distribution());
 }
 
-void UINameAndSystemEditor::markNameEditor(bool fError)
+void UINameAndSystemEditor::markNameEditor(bool fError, const QString &strErrorMessage, const QString &strNoErrorMessage)
 {
     if (m_pEditorName)
-        m_pEditorName->mark(fError, tr("Invalid guest machine name"), tr("Guest machine name is valid"));
+        m_pEditorName->mark(fError, strErrorMessage, strNoErrorMessage);
 }
 
 void UINameAndSystemEditor::markImageEditor(bool fError, const QString &strErrorMessage, const QString &strNoErrorMessage)
