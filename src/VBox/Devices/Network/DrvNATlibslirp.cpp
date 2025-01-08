@@ -1,4 +1,4 @@
-/* $Id: DrvNATlibslirp.cpp 107610 2025-01-08 21:14:58Z jack.doherty@oracle.com $ */
+/* $Id: DrvNATlibslirp.cpp 107612 2025-01-08 23:54:25Z jack.doherty@oracle.com $ */
 /** @file
  * DrvNATlibslirp - NATlibslirp network transport driver.
  */
@@ -1591,7 +1591,7 @@ static DECLCALLBACK(int) drvNATConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg, uin
     LogRel(("These CFGM parameters are currently not supported when using NAT:\n"
         "DNSProxy\n"
         "UseHostResolver\n"
-        "AliasMode\n",
+        "AliasMode\n"
         "SockRcv\n"
         "SockSnd\n"
         "TcpRcv\n"
