@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 107066 2024-11-19 17:21:14Z dmitrii.grigorev@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 107557 2025-01-08 12:33:38Z dmitrii.grigorev@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -6105,6 +6105,19 @@ int vmsvgaR3LoadExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, uint32_t uVersion, uin
     /* Load our part of the VGAState */
     rc = pHlp->pfnSSMGetStructEx(pSSM, &pThis->svga, sizeof(pThis->svga), 0, g_aVGAStateSVGAFields, NULL);
     AssertRCReturn(rc, rc);
+
+    if (pThis->svga.fVMSVGA2dGBO)
+    {
+        if (pThis->svga.u32DeviceCaps & SVGA_CAP_GBOBJECTS)
+        {
+            LogRel(("VGA: VMSVGA2dGBO enabled in VM config and SVGA_CAP_GBOBJECTS is present in Caps. 3D state should be loaded.\n"));
+        }
+        else
+        {
+            LogRel(("VGA: VMSVGA2dGBO enabled in VM config but SVGA_CAP_GBOBJECTS is NOT present in Caps, so fVMSVGA2dGBO should be forced to 0\n"));
+            pThis->svga.fVMSVGA2dGBO = false;
+        }
+    }
 
     /* Load the VGA framebuffer. */
     AssertCompile(VMSVGA_VGA_FB_BACKUP_SIZE >= _32K);
