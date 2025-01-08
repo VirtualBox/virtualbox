@@ -1,4 +1,4 @@
-/* $Id: UIMachineSettingsDisplay.cpp 106857 2024-11-05 18:10:10Z sergey.dubov@oracle.com $ */
+/* $Id: UIMachineSettingsDisplay.cpp 107608 2025-01-08 18:20:54Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineSettingsDisplay class implementation.
  */
@@ -638,8 +638,14 @@ bool UIMachineSettingsDisplay::validate(QList<UIValidationMessage> &messages)
 
     /* Validation prerequisites: */
 #ifdef VBOX_WITH_3D_ACCELERATION
-    /* Check whether WDDM mode supported by the guest OS type: */
-    m_f3DAccelerationSupported = UIGuestOSTypeHelpers::isWddmCompatibleOsType(m_strGuestOSTypeId);
+    /* Special handling for Windows guests, 3D is available for VBoxSVGA only: */
+    if (m_strGuestOSTypeId.startsWith("Windows"))
+        m_f3DAccelerationSupported = graphicsControllerTypeCurrent() == KGraphicsControllerType_VBoxSVGA
+                                   ? UIGuestOSTypeHelpers::isWddmCompatibleOsType(m_strGuestOSTypeId)
+                                   : false;
+    /* For the rest of guest OS types 3D is available for VMSVGA only: */
+    else
+        m_f3DAccelerationSupported = graphicsControllerTypeCurrent() == KGraphicsControllerType_VMSVGA;
 
     /* Additionally make sure 3D acceleration is one of the features for current graphical controller: */
     if (m_f3DAccelerationSupported)
