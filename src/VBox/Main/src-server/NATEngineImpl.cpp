@@ -1,4 +1,4 @@
-/* $Id: NATEngineImpl.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: NATEngineImpl.cpp 107610 2025-01-08 21:14:58Z jack.doherty@oracle.com $ */
 /** @file
  * Implementation of INATEngine in VBoxSVC.
  */
@@ -198,6 +198,7 @@ void NATEngine::i_applyDefaults()
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
 
     mData->m->fLocalhostReachable = false; /* Applies to new VMs only, see @bugref{9896} */
+    mData->m->fForwardBroadcast = false;       /* Applies to new VMs only. see @bugref{10268} */
 }
 
 bool NATEngine::i_hasDefaults()
@@ -460,6 +461,26 @@ HRESULT NATEngine::getLocalhostReachable(BOOL *pfLocalhostReachable)
 {
     AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
     *pfLocalhostReachable = mData->m->fLocalhostReachable;
+    return S_OK;
+}
+
+HRESULT NATEngine::setForwardBroadcast(BOOL fForwardBroadcast)
+{
+    AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+
+    if (mData->m->fForwardBroadcast != RT_BOOL(fForwardBroadcast))
+    {
+        mData->m.backup();
+        mData->m->fForwardBroadcast = RT_BOOL(fForwardBroadcast);
+        mParent->i_setModified(Machine::IsModified_NetworkAdapters);
+    }
+    return S_OK;
+}
+
+HRESULT NATEngine::getForwardBroadcast(BOOL *pfForwardBroadcast)
+{
+    AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+    *pfForwardBroadcast = mData->m->fForwardBroadcast;
     return S_OK;
 }
 

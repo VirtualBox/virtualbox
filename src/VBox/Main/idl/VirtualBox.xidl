@@ -26342,7 +26342,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     uuid="a06253a7-dcd2-44e3-8689-9c9c4b6b6234"
     wsmap="managed"
     rest="managed"
-    reservedMethods="4" reservedAttributes="8"
+    reservedMethods="4" reservedAttributes="7"
     >
     <desc>Interface for managing a NAT engine which is used with a virtual machine. This
       allows for changing NAT behavior such as port-forwarding rules. This interface is
@@ -26391,6 +26391,10 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <attribute name="localhostReachable" type="boolean">
       <desc>Whether traffic from the guest directed to 10.0.2.2 will reach the
         host's loopback interface, i.e. localhost or 127.0.0.1.</desc>
+    </attribute>
+    <attribute name="forwardBroadcast" type="boolean">
+      <desc>Forwards broadcast packets sent by the guest to the host machine as
+        such. IP address will show to host as 255.255.255.255.</desc>
     </attribute>
     <method name="setNetworkSettings">
       <desc>Sets network configuration of the NAT engine.</desc>

@@ -217,6 +217,11 @@ struct Slirp {
     struct sockaddr_in *outbound_addr;
     struct sockaddr_in6 *outbound_addr6;
     bool disable_dns; /* slirp will not redirect/serve any DNS packet */
+
+#ifdef VBOX
+    bool fForwardBroadcast;
+    int iSoMaxConn;
+#endif
 };
 
 /*

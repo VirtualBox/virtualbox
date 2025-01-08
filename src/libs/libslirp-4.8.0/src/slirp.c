@@ -698,6 +698,11 @@ Slirp *slirp_new(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaque)
         memset(slirp->oob_eth_addr, 0, ETH_ALEN);
     }
 
+#ifdef VBOX
+    slirp->fForwardBroadcast = cfg->fForwardBroadcast;
+    slirp->iSoMaxConn = cfg->iSoMaxConn;
+#endif
+
     ip6_post_init(slirp);
     return slirp;
 }

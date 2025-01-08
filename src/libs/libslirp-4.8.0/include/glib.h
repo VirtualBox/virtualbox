@@ -34,6 +34,7 @@
  */
 
 #ifndef INCLUDED_glib_h
+#define INCLUDED_glib_h
 #ifndef RT_WITHOUT_PRAGMA_ONCE
 # pragma once
 #endif

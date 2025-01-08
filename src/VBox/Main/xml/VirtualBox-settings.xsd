@@ -1119,6 +1119,7 @@
   <xsd:attribute name="tcprcv" type="xsd:unsignedInt"/>
   <xsd:attribute name="tcpsnd" type="xsd:unsignedInt"/>
   <xsd:attribute name="localhost-reachable" type="xsd:boolean" default="true"/>
+  <xsd:attribute name="forward-broadcast" type="xsd:boolean" default="false" />
 </xsd:complexType>
 
 <xsd:complexType name="TNetNATNetwork">

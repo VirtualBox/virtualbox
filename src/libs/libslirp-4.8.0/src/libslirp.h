@@ -209,6 +209,20 @@ typedef struct SlirpConfig {
      * retrieved through NC-SI.
      */
     uint8_t oob_eth_addr[6];
+#ifdef VBOX
+    /*
+     * Allow for network broadcasts to be sent out of internal NAT network.
+     * When true, all devices on host's network would receive broadcasts if
+     * host's network configuration allows.
+     */
+    bool fForwardBroadcast;
+
+    /*
+     * Set a maximum number of pending socket connections to be passeed to
+     * the backlog parameter of listen().
+     */
+    int iSoMaxConn;
+#endif
 } SlirpConfig;
 
 /* Create a new instance of a slirp stack */

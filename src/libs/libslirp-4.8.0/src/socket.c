@@ -655,7 +655,7 @@ void sorecvfrom(struct socket *so)
                             &addrlen);
         DEBUG_MISC(" did recvfrom %d, errno = %d-%s", m->m_len, errno,
                    strerror(errno));
-        if (m->m_len < 0) {    	
+        if (m->m_len < 0) {
             if (errno == ENOTCONN) {
                 /*
                  * UDP socket got burnt, e.g. by suspend on iOS. Tear it down
@@ -867,7 +867,11 @@ struct socket *tcpx_listen(Slirp *slirp,
         (haddr->sa_family == AF_INET6 && slirp_socket_set_v6only(s, (flags & SS_HOSTFWD_V6ONLY) != 0) < 0) ||
         (slirp_socket_set_fast_reuse(s) < 0) ||
         (bind(s, haddr, haddrlen) < 0) ||
+#ifdef VBOX
+        (listen(s, slirp->iSoMaxConn) < 0)) {
+#else
         (listen(s, 1) < 0)) {
+#endif
         int tmperrno = errno; /* Don't clobber the real reason we failed */
         if (s >= 0) {
             closesocket(s);
@@ -972,12 +976,24 @@ static bool sotranslate_out4(Slirp *s, struct socket *so, struct sockaddr_in *si
     }
 
     if (so->so_faddr.s_addr == s->vhost_addr.s_addr ||
-        so->so_faddr.s_addr == 0xffffffff) {
+#ifdef VBOX
+        so->so_faddr.s_addr == 0xffffffff ||
+        so->so_faddr.s_addr ==
+            (s->vnetwork_addr.s_addr|~s->vnetwork_mask.s_addr)) {
+#else
+        so->so_faddr.s_addr == 0xffffffff {
+#endif
+
         if (s->disable_host_loopback) {
             return false;
         }
 
-        sin->sin_addr = loopback_addr;
+#ifdef VBOX
+        if (s->fForwardBroadcast)
+            sin->sin_addr.s_addr = 0xffffffff;
+        else
+#endif
+            sin->sin_addr = loopback_addr;
     }
 
     return true;

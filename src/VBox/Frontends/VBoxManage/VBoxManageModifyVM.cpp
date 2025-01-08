@@ -1,4 +1,4 @@
-/* $Id: VBoxManageModifyVM.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxManageModifyVM.cpp 107610 2025-01-08 21:14:58Z jack.doherty@oracle.com $ */
 /** @file
  * VBoxManage - Implementation of modifyvm command.
  */
@@ -145,6 +145,7 @@ enum
     MODIFYVM_NATDNSPROXY,
     MODIFYVM_NATDNSHOSTRESOLVER,
     MODIFYVM_NATLOCALHOSTREACHABLE,
+    MODIFYVM_NATFORWARDBROADCAST,
     MODIFYVM_MACADDRESS,
     MODIFYVM_HIDPTR,
     MODIFYVM_HIDKBD,
@@ -375,6 +376,7 @@ static const RTGETOPTDEF g_aModifyVMOptions[] =
     OPT2("--nat-dns-proxy",                 "--natdnsproxy",            MODIFYVM_NATDNSPROXY,               RTGETOPT_REQ_BOOL_ONOFF | RTGETOPT_FLAG_INDEX),
     OPT2("--nat-dns-host-resolver",         "--natdnshostresolver",     MODIFYVM_NATDNSHOSTRESOLVER,        RTGETOPT_REQ_BOOL_ONOFF | RTGETOPT_FLAG_INDEX),
     OPT2("--nat-localhostreachable",        "--natlocalhostreachable",  MODIFYVM_NATLOCALHOSTREACHABLE,     RTGETOPT_REQ_BOOL_ONOFF | RTGETOPT_FLAG_INDEX),
+    OPT2("--nat-forward-broadcast",         "--natforwardbroadcast",    MODIFYVM_NATFORWARDBROADCAST,       RTGETOPT_REQ_BOOL_ONOFF | RTGETOPT_FLAG_INDEX),
     OPT2("--mac-address",                   "--macaddress",             MODIFYVM_MACADDRESS,                RTGETOPT_REQ_STRING | RTGETOPT_FLAG_INDEX),
     OPT1("--mouse",                                                     MODIFYVM_HIDPTR,                    RTGETOPT_REQ_STRING),
     OPT1("--keyboard",                                                  MODIFYVM_HIDKBD,                    RTGETOPT_REQ_STRING),
@@ -2347,6 +2349,22 @@ RTEXITCODE handleModifyVM(HandlerArg *a)
                 CHECK_ERROR(nic, COMGETTER(NATEngine)(engine.asOutParam()));
 
                 CHECK_ERROR(engine, COMSETTER(LocalhostReachable)(ValueUnion.f));
+                break;
+            }
+
+            case MODIFYVM_NATFORWARDBROADCAST:
+            {
+                if (!parseNum(GetOptState.uIndex, NetworkAdapterCount, "NIC"))
+                    break;
+
+                ComPtr<INetworkAdapter> nic;
+                CHECK_ERROR_BREAK(sessionMachine, GetNetworkAdapter(GetOptState.uIndex - 1, nic.asOutParam()));
+                ASSERT(nic);
+
+                ComPtr<INATEngine> engine;
+                CHECK_ERROR(nic, COMGETTER(NATEngine)(engine.asOutParam()));
+
+                CHECK_ERROR(engine, COMSETTER(ForwardBroadcast)(ValueUnion.f));
                 break;
             }
 
