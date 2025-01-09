@@ -1,4 +1,4 @@
-/* $Id: UIMotherboardFeaturesEditor.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIMotherboardFeaturesEditor.cpp 107665 2025-01-09 15:48:07Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMotherboardFeaturesEditor class implementation.
  */
@@ -35,6 +35,9 @@
 #include "UIIconPool.h"
 #include "UIMessageCenter.h"
 #include "UIMotherboardFeaturesEditor.h"
+
+/* COM includes: */
+#include "KPlatformArchitecture.h"
 
 
 UIMotherboardFeaturesEditor::UIMotherboardFeaturesEditor(QWidget *pParent /* = 0 */)
@@ -147,6 +150,21 @@ void UIMotherboardFeaturesEditor::setMinimumLayoutIndent(int iIndent)
         m_pLayout->setColumnMinimumWidth(0, iIndent);
 }
 
+void UIMotherboardFeaturesEditor::handleFilterChange()
+{
+    /* Some options hidden for ARM machines: */
+    const KPlatformArchitecture enmArch = optionalFlags().contains("arch")
+                                        ? optionalFlags().value("arch").value<KPlatformArchitecture>()
+                                        : KPlatformArchitecture_x86;
+    const bool fARMMachine = enmArch == KPlatformArchitecture_ARM;
+    if (fARMMachine)
+    {
+        if (m_pCheckBoxEnableIoApic)
+            m_pCheckBoxEnableIoApic->hide();
+        rebuildLayout();
+    }
+}
+
 void UIMotherboardFeaturesEditor::sltRetranslateUI()
 {
     if (m_pLabel)
@@ -242,42 +260,27 @@ void UIMotherboardFeaturesEditor::prepare()
         /* Prepare label: */
         m_pLabel = new QLabel(this);
         if (m_pLabel)
-        {
             m_pLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-            m_pLayout->addWidget(m_pLabel, 0, 0);
-        }
         /* Prepare 'enable IO APIC' check-box: */
         m_pCheckBoxEnableIoApic = new QCheckBox(this);
         if (m_pCheckBoxEnableIoApic)
-        {
             connect(m_pCheckBoxEnableIoApic, &QCheckBox::stateChanged,
                     this, &UIMotherboardFeaturesEditor::sigChangedIoApic);
-            m_pLayout->addWidget(m_pCheckBoxEnableIoApic, 0, 1);
-        }
         /* Prepare 'enable UTC time' check-box: */
         m_pCheckBoxEnableUtcTime = new QCheckBox(this);
         if (m_pCheckBoxEnableUtcTime)
-        {
             connect(m_pCheckBoxEnableUtcTime, &QCheckBox::stateChanged,
                     this, &UIMotherboardFeaturesEditor::sigChangedUtcTime);
-            m_pLayout->addWidget(m_pCheckBoxEnableUtcTime, 1, 1);
-        }
         /* Prepare 'enable EFI' check-box: */
         m_pCheckBoxEnableEfi = new QCheckBox(this);
         if (m_pCheckBoxEnableEfi)
-        {
             connect(m_pCheckBoxEnableEfi, &QCheckBox::stateChanged,
                     this, &UIMotherboardFeaturesEditor::sltHandleEnableEfiToggling);
-            m_pLayout->addWidget(m_pCheckBoxEnableEfi, 2, 1);
-        }
         /* Prepare 'enable secure boot' check-box: */
         m_pCheckBoxEnableSecureBoot = new QCheckBox(this);
         if (m_pCheckBoxEnableSecureBoot)
-        {
             connect(m_pCheckBoxEnableSecureBoot, &QCheckBox::stateChanged,
                     this, &UIMotherboardFeaturesEditor::sltHandleEnableSecureBootToggling);
-            m_pLayout->addWidget(m_pCheckBoxEnableSecureBoot, 3, 1);
-        }
         /* Prepare 'reset secure boot' tool-button: */
         m_pPushButtonResetSecureBoot = new QPushButton(this);
         if (m_pPushButtonResetSecureBoot)
@@ -285,8 +288,9 @@ void UIMotherboardFeaturesEditor::prepare()
             m_pPushButtonResetSecureBoot->setIcon(UIIconPool::iconSet(":/refresh_16px.png"));
             connect(m_pPushButtonResetSecureBoot, &QPushButton::clicked,
                     this, &UIMotherboardFeaturesEditor::sltResetSecureBoot);
-            m_pLayout->addWidget(m_pPushButtonResetSecureBoot, 4, 1);
         }
+
+        rebuildLayout();
     }
 
     /* Fetch states: */
@@ -295,4 +299,33 @@ void UIMotherboardFeaturesEditor::prepare()
 
     /* Apply language settings: */
     sltRetranslateUI();
+}
+
+void UIMotherboardFeaturesEditor::rebuildLayout()
+{
+    if (m_pLayout)
+    {
+        /* Remove all the widgets from the layout if any: */
+        m_pLayout->removeWidget(m_pLabel);
+        m_pLayout->removeWidget(m_pCheckBoxEnableIoApic);
+        m_pLayout->removeWidget(m_pCheckBoxEnableUtcTime);
+        m_pLayout->removeWidget(m_pCheckBoxEnableEfi);
+        m_pLayout->removeWidget(m_pCheckBoxEnableSecureBoot);
+        m_pLayout->removeWidget(m_pPushButtonResetSecureBoot);
+
+        /* Put them back only if they are visible: */
+        int i = 0;
+        if (m_pLabel)
+            m_pLayout->addWidget(m_pLabel, i, 0);
+        if (m_pCheckBoxEnableIoApic && !m_pCheckBoxEnableIoApic->isHidden())
+            m_pLayout->addWidget(m_pCheckBoxEnableIoApic, i++, 1);
+        if (m_pCheckBoxEnableUtcTime && !m_pCheckBoxEnableUtcTime->isHidden())
+            m_pLayout->addWidget(m_pCheckBoxEnableUtcTime, i++, 1);
+        if (m_pCheckBoxEnableEfi && !m_pCheckBoxEnableEfi->isHidden())
+            m_pLayout->addWidget(m_pCheckBoxEnableEfi, i++, 1);
+        if (m_pCheckBoxEnableSecureBoot && !m_pCheckBoxEnableSecureBoot->isHidden())
+            m_pLayout->addWidget(m_pCheckBoxEnableSecureBoot, i++, 1);
+        if (m_pPushButtonResetSecureBoot && !m_pPushButtonResetSecureBoot->isHidden())
+            m_pLayout->addWidget(m_pPushButtonResetSecureBoot, i++, 1);
+    }
 }
