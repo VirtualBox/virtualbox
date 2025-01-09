@@ -1,4 +1,4 @@
-/* $Id: VBVABase.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBVABase.cpp 107674 2025-01-09 18:12:18Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VirtualBox Video driver, common code - VBVA initialisation and helper
  * functions.
@@ -252,19 +252,19 @@ static void vboxHwBufferPlaceDataAt(PVBVABUFFERCONTEXT pCtx, const void *p,
 {
     VBVABUFFER *pVBVA = pCtx->pVBVA;
     uint32_t u32BytesTillBoundary = pVBVA->cbData - offset;
-    uint8_t  *dst                 = &pVBVA->au8Data[offset];
+    uint8_t  *dst                 = &pVBVA->au8Data[0] + offset;
     int32_t i32Diff               = cb - u32BytesTillBoundary;
 
     if (i32Diff <= 0)
     {
         /* Chunk will not cross buffer boundary. */
-        memcpy (dst, p, cb);
+        RT_BCOPY_UNFORTIFIED(dst, p, cb);
     }
     else
     {
         /* Chunk crosses buffer boundary. */
-        memcpy (dst, p, u32BytesTillBoundary);
-        memcpy (&pVBVA->au8Data[0], (uint8_t *)p + u32BytesTillBoundary, i32Diff);
+        RT_BCOPY_UNFORTIFIED(dst, p, u32BytesTillBoundary);
+        RT_BCOPY_UNFORTIFIED(&pVBVA->au8Data[0], (uint8_t *)p + u32BytesTillBoundary, i32Diff);
     }
 }
 

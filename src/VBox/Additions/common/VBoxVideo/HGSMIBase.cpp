@@ -1,4 +1,4 @@
-/* $Id: HGSMIBase.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: HGSMIBase.cpp 107674 2025-01-09 18:12:18Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VirtualBox Video driver, common code - HGSMI guest-to-host communication.
  */
@@ -232,7 +232,7 @@ DECLHIDDEN(int)  VBoxHGSMIUpdatePointerShape(PHGSMIGUESTCOMMANDCONTEXT pCtx, uin
     p->u32Height = cHeight;
     if (cbPixels)
         /* Copy the actual pointer data. */
-        memcpy (p->au8Data, pPixels, cbPixels);
+        RT_BCOPY_UNFORTIFIED(p->au8Data, pPixels, cbPixels);
     /* No need to check that the buffer is valid as we have just allocated it. */
     VBoxHGSMIBufferSubmit(pCtx, p);
     rc = p->i32Result;

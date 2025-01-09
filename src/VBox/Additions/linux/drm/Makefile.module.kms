@@ -1,4 +1,4 @@
-# $Id: Makefile.module.kms 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.module.kms 107674 2025-01-09 18:12:18Z vadim.galitsyn@oracle.com $
 ## @file
 # VirtualBox Guest Additions Module Makefile.
 #
@@ -44,6 +44,7 @@ endif
 ifneq ($(VBOX_BUILD),)
 
 VBOXMOD_NAME = vboxvideo
+VBOXMOD_CFLAGS = -DRT_OS_LINUX
 VBOXMOD_OBJS = \
 	hgsmi_base.o \
 	modesetting.o \
