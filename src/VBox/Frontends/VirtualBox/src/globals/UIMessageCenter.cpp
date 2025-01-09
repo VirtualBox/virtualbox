@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.cpp 107658 2025-01-09 11:57:35Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIMessageCenter.cpp 107664 2025-01-09 14:08:01Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class implementation.
  */
@@ -114,6 +114,7 @@
 #include <iprt/param.h>
 #include <iprt/path.h>
 
+#include <VBox/version.h>
 
 /* static */
 UIMessageCenter *UIMessageCenter::s_pInstance = 0;
@@ -2089,7 +2090,8 @@ void UIMessageCenter::sltShowOracle()
 
 void UIMessageCenter::sltShowOnlineDocumentation()
 {
-    uiCommon().openURL("https://docs.oracle.com/en/virtualization/virtualbox/7.1/user/index.html");
+    QString strUrl = QString("https://docs.oracle.com/en/virtualization/virtualbox/%1.%2/user/index.html").arg(VBOX_VERSION_MAJOR).arg(VBOX_VERSION_MINOR);
+    uiCommon().openURL(strUrl);
 }
 
 void UIMessageCenter::sltShowHelpAboutDialog()
