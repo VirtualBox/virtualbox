@@ -1,4 +1,4 @@
-﻿/* $Id: UIAdvancedSettingsDialog.cpp 106464 2024-10-17 16:10:46Z sergey.dubov@oracle.com $ */
+﻿/* $Id: UIAdvancedSettingsDialog.cpp 107667 2025-01-09 15:55:37Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIAdvancedSettingsDialog class implementation.
  */
@@ -845,9 +845,7 @@ void UIAdvancedSettingsDialog::sltCategoryChanged(int cId)
     /* Make sure corresponding page is visible: */
     m_pScrollArea->requestVerticalScrollBarPosition(iPosition);
 
-#ifndef VBOX_WS_MAC
     uiCommon().setHelpKeyword(m_pButtonBox->button(QDialogButtonBox::Help), m_pageHelpKeywords.value(cId));
-#endif
 }
 
 void UIAdvancedSettingsDialog::sltHandleSerializationStarted()
@@ -1570,24 +1568,15 @@ void UIAdvancedSettingsDialog::prepareButtonBox()
     m_pButtonBox = new QIDialogButtonBox(centralWidget());
     if (m_pButtonBox)
     {
-#ifndef VBOX_WS_MAC
         m_pButtonBox->setStandardButtons(QDialogButtonBox::Ok | QDialogButtonBox::Cancel |
                                          QDialogButtonBox::NoButton | QDialogButtonBox::Help);
         m_pButtonBox->button(QDialogButtonBox::Help)->setShortcut(UIShortcutPool::standardSequence(QKeySequence::HelpContents));
-#else
-        // WORKAROUND:
-        // No Help button on macOS for now, conflict with old Qt.
-        m_pButtonBox->setStandardButtons(QDialogButtonBox::Ok | QDialogButtonBox::Cancel |
-                                         QDialogButtonBox::NoButton);
-#endif
         m_pButtonBox->button(QDialogButtonBox::Ok)->setShortcut(Qt::Key_Return);
         m_pButtonBox->button(QDialogButtonBox::Cancel)->setShortcut(Qt::Key_Escape);
         connect(m_pButtonBox, &QIDialogButtonBox::rejected, this, &UIAdvancedSettingsDialog::sltClose);
         connect(m_pButtonBox, &QIDialogButtonBox::accepted, this, &UIAdvancedSettingsDialog::accept);
-#ifndef VBOX_WS_MAC
         connect(m_pButtonBox->button(QDialogButtonBox::Help), &QAbstractButton::pressed,
                 m_pButtonBox, &QIDialogButtonBox::sltHandleHelpRequest);
-#endif
 
         /* Prepare status-bar: */
         m_pStatusBar = new QStackedWidget(m_pButtonBox);
