@@ -1,4 +1,4 @@
-/* $Id: UIVisoCreator.cpp 106472 2024-10-18 10:12:57Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIVisoCreator.cpp 107666 2025-01-09 15:52:29Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVisoCreator classes implementation.
  */
@@ -830,16 +830,14 @@ void UIVisoCreatorDialog::prepareWidgets(const QString& strVisoFilePath, const Q
     m_pButtonBox->button(QDialogButtonBox::Cancel)->setShortcut(QKeySequence(Qt::Key_Escape));
     pMainLayout->addWidget(m_pButtonBox);
 
-    connect(m_pButtonBox->button(QIDialogButtonBox::Help), &QPushButton::pressed,
+    connect(m_pButtonBox->button(QDialogButtonBox::Help), &QPushButton::pressed,
             m_pButtonBox, &QIDialogButtonBox::sltHandleHelpRequest);
-
-    m_pButtonBox->button(QDialogButtonBox::Help)->setShortcut(UIShortcutPool::standardSequence(QKeySequence::HelpContents));
 
     connect(m_pButtonBox, &QIDialogButtonBox::rejected, this, &UIVisoCreatorDialog::close);
     connect(m_pButtonBox, &QIDialogButtonBox::accepted, this, &UIVisoCreatorDialog::accept);
 
 
-    uiCommon().setHelpKeyword(m_pButtonBox->button(QIDialogButtonBox::Help), "create-optical-disk-image");
+    uiCommon().setHelpKeyword(m_pButtonBox->button(QDialogButtonBox::Help), "create-optical-disk-image");
 
     sltRetranslateUI();
     connect(&translationEventListener(), &UITranslationEventListener::sigRetranslateUI,
@@ -855,7 +853,10 @@ void UIVisoCreatorDialog::sltRetranslateUI()
         m_pButtonBox->button(QDialogButtonBox::Ok)->setToolTip(UIVisoCreatorWidget::tr("Creates VISO file with the selected content"));
     }
     if (m_pButtonBox && m_pButtonBox->button(QDialogButtonBox::Help))
+    {
         m_pButtonBox->button(QDialogButtonBox::Help)->setToolTip(UIVisoCreatorWidget::tr("Opens the help browser and navigates to the related section"));
+        m_pButtonBox->button(QDialogButtonBox::Help)->setShortcut(UIShortcutPool::standardSequence(QKeySequence::HelpContents));
+    }
     updateWindowTitle();
 }
 

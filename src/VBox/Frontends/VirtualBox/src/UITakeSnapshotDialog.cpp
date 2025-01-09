@@ -1,4 +1,4 @@
-/* $Id: UITakeSnapshotDialog.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UITakeSnapshotDialog.cpp 107666 2025-01-09 15:52:29Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UITakeSnapshotDialog class implementation.
  */
@@ -306,7 +306,6 @@ void UITakeSnapshotDialog::prepareContents()
                     this, &UITakeSnapshotDialog::reject);
             connect(m_pButtonBox->button(QIDialogButtonBox::Help), &QPushButton::pressed,
                     m_pButtonBox, &QIDialogButtonBox::sltHandleHelpRequest);
-            m_pButtonBox->button(QDialogButtonBox::Help)->setShortcut(UIShortcutPool::standardSequence(QKeySequence::HelpContents));
             uiCommon().setHelpKeyword(m_pButtonBox->button(QIDialogButtonBox::Help), "snapshots");
 
             /* Add into layout: */

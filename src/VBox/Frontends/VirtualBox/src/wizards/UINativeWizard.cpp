@@ -1,4 +1,4 @@
-/* $Id: UINativeWizard.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UINativeWizard.cpp 107666 2025-01-09 15:52:29Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINativeWizard class implementation.
  */
@@ -204,6 +204,7 @@ void UINativeWizard::sltRetranslateUI()
     {
         pButtonHelp->setText(tr("&Help"));
         pButtonHelp->setToolTip(tr("Open corresponding Help topic."));
+        pButtonHelp->setShortcut(UIShortcutPool::standardSequence(QKeySequence::HelpContents));
     }
 
     /* Translate Back button: */
@@ -541,7 +542,6 @@ void UINativeWizard::prepare()
                 {
                     connect(wizardButton(WizardButtonType_Help), &QPushButton::clicked,
                             this, &UINativeWizard::sltHandleHelpRequest);
-                    wizardButton(WizardButtonType_Help)->setShortcut(UIShortcutPool::standardSequence(QKeySequence::HelpContents));
                     uiCommon().setHelpKeyword(this, m_strHelpKeyword);
                 }
                 connect(wizardButton(WizardButtonType_Back), &QPushButton::clicked,
