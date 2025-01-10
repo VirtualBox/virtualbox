@@ -1,4 +1,4 @@
-/* $Id: SUPR3HardenedMainImports-win.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: SUPR3HardenedMainImports-win.cpp 107702 2025-01-10 10:45:42Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Hardened Main, Windows Import Trickery.
  */
@@ -61,8 +61,9 @@
 #ifdef VBOX_HARDENED_STUB_WITHOUT_IMPORTS
 # define SUPHNTIMP_ERROR(a_fReportErrors, a_id, a_szWhere, a_enmOp, a_rc, ...) \
     do { \
-        if (a_fReportErrors) supR3HardenedFatalMsg(a_szWhere, a_enmOp, a_rc, __VA_ARGS__); \
-        else { static const char s_szWhere[] = a_szWhere; *(char *)(uintptr_t)(a_id) += 1; __debugbreak(); } \
+        const char * const pszWhereError = (a_szWhere); \
+        if (a_fReportErrors) supR3HardenedFatalMsg(pszWhereError, a_enmOp, a_rc, __VA_ARGS__); \
+        else { *(uintptr_t *)(uintptr_t)(a_id) += (uintptr_t)pszWhereError; __debugbreak(); } \
     } while (0)
 #else
 # define SUPHNTIMP_ERROR(a_fReportErrors, a_id, a_szWhere, a_enmOp, a_rc, ...) \
