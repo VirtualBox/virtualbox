@@ -1,4 +1,4 @@
-/* $Id: UIHelpBrowserWidget.cpp 107805 2025-01-14 08:28:19Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIHelpBrowserWidget.cpp 107834 2025-01-14 15:44:02Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIHelpBrowserWidget class implementation.
  */
@@ -190,11 +190,11 @@ signals:
     void sigHistoryChanged(bool fBackwardAvailable, bool fForwardAvailable);
     void sigMouseOverImage(const QString &strImageName);
     void sigZoomRequest(UIHelpViewer::ZoomOperation enmZoomOperation);
+    void sigGoHome();
 
 public:
 
-    UIHelpBrowserTab(const QHelpEngine  *pHelpEngine, const QUrl &homeUrl,
-                     const QUrl &initialUrl, QWidget *pParent = 0);
+    UIHelpBrowserTab(const QHelpEngine  *pHelpEngine, const QUrl &initialUrl, QWidget *pParent = 0);
 
     QUrl source() const;
     void setSource(const QUrl &url);
@@ -212,7 +212,6 @@ public:
 public slots:
 
     void sltFindInPageAction(bool fToggled);
-    void sltHomeAction();
     void sltForwardAction();
     void sltBackwardAction();
     void sltAddBookmarkAction();
@@ -245,7 +244,6 @@ private:
     QComboBox   *m_pAddressBar;
     UIHelpViewer *m_pContentViewer;
     const QHelpEngine* m_pHelpEngine;
-    QUrl m_homeUrl;
 };
 
 
@@ -269,11 +267,11 @@ signals:
     void sigFindInPageWidgetVisibilityChanged(bool fVisible);
     void sigHistoryChanged(bool fBackwardAvailable, bool fForwardAvailable);
     void sigMouseOverImage(const QString &strImageName);
+    void sigGoHome();
 
 public:
 
-    UIHelpBrowserTabManager(const QHelpEngine  *pHelpEngine, const QUrl &homeUrl,
-                            const QStringList &urlList, QWidget *pParent = 0);
+    UIHelpBrowserTabManager(const QHelpEngine  *pHelpEngine, const QStringList &urlList, QWidget *pParent = 0);
     /* Returns the list of urls of all open tabs as QStringList. */
     QStringList tabUrlList() const;
     QStringList tabTitleList() const;
@@ -300,7 +298,6 @@ public slots:
 
     void sltCloseCurrentTab();
     void sltCloseOtherTabs();
-    void sltHomeAction();
     void sltAddBookmarkAction();
     void sltForwardAction();
     void sltBackwardAction();
@@ -331,7 +328,6 @@ private:
     int  findTab(const QUrl &Url) const;
 
     const QHelpEngine* m_pHelpEngine;
-    QUrl m_homeUrl;
     QStringList m_savedUrlList;
     /** Immediately switch the newly created tab. Otherwise open the tab in background. */
     bool m_fSwitchToNewTab;
@@ -544,8 +540,7 @@ int UIBookmarksListContainer::itemIndex(const QUrl &url)
 *   UIHelpBrowserTab implementation.                                                                                        *
 *********************************************************************************************************************************/
 
-UIHelpBrowserTab::UIHelpBrowserTab(const QHelpEngine  *pHelpEngine, const QUrl &homeUrl,
-                                   const QUrl &initialUrl, QWidget *pParent /* = 0 */)
+UIHelpBrowserTab::UIHelpBrowserTab(const QHelpEngine  *pHelpEngine, const QUrl &initialUrl, QWidget *pParent /* = 0 */)
     : QWidget(pParent)
     , m_pHomeAction(0)
     , m_pForwardAction(0)
@@ -558,12 +553,11 @@ UIHelpBrowserTab::UIHelpBrowserTab(const QHelpEngine  *pHelpEngine, const QUrl &
     , m_pAddressBar(0)
     , m_pContentViewer(0)
     , m_pHelpEngine(pHelpEngine)
-    , m_homeUrl(homeUrl)
 {
     if (initialUrl.isValid())
         prepare(initialUrl);
     else
-        prepare(m_homeUrl);
+        prepare(QUrl());
 }
 
 QUrl UIHelpBrowserTab::source() const
@@ -575,14 +569,10 @@ QUrl UIHelpBrowserTab::source() const
 
 void UIHelpBrowserTab::setSource(const QUrl &url)
 {
+    if (url == source())
+        return;
     if (m_pContentViewer)
-    {
-        m_pContentViewer->blockSignals(true);
         m_pContentViewer->setSource(url);
-        m_pContentViewer->blockSignals(false);
-        /* emit historyChanged signal explicitly since we have blocked the signals: */
-        m_pContentViewer->emitHistoryChangedSignal();
-    }
 }
 
 QString UIHelpBrowserTab::documentTitle() const
@@ -684,7 +674,7 @@ void UIHelpBrowserTab::prepareWidgets(const QUrl &initialUrl)
     connect(m_pContentViewer, &UIHelpViewer::sigGoForward,
             this, &UIHelpBrowserTab::sltForwardAction);
     connect(m_pContentViewer, &UIHelpViewer::sigGoHome,
-            this, &UIHelpBrowserTab::sltHomeAction);
+            this, &UIHelpBrowserTab::sigGoHome);
     connect(m_pContentViewer, &UIHelpViewer::sigAddBookmark,
             this, &UIHelpBrowserTab::sltAddBookmarkAction);
     connect(m_pContentViewer, &UIHelpViewer::highlighted,
@@ -698,7 +688,10 @@ void UIHelpBrowserTab::prepareWidgets(const QUrl &initialUrl)
     connect(m_pContentViewer, &UIHelpViewer::sigZoomRequest,
             this, &UIHelpBrowserTab::sigZoomRequest);
 
-    m_pContentViewer->setSource(initialUrl);
+    if (initialUrl.isValid())
+        m_pContentViewer->setSource(initialUrl);
+    else
+        emit sigGoHome();
 }
 
 void UIHelpBrowserTab::prepareToolBarAndAddressBar()
@@ -727,7 +720,7 @@ void UIHelpBrowserTab::prepareToolBarAndAddressBar()
                      m_pFindInPageAction);
     m_pFindInPageAction->setCheckable(true);
 
-    connect(m_pHomeAction, &QAction::triggered, this, &UIHelpBrowserTab::sltHomeAction);
+    connect(m_pHomeAction, &QAction::triggered, this, &UIHelpBrowserTab::sigGoHome);
     connect(m_pAddBookmarkAction, &QAction::triggered, this, &UIHelpBrowserTab::sltAddBookmarkAction);
     connect(m_pForwardAction, &QAction::triggered, this, &UIHelpBrowserTab::sltForwardAction);
     connect(m_pBackwardAction, &QAction::triggered, this, &UIHelpBrowserTab::sltBackwardAction);
@@ -773,13 +766,6 @@ void UIHelpBrowserTab::sltRetranslateUI()
     setActionTextAndToolTip(m_pAddBookmarkAction, UIHelpBrowserWidget::tr("Add Bookmark"), UIHelpBrowserWidget::tr("Add a New Bookmark"));
     setActionTextAndToolTip(m_pReloadPageAction, UIHelpBrowserWidget::tr("Reload"), UIHelpBrowserWidget::tr("Reload the Current Page"));
     setActionTextAndToolTip(m_pFindInPageAction, UIHelpBrowserWidget::tr("Find in Page"), UIHelpBrowserWidget::tr("Find a String in the Current Page"));
-}
-
-void UIHelpBrowserTab::sltHomeAction()
-{
-    if (!m_pContentViewer)
-        return;
-    m_pContentViewer->setSource(m_homeUrl);
 }
 
 void UIHelpBrowserTab::sltForwardAction()
@@ -886,11 +872,10 @@ void UIHelpBrowserTab::sltFindInPageWidgetVisibilityChanged(bool fVisible)
 *   UIHelpBrowserTabManager definition.                                                                                          *
 *********************************************************************************************************************************/
 
-UIHelpBrowserTabManager::UIHelpBrowserTabManager(const QHelpEngine  *pHelpEngine, const QUrl &homeUrl,
+UIHelpBrowserTabManager::UIHelpBrowserTabManager(const QHelpEngine  *pHelpEngine,
                                                  const QStringList &urlList, QWidget *pParent /* = 0 */)
     : QITabWidget(pParent)
     , m_pHelpEngine(pHelpEngine)
-    , m_homeUrl(homeUrl)
     , m_savedUrlList(urlList)
     , m_fSwitchToNewTab(true)
     , m_fToolBarVisible(true)
@@ -912,7 +897,7 @@ void UIHelpBrowserTabManager::addNewTab(const QUrl &initialUrl, bool fBackground
         return;
     }
 #endif
-    UIHelpBrowserTab *pTabWidget = new  UIHelpBrowserTab(m_pHelpEngine, m_homeUrl, initialUrl);
+    UIHelpBrowserTab *pTabWidget = new  UIHelpBrowserTab(m_pHelpEngine, initialUrl);
     AssertReturnVoid(pTabWidget);
     pTabWidget->setToolBarVisible(m_fToolBarVisible);
     int index = addTab(pTabWidget, pTabWidget->documentTitle());
@@ -936,6 +921,8 @@ void UIHelpBrowserTabManager::addNewTab(const QUrl &initialUrl, bool fBackground
             this, &UIHelpBrowserTabManager::sigMouseOverImage);
    connect(pTabWidget, &UIHelpBrowserTab::sigZoomRequest,
             this, &UIHelpBrowserTabManager::sltHandleZoomRequest);
+   connect(pTabWidget, &UIHelpBrowserTab::sigGoHome,
+            this, &UIHelpBrowserTabManager::sigGoHome);
 
    pTabWidget->setZoomPercentage(zoomPercentage());
    pTabWidget->setHelpFileList(m_helpFileList);
@@ -1227,13 +1214,6 @@ void UIHelpBrowserTabManager::sltShowTabBarContextMenu(const QPoint &pos)
     menu.exec(tabBar()->mapToGlobal(pos));
 }
 
-void UIHelpBrowserTabManager::sltHomeAction()
-{
-    UIHelpBrowserTab *pTab = qobject_cast<UIHelpBrowserTab*>(currentWidget());
-    if (pTab)
-        pTab->sltHomeAction();
-}
-
 void UIHelpBrowserTabManager::sltAddBookmarkAction()
 {
     UIHelpBrowserTab *pTab = qobject_cast<UIHelpBrowserTab*>(currentWidget());
@@ -1504,7 +1484,7 @@ void UIHelpBrowserWidget::prepareActions()
 
     m_pHomeAction = new QAction(this);
     connect(m_pHomeAction, &QAction::triggered,
-            this, &UIHelpBrowserWidget::sigGoHome);
+            this, &UIHelpBrowserWidget::sltGoHome);
 
     m_pReloadPageAction = new QAction(this);
     m_pReloadPageAction->setShortcut(QKeySequence::Refresh);
@@ -1525,7 +1505,7 @@ void UIHelpBrowserWidget::prepareConnections()
 {
     if (m_pTabManager)
     {
-        connect(m_pHomeAction, &QAction::triggered, m_pTabManager, &UIHelpBrowserTabManager::sltHomeAction);
+        connect(m_pHomeAction, &QAction::triggered, m_pTabManager, &UIHelpBrowserTabManager::sigGoHome);
         connect(m_pAddBookmarkAction, &QAction::triggered, m_pTabManager, &UIHelpBrowserTabManager::sltAddBookmarkAction);
         connect(m_pForwardAction, &QAction::triggered, m_pTabManager, &UIHelpBrowserTabManager::sltForwardAction);
         connect(m_pBackwardAction, &QAction::triggered, m_pTabManager, &UIHelpBrowserTabManager::sltBackwardAction);
@@ -1541,20 +1521,20 @@ void UIHelpBrowserWidget::prepareWidgets()
     m_pMainLayout->addWidget(m_pSplitter);
     m_pHelpEngine = new QHelpEngine(m_strHelpFilePath, this);
     m_pBookmarksWidget = new UIBookmarksListContainer(this);
-    m_pTabWidget = new QITabWidget;
-    m_pTabManager = new UIHelpBrowserTabManager(m_pHelpEngine, findIndexHtml(), loadSavedUrlList());
-    m_pTabManager->setHelpFileList(m_pHelpEngine->files(m_pHelpEngine->namespaceName(m_strHelpFilePath), QStringList()));
 
+    m_pContentWidget = m_pHelpEngine->contentWidget();
+    m_pIndexWidget = m_pHelpEngine->indexWidget();
+    m_pContentModel = m_pHelpEngine->contentModel();
+    AssertReturnVoid(m_pContentWidget && m_pIndexWidget && m_pContentModel);
+
+    m_pTabWidget = new QITabWidget;
+    m_pTabManager = new UIHelpBrowserTabManager(m_pHelpEngine, loadSavedUrlList());
+    m_pTabManager->setHelpFileList(m_pHelpEngine->files(m_pHelpEngine->namespaceName(m_strHelpFilePath), QStringList()));
     AssertReturnVoid(m_pTabWidget &&
                      m_pHelpEngine &&
                      m_pBookmarksWidget &&
                      m_pTabManager);
 
-    m_pContentWidget = m_pHelpEngine->contentWidget();
-    m_pIndexWidget = m_pHelpEngine->indexWidget();
-    m_pContentModel = m_pHelpEngine->contentModel();
-
-    AssertReturnVoid(m_pContentWidget && m_pIndexWidget && m_pContentModel);
     m_pSplitter->addWidget(m_pTabWidget);
     m_pContentWidget->setContextMenuPolicy(Qt::CustomContextMenu);
 
@@ -1591,6 +1571,9 @@ void UIHelpBrowserWidget::prepareWidgets()
             this, &UIHelpBrowserWidget::sltHistoryChanged);
     connect(m_pTabManager, &UIHelpBrowserTabManager::sigMouseOverImage,
             this, &UIHelpBrowserWidget::sltMouseOverImage);
+    connect(m_pTabManager, &UIHelpBrowserTabManager::sigGoHome,
+            this, &UIHelpBrowserWidget::sltGoHome);
+
 
     connect(m_pHelpEngine, &QHelpEngine::setupFinished,
             this, &UIHelpBrowserWidget::sltHelpEngineSetupFinished);
@@ -1749,38 +1732,37 @@ void UIHelpBrowserWidget::saveOptions()
     }
 }
 
-QUrl UIHelpBrowserWidget::findIndexHtml() const
+QUrl UIHelpBrowserWidget::findHomeUrl() const
 {
+    if (m_pHelpEngine && m_pHelpEngine->contentModel())
+    {
+        QModelIndex modelIndex = m_pHelpEngine->contentModel()->index(0, 0);
+        if (modelIndex.isValid())
+        {
+            QUrl url = contentWidgetUrl(modelIndex);
+            if (url.isValid())
+                return url;
+        }
+    }
     QList<QUrl> files = m_pHelpEngine->files(m_pHelpEngine->namespaceName(m_strHelpFilePath), QStringList());
     int iIndex = -1;
     for (int i = 0; i < files.size(); ++i)
     {
-        if (QString::compare(files[i].fileName(), "preface.html", Qt::CaseInsensitive) == 0)
+        if (files[i].toString().contains(".html", Qt::CaseInsensitive) ||
+            files[i].toString().contains(".htm", Qt::CaseInsensitive))
         {
             iIndex = i;
             break;
         }
     }
-    if (iIndex == -1)
-    {
-        /* If index html/htm could not be found try to find a html file at least: */
-        for (int i = 0; i < files.size(); ++i)
-        {
-            if (files[i].toString().contains(".html", Qt::CaseInsensitive) ||
-                files[i].toString().contains(".htm", Qt::CaseInsensitive))
-            {
-                iIndex = i;
-                break;
-            }
-        }
-    }
+
     if (iIndex != -1 && files.size() > iIndex)
         return files[iIndex];
     else
         return QUrl();
 }
 
-QUrl UIHelpBrowserWidget::contentWidgetUrl(const QModelIndex &itemIndex)
+QUrl UIHelpBrowserWidget::contentWidgetUrl(const QModelIndex &itemIndex) const
 {
     QHelpContentModel *pContentModel =
         qobject_cast<QHelpContentModel*>(m_pContentWidget->model());
@@ -1914,6 +1896,13 @@ void UIHelpBrowserWidget::sltFindPreviousInPage()
         m_pTabManager->findPrevious();
 }
 
+void UIHelpBrowserWidget::sltGoHome()
+{
+    QUrl homeUrl = findHomeUrl();
+    if (homeUrl.isValid() && m_pTabManager)
+        m_pTabManager->setSource(homeUrl);
+}
+
 void UIHelpBrowserWidget::sltHistoryChanged(bool fBackwardAvailable, bool fForwardAvailable)
 {
     if (m_pBackwardAction)
@@ -1997,16 +1986,36 @@ void UIHelpBrowserWidget::sltContentWidgetItemClicked(const QModelIndex & index)
     m_pContentWidget->expand(index);
 }
 
+QModelIndex findItemByUrl(QHelpContentModel* model, const QModelIndex& parent, const QUrl& targetUrl)
+{
+    for (int row = 0; row < model->rowCount(parent); ++row)
+    {
+        QModelIndex index = model->index(row, 0, parent);
+        if (!index.isValid())
+            continue;
+        QHelpContentItem* item = model->contentItemAt(index);
+        if (!item)
+            continue;
+        if (item && item->url() == targetUrl)
+            return index;
+
+        QModelIndex childIndex = findItemByUrl(model, index, targetUrl);
+        if (childIndex.isValid())
+            return childIndex;
+    }
+
+    return QModelIndex();
+}
+
 void UIHelpBrowserWidget::sltViewerSourceChange(const QUrl &source)
 {
     if (m_fModelContentCreated && m_pContentWidget && source.isValid() && m_pContentModel)
     {
-        QModelIndex index = m_pContentWidget->indexOf(source);
-        QItemSelectionModel *pSelectionModel = m_pContentWidget->selectionModel();
-        if (pSelectionModel && index.isValid())
+        QModelIndex index = findItemByUrl(m_pContentModel, QModelIndex(), source);
+        if (index.isValid())
         {
             m_pContentWidget->blockSignals(true);
-            pSelectionModel->select(index, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+            m_pContentWidget->setCurrentIndex(index);
             m_pContentWidget->scrollTo(index, QAbstractItemView::EnsureVisible);
             m_pContentWidget->expand(index);
             m_pContentWidget->blockSignals(false);
