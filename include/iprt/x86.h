@@ -1574,25 +1574,25 @@ typedef const X86MTRRVAR *PCX86MTRRVAR;
 /** Architecture capabilities (bugfixes). */
 #define MSR_IA32_ARCH_CAPABILITIES          UINT32_C(0x10a)
 /** CPU is no subject to meltdown problems. */
-#define MSR_IA32_ARCH_CAP_F_RDCL_NO         RT_BIT_32(0)
+#define MSR_IA32_ARCH_CAP_F_RDCL_NO                 RT_BIT_32(0)
 /** CPU has better IBRS and you can leave it on all the time. */
-#define MSR_IA32_ARCH_CAP_F_IBRS_ALL        RT_BIT_32(1)
+#define MSR_IA32_ARCH_CAP_F_IBRS_ALL                RT_BIT_32(1)
 /** CPU has return stack buffer (RSB) override. */
-#define MSR_IA32_ARCH_CAP_F_RSBO            RT_BIT_32(2)
+#define MSR_IA32_ARCH_CAP_F_RSBO                    RT_BIT_32(2)
 /** Virtual machine monitors need not flush the level 1 data cache on VM entry.
  * This is also the case when MSR_IA32_ARCH_CAP_F_RDCL_NO is set. */
 #define MSR_IA32_ARCH_CAP_F_VMM_NEED_NOT_FLUSH_L1D  RT_BIT_32(3)
 /** CPU does not suffer from speculative store bypass (SSB) issues.   */
-#define MSR_IA32_ARCH_CAP_F_SSB_NO          RT_BIT_32(4)
+#define MSR_IA32_ARCH_CAP_F_SSB_NO                  RT_BIT_32(4)
 /** CPU does not suffer from microarchitectural data sampling (MDS) issues. */
-#define MSR_IA32_ARCH_CAP_F_MDS_NO          RT_BIT_32(5)
+#define MSR_IA32_ARCH_CAP_F_MDS_NO                  RT_BIT_32(5)
 /** CPU does not suffer MCE after change code page size w/o invlpg issues. */
 #define MSR_IA32_ARCH_CAP_F_IF_PSCHANGE_MC_NO       RT_BIT_32(6)
 /** CPU has RTM_DISABLE and TXS_CPUID_CLEAR support. */
-#define MSR_IA32_ARCH_CAP_F_TSX_CTRL        RT_BIT_32(7)
+#define MSR_IA32_ARCH_CAP_F_TSX_CTRL                RT_BIT_32(7)
 /** CPU does not suffer from transaction synchronization extensions (TSX)
  *  asyncrhonous abort (TAA) issues. */
-#define MSR_IA32_ARCH_CAP_F_TAA_NO          RT_BIT_32(8)
+#define MSR_IA32_ARCH_CAP_F_TAA_NO                  RT_BIT_32(8)
 /* 9 is 'reserved' */
 #define MSR_IA32_ARCH_CAP_F_MISC_PACKAGE_CTRLS      RT_BIT_32(10)
 #define MSR_IA32_ARCH_CAP_F_ENERGY_FILTERING_CTL    RT_BIT_32(11)
