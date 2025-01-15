@@ -1,4 +1,4 @@
-/* $Id: CPUMAllMsrs.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: CPUMAllMsrs.cpp 107839 2025-01-15 09:51:01Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU MSR Registers.
  */
@@ -5673,7 +5673,11 @@ PCPUMMSRRANGE cpumLookupMsrRange(PVM pVM, uint32_t idMsr)
     uint32_t        cRanges   = RT_MIN(pVM->cpum.s.GuestInfo.cMsrRanges, RT_ELEMENTS(pVM->cpum.s.GuestInfo.aMsrRanges));
     if (!cRanges)
         return NULL;
+# ifdef IN_RING3 /* Must use paMsrRangesR3 for it to work during early init (fudging). */
+    PCPUMMSRRANGE   paRanges  = pVM->cpum.s.GuestInfo.paMsrRangesR3;
+# else
     PCPUMMSRRANGE   paRanges  = pVM->cpum.s.GuestInfo.aMsrRanges;
+# endif
     for (;;)
     {
         uint32_t i = cRanges / 2;
