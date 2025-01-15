@@ -1,4 +1,4 @@
-/* $Id: CPUMDbg.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: CPUMDbg.cpp 107849 2025-01-15 10:15:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU Monitor / Manager, Debugger & Debugging APIs.
  */
@@ -1092,6 +1092,56 @@ static DBGFREGSUBFIELD const g_aCpumRegFields_sf_mask[] =
 };
 #endif
 
+/** Sub-fields for the IA32_ARCH_CAP MSR. */
+static DBGFREGSUBFIELD const g_aCpumRegFields_msr_ia32_arch_cap[] =
+{
+    DBGFREGSUBFIELD_RW("rdcl_no",                   0, 1, 0),
+    DBGFREGSUBFIELD_RW("ibrs_all",                  1, 1, 0),
+    DBGFREGSUBFIELD_RW("rsbo",                      2, 1, 0),
+    DBGFREGSUBFIELD_RW("vmm_need_not_flush_l1d",    3, 1, 0),
+    DBGFREGSUBFIELD_RW("ssb_no",                    4, 1, 0),
+    DBGFREGSUBFIELD_RW("mds_no",                    5, 1, 0),
+    DBGFREGSUBFIELD_RW("if_pschange_mc_no",         6, 1, 0),
+    DBGFREGSUBFIELD_RW("tsx_ctrl",                  7, 1, 0),
+    DBGFREGSUBFIELD_RW("taa_no",                    8, 1, 0),
+    DBGFREGSUBFIELD_RW("misc_package_ctrls",       10, 1, 0),
+    DBGFREGSUBFIELD_RW("energy_filtering_ctl",     11, 1, 0),
+    DBGFREGSUBFIELD_RW("doitm",                    12, 1, 0),
+    DBGFREGSUBFIELD_RW("sbdr_ssdp_no",             13, 1, 0),
+    DBGFREGSUBFIELD_RW("fbsdp_no",                 14, 1, 0),
+    DBGFREGSUBFIELD_RW("psdp_no",                  15, 1, 0),
+    DBGFREGSUBFIELD_RW("fb_clear",                 17, 1, 0),
+    DBGFREGSUBFIELD_RW("fb_clear_ctrl",            18, 1, 0),
+    DBGFREGSUBFIELD_RW("rrsba",                    19, 1, 0),
+    DBGFREGSUBFIELD_RW("bhi_no",                   20, 1, 0),
+    DBGFREGSUBFIELD_RW("xapic_disable_status",     21, 1, 0),
+    DBGFREGSUBFIELD_RW("overclocking_status",      23, 1, 0),
+    DBGFREGSUBFIELD_RW("pbrsb_no",                 24, 1, 0),
+    DBGFREGSUBFIELD_RW("gds_ctrl",                 25, 1, 0),
+    DBGFREGSUBFIELD_RW("gds_no",                   26, 1, 0),
+    DBGFREGSUBFIELD_RW("rfds_no",                  27, 1, 0),
+    DBGFREGSUBFIELD_RW("rfds_clear",               28, 1, 0),
+    DBGFREGSUBFIELD_RW("ign_umonitor_support",     29, 1, 0),
+    DBGFREGSUBFIELD_RW("mon_umon_mitig_support",   30, 1, 0),
+    DBGFREGSUBFIELD_TERMINATOR()
+};
+
+/** Sub-fields for the IA32_SPEC_CTRL MSR. */
+static DBGFREGSUBFIELD const g_aCpumRegFields_msr_ia32_spec_ctrl[] =
+{
+    DBGFREGSUBFIELD_RW("ibrs",          0, 1, 0),
+    DBGFREGSUBFIELD_RW("stibp",         1, 1, 0),
+    DBGFREGSUBFIELD_RW("ssbd",          2, 1, 0),
+    DBGFREGSUBFIELD_RW("ipred_dis_u",   3, 1, 0),
+    DBGFREGSUBFIELD_RW("ipred_dis_s",   4, 1, 0),
+    DBGFREGSUBFIELD_RW("rrsba_dis_u",   5, 1, 0),
+    DBGFREGSUBFIELD_RW("rrsba_dis_s",   6, 1, 0),
+    DBGFREGSUBFIELD_RW("psfd",          7, 1, 0),
+    DBGFREGSUBFIELD_RW("ddpd_u",        8, 1, 0),
+    DBGFREGSUBFIELD_RW("bhi_dis_s",    10, 1, 0),
+    DBGFREGSUBFIELD_TERMINATOR()
+};
+
 
 /** @name Macros for producing register descriptor table entries.
  * @{ */
@@ -1243,6 +1293,8 @@ static DBGFREGDESC const g_aCpumRegGstDescs[] =
     CPU_REG_MSR("sysenter_eip",  IA32_SYSENTER_EIP, U64, NULL                        ),
     CPU_REG_MSR("sysenter_esp",  IA32_SYSENTER_ESP, U64, NULL                        ),
     CPU_REG_MSR("tsc",           IA32_TSC,          U32, NULL                        ),
+    CPU_REG_MSR("msr_ia32_arch_cap",  IA32_ARCH_CAPABILITIES,   U64, g_aCpumRegFields_msr_ia32_arch_cap),
+    CPU_REG_MSR("msr_ia32_spec_ctrl", IA32_SPEC_CTRL,           U64, g_aCpumRegFields_msr_ia32_spec_ctrl),
     CPU_REG_MSR("efer",          K6_EFER,           U32, g_aCpumRegFields_efer       ),
     CPU_REG_MSR("star",          K6_STAR,           U64, g_aCpumRegFields_star       ),
     CPU_REG_MSR("cstar",         K8_CSTAR,          U64, g_aCpumRegFields_cstar      ),
