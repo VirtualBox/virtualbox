@@ -1,4 +1,4 @@
-/* $Id: VBoxManageModifyVM.cpp 107610 2025-01-08 21:14:58Z jack.doherty@oracle.com $ */
+/* $Id: VBoxManageModifyVM.cpp 107885 2025-01-15 23:24:57Z brent.paulson@oracle.com $ */
 /** @file
  * VBoxManage - Implementation of modifyvm command.
  */
@@ -1091,6 +1091,9 @@ RTEXITCODE handleModifyVM(HandlerArg *a)
                          || !RTStrICmp(ValueUnion.psz, "svga"))
                     CHECK_ERROR(pGraphicsAdapter, COMSETTER(GraphicsControllerType)(GraphicsControllerType_VBoxSVGA));
 #endif
+                else if (   !RTStrICmp(ValueUnion.psz, "qemuramfb")
+                         || !RTStrICmp(ValueUnion.psz, "qemu-ramfb"))
+                    CHECK_ERROR(pGraphicsAdapter, COMSETTER(GraphicsControllerType)(GraphicsControllerType_QemuRamFB));
                 else
                 {
                     errorArgument(ModifyVM::tr("Invalid --graphicscontroller argument '%s'"), ValueUnion.psz);

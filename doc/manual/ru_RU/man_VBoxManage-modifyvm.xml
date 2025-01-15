@@ -30,7 +30,7 @@
 ]>
 <refentry id="vboxmanage-modifyvm" lang="en">
   <refentryinfo>
-    <pubdate>$Date: 2024-10-15 14:08:41 +0200 (Tue, 15 Oct 2024) $</pubdate>
+    <pubdate>$Date: 2025-01-16 00:24:57 +0100 (Thu, 16 Jan 2025) $</pubdate>
     <title>VBoxManage modifyvm</title>
   </refentryinfo>
 
@@ -249,6 +249,7 @@
           <arg choice="plain">vboxvga</arg>
           <arg choice="plain">vmsvga</arg>
           <arg choice="plain">vboxsvga</arg>
+          <arg choice="plain">qemuramfb</arg>
         </group></arg>
       <arg>--snapshot-folder=<group choice="plain">
           <arg choice="plain">default</arg>
