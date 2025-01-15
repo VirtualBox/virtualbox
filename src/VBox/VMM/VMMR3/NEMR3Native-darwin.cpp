@@ -1,4 +1,4 @@
-/* $Id: NEMR3Native-darwin.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: NEMR3Native-darwin.cpp 107845 2025-01-15 10:02:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 macOS backend using Hypervisor.framework.
  *
@@ -2123,7 +2123,7 @@ static int nemR3DarwinLoadHv(bool fForced, PRTERRINFO pErrInfo)
  *
  * @returns VBox status code.
  */
-static int nemR3DarwinCapsInit(void)
+static int nemR3DarwinCapsInit(PVM pVM)
 {
     RT_ZERO(g_HmMsrs);
 
@@ -2202,19 +2202,19 @@ static int nemR3DarwinCapsInit(void)
 
     /*
      * Get MSR_IA32_ARCH_CAPABILITIES and expand it into the host feature structure.
+     *
      * This is only available with 11.0+ (BigSur) as the required API is only available there,
      * we could in theory initialize this when creating the EMTs using hv_vcpu_read_msr() but
      * the required vCPU handle is created after CPUM was initialized which is too late.
      * Given that the majority of users is on 11.0 and later we don't care for now.
+     *
+     * (Yes, this is done after CPUM init.)
      */
+    uint64_t fHostArchVal = 0;
+    bool     fHasArchCap  = false;
     if (   hrc == HV_SUCCESS
         && hv_vmx_get_msr_info)
     {
-        g_CpumHostFeatures.s.fArchRdclNo             = 0;
-        g_CpumHostFeatures.s.fArchIbrsAll            = 0;
-        g_CpumHostFeatures.s.fArchRsbOverride        = 0;
-        g_CpumHostFeatures.s.fArchVmmNeedNotFlushL1d = 0;
-        g_CpumHostFeatures.s.fArchMdsNo              = 0;
         uint32_t const cStdRange = ASMCpuId_EAX(0);
         if (   RTX86IsValidStdRange(cStdRange)
             && cStdRange >= 7)
@@ -2225,21 +2225,14 @@ static int nemR3DarwinCapsInit(void)
             if (   (fStdExtFeaturesEdx & X86_CPUID_STEXT_FEATURE_EDX_ARCHCAP)
                 && (fStdFeaturesEdx    & X86_CPUID_FEATURE_EDX_MSR))
             {
-                uint64_t fArchVal;
-                hrc = hv_vmx_get_msr_info(HV_VMX_INFO_MSR_IA32_ARCH_CAPABILITIES, &fArchVal);
-                if (hrc == HV_SUCCESS)
-                {
-                    g_CpumHostFeatures.s.fArchRdclNo             = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_RDCL_NO);
-                    g_CpumHostFeatures.s.fArchIbrsAll            = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_IBRS_ALL);
-                    g_CpumHostFeatures.s.fArchRsbOverride        = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_RSBO);
-                    g_CpumHostFeatures.s.fArchVmmNeedNotFlushL1d = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_VMM_NEED_NOT_FLUSH_L1D);
-                    g_CpumHostFeatures.s.fArchMdsNo              = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_MDS_NO);
-                }
+                fHasArchCap = true;
+                hrc = hv_vmx_get_msr_info(HV_VMX_INFO_MSR_IA32_ARCH_CAPABILITIES, &fHostArchVal);
+                if (hrc != HV_SUCCESS)
+                    fHostArchVal = 0;
             }
-            else
-                g_CpumHostFeatures.s.fArchCap = 0;
         }
     }
+    CPUMCpuIdApplyX86HostArchCapabilities(pVM, fHasArchCap, fHostArchVal);
 
     return nemR3DarwinHvSts2Rc(hrc);
 }
@@ -3149,7 +3142,7 @@ static DECLCALLBACK(int) nemR3DarwinNativeInitVCpuOnEmt(PVM pVM, PVMCPU pVCpu, V
     if (idCpu == 0)
     {
         /* First call initializs the MSR structure holding the capabilities of the host CPU. */
-        int rc = nemR3DarwinCapsInit();
+        int rc = nemR3DarwinCapsInit(pVM);
         AssertRCReturn(rc, rc);
 
         if (hv_vmx_vcpu_get_cap_write_vmcs)

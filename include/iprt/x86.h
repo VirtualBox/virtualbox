@@ -1445,18 +1445,29 @@ AssertCompile(X86_DR7_ANY_RW_IO(UINT32_C(0x00040000)) == 0);
 /** Spectre control register.
  * Logical processor scope. Reset value 0, unaffected by SIPI & INIT. */
 #define MSR_IA32_SPEC_CTRL                  0x48
+/** @name MSR_IA32_SPEC_CTRL bits
+ * @{ */
 /** IBRS - Indirect branch restricted speculation. */
-#define MSR_IA32_SPEC_CTRL_F_IBRS           RT_BIT_32(0)
+#define MSR_IA32_SPEC_CTRL_F_IBRS                   RT_BIT_64(0)
 /** STIBP - Single thread indirect branch predictors. */
-#define MSR_IA32_SPEC_CTRL_F_STIBP          RT_BIT_32(1)
+#define MSR_IA32_SPEC_CTRL_F_STIBP                  RT_BIT_64(1)
 /** SSBD - Speculative Store Bypass Disable. */
-#define MSR_IA32_SPEC_CTRL_F_SSBD           RT_BIT_32(2)
+#define MSR_IA32_SPEC_CTRL_F_SSBD                   RT_BIT_64(2)
+#define MSR_IA32_SPEC_CTRL_F_IPRED_DIS_U            RT_BIT_64(3)
+#define MSR_IA32_SPEC_CTRL_F_IPRED_DIS_S            RT_BIT_64(4)
+#define MSR_IA32_SPEC_CTRL_F_RRSBA_DIS_U            RT_BIT_64(5)
+#define MSR_IA32_SPEC_CTRL_F_RRSBA_DIS_S            RT_BIT_64(6)
+#define MSR_IA32_SPEC_CTRL_F_PSFD                   RT_BIT_64(7)
+#define MSR_IA32_SPEC_CTRL_F_DDPD_U                 RT_BIT_64(8)
+/* 9 is reserved (for DDPD_S?) */
+#define MSR_IA32_SPEC_CTRL_F_BHI_DIS_S              RT_BIT_64(9)
+/** @} */
 
 /** Prediction command register.
  * Write only, logical processor scope, no state since write only. */
 #define MSR_IA32_PRED_CMD                   0x49
 /** IBPB - Indirect branch prediction barrie when written as 1. */
-#define MSR_IA32_PRED_CMD_F_IBPB            RT_BIT_32(0)
+#define MSR_IA32_PRED_CMD_F_IBPB                    RT_BIT_64(0)
 
 /** BIOS update trigger (microcode update). */
 #define MSR_IA32_BIOS_UPDT_TRIG             0x79
@@ -1573,51 +1584,56 @@ typedef const X86MTRRVAR *PCX86MTRRVAR;
 
 /** Architecture capabilities (bugfixes). */
 #define MSR_IA32_ARCH_CAPABILITIES          UINT32_C(0x10a)
+/** @name MSR_IA32_ARCH_CAPABILITIES bits
+ * @{ */
 /** CPU is no subject to meltdown problems. */
-#define MSR_IA32_ARCH_CAP_F_RDCL_NO                 RT_BIT_32(0)
+#define MSR_IA32_ARCH_CAP_F_RDCL_NO                 RT_BIT_64(0)
 /** CPU has better IBRS and you can leave it on all the time. */
-#define MSR_IA32_ARCH_CAP_F_IBRS_ALL                RT_BIT_32(1)
+#define MSR_IA32_ARCH_CAP_F_IBRS_ALL                RT_BIT_64(1)
 /** CPU has return stack buffer (RSB) override. */
-#define MSR_IA32_ARCH_CAP_F_RSBO                    RT_BIT_32(2)
+#define MSR_IA32_ARCH_CAP_F_RSBO                    RT_BIT_64(2)
 /** Virtual machine monitors need not flush the level 1 data cache on VM entry.
  * This is also the case when MSR_IA32_ARCH_CAP_F_RDCL_NO is set. */
-#define MSR_IA32_ARCH_CAP_F_VMM_NEED_NOT_FLUSH_L1D  RT_BIT_32(3)
+#define MSR_IA32_ARCH_CAP_F_VMM_NEED_NOT_FLUSH_L1D  RT_BIT_64(3)
 /** CPU does not suffer from speculative store bypass (SSB) issues.   */
-#define MSR_IA32_ARCH_CAP_F_SSB_NO                  RT_BIT_32(4)
+#define MSR_IA32_ARCH_CAP_F_SSB_NO                  RT_BIT_64(4)
 /** CPU does not suffer from microarchitectural data sampling (MDS) issues. */
-#define MSR_IA32_ARCH_CAP_F_MDS_NO                  RT_BIT_32(5)
+#define MSR_IA32_ARCH_CAP_F_MDS_NO                  RT_BIT_64(5)
 /** CPU does not suffer MCE after change code page size w/o invlpg issues. */
-#define MSR_IA32_ARCH_CAP_F_IF_PSCHANGE_MC_NO       RT_BIT_32(6)
+#define MSR_IA32_ARCH_CAP_F_IF_PSCHANGE_MC_NO       RT_BIT_64(6)
 /** CPU has RTM_DISABLE and TXS_CPUID_CLEAR support. */
-#define MSR_IA32_ARCH_CAP_F_TSX_CTRL                RT_BIT_32(7)
+#define MSR_IA32_ARCH_CAP_F_TSX_CTRL                RT_BIT_64(7)
 /** CPU does not suffer from transaction synchronization extensions (TSX)
  *  asyncrhonous abort (TAA) issues. */
-#define MSR_IA32_ARCH_CAP_F_TAA_NO                  RT_BIT_32(8)
+#define MSR_IA32_ARCH_CAP_F_TAA_NO                  RT_BIT_64(8)
 /* 9 is 'reserved' */
-#define MSR_IA32_ARCH_CAP_F_MISC_PACKAGE_CTRLS      RT_BIT_32(10)
-#define MSR_IA32_ARCH_CAP_F_ENERGY_FILTERING_CTL    RT_BIT_32(11)
-#define MSR_IA32_ARCH_CAP_F_DOITM                   RT_BIT_32(12)
-#define MSR_IA32_ARCH_CAP_F_SBDR_SSDP_NO            RT_BIT_32(13)
-#define MSR_IA32_ARCH_CAP_F_FBSDP_NO                RT_BIT_32(14)
-#define MSR_IA32_ARCH_CAP_F_PSDP_NO                 RT_BIT_32(15)
+#define MSR_IA32_ARCH_CAP_F_MISC_PACKAGE_CTRLS      RT_BIT_64(10)
+#define MSR_IA32_ARCH_CAP_F_ENERGY_FILTERING_CTL    RT_BIT_64(11)
+#define MSR_IA32_ARCH_CAP_F_DOITM                   RT_BIT_64(12)
+#define MSR_IA32_ARCH_CAP_F_SBDR_SSDP_NO            RT_BIT_64(13)
+#define MSR_IA32_ARCH_CAP_F_FBSDP_NO                RT_BIT_64(14)
+#define MSR_IA32_ARCH_CAP_F_PSDP_NO                 RT_BIT_64(15)
 /* 16 is 'reserved' */
-#define MSR_IA32_ARCH_CAP_F_FB_CLEAR                RT_BIT_32(17)
-#define MSR_IA32_ARCH_CAP_F_FB_CLEAR_CTRL           RT_BIT_32(18)
-#define MSR_IA32_ARCH_CAP_F_RRSBA                   RT_BIT_32(19)
-#define MSR_IA32_ARCH_CAP_F_BHI_NO                  RT_BIT_32(20)
-#define MSR_IA32_ARCH_CAP_F_XAPIC_DISABLE_STATUS    RT_BIT_32(21)
+#define MSR_IA32_ARCH_CAP_F_FB_CLEAR                RT_BIT_64(17)
+#define MSR_IA32_ARCH_CAP_F_FB_CLEAR_CTRL           RT_BIT_64(18)
+#define MSR_IA32_ARCH_CAP_F_RRSBA                   RT_BIT_64(19)
+#define MSR_IA32_ARCH_CAP_F_BHI_NO                  RT_BIT_64(20)
+#define MSR_IA32_ARCH_CAP_F_XAPIC_DISABLE_STATUS    RT_BIT_64(21)
 /* 22 is 'reserved' */
-#define MSR_IA32_ARCH_CAP_F_OVERCLOCKING_STATUS     RT_BIT_32(22)
-#define MSR_IA32_ARCH_CAP_F_PBRSB_NO                RT_BIT_32(23)
-#define MSR_IA32_ARCH_CAP_F_GDS_CTRL                RT_BIT_32(24)
-#define MSR_IA32_ARCH_CAP_F_GDS_NO                  RT_BIT_32(25)
-#define MSR_IA32_ARCH_CAP_F_RFDS_NO                 RT_BIT_32(26)
-#define MSR_IA32_ARCH_CAP_F_RFDS_CLEAR              RT_BIT_32(27)
+#define MSR_IA32_ARCH_CAP_F_OVERCLOCKING_STATUS     RT_BIT_64(23)
+#define MSR_IA32_ARCH_CAP_F_PBRSB_NO                RT_BIT_64(24)
+#define MSR_IA32_ARCH_CAP_F_GDS_CTRL                RT_BIT_64(25)
+#define MSR_IA32_ARCH_CAP_F_GDS_NO                  RT_BIT_64(26)
+#define MSR_IA32_ARCH_CAP_F_RFDS_NO                 RT_BIT_64(27)
+#define MSR_IA32_ARCH_CAP_F_RFDS_CLEAR              RT_BIT_64(28)
+#define MSR_IA32_ARCH_CAP_F_IGN_UMONITOR_SUPPORT    RT_BIT_64(29)
+#define MSR_IA32_ARCH_CAP_F_MON_UMON_MITIG_SUPPORT  RT_BIT_64(30)
+/** @} */
 
 /** Flush command register. */
 #define MSR_IA32_FLUSH_CMD                  UINT32_C(0x10b)
 /** Flush the level 1 data cache when this bit is written. */
-#define MSR_IA32_FLUSH_CMD_F_L1D            RT_BIT_32(0)
+#define MSR_IA32_FLUSH_CMD_F_L1D                    RT_BIT_64(0)
 
 /** Cache control/info. */
 #define MSR_BBL_CR_CTL3                     UINT32_C(0x11e)
