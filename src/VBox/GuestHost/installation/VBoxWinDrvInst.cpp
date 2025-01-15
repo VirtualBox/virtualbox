@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvInst.cpp 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvInst.cpp 107844 2025-01-15 10:02:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvInst - Windows driver installation handling.
  */
@@ -94,10 +94,10 @@
 #define VBOXWINDRVINST_VALID_RETURN(hDrvInst) VBOXWINDRVINST_VALID_RETURN_RC((hDrvInst), VERR_INVALID_HANDLE)
 
 /** Validates a handle and returns (void) if not valid. */
-#define VBOXWINDRVINST_VALID_RETURN_VOID(hFTPServer) \
+#define VBOXWINDRVINST_VALID_RETURN_VOID(hDrvInst) \
     do { \
-        AssertPtrReturnVoid(hFTPServer); \
-        AssertReturnVoid((hFTPServer)->u32Magic == VBOXWINDRVINST_MAGIC); \
+        AssertPtrReturnVoid(hDrvInst); \
+        AssertReturnVoid((hDrvInst)->u32Magic == VBOXWINDRVINST_MAGIC); \
     } while (0)
 
 
@@ -159,6 +159,9 @@ typedef struct VBOXWINDRVINSTINTERNAL
     unsigned               cErrors;
     /** Whether a reboot is needed in order to perform the current (un)installation. */
     bool                   fReboot;
+    /** OS version to use. Detected on creation. RTSYSTEM_NT_VERSION_GET_XXX style.
+     *  Can be overwritten via VBoxWinDrvInstSetOsVersion(). */
+    uint64_t               uOsVer;
     /** Parameters for (un)installation. */
     VBOXWINDRVINSTPARMS    Parms;
     /** Driver store entry to use. */
@@ -947,13 +950,11 @@ static int vboxWinDrvInstallPerform(PVBOXWINDRVINSTINTERNAL pCtx, PVBOXWINDRVINS
             BOOL fRc = FALSE;
             BOOL fReboot = FALSE;
 
-            uint64_t const uNtVer = RTSystemGetNtVersion();
-
             /*
              * Pre-install driver.
              */
             DWORD dwInstallFlags = 0;
-            if (uNtVer >= RTSYSTEM_MAKE_NT_VERSION(6, 0, 0)) /* for Vista / 2008 Server and up. */
+            if (pCtx->uOsVer >= RTSYSTEM_MAKE_NT_VERSION(6, 0, 0)) /* for Vista / 2008 Server and up. */
             {
                 if (pParms->fFlags & VBOX_WIN_DRIVERINSTALL_F_FORCE)
                     dwInstallFlags |= DIIRFLAG_FORCE_INF;
@@ -996,7 +997,7 @@ static int vboxWinDrvInstallPerform(PVBOXWINDRVINSTINTERNAL pCtx, PVBOXWINDRVINS
                     if (pParms->fFlags & VBOX_WIN_DRIVERINSTALL_F_SILENT)
                     {
                         /* Using INSTALLFLAG_NONINTERACTIVE will trigger an invalid parameter error on Windows 2000. */
-                        if (uNtVer >= RTSYSTEM_MAKE_NT_VERSION(5, 1, 0))
+                        if (pCtx->uOsVer >= RTSYSTEM_MAKE_NT_VERSION(5, 1, 0))
                             dwInstallFlags |= INSTALLFLAG_NONINTERACTIVE;
                         else
                             vboxWinDrvInstLogWarn(pCtx, "This version of Windows does not support silent installs");
@@ -1590,12 +1591,12 @@ int VBoxWinDrvInstCreateEx(PVBOXWINDRVINST phDrvInst, unsigned uVerbosity, PFNVB
         pCtx->pfnLog     = pfnLog;
         pCtx->pvUser     = pvUser;
 
-        uint64_t const uNtVer = RTSystemGetNtVersion();
+        pCtx->uOsVer     = RTSystemGetNtVersion(); /* Might be overwritten later via VBoxWinDrvInstSetOsVersion(). */
 
         vboxWinDrvInstLogInfo(pCtx, VBOX_PRODUCT " Version " VBOX_VERSION_STRING " - r%s", RTBldCfgRevisionStr());
-        vboxWinDrvInstLogInfo(pCtx, "Detected Windows version %d.%d.%d (%s)", RTSYSTEM_NT_VERSION_GET_MAJOR(uNtVer),
-                                                                              RTSYSTEM_NT_VERSION_GET_MINOR(uNtVer),
-                                                                              RTSYSTEM_NT_VERSION_GET_BUILD(uNtVer),
+        vboxWinDrvInstLogInfo(pCtx, "Detected Windows version %d.%d.%d (%s)", RTSYSTEM_NT_VERSION_GET_MAJOR(pCtx->uOsVer),
+                                                                              RTSYSTEM_NT_VERSION_GET_MINOR(pCtx->uOsVer),
+                                                                              RTSYSTEM_NT_VERSION_GET_BUILD(pCtx->uOsVer),
                                                                               RTBldCfgTargetArch());
 
         rc = RTOnce(&g_vboxWinDrvInstResolveOnce, vboxWinDrvInstResolveOnce, pCtx);
@@ -1681,6 +1682,23 @@ unsigned VBoxWinDrvInstGetErrors(VBOXWINDRVINST hDrvInst)
     VBOXWINDRVINST_VALID_RETURN_RC(pCtx, UINT8_MAX);
 
     return pCtx->cErrors;
+}
+
+/**
+ * Sets (overwrites) the current OS version used for the (un)installation code.
+ *
+ * @param   hDrvInst            Windows driver installer handle.
+ * @param   uOsVer              OS version to set. RTSYSTEM_MAKE_NT_VERSION style.
+ */
+void VBoxWinDrvInstSetOsVersion(VBOXWINDRVINST hDrvInst, uint64_t uOsVer)
+{
+    PVBOXWINDRVINSTINTERNAL pCtx = hDrvInst;
+    VBOXWINDRVINST_VALID_RETURN_VOID(pCtx);
+
+    pCtx->uOsVer = uOsVer;
+
+    vboxWinDrvInstLogInfo(pCtx, "Set OS version to: %u.%u\n", RTSYSTEM_NT_VERSION_GET_MAJOR(pCtx->uOsVer),
+                                                              RTSYSTEM_NT_VERSION_GET_MINOR(pCtx->uOsVer));
 }
 
 /**

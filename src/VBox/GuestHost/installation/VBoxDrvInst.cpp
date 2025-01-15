@@ -1,4 +1,4 @@
-/* $Id: VBoxDrvInst.cpp 107450 2024-12-20 09:53:27Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxDrvInst.cpp 107844 2025-01-15 10:02:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Driver installation utility for Windows hosts and guests.
  */
@@ -140,7 +140,8 @@ enum
     VBOXDRVINST_INSTALL_OPT_PNPID,
     VBOXDRVINST_INSTALL_OPT_NOT_FORCE,
     VBOXDRVINST_INSTALL_OPT_NOT_SILENT,
-    VBOXDRVINST_INSTALL_OPT_IGNORE_REBOOT
+    VBOXDRVINST_INSTALL_OPT_IGNORE_REBOOT,
+    VBOXDRVINST_INSTALL_OPT_DEBUG_OS_VER
 };
 
 /**
@@ -156,7 +157,8 @@ static const RTGETOPTDEF g_aCmdInstallOptions[] =
     { "--pnp-id",        VBOXDRVINST_INSTALL_OPT_PNPID,         RTGETOPT_REQ_STRING  },
     { "--not-force",     VBOXDRVINST_INSTALL_OPT_NOT_FORCE,     RTGETOPT_REQ_NOTHING },
     { "--not-silent",    VBOXDRVINST_INSTALL_OPT_NOT_SILENT,    RTGETOPT_REQ_NOTHING },
-    { "--ignore-reboot", VBOXDRVINST_INSTALL_OPT_IGNORE_REBOOT, RTGETOPT_REQ_NOTHING }
+    { "--ignore-reboot", VBOXDRVINST_INSTALL_OPT_IGNORE_REBOOT, RTGETOPT_REQ_NOTHING },
+    { "--debug-os-ver",  VBOXDRVINST_INSTALL_OPT_DEBUG_OS_VER,  RTGETOPT_REQ_UINT32_PAIR }
 };
 
 /**
@@ -413,6 +415,7 @@ static DECLCALLBACK(const char *) vboxDrvInstCmdInstallHelp(PCRTGETOPTDEF pOpt)
         case VBOXDRVINST_INSTALL_OPT_NOT_FORCE:     return "Installation will not be forced";
         case VBOXDRVINST_INSTALL_OPT_NOT_SILENT:    return "Installation will not run in silent mode";
         case VBOXDRVINST_INSTALL_OPT_IGNORE_REBOOT: return "Ignores reboot requirements";
+        case VBOXDRVINST_INSTALL_OPT_DEBUG_OS_VER:  return "Overwrites the detected OS version";
         default:
             break;
     }
@@ -431,6 +434,7 @@ static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdInstallMain(PRTGETOPTSTATE pGetSta
     char *pszModel = NULL;
     char *pszPnpId = NULL;
     char *pszInfSection = NULL;
+    uint64_t uOsVer = 0;
 
     /* By default we want to force an installation and be silent. */
     uint32_t fInstall = VBOX_WIN_DRIVERINSTALL_F_SILENT | VBOX_WIN_DRIVERINSTALL_F_FORCE;
@@ -486,6 +490,11 @@ static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdInstallMain(PRTGETOPTSTATE pGetSta
                 fIgnoreReboot = true;
                 break;
 
+            case VBOXDRVINST_INSTALL_OPT_DEBUG_OS_VER:
+                uOsVer = RTSYSTEM_MAKE_NT_VERSION(ValueUnion.PairU32.uFirst, ValueUnion.PairU32.uSecond,
+                                                  0 /* Build Version */);
+                break;
+
             default:
                 return RTGetOptPrintError(ch, &ValueUnion);
         }
@@ -502,6 +511,9 @@ static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdInstallMain(PRTGETOPTSTATE pGetSta
     rc = VBoxWinDrvInstCreateEx(&hWinDrvInst, g_uVerbosity, &vboxDrvInstLogCallback, NULL /* pvUser */);
     if (RT_SUCCESS(rc))
     {
+        if (uOsVer)
+            VBoxWinDrvInstSetOsVersion(hWinDrvInst, uOsVer);
+
         rc = VBoxWinDrvInstInstallEx(hWinDrvInst, pszInfFile, pszModel, pszPnpId, fInstall);
         if (RT_SUCCESS(rc))
         {
@@ -711,6 +723,7 @@ static RTEXITCODE vboxDrvInstShowUsage(PRTSTREAM pStrm, PCVBOXDRVINSTCMD pOnlyCm
 
     RTStrmPrintf(pStrm, "\nExamples:\n");
     RTStrmPrintf(pStrm, "\t%s install   --inf-file C:\\Path\\To\\VBoxUSB.inf\n", pszProcName);
+    RTStrmPrintf(pStrm, "\t%s install   --debug-os-ver 6:0 --inf-file C:\\Path\\To\\VBoxGuest.inf\n", pszProcName);
     RTStrmPrintf(pStrm, "\t%s uninstall --inf -file C:\\Path\\To\\VBoxUSB.inf --pnp-id \"USB\\VID_80EE&PID_CAFE\"\n", pszProcName);
     RTStrmPrintf(pStrm, "\t%s uninstall --model \"VBoxUSB.AMD64\"\n", pszProcName);
     RTStrmPrintf(pStrm, "\t%s uninstall --model \"VBoxUSB*\"\n", pszProcName);
