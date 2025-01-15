@@ -1,4 +1,4 @@
-; $Id: CPUMInternal.mac 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+; $Id: CPUMInternal.mac 107840 2025-01-15 09:52:16Z knut.osmundsen@oracle.com $
 ;; @file
 ; CPUM - Internal header file (asm).
 ;
@@ -54,6 +54,8 @@ struc CPUMINFO
     .enmUnknownCpuIdMethod  resd 1                  ; CPUMUNKNOWNCPUID
     .DefCpuId               resb CPUMCPUID_size     ; CPUMCPUID
     .uScalableBusFreq       resq 1                  ; uint64_t
+    .uMicrocodeRevision     resd 1
+    alignb 8
     .paMsrRangesR3          RTR3PTR_RES 1           ; R3PTRTYPE(PCPUMMSRRANGE)
     .paCpuIdLeavesR3        RTR3PTR_RES 1           ; R3PTRTYPE(PCPUMCPUIDLEAF)
     .aCpuIdLeaves           resb 256*32

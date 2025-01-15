@@ -1,4 +1,4 @@
-/* $Id: CPUMInternal.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: CPUMInternal.h 107840 2025-01-15 09:52:16Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - Internal header file.
  */
@@ -105,8 +105,8 @@ typedef uint64_t STAMCOUNTER;
 /** @name CPUM Saved State Version.
  * @{ */
 /** The current saved state version.
- *  @todo When bumping to next version, add CPUMCTX::enmHwVirt to the saved
- *        state. */
+ *  @todo When bumping to next version, add CPUMCTX::enmHwVirt and
+ *        uMicrocodeRevision to the saved state. */
 #define CPUM_SAVED_STATE_VERSION                CPUM_SAVED_STATE_VERSION_HWVIRT_VMX_4
 /** The saved state version with u32RestoreProcCtls2 for Nested Microsoft
  *  Hyper-V. */
@@ -188,6 +188,12 @@ typedef struct CPUMINFO
 
     /** Scalable bus frequency used for reporting other frequencies. */
     uint64_t                    uScalableBusFreq;
+
+    /** The microcode revision.
+     * UINT32_MAX if the one from the CPU database entry is to be used.
+     * @see /CPUM/GuestMicrocodeRevision in CFGM. */
+    uint32_t                    uMicrocodeRevision;
+    uint32_t                    uPadding;
 
     /** Pointer to the MSR ranges (for compatibility with old hyper heap code). */
     R3PTRTYPE(PCPUMMSRRANGE)    paMsrRangesR3;
