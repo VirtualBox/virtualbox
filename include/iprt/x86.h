@@ -1638,15 +1638,25 @@ typedef const X86MTRRVAR *PCX86MTRRVAR;
 /** Cache control/info. */
 #define MSR_BBL_CR_CTL3                     UINT32_C(0x11e)
 
-/** Microcode Update Operation Control (R/W). */
+/** Microcode Update Option Control (R/W). */
 #define MSR_IA32_MCU_OPT_CTRL                       0x123
+/** MSR_IA32_MCU_OPT_CTRL[0]: RNGDS_MITG_DIS - disable SRBDS mitigations
+ *  for RDRAND & RDSEED when set. */
 #define MSR_IA32_MCU_OPT_CTRL_RNGDS_MITG_DIS        RT_BIT_64(0)
+/** MSR_IA32_MCU_OPT_CTRL[1]: RTM_ALLOW - Allow TXS according to IA32_TSX_CTRL. */
 #define MSR_IA32_MCU_OPT_CTRL_RTM_ALLOW             RT_BIT_64(1)
+/** MSR_IA32_MCU_OPT_CTRL[2]: RTM_LOCKED - Lock RTM_ALLOW at zero. */
 #define MSR_IA32_MCU_OPT_CTRL_RTM_LOCKED            RT_BIT_64(2)
+/** MSR_IA32_MCU_OPT_CTRL[3]: FB_CLEAR_DIS - Disables FB_CLEAR part of VERW. */
 #define MSR_IA32_MCU_OPT_CTRL_FB_CLEAR_DIS          RT_BIT_64(3)
+/** MSR_IA32_MCU_OPT_CTRL[4]: GDS_MITG_DIS - Disables GDS mitigation on core. */
 #define MSR_IA32_MCU_OPT_CTRL_GDS_MITG_DIS          RT_BIT_64(4)
+/** MSR_IA32_MCU_OPT_CTRL[5]: GDS_MITG_DIS - Disables GDS mitigation on core. */
 #define MSR_IA32_MCU_OPT_CTRL_GDS_MITG_LOCK         RT_BIT_64(5)
+/** MSR_IA32_MCU_OPT_CTRL[6]: IGN_UMONITOR - Ignore UMONITOR & fail UMWAIT. */
 #define MSR_IA32_MCU_OPT_CTRL_IGN_UMONITOR          RT_BIT_64(6)
+/** MSR_IA32_MCU_OPT_CTRL[7]: MON_UMON_MITG - UMONITOR/MONITOR mitigation
+ * (may affect sibling hyperthreads). */
 #define MSR_IA32_MCU_OPT_CTRL_MON_UMON_MITG         RT_BIT_64(7)
 /* Bits 63:7 reserved. */
 #define MSR_IA32_MCU_OPT_CTRL_RSVD_MASK             UINT64_C(0xffffffffffffff80)

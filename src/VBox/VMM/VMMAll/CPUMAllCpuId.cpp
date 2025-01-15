@@ -1,4 +1,4 @@
-/* $Id: CPUMAllCpuId.cpp 107845 2025-01-15 10:02:52Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMAllCpuId.cpp 107846 2025-01-15 10:09:51Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part, common bits.
  */
@@ -1642,11 +1642,8 @@ static void cpumCpuIdExplodeArchCapabilities(CPUMFEATURES *pFeatures, bool fHasA
     pFeatures->fArchIbrsAll            = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_IBRS_ALL);
     pFeatures->fArchRsbOverride        = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_RSBO);
     pFeatures->fArchVmmNeedNotFlushL1d = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_VMM_NEED_NOT_FLUSH_L1D);
-#if 0
     pFeatures->fArchSsbNo              = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_SSB_NO);
-#endif
     pFeatures->fArchMdsNo              = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_MDS_NO);
-#if 0
     pFeatures->fArchIfPschangeMscNo    = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_IF_PSCHANGE_MC_NO);
     pFeatures->fArchTsxCtrl            = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_TSX_CTRL);
     pFeatures->fArchTaaNo              = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_TAA_NO);
@@ -1660,7 +1657,7 @@ static void cpumCpuIdExplodeArchCapabilities(CPUMFEATURES *pFeatures, bool fHasA
     pFeatures->fArchFbClearCtrl        = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_FB_CLEAR_CTRL);
     pFeatures->fArchRrsba              = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_RRSBA);
     pFeatures->fArchBhiNo              = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_BHI_NO);
-    pFeatures->fArchXapicDisableStatus = RT_BOOL(fArchVal & XAPIC_DISABLE_STATUS);
+    pFeatures->fArchXapicDisableStatus = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_XAPIC_DISABLE_STATUS);
     pFeatures->fArchOverclockingStatus = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_OVERCLOCKING_STATUS);
     pFeatures->fArchPbrsbNo            = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_PBRSB_NO);
     pFeatures->fArchGdsCtrl            = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_GDS_CTRL);
@@ -1669,7 +1666,6 @@ static void cpumCpuIdExplodeArchCapabilities(CPUMFEATURES *pFeatures, bool fHasA
     pFeatures->fArchRfdsClear          = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_RFDS_CLEAR);
     pFeatures->fArchIgnUmonitorSupport = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_IGN_UMONITOR_SUPPORT);
     pFeatures->fArchMonUmonMitigSupport= RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_MON_UMON_MITIG_SUPPORT);
-#endif
 }
 
 
