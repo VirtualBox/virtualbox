@@ -1,4 +1,4 @@
-/* $Id: CPUMAllCpuId.cpp 107847 2025-01-15 10:11:19Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMAllCpuId.cpp 107848 2025-01-15 10:15:06Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part, common bits.
  */
@@ -1491,9 +1491,23 @@ int cpumCpuIdExplodeFeaturesX86(PCCPUMCPUIDLEAF paLeaves, uint32_t cLeaves, PCCP
             pFeatures->fIbpb                = RT_BOOL(pSxfLeaf0->uEdx & X86_CPUID_STEXT_FEATURE_EDX_IBRS_IBPB);
             pFeatures->fIbrs                = pFeatures->fIbpb;
             pFeatures->fStibp               = RT_BOOL(pSxfLeaf0->uEdx & X86_CPUID_STEXT_FEATURE_EDX_STIBP);
+            pFeatures->fSsbd                = RT_BOOL(pSxfLeaf0->uEdx & X86_CPUID_STEXT_FEATURE_EDX_SSBD);
             pFeatures->fFlushCmd            = RT_BOOL(pSxfLeaf0->uEdx & X86_CPUID_STEXT_FEATURE_EDX_FLUSH_CMD);
             pFeatures->fArchCap             = RT_BOOL(pSxfLeaf0->uEdx & X86_CPUID_STEXT_FEATURE_EDX_ARCHCAP);
+            pFeatures->fCoreCap             = RT_BOOL(pSxfLeaf0->uEdx & X86_CPUID_STEXT_FEATURE_EDX_CORECAP);
             pFeatures->fMdsClear            = RT_BOOL(pSxfLeaf0->uEdx & X86_CPUID_STEXT_FEATURE_EDX_MD_CLEAR);
+        }
+        PCCPUMCPUIDLEAF const pSxfLeaf2 = cpumCpuIdFindLeafEx(paLeaves, cLeaves, 7, 2);
+        if (pSxfLeaf2)
+        {
+            pFeatures->fPsfd                = RT_BOOL(pSxfLeaf2->uEdx & X86_CPUID_STEXT_FEATURE_2_EDX_PSFD);
+            pFeatures->fIpredCtrl           = RT_BOOL(pSxfLeaf2->uEdx & X86_CPUID_STEXT_FEATURE_2_EDX_IPRED_CTRL);
+            pFeatures->fRrsbaCtrl           = RT_BOOL(pSxfLeaf2->uEdx & X86_CPUID_STEXT_FEATURE_2_EDX_RRSBA_CTRL);
+            pFeatures->fDdpdU               = RT_BOOL(pSxfLeaf2->uEdx & X86_CPUID_STEXT_FEATURE_2_EDX_DDPD_U);
+            pFeatures->fBhiCtrl             = RT_BOOL(pSxfLeaf2->uEdx & X86_CPUID_STEXT_FEATURE_2_EDX_BHI_CTRL);
+            pFeatures->fMcdtNo              = RT_BOOL(pSxfLeaf2->uEdx & X86_CPUID_STEXT_FEATURE_2_EDX_MCDT_NO);
+            pFeatures->fUcLockDis           = RT_BOOL(pSxfLeaf2->uEdx & X86_CPUID_STEXT_FEATURE_2_EDX_UC_LOCK_DIS);
+            pFeatures->fMonitorMitgNo       = RT_BOOL(pSxfLeaf2->uEdx & X86_CPUID_STEXT_FEATURE_2_EDX_MONITOR_MITG_NO);
         }
 
         /* MWAIT/MONITOR leaf. */

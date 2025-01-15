@@ -1,4 +1,4 @@
-/* $Id: CPUMAllMsrs.cpp 107840 2025-01-15 09:52:16Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMAllMsrs.cpp 107848 2025-01-15 10:15:06Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU MSR Registers.
  */
@@ -1635,7 +1635,16 @@ static DECLCALLBACK(VBOXSTRICTRC) cpumMsrWr_Ia32SpecCtrl(PVMCPUCC pVCpu, uint32_
     RT_NOREF_PV(idMsr); RT_NOREF_PV(pRange); RT_NOREF_PV(uRawValue);
 
     /* NB: The STIBP bit can be set even when IBRS is present, regardless of whether STIBP is actually implemented. */
-    if (uValue & ~(MSR_IA32_SPEC_CTRL_F_IBRS | MSR_IA32_SPEC_CTRL_F_STIBP))
+    PCPUMFEATURES const pFeatures = &pVCpu->CTX_SUFF(pVM)->cpum.s.GuestFeatures;
+    uint64_t const fValidMask = (pFeatures->fIbrs      ? MSR_IA32_SPEC_CTRL_F_IBRS : 0)
+                              | (pFeatures->fStibp     ? MSR_IA32_SPEC_CTRL_F_STIBP : 0)
+                              | (pFeatures->fSsbd      ? MSR_IA32_SPEC_CTRL_F_SSBD : 0)
+                              | (pFeatures->fIpredCtrl ? MSR_IA32_SPEC_CTRL_F_IPRED_DIS_U | MSR_IA32_SPEC_CTRL_F_IPRED_DIS_S : 0)
+                              | (pFeatures->fRrsbaCtrl ? MSR_IA32_SPEC_CTRL_F_RRSBA_DIS_U | MSR_IA32_SPEC_CTRL_F_RRSBA_DIS_S : 0)
+                              | (pFeatures->fPsfd      ? MSR_IA32_SPEC_CTRL_F_PSFD : 0)
+                              | (pFeatures->fDdpdU     ? MSR_IA32_SPEC_CTRL_F_DDPD_U : 0)
+                              | (pFeatures->fBhiCtrl   ? MSR_IA32_SPEC_CTRL_F_BHI_DIS_S : 0);
+    if (uValue & ~fValidMask)
     {
         Log(("CPUM: Invalid IA32_SPEC_CTRL bits (trying to write %#llx)\n", uValue));
         return VERR_CPUM_RAISE_GP_0;

@@ -851,12 +851,32 @@ typedef struct CPUMFEATURES
     uint32_t        fIbrs : 1;
     /** Supports IA32_SPEC_CTRL.STIBP. */
     uint32_t        fStibp : 1;
+    /** Supports IA32_SPEC_CTRL.SSBD. */
+    uint32_t        fSsbd : 1;
+    /** Supports IA32_SPEC_CTRL.PSFD. */
+    uint32_t        fPsfd : 1;
+    /** Supports IA32_SPEC_CTRL.IPRED_DIS_U/S. */
+    uint32_t        fIpredCtrl : 1;
+    /** Supports IA32_SPEC_CTRL.RRSBA_DIS_U/S. */
+    uint32_t        fRrsbaCtrl : 1;
+    /** Supports IA32_SPEC_CTRL.DDPD_DIS_U. */
+    uint32_t        fDdpdU : 1;
+    /** Supports IA32_SPEC_CTRL.BHI_S. */
+    uint32_t        fBhiCtrl : 1;
     /** Supports IA32_FLUSH_CMD. */
     uint32_t        fFlushCmd : 1;
     /** Supports IA32_ARCH_CAP. */
     uint32_t        fArchCap : 1;
+    /** Supports IA32_CORE_CAP. */
+    uint32_t        fCoreCap : 1;
     /** Supports MD_CLEAR functionality (VERW, IA32_FLUSH_CMD). */
     uint32_t        fMdsClear : 1;
+    /** Whether susceptible to MXCSR configuration dependent timing (MCDT) behaviour. */
+    uint32_t        fMcdtNo : 1;
+    /** Whether susceptible MONITOR/UMONITOR internal table capacity issues. */
+    uint32_t        fMonitorMitgNo : 1;
+    /** Supports the UC-lock disable feature. */
+    uint32_t        fUcLockDis : 1;
     /** Supports PCID. */
     uint32_t        fPcid : 1;
     /** Supports INVPCID. */
@@ -1001,7 +1021,7 @@ typedef struct CPUMFEATURES
     /** @} */
 
     /** Alignment padding / reserved for future use. */
-    uint32_t        fPadding0 : 28;
+    uint32_t        fPadding0 : 18;
 
 
     /** @name SVM

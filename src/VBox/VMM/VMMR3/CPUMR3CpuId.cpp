@@ -1,4 +1,4 @@
-/* $Id: CPUMR3CpuId.cpp 107847 2025-01-15 10:11:19Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMR3CpuId.cpp 107848 2025-01-15 10:15:06Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part.
  */
@@ -1065,6 +1065,8 @@ typedef struct CPUMCPUIDCONFIG
     CPUMISAEXTCFG   enmArchCapMsr;
     CPUMISAEXTCFG   enmFma;
     CPUMISAEXTCFG   enmF16c;
+    CPUMISAEXTCFG   enmMcdtNo;
+    CPUMISAEXTCFG   enmMonitorMitgNo;
 
     CPUMISAEXTCFG   enmAbm;
     CPUMISAEXTCFG   enmSse4A;
@@ -1853,7 +1855,7 @@ static int cpumR3CpuIdSanitize(PVM pVM, PCPUM pCpum, PCPUMCPUIDCONFIG pConfig)
         {
             case 0:
             {
-                pCurLeaf->uEax  = 0;    /* Max ECX input is 0. */
+                pCurLeaf->uEax  = RT_MIN(pCurLeaf->uEax, 2); /* Max ECX input is 2. */
                 pCurLeaf->uEbx &= 0
                                | PASSTHRU_FEATURE(pConfig->enmFsGsBase, pHstFeat->fFsGsBase, X86_CPUID_STEXT_FEATURE_EBX_FSGSBASE)
                                //| X86_CPUID_STEXT_FEATURE_EBX_TSC_ADJUST        RT_BIT(1)
@@ -1892,11 +1894,16 @@ static int cpumR3CpuIdSanitize(PVM pVM, PCPUM pCpum, PCPUMCPUIDCONFIG pConfig)
                                //| X86_CPUID_STEXT_FEATURE_ECX_PREFETCHWT1 - we do not do vector functions yet.
                                ;
                 pCurLeaf->uEdx &= 0
+                               //| X86_CPUID_STEXT_FEATURE_EDX_SRBDS_CTRL        RT_BIT(9)
                                | PASSTHRU_FEATURE(pConfig->enmMdsClear,   pHstFeat->fMdsClear, X86_CPUID_STEXT_FEATURE_EDX_MD_CLEAR)
+                               //| X86_CPUID_STEXT_FEATURE_EDX_TSX_FORCE_ABORT   RT_BIT_32(11)
+                               //| X86_CPUID_STEXT_FEATURE_EDX_CET_IBT           RT_BIT(20)
                                //| X86_CPUID_STEXT_FEATURE_EDX_IBRS_IBPB         RT_BIT(26)
                                //| X86_CPUID_STEXT_FEATURE_EDX_STIBP             RT_BIT(27)
                                | PASSTHRU_FEATURE(pConfig->enmFlushCmdMsr, pHstFeat->fFlushCmd, X86_CPUID_STEXT_FEATURE_EDX_FLUSH_CMD)
                                | PASSTHRU_FEATURE(pConfig->enmArchCapMsr,  pHstFeat->fArchCap,  X86_CPUID_STEXT_FEATURE_EDX_ARCHCAP)
+                               //| X86_CPUID_STEXT_FEATURE_EDX_CORECAP           RT_BIT_32(30)
+                               //| X86_CPUID_STEXT_FEATURE_EDX_SSBD              RT_BIT_32(31)
                                ;
 
                 /* Mask out INVPCID unless FSGSBASE is exposed due to a bug in Windows 10 SMP guests, see @bugref{9089#c15}. */
@@ -1955,6 +1962,31 @@ static int cpumR3CpuIdSanitize(PVM pVM, PCPUM pCpum, PCPUMCPUIDCONFIG pConfig)
                     pCurLeaf->uEdx |= X86_CPUID_STEXT_FEATURE_EDX_MD_CLEAR;
                 if (pConfig->enmArchCapMsr == CPUMISAEXTCFG_ENABLED_ALWAYS)
                     pCurLeaf->uEdx |= X86_CPUID_STEXT_FEATURE_EDX_ARCHCAP;
+                break;
+            }
+
+            case 2:
+            {
+                pCurLeaf->uEax  = 0;
+                pCurLeaf->uEbx  = 0;
+                pCurLeaf->uEcx  = 0;
+                pCurLeaf->uEdx &= 0
+                               //| X86_CPUID_STEXT_FEATURE_2_EDX_PSFD              RT_BIT_32(0)
+                               //| X86_CPUID_STEXT_FEATURE_2_EDX_IPRED_CTRL        RT_BIT_32(1)
+                               //| X86_CPUID_STEXT_FEATURE_2_EDX_RRSBA_CTRL        RT_BIT_32(2)
+                               //| X86_CPUID_STEXT_FEATURE_2_EDX_DDPD_U            RT_BIT_32(3)
+                               //| X86_CPUID_STEXT_FEATURE_2_EDX_BHI_CTRL          RT_BIT_32(4)
+                               | PASSTHRU_FEATURE(pConfig->enmMcdtNo, pHstFeat->fMcdtNo, X86_CPUID_STEXT_FEATURE_2_EDX_MCDT_NO)
+                               //| X86_CPUID_STEXT_FEATURE_2_EDX_UC_LOCK_DIS       RT_BIT_32(6)
+                               //| Bit 7 - MONITOR_MITG_NO - No need for MONITOR/UMONITOR power mitigrations. */
+                               | PASSTHRU_FEATURE(pConfig->enmMonitorMitgNo, pHstFeat->fMonitorMitgNo, X86_CPUID_STEXT_FEATURE_2_EDX_MONITOR_MITG_NO)
+                               ;
+
+                /* Force standard feature bits. */
+                if (pConfig->enmMcdtNo == CPUMISAEXTCFG_ENABLED_ALWAYS)
+                    pCurLeaf->uEdx |= X86_CPUID_STEXT_FEATURE_2_EDX_MCDT_NO;
+                if (pConfig->enmMonitorMitgNo == CPUMISAEXTCFG_ENABLED_ALWAYS)
+                    pCurLeaf->uEdx |= X86_CPUID_STEXT_FEATURE_2_EDX_MONITOR_MITG_NO;
                 break;
             }
 
@@ -2853,6 +2885,8 @@ static int cpumR3CpuIdReadConfig(PVM pVM, PCPUMCPUIDCONFIG pConfig, PCFGMNODE pC
                                   "|FlushCmdMsr"
                                   "|FMA"
                                   "|F16C"
+                                  "|McdtNo"
+                                  "|MonitorMitgNo"
                                   "|ABM"
                                   "|SSE4A"
                                   "|MISALNSSE"
@@ -3055,6 +3089,20 @@ static int cpumR3CpuIdReadConfig(PVM pVM, PCPUMCPUIDCONFIG pConfig, PCFGMNODE pC
      */
     rc = cpumR3CpuIdReadIsaExtCfgEx(pVM, pIsaExts, "F16C", &pConfig->enmF16c, fNestedPagingAndFullGuestExec /* temporarily */,
                                     fMayHaveXSave && pConfig->enmXSave && (fXStateHostMask & XSAVE_C_YMM) /*fAllowed*/);
+    AssertLogRelRCReturn(rc, rc);
+
+    /** @cfgm{/CPUM/IsaExts/McdtNo, isaextcfg, true}
+     * Whether the CPU is not susceptible to the MXCSR configuration dependent
+     * timing (MCDT) behaviour.
+     */
+    rc = cpumR3CpuIdReadIsaExtCfg(pVM, pIsaExts, "McdtNo", &pConfig->enmMcdtNo, CPUMISAEXTCFG_ENABLED_SUPPORTED);
+    AssertLogRelRCReturn(rc, rc);
+
+    /** @cfgm{/CPUM/IsaExts/MonitorMitgNo, isaextcfg, true}
+     * Whether the CPU is not susceptible MONITOR/UMONITOR internal table capacity
+     * issues.
+     */
+    rc = cpumR3CpuIdReadIsaExtCfg(pVM, pIsaExts, "MonitorMitgNo", &pConfig->enmMonitorMitgNo, CPUMISAEXTCFG_ENABLED_SUPPORTED);
     AssertLogRelRCReturn(rc, rc);
 
 
@@ -3918,6 +3966,7 @@ VMMR3_INT_DECL(void) CPUMR3SetGuestCpuIdFeature(PVM pVM, CPUMCPUIDFEATURE enmFea
                 if (pVM->cpum.s.HostFeatures.fIbrs)
 #endif
                 {
+/** @todo make this more configurable? */
                     pLeaf->uEdx |= X86_CPUID_STEXT_FEATURE_EDX_IBRS_IBPB;
                     pVM->cpum.s.GuestFeatures.fIbrs = 1;
 #ifdef RT_ARCH_AMD64
@@ -3926,6 +3975,58 @@ VMMR3_INT_DECL(void) CPUMR3SetGuestCpuIdFeature(PVM pVM, CPUMCPUIDFEATURE enmFea
                     {
                         pLeaf->uEdx |= X86_CPUID_STEXT_FEATURE_EDX_STIBP;
                         pVM->cpum.s.GuestFeatures.fStibp = 1;
+                    }
+
+#ifdef RT_ARCH_AMD64
+                    if (pVM->cpum.s.HostFeatures.fSsbd)
+#endif
+                    {
+                        pLeaf->uEdx |= X86_CPUID_STEXT_FEATURE_EDX_SSBD;
+                        pVM->cpum.s.GuestFeatures.fSsbd = 1;
+                    }
+
+                    PCPUMCPUIDLEAF const pSubLeaf2 = cpumR3CpuIdGetExactLeaf(&pVM->cpum.s, UINT32_C(0x00000007), 2);
+                    if (pSubLeaf2)
+                    {
+#ifdef RT_ARCH_AMD64
+                        if (pVM->cpum.s.HostFeatures.fPsfd)
+#endif
+                        {
+                            pSubLeaf2->uEdx |= X86_CPUID_STEXT_FEATURE_2_EDX_PSFD;
+                            pVM->cpum.s.GuestFeatures.fPsfd = 1;
+                        }
+
+#ifdef RT_ARCH_AMD64
+                        if (pVM->cpum.s.HostFeatures.fIpredCtrl)
+#endif
+                        {
+                            pSubLeaf2->uEdx |= X86_CPUID_STEXT_FEATURE_2_EDX_IPRED_CTRL;
+                            pVM->cpum.s.GuestFeatures.fIpredCtrl = 1;
+                        }
+
+#ifdef RT_ARCH_AMD64
+                        if (pVM->cpum.s.HostFeatures.fRrsbaCtrl)
+#endif
+                        {
+                            pSubLeaf2->uEdx |= X86_CPUID_STEXT_FEATURE_2_EDX_RRSBA_CTRL;
+                            pVM->cpum.s.GuestFeatures.fRrsbaCtrl = 1;
+                        }
+
+#ifdef RT_ARCH_AMD64
+                        if (pVM->cpum.s.HostFeatures.fDdpdU)
+#endif
+                        {
+                            pSubLeaf2->uEdx |= X86_CPUID_STEXT_FEATURE_2_EDX_DDPD_U;
+                            pVM->cpum.s.GuestFeatures.fDdpdU = 1;
+                        }
+
+#ifdef RT_ARCH_AMD64
+                        if (pVM->cpum.s.HostFeatures.fBhiCtrl)
+#endif
+                        {
+                            pSubLeaf2->uEdx |= X86_CPUID_STEXT_FEATURE_2_EDX_BHI_CTRL;
+                            pVM->cpum.s.GuestFeatures.fBhiCtrl = 1;
+                        }
                     }
 
                     /* Make sure we have the speculation control MSR... */
