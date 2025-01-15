@@ -1,4 +1,4 @@
-/* $Id: CPUMR3CpuId.cpp 107840 2025-01-15 09:52:16Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMR3CpuId.cpp 107847 2025-01-15 10:11:19Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part.
  */
@@ -5289,13 +5289,43 @@ static DBGFREGSUBFIELD const g_aLeaf7Sub0EcxSubFields[] =
 /** CPUID(7,0).EDX field descriptions.   */
 static DBGFREGSUBFIELD const g_aLeaf7Sub0EdxSubFields[] =
 {
+    DBGFREGSUBFIELD_RO("MCU_OPT_CTRL\0" "Supports IA32_MCU_OPT_CTRL ",                   9, 1, 0),
     DBGFREGSUBFIELD_RO("MD_CLEAR\0"     "Supports MDS related buffer clearing",         10, 1, 0),
+    DBGFREGSUBFIELD_RO("TSX_FORCE_ABORT\0" "Supports IA32_TSX_FORCE_ABORT",             11, 1, 0),
+    DBGFREGSUBFIELD_RO("CET_IBT\0"      "Supports indirect branch tracking w/ CET",     20, 1, 0),
     DBGFREGSUBFIELD_RO("IBRS_IBPB\0"    "IA32_SPEC_CTRL.IBRS and IA32_PRED_CMD.IBPB",   26, 1, 0),
     DBGFREGSUBFIELD_RO("STIBP\0"        "Supports IA32_SPEC_CTRL.STIBP",                27, 1, 0),
     DBGFREGSUBFIELD_RO("FLUSH_CMD\0"    "Supports IA32_FLUSH_CMD",                      28, 1, 0),
     DBGFREGSUBFIELD_RO("ARCHCAP\0"      "Supports IA32_ARCH_CAP",                       29, 1, 0),
     DBGFREGSUBFIELD_RO("CORECAP\0"      "Supports IA32_CORE_CAP",                       30, 1, 0),
     DBGFREGSUBFIELD_RO("SSBD\0"         "Supports IA32_SPEC_CTRL.SSBD",                 31, 1, 0),
+    DBGFREGSUBFIELD_TERMINATOR()
+};
+
+
+/** CPUID(7,2).EBX field descriptions. */
+static DBGFREGSUBFIELD const g_aLeaf7Sub2EbxSubFields[] =
+{
+    DBGFREGSUBFIELD_TERMINATOR()
+};
+
+/** CPUID(7,2).ECX field descriptions. */
+static DBGFREGSUBFIELD const g_aLeaf7Sub2EcxSubFields[] =
+{
+    DBGFREGSUBFIELD_TERMINATOR()
+};
+
+/** CPUID(7,2).EDX field descriptions. */
+static DBGFREGSUBFIELD const g_aLeaf7Sub2EdxSubFields[] =
+{
+    DBGFREGSUBFIELD_RO("PSFD\0"         "Supports IA32_SPEC_CTRL[7] (PSFD)",             0, 1, 0),
+    DBGFREGSUBFIELD_RO("IPRED_CTRL\0"   "Supports IA32_SPEC_CTRL[4:3] (IPRED_DIS)",      1, 1, 0),
+    DBGFREGSUBFIELD_RO("RRSBA_CTRL\0"   "Supports IA32_SPEC_CTRL[6:5] (RRSBA_DIS)",      2, 1, 0),
+    DBGFREGSUBFIELD_RO("DDPD_U\0"       "Supports IA32_SPEC_CTRL[8] (DDPD_U)",           3, 1, 0),
+    DBGFREGSUBFIELD_RO("BHI_CTRL\0"     "Supports IA32_SPEC_CTRL[10] (BHI_DIS_S) ",      4, 1, 0),
+    DBGFREGSUBFIELD_RO("MCDT_NO\0"      "No MXCSR Config Dependent Timing issues",       5, 1, 0),
+    DBGFREGSUBFIELD_RO("UC_LOCK_DIS\0"  "Supports UC-lock disable and causing #AC",      6, 1, 0),
+    DBGFREGSUBFIELD_RO("MONITOR_MITG_NO\0" "No MONITOR/UMONITOR power issues",           7, 1, 0),
     DBGFREGSUBFIELD_TERMINATOR()
 };
 
@@ -5677,6 +5707,7 @@ static void cpumR3CpuIdInfoStdLeaf7Details(PCDBGFINFOHLP pHlp, PCCPUMCPUIDLEAF p
             case 0:
                 if (fVerbose)
                 {
+                    pHlp->pfnPrintf(pHlp, " Sub-leaf 0\n");
                     pHlp->pfnPrintf(pHlp, "  Mnemonic - Description                                  = guest (host)\n");
                     cpumR3CpuIdInfoVerboseCompareListU32(pHlp, pCurLeaf->uEbx, Host.uEbx, g_aLeaf7Sub0EbxSubFields, 56);
                     cpumR3CpuIdInfoVerboseCompareListU32(pHlp, pCurLeaf->uEcx, Host.uEcx, g_aLeaf7Sub0EcxSubFields, 56);
@@ -5685,10 +5716,34 @@ static void cpumR3CpuIdInfoStdLeaf7Details(PCDBGFINFOHLP pHlp, PCCPUMCPUIDLEAF p
                 }
                 else
                 {
-                    cpumR3CpuIdInfoMnemonicListU32(pHlp, pCurLeaf->uEbx, g_aLeaf7Sub0EbxSubFields, "Ext Features EBX:", 36);
-                    cpumR3CpuIdInfoMnemonicListU32(pHlp, pCurLeaf->uEcx, g_aLeaf7Sub0EcxSubFields, "Ext Features ECX:", 36);
+                    cpumR3CpuIdInfoMnemonicListU32(pHlp, pCurLeaf->uEbx, g_aLeaf7Sub0EbxSubFields, "Ext Features #0 EBX:", 36);
+                    cpumR3CpuIdInfoMnemonicListU32(pHlp, pCurLeaf->uEcx, g_aLeaf7Sub0EcxSubFields, "Ext Features #0 ECX:", 36);
                     if (pCurLeaf->uEdx)
-                        cpumR3CpuIdInfoMnemonicListU32(pHlp, pCurLeaf->uEdx, g_aLeaf7Sub0EdxSubFields, "Ext Features EDX:", 36);
+                        cpumR3CpuIdInfoMnemonicListU32(pHlp, pCurLeaf->uEdx, g_aLeaf7Sub0EdxSubFields, "Ext Features #0 EDX:", 36);
+                }
+                break;
+
+            /** @todo case 1   */
+
+            case 2:
+                if (fVerbose)
+                {
+                    pHlp->pfnPrintf(pHlp, " Sub-leaf 2\n");
+                    pHlp->pfnPrintf(pHlp, "  Mnemonic - Description                                  = guest (host)\n");
+                    if (pCurLeaf->uEbx || Host.uEbx)
+                        cpumR3CpuIdInfoVerboseCompareListU32(pHlp, pCurLeaf->uEbx, Host.uEbx, g_aLeaf7Sub2EbxSubFields, 56);
+                    if (pCurLeaf->uEcx || Host.uEcx)
+                        cpumR3CpuIdInfoVerboseCompareListU32(pHlp, pCurLeaf->uEcx, Host.uEcx, g_aLeaf7Sub2EcxSubFields, 56);
+                    cpumR3CpuIdInfoVerboseCompareListU32(pHlp, pCurLeaf->uEdx, Host.uEdx, g_aLeaf7Sub2EdxSubFields, 56);
+                }
+                else
+                {
+                    if (pCurLeaf->uEbx)
+                        cpumR3CpuIdInfoMnemonicListU32(pHlp, pCurLeaf->uEbx, g_aLeaf7Sub2EbxSubFields, "Ext Features #2 EBX:", 36);
+                    if (pCurLeaf->uEcx)
+                        cpumR3CpuIdInfoMnemonicListU32(pHlp, pCurLeaf->uEcx, g_aLeaf7Sub2EcxSubFields, "Ext Features #2 ECX:", 36);
+                    if (pCurLeaf->uEdx)
+                        cpumR3CpuIdInfoMnemonicListU32(pHlp, pCurLeaf->uEdx, g_aLeaf7Sub2EdxSubFields, "Ext Features #2 EDX:", 36);
                 }
                 break;
 

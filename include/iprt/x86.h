@@ -636,8 +636,8 @@ typedef const X86CPUIDFEATEDX *PCX86CPUIDFEATEDX;
 /** @} */
 
 
-/** @name CPUID Structured Extended Feature information.
- * CPUID query with EAX=7.
+/** @name CPUID Structured Extended Feature information, \#0.
+ * CPUID query with EAX=7 and ECX=0.
  * @{
  */
 /** EBX Bit 0 - FSGSBASE - Supports RDFSBASE/RDGSBASE/WRFSBASE/WRGSBASE. */
@@ -715,6 +715,8 @@ typedef const X86CPUIDFEATEDX *PCX86CPUIDFEATEDX;
 #define X86_CPUID_STEXT_FEATURE_EDX_SRBDS_CTRL        RT_BIT_32(9)
 /** EDX Bit 10 - MD_CLEAR - Supports flushing MDS related buffers. */
 #define X86_CPUID_STEXT_FEATURE_EDX_MD_CLEAR          RT_BIT_32(10)
+/** EDX Bit 11 - TSX_FORCE_ABORT - Supports for IA32_TSX_FORCE_ABORT MSR. */
+#define X86_CPUID_STEXT_FEATURE_EDX_TSX_FORCE_ABORT   RT_BIT_32(11)
 /** EDX Bit 20 - CET_IBT - Supports CET indirect branch tracking features. */
 #define X86_CPUID_STEXT_FEATURE_EDX_CET_IBT           RT_BIT_32(20)
 /** EDX Bit 26 - IBRS & IBPB - Supports the IBRS flag in IA32_SPEC_CTRL and
@@ -722,7 +724,7 @@ typedef const X86CPUIDFEATEDX *PCX86CPUIDFEATEDX;
 #define X86_CPUID_STEXT_FEATURE_EDX_IBRS_IBPB         RT_BIT_32(26)
 /** EDX Bit 27 - IBRS & IBPB - Supports the STIBP flag in IA32_SPEC_CTRL. */
 #define X86_CPUID_STEXT_FEATURE_EDX_STIBP             RT_BIT_32(27)
-/** EDX Bit 28 - FLUSH_CMD - Supports IA32_FLUSH_CMD MSR. */
+/** EDX Bit 28 - FLUSH_CMD - Supports the IA32_FLUSH_CMD.L1D_FLUSH command. */
 #define X86_CPUID_STEXT_FEATURE_EDX_FLUSH_CMD         RT_BIT_32(28)
 /** EDX Bit 29 - ARCHCAP - Supports the IA32_ARCH_CAPABILITIES MSR. */
 #define X86_CPUID_STEXT_FEATURE_EDX_ARCHCAP           RT_BIT_32(29)
@@ -730,7 +732,28 @@ typedef const X86CPUIDFEATEDX *PCX86CPUIDFEATEDX;
 #define X86_CPUID_STEXT_FEATURE_EDX_CORECAP           RT_BIT_32(30)
 /** EDX Bit 31 - SSBD - Supports the SSBD flag in IA32_SPEC_CTRL. */
 #define X86_CPUID_STEXT_FEATURE_EDX_SSBD              RT_BIT_32(31)
+/** @} */
 
+/** @name CPUID Structured Extended Feature information, \#2.
+ * CPUID query with EAX=7 and ECX=2.
+ * @{
+ */
+/** EDX Bit 0 - PSFD - IA32_SPEC_CTRL[7] (PSFD) supported. */
+#define X86_CPUID_STEXT_FEATURE_2_EDX_PSFD              RT_BIT_32(0)
+/** EDX Bit 1 - IPRED_CTRL - IA32_SPEC_CTRL[4:3] (IPRED_DIS_S/U) supported. */
+#define X86_CPUID_STEXT_FEATURE_2_EDX_IPRED_CTRL        RT_BIT_32(1)
+/** EDX Bit 2 - RRSBA_CTRL - IA32_SPEC_CTRL[6:5] (RRSBA_DIS_S/U) supported. */
+#define X86_CPUID_STEXT_FEATURE_2_EDX_RRSBA_CTRL        RT_BIT_32(2)
+/** EDX Bit 3 - DDPD_U - IA32_SPEC_CTRL[8] (DDPD_U) supported. */
+#define X86_CPUID_STEXT_FEATURE_2_EDX_DDPD_U            RT_BIT_32(3)
+/** EDX Bit 4 - BHI_CTRL - IA32_SPEC_CTRL[10] (BHI_DIS_S) supported. */
+#define X86_CPUID_STEXT_FEATURE_2_EDX_BHI_CTRL          RT_BIT_32(4)
+/** EDX Bit 5 - MCDT_NO - No MXCSR Configuration Dependent Timing issues. */
+#define X86_CPUID_STEXT_FEATURE_2_EDX_MCDT_NO           RT_BIT_32(5)
+/** EDX Bit 6 - UC_LOCK_DIS - Supports UC-lock disable and causing \#AC. */
+#define X86_CPUID_STEXT_FEATURE_2_EDX_UC_LOCK_DIS       RT_BIT_32(6)
+/** EDX Bit 7 - MONITOR_MITG_NO - No need for MONITOR/UMONITOR power mitigrations. */
+#define X86_CPUID_STEXT_FEATURE_2_EDX_MONITOR_MITG_NO   RT_BIT_32(7)
 /** @} */
 
 
@@ -1460,7 +1483,7 @@ AssertCompile(X86_DR7_ANY_RW_IO(UINT32_C(0x00040000)) == 0);
 #define MSR_IA32_SPEC_CTRL_F_PSFD                   RT_BIT_64(7)
 #define MSR_IA32_SPEC_CTRL_F_DDPD_U                 RT_BIT_64(8)
 /* 9 is reserved (for DDPD_S?) */
-#define MSR_IA32_SPEC_CTRL_F_BHI_DIS_S              RT_BIT_64(9)
+#define MSR_IA32_SPEC_CTRL_F_BHI_DIS_S              RT_BIT_64(10)
 /** @} */
 
 /** Prediction command register.

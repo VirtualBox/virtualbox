@@ -1,4 +1,4 @@
-/* $Id: HMVMXR0.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: HMVMXR0.cpp 107847 2025-01-15 10:11:19Z knut.osmundsen@oracle.com $ */
 /** @file
  * HM VMX (Intel VT-x) - Host Context Ring-0.
  */
@@ -2524,7 +2524,9 @@ static void hmR0VmxSetupVmcsMsrPermissions(PVMCPUCC pVCpu, PVMXVMCSINFO pVmcsInf
      *
      * The IA32_SPEC_CTRL MSR is read/write and has state. We allow the guest to
      * read/write them. We swap the guest/host MSR value using the
-     * auto-load/store MSR area.
+     * auto-load/store MSR area. Since things keeps getting added here, we should
+     * technically intercept writes to prevent illegal bits from being set (raise
+     * #GP), but we don't currently do so for performance raisins/laziness.
      */
     if (pVM->cpum.ro.GuestFeatures.fIbpb)
         hmR0VmxSetMsrPermission(pVCpu, pVmcsInfo, false, MSR_IA32_PRED_CMD,  VMXMSRPM_ALLOW_RD_WR);

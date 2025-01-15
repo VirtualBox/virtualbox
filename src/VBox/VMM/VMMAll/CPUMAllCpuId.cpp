@@ -1,4 +1,4 @@
-/* $Id: CPUMAllCpuId.cpp 107846 2025-01-15 10:09:51Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMAllCpuId.cpp 107847 2025-01-15 10:11:19Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part, common bits.
  */
@@ -880,7 +880,7 @@ static bool cpumIsEcxRelevantForCpuIdLeaf(uint32_t uLeaf, uint32_t *pcSubLeaves,
     }
 
     /* Count sub-leaves. */
-    uint32_t cMinLeaves = uLeaf == 0xd ? 64 : 0;
+    uint32_t cMinLeaves = uLeaf == 0xd ? 64 : uLeaf == 7 ? 2 : 0;
     uint32_t cRepeats = 0;
     uSubLeaf = 0;
     for (;;)
