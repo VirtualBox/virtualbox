@@ -1,4 +1,4 @@
-/* $Id: SUPLib-darwin.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: SUPLib-darwin.cpp 107889 2025-01-16 00:29:04Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Darwin specific parts.
  */
@@ -334,6 +334,26 @@ DECLHIDDEN(int) suplibOsPageFree(PSUPLIBDATA pThis, void *pvPages, size_t /* cPa
 }
 
 
+# ifdef RT_ARCH_AMD64
+DECLHIDDEN(int)  suplibOsQueryMicrocodeRev(uint32_t *puMicrocodeRev)
+{
+    size_t cb = sizeof(*puMicrocodeRev);
+    int rc = sysctlbyname("machdep.cpu.microcode_version", puMicrocodeRev, &cb, NULL, 0);
+    if (!rc)
+    {
+        if (cb == sizeof(uint32_t))
+            return VINF_SUCCESS;
+        AssertMsgFailed(("cb=%d\n", cb));
+        rc = VERR_INTERNAL_ERROR_3;
+    }
+    else
+        rc = RTErrConvertFromErrno(errno);
+    *puMicrocodeRev = 0;
+    return rc;
+}
+# endif
+
+
 DECLHIDDEN(bool) suplibOsIsNemSupportedWhenNoVtxOrAmdV(void)
 {
 # if ARCH_BITS == 64
@@ -347,7 +367,7 @@ DECLHIDDEN(bool) suplibOsIsNemSupportedWhenNoVtxOrAmdV(void)
     return false;
 # else
     return false;
-#endif
+# endif
 }
 
 #endif /* !IN_SUP_HARDENED_R3 */
