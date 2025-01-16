@@ -1,4 +1,4 @@
-/* $Id: vbox_mode.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: vbox_mode.c 107919 2025-01-16 16:15:10Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VirtualBox Additions Linux kernel video driver
  */
@@ -888,7 +888,11 @@ static int vbox_cursor_set2(struct drm_crtc *crtc, struct drm_file *file_priv,
 #endif
     if (ret) {
         vbox->cursor_data_size = 0;
+#if RTLNX_VER_MIN(6,4,0)
+        goto out_bo_unpin;
+#else
         goto out_unreserve_bo;
+#endif
     }
 
     src = ttm_kmap_obj_virtual(&uobj_map, &src_isiomem);
@@ -913,8 +917,9 @@ out_unmap_bo:
 #if RTLNX_VER_MIN(6,4,0)
 out_bo_unpin:
     vbox_bo_unpin(bo);
-#endif
+#else
 out_unreserve_bo:
+#endif
     vbox_bo_unreserve(bo);
 out_unref_obj:
 #if RTLNX_VER_MIN(5,9,0) || RTLNX_RHEL_MIN(8,4) || RTLNX_SUSE_MAJ_PREREQ(15,3)
