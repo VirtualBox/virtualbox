@@ -1,4 +1,4 @@
-/* $Id: NATEngineImpl.cpp 107610 2025-01-08 21:14:58Z jack.doherty@oracle.com $ */
+/* $Id: NATEngineImpl.cpp 107914 2025-01-16 14:50:32Z knut.osmundsen@oracle.com $ */
 /** @file
  * Implementation of INATEngine in VBoxSVC.
  */
@@ -198,7 +198,7 @@ void NATEngine::i_applyDefaults()
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
 
     mData->m->fLocalhostReachable = false; /* Applies to new VMs only, see @bugref{9896} */
-    mData->m->fForwardBroadcast = false;       /* Applies to new VMs only. see @bugref{10268} */
+    mData->m->fForwardBroadcast = false;   /* Applies to new VMs only. see @bugref{10268} */
 }
 
 bool NATEngine::i_hasDefaults()

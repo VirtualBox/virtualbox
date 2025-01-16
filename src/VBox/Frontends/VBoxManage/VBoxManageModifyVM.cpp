@@ -1,4 +1,4 @@
-/* $Id: VBoxManageModifyVM.cpp 107885 2025-01-15 23:24:57Z brent.paulson@oracle.com $ */
+/* $Id: VBoxManageModifyVM.cpp 107914 2025-01-16 14:50:32Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxManage - Implementation of modifyvm command.
  */
@@ -145,7 +145,7 @@ enum
     MODIFYVM_NATDNSPROXY,
     MODIFYVM_NATDNSHOSTRESOLVER,
     MODIFYVM_NATLOCALHOSTREACHABLE,
-    MODIFYVM_NATFORWARDBROADCAST,
+    MODIFYVM_NATFORWARD_BROADCAST,
     MODIFYVM_MACADDRESS,
     MODIFYVM_HIDPTR,
     MODIFYVM_HIDKBD,
@@ -376,7 +376,7 @@ static const RTGETOPTDEF g_aModifyVMOptions[] =
     OPT2("--nat-dns-proxy",                 "--natdnsproxy",            MODIFYVM_NATDNSPROXY,               RTGETOPT_REQ_BOOL_ONOFF | RTGETOPT_FLAG_INDEX),
     OPT2("--nat-dns-host-resolver",         "--natdnshostresolver",     MODIFYVM_NATDNSHOSTRESOLVER,        RTGETOPT_REQ_BOOL_ONOFF | RTGETOPT_FLAG_INDEX),
     OPT2("--nat-localhostreachable",        "--natlocalhostreachable",  MODIFYVM_NATLOCALHOSTREACHABLE,     RTGETOPT_REQ_BOOL_ONOFF | RTGETOPT_FLAG_INDEX),
-    OPT2("--nat-forward-broadcast",         "--natforwardbroadcast",    MODIFYVM_NATFORWARDBROADCAST,       RTGETOPT_REQ_BOOL_ONOFF | RTGETOPT_FLAG_INDEX),
+    OPT1("--nat-forward-broadcast",                                     MODIFYVM_NATFORWARD_BROADCAST,      RTGETOPT_REQ_BOOL_ONOFF | RTGETOPT_FLAG_INDEX),
     OPT2("--mac-address",                   "--macaddress",             MODIFYVM_MACADDRESS,                RTGETOPT_REQ_STRING | RTGETOPT_FLAG_INDEX),
     OPT1("--mouse",                                                     MODIFYVM_HIDPTR,                    RTGETOPT_REQ_STRING),
     OPT1("--keyboard",                                                  MODIFYVM_HIDKBD,                    RTGETOPT_REQ_STRING),
@@ -2355,7 +2355,7 @@ RTEXITCODE handleModifyVM(HandlerArg *a)
                 break;
             }
 
-            case MODIFYVM_NATFORWARDBROADCAST:
+            case MODIFYVM_NATFORWARD_BROADCAST:
             {
                 if (!parseNum(GetOptState.uIndex, NetworkAdapterCount, "NIC"))
                     break;

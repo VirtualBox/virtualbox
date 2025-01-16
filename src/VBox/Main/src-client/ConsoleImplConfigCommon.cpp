@@ -1,4 +1,4 @@
-/* $Id: ConsoleImplConfigCommon.cpp 107610 2025-01-08 21:14:58Z jack.doherty@oracle.com $ */
+/* $Id: ConsoleImplConfigCommon.cpp 107914 2025-01-16 14:50:32Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBox Console COM Class implementation - VM Configuration Bits.
  *
@@ -2324,8 +2324,8 @@ int Console::i_configNetwork(const char *pszDevice,
                 InsertConfigInteger(pCfg, "LocalhostReachable", fLocalhostReachable);
 
                 /* forward broadcast packets */
-                BOOL fForwardBroadcast;
-                hrc = natEngine->COMGETTER(ForwardBroadcast)(&fForwardBroadcast);                   H();
+                BOOL fForwardBroadcast = FALSE;
+                hrc = natEngine->COMGETTER(ForwardBroadcast)(&fForwardBroadcast);           H();
                 InsertConfigInteger(pCfg, "ForwardBroadcast", fForwardBroadcast);
 
                 /* port-forwarding */

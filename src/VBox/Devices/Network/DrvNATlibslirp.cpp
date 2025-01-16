@@ -1,4 +1,4 @@
-/* $Id: DrvNATlibslirp.cpp 107913 2025-01-16 14:49:39Z knut.osmundsen@oracle.com $ */
+/* $Id: DrvNATlibslirp.cpp 107914 2025-01-16 14:50:32Z knut.osmundsen@oracle.com $ */
 /** @file
  * DrvNATlibslirp - NATlibslirp network transport driver.
  */
@@ -264,9 +264,8 @@ static void drvNAT_CheckTimeout(void *opaque);
 static DECLCALLBACK(int) drvNAT_AddPollCb(int iFd, int iEvents, void *opaque);
 static DECLCALLBACK(int64_t) drvNAT_ClockGetNsCb(void *opaque);
 static DECLCALLBACK(int) drvNAT_GetREventsCb(int idx, void *opaque);
-static DECLCALLBACK(int) drvNATNotifyApplyPortForwardCommand(PDRVNAT pThis, bool fRemove,
-                                                              bool fUdp, const char *pHostIp,
-                                                              uint16_t u16HostPort, const char *pGuestIp, uint16_t u16GuestPort);
+static DECLCALLBACK(int) drvNATNotifyApplyPortForwardCommand(PDRVNAT pThis, bool fRemove, bool fUdp, const char *pszHostIp,
+                                                             uint16_t u16HostPort, const char *pszGuestIp, uint16_t u16GuestPort);
 
 
 
@@ -961,31 +960,26 @@ static int drvNATConstructRedir(unsigned iInstance, PDRVNAT pThis, PCFGMNODE pCf
 
         /** @todo r=jack: why are we using IP INADD_ANY for port forward when FE does not do so. */
         /* host address ("BindIP" name is rather unfortunate given "HostPort" to go with it) */
-        char mHostIp[MAX_IP_ADDRESS_STR_LEN_W_NULL];
-        RT_ZERO(mHostIp);
-        // GETIP_DEF(rc, pDrvIns, pNode, mHostIp, INADDR_ANY);
-        GET_STRING(rc, pDrvIns, pNode, "BindIP", mHostIp[0], sizeof(mHostIp));
+        char szHostIp[MAX_IP_ADDRESS_STR_LEN_W_NULL] = {0};
+        // GETIP_DEF(rc, pDrvIns, pNode, szHostIp, INADDR_ANY);
+        GET_STRING(rc, pDrvIns, pNode, "BindIP", szHostIp[0], sizeof(szHostIp));
 
         /* guest address */
-        char mGuestIp[MAX_IP_ADDRESS_STR_LEN_W_NULL];
-        RT_ZERO(mGuestIp);
-        // GETIP_DEF(rc, pDrvIns, pNode, mGuestIp, INADDR_ANY);
-        GET_STRING(rc, pDrvIns, pNode, "GuestIP", mGuestIp[0], sizeof(mGuestIp));
+        char szGuestIp[MAX_IP_ADDRESS_STR_LEN_W_NULL] = {0};
+        // GETIP_DEF(rc, pDrvIns, pNode, szGuestIp, INADDR_ANY);
+        GET_STRING(rc, pDrvIns, pNode, "GuestIP", szGuestIp[0], sizeof(szGuestIp));
 
-        LogRelMax(256, ("Preconfigured port forward rule discovered on startup: "
-                        "fUdp=%d, pHostIp=%s, u16HostPort=%u, pGuestIp=%s, u16GuestPort=%u\n",
-                        RT_BOOL(fUDP), mHostIp, iHostPort, mGuestIp, iGuestPort));
+        LogRelMax(256, ("Preconfigured port forward rule discovered on startup: fUdp=%d, HostIp=%s, u16HostPort=%u, GuestIp=%s, u16GuestPort=%u\n",
+                        RT_BOOL(fUDP), szHostIp, iHostPort, szGuestIp, iGuestPort));
 
         /*
          * Apply port forward.
          */
-        if (drvNATNotifyApplyPortForwardCommand(pThis, false /* fRemove */, fUDP,
-                                                mHostIp, iHostPort, mGuestIp, iGuestPort) < 0)
+        if (drvNATNotifyApplyPortForwardCommand(pThis, false /* fRemove */, fUDP, szHostIp, iHostPort, szGuestIp, iGuestPort) < 0)
             return PDMDrvHlpVMSetError(pThis->pDrvIns, VERR_NAT_REDIR_SETUP, RT_SRC_POS,
-                                       N_("NAT#%d: configuration error: failed to set up "
-                                       "redirection of %d to %d. Probably a conflict with "
-                                       "existing services or other rules"), iInstance, iHostPort,
-                                       iGuestPort);
+                                       N_("NAT#%d: configuration error: failed to set up redirection of %d to %d. "
+                                          "Probably a conflict with existing services or other rules"), 
+                                       iInstance, iHostPort, iGuestPort);
     } /* for each redir rule */
 
     return VINF_SUCCESS;
@@ -997,47 +991,44 @@ static int drvNATConstructRedir(unsigned iInstance, PDRVNAT pThis, PCFGMNODE pCf
  * @param   pThis           Pointer to DRVNAT state for current context.
  * @param   fRemove         Flag to remove port forward instead of create.
  * @param   fUdp            Flag specifying if UDP. If false, TCP.
- * @param   pHostIp         String of host IP address.
+ * @param   pszHostIp       String of host IP address.
  * @param   u16HostPort     Host port to forward to.
- * @param   pGuestIp        String of guest IP address.
+ * @param   pszGuestIp      String of guest IP address.
  * @param   u16GuestPort    Guest port to forward.
  *
  * @thread  ?
  */
-static DECLCALLBACK(int) drvNATNotifyApplyPortForwardCommand(PDRVNAT pThis, bool fRemove,
-                                                              bool fUdp, const char *pHostIp,
-                                                              uint16_t u16HostPort, const char *pGuestIp, uint16_t u16GuestPort)
+static DECLCALLBACK(int) drvNATNotifyApplyPortForwardCommand(PDRVNAT pThis, bool fRemove, bool fUdp, const char *pszHostIp,
+                                                             uint16_t u16HostPort, const char *pszGuestIp, uint16_t u16GuestPort)
 {
     /** @todo r=jack:
      * - rewrite for IPv6
      * - do we want to lock the guestIp to the VMs IP?
      */
     struct in_addr guestIp, hostIp;
-    int rc = VINF_SUCCESS;
 
-    if (   pHostIp == NULL
-        || inet_aton(pHostIp, &hostIp) == 0)
+    if (   pszHostIp == NULL
+        || inet_aton(pszHostIp, &hostIp) == 0)
         hostIp.s_addr = INADDR_ANY;
 
-    if (   pGuestIp == NULL
-        || inet_aton(pGuestIp, &guestIp) == 0)
+    if (   pszGuestIp == NULL
+        || inet_aton(pszGuestIp, &guestIp) == 0)
         guestIp.s_addr = pThis->GuestIP;
 
+    int rc;
     if (fRemove)
         rc = slirp_remove_hostfwd(pThis->pNATState->pSlirp, fUdp, hostIp, u16HostPort);
     else
         rc = slirp_add_hostfwd(pThis->pNATState->pSlirp, fUdp, hostIp,
                                u16HostPort, guestIp, u16GuestPort);
-
     if (rc < 0)
     {
-        LogRelFunc(("Port forward modify FAIL! Details: fRemove=%d, fUdp=%d, pHostIp=%s, u16HostPort=%u, pGuestIp=%s, u16GuestPort=%u\n",
-                    RT_BOOL(fRemove), RT_BOOL(fUdp), pHostIp, u16HostPort, pGuestIp, u16GuestPort));
-
+        LogRelFunc(("Port forward modify FAIL! Details: fRemove=%d, fUdp=%d, pszHostIp=%s, u16HostPort=%u, pszGuestIp=%s, u16GuestPort=%u\n",
+                    RT_BOOL(fRemove), RT_BOOL(fUdp), pszHostIp, u16HostPort, pszGuestIp, u16GuestPort));
         return PDMDrvHlpVMSetError(pThis->pDrvIns, VERR_NAT_REDIR_SETUP, RT_SRC_POS,
-                                   N_("NAT#%d: configuration error: failed to set up "
-                                   "redirection of %d to %d. Probably a conflict with "
-                                   "existing services or other rules"), pThis->pDrvIns->iInstance, u16HostPort, u16GuestPort);
+                                   N_("NAT#%d: configuration error: failed to set up redirection of %d to %d. "
+                                      "Probably a conflict with existing services or other rules"), 
+                                   pThis->pDrvIns->iInstance, u16HostPort, u16GuestPort);
     }
 
     return rc;
@@ -1057,14 +1048,13 @@ static DECLCALLBACK(int) drvNATNetworkNatConfigRedirect(PPDMINETWORKNATCONFIG pI
     /* Execute the command directly if the VM is not running. */
     int rc;
     if (pThis->pSlirpThread->enmState != PDMTHREADSTATE_RUNNING)
-        rc = drvNATNotifyApplyPortForwardCommand(pThis, fRemove, fUdp, pHostIp,
-                                           u16HostPort, pGuestIp,u16GuestPort);
+        rc = drvNATNotifyApplyPortForwardCommand(pThis, fRemove, fUdp, pHostIp, u16HostPort, pGuestIp,u16GuestPort);
     else
     {
         PRTREQ pReq;
         rc = RTReqQueueCallEx(pThis->hSlirpReqQueue, &pReq, 0 /*cMillies*/, RTREQFLAGS_VOID,
-                              (PFNRT)drvNATNotifyApplyPortForwardCommand, 7, pThis, fRemove,
-                              fUdp, pHostIp, u16HostPort, pGuestIp, u16GuestPort);
+                              (PFNRT)drvNATNotifyApplyPortForwardCommand, 7, 
+                              pThis, fRemove, fUdp, pHostIp, u16HostPort, pGuestIp, u16GuestPort);
         if (rc == VERR_TIMEOUT)
         {
             drvNATNotifyNATThread(pThis, "drvNATNetworkNatConfigRedirect");
