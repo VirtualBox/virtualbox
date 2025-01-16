@@ -1,4 +1,4 @@
-/* $Id: ConsoleImplConfigX86.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: ConsoleImplConfigX86.cpp 107891 2025-01-16 00:33:11Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBox Console COM Class implementation - VM Configuration Bits.
  *
@@ -988,6 +988,13 @@ int Console::i_configConstructorX86(PUVM pUVM, PVM pVM, PCVMMR3VTABLE pVMM, Auto
         PCFGMNODE pNEM;
         InsertConfigNode(pRoot, "NEM", &pNEM);
         InsertConfigInteger(pNEM, "Allow64BitGuests", fIsGuest64Bit);
+
+        InsertConfigInteger(pNEM, "IBPBOnVMExit", fIBPBOnVMExit);
+        InsertConfigInteger(pNEM, "IBPBOnVMEntry", fIBPBOnVMEntry);
+        InsertConfigInteger(pNEM, "L1DFlushOnSched", fL1DFlushOnSched);
+        InsertConfigInteger(pNEM, "L1DFlushOnVMEntry", fL1DFlushOnVMEntry);
+        InsertConfigInteger(pNEM, "MDSClearOnSched", fMDSClearOnSched);
+        InsertConfigInteger(pNEM, "MDSClearOnVMEntry", fMDSClearOnVMEntry);
 
         /*
          * Paravirt. provider.

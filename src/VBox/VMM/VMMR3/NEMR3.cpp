@@ -1,4 +1,4 @@
-/* $Id: NEMR3.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: NEMR3.cpp 107891 2025-01-16 00:33:11Z knut.osmundsen@oracle.com $ */
 /** @file
  * NEM - Native execution manager.
  */
@@ -45,6 +45,7 @@
 #include <VBox/vmm/gim.h>
 #include "NEMInternal.h"
 #include <VBox/vmm/vm.h>
+#include <VBox/vmm/vmcc.h>
 #include <VBox/vmm/uvm.h>
 #include <VBox/err.h>
 
@@ -105,6 +106,14 @@ VMMR3_INT_DECL(int) NEMR3InitConfig(PVM pVM)
 #if defined(VBOX_VMM_TARGET_ARMV8)
                                   "|VTimerInterrupt"
 #endif
+#if defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86)
+                                  "|IBPBOnVMExit"
+                                  "|IBPBOnVMEntry"
+                                  "|L1DFlushOnSched"
+                                  "|L1DFlushOnVMEntry"
+                                  "|MDSClearOnSched"
+                                  "|MDSClearOnVMEntry"
+#endif
                                   ,
                                   "" /* pszValidNodes */, "NEM" /* pszWho */, 0 /* uInstance */);
     if (RT_FAILURE(rc))
@@ -138,6 +147,55 @@ VMMR3_INT_DECL(int) NEMR3InitConfig(PVM pVM)
         PVMCPU pVCpu = pVM->apCpusR3[idCpu];
         pVCpu->nem.s.fTrapXcptGpForLovelyMesaDrv = f;
     }
+
+#if defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86)
+    /** @cfgm{/NEM/IBPBOnVMExit, bool}
+     * Costly paranoia setting. */
+    rc = CFGMR3QueryBoolDef(pCfgNem, "IBPBOnVMExit", &f, false);
+    AssertLogRelRCReturn(rc, rc);
+    VMCC_FOR_EACH_VMCPU_STMT(pVM, pVCpu->nem.s.fIbpbOnVmExit = f);
+
+    /** @cfgm{/NEM/IBPBOnVMEntry, bool}
+     * Costly paranoia setting. */
+    rc = CFGMR3QueryBoolDef(pCfgNem, "IBPBOnVMEntry", &f, false);
+    AssertLogRelRCReturn(rc, rc);
+    VMCC_FOR_EACH_VMCPU_STMT(pVM, pVCpu->nem.s.fIbpbOnVmEntry = f);
+
+    /** @cfgm{/NEM/L1DFlushOnSched, bool, true}
+     * CVE-2018-3646 workaround, ignored on CPUs that aren't affected. */
+    rc = CFGMR3QueryBoolDef(pCfgNem, "L1DFlushOnSched", &f, true);
+    AssertLogRelRCReturn(rc, rc);
+    VMCC_FOR_EACH_VMCPU_STMT(pVM, pVCpu->nem.s.fL1dFlushOnSched = f);
+
+    /** @cfgm{/NEM/L1DFlushOnVMEntry, bool}
+     * CVE-2018-3646 workaround, ignored on CPUs that aren't affected. */
+    rc = CFGMR3QueryBoolDef(pCfgNem, "L1DFlushOnVMEntry", &f, false);
+    AssertLogRelRCReturn(rc, rc);
+    VMCC_FOR_EACH_VMCPU_STMT(pVM, pVCpu->nem.s.fL1dFlushOnVmEntry = f);
+
+    /* Disable L1DFlushOnSched if L1DFlushOnVMEntry is enabled. */
+    PVMCPU const pVCpu0 = pVM->apCpusR3[0];
+    if (pVCpu0->nem.s.fL1dFlushOnVmEntry)
+        VMCC_FOR_EACH_VMCPU_STMT(pVM, pVCpu->nem.s.fL1dFlushOnSched = false);
+
+    /** @cfgm{/NEM/MDSClearOnSched, bool, true}
+     * CVE-2018-12126, CVE-2018-12130, CVE-2018-12127, CVE-2019-11091 workaround,
+     * ignored on CPUs that aren't affected. */
+    rc = CFGMR3QueryBoolDef(pCfgNem, "MDSClearOnSched", &f, true);
+    AssertLogRelRCReturn(rc, rc);
+    VMCC_FOR_EACH_VMCPU_STMT(pVM, pVCpu->nem.s.fMdsClearOnSched = f);
+
+    /** @cfgm{/NEM/MDSClearOnVmEntry, bool, false}
+     * CVE-2018-12126, CVE-2018-12130, CVE-2018-12127, CVE-2019-11091 workaround,
+     * ignored on CPUs that aren't affected. */
+    rc = CFGMR3QueryBoolDef(pCfgNem, "MDSClearOnVmEntry", &f, false);
+    AssertLogRelRCReturn(rc, rc);
+    VMCC_FOR_EACH_VMCPU_STMT(pVM, pVCpu->nem.s.fMdsClearOnVmEntry = f);
+
+    /* Disable MDSClearOnSched if MDSClearOnVmEntry is enabled. */
+    if (pVCpu0->nem.s.fMdsClearOnVmEntry)
+        VMCC_FOR_EACH_VMCPU_STMT(pVM, pVCpu->nem.s.fMdsClearOnSched = false);
+#endif /* VBOX_VMM_TARGET_X86 */
 
 #if defined(VBOX_VMM_TARGET_ARMV8)
     /** @cfgm{/NEM/VTimerInterrupt, uint32_t}
@@ -216,6 +274,52 @@ VMMR3_INT_DECL(int) NEMR3Init(PVM pVM, bool fFallback, bool fForced)
 }
 
 
+#if defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86)
+/**
+ * Finalize configuration related to spectre and such.
+ *
+ * This can be called explicitly by the native code after it has seeded the
+ * necessary host information to CPUM, or/and it will be called by
+ * NEMR3InitAfterCPUM().
+ *
+ * @note This code is also duplicated in hmR3InitFinalizeR3().
+ */
+DECLHIDDEN(void) nemR3InitFinalizeSpecCtrl(PVM pVM)
+{
+    /*
+     * Check if L1D flush is needed/possible.
+     */
+    if (   !g_CpumHostFeatures.s.fFlushCmd
+        || g_CpumHostFeatures.s.enmMicroarch <  kCpumMicroarch_Intel_Core7_Nehalem
+        || g_CpumHostFeatures.s.enmMicroarch >= kCpumMicroarch_Intel_Core7_End
+        || g_CpumHostFeatures.s.fArchVmmNeedNotFlushL1d
+        || g_CpumHostFeatures.s.fArchRdclNo)
+        VMCC_FOR_EACH_VMCPU_STMT(pVM, pVCpu->nem.s.fL1dFlushOnSched = pVCpu->nem.s.fL1dFlushOnVmEntry = false);
+
+    /*
+     * Check if MDS flush is needed/possible.
+     * On atoms and knight family CPUs, we will only allow clearing on scheduling.
+     */
+    if (   !g_CpumHostFeatures.s.fMdsClear
+        || g_CpumHostFeatures.s.fArchMdsNo)
+        VMCC_FOR_EACH_VMCPU_STMT(pVM, pVCpu->nem.s.fMdsClearOnSched = pVCpu->nem.s.fMdsClearOnVmEntry = false);
+    else if (   (   g_CpumHostFeatures.s.enmMicroarch >=  kCpumMicroarch_Intel_Atom_Airmount
+                 && g_CpumHostFeatures.s.enmMicroarch <   kCpumMicroarch_Intel_Atom_End)
+             || (   g_CpumHostFeatures.s.enmMicroarch >=  kCpumMicroarch_Intel_Phi_KnightsLanding
+                 && g_CpumHostFeatures.s.enmMicroarch <   kCpumMicroarch_Intel_Phi_End))
+    {
+        PVMCPU const pVCpu0 = pVM->apCpusR3[0];
+        if (!pVCpu0->nem.s.fMdsClearOnSched)
+            VMCC_FOR_EACH_VMCPU_STMT(pVM, pVCpu->nem.s.fMdsClearOnSched = pVCpu->nem.s.fMdsClearOnVmEntry);
+        VMCC_FOR_EACH_VMCPU_STMT(pVM, pVCpu->nem.s.fMdsClearOnVmEntry = false);
+    }
+    else if (   g_CpumHostFeatures.s.enmMicroarch <  kCpumMicroarch_Intel_Core7_Nehalem
+             || g_CpumHostFeatures.s.enmMicroarch >= kCpumMicroarch_Intel_Core7_End)
+        VMCC_FOR_EACH_VMCPU_STMT(pVM, pVCpu->nem.s.fMdsClearOnSched = pVCpu->nem.s.fMdsClearOnVmEntry = false);
+}
+#endif
+
+
 /**
  * Perform initialization that depends on CPUM working.
  *
@@ -232,6 +336,9 @@ VMMR3_INT_DECL(int) NEMR3InitAfterCPUM(PVM pVM)
         /*
          * Do native after-CPUM init.
          */
+#if defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86)
+        nemR3InitFinalizeSpecCtrl(pVM);
+#endif
 #ifdef VBOX_WITH_NATIVE_NEM
         rc = nemR3NativeInitAfterCPUM(pVM);
 #else
