@@ -81,75 +81,130 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
-        <para></para>
-      </listitem>
-
-    </itemizedlist>
-  </sect1>
-
-  <sect1>
-
-    <title>Version 7.1.6 (date tbd)</title>
-
-    <para>This is a maintenance release. The following items were fixed and/or
-      added:</para>
-
-    <itemizedlist>
-
-      <listitem>
-        <para>GUI: Make sure disabled preferences contents have more
-          obvious representation (mask+font), useful for certain Linux
-          themes</para>
+       <para>VMM: Fixed issue when Windows 11 24H2 guest was experiencing BSOD
+         in rare conditions</para>
       </listitem>
 
       <listitem>
-        <para>GUI: Make sure seamless mode is properly enabled or disabled
+        <para>GUI: Improved representation of disabled preferences contents (mask+font)
+          when it is shown with certain Linux themes</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Fixed issue when seamless mode was not properly enabled or disabled
           in appropriate time according to GA status events</para>
       </listitem>
 
       <listitem>
-        <para>GUI: fixed rare crash on macOS hosts on application
-          exit</para>
+        <para>GUI: Fixed rare crash on macOS hosts on application exit</para>
       </listitem>
 
       <listitem>
-        <para>GUI: fixed small 7.1.4 regression in preferences
-          windows, filter editor was not focusable and animated</para>
+        <para>GUI: Fixed small 7.1.4 regression in preferences
+          windows when filter editor was not in focus</para>
       </listitem>
 
       <listitem>
-        <para>GUI: Allow to change preferred update branch even if automatic
-          update check is disabled</para>
+        <para>GUI: Introduced improvements in Advanced properties/settings
+          dialog area</para>
       </listitem>
 
       <listitem>
-        <para>GUI: Bring back missing functionality to change bridged adapter
+        <para>GUI: Restored missing functionality to change bridged adapter
           at VM startup if current one wasn't found</para>
       </listitem>
 
       <listitem>
-        <para>GUI: Fixing annoying Show action duplicates on macOS while
-          switching between running and powered off VMs</para>
+        <para>GUI: Fixed issue when Show action duplicates were created on macOS host in
+          attempt to switch between running and powered off VMs</para>
       </listitem>
 
       <listitem>
-        <para>GUI: Make sure 3D acceleration check-box is enabled or disabled
-          according to guest OS and graphical controller types</para>
+        <para>GUI: Fixed regression when 3D acceleration check-box was not available
+          for certain guest OS and graphical controller types</para>
       </listitem>
 
       <listitem>
-        <para>GUI: Restoring lost Help button for preferences
+        <para>GUI: Restored lost Help button for preferences
           windows on macOS</para>
       </listitem>
 
       <listitem>
-        <para>GUI: Restoring lost Help button shortcuts for certain
+        <para>GUI: Restored lost Help button shortcuts for certain
           windows</para>
       </listitem>
 
       <listitem>
-        <para>GUI: Fixing annoying error message for VM started in
-          full-screen mode</para>
+       <para>GUI: Fixed issue when error message was shown when VM
+         was starting in full-screen mode</para>
+      </listitem>
+
+      <listitem>
+       <para>VirtioNet: Fixed issue with re-negotiation of features after reset</para>
+      </listitem>
+
+      <listitem>
+       <para>Graphics: Fixed issue with Linux guest screen flickering when
+         guest was using VMSVGA graphics adapter</para>
+      </listitem>
+
+      <listitem>
+       <para>VBoxManage: Added the ability to export and import VMs which
+         contain an NVMe storage controller</para>
+      </listitem>
+
+      <listitem>
+       <para>VBoxManage: Fixed issue when it was not possible to set graphics
+         controller to "QemuRamFB" using modifyvm command (bug #22232)</para>
+      </listitem>
+
+      <listitem>
+       <para>Main: Fixed issue when specifying custom proxy server in GUI settings
+         had no effect</para>
+      </listitem>
+
+      <listitem>
+       <para>Network: Added changes which replaced NAT engines with libslirp</para>
+      </listitem>
+
+      <listitem>
+       <para>Guest OSes: Added OS type for Windows Server 2025</para>
+      </listitem>
+
+      <listitem>
+       <para>Linux guest and host: Added more fixes for UBSAN related
+         warnings (bug #21877)</para>
+      </listitem>
+
+      <listitem>
+       <para>Linux guest and host: Added initial support for RHEL 9.6 kernel</para>
+      </listitem>
+
+      <listitem>
+       <para>Windows guest and host: Dropped dependency on DIFxApp in host installer</para>
+      </listitem>
+
+      <listitem>
+       <para>Solaris host: Removed the VirtualBox GUI shared objects
+         libqgtk2styleVBox.so and libqgtk2VBox.so from the Solaris installation
+         packages as they depend on GTK2 which is EOL and no longer supported</para>
+      </listitem>
+
+      <listitem>
+       <para>Linux Guest Additions: Introduced initial support for kernel 6.13</para>
+      </listitem>
+
+      <listitem>
+       <para>Linux Guest Additions: vboxvideo: Added improvement for kernel 6.4 support and
+         fixed issue when graphics could be frozen when using VBoxVGA adapter</para>
+      </listitem>
+
+      <listitem>
+       <para>Linux Guest Additions: Introduced additional fixes for kernel 6.12 in vboxvideo</para>
+      </listitem>
+
+      <listitem>
+       <para>Windows Guest Additions: Added change to make installer to use NSIS 3.10</para>
       </listitem>
 
     </itemizedlist>
