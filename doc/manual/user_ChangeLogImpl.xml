@@ -103,7 +103,7 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
-        <para>GUI: Make sure seamless mode is properly enabled/disabled
+        <para>GUI: Make sure seamless mode is properly enabled or disabled
           in appropriate time according to GA status events</para>
       </listitem>
 
@@ -113,8 +113,43 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
-        <para>GUI: fixed small 7.1.4 regression in preferences and settings
-          windows, filter editor was not focusable/animated</para>
+        <para>GUI: fixed small 7.1.4 regression in preferences
+          windows, filter editor was not focusable and animated</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Allow to change preferred update branch even if automatic
+          update check is disabled</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Bring back missing functionality to change bridged adapter
+          at VM startup if current one wasn't found</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Fixing annoying Show action duplicates on macOS while
+          switching between running and powered off VMs</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Make sure 3D acceleration check-box is enabled or disabled
+          according to guest OS and graphical controller types</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Restoring lost Help button for preferences
+          windows on macOS</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Restoring lost Help button shortcuts for certain
+          windows</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Fixing annoying error message for VM started in
+          full-screen mode</para>
       </listitem>
 
     </itemizedlist>
