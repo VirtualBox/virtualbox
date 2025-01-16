@@ -1,4 +1,4 @@
-/* $Id: CPUMAllCpuId.cpp 107848 2025-01-15 10:15:06Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMAllCpuId.cpp 107927 2025-01-16 21:19:50Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part, common bits.
  */
@@ -1683,7 +1683,7 @@ static void cpumCpuIdExplodeArchCapabilities(CPUMFEATURES *pFeatures, bool fHasA
 }
 
 
-# if defined(VBOX_VMM_TARGET_X86) || defined(VBOX_VMM_TARGET_AGNOSTIC)
+# ifndef VBOX_VMM_TARGET_ARMV8 /* trunk: defined(VBOX_VMM_TARGET_X86) || defined(VBOX_VMM_TARGET_AGNOSTIC) */
 /**
  * Sets the guest IA32_ARCH_CAPABILITIES value and associated feature bits.
  */
