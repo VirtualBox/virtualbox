@@ -81,8 +81,8 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
-       <para>VMM: Fixed issue when Windows 11 24H2 guest was experiencing BSOD
-         in rare conditions</para>
+        <para>VMM: Fixed issue when Windows 11 24H2 guest was experiencing BSOD
+          in rare conditions</para>
       </listitem>
 
       <listitem>
@@ -135,72 +135,72 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
-       <para>GUI: Fixed issue when error message was shown when VM
-         was starting in full-screen mode</para>
+        <para>GUI: Fixed issue when error message was shown when VM
+          was starting in full-screen mode</para>
       </listitem>
 
       <listitem>
-       <para>VirtioNet: Fixed issue with re-negotiation of features after reset</para>
+        <para>VirtioNet: Fixed issue with re-negotiation of features after reset</para>
       </listitem>
 
       <listitem>
-       <para>Graphics: Fixed issue with Linux guest screen flickering when
-         guest was using VMSVGA graphics adapter</para>
+        <para>Graphics: Fixed issue with Linux guest screen flickering when
+          guest was using VMSVGA graphics adapter</para>
       </listitem>
 
       <listitem>
-       <para>VBoxManage: Added the ability to export and import VMs which
-         contain an NVMe storage controller</para>
+        <para>VBoxManage: Added the ability to export and import VMs which
+          contain an NVMe storage controller</para>
       </listitem>
 
       <listitem>
-       <para>VBoxManage: Fixed issue when it was not possible to set graphics
-         controller to "QemuRamFB" using modifyvm command (bug #22232)</para>
+        <para>VBoxManage: Fixed issue when it was not possible to set graphics
+          controller to "QemuRamFB" using modifyvm command (bug #22232)</para>
       </listitem>
 
       <listitem>
-       <para>Main: Fixed issue when specifying custom proxy server in GUI settings
-         had no effect</para>
+        <para>Main: Fixed issue when specifying custom proxy server in GUI settings
+          had no effect</para>
       </listitem>
 
       <listitem>
-       <para>Network: Added changes which replaced NAT engines with libslirp</para>
+        <para>Network: Added changes which replaced NAT engines with libslirp</para>
       </listitem>
 
       <listitem>
-       <para>Guest OSes: Added OS type for Windows Server 2025</para>
+        <para>Guest OSes: Added OS type for Windows Server 2025</para>
       </listitem>
 
       <listitem>
-       <para>Linux guest and host: Added more fixes for UBSAN related
-         warnings (bug #21877)</para>
+        <para>Linux guest and host: Added more fixes for UBSAN related
+          warnings (bug #21877)</para>
       </listitem>
 
       <listitem>
-       <para>Linux guest and host: Added initial support for RHEL 9.6 kernel</para>
+        <para>Linux guest and host: Added initial support for RHEL 9.6 kernel</para>
       </listitem>
 
       <listitem>
-       <para>Windows guests and host: Re-implemented driver installation</para>
+        <para>Windows guests and host: Re-implemented driver installation</para>
       </listitem>
 
       <listitem>
-       <para>Solaris host: Removed the VirtualBox GUI shared objects
-         libqgtk2styleVBox.so and libqgtk2VBox.so from the Solaris installation
-         packages as they depend on GTK2 which is EOL and no longer supported</para>
+        <para>Solaris host: Removed the VirtualBox GUI shared objects
+          libqgtk2styleVBox.so and libqgtk2VBox.so from the Solaris installation
+          packages as they depend on GTK2 which is EOL and no longer supported</para>
       </listitem>
 
       <listitem>
-       <para>Linux Guest Additions: Introduced initial support for kernel 6.13</para>
+        <para>Linux Guest Additions: Introduced initial support for kernel 6.13</para>
       </listitem>
 
       <listitem>
-       <para>Linux Guest Additions: vboxvideo: Added improvement for kernel 6.4 support and
-         fixed issue when graphics could be frozen when using VBoxVGA adapter</para>
+        <para>Linux Guest Additions: vboxvideo: Added improvement for kernel 6.4 support and
+          fixed issue when graphics could be frozen when using VBoxVGA adapter</para>
       </listitem>
 
       <listitem>
-       <para>Linux Guest Additions: Introduced additional fixes for kernel 6.12 in vboxvideo</para>
+        <para>Linux Guest Additions: Introduced additional fixes for kernel 6.12 in vboxvideo</para>
       </listitem>
 
     </itemizedlist>
