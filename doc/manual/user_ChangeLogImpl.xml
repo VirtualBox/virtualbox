@@ -181,7 +181,7 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
-       <para>Windows guest and host: Dropped dependency on DIFxApp in host installer</para>
+       <para>Windows guests and host: Re-implemented driver installation</para>
       </listitem>
 
       <listitem>
@@ -201,10 +201,6 @@ Rules for adding a changelog entry to make them look more uniform:
 
       <listitem>
        <para>Linux Guest Additions: Introduced additional fixes for kernel 6.12 in vboxvideo</para>
-      </listitem>
-
-      <listitem>
-       <para>Windows Guest Additions: Added change to make installer to use NSIS 3.10</para>
       </listitem>
 
     </itemizedlist>
