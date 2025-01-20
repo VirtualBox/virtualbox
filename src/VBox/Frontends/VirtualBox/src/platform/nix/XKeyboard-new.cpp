@@ -1,4 +1,4 @@
-/* $Id: XKeyboard-new.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: XKeyboard-new.cpp 107972 2025-01-20 23:46:28Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Qt GUI - Implementation of Linux-specific keyboard functions.
  */
@@ -89,7 +89,7 @@ static void printKey(Display *pDisplay, int cKeys)
 static void dumpLayout(Display *pDisplay)
 {
     LogRel(("Your keyboard layout does not appear to be fully supported by\n"
-            "VirtualBox. If you are experiencing keyboard problems this.\n"
+            "VirtualBox. If you are experiencing keyboard problems this\n"
             "information may help us to resolve them.\n"
             "(Note: please tell us if you are using a custom layout.)\n\n"
             "The correct table for your layout is:\n"));
