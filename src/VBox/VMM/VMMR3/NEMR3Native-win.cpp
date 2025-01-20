@@ -1,4 +1,4 @@
-/* $Id: NEMR3Native-win.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: NEMR3Native-win.cpp 107968 2025-01-20 20:16:31Z knut.osmundsen@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 Windows backend.
  *
@@ -650,8 +650,11 @@ static int nemR3WinInitCheckCapabilities(PVM pVM, PRTERRINFO pErrInfo)
         return RTErrInfoSetF(pErrInfo, VERR_NEM_INIT_FAILED,
                              "WHvGetCapability/WHvCapabilityCodeFeatures failed: %Rhrc (Last=%#x/%u)",
                              hrc, RTNtLastStatusValue(), RTNtLastErrorValue());
-    if (Caps.Features.AsUINT64 & ~(uint64_t)0)
-        LogRel(("NEM: Warning! Unknown feature definitions: %#RX64\n", Caps.Features.AsUINT64));
+    NEM_LOG_REL_CAP_EX("WHvCapabilityCodeFeatures", "%'#018RX64", Caps.Features.AsUINT64);
+    pVM->nem.s.fSpeculationControl = RT_BOOL(Caps.Features.SpeculationControl);
+    const uint64_t fKnownFeatures = RT_BIT_64(10) - 1U;
+    if (Caps.Features.AsUINT64 & ~fKnownFeatures)
+        LogRel(("NEM: Warning! Unknown feature definitions: %#RX64\n", Caps.Features.AsUINT64 & ~fKnownFeatures));
     /** @todo RECHECK: WHV_CAPABILITY_FEATURES typedef. */
 
     /*
