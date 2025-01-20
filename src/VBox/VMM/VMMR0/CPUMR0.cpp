@@ -1,4 +1,4 @@
-/* $Id: CPUMR0.cpp 107845 2025-01-15 10:02:52Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMR0.cpp 107963 2025-01-20 16:26:58Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - Host Context Ring 0.
  */
@@ -163,15 +163,12 @@ VMMR0_INT_DECL(int) CPUMR0ModuleInit(void)
 
     /*
      * Get MSR_IA32_ARCH_CAPABILITIES and expand it into the host feature structure.
+     *
+     * AMD CPUs doesn't have this register, similar info is available in EBX in
+     * CPUID leaf 0x80000008
      */
     if (ASMHasCpuId())
     {
-        /** @todo Should add this MSR to CPUMMSRS and expose it via SUPDrv... */
-        g_CpumHostFeatures.s.fArchRdclNo             = 0;
-        g_CpumHostFeatures.s.fArchIbrsAll            = 0;
-        g_CpumHostFeatures.s.fArchRsbOverride        = 0;
-        g_CpumHostFeatures.s.fArchVmmNeedNotFlushL1d = 0;
-        g_CpumHostFeatures.s.fArchMdsNo              = 0;
         uint32_t const cStdRange = ASMCpuId_EAX(0);
         if (   RTX86IsValidStdRange(cStdRange)
             && cStdRange >= 7)
@@ -181,16 +178,7 @@ VMMR0_INT_DECL(int) CPUMR0ModuleInit(void)
             ASMCpuIdExSlow(7, 0, 0, 0, NULL, NULL, NULL, &fStdExtFeaturesEdx);
             if (   (fStdExtFeaturesEdx & X86_CPUID_STEXT_FEATURE_EDX_ARCHCAP)
                 && (fStdFeaturesEdx    & X86_CPUID_FEATURE_EDX_MSR))
-            {
-                uint64_t fArchVal = ASMRdMsr(MSR_IA32_ARCH_CAPABILITIES);
-                g_CpumHostFeatures.s.fArchRdclNo             = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_RDCL_NO);
-                g_CpumHostFeatures.s.fArchIbrsAll            = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_IBRS_ALL);
-                g_CpumHostFeatures.s.fArchRsbOverride        = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_RSBO);
-                g_CpumHostFeatures.s.fArchVmmNeedNotFlushL1d = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_VMM_NEED_NOT_FLUSH_L1D);
-                g_CpumHostFeatures.s.fArchMdsNo              = RT_BOOL(fArchVal & MSR_IA32_ARCH_CAP_F_MDS_NO);
-            }
-            else
-                g_CpumHostFeatures.s.fArchCap = 0;
+                cpumCpuIdExplodeArchCapabilities(&g_CpumHostFeatures.s, true, ASMRdMsr(MSR_IA32_ARCH_CAPABILITIES));
         }
     }
 
@@ -361,9 +349,8 @@ VMMR0_INT_DECL(int) CPUMR0InitVM(PVMCC pVM)
          * structure and as well as the guest MSR.
          * Note! We assume this happens after the CPUMR3Init is done, so CPUID bits are settled.
          */
-        uint64_t       fHostArchVal = 0;
-        bool           fHasArchCap  = false;
-        uint32_t const cStdRange    = ASMCpuId_EAX(0);
+        /** @todo Should add this MSR to CPUMMSRS and expose it via SUPDrv... */
+        uint32_t const cStdRange = ASMCpuId_EAX(0);
         if (   RTX86IsValidStdRange(cStdRange)
             && cStdRange >= 7)
         {
@@ -371,12 +358,8 @@ VMMR0_INT_DECL(int) CPUMR0InitVM(PVMCC pVM)
             ASMCpuId_Idx_ECX(7, 0, &u32Dummy, &u32Dummy, &u32Dummy, &fEdxFeatures);
             if (   (fEdxFeatures & X86_CPUID_STEXT_FEATURE_EDX_ARCHCAP)
                 && (fFeatures & X86_CPUID_FEATURE_EDX_MSR))
-            {
-                fHostArchVal = ASMRdMsr(MSR_IA32_ARCH_CAPABILITIES);
-                fHasArchCap  = true;
-            }
+                CPUMCpuIdApplyX86HostArchCapabilities(pVM, true, ASMRdMsr(MSR_IA32_ARCH_CAPABILITIES));
         }
-        CPUMCpuIdApplyX86HostArchCapabilities(pVM, fHasArchCap, fHostArchVal);
 
         /*
          * Unify/cross check some CPUID feature bits on all available CPU cores

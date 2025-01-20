@@ -1,4 +1,4 @@
-/* $Id: HMInternal.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: HMInternal.h 107963 2025-01-20 16:26:58Z knut.osmundsen@oracle.com $ */
 /** @file
  * HM - Internal header file.
  */
@@ -591,7 +591,7 @@ typedef HMR0PERVM *PHMR0PERVM;
 
 /** @addtogroup grp_hm_int_svm  SVM Internal
  * @{ */
-/** SVM VMRun function, see SVMR0VMRun(). */
+/** SVM VMRun function, see SVMR0VMRun().  */
 typedef DECLCALLBACKTYPE(int, FNHMSVMVMRUN,(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhysVMCB));
 /** Pointer to a SVM VMRun function. */
 typedef R0PTRTYPE(FNHMSVMVMRUN *) PFNHMSVMVMRUN;
@@ -1178,6 +1178,11 @@ AssertCompileMemberAlignment(HMR0PERVCPU, vmx.RestoreHost,   8);
 #define HM_WSF_L1D_ENTRY            RT_BIT_32(2)
 /** Flush MDS buffers on VM entry. */
 #define HM_WSF_MDS_ENTRY            RT_BIT_32(3)
+/** MSR_IA32_SPEC_CTRL needs to be replaced upon entry and exit.
+ * Save host value on entry, load guest value, run guest, save guest value on
+ * exit and restore the host value.
+ * @todo may not reliable for VT-x/Intel.  */
+#define HM_WSF_SPEC_CTRL            RT_BIT_32(4)
 
 /** Touch IA32_FLUSH_CMD.L1D on VM scheduling. */
 #define HM_WSF_L1D_SCHED            RT_BIT_32(16)
@@ -1243,14 +1248,22 @@ VMM_INT_DECL(int)           hmEmulateSvmMovTpr(PVMCC pVM, PVMCPUCC pVCpu);
  *
  * @{
  */
-DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_SansIbpbExit(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_SansIbpbExit(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_SansIbpbExit(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_SansIbpbExit(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_WithIbpbExit(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_WithIbpbExit(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_WithIbpbExit(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_WithIbpbExit(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_SansIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_SansIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_SansIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_SansIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_WithIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_WithIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_WithIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_WithIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_SansIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_SansIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_SansIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_SansIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_WithIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_WithIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_WithIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_WithIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
 /** @} */
 
 /** @} */

@@ -1,4 +1,4 @@
-/* $Id: CPUMAllCpuId.cpp 107927 2025-01-16 21:19:50Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMAllCpuId.cpp 107963 2025-01-20 16:26:58Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part, common bits.
  */
@@ -1389,6 +1389,21 @@ static void cpumExplodeVmxFeatures(PCVMXMSRS pVmxMsrs, PCPUMFEATURES pFeatures)
 }
 
 
+void cpumCpuIdExplodeFeaturesX86SetSummaryBits(PCPUMFEATURES pFeatures)
+{
+    /* Summary or all bits indicating the presence of the IA32_SPEC_CTRL MSR. */
+    pFeatures->fSpecCtrlMsr = pFeatures->fIbrs
+                            | pFeatures->fStibp
+                            | pFeatures->fSsbd
+                            | pFeatures->fPsfd
+                            | pFeatures->fIpredCtrl
+                            | pFeatures->fRrsbaCtrl
+                            | pFeatures->fDdpdU
+                            | pFeatures->fBhiCtrl
+                            ;
+}
+
+
 int cpumCpuIdExplodeFeaturesX86(PCCPUMCPUIDLEAF paLeaves, uint32_t cLeaves, PCCPUMMSRS pMsrs, PCPUMFEATURES pFeatures)
 {
     Assert(pMsrs);
@@ -1551,11 +1566,27 @@ int cpumCpuIdExplodeFeaturesX86(PCCPUMCPUIDLEAF paLeaves, uint32_t cLeaves, PCCP
             pFeatures->fFxSaveRstor    |= RT_BOOL(pExtLeaf->uEdx & X86_CPUID_AMD_FEATURE_EDX_FXSR);
             pFeatures->fMmx            |= RT_BOOL(pExtLeaf->uEdx & X86_CPUID_AMD_FEATURE_EDX_MMX);
             pFeatures->fTsc            |= RT_BOOL(pExtLeaf->uEdx & X86_CPUID_AMD_FEATURE_EDX_TSC);
-            pFeatures->fIbpb           |= pExtLeaf8 && (pExtLeaf8->uEbx & X86_CPUID_AMD_EFEID_EBX_IBPB);
             pFeatures->fAmdMmxExts      = RT_BOOL(pExtLeaf->uEdx & X86_CPUID_AMD_FEATURE_EDX_AXMMX);
             pFeatures->fXop             = RT_BOOL(pExtLeaf->uEcx & X86_CPUID_AMD_FEATURE_ECX_XOP);
             pFeatures->fTbm             = RT_BOOL(pExtLeaf->uEcx & X86_CPUID_AMD_FEATURE_ECX_TBM);
             pFeatures->fSvm             = RT_BOOL(pExtLeaf->uEcx & X86_CPUID_AMD_FEATURE_ECX_SVM);
+
+            if (pExtLeaf8)
+            {
+                pFeatures->fIbpb      |= RT_BOOL(pExtLeaf8->uEbx & X86_CPUID_AMD_EFEID_EBX_IBPB);
+                pFeatures->fIbrs      |= RT_BOOL(pExtLeaf8->uEbx & X86_CPUID_AMD_EFEID_EBX_IBRS);
+                pFeatures->fStibp     |= RT_BOOL(pExtLeaf8->uEbx & X86_CPUID_AMD_EFEID_EBX_STIBP);
+                pFeatures->fSsbd      |= RT_BOOL(pExtLeaf8->uEbx & X86_CPUID_AMD_EFEID_EBX_SPEC_CTRL_SSBD);
+                pFeatures->fPsfd      |= RT_BOOL(pExtLeaf8->uEbx & X86_CPUID_AMD_EFEID_EBX_PSFD);
+            }
+
+            PCCPUMCPUIDLEAF pExtLeaf21 = cpumCpuIdFindLeaf(paLeaves, cLeaves, 0x80000021);
+            if (pExtLeaf21)
+            {
+                /** @todo IBPB_BRTYPE is implied on Zen 1 & 2.
+                 *  https://www.amd.com/content/dam/amd/en/documents/corporate/cr/speculative-return-stack-overflow-whitepaper.pdf */
+            }
+
             if (pFeatures->fSvm)
             {
                 PCCPUMCPUIDLEAF pSvmLeaf = cpumCpuIdFindLeaf(paLeaves, cLeaves, 0x8000000a);
@@ -1641,6 +1672,8 @@ int cpumCpuIdExplodeFeaturesX86(PCCPUMCPUIDLEAF paLeaves, uint32_t cLeaves, PCCP
     }
     else
         AssertLogRelReturn(cLeaves == 0, VERR_CPUM_IPE_1);
+
+    cpumCpuIdExplodeFeaturesX86SetSummaryBits(pFeatures);
     return VINF_SUCCESS;
 }
 
@@ -1648,7 +1681,7 @@ int cpumCpuIdExplodeFeaturesX86(PCCPUMCPUIDLEAF paLeaves, uint32_t cLeaves, PCCP
 /**
  * Helper for extracting feature bits from IA32_ARCH_CAPABILITIES.
  */
-static void cpumCpuIdExplodeArchCapabilities(CPUMFEATURES *pFeatures, bool fHasArchCap, uint64_t fArchVal)
+void cpumCpuIdExplodeArchCapabilities(CPUMFEATURES *pFeatures, bool fHasArchCap, uint64_t fArchVal)
 {
     Assert(fHasArchCap || fArchVal == 0);
     pFeatures->fArchCap                = fHasArchCap;

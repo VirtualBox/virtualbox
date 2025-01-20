@@ -1,4 +1,4 @@
-/* $Id: CPUMInternal.h 107840 2025-01-15 09:52:16Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMInternal.h 107963 2025-01-20 16:26:58Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - Internal header file.
  */
@@ -486,6 +486,7 @@ typedef struct CPUMCPU
 } CPUMCPU;
 #ifndef VBOX_FOR_DTRACE_LIB
 AssertCompileMemberAlignment(CPUMCPU, Host, 64);
+AssertCompileAdjacentMembers(CPUMCPU, Guest, GuestMsrs); /* HACK ALERT! HMR0A.asm makes this ASSUMPTION in the SVM RUN code! */
 #endif
 /** Pointer to the CPUMCPU instance data residing in the shared VMCPU structure. */
 typedef CPUMCPU *PCPUMCPU;
@@ -502,6 +503,8 @@ void                cpumCpuIdAssertOrder(PCPUMCPUIDLEAF paLeaves, uint32_t cLeav
 # endif
 int                 cpumCpuIdExplodeFeaturesX86(PCCPUMCPUIDLEAF paLeaves, uint32_t cLeaves, PCCPUMMSRS pMsrs,
                                                 PCPUMFEATURES pFeatures);
+void                cpumCpuIdExplodeFeaturesX86SetSummaryBits(PCPUMFEATURES pFeatures);
+void                cpumCpuIdExplodeArchCapabilities(PCPUMFEATURES pFeatures, bool fHasArchCap, uint64_t fArchVal);
 
 # ifdef IN_RING3
 int                 cpumR3DbgInit(PVM pVM);
@@ -516,7 +519,7 @@ DECLCALLBACK(void)  cpumR3CpuIdInfo(PVM pVM, PCDBGFINFOHLP pHlp, const char *psz
 
 int                 cpumR3DbGetCpuInfo(const char *pszName, PCPUMINFO pInfo);
 int                 cpumR3MsrRangesInsert(PVM pVM, PCPUMMSRRANGE *ppaMsrRanges, uint32_t *pcMsrRanges, PCCPUMMSRRANGE pNewRange);
-int                 cpumR3MsrReconcileWithCpuId(PVM pVM);
+DECLHIDDEN(int)     cpumR3MsrReconcileWithCpuId(PVM pVM, bool fForceFlushCmd, bool fForceSpecCtrl);
 int                 cpumR3MsrApplyFudge(PVM pVM);
 int                 cpumR3MsrRegStats(PVM pVM);
 int                 cpumR3MsrStrictInitChecks(void);

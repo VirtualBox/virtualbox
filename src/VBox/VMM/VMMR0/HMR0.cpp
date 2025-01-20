@@ -1,4 +1,4 @@
-/* $Id: HMR0.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: HMR0.cpp 107963 2025-01-20 16:26:58Z knut.osmundsen@oracle.com $ */
 /** @file
  * Hardware Assisted Virtualization Manager (HM) - Host Context Ring-0.
  */
@@ -1331,42 +1331,43 @@ VMMR0_INT_DECL(int) HMR0InitVM(PVMCC pVM)
     /*
      * Configure defences against spectre and other CPU bugs.
      */
+    /* Determin the flags: */
     uint32_t fWorldSwitcher = 0;
-    uint32_t cLastStdLeaf   = ASMCpuId_EAX(0);
-    if (cLastStdLeaf >= 0x00000007 && RTX86IsValidStdRange(cLastStdLeaf))
+    if (g_CpumHostFeatures.s.fIbpb)
     {
-        uint32_t uEdx = 0;
-        ASMCpuIdExSlow(0x00000007, 0, 0, 0, NULL, NULL, NULL, &uEdx);
-
-        if (uEdx & X86_CPUID_STEXT_FEATURE_EDX_IBRS_IBPB)
-        {
-            if (pVM->hm.s.fIbpbOnVmExit)
-                fWorldSwitcher |= HM_WSF_IBPB_EXIT;
-            if (pVM->hm.s.fIbpbOnVmEntry)
-                fWorldSwitcher |= HM_WSF_IBPB_ENTRY;
-        }
-        if (uEdx & X86_CPUID_STEXT_FEATURE_EDX_FLUSH_CMD)
-        {
-            if (pVM->hm.s.fL1dFlushOnVmEntry)
-                fWorldSwitcher |= HM_WSF_L1D_ENTRY;
-            else if (pVM->hm.s.fL1dFlushOnSched)
-                fWorldSwitcher |= HM_WSF_L1D_SCHED;
-        }
-        if (uEdx & X86_CPUID_STEXT_FEATURE_EDX_MD_CLEAR)
-        {
-            if (pVM->hm.s.fMdsClearOnVmEntry)
-                fWorldSwitcher |= HM_WSF_MDS_ENTRY;
-            else if (pVM->hm.s.fMdsClearOnSched)
-                fWorldSwitcher |= HM_WSF_MDS_SCHED;
-        }
+        if (pVM->hm.s.fIbpbOnVmExit)
+            fWorldSwitcher |= HM_WSF_IBPB_EXIT;
+        if (pVM->hm.s.fIbpbOnVmEntry)
+            fWorldSwitcher |= HM_WSF_IBPB_ENTRY;
     }
+    if (g_CpumHostFeatures.s.fFlushCmd)
+    {
+        if (pVM->hm.s.fL1dFlushOnVmEntry)
+            fWorldSwitcher |= HM_WSF_L1D_ENTRY;
+        else if (pVM->hm.s.fL1dFlushOnSched)
+            fWorldSwitcher |= HM_WSF_L1D_SCHED;
+    }
+    if (g_CpumHostFeatures.s.fMdsClear)
+    {
+        if (pVM->hm.s.fMdsClearOnVmEntry)
+            fWorldSwitcher |= HM_WSF_MDS_ENTRY;
+        else if (pVM->hm.s.fMdsClearOnSched)
+            fWorldSwitcher |= HM_WSF_MDS_SCHED;
+    }
+    if (g_CpumHostFeatures.s.fSpecCtrlMsr)
+    {
+        /** @todo this may be too early for intel? */
+        if (pVM->cpum.ro.GuestFeatures.fSpecCtrlMsr)
+            fWorldSwitcher |= HM_WSF_SPEC_CTRL;
+    }
+
+    /* Distribute the flags. */
     for (VMCPUID idCpu = 0; idCpu < pVM->cCpus; idCpu++)
     {
         PVMCPUCC pVCpu = VMCC_GET_CPU(pVM, idCpu);
         pVCpu->hmr0.s.fWorldSwitcher = fWorldSwitcher;
     }
     pVM->hm.s.ForR3.fWorldSwitcher = fWorldSwitcher;
-
 
     /*
      * Call the hardware specific initialization method.

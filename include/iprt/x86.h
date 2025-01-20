@@ -908,13 +908,19 @@ typedef const X86CPUIDFEATEDX *PCX86CPUIDFEATEDX;
 #define X86_CPUID_AMD_EFEID_EBX_IRPERF                      RT_BIT_32(1)
 /** Bit 2 - XSaveErPtr - Always XSAVE* and XRSTR* error pointers. */
 #define X86_CPUID_AMD_EFEID_EBX_XSAVE_ER_PTR                RT_BIT_32(2)
+/** Bit 3 - INVLPGB - Supports the INVLPGB instruction. */
+#define X86_CPUID_AMD_EFEID_EBX_INVLPGB                     RT_BIT_32(3)
 /** Bit 4 - RDPRU - Supports the RDPRU instruction. */
 #define X86_CPUID_AMD_EFEID_EBX_RDPRU                       RT_BIT_32(4)
+/** Bit 6 - BE - Has bandwidth enforcement extension. */
+#define X86_CPUID_AMD_EFEID_EBX_BE                          RT_BIT_32(6)
 /** Bit 8 - MCOMMIT - Supports the MCOMMIT instruction. */
 #define X86_CPUID_AMD_EFEID_EBX_MCOMMIT                     RT_BIT_32(8)
 /* AMD pipeline length: 9 feature bits ;-) */
-/** Bit 12 - IBPB - Supports the IBPB command in IA32_PRED_CMD. */
+/** Bit 12 - IBPB - Supports IA32_PRED_CMD.IBPB. */
 #define X86_CPUID_AMD_EFEID_EBX_IBPB                        RT_BIT_32(12)
+/** Bit 13 - INT_WBINVD - WBINVD/WBNOINVD are interruptible. */
+#define X86_CPUID_AMD_EFEID_EBX_INT_WBINVD                  RT_BIT_32(13)
 /** Bit 14 - IBRS - Supports the IBRS bit in IA32_SPEC_CTRL. */
 #define X86_CPUID_AMD_EFEID_EBX_IBRS                        RT_BIT_32(14)
 /** Bit 15 - STIBP - Supports the STIBP bit in IA32_SPEC_CTRL. */
@@ -925,12 +931,31 @@ typedef const X86CPUIDFEATEDX *PCX86CPUIDFEATEDX;
 #define X86_CPUID_AMD_EFEID_EBX_STIBP_ALWAYS_ON             RT_BIT_32(17)
 /** Bit 18 - IBRS preferred - IBRS is preferred over software mitigations. */
 #define X86_CPUID_AMD_EFEID_EBX_IBRS_PREFERRED              RT_BIT_32(18)
+/** Bit 19 - IBRS same mode - IBRS provides same mode speculation limits. */
+#define X86_CPUID_AMD_EFEID_EBX_IBRS_SAME_MODE              RT_BIT_32(19)
+/** Bit 20 - EferLmsleUnsupported - The EFER.LMSLE bit is not supported. */
+#define X86_CPUID_AMD_EFEID_EBX_NO_EFER_LMSLE               RT_BIT_32(20)
+/** Bit 21 - INVLPGBnestedPages - The INVLPGB instruction supports
+ *  invalidating nested translations. */
+#define X86_CPUID_AMD_EFEID_EBX_INVLPGB_NESTED_PAGES        RT_BIT_32(21)
+/** Bit 23 - PPIN - protected process inventory number. */
+#define X86_CPUID_AMD_EFEID_EBX_PPIN                        RT_BIT_32(23)
 /** Bit 24 - Speculative Store Bypass Disable supported in SPEC_CTL. */
 #define X86_CPUID_AMD_EFEID_EBX_SPEC_CTRL_SSBD              RT_BIT_32(24)
 /** Bit 25 - Speculative Store Bypass Disable supported in VIRT_SPEC_CTL. */
 #define X86_CPUID_AMD_EFEID_EBX_VIRT_SPEC_CTRL_SSBD         RT_BIT_32(25)
 /** Bit 26 - Speculative Store Bypass Disable not required. */
-#define X86_CPUID_AMD_EFEID_EBX_NO_SSBD_REQUIRED            RT_BIT_32(26)
+#define X86_CPUID_AMD_EFEID_EBX_SSBD_NOT_REQUIRED           RT_BIT_32(26)
+/** Bit 27 - CPPC - Supports collaborative processor performance control. */
+#define X86_CPUID_AMD_EFEID_EBX_CPPC                        RT_BIT_32(27)
+/** Bit 28 - PSFD - Supports IA32_SPEC_CTRL.PSFD (bit 7). */
+#define X86_CPUID_AMD_EFEID_EBX_PSFD                        RT_BIT_32(28)
+/** Bit 29 - BTC_NO - CPU not subject to branch type confusion. */
+#define X86_CPUID_AMD_EFEID_EBX_BTC_NO                      RT_BIT_32(29)
+/** Bit 30 - IBPB_RET - Supports returns type with IA32_PRED_CMD.IBPB? */
+#define X86_CPUID_AMD_EFEID_EBX_IBPB_RET                    RT_BIT_32(30)
+/** Bit 31 - BRS - Branch sampling. */
+#define X86_CPUID_AMD_EFEID_EBX_BRS                         RT_BIT_32(31)
 /** @} */
 
 
@@ -991,8 +1016,27 @@ typedef const X86CPUIDFEATEDX *PCX86CPUIDFEATEDX;
 #define X86_CPUID_SVM_FEATURE_EDX_NST_VIRT_VMCB_ADDR_CHK    RT_BIT(28)
 /** Bit 29 - TlbiCtl - Supports INVLPGB/TLBSYNC in VMCB and TLBSYNC intercept. */
 #define X86_CPUID_SVM_FEATURE_EDX_BUS_LOCK_THRESHOLD        RT_BIT(29)
+/** @} */
+
+/** @name CPUID AMD Fn8000_0021
+ * CPUID query with EAX=0x80000021.
+ * @{
+ */
+/** Bit 27 - SBPB - Supports IA32_PRED_CMD[7(SBPB)] - selective branch
+ *  predictor barrier. */
+#define X86_CPUID_AMD_21_EAX_SBPB                           RT_BIT(27)
+/** Bit 28 - IBPB_BRTYPE - IA32_PRED_CMD.IBPB flushes all branch types. */
+#define X86_CPUID_AMD_21_EAX_IBPB_BRTYPE                    RT_BIT(28)
+/** Bit 29 - SRSO_NO - CPU not affected by SRSO. */
+#define X86_CPUID_AMD_21_EAX_SRSO_NO                        RT_BIT(29)
+/** Bit 30 - SRSO_USER_KERNEL_NO - CPU not affected by SRSO crossing user/kernel
+ *  boundraries. */
+#define X86_CPUID_AMD_21_EAX_SRSO_USER_KERNEL_NO            RT_BIT(30)
+/** Bit 31 - SRSO_MSR_FIX - Supports BP_CFG[BpSpecReduce(4)] for SRSO fixing. */
+#define X86_CPUID_AMD_21_EAX_SRSO_MSR_FIX                   RT_BIT(31)
 
 /** @} */
+
 
 
 /** @name CR0
@@ -1489,8 +1533,10 @@ AssertCompile(X86_DR7_ANY_RW_IO(UINT32_C(0x00040000)) == 0);
 /** Prediction command register.
  * Write only, logical processor scope, no state since write only. */
 #define MSR_IA32_PRED_CMD                   0x49
-/** IBPB - Indirect branch prediction barrie when written as 1. */
+/** IBPB - Indirect branch prediction barrier when written as 1. */
 #define MSR_IA32_PRED_CMD_F_IBPB                    RT_BIT_64(0)
+/** SBPB - Selective branch prediction barrier when written as 1. */
+#define MSR_IA32_PRED_CMD_F_SBPB                    RT_BIT_64(7)
 
 /** BIOS update trigger (microcode update). */
 #define MSR_IA32_BIOS_UPDT_TRIG             0x79
@@ -1653,7 +1699,9 @@ typedef const X86MTRRVAR *PCX86MTRRVAR;
 #define MSR_IA32_ARCH_CAP_F_MON_UMON_MITIG_SUPPORT  RT_BIT_64(30)
 /** @} */
 
-/** Flush command register. */
+/** Flush command register.
+ * Introduced for mitigating CVE-2018-3615 (Foreshadow), CVE-2018-3620 (NG),
+ * CVE-2018-3646 (NG) - intel only. */
 #define MSR_IA32_FLUSH_CMD                  UINT32_C(0x10b)
 /** Flush the level 1 data cache when this bit is written. */
 #define MSR_IA32_FLUSH_CMD_F_L1D                    RT_BIT_64(0)

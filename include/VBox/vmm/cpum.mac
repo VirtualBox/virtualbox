@@ -264,10 +264,31 @@ endstruc
 %define CPUMSELREG_FLAGS_VALID_MASK 0x0003
 
 
+%define CPUMCTX_MAX_MTRRVAR_COUNT   16
+
 ;;
 ; Guest MSR state.
 struc CPUMCTXMSRS
-    .au64               resq  64
+    .msr.TscAux                         resq 1
+    .msr.MiscEnable                     resq 1
+    .msr.MtrrDefType                    resq 1
+    .msr.MtrrFix64K_00000               resq 1
+    .msr.MtrrFix16K_80000               resq 1
+    .msr.MtrrFix16K_A0000               resq 1
+    .msr.MtrrFix4K_C0000                resq 1
+    .msr.MtrrFix4K_C8000                resq 1
+    .msr.MtrrFix4K_D0000                resq 1
+    .msr.MtrrFix4K_D8000                resq 1
+    .msr.MtrrFix4K_E0000                resq 1
+    .msr.MtrrFix4K_E8000                resq 1
+    .msr.MtrrFix4K_F0000                resq 1
+    .msr.MtrrFix4K_F8000                resq 1
+    .msr.PkgCStateCfgCtrl               resq 1
+    .msr.SpecCtrl                       resq 1
+    .msr.ArchCaps                       resq 1
+    .msr.MtrrCap                        resq 1
+    .msr.aMtrrVarMsrs                   resq CPUMCTX_MAX_MTRRVAR_COUNT
+    alignb 512
 endstruc
 
 
