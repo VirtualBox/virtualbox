@@ -1,4 +1,4 @@
-/* $Id: keyboard-layouts.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: keyboard-layouts.h 107973 2025-01-20 23:46:48Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox/Frontends/Common - X11 keyboard driver translation tables (keyboard layouts).
  *
@@ -875,6 +875,15 @@ static const char main_key_fr_latin9_sundeadkeys[MAIN_LEN][2] =
 "aA","zZ","eE","rR","tT","yY","uU","iI","oO","pP","\x1\x4","$\xa3",
 "qQ","sS","dD","fF","gG","hH","jJ","kK","lL","mM","\xf9%","*\xb5",
 "wW","xX","cC","vV","bB","nN",",?",";.",":/","!\xa7","<>","\x0\x0","\x0\x0"
+};
+
+/* France, Bepo */
+static const char main_key_fr_bepo[MAIN_LEN][2] =
+{
+"$#","\"1","\xab""2","\xbb""3","(4",")5","@6","+7","-8","/9","*0","=\xb0","%`",
+"bB","\xe9\xc9","pP","oO","\xe8\xc8","^!","vV","dD","lL","jJ","zZ","wW",
+"aA","uU","iI","eE",",;","cC","tT","sS","rR","nN","mM","\xe7\xc7",
+"\xe0\xc0","yY","xX",".:","kK","'?","qQ","gG","hH","fF","\xea\xca","\x0\x0","\x0\x0"
 };
 
 /* France, Dvorak */

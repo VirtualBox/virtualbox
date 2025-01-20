@@ -1,4 +1,4 @@
-/* $Id: keyboard-list.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: keyboard-list.h 107973 2025-01-20 23:46:48Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox/Frontends/Common - X11 keyboard driver translation tables (keyboard layouts)
  *
@@ -132,6 +132,7 @@
  {"France, (Legacy) Alternative", &main_key_fr_latin9},
  {"France, (Legacy) Alternative, eliminate dead keys", &main_key_fr_latin9_nodeadkeys},
  {"France, (Legacy) Alternative, Sun dead keys", &main_key_fr_latin9_sundeadkeys},
+ {"France, Bepo", &main_key_fr_bepo},
  {"France, Dvorak", &main_key_fr_dvorak},
  {"France, Macintosh", &main_key_fr_mac},
  {"Ghana", &main_key_gh},
