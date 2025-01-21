@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 107557 2025-01-08 12:33:38Z dmitrii.grigorev@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 107980 2025-01-21 09:35:59Z dmitrii.grigorev@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -4267,7 +4267,7 @@ static void vmsvgaR3FifoHandleExtCmd(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGAST
             AssertLogRelMsgBreak(RT_VALID_PTR(pSSM), ("pSSM=%p\n", pSSM));
             vmsvgaR3SaveExecFifo(pDevIns->pHlpR3, pThisCC, pSSM);
 # ifdef VBOX_WITH_VMSVGA3D
-            if (pThis->svga.f3DEnabled)
+            if (pThis->svga.f3DEnabled || pThis->svga.fVMSVGA2dGBO)
             {
                 if (vmsvga3dIsLegacyBackend(pThisCC))
                     vmsvga3dSaveExec(pDevIns, pThisCC, pSSM);
@@ -4287,7 +4287,7 @@ static void vmsvgaR3FifoHandleExtCmd(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGAST
             AssertLogRelMsgBreak(RT_VALID_PTR(pLoadState), ("pLoadState=%p\n", pLoadState));
             vmsvgaR3LoadExecFifo(pDevIns->pHlpR3, pThis, pThisCC, pLoadState->pSSM, pLoadState->uVersion, pLoadState->uPass);
 # ifdef VBOX_WITH_VMSVGA3D
-            if (pThis->svga.f3DEnabled)
+            if (pThis->svga.f3DEnabled || pThis->svga.fVMSVGA2dGBO)
             {
                 /* The following RT_OS_DARWIN code was in vmsvga3dLoadExec and therefore must be executed before each vmsvga3dLoadExec invocation. */
 #  ifndef RT_OS_DARWIN /** @todo r=bird: this is normally done on the EMT, so for DARWIN we do that when loading saved state too now. See DevVGA-SVGA.cpp */
