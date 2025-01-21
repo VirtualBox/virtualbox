@@ -1,4 +1,4 @@
-# $Id: Version.kmk 107950 2025-01-17 14:35:50Z samuel.burchill@oracle.com $
+# $Id: Version.kmk 107983 2025-01-21 12:39:43Z samuel.burchill@oracle.com $
 ## @file
 # The VirtualBox version.
 #
@@ -34,7 +34,7 @@ VBOX_VERSION_MINOR  = 1
 # This is the current build number. It should be increased every time we publish a
 # new build. The define is available in every source file. Only even build numbers
 # will be published, odd numbers are set during development.
-VBOX_VERSION_BUILD  = 6
+VBOX_VERSION_BUILD  =  6
 # This can be overridden in LocalConfig.kmk or elsewhere.
 # For the convention, see checks near the end of Config.kmk.
 VBOX_BUILD_PUBLISHER =
@@ -45,4 +45,4 @@ VBOX_VERSION_PRERELEASE =
 VBOX_RELEASE_EXACT_MATCH =
 
 # Fallback revision when there is no other source. See Config.kmk.
-VBOX_SVN_REV_VERSION_FALLBACK := $(patsubst %:,,  $Rev: 107950 $  )
+VBOX_SVN_REV_VERSION_FALLBACK := $(patsubst %:,,  $Rev: 107983 $  )
