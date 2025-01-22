@@ -49,4 +49,5 @@
 [LibraryClasses]
   DebugLib
   BaseLib
+  IoLib # VBox: Added
 

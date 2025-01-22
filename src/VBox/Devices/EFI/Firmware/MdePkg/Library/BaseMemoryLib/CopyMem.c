@@ -13,6 +13,9 @@
 
 #include "MemLibInternals.h"
 
+#include <Library/IoLib.h>
+
+
 /**
   Copy Length bytes from Source to Destination.
 
@@ -49,7 +52,13 @@ InternalMemCopyMem (
       Destination64 = (UINT64 *)DestinationBuffer;
       Source64      = (CONST UINT64 *)SourceBuffer;
       while (Length >= 8) {
+#if !defined(VBOX) || !defined(MDE_CPU_AARCH64)
         *(Destination64++) = *(Source64++);
+#else
+        MmioWrite64(Destination64, MmioRead64(Source64));
+        Destination64++;
+        Source64++;
+#endif
         Length            -= 8;
       }
 
@@ -57,7 +66,13 @@ InternalMemCopyMem (
       Destination8 = (UINT8 *)Destination64;
       Source8      = (CONST UINT8 *)Source64;
       while (Length-- != 0) {
+#if !defined(VBOX) || !defined(MDE_CPU_AARCH64)
         *(Destination8++) = *(Source8++);
+#else
+        MmioWrite8(Destination8, MmioRead8(Source8));
+        Destination8++;
+        Source8++;
+#endif
       }
     } else if (SourceBuffer < DestinationBuffer) {
       Destination64 = (UINT64 *)((UINTN)DestinationBuffer + Length);
@@ -73,7 +88,13 @@ InternalMemCopyMem (
         Source8      = (CONST UINT8 *)Source64;
 
         while (Alignment-- != 0) {
+#if !defined(VBOX) || !defined(MDE_CPU_AARCH64)
           *(--Destination8) = *(--Source8);
+#else
+          Destination8--;
+          Source8--;
+          MmioWrite8(Destination8, MmioRead8(Source8));
+#endif
           --Length;
         }
 
@@ -82,7 +103,13 @@ InternalMemCopyMem (
       }
 
       while (Length > 0) {
+#if !defined(VBOX) || !defined(MDE_CPU_AARCH64)
         *(--Destination64) = *(--Source64);
+#else
+        Destination64--;
+        Source64--;
+        MmioWrite64(Destination64, MmioRead64(Source64));
+#endif
         Length            -= 8;
       }
     }
@@ -91,7 +118,13 @@ InternalMemCopyMem (
       Destination32 = (UINT32 *)DestinationBuffer;
       Source32      = (CONST UINT32 *)SourceBuffer;
       while (Length >= 4) {
+#if !defined(VBOX) || !defined(MDE_CPU_AARCH64)
         *(Destination32++) = *(Source32++);
+#else
+        MmioWrite32(Destination32, MmioRead32(Source32));
+        Destination32++;
+        Source32++;
+#endif
         Length            -= 4;
       }
 
@@ -99,7 +132,13 @@ InternalMemCopyMem (
       Destination8 = (UINT8 *)Destination32;
       Source8      = (CONST UINT8 *)Source32;
       while (Length-- != 0) {
+#if !defined(VBOX) || !defined(MDE_CPU_AARCH64)
         *(Destination8++) = *(Source8++);
+#else
+        MmioWrite8(Destination8, MmioRead8(Source8));
+        Destination8++;
+        Source8++;
+#endif
       }
     } else if (SourceBuffer < DestinationBuffer) {
       Destination32 = (UINT32 *)((UINTN)DestinationBuffer + Length);
@@ -115,7 +154,13 @@ InternalMemCopyMem (
         Source8      = (CONST UINT8 *)Source32;
 
         while (Alignment-- != 0) {
+#if !defined(VBOX) || !defined(MDE_CPU_AARCH64)
           *(--Destination8) = *(--Source8);
+#else
+          Destination8--;
+          Source8--;
+          MmioWrite8(Destination8, MmioRead8(Source8));
+#endif
           --Length;
         }
 
@@ -124,7 +169,13 @@ InternalMemCopyMem (
       }
 
       while (Length > 0) {
+#if !defined(VBOX) || !defined(MDE_CPU_AARCH64)
         *(--Destination32) = *(--Source32);
+#else
+        Destination32--;
+        Source32--;
+        MmioWrite32(Destination32, MmioRead32(Source32));
+#endif
         Length            -= 4;
       }
     }
@@ -133,13 +184,25 @@ InternalMemCopyMem (
       Destination8 = (UINT8 *)DestinationBuffer;
       Source8      = (CONST UINT8 *)SourceBuffer;
       while (Length-- != 0) {
+#if !defined(VBOX) || !defined(MDE_CPU_AARCH64)
         *(Destination8++) = *(Source8++);
+#else
+        MmioWrite8(Destination8, MmioRead8(Source8));
+        Destination8++;
+        Source8++;
+#endif
       }
     } else if (SourceBuffer < DestinationBuffer) {
       Destination8 = (UINT8 *)DestinationBuffer + (Length - 1);
       Source8      = (CONST UINT8 *)SourceBuffer + (Length - 1);
       while (Length-- != 0) {
+#if !defined(VBOX) || !defined(MDE_CPU_AARCH64)
         *(Destination8--) = *(Source8--);
+#else
+        MmioWrite8(Destination8, MmioRead8(Source8));
+        Destination8--;
+        Source8--;
+#endif
       }
     }
   }

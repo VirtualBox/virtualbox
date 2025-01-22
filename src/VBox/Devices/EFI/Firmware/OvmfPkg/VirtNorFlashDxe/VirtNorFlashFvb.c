@@ -172,6 +172,30 @@ InitializeFvAndVariableStoreHeaders (
   return Status;
 }
 
+#if defined(VBOX) && defined(MDE_CPU_AARCH64)
+static UINT16 NorFlashCalculateSum16 (
+  IN      CONST UINT16  *Buffer,
+  IN      UINTN         Length
+  )
+{
+  UINT16  Sum;
+  UINTN   Count;
+  UINTN   Total;
+
+  ASSERT (Buffer != NULL);
+  ASSERT (((UINTN)Buffer & 0x1) == 0);
+  ASSERT ((Length & 0x1) == 0);
+  ASSERT (Length <= (MAX_ADDRESS - ((UINTN)Buffer) + 1));
+
+  Total = Length / sizeof (*Buffer);
+  for (Sum = 0, Count = 0; Count < Total; Count++) {
+    Sum += MmioRead16((volatile UINT16 *)(Buffer + Count));
+  }
+
+  return Sum;
+}
+#endif
+
 /**
   Check the integrity of firmware volume header.
 
@@ -227,7 +251,11 @@ ValidateFvHeader (
   }
 
   // Verify the header checksum
+#if !defined(VBOX) || !defined(MDE_CPU_AARCH64)
   Checksum = CalculateSum16 ((UINT16 *)FwVolHeader, FwVolHeader->HeaderLength);
+#else
+  Checksum = NorFlashCalculateSum16 ((UINT16 *)FwVolHeader, FwVolHeader->HeaderLength);
+#endif
   if (Checksum != 0) {
     DEBUG ((
       DEBUG_INFO,
@@ -382,6 +410,7 @@ ValidateFvHeader (
       }
     }
 
+#if !defined(VBOX) || !defined(MDE_CPU_AARCH64) /* MSVC/clang generate instructions on arm64 in debug builds not supported by IEM right now. */
     DEBUG ((
       DEBUG_VERBOSE,
       "%a: +0x%04Lx: name=0x%x data=0x%x guid=%g '%s' (%a)\n",
@@ -393,6 +422,7 @@ ValidateFvHeader (
       VarName,
       VarState
       ));
+#endif
 
     VarPadding = (4 - (VarEnd & 3)) & 3;
     Status     = SafeUintnAdd (VarEnd, VarPadding, &VarOffset);
