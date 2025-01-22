@@ -1,4 +1,4 @@
-/* $Id: vkatDriverStack.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: vkatDriverStack.cpp 108006 2025-01-22 14:24:01Z andreas.loeffler@oracle.com $ */
 /** @file
  * Validation Kit Audio Test (VKAT) - Driver stack code.
  */
@@ -190,6 +190,15 @@ static DECLCALLBACK(int) audioTestDrvHlp_CFGMR3ValidateConfig(PCFGMNODE pNode, c
     return VINF_SUCCESS;
 }
 
+/**
+ * @copydoc PDMDRVHLPR3::pfnVMState
+ */
+static DECLCALLBACK(VMSTATE) audioTestDrvHlp_VMState(PPDMDRVINS pDrvIns)
+{
+    RT_NOREF(pDrvIns);
+    return VMSTATE_RUNNING; /* For mocking we report the VM state as running here. */
+}
+
 /** @} */
 
 /** @name Driver Helper Fakes
@@ -289,6 +298,7 @@ static const PDMDRVHLPR3 *audioTestFakeGetDrvHlp(void)
         s_DrvHlp.pfnCFGMQueryU8                 = audioTestDrvHlp_CFGMR3QueryU8;
         s_DrvHlp.pfnCFGMQueryU32                = audioTestDrvHlp_CFGMR3QueryU32;
         s_DrvHlp.pfnCFGMValidateConfig          = audioTestDrvHlp_CFGMR3ValidateConfig;
+        s_DrvHlp.pfnVMState                     = audioTestDrvHlp_VMState;
     }
     return &s_DrvHlp;
 }
