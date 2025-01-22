@@ -2379,6 +2379,18 @@ check_darwinversion()
   test_header "Darwin version"
   darwin_ver=`uname -r`
   case "$darwin_ver" in
+    24\.*)
+      darwin_ver="15.0" # Sequoia
+      ;;
+    23\.*)
+      darwin_ver="14.0" # Sonoma
+      ;;
+    22\.*)
+      darwin_ver="13.0" # Ventura
+      ;;
+    21\.*)
+      darwin_ver="12.0" # Monterey
+      ;;
     20\.*)
       darwin_ver="11.0" # Big Sur
       ;;
