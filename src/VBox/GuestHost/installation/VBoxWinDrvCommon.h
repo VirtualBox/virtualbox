@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvCommon.h 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvCommon.h 108020 2025-01-23 08:29:22Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvCommon - Common Windows driver functions.
  */
@@ -67,8 +67,8 @@ int VBoxWinDrvInfQueryModelEx(HINF hInf, PCRTUTF16 pwszSection, unsigned uIndex,
 int VBoxWinDrvInfQueryModel(HINF hInf, PCRTUTF16 pwszSection, unsigned uIndex, PRTUTF16 *ppwszValue, PDWORD pcwcValue);
 int VBoxWinDrvInfQueryInstallSectionEx(HINF hInf, PCRTUTF16 pwszModel, PRTUTF16 *ppwszValue, PDWORD pcwcValue);
 int VBoxWinDrvInfQueryInstallSection(HINF hInf, PCRTUTF16 pwszModel, PRTUTF16 *ppwszValue);
-int VBoxWinDrvInfQuerySectionVerEx(HINF hInf, UINT uIndex, PVBOXWINDRVINFSEC_VERSION pVer);
-int VBoxWinDrvInfQuerySectionVer(HINF hInf, PVBOXWINDRVINFSEC_VERSION pVer);
+int VBoxWinDrvInfQuerySectionVerEx(HINF hInf, UINT uIndex, PVBOXWINDRVINFSECVERSION pVer);
+int VBoxWinDrvInfQuerySectionVer(HINF hInf, PVBOXWINDRVINFSECVERSION pVer);
 
 const char *VBoxWinDrvSetupApiErrToStr(const DWORD dwErr);
 const char *VBoxWinDrvWinErrToStr(const DWORD dwErr);

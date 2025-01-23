@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvStore.h 107167 2024-11-26 09:06:00Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvStore.h 108020 2025-01-23 08:29:22Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvInst - Header for Windows driver store handling.
  */
@@ -56,7 +56,7 @@
 /**
  * Structure for keeping a generic Windows driver store list.
  */
-typedef struct _VBOXWINDRVSTORELIST
+typedef struct VBOXWINDRVSTORELIST
 {
     /** List node. */
     RTLISTANCHOR List;
@@ -69,11 +69,11 @@ typedef VBOXWINDRVSTORELIST *PVBOXWINDRVSTORELIST;
 /**
  * Structure for keeping a Windows driver store entry.
  */
-typedef struct _VBOXWINDRVSTOREENTRY
+typedef struct VBOXWINDRVSTOREENTRY
 {
     RTLISTNODE Node;
     /** Version section information. */
-    VBOXWINDRVINFSEC_VERSION Ver;
+    VBOXWINDRVINFSECVERSION  Ver;
     /** Full path to the oemXXX.inf file within the driver store. */
     RTUTF16                  wszInfFile[RTPATH_MAX];
     /** PnP ID of the driver.
@@ -89,13 +89,13 @@ typedef struct _VBOXWINDRVSTOREENTRY
 /** Pointer to a Windows driver store entry. */
 typedef VBOXWINDRVSTOREENTRY *PVBOXWINDRVSTOREENTRY;
 
-struct _VBOXWINDRVSTORE;
-typedef struct _VBOXWINDRVSTORE *PVBOXWINDRVSTORE;
+struct VBOXWINDRVSTORE;
+typedef struct VBOXWINDRVSTORE *PVBOXWINDRVSTORE;
 
 /**
  * Interface for a Windows driver store implementation.
  */
-typedef struct _VBOXWINDRVSTOREIFACE
+typedef struct VBOXWINDRVSTOREIFACE
 {
     /**
      * Adds a driver to the driver store.
@@ -131,7 +131,7 @@ typedef VBOXWINDRVSTOREIFACE *PVBOXWINDRVSTOREIFACE;
 /**
  * Enumeration for a driver store backend.
  */
-typedef enum _VBOXWINDRVSTOREBACKENDTYPE
+typedef enum VBOXWINDRVSTOREBACKENDTYPE
 {
     /** Invalid. */
     VBOXWINDRVSTOREBACKENDTYPE_INVALID = 0,
@@ -144,7 +144,7 @@ typedef enum _VBOXWINDRVSTOREBACKENDTYPE
  *
  * Currently only the (local) file system backend is supported.
  */
-typedef struct _VBOXWINDRVSTOREBACKEND
+typedef struct VBOXWINDRVSTOREBACKEND
 {
     VBOXWINDRVSTOREBACKENDTYPE enmType;
     /** The Windows driver store interface to use. */
@@ -163,7 +163,7 @@ typedef VBOXWINDRVSTOREBACKEND *PVBOXWINDRVSTOREBACKEND;
 /**
  * Structure for keeping Windows driver store instance data.
  */
-typedef struct _VBOXWINDRVSTORE
+typedef struct VBOXWINDRVSTORE
 {
     /** The current list of drivers. */
     VBOXWINDRVSTORELIST    lstDrivers;

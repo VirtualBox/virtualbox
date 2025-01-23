@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvStore.cpp 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvStore.cpp 108020 2025-01-23 08:29:22Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvStore - Windows driver store handling.
  */
@@ -118,10 +118,11 @@ void vboxWinDrvStoreEntryDestroy(PVBOXWINDRVSTOREENTRY pEntry)
 /**
  * Duplicates a Windows driver store entry.
  *
- * @returns Duplicated Windows driver store entry.
+ * @returns Duplicated Windows driver store entry.  Caller must correct
+ *          VBOXWINDRVSTOREENTRY::Node (list entry) immediately.
  * @param   pEntry              Windows driver store list to duplicate.
  */
-PVBOXWINDRVSTOREENTRY vboxWinDrvStoreEntryDup(PVBOXWINDRVSTOREENTRY pEntry)
+static PVBOXWINDRVSTOREENTRY vboxWinDrvStoreEntryDup(PVBOXWINDRVSTOREENTRY pEntry)
 {
     return (PVBOXWINDRVSTOREENTRY)RTMemDup(pEntry, sizeof(VBOXWINDRVSTOREENTRY));
 }
@@ -131,7 +132,7 @@ PVBOXWINDRVSTOREENTRY vboxWinDrvStoreEntryDup(PVBOXWINDRVSTOREENTRY pEntry)
  *
  * @param   pList               Windows driver store list to initialize.
  */
-void vboxWinDrvStoreListInit(PVBOXWINDRVSTORELIST pList)
+static void vboxWinDrvStoreListInit(PVBOXWINDRVSTORELIST pList)
 {
     RT_BZERO(pList, sizeof(VBOXWINDRVSTORELIST));
 
@@ -144,7 +145,7 @@ void vboxWinDrvStoreListInit(PVBOXWINDRVSTORELIST pList)
  * @returns VBox status code.
  * @param   ppList              Where to return the created Windows driver store list on success.
  */
-int vboxWinDrvStoreListCreate(PVBOXWINDRVSTORELIST *ppList)
+static int vboxWinDrvStoreListCreate(PVBOXWINDRVSTORELIST *ppList)
 {
     PVBOXWINDRVSTORELIST pList = (PVBOXWINDRVSTORELIST)RTMemAlloc(sizeof(VBOXWINDRVSTORELIST));
     AssertPtrReturn(pList, VERR_NO_MEMORY);
@@ -162,7 +163,7 @@ int vboxWinDrvStoreListCreate(PVBOXWINDRVSTORELIST *ppList)
  * @param   pList               Windows driver store list to destroy.
  *                              The pointer will be invalid after return.
  */
-void vboxWinDrvStoreListDestroy(PVBOXWINDRVSTORELIST pList)
+static void vboxWinDrvStoreListDestroy(PVBOXWINDRVSTORELIST pList)
 {
     if (!pList)
         return;
@@ -226,11 +227,11 @@ typedef enum VBOXWINDRVSTORELISTQUERYTYPE
  * @returns VBox status code.
  * @param   pList               Driver store list to query.
  * @param   enmType             Query type.
- * @param   pvType              Query data. Must match \a enmType.
+ * @param   pszTypeConst        Query data. Must match \a enmType.
  * @param   ppListResults       Where to return found results on success.
  *                              Must be destroyed with VBoxWinDrvStoreListFree().
  */
-static int vboxWinDrvStoreListQueryEx(PVBOXWINDRVSTORELIST pList, VBOXWINDRVSTORELISTQUERYTYPE enmType, const void *pvType,
+static int vboxWinDrvStoreListQueryEx(PVBOXWINDRVSTORELIST pList, VBOXWINDRVSTORELISTQUERYTYPE enmType, const char *pszTypeConst,
                                       PVBOXWINDRVSTORELIST *ppListResults)
 {
     PVBOXWINDRVSTORELIST pListResults;
@@ -239,48 +240,48 @@ static int vboxWinDrvStoreListQueryEx(PVBOXWINDRVSTORELIST pList, VBOXWINDRVSTOR
 
     /* Currently all query types require strings, so do this for all query times for now. */
     char *pszType = NULL;
-    if (pvType)
+    if (pszTypeConst)
     {
-        AssertReturn(RTStrIsValidEncoding((const char *)pvType), VERR_INVALID_PARAMETER);
-        pszType = RTStrDup((const char *)pvType);
+        AssertReturn(RTStrIsValidEncoding(pszTypeConst), VERR_INVALID_PARAMETER);
+        pszType = RTStrDup(pszTypeConst);
         AssertPtrReturnStmt(pszType, VBoxWinDrvStoreListFree(pListResults), VERR_NO_MEMORY);
-    }
 
-    PRTUTF16 papszHaystacks[4] = { NULL }; /* Array of haystacks to search in. */
-    size_t   cHaystacks        = 0;        /* Number of haystacks to search in, zero-based. */
+        /* Convert strings to lowercase, as RTStrSimplePatternMatch() is case sensitive. */
+        RTStrToLower(pszType);
+    }
 
     PVBOXWINDRVSTOREENTRY pCur;
     RTListForEach(&pList->List, pCur, VBOXWINDRVSTOREENTRY, Node)
     {
         bool fFound = false;
         if (pszType == NULL) /* No query type specified? Then directly add the entry to the list. */
-        {
             fFound = true;
-        }
         else
         {
+            PRTUTF16 apszHaystacks[3] = {};  /* Array of haystacks to search in. */
+            size_t   cHaystacks = 0;         /* Number of haystacks to search in, zero-based. */
             switch (enmType)
             {
                 case VBOXWINDRVSTORELISTQUERYTYPE_PNP_ID:
                 {
-                    papszHaystacks[cHaystacks++] = pCur->wszPnpId;
+                    apszHaystacks[cHaystacks++] = pCur->wszPnpId;
                     break;
                 }
                 case VBOXWINDRVSTORELISTQUERYTYPE_MODEL_NAME:
                 {
-                    papszHaystacks[cHaystacks++] = pCur->wszModel;
+                    apszHaystacks[cHaystacks++] = pCur->wszModel;
                     break;
                 }
                 case VBOXWINDRVSTORELISTQUERYTYPE_DRIVER_NAME:
                 {
-                    papszHaystacks[cHaystacks++] = pCur->wszDriverName;
+                    apszHaystacks[cHaystacks++] = pCur->wszDriverName;
                     break;
                 }
                 case VBOXWINDRVSTORELISTQUERYTYPE_ANY:
                 {
-                    papszHaystacks[cHaystacks++] = pCur->wszPnpId;
-                    papszHaystacks[cHaystacks++] = pCur->wszModel;
-                    papszHaystacks[cHaystacks++] = pCur->wszDriverName;
+                    apszHaystacks[cHaystacks++] = pCur->wszPnpId;
+                    apszHaystacks[cHaystacks++] = pCur->wszModel;
+                    apszHaystacks[cHaystacks++] = pCur->wszDriverName;
                     break;
                 }
 
@@ -288,19 +289,17 @@ static int vboxWinDrvStoreListQueryEx(PVBOXWINDRVSTORELIST pList, VBOXWINDRVSTOR
                     rc = VERR_NOT_IMPLEMENTED;
                     break;
             }
-
             if (RT_FAILURE(rc))
                 break;
 
+            Assert(cHaystacks <= RT_ELEMENTS(apszHaystacks));
             for (size_t i = 0; i < cHaystacks; i++)
             {
                 /* Slow, but does the job for now. */
                 char *pszHaystack;
-                rc = RTUtf16ToUtf8(papszHaystacks[i], &pszHaystack);
+                rc = RTUtf16ToUtf8(apszHaystacks[i], &pszHaystack);
                 if (RT_SUCCESS(rc))
                 {
-                    /* Convert strings to lowercase first, as RTStrSimplePatternMatch() is case sensitive. */
-                    RTStrToLower(pszType);
                     RTStrToLower(pszHaystack);
 
                     fFound = RTStrSimplePatternMatch(pszType, pszHaystack);
@@ -321,8 +320,6 @@ static int vboxWinDrvStoreListQueryEx(PVBOXWINDRVSTORELIST pList, VBOXWINDRVSTOR
             else
                 AssertFailedBreakStmt(rc = VERR_NO_MEMORY);
         }
-
-        cHaystacks = 0;
     }
 
     RTStrFree(pszType);
@@ -527,7 +524,7 @@ void VBoxWinDrvStoreDestroy(PVBOXWINDRVSTORE pDrvStore)
  *
  * @returns VBox status code.
  * @param   pDrvStore           Driver store to query.
- * @param   pszPattern          Pattern to query for. DOS-style wildcards supported.
+ * @param   pszPattern          Pattern (RTStrSimplePatternMatch) to query for.
  * @param   ppResults           Where to return the results list on success.
  *                              Must be free'd with VBoxWinDrvStoreListFree().
  */
@@ -554,14 +551,14 @@ int VBoxWinDrvStoreQueryAll(PVBOXWINDRVSTORE pDrvStore, PVBOXWINDRVSTORELIST *pp
  *
  * @returns VBox status code.
  * @param   pDrvStore           Driver store to query.
- * @param   pszPnpId            PnP ID to query. DOS-style wildcards supported.
+ * @param   pszPnpId            PnP ID pattern (RTStrSimplePatternMatch) to
+ *                              query.
  * @param   ppResults           Where to return the results list on success.
  *                              Must be free'd with VBoxWinDrvStoreListFree().
  */
 int VBoxWinDrvStoreQueryByPnpId(PVBOXWINDRVSTORE pDrvStore, const char *pszPnpId, PVBOXWINDRVSTORELIST *ppResults)
 {
-    return vboxWinDrvStoreListQueryEx(&pDrvStore->lstDrivers, VBOXWINDRVSTORELISTQUERYTYPE_PNP_ID, (const char *)pszPnpId,
-                                      ppResults);
+    return vboxWinDrvStoreListQueryEx(&pDrvStore->lstDrivers, VBOXWINDRVSTORELISTQUERYTYPE_PNP_ID, pszPnpId, ppResults);
 }
 
 /**
@@ -569,14 +566,14 @@ int VBoxWinDrvStoreQueryByPnpId(PVBOXWINDRVSTORE pDrvStore, const char *pszPnpId
  *
  * @returns VBox status code.
  * @param   pDrvStore           Driver store to query.
- * @param   pszPnpId            Model name to query. DOS-style wildcards supported.
+ * @param   pszPnpId            Model name pattern (RTStrSimplePatternMatch) to
+ *                              query.
  * @param   ppResults           Where to return the results list on success.
  *                              Must be free'd with VBoxWinDrvStoreListFree().
  */
 int VBoxWinDrvStoreQueryByModelName(PVBOXWINDRVSTORE pDrvStore, const char *pszModelName, PVBOXWINDRVSTORELIST *ppResults)
 {
-    return vboxWinDrvStoreListQueryEx(&pDrvStore->lstDrivers, VBOXWINDRVSTORELISTQUERYTYPE_MODEL_NAME, (const char *)pszModelName,
-                                      ppResults);
+    return vboxWinDrvStoreListQueryEx(&pDrvStore->lstDrivers, VBOXWINDRVSTORELISTQUERYTYPE_MODEL_NAME, pszModelName, ppResults);
 }
 
 /**

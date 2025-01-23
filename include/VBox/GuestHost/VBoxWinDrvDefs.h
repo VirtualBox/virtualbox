@@ -1,6 +1,6 @@
-/* $Id: VBoxWinDrvDefs.h 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvDefs.h 108020 2025-01-23 08:29:22Z andreas.loeffler@oracle.com $ */
 /** @file
- * VBoxWinDrvDefs - Common definitions for Windows driver functions.
+ * VBoxWinDrvDefs - Common definitions for Windows driver installation functions.
  */
 
 /*
@@ -84,7 +84,7 @@
 /**
  * Structure for keeping INF Version section information.
  */
-typedef struct _VBOXWINDRVINFSEC_VERSION
+typedef struct VBOXWINDRVINFSECVERSION
 {
     /** Catalog (.cat) file. */
     RTUTF16 wszCatalogFile[VBOXWINDRVINF_MAX_CATALOG_FILE_LEN];
@@ -92,8 +92,8 @@ typedef struct _VBOXWINDRVINFSEC_VERSION
     RTUTF16 wszDriverVer[VBOXWINDRVINF_MAX_DRIVER_VER_LEN];
     /** Provider name. */
     RTUTF16 wszProvider[VBOXWINDRVINF_MAX_PROVIDER_NAME_LEN];
-} VBOXWINDRVINFSEC_VERSION;
+} VBOXWINDRVINFSECVERSION;
 /** Pointer to structure for keeping INF Version section information. */
-typedef VBOXWINDRVINFSEC_VERSION *PVBOXWINDRVINFSEC_VERSION;
+typedef VBOXWINDRVINFSECVERSION *PVBOXWINDRVINFSECVERSION;
 
 #endif /* !VBOX_INCLUDED_GuestHost_VBoxWinDrvDefs_h */

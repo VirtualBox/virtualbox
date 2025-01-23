@@ -1,6 +1,6 @@
-/* $Id: VBoxWinDrvCommon.cpp 107452 2024-12-20 12:47:54Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvCommon.cpp 108020 2025-01-23 08:29:22Z andreas.loeffler@oracle.com $ */
 /** @file
- * VBoxWinDrvCommon - Common Windows driver functions.
+ * VBoxWinDrvCommon - Common Windows driver installation functions.
  */
 
 /*
@@ -51,16 +51,6 @@
 
 
 /*********************************************************************************************************************************
-*   Defines                                                                                                                      *
-*********************************************************************************************************************************/
-
-
-/*********************************************************************************************************************************
-*   Defined Constants And Macros                                                                                                 *
-*********************************************************************************************************************************/
-
-
-/*********************************************************************************************************************************
 *   Prototypes                                                                                                                   *
 *********************************************************************************************************************************/
 static int vboxWinDrvInfQueryContext(HINF hInf, LPCWSTR pwszSection, LPCWSTR pwszKey, PINFCONTEXT pCtx);
@@ -76,6 +66,9 @@ static int vboxWinDrvInfQueryContext(HINF hInf, LPCWSTR pwszSection, LPCWSTR pws
  */
 VBOXWINDRVINFTYPE VBoxWinDrvInfGetTypeEx(HINF hInf, PRTUTF16 *ppwszSection)
 {
+    if (ppwszSection)
+        *ppwszSection = NULL;
+
     /*
      * Regular driver?
      */
@@ -132,21 +125,17 @@ VBOXWINDRVINFTYPE VBoxWinDrvInfGetTypeEx(HINF hInf, PRTUTF16 *ppwszSection)
      * Only one or the other has to be present. */
     if (   pwszManufacturerSection
         && pwszPrimitiveSection)
-    {
         return VBOXWINDRVINFTYPE_INVALID;
-    }
-    else if (pwszManufacturerSection)
+    if (pwszManufacturerSection)
     {
         if (ppwszSection)
             *ppwszSection = RTUtf16Dup(pwszManufacturerSection);
-
         return VBOXWINDRVINFTYPE_NORMAL;
     }
-    else if (pwszPrimitiveSection)
+    if (pwszPrimitiveSection)
     {
         if (ppwszSection)
             *ppwszSection = RTUtf16Dup(pwszPrimitiveSection);
-
         return VBOXWINDRVINFTYPE_PRIMITIVE;
     }
 
@@ -188,7 +177,9 @@ static int vboxWinDrvInfQueryContext(HINF hInf, LPCWSTR pwszSection, LPCWSTR pws
  * @param   pCtx                INF context to use.
  * @param   iValue              Index to query.
  * @param   ppwszValue          Where to return the value on success.
- * @param   pcwcValue           Where to return the number of characters for \a ppwszValue. Optional an can be NULL.
+ * @param   pcwcValue           Where to return the number of characters in the
+ *                              string returned via \a ppwszValue, including the
+ *                              zero terminator. Optional and can be NULL.
  */
 int VBoxWinDrvInfQueryKeyValue(PINFCONTEXT pCtx, DWORD iValue, PRTUTF16 *ppwszValue, PDWORD pcwcValue)
 {
@@ -230,21 +221,20 @@ int VBoxWinDrvInfQueryKeyValue(PINFCONTEXT pCtx, DWORD iValue, PRTUTF16 *ppwszVa
  * @param   uIndex              Index of model to query.
  *                              Currently only the first model (index 0) is supported.
  * @param   ppwszValue          Where to return the model name on success.
- * @param   pcwcValue           Where to return the number of characters for \a ppwszValue. Optional an can be NULL.
+ * @param   pcwcValue           Where to return the number of characters in the
+ *                              string returned via \a ppwszValue, including the
+ *                              zero terminator. Optional and can be NULL.
  */
 int VBoxWinDrvInfQueryModelEx(HINF hInf, PCRTUTF16 pwszSection, unsigned uIndex, PRTUTF16 *ppwszValue, PDWORD pcwcValue)
 {
-    AssertPtrReturn(pwszSection, VERR_INVALID_POINTER);
-    AssertReturn(uIndex == 0, VERR_INVALID_PARAMETER);
-
     *ppwszValue = NULL;
     if (pcwcValue)
         *pcwcValue = 0;
-
-    int rc = VINF_SUCCESS;
+    AssertPtrReturn(pwszSection, VERR_INVALID_POINTER);
+    AssertReturn(uIndex == 0, VERR_INVALID_PARAMETER);
 
     INFCONTEXT InfCtx;
-    rc = vboxWinDrvInfQueryContext(hInf, pwszSection, NULL, &InfCtx);
+    int rc = vboxWinDrvInfQueryContext(hInf, pwszSection, NULL, &InfCtx);
     if (RT_FAILURE(rc))
         return rc;
 
@@ -253,9 +243,6 @@ int VBoxWinDrvInfQueryModelEx(HINF hInf, PCRTUTF16 pwszSection, unsigned uIndex,
     rc = VBoxWinDrvInfQueryKeyValue(&InfCtx, 1, &pwszModel, &cwcModels);
     if (RT_FAILURE(rc))
         return rc;
-
-    PRTUTF16 pwszResult = NULL;
-    DWORD    cwcResult  = 0;
 
     PRTUTF16 pwszPlatform = NULL;
     DWORD    cwcPlatform;
@@ -269,19 +256,23 @@ int VBoxWinDrvInfQueryModelEx(HINF hInf, PCRTUTF16 pwszSection, unsigned uIndex,
         if (RTUtf16FindAscii(pwszPlatform, VBOXWINDRVINF_NT_NATIVE_ARCH_STR) == 0)
         {
             RTUTF16 wszSection[VBOXWINDRVINF_MAX_SECTION_NAME_LEN];
-            rc = RTUtf16Copy(wszSection, sizeof(wszSection), pwszModel);
+            rc = RTUtf16Copy(wszSection, RT_ELEMENTS(wszSection), pwszModel);
             if (RT_SUCCESS(rc))
             {
-                rc = RTUtf16Cat(wszSection, sizeof(wszSection), VBOXWINDRVINF_DECORATION_SEP_UTF16_STR);
+                rc = RTUtf16Cat(wszSection, RT_ELEMENTS(wszSection), VBOXWINDRVINF_DECORATION_SEP_UTF16_STR);
                 if (RT_SUCCESS(rc))
                 {
-                    rc = RTUtf16Cat(wszSection, sizeof(wszSection), pwszPlatform);
+                    rc = RTUtf16Cat(wszSection, RT_ELEMENTS(wszSection), pwszPlatform);
                     if (RT_SUCCESS(rc))
                     {
-                        pwszResult = RTUtf16Dup(wszSection);
+                        /** @todo r=bird: Mixing RTMemAlloc and RTUtf16Dup/RTUtf16Alloc is not
+                         *        allowed because of RTMEM_WRAP_TO_EF_APIS and other reasons!  */
+                        PRTUTF16 pwszResult = RTUtf16Dup(wszSection);
                         if (pwszResult)
                         {
-                            cwcResult = (DWORD)RTUtf16Len(wszSection);
+                            *ppwszValue = pwszResult;
+                            if (pcwcValue)
+                                *pcwcValue = (DWORD)(RTUtf16Len(wszSection) + 1);
                         }
                         else
                             rc = VERR_NO_MEMORY;
@@ -291,24 +282,16 @@ int VBoxWinDrvInfQueryModelEx(HINF hInf, PCRTUTF16 pwszSection, unsigned uIndex,
         }
         else
             rc = VERR_PLATFORM_ARCH_NOT_SUPPORTED;
+        RTMemFree(pwszPlatform);
+        RTMemFree(pwszModel);
     }
-    else /* Model w/o platform. */
+    else
     {
-        pwszResult = pwszModel;
-        cwcResult  = cwcModels;
-        pwszModel  = NULL;
-
-        rc = VINF_SUCCESS;
-    }
-
-    RTMemFree(pwszModel);
-    RTMemFree(pwszPlatform);
-
-    if (RT_SUCCESS(rc))
-    {
-        *ppwszValue = pwszResult;
+        /* Model without platform - just return the pwszModel string. */
+        *ppwszValue = pwszModel;
         if (pcwcValue)
-            *pcwcValue = cwcResult;
+            *pcwcValue = cwcModels;
+        rc = VINF_SUCCESS;
     }
 
     return rc;
@@ -337,55 +320,71 @@ int VBoxWinDrvInfQueryInstallSection(HINF hInf, PCRTUTF16 pwszModel, PRTUTF16 *p
  * @param   uIndex              Index of version information to query. Usually 0.
  * @param   pVer                Where to return the Version section information on success.
  */
-int VBoxWinDrvInfQuerySectionVerEx(HINF hInf, UINT uIndex, PVBOXWINDRVINFSEC_VERSION pVer)
+int VBoxWinDrvInfQuerySectionVerEx(HINF hInf, UINT uIndex, PVBOXWINDRVINFSECVERSION pVer)
 {
     DWORD dwSize = 0;
     bool fRc = SetupGetInfInformationW(hInf, INFINFO_INF_SPEC_IS_HINF, NULL, 0, &dwSize);
     if (!fRc || !dwSize)
         return VERR_NOT_FOUND;
 
-    int rc = VINF_SUCCESS;
+    int rc;
 
-    PSP_INF_INFORMATION pInfo = (PSP_INF_INFORMATION)RTMemAlloc(dwSize);
+    PSP_INF_INFORMATION pInfo = (PSP_INF_INFORMATION)RTMemAllocZ(dwSize);
     AssertPtrReturn(pInfo, VERR_NO_MEMORY);
     fRc = SetupGetInfInformationW(hInf, INFINFO_INF_SPEC_IS_HINF, pInfo, dwSize, NULL);
     if (fRc)
     {
         if (pInfo->InfStyle == INF_STYLE_WIN4)
         {
+            /*
+             * We query all the keys and values for the given index.
+             */
             dwSize = 0;
             fRc = SetupQueryInfVersionInformationW(pInfo, uIndex, NULL /* Key, NULL means all */,
                                                    NULL, 0, &dwSize);
             if (fRc)
             {
-                PRTUTF16 pwszInfo = (PRTUTF16)RTMemAlloc(dwSize * sizeof(RTUTF16));
-                if (pwszInfo)
+                PRTUTF16 pwszzInfo = (PRTUTF16)RTMemAllocZ(dwSize * sizeof(RTUTF16));
+                if (pwszzInfo)
                 {
                     fRc = SetupQueryInfVersionInformationW(pInfo, uIndex, NULL /* Key, NULL means all */,
-                                                           pwszInfo, dwSize, NULL);
+                                                           pwszzInfo, dwSize, NULL);
+                    if (fRc)
+                    {
+                        /*
+                         * Parse the block of "key1\0value1\0\key2\0\value2\0....\0\0" strings,
+                         * snapping up stuff we know.
+                         */
+                        rc = VINF_SUCCESS;
+                        size_t off  = 0;
+                        while (off < dwSize)
+                        {
+                            PRTUTF16 const pwszKey = &pwszzInfo[off];
+                            size_t const   cwcKey  = RTUtf16NLen(pwszKey, dwSize - off);
+                            off += cwcKey + 1;
+                            if (off >= dwSize)
+                                break;
+                            PRTUTF16 const pwszValue = &pwszzInfo[off];
+                            size_t const   cwcValue  = RTUtf16NLen(pwszValue, dwSize - off);
+                            off += cwcValue + 1;
 
 /** Macro to find a specific key and assign its value to the given string. */
-#define GET_VALUE(a_Key, a_String) \
-    if (!RTUtf16ICmp(pwsz, a_Key)) \
+#define GET_VALUE(a_wszKey, a_wszDst) \
+    if (!RTUtf16ICmp(pwszKey, a_wszKey)) \
     { \
-        rc = RTUtf16Printf(a_String, RT_ELEMENTS(a_String), "%ls", pwsz + cch + 1 /* SKip key + terminator */); \
+        rc = RTUtf16CopyEx(a_wszDst, RT_ELEMENTS(a_wszDst), pwszValue, cwcValue); \
         AssertRCBreak(rc); \
     }
-                    PRTUTF16 pwsz = pwszInfo;
-                    while (dwSize)
-                    {
-                        size_t const cch = RTUtf16Len(pwsz);
-
-                        GET_VALUE(L"DriverVer", pVer->wszDriverVer);
-                        GET_VALUE(L"Provider", pVer->wszProvider);
-                        GET_VALUE(L"CatalogFile", pVer->wszCatalogFile);
-
-                        dwSize -= (DWORD)cch + 1;
-                        pwsz   += cch + 1;
-                    }
-                    Assert(dwSize == 0);
+                            GET_VALUE(L"DriverVer", pVer->wszDriverVer);
+                            GET_VALUE(L"Provider", pVer->wszProvider);
+                            GET_VALUE(L"CatalogFile", pVer->wszCatalogFile);
 #undef GET_VALUE
-                    RTMemFree(pwszInfo);
+                        }
+                        Assert(off == dwSize);
+                    }
+                    else
+                        rc = VBoxWinDrvInstErrorFromWin32(GetLastError());
+                    RTMemFree(pwszzInfo);
                 }
                 else
                     rc = VERR_NO_MEMORY;
@@ -410,7 +409,7 @@ int VBoxWinDrvInfQuerySectionVerEx(HINF hInf, UINT uIndex, PVBOXWINDRVINFSEC_VER
  * @param   hInf                INF handle to use.
  * @param   pVer                Where to return the Version section information on success.
  */
-int VBoxWinDrvInfQuerySectionVer(HINF hInf, PVBOXWINDRVINFSEC_VERSION pVer)
+int VBoxWinDrvInfQuerySectionVer(HINF hInf, PVBOXWINDRVINFSECVERSION pVer)
 {
     return VBoxWinDrvInfQuerySectionVerEx(hInf, 0 /* uIndex */, pVer);
 }
@@ -426,11 +425,9 @@ int VBoxWinDrvInfQuerySectionVer(HINF hInf, PVBOXWINDRVINFSEC_VERSION pVer)
 int VBoxWinDrvInfOpenEx(PCRTUTF16 pwszInfFile, PRTUTF16 pwszClassName, HINF *phInf)
 {
     HINF hInf = SetupOpenInfFileW(pwszInfFile, pwszClassName, INF_STYLE_WIN4, NULL /*__in PUINT ErrorLine */);
-    if (hInf == INVALID_HANDLE_VALUE)
-        return VBoxWinDrvInstErrorFromWin32(GetLastError());
-
     *phInf = hInf;
-
+    if (hInf != INVALID_HANDLE_VALUE)
+        return VBoxWinDrvInstErrorFromWin32(GetLastError());
     return VINF_SUCCESS;
 }
 
@@ -445,17 +442,13 @@ int VBoxWinDrvInfOpenEx(PCRTUTF16 pwszInfFile, PRTUTF16 pwszClassName, HINF *phI
  */
 int VBoxWinDrvInfOpen(PCRTUTF16 pwszInfFile, HINF *phInf)
 {
-    int rc;
-
+    int     rc;
     GUID    guid = {};
-    RTUTF16 pwszClassName[MAX_CLASS_NAME_LEN] = { };
-    if (SetupDiGetINFClassW(pwszInfFile, &guid, &(pwszClassName[0]), sizeof(pwszClassName), NULL))
-    {
-        rc = VBoxWinDrvInfOpenEx(pwszInfFile, pwszClassName, phInf);
-    }
+    RTUTF16 wszClassName[MAX_CLASS_NAME_LEN] = {};
+    if (SetupDiGetINFClassW(pwszInfFile, &guid, wszClassName, RT_ELEMENTS(wszClassName), NULL))
+        rc = VBoxWinDrvInfOpenEx(pwszInfFile, wszClassName, phInf);
     else
         rc = VBoxWinDrvInstErrorFromWin32(GetLastError());
-
     return rc;
 }
 
