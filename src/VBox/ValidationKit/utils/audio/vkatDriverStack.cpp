@@ -1,4 +1,4 @@
-/* $Id: vkatDriverStack.cpp 108006 2025-01-22 14:24:01Z andreas.loeffler@oracle.com $ */
+/* $Id: vkatDriverStack.cpp 108045 2025-01-23 17:32:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * Validation Kit Audio Test (VKAT) - Driver stack code.
  */
@@ -158,6 +158,8 @@ static DECLCALLBACK(int) audioTestDrvHlp_CFGMR3QueryBoolDef(PCFGMNODE pNode, con
         if (   strcmp(pDrvReg->szName, "AUDIO") == 0
             && strcmp(pszName, "DebugEnabled") == 0)
             *pf = g_fDrvAudioDebug;
+        else if (strcmp(pszName, "CacheEnabled") == 0)
+            *pf = g_fDrvHostAudioCacheEnabled;
 
         if (g_uVerbosity > 2)
             RTPrintf("debug: CFGMR3QueryBoolDef([%s], %s, %p, %RTbool) -> %RTbool\n", pDrvReg->szName, pszName, pf, fDef, *pf);

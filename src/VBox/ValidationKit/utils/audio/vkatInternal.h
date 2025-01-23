@@ -1,4 +1,4 @@
-/* $Id: vkatInternal.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: vkatInternal.h 108045 2025-01-23 17:32:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * VKAT - Internal header file for common definitions + structs.
  */
@@ -385,6 +385,9 @@ extern unsigned         g_uVerbosity;
 extern bool             g_fDrvAudioDebug;
 /** DrvAudio: The debug output path. */
 extern const char      *g_pszDrvAudioDebug;
+/** Whether the host audio driver backend's caching is enabled or not. Defaults to enabled.
+ *  Only implemented for DrvHostAudioWasApi backend so far, ignored otherwise. */
+extern bool             g_fDrvHostAudioCacheEnabled;
 
 extern const VKATCMD    g_CmdTest;
 extern const VKATCMD    g_CmdVerify;
@@ -519,7 +522,8 @@ enum
     AUDIO_TEST_OPT_CMN_DAEMONIZE = 256,
     AUDIO_TEST_OPT_CMN_DAEMONIZED,
     AUDIO_TEST_OPT_CMN_DEBUG_AUDIO_ENABLE,
-    AUDIO_TEST_OPT_CMN_DEBUG_AUDIO_PATH
+    AUDIO_TEST_OPT_CMN_DEBUG_AUDIO_PATH,
+    AUDIO_TEST_OPT_CMN_DRVHOST_CACHE_ENABLED
 };
 
 /** For use in the option switch to handle common options. */
@@ -544,8 +548,12 @@ enum
                 g_fDrvAudioDebug = true; \
                 break; \
             \
+            case AUDIO_TEST_OPT_CMN_DRVHOST_CACHE_ENABLED: \
+                g_fDrvHostAudioCacheEnabled = a_ValueUnion.f; \
+                break; \
+            \
             case AUDIO_TEST_OPT_CMN_DEBUG_AUDIO_PATH: \
-                g_pszDrvAudioDebug = (a_ValueUnion).psz; \
+                g_pszDrvAudioDebug = a_ValueUnion.psz; \
                 break; \
             case AUDIO_TEST_OPT_CMN_DAEMONIZE: \
                 break; \

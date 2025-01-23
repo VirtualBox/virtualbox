@@ -1,4 +1,4 @@
-/* $Id: vkat.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: vkat.cpp 108045 2025-01-23 17:32:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * Validation Kit Audio Test (VKAT) utility for testing and validating the audio stack.
  */
@@ -170,12 +170,13 @@ enum
  */
 static const RTGETOPTDEF g_aCmdCommonOptions[] =
 {
-    { "--quiet",            'q',                                        RTGETOPT_REQ_NOTHING },
-    { "--verbose",          'v',                                        RTGETOPT_REQ_NOTHING },
-    { "--daemonize",        AUDIO_TEST_OPT_CMN_DAEMONIZE,               RTGETOPT_REQ_NOTHING },
-    { "--daemonized",       AUDIO_TEST_OPT_CMN_DAEMONIZED,              RTGETOPT_REQ_NOTHING },
-    { "--debug-audio",      AUDIO_TEST_OPT_CMN_DEBUG_AUDIO_ENABLE,      RTGETOPT_REQ_NOTHING },
-    { "--debug-audio-path", AUDIO_TEST_OPT_CMN_DEBUG_AUDIO_PATH,        RTGETOPT_REQ_STRING  },
+    { "--quiet",                 'q',                                      RTGETOPT_REQ_NOTHING },
+    { "--verbose",               'v',                                      RTGETOPT_REQ_NOTHING },
+    { "--daemonize",             AUDIO_TEST_OPT_CMN_DAEMONIZE,             RTGETOPT_REQ_NOTHING },
+    { "--daemonized",            AUDIO_TEST_OPT_CMN_DAEMONIZED,            RTGETOPT_REQ_NOTHING },
+    { "--debug-audio",           AUDIO_TEST_OPT_CMN_DEBUG_AUDIO_ENABLE,    RTGETOPT_REQ_NOTHING },
+    { "--debug-audio-path",      AUDIO_TEST_OPT_CMN_DEBUG_AUDIO_PATH,      RTGETOPT_REQ_STRING  },
+    { "--drvhost-cache-enabled", AUDIO_TEST_OPT_CMN_DRVHOST_CACHE_ENABLED, RTGETOPT_REQ_BOOL    },
 };
 
 /**
@@ -235,7 +236,9 @@ unsigned         g_uVerbosity = 0;
 bool             g_fDrvAudioDebug = false;
 /** DrvAudio: The debug output path. */
 const char      *g_pszDrvAudioDebug = NULL;
-
+/** Whether the host audio driver backend's caching is enabled or not. Defaults to enabled.
+ *  Only implemented for DrvHostAudioWasApi backend so far, ignored otherwise. */
+bool             g_fDrvHostAudioCacheEnabled = true;
 
 /**
  * Get default backend.
@@ -1312,6 +1315,8 @@ RTEXITCODE audioTestUsage(PRTSTREAM pStrm, PCVKATCMD pOnlyCmd)
                  "    Enables (DrvAudio) debugging\n"
                  "  --debug-audio-path=<path>\n"
                  "    Tells DrvAudio where to put its debug output (wav-files)\n"
+                 "  --drvhost-cache-enabled=<true|false>\n"
+                 "    Enables or disables caching code for the host driver (backend)\n"
                  "  -q, --quiet\n"
                  "    Sets verbosity to zero\n"
                  "  -v, --verbose\n"
