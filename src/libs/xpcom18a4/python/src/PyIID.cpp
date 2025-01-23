@@ -239,9 +239,24 @@ PyTypeObject *Py_nsIID::GetTypeObject(void)
         { Py_tp_is_gc,          (void *)(uintptr_t)&Py_nsIID::PyTypeMethod_is_gc },
 		{ 0, NULL } /* terminator */
 	};
+
+    /* The parent/base class specified in Py_tp_base (&PyType_Type) here is larger
+     * than the Py_nsIID derived class so we need to ensure enough space is allocated
+     * for both when calling PyType_FromSpec(), i.e.: PyType_Type.tp_basicsize +
+     * sizeof(Py_nsIID).  Starting with Python 3.12 when 'basicsize' is negative "the
+     * absolute value specifies how much space instances of the class need in addition
+     * to the superclass".  Earlier Python releases require calculating the total size
+     * by hand. */
+#if PY_VERSION_HEX >= 0x030C0000
+    int basicsize = -(int)sizeof(Py_nsIID);
+#else
+    /* PyObjects are opaque in the Py_LIMITED_API so we must use PyObject_GetAttrString() here. */
+    PyObject *sizeObj = PyObject_GetAttrString((PyObject*)&PyType_Type, "__basicsize__");
+    int basicsize = (int)PyLong_AsLong(sizeObj) + (int)sizeof(Py_nsIID);
+#endif
 	PyType_Spec TypeSpec = {
 		/* .name: */ 		"IID",
-		/* .basicsize: */       sizeof(Py_nsIID),
+		/* .basicsize: */	basicsize,
 		/* .itemsize: */	0,
 		/* .flags: */   	Py_TPFLAGS_DEFAULT,
 		/* .slots: */		aTypeSlots,
