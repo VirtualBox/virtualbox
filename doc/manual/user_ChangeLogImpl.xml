@@ -84,6 +84,15 @@ Rules for adding a changelog entry to make them look more uniform:
         <para></para>
       </listitem>
 
+      <listitem>
+        <para>Windows Guest Additions: Fixed mouse driver installation on
+          Vista guests</para>
+      </listitem>
+
+      <listitem>
+        <para>Windows Guest Additions: Fixed uninstallation integrity issues</para>
+      </listitem>
+
     </itemizedlist>
   </sect1>
 
