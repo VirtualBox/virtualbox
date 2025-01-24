@@ -1,4 +1,4 @@
-/* $Id: UnattendedScript.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UnattendedScript.cpp 108048 2025-01-24 08:38:17Z alexander.eichner@oracle.com $ */
 /** @file
  * Classes for reading/parsing/saving scripts for unattended installation.
  */
@@ -781,6 +781,8 @@ int UnattendedScriptTemplate::queryVariable(const char *pchName, size_t cchName,
         pszValue = mpUnattended->i_isRtcUsingUtc() ? "1" : "0";
     else if (IS_MATCH("HAS_PROXY"))
         pszValue = mpUnattended->i_getProxy().isNotEmpty() ? "1" : "0";
+    else if (IS_MATCH("AVOID_UPDATES_OVER_NETWORK"))
+        pszValue = mpUnattended->i_getAvoidUpdatesOverNetwork() ? "1" : "0";
     /*
      * Unknown variable.
      */
