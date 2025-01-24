@@ -1,4 +1,4 @@
-/* $Id: ConsoleImplConfigCommon.cpp 108045 2025-01-23 17:32:37Z andreas.loeffler@oracle.com $ */
+/* $Id: ConsoleImplConfigCommon.cpp 108050 2025-01-24 09:08:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console COM Class implementation - VM Configuration Bits.
  *
@@ -3769,6 +3769,7 @@ int Console::i_configAudioCtrl(ComPtr<IVirtualBox> pVBox, ComPtr<IMachine> pMach
                             || strTmp.equalsIgnoreCase("wasapi")) )
                     {
                         /* Nothing to do here, fall through to WAS driver. */
+                        LogRel(("Audio: Using Windows Audio Session (WAS) backend instead of DirectSound for performance reasons\n"));
                     }
                     else
                     {
