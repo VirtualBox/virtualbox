@@ -1,4 +1,4 @@
-/* $Id: NEMInternal.h 107968 2025-01-20 20:16:31Z knut.osmundsen@oracle.com $ */
+/* $Id: NEMInternal.h 108055 2025-01-24 10:05:32Z knut.osmundsen@oracle.com $ */
 /** @file
  * NEM - Internal header file.
  */
@@ -265,6 +265,8 @@ typedef struct NEM
     bool                        fExtendedXcptExit : 1;
     /** Copy of WHV_CAPABILITY_FEATURES::SpeculationControl. */
     bool                        fSpeculationControl : 1;
+    /** Whether to export/import IA32_SPEC_CTRL. */
+    bool                        fDoIa32SpecCtrl : 1;
 #  ifdef NEM_WIN_WITH_A20
     /** Set if we've started more than one CPU and cannot mess with A20. */
     bool                        fA20Fixed : 1;
