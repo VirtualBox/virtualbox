@@ -1,4 +1,4 @@
-/* $Id: NEMR3Native-win.cpp 107968 2025-01-20 20:16:31Z knut.osmundsen@oracle.com $ */
+/* $Id: NEMR3Native-win.cpp 108054 2025-01-24 10:05:09Z knut.osmundsen@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 Windows backend.
  *
@@ -46,7 +46,7 @@
 # error "Missing _WIN32_WINNT_WIN10"
 #endif
 #ifndef _WIN32_WINNT_WIN10_RS1 /* Missing define, causing trouble for us. */
-# define _WIN32_WINNT_WIN10_RS1 (_WIN32_WINNT_WIN10 + 1)
+# define _WIN32_WINNT_WIN10_RS1  (_WIN32_WINNT_WIN10 + 1)
 #endif
 #include <sysinfoapi.h>
 #include <debugapi.h>
@@ -94,6 +94,51 @@ HRESULT WINAPI WHvQueryGpaRangeDirtyBitmap(WHV_PARTITION_HANDLE, WHV_GUEST_PHYSI
 #define NEM_WIN_IOCTL_DETECTOR_FAKE_VP_INDEX                    UINT32_C(42)
 /** VID I/O control detection: Fake timeout input. */
 #define NEM_WIN_IOCTL_DETECTOR_FAKE_TIMEOUT                     UINT32_C(0x00080286)
+
+
+#ifndef NTDDI_WIN10_RS4             /* We use this to support older SDKs. */
+# define NTDDI_WIN10_RS4            (NTDDI_WIN10 + 5)   /* 17134 */
+#endif
+#ifndef NTDDI_WIN10_RS5             /* We use this to support older SDKs. */
+# define NTDDI_WIN10_RS5            (NTDDI_WIN10 + 6)   /* ????? */
+#endif
+#ifndef NTDDI_WIN10_19H1            /* We use this to support older SDKs. */
+# define NTDDI_WIN10_19H1           (NTDDI_WIN10 + 7)   /* 18362 */
+#endif
+#ifndef NTDDI_WIN10_VB
+# define NTDDI_WIN10_VB             (NTDDI_WIN10 + 8)   /* 19040 */
+#endif
+#ifndef NTDDI_WIN10_MN
+# define NTDDI_WIN10_MN             (NTDDI_WIN10 + 9)   /* ????? */
+#endif
+#ifndef NTDDI_WIN10_FE
+# define NTDDI_WIN10_FE             (NTDDI_WIN10 + 10)  /* ????? */
+#endif
+#ifndef NTDDI_WIN10_CO
+# define NTDDI_WIN10_CO             (NTDDI_WIN10 + 11)  /* 22000 */
+#endif
+#ifndef NTDDI_WIN10_NI
+# define NTDDI_WIN10_NI             (NTDDI_WIN10 + 12)  /* 22621 */
+#endif
+#ifndef NTDDI_WIN10_CU
+# define NTDDI_WIN10_CU             (NTDDI_WIN10 + 13)  /* ????? */
+#endif
+#ifndef NTDDI_WIN10_ZN
+# define NTDDI_WIN10_ZN             (NTDDI_WIN10 + 14)  /* ????? */
+#endif
+#ifndef NTDDI_WIN10_GA
+# define NTDDI_WIN10_GA             (NTDDI_WIN10 + 15)  /* ????? */
+#endif
+#ifndef NTDDI_WIN10_GE
+# define NTDDI_WIN10_GE             (NTDDI_WIN10 + 16)  /* 26100 */
+#endif
+
+#define MY_NTDDI_WIN10_17134    NTDDI_WIN10_RS4
+#define MY_NTDDI_WIN10_18362    NTDDI_WIN10_19H1
+#define MY_NTDDI_WIN10_19040    NTDDI_WIN10_VB
+#define MY_NTDDI_WIN11_22000    NTDDI_WIN10_CO
+#define MY_NTDDI_WIN11_22621    NTDDI_WIN10_NI
+#define MY_NTDDI_WIN11_26100    NTDDI_WIN10_GE
 
 
 /*********************************************************************************************************************************
@@ -631,14 +676,33 @@ static int nemR3WinInitCheckCapabilities(PVM pVM, PRTERRINFO pErrInfo)
                              "WHvGetCapability/WHvCapabilityCodeExtendedVmExits failed: %Rhrc (Last=%#x/%u)",
                              hrc, RTNtLastStatusValue(), RTNtLastErrorValue());
     NEM_LOG_REL_CAP_EX("WHvCapabilityCodeExtendedVmExits", "%'#018RX64", Caps.ExtendedVmExits.AsUINT64);
+#define NEM_LOG_REL_CAP_VM_EXIT(a_Field)    NEM_LOG_REL_CAP_SUB(#a_Field, Caps.ExtendedVmExits.a_Field)
+    NEM_LOG_REL_CAP_VM_EXIT(X64CpuidExit);
+    NEM_LOG_REL_CAP_VM_EXIT(X64MsrExit);
+    NEM_LOG_REL_CAP_VM_EXIT(ExceptionExit);
+#if WDK_NTDDI_VERSION >= MY_NTDDI_WIN10_19040
+    NEM_LOG_REL_CAP_VM_EXIT(X64RdtscExit);
+    NEM_LOG_REL_CAP_VM_EXIT(X64ApicSmiExitTrap);
+    NEM_LOG_REL_CAP_VM_EXIT(HypercallExit);
+    NEM_LOG_REL_CAP_VM_EXIT(X64ApicInitSipiExitTrap);
+#endif
+#if WDK_NTDDI_VERSION >= MY_NTDDI_WIN11_22000 /** @todo Could some of these may have been added earlier... */
+    NEM_LOG_REL_CAP_VM_EXIT(X64ApicWriteLint0ExitTrap);
+    NEM_LOG_REL_CAP_VM_EXIT(X64ApicWriteLint1ExitTrap);
+    NEM_LOG_REL_CAP_VM_EXIT(X64ApicWriteSvrExitTrap);
+    NEM_LOG_REL_CAP_VM_EXIT(UnknownSynicConnection);
+    NEM_LOG_REL_CAP_VM_EXIT(RetargetUnknownVpciDevice);
+    NEM_LOG_REL_CAP_VM_EXIT(X64ApicWriteLdrExitTrap);
+    NEM_LOG_REL_CAP_VM_EXIT(X64ApicWriteDfrExitTrap);
+    NEM_LOG_REL_CAP_VM_EXIT(GpaAccessFaultExit);
+#endif
+#undef  NEM_LOG_REL_CAP_VM_EXIT
+    uint64_t const fKnownVmExits = RT_BIT_64(15) - 1U;
+    if (Caps.ExtendedVmExits.AsUINT64 & ~fKnownVmExits)
+        NEM_LOG_REL_CAP_SUB_EX("Unknown VM exit defs", "%#RX64", Caps.ExtendedVmExits.AsUINT64 & ~fKnownVmExits);
     pVM->nem.s.fExtendedMsrExit   = RT_BOOL(Caps.ExtendedVmExits.X64MsrExit);
     pVM->nem.s.fExtendedCpuIdExit = RT_BOOL(Caps.ExtendedVmExits.X64CpuidExit);
     pVM->nem.s.fExtendedXcptExit  = RT_BOOL(Caps.ExtendedVmExits.ExceptionExit);
-    NEM_LOG_REL_CAP_SUB("fExtendedMsrExit",   pVM->nem.s.fExtendedMsrExit);
-    NEM_LOG_REL_CAP_SUB("fExtendedCpuIdExit", pVM->nem.s.fExtendedCpuIdExit);
-    NEM_LOG_REL_CAP_SUB("fExtendedXcptExit",  pVM->nem.s.fExtendedXcptExit);
-    if (Caps.ExtendedVmExits.AsUINT64 & ~(uint64_t)7)
-        LogRel(("NEM: Warning! Unknown VM exit definitions: %#RX64\n", Caps.ExtendedVmExits.AsUINT64));
     /** @todo RECHECK: WHV_EXTENDED_VM_EXITS typedef. */
 
     /*
@@ -651,10 +715,28 @@ static int nemR3WinInitCheckCapabilities(PVM pVM, PRTERRINFO pErrInfo)
                              "WHvGetCapability/WHvCapabilityCodeFeatures failed: %Rhrc (Last=%#x/%u)",
                              hrc, RTNtLastStatusValue(), RTNtLastErrorValue());
     NEM_LOG_REL_CAP_EX("WHvCapabilityCodeFeatures", "%'#018RX64", Caps.Features.AsUINT64);
-    pVM->nem.s.fSpeculationControl = RT_BOOL(Caps.Features.SpeculationControl);
+#define NEM_LOG_REL_CAP_FEATURE(a_Field)    NEM_LOG_REL_CAP_SUB(#a_Field, Caps.Features.a_Field)
+#if WDK_NTDDI_VERSION >= MY_NTDDI_WIN10_18362
+    NEM_LOG_REL_CAP_FEATURE(PartialUnmap);
+    NEM_LOG_REL_CAP_FEATURE(LocalApicEmulation);
+    NEM_LOG_REL_CAP_FEATURE(Xsave);
+    NEM_LOG_REL_CAP_FEATURE(DirtyPageTracking);
+    NEM_LOG_REL_CAP_FEATURE(SpeculationControl);
+#endif
+#if WDK_NTDDI_VERSION >= MY_NTDDI_WIN10_19040
+    NEM_LOG_REL_CAP_FEATURE(ApicRemoteRead);
+    NEM_LOG_REL_CAP_FEATURE(IdleSuspend);
+#endif
+#if WDK_NTDDI_VERSION >= MY_NTDDI_WIN11_22000 /** @todo Could some of these may have been added earlier... */
+    NEM_LOG_REL_CAP_FEATURE(VirtualPciDeviceSupport);
+    NEM_LOG_REL_CAP_FEATURE(IommuSupport);
+    NEM_LOG_REL_CAP_FEATURE(VpHotAddRemove);
+#endif
+#undef  NEM_LOG_REL_CAP_FEATURE
     const uint64_t fKnownFeatures = RT_BIT_64(10) - 1U;
     if (Caps.Features.AsUINT64 & ~fKnownFeatures)
-        LogRel(("NEM: Warning! Unknown feature definitions: %#RX64\n", Caps.Features.AsUINT64 & ~fKnownFeatures));
+        NEM_LOG_REL_CAP_SUB_EX("Unknown features", "%#RX64", Caps.ExtendedVmExits.AsUINT64 & ~fKnownVmExits);
+    pVM->nem.s.fSpeculationControl = RT_BOOL(Caps.Features.SpeculationControl);
     /** @todo RECHECK: WHV_CAPABILITY_FEATURES typedef. */
 
     /*
@@ -732,7 +814,7 @@ static int nemR3WinInitCheckCapabilities(PVM pVM, PRTERRINFO pErrInfo)
     NEM_LOG_REL_CPU_FEATURE(EnhancedFastStringSupport);
     NEM_LOG_REL_CPU_FEATURE(Bmi1Support);
     NEM_LOG_REL_CPU_FEATURE(Bmi2Support);
-    /* two reserved bits here, see below */
+    NEM_LOG_REL_CPU_FEATURE(Reserved1);
     NEM_LOG_REL_CPU_FEATURE(MovbeSupport);
     NEM_LOG_REL_CPU_FEATURE(Npiep1Support);
     NEM_LOG_REL_CPU_FEATURE(DepX87FPUSaveSupport);
@@ -747,9 +829,34 @@ static int nemR3WinInitCheckCapabilities(PVM pVM, PRTERRINFO pErrInfo)
     NEM_LOG_REL_CPU_FEATURE(ClwbSupport);
     NEM_LOG_REL_CPU_FEATURE(ShaSupport);
     NEM_LOG_REL_CPU_FEATURE(X87PointersSavedSupport);
+#if WDK_NTDDI_VERSION >= MY_NTDDI_WIN10_17134 /** @todo maybe some of these were added earlier... */
+    NEM_LOG_REL_CPU_FEATURE(InvpcidSupport);
+    NEM_LOG_REL_CPU_FEATURE(IbrsSupport);
+    NEM_LOG_REL_CPU_FEATURE(StibpSupport);
+    NEM_LOG_REL_CPU_FEATURE(IbpbSupport);
+    NEM_LOG_REL_CPU_FEATURE(Reserved2);
+    NEM_LOG_REL_CPU_FEATURE(SsbdSupport);
+    NEM_LOG_REL_CPU_FEATURE(FastShortRepMovSupport);
+    NEM_LOG_REL_CPU_FEATURE(Reserved3);
+    NEM_LOG_REL_CPU_FEATURE(RdclNo);
+    NEM_LOG_REL_CPU_FEATURE(IbrsAllSupport);
+    NEM_LOG_REL_CPU_FEATURE(Reserved4);
+    NEM_LOG_REL_CPU_FEATURE(SsbNo);
+    NEM_LOG_REL_CPU_FEATURE(RsbANo);
+#endif
+#if WDK_NTDDI_VERSION >= MY_NTDDI_WIN10_19040
+    NEM_LOG_REL_CPU_FEATURE(Reserved5);
+    NEM_LOG_REL_CPU_FEATURE(RdPidSupport);
+    NEM_LOG_REL_CPU_FEATURE(UmipSupport);
+    NEM_LOG_REL_CPU_FEATURE(MdsNoSupport);
+    NEM_LOG_REL_CPU_FEATURE(MdClearSupport);
+#endif
+#if WDK_NTDDI_VERSION >= MY_NTDDI_WIN11_22000
+    NEM_LOG_REL_CPU_FEATURE(TaaNoSupport);
+    NEM_LOG_REL_CPU_FEATURE(TsxCtrlSupport);
+    NEM_LOG_REL_CPU_FEATURE(Reserved6);
+#endif
 #undef NEM_LOG_REL_CPU_FEATURE
-    if (Caps.ProcessorFeatures.AsUINT64 & (~(RT_BIT_64(43) - 1) | RT_BIT_64(27) | RT_BIT_64(28)))
-        LogRel(("NEM: Warning! Unknown CPU features: %#RX64\n", Caps.ProcessorFeatures.AsUINT64));
     pVM->nem.s.uCpuFeatures.u64 = Caps.ProcessorFeatures.AsUINT64;
     /** @todo RECHECK: WHV_PROCESSOR_FEATURES typedef. */
 
