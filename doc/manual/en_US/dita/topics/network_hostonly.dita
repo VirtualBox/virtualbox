@@ -38,8 +38,9 @@
             outputclass="bold">Attached To</b> field. </p>
       </li>
       <li>
-        <p>On the command line, use <userinput>VBoxManage modifyvm vmname --nic <varname>x</varname>
-            hostonly</userinput>. See <xref href="vboxmanage-modifyvm.dita"/>. </p>
+        <p>On the command-line, use: </p>
+        <userinput>VBoxManage modifyvm <i>VM-name</i> --nic<varname>N</varname>=hostonly</userinput> --host-only-adapter<varname>N</varname>=<i>interface-name</i>
+        <p>See <xref href="../cli_topics/vboxmanage-modifyvm.dita"/>.</p>
       </li>
     </ul>
     <p>For host-only networking, as with internal networking, you may find the DHCP server useful that is built into <ph
