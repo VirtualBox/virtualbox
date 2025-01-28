@@ -1,4 +1,4 @@
-/* $Id: VBoxTray.cpp 108105 2025-01-28 16:08:20Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxTray.cpp 108106 2025-01-28 16:26:46Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxTray - Guest Additions Tray Application
  */
@@ -204,8 +204,6 @@ static int vboxTrayCreateTrayIcon(void)
 
 /**
  * Removes VBoxTray's tray icon.
- *
- * @returns VBox status code.
  */
 static void vboxTrayRemoveTrayIcon(void)
 {
@@ -1472,4 +1470,3 @@ static void VBoxGrapicsSetSupported(BOOL fSupported)
 {
     VBoxConsoleCapSetSupported(VBOXCAPS_ENTRY_IDX_GRAPHICS, fSupported);
 }
-
