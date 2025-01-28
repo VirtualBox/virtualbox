@@ -1,4 +1,4 @@
-/* $Id: VBoxVRDP.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxVRDP.h 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxVRDP - VRDP notification
  */
@@ -32,8 +32,8 @@
 #endif
 
 /* The restore service prototypes. */
-int                VBoxVRDPInit    (const VBOXSERVICEENV *pEnv, void **ppInstance, bool *pfStartThread);
+int                VBoxVRDPInit    (const VBOXTRAYSVCENV *pEnv, void **ppInstance, bool *pfStartThread);
 unsigned __stdcall VBoxVRDPThread  (void *pInstance);
-void               VBoxVRDPDestroy (const VBOXSERVICEENV *pEnv, void *pInstance);
+void               VBoxVRDPDestroy (const VBOXTRAYSVCENV *pEnv, void *pInstance);
 
 #endif /* !GA_INCLUDED_SRC_WINNT_VBoxTray_VBoxVRDP_h */

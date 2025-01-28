@@ -1,4 +1,4 @@
-/* $Id: VBoxHelpers.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxHelpers.h 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
 /** @file
  * helpers - Guest Additions Service helper functions header.
  */
@@ -31,11 +31,13 @@
 # pragma once
 #endif
 
-extern int  hlpReportStatus(VBoxGuestFacilityStatus statusCurrent);
 extern void hlpReloadCursor(void);
 extern void hlpResizeRect(RECTL *paRects, unsigned nRects, unsigned uPrimary, unsigned uResized, int iNewWidth, int iNewHeight, int iNewPosX, int iNewPosY);
-extern int  hlpShowBalloonTip(HINSTANCE hInst, HWND hWnd, UINT uID, const char *pszMsg, const char *pszTitle, UINT uTimeout, DWORD dwInfoFlags);
-extern void hlpShowMessageBox(const char *pszTitle, UINT uStyle, const char *pszFmt, ...);
+
+extern int  VBoxTrayHlpReportStatus(VBoxGuestFacilityStatus statusCurrent);
+extern int  VBoxTrayHlpShowBalloonTip(const char *pszMsg, const char *pszTitle, UINT uTimeout);
+extern int  VBoxTrayHlpShowBalloonTipEx(HINSTANCE hInst, HWND hWnd, UINT uID, const char *pszMsg, const char *pszTitle, UINT uTimeout, DWORD dwInfoFlags);
+extern void VBoxTrayShowMsgBox(const char *pszTitle, UINT uStyle, const char *pszFmt, ...);
 
 #endif /* !GA_INCLUDED_SRC_WINNT_VBoxTray_VBoxHelpers_h */
 

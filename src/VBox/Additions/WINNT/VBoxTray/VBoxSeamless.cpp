@@ -1,4 +1,4 @@
-/* $Id: VBoxSeamless.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxSeamless.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxSeamless - Seamless windows
  */
@@ -51,7 +51,7 @@
 *********************************************************************************************************************************/
 typedef struct _VBOXSEAMLESSCONTEXT
 {
-    const VBOXSERVICEENV *pEnv;
+    const VBOXTRAYSVCENV *pEnv;
 
     RTLDRMOD hModHook;
 
@@ -81,7 +81,28 @@ void VBoxLogString(HANDLE hDriver, char *pszStr);
 static void vboxSeamlessSetSupported(BOOL fSupported);
 
 
-static DECLCALLBACK(int) VBoxSeamlessInit(const PVBOXSERVICEENV pEnv, void **ppInstance)
+/**
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnPreInit}
+ */
+static DECLCALLBACK(int) vbtrSeamlessPreInit(void)
+{
+    return VINF_SUCCESS;
+}
+
+/**
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnOption}
+ */
+static DECLCALLBACK(int) vbtrSeamlessOption(const char **ppszShort, int argc, char **argv, int *pi)
+{
+    RT_NOREF(ppszShort, argc, argv, pi);
+
+    return -1;
+}
+
+/**
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnInit}
+ */
+static DECLCALLBACK(int) vbtrSeamlessInit(const PVBOXTRAYSVCENV pEnv, void **ppInstance)
 {
     LogFlowFuncEnter();
 
@@ -134,6 +155,9 @@ static DECLCALLBACK(int) VBoxSeamlessInit(const PVBOXSERVICEENV pEnv, void **ppI
     return rc;
 }
 
+/**
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnDestroy}
+ */
 static DECLCALLBACK(void) VBoxSeamlessDestroy(void *pInstance)
 {
     LogFlowFuncEnter();
@@ -393,10 +417,9 @@ void VBoxSeamlessCheckWindows(bool fForce)
 }
 
 /**
- * Thread function to wait for and process seamless mode change
- * requests
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnWorker}
  */
-static DECLCALLBACK(int) VBoxSeamlessWorker(void *pvInstance, bool volatile *pfShutdown)
+static DECLCALLBACK(int) vbtrSeamlessWorker(void *pvInstance, bool volatile *pfShutdown)
 {
     AssertPtrReturn(pvInstance, VERR_INVALID_POINTER);
     LogFlowFunc(("pvInstance=%p\n", pvInstance));
@@ -518,15 +541,21 @@ static DECLCALLBACK(int) VBoxSeamlessWorker(void *pvInstance, bool volatile *pfS
 /**
  * The service description.
  */
-VBOXSERVICEDESC g_SvcDescSeamless =
+VBOXTRAYSVCDESC g_SvcDescSeamless =
 {
     /* pszName. */
     "seamless",
     /* pszDescription. */
     "Seamless Windows",
+    /* pszUsage. */
+    NULL,
+    /* pszOptions. */
+    NULL,
     /* methods */
-    VBoxSeamlessInit,
-    VBoxSeamlessWorker,
+    vbtrSeamlessPreInit,
+    vbtrSeamlessOption,
+    vbtrSeamlessInit,
+    vbtrSeamlessWorker,
     NULL /* pfnStop */,
     VBoxSeamlessDestroy
 };

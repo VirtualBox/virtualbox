@@ -1,4 +1,4 @@
-/* $Id: VBoxDnDDropTarget.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxDnDDropTarget.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxDnDTarget.cpp - IDropTarget implementation.
  */
@@ -33,6 +33,7 @@
 #include <iprt/win/shlobj.h> /* For DROPFILES and friends. */
 
 #include "VBoxTray.h"
+#include "VBoxTrayInternal.h"
 #include "VBoxHelpers.h"
 #include "VBoxDnD.h"
 
@@ -119,7 +120,7 @@ void VBoxDnDDropTarget::DumpFormats(IDataObject *pDataObject)
     HRESULT hr2 = pDataObject->EnumFormatEtc(DATADIR_GET, &pEnumFormats);
     if (SUCCEEDED(hr2))
     {
-        LogRel(("DnD: The following formats were offered to us:\n"));
+        VBoxTrayVerbose(1, "DnD: The following formats were offered to us:\n");
 
         FORMATETC curFormatEtc;
         while (pEnumFormats->Next(1, &curFormatEtc,
@@ -128,12 +129,12 @@ void VBoxDnDDropTarget::DumpFormats(IDataObject *pDataObject)
             WCHAR wszCfName[128]; /* 128 chars should be enough, rest will be truncated. */
             hr2 = GetClipboardFormatNameW(curFormatEtc.cfFormat, wszCfName,
                                           sizeof(wszCfName) / sizeof(WCHAR));
-            LogRel(("\tcfFormat=%RI16 (%s), tyMed=%RI32, dwAspect=%RI32, strCustomName=%ls, hr=%Rhrc\n",
-                    curFormatEtc.cfFormat,
-                    VBoxDnDDataObject::ClipboardFormatToString(curFormatEtc.cfFormat),
-                    curFormatEtc.tymed,
-                    curFormatEtc.dwAspect,
-                    wszCfName, hr2));
+            VBoxTrayVerbose(1, "\tcfFormat=%RI16 (%s), tyMed=%RI32, dwAspect=%RI32, strCustomName=%ls, hr=%Rhrc\n",
+                            curFormatEtc.cfFormat,
+                            VBoxDnDDataObject::ClipboardFormatToString(curFormatEtc.cfFormat),
+                            curFormatEtc.tymed,
+                            curFormatEtc.dwAspect,
+                            wszCfName, hr2);
         }
 
         pEnumFormats->Release();
@@ -227,7 +228,7 @@ STDMETHODIMP VBoxDnDDropTarget::DragEnter(IDataObject *pDataObject, DWORD grfKey
         {
             case ERROR_INVALID_FUNCTION:
             {
-                LogRel(("DnD: Drag and drop format is not supported by VBoxTray\n"));
+                VBoxTrayError("DnD: Drag and drop format is not supported by VBoxTray\n");
                 VBoxDnDDropTarget::DumpFormats(pDataObject);
                 break;
             }
@@ -352,9 +353,9 @@ STDMETHODIMP VBoxDnDDropTarget::Drop(IDataObject *pDataObject, DWORD grfKeyState
                         AssertPtr(pvData);
                         size_t cbSize = GlobalSize(pvData);
 
-                        LogRel(("DnD: Got %zu bytes of %s\n", cbSize,
-                                                                m_FormatEtc.cfFormat == CF_TEXT
-                                                              ? "ANSI text" : "Unicode text"));
+                        VBoxTrayVerbose(2, "DnD: Got %zu bytes of %s\n", cbSize,
+                                          m_FormatEtc.cfFormat == CF_TEXT
+                                        ? "ANSI text" : "Unicode text");
                         if (cbSize)
                         {
                             char *pszText = NULL;
@@ -408,7 +409,7 @@ STDMETHODIMP VBoxDnDDropTarget::Drop(IDataObject *pDataObject, DWORD grfKeyState
                         size_t cchFiles = 0;
                         UINT cFiles = DragQueryFile(hDrop, UINT32_MAX /* iFile */, NULL /* lpszFile */, 0 /* cchFile */);
 
-                        LogRel(("DnD: Got %RU16 file(s), fUnicode=%RTbool\n", cFiles, fUnicode));
+                        VBoxTrayVerbose(1, "DnD: Got %RU16 file(s), fUnicode=%RTbool\n", cFiles, fUnicode);
 
                         for (UINT i = 0; i < cFiles; i++)
                         {
@@ -465,7 +466,7 @@ STDMETHODIMP VBoxDnDDropTarget::Drop(IDataObject *pDataObject, DWORD grfKeyState
                             {
                                 LogFlowFunc(("\tFile: %s (cchFile=%RU16)\n", pszFileUtf8, cchFileUtf8));
 
-                                LogRel(("DnD: Adding guest file '%s'\n", pszFileUtf8));
+                                VBoxTrayVerbose(1, "DnD: Adding guest file '%s'\n", pszFileUtf8);
 
                                 if (RT_SUCCESS(rc))
                                 {
@@ -485,7 +486,7 @@ STDMETHODIMP VBoxDnDDropTarget::Drop(IDataObject *pDataObject, DWORD grfKeyState
                             }
 
                             if (RT_FAILURE(rc))
-                                LogRel(("DnD: Error handling file entry #%u, rc=%Rrc\n", i, rc));
+                                VBoxTrayError("DnD: Error handling file entry #%u, rc=%Rrc\n", i, rc);
 
                             RTStrFree(pszFileUtf8);
 

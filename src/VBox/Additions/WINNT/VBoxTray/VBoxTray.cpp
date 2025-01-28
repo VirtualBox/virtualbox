@@ -1,4 +1,4 @@
-/* $Id: VBoxTray.cpp 107164 2024-11-26 07:15:16Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxTray.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxTray - Guest Additions Tray Application
  */
@@ -52,11 +52,13 @@
 
 #include <iprt/asm.h>
 #include <iprt/buildconfig.h>
+#include <iprt/file.h>
 #include <iprt/getopt.h>
 #include <iprt/ldr.h>
 #include <iprt/message.h>
 #include <iprt/path.h>
 #include <iprt/process.h>
+#include <iprt/stream.h>
 #include <iprt/system.h>
 #include <iprt/time.h>
 #include <iprt/utf16.h>
@@ -77,9 +79,21 @@ static int vboxTrayGlMsgTaskbarCreated(WPARAM lParam, LPARAM wParam);
 
 
 /*********************************************************************************************************************************
+*   Structures and Typedefs                                                                                                      *
+*********************************************************************************************************************************/
+typedef BOOL (WINAPI *PFNALLOCCONSOLE)(VOID);
+typedef BOOL (WINAPI *PFNATTACHCONSOLE)(DWORD);
+
+
+/*********************************************************************************************************************************
 *   Global Variables                                                                                                             *
 *********************************************************************************************************************************/
-int                   g_cVerbosity             = 0;
+/** Mutex for checking if VBoxTray already is running. */
+HANDLE                g_hMutexAppRunning       = NULL;
+/** Whether VBoxTray is connected to a (parent) console. */
+bool                  g_fHasConsole            = false;
+/** The current verbosity level. */
+unsigned              g_cVerbosity             = 0;
 HANDLE                g_hStopSem;
 HANDLE                g_hSeamlessWtNotifyEvent = 0;
 HANDLE                g_hSeamlessKmNotifyEvent = 0;
@@ -89,21 +103,18 @@ NOTIFYICONDATA        g_NotifyIconData;
 
 uint32_t              g_fGuestDisplaysChanged = 0;
 
-static PRTLOGGER      g_pLoggerRelease = NULL;           /**< This is actually the debug logger in DEBUG builds! */
-static uint32_t       g_cHistory = 10;                   /**< Enable log rotation, 10 files. */
-static uint32_t       g_uHistoryFileTime = RT_SEC_1DAY;  /**< Max 1 day per file. */
-static uint64_t       g_uHistoryFileSize = 100 * _1M;    /**< Max 100MB per file. */
 
-#ifdef DEBUG_andy
-static VBOXSERVICEINFO g_aServices[] =
-{
-    { &g_SvcDescClipboard,      NIL_RTTHREAD, NULL, false, false, false, false, true }
-};
-#else
+/*********************************************************************************************************************************
+*   Global Variables                                                                                                             *
+*********************************************************************************************************************************/
+DECL_HIDDEN_DATA(PFNALLOCCONSOLE)  g_pfnAllocConsole = NULL;  /* For W2K+. */
+DECL_HIDDEN_DATA(PFNATTACHCONSOLE) g_pfnAttachConsole = NULL; /* For W2K+. */
+
+
 /**
  * The details of the services that has been compiled in.
  */
-static VBOXSERVICEINFO g_aServices[] =
+static VBOXTRAYSVCINFO g_aServices[] =
 {
     { &g_SvcDescDisplay,        NIL_RTTHREAD, NULL, false, false, false, false, true },
 #ifdef VBOX_WITH_SHARED_CLIPBOARD
@@ -117,10 +128,11 @@ static VBOXSERVICEINFO g_aServices[] =
     { &g_SvcDescDnD,            NIL_RTTHREAD, NULL, false, false, false, false, true }
 #endif
 };
-#endif
 
-/* The global message table. */
-static VBOXGLOBALMESSAGE g_vboxGlobalMessageTable[] =
+/**
+ * The global message table.
+ */
+static VBOXTRAYGLOBALMSG g_vboxGlobalMessageTable[] =
 {
     /* Windows specific stuff. */
     {
@@ -130,7 +142,6 @@ static VBOXGLOBALMESSAGE g_vboxGlobalMessageTable[] =
 
     /* VBoxTray specific stuff. */
     /** @todo Add new messages here! */
-
     {
         NULL
     }
@@ -140,7 +151,7 @@ static VBOXGLOBALMESSAGE g_vboxGlobalMessageTable[] =
  * Gets called whenever the Windows main taskbar
  * get (re-)created. Nice to install our tray icon.
  *
- * @return  IPRT status code.
+ * @return  VBox status code.
  * @param   wParam
  * @param   lParam
  */
@@ -150,13 +161,18 @@ static int vboxTrayGlMsgTaskbarCreated(WPARAM wParam, LPARAM lParam)
     return vboxTrayCreateTrayIcon();
 }
 
+/**
+ * Creates VBoxTray's tray icon.
+ *
+ * @returns VBox status code.
+ */
 static int vboxTrayCreateTrayIcon(void)
 {
     HICON hIcon = LoadIcon(g_hInstance, "IDI_ICON1"); /* see Artwork/win/TemplateR3.rc */
     if (hIcon == NULL)
     {
-        DWORD dwErr = GetLastError();
-        LogFunc(("Could not load tray icon, error %08X\n", dwErr));
+        DWORD const dwErr = GetLastError();
+        VBoxTrayError("Could not load tray icon (%#x)\n", dwErr);
         return RTErrConvertFromWin32(dwErr);
     }
 
@@ -175,8 +191,8 @@ static int vboxTrayCreateTrayIcon(void)
     int rc = VINF_SUCCESS;
     if (!Shell_NotifyIcon(NIM_ADD, &g_NotifyIconData))
     {
-        DWORD dwErr = GetLastError();
-        LogFunc(("Could not create tray icon, error=%ld\n", dwErr));
+        DWORD const dwErr = GetLastError();
+        VBoxTrayError("Could not create tray icon (%#x)\n", dwErr);
         rc = RTErrConvertFromWin32(dwErr);
         RT_ZERO(g_NotifyIconData);
     }
@@ -186,6 +202,11 @@ static int vboxTrayCreateTrayIcon(void)
     return rc;
 }
 
+/**
+ * Removes VBoxTray's tray icon.
+ *
+ * @returns VBox status code.
+ */
 static void vboxTrayRemoveTrayIcon(void)
 {
     if (g_NotifyIconData.cbSize > 0)
@@ -212,7 +233,7 @@ static void vboxTrayRemoveTrayIcon(void)
  */
 static DECLCALLBACK(int) vboxTrayServiceThread(RTTHREAD ThreadSelf, void *pvUser)
 {
-    PVBOXSERVICEINFO pSvc = (PVBOXSERVICEINFO)pvUser;
+    PVBOXTRAYSVCINFO pSvc = (PVBOXTRAYSVCINFO)pvUser;
     AssertPtr(pSvc);
 
 #ifndef RT_OS_WINDOWS
@@ -228,22 +249,55 @@ static DECLCALLBACK(int) vboxTrayServiceThread(RTTHREAD ThreadSelf, void *pvUser
     ASMAtomicXchgBool(&pSvc->fShutdown, true);
     RTThreadUserSignal(ThreadSelf);
 
-    LogFunc(("Worker for '%s' ended with %Rrc\n", pSvc->pDesc->pszName, rc));
+    VBoxTrayVerbose(1, "Thread for '%s' ended with %Rrc\n", pSvc->pDesc->pszName, rc);
     return rc;
 }
 
-static int vboxTrayServicesStart(PVBOXSERVICEENV pEnv)
+/**
+ * Lazily calls the pfnPreInit method on each service.
+ *
+ * @returns VBox status code, error message displayed.
+ */
+static int vboxTrayServicesLazyPreInit(void)
+{
+    for (unsigned j = 0; j < RT_ELEMENTS(g_aServices); j++)
+        if (!g_aServices[j].fPreInited)
+        {
+            int rc = g_aServices[j].pDesc->pfnPreInit();
+            if (RT_FAILURE(rc))
+                return VBoxTrayError("Service '%s' failed pre-init: %Rrc\n", g_aServices[j].pDesc->pszName, rc);
+            g_aServices[j].fPreInited = true;
+        }
+    return VINF_SUCCESS;
+}
+
+/**
+ * Starts all services.
+ *
+ * @returns VBox status code.
+ * @param   pEnv                Service environment to use.
+ */
+static int vboxTrayServicesStart(PVBOXTRAYSVCENV pEnv)
 {
     AssertPtrReturn(pEnv, VERR_INVALID_POINTER);
 
-    LogRel(("Starting services ...\n"));
+    VBoxTrayInfo("Starting services ...\n");
 
     int rc = VINF_SUCCESS;
 
+    size_t cServicesStarted = 0;
+
     for (unsigned i = 0; i < RT_ELEMENTS(g_aServices); i++)
     {
-        PVBOXSERVICEINFO pSvc = &g_aServices[i];
-        LogRel(("Starting service '%s' ...\n", pSvc->pDesc->pszName));
+        PVBOXTRAYSVCINFO pSvc = &g_aServices[i];
+
+        if (!pSvc->fEnabled)
+        {
+            VBoxTrayInfo("Skipping starting service '%s' (disabled)\n", pSvc->pDesc->pszName);
+            continue;
+        }
+
+        VBoxTrayInfo("Starting service '%s' ...\n", pSvc->pDesc->pszName);
 
         pSvc->hThread   = NIL_RTTHREAD;
         pSvc->pInstance = NULL;
@@ -260,17 +314,17 @@ static int vboxTrayServicesStart(PVBOXSERVICEENV pEnv)
             switch (rc2)
             {
                 case VERR_NOT_SUPPORTED:
-                    LogRel(("Service '%s' is not supported on this system\n", pSvc->pDesc->pszName));
+                    VBoxTrayInfo("Service '%s' is not supported on this system\n", pSvc->pDesc->pszName);
                     rc2 = VINF_SUCCESS; /* Keep going. */
                     break;
 
                 case VERR_HGCM_SERVICE_NOT_FOUND:
-                    LogRel(("Service '%s' is not available on the host\n", pSvc->pDesc->pszName));
+                    VBoxTrayInfo("Service '%s' is not available on the host\n", pSvc->pDesc->pszName);
                     rc2 = VINF_SUCCESS; /* Keep going. */
                     break;
 
                 default:
-                    LogRel(("Failed to initialize service '%s', rc=%Rrc\n", pSvc->pDesc->pszName, rc2));
+                    VBoxTrayError("Failed to initialize service '%s', rc=%Rrc\n", pSvc->pDesc->pszName, rc2);
                     break;
             }
         }
@@ -287,15 +341,18 @@ static int vboxTrayServicesStart(PVBOXSERVICEENV pEnv)
                     RTThreadUserWait(pSvc->hThread, 30 * 1000 /* Timeout in ms */);
                     if (pSvc->fShutdown)
                     {
-                        LogRel(("Service '%s' failed to start!\n", pSvc->pDesc->pszName));
+                        VBoxTrayError("Service '%s' failed to start!\n", pSvc->pDesc->pszName);
                         rc = VERR_GENERAL_FAILURE;
                     }
                     else
-                        LogRel(("Service '%s' started\n", pSvc->pDesc->pszName));
+                    {
+                        cServicesStarted++;
+                        VBoxTrayInfo("Service '%s' started\n", pSvc->pDesc->pszName);
+                    }
                 }
                 else
                 {
-                    LogRel(("Failed to start thread for service '%s': %Rrc\n", rc2));
+                    VBoxTrayInfo("Failed to start thread for service '%s': %Rrc\n", rc2);
                     if (pSvc->pDesc->pfnDestroy)
                         pSvc->pDesc->pfnDestroy(pSvc->pInstance);
                 }
@@ -306,20 +363,25 @@ static int vboxTrayServicesStart(PVBOXSERVICEENV pEnv)
             rc = rc2;
     }
 
-    if (RT_SUCCESS(rc))
-        LogRel(("All services started\n"));
-    else
-        LogRel(("Services started, but some with errors\n"));
+    VBoxTrayInfo("%zu/%zu service(s) started\n", cServicesStarted, RT_ELEMENTS(g_aServices));
+    if (RT_FAILURE(rc))
+        VBoxTrayInfo("Some service(s) reported errors when starting -- see log above\n");
 
     LogFlowFuncLeaveRC(rc);
     return rc;
 }
 
-static int vboxTrayServicesStop(VBOXSERVICEENV *pEnv)
+/**
+ * Stops all services.
+ *
+ * @returns VBox status code.
+ * @param   pEnv                Service environment to use.
+ */
+static int vboxTrayServicesStop(VBOXTRAYSVCENV *pEnv)
 {
     AssertPtrReturn(pEnv, VERR_INVALID_POINTER);
 
-    LogRel2(("Stopping all services ...\n"));
+    VBoxTrayVerbose(1, "Stopping all services ...\n");
 
     /*
      * Signal all the services.
@@ -332,18 +394,18 @@ static int vboxTrayServicesStop(VBOXSERVICEENV *pEnv)
      */
     for (unsigned i = 0; i < RT_ELEMENTS(g_aServices); i++)
     {
-        PVBOXSERVICEINFO pSvc = &g_aServices[i];
+        PVBOXTRAYSVCINFO pSvc = &g_aServices[i];
         if (   pSvc->fStarted
             && pSvc->pDesc->pfnStop)
         {
-            LogRel2(("Calling stop function for service '%s' ...\n", pSvc->pDesc->pszName));
+            VBoxTrayVerbose(1, "Calling stop function for service '%s' ...\n", pSvc->pDesc->pszName);
             int rc2 = pSvc->pDesc->pfnStop(pSvc->pInstance);
             if (RT_FAILURE(rc2))
-                LogRel(("Failed to stop service '%s': %Rrc\n", pSvc->pDesc->pszName, rc2));
+                VBoxTrayError("Failed to stop service '%s': %Rrc\n", pSvc->pDesc->pszName, rc2);
         }
     }
 
-    LogRel2(("All stop functions for services called\n"));
+    VBoxTrayVerbose(2, "All stop functions for services called\n");
 
     int rc = VINF_SUCCESS;
 
@@ -352,13 +414,13 @@ static int vboxTrayServicesStop(VBOXSERVICEENV *pEnv)
      */
     for (unsigned i = 0; i < RT_ELEMENTS(g_aServices); i++)
     {
-        PVBOXSERVICEINFO pSvc = &g_aServices[i];
+        PVBOXTRAYSVCINFO pSvc = &g_aServices[i];
         if (!pSvc->fEnabled) /* Only stop services which were started before. */
             continue;
 
         if (pSvc->hThread != NIL_RTTHREAD)
         {
-            LogRel2(("Waiting for service '%s' to stop ...\n", pSvc->pDesc->pszName));
+            VBoxTrayVerbose(1, "Waiting for service '%s' to stop ...\n", pSvc->pDesc->pszName);
             int rc2 = VINF_SUCCESS;
             for (int j = 0; j < 30; j++) /* Wait 30 seconds in total */
             {
@@ -368,7 +430,7 @@ static int vboxTrayServicesStop(VBOXSERVICEENV *pEnv)
             }
             if (RT_FAILURE(rc2))
             {
-                LogRel(("Service '%s' failed to stop (%Rrc)\n", pSvc->pDesc->pszName, rc2));
+                VBoxTrayError("Service '%s' failed to stop (%Rrc)\n", pSvc->pDesc->pszName, rc2);
                 if (RT_SUCCESS(rc))
                     rc = rc2;
             }
@@ -377,19 +439,25 @@ static int vboxTrayServicesStop(VBOXSERVICEENV *pEnv)
         if (   pSvc->pDesc->pfnDestroy
             && pSvc->pInstance) /* pInstance might be NULL if initialization of a service failed. */
         {
-            LogRel2(("Terminating service '%s' ...\n", pSvc->pDesc->pszName));
+            VBoxTrayVerbose(1, "Terminating service '%s' ...\n", pSvc->pDesc->pszName);
             pSvc->pDesc->pfnDestroy(pSvc->pInstance);
         }
     }
 
     if (RT_SUCCESS(rc))
-        LogRel(("All services stopped\n"));
+        VBoxTrayVerbose(1, "All services stopped\n");
 
     LogFlowFuncLeaveRC(rc);
     return rc;
 }
 
-static int vboxTrayRegisterGlobalMessages(PVBOXGLOBALMESSAGE pTable)
+/**
+ * Registers all global window messages of a specific table.
+ *
+ * @returns VBox status code.
+ * @param   pTable              Table to register messages for.
+ */
+static int vboxTrayRegisterGlobalMessages(PVBOXTRAYGLOBALMSG pTable)
 {
     int rc = VINF_SUCCESS;
     if (pTable == NULL) /* No table to register? Skip. */
@@ -402,7 +470,7 @@ static int vboxTrayRegisterGlobalMessages(PVBOXGLOBALMESSAGE pTable)
         if (!pTable->uMsgID)
         {
             DWORD dwErr = GetLastError();
-            Log(("Registering global message \"%s\" failed, error = %08X\n", dwErr));
+            VBoxTrayError("Registering global message \"%s\" failed, error = %08X\n", pTable->pszName, dwErr);
             rc = RTErrConvertFromWin32(dwErr);
         }
 
@@ -412,7 +480,16 @@ static int vboxTrayRegisterGlobalMessages(PVBOXGLOBALMESSAGE pTable)
     return rc;
 }
 
-static bool vboxTrayHandleGlobalMessages(PVBOXGLOBALMESSAGE pTable, UINT uMsg,
+/**
+ * Handler for global (registered) window messages.
+ *
+ * @returns \c true if message got handeled, \c false if not.
+ * @param   pTable              Message table to look message up in.
+ * @param   uMsg                Message ID to handle.
+ * @param   wParam              WPARAM of the message.
+ * @param   lParam              LPARAM of the message.
+ */
+static bool vboxTrayHandleGlobalMessages(PVBOXTRAYGLOBALMSG pTable, UINT uMsg,
                                          WPARAM wParam, LPARAM lParam)
 {
     if (pTable == NULL)
@@ -433,214 +510,12 @@ static bool vboxTrayHandleGlobalMessages(PVBOXGLOBALMESSAGE pTable, UINT uMsg,
 }
 
 /**
- * Header/footer callback for the release logger.
- *
- * @param   pLoggerRelease
- * @param   enmPhase
- * @param   pfnLog
+ * Destroys the invisible tool window of VBoxTray.
  */
-static DECLCALLBACK(void) vboxTrayLogHeaderFooter(PRTLOGGER pLoggerRelease, RTLOGPHASE enmPhase, PFNRTLOGPHASEMSG pfnLog)
-{
-    /* Some introductory information. */
-    static RTTIMESPEC s_TimeSpec;
-    char szTmp[256];
-    if (enmPhase == RTLOGPHASE_BEGIN)
-        RTTimeNow(&s_TimeSpec);
-    RTTimeSpecToString(&s_TimeSpec, szTmp, sizeof(szTmp));
-
-    switch (enmPhase)
-    {
-        case RTLOGPHASE_BEGIN:
-        {
-            pfnLog(pLoggerRelease,
-                   "VBoxTray %s r%s %s (%s %s) release log\n"
-                   "Log opened %s\n",
-                   RTBldCfgVersion(), RTBldCfgRevisionStr(), VBOX_BUILD_TARGET,
-                   __DATE__, __TIME__, szTmp);
-
-            int vrc = RTSystemQueryOSInfo(RTSYSOSINFO_PRODUCT, szTmp, sizeof(szTmp));
-            if (RT_SUCCESS(vrc) || vrc == VERR_BUFFER_OVERFLOW)
-                pfnLog(pLoggerRelease, "OS Product: %s\n", szTmp);
-            vrc = RTSystemQueryOSInfo(RTSYSOSINFO_RELEASE, szTmp, sizeof(szTmp));
-            if (RT_SUCCESS(vrc) || vrc == VERR_BUFFER_OVERFLOW)
-                pfnLog(pLoggerRelease, "OS Release: %s\n", szTmp);
-            vrc = RTSystemQueryOSInfo(RTSYSOSINFO_VERSION, szTmp, sizeof(szTmp));
-            if (RT_SUCCESS(vrc) || vrc == VERR_BUFFER_OVERFLOW)
-                pfnLog(pLoggerRelease, "OS Version: %s\n", szTmp);
-            if (RT_SUCCESS(vrc) || vrc == VERR_BUFFER_OVERFLOW)
-                pfnLog(pLoggerRelease, "OS Service Pack: %s\n", szTmp);
-
-            /* the package type is interesting for Linux distributions */
-            char szExecName[RTPATH_MAX];
-            char *pszExecName = RTProcGetExecutablePath(szExecName, sizeof(szExecName));
-            pfnLog(pLoggerRelease,
-                   "Executable: %s\n"
-                   "Process ID: %u\n"
-                   "Package type: %s"
-#ifdef VBOX_OSE
-                   " (OSE)"
-#endif
-                   "\n",
-                   pszExecName ? pszExecName : "unknown",
-                   RTProcSelf(),
-                   VBOX_PACKAGE_STRING);
-            break;
-        }
-
-        case RTLOGPHASE_PREROTATE:
-            pfnLog(pLoggerRelease, "Log rotated - Log started %s\n", szTmp);
-            break;
-
-        case RTLOGPHASE_POSTROTATE:
-            pfnLog(pLoggerRelease, "Log continuation - Log started %s\n", szTmp);
-            break;
-
-        case RTLOGPHASE_END:
-            pfnLog(pLoggerRelease, "End of log file - Log started %s\n", szTmp);
-            break;
-
-        default:
-            /* nothing */;
-    }
-}
-
-/**
- * Creates the default release logger outputting to the specified file.
- *
- * @return  IPRT status code.
- * @param   pszLogFile          Path to log file to use. Can be NULL if not needed.
- */
-static int vboxTrayLogCreate(const char *pszLogFile)
-{
-    /* Create release (or debug) logger (stdout + file). */
-    static const char * const s_apszGroups[] = VBOX_LOGGROUP_NAMES;
-#ifdef DEBUG
-    static const char s_szEnvVarPfx[] = "VBOXTRAY_LOG";
-    static const char s_szGroupSettings[] = "all.e.l.f";
-#else
-    static const char s_szEnvVarPfx[] = "VBOXTRAY_RELEASE_LOG";
-    static const char s_szGroupSettings[] = "all";
-#endif
-    RTERRINFOSTATIC ErrInfo;
-    int rc = RTLogCreateEx(&g_pLoggerRelease, s_szEnvVarPfx,
-                           RTLOGFLAGS_PREFIX_THREAD | RTLOGFLAGS_PREFIX_TIME_PROG | RTLOGFLAGS_USECRLF,
-                           s_szGroupSettings, RT_ELEMENTS(s_apszGroups), s_apszGroups, UINT32_MAX,
-                           0 /*cBufDescs*/, NULL /*paBufDescs*/, RTLOGDEST_STDOUT,
-                           vboxTrayLogHeaderFooter, g_cHistory, g_uHistoryFileSize, g_uHistoryFileTime,
-                           NULL /*pOutputIf*/, NULL /*pvOutputIfUser*/,
-                           RTErrInfoInitStatic(&ErrInfo), "%s", pszLogFile ? pszLogFile : "");
-    if (RT_SUCCESS(rc))
-    {
-#ifdef DEBUG
-        /* Register this logger as the _debug_ logger. */
-        RTLogSetDefaultInstance(g_pLoggerRelease);
-#else
-        /* Register this logger as the release logger. */
-        RTLogRelSetDefaultInstance(g_pLoggerRelease);
-#endif
-        /* If verbosity is explicitly set, make sure to increase the logging levels for
-         * the logging groups we offer functionality for in VBoxTray. */
-        if (g_cVerbosity)
-        {
-            /* All groups we want to enable logging for VBoxTray. */
-#ifdef DEBUG
-            const char *apszGroups[] = { "guest_dnd", "shared_clipboard" };
-#else /* For release builds we always want all groups being logged in verbose mode. Don't change this! */
-            const char *apszGroups[] = { "all" };
-#endif
-            char        szGroupSettings[_1K];
-
-            szGroupSettings[0] = '\0';
-
-            for (size_t i = 0; i < RT_ELEMENTS(apszGroups); i++)
-            {
-                if (i > 0)
-                    rc = RTStrCat(szGroupSettings, sizeof(szGroupSettings), "+");
-                if (RT_SUCCESS(rc))
-                    rc = RTStrCat(szGroupSettings, sizeof(szGroupSettings), apszGroups[i]);
-                if (RT_FAILURE(rc))
-                    break;
-
-                switch (g_cVerbosity)
-                {
-                    case 1:
-                        rc = RTStrCat(szGroupSettings, sizeof(szGroupSettings), ".e.l.l2");
-                        break;
-
-                    case 2:
-                        rc = RTStrCat(szGroupSettings, sizeof(szGroupSettings), ".e.l.l2.l3");
-                        break;
-
-                    case 3:
-                        rc = RTStrCat(szGroupSettings, sizeof(szGroupSettings), ".e.l.l2.l3.l4");
-                        break;
-
-                    case 4:
-                        RT_FALL_THROUGH();
-                    default:
-                        rc = RTStrCat(szGroupSettings, sizeof(szGroupSettings), ".e.l.l2.l3.l4.f");
-                        break;
-                }
-
-                if (RT_FAILURE(rc))
-                    break;
-            }
-
-            LogRel(("Verbose log settings are: %s\n", szGroupSettings));
-
-            if (RT_SUCCESS(rc))
-                rc = RTLogGroupSettings(g_pLoggerRelease, szGroupSettings);
-            if (RT_FAILURE(rc))
-                RTMsgError("Setting log group settings failed, rc=%Rrc\n", rc);
-        }
-
-        /* Explicitly flush the log in case of VBOXTRAY_RELEASE_LOG=buffered. */
-        RTLogFlush(g_pLoggerRelease);
-    }
-    else
-        VBoxTrayShowError(ErrInfo.szMsg);
-
-    return rc;
-}
-
-static void vboxTrayLogDestroy(void)
-{
-    /* Only want to destroy the release logger before calling exit(). The debug
-       logger can be useful after that point... */
-    RTLogDestroy(RTLogRelSetDefaultInstance(NULL));
-}
-
-/**
- * Displays an error message.
- *
- * @returns RTEXITCODE_FAILURE.
- * @param   pszFormat   The message text.
- * @param   ...         Format arguments.
- */
-RTEXITCODE VBoxTrayShowError(const char *pszFormat, ...)
-{
-    va_list args;
-    va_start(args, pszFormat);
-    char *psz = NULL;
-    RTStrAPrintfV(&psz, pszFormat, args);
-    va_end(args);
-
-    AssertPtr(psz);
-    LogRel(("Error: %s", psz));
-
-    MessageBox(GetDesktopWindow(), psz, "VBoxTray - Error", MB_OK | MB_ICONERROR);
-
-    RTStrFree(psz);
-
-    return RTEXITCODE_FAILURE;
-}
-
 static void vboxTrayDestroyToolWindow(void)
 {
     if (g_hwndToolWindow)
     {
-        Log(("Destroying tool window ...\n"));
-
         /* Destroy the tool window. */
         DestroyWindow(g_hwndToolWindow);
         g_hwndToolWindow = NULL;
@@ -649,6 +524,11 @@ static void vboxTrayDestroyToolWindow(void)
     }
 }
 
+/**
+ * Creates the invisible tool window of VBoxTray.
+ *
+ * @returns VBox status code.
+ */
 static int vboxTrayCreateToolWindow(void)
 {
     DWORD dwErr = ERROR_SUCCESS;
@@ -665,7 +545,7 @@ static int vboxTrayCreateToolWindow(void)
     if (!RegisterClassEx(&wc))
     {
         dwErr = GetLastError();
-        Log(("Registering invisible tool window failed, error = %08X\n", dwErr));
+        VBoxTrayError("Registering invisible tool window failed, error = %08X\n", dwErr);
     }
     else
     {
@@ -696,7 +576,13 @@ static int vboxTrayCreateToolWindow(void)
 
     if (dwErr != ERROR_SUCCESS)
          vboxTrayDestroyToolWindow();
-    return RTErrConvertFromWin32(dwErr);
+
+    int const rc = RTErrConvertFromWin32(dwErr);
+
+    if (RT_FAILURE(rc))
+        VBoxTrayError("Could not create tool window, rc=%Rrc\n", rc);
+
+    return rc;
 }
 
 static int vboxTraySetupSeamless(void)
@@ -781,7 +667,13 @@ static int vboxTraySetupSeamless(void)
             }
         }
     }
-    return RTErrConvertFromWin32(dwErr);
+
+    int const rc = RTErrConvertFromWin32(dwErr);
+
+    if (RT_FAILURE(rc))
+        VBoxTrayError("Could not setup seamless, rc=%Rrc\n", rc);
+
+    return rc;
 }
 
 static void vboxTrayShutdownSeamless(void)
@@ -799,10 +691,15 @@ static void vboxTrayShutdownSeamless(void)
     }
 }
 
+/**
+ * Main routine for starting / stopping all internal services.
+ *
+ * @returns VBox status code.
+ */
 static int vboxTrayServiceMain(void)
 {
     int rc = VINF_SUCCESS;
-    LogFunc(("Entering vboxTrayServiceMain\n"));
+    VBoxTrayVerbose(2, "Entering main loop\n");
 
     g_hStopSem = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (g_hStopSem == NULL)
@@ -815,29 +712,24 @@ static int vboxTrayServiceMain(void)
         /*
          * Start services listed in the vboxServiceTable.
          */
-        VBOXSERVICEENV svcEnv;
+        VBOXTRAYSVCENV svcEnv;
         svcEnv.hInstance = g_hInstance;
 
         /* Initializes disp-if to default (XPDM) mode. */
         VBoxDispIfInit(&svcEnv.dispIf); /* Cannot fail atm. */
-    #ifdef VBOX_WITH_WDDM
+#ifdef VBOX_WITH_WDDM
         /*
          * For now the display mode will be adjusted to WDDM mode if needed
          * on display service initialization when it detects the display driver type.
          */
-    #endif
+#endif
+        VBoxTrayHlpReportStatus(VBoxGuestFacilityStatus_Init);
 
         /* Finally start all the built-in services! */
         rc = vboxTrayServicesStart(&svcEnv);
-        if (RT_FAILURE(rc))
-        {
-            /* Terminate service if something went wrong. */
-            vboxTrayServicesStop(&svcEnv);
-        }
-        else
+        if (RT_SUCCESS(rc))
         {
             uint64_t const uNtVersion = RTSystemGetNtVersion();
-            rc = vboxTrayCreateTrayIcon();
             if (   RT_SUCCESS(rc)
                 && uNtVersion >= RTSYSTEM_MAKE_NT_VERSION(5, 0, 0)) /* Only for W2K and up ... */
             {
@@ -852,7 +744,7 @@ static int vboxTrayServiceMain(void)
             if (RT_SUCCESS(rc))
             {
                 /* Report the host that we're up and running! */
-                hlpReportStatus(VBoxGuestFacilityStatus_Active);
+                VBoxTrayHlpReportStatus(VBoxGuestFacilityStatus_Active);
             }
 
             if (RT_SUCCESS(rc))
@@ -956,16 +848,181 @@ static int vboxTrayServiceMain(void)
                 }
                 LogFunc(("Returned from main loop, exiting ...\n"));
             }
-            LogFunc(("Waiting for services to stop ...\n"));
-            vboxTrayServicesStop(&svcEnv);
+
         } /* Services started */
+
+        LogFunc(("Waiting for services to stop ...\n"));
+
+        VBoxTrayHlpReportStatus(VBoxGuestFacilityStatus_Terminating);
+
+        vboxTrayServicesStop(&svcEnv);
+
         CloseHandle(g_hStopSem);
+
     } /* Stop event created */
 
-    vboxTrayRemoveTrayIcon();
-
-    LogFunc(("Leaving with rc=%Rrc\n", rc));
+    VBoxTrayVerbose(2, "Leaving main loop with %Rrc\n", rc);
     return rc;
+}
+
+/**
+ * Attaches to a parent console (if any) or creates an own (dedicated) console window.
+ *
+ * @returns VBox status code.
+ */
+static int vboxTrayAttachConsole(void)
+{
+    if (    g_fHasConsole       /* Console already attached? Bail out. */
+        || !g_pfnAttachConsole) /* AttachConsole() not available (NT <= 4.0)? */
+        return VINF_SUCCESS;
+
+    /* As we run with the WINDOWS subsystem, we need to either attach to or create an own console
+     * to get any stdout / stderr output. */
+    bool fAllocConsole = false;
+    if (!g_pfnAttachConsole(ATTACH_PARENT_PROCESS))
+        fAllocConsole = true;
+
+    if (fAllocConsole)
+    {
+        AssertPtrReturn(g_pfnAllocConsole, VERR_NOT_AVAILABLE);
+        if (!g_pfnAllocConsole())
+            VBoxTrayShowError("Unable to attach to or allocate a console!");
+        /* Continue running. */
+    }
+
+    RTFILE hStdIn;
+    RTFileFromNative(&hStdIn,  (RTHCINTPTR)GetStdHandle(STD_INPUT_HANDLE));
+    /** @todo Closing of standard handles not support via IPRT (yet). */
+    RTStrmOpenFileHandle(hStdIn, "r", 0, &g_pStdIn);
+
+    RTFILE hStdOut;
+    RTFileFromNative(&hStdOut,  (RTHCINTPTR)GetStdHandle(STD_OUTPUT_HANDLE));
+    /** @todo Closing of standard handles not support via IPRT (yet). */
+    RTStrmOpenFileHandle(hStdOut, "wt", 0, &g_pStdOut);
+
+    RTFILE hStdErr;
+    RTFileFromNative(&hStdErr,  (RTHCINTPTR)GetStdHandle(STD_ERROR_HANDLE));
+    RTStrmOpenFileHandle(hStdErr, "wt", 0, &g_pStdErr);
+
+    if (!fAllocConsole) /* When attaching to the parent console, make sure we start on a fresh line. */
+        RTPrintf("\n");
+
+    g_fHasConsole = true;
+
+    return VINF_SUCCESS;
+}
+
+/**
+ * Detaches from the (parent) console.
+ */
+static void vboxTrayDetachConsole()
+{
+    g_fHasConsole = false;
+}
+
+/**
+ * Early initialization code, required for resolving dynamic symbols and such.
+ *
+ * @returns VBox status code.
+ */
+static int vboxTrayPreInit()
+{
+    RTLDRMOD hMod;
+    int rc = RTLdrLoadSystem("kernel32.dll", true /*fNoUnload*/, &hMod);
+    if (RT_SUCCESS(rc))
+    {
+        /* only W2K+, ignore rc */ RTLdrGetSymbol(hMod, "AllocConsole", (void **)&g_pfnAllocConsole);
+        /* only W2K+, ignore rc */ RTLdrGetSymbol(hMod, "AttachConsole", (void **)&g_pfnAttachConsole);
+
+        RTLdrClose(hMod);
+    }
+
+    return rc;
+}
+
+/**
+ * Destroys VBoxTray.
+ *
+ * @returns RTEXITCODE_SUCCESS.
+ */
+static RTEXITCODE vboxTrayDestroy()
+{
+    vboxTrayDetachConsole();
+
+    /* Release instance mutex. */
+    if (g_hMutexAppRunning != NULL)
+    {
+        CloseHandle(g_hMutexAppRunning);
+        g_hMutexAppRunning = NULL;
+    }
+
+    return RTEXITCODE_SUCCESS;
+}
+
+/**
+ * Prints the help to either a message box or a console (if attached).
+ *
+ * @returns RTEXITCODE_SYNTAX.
+ * @param   cArgs               Number of arguments given via argc.
+ * @param   papszArgs           Arguments given specified by \a cArgs.
+ */
+static RTEXITCODE vboxTrayPrintHelp(int cArgs, char **papszArgs)
+{
+    RT_NOREF(cArgs);
+
+    char szServices[64] = { 0 };
+    for (size_t i = 0; i < RT_ELEMENTS(g_aServices); i++)
+    {
+        char szName[RTTHREAD_NAME_LEN];
+        int rc2 = RTStrCopy(szName, sizeof(szName), g_aServices[i].pDesc->pszName);
+        RTStrToLower(szName); /* To make it easier for users to recognize the service name via command line. */
+        AssertRCBreak(rc2);
+        if (i > 0)
+        {
+            rc2 = RTStrCat(szServices, sizeof(szServices), ", ");
+            AssertRCBreak(rc2);
+        }
+        rc2 = RTStrCat(szServices, sizeof(szServices), szName);
+        AssertRCBreak(rc2);
+    }
+
+    VBoxTrayShowMsgBox(VBOX_PRODUCT " - " VBOX_VBOXTRAY_TITLE,
+                       MB_ICONINFORMATION,
+                       VBOX_PRODUCT " %s v%u.%u.%ur%u\n"
+                       "Copyright (C) 2009-" VBOX_C_YEAR " " VBOX_VENDOR "\n\n"
+                       "Command Line Parameters:\n\n"
+                       "-d, --debug\n"
+                       "    Enables debugging mode\n"
+                       "-f, --foreground\n"
+                       "    Enables running in foreground\n"
+                       "-l, --logfile <file>\n"
+                       "    Enables logging to a file\n"
+                       "-v, --verbose\n"
+                       "    Increases verbosity\n"
+                       "-V, --version\n"
+                       "   Displays version number and exit\n"
+                       "-?, -h, --help\n"
+                       "   Displays this help text and exit\n"
+                       "\n"
+                       "Service parameters:\n\n"
+                       "--enable-<service-name>\n"
+                       "   Enables the given service\n"
+                       "--disable-<service-name>\n"
+                       "   Disables the given service\n"
+                       "--only-<service-name>\n"
+                       "   Only starts the given service\n"
+                       "\n"
+                       "Examples:\n"
+                       "  %s -vvv --logfile C:\\Temp\\VBoxTray.log\n"
+                       "  %s --foreground -vvvv --only-draganddrop\n"
+                       "\n"
+                       "Available services: %s\n\n",
+                       VBOX_VBOXTRAY_TITLE, VBOX_VERSION_MAJOR, VBOX_VERSION_MINOR, VBOX_VERSION_BUILD, VBOX_SVN_REV,
+                       papszArgs[0], papszArgs[0], szServices);
+
+    vboxTrayDestroy();
+
+    return RTEXITCODE_SYNTAX;
 }
 
 /**
@@ -977,11 +1034,23 @@ int main(int cArgs, char **papszArgs)
     if (RT_FAILURE(rc))
         return RTMsgInitFailure(rc);
 
+    rc = vboxTrayPreInit();
+    if (RT_FAILURE(rc))
+        return VBoxTrayShowError(VBOX_VBOXTRAY_TITLE " Pre-init failed: %Rrc\n", rc);
+
+    /* If a debugger is present, we always want to attach a console. */
+    if (IsDebuggerPresent())
+        vboxTrayAttachConsole();
+
     /*
      * Parse the top level arguments until we find a command.
      */
     static const RTGETOPTDEF s_aOptions[] =
     {
+        { "--debug",            'd',                         RTGETOPT_REQ_NOTHING },
+        { "/debug",             'd',                         RTGETOPT_REQ_NOTHING },
+        { "--foreground",       'f',                         RTGETOPT_REQ_NOTHING },
+        { "/foreground",        'f',                         RTGETOPT_REQ_NOTHING },
         { "--help",             'h',                         RTGETOPT_REQ_NOTHING },
         { "-help",              'h',                         RTGETOPT_REQ_NOTHING },
         { "/help",              'h',                         RTGETOPT_REQ_NOTHING },
@@ -1005,86 +1074,140 @@ int main(int cArgs, char **papszArgs)
         switch (ch)
         {
             case 'h':
-                hlpShowMessageBox(VBOX_PRODUCT " - " VBOX_VBOXTRAY_TITLE,
-                                  MB_ICONINFORMATION,
-                     "-- " VBOX_PRODUCT " %s v%u.%u.%ur%u --\n\n"
-                     "Copyright (C) 2009-" VBOX_C_YEAR " " VBOX_VENDOR "\n\n"
-                     "Command Line Parameters:\n\n"
-                     "-l, --logfile <file>\n"
-                     "    Enables logging to a file\n"
-                     "-v, --verbose\n"
-                     "    Increases verbosity\n"
-                     "-V, --version\n"
-                     "   Displays version number and exit\n"
-                     "-?, -h, --help\n"
-                     "   Displays this help text and exit\n"
-                     "\n"
-                     "Examples:\n"
-                     "  %s -vvv\n",
-                     VBOX_VBOXTRAY_TITLE, VBOX_VERSION_MAJOR, VBOX_VERSION_MINOR, VBOX_VERSION_BUILD, VBOX_SVN_REV,
-                     papszArgs[0], papszArgs[0]);
-                return RTEXITCODE_SUCCESS;
+                return vboxTrayPrintHelp(cArgs, papszArgs);
+
+            case 'd':
+            {
+                /* ignore rc */ vboxTrayAttachConsole();
+                g_cVerbosity = 4; /* Set verbosity to level 4. */
+                break;
+            }
+
+            case 'f':
+            {
+                /* ignore rc */ vboxTrayAttachConsole();
+                /* Don't increase verbosity automatically here. */
+                break;
+            }
 
             case 'l':
+            {
                 if (*ValueUnion.psz == '\0')
                     szLogFile[0] = '\0';
                 else
                 {
                     rc = RTPathAbs(ValueUnion.psz, szLogFile, sizeof(szLogFile));
                     if (RT_FAILURE(rc))
-                        return RTMsgErrorExit(RTEXITCODE_FAILURE, "RTPathAbs failed on log file path: %Rrc (%s)",
-                                              rc, ValueUnion.psz);
+                    {
+                        int rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "RTPathAbs failed on log file path: %Rrc (%s)",
+                                                    rc, ValueUnion.psz);
+                        vboxTrayDestroy();
+                        return rcExit;
+                    }
                 }
                 break;
+            }
 
             case 'v':
                 g_cVerbosity++;
                 break;
 
             case 'V':
-                hlpShowMessageBox(VBOX_VBOXTRAY_TITLE, MB_ICONINFORMATION,
-                                  "Version: %u.%u.%ur%u",
-                                  VBOX_VERSION_MAJOR, VBOX_VERSION_MINOR, VBOX_VERSION_BUILD, VBOX_SVN_REV);
-                return RTEXITCODE_SUCCESS;
+                VBoxTrayShowMsgBox(VBOX_PRODUCT " - " VBOX_VBOXTRAY_TITLE,
+                                   MB_ICONINFORMATION,
+                                   "%u.%u.%ur%u", VBOX_VERSION_MAJOR, VBOX_VERSION_MINOR, VBOX_VERSION_BUILD, VBOX_SVN_REV);
+                return vboxTrayDestroy();
 
             default:
-                rc = RTGetOptPrintError(ch, &ValueUnion);
-                break;
+            {
+                const  char *psz = ValueUnion.psz;
+                size_t const cch = strlen(ValueUnion.psz);
+                bool fFound = false;
+
+                if (cch > sizeof("--enable-") && !memcmp(psz, RT_STR_TUPLE("--enable-")))
+                    for (unsigned j = 0; !fFound && j < RT_ELEMENTS(g_aServices); j++)
+                        if ((fFound = !RTStrICmp(psz + sizeof("--enable-") - 1, g_aServices[j].pDesc->pszName)))
+                            g_aServices[j].fEnabled = true;
+
+                if (cch > sizeof("--disable-") && !memcmp(psz, RT_STR_TUPLE("--disable-")))
+                    for (unsigned j = 0; !fFound && j < RT_ELEMENTS(g_aServices); j++)
+                        if ((fFound = !RTStrICmp(psz + sizeof("--disable-") - 1, g_aServices[j].pDesc->pszName)))
+                            g_aServices[j].fEnabled = false;
+
+                if (cch > sizeof("--only-") && !memcmp(psz, RT_STR_TUPLE("--only-")))
+                    for (unsigned j = 0; j < RT_ELEMENTS(g_aServices); j++)
+                    {
+                        g_aServices[j].fEnabled = !RTStrICmp(psz + sizeof("--only-") - 1, g_aServices[j].pDesc->pszName);
+                        if (g_aServices[j].fEnabled)
+                            fFound = true;
+                    }
+
+                if (!fFound)
+                {
+                    rc = vboxTrayServicesLazyPreInit();
+                    if (RT_FAILURE(rc))
+                        break;
+                    for (unsigned j = 0; !fFound && j < RT_ELEMENTS(g_aServices); j++)
+                    {
+                        rc = g_aServices[j].pDesc->pfnOption(NULL, cArgs, papszArgs, NULL);
+                        fFound = rc == VINF_SUCCESS;
+                        if (fFound)
+                            break;
+                        if (rc != -1) /* Means not parsed. */
+                            break;
+                    }
+                }
+                if (!fFound)
+                {
+                    RTGetOptPrintError(ch, &ValueUnion); /* Only shown on console. */
+                    return vboxTrayPrintHelp(cArgs, papszArgs);
+                }
+
+                continue;
+            }
         }
     }
 
-    /* Note: Do not use a global namespace ("Global\\") for mutex name here,
-     * will blow up NT4 compatibility! */
-    HANDLE hMutexAppRunning = CreateMutex(NULL, FALSE, VBOX_VBOXTRAY_TITLE);
-    if (   hMutexAppRunning != NULL
+    if (RT_FAILURE(rc))
+    {
+        vboxTrayDestroy();
+        return RTEXITCODE_FAILURE;
+    }
+
+    /**
+     * VBoxTray already running? Bail out.
+     *
+     * Note: Do not use a global namespace ("Global\\") for mutex name here,
+     * will blow up NT4 compatibility!
+     */
+    g_hMutexAppRunning = CreateMutex(NULL, FALSE, VBOX_VBOXTRAY_TITLE);
+    if (   g_hMutexAppRunning != NULL
         && GetLastError() == ERROR_ALREADY_EXISTS)
     {
-        /* VBoxTray already running? Bail out. */
-        CloseHandle (hMutexAppRunning);
-        hMutexAppRunning = NULL;
-        return RTEXITCODE_SUCCESS;
+        VBoxTrayError(VBOX_VBOXTRAY_TITLE " already running!\n");
+        return vboxTrayDestroy();
     }
+
+    /* Set the instance handle. */
+#ifdef IPRT_NO_CRT
+    Assert(g_hInstance == NULL); /* Make sure this isn't set before by WinMain(). */
+    g_hInstance = GetModuleHandleW(NULL);
+#endif
 
     rc = VbglR3Init();
     if (RT_SUCCESS(rc))
     {
-        rc = vboxTrayLogCreate(szLogFile[0] ? szLogFile : NULL);
+        rc = VBoxTrayLogCreate(szLogFile[0] ? szLogFile : NULL);
         if (RT_SUCCESS(rc))
         {
-            LogRel(("Verbosity level: %d\n", g_cVerbosity));
+            VBoxTrayInfo("Verbosity level: %d\n", g_cVerbosity);
 
-            /* Log the major windows NT version: */
-            uint64_t const uNtVersion = RTSystemGetNtVersion();
-            LogRel(("Windows version %u.%u build %u (uNtVersion=%#RX64)\n", RTSYSTEM_NT_VERSION_GET_MAJOR(uNtVersion),
-                    RTSYSTEM_NT_VERSION_GET_MINOR(uNtVersion), RTSYSTEM_NT_VERSION_GET_BUILD(uNtVersion), uNtVersion ));
-
-            /* Set the instance handle. */
-#ifdef IPRT_NO_CRT
-            Assert(g_hInstance == NULL); /* Make sure this isn't set before by WinMain(). */
-            g_hInstance = GetModuleHandleW(NULL);
-#endif
-            hlpReportStatus(VBoxGuestFacilityStatus_Init);
             rc = vboxTrayCreateToolWindow();
+            if (RT_SUCCESS(rc))
+                rc = vboxTrayCreateTrayIcon();
+
+            VBoxTrayHlpReportStatus(VBoxGuestFacilityStatus_PreInit);
+
             if (RT_SUCCESS(rc))
             {
                 VBoxCapsInit();
@@ -1100,27 +1223,22 @@ int main(int cArgs, char **papszArgs)
                 }
 
                 rc = vboxDtInit();
-                if (!RT_SUCCESS(rc))
+                if (RT_FAILURE(rc))
                 {
-                    LogFlowFunc(("vboxDtInit failed, rc=%Rrc\n", rc));
                     /* ignore the Dt Init failure. this can happen for < XP win that do not support WTS API
                      * in that case the session is treated as active connected to the physical console
                      * (i.e. fallback to the old behavior that was before introduction of VBoxSt) */
                     Assert(vboxDtIsInputDesktop());
                 }
 
-                rc = VBoxAcquireGuestCaps(VMMDEV_GUEST_SUPPORTS_SEAMLESS | VMMDEV_GUEST_SUPPORTS_GRAPHICS, 0, true);
-                if (!RT_SUCCESS(rc))
-                    LogFlowFunc(("VBoxAcquireGuestCaps failed with rc=%Rrc, ignoring ...\n", rc));
+                VBoxAcquireGuestCaps(VMMDEV_GUEST_SUPPORTS_SEAMLESS | VMMDEV_GUEST_SUPPORTS_GRAPHICS, 0, true);
 
-                rc = vboxTraySetupSeamless(); /** @todo r=andy Do we really want to be this critical for the whole application? */
-                if (RT_SUCCESS(rc))
-                {
-                    rc = vboxTrayServiceMain();
-                    if (RT_SUCCESS(rc))
-                        hlpReportStatus(VBoxGuestFacilityStatus_Terminating);
-                    vboxTrayShutdownSeamless();
-                }
+                vboxTraySetupSeamless();
+
+                rc = vboxTrayServiceMain();
+                /* Note: Do *not* overwrite rc in the following code, as this acts as the exit code. */
+
+                vboxTrayShutdownSeamless();
 
                 /* it should be safe to call vboxDtTerm even if vboxStInit above failed */
                 vboxDtTerm();
@@ -1129,20 +1247,20 @@ int main(int cArgs, char **papszArgs)
                 vboxStTerm();
 
                 VBoxCapsTerm();
-
-                vboxTrayDestroyToolWindow();
             }
+
+            vboxTrayRemoveTrayIcon();
+            vboxTrayDestroyToolWindow();
+
             if (RT_SUCCESS(rc))
-                hlpReportStatus(VBoxGuestFacilityStatus_Terminated);
+
+                VBoxTrayHlpReportStatus(VBoxGuestFacilityStatus_Terminated);
             else
-            {
-                LogRel(("Error while starting, rc=%Rrc\n", rc));
-                hlpReportStatus(VBoxGuestFacilityStatus_Failed);
-            }
+                VBoxTrayHlpReportStatus(VBoxGuestFacilityStatus_Failed);
 
-            LogRel(("Ended\n"));
+            VBoxTrayInfo("VBoxTray terminated with %Rrc\n", rc);
 
-            vboxTrayLogDestroy();
+            VBoxTrayLogDestroy();
         }
 
         VbglR3Term();
@@ -1163,12 +1281,7 @@ int main(int cArgs, char **papszArgs)
         }
     }
 
-    /* Release instance mutex. */
-    if (hMutexAppRunning != NULL)
-    {
-        CloseHandle(hMutexAppRunning);
-        hMutexAppRunning = NULL;
-    }
+    vboxTrayDestroy();
 
     return RT_SUCCESS(rc) ? RTEXITCODE_SUCCESS : RTEXITCODE_FAILURE;
 }
@@ -1225,12 +1338,15 @@ static LRESULT CALLBACK vboxToolWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPA
             switch (wParam)
             {
                 case TIMERID_VBOXTRAY_CHECK_HOSTVERSION:
+                {
                     if (RT_SUCCESS(VBoxCheckHostVersion()))
                     {
-                        /* After successful run we don't need to check again. */
+                        /* After a successful run we don't need to check again. */
                         KillTimer(g_hwndToolWindow, TIMERID_VBOXTRAY_CHECK_HOSTVERSION);
                     }
+
                     return 0;
+                }
 
                 default:
                     break;

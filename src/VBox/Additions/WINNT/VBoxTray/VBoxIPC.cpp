@@ -1,4 +1,4 @@
-/* $Id: VBoxIPC.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxIPC.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxIPC - IPC thread, acts as a (purely) local IPC server.
  *           Multiple sessions are supported, whereas every session
@@ -58,7 +58,7 @@
 typedef struct VBOXIPCCONTEXT
 {
     /** Pointer to the service environment. */
-    const VBOXSERVICEENV      *pEnv;
+    const VBOXTRAYSVCENV      *pEnv;
     /** Handle for the local IPC server. */
     RTLOCALIPCSERVER           hServer;
     /** Critical section serializing access to the session list, the state,
@@ -169,11 +169,8 @@ static int vboxIPCHandleShowBalloonMsg(PVBOXIPCSESSION pSession, PVBOXTRAYIPCHEA
     /*
      * Showing the balloon tooltip is not critical.
      */
-    int rc2 = hlpShowBalloonTip(g_hInstance, g_hwndToolWindow, ID_TRAYICON,
+    VBoxTrayHlpShowBalloonTipEx(g_hInstance, g_hwndToolWindow, ID_TRAYICON,
                                 pszMsg, pszTitle, Payload.s.cMsTimeout, Payload.s.uType);
-    LogFlowFunc(("Showing \"%s\" - \"%s\" (type %RU32, %RU32ms), rc=%Rrc\n",
-                 pszTitle, pszMsg, Payload.s.cMsTimeout, Payload.s.uType, rc2));
-    RT_NOREF_PV(rc2);
 
     return VINF_SUCCESS;
 }
@@ -206,13 +203,28 @@ static int vboxIPCHandleUserLastInput(PVBOXIPCSESSION pSession, PVBOXTRAYIPCHEAD
 }
 
 /**
- * Initializes the IPC communication.
- *
- * @return  IPRT status code.
- * @param   pEnv                        The IPC service's environment.
- * @param   ppInstance                  The instance pointer which refers to this object.
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnPreInit}
  */
-DECLCALLBACK(int) VBoxIPCInit(const PVBOXSERVICEENV pEnv, void **ppInstance)
+static DECLCALLBACK(int) vbtrIPCPreInit(void)
+{
+    return VINF_SUCCESS;
+}
+
+
+/**
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnOption}
+ */
+static DECLCALLBACK(int) vbtrIPCOption(const char **ppszShort, int argc, char **argv, int *pi)
+{
+    RT_NOREF(ppszShort, argc, argv, pi);
+
+    return -1;
+}
+
+/**
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnInit}
+ */
+DECLCALLBACK(int) vbtrIPCInit(const PVBOXTRAYSVCENV pEnv, void **ppInstance)
 {
     AssertPtrReturn(pEnv, VERR_INVALID_POINTER);
     AssertPtrReturn(ppInstance, VERR_INVALID_POINTER);
@@ -259,6 +271,9 @@ DECLCALLBACK(int) VBoxIPCInit(const PVBOXSERVICEENV pEnv, void **ppInstance)
     return rc;
 }
 
+/**
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnStop}
+ */
 DECLCALLBACK(void) VBoxIPCStop(void *pInstance)
 {
     /* Can be NULL if VBoxIPCInit failed. */
@@ -297,7 +312,10 @@ DECLCALLBACK(void) VBoxIPCStop(void *pInstance)
     }
 }
 
-DECLCALLBACK(void) VBoxIPCDestroy(void *pInstance)
+/**
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnDestroy}
+ */
+DECLCALLBACK(void) vbtrIPCDestroy(void *pInstance)
 {
     AssertPtrReturnVoid(pInstance);
 
@@ -551,7 +569,7 @@ static int vboxIPCSessionStop(PVBOXIPCSESSION pSession)
  * Thread function to wait for and process seamless mode change
  * requests
  */
-DECLCALLBACK(int) VBoxIPCWorker(void *pInstance, bool volatile *pfShutdown)
+DECLCALLBACK(int) vbtrIPCWorker(void *pInstance, bool volatile *pfShutdown)
 {
     AssertPtr(pInstance);
     LogFlowFunc(("pInstance=%p\n", pInstance));
@@ -605,16 +623,22 @@ DECLCALLBACK(int) VBoxIPCWorker(void *pInstance, bool volatile *pfShutdown)
 /**
  * The service description.
  */
-VBOXSERVICEDESC g_SvcDescIPC =
+VBOXTRAYSVCDESC g_SvcDescIPC =
 {
     /* pszName. */
     "IPC",
     /* pszDescription. */
     "Inter-Process Communication",
+    /* pszUsage. */
+    NULL,
+    /* pszOptions. */
+    NULL,
     /* methods */
-    VBoxIPCInit,
-    VBoxIPCWorker,
+    vbtrIPCPreInit,
+    vbtrIPCOption,
+    vbtrIPCInit,
+    vbtrIPCWorker,
     NULL /* pfnStop */,
-    VBoxIPCDestroy
+    vbtrIPCDestroy
 };
 

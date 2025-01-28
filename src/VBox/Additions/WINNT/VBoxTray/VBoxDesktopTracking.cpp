@@ -1,4 +1,4 @@
-/* $Id: VBoxDesktopTracking.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxDesktopTracking.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxDesktopTracking.cpp - Desktop tracking.
  */
@@ -214,6 +214,9 @@ int vboxDtInit()
 
     RT_ZERO(gVBoxDt);
     gVBoxDt.fIsInputDesktop = TRUE;
+
+    if (RT_FAILURE(rc))
+        VBoxTrayError("Initializing desktop tracking failed with %Rrc\n", rc);
 
     return rc;
 }

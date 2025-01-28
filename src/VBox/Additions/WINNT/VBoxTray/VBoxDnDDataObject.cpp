@@ -1,4 +1,4 @@
-/* $Id: VBoxDnDDataObject.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxDnDDataObject.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxDnDDataObject.cpp - IDataObject implementation.
  */
@@ -39,6 +39,7 @@
 #include <iprt/utf16.h>
 
 #include "VBoxTray.h"
+#include "VBoxTrayInternal.h"
 #include "VBoxHelpers.h"
 #include "VBoxDnD.h"
 
@@ -128,19 +129,19 @@ STDMETHODIMP VBoxDnDDataObject::GetData(LPFORMATETC pFormatEtc, LPSTGMEDIUM pMed
     LogFlowFunc(("mStatus=%ld\n", m_enmStatus));
     if (m_enmStatus == Status_Dropping)
     {
-        LogRel2(("DnD: Waiting for drop event ...\n"));
+        VBoxTrayVerbose(2, "DnD: Waiting for drop event ...\n");
         int rc2 = RTSemEventWait(m_EvtDropped, RT_INDEFINITE_WAIT);
         LogFlowFunc(("rc2=%Rrc, mStatus=%ld\n", rc2, m_enmStatus)); RT_NOREF(rc2);
     }
 
     if (m_enmStatus == Status_Dropped)
     {
-        LogRel2(("DnD: Drop event received\n"));
-        LogRel3(("DnD: cfFormat=%RI16, sFormat=%s, tyMed=%RU32, dwAspect=%RU32\n",
-                 pThisFormat->cfFormat, VBoxDnDDataObject::ClipboardFormatToString(pFormatEtc->cfFormat),
-                 pThisFormat->tymed, pThisFormat->dwAspect));
-        LogRel3(("DnD: Got strFormat=%s, pvData=%p, cbData=%RU32\n",
-                  m_strFormat.c_str(), m_pvData, m_cbData));
+        VBoxTrayVerbose(2, "DnD: Drop event received\n");
+        VBoxTrayVerbose(3, "DnD: cfFormat=%RI16, sFormat=%s, tyMed=%RU32, dwAspect=%RU32\n",
+                        pThisFormat->cfFormat, VBoxDnDDataObject::ClipboardFormatToString(pFormatEtc->cfFormat),
+                        pThisFormat->tymed, pThisFormat->dwAspect);
+        VBoxTrayVerbose(3, "DnD: Got strFormat=%s, pvData=%p, cbData=%RU32\n",
+                        m_strFormat.c_str(), m_pvData, m_cbData);
 
         /*
          * Initialize default values.
@@ -159,9 +160,9 @@ STDMETHODIMP VBoxDnDDataObject::GetData(LPFORMATETC pFormatEtc, LPSTGMEDIUM pMed
             if (   RT_SUCCESS(rc)
                 && cFiles)
             {
-                LogRel2(("DnD: Files (%zu)\n", cFiles));
+                VBoxTrayVerbose(1, "DnD: Files (%zu)\n", cFiles);
                 for (size_t i = 0; i < cFiles; i++)
-                    LogRel2(("\tDnD: File '%s'\n", papszFiles[i]));
+                    VBoxTrayVerbose(1, "\tDnD: File '%s'\n", papszFiles[i]);
 
 #if 0
                 if (   (pFormatEtc->tymed & TYMED_ISTREAM)
@@ -635,18 +636,18 @@ bool VBoxDnDDataObject::LookupFormatEtc(LPFORMATETC pFormatEtc, ULONG *puIndex)
             && pFormatEtc->cfFormat == m_paFormatEtc[i].cfFormat
             && pFormatEtc->dwAspect == m_paFormatEtc[i].dwAspect)
         {
-            LogRel3(("DnD: Format found: tyMed=%RI32, cfFormat=%RI16, sFormats=%s, dwAspect=%RI32, ulIndex=%RU32\n",
-                      pFormatEtc->tymed, pFormatEtc->cfFormat, VBoxDnDDataObject::ClipboardFormatToString(m_paFormatEtc[i].cfFormat),
-                      pFormatEtc->dwAspect, i));
+            VBoxTrayVerbose(3, "DnD: Format found: tyMed=%RI32, cfFormat=%RI16, sFormats=%s, dwAspect=%RI32, ulIndex=%RU32\n",
+                            pFormatEtc->tymed, pFormatEtc->cfFormat, VBoxDnDDataObject::ClipboardFormatToString(m_paFormatEtc[i].cfFormat),
+                            pFormatEtc->dwAspect, i);
             if (puIndex)
                 *puIndex = i;
             return true;
         }
     }
 
-    LogRel3(("DnD: Format NOT found: tyMed=%RI32, cfFormat=%RI16, sFormats=%s, dwAspect=%RI32\n",
-             pFormatEtc->tymed, pFormatEtc->cfFormat, VBoxDnDDataObject::ClipboardFormatToString(pFormatEtc->cfFormat),
-             pFormatEtc->dwAspect));
+    VBoxTrayVerbose(3, "DnD: Format NOT found: tyMed=%RI32, cfFormat=%RI16, sFormats=%s, dwAspect=%RI32\n",
+                    pFormatEtc->tymed, pFormatEtc->cfFormat, VBoxDnDDataObject::ClipboardFormatToString(pFormatEtc->cfFormat),
+                    pFormatEtc->dwAspect);
 
     return false;
 }
@@ -727,7 +728,7 @@ int VBoxDnDDataObject::Signal(const RTCString &strFormat,
     }
 
     /* Signal in any case. */
-    LogRel2(("DnD: Signalling drop event\n"));
+    VBoxTrayVerbose(2, "DnD: Signalling drop event\n");
 
     int rc2 = RTSemEventSignal(m_EvtDropped);
     if (RT_SUCCESS(rc))

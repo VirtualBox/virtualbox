@@ -1,4 +1,4 @@
-/* $Id: VBoxSessionTracking.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxSessionTracking.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxSessionTracking.cpp - Session tracking.
  */
@@ -36,6 +36,7 @@
 #include <Wtsapi32.h>
 
 #include "VBoxTray.h"
+#include "VBoxTrayInternal.h"
 
 
 /* St (session [state] tracking) functionality API impl */
@@ -124,8 +125,8 @@ int vboxStInit(HWND hWnd)
         }
         else
         {
-            DWORD dwErr = GetLastError();
-            LogRel(("WTSRegisterSessionNotification failed, error = %08X\n", dwErr));
+            DWORD const dwErr = GetLastError();
+            VBoxTrayInfo("WTSRegisterSessionNotification failed, error = %08X\n", dwErr);
             if (dwErr == RPC_S_INVALID_BINDING)
             {
                 gVBoxSt.idDelayedInitTimer = SetTimer(gVBoxSt.hWTSAPIWnd, TIMERID_VBOXTRAY_ST_DELAYED_INIT_TIMER,
@@ -143,7 +144,8 @@ int vboxStInit(HWND hWnd)
     }
     else
     {
-        LogRel(("WtsApi32.dll APIs are not available (%Rrc)\n", rc));
+        VBoxTrayInfo("WtsApi32.dll APIs are not available (%Rrc)\n", rc);
+
         gVBoxSt.pfnWTSRegisterSessionNotification = NULL;
         gVBoxSt.pfnWTSUnRegisterSessionNotification = NULL;
         gVBoxSt.pfnWTSQuerySessionInformationA = NULL;
@@ -152,6 +154,10 @@ int vboxStInit(HWND hWnd)
     RT_ZERO(gVBoxSt);
     gVBoxSt.fIsConsole = TRUE;
     gVBoxSt.enmConnectState = WTSActive;
+
+    if (RT_FAILURE(rc))
+        VBoxTrayError("Initializing sessiosn tracking failed with %Rrc\n", rc);
+
     return rc;
 }
 

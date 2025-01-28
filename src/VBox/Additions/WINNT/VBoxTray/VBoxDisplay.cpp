@@ -1,4 +1,4 @@
-/* $Id: VBoxDisplay.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxDisplay.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxSeamless - Display notifications.
  */
@@ -50,7 +50,7 @@
 *********************************************************************************************************************************/
 typedef struct _VBOXDISPLAYCONTEXT
 {
-    const VBOXSERVICEENV *pEnv;
+    const VBOXTRAYSVCENV *pEnv;
     BOOL fAnyX;
     /** ChangeDisplaySettingsEx does not exist in NT. ResizeDisplayDevice uses the function. */
     DECLCALLBACKMEMBER_EX(LONG,WINAPI, pfnChangeDisplaySettingsEx,(LPCTSTR lpszDeviceName, LPDEVMODE lpDevMode, HWND hwnd,
@@ -82,7 +82,28 @@ static VBOXDISPLAYCONTEXT g_Ctx = { 0 };
 static VBOXDISPLAY_DRIVER_TYPE getVBoxDisplayDriverType(VBOXDISPLAYCONTEXT *pCtx);
 
 
-static DECLCALLBACK(int) VBoxDisplayInit(const PVBOXSERVICEENV pEnv, void **ppInstance)
+/**
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnPreInit}
+ */
+static DECLCALLBACK(int) vbtrDispPreInit(void)
+{
+    return VINF_SUCCESS;
+}
+
+/**
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnOption}
+ */
+static DECLCALLBACK(int) vbtrDispOption(const char **ppszShort, int argc, char **argv, int *pi)
+{
+    RT_NOREF(ppszShort, argc, argv, pi);
+
+    return -1;
+}
+
+/**
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnInit}
+ */
+static DECLCALLBACK(int) vbtrDisplayInit(const PVBOXTRAYSVCENV pEnv, void **ppInstance)
 {
     LogFlowFuncEnter();
 
@@ -171,7 +192,10 @@ static DECLCALLBACK(int) VBoxDisplayInit(const PVBOXSERVICEENV pEnv, void **ppIn
     return rc;
 }
 
-static DECLCALLBACK(void) VBoxDisplayDestroy(void *pInstance)
+/**
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnDestroy}
+ */
+static DECLCALLBACK(void) vbtrDisplayDestroy(void *pInstance)
 {
     RT_NOREF(pInstance);
     return;
@@ -897,9 +921,9 @@ static BOOL DisplayChangeRequestHandler(PVBOXDISPLAYCONTEXT pCtx)
 }
 
 /**
- * Thread function to wait for and process display change requests.
+ * @interface_method_impl{VBOXTRAYSVCDESC,pfnWorker}
  */
-static DECLCALLBACK(int) VBoxDisplayWorker(void *pvInstance, bool volatile *pfShutdown)
+static DECLCALLBACK(int) vbtrDisplayWorker(void *pvInstance, bool volatile *pfShutdown)
 {
     AssertPtr(pvInstance);
     PVBOXDISPLAYCONTEXT pCtx = (PVBOXDISPLAYCONTEXT)pvInstance;
@@ -988,16 +1012,22 @@ static DECLCALLBACK(int) VBoxDisplayWorker(void *pvInstance, bool volatile *pfSh
 /**
  * The service description.
  */
-VBOXSERVICEDESC g_SvcDescDisplay =
+VBOXTRAYSVCDESC g_SvcDescDisplay =
 {
     /* pszName. */
     "display",
     /* pszDescription. */
     "Display Notifications",
+    /* pszUsage. */
+    NULL,
+    /* pszOptions. */
+    NULL,
     /* methods */
-    VBoxDisplayInit,
-    VBoxDisplayWorker,
+    vbtrDispPreInit,
+    vbtrDispOption,
+    vbtrDisplayInit,
+    vbtrDisplayWorker,
     NULL /* pfnStop */,
-    VBoxDisplayDestroy
+    vbtrDisplayDestroy
 };
 
