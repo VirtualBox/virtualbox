@@ -1,4 +1,4 @@
-/* $Id: VBoxClipboard.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxClipboard.cpp 108105 2025-01-28 16:08:20Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxClipboard - Shared clipboard, Windows Guest Implementation.
  */
@@ -925,7 +925,7 @@ static DECLCALLBACK(int) vbtrShClOption(const char **ppszShort, int argc, char *
 /**
  * @interface_method_impl{VBOXTRAYSVCDESC,pfnInit}
  */
-DECLCALLBACK(int) vbtrShClInit(const PVBOXTRAYSVCENV pEnv, void **ppInstance)
+DECLCALLBACK(int) vbtrShClInit(const PVBOXTRAYSVCENV pEnv, void **ppvInstance)
 {
     LogFlowFuncEnter();
 
@@ -979,7 +979,7 @@ DECLCALLBACK(int) vbtrShClInit(const PVBOXTRAYSVCENV pEnv, void **ppInstance)
 
         if (RT_SUCCESS(rc))
         {
-            *ppInstance = pCtx;
+            *ppvInstance = pCtx;
         }
         else
             VbglR3ClipboardDisconnectEx(&pCtx->CmdCtx);
@@ -995,10 +995,10 @@ DECLCALLBACK(int) vbtrShClInit(const PVBOXTRAYSVCENV pEnv, void **ppInstance)
 /**
  * @interface_method_impl{VBOXTRAYSVCDESC,pfnWorker}
  */
-DECLCALLBACK(int) vbtrShClWorker(void *pInstance, bool volatile *pfShutdown)
+DECLCALLBACK(int) vbtrShClWorker(void *pvInstance, bool volatile *pfShutdown)
 {
-    AssertPtr(pInstance);
-    LogFlowFunc(("pInstance=%p\n", pInstance));
+    AssertPtr(pvInstance);
+    LogFlowFunc(("pvInstance=%p\n", pvInstance));
 
     /*
      * Tell the control thread that it can continue
@@ -1006,7 +1006,7 @@ DECLCALLBACK(int) vbtrShClWorker(void *pInstance, bool volatile *pfShutdown)
      */
     RTThreadUserSignal(RTThreadSelf());
 
-    const PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pInstance;
+    const PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pvInstance;
     AssertPtr(pCtx);
 
     const PSHCLWINCTX pWinCtx = &pCtx->Win;
@@ -1167,13 +1167,13 @@ DECLCALLBACK(int) vbtrShClWorker(void *pInstance, bool volatile *pfShutdown)
 /**
  * @interface_method_impl{VBOXTRAYSVCDESC,pfnStop}
  */
-DECLCALLBACK(int) vbtrShClStop(void *pInstance)
+DECLCALLBACK(int) vbtrShClStop(void *pvInstance)
 {
-    AssertPtrReturn(pInstance, VERR_INVALID_POINTER);
+    AssertPtrReturn(pvInstance, VERR_INVALID_POINTER);
 
-    LogFunc(("Stopping pInstance=%p\n", pInstance));
+    LogFunc(("Stopping pvInstance=%p\n", pvInstance));
 
-    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pInstance;
+    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pvInstance;
     AssertPtr(pCtx);
 
     /* Set shutdown indicator. */
@@ -1194,11 +1194,11 @@ DECLCALLBACK(int) vbtrShClStop(void *pInstance)
 /**
  * @interface_method_impl{VBOXTRAYSVCDESC,pfnDestroy}
  */
-DECLCALLBACK(void) vbtrShClDestroy(void *pInstance)
+DECLCALLBACK(void) vbtrShClDestroy(void *pvInstance)
 {
-    AssertPtrReturnVoid(pInstance);
+    AssertPtrReturnVoid(pvInstance);
 
-    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pInstance;
+    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pvInstance;
     AssertPtrReturnVoid(pCtx);
 
     /* Make sure that we are disconnected. */

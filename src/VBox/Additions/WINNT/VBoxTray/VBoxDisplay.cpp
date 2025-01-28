@@ -1,4 +1,4 @@
-/* $Id: VBoxDisplay.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxDisplay.cpp 108105 2025-01-28 16:08:20Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxSeamless - Display notifications.
  */
@@ -103,11 +103,11 @@ static DECLCALLBACK(int) vbtrDispOption(const char **ppszShort, int argc, char *
 /**
  * @interface_method_impl{VBOXTRAYSVCDESC,pfnInit}
  */
-static DECLCALLBACK(int) vbtrDisplayInit(const PVBOXTRAYSVCENV pEnv, void **ppInstance)
+static DECLCALLBACK(int) vbtrDisplayInit(const PVBOXTRAYSVCENV pEnv, void **ppvInstance)
 {
     LogFlowFuncEnter();
 
-    PVBOXDISPLAYCONTEXT pCtx = &g_Ctx; /** @todo r=andy Use instance data via service lookup (add void *pInstance). */
+    PVBOXDISPLAYCONTEXT pCtx = &g_Ctx; /** @todo r=andy Use instance data via service lookup (add void *pvInstance). */
     AssertPtr(pCtx);
 
     int rc;
@@ -185,7 +185,7 @@ static DECLCALLBACK(int) vbtrDisplayInit(const PVBOXTRAYSVCENV pEnv, void **ppIn
         else
             pCtx->fAnyX = TRUE;
 
-        *ppInstance = pCtx;
+        *ppvInstance = pCtx;
     }
 
     LogFlowFuncLeaveRC(rc);
@@ -195,9 +195,9 @@ static DECLCALLBACK(int) vbtrDisplayInit(const PVBOXTRAYSVCENV pEnv, void **ppIn
 /**
  * @interface_method_impl{VBOXTRAYSVCDESC,pfnDestroy}
  */
-static DECLCALLBACK(void) vbtrDisplayDestroy(void *pInstance)
+static DECLCALLBACK(void) vbtrDisplayDestroy(void *pvInstance)
 {
-    RT_NOREF(pInstance);
+    RT_NOREF(pvInstance);
     return;
 }
 

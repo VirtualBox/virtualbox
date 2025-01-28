@@ -1,4 +1,4 @@
-/* $Id: VBoxTray.h 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxTray.h 108105 2025-01-28 16:08:20Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxTray - Guest Additions Tray, Internal Header.
  */
@@ -134,32 +134,35 @@ typedef struct VBOXTRAYSVCDESC
      *          VERR_HGCM_SERVICE_NOT_FOUND if the service is not available on the host system. Logged.
      *          Returning any other error will be considered as a fatal error.
      * @param   pEnv
-     * @param   ppInstance      Where to return the thread-specific instance data.
+     * @param   ppvInstance     Where to return the thread-specific instance data.
      * @todo r=bird: The pEnv type is WRONG!  Please check all your const pointers.
      */
-    DECLCALLBACKMEMBER(int, pfnInit,(const PVBOXTRAYSVCENV pEnv, void **ppInstance));
+    DECLCALLBACKMEMBER(int, pfnInit,(const PVBOXTRAYSVCENV pEnv, void **ppvInstance));
 
     /** Called from the worker thread.
      *
      * @returns VBox status code.
      * @retval  VINF_SUCCESS if exitting because *pfShutdown was set.
-     * @param   pInstance       Pointer to thread-specific instance data.
+     * @param   pvInstance      Pointer to thread-specific instance data.
      * @param   pfShutdown      Pointer to a per service termination flag to check
      *                          before and after blocking.
      */
-    DECLCALLBACKMEMBER(int, pfnWorker,(void *pInstance, bool volatile *pfShutdown));
+    DECLCALLBACKMEMBER(int, pfnWorker,(void *pvInstance, bool volatile *pfShutdown));
 
     /**
      * Stops a service.
+     * @param   pvInstance      Pointer to thread-specific instance data.
      */
-    DECLCALLBACKMEMBER(int, pfnStop,(void *pInstance));
+    DECLCALLBACKMEMBER(int, pfnStop,(void *pvInstance));
 
     /**
      * Does termination cleanups.
      *
+     * @param   pvInstance      Pointer to thread-specific instance data.
+     *
      * @remarks This may be called even if pfnInit hasn't been called!
      */
-    DECLCALLBACKMEMBER(void, pfnDestroy,(void *pInstance));
+    DECLCALLBACKMEMBER(void, pfnDestroy,(void *pvInstance));
 } VBOXTRAYSVCDESC;
 /** Pointer to a VBoxTray service descriptor. */
 typedef VBOXTRAYSVCDESC *PVBOXTRAYSVCDESC;
@@ -175,7 +178,7 @@ typedef struct VBOXTRAYSVCINFO
     RTTHREAD         hThread;
     /** Pointer to service-specific instance data.
      *  Must be free'd by the service itself. */
-    void            *pInstance;
+    void            *pvInstance;
     /** Whether Pre-init was called. */
     bool             fPreInited;
     /** Shutdown indicator. */

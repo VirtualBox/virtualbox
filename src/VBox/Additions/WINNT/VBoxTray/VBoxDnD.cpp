@@ -1,4 +1,4 @@
-/* $Id: VBoxDnD.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxDnD.cpp 108105 2025-01-28 16:08:20Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxDnD.cpp - Windows-specific bits of the drag and drop service.
  */
@@ -1776,10 +1776,10 @@ static DECLCALLBACK(int) vbtrDnDOption(const char **ppszShort, int argc, char **
 /**
  * @interface_method_impl{VBOXTRAYSVCDESC,pfnInit}
  */
-DECLCALLBACK(int) vbtrDnDInit(const PVBOXTRAYSVCENV pEnv, void **ppInstance)
+DECLCALLBACK(int) vbtrDnDInit(const PVBOXTRAYSVCENV pEnv, void **ppvInstance)
 {
     AssertPtrReturn(pEnv, VERR_INVALID_POINTER);
-    AssertPtrReturn(ppInstance, VERR_INVALID_POINTER);
+    AssertPtrReturn(ppvInstance, VERR_INVALID_POINTER);
 
     LogFlowFuncEnter();
 
@@ -1858,7 +1858,7 @@ DECLCALLBACK(int) vbtrDnDInit(const PVBOXTRAYSVCENV pEnv, void **ppInstance)
         rc = RTSemEventCreate(&pCtx->hEvtQueueSem);
     if (RT_SUCCESS(rc))
     {
-        *ppInstance = pCtx;
+        *ppvInstance = pCtx;
 
         VBoxTrayInfo("DnD: Drag and drop service successfully started\n");
     }
@@ -1872,13 +1872,13 @@ DECLCALLBACK(int) vbtrDnDInit(const PVBOXTRAYSVCENV pEnv, void **ppInstance)
 /**
  * @interface_method_impl{VBOXTRAYSVCDESC,pfnStop}
  */
-DECLCALLBACK(int) vbtrDnDStop(void *pInstance)
+DECLCALLBACK(int) vbtrDnDStop(void *pvInstance)
 {
-    AssertPtrReturn(pInstance, VERR_INVALID_POINTER);
+    AssertPtrReturn(pvInstance, VERR_INVALID_POINTER);
 
-    LogFunc(("Stopping pInstance=%p\n", pInstance));
+    LogFunc(("Stopping pvInstance=%p\n", pvInstance));
 
-    PVBOXDNDCONTEXT pCtx = (PVBOXDNDCONTEXT)pInstance;
+    PVBOXDNDCONTEXT pCtx = (PVBOXDNDCONTEXT)pvInstance;
     AssertPtr(pCtx);
 
     /* Set shutdown indicator. */
@@ -1894,13 +1894,13 @@ DECLCALLBACK(int) vbtrDnDStop(void *pInstance)
 /**
  * @interface_method_impl{VBOXTRAYSVCDESC,pfnInit}
  */
-DECLCALLBACK(void) vbtrDnDDestroy(void *pInstance)
+DECLCALLBACK(void) vbtrDnDDestroy(void *pvInstance)
 {
-    AssertPtrReturnVoid(pInstance);
+    AssertPtrReturnVoid(pvInstance);
 
-    LogFunc(("Destroying pInstance=%p\n", pInstance));
+    LogFunc(("Destroying pvInstance=%p\n", pvInstance));
 
-    PVBOXDNDCONTEXT pCtx = (PVBOXDNDCONTEXT)pInstance;
+    PVBOXDNDCONTEXT pCtx = (PVBOXDNDCONTEXT)pvInstance;
     AssertPtr(pCtx);
 
     /** @todo At the moment we only have one DnD proxy window. */
@@ -1918,18 +1918,18 @@ DECLCALLBACK(void) vbtrDnDDestroy(void *pInstance)
         pCtx->hEvtQueueSem = NIL_RTSEMEVENT;
     }
 
-    LogFunc(("Destroyed pInstance=%p\n", pInstance));
+    LogFunc(("Destroyed pvInstance=%p\n", pvInstance));
 }
 
 /**
  * @interface_method_impl{VBOXTRAYSVCDESC,pfnWorker}
  */
-DECLCALLBACK(int) vbtrDnDWorker(void *pInstance, bool volatile *pfShutdown)
+DECLCALLBACK(int) vbtrDnDWorker(void *pvInstance, bool volatile *pfShutdown)
 {
-    AssertPtr(pInstance);
+    AssertPtr(pvInstance);
     AssertPtr(pfShutdown);
 
-    LogFlowFunc(("pInstance=%p\n", pInstance));
+    LogFlowFunc(("pvInstance=%p\n", pvInstance));
 
     /*
      * Tell the control thread that it can continue
@@ -1937,7 +1937,7 @@ DECLCALLBACK(int) vbtrDnDWorker(void *pInstance, bool volatile *pfShutdown)
      */
     RTThreadUserSignal(RTThreadSelf());
 
-    PVBOXDNDCONTEXT pCtx = (PVBOXDNDCONTEXT)pInstance;
+    PVBOXDNDCONTEXT pCtx = (PVBOXDNDCONTEXT)pvInstance;
     AssertPtr(pCtx);
 
     int rc = VbglR3DnDConnect(&pCtx->cmdCtx);

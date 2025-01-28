@@ -1,4 +1,4 @@
-/* $Id: VBoxSeamless.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSeamless.cpp 108105 2025-01-28 16:08:20Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxSeamless - Seamless windows
  */
@@ -102,7 +102,7 @@ static DECLCALLBACK(int) vbtrSeamlessOption(const char **ppszShort, int argc, ch
 /**
  * @interface_method_impl{VBOXTRAYSVCDESC,pfnInit}
  */
-static DECLCALLBACK(int) vbtrSeamlessInit(const PVBOXTRAYSVCENV pEnv, void **ppInstance)
+static DECLCALLBACK(int) vbtrSeamlessInit(const PVBOXTRAYSVCENV pEnv, void **ppvInstance)
 {
     LogFlowFuncEnter();
 
@@ -136,7 +136,7 @@ static DECLCALLBACK(int) vbtrSeamlessInit(const PVBOXTRAYSVCENV pEnv, void **ppI
             {
                 vboxSeamlessSetSupported(TRUE);
 
-                *ppInstance = pCtx;
+                *ppvInstance = pCtx;
             }
             else
             {
@@ -158,14 +158,14 @@ static DECLCALLBACK(int) vbtrSeamlessInit(const PVBOXTRAYSVCENV pEnv, void **ppI
 /**
  * @interface_method_impl{VBOXTRAYSVCDESC,pfnDestroy}
  */
-static DECLCALLBACK(void) VBoxSeamlessDestroy(void *pInstance)
+static DECLCALLBACK(void) VBoxSeamlessDestroy(void *pvInstance)
 {
     LogFlowFuncEnter();
 
-    if (!pInstance)
+    if (!pvInstance)
         return;
 
-    PVBOXSEAMLESSCONTEXT pCtx = (PVBOXSEAMLESSCONTEXT)pInstance;
+    PVBOXSEAMLESSCONTEXT pCtx = (PVBOXSEAMLESSCONTEXT)pvInstance;
     AssertPtr(pCtx);
 
     vboxSeamlessSetSupported(FALSE);
@@ -183,7 +183,7 @@ static DECLCALLBACK(void) VBoxSeamlessDestroy(void *pInstance)
 
 static void VBoxSeamlessInstallHook(void)
 {
-    PVBOXSEAMLESSCONTEXT pCtx = &g_Ctx; /** @todo r=andy Use instance data via service lookup (add void *pInstance). */
+    PVBOXSEAMLESSCONTEXT pCtx = &g_Ctx; /** @todo r=andy Use instance data via service lookup (add void *pvInstance). */
     AssertPtr(pCtx);
 
     if (pCtx->pfnVBoxHookInstallWindowTracker)
@@ -199,7 +199,7 @@ static void VBoxSeamlessInstallHook(void)
 
 static void VBoxSeamlessRemoveHook(void)
 {
-    PVBOXSEAMLESSCONTEXT pCtx = &g_Ctx; /** @todo r=andy Use instance data via service lookup (add void *pInstance). */
+    PVBOXSEAMLESSCONTEXT pCtx = &g_Ctx; /** @todo r=andy Use instance data via service lookup (add void *pvInstance). */
     AssertPtr(pCtx);
 
     if (pCtx->pfnVBoxHookRemoveWindowTracker)
@@ -219,7 +219,7 @@ static VBOXDISPIF_SEAMLESS gVBoxDispIfSeamless; /** @todo r=andy Move this into 
 
 void VBoxSeamlessEnable(void)
 {
-    PVBOXSEAMLESSCONTEXT pCtx = &g_Ctx; /** @todo r=andy Use instance data via service lookup (add void *pInstance). */
+    PVBOXSEAMLESSCONTEXT pCtx = &g_Ctx; /** @todo r=andy Use instance data via service lookup (add void *pvInstance). */
     AssertPtr(pCtx);
 
     Assert(g_hSeamlessKmNotifyEvent);
@@ -231,7 +231,7 @@ void VBoxSeamlessEnable(void)
 
 void VBoxSeamlessDisable(void)
 {
-    PVBOXSEAMLESSCONTEXT pCtx = &g_Ctx; /** @todo r=andy Use instance data via service lookup (add void *pInstance). */
+    PVBOXSEAMLESSCONTEXT pCtx = &g_Ctx; /** @todo r=andy Use instance data via service lookup (add void *pvInstance). */
     AssertPtr(pCtx);
     NOREF(pCtx);
 
@@ -353,7 +353,7 @@ BOOL CALLBACK VBoxEnumFunc(HWND hwnd, LPARAM lParam) RT_NOTHROW_DEF
 
 void VBoxSeamlessCheckWindows(bool fForce)
 {
-    PVBOXSEAMLESSCONTEXT pCtx = &g_Ctx; /** @todo r=andy Use instance data via service lookup (add void *pInstance). */
+    PVBOXSEAMLESSCONTEXT pCtx = &g_Ctx; /** @todo r=andy Use instance data via service lookup (add void *pvInstance). */
     AssertPtr(pCtx);
 
     if (!VBoxDispIfSeamlesIsValid(&gVBoxDispIfSeamless))

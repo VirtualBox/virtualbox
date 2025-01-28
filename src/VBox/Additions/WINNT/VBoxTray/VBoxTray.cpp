@@ -1,4 +1,4 @@
-/* $Id: VBoxTray.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxTray.cpp 108105 2025-01-28 16:08:20Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxTray - Guest Additions Tray Application
  */
@@ -245,7 +245,7 @@ static DECLCALLBACK(int) vboxTrayServiceThread(RTTHREAD ThreadSelf, void *pvUser
     pthread_sigmask(SIG_BLOCK, &signalMask, NULL);
 #endif
 
-    int rc = pSvc->pDesc->pfnWorker(pSvc->pInstance, &pSvc->fShutdown);
+    int rc = pSvc->pDesc->pfnWorker(pSvc->pvInstance, &pSvc->fShutdown);
     ASMAtomicXchgBool(&pSvc->fShutdown, true);
     RTThreadUserSignal(ThreadSelf);
 
@@ -300,14 +300,14 @@ static int vboxTrayServicesStart(PVBOXTRAYSVCENV pEnv)
         VBoxTrayInfo("Starting service '%s' ...\n", pSvc->pDesc->pszName);
 
         pSvc->hThread   = NIL_RTTHREAD;
-        pSvc->pInstance = NULL;
+        pSvc->pvInstance = NULL;
         pSvc->fStarted  = false;
         pSvc->fShutdown = false;
 
         int rc2 = VINF_SUCCESS;
 
         if (pSvc->pDesc->pfnInit)
-            rc2 = pSvc->pDesc->pfnInit(pEnv, &pSvc->pInstance);
+            rc2 = pSvc->pDesc->pfnInit(pEnv, &pSvc->pvInstance);
 
         if (RT_FAILURE(rc2))
         {
@@ -354,7 +354,7 @@ static int vboxTrayServicesStart(PVBOXTRAYSVCENV pEnv)
                 {
                     VBoxTrayInfo("Failed to start thread for service '%s': %Rrc\n", rc2);
                     if (pSvc->pDesc->pfnDestroy)
-                        pSvc->pDesc->pfnDestroy(pSvc->pInstance);
+                        pSvc->pDesc->pfnDestroy(pSvc->pvInstance);
                 }
             }
         }
@@ -399,7 +399,7 @@ static int vboxTrayServicesStop(VBOXTRAYSVCENV *pEnv)
             && pSvc->pDesc->pfnStop)
         {
             VBoxTrayVerbose(1, "Calling stop function for service '%s' ...\n", pSvc->pDesc->pszName);
-            int rc2 = pSvc->pDesc->pfnStop(pSvc->pInstance);
+            int rc2 = pSvc->pDesc->pfnStop(pSvc->pvInstance);
             if (RT_FAILURE(rc2))
                 VBoxTrayError("Failed to stop service '%s': %Rrc\n", pSvc->pDesc->pszName, rc2);
         }
@@ -437,10 +437,10 @@ static int vboxTrayServicesStop(VBOXTRAYSVCENV *pEnv)
         }
 
         if (   pSvc->pDesc->pfnDestroy
-            && pSvc->pInstance) /* pInstance might be NULL if initialization of a service failed. */
+            && pSvc->pvInstance) /* pvInstance might be NULL if initialization of a service failed. */
         {
             VBoxTrayVerbose(1, "Terminating service '%s' ...\n", pSvc->pDesc->pszName);
-            pSvc->pDesc->pfnDestroy(pSvc->pInstance);
+            pSvc->pDesc->pfnDestroy(pSvc->pvInstance);
         }
     }
 
