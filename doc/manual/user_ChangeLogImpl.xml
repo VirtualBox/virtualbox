@@ -90,7 +90,13 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
-        <para>Windows Guest Additions: Fixed uninstallation integrity issues</para>
+        <para>Windows Guest Additions: Fixed uninstallation integrity issues
+          (bug #22290)</para>
+      </listitem>
+
+      <listitem>
+        <para>Windows Guest Additions: Fixed 100% CPU usage of VBoxTray which
+          happened under certain circumstances (bug #22123)</para>
       </listitem>
 
     </itemizedlist>
