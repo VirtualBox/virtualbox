@@ -1,4 +1,4 @@
-/* $Id: VBoxGuest.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxGuest.cpp 108107 2025-01-28 16:35:59Z dmitrii.grigorev@oracle.com $ */
 /** @file
  * VBoxGuest - Guest Additions Driver, Common Code.
  */
@@ -1547,7 +1547,7 @@ void VGDrvCommonProcessOptionsFromHost(PVBOXGUESTDEVEXT pDevExt)
                     unsigned    iField;
                     for (iField = 0; iField < RT_ELEMENTS(apszFields); iField++)
                     {
-                        apszFields[0] = &pszzStrings[off];
+                        apszFields[iField] = &pszzStrings[off];
                         while (off < cbStrings)
                         {
                             char ch = pszzStrings[off++];
@@ -1575,7 +1575,7 @@ void VGDrvCommonProcessOptionsFromHost(PVBOXGUESTDEVEXT pDevExt)
                         {
                             if (fFlags & GUEST_PROP_F_RDONLYGUEST)
                             {
-                                apszFields[0] += sizeof(g_szzPattern) - 2;
+                                apszFields[0] += sizeof(g_szzPattern) - 3;
                                 VGDrvCommonProcessOption(pDevExt, apszFields[0], apszFields[1]);
                             }
                             else
