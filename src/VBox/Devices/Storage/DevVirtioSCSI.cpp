@@ -1,4 +1,4 @@
-/* $Id: DevVirtioSCSI.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: DevVirtioSCSI.cpp 108103 2025-01-28 15:44:18Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox storage devices - Virtio SCSI Driver
  *
@@ -1644,9 +1644,9 @@ static DECLCALLBACK(int) virtioScsiR3WorkerThread(PPDMDEVINS pDevIns, PPDMTHREAD
         }
         if (!pThisCC->fQuiescing)
         {
-             /* Process any reqs that were suspended saved to the redo queue in save exec. */
-             for (int i = 0; i < pWorkerR3->cRedoDescs; i++)
-             {
+            /* Process any reqs that were suspended saved to the redo queue in save exec. */
+            for (int i = 0; i < pWorkerR3->cRedoDescs; i++)
+            {
                 PVIRTQBUF pVirtqBuf = virtioCoreR3VirtqBufAlloc();
                 if (!pVirtqBuf)
                 {
@@ -1654,7 +1654,7 @@ static DECLCALLBACK(int) virtioScsiR3WorkerThread(PPDMDEVINS pDevIns, PPDMTHREAD
                     break;  /* No point in trying to allocate memory for other descriptor chains */
                 }
                 int rc = virtioCoreR3VirtqAvailBufGet(pDevIns, &pThis->Virtio, uVirtqNbr,
-                                                    pWorkerR3->auRedoDescs[i], pVirtqBuf);
+                                                      pWorkerR3->auRedoDescs[i], pVirtqBuf);
                 if (RT_FAILURE(rc))
                     LogRel(("Error fetching desc chain to redo, %Rrc", rc));
 
@@ -1662,11 +1662,11 @@ static DECLCALLBACK(int) virtioScsiR3WorkerThread(PPDMDEVINS pDevIns, PPDMTHREAD
                 if (RT_FAILURE(rc))
                     LogRel(("Error submitting req packet, resetting %Rrc", rc));
 
-                  virtioCoreR3VirtqBufRelease(&pThis->Virtio, pVirtqBuf);
-             }
-             pWorkerR3->cRedoDescs = 0;
+                virtioCoreR3VirtqBufRelease(&pThis->Virtio, pVirtqBuf);
+            }
+            pWorkerR3->cRedoDescs = 0;
 
-             Log6Func(("fetching next descriptor chain from %s\n", VIRTQNAME(uVirtqNbr)));
+            Log6Func(("fetching next descriptor chain from %s\n", VIRTQNAME(uVirtqNbr)));
             PVIRTQBUF pVirtqBuf = virtioCoreR3VirtqBufAlloc();
             if (!pVirtqBuf)
                 LogRel(("Failed to allocate memory for VIRTQBUF\n"));
@@ -1699,7 +1699,7 @@ static DECLCALLBACK(int) virtioScsiR3WorkerThread(PPDMDEVINS pDevIns, PPDMTHREAD
 
 
 /*********************************************************************************************************************************
-*   Sending evnets
+*   Sending events
 *********************************************************************************************************************************/
 
 /*
@@ -2024,41 +2024,48 @@ static DECLCALLBACK(int) virtioScsiR3LoadExec(PPDMDEVINS pDevIns, PSSMHANDLE pSS
 
     for (uint16_t uTarget = 0; uTarget < pThis->cTargets; uTarget++)
     {
-        uint16_t cReqsRedo;
-        rc = pHlp->pfnSSMGetU16(pSSM, &cReqsRedo);
-        AssertRCReturn(rc, rc);
-        AssertReturn(cReqsRedo < VIRTQ_SIZE,
-                     pHlp->pfnSSMSetLoadError(pSSM, VERR_SSM_DATA_UNIT_FORMAT_CHANGED, RT_SRC_POS,
-                                              N_("Bad count of I/O transactions to re-do in saved state (%#x, max %#x - 1)"),
-                                              cReqsRedo, VIRTQ_SIZE));
+        PVIRTIOSCSITARGET pTarget = &pThisCC->paTargetInstances[uTarget];
 
-        for (uint16_t uVirtqNbr = VIRTQ_REQ_BASE; uVirtqNbr < VIRTIOSCSI_VIRTQ_CNT; uVirtqNbr++)
+        /* Place all suspended requests in the request queue. */
+        if (pTarget->pDrvMediaEx)
         {
-            PVIRTIOSCSIWORKERR3 pWorkerR3 = &pThisCC->aWorkers[uVirtqNbr];
-            pWorkerR3->cRedoDescs = 0;
-        }
 
-        for (int i = 0; i < cReqsRedo; i++)
-        {
-            uint16_t uVirtqNbr;
-            rc = pHlp->pfnSSMGetU16(pSSM, &uVirtqNbr);
+            uint16_t cReqsRedo;
+            rc = pHlp->pfnSSMGetU16(pSSM, &cReqsRedo);
             AssertRCReturn(rc, rc);
-            AssertReturn(uVirtqNbr < VIRTIOSCSI_VIRTQ_CNT,
+            AssertReturn(cReqsRedo < VIRTQ_SIZE,
                          pHlp->pfnSSMSetLoadError(pSSM, VERR_SSM_DATA_UNIT_FORMAT_CHANGED, RT_SRC_POS,
-                                                  N_("Bad queue index for re-do in saved state (%#x, max %#x)"),
-                                                  uVirtqNbr, VIRTIOSCSI_VIRTQ_CNT - 1));
+                                                  N_("Bad count of I/O transactions to re-do in saved state (%#x, max %#x - 1)"),
+                                                  cReqsRedo, VIRTQ_SIZE));
 
-            uint16_t idxHead;
-            rc = pHlp->pfnSSMGetU16(pSSM, &idxHead);
-            AssertRCReturn(rc, rc);
-            AssertReturn(idxHead < VIRTQ_SIZE,
-                         pHlp->pfnSSMSetLoadError(pSSM, VERR_SSM_DATA_UNIT_FORMAT_CHANGED, RT_SRC_POS,
-                                                  N_("Bad queue element index for re-do in saved state (%#x, max %#x)"),
-                                                  idxHead, VIRTQ_SIZE - 1));
+            for (uint16_t uVirtqNbr = VIRTQ_REQ_BASE; uVirtqNbr < VIRTIOSCSI_VIRTQ_CNT; uVirtqNbr++)
+            {
+                PVIRTIOSCSIWORKERR3 pWorkerR3 = &pThisCC->aWorkers[uVirtqNbr];
+                pWorkerR3->cRedoDescs = 0;
+            }
 
-            PVIRTIOSCSIWORKERR3 pWorkerR3 = &pThisCC->aWorkers[uVirtqNbr];
-            pWorkerR3->auRedoDescs[pWorkerR3->cRedoDescs++] = idxHead;
-            pWorkerR3->cRedoDescs %= VIRTQ_SIZE;
+            for (int i = 0; i < cReqsRedo; i++)
+            {
+                uint16_t uVirtqNbr;
+                rc = pHlp->pfnSSMGetU16(pSSM, &uVirtqNbr);
+                AssertRCReturn(rc, rc);
+                AssertReturn(uVirtqNbr < VIRTIOSCSI_VIRTQ_CNT,
+                             pHlp->pfnSSMSetLoadError(pSSM, VERR_SSM_DATA_UNIT_FORMAT_CHANGED, RT_SRC_POS,
+                                                      N_("Bad queue index for re-do in saved state (%#x, max %#x)"),
+                                                      uVirtqNbr, VIRTIOSCSI_VIRTQ_CNT - 1));
+
+                uint16_t idxHead;
+                rc = pHlp->pfnSSMGetU16(pSSM, &idxHead);
+                AssertRCReturn(rc, rc);
+                AssertReturn(idxHead < VIRTQ_SIZE,
+                             pHlp->pfnSSMSetLoadError(pSSM, VERR_SSM_DATA_UNIT_FORMAT_CHANGED, RT_SRC_POS,
+                                                      N_("Bad queue element index for re-do in saved state (%#x, max %#x)"),
+                                                      idxHead, VIRTQ_SIZE - 1));
+
+                PVIRTIOSCSIWORKERR3 pWorkerR3 = &pThisCC->aWorkers[uVirtqNbr];
+                pWorkerR3->auRedoDescs[pWorkerR3->cRedoDescs++] = idxHead;
+                pWorkerR3->cRedoDescs %= VIRTQ_SIZE;
+            }
         }
     }
 
@@ -2119,40 +2126,40 @@ static DECLCALLBACK(int) virtioScsiR3SaveExec(PPDMDEVINS pDevIns, PSSMHANDLE pSS
 
     AssertMsg(!pThis->cActiveReqs, ("There are still outstanding requests on this device\n"));
 
-     pHlp->pfnSSMPutU32(pSSM, pThis->cTargets);
+    pHlp->pfnSSMPutU32(pSSM, pThis->cTargets);
 
-     for (uint16_t uTarget = 0; uTarget < pThis->cTargets; uTarget++)
-     {
+    for (uint16_t uTarget = 0; uTarget < pThis->cTargets; uTarget++)
+    {
         PVIRTIOSCSITARGET pTarget = &pThisCC->paTargetInstances[uTarget];
 
-         /* Query all suspended requests and store them in the request queue. */
-         if (pTarget->pDrvMediaEx)
-         {
-             uint32_t cReqsRedo = pTarget->pDrvMediaEx->pfnIoReqGetSuspendedCount(pTarget->pDrvMediaEx);
+        /* Query all suspended requests and store them in the request queue. */
+        if (pTarget->pDrvMediaEx)
+        {
+            uint32_t cReqsRedo = pTarget->pDrvMediaEx->pfnIoReqGetSuspendedCount(pTarget->pDrvMediaEx);
 
-             pHlp->pfnSSMPutU16(pSSM, cReqsRedo);
+            pHlp->pfnSSMPutU16(pSSM, cReqsRedo);
 
-             if (cReqsRedo)
-             {
-                 PDMMEDIAEXIOREQ hIoReq;
-                 PVIRTIOSCSIREQ pReq;
+            if (cReqsRedo)
+            {
+                PDMMEDIAEXIOREQ hIoReq;
+                PVIRTIOSCSIREQ pReq;
 
-                 int rc = pTarget->pDrvMediaEx->pfnIoReqQuerySuspendedStart(pTarget->pDrvMediaEx, &hIoReq,
-                                                                            (void **)&pReq);
-                 AssertRCBreak(rc);
+                int rc = pTarget->pDrvMediaEx->pfnIoReqQuerySuspendedStart(pTarget->pDrvMediaEx, &hIoReq,
+                                                                           (void **)&pReq);
+                AssertRCBreak(rc);
 
-                 while(--cReqsRedo)
-                 {
+                while(--cReqsRedo)
+                {
                     pHlp->pfnSSMPutU16(pSSM, pReq->uVirtqNbr);
                     pHlp->pfnSSMPutU16(pSSM, pReq->pVirtqBuf->uHeadIdx);
 
                     rc = pTarget->pDrvMediaEx->pfnIoReqQuerySuspendedNext(pTarget->pDrvMediaEx, hIoReq,
                                                                           &hIoReq, (void **)&pReq);
                     AssertRCBreak(rc);
-                 }
-             }
-         }
-     }
+                }
+            }
+        }
+    }
 
     /*
      * Call the virtio core to let it save its state.
@@ -2457,7 +2464,7 @@ static DECLCALLBACK(int) virtioScsiR3Destruct(PPDMDEVINS pDevIns)
             if (RT_FAILURE(rc) || RT_FAILURE(rcThread))
                 AssertMsgFailed(("%s Failed to destroythread rc=%Rrc rcThread=%Rrc\n",
                                  __FUNCTION__, rc, rcThread));
-           pThisCC->aWorkers[uVirtqNbr].pThread = NULL;
+            pThisCC->aWorkers[uVirtqNbr].pThread = NULL;
         }
 
         if (RTCritSectIsInitialized(&pThisCC->aWorkers[uVirtqNbr].CritSectVirtq))
@@ -2507,7 +2514,7 @@ static DECLCALLBACK(int) virtioScsiR3Construct(PPDMDEVINS pDevIns, int iInstance
 
     rc = pHlp->pfnCFGMQueryBoolDef(pCfg, "Bootable", &pThis->fBootable, true);
     if (RT_FAILURE(rc))
-         return PDMDEV_SET_ERROR(pDevIns, rc, N_("virtio-scsi configuration error: failed to read Bootable as boolean"));
+        return PDMDEV_SET_ERROR(pDevIns, rc, N_("virtio-scsi configuration error: failed to read Bootable as boolean"));
 
     LogRel(("%s: Targets=%u Bootable=%RTbool (unimplemented) R0Enabled=%RTbool RCEnabled=%RTbool\n",
             pThis->szInstance, pThis->cTargets, pThis->fBootable, pDevIns->fR0Enabled, pDevIns->fRCEnabled));
