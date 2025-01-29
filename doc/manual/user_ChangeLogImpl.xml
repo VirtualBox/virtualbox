@@ -95,6 +95,11 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
+        <para>Windows Guest Additions: Fixed driver installation
+          error ERROR_AUTHENTICODE_TRUST_NOT_ESTABLISHED (bug #22300)</para>
+      </listitem>
+
+      <listitem>
         <para>Windows Guest Additions: Fixed 100% CPU usage of VBoxTray which
           happened under certain circumstances (bug #22123)</para>
       </listitem>
