@@ -31,6 +31,10 @@
     <CustomAction Id="ca_VBoxSupDrvInstArgFlagForce" Property="VBoxDrvInstFlagForce" Value="1" Execute="immediate" />
     <CustomAction Id="ca_VBoxSupDrvInstArgFlagSilent" Property="VBoxDrvInstFlagSilent" Value="1" Execute="immediate" />
 
+    <CustomAction Id="ca_VBoxSupDrvStart" DllEntry="ServiceControl" Execute="immediate" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
+    <CustomAction Id="ca_VBoxSupDrvStartArgName" Property="VBoxSvcCtlName" Value="VBoxSUP" Execute="immediate" />
+    <CustomAction Id="ca_VBoxSupDrvStartArgFn" Property="VBoxSvcCtlFn" Value="start" Execute="immediate" />
+
     <CustomAction Id="ca_VBoxSupDrvUninst" DllEntry="DriverUninstall" Execute="immediate" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
     <CustomAction Id="ca_VBoxSupDrvUninstArgModel" Property="VBoxDrvUninstModel" Value="VBoxSup*" Execute="immediate" />
 

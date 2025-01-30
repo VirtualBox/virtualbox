@@ -1,4 +1,4 @@
-/* $Id: VBoxInstallHelper.cpp 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxInstallHelper.cpp 108135 2025-01-30 16:51:51Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxInstallHelper - Various helper routines for Windows host installer.
  */
@@ -1576,6 +1576,56 @@ UINT __stdcall DriverUninstall(MSIHANDLE hModule)
 
     logStringF(hModule, "DriverUninstall: Handling done (rc=%Rrc)", rc);
     return RT_SUCCESS(rc) ? ERROR_SUCCESS : ERROR_DRIVER_STORE_DELETE_FAILED /* Close enough */;
+}
+
+UINT __stdcall ServiceControl(MSIHANDLE hModule)
+{
+    char *pszSvcCtlName;
+    int rc = VBoxMsiQueryPropUtf8(hModule, "VBoxSvcCtlName", &pszSvcCtlName);
+    if (RT_SUCCESS(rc))
+    {
+        char *pszSvcCtlFn;
+        rc = VBoxMsiQueryPropUtf8(hModule, "VBoxSvcCtlFn", &pszSvcCtlFn);
+        if (RT_SUCCESS(rc))
+        {
+            VBOXWINDRVSVCFN enmFn = VBOXWINDRVSVCFN_INVALID; /* Shut up MSVC. */
+            if (!RTStrICmp(pszSvcCtlFn, "start"))
+                enmFn = VBOXWINDRVSVCFN_START;
+            else if (!RTStrICmp(pszSvcCtlFn, "stop"))
+                enmFn = VBOXWINDRVSVCFN_STOP;
+            else if (!RTStrICmp(pszSvcCtlFn, "restart"))
+                enmFn = VBOXWINDRVSVCFN_RESTART;
+            else
+                rc = VERR_INVALID_PARAMETER;
+
+            if (RT_SUCCESS(rc))
+            {
+                RTMSINTERVAL msTimeout = 0; /* Don't wait by default. */
+                rc = VBoxMsiQueryPropInt32(hModule, "VBoxSvcCtlWaitMs", (DWORD *)&msTimeout);
+                if (   RT_SUCCESS(rc)
+                    || rc == VERR_NOT_FOUND) /* VBoxSvcCtlWaitMs is optional. */
+                {
+                    VBOXWINDRVINST hWinDrvInst;
+                    rc = VBoxWinDrvInstCreateEx(&hWinDrvInst, 1 /* uVerbostiy */,
+                                                &vboxWinDrvInstLogCallback, &hModule /* pvUser */);
+                    if (RT_SUCCESS(rc))
+                    {
+                        rc = VBoxWinDrvInstControlServiceEx(hWinDrvInst, pszSvcCtlName, enmFn,
+                                                            msTimeout == 0 ? VBOXWINDRVSVCFN_F_NONE : VBOXWINDRVSVCFN_F_WAIT,
+                                                            msTimeout);
+                        VBoxWinDrvInstDestroy(hWinDrvInst);
+                    }
+                }
+            }
+
+            RTStrFree(pszSvcCtlFn);
+        }
+
+        RTStrFree(pszSvcCtlName);
+    }
+
+    logStringF(hModule, "ServiceControl: Handling done (rc=%Rrc)", rc);
+    return RT_SUCCESS(rc) ? ERROR_SUCCESS : ERROR_INVALID_SERVICE_CONTROL;
 }
 
 #if defined(VBOX_WITH_NETFLT) || defined(VBOX_WITH_NETADP)

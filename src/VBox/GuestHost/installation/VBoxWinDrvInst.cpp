@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvInst.cpp 108110 2025-01-29 09:39:04Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvInst.cpp 108135 2025-01-30 16:51:51Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvInst - Windows driver installation handling.
  */
@@ -50,6 +50,7 @@
 #include <iprt/stream.h>
 #include <iprt/string.h>
 #include <iprt/system.h>
+#include <iprt/thread.h> /* For RTThreadSleep(). */
 #include <iprt/utf16.h>
 
 #include <package-generated.h>
@@ -121,6 +122,8 @@ typedef VOID(WINAPI* PFNSETUPCLOSEINFFILE) (HINF InfHandle);
 typedef BOOL(WINAPI* PFNSETUPDIGETINFCLASSW) (PCWSTR, LPGUID, PWSTR, DWORD, PDWORD);
 typedef BOOL(WINAPI* PFNSETUPUNINSTALLOEMINFW) (PCWSTR InfFileName, DWORD Flags, PVOID Reserved);
 typedef BOOL(WINAPI *PFNSETUPSETNONINTERACTIVEMODE) (BOOL NonInteractiveFlag);
+/* advapi32.dll: */
+typedef BOOL(WINAPI *PFNQUERYSERVICESTATUSEX) (SC_HANDLE, SC_STATUS_TYPE, LPBYTE, DWORD, LPDWORD);
 
 /** Function pointer for a general try INF section callback. */
 typedef int (*PFNVBOXWINDRVINST_TRYINFSECTION_CALLBACK)(HINF hInf, PCRTUTF16 pwszSection, void *pvCtx);
@@ -144,6 +147,8 @@ DECL_HIDDEN_DATA(PFNSETUPCLOSEINFFILE)                   g_pfnSetupCloseInfFile 
 DECL_HIDDEN_DATA(PFNSETUPDIGETINFCLASSW)                 g_pfnSetupDiGetINFClassW                 = NULL; /* For W2K+. */
 DECL_HIDDEN_DATA(PFNSETUPUNINSTALLOEMINFW)               g_pfnSetupUninstallOEMInfW               = NULL; /* For XP+.  */
 DECL_HIDDEN_DATA(PFNSETUPSETNONINTERACTIVEMODE)          g_pfnSetupSetNonInteractiveMode          = NULL; /* For W2K+. */
+/* advapi32.dll: */
+DECL_HIDDEN_DATA(PFNQUERYSERVICESTATUSEX)                g_pfnQueryServiceStatusEx                = NULL; /* For W2K+. */
 
 /**
  * Structure for keeping the internal Windows driver context.
@@ -219,6 +224,13 @@ static VBOXWINDRVINSTIMPORTSYMBOL s_aNewDevImports[] =
     { "DiUninstallDriverW", (void **)&g_pfnDiUninstallDriverW },
     /* Anything older (must support Windows 2000). */
     { "UpdateDriverForPlugAndPlayDevicesW", (void **)&g_pfnUpdateDriverForPlugAndPlayDevicesW }
+};
+
+/* newdev.dll: */
+static VBOXWINDRVINSTIMPORTSYMBOL s_aAdvApi32Imports[] =
+{
+    /* Only for Windows 2000 and up. */
+    { "QueryServiceStatusEx", (void **)&g_pfnQueryServiceStatusEx }
 };
 
 
@@ -472,7 +484,8 @@ static DECLCALLBACK(int) vboxWinDrvInstResolveOnce(void *pvUser)
                                                           s_aSetupApiImports, RT_ELEMENTS(s_aSetupApiImports));
     /* rc ignored, keep going */ vboxWinDrvInstResolveMod(pCtx, "newdev.dll",
                                                           s_aNewDevImports, RT_ELEMENTS(s_aNewDevImports));
-
+    /* rc ignored, keep going */ vboxWinDrvInstResolveMod(pCtx, "advapi32.dll",
+                                                          s_aAdvApi32Imports, RT_ELEMENTS(s_aAdvApi32Imports));
     return VINF_SUCCESS;
 }
 
@@ -2243,6 +2256,250 @@ int VBoxWinDrvInstInstallExecuteInf(VBOXWINDRVINST hDrvInst, const char *pszInfF
 int VBoxWinDrvInstUninstallExecuteInf(VBOXWINDRVINST hDrvInst, const char *pszInfFile, const char *pszSection, uint32_t fFlags)
 {
     return VBoxWinDrvInstExecuteInfWorker(hDrvInst, false /* fInstall */, pszInfFile, pszSection, fFlags);
+}
+
+/**
+ * Controls a Windows service, internal version.
+ *
+ * @returns VBox status code.
+ * @param   hDrvInst            Windows driver installer handle to use.
+ * @param   pszService          Name of service to control.
+ * @param   enmFn               Service control function to use.
+ *                              VBOXWINDRVSVCFN_RESTART is not implemented and must be composed of
+ *                              VBOXWINDRVSVCFN_START + VBOXWINDRVSVCFN_STOP by the caller.
+ * @param   fFlags              Service control flags (of type VBOXWINDRVSVCFN_F_XXX) to use.
+ * @param   msTimeout           Timeout (in ms) to use. Ignored if VBOXWINDRVSVCFN_F_WAIT is missing in \a fFlags.
+ */
+static int vboxWinDrvInstControlServiceEx(PVBOXWINDRVINSTINTERNAL pCtx,
+                                          const char *pszService, VBOXWINDRVSVCFN enmFn, uint32_t fFlags, RTMSINTERVAL msTimeout)
+{
+    AssertPtrReturn(pszService, VERR_INVALID_POINTER);
+    AssertReturn(!(fFlags & ~VBOXWINDRVSVCFN_F_VALID_MASK), VERR_INVALID_PARAMETER);
+    AssertReturn(enmFn > VBOXWINDRVSVCFN_INVALID && enmFn < VBOXWINDRVSVCFN_END, VERR_INVALID_PARAMETER);
+    AssertReturn(!(fFlags & VBOXWINDRVSVCFN_F_WAIT) || msTimeout, VERR_INVALID_PARAMETER);
+
+    PRTUTF16 pwszService;
+    int rc = RTStrToUtf16(pszService, &pwszService);
+    if (RT_FAILURE(rc))
+        return rc;
+
+    SC_HANDLE hSvc = NULL;
+    SC_HANDLE hSCM = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (hSCM != NULL)
+    {
+        hSvc = OpenServiceW(hSCM, pwszService, SERVICE_ALL_ACCESS | SERVICE_QUERY_STATUS);
+        if (hSvc == NULL)
+        {
+            rc = RTErrConvertFromWin32(GetLastError());
+            if (rc == VERR_NOT_FOUND)
+                vboxWinDrvInstLogError(pCtx, "Service '%s' not found", pszService);
+            else
+                rc = vboxWinDrvInstLogLastError(pCtx, "Opening service '%s' failed", pszService);
+        }
+    }
+    else
+        rc = vboxWinDrvInstLogLastError(pCtx, "Opening Service Control Manager (SCM) failed");
+
+    if (RT_FAILURE(rc))
+    {
+        RTUtf16Free(pwszService);
+        if (hSvc)
+            CloseServiceHandle(hSvc);
+        if (hSCM)
+            CloseServiceHandle(hSCM);
+        return rc;
+    }
+
+    SERVICE_STATUS_PROCESS enmSvcSts;
+
+    switch (enmFn)
+    {
+        case VBOXWINDRVSVCFN_START:
+        {
+            if (!StartService(hSvc, 0, NULL))
+            {
+                if (GetLastError() == ERROR_SERVICE_ALREADY_RUNNING)
+                    break;
+
+                /** @todo Also handle disabled services here? */
+
+                rc = vboxWinDrvInstLogLastError(pCtx, "Starting service '%s' failed", pszService);
+            }
+            else
+                vboxWinDrvInstLogInfo(pCtx, "Starting service '%s' ...", pszService);
+            break;
+        }
+
+        case VBOXWINDRVSVCFN_STOP:
+        {
+            if (!ControlService(hSvc, SERVICE_CONTROL_STOP, (LPSERVICE_STATUS)&enmSvcSts))
+            {
+                DWORD const dwErr = GetLastError();
+
+                /* A not active or disabled service is not an error, so just skip. */
+                if (   dwErr == ERROR_SERVICE_DISABLED
+                    || dwErr == ERROR_SERVICE_NOT_ACTIVE)
+                    break;
+
+                rc = vboxWinDrvInstLogLastError(pCtx, "Stopping service '%s' failed", pszService);
+            }
+            else
+                vboxWinDrvInstLogInfo(pCtx, "Stopping service '%s' ...", pszService);
+            break;
+        }
+
+        default:
+            AssertFailedStmt(rc = VERR_NOT_SUPPORTED);
+            break;
+    }
+
+    if (   RT_SUCCESS(rc)
+        && (fFlags & VBOXWINDRVSVCFN_F_WAIT))
+    {
+        uint64_t const msStartTS = RTTimeMilliTS();
+
+        rc = VERR_NO_CHANGE; /* No change yet. */
+
+        if (!g_pfnQueryServiceStatusEx)
+        {
+            vboxWinDrvInstLogWarn(pCtx, "Waiting for status change of service '%s' not supported on this OS, skipping",
+                                  pszService);
+            rc = VINF_SUCCESS;
+        }
+        else
+        {
+            vboxWinDrvInstLogInfo(pCtx, "Waiting for status change of service '%s' (%ums timeout) ...", pszService, msTimeout);
+            for (;;)
+            {
+                DWORD dwBytes;
+                if (!g_pfnQueryServiceStatusEx(hSvc,
+                                               SC_STATUS_PROCESS_INFO,
+                                               (LPBYTE)&enmSvcSts,
+                                               sizeof(SERVICE_STATUS_PROCESS),
+                                               &dwBytes))
+                {
+                    rc = vboxWinDrvInstLogLastError(pCtx, "Failed to query service status");
+                    break;
+                }
+
+                if ((RTTimeMilliTS() - msStartTS) % RT_MS_1SEC == 0) /* Don't spam. */
+                    vboxWinDrvInstLogVerbose(pCtx, 3, "Service '%s' status is %#x: %u",
+                                             pszService, enmSvcSts.dwCurrentState, (RTTimeMilliTS() - msStartTS) % 100 == 0);
+
+                switch (enmSvcSts.dwCurrentState)
+                {
+                    case SERVICE_STOP_PENDING:
+                    case SERVICE_START_PENDING:
+                        RTThreadSleep(100); /* Wait a bit before retrying. */
+                        break;
+
+                    case SERVICE_RUNNING:
+                    {
+                        if (enmFn == VBOXWINDRVSVCFN_START)
+                            rc = VINF_SUCCESS;
+                        break;
+                    }
+
+                    case SERVICE_STOPPED:
+                    {
+                        if (enmFn == VBOXWINDRVSVCFN_START)
+                        {
+                            vboxWinDrvInstLogError(pCtx, "Service '%s' stopped unexpectedly", pszService);
+                            rc = VERR_INVALID_STATE;
+                        }
+                        else
+                            rc = VINF_SUCCESS;
+                        break;
+                    }
+
+                    default:
+                    {
+                        vboxWinDrvInstLogError(pCtx, "Service '%s' reported an unexpected state (%#x)",
+                                               pszService, enmSvcSts.dwCurrentState);
+                        rc = VERR_INVALID_STATE;
+                    }
+                }
+
+                if (   RT_FAILURE(rc)
+                    && rc != VERR_NO_CHANGE)
+                    break;
+
+                if (RT_SUCCESS(rc))
+                    break;
+
+                if (RTTimeMilliTS() - msStartTS >= msTimeout)
+                {
+                    vboxWinDrvInstLogError(pCtx, "Waiting for service '%s' timed out (%ums)", pszService, msTimeout);
+                    rc = VERR_TIMEOUT;
+                    break;
+                }
+            }
+        }
+
+        if (RT_SUCCESS(rc))
+            vboxWinDrvInstLogInfo(pCtx, "Service '%s' successfully %s",
+                                  pszService, enmFn == VBOXWINDRVSVCFN_START ? "started" : "stopped");
+    }
+    else
+        vboxWinDrvInstLogVerbose(pCtx, 1, "Service '%s' was %s asynchronously",
+                                 pszService, enmFn == VBOXWINDRVSVCFN_START ? "started" : "stopped");
+
+    RTUtf16Free(pwszService);
+    CloseServiceHandle(hSvc);
+    CloseServiceHandle(hSCM);
+    return rc;
+}
+
+/**
+ * Controls a Windows service, extended version.
+ *
+ * @returns VBox status code.
+ * @param   hDrvInst            Windows driver installer handle to use.
+ * @param   pszService          Name of service to control.
+ * @param   enmFn               Service control function to use.
+ * @param   fFlags              Service control flags (of type VBOXWINDRVSVCFN_F_XXX) to use.
+ * @param   msTimeout           Timeout (in ms) to use. Only being used if VBOXWINDRVSVCFN_F_WAIT is specified in \a fFlags.
+ */
+int VBoxWinDrvInstControlServiceEx(VBOXWINDRVINST hDrvInst,
+                                    const char *pszService, VBOXWINDRVSVCFN enmFn, uint32_t fFlags, RTMSINTERVAL msTimeout)
+{
+    PVBOXWINDRVINSTINTERNAL pCtx = hDrvInst;
+    VBOXWINDRVINST_VALID_RETURN(pCtx);
+
+#define CONTROL_SERVICE(a_Fn) \
+    vboxWinDrvInstControlServiceEx(pCtx, pszService, a_Fn, fFlags, msTimeout);
+
+    int rc;
+    if (enmFn == VBOXWINDRVSVCFN_RESTART)
+    {
+        rc = CONTROL_SERVICE(VBOXWINDRVSVCFN_STOP);
+        if (RT_SUCCESS(rc))
+            rc = CONTROL_SERVICE(VBOXWINDRVSVCFN_START);
+    }
+    else
+        rc = CONTROL_SERVICE(enmFn);
+
+#undef CONTROL_SERVICE
+    return rc;
+}
+
+/**
+ * Controls a Windows service.
+ *
+ * @returns VBox status code.
+ * @param   hDrvInst            Windows driver installer handle to use.
+ * @param   pszService          Name of service to control.
+ * @param   enmFn               Service control function to use.
+ *
+ * @note    Function waits 30s for the service to reach the desired control function.
+ *          Use VBooxWinDrvInstControlServiceEx() for more flexibility.
+ */
+int VBoxWinDrvInstControlService(VBOXWINDRVINST hDrvInst, const char *pszService, VBOXWINDRVSVCFN enmFn)
+{
+    PVBOXWINDRVINSTINTERNAL pCtx = hDrvInst;
+    VBOXWINDRVINST_VALID_RETURN(pCtx);
+
+    return VBoxWinDrvInstControlServiceEx(pCtx, pszService, enmFn, VBOXWINDRVSVCFN_F_WAIT, RT_MS_30SEC);
 }
 
 #ifdef TESTCASE

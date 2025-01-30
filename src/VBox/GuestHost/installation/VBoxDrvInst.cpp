@@ -1,4 +1,4 @@
-/* $Id: VBoxDrvInst.cpp 108110 2025-01-29 09:39:04Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxDrvInst.cpp 108135 2025-01-30 16:51:51Z andreas.loeffler@oracle.com $ */
 /** @file
  * Driver installation utility for Windows hosts and guests.
  */
@@ -64,10 +64,12 @@
 static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdListMain(PRTGETOPTSTATE pGetState);
 static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdInstallMain(PRTGETOPTSTATE pGetState);
 static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdUninstallMain(PRTGETOPTSTATE pGetState);
+static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdServiceMain(PRTGETOPTSTATE pGetState);
 
 static DECLCALLBACK(const char *) vboxDrvInstCmdListHelp(PCRTGETOPTDEF pOpt);
 static DECLCALLBACK(const char *) vboxDrvInstCmdInstallHelp(PCRTGETOPTDEF pOpt);
 static DECLCALLBACK(const char *) vboxDrvInstCmdUninstallHelp(PCRTGETOPTDEF pOpt);
+static DECLCALLBACK(const char *) vboxDrvInstCmdServiceHelp(PCRTGETOPTDEF pOpt);
 
 struct VBOXDRVINSTCMD;
 static RTEXITCODE vboxDrvInstShowUsage(PRTSTREAM pStrm, VBOXDRVINSTCMD const *pOnlyCmd);
@@ -216,13 +218,51 @@ const VBOXDRVINSTCMD g_CmdUninstall =
 };
 
 /**
+ * Long option values for the 'service' command.
+ */
+enum
+{
+    VBOXDRVINST_SERVICE_OPT_START = 900,
+    VBOXDRVINST_SERVICE_OPT_STOP,
+    VBOXDRVINST_SERVICE_OPT_RESTART,
+    VBOXDRVINST_SERVICE_OPT_WAIT,
+    VBOXDRVINST_SERVICE_OPT_NO_WAIT
+};
+
+/**
+ * Command line parameters for the 'service' command.
+ */
+static const RTGETOPTDEF g_aCmdServiceOptions[] =
+{
+    { "start",     VBOXDRVINST_SERVICE_OPT_START,   RTGETOPT_REQ_NOTHING },
+    { "stop",      VBOXDRVINST_SERVICE_OPT_STOP,    RTGETOPT_REQ_NOTHING },
+    { "restart",   VBOXDRVINST_SERVICE_OPT_RESTART, RTGETOPT_REQ_NOTHING },
+    { "--wait",    VBOXDRVINST_SERVICE_OPT_WAIT,    RTGETOPT_REQ_INT32 },
+    { "--no-wait", VBOXDRVINST_SERVICE_OPT_NO_WAIT, RTGETOPT_REQ_NOTHING }
+};
+
+/**
+ * Command definition for the 'service' command.
+ */
+const VBOXDRVINSTCMD g_CmdService =
+{
+    "service",
+    vboxDrvInstCmdServiceMain,
+    "Controls services.",
+    g_aCmdServiceOptions,
+    RT_ELEMENTS(g_aCmdServiceOptions),
+    vboxDrvInstCmdServiceHelp
+};
+
+/**
  * Commands.
  */
 static const VBOXDRVINSTCMD * const g_apCommands[] =
 {
     &g_CmdList,
     &g_CmdInstall,
-    &g_CmdUninstall
+    &g_CmdUninstall,
+    &g_CmdService
 };
 
 /**
@@ -665,6 +705,105 @@ static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdUninstallMain(PRTGETOPTSTATE pGetS
     return rcExit;
 }
 
+/** Option help for the 'service' command. */
+static DECLCALLBACK(const char *) vboxDrvInstCmdServiceHelp(PCRTGETOPTDEF pOpt)
+{
+    switch (pOpt->iShort)
+    {
+        case VBOXDRVINST_SERVICE_OPT_START:   return "Starts the service";
+        case VBOXDRVINST_SERVICE_OPT_STOP:    return "Stops the service";
+        case VBOXDRVINST_SERVICE_OPT_RESTART: return "Restarts the service";
+        case VBOXDRVINST_SERVICE_OPT_WAIT:    return "Waits for the service to reach the desired state";
+        case VBOXDRVINST_SERVICE_OPT_NO_WAIT: return "Skips waiting for the service to reach the desired state";
+
+        default:
+            break;
+    }
+    return NULL;
+}
+
+static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdServiceMain(PRTGETOPTSTATE pGetState)
+{
+    const char     *pszService = NULL;
+    VBOXWINDRVSVCFN enmFn      = VBOXWINDRVSVCFN_INVALID;
+    /* We wait 30s by default, unless specified otherwise below. */
+    uint32_t        fFlags     = VBOXWINDRVSVCFN_F_WAIT;
+    RTMSINTERVAL    msTimeout  = RT_MS_30SEC;
+
+    int           ch;
+    RTGETOPTUNION ValueUnion;
+    while ((ch = RTGetOpt(pGetState, &ValueUnion)))
+    {
+        switch (ch)
+        {
+            case 'h':
+                return vboxDrvInstShowUsage(g_pStdOut, &g_CmdService);
+
+            case VBOXDRVINST_SERVICE_OPT_START:
+            {
+                if (enmFn != VBOXWINDRVSVCFN_INVALID)
+                    return RTMsgErrorExitFailure("Service control function already specified\n");
+                enmFn = VBOXWINDRVSVCFN_START;
+                break;
+            }
+
+            case VBOXDRVINST_SERVICE_OPT_STOP:
+            {
+                if (enmFn != VBOXWINDRVSVCFN_INVALID)
+                    return RTMsgErrorExitFailure("Service control function already specified\n");
+                enmFn = VBOXWINDRVSVCFN_STOP;
+                break;
+            }
+
+            case VBOXDRVINST_SERVICE_OPT_RESTART:
+            {
+                if (enmFn != VBOXWINDRVSVCFN_INVALID)
+                    return RTMsgErrorExitFailure("Service control function already specified\n");
+                enmFn = VBOXWINDRVSVCFN_RESTART;
+                break;
+            }
+
+            case VBOXDRVINST_SERVICE_OPT_WAIT:
+                /* Note: fFlags already set above. */
+                msTimeout = ValueUnion.u32 * RT_MS_1SEC; /* Seconds -> Milliseconds. */
+                if (!msTimeout)
+                    return RTMsgErrorExitFailure("Timeout value is invalid\n");
+                break;
+
+            case VBOXDRVINST_SERVICE_OPT_NO_WAIT:
+                fFlags &= ~VBOXWINDRVSVCFN_F_WAIT;
+                break;
+
+            case VINF_GETOPT_NOT_OPTION:
+            {
+                if (pszService)
+                    return RTMsgErrorExitFailure("Service name already specified\n");
+
+                pszService = ValueUnion.psz;
+                break;
+            }
+
+            default:
+                return RTGetOptPrintError(ch, &ValueUnion);
+        }
+    }
+
+    if (!pszService)
+        return RTMsgErrorExitFailure("No service to control specified\n");
+    if (enmFn == VBOXWINDRVSVCFN_INVALID)
+        return RTMsgErrorExitFailure("No or invalid service control function specified\n");
+
+    VBOXWINDRVINST hWinDrvInst;
+    int rc = VBoxWinDrvInstCreateEx(&hWinDrvInst, g_uVerbosity, &vboxDrvInstLogCallback, NULL /* pvUser */);
+    if (RT_SUCCESS(rc))
+    {
+        rc = VBoxWinDrvInstControlServiceEx(hWinDrvInst, pszService, enmFn, fFlags, msTimeout);
+        VBoxWinDrvInstDestroy(hWinDrvInst);
+    }
+
+    return RT_SUCCESS(rc) ? RTEXITCODE_SUCCESS : RTEXITCODE_FAILURE;
+}
+
 /**
  * Shows the commands and their descriptions.
  *
@@ -741,9 +880,12 @@ static RTEXITCODE vboxDrvInstShowUsage(PRTSTREAM pStrm, PCVBOXDRVINSTCMD pOnlyCm
     RTStrmPrintf(pStrm, "\t%s uninstall --inf -file C:\\Path\\To\\VBoxUSB.inf --pnp-id \"USB\\VID_80EE&PID_CAFE\"\n", pszProcName);
     RTStrmPrintf(pStrm, "\t%s uninstall --model \"VBoxUSB.AMD64\"\n", pszProcName);
     RTStrmPrintf(pStrm, "\t%s uninstall --model \"VBoxUSB*\"\n", pszProcName);
+    RTStrmPrintf(pStrm, "\t%s service   VBoxSDS stop\n", pszProcName);
+    RTStrmPrintf(pStrm, "\t%s service   VBoxSDS start --no-wait\n", pszProcName);
+    RTStrmPrintf(pStrm, "\t%s service   VBoxSDS restart --wait 180\n", pszProcName);
     RTStrmPrintf(pStrm, "\t%s list      \"VBox*\"\n\n", pszProcName);
     RTStrmPrintf(pStrm, "Exit codes:\n");
-    RTStrmPrintf(pStrm, "\t1 - The (un)installation failed.\n");
+    RTStrmPrintf(pStrm, "\t1 - The requested command failed.\n");
     RTStrmPrintf(pStrm, "\t2 - Syntax error.\n");
     RTStrmPrintf(pStrm, "\t5 - A reboot is needed in order to complete the (un)installation.\n\n");
 

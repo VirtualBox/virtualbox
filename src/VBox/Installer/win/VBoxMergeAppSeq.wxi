@@ -31,6 +31,11 @@
     <Custom Action="ca_VBoxSupDrvInstArgModel" Before="ca_VBoxSupDrvInst" Condition="NOT REMOVE" />
     <Custom Action="ca_VBoxSupDrvInst" After="InstallFinalize" Condition="NOT REMOVE" />
 
+    <!-- Start VBoxSUP.sys after installation. -->
+    <Custom Action="ca_VBoxSupDrvStartArgFn" Before="ca_VBoxSupDrvStartArgName" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxSupDrvStartArgName" Before="ca_VBoxSupDrvStart" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxSupDrvStart" After="ca_VBoxSupDrvInst" Condition="NOT REMOVE" />
+
     <Custom Action="ca_VBoxSupDrvUninstArgModel" Before="ca_VBoxSupDrvUninst"
             Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
     <Custom Action="ca_VBoxSupDrvUninst" After="InstallInitialize"
