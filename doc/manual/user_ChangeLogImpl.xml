@@ -81,7 +81,8 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
-        <para></para>
+        <para>Windows installer: Automatically load the support driver after
+          a successful installation (bug #22292)</para>
       </listitem>
 
       <listitem>
