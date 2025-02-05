@@ -1,4 +1,4 @@
-# $Id: routines.sh 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: routines.sh 108216 2025-02-05 12:06:23Z vadim.galitsyn@oracle.com $
 # Oracle VirtualBox
 # VirtualBox installer shell routines
 #
@@ -126,10 +126,14 @@ check_running()
 {
     VBOXSVC_PID=`pidof VBoxSVC 2> /dev/null`
     if [ -n "$VBOXSVC_PID" ]; then
-        if [ -f /etc/init.d/vboxweb-service ]; then
-            kill -USR1 $VBOXSVC_PID
-        fi
-        sleep 1
+        # Ask VBoxSVC to terminate gracefully if it is not
+        # busy with handling client requests.
+        kill -USR1 $VBOXSVC_PID
+        # Wait for VBoxSVC to terminate.
+        for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            [ -n "$(pidof VBoxSVC 2> /dev/null)" ] && sleep 1
+        done
+        # Still running?
         if pidof VBoxSVC > /dev/null 2>&1; then
             echo 1>&2 "A copy of VirtualBox is currently running.  Please close it and try again."
             abort "Please note that it can take up to ten seconds for VirtualBox to finish running."
