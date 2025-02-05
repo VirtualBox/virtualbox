@@ -1,4 +1,4 @@
-/* $Id: NEMAllNativeTemplate-win.cpp.h 108055 2025-01-24 10:05:32Z knut.osmundsen@oracle.com $ */
+/* $Id: NEMAllNativeTemplate-win.cpp.h 108227 2025-02-05 15:26:29Z knut.osmundsen@oracle.com $ */
 /** @file
  * NEM - Native execution manager, Windows code template ring-0/3.
  */
@@ -980,7 +980,7 @@ NEM_TMPL_STATIC int nemHCWinCopyStateFromHyperV(PVMCC pVM, PVMCPUCC pVCpu, uint6
             GET_REG64_LOG7(pCtxMsrs->msr.MtrrFix4K_E8000,  WHvX64RegisterMsrMtrrFix4kE8000,  "MSR MTRR_FIX_4K_E8000");
             GET_REG64_LOG7(pCtxMsrs->msr.MtrrFix4K_F0000,  WHvX64RegisterMsrMtrrFix4kF0000,  "MSR MTRR_FIX_4K_F0000");
             GET_REG64_LOG7(pCtxMsrs->msr.MtrrFix4K_F8000,  WHvX64RegisterMsrMtrrFix4kF8000,  "MSR MTRR_FIX_4K_F8000");
-            if (pVM->nem.s.fSpeculationControl)
+            if (pVM->nem.s.fDoIa32SpecCtrl)
                 GET_REG64_LOG7(pCtxMsrs->msr.SpecCtrl,     WHvX64RegisterSpecCtrl,           "MSR IA32_SPEC_CTRL");
             /** @todo look for HvX64RegisterIa32MiscEnable and HvX64RegisterIa32FeatureControl? */
         }
