@@ -1,4 +1,4 @@
-/* $Id: VBoxControl.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxControl.cpp 108215 2025-02-05 12:05:02Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VBoxControl - Guest Additions Command Line Management Interface.
  */
@@ -1731,7 +1731,12 @@ static RTEXITCODE sharedFolder_list(int argc, char **argv)
                                      paMappings[i].u32Root, rc);
             }
             if (!cMappings)
+            {
                 RTPrintf("No Shared Folders available.\n");
+                /* Return non-zero status for shell scripts to
+                 * detect that there is no mapping available. */
+                rc = VERR_NO_DATA;
+            }
             VbglR3SharedFolderFreeMappings(paMappings);
         }
         else

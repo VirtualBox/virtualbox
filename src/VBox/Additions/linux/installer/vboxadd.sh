@@ -1,7 +1,7 @@
 #! /bin/sh
-# $Id: vboxadd.sh 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: vboxadd.sh 108215 2025-02-05 12:05:02Z vadim.galitsyn@oracle.com $
 ## @file
-# Linux Additions kernel module init script ($Revision: 106320 $)
+# Linux Additions kernel module init script ($Revision: 108215 $)
 #
 
 #
@@ -168,38 +168,6 @@ VBOX_VERSION="`"$VBOXCONTROL" --version | cut -d r -f1`"
 VBOX_REVISION="r`"$VBOXCONTROL" --version | cut -d r -f2`"
 [ "$VBOX_REVISION" != "r" ] || VBOX_REVISION='unknown'
 
-# Returns if the vboxguest module is running or not.
-#
-# Returns true if vboxguest module is running, false if not.
-running_vboxguest()
-{
-    lsmod | grep -q "vboxguest[^_-]"
-}
-
-# Returns if the vboxadd module is running or not.
-#
-# Returns true if vboxadd module is running, false if not.
-running_vboxadd()
-{
-    lsmod | grep -q "vboxadd[^_-]"
-}
-
-# Returns if the vboxsf module is running or not.
-#
-# Returns true if vboxsf module is running, false if not.
-running_vboxsf()
-{
-    lsmod | grep -q "vboxsf[^_-]"
-}
-
-# Returns if the vboxvideo module is running or not.
-#
-# Returns true if vboxvideo module is running, false if not.
-running_vboxvideo()
-{
-    lsmod | grep -q "vboxvideo[^_-]"
-}
-
 # Returns if a specific module is running or not.
 #
 # Input $1: Module name to check running status for.
@@ -207,7 +175,8 @@ running_vboxvideo()
 # Returns true if the module is running, false if not.
 running_module()
 {
-    lsmod | grep -q "$1"
+    mod="$1"
+    [ -d "/sys/module/$mod" ]
 }
 
 # Returns the version string of a currently running kernel module.
@@ -218,7 +187,7 @@ running_module()
 running_module_version()
 {
     mod="$1"
-    version_string_path="/sys/module/"$mod"/version"
+    version_string_path="/sys/module/$mod/version"
 
     [ -n "$mod" ] || return
     if [ -r "$version_string_path" ]; then
@@ -896,7 +865,7 @@ Please install them and execute
     # Create user group which will have permissive access to DRP IPC server socket.
     groupadd -r -f vboxdrmipc >/dev/null 2>&1
 
-    if  running_vboxguest || running_vboxadd; then
+    if  running_module "vboxguest"; then
         # Only warn user if currently loaded modules version do not match Guest Additions Installation.
         check_running_module_version "vboxguest" || info "Running kernel modules will not be replaced until the system is restarted or 'rcvboxadd reload' triggered"
     fi
@@ -1012,46 +981,79 @@ check_pid()
 }
 
 # A wrapper for check_running_module_version.
-# Go through the list of Guest Additions' modules and
-# verify if they are loaded and running version matches
-# to current installation version. Skip vboxvideo since
-# it is not loaded for old guests.
-check_status_kernel()
+# Verify if module is loaded and its version matches
+# to current Additions installation version.
+check_running_module()
 {
-    for mod in vboxguest vboxsf; do
+    mod="$1"
 
-        for attempt in 1 2 3 4 5; do
+    # Check args.
+    [ -n "$mod" ] || return
 
-            # Wait before the next attempt.
-            [ $? -ne 0 ] && sleep 1
+    # During reload action it may take some time for module
+    # to be fully loaded, so make a few attempts while checking this.
+    for attempt in 1 2 3 4 5; do
 
-            running_module "$mod"
-            if [ $? -eq 0 ]; then
-                mod_is_running="1"
-                check_running_module_version "$mod"
-                [ $? -eq 0 ] && break
-            else
-                mod_is_running=""
-                false
-            fi
+        # Wait before the next attempt.
+        [ -n "$vbox_add_wait" -a $? -ne 0 ] && sleep 1
 
-        done
-
-        # In case of error, try to print out proper reason of failure.
-        if [ $? -ne 0 ]; then
-            # Was module loaded?
-            if [ -z "$mod_is_running" ]; then
-                info "module $mod is not loaded"
-            else
-                # If module was loaded it means that it has incorrect version.
-                info "currently loaded module $mod version ($(running_module_version "$mod")) does not match to VirtualBox Guest Additions installation version ($VBOX_VERSION $VBOX_REVISION)"
-            fi
-
-            # Set "bad" rc.
+        running_module "$mod"
+        if [ $? -eq 0 ]; then
+            mod_is_running="1"
+            check_running_module_version "$mod"
+            [ $? -eq 0 ] && break
+        else
+            mod_is_running=""
             false
         fi
 
     done
+
+    # In case of error, try to print out proper reason of failure.
+    if [ $? -ne 0 ]; then
+        # Was module loaded?
+        if [ -z "$mod_is_running" ]; then
+            info "module $mod is not loaded"
+        else
+            # If module was loaded it means that it has incorrect version.
+            info "currently loaded module $mod version ($(running_module_version "$mod")) does not match to VirtualBox Guest Additions installation version ($VBOX_VERSION $VBOX_REVISION)"
+        fi
+
+        # Set "bad" rc.
+        false
+    fi
+}
+
+# Go through list of Additions modules and check
+# if they were properly loaded.
+check_status_kernel()
+{
+    # Module vboxguest should be loaded unconditionally once Guest Additions were installed.
+    check_running_module "vboxguest"
+
+    # Module vboxsf module might not be loaded if VM has no Shared Folder mappings.
+    # Check that first and then verify the module.
+    if [ $? -eq 0 ]; then
+        VBoxControl sharedfolder list >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            check_running_module "vboxsf"
+        else
+            # Do not spoil $?.
+            true
+        fi
+    fi
+
+    # Module vboxvideo is optional and expected to be loaded only when VM is
+    # running VBoxVGA or VBoxSVGA graphics.
+    if [ $? -eq 0 ]; then
+        gpu_vendor=$(lspci | grep 'VGA compatible controller' | cut -d ' ' -f 5 2>/dev/null)
+        if [ "gpu_vendor" = "InnoTek" ]; then
+            check_running_module "vboxvideo"
+        else
+            # Do not spoil $?.
+            true
+        fi
+    fi
 }
 
 # Check whether user-land processes are running.
@@ -1179,8 +1181,8 @@ reload()
             # Try unload drivers unconditionally (ignore previous command exit code).
             # If final goal of unloading vboxguest.ko won't be met, we will fail on
             # the next step anyway.
-            running_vboxsf && modprobe -r vboxsf >/dev/null  2>&1
-            running_vboxguest
+            running_module "vboxsf" && modprobe -r vboxsf >/dev/null  2>&1
+            running_module "vboxguest"
             if [ $? -eq 0 ]; then
                 modprobe -r vboxguest >/dev/null  2>&1
                 [ $? -eq 0 ] && break
@@ -1191,7 +1193,7 @@ reload()
         done
 
         # Check if we succeeded with unloading vboxguest after several attempts.
-        running_vboxguest
+        running_module "vboxguest"
         if [ $? -eq 0 ]; then
             info "cannot reload kernel modules: one or more module(s) is still in use"
             false
@@ -1233,7 +1235,7 @@ reload()
 
 dmnstatus()
 {
-    if running_vboxguest; then
+    if running_module "vboxguest"; then
         echo "The VirtualBox Additions are currently running."
     else
         echo "The VirtualBox Additions are not currently running."
@@ -1264,6 +1266,12 @@ restart)
 # Tries to reload kernel modules and restart user processes.
 reload)
     check_root
+    # reload() we will call modprobe(8) in order to reload kernel
+    # modules. This operation is asynchronous and requires some time for
+    # modules to be loaded in most of the cases. By setting this variable, we
+    # ask check_running_module() to wait a bit before making a decision
+    # whether modules were loaded or not.
+    vbox_add_wait=1
     reload
     ;;
 # Setup does a clean-up (see below) and re-does all Additions-specific
