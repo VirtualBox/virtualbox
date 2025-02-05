@@ -1274,7 +1274,8 @@ int ShClX11Destroy(PSHCLX11CTX pCtx)
 
     int rc = VINF_SUCCESS;
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
-    rc = ShClTransferHttpServerDestroy(&pCtx->HttpCtx.HttpServer);
+    if (!shClX11HeadlessIsEnabled(pCtx))
+        rc = ShClTransferHttpServerDestroy(&pCtx->HttpCtx.HttpServer);
 #endif
 
 #ifdef TESTCASE
