@@ -29,7 +29,8 @@
     <Custom Action="ca_VBoxUSBDevDrvInstArgFlagForce" Before="ca_VBoxUSBDevDrvInstArgModel" Condition="NOT REMOVE" />
     <Custom Action="ca_VBoxUSBDevDrvInstArgModel" Before="ca_VBoxUSBDevDrvInstArgInfFile" Condition="NOT REMOVE" />
     <Custom Action="ca_VBoxUSBDevDrvInstArgInfFile" Before="ca_VBoxUSBDevDrvInst" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxUSBDevDrvInst" After="InstallFinalize" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxUSBDevDrvInst" After="InstallFinalize"
+            Condition="NOT REMOVE AND (&amp;VBoxUSB=3)" />
 
     <Custom Action="ca_VBoxUSBDevDrvUninstArgModel" Before="ca_VBoxUSBDevDrvUninst"
             Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
@@ -40,7 +41,8 @@
     <Custom Action="ca_VBoxUSBMonDrvInstArgFlagForce" Before="ca_VBoxUSBMonDrvInstArgModel" Condition="NOT REMOVE" />
     <Custom Action="ca_VBoxUSBMonDrvInstArgModel" Before="ca_VBoxUSBMonDrvInstArgInfFile" Condition="NOT REMOVE" />
     <Custom Action="ca_VBoxUSBMonDrvInstArgInfFile" Before="ca_VBoxUSBMonDrvInst" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxUSBMonDrvInst" After="InstallFinalize" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxUSBMonDrvInst" After="InstallFinalize"
+            Condition="NOT REMOVE AND (&amp;VBoxUSB=3)" />
 
     <Custom Action="ca_VBoxUSBMonDrvUninstArgModel" Before="ca_VBoxUSBMonDrvUninst"
             Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
@@ -48,4 +50,3 @@
             Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
 
 </Include>
-
