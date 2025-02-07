@@ -1,4 +1,4 @@
-/* $Id: DrvNATlibslirp.cpp 107914 2025-01-16 14:50:32Z knut.osmundsen@oracle.com $ */
+/* $Id: DrvNATlibslirp.cpp 108273 2025-02-07 19:53:58Z jack.doherty@oracle.com $ */
 /** @file
  * DrvNATlibslirp - NATlibslirp network transport driver.
  */
@@ -1644,7 +1644,7 @@ static DECLCALLBACK(int) drvNATConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg, uin
         return PDMDrvHlpVMSetError(pDrvIns, rc, RT_SRC_POS, N_("NAT%d: Configuration error: missing network"),
                                    pDrvIns->iInstance);
 
-    RTNETADDRIPV4 Network, Netmask;
+    RTNETADDRIPV4 Network, Netmask, Nettemp;
     rc = RTCidrStrToIPv4(szNetwork, &Network, &Netmask);
     if (RT_FAILURE(rc))
         return PDMDrvHlpVMSetError(pDrvIns, rc, RT_SRC_POS,
@@ -1653,15 +1653,19 @@ static DECLCALLBACK(int) drvNATConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg, uin
 
     /* Construct Libslirp Config and Initialzie Slirp */
 
-    LogFlow(("Here is what is coming out of the vbox config:\n"
-             "  Network: %lu\n"
-             "  Netmask: %lu\n", Network, Netmask));
+    LogFlow(("Here is what is coming out of the vbox config (NAT#%d):\n"
+             "  Network: %RTnaipv4\n"
+             "  Netmask: %RTnaipv4\n",
+             pDrvIns->iInstance, RT_H2BE_U32(Network.u), RT_H2BE_U32(Netmask.u)));
 
     struct in_addr vnetwork = RTNetIPv4AddrHEToInAddr(&Network);
     struct in_addr vnetmask = RTNetIPv4AddrHEToInAddr(&Netmask);
-    struct in_addr vhost = RTNetInAddrFromU8(10, 0, 2, 2);
-    struct in_addr vdhcp_start = RTNetInAddrFromU8(10, 0, 2, 15);
-    struct in_addr vnameserver = RTNetInAddrFromU8(10, 0, 2, 3);
+    Nettemp = Network; Nettemp.u |= 2;  /* Usually 10.0.2.2 */
+    struct in_addr vhost       = RTNetIPv4AddrHEToInAddr(&Nettemp);
+    Nettemp = Network; Nettemp.u |= 15; /* Usually 10.0.2.15 */
+    struct in_addr vdhcp_start = RTNetIPv4AddrHEToInAddr(&Nettemp);
+    Nettemp = Network; Nettemp.u |= 3;  /* Usually 10.0.2.3 */
+    struct in_addr vnameserver = RTNetIPv4AddrHEToInAddr(&Nettemp);
 
     SlirpConfig slirpCfg = { 0 };
     static SlirpCb slirpCallbacks = { 0 };
@@ -1674,9 +1678,25 @@ static DECLCALLBACK(int) drvNATConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg, uin
     slirpCfg.vhost = vhost;
     slirpCfg.in6_enabled = true;
 
-    inet_pton(AF_INET6, "fd00::", &slirpCfg.vprefix_addr6);
+    /*
+     * Use the same prefix as the NAT Network default:
+     * [fd17:625c:f037:XXXX::/64] - RFC 4193 (ULA) Locally Assigned
+     * Global ID where XXXX, 16 bit Subnet ID, are two bytes from the
+     * middle of the IPv4 address, e.g. :0002: for 10.0.2.1.
+     */
+
+    inet_pton(AF_INET6, "fd17:625c:f037:0::",  &slirpCfg.vprefix_addr6);
+    inet_pton(AF_INET6, "fd17:625c:f037:0::2", &slirpCfg.vhost6);
+    inet_pton(AF_INET6, "fd17:625c:f037:0::3", &slirpCfg.vnameserver6);
     slirpCfg.vprefix_len = 64;
-    inet_pton(AF_INET6, "fd00::2", &slirpCfg.vhost6);
+
+    /* Copy the middle of the IPv4 addresses to the IPv6 addresses. */
+    slirpCfg.vprefix_addr6.s6_addr[6] = RT_BYTE2(vhost.s_addr);
+    slirpCfg.vprefix_addr6.s6_addr[7] = RT_BYTE3(vhost.s_addr);
+    slirpCfg.vhost6.s6_addr[6]        = RT_BYTE2(vhost.s_addr);
+    slirpCfg.vhost6.s6_addr[7]        = RT_BYTE3(vhost.s_addr);
+    slirpCfg.vnameserver6.s6_addr[6]  = RT_BYTE2(vnameserver.s_addr);
+    slirpCfg.vnameserver6.s6_addr[7]  = RT_BYTE3(vnameserver.s_addr);
 
     slirpCfg.vhostname = "vbox";
     slirpCfg.tftp_server_name = pThis->pszNextServer;
@@ -1685,8 +1705,6 @@ static DECLCALLBACK(int) drvNATConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg, uin
     slirpCfg.vdhcp_start = vdhcp_start;
     slirpCfg.vnameserver = vnameserver;
     slirpCfg.if_mtu = MTU;
-
-    inet_pton(AF_INET6, "fd00::3", &slirpCfg.vnameserver6);
 
     slirpCfg.vdnssearch = NULL;
     slirpCfg.vdomainname = NULL;
