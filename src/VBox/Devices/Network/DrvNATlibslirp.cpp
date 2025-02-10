@@ -1,4 +1,4 @@
-/* $Id: DrvNATlibslirp.cpp 108308 2025-02-10 19:22:46Z jack.doherty@oracle.com $ */
+/* $Id: DrvNATlibslirp.cpp 108309 2025-02-10 19:23:30Z jack.doherty@oracle.com $ */
 /** @file
  * DrvNATlibslirp - NATlibslirp network transport driver.
  */
@@ -973,10 +973,9 @@ static int drvNATConstructRedir(unsigned iInstance, PDRVNAT pThis, PCFGMNODE pCf
          * Apply port forward.
          */
         if (drvNATNotifyApplyPortForwardCommand(pThis, false /* fRemove */, fUDP, szHostIp, iHostPort, szGuestIp, iGuestPort) < 0)
-            return PDMDrvHlpVMSetError(pThis->pDrvIns, VERR_NAT_REDIR_SETUP, RT_SRC_POS,
-                                       N_("NAT#%d: configuration error: failed to set up redirection of %d to %d. "
-                                          "Probably a conflict with existing services or other rules"),
-                                       iInstance, iHostPort, iGuestPort);
+            LogFlowFunc(("NAT#%d: configuration error: failed to set up redirection of %d to %d. "
+                                          "Probably a conflict with existing services or other rules",
+                                       iInstance, iHostPort, iGuestPort));
     } /* for each redir rule */
 
     return VINF_SUCCESS;
