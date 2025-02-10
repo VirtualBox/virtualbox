@@ -61,7 +61,11 @@ enum {
 /* Callback for application to get data from the guest */
 typedef slirp_ssize_t (*SlirpReadCb)(void *buf, size_t len, void *opaque);
 /* Callback for application to send data to the guest */
+#ifdef VBOX
+typedef slirp_ssize_t (*SlirpWriteCb)(const void *buf, ssize_t len, void *opaque);
+#else
 typedef slirp_ssize_t (*SlirpWriteCb)(const void *buf, size_t len, void *opaque);
+#endif
 /* Timer callback */
 typedef void (*SlirpTimerCb)(void *opaque);
 /* Callback for libslirp to register polling callbacks */
@@ -253,8 +257,13 @@ void slirp_cleanup(Slirp *slirp);
  * that should be monitored along the sleep. The opaque pointer is passed as
  * such to add_poll, and add_poll returns an index. */
 SLIRP_EXPORT
+#ifdef VBOX
+void slirp_pollfds_fill(Slirp *slirp, int *timeout,
+                        SlirpAddPollCb add_poll, void *opaque);
+#else
 void slirp_pollfds_fill(Slirp *slirp, uint32_t *timeout,
                         SlirpAddPollCb add_poll, void *opaque);
+#endif
 
 /* This is called by the application after sleeping, to report which file
  * descriptors are available. slirp_pollfds_poll calls get_revents on each file

@@ -772,9 +772,15 @@ void slirp_cleanup(Slirp *slirp)
 #define CONN_CANFRCV(so) \
     (((so)->so_state & (SS_FCANTRCVMORE | SS_ISFCONNECTED)) == SS_ISFCONNECTED)
 
+#ifdef VBOX
+static void slirp_update_timeout(Slirp *slirp, int *timeout)
+{
+    int t;
+#else
 static void slirp_update_timeout(Slirp *slirp, uint32_t *timeout)
 {
     uint32_t t;
+#endif
 
     if (*timeout <= TIMEOUT_FAST) {
         return;
@@ -795,8 +801,13 @@ static void slirp_update_timeout(Slirp *slirp, uint32_t *timeout)
     *timeout = t;
 }
 
+#ifdef VBOX
+void slirp_pollfds_fill(Slirp *slirp, int *timeout,
+                        SlirpAddPollCb add_poll, void *opaque)
+#else
 void slirp_pollfds_fill(Slirp *slirp, uint32_t *timeout,
                         SlirpAddPollCb add_poll, void *opaque)
+#endif
 {
     struct socket *so, *so_next;
 

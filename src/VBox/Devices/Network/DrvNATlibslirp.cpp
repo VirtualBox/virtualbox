@@ -1,4 +1,4 @@
-/* $Id: DrvNATlibslirp.cpp 108306 2025-02-10 19:11:01Z jack.doherty@oracle.com $ */
+/* $Id: DrvNATlibslirp.cpp 108307 2025-02-10 19:18:35Z jack.doherty@oracle.com $ */
 /** @file
  * DrvNATlibslirp - NATlibslirp network transport driver.
  */
@@ -64,6 +64,7 @@
 #include <iprt/critsect.h>
 #include <iprt/cidr.h>
 #include <iprt/file.h>
+#include <limits.h>
 #include <iprt/mem.h>
 #include <iprt/net.h>
 #include <iprt/pipe.h>
@@ -126,10 +127,12 @@
     GET_EXTRADATA_N(pdrvins, node, name, (rc), String, string, (var), (var_size))
 #define GET_STRING_ALLOC(rc, pdrvins, node, name, var) \
     GET_EXTRADATA(pdrvins, node, name, (rc), StringAlloc, string, (var))
+#define GET_U16_STRICT(rc, pdrvins, node, name, var) \
+    GET_ED_STRICT(pdrvins, node, name, (rc), U16, int, (var))
 #define GET_S32(rc, pdrvins, node, name, var) \
     GET_EXTRADATA(pdrvins, node, name, (rc), S32, int, (var))
-#define GET_S32_STRICT(rc, pdrvins, node, name, var) \
-    GET_ED_STRICT(pdrvins, node, name, (rc), S32, int, (var))
+#define GET_U32(rc, pdrvins, node, name, var) \
+    GET_EXTRADATA(pdrvins, node, name, (rc), U32, int, (var))
 
 #define DO_GET_IP(rc, node, instance, status, x)                                \
     do {                                                                            \
@@ -259,7 +262,7 @@ typedef DRVNAT *PDRVNAT;
 *   Internal Functions                                                                                                           *
 *********************************************************************************************************************************/
 static void drvNATNotifyNATThread(PDRVNAT pThis, const char *pszWho);
-static void drvNAT_UpdateTimeout(uint32_t *uTimeout, void *opaque);
+static void drvNAT_UpdateTimeout(int *i32Timeout, void *opaque);
 static void drvNAT_CheckTimeout(void *opaque);
 static DECLCALLBACK(int) drvNAT_AddPollCb(int iFd, int iEvents, void *opaque);
 static DECLCALLBACK(int64_t) drvNAT_ClockGetNsCb(void *opaque);
@@ -305,7 +308,7 @@ static DECLCALLBACK(int) drvNATRecvWakeup(PPDMDRVINS pDrvIns, PPDMTHREAD pThread
     rc = RTSemEventSignal(pThis->EventRecv);
 
     STAM_COUNTER_INC(&pThis->StatNATRecvWakeups);
-    return VINF_SUCCESS;
+    return rc;
 }
 
 /**
@@ -422,6 +425,7 @@ static DECLCALLBACK(void) drvNATSendWorker(PDRVNAT pThis, PPDMSCATTERGATHER pSgB
                                                                 iSeg, cSegs, (uint8_t *)pvSeg, &cbHdrs, &cbPayload);
                     memcpy((uint8_t *)pvSeg + cbHdrs, pbFrame + offPayload, cbPayload);
 
+                    Assert((size_t)cbPayload > 0 && (size_t)cbHdrs > 0);
                     slirp_input(pThis->pNATState->pSlirp, (uint8_t const *)pvSeg, cbPayload + cbHdrs);
                     RTMemFree(pvSeg);
                 }
@@ -722,8 +726,10 @@ static DECLCALLBACK(int) drvNATAsyncIoThread(PPDMDRVINS pDrvIns, PPDMTHREAD pThr
     pThis->pNATState->polls[0].fd = pThis->pWakeupSockPair[1];
 #else
     unsigned int cPollNegRet = 0;
-    drvNAT_AddPollCb(RTPipeToNative(pThis->hPipeRead), SLIRP_POLL_IN | SLIRP_POLL_HUP, pThis);
-    pThis->pNATState->polls[0].fd = RTPipeToNative(pThis->hPipeRead);
+    RTHCINTPTR i64NativeReadPipe = RTPipeToNative(pThis->hPipeRead);
+    Assert(i64NativeReadPipe < INT_MAX);
+    drvNAT_AddPollCb(i64NativeReadPipe, SLIRP_POLL_IN | SLIRP_POLL_HUP, pThis);
+    pThis->pNATState->polls[0].fd = i64NativeReadPipe;
     pThis->pNATState->polls[0].events = POLLRDNORM | POLLPRI | POLLRDBAND;
     pThis->pNATState->polls[0].revents = 0;
 #endif /* !RT_OS_WINDOWS */
@@ -745,18 +751,18 @@ static DECLCALLBACK(int) drvNATAsyncIoThread(PPDMDRVINS pDrvIns, PPDMTHREAD pThr
          * To prevent concurrent execution of sending/receiving threads
          */
 
-        uint32_t uTimeout = DRVNAT_DEFAULT_TIMEOUT;
+        int i32Timeout = DRVNAT_DEFAULT_TIMEOUT;
         pThis->pNATState->nsock = 1;
 
-        slirp_pollfds_fill(pThis->pNATState->pSlirp, &uTimeout, drvNAT_AddPollCb /* SlirpAddPollCb */, pThis /* opaque */);
-        drvNAT_UpdateTimeout(&uTimeout, pThis);
+        slirp_pollfds_fill(pThis->pNATState->pSlirp, &i32Timeout, drvNAT_AddPollCb /* SlirpAddPollCb */, pThis /* opaque */);
+        drvNAT_UpdateTimeout(&i32Timeout, pThis);
 
 #ifdef RT_OS_WINDOWS
-        int cChangedFDs = WSAPoll(pThis->pNATState->polls, pThis->pNATState->nsock, uTimeout /* timeout */);
+        int cChangedFDs = WSAPoll(pThis->pNATState->polls, pThis->pNATState->nsock, i32Timeout /* timeout */);
         /* Note: This must be called IMMEDIATELY after WSAPoll. */
         int error = WSAGetLastError();
 #else
-        int cChangedFDs = poll(pThis->pNATState->polls, pThis->pNATState->nsock, uTimeout /* timeout */);
+        int cChangedFDs = poll(pThis->pNATState->polls, pThis->pNATState->nsock, i32Timeout /* timeout */);
 #endif
         if (cChangedFDs < 0)
         {
@@ -921,12 +927,12 @@ static int drvNATConstructRedir(unsigned iInstance, PDRVNAT pThis, PCFGMNODE pCf
                                        N_("NAT#%d: configuration query for \"Protocol\" failed"),
                                        iInstance);
         /* host port */
-        int32_t iHostPort;
-        GET_S32_STRICT(rc, pDrvIns, pNode, "HostPort", iHostPort);
+        uint16_t iHostPort;
+        GET_U16_STRICT(rc, pDrvIns, pNode, "HostPort", iHostPort);
 
         /* guest port */
-        int32_t iGuestPort;
-        GET_S32_STRICT(rc, pDrvIns, pNode, "GuestPort", iGuestPort);
+        uint16_t iGuestPort;
+        GET_U16_STRICT(rc, pDrvIns, pNode, "GuestPort", iGuestPort);
 
         /** @todo r=jack: why are we using IP INADD_ANY for port forward when FE does not do so. */
         /* host address ("BindIP" name is rather unfortunate given "HostPort" to go with it) */
@@ -1071,12 +1077,12 @@ static DECLCALLBACK(void) drvNATNotifyDnsChanged(PPDMINETWORKNATCONFIG pInterfac
 /**
  * Update the timeout field in given list of Slirp timers.
  *
- * @param uTimeout  Pointer to timeout value.
+ * @param i32Timeout  Pointer to timeout value.
  * @param opaque    Pointer to NAT State context.
  *
  * @thread  ?
  */
-static void drvNAT_UpdateTimeout(uint32_t *uTimeout, void *opaque)
+static void drvNAT_UpdateTimeout(int *i32Timeout, void *opaque)
 {
     PDRVNAT pThis = (PDRVNAT)opaque;
     Assert(pThis);
@@ -1092,8 +1098,8 @@ static void drvNAT_UpdateTimeout(uint32_t *uTimeout, void *opaque)
             if (diff < 0)
                 diff = 0;
 
-            if (diff < *uTimeout)
-                *uTimeout = diff;
+            if (diff < *i32Timeout)
+                *i32Timeout = RT_MIN(diff, INT_MAX);
         }
 
         pCurrent = pCurrent->next;
@@ -1139,8 +1145,8 @@ static void drvNAT_CheckTimeout(void *opaque)
  *
  * @thread  ?
  */
-static int drvNAT_PollEventSlirpToHost(int iEvents) {
-    int iRet = 0;
+static short drvNAT_PollEventSlirpToHost(int iEvents) {
+    short iRet = 0;
 #ifndef RT_OS_WINDOWS
     if (iEvents & SLIRP_POLL_IN)  iRet |= POLLIN;
     if (iEvents & SLIRP_POLL_OUT) iRet |= POLLOUT;
@@ -1199,7 +1205,7 @@ static int drvNAT_PollEventHostToSlirp(int iEvents) {
  *
  * @thread  ?
  */
-static DECLCALLBACK(ssize_t) drvNAT_SendPacketCb(const void *pBuf, size_t cb, void *opaque /* PDRVNAT */)
+static DECLCALLBACK(ssize_t) drvNAT_SendPacketCb(const void *pBuf, ssize_t cb, void *opaque /* PDRVNAT */)
 {
     char *pNewBuf = (char *)RTMemAlloc(cb);
     if (pNewBuf == NULL)
@@ -1383,7 +1389,7 @@ static DECLCALLBACK(int) drvNAT_AddPollCb(int iFd, int iEvents, void *opaque)
 
     if (pThis->pNATState->nsock + 1 >= pThis->pNATState->uPollCap)
     {
-        int cbNew = pThis->pNATState->uPollCap * 2 * sizeof(struct pollfd);
+        size_t cbNew = pThis->pNATState->uPollCap * 2 * sizeof(struct pollfd);
         struct pollfd *pvNew = (struct pollfd *)RTMemRealloc(pThis->pNATState->polls, cbNew);
         if (pvNew)
         {
@@ -1394,16 +1400,17 @@ static DECLCALLBACK(int) drvNAT_AddPollCb(int iFd, int iEvents, void *opaque)
             return -1;
     }
 
-    int idx = pThis->pNATState->nsock;
+    unsigned int uIdx = pThis->pNATState->nsock;
+    Assert(uIdx < INT_MAX);
 #ifdef RT_OS_WINDOWS
-    pThis->pNATState->polls[idx].fd = libslirp_wrap_RTHandleTableLookup(iFd);
+    pThis->pNATState->polls[uIdx].fd = libslirp_wrap_RTHandleTableLookup(iFd);
 #else
-    pThis->pNATState->polls[idx].fd = iFd;
+    pThis->pNATState->polls[uIdx].fd = iFd;
 #endif
-    pThis->pNATState->polls[idx].events = drvNAT_PollEventSlirpToHost(iEvents);
-    pThis->pNATState->polls[idx].revents = 0;
+    pThis->pNATState->polls[uIdx].events = drvNAT_PollEventSlirpToHost(iEvents);
+    pThis->pNATState->polls[uIdx].revents = 0;
     pThis->pNATState->nsock += 1;
-    return idx;
+    return uIdx;
 }
 
 /**
@@ -1578,19 +1585,12 @@ static DECLCALLBACK(int) drvNATConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg, uin
 
     int fDNSProxy = 0;
     GET_S32(rc, pDrvIns, pCfg, "DNSProxy", fDNSProxy);
-    int MTU = 1500;
-    GET_S32(rc, pDrvIns, pCfg, "SlirpMTU", MTU);
-    int i32AliasMode = 0;
-    int i32MainAliasMode = 0;
-    GET_S32(rc, pDrvIns, pCfg, "AliasMode", i32MainAliasMode);
+    unsigned int MTU = 1500;
+    GET_U32(rc, pDrvIns, pCfg, "SlirpMTU", MTU);
     int iIcmpCacheLimit = 100;
     GET_S32(rc, pDrvIns, pCfg, "ICMPCacheLimit", iIcmpCacheLimit);
     bool fLocalhostReachable = false;
     GET_BOOL(rc, pDrvIns, pCfg, "LocalhostReachable", fLocalhostReachable);
-
-    i32AliasMode |= (i32MainAliasMode & 0x1 ? 0x1 : 0);
-    i32AliasMode |= (i32MainAliasMode & 0x2 ? 0x40 : 0);
-    i32AliasMode |= (i32MainAliasMode & 0x4 ? 0x4 : 0);
     int i32SoMaxConn = 10;
     GET_S32(rc, pDrvIns, pCfg, "SoMaxConnection", i32SoMaxConn);
     /*
