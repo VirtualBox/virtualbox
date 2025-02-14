@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 108286 2025-02-10 10:47:28Z dmitrii.grigorev@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 108396 2025-02-14 20:12:05Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -7098,7 +7098,7 @@ static void vmsvgaR3Init3DCaps(PVGASTATE pThis, PVGASTATECC pThisCC)
 
     if (!pThis->svga.fVMSVGA2dGBO)
     {
-        for (unsigned i = 0; i <= RT_ELEMENTS(pThis->svga.au32DevCaps); ++i)
+        for (unsigned i = 0; i < RT_ELEMENTS(pThis->svga.au32DevCaps); ++i)
         {
             uint32_t val = 0;
             int rc = vmsvga3dQueryCaps(pThisCC, (SVGA3dDevCapIndex)i, &val);
