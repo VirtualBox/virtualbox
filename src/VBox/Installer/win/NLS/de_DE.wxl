@@ -90,7 +90,7 @@
     <String Id="LicenseAgreementDlg_Header" Value="Endbenutzer-Lizenzvertrag" />
     <String Id="LicenseAgreementDlg_Body" Value="Bitte lesen Sie den folgenden Lizenzvertrag sorgfältig durch." />
     <String Id="LicenseAgreementDlg_Accept" Value="Ich &amp;akzeptiere die Bedingungen des Lizenzvertrags." />
-    <String Id="LicenseAgreementDlg_Decline" Value="Ich &amp;akzeptiere die Bedingungen des Lizenzvertrags nicht." />
+    <String Id="LicenseAgreementDlg_Decline" Value="Ich akzeptiere die Bedingungen des Lizenzvertrags &amp;nicht." />
 
     <!---->
     <String Id="InvalidTargetDirDlg_Header" Value="Ungültiges Installationsverzeichnis" />
