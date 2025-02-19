@@ -30,7 +30,7 @@
 ]>
 <refentry id="vboxmanage-modifyvm" lang="en">
   <refentryinfo>
-    <pubdate>$Date: 2025-01-16 00:24:57 +0100 (Thu, 16 Jan 2025) $</pubdate>
+    <pubdate>$Date: 2025-02-19 11:33:41 +0100 (Wed, 19 Feb 2025) $</pubdate>
     <title>VBoxManage modifyvm</title>
   </refentryinfo>
 
@@ -1073,7 +1073,7 @@ it unless this changes. -->
               Включает или выключает аппаратное 3D ускорение для
               графических адаптеров, поддерживающих это. Эта опция
               работает только при установленных Дополнений Гостевой ОС.
-              Смотрите <xref linkend="guestadd-3d" />.
+              Смотрите <xref linkend="guestadd-video" />.
             </para></listitem>
         </varlistentry>
         <varlistentry>
