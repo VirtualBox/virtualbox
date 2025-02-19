@@ -2,6 +2,20 @@
 <!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
 <topic xml:lang="en-us" id="guestadd-video">
   <title>Hardware-Accelerated Graphics</title>
-  
-  <body/>
+  <body>
+    <p>The <ph conkeyref="vbox-conkeyref-phrases/product-name"/> Guest Additions contain experimental hardware 3D support for Windows, Linux, and Oracle Solaris guests.</p>
+    <p>With this feature, if an application inside your virtual machine uses 3D features through the OpenGL or Direct3D programming interfaces, instead of emulating them in software, which would be slow, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> will attempt to use your host's 3D hardware. This works for all supported host platforms, provided that your host operating system can make use of your accelerated 3D hardware in the first place. The Guest Additions must be installed on your VM.</p>
+    <p>The 3D acceleration feature  is only available for certain Windows, Linux, and Oracle Solaris guests, on an experimental basis:</p>
+    <ul>
+      <li>
+        <p>3D acceleration with Windows guests requires Windows Vista or later. Vista and Windows 7 guests have Direct3D 9, Windows 8 and newer guests have Direct3D 11.0 or 11.1 depending on the host capabilities. Windows guests also have OpenGL 4.1 support.</p>
+      </li>
+      <li>
+        <p>Linux guests have OpenGL 4.1 support with Mesa3D drivers. OpenGL on Linux requires kernel 2.6.27 or later, as well as X.org server version 1.5 or later. Ubuntu 10.10 and Fedora 14 have been tested and confirmed as working. </p>
+      </li>
+      <li>
+        <p>OpenGL on Oracle Solaris guests requires X.org server version 1.5 or later.</p>
+      </li>
+    </ul>
+  </body>
 </topic>

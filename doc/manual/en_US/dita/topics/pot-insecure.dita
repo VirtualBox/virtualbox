@@ -11,13 +11,6 @@
     <ul>
       <li>
         <p>
-            Enabling 3D graphics using the Guest Additions exposes the
-            host to additional security risks. See
-            <xref href="guestadd-3d.dita">Hardware 3D Acceleration (OpenGL and Direct3D 8/9)</xref>.
-          </p>
-      </li>
-      <li>
-        <p>
             When teleporting a machine, the data stream through which
             the machine's memory contents are transferred from one host
             to another is not encrypted. A third party with access to

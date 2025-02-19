@@ -99,10 +99,6 @@
         </ul>
       </li>
       <li>
-        <p>Neither <b outputclass="bold">scale mode</b> nor <b outputclass="bold">seamless mode</b> work correctly with
-          guests using OpenGL 3D features, such as with Compiz-enabled window managers. </p>
-      </li>
-      <li>
         <p>The RDP server in the <ph conkeyref="vbox-conkeyref-phrases/product-name"/> extension pack supports only
           audio streams in format 22.05kHz stereo 16-bit. If the RDP client requests any other audio format there will
           be no audio. </p>

@@ -18,7 +18,10 @@
         <li>Windows Server 2003 (32-bit and 64-bit)</li>
         <li>Oracle Solaris 10 8/11 Update 10 and later (32-bit and 64-bit)</li>
         <li>CentOS Stream 8 (64-bit)</li>
-        <li>CentOS Linux 7 (64-bit)</li>
+        <li>Oracle Linux 7 (64-bit)<ul>
+            <li>Red Hat Enterprise Linux 7 (64-bit)</li>
+            <li>CentOS Linux 7 (64-bit)</li>
+          </ul></li>
         <li>Oracle Linux 6 (32-bit and 64-bit)<ul>
             <li>Red Hat Enterprise Linux 6 (32-bit and 64-bit)</li>
             <li>CentOS 6 (32-bit and 64-bit)</li>
@@ -38,6 +41,9 @@
         <li>OS/2 Warp 4.5</li>
       </ul></p>
     <p>VMs with an Arm64 platform architecture might run<ul id="ul_oyj_1bg_3cc">
+        <li>Oracle Linux 7<ul>
+            <li>Red Hat Enterprise Linux 7</li>
+          </ul></li>
         <li>CentOS Stream 8</li>
         <li>CentOS Linux 7</li>
         <li>Debian 12</li>

@@ -2,7 +2,7 @@
 <!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
 <topic xml:lang="en-us" id="network_hostonly">
   <title>Host-Only Networking</title>
-  
+
   <body>
     <p>Host-only networking can be thought of as a hybrid between the bridged and internal networking modes. As with
       bridged networking, the virtual machines can talk to each other and the host as if they were connected through a
@@ -38,9 +38,9 @@
             outputclass="bold">Attached To</b> field. </p>
       </li>
       <li>
-        <p>On the command-line, use: </p>
-        <userinput>VBoxManage modifyvm <i>VM-name</i> --nic<varname>N</varname>=hostonly</userinput> --host-only-adapter<varname>N</varname>=<i>interface-name</i>
-        <p>See <xref href="../cli_topics/vboxmanage-modifyvm.dita"/>.</p>
+        <p>On the command line, use </p>
+        <p><userinput>VBoxManage modifyvm <varname>VM-name</varname> --nic<varname>N</varname>=hostonly --host-only-adapter<varname>N</varname>=<varname>interface-name</varname></userinput>.</p>
+        <p>See <xref href="vboxmanage-modifyvm.dita"/>.</p>
       </li>
     </ul>
     <p>For host-only networking, as with internal networking, you may find the DHCP server useful that is built into <ph
@@ -80,5 +80,5 @@
     <pre xml:space="preserve">      # No addresses are allowed for host-only adapters
       </pre>
   </body>
-  
+
 </topic>
