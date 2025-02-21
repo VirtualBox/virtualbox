@@ -25,26 +25,19 @@
 
 <Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
-    <CustomAction Id="ca_VBoxUSBDevDrvInst" DllEntry="DriverInstall" Execute="immediate" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
-    <CustomAction Id="ca_VBoxUSBDevDrvInstArgInfFile"  Property="VBoxDrvInstInfFile" Value="[#file_VBoxUSB.inf]" Execute="immediate" />
-    <CustomAction Id="ca_VBoxUSBDevDrvInstArgModel" Property="VBoxDrvInstModel" Value="VBoxUSB*" Execute="immediate" />
-    <CustomAction Id="ca_VBoxUSBDevDrvInstArgFlagForce" Property="VBoxDrvInstFlagForce" Value="1" Execute="immediate" />
-    <CustomAction Id="ca_VBoxUSBDevDrvInstArgFlagSilent" Property="VBoxDrvInstFlagSilent" Value="1" Execute="immediate" />
+    <CustomAction Id="ca_VBoxUSBDevDrvInstParms" Property="ca_VBoxUSBDevDrvInst" Value="VBoxDrvInstInfFile=[#file_VBoxUSB.inf]##VBoxDrvInstModel=VBoxUSB*##VBoxDrvInstFlagForce=1##VBoxDrvInstFlagSilent=1" Execute="immediate" />
+    <CustomAction Id="ca_VBoxUSBDevDrvInst" DllEntry="DriverInstall" Execute="deferred" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
 
-    <CustomAction Id="ca_VBoxUSBDevDrvUninst" DllEntry="DriverUninstall" Execute="immediate" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
-    <CustomAction Id="ca_VBoxUSBDevDrvUninstArgModel" Property="VBoxDrvUninstModel" Value="VBoxUSB*" Execute="immediate" />
+    <CustomAction Id="ca_VBoxUSBDevDrvUninstParms" Property="ca_VBoxUSBDevDrvUninst" Value="VBoxDrvUninstModel=VBoxUSB*" Execute="immediate" />
+    <CustomAction Id="ca_VBoxUSBDevDrvUninst" DllEntry="DriverUninstall" Execute="deferred" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
 
-    <CustomAction Id="ca_VBoxUSBMonDrvInst" DllEntry="DriverInstall" Execute="immediate" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
-    <CustomAction Id="ca_VBoxUSBMonDrvInstArgInfFile"  Property="VBoxDrvInstInfFile" Value="[#file_VBoxUSBMon.inf]" Execute="immediate" />
-    <CustomAction Id="ca_VBoxUSBMonDrvInstArgModel" Property="VBoxDrvInstModel" Value="VBoxUSBMon*" Execute="immediate" />
-    <CustomAction Id="ca_VBoxUSBMonDrvInstArgFlagForce" Property="VBoxDrvInstFlagForce" Value="1" Execute="immediate" />
-    <CustomAction Id="ca_VBoxUSBMonDrvInstArgFlagSilent" Property="VBoxDrvInstFlagSilent" Value="1" Execute="immediate" />
+    <CustomAction Id="ca_VBoxUSBMonDrvInstParms" Property="ca_VBoxUSBMonDrvInst" Value="VBoxDrvInstInfFile=[#file_VBoxUSBMon.inf]##VBoxDrvInstModel=VBoxUSBMon*##VBoxDrvInstFlagForce=1##VBoxDrvInstFlagSilent=1" Execute="immediate" />
+    <CustomAction Id="ca_VBoxUSBMonDrvInst" DllEntry="DriverInstall" Execute="deferred" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
 
-    <CustomAction Id="ca_VBoxUSBMonDrvStart" DllEntry="ServiceControl" Execute="immediate" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
-    <CustomAction Id="ca_VBoxUSBMonDrvStartArgName" Property="VBoxSvcCtlName" Value="VBoxUSBMon" Execute="immediate" />
-    <CustomAction Id="ca_VBoxUSBMonDrvStartArgFn" Property="VBoxSvcCtlFn" Value="start" Execute="immediate" />
+    <CustomAction Id="ca_VBoxUSBMonDrvStartParms" Property="ca_VBoxUSBMonDrvStart" Value="VBoxSvcCtlName=VBoxUSBMon##VBoxSvcCtlFn=start" Execute="immediate" />
+    <CustomAction Id="ca_VBoxUSBMonDrvStart" DllEntry="ServiceControl" Execute="deferred" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
 
-    <CustomAction Id="ca_VBoxUSBMonDrvUninst" DllEntry="DriverUninstall" Execute="immediate" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
-    <CustomAction Id="ca_VBoxUSBMonDrvUninstArgModel" Property="VBoxDrvUninstModel" Value="VBoxUSBMon*" Execute="immediate" />
+    <CustomAction Id="ca_VBoxUSBMonDrvUninstParms" Property="ca_VBoxUSBMonDrvUninst" Value="VBoxDrvUninstModel=VBoxUSBMon*" Execute="immediate" />
+    <CustomAction Id="ca_VBoxUSBMonDrvUninst" DllEntry="DriverUninstall" Execute="deferred" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
 
 </Include>

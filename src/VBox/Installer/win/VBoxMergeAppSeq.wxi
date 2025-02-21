@@ -25,20 +25,16 @@
 
 <Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
-    <Custom Action="ca_VBoxSupDrvInstArgFlagSilent" Before="ca_VBoxSupDrvInstArgFlagForce" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxSupDrvInstArgFlagForce" Before="ca_VBoxSupDrvInstArgModel" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxSupDrvInstArgInfFile" Before="ca_VBoxSupDrvInstArgModel" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxSupDrvInstArgModel" Before="ca_VBoxSupDrvInst" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxSupDrvInst" After="InstallFinalize" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxSupDrvInstParms" After="InstallFiles" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxSupDrvInst" After="ca_VBoxSupDrvInstParms" Condition="NOT REMOVE" />
 
     <!-- Start VBoxSUP.sys after installation. -->
-    <Custom Action="ca_VBoxSupDrvStartArgFn" Before="ca_VBoxSupDrvStartArgName" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxSupDrvStartArgName" Before="ca_VBoxSupDrvStart" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxSupDrvStart" After="ca_VBoxSupDrvInst" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxSupDrvStartParms" After="ca_VBoxSupDrvInst" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxSupDrvStart" After="ca_VBoxSupDrvStartParms" Condition="NOT REMOVE" />
 
-    <Custom Action="ca_VBoxSupDrvUninstArgModel" Before="ca_VBoxSupDrvUninst"
+    <Custom Action="ca_VBoxSupDrvUninstParms" After="InstallInitialize"
             Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
-    <Custom Action="ca_VBoxSupDrvUninst" After="InstallInitialize"
+    <Custom Action="ca_VBoxSupDrvUninst" After="ca_VBoxSupDrvUninstParms"
             Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
 
 <?if $(env.VBOX_WITH_CRT_PACKING) = "no" ?>
@@ -53,4 +49,3 @@
     <Custom Action="ca_IsWindows10" After="FileCost"/>
 
 </Include>
-

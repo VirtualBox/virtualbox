@@ -25,33 +25,28 @@
 
 <Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
-    <Custom Action="ca_VBoxUSBDevDrvInstArgFlagSilent" Before="ca_VBoxUSBDevDrvInstArgFlagForce" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxUSBDevDrvInstArgFlagForce" Before="ca_VBoxUSBDevDrvInstArgModel" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxUSBDevDrvInstArgModel" Before="ca_VBoxUSBDevDrvInstArgInfFile" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxUSBDevDrvInstArgInfFile" Before="ca_VBoxUSBDevDrvInst" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxUSBDevDrvInst" After="InstallFinalize"
+    <Custom Action="ca_VBoxUSBDevDrvInstParms" After="InstallFiles"
+            Condition="NOT REMOVE AND (&amp;VBoxUSB=3)" />
+    <Custom Action="ca_VBoxUSBDevDrvInst" After="ca_VBoxUSBDevDrvInstParms"
             Condition="NOT REMOVE AND (&amp;VBoxUSB=3)" />
 
-    <Custom Action="ca_VBoxUSBDevDrvUninstArgModel" Before="ca_VBoxUSBDevDrvUninst"
-            Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
-    <Custom Action="ca_VBoxUSBDevDrvUninst" After="InstallInitialize"
+    <Custom Action="ca_VBoxUSBDevDrvUninstParms" Before="ca_VBoxSupDrvUninst"
+            Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)"/>
+    <Custom Action="ca_VBoxUSBDevDrvUninst" After="ca_VBoxUSBDevDrvUninstParms"
             Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)"/>
 
-    <Custom Action="ca_VBoxUSBMonDrvInstArgFlagSilent" Before="ca_VBoxUSBMonDrvInstArgFlagForce" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxUSBMonDrvInstArgFlagForce" Before="ca_VBoxUSBMonDrvInstArgModel" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxUSBMonDrvInstArgModel" Before="ca_VBoxUSBMonDrvInstArgInfFile" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxUSBMonDrvInstArgInfFile" Before="ca_VBoxUSBMonDrvInst" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxUSBMonDrvInst" After="InstallFinalize"
+    <Custom Action="ca_VBoxUSBMonDrvInstParms" After="InstallFiles"
+            Condition="NOT REMOVE AND (&amp;VBoxUSB=3)" />
+    <Custom Action="ca_VBoxUSBMonDrvInst" After="ca_VBoxUSBMonDrvInstParms"
             Condition="NOT REMOVE AND (&amp;VBoxUSB=3)" />
 
     <!-- Start VBoxUSBMon after installation. -->
-    <Custom Action="ca_VBoxUSBMonDrvStartArgFn" Before="ca_VBoxUSBMonDrvStartArgName" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxUSBMonDrvStartArgName" Before="ca_VBoxUSBMonDrvStart" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxUSBMonDrvStart" After="ca_VBoxUSBMonDrvInst" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxUSBMonDrvStartParms" After="ca_VBoxUSBMonDrvInst" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxUSBMonDrvStart" After="ca_VBoxUSBMonDrvStartParms" Condition="NOT REMOVE" />
 
-    <Custom Action="ca_VBoxUSBMonDrvUninstArgModel" Before="ca_VBoxUSBMonDrvUninst"
+    <Custom Action="ca_VBoxUSBMonDrvUninstParms" Before="ca_VBoxSupDrvUninst"
             Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
-    <Custom Action="ca_VBoxUSBMonDrvUninst" After="InstallInitialize"
+    <Custom Action="ca_VBoxUSBMonDrvUninst" After="ca_VBoxUSBMonDrvUninstParms"
             Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
 
 </Include>
