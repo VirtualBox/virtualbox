@@ -40,8 +40,11 @@
     <CustomAction Id="ca_VBoxUSBMonDrvInstArgFlagForce" Property="VBoxDrvInstFlagForce" Value="1" Execute="immediate" />
     <CustomAction Id="ca_VBoxUSBMonDrvInstArgFlagSilent" Property="VBoxDrvInstFlagSilent" Value="1" Execute="immediate" />
 
+    <CustomAction Id="ca_VBoxUSBMonDrvStart" DllEntry="ServiceControl" Execute="immediate" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
+    <CustomAction Id="ca_VBoxUSBMonDrvStartArgName" Property="VBoxSvcCtlName" Value="VBoxUSBMon" Execute="immediate" />
+    <CustomAction Id="ca_VBoxUSBMonDrvStartArgFn" Property="VBoxSvcCtlFn" Value="start" Execute="immediate" />
+
     <CustomAction Id="ca_VBoxUSBMonDrvUninst" DllEntry="DriverUninstall" Execute="immediate" Return="check" Impersonate="no" BinaryRef="VBoxInstallHelper" />
     <CustomAction Id="ca_VBoxUSBMonDrvUninstArgModel" Property="VBoxDrvUninstModel" Value="VBoxUSBMon*" Execute="immediate" />
 
 </Include>
-
