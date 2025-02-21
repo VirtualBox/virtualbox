@@ -1,4 +1,4 @@
-/* $Id: regops.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: regops.c 108499 2025-02-21 12:03:56Z vadim.galitsyn@oracle.com $ */
 /** @file
  * vboxsf - VBox Linux Shared Folders VFS, regular file inode and file operations.
  */
@@ -2218,7 +2218,7 @@ static int vbsf_iter_lock_pages(struct iov_iter *iter, bool fWrite, struct vbsf_
 # endif
                 cbSegRet = VBOX_IOV_GET_PAGES(iter, papPages, iov_iter_count(iter), cMaxPages, &offPage0);
                 if (cbSegRet > 0) {
-# if RTLNX_VER_MAX(6,0,0)
+# if RTLNX_VER_MAX(6,0,0) && !RTLNX_RHEL_RANGE(9,4, 9,99)
                     iov_iter_advance(iter, cbSegRet);
 #endif
                     cbChunk    = (size_t)cbSegRet;
@@ -2246,7 +2246,7 @@ static int vbsf_iter_lock_pages(struct iov_iter *iter, bool fWrite, struct vbsf_
                 }
                 cbSegRet = VBOX_IOV_GET_PAGES(iter, &papPages[cPages], iov_iter_count(iter), 1, &offPgProbe);
                 if (cbSegRet > 0) {
-# if RTLNX_VER_MAX(6,0,0)
+# if RTLNX_VER_MAX(6,0,0) && !RTLNX_RHEL_RANGE(9,4, 9,99)
                     iov_iter_advance(iter, cbSegRet); /** @todo maybe not do this if we stash the page? */
 #endif
                     Assert(offPgProbe + cbSegRet <= PAGE_SIZE);
@@ -2268,7 +2268,7 @@ static int vbsf_iter_lock_pages(struct iov_iter *iter, bool fWrite, struct vbsf_
                             if (cbSegRet > 0) {
                                 size_t const cPgRet = RT_ALIGN_Z((size_t)cbSegRet, PAGE_SIZE) >> PAGE_SHIFT;
                                 Assert(offPgProbe == 0);
-# if RTLNX_VER_MAX(6,0,0)
+# if RTLNX_VER_MAX(6,0,0) && !RTLNX_RHEL_RANGE(9,4, 9,99)
                                 iov_iter_advance(iter, cbSegRet);
 # endif
                                 SFLOG3(("vbsf_iter_lock_pages: iov_iter_get_pages() -> %#zx; %#zx pages\n", cbSegRet, cPgRet));
