@@ -41,8 +41,8 @@
             Condition="NOT REMOVE AND (&amp;VBoxUSB=3)" />
 
     <!-- Start VBoxUSBMon after installation. -->
-    <Custom Action="ca_VBoxUSBMonDrvStartParms" After="ca_VBoxUSBMonDrvInst" Condition="NOT REMOVE" />
-    <Custom Action="ca_VBoxUSBMonDrvStart" After="ca_VBoxUSBMonDrvStartParms" Condition="NOT REMOVE" />
+    <Custom Action="ca_VBoxUSBMonDrvStartParms" After="ca_VBoxUSBMonDrvInst" Condition="NOT REMOVE AND (&amp;VBoxUSB=3)" />
+    <Custom Action="ca_VBoxUSBMonDrvStart" After="ca_VBoxUSBMonDrvStartParms" Condition="NOT REMOVE AND (&amp;VBoxUSB=3)" />
 
     <Custom Action="ca_VBoxUSBMonDrvUninstParms" Before="ca_VBoxSupDrvUninst"
             Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
