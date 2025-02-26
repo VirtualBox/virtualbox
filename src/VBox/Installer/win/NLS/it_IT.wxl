@@ -154,13 +154,11 @@
     <String Id="ExitDlg_InstComplete" Value="L'installazione di [ProductName] è completa." />
     <String Id="ExitDlg_StartVBox" Value="Avvia [ProductName] dopo l'installazione" />
     <!---->
-    <String Id="FatalErrorTitle" Value="A fatal error has occurred." />
-    <String Id="FatalErrorDescription1" Value="Please check the installation log for more information." />
-    <String Id="FatalErrorDescription2" Value="Alternatively, consult the forums or the documentation of [ProductName]." />
-    <!---->
-    <String Id="FatalErrorDlg_Header" Value="La procedura guidata di [ProductName] è stata terminata in anticipo" />
-    <String Id="FatalErrorDlg_Desc" Value="L'installazione di [ProductName] è stata terminata in anticipo a causa di un errore. Il sistema non è stato modificato. Per installare questo programma successivamente, esegui nuovamente l'installazione." />
-    <String Id="FatalErrorDlg_Footer" Value="Fai clic sul pulsante Fine per uscire dalla procedura guidata." />
+    <String Id="FatalErrorDlg_Title" Value="[ProductName] L'installazione guidata si è conclusa prematuramente." />
+    <String Id="FatalErrorDlg_Description1" Value="Riavviare e riprovare eseguendo nuovamente la (dis)installazione." />
+    <String Id="FatalErrorDlg_Description2" Value="In alternativa, consultare i forum o la documentazione di [ProductName]." />
+    <String Id="FatalErrorDlg_DescLogOpen" Value="Aprire il file di registro" />
+    <String Id="FatalErrorDlg_DescLogPath" Value="Il file di registro è stato scritto in:" />
     <!---->
     <String Id="FilesInUse_Text" Value="Le seguenti applicazioni stanno utilizzando file che devono essere aggiornati da questa installazione. Chiudi queste applicazioni e poi fai clic su &amp;Riprova per continuare l'installazione o Esci per abbandonarla." />
     <String Id="FilesInUse_Description" Value="Alcuni file che devono essere aggiornati sono attualmente utilizzati." />

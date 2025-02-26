@@ -199,15 +199,11 @@
 
     <!---->
 
-    <String Id="FatalErrorTitle" Value="A fatal error has occurred." />
-    <String Id="FatalErrorDescription1" Value="Please check the installation log for more information." />
-    <String Id="FatalErrorDescription2" Value="Alternatively, consult the forums or the documentation of [ProductName]." />
-
-    <!---->
-
-    <String Id="FatalErrorDlg_Header" Value="[ProductName] Setup Wizard ended prematurely" />
-    <String Id="FatalErrorDlg_Desc" Value="[ProductName] setup ended prematurely because of an error. Your system has not been modified. To install this program at a later time, please run the installation again." />
-    <String Id="FatalErrorDlg_Footer" Value="Click the Finish button to exit the Setup Wizard." />
+    <String Id="FatalErrorDlg_Title" Value="[ProductName] Setup Wizard ended prematurely" />
+    <String Id="FatalErrorDlg_Description1" Value="Please reboot and try again by re-running the (un)installation." />
+    <String Id="FatalErrorDlg_Description2" Value="Alternatively, consult the forums or the documentation of [ProductName]." />
+    <String Id="FatalErrorDlg_DescLogOpen" Value="Open Log File" />
+    <String Id="FatalErrorDlg_DescLogPath" Value="The log file was written to:" />
 
     <!---->
 

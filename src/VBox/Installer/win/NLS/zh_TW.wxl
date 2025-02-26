@@ -199,15 +199,11 @@
 
     <!---->
 
-    <String Id="FatalErrorTitle" Value="A fatal error has occurred." />
-    <String Id="FatalErrorDescription1" Value="Please check the installation log for more information." />
-    <String Id="FatalErrorDescription2" Value="Alternatively, consult the forums or the documentation of [ProductName]." />
-
-    <!---->
-
-    <String Id="FatalErrorDlg_Header" Value="[ProductName] 安裝精靈太早結束" />
-    <String Id="FatalErrorDlg_Desc" Value="[ProductName] 安裝因為錯誤太早結束。 您的系統未做修改。 若要稍後安裝此程式，請再次執行安裝。" />
-    <String Id="FatalErrorDlg_Footer" Value="按一下「完成」按鈕結束安裝精靈。" />
+    <String Id="FatalErrorDlg_Title" Value="[ProductName] 安裝精靈提前結束" />
+    <String Id="FatalErrorDlg_Description1" Value="請重新啟動並重新運行（卸載）安裝，重試。" />
+    <String Id="FatalErrorDlg_Description2" Value="或者，查閱 [ProductName] 的論壇或文件。" />
+    <String Id="FatalErrorDlg_DescLogOpen" Value="打開日誌文件" />
+    <String Id="FatalErrorDlg_DescLogPath" Value="日誌檔案寫入：" />
 
     <!---->
 

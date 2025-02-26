@@ -199,15 +199,11 @@
 
     <!---->
 
-    <String Id="FatalErrorTitle" Value="A fatal error has occurred." />
-    <String Id="FatalErrorDescription1" Value="Please check the installation log for more information." />
-    <String Id="FatalErrorDescription2" Value="Alternatively, consult the forums or the documentation of [ProductName]." />
-
-    <!---->
-
-    <String Id="FatalErrorDlg_Header" Value="Ο Οδηγός Εγκατάστασης του [ProductName] ολοκληρώθηκε πρόωρα" />
-    <String Id="FatalErrorDlg_Desc" Value="Η εγκατάσταση του [ProductName] σταμάτησε πρόωρα λόγω σφάλματος. Το σύστημά σας δεν έχει τροποποιηθεί. Για να εγκαταστήσετε το πρόγραμμα αργότερα, εκτελέστε ξανά την εγκατάσταση." />
-    <String Id="FatalErrorDlg_Footer" Value="Κάντε κλικ στο κουμπί &quot;Τέλος&quot; για να βγείτε από τον Οδηγό Εγκατάστασης." />
+    <String Id="FatalErrorDlg_Title" Value="[Όνομα προϊόντος] Ο Οδηγός εγκατάστασης τερματίστηκε πρόωρα" />
+    <String Id="FatalErrorDlg_Description1" Value="Κάντε επανεκκίνηση και προσπαθήστε ξανά εκτελώντας εκ νέου την εγκατάσταση." />
+    <String Id="FatalErrorDlg_Description2" Value="Εναλλακτικά, συμβουλευτείτε τα φόρουμ ή την τεκμηρίωση του [Όνομα προϊόντος]." />
+    <String Id="FatalErrorDlg_DescLogOpen" Value="Άνοιγμα αρχείου καταγραφής" />
+    <String Id="FatalErrorDlg_DescLogPath" Value="Το αρχείο καταγραφής γράφτηκε στο:" />
 
     <!---->
 

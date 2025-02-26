@@ -55,6 +55,9 @@
 
     <?include CommonProperties.wxi ?>
 
+    <!-- We want a verbose installation log by default, to better track down issues. -->
+    <Property Id="MsiLogging" Value="voicewarmupx" />
+
     <!-- Global properties -->
     <Property Id="ARPPRODUCTICON" Value="IconVirtualBox" />
     <Property Id="ARPURLINFOABOUT" Value="http://www.virtualbox.org" />
@@ -219,6 +222,9 @@
     <!-- Note: Make sure to set the CWD (via 'Directory' attribute) to not run off a possibly temporary directory or some such (see @bugref{10203}). -->
     <CustomAction Id="ca_StartVBox" Directory="INSTALLDIR" ExeCommand="[INSTALLDIR]VirtualBox.exe" Return="asyncNoWait" Impersonate="yes" />
 <?endif?>
+    <!-- Opens the installer's log file using the user's default editor.
+         Note: Make sure to set the CWD (via 'Directory' attribute) to not run off a possibly temporary directory or some such (see @bugref{10203}). -->
+    <CustomAction Id="ca_OpenLogFile" Directory="INSTALLDIR" ExeCommand='rundll32.exe shell32.dll,ShellExec_RunDLL [MsiLogFileLocation]' Return="asyncNoWait" Impersonate="yes" />
 
     <CustomAction Id="ca_CheckSerial" DllEntry="CheckSerial" Impersonate="no" BinaryRef="VBoxInstallHelper" />
 

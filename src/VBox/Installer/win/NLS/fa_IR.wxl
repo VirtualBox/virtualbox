@@ -154,13 +154,11 @@
     <String Id="ExitDlg_InstComplete" Value="نصب [ProductName] کامل شد." />
     <String Id="ExitDlg_StartVBox" Value="بعداز نصب، [ProductName] اِجرا شود" />
     <!---->
-    <String Id="FatalErrorTitle" Value="A fatal error has occurred." />
-    <String Id="FatalErrorDescription1" Value="Please check the installation log for more information." />
-    <String Id="FatalErrorDescription2" Value="Alternatively, consult the forums or the documentation of [ProductName]." />
-    <!---->
-    <String Id="FatalErrorDlg_Header" Value="نصب [ProductName] نابهنگام پایان یافت" />
-    <String Id="FatalErrorDlg_Desc" Value="نصب [ProductName] نابهنگام به علت خطا پایان یافت.  سیستم شما تغییر نکرده است.  برای نصب این برنامه در زمانی دیگر، لطفا برنامه راه انداز را دوباره اجرا کنید." />
-    <String Id="FatalErrorDlg_Footer" Value="روی دکمه پایان برای خروج از ویزارد نصب کلیک کنید." />
+    <String Id="FatalErrorDlg_Title" Value="[ProductName] Setup Wizard ended prematurely" />
+    <String Id="FatalErrorDlg_Description1" Value="Please reboot and try again by re-running the (un)installation." />
+    <String Id="FatalErrorDlg_Description2" Value="Alternatively, consult the forums or the documentation of [ProductName]." />
+    <String Id="FatalErrorDlg_DescLogOpen" Value="Open Log File" />
+    <String Id="FatalErrorDlg_DescLogPath" Value="The log file was written to:" />
     <!---->
     <String Id="FilesInUse_Text" Value="برنامه های زیر از فایل هایی که نیاز به بروزرسانی دارند استفاده میکنند. شما میتوانید برنامه را ببندید و روی &quot;دوباره&quot; کلیک کنید، با روی &quot;لغو&quot; برای خروج از آن کلیک کنید." />
     <String Id="FilesInUse_Description" Value="بعضی از فایل هایی که نیاز به بروزرسانی دارند اکنون درحال استفاده است." />

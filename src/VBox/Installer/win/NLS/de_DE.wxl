@@ -194,15 +194,11 @@
 
     <!---->
 
-    <String Id="FatalErrorTitle" Value="Ein nicht behebbarer Fehler ist aufgetreten." />
-    <String Id="FatalErrorDescription1" Value="Bitte die Installations-Logdatei für mehr Informationen überprüfen." />
-    <String Id="FatalErrorDescription2" Value="Alternativ das Forum oder die Dokumentation von [ProductName] aufsuchen um mehr über das Problem zu erfahren." />
-
-    <!---->
-
-    <String Id="FatalErrorDlg_Header" Value="Der Setup-Assistent von [ProductName] wurde vorzeitig abgebrochen" />
-    <String Id="FatalErrorDlg_Desc" Value="Der Setup-Assistent von [ProductName] wurde aufgrund eines Fehlers vorzeitig abgebrochen. Es wurden keine Änderungen an Ihrem System vorgenommen. Um dieses Programm zu einem späteren Zeitpunkt zu installieren, führen Sie den Setup-Assistenten erneut aus." />
-    <String Id="FatalErrorDlg_Footer" Value="Klicken Sie auf die Schaltfläche &quot;Fertig stellen&quot;, um den Setup-Assistenten fertig zu stellen." />
+    <String Id="FatalErrorDlg_Title" Value="Der Setup-Assistent von [ProductName] wurde vorzeitig abgebrochen" />
+    <String Id="FatalErrorDlg_Description1" Value="Bitte einen Neustart durchführen und die (De-)Installation wiederholen." />
+    <String Id="FatalErrorDlg_Description2" Value="Alternativ das Forum oder die Dokumentation von [ProductName] aufsuchen um mehr über das Problem zu erfahren." />
+    <String Id="FatalErrorDlg_DescLogOpen" Value="Log-Datei öffnen" />
+    <String Id="FatalErrorDlg_DescLogPath" Value="Die Log-Datei wurde hierhin geschrieben:" />
 
     <!---->
 

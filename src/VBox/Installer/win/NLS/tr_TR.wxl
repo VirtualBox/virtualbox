@@ -199,15 +199,11 @@
 
     <!---->
 
-    <String Id="FatalErrorTitle" Value="A fatal error has occurred." />
-    <String Id="FatalErrorDescription1" Value="Please check the installation log for more information." />
-    <String Id="FatalErrorDescription2" Value="Alternatively, consult the forums or the documentation of [ProductName]." />
-
-    <!---->
-
-    <String Id="FatalErrorDlg_Header" Value="[ProductName] Kur Sihirbazı zamansız sonlandı" />
-    <String Id="FatalErrorDlg_Desc" Value="[ProductName] kur bir hata yüzünden zamansız sonlandı. Sisteminiz değiştirilmedi. Bu programı daha sonraki bir zamanda yüklemek için lütfen kurulumu tekrar çalıştırın." />
-    <String Id="FatalErrorDlg_Footer" Value="Kur Sihirbazından çıkmak için Bitir düğmesine tıklayın." />
+    <String Id="FatalErrorDlg_Title" Value="[ProductName] Kurulum Sihirbazı zamanından önce sonlandırıldı" />
+    <String Id="FatalErrorDlg_Description1" Value="Lütfen yeniden başlatın ve (un)kurulumu yeniden çalıştırarak tekrar deneyin." />
+    <String Id="FatalErrorDlg_Description2" Value="Alternatif olarak, forumlara veya [ProductName] belgelerine başvurun." />
+    <String Id="FatalErrorDlg_DescLogOpen" Value="Günlük Dosyasını Aç" />
+    <String Id="FatalErrorDlg_DescLogPath" Value="Günlük dosyasına yazıldı:" />
 
     <!---->
 

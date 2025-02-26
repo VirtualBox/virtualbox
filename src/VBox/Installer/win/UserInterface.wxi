@@ -625,11 +625,14 @@
             <Control Id="Bitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="234" TabSkip="no" Text="[DialogBitmap]" />
             <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Disabled="yes" Text="!(loc.ButtonText_Back)" />
             <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
-            <Control Id="Title" Type="Text" X="135" Y="20" Width="220" Height="60" Transparent="yes" NoPrefix="yes" Text="!(loc.FatalErrorTitle)" />
-            <Control Id="Description" Type="Text" X="135" Y="70" Width="220" Height="80" Transparent="yes" NoPrefix="yes" Text="!(loc.FatalErrorDescription1) !(loc.FatalErrorDescription2)" />
-            <Control Id="Build" Type="Text" X="20" Y="247" Width="220" Height="10" Transparent="yes" NoPrefix="yes">
-                <Text Value="[Version_text] $(var.Property_Version)" />
+            <Control Id="Title" Type="Text" X="135" Y="20" Width="220" Height="60" Transparent="yes" NoPrefix="yes" Text="{\DlgTextStyleErrorTitle}!(loc.FatalErrorDlg_Title)" />
+            <Control Id="Desc1" Type="Text" X="135" Y="60" Width="220" Height="80" Transparent="yes" NoPrefix="yes" Text="!(loc.FatalErrorDlg_Description1)" />
+            <Control Id="Desc2" Type="Text" X="135" Y="85" Width="220" Height="80" Transparent="yes" NoPrefix="yes" Text="!(loc.FatalErrorDlg_Description2)" />
+            <Control Id="BrowseButton" Type="PushButton" X="135" Y="170" Width="100" Height="17" Text="!(loc.FatalErrorDlg_DescLogOpen)">
+                <Publish Event="DoAction" Value="ca_OpenLogFile" />
             </Control>
+            <Control Id="Desc3" Type="Text" X="135" Y="190" Width="220" Height="80" Transparent="yes" NoPrefix="yes" Text="!(loc.FatalErrorDlg_DescLogPath)" />
+            <Control Id="Desc4" Type="Text" X="135" Y="205" Width="220" Height="80" Transparent="yes" NoPrefix="yes" Text="[MsiLogFileLocation]" />
         </Dialog>
 
         <Dialog Id="FilesInUse" Width="370" Height="270" Title="[ProductName] !(loc.Setup)" KeepModeless="yes">
@@ -965,6 +968,7 @@
         <TextStyle Id="DlgVerdanaBold13" FaceName="Verdana" Size="13" Bold="yes" />
         <TextStyle Id="DlgInvalidSerial" FaceName="Verdana" Size="13" Bold="yes" Red="255" />
         <TextStyle Id="DlgWarnDisconNetIfaces" FaceName="Verdana" Size="13" Bold="yes" Red="255" />
+        <TextStyle Id="DlgTextStyleErrorTitle" FaceName="Verdana" Size="13" Bold="yes" Red="255" />
         <TextStyle Id="DlgWarnPython" FaceName="Verdana" Size="13" Bold="yes" />
 
         <!-- The UIText table contains the localized versions of some of the strings used in the user interface.

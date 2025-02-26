@@ -194,15 +194,11 @@
 
     <!---->
 
-    <String Id="FatalErrorTitle" Value="A fatal error has occurred." />
-    <String Id="FatalErrorDescription1" Value="Please check the installation log for more information." />
-    <String Id="FatalErrorDescription2" Value="Alternatively, consult the forums or the documentation of [ProductName]." />
-
-    <!---->
-
-    <String Id="FatalErrorDlg_Header" Value="L'assistant d'installation [ProductName] a terminé anormalement" />
-    <String Id="FatalErrorDlg_Desc" Value="L'installation de [ProductName] a été terminé en raison d'une erreur. Votre système n'a pas été modifié. Pour installer ce programme plus tard, veuillez relancer l'assistant." />
-    <String Id="FatalErrorDlg_Footer" Value="Appuyez sur Terminer pour quitter l'assistant d'installation." />
+    <String Id="FatalErrorDlg_Title" Value="[ProductName] L'assistant d'installation s'est terminé prématurément" />
+    <String Id="FatalErrorDlg_Description1" Value="Veuillez redémarrer et réessayer en relançant l'installation ou la désinstallation." />
+    <String Id="FatalErrorDlg_Description2" Value="Vous pouvez également consulter les forums ou la documentation de [ProductName]." />
+    <String Id="FatalErrorDlg_DescLogOpen" Value="Ouvrir le fichier journal" />
+    <String Id="FatalErrorDlg_DescLogPath" Value="Le fichier journal a été écrit:" />
 
     <!---->
 

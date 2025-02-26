@@ -199,15 +199,11 @@
 
 <!---->
 
-<String Id="FatalErrorTitle" Value="A fatal error has occurred." />
-<String Id="FatalErrorDescription1" Value="Please check the installation log for more information." />
-<String Id="FatalErrorDescription2" Value="Alternatively, consult the forums or the documentation of [ProductName]." />
-
-<!---->
-
-<String Id="FatalErrorDlg_Header" Value="[ProductName] 安装向导太早结束" />
-<String Id="FatalErrorDlg_Desc" Value="[ProductName] 安装因为错误太早结束。 你的系统未做修改。 若要稍后安装此程序，请再次执行安装。" />
-<String Id="FatalErrorDlg_Footer" Value="单击&quot;完成&quot;按钮结束安装向导。" />
+<String Id="FatalErrorDlg_Title" Value="[ProductName] 安装向导提前结束" />
+<String Id="FatalErrorDlg_Description1" Value="请重新启动并尝试重新运行（未）安装。" />
+<String Id="FatalErrorDlg_Description2" Value="或者，查阅 [ProductName] 的论坛或文档。" />
+<String Id="FatalErrorDlg_DescLogOpen" Value="打开日志文件" />
+<String Id="FatalErrorDlg_DescLogPath" Value="日志文件已写入：" />
 
 <!---->
 
