@@ -118,12 +118,20 @@
 
     <Upgrade Id="C4BAD770-BFE8-4D2C-A592-693028A7215B"> <!-- Upgrade of Sun xVM VirtualBox >= v1.6.0 -->
 
-        <!-- Upgrade is flagged if current-install is newer than or equal to package - TODO: should make a dialog appear asking user to confirm downgrade -->
-        <!-- Setting "OnlyDetect" to "no" makes the installer uninstall an already newer installed version -->
-        <UpgradeVersion Property="NEWERVERSIONDETECTED" Minimum="$(var.Property_Version)" IncludeMinimum="no" OnlyDetect="no" />
+        <!-- Detect and uninstall if the same version (as this version) of VirtualBox already is installed.
+             Useful for debugging / testboxes -->
+        <UpgradeVersion Property="SAMEVERSIONDETECTED" Minimum="$(var.Property_Version)" IncludeMinimum="yes"
+                                                       Maximum="$(var.Property_Version)" IncludeMaximum="yes"
+                                                       OnlyDetect="no" />
+
+        <!-- Detect and uninstall if a newer version (than this version) of VirtualBox already is installed.
+             @todo Should make a dialog appear asking user to confirm downgrade -->
+        <UpgradeVersion Property="NEWERVERSIONDETECTED" Minimum="$(var.Property_Version)" IncludeMinimum="no"
+                                                        Maximum="9.9.99"                  IncludeMaximum="yes"
+                                                        OnlyDetect="no" />
 
         <!-- Flag is set if the install will trigger an upgrade of an existing install -->
-        <UpgradeVersion Property="PREVIOUSVERSIONSINSTALLED" Minimum="1.0.0.0" Maximum="$(var.Property_Version)" IncludeMaximum="yes" />
+        <UpgradeVersion Property="PREVIOUSVERSIONSINSTALLED" Minimum="1.0.0.0" Maximum="$(var.Property_Version)" IncludeMaximum="no" />
 
     </Upgrade>
 
@@ -222,9 +230,15 @@
     <!-- Note: Make sure to set the CWD (via 'Directory' attribute) to not run off a possibly temporary directory or some such (see @bugref{10203}). -->
     <CustomAction Id="ca_StartVBox" Directory="INSTALLDIR" ExeCommand="[INSTALLDIR]VirtualBox.exe" Return="asyncNoWait" Impersonate="yes" />
 <?endif?>
-    <!-- Opens the installer's log file using the user's default editor.
-         Note: Make sure to set the CWD (via 'Directory' attribute) to not run off a possibly temporary directory or some such (see @bugref{10203}). -->
-    <CustomAction Id="ca_OpenLogFile" Directory="INSTALLDIR" ExeCommand='rundll32.exe shell32.dll,ShellExec_RunDLL [MsiLogFileLocation]' Return="asyncNoWait" Impersonate="yes" />
+    <!-- General custom action for starting an application or opening a file using the system's default open handler. Ignores result.
+         The "WixShellExecTarget" property must be set beforehand as the actual execution parameter.
+
+         Note! Manually using a custom action w/ ExecCommand + "rundll32 [...]" will result in big delays on Windows/ARM,
+               probably due to the x86 emulation layer and/or shimming in-between. So we need to this built-in action (part of wixutil)
+               instead.
+
+         Currently being used for displaying the MSI log file in the fatal error dialog. -->
+    <CustomAction Id="ca_ShellExecIgnore" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixShellExec" Execute="immediate" Return="ignore" />
 
     <CustomAction Id="ca_CheckSerial" DllEntry="CheckSerial" Impersonate="no" BinaryRef="VBoxInstallHelper" />
 
@@ -435,8 +449,8 @@
         <AppSearch Sequence="1"></AppSearch>
         <LaunchConditions After="AppSearch" />
 
-        <!-- First install the new version and then remove the old version. This is more efficient -->
-        <RemoveExistingProducts After="InstallValidate" Condition="PREVIOUSVERSIONSINSTALLED OR NEWERVERSIONDETECTED" />
+        <!-- First uninstall any installed VBox version, then install this version. -->
+        <RemoveExistingProducts After="InstallValidate" Condition="PREVIOUSVERSIONDETECTED OR NEWERVERSIONDETECTED OR SAMEVERSIONDETECTED" />
 
         <Custom Action="ca_OriginalTargetDir" After="FileCost" Condition="(NOT INSTALLDIR)" />
         <Custom Action="ca_DefaultTargetDir" Before="FileCost" Condition="NOT INSTALLDIR AND EXISTINGINSTALLDIR" />
