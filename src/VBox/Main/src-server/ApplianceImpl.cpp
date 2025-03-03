@@ -1,4 +1,4 @@
-/* $Id: ApplianceImpl.cpp 107002 2024-11-13 12:21:13Z brent.paulson@oracle.com $ */
+/* $Id: ApplianceImpl.cpp 108607 2025-03-03 12:09:00Z brent.paulson@oracle.com $ */
 /** @file
  * IAppliance and IVirtualSystem COM class implementations.
  */
@@ -432,7 +432,7 @@ ovf::CIMOSType_T convertVBoxOSType2CIMOSType(const char *pcszVBox, BOOL fLongMod
                         return g_aOsTypes[j].cim;
                 if (i > 0)
                 {
-                    for (size_t j = i-1; j > 0; j++)
+                    for (size_t j = i-1; j > 0; j--)
                         if (g_aOsTypes[j].osType == enmDesiredOsType)
                             return g_aOsTypes[j].cim;
                 }
