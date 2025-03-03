@@ -573,6 +573,28 @@
 <String Id="ProgressTextUnmoveFilesTemplate" Value="文件：[1]， 目录：[9]" />
 <String Id="ProgressTextUnpublishProduct" Value="正在取消发布产品信息" />
 
+<String Id="ProgressTextCheckTargetDir" Value="Checking target directory ..." />
+
+<String Id="ProgressTextSupDrvInt" Value="Installing support driver ..." />
+<String Id="ProgressTextSupDrvStart" Value="Starting support driver ..." />
+<String Id="ProgressTextSupDrvUninst" Value="Uninstalling support driver ..." />
+
+<String Id="ProgressTextUSBDevDrvInst" Value="Installing USB device driver ..." />
+<String Id="ProgressTextUSBDevDrvUninst" Value="Uninstalling USB device driver ..." />
+<String Id="ProgressTextUSBMonDrvInst" Value="Installing USB monitor driver ..." />
+<String Id="ProgressTextUSBMonDrvStart" Value="Starting USB monitor driver ..." />
+<String Id="ProgressTextUSBMonDrvUninst" Value="Uninstalling USB monitor driver ..." />
+
+<String Id="ProgressTextNetAdp6Create" Value="Creating network adapter ..." />
+<String Id="ProgressTextNetAdp6Remove" Value="Removing network adapter ..." />
+<String Id="ProgressTextNetAdp6Update" Value="Updating network adapter ..." />
+<String Id="ProgressTextNetAdp6Uninst" Value="Uninstalling network adapter ..." />
+
+<String Id="ProgressTextNetLwfInst" Value="Installing network filter ..." />
+<String Id="ProgressTextNetLwfRollbackInst" Value="Rolling back installation of network filter ..." />
+<String Id="ProgressTextNetLwfUninst" Value="Uninstalling network filter ..." />
+<String Id="ProgressTextNetLwfRollbackUninst" Value="Rolling back uninstallation of network filter ..." />
+
 <String Id="UITextbytes" Value="字节" />
 <String Id="UITextGB" Value="GB" />
 <String Id="UITextKB" Value="KB" />

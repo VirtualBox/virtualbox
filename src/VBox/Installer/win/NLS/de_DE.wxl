@@ -571,6 +571,28 @@
     <String Id="ProgressTextUnmoveFilesTemplate" Value="Datei: [1], Verzeichnis: [9]" />
     <String Id="ProgressTextUnpublishProduct" Value="Veröffentlichung der Produktinformationen wird aufgehoben" />
 
+    <String Id="ProgressTextCheckTargetDir" Value="Überprüfe Zielverzeichnis ..." />
+
+    <String Id="ProgressTextSupDrvInt" Value="Installiere Unterstützungs-Treiber ..." />
+    <String Id="ProgressTextSupDrvStart" Value="Starte Unterstützungs-Treiber ..." />
+    <String Id="ProgressTextSupDrvUninst" Value="Deinstalliere Unterstützungs-Treiber ..." />
+
+    <String Id="ProgressTextUSBDevDrvInst" Value="Installiere USB-Monitor-Treiber ..." />
+    <String Id="ProgressTextUSBDevDrvUninst" Value="Deinstalliere USB-Monitor-Treiber ..." />
+    <String Id="ProgressTextUSBMonDrvInst" Value="Installiere USB-Monitor-Treiber ..." />
+    <String Id="ProgressTextUSBMonDrvStart" Value="Starte USB-Monitor-Treiber ..." />
+    <String Id="ProgressTextUSBMonDrvUninst" Value="Deinstalliere USB-Monitor-Treiber ..." />
+
+    <String Id="ProgressTextNetAdp6Create" Value="Erstelle Netzwerk-Adapter ..." />
+    <String Id="ProgressTextNetAdp6Remove" Value="Entferne Netzwerk-Adapter ..." />
+    <String Id="ProgressTextNetAdp6Update" Value="Aktualisiere Netzwerk-Adapter ..." />
+    <String Id="ProgressTextNetAdp6Uninst" Value="Deinstalliere Netzwerk-Adapter ..." />
+
+    <String Id="ProgressTextNetLwfInst" Value="Installiere Netzwerk-Filter ..." />
+    <String Id="ProgressTextNetLwfRollbackInst" Value="Installation von Netzwerk-Filter wird rückgängig gemacht ..." />
+    <String Id="ProgressTextNetLwfUninst" Value="Deinstalliere Netzwerk-Filter ..." />
+    <String Id="ProgressTextNetLwfRollbackUninst" Value="Deinstallation von Netzwerk-Filter wird rückgängig gemacht ..." />
+
     <String Id="UITextbytes" Value="Bytes" />
     <String Id="UITextGB" Value="GB" />
     <String Id="UITextKB" Value="KB" />

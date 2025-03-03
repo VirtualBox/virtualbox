@@ -1045,6 +1045,33 @@
         <ProgressText Action="UnmoveFiles" Template="File: [1], Directory: [9]" Message="!(loc.ProgressTextUnmoveFiles)" />
         <ProgressText Action="UnpublishProduct" Message="!(loc.ProgressTextUnpublishProduct)" />
 
+        <!-- Custom progress texts for custom actions we provide. -->
+        <ProgressText Action="ca_CheckTargetDirPre" Message="!(loc.ProgressTextCheckTargetDir)" />
+        <ProgressText Action="ca_CheckTargetDirPost" Message="!(loc.ProgressTextCheckTargetDir)" />
+
+        <ProgressText Action="ca_VBoxSupDrvInst" Message="!(loc.ProgressTextSupDrvInt)" />
+        <ProgressText Action="ca_VBoxSupDrvStart" Message="!(loc.ProgressTextSupDrvStart)" />
+        <ProgressText Action="ca_VBoxSupDrvUninst" Message="!(loc.ProgressTextSupDrvUninst)" />
+<?if $(env.VBOX_WITH_USB) = "yes" ?>
+        <ProgressText Action="ca_VBoxUSBDevDrvInst" Message="!(loc.ProgressTextUSBDevDrvInst)" />
+        <ProgressText Action="ca_VBoxUSBDevDrvUninst" Message="!(loc.ProgressTextUSBDevDrvUninst)" />
+        <ProgressText Action="ca_VBoxUSBMonDrvInst" Message="!(loc.ProgressTextUSBMonDrvInst)" />
+        <ProgressText Action="ca_VBoxUSBMonDrvStart" Message="!(loc.ProgressTextUSBMonDrvStart)" />
+        <ProgressText Action="ca_VBoxUSBMonDrvUninst" Message="!(loc.ProgressTextUSBMonDrvUninst)" />
+<?endif?>
+<?if $(env.VBOX_WITH_NETADP) = "yes" ?>
+    <ProgressText Action="ca_CreateHostOnlyInterfaceNDIS6" Message="!(loc.ProgressTextNetAdp6Create)" />
+    <ProgressText Action="ca_RemoveHostOnlyInterfacesNDIS6" Message="!(loc.ProgressTextNetAdp6Remove)" />
+    <ProgressText Action="ca_UpdateHostOnlyInterfacesNDIS6" Message="!(loc.ProgressTextNetAdp6Update)" />
+    <ProgressText Action="ca_UninstallNetAdp6" Message="!(loc.ProgressTextNetAdp6Uninst)" />
+<?endif?>
+<?if $(env.VBOX_WITH_NETFLT) = "yes" ?>
+    <ProgressText Action="ca_InstallNetLwf" Message="!(loc.ProgressTextNetLwfInst)" />
+    <ProgressText Action="ca_RollbackInstallNetLwf" Message="!(loc.ProgressTextNetLwfRollbackInst)" />
+    <ProgressText Action="ca_UninstallNetLwf" Message="!(loc.ProgressTextNetLwfUninst)" />
+    <ProgressText Action="ca_RollbackUninstallNetLwf" Message="!(loc.ProgressTextNetLwfRollbackUninst)" />
+<?endif?>
+
         <UIText Id="bytes" Value="!(loc.UITextbytes)" />
         <UIText Id="GB" Value="!(loc.UITextGB)" />
         <UIText Id="KB" Value="!(loc.UITextKB)" />
