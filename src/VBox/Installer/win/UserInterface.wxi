@@ -626,8 +626,8 @@
             <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Disabled="yes" Text="!(loc.ButtonText_Back)" />
             <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
             <Control Id="Title" Type="Text" X="135" Y="20" Width="220" Height="60" Transparent="yes" NoPrefix="yes" Text="{\DlgTextStyleErrorTitle}!(loc.FatalErrorDlg_Title)" />
-            <Control Id="Desc1" Type="Text" X="135" Y="60" Width="220" Height="80" Transparent="yes" NoPrefix="yes" Text="!(loc.FatalErrorDlg_Description1)" />
-            <Control Id="Desc2" Type="Text" X="135" Y="85" Width="220" Height="80" Transparent="yes" NoPrefix="yes" Text="!(loc.FatalErrorDlg_Description2)" />
+            <Control Id="Desc1" Type="Text" X="135" Y="85" Width="220" Height="80" Transparent="yes" NoPrefix="yes" Text="!(loc.FatalErrorDlg_Description1)" />
+            <Control Id="Desc2" Type="Text" X="135" Y="110" Width="220" Height="80" Transparent="yes" NoPrefix="yes" Text="!(loc.FatalErrorDlg_Description2)" />
             <Control Id="BrowseButton" Type="PushButton" X="135" Y="170" Width="100" Height="17" Text="!(loc.FatalErrorDlg_DescLogOpen)">
                 <Publish Property="WixShellExecTarget" Value="[MsiLogFileLocation]" />
                 <Publish Event="DoAction" Value="ca_ShellExecIgnore" />
