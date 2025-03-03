@@ -69,6 +69,10 @@ from vbox_server.models.console_attach_usb_device_request_body import ConsoleAtt
 from vbox_server.models.machine_take_snapshot_request_body import MachineTakeSnapshotRequestBody  # noqa: E501
 from vbox_server.models.platform_x86_set_cpu_property_request_body import PlatformX86SetCPUPropertyRequestBody  # noqa: E501
 from vbox_server.models.platform_x86_set_hw_virt_ex_property_request_body import PlatformX86SetHWVirtExPropertyRequestBody  # noqa: E501
+from vbox_server.models.machine_getcpustatus_response import MachineGetcpustatusResponse  # noqa: E501
+from vbox_server.models.machine_enumerateguestproperties_response import MachineEnumerateguestpropertiesResponse  # noqa: E501
+from vbox_server.models.machine_getguestpropertytimestamp_response import MachineGetguestpropertytimestampResponse  # noqa: E501
+from vbox_server.models.machine_set_guest_property_value_request_body import MachineSetGuestPropertyValueRequestBody  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
@@ -2664,6 +2668,249 @@ def i_machine_hotunplugcpu(vmid, cpu=None, *var_args_tuple):  # noqa: E501
     return response, httpCode
 
 
+def i_machine_getcpustatus(vmid, cpu=None):  # noqa: E501
+    """
+    Call interface method IMachine::getCPUStatus
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param cpu: 
+    :type cpu: int
+
+    :rtype: MachineGetcpustatusResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oMachineGetcpustatusResponse = MachineGetcpustatusResponse()
+
+    try:
+        bStatus = oVM.getCPUStatus(cpu)
+        oMachineGetcpustatusResponse.attached = bStatus
+        logging.info('Successfully get the CPU status')
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMachineGetcpustatusResponse)
+    return response, httpCode
+
+
+def i_machine_enumerateguestproperties(vmid, patterns=None):  # noqa: E501
+    """
+    Call interface method IMachine::enumerateGuestProperties
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param patterns: 
+    :type patterns: str
+
+    :rtype: MachineEnumerateguestpropertiesResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oMachineEnumerateguestpropertiesResponse = MachineEnumerateguestpropertiesResponse()
+
+    try:
+        names, values, timestamps, flags = oVM.enumerateGuestProperties(patterns)
+
+        oMachineEnumerateguestpropertiesResponse.names = names
+        oMachineEnumerateguestpropertiesResponse.values = values
+        oMachineEnumerateguestpropertiesResponse.timestamps = timestamps
+        oMachineEnumerateguestpropertiesResponse.flags = flags
+
+        logging.info('Successfully enumerated the guest properties')
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMachineEnumerateguestpropertiesResponse)
+    return response, httpCode
+
+
+@sessionDecorator
+def i_machine_deleteguestproperty(vmid, name=None, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::deleteGuestProperty
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param name: 
+    :type name: str
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    try:
+        oCurrMachine.deleteGuestProperty(name)
+        oCurrMachine.saveSettings()
+        logging.info('Successfully deleted the guest property ' + name)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else 'Successfully deleted the guest property ' + name)
+    return response, httpCode
+
+
+@sessionDecorator
+def i_machine_setguestpropertyvalue(vmid, oMachineSetGuestPropertyValueRequestBody: MachineSetGuestPropertyValueRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::setGuestPropertyValue
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetGuestPropertyValueRequestBody:
+    :type oMachineSetGuestPropertyValueRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    o = oMachineSetGuestPropertyValueRequestBody
+
+    sProperty = o._property
+    sValue = o.value
+
+    try:
+        logging.info(o)
+        logging.info(o._property)
+        logging.info(o.value)
+        oCurrMachine.setGuestPropertyValue(sProperty, sValue)
+        oCurrMachine.saveSettings()
+        logging.info("Successfully set VM guest property " + "'" + sProperty + "'" + " to value " + "'" + sValue + "'")
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is not None:
+        return jsonify(oError), httpCode
+
+    return "Successfully set VM guest property " + "'" + sProperty + "'" + " to value " + "'" + sValue + "'"
+
+
+def i_machine_getguestpropertytimestamp(vmid, property=None):  # noqa: E501
+    """
+    Call interface method IMachine::getGuestPropertyTimestamp
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param _property: 
+    :type _property: str
+
+    :rtype: MachineGetguestpropertytimestampResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oMachineGetguestpropertytimestampResponse = MachineGetguestpropertytimestampResponse()
+
+    try:
+        timestamp = oVM.getGuestPropertyTimestamp(property)
+        oMachineGetguestpropertytimestampResponse.value= timestamp
+
+        logging.info('Successfully get the timestamp of VM guest property ' + property)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMachineGetguestpropertytimestampResponse)
+    return response, httpCode
+
+
+def i_machine_getguestpropertyvalue(vmid, property=None):  # noqa: E501
+    """
+    Call interface method IMachine::getGuestPropertyValue
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param _property: 
+    :type _property: str
+
+    :rtype: MediumGetpropertyResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oMediumGetpropertyResponse = MediumGetpropertyResponse()
+
+    try:
+        value = oVM.getGuestPropertyValue(property)
+        oMediumGetpropertyResponse.value = value
+
+        logging.info('Successfully get the value of VM guest property ' + property)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMediumGetpropertyResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -2828,21 +3075,6 @@ def i_machine_attachhostpcidevice(vmid, oMachineAttachHostPCIDeviceRequestBody):
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_machine_deleteguestproperty(vmid, name=None):  # noqa: E501
-    """
-    Call interface method IMachine::deleteGuestProperty
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param name: 
-    :type name: str
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
 def i_machine_detachhostpcidevice(vmid, hostAddress=None):  # noqa: E501
     """
     Call interface method IMachine::detachHostPCIDevice
@@ -2896,21 +3128,6 @@ def i_machine_exportto(vmid, oMachineExportToRequestBody):  # noqa: E501
     :type oMachineExportToRequestBody: dict | bytes
 
     :rtype: VirtualSystemDescriptionResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_getcpustatus(vmid, cpu=None):  # noqa: E501
-    """
-    Call interface method IMachine::getCPUStatus
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param cpu: 
-    :type cpu: int
-
-    :rtype: MachineGetcpustatusResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
