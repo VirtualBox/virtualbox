@@ -1645,7 +1645,7 @@ def i_machine_cloneto(vmid, oMachineCloneToRequestBody: MachineCloneToRequestBod
 
 
 @sessionDecorator
-def i_console_attachusbdevice(vmid, oConsoleAttachUSBDeviceRequestBody, *var_args_tuple):  # noqa: E501
+def i_console_attachusbdevice(vmid, oConsoleAttachUSBDeviceRequestBody: ConsoleAttachUSBDeviceRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IConsole::attachUSBDevice
 
@@ -2017,7 +2017,7 @@ def i_machine_getmediumattachmentsofcontroller(vmid, select=None, name=None):  #
 
 # close the session is done inside session_observer.py in SessionObserver::run()
 @openSession
-def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody: MachineTakeSnapshotRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::takeSnapshot
 
@@ -2278,78 +2278,6 @@ def i_machine_deletesnapshotrange(vmid, oMachineDeleteSnapshotRangeRequestBody):
     return "This API method is right now not implemented!", HTTPStatus.NOT_IMPLEMENTED
 
 
-@sessionDecorator
-def i_machine_hotplugcpu(vmid, cpu=None, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IMachine::hotPlugCPU
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param cpu:
-    :type cpu: int
-
-    :rtype: None
-    """
-
-    vbox_utils_commonChecks()
-
-    oError = None
-    httpCode = HTTPStatus.OK
-
-    logging.info('Passed machine Id is ' + vmid)
-
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
-
-    try:
-        # No return value
-        oCurrMachine.hotPlugCPU(cpu)
-        oCurrMachine.saveSettings()
-        logging.info('Successfully plugged CPU ' + str(cpu))
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else 'Successfully plugged CPU ' + str(cpu))
-    return response, httpCode
-
-
-@sessionDecorator
-def i_machine_hotunplugcpu(vmid, cpu=None, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IMachine::hotUnplugCPU
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param cpu:
-    :type cpu: int
-
-    :rtype: None
-    """
-
-    vbox_utils_commonChecks()
-
-    oError = None
-    httpCode = HTTPStatus.OK
-
-    logging.info('Passed machine Id is ' + vmid)
-
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
-
-    try:
-        # No return value
-        oCurrMachine.hotUnplugCPU(cpu)
-        oCurrMachine.saveSettings()
-        logging.info('Successfully unplugged CPU ' + str(cpu))
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else 'Successfully unplugged CPU ' + str(cpu))
-    return response, httpCode
-
-
 def i_machine_getnetworkadapter(vmid, select=None, slot=None):  # noqa: E501
     """
     Call interface method IMachine::getNetworkAdapter
@@ -2524,7 +2452,7 @@ def i_platformx86_gethwvirtexproperty(vmid, property=None):  # noqa: E501
 
 
 @sessionDecorator
-def i_platformx86_sethwvirtexproperty(vmid, oPlatformX86SetHWVirtExPropertyRequestBody, *var_args_tuple):  # noqa: E501
+def i_platformx86_sethwvirtexproperty(vmid, oPlatformX86SetHWVirtExPropertyRequestBody: PlatformX86SetHWVirtExPropertyRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IPlatformX86::setHWVirtExProperty
 
@@ -2571,7 +2499,7 @@ def i_platformx86_sethwvirtexproperty(vmid, oPlatformX86SetHWVirtExPropertyReque
 
 
 @sessionDecorator
-def i_platformx86_setcpuproperty(vmid, oPlatformX86SetCPUPropertyRequestBody, *var_args_tuple):  # noqa: E501
+def i_platformx86_setcpuproperty(vmid, oPlatformX86SetCPUPropertyRequestBody: PlatformX86SetCPUPropertyRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IPlatformX86::setCPUProperty
 
@@ -2618,7 +2546,7 @@ def i_platformx86_setcpuproperty(vmid, oPlatformX86SetCPUPropertyRequestBody, *v
 
 
 @sessionDecorator
-def i_platformarm_setcpuproperty(vmid, oPlatformARMSetCPUPropertyRequestBody, *var_args_tuple):  # noqa: E501
+def i_platformarm_setcpuproperty(vmid, oPlatformARMSetCPUPropertyRequestBody: PlatformARMSetCPUPropertyRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IPlatformARM::setCPUProperty
 
@@ -2662,6 +2590,78 @@ def i_platformarm_setcpuproperty(vmid, oPlatformARMSetCPUPropertyRequestBody, *v
         return jsonify(oError), httpCode
 
     return 'Successfully set the virtual CPU property ' + property + ' to ' + str(value)
+
+
+@sessionDecorator
+def i_machine_hotplugcpu(vmid, cpu=None, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::hotPlugCPU
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param cpu:
+    :type cpu: int
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    try:
+        # No return value
+        oCurrMachine.hotPlugCPU(cpu)
+        oCurrMachine.saveSettings()
+        logging.info('Successfully plugged CPU ' + str(cpu))
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else 'Successfully plugged CPU ' + str(cpu))
+    return response, httpCode
+
+
+@sessionDecorator
+def i_machine_hotunplugcpu(vmid, cpu=None, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::hotUnplugCPU
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param cpu:
+    :type cpu: int
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info('Passed machine Id is ' + vmid)
+
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    try:
+        # No return value
+        oCurrMachine.hotUnplugCPU(cpu)
+        oCurrMachine.saveSettings()
+        logging.info('Successfully unplugged CPU ' + str(cpu))
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else 'Successfully unplugged CPU ' + str(cpu))
+    return response, httpCode
 
 
 ############################# Not implemented yet #############################
@@ -3012,20 +3012,6 @@ def i_machine_lockmachine(vmid, oMachineLockMachineRequestBody):  # noqa: E501
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::nonRotationalDevice
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineNonRotationalDeviceRequestBody: 
-    :type oMachineNonRotationalDeviceRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
 
 def i_machine_passthroughdevice(vmid, oMachinePassthroughDeviceRequestBody):  # noqa: E501
     """
@@ -3050,21 +3036,6 @@ def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody):
     :type vmid: str
     :param oMachineNonRotationalDeviceRequestBody: 
     :type oMachineNonRotationalDeviceRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_passthroughdevice(vmid, oMachinePassthroughDeviceRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::passthroughDevice
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachinePassthroughDeviceRequestBody: 
-    :type oMachinePassthroughDeviceRequestBody: dict | bytes
 
     :rtype: None
     """
