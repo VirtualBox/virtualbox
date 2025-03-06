@@ -1,4 +1,4 @@
-/* $Id: DrvHostAudioValidationKit.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: DrvHostAudioValidationKit.cpp 108655 2025-03-06 16:57:21Z andreas.loeffler@oracle.com $ */
 /** @file
  * Host audio driver - ValidationKit - For dumping and injecting audio data from/to the device emulation.
  */
@@ -990,8 +990,8 @@ static DECLCALLBACK(uint32_t) drvHostValKitAudioHA_StreamGetWritable(PPDMIHOSTAU
                 cbWritable = UINT32_MAX;
             }
         }
-        else
-            LogRel2(("ValKit: Reporting UINT32_MAX bytes writable (no playback test running)\n"));
+        else /* Only log this with high verbosity -- too noisy otherwise. */
+            LogRel5(("ValKit: Reporting UINT32_MAX bytes writable (no playback test running)\n"));
 
         int rc2 = RTCritSectLeave(&pThis->CritSect);
         AssertRC(rc2);
