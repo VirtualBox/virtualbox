@@ -1,4 +1,4 @@
-/* $Id: PDMAsyncCompletion.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: PDMAsyncCompletion.cpp 108651 2025-03-06 11:15:45Z alexander.eichner@oracle.com $ */
 /** @file
  * PDM Async I/O - Transport data asynchronous in R3 using EMT.
  */
@@ -138,14 +138,14 @@ typedef struct PDMACBWMGR
     /** Identifier of the manager. */
     char                                       *pszId;
     /** Maximum number of bytes the endpoints are allowed to transfer (Max is 4GB/s currently) */
-    volatile uint32_t                           cbTransferPerSecMax;
+    volatile uint64_t                           cbTransferPerSecMax;
     /** Number of bytes we start with */
-    volatile uint32_t                           cbTransferPerSecStart;
+    volatile uint64_t                           cbTransferPerSecStart;
     /** Step after each update */
-    volatile uint32_t                           cbTransferPerSecStep;
+    volatile uint64_t                           cbTransferPerSecStep;
     /** Number of bytes we are allowed to transfer till the next update.
      * Reset by the refresh timer. */
-    volatile uint32_t                           cbTransferAllowed;
+    volatile uint64_t                           cbTransferAllowed;
     /** Timestamp of the last update */
     volatile uint64_t                           tsUpdatedLast;
     /** Reference counter - How many endpoints are associated with this manager. */
@@ -654,10 +654,10 @@ static void pdmacBwMgrUnlink(PPDMACBWMGR pBwMgr)
 
 
 /** Lazy coder. */
-static int pdmacAsyncCompletionBwMgrCreate(PPDMASYNCCOMPLETIONEPCLASS pEpClass, const char *pszBwMgr, uint32_t cbTransferPerSecMax,
-                                           uint32_t cbTransferPerSecStart, uint32_t cbTransferPerSecStep)
+static int pdmacAsyncCompletionBwMgrCreate(PPDMASYNCCOMPLETIONEPCLASS pEpClass, const char *pszBwMgr, uint64_t cbTransferPerSecMax,
+                                           uint64_t cbTransferPerSecStart, uint64_t cbTransferPerSecStep)
 {
-    LogFlowFunc(("pEpClass=%#p pszBwMgr=%#p{%s} cbTransferPerSecMax=%u cbTransferPerSecStart=%u cbTransferPerSecStep=%u\n",
+    LogFlowFunc(("pEpClass=%#p pszBwMgr=%#p{%s} cbTransferPerSecMax=%RU64 cbTransferPerSecStart=%RU64 cbTransferPerSecStep=%RU64\n",
                  pEpClass, pszBwMgr, pszBwMgr, cbTransferPerSecMax, cbTransferPerSecStart, cbTransferPerSecStep));
 
     AssertPtrReturn(pEpClass, VERR_INVALID_POINTER);
@@ -731,16 +731,16 @@ DECLINLINE(void) pdmacBwMgrRelease(PPDMACBWMGR pBwMgr)
  *                                    until the bandwidth is refreshed.
  *                                    Only set if false is returned.
  */
-bool pdmacEpIsTransferAllowed(PPDMASYNCCOMPLETIONENDPOINT pEndpoint, uint32_t cbTransfer, RTMSINTERVAL *pmsWhenNext)
+bool pdmacEpIsTransferAllowed(PPDMASYNCCOMPLETIONENDPOINT pEndpoint, uint64_t cbTransfer, RTMSINTERVAL *pmsWhenNext)
 {
     bool        fAllowed = true;
     PPDMACBWMGR pBwMgr = ASMAtomicReadPtrT(&pEndpoint->pBwMgr, PPDMACBWMGR);
 
-    LogFlowFunc(("pEndpoint=%p pBwMgr=%p cbTransfer=%u\n", pEndpoint, pBwMgr, cbTransfer));
+    LogFlowFunc(("pEndpoint=%p pBwMgr=%p cbTransfer=%RU64\n", pEndpoint, pBwMgr, cbTransfer));
 
     if (pBwMgr)
     {
-        uint32_t cbOld = ASMAtomicSubU32(&pBwMgr->cbTransferAllowed, cbTransfer);
+        uint64_t cbOld = ASMAtomicSubU64(&pBwMgr->cbTransferAllowed, cbTransfer);
         if (RT_LIKELY(cbOld >= cbTransfer))
             fAllowed = true;
         else
@@ -758,21 +758,21 @@ bool pdmacEpIsTransferAllowed(PPDMASYNCCOMPLETIONENDPOINT pEndpoint, uint32_t cb
                     if (pBwMgr->cbTransferPerSecStart < pBwMgr->cbTransferPerSecMax)
                     {
                        pBwMgr->cbTransferPerSecStart = RT_MIN(pBwMgr->cbTransferPerSecMax, pBwMgr->cbTransferPerSecStart + pBwMgr->cbTransferPerSecStep);
-                       LogFlow(("AIOMgr: Increasing maximum bandwidth to %u bytes/sec\n", pBwMgr->cbTransferPerSecStart));
+                       LogFlow(("AIOMgr: Increasing maximum bandwidth to %RU64 bytes/sec\n", pBwMgr->cbTransferPerSecStart));
                     }
 
                     /* Update */
-                    uint32_t cbTransferAllowedNew =   pBwMgr->cbTransferPerSecStart > cbTransfer
+                    uint64_t cbTransferAllowedNew =   pBwMgr->cbTransferPerSecStart > cbTransfer
                                                     ? pBwMgr->cbTransferPerSecStart - cbTransfer
                                                     : 0;
-                    ASMAtomicWriteU32(&pBwMgr->cbTransferAllowed, cbTransferAllowedNew);
+                    ASMAtomicWriteU64(&pBwMgr->cbTransferAllowed, cbTransferAllowedNew);
                     fAllowed = true;
                     LogFlow(("AIOMgr: Refreshed bandwidth\n"));
                 }
             }
             else
             {
-                ASMAtomicAddU32(&pBwMgr->cbTransferAllowed, cbTransfer);
+                ASMAtomicAddU64(&pBwMgr->cbTransferAllowed, cbTransfer);
                 *pmsWhenNext = ((1000*1000*1000) - (tsNow - tsUpdatedLast)) / (1000*1000);
             }
         }
@@ -882,16 +882,16 @@ static int pdmR3AsyncCompletionEpClassInit(PVM pVM, PCPDMASYNCCOMPLETIONEPCLASSO
                                 rc = CFGMR3GetName(pCur, pszBwGrpId, cbName);
                                 if (RT_SUCCESS(rc))
                                 {
-                                    uint32_t cbMax;
-                                    rc = CFGMR3QueryU32(pCur, "Max", &cbMax);
+                                    uint64_t cbMax;
+                                    rc = CFGMR3QueryU64(pCur, "Max", &cbMax);
                                     if (RT_SUCCESS(rc))
                                     {
-                                        uint32_t cbStart;
-                                        rc = CFGMR3QueryU32Def(pCur, "Start", &cbStart, cbMax);
+                                        uint64_t cbStart;
+                                        rc = CFGMR3QueryU64Def(pCur, "Start", &cbStart, cbMax);
                                         if (RT_SUCCESS(rc))
                                         {
-                                            uint32_t cbStep;
-                                            rc = CFGMR3QueryU32Def(pCur, "Step", &cbStep, 0);
+                                            uint64_t cbStep;
+                                            rc = CFGMR3QueryU64Def(pCur, "Step", &cbStep, 0);
                                             if (RT_SUCCESS(rc))
                                                 rc = pdmacAsyncCompletionBwMgrCreate(pEndpointClass, pszBwGrpId,
                                                                                      cbMax, cbStart, cbStep);
@@ -1303,9 +1303,9 @@ void pdmR3AsyncCompletionResume(PVM pVM)
             while (pBwMgr)
             {
                 LogRel(("AIOMgr:     Id:    %s\n", pBwMgr->pszId));
-                LogRel(("AIOMgr:     Max:   %u B/s\n", pBwMgr->cbTransferPerSecMax));
-                LogRel(("AIOMgr:     Start: %u B/s\n", pBwMgr->cbTransferPerSecStart));
-                LogRel(("AIOMgr:     Step:  %u B/s\n", pBwMgr->cbTransferPerSecStep));
+                LogRel(("AIOMgr:     Max:   %RU64 B/s\n", pBwMgr->cbTransferPerSecMax));
+                LogRel(("AIOMgr:     Start: %RU64 B/s\n", pBwMgr->cbTransferPerSecStart));
+                LogRel(("AIOMgr:     Step:  %RU64 B/s\n", pBwMgr->cbTransferPerSecStep));
                 LogRel(("AIOMgr:     Endpoints:\n"));
 
                 pEp = pEpClass->pEndpointsHead;
@@ -1780,7 +1780,7 @@ VMMR3DECL(int) PDMR3AsyncCompletionTaskCancel(PPDMASYNCCOMPLETIONTASK pTask)
  * @param   pszBwMgr        The identifer of the bandwidth manager to change.
  * @param   cbMaxNew        The new maximum for the bandwidth manager in bytes/sec.
  */
-VMMR3DECL(int) PDMR3AsyncCompletionBwMgrSetMaxForFile(PUVM pUVM, const char *pszBwMgr, uint32_t cbMaxNew)
+VMMR3DECL(int) PDMR3AsyncCompletionBwMgrSetMaxForFile(PUVM pUVM, const char *pszBwMgr, uint64_t cbMaxNew)
 {
     UVM_ASSERT_VALID_EXT_RETURN(pUVM, VERR_INVALID_VM_HANDLE);
     PVM pVM = pUVM->pVM;
@@ -1796,8 +1796,8 @@ VMMR3DECL(int) PDMR3AsyncCompletionBwMgrSetMaxForFile(PUVM pUVM, const char *psz
          * Set the new value for the start and max value to let the manager pick up
          * the new limit immediately.
          */
-        ASMAtomicWriteU32(&pBwMgr->cbTransferPerSecMax, cbMaxNew);
-        ASMAtomicWriteU32(&pBwMgr->cbTransferPerSecStart, cbMaxNew);
+        ASMAtomicWriteU64(&pBwMgr->cbTransferPerSecMax, cbMaxNew);
+        ASMAtomicWriteU64(&pBwMgr->cbTransferPerSecStart, cbMaxNew);
     }
     else
         rc = VERR_NOT_FOUND;

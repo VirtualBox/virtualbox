@@ -1,4 +1,4 @@
-/* $Id: PDMAsyncCompletionFileFailsafe.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: PDMAsyncCompletionFileFailsafe.cpp 108651 2025-03-06 11:15:45Z alexander.eichner@oracle.com $ */
 /** @file
  * PDM Async I/O - Transport data asynchronous in R3 using EMT.
  * Simple File I/O manager.
@@ -78,7 +78,7 @@ static int pdmacFileAioMgrFailsafeProcessEndpointTaskList(PPDMACEPFILEMGR pAioMg
         RTMSINTERVAL msWhenNext;
         PPDMACTASKFILE pCurr = pTasks;
 
-        if (!pdmacEpIsTransferAllowed(&pEndpoint->Core, (uint32_t)pCurr->DataSeg.cbSeg, &msWhenNext))
+        if (!pdmacEpIsTransferAllowed(&pEndpoint->Core, pCurr->DataSeg.cbSeg, &msWhenNext))
         {
             pAioMgr->msBwLimitExpired = RT_MIN(pAioMgr->msBwLimitExpired, msWhenNext);
             break;
