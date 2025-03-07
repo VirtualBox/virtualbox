@@ -1,4 +1,4 @@
-/* $Id: VBoxInstallHelper.cpp 108493 2025-02-21 08:15:34Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxInstallHelper.cpp 108660 2025-03-07 08:03:53Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxInstallHelper - Various helper routines for Windows host installer.
  */
@@ -2845,74 +2845,24 @@ UINT __stdcall UninstallTAPInstances(MSIHANDLE hModule)
  */
 UINT __stdcall UninstallVBoxDrv(MSIHANDLE hModule)
 {
-    /*
-     * Try open the service.
-     */
-    SC_HANDLE hSMgr = OpenSCManager(NULL, NULL, SERVICE_CHANGE_CONFIG | SERVICE_STOP | SERVICE_QUERY_STATUS);
-    if (hSMgr)
+    VBOXWINDRVINST hWinDrvInst;
+    int rc = VBoxWinDrvInstCreateEx(&hWinDrvInst, 1 /* uVerbostiy */, &vboxWinDrvInstLogCallback, &hModule /* pvUser */);
+    if (RT_SUCCESS(rc))
     {
-        SC_HANDLE hService = OpenServiceW(hSMgr, L"VBoxDrv", DELETE | SERVICE_STOP | SERVICE_QUERY_STATUS);
-        if (hService)
-        {
-            /*
-             * Try stop it before we delete it.
-             */
-            SERVICE_STATUS Status = { 0, 0, 0, 0, 0, 0, 0 };
-            QueryServiceStatus(hService, &Status);
-            if (Status.dwCurrentState == SERVICE_STOPPED)
-                logStringF(hModule, "VBoxDrv: The service old service was already stopped");
-            else
-            {
-                logStringF(hModule, "VBoxDrv: Stopping the service (state %u)", Status.dwCurrentState);
-                if (ControlService(hService, SERVICE_CONTROL_STOP, &Status))
-                {
-                    /* waiting for it to stop: */
-                    int iWait = 100;
-                    while (Status.dwCurrentState == SERVICE_STOP_PENDING && iWait-- > 0)
-                    {
-                        Sleep(100);
-                        QueryServiceStatus(hService, &Status);
-                    }
+        /*
+         * Try stop it before we delete it.
+         */
+        /* ignore rc */ VBoxWinDrvInstControlServiceEx(hWinDrvInst, "VBoxDrv",
+                                                       VBOXWINDRVSVCFN_STOP, VBOXWINDRVSVCFN_F_WAIT, RT_MS_10SEC);
 
-                    if (Status.dwCurrentState == SERVICE_STOPPED)
-                        logStringF(hModule, "VBoxDrv: Stopped service");
-                    else
-                        logStringF(hModule, "VBoxDrv: Failed to stop the service, status: %u", Status.dwCurrentState);
-                }
-                else
-                {
-                    DWORD const dwErr = GetLastError();
-                    if (   Status.dwCurrentState == SERVICE_STOP_PENDING
-                        && dwErr == ERROR_SERVICE_CANNOT_ACCEPT_CTRL)
-                        logStringF(hModule, "VBoxDrv: Failed to stop the service: stop pending, not accepting control messages");
-                    else
-                        logStringF(hModule, "VBoxDrv: Failed to stop the service: dwErr=%u status=%u", dwErr, Status.dwCurrentState);
-                }
-            }
+        /*
+         * Delete the service, or at least mark it for deletion.
+         */
+        /* ignore rc */ VBoxWinDrvInstControlService(hWinDrvInst, "VBoxDrv", VBOXWINDRVSVCFN_DELETE);
 
-            /*
-             * Delete the service, or at least mark it for deletion.
-             */
-            if (DeleteService(hService))
-                logStringF(hModule, "VBoxDrv: Successfully delete service");
-            else
-                logStringF(hModule, "VBoxDrv: Failed to delete the service: %u", GetLastError());
-
-            CloseServiceHandle(hService);
-        }
-        else
-        {
-            DWORD const dwErr = GetLastError();
-            if (dwErr == ERROR_SERVICE_DOES_NOT_EXIST)
-                logStringF(hModule, "VBoxDrv: Nothing to do, the old service does not exist");
-            else
-                logStringF(hModule, "VBoxDrv: Failed to open the service: %u", dwErr);
-        }
-
-        CloseServiceHandle(hSMgr);
+        VBoxWinDrvInstDestroy(hWinDrvInst);
     }
-    else
-        logStringF(hModule, "VBoxDrv: Failed to open service manager (%u).", GetLastError());
 
     return ERROR_SUCCESS;
 }
+
