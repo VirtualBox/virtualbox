@@ -27,29 +27,43 @@
 
 <?if $(env.VBOX_WITH_NETFLT) = "yes" ?>
 
+    <!--
+      Initial (first) installation.
+      -->
+
+    <!-- Rollback tries to uninstall the driver if installation has failed. -->
     <Custom Action="ca_RollbackInstallNetLwfArgs" Before="ca_RollbackInstallNetLwf"
-            Condition="(VersionNT >= 600) AND $cp_NetLwfDriver=3 AND (NOT Installed)" />
+            Condition="$cp_NetLwfDriver=3 AND (NOT Installed)" />
 
     <Custom Action="ca_RollbackInstallNetLwf" Before="ca_InstallNetLwf"
-            Condition="(VersionNT >= 600) AND $cp_NetLwfDriver=3 AND (NOT Installed)" />
+            Condition="$cp_NetLwfDriver=3 AND (NOT Installed)" />
 
     <Custom Action="ca_InstallNetLwfArgs" Before="ca_InstallNetLwf"
-            Condition="(VersionNT >= 600) AND $cp_NetLwfDriver=3 AND (NOT Installed)" />
+            Condition="$cp_NetLwfDriver=3 AND (NOT Installed)" />
 
     <Custom Action="ca_InstallNetLwf" Before="InstallFinalize"
-            Condition="(VersionNT >= 600) AND $cp_NetLwfDriver=3 AND (NOT Installed)" />
+            Condition="$cp_NetLwfDriver=3 AND (NOT Installed)" />
 
+    <!--
+      Uninstallation or update.
+
+      Note: On update we also uninstall the current VBoxNetLwf driver first before installing
+            the new version.
+      -->
+
+    <!-- Rollback tries to re-install the driver if uninstallation has failed. -->
     <Custom Action="ca_RollbackUninstallNetLwfArgs" Before="ca_RollbackUninstallNetLwf"
-            Condition="(UPGRADINGPRODUCTCODE) OR (REMOVE=&quot;ALL&quot;)"  />
+            Condition="(UPGRADINGPRODUCTCODE) OR (REMOVE=&quot;ALL&quot;)" />
 
     <Custom Action="ca_RollbackUninstallNetLwf" Before="ca_UninstallNetLwf"
             Condition="(UPGRADINGPRODUCTCODE) OR (REMOVE=&quot;ALL&quot;)" />
 
     <Custom Action="ca_UninstallNetLwfArgs" Before="ca_UninstallNetLwf"
-            Condition="((UPGRADINGPRODUCTCODE) OR (REMOVE=&quot;ALL&quot;))" />
+            Condition="(UPGRADINGPRODUCTCODE) OR (REMOVE=&quot;ALL&quot;)" />
 
-    <Custom Action="ca_UninstallNetLwf" After="InstallInitialize"
-            Condition="((UPGRADINGPRODUCTCODE) OR (REMOVE=&quot;ALL&quot;))" />
+    <!-- Needs to be uninstalled before VBoxSUP gets removed. -->
+    <Custom Action="ca_UninstallNetLwf" Before="ca_VBoxSupDrvUninst"
+            Condition="(UPGRADINGPRODUCTCODE) OR (REMOVE=&quot;ALL&quot;)" />
 
 <?endif?> <!-- VBOX_WITH_NETFLT -->
 

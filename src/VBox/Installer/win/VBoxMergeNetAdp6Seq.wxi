@@ -27,25 +27,25 @@
 
 <?if $(env.VBOX_WITH_NETFLT) = "yes" ?>
 
+    <!--
+      Initial (first) installation.
+      -->
+
     <!-- Create host-only interfaces on first-time install -->
     <Custom Action="ca_CreateHostOnlyInterfaceNDIS6Args" Before="ca_CreateHostOnlyInterfaceNDIS6"
-            Condition="(NOT Installed) AND (VersionNT >= 600) AND ($cp_NetAdp6Driver=3)" />
+            Condition="(NOT Installed) AND ($cp_NetAdp6Driver=3)" />
 
     <Custom Action="ca_CreateHostOnlyInterfaceNDIS6" Before="InstallFinalize"
-            Condition="(NOT Installed) AND (VersionNT >= 600) AND ($cp_NetAdp6Driver=3)" />
+            Condition="(NOT Installed) AND ($cp_NetAdp6Driver=3)" />
 
-    <!-- Remove the host-only interfaces on uninstall only. Includes
-         VBoxNetAdp6 driver uninstall.
-         @todo r=klaus Clean up this inconsistency by changing what the
-         install helper DLL does. It's very surprising behavior and needs
-         digging through a lot of code to understand the where and why. -->
-    <Custom Action="ca_RemoveHostOnlyInterfacesNDIS6" After="InstallInitialize"
-            Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
+    <!--
+      Update (from a former Version of VirtualBox).
+      -->
 
     <!-- Stop the host-only interfaces on update only. Driver still has to be
          uninstalled, and the creation of interfaces in the new installer will
          do the actual upgrading, preserving the interfaces. -->
-    <Custom Action="ca_StopHostOnlyInterfacesNDIS6" After="InstallInitialize"
+    <Custom Action="ca_StopHostOnlyInterfacesNDIS6" Before="ca_VBoxSupDrvInst"
             Condition="(UPGRADINGPRODUCTCODE) AND (REMOVE=&quot;ALL&quot;)" />
 
     <!-- Uninstall the driver only on package upgrade, as for uninstall it is
@@ -56,8 +56,22 @@
     <Custom Action="ca_UninstallNetAdp6Args" Before="ca_UninstallNetAdp6"
             Condition="(UPGRADINGPRODUCTCODE) AND (REMOVE=&quot;ALL&quot;)" />
 
-    <Custom Action="ca_UninstallNetAdp6" After="ca_StopHostOnlyInterfacesNDIS6"
+    <!-- Needs to be uninstalled before VBoxSUP gets removed. -->
+    <Custom Action="ca_UninstallNetAdp6" Before="ca_VBoxSupDrvUninst"
             Condition="(UPGRADINGPRODUCTCODE) AND (REMOVE=&quot;ALL&quot;)" />
+
+    <!--
+      Uninstallation
+      -->
+
+    <!-- Remove the host-only interfaces on uninstall only. Includes
+         VBoxNetAdp6 driver uninstall.
+         @todo r=klaus Clean up this inconsistency by changing what the
+         install helper DLL does. It's very surprising behavior and needs
+         digging through a lot of code to understand the where and why. -->
+    <!-- Needs to be uninstalled before VBoxSUP gets removed. -->
+    <Custom Action="ca_RemoveHostOnlyInterfacesNDIS6" Before="ca_VBoxSupDrvUninst"
+            Condition="NOT (UPGRADINGPRODUCTCODE) AND (Installed) AND (REMOVE=&quot;ALL&quot;)" />
 
 <?endif?>
 
