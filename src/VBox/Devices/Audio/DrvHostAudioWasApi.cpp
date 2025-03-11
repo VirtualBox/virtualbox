@@ -1,4 +1,4 @@
-/* $Id: DrvHostAudioWasApi.cpp 108537 2025-02-24 18:13:21Z andreas.loeffler@oracle.com $ */
+/* $Id: DrvHostAudioWasApi.cpp 108704 2025-03-11 06:28:18Z andreas.loeffler@oracle.com $ */
 /** @file
  * Host audio driver - Windows Audio Session API.
  */
@@ -1264,22 +1264,33 @@ static int drvHostAudioWasCacheLookupOrCreate(PDRVHOSTAUDIOWAS pThis, IMMDevice 
     HRESULT hrc = pIDevice->GetId(&pwszDevId);
     if (SUCCEEDED(hrc))
     {
-        PDRVHOSTAUDIOWASCACHEDEV pDevEntry;
-        size_t                   cwcDevId = RTUtf16Len(pwszDevId);
+        bool fLookupOrCreateInCache = pThis->fCacheEnabled; /* Whether to lookup and/or create the device in our cache. */
 
-        if (pThis->fCacheEnabled)
+        /* First, try retrieving the current device state here as a yet another meassure for
+         * AUDCLNT_E_DEVICE_INVALIDATED errors. We try not to cache malfunctioning devices here.  See @bugref{10844} */
+        DWORD dwState;
+        hrc = pIDevice->GetState(&dwState);
+        if (SUCCEEDED(hrc))
+        {
+            if (dwState != DEVICE_STATE_ACTIVE)
+            {
+                LogRel2(("WasAPI: Device '%ls': Is in non-active state (state is %#x, iface %p)\n",
+                         pwszDevId, drvHostAudioWasMMDeviceStateToString(dwState), pIDevice));
+                fLookupOrCreateInCache = false;
+            }
+        }
+        else
+        {
+            LogRel2(("WasAPI: Device '%ls': Unable to retrieve state (hr=%#x, iface %p)\n", pwszDevId, hrc, pIDevice));
+            fLookupOrCreateInCache = false;
+        }
+
+        PDRVHOSTAUDIOWASCACHEDEV pDevEntry;
+        size_t const             cwcDevId = RTUtf16Len(pwszDevId);
+
+        if (fLookupOrCreateInCache)
         {
             LogRel2(("WasAPI: Checking for cached device '%ls' ...\n", pwszDevId));
-
-#define LOG_STALE_DEVICE(a_LogRel2What) \
-    LogRel2(a_LogRel2What); \
-    LogRel(("WasAPI: Stale audio interface '%ls' detected!\n", pDevEntry->wszDevId));
-
-#define LOG_STALE_DEVICE_BREAK(a_LogRel2What) \
-    { \
-        LOG_STALE_DEVICE(a_LogRel2What); \
-        break; \
-    }
 
             /*
              * The cache has two levels, so first the device entry.
@@ -1292,20 +1303,6 @@ static int drvHostAudioWasCacheLookupOrCreate(PDRVHOSTAUDIOWAS pThis, IMMDevice 
                     && pDevEntry->enmDir   == pCfgReq->enmDir
                     && RTUtf16Cmp(pDevEntry->wszDevId, pwszDevId) == 0)
                 {
-                    /* First, try retrieving the current device state here as a yet another messure for
-                     * AUDCLNT_E_DEVICE_INVALIDATED errors.  See @bugref{10844} */
-                    DWORD dwState;
-                    hrc = pIDevice->GetState(&dwState);
-                    if (SUCCEEDED(hrc))
-                    {
-                        if (dwState != DEVICE_STATE_ACTIVE)
-                            LOG_STALE_DEVICE_BREAK(("WasAPI: Cache hit for device '%ls': Non-active state (state %#x)\n",
-                                                    pDevEntry->wszDevId, drvHostAudioWasMMDeviceStateToString(dwState)));
-                    }
-                    else
-                        LOG_STALE_DEVICE_BREAK(("WasAPI: Cache hit for device '%ls': Unable to retrieve state (hr=%#x)\n",
-                                                pDevEntry->wszDevId, hrc));
-
                     /*
                      * Cache hit -- here we now need to also check if the device interface we want to look up
                      * actually matches the one we have in the cache entry.
@@ -1316,8 +1313,8 @@ static int drvHostAudioWasCacheLookupOrCreate(PDRVHOSTAUDIOWAS pThis, IMMDevice 
                      * AUDCLNT_E_DEVICE_INVALIDATED.  See @bugref{10503}
                      */
                     if (pDevEntry->pIDevice != pIDevice)
-                        LOG_STALE_DEVICE_BREAK(("WasAPI: Cache hit for device '%ls': Stale interface (new: %p, old: %p)\n",
-                                                pDevEntry->wszDevId, pIDevice, pDevEntry->pIDevice));
+                        LogRel2(("WasAPI: Cache hit for device '%ls': Stale interface (new: %p, old: %p)\n",
+                                 pDevEntry->wszDevId, pIDevice, pDevEntry->pIDevice));
 
                     LogRel2(("WasAPI: Cache hit for device '%ls' (iface %p)\n", pwszDevId, pIDevice));
 
@@ -1336,7 +1333,7 @@ static int drvHostAudioWasCacheLookupOrCreate(PDRVHOSTAUDIOWAS pThis, IMMDevice 
 
         }
         else
-            LogRel2(("WasAPI: Cache disabled for device '%ls' (iface %p)\n", pwszDevId, pIDevice));
+            LogRel2(("WasAPI: Not caching device '%ls' (iface %p)\n", pwszDevId, pIDevice));
 
         /*
          * Device not in the cache, add it.
@@ -1360,7 +1357,7 @@ static int drvHostAudioWasCacheLookupOrCreate(PDRVHOSTAUDIOWAS pThis, IMMDevice 
             CoTaskMemFree(pwszDevId);
             pwszDevId = NULL;
 
-            if (pThis->fCacheEnabled)
+            if (fLookupOrCreateInCache)
             {
                 /*
                  * Before adding the device to the cache, check that someone didn't race us adding it.
@@ -1769,7 +1766,7 @@ static int drvHostWasEnumerateDevices(PDRVHOSTAUDIOWAS pThis, PPDMAUDIOHOSTENUM 
             pIDefaultDevice->Release();
     }
 
-    LogRel2(("WasAPI: Enumerating devices done - %u device (%Rrc)\n", pDevEnm->cDevices, rc));
+    LogRel2(("WasAPI: Enumerating devices done - %u devices (%Rrc)\n", pDevEnm->cDevices, rc));
     return rc;
 }
 
