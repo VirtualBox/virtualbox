@@ -1,4 +1,4 @@
-/* $Id: CPUMDbg.cpp 107849 2025-01-15 10:15:57Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMDbg.cpp 108740 2025-03-13 11:17:16Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU Monitor / Manager, Debugger & Debugging APIs.
  */
@@ -1292,7 +1292,7 @@ static DBGFREGDESC const g_aCpumRegGstDescs[] =
     CPU_REG_MSR("sysenter_cs",   IA32_SYSENTER_CS,  U16, NULL                        ),
     CPU_REG_MSR("sysenter_eip",  IA32_SYSENTER_EIP, U64, NULL                        ),
     CPU_REG_MSR("sysenter_esp",  IA32_SYSENTER_ESP, U64, NULL                        ),
-    CPU_REG_MSR("tsc",           IA32_TSC,          U32, NULL                        ),
+    CPU_REG_MSR("tsc",           IA32_TSC,          U64, NULL                        ),
     CPU_REG_MSR("msr_ia32_arch_cap",  IA32_ARCH_CAPABILITIES,   U64, g_aCpumRegFields_msr_ia32_arch_cap),
     CPU_REG_MSR("msr_ia32_spec_ctrl", IA32_SPEC_CTRL,           U64, g_aCpumRegFields_msr_ia32_spec_ctrl),
     CPU_REG_MSR("efer",          K6_EFER,           U32, g_aCpumRegFields_efer       ),
