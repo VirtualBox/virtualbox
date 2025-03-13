@@ -1,4 +1,4 @@
-/* $Id: NEMR3Native-win.cpp 108055 2025-01-24 10:05:32Z knut.osmundsen@oracle.com $ */
+/* $Id: NEMR3Native-win.cpp 108741 2025-03-13 11:24:03Z knut.osmundsen@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 Windows backend.
  *
@@ -162,6 +162,8 @@ static decltype(WHvRunVirtualProcessor) *           g_pfnWHvRunVirtualProcessor;
 static decltype(WHvCancelRunVirtualProcessor) *     g_pfnWHvCancelRunVirtualProcessor;
 static decltype(WHvGetVirtualProcessorRegisters) *  g_pfnWHvGetVirtualProcessorRegisters;
 static decltype(WHvSetVirtualProcessorRegisters) *  g_pfnWHvSetVirtualProcessorRegisters;
+static decltype(WHvResumePartitionTime)            *g_pfnWHvResumePartitionTime;
+static decltype(WHvSuspendPartitionTime)           *g_pfnWHvSuspendPartitionTime;
 /** @} */
 
 /** @name APIs imported from Vid.dll
@@ -212,6 +214,8 @@ static const struct
     NEM_WIN_IMPORT(0, false, WHvCancelRunVirtualProcessor),
     NEM_WIN_IMPORT(0, false, WHvGetVirtualProcessorRegisters),
     NEM_WIN_IMPORT(0, false, WHvSetVirtualProcessorRegisters),
+    NEM_WIN_IMPORT(0, true,  WHvResumePartitionTime),  /* since 19H1 */
+    NEM_WIN_IMPORT(0, true,  WHvSuspendPartitionTime), /* since 19H1 */
 
     NEM_WIN_IMPORT(1, true,  VidGetHvPartitionId),
     NEM_WIN_IMPORT(1, true,  VidGetPartitionProperty),
@@ -284,6 +288,8 @@ static const HV_X64_INTERCEPT_MESSAGE_HEADER *g_pX64MsgHdr;
 # define WHvCancelRunVirtualProcessor               g_pfnWHvCancelRunVirtualProcessor
 # define WHvGetVirtualProcessorRegisters            g_pfnWHvGetVirtualProcessorRegisters
 # define WHvSetVirtualProcessorRegisters            g_pfnWHvSetVirtualProcessorRegisters
+# define WHvResumePartitionTime                     g_pfnWHvResumePartitionTime
+# define WHvSuspendPartitionTime                    g_pfnWHvSuspendPartitionTime
 
 # define VidMessageSlotHandleAndGetNext             g_pfnVidMessageSlotHandleAndGetNext
 # define VidStartVirtualProcessor                   g_pfnVidStartVirtualProcessor

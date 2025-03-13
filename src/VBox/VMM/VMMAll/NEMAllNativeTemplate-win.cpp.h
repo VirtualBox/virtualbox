@@ -1,4 +1,4 @@
-/* $Id: NEMAllNativeTemplate-win.cpp.h 108227 2025-02-05 15:26:29Z knut.osmundsen@oracle.com $ */
+/* $Id: NEMAllNativeTemplate-win.cpp.h 108741 2025-03-13 11:24:03Z knut.osmundsen@oracle.com $ */
 /** @file
  * NEM - Native execution manager, Windows code template ring-0/3.
  */
@@ -1112,6 +1112,16 @@ VMM_INT_DECL(int) NEMHCResumeCpuTickOnAll(PVMCC pVM, PVMCPUCC pVCpu, uint64_t uP
     VMCPU_ASSERT_EMT_RETURN(pVCpu, VERR_VM_THREAD_NOT_EMT);
     AssertReturn(VM_IS_NEM_ENABLED(pVM), VERR_NEM_IPE_9);
 
+    /** @todo Do this WHvSuspendPartitionTime call to when the VM is suspended. */
+    HRESULT hrcSuspend = E_FAIL;
+    if (WHvSuspendPartitionTime && WHvResumePartitionTime)
+    {
+        hrcSuspend = WHvSuspendPartitionTime(pVM->nem.s.hPartition);
+        AssertLogRelMsg(SUCCEEDED(hrcSuspend),
+                        ("WHvSuspendPartitionTime(%p) -> %Rhrc (Last=%#x/%u)\n",
+                         pVM->nem.s.hPartition, hrcSuspend, RTNtLastStatusValue(), RTNtLastErrorValue()));
+    }
+
     /*
      * Call the offical API to do the job.
      */
@@ -1134,12 +1144,21 @@ VMM_INT_DECL(int) NEMHCResumeCpuTickOnAll(PVMCC pVM, PVMCPUCC pVCpu, uint64_t uP
     for (VMCPUID iCpu = 1; iCpu < pVM->cCpus; iCpu++)
     {
         Assert(enmName == WHvX64RegisterTsc);
-        const uint64_t offDelta = (ASMReadTSC() - uFirstTsc);
+        const uint64_t offDelta = SUCCEEDED(hrcSuspend) ? 0 : ASMReadTSC() - uFirstTsc;
         Value.Reg64 = uPausedTscValue + offDelta;
         hrc = WHvSetVirtualProcessorRegisters(pVM->nem.s.hPartition, iCpu, &enmName, 1, &Value);
         AssertLogRelMsgReturn(SUCCEEDED(hrc),
                               ("WHvSetVirtualProcessorRegisters(%p, 0,{tsc},2,%#RX64 + %#RX64) -> %Rhrc (Last=%#x/%u)\n",
                                pVM->nem.s.hPartition, iCpu, uPausedTscValue, offDelta, hrc, RTNtLastStatusValue(), RTNtLastErrorValue())
+                              , VERR_NEM_SET_TSC);
+    }
+
+    if (SUCCEEDED(hrcSuspend))
+    {
+        hrc = WHvResumePartitionTime(pVM->nem.s.hPartition);
+        AssertLogRelMsgReturn(SUCCEEDED(hrc),
+                              ("WHvResumePartitionTime(%p) -> %Rhrc (Last=%#x/%u)\n",
+                               pVM->nem.s.hPartition, hrc, RTNtLastStatusValue(), RTNtLastErrorValue())
                               , VERR_NEM_SET_TSC);
     }
 
