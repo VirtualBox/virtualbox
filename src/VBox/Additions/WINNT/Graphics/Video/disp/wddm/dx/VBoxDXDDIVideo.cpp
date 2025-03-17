@@ -1,4 +1,4 @@
-/* $Id: VBoxDXDDIVideo.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxDXDDIVideo.cpp 108773 2025-03-17 15:27:31Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox D3D11 user mode DDI interface for video.
  */
@@ -132,8 +132,10 @@ static VOID APIENTRY ddi11_1GetVideoDecoderBufferInfo(
 {
     PVBOXDX_DEVICE pDevice = (PVBOXDX_DEVICE)hDevice.pDrvPrivate;
     //DEBUG_BREAKPOINT_TEST();
-    RT_NOREF(pDevice, pDecodeDesc);
+    RT_NOREF(pDevice);
     *pInfo = g_aBufferInfo[Index];
+    if (pInfo->Type == D3D11_1DDI_VIDEO_DECODER_BUFFER_BITSTREAM)
+       pInfo->Size = RT_ALIGN_32(pDecodeDesc->SampleWidth * pDecodeDesc->SampleHeight, 1024 * 1024);
 }
 
 static SIZE_T APIENTRY ddi11_1CalcPrivateVideoDecoderSize(
