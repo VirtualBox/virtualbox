@@ -60,6 +60,7 @@ from vbox_server.models.device_type_response import DeviceTypeResponse  # noqa: 
 from vbox_server.models.machine_response import MachineResponse  # noqa: E501
 from vbox_server.models.medium_attachment_response import MediumAttachmentResponse  # noqa: E501
 from vbox_server.models.network_adapter_response import NetworkAdapterResponse  # noqa: E501
+from vbox_server.models.storage_controller_response import StorageControllerResponse  # noqa: E501
 from vbox_server.models.platform_arm_set_cpu_property_request_body import PlatformARMSetCPUPropertyRequestBody  # noqa: E501
 from vbox_server.models.platform_x86_set_cpu_property_request_body import PlatformX86SetCPUPropertyRequestBody  # noqa: E501
 from vbox_server.models.platformarm_getcpuproperty_response import PlatformarmGetcpupropertyResponse  # noqa: E501
@@ -73,14 +74,14 @@ from vbox_server.models.machine_getcpustatus_response import MachineGetcpustatus
 from vbox_server.models.machine_enumerateguestproperties_response import MachineEnumerateguestpropertiesResponse  # noqa: E501
 from vbox_server.models.machine_getguestpropertytimestamp_response import MachineGetguestpropertytimestampResponse  # noqa: E501
 from vbox_server.models.machine_set_guest_property_value_request_body import MachineSetGuestPropertyValueRequestBody  # noqa: E501
+from vbox_server.models.machine_add_storage_controller_request_body import MachineAddStorageControllerRequestBody  # noqa: E501
+from vbox_server.models.machine_attach_device_without_medium_request_body import MachineAttachDeviceWithoutMediumRequestBody  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
 from vbox_server.models.console_add_encryption_passwords_request_body import ConsoleAddEncryptionPasswordsRequestBody  # noqa: E501
 from vbox_server.models.console_create_shared_folder_request_body import ConsoleCreateSharedFolderRequestBody  # noqa: E501
-from vbox_server.models.machine_add_storage_controller_request_body import MachineAddStorageControllerRequestBody  # noqa: E501
 from vbox_server.models.machine_add_usb_controller_request_body import MachineAddUSBControllerRequestBody  # noqa: E501
-from vbox_server.models.machine_attach_device_without_medium_request_body import MachineAttachDeviceWithoutMediumRequestBody  # noqa: E501
 from vbox_server.models.machine_attach_host_pci_device_request_body import MachineAttachHostPCIDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_delete_snapshot_range_request_body import MachineDeleteSnapshotRangeRequestBody  # noqa: E501
 from vbox_server.models.machine_export_to_request_body import MachineExportToRequestBody  # noqa: E501
@@ -2911,6 +2912,166 @@ def i_machine_getguestpropertyvalue(vmid, property=None):  # noqa: E501
     return response, httpCode
 
 
+@sessionDecorator
+def i_machine_addstoragecontroller(vmid, oMachineAddStorageControllerRequestBody: MachineAddStorageControllerRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::addStorageController
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineAddStorageControllerRequestBody:
+    :type oMachineAddStorageControllerRequestBody: dict | bytes
+
+    :rtype: StorageControllerResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oSession = var_args_tuple[1]
+
+    o = oMachineAddStorageControllerRequestBody
+    print(o)
+    name = o.name
+
+    oCurrMachine = oSession.machine
+    oStorageControllerResponse = StorageControllerResponse()
+    try:
+        connectionType = swagger_to_vbox_storage_bus(o.connection_type)
+        if connectionType:
+            oStorageController = oCurrMachine.addStorageController(name, connectionType)
+            oCurrMachine.saveSettings()
+        else:
+            logging.info("The passed connection type %s isn't supported or unknown" % (o.connection_type))
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "The passed connection type %s isn't supported or unknown" % (o.connection_type))
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is None:
+        oStorageControllerResponse.controller = i_fill_storage_controller(oStorageController)
+
+    response = jsonify(oError if oError is not None else oStorageControllerResponse)
+    return response, httpCode
+
+
+@sessionDecorator
+def i_machine_removestoragecontroller(vmid, name=None, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::removeStorageController
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param name:
+    :type name: str
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oSession = var_args_tuple[1]
+
+    oCurrMachine = oSession.machine
+    try:
+        oCurrMachine.removeStorageController(name)
+        oCurrMachine.saveSettings()
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else "The controller named %s has been successfully removed" % (name))
+    return response, httpCode
+
+
+def i_machine_getstoragecontrollerbyname(vmid, select=None, name=None):  # noqa: E501
+    """
+    Call interface method IMachine::getStorageControllerByName
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param name:
+    :type name: str
+
+    :rtype: StorageControllerResponse1
+    """
+
+    vbox_utils_commonChecks()
+    httpCode = HTTPStatus.OK
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oStorageControllerResponse = StorageControllerResponse()
+    try:
+        oStorageController = oVM.getStorageControllerByName(name)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is None:
+        oStorageControllerResponse.controller = i_fill_storage_controller(oStorageController, select)
+
+    response = jsonify(oError if oError is not None else oStorageControllerResponse)
+    return response, httpCode
+
+
+def i_machine_getstoragecontrollerbyinstance(vmid, select=None, connectionType=None, instance=None):  # noqa: E501
+    """
+    Call interface method IMachine::getStorageControllerByInstance
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param connectionType: For the possible values of enumeration look into #/definitions/StorageBus
+    :type connectionType: str
+    :param instance:
+    :type instance: int
+
+    :rtype: StorageControllerResponse
+    """
+
+    vbox_utils_commonChecks()
+    httpCode = HTTPStatus.OK
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oStorageControllerResponse = StorageControllerResponse()
+    try:
+        vBoxConnectionType = swagger_to_vbox_storage_bus(connectionType)
+        if vBoxConnectionType:
+            oStorageController = oVM.getStorageControllerByInstance(vBoxConnectionType, instance)
+        else:
+            logging.info("The passed connection type %s isn't supported or unknown" % (connectionType))
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "The passed connection type %s isn't supported or unknown" % (connectionType))
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is None:
+        oStorageControllerResponse.controller = i_fill_storage_controller(oStorageController, select)
+
+    response = jsonify(oError if oError is not None else oStorageControllerResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -2918,7 +3079,7 @@ def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBo
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oConsoleAddEncryptionPasswordRequestBody: 
+    :param oConsoleAddEncryptionPasswordRequestBody:
     :type oConsoleAddEncryptionPasswordRequestBody: dict | bytes
 
     :rtype: None
@@ -2933,7 +3094,7 @@ def i_console_addencryptionpasswords(vmid, oConsoleAddEncryptionPasswordsRequest
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oConsoleAddEncryptionPasswordsRequestBody: 
+    :param oConsoleAddEncryptionPasswordsRequestBody:
     :type oConsoleAddEncryptionPasswordsRequestBody: dict | bytes
 
     :rtype: None
@@ -2961,7 +3122,7 @@ def i_console_createsharedfolder(vmid, oConsoleCreateSharedFolderRequestBody):  
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oConsoleCreateSharedFolderRequestBody: 
+    :param oConsoleCreateSharedFolderRequestBody:
     :type oConsoleCreateSharedFolderRequestBody: dict | bytes
 
     :rtype: None
@@ -2976,7 +3137,7 @@ def i_console_removeencryptionpassword(vmid, id=None):  # noqa: E501
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param id: 
+    :param id:
     :type id: str
 
     :rtype: None
@@ -2991,7 +3152,7 @@ def i_console_removesharedfolder(vmid, name=None):  # noqa: E501
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param name: 
+    :param name:
     :type name: str
 
     :rtype: None
@@ -3006,7 +3167,7 @@ def i_machine_addstoragecontroller(vmid, oMachineAddStorageControllerRequestBody
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachineAddStorageControllerRequestBody: 
+    :param oMachineAddStorageControllerRequestBody:
     :type oMachineAddStorageControllerRequestBody: dict | bytes
 
     :rtype: StorageControllerResponse
@@ -3021,7 +3182,7 @@ def i_machine_addusbcontroller(vmid, oMachineAddUSBControllerRequestBody):  # no
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachineAddUSBControllerRequestBody: 
+    :param oMachineAddUSBControllerRequestBody:
     :type oMachineAddUSBControllerRequestBody: dict | bytes
 
     :rtype: USBControllerResponse
@@ -3036,7 +3197,7 @@ def i_machine_applydefaults(vmid, flags=None):  # noqa: E501
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param flags: 
+    :param flags:
     :type flags: str
 
     :rtype: None
@@ -3051,7 +3212,7 @@ def i_machine_attachdevicewithoutmedium(vmid, oMachineAttachDeviceWithoutMediumR
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachineAttachDeviceWithoutMediumRequestBody: 
+    :param oMachineAttachDeviceWithoutMediumRequestBody:
     :type oMachineAttachDeviceWithoutMediumRequestBody: dict | bytes
 
     :rtype: None
@@ -3066,7 +3227,7 @@ def i_machine_attachhostpcidevice(vmid, oMachineAttachHostPCIDeviceRequestBody):
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachineAttachHostPCIDeviceRequestBody: 
+    :param oMachineAttachHostPCIDeviceRequestBody:
     :type oMachineAttachHostPCIDeviceRequestBody: dict | bytes
 
     :rtype: None
@@ -3081,7 +3242,7 @@ def i_machine_detachhostpcidevice(vmid, hostAddress=None):  # noqa: E501
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param hostAddress: 
+    :param hostAddress:
     :type hostAddress: int
 
     :rtype: None
@@ -3096,7 +3257,7 @@ def i_machine_discardsavedstate(vmid, fRemoveFile=None):  # noqa: E501
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param fRemoveFile: 
+    :param fRemoveFile:
     :type fRemoveFile: bool
 
     :rtype: None
@@ -3124,7 +3285,7 @@ def i_machine_exportto(vmid, oMachineExportToRequestBody):  # noqa: E501
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachineExportToRequestBody: 
+    :param oMachineExportToRequestBody:
     :type oMachineExportToRequestBody: dict | bytes
 
     :rtype: VirtualSystemDescriptionResponse
@@ -3156,7 +3317,7 @@ def i_machine_getstoragecontrollerbyinstance(vmid, select=None, connectionType=N
     :type select: str
     :param connectionType: For the possible values of enumeration look into #/definitions/StorageBus
     :type connectionType: str
-    :param instance: 
+    :param instance:
     :type instance: int
 
     :rtype: StorageControllerResponse1
@@ -3173,7 +3334,7 @@ def i_machine_getstoragecontrollerbyname(vmid, select=None, name=None):  # noqa:
     :type vmid: str
     :param select: The object attributes separated by comma
     :type select: str
-    :param name: 
+    :param name:
     :type name: str
 
     :rtype: StorageControllerResponse1
@@ -3190,7 +3351,7 @@ def i_machine_getusbcontrollerbyname(vmid, select=None, name=None):  # noqa: E50
     :type vmid: str
     :param select: The object attributes separated by comma
     :type select: str
-    :param name: 
+    :param name:
     :type name: str
 
     :rtype: USBControllerResponse
@@ -3220,7 +3381,7 @@ def i_machine_lockmachine(vmid, oMachineLockMachineRequestBody):  # noqa: E501
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachineLockMachineRequestBody: 
+    :param oMachineLockMachineRequestBody:
     :type oMachineLockMachineRequestBody: dict | bytes
 
     :rtype: None
@@ -3236,7 +3397,7 @@ def i_machine_passthroughdevice(vmid, oMachinePassthroughDeviceRequestBody):  # 
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachinePassthroughDeviceRequestBody: 
+    :param oMachinePassthroughDeviceRequestBody:
     :type oMachinePassthroughDeviceRequestBody: dict | bytes
 
     :rtype: None
@@ -3251,7 +3412,7 @@ def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody):
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachineNonRotationalDeviceRequestBody: 
+    :param oMachineNonRotationalDeviceRequestBody:
     :type oMachineNonRotationalDeviceRequestBody: dict | bytes
 
     :rtype: None
@@ -3266,7 +3427,7 @@ def i_machine_removestoragecontroller(vmid, name=None):  # noqa: E501
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param name: 
+    :param name:
     :type name: str
 
     :rtype: None
@@ -3281,7 +3442,7 @@ def i_machine_removeusbcontroller(vmid, name=None):  # noqa: E501
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param name: 
+    :param name:
     :type name: str
 
     :rtype: None
@@ -3296,7 +3457,7 @@ def i_machine_setautodiscardfordevice(vmid, oMachineSetAutoDiscardForDeviceReque
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachineSetAutoDiscardForDeviceRequestBody: 
+    :param oMachineSetAutoDiscardForDeviceRequestBody:
     :type oMachineSetAutoDiscardForDeviceRequestBody: dict | bytes
 
     :rtype: None
@@ -3311,7 +3472,7 @@ def i_machine_setbandwidthgroupfordevice(vmid, oMachineSetBandwidthGroupForDevic
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachineSetBandwidthGroupForDeviceRequestBody: 
+    :param oMachineSetBandwidthGroupForDeviceRequestBody:
     :type oMachineSetBandwidthGroupForDeviceRequestBody: dict | bytes
 
     :rtype: None
@@ -3326,7 +3487,7 @@ def i_machine_sethotpluggablefordevice(vmid, oMachineSetHotPluggableForDeviceReq
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachineSetHotPluggableForDeviceRequestBody: 
+    :param oMachineSetHotPluggableForDeviceRequestBody:
     :type oMachineSetHotPluggableForDeviceRequestBody: dict | bytes
 
     :rtype: None
@@ -3341,7 +3502,7 @@ def i_machine_setnobandwidthgroupfordevice(vmid, oMachineSetNoBandwidthGroupForD
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachineSetNoBandwidthGroupForDeviceRequestBody: 
+    :param oMachineSetNoBandwidthGroupForDeviceRequestBody:
     :type oMachineSetNoBandwidthGroupForDeviceRequestBody: dict | bytes
 
     :rtype: None
@@ -3356,7 +3517,7 @@ def i_machine_setsettingsfilepath(vmid, settingsFilePath=None):  # noqa: E501
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param settingsFilePath: 
+    :param settingsFilePath:
     :type settingsFilePath: str
 
     :rtype: ProgressResponse
@@ -3371,7 +3532,7 @@ def i_machine_setstoragecontrollerbootable(vmid, oMachineSetStorageControllerBoo
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachineSetStorageControllerBootableRequestBody: 
+    :param oMachineSetStorageControllerBootableRequestBody:
     :type oMachineSetStorageControllerBootableRequestBody: dict | bytes
 
     :rtype: None
@@ -3386,7 +3547,7 @@ def i_machine_temporaryejectdevice(vmid, oMachineTemporaryEjectDeviceRequestBody
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oMachineTemporaryEjectDeviceRequestBody: 
+    :param oMachineTemporaryEjectDeviceRequestBody:
     :type oMachineTemporaryEjectDeviceRequestBody: dict | bytes
 
     :rtype: None
@@ -3401,7 +3562,7 @@ def i_virtualbox_openmachine(vmid, oVirtualBoxOpenMachineRequestBody):  # noqa: 
 
     :param vmid: The Id of vm
     :type vmid: str
-    :param oVirtualBoxOpenMachineRequestBody: 
+    :param oVirtualBoxOpenMachineRequestBody:
     :type oVirtualBoxOpenMachineRequestBody: dict | bytes
 
     :rtype: MachineResponse
