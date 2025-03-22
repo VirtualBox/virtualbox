@@ -130,7 +130,7 @@ If all is correct you will see the home page with Swagger UI displaying VBox RES
 Valery Portnyagin - valery.portnyagin@oracle.com
 
 ## License
-[UPL 1.0 licence](https://oss.oracle.com/licenses/upl/)
+Released under the Universal Permissive License v1.0 as shown at [UPL 1.0 licence](https://oss.oracle.com/licenses/upl/).
 
 ## Project status
 Active
