@@ -25,6 +25,7 @@ from vbox_server.models.parallel_port import ParallelPort
 from vbox_server.models.snapshot import Snapshot
 from vbox_server.models.platform_properties import PlatformProperties
 from vbox_server.models.network_adapter import NetworkAdapter
+from vbox_server.models.storage_controller import StorageController
 from vbox_server.models.guest_os_type import GuestOSType
 from vbox_server.models.nat_engine import NATEngine
 
@@ -4417,3 +4418,167 @@ def i_fill_partial_network_adapter(oVBoxNetworkAdapter, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oNetworkAdapter
+
+def i_fill_storage_controller(oVBoxStorageController, select=None):
+  """Convert the passed VirtualBox object oVBoxStorageController with interface IStorageController into Swagger object oStorageController"""
+  logging.info('Enter function ')
+  oStorageController = StorageController()
+  try:
+    if oVBoxStorageController is not None:
+      if select is not None and len(select)>0:
+        oStorageController = i_fill_partial_storage_controller(oVBoxStorageController, select)
+      else:
+        oStorageController = i_fill_whole_storage_controller(oVBoxStorageController)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oStorageController = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxStorageController into Swagger object oStorageController. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oStorageController
+
+def i_fill_whole_storage_controller(oVBoxStorageController):
+  logging.info('Enter function ')
+  oStorageController = StorageController()
+  try:
+    if oVBoxStorageController is not None:
+      try:
+        oStorageController.name = oVBoxStorageController.name
+      except Exception as e:
+        logging.info('Error getting the attribute "name"')
+      try:
+        oStorageController.max_devices_per_port_count = oVBoxStorageController.maxDevicesPerPortCount
+      except Exception as e:
+        logging.info('Error getting the attribute "maxDevicesPerPortCount"')
+      try:
+        oStorageController.min_port_count = oVBoxStorageController.minPortCount
+      except Exception as e:
+        logging.info('Error getting the attribute "minPortCount"')
+      try:
+        oStorageController.max_port_count = oVBoxStorageController.maxPortCount
+      except Exception as e:
+        logging.info('Error getting the attribute "maxPortCount"')
+      try:
+        oStorageController.instance = oVBoxStorageController.instance
+      except Exception as e:
+        logging.info('Error getting the attribute "instance"')
+      try:
+        oStorageController.port_count = oVBoxStorageController.portCount
+      except Exception as e:
+        logging.info('Error getting the attribute "portCount"')
+      try:
+        oStorageController.bus = ctx[ 'global'].getEnumValueName('StorageBus', oVBoxStorageController.bus)
+      except Exception as e:
+        logging.info('Error getting the attribute "bus"')
+      try:
+        oStorageController.controller_type = ctx[ 'global'].getEnumValueName('StorageControllerType', oVBoxStorageController.controllerType)
+      except Exception as e:
+        logging.info('Error getting the attribute "controllerType"')
+      try:
+        oStorageController.use_host_io_cache = oVBoxStorageController.useHostIOCache
+      except Exception as e:
+        logging.info('Error getting the attribute "useHostIOCache"')
+      try:
+        oStorageController.bootable = oVBoxStorageController.bootable
+      except Exception as e:
+        logging.info('Error getting the attribute "bootable"')
+
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oStorageController = None
+    text = 'Exception trying to fill the object oStorageController. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oStorageController
+
+def i_fill_partial_storage_controller(oVBoxStorageController, select):
+  logging.info('Enter function ')
+  oStorageController = StorageController()
+  try:
+    if oVBoxStorageController is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='name':
+            try:
+              oStorageController.name = oVBoxStorageController.name
+            except Exception as e:
+              logging.info('Error getting the attribute "name"')
+              raise Exception('Error getting the attribute "name"')
+
+          if currAttr=='maxDevicesPerPortCount':
+            try:
+              oStorageController.max_devices_per_port_count = oVBoxStorageController.maxDevicesPerPortCount
+            except Exception as e:
+              logging.info('Error getting the attribute "maxDevicesPerPortCount"')
+              raise Exception('Error getting the attribute "maxDevicesPerPortCount"')
+
+          if currAttr=='minPortCount':
+            try:
+              oStorageController.min_port_count = oVBoxStorageController.minPortCount
+            except Exception as e:
+              logging.info('Error getting the attribute "minPortCount"')
+              raise Exception('Error getting the attribute "minPortCount"')
+
+          if currAttr=='maxPortCount':
+            try:
+              oStorageController.max_port_count = oVBoxStorageController.maxPortCount
+            except Exception as e:
+              logging.info('Error getting the attribute "maxPortCount"')
+              raise Exception('Error getting the attribute "maxPortCount"')
+
+          if currAttr=='instance':
+            try:
+              oStorageController.instance = oVBoxStorageController.instance
+            except Exception as e:
+              logging.info('Error getting the attribute "instance"')
+              raise Exception('Error getting the attribute "instance"')
+
+          if currAttr=='portCount':
+            try:
+              oStorageController.port_count = oVBoxStorageController.portCount
+            except Exception as e:
+              logging.info('Error getting the attribute "portCount"')
+              raise Exception('Error getting the attribute "portCount"')
+
+          if currAttr=='bus':
+            try:
+              oStorageController.bus = ctx[ 'global'].getEnumValueName('StorageBus', oVBoxStorageController.bus)
+            except Exception as e:
+              logging.info('Error getting the attribute "bus"')
+              raise Exception('Error getting the array of "bus"')
+
+          if currAttr=='controllerType':
+            try:
+              oStorageController.controller_type = ctx[ 'global'].getEnumValueName('StorageControllerType', oVBoxStorageController.controllerType)
+            except Exception as e:
+              logging.info('Error getting the attribute "controllerType"')
+              raise Exception('Error getting the array of "controllerType"')
+
+          if currAttr=='useHostIOCache':
+            try:
+              oStorageController.use_host_io_cache = oVBoxStorageController.useHostIOCache
+            except Exception as e:
+              logging.info('Error getting the attribute "useHostIOCache"')
+              raise Exception('Error getting the attribute "useHostIOCache"')
+
+          if currAttr=='bootable':
+            try:
+              oStorageController.bootable = oVBoxStorageController.bootable
+            except Exception as e:
+              logging.info('Error getting the attribute "bootable"')
+              raise Exception('Error getting the attribute "bootable"')
+            
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oStorageController = None
+    text = 'Exception trying to fill the object oStorageController. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oStorageController
