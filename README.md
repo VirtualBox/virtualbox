@@ -125,6 +125,16 @@ If all is correct you will see the home page with Swagger UI displaying VBox RES
 
 ![Example: VirtualBox Swagger UI page](assets/home_page_example.png)
 ## Roadmap
+- add https support
+- add authentications - JWT, OAuth2, OpenID
+- improve endpoints. Make them more natural in REST terms.
+- make the test suite using Postman
+- documentation: setup gunicorn, work from within internal network
+- add CI/CD pipeline with GitHub Actions
+- add Docker support
+- add OpenAPI support
+- invent vbox-cli tool on Python
+- WEB application aka GUI VirtualBox (usability). Work within web browser.
 
 ## Authors and acknowledgment
 Valery Portnyagin - valery.portnyagin@oracle.com
