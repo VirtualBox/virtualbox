@@ -3080,6 +3080,55 @@ def i_machine_getstoragecontrollerbyinstance(vmid, select=None, connectionType=N
     return response, httpCode
 
 
+@sessionDecorator
+def i_machine_attachdevicewithoutmedium(vmid, oMachineAttachDeviceWithoutMediumRequestBody: MachineAttachDeviceWithoutMediumRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::attachDeviceWithoutMedium
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineAttachDeviceWithoutMediumRequestBody: 
+    :type oMachineAttachDeviceWithoutMediumRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oSession = var_args_tuple[1]
+
+    o = oMachineAttachDeviceWithoutMediumRequestBody
+    print(o)
+    name = o.name
+    controllerPort = o.controller_port
+    device = o.device
+
+    try:
+        type = swagger_to_vbox_device_type(o.type)
+
+        if type != ctx['const'].DeviceType_Floppy and type != ctx['const'].DeviceType_DVD:
+            logging.info("VBox REST API doesn't support the type %s for this operation" % (o.type))
+            httpCode = HTTPStatus.PRECONDITION_FAILED
+            oError = Error(httpCode, "VBox REST API doesn't support the type %s for this operation" % (o.type))
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is None:
+        oCurrMachine = oSession.machine
+        try:
+            oCurrMachine.attachDeviceWithoutMedium(name, controllerPort, device, type)
+            oCurrMachine.saveSettings()
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else "The device %s with the type %s has been successfully attached" % (o.name, o.type))
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -3207,21 +3256,6 @@ def i_machine_applydefaults(vmid, flags=None):  # noqa: E501
     :type vmid: str
     :param flags:
     :type flags: str
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_attachdevicewithoutmedium(vmid, oMachineAttachDeviceWithoutMediumRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::attachDeviceWithoutMedium
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineAttachDeviceWithoutMediumRequestBody:
-    :type oMachineAttachDeviceWithoutMediumRequestBody: dict | bytes
 
     :rtype: None
     """
