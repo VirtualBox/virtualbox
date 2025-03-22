@@ -84,11 +84,12 @@ from vbox_server.models.machine_getguestpropertytimestamp_response import Machin
 from vbox_server.models.machine_set_guest_property_value_request_body import MachineSetGuestPropertyValueRequestBody  # noqa: E501
 from vbox_server.models.machine_add_storage_controller_request_body import MachineAddStorageControllerRequestBody  # noqa: E501
 from vbox_server.models.machine_attach_device_without_medium_request_body import MachineAttachDeviceWithoutMediumRequestBody  # noqa: E501
+from vbox_server.models.machine_set_storage_controller_bootable_request_body import MachineSetStorageControllerBootableRequestBody  # noqa: E501
+from vbox_server.models.console_create_shared_folder_request_body import ConsoleCreateSharedFolderRequestBody  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
 from vbox_server.models.console_add_encryption_passwords_request_body import ConsoleAddEncryptionPasswordsRequestBody  # noqa: E501
-from vbox_server.models.console_create_shared_folder_request_body import ConsoleCreateSharedFolderRequestBody  # noqa: E501
 from vbox_server.models.machine_add_usb_controller_request_body import MachineAddUSBControllerRequestBody  # noqa: E501
 from vbox_server.models.machine_attach_host_pci_device_request_body import MachineAttachHostPCIDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_delete_snapshot_range_request_body import MachineDeleteSnapshotRangeRequestBody  # noqa: E501
@@ -100,7 +101,6 @@ from vbox_server.models.machine_set_auto_discard_for_device_request_body import 
 from vbox_server.models.machine_set_bandwidth_group_for_device_request_body import MachineSetBandwidthGroupForDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_set_hot_pluggable_for_device_request_body import MachineSetHotPluggableForDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_set_no_bandwidth_group_for_device_request_body import MachineSetNoBandwidthGroupForDeviceRequestBody  # noqa: E501
-from vbox_server.models.machine_set_storage_controller_bootable_request_body import MachineSetStorageControllerBootableRequestBody  # noqa: E501
 from vbox_server.models.machine_temporary_eject_device_request_body import MachineTemporaryEjectDeviceRequestBody  # noqa: E501
 from vbox_server.models.virtual_box_open_machine_request_body import VirtualBoxOpenMachineRequestBody  
 
@@ -3081,6 +3081,49 @@ def i_machine_getstoragecontrollerbyinstance(vmid, select=None, connectionType=N
 
 
 @sessionDecorator
+def i_machine_setstoragecontrollerbootable(vmid, oMachineSetStorageControllerBootableRequestBody: MachineSetStorageControllerBootableRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::setStorageControllerBootable
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetStorageControllerBootableRequestBody: 
+    :type oMachineSetStorageControllerBootableRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    o = oMachineSetStorageControllerBootableRequestBody
+    name = o.name
+    fBootable = o.bootable
+
+    try:
+        oCurrMachine.setStorageControllerBootable(name, fBootable)
+        oCurrMachine.saveSettings()
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    try:
+        response = jsonify(oError if oError is not None 
+                            else "The bootable flag for controller named %s has been successfully set to %s" % (name, fBootable))
+    except Exception as e:
+        if oError is None:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            response = jsonify("The action was successful. But an exception occurred while composing the response.")
+
+    return response, httpCode
+
+
+@sessionDecorator
 def i_machine_attachdevicewithoutmedium(vmid, oMachineAttachDeviceWithoutMediumRequestBody: MachineAttachDeviceWithoutMediumRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::attachDeviceWithoutMedium
@@ -3562,21 +3605,6 @@ def i_machine_setsettingsfilepath(vmid, settingsFilePath=None):  # noqa: E501
     :type settingsFilePath: str
 
     :rtype: ProgressResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_setstoragecontrollerbootable(vmid, oMachineSetStorageControllerBootableRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::setStorageControllerBootable
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineSetStorageControllerBootableRequestBody:
-    :type oMachineSetStorageControllerBootableRequestBody: dict | bytes
-
-    :rtype: None
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
