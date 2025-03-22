@@ -3283,21 +3283,6 @@ def i_console_removeencryptionpassword(vmid, id=None):  # noqa: E501
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_machine_addstoragecontroller(vmid, oMachineAddStorageControllerRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::addStorageController
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineAddStorageControllerRequestBody:
-    :type oMachineAddStorageControllerRequestBody: dict | bytes
-
-    :rtype: StorageControllerResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
 def i_machine_addusbcontroller(vmid, oMachineAddUSBControllerRequestBody):  # noqa: E501
     """
     Call interface method IMachine::addUSBController
@@ -3414,42 +3399,6 @@ def i_machine_geteffectiveparavirtprovider(vmid):  # noqa: E501
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_machine_getstoragecontrollerbyinstance(vmid, select=None, connectionType=None, instance=None):  # noqa: E501
-    """
-    Call interface method IMachine::getStorageControllerByInstance
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param connectionType: For the possible values of enumeration look into #/definitions/StorageBus
-    :type connectionType: str
-    :param instance:
-    :type instance: int
-
-    :rtype: StorageControllerResponse1
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_getstoragecontrollerbyname(vmid, select=None, name=None):  # noqa: E501
-    """
-    Call interface method IMachine::getStorageControllerByName
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param name:
-    :type name: str
-
-    :rtype: StorageControllerResponse1
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
 def i_machine_getusbcontrollerbyname(vmid, select=None, name=None):  # noqa: E501
     """
     Call interface method IMachine::getUSBControllerByName
@@ -3521,21 +3470,6 @@ def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody):
     :type vmid: str
     :param oMachineNonRotationalDeviceRequestBody:
     :type oMachineNonRotationalDeviceRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_removestoragecontroller(vmid, name=None):  # noqa: E501
-    """
-    Call interface method IMachine::removeStorageController
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param name:
-    :type name: str
 
     :rtype: None
     """
