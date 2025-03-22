@@ -3129,6 +3129,101 @@ def i_machine_attachdevicewithoutmedium(vmid, oMachineAttachDeviceWithoutMediumR
     return response, httpCode
 
 
+@sessionDecorator
+def i_console_createsharedfolder(vmid, oConsoleCreateSharedFolderRequestBody: ConsoleCreateSharedFolderRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IConsole::createSharedFolder
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oConsoleCreateSharedFolderRequestBody: 
+    :type oConsoleCreateSharedFolderRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    oVM = var_args_tuple[0]
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+    oConsole = oSession.console
+
+    o = oConsoleCreateSharedFolderRequestBody
+    name = o.name
+    hostPath = o.host_path
+    fWritable = o.writable
+    fAutomount = o.automount
+    autoMountPoint = o.auto_mount_point
+
+    logging.info("Try to create the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    for sf in ctx['global'].getArray(oVM, 'sharedFolders'):
+        if sf.name == name:
+            logging.info("The shared folder with the name %s exists" % (name))
+            httpCode = HTTPStatus.PRECONDITION_FAILED
+            oError = Error(httpCode, "The shared folder with the name %s exists" % (name))
+            break
+
+    if oError is None:
+        try:
+            # No return result check
+            oConsole.createSharedFolder(name, hostPath, fWritable, fAutomount, autoMountPoint)
+            logging.info("Created the shared folder %s" % (name))
+
+            #Don't forget to save
+            oCurrMachine.saveSettings()
+
+        except Exception as e:
+            logging.info("Exception during creation the shared folder %s" % (name))
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else "Successfully created the shared folder")
+    return response, httpCode
+
+
+@sessionDecorator
+def i_console_removesharedfolder(vmid, name=None, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IConsole::removeSharedFolder
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param name: 
+    :type name: str
+
+    :rtype: None
+    """
+
+    oVM = var_args_tuple[0]
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+    oConsole = oSession.console
+
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    logging.info("Try to remove the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
+
+    try:
+        # No return result check.
+        # removeSharedFolder returns None instead of the result S_OK.
+        oConsole.removeSharedFolder(name)
+        logging.info("Removed the shared folder %s" % (name))
+
+        #Don't forget to save
+        oCurrMachine.saveSettings()
+    except Exception as e:
+        logging.info("Exception during removing the shared folder %s" % (name))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else "Successfully removed the shared folder")
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -3173,21 +3268,6 @@ def i_console_clearallencryptionpasswords(vmid):  # noqa: E501
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_console_createsharedfolder(vmid, oConsoleCreateSharedFolderRequestBody):  # noqa: E501
-    """
-    Call interface method IConsole::createSharedFolder
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oConsoleCreateSharedFolderRequestBody:
-    :type oConsoleCreateSharedFolderRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
 def i_console_removeencryptionpassword(vmid, id=None):  # noqa: E501
     """
     Call interface method IConsole::removeEncryptionPassword
@@ -3196,21 +3276,6 @@ def i_console_removeencryptionpassword(vmid, id=None):  # noqa: E501
     :type vmid: str
     :param id:
     :type id: str
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_console_removesharedfolder(vmid, name=None):  # noqa: E501
-    """
-    Call interface method IConsole::removeSharedFolder
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param name:
-    :type name: str
 
     :rtype: None
     """
