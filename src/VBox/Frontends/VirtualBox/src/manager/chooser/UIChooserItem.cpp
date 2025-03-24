@@ -1,4 +1,4 @@
-/* $Id: UIChooserItem.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIChooserItem.cpp 108918 2025-03-24 16:07:18Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIChooserItem class definition.
  */
@@ -225,8 +225,8 @@ void UIChooserDisabledItemEffect::draw(QPainter *pPainter)
     pixmap.convertFromImage(UIImageTools::toGray(resultImage));
     QWidget *pParentWidget = qobject_cast<QWidget*>(parent());
     pixmap.setDevicePixelRatio(  pParentWidget
-                               ? UIDesktopWidgetWatchdog::devicePixelRatioActual(pParentWidget)
-                               : UIDesktopWidgetWatchdog::devicePixelRatioActual());
+                               ? UIDesktopWidgetWatchdog::devicePixelRatio(pParentWidget)
+                               : UIDesktopWidgetWatchdog::devicePixelRatio());
     /* Use the filtered pixmap: */
     pPainter->drawPixmap(offset, pixmap);
 }

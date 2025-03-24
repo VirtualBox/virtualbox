@@ -1,4 +1,4 @@
-/* $Id: UIMachineViewScale.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIMachineViewScale.cpp 108918 2025-03-24 16:07:18Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineViewScale class implementation.
  */
@@ -55,12 +55,10 @@ void UIMachineViewScale::sltPerformGuestScale()
 {
     /* Assign new frame-buffer logical-size: */
     QSize scaledSize = size();
-    const double dDevicePixelRatioFormal = frameBuffer()->devicePixelRatio();
-    const double dDevicePixelRatioActual = frameBuffer()->devicePixelRatioActual();
     const bool fUseUnscaledHiDPIOutput = frameBuffer()->useUnscaledHiDPIOutput();
-    scaledSize *= dDevicePixelRatioFormal;
-    if (!fUseUnscaledHiDPIOutput)
-        scaledSize /= dDevicePixelRatioActual;
+    const double dDevicePixelRatio = frameBuffer()->devicePixelRatio();
+    if (fUseUnscaledHiDPIOutput)
+        scaledSize *= dDevicePixelRatio;
     frameBuffer()->setScaledSize(scaledSize);
     frameBuffer()->performRescale();
 
@@ -80,8 +78,8 @@ void UIMachineViewScale::sltPerformGuestScale()
             // not 3D overlay itself, so for auto scale-up mode we have to take that into account.
             if (!fUseUnscaledHiDPIOutput)
             {
-                xScaleFactor *= dDevicePixelRatioActual;
-                yScaleFactor *= dDevicePixelRatioActual;
+                xScaleFactor *= dDevicePixelRatio;
+                yScaleFactor *= dDevicePixelRatio;
             }
 #endif /* VBOX_WS_WIN || VBOX_WS_NIX */
             uimachine()->notifyScaleFactorChange(m_uScreenId,
@@ -124,7 +122,6 @@ void UIMachineViewScale::applyMachineViewScaleFactor()
 {
     /* If scaled-size is valid: */
     const QSize scaledSize = frameBuffer()->scaledSize();
-    const double dDevicePixelRatioActual = frameBuffer()->devicePixelRatioActual(); Q_UNUSED(dDevicePixelRatioActual);
     const bool fUseUnscaledHiDPIOutput = frameBuffer()->useUnscaledHiDPIOutput();
     if (scaledSize.isValid())
     {
@@ -141,8 +138,9 @@ void UIMachineViewScale::applyMachineViewScaleFactor()
             // not 3D overlay itself, so for auto scale-up mode we have to take that into account.
             if (!fUseUnscaledHiDPIOutput)
             {
-                xScaleFactor *= dDevicePixelRatioActual;
-                yScaleFactor *= dDevicePixelRatioActual;
+                const double dDevicePixelRatio = frameBuffer()->devicePixelRatio();
+                xScaleFactor *= dDevicePixelRatio;
+                yScaleFactor *= dDevicePixelRatio;
             }
 #endif /* VBOX_WS_WIN || VBOX_WS_NIX */
             uimachine()->notifyScaleFactorChange(m_uScreenId,

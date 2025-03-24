@@ -1,4 +1,4 @@
-/* $Id: UIDesktopWidgetWatchdog.cpp 108917 2025-03-24 15:53:56Z sergey.dubov@oracle.com $ */
+/* $Id: UIDesktopWidgetWatchdog.cpp 108918 2025-03-24 16:07:18Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIDesktopWidgetWatchdog class implementation.
  */
@@ -484,48 +484,6 @@ double UIDesktopWidgetWatchdog::devicePixelRatio(QWidget *pWidget)
 {
     /* Redirect call to wrapper above: */
     return devicePixelRatio(screenNumber(pWidget));
-}
-
-/* static */
-double UIDesktopWidgetWatchdog::devicePixelRatioActual(int iHostScreenIndex /* = -1 */)
-{
-    /* First, we should check whether the screen is valid: */
-    QScreen *pScreen = 0;
-    if (iHostScreenIndex == -1)
-    {
-        pScreen = QGuiApplication::primaryScreen();
-        iHostScreenIndex = QGuiApplication::screens().indexOf(pScreen);
-    }
-    else
-        pScreen = QGuiApplication::screens().value(iHostScreenIndex);
-    AssertPtrReturn(pScreen, 1.0);
-
-#ifdef VBOX_WS_WIN
-    /* Enumerate available monitors through EnumDisplayMonitors if GetDpiForMonitor is available: */
-    if (ResolveDynamicImports())
-    {
-        QList<QPair<int, int> > listOfScreenDPI;
-        EnumDisplayMonitors(0, 0, MonitorEnumProcF, (LPARAM)&listOfScreenDPI);
-        if (iHostScreenIndex >= 0 && iHostScreenIndex < listOfScreenDPI.size())
-        {
-            const QPair<int, int> dpiPair = listOfScreenDPI.at(iHostScreenIndex);
-            if (dpiPair.first > 0)
-                return (double)dpiPair.first / 96 /* dpi unawarness value */;
-        }
-    }
-#else /* !VBOX_WS_WIN */
-    Q_UNUSED(iHostScreenIndex);
-#endif /* !VBOX_WS_WIN */
-
-    /* Then acquire device-pixel-ratio: */
-    return pScreen->devicePixelRatio();
-}
-
-/* static */
-double UIDesktopWidgetWatchdog::devicePixelRatioActual(QWidget *pWidget)
-{
-    /* Redirect call to wrapper above: */
-    return devicePixelRatioActual(screenNumber(pWidget));
 }
 
 /* static */
