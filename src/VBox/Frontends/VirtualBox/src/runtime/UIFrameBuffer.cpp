@@ -1,4 +1,4 @@
-/* $Id: UIFrameBuffer.cpp 108920 2025-03-24 16:24:14Z sergey.dubov@oracle.com $ */
+/* $Id: UIFrameBuffer.cpp 108921 2025-03-24 16:28:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIFrameBuffer class implementation.
  */
@@ -142,7 +142,10 @@ public:
     /** Returns device-pixel-ratio set for HiDPI frame-buffer. */
     double devicePixelRatio() const { return m_dDevicePixelRatio; }
     /** Defines device-pixel-ratio set for HiDPI frame-buffer. */
-    void setDevicePixelRatio(double dDevicePixelRatio) { m_dDevicePixelRatio = dDevicePixelRatio; }
+    void setDevicePixelRatio(double dDevicePixelRatio);
+
+    /** Returns smallest device-pixel-ratio denominator. */
+    int smallestDenominator() const { return m_iSmallestDenominator; }
 
     /** Returns whether frame-buffer should use unscaled HiDPI output. */
     bool useUnscaledHiDPIOutput() const { return m_fUseUnscaledHiDPIOutput; }
@@ -287,8 +290,8 @@ protected:
 
     /** Finds greatest common divisor for @a a and @a b. */
     static int greatestCommonDivisor(int a, int b);
-    /** Finds multiple of @a fScaleFactor which is @a fLarger than @a iNumber. */
-    static int findMultipleOfScaleFactor(double fScaleFactor, int iNumber, bool fLarger);
+    /** Rounds passed iNumber up to @a iNearest @a fUp. */
+    static int roundNumberUpToNearest(int iNumber, int iNearest, bool fUp);
 
     /** Holds the screen-id. */
     ulong m_uScreenId;
@@ -358,6 +361,8 @@ protected:
      * @{ */
     /** Holds device-pixel-ratio set for HiDPI frame-buffer. */
     double  m_dDevicePixelRatio;
+    /** Holds the smallest device-pixel-ratio denominator. */
+    int     m_iSmallestDenominator;
     /** Holds whether frame-buffer should use unscaled HiDPI output. */
     bool    m_fUseUnscaledHiDPIOutput;
     /** @} */
@@ -392,6 +397,7 @@ UIFrameBufferPrivate::UIFrameBufferPrivate()
     , m_dScaleFactor(1.0)
     , m_enmScalingOptimizationType(ScalingOptimizationType_None)
     , m_dDevicePixelRatio(1.0)
+    , m_iSmallestDenominator(-1)
     , m_fUseUnscaledHiDPIOutput(false)
 {
     LogRel2(("GUI: UIFrameBufferPrivate::UIFrameBufferPrivate %p\n", this));
@@ -481,6 +487,30 @@ void UIFrameBufferPrivate::setMarkAsUnused(bool fUnused)
     lock();
     m_fUnused = fUnused;
     unlock();
+}
+
+void UIFrameBufferPrivate::setDevicePixelRatio(double dDevicePixelRatio)
+{
+    /* Make sure something changed: */
+    if (devicePixelRatio() == dDevicePixelRatio)
+        return;
+
+    /* Cache device-pixel-ratio (dpr): */
+    m_dDevicePixelRatio = dDevicePixelRatio;
+
+    /* For 100% host OS scale-factor we don't need denominator: */
+    if (devicePixelRatio() == 1.0)
+        m_iSmallestDenominator = -1;
+    else
+    {
+        /* Recalculate smallest dpr denominator: */
+        const int iDenominator = 100; // precision, cause scale-factor is percentage
+        const int iNumerator = static_cast<int>(devicePixelRatio() * iDenominator);
+        const int iGreatestCommonDivisor = greatestCommonDivisor(iNumerator, iDenominator);
+        /* We need smallest denominator after all: */
+        m_iSmallestDenominator = iDenominator / iGreatestCommonDivisor;
+    }
+    //printf("m_iSmallestDenominator = %d\n", m_iSmallestDenominator);
 }
 
 HRESULT UIFrameBufferPrivate::FinalConstruct()
@@ -1266,12 +1296,12 @@ void UIFrameBufferPrivate::paintDefault(QPaintEvent *pEvent)
     /* Prepare the base and hidpi paint rectangles: */
     QRect paintRect = pEvent->rect();
     /* Adjust original rectangle the way that it can be fractionally upscaled to int values: */
-    if (devicePixelRatio() != 1.0)
+    if (smallestDenominator() != -1)
     {
-        paintRect.setLeft(findMultipleOfScaleFactor(devicePixelRatio(), paintRect.left(), false));
-        paintRect.setTop(findMultipleOfScaleFactor(devicePixelRatio(), paintRect.top(), false));
-        paintRect.setWidth(findMultipleOfScaleFactor(devicePixelRatio(), paintRect.width(), true));
-        paintRect.setHeight(findMultipleOfScaleFactor(devicePixelRatio(), paintRect.height(), true));
+        paintRect.setLeft(roundNumberUpToNearest(paintRect.left(), smallestDenominator(), false /* up */));
+        paintRect.setTop(roundNumberUpToNearest(paintRect.top(), smallestDenominator(), false /* up */));
+        paintRect.setWidth(roundNumberUpToNearest(paintRect.width(), smallestDenominator(), true /* up */));
+        paintRect.setHeight(roundNumberUpToNearest(paintRect.height(), smallestDenominator(), true /* up */));
     }
     QRect paintRectHiDPI = paintRect;
 
@@ -1445,21 +1475,13 @@ int UIFrameBufferPrivate::greatestCommonDivisor(int a, int b)
 }
 
 /* static */
-int UIFrameBufferPrivate::findMultipleOfScaleFactor(double fScaleFactor, int iNumber, bool fLarger)
+int UIFrameBufferPrivate::roundNumberUpToNearest(int iNumber, int iNearest, bool fUp)
 {
-    /* Approximate scale-factor as a fraction: */
-    int iDenominator = 100; // precision, scale-factor is percentage
-    int iNumerator = static_cast<int>(fScaleFactor * iDenominator);
-    int iCommonDivisor = greatestCommonDivisor(iNumerator, iDenominator);
-    /* We need smallest denominator after all: */
-    iDenominator /= iCommonDivisor;
-
-    /* Find the largest/smallest multiple
-     * of the denominator <=/>= iNumber: */
-    int iResult = (iNumber / iDenominator) * iDenominator;
-    /* Append denominator if requested: */
-    if (fLarger && iResult < iNumber)
-        iResult += iDenominator;
+    /* Round passed iNumber up to iNearest: */
+    int iResult = (iNumber / iNearest) * iNearest;
+    /* Append iNearest if requested: */
+    if (fUp && iResult < iNumber)
+        iResult += iNearest;
     return iResult;
 }
 
