@@ -1,4 +1,4 @@
-/* $Id: UIMachineView.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIMachineView.cpp 108917 2025-03-24 15:53:56Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineView class implementation.
  */
@@ -445,7 +445,9 @@ QSize UIMachineView::maximumGuestSize()
 
 void UIMachineView::updateViewport()
 {
-    uimachine()->viewportChanged(screenId(), contentsX(), contentsY(), visibleWidth(), visibleHeight());
+    uimachine()->viewportChanged(screenId(),
+                                 (ulong)contentsX(), (ulong)contentsY(),
+                                 (ulong)visibleWidth(), (ulong)visibleHeight());
 }
 
 #ifdef VBOX_WITH_DRAG_AND_DROP
@@ -881,7 +883,7 @@ void UIMachineView::sltPerformGuestResize(const QSize &toSize)
                                               uimachine()->isScreenVisible(screenId()),
                                               false /* change origin? */,
                                               0 /* origin x */, 0 /* origin y */,
-                                              size.width(), size.height(),
+                                              (ulong)size.width(), (ulong)size.height(),
                                               0 /* bits per pixel */,
                                               true /* notify? */);
             }
@@ -897,7 +899,7 @@ void UIMachineView::sltPerformGuestResize(const QSize &toSize)
                                               true /* enabled? */,
                                               false /* change origin? */,
                                               0 /* origin x */, 0 /* origin y */,
-                                              size.width(), size.height(),
+                                              (ulong)size.width(), (ulong)size.height(),
                                               0 /* bits per pixel */,
                                               true /* notify? */);
             }
@@ -943,7 +945,7 @@ void UIMachineView::sltPerformGuestResize(const QSize &toSize)
                                           uimachine()->isScreenVisible(screenId()),
                                           false /* change origin? */,
                                           0 /* origin x */, 0 /* origin y */,
-                                          size.width(), size.height(),
+                                          (ulong)size.width(), (ulong)size.height(),
                                           0 /* bits per pixel */,
                                           true /* notify? */);
             m_lastSizeHint = size;
@@ -1650,7 +1652,9 @@ void UIMachineView::takePausePixmapLive()
     screenShot.fill(0);
 
     /* Acquire screen-shot image: */
-    uimachine()->acquireScreenShot(screenId(), screenShot.width(), screenShot.height(), KBitmapFormat_BGR0, screenShot.bits());
+    uimachine()->acquireScreenShot(screenId(),
+                                   (ulong)screenShot.width(), (ulong)screenShot.height(),
+                                   KBitmapFormat_BGR0, screenShot.bits());
 
     /* Take the device-pixel-ratio into account: */
     const double dDevicePixelRatioActual = frameBuffer()->devicePixelRatioActual();
@@ -2169,8 +2173,8 @@ QSize UIMachineView::scaledForward(QSize size) const
     const double dDevicePixelRatioFormal = frameBuffer()->devicePixelRatio();
     const double dDevicePixelRatioActual = frameBuffer()->devicePixelRatioActual();
     if (!frameBuffer()->useUnscaledHiDPIOutput())
-        size = QSize(size.width() * dDevicePixelRatioActual, size.height() * dDevicePixelRatioActual);
-    size = QSize(size.width() / dDevicePixelRatioFormal, size.height() / dDevicePixelRatioFormal);
+        size = QSize((int)(size.width() * dDevicePixelRatioActual), (int)(size.height() * dDevicePixelRatioActual));
+    size = QSize((int)(size.width() / dDevicePixelRatioFormal), (int)(size.height() / dDevicePixelRatioFormal));
 
     /* Return result: */
     return size;
@@ -2181,7 +2185,7 @@ QSize UIMachineView::scaledBackward(QSize size) const
     /* Take the device-pixel-ratio into account: */
     const double dDevicePixelRatioFormal = frameBuffer()->devicePixelRatio();
     const double dDevicePixelRatioActual = frameBuffer()->devicePixelRatioActual();
-    size = QSize(size.width() * dDevicePixelRatioFormal, size.height() * dDevicePixelRatioFormal);
+    size = QSize((int)(size.width() * dDevicePixelRatioFormal), (int)(size.height() * dDevicePixelRatioFormal));
     if (!frameBuffer()->useUnscaledHiDPIOutput())
         size = QSize(size.width() / dDevicePixelRatioActual, size.height() / dDevicePixelRatioActual);
 
@@ -2204,7 +2208,7 @@ void UIMachineView::updateMousePointerPixmapScaling(QPixmap &pixmap, uint &uXHot
     if (dScaleFactor > 1.0)
     {
         /* Scale the pixmap up: */
-        pixmap = pixmap.scaled(pixmap.width() * dScaleFactor, pixmap.height() * dScaleFactor,
+        pixmap = pixmap.scaled((int)(pixmap.width() * dScaleFactor), (int)(pixmap.height() * dScaleFactor),
                                Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
         uXHot *= dScaleFactor;
         uYHot *= dScaleFactor;

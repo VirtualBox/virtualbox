@@ -1,4 +1,4 @@
-/* $Id: UIDesktopWidgetWatchdog.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIDesktopWidgetWatchdog.cpp 108917 2025-03-24 15:53:56Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIDesktopWidgetWatchdog class implementation.
  */
@@ -513,7 +513,9 @@ double UIDesktopWidgetWatchdog::devicePixelRatioActual(int iHostScreenIndex /* =
                 return (double)dpiPair.first / 96 /* dpi unawarness value */;
         }
     }
-#endif /* VBOX_WS_WIN */
+#else /* !VBOX_WS_WIN */
+    Q_UNUSED(iHostScreenIndex);
+#endif /* !VBOX_WS_WIN */
 
     /* Then acquire device-pixel-ratio: */
     return pScreen->devicePixelRatio();
