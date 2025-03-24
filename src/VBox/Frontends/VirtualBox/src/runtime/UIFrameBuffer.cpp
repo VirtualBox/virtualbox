@@ -1,4 +1,4 @@
-/* $Id: UIFrameBuffer.cpp 108919 2025-03-24 16:18:59Z sergey.dubov@oracle.com $ */
+/* $Id: UIFrameBuffer.cpp 108920 2025-03-24 16:24:14Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIFrameBuffer class implementation.
  */
@@ -1258,13 +1258,10 @@ void UIFrameBufferPrivate::paintDefault(QPaintEvent *pEvent)
                 break;
             default:
                 pSourceImage = new QImage(pSourceImage->scaled(effectiveSize, Qt::IgnoreAspectRatio,
-                                                               transformationMode(scalingOptimizationType(), m_dScaleFactor)));
+                                                               transformationMode(scalingOptimizationType(), scaleFactor())));
                 break;
         }
     }
-
-    /* Take the device-pixel-ratio into account: */
-    pSourceImage->setDevicePixelRatio(devicePixelRatio());
 
     /* Prepare the base and hidpi paint rectangles: */
     QRect paintRect = pEvent->rect();
@@ -1283,7 +1280,7 @@ void UIFrameBufferPrivate::paintDefault(QPaintEvent *pEvent)
     paintRectHiDPI.setSize(paintRectHiDPI.size() * devicePixelRatio());
 
     /* Make sure hidpi paint rectangle is within the image boundary: */
-    paintRectHiDPI = paintRectHiDPI.intersected(pSourceImage->rect());
+    paintRectHiDPI &= pSourceImage->rect();
     if (paintRectHiDPI.isEmpty())
         return;
 

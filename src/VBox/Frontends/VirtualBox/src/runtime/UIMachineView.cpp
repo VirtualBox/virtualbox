@@ -1,4 +1,4 @@
-/* $Id: UIMachineView.cpp 108918 2025-03-24 16:07:18Z sergey.dubov@oracle.com $ */
+/* $Id: UIMachineView.cpp 108920 2025-03-24 16:24:14Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineView class implementation.
  */
@@ -808,6 +808,8 @@ void UIMachineView::sltHandleNotifyUpdate(int iX, int iY, int iWidth, int iHeigh
 
     /* Limit the resulting part by the viewport rectangle: */
     rect &= viewport()->rect();
+    if (rect.isEmpty())
+        return;
 
     /* Update corresponding viewport part: */
     viewport()->update(rect);
