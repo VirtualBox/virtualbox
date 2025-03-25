@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UINotificationObjectItem.h 108937 2025-03-25 11:11:46Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class declaration.
  */
@@ -41,6 +41,7 @@
 class QHBoxLayout;
 class QLabel;
 class QProgressBar;
+class QPushButton;
 class QVBoxLayout;
 class QIRichTextLabel;
 class QIToolButton;
@@ -81,7 +82,7 @@ protected:
     /** Holds the help button instance. */
     QIToolButton    *m_pButtonHelp;
     /** Holds the forget button instance. */
-    QIToolButton    *m_pButtonForget;
+    QPushButton     *m_pButtonForget;
     /** Holds the close button instance. */
     QIToolButton    *m_pButtonClose;
     /** Holds the details label instance. */
@@ -93,6 +94,9 @@ protected:
     bool  m_fToggled;
 
 private slots:
+
+    /** Handles translation event. */
+    void sltRetranslateUI();
 
     /** Handles help request. */
     void sltHandleHelpRequest();

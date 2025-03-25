@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UINotificationObjectItem.cpp 108937 2025-03-25 11:11:46Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class implementation.
  */
@@ -33,6 +33,7 @@
 #include <QPainter>
 #include <QPaintEvent>
 #include <QProgressBar>
+#include <QPushButton>
 #include <QVBoxLayout>
 
 /* GUI includes: */
@@ -43,6 +44,7 @@
 #include "UIMessageCenter.h"
 #include "UINotificationObject.h"
 #include "UINotificationObjectItem.h"
+#include "UITranslationEventListener.h"
 
 
 /*********************************************************************************************************************************
@@ -95,20 +97,6 @@ UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent, UINotificat
                 m_pLayoutUpper->addWidget(m_pButtonHelp);
             }
 
-            /* Prepare forget button: */
-            if (!m_pObject->internalName().isEmpty())
-                m_pButtonForget = new QIToolButton(this);
-            if (m_pButtonForget)
-            {
-                m_pButtonForget->setIcon(UIIconPool::iconSet(":/close_popup_16px.png"));
-                m_pButtonForget->setIconSize(QSize(10, 10));
-                connect(m_pButtonForget, &QIToolButton::clicked,
-                        m_pObject, &UINotificationObject::dismiss,
-                        Qt::QueuedConnection);
-
-                m_pLayoutUpper->addWidget(m_pButtonForget);
-            }
-
             /* Prepare close button: */
             m_pButtonClose = new QIToolButton(this);
             if (m_pButtonClose)
@@ -146,7 +134,31 @@ UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent, UINotificat
 
             m_pLayoutMain->addWidget(m_pLabelDetails);
         }
+
+        /* Prepare forget button: */
+        if (!m_pObject->internalName().isEmpty())
+        {
+            m_pButtonForget = new QPushButton(this);
+            if (m_pButtonForget)
+            {
+                QFont myFont = m_pButtonForget->font();
+                myFont.setPointSize(myFont.pointSize() - 2);
+                m_pButtonForget->setFont(myFont);
+                m_pButtonForget->setIcon(UIIconPool::iconSet(":/close_popup_16px.png"));
+                m_pButtonForget->setIconSize(QSize(10, 10));
+                connect(m_pButtonForget, &QIToolButton::clicked,
+                        m_pObject, &UINotificationObject::dismiss,
+                        Qt::QueuedConnection);
+
+                m_pLayoutMain->addWidget(m_pButtonForget);
+            }
+        }
     }
+
+    /* Install translation listener: */
+    connect(&translationEventListener(), &UITranslationEventListener::sigRetranslateUI,
+        this, &UINotificationObjectItem::sltRetranslateUI);
+    sltRetranslateUI();
 }
 
 bool UINotificationObjectItem::event(QEvent *pEvent)
@@ -223,6 +235,19 @@ void UINotificationObjectItem::paintEvent(QPaintEvent *pPaintEvent)
         /* Draw frame: */
         painter.drawRect(rect());
     }
+}
+
+void UINotificationObjectItem::sltRetranslateUI()
+{
+    if (m_pButtonClose)
+        m_pButtonClose->setToolTip(QApplication::translate("UIMessageCenter", "Close"));
+    if (m_pButtonForget)
+        m_pButtonForget->setText(QApplication::translate("UIMessageCenter", "Don't show again"));
+}
+
+void UINotificationObjectItem::sltHandleHelpRequest()
+{
+    UIHelpBrowserDialog::findManualFileAndShow("helpkeyword");
 }
 
 
@@ -444,9 +469,4 @@ UINotificationObjectItem *UINotificationItem::create(QWidget *pParent, UINotific
 #endif
     /* Handle defaults: */
     return new UINotificationObjectItem(pParent, pObject);
-}
-
-void UINotificationObjectItem::sltHandleHelpRequest()
-{
-    UIHelpBrowserDialog::findManualFileAndShow("helpkeyword");
 }
