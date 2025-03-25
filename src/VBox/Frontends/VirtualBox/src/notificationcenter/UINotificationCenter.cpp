@@ -1,4 +1,4 @@
-/* $Id: UINotificationCenter.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UINotificationCenter.cpp 108938 2025-03-25 11:16:36Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationCenter class implementation.
  */
@@ -532,6 +532,10 @@ void UINotificationCenter::sltHandleProgressFinished()
 
 void UINotificationCenter::prepare()
 {
+    /* Make sure notification-center and it's children always have cursor,
+     * even if parent (like VM view) set it to Qt::BlankCursor intentionally. */
+    setCursor(Qt::ArrowCursor);
+
     /* Hide initially: */
     setHidden(true);
 
