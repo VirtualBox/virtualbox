@@ -1,4 +1,4 @@
-/* $Id: NvramStoreImpl.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: NvramStoreImpl.h 108960 2025-03-26 13:45:20Z brent.paulson@oracle.com $ */
 /** @file
  * VirtualBox COM NVRAM store class implementation
  */
@@ -84,7 +84,6 @@ public:
     HRESULT i_applyDefaults(GuestOSType *aOSType);
 #endif
 
-    int i_getNonVolatileStorageFile(com::Utf8Str &aNonVolatileStorageFile);
     com::Utf8Str i_getNonVolatileStorageFile();
     void i_updateNonVolatileStorageFile(const com::Utf8Str &aNonVolatileStorageFile);
 

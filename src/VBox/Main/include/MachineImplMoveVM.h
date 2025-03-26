@@ -1,4 +1,4 @@
-/* $Id: MachineImplMoveVM.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: MachineImplMoveVM.h 108960 2025-03-26 13:45:20Z brent.paulson@oracle.com $ */
 /** @file
  * Definition of MachineMoveVM
  */
@@ -41,7 +41,7 @@ enum VBoxFolder_t
 {
     VBox_UnknownFolderType = 0,
     VBox_OutsideVMfolder,
-    VBox_SettingFolder,
+    VBox_MachineFolder,
     VBox_LogFolder,
     VBox_StateFolder,
     VBox_SnapshotFolder

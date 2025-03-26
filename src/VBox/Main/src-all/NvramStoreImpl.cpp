@@ -1,4 +1,4 @@
-/* $Id: NvramStoreImpl.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: NvramStoreImpl.cpp 108960 2025-03-26 13:45:20Z brent.paulson@oracle.com $ */
 /** @file
  * VirtualBox COM NVRAM store class implementation
  */
@@ -356,9 +356,22 @@ void NvramStore::uninit()
 
 HRESULT NvramStore::getNonVolatileStorageFile(com::Utf8Str &aNonVolatileStorageFile)
 {
-    int vrc = i_getNonVolatileStorageFile(aNonVolatileStorageFile);
-    if (RT_FAILURE(vrc))
-        return setError(E_FAIL, tr("This machine does not have an NVRAM store file"));
+#ifndef VBOX_COM_INPROC
+    Utf8Str strTmp;
+    {
+        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+        strTmp = m->bd->strNvramPath;
+    }
+
+    AutoReadLock mlock(m->pParent COMMA_LOCKVAL_SRC_POS);
+    if (strTmp.isEmpty())
+        strTmp = m->pParent->i_getDefaultNVRAMFilename();
+    if (strTmp.isNotEmpty())
+        m->pParent->i_calculateFullPath(strTmp, aNonVolatileStorageFile);
+#else
+    AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+    aNonVolatileStorageFile = m->bd->strNvramPath;
+#endif
 
     return S_OK;
 }
@@ -368,8 +381,8 @@ HRESULT NvramStore::getUefiVariableStore(ComPtr<IUefiVariableStore> &aUefiVarSto
 {
 #ifndef VBOX_COM_INPROC
     Utf8Str strPath;
-    int vrc = i_getNonVolatileStorageFile(strPath);
-    if (RT_FAILURE(vrc))
+    NvramStore::getNonVolatileStorageFile(strPath);
+    if (strPath.isEmpty())
         return setError(E_FAIL, tr("No NVRAM store file found"));
 
     /* We need a write lock because of the lazy initialization. */
@@ -382,7 +395,7 @@ HRESULT NvramStore::getUefiVariableStore(ComPtr<IUefiVariableStore> &aUefiVarSto
         /* Load the NVRAM file first if it isn't already. */
         if (!m->mapNvram.size())
         {
-            vrc = i_loadStore(strPath.c_str());
+            int vrc = i_loadStore(strPath.c_str());
             if (RT_FAILURE(vrc))
                 hrc = setError(E_FAIL, tr("Loading the NVRAM store failed (%Rrc)\n"), vrc);
         }
@@ -452,7 +465,8 @@ HRESULT NvramStore::initUefiVariableStore(ULONG aSize)
     AutoMutableStateDependency adep(m->pParent);
     if (FAILED(adep.hrc())) return adep.hrc();
 
-    Utf8Str strPath = i_getNonVolatileStorageFile();
+    Utf8Str strPath;
+    NvramStore::getNonVolatileStorageFile(strPath);
 
     /* We need a write lock because of the lazy initialization. */
     AutoReadLock mlock(m->pParent COMMA_LOCKVAL_SRC_POS);
@@ -514,39 +528,6 @@ HRESULT NvramStore::initUefiVariableStore(ULONG aSize)
 
 
 /**
- * Returns the path of the non-volatile storage file.
- *
- * @returns VBox status code.
- * @retval  VERR_FILE_NOT_FOUND if the storage file was not found.
- * @param   aNonVolatileStorageFile   Returns path to non-volatile stroage file on success.
- */
-int NvramStore::i_getNonVolatileStorageFile(com::Utf8Str &aNonVolatileStorageFile)
-{
-#ifndef VBOX_COM_INPROC
-    Utf8Str strTmp;
-    {
-        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
-        strTmp = m->bd->strNvramPath;
-    }
-
-    AutoReadLock mlock(m->pParent COMMA_LOCKVAL_SRC_POS);
-    if (strTmp.isEmpty())
-        strTmp = m->pParent->i_getDefaultNVRAMFilename();
-    if (strTmp.isNotEmpty())
-        m->pParent->i_calculateFullPath(strTmp, aNonVolatileStorageFile);
-#else
-    AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
-    aNonVolatileStorageFile = m->bd->strNvramPath;
-#endif
-
-    if (aNonVolatileStorageFile.isEmpty())
-        return VERR_FILE_NOT_FOUND;
-
-    return VINF_SUCCESS;
-}
-
-
-/**
  * Returns the path of the non-volatile stroage file.
  *
  * @returns Path to non-volatile stroage file. Empty if not supported / found.
@@ -559,7 +540,7 @@ Utf8Str NvramStore::i_getNonVolatileStorageFile()
     AssertReturn(autoCaller.isOk(), Utf8Str::Empty);
 
     Utf8Str strTmp;
-    /* rc ignored */ i_getNonVolatileStorageFile(strTmp);
+    NvramStore::getNonVolatileStorageFile(strTmp);
     return strTmp;
 }
 
@@ -1190,7 +1171,8 @@ int NvramStore::i_saveStore(void)
 {
     int vrc = VINF_SUCCESS;
 
-    Utf8Str strPath = i_getNonVolatileStorageFile();
+    Utf8Str strPath;
+    NvramStore::getNonVolatileStorageFile(strPath);
 
     /*
      * Only store the NVRAM content if the path is not empty, if it is
