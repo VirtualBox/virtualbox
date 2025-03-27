@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 108303 2025-02-10 17:03:19Z alexander.rudnev@oracle.com $
+# $Id: Makefile.kmk 108973 2025-03-27 13:35:10Z alexander.rudnev@oracle.com $
 ## @file
 # Top-level makefile for the external libraries.
 #
@@ -109,7 +109,7 @@ if   !defined(VBOX_ONLY_SDK) \
   && (!defined(VBOX_ONLY_ADDITIONS) || !defined(VBOX_ONLY_ADDITIONS_WITHOUT_RTISOMAKER)) \
   && (!defined(VBOX_ONLY_EXTPACKS) || defined(VBOX_NEED_EXTPACK_OPENSSL) || defined(VBOX_WITH_BLD_RTSIGNTOOL_SIGNING) || !defined(VBOX_ONLY_EXTPACKS_USE_IMPLIBS)) \
   && ("$(SDK_VBoxOpenSslStatic_INCS)" == "$(SDK_VBoxOpenSslStatic_VBOX_DEFAULT_INCS)" || defined(VBOX_NEED_EXTPACK_OPENSSL))
- include $(PATH_SUB_CURRENT)/openssl-3.1.7/Makefile.kmk
+ include $(PATH_SUB_CURRENT)/openssl-3.3.2/Makefile.kmk
 endif
 
 
