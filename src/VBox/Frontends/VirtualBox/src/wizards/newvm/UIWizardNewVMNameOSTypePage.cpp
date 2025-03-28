@@ -1,4 +1,4 @@
-/* $Id: UIWizardNewVMNameOSTypePage.cpp 107506 2025-01-07 09:10:25Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIWizardNewVMNameOSTypePage.cpp 108994 2025-03-28 13:45:53Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardNewVMPageBasicNameOSStype class implementation.
  */
@@ -767,9 +767,11 @@ void UIWizardNewVMNameOSTypePage::markWidgets() const
     if (m_pNameAndSystemEditor)
     {
         m_pNameAndSystemEditor->markNameEditor(m_pNameAndSystemEditor->name().isEmpty(),
-                                               tr("Guest machine name cannot be empty"), tr("Guest machine name is valid"));
+                                               UIWizardNewVM::tr("Guest machine name cannot be empty"),
+                                               UIWizardNewVM::tr("Guest machine name is valid"));
         m_pNameAndSystemEditor->markNameEditor((QDir(m_pNameAndSystemEditor->fullPath()).exists()),
-                                               tr("Guest machine path is not unique"), tr("Guest machine name is valid"));
+                                               UIWizardNewVM::tr("Guest machine path is not unique"),
+                                               UIWizardNewVM::tr("Guest machine name is valid"));
         m_pNameAndSystemEditor->markImageEditor(!UIWizardNewVMNameOSTypeCommon::checkISOFile(m_pNameAndSystemEditor),
                                                 UIWizardNewVM::tr("Invalid file path or unreadable file"),
                                                 UIWizardNewVM::tr("File path is valid"));
