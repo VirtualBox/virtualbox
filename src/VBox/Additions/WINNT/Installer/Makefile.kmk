@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 108058 2025-01-24 13:14:27Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 108986 2025-03-28 09:01:11Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the Windows Guest Additions Installer.
 #
@@ -244,7 +244,7 @@ ifdef VBOX_WITH_WDDM
  endif
 endif # VBOX_WITH_WDDM
 
-ifdef env.VBOX_WITH_ADDITIONS_SHIPPING_AUDIO_TEST
+ifdef VBOX_WITH_ADDITIONS_SHIPPING_AUDIO_TEST
  VBOX_WINDOWS_ADDITIONS_OTHER_FILES += \
  	$(PATH_STAGE_BIN)/additions/VBoxAudioTest.exe
 endif
@@ -321,6 +321,7 @@ endif
 	$(REDIRECT) -C $(VBOX_PATH_WIN_ADD_INS_SRC) \
 		$(VB_WIN_ADD_NSIS_ENV) \
 		-- $(EXEC_X86_WIN32) $(VBOX_PATH_NSIS)/makensis.exe /NOCD /V2 \
+			$(if $(VBOX_WITH_ADDITIONS_SHIPPING_AUDIO_TEST),'/DVBOX_WITH_ADDITIONS_SHIPPING_AUDIO_TEST=1') \
 			$(if $(VBOX_SIGNING_MODE),'/DEXTERNAL_UNINSTALLER=1') \
                        $(if-expr defined(VBOX_SIGN_ADDITIONS) && defined(VBOX_SIGNING_MODE), \
                        	'/DVBOX_SIGN_ADDITIONS=1' \
@@ -368,6 +369,7 @@ ifdef VBOX_SIGNING_MODE
 	$(QUIET)$(REDIRECT) -C $(VBOX_PATH_WIN_ADD_INS_SRC) \
 		$(VB_WIN_ADD_NSIS_ENV) \
 		-- $(EXEC_X86_WIN32) $(VBOX_PATH_NSIS)/makensis.exe /NOCD /V2 \
+			$(if $(VBOX_WITH_ADDITIONS_SHIPPING_AUDIO_TEST),'/DVBOX_WITH_ADDITIONS_SHIPPING_AUDIO_TEST=1') \
 			$(if $(VBOX_SIGN_ADDITIONS),'/DVBOX_SIGN_ADDITIONS=1') \
 			$(if $(VBOX_WITH_VBOX_LEGACY_TS_CA),'/DVBOX_WITH_VBOX_LEGACY_TS_CA=1') \
 			$(if $(VBOX_INSTALLER_ADD_LANGUAGES),'/DVBOX_INSTALLER_ADD_LANGUAGES=1') \

@@ -1,4 +1,4 @@
-; $Id: VBoxGuestAdditionsW2KXP.nsh 107450 2024-12-20 09:53:27Z andreas.loeffler@oracle.com $
+; $Id: VBoxGuestAdditionsW2KXP.nsh 108986 2025-03-28 09:01:11Z andreas.loeffler@oracle.com $
 ;; @file
 ; VBoxGuestAdditionsW2KXP.nsh - Guest Additions installation for Windows 2000/XP.
 ;
@@ -396,7 +396,8 @@ Function W2K_CopyFiles
   FILE "$%PATH_OUT%\bin\additions\VBoxTray.exe"
   FILE "$%PATH_OUT%\bin\additions\VBoxControl.exe"
 
-  ; Misc
+  ; Tools
+  SetOutPath "$INSTDIR\Tools"
 !ifdef VBOX_WITH_ADDITIONS_SHIPPING_AUDIO_TEST
   FILE "$%PATH_OUT%\bin\additions\VBoxAudioTest.exe"
 !endif
