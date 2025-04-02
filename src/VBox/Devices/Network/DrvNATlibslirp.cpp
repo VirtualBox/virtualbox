@@ -1,4 +1,4 @@
-/* $Id: DrvNATlibslirp.cpp 108309 2025-02-10 19:23:30Z jack.doherty@oracle.com $ */
+/* $Id: DrvNATlibslirp.cpp 109047 2025-04-02 19:14:38Z jack.doherty@oracle.com $ */
 /** @file
  * DrvNATlibslirp - NATlibslirp network transport driver.
  */
@@ -738,6 +738,8 @@ static DECLCALLBACK(int) drvNATAsyncIoThread(PPDMDRVINS pDrvIns, PPDMTHREAD pThr
      *        the code here.) */
 #ifdef RT_OS_WINDOWS
     drvNAT_AddPollCb(pThis->ahWakeupSockPair[1], SLIRP_POLL_IN | SLIRP_POLL_HUP, pThis);
+
+    /* HACK ALERT: while Windows socket handling is weird, do this explicitly. */
     pThis->pNATState->polls[0].fd = pThis->ahWakeupSockPair[1];
 #else
     unsigned int cPollNegRet = 0;
@@ -1785,6 +1787,25 @@ static DECLCALLBACK(int) drvNATConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg, uin
     pThis->ahWakeupSockPair[1] = INVALID_SOCKET;
     rc = RTWinSocketPair(AF_INET, SOCK_DGRAM, 0, pThis->ahWakeupSockPair);
     AssertRCReturn(rc, rc);
+
+    uint32_t hReadFd = 0;
+    uint32_t hWriteFd = 0;
+
+    rc = libslirp_wrap_RTHandleTableAlloc(pThis->ahWakeupSockPair[0], &hReadFd);
+    AssertRCReturn(rc, rc);
+
+    rc = libslirp_wrap_RTHandleTableAlloc(pThis->ahWakeupSockPair[1], &hWriteFd);
+    AssertRCReturn(rc, rc);
+
+    Log4Func(("Created wakeup socket pair.\nSocket details - read:%d, write%d\n \
+               Handle details - read:%d, write%d\n", pThis->ahWakeupSockPair[0],
+               pThis->ahWakeupSockPair[1], hReadFd, hWriteFd));
+
+    /**
+     * @todo r=jack: should probably use the internal handles up in the io
+     * thread. Will fix (or just update libslirp and this translation stuff
+     * might go away).
+     */
 #else
     /* Create the control pipe. */
     rc = RTPipeCreate(&pThis->hPipeRead, &pThis->hPipeWrite, 0 /*fFlags*/);
