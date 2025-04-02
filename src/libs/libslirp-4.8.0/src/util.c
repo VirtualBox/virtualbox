@@ -198,12 +198,28 @@ int slirp_closesocket_wrap(int fd)
         return -1;
 
     ret = closesocket(s);
+
+    if (ret == SOCKET_ERROR)
+    {
+        errno = socket_error();
+        LogFunc(("SOCKET CLOSE ERROR: Handle %d, discovered to be SOCKET %d, \
+                failed to close with error: %d\n", fd, s, errno));
+        return ret;
+    }
+
+    int iFreeRc = libslirp_wrap_RTHandleTableFree(fd);
+    if (!RT_SUCCESS(iFreeRc))
+    {
+        Log3Func(("Handle free error: Handle %d which was really %d. Rc=%d\n", \
+                 fd, s, iFreeRc));
+        return VERR_INVALID_PARAMETER;
+    }
 #else
     ret = closesocket(fd);
-#endif
     if (ret < 0) {
         errno = socket_error();
     }
+#endif
     return ret;
 }
 

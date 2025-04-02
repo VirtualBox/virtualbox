@@ -1,5 +1,6 @@
+/* $Id: nathandletable.h 109046 2025-04-02 18:40:55Z jack.doherty@oracle.com $ */
 /** @file
- * libslirp: NAT Hanlde Table Singleton Wrapper
+ * libslirp: NAT Handle Table Singleton Wrapper
  */
 
 /*
@@ -33,38 +34,57 @@
  * SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
  */
 
-#ifdef _WIN32
 #ifndef INCLUDED_nathandletable_h
+#define INCLUDED_nathandletable_h
 #ifndef RT_WITHOUT_PRAGMA_ONCE
 # pragma once
 #endif
 
-#include <iprt/assert.h>
-#include <iprt/err.h>
-#include <iprt/handletable.h>
-#include <iprt/mem.h>
+#ifdef _WIN32
+# include <iprt/assert.h>
+# include <iprt/err.h>
+# include <iprt/handletable.h>
+# include <iprt/mem.h>
 
 # ifndef LOG_GROUP
 #  define LOG_GROUP LOG_GROUP_DRV_NAT
 #  include <VBox/log.h>
 # endif
 
-#include <winsock2.h>
+# include <winsock2.h>
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+RT_C_DECLS_BEGIN
 
-extern PRTHANDLETABLE pNATHandleTable;
+extern RTHANDLETABLE g_hNATHandleTable;
 
+/**
+ * Looks up a SOCKET handle by the integer handle used by libslirp.
+ *
+ * @returns actual SOCKET handle used by Windows
+ * @param   fd            Integer handle used internally by libslirp.
+ */
 SOCKET libslirp_wrap_RTHandleTableLookup(int fd);
 
-int libslirp_wrap_RTHandleTableAlloc(SOCKET, uint32_t *);
+/**
+ * Allocates an integer handle from a SOCKET handle for use libslirp.
+ *
+ * @returns VBox status code
+ * @param   s            SOCKET handle from Windows.
+ *                       Typically from a socket() call.
+ * @param   h            Return param. Integer handle from table.
+ */
+int libslirp_wrap_RTHandleTableAlloc(SOCKET s, uint32_t *h);
 
-#ifdef __cplusplus
-}
-#endif
+/**
+ * Frees entry from lookup table.
+ *
+ * @returns VBox status code
+ * @param   fd            Integer handle used internally by libslirp.
+ */
+int libslirp_wrap_RTHandleTableFree(int fd);
 
-#endif
+RT_C_DECLS_END
+
+# endif /* _WIN32*/
+
 #endif

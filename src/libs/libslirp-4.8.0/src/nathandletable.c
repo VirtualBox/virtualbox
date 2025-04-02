@@ -1,5 +1,6 @@
+/* $Id: nathandletable.c 109046 2025-04-02 18:40:55Z jack.doherty@oracle.com $ */
 /** @file
- * libslirp: NAT Hanlde Table Wrapper
+ * libslirp: NAT Handle Table Wrapper
  */
 
 /*
@@ -37,33 +38,62 @@
 #ifdef _WIN32
 #include "nathandletable.h"
 
-PRTHANDLETABLE pNATHandleTable = NULL;
+RTHANDLETABLE g_hNATHandleTable = NIL_RTHANDLETABLE;
 
+/**
+ * Returns the windows SOCKET for file descriptor @a fd (aka handle).
+ *
+ * @returns Windows socket handle. NULL if @a fd is invalid.
+ */
 SOCKET libslirp_wrap_RTHandleTableLookup(int fd)
 {
-    if (pNATHandleTable == NULL)
-    {
-        pNATHandleTable = RTMemAlloc(sizeof(RTHANDLETABLE));
-        int rc = RTHandleTableCreate(pNATHandleTable);
-        AssertRC(rc);
-    }
-
-    Log6Func(("Looking up %d on %p\n", fd, (void *)pNATHandleTable));
-    SOCKET s = (SOCKET)RTHandleTableLookup(*pNATHandleTable, fd);
-    return s;
+    RTHANDLETABLE const hHandleTable = g_hNATHandleTable;
+    SOCKET hSock = (SOCKET)RTHandleTableLookup(hHandleTable, fd);
+    Log6Func(("Looked up %d in %p and returned %d\n", fd, hHandleTable, hSock));
+    return hSock;
 }
 
-int libslirp_wrap_RTHandleTableAlloc(SOCKET uSocket, uint32_t *pHandle)
+/**
+ * Allocates a file descriptor (handle) for windows SOCKET @a hSock.
+ * @returns IPRT status code.
+ */
+int libslirp_wrap_RTHandleTableAlloc(SOCKET hSock, uint32_t *pHandle)
 {
-    if (pNATHandleTable == NULL)
+    /* Lazy create the handle table (leaked): */
+    RTHANDLETABLE hHandleTable = g_hNATHandleTable;
+    if (RT_LIKELY(hHandleTable != NIL_RTHANDLETABLE))
+    { /* likely*/ }
+    else
     {
-        pNATHandleTable = RTMemAlloc(sizeof(RTHANDLETABLE));
-        int rc = RTHandleTableCreate(pNATHandleTable);
-        AssertRC(rc);
+        int rc = RTHandleTableCreate(&hHandleTable);
+        AssertLogRelRCReturn(rc, rc);
+        /** @todo potential race here? iff so, use cmpxchg from asm.h   */
+        g_hNATHandleTable = hHandleTable;
     }
 
-    Log6Func(("Creating sock %llu on %p\n", uSocket, (void *)pNATHandleTable));
-    return RTHandleTableAlloc(*pNATHandleTable, (void *)uSocket, pHandle);
+    int rc = RTHandleTableAlloc(hHandleTable, (void *)hSock, pHandle);
+    Log6Func(("Creating sock %p in %p with handle %d\n", hSock, hHandleTable, *pHandle));
+    return rc;
+}
+
+/**
+ * Frees file descriptor (handle) @a fd after the associated socket has been
+ * closed.
+ *
+ * @returns IPRT status code. (Shouldn't fail unless there are multiple
+ *          concurrent closesocket calls.)
+ */
+int libslirp_wrap_RTHandleTableFree(int fd)
+{
+    RTHANDLETABLE const hHandleTable = g_hNATHandleTable;
+    AssertReturn(hHandleTable != NIL_RTHANDLETABLE, VERR_INVALID_PARAMETER);
+
+    void * const pvObsoleteSocket = RTHandleTableFree(hHandleTable, fd);
+    Log6Func(("Freed handle %d (sock %p) from %p\n", fd, pvObsoleteSocket, hHandleTable));
+    if (pvObsoleteSocket)
+        return VINF_SUCCESS;
+
+    return VERR_INVALID_PARAMETER;
 }
 
 #endif
