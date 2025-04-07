@@ -104,7 +104,7 @@ preparations:
 
 api-generation: enums objects methods requestbody fullapi
 
-code-generation: flask-connexion
+code-generation: flask-connexion enum-conversion-code
 
 # The variable CLASSPATH isn't picked up properly on Windows
 # That's why the path to Xalan is added directly via the parameter "-classpath"
@@ -158,6 +158,13 @@ flask-connexion:
 	@echo "@@@@@@@@@@@@@@@@ $(GENERATOR) @@@@@@@@@@@@@@@@"
 	java -jar $(TOOLS_DIR)/bin/$(GENERATOR) generate $(OPTIONS) -i $(DEST_YAML_DIR)/restapi.yaml -o $(DEST_DIR)
 
+enum-conversion-code:
+	java -classpath $(TOOLS_DIR)/bin/xalan-2.4.1.jar org.apache.xalan.xslt.Process \
+	$(COMMON_XSLT_OPTIONS) \
+	-in $(VBOX_XIDL_FILE) \
+	-xsl $(SRC_XSL_DIR)/code-enum-conversion-functions.xsl \
+	-out $(DEST_UTILS_DIR)/enum_conversion.py
+
 docs: html-docs
 
 html-docs:
@@ -190,7 +197,7 @@ copy:
 	cp requirements.txt $(DEST_DIR)
 
 # Copy the rest to the output folder
-	cp -r $(SRC_DIR)/utils $(DEST_CODE_DIR)
+	cp -r --update=none $(SRC_DIR)/utils $(DEST_CODE_DIR)
 	cp $(SRC_DIR)/__init__.py $(SRC_DIR)/global_settings.py $(SRC_DIR)/wsgi.py $(DEST_CODE_DIR)
 	cp -r $(SRC_DIR)/controllers/internal/* $(DEST_INT_CONTROLLER_DIR)
 
