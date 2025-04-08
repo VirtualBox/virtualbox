@@ -325,6 +325,10 @@
             image is shrunk in response to a <command>trim</command>
             command from the guest OS.
           </para><para>
+            This feature is experimental and has known bugs which can cause
+            hangs and other instabilities of the guest OS. Do not use if you
+            care about the integrity of data on the virtual hard disk.
+          </para><para>
             The virtual hard disk must meet the following requirements:
           </para><itemizedlist>
             <listitem><para>
