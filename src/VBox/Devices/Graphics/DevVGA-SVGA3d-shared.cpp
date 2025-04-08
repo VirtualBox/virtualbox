@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-shared.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-shared.cpp 109122 2025-04-08 20:56:04Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -312,6 +312,14 @@ uint32_t vmsvga3dSurfaceFormatSize(SVGA3dSurfaceFormat format,
     return desc->bytes_per_block;
 }
 
+uint32_t vmsvga3dClampedAddDiv(uint32_t a, uint32_t b, uint32_t d)
+{
+    uint64_t const u64Tmp = (uint64_t)a + (uint64_t)b;
+    if (RT_LIKELY(u64Tmp <= UINT64_C(0xFFFFFFFF) && d > 0))
+        return u64Tmp / d;
+    return UINT32_C(0xFFFFFFFF);
+}
+
 void vmsvga3dSurfaceMipBufferSize(SVGA3dSurfaceFormat format, SVGA3dSize mipmapSize, uint32_t multisampleCount,
                                   uint32_t *pcBlocksX,
                                   uint32_t *pcBlocksY,
@@ -321,9 +329,9 @@ void vmsvga3dSurfaceMipBufferSize(SVGA3dSurfaceFormat format, SVGA3dSize mipmapS
 {
     const struct svga3d_surface_desc *desc = svga3dsurface_get_desc(format);
 
-    uint32_t const cxBlocks = (mipmapSize.width + desc->block_size.width - 1) / desc->block_size.width;
-    uint32_t const cyBlocks = (mipmapSize.height + desc->block_size.height - 1) / desc->block_size.height;
-    uint32_t const czBlocks = (mipmapSize.depth + desc->block_size.depth - 1) / desc->block_size.depth;
+    uint32_t const cxBlocks = vmsvga3dClampedAddDiv(mipmapSize.width, desc->block_size.width - 1, desc->block_size.width);
+    uint32_t const cyBlocks = vmsvga3dClampedAddDiv(mipmapSize.height, desc->block_size.height - 1, desc->block_size.height);
+    uint32_t const czBlocks = vmsvga3dClampedAddDiv(mipmapSize.depth, desc->block_size.depth - 1, desc->block_size.depth);
 
     uint32_t const cbPitch = cxBlocks * desc->pitch_bytes_per_block;
 
