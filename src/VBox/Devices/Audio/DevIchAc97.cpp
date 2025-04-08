@@ -1,4 +1,4 @@
-/* $Id: DevIchAc97.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: DevIchAc97.cpp 109106 2025-04-08 14:04:25Z andreas.loeffler@oracle.com $ */
 /** @file
  * DevIchAc97 - VBox ICH AC97 Audio Controller.
  */
@@ -4215,7 +4215,7 @@ static int ichac97R3AttachInternal(PPDMDEVINS pDevIns, PAC97STATER3 pThisCC, uns
     int rc = PDMDevHlpDriverAttach(pDevIns, uLUN, &pThisCC->IBase, &pDrvBase, pDrv->szDesc);
     if (RT_SUCCESS(rc))
     {
-       pDrv->pConnector = PDMIBASE_QUERY_INTERFACE(pDrvBase, PDMIAUDIOCONNECTOR);
+        pDrv->pConnector = PDMIBASE_QUERY_INTERFACE(pDrvBase, PDMIAUDIOCONNECTOR);
         AssertPtr(pDrv->pConnector);
         if (RT_VALID_PTR(pDrv->pConnector))
         {
@@ -4267,7 +4267,7 @@ static int ichac97R3AttachInternal(PPDMDEVINS pDevIns, PAC97STATER3 pThisCC, uns
             LogFunc(("LUN#%u: returns VINF_SUCCESS (pCon=%p)\n", uLUN, pDrv->pConnector));
             return VINF_SUCCESS;
         }
-        RTMemFree(pDrv);
+
         rc = VERR_PDM_MISSING_INTERFACE_BELOW;
     }
     else if (rc == VERR_PDM_NO_ATTACHED_DRIVER)
