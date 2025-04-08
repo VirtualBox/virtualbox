@@ -2788,10 +2788,9 @@
     <attribute name="packageType" type="wstring" readonly="yes">
       <desc>
         A string representing the package type of this product. The
-        format is OS_ARCH_DIST where OS is either WINDOWS, LINUX,
-        SOLARIS, DARWIN. ARCH is either 32BITS or 64BITS. DIST
-        is either GENERIC, UBUNTU_606, UBUNTU_710, or something like
-        this.
+        format is OS_ARCH_DIST where OS is one of: WINDOWS, LINUX,
+        SOLARIS, or DARWIN. ARCH is 32BITS, 64BITS, or ARM64. DIST
+        is GENERIC, UBUNTU_606, UBUNTU_710, or similar.
       </desc>
     </attribute>
 
