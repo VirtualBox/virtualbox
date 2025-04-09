@@ -111,6 +111,11 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
+        <para>Main: Fixed issue when deleting running VM snapshot was
+          leaving the .sav file on disk (bug #21345)</para>
+      </listitem>
+
+      <listitem>
         <para>NAT: Fixed connectivity issue on old Windows guests (bug #22364)</para>
       </listitem>
 
