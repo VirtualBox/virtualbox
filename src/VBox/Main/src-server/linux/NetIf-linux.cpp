@@ -1,4 +1,4 @@
-/* $Id: NetIf-linux.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: NetIf-linux.cpp 109141 2025-04-09 11:18:10Z vadim.galitsyn@oracle.com $ */
 /** @file
  * Main - NetIfList, Linux implementation.
  */
@@ -32,6 +32,8 @@
 *********************************************************************************************************************************/
 #define LOG_GROUP LOG_GROUP_MAIN_HOST
 
+#include <iprt/linux/sysfs.h>
+#include <iprt/file.h>
 #include <iprt/errcore.h>
 #include <list>
 #include <sys/ioctl.h>
@@ -196,10 +198,32 @@ static int getInterfaceInfo(int iSocket, const char *pszName, PNETIFINFO pInfo)
         if (ioctl(iSocket, SIOCGIFFLAGS, &Req) >= 0)
             pInfo->enmStatus = Req.ifr_flags & IFF_UP ? NETIF_S_UP : NETIF_S_DOWN;
 
-        struct iwreq WRq;
-        RT_ZERO(WRq);
-        RTStrCopy(WRq.ifr_name, sizeof(WRq.ifr_name), pszName);
-        pInfo->fWireless = ioctl(iSocket, SIOCGIWNAME, &WRq) >= 0;
+        /* Detect if given interfece is wireless, assume 'no' by default. */
+        pInfo->fWireless = false;
+
+        RTFILE hFile;
+        int vrc = RTLinuxSysFsOpen(&hFile, "class/net/%s/uevent", pszName);
+        if (RT_SUCCESS(vrc))
+        {
+            char szSysFsBuf[256];
+            size_t cchRead = 0;
+
+            RT_ZERO(szBuf);
+            vrc = RTLinuxSysFsReadStr(hFile, szSysFsBuf, sizeof(szSysFsBuf) - 1, &cchRead);
+            if (RT_SUCCESS(vrc))
+                pInfo->fWireless = RTStrStr(szSysFsBuf, "DEVTYPE=wlan") != NULL;
+
+            RTFileClose(hFile);
+        }
+
+        /* Fallback to legacy way of checking if iface is wireless. */
+        if (!pInfo->fWireless)
+        {
+            struct iwreq WRq;
+            RT_ZERO(WRq);
+            RTStrCopy(WRq.ifr_name, sizeof(WRq.ifr_name), pszName);
+            pInfo->fWireless = ioctl(iSocket, SIOCGIWNAME, &WRq) >= 0;
+        }
 
         FILE *fp = fopen("/proc/net/if_inet6", "r");
         if (fp)
