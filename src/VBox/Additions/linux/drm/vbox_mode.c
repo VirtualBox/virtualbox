@@ -1,4 +1,4 @@
-/* $Id: vbox_mode.c 107920 2025-01-16 16:16:45Z vadim.galitsyn@oracle.com $ */
+/* $Id: vbox_mode.c 109139 2025-04-09 11:15:45Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VirtualBox Additions Linux kernel video driver
  */
@@ -893,7 +893,7 @@ static int vbox_cursor_set2(struct drm_crtc *crtc, struct drm_file *file_priv,
     vbox->cursor_data_size = data_size;
     dst = vbox->cursor_data;
 
-#if RTLNX_VER_MIN(6,4,0)
+#if RTLNX_VER_MIN(6,4,0) || RTLNX_RHEL_RANGE(9,7, 9,99)
     /* Make sure bo is in SYSTEM (main) memory, so we can access it directly. */
     ret = vbox_bo_pin(bo, VBOX_MEM_TYPE_SYSTEM, NULL);
     if (ret)
@@ -912,7 +912,7 @@ static int vbox_cursor_set2(struct drm_crtc *crtc, struct drm_file *file_priv,
 #endif
     if (ret) {
         vbox->cursor_data_size = 0;
-#if RTLNX_VER_MIN(6,4,0)
+#if RTLNX_VER_MIN(6,4,0) || RTLNX_RHEL_RANGE(9,7, 9,99)
         goto out_bo_unpin;
 #else
         goto out_unreserve_bo;
@@ -938,7 +938,7 @@ static int vbox_cursor_set2(struct drm_crtc *crtc, struct drm_file *file_priv,
 
 out_unmap_bo:
     ttm_bo_kunmap(&uobj_map);
-#if RTLNX_VER_MIN(6,4,0)
+#if RTLNX_VER_MIN(6,4,0) || RTLNX_RHEL_RANGE(9,7, 9,99)
 out_bo_unpin:
     vbox_bo_unpin(bo);
 #else
