@@ -1,4 +1,4 @@
-OPYING file for VirtualBox versions 7.0 and later versions that include this
+COPYING file for VirtualBox versions 7.0 and later versions that include this
 file
 
 Preliminary notes:
