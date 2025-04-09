@@ -10,12 +10,6 @@ autoinstall:
   keyboard:
     layout: us
 
-  identity:
-    realname: '@@VBOX_INSERT_USER_FULL_NAME@@'
-    username: '@@VBOX_INSERT_USER_LOGIN@@'
-    password: '@@VBOX_INSERT_USER_PASSWORD_SHACRYPT512@@'
-    hostname: '@@VBOX_INSERT_HOSTNAME_WITHOUT_DOMAIN@@'
-
   shutdown: reboot
 
   storage:
@@ -46,7 +40,7 @@ autoinstall:
   # Additional cloud-init configuration affecting the target system can be supplied
   # underneath a user-data section inside of autoinstall.
   user-data:
-
+    hostname: '@@VBOX_INSERT_HOSTNAME_WITHOUT_DOMAIN@@'
     users:
       - name: root
         primary_group: root
@@ -54,6 +48,19 @@ autoinstall:
         lock-passwd: false
         passwd: '@@VBOX_INSERT_USER_PASSWORD_SHACRYPT512@@'
         uid: 0
+
+      - name: '@@VBOX_INSERT_USER_LOGIN@@'
+        gecos: '@@VBOX_INSERT_USER_LOGIN@@'
+        primary_group: '@@VBOX_INSERT_USER_LOGIN@@'
+@@VBOX_COND_IS_INSTALLING_ADDITIONS@@
+        groups: sudo, vboxsf
+@@VBOX_COND_END@@
+@@VBOX_COND_IS_NOT_INSTALLING_ADDITIONS@@
+        groups: sudo
+@@VBOX_COND_END@@
+        lock-passwd: false
+        shell: /bin/bash
+        passwd: '@@VBOX_INSERT_USER_PASSWORD_SHACRYPT512@@'
 
 @@VBOX_COND_IS_RTC_USING_UTC@@
     timezone: Etc/UTC
