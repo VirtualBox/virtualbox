@@ -1,4 +1,4 @@
-/* $Id: PDMBlkCache.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: PDMBlkCache.cpp 109162 2025-04-09 18:32:56Z alexander.eichner@oracle.com $ */
 /** @file
  * PDM Block Cache.
  */
@@ -2492,8 +2492,6 @@ VMMR3DECL(int) PDMR3BlkCacheDiscard(PPDMBLKCACHE pBlkCache, PCRTRANGE paRanges,
                             STAM_PROFILE_ADV_STOP(&pCache->StatTreeRemove, Cache);
 
                             pdmBlkCacheLockLeave(pCache);
-
-                            RTMemFree(pEntry);
                         }
                         else
                         {
@@ -2508,6 +2506,7 @@ VMMR3DECL(int) PDMR3BlkCacheDiscard(PPDMBLKCACHE pBlkCache, PCRTRANGE paRanges,
 
                         RTSemRWReleaseWrite(pBlkCache->SemRWEntries);
                         pdmBlkCacheEntryRelease(pEntry);
+                        RTMemFree(pEntry);
                     }
                     else /* Dirty bit not set */
                     {
