@@ -86,6 +86,16 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
+        <para>Windows installer: Various bugfixes for the new installation
+          code</para>
+      </listitem>
+
+      <listitem>
+        <para>Windows installer: Implemented a new fatal error dialog with
+          the ability to open the installer log file directly</para>
+      </listitem>
+
+      <listitem>
         <para>Windows Guest Additions: Fixed mouse driver installation on
           Vista guests</para>
       </listitem>
@@ -103,6 +113,11 @@ Rules for adding a changelog entry to make them look more uniform:
       <listitem>
         <para>Windows Guest Additions: Fixed 100% CPU usage of VBoxTray which
           happened under certain circumstances (bug #22123)</para>
+      </listitem>
+
+      <listitem>
+        <para>Windows Guest Additions: Now also ships the VBoxAudioTest binary
+          for performing guest audio testing / diagnosis</para>
       </listitem>
 
     </itemizedlist>
