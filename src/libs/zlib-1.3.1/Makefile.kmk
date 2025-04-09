@@ -1,0 +1,103 @@
+# $Id: Makefile.kmk 109130 2025-04-09 08:08:43Z samantha.scholz@oracle.com $
+## @file
+# Sub-Makefile for zlib.
+#
+
+#
+# Copyright (C) 2006-2024 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH = ../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+LIBRARIES += VBox-zlib
+if1of ($(KBUILD_TARGET), os2 win)
+ # only required for vbox-img
+ LIBRARIES += VBox-zlib-static
+endif
+VBox-zlib_TEMPLATE = VBoxR3RuntimeDllNonPedanticFast
+VBox-zlib_DEFS = verbose=-1 NO_VIZ=1
+ifn1of ($(KBUILD_TARGET), win)
+ VBox-zlib_DEFS = Z_HAVE_UNISTD_H
+endif
+VBox-zlib_SOURCES = \
+	adler32.c \
+	compress.c \
+	crc32.c \
+	gzclose.c \
+	gzlib.c \
+	gzread.c \
+	gzwrite.c \
+	uncompr.c \
+	deflate.c \
+	trees.c \
+	zutil.c \
+	inflate.c \
+	infback.c \
+	inftrees.c \
+	inffast.c
+
+VBox-zlib-static_TEMPLATE = VBoxR3StaticNonPedantic
+VBox-zlib-static_DEFS = $(VBox-zlib_DEFS)
+ifdef VBOX_WITH_NOCRT_STATIC
+ VBox-zlib-static_DEFS += IPRT_NO_CRT_FOR_3RD_PARTY
+endif
+VBox-zlib-static_SOURCES = $(VBox-zlib_SOURCES)
+
+ifdef VBOX_WITH_32_ON_64_MAIN_API # 32-bit edition.
+ LIBRARIES += VBox-zlib-x86
+ VBox-zlib-x86_TEMPLATE = VBoxR3DllNonPedantic-x86
+ VBox-zlib-x86_EXTENDS = VBox-zlib
+endif
+
+# Builds a Windows DLL in a separate tree so that it can be found by the scons build system.
+# Required for building NSIS (Windows Guest Additions installer) from source.
+#
+# We always build the x86 version, regardless of the actual target, as NSIS is 32-bit only (even on amd64).
+if !defined(VBOX_OSE) && defined(VBOX_WITH_ADDITIONS) && !defined(VBOX_WITHOUT_ADDITIONS)
+ DLLS.win += nsis-zlib-dll
+ nsis-zlib-dll_EXTENDS      := VBox-zlib
+ nsis-zlib-dll_NAME         := zlib1
+ nsis-zlib-dll_TEMPLATE     := VBoxR3DllNonPedantic
+ nsis-zlib-dll_INSTTYPE     := none
+ nsis-zlib-dll_DEFS         := ZLIB_DLL $(VBox-zlib_DEFS)
+ # Note! We need to build the NSIS variant of zlib without any modern x86 CPU instructions (SSE, ++) being used,
+ #       to avoid breaking things on ancient Windows (guest) OSes.
+ nsis-zlib-dll_CFLAGS.win.x86   = /arch:IA32
+ nsis-zlib-dll_CXXFLAGS.win.x86 = /arch:IA32
+ nsis-zlib-dll_PCHFLAGS.win.x86 = /arch:IA32
+ nsis-zlib-dll_SOURCES.win := \
+ 	win32/zlib1.rc \
+ 	win32/zlib.def
+
+ INSTALLS.win += nsis-zlib-install
+ nsis-zlib-install_TEMPLATE := DUMMY
+ nsis-zlib-install_INSTTYPE := stage
+ nsis-zlib-install_INST     := nsis-zlib/
+ nsis-zlib-install_MODE     := a+r,u+w
+ nsis-zlib-install_SOURCES   = \
+ 	$(nsis-zlib-dll_1_TARGET) \
+ 	$(basename $(nsis-zlib-dll_1_TARGET)).lib=>zdll.lib \
+ 	zconf.h \
+ 	zlib.h
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)
