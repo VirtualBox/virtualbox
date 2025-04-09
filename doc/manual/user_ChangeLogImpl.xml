@@ -111,6 +111,10 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
+        <para>NAT: Fixed connectivity bug on old Windows guests</para>
+      </listitem>
+
+      <listitem>
         <para>VBoxManage: Updated User Manual to correct the 'VBoxManage modifyvm'
           invocation for configuring a VM to use host-only networking (bug #22158)</para>
       </listitem>
