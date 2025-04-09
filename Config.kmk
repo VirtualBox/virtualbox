@@ -1,4 +1,4 @@
-# $Id: Config.kmk 109126 2025-04-09 04:46:21Z samantha.scholz@oracle.com $
+# $Id: Config.kmk 109128 2025-04-09 07:28:52Z samantha.scholz@oracle.com $
 ## @file
 # The global build configuration file for VBox.
 #
@@ -5304,7 +5304,7 @@ SDK_VBoxLibXml2_DEFS.win      ?= WIN32 _WINDOWS _MBCS HAVE_WIN32_THREADS HAVE_CO
 # zlib
 SDK_VBoxZlib                  := zlib for dll linking.
 if1of ($(KBUILD_TARGET), os2 solaris win)
- SDK_VBoxZlib_INCS            ?= $(PATH_ROOT)/src/libs/zlib-1.3.1
+ SDK_VBoxZlib_INCS            ?= $(PATH_ROOT)/src/libs/zlib-1.2.13
  SDK_VBoxZlib_LIBS            ?= $(PATH_STAGE_LIB)/VBox-zlib$(VBOX_SUFF_LIB)
 else
  SDK_VBoxZlib_INCS            ?=
@@ -9287,7 +9287,7 @@ endif
 SVN                    ?= svn$(HOSTSUFF_EXE)
 VBOX_SVN_REV_KMK        = $(PATH_OUT)/revision.kmk
 ifndef VBOX_SVN_REV
- VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 109126 $  )
+ VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 109128 $  )
  VBOX_SVN_REV_FALLBACK := $(if-expr $(VBOX_SVN_REV_CONFIG_FALLBACK) > $(VBOX_SVN_REV_VERSION_FALLBACK),$(VBOX_SVN_REV_CONFIG_FALLBACK),$(VBOX_SVN_REV_VERSION_FALLBACK))
  VBOX_SVN_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.svn/wc.db $(abspath $(PATH_ROOT)/../.svn/wc.db) $(abspath $(PATH_ROOT)/../../.svn/wc.db) $(PATH_ROOT)/.svn/entries))
  ifeq ($(which $(SVN)),)
