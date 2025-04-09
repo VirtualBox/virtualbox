@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 108973 2025-03-27 13:35:10Z alexander.rudnev@oracle.com $
+# $Id: Makefile.kmk 109126 2025-04-09 04:46:21Z samantha.scholz@oracle.com $
 ## @file
 # Top-level makefile for the external libraries.
 #
@@ -125,8 +125,8 @@ endif
 
 # zlib is used by the IPRT compression code, libpng and others.
 if   !defined(VBOX_ONLY_SDK) \
-  && "$(SDK_VBoxZlib_INCS)" == "$(PATH_ROOT)/src/libs/zlib-1.2.13"
- include $(PATH_SUB_CURRENT)/zlib-1.2.13/Makefile.kmk
+  && "$(SDK_VBoxZlib_INCS)" == "$(PATH_ROOT)/src/libs/zlib-1.3.1"
+ include $(PATH_SUB_CURRENT)/zlib-1.3.1/Makefile.kmk
 endif
 
 
