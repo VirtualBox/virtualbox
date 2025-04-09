@@ -81,8 +81,86 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
+        <para>VMM: Fixed issue when VM clock went backwards in rare
+          circumstances (bug #22334)</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Fixed issue when accelerated cursor image was not
+          displayed correctly (bug #22096)</para>
+      </listitem>
+
+      <listitem>
+        <para>DevVirtioSCSI: Fixed issue with restoring saved state</para>
+      </listitem>
+
+      <listitem>
+        <para>Graphics: Fixed issue when assertion was triggered on
+          restoring VM state if VMSVGA graphics adapter was used
+          without 3D acceleration (bug #21955)</para>
+      </listitem>
+
+      <listitem>
+        <para>Main: Fixed issue when VBoxSVC was crashing on saving machine config
+          through VirtualBox web service (bug #22259)</para>
+      </listitem>
+
+      <listitem>
+        <para>Main: Fixed issue when wireless network adapters could
+          not be discovered on modern Linux distributions (bug #22362)</para>
+      </listitem>
+
+      <listitem>
+        <para>VBoxManage: Updated User Manual to correct the 'VBoxManage modifyvm'
+          invocation for configuring a VM to use host-only networking (bug #22158)</para>
+      </listitem>
+
+      <listitem>
+        <para>VBoxManage: Fixed issue when it was not possible to set disk bandwidth
+          with 'VBoxManage bandwidthctl' command (bug #22328)</para>
+      </listitem>
+
+      <listitem>
         <para>Windows installer: Automatically load the support driver after
           a successful installation (bug #22292)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host Installer: Fixed issue which sometimes resulted in
+          installation failure due to incorrect check whether previous
+          VirtualBox installation is running or not</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Guest Additions: Fixed issue when VBoxClient could
+          crash in XWayland guest (bug #22345)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Guest Additions: Fixed issue which resulted in cursor image
+          corruption when VM was using VBoxVGA graphics adapter</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Guest Additions: Fixed issue when installation could fail on
+          the system which does not have X11 libraries installed</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Guest Additions: Added initial support for kernel 6.14</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Guest Additions: Introduced initial support for RHEL 9.7 kernel</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Guest Additions: Introduced additional fixes
+          for RHEL 9.4 kernel, (bug #22277)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Guest Additions: Improved 'rcvboxadd status-kernel' check</para>
       </listitem>
 
       <listitem>
