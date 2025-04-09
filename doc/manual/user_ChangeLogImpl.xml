@@ -111,7 +111,7 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
-        <para>NAT: Fixed connectivity bug on old Windows guests</para>
+        <para>NAT: Fixed connectivity issue on old Windows guests (bug #22364)</para>
       </listitem>
 
       <listitem>
