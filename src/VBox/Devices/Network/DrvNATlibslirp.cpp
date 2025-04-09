@@ -1,4 +1,4 @@
-/* $Id: DrvNATlibslirp.cpp 109047 2025-04-02 19:14:38Z jack.doherty@oracle.com $ */
+/* $Id: DrvNATlibslirp.cpp 109156 2025-04-09 16:04:13Z klaus.espenlaub@oracle.com $ */
 /** @file
  * DrvNATlibslirp - NATlibslirp network transport driver.
  */
@@ -841,7 +841,7 @@ static DECLCALLBACK(int) drvNATAsyncIoThread(PPDMDRVINS pDrvIns, PPDMTHREAD pThr
  * Unblock the send thread so it can respond to a state change.
  *
  * @returns VBox status code.
- * @param   pDrvIns     The pcnet device instance.
+ * @param   pDrvIns     Pointer to PDM driver context.
  * @param   pThread     The send thread.
  *
  * @thread  ?
