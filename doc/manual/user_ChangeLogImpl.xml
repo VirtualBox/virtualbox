@@ -207,6 +207,12 @@ Rules for adding a changelog entry to make them look more uniform:
           for performing guest audio testing / diagnosis</para>
       </listitem>
 
+      <listitem>
+        <para>Windows Guest Additions: For older Windows versions (Windows 2000
+          to Windows 7) install alternative Shared Folder driver which avoids
+          some compatibility glitches of the usual driver</para>
+      </listitem>
+
     </itemizedlist>
   </sect1>
 
