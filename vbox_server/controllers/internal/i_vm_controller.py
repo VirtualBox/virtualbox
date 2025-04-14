@@ -86,11 +86,13 @@ from vbox_server.models.machine_add_storage_controller_request_body import Machi
 from vbox_server.models.machine_attach_device_without_medium_request_body import MachineAttachDeviceWithoutMediumRequestBody  # noqa: E501
 from vbox_server.models.machine_set_storage_controller_bootable_request_body import MachineSetStorageControllerBootableRequestBody  # noqa: E501
 from vbox_server.models.console_create_shared_folder_request_body import ConsoleCreateSharedFolderRequestBody  # noqa: E501
+from vbox_server.models.machine_add_usb_controller_request_body import MachineAddUSBControllerRequestBody  # noqa: E501
+from vbox_server.models.machine_getusbcontrollercountbytype_response import MachineGetusbcontrollercountbytypeResponse  # noqa: E501
+from vbox_server.models.usb_controller_response import USBControllerResponse  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
 from vbox_server.models.console_add_encryption_passwords_request_body import ConsoleAddEncryptionPasswordsRequestBody  # noqa: E501
-from vbox_server.models.machine_add_usb_controller_request_body import MachineAddUSBControllerRequestBody  # noqa: E501
 from vbox_server.models.machine_attach_host_pci_device_request_body import MachineAttachHostPCIDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_delete_snapshot_range_request_body import MachineDeleteSnapshotRangeRequestBody  # noqa: E501
 from vbox_server.models.machine_export_to_request_body import MachineExportToRequestBody  # noqa: E501
@@ -3267,6 +3269,157 @@ def i_console_removesharedfolder(vmid, name=None, *var_args_tuple):  # noqa: E50
     return response, httpCode
 
 
+@sessionDecorator
+def i_machine_addusbcontroller(vmid, oMachineAddUSBControllerRequestBody: MachineAddUSBControllerRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::addUSBController
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineAddUSBControllerRequestBody: 
+    :type oMachineAddUSBControllerRequestBody: dict | bytes
+
+    :rtype: USBControllerResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oSession = var_args_tuple[1]
+
+    o = oMachineAddUSBControllerRequestBody
+    print(o)
+    name = o.name
+
+    oCurrMachine = oSession.machine
+    oUSBControllerResponse = USBControllerResponse()
+    try:
+        usbType = swagger_to_vbox_usb_controller_type(o.type)
+        if usbType:
+            oUSBController = oCurrMachine.addUSBController(name, usbType)
+            oCurrMachine.saveSettings()
+        else:
+            logging.info("The passed connection type %s isn't supported or unknown" % (o.type))
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "The passed connection type %s isn't supported or unknown" % (o.type))
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is None:
+        oUSBControllerResponse.controller = i_fill_storage_controller(oUSBController)
+
+    response = jsonify(oError if oError is not None else oUSBControllerResponse)
+    return response, httpCode
+
+
+@sessionDecorator
+def i_machine_removeusbcontroller(vmid, name=None, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::removeUSBController
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param name: 
+    :type name: str
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oSession = var_args_tuple[1]
+
+    oCurrMachine = oSession.machine
+    try:
+        oCurrMachine.removeUSBController(name)
+        oCurrMachine.saveSettings()
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else "The controller named %s has been successfully removed" % (name))
+    return response, httpCode
+
+
+def i_machine_getusbcontrollerbyname(vmid, select=None, name=None):  # noqa: E501
+    """
+    Call interface method IMachine::getUSBControllerByName
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param select: The object attributes separated by comma
+    :type select: str
+    :param name: 
+    :type name: str
+
+    :rtype: USBControllerResponse
+    """
+
+    vbox_utils_commonChecks()
+    httpCode = HTTPStatus.OK
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oUSBControllerResponse = USBControllerResponse()
+    try:
+        oUSBController = oVM.getUSBControllerByName(name)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is None:
+        oUSBControllerResponse.controller = i_fill_usb_controller(oUSBController, select)
+
+    response = jsonify(oError if oError is not None else oUSBControllerResponse)
+    return response, httpCode
+
+
+def i_machine_getusbcontrollercountbytype(vmid, type=None):  # noqa: E501
+    """
+    Call interface method IMachine::getUSBControllerCountByType
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param type: For the possible values of enumeration look into #/definitions/USBControllerType
+    :type type: str
+
+    :rtype: MachineGetusbcontrollercountbytypeResponse
+    """
+
+    vbox_utils_commonChecks()
+    httpCode = HTTPStatus.OK
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oMachineGetusbcontrollercountbytypeResponse = MachineGetusbcontrollercountbytypeResponse()
+    try:
+        cType = swagger_to_vbox_usb_controller_type(type)
+        cNum = oVM.getUSBControllerCountByType(cType)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is None:
+        oMachineGetusbcontrollercountbytypeResponse.controllers = cNum
+
+    response = jsonify(oError if oError is not None else oMachineGetusbcontrollercountbytypeResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -3321,21 +3474,6 @@ def i_console_removeencryptionpassword(vmid, id=None):  # noqa: E501
     :type id: str
 
     :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_addusbcontroller(vmid, oMachineAddUSBControllerRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::addUSBController
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineAddUSBControllerRequestBody:
-    :type oMachineAddUSBControllerRequestBody: dict | bytes
-
-    :rtype: USBControllerResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
@@ -3442,38 +3580,6 @@ def i_machine_geteffectiveparavirtprovider(vmid):  # noqa: E501
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_machine_getusbcontrollerbyname(vmid, select=None, name=None):  # noqa: E501
-    """
-    Call interface method IMachine::getUSBControllerByName
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param name:
-    :type name: str
-
-    :rtype: USBControllerResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_getusbcontrollercountbytype(vmid, type=None):  # noqa: E501
-    """
-    Call interface method IMachine::getUSBControllerCountByType
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param type: For the possible values of enumeration look into #/definitions/USBControllerType
-    :type type: str
-
-    :rtype: MachineGetusbcontrollercountbytypeResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
 def i_machine_lockmachine(vmid, oMachineLockMachineRequestBody):  # noqa: E501
     """
     Call interface method IMachine::lockMachine
@@ -3513,21 +3619,6 @@ def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody):
     :type vmid: str
     :param oMachineNonRotationalDeviceRequestBody:
     :type oMachineNonRotationalDeviceRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_removeusbcontroller(vmid, name=None):  # noqa: E501
-    """
-    Call interface method IMachine::removeUSBController
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param name:
-    :type name: str
 
     :rtype: None
     """
