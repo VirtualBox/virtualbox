@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
+<topic id="security-of-remote-vms">
+    <title>Security of Remote VMs</title>
+    <body>
+        <p><xref href="remotevm.dita">Remote VMs</xref> require security protocols in place to control access to the VM from the VRDP server providing access to it. You can change the security method using VBoxManage or the VM Settings in VirtualBox Manager, as described in <xref href="vrde-crypt.dita"/>.</p>
+        <p>The default security method is TLS, which requires certificates to operate.  You can set up custom certificates, or accept the default self-signed certificate. For more information, see <xref href="vrde-crypt.dita"/>.</p>
+    </body>
+</topic>

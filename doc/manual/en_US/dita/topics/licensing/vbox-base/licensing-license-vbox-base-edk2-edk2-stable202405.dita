@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
+<topic xml:lang="en-us" id="license-edk2-edk2-stable202405">
+  
+ <title>EDK2</title>
+  
+ <body>
+  <pre xml:space="preserve">************************************************************
+********* Copied from LT Public License &amp; Copyright Notices *********
+
+Copyright (c) 2019, TianoCore and contributors.  All rights reserved.
+
+SPDX-License-Identifier: BSD-2-Clause-Patent
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+Subject to the terms and conditions of this license, each copyright holder
+and contributor hereby grants to those receiving rights under this license
+a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+(except for failure to satisfy the conditions of this license) patent
+license to make, have made, use, offer to sell, sell, import, and otherwise
+transfer this software, where such license applies only to those patent
+claims, already acquired or hereafter acquired, licensable by such copyright
+holder or contributor that are necessarily infringed by:
+
+(a) their Contribution(s) (the licensed copyrights of copyright holders and
+    non-copyrightable additions of contributors, in source or binary form)
+    alone; or
+
+(b) combination of their Contribution(s) with the work of authorship to
+    which such Contribution(s) was added by such copyright holder or
+    contributor, if, at the time the Contribution is added, such addition
+    causes such combination to be necessarily infringed. The patent license
+    shall not apply to any other combinations which include the
+    Contribution.
+
+Except as expressly stated above, no rights or licenses from any copyright
+holder or contributor is granted under this license, whether expressly, by
+implication, estoppel or otherwise.
+
+DISCLAIMER
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &#34;AS IS&#34;
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+******************************************************************
+The following additional License.txt files were found in the source code:
+./OvmfPkg/License.txt
+./OvmfPkg/Bhyve/License.txt
+******************************************************************
+
+./OvmfPkg/License.txt
+---------------------------
+
+ckochsto@sca-lx-06 ~/edk2-stable20218/edk2-edk2-stable202108]$ cat ./OvmfPkg/License.txt
+Copyright (c) 2012 - 2019, Intel Corporation. All rights reserved.
+
+SPDX-License-Identifier: BSD-2-Clause-Patent
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+Subject to the terms and conditions of this license, each copyright holder
+and contributor hereby grants to those receiving rights under this license
+a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+(except for failure to satisfy the conditions of this license) patent
+license to make, have made, use, offer to sell, sell, import, and otherwise
+transfer this software, where such license applies only to those patent
+claims, already acquired or hereafter acquired, licensable by such copyright
+holder or contributor that are necessarily infringed by:
+
+(a) their Contribution(s) (the licensed copyrights of copyright holders and
+    non-copyrightable additions of contributors, in source or binary form)
+    alone; or
+
+(b) combination of their Contribution(s) with the work of authorship to
+    which such Contribution(s) was added by such copyright holder or
+    contributor, if, at the time the Contribution is added, such addition
+    causes such combination to be necessarily infringed. The patent license
+    shall not apply to any other combinations which include the
+    Contribution.
+
+Except as expressly stated above, no rights or licenses from any copyright
+holder or contributor is granted under this license, whether expressly, by
+implication, estoppel or otherwise.
+
+DISCLAIMER
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &#34;AS IS&#34;
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+================================================================================
+
+
+
+Some files are subject to the following license, the MIT license. Those files
+are located in:
+- OvmfPkg/Include/IndustryStandard/Xen/
+- OvmfPkg/XenBusDxe/
+
+SPDX-License-Identifier: MIT
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &#34;Software&#34;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice (including the next
+paragraph) shall be included in all copies or substantial portions of the
+Software.
+
+THE SOFTWARE IS PROVIDED &#34;AS IS&#34;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+
+./OvmfPkg/Bhyve/License.txt
+-----------------------------------
+[ckochsto@sca-lx-06 ~/edk2-stable20218/edk2-edk2-stable202108]$ cat ./OvmfPkg/Bhyve/License.txt
+Copyright (c) 2020, Rebecca Cran &lt;rebecca@bsdio.com&gt;
+Copyright (c) 2004 - 2019, Intel Corporation. All rights reserved.&lt;BR&gt;
+Copyright (C) 2018, Red Hat, Inc.
+Copyright (c) 2017, Advanced Micro Devices. All rights reserved.&lt;BR&gt;
+Copyright (C) 2016, Red Hat, Inc.
+(C) Copyright 2016 Hewlett Packard Enterprise Development LP&lt;BR&gt;
+Copyright (c) 2015 Nahanni Systems
+Copyright (C) 2015, Red Hat, Inc.
+Copyright (C) 2014, Red Hat, Inc.
+Copyright (c) 2014, Pluribus Networks, Inc.
+Copyright (C) 2013, Red Hat, Inc.
+Copyright (c) 2012, 2013, Red Hat, Inc.
+Copyright (c) 2011, Bei Guan &lt;gbtju85@gmail.com&gt;
+Copyright (c) 2011, Andrei Warkentin &lt;andreiw@motorola.com&gt;
+Portions copyright (c) 2011, Apple Inc. All rights reserved.
+Portions copyright (c) 2010,Apple Inc. All rights reserved.&lt;BR&gt;
+
+
+SPDX-License-Identifier: BSD-2-Clause-Patent
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+Subject to the terms and conditions of this license, each copyright holder
+and contributor hereby grants to those receiving rights under this license
+a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+(except for failure to satisfy the conditions of this license) patent
+license to make, have made, use, offer to sell, sell, import, and otherwise
+transfer this software, where such license applies only to those patent
+claims, already acquired or hereafter acquired, licensable by such copyright
+holder or contributor that are necessarily infringed by:
+
+(a) their Contribution(s) (the licensed copyrights of copyright holders and
+    non-copyrightable additions of contributors, in source or binary form)
+    alone; or
+
+(b) combination of their Contribution(s) with the work of authorship to
+    which such Contribution(s) was added by such copyright holder or
+    contributor, if, at the time the Contribution is added, such addition
+    causes such combination to be necessarily infringed. The patent license
+    shall not apply to any other combinations which include the
+    Contribution.
+
+Except as expressly stated above, no rights or licenses from any copyright
+holder or contributor is granted under this license, whether expressly, by
+implication, estoppel or otherwise.
+
+DISCLAIMER
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &#34;AS IS&#34;
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+==========================================================
+OpenSSL 1.1.1t (LICENSE):
+
+LICENSE ISSUES
+  ==============
+
+  The OpenSSL toolkit stays under a double license, i.e. both the conditions of
+  the OpenSSL License and the original SSLeay license apply to the toolkit.
+  See below for the actual license texts.
+
+  OpenSSL License
+  ---------------
+
+/* ====================================================================
+ * Copyright (c) 1998-2019 The OpenSSL Project.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. All advertising materials mentioning features or use of this
+ *    software must display the following acknowledgment:
+ *    &#34;This product includes software developed by the OpenSSL Project
+ *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)&#34;
+ *
+ * 4. The names &#34;OpenSSL Toolkit&#34; and &#34;OpenSSL Project&#34; must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For written permission, please contact
+ *    openssl-core@openssl.org.
+ *
+ * 5. Products derived from this software may not be called &#34;OpenSSL&#34;
+ *    nor may &#34;OpenSSL&#34; appear in their names without prior written
+ *    permission of the OpenSSL Project.
+ *
+ * 6. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    &#34;This product includes software developed by the OpenSSL Project
+ *    for use in the OpenSSL Toolkit (http://www.openssl.org/)&#34;
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS&#39;&#39; AND ANY
+ * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
+ * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ * ====================================================================
+ *
+ * This product includes cryptographic software written by Eric Young
+ * (eay@cryptsoft.com).  This product includes software written by Tim
+ * Hudson (tjh@cryptsoft.com).
+ *
+ */
+
+ Original SSLeay License
+ -----------------------
+
+/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
+ * All rights reserved.
+ *
+ * This package is an SSL implementation written
+ * by Eric Young (eay@cryptsoft.com).
+ * The implementation was written so as to conform with Netscapes SSL.
+ *
+ * This library is free for commercial and non-commercial use as long as
+ * the following conditions are aheared to.  The following conditions
+ * apply to all code found in this distribution, be it the RC4, RSA,
+ * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
+ * included with this distribution is covered by the same copyright terms
+ * except that the holder is Tim Hudson (tjh@cryptsoft.com).
+ *
+ * Copyright remains Eric Young&#39;s, and as such any Copyright notices in
+ * the code are not to be removed.
+ * If this package is used in a product, Eric Young should be given attribution
+ * as the author of the parts of the library used.
+ * This can be in the form of a textual message at program startup or
+ * in documentation (online or textual) provided with the package.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *    &#34;This product includes cryptographic software written by
+ *     Eric Young (eay@cryptsoft.com)&#34;
+ *    The word &#39;cryptographic&#39; can be left out if the rouines from the library
+ *    being used are not cryptographic related :-).
+ * 4. If you include any Windows specific code (or a derivative thereof) from
+ *    the apps directory (application code) you must include an acknowledgement:
+ *    &#34;This product includes software written by Tim Hudson (tjh@cryptsoft.com)&#34;
+ *
+ * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS&#39;&#39; AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * The licence and distribution terms for any publically available version or
+ * derivative of this code cannot be changed.  i.e. this code cannot simply be
+ * copied and put under another distribution licence
+ * [including the GNU Public Licence.]
+ */</pre>
+  </body>
+ </topic>

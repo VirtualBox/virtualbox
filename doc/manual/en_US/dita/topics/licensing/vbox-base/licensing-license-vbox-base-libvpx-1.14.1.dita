@@ -1,0 +1,2464 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
+<topic xml:lang="en-us" id="license-libvpx-1.14.1">
+  
+ <title>libvpx</title>
+  
+ <body>
+  <pre xml:space="preserve">## Files:
+LICENSE
+
+Copyright (c) 2010, The WebM Project authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+  * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+
+  * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+
+  * Neither the name of Google, nor the WebM Project, nor the names
+    of its contributors may be used to endorse or promote products
+    derived from this software without specific prior written
+    permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+&#34;AS IS&#34; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+## Files:
+PATENTS
+third_party/libwebm/PATENTS.TXT
+
+Additional IP Rights Grant (Patents)
+------------------------------------
+
+&#34;These implementations&#34; means the copyrightable works that implement the WebM
+codecs distributed by Google as part of the WebM Project.
+
+Google hereby grants to you a perpetual, worldwide, non-exclusive, no-charge,
+royalty-free, irrevocable (except as stated in this section) patent license to
+make, have made, use, offer to sell, sell, import, transfer, and otherwise
+run, modify and propagate the contents of these implementations of WebM, where
+such license applies only to those patent claims, both currently owned by
+Google and acquired in the future, licensable by Google that are necessarily
+infringed by these implementations of WebM. This grant does not include claims
+that would be infringed only as a consequence of further modification of these
+implementations. If you or your agent or exclusive licensee institute or order
+or agree to the institution of patent litigation or any other patent
+enforcement activity against any entity (including a cross-claim or
+counterclaim in a lawsuit) alleging that any of these implementations of WebM
+or any code incorporated within any of these implementations of WebM
+constitute direct or contributory patent infringement, or inducement of
+patent infringement, then any patent rights granted to you under this License
+for these implementations of WebM shall terminate as of the date such
+litigation is filed.
+
+
+## Files:
+third_party/libwebm/LICENSE.TXT
+
+Copyright (c) 2010, Google Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+  * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+
+  * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+
+  * Neither the name of Google nor the names of its contributors may
+    be used to endorse or promote products derived from this software
+    without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+&#34;AS IS&#34; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+## Files:
+third_party/libyuv/LICENSE
+
+Copyright 2011 The LibYuv Project Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+  * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+
+  * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+
+  * Neither the name of Google nor the names of its contributors may
+    be used to endorse or promote products derived from this software
+    without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+&#34;AS IS&#34; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+## Files:
+third_party/googletest/src/LICENSE
+third_party/googletest/src/include/gtest/gtest-param-test.h
+third_party/googletest/src/include/gtest/gtest-test-part.h
+third_party/googletest/src/include/gtest/internal/gtest-filepath.h
+third_party/googletest/src/src/gtest-all.cc
+third_party/googletest/src/src/gtest-filepath.cc
+third_party/googletest/src/src/gtest-port.cc
+third_party/googletest/src/src/gtest-test-part.cc
+
+Copyright 2008, Google Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+    * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+    * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+&#34;AS IS&#34; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+## Files:
+third_party/x86inc/LICENSE
+
+Copyright (C) 2005-2012 x264 project
+
+Authors: Loren Merritt &lt;lorenm@u.washington.edu&gt;
+         Anton Mitrofanov &lt;BugMaster@narod.ru&gt;
+         Jason Garrett-Glaser &lt;darkshikari@gmail.com&gt;
+         Henrik Gramner &lt;hengar-6@student.ltu.se&gt;
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED &#34;AS IS&#34; AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+
+## Files:
+third_party/googletest/src/include/gtest/gtest_pred_impl.h
+
+Copyright 2006, Google Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+    * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+    * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+&#34;AS IS&#34; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Implements a family of generic predicate assertion macros.
+
+
+## Files:
+third_party/googletest/src/include/gtest/gtest-assertion-result.h
+third_party/googletest/src/include/gtest/gtest-death-test.h
+third_party/googletest/src/include/gtest/gtest-message.h
+third_party/googletest/src/include/gtest/gtest.h
+third_party/googletest/src/include/gtest/internal/gtest-death-test-internal.h
+third_party/googletest/src/include/gtest/internal/gtest-internal.h
+third_party/googletest/src/include/gtest/internal/gtest-port.h
+third_party/googletest/src/include/gtest/internal/gtest-string.h
+third_party/googletest/src/src/gtest-assertion-result.cc
+third_party/googletest/src/src/gtest-death-test.cc
+third_party/googletest/src/src/gtest-internal-inl.h
+third_party/googletest/src/src/gtest.cc
+
+Copyright 2005, Google Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+    * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+    * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+&#34;AS IS&#34; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+## Files:
+third_party/googletest/src/include/gtest/internal/custom/gtest-printers.h
+
+Copyright 2015, Google Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+    * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+    * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+&#34;AS IS&#34; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+This file provides an injection point for custom printers in a local
+installation of gTest.
+It will be included from gtest-printers.h and the overrides in this file
+will be visible to everyone.
+
+Injection point for custom user configurations. See README for details
+
+** Custom implementation starts here **
+
+
+## Files:
+tools/cpplint.py
+
+Copyright (c) 2009 Google Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+&#34;AS IS&#34; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+## Files:
+third_party/googletest/src/include/gtest/internal/custom/gtest-port.h
+third_party/googletest/src/include/gtest/internal/custom/gtest.h
+
+Copyright 2015, Google Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+    * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+    * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+&#34;AS IS&#34; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Injection point for custom user configurations. See README for details
+
+** Custom implementation starts here **
+
+
+## Files:
+third_party/googletest/src/include/gtest/gtest-typed-test.h
+third_party/googletest/src/include/gtest/internal/gtest-param-util.h
+third_party/googletest/src/include/gtest/internal/gtest-type-util.h
+third_party/googletest/src/src/gtest-typed-test.cc
+
+Copyright 2008 Google Inc.
+All Rights Reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+    * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+    * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+&#34;AS IS&#34; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+## Files:
+third_party/googletest/src/include/gtest/gtest-matchers.h
+third_party/googletest/src/include/gtest/gtest-printers.h
+third_party/googletest/src/include/gtest/gtest-spi.h
+third_party/googletest/src/src/gtest-matchers.cc
+third_party/googletest/src/src/gtest-printers.cc
+
+Copyright 2007, Google Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+    * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+    * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+&#34;AS IS&#34; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+## Files:
+third_party/googletest/src/include/gtest/internal/gtest-port-arch.h
+
+Copyright 2015, Google Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+    * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+    * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+&#34;AS IS&#34; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+## Files:
+third_party/googletest/src/include/gtest/gtest_prod.h
+third_party/googletest/src/src/gtest_main.cc
+
+Copyright 2006, Google Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+    * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+    * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+&#34;AS IS&#34; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+## Files:
+third_party/libyuv/include/libyuv/macros_msa.h
+third_party/libyuv/source/rotate_msa.cc
+third_party/libyuv/source/row_msa.cc
+third_party/libyuv/source/scale_msa.cc
+
+Copyright 2016 The LibYuv Project Authors. All rights reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS. All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+test/vp9_ext_ratectrl_test.cc
+test/vp9_ratectrl_rtc_test.cc
+vp9/encoder/vp9_ext_ratectrl.c
+vp9/encoder/vp9_ext_ratectrl.h
+vp9/ratectrl_rtc.cc
+vp9/ratectrl_rtc.h
+vpx/vpx_ext_ratectrl.h
+vpx_ports/compiler_attributes.h
+vpx_ports/mips.h
+vpx_ports/mips_cpudetect.c
+vpx_ports/static_assert.h
+
+Copyright (c) 2020 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+examples/vp9cx_set_ref.c
+test/add_noise_test.cc
+test/buffer.h
+test/decode_svc_test.cc
+test/encode_api_test.cc
+test/hadamard_test.cc
+test/level_test.cc
+test/minmax_test.cc
+test/realtime_test.cc
+test/sum_squares_test.cc
+third_party/libwebm/common/file_util.cc
+third_party/libwebm/common/file_util.h
+third_party/libwebm/common/hdr_util.cc
+third_party/libwebm/common/hdr_util.h
+tools/tiny_ssim.c
+vp9/encoder/x86/vp9_frame_scale_ssse3.c
+vpx_dsp/arm/deblock_neon.c
+vpx_dsp/arm/hadamard_neon.c
+vpx_dsp/arm/highbd_idct4x4_add_neon.c
+vpx_dsp/arm/highbd_idct8x8_add_neon.c
+vpx_dsp/arm/highbd_intrapred_neon.c
+vpx_dsp/arm/highbd_loopfilter_neon.c
+vpx_dsp/arm/highbd_vpx_convolve8_neon.c
+vpx_dsp/arm/highbd_vpx_convolve_avg_neon.c
+vpx_dsp/arm/highbd_vpx_convolve_copy_neon.c
+vpx_dsp/arm/highbd_vpx_convolve_neon.c
+vpx_dsp/arm/idct32x32_135_add_neon.c
+vpx_dsp/arm/idct32x32_34_add_neon.c
+vpx_dsp/arm/idct_neon.h
+vpx_dsp/arm/loopfilter_neon.c
+vpx_dsp/arm/transpose_neon.h
+vpx_dsp/deblock.c
+vpx_dsp/mips/deblock_msa.c
+vpx_dsp/postproc.h
+vpx_dsp/psnr.c
+vpx_dsp/psnr.h
+vpx_dsp/sum_squares.c
+vpx_dsp/x86/sum_squares_sse2.c
+
+Copyright (c) 2016 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+md5_utils.h
+
+This is the header file for the MD5 message-digest algorithm.
+The algorithm is due to Ron Rivest.  This code was
+written by Colin Plumb in 1993, no copyright is claimed.
+This code is in the public domain; do with it what you wish.
+
+Equivalent code is available from RSA Data Security, Inc.
+This code has been tested against that, and is equivalent,
+except that you don&#39;t need to include two pages of legalese
+with every copy.
+
+To compute the message digest of a chunk of bytes, declare an
+MD5Context structure, pass it to MD5Init, call MD5Update as
+needed on buffers full of bytes, and then call MD5Final, which
+will fill a supplied 16-byte array with the digest.
+
+Changed so as no longer to depend on Colin Plumb&#39;s `usual.h&#39;
+header definitions
+ - Ian Jackson &lt;ian@chiark.greenend.org.uk&gt;.
+Still in the public domain.
+
+
+## Files:
+test/twopass_encoder.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file tests the libvpx twopass_encoder example. To add new tests to this
+#  file, do the following:
+#    1. Write a shell function (this is your test).
+#    2. Add the function to twopass_encoder_tests (on a new line).
+#
+
+
+## Files:
+vp8/common/loongarch/idct_lsx.c
+vp8/encoder/loongarch/dct_lsx.c
+vp8/encoder/loongarch/encodeopt_lsx.c
+vp8/encoder/loongarch/vp8_quantize_lsx.c
+vp9/encoder/arm/neon/vp9_dct_neon.c
+vp9/encoder/arm/neon/vp9_diamond_search_sad_neon.c
+vp9/encoder/x86/vp9_quantize_ssse3.c
+vpx_dsp/arm/fdct32x32_neon.h
+vpx_dsp/arm/fdct4x4_neon.h
+vpx_dsp/arm/fdct8x8_neon.h
+vpx_dsp/arm/fdct_neon.h
+vpx_dsp/arm/highbd_quantize_neon.c
+vpx_dsp/arm/highbd_sad_neon.c
+vpx_dsp/arm/highbd_variance_neon.c
+vpx_dsp/arm/highbd_variance_neon_dotprod.c
+vpx_dsp/loongarch/avg_lsx.c
+vpx_dsp/loongarch/avg_pred_lsx.c
+vpx_dsp/loongarch/bitdepth_conversion_lsx.h
+vpx_dsp/loongarch/fwd_dct32x32_lsx.c
+vpx_dsp/loongarch/fwd_txfm_lsx.c
+vpx_dsp/loongarch/fwd_txfm_lsx.h
+vpx_dsp/loongarch/idct32x32_lsx.c
+vpx_dsp/loongarch/loopfilter_4_lsx.c
+vpx_dsp/loongarch/loopfilter_8_lsx.c
+vpx_dsp/loongarch/loopfilter_lsx.h
+vpx_dsp/loongarch/quantize_lsx.c
+vpx_dsp/loongarch/sad_lsx.c
+vpx_dsp/loongarch/sub_pixel_variance_lsx.c
+vpx_dsp/loongarch/subtract_lsx.c
+vpx_dsp/loongarch/txfm_macros_lsx.h
+vpx_dsp/loongarch/variance_lsx.c
+vpx_dsp/loongarch/variance_lsx.h
+vpx_dsp/loongarch/vpx_convolve8_avg_horiz_lsx.c
+vpx_dsp/loongarch/vpx_convolve8_avg_lsx.c
+vpx_dsp/loongarch/vpx_convolve8_avg_vert_lsx.c
+vpx_dsp/loongarch/vpx_convolve8_horiz_lsx.c
+vpx_dsp/loongarch/vpx_convolve8_lsx.c
+vpx_dsp/loongarch/vpx_convolve8_vert_lsx.c
+vpx_dsp/loongarch/vpx_convolve_avg_lsx.c
+vpx_dsp/loongarch/vpx_convolve_copy_lsx.c
+vpx_dsp/loongarch/vpx_convolve_lsx.h
+vpx_dsp/x86/highbd_quantize_intrin_avx2.c
+vpx_dsp/x86/highbd_sad4d_avx2.c
+vpx_dsp/x86/highbd_sad_avx2.c
+vpx_dsp/x86/quantize_avx2.c
+vpx_dsp/x86/subtract_avx2.c
+vpx_util/loongson_intrinsics.h
+
+Copyright (c) 2022 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+vpx_util/loongson_intrinsics.h
+
+Copyright (c) 2021 Loongson Technology Corporation Limited
+All rights reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+Contributed by Shiyou Yin &lt;yinshiyou-hf@loongson.cn&gt;
+               Xiwei Gu   &lt;guxiwei-hf@loongson.cn&gt;
+               Lu Wang    &lt;wanglu@loongson.cn&gt;
+
+This file is a header file for loongarch builtin extension.
+
+
+## Files:
+test/vp9_c_vs_simd_encode.sh
+
+#
+#  Copyright (c) 2023 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This script checks the bit exactness between C and SIMD
+#  implementations of VP9 encoder.
+#
+
+
+## Files:
+vp8/common/loongarch/loopfilter_filters_lsx.c
+
+Copyright (c) 2021 Loongson Technology Corporation Limited
+Contributed by Lu Wang &lt;wanglu@loongson.cn&gt;
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS. All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+y4minput.c
+y4minput.h
+
+Copyright (c) 2010 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+Based on code from the OggTheora software codec source code,
+Copyright (C) 2002-2010 The Xiph.Org Foundation and contributors.
+
+
+## Files:
+test/comp_avg_pred_test.cc
+test/dct_partial_test.cc
+test/dct_test.cc
+test/vp9_motion_vector_test.cc
+test/vp9_scale_test.cc
+vp8/common/mips/mmi/copymem_mmi.c
+vp8/common/mips/mmi/dequantize_mmi.c
+vp8/common/mips/mmi/idct_blk_mmi.c
+vp8/common/mips/mmi/idctllm_mmi.c
+vp8/common/mips/mmi/loopfilter_filters_mmi.c
+vp8/common/mips/mmi/sixtap_filter_mmi.c
+vp8/encoder/ethreading.h
+vp8/encoder/mips/mmi/dct_mmi.c
+vp8/encoder/mips/mmi/vp8_quantize_mmi.c
+vp8/encoder/picklpf.h
+vp8/encoder/temporal_filter.h
+vp9/encoder/arm/neon/vp9_denoiser_neon.c
+vp9/encoder/arm/neon/vp9_frame_scale_neon.c
+vp9/encoder/vp9_frame_scale.c
+vp9/encoder/vp9_job_queue.h
+vp9/encoder/vp9_multi_thread.c
+vp9/encoder/vp9_multi_thread.h
+vp9/encoder/x86/temporal_filter_sse4.c
+vp9/encoder/x86/vp9_quantize_avx2.c
+vpx_dsp/arm/avg_pred_neon.c
+vpx_dsp/arm/fdct16x16_neon.c
+vpx_dsp/arm/fdct16x16_neon.h
+vpx_dsp/arm/fdct32x32_neon.c
+vpx_dsp/arm/fdct4x4_neon.c
+vpx_dsp/arm/fdct_partial_neon.c
+vpx_dsp/arm/highbd_idct16x16_add_neon.c
+vpx_dsp/arm/highbd_idct32x32_1024_add_neon.c
+vpx_dsp/arm/highbd_idct32x32_135_add_neon.c
+vpx_dsp/arm/highbd_idct32x32_34_add_neon.c
+vpx_dsp/arm/highbd_idct32x32_add_neon.c
+vpx_dsp/arm/mem_neon.h
+vpx_dsp/arm/quantize_neon.c
+vpx_dsp/arm/sum_neon.h
+vpx_dsp/arm/vpx_scaled_convolve8_neon.c
+vpx_dsp/mips/sad_mmi.c
+vpx_dsp/mips/subtract_mmi.c
+vpx_dsp/mips/sum_squares_msa.c
+vpx_dsp/mips/variance_mmi.c
+vpx_dsp/ppc/bitdepth_conversion_vsx.h
+vpx_dsp/ppc/hadamard_vsx.c
+vpx_dsp/ppc/intrapred_vsx.c
+vpx_dsp/ppc/sad_vsx.c
+vpx_dsp/ppc/transpose_vsx.h
+vpx_dsp/ppc/types_vsx.h
+vpx_dsp/ppc/variance_vsx.c
+vpx_dsp/ppc/vpx_convolve_vsx.c
+vpx_dsp/skin_detection.c
+vpx_dsp/skin_detection.h
+vpx_dsp/x86/avg_intrin_avx2.c
+vpx_dsp/x86/avg_pred_sse2.c
+vpx_dsp/x86/bitdepth_conversion_avx2.h
+vpx_dsp/x86/bitdepth_conversion_sse2.h
+vpx_dsp/x86/convolve_avx2.h
+vpx_dsp/x86/convolve_ssse3.h
+vpx_dsp/x86/highbd_convolve_avx2.c
+vpx_dsp/x86/highbd_idct16x16_add_sse4.c
+vpx_dsp/x86/highbd_idct32x32_add_sse4.c
+vpx_dsp/x86/highbd_idct4x4_add_sse4.c
+vpx_dsp/x86/highbd_idct8x8_add_sse4.c
+vpx_dsp/x86/highbd_intrapred_intrin_sse2.c
+vpx_dsp/x86/highbd_intrapred_intrin_ssse3.c
+vpx_dsp/x86/highbd_inv_txfm_sse4.h
+vpx_dsp/x86/inv_txfm_ssse3.c
+vpx_dsp/x86/inv_txfm_ssse3.h
+vpx_dsp/x86/mem_sse2.h
+vpx_dsp/x86/quantize_avx.c
+vpx_dsp/x86/quantize_sse2.h
+vpx_dsp/x86/quantize_ssse3.c
+vpx_dsp/x86/quantize_ssse3.h
+vpx_dsp/x86/sad4d_avx512.c
+vpx_ports/asmdefs_mmi.h
+vpx_ports/ppc.h
+vpx_ports/ppc_cpudetect.c
+vpx_util/vpx_atomics.h
+
+Copyright (c) 2017 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+build/make/gen_msvs_vcxproj.sh
+
+#
+#  Copyright (c) 2013 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+
+
+## Files:
+vpx_dsp/psnrhvs.c
+
+Copyright (c) 2010 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+This code was originally written by: Gregory Maxwell, at the Daala
+project.
+
+
+## Files:
+test/vpx_image_test.cc
+
+Copyright (c) 2024 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+third_party/libyuv/include/libyuv/rotate_row.h
+third_party/libyuv/include/libyuv/scale_row.h
+third_party/libyuv/source/rotate_win.cc
+third_party/libyuv/source/scale_common.cc
+third_party/libyuv/source/scale_gcc.cc
+third_party/libyuv/source/scale_win.cc
+
+Copyright 2013 The LibYuv Project Authors. All rights reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS. All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+vpx_ports/loongarch.h
+vpx_ports/loongarch_cpudetect.c
+
+Copyright (c) 2021 Loongson Technology Corporation Limited
+Contributed by Jin Bo  &lt;jinbo@loongson.cn&gt;
+Contributed by Lu Wang &lt;wanglu@loongson.cn&gt;
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+test/postproc.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file tests the libvpx postproc example code. To add new tests to this
+#  file, do the following:
+#    1. Write a shell function (this is your test).
+#    2. Add the function to postproc_tests (on a new line).
+#
+
+
+## Files:
+test/tools_common.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file contains shell code shared by test scripts for libvpx tools.
+
+
+## Files:
+third_party/libyuv/source/compare_msa.cc
+
+Copyright 2017 The LibYuv Project Authors. All rights reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS. All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+build/make/msvs_common.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+
+
+## Files:
+third_party/libyuv/include/libyuv/convert_argb.h
+third_party/libyuv/include/libyuv/convert_from_argb.h
+third_party/libyuv/include/libyuv/mjpeg_decoder.h
+third_party/libyuv/include/libyuv/rotate_argb.h
+third_party/libyuv/include/libyuv/scale_argb.h
+third_party/libyuv/include/libyuv/version.h
+third_party/libyuv/source/compare_common.cc
+third_party/libyuv/source/compare_gcc.cc
+third_party/libyuv/source/compare_neon.cc
+third_party/libyuv/source/compare_neon64.cc
+third_party/libyuv/source/compare_win.cc
+third_party/libyuv/source/convert_from.cc
+third_party/libyuv/source/convert_from_argb.cc
+third_party/libyuv/source/mjpeg_decoder.cc
+third_party/libyuv/source/mjpeg_validate.cc
+third_party/libyuv/source/rotate_argb.cc
+third_party/libyuv/source/row_any.cc
+
+Copyright 2012 The LibYuv Project Authors. All rights reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS. All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+test/vpx_temporal_svc_encoder.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file tests the libvpx vpx_temporal_svc_encoder example. To add new
+#  tests to this file, do the following:
+#    1. Write a shell function (this is your test).
+#    2. Add the function to vpx_tsvc_encoder_tests (on a new line).
+#
+
+
+## Files:
+test/android/get_files.py
+
+Copyright (c) 2013 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+This simple script pulls test files from the webm homepage
+It is intelligent enough to only pull files if
+  1) File / test_data folder does not exist
+  2) SHA mismatch
+
+
+## Files:
+test/active_map_refresh_test.cc
+test/test_intra_pred_speed.cc
+test/vp9_arf_freq_test.cc
+test/vp9_skip_loopfilter_test.cc
+vp8/common/mips/msa/bilinear_filter_msa.c
+vp8/common/mips/msa/copymem_msa.c
+vp8/common/mips/msa/idct_msa.c
+vp8/common/mips/msa/loopfilter_filters_msa.c
+vp8/common/mips/msa/mfqe_msa.c
+vp8/common/mips/msa/sixtap_filter_msa.c
+vp8/common/mips/msa/vp8_macros_msa.h
+vp8/common/vp8_skin_detection.c
+vp8/common/vp8_skin_detection.h
+vp8/encoder/mips/msa/dct_msa.c
+vp8/encoder/mips/msa/denoising_msa.c
+vp8/encoder/mips/msa/encodeopt_msa.c
+vp8/encoder/mips/msa/quantize_msa.c
+vp8/encoder/mips/msa/temporal_filter_msa.c
+vp9/common/mips/msa/vp9_idct16x16_msa.c
+vp9/common/mips/msa/vp9_idct4x4_msa.c
+vp9/common/mips/msa/vp9_idct8x8_msa.c
+vp9/common/mips/msa/vp9_mfqe_msa.c
+vp9/encoder/arm/neon/vp9_error_neon.c
+vp9/encoder/mips/msa/vp9_error_msa.c
+vp9/encoder/mips/msa/vp9_fdct16x16_msa.c
+vp9/encoder/mips/msa/vp9_fdct4x4_msa.c
+vp9/encoder/mips/msa/vp9_fdct8x8_msa.c
+vp9/encoder/mips/msa/vp9_fdct_msa.h
+vp9/encoder/vp9_noise_estimate.c
+vp9/encoder/vp9_skin_detection.c
+vp9/encoder/vp9_skin_detection.h
+vp9/vp9_dx_iface.h
+vpx_dsp/add_noise.c
+vpx_dsp/arm/avg_neon.c
+vpx_dsp/arm/fdct8x8_neon.c
+vpx_dsp/arm/sad4d_neon.c
+vpx_dsp/fwd_txfm.c
+vpx_dsp/fwd_txfm.h
+vpx_dsp/intrapred.c
+vpx_dsp/inv_txfm.c
+vpx_dsp/loopfilter.c
+vpx_dsp/mips/add_noise_msa.c
+vpx_dsp/mips/avg_msa.c
+vpx_dsp/mips/common_dspr2.c
+vpx_dsp/mips/fwd_dct32x32_msa.c
+vpx_dsp/mips/fwd_txfm_msa.c
+vpx_dsp/mips/fwd_txfm_msa.h
+vpx_dsp/mips/idct16x16_msa.c
+vpx_dsp/mips/idct32x32_msa.c
+vpx_dsp/mips/idct4x4_msa.c
+vpx_dsp/mips/idct8x8_msa.c
+vpx_dsp/mips/intrapred16_dspr2.c
+vpx_dsp/mips/intrapred4_dspr2.c
+vpx_dsp/mips/intrapred8_dspr2.c
+vpx_dsp/mips/intrapred_msa.c
+vpx_dsp/mips/inv_txfm_msa.h
+vpx_dsp/mips/itrans16_dspr2.c
+vpx_dsp/mips/itrans4_dspr2.c
+vpx_dsp/mips/itrans8_dspr2.c
+vpx_dsp/mips/loopfilter_16_msa.c
+vpx_dsp/mips/loopfilter_4_msa.c
+vpx_dsp/mips/loopfilter_8_msa.c
+vpx_dsp/mips/loopfilter_msa.h
+vpx_dsp/mips/macros_msa.h
+vpx_dsp/mips/sad_msa.c
+vpx_dsp/mips/sub_pixel_variance_msa.c
+vpx_dsp/mips/subtract_msa.c
+vpx_dsp/mips/txfm_macros_msa.h
+vpx_dsp/mips/variance_msa.c
+vpx_dsp/mips/vpx_convolve8_avg_horiz_msa.c
+vpx_dsp/mips/vpx_convolve8_avg_msa.c
+vpx_dsp/mips/vpx_convolve8_avg_vert_msa.c
+vpx_dsp/mips/vpx_convolve8_horiz_msa.c
+vpx_dsp/mips/vpx_convolve8_msa.c
+vpx_dsp/mips/vpx_convolve8_vert_msa.c
+vpx_dsp/mips/vpx_convolve_avg_msa.c
+vpx_dsp/mips/vpx_convolve_copy_msa.c
+vpx_dsp/mips/vpx_convolve_msa.h
+vpx_dsp/ppc/inv_txfm_vsx.c
+vpx_dsp/quantize.c
+vpx_dsp/quantize.h
+vpx_dsp/sad.c
+vpx_dsp/subtract.c
+vpx_dsp/txfm_common.h
+vpx_dsp/variance.h
+vpx_dsp/vpx_dsp_common.h
+vpx_dsp/vpx_dsp_rtcd.c
+vpx_dsp/vpx_filter.h
+vpx_dsp/x86/convolve.h
+vpx_dsp/x86/fwd_txfm_sse2.c
+vpx_dsp/x86/highbd_idct16x16_add_sse2.c
+vpx_dsp/x86/highbd_idct32x32_add_sse2.c
+vpx_dsp/x86/highbd_idct4x4_add_sse2.c
+vpx_dsp/x86/highbd_idct8x8_add_sse2.c
+vpx_dsp/x86/highbd_inv_txfm_sse2.h
+vpx_dsp/x86/highbd_quantize_intrin_sse2.c
+vpx_dsp/x86/inv_txfm_sse2.c
+vpx_dsp/x86/inv_txfm_sse2.h
+vpx_dsp/x86/quantize_sse2.c
+vpx_dsp/x86/transpose_sse2.h
+vpx_dsp/x86/txfm_common_sse2.h
+vpx_ports/msvc.h
+vpx_ports/system_state.h
+vpx_ports/vpx_once.h
+vpx_util/vpx_write_yuv_frame.c
+vpx_util/vpx_write_yuv_frame.h
+
+Copyright (c) 2015 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+vp9/encoder/vp9_alt_ref_aq.c
+vp9/encoder/vp9_alt_ref_aq.h
+
+Copyright (c) 2016 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed  by a BSD-style license that can be
+found in the LICENSE file in the root of the source tree. An additional
+intellectual property  rights grant can  be found in the  file PATENTS.
+All contributing  project authors may be  found in the AUTHORS  file in
+the root of the source tree.
+
+
+## Files:
+third_party/libyuv/include/libyuv/basic_types.h
+third_party/libyuv/include/libyuv/compare.h
+third_party/libyuv/include/libyuv/convert.h
+third_party/libyuv/include/libyuv/convert_from.h
+third_party/libyuv/include/libyuv/cpu_id.h
+third_party/libyuv/include/libyuv/planar_functions.h
+third_party/libyuv/include/libyuv/rotate.h
+third_party/libyuv/include/libyuv/row.h
+third_party/libyuv/include/libyuv/scale.h
+third_party/libyuv/include/libyuv/video_common.h
+third_party/libyuv/source/compare.cc
+third_party/libyuv/source/convert.cc
+third_party/libyuv/source/convert_argb.cc
+third_party/libyuv/source/convert_jpeg.cc
+third_party/libyuv/source/convert_to_argb.cc
+third_party/libyuv/source/convert_to_i420.cc
+third_party/libyuv/source/cpu_id.cc
+third_party/libyuv/source/planar_functions.cc
+third_party/libyuv/source/rotate.cc
+third_party/libyuv/source/rotate_common.cc
+third_party/libyuv/source/rotate_neon.cc
+third_party/libyuv/source/row_common.cc
+third_party/libyuv/source/row_gcc.cc
+third_party/libyuv/source/row_neon.cc
+third_party/libyuv/source/row_win.cc
+third_party/libyuv/source/scale.cc
+third_party/libyuv/source/scale_argb.cc
+third_party/libyuv/source/scale_neon.cc
+third_party/libyuv/source/video_common.cc
+
+Copyright 2011 The LibYuv Project Authors. All rights reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS. All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+test/non_greedy_mv_test.cc
+test/simple_encode_test.cc
+test/timestamp_test.cc
+test/yuv_temporal_filter_test.cc
+vp8/common/arm/loopfilter_arm.h
+vp9/encoder/vp9_blockiness.h
+vp9/encoder/vp9_non_greedy_mv.c
+vp9/encoder/vp9_non_greedy_mv.h
+vp9/encoder/x86/highbd_temporal_filter_sse4.c
+vp9/simple_encode.cc
+vp9/simple_encode.h
+vp9/vp9_cx_iface.h
+vpx_util/vpx_debug_util.c
+vpx_util/vpx_debug_util.h
+vpx_util/vpx_timestamp.h
+
+Copyright (c) 2019 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+vpx_util/vpx_thread.c
+vpx_util/vpx_thread.h
+
+Copyright 2013 Google Inc. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the COPYING file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS. All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+-----------------------------------------------------------------------------
+
+Multi-threaded worker
+
+Original source:
+ https://chromium.googlesource.com/webm/libwebp
+
+
+## Files:
+examples/svc_context.h
+examples/svc_encodeframe.c
+ivfdec.c
+ivfdec.h
+ivfenc.c
+ivfenc.h
+test/clear_system_state.h
+test/codec_factory.h
+test/decode_perf_test.cc
+test/error_resilience_test.cc
+test/partial_idct_test.cc
+test/predict_test.cc
+test/test_vector_test.cc
+test/test_vectors.cc
+test/test_vectors.h
+test/tile_independence_test.cc
+test/user_priv_test.cc
+test/vp8_decrypt_test.cc
+test/vp8_fdct4x4_test.cc
+test/vp9_decrypt_test.cc
+test/vp9_lossless_test.cc
+test/vp9_thread_test.cc
+vp9/common/mips/dspr2/vp9_itrans16_dspr2.c
+vp9/common/mips/dspr2/vp9_itrans4_dspr2.c
+vp9/common/mips/dspr2/vp9_itrans8_dspr2.c
+vp9/common/vp9_scale.c
+vp9/common/vp9_scale.h
+vp9/common/vp9_scan.h
+vp9/decoder/vp9_dsubexp.h
+vp9/encoder/vp9_aq_360.c
+vp9/encoder/vp9_aq_360.h
+vp9/encoder/vp9_aq_variance.c
+vp9/encoder/vp9_aq_variance.h
+vp9/encoder/vp9_subexp.c
+vp9/encoder/vp9_subexp.h
+vp9/vp9_iface_common.h
+vpx_dsp/arm/vpx_convolve_neon.c
+vpx_dsp/bitreader_buffer.c
+vpx_dsp/bitreader_buffer.h
+vpx_dsp/bitwriter_buffer.c
+vpx_dsp/bitwriter_buffer.h
+vpx_dsp/mips/common_dspr2.h
+vpx_dsp/mips/convolve2_avg_dspr2.c
+vpx_dsp/mips/convolve2_avg_horiz_dspr2.c
+vpx_dsp/mips/convolve2_dspr2.c
+vpx_dsp/mips/convolve2_horiz_dspr2.c
+vpx_dsp/mips/convolve2_vert_dspr2.c
+vpx_dsp/mips/convolve8_avg_dspr2.c
+vpx_dsp/mips/convolve8_avg_horiz_dspr2.c
+vpx_dsp/mips/convolve8_dspr2.c
+vpx_dsp/mips/convolve8_horiz_dspr2.c
+vpx_dsp/mips/convolve8_vert_dspr2.c
+vpx_dsp/mips/convolve_common_dspr2.h
+vpx_dsp/mips/inv_txfm_dspr2.h
+vpx_dsp/mips/itrans32_cols_dspr2.c
+vpx_dsp/mips/itrans32_dspr2.c
+vpx_dsp/mips/loopfilter_filters_dspr2.c
+vpx_dsp/mips/loopfilter_filters_dspr2.h
+vpx_dsp/mips/loopfilter_macros_dspr2.h
+vpx_dsp/mips/loopfilter_masks_dspr2.h
+vpx_dsp/mips/loopfilter_mb_dspr2.c
+vpx_dsp/mips/loopfilter_mb_horiz_dspr2.c
+vpx_dsp/mips/loopfilter_mb_vert_dspr2.c
+vpx_dsp/prob.c
+vpx_dsp/prob.h
+vpx_dsp/vpx_convolve.c
+vpx_dsp/vpx_convolve.h
+vpx_scale/mips/dspr2/yv12extend_dspr2.c
+vpxenc.h
+vpxstats.c
+vpxstats.h
+warnings.c
+warnings.h
+webmdec.cc
+webmdec.h
+webmenc.h
+
+Copyright (c) 2013 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+examples/vpx_dec_fuzzer.cc
+test/bench.cc
+test/bench.h
+test/decode_corrupted.cc
+test/svc_end_to_end_test.cc
+test/svc_test.cc
+test/svc_test.h
+vp8/common/x86/bilinear_filter_sse2.c
+vp9/common/arm/neon/vp9_highbd_iht16x16_add_neon.c
+vp9/common/arm/neon/vp9_highbd_iht4x4_add_neon.c
+vp9/common/arm/neon/vp9_highbd_iht8x8_add_neon.c
+vp9/common/arm/neon/vp9_iht16x16_add_neon.c
+vp9/common/arm/neon/vp9_iht_neon.h
+vp9/common/ppc/vp9_idct_vsx.c
+vp9/common/x86/vp9_highbd_iht16x16_add_sse4.c
+vp9/common/x86/vp9_highbd_iht4x4_add_sse4.c
+vp9/common/x86/vp9_highbd_iht8x8_add_sse4.c
+vp9/decoder/vp9_job_queue.c
+vp9/decoder/vp9_job_queue.h
+vp9/encoder/ppc/vp9_quantize_vsx.c
+vp9/encoder/vp9_partition_models.h
+vpx_dsp/arm/highbd_idct_neon.h
+vpx_dsp/arm/sum_squares_neon.c
+vpx_dsp/arm/vpx_convolve8_neon_asm.c
+vpx_dsp/arm/vpx_convolve8_neon_asm.h
+vpx_dsp/mips/vpx_convolve8_mmi.c
+vpx_dsp/ppc/deblock_vsx.c
+vpx_dsp/ppc/fdct32x32_vsx.c
+vpx_dsp/ppc/inv_txfm_vsx.h
+vpx_dsp/ppc/quantize_vsx.c
+vpx_dsp/ppc/subtract_vsx.c
+vpx_dsp/ppc/txfm_common_vsx.h
+vpx_dsp/x86/convolve_sse2.h
+vpx_dsp/x86/post_proc_sse2.c
+vpx_dsp/x86/vpx_subpixel_4t_intrin_sse2.c
+vpx_ports/emms_mmx.c
+
+Copyright (c) 2018 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+test/decode_with_drops.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file tests the libvpx decode_with_drops example. To add new tests to
+#  this file, do the following:
+#    1. Write a shell function (this is your test).
+#    2. Add the function to decode_with_drops_tests (on a new line).
+#
+
+
+## Files:
+tools/cpplint.py
+
+means no copyright line was found
+
+
+## Files:
+test/simple_decoder.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file tests the libvpx simple_decoder example code. To add new tests to
+#  this file, do the following:
+#    1. Write a shell function (this is your test).
+#    2. Add the function to simple_decoder_tests (on a new line).
+#
+
+
+## Files:
+tools/cpplint.py
+
+Logs an error if no Copyright message appears at the top of the file.
+
+
+## Files:
+vpx_dsp/fastssim.c
+
+Copyright (c) 2010 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+This code was originally written by: Nathan E. Egge, at the Daala
+project.
+
+
+## Files:
+vp8/common/filter.h
+vp8/common/rtcd.c
+vp8/decoder/ec_types.h
+vp8/decoder/error_concealment.c
+vp8/decoder/error_concealment.h
+vp8/encoder/lookahead.c
+vp8/encoder/lookahead.h
+vp9/common/vp9_filter.h
+vp9/common/vp9_rtcd.c
+vp9/encoder/vp9_lookahead.c
+vp9/encoder/vp9_lookahead.h
+vpx_scale/vpx_scale_rtcd.c
+
+Copyright (c) 2011 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+vp9/encoder/vp9_encoder.c
+
+Copyright (c) 2010 The WebM project authors. All Rights Reserved.
+
+ Use of this source code is governed by a BSD-style license
+ that can be found in the LICENSE file in the root of the source
+ tree. An additional intellectual property rights grant can be found
+ in the file PATENTS.  All contributing project authors may
+ be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+tools/diff.py
+tools/intersect-diffs.py
+tools/lint-hunks.py
+tools/wrap-commit-msg.py
+
+#  Copyright (c) 2012 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+
+
+## Files:
+third_party/libyuv/source/rotate_neon64.cc
+third_party/libyuv/source/row_neon64.cc
+third_party/libyuv/source/scale_neon64.cc
+
+Copyright 2014 The LibYuv Project Authors. All rights reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS. All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+tools/set_analyzer_env.sh
+
+#  Copyright (c) 2018 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  Sourcing this file sets environment variables to simplify setting up
+#  sanitizer builds and testing.
+
+
+## Files:
+test/vp8_ratectrl_rtc_test.cc
+vp8/vp8_ratectrl_rtc.cc
+vp8/vp8_ratectrl_rtc.h
+vpx/internal/vpx_ratectrl_rtc.h
+vpx_dsp/arm/sad4d_neon_dotprod.c
+vpx_dsp/arm/sad_neon_dotprod.c
+vpx_dsp/arm/variance_neon_dotprod.c
+vpx_dsp/arm/vpx_convolve8_neon_dotprod.c
+
+Copyright (c) 2021 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+test/simple_encoder.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file tests the libvpx simple_encoder example. To add new tests to this
+#  file, do the following:
+#    1. Write a shell function (this is your test).
+#    2. Add the function to simple_encoder_tests (on a new line).
+#
+
+
+## Files:
+vp8/common/loongarch/sixtap_filter_lsx.c
+vpx_dsp/loongarch/intrapred_lsx.c
+
+Copyright (c) 2021 Loongson Technology Corporation Limited
+Contributed by Lu Wang &lt;wanglu@loongson.cn&gt;
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+vpx_dsp/loongarch/loopfilter_16_lsx.c
+
+Copyright (c) 2022 Loongson Technology Corporation Limited
+Contributed by Hecai Yuan &lt;yuanhecai@loongson.cn&gt;
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+test/set_maps.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file tests the libvpx set_maps example. To add new tests to this file,
+#  do the following:
+#    1. Write a shell function (this is your test).
+#    2. Add the function to set_maps_tests (on a new line).
+#
+
+
+## Files:
+vp9/vp9_iface_common.c
+
+Copyright (c) 2019 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed  by a BSD-style license that can be
+found in the LICENSE file in the root of the source tree. An additional
+intellectual property  rights grant can  be found in the  file PATENTS.
+All contributing  project authors may be  found in the AUTHORS  file in
+the root of the source tree.
+
+
+## Files:
+test/decode_to_md5.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file tests the libvpx decode_to_md5 example. To add new tests to this
+#  file, do the following:
+#    1. Write a shell function (this is your test).
+#    2. Add the function to decode_to_md5_tests (on a new line).
+#
+
+
+## Files:
+third_party/libyuv/source/rotate_any.cc
+third_party/libyuv/source/rotate_gcc.cc
+third_party/libyuv/source/scale_any.cc
+
+Copyright 2015 The LibYuv Project Authors. All rights reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS. All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+test/vpxenc.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file tests vpxenc using hantro_collage_w352h288.yuv as input. To add
+#  new tests to this file, do the following:
+#    1. Write a shell function (this is your test).
+#    2. Add the function to vpxenc_tests (on a new line).
+#
+
+
+## Files:
+tools/3D-Reconstruction/MotionEST/Anandan.py
+tools/3D-Reconstruction/MotionEST/Exhaust.py
+tools/3D-Reconstruction/MotionEST/GroundTruth.py
+tools/3D-Reconstruction/MotionEST/HornSchunck.py
+tools/3D-Reconstruction/MotionEST/MotionEST.py
+tools/3D-Reconstruction/MotionEST/SearchSmooth.py
+tools/3D-Reconstruction/MotionEST/Util.py
+tools/3D-Reconstruction/genY4M/genY4M.py
+tools/non_greedy_mv/non_greedy_mv.py
+
+#  Copyright (c) 2020 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+
+
+## Files:
+examples/resize_util.c
+examples/vp9_lossless_encoder.c
+rate_hist.c
+rate_hist.h
+test/active_map_test.cc
+test/android/scrape_gtest_log.py
+test/byte_alignment_test.cc
+test/decode_api_test.cc
+test/encode_perf_test.cc
+test/external_frame_buffer_test.cc
+test/frame_size_tests.cc
+test/invalid_file_test.cc
+test/lpf_test.cc
+test/quantize_test.cc
+test/vp8_denoiser_sse2_test.cc
+test/vp8_fragments_test.cc
+test/vp9_block_error_test.cc
+test/vp9_denoiser_test.cc
+test/vp9_encoder_parms_get_to_decoder.cc
+test/vp9_end_to_end_test.cc
+test/vp9_ethread_test.cc
+test/vp9_intrapred_test.cc
+test/vp9_quantize_test.cc
+test/vp9_roi_test.cc
+test/vpx_scale_test.cc
+test/vpx_scale_test.h
+test/yuv_video_source.h
+video_common.h
+video_reader.c
+video_reader.h
+video_writer.c
+video_writer.h
+vp8/common/arm/neon/bilinearpredict_neon.c
+vp8/common/arm/neon/copymem_neon.c
+vp8/common/arm/neon/dc_only_idct_add_neon.c
+vp8/common/arm/neon/dequant_idct_neon.c
+vp8/common/arm/neon/dequantizeb_neon.c
+vp8/common/arm/neon/iwalsh_neon.c
+vp8/common/arm/neon/loopfiltersimplehorizontaledge_neon.c
+vp8/common/arm/neon/loopfiltersimpleverticaledge_neon.c
+vp8/common/arm/neon/mbloopfilter_neon.c
+vp8/common/arm/neon/shortidct4x4llm_neon.c
+vp8/common/arm/neon/sixtappredict_neon.c
+vp8/common/arm/neon/vp8_loopfilter_neon.c
+vp8/encoder/arm/neon/fastquantizeb_neon.c
+vp8/encoder/arm/neon/shortfdct_neon.c
+vp8/encoder/arm/neon/vp8_shortwalsh4x4_neon.c
+vp9/common/arm/neon/vp9_iht4x4_add_neon.c
+vp9/common/arm/neon/vp9_iht8x8_add_neon.c
+vp9/common/vp9_blockd.c
+vp9/common/vp9_frame_buffers.c
+vp9/common/vp9_frame_buffers.h
+vp9/common/vp9_mfqe.c
+vp9/common/vp9_mfqe.h
+vp9/common/vp9_thread_common.c
+vp9/common/vp9_thread_common.h
+vp9/encoder/arm/neon/vp9_quantize_neon.c
+vp9/encoder/vp9_aq_complexity.c
+vp9/encoder/vp9_aq_complexity.h
+vp9/encoder/vp9_aq_cyclicrefresh.c
+vp9/encoder/vp9_aq_cyclicrefresh.h
+vp9/encoder/vp9_blockiness.c
+vp9/encoder/vp9_context_tree.c
+vp9/encoder/vp9_context_tree.h
+vp9/encoder/vp9_cost.c
+vp9/encoder/vp9_cost.h
+vp9/encoder/vp9_ethread.c
+vp9/encoder/vp9_ethread.h
+vp9/encoder/vp9_pickmode.c
+vp9/encoder/vp9_pickmode.h
+vp9/encoder/vp9_resize.c
+vp9/encoder/vp9_resize.h
+vp9/encoder/vp9_svc_layercontext.c
+vp9/encoder/vp9_svc_layercontext.h
+vp9/encoder/x86/vp9_denoiser_sse2.c
+vp9/encoder/x86/vp9_error_avx2.c
+vp9/encoder/x86/vp9_highbd_block_error_intrin_sse2.c
+vp9/encoder/x86/vp9_quantize_sse2.c
+vpx/vpx_frame_buffer.h
+vpx_dsp/arm/idct16x16_1_add_neon.c
+vpx_dsp/arm/idct16x16_add_neon.c
+vpx_dsp/arm/idct32x32_1_add_neon.c
+vpx_dsp/arm/idct32x32_add_neon.c
+vpx_dsp/arm/idct4x4_1_add_neon.c
+vpx_dsp/arm/idct4x4_add_neon.c
+vpx_dsp/arm/idct8x8_1_add_neon.c
+vpx_dsp/arm/idct8x8_add_neon.c
+vpx_dsp/arm/intrapred_neon.c
+vpx_dsp/arm/sad_neon.c
+vpx_dsp/arm/subpel_variance_neon.c
+vpx_dsp/arm/subtract_neon.c
+vpx_dsp/arm/variance_neon.c
+vpx_dsp/arm/vpx_convolve8_neon.c
+vpx_dsp/arm/vpx_convolve8_neon.h
+vpx_dsp/arm/vpx_convolve_avg_neon.c
+vpx_dsp/arm/vpx_convolve_copy_neon.c
+vpx_dsp/avg.c
+vpx_dsp/ssim.h
+vpx_dsp/x86/avg_intrin_sse2.c
+vpx_dsp/x86/fwd_txfm_impl_sse2.h
+vpx_dsp/x86/fwd_txfm_sse2.h
+vpx_dsp/x86/highbd_loopfilter_sse2.c
+vpx_dsp/x86/highbd_variance_sse2.c
+vpx_dsp/x86/sad4d_avx2.c
+webmenc.cc
+y4menc.c
+y4menc.h
+
+Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+test/vpxdec.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file tests vpxdec. To add new tests to this file, do the following:
+#    1. Write a shell function (this is your test).
+#    2. Add the function to vpxdec_tests (on a new line).
+#
+
+
+## Files:
+test/init_vpx_test.cc
+test/init_vpx_test.h
+vp9/encoder/arm/neon/vp9_highbd_error_neon.c
+vp9/encoder/arm/neon/vp9_highbd_temporal_filter_neon.c
+vp9/encoder/arm/neon/vp9_temporal_filter_neon.c
+vp9/encoder/vp9_firstpass_stats.h
+vp9/encoder/vp9_temporal_filter_constants.h
+vp9/encoder/vp9_tpl_model.c
+vp9/encoder/vp9_tpl_model.h
+vpx/src/vpx_tpl.c
+vpx/vpx_tpl.h
+vpx_dsp/arm/highbd_avg_neon.c
+vpx_dsp/arm/highbd_avg_pred_neon.c
+vpx_dsp/arm/highbd_hadamard_neon.c
+vpx_dsp/arm/highbd_sad4d_neon.c
+vpx_dsp/arm/highbd_sse_neon.c
+vpx_dsp/arm/highbd_subpel_variance_neon.c
+vpx_dsp/arm/sse_neon.c
+vpx_dsp/arm/sse_neon_dotprod.c
+vpx_dsp/arm/vpx_convolve8_neon_i8mm.c
+vpx_dsp/arm/vpx_convolve_neon_dotprod.c
+vpx_dsp/arm/vpx_convolve_neon_i8mm.c
+vpx_dsp/sse.c
+vpx_dsp/x86/avg_pred_avx2.c
+vpx_dsp/x86/inv_txfm_avx2.c
+vpx_dsp/x86/sse_avx2.c
+vpx_dsp/x86/sse_sse4.c
+vpx_ports/aarch32_cpudetect.c
+vpx_ports/aarch64_cpudetect.c
+vpx_ports/arm_cpudetect.h
+
+Copyright (c) 2023 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+test/stress.sh
+
+#
+#  Copyright (c) 2016 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file performs a stress test. It runs (STRESS_ONEPASS_MAX_JOBS,
+#  default=5) one, (STRESS_TWOPASS_MAX_JOBS, default=5) two pass &amp;
+#  (STRESS_RT_MAX_JOBS, default=5) encodes and (STRESS_&lt;codec&gt;_DECODE_MAX_JOBS,
+#  default=30) decodes in parallel.
+
+
+## Files:
+test/vp8_multi_resolution_encoder.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file tests the libvpx vp8_multi_resolution_encoder example. To add new
+#  tests to this file, do the following:
+#    1. Write a shell function (this is your test).
+#    2. Add the function to vp8_mre_tests (on a new line).
+#
+
+
+## Files:
+build/make/armlink_adapter.sh
+build/make/gen_asm_deps.sh
+build/make/gen_msvs_def.sh
+build/make/gen_msvs_sln.sh
+build/make/version.sh
+
+#
+#  Copyright (c) 2010 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+
+
+## Files:
+vp9/decoder/vp9_decodemv.c
+vp9/decoder/vp9_dsubexp.c
+
+ Copyright (c) 2010 The WebM project authors. All Rights Reserved.
+*
+*  Use of this source code is governed by a BSD-style license
+*  that can be found in the LICENSE file in the root of the source
+*  tree. An additional intellectual property rights grant can be found
+*  in the file PATENTS.  All contributing project authors may
+*  be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+test/cx_set_ref.sh
+
+#
+#  Copyright (c) 2016 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file tests the libvpx cx_set_ref example. To add new tests to this
+#  file, do the following:
+#    1. Write a shell function (this is your test).
+#    2. Add the function to cx_set_ref_tests (on a new line).
+#
+
+
+## Files:
+examples/vp9_spatial_svc_encoder.c
+examples/vpx_temporal_svc_encoder.c
+test/acm_random.h
+test/alt_ref_aq_segment_test.cc
+test/altref_test.cc
+test/aq_segment_test.cc
+test/avg_test.cc
+test/blockiness_test.cc
+test/borders_test.cc
+test/config_test.cc
+test/consistency_test.cc
+test/cpu_speed_test.cc
+test/cq_test.cc
+test/dct16x16_test.cc
+test/dct32x32_test.cc
+test/decode_test_driver.cc
+test/decode_test_driver.h
+test/encode_test_driver.cc
+test/encode_test_driver.h
+test/fdct8x8_test.cc
+test/i420_video_source.h
+test/idct8x8_test.cc
+test/ivf_video_source.h
+test/keyframe_test.cc
+test/md5_helper.h
+test/pp_filter_test.cc
+test/register_state_check.h
+test/resize_test.cc
+test/sad_test.cc
+test/set_roi.cc
+test/superframe_test.cc
+test/svc_datarate_test.cc
+test/test_libvpx.cc
+test/util.h
+test/variance_test.cc
+test/video_source.h
+test/vp8_boolcoder_test.cc
+test/vp8_datarate_test.cc
+test/vp9_boolcoder_test.cc
+test/vp9_datarate_test.cc
+test/vp9_subtract_test.cc
+test/webm_video_source.h
+test/y4m_test.cc
+test/y4m_video_source.h
+third_party/libwebm/common/webmids.h
+third_party/libwebm/mkvmuxer/mkvmuxer.cc
+third_party/libwebm/mkvmuxer/mkvmuxer.h
+third_party/libwebm/mkvmuxer/mkvmuxertypes.h
+third_party/libwebm/mkvmuxer/mkvmuxerutil.cc
+third_party/libwebm/mkvmuxer/mkvmuxerutil.h
+third_party/libwebm/mkvmuxer/mkvwriter.cc
+third_party/libwebm/mkvmuxer/mkvwriter.h
+third_party/libwebm/mkvparser/mkvparser.cc
+third_party/libwebm/mkvparser/mkvparser.h
+vp8/common/mfqe.c
+vp8/common/mips/dspr2/dequantize_dspr2.c
+vp8/common/mips/dspr2/filter_dspr2.c
+vp8/common/mips/dspr2/idct_blk_dspr2.c
+vp8/common/mips/dspr2/idctllm_dspr2.c
+vp8/common/mips/dspr2/reconinter_dspr2.c
+vp8/common/mips/dspr2/vp8_loopfilter_filters_dspr2.c
+vp8/encoder/arm/neon/denoising_neon.c
+vp8/encoder/dct_value_cost.h
+vp8/encoder/dct_value_tokens.h
+vp8/encoder/denoising.c
+vp8/encoder/denoising.h
+vp8/encoder/encodeframe.h
+vp8/encoder/x86/denoising_sse2.c
+vp8/encoder/x86/quantize_sse4.c
+vp8/encoder/x86/vp8_enc_stubs_sse2.c
+vp8/encoder/x86/vp8_quantize_sse2.c
+vp8/encoder/x86/vp8_quantize_ssse3.c
+vp9/common/vp9_mvref_common.c
+vp9/common/vp9_mvref_common.h
+vp9/common/vp9_pred_common.c
+vp9/common/vp9_pred_common.h
+vp9/common/vp9_seg_common.h
+vp9/common/x86/vp9_idct_intrin_sse2.c
+vp9/encoder/vp9_denoiser.c
+vp9/encoder/vp9_denoiser.h
+vp9/encoder/vp9_noise_estimate.h
+vp9/encoder/vp9_segmentation.c
+vp9/encoder/x86/vp9_dct_intrin_sse2.c
+vpx_dsp/x86/fwd_dct32x32_impl_avx2.h
+vpx_dsp/x86/fwd_dct32x32_impl_sse2.h
+vpx_dsp/x86/fwd_txfm_avx2.c
+vpx_dsp/x86/sad_avx2.c
+vpx_dsp/x86/variance_avx2.c
+vpx_ports/emmintrin_compat.h
+
+Copyright (c) 2012 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+vpx_util/endian_inl.h
+
+Copyright 2014 Google Inc. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the COPYING file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS. All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+-----------------------------------------------------------------------------
+
+Endian related functions.
+
+
+## Files:
+args.c
+args.h
+examples/decode_to_md5.c
+examples/decode_with_drops.c
+examples/postproc.c
+examples/set_maps.c
+examples/simple_decoder.c
+examples/simple_encoder.c
+examples/twopass_encoder.c
+examples/vp8_multi_resolution_encoder.c
+examples/vp8cx_set_ref.c
+test/convolve_test.cc
+test/idct_test.cc
+third_party/libwebm/mkvparser/mkvreader.cc
+third_party/libwebm/mkvparser/mkvreader.h
+tools_common.c
+tools_common.h
+vp8/common/alloccommon.c
+vp8/common/alloccommon.h
+vp8/common/arm/loopfilter_arm.c
+vp8/common/arm/neon/idct_blk_neon.c
+vp8/common/blockd.c
+vp8/common/blockd.h
+vp8/common/coefupdateprobs.h
+vp8/common/common.h
+vp8/common/context.c
+vp8/common/debugmodes.c
+vp8/common/default_coef_probs.h
+vp8/common/dequantize.c
+vp8/common/entropy.c
+vp8/common/entropy.h
+vp8/common/entropymode.c
+vp8/common/entropymode.h
+vp8/common/entropymv.c
+vp8/common/entropymv.h
+vp8/common/extend.c
+vp8/common/extend.h
+vp8/common/filter.c
+vp8/common/findnearmv.c
+vp8/common/findnearmv.h
+vp8/common/generic/systemdependent.c
+vp8/common/header.h
+vp8/common/idct_blk.c
+vp8/common/idctllm.c
+vp8/common/invtrans.h
+vp8/common/loopfilter.h
+vp8/common/loopfilter_filters.c
+vp8/common/mbpitch.c
+vp8/common/modecont.c
+vp8/common/modecont.h
+vp8/common/mv.h
+vp8/common/onyx.h
+vp8/common/onyxc_int.h
+vp8/common/onyxd.h
+vp8/common/postproc.c
+vp8/common/postproc.h
+vp8/common/ppflags.h
+vp8/common/quant_common.c
+vp8/common/quant_common.h
+vp8/common/reconinter.c
+vp8/common/reconinter.h
+vp8/common/reconintra.c
+vp8/common/reconintra.h
+vp8/common/reconintra4x4.c
+vp8/common/reconintra4x4.h
+vp8/common/setupintrarecon.c
+vp8/common/setupintrarecon.h
+vp8/common/swapyv12buffer.c
+vp8/common/swapyv12buffer.h
+vp8/common/systemdependent.h
+vp8/common/threading.h
+vp8/common/treecoder.c
+vp8/common/treecoder.h
+vp8/common/vp8_entropymodedata.h
+vp8/common/vp8_loopfilter.c
+vp8/common/x86/idct_blk_mmx.c
+vp8/common/x86/idct_blk_sse2.c
+vp8/common/x86/loopfilter_x86.c
+vp8/common/x86/vp8_asm_stubs.c
+vp8/decoder/dboolhuff.c
+vp8/decoder/dboolhuff.h
+vp8/decoder/decodeframe.c
+vp8/decoder/decodemv.c
+vp8/decoder/decodemv.h
+vp8/decoder/decoderthreading.h
+vp8/decoder/detokenize.c
+vp8/decoder/detokenize.h
+vp8/decoder/onyxd_if.c
+vp8/decoder/onyxd_int.h
+vp8/decoder/threading.c
+vp8/decoder/treereader.h
+vp8/encoder/bitstream.c
+vp8/encoder/bitstream.h
+vp8/encoder/block.h
+vp8/encoder/boolhuff.c
+vp8/encoder/boolhuff.h
+vp8/encoder/copy_c.c
+vp8/encoder/dct.c
+vp8/encoder/defaultcoefcounts.h
+vp8/encoder/encodeframe.c
+vp8/encoder/encodeintra.c
+vp8/encoder/encodeintra.h
+vp8/encoder/encodemb.c
+vp8/encoder/encodemb.h
+vp8/encoder/encodemv.c
+vp8/encoder/encodemv.h
+vp8/encoder/ethreading.c
+vp8/encoder/firstpass.c
+vp8/encoder/firstpass.h
+vp8/encoder/mcomp.c
+vp8/encoder/mcomp.h
+vp8/encoder/modecosts.c
+vp8/encoder/modecosts.h
+vp8/encoder/mr_dissim.c
+vp8/encoder/mr_dissim.h
+vp8/encoder/onyx_if.c
+vp8/encoder/onyx_int.h
+vp8/encoder/pickinter.c
+vp8/encoder/pickinter.h
+vp8/encoder/picklpf.c
+vp8/encoder/quantize.h
+vp8/encoder/ratectrl.c
+vp8/encoder/ratectrl.h
+vp8/encoder/rdopt.c
+vp8/encoder/rdopt.h
+vp8/encoder/segmentation.c
+vp8/encoder/segmentation.h
+vp8/encoder/temporal_filter.c
+vp8/encoder/tokenize.c
+vp8/encoder/tokenize.h
+vp8/encoder/treewriter.c
+vp8/encoder/treewriter.h
+vp8/encoder/vp8_quantize.c
+vp8/vp8_cx_iface.c
+vp8/vp8_dx_iface.c
+vp9/common/vp9_alloccommon.c
+vp9/common/vp9_alloccommon.h
+vp9/common/vp9_blockd.h
+vp9/common/vp9_common.h
+vp9/common/vp9_common_data.c
+vp9/common/vp9_common_data.h
+vp9/common/vp9_debugmodes.c
+vp9/common/vp9_entropy.c
+vp9/common/vp9_entropy.h
+vp9/common/vp9_entropymode.c
+vp9/common/vp9_entropymode.h
+vp9/common/vp9_entropymv.c
+vp9/common/vp9_entropymv.h
+vp9/common/vp9_enums.h
+vp9/common/vp9_filter.c
+vp9/common/vp9_idct.c
+vp9/common/vp9_idct.h
+vp9/common/vp9_loopfilter.c
+vp9/common/vp9_loopfilter.h
+vp9/common/vp9_mv.h
+vp9/common/vp9_onyxc_int.h
+vp9/common/vp9_postproc.c
+vp9/common/vp9_postproc.h
+vp9/common/vp9_ppflags.h
+vp9/common/vp9_quant_common.c
+vp9/common/vp9_quant_common.h
+vp9/common/vp9_reconinter.c
+vp9/common/vp9_reconinter.h
+vp9/common/vp9_reconintra.c
+vp9/common/vp9_reconintra.h
+vp9/common/vp9_scan.c
+vp9/common/vp9_seg_common.c
+vp9/common/vp9_tile_common.c
+vp9/common/vp9_tile_common.h
+vp9/decoder/vp9_decodeframe.c
+vp9/decoder/vp9_decodeframe.h
+vp9/decoder/vp9_decodemv.h
+vp9/decoder/vp9_decoder.c
+vp9/decoder/vp9_decoder.h
+vp9/decoder/vp9_detokenize.c
+vp9/decoder/vp9_detokenize.h
+vp9/encoder/vp9_bitstream.c
+vp9/encoder/vp9_bitstream.h
+vp9/encoder/vp9_block.h
+vp9/encoder/vp9_dct.c
+vp9/encoder/vp9_encodeframe.c
+vp9/encoder/vp9_encodeframe.h
+vp9/encoder/vp9_encodemb.c
+vp9/encoder/vp9_encodemb.h
+vp9/encoder/vp9_encodemv.c
+vp9/encoder/vp9_encodemv.h
+vp9/encoder/vp9_encoder.h
+vp9/encoder/vp9_extend.c
+vp9/encoder/vp9_extend.h
+vp9/encoder/vp9_firstpass.c
+vp9/encoder/vp9_firstpass.h
+vp9/encoder/vp9_mbgraph.c
+vp9/encoder/vp9_mbgraph.h
+vp9/encoder/vp9_mcomp.c
+vp9/encoder/vp9_mcomp.h
+vp9/encoder/vp9_picklpf.c
+vp9/encoder/vp9_picklpf.h
+vp9/encoder/vp9_quantize.c
+vp9/encoder/vp9_quantize.h
+vp9/encoder/vp9_ratectrl.c
+vp9/encoder/vp9_ratectrl.h
+vp9/encoder/vp9_rd.c
+vp9/encoder/vp9_rd.h
+vp9/encoder/vp9_rdopt.c
+vp9/encoder/vp9_rdopt.h
+vp9/encoder/vp9_segmentation.h
+vp9/encoder/vp9_speed_features.c
+vp9/encoder/vp9_speed_features.h
+vp9/encoder/vp9_temporal_filter.c
+vp9/encoder/vp9_temporal_filter.h
+vp9/encoder/vp9_tokenize.c
+vp9/encoder/vp9_tokenize.h
+vp9/encoder/vp9_treewriter.c
+vp9/encoder/vp9_treewriter.h
+vp9/vp9_cx_iface.c
+vp9/vp9_dx_iface.c
+vpx/internal/vpx_codec_internal.h
+vpx/src/vpx_codec.c
+vpx/src/vpx_decoder.c
+vpx/src/vpx_encoder.c
+vpx/src/vpx_image.c
+vpx/vp8.h
+vpx/vp8cx.h
+vpx/vp8dx.h
+vpx/vpx_codec.h
+vpx/vpx_decoder.h
+vpx/vpx_encoder.h
+vpx/vpx_image.h
+vpx/vpx_integer.h
+vpx_dsp/bitreader.c
+vpx_dsp/bitreader.h
+vpx_dsp/bitwriter.c
+vpx_dsp/bitwriter.h
+vpx_dsp/inv_txfm.h
+vpx_dsp/ssim.c
+vpx_dsp/variance.c
+vpx_dsp/x86/loopfilter_avx2.c
+vpx_dsp/x86/loopfilter_sse2.c
+vpx_dsp/x86/variance_sse2.c
+vpx_dsp/x86/vpx_subpixel_8t_intrin_avx2.c
+vpx_dsp/x86/vpx_subpixel_8t_intrin_ssse3.c
+vpx_mem/include/vpx_mem_intrnl.h
+vpx_mem/vpx_mem.c
+vpx_mem/vpx_mem.h
+vpx_ports/arm.h
+vpx_ports/bitops.h
+vpx_ports/mem.h
+vpx_ports/mem_ops.h
+vpx_ports/mem_ops_aligned.h
+vpx_ports/vpx_timer.h
+vpx_ports/x86.h
+vpx_scale/generic/gen_scalers.c
+vpx_scale/generic/vpx_scale.c
+vpx_scale/generic/yv12config.c
+vpx_scale/generic/yv12extend.c
+vpx_scale/vpx_scale.h
+vpx_scale/yv12config.h
+vpxdec.c
+vpxenc.c
+
+Copyright (c) 2010 The WebM project authors. All Rights Reserved.
+
+Use of this source code is governed by a BSD-style license
+that can be found in the LICENSE file in the root of the source
+tree. An additional intellectual property rights grant can be found
+in the file PATENTS.  All contributing project authors may
+be found in the AUTHORS file in the root of the source tree.
+
+
+## Files:
+md5_utils.c
+
+This code implements the MD5 message-digest algorithm.
+The algorithm is due to Ron Rivest.  This code was
+written by Colin Plumb in 1993, no copyright is claimed.
+This code is in the public domain; do with it what you wish.
+
+Equivalent code is available from RSA Data Security, Inc.
+This code has been tested against that, and is equivalent,
+except that you don&#39;t need to include two pages of legalese
+with every copy.
+
+To compute the message digest of a chunk of bytes, declare an
+MD5Context structure, pass it to MD5Init, call MD5Update as
+needed on buffers full of bytes, and then call MD5Final, which
+will fill a supplied 16-byte array with the digest.
+
+Changed so as no longer to depend on Colin Plumb&#39;s `usual.h&#39; header
+definitions
+ - Ian Jackson &lt;ian@chiark.greenend.org.uk&gt;.
+Still in the public domain.
+
+
+## Files:
+test/resize_util.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file tests the libvpx resize_util example code. To add new tests to
+#  this file, do the following:
+#    1. Write a shell function (this is your test).
+#    2. Add the function to resize_util_tests (on a new line).
+#
+
+
+## Files:
+test/examples.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#  This file runs all of the tests for the libvpx examples.
+#
+
+
+## Files:
+build/make/iosbuild.sh
+
+#
+#  Copyright (c) 2014 The WebM project authors. All Rights Reserved.
+#
+#  Use of this source code is governed by a BSD-style license
+#  that can be found in the LICENSE file in the root of the source
+#  tree. An additional intellectual property rights grant can be found
+#  in the file PATENTS.  All contributing project authors may
+#  be found in the AUTHORS file in the root of the source tree.
+#
+#
+# This script generates &#39;VPX.framework&#39;. An iOS app can encode and decode VPx
+# video by including &#39;VPX.framework&#39;.
+#
+# Run iosbuild.sh to create &#39;VPX.framework&#39; in the current directory.
+#</pre>
+  </body>
+ </topic>
