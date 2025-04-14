@@ -1,0 +1,63 @@
+# $Id: Makefile.kmk 109212 2025-04-14 17:29:48Z aleksey.ilyushin@oracle.com $
+## @file
+# OpenSSL Sub-Makefile.
+#
+
+#
+# Copyright (C) 2006-2023 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+LIBRARIES += crypto_rsa
+crypto_rsa_TEMPLATE = SubLibCrypto
+crypto_rsa_DEFS = OPENSSL_NO_DEPRECATED
+crypto_rsa_SOURCES = \
+	rsa_ameth.c \
+	rsa_asn1.c \
+	rsa_backend.c \
+	rsa_chk.c \
+	rsa_crpt.c \
+	rsa_depr.c \
+	rsa_err.c \
+	rsa_gen.c \
+	rsa_lib.c \
+	rsa_meth.c \
+	rsa_mp.c \
+	rsa_mp_names.c \
+	rsa_none.c \
+	rsa_oaep.c \
+	rsa_ossl.c \
+	rsa_pk1.c \
+	rsa_pmeth.c \
+	rsa_prn.c \
+	rsa_pss.c \
+	rsa_saos.c \
+	rsa_schemes.c \
+	rsa_sign.c \
+	rsa_sp800_56b_check.c \
+	rsa_sp800_56b_gen.c \
+	rsa_x931.c \
+	rsa_x931g.c
+$(evalcall VBOX_OPENSSL_X86,crypto_rsa)
+
+include $(FILE_KBUILD_SUB_FOOTER)

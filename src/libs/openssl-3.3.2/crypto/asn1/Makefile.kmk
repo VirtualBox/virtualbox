@@ -1,0 +1,101 @@
+# $Id: Makefile.kmk 109212 2025-04-14 17:29:48Z aleksey.ilyushin@oracle.com $
+## @file
+# OpenSSL Sub-Makefile.
+#
+
+#
+# Copyright (C) 2019-2023 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+LIBRARIES += crypto_asn1
+crypto_asn1_TEMPLATE = SubLibCrypto
+crypto_asn1_DEFS = OPENSSL_NO_DEPRECATED
+crypto_asn1_SOURCES = \
+	a_bitstr.c \
+	a_d2i_fp.c \
+	a_digest.c \
+	a_dup.c \
+	a_gentm.c \
+	a_i2d_fp.c \
+	a_int.c \
+	a_mbstr.c \
+	a_object.c \
+	a_octet.c \
+	a_print.c \
+	a_sign.c \
+	a_strex.c \
+	a_strnid.c \
+	a_time.c \
+	a_type.c \
+	a_utctm.c \
+	a_utf8.c \
+	a_verify.c \
+	ameth_lib.c \
+	asn1_err.c \
+	asn1_gen.c \
+	asn1_item_list.c \
+	asn1_lib.c \
+	asn1_parse.c \
+	asn_mime.c \
+	asn_moid.c \
+	asn_mstbl.c \
+	asn_pack.c \
+	bio_asn1.c \
+	bio_ndef.c \
+	d2i_param.c \
+	d2i_pr.c \
+	d2i_pu.c \
+	evp_asn1.c \
+	f_int.c \
+	f_string.c \
+	i2d_evp.c \
+	n_pkey.c \
+	nsseq.c \
+	p5_pbe.c \
+	p5_pbev2.c \
+	p5_scrypt.c \
+	p8_pkey.c \
+	t_bitst.c \
+	t_pkey.c \
+	t_spki.c \
+	tasn_dec.c \
+	tasn_enc.c \
+	tasn_fre.c \
+	tasn_new.c \
+	tasn_prn.c \
+	tasn_scn.c \
+	tasn_typ.c \
+	tasn_utl.c \
+	x_algor.c \
+	x_bignum.c \
+	x_info.c \
+	x_int64.c \
+	x_long.c \
+	x_pkey.c \
+	x_sig.c \
+	x_spki.c \
+	x_val.c
+$(evalcall VBOX_OPENSSL_X86,crypto_asn1)
+
+include $(FILE_KBUILD_SUB_FOOTER)
