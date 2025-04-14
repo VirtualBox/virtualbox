@@ -36,6 +36,7 @@ from vbox_server.models.network_adapter import NetworkAdapter
 from vbox_server.models.storage_controller import StorageController
 from vbox_server.models.guest_os_type import GuestOSType
 from vbox_server.models.nat_engine import NATEngine
+from vbox_server.models.usb_controller import USBController
 
 from vbox_server.models.virtual_box_error_info import VirtualBoxErrorInfo
 
@@ -4590,3 +4591,91 @@ def i_fill_partial_storage_controller(oVBoxStorageController, select):
     raise Exception(text +  ' {Original: ' + exceptionText + '} ')
   logging.info('Normal function exit')
   return oStorageController
+
+def i_fill_usb_controller(oVBoxUSBController, select=None):
+  """Convert the passed VirtualBox object oVBoxUSBController with interface IUSBController into Swagger object oUSBController"""
+  
+  logging.info('Enter function ')
+  oUSBController = USBController()
+  try:
+    if oVBoxUSBController is not None:
+      if select is not None and len(select)>0:
+        oUSBController = i_fill_partial_usb_controller(oVBoxUSBController, select)
+      else:
+        oUSBController = i_fill_whole_usb_controller(oVBoxUSBController)
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oUSBController = None
+    text = 'Exception trying to convert the VirtualBox object oVBoxUSBController into Swagger object oUSBController. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oUSBController
+
+def i_fill_whole_usb_controller(oVBoxUSBController):
+  logging.info('Enter function ')
+  oUSBController = USBController()
+  try:
+    if oVBoxUSBController is not None:
+      try:
+        oUSBController.name = oVBoxUSBController.name
+      except Exception as e:
+        logging.info('Error getting the attribute "name"')
+      try:
+        oUSBController.type = ctx[ 'global'].getEnumValueName('USBControllerType', oVBoxUSBController.type)
+      except Exception as e:
+        logging.info('Error getting the attribute "type"')
+      try:
+        oUSBController.usb_standard = oVBoxUSBController.USBStandard
+      except Exception as e:
+        logging.info('Error getting the attribute "USBStandard"')
+      
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oUSBController = None
+    text = 'Exception trying to fill the object oUSBController. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oUSBController
+
+def i_fill_partial_usb_controller(oVBoxUSBController, select):
+  logging.info('Enter function ')
+  oUSBController = USBController()
+  try:
+    if oVBoxUSBController is not None:
+      olAttributesList = list()
+      if select is not None and len(select) > 0:
+        olAttributesList = select.split(',')
+        logging.info(olAttributesList)
+        for attr in olAttributesList:
+          currAttr = attr
+          if currAttr=='name':
+            try:
+              oUSBController.name = oVBoxUSBController.name
+            except Exception as e:
+              logging.info('Error getting the attribute "name"')
+              raise Exception('Error getting the attribute "name"')
+            
+          if currAttr=='type':
+            try:
+              oUSBController.type = ctx[ 'global'].getEnumValueName('USBControllerType', oVBoxUSBController.type)
+            except Exception as e:
+              logging.info('Error getting the attribute "type"')
+              raise Exception('Error getting the array of "type"')
+            
+          if currAttr=='USBStandard':
+            try:
+              oUSBController.usb_standard = oVBoxUSBController.USBStandard
+            except Exception as e:
+              logging.info('Error getting the attribute "USBStandard"')
+              raise Exception('Error getting the attribute "USBStandard"')
+            
+  except Exception as e:
+    logging.info('Abnormal function exit')
+    oUSBController = None
+    text = 'Exception trying to fill the object oUSBController. '
+    exceptionText = str(e)
+    raise Exception(text +  ' {Original: ' + exceptionText + '} ')
+  logging.info('Normal function exit')
+  return oUSBController
