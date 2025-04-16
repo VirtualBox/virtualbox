@@ -1,4 +1,4 @@
-# $Id: Config.kmk 109130 2025-04-09 08:08:43Z samantha.scholz@oracle.com $
+# $Id: Config.kmk 109257 2025-04-16 15:23:28Z valery.portnyagin@oracle.com $
 ## @file
 # The global build configuration file for VBox.
 #
@@ -2649,7 +2649,7 @@ else
 endif
 
 # Makeself for the linux installers.
-VBOX_MAKESELF  ?= $(KBUILD_DEVTOOLS)/common/makeself/v2.4.5-r2/makeself.sh
+VBOX_MAKESELF  ?= $(KBUILD_DEVTOOLS)/common/makeself/v2.5.0-r2/makeself.sh
 
 # Microsoft HTML Help Workshop.
 VBOX_PATH_HTML_HELP_WORKSHOP ?= $(KBUILD_DEVTOOLS)/win.x86/HTML_Help_Workshop/v1.3/
@@ -9287,7 +9287,7 @@ endif
 SVN                    ?= svn$(HOSTSUFF_EXE)
 VBOX_SVN_REV_KMK        = $(PATH_OUT)/revision.kmk
 ifndef VBOX_SVN_REV
- VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 109130 $  )
+ VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 109257 $  )
  VBOX_SVN_REV_FALLBACK := $(if-expr $(VBOX_SVN_REV_CONFIG_FALLBACK) > $(VBOX_SVN_REV_VERSION_FALLBACK),$(VBOX_SVN_REV_CONFIG_FALLBACK),$(VBOX_SVN_REV_VERSION_FALLBACK))
  VBOX_SVN_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.svn/wc.db $(abspath $(PATH_ROOT)/../.svn/wc.db) $(abspath $(PATH_ROOT)/../../.svn/wc.db) $(PATH_ROOT)/.svn/entries))
  ifeq ($(which $(SVN)),)
