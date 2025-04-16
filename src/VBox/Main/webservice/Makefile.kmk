@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 109254 2025-04-16 15:00:46Z valery.portnyagin@oracle.com $
 ## @file
 # Sub-Makefile for the VBox web service.
 #
@@ -120,13 +120,11 @@ else
 endif
 VBOX_PATH_GSOAP_BIN    := $(strip $(VBOX_PATH_GSOAP_BIN))
 if "$(VBOX_PATH_GSOAP_BIN)" == ""
- VBOX_PATH_GSOAP_BIN   := $(VBOX_PATH_GSOAP)/bin
- if "$(KBUILD_HOST)" == "darwin"
-  VBOX_PATH_GSOAP_BIN  := $(VBOX_PATH_GSOAP_BIN)/macosx
- else if "$(KBUILD_HOST)" == "win"
-  VBOX_PATH_GSOAP_BIN  := $(VBOX_PATH_GSOAP_BIN)/win32
+ if "$(KBUILD_HOST).$(KBUILD_HOST_ARCH)" == "win.arm64"
+  # Reuse amd64 binaries
+  VBOX_PATH_GSOAP_BIN  := $(VBOX_PATH_GSOAP)/bin/win.amd64
  else
-  VBOX_PATH_GSOAP_BIN  := $(VBOX_PATH_GSOAP_BIN)/$(KBUILD_HOST).x86
+  VBOX_PATH_GSOAP_BIN  := $(VBOX_PATH_GSOAP)/bin/$(KBUILD_HOST).$(KBUILD_HOST_ARCH)
  endif
  if !exists($(VBOX_PATH_GSOAP_BIN))
   VBOX_PATH_GSOAP_BIN  := $(VBOX_PATH_GSOAP)/bin
