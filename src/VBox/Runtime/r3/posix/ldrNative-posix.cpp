@@ -1,4 +1,4 @@
-/* $Id: ldrNative-posix.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: ldrNative-posix.cpp 109313 2025-04-23 11:36:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Binary Image Loader, POSIX native.
  */
@@ -97,7 +97,7 @@ DECLHIDDEN(int) rtldrNativeLoad(const char *pszFilename, uintptr_t *phHandle, ui
     }
 
     const char *pszDlError = dlerror();
-    RTErrInfoSet(pErrInfo, VERR_FILE_NOT_FOUND, pszDlError);
+    RTErrInfoSet(pErrInfo, VERR_FILE_NOT_FOUND, RT_VALID_PTR(pszDlError) ? pszDlError : "unknown dlopen error");
     LogRel(("rtldrNativeLoad: dlopen('%s', RTLD_NOW | RTLD_LOCAL) failed: %s\n", pszFilename, pszDlError));
     return VERR_FILE_NOT_FOUND;
 }
