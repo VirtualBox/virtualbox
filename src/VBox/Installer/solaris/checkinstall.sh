@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: checkinstall.sh 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: checkinstall.sh 109330 2025-04-24 15:58:01Z brent.paulson@oracle.com $
 ## @file
 #
 # VirtualBox checkinstall script for Solaris.
@@ -102,9 +102,10 @@ checkdep_ips_python()
     # python 2.7:  S11 FCS -> S11.4 SRU56 [removed in S11.4 SRU57]
     # python 3.4:  S11.3 FCS -> S11.4 SRU26 [removed in S11.4 SRU27]
     # python 3.5:  S11.4 FCS -> S11.4 SRU29 [removed in S11.4 SRU30]
-    # python 3.7:  S11.4 SRU4 -> TBD
+    # python 3.7:  S11.4 SRU4 -> S11.4 SRU71 [removed in S11.4 SRU72]
     # python 3.9:  S11.4 SRU30 -> TBD
     # python 3.11: S11.4 SRU54 -> TBD
+    # python 3.13: S11.4 SRU78 -> TBD
     if test "$UPDATE" -lt 3 || test "$UPDATE" -gt 4; then  # S11 FCS - S11.2 SRU15 or anything before S11 FCS
         PKG_MISSING_IPS="$PKG_MISSING_IPS runtime/python-26 or runtime/python-27"
     elif test "$UPDATE" -eq 3 && test "$SRU" -le 19; then  # S11.3 FCS - S11.3 SRU19
@@ -121,10 +122,12 @@ checkdep_ips_python()
         PKG_MISSING_IPS="$PKG_MISSING_IPS runtime/python-27 or runtime/python-37 or runtime/python-39"
     elif test "$UPDATE" -eq 4 && test "$SRU" -le 56; then  # S11.4 SRU54 - S11.4 SRU56
         PKG_MISSING_IPS="$PKG_MISSING_IPS runtime/python-27 or runtime/python-37 or runtime/python-39 or runtime/python-311"
-    elif test "$UPDATE" -eq 4 && test "$SRU" -gt 56; then  # S11.4 SRU57 - S11.4 SRU<latest>
+    elif test "$UPDATE" -eq 4 && test "$SRU" -le 71; then  # S11.4 SRU57 - S11.4 SRU71
         PKG_MISSING_IPS="$PKG_MISSING_IPS runtime/python-37 or runtime/python-39 or runtime/python-311"
+    elif test "$UPDATE" -eq 4 && test "$SRU" -gt 71; then  # S11.4 SRU72 - S11.4 SRU<latest>
+        PKG_MISSING_IPS="$PKG_MISSING_IPS runtime/python-39 or runtime/python-311 or runtime/python-313"
     else # Fall through just in case.
-        PKG_MISSING_IPS="$PKG_MISSING_IPS runtime/python-37 or runtime/python-39 or runtime/python-311"
+        PKG_MISSING_IPS="$PKG_MISSING_IPS runtime/python-39 or runtime/python-311 or runtime/python-313"
     fi
 
     return 1
@@ -239,7 +242,7 @@ if test -x "$BIN_PKG"; then
     checkdep_ips "x11/library/mesa"
     checkdep_ips "x11/library/toolkit/libxt"
     checkdep_ips "x11/library/xcb-util"
-    checkdep_ips_python "runtime/python-26" "runtime/python-27" "runtime/python-34" "runtime/python-35" "runtime/python-37" "runtime/python-39" "runtime/python-311"
+    checkdep_ips_python "runtime/python-26" "runtime/python-27" "runtime/python-34" "runtime/python-35" "runtime/python-37" "runtime/python-39" "runtime/python-311" "runtime/python-313"
     checkdep_ips_either "system/library/gcc/gcc-c++-runtime" "system/library/gcc/gcc-c++-runtime-9"
     checkdep_ips_either "system/library/gcc/gcc-c-runtime" "system/library/gcc/gcc-c-runtime-9"
 else
