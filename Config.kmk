@@ -1,4 +1,4 @@
-# $Id: Config.kmk 109257 2025-04-16 15:23:28Z valery.portnyagin@oracle.com $
+# $Id: Config.kmk 109351 2025-04-28 16:43:47Z alexander.rudnev@oracle.com $
 ## @file
 # The global build configuration file for VBox.
 #
@@ -4230,9 +4230,11 @@ ifdef VBOX_SIGNING_MODE
  VBOX_CCS_CLIENT_JAR := $(firstword $(rsort \
  			$(wildcard $(KBUILD_DEVTOOLS)/common/ccs/v*/Client.jar)) \
  		$(KBUILD_DEVTOOLS)/common/ccs/notfound/Client.jar )
- VBOX_CCS_USER       ?= virtualbox_grp
- VBOX_CCS_GLOBAL_UID ?= non-of-your-business
- VBOX_CCS_SERVER     ?= UK
+ VBOX_CCS_USER           ?= virtualbox_grp
+ VBOX_CCS_GLOBAL_UID     ?= non-of-your-business
+ VBOX_CCS_SERVER.solaris ?= SCA
+ VBOX_CCS_SERVER.win     ?= PHX
+ VBOX_CCS_SERVER.darwin  ?= SCA
  ##
  # Corp Code Signing command line.
  # @param  $1  Signing method: solaris_elf, solaris_pkg, driver (microsoft), ...
@@ -4241,7 +4243,7 @@ ifdef VBOX_SIGNING_MODE
  # @param  $4  Additional options.
  VBOX_CCS_SIGN_CMD    = $(VBOX_RETRY) $(VBOX_JAVA) -Xmx256m -jar "$(VBOX_CCS_CLIENT_JAR)" \
  	sign -user "$(VBOX_CCS_USER)" -global_uid "$(VBOX_CCS_GLOBAL_UID)" \
- 	-job_timeout 90 -server_timeout 75 -server "$(VBOX_CCS_SERVER)" \
+ 	-job_timeout 90 -server_timeout 75 -server "$(VBOX_CCS_SERVER.$(KBUILD_TARGET))" \
  	-sign_method "$1" -file_to_sign "$2" -signed_location "$(if $3,$3,$(call VBOX_DIRX,$2))" $4
 
  ifeq ($(KBUILD_HOST),win)
@@ -4661,7 +4663,7 @@ ifdef VBOX_SIGNING_MODE
   # @param 3  The directory to put the notarized file in. Defaults to $(dir $1).
   VBOX_CCS_NOTARIZE_CMD = $(VBOX_RETRY) $(VBOX_JAVA) -jar "$(VBOX_CCS_CLIENT_JAR)" \
   	mac_notarize -user "$(VBOX_CCS_USER)" -global_uid "$(VBOX_CCS_GLOBAL_UID)" \
-  	-job_timeout 90 -server_timeout 75 -server "$(VBOX_CCS_SERVER)" \
+  	-job_timeout 90 -server_timeout 75 -server "$(VBOX_CCS_SERVER.$(KBUILD_TARGET))" \
   	-file_to_notarize "$1" -bundle_id "$2" -download_location "$(if $3,$3,$(call VBOX_DIRX,$1))"
 
   ## Sign an application bundle, framework or kernel extension.
@@ -9287,7 +9289,7 @@ endif
 SVN                    ?= svn$(HOSTSUFF_EXE)
 VBOX_SVN_REV_KMK        = $(PATH_OUT)/revision.kmk
 ifndef VBOX_SVN_REV
- VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 109257 $  )
+ VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 109351 $  )
  VBOX_SVN_REV_FALLBACK := $(if-expr $(VBOX_SVN_REV_CONFIG_FALLBACK) > $(VBOX_SVN_REV_VERSION_FALLBACK),$(VBOX_SVN_REV_CONFIG_FALLBACK),$(VBOX_SVN_REV_VERSION_FALLBACK))
  VBOX_SVN_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.svn/wc.db $(abspath $(PATH_ROOT)/../.svn/wc.db) $(abspath $(PATH_ROOT)/../../.svn/wc.db) $(PATH_ROOT)/.svn/entries))
  ifeq ($(which $(SVN)),)
