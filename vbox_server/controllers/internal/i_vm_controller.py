@@ -89,6 +89,12 @@ from vbox_server.models.console_create_shared_folder_request_body import Console
 from vbox_server.models.machine_add_usb_controller_request_body import MachineAddUSBControllerRequestBody  # noqa: E501
 from vbox_server.models.machine_getusbcontrollercountbytype_response import MachineGetusbcontrollercountbytypeResponse  # noqa: E501
 from vbox_server.models.usb_controller_response import USBControllerResponse  # noqa: E501
+from vbox_server.models.machine_non_rotational_device_request_body import MachineNonRotationalDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_passthrough_device_request_body import MachinePassthroughDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_set_auto_discard_for_device_request_body import MachineSetAutoDiscardForDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_set_bandwidth_group_for_device_request_body import MachineSetBandwidthGroupForDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_set_hot_pluggable_for_device_request_body import MachineSetHotPluggableForDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_set_no_bandwidth_group_for_device_request_body import MachineSetNoBandwidthGroupForDeviceRequestBody  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
@@ -97,12 +103,6 @@ from vbox_server.models.machine_attach_host_pci_device_request_body import Machi
 from vbox_server.models.machine_delete_snapshot_range_request_body import MachineDeleteSnapshotRangeRequestBody  # noqa: E501
 from vbox_server.models.machine_export_to_request_body import MachineExportToRequestBody  # noqa: E501
 from vbox_server.models.machine_lock_machine_request_body import MachineLockMachineRequestBody  # noqa: E501
-from vbox_server.models.machine_non_rotational_device_request_body import MachineNonRotationalDeviceRequestBody  # noqa: E501
-from vbox_server.models.machine_passthrough_device_request_body import MachinePassthroughDeviceRequestBody  # noqa: E501
-from vbox_server.models.machine_set_auto_discard_for_device_request_body import MachineSetAutoDiscardForDeviceRequestBody  # noqa: E501
-from vbox_server.models.machine_set_bandwidth_group_for_device_request_body import MachineSetBandwidthGroupForDeviceRequestBody  # noqa: E501
-from vbox_server.models.machine_set_hot_pluggable_for_device_request_body import MachineSetHotPluggableForDeviceRequestBody  # noqa: E501
-from vbox_server.models.machine_set_no_bandwidth_group_for_device_request_body import MachineSetNoBandwidthGroupForDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_temporary_eject_device_request_body import MachineTemporaryEjectDeviceRequestBody  # noqa: E501
 from vbox_server.models.virtual_box_open_machine_request_body import VirtualBoxOpenMachineRequestBody  
 
@@ -3420,6 +3420,305 @@ def i_machine_getusbcontrollercountbytype(vmid, type=None):  # noqa: E501
     return response, httpCode
 
 
+@sessionDecorator
+def i_machine_setautodiscardfordevice(vmid, oMachineSetAutoDiscardForDeviceRequestBody: MachineSetAutoDiscardForDeviceRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::setAutoDiscardForDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetAutoDiscardForDeviceRequestBody:
+    :type oMachineSetAutoDiscardForDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    o = oMachineSetAutoDiscardForDeviceRequestBody
+    print(o)
+    name = o.name
+    controllerPort = o.controller_port
+    device = o.device
+    fDiscard = o.discard
+
+    try:
+        oCurrMachine.setAutoDiscardForDevice(name, controllerPort, device, fDiscard)
+        oCurrMachine.saveSettings()
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    try:
+        response = jsonify(oError if oError is not None else "The discard device flag was set to " + str(fDiscard) + " successfully")
+    except Exception as e:
+        if oError is None:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            response = jsonify("The action was successful. But an exception occurred while composing the response.")
+
+    return response, httpCode
+
+
+@sessionDecorator
+def i_machine_setnobandwidthgroupfordevice(vmid, oMachineSetNoBandwidthGroupForDeviceRequestBody: MachineSetNoBandwidthGroupForDeviceRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::setNoBandwidthGroupForDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetNoBandwidthGroupForDeviceRequestBody:
+    :type oMachineSetNoBandwidthGroupForDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    o = oMachineSetNoBandwidthGroupForDeviceRequestBody
+    print(o)
+    name = o.name
+    controllerPort = o.controller_port
+    device = o.device
+
+    try:
+        oCurrMachine.setNoBandwidthGroupForDevice(name, controllerPort, device)
+        oCurrMachine.saveSettings()
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    try:
+        response = jsonify(oError if oError is not None else "The no bandwidth group was set successfully")
+    except Exception as e:
+        if oError is None:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            response = jsonify("The action was successful. But an exception occurred while composing the response.")
+
+    return response, httpCode
+
+
+@sessionDecorator
+def i_machine_setbandwidthgroupfordevice(vmid, oMachineSetBandwidthGroupForDeviceRequestBody: MachineSetBandwidthGroupForDeviceRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::setBandwidthGroupForDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetBandwidthGroupForDeviceRequestBody:
+    :type oMachineSetBandwidthGroupForDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    o = oMachineSetBandwidthGroupForDeviceRequestBody
+    print(o)
+    name = o.name
+    controllerPort = o.controller_port
+    device = o.device
+    bandwidthGroup = o.bandwidth_group
+    # oVBoxBandwidthGroup = i_find_bandwidth_group_by_name(bandwidthGroup)
+    # if oVBoxBandwidthGroup is None:
+    #     oVBoxBandwidthGroup = ''
+
+    # try:
+    #     oCurrMachine.setBandwidthGroupForDevice(name, controllerPort, device, oVBoxBandwidthGroup)
+    # except Exception as e:
+    #     httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+    #     oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else "The setting bandwidth group for device aren't supported by REST API at moment")
+    return response, httpCode
+
+
+@sessionDecorator
+def i_machine_sethotpluggablefordevice(vmid, oMachineSetHotPluggableForDeviceRequestBody: MachineSetHotPluggableForDeviceRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::setHotPluggableForDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineSetHotPluggableForDeviceRequestBody:
+    :type oMachineSetHotPluggableForDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    o = oMachineSetHotPluggableForDeviceRequestBody
+    print(o)
+    name = o.name
+    controllerPort = o.controller_port
+    device = o.device
+    fhotPluggable = o.hot_pluggable
+
+    try:
+        oCurrMachine.setHotPluggableForDevice(name, controllerPort, device, fhotPluggable)
+        oCurrMachine.saveSettings()
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    try:
+        response = jsonify(oError if oError is not None else "The hot-pluggable device flag was set to " + str(fhotPluggable) + " successfully")
+    except Exception as e:
+        if oError is None:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            response = jsonify("The action was successful. But an exception occurred while composing the response.")
+
+    return response, httpCode
+
+
+@sessionDecorator
+def i_machine_passthroughdevice(vmid, oMachinePassthroughDeviceRequestBody: MachinePassthroughDeviceRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::passthroughDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachinePassthroughDeviceRequestBody:
+    :type oMachinePassthroughDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    o = oMachinePassthroughDeviceRequestBody
+    name = o.name
+    controllerPort = o.controller_port
+    device = o.device
+    fPassthrough = o.passthrough
+
+    try:
+        oCurrMachine.passthroughDevice(name, controllerPort, device, fPassthrough)
+        oCurrMachine.saveSettings()
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    try:
+        response = jsonify(oError if oError is not None else "The passthrough device flag was set to " + str(fPassthrough) + " successfully")
+    except Exception as e:
+        if oError is None:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            response = jsonify("The action was successful. But an exception occurred while composing the response.")
+
+    return response, httpCode
+
+
+@sessionDecorator
+def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody: MachineNonRotationalDeviceRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::nonRotationalDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineNonRotationalDeviceRequestBody:
+    :type oMachineNonRotationalDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    o = oMachineNonRotationalDeviceRequestBody
+    name = o.name
+    controllerPort = o.controller_port
+    device = o.device
+    fNonRotational = o.non_rotational
+
+    try:
+        oCurrMachine.nonRotationalDevice(name, controllerPort, device, fNonRotational)
+        oCurrMachine.saveSettings()
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    try:
+        response = jsonify(oError if oError is not None
+                            else "The non-rotational device flag was set to " + str(fNonRotational) + " successfully")
+    except Exception as e:
+        if oError is None:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            response = jsonify("The action was successful. But an exception occurred while composing the response.")
+
+    return response, httpCode
+
+
+@sessionDecorator
+def i_machine_applydefaults(vmid, flags=None, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::applyDefaults
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param flags:
+    :type flags: str
+
+    :rtype: None
+    """
+
+    httpCode = HTTPStatus.OK
+    oError = None
+
+    oVM = var_args_tuple[0]
+    vbox_utils_logVmInfo(oVM)
+
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    if flags is None: flags = ''
+
+    try:
+        oCurrMachine.applyDefaults(flags)
+        oCurrMachine.saveSettings()
+    except Exception as e:
+        logging.info("Exception in i_machine_applydefaults for VM '%s': %s" % (oVM.name, str(e)))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else "Successful")
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
@@ -3472,21 +3771,6 @@ def i_console_removeencryptionpassword(vmid, id=None):  # noqa: E501
     :type vmid: str
     :param id:
     :type id: str
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_applydefaults(vmid, flags=None):  # noqa: E501
-    """
-    Call interface method IMachine::applyDefaults
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param flags:
-    :type flags: str
 
     :rtype: None
     """
@@ -3588,97 +3872,6 @@ def i_machine_lockmachine(vmid, oMachineLockMachineRequestBody):  # noqa: E501
     :type vmid: str
     :param oMachineLockMachineRequestBody:
     :type oMachineLockMachineRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-
-def i_machine_passthroughdevice(vmid, oMachinePassthroughDeviceRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::passthroughDevice
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachinePassthroughDeviceRequestBody:
-    :type oMachinePassthroughDeviceRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::nonRotationalDevice
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineNonRotationalDeviceRequestBody:
-    :type oMachineNonRotationalDeviceRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_setautodiscardfordevice(vmid, oMachineSetAutoDiscardForDeviceRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::setAutoDiscardForDevice
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineSetAutoDiscardForDeviceRequestBody:
-    :type oMachineSetAutoDiscardForDeviceRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_setbandwidthgroupfordevice(vmid, oMachineSetBandwidthGroupForDeviceRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::setBandwidthGroupForDevice
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineSetBandwidthGroupForDeviceRequestBody:
-    :type oMachineSetBandwidthGroupForDeviceRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_sethotpluggablefordevice(vmid, oMachineSetHotPluggableForDeviceRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::setHotPluggableForDevice
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineSetHotPluggableForDeviceRequestBody:
-    :type oMachineSetHotPluggableForDeviceRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_setnobandwidthgroupfordevice(vmid, oMachineSetNoBandwidthGroupForDeviceRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::setNoBandwidthGroupForDevice
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineSetNoBandwidthGroupForDeviceRequestBody:
-    :type oMachineSetNoBandwidthGroupForDeviceRequestBody: dict | bytes
 
     :rtype: None
     """
