@@ -1160,7 +1160,7 @@
 
         <!-- Property which defines if we need to show the customization dialog or not.
              We only show the dialog on new installs to let the users choose the components to install. -->
-        <Property Id="VBOX_SHOW_CUSTOMIZE_DLG" Value="((PREVIOUSVERSIONSINSTALLED OR NEWERVERSIONDETECTED) OR ((NOT PREVIOUSVERSIONSINSTALLED) AND (NOT NEWERVERSIONDETECTED)))" />
+        <Property Id="VBOX_SHOW_CUSTOMIZE_DLG" Value="((PREVIOUSVERSIONDETECTED OR NEWERVERSIONDETECTED) OR ((NOT PREVIOUSVERSIONDETECTED) AND (NOT NEWERVERSIONDETECTED)))" />
 <?if $(env.VBOX_WITH_LICENSE_DISPLAY) = "yes" ?>
         <!-- Property which defines whether the license dialog will be shown or not. -->
         <Property Id="VBOX_SHOW_LICENSE_DLG" Value="1" />
@@ -1202,8 +1202,8 @@
         <Publish Dialog="VBoxCheckSerialDlg" Control="Back" Event="NewDialog" Value="VBoxLicenseAgreementDlg" Condition="VBOX_SHOW_LICENSE_DLG" />
         <Publish Dialog="VBoxCheckSerialDlg" Control="Back" Event="NewDialog" Value="VBoxWelcomeDlg" Condition="NOT VBOX_SHOW_LICENSE_DLG" />
         <Publish Dialog="VBoxCheckSerialDlg" Control="Next" Event="DoAction" Value="ca_CheckSerial" Order="1" />
-        <Publish Dialog="VBoxCheckSerialDlg" Control="Next" Event="NewDialog" Value="VBoxCustomizeDlg" Condition="(PREVIOUSVERSIONSINSTALLED OR NEWERVERSIONDETECTED) AND (VBOX_SERIAL_IS_VALID=&quot;1&quot;)" />
-        <Publish Dialog="VBoxCheckSerialDlg" Control="Next" Event="NewDialog" Value="VBoxCustomizeDlg" Condition="(NOT PREVIOUSVERSIONSINSTALLED) AND (NOT NEWERVERSIONDETECTED) AND (VBOX_SERIAL_IS_VALID=&quot;1&quot;)" />
+        <Publish Dialog="VBoxCheckSerialDlg" Control="Next" Event="NewDialog" Value="VBoxCustomizeDlg" Condition="(PREVIOUSVERSIONDETECTED OR NEWERVERSIONDETECTED) AND (VBOX_SERIAL_IS_VALID=&quot;1&quot;)" />
+        <Publish Dialog="VBoxCheckSerialDlg" Control="Next" Event="NewDialog" Value="VBoxCustomizeDlg" Condition="(NOT PREVIOUSVERSIONDETECTED) AND (NOT NEWERVERSIONDETECTED) AND (VBOX_SERIAL_IS_VALID=&quot;1&quot;)" />
         <Publish Dialog="VBoxCheckSerialDlg" Control="Next" Event="NewDialog" Value="VBoxWrongSerialDlg" Condition="VBOX_SERIAL_IS_VALID=&quot;0&quot;" />
 
         <Publish Dialog="VBoxWrongSerialDlg" Control="Back" Event="NewDialog" Value="VBoxCheckSerialDlg" />

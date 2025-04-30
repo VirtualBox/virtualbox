@@ -130,8 +130,8 @@
                                                         Maximum="9.9.99"                  IncludeMaximum="yes"
                                                         OnlyDetect="no" />
 
-        <!-- Flag is set if the install will trigger an upgrade of an existing install -->
-        <UpgradeVersion Property="PREVIOUSVERSIONSINSTALLED" Minimum="1.0.0.0" Maximum="$(var.Property_Version)" IncludeMaximum="no" />
+        <!-- Detect if an older version (than this version) of VirtualBox already is installed. -->
+        <UpgradeVersion Property="PREVIOUSVERSIONDETECTED" Minimum="1.0.0.0" Maximum="$(var.Property_Version)" IncludeMaximum="no" />
 
     </Upgrade>
 
