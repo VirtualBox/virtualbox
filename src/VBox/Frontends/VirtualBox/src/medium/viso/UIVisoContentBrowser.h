@@ -1,4 +1,4 @@
-/* $Id: UIVisoContentBrowser.h 106472 2024-10-18 10:12:57Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIVisoContentBrowser.h 109396 2025-05-02 14:26:17Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVisoContentBrowser class declaration.
  */
@@ -62,6 +62,7 @@ signals:
 
     void sigTableSelectionChanged(bool fIsSelectionEmpty);
     void sigISOContentImportedOrRemoved(bool fImportedr);
+    void sigVolumeIdParsed(const QString &strVoludId);
 
 public:
 

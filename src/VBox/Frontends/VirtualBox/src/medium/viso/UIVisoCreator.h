@@ -1,4 +1,4 @@
-/* $Id: UIVisoCreator.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIVisoCreator.h 109396 2025-05-02 14:26:17Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVisoCreator classes declaration.
  */
@@ -134,6 +134,7 @@ private slots:
     void sltISOContentImportedOrRemoved(bool fImported);
     void sltSettingsChanged();
     void sltPanelContainerHidden();
+    void sltVisoVolumeIdParsed(const QString &strVolumeId);
 
 private:
 

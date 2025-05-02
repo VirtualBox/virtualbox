@@ -1,4 +1,4 @@
-/* $Id: UIVisoCreator.cpp 107666 2025-01-09 15:52:29Z sergey.dubov@oracle.com $ */
+/* $Id: UIVisoCreator.cpp 109396 2025-05-02 14:26:17Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVisoCreator classes implementation.
  */
@@ -374,7 +374,7 @@ void UIVisoCreatorWidget::setVisoFilePath(const QString& strPath)
 {
     if (m_strVisoFilePath == strPath)
         return;
-    m_strVisoFilePath = strPath;
+    m_strVisoFilePath = QDir::fromNativeSeparators(QDir::cleanPath(strPath));
     emit sigVisoFilePathChanged(m_strVisoFilePath);
 }
 
@@ -439,7 +439,11 @@ void UIVisoCreatorWidget::sltOpenAction()
     QString strFileName =  QIFileDialog::getOpenFileName(UIMediumTools::defaultFolderPathForType(UIMediumDeviceType_DVD),
                                                          "VISO files (*.viso)", pActive, UIVisoCreatorWidget::tr("Select a VISO file to load"));
     if (!strFileName.isEmpty() && m_pVISOContentBrowser)
+    {
+        setVisoFilePath(QFileInfo(strFileName).absolutePath());
+        setVisoName(QFileInfo(strFileName).baseName());
         m_pVISOContentBrowser->parseVisoFileContent(strFileName);
+    }
 }
 
 void UIVisoCreatorWidget::sltSaveAsAction()
@@ -483,6 +487,11 @@ void UIVisoCreatorWidget::sltISOContentImportedOrRemoved(bool fImported)
         m_pImportISOAction->setEnabled(!fImported);
     if (m_pRemoveISOAction)
         m_pRemoveISOAction->setEnabled(fImported);
+}
+
+void UIVisoCreatorWidget::sltVisoVolumeIdParsed(const QString &strVolumeId)
+{
+    setVisoName(strVolumeId);
 }
 
 void UIVisoCreatorWidget::sltSettingsChanged()
@@ -591,6 +600,8 @@ void UIVisoCreatorWidget::prepareConnections()
                 this, &UIVisoCreatorWidget::sltContentBrowserTableSelectionChanged);
         connect(m_pVISOContentBrowser, &UIVisoContentBrowser::sigISOContentImportedOrRemoved,
                 this, &UIVisoCreatorWidget::sltISOContentImportedOrRemoved);
+        connect(m_pVISOContentBrowser, &UIVisoContentBrowser::sigVolumeIdParsed,
+                this, &UIVisoCreatorWidget::sltVisoVolumeIdParsed);
     }
 
     if (m_pActionPreferences)

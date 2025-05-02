@@ -1,4 +1,4 @@
-/* $Id: UIVisoContentBrowser.cpp 106472 2024-10-18 10:12:57Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIVisoContentBrowser.cpp 109396 2025-05-02 14:26:17Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVisoContentBrowser class implementation.
  */
@@ -921,16 +921,17 @@ void UIVisoContentBrowser::parseVisoFileContent(const QString &strFileName)
                     fileEntries[fileEntry[0]] = fileEntry[1];
                 else if (fileEntry[1] == cRemoveText)
                     removedEntries.append(fileEntry[0]);
-
             }
         }
-        else
+        else if(fileEntry.size() == 2 && fileEntry[0].contains("import-iso", Qt::CaseInsensitive))
         {
-            if(fileEntry.size() == 2 && fileEntry[0].contains("import-iso", Qt::CaseInsensitive))
-            {
-                if (QFileInfo(fileEntry[1]).exists())
-                    importISOContentToViso(fileEntry[1]);
-            }
+            if (QFileInfo(fileEntry[1]).exists())
+                importISOContentToViso(fileEntry[1]);
+        }
+        else if(fileEntry.size() == 2 && fileEntry[0].contains("volume-id", Qt::CaseInsensitive))
+        {
+            if (!fileEntry[1].isEmpty())
+                sigVolumeIdParsed(fileEntry[1]);
         }
     }
     file.close();
