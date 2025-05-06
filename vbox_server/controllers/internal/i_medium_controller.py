@@ -226,6 +226,217 @@ def i_virtualbox_createmedium(oVirtualBoxCreateMediumRequestBody: VirtualBoxCrea
     return response, httpCode
 
 
+@findMedium_decorator
+def i_medium_compact(oVBoxMedium):  # noqa: E501
+    """
+    Call interface method IMedium::compact
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+
+    :rtype: ProgressResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    logging.info(f"Compacting the medium {oVBoxMedium.id}")
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oProgressResponse = ProgressResponse()
+
+    try:
+        oVBoxProgress = oVBoxMedium.compact()
+        if oVBoxProgress is not None:
+            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            logging.info('The compacting medium has been successfully started')
+
+            # Add Progress Id object into the tracking lists
+            ctx['tracker'][oProgressResponse.progress.id] = None
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "Something wrong with the Progress object")
+
+    except Exception as e:
+        logging.info(f"Exception during compacting the medium {oVBoxMedium.id}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
+@findMedium_decorator
+def i_medium_resize(oVBoxMedium, logicalSize=None):  # noqa: E501
+    """
+    Call interface method IMedium::resize
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param logicalSize: 
+    :type logicalSize: int
+
+    :rtype: ProgressResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    logging.info(f"Resizing the medium {oVBoxMedium.id}")
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oProgressResponse = ProgressResponse()
+
+    if logicalSize is None or logicalSize == 0:
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, "The passed logical size is zero")
+        return jsonify(oError), httpCode
+
+    try:
+        oVBoxProgress = oVBoxMedium.resize(logicalSize)
+        if oVBoxProgress is not None:
+            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            logging.info('The compacting medium has been successfully started')
+
+            # Add Progress Id object into the tracking lists
+            ctx['tracker'][oProgressResponse.progress.id] = None
+        else:
+            httpCode = HTTPStatus.OK
+            oError = Error(httpCode, f"The medium {id} has been successfully resized without using Progress object")
+
+    except Exception as e:
+        logging.info(f"Exception during compacting the medium {oVBoxMedium.id}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
+@findMedium_decorator
+def i_medium_deletestorage(oVBoxMedium):  # noqa: E501
+    """
+    Call interface method IMedium::deleteStorage
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+
+    :rtype: ProgressResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    logging.info(f"Deletion the medium {oVBoxMedium.id}")
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oProgressResponse = ProgressResponse()
+
+    try:
+        oVBoxProgress = oVBoxMedium.deleteStorage()
+        if oVBoxProgress is not None:
+            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            logging.info('The deletion of medium has been successfully started')
+
+            # Add Progress Id object into the tracking lists
+            ctx['tracker'][oProgressResponse.progress.id] = None
+        else:
+            httpCode = HTTPStatus.OK
+            oError = Error(httpCode, f"The medium {id} has been successfully deleted without using Progress object")
+
+    except Exception as e:
+        logging.info(f"Exception during deletion the medium {oVBoxMedium.id}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
+@findMedium_decorator
+def i_medium_close(oVBoxMedium):  # noqa: E501
+    """
+    Call interface method IMedium::close
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    logging.info(f"Closing the medium {oVBoxMedium.id}")
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oProgressResponse = ProgressResponse()
+
+    try:
+        # Note that after this method successfully returns, the given medium object becomes uninitialized.
+        # This means that any attempt to call any of its methods or attributes will fail with the "Object not ready" (E_ACCESSDENIED) error.
+        # save oVBoxMedium.id in the temporary variable
+        id = oVBoxMedium.id
+        oVBoxProgress = oVBoxMedium.close()
+        if oVBoxProgress is not None:
+            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            logging.info('The closing of medium has been successfully started')
+
+            # Add Progress Id object into the tracking lists
+            ctx['tracker'][oProgressResponse.progress.id] = None
+        else:
+            httpCode = HTTPStatus.OK
+            oError = Error(httpCode, f"The medium {id} has been successfully closed without using Progress object")
+
+    except Exception as e:
+        logging.info(f"Exception during closing the medium {id}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
+@findMedium_decorator
+def i_medium_reset(oVBoxMedium):  # noqa: E501
+    """
+    Call interface method IMedium::reset
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+
+    :rtype: ProgressResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    logging.info(f"Closing the medium {oVBoxMedium.id}")
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oProgressResponse = ProgressResponse()
+
+    try:
+        oVBoxProgress = oVBoxMedium.reset()
+        if oVBoxProgress is not None:
+            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            logging.info('The closing of medium has been successfully started')
+
+            # Add Progress Id object into the tracking lists
+            ctx['tracker'][oProgressResponse.progress.id] = None
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "Something wrong with the Progress object")
+
+    except Exception as e:
+        logging.info(f"Exception during closing the medium {oVBoxMedium.id}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
