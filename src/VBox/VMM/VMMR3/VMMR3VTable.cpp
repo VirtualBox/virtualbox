@@ -1,4 +1,4 @@
-/* $Id: VMMR3VTable.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VMMR3VTable.cpp 109447 2025-05-06 21:12:42Z knut.osmundsen@oracle.com $ */
 /** @file
  * VM - The Virtual Machine Monitor, Ring-3 API VTable Definitions.
  */
@@ -73,6 +73,16 @@ static DECLCALLBACK(int) vmmR3ReservedVTableEntry(void)
     AssertLogRelMsgFailed(("Reserved VMM function table entry called from %p!\n", pvCaller ));
     return VERR_INTERNAL_ERROR;
 }
+
+
+#ifndef VBOX_WITH_DEBUGGER
+/** Stub */
+DBGDECL(int) DBGCCreate(PUVM pUVM, PCDBGCIO pIo, unsigned fFlags)
+{
+    RT_NOREF(pUVM, pIo, fFlags);
+    return VERR_NOT_IMPLEMENTED;
+}
+#endif
 
 
 VMMR3DECL(PCVMMR3VTABLE) VMMR3GetVTable(void)
