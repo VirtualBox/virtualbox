@@ -95,6 +95,8 @@ from vbox_server.models.machine_set_auto_discard_for_device_request_body import 
 from vbox_server.models.machine_set_bandwidth_group_for_device_request_body import MachineSetBandwidthGroupForDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_set_hot_pluggable_for_device_request_body import MachineSetHotPluggableForDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_set_no_bandwidth_group_for_device_request_body import MachineSetNoBandwidthGroupForDeviceRequestBody  # noqa: E501
+from vbox_server.models.paravirt_provider_response import ParavirtProviderResponse  # noqa: E501
+from vbox_server.models.machine_temporary_eject_device_request_body import MachineTemporaryEjectDeviceRequestBody  # noqa: E501
 
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
@@ -103,7 +105,6 @@ from vbox_server.models.machine_attach_host_pci_device_request_body import Machi
 from vbox_server.models.machine_delete_snapshot_range_request_body import MachineDeleteSnapshotRangeRequestBody  # noqa: E501
 from vbox_server.models.machine_export_to_request_body import MachineExportToRequestBody  # noqa: E501
 from vbox_server.models.machine_lock_machine_request_body import MachineLockMachineRequestBody  # noqa: E501
-from vbox_server.models.machine_temporary_eject_device_request_body import MachineTemporaryEjectDeviceRequestBody  # noqa: E501
 from vbox_server.models.virtual_box_open_machine_request_body import VirtualBoxOpenMachineRequestBody  
 
 
@@ -3719,7 +3720,101 @@ def i_machine_applydefaults(vmid, flags=None, *var_args_tuple):  # noqa: E501
     return response, httpCode
 
 
+@sessionDecorator
+def i_machine_temporaryejectdevice(vmid, oMachineTemporaryEjectDeviceRequestBody: MachineTemporaryEjectDeviceRequestBody, *var_args_tuple):  # noqa: E501
+    """
+    Call interface method IMachine::temporaryEjectDevice
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param oMachineTemporaryEjectDeviceRequestBody: 
+    :type oMachineTemporaryEjectDeviceRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oSession = var_args_tuple[1]
+    oCurrMachine = oSession.machine
+
+    o = oMachineTemporaryEjectDeviceRequestBody
+    name = o.name
+    controllerPort = o.controller_port
+    device = o.device
+    fTemporaryEject = o.temporary_eject
+
+    try:
+        oCurrMachine.temporaryEjectDevice(name, controllerPort, device, fTemporaryEject)
+        oCurrMachine.saveSettings()
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    try:
+        response = jsonify(oError if oError is not None 
+                            else "The temporary eject device flag was set to " + str(fTemporaryEject) + " successfully")
+    except Exception as e:
+        if oError is None:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            response = jsonify("The action was successful. But an exception occurred while composing the response.")
+
+    return response, httpCode
+
+
+def i_machine_geteffectiveparavirtprovider(vmid):  # noqa: E501
+    """
+    Call interface method IMachine::getEffectiveParavirtProvider
+
+    :param vmid: The Id of vm
+    :type vmid: str
+
+    :rtype: ParavirtProviderResponse
+    """
+
+    vbox_utils_commonChecks()
+    httpCode = HTTPStatus.OK
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    oParavirtProviderResponse = ParavirtProviderResponse()
+    try:
+        nVXoxEPPValue = oVM.getEffectiveParavirtProvider()
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    if oError is None:
+        oParavirtProviderResponse.paravirt_provider = vbox_to_swagger_paravirt_provider(nVXoxEPPValue)
+
+    response = jsonify(oError if oError is not None else oParavirtProviderResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet #############################
+def i_machine_discardsavedstate(vmid, fRemoveFile=None):  # noqa: E501
+    """
+    Call interface method IMachine::discardSavedState
+
+    :param vmid: The Id of vm
+    :type vmid: str
+    :param fRemoveFile: 
+    :type fRemoveFile: bool
+
+    :rtype: None
+    """
+
+    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
     """
     Call interface method IConsole::addEncryptionPassword
@@ -3808,21 +3903,6 @@ def i_machine_detachhostpcidevice(vmid, hostAddress=None):  # noqa: E501
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_machine_discardsavedstate(vmid, fRemoveFile=None):  # noqa: E501
-    """
-    Call interface method IMachine::discardSavedState
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param fRemoveFile:
-    :type fRemoveFile: bool
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
 def i_machine_discardsettings(vmid):  # noqa: E501
     """
     Call interface method IMachine::discardSettings
@@ -3846,19 +3926,6 @@ def i_machine_exportto(vmid, oMachineExportToRequestBody):  # noqa: E501
     :type oMachineExportToRequestBody: dict | bytes
 
     :rtype: VirtualSystemDescriptionResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_geteffectiveparavirtprovider(vmid):  # noqa: E501
-    """
-    Call interface method IMachine::getEffectiveParavirtProvider
-
-    :param vmid: The Id of vm
-    :type vmid: str
-
-    :rtype: ParavirtProviderResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
@@ -3889,21 +3956,6 @@ def i_machine_setsettingsfilepath(vmid, settingsFilePath=None):  # noqa: E501
     :type settingsFilePath: str
 
     :rtype: ProgressResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_machine_temporaryejectdevice(vmid, oMachineTemporaryEjectDeviceRequestBody):  # noqa: E501
-    """
-    Call interface method IMachine::temporaryEjectDevice
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param oMachineTemporaryEjectDeviceRequestBody:
-    :type oMachineTemporaryEjectDeviceRequestBody: dict | bytes
-
-    :rtype: None
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
