@@ -11,6 +11,7 @@ SPDX-License-Identifier: UPL-1.0
 # pylint: disable=line-too-long
 # pylint: disable=undefined-variable
 import functools
+import uuid
 import logging
 from http import HTTPStatus
 from flask import jsonify
@@ -41,6 +42,9 @@ from vbox_server.models.virtual_box_create_medium_request_body import VirtualBox
 from vbox_server import util
 
 ############################ Helpers ############################
+# local list to keep a newly created mediums that wait to be registered in VirtualBox
+lNewAndNotRegisteredStorage = dict()
+
 def __find_medium_by_id(id: str):
     lDiskType = ['hardDisks', 'DVDImages', 'floppyImages']
     oVBox = ctx['vb']
@@ -109,6 +113,7 @@ def __testLocation(sLocation: str):
     return fRes
 
 
+############################ Implemented or used ############################
 def i_synthetic_getmedium(mediumid, select=None):  # noqa: E501
     """
     Call interface method ISynthetic::getMedium
@@ -171,6 +176,57 @@ def i_synthetic_getmedium(mediumid, select=None):  # noqa: E501
     return response, httpCode
 
 
+# Problem! IVirtualBox::createMedium must be called together with IMedium::createBaseStorage inside one action
+# Because medium registration is done only inside IMedium::createBaseStorage.
+# User can't find a new medium after returning from IVirtualBox::createMedium.
+# Workaround is the using the dictionary lNewAndNotRegisteredStorage as the temporary storage for a new VirtualBox Medium object
+def i_virtualbox_createmedium(oVirtualBoxCreateMediumRequestBody: VirtualBoxCreateMediumRequestBody):  # noqa: E501
+    """
+    Call interface method IVirtualBox::createMedium
+
+    :param oVirtualBoxCreateMediumRequestBody: 
+    :type oVirtualBoxCreateMediumRequestBody: dict | bytes
+
+    :rtype: MediumResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    format = oVirtualBoxCreateMediumRequestBody.format
+    location = oVirtualBoxCreateMediumRequestBody.location
+    accessMode = swagger_to_vbox_access_mode(oVirtualBoxCreateMediumRequestBody.access_mode)
+    deviceType = swagger_to_vbox_device_type(oVirtualBoxCreateMediumRequestBody.a_device_type_type)
+
+    logging.info(f"Creating medium in location {location}")
+
+    oVBox = ctx['vb']
+    oError = None
+    httpCode = HTTPStatus.OK
+    oMediumResponse = MediumResponse()
+
+    try:
+        oHdd = oVBox.createMedium(format, location, accessMode, deviceType)
+        if oHdd is not None:
+            tempUuid = uuid.uuid4()
+            strUuid = str(tempUuid)
+            lNewAndNotRegisteredStorage[strUuid] = oHdd
+            oMediumResponse.medium = i_fill_medium(oHdd)
+            oMediumResponse.medium.id = strUuid
+            logging.info('The medium creation has been done successfully')
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, f"Something wrong with medium creation in location {location}")
+
+    except Exception as e:
+        logging.info(f"Exception during medium creation in location {location}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMediumResponse)
+    return response, httpCode
+
+
+############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
     Call interface method IMedium::changeEncryption
@@ -501,17 +557,5 @@ def i_medium_setproperty(mediumid, oMediumSetPropertyRequestBody):  # noqa: E501
     :type oMediumSetPropertyRequestBody: dict | bytes
 
     :rtype: None
-    """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_virtualbox_createmedium(oVirtualBoxCreateMediumRequestBody):  # noqa: E501
-    """
-    Call interface method IVirtualBox::createMedium
-
-    :param oVirtualBoxCreateMediumRequestBody: 
-    :type oVirtualBoxCreateMediumRequestBody: dict | bytes
-
-    :rtype: MediumResponse
     """
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
