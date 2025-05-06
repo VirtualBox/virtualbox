@@ -10,6 +10,7 @@ SPDX-License-Identifier: UPL-1.0
 # pylint: disable=consider-using-f-string
 # pylint: disable=line-too-long
 # pylint: disable=undefined-variable
+import functools
 import logging
 from http import HTTPStatus
 from flask import jsonify
@@ -38,6 +39,74 @@ from vbox_server.models.progress_response import ProgressResponse  # noqa: E501
 from vbox_server.models.token_response import TokenResponse  # noqa: E501
 from vbox_server.models.virtual_box_create_medium_request_body import VirtualBoxCreateMediumRequestBody  # noqa: E501
 from vbox_server import util
+
+############################ Helpers ############################
+def __find_medium_by_id(id: str):
+    lDiskType = ['hardDisks', 'DVDImages', 'floppyImages']
+    oVBox = ctx['vb']
+    fFound = False
+    oFoundMedium = None
+    oError = None
+
+    for diskType in lDiskType:
+        try:
+            olDisks = ctx['global'].getArray(oVBox, diskType)
+            for item in olDisks:
+                if str(item.id) == id:
+                    oFoundMedium = item
+                    fFound = True
+                    break
+        except Exception as e:
+            logging.info('Error walking through the array of ' + diskType)
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            oFoundMedium = None
+
+        if fFound is True:
+            break
+
+    return oFoundMedium, oError
+
+
+def findMedium_decorator(func):
+    """
+    Find the medium object using the passed ID
+    The first parameter must be medium uuid always.
+    Appends the arguments list by the flag which indicates whether the medium was found or not
+    """
+    @functools.wraps(func)
+    def wrapper_decorator(*args, **kwargs):
+        args_repr = [a for a in args]
+        mediumid = args_repr[0]
+        oVBoxMedium = None
+
+        oVBoxMedium, oError = __find_medium_by_id(mediumid)
+        if oVBoxMedium is not None:
+            #append the Medium object at the end of the argument's list
+            # args_repr.append(oVBoxMedium)
+            args_repr[0] = oVBoxMedium #replace the first argument "mediumid" by oVBoxMedium
+        else:
+            if oError:
+                return jsonify('The medium with UUID ' + mediumid + ' wasn\'t found. Internal error is ' + '"' + oError.message + '"'), oError.code
+            else:
+                return jsonify("The medium with UUID " + mediumid + " wasn't found"), HTTPStatus.NOT_FOUND
+
+        # new_args_repr=args_repr[1:] #remove the first argument "mediumid" from the argument list because we added oVBoxMedium into the end of one
+        new_args_repr=args_repr
+
+        #Call the general function with the updated arguments list
+        value = func(*new_args_repr, **kwargs)
+
+        return value
+
+    return wrapper_decorator
+
+
+def __testLocation(sLocation: str):
+    fRes = True
+    if not os.path.exists(sLocation):
+        fRes = False
+    return fRes
 
 
 def i_synthetic_getmedium(mediumid, select=None):  # noqa: E501
