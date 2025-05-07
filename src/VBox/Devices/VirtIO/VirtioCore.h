@@ -1,4 +1,4 @@
-/* $Id: VirtioCore.h 109453 2025-05-07 08:37:01Z aleksey.ilyushin@oracle.com $ */
+/* $Id: VirtioCore.h 109455 2025-05-07 12:03:47Z aleksey.ilyushin@oracle.com $ */
 
 /** @file
  * VirtioCore.h - Virtio Declarations
@@ -40,7 +40,7 @@
  * WARNING! NEVER ENABLE IN PRODUCTION BUILDS!
  * Enables temporary printouts to release log in descriptor chain handling code.
  */
-#define VIRTIO_REL_INFO_DUMP 1
+//#define VIRTIO_REL_INFO_DUMP 1
 
 #ifdef LOG_ENABLED
 # define VIRTIO_HEX_DUMP(logLevel, pv, cb, base, title) \
