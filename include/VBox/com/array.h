@@ -833,14 +833,21 @@ public:
         if (!ensureCapacity(size() + 1))
             return false;
 
-        for (size_t i = size(); i > 0; --i)
-        {
 #ifdef VBOX_WITH_XPCOM
+        /* For XPCOM, size() is 0 and capacity() is 16 for the first time
+         * this function is being called on an empty array.
+         * See implementation of ensureCapacity(). */
+        for (size_t i = size(); i > 0; --i)
             SafeArray::Copy(m.arr[i - 1], m.arr[i]);
 #else
+        /* For Windows (COM), size() always matches the array's capacity.
+         *
+         * So we here need to make sure we don't read beyond the array
+         * if this function is being called on an empty array
+         * (size is 1 and  there is no element on index 1 yet). */
+        for (size_t i = size() - 1; i > 0; --i)
             SafeArray::Copy(m.raw[i - 1], m.raw[i]);
 #endif
-        }
 
 #ifdef VBOX_WITH_XPCOM
         SafeArray::Copy(aElement, m.arr[0]);

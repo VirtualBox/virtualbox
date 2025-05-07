@@ -1,4 +1,4 @@
-/* $Id: tstSafeArray.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: tstSafeArray.cpp 109459 2025-05-07 13:39:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * API Glue Testcase - SafeArray.
  */
@@ -29,11 +29,13 @@
 /*********************************************************************************************************************************
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
+#include <VBox/com/com.h>
 #include <VBox/com/array.h>
 #include <VBox/com/string.h>
 
 #include <iprt/mem.h>
 #include <iprt/rand.h>
+#include <iprt/stream.h>
 #include <iprt/string.h>
 #include <iprt/test.h>
 #include <iprt/uni.h>
@@ -47,8 +49,21 @@ int main()
     {
         RTTestBanner(hTest);
 
-        /* Sizes / Pre-allocations. */
+        HRESULT hrc = com::Initialize();
+        if (FAILED(hrc))
+        {
+            RTPrintf("ERROR: failed to initialize COM, hrc=%Rhrc\n", hrc);
+            return RTEXITCODE_FAILURE;
+        }
+
+        /* Some simple push-to-front test to catch some off-by-one errors. */
         com::SafeArray<int> aInt;
+        aInt.push_front(42);
+
+        /* Test NULL'ing. */
+        aInt.setNull();
+
+        /* Sizes / Pre-allocations. */
         RTTESTI_CHECK(aInt.size() == 0);
 
         com::SafeArray<int> aInt2(42);
@@ -88,6 +103,54 @@ int main()
         for (size_t i = 0; i < RT_ELEMENTS(aPushToFront); i++)
             RTTESTI_CHECK_MSG(aInt[i] == aPushToFront[RT_ELEMENTS(aPushToFront) - i - 1],
                               ("Got %d, expected %d\n", aInt[i], aPushToFront[RT_ELEMENTS(aPushToFront) - i - 1]));
+
+        /* Push to back first, then push to front. */
+        com::SafeArray<int> aInt4;
+        for (size_t i = 0; i < RT_ELEMENTS(aPushToBack); i++)
+        {
+            RTTESTI_CHECK(aInt4.push_back(aPushToBack[i]));
+            RTTESTI_CHECK(aInt4.size() == i + 1);
+            RTTESTI_CHECK(aInt4[i] == aPushToBack[i]);
+        }
+        for (size_t i = 0; i < RT_ELEMENTS(aPushToBack); i++)
+            RTTESTI_CHECK_MSG(aInt4[i] == aPushToBack[i], ("Got %d, expected %d\n", aInt4[i], aPushToBack[i]));
+
+        for (size_t i = 0; i < RT_ELEMENTS(aPushToFront); i++)
+        {
+            RTTESTI_CHECK(aInt4.push_front(aPushToFront[i]));
+            RTTESTI_CHECK(aInt4.size() == i + 1 + RT_ELEMENTS(aPushToBack));
+            RTTESTI_CHECK(aInt4[0] == aPushToFront[i]);
+        }
+        for (size_t i = 0; i < RT_ELEMENTS(aPushToFront); i++)
+            RTTESTI_CHECK_MSG(aInt4[i] == aPushToFront[RT_ELEMENTS(aPushToFront) - i - 1],
+                              ("Got %d, expected %d\n", aInt4[i], aPushToFront[RT_ELEMENTS(aPushToFront) - i - 1]));
+
+        aInt4.setNull();
+
+        /* Push to front first, then push to back. */
+        com::SafeArray<int> aInt5;
+        for (size_t i = 0; i < RT_ELEMENTS(aPushToFront); i++)
+        {
+            RTTESTI_CHECK(aInt5.push_front(aPushToFront[i]));
+            RTTESTI_CHECK(aInt5.size() == i + 1);
+            RTTESTI_CHECK(aInt5[0] == aPushToFront[i]);
+        }
+        for (size_t i = 0; i < RT_ELEMENTS(aPushToFront); i++)
+            RTTESTI_CHECK_MSG(aInt5[i] == aPushToFront[RT_ELEMENTS(aPushToFront) - i - 1],
+                              ("Got %d, expected %d\n", aInt5[i], aPushToFront[RT_ELEMENTS(aPushToFront) - i - 1]));
+
+        /* Push to back. */
+        for (size_t i = 0; i < RT_ELEMENTS(aPushToBack); i++)
+        {
+            RTTESTI_CHECK(aInt5.push_back(aPushToBack[i]));
+            RTTESTI_CHECK(aInt5.size() == i + 1 + RT_ELEMENTS(aPushToFront));
+            RTTESTI_CHECK(aInt5[i + RT_ELEMENTS(aPushToFront)] == aPushToBack[i]);
+        }
+        for (size_t i = 0; i < RT_ELEMENTS(aPushToBack); i++)
+            RTTESTI_CHECK_MSG(aInt5[i + RT_ELEMENTS(aPushToFront)] == aPushToBack[i],
+                              ("Got %d, expected %d\n", aInt5[i], aPushToBack[i]));
+
+        aInt5.setNull();
 
         /* A bit more data. */
         aInt.setNull();
