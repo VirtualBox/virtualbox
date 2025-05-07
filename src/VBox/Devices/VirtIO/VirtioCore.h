@@ -1,4 +1,4 @@
-/* $Id: VirtioCore.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VirtioCore.h 109452 2025-05-07 08:16:10Z aleksey.ilyushin@oracle.com $ */
 
 /** @file
  * VirtioCore.h - Virtio Declarations
@@ -35,6 +35,12 @@
 #include <iprt/ctype.h>
 #include <iprt/sg.h>
 #include <iprt/types.h>
+
+/*
+ * WARNING! NEVER ENABLE IN PRODUCTION BUILDS!
+ * Enables temporary printouts to release log in descriptor chain handling code.
+ */
+//#define VIRTIO_REL_INFO_DUMP 1
 
 #ifdef LOG_ENABLED
 # define VIRTIO_HEX_DUMP(logLevel, pv, cb, base, title) \
@@ -457,6 +463,13 @@ typedef struct VIRTIOCORE
     uint32_t                    fOfferLegacy;                     /**< Set at init call from dev-specific code   */
     uint16_t                    uIrqMmio;                         /**< The interrupt number when Virtio-over-MMIO is used */
     uint8_t                     uDeviceType;                      /**< The implemented device type for Virtio-over-MMIO   */
+#ifdef VIRTIO_REL_INFO_DUMP
+    bool                        fRecovering;
+    bool                        fTestRecovery;
+#define VIRTIO_CORE_TRACE_BUF_SIZE (256 /* header */ + 256 * 256 /* buffer*/)
+    RTTRACEBUF                  hTraceBuf;
+    uint8_t                     aTraceBuf[VIRTIO_CORE_TRACE_BUF_SIZE];
+#endif /* VIRTIO_REL_INFO_DUMP */
 
     /** @name The locations of the capability structures in PCI config space and the BAR.
      * @{ */
@@ -781,6 +794,19 @@ DECLHIDDEN(void) virtioCoreR3VirtqInfo(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, P
  * @param   uVirtqNbr   Virtqueue to return the count of buffers available for.
  */
 DECLHIDDEN(uint16_t) virtioCoreVirtqAvailBufCount(PPDMDEVINS pDevIns, PVIRTIOCORE pVirtio, uint16_t uVirtqNbr);
+
+#ifdef VIRTIO_REL_INFO_DUMP
+/**
+ * Copies all available chains to used ring. Only indices of chains are copied, not the chains
+ * themselves. This can only be done for virtionet TX ring to work around the issue in NetKVM
+ * driver, which does not complete NBLs on device reset, if these NBLs are already in 'avail' ring.
+ *
+ * @param   pDevIns     The device instance.
+ * @param   pVirtio     Pointer to the shared virtio state.
+ * @param   uVirtqNbr   Virtqueue to modify.
+ */
+void virtioCorePutAllAvailBufsToUsedRing(PPDMDEVINS pDevIns, PVIRTIOCORE pVirtio, uint16_t uVirtqNbr);
+#endif /* VIRTIO_REL_INFO_DUMP */
 
 /**
  * This function is identical to virtioCoreR3VirtqAvailBufGet(), *except* it doesn't consume

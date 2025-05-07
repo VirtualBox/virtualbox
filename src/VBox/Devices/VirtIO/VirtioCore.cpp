@@ -1,4 +1,4 @@
-/* $Id: VirtioCore.cpp 107056 2024-11-19 09:20:28Z aleksey.ilyushin@oracle.com $ */
+/* $Id: VirtioCore.cpp 109452 2025-05-07 08:16:10Z aleksey.ilyushin@oracle.com $ */
 
 /** @file
  * VirtioCore - Virtio Core (PCI, feature & config mgt, queue mgt & proxy, notification mgt)
@@ -47,6 +47,9 @@
 #include <VBox/vmm/pdmdev.h>
 #include "VirtioCore.h"
 
+#ifdef VIRTIO_REL_INFO_DUMP
+#include <iprt/trace.h>
+#endif /* VIRTIO_REL_INFO_DUMP */
 
 /*********************************************************************************************************************************
 *   Defined Constants And Macros                                                                                                 *
@@ -632,6 +635,74 @@ DECLINLINE(void) virtioCoreR3DescInfo(PCDBGFINFOHLP pHlp, PVIRTQ_DESC_T pDesc, u
                         pDesc->cb, pDesc->GCPhysBuf, cszTail);
 }
 
+#ifdef VIRTIO_REL_INFO_DUMP
+DECLHIDDEN(void) virtioCoreR3DumpAvailRing(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, PVIRTIOCORE pVirtio, PVIRTQUEUE pVirtq)
+{
+    uint16_t auTmp[VIRTQ_SIZE];
+    virtioCoreGCPhysRead(pVirtio, pDevIns,
+                         pVirtq->GCPhysVirtqAvail + RT_UOFFSETOF_DYN(VIRTQ_AVAIL_T, auRing[0]),
+                         auTmp, pVirtq->uQueueSize * sizeof(uint16_t));
+    pHlp->pfnPrintf(pHlp, "       avail ring dump:\n%.*RhXd\n", pVirtq->uQueueSize * sizeof(uint16_t), auTmp,
+                    pVirtq->GCPhysVirtqAvail + RT_UOFFSETOF_DYN(VIRTQ_AVAIL_T, auRing[0]));
+}
+
+DECLHIDDEN(void) virtioCoreR3DumpUsedRing(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, PVIRTIOCORE pVirtio, PVIRTQUEUE pVirtq)
+{
+    VIRTQ_USED_ELEM_T aTmp[VIRTQ_SIZE];
+    virtioCoreGCPhysRead(pVirtio, pDevIns,
+                         pVirtq->GCPhysVirtqUsed + RT_UOFFSETOF_DYN(VIRTQ_USED_T, aRing[0]),
+                         aTmp, pVirtq->uQueueSize * sizeof(VIRTQ_USED_ELEM_T));
+    pHlp->pfnPrintf(pHlp, "       used ring dump:\n%.*RhXd\n", pVirtq->uQueueSize * sizeof(VIRTQ_USED_ELEM_T), aTmp,
+                    pVirtq->GCPhysVirtqUsed + RT_UOFFSETOF_DYN(VIRTQ_USED_T, aRing[0]));
+}
+
+#define VIRTIO_CORE_EVENT_INVALID    0
+#define VIRTIO_CORE_EVENT_AVAIL_GET  1  // pVirtq->uAvailIdxShadow, pVirtqBuf->uHeadIdx
+#define VIRTIO_CORE_EVENT_AVAIL_PEEK 2  // pVirtq->uAvailIdxShadow, pVirtqBuf->uHeadIdx
+#define VIRTIO_CORE_EVENT_AVAIL_NEXT 3  // pVirtq->uAvailIdxShadow, N/A
+#define VIRTIO_CORE_EVENT_USED_PUT   4  // pVirtq->uUsedIdxShadow, pVirtqBuf->uHeadIdx
+#define VIRTIO_CORE_EVENT_USED_SYNC  5  // pVirtq->uUsedIdxShadow, N/A
+
+static const char *virtioCoreEventText[] = {
+    "none <n/a>",
+    " get avail",
+    "peek avail",
+    "next avail",
+    " put  used",
+    "sync  used"
+};
+
+static void virtioCoreTraceEvent(PVIRTIOCORE pVirtio, PVIRTQUEUE pVirtq, const uint8_t event, uint16_t ringIdx, uint16_t descIdx)
+{
+    if (pVirtq->uQueueSize)
+    {
+        if (event == VIRTIO_CORE_EVENT_AVAIL_NEXT || event == VIRTIO_CORE_EVENT_USED_SYNC)
+            RTTraceBufAddMsgF(pVirtio->hTraceBuf, "%s: %s[%u]\n", pVirtq->szName, virtioCoreEventText[event], ringIdx % pVirtq->uQueueSize);
+        else
+            RTTraceBufAddMsgF(pVirtio->hTraceBuf, "%s: %s[%u]=%u\n", pVirtq->szName, virtioCoreEventText[event], ringIdx % pVirtq->uQueueSize, descIdx);
+    }
+    else
+    {
+        if (event == VIRTIO_CORE_EVENT_AVAIL_NEXT || event == VIRTIO_CORE_EVENT_USED_SYNC)
+            RTTraceBufAddMsgF(pVirtio->hTraceBuf, "%s: %s[%u]\n", pVirtq->szName, virtioCoreEventText[event], ringIdx);
+        else
+            RTTraceBufAddMsgF(pVirtio->hTraceBuf, "%s: %s[%u]=%u\n", pVirtq->szName, virtioCoreEventText[event], ringIdx, descIdx);
+    }
+}
+
+static DECLCALLBACK(int) dumpOneEntryToRelLog(RTTRACEBUF hTraceBuf, uint32_t iEntry, uint64_t NanoTS, RTCPUID idCpu, const char *pszMsg, void *pvUser)
+{
+    RT_NOREF(hTraceBuf, pvUser);
+    LogRel(("%03u / %llu / %02u / %s", iEntry, NanoTS, idCpu, pszMsg));
+    return VINF_SUCCESS;
+}
+
+static inline void virtioCoreDumpTraceBufToRelLog(RTTRACEBUF hTraceBuf)
+{
+    RTTraceBufEnumEntries(hTraceBuf, dumpOneEntryToRelLog, NULL);
+}
+#endif /* VIRTIO_REL_INFO_DUMP */
+
 /** API Fuunction: See header file */
 DECLHIDDEN(void) virtioCoreR3VirtqInfo(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, PVIRTIOCORE pVirtio, const char *pszArgs, int uVirtq)
 {
@@ -660,6 +731,7 @@ DECLHIDDEN(void) virtioCoreR3VirtqInfo(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, P
                             &uAvailEventIdx, sizeof(uAvailEventIdx));
     }
 
+#ifndef VIRTIO_REL_INFO_DUMP
     VIRTQBUF_T VirtqBuf;
     PVIRTQBUF pVirtqBuf = &VirtqBuf;
     RT_ZERO(VirtqBuf);  /* Make sure pSgPhysSend and pSgPhysReturn are initialized. */
@@ -674,6 +746,7 @@ DECLHIDDEN(void) virtioCoreR3VirtqInfo(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, P
         cSendSegs   = pVirtqBuf->pSgPhysSend ? pVirtqBuf->pSgPhysSend->cSegs : 0;
         cReturnSegs = pVirtqBuf->pSgPhysReturn ? pVirtqBuf->pSgPhysReturn->cSegs : 0;
     }
+#endif /* !VIRTIO_REL_INFO_DUMP */
 
     bool fAvailNoInterrupt   = virtioReadAvailRingFlags(pDevIns, pVirtio, pVirtq) & VIRTQ_AVAIL_F_NO_INTERRUPT;
     bool fUsedNoNotify       = virtioReadUsedRingFlags(pDevIns, pVirtio, pVirtq) & VIRTQ_USED_F_NO_NOTIFY;
@@ -694,6 +767,7 @@ DECLHIDDEN(void) virtioCoreR3VirtqInfo(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, P
     pHlp->pfnPrintf(pHlp, "          shadow: ............... %d (%d)\n", pVirtq->uQueueSize ? uUsedIdxShadow % pVirtq->uQueueSize : uUsedIdxShadow, uUsedIdxShadow);
     pHlp->pfnPrintf(pHlp, "          flags: ................ %s\n", fUsedNoNotify ? "NO_NOTIFY" : "");
     pHlp->pfnPrintf(pHlp, "\n");
+#ifndef VIRTIO_REL_INFO_DUMP
     if (!fEmpty)
     {
         pHlp->pfnPrintf(pHlp, "       desc chain:\n");
@@ -718,6 +792,7 @@ DECLHIDDEN(void) virtioCoreR3VirtqInfo(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, P
         }
     } else
         pHlp->pfnPrintf(pHlp,     "       no desc chains available\n");
+#endif /* !VIRTIO_REL_INFO_DUMP */
     pHlp->pfnPrintf(pHlp, "\n");
 
     /* Avoid handling zero-sized queues, there is nothing to show anyway. */
@@ -782,6 +857,12 @@ DECLHIDDEN(void) virtioCoreR3VirtqInfo(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, P
     pHlp->pfnPrintf(pHlp, "          ------ - -----------   ---------------- ------- -------- ------------------\n");
     for (uint16_t i = 0; i < pVirtq->uQueueSize; i++)
         virtioCoreR3DescInfo(pHlp, &descTable[i], i, aszTails[i]);
+#ifdef VIRTIO_REL_INFO_DUMP
+    pHlp->pfnPrintf(pHlp, "\n");
+    virtioCoreR3DumpAvailRing(pDevIns, pHlp, pVirtio, pVirtq);
+    pHlp->pfnPrintf(pHlp, "\n");
+    virtioCoreR3DumpUsedRing(pDevIns, pHlp, pVirtio, pVirtq);
+#endif /* VIRTIO_REL_INFO_DUMP */
 }
 
 
@@ -889,10 +970,78 @@ DECLHIDDEN(int) virtioCoreR3VirtqAvailBufNext(PVIRTIOCORE pVirtio, uint16_t uVir
 
     Log6Func(("%s avail shadow idx: %u\n", pVirtq->szName, pVirtq->uAvailIdxShadow));
     pVirtq->uAvailIdxShadow++;
+#ifdef VIRTIO_REL_INFO_DUMP
+    virtioCoreTraceEvent(pVirtio, pVirtq, VIRTIO_CORE_EVENT_AVAIL_NEXT, pVirtq->uAvailIdxShadow, 0);
+#endif /* VIRTIO_REL_INFO_DUMP */
 
     return VINF_SUCCESS;
 }
 
+#ifdef VIRTIO_REL_INFO_DUMP
+DECLCALLBACK(void) virtioNetR3Info(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, const char *pszArgs);
+
+static DECLCALLBACK(void) dbgVirtio_Printf(PCDBGFINFOHLP pHlp, const char *pszFormat, ...)
+{
+    RT_NOREF(pHlp);
+    va_list va;
+    va_start(va, pszFormat);
+    RTLogRelPrintfV(pszFormat, va);
+    va_end(va);
+}
+
+
+static DECLCALLBACK(void) dbgVirtio_PrintfV(PCDBGFINFOHLP pHlp, const char *pszFormat, va_list args)
+{
+    RT_NOREF(pHlp);
+    RTLogRelPrintfV(pszFormat, args);
+}
+
+
+/**
+ * @interface_method_impl{DBGCCMDHLP,pfnGetDbgfOutputHlp}
+ */
+static void dbgVirtioDump(PPDMDEVINS pDevIns)
+{
+    PVIRTIOCORE pVirtio = PDMINS_2_DATA(pDevIns, PVIRTIOCORE);
+    LogRel(("dbgVirtioDump(%s)\n", pVirtio->szInstance));
+    if (RTStrNCmp("virtio-net", pVirtio->szInstance, 10) == 0)
+    {
+        DBGFINFOHLP DbgHlp;
+
+        DbgHlp.pfnPrintf      = dbgVirtio_Printf;
+        DbgHlp.pfnPrintfV     = dbgVirtio_PrintfV;
+        DbgHlp.pfnGetOptError = NULL;
+
+        virtioNetR3Info(pDevIns, &DbgHlp, "a"); // Print everything!
+    }
+}
+
+/** Temporary API function: See Header file  */
+void virtioCorePutAllAvailBufsToUsedRing(PPDMDEVINS pDevIns, PVIRTIOCORE pVirtio, uint16_t uVirtq)
+{
+    PVIRTQUEUE pVirtq = &pVirtio->aVirtqueues[uVirtq];
+    uint16_t uStartAvailIdx = pVirtq->uAvailIdxShadow;
+    uint16_t uStartUsedIdx  = pVirtq->uUsedIdxShadow;
+
+    /*
+     * Copy chain head indices from avail to used, specifying zero processed length, which should be ok
+     * for TX queue of virtio-net only!
+     */
+    while (pVirtq->uAvailIdxShadow != virtioReadAvailRingIdx(pDevIns, pVirtio, pVirtq))
+        virtioWriteUsedElem(pDevIns, pVirtio, pVirtq, pVirtq->uUsedIdxShadow++,
+                            virtioReadAvailDescIdx(pDevIns, pVirtio, pVirtq, pVirtq->uAvailIdxShadow++), 0);
+
+    if (pVirtq->uAvailIdxShadow != uStartAvailIdx)
+    {
+        LogRel(("[%s] Copied indices for %s [avail(%u:%u) -> used(%u:%u)]\n", pVirtio->szInstance, pVirtq->szName,
+                uStartAvailIdx, pVirtq->uAvailIdxShadow - 1, uStartUsedIdx, pVirtq->uUsedIdxShadow - 1));
+        virtioWriteUsedRingIdx(pDevIns, pVirtio, pVirtq, pVirtq->uUsedIdxShadow);
+        virtioCoreNotifyGuestDriver(pDevIns, pVirtio, uVirtq);
+    }
+    else
+        LogRel(("[%s] Avail ring is empty for %s, nothing to copy.\n", pVirtio->szInstance, pVirtq->szName));
+}
+#endif /* VIRTIO_REL_INFO_DUMP */
 /** API Function: See header file */
 DECLHIDDEN(int) virtioCoreR3VirtqAvailBufGet(PPDMDEVINS pDevIns, PVIRTIOCORE pVirtio, uint16_t uVirtq,
                                              uint16_t uHeadIdx, PVIRTQBUF pVirtqBuf)
@@ -940,20 +1089,39 @@ DECLHIDDEN(int) virtioCoreR3VirtqAvailBufGet(PPDMDEVINS pDevIns, PVIRTIOCORE pVi
          * linked descriptors exceeding the total number of descriptors in the ring (see @bugref{8620}),
          * the following aborts I/O if breach and employs a simple log throttling algorithm to notify.
          */
+#ifdef VIRTIO_REL_INFO_DUMP
+        if (cSegsIn + cSegsOut >= pVirtq->uQueueSize || ASMAtomicCmpXchgBool(&pVirtio->fTestRecovery, false, true))
+        {
+            static volatile uint32_t s_cMessages  = 0;
+            if (ASMAtomicIncU32(&s_cMessages) <= 10)
+            {
+                LogRel(("Too many linked descriptors; check if the guest arranges descriptors in a loop "
+                        "(cSegsIn=%u cSegsOut=%u uQueueSize=%u uDescIdx=%u uHeadIdx=%u uAvailIdxShadow=%u queue=%s).\n",
+                        cSegsIn, cSegsOut, pVirtq->uQueueSize, uDescIdx, pVirtqBuf->uHeadIdx, pVirtq->uAvailIdxShadow, pVirtq->szName));
+                virtioCoreDumpTraceBufToRelLog(pVirtio->hTraceBuf);
+                dbgVirtioDump(pDevIns);
+            }
+            /* Disable the queue to prevent its operation until it is re-initialized. */
+            pVirtq->uEnable = false;
+            return VERR_INVALID_STATE;
+        }
+#else /* !VIRTIO_REL_INFO_DUMP */
         if (cSegsIn + cSegsOut >= pVirtq->uQueueSize)
         {
             static volatile uint32_t s_cMessages  = 0;
             static volatile uint32_t s_cThreshold = 1;
             if (ASMAtomicIncU32(&s_cMessages) == ASMAtomicReadU32(&s_cThreshold))
             {
-                LogRelMax(64, ("Too many linked descriptors; check if the guest arranges descriptors in a loop (cSegsIn=%u cSegsOut=%u uQueueSize=%u uDescIdx=%u queue=%s).\n",
-                               cSegsIn, cSegsOut, pVirtq->uQueueSize, uDescIdx, pVirtq->szName));
+                LogRelMax(64, ("Too many linked descriptors; check if the guest arranges descriptors in a loop "
+                               "(cSegsIn=%u cSegsOut=%u uQueueSize=%u uDescIdx=%u uHeadIdx=%u uAvailIdxShadow=%u queue=%s).\n",
+                               cSegsIn, cSegsOut, pVirtq->uQueueSize, uDescIdx, pVirtqBuf->uHeadIdx, pVirtq->uAvailIdxShadow, pVirtq->szName));
                 if (ASMAtomicReadU32(&s_cMessages) != 1)
                     LogRelMax(64, ("(the above error has occured %u times so far)\n", ASMAtomicReadU32(&s_cMessages)));
                 ASMAtomicWriteU32(&s_cThreshold, ASMAtomicReadU32(&s_cThreshold) * 10);
             }
             break;
         }
+#endif /* !VIRTIO_REL_INFO_DUMP */
         /* Check if the limit has been reached for input chain (see section 2.4.4.1 of virtio 1.0 spec). */
         if (cSegsIn >= RT_ELEMENTS(pVirtqBuf->aSegsIn))
         {
@@ -1041,6 +1209,9 @@ DECLHIDDEN(int) virtioCoreR3VirtqAvailBufGet(PPDMDEVINS pDevIns, PVIRTIOCORE pVi
     if (pVirtio->uDriverFeatures & VIRTIO_F_EVENT_IDX)
         virtioWriteUsedAvailEvent(pDevIns,pVirtio, pVirtq, pVirtq->uAvailIdxShadow + 1);
 
+#ifdef VIRTIO_REL_INFO_DUMP
+    virtioCoreTraceEvent(pVirtio, pVirtq, fRemove ? VIRTIO_CORE_EVENT_AVAIL_GET : VIRTIO_CORE_EVENT_AVAIL_PEEK, pVirtq->uAvailIdxShadow, uHeadIdx);
+#endif /* VIRTIO_REL_INFO_DUMP */
     if (fRemove)
         pVirtq->uAvailIdxShadow++;
 
@@ -1115,6 +1286,9 @@ DECLHIDDEN(int) virtioCoreR3VirtqUsedBufPut(PPDMDEVINS pDevIns, PVIRTIOCORE pVir
      * @todo r=aeichner: The increment of the shadow index is not atomic but this code can be called
      *                   concurrently!!
      */
+#ifdef VIRTIO_REL_INFO_DUMP
+    virtioCoreTraceEvent(pVirtio, pVirtq, VIRTIO_CORE_EVENT_USED_PUT, pVirtq->uUsedIdxShadow, pVirtqBuf->uHeadIdx);
+#endif /* VIRTIO_REL_INFO_DUMP */
     virtioWriteUsedElem(pDevIns, pVirtio, pVirtq, pVirtq->uUsedIdxShadow++, pVirtqBuf->uHeadIdx, (uint32_t)cbTotal);
 
 #ifdef LOG_ENABLED
@@ -1195,6 +1369,9 @@ DECLHIDDEN(int) virtioCoreR3VirtqUsedBufPut(PPDMDEVINS pDevIns, PVIRTIOCORE pVir
         Log6Func(("    Enqueue desc chain head idx %u to %s used ring @ %u\n", pVirtqBuf->uHeadIdx,
                 VIRTQNAME(pVirtio, uVirtq), pVirtq->uUsedIdxShadow));
 
+#ifdef VIRTIO_REL_INFO_DUMP
+        virtioCoreTraceEvent(pVirtio, pVirtq, VIRTIO_CORE_EVENT_USED_PUT, pVirtq->uUsedIdxShadow, pVirtqBuf->uHeadIdx);
+#endif /* VIRTIO_REL_INFO_DUMP */
         virtioWriteUsedElem(pDevIns, pVirtio, pVirtq, pVirtq->uUsedIdxShadow++, pVirtqBuf->uHeadIdx, (uint32_t)cbEnqueue);
 
 #ifdef LOG_ENABLED
@@ -1229,6 +1406,12 @@ DECLHIDDEN(int) virtioCoreVirtqUsedRingSync(PPDMDEVINS pDevIns, PVIRTIOCORE pVir
     Log6Func(("    Sync %s used ring (%u -> idx)\n",
                         pVirtq->szName, pVirtq->uUsedIdxShadow));
 
+#ifdef IN_RING3
+    // I believe virtioCoreVirtqUsedRingSync is only called from ring 3 in virtio-net
+#ifdef VIRTIO_REL_INFO_DUMP
+    virtioCoreTraceEvent(pVirtio, pVirtq, VIRTIO_CORE_EVENT_USED_SYNC, pVirtq->uUsedIdxShadow, 0);
+#endif /* VIRTIO_REL_INFO_DUMP */
+#endif /* IN_RING3 */
     virtioWriteUsedRingIdx(pDevIns, pVirtio, pVirtq, pVirtq->uUsedIdxShadow);
     virtioCoreNotifyGuestDriver(pDevIns, pVirtio, uVirtq);
 
@@ -1331,6 +1514,11 @@ static void virtioCoreNotifyGuestDriver(PPDMDEVINS pDevIns, PVIRTIOCORE pVirtio,
  */
 static int virtioNudgeGuest(PPDMDEVINS pDevIns, PVIRTIOCORE pVirtio, uint8_t uCause, uint16_t uMsixVector)
 {
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (ASMAtomicReadBool(&pVirtio->fRecovering))
+        LogRel(("[%s] Raising%s interrupt, because of %s\n", pVirtio->szInstance, pVirtio->fMsiSupport ? " MSI" : "",
+                uCause == VIRTIO_ISR_VIRTQ_INTERRUPT ? "added buffer" : "config change"));
+#endif /* VIRTIO_REL_INFO_DUMP */
     if (uCause == VIRTIO_ISR_VIRTQ_INTERRUPT)
         Log6Func(("Reason for interrupt - buffer added to 'used' ring.\n"));
     else
@@ -1559,6 +1747,15 @@ static int virtioCommonCfgAccessed(PPDMDEVINS pDevIns, PVIRTIOCORE pVirtio, PVIR
     uint16_t uVirtq = pVirtio->uVirtqSelect;
     int rc = VINF_SUCCESS;
     uint64_t val;
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (ASMAtomicReadBool(&pVirtio->fRecovering))
+    {
+        if (fWrite)
+            LogRel(("[%s] writes %u bytes @ cmn cfg + %u: %.*Rhxs\n", pVirtio->szInstance, cb, uOffsetOfAccess, cb, pv));
+        else
+            LogRel(("[%s] attempts to read %u bytes @ cmn cfg + %u\n", pVirtio->szInstance, cb, uOffsetOfAccess));
+    }
+#endif /* VIRTIO_REL_INFO_DUMP */
     if (VIRTIO_DEV_CONFIG_MATCH_MEMBER(uDeviceFeatures, VIRTIO_PCI_COMMON_CFG_T, uOffsetOfAccess))
     {
         if (fWrite) /* Guest WRITE pCommonCfg>uDeviceFeatures */
@@ -1724,6 +1921,10 @@ static int virtioCommonCfgAccessed(PPDMDEVINS pDevIns, PVIRTIOCORE pVirtio, PVIR
                   fWrite ? "write" : "read ", uOffsetOfAccess, uOffsetOfAccess, cb));
         return fWrite ? VINF_SUCCESS : VINF_IOM_MMIO_UNUSED_00;
     }
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (ASMAtomicReadBool(&pVirtio->fRecovering) && !fWrite)
+        LogRel(("[%s] read %u bytes @ cmn cfg + %u: %.*Rhxs\n", pVirtio->szInstance, cb, uOffsetOfAccess, cb, pv));
+#endif /* VIRTIO_REL_INFO_DUMP */
 
 #ifndef IN_RING3
     RT_NOREF(pDevIns, pVirtioCC);
@@ -2794,6 +2995,10 @@ DECLHIDDEN(void) virtioCoreR3VmStateChanged(PVIRTIOCORE pVirtio, VIRTIOVMSTATECH
  */
 DECLHIDDEN(void) virtioCoreR3Term(PPDMDEVINS pDevIns, PVIRTIOCORE pVirtio, PVIRTIOCORECC pVirtioCC)
 {
+#ifdef VIRTIO_REL_INFO_DUMP
+    RTTraceBufRelease(pVirtio->hTraceBuf);
+    pVirtio->hTraceBuf = NIL_RTTRACEBUF;
+#endif /* VIRTIO_REL_INFO_DUMP */
     if (pVirtioCC->pbPrevDevSpecificCfg)
     {
         RTMemFree(pVirtioCC->pbPrevDevSpecificCfg);
@@ -3150,6 +3355,15 @@ DECLHIDDEN(int) virtioCoreR3Init(PPDMDEVINS pDevIns, PVIRTIOCORE pVirtio, PVIRTI
     PDMDevHlpSTAMRegister(pDevIns, &pVirtio->StatWriteRC,   STAMTYPE_PROFILE, "IO/WriteRC",         STAMUNIT_TICKS_PER_CALL, "Profiling IO writes in RC");
 # endif /* VBOX_WITH_STATISTICS */
 
+#ifdef VIRTIO_REL_INFO_DUMP
+    pVirtio->fRecovering = false;
+    pVirtio->fTestRecovery = false;
+    size_t cbBlock = VIRTIO_CORE_TRACE_BUF_SIZE;
+    rc = RTTraceBufCarve(&pVirtio->hTraceBuf, 0 /*cEntries*/, 0 /*cbEntry*/, 0 /*fFlags*/, pVirtio->aTraceBuf, &cbBlock);
+    AssertRC(rc);
+    if (RT_FAILURE(rc))
+        LogRel(("virtioCore: Failed to initialize trace buffer (rc=%d)\n", rc));
+#endif /* VIRTIO_REL_INFO_DUMP */
     return VINF_SUCCESS;
 }
 

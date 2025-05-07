@@ -1,4 +1,4 @@
-/* $Id: DevVirtioNet.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ $Revision: 106320 $ $Date: 2024-10-15 14:08:41 +0200 (Tue, 15 Oct 2024) $ $Author: klaus.espenlaub@oracle.com $ */
+/* $Id: DevVirtioNet.cpp 109452 2025-05-07 08:16:10Z aleksey.ilyushin@oracle.com $ $Revision: 109452 $ $Date: 2025-05-07 10:16:10 +0200 (Wed, 07 May 2025) $ $Author: aleksey.ilyushin@oracle.com $ */
 
 /** @file
  * VBox storage devices - Virtio NET Driver
@@ -672,6 +672,10 @@ static DECLCALLBACK(void) virtioNetVirtqNotified(PPDMDEVINS pDevIns, PVIRTIOCORE
     PVIRTIONETVIRTQ  pVirtq  = &pThis->aVirtqs[uVirtqNbr];
     PVIRTIONETWORKER pWorker = &pThis->aWorkers[uVirtqNbr];
 
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (ASMAtomicReadBool(&pVirtio->fRecovering))
+        LogRel(("[%s] Received notification from the guest on queue %u\n", pThis->szInst, uVirtqNbr));
+#endif /* VIRTIO_REL_INFO_DUMP */
 #if defined (IN_RING3) && defined (LOG_ENABLED)
     RTLogFlush(NULL);
 #endif
@@ -791,7 +795,11 @@ void virtioNetDumpGcPhysRxBuf(PPDMDEVINS pDevIns, PVIRTIONETPKTHDR pRxPktHdr,
 /**
  * @callback_method_impl{FNDBGFHANDLERDEV, virtio-net debugger info callback.}
  */
+#ifdef VIRTIO_REL_INFO_DUMP
+DECLCALLBACK(void) virtioNetR3Info(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, const char *pszArgs)
+#else  /* !VIRTIO_REL_INFO_DUMP */
 static DECLCALLBACK(void) virtioNetR3Info(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, const char *pszArgs)
+#endif /* !VIRTIO_REL_INFO_DUMP */
 {
     PVIRTIONET     pThis   = PDMDEVINS_2_DATA(pDevIns,  PVIRTIONET);
     PVIRTIONETCC   pThisCC = PDMDEVINS_2_DATA_CC(pDevIns, PVIRTIONETCC);
@@ -803,6 +811,14 @@ static DECLCALLBACK(void) virtioNetR3Info(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp
     bool fState    = pszArgs && (*pszArgs == 's' || *pszArgs == 'S'); /* "state"    */
     bool fPointers = pszArgs && (*pszArgs == 'p' || *pszArgs == 'P'); /* "pointers" */
     bool fVirtqs   = pszArgs && (*pszArgs == 'q' || *pszArgs == 'Q'); /* "queues    */
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (pszArgs && (*pszArgs == 't' || *pszArgs == 'T'))
+    {
+        ASMAtomicWriteBool(&pThis->Virtio.fTestRecovery, true);
+        pHlp->pfnPrintf(pHlp, "Triggering recovery for %s\n", pThis->szInst);
+        return;
+    }
+#endif /* VIRTIO_REL_INFO_DUMP */
 
     /* Show basic information. */
     pHlp->pfnPrintf(pHlp,
@@ -1037,6 +1053,10 @@ static int virtioNetR3DevCfgAccess(PVIRTIONET pThis, uint32_t uOffsetOfAccess, v
                 pThis->szInst, uOffsetOfAccess, uOffsetOfAccess, cb));
         return fWrite ? VINF_SUCCESS : VINF_IOM_MMIO_UNUSED_00;
     }
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (ASMAtomicReadBool(&pThis->Virtio.fRecovering))
+        LogRel(("[%s] %s %u bytes @ dev cfg + %u: %.*Rhxs\n", pThis->szInst, fWrite ? "wrote" : "read", cb, uOffsetOfAccess, cb, pv));
+#endif /* VIRTIO_REL_INFO_DUMP */
     return VINF_SUCCESS;
 }
 
@@ -1536,6 +1556,42 @@ static DECLCALLBACK(int) virtioNetR3ModernSaveExec(PPDMDEVINS pDevIns, PSSMHANDL
 
 #ifdef IN_RING3
 
+#ifdef VIRTIO_REL_INFO_DUMP
+/**
+ * Attempt to recover from the state when a descriptor loop is discovered in adapter queue.
+ * The idea is to force device reset via setting the DEVICE_NEEDS_RESET bit in the device status field.
+ * To prevent further accesses to the queue in invalid state we need to bring down the link temporarily.
+ * Unfortunately it does not seem to be handled by Linux virtio at all, so the faulty queue will remain
+ * disabled, preventing recovery.
+ *
+ * @param pDevIns               PDM instance
+ *
+ */
+DECLHIDDEN(int) virtioNetAttemptToRecover(PPDMDEVINS pDevIns)
+{
+    PVIRTIONET     pThis   = PDMDEVINS_2_DATA(pDevIns,  PVIRTIONET);
+    PVIRTIONETCC   pThisCC = PDMDEVINS_2_DATA_CC(pDevIns, PVIRTIONETCC);
+
+    if (IS_LINK_UP(pThis))
+    {
+        SET_LINK_DOWN(pThis);
+
+        /* Re-establish link in 10 seconds. */
+        int rc = PDMDevHlpTimerSetMillies(pDevIns, pThisCC->hLinkUpTimer, 10000);
+        AssertRC(rc);
+
+        LogRel(("[%s] Virtio disabled until device reset\n", pThis->szInst));
+        pThis->fVirtioReady = false;
+    }
+    virtioCoreResetAll(&pThis->Virtio);
+
+    if (ASMAtomicXchgBool(&pThis->Virtio.fRecovering, true))
+        LogRel(("[%s] Attempting recovery while in recovery!\n", pThis->szInst));
+
+    return VINF_SUCCESS;
+}
+#endif /* VIRTIO_REL_INFO_DUMP */
+
 /**
  * Perform 16-bit 1's compliment checksum on provided packet in accordance with VirtIO specification,
  * pertinent to VIRTIO_NET_F_CSUM feature, which 'offloads' the Checksum feature from the driver
@@ -1650,6 +1706,10 @@ static int virtioNetR3CheckRxBufsAvail(PPDMDEVINS pDevIns, PVIRTIONET pThis, PVI
                 virtioCoreVirtqAvailBufCount(pDevIns,  &pThis->Virtio, pRxVirtq->uIdx)));
         rc = VINF_SUCCESS;
     }
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (ASMAtomicReadBool(&pThis->Virtio.fRecovering))
+        LogRel(("[%s] %sRX buffers available on %s\n", pThis->szInst, rc == VERR_INVALID_STATE ? "Enabling notify as no " : "", pRxVirtq->szName));
+#endif /* VIRTIO_REL_INFO_DUMP */
     virtioCoreVirtqEnableNotify(&pThis->Virtio, pRxVirtq->uIdx, rc == VERR_INVALID_STATE /* fEnable */);
     return rc;
 }
@@ -2008,6 +2068,12 @@ static int virtioNetR3RxPktMultibufXfer(PPDMDEVINS pDevIns, PVIRTIONET pThis, ui
         {
             cbHdrEnqueued = cbPktHdr;
             int rc = virtioCoreR3VirtqAvailBufGet(pDevIns, &pThis->Virtio, pRxVirtq->uIdx, pVirtqBuf, true);
+#ifdef VIRTIO_REL_INFO_DUMP
+            if (rc == VERR_INVALID_STATE)
+                return virtioNetAttemptToRecover(pDevIns);
+            if (rc == VERR_NOT_AVAILABLE)
+                return VINF_SUCCESS;
+#endif /* VIRTIO_REL_INFO_DUMP */
             AssertMsgReturn(rc == VINF_SUCCESS || rc == VERR_NOT_AVAILABLE, ("%Rrc\n", rc), rc);
             AssertMsgReturn(rc == VINF_SUCCESS && pVirtqBuf->cbPhysReturn,
                             ("Not enough Rx buffers in queue to accomodate ethernet packet\n"),
@@ -2052,6 +2118,12 @@ static int virtioNetR3CopyRxPktToGuest(PPDMDEVINS pDevIns, PVIRTIONET pThis, PVI
 
     PVIRTQBUF pVirtqBuf = &VirtqBuf;
     int rc = virtioCoreR3VirtqAvailBufGet(pDevIns, &pThis->Virtio, pRxVirtq->uIdx, pVirtqBuf, true);
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (rc == VERR_INVALID_STATE)
+        return virtioNetAttemptToRecover(pDevIns);
+    if (rc == VERR_NOT_AVAILABLE)
+        return VINF_SUCCESS;
+#endif /* VIRTIO_REL_INFO_DUMP */
     AssertMsgReturn(rc == VINF_SUCCESS || rc == VERR_NOT_AVAILABLE, ("%Rrc\n", rc), rc);
     AssertMsgReturn(rc == VINF_SUCCESS && pVirtqBuf->cbPhysReturn,
                     ("Not enough Rx buffers or capacity to accommodate ethernet packet\n"),
@@ -2079,6 +2151,10 @@ static int virtioNetR3CopyRxPktToGuest(PPDMDEVINS pDevIns, PVIRTIONET pThis, PVI
         return rc;
     }
     STAM_PROFILE_STOP(&pThis->StatReceiveStore, a);
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (ASMAtomicXchgBool(&pThis->Virtio.fRecovering, false))
+        LogRel(("[%s] Recovery complete on successfully receiving a packet\n", pThis->szInst));
+#endif /* VIRTIO_REL_INFO_DUMP */
     return VINF_SUCCESS;
 }
 
@@ -2720,6 +2796,10 @@ static int virtioNetR3TransmitPkts(PPDMDEVINS pDevIns, PVIRTIONET pThis, PVIRTIO
     int cPkts = virtioCoreVirtqAvailBufCount(pVirtio->pDevInsR3, pVirtio, pTxVirtq->uIdx);
     if (!cPkts)
     {
+#ifdef VIRTIO_REL_INFO_DUMP
+        if (ASMAtomicReadBool(&pThis->Virtio.fRecovering))
+            LogRel(("[%s] No packets to send found on %s\n", pThis->szInst, pTxVirtq->szName));
+#endif /* VIRTIO_REL_INFO_DUMP */
         LogFunc(("[%s] No packets to send found on %s\n", pThis->szInst, pTxVirtq->szName));
 
         if (pDrv)
@@ -2728,6 +2808,10 @@ static int virtioNetR3TransmitPkts(PPDMDEVINS pDevIns, PVIRTIONET pThis, PVIRTIO
         ASMAtomicWriteU32(&pThis->uIsTransmitting, 0);
         return VERR_MISSING;
     }
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (ASMAtomicReadBool(&pThis->Virtio.fRecovering))
+        LogRel(("[%s] About to transmit %d pending packet%c\n", pThis->szInst, cPkts, cPkts == 1 ? ' ' : 's'));
+#endif /* VIRTIO_REL_INFO_DUMP */
     LogFunc(("[%s] About to transmit %d pending packet%c\n", pThis->szInst, cPkts, cPkts == 1 ? ' ' : 's'));
 
     virtioNetR3SetWriteLed(pThisCC, true);
@@ -2858,6 +2942,23 @@ static int virtioNetR3TransmitPkts(PPDMDEVINS pDevIns, PVIRTIONET pThis, PVIRTIO
             && IS_VIRTQ_EMPTY(pDevIns, &pThis->Virtio, pTxVirtq->uIdx))
             virtioCoreVirtqEnableNotify(&pThis->Virtio, pTxVirtq->uIdx, true /* fEnable */);
     }
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (rc == VERR_INVALID_STATE)
+    {
+        /*
+         * Our best bet for recovering from a bad queue state is to do a device reset, but
+         * it is not enough because NetKVM driver does not complete NBLs on reset. We need to lower
+         * the link in order to prevent adding new descriptors to the TX queue first. Then we
+         * need to simulate processing of all outstanding descriptor chains by simply copying
+         * all head indices from avail to used ring. Note that we have only 'peeked' into the avail
+         * ring, so the avail index should not have moved yet. This is not the case for other queues.
+         */
+        virtioNetAttemptToRecover(pDevIns);
+        virtioCorePutAllAvailBufsToUsedRing(pDevIns, &pThis->Virtio, pTxVirtq->uIdx);
+    }
+    else if (ASMAtomicXchgBool(&pThis->Virtio.fRecovering, false))
+        LogRel(("[%s] Recovery complete on successfully transmitting a packet\n", pThis->szInst));
+#endif /* VIRTIO_REL_INFO_DUMP */
     virtioNetR3SetWriteLed(pThisCC, false);
 
     if (pDrv)
@@ -2890,7 +2991,22 @@ static DECLCALLBACK(void) virtioNetR3LinkUpTimer(PPDMDEVINS pDevIns, TMTIMERHAND
     PVIRTIONET   pThis   = PDMDEVINS_2_DATA(pDevIns, PVIRTIONET);
     PVIRTIONETCC pThisCC = PDMDEVINS_2_DATA_CC(pDevIns, PVIRTIONETCC);
 
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (RT_UNLIKELY(!pThis->fVirtioReady))
+    {
+        if (ASMAtomicXchgBool(&pThis->Virtio.fRecovering, false))
+        {
+            LogRel(("[%s] Recovery failed, VM reset is needed!\n", pThis->szInst));
+            return;
+        }
+    }
+#endif /* VIRTIO_REL_INFO_DUMP */
+
     SET_LINK_UP(pThis);
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (ASMAtomicReadBool(&pThis->Virtio.fRecovering))
+        LogRel(("[%s] Link is up\n", pThis->szInst));
+#endif /* VIRTIO_REL_INFO_DUMP */
     virtioNetWakeupRxBufWaiter(pDevIns);
 
     if (pThisCC->pDrv)
@@ -3139,6 +3255,13 @@ static DECLCALLBACK(int) virtioNetR3WorkerThread(PPDMDEVINS pDevIns, PPDMTHREAD 
             VIRTQBUF_T VirtqBuf;
             PVIRTQBUF pVirtqBuf = &VirtqBuf;
             int rc = virtioCoreR3VirtqAvailBufGet(pDevIns, &pThis->Virtio, pVirtq->uIdx, pVirtqBuf, true);
+#ifdef VIRTIO_REL_INFO_DUMP
+            if (rc == VERR_INVALID_STATE)
+            {
+                virtioNetAttemptToRecover(pDevIns);
+                continue;
+            }
+#endif /* VIRTIO_REL_INFO_DUMP */
             if (rc == VERR_NOT_AVAILABLE)
             {
                 Log10Func(("[%s] %s worker woken. Nothing found in queue\n", pThis->szInst, pVirtq->szName));
@@ -3204,6 +3327,10 @@ static DECLCALLBACK(void) virtioNetR3StatusChg(PVIRTIOCORE pVirtio, PVIRTIOCOREC
     }
     else
     {
+#ifdef VIRTIO_REL_INFO_DUMP
+        if (ASMAtomicReadBool(&pThis->Virtio.fRecovering))
+            LogRel(("[%s] Resetting...\n", pThis->szInst));
+#endif /* VIRTIO_REL_INFO_DUMP */
         Log(("\n%-23s: %s VirtIO is resetting ***\n", __FUNCTION__, pThis->szInst));
 
         pThis->virtioNetConfig.uStatus = pThis->fCableConnected ? VIRTIONET_F_LINK_UP : 0;
@@ -3232,6 +3359,11 @@ static DECLCALLBACK(void) virtioNetR3StatusChg(PVIRTIOCORE pVirtio, PVIRTIOCOREC
             pThis->aVirtqs[uVirtqNbr].fAttachedToVirtioCore = false;
         }
     }
+
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (pThisCC->pDrv)
+        pThisCC->pDrv->pfnNotifyLinkChanged(pThisCC->pDrv, pThis->virtioNetConfig.uStatus ? PDMNETWORKLINKSTATE_UP : PDMNETWORKLINKSTATE_DOWN);
+#endif /* VIRTIO_REL_INFO_DUMP */
 }
 
 /**
@@ -3242,6 +3374,10 @@ static DECLCALLBACK(void) pfnFeatureNegotiationComplete(PVIRTIOCORE pVirtio, uin
     PVIRTIONET   pThis   = PDMDEVINS_2_DATA(pVirtio->pDevInsR3, PVIRTIONET);
 
     LogFunc(("[Feature Negotiation Complete] Guest Driver version is: %s\n", fLegacy ? "legacy" : "modern"));
+#ifdef VIRTIO_REL_INFO_DUMP
+    if (ASMAtomicReadBool(&pThis->Virtio.fRecovering))
+        LogRel(("[%s] Feature Negotiation Complete for %s driver\n", pThis->szInst, fLegacy ? "legacy" : "modern"));
+#endif /* VIRTIO_REL_INFO_DUMP */
     virtioNetConfigurePktHdr(pThis, fLegacy);
     virtioNetR3SetVirtqNames(pThis, fLegacy);
 
