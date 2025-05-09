@@ -1,0 +1,80 @@
+# $Id: Makefile.kmk 109491 2025-05-09 10:43:28Z aleksey.ilyushin@oracle.com $
+## @file
+# OpenSSL Sub-Makefile.
+#
+
+#
+# Copyright (C) 2022-2023 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+LIBRARIES += providers_der
+providers_der_TEMPLATE = SubLibCrypto
+providers_der_DEFS = OPENSSL_NO_DEPRECATED
+providers_der_SOURCES = \
+	der_dsa_key.c \
+	der_dsa_sig.c \
+	der_ec_key.c \
+	der_ec_sig.c \
+	der_ecx_key.c \
+	der_rsa_key.c \
+	der_rsa_sig.c \
+	der_sm2_key.c \
+	der_sm2_sig.c \
+	$(VBOX_PATH_OPENSSL)/gen-sources/der/der_digests_gen.c \
+	$(VBOX_PATH_OPENSSL)/gen-sources/der/der_dsa_gen.c \
+	$(VBOX_PATH_OPENSSL)/gen-sources/der/der_ec_gen.c \
+	$(VBOX_PATH_OPENSSL)/gen-sources/der/der_ecx_gen.c \
+	$(VBOX_PATH_OPENSSL)/gen-sources/der/der_rsa_gen.c \
+	$(VBOX_PATH_OPENSSL)/gen-sources/der/der_sm2_gen.c \
+	$(VBOX_PATH_OPENSSL)/gen-sources/der/der_wrap_gen.c
+$(evalcall VBOX_OPENSSL_X86,providers_der)
+
+include $(FILE_KBUILD_SUB_FOOTER)
+
+#
+# Re-creates certain openssl headers which exist as templates.
+#
+OSSL_PROVIDERS_DER_SRC_TEMPLATES := \
+	$(VBOX_PATH_CRYPTO_PROVIDERS)/common/der/der_digests_gen.c.in \
+	$(VBOX_PATH_CRYPTO_PROVIDERS)/common/der/der_dsa_gen.c.in \
+	$(VBOX_PATH_CRYPTO_PROVIDERS)/common/der/der_ec_gen.c.in \
+	$(VBOX_PATH_CRYPTO_PROVIDERS)/common/der/der_ecx_gen.c.in \
+	$(VBOX_PATH_CRYPTO_PROVIDERS)/common/der/der_rsa_gen.c.in \
+	$(VBOX_PATH_CRYPTO_PROVIDERS)/common/der/der_sm2_gen.c.in \
+	$(VBOX_PATH_CRYPTO_PROVIDERS)/common/der/der_wrap_gen.c.in
+
+#
+# Big fat @todo:
+#  I'm too stupid atm to figure out how to get this executed sequentially
+#  instead of getting it expanded and executed at once...
+#
+recreate-providers-der-sources: $(VBOX_PATH_OPENSSL)/util/dofile.pl \
+		$(OSSL_PROVIDERS_DER_SRC_TEMPLATES)
+	$(foreach src, $(OSSL_PROVIDERS_DER_SRC_TEMPLATES), \
+	    perl \
+	     -I$(VBOX_PATH_OPENSSL) \
+	     -I$(VBOX_PATH_OPENSSL)/util/perl \
+	     -I$(VBOX_PATH_CRYPTO_PROVIDERS)/common/der \
+	     -Mconfigdata -Moids_to_c $(VBOX_PATH_OPENSSL)/util/dofile.pl -oMakefile \
+	     $(src) > $(VBOX_PATH_OPENSSL)/gen-sources/der/$(basename $(notdir $(src)));))

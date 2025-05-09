@@ -1,0 +1,175 @@
+# $Id: Makefile.kmk 109491 2025-05-09 10:43:28Z aleksey.ilyushin@oracle.com $
+## @file
+# Sub-Makefile for the OpenSSL base directory.
+#
+
+#
+# Copyright (C) 2006-2023 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH = ../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Make sure our Config.kmk is included.
+ifndef VBOX_PATH_CRYPTO
+ include $(PATH_SUB_CURRENT)/Config.kmk
+endif
+
+# Include sub-makefiles.
+include $(PATH_SUB_CURRENT)/providers/Makefile.kmk
+include $(PATH_SUB_CURRENT)/crypto/Makefile.kmk
+include $(PATH_SUB_CURRENT)/ssl/Makefile.kmk
+
+# Let kBuild generate the rules.
+include $(FILE_KBUILD_SUB_FOOTER)
+
+#
+# Re-creates certain openssl headers which exist as templates.
+#
+OSSL_HDR_TEMPLATES := \
+	$(PATH_SUB_CURRENT)/include/openssl/asn1.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/asn1t.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/bio.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/cmp.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/cms.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/comp.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/conf.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/configuration.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/core_names.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/crmf.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/crypto.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/ct.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/err.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/ess.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/fipskey.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/lhash.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/opensslv.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/ocsp.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/pkcs12.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/pkcs7.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/safestack.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/srp.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/ssl.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/ui.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/x509.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/x509_acert.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/x509_vfy.h.in \
+	$(PATH_SUB_CURRENT)/include/openssl/x509v3.h.in
+
+#
+# Big fat @todo:
+#  I'm too stupid atm to figure out how to get this executed sequentially
+#  instead of getting it expanded and executed at once...
+#
+recreate-headers: $(PATH_SUB_CURRENT)/util/dofile.pl \
+		$(OSSL_HDR_TEMPLATES) \
+		recreate-crypto-sources \
+		recreate-internal-headers \
+		recreate-providers-headers
+	$(foreach header, $(OSSL_HDR_TEMPLATES), \
+	    perl -I$(PATH_SUB_CURRENT) \
+	     -Mconfigdata $(PATH_SUB_CURRENT)/util/dofile.pl -oMakefile \
+	     $(header) > $(PATH_SUB_CURRENT)/gen-includes/openssl/$(basename $(notdir $(header)));))
+
+# At the moment there is a single template in include/internal, hence no list nor for loop
+recreate-internal-headers: $(PATH_SUB_CURRENT)/util/dofile.pl
+	perl -I$(PATH_SUB_CURRENT) \
+		-Mconfigdata $(PATH_SUB_CURRENT)/util/dofile.pl -oMakefile \
+		$(PATH_SUB_CURRENT)/include/internal/param_names.h.in > $(PATH_SUB_CURRENT)/gen-includes/internal/param_names.h
+
+#
+# How to regenerate the openssl-mangling.h
+#
+openssl-mangling.h openssl-mangling-new.h: $(VBox-libcrypto_1_TARGET) $(VBox-libssl_1_TARGET) FORCE
+	$(RM) -f -- $@
+	$(APPEND_EXT) -tn $@ \
+		'/* $(DOLLAR)Id: $(DOLLAR) */' \
+		"/** @file" \
+		" * Autogenerate symbol mangling header for openssl." \
+		" */" \
+		"" \
+		"/*" \
+		" * Copyright (C) 2011$(if-expr $(date %Y) > 2011,-$(date %Y),) Oracle and/or its affiliates." \
+		" *" \
+		" * This file is part of VirtualBox base platform packages, as" \
+		" * available from https://www.virtualbox.org." \
+		" *" \
+		" * This program is free software; you can redistribute it and/or" \
+		" * modify it under the terms of the GNU General Public License" \
+		" * as published by the Free Software Foundation, in version 3 of the" \
+		" * License." \
+		" *" \
+		" * This program is distributed in the hope that it will be useful, but" \
+		" * WITHOUT ANY WARRANTY; without even the implied warranty of" \
+		" * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU" \
+		" * General Public License for more details." \
+		" *" \
+		" * You should have received a copy of the GNU General Public License" \
+		" * along with this program; if not, see <https://www.gnu.org/licenses>." \
+		" *" \
+		" * SPDX-License-Identifier: GPL-3.0-only" \
+		" */" \
+		"" \
+		"#ifndef ___openssl_mangling_h___" \
+		"#define ___openssl_mangling_h___" \
+		"# ifdef VBOX_IN_EXTPACK" \
+		"#  define OPENSSL_MANGLER(a_Name) OracleExtPack_ ## a_Name" \
+		"#  define OPENSSL_MANGLER_ASM(a_Name) _OracleExtPack_ ## a_Name" \
+		"# else" \
+		"#  define OPENSSL_MANGLER(a_Name) VBox_ ## a_Name" \
+		"#  define OPENSSL_MANGLER_ASM(a_Name) _VBox_ ## a_Name" \
+		"# endif"
+	nm $(filter-out FORCE, $+) \
+		| $(SED) \
+			-e '/^[[:xdigit:]][[:xdigit:]]* [TSDBC] /!d' \
+			-e '/\.eh$(DOLLAR)/d' \
+			-e 's/^[^ ]* [TSDBC] $(if $(intersects $(KBUILD_TARGET), darwin os2 win),_,)\([[:alpha:]_].*\)/\1/' \
+			-e 's/[[:space:]]*//g' \
+			-e 's/^VBox_//' \
+		| sort \
+		| $(SED) -e 's/^\(.*\)$(DOLLAR)/#ifndef OPENSSL_MANGLE_ASM\n# ifndef \1\n#  define \1 OPENSSL_MANGLER(\1)\n# endif\n#else\n# ifndef _\1\n#  define _\1 OPENSSL_MANGLER_ASM(\1)\n# endif\n#endif/' --append-text $@
+	$(APPEND_EXT) -n $@ \
+		"#endif" \
+		""
+
+#
+# Lists unmangled symbols.
+#
+.PHONY: check-openssl-mangling
+check-openssl-mangling: \
+		$(VBox-libcrypto_1_TARGET) \
+		$(VBox-libssl_1_TARGET) \
+		$(VBoxExtPack-libcrypto_1_TARGET) \
+		$(VBoxExtPack-libssl_1_TARGET) FORCE
+	nm $(VBox-libcrypto_1_TARGET) $(VBox-libssl_1_TARGET) \
+		| $(SED) \
+			-e '/^[[:xdigit:]][[:xdigit:]]* [TSDBC] /!d' \
+			-e 's/^[^ ]* [TSDBC] $(if $(intersects $(KBUILD_TARGET), darwin os2 win),_,)\([[:alpha:]_].*\)/\1/' \
+			-e 's/[[:space:]]*//g' \
+			-e '/^VBox_/d' \
+		| sort
+	nm $(VBoxExtPack-libcrypto_1_TARGET) $(VBoxExtPack-libssl_1_TARGET) \
+		| $(SED) \
+			-e '/^[[:xdigit:]][[:xdigit:]]* [TSDBC] /!d' \
+			-e 's/^[^ ]* [TSDBC] $(if $(intersects $(KBUILD_TARGET), darwin os2 win),_,)\([[:alpha:]_].*\)/\1/' \
+			-e 's/[[:space:]]*//g' \
+			-e '/^OracleExtPack_/d' \
+		| sort

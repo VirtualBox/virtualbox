@@ -1,0 +1,99 @@
+# $Id: Makefile.kmk 109491 2025-05-09 10:43:28Z aleksey.ilyushin@oracle.com $
+## @file
+# OpenSSL Sub-Makefile.
+#
+
+#
+# Copyright (C) 2019-2023 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+LIBRARIES += crypto_ec
+crypto_ec_TEMPLATE = SubLibCrypto
+crypto_ec_DEFS = OPENSSL_NO_DEPRECATED
+crypto_ec_SOURCES = \
+	curve25519.c \
+	curve448/arch_32/f_impl32.c \
+	curve448/arch_64/f_impl64.c \
+	curve448/curve448.c \
+	curve448/curve448_tables.c \
+	curve448/eddsa.c \
+	curve448/f_generic.c \
+	curve448/scalar.c \
+	ec2_oct.c \
+	ec2_smpl.c \
+	ec_ameth.c \
+	ec_asn1.c \
+	ec_backend.c \
+	ec_check.c \
+	ec_curve.c \
+	ec_cvt.c \
+	ec_deprecated.c \
+	ec_err.c \
+	ec_key.c \
+	ec_kmeth.c \
+	ec_lib.c \
+	ec_mult.c \
+	ec_oct.c \
+	ec_pmeth.c \
+	ec_print.c \
+	ecdh_kdf.c \
+	ecdh_ossl.c \
+	ecdsa_ossl.c \
+	ecdsa_sign.c \
+	ecdsa_vrf.c \
+	eck_prn.c \
+	ecp_mont.c \
+	ecp_nist.c \
+	ecp_nistz256.c \
+	ecp_oct.c \
+	ecp_smpl.c \
+	ecx_backend.c \
+	ecx_key.c \
+	ecx_meth.c
+
+ifdef VBOX_WITH_CRYPTO_ASM
+ crypto_ec_SOURCES.x86 += \
+ 	$(VBOX_PATH_CRYPTO_GENASM)/ecp_nistz256-x86.S
+ crypto_ec_SOURCES.amd64 += \
+ 	$(VBOX_PATH_CRYPTO_GENASM)/ecp_nistz256-x86_64.S \
+ 	$(VBOX_PATH_CRYPTO_GENASM)/x25519-x86_64.S
+endif
+$(evalcall VBOX_OPENSSL_X86,crypto_ec)
+
+
+recreate-ec-asm: $(VBOX_PATH_CRYPTO)/perlasm/x86asm.pl \
+		$(VBOX_PATH_CRYPTO_EC)/asm/ecp_nistz256-x86.pl \
+		$(VBOX_PATH_CRYPTO_EC)/asm/ecp_nistz256-x86_64.pl \
+		$(VBOX_PATH_CRYPTO_EC)/asm/x25519-x86_64.pl
+	perl $(VBOX_PATH_CRYPTO_EC)/asm/ecp_nistz256-x86.pl elf -fPIC $(VBOX_PATH_CRYPTO)/genasm-elf/ecp_nistz256-x86.S
+	perl $(VBOX_PATH_CRYPTO_EC)/asm/ecp_nistz256-x86_64.pl elf $(VBOX_PATH_CRYPTO)/genasm-elf/ecp_nistz256-x86_64.S
+	perl $(VBOX_PATH_CRYPTO_EC)/asm/x25519-x86_64.pl elf $(VBOX_PATH_CRYPTO)/genasm-elf/x25519-x86_64.S
+	perl $(VBOX_PATH_CRYPTO_EC)/asm/ecp_nistz256-x86.pl macosx $(VBOX_PATH_CRYPTO)/genasm-macosx/ecp_nistz256-x86.S
+	perl $(VBOX_PATH_CRYPTO_EC)/asm/ecp_nistz256-x86_64.pl macosx $(VBOX_PATH_CRYPTO)/genasm-macosx/ecp_nistz256-x86_64.S
+	perl $(VBOX_PATH_CRYPTO_EC)/asm/x25519-x86_64.pl macosx $(VBOX_PATH_CRYPTO)/genasm-macosx/x25519-x86_64.S
+	perl $(VBOX_PATH_CRYPTO_EC)/asm/ecp_nistz256-x86.pl win32n $(VBOX_PATH_CRYPTO)/genasm-nasm/ecp_nistz256-x86.S
+	perl $(VBOX_PATH_CRYPTO_EC)/asm/ecp_nistz256-x86_64.pl nasm $(VBOX_PATH_CRYPTO)/genasm-nasm/ecp_nistz256-x86_64.S
+	perl $(VBOX_PATH_CRYPTO_EC)/asm/x25519-x86_64.pl nasm $(VBOX_PATH_CRYPTO)/genasm-nasm/x25519-x86_64.S
+
+include $(FILE_KBUILD_SUB_FOOTER)

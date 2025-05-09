@@ -1,0 +1,40 @@
+# $Id: Makefile.kmk 109491 2025-05-09 10:43:28Z aleksey.ilyushin@oracle.com $
+## @file
+# OpenSSL Sub-Makefile.
+#
+
+#
+# Copyright (C) 2022-2023 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+LIBRARIES += crypto_http
+crypto_http_TEMPLATE = SubLibCrypto
+crypto_http_DEFS = OPENSSL_NO_DEPRECATED
+crypto_http_SOURCES = \
+	http_client.c \
+	http_err.c \
+	http_lib.c
+$(evalcall VBOX_OPENSSL_X86,crypto_http)
+
+include $(FILE_KBUILD_SUB_FOOTER)
