@@ -1,6 +1,6 @@
 # VirtualBox Swagger/OpenAPI server
 
-## Name
+## Project name
 VirtualBox Swagger/OpenAPI server
 
 ## Description
@@ -14,7 +14,7 @@ The project is intended to help VirtualBox users interact with VirtualBox server
 ## Current API version
 0.0.1
 
-## Preparation
+## Getting Started
 
 ### Downloading VirtualBox SDK
 - Download an appropriate VirtualBox SDK as a standalone package.
@@ -46,11 +46,11 @@ Java must be installed. Simple check is to run on of the next commands:
 java --version
 javac --version
 ```
-## Build the project
+### Build the project
 Run ```make```\
 The artifacts will be placed into the "out" folder.\
 The folder "out/vbox_server" will contain the server code.
-## Destination server folder and Python virtual environment
+### Destination server folder and Python virtual environment
 Go to a folder where the server will live.
 > **NOTE!**
 > Below it's called "destination folder".
@@ -66,14 +66,14 @@ Go to the VBox SDK installation folder (inside VirtualBox SDK folder)\
 ```cd /path/to/<virualbox-sdk-folder>/sdk/installer```\
 and run\
 ```python vboxapisetup.py install```
-## Copy the server code into the destination server folder
+### Copy the server code into the destination server folder
 - Go to the destination folder\
 ```cd <destination folder>```
 - Copy the code from the `<project folder>/out/vbox_server` into the destination folder\
 ```cp -r <project folder>/out/vbox_server ./```
 - Copy requirements.txt file into the destination folder\
 ```cp <project folder>/out/requirements.txt ./```
-## Install the requirements
+### Install the requirements
 - Run ```pip install -r requirements.txt```
 - Check the packages versions
   - Run `flask --version`. The version mustn't be higher than 2.3.
@@ -88,12 +88,12 @@ and run\
     Example of output:
 
     _Connexion 2.14.1_
-## Set the environment variable FLASK_APP
+### Set the environment variable FLASK_APP
 - Windows:\
     ```set FLASK_APP=vbox_server.wsgi:application```
 - Linux:\
     ```export FLASK_APP=vbox_server.wsgi:application```
-## Start server
+### Start server
 Run\
 ```python -m flask run --port=8080```\
 or\
@@ -112,8 +112,7 @@ If all is correct you will see the output like:
 ```
 
 If you want a server to be visible across the network you can add "--host=0.0.0.0" to the command line. 
-
-## Using a web browser
+### Using a web browser
 open a web browser on the page http://localhost:8080/virtualbox/{apiversion}/api
 
 [Current API version](#current-api-version)
@@ -136,11 +135,17 @@ If all is correct you will see the home page with Swagger UI displaying VBox RES
 - invent vbox-cli tool on Python
 - WEB application aka GUI VirtualBox (usability). Work within web browser.
 
-## Authors and acknowledgment
-Valery Portnyagin - valery.portnyagin@oracle.com
+## Documentation
+
+## Examples
+
+## Help
+
+## Contributing
+This project welcomes contributions from the community. Before submitting a pull request, please [review our contribution guide](./CONTRIBUTING.md)
+
+## Security
+Please consult the [security guide](./SECURITY.md) for our responsible security vulnerability disclosure process
 
 ## License
 Released under the Universal Permissive License v1.0 as shown at [UPL 1.0 licence](https://oss.oracle.com/licenses/upl/).
-
-## Project status
-Active
