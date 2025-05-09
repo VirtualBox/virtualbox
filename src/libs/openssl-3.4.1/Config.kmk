@@ -1,4 +1,4 @@
-# $Id: Config.kmk 109491 2025-05-09 10:43:28Z aleksey.ilyushin@oracle.com $
+# $Id: Config.kmk 109494 2025-05-09 13:07:40Z aleksey.ilyushin@oracle.com $
 ## @file
 # OpenSSL kBuild Configuration file.
 #
@@ -245,13 +245,12 @@ endif
 TEMPLATE_LibCrypto = Template for the OpenSSL crypto library.
 TEMPLATE_LibCrypto_EXTENDS = VBoxR3RuntimeDllNonPedantic
 ifneq ($(KBUILD_TARGET),win)
- TEMPLATE_LibCrypto_ASTOOL.$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH)  = $(VBOX_GCC_TOOL)
- TEMPLATE_LibCrypto_ASTOOL.$(KBUILD_TARGET).x86                    = $(VBOX_GCC_TOOL)
- TEMPLATE_LibCrypto_ASFLAGS.$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH) = $(VBOX_$(VBOX_GCC_TOOL)_ASFLAGS.$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH))
- TEMPLATE_LibCrypto_ASFLAGS.$(KBUILD_TARGET).x86                   = $(VBOX_$(VBOX_GCC_TOOL)_ASFLAGS.$(KBUILD_TARGET).x86)
- TEMPLATE_LibCrypto_ASFLAGS                                        = -include $(VBOX_PATH_OPENSSL)/openssl-mangling.h
- TEMPLATE_LibCrypto_ASDEFS                                         = $(NO_SUCH_VARIABLE)
- TEMPLATE_LibCrypto_ASDEFS.darwin                                  = OPENSSL_MANGLE_ASM
+ TEMPLATE_LibCrypto_ASTOOL          = $(TEMPLATE_VBoxR3RuntimeDllNonPedantic_TOOL)
+ TEMPLATE_LibCrypto_ASFLAGS         = -include $(VBOX_PATH_OPENSSL)/openssl-mangling.h
+ TEMPLATE_LibCrypto_ASFLAGS.x86     = -m32
+ TEMPLATE_LibCrypto_ASFLAGS.amd64   = -m64
+ TEMPLATE_LibCrypto_ASDEFS          = $(NO_SUCH_VARIABLE)
+ TEMPLATE_LibCrypto_ASDEFS.darwin   = OPENSSL_MANGLE_ASM
  if "$(VBOX_AS_VERSION)" != "" && "$(VBOX_AS_VERSION)" vlt "GNU assembler version 2.20"
   TEMPLATE_LibCrypto_ASFLAGS.solaris = -include $(VBOX_PATH_OPENSSL)/crypto/old-solaris-asm-trick.h
  endif
