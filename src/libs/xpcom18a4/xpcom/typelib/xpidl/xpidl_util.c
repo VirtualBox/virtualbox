@@ -38,6 +38,8 @@
 /*
  * Utility functions called by various backends.
  */ 
+#include <iprt/assert.h>
+#include <iprt/string.h>
 
 #include "xpidl.h"
 
@@ -57,37 +59,21 @@ xpidl_malloc(size_t nbytes)
 char *
 xpidl_strdup(const char *s)
 {
-#if defined(XP_MAC) || defined(XP_SOLARIS) /* bird: dunno why this is required, but whatever*/
-    size_t len = strlen(s);
-	char *ns = malloc(len + 1);
-	if (ns)
-		memcpy(ns, s, len + 1);
-#else
-    char *ns = strdup(s);
-#endif
-    if (!ns) {
+    char *ns = RTStrDup(s);
+    if (!ns)
+    {
         fputs(OOM, stderr);
         exit(1);
     }
     return ns;
 }
 
-void
-xpidl_write_comment(TreeState *state, int indent)
-{
-    fprintf(state->file, "%*s/* ", indent, "");
-    IDL_tree_to_IDL(state->tree, state->ns, state->file,
-                    IDLF_OUTPUT_NO_NEWLINES |
-                    IDLF_OUTPUT_NO_QUALIFY_IDENTS |
-                    IDLF_OUTPUT_PROPERTIES);
-    fputs(" */\n", state->file);
-}
 
 /*
  * Print an iid to into a supplied buffer; the buffer should be at least
  * UUID_LENGTH bytes.
  */
-gboolean
+bool
 xpidl_sprint_iid(nsID *id, char iidbuf[])
 {
     int printed;
@@ -115,7 +101,7 @@ static const char nsIDFmt2[] =
  * Parse a uuid string into an nsID struct.  We cannot link against libxpcom,
  * so we re-implement nsID::Parse here.
  */
-gboolean
+bool
 xpidl_parse_iid(nsID *id, const char *str)
 {
     PRInt32 count = 0;
@@ -125,7 +111,7 @@ xpidl_parse_iid(nsID *id, const char *str)
     XPT_ASSERT(str != NULL);
     
     if (strlen(str) != 36) {
-        return FALSE;
+        return false;
     }
      
 #ifdef DEBUG_shaver_iid
@@ -133,9 +119,9 @@ xpidl_parse_iid(nsID *id, const char *str)
 #endif
 
     count = sscanf(str, nsIDFmt2,
-                   &n0, &n1, &n2,
-                   &n3[0],&n3[1],&n3[2],&n3[3],
-                   &n3[4],&n3[5],&n3[6],&n3[7]);
+                   (uint32_t *)&n0, (uint32_t *)&n1, (uint32_t *)&n2,
+                   (uint32_t *)&n3[0],(uint32_t *)&n3[1],(uint32_t *)&n3[2],(uint32_t *)&n3[3],
+                   (uint32_t *)&n3[4],(uint32_t *)&n3[5],(uint32_t *)&n3[6],(uint32_t *)&n3[7]);
 
     id->m0 = (PRInt32) n0;
     id->m1 = (PRInt16) n1;
@@ -151,244 +137,132 @@ xpidl_parse_iid(nsID *id, const char *str)
         fputs("\n", stderr);
     }
 #endif
-    return (gboolean)(count == 11);
+    return (count == 11);
 }
 
-gboolean
-verify_const_declaration(IDL_tree const_tree) {
-    struct _IDL_CONST_DCL *dcl = &IDL_CONST_DCL(const_tree);
-    const char *name = IDL_IDENT(dcl->ident).str;
-    IDL_tree real_type;
-
-    /* const -> list -> interface */
-    if (!IDL_NODE_UP(IDL_NODE_UP(const_tree)) ||
-        IDL_NODE_TYPE(IDL_NODE_UP(IDL_NODE_UP(const_tree)))
-        != IDLN_INTERFACE) {
-        IDL_tree_error(const_tree,
-                       "const declaration \'%s\' outside interface",
-                       name);
-        return FALSE;
-    }
+DECLHIDDEN(int) verify_const_declaration(PCXPIDLNODE pNd, PRTERRINFO pErrInfo)
+{
+    /* const must be inside an interface definition. */
+    if (   !pNd->pParent
+        || pNd->pParent->enmType != kXpidlNdType_Interface_Def)
+        return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                             "const declaration \'%s\' outside interface",
+                             pNd->u.Const.pszName);
 
     /* Could be a typedef; try to map it to the real type. */
-    real_type = find_underlying_type(dcl->const_type);
-    real_type = real_type ? real_type : dcl->const_type;
-    if (IDL_NODE_TYPE(real_type) == IDLN_TYPE_INTEGER &&
-        (IDL_TYPE_INTEGER(real_type).f_type == IDL_INTEGER_TYPE_SHORT ||
-         IDL_TYPE_INTEGER(real_type).f_type == IDL_INTEGER_TYPE_LONG))
-    {
-        if (!IDL_TYPE_INTEGER(real_type).f_signed &&
-            IDL_INTEGER(dcl->const_exp).value < 0)
-        {
-#ifndef G_HAVE_GINT64
-            /*
-             * For platforms without longlong support turned on we can get
-             * confused by the high bit of the long value and think that it
-             * represents a negative value in an unsigned declaration.
-             * In that case we don't know if it is the programmer who is 
-             * confused or the compiler. So we issue a warning instead of 
-             * an error.
-             */
-            if (IDL_TYPE_INTEGER(real_type).f_type == IDL_INTEGER_TYPE_LONG)
-            {
-                XPIDL_WARNING((const_tree, IDL_WARNING1,
-                              "unsigned const declaration \'%s\' "
-                              "initialized with (possibly) negative constant",
-                              name));
-                return TRUE;
-            }
-#endif
-            IDL_tree_error(const_tree,
-                           "unsigned const declaration \'%s\' initialized with "
-                           "negative constant",
-                           name);
-            return FALSE;
-        }
-    } else {
-        IDL_tree_error(const_tree,
-                       "const declaration \'%s\' must be of type short or long",
-                       name);
-        return FALSE;
-    }
+    PCXPIDLNODE pNdType = find_underlying_type(pNd->u.Const.pNdTypeSpec);
+    pNdType = pNdType ? pNdType : pNd->u.Const.pNdTypeSpec;
+    if (   pNdType->enmType != kXpidlNdType_BaseType
+        || (   pNdType->u.enmBaseType != kXpidlType_Short
+            && pNdType->u.enmBaseType != kXpidlType_Long
+            && pNdType->u.enmBaseType != kXpidlType_Unsigned_Short
+            && pNdType->u.enmBaseType != kXpidlType_Unsigned_Long))
+        return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                             "const declaration \'%s\' must be of type short or long",
+                             pNd->u.Const.pszName);
 
-    return TRUE;
+    return VINF_SUCCESS;
 }
 
 
-
-/*
- * This method consolidates error checking needed when coercing the XPIDL compiler 
- * via the -t flag to generate output for a specific version of XPConnect.
- */
-static gboolean
-verify_type_fits_version(IDL_tree in_tree, IDL_tree error_tree)
+DECLHIDDEN(int) verify_attribute_declaration(PCXPIDLNODE pNd, PRTERRINFO pErrInfo)
 {
-    if (major_version == 1 && minor_version == 1)
-    {
-        /* XPIDL Version 1.1 checks */
+    Assert(pNd->enmType == kXpidlNdType_Attribute);
 
-        /* utf8string, cstring, and astring types are not supported */
-        if (IDL_tree_property_get(in_tree, "utf8string") != NULL ||
-            IDL_tree_property_get(in_tree, "cstring")    != NULL ||
-            IDL_tree_property_get(in_tree, "astring")    != NULL)
-        {
-            IDL_tree_error(error_tree,
-                           "Cannot use [utf8string], [cstring] and [astring] "
-                           "types when generating version 1.1 typelibs\n");
-            return FALSE;
-        }
-    }
-    return TRUE;
-}
-
-gboolean
-verify_attribute_declaration(IDL_tree attr_tree)
-{
-    IDL_tree iface;
-    IDL_tree ident;
-    IDL_tree attr_type;
-    gboolean scriptable_interface;
-
-    /* We don't support attributes named IID, conflicts with static GetIID 
+    /*
+     * We don't support attributes named IID, conflicts with static GetIID 
      * member. The conflict is due to certain compilers (VC++) choosing a
      * different vtable order, placing GetIID at the beginning regardless
      * of it's placement
      */
-    if (strcmp(
-        IDL_IDENT(
-            IDL_LIST(IDL_ATTR_DCL(attr_tree).simple_declarations).data).str, 
-        "IID") == 0) {
-        IDL_tree_error(attr_tree,
-                       "Attributes named IID not supported, causes vtable "
-                       "ordering problems");
-        return FALSE;
-    }
+    if (!strcmp(pNd->u.Attribute.pszName, "IID"))
+        return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                             "Attributes named IID not supported, causes vtable ordering problems");
+
     /* 
      * Verify that we've been called on an interface, and decide if the
      * interface was marked [scriptable].
      */
-    if (IDL_NODE_UP(attr_tree) && IDL_NODE_UP(IDL_NODE_UP(attr_tree)) &&
-        IDL_NODE_TYPE(iface = IDL_NODE_UP(IDL_NODE_UP(attr_tree))) 
-        == IDLN_INTERFACE)
-    {
-        scriptable_interface =
-            (IDL_tree_property_get(IDL_INTERFACE(iface).ident, "scriptable")
-             != NULL);
-    } else {
-        IDL_tree_error(attr_tree,
-                    "verify_attribute_declaration called on a non-interface?");
-        return FALSE;
-    }
-
-    /*
-     * Grab the first of the list of idents and hope that it'll
-     * say scriptable or no.
-     */
-    ident = IDL_LIST(IDL_ATTR_DCL(attr_tree).simple_declarations).data;
+    bool fScriptable;
+    if (   pNd->pParent
+        && pNd->pParent->enmType == kXpidlNdType_Interface_Def)
+        fScriptable = (xpidlNodeAttrFind(pNd->pParent, "scriptable") != NULL);
+    else
+        return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                             "verify_attribute_declaration called on a non-interface?");
 
     /*
      * If the interface isn't scriptable, or the attribute is marked noscript,
      * there's no need to check.
      */
-    if (!scriptable_interface ||
-        IDL_tree_property_get(ident, "noscript") != NULL)
-        return TRUE;
+    if (!fScriptable || !xpidlNodeAttrFind(pNd, "scriptable"))
+        return VINF_SUCCESS;
 
     /*
      * If it should be scriptable, check that the type is non-native. nsid,
      * domstring, utf8string, cstring, astring are exempted.
      */
-    attr_type = IDL_ATTR_DCL(attr_tree).param_type_spec;
-
-    if (attr_type != NULL)
+    PCXPIDLNODE pNdType = find_underlying_type(pNd->u.Attribute.pNdTypeSpec);
+    pNdType = pNdType ? pNdType : pNd->u.Attribute.pNdTypeSpec;
+    if (pNdType)
     {
-        if (UP_IS_NATIVE(attr_type) &&
-            IDL_tree_property_get(attr_type, "nsid") == NULL &&
-            IDL_tree_property_get(attr_type, "domstring") == NULL &&
-            IDL_tree_property_get(attr_type, "utf8string") == NULL &&
-            IDL_tree_property_get(attr_type, "cstring") == NULL &&
-            IDL_tree_property_get(attr_type, "astring") == NULL)
-        {
-            IDL_tree_error(attr_tree,
-                           "attributes in [scriptable] interfaces that are "
-                           "non-scriptable because they refer to native "
-                           "types must be marked [noscript]\n");
-            return FALSE;
-        }
+        if (pNdType->enmType == kXpidlNdType_Native &&
+            xpidlNodeAttrFind(pNdType, "nsid") == NULL &&
+            xpidlNodeAttrFind(pNdType, "domstring") == NULL &&
+            xpidlNodeAttrFind(pNdType, "utf8string") == NULL &&
+            xpidlNodeAttrFind(pNdType, "cstring") == NULL &&
+            xpidlNodeAttrFind(pNdType, "astring") == NULL)
+            return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                                 "attributes in [scriptable] interfaces that are "
+                                 "non-scriptable because they refer to native "
+                                 "types must be marked [noscript]");
+
         /*
          * We currently don't support properties of type nsid that aren't 
          * pointers or references, unless they are marked [notxpcom} and 
          * must be read-only 
          */
-         
-        if ((IDL_tree_property_get(ident, "notxpcom") == NULL || !(IDL_ATTR_DCL(attr_tree).f_readonly)) &&
-            IDL_tree_property_get(attr_type,"nsid") != NULL &&
-            IDL_tree_property_get(attr_type,"ptr") == NULL &&
-            IDL_tree_property_get(attr_type,"ref") == NULL)
-        {
-            IDL_tree_error(attr_tree,
-                           "Feature not currently supported: "
-                           "attributes with a type of nsid must be marked "
-                           "either [ptr] or [ref], or "
-                           "else must be marked [notxpcom] "
-                           "and must be read-only\n");
-            return FALSE;
-        }
-
-        /* 
-         * Run additional error checks on the attribute type if targetting an 
-         * older version of XPConnect.
-         */
-
-        if (!verify_type_fits_version(attr_type, attr_tree))
-            return FALSE;
+        if (   (   xpidlNodeAttrFind(pNd, "notxpcom") == NULL
+                || pNd->u.Attribute.fReadonly)
+            && xpidlNodeAttrFind(pNdType,"nsid") != NULL
+            && xpidlNodeAttrFind(pNdType,"ptr") == NULL
+            && xpidlNodeAttrFind(pNdType,"ref") == NULL)
+            return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                                 "Feature not currently supported: "
+                                 "attributes with a type of nsid must be marked either [ptr] or [ref], or "
+                                 "else must be marked [notxpcom] and must be read-only\n");
     }
 
-    if (IDL_LIST(IDL_ATTR_DCL(attr_tree).simple_declarations).next != NULL)
-    {
-        IDL_tree_error(attr_tree,
-            "multiple attributes in a single declaration is not supported\n");
-        return FALSE;
-    }
-    return TRUE;
+    return VINF_SUCCESS;
 }
+
 
 /*
  * Find the underlying type of an identifier typedef.
- * 
- * All the needed tree-walking seems pretty shaky; isn't there something in
- * libIDL to automate this?
  */
-IDL_tree /* IDL_TYPE_DCL */
-find_underlying_type(IDL_tree typedef_ident)
+DECLHIDDEN(PCXPIDLNODE) find_underlying_type(PCXPIDLNODE pNd)
 {
-    IDL_tree up;
-
-    if (typedef_ident == NULL || IDL_NODE_TYPE(typedef_ident) != IDLN_IDENT)
+    if (pNd->enmType == kXpidlNdType_BaseType)
+        return pNd;
+    if (pNd == NULL || pNd->enmType != kXpidlNdType_Identifier)
         return NULL;
 
-    up = IDL_NODE_UP(typedef_ident);
-    if (up == NULL || IDL_NODE_TYPE(up) != IDLN_LIST)
-        return NULL;
-    up = IDL_NODE_UP(up);
-    if (up == NULL || IDL_NODE_TYPE(up) != IDLN_TYPE_DCL)
-        return NULL;
-
-    return IDL_TYPE_DCL(up).type_spec;
+    AssertPtr(pNd->pNdTypeRef);
+    pNd = pNd->pNdTypeRef;
+    if (pNd->enmType == kXpidlNdType_Typedef)
+        pNd = pNd->u.Typedef.pNodeTypeSpec;
+    return pNd;
 }
 
-static IDL_tree /* IDL_PARAM_DCL */
-find_named_parameter(IDL_tree method_tree, const char *param_name)
+
+static PCXPIDLNODE find_named_parameter(PCXPIDLNODE pNdMethod, const char *param_name)
 {
-    IDL_tree iter;
-    for (iter = IDL_OP_DCL(method_tree).parameter_dcls; iter;
-         iter = IDL_LIST(iter).next)
+    PCXPIDLNODE pIt;
+    RTListForEach(&pNdMethod->u.Method.LstParams, pIt, XPIDLNODE, NdLst)
     {
-        IDL_tree param = IDL_LIST(iter).data;
-        IDL_tree simple_decl = IDL_PARAM_DCL(param).simple_declarator;
-        const char *current_name = IDL_IDENT(simple_decl).str;
-        if (strcmp(current_name, param_name) == 0)
-            return param;
+        Assert(pIt->enmType == kXpidlNdType_Parameter);
+        if (!strcmp(pIt->u.Param.pszName, param_name))
+            return pIt;
     }
     return NULL;
 }
@@ -403,12 +277,9 @@ typedef enum ParamAttrType {
  * Check that parameters referred to by attributes such as size_is exist and
  * refer to parameters of the appropriate type.
  */
-static gboolean
-check_param_attribute(IDL_tree method_tree, IDL_tree param,
-                      ParamAttrType whattocheck)
+static int check_param_attribute(PCXPIDLNODE pNdMethod, PCXPIDLNODE pNdParam,
+                                 ParamAttrType whattocheck, PRTERRINFO pErrInfo)
 {
-    const char *referred_name = NULL;
-    IDL_tree simple_decl = IDL_PARAM_DCL(param).simple_declarator;
     const char *attr_name;
     const char *needed_type;
 
@@ -422,115 +293,90 @@ check_param_attribute(IDL_tree method_tree, IDL_tree param,
         attr_name = "size_is";
         needed_type = "unsigned long (or PRUint32)";
     } else {
-        XPT_ASSERT("asked to check an unknown attribute type!");
-        return TRUE;
+        AssertMsgFailed(("asked to check an unknown attribute type!"));
+        return VINF_SUCCESS;
     }
     
-    referred_name = IDL_tree_property_get(simple_decl, attr_name);
-    if (referred_name != NULL) {
-        IDL_tree referred_param = find_named_parameter(method_tree,
+    PCXPIDLATTR pAttr = xpidlNodeAttrFind(pNdParam, attr_name);
+    if (pAttr != NULL)
+    {
+        const char *referred_name = pAttr->pszVal;
+
+        PCXPIDLNODE pNdParamRef = find_named_parameter(pNdMethod,
                                                        referred_name);
-        IDL_tree referred_param_type;
-        if (referred_param == NULL) {
-            IDL_tree_error(method_tree,
-                           "attribute [%s(%s)] refers to missing "
-                           "parameter \"%s\"",
-                           attr_name, referred_name, referred_name);
-            return FALSE;
-        }
-        if (referred_param == param) {
-            IDL_tree_error(method_tree,
-                           "attribute [%s(%s)] refers to it's own parameter",
-                           attr_name, referred_name);
-            return FALSE;
-        }
+        if (!pNdParamRef)
+            return xpidlIdlError(pErrInfo, pNdParam, VERR_INVALID_STATE,
+                                 "attribute [%s(%s)] refers to missing parameter \"%s\"",
+                                 attr_name, referred_name, referred_name);
+
+        if (pNdParamRef == pNdParam)
+            return xpidlIdlError(pErrInfo, pNdParam, VERR_INVALID_STATE,
+                                 "attribute [%s(%s)] refers to it's own parameter",
+                                 attr_name, referred_name);
         
-        referred_param_type = IDL_PARAM_DCL(referred_param).param_type_spec;
-        if (whattocheck == IID_IS) {
+        PCXPIDLNODE pNdTypeSpec = find_underlying_type(pNdParamRef->u.Param.pNdTypeSpec);
+        pNdTypeSpec = pNdTypeSpec ? pNdTypeSpec : pNdParamRef->u.Param.pNdTypeSpec;
+        if (whattocheck == IID_IS)
+        {
             /* require IID type */
-            if (IDL_tree_property_get(referred_param_type, "nsid") == NULL) {
-                IDL_tree_error(method_tree,
+            if (!xpidlNodeAttrFind(pNdTypeSpec, "nsid"))
+                return xpidlIdlError(pErrInfo, pNdParamRef, VERR_INVALID_STATE,
                                "target \"%s\" of [%s(%s)] attribute "
                                "must be of %s type",
                                referred_name, attr_name, referred_name,
                                needed_type);
-                return FALSE;
-            }
-        } else if (whattocheck == LENGTH_IS || whattocheck == SIZE_IS) {
-            /* require PRUint32 type */
-            IDL_tree real_type;
+        }
+        else if (whattocheck == LENGTH_IS || whattocheck == SIZE_IS)
+        {
+            PCXPIDLNODE pNdType = find_underlying_type(pNdTypeSpec);
+            pNdType = pNdType ? pNdType : pNdTypeSpec;
 
-            /* Could be a typedef; try to map it to the real type. */
-            real_type = find_underlying_type(referred_param_type);
-            real_type = real_type ? real_type : referred_param_type;
-
-            if (IDL_NODE_TYPE(real_type) != IDLN_TYPE_INTEGER ||
-                IDL_TYPE_INTEGER(real_type).f_signed != FALSE ||
-                IDL_TYPE_INTEGER(real_type).f_type != IDL_INTEGER_TYPE_LONG)
-            {
-                IDL_tree_error(method_tree,
-                               "target \"%s\" of [%s(%s)] attribute "
-                               "must be of %s type",
-                               referred_name, attr_name, referred_name,
-                               needed_type);
-
-                return FALSE;
-            }
+            if (   pNdType->enmType != kXpidlNdType_BaseType
+                || pNdType->u.enmBaseType != kXpidlType_Unsigned_Long)
+                return xpidlIdlError(pErrInfo, pNdParamRef, VERR_INVALID_STATE,
+                                     "target \"%s\" of [%s(%s)] attribute "
+                                     "must be of %s type",
+                                     referred_name, attr_name, referred_name,
+                                     needed_type);
         }
     }
 
-    return TRUE;
+    return VINF_SUCCESS;
 }
 
 
 /*
  * Common method verification code, called by *op_dcl in the various backends.
  */
-gboolean
-verify_method_declaration(IDL_tree method_tree)
+DECLHIDDEN(int) verify_method_declaration(PCXPIDLNODE pNd, PRTERRINFO pErrInfo)
 {
-    struct _IDL_OP_DCL *op = &IDL_OP_DCL(method_tree);
-    IDL_tree iface;
-    IDL_tree iter;
-    gboolean notxpcom;
-    gboolean scriptable_interface;
-    gboolean scriptable_method;
-    gboolean seen_retval = FALSE;
-    const char *method_name = IDL_IDENT(IDL_OP_DCL(method_tree).ident).str;
+    Assert(pNd->enmType == kXpidlNdType_Method);
+    bool notxpcom;
+    bool scriptable_interface;
+    bool scriptable_method;
+    bool seen_retval = false;
 
-    /* We don't support attributes named IID, conflicts with static GetIID 
+    /*
+     * We don't support attributes named IID, conflicts with static GetIID 
      * member. The conflict is due to certain compilers (VC++) choosing a
      * different vtable order, placing GetIID at the beginning regardless
      * of it's placement
      */
-    if (strcmp(method_name, "GetIID") == 0) {
-        IDL_tree_error(method_tree,
-                       "Methods named GetIID not supported, causes vtable "
-                       "ordering problems");
-        return FALSE;
-    }
-    if (op->f_varargs) {
-        /* We don't currently support varargs. */
-        IDL_tree_error(method_tree, "varargs are not currently supported");
-        return FALSE;
-    }
+    if (!strcmp(pNd->u.Method.pszName, "GetIID"))
+        return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                             "Methods named GetIID not supported, causes vtable "
+                             "ordering problems");
 
     /* 
      * Verify that we've been called on an interface, and decide if the
      * interface was marked [scriptable].
      */
-    if (IDL_NODE_UP(method_tree) && IDL_NODE_UP(IDL_NODE_UP(method_tree)) &&
-        IDL_NODE_TYPE(iface = IDL_NODE_UP(IDL_NODE_UP(method_tree))) 
-        == IDLN_INTERFACE)
-    {
-        scriptable_interface =
-            (IDL_tree_property_get(IDL_INTERFACE(iface).ident, "scriptable")
-             != NULL);
-    } else {
-        IDL_tree_error(method_tree,
-                       "verify_method_declaration called on a non-interface?");
-        return FALSE;
-    }
+    if (   pNd->pParent
+        && pNd->pParent->enmType == kXpidlNdType_Interface_Def)
+        scriptable_interface = (xpidlNodeAttrFind(pNd->pParent, "scriptable") != NULL);
+    else
+        return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                             "verify_method_declaration called on a non-interface?");
 
     /*
      * Require that any method in an interface marked as [scriptable], that
@@ -540,84 +386,78 @@ verify_method_declaration(IDL_tree method_tree)
      * Also check that iid_is points to nsid, and length_is, size_is points
      * to unsigned long.
      */
-    notxpcom = IDL_tree_property_get(op->ident, "notxpcom") != NULL;
+    notxpcom = xpidlNodeAttrFind(pNd, "notxpcom") != NULL;
 
-    scriptable_method = scriptable_interface &&
-        !notxpcom &&
-        IDL_tree_property_get(op->ident, "noscript") == NULL;
+    scriptable_method =    scriptable_interface
+                        && !notxpcom
+                        && xpidlNodeAttrFind(pNd, "noscript") == NULL;
 
     /* Loop through the parameters and check. */
-    for (iter = op->parameter_dcls; iter; iter = IDL_LIST(iter).next) {
-        IDL_tree param = IDL_LIST(iter).data;
-        IDL_tree param_type =
-            IDL_PARAM_DCL(param).param_type_spec;
-        IDL_tree simple_decl =
-            IDL_PARAM_DCL(param).simple_declarator;
-        const char *param_name = IDL_IDENT(simple_decl).str;
+    PCXPIDLNODE pIt;
+    RTListForEach(&pNd->u.Method.LstParams, pIt, XPIDLNODE, NdLst)
+    {
+        int rc;
+
+        PCXPIDLNODE pNdTypeSpec = find_underlying_type(pIt->u.Param.pNdTypeSpec);
+        pNdTypeSpec = pNdTypeSpec ? pNdTypeSpec : pIt->u.Param.pNdTypeSpec;
         
         /*
          * Reject this method if it should be scriptable and some parameter is
          * native that isn't marked with either nsid, domstring, utf8string, 
          * cstring, astring or iid_is.
          */
-        if (scriptable_method &&
-            UP_IS_NATIVE(param_type) &&
-            IDL_tree_property_get(param_type, "nsid") == NULL &&
-            IDL_tree_property_get(simple_decl, "iid_is") == NULL &&
-            IDL_tree_property_get(param_type, "domstring") == NULL &&
-            IDL_tree_property_get(param_type, "utf8string") == NULL &&
-            IDL_tree_property_get(param_type, "cstring") == NULL &&
-            IDL_tree_property_get(param_type, "astring") == NULL)
-        {
-            IDL_tree_error(method_tree,
+        if (   scriptable_method
+            && pNdTypeSpec->enmType == kXpidlNdType_Native
+            && xpidlNodeAttrFind(pNdTypeSpec, "nsid") == NULL
+            && xpidlNodeAttrFind(pIt, "iid_is") == NULL
+            && xpidlNodeAttrFind(pNdTypeSpec, "domstring") == NULL
+            && xpidlNodeAttrFind(pNdTypeSpec, "utf8string") == NULL
+            && xpidlNodeAttrFind(pNdTypeSpec, "cstring") == NULL
+            && xpidlNodeAttrFind(pNdTypeSpec, "astring") == NULL)
+            return xpidlIdlError(pErrInfo, pIt, VERR_INVALID_STATE,
                            "methods in [scriptable] interfaces that are "
                            "non-scriptable because they refer to native "
                            "types (parameter \"%s\") must be marked "
-                           "[noscript]", param_name);
-            return FALSE;
-        }
+                           "[noscript]", pIt->u.Param.pszName);
 
         /* 
          * nsid's parameters that aren't ptr's or ref's are not currently 
          * supported in xpcom or non-xpcom (marked with [notxpcom]) methods 
          * as input parameters
          */
-        if (!(notxpcom && IDL_PARAM_DCL(param).attr != IDL_PARAM_IN) &&
-            IDL_tree_property_get(param_type, "nsid") != NULL &&
-            IDL_tree_property_get(param_type, "ptr") == NULL &&
-            IDL_tree_property_get(param_type, "ref") == NULL) 
-        {
-            IDL_tree_error(method_tree,
-                           "Feature currently not supported: "
-                           "parameter \"%s\" is of type nsid and "
-                           "must be marked either [ptr] or [ref] "
-                           "or method \"%s\" must be marked [notxpcom] "
-                           "and must not be an input parameter",
-                           param_name,
-                           method_name);
-            return FALSE;
-        }
+        if (   !(   notxpcom
+                 && pIt->u.Param.enmDir != kXpidlDirection_In)
+            && xpidlNodeAttrFind(pNdTypeSpec, "nsid") != NULL
+            && xpidlNodeAttrFind(pNdTypeSpec, "ptr") == NULL
+            && xpidlNodeAttrFind(pNdTypeSpec, "ref") == NULL) 
+            return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                                 "Feature currently not supported: "
+                                 "parameter \"%s\" is of type nsid and "
+                                 "must be marked either [ptr] or [ref] "
+                                 "or method \"%s\" must be marked [notxpcom] "
+                                 "and must not be an input parameter",
+                                 pIt->u.Param.pszName, pNd->u.Method.pszName);
+
         /*
          * Sanity checks on return values.
          */
-        if (IDL_tree_property_get(simple_decl, "retval") != NULL) {
-            if (IDL_LIST(iter).next != NULL) {
-                IDL_tree_error(method_tree,
-                               "only the last parameter can be marked [retval]");
-                return FALSE;
-            }
-            if (op->op_type_spec) {
-                IDL_tree_error(method_tree,
-                               "can't have [retval] with non-void return type");
-                return FALSE;
-            }
+        if (xpidlNodeAttrFind(pIt, "retval") != NULL)
+        {
+            if (!RTListNodeIsLast(&pNd->u.Method.LstParams, &pIt->NdLst))
+                return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                                     "only the last parameter can be marked [retval]");
+
+            if (   pNd->u.Method.pNdTypeSpecRet->enmType != kXpidlNdType_BaseType
+                || pNd->u.Method.pNdTypeSpecRet->u.enmBaseType != kXpidlType_Void)
+                return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                                     "can't have [retval] with non-void return type");
+
             /* In case XPConnect relaxes the retval-is-last restriction. */
-            if (seen_retval) {
-                IDL_tree_error(method_tree,
-                               "can't have more than one [retval] parameter");
-                return FALSE;
-            }
-            seen_retval = TRUE;
+            if (seen_retval)
+                return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                                     "can't have more than one [retval] parameter");
+
+            seen_retval = true;
         }
 
         /*
@@ -625,224 +465,167 @@ verify_method_declaration(IDL_tree method_tree)
          * or native (but not nsid, domstring, utf8string, cstring or astring) 
          * and can't be used with [array].
          */
-        if (IDL_tree_property_get(simple_decl, "shared") != NULL) {
-            IDL_tree real_type;
-            real_type = find_underlying_type(param_type);
-            real_type = real_type ? real_type : param_type;
+        if (xpidlNodeAttrFind(pIt, "shared") != NULL)
+        {
+            if (xpidlNodeAttrFind(pIt, "array") != NULL)
+                return xpidlIdlError(pErrInfo, pIt, VERR_INVALID_STATE,
+                                     "[shared] parameter \"%s\" cannot be of array type",
+                                     pIt->u.Param.pszName);
 
-            if (IDL_tree_property_get(simple_decl, "array") != NULL) {
-                IDL_tree_error(method_tree,
-                               "[shared] parameter \"%s\" cannot "
-                               "be of array type", param_name);
-                return FALSE;
-            }                
-
-            if (!(IDL_NODE_TYPE(real_type) == IDLN_TYPE_STRING ||
-                  IDL_NODE_TYPE(real_type) == IDLN_TYPE_WIDE_STRING ||
-                  (UP_IS_NATIVE(real_type) &&
-                   !IDL_tree_property_get(real_type, "nsid") &&
-                   !IDL_tree_property_get(real_type, "domstring")  &&
-                   !IDL_tree_property_get(real_type, "utf8string") &&
-                   !IDL_tree_property_get(real_type, "cstring")    &&
-                   !IDL_tree_property_get(real_type, "astring"))))
-            {
-                IDL_tree_error(method_tree,
-                               "[shared] parameter \"%s\" must be of type "
-                               "string, wstring or native", param_name);
-                return FALSE;
-            }
+            if (   !(   pNdTypeSpec->enmType == kXpidlNdType_BaseType
+                     && (   pNdTypeSpec->u.enmBaseType == kXpidlType_String
+                         || pNdTypeSpec->u.enmBaseType == kXpidlType_Wide_String))
+                && !(   pNdTypeSpec->enmType == kXpidlNdType_Native
+                     && (   !xpidlNodeAttrFind(pNdTypeSpec, "nsid")
+                         && !xpidlNodeAttrFind(pNdTypeSpec, "domstring")
+                         && !xpidlNodeAttrFind(pNdTypeSpec, "utf8string")
+                         && !xpidlNodeAttrFind(pNdTypeSpec, "cstring")
+                         && !xpidlNodeAttrFind(pNdTypeSpec, "astring"))))
+                return xpidlIdlError(pErrInfo, pIt, VERR_INVALID_STATE,
+                                     "[shared] parameter \"%s\" must be of type "
+                                     "string, wstring or native", pIt->u.Param.pszName);
         }
 
         /*
          * inout is not allowed with "domstring", "UTF8String", "CString" 
          * and "AString" types
          */
-        if (IDL_PARAM_DCL(param).attr == IDL_PARAM_INOUT &&
-            UP_IS_NATIVE(param_type) &&
-            (IDL_tree_property_get(param_type, "domstring")  != NULL ||
-             IDL_tree_property_get(param_type, "utf8string") != NULL ||
-             IDL_tree_property_get(param_type, "cstring")    != NULL ||
-             IDL_tree_property_get(param_type, "astring")    != NULL )) {
-            IDL_tree_error(method_tree,
-                           "[domstring], [utf8string], [cstring], [astring] "
-                           "types cannot be used as inout parameters");
-            return FALSE;
-        }
-
+        if (   pIt->u.Param.enmDir == kXpidlDirection_InOut
+            && pNdTypeSpec->enmType == kXpidlNdType_Native
+            && (   xpidlNodeAttrFind(pNdTypeSpec, "domstring")  != NULL
+                || xpidlNodeAttrFind(pNdTypeSpec, "utf8string") != NULL
+                || xpidlNodeAttrFind(pNdTypeSpec, "cstring")    != NULL
+                || xpidlNodeAttrFind(pNdTypeSpec, "astring")    != NULL))
+            return xpidlIdlError(pErrInfo, pIt, VERR_INVALID_STATE,
+                                 "[domstring], [utf8string], [cstring], [astring] "
+                                 "types cannot be used as inout parameters");
 
         /*
          * arrays of domstring, utf8string, cstring, astring types not allowed
          */
-        if (IDL_tree_property_get(simple_decl, "array") != NULL &&
-            UP_IS_NATIVE(param_type) &&
-            (IDL_tree_property_get(param_type, "domstring")  != NULL ||
-             IDL_tree_property_get(param_type, "utf8string") != NULL ||
-             IDL_tree_property_get(param_type, "cstring")    != NULL ||
-             IDL_tree_property_get(param_type, "astring")    != NULL)) {
-            IDL_tree_error(method_tree,
+        if (   xpidlNodeAttrFind(pIt, "array")
+            && pNdTypeSpec->enmType == kXpidlNdType_Native
+            && (   xpidlNodeAttrFind(pNdTypeSpec, "domstring")  != NULL
+                || xpidlNodeAttrFind(pNdTypeSpec, "utf8string") != NULL
+                || xpidlNodeAttrFind(pNdTypeSpec, "cstring")    != NULL
+                || xpidlNodeAttrFind(pNdTypeSpec, "astring")    != NULL))
+            return xpidlIdlError(pErrInfo, pIt, VERR_INVALID_STATE,
                            "[domstring], [utf8string], [cstring], [astring] "
                            "types cannot be used in array parameters");
-            return FALSE;
-        }                
 
-        if (!check_param_attribute(method_tree, param, IID_IS) ||
-            !check_param_attribute(method_tree, param, LENGTH_IS) ||
-            !check_param_attribute(method_tree, param, SIZE_IS))
-            return FALSE;
-
-        /* 
-         * Run additional error checks on the parameter type if targetting an 
-         * older version of XPConnect.
-         */
-
-        if (!verify_type_fits_version(param_type, method_tree))
-            return FALSE;
-        
+        rc = check_param_attribute(pNd, pIt, IID_IS, pErrInfo);
+        if (RT_FAILURE(rc))
+            return rc;
+        rc = check_param_attribute(pNd, pIt, LENGTH_IS, pErrInfo);
+        if (RT_FAILURE(rc))
+            return rc;
+        rc = check_param_attribute(pNd, pIt, SIZE_IS, pErrInfo);
+        if (RT_FAILURE(rc))
+            return rc;
     }
-    
+
+    PCXPIDLNODE pNdTypeSpec = find_underlying_type(pNd->u.Method.pNdTypeSpecRet);
+    pNdTypeSpec = pNdTypeSpec ? pNdTypeSpec : pIt->u.Method.pNdTypeSpecRet;
+
     /* XXX q: can return type be nsid? */
     /* Native return type? */
-    if (scriptable_method &&
-        op->op_type_spec != NULL && UP_IS_NATIVE(op->op_type_spec) &&
-        IDL_tree_property_get(op->op_type_spec, "nsid") == NULL &&
-        IDL_tree_property_get(op->op_type_spec, "domstring") == NULL &&
-        IDL_tree_property_get(op->op_type_spec, "utf8string") == NULL &&
-        IDL_tree_property_get(op->op_type_spec, "cstring") == NULL &&
-        IDL_tree_property_get(op->op_type_spec, "astring") == NULL)
-    {
-        IDL_tree_error(method_tree,
-                       "methods in [scriptable] interfaces that are "
-                       "non-scriptable because they return native "
-                       "types must be marked [noscript]");
-        return FALSE;
-    }
-
+    if (   scriptable_method
+        && pNdTypeSpec->enmType == kXpidlNdType_Native
+        && xpidlNodeAttrFind(pNdTypeSpec, "nsid") == NULL
+        && xpidlNodeAttrFind(pNdTypeSpec, "domstring") == NULL
+        && xpidlNodeAttrFind(pNdTypeSpec, "utf8string") == NULL
+        && xpidlNodeAttrFind(pNdTypeSpec, "cstring") == NULL
+        && xpidlNodeAttrFind(pNdTypeSpec, "astring") == NULL)
+        return xpidlIdlError(pErrInfo, pIt, VERR_INVALID_STATE,
+                             "methods in [scriptable] interfaces that are "
+                             "non-scriptable because they return native "
+                             "types must be marked [noscript]");
 
     /* 
      * nsid's parameters that aren't ptr's or ref's are not currently 
      * supported in xpcom
      */
-    if (!notxpcom &&
-        op->op_type_spec != NULL &&
-        IDL_tree_property_get(op->op_type_spec, "nsid") != NULL &&
-        IDL_tree_property_get(op->op_type_spec, "ptr") == NULL &&
-        IDL_tree_property_get(op->op_type_spec, "ref") == NULL) 
-    {
-        IDL_tree_error(method_tree,
-                       "Feature currently not supported: "
-                       "return value is of type nsid and "
-                       "must be marked either [ptr] or [ref], "
-                       "or else method \"%s\" must be marked [notxpcom] ",
-                       method_name);
-        return FALSE;
-    }
+    if (   !notxpcom
+        && pNdTypeSpec->enmType == kXpidlNdType_Native
+        && xpidlNodeAttrFind(pNdTypeSpec, "nsid") != NULL
+        && xpidlNodeAttrFind(pNdTypeSpec, "ptr") == NULL
+        && xpidlNodeAttrFind(pNdTypeSpec, "ref") == NULL) 
+        return xpidlIdlError(pErrInfo, pIt, VERR_INVALID_STATE,
+                             "Feature currently not supported: "
+                             "return value is of type nsid and "
+                             "must be marked either [ptr] or [ref], "
+                             "or else method \"%s\" must be marked [notxpcom] ",
+                             pNd->u.Method.pszName);
 
-    /* 
-     * Run additional error checks on the return type if targetting an 
-     * older version of XPConnect.
-     */
-
-    if (op->op_type_spec != NULL &&
-        !verify_type_fits_version(op->op_type_spec, method_tree))
-    {
-        return FALSE;
-    }
-
-    return TRUE;
+    return VINF_SUCCESS;
 }
+
 
 /*
  * Verify that a native declaration has an associated C++ expression, i.e. that
  * it's of the form native <idl-name>(<c++-name>)
  */
-gboolean
-check_native(TreeState *state)
+DECLHIDDEN(int) check_native(PCXPIDLNODE pNd, PRTERRINFO pErrInfo)
 {
-    char *native_name;
+    Assert(pNd->enmType == kXpidlNdType_Native);
+
     /* require that native declarations give a native type */
-    if (IDL_NATIVE(state->tree).user_type) 
-        return TRUE;
-    native_name = IDL_IDENT(IDL_NATIVE(state->tree).ident).str;
-    IDL_tree_error(state->tree,
-                   "``native %s;'' needs C++ type: ``native %s(<C++ type>);''",
-                   native_name, native_name);
-    return FALSE;
+    if (pNd->u.Native.pszNative) 
+        return VINF_SUCCESS;
+
+    return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                         "``native %s;'' needs C++ type: ``native %s(<C++ type>);''",
+                         pNd->u.Native.pszName, pNd->u.Native.pszName);
 }
 
-/*
- * Print a GSList as char strings to a file.
- */
-void
-printlist(FILE *outfile, GSList *slist)
-{
-    guint i;
-    guint len = g_slist_length(slist);
-
-    for(i = 0; i < len; i++) {
-        fprintf(outfile, 
-                "%s\n", (char *)g_slist_nth_data(slist, i));
-    }
-}
-
-void
-xpidl_list_foreach(IDL_tree p, IDL_tree_func foreach, gpointer user_data)
-{
-    IDL_tree_func_data tfd;
-
-    while (p) {
-        struct _IDL_LIST *list = &IDL_LIST(p);
-        tfd.tree = list->data;
-        if (!foreach(&tfd, user_data))
-            return;
-        p = list->next;
-    }
-}
 
 /*
  * Verify that the interface declaration is correct
  */
-gboolean
-verify_interface_declaration(IDL_tree interface_tree)
+DECLHIDDEN(int) verify_interface_declaration(PCXPIDLNODE pNd, PRTERRINFO pErrInfo)
 {
-    IDL_tree iter;
     /* 
      * If we have the scriptable attribute then make sure all of our direct
      * parents have it as well.
      * NOTE: We don't recurse since all interfaces will fall through here
      */
-    if (IDL_tree_property_get(IDL_INTERFACE(interface_tree).ident, 
-        "scriptable")) {
-        for (iter = IDL_INTERFACE(interface_tree).inheritance_spec; iter; 
-            iter = IDL_LIST(iter).next) {
-            if (IDL_tree_property_get(
-                IDL_INTERFACE(iter).ident, "scriptable") == 0) {
-                XPIDL_WARNING((interface_tree,IDL_WARNING1,
-                    "%s is scriptable but inherits from the non-scriptable interface %s\n",
-                    IDL_IDENT(IDL_INTERFACE(interface_tree).ident).str,
-                    IDL_IDENT(IDL_INTERFACE(iter).ident).str));
-            }
+    if (xpidlNodeAttrFind(pNd, "scriptable"))
+    {
+        Assert(pNd->enmType == kXpidlNdType_Interface_Def);
+        while (pNd->pNdTypeRef)
+        {
+            if (!xpidlNodeAttrFind(pNd->pNdTypeRef, "scriptable"))
+                return xpidlIdlError(pErrInfo, pNd, VERR_INVALID_STATE,
+                                     "%s is scriptable but inherits from the non-scriptable interface %s",
+                                     pNd->u.If.pszIfName, pNd->u.If.pszIfInherit);
+
+            pNd = pNd->pNdTypeRef;
         }
     }
-    return TRUE;
+    return VINF_SUCCESS;
 }
 
-/*
- * Return a pointer to the start of the base filename of path
- */
-char *
-xpidl_basename(const char * path)
+
+DECLHIDDEN(PCXPIDLATTR) xpidlNodeAttrFind(PCXPIDLNODE pNd, const char *pszAttr)
 {
-    char * result = g_path_get_basename(path);
-    /* 
-     *If this is windows then we'll handle either / or \ as a separator
-     * g_basename only handles \ for windows
-     */
-#if defined(XP_WIN32)
-# error adapt regarding g_basename() vs. g_path_get_basename()!
-    const char * slash = strrchr(path, '/');
-    /* If we found a slash and its after the current default OS separator */
-    if (slash != NULL && (slash > result))
-        result = slash + 1;
-#endif
-    return result;
+    uint32_t i;
+    for (i = 0; i < pNd->cAttrs; i++)
+    {
+        if (!strcmp(pNd->aAttrs[i].pszName, pszAttr))
+            return &pNd->aAttrs[i];
+    }
+
+    return NULL;
+}
+
+
+DECLHIDDEN(int) xpidlIdlError(PRTERRINFO pErrInfo, PCXPIDLNODE pNd, int rc, const char *pszFmt, ...)
+{
+    RT_NOREF(pNd);
+
+    va_list Args;
+    va_start(Args, pszFmt);
+    rc = RTErrInfoSetV(pErrInfo, rc, pszFmt, Args);
+    va_end(Args);
+    return rc;
 }

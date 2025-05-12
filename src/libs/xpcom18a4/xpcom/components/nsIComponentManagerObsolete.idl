@@ -347,5 +347,5 @@ interface nsIComponentManagerObsolete : nsISupports
 %{ C++
 /* include after the class def'n, because it needs to see it. */
 #include "nsComponentManagerUtils.h"
-%} C++
+%}
 

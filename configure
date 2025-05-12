@@ -90,7 +90,6 @@ WITH_XPCOM=1
 WITH_PYTHON=1
 WITH_JAVA=1
 WITH_VMMRAW=1
-WITH_LIBIDL=1
 WITH_QT6=1
 WITH_SDL=1
 WITH_SDL_TTF=1
@@ -781,36 +780,6 @@ EOF
     else
       log_failure "neither pkg-config nor xml2-config found"
       fail
-    fi
-  fi
-}
-
-
-#
-# Check for libIDL, needed by xpcom
-#
-check_libidl()
-{
-  test_header libIDL
-
-  if which_wrapper libIDL-config-2 > /dev/null; then
-    libidl_ver=`libIDL-config-2 --version`
-    if [ $? -ne 0 ]; then
-      log_failure "libIDL-config-2 not working"
-      fail
-    else
-      log_success "found version $libidl_ver"
-      cnf_append "VBOX_LIBIDL_CONFIG" \
-        "PKG_CONFIG_PATH=`libIDL-config-2 --prefix`/$LIB/pkgconfig `which_wrapper libIDL-config-2`"
-    fi
-  elif check_avail "libIDL-config" libIDL-config; then
-    libidl_ver=`libIDL-config --version`
-    if [ $? -ne 0 ]; then
-      log_failure "libIDL-config not working"
-      fail
-    else
-      log_success "found version $libidl_ver"
-      cnf_append "VBOX_LIBIDL_CONFIG" "`which_wrapper libIDL-config`"
     fi
   fi
 }
@@ -2632,7 +2601,6 @@ elif [ "$OS" = "haiku" ]; then
   WITH_PULSE=0
   WITH_DBUS=0
   WITH_KMODS=0
-  WITH_LIBIDL=0
   WITH_XPCOM=0
   BUILD_LIBXSLT=1
   BUILD_LIBXML2=1
@@ -3024,7 +2992,6 @@ fi
 if [ $ONLY_ADDITIONS -eq 0 ]; then
   [ "$OS" != "darwin"  ] && check_pthread
   check_libxml2
-  [ $WITH_LIBIDL -eq 1 ] && check_libidl
   check_z
   check_lzf
   check_ssl

@@ -414,6 +414,8 @@ XPT_NewInterfaceDescriptor(XPTArena *arena,
 XPT_PUBLIC_API(void)
 XPT_FreeInterfaceDescriptor(XPTArena *arena, XPTInterfaceDescriptor* id)
 {
+    RT_NOREF(arena);
+
     if (id) {
         XPTMethodDescriptor *md, *mdend;
         XPTConstDescriptor *cd, *cdend;
@@ -797,6 +799,8 @@ XPT_PUBLIC_API(PRBool)
 XPT_FillParamDescriptor(XPTArena *arena, XPTParamDescriptor *pd, PRUint8 flags,
                         XPTTypeDescriptor *type)
 {
+    RT_NOREF(arena);
+
     pd->flags = flags & XPT_PD_FLAGMASK;
     XPT_COPY_TYPE(pd->type, *type);
     return PR_TRUE;
@@ -816,6 +820,7 @@ DoParamDescriptor(XPTArena *arena, XPTCursor *cursor, XPTParamDescriptor *pd,
 PRBool
 DoTypeDescriptorPrefix(XPTArena *arena, XPTCursor *cursor, XPTTypeDescriptorPrefix *tdp)
 {
+    RT_NOREF(arena);
     return XPT_Do8(cursor, &tdp->flags);
 }
 

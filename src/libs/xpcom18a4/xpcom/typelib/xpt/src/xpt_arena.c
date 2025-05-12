@@ -94,10 +94,10 @@ static void xpt_DebugPrintArenaStats(XPTArena *arena);
 
 #define LOG_MALLOC(_a, _req, _used)   ((void)0)
 #define LOG_REAL_MALLOC(_a, _size)    ((void)0)
-#define LOG_FREE(_a)                  ((void)0)
+#define LOG_FREE(_a)                  RT_NOREF(_a)
 
 #define LOG_DONE_LOADING(_a)          ((void)0)
-#define PRINT_STATS(_a)               ((void)0)
+#define PRINT_STATS(_a)               RT_NOREF(_a)
 
 #endif /* XPT_ARENA_LOGGING */
 
@@ -289,12 +289,15 @@ XPT_NotifyDoneLoading(XPTArena *arena)
     if (arena) {
         LOG_DONE_LOADING(arena);
     }
+#else
+    RT_NOREF(arena);
 #endif
 }
 
 XPT_PUBLIC_API(void)
 XPT_ArenaFree(XPTArena *arena, void *block)
 {
+    RT_NOREF(block);
     LOG_FREE(arena);
 }
 

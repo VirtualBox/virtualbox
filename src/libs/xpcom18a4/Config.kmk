@@ -1,4 +1,4 @@
-# $Id: Config.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: Config.kmk 109507 2025-05-12 17:53:56Z vadim.galitsyn@oracle.com $
 ## @file
 # XPCOM kBuild Configuration file.
 #
@@ -229,26 +229,19 @@ endif
 #
 # Template for building XPCOM executables for running at build time.
 #
-# It extends the BLDPROG template in config.kmk but overrides CFLAGS
-# and CXXFLAGS completely at the moment.
-#
 TEMPLATE_XPComBldProg                     = XPCOM Build programs executables
 TEMPLATE_XPComBldProg_EXTENDS             = VBoxAdvBldProg
 TEMPLATE_XPComBldProg_DEFS.$(KBUILD_HOST) = $(TEMPLATE_VBoxAdvBldProg_DEFS.$(KBUILD_HOST)) $(TEMPLATE_XPComExe_DEFS.$(KBUILD_HOST))
 TEMPLATE_XPComBldProg_DEFS.x86            = $(TEMPLATE_VBoxAdvBldProg_DEFS.x86)            $(TEMPLATE_XPComExe_DEFS.x86)
 TEMPLATE_XPComBldProg_DEFS.amd64          = $(TEMPLATE_VBoxAdvBldProg_DEFS.amd64)          $(TEMPLATE_XPComExe_DEFS.amd64)
 TEMPLATE_XPComBldProg_DEFS.arm64          = $(TEMPLATE_VBoxAdvBldProg_DEFS.arm64)          $(TEMPLATE_XPComExe_DEFS.arm64)
+TEMPLATE_XPComBldProg_CFLAGS             += -std=c99
 TEMPLATE_XPComBldProg_INCS                = \
 	$(VBOX_PATH_SDK)/bindings/xpcom/include \
 	$(VBOX_PATH_SDK)/bindings/xpcom/include/nsprpub \
 	$(VBOX_PATH_SDK)/bindings/xpcom/include/string \
 	$(VBOX_PATH_SDK)/bindings/xpcom/include/xpcom \
 	$(VBOX_PATH_SDK)/bindings/xpcom/include/ipcd
-TEMPLATE_XPComBldProg_CFLAGS             = $(filter-out $(VBOX_GCC_PEDANTIC_C), $(TEMPLATE_VBoxAdvBldProg_CFLAGS)) \
-	$(VBOX_GCC_Wno-int-to-pointer-cast) $(VBOX_GCC_Wno-pointer-to-int-cast) $(VBOX_GCC_NON_PEDANTIC_C)
-TEMPLATE_XPComBldProg_CXXFLAGS.darwin    = $(TEMPLATE_VBoxAdvBldProg_CXXFLAGS.darwin)     -fpascal-strings -fshort-wchar -fno-common -fno-rtti
-TEMPLATE_XPComBldProg_CXXFLAGS.solaris   = $(TEMPLATE_VBoxAdvBldProg_CXXFLAGS.solaris)    -fno-omit-frame-pointer # for now anyway.
-TEMPLATE_XPComBldProg_LDFLAGS.darwin     = $(TEMPLATE_VBoxAdvBldProg_LDFLAGS.darwin)      -fpascal-strings -fshort-wchar -fno-rtti -fno-exceptions
 TEMPLATE_XPComBldProg_ORDERDEPS          = $(foreach hdrinst, $(filter %-HEADERS, $(INSTALLS)), $($(hdrinst)_1_TARGET))
 TEMPLATE_XPComBldProg_LIBS.darwin        = \
 	iconv

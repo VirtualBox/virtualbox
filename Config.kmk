@@ -1,4 +1,4 @@
-# $Id: Config.kmk 109493 2025-05-09 12:17:25Z aleksey.ilyushin@oracle.com $
+# $Id: Config.kmk 109507 2025-05-12 17:53:56Z vadim.galitsyn@oracle.com $
 ## @file
 # The global build configuration file for VBox.
 #
@@ -880,8 +880,6 @@ if1of ($(KBUILD_TARGET), darwin linux solaris)
  # Enable Java<->JAX-WS bridge
  VBOX_WITH_JWS ?= 1
 endif
-# Use XPIDL instead of XSLT stylesheet
-VBOX_WITH_JAVA_SUPPORT_IN_XPIDL ?=
 # Build against multiple Python versions present in the system (only up to 3.2,
 # unless VBOX_WITH_ONLY_PYTHON_LIMITED_API is overridden).
 VBOX_WITH_MULTIVERSION_PYTHON ?= 1
@@ -2772,15 +2770,6 @@ ifneq ($(KBUILD_TARGET),win)
  	$(VBOX_PATH_SDK)/bindings/xpcom/include/xpcom \
  	$(VBOX_PATH_SDK)/bindings/xpcom/include/nsprpub \
  	$(VBOX_PATH_SDK)/bindings/xpcom/include/ipcd
- ifneq ($(KBUILD_TARGET),os2)
-  # libIDL-config (for xpcom18a4)
-  ifeq ($(origin VBOX_LIBIDL_CONFIG),undefined)
-   ifeq ($(KBUILD_HOST),solaris)
-    VBOX_LIBIDL_CONFIG_FALLBACK = $(lastword $(wildcard $(KBUILD_DEVTOOLS)/solaris.amd64/libIDL/*/bin/libIDL-config-2))
-   endif
-   export VBOX_LIBIDL_CONFIG := $(firstword $(which libIDL-config-2 libIDL-config) $(VBOX_LIBIDL_CONFIG_FALLBACK) libIDL-config-2-not-found)
-  endif
- endif
 endif
 
 # The X11 LIBPATH. (The amd64 hack is for RHEL4.)
@@ -9289,7 +9278,7 @@ endif
 SVN                    ?= svn$(HOSTSUFF_EXE)
 VBOX_SVN_REV_KMK        = $(PATH_OUT)/revision.kmk
 ifndef VBOX_SVN_REV
- VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 109493 $  )
+ VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 109507 $  )
  VBOX_SVN_REV_FALLBACK := $(if-expr $(VBOX_SVN_REV_CONFIG_FALLBACK) > $(VBOX_SVN_REV_VERSION_FALLBACK),$(VBOX_SVN_REV_CONFIG_FALLBACK),$(VBOX_SVN_REV_VERSION_FALLBACK))
  VBOX_SVN_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.svn/wc.db $(abspath $(PATH_ROOT)/../.svn/wc.db) $(abspath $(PATH_ROOT)/../../.svn/wc.db) $(PATH_ROOT)/.svn/entries))
  ifeq ($(which $(SVN)),)

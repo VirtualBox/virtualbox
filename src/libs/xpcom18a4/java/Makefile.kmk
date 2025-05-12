@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 109507 2025-05-12 17:53:56Z vadim.galitsyn@oracle.com $
 ## @file
 # Sub-Makefile for Java bindings
 #
@@ -91,11 +91,7 @@ INSTALLS += VBoxJXpcom-inst-jar
 
 VBOX_JXPCOM_JAR     = $(VBoxJXpcom-inst-jar_0_OUTDIR)/vboxjxpcom.jar
 VBOX_JXPCOM_NSERROR = $(VBOX_JXPCOM_GEN)/java/XPCOMError.java
-ifndef VBOX_WITH_JAVA_SUPPORT_IN_XPIDL
- VBOX_JXPCOM_GEN    = $(VBOX_JXPCOM_TARGET)/jxpcomgen
-else
- VBOX_JXPCOM_GEN    = $(VBOX_JXPCOM_TARGET)/jxpcomgen-idl
-endif
+VBOX_JXPCOM_GEN     = $(VBOX_JXPCOM_TARGET)/jxpcomgen
 
 VBoxJXpcom-inst-jar_INST = $(INST_SDK)bindings/xpcom/java/
 VBoxJXpcom-inst-jar_MODE = a+r,u+w
@@ -138,41 +134,21 @@ $(VBOX_JXPCOM_NSERROR): $(VBOX_PATH_XPCOM_SRC)/xpcom/base/nsError.h $(VBOX_JXPCO
 	$(call MSG_L1,Generating $@)
 	$(QUIET)perl $(VBOX_JXPCOM_SRC)/tools/gen-nsError.pl < $< > $@
 
-ifndef VBOX_WITH_JAVA_SUPPORT_IN_XPIDL
- #
- # Generate .java interface files from .xidl
- #
-
- $(VBOX_JXPCOM_GEN)/jxpcomgen.list: \
- 		$(VBOX_XIDL_FILE) \
- 		$(VBOX_FILESPLIT) \
- 		$(VBOX_JXPCOM_SRC)/tools/genjifaces.xsl \
- 		| $(VBOX_JXPCOM_GEN)/java/interfaces/
+#
+# Generate .java interface files from .xidl
+#
+$(VBOX_JXPCOM_GEN)/jxpcomgen.list: \
+		$(VBOX_XIDL_FILE) \
+		$(VBOX_FILESPLIT) \
+		$(VBOX_JXPCOM_SRC)/tools/genjifaces.xsl \
+		| $(VBOX_JXPCOM_GEN)/java/interfaces/
 	$(call MSG_L1,Generating Java interface files)
 	$(QUIET)$(RM) -f $(wildcard $(VBOX_JXPCOM_GEN)/java/interfaces/*.java)
 	$(QUIET)$(VBOX_XSLTPROC)   \
-              -o $(VBOX_JXPCOM_GEN)/java/interfaces/merged.file $(VBOX_JXPCOM_SRC)/tools/genjifaces.xsl $<
+             -o $(VBOX_JXPCOM_GEN)/java/interfaces/merged.file $(VBOX_JXPCOM_SRC)/tools/genjifaces.xsl $<
 	$(QUIET)$(VBOX_FILESPLIT) $(VBOX_JXPCOM_GEN)/java/interfaces/merged.file $(VBOX_JXPCOM_GEN)/java/interfaces
 	$(QUIET)echo $(VBOX_JXPCOM_GEN)/java/interfaces/*.java > $@
 
-else  # VBOX_WITH_JAVA_SUPPORT_IN_XPIDL
- #
- # Generate .java interface files from the XPCOM and VirtualBox IDL files.
- #
- # Note! There is not a 1:1 relationship between input and output files here, unfortunately.
- # Note! VBOX_JXPCOM_NSERROR shares the output directory with us.
- #
- $(VBOX_JXPCOM_GEN)/jxpcomgen.list: \
- 		$(VBOX_PATH_SDK)/bindings/xpcom/idl/VirtualBox_XPCOM.idl \
- 		$$(addprefix $(VBOX_PATH_XPCOM_SRC)/,$$(XPCOM_IDLFILES)) \
- 		$(VBOX_XPIDL) \
- 		| $(VBOX_JXPCOM_GEN)/java/
-	$(call MSG_L1,Generating XPCOM Java interface files from IDL)
-	$(QUIET)$(RM) -f $(filter-out %/XPCOMError.java, $(wildcard $(VBOX_JXPCOM_GEN)/java/*.java))
-	$(foreach idl, $(VBOX_PATH_SDK)/bindings/xpcom/idl/VirtualBox_XPCOM.idl $(addprefix $(VBOX_PATH_XPCOM_SRC)/,$(XPCOM_IDLFILES))\
-		, $(NLTAB)$(QUIET)$(VBOX_XPIDL) -m java $(XPIDL_INCS) -e $(VBOX_JXPCOM_GEN)/java/$(basename $(notdir $(idl))).java $(idl) )
-	$(QUIET)echo $(VBOX_JXPCOM_GEN)/java/*.java > $@
-endif # VBOX_WITH_JAVA_SUPPORT_IN_XPIDL
 
 $(VBOX_JXPCOM_GEN)/jxpcomglue.list: \
 		$(VBOX_XIDL_FILE) \

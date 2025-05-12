@@ -1,4 +1,4 @@
-/* $Id: script.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: script.h 109507 2025-05-12 17:53:56Z vadim.galitsyn@oracle.com $ */
 /** @file
  * IPRT - RTScript, Script language support in IPRT.
  */
@@ -97,6 +97,10 @@ typedef enum RTSCRIPTLEXTOKTYPE
     RTSCRIPTLEXTOKTYPE_KEYWORD,
     /** Some punctuator. */
     RTSCRIPTLEXTOKTYPE_PUNCTUATOR,
+    /** A single line comment. */
+    RTSCRIPTLEXTOKTYPE_COMMENT_SINGLE_LINE,
+    /** A multi line comment. */
+    RTSCRIPTLEXTOKTYPE_COMMENT_MULTI_LINE,
     /** Special error token, conveying an error message from the lexer. */
     RTSCRIPTLEXTOKTYPE_ERROR,
     /** End of stream token. */
@@ -211,6 +215,14 @@ typedef struct RTSCRIPTLEXTOKEN
             /** Pointer to the matched punctuator descriptor. */
             PCRTSCRIPTLEXTOKMATCH pPunctuator;
         } Punctuator;
+        /** Comment */
+        struct
+        {
+            /** Pointer to the start of the comment (including the symbols starting the comment). */
+            const char            *pszComment;
+            /** Number of characters of the comment, including the null terminator. */
+            size_t                cchComment;
+        } Comment;
         /** Error. */
         struct
         {
@@ -308,10 +320,15 @@ typedef RTSCRIPTLEXCFG *PRTSCRIPTLEXCFG;
 typedef const RTSCRIPTLEXCFG *PCRTSCRIPTLEXCFG;
 
 /** Default lexer config flags. */
-#define RTSCRIPT_LEX_CFG_F_DEFAULT          0
+#define RTSCRIPT_LEX_CFG_F_DEFAULT                0
 /** Case insensitive lexing, keywords and so on must be used lowercase to match
  * as the lexer will convert everything to lowercase internally. */
-#define RTSCRIPT_LEX_CFG_F_CASE_INSENSITIVE RT_BIT(0)
+#define RTSCRIPT_LEX_CFG_F_CASE_INSENSITIVE_LOWER RT_BIT(0)
+/** Case insensitive lexing, keywords and so on must be used uppercase to match
+ * as the lexer will convert everything to uppercase internally. */
+#define RTSCRIPT_LEX_CFG_F_CASE_INSENSITIVE_UPPER RT_BIT(1)
+/** Comments are not skipped but passed back as tokens. */
+#define RTSCRIPT_LEX_CFG_F_COMMENTS_AS_TOKENS     RT_BIT(2)
 
 
 /** Default character conversions (converting to lower case when the case insensitive flag is set). */
@@ -365,12 +382,17 @@ typedef FNRTSCRIPTLEXDTOR *PFNRTSCRIPTLEXDTOR;
  *                                 scanned string literals on success, optional.
  *                                 If not NULL the string cache must be freed by the caller when not used
  *                                 anymore.
+ * @param   phStrCacheComments     Where to store the pointer to the string cache containing all
+ *                                 comments on success when RTSCRIPT_LEX_CFG_F_COMMENTS_AS_TOKENS
+ *                                 is given, optional.
+ *                                 If not NULL the string cache must be freed by the caller when not used
+ *                                 anymore.
  * @param   pCfg                   The lexer config to use for identifying the different tokens.
  */
 RTDECL(int) RTScriptLexCreateFromReader(PRTSCRIPTLEX phScriptLex, PFNRTSCRIPTLEXRDR pfnReader,
                                         PFNRTSCRIPTLEXDTOR pfnDtor, void *pvUser,
                                         size_t cchBuf, PRTSTRCACHE phStrCacheId, PRTSTRCACHE phStrCacheStringLit,
-                                        PCRTSCRIPTLEXCFG pCfg);
+                                        PRTSTRCACHE phStrCacheComments, PCRTSCRIPTLEXCFG pCfg);
 
 
 /**
@@ -387,10 +409,16 @@ RTDECL(int) RTScriptLexCreateFromReader(PRTSCRIPTLEX phScriptLex, PFNRTSCRIPTLEX
  *                                 scanned string literals on success, optional.
  *                                 If not NULL the string cache must be freed by the caller when not used
  *                                 anymore.
+ * @param   phStrCacheComments     Where to store the pointer to the string cache containing all
+ *                                 comments on success when RTSCRIPT_LEX_CFG_F_COMMENTS_AS_TOKENS
+ *                                 is given, optional.
+ *                                 If not NULL the string cache must be freed by the caller when not used
+ *                                 anymore.
  * @param   pCfg                   The lexer config to use for identifying the different tokens.
  */
 RTDECL(int) RTScriptLexCreateFromString(PRTSCRIPTLEX phScriptLex, const char *pszSrc, PRTSTRCACHE phStrCacheId,
-                                        PRTSTRCACHE phStrCacheStringLit, PCRTSCRIPTLEXCFG pCfg);
+                                        PRTSTRCACHE phStrCacheStringLit, PRTSTRCACHE phStrCacheComments,
+                                        PCRTSCRIPTLEXCFG pCfg);
 
 
 /**
@@ -407,10 +435,16 @@ RTDECL(int) RTScriptLexCreateFromString(PRTSCRIPTLEX phScriptLex, const char *ps
  *                                 scanned string literals on success, optional.
  *                                 If not NULL the string cache must be freed by the caller when not used
  *                                 anymore.
+ * @param   phStrCacheComments     Where to store the pointer to the string cache containing all
+ *                                 comments on success when RTSCRIPT_LEX_CFG_F_COMMENTS_AS_TOKENS
+ *                                 is given, optional.
+ *                                 If not NULL the string cache must be freed by the caller when not used
+ *                                 anymore.
  * @param   pCfg                   The lexer config to use for identifying the different tokens.
  */
 RTDECL(int) RTScriptLexCreateFromFile(PRTSCRIPTLEX phScriptLex, const char *pszFilename, PRTSTRCACHE phStrCacheId,
-                                      PRTSTRCACHE phStrCacheStringLit, PCRTSCRIPTLEXCFG pCfg);
+                                      PRTSTRCACHE phStrCacheStringLit, PRTSTRCACHE phStrCacheComments,
+                                      PCRTSCRIPTLEXCFG pCfg);
 
 
 /**
@@ -601,6 +635,30 @@ RTDECL(int) RTScriptLexScanStringLiteralC(RTSCRIPTLEX hScriptLex, char ch, PRTSC
  */
 RTDECL(int) RTScriptLexScanStringLiteralPascal(RTSCRIPTLEX hScriptLex, char ch, PRTSCRIPTLEXTOKEN pTok, void *pvUser);
 
+
+/**
+ * Produces an error token with the given message, used for custom lexer rule implementations.
+ *
+ * @returns IPRT status code.
+ * @param   hScriptLex             The lexer handle.
+ * @param   pTok                   The token to fill.
+ * @param   rc                     The status code to use in the message.
+ * @param   pszMsg                 The format string for the error message.
+ * @param   ...                    Arguments to the format string.
+ */
+RTDECL(int) RTScriptLexProduceTokError(RTSCRIPTLEX hScriptLex, PRTSCRIPTLEXTOKEN pTok, int rc, const char *pszMsg, ...);
+
+
+/**
+ * Produces an identifier token with the given identifier, used for custom lexer rule implementations.
+ *
+ * @returns IPRT status code.
+ * @param   hScriptLex             The lexer handle.
+ * @param   pTok                   The token to fill.
+ * @param   pszIde                 The identifier to add.
+ * @param   cchIde                 Number of characters in the identifier.
+ */
+RTDECL(int) RTScriptLexProduceTokIde(RTSCRIPTLEX hScriptLex, PRTSCRIPTLEXTOKEN pTok, const char *pszIde, size_t cchIde);
 /** @} */
 
 /** @} */

@@ -828,8 +828,6 @@ XPT_DumpConstDescriptor(XPTHeader *header, XPTConstDescriptor *cd,
     int new_indent = indent + BASE_INDENT;
     char *const_type;
 /*      char *out; */
-    PRUint32 uintout;
-    PRInt32 intout;
 
     if (verbose_mode) {
         fprintf(stdout, "%*sName:   %s\n", indent, " ", cd->name);
@@ -858,8 +856,7 @@ XPT_DumpConstDescriptor(XPTHeader *header, XPTConstDescriptor *cd,
 /*          out = PR_smprintf("%lld", cd->value.i64); */
 /*          fputs(out, stdout); */
 /*          PR_smprintf_free(out); */
-        LL_L2I(intout, cd->value.i64);
-        fprintf(stdout, "%d", intout);
+        fprintf(stdout, "%ld", cd->value.i64);
         break;
     case TD_INT32:
         fprintf(stdout, "%d", cd->value.i32);
@@ -875,8 +872,7 @@ XPT_DumpConstDescriptor(XPTHeader *header, XPTConstDescriptor *cd,
 /*          fputs(out, stdout); */
 /*          PR_smprintf_free(out); */
         /* XXX punt for now to remove NSPR linkage. */
-        LL_L2UI(uintout, cd->value.ui64);
-        fprintf(stdout, "%u", uintout);
+        fprintf(stdout, "%lu", cd->value.ui64);
         break;
     case TD_UINT32:
         fprintf(stdout, "%u", cd->value.ui32);
