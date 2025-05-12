@@ -1,4 +1,4 @@
-/* $Id: vbox_fb.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: vbox_fb.c 109499 2025-05-12 12:21:43Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VirtualBox Additions Linux kernel video driver
  */
@@ -265,7 +265,7 @@ static struct fb_info *drm_fb_helper_alloc_fbi(struct drm_fb_helper *helper)
 }
 #endif
 
-static int vboxfb_create(struct drm_fb_helper *helper,
+int vboxfb_create(struct drm_fb_helper *helper,
 			 struct drm_fb_helper_surface_size *sizes)
 {
 	struct vbox_fbdev *fbdev =
@@ -413,9 +413,11 @@ static int vboxfb_create(struct drm_fb_helper *helper,
 	return 0;
 }
 
+#if RTLNX_VER_MAX(6,15,0)
 static struct drm_fb_helper_funcs vbox_fb_helper_funcs = {
 	.fb_probe = vboxfb_create,
 };
+#endif
 
 #if RTLNX_VER_MAX(4,3,0) && !RTLNX_RHEL_MAJ_PREREQ(7,3)
 static void drm_fb_helper_unregister_fbi(struct drm_fb_helper *fb_helper)
@@ -484,7 +486,9 @@ int vbox_fbdev_init(struct drm_device *dev)
 	vbox->fbdev = fbdev;
 	spin_lock_init(&fbdev->dirty_lock);
 
-#if RTLNX_VER_MIN(6,3,0) || RTLNX_RHEL_RANGE(8,9, 8,99) || RTLNX_RHEL_RANGE(9,3, 9,99)
+#if RTLNX_VER_MIN(6,15,0)
+	drm_fb_helper_prepare(dev, &fbdev->helper, 32, NULL);
+#elif RTLNX_VER_MIN(6,3,0) || RTLNX_RHEL_RANGE(8,9, 8,99) || RTLNX_RHEL_RANGE(9,3, 9,99)
 	drm_fb_helper_prepare(dev, &fbdev->helper, 32, &vbox_fb_helper_funcs);
 #elif RTLNX_VER_MIN(3,17,0) || RTLNX_RHEL_MIN(7,2)
 	drm_fb_helper_prepare(dev, &fbdev->helper, &vbox_fb_helper_funcs);

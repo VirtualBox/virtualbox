@@ -1,4 +1,4 @@
-# $Id: Makefile-footer.gmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: Makefile-footer.gmk 109499 2025-05-12 12:21:43Z vadim.galitsyn@oracle.com $
 ## @file
 # VirtualBox Guest Additions kernel module Makefile, common parts.
 #
@@ -115,6 +115,7 @@ VBOXMOD_EXT := ko
 
 # build defs
 EXTRA_CFLAGS += $(VBOXMOD_CFLAGS) $(addprefix -I,$(KERN_INCL) $(VBOXMOD_INCL)) $(VBOXMOD_0_KFLAGS) $(KDEBUG)
+ccflags-y += $(EXTRA_CFLAGS)
 $(VBOXMOD_0_TARGET)-y := $(VBOXMOD_OBJS)
 obj-m += $(VBOXMOD_0_TARGET).o
 

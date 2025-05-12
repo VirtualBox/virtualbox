@@ -1,4 +1,4 @@
-/* $Id: timer-r0drv-linux.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: timer-r0drv-linux.c 109499 2025-05-12 12:21:43Z vadim.galitsyn@oracle.com $ */
 /** @file
  * IPRT - Timers, Ring-0 Driver, Linux.
  */
@@ -422,7 +422,11 @@ static void rtTimerLnxStopSubTimer(PRTTIMERLNXSUBTIMER pSubTimer, bool fHighRes)
     }
     else
 #endif
+# if RTLNX_VER_MIN(6,15,0)
+        timer_delete(&pSubTimer->u.Std.LnxTimer);
+#else
         del_timer(&pSubTimer->u.Std.LnxTimer);
+#endif
 
     rtTimerLnxSetState(&pSubTimer->enmState, RTTIMERLNXSTATE_STOPPED);
 }
@@ -470,7 +474,11 @@ static void rtTimerLnxDestroyIt(PRTTIMER pTimer)
             hrtimer_cancel(&pTimer->aSubTimers[iCpu].u.Hr.LnxTimer);
         else
 #endif
+# if RTLNX_VER_MIN(6,15,0)
+            timer_delete_sync(&pTimer->aSubTimers[iCpu].u.Std.LnxTimer);
+#else
             del_timer_sync(&pTimer->aSubTimers[iCpu].u.Std.LnxTimer);
+#endif
     }
 
     /*
@@ -1626,8 +1634,13 @@ RTDECL(int) RTTimerCreateEx(PRTTIMER *ppTimer, uint64_t u64NanoInterval, uint32_
 #ifdef RTTIMER_LINUX_WITH_HRTIMER
         if (pTimer->fHighRes)
         {
+#if RTLNX_VER_MIN(6,15,0)
+            hrtimer_setup(&pTimer->aSubTimers[iCpu].u.Hr.LnxTimer,
+                          rtTimerLinuxHrCallback, CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
+#else
             hrtimer_init(&pTimer->aSubTimers[iCpu].u.Hr.LnxTimer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
             pTimer->aSubTimers[iCpu].u.Hr.LnxTimer.function     = rtTimerLinuxHrCallback;
+#endif
         }
         else
 #endif

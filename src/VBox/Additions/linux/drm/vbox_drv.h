@@ -1,4 +1,4 @@
-/* $Id: vbox_drv.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: vbox_drv.h 109499 2025-05-12 12:21:43Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VirtualBox Additions Linux kernel video driver
  */
@@ -432,6 +432,8 @@ int vbox_framebuffer_init(struct drm_device *dev,
 			  struct DRM_MODE_FB_CMD *mode_cmd,
 #endif
 			  struct drm_gem_object *obj);
+
+int vboxfb_create(struct drm_fb_helper *helper, struct drm_fb_helper_surface_size *sizes);
 
 int vbox_fbdev_init(struct drm_device *dev);
 void vbox_fbdev_fini(struct drm_device *dev);
