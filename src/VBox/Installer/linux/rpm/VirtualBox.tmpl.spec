@@ -1,4 +1,4 @@
-# $Id: VirtualBox.tmpl.spec 109518 2025-05-13 14:41:43Z vadim.galitsyn@oracle.com $
+# $Id: VirtualBox.tmpl.spec 109520 2025-05-13 15:06:05Z vadim.galitsyn@oracle.com $
 ## @file
 # Spec file for creating VirtualBox rpm packages
 #
@@ -139,8 +139,7 @@ PATH=${PATH#/opt/rh/devtoolset-4/root/usr/bin:}
 %if "%BUILDREL%" == "openSUSE156"
 # For openSUSE156 we need GCC 10+ to build Qt 6.8 related code. However,
 # kernel modules need be built with older GCC.
-OLD_CC="$CC"
-export CC=gcc-7
+VBOX_EXTRA_FLAGS="CC=gcc-7"
 %endif
 for d in /lib/modules/*; do
   if [ -L $d/build ]; then
@@ -148,23 +147,23 @@ for d in /lib/modules/*; do
     ./src/vboxhost/build_in_tmp \
       --save-module-symvers /tmp/vboxdrv-Module.symvers \
       --module-source `pwd`/src/vboxhost/vboxdrv \
-      KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT CC="$CC" -j4 \
+      KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT $VBOX_EXTRA_FLAGS -j4 \
       %INSTMOD%
     ./src/vboxhost/build_in_tmp \
       --use-module-symvers /tmp/vboxdrv-Module.symvers \
       --module-source `pwd`/src/vboxhost/vboxnetflt \
-      KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT CC="$CC" -j4 \
+      KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT $VBOX_EXTRA_FLAGS -j4 \
       %INSTMOD%
     ./src/vboxhost/build_in_tmp \
       --use-module-symvers /tmp/vboxdrv-Module.symvers \
       --module-source `pwd`/src/vboxhost/vboxnetadp \
-      KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT CC="$CC" -j4 \
+      KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT $VBOX_EXTRA_FLAGS -j4 \
       %INSTMOD%
     if [ -e `pwd`/src/vboxhost/vboxpci ]; then
       ./src/vboxhost/build_in_tmp \
         --use-module-symvers /tmp/vboxdrv-Module.symvers \
         --module-source `pwd`/src/vboxhost/vboxpci \
-        KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT CC="$CC" -j4 \
+        KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT $VBOX_EXTRA_FLAGS -j4 \
         %INSTMOD%
     fi
   fi
@@ -175,8 +174,7 @@ PATH="$old_path"
 unset old_path
 %endif
 %if "%BUILDREL%" == "openSUSE156"
-export CC="$OLD_CC"
-unset OLD_CC
+unset VBOX_EXTRA_FLAGS
 %endif
 rm -r src
 %endif
