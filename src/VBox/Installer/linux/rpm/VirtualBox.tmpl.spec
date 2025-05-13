@@ -1,4 +1,4 @@
-# $Id: VirtualBox.tmpl.spec 108216 2025-02-05 12:06:23Z vadim.galitsyn@oracle.com $
+# $Id: VirtualBox.tmpl.spec 109518 2025-05-13 14:41:43Z vadim.galitsyn@oracle.com $
 ## @file
 # Spec file for creating VirtualBox rpm packages
 #
@@ -136,29 +136,35 @@ mv virtualbox.xml $RPM_BUILD_ROOT/usr/share/mime/packages
 old_path="$PATH"
 PATH=${PATH#/opt/rh/devtoolset-4/root/usr/bin:}
 %endif
+%if "%BUILDREL%" == "openSUSE156"
+# For openSUSE156 we need GCC 10+ to build Qt 6.8 related code. However,
+# kernel modules need be built with older GCC.
+OLD_CC="$CC"
+export CC=gcc-7
+%endif
 for d in /lib/modules/*; do
   if [ -L $d/build ]; then
     rm -f /tmp/vboxdrv-Module.symvers
     ./src/vboxhost/build_in_tmp \
       --save-module-symvers /tmp/vboxdrv-Module.symvers \
       --module-source `pwd`/src/vboxhost/vboxdrv \
-      KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT -j4 \
+      KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT CC="$CC" -j4 \
       %INSTMOD%
     ./src/vboxhost/build_in_tmp \
       --use-module-symvers /tmp/vboxdrv-Module.symvers \
       --module-source `pwd`/src/vboxhost/vboxnetflt \
-      KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT -j4 \
+      KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT CC="$CC" -j4 \
       %INSTMOD%
     ./src/vboxhost/build_in_tmp \
       --use-module-symvers /tmp/vboxdrv-Module.symvers \
       --module-source `pwd`/src/vboxhost/vboxnetadp \
-      KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT -j4 \
+      KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT CC="$CC" -j4 \
       %INSTMOD%
     if [ -e `pwd`/src/vboxhost/vboxpci ]; then
       ./src/vboxhost/build_in_tmp \
         --use-module-symvers /tmp/vboxdrv-Module.symvers \
         --module-source `pwd`/src/vboxhost/vboxpci \
-        KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT -j4 \
+        KBUILD_VERBOSE= KERN_VER=$(basename $d) INSTALL_MODULE_PATH=$RPM_BUILD_ROOT CC="$CC" -j4 \
         %INSTMOD%
     fi
   fi
@@ -167,6 +173,10 @@ done
 # For el7 restore PATH, see above.
 PATH="$old_path"
 unset old_path
+%endif
+%if "%BUILDREL%" == "openSUSE156"
+export CC="$OLD_CC"
+unset OLD_CC
 %endif
 rm -r src
 %endif
