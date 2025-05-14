@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c 109499 2025-05-12 12:21:43Z vadim.galitsyn@oracle.com $ */
+/* $Id: SUPDrv-linux.c 109524 2025-05-14 10:16:16Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -1744,15 +1744,17 @@ SUPR0DECL(bool) SUPR0FpuBegin(bool fCtxHook)
      */
     Assert(fCtxHook || !RTThreadPreemptIsEnabled(NIL_RTTHREAD));
     kernel_fpu_begin();
-# if 0 /* Always do it for now for better test coverage. */
+#  if RTLNX_VER_MIN(6,15,0) /* fpregs_unlock may do more than just preempt_enable, so only when necessary now. */
     if (fCtxHook)
 # endif
-# if RTLNX_VER_MIN(6,15,0)
+    {
+#  if RTLNX_VER_MIN(6,15,0)
         if (!irqs_disabled())
             fpregs_unlock();
-# else
+#  else
         preempt_enable();
-# endif
+#  endif
+    }
     return false; /** @todo Not sure if we have license to use any extended state, or
                    *        if we're limited to the SSE & x87 FPU. If it's the former,
                    *        we should return @a true and the caller can skip
@@ -1770,15 +1772,17 @@ SUPR0DECL(void) SUPR0FpuEnd(bool fCtxHook)
 #if RTLNX_VER_MIN(4,19,0)
     /* HACK ALERT! See SUPR0FpuBegin for an explanation of this. */
     Assert(!RTThreadPreemptIsEnabled(NIL_RTTHREAD));
-# if 0 /* Always do it for now for better test coverage. */
+#  if RTLNX_VER_MIN(6,15,0) /* fpregs_unlock may do more than just preempt_enable, so only when necessary now. */
     if (fCtxHook)
 # endif
-# if RTLNX_VER_MIN(6,15,0)
+    {
+#  if RTLNX_VER_MIN(6,15,0)
         if (!irqs_disabled())
             fpregs_lock();
-# else
+#  else
         preempt_disable();
-# endif
+#  endif
+    }
     kernel_fpu_end();
 #endif
 }
