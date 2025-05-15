@@ -1,4 +1,4 @@
-; $Id: VMMR0.inf 167769 2025-02-26 21:45:38Z klaus.espenlaub@oracle.com $
+; $Id: VMMR0.inf 168897 2025-05-15 19:59:23Z klaus.espenlaub@oracle.com $
 ;; @file
 ; VMMR0.inf - VirtualBox VMM drivers.
 ;
@@ -32,6 +32,7 @@ ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318}
 CatalogFile = VMMR0.cat
 Provider    = %ORACLE%
 ;edit-DriverVer  = 08/26/2008,2.00.0000
+PnpLockdown=1
 
 [SourceDisksNames]
 1=%VBoxVMM.DskDesc%,"",,
