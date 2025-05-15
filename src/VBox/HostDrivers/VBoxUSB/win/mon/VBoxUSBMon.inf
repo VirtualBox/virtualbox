@@ -1,4 +1,4 @@
-; $Id: VBoxUSBMon.inf 167764 2025-02-26 16:48:45Z andreas.loeffler@oracle.com $
+; $Id: VBoxUSBMon.inf 168896 2025-05-15 18:46:02Z klaus.espenlaub@oracle.com $
 ;; @file
 ; VBox USB Monitor driver - Installation file
 ;
@@ -42,7 +42,7 @@ Provider=%ORACLE%
 ;edit-DriverVer=08/26/2008,2.00.0000
 DriverPackageType=KernelService
 ;cat CatalogFile=VBoxUSBMon.cat
-;PnpLockdown=1
+PnpLockdown=1
 
 [SourceDisksNames]
 1=%VBoxUSBMon_DiskDesc%,
