@@ -1,4 +1,4 @@
-/* $Id: memobj-r0drv-linux.c 109574 2025-05-15 18:36:29Z knut.osmundsen@oracle.com $ */
+/* $Id: memobj-r0drv-linux.c 109575 2025-05-15 18:37:12Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Ring-0 Memory Objects, Linux.
  */
@@ -60,6 +60,18 @@
 #endif
 #ifndef PAGE_READONLY_EXEC
 # define PAGE_READONLY_EXEC PAGE_READONLY
+#endif
+
+#if RTLNX_VER_MIN(2,6,0)
+# ifdef __GFP_REPEAT
+#  define MY_GFP_REPEAT __GFP_REPEAT
+# elif defined (__GFP_RETRY_MAYFAIL) /* Renamed in commit dcda9b04713c3f6ff0875652924844fae28286ea . */
+#  define MY_GFP_REPEAT __GFP_RETRY_MAYFAIL
+# else /* This is to notice when the flags are renamed/moved around again. */
+#  error "Was this flag renamed again?"
+# endif
+# else
+#  define MY_GFP_REPEAT 0
 #endif
 
 /** @def IPRT_USE_ALLOC_VM_AREA_FOR_EXEC
@@ -411,10 +423,8 @@ static int rtR0MemObjLinuxAllocPages(PRTR0MEMOBJLNX *ppMemLnx, RTR0MEMOBJTYPE en
 
     if (cPages > 255)
     {
-# ifdef __GFP_REPEAT
         /* Try hard to allocate the memory, but the allocation attempt might fail. */
-        fFlagsLnx |= __GFP_REPEAT;
-# endif
+        fFlagsLnx |= MY_GFP_REPEAT;
 # ifdef __GFP_NOMEMALLOC
         /* Introduced with Linux 2.6.12: Don't use emergency reserves */
         fFlagsLnx |= __GFP_NOMEMALLOC;
