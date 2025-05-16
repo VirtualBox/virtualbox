@@ -1,4 +1,4 @@
-/* $Id: UIHelpViewer.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UIHelpViewer.cpp 168909 2025-05-16 15:29:41Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIHelpViewer class implementation.
  */
@@ -933,6 +933,7 @@ void UIHelpViewer::iterateDocumentImages()
                 continue;
             QHash<QString, DocumentImage>::iterator iterator = m_imageMap.insert(imageFormat.name(), DocumentImage());
             DocumentImage &image = iterator.value();
+            /* QtextImageFormat::width() returns something meaningful only if width is set explicitly in html code, else it returns 0:*/
             image.m_fInitialWidth = imageFormat.width();
             image.m_strName = imageFormat.name();
             image.m_textCursor = cursor;
@@ -968,6 +969,8 @@ void UIHelpViewer::scaleImages()
          iterator != m_imageMap.end(); ++iterator)
     {
         DocumentImage &image = *iterator;
+        if (image.m_fInitialWidth <= 0)
+            continue;
         QTextCursor cursor = image.m_textCursor;
         QTextCharFormat format = cursor.charFormat();
         if (!format.isImageFormat())
