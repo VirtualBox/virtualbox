@@ -1,4 +1,4 @@
-/* $Id: GICR3.cpp 168873 2025-05-15 07:47:37Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICR3.cpp 168898 2025-05-16 08:13:16Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC).
  */
@@ -108,6 +108,24 @@ static DECLCALLBACK(void) gicR3DbgInfo(PVM pVM, PCDBGFINFOHLP pHlp, const char *
 
 
 /**
+ * Gets alternate bits (starting at and including bit 1 to bit 63) from a 64-bit
+ * source into a 32-bit value.
+ *
+ * @returns The 32-bit result with alternate bits from the 64-bit source.
+ * @param uLo    The low 32-bits of the source value.
+ * @param uHi    The high 32-bits of the source value.
+ */
+DECL_FORCE_INLINE(uint32_t) gicGetAltBits(uint32_t uLo, uint32_t uHi)
+{
+    uint64_t const uVal = RT_MAKE_U64(uLo, uHi);
+    uint32_t uConfig = 0;
+    for (unsigned i = 1; i < sizeof(uint64_t) * 8; i += 2)
+        uConfig |= ((uVal >> i) & 1) << (i / 2);
+    return uConfig;
+}
+
+
+/**
  * Dumps GIC Distributor information.
  *
  * @param   pVM         The cross context VM structure.
@@ -122,6 +140,11 @@ static DECLCALLBACK(void) gicR3DbgInfoDist(PVM pVM, PCDBGFINFOHLP pHlp, const ch
     PPDMDEVINS pDevIns = pGic->CTX_SUFF(pDevIns);
     PCGICDEV   pGicDev = PDMDEVINS_2_DATA(pDevIns, PCGICDEV);
 
+    pHlp->pfnPrintf(pHlp, "GIC Distributor:\n");
+    pHlp->pfnPrintf(pHlp, "  fIntrGroup0Enabled = %RTbool\n", pGicDev->fIntrGroup0Enabled);
+    pHlp->pfnPrintf(pHlp, "  fIntrGroup1Enabled = %RTbool\n", pGicDev->fIntrGroup1Enabled);
+    pHlp->pfnPrintf(pHlp, "  fAffRoutingEnabled = %RTbool\n", pGicDev->fAffRoutingEnabled);
+
 #define GIC_DBGFINFO_DIST_INTR_BITMAP(a_Name, a_bmIntr) \
     do \
     { \
@@ -131,15 +154,29 @@ static DECLCALLBACK(void) gicR3DbgInfoDist(PVM pVM, PCDBGFINFOHLP pHlp, const ch
                             (a_bmIntr)[i],   (a_bmIntr)[i+1], (a_bmIntr)[i+2], (a_bmIntr)[i+3],  \
                             (a_bmIntr)[i+4], (a_bmIntr)[i+5], (a_bmIntr)[i+6], (a_bmIntr)[i+7]); \
     } while (0)
-
-    pHlp->pfnPrintf(pHlp, "GIC Distributor:\n");
-    pHlp->pfnPrintf(pHlp, "  fIntrGroup0Enabled = %RTbool\n", pGicDev->fIntrGroup0Enabled);
-    pHlp->pfnPrintf(pHlp, "  fIntrGroup1Enabled = %RTbool\n", pGicDev->fIntrGroup1Enabled);
-    pHlp->pfnPrintf(pHlp, "  fAffRoutingEnabled = %RTbool\n", pGicDev->fAffRoutingEnabled);
     GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrGroup",   pGicDev->bmIntrGroup);
     GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrEnabled", pGicDev->bmIntrEnabled);
     GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrPending", pGicDev->bmIntrPending);
     GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrActive",  pGicDev->bmIntrActive);
+#undef GIC_DBGFINFO_DIST_INTR_BITMAP
+
+    /* Interrupt config (edge-triggered or level-sensitive). */
+    {
+        pHlp->pfnPrintf(pHlp, "  Interrupt configs:\n");
+        for (uint32_t i = 0; i < RT_ELEMENTS(pGicDev->bmIntrConfig); i += 16)
+        {
+            uint32_t const bmCfg0 = gicGetAltBits(pGicDev->bmIntrConfig[i],      pGicDev->bmIntrConfig[i + 1]);
+            uint32_t const bmCfg1 = gicGetAltBits(pGicDev->bmIntrConfig[i + 2],  pGicDev->bmIntrConfig[i + 3]);
+            uint32_t const bmCfg2 = gicGetAltBits(pGicDev->bmIntrConfig[i + 4],  pGicDev->bmIntrConfig[i + 5]);
+            uint32_t const bmCfg3 = gicGetAltBits(pGicDev->bmIntrConfig[i + 6],  pGicDev->bmIntrConfig[i + 7]);
+            uint32_t const bmCfg4 = gicGetAltBits(pGicDev->bmIntrConfig[i + 8],  pGicDev->bmIntrConfig[i + 9]);
+            uint32_t const bmCfg5 = gicGetAltBits(pGicDev->bmIntrConfig[i + 10], pGicDev->bmIntrConfig[i + 11]);
+            uint32_t const bmCfg6 = gicGetAltBits(pGicDev->bmIntrConfig[i + 12], pGicDev->bmIntrConfig[i + 13]);
+            uint32_t const bmCfg7 = gicGetAltBits(pGicDev->bmIntrConfig[i + 14], pGicDev->bmIntrConfig[i + 15]);
+            pHlp->pfnPrintf(pHlp, "    [%2u..%-2u] %#010x %#010x %#010x %#010x %#010x %#010x %#010x %#010x\n", i / 2, i / 2 + 7,
+                                  bmCfg0, bmCfg1, bmCfg2, bmCfg3, bmCfg4, bmCfg5, bmCfg6, bmCfg7);
+        }
+    }
 
     /* Interrupt priorities.*/
     {
@@ -172,8 +209,8 @@ static DECLCALLBACK(void) gicR3DbgInfoDist(PVM pVM, PCDBGFINFOHLP pHlp, const ch
             uint8_t const idxIrm = i / cBits;
             uint8_t const iBit   = i % cBits;
             Assert(idxIrm < RT_ELEMENTS(pGicDev->bmIntrRoutingMode));   /* Paranoia. */
-            pHlp->pfnPrintf(pHlp, "    IntId[%4u..%-4u] = %u:%-3u %u:%-3u %u:%-3u %u:%-3u %u:%-3u %u:%-3u %u:%-3u %u:%-3u"
-                                  "    IntId[%4u..%-4u] = %u:%-3u %u:%-3u %u:%-3u %u:%-3u %u:%-3u %u:%-3u %u:%-3u %u:%-3u\n",
+            pHlp->pfnPrintf(pHlp, "    IntId[%4u..%-4u] = %u:%u %u:%u %u:%u %u:%u %u:%u %u:%u %u:%u %u:%u"
+                                  "    IntId[%4u..%-4u] = %u:%u %u:%u %u:%u %u:%u %u:%u %u:%u %u:%u %u:%u\n",
                                   gicDistGetIntIdFromIndex(i),                            gicDistGetIntIdFromIndex(i + 7),
                                   pGicDev->bmIntrRoutingMode[idxIrm] & RT_BIT(iBit + 0),  pGicDev->au32IntrRouting[i],
                                   pGicDev->bmIntrRoutingMode[idxIrm] & RT_BIT(iBit + 1),  pGicDev->au32IntrRouting[i + 1],
@@ -194,8 +231,6 @@ static DECLCALLBACK(void) gicR3DbgInfoDist(PVM pVM, PCDBGFINFOHLP pHlp, const ch
                                   pGicDev->bmIntrRoutingMode[idxIrm] & RT_BIT(iBit + 15), pGicDev->au32IntrRouting[i + 15]);
         }
     }
-
-#undef GIC_DBGFINFO_DIST_INTR_BITMAP
 }
 
 
@@ -227,6 +262,14 @@ static DECLCALLBACK(void) gicR3DbgInfoReDist(PVM pVM, PCDBGFINFOHLP pHlp, const 
     pHlp->pfnPrintf(pHlp, "  bmIntrPending[0..2] = %#010x %#010x %#010x\n", GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(bmIntrPending));
     pHlp->pfnPrintf(pHlp, "  bmIntrActive[0..2]  = %#010x %#010x %#010x\n", GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(bmIntrActive));
 #undef GIC_DBGFINFO_REDIST_INTR_BITMAPS
+
+    /* Interrupt config (edge-triggered or level-sensitive). */
+    {
+        uint32_t const bmCfg0 = gicGetAltBits(pGicCpu->bmIntrConfig[0], pGicCpu->bmIntrConfig[1]);
+        uint32_t const bmCfg1 = gicGetAltBits(pGicCpu->bmIntrConfig[2], pGicCpu->bmIntrConfig[3]);
+        uint32_t const bmCfg2 = gicGetAltBits(pGicCpu->bmIntrConfig[4], pGicCpu->bmIntrConfig[5]);
+        pHlp->pfnPrintf(pHlp, "  Interrupt configs   = %#010x %#010x %#010x\n", bmCfg0, bmCfg1, bmCfg2);
+    }
 
     /* Interrupt priorities. */
     {
