@@ -1,4 +1,4 @@
-/* $Id: ARM_Apple_M2_Max.h 168599 2025-04-23 13:17:46Z knut.osmundsen@oracle.com $ */
+/* $Id: ARM_Apple_M2_Max.h 168912 2025-05-16 17:58:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPU database entry "Apple M2 Max".
  * Generated at 2025-04-22T09:46:58Z by VBoxCpuReport v7.1.97r168579 on linux.arm64.
@@ -113,6 +113,7 @@ static CPUMDBENTRYARM const g_Entry_ARM_Apple_M2_Max =
         /*.enmVendor    = */ CPUMCPUVENDOR_APPLE,
         /*.enmMicroarch = */ kCpumMicroarch_Apple_M2,
         /*.fFlags       = */ 0,
+        /*.enmEntryType = */ CPUMDBENTRYTYPE_ARM,
     },
     /*.paSysRegCmnVals  = */ NULL_ALONE(g_aCmnSysRegVals_ARM_Apple_M2_Max),
     /*.cSysRegCmnVals   = */ ZERO_ALONE(RT_ELEMENTS(g_aCmnSysRegVals_ARM_Apple_M2_Max)),

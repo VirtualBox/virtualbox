@@ -1,4 +1,4 @@
-/* $Id: ARM_Qualcomm_Snapdragon_X.h 168599 2025-04-23 13:17:46Z knut.osmundsen@oracle.com $ */
+/* $Id: ARM_Qualcomm_Snapdragon_X.h 168912 2025-05-16 17:58:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPU database entry "Qualcomm Snapdragon X".
  * Generated at 2025-04-21T11:23:38Z by VBoxCpuReport v7.1.97r168566 on win.arm64.
@@ -113,6 +113,7 @@ static CPUMDBENTRYARM const g_Entry_ARM_Qualcomm_Snapdragon_X =
         /*.enmVendor    = */ CPUMCPUVENDOR_QUALCOMM,
         /*.enmMicroarch = */ kCpumMicroarch_Qualcomm_Oryon,
         /*.fFlags       = */ 0,
+        /*.enmEntryType = */ CPUMDBENTRYTYPE_ARM,
     },
     /*.paSysRegCmnVals  = */ NULL_ALONE(g_aCmnSysRegVals_ARM_Qualcomm_Snapdragon_X),
     /*.cSysRegCmnVals   = */ ZERO_ALONE(RT_ELEMENTS(g_aCmnSysRegVals_ARM_Qualcomm_Snapdragon_X)),

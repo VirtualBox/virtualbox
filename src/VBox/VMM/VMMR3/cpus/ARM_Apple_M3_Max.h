@@ -1,4 +1,4 @@
-/* $Id: ARM_Apple_M3_Max.h 168708 2025-05-05 11:58:18Z knut.osmundsen@oracle.com $ */
+/* $Id: ARM_Apple_M3_Max.h 168912 2025-05-16 17:58:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPU database entry "Apple M3 Max".
  * Generated at 2025-05-02T20:19:41Z by VBoxCpuReport v7.1.97r168686 on darwin.arm64.
@@ -113,6 +113,7 @@ static CPUMDBENTRYARM const g_Entry_ARM_Apple_M3_Max =
         /*.enmVendor    = */ CPUMCPUVENDOR_APPLE,
         /*.enmMicroarch = */ kCpumMicroarch_Apple_M3,
         /*.fFlags       = */ 0,
+        /*.enmEntryType = */ CPUMDBENTRYTYPE_ARM,
     },
     /*.paSysRegCmnVals  = */ NULL_ALONE(g_aCmnSysRegVals_ARM_Apple_M3_Max),
     /*.cSysRegCmnVals   = */ ZERO_ALONE(RT_ELEMENTS(g_aCmnSysRegVals_ARM_Apple_M3_Max)),

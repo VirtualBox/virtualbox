@@ -1,4 +1,4 @@
-/* $Id: ARM_Apple_M1.h 168685 2025-05-01 02:20:31Z knut.osmundsen@oracle.com $ */
+/* $Id: ARM_Apple_M1.h 168912 2025-05-16 17:58:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPU database entry "Apple M1".
  * Generated at 2025-05-01T02:17:14Z by VBoxCpuReport v7.1.97r168636 on darwin.arm64.
@@ -113,6 +113,7 @@ static CPUMDBENTRYARM const g_Entry_ARM_Apple_M1 =
         /*.enmVendor    = */ CPUMCPUVENDOR_APPLE,
         /*.enmMicroarch = */ kCpumMicroarch_Apple_M1,
         /*.fFlags       = */ 0,
+        /*.enmEntryType = */ CPUMDBENTRYTYPE_ARM,
     },
     /*.paSysRegCmnVals  = */ NULL_ALONE(g_aCmnSysRegVals_ARM_Apple_M1),
     /*.cSysRegCmnVals   = */ ZERO_ALONE(RT_ELEMENTS(g_aCmnSysRegVals_ARM_Apple_M1)),
