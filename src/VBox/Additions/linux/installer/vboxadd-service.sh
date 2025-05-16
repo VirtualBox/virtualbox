@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: vboxadd-service.sh 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+# $Id: vboxadd-service.sh 168911 2025-05-16 16:06:57Z andreas.loeffler@oracle.com $
 ## @file
 # Linux Additions Guest Additions service daemon init script.
 #
@@ -74,7 +74,15 @@ daemon() {
 }
 
 killproc() {
-    killall $1
+    # On older (guest) OSes killall isn't available, so try using pkill instead.
+    if test -x "$(which killall 2>/dev/null)"; then
+        killall "$1"
+    elif test -x "$(which pkill 2>/dev/null)"; then
+        pkill "$1"
+    else
+        echo "Unable to determine kill binary; please report this bug!"
+        exit 1
+    fi
     rm -f $PIDFILE
 }
 
