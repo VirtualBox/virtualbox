@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # pylint: disable=too-many-lines
-# $Id: tdAddGuestCtrl.py 168902 2025-05-16 11:47:48Z andreas.loeffler@oracle.com $
+# $Id: tdAddGuestCtrl.py 168905 2025-05-16 12:39:49Z andreas.loeffler@oracle.com $
 
 """
 VirtualBox Validation Kit - Guest Control Tests.
@@ -38,7 +38,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 168902 $"
+__version__ = "$Revision: 168905 $"
 
 # Standard Python imports.
 import errno
@@ -1747,10 +1747,10 @@ class SubTstDrvAddGuestCtrl(base.SubTestDriverBase):
             sImagePath = '%s -vvvv --logfile %s' % (self.sPathVBoxServiceExeGst, sPathLogFile);
             # For newer revisions we use VBoxGuestInstallHelper.exe. Should work on all Windows versions.
             if  self.oTstDrv.fpApiVer >= 7.0 \
-            and str(self.oTstDrv.getGuestAdditionsRevision(oSession)) >= "166162":
+            and self.oTstDrv.getGuestAdditionsRevision(oSession) >= 166162:
                 sRegEditorExeBasePath = 'C:\\Program Files\\Oracle\\VirtualBox Guest Additions\\';
                 if  self.oTstDrv.fpApiVer >= 7.2 \
-                and str(self.oTstDrv.getGuestAdditionsRevision(oSession)) >= "168202":
+                and self.oTstDrv.getGuestAdditionsRevision(oSession) >= 168202:
                     sRegEditorExePath = sRegEditorExeBasePath + 'Tools\\VBoxGuestInstallHelper.exe';
                 else:
                     sRegEditorExePath = sRegEditorExeBasePath + 'VBoxGuestInstallHelper.exe';
