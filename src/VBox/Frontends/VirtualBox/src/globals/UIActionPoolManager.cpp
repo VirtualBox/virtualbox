@@ -1,4 +1,4 @@
-/* $Id: UIActionPoolManager.cpp 168877 2025-05-15 09:22:19Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIActionPoolManager.cpp 168908 2025-05-16 15:03:57Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIActionPoolManager class implementation.
  */
@@ -2759,7 +2759,7 @@ protected:
     }
 };
 
-/** Simple action extension, used as 'Perform Clear' action class. */
+/** Simple action extension, used as 'Perform Edit' action class. */
 class UIActionMenuManagerMediumPerformEdit : public UIActionSimple
 {
     Q_OBJECT;
@@ -2771,8 +2771,8 @@ public:
         : UIActionSimple(pParent)
     {
         setShortcutContext(Qt::WidgetWithChildrenShortcut);
-        setIcon(1, UIIconPool::iconSetFull(":/cd_modify_32px.png",          ":/cd_modify_16px.png",
-                                           ":/cd_modify_disabled_32px.png", ":/cd_modify_disabled_16px.png"));
+        setIcon(1, UIIconPool::iconSetFull(":/cd_edit_32px.png",          ":/cd_edit_16px.png",
+                                           ":/cd_edit_disabled_32px.png", ":/cd_edit_disabled_16px.png"));
 
     }
 
