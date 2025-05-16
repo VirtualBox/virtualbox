@@ -1,4 +1,4 @@
-/* $Id: main.c 167506 2025-02-12 21:24:43Z klaus.espenlaub@oracle.com $ */
+/* $Id: main.c 168914 2025-05-16 21:10:21Z klaus.espenlaub@oracle.com $ */
 /** @file
  * svnsync tool. Modified by Oracle.
  */
@@ -46,6 +46,7 @@
 #define SVNSYNC_PROP_EXTERNALS          SVNSYNC_PROP_PREFIX "externals"
 #define SVNSYNC_PROP_LICENSE            SVNSYNC_PROP_PREFIX "license"
 #define SVNSYNC_PROP_DEFAULT_PROCESS    SVNSYNC_PROP_PREFIX "default-process"
+#define SVNSYNC_PROP_CENSOR_AUTHOR      SVNSYNC_PROP_PREFIX "censor-author"
 #define SVNSYNC_PROP_REPLACE_EXTERNALS  SVNSYNC_PROP_PREFIX "replace-externals"
 #define SVNSYNC_PROP_REPLACE_LICENSE    SVNSYNC_PROP_PREFIX "replace-license"
 #define SVNSYNC_PROP_IGNORE_CHANGESET   SVNSYNC_PROP_PREFIX "ignore-changeset"
@@ -97,6 +98,7 @@ enum {
   svnsync_opt_auth_password,
   svnsync_opt_config_dir,
 #ifdef VBOX
+  svnsync_opt_censor_author,
   svnsync_opt_start_rev,
   svnsync_opt_default_process,
   svnsync_opt_replace_externals,
@@ -113,6 +115,7 @@ enum {
 
 #ifdef VBOX
 #define SVNSYNC_OPTS_INITIALIZE SVNSYNC_OPTS_DEFAULT, \
+  svnsync_opt_censor_author, \
   svnsync_opt_start_rev, \
   svnsync_opt_default_process, \
   svnsync_opt_replace_externals, \
@@ -176,6 +179,8 @@ static const apr_getopt_option_t svnsync_options[] =
     {"config-dir",     svnsync_opt_config_dir, 1,
                        N_("read user configuration files from directory ARG")},
 #ifdef VBOX
+    {"censor-author",  svnsync_opt_censor_author, 0,
+                       N_("ignore all revisions before ARG")},
     {"start-rev",      svnsync_opt_start_rev, 1,
                        N_("ignore all revisions before ARG")},
     {"default-process", svnsync_opt_default_process, 1,
@@ -202,6 +207,7 @@ typedef struct {
   const char *auth_password;
   const char *config_dir;
 #ifdef VBOX
+  svn_boolean_t censor_author;
   svn_revnum_t start_rev;
   const char *default_process;
   svn_boolean_t replace_externals;
@@ -501,6 +507,7 @@ copy_revprops(svn_ra_session_t *from_session,
               svn_revnum_t rev,
 #ifdef VBOX
               svn_revnum_t rev_to,
+              svn_boolean_t censor_author,
 #endif /* VBOX */
               svn_boolean_t sync,
               apr_pool_t *pool)
@@ -532,8 +539,10 @@ copy_revprops(svn_ra_session_t *from_session,
         saw_sync_props = TRUE;
       else
 #ifdef VBOX
-        if (strncmp(key, SVN_PROP_REVISION_AUTHOR,
-                    sizeof(SVN_PROP_REVISION_AUTHOR) - 1))
+        if (   (!censor_author || strncmp(key, SVN_PROP_REVISION_AUTHOR,
+                                          sizeof(SVN_PROP_REVISION_AUTHOR) - 1))
+            && ((rev_to != 1) || (rev == rev_to) || strncmp(key, SVN_PROP_REVISION_LOG,
+                                                            sizeof(SVN_PROP_REVISION_LOG)-1)))
           SVN_ERR(svn_ra_change_rev_prop2(to_session, rev_to, key, NULL, val, subpool));
 #else /* !VBOX */
         SVN_ERR(svn_ra_change_rev_prop(to_session, rev, key, val, subpool));
@@ -628,6 +637,7 @@ typedef struct {
   const svn_delta_editor_t *wrapped_editor;
   void *wrapped_edit_baton;
   svn_ra_session_t *from_session_prop;
+  svn_boolean_t censor_author;
   svn_revnum_t current;
   const char *default_process;
   svn_boolean_t replace_externals;
@@ -663,6 +673,8 @@ init_set_target_revision(void *edit_baton,
   initedit_baton_t *eb = edit_baton;
 
   DX(fprintf(stderr, "init set_target_revision %ld\n", target_revision);)
+  target_revision = 1;
+  DX(fprintf(stderr, "init override set_target_revision %ld\n", target_revision);)
   SVN_ERR(eb->wrapped_editor->set_target_revision(eb->wrapped_edit_baton,
                                                   target_revision, pool));
 
@@ -678,14 +690,16 @@ init_open_root(void *edit_baton,
   initedit_baton_t *eb = edit_baton;
   initdir_baton_t *db = apr_pcalloc(pool, sizeof(*db));
 
-  DX(fprintf(stderr, "init open_root\n");)
+  DX(fprintf(stderr, "init open_root %ld\n", base_revision);)
+  base_revision = 1;
+  DX(fprintf(stderr, "init override open_root %ld\n", base_revision);)
   SVN_ERR(get_props_sync(eb->from_session_prop, eb->default_process, TRUE,
                          FALSE,"", eb->current, &db->process,
                          &db->process_default, &db->process_recursive, pool));
   DX(fprintf(stderr, "  %s\n", db->process ? "EXPORT" : "IGNORE");)
   if (db->process)
     SVN_ERR(eb->wrapped_editor->open_root(eb->wrapped_edit_baton,
-                                          base_revision, pool,
+                                          base_revision - 1, pool,
                                           &db->wrapped_dir_baton));
 
   db->edit_baton = edit_baton;
@@ -925,6 +939,7 @@ get_init_editor(const svn_delta_editor_t *wrapped_editor,
                 svn_revnum_t start_rev,
                 svn_ra_session_t *prop_session,
                 const char *default_process,
+                svn_boolean_t censor_author,
                 svn_boolean_t replace_externals,
                 svn_boolean_t replace_license,
                 const svn_delta_editor_t **editor,
@@ -970,6 +985,7 @@ typedef struct {
   const char *to_url;
   apr_hash_t *config;
 #ifdef VBOX
+  svn_boolean_t censor_author;
   svn_revnum_t start_rev;
   const char *default_process;
   svn_boolean_t replace_externals;
@@ -1086,6 +1102,10 @@ do_initialize(svn_ra_session_t *to_session, void *b, apr_pool_t *pool)
   SVN_ERR(svn_ra_change_rev_prop2(to_session, 0, SVNSYNC_PROP_DEFAULT_PROCESS, NULL,
                                   svn_string_create(default_process, pool),
                                   pool));
+  if (baton->censor_author)
+    SVN_ERR(svn_ra_change_rev_prop2(to_session, 0,
+                                    SVNSYNC_PROP_CENSOR_AUTHOR, NULL,
+                                    svn_string_create("", pool), pool));
   if (baton->replace_externals)
     SVN_ERR(svn_ra_change_rev_prop2(to_session, 0,
                                     SVNSYNC_PROP_REPLACE_EXTERNALS, NULL,
@@ -1103,7 +1123,7 @@ do_initialize(svn_ra_session_t *to_session, void *b, apr_pool_t *pool)
      repos into the dest repos. */
 
 #ifdef VBOX
-  SVN_ERR(copy_revprops(from_session, to_session, 0, 0, FALSE, pool));
+  SVN_ERR(copy_revprops(from_session, to_session, 0, 0, baton->censor_author, FALSE, pool));
 #else /* !VBOX */
   SVN_ERR(copy_revprops(from_session, to_session, 0, FALSE, pool));
 #endif /* !VBOX */
@@ -1141,6 +1161,7 @@ do_initialize(svn_ra_session_t *to_session, void *b, apr_pool_t *pool)
 
     SVN_ERR(get_init_editor(commit_editor, commit_baton, baton->start_rev,
                             from_session_prop, baton->default_process,
+                            baton->censor_author,
                             baton->replace_externals, baton->replace_license,
                             &init_editor, &init_baton, pool));
 
@@ -1157,6 +1178,11 @@ do_initialize(svn_ra_session_t *to_session, void *b, apr_pool_t *pool)
                                svn_depth_infinity, TRUE, NULL, pool));
     SVN_ERR(reporter->finish_report(report_baton, pool));
   }
+
+  /* Finally, copy all non-svnsync revprops from rev start_rev of the source
+     repos into rev 1 of the dest repos. */
+
+  SVN_ERR(copy_revprops(from_session, to_session, baton->start_rev, 1, baton->censor_author, FALSE, pool));
 #endif /* VBOX */
 
   return SVN_NO_ERROR;
@@ -1192,6 +1218,7 @@ initialize_cmd(apr_getopt_t *os, void *b, apr_pool_t *pool)
 #ifdef VBOX
   baton.start_rev = opt_baton->start_rev;
   baton.default_process = opt_baton->default_process;
+  baton.censor_author = opt_baton->censor_author;
   baton.replace_externals = opt_baton->replace_externals;
   baton.replace_license = opt_baton->replace_license;
 #endif /* VBOX */
@@ -2390,7 +2417,7 @@ commit_callback(const svn_commit_info_t *commit_info,
  * with TO_SESSION).  Set LAST_MERGED_REV to the value of the property
  * which records the most recently synchronized revision.
 *** VBOX
- * Set START_REV_STR to the properly which records the starting revision.
+ * Set START_REV_STR to the property which records the starting revision.
 *** VBOX
  *
  * CALLBACKS is a vtable of RA callbacks to provide when creating
@@ -2482,6 +2509,8 @@ do_synchronize(svn_ra_session_t *to_session, void *b, apr_pool_t *pool)
   svn_string_t *currently_copying;
   svn_revnum_t to_latest, copying, last_merged;
 #ifdef VBOX
+  svn_string_t *censor_author_str;
+  svn_boolean_t censor_author;
   svn_revnum_t start_rev;
   svn_string_t *from_url;
   svn_string_t *default_process;
@@ -2504,6 +2533,9 @@ do_synchronize(svn_ra_session_t *to_session, void *b, apr_pool_t *pool)
                           &default_process, pool));
   if (!default_process)
     default_process = svn_string_create("export", pool);
+  SVN_ERR(svn_ra_rev_prop(to_session, 0, SVNSYNC_PROP_CENSOR_AUTHOR,
+                          &censor_author_str, pool));
+  censor_author = !!censor_author_str;
   SVN_ERR(svn_ra_rev_prop(to_session, 0, SVNSYNC_PROP_REPLACE_EXTERNALS,
                           &replace_externals_str, pool));
   replace_externals = !!replace_externals_str;
@@ -2580,7 +2612,7 @@ do_synchronize(svn_ra_session_t *to_session, void *b, apr_pool_t *pool)
 #ifdef VBOX
 /** @todo fix use of from/to revision numbers. */
               SVN_ERR(copy_revprops(from_session, to_session,
-                                    to_latest, to_latest, TRUE, pool));
+                                    to_latest, to_latest, censor_author, TRUE, pool));
 #else /* !VBOX */
               SVN_ERR(copy_revprops(from_session, to_session,
                                     to_latest, TRUE, pool));
@@ -2763,7 +2795,7 @@ do_synchronize(svn_ra_session_t *to_session, void *b, apr_pool_t *pool)
       if (SVN_IS_VALID_REVNUM(baton->committed_rev))
       {
         SVN_ERR(copy_revprops(from_session, to_session, current,
-                              baton->committed_rev, TRUE, subpool));
+                              baton->committed_rev, censor_author, TRUE, subpool));
 
         /* Add a revision cross-reference revprop visible to the public. */
         SVN_ERR(svn_ra_change_rev_prop2(to_session, baton->committed_rev,
@@ -2917,6 +2949,8 @@ do_copy_revprops(svn_ra_session_t *to_session, void *b, apr_pool_t *pool)
   svn_string_t *last_merged_rev;
 #ifdef VBOX
   svn_revnum_t start_rev;
+  svn_string_t *censor_author_str;
+  svn_boolean_t censor_author;
 #endif /* VBOX */
 
 #ifdef VBOX
@@ -2927,6 +2961,10 @@ do_copy_revprops(svn_ra_session_t *to_session, void *b, apr_pool_t *pool)
     return svn_error_create
       (APR_EINVAL, NULL, _("Cannot copy revprops for repositories using "
                            "the start-rev feature (unimplemented)"));
+
+  SVN_ERR(svn_ra_rev_prop(to_session, 0, SVNSYNC_PROP_CENSOR_AUTHOR,
+                          &censor_author_str, pool));
+  censor_author = !!censor_author_str;
 #else /* !VBOX */
   SVN_ERR(open_source_session(&from_session, &last_merged_rev, to_session,
                               baton->callbacks, baton->config, baton, pool));
@@ -2938,7 +2976,7 @@ do_copy_revprops(svn_ra_session_t *to_session, void *b, apr_pool_t *pool)
                            "been synchronized yet"));
 
 #ifdef VBOX
-  SVN_ERR(copy_revprops(from_session, to_session, baton->rev, baton->rev, FALSE, pool));
+  SVN_ERR(copy_revprops(from_session, to_session, baton->rev, baton->rev, censor_author, FALSE, pool));
 #else /* !VBOX */
   SVN_ERR(copy_revprops(from_session, to_session, baton->rev, FALSE, pool));
 #endif /* !VBOX */
@@ -3146,6 +3184,10 @@ main(int argc, const char *argv[])
             break;
 
 #ifdef VBOX
+          case svnsync_opt_censor_author:
+            opt_baton.censor_author = TRUE;
+            break;
+
           case svnsync_opt_start_rev:
             opt_baton.start_rev = SVN_STR_TO_REV(opt_arg);
             break;
