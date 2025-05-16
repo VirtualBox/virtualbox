@@ -1,4 +1,4 @@
-; $Id: VBoxNetAdp6.inf 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+; $Id: VBoxNetAdp6.inf 109587 2025-05-16 15:58:06Z klaus.espenlaub@oracle.com $
 ;; @file
 ; VBoxNetAdp6.inf - VirtualBox NDIS6 Miniport Driver inf file
 ;
@@ -43,6 +43,7 @@ Class       = Net
 ClassGUID   = {4D36E972-E325-11CE-BFC1-08002BE10318}
 Provider    = %ORACLE%
 ;edit-DriverVer=10/23/2014,1.0.1.0
+PnpLockdown=1
 
 
 [Manufacturer]

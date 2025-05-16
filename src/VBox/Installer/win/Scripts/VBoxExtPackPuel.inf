@@ -1,4 +1,4 @@
-; $Id: VBoxExtPackPuel.inf 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+; $Id: VBoxExtPackPuel.inf 109587 2025-05-16 15:58:06Z klaus.espenlaub@oracle.com $
 ;; @file
 ; VBoxExtPackPuel - VirtualBox PUEL ExtPack drivers.
 ;
@@ -32,6 +32,7 @@ ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318}
 CatalogFile = VBoxExtPackPuel.cat
 Provider    = %ORACLE%
 ;edit-DriverVer  = 08/26/2008,2.00.0000
+PnpLockdown=1
 
 [SourceDisksNames]
 1=%VBoxExtPackPuel.DskDesc%,"",,

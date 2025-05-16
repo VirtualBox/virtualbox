@@ -1,4 +1,4 @@
-; $Id: VBoxMouse.inf 107166 2024-11-26 09:03:23Z andreas.loeffler@oracle.com $
+; $Id: VBoxMouse.inf 109587 2025-05-16 15:58:06Z klaus.espenlaub@oracle.com $
 ;; @file
 ; INF file for installing the VBox Guest Mouse (driver for Windows NT5+).
 ;
@@ -33,7 +33,7 @@ Class=Mouse
 DriverPackageType=ClassFilter
 ;edit-DriverVer=08/26/2008,2.00.0000
 ;cat CatalogFile=VBoxMouse.cat
-;PnpLockdown=1
+PnpLockdown=1
 
 [SourceDisksNames]
 1 = %VBoxMouse_DiskDesc%,,,

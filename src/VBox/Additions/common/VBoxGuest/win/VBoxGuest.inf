@@ -1,4 +1,4 @@
-; $Id: VBoxGuest.inf 107177 2024-11-26 12:34:25Z andreas.loeffler@oracle.com $
+; $Id: VBoxGuest.inf 109587 2025-05-16 15:58:06Z klaus.espenlaub@oracle.com $
 ;; @file
 ; INF file for installing the VirtualBox Windows guest driver, XP and later.
 ;
@@ -42,7 +42,7 @@ Class=System
 DriverPackageType=PlugAndPlay
 ;edit-DriverVer=08/26/2008,2.00.0000
 ;cat CatalogFile=VBoxGuest.cat
-;PnpLockdown=1
+PnpLockdown=1
 
 [SourceDisksNames]
 1 = %VBoxGuest_MediaDesc%,,,
