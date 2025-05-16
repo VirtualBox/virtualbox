@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# $Id: utils.py 167305 2025-02-03 17:10:51Z ksenia.s.stepanova@oracle.com $
+# $Id: utils.py 168903 2025-05-16 12:31:15Z knut.osmundsen@oracle.com $
 # pylint: disable=too-many-lines
 
 """
@@ -39,7 +39,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 167305 $"
+__version__ = "$Revision: 168903 $"
 
 
 # Standard Python imports.
@@ -2144,18 +2144,178 @@ def stricmp(sFirst, sSecond):
     return 1;
 
 
+## RT_C_IS_PUNCT
+#return (unsigned)ch - 0x21U < 15U /* 21..2f */
+#    || (unsigned)ch - 0x3aU <  7U /* 3a..40 */
+#    || (unsigned)ch - 0x5bU <  6U /* 5a..60 */
+#    || (unsigned)ch - 0x7bU <  4U /* 7b..7e */;
+g_dVerCompPunct = {
+    #   21..2f:
+    '!',
+    '"',
+    '#',
+    '$',
+    '%',
+    '&',
+    '\'',
+    '(',
+    ')',
+    '*',
+    '+',
+    ',',
+    '-',
+    '.',
+    '/',
+    #   3a..40:
+    ':',
+    ';',
+    '<',
+    '=',
+    '>',
+    '?',
+    '@',
+    #   5a..60:
+    '[',
+    '\\',
+    ']',
+    '^',
+    '_',
+    '`',
+    #   7b..7e
+    '{',
+    '|',
+    '}',
+    '~',
+};
+
 def versionCompare(sVer1, sVer2):
     """
     Compares to version strings in a fashion similar to RTStrVersionCompare.
+
+    Note! The current code is a python translation of RTStrVersionCompare.
     """
 
-    ## @todo implement me!!
+    def rtStrVersionParseBlock(sStr):
+        """
+        return (fNumeric, iVal, sBlock, sVer)
+        """
 
-    if sVer1 == sVer2:
-        return 0;
-    if sVer1 < sVer2:
-        return -1;
-    return 1;
+        #
+        # Check for end-of-string.
+        #
+        if not sStr:
+            return (False, 0, '', '');
+
+        #
+        # Try convert the block to a number the simple way.
+        #
+        iValue   = 0;
+        fNumeric = sStr[0].isdigit();
+        if fNumeric:
+            cchBlock = 1;
+            while cchBlock < len(sStr) and sStr[cchBlock].isdigit():
+                cchBlock += 1;
+            sBlock = sStr[:cchBlock];
+            try:
+                iValue = int(sBlock);
+            except:
+                #print('dbg: int exception: %s' % (sBlock,))
+                fNumeric = False
+            ## @todo
+            #if (RT_FAILURE(rc) || rc == VWRN_NUMBER_TOO_BIG)
+            #{
+            #    AssertRC(rc);
+            #    fNumeric = False;
+            #    *pi32Value = 0;
+            #}
+        else:
+            #
+            # Find the end of the current string.  Make a special case for SVN
+            # revision numbers that immediately follows a release tag string.
+            #
+            cchBlock = 1;
+            while (    cchBlock < len(sStr)
+                   and not sStr[cchBlock].isdigit()
+                   and sStr[cchBlock] not in g_dVerCompPunct ):
+                cchBlock += 1;
+
+            if (    1 < cchBlock < len(sStr)
+                and sStr[cchBlock - 1] == 'r'
+                and sStr[cchBlock].isdigit()):
+                cchBlock -= 1;
+
+            #
+            # Translate standard pre release terms to negative values.
+            #
+            dTerms = {
+                "RC":      -100000,
+                "PRE":     -200000,
+                "GAMMA":   -300000,
+                "BETA":    -400000,
+                "ALPHA":   -500000,
+            };
+
+            sBlock = sStr[:cchBlock];
+            iValue = dTerms.get(sBlock.upper(), 0);
+            if iValue != 0:
+                #
+                # Does the prelease term have a trailing number?
+                # Add it assuming BETA == BETA1.
+                #
+                if cchBlock < len(sStr) and sStr[cchBlock].isdigit():
+                    offNum = cchBlock;
+                    cchBlock += 1;
+                    while cchBlock < len(sStr) and sStr[cchBlock].isdigit():
+                        cchBlock += 1;
+
+                    try:
+                        iTmp = int(sStr[offNum:cchBlock]);
+                        if iTmp != 0:
+                            iValue += iTmp - 1;
+                    except:
+                        cchBlock = offNum;
+                        #print('dbg: int exception: %s' % (sStr[offNum:cchBlock],))
+                    sBlock = sStr[:cchBlock];
+                fNumeric = True;
+
+        #
+        # Skip trailing punctuation.
+        #
+        if (    cchBlock < len(sStr)
+            and sStr[cchBlock] in g_dVerCompPunct):
+            return (fNumeric, iValue, sBlock, sStr[cchBlock + 1:]);
+        return (fNumeric, iValue, sBlock, sStr[cchBlock:]);
+
+
+    #
+    # Do a parallel parse of the strings.
+    #
+    #print('dbg: ver1=%s ver2=%s' % (sVer1, sVer2,));
+    while sVer1 or sVer2:
+        (fNumeric1, iVal1, sBlock1, sVer1) = rtStrVersionParseBlock(sVer1);
+        #print('dbg: 1: %s,%s,%s,%s' % (fNumeric1, iVal1, sBlock1, sVer1));
+        (fNumeric2, iVal2, sBlock2, sVer2) = rtStrVersionParseBlock(sVer2);
+        #print('dbg: 2: %s,%s,%s,%s' % (fNumeric2, iVal2, sBlock2, sVer2));
+
+        if fNumeric1 and fNumeric2:
+            if iVal1 != iVal2:
+                return -1 if iVal1 < iVal2 else 1;
+        elif (    fNumeric1 != fNumeric2
+              and (   (fNumeric1 and iVal1 == 0 and not sBlock2)
+                   or (fNumeric2 and iVal2 == 0 and not sBlock1) ) ):
+            pass; #/*else: 1.0 == 1.0.0.0.0. */;
+        elif (    fNumeric1 != fNumeric2
+              and (iVal1 if fNumeric1 else iVal2) < 0):
+            #/* Pre-release indicators are smaller than all other strings. */
+            return -1 if fNumeric1 else 1;
+        else:
+            sBlock1  = sBlock1.lower();
+            sBlock2  = sBlock2.lower();
+            if sBlock1 < sBlock2:
+                return -1;
+            if sBlock1 > sBlock2:
+                return 1;
+    return 0;
 
 
 def formatNumber(lNum, sThousandSep = ' '):
@@ -2592,6 +2752,78 @@ class BuildCategoryDataTestCase(unittest.TestCase):
             self.assertEqual(areBytesEqual(buffer(bytearray([0x30,0x31,0x32,0x33,0x34]), 1), b'1234'), True);
             self.assertEqual(areBytesEqual(buffer(bytearray([0x30,0x31,0x32,0x33,0x34]), 1),  '1234'), True);
             self.assertEqual(areBytesEqual(buffer(bytearray([0x30,0x31,0x32,0x33,0x34]), 1), u'1234'), True);
+
+    kaVerCompTests = (
+        # (pszVer1, pszVer2, iResult) - copied from tstRTStrVersion.cpp
+        ( "",           "",                 0  ),
+        ( "asdf",       "",                 1  ),
+        ( "asdf234",    "1.4.5",            1  ),
+        ( "12.foo006",  "12.6",             1  ),
+        ( "1",          "1",                0  ),
+        ( "1",          "100",              -1 ),
+        ( "100",        "1",                1  ),
+        ( "3",          "4",                -1 ),
+        ( "1",          "0.1",              1  ),
+        ( "1",          "0.0.0.0.10000",    1  ),
+        ( "0100",       "100",              0  ),
+        ( "1.0.0",      "1",                0  ),
+        ( "1.0.0",      "100.0.0",          -1 ),
+        ( "1",          "1.0.3.0",          -1 ),
+        ( "1.4.5",      "1.2.3",            1  ),
+        ( "1.2.3",      "1.4.5",            -1 ),
+        ( "1.2.3",      "4.5.6",            -1 ),
+        ( "1.0.4",      "1.0.3",            1  ),
+        ( "0.1",        "0.0.1",            1  ),
+        ( "0.0.1",      "0.1.1",            -1 ),
+        ( "3.1.0",      "3.0.14",           1  ),
+        ( "2.0.12",     "3.0.14",           -1 ),
+        ( "3.1",        "3.0.22",           1  ),
+        ( "3.0.14",     "3.1.0",            -1 ),
+        ( "45.63",      "04.560.30",        1  ),
+        ( "45.006",     "45.6",             0  ),
+        ( "23.206",     "23.06",            1  ),
+        ( "23.2",       "23.060",           -1 ),
+
+        ( "VirtualBox-2.0.8-Beta2",     "VirtualBox-2.0.8_Beta3-r12345",    -1 ),
+        ( "VirtualBox-2.2.4-Beta2",     "VirtualBox-2.2.2",                  1 ),
+        ( "VirtualBox-2.2.4-Beta3",     "VirtualBox-2.2.2-Beta4",            1 ),
+        ( "VirtualBox-3.1.8-Alpha1",    "VirtualBox-3.1.8-Alpha1-r61454",   -1 ),
+        ( "VirtualBox-3.1.0",           "VirtualBox-3.1.2_Beta1",           -1 ),
+        ( "3.1.0_BETA-r12345",          "3.1.2",                            -1 ),
+        ( "3.1.0_BETA1r12345",          "3.1.0",                            -1 ),
+        ( "3.1.0_BETAr12345",           "3.1.0",                            -1 ),
+        ( "3.1.0_BETA-r12345",          "3.1.0",                            -1 ),
+        ( "3.1.0_BETA-r12345",          "3.1.0",                            -1 ),
+        ( "3.1.0_BETA-r12345",          "3.1.0.0",                          -1 ),
+        ( "3.1.0_BETA",                 "3.1.0.0",                          -1 ),
+        ( "3.1.0_BETA1",                "3.1.0",                            -1 ),
+        ( "3.1.0_BETA-r12345",          "3.1.0r12345",                      -1 ),
+        ( "3.1.0_BETA1-r12345",         "3.1.0_BETA-r12345",                 0 ),
+        ( "3.1.0_BETA1-r12345",         "3.1.0_BETA1-r12345",                0 ),
+        ( "3.1.0_BETA2-r12345",         "3.1.0_BETA1-r12345",                1 ),
+        ( "3.1.0_BETA2-r12345",         "3.1.0_BETA999-r12345",             -1 ),
+        ( "3.1.0_BETA2",                "3.1.0_ABC",                        -1 ), # ABC isn't indicating a prerelease, BETA does.
+        ( "3.1.0_BETA",                 "3.1.0_ATEB",                       -1 ),
+        ( "4.0.0_ALPHAr68482",          "4.0.0_ALPHAr68483",                -1 ),
+        ( "4.0.0_ALPHA1r68482",         "4.0.0_ALPHAr68482",                 0 ),
+        ( "4.0.0_ALPHA-r68482",         "4.0.0_ALPHAr68482",                 0 ),
+        ( "4.0.0_ALPHAr68483",          "4.0.0_BETAr68783",                 -1 ),
+        ( "4.0.0_ALPHAr68483",          "4.0.0_BETA1r68783",                -1 ),
+        ( "4.0.0_ALPHAr68483",          "4.0.0_BETA2r68783",                -1 ),
+        ( "4.0.0_ALPHAr68483",          "4.0.0_BETA2r68784",                -1 ),
+        ( "4.0.6",                      "4.0.6_Ubuntu",                     -1 ), # Without stripped guest OS string (Ubuntu).
+        ( "4.0.6_Windows",              "4.0.6",                             1 ), # Without stripped guest OS string (Windows).
+        ( "4.1.6r74567",                "4.1.6r74567",                       0 ),
+        ( "4.1.7r74567",                "4.1.6r74567",                       1 ),
+        ( "4.1.5r74567",                "4.1.6r74567",                      -1 ),
+        ( "4.1.6r74567-ENTERPRISE",     "4.1.6r74567",                       1 ), # The tagged version is "newer".
+    );
+
+    def testVersionCompare(self):
+        for sVer1, sVer2, iExpectedResult in self.kaVerCompTests:
+            self.assertEqual( versionCompare(sVer1, sVer2), iExpectedResult, 'sVer1=%s sVer2=%s' % (sVer1, sVer2,));
+            self.assertEqual(-versionCompare(sVer2, sVer1), iExpectedResult, 'sVer2=%s sVer1=%s' % (sVer2, sVer1,)); # pylint: disable=arguments-out-of-order
+
 
 if __name__ == '__main__':
     unittest.main();
