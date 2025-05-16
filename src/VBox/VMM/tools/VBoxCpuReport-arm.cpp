@@ -1,4 +1,4 @@
-/* $Id: VBoxCpuReport-arm.cpp 168724 2025-05-05 23:50:35Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxCpuReport-arm.cpp 168915 2025-05-16 21:41:53Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxCpuReport - Produces the basis for a CPU DB entry, x86 specifics.
  */
@@ -47,19 +47,6 @@
 
 
 /*********************************************************************************************************************************
-*   Structures and Typedefs                                                                                                      *
-*********************************************************************************************************************************/
-typedef struct PARTNUMINFO
-{
-    uint32_t        uPartNum;
-    CPUMMICROARCH   enmMicroarch;
-    const char     *pszName;
-    const char     *pszFullName;
-    CPUMCORETYPE    enmCoreType;
-} PARTNUMINFO;
-
-
-/*********************************************************************************************************************************
 *   Global Variables                                                                                                             *
 *********************************************************************************************************************************/
 static struct CPUCOREVARIATION
@@ -89,54 +76,6 @@ static uint32_t         g_cCmnSysRegVals = 0;
 static SUPARMSYSREGVAL  g_aCmnSysRegVals[256];
 
 static bool             g_fOtherSysRegSource = false;
-
-
-/** ARM CPU info by part number. */
-static PARTNUMINFO const g_aPartNumDbArm[] =
-{
-    { 0xfff,    kCpumMicroarch_Unknown,             "TODO",                 "TODO" },
-};
-
-/** Broadcom CPU info by part number. */
-static PARTNUMINFO const g_aPartNumDbBroadcom[] =
-{
-    { 0xfff,    kCpumMicroarch_Unknown,             "TODO",                 "TODO" },
-};
-
-/** Qualcomm CPU info by part number. */
-static PARTNUMINFO const g_aPartNumDbQualcomm[] =
-{
-    { 0x0d4b,   kCpumMicroarch_Qualcomm_Kyro,       "Qualcomm Snapdragon 8cx Gen 3",    "Qualcomm Snapdragon 8cx Gen 3 (Kryo Prime)",   kCpumCoreType_Efficiency  }, /* Guessing which part */    /*MIDR_EL1=0x410FD4B0*/
-    { 0x0d4c,   kCpumMicroarch_Qualcomm_Kyro,       "Qualcomm Snapdragon 8cx Gen 3",    "Qualcomm Snapdragon 8cx Gen 3 (Kryo Gold)",    kCpumCoreType_Performance }, /* is for which core... */   /*MIDR_EL1=0x410FD4C0*/
-    { 0x1001,   kCpumMicroarch_Qualcomm_Oryon,      "Qualcomm Snapdragon X",            "Qualcomm Snapdragon X (Oryon var 1)",          kCpumCoreType_Unknown     }, /*MIDR_EL1=0x511f0011 (perf?)*/
-    { 0x2001,   kCpumMicroarch_Qualcomm_Oryon,      "Qualcomm Snapdragon X",            "Qualcomm Snapdragon X (Oryon var 2)",          kCpumCoreType_Unknown     }, /*MIDR_EL1=0x512f0011 (eff?)*/
-};
-
-/** Apple CPU info by part number. */
-static PARTNUMINFO const g_aPartNumDbApple[] =
-{
-    { 0x022,    kCpumMicroarch_Apple_M1,            "Apple M1",             "Apple M1 (Icestorm)",          kCpumCoreType_Efficiency  },
-    { 0x023,    kCpumMicroarch_Apple_M1,            "Apple M1",             "Apple M1 (Firestorm)",         kCpumCoreType_Performance },
-    { 0x024,    kCpumMicroarch_Apple_M1,            "Apple M1 Pro",         "Apple M1 Pro (Icestorm)",      kCpumCoreType_Efficiency  },
-    { 0x025,    kCpumMicroarch_Apple_M1,            "Apple M1 Pro",         "Apple M1 Pro (Firestorm)",     kCpumCoreType_Performance },
-    { 0x028,    kCpumMicroarch_Apple_M1,            "Apple M1 Max",         "Apple M1 Max (Icestorm)",      kCpumCoreType_Efficiency  },
-    { 0x029,    kCpumMicroarch_Apple_M1,            "Apple M1 Max",         "Apple M1 Max (Firestorm)",     kCpumCoreType_Performance },
-    /** @todo some sources lists 0x30/31 as plain m2...   */
-    { 0x032,    kCpumMicroarch_Apple_M2,            "Apple M2",             "Apple M2 (Blizzard)",          kCpumCoreType_Efficiency  },
-    { 0x033,    kCpumMicroarch_Apple_M2,            "Apple M2",             "Apple M2 (Avalanche)",         kCpumCoreType_Performance },
-    { 0x034,    kCpumMicroarch_Apple_M2,            "Apple M2 Pro",         "Apple M2 Pro (Blizzard)",      kCpumCoreType_Efficiency  },
-    { 0x035,    kCpumMicroarch_Apple_M2,            "Apple M2 Pro",         "Apple M2 Pro (Avalanche)",     kCpumCoreType_Performance },
-    { 0x038,    kCpumMicroarch_Apple_M2,            "Apple M2 Max",         "Apple M2 Max (Blizzard)",      kCpumCoreType_Efficiency  },
-    { 0x039,    kCpumMicroarch_Apple_M2,            "Apple M2 Max",         "Apple M2 Max (Avalanche)",     kCpumCoreType_Performance },
-    { 0x048,    kCpumMicroarch_Apple_M3,            "Apple M3 Max",         "Apple M3 Max (Sawtooth)",      kCpumCoreType_Efficiency  }, /** @todo code names */
-    { 0x049,    kCpumMicroarch_Apple_M3,            "Apple M3 Max",         "Apple M3 Max (Everest)",       kCpumCoreType_Performance }, /** @todo code names */
-};
-
-/** Ampere CPU info by part number. */
-static PARTNUMINFO const g_aPartNumDbAmpere[] =
-{
-    { 0xfff,    kCpumMicroarch_Unknown,             "TODO",                 "TODO" },
-};
 
 
 /** @callback_impl{FNRTSORTCMP} */
@@ -801,89 +740,22 @@ int produceCpuReport(void)
         uint64_t const uMIdReg      = getSysRegVal(ARMV8_AARCH64_SYSREG_MIDR_EL1, iVar);
         g_aVariations[iVar].uMIdReg = uMIdReg;
 
-        uint8_t const  bImplementer = (uint8_t )((uMIdReg >> 24) & 0xff);
-        uint8_t  const bVariant     = (uint8_t )((uMIdReg >> 20) & 0xf);
-        uint16_t const uPartNum     = (uint16_t)((uMIdReg >>  4) & 0xfff);
-        //uint8_t const  bRevision    = (uint8_t )( uMIdReg        & 0x7);
-        uint16_t const uPartNumEx   = uPartNum | ((uint16_t)bVariant << 12);
-
-        /** @todo move this to CPUM or IPRT...   */
-        PARTNUMINFO const *paPartNums;
-        size_t             cPartNums;
-        uint32_t           uPartNumSearch = uPartNum;
-        switch (bImplementer)
-        {
-            case 0x41:
-                g_aVariations[iVar].enmVendor = CPUMCPUVENDOR_ARM;
-                paPartNums = g_aPartNumDbArm;
-                cPartNums  = RT_ELEMENTS(g_aPartNumDbArm);
-                break;
-
-            case 0x42:
-                g_aVariations[iVar].enmVendor = CPUMCPUVENDOR_BROADCOM;
-                paPartNums = g_aPartNumDbBroadcom;
-                cPartNums  = RT_ELEMENTS(g_aPartNumDbBroadcom);
-                break;
-
-            case 0x51:
-                g_aVariations[iVar].enmVendor = CPUMCPUVENDOR_QUALCOMM;
-                paPartNums = g_aPartNumDbQualcomm;
-                cPartNums  = RT_ELEMENTS(g_aPartNumDbQualcomm);
-                uPartNumSearch = uPartNumEx; /* include the variant in the search */
-                break;
-
-            case 0x61:
-                g_aVariations[iVar].enmVendor = CPUMCPUVENDOR_APPLE;
-                paPartNums = g_aPartNumDbApple;
-                cPartNums  = RT_ELEMENTS(g_aPartNumDbApple);
-                break;
-
-            case 0xc0:
-                g_aVariations[iVar].enmVendor = CPUMCPUVENDOR_AMPERE;
-                paPartNums = g_aPartNumDbAmpere;
-                cPartNums  = RT_ELEMENTS(g_aPartNumDbAmpere);
-                break;
-
-            default:
-                return RTMsgErrorRc(VERR_UNSUPPORTED_CPU, "Unknown ARM implementer: %#x (%s)", bImplementer, pszCpuName);
-        }
-
-        /* Look up the part number in the vendor table: */
-        g_aVariations[iVar].enmCoreType  = kCpumCoreType_Invalid;
-        g_aVariations[iVar].enmMicroarch = kCpumMicroarch_Invalid;
-        g_aVariations[iVar].pszName      = NULL;
-        g_aVariations[iVar].pszFullName  = NULL;
-        for (size_t i = 0; i < cPartNums; i++)
-            if (paPartNums[i].uPartNum == uPartNumSearch)
-            {
-                g_aVariations[iVar].enmCoreType  = paPartNums[i].enmCoreType;
-                g_aVariations[iVar].enmMicroarch = paPartNums[i].enmMicroarch;
-                g_aVariations[iVar].pszName      = paPartNums[i].pszName;
-                g_aVariations[iVar].pszFullName  = paPartNums[i].pszFullName;
-                break;
-            }
-        if (g_aVariations[iVar].enmMicroarch == kCpumMicroarch_Invalid)
-        {
-            rc = RTMsgErrorRc(VERR_UNSUPPORTED_CPU, "%s part number not found: %#x (MIDR_EL1=%#x%s%s)",
-                              CPUMCpuVendorName(g_aVariations[iVar].enmVendor), uPartNum, uMIdReg,
-                              *pszCpuName ? " " : "", pszCpuName);
+        rc = CPUMCpuIdDetermineArmV8MicroarchEx(uMIdReg,
 #ifdef RT_OS_DARWIN
-            /* Search by CPU name. */
-            if (pszCpuName && g_fOtherSysRegSource)
-                for (size_t i = 0; i < cPartNums; i++)
-                    if (   strcmp(paPartNums[i].pszName, pszCpuName) == 0
-                        || strcmp(paPartNums[i].pszFullName, pszCpuName) == 0)
-                    {
-                        g_aVariations[iVar].enmCoreType  = kCpumCoreType_Unknown;
-                        g_aVariations[iVar].enmMicroarch = paPartNums[i].enmMicroarch;
-                        g_aVariations[iVar].pszName      = paPartNums[i].pszName;
-                        g_aVariations[iVar].pszFullName  = paPartNums[i].pszName;
-                        break;
-                    }
-            if (g_aVariations[iVar].enmMicroarch == kCpumMicroarch_Invalid)
+                                                g_fOtherSysRegSource && *pszCpuName ? pszCpuName :
 #endif
-                return rc;
-        }
+                                                NULL,
+                                                &g_aVariations[iVar].enmMicroarch,
+                                                &g_aVariations[iVar].enmVendor,
+                                                &g_aVariations[iVar].enmCoreType,
+                                                &g_aVariations[iVar].pszName,
+                                                &g_aVariations[iVar].pszFullName);
+        if (RT_FAILURE(rc))
+            return RTMsgErrorRc(rc, "CPUMCpuIdDetermineArmV8MicroarchEx failed for %#RX64%s%s: %Rrc",
+                                uMIdReg, *pszCpuName ? " " : "", pszCpuName, rc);
+        if (rc != VINF_SUCCESS)
+             RTMsgWarning("%s part number not found (MIDR_EL1=%#x%s%s), matched by CPU name instead.",
+                          CPUMCpuVendorName(g_aVariations[iVar].enmVendor), uMIdReg, *pszCpuName ? " " : "", pszCpuName);
     }
 
     /*

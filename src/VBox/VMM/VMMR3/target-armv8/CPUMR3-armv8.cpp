@@ -1,4 +1,4 @@
-/* $Id: CPUMR3-armv8.cpp 168793 2025-05-09 07:50:57Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMR3-armv8.cpp 168915 2025-05-16 21:41:53Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU Monitor / Manager (ARMv8 variant).
  */
@@ -664,15 +664,15 @@ DECLHIDDEN(void) cpumR3InfoOneTarget(PVM pVM, PCVMCPU pVCpu, PCDBGFINFOHLP pHlp,
         case CPUMDUMPTYPE_TERSE:
             if (CPUMIsGuestIn64BitCodeEx(pCtx))
                 pHlp->pfnPrintf(pHlp,
-                    "x0=%016RX64 x1=%016RX64 x2=%016RX64 x3=%016RX64\n"
-                    "x4=%016RX64 x5=%016RX64 x6=%016RX64 x7=%016RX64\n"
-                    "x8=%016RX64 x9=%016RX64 x10=%016RX64 x11=%016RX64\n"
+                    " x0=%016RX64  x1=%016RX64  x2=%016RX64  x3=%016RX64\n"
+                    " x4=%016RX64  x5=%016RX64  x6=%016RX64  x7=%016RX64\n"
+                    " x8=%016RX64  x9=%016RX64 x10=%016RX64 x11=%016RX64\n"
                     "x12=%016RX64 x13=%016RX64 x14=%016RX64 x15=%016RX64\n"
                     "x16=%016RX64 x17=%016RX64 x18=%016RX64 x19=%016RX64\n"
                     "x20=%016RX64 x21=%016RX64 x22=%016RX64 x23=%016RX64\n"
                     "x24=%016RX64 x25=%016RX64 x26=%016RX64 x27=%016RX64\n"
                     "x28=%016RX64 x29=%016RX64 x30=%016RX64\n"
-                    "pc=%016RX64 pstate=%016RX64 %s\n"
+                    " pc=%016RX64 psr=%016RX64 %s\n"
                     "sp_el0=%016RX64 sp_el1=%016RX64\n",
                     pCtx->aGRegs[0],  pCtx->aGRegs[1],  pCtx->aGRegs[2],  pCtx->aGRegs[3],
                     pCtx->aGRegs[4],  pCtx->aGRegs[5],  pCtx->aGRegs[6],  pCtx->aGRegs[7],
@@ -691,18 +691,18 @@ DECLHIDDEN(void) cpumR3InfoOneTarget(PVM pVM, PCVMCPU pVCpu, PCDBGFINFOHLP pHlp,
         case CPUMDUMPTYPE_DEFAULT:
             if (CPUMIsGuestIn64BitCodeEx(pCtx))
                 pHlp->pfnPrintf(pHlp,
-                    "x0=%016RX64 x1=%016RX64 x2=%016RX64 x3=%016RX64\n"
-                    "x4=%016RX64 x5=%016RX64 x6=%016RX64 x7=%016RX64\n"
-                    "x8=%016RX64 x9=%016RX64 x10=%016RX64 x11=%016RX64\n"
+                    " x0=%016RX64  x1=%016RX64  x2=%016RX64  x3=%016RX64\n"
+                    " x4=%016RX64  x5=%016RX64  x6=%016RX64  x7=%016RX64\n"
+                    " x8=%016RX64  x9=%016RX64 x10=%016RX64 x11=%016RX64\n"
                     "x12=%016RX64 x13=%016RX64 x14=%016RX64 x15=%016RX64\n"
                     "x16=%016RX64 x17=%016RX64 x18=%016RX64 x19=%016RX64\n"
                     "x20=%016RX64 x21=%016RX64 x22=%016RX64 x23=%016RX64\n"
                     "x24=%016RX64 x25=%016RX64 x26=%016RX64 x27=%016RX64\n"
                     "x28=%016RX64 x29=%016RX64 x30=%016RX64\n"
-                    "pc=%016RX64 pstate=%016RX64 %s\n"
-                    "sp_el0=%016RX64 sp_el1=%016RX64 sctlr_el1=%016RX64\n"
-                    "tcr_el1=%016RX64 ttbr0_el1=%016RX64 ttbr1_el1=%016RX64\n"
-                    "vbar_el1=%016RX64 elr_el1=%016RX64 esr_el1=%016RX64\n",
+                    " pc=%016RX64 psr=%016RX64 %s\n"
+                    "  sp_el0=%016RX64    sp_el1=%016RX64 sctlr_el1=%016RX64\n"
+                    " tcr_el1=%016RX64 ttbr0_el1=%016RX64 ttbr1_el1=%016RX64\n"
+                    "vbar_el1=%016RX64   elr_el1=%016RX64   esr_el1=%016RX64\n",
                     pCtx->aGRegs[0],  pCtx->aGRegs[1],  pCtx->aGRegs[2],  pCtx->aGRegs[3],
                     pCtx->aGRegs[4],  pCtx->aGRegs[5],  pCtx->aGRegs[6],  pCtx->aGRegs[7],
                     pCtx->aGRegs[8],  pCtx->aGRegs[9],  pCtx->aGRegs[10], pCtx->aGRegs[11],
@@ -722,25 +722,25 @@ DECLHIDDEN(void) cpumR3InfoOneTarget(PVM pVM, PCVMCPU pVCpu, PCDBGFINFOHLP pHlp,
         case CPUMDUMPTYPE_VERBOSE:
             if (CPUMIsGuestIn64BitCodeEx(pCtx))
                 pHlp->pfnPrintf(pHlp,
-                    "x0=%016RX64 x1=%016RX64 x2=%016RX64 x3=%016RX64\n"
-                    "x4=%016RX64 x5=%016RX64 x6=%016RX64 x7=%016RX64\n"
-                    "x8=%016RX64 x9=%016RX64 x10=%016RX64 x11=%016RX64\n"
+                    " x0=%016RX64  x1=%016RX64  x2=%016RX64  x3=%016RX64\n"
+                    " x4=%016RX64  x5=%016RX64  x6=%016RX64  x7=%016RX64\n"
+                    " x8=%016RX64  x9=%016RX64 x10=%016RX64 x11=%016RX64\n"
                     "x12=%016RX64 x13=%016RX64 x14=%016RX64 x15=%016RX64\n"
                     "x16=%016RX64 x17=%016RX64 x18=%016RX64 x19=%016RX64\n"
                     "x20=%016RX64 x21=%016RX64 x22=%016RX64 x23=%016RX64\n"
                     "x24=%016RX64 x25=%016RX64 x26=%016RX64 x27=%016RX64\n"
                     "x28=%016RX64 x29=%016RX64 x30=%016RX64\n"
-                    "pc=%016RX64 pstate=%016RX64 %s\n"
-                    "sp_el0=%016RX64 sp_el1=%016RX64 sctlr_el1=%016RX64\n"
-                    "tcr_el1=%016RX64 ttbr0_el1=%016RX64 ttbr1_el1=%016RX64\n"
-                    "vbar_el1=%016RX64 elr_el1=%016RX64 esr_el1=%016RX64\n"
-                    "contextidr_el1=%016RX64 tpidrr0_el0=%016RX64\n"
-                    "tpidr_el0=%016RX64 tpidr_el1=%016RX64\n"
-                    "far_el1=%016RX64 mair_el1=%016RX64 par_el1=%016RX64\n"
-                    "cntv_ctl_el0=%016RX64 cntv_val_el0=%016RX64\n"
-                    "afsr0_el1=%016RX64 afsr0_el1=%016RX64 amair_el1=%016RX64\n"
-                    "cntkctl_el1=%016RX64 cpacr_el1=%016RX64 csselr_el1=%016RX64\n"
-                    "mdccint_el1=%016RX64\n",
+                    " pc=%016RX64 psr=%016RX64 %s\n"
+                    "      sp_el0=%016RX64    sp_el1=%016RX64  sctlr_el1=%016RX64\n"
+                    "     tcr_el1=%016RX64 ttbr0_el1=%016RX64  ttbr1_el1=%016RX64\n"
+                    "    vbar_el1=%016RX64   elr_el1=%016RX64    esr_el1=%016RX64\n"
+                    " tpidrr0_el0=%016RX64                        contextidr_el1=%016RX64\n"
+                    "   tpidr_el0=%016RX64 tpidr_el1=%016RX64\n"
+                    "     far_el1=%016RX64  mair_el1=%016RX64    par_el1=%016RX64\n"
+                    "cntv_ctl_el0=%016RX64                          cntv_val_el0=%016RX64\n"
+                    "   afsr0_el1=%016RX64 afsr0_el1=%016RX64  amair_el1=%016RX64\n"
+                    " cntkctl_el1=%016RX64 cpacr_el1=%016RX64 csselr_el1=%016RX64\n"
+                    " mdccint_el1=%016RX64\n",
                     pCtx->aGRegs[0],  pCtx->aGRegs[1],  pCtx->aGRegs[2],  pCtx->aGRegs[3],
                     pCtx->aGRegs[4],  pCtx->aGRegs[5],  pCtx->aGRegs[6],  pCtx->aGRegs[7],
                     pCtx->aGRegs[8],  pCtx->aGRegs[9],  pCtx->aGRegs[10], pCtx->aGRegs[11],
@@ -753,7 +753,7 @@ DECLHIDDEN(void) cpumR3InfoOneTarget(PVM pVM, PCVMCPU pVCpu, PCDBGFINFOHLP pHlp,
                     pCtx->aSpReg[0].u64, pCtx->aSpReg[1].u64, pCtx->Sctlr.u64,
                     pCtx->Tcr.u64, pCtx->Ttbr0.u64, pCtx->Ttbr1.u64,
                     pCtx->VBar.u64, pCtx->Elr.u64, pCtx->Esr.u64,
-                    pCtx->ContextIdr.u64, pCtx->TpIdrRoEl0.u64,
+                    pCtx->TpIdrRoEl0.u64, pCtx->ContextIdr.u64,
                     pCtx->aTpIdr[0].u64, pCtx->aTpIdr[1].u64,
                     pCtx->Far.u64, pCtx->Mair.u64, pCtx->Par.u64,
                     pCtx->CntvCtlEl0, pCtx->CntvCValEl0,
@@ -791,7 +791,6 @@ DECLHIDDEN(void) cpumR3InfoOneTarget(PVM pVM, PCVMCPU pVCpu, PCDBGFINFOHLP pHlp,
             pHlp->pfnPrintf(pHlp, "APGAKey=%016RX64'%016RX64\n", pCtx->Apga.High.u64, pCtx->Apga.Low.u64);
             pHlp->pfnPrintf(pHlp, "APIAKey=%016RX64'%016RX64\n", pCtx->Apia.High.u64, pCtx->Apia.Low.u64);
             pHlp->pfnPrintf(pHlp, "APIBKey=%016RX64'%016RX64\n", pCtx->Apib.High.u64, pCtx->Apib.Low.u64);
-
             break;
     }
 }

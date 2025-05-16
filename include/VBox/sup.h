@@ -206,13 +206,24 @@ typedef struct SUPARMSYSREGVAL
     uint64_t            uValue;
     /** The register number (ARMV8_AARCH64_SYSREG_ID_CREATE). */
     uint32_t            idReg;
-    /** Reserved, zero. */
+    /** SUP_ARM_SYS_REG_VAL_F_XXX. */
     uint32_t            fFlags;
 } SUPARMSYSREGVAL;
 /** Pointer to an ARM system register value. */
 typedef SUPARMSYSREGVAL *PSUPARMSYSREGVAL;
 /** Pointer to a const ARM system register value. */
 typedef SUPARMSYSREGVAL const *PCSUPARMSYSREGVAL;
+
+/** @name  SUP_ARM_SYS_REG_VAL_F_XXX
+ * @note This is mostly for internal CPUM use.
+ * @{ */
+#define SUP_ARM_SYS_REG_VAL_F_FROM_CPU           UINT32_C(0x00000000) /**< Directly from the CPU. */
+#define SUP_ARM_SYS_REG_VAL_F_FROM_DB            UINT32_C(0x00000001) /**< From a CPU database entry. */
+#define SUP_ARM_SYS_REG_VAL_F_FROM_REGISTRY      UINT32_C(0x00000004) /**< From windows registry*/
+#define SUP_ARM_SYS_REG_VAL_F_FROM_SYSFS         UINT32_C(0x00000005) /**< From linux sysfs. */
+#define SUP_ARM_SYS_REG_VAL_F_FROM_USERLAND      UINT32_C(0x00000006) /**< From linux userland MRS emulation, i.e. sanitized. */
+#define SUP_ARM_SYS_REG_VAL_F_FROM_MASK          UINT32_C(0x00000007) /**< Register source mask. */
+/** @} */
 
 #if defined(RT_ARCH_ARM64) || defined(DOXYGEN_RUNNING)
 /** @name SUP_ARM_SYS_REG_F_XXX - Flags for SUPR3ArmQuerySysRegs.

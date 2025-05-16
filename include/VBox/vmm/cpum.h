@@ -1007,8 +1007,10 @@ typedef struct CPUMFEATURESARMV8
     uint32_t        fAsid16 : 1;
     /** Supports Advanced SIMD PMULL instructions (FEAT_PMULL). */
     uint32_t        fPmull : 1;
-    /** Supports CP15Disable2 (FEAT_CP15DISABLE2). */
-    uint32_t        fCp15Disable2 : 1;
+#if 0 /* AArch32 EL3 stuff which doesn't seem to be detectable outside CPU specs...  */
+    /** Supports CP15SDisable2 (_FEAT_CP15SDISABLE2). */
+    uint32_t        fCp15SDisable2 : 1;
+#endif
     /** Supports Cache Speculation Variant 2 (FEAT_CSV2). */
     uint32_t        fCsv2 : 1;
     /** Supports Cache Speculation Variant 2, version 1.1 (FEAT_CSV2_1p1). */
@@ -1027,8 +1029,10 @@ typedef struct CPUMFEATURESARMV8
     uint32_t        fFp : 1;
     /** Supports IVIPT Extensions (FEAT_IVIPT). */
     uint32_t        fIvipt : 1;
-    /** Supports PC Sample-based Profiling Extension (FEAT_PCSRv8). */
+#if 0 /* difficult to detect (external reg) */
+    /** Supports PC Sample-based Profiling Extension (_FEAT_PCSRv8). */
     uint32_t        fPcsrV8 : 1;
+#endif
     /** Supports Speculation Restrictions instructions (FEAT_SPECRES). */
     uint32_t        fSpecres : 1;
     /** Supports Reliability, Availability, and Serviceability (RAS) Extension (FEAT_RAS). */
@@ -1107,8 +1111,10 @@ typedef struct CPUMFEATURESARMV8
     uint32_t        fLva : 1;
     /** Supports Memory Partitioning and Monitoring Extension (FEAT_MPAM). */
     uint32_t        fMpam : 1;
-    /** Supports PC Sample-based Profiling Extension, version 8.2 (FEAT_PCSRv8p2). */
+#if 0 /* difficult to detect (external reg) */
+    /** Supports PC Sample-based Profiling Extension, version 8.2 (_FEAT_PCSRv8p2). */
     uint32_t        fPcsrV8p2 : 1;
+#endif
     /** Supports Advanced SIMD SHA3 instructions (FEAT_SHA3). */
     uint32_t        fSha3 : 1;
     /** Supports Advanced SIMD SHA512 instructions (FEAT_SHA512). */
@@ -1135,8 +1141,10 @@ typedef struct CPUMFEATURESARMV8
     uint32_t        fCcidx : 1;
     /** Supports Floating-point complex number instructions (FEAT_FCMA). */
     uint32_t        fFcma : 1;
-    /** Supports Debug over Powerdown (FEAT_DoPD). */
+#if 0 /* difficult to detect (external reg) */
+    /** Supports Debug over Powerdown (_FEAT_DoPD). */
     uint32_t        fDopd : 1;
+#endif
     /** Supports Enhanced pointer authentication (FEAT_EPAC). */
     uint32_t        fEpac : 1;
     /** Supports Faulting on AUT* instructions (FEAT_FPAC). */
@@ -1161,8 +1169,10 @@ typedef struct CPUMFEATURESARMV8
     uint32_t        fSpeV1p1 : 1;
     /** Supports Activity Monitor Extension, version 1 (FEAT_AMUv1). */
     uint32_t        fAmuV1 : 1;
-    /** Supports Generic Counter Scaling (FEAT_CNTSC). */
+#if 0 /* difficult to detect (external reg) */
+    /** Supports Generic Counter Scaling (_FEAT_CNTSC). */
     uint32_t        fCntsc : 1;
+#endif
     /** Supports Debug v8.4 (FEAT_Debugv8p4). */
     uint32_t        fDebugV8p4 : 1;
     /** Supports Double Fault Extension (FEAT_DoubleFault). */
@@ -1367,12 +1377,14 @@ typedef struct CPUMFEATURESARMV8
     uint32_t        fPmuV3Th : 1;
     /** Supports Armv8.8 PMU extensions (FEAT_PMUv3p8). */
     uint32_t        fPmuV3p8 : 1;
-    /** Supports 64-bit external interface to the Performance Monitors (FEAT_PMUv3_EXT64). */
+#if 0 /* difficult to detect, so ignore for now */
+    /** Supports 64-bit external interface to the Performance Monitors (_FEAT_PMUv3_EXT64). */
     uint32_t        fPmuV3Ext64 : 1;
-    /** Supports 32-bit external interface to the Performance Monitors (FEAT_PMUv3_EXT32). */
+    /** Supports 32-bit external interface to the Performance Monitors (_FEAT_PMUv3_EXT32). */
     uint32_t        fPmuV3Ext32 : 1;
-    /** Supports External interface to the Performance Monitors (FEAT_PMUv3_EXT). */
+    /** Supports External interface to the Performance Monitors (_FEAT_PMUv3_EXT). */
     uint32_t        fPmuV3Ext : 1;
+#endif
     /** Supports Trapping support for RNDR/RNDRRS (FEAT_RNG_TRAP). */
     uint32_t        fRngTrap : 1;
     /** Supports Statistical Profiling Extension version 1.3 (FEAT_SPEv1p3). */
@@ -1445,10 +1457,14 @@ typedef struct CPUMFEATURESARMV8
     uint32_t        fMteAsymFault : 1;
     /** Supports Memory Tagging asynchronous faulting (FEAT_MTE_ASYNC). */
     uint32_t        fMteAsync : 1;
-    /** Supports Allocation tag access permission (FEAT_MTE_PERM_S1). */
+#if 0 /* No documentation for this. Removed? */
+    /** Supports Allocation tag access permission (_FEAT_MTE_PERM_S1). */
     uint32_t        fMtePermS1 : 1;
-    /** Supports Armv8.9 PC Sample-based Profiling Extension (FEAT_PCSRv8p9). */
+#endif
+#if 0 /* difficult to detect (external reg) */
+    /** Supports Armv8.9 PC Sample-based Profiling Extension (_FEAT_PCSRv8p9). */
     uint32_t        fPcsrV8p9 : 1;
+#endif
     /** Supports Permission model enhancements (FEAT_S1PIE). */
     uint32_t        fS1Pie : 1;
     /** Supports Permission model enhancements (FEAT_S2PIE). */
@@ -1471,8 +1487,10 @@ typedef struct CPUMFEATURESARMV8
     uint32_t        fPrfmSlc : 1;
     /** Supports RAS version 2 (FEAT_RASv2). */
     uint32_t        fRasV2 : 1;
-    /** Supports RAS version 2 System Architecture (FEAT_RASSAv2). */
+#if 0 /* difficult to detect */
+    /** Supports RAS version 2 System Architecture (_FEAT_RASSAv2). */
     uint32_t        fRasSaV2 : 1;
+#endif
     /** Supports for Range Prefetch Memory instruction (FEAT_RPRFM). */
     uint32_t        fRprfm : 1;
     /** Supports extensions to SCTLR_ELx (FEAT_SCTLR2). */
@@ -1651,10 +1669,12 @@ typedef struct CPUMFEATURESARMV8
     uint32_t        fRmeGpc3 : 1;
     /** Support streaming SVE mode AES + 128-bit polynomial multiply long instr. (FEAT_SSVE_AES). */
     uint32_t        fSsveAes : 1;
-    /** Support MPAM default resource control (FEAT_MPAM_MSC_DCTRL). */
+#if 0 /* difficult to detect (external reg) */
+    /** Support MPAM default resource control (_FEAT_MPAM_MSC_DCTRL). */
     uint32_t        fMpamMscDCtrl : 1;
-    /** Support MPAM domain PARTID translation (FEAT_MPAM_MSC_DOMAINS). */
+    /** Support MPAM domain PARTID translation (_FEAT_MPAM_MSC_DOMAINS). */
     uint32_t        fMpamMscDomains : 1;
+#endif
     /** @} */
 
     /** @name Armv9.6
@@ -2098,7 +2118,6 @@ VMM_INT_DECL(void)      CPUMCpuIdApplyX86HostArchCapabilities(PVMCC pVM, bool fH
 #endif
 #if defined(RT_ARCH_ARM64)
 VMMDECL(int)            CPUMCpuIdCollectIdSysRegsFromArmV8Host(struct SUPARMSYSREGVAL **ppaSysRegs, uint32_t *pcSysRegs);
-VMMDECL(int)            CPUMCpuIdCollectIdRegistersFromArmV8Host(PCPUMARMV8IDREGS pIdRegs);
 #endif
 
 #ifdef IN_RING3
@@ -2124,6 +2143,34 @@ typedef DECLCALLBACKPTR(PCCPUMDBENTRY, PFNCPUMDBGETENTRYBYINDEX, (uint32_t idxCp
 VMMR3DECL(PCCPUMDBENTRY)    CPUMR3DbGetEntryByName(const char *pszName);
 /** Pointer to CPUMR3DbGetEntryByName. */
 typedef DECLCALLBACKPTR(PCCPUMDBENTRY, PFNCPUMDBGETENTRYBYNAME, (const char *pszName));
+VMMR3DECL(PCCPUMDBENTRY)    CPUMR3DbGetBestEntryByName(const char *pszName, CPUMDBENTRYTYPE enmEntryType, uint32_t *puScore);
+/** Pointer to CPUMR3DbGetBestEntryByName. */
+typedef DECLCALLBACKPTR(PCCPUMDBENTRY, PFNCPUMDBGETBESTENTRYBYNAME, (const char *pszName, CPUMDBENTRYTYPE enmEntryType,
+                                                                     uint32_t *puScore));
+VMMR3DECL(PCCPUMDBENTRYARM) CPUMR3DbGetBestEntryByArm64MainId(uint64_t idMain, uint32_t *puScore);
+/** Pointer to CPUMR3DbGetBestEntryByArm64MainId.  */
+typedef DECLCALLBACKPTR(PCCPUMDBENTRYARM, PFNCPUMDBGETBESTENTRYBYARM64MAINID, (uint64_t idMain, uint32_t *puScore));
+VMMR3DECL(void)             CPUMR3CpuIdPrintArmV8Features(PCDBGFINFOHLP pHlp,
+                                                          CPUMFEATURESARMV8 const *pFeatures, const char *pszLabel,
+                                                          CPUMFEATURESARMV8 const *pSecondary, const char *pszSecondary);
+/** Pointer to CPUMR3CpuIdPrintArmV8Features   */
+typedef DECLCALLBACKPTR(void, PFNCPUMCPUIDPRINTARMV8FEATURES,(PCDBGFINFOHLP pHlp,
+                                                              CPUMFEATURESARMV8 const *pFeatures, const char *pszLabel,
+                                                              CPUMFEATURESARMV8 const *pSecondary, const char *pszSecondary));
+VMMR3DECL(int)              CPUMCpuIdDetermineArmV8MicroarchEx(uint64_t idMain, const char *pszCpuName,
+                                                               CPUMMICROARCH *penmMicroarch,
+                                                               CPUMCPUVENDOR *penmVendor,
+                                                               CPUMCORETYPE  *penmCoreType,
+                                                               const char   **ppszName,
+                                                               const char   **ppszFullName);
+/** Pointer to CPUMCpuIdDetermineArmV8MicroarchEx. */
+typedef DECLCALLBACKPTR(int, PFNCPUMCPUIDDETERMINEARMV8MICROARCHEX, (uint64_t idMain, const char *pszCpuName,
+                                                                     CPUMMICROARCH *penmMicroarch,
+                                                                     CPUMCPUVENDOR *penmVendor,
+                                                                     CPUMCORETYPE  *penmCoreType,
+                                                                     const char   **ppszName,
+                                                                     const char   **ppszFullName));
+
 
 # if defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64)
 VMMR3DECL(uint32_t)         CPUMR3DeterminHostMxCsrMask(void);

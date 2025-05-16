@@ -1,4 +1,4 @@
-/* $Id: CPUMR3CpuId-armv8.cpp 168793 2025-05-09 07:50:57Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMR3CpuId-armv8.cpp 168915 2025-05-16 21:41:53Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part for ARMv8 hypervisor.
  */
@@ -411,7 +411,7 @@ VMMR3DECL(int) CPUMR3PopulateFeaturesByIdRegisters(PVM pVM, PCCPUMARMV8IDREGS pI
 {
     /* Set the host features from the given ID registers. */
 #ifdef RT_ARCH_ARM64
-    int rcHost = cpumCpuIdExplodeFeaturesArmV8(pIdRegs, &g_CpumHostFeatures.s);
+    int rcHost = cpumCpuIdExplodeFeaturesArmV8FromIdRegs(pIdRegs, &g_CpumHostFeatures.s);
     AssertRCReturn(rcHost, rcHost);
     pVM->cpum.s.HostFeatures.s             = g_CpumHostFeatures.s;
     pVM->cpum.s.HostIdRegs                 = *pIdRegs;
@@ -452,7 +452,7 @@ VMMR3DECL(int) CPUMR3PopulateFeaturesByIdRegisters(PVM pVM, PCCPUMARMV8IDREGS pI
      * Pre-explode the CPUID info.
      */
     if (RT_SUCCESS(rc))
-        rc = cpumCpuIdExplodeFeaturesArmV8(pIdRegs, &pCpum->GuestFeatures);
+        rc = cpumCpuIdExplodeFeaturesArmV8FromIdRegs(pIdRegs, &pCpum->GuestFeatures);
 
     /*
      * Sanitize the cpuid information passed on to the guest.
@@ -1253,6 +1253,17 @@ DECLCALLBACK(void) cpumR3CpuFeatInfo(PVM pVM, PCDBGFINFOHLP pHlp, const char *ps
             fVerbose = true;
     }
 
+#if 1
+    /*
+     * Call generated code to do the actual printing.
+     */
+#ifdef RT_ARCH_ARM64
+    if (fVerbose)
+        CPUMR3CpuIdPrintArmV8Features(pHlp, &pVM->cpum.s.GuestFeatures, "guest", &pVM->cpum.s.HostFeatures.s, "host");
+    else
+#endif
+        CPUMR3CpuIdPrintArmV8Features(pHlp, &pVM->cpum.s.GuestFeatures, "guest", NULL, NULL);
+#else
 #ifdef RT_ARCH_ARM64
     if (fVerbose)
         pHlp->pfnPrintf(pHlp, "  Features                                  = guest (host)\n");
@@ -1286,7 +1297,9 @@ DECLCALLBACK(void) cpumR3CpuFeatInfo(PVM pVM, PCDBGFINFOHLP pHlp, const char *ps
     LOG_CPU_FEATURE(FEAT_AdvSIMD,       fAdvSimd);
     LOG_CPU_FEATURE(FEAT_AES,           fAes);
     LOG_CPU_FEATURE(FEAT_PMULL,         fPmull);
-    LOG_CPU_FEATURE(FEAT_CP15DISABLE2,  fCp15Disable2);
+#if 0
+    LOG_CPU_FEATURE(FEAT_CP15SDISABLE2, fCp15SDisable2); /* impossible to detect & of aarch32 relevance only */
+#endif
     LOG_CPU_FEATURE(FEAT_CSV2,          fCsv2);
     LOG_CPU_FEATURE(FEAT_CSV2_1p1,      fCsv21p1);
     LOG_CPU_FEATURE(FEAT_CSV2_1p2,      fCsv21p2);
@@ -1457,9 +1470,11 @@ DECLCALLBACK(void) cpumR3CpuFeatInfo(PVM pVM, PCDBGFINFOHLP pHlp, const char *ps
     LOG_CPU_FEATURE(FEAT_PACQARMA3,     fPacQarma3);
     LOG_CPU_FEATURE(FEAT_PMUv3_TH,      fPmuV3Th);
     LOG_CPU_FEATURE(FEAT_PMUv3p8,       fPmuV3p8);
-    LOG_CPU_FEATURE(FEAT_PMUv3_EXT64,   fPmuV3Ext64);
-    LOG_CPU_FEATURE(FEAT_PMUv3_EXT32,   fPmuV3Ext32);
-    LOG_CPU_FEATURE(FEAT_PMUv3_EXT,     fPmuV3Ext);
+#if 0
+    LOG_CPU_FEATURE(FEAT_PMUv3_EXT64,   fPmuV3Ext64);   /* difficult to detect */
+    LOG_CPU_FEATURE(FEAT_PMUv3_EXT32,   fPmuV3Ext32);   /* difficult to detect */
+    LOG_CPU_FEATURE(FEAT_PMUv3_EXT,     fPmuV3Ext);     /* difficult to detect */
+#endif
     LOG_CPU_FEATURE(FEAT_RNG_TRAP,      fRngTrap);
     LOG_CPU_FEATURE(FEAT_SPEv1p3,       fSpeV1p3);
     LOG_CPU_FEATURE(FEAT_TIDCP1,        fTidcp1);
@@ -1496,7 +1511,9 @@ DECLCALLBACK(void) cpumR3CpuFeatInfo(PVM pVM, PCDBGFINFOHLP pHlp, const char *ps
     LOG_CPU_FEATURE(FEAT_MTE_NO_ADDRESS_TAGS,   fMteNoAddressTags);
     LOG_CPU_FEATURE(FEAT_MTE_ASYM_FAULT,        fMteAsymFault);
     LOG_CPU_FEATURE(FEAT_MTE_ASYNC,             fMteAsync);
-    LOG_CPU_FEATURE(FEAT_MTE_PERM_S1,           fMtePermS1);
+#if 0
+    LOG_CPU_FEATURE(FEAT_MTE_PERM_S1,           fMtePermS1); /* removed? */
+#endif
     LOG_CPU_FEATURE(FEAT_PCSRv8p9,              fPcsrV8p9);
     LOG_CPU_FEATURE(FEAT_S1PIE,                 fS1Pie);
     LOG_CPU_FEATURE(FEAT_S2PIE,                 fS2Pie);
@@ -1530,4 +1547,5 @@ DECLCALLBACK(void) cpumR3CpuFeatInfo(PVM pVM, PCDBGFINFOHLP pHlp, const char *ps
     LOG_CPU_FEATURE(FEAT_TRBE_EXT,              fTrbeExt);
     LOG_CPU_FEATURE(FEAT_TRBE_MPAM,             fTrbeMpam);
 #undef LOG_CPU_FEATURE
+#endif
 }

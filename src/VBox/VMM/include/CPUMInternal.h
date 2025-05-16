@@ -1,4 +1,4 @@
-/* $Id: CPUMInternal.h 168788 2025-05-08 22:09:06Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMInternal.h 168915 2025-05-16 21:41:53Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - Internal header file.
  */
@@ -475,6 +475,11 @@ typedef struct CPUM
 #endif
 
 #ifdef RT_ARCH_ARM64
+    /** Host system registers used for identification. */
+    PSUPARMSYSREGVAL        paHostIdRegs;
+    /** Number of registers in paHostSysRegs.   */
+    uint32_t                cHostIdRegs;
+
     /** Host CPU ID registers. */
     CPUMARMV8IDREGS         HostIdRegs;
 
@@ -572,7 +577,9 @@ DECLHIDDEN(void)    cpumCpuIdExplodeFeaturesX86VmxFromSupMsrs(PCSUPHWVIRTMSRS pM
 void                cpumCpuIdExplodeArchCapabilities(CPUMFEATURESX86 *pFeatures, bool fHasArchCap, uint64_t fArchVal);
 # endif /* defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64) || defined(VBOX_VMM_TARGET_X86) */
 # if defined(RT_ARCH_ARM64) || defined(VBOX_VMM_TARGET_ARMV8)
-int                 cpumCpuIdExplodeFeaturesArmV8(PCCPUMARMV8IDREGS pIdRegs, CPUMFEATURESARMV8 *pFeatures);
+DECLHIDDEN(int)     cpumCpuIdExplodeFeaturesArmV8FromIdRegs(PCCPUMARMV8IDREGS pIdRegs, CPUMFEATURESARMV8 *pFeatures);
+DECLHIDDEN(int)     cpumCpuIdExplodeFeaturesArmV8FromSysRegs(PCSUPARMSYSREGVAL paSysRegs, uint32_t cSysRegs,
+                                                             CPUMFEATURESARMV8 *pFeatures);
 # endif
 
 

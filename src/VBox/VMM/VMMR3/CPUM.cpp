@@ -1,4 +1,4 @@
-/* $Id: CPUM.cpp 168788 2025-05-08 22:09:06Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUM.cpp 168915 2025-05-16 21:41:53Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU Monitor / Manager.
  */
@@ -160,6 +160,9 @@ static DECLCALLBACK(void) cpumR3InfoGuestInstr(PVM pVM, PCDBGFINFOHLP pHlp, cons
 #ifdef RT_ARCH_AMD64
 static DECLCALLBACK(void) cpumR3InfoHost(PVM pVM, PCDBGFINFOHLP pHlp, const char *pszArgs);
 #endif
+#if defined(RT_ARCH_ARM64) || defined(RT_ARCH_ARM32)
+static DECLCALLBACK(void) cpumR3InfoCpuFeatHost(PVM pVM, PCDBGFINFOHLP pHlp, const char *pszArgs);
+#endif
 
 
 /*********************************************************************************************************************************
@@ -303,8 +306,8 @@ VMMR3DECL(int) CPUMR3Init(PVM pVM)
     else
     {
 #if defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64)
-        PCPUMCPUIDLEAF  paLeaves;
-        uint32_t        cLeaves;
+        PCPUMCPUIDLEAF      paLeaves = NULL;
+        uint32_t            cLeaves  = 0;
         rc = CPUMCpuIdCollectLeavesFromX86Host(&paLeaves, &cLeaves);
         AssertLogRelRCReturn(rc, rc);
 
@@ -315,11 +318,10 @@ VMMR3DECL(int) CPUMR3Init(PVM pVM)
             cpumCpuIdExplodeFeaturesX86VmxFromSupMsrs(&HostMsrs, &g_CpumHostFeatures.s);
 
 #elif defined(RT_ARCH_ARM64)
-        CPUMARMV8IDREGS IdRegs = {0};
-        rc = CPUMCpuIdCollectIdRegistersFromArmV8Host(&IdRegs);
+        rc = CPUMCpuIdCollectIdSysRegsFromArmV8Host(&pVM->cpum.s.paHostIdRegs, &pVM->cpum.s.cHostIdRegs);
         AssertLogRelRCReturn(rc, rc);
 
-        rc = cpumCpuIdExplodeFeaturesArmV8(&IdRegs, &g_CpumHostFeatures.s);
+        rc = cpumCpuIdExplodeFeaturesArmV8FromSysRegs(pVM->cpum.s.paHostIdRegs, pVM->cpum.s.cHostIdRegs, &g_CpumHostFeatures.s);
         AssertLogRelRCReturn(rc, rc);
 
 #else
@@ -435,6 +437,14 @@ VMMR3DECL(int) CPUMR3Init(PVM pVM)
                                  &cpumR3InfoGuestInstr, DBGFINFO_FLAGS_ALL_EMTS);
     DBGFR3InfoRegisterInternal(  pVM, "cpuid",            "Displays the guest cpuid leaves.",
                                  &cpumR3CpuIdInfo);
+# if defined(RT_ARCH_ARM64) || defined(RT_ARCH_ARM32)
+    DBGFR3InfoRegisterInternal(pVM, "cpufeathost", "Displays the host features.", &cpumR3InfoCpuFeatHost);
+#endif
+
+#if  (defined(VBOX_VMM_TARGET_X86)   && !defined(RT_ARCH_AMD64) && !defined(RT_ARCH_X86)) \
+  || (defined(VBOX_VMM_TARGET_ARMV8) && !defined(RT_ARCH_ARM64) && !defined(RT_ARCH_ARM32))
+    /** @todo cpuidhost */
+#endif
 
     rc = cpumR3DbgInitTarget(pVM);
     if (RT_FAILURE(rc))
@@ -782,6 +792,19 @@ static DECLCALLBACK(void) cpumR3InfoHost(PVM pVM, PCDBGFINFOHLP pHlp, const char
 #endif /* RT_ARCH_AMD64 */
 
 
+#if defined(RT_ARCH_ARM64) || defined(RT_ARCH_ARM32)
+/**
+ * @callback_method_impl{FNDBGFHANDLERINT,
+ *      Handler for the 'cpufeathost' info item.}
+ */
+static DECLCALLBACK(void) cpumR3InfoCpuFeatHost(PVM pVM, PCDBGFINFOHLP pHlp, const char *pszArgs)
+{
+    RT_NOREF_PV(pszArgs);
+    CPUMR3CpuIdPrintArmV8Features(pHlp, &pVM->cpum.s.HostFeatures.s, "Host", NULL, NULL);
+}
+#endif /* RT_ARCH_AMD64 || RT_ARCH_ARM32 */
+
+
 /**
  * Called when the ring-3 init phase completes.
  *
@@ -820,22 +843,39 @@ VMMR3DECL(void) CPUMR3LogCpuIdAndMsrFeatures(PVM pVM)
      */
     RTCPUSET OnlineSet;
     LogRel(("CPUM: Logical host processors: %u present, %u max, %u online, online mask: %016RX64\n",
-                (unsigned)RTMpGetPresentCount(), (unsigned)RTMpGetCount(), (unsigned)RTMpGetOnlineCount(),
-                RTCpuSetToU64(RTMpGetOnlineSet(&OnlineSet)) ));
+            (unsigned)RTMpGetPresentCount(), (unsigned)RTMpGetCount(), (unsigned)RTMpGetOnlineCount(),
+            RTCpuSetToU64(RTMpGetOnlineSet(&OnlineSet)) ));
     RTCPUID cCores = RTMpGetCoreCount();
     if (cCores)
         LogRel(("CPUM: Physical host cores: %u\n", (unsigned)cCores));
-    LogRel(("************************* CPUID dump ************************\n"));
-
-    DBGFR3Info(pVM->pUVM, "cpuid", "verbose", DBGFR3InfoLogRelHlp());
-    LogRel(("\n"));
+    LogRel(("************************ CPUID dump *************************\n"));
+    DBGFR3Info(pVM->pUVM,     "cpuid", "verbose", DBGFR3InfoLogRelHlp());
     DBGFR3_INFO_LOG_SAFE(pVM, "cpuid", "verbose"); /* macro */
-    LogRel(("******************** End of CPUID dump **********************\n"));
+    LogRel(("********************* End of CPUID dump *********************\n"));
 
     /*
      * Do target specific logging.
      */
     cpumR3LogCpuIdAndMsrFeaturesTarget(pVM);
+
+#if !(defined(RT_ARCH_AMD64) || defined(RT_ARCH_ARM32)) && !defined(VBOX_VMM_TARGET_ARMV8)
+    LogRel(("********************* Host CPU features *********************\n"));
+    DBGFR3Info(pVM->pUVM,     "cpufeathost", "", DBGFR3InfoLogRelHlp());
+    DBGFR3_INFO_LOG_SAFE(pVM, "cpufeathost", "");
+    LogRel(("***************** End of host CPU features ******************\n"));
+#endif
+
+#if  (defined(VBOX_VMM_TARGET_X86)   && !defined(RT_ARCH_AMD64) && !defined(RT_ARCH_X86)) \
+  || (defined(VBOX_VMM_TARGET_ARMV8) && !defined(RT_ARCH_ARM64) && !defined(RT_ARCH_ARM32))
+    /*
+     * If the host and target differs, dump the host cpuid / features.
+     */
+    /** @todo cpuidhost   */
+    //LogRel(("********************** Host CPUID dump **********************\n"));
+    //DBGFR3Info(pVM->pUVM,     "cpuidhost", "verbose", DBGFR3InfoLogRelHlp());
+    //DBGFR3_INFO_LOG_SAFE(pVM, "cpuidhost", "verbose");
+    //LogRel(("****************** End of host CPUID dump *******************\n"));
+#endif
 
     /*
      * Restore the log buffering state to what it was previously.

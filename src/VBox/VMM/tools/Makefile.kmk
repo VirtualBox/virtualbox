@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 168793 2025-05-09 07:50:57Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 168915 2025-05-16 21:41:53Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for VMM tools.
 #
@@ -110,6 +110,14 @@ ifdef VBOX_SIGNING_MODE
  VBoxCpuReport_POST_CMDS.darwin.arm64 = \
  	$(call VBOX_SIGN_MACHO_FN,$(out),org.virtualbox.app.macos.VBoxCpuReport,--entitlements=$(VBoxCpuReport_DEPS.darwin.arm64))
 endif
+
+
+#
+# CPU profile
+#
+PROGRAMS += VBoxCpuProfile
+VBoxCpuProfile_TEMPLATE := VBoxR3Tool
+VBoxCpuProfile_SOURCES  := VBoxCpuProfile.cpp
 
 
 

@@ -1,4 +1,4 @@
-; $Id: VMMR3.def 167432 2025-02-10 11:05:23Z knut.osmundsen@oracle.com $
+; $Id: VMMR3.def 168915 2025-05-16 21:41:53Z knut.osmundsen@oracle.com $
 ;; @file
 ; VMM Ring-3 Context DLL - Definition file.
 
@@ -108,6 +108,10 @@ EXPORTS
     CPUMGetHostMicroarch
     CPUMGetGuestArch
     CPUMGetGuestMicroarch
+    CPUMR3DbGetEntries
+    CPUMR3DbGetEntryByIndex
+    CPUMR3DbGetEntryByName
+    CPUMR3DbGetBestEntryByName
 
     DBGCCreate
 

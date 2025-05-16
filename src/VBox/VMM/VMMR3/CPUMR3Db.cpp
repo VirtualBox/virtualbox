@@ -1,4 +1,4 @@
-/* $Id: CPUMR3Db.cpp 168793 2025-05-09 07:50:57Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMR3Db.cpp 168915 2025-05-16 21:41:53Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU database part.
  */
@@ -43,6 +43,7 @@
 # include <iprt/asm-amd64-x86.h>
 #endif
 #include <iprt/mem.h>
+#include <iprt/ctype.h>
 #include <iprt/string.h>
 
 
@@ -295,6 +296,463 @@ VMMR3DECL(PCCPUMDBENTRY)    CPUMR3DbGetEntryByName(const char *pszName)
             return g_apCpumDbEntries[i];
     return NULL;
 }
+
+/**
+ * Skips any blah-blah word at the start of @a psz.
+ */
+static size_t cpumSkipCpuNameBlahBlah(size_t off, const char *psz)
+{
+    static RTSTRTUPLE const s_aWords[] =
+    {
+        { RT_STR_TUPLE("(R)")  },
+        { RT_STR_TUPLE("(C)")  },
+        { RT_STR_TUPLE("(TM)") },
+    };
+    for (size_t i = 0; i < RT_ELEMENTS(s_aWords); i++)
+        if (RTStrNICmp(&psz[off], s_aWords[i].psz, s_aWords[i].cch) == 0)
+        {
+            /* If what we're skipping was preceeded by whitespace, skip whitespace after it
+               so we'll correctly match a string that doesn't include this blah-blah word. */
+            char chPrev = off > 0 ? psz[off - 1] : '\0';
+            off += s_aWords[i].cch;
+            if (RT_C_IS_SPACE(chPrev) || chPrev == '@')
+                while (RT_C_IS_SPACE(psz[off]) || psz[off] == '@')
+                    off++;
+
+            /* Recurse to match more blah-blah following this one. */
+            return cpumSkipCpuNameBlahBlah(off, psz);
+        }
+    return off;
+}
+
+/**
+ * A RTStrStartsWith variant that takes care if pszStart ends with a number.
+ */
+static bool cpumDbStartsWith(const char *pszString, size_t cchString, const char *pszStart, size_t cchStart)
+{
+    if (cchString == RTSTR_MAX)
+        cchString = strlen(pszString);
+    if (cchStart == RTSTR_MAX)
+        cchStart = strlen(pszStart);
+    if (cchStart <= cchString)
+        if (memcmp(pszString, pszStart, cchStart) == 0)
+        {
+            if (cchString == cchStart)
+                return true;
+            if (!RT_C_IS_DIGIT(pszStart[cchStart - 1]))
+                return true;
+            /* pszStart ends with a digit, so if pszString continues with a digit
+               we don't have a match (unless there its all zeros). Just require
+               a non-digit as the next character. */
+            if (!RT_C_IS_DIGIT(pszString[cchStart]))
+                return true;
+        }
+    return false;
+}
+
+
+/**
+ * Returns CPU database entry considered the best match for the given name.
+ *
+ * @returns Pointer the CPU database entry, NULL if nothing suitable was found.
+ * @param   pszName             The CPU name to locte a profile for.
+ * @param   enmEntryType        The type of profile to return.
+ *                              CPUMDBENTRYTYPE_INVALID for any.
+ * @param   puScore             Where to return the score.  A score of 100 is a
+ *                              perfect name match.
+ */
+VMMR3DECL(PCCPUMDBENTRY) CPUMR3DbGetBestEntryByName(const char *pszName, CPUMDBENTRYTYPE enmEntryType, uint32_t *puScore)
+{
+    AssertStmt(!RT_C_IS_SPACE(*pszName), pszName = RTStrStripL(pszName));
+    AssertReturnStmt(*pszName, *puScore = 0, NULL);
+
+    /*
+     * Is there a perfect match in the database?
+     */
+    *puScore = 100;
+    for (size_t i = 0; i < RT_ELEMENTS(g_apCpumDbEntries); i++)
+    {
+        PCCPUMDBENTRY pEntry = g_apCpumDbEntries[i];
+        if (enmEntryType == pEntry->enmEntryType || enmEntryType == CPUMDBENTRYTYPE_INVALID)
+        {
+            if (   strcmp(pEntry->pszName, pszName) == 0
+                || strcmp(pEntry->pszFullName, pszName) == 0)
+                return g_apCpumDbEntries[i];
+            if (pEntry->enmEntryType == CPUMDBENTRYTYPE_ARM)
+            {
+                PCCPUMDBENTRYARM pArmEntry = (PCCPUMDBENTRYARM)pEntry;
+                for (uint32_t iVar = 0; iVar < pArmEntry->cVariants; iVar++)
+                    if (strcmp(pArmEntry->aVariants[iVar].pszName, pszName) == 0)
+                        return g_apCpumDbEntries[i];
+            }
+        }
+    }
+
+    /*
+     * See if a database name is a subset of the given name.
+     */
+    size_t cchName = strlen(pszName);
+    while (cchName > 0 && RT_C_IS_SPACE(pszName[cchName - 1]))
+        cchName--;
+    AssertReturnStmt(cchName > 0, *puScore = 0, NULL);
+
+    *puScore = 90;
+    for (size_t i = 0; i < RT_ELEMENTS(g_apCpumDbEntries); i++)
+    {
+        PCCPUMDBENTRY pEntry = g_apCpumDbEntries[i];
+        if (enmEntryType == pEntry->enmEntryType || enmEntryType == CPUMDBENTRYTYPE_INVALID)
+        {
+            if (   cpumDbStartsWith(pszName, cchName, pEntry->pszName, RTSTR_MAX)
+                || cpumDbStartsWith(pszName, cchName, pEntry->pszFullName, RTSTR_MAX))
+                return g_apCpumDbEntries[i];
+            if (pEntry->enmEntryType == CPUMDBENTRYTYPE_ARM)
+            {
+                PCCPUMDBENTRYARM pArmEntry = (PCCPUMDBENTRYARM)pEntry;
+                for (uint32_t iVar = 0; iVar < pArmEntry->cVariants; iVar++)
+                    if (cpumDbStartsWith(pszName, cchName, pArmEntry->aVariants[iVar].pszName, RTSTR_MAX))
+                        return g_apCpumDbEntries[i];
+            }
+        }
+    }
+
+    /*
+     * The other way around.
+     */
+    *puScore = 88;
+    for (size_t i = 0; i < RT_ELEMENTS(g_apCpumDbEntries); i++)
+    {
+        PCCPUMDBENTRY pEntry = g_apCpumDbEntries[i];
+        if (enmEntryType == pEntry->enmEntryType || enmEntryType == CPUMDBENTRYTYPE_INVALID)
+        {
+            if (   cpumDbStartsWith(pEntry->pszName,     RTSTR_MAX, pszName, cchName)
+                || cpumDbStartsWith(pEntry->pszFullName, RTSTR_MAX, pszName, cchName))
+                return g_apCpumDbEntries[i];
+            if (pEntry->enmEntryType == CPUMDBENTRYTYPE_ARM)
+            {
+                PCCPUMDBENTRYARM pArmEntry = (PCCPUMDBENTRYARM)pEntry;
+                for (uint32_t iVar = 0; iVar < pArmEntry->cVariants; iVar++)
+                    if (cpumDbStartsWith(pArmEntry->aVariants[iVar].pszName, RTSTR_MAX, pszName, cchName))
+                        return g_apCpumDbEntries[i];
+            }
+        }
+    }
+
+    /*
+     * Match the name strings.
+     *
+     * This is need quite some more work to work efficiently, however, we only
+     * really care about strings like 'Apple M3 Max' at present.
+     */
+    PCCPUMDBENTRY  pBest           = NULL;
+    const char    *pszBestNm       = NULL;
+    size_t         cchBestNm       = 0;
+    size_t         offBestNmN      = 0;
+    size_t         cchBestInputNm  = 0;
+    size_t         offBestInputNmN = 0;
+    for (size_t i = 0; i < RT_ELEMENTS(g_apCpumDbEntries); i++)
+    {
+        PCCPUMDBENTRY pEntry = g_apCpumDbEntries[i];
+        if (enmEntryType == pEntry->enmEntryType || enmEntryType == CPUMDBENTRYTYPE_INVALID)
+        {
+            /* Gather strings to consider: */
+            const char *apszNames[2 + 2] = { pEntry->pszName, pEntry->pszFullName, };
+            size_t      cNames           = 2;
+            if (pEntry->enmEntryType == CPUMDBENTRYTYPE_ARM)
+            {
+                PCCPUMDBENTRYARM pArmEntry = (PCCPUMDBENTRYARM)pEntry;
+                AssertCompile(RT_ELEMENTS(pArmEntry->aVariants) == 2); /* apszName size */
+                for (uint32_t iVar = 0; iVar < pArmEntry->cVariants; iVar++)
+                    apszNames[cNames++] = pArmEntry->aVariants[iVar].pszName;
+            }
+
+            /* Match each name. */
+            for (size_t iName = 0; iName < cNames; iName++)
+            {
+                const char * const pszCand = apszNames[iName];
+                Assert(pszCand);
+                Assert(!RT_C_IS_SPACE(*pszCand));
+
+                /* See how much of the two names matches up and keep the best ones... */
+                size_t offCand = 0;
+                size_t offName = 0;
+                for (;;)
+                {
+                    char chCand = pszCand[offCand];
+                    if (chCand == '(')
+                    {
+                        offCand = cpumSkipCpuNameBlahBlah(offCand, pszCand);
+                        chCand  = pszCand[offCand];
+                    }
+
+                    char chName      = pszName[offName];
+                    if (chName == '(')
+                    {
+                        offName = cpumSkipCpuNameBlahBlah(offName, pszName);
+                        chName  = pszName[offName];
+                    }
+
+                    if (chCand != chName)
+                    {
+                        chCand = RT_C_TO_LOWER(chCand);
+                        chName = RT_C_TO_LOWER(chName);
+                        if (RT_C_IS_SPACE(chCand) || chCand == '@')
+                            chCand = ' ';
+                        if (RT_C_IS_SPACE(chName) || chName == '@')
+                            chName      = ' ';
+
+                        if (   chCand != chName
+                            && offName > 0
+                            && pszName[offName - 1] == 'i'
+                            && pszName[offName + 1] == '-'
+                            && pszCand[offCand + 1] == '-'
+                            && (chName == '3' || chName == '5' || chName == '7' || chName == '9')
+                            && (chCand == '3' || chCand == '5' || chCand == '7' || chCand == '9')
+                            /*&& chName < chCand ? */ )
+                        { /* We let 'i3/i5/i7/i9-' match as the model number following is often more helpful ... */ }
+                        else if (chCand != chName)
+                        {
+                            /** @todo i3/i5/i7/i9 should probably all be made to match here... */
+
+                            /*
+                             * If we match more of the input name it is a clear improvement.
+                             *
+                             * If we end up with the same length match we will try for better
+                             * numeric matches.  The idea here is that if we have matched up
+                             * 'Apple M' and is considering whether 'Apple M2' or 'Apple M4'
+                             * is better when looking for 'Apple M3 Ultra', we should pick
+                             * the older M2 entry as it is less likely to have unsupported
+                             * features and whatnot listed in it.
+                             */
+                            if (offName > 0 && offCand > 0)
+                            {
+                                /** @todo this isn't exactly perfect, but it'll do for now, I hope... */
+                                /** @todo maybe add some word-boundrary logic here, so we don't match
+                                 *        'dragon ya' and 'dragon yb'. This would fit nicely with the current
+                                 *        handling of trailing numbers. */
+                                bool const fNameIsDigit    = RT_C_IS_DIGIT(chName);
+                                bool const fCandIsDigit    = RT_C_IS_DIGIT(chCand);
+                                bool       fToBeConsidered = fNameIsDigit == fCandIsDigit
+                                                          || (!fNameIsDigit && RT_C_IS_DIGIT(pszName[offName - 1]))
+                                                          || (!fCandIsDigit && RT_C_IS_DIGIT(pszCand[offCand - 1]));
+                                bool const fNumeric        = fToBeConsidered && (fNameIsDigit || fCandIsDigit);
+                                size_t     offNameN        = offName;
+                                size_t     offCandN        = offCand;
+                                if (fNumeric)
+                                {
+                                    if (fNameIsDigit != fCandIsDigit)
+                                        offNameN--, offCandN--;
+                                    while (   offNameN > 0
+                                           && RT_C_IS_DIGIT(pszName[offNameN - 1])
+                                           && offCandN > 0
+                                           && RT_C_IS_DIGIT(pszCand[offCandN - 1]))
+                                        offNameN--, offCandN--;
+                                    fToBeConsidered = RTStrVersionCompare(&pszCand[offCandN], &pszName[offNameN]) <= 0;
+                                }
+
+                                if (   fToBeConsidered
+                                    && (  !fNumeric
+                                        ? offName > cchBestInputNm
+                                        :    offNameN > offBestInputNmN
+                                          || (    offNameN == offBestInputNmN
+                                               && RTStrVersionCompare(&pszCand[offCandN], &pszBestNm[offBestNmN]) > 0) ) )
+                                {
+                                    pBest           = pEntry;
+                                    pszBestNm       = pszCand;
+                                    cchBestNm       = offCand;
+                                    offBestNmN      = offCandN;
+                                    cchBestInputNm  = offName;
+                                    offBestInputNmN = offNameN;
+                                }
+                            }
+                            break;
+                        }
+                    }
+
+                    /* If we've somehow matched the whole input name due to normalization and
+                       case-insensitivity, return a prefect match. */
+                    if (offName >= cchName)
+                    {
+                        *puScore = 100;
+                        return pEntry;
+                    }
+                    Assert(chName != '\0' && chCand != '\0');
+
+                    /* Advance, normalizing spaces. */
+                    if (!RT_C_IS_SPACE(chName) && chName != '@')
+                    {
+                        offCand += 1;
+                        offName += 1;
+                    }
+                    else
+                    {
+                        Assert(RT_C_IS_SPACE(chCand));
+                        do
+                            chCand = pszCand[++offCand];
+                        while (RT_C_IS_SPACE(chCand) || chCand == '@');
+                        do
+                            chName = pszName[++offName];
+                        while (RT_C_IS_SPACE(chName) || chName == '@');
+                    }
+                }
+            }
+        }
+    }
+
+    /*
+     * If we've got a match, check that it carry some weight and is not just
+     * matching vendor part of the name or something like that.  This is a
+     * little bit tricky...
+     */
+    if (cchBestInputNm > 2)
+    {
+        /* In most cases we can sidestep the issue by scanning for digits, if
+           we already matched some we're probably good and if the difference
+           is down to digits (e.g. M2 vs M3), we're also good. */
+        uint32_t cDigits = 0;
+        for (uint32_t off = 0; off < cchBestInputNm; off++)
+            cDigits += RT_C_IS_DIGIT(pszName[off]);
+        if (   RT_C_IS_DIGIT(pszBestNm[cchBestNm])
+            && RT_C_IS_DIGIT(pszBestNm[cchBestNm]))
+            cDigits += 1;
+        if (cDigits > 0)
+        {
+            *puScore = RT_MIN(10 + cDigits, 80);
+            return pBest;
+        }
+
+        /* Now, the above doesn't work for all names in the DB. */
+        static RTSTRTUPLE s_aWeightlessWords[] =
+        {
+            { RT_STR_TUPLE("Core")          },
+            { RT_STR_TUPLE("Dual-Core")     },
+            { RT_STR_TUPLE("Quad-Core")     },
+            { RT_STR_TUPLE("Dual")          },
+            { RT_STR_TUPLE("Quad")          },
+            { RT_STR_TUPLE("Genuin")        },
+            { RT_STR_TUPLE("Authentic")     },
+            { RT_STR_TUPLE("Processor")     },
+            { RT_STR_TUPLE("CPU")           },
+            { RT_STR_TUPLE("(R)")           },
+            { RT_STR_TUPLE("(C)")           },
+            { RT_STR_TUPLE("(TM)")          },
+            { RT_STR_TUPLE("Apple")         },
+            { RT_STR_TUPLE("Qualcomm")      },
+            {     RT_STR_TUPLE("Snapdragon") },
+            { RT_STR_TUPLE("Intel")         },
+            {     RT_STR_TUPLE("Pentium")   },
+            {     RT_STR_TUPLE("i3")        },
+            {     RT_STR_TUPLE("i5")        },
+            {     RT_STR_TUPLE("i7")        },
+            {     RT_STR_TUPLE("i9")        },
+            {     RT_STR_TUPLE("Atom")      },
+            {     RT_STR_TUPLE("Xeon")      },
+            {     RT_STR_TUPLE("Gold")      },
+            { RT_STR_TUPLE("AMD")           },
+            {     RT_STR_TUPLE("FX-")       },
+            {     RT_STR_TUPLE("Phenom")    },
+            {     RT_STR_TUPLE("Ryzen")     },
+            { RT_STR_TUPLE("Hygon")         },
+            { RT_STR_TUPLE("VIA")           },
+            { RT_STR_TUPLE("ZHAOXIN")       },
+            {     RT_STR_TUPLE("KaiXian")   },
+            { RT_STR_TUPLE("VIA")           },
+            {     RT_STR_TUPLE("Nano")      },
+        };
+        size_t offWeightless = 0;
+        while (offWeightless < cchName)
+        {
+            /* skip spaces and '@' */
+            char ch = pszName[offWeightless];
+            while (RT_C_IS_SPACE(ch) || ch == '@')
+                ch = pszName[++offWeightless];
+            if (!ch)
+                break;
+
+            /* Do look for the above words */
+            size_t i = 0;
+            while (   i < RT_ELEMENTS(s_aWeightlessWords)
+                   && RTStrNICmp(&pszName[offWeightless], s_aWeightlessWords[i].psz, s_aWeightlessWords[i].cch) != 0)
+                i++;
+            if (i >= RT_ELEMENTS(s_aWeightlessWords))
+                break;
+            offWeightless += s_aWeightlessWords[i].cch;
+        }
+
+        if (offWeightless < cchBestInputNm)
+        {
+            *puScore = (uint32_t)(cchBestInputNm - offWeightless);
+            return pBest;
+        }
+    }
+
+    *puScore = 0;
+    return NULL;
+}
+
+
+#if defined(RT_ARCH_ARM64) || defined(RT_ARCH_ARM32) || defined(VBOX_VMM_TARGET_ARMV8)
+/**
+ * Gets the best matching DB entry for the given ARM ID register value.
+ *
+ * @returns Pointer to best match, NULL if nothing suitable was found.
+ * @param   idMain              The main ID register value.
+ * @param   puScore             Where to return the score.  100 for a direct
+ *                              hit, less for a partial hit only matching the
+ *                              microcode.
+ */
+VMMR3DECL(PCCPUMDBENTRYARM) CPUMR3DbGetBestEntryByArm64MainId(uint64_t idMain, uint32_t *puScore)
+{
+    /*
+     * A quick search for a perfect match.
+     */
+    *puScore = 100;
+    for (size_t i = 0; i < RT_ELEMENTS(g_apCpumDbEntries); i++)
+    {
+        PCCPUMDBENTRYARM const pEntry = (PCCPUMDBENTRYARM)g_apCpumDbEntries[i];
+        if (pEntry->Core.enmEntryType == CPUMDBENTRYTYPE_ARM)
+            for (uint32_t iVar = 0; iVar < pEntry->cVariants; iVar++)
+                if (pEntry->aVariants[iVar].Midr.u64 == idMain)
+                    return pEntry;
+    }
+
+    /*
+     * Translate the ID to a microarchitecture and see if we can fine something similar.
+     */
+    CPUMMICROARCH enmMicroarch = kCpumMicroarch_Invalid;
+    int rc = CPUMCpuIdDetermineArmV8MicroarchEx(idMain, NULL, &enmMicroarch, NULL, NULL, NULL, NULL);
+    if (   RT_SUCCESS(rc)
+        && enmMicroarch != kCpumMicroarch_Unknown)
+    {
+        uint32_t const   uPartNum   = (uint32_t)((idMain >> 4) & 0xfff);
+        PCCPUMDBENTRYARM pBestEntry = NULL;
+        for (size_t i = 0; i < RT_ELEMENTS(g_apCpumDbEntries); i++)
+        {
+            PCCPUMDBENTRYARM const pEntry = (PCCPUMDBENTRYARM)g_apCpumDbEntries[i];
+            if (   pEntry->Core.enmMicroarch == enmMicroarch
+                && pEntry->Core.enmEntryType == CPUMDBENTRYTYPE_ARM)
+            {
+                /* Just using the part number part, pick the entry that's closest from below. */
+                if (   !pBestEntry
+                    || (pBestEntry->aVariants[0].Midr.s.u12PartNum > uPartNum
+                        ? pEntry->aVariants[0].Midr.s.u12PartNum < pBestEntry->aVariants[0].Midr.s.u12PartNum
+                        :    pEntry->aVariants[0].Midr.s.u12PartNum <= uPartNum
+                          && pEntry->aVariants[0].Midr.s.u12PartNum > pBestEntry->aVariants[0].Midr.s.u12PartNum))
+                    pBestEntry = pEntry;
+            }
+        }
+        if (pBestEntry)
+        {
+            *puScore = pBestEntry->aVariants[0].Midr.s.u12PartNum == uPartNum ? 90 : 80;
+            return pBestEntry;
+        }
+    }
+
+    *puScore = 0;
+    return NULL;
+}
+#endif /* #if defined(RT_ARCH_ARM64) || defined(RT_ARCH_ARM32) || defined(VBOX_VMM_TARGET_ARMV8) */
+
+
 
 #if defined(VBOX_VMM_TARGET_X86) && (defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64))
 

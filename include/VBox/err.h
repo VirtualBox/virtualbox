@@ -728,6 +728,8 @@
 #define VERR_CPUM_INVALID_HWVIRT_CONFIG         (-1767)
 /** Invalid nested hardware virtualization feature combination. */
 #define VERR_CPUM_INVALID_HWVIRT_FEAT_COMBO     (-1768)
+/** CPU microarch lookup matched by name. */
+#define VINF_CPUM_MATCHED_BY_NAME               (1769)
 /** @} */
 
 
