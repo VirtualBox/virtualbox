@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# $Id: vbox.py 168876 2025-05-15 08:23:37Z andreas.loeffler@oracle.com $
+# $Id: vbox.py 168904 2025-05-16 12:38:14Z knut.osmundsen@oracle.com $
 # pylint: disable=too-many-lines
 
 """
@@ -37,7 +37,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 168876 $"
+__version__ = "$Revision: 168904 $"
 
 # pylint: disable=unnecessary-semicolon
 
@@ -1778,61 +1778,13 @@ class TestDriver(base.TestDriver):                                              
         return self.oBuild.sGuestAdditionsIso;
 
     @staticmethod
-    def versionToTuple(sVer, fIgnoreErrors = False):
-        """
-        Returns a semantic versioning string as a tuple.
-        """
-        try:
-            # Regular expression taken from semver.org (recommended regular expression for semantic version strings).
-            # Creative Commons ― CC BY 3.0
-            #
-            # Modified to also recognize our semantics:
-            # - We use "-BETA2" instead of "_BETA2".
-            oRegEx = re.compile(r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-|_]((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'); # pylint: disable=line-too-long
-            oMatch = oRegEx.search(sVer);
-            return oMatch.groups();
-        except:
-            if not fIgnoreErrors:
-                reporter.logXcpt('Handling regex for "%s" failed' % (sVer,));
-        return None;
-
-    @staticmethod
-    def compareVersion(sVer1, sVer2, fIgnoreErrors = False):
-        """
-        Compares two version numbers and returns the result.
-
-        Takes either strings or version tuples as input.
-
-        Returns 0 if both versions match.
-        Return -1 if version 1 is bigger than version 2.
-        Return  1 if version 2 is bigger than version 1.
-        Returns None on error.
-        """
-        assert sVer1 is not None;
-        assert sVer2 is not None;
-        try:
-            tpVer1 = TestDriver.versionToTuple(sVer1, fIgnoreErrors);
-            if tpVer1 is None:
-                return None;
-            tpVer2 = TestDriver.versionToTuple(sVer2, fIgnoreErrors);
-            if tpVer2 is None:
-                return None;
-            if tpVer1 == tpVer2:
-                return 0;
-            return 1 if tuple(map(str, tpVer2)) > tuple(map(str, tpVer1)) else -1;
-        except:
-            if not fIgnoreErrors:
-                reporter.logXcpt();
-        return None;
-
-    @staticmethod
-    def isVersionEqualOrBigger(sVer1, sVer2, fIgnoreErrors = False):
+    def isVersionEqualOrBigger(sVer1, sVer2):
         """
         Checks whether version 1 is equal or bigger than version 2.
 
         Returns True if version 1 is equal or bigger than version 2, False if not.
         """
-        return not TestDriver.compareVersion(sVer1, sVer2, fIgnoreErrors);
+        return utils.versionCompare(sVer1, sVer2) >= 0;
 
     def getGuestAdditionsVersion(self, oSession, fIgnoreErrors = False):
         """
