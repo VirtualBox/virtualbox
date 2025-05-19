@@ -1,4 +1,4 @@
-/* $Id: VBoxCpuProfile.cpp 168916 2025-05-16 21:45:26Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxCpuProfile.cpp 168936 2025-05-19 19:47:17Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxCpuProfile - For testing and poking at the CPU profile DB.
  */
@@ -60,17 +60,20 @@ static const struct
 {
     bool        fOptional;
     const char *pszSymbol;
-    PFNRT      *ppfn;
+    /** Note! Should've been 'PFNRT *ppfn', but clang 14.1 on macos complaints
+     *        that "exception specifications are not allowed beyond a single
+     *        level of indirection".  So, we're using uintptr_t here as a HACK. */
+    uintptr_t  *ppfn;
 } g_aImports[] =
 {
-    { false, VMMR3VTABLE_GETTER_NAME,              (PFNRT *)&g_pfnVMMR3GetVTable                     },
-    { false, "CPUMR3DbGetEntries",                 (PFNRT *)&g_pfnCPUMR3DbGetEntries                 },
-    { false, "CPUMR3DbGetEntryByIndex",            (PFNRT *)&g_pfnCPUMR3DbGetEntryByIndex            },
-    { false, "CPUMR3DbGetEntryByName",             (PFNRT *)&g_pfnCPUMR3DbGetEntryByName             },
-    { false, "CPUMR3DbGetBestEntryByName",         (PFNRT *)&g_pfnCPUMR3DbGetBestEntryByName         },
-    { true,  "CPUMR3DbGetBestEntryByArm64MainId",  (PFNRT *)&g_pfnCPUMR3DbGetBestEntryByArm64MainId  },
-    { true,  "CPUMR3CpuIdPrintArmV8Features",      (PFNRT *)&g_pfnCPUMR3CpuIdPrintArmV8Features      },
-    { true,  "CPUMCpuIdDetermineArmV8MicroarchEx", (PFNRT *)&g_pfnCPUMCpuIdDetermineArmV8MicroarchEx },
+    { false, VMMR3VTABLE_GETTER_NAME,              (uintptr_t *)&g_pfnVMMR3GetVTable                     },
+    { false, "CPUMR3DbGetEntries",                 (uintptr_t *)&g_pfnCPUMR3DbGetEntries                 },
+    { false, "CPUMR3DbGetEntryByIndex",            (uintptr_t *)&g_pfnCPUMR3DbGetEntryByIndex            },
+    { false, "CPUMR3DbGetEntryByName",             (uintptr_t *)&g_pfnCPUMR3DbGetEntryByName             },
+    { false, "CPUMR3DbGetBestEntryByName",         (uintptr_t *)&g_pfnCPUMR3DbGetBestEntryByName         },
+    { true,  "CPUMR3DbGetBestEntryByArm64MainId",  (uintptr_t *)&g_pfnCPUMR3DbGetBestEntryByArm64MainId  },
+    { true,  "CPUMR3CpuIdPrintArmV8Features",      (uintptr_t *)&g_pfnCPUMR3CpuIdPrintArmV8Features      },
+    { true,  "CPUMCpuIdDetermineArmV8MicroarchEx", (uintptr_t *)&g_pfnCPUMCpuIdDetermineArmV8MicroarchEx },
 };
 
 static unsigned g_cVerbosity = 1;
@@ -185,7 +188,7 @@ int main(int argc, char **argv)
                             return RTMsgErrorExitFailure("Unable to resolve %s in %s: %Rrc", g_aImports[i].pszSymbol, pszPath, rc);
                         pv = NULL;
                     }
-                    *g_aImports[i].ppfn = (PFNRT)(uintptr_t)pv;
+                    *g_aImports[i].ppfn = (uintptr_t)pv;
                 }
                 g_pVMM = g_pfnVMMR3GetVTable();
                 if (!RT_VALID_PTR(g_pVMM))
