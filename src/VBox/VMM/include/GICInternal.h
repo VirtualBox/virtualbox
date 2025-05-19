@@ -1,4 +1,4 @@
-/* $Id: GICInternal.h 168810 2025-05-12 12:37:55Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICInternal.h 168919 2025-05-19 06:11:29Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC).
  */
@@ -84,7 +84,7 @@ extern const PDMGICBACKEND g_GicKvmBackend;
 #define GIC_CRIT_SECT_IS_OWNER(a_pDevIns)       PDMDevHlpCritSectIsOwner((a_pDevIns), (a_pDevIns)->CTX_SUFF(pCritSectRo))
 
 /** Returns whether the given register offset is within the specified range. */
-#define GIC_IS_REG_IN_RANGE(a_offReg, a_offFirst, a_cbRegion)    ((uint32_t)(a_offReg) - (a_offFirst) < (a_cbRegion))
+#define GIC_IS_REG_IN_RANGE(a_offReg, a_offFirst, a_cbRegion)    ((uint32_t)(a_offReg) - (a_offFirst) < (uint32_t)(a_cbRegion))
 
 /** @def GIC_SET_REG_U64_FULL
  * Sets a 64-bit GIC register.
@@ -289,7 +289,7 @@ typedef struct GICCPU
     uint8_t                     abRunningPriorities[256];
     /** The active priorities group 0 bitmap. */
     uint32_t                    bmActivePriorityGroup0[4];
-    /** The active priorities group 0 bitmap. */
+    /** The active priorities group 1 bitmap. */
     uint32_t                    bmActivePriorityGroup1[4];
     /** The binary point register for group 0 interrupts. */
     uint8_t                     bBinaryPtGroup0;
