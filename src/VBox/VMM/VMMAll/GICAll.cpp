@@ -1,4 +1,4 @@
-/* $Id: GICAll.cpp 168924 2025-05-19 10:19:14Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICAll.cpp 168925 2025-05-19 11:14:32Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC) - All Contexts.
  */
@@ -697,6 +697,7 @@ static void gicDistHasIrqPendingForVCpu(PCGICDEV pGicDev, PCVMCPUCC pVCpu, VMCPU
         {
             AssertCompile(RT_ELEMENTS(pGicDev->abIntrPriority) == RT_ELEMENTS(pGicDev->au32IntrRouting));
             Assert((uint32_t)idxIntr < RT_ELEMENTS(pGicDev->abIntrPriority));
+            Assert(idxIntr > GIC_INTID_RANGE_PPI_LAST);
             Assert(idxIntr < GIC_INTID_RANGE_SPECIAL_START || idxIntr > GIC_INTID_RANGE_SPECIAL_LAST);
             uint8_t const bIntrPriority = pGicDev->abIntrPriority[idxIntr];
             bool const    fInGroup1     = ASMBitTest(&pGicDev->bmIntrGroup[0], idxIntr);
