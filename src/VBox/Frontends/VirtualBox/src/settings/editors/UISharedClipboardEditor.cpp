@@ -1,4 +1,4 @@
-/* $Id: UISharedClipboardEditor.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UISharedClipboardEditor.cpp 168930 2025-05-19 15:06:14Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UISharedClipboardEditor class implementation.
  */
@@ -79,7 +79,7 @@ void UISharedClipboardEditor::setMinimumLayoutIndent(int iIndent)
 void UISharedClipboardEditor::sltRetranslateUI()
 {
     if (m_pLabel)
-        m_pLabel->setText(tr("&Shared Clipboard:"));
+        m_pLabel->setText(tr("&Shared Clipboard"));
     if (m_pCombo)
     {
         for (int i = 0; i < m_pCombo->count(); ++i)
@@ -87,8 +87,7 @@ void UISharedClipboardEditor::sltRetranslateUI()
             const KClipboardMode enmType = m_pCombo->itemData(i).value<KClipboardMode>();
             m_pCombo->setItemText(i, gpConverter->toString(enmType));
         }
-        m_pCombo->setToolTip(tr("Holds which clipboard data will be copied between the guest and the host OS. "
-                                "This feature requires Guest Additions to be installed in the guest OS."));
+        m_pCombo->setToolTip(tr("Enable sharing of clipboard data as required"));
     }
 }
 

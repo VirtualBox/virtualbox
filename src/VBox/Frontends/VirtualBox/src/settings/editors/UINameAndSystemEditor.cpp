@@ -1,4 +1,4 @@
-/* $Id: UINameAndSystemEditor.cpp 167476 2025-02-11 16:23:34Z serkan.bayraktar@oracle.com $ */
+/* $Id: UINameAndSystemEditor.cpp 168930 2025-05-19 15:06:14Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINameAndSystemEditor class implementation.
  */
@@ -292,9 +292,9 @@ void UINameAndSystemEditor::sltRetranslateUI()
     if (m_pLabelEdition)
         m_pLabelEdition->setText(tr("OS &Edition"));
     if (m_pLabelFamily)
-        m_pLabelFamily->setText(tr("OS &Type"));
+        m_pLabelFamily->setText(tr("&OS"));
     if (m_pLabelDistribution)
-        m_pLabelDistribution->setText(tr("OS Va&riant"));
+        m_pLabelDistribution->setText(tr("OS &Distribution"));
     if (m_pLabelType)
         m_pLabelType->setText(tr("OS &Version"));
 
@@ -304,13 +304,13 @@ void UINameAndSystemEditor::sltRetranslateUI()
         m_pSelectorPath->setToolTip(tr("Storage location for virtual machine files"));
     if (m_pComboEdition)
         m_pComboEdition->setToolTip(tr("Edition of guest operating system to install"));
-    if (m_pComboFamily)
-        m_pComboFamily->setToolTip(tr("Guest operating system type"));
 
+    if (m_pComboFamily)
+        m_pComboFamily->setToolTip(tr("Operating system, for example Linux, Windows"));
     if (m_pComboDistribution)
-        m_pComboDistribution->setToolTip(tr("Guest operating system variant, if applicable"));
+        m_pComboDistribution->setToolTip(tr("OS distribution, if applicable"));
     if (m_pComboType)
-        m_pComboType->setToolTip(tr("Guest operating system version to install"));
+        m_pComboType->setToolTip(tr("Version of OS"));
 
     if (m_pSelectorImage)
         m_pSelectorImage->setToolTip(tr("ISO image to be attached to the "

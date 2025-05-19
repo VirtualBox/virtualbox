@@ -1,4 +1,4 @@
-/* $Id: UIDiskEncryptionSettingsEditor.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UIDiskEncryptionSettingsEditor.cpp 168930 2025-05-19 15:06:14Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIDiskEncryptionSettingsEditor class implementation.
  */
@@ -103,12 +103,12 @@ void UIDiskEncryptionSettingsEditor::sltRetranslateUI()
 {
     if (m_pCheckboxFeature)
     {
-        m_pCheckboxFeature->setText(tr("En&able Disk Encryption"));
-        m_pCheckboxFeature->setToolTip(tr("When checked, disks attached to this virtual machine will be encrypted."));
+        m_pCheckboxFeature->setText(tr("&Encrypt Disks"));
+        m_pCheckboxFeature->setToolTip(tr("Encrypt the disks attached to this VM"));
     }
 
     if (m_pLabelCipherType)
-        m_pLabelCipherType->setText(tr("Disk Encryption C&ipher:"));
+        m_pLabelCipherType->setText(tr("Disk Encryption C&ipher"));
     if (m_pComboCipherType)
     {
         for (int iIndex = 0; iIndex < m_pComboCipherType->count(); ++iIndex)
@@ -116,17 +116,17 @@ void UIDiskEncryptionSettingsEditor::sltRetranslateUI()
             const UIDiskEncryptionCipherType enmType = m_pComboCipherType->itemData(iIndex).value<UIDiskEncryptionCipherType>();
             m_pComboCipherType->setItemText(iIndex, gpConverter->toString(enmType));
         }
-        m_pComboCipherType->setToolTip(tr("Holds the cipher to be used for encrypting the virtual machine disks."));
+        m_pComboCipherType->setToolTip(tr("Cipher type used to encrypt the disks"));
     }
 
     if (m_pLabelPassword1)
-        m_pLabelPassword1->setText(tr("E&nter New Password:"));
+        m_pLabelPassword1->setText(tr("E&nter New Encryption Password"));
     if (m_pEditorPassword1)
-        m_pEditorPassword1->setToolTip(tr("Holds the encryption password for disks attached to this virtual machine."));
+        m_pEditorPassword1->setToolTip(tr("Password to access disks attached to this VM"));
     if (m_pLabelPassword2)
-        m_pLabelPassword2->setText(tr("C&onfirm New Password:"));
+        m_pLabelPassword2->setText(tr("C&onfirm New Encryption Password"));
     if (m_pEditorPassword2)
-        m_pEditorPassword2->setToolTip(tr("Confirms the disk encryption password."));
+        m_pEditorPassword2->setToolTip(tr("Re-enter the password to confirm it matches"));
 
     /* Translate Cipher type combo: */
     m_pComboCipherType->setItemText(0, tr("Leave Unchanged", "cipher type"));
