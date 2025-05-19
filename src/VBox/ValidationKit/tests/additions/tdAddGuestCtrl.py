@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # pylint: disable=too-many-lines
-# $Id: tdAddGuestCtrl.py 168927 2025-05-19 13:19:23Z andreas.loeffler@oracle.com $
+# $Id: tdAddGuestCtrl.py 168933 2025-05-19 17:09:43Z andreas.loeffler@oracle.com $
 
 """
 VirtualBox Validation Kit - Guest Control Tests.
@@ -38,7 +38,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 168927 $"
+__version__ = "$Revision: 168933 $"
 
 # Standard Python imports.
 import errno
@@ -1778,12 +1778,22 @@ class SubTstDrvAddGuestCtrl(base.SubTestDriverBase):
             asArgs = [ sCmdChPasswd ];
             self.oTstDrv.txsRunTestStdIn(oTxsSession, sCmdChPasswd, 5 * 60 * 1000, sCmdChPasswd, asArgs,
                                          sStdIn = 'vbox:password\n', fIgnoreErrors = True);
-            # Show SELinux status (ignore errors, might not be available).
-            sCmdSEStatus = oTestVm.pathJoin(self.oTstDrv.getGuestSystemAdminDir(oTestVm, sPathPrefix = '/usr'), 'sestatus');
-            asArgs = [ sCmdSEStatus ];
-            self.oTstDrv.txsRunTest(oTxsSession, sCmdSEStatus, 5 * 60 * 1000, sCmdSEStatus, asArgs,
-                                    fCheckSessionStatus = False);
-
+            # Show SELinux status (might not be available everywhere, so check for binary first).
+            asCmdSELinuxSts = [
+                ( oTestVm.pathJoin(self.oTstDrv.getGuestSystemAdminDir(oTestVm, sPathPrefix = '/usr'), 'sestatus'), ),
+                ( oTestVm.pathJoin(self.oTstDrv.getGuestSystemAdminDir(oTestVm, sPathPrefix = '/usr/local'), 'sestatus'), ),
+            ];
+            fSELinuxFound = False;
+            for sCmdSELinuxSts in asCmdSELinuxSts:
+                fSELinuxFound = self.oTstDrv.txsIsFile(oSession, oTxsSession, sCmdSELinuxSts, fIgnoreErrors = True):
+                if fSELinuxFound:
+                    reporter.log('SELinux found:');
+                    asArgs = [ sCmdSELinuxSts ];
+                    self.oTstDrv.txsRunTest(oTxsSession, sCmdSELinuxSts, 5 * 60 * 1000, sCmdSELinuxSts, asArgs,
+                                            fCheckSessionStatus = False);
+                    break;
+            if not fSELinuxFound:
+                reporter.log('SELinux not found');
         #
         # Enable VBoxService verbose logging.
         #
