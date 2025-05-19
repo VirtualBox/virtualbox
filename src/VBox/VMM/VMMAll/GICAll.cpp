@@ -1,4 +1,4 @@
-/* $Id: GICAll.cpp 168926 2025-05-19 12:12:31Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICAll.cpp 168928 2025-05-19 13:23:23Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC) - All Contexts.
  */
@@ -2822,9 +2822,8 @@ static DECLCALLBACK(int) gicSetSpi(PVMCC pVM, uint32_t uSpiIntId, bool fAsserted
         ASMBitClear(&pGicDev->bmIntrPending[0], idxIntr);
 
     int const rc = VBOXSTRICTRC_VAL(gicDistUpdateIrqState(pVM, pGicDev));
-    STAM_PROFILE_STOP(&pGicCpu->StatProfSetSpi, a);
-
     GIC_CRIT_SECT_LEAVE(pDevIns);
+    STAM_PROFILE_STOP(&pGicCpu->StatProfSetSpi, a);
     return rc;
 }
 
@@ -3171,6 +3170,7 @@ static DECLCALLBACK(VBOXSTRICTRC) gicWriteSysReg(PVMCPUCC pVCpu, uint32_t u32Reg
              * See ARM GIC spec. 12.2.10 "ICC_EOIR1_EL1, Interrupt Controller End Of Interrupt Register 1".
              * NOTE! The order of the 'if' checks below are crucial.
              */
+            bool fIsRedistIntId = true;
             uint16_t const uIntId = (uint16_t)u64Value;
             if (uIntId <= GIC_INTID_RANGE_PPI_LAST)
             {
@@ -3185,6 +3185,7 @@ static DECLCALLBACK(VBOXSTRICTRC) gicWriteSysReg(PVMCPUCC pVCpu, uint32_t u32Reg
                 uint16_t const idxIntr = /*gicDistGetIndexFromIntId*/(uIntId);
                 AssertReturn(idxIntr < sizeof(pGicDev->bmIntrActive) * 8, VERR_BUFFER_OVERFLOW);
                 ASMBitClear(&pGicDev->bmIntrActive[0], idxIntr);
+                fIsRedistIntId = false;
             }
             else if (uIntId <= GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT)
             {
@@ -3205,6 +3206,7 @@ static DECLCALLBACK(VBOXSTRICTRC) gicWriteSysReg(PVMCPUCC pVCpu, uint32_t u32Reg
                 uint16_t const idxIntr = gicDistGetIndexFromIntId(uIntId);
                 AssertReturn(idxIntr < sizeof(pGicDev->bmIntrActive) * 8, VERR_BUFFER_OVERFLOW);
                 ASMBitClear(&pGicDev->bmIntrActive[0], idxIntr);
+                fIsRedistIntId = false;
             }
             else
             {
@@ -3239,7 +3241,10 @@ static DECLCALLBACK(VBOXSTRICTRC) gicWriteSysReg(PVMCPUCC pVCpu, uint32_t u32Reg
             }
             else
                 AssertReleaseMsgFailed(("Index of running-priority interrupt out-of-bounds %u\n", pGicCpu->idxRunningPriority));
-            rcStrict = gicReDistUpdateIrqState(pGicDev, pVCpu);
+            if (fIsRedistIntId)
+                rcStrict = gicReDistUpdateIrqState(pGicDev, pVCpu);
+            else
+                rcStrict = gicDistUpdateIrqState(pVCpu->CTX_SUFF(pVM), pGicDev);
             break;
         }
 
