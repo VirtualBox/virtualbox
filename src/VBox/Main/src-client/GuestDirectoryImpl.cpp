@@ -1,4 +1,4 @@
-/* $Id: GuestDirectoryImpl.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: GuestDirectoryImpl.cpp 109609 2025-05-19 17:46:22Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Guest directory handling.
  */
@@ -581,7 +581,7 @@ int GuestDirectory::i_onDirNotify(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCTRL
 
         case GUEST_DIR_NOTIFYTYPE_LIST:
         {
-            ASSERT_GUEST_MSG_STMT_BREAK(pSvcCbData->mParms >= 4, ("mParms=%u\n", pSvcCbData->mParms),
+            ASSERT_GUEST_MSG_STMT_BREAK(pSvcCbData->mParms == 5, ("mParms=%u\n", pSvcCbData->mParms),
                                         vrc = VERR_WRONG_PARAMETER_COUNT);
             ASSERT_GUEST_MSG_STMT_BREAK(pSvcCbData->mpaParms[idx].type == VBOX_HGCM_SVC_PARM_32BIT,
                                         ("type=%u\n", pSvcCbData->mpaParms[idx].type),
@@ -599,8 +599,6 @@ int GuestDirectory::i_onDirNotify(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCTRL
             /*
              * Fetch buffer with packed directory entries.
              */
-            ASSERT_GUEST_MSG_STMT_BREAK(pSvcCbData->mParms == 5, ("mParms=%u\n", pSvcCbData->mParms),
-                                        vrc = VERR_WRONG_PARAMETER_COUNT);
             ASSERT_GUEST_MSG_STMT_BREAK(pSvcCbData->mpaParms[idx].type == VBOX_HGCM_SVC_PARM_PTR,
                                         ("type=%u\n", pSvcCbData->mpaParms[idx].type),
                                         vrc = VERR_WRONG_PARAMETER_TYPE);
@@ -608,7 +606,6 @@ int GuestDirectory::i_onDirNotify(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCTRL
             uint32_t cbBuf;
             vrc = HGCMSvcGetPv(&pSvcCbData->mpaParms[idx], &pvBuf, &cbBuf);
             AssertRCBreak(vrc);
-            AssertBreakStmt(cbBuf >= sizeof(GSTCTLDIRENTRYEX), vrc = VERR_INVALID_PARAMETER);
             dataCb.u.list.paEntries = (PCALLBACKDATA_DIR_ENTRY *)RTMemAllocZ(dataCb.u.list.cEntries * sizeof(PCALLBACKDATA_DIR_ENTRY));
             AssertPtrBreakStmt(dataCb.u.list.paEntries, vrc = VERR_NO_MEMORY);
 
