@@ -1,4 +1,4 @@
-/* $Id: GICInternal.h 168919 2025-05-19 06:11:29Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICInternal.h 168922 2025-05-19 09:18:22Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC).
  */
@@ -324,6 +324,10 @@ typedef struct GICCPU
     STAMCOUNTER                 StatSetPpi;
     /** Number of SGIs generated. */
     STAMCOUNTER                 StatSetSgi;
+    /** Number of interrupts acknowledged. */
+    STAMCOUNTER                 StatIntrAck;
+    /** Number of interrupts EOI'd. */
+    STAMCOUNTER                 StatIntrEoi;
 
     /** Profiling of interrupt acknowledge (IAR). */
     STAMPROFILE                 StatProfIntrAck;
