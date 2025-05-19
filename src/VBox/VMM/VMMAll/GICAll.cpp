@@ -1,4 +1,4 @@
-/* $Id: GICAll.cpp 168922 2025-05-19 09:18:22Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICAll.cpp 168923 2025-05-19 10:00:33Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC) - All Contexts.
  */
@@ -2212,6 +2212,7 @@ DECLINLINE(VBOXSTRICTRC) gicDistReadRegister(PPDMDEVINS pDevIns, PVMCPUCC pVCpu,
                      | GIC_DIST_REG_CTRL_DS         /* We don't support multiple security states. */
                      | GIC_DIST_REG_CTRL_ARE_S;     /* We don't support GICv2 backwards compatibility, ARE is always enabled. */
             break;
+
         case GIC_DIST_REG_TYPER_OFF:
         {
             Assert(pGicDev->uMaxSpi > 0 && pGicDev->uMaxSpi <= GIC_DIST_REG_TYPER_NUM_ITLINES);
@@ -2238,16 +2239,20 @@ DECLINLINE(VBOXSTRICTRC) gicDistReadRegister(PPDMDEVINS pDevIns, PVMCPUCC pVCpu,
                       == RT_BOOL(*puValue & GIC_DIST_REG_TYPER_LPIS), ("%#RX32\n", *puValue));
             break;
         }
+
         case GIC_DIST_REG_PIDR2_OFF:
             Assert(pGicDev->uArchRev <= GIC_DIST_REG_PIDR2_ARCHREV_GICV4);
             *puValue = GIC_DIST_REG_PIDR2_ARCHREV_SET(pGicDev->uArchRev);
             break;
+
         case GIC_DIST_REG_IIDR_OFF:
             *puValue = GIC_DIST_REG_IIDR_IMPL_SET(GIC_JEDEC_JEP106_IDENTIFICATION_CODE, GIC_JEDEC_JEP106_CONTINUATION_CODE);
             break;
+
         case GIC_DIST_REG_TYPER2_OFF:
             *puValue = 0;
             break;
+
         default:
             AssertReleaseMsgFailed(("offReg=%#x\n", offReg));
             *puValue = 0;
@@ -2437,6 +2442,7 @@ DECLINLINE(VBOXSTRICTRC) gicDistWriteRegister(PPDMDEVINS pDevIns, PVMCPUCC pVCpu
             pGicDev->fIntrGroup1Enabled = RT_BOOL(uValue & GIC_DIST_REG_CTRL_ENABLE_GRP1_NS);
             rcStrict = gicDistUpdateIrqState(pVM, pGicDev);
             break;
+
         default:
         {
             /* Windows 11 arm64 (24H2) writes zeroes into these reserved registers. We ignore them. */
@@ -2478,35 +2484,43 @@ DECLINLINE(VBOXSTRICTRC) gicReDistReadRegister(PPDMDEVINS pDevIns, PVMCPUCC pVCp
                      | (pGicDev->fLpi    ? GIC_REDIST_REG_TYPER_PLPIS : 0);
             Assert(!pGicDev->fExtPpi || pGicDev->uMaxExtPpi > 0);
             break;
+
         case GIC_REDIST_REG_WAKER_OFF:
             *puValue = 0;
             break;
+
         case GIC_REDIST_REG_IIDR_OFF:
             *puValue = GIC_REDIST_REG_IIDR_IMPL_SET(GIC_JEDEC_JEP106_IDENTIFICATION_CODE, GIC_JEDEC_JEP106_CONTINUATION_CODE);
             break;
+
         case GIC_REDIST_REG_TYPER_AFFINITY_OFF:
             *puValue = idRedist;
             break;
+
         case GIC_REDIST_REG_PIDR2_OFF:
             Assert(pGicDev->uArchRev <= GIC_DIST_REG_PIDR2_ARCHREV_GICV4);
             *puValue = GIC_REDIST_REG_PIDR2_ARCHREV_SET(pGicDev->uArchRev);
             break;
+
         case GIC_REDIST_REG_CTLR_OFF:
             *puValue = (pGicDev->fEnableLpis ? GIC_REDIST_REG_CTLR_ENABLE_LPI : 0)
                      | GIC_REDIST_REG_CTLR_CES_SET(1);
             break;
+
         case GIC_REDIST_REG_PROPBASER_OFF:
             *puValue = pGicDev->uLpiConfigBaseReg.s.Lo;
             break;
         case GIC_REDIST_REG_PROPBASER_OFF + 4:
             *puValue = pGicDev->uLpiConfigBaseReg.s.Hi;
             break;
+
         case GIC_REDIST_REG_PENDBASER_OFF:
             *puValue = pGicDev->uLpiPendingBaseReg.s.Lo;
             break;
         case GIC_REDIST_REG_PENDBASER_OFF + 4:
             *puValue = pGicDev->uLpiPendingBaseReg.s.Hi;
             break;
+
         default:
             AssertReleaseMsgFailed(("offReg=%#x\n",  offReg));
             *puValue = 0;
@@ -2633,6 +2647,7 @@ DECLINLINE(VBOXSTRICTRC) gicReDistWriteRegister(PPDMDEVINS pDevIns, PVMCPUCC pVC
         case GIC_REDIST_REG_WAKER_OFF:
             Assert(uValue == 0);
             break;
+
         case GIC_REDIST_REG_CTLR_OFF:
         {
             /* Check if LPIs are supported and whether the enable LPI bit changed. */
@@ -2655,18 +2670,21 @@ DECLINLINE(VBOXSTRICTRC) gicReDistWriteRegister(PPDMDEVINS pDevIns, PVMCPUCC pVC
             }
             break;
         }
+
         case GIC_REDIST_REG_PROPBASER_OFF:
             pGicDev->uLpiConfigBaseReg.s.Lo = uValue & RT_LO_U32(GIC_REDIST_REG_PROPBASER_RW_MASK);
             break;
         case GIC_REDIST_REG_PROPBASER_OFF + 4:
             pGicDev->uLpiConfigBaseReg.s.Hi = uValue & RT_HI_U32(GIC_REDIST_REG_PROPBASER_RW_MASK);
             break;
+
         case GIC_REDIST_REG_PENDBASER_OFF:
             pGicDev->uLpiPendingBaseReg.s.Lo = uValue & RT_LO_U32(GIC_REDIST_REG_PENDBASER_RW_MASK);
             break;
         case GIC_REDIST_REG_PENDBASER_OFF + 4:
             pGicDev->uLpiPendingBaseReg.s.Hi = uValue & RT_HI_U32(GIC_REDIST_REG_PENDBASER_RW_MASK);
             break;
+
         default:
             AssertReleaseMsgFailed(("offReg=%#x (%s) uValue=%#RX32\n", offReg, gicReDistGetRegDescription(offReg), uValue));
             break;
@@ -2958,7 +2976,10 @@ static VBOXSTRICTRC gicReDistWriteSgiReg(PCGICDEV pGicDev, PVMCPUCC pVCpu, uint6
                 if (fRangeSelSupport)
                     idCpuTarget = RT_MAKE_U32_FROM_U8(idRangeStart + idCpuInterface, uAff1, uAff2, uAff3);
                 else
+                {
+                    AssertMsgFailed(("here\n"));
                     idCpuTarget = gicGetCpuIdFromAffinity(idCpuInterface, uAff1, uAff2, uAff3);
+                }
                 if (RT_LIKELY(idCpuTarget < cCpus))
                     VMCPUSET_ADD(&DestCpuSet, idCpuTarget);
                 else
@@ -3005,92 +3026,78 @@ static DECLCALLBACK(VBOXSTRICTRC) gicReadSysReg(PVMCPUCC pVCpu, uint32_t u32Reg,
         case ARMV8_AARCH64_SYSREG_ICC_PMR_EL1:
             *pu64Value = pGicCpu->bIntrPriorityMask;
             break;
-        case ARMV8_AARCH64_SYSREG_ICC_IAR0_EL1:
-            AssertReleaseFailed();
-            break;
-        case ARMV8_AARCH64_SYSREG_ICC_EOIR0_EL1:
-            AssertReleaseFailed();
-            break;
-        case ARMV8_AARCH64_SYSREG_ICC_HPPIR0_EL1:
-            AssertReleaseFailed();
-            break;
+
         case ARMV8_AARCH64_SYSREG_ICC_BPR0_EL1:
             *pu64Value = ARMV8_ICC_BPR0_EL1_AARCH64_BINARYPOINT_SET(pGicCpu->bBinaryPtGroup0);
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_AP0R0_EL1:
-            AssertReleaseFailed();
             *pu64Value = pGicCpu->bmActivePriorityGroup0[0];
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_AP0R1_EL1:
             AssertReleaseFailed();
             *pu64Value = pGicCpu->bmActivePriorityGroup0[1];
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_AP0R2_EL1:
             AssertReleaseFailed();
             *pu64Value = pGicCpu->bmActivePriorityGroup0[2];
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_AP0R3_EL1:
             AssertReleaseFailed();
             *pu64Value = pGicCpu->bmActivePriorityGroup0[3];
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_AP1R0_EL1:
             AssertReleaseFailed();
             *pu64Value = pGicCpu->bmActivePriorityGroup1[0];
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_AP1R1_EL1:
             AssertReleaseFailed();
             *pu64Value = pGicCpu->bmActivePriorityGroup1[1];
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_AP1R2_EL1:
             AssertReleaseFailed();
             *pu64Value = pGicCpu->bmActivePriorityGroup1[2];
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_AP1R3_EL1:
             AssertReleaseFailed();
             *pu64Value = pGicCpu->bmActivePriorityGroup1[3];
             break;
-        case ARMV8_AARCH64_SYSREG_ICC_NMIAR1_EL1:
-            AssertReleaseFailed();
-            break;
-        case ARMV8_AARCH64_SYSREG_ICC_DIR_EL1:
-            AssertReleaseFailed();
-            break;
+
         case ARMV8_AARCH64_SYSREG_ICC_RPR_EL1:
             *pu64Value = pGicCpu->abRunningPriorities[pGicCpu->idxRunningPriority] & 0xfe;
             break;
-        case ARMV8_AARCH64_SYSREG_ICC_SGI1R_EL1:
-            AssertReleaseFailed();
-            break;
-        case ARMV8_AARCH64_SYSREG_ICC_ASGI1R_EL1:
-            AssertReleaseFailed();
-            break;
-        case ARMV8_AARCH64_SYSREG_ICC_SGI0R_EL1:
-            AssertReleaseFailed();
-            break;
+
         case ARMV8_AARCH64_SYSREG_ICC_IAR1_EL1:
             *pu64Value = gicAckHighestPriorityPendingIntr(pGicDev, pVCpu, GICINTRGROUP_1NS);
             break;
-        case ARMV8_AARCH64_SYSREG_ICC_EOIR1_EL1:
-            AssertReleaseFailed();
-            break;
+
         case ARMV8_AARCH64_SYSREG_ICC_HPPIR1_EL1:
             *pu64Value = gicGetHighestPriorityPendingIntr(pGicDev, pGicCpu, GICINTRGROUP_1NS, NULL /*pIntr*/);
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_BPR1_EL1:
             *pu64Value = ARMV8_ICC_BPR1_EL1_AARCH64_BINARYPOINT_SET(pGicCpu->bBinaryPtGroup1);
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_CTLR_EL1:
             *pu64Value = pGicCpu->uIccCtlr;
             break;
-        case ARMV8_AARCH64_SYSREG_ICC_SRE_EL1:
-            AssertReleaseFailed();
-            break;
+
         case ARMV8_AARCH64_SYSREG_ICC_IGRPEN0_EL1:
             *pu64Value = pGicCpu->fIntrGroup0Enabled ? ARMV8_ICC_IGRPEN0_EL1_AARCH64_ENABLE : 0;
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_IGRPEN1_EL1:
             *pu64Value = pGicCpu->fIntrGroup1Enabled ? ARMV8_ICC_IGRPEN1_EL1_AARCH64_ENABLE : 0;
             break;
+
         default:
             AssertReleaseMsgFailed(("u32Reg=%#RX32\n", u32Reg));
             break;
@@ -3130,18 +3137,11 @@ static DECLCALLBACK(VBOXSTRICTRC) gicWriteSysReg(PVMCPUCC pVCpu, uint32_t u32Reg
             pGicCpu->bIntrPriorityMask = (uint8_t)u64Value;
             rcStrict = gicReDistUpdateIrqState(pGicDev, pVCpu);
             break;
-        case ARMV8_AARCH64_SYSREG_ICC_IAR0_EL1:
-            AssertReleaseFailed();
-            break;
-        case ARMV8_AARCH64_SYSREG_ICC_EOIR0_EL1:
-            AssertReleaseFailed();
-            break;
-        case ARMV8_AARCH64_SYSREG_ICC_HPPIR0_EL1:
-            AssertReleaseFailed();
-            break;
+
         case ARMV8_AARCH64_SYSREG_ICC_BPR0_EL1:
             pGicCpu->bBinaryPtGroup0 = (uint8_t)ARMV8_ICC_BPR0_EL1_AARCH64_BINARYPOINT_GET(u64Value);
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_AP0R0_EL1:
         case ARMV8_AARCH64_SYSREG_ICC_AP0R1_EL1:
         case ARMV8_AARCH64_SYSREG_ICC_AP0R2_EL1:
@@ -3152,29 +3152,11 @@ static DECLCALLBACK(VBOXSTRICTRC) gicWriteSysReg(PVMCPUCC pVCpu, uint32_t u32Reg
         case ARMV8_AARCH64_SYSREG_ICC_AP1R3_EL1:
             /* Writes ignored, well behaving guest would write all 0s or the last read value of the register. */
             break;
-        case ARMV8_AARCH64_SYSREG_ICC_NMIAR1_EL1:
-            AssertReleaseFailed();
-            break;
-        case ARMV8_AARCH64_SYSREG_ICC_DIR_EL1:
-            AssertReleaseFailed();
-            break;
-        case ARMV8_AARCH64_SYSREG_ICC_RPR_EL1:
-            AssertReleaseFailed();
-            break;
+
         case ARMV8_AARCH64_SYSREG_ICC_SGI1R_EL1:
-        {
             gicReDistWriteSgiReg(pGicDev, pVCpu, u64Value);
             break;
-        }
-        case ARMV8_AARCH64_SYSREG_ICC_ASGI1R_EL1:
-            AssertReleaseFailed();
-            break;
-        case ARMV8_AARCH64_SYSREG_ICC_SGI0R_EL1:
-            AssertReleaseFailed();
-            break;
-        case ARMV8_AARCH64_SYSREG_ICC_IAR1_EL1:
-            AssertReleaseFailed();
-            break;
+
         case ARMV8_AARCH64_SYSREG_ICC_EOIR1_EL1:
         {
             /*
@@ -3262,28 +3244,25 @@ static DECLCALLBACK(VBOXSTRICTRC) gicWriteSysReg(PVMCPUCC pVCpu, uint32_t u32Reg
             rcStrict = gicReDistUpdateIrqState(pGicDev, pVCpu);
             break;
         }
-        case ARMV8_AARCH64_SYSREG_ICC_HPPIR1_EL1:
-            AssertReleaseFailed();
-            break;
+
         case ARMV8_AARCH64_SYSREG_ICC_BPR1_EL1:
             pGicCpu->bBinaryPtGroup1 = (uint8_t)ARMV8_ICC_BPR1_EL1_AARCH64_BINARYPOINT_GET(u64Value);
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_CTLR_EL1:
-            Assert(!(u64Value & ARMV8_ICC_CTLR_EL1_AARCH64_EOIMODE));
-            pGicCpu->uIccCtlr &= ARMV8_ICC_CTLR_EL1_RW;
-            /** @todo */
+            GIC_SET_REG_U64_FULL(pGicCpu->uIccCtlr, u64Value, ARMV8_ICC_CTLR_EL1_RW);
             break;
-        case ARMV8_AARCH64_SYSREG_ICC_SRE_EL1:
-            AssertReleaseFailed();
-            break;
+
         case ARMV8_AARCH64_SYSREG_ICC_IGRPEN0_EL1:
             pGicCpu->fIntrGroup0Enabled = RT_BOOL(u64Value & ARMV8_ICC_IGRPEN0_EL1_AARCH64_ENABLE);
             break;
+
         case ARMV8_AARCH64_SYSREG_ICC_IGRPEN1_EL1:
             pGicCpu->fIntrGroup1Enabled = RT_BOOL(u64Value & ARMV8_ICC_IGRPEN1_EL1_AARCH64_ENABLE);
             break;
+
         default:
-            AssertReleaseMsgFailed(("u32Reg=%#RX32\n", u32Reg));
+            AssertReleaseMsgFailed(("u32Reg=%#RX32 uValue=%#RX64\n", u32Reg, u64Value));
             break;
     }
 
