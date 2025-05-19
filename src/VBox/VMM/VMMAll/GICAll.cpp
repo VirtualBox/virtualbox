@@ -1,4 +1,4 @@
-/* $Id: GICAll.cpp 168923 2025-05-19 10:00:33Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICAll.cpp 168924 2025-05-19 10:19:14Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC) - All Contexts.
  */
@@ -2976,10 +2976,7 @@ static VBOXSTRICTRC gicReDistWriteSgiReg(PCGICDEV pGicDev, PVMCPUCC pVCpu, uint6
                 if (fRangeSelSupport)
                     idCpuTarget = RT_MAKE_U32_FROM_U8(idRangeStart + idCpuInterface, uAff1, uAff2, uAff3);
                 else
-                {
-                    AssertMsgFailed(("here\n"));
                     idCpuTarget = gicGetCpuIdFromAffinity(idCpuInterface, uAff1, uAff2, uAff3);
-                }
                 if (RT_LIKELY(idCpuTarget < cCpus))
                     VMCPUSET_ADD(&DestCpuSet, idCpuTarget);
                 else
@@ -3250,7 +3247,8 @@ static DECLCALLBACK(VBOXSTRICTRC) gicWriteSysReg(PVMCPUCC pVCpu, uint32_t u32Reg
             break;
 
         case ARMV8_AARCH64_SYSREG_ICC_CTLR_EL1:
-            GIC_SET_REG_U64_FULL(pGicCpu->uIccCtlr, u64Value, ARMV8_ICC_CTLR_EL1_RW);
+            /* We don't support dual-security states, so we use the "DS_RW" read/write mask. */
+            GIC_SET_REG_U64_FULL(pGicCpu->uIccCtlr, u64Value, ARMV8_ICC_CTLR_EL1_DS_RW);
             break;
 
         case ARMV8_AARCH64_SYSREG_ICC_IGRPEN0_EL1:

@@ -1572,8 +1572,8 @@ typedef const ARMV8SPSREL2 *PCXARMV8SPSREL2;
 #define ARMV8_ICC_CTLR_EL1_AARCH64_EOIMODE                      RT_BIT_64(1)
 #define ARMV8_ICC_CTLR_EL1_AARCH64_EOIMODE_BIT                  1
 /** Bit 7 - Priority Mask Hint Enable - RW (under circumstances). */
-#define ARMV8_ICC_CTLR_EL1_AARCH64_PMHE                         RT_BIT_64(7)
-#define ARMV8_ICC_CTLR_EL1_AARCH64_PMHE_BIT                     7
+#define ARMV8_ICC_CTLR_EL1_AARCH64_PMHE                         RT_BIT_64(6)
+#define ARMV8_ICC_CTLR_EL1_AARCH64_PMHE_BIT                     6
 /** Bit 8 - 10 - Priority bits - RO. */
 #define ARMV8_ICC_CTLR_EL1_AARCH64_PRIBITS                      (RT_BIT_64(8) | RT_BIT_64(9) | RT_BIT_64(10))
 #define ARMV8_ICC_CTLR_EL1_AARCH64_PRIBITS_SET(a_PriBits)       (((a_PriBits) << 8) & ARMV8_ICC_CTLR_EL1_AARCH64_PRIBITS)
@@ -1596,7 +1596,9 @@ typedef const ARMV8SPSREL2 *PCXARMV8SPSREL2;
 /** Bit 19 - Extended INTID range supported - RO. */
 #define ARMV8_ICC_CTLR_EL1_AARCH64_EXTRANGE                     RT_BIT_64(19)
 #define ARMV8_ICC_CTLR_EL1_AARCH64_EXTRANGE_BIT                 19
-/** All RW bits. */
+/** RW bits when GICD_CTLR.DS (disable-security) is set. */
+#define ARMV8_ICC_CTLR_EL1_DS_RW                                (ARMV8_ICC_CTLR_EL1_AARCH64_CBPR | ARMV8_ICC_CTLR_EL1_AARCH64_EOIMODE)
+/** RW bits when GICD_CTLR.DS (disable-security) is clear. */
 #define ARMV8_ICC_CTLR_EL1_RW                                   (ARMV8_ICC_CTLR_EL1_AARCH64_CBPR | ARMV8_ICC_CTLR_EL1_AARCH64_EOIMODE | ARMV8_ICC_CTLR_EL1_AARCH64_PMHE)
 /** All RO bits (including Res0). */
 #define ARMV8_ICC_CTLR_EL1_RO                                   ~ARMV8_ICC_CTLR_EL1_RW
