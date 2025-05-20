@@ -622,7 +622,7 @@ def i_medium_resizeandcloneto(oVBoxMedium, oMediumResizeAndCloneToRequestBody: M
 
     :param mediumid: The Id of medium
     :type mediumid: str
-    :param oMediumResizeAndCloneToRequestBody: 
+    :param oMediumResizeAndCloneToRequestBody:
     :type oMediumResizeAndCloneToRequestBody: dict | bytes
 
     :rtype: ProgressResponse
@@ -658,7 +658,7 @@ def i_medium_resizeandcloneto(oVBoxMedium, oMediumResizeAndCloneToRequestBody: M
             logging.info(f"The medium passed as 'parent' with Id {strParentId} wasn't found")
             oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'parent' with Id {strParentId} wasn't found")
             return jsonify(oError), HTTPStatus.NOT_FOUND
-    
+
     try:
         oVBoxProgress = oVBoxMedium.resizeAndCloneTo(oTargetMedium, nLogicalSize, lMediumVariant, oParentMedium)
         if oVBoxProgress is not None:
@@ -673,6 +673,61 @@ def i_medium_resizeandcloneto(oVBoxMedium, oMediumResizeAndCloneToRequestBody: M
 
     except Exception as e:
         logging.info(f"Exception during resizing and cloning the medium {oVBoxMedium.id}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
+def i_medium_createbasestorage(mediumid, oMediumCreateBaseStorageRequestBody: MediumCreateBaseStorageRequestBody):  # noqa: E501
+    """
+    Call interface method IMedium::createBaseStorage
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param oMediumCreateBaseStorageRequestBody:
+    :type oMediumCreateBaseStorageRequestBody: dict | bytes
+
+    :rtype: ProgressResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oProgressResponse = ProgressResponse()
+
+    # Trying to get VirtualBox Medium object that had been created earlier
+    # mediumid, in this case, is a value returned in oMediumResponse.medium.id (see the function i_virtualbox_createmedium())
+    try:
+        oVBoxMedium = lNewAndNotRegisteredStorage[mediumid]
+    except KeyError as e:
+        logging.info(f"The medium Id {mediumid} wasn't found")
+        httpCode = HTTPStatus.NOT_FOUND
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    nLogicalSize = oMediumCreateBaseStorageRequestBody.logical_size
+    variant = swagger_to_vbox_medium_variant(oMediumCreateBaseStorageRequestBody.variant)
+
+    try:
+        oVBoxProgress = oVBoxMedium.createBaseStorage(nLogicalSize, variant)
+        # Don't forget to remove the Id from the Map
+        del lNewAndNotRegisteredStorage[mediumid]
+
+        if oVBoxProgress is not None:
+            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            logging.info('The medium base storage creation has been successfully started')
+
+            # Add Progress Id object into the tracking lists
+            ctx['tracker'][oProgressResponse.progress.id] = None
+        else:
+            httpCode = HTTPStatus.OK
+            oError = Error(httpCode, f"The medium base storage creation has been done without using Progress object")
+
+    except Exception as e:
+        logging.info(f"Exception during creation of the base storage of the medium {oVBoxMedium.id}")
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
 
