@@ -1,4 +1,4 @@
-/* $Id: CPUMR3CpuIdInfo-armv8.cpp 168941 2025-05-20 21:23:52Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMR3CpuIdInfo-armv8.cpp 168946 2025-05-20 23:25:45Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part for ARMv8 hypervisor.
  */
@@ -332,11 +332,9 @@ static PCSUPARMSYSREGVAL cpumR3CpuIdInfoArmLookup2(PCPUMCPUIDINFOSTATEARMV8 pThi
 
 
 /**
- * Display the guest CpuId leaves.
+ * Display most ARMv8 ID registers.
  *
- * @param   pVM         The cross context VM structure.
- * @param   pHlp        The info helper functions.
- * @param   pszArgs     "terse", "default" or "verbose".
+ * @param   pThis       The argument package.
  */
 VMMR3DECL(void) CPUMR3CpuIdInfoArmV8(PCPUMCPUIDINFOSTATEARMV8 pThis)
 {

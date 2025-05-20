@@ -1,4 +1,4 @@
-/* $Id: CPUMR3CpuIdInfo-x86.cpp 168941 2025-05-20 21:23:52Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMR3CpuIdInfo-x86.cpp 168946 2025-05-20 23:25:45Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part.
  */
@@ -867,11 +867,9 @@ static PCCPUMCPUIDLEAF cpumR3CpuIdInfoRawSubLeafs(PCPUMCPUIDINFOSTATEX86 pThis, 
 
 
 /**
- * Display the guest CpuId leaves.
+ * Display the x86 CPUID leaves.
  *
- * @param   pVM         The cross context VM structure.
- * @param   pHlp        The info helper functions.
- * @param   pszArgs     "terse", "default" or "verbose".
+ * @param   pThis       The argument package.
  */
 VMMR3DECL(void) CPUMR3CpuIdInfoX86(PCPUMCPUIDINFOSTATEX86 pThis)
 {

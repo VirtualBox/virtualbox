@@ -54,7 +54,7 @@ DECLINLINE(uint64_t) cpumCpuIdLookupSysReg(PCSUPARMSYSREGVAL paSysRegs, uint32_t
  * @returns VBox status code
  * @param   paSysRegs   The system registers and their values.
  * @param   cSysRegs    Number of system register values.
- * @param   paFeatures  The structure to explode the features into.
+ * @param   pFeatures   The structure to explode the features into.
  */
 VMMR3DECL(int) CPUMCpuIdExplodeFeaturesArmV8FromSysRegs(PCSUPARMSYSREGVAL paSysRegs, uint32_t cSysRegs,
                                                         CPUMFEATURESARMV8 *pFeatures)
