@@ -615,6 +615,71 @@ def i_medium_moveto(oVBoxMedium, location=None):
     return response, httpCode
 
 
+@findMedium_decorator
+def i_medium_resizeandcloneto(oVBoxMedium, oMediumResizeAndCloneToRequestBody: MediumResizeAndCloneToRequestBody):  # noqa: E501
+    """
+    Call interface method IMedium::resizeAndCloneTo
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param oMediumResizeAndCloneToRequestBody: 
+    :type oMediumResizeAndCloneToRequestBody: dict | bytes
+
+    :rtype: ProgressResponse
+    """
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oProgressResponse = ProgressResponse()
+
+    strParentId = oMediumResizeAndCloneToRequestBody.parent
+    strTargetId = oMediumResizeAndCloneToRequestBody.target
+    nLogicalSize = oMediumResizeAndCloneToRequestBody.logical_size
+    lMediumVariant = list()
+    for item in oMediumResizeAndCloneToRequestBody.variant:
+        variant = swagger_to_vbox_medium_variant(item)
+        lMediumVariant.append(variant)
+
+    if len(lMediumVariant) == 0:#try to use kind of standard medium variant
+        lMediumVariant.append(ctx['const'].MediumVariant_Standard)
+
+    logging.info(f"Resizing and cloning the medium {oVBoxMedium.id} to the medium {strTargetId} with the size {nLogicalSize}")
+
+    oTargetMedium, oError = __find_medium_by_id(strTargetId)
+    if oError or oTargetMedium is None:
+        logging.info(f"The medium passed as 'target' with Id {strTargetId} wasn't found")
+        oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'target' with Id {strTargetId} wasn't found")
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    oParentMedium = None
+    if strParentId is not None and strParentId != '':
+        oParentMedium, oError = __find_medium_by_id(strParentId)
+        if oError or oParentMedium is None:
+            logging.info(f"The medium passed as 'parent' with Id {strParentId} wasn't found")
+            oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'parent' with Id {strParentId} wasn't found")
+            return jsonify(oError), HTTPStatus.NOT_FOUND
+    
+    try:
+        oVBoxProgress = oVBoxMedium.resizeAndCloneTo(oTargetMedium, nLogicalSize, lMediumVariant, oParentMedium)
+        if oVBoxProgress is not None:
+            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            logging.info('The cloning medium has been successfully started')
+
+            # Add Progress Id object into the tracking lists
+            ctx['tracker'][oProgressResponse.progress.id] = None
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "Something wrong with the Progress object")
+
+    except Exception as e:
+        logging.info(f"Exception during resizing and cloning the medium {oVBoxMedium.id}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
