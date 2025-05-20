@@ -1,4 +1,4 @@
-/* $Id: VBoxWindowsAdditions.cpp 167063 2025-01-20 18:13:12Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxWindowsAdditions.cpp 168939 2025-05-20 10:23:36Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxWindowsAdditions - The Windows Guest Additions Loader.
  *
@@ -303,7 +303,8 @@ static DECLCALLBACK(int) VerifyExeCallback(RTLDRMOD hLdrMod, PCRTLDRSIGNATUREINF
             PCRTCRPKCS7CONTENTINFO pContentInfo = (PCRTCRPKCS7CONTENTINFO)pInfo->pvSignature;
 
             if (pState->cVerbose > 0)
-                RTMsgInfo("Verifying '%s' signature #%u ...\n", pState->pszFilename, pInfo->iSignature + 1);
+                RTMsgInfo("(%RU64) Verifying '%s' signature #%u ...\n", RTTimeProgramMilliTS(),
+                          pState->pszFilename, pInfo->iSignature + 1);
 
 #  if 0
             /*
@@ -368,9 +369,9 @@ static DECLCALLBACK(int) VerifyExeCallback(RTLDRMOD hLdrMod, PCRTLDRSIGNATUREINF
                                                  && RTTimeSpecCompare(&TimeSpec, &aTimes[iTime].TimeSpec) != 0
                                                ? "at signing time" : aTimes[iTime].pszDesc;
                     if (pInfo->cSignatures == 1)
-                        RTMsgInfo("'%s' is valid %s%s.\n", pState->pszFilename, pszTime, pszNote);
+                        RTMsgInfo("(%RU64) '%s' is valid %s%s.\n", RTTimeProgramMilliTS(), pState->pszFilename, pszTime, pszNote);
                     else
-                        RTMsgInfo("'%s' signature #%u is valid %s%s.\n",
+                        RTMsgInfo("(%RU64) '%s' signature #%u is valid %s%s.\n", RTTimeProgramMilliTS(),
                                   pState->pszFilename, pInfo->iSignature + 1, pszTime, pszNote);
                     pState->cOkay++;
                     return VINF_SUCCESS;
@@ -410,7 +411,7 @@ static DECLCALLBACK(int) VerifyExeCallback(RTLDRMOD hLdrMod, PCRTLDRSIGNATUREINF
 static int CheckFileSignatureIprt(wchar_t const *pwszExePath)
 {
     RTR3InitExeNoArguments(RTR3INIT_FLAGS_STANDALONE_APP);
-    RTMsgInfo("Signing checking of '%ls'...\n", pwszExePath);
+    RTMsgInfo("(%RU64) Signing checking of '%ls'...\n", RTTimeProgramMilliTS(), pwszExePath);
 
     /* Initialize the state. */
     VERIFYEXESTATE State;
