@@ -1,4 +1,4 @@
-/* $Id: VBoxCpuProfile.cpp 168941 2025-05-20 21:23:52Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxCpuProfile.cpp 168943 2025-05-20 21:28:33Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxCpuProfile - For testing and poking at the CPU profile DB.
  */
@@ -271,7 +271,7 @@ static RTEXITCODE cmdHost(const char *pszCmd)
     if (RT_FAILURE(rc))
         return RTMsgErrorExitFailure("%s: CPUMCpuIdCollectLeavesFromX86Host failed: %Rrc", pszCmd, rc);
 
-    CPUMFEATURESX86 Features = {0};
+    CPUMFEATURESX86 Features;
     rc = g_pfnCPUMCpuIdExplodeFeaturesX86(paIdValues, cIdValues, &Features);
     if (RT_FAILURE(rc))
         return RTMsgErrorExitFailure("%s: CPUMCpuIdExplodeFeaturesX86 failed: %Rrc", pszCmd, rc);
