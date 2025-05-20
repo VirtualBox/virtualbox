@@ -437,6 +437,72 @@ def i_medium_reset(oVBoxMedium):  # noqa: E501
     return response, httpCode
 
 
+@findMedium_decorator
+def i_medium_cloneto(oVBoxMedium, oMediumCloneToRequestBody: MediumCloneToRequestBody):  # noqa: E501
+    """
+    Call interface method IMedium::cloneTo
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param oMediumCloneToRequestBody:
+    :type oMediumCloneToRequestBody: dict | bytes
+
+    :rtype: ProgressResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oProgressResponse = ProgressResponse()
+
+    strParentId = oMediumCloneToRequestBody.parent
+    strTargetId = oMediumCloneToRequestBody.target
+    lMediumVariant = list()
+    for item in oMediumCloneToRequestBody.variant:
+        variant = swagger_to_vbox_medium_variant(item)
+        lMediumVariant.append(variant)
+
+    if len(lMediumVariant) == 0:#try to use kind of standard medium variant
+        lMediumVariant.append(ctx['const'].MediumVariant_Standard)
+
+    logging.info(f"Cloning the medium {oVBoxMedium.id} to the medium {strTargetId}")
+
+    oTargetMedium, oError = __find_medium_by_id(strTargetId)
+    if oError or oTargetMedium is None:
+        logging.info(f"The medium passed as 'target' with Id {strTargetId} wasn't found")
+        oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'target' with Id {strTargetId} wasn't found")
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    oParentMedium = None
+    if strParentId is not None and strParentId != '':
+        oParentMedium, oError = __find_medium_by_id(strParentId)
+        if oError or oParentMedium is None:
+            logging.info(f"The medium passed as 'parent' with Id {strParentId} wasn't found")
+            oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'parent' with Id {strParentId} wasn't found")
+            return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    try:
+        oVBoxProgress = oVBoxMedium.cloneTo(oTargetMedium, lMediumVariant, oParentMedium)
+        if oVBoxProgress is not None:
+            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            logging.info('The cloning medium has been successfully started')
+
+            # Add Progress Id object into the tracking lists
+            ctx['tracker'][oProgressResponse.progress.id] = None
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "Something wrong with the Progress object")
+
+    except Exception as e:
+        logging.info(f"Exception during cloning the medium {oVBoxMedium.id}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
@@ -464,20 +530,6 @@ def i_medium_checkencryptionpassword(mediumid, password=None):  # noqa: E501
     :rtype: None
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_cloneto(mediumid, oMediumCloneToRequestBody):  # noqa: E501
-    """
-    Call interface method IMedium::cloneTo
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param oMediumCloneToRequestBody: 
-    :type oMediumCloneToRequestBody: dict | bytes
-
-    :rtype: ProgressResponse
-    """
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
