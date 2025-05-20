@@ -1,4 +1,4 @@
-/* $Id: GICAll.cpp 168928 2025-05-19 13:23:23Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICAll.cpp 168938 2025-05-20 06:07:41Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC) - All Contexts.
  */
@@ -1939,7 +1939,7 @@ static uint16_t gicAckHighestPriorityPendingIntr(PGICDEV pGicDev, PVMCPUCC pVCpu
     {
         /* Mark the interrupt as active. */
         AssertMsg(idxIntr < sizeof(pGicCpu->bmIntrActive) * 8, ("idxIntr=%u\n", idxIntr));
-        AssertMsg(idxIntr < 32, ("idxIntr=%u uIntId=%u\n", idxIntr, uIntId));
+        AssertMsg(idxIntr < 32, ("idxIntr=%u uIntId=%u\n", idxIntr, uIntId));   /** @todo Remove later, temporary for debugging */
         ASMBitSet(&pGicCpu->bmIntrActive[0], idxIntr);
 
         /* If it is an edge-triggered interrupt, mark it as no longer pending. */
@@ -1947,6 +1947,9 @@ static uint16_t gicAckHighestPriorityPendingIntr(PGICDEV pGicDev, PVMCPUCC pVCpu
         bool const fEdgeTriggered = ASMBitTest(&pGicCpu->bmIntrConfig[0], 2 * idxIntr + 1);
         if (fEdgeTriggered)
             ASMBitClear(&pGicCpu->bmIntrPending[0], idxIntr);
+
+        /* Paranoia - SGIs are always edge-triggered. */
+        Assert(!GIC_IS_INTR_SGI(uIntId) || fEdgeTriggered);
 
         /** @todo Duplicate block Id=E5ED12D2-088D-4525-9609-8325C02846C3 (start). */
         /* Update the active priorities bitmap. */
@@ -2812,6 +2815,7 @@ static DECLCALLBACK(int) gicSetSpi(PVMCC pVM, uint32_t uSpiIntId, bool fAsserted
     AssertMsgReturn(idxIntr < sizeof(pGicDev->bmIntrPending) * 8,
                     ("out-of-range SPI interrupt ID %RU32 (%RU32)\n", uIntId, uSpiIntId),
                     VERR_INVALID_PARAMETER);
+    Assert(GIC_IS_INTR_SPI(uIntId) || GIC_IS_INTR_EXT_SPI(uIntId));
 
     GIC_CRIT_SECT_ENTER(pDevIns);
 
@@ -2849,6 +2853,7 @@ static DECLCALLBACK(int) gicSetPpi(PVMCPUCC pVCpu, uint32_t uPpiIntId, bool fAss
     AssertMsgReturn(idxIntr < sizeof(pGicCpu->bmIntrPending) * 8,
                     ("out-of-range PPI interrupt ID %RU32 (%RU32)\n", uIntId, uPpiIntId),
                     VERR_INVALID_PARAMETER);
+    Assert(GIC_IS_INTR_PPI(uIntId) || GIC_IS_INTR_EXT_PPI(uIntId));
 
     GIC_CRIT_SECT_ENTER(pDevIns);
 
@@ -3068,8 +3073,12 @@ static DECLCALLBACK(VBOXSTRICTRC) gicReadSysReg(PVMCPUCC pVCpu, uint32_t u32Reg,
             break;
 
         case ARMV8_AARCH64_SYSREG_ICC_RPR_EL1:
-            *pu64Value = pGicCpu->abRunningPriorities[pGicCpu->idxRunningPriority] & 0xfe;
+        {
+            Assert(    pGicCpu->abRunningPriorities[pGicCpu->idxRunningPriority] == GIC_IDLE_PRIORITY
+                   || !(pGicCpu->abRunningPriorities[pGicCpu->idxRunningPriority] & RT_BIT(0)));
+            *pu64Value = pGicCpu->abRunningPriorities[pGicCpu->idxRunningPriority];
             break;
+        }
 
         case ARMV8_AARCH64_SYSREG_ICC_IAR1_EL1:
             *pu64Value = gicAckHighestPriorityPendingIntr(pGicDev, pVCpu, GICINTRGROUP_1NS);
