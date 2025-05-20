@@ -1,4 +1,4 @@
-/* $Id: VBoxCpuProfile.cpp 168945 2025-05-20 23:25:44Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxCpuProfile.cpp 168947 2025-05-20 23:28:44Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxCpuProfile - For testing and poking at the CPU profile DB.
  */
@@ -343,7 +343,7 @@ static RTEXITCODE cmdHelp(void)
                         "\n"
                         "This is a tool for testing CPU ID register/leaves info items and applying these to the CPU profiles.\n"
                         "\n"
-                        "Options:\n"
+                        "Options:\n");
     RTStrmWrappedPrintf(g_pStdOut, RTSTRMWRAPPED_F_HANGING_INDENT | (4 << RTSTRMWRAPPED_F_HANGING_INDENT_SHIFT),
                         "  --vmm[-path]=<name|path>, --path=<name|path>\n"
                         "    Load the given VMM module. Anything from a filename w/o to suffix to a full path can be given.\n"
