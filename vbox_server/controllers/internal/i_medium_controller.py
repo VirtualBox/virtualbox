@@ -735,6 +735,67 @@ def i_medium_createbasestorage(mediumid, oMediumCreateBaseStorageRequestBody: Me
     return response, httpCode
 
 
+def i_medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: MediumCreateDiffStorageRequestBody):  # noqa: E501
+    """
+    Call interface method IMedium::createDiffStorage
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param oMediumCreateDiffStorageRequestBody: 
+    :type oMediumCreateDiffStorageRequestBody: dict | bytes
+
+    :rtype: ProgressResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oProgressResponse = ProgressResponse()
+
+    # Trying to get VirtualBox Medium object that had been created earlier
+    # mediumid, in this case, is a value returned in oMediumResponse.medium.id (see the function i_virtualbox_createmedium())
+    try:
+        oVBoxMedium = lNewAndNotRegisteredStorage[mediumid]
+    except KeyError as e:
+        logging.info(f"The medium Id {mediumid} wasn't found")
+        httpCode = HTTPStatus.NOT_FOUND
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    strTargetId = oMediumCreateDiffStorageRequestBody.target
+    oTargetMedium, oError = __find_medium_by_id(strTargetId)
+    if oError or oTargetMedium is None:
+        logging.info(f"The medium passed as 'target' with Id {strTargetId} wasn't found")
+        oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'target' with Id {strTargetId} wasn't found")
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    variant = swagger_to_vbox_medium_variant(oMediumCreateDiffStorageRequestBody.variant)
+
+    try:
+        oVBoxProgress = oVBoxMedium.createDiffStorage(strTargetId, variant)
+        # Don't forget to remove the Id from the Map
+        del lNewAndNotRegisteredStorage[mediumid]
+
+        if oVBoxProgress is not None:
+            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            logging.info('The medium diff base storage creation has been successfully started')
+
+            # Add Progress Id object into the tracking lists
+            ctx['tracker'][oProgressResponse.progress.id] = None
+        else:
+            httpCode = HTTPStatus.OK
+            oError = Error(httpCode, f"The medium diff storage creation has been done without using Progress object")
+
+    except Exception as e:
+        logging.info(f"Exception during creation of the diff storage of the medium {oVBoxMedium.id}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
@@ -788,34 +849,6 @@ def i_medium_compact(mediumid):  # noqa: E501
     :rtype: ProgressResponse
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_createbasestorage(mediumid, oMediumCreateBaseStorageRequestBody):  # noqa: E501
-    """
-    Call interface method IMedium::createBaseStorage
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param oMediumCreateBaseStorageRequestBody: 
-    :type oMediumCreateBaseStorageRequestBody: dict | bytes
-
-    :rtype: ProgressResponse
-    """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody):  # noqa: E501
-    """
-    Call interface method IMedium::createDiffStorage
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param oMediumCreateDiffStorageRequestBody: 
-    :type oMediumCreateDiffStorageRequestBody: dict | bytes
-
-    :rtype: ProgressResponse
-    """
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
