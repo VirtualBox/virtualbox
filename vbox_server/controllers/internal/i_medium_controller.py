@@ -523,6 +523,54 @@ def i_medium_clonetobase(mediumid, oMediumCloneToBaseRequestBody: MediumCloneToB
     return i_medium_cloneto(mediumid, oMediumCloneToRequestBody)
 
 
+@findMedium_decorator
+def i_medium_mergeto(oVBoxMedium, target=None):  # noqa: E501
+    """
+    Call interface method IMedium::mergeTo
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param target: Put here an ID of requested IMedium VirtualBox object
+    :type target: str
+
+    :rtype: ProgressResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oProgressResponse = ProgressResponse()
+    
+    strTargetId = target
+    oTargetMedium, oError = __find_medium_by_id(strTargetId)
+    if oError or oTargetMedium is None:
+        logging.info(f"The medium passed as 'target' with Id {strTargetId} wasn't found")
+        oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'target' with Id {strTargetId} wasn't found")
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+
+    try:
+        oVBoxProgress = oVBoxMedium.mergeTo(oTargetMedium)
+
+        if oVBoxProgress is not None:
+            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            logging.info('The medium merging has been successfully started')
+
+            # Add Progress Id object into the tracking lists
+            ctx['tracker'][oProgressResponse.progress.id] = None
+        else:
+            httpCode = HTTPStatus.OK
+            oError = Error(httpCode, f"The medium merging has been done without using Progress object")
+
+    except Exception as e:
+        logging.info(f"Exception during merging the source medium {oVBoxMedium.id} with the target {strTargetId}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
@@ -699,21 +747,6 @@ def i_medium_lockwrite(mediumid):  # noqa: E501
     :type mediumid: str
 
     :rtype: TokenResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_mergeto(mediumid, target=None):  # noqa: E501
-    """
-    Call interface method IMedium::mergeTo
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param target: Put here an ID of requested IMedium VirtualBox object
-    :type target: str
-
-    :rtype: ProgressResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
