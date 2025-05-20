@@ -1,4 +1,4 @@
-/* $Id: VBoxCpuProfile.cpp 168943 2025-05-20 21:28:33Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxCpuProfile.cpp 168945 2025-05-20 23:25:44Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxCpuProfile - For testing and poking at the CPU profile DB.
  */
@@ -39,6 +39,7 @@
 #include <iprt/message.h>
 #include <iprt/mem.h>
 #include <iprt/path.h>
+#include <iprt/process.h>
 #include <iprt/string.h>
 #include <iprt/stream.h>
 
@@ -334,6 +335,43 @@ static RTEXITCODE cmdHost(const char *pszCmd)
 }
 
 
+static RTEXITCODE cmdHelp(void)
+{
+    RTStrmWrappedPrintf(g_pStdOut, RTSTRMWRAPPED_F_HANGING_INDENT | (11 << RTSTRMWRAPPED_F_HANGING_INDENT_SHIFT),
+                        "Usage: %s [options] [cmd [args] [options] [cmd2 [args] ...]]\n", RTProcShortName());
+    RTStrmWrappedPrintf(g_pStdOut, 0,
+                        "\n"
+                        "This is a tool for testing CPU ID register/leaves info items and applying these to the CPU profiles.\n"
+                        "\n"
+                        "Options:\n"
+    RTStrmWrappedPrintf(g_pStdOut, RTSTRMWRAPPED_F_HANGING_INDENT | (4 << RTSTRMWRAPPED_F_HANGING_INDENT_SHIFT),
+                        "  --vmm[-path]=<name|path>, --path=<name|path>\n"
+                        "    Load the given VMM module. Anything from a filename w/o to suffix to a full path can be given.\n"
+                        "  --verbose, -v\n"
+                        "    Increases the output verbosity.\n"
+                        "  --quiet, -q\n"
+                        "    Resets the verbosity to the absolute minimal.\n"
+                        "\n"
+                        "Commands:\n");
+    RTStrmWrappedPrintf(g_pStdOut, RTSTRMWRAPPED_F_HANGING_INDENT | (6 << RTSTRMWRAPPED_F_HANGING_INDENT_SHIFT),
+                        "  - list\n"
+                        "      Lists all the profiles in the current VMM module.\n"
+                        "  - best-by-name <name>\n"
+                        "  - best-arm-by-name <name>\n"
+                        "  - best-x86-by-name <name>\n"
+                        "      Finds the best profile match for the given name.  The 'arm' and 'x86' variants limits the "
+                        "selection to the given architectures.\n"
+                        "  - best-by-midr [hexvalue]\n"
+                        "      Finds the best profile match for the given main ID value. Implies 'arm' architecture.\n"
+                        "  - host\n"
+                        "      Display the CPU ID registers/leaves for the host.\n"
+                        "  - help\n"
+                        "      Display this help info.\n"
+                        );
+    return RTEXITCODE_SUCCESS;
+}
+
+
 static void echoCommand(const char *pszFormat, ...)
 {
     if (g_cVerbosity > 0)
@@ -507,6 +545,8 @@ int main(int argc, char **argv)
                     echoCommand("%s", pszCmd, ValueUnion.u64);
                     rcExit = cmdHost(pszCmd);
                 }
+                else if (strcmp(pszCmd, "help") == 0)
+                    return cmdHelp();
                 else
                     return RTMsgSyntax("Unknown command: %s", pszCmd);
                 break;
