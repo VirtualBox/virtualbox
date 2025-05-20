@@ -1,4 +1,4 @@
-/* $Id: CPUMAllCpuId.cpp 168941 2025-05-20 21:23:52Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMAllCpuId.cpp 168944 2025-05-20 21:30:27Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part, common bits.
  */
@@ -2040,7 +2040,7 @@ VMM_INT_DECL(void) CPUMCpuIdApplyX86HostArchCapabilities(PVMCC pVM, bool fHasArc
 #endif /* defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64) || defined(VBOX_VMM_TARGET_X86) */
 #if defined(RT_ARCH_ARM64) && defined(IN_RING3) /** @todo port to ring-0 as needed. */
 
-/** @callback_impl{FNRTSORTCMP} */
+/** @callback_method_impl{FNRTSORTCMP} */
 static DECLCALLBACK(int) cpumCpuIdSysRegValSortCmp(void const *pvElement1, void const *pvElement2, void *pvUser)
 {
     RT_NOREF(pvUser);

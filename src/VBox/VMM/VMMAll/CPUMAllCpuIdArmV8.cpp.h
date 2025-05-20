@@ -448,7 +448,7 @@ VMMR3DECL(int) CPUMCpuIdExplodeFeaturesArmV8FromSysRegs(PCSUPARMSYSREGVAL paSysR
  *
  * @returns VBox status code
  * @param   pIdRegs     The system register values.
- * @param   paFeatures  The structure to explode the features into.
+ * @param   pFeatures   The structure to explode the features into.
  */
 DECLHIDDEN(int) cpumCpuIdExplodeFeaturesArmV8FromIdRegs(PCCPUMARMV8IDREGS pIdRegs, CPUMFEATURESARMV8 *pFeatures)
 {
