@@ -1,4 +1,4 @@
-/* $Id: UIVMActivityOverviewModelView.cpp 168821 2025-05-13 09:51:10Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIVMActivityOverviewModelView.cpp 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVMActivityOverviewModelView class implementation.
  */
@@ -106,9 +106,9 @@ public:
     virtual QString machineStateString() const = 0;
 
 protected:
-    void updateCellText(int /*ResourceDashboardColumn*/ iColumnIndex, const QString &strText);
+    void updateCellText(int /*VMActivityOverviewColumn*/ iColumnIndex, const QString &strText);
     QUuid m_uMachineId;
-    /* Key is ResourceDashboardColumn enum item. */
+    /* Key is VMActivityOverviewColumn enum item. */
     QMap<int, UIVMActivityOverviewCell*> m_cells;
 
     QString m_strMachineName;
@@ -269,15 +269,15 @@ UIVMActivityOverviewRow::~UIVMActivityOverviewRow()
 void UIVMActivityOverviewRow::initCells()
 {
     /* Hide VM exits in release builds: */
-    for (int i = (int) ResourceDashboardColumn_Name; i < (int) ResourceDashboardColumn_Max; ++i)
+    for (int i = (int) VMActivityOverviewColumn_Name; i < (int) VMActivityOverviewColumn_Max; ++i)
     {
 #ifndef DEBUG
-        if (i == (int) ResourceDashboardColumn_VMExits)
+        if (i == (int) VMActivityOverviewColumn_VMExits)
             continue;
 #endif
         m_cells[i] = new UIVMActivityOverviewCell(this);
     }
-    m_cells[ResourceDashboardColumn_Name]->setText(m_strMachineName);
+    m_cells[VMActivityOverviewColumn_Name]->setText(m_strMachineName);
 }
 
 const QUuid &UIVMActivityOverviewRow::machineId() const
@@ -285,7 +285,7 @@ const QUuid &UIVMActivityOverviewRow::machineId() const
     return m_uMachineId;
 }
 
-void UIVMActivityOverviewRow::updateCellText(int /*ResourceDashboardColumn*/ enmColumnIndex, const QString &strText)
+void UIVMActivityOverviewRow::updateCellText(int /*VMActivityOverviewColumn*/ enmColumnIndex, const QString &strText)
 {
     if (m_cells.value(enmColumnIndex, 0))
         m_cells[enmColumnIndex]->setText(strText);
@@ -317,8 +317,8 @@ void UIVMActivityOverviewRowLocal::updateCells()
     ULONG  uCPUGuestLoad;
     ULONG uCPUVMMLoad;
     m_comDebugger.GetCPULoad(0x7fffffff, uCPUGuestLoad, aPctHalted, uCPUVMMLoad);
-    updateCellText(ResourceDashboardColumn_CPUVMMLoad, QString("%1%").arg(QString::number(uCPUVMMLoad)));
-    updateCellText(ResourceDashboardColumn_CPUGuestLoad, QString("%1%").arg(QString::number(uCPUGuestLoad)));
+    updateCellText(VMActivityOverviewColumn_CPUVMMLoad, QString("%1%").arg(QString::number(uCPUVMMLoad)));
+    updateCellText(VMActivityOverviewColumn_CPUGuestLoad, QString("%1%").arg(QString::number(uCPUGuestLoad)));
 
     /* RAM Utilization: */
     QString strRAMUsage;
@@ -344,8 +344,8 @@ void UIVMActivityOverviewRowLocal::updateCells()
         strRAMUsage = QApplication::translate("UIVMActivityOverviewWidget", "N/A");
     }
 
-    updateCellText(ResourceDashboardColumn_RAMUsedAndTotal, strRAMUsage);
-    updateCellText(ResourceDashboardColumn_RAMUsedPercentage, strRAMPercentage);
+    updateCellText(VMActivityOverviewColumn_RAMUsedAndTotal, strRAMUsage);
+    updateCellText(VMActivityOverviewColumn_RAMUsedPercentage, strRAMPercentage);
 
     /* Network rate: */
     quint64 uPrevDownTotal = m_uNetworkDownTotal;
@@ -354,10 +354,10 @@ void UIVMActivityOverviewRowLocal::updateCells()
     quint64 uNetworkDownRate = m_uNetworkDownTotal - uPrevDownTotal;
     quint64 uNetworkUpRate = m_uNetworkUpTotal - uPrevUpTotal;
 
-    updateCellText(ResourceDashboardColumn_NetworkUpRate, QString("%1").arg(UITranslator::formatSize(uNetworkUpRate, iDecimalCount)));
-    updateCellText(ResourceDashboardColumn_NetworkDownRate,QString("%1").arg(UITranslator::formatSize(uNetworkDownRate, iDecimalCount)));
-    updateCellText(ResourceDashboardColumn_NetworkUpTotal, QString("%1").arg(UITranslator::formatSize(m_uNetworkUpTotal, iDecimalCount)));
-    updateCellText(ResourceDashboardColumn_NetworkDownTotal, QString("%1").arg(UITranslator::formatSize(m_uNetworkDownTotal, iDecimalCount)));
+    updateCellText(VMActivityOverviewColumn_NetworkUpRate, QString("%1").arg(UITranslator::formatSize(uNetworkUpRate, iDecimalCount)));
+    updateCellText(VMActivityOverviewColumn_NetworkDownRate,QString("%1").arg(UITranslator::formatSize(uNetworkDownRate, iDecimalCount)));
+    updateCellText(VMActivityOverviewColumn_NetworkUpTotal, QString("%1").arg(UITranslator::formatSize(m_uNetworkUpTotal, iDecimalCount)));
+    updateCellText(VMActivityOverviewColumn_NetworkDownTotal, QString("%1").arg(UITranslator::formatSize(m_uNetworkDownTotal, iDecimalCount)));
 
     /* IO rate: */
     quint64 uPrevWriteTotal = m_uDiskWriteTotal;
@@ -365,16 +365,16 @@ void UIVMActivityOverviewRowLocal::updateCells()
     UIMonitorCommon::getDiskLoad(m_comDebugger, m_uDiskWriteTotal, m_uDiskReadTotal);
     quint64 uDiskWriteRate = m_uDiskWriteTotal - uPrevWriteTotal;
     quint64 uDiskReadRate = m_uDiskReadTotal - uPrevReadTotal;
-    updateCellText(ResourceDashboardColumn_DiskIOReadRate,QString("%1").arg(UITranslator::formatSize(uDiskReadRate, iDecimalCount)));
-    updateCellText(ResourceDashboardColumn_DiskIOWriteRate,QString("%1").arg(UITranslator::formatSize(uDiskWriteRate, iDecimalCount)));
-    updateCellText(ResourceDashboardColumn_DiskIOReadTotal,  QString("%1").arg(UITranslator::formatSize(m_uDiskReadTotal, iDecimalCount)));
-    updateCellText(ResourceDashboardColumn_DiskIOWriteTotal, QString("%1").arg(UITranslator::formatSize(m_uDiskWriteTotal, iDecimalCount)));
+    updateCellText(VMActivityOverviewColumn_DiskIOReadRate,QString("%1").arg(UITranslator::formatSize(uDiskReadRate, iDecimalCount)));
+    updateCellText(VMActivityOverviewColumn_DiskIOWriteRate,QString("%1").arg(UITranslator::formatSize(uDiskWriteRate, iDecimalCount)));
+    updateCellText(VMActivityOverviewColumn_DiskIOReadTotal,  QString("%1").arg(UITranslator::formatSize(m_uDiskReadTotal, iDecimalCount)));
+    updateCellText(VMActivityOverviewColumn_DiskIOWriteTotal, QString("%1").arg(UITranslator::formatSize(m_uDiskWriteTotal, iDecimalCount)));
 
     /* VM Exits: */
     quint64 uPrevVMExitsTotal = m_uVMExitTotal;
     UIMonitorCommon::getVMMExitCount(m_comDebugger, m_uVMExitTotal);
     quint64 uVMExitRate = m_uVMExitTotal - uPrevVMExitsTotal;
-    updateCellText(ResourceDashboardColumn_VMExits, QString("%1/%2").arg(UITranslator::addMetricSuffixToNumber(uVMExitRate)).
+    updateCellText(VMActivityOverviewColumn_VMExits, QString("%1/%2").arg(UITranslator::addMetricSuffixToNumber(uVMExitRate)).
                    arg(UITranslator::addMetricSuffixToNumber(m_uVMExitTotal)));
 }
 
@@ -511,31 +511,31 @@ void UIVMActivityOverviewRowCloud::sltMetricDataReceived(KMetricType enmMetricTy
     QLocale locale;
     if (enmMetricType == KMetricType_CpuUtilization)
     {
-        updateCellText(ResourceDashboardColumn_CPUGuestLoad, QString("%1%").arg(locale.toString(data[0].toFloat(), 'f', iDecimalCount)));
+        updateCellText(VMActivityOverviewColumn_CPUGuestLoad, QString("%1%").arg(locale.toString(data[0].toFloat(), 'f', iDecimalCount)));
     }
     else if (enmMetricType == KMetricType_MemoryUtilization)
     {
          if (m_uTotalRAM != 0)
          {
              quint64 uUsedRAM = (quint64)data[0].toFloat() * (m_uTotalRAM / 100.f);
-             updateCellText(ResourceDashboardColumn_RAMUsedAndTotal,
+             updateCellText(VMActivityOverviewColumn_RAMUsedAndTotal,
                             QString("%1/%2").arg(UITranslator::formatSize(_1K * uUsedRAM, iDecimalCount)).
                             arg(UITranslator::formatSize(_1K * m_uTotalRAM, iDecimalCount)));
          }
-         updateCellText(ResourceDashboardColumn_RAMUsedPercentage,
+         updateCellText(VMActivityOverviewColumn_RAMUsedPercentage,
                         QString("%1%").arg(QString::number(data[0].toFloat(), 'f', iDecimalCount)));
     }
     else if (enmMetricType == KMetricType_NetworksBytesOut)
-        updateCellText(ResourceDashboardColumn_NetworkUpRate,
+        updateCellText(VMActivityOverviewColumn_NetworkUpRate,
                        UITranslator::formatSize((quint64)data[0].toFloat(), iDecimalCount));
     else if (enmMetricType == KMetricType_NetworksBytesIn)
-        updateCellText(ResourceDashboardColumn_NetworkDownRate,
+        updateCellText(VMActivityOverviewColumn_NetworkDownRate,
                        UITranslator::formatSize((quint64)data[0].toFloat(), iDecimalCount));
     else if (enmMetricType == KMetricType_DiskBytesRead)
-        updateCellText(ResourceDashboardColumn_DiskIOReadRate,
+        updateCellText(VMActivityOverviewColumn_DiskIOReadRate,
                        UITranslator::formatSize((quint64)data[0].toFloat(), iDecimalCount));
     else if (enmMetricType == KMetricType_DiskBytesWritten)
-        updateCellText(ResourceDashboardColumn_DiskIOWriteRate,
+        updateCellText(VMActivityOverviewColumn_DiskIOWriteRate,
                        UITranslator::formatSize((quint64)data[0].toFloat(), iDecimalCount));
 
     sender()->deleteLater();
@@ -564,8 +564,8 @@ void UIVMActivityOverviewRowCloud::setMachineState(int iState)
 
 void UIVMActivityOverviewRowCloud::resetColumData()
 {
-    for (int i = (int) ResourceDashboardColumn_CPUGuestLoad;
-         i < (int)ResourceDashboardColumn_Max; ++i)
+    for (int i = (int) VMActivityOverviewColumn_CPUGuestLoad;
+         i < (int)VMActivityOverviewColumn_Max; ++i)
         updateCellText(i,  QApplication::translate("UIVMActivityOverviewWidget", "N/A"));
 }
 
@@ -625,7 +625,7 @@ void UIVMActivityOverviewTableView::updateColumVisibility()
 
     if (!pModel || !pHeader)
         return;
-    for (int i = (int)ResourceDashboardColumn_Name; i < (int)ResourceDashboardColumn_Max; ++i)
+    for (int i = (int)VMActivityOverviewColumn_Name; i < (int)VMActivityOverviewColumn_Max; ++i)
     {
         if (!pModel->columnVisible(i))
             pHeader->hideSection(i);
@@ -702,7 +702,7 @@ void UIVMActivityOverviewTableView::resizeHeaders()
     {
         if (pHeader->isSectionHidden(i))
             continue;
-        int iMinWidth = m_minimumColumnWidths.value((ResourceDashboardColumn)i, 0);
+        int iMinWidth = m_minimumColumnWidths.value((VMActivityOverviewColumn)i, 0);
         pHeader->resizeSection(i, iWidth < iMinWidth ? iMinWidth : iWidth);
     }
 }
@@ -897,7 +897,7 @@ const QMap<int, int> UIVMActivityOverviewModel::dataLengths() const
 
 void UIVMActivityOverviewModel::initialize()
 {
-    for (int i = 0; i < (int)ResourceDashboardColumn_Max; ++i)
+    for (int i = 0; i < (int)VMActivityOverviewColumn_Max; ++i)
         m_columnDataMaxLength[i] = 0;
 
     if (m_pLocalVMUpdateTimer)
@@ -927,7 +927,7 @@ void UIVMActivityOverviewModel::addRow(const QUuid& uMachineId, const QString& s
 QVariant UIVMActivityOverviewModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
     if (role == Qt::DisplayRole && orientation == Qt::Horizontal)
-        return m_columnTitles.value((ResourceDashboardColumn)section, QString());;
+        return m_columnTitles.value((VMActivityOverviewColumn)section, QString());;
     return QVariant();
 }
 
@@ -988,7 +988,7 @@ void UIVMActivityOverviewModel::sltLocalVMUpdateTimeout()
         pItem->updateCells();
     }
 
-    for (int i = 0; i < (int)ResourceDashboardColumn_Max; ++i)
+    for (int i = 0; i < (int)VMActivityOverviewColumn_Max; ++i)
     {
         for (int j = 0; j < m_rows.size(); ++j)
             if (m_columnDataMaxLength.value(i, 0) < m_rows[j]->columnLength(i))

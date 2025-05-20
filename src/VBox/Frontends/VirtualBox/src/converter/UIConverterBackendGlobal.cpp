@@ -1,4 +1,4 @@
-/* $Id: UIConverterBackendGlobal.cpp 168877 2025-05-15 09:22:19Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIConverterBackendGlobal.cpp 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIConverterBackendGlobal implementation.
  */
@@ -1699,11 +1699,11 @@ template<> SHARED_LIBRARY_STUFF QString UIConverter::toInternalString(const UITo
         case UIToolType_Network:      strResult = "Network"; break;
         case UIToolType_Cloud:        strResult = "Cloud"; break;
         case UIToolType_CloudConsole: strResult = "CloudConsole"; break;
-        case UIToolType_ResourceDashboard:   strResult = "Activities"; break;
+        case UIToolType_Activities:   strResult = "Activities"; break;
         case UIToolType_Details:      strResult = "Details"; break;
         case UIToolType_Snapshots:    strResult = "Snapshots"; break;
         case UIToolType_Logs:         strResult = "Logs"; break;
-        case UIToolType_VMResourceUse:   strResult = "Activity"; break;
+        case UIToolType_VMActivity:   strResult = "Activity"; break;
         case UIToolType_FileManager:  strResult = "FileManager"; break;
         default:
         {
@@ -1732,7 +1732,7 @@ template<> SHARED_LIBRARY_STUFF UIToolType UIConverter::fromInternalString<UIToo
     if (strToolType.compare("CloudConsole", Qt::CaseInsensitive) == 0)
         return UIToolType_CloudConsole;
     if (strToolType.compare("Activities", Qt::CaseInsensitive) == 0)
-        return UIToolType_ResourceDashboard;
+        return UIToolType_Activities;
     if (strToolType.compare("Details", Qt::CaseInsensitive) == 0)
         return UIToolType_Details;
     if (strToolType.compare("Snapshots", Qt::CaseInsensitive) == 0)
@@ -1740,7 +1740,7 @@ template<> SHARED_LIBRARY_STUFF UIToolType UIConverter::fromInternalString<UIToo
     if (strToolType.compare("Logs", Qt::CaseInsensitive) == 0)
         return UIToolType_Logs;
     if (strToolType.compare("Activity", Qt::CaseInsensitive) == 0)
-        return UIToolType_VMResourceUse;
+        return UIToolType_VMActivity;
     if (strToolType.compare("FileManager", Qt::CaseInsensitive) == 0)
         return UIToolType_FileManager;
     return UIToolType_Invalid;
@@ -2845,67 +2845,67 @@ template<> SHARED_LIBRARY_STUFF QString UIConverter::toString(const UISettingsDe
     return strResult;
 }
 
-/* QString <= ResourceDashboardColumn: */
-template<> SHARED_LIBRARY_STUFF QString UIConverter::toInternalString(const ResourceDashboardColumn &enmResourceDashboardColumn) const
+/* QString <= VMActivityOverviewColumn: */
+template<> SHARED_LIBRARY_STUFF QString UIConverter::toInternalString(const VMActivityOverviewColumn &enmVMActivityOverviewColumn) const
 {
     QString strResult;
-    switch (enmResourceDashboardColumn)
+    switch (enmVMActivityOverviewColumn)
     {
-        case ResourceDashboardColumn_Name:              strResult = "VMName"; break;
-        case ResourceDashboardColumn_CPUGuestLoad:      strResult = "CPUGuestLoad"; break;
-        case ResourceDashboardColumn_CPUVMMLoad:        strResult = "CPUVMMLoad"; break;
-        case ResourceDashboardColumn_RAMUsedAndTotal:   strResult = "RAMUsedAndTotal"; break;
-        case ResourceDashboardColumn_RAMUsedPercentage: strResult = "RAMUsedPercentage"; break;
-        case ResourceDashboardColumn_NetworkUpRate:     strResult = "NetworkUpRate"; break;
-        case ResourceDashboardColumn_NetworkDownRate:   strResult = "NetworkDownRate"; break;
-        case ResourceDashboardColumn_NetworkUpTotal:    strResult = "NetworkUpTotal"; break;
-        case ResourceDashboardColumn_NetworkDownTotal:  strResult = "NetworkDownTotal"; break;
-        case ResourceDashboardColumn_DiskIOReadRate:    strResult = "DiskIOReadRate"; break;
-        case ResourceDashboardColumn_DiskIOWriteRate:   strResult = "DiskIOWriteRate"; break;
-        case ResourceDashboardColumn_DiskIOReadTotal:   strResult = "DiskIOReadTotal"; break;
-        case ResourceDashboardColumn_DiskIOWriteTotal:  strResult = "DiskIOWriteTotal"; break;
-        case ResourceDashboardColumn_VMExits:           strResult = "VMExits"; break;
+        case VMActivityOverviewColumn_Name:              strResult = "VMName"; break;
+        case VMActivityOverviewColumn_CPUGuestLoad:      strResult = "CPUGuestLoad"; break;
+        case VMActivityOverviewColumn_CPUVMMLoad:        strResult = "CPUVMMLoad"; break;
+        case VMActivityOverviewColumn_RAMUsedAndTotal:   strResult = "RAMUsedAndTotal"; break;
+        case VMActivityOverviewColumn_RAMUsedPercentage: strResult = "RAMUsedPercentage"; break;
+        case VMActivityOverviewColumn_NetworkUpRate:     strResult = "NetworkUpRate"; break;
+        case VMActivityOverviewColumn_NetworkDownRate:   strResult = "NetworkDownRate"; break;
+        case VMActivityOverviewColumn_NetworkUpTotal:    strResult = "NetworkUpTotal"; break;
+        case VMActivityOverviewColumn_NetworkDownTotal:  strResult = "NetworkDownTotal"; break;
+        case VMActivityOverviewColumn_DiskIOReadRate:    strResult = "DiskIOReadRate"; break;
+        case VMActivityOverviewColumn_DiskIOWriteRate:   strResult = "DiskIOWriteRate"; break;
+        case VMActivityOverviewColumn_DiskIOReadTotal:   strResult = "DiskIOReadTotal"; break;
+        case VMActivityOverviewColumn_DiskIOWriteTotal:  strResult = "DiskIOWriteTotal"; break;
+        case VMActivityOverviewColumn_VMExits:           strResult = "VMExits"; break;
         default:
             {
-                AssertMsgFailed(("No text for Resource Dashboard Column=%d", enmResourceDashboardColumn));
+                AssertMsgFailed(("No text for VM Activity Overview Column=%d", enmVMActivityOverviewColumn));
                 break;
             }
     }
     return strResult;
 }
 
-/* ResourceDashboardColumn <= QString: */
-template<> SHARED_LIBRARY_STUFF ResourceDashboardColumn UIConverter::fromInternalString<ResourceDashboardColumn>(const QString &strResourceDashboardColumn) const
+/* VMActivityOverviewColumn <= QString: */
+template<> SHARED_LIBRARY_STUFF VMActivityOverviewColumn UIConverter::fromInternalString<VMActivityOverviewColumn>(const QString &strVMActivityOverviewColumn) const
 {
-    if (strResourceDashboardColumn.compare("VMName", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_Name;
-    if (strResourceDashboardColumn.compare("CPUGuestLoad", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_CPUGuestLoad;
-    if (strResourceDashboardColumn.compare("CPUVMMLoad", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_CPUVMMLoad;
-    if (strResourceDashboardColumn.compare("RAMUsedAndTotal", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_RAMUsedAndTotal;
-    if (strResourceDashboardColumn.compare("RAMUsedPercentage", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_RAMUsedPercentage;
-    if (strResourceDashboardColumn.compare("NetworkUpRate", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_NetworkUpRate;
-    if (strResourceDashboardColumn.compare("NetworkDownRate", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_NetworkDownRate;
-    if (strResourceDashboardColumn.compare("NetworkUpTotal", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_NetworkUpTotal;
-    if (strResourceDashboardColumn.compare("NetworkDownTotal", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_NetworkDownTotal;
-    if (strResourceDashboardColumn.compare("DiskIOReadRate", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_DiskIOReadRate;
-    if (strResourceDashboardColumn.compare("DiskIOWriteRate", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_DiskIOWriteRate;
-    if (strResourceDashboardColumn.compare("DiskIOReadTotal", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_DiskIOReadTotal;
-    if (strResourceDashboardColumn.compare("DiskIOWriteTotal", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_DiskIOWriteTotal;
-    if (strResourceDashboardColumn.compare("VMExits", Qt::CaseInsensitive) == 0)
-        return ResourceDashboardColumn_VMExits;
-    return ResourceDashboardColumn_Max;
+    if (strVMActivityOverviewColumn.compare("VMName", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_Name;
+    if (strVMActivityOverviewColumn.compare("CPUGuestLoad", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_CPUGuestLoad;
+    if (strVMActivityOverviewColumn.compare("CPUVMMLoad", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_CPUVMMLoad;
+    if (strVMActivityOverviewColumn.compare("RAMUsedAndTotal", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_RAMUsedAndTotal;
+    if (strVMActivityOverviewColumn.compare("RAMUsedPercentage", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_RAMUsedPercentage;
+    if (strVMActivityOverviewColumn.compare("NetworkUpRate", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_NetworkUpRate;
+    if (strVMActivityOverviewColumn.compare("NetworkDownRate", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_NetworkDownRate;
+    if (strVMActivityOverviewColumn.compare("NetworkUpTotal", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_NetworkUpTotal;
+    if (strVMActivityOverviewColumn.compare("NetworkDownTotal", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_NetworkDownTotal;
+    if (strVMActivityOverviewColumn.compare("DiskIOReadRate", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_DiskIOReadRate;
+    if (strVMActivityOverviewColumn.compare("DiskIOWriteRate", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_DiskIOWriteRate;
+    if (strVMActivityOverviewColumn.compare("DiskIOReadTotal", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_DiskIOReadTotal;
+    if (strVMActivityOverviewColumn.compare("DiskIOWriteTotal", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_DiskIOWriteTotal;
+    if (strVMActivityOverviewColumn.compare("VMExits", Qt::CaseInsensitive) == 0)
+        return VMActivityOverviewColumn_VMExits;
+    return VMActivityOverviewColumn_Max;
 }
 
 /* QString <= UIVRDESecurityMethod: */

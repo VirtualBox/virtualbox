@@ -1,4 +1,4 @@
-/* $Id: UIVirtualBoxWidget.cpp 168877 2025-05-15 09:22:19Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIVirtualBoxWidget.cpp 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVirtualBoxWidget class implementation.
  */
@@ -590,11 +590,11 @@ void UIVirtualBoxWidget::updateToolbar()
                 m_pToolBar->addAction(actionPool()->action(UIActionIndexMN_M_Machine_S_Show));
             break;
         }
-        case UIToolType_VMResourceUse:
+        case UIToolType_VMActivity:
         {
-            m_pToolBar->addAction(actionPool()->action(UIActionIndex_M_VMResourceUse_S_Export));
-            m_pToolBar->addAction(actionPool()->action(UIActionIndex_M_VMResourceUse_S_ToResourceDashboard));
-            m_pToolBar->addAction(actionPool()->action(UIActionIndex_M_VMResourceUse_T_Preferences));
+            m_pToolBar->addAction(actionPool()->action(UIActionIndex_M_Activity_S_Export));
+            m_pToolBar->addAction(actionPool()->action(UIActionIndex_M_Activity_S_ToVMActivityOverview));
+            m_pToolBar->addAction(actionPool()->action(UIActionIndex_M_Activity_T_Preferences));
             m_pToolBar->addSeparator();
             m_pToolBar->addAction(actionPool()->action(UIActionIndexMN_M_Machine_S_Settings));
             m_pToolBar->addAction(actionPool()->action(UIActionIndexMN_M_Machine_S_Discard));
@@ -672,12 +672,12 @@ void UIVirtualBoxWidget::updateToolbar()
             m_pToolBar->addAction(actionPool()->action(UIActionIndexMN_M_Cloud_S_Help));
             break;
         }
-        case UIToolType_ResourceDashboard:
+        case UIToolType_Activities:
         {
-            m_pToolBar->addAction(actionPool()->action(UIActionIndexMN_M_ResourceDashboard_M_Columns));
-            m_pToolBar->addAction(actionPool()->action(UIActionIndexMN_M_ResourceDashboard_S_SwitchToVMResourceUse));
+            m_pToolBar->addAction(actionPool()->action(UIActionIndexMN_M_VMActivityOverview_M_Columns));
+            m_pToolBar->addAction(actionPool()->action(UIActionIndexMN_M_VMActivityOverview_S_SwitchToMachineActivity));
             QToolButton *pButton =
-                qobject_cast<QToolButton*>(m_pToolBar->widgetForAction(actionPool()->action(UIActionIndexMN_M_ResourceDashboard_M_Columns)));
+                qobject_cast<QToolButton*>(m_pToolBar->widgetForAction(actionPool()->action(UIActionIndexMN_M_VMActivityOverview_M_Columns)));
             if (pButton)
             {
                 pButton->setPopupMode(QToolButton::InstantPopup);

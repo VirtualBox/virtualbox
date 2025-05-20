@@ -1,4 +1,4 @@
-/* $Id: UIGlobalToolsWidget.h 168877 2025-05-15 09:22:19Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIGlobalToolsWidget.h 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIGlobalToolsWidget class declaration.
  */
@@ -142,7 +142,7 @@ private slots:
 
         /** Handles signal requesting switch to Activities tool. */
         void sltSwitchToActivitiesTool();
-        /** Handles signal requesting switch to VM Resource Use tool. */
+        /** Handles signal requesting switch to VM Activity tool. */
         void sltSwitchToVMActivityTool(const QUuid &uMachineId);
     /** @} */
 

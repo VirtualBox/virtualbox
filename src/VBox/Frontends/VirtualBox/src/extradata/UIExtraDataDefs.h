@@ -1,4 +1,4 @@
-/* $Id: UIExtraDataDefs.h 168877 2025-05-15 09:22:19Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIExtraDataDefs.h 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - Extra-data related definitions.
  */
@@ -974,13 +974,13 @@ enum UIToolType
     UIToolType_Network,
     UIToolType_Cloud,
     UIToolType_CloudConsole,
-    UIToolType_ResourceDashboard,
+    UIToolType_Activities,
     /* Machine types: */
     UIToolType_Error,
     UIToolType_Details,
     UIToolType_Snapshots,
     UIToolType_Logs,
-    UIToolType_VMResourceUse,
+    UIToolType_VMActivity,
     UIToolType_FileManager
 };
 Q_DECLARE_METATYPE(UIToolType);
@@ -1165,25 +1165,25 @@ enum MaximumGuestScreenSizePolicy
 Q_DECLARE_METATYPE(MaximumGuestScreenSizePolicy);
 
 
-/** Manager UI: Resource Dashboard Column types.
+/** Manager UI: VM Activity Overview Column types.
   * @note The first element must be 0 and the rest must be consecutive */
-enum ResourceDashboardColumn
+enum VMActivityOverviewColumn
 {
-    ResourceDashboardColumn_Name = 0,
-    ResourceDashboardColumn_CPUGuestLoad,
-    ResourceDashboardColumn_CPUVMMLoad,
-    ResourceDashboardColumn_RAMUsedAndTotal,
-    ResourceDashboardColumn_RAMUsedPercentage,
-    ResourceDashboardColumn_NetworkUpRate,
-    ResourceDashboardColumn_NetworkDownRate,
-    ResourceDashboardColumn_NetworkUpTotal,
-    ResourceDashboardColumn_NetworkDownTotal,
-    ResourceDashboardColumn_DiskIOReadRate,
-    ResourceDashboardColumn_DiskIOWriteRate,
-    ResourceDashboardColumn_DiskIOReadTotal,
-    ResourceDashboardColumn_DiskIOWriteTotal,
-    ResourceDashboardColumn_VMExits,
-    ResourceDashboardColumn_Max
+    VMActivityOverviewColumn_Name = 0,
+    VMActivityOverviewColumn_CPUGuestLoad,
+    VMActivityOverviewColumn_CPUVMMLoad,
+    VMActivityOverviewColumn_RAMUsedAndTotal,
+    VMActivityOverviewColumn_RAMUsedPercentage,
+    VMActivityOverviewColumn_NetworkUpRate,
+    VMActivityOverviewColumn_NetworkDownRate,
+    VMActivityOverviewColumn_NetworkUpTotal,
+    VMActivityOverviewColumn_NetworkDownTotal,
+    VMActivityOverviewColumn_DiskIOReadRate,
+    VMActivityOverviewColumn_DiskIOWriteRate,
+    VMActivityOverviewColumn_DiskIOReadTotal,
+    VMActivityOverviewColumn_DiskIOWriteTotal,
+    VMActivityOverviewColumn_VMExits,
+    VMActivityOverviewColumn_Max
 };
 
 #endif /* !FEQT_INCLUDED_SRC_extradata_UIExtraDataDefs_h */

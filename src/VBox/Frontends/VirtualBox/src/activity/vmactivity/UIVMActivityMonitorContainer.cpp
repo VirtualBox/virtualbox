@@ -1,4 +1,4 @@
-/* $Id: UIVMActivityMonitorContainer.cpp 168877 2025-05-15 09:22:19Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIVMActivityMonitorContainer.cpp 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVMLogViewer class implementation.
  */
@@ -232,12 +232,12 @@ void UIVMActivityMonitorContainer::prepare()
             this, &UIVMActivityMonitorContainer::sltCurrentTabChanged);
     connect(m_pPaneContainer, &UIVMActivityMonitorPaneContainer::sigColorChanged,
             this, &UIVMActivityMonitorContainer::sltDataSeriesColorChanged);
-    m_pExportToFileAction = m_pActionPool->action(UIActionIndex_M_VMResourceUse_S_Export);
+    m_pExportToFileAction = m_pActionPool->action(UIActionIndex_M_Activity_S_Export);
     if (m_pExportToFileAction)
         connect(m_pExportToFileAction, &QAction::triggered, this, &UIVMActivityMonitorContainer::sltExportToFile);
 
-    if (m_pActionPool->action(UIActionIndex_M_VMResourceUse_T_Preferences))
-        connect(m_pActionPool->action(UIActionIndex_M_VMResourceUse_T_Preferences), &QAction::toggled,
+    if (m_pActionPool->action(UIActionIndex_M_Activity_T_Preferences))
+        connect(m_pActionPool->action(UIActionIndex_M_Activity_T_Preferences), &QAction::toggled,
                 this, &UIVMActivityMonitorContainer::sltTogglePreferencesPane);
 }
 

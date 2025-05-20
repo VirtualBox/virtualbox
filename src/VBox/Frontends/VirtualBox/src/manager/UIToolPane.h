@@ -1,4 +1,4 @@
-/* $Id: UIToolPane.h 168821 2025-05-13 09:51:10Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIToolPane.h 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIToolPane class declaration.
  */
@@ -222,7 +222,7 @@ private:
         UINetworkManagerWidget       *m_pPaneNetwork;
         /** Holds the Cloud Profile Manager instance. */
         UICloudProfileManagerWidget  *m_pPaneCloud;
-        /** Holds the Resource Dashboard instance. */
+        /** Holds the VM Activity Overview instance. */
         UIVMActivityOverviewWidget   *m_pPaneActivities;
 
         /** Holds the cache of passed cloud machine items. */

@@ -1,4 +1,4 @@
-/* $Id: UIActionPoolManager.cpp 168908 2025-05-16 15:03:57Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIActionPoolManager.cpp 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIActionPoolManager class implementation.
  */
@@ -392,18 +392,18 @@ protected:
     }
 };
 
-/** Simple action extension, used as 'Show Resource Dashboard' action class. */
-class UIActionToggleManagerToolsGlobalShowResourceDashboard : public UIActionToggle
+/** Simple action extension, used as 'Show VM Activity Overview' action class. */
+class UIActionToggleManagerToolsGlobalShowVMActivityOverview : public UIActionToggle
 {
     Q_OBJECT;
 
 public:
 
     /** Constructs action passing @a pParent to the base-class. */
-    UIActionToggleManagerToolsGlobalShowResourceDashboard(UIActionPool *pParent)
+    UIActionToggleManagerToolsGlobalShowVMActivityOverview(UIActionPool *pParent)
         : UIActionToggle(pParent)
     {
-        setProperty("UIToolType", QVariant::fromValue(UIToolType_ResourceDashboard));
+        setProperty("UIToolType", QVariant::fromValue(UIToolType_Activities));
         /// @todo use icons with check-boxes
         setIcon(UIIconPool::iconSetFull(":/resources_monitor_24px.png", ":/resources_monitor_16px.png",
                                         ":/resources_monitor_disabled_24px.png", ":/resources_monitor_disabled_16px.png"));
@@ -414,14 +414,14 @@ protected:
     /** Returns shortcut extra-data ID. */
     virtual QString shortcutExtraDataID() const RT_OVERRIDE
     {
-        return QString("ToolsGlobalResourceDashboard");
+        return QString("ToolsGlobalVMActivityOverview");
     }
 
     /** Handles translation event. */
     virtual void retranslateUi() RT_OVERRIDE
     {
-        setName(QApplication::translate("UIActionPool", "&Resource Dashboard"));
-        setStatusTip(QApplication::translate("UIActionPool", "Open Resource Dashboard"));
+        setName(QApplication::translate("UIActionPool", "&Resource Usage"));
+        setStatusTip(QApplication::translate("UIActionPool", "Open the VM Activity Overview"));
     }
 };
 
@@ -1893,18 +1893,18 @@ protected:
     }
 };
 
-/** Simple action extension, used as 'Show VM Resource Use' action class. */
-class UIActionToggleManagerToolsMachineShowVMResourceUse : public UIActionToggle
+/** Simple action extension, used as 'Show VM Activity Monitor' action class. */
+class UIActionToggleManagerToolsMachineShowActivity : public UIActionToggle
 {
     Q_OBJECT;
 
 public:
 
     /** Constructs action passing @a pParent to the base-class. */
-    UIActionToggleManagerToolsMachineShowVMResourceUse(UIActionPool *pParent)
+    UIActionToggleManagerToolsMachineShowActivity(UIActionPool *pParent)
         : UIActionToggle(pParent)
     {
-        setProperty("UIToolType", QVariant::fromValue(UIToolType_VMResourceUse));
+        setProperty("UIToolType", QVariant::fromValue(UIToolType_VMActivity));
         /// @todo use icons with check-boxes
         setIcon(UIIconPool::iconSetFull(":/performance_monitor_32px.png", ":/performance_monitor_16px.png",
                                         ":/performance_monitor_disabled_32px.png", ":/performance_monitor_disabled_16px.png"));
@@ -1915,14 +1915,14 @@ protected:
     /** Returns shortcut extra-data ID. */
     virtual QString shortcutExtraDataID() const RT_OVERRIDE
     {
-        return QString("ToolsMachineVMResourceUse");
+        return QString("ToolsMachineVMActivityMonitor");
     }
 
     /** Handles translation event. */
     virtual void retranslateUi() RT_OVERRIDE
     {
-        setName(QApplication::translate("UIActionPool", "&Resource"));
-        setStatusTip(QApplication::translate("UIActionPool", "Open the VM resource use"));
+        setName(QApplication::translate("UIActionPool", "&Activity"));
+        setStatusTip(QApplication::translate("UIActionPool", "Open the machine activity monitor pane"));
     }
 };
 
@@ -3468,15 +3468,15 @@ protected:
 };
 
 
-/** Menu action extension, used as 'Resource Dashboard' menu class. */
-class UIActionMenuResourceDashboard : public UIActionMenu
+/** Menu action extension, used as 'Resources' menu class. */
+class UIActionMenuVMActivityOverview : public UIActionMenu
 {
     Q_OBJECT;
 
 public:
 
     /** Constructs action passing @a pParent to the base-class. */
-    UIActionMenuResourceDashboard(UIActionPool *pParent)
+    UIActionMenuVMActivityOverview(UIActionPool *pParent)
         : UIActionMenu(pParent)
     {}
 
@@ -3485,19 +3485,19 @@ protected:
     /** Handles translation event. */
     virtual void retranslateUi() RT_OVERRIDE
     {
-        setName(QApplication::translate("UIActionPool", "&Resource"));
+        setName(QApplication::translate("UIActionPool", "&Resources"));
     }
 };
 
 /** Menu action extension, used as 'Columns' menu class. */
-class UIActionMenuManagerResourceDashboardColumns : public UIActionMenu
+class UIActionMenuManagerVMActivityOverviewColumns : public UIActionMenu
 {
     Q_OBJECT;
 
 public:
 
     /** Constructs action passing @a pParent to the base-class. */
-    UIActionMenuManagerResourceDashboardColumns(UIActionPool *pParent)
+    UIActionMenuManagerVMActivityOverviewColumns(UIActionPool *pParent)
         : UIActionMenu(pParent,
                        ":/resources_monitor_columns_32px.png", ":/resources_monitor_columns_16px.png",
                        ":/resources_monitor_columns_disabled_32px.png", ":/resources_monitor_columns_disabled_16px.png")
@@ -3511,22 +3511,22 @@ protected:
     virtual void retranslateUi() RT_OVERRIDE
     {
         setName(QApplication::translate("UIActionPool", "Columns"));
-        setShortcutScope(QApplication::translate("UIActionPool", "Resource Dashboard"));
+        setShortcutScope(QApplication::translate("UIActionPool", "VM Activity Overview"));
         setStatusTip(QApplication::translate("UIActionPool", "Show/Hide Columns"));
         setToolTip(  QApplication::translate("UIActionPool", "Show/Hide Columns")
                    + (shortcut().isEmpty() ? QString() : QString(" (%1)").arg(shortcut().toString())));
     }
 };
 
-/** Simple action extension, used as 'Switch to VM Resource Use' action class. */
-class UIActionMenuManagerResourceDashboardSwitchToVMResourceUse : public UIActionSimple
+/** Simple action extension, used as 'Switch to Machine Activity' action class. */
+class UIActionMenuManagerVMActivityOverviewSwitchToMachineActivity : public UIActionSimple
 {
     Q_OBJECT;
 
 public:
 
     /** Constructs action passing @a pParent to the base-class. */
-    UIActionMenuManagerResourceDashboardSwitchToVMResourceUse(UIActionPool *pParent)
+    UIActionMenuManagerVMActivityOverviewSwitchToMachineActivity(UIActionPool *pParent)
         : UIActionSimple(pParent,
                          ":/resources_monitor_jump_to_vm_32px.png",          ":/resources_monitor_jump_to_vm_16px.png",
                          ":/resources_monitor_jump_to_vm_disabled_32px.png", ":/resources_monitor_jump_to_vm_disabled_16px.png")
@@ -3539,16 +3539,16 @@ protected:
     /** Returns shortcut extra-data ID. */
     virtual QString shortcutExtraDataID() const RT_OVERRIDE
     {
-        return QString("ResourceDashboardSwitchToVMResourceUse");
+        return QString("VMActivityOverviewSwitchToMachineActivity");
     }
 
     /** Handles translation event. */
     virtual void retranslateUi() RT_OVERRIDE
     {
-        setName(QApplication::translate("UIActionPool", "VM Resource Use"));
-        setShortcutScope(QApplication::translate("UIActionPool", "Resource Dashboard"));
-        setStatusTip(QApplication::translate("UIActionPool", "View resource use of the selected virtual machine"));
-        setToolTip(  QApplication::translate("UIActionPool", "View resource use of the selected virtual machine")
+        setName(QApplication::translate("UIActionPool", "VM Activity"));
+        setShortcutScope(QApplication::translate("UIActionPool", "VM Activity Overview"));
+        setStatusTip(QApplication::translate("UIActionPool", "View activity for selected virtual machine"));
+        setToolTip(  QApplication::translate("UIActionPool", "View activity for selected virtual machine")
                    + (shortcut().isEmpty() ? QString() : QString(" (%1)").arg(shortcut().toString())));
     }
 };
@@ -3576,7 +3576,7 @@ void UIActionPoolManager::preparePool()
     m_pool[UIActionIndexMN_M_File_M_Tools_T_VirtualMediaManager] = new UIActionToggleManagerToolsGlobalShowVirtualMediaManager(this);
     m_pool[UIActionIndexMN_M_File_M_Tools_T_NetworkManager] = new UIActionToggleManagerToolsGlobalShowNetworkManager(this);
     m_pool[UIActionIndexMN_M_File_M_Tools_T_CloudProfileManager] = new UIActionToggleManagerToolsGlobalShowCloudProfileManager(this);
-    m_pool[UIActionIndexMN_M_File_M_Tools_T_ResourceDashboard] = new UIActionToggleManagerToolsGlobalShowResourceDashboard(this);
+    m_pool[UIActionIndexMN_M_File_M_Tools_T_VMActivityOverview] = new UIActionToggleManagerToolsGlobalShowVMActivityOverview(this);
 #ifdef VBOX_GUI_WITH_EXTRADATA_MANAGER_UI
     m_pool[UIActionIndexMN_M_File_S_ShowExtraDataManager] = new UIActionSimpleManagerFileShowExtraDataManager(this);
 #endif
@@ -3615,7 +3615,7 @@ void UIActionPoolManager::preparePool()
     m_pool[UIActionIndexMN_M_Group_M_Tools_T_Details] = new UIActionToggleManagerToolsMachineShowDetails(this);
     m_pool[UIActionIndexMN_M_Group_M_Tools_T_Snapshots] = new UIActionToggleManagerToolsMachineShowSnapshots(this);
     m_pool[UIActionIndexMN_M_Group_M_Tools_T_Logs] = new UIActionToggleManagerToolsMachineShowLogs(this);
-    m_pool[UIActionIndexMN_M_Group_M_Tools_T_VMResourceUse] = new UIActionToggleManagerToolsMachineShowVMResourceUse(this);
+    m_pool[UIActionIndexMN_M_Group_M_Tools_T_Activity] = new UIActionToggleManagerToolsMachineShowActivity(this);
     m_pool[UIActionIndexMN_M_Group_M_Tools_T_FileManager] = new UIActionToggleManagerToolsMachineShowFileManager(this);
     m_pool[UIActionIndexMN_M_Group_S_Discard] = new UIActionSimpleManagerCommonPerformDiscard(this);
     m_pool[UIActionIndexMN_M_Group_S_Refresh] = new UIActionSimpleManagerCommonPerformRefresh(this);
@@ -3661,7 +3661,7 @@ void UIActionPoolManager::preparePool()
     m_pool[UIActionIndexMN_M_Machine_M_Tools_T_Details] = new UIActionToggleManagerToolsMachineShowDetails(this);
     m_pool[UIActionIndexMN_M_Machine_M_Tools_T_Snapshots] = new UIActionToggleManagerToolsMachineShowSnapshots(this);
     m_pool[UIActionIndexMN_M_Machine_M_Tools_T_Logs] = new UIActionToggleManagerToolsMachineShowLogs(this);
-    m_pool[UIActionIndexMN_M_Machine_M_Tools_T_VMResourceUse] = new UIActionToggleManagerToolsMachineShowVMResourceUse(this);
+    m_pool[UIActionIndexMN_M_Machine_M_Tools_T_Activity] = new UIActionToggleManagerToolsMachineShowActivity(this);
     m_pool[UIActionIndexMN_M_Machine_M_Tools_T_FileManager] = new UIActionToggleManagerToolsMachineShowFileManager(this);
     m_pool[UIActionIndexMN_M_Machine_S_Discard] = new UIActionSimpleManagerCommonPerformDiscard(this);
     m_pool[UIActionIndexMN_M_Machine_S_Refresh] = new UIActionSimpleManagerCommonPerformRefresh(this);
@@ -3726,10 +3726,10 @@ void UIActionPoolManager::preparePool()
     m_pool[UIActionIndexMN_M_CloudConsole_S_ProfileRemove] = new UIActionMenuManagerCloudConsolePerformProfileRemove(this);
     m_pool[UIActionIndexMN_M_CloudConsole_T_Details] = new UIActionMenuManagerCloudConsoleToggleProperties(this);
 
-    /* Resource Dashboard actions: */
-    m_pool[UIActionIndexMN_M_ResourceDashboard] = new UIActionMenuResourceDashboard(this);
-    m_pool[UIActionIndexMN_M_ResourceDashboard_M_Columns] = new UIActionMenuManagerResourceDashboardColumns(this);
-    m_pool[UIActionIndexMN_M_ResourceDashboard_S_SwitchToVMResourceUse] = new UIActionMenuManagerResourceDashboardSwitchToVMResourceUse(this);
+    /* VM Activity Overview actions: */
+    m_pool[UIActionIndexMN_M_VMActivityOverview] = new UIActionMenuVMActivityOverview(this);
+    m_pool[UIActionIndexMN_M_VMActivityOverview_M_Columns] = new UIActionMenuManagerVMActivityOverviewColumns(this);
+    m_pool[UIActionIndexMN_M_VMActivityOverview_S_SwitchToMachineActivity] = new UIActionMenuManagerVMActivityOverviewSwitchToMachineActivity(this);
 
     /* 'File' action groups: */
     m_groupPool[UIActionIndexMN_M_File_M_Tools] = new QActionGroup(m_pool.value(UIActionIndexMN_M_File_M_Tools));
@@ -3738,7 +3738,7 @@ void UIActionPoolManager::preparePool()
     m_groupPool[UIActionIndexMN_M_File_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_File_M_Tools_T_VirtualMediaManager));
     m_groupPool[UIActionIndexMN_M_File_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_File_M_Tools_T_NetworkManager));
     m_groupPool[UIActionIndexMN_M_File_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_File_M_Tools_T_CloudProfileManager));
-    m_groupPool[UIActionIndexMN_M_File_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_File_M_Tools_T_ResourceDashboard));
+    m_groupPool[UIActionIndexMN_M_File_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_File_M_Tools_T_VMActivityOverview));
     m_groupPool[UIActionIndexMN_M_File_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_File_M_Tools_T_MachineManager));
 
     /* 'Group' action groups: */
@@ -3746,7 +3746,7 @@ void UIActionPoolManager::preparePool()
     m_groupPool[UIActionIndexMN_M_Group_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_Group_M_Tools_T_Details));
     m_groupPool[UIActionIndexMN_M_Group_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_Group_M_Tools_T_Snapshots));
     m_groupPool[UIActionIndexMN_M_Group_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_Group_M_Tools_T_Logs));
-    m_groupPool[UIActionIndexMN_M_Group_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_Group_M_Tools_T_VMResourceUse));
+    m_groupPool[UIActionIndexMN_M_Group_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_Group_M_Tools_T_Activity));
     m_groupPool[UIActionIndexMN_M_Group_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_Group_M_Tools_T_FileManager));
 
     /* 'Machine' action groups: */
@@ -3754,7 +3754,7 @@ void UIActionPoolManager::preparePool()
     m_groupPool[UIActionIndexMN_M_Machine_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_Machine_M_Tools_T_Details));
     m_groupPool[UIActionIndexMN_M_Machine_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_Machine_M_Tools_T_Snapshots));
     m_groupPool[UIActionIndexMN_M_Machine_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_Machine_M_Tools_T_Logs));
-    m_groupPool[UIActionIndexMN_M_Machine_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_Machine_M_Tools_T_VMResourceUse));
+    m_groupPool[UIActionIndexMN_M_Machine_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_Machine_M_Tools_T_Activity));
     m_groupPool[UIActionIndexMN_M_Machine_M_Tools]->addAction(m_pool.value(UIActionIndexMN_M_Machine_M_Tools_T_FileManager));
 
     /* Prepare update-handlers for known menus: */
@@ -3783,7 +3783,7 @@ void UIActionPoolManager::preparePool()
     m_menuUpdateHandlers[UIActionIndexMN_M_Cloud].ptfm =                 &UIActionPoolManager::updateMenuCloud;
     m_menuUpdateHandlers[UIActionIndexMN_M_CloudConsoleWindow].ptfm =    &UIActionPoolManager::updateMenuCloudConsoleWindow;
     m_menuUpdateHandlers[UIActionIndexMN_M_CloudConsole].ptfm =          &UIActionPoolManager::updateMenuCloudConsole;
-    m_menuUpdateHandlers[UIActionIndexMN_M_ResourceDashboard].ptfm =     &UIActionPoolManager::updateMenuResourceDashboard;
+    m_menuUpdateHandlers[UIActionIndexMN_M_VMActivityOverview].ptfm =    &UIActionPoolManager::updateMenuVMActivityOverview;
     m_menuUpdateHandlers[UIActionIndexMN_M_Snapshot].ptfm =              &UIActionPoolManager::updateMenuSnapshot;
 
     /* Call to base-class: */
@@ -3871,9 +3871,9 @@ void UIActionPoolManager::updateMenus()
     addMenu(m_mainMenus, action(UIActionIndexMN_M_Cloud));
     updateMenuCloudWindow();
     updateMenuCloud();
-    /* 'Resource Dashboard' menu: */
-    addMenu(m_mainMenus, action(UIActionIndexMN_M_ResourceDashboard));
-    updateMenuResourceDashboard();
+    /* 'VM Activity Overview' menu: */
+    addMenu(m_mainMenus, action(UIActionIndexMN_M_VMActivityOverview));
+    updateMenuVMActivityOverview();
 
     /* 'Snapshot' menu: */
     addMenu(m_mainMenus, action(UIActionIndexMN_M_Snapshot));
@@ -3882,9 +3882,9 @@ void UIActionPoolManager::updateMenus()
     addMenu(m_mainMenus, action(UIActionIndex_M_Log));
     updateMenuLogViewerWindow();
     updateMenuLogViewer();
-    /* 'Resouce Utilization' menu: */
-    addMenu(m_mainMenus, action(UIActionIndex_M_VMResourceUse));
-    updateMenuVMResourceUse();
+    /* 'Activity' menu: */
+    addMenu(m_mainMenus, action(UIActionIndex_M_Activity));
+    updateMenuVMActivityMonitor();
 
     /* 'File Manager' menu*/
     addMenu(m_mainMenus, action(UIActionIndex_M_FileManager));
@@ -3939,7 +3939,7 @@ void UIActionPoolManager::setShortcutsVisible(int iIndex, bool fVisible)
                     << action(UIActionIndexMN_M_Group_M_Tools_T_Details)
                     << action(UIActionIndexMN_M_Group_M_Tools_T_Snapshots)
                     << action(UIActionIndexMN_M_Group_M_Tools_T_Logs)
-                    << action(UIActionIndexMN_M_Group_M_Tools_T_VMResourceUse);
+                    << action(UIActionIndexMN_M_Group_M_Tools_T_Activity);
             break;
         }
         case UIActionIndexMN_M_Machine:
@@ -3981,7 +3981,7 @@ void UIActionPoolManager::setShortcutsVisible(int iIndex, bool fVisible)
                     << action(UIActionIndexMN_M_Machine_M_Tools_T_Details)
                     << action(UIActionIndexMN_M_Machine_M_Tools_T_Snapshots)
                     << action(UIActionIndexMN_M_Machine_M_Tools_T_Logs)
-                    << action(UIActionIndexMN_M_Machine_M_Tools_T_VMResourceUse);
+                    << action(UIActionIndexMN_M_Machine_M_Tools_T_Activity);
             break;
         }
         default:
@@ -4113,7 +4113,7 @@ void UIActionPoolManager::updateMenuFileTools()
         pMenu->addAction(action(UIActionIndexMN_M_File_M_Tools_T_NetworkManager));
     }
     pMenu->addAction(action(UIActionIndexMN_M_File_M_Tools_T_CloudProfileManager));
-    pMenu->addAction(action(UIActionIndexMN_M_File_M_Tools_T_ResourceDashboard));
+    pMenu->addAction(action(UIActionIndexMN_M_File_M_Tools_T_VMActivityOverview));
     //pMenu->addAction(action(UIActionIndexMN_M_File_M_Tools_T_MachineManager));
 
     /* Mark menu as valid: */
@@ -4306,7 +4306,7 @@ void UIActionPoolManager::updateMenuGroupTools()
     pMenu->addAction(action(UIActionIndexMN_M_Group_M_Tools_T_Details));
     pMenu->addAction(action(UIActionIndexMN_M_Group_M_Tools_T_Snapshots));
     pMenu->addAction(action(UIActionIndexMN_M_Group_M_Tools_T_Logs));
-    pMenu->addAction(action(UIActionIndexMN_M_Group_M_Tools_T_VMResourceUse));
+    pMenu->addAction(action(UIActionIndexMN_M_Group_M_Tools_T_Activity));
     if (fExpertMode)
         pMenu->addAction(action(UIActionIndexMN_M_Group_M_Tools_T_FileManager));
 
@@ -4327,7 +4327,7 @@ void UIActionPoolManager::updateMenuMachineTools()
     pMenu->addAction(action(UIActionIndexMN_M_Machine_M_Tools_T_Details));
     pMenu->addAction(action(UIActionIndexMN_M_Machine_M_Tools_T_Snapshots));
     pMenu->addAction(action(UIActionIndexMN_M_Machine_M_Tools_T_Logs));
-    pMenu->addAction(action(UIActionIndexMN_M_Machine_M_Tools_T_VMResourceUse));
+    pMenu->addAction(action(UIActionIndexMN_M_Machine_M_Tools_T_Activity));
     if (fExpertMode)
         pMenu->addAction(action(UIActionIndexMN_M_Machine_M_Tools_T_FileManager));
 
@@ -4603,21 +4603,21 @@ void UIActionPoolManager::updateMenuCloudConsoleWrapper(UIMenu *pMenu)
     Q_UNUSED(fSeparator);
 }
 
-void UIActionPoolManager::updateMenuResourceDashboard()
+void UIActionPoolManager::updateMenuVMActivityOverview()
 {
     /* Update corresponding menu: */
-    updateMenuResourceDashboardWrapper(action(UIActionIndexMN_M_ResourceDashboard)->menu());
+    updateMenuVMActivityOverviewWrapper(action(UIActionIndexMN_M_VMActivityOverview)->menu());
 
     /* Mark menu as valid: */
-    m_invalidations.remove(UIActionIndexMN_M_ResourceDashboard);
+    m_invalidations.remove(UIActionIndexMN_M_VMActivityOverview);
 }
 
-void UIActionPoolManager::updateMenuResourceDashboardWrapper(UIMenu *pMenu)
+void UIActionPoolManager::updateMenuVMActivityOverviewWrapper(UIMenu *pMenu)
 {
     /* Clear contents: */
     pMenu->clear();
-    addAction(pMenu, action(UIActionIndexMN_M_ResourceDashboard_M_Columns));
-    addAction(pMenu, action(UIActionIndexMN_M_ResourceDashboard_S_SwitchToVMResourceUse));
+    addAction(pMenu, action(UIActionIndexMN_M_VMActivityOverview_M_Columns));
+    addAction(pMenu, action(UIActionIndexMN_M_VMActivityOverview_S_SwitchToMachineActivity));
 }
 
 void UIActionPoolManager::updateMenuSnapshot()

@@ -1,4 +1,4 @@
-/* $Id: UIActionPoolManager.h 168877 2025-05-15 09:22:19Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIActionPoolManager.h 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIActionPoolManager class declaration.
  */
@@ -54,7 +54,7 @@ enum UIActionIndexMN
     UIActionIndexMN_M_File_M_Tools_T_VirtualMediaManager,
     UIActionIndexMN_M_File_M_Tools_T_NetworkManager,
     UIActionIndexMN_M_File_M_Tools_T_CloudProfileManager,
-    UIActionIndexMN_M_File_M_Tools_T_ResourceDashboard,
+    UIActionIndexMN_M_File_M_Tools_T_VMActivityOverview,
     UIActionIndexMN_M_File_M_Tools_T_MachineManager,
 #ifdef VBOX_GUI_WITH_EXTRADATA_MANAGER_UI
     UIActionIndexMN_M_File_S_ShowExtraDataManager,
@@ -94,7 +94,7 @@ enum UIActionIndexMN
     UIActionIndexMN_M_Group_M_Tools_T_Details,
     UIActionIndexMN_M_Group_M_Tools_T_Snapshots,
     UIActionIndexMN_M_Group_M_Tools_T_Logs,
-    UIActionIndexMN_M_Group_M_Tools_T_VMResourceUse,
+    UIActionIndexMN_M_Group_M_Tools_T_Activity,
     UIActionIndexMN_M_Group_M_Tools_T_FileManager,
     UIActionIndexMN_M_Group_S_Discard,
     UIActionIndexMN_M_Group_S_Refresh,
@@ -140,7 +140,7 @@ enum UIActionIndexMN
     UIActionIndexMN_M_Machine_M_Tools_T_Details,
     UIActionIndexMN_M_Machine_M_Tools_T_Snapshots,
     UIActionIndexMN_M_Machine_M_Tools_T_Logs,
-    UIActionIndexMN_M_Machine_M_Tools_T_VMResourceUse,
+    UIActionIndexMN_M_Machine_M_Tools_T_Activity,
     UIActionIndexMN_M_Machine_M_Tools_T_FileManager,
     UIActionIndexMN_M_Machine_S_Discard,
     UIActionIndexMN_M_Machine_S_Refresh,
@@ -205,10 +205,10 @@ enum UIActionIndexMN
     UIActionIndexMN_M_CloudConsole_S_ProfileRemove,
     UIActionIndexMN_M_CloudConsole_T_Details,
 
-    /* Resource Dashboard actions: */
-    UIActionIndexMN_M_ResourceDashboard,
-    UIActionIndexMN_M_ResourceDashboard_M_Columns,
-    UIActionIndexMN_M_ResourceDashboard_S_SwitchToVMResourceUse,
+    /* VM VM Activity Overview actions: */
+    UIActionIndexMN_M_VMActivityOverview,
+    UIActionIndexMN_M_VMActivityOverview_M_Columns,
+    UIActionIndexMN_M_VMActivityOverview_S_SwitchToMachineActivity,
 
     /* Maximum index: */
     UIActionIndexMN_Max
@@ -318,10 +318,10 @@ private:
     /** Updates 'Cloud Console' @a pMenu. */
     void updateMenuCloudConsoleWrapper(UIMenu *pMenu);
 
-    /** Updates 'Resource Dashboard' menu. */
-    void updateMenuResourceDashboard();
-    /** Updates 'Resource Dashboard' @a pMenu. */
-    void updateMenuResourceDashboardWrapper(UIMenu *pMenu);
+    /** Updates 'VM VM Activity Overview' menu. */
+    void updateMenuVMActivityOverview();
+    /** Updates 'VM VM Activity Overview' @a pMenu. */
+    void updateMenuVMActivityOverviewWrapper(UIMenu *pMenu);
 
     /** Updates 'Snapshot' menu. */
     void updateMenuSnapshot();

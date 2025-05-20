@@ -1,4 +1,4 @@
-/* $Id: UIVMInformationDialog.h 168877 2025-05-15 09:22:19Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIVMInformationDialog.h 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVMInformationDialog class declaration.
  */
@@ -87,7 +87,7 @@ private:
     {
         Tabs_ConfigurationDetails = 0,
         Tabs_RuntimeInformation,
-        Tabs_VMResourceUse,
+        Tabs_ActivityMonitor,
         Tabs_GuestControl
     };
     /** Prepares all. */

@@ -1,4 +1,4 @@
-/* $Id: UIVMActivityOverviewWidget.cpp 168877 2025-05-15 09:22:19Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIVMActivityOverviewWidget.cpp 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVMActivityOverviewWidget class implementation.
  */
@@ -611,7 +611,7 @@ UIVMActivityOverviewItem::UIVMActivityOverviewItem(QObject *pParent, const QUuid
     , m_VMuid(uid)
     , m_strVMName(strVMName)
 {
-    m_columnData[ResourceDashboardColumn_Name] = m_strVMName;
+    m_columnData[VMActivityOverviewColumn_Name] = m_strVMName;
 }
 
 UIVMActivityOverviewItem::UIVMActivityOverviewItem()
@@ -745,10 +745,10 @@ void UIVMActivityOverviewItemCloud::sltMetricDataReceived(KMetricType enmMetricT
     {
         //QString QLocale::toString(double i, char f = 'g', int prec = 6) const
 
-        // m_columnData[ResourceDashboardColumn_CPUGuestLoad] =
+        // m_columnData[VMActivityOverviewColumn_CPUGuestLoad] =
         //     QString("%1%").arg(QString::number(data[0].toFloat(), 'f', iDecimalCount));
 
-        m_columnData[ResourceDashboardColumn_CPUGuestLoad] =
+        m_columnData[VMActivityOverviewColumn_CPUGuestLoad] =
             QString("%1%").arg(locale.toString(data[0].toFloat(), 'f', iDecimalCount));
 }
     else if (enmMetricType == KMetricType_MemoryUtilization)
@@ -756,24 +756,24 @@ void UIVMActivityOverviewItemCloud::sltMetricDataReceived(KMetricType enmMetricT
          if (m_uTotalRAM != 0)
          {
              quint64 uUsedRAM = (quint64)data[0].toFloat() * (m_uTotalRAM / 100.f);
-             m_columnData[ResourceDashboardColumn_RAMUsedAndTotal] =
+             m_columnData[VMActivityOverviewColumn_RAMUsedAndTotal] =
                  QString("%1/%2").arg(UITranslator::formatSize(_1K * uUsedRAM, iDecimalCount)).
                  arg(UITranslator::formatSize(_1K * m_uTotalRAM, iDecimalCount));
          }
-         m_columnData[ResourceDashboardColumn_RAMUsedPercentage] =
+         m_columnData[VMActivityOverviewColumn_RAMUsedPercentage] =
              QString("%1%").arg(QString::number(data[0].toFloat(), 'f', iDecimalCount));
     }
     else if (enmMetricType == KMetricType_NetworksBytesOut)
-        m_columnData[ResourceDashboardColumn_NetworkUpRate] =
+        m_columnData[VMActivityOverviewColumn_NetworkUpRate] =
             UITranslator::formatSize((quint64)data[0].toFloat(), iDecimalCount);
     else if (enmMetricType == KMetricType_NetworksBytesIn)
-        m_columnData[ResourceDashboardColumn_NetworkDownRate] =
+        m_columnData[VMActivityOverviewColumn_NetworkDownRate] =
             UITranslator::formatSize((quint64)data[0].toFloat(), iDecimalCount);
     else if (enmMetricType == KMetricType_DiskBytesRead)
-        m_columnData[ResourceDashboardColumn_DiskIOReadRate] =
+        m_columnData[VMActivityOverviewColumn_DiskIOReadRate] =
             UITranslator::formatSize((quint64)data[0].toFloat(), iDecimalCount);
     else if (enmMetricType == KMetricType_DiskBytesWritten)
-        m_columnData[ResourceDashboardColumn_DiskIOWriteRate] =
+        m_columnData[VMActivityOverviewColumn_DiskIOWriteRate] =
             UITranslator::formatSize((quint64)data[0].toFloat(), iDecimalCount);
 
     sender()->deleteLater();
@@ -802,8 +802,8 @@ void UIVMActivityOverviewItemCloud::setMachineState(int iState)
 
 void UIVMActivityOverviewItemCloud::resetColumData()
 {
-    for (int i = (int) ResourceDashboardColumn_CPUGuestLoad;
-         i < (int)ResourceDashboardColumn_Max; ++i)
+    for (int i = (int) VMActivityOverviewColumn_CPUGuestLoad;
+         i < (int)VMActivityOverviewColumn_Max; ++i)
         m_columnData[i] = UIVMActivityOverviewWidget::tr("N/A");
 }
 
@@ -930,25 +930,25 @@ void UIVMActivityOverviewItemLocal::updateColumnData()
     ULONG  uCPUGuestLoad;
     ULONG uCPUVMMLoad;
     m_comDebugger.GetCPULoad(0x7fffffff, uCPUGuestLoad, aPctHalted, uCPUVMMLoad);
-    m_columnData[ResourceDashboardColumn_CPUGuestLoad] =
+    m_columnData[VMActivityOverviewColumn_CPUGuestLoad] =
         QString("%1%").arg(QString::number(uCPUGuestLoad));
-    m_columnData[ResourceDashboardColumn_CPUVMMLoad] =
+    m_columnData[VMActivityOverviewColumn_CPUVMMLoad] =
         QString("%1%").arg(QString::number(uCPUVMMLoad));
 
     /* RAM Utilization: */
     if (isWithGuestAdditions())
-        m_columnData[ResourceDashboardColumn_RAMUsedAndTotal] =
+        m_columnData[VMActivityOverviewColumn_RAMUsedAndTotal] =
             QString("%1/%2").arg(UITranslator::formatSize(_1K * m_uUsedRAM, iDecimalCount)).
             arg(UITranslator::formatSize(_1K * m_uTotalRAM, iDecimalCount));
     else
-        m_columnData[ResourceDashboardColumn_RAMUsedAndTotal] = UIVMActivityOverviewWidget::tr("N/A");
+        m_columnData[VMActivityOverviewColumn_RAMUsedAndTotal] = UIVMActivityOverviewWidget::tr("N/A");
 
     /* RAM Utilization %: */
     if (isWithGuestAdditions())
-        m_columnData[ResourceDashboardColumn_RAMUsedPercentage] =
+        m_columnData[VMActivityOverviewColumn_RAMUsedPercentage] =
             QString("%1%").arg(QString::number(m_fRAMUsagePercentage, 'f', 2));
     else
-        m_columnData[ResourceDashboardColumn_RAMUsedPercentage] = UIVMActivityOverviewWidget::tr("N/A");
+        m_columnData[VMActivityOverviewColumn_RAMUsedPercentage] = UIVMActivityOverviewWidget::tr("N/A");
 
     /* Network rate: */
     quint64 uPrevDownTotal = m_uNetworkDownTotal;
@@ -956,13 +956,13 @@ void UIVMActivityOverviewItemLocal::updateColumnData()
     UIMonitorCommon::getNetworkLoad(m_comDebugger, m_uNetworkDownTotal, m_uNetworkUpTotal);
     quint64 uNetworkDownRate = m_uNetworkDownTotal - uPrevDownTotal;
     quint64 uNetworkUpRate = m_uNetworkUpTotal - uPrevUpTotal;
-    m_columnData[ResourceDashboardColumn_NetworkUpRate] =
+    m_columnData[VMActivityOverviewColumn_NetworkUpRate] =
         QString("%1").arg(UITranslator::formatSize(uNetworkUpRate, iDecimalCount));
-    m_columnData[ResourceDashboardColumn_NetworkDownRate] =
+    m_columnData[VMActivityOverviewColumn_NetworkDownRate] =
         QString("%1").arg(UITranslator::formatSize(uNetworkDownRate, iDecimalCount));
-    m_columnData[ResourceDashboardColumn_NetworkUpTotal] =
+    m_columnData[VMActivityOverviewColumn_NetworkUpTotal] =
         QString("%1").arg(UITranslator::formatSize(m_uNetworkUpTotal, iDecimalCount));
-    m_columnData[ResourceDashboardColumn_NetworkDownTotal] =
+    m_columnData[VMActivityOverviewColumn_NetworkDownTotal] =
         QString("%1").arg(UITranslator::formatSize(m_uNetworkDownTotal, iDecimalCount));
 
 
@@ -972,20 +972,20 @@ void UIVMActivityOverviewItemLocal::updateColumnData()
     UIMonitorCommon::getDiskLoad(m_comDebugger, m_uDiskWriteTotal, m_uDiskReadTotal);
     quint64 uDiskWriteRate = m_uDiskWriteTotal - uPrevWriteTotal;
     quint64 uDiskReadRate = m_uDiskReadTotal - uPrevReadTotal;
-    m_columnData[ResourceDashboardColumn_DiskIOReadRate] =
+    m_columnData[VMActivityOverviewColumn_DiskIOReadRate] =
         QString("%1").arg(UITranslator::formatSize(uDiskReadRate, iDecimalCount));
-    m_columnData[ResourceDashboardColumn_DiskIOWriteRate] =
+    m_columnData[VMActivityOverviewColumn_DiskIOWriteRate] =
         QString("%1").arg(UITranslator::formatSize(uDiskWriteRate, iDecimalCount));
-    m_columnData[ResourceDashboardColumn_DiskIOReadTotal] =
+    m_columnData[VMActivityOverviewColumn_DiskIOReadTotal] =
         QString("%1").arg(UITranslator::formatSize(m_uDiskReadTotal, iDecimalCount));
-    m_columnData[ResourceDashboardColumn_DiskIOWriteTotal] =
+    m_columnData[VMActivityOverviewColumn_DiskIOWriteTotal] =
         QString("%1").arg(UITranslator::formatSize(m_uDiskWriteTotal, iDecimalCount));
 
     /* VM Exits: */
     quint64 uPrevVMExitsTotal = m_uVMExitTotal;
     UIMonitorCommon::getVMMExitCount(m_comDebugger, m_uVMExitTotal);
     quint64 uVMExitRate = m_uVMExitTotal - uPrevVMExitsTotal;
-    m_columnData[ResourceDashboardColumn_VMExits] =
+    m_columnData[VMActivityOverviewColumn_VMExits] =
         QString("%1/%2").arg(UITranslator::addMetricSuffixToNumber(uVMExitRate)).
         arg(UITranslator::addMetricSuffixToNumber(m_uVMExitTotal));
 }
@@ -1052,20 +1052,20 @@ void UIVMActivityOverviewWidget::sltRetranslateUI()
 {
     m_pTableView->setWhatsThis(tr("Lists all currently active virtual machines."));
 
-    m_columnTitles[ResourceDashboardColumn_Name] = UIVMActivityOverviewWidget::tr("VM Name");
-    m_columnTitles[ResourceDashboardColumn_CPUGuestLoad] = UIVMActivityOverviewWidget::tr("CPU Guest");
-    m_columnTitles[ResourceDashboardColumn_CPUVMMLoad] = UIVMActivityOverviewWidget::tr("CPU VMM");
-    m_columnTitles[ResourceDashboardColumn_RAMUsedAndTotal] = UIVMActivityOverviewWidget::tr("RAM Used/Total");
-    m_columnTitles[ResourceDashboardColumn_RAMUsedPercentage] = UIVMActivityOverviewWidget::tr("RAM %");
-    m_columnTitles[ResourceDashboardColumn_NetworkUpRate] = UIVMActivityOverviewWidget::tr("Network Upload Rate");
-    m_columnTitles[ResourceDashboardColumn_NetworkDownRate] = UIVMActivityOverviewWidget::tr("Network Download Rate");
-    m_columnTitles[ResourceDashboardColumn_NetworkUpTotal] = UIVMActivityOverviewWidget::tr("Network Upload Total");
-    m_columnTitles[ResourceDashboardColumn_NetworkDownTotal] = UIVMActivityOverviewWidget::tr("Network Download Total");
-    m_columnTitles[ResourceDashboardColumn_DiskIOReadRate] = UIVMActivityOverviewWidget::tr("Disk Read Rate");
-    m_columnTitles[ResourceDashboardColumn_DiskIOWriteRate] = UIVMActivityOverviewWidget::tr("Disk Write Rate");
-    m_columnTitles[ResourceDashboardColumn_DiskIOReadTotal] = UIVMActivityOverviewWidget::tr("Disk Read Total");
-    m_columnTitles[ResourceDashboardColumn_DiskIOWriteTotal] = UIVMActivityOverviewWidget::tr("Disk Write Total");
-    m_columnTitles[ResourceDashboardColumn_VMExits] = UIVMActivityOverviewWidget::tr("VM Exits");
+    m_columnTitles[VMActivityOverviewColumn_Name] = UIVMActivityOverviewWidget::tr("VM Name");
+    m_columnTitles[VMActivityOverviewColumn_CPUGuestLoad] = UIVMActivityOverviewWidget::tr("CPU Guest");
+    m_columnTitles[VMActivityOverviewColumn_CPUVMMLoad] = UIVMActivityOverviewWidget::tr("CPU VMM");
+    m_columnTitles[VMActivityOverviewColumn_RAMUsedAndTotal] = UIVMActivityOverviewWidget::tr("RAM Used/Total");
+    m_columnTitles[VMActivityOverviewColumn_RAMUsedPercentage] = UIVMActivityOverviewWidget::tr("RAM %");
+    m_columnTitles[VMActivityOverviewColumn_NetworkUpRate] = UIVMActivityOverviewWidget::tr("Network Upload Rate");
+    m_columnTitles[VMActivityOverviewColumn_NetworkDownRate] = UIVMActivityOverviewWidget::tr("Network Download Rate");
+    m_columnTitles[VMActivityOverviewColumn_NetworkUpTotal] = UIVMActivityOverviewWidget::tr("Network Upload Total");
+    m_columnTitles[VMActivityOverviewColumn_NetworkDownTotal] = UIVMActivityOverviewWidget::tr("Network Download Total");
+    m_columnTitles[VMActivityOverviewColumn_DiskIOReadRate] = UIVMActivityOverviewWidget::tr("Disk Read Rate");
+    m_columnTitles[VMActivityOverviewColumn_DiskIOWriteRate] = UIVMActivityOverviewWidget::tr("Disk Write Rate");
+    m_columnTitles[VMActivityOverviewColumn_DiskIOReadTotal] = UIVMActivityOverviewWidget::tr("Disk Read Total");
+    m_columnTitles[VMActivityOverviewColumn_DiskIOWriteTotal] = UIVMActivityOverviewWidget::tr("Disk Write Total");
+    m_columnTitles[VMActivityOverviewColumn_VMExits] = UIVMActivityOverviewWidget::tr("VM Exits");
 
     updateColumnsMenu();
 
@@ -1169,15 +1169,15 @@ void UIVMActivityOverviewWidget::prepareWidgets()
 
 void UIVMActivityOverviewWidget::updateColumnsMenu()
 {
-    UIMenu *pMenu = m_pActionPool->action(UIActionIndexMN_M_ResourceDashboard_M_Columns)->menu();
+    UIMenu *pMenu = m_pActionPool->action(UIActionIndexMN_M_VMActivityOverview_M_Columns)->menu();
     if (!pMenu)
         return;
     pMenu->clear();
-    for (int i = 0; i < ResourceDashboardColumn_Max; ++i)
+    for (int i = 0; i < VMActivityOverviewColumn_Max; ++i)
     {
         QAction *pAction = pMenu->addAction(m_columnTitles[i]);
         pAction->setCheckable(true);
-        if (i == (int)ResourceDashboardColumn_Name)
+        if (i == (int)VMActivityOverviewColumn_Name)
             pAction->setEnabled(false);
         pAction->setData(i);
         pAction->setChecked(columnVisible(i));
@@ -1189,7 +1189,7 @@ void UIVMActivityOverviewWidget::prepareActions()
 {
     updateColumnsMenu();
     m_pVMActivityMonitorAction =
-        m_pActionPool->action(UIActionIndexMN_M_ResourceDashboard_S_SwitchToVMResourceUse);
+        m_pActionPool->action(UIActionIndexMN_M_VMActivityOverview_S_SwitchToMachineActivity);
 
     if (m_pVMActivityMonitorAction)
         connect(m_pVMActivityMonitorAction, &QAction::triggered, this, &UIVMActivityOverviewWidget::sltHandleShowVMActivityMonitor);
@@ -1224,10 +1224,10 @@ void UIVMActivityOverviewWidget::loadSettings()
 {
     /* Load the list of hidden columns: */
     QStringList hiddenColumnList = gEDataManager->VMActivityOverviewHiddenColumnList();
-    for (int i = (int)ResourceDashboardColumn_Name; i < (int)ResourceDashboardColumn_Max; ++i)
+    for (int i = (int)VMActivityOverviewColumn_Name; i < (int)VMActivityOverviewColumn_Max; ++i)
         m_columnVisible[i] = true;
     foreach(const QString& strColumn, hiddenColumnList)
-        setColumnVisible((int)gpConverter->fromInternalString<ResourceDashboardColumn>(strColumn), false);
+        setColumnVisible((int)gpConverter->fromInternalString<VMActivityOverviewColumn>(strColumn), false);
     /* Load other options: */
     sltNotRunningVMVisibility(gEDataManager->VMActivityOverviewShowAllMachines());
 }
@@ -1239,7 +1239,7 @@ void UIVMActivityOverviewWidget::sltSaveSettings()
     for (int i = 0; i < m_columnVisible.size(); ++i)
     {
         if (!columnVisible(i))
-            hiddenColumnList << gpConverter->toInternalString((ResourceDashboardColumn) i);
+            hiddenColumnList << gpConverter->toInternalString((VMActivityOverviewColumn) i);
     }
     gEDataManager->setVMActivityOverviewHiddenColumnList(hiddenColumnList);
     gEDataManager->setVMActivityOverviewShowAllMachines(m_fShowNotRunningVMs);
@@ -1375,7 +1375,7 @@ void UIVMActivityOverviewWidget::computeMinimumColumnWidths()
     QFontMetrics fontMetrics(m_pTableView->font());
     const QMap<int, int> &columnDataStringLengths = m_pModel->dataLengths();
     QMap<int, int> columnWidthsInPixels;
-    for (int i = 0; i < (int)ResourceDashboardColumn_Max; ++i)
+    for (int i = 0; i < (int)VMActivityOverviewColumn_Max; ++i)
     {
         int iColumnStringWidth = columnDataStringLengths.value(i, 0);
         int iColumnTitleWidth = m_columnTitles.value(i, QString()).length();
