@@ -1,4 +1,4 @@
-# $Id: .scm-settings 168477 2025-04-12 00:16:48Z knut.osmundsen@oracle.com $
+# $Id: .scm-settings 168942 2025-05-20 21:27:26Z knut.osmundsen@oracle.com $
 ## @file
 # Source code massager settings for the VMM.
 #
@@ -34,6 +34,7 @@
 /include/PGMSlatDefs.h: --no-fix-header-guards
 /VMMR0/PGMR0Bth.h: --no-fix-header-guards
 /VMMR3/PGMPhysRWTmpl.h: --no-fix-header-guards
+/VMMAll/CPUMAllCpuIdArmV8.cpp.h: --dont-set-svn-keywords
 /VMMAll/PGMAll*-*.cpp.h: --no-fix-header-guards
 /VMMAll/target-armv8/IEMAllInstrA64Impl.h: --no-fix-header-guards
 /VMMAll/target-x86/IEMAllInstCommonBodyMacros-x86.h: --no-fix-header-guards
