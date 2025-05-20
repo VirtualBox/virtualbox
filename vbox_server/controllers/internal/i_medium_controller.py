@@ -571,6 +571,50 @@ def i_medium_mergeto(oVBoxMedium, target=None):  # noqa: E501
     return response, httpCode
 
 
+@findMedium_decorator
+def i_medium_moveto(oVBoxMedium, location=None):
+    """
+    Call interface method IMedium::moveTo
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param location: 
+    :type location: str
+
+    :rtype: ProgressResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    logging.info(f"Moving the medium {oVBoxMedium.id} to the new location {location}")
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oProgressResponse = ProgressResponse()
+
+    if __testLocation(location) is False:
+        logging.info("The passed new location %s isn't a fully qualified path or hasn't existed" % (location))
+    try:
+        oVBoxProgress = oVBoxMedium.moveTo(location)
+        if oVBoxProgress is not None:
+            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            logging.info('The moving medium has been successfully started')
+
+            # Add Progress Id object into the tracking lists
+            ctx['tracker'][oProgressResponse.progress.id] = None
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "Something wrong with the Progress object")
+
+    except Exception as e:
+        logging.info("Exception during moving the medium %s to the new location %s" % (oVBoxMedium.id, location))
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
@@ -747,21 +791,6 @@ def i_medium_lockwrite(mediumid):  # noqa: E501
     :type mediumid: str
 
     :rtype: TokenResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_moveto(mediumid, location=None):  # noqa: E501
-    """
-    Call interface method IMedium::moveTo
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param location: 
-    :type location: str
-
-    :rtype: ProgressResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
