@@ -503,6 +503,26 @@ def i_medium_cloneto(oVBoxMedium, oMediumCloneToRequestBody: MediumCloneToReques
     return response, httpCode
 
 
+def i_medium_clonetobase(mediumid, oMediumCloneToBaseRequestBody: MediumCloneToBaseRequestBody):  # noqa: E501
+    """
+    Call interface method IMedium::cloneToBase
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param oMediumCloneToBaseRequestBody: 
+    :type oMediumCloneToBaseRequestBody: dict | bytes
+
+    :rtype: ProgressResponse
+    """
+
+    oMediumCloneToRequestBody = MediumCloneToRequestBody()
+    oMediumCloneToRequestBody.parent = None
+    oMediumCloneToRequestBody.target = oMediumCloneToBaseRequestBody.target
+    oMediumCloneToRequestBody.variant = oMediumCloneToBaseRequestBody.variant
+
+    return i_medium_cloneto(mediumid, oMediumCloneToRequestBody)
+
+
 ############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
@@ -530,20 +550,6 @@ def i_medium_checkencryptionpassword(mediumid, password=None):  # noqa: E501
     :rtype: None
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_clonetobase(mediumid, oMediumCloneToBaseRequestBody):  # noqa: E501
-    """
-    Call interface method IMedium::cloneToBase
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param oMediumCloneToBaseRequestBody: 
-    :type oMediumCloneToBaseRequestBody: dict | bytes
-
-    :rtype: ProgressResponse
-    """
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
