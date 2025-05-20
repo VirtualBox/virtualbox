@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # pylint: disable=too-many-lines
-# $Id: tdAddGuestCtrl.py 168934 2025-05-19 17:23:57Z andreas.loeffler@oracle.com $
+# $Id: tdAddGuestCtrl.py 168937 2025-05-20 06:00:17Z andreas.loeffler@oracle.com $
 
 """
 VirtualBox Validation Kit - Guest Control Tests.
@@ -38,7 +38,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 168934 $"
+__version__ = "$Revision: 168937 $"
 
 # Standard Python imports.
 import errno
@@ -1780,8 +1780,8 @@ class SubTstDrvAddGuestCtrl(base.SubTestDriverBase):
                                          sStdIn = 'vbox:password\n', fIgnoreErrors = True);
             # Show SELinux status (might not be available everywhere, so check for binary first).
             asCmdSELinuxSts = [
-                ( oTestVm.pathJoin(self.oTstDrv.getGuestSystemAdminDir(oTestVm, sPathPrefix = '/usr'), 'sestatus'), ),
-                ( oTestVm.pathJoin(self.oTstDrv.getGuestSystemAdminDir(oTestVm, sPathPrefix = '/usr/local'), 'sestatus'), ),
+                oTestVm.pathJoin(self.oTstDrv.getGuestSystemAdminDir(oTestVm, sPathPrefix = '/usr'),       'sestatus'),
+                oTestVm.pathJoin(self.oTstDrv.getGuestSystemAdminDir(oTestVm, sPathPrefix = '/usr/local'), 'sestatus'),
             ];
             fSELinuxFound = False;
             for sCmdSELinuxSts in asCmdSELinuxSts:
