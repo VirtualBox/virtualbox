@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 168793 2025-05-09 07:50:57Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 168941 2025-05-20 21:23:52Z knut.osmundsen@oracle.com $
 ## @file
 # Top-level makefile for the VMM.
 #
@@ -117,6 +117,8 @@ VBoxVMM_SOURCES  = \
 	VMMR3/target-x86/CPUMR3Msr-x86.cpp \
 	VMMR3/target-x86/CPUMR3Dbg-x86.cpp \
 	VMMR3/CPUMR3Db.cpp \
+	VMMR3/CPUMR3CpuIdInfo.cpp \
+	VMMR3/CPUMR3CpuIdInfo-x86.cpp \
 	VMMR3/DBGF.cpp \
 	VMMR3/DBGFAddr.cpp \
 	VMMR3/DBGFAddrSpace.cpp \
@@ -255,7 +257,8 @@ VBoxVMM_SOURCES.amd64 += \
 	$(if-expr !defined(IEM_WITHOUT_ASSEMBLY),VMMAll/target-x86/IEMAllAImpl-x86-amd64.asm,) \
 	VMMAll/VMMAllA.asm
 VBoxVMM_SOURCES.arm64 += \
-	VMMAll/target-x86/IEMAllAImpl-x86-arm64.S
+	VMMAll/target-x86/IEMAllAImpl-x86-arm64.S \
+	VMMR3/CPUMR3CpuIdInfo-armv8.cpp
 ifdef VBOX_WITH_VUSB
  VBoxVMM_SOURCES += VMMR3/PDMUsb.cpp
 endif
@@ -461,6 +464,8 @@ ifdef VBOX_WITH_VIRT_ARMV8
  	VMMR3/target-armv8/CPUMR3SysReg-armv8.cpp \
  	VMMR3/target-armv8/CPUMR3Dbg-armv8.cpp \
  	VMMR3/CPUMR3Db.cpp \
+ 	VMMR3/CPUMR3CpuIdInfo.cpp \
+ 	VMMR3/CPUMR3CpuIdInfo-armv8.cpp \
  	VMMAll/CPUMAllCpuId.cpp \
  	VMMR3/DBGF.cpp \
  	VMMR3/DBGFAddr.cpp \
@@ -587,6 +592,7 @@ ifdef VBOX_WITH_VIRT_ARMV8
 
  VBoxVMMArm_SOURCES.amd64 += \
  	VMMR3/CPUMR3Host-x86.cpp \
+ 	VMMR3/CPUMR3CpuIdInfo-x86.cpp \
  	VMMR3/PGMR3DbgA.asm
 
  VBoxVMMArm_SOURCES.darwin.arm64 += \

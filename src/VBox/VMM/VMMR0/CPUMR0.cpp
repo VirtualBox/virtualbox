@@ -1,4 +1,4 @@
-/* $Id: CPUMR0.cpp 168788 2025-05-08 22:09:06Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMR0.cpp 168941 2025-05-20 21:23:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - Host Context Ring 0, only targeting x86.
  */
@@ -155,7 +155,7 @@ VMMR0_INT_DECL(int) CPUMR0ModuleInit(void)
     /*
      * Populate the host CPU feature global variable.
      */
-    rc = cpumCpuIdExplodeFeaturesX86(paLeaves, cLeaves, &g_CpumHostFeatures.s);
+    rc = CPUMCpuIdExplodeFeaturesX86(paLeaves, cLeaves, &g_CpumHostFeatures.s);
     RTMemFree(paLeaves);
     AssertLogRelRCReturn(rc, rc);
     if (g_CpumHostFeatures.s.fVmx)

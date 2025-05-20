@@ -2078,6 +2078,71 @@ typedef CPUMDBENTRYARM const *PCCPUMDBENTRYARM;
 #endif
 
 
+/**
+ * Common CPUID info dumper state.
+ */
+typedef struct CPUMCPUIDINFOSTATE
+{
+    /** Output helper. */
+    PCDBGFINFOHLP   pHlp;
+    /** Verbosity level. */
+    unsigned        iVerbosity;
+    /** RT_MAX(strlen(pszLabel), strlen(pszLabel2)). */
+    unsigned        cchLabelMax;
+    /** The short label, exactly 3 characters long. */
+    const char     *pszShort;
+    /** The full label. */
+    const char     *pszLabel;
+    /** strlen(pszLabel). */
+    unsigned        cchLabel;
+
+    /** strlen(pszLabel2). */
+    unsigned        cchLabel2;
+    /** The short label, exactly 3 characters long.  NULL if no 2nd data series. */
+    const char     *pszShort2;
+    /** The full label.  NULL if no 2nd data series. */
+    const char     *pszLabel2;
+} CPUMCPUIDINFOSTATE;
+/** Pointer to a common CPUID info dumper state. */
+typedef CPUMCPUIDINFOSTATE *PCPUMCPUIDINFOSTATE;
+
+
+/**
+ * X86 CPUID info dumper state.
+ */
+typedef struct CPUMCPUIDINFOSTATEX86
+{
+    CPUMCPUIDINFOSTATE      Cmn;
+
+    CPUMFEATURESX86 const  *pFeatures;
+    PCCPUMCPUIDLEAF         paLeaves;
+    uint32_t                cLeaves;
+
+    uint32_t                cLeaves2;
+    PCCPUMCPUIDLEAF         paLeaves2;
+} CPUMCPUIDINFOSTATEX86;
+/** Pointer to a x86 CPUID info dumper state. */
+typedef CPUMCPUIDINFOSTATEX86 *PCPUMCPUIDINFOSTATEX86;
+
+
+/**
+ * ARMv8 CPUID info dumper state.
+ */
+typedef struct CPUMCPUIDINFOSTATEARMV8
+{
+    CPUMCPUIDINFOSTATE          Cmn;
+
+    CPUMFEATURESARMV8 const    *pFeatures;
+    struct SUPARMSYSREGVAL     *paIdRegs;
+    uint32_t                    cIdRegs;
+
+    uint32_t                    cIdRegs2;
+    struct SUPARMSYSREGVAL     *paIdRegs2;
+} CPUMCPUIDINFOSTATEARMV8;
+/** Pointer to a ARMv8 CPUID info dumper state. */
+typedef CPUMCPUIDINFOSTATEARMV8 *PCPUMCPUIDINFOSTATEARMV8;
+
+
 
 RT_C_DECLS_BEGIN
 
@@ -2116,9 +2181,13 @@ VMMDECL(CPUMCPUVENDOR)  CPUMCpuIdDetectX86VendorEx(uint32_t uEAX, uint32_t uEBX,
 VMMDECL(int)            CPUMCpuIdCollectLeavesFromX86Host(PCPUMCPUIDLEAF *ppaLeaves, uint32_t *pcLeaves);
 VMM_INT_DECL(void)      CPUMCpuIdApplyX86HostArchCapabilities(PVMCC pVM, bool fHasArchCap, uint64_t fHostArchVal);
 #endif
+VMMDECL(int)            CPUMCpuIdExplodeFeaturesX86(PCCPUMCPUIDLEAF paLeaves, uint32_t cLeaves, CPUMFEATURESX86 *pFeatures);
 #if defined(RT_ARCH_ARM64)
 VMMDECL(int)            CPUMCpuIdCollectIdSysRegsFromArmV8Host(struct SUPARMSYSREGVAL **ppaSysRegs, uint32_t *pcSysRegs);
 #endif
+VMMDECL(int)            CPUMCpuIdExplodeFeaturesArmV8FromSysRegs(struct SUPARMSYSREGVAL const *paSysRegs, uint32_t cSysRegs,
+                                                                 CPUMFEATURESARMV8 *pFeatures);
+
 
 #ifdef IN_RING3
 /** @defgroup grp_cpum_r3    The CPUM ring-3 API
@@ -2170,6 +2239,13 @@ typedef DECLCALLBACKPTR(int, PFNCPUMCPUIDDETERMINEARMV8MICROARCHEX, (uint64_t id
                                                                      CPUMCORETYPE  *penmCoreType,
                                                                      const char   **ppszName,
                                                                      const char   **ppszFullName));
+VMMR3DECL(void)             CPUMR3CpuIdInfoX86(PCPUMCPUIDINFOSTATEX86 pThis);
+/** Pointer to CPUMR3CpuIdInfoX86. */
+typedef DECLCALLBACKPTR(void, PFNCPUMR3CPUIDINFOX86,(PCPUMCPUIDINFOSTATEX86 pThis));
+
+VMMR3DECL(void)             CPUMR3CpuIdInfoArmV8(PCPUMCPUIDINFOSTATEARMV8 pThis);
+/** Pointer to CPUMR3CpuIdInfoArmV8. */
+typedef DECLCALLBACKPTR(void, PFNCPUMR3CPUIDINFOARMV8,(PCPUMCPUIDINFOSTATEARMV8 pThis));
 
 
 # if defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64)

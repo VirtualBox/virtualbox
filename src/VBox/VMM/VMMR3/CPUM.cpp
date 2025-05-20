@@ -1,4 +1,4 @@
-/* $Id: CPUM.cpp 168915 2025-05-16 21:41:53Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUM.cpp 168941 2025-05-20 21:23:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU Monitor / Manager.
  */
@@ -306,22 +306,19 @@ VMMR3DECL(int) CPUMR3Init(PVM pVM)
     else
     {
 #if defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64)
-        PCPUMCPUIDLEAF      paLeaves = NULL;
-        uint32_t            cLeaves  = 0;
-        rc = CPUMCpuIdCollectLeavesFromX86Host(&paLeaves, &cLeaves);
+        rc = CPUMCpuIdCollectLeavesFromX86Host(&pVM->cpum.s.paHostLeavesR3, &pVM->cpum.s.cHostLeaves);
         AssertLogRelRCReturn(rc, rc);
 
-        rc = cpumCpuIdExplodeFeaturesX86(paLeaves, cLeaves, &g_CpumHostFeatures.s);
-        RTMemFree(paLeaves);
+        rc = CPUMCpuIdExplodeFeaturesX86(pVM->cpum.s.paHostLeavesR3, pVM->cpum.s.cHostLeaves, &g_CpumHostFeatures.s);
         AssertLogRelRCReturn(rc, rc);
         if (g_CpumHostFeatures.s.fVmx)
             cpumCpuIdExplodeFeaturesX86VmxFromSupMsrs(&HostMsrs, &g_CpumHostFeatures.s);
 
 #elif defined(RT_ARCH_ARM64)
-        rc = CPUMCpuIdCollectIdSysRegsFromArmV8Host(&pVM->cpum.s.paHostIdRegs, &pVM->cpum.s.cHostIdRegs);
+        rc = CPUMCpuIdCollectIdSysRegsFromArmV8Host(&pVM->cpum.s.paHostIdRegsR3, &pVM->cpum.s.cHostIdRegs);
         AssertLogRelRCReturn(rc, rc);
 
-        rc = cpumCpuIdExplodeFeaturesArmV8FromSysRegs(pVM->cpum.s.paHostIdRegs, pVM->cpum.s.cHostIdRegs, &g_CpumHostFeatures.s);
+        rc = CPUMCpuIdExplodeFeaturesArmV8FromSysRegs(pVM->cpum.s.paHostIdRegsR3, pVM->cpum.s.cHostIdRegs, &g_CpumHostFeatures.s);
         AssertLogRelRCReturn(rc, rc);
 
 #else
@@ -435,8 +432,10 @@ VMMR3DECL(int) CPUMR3Init(PVM pVM)
 #endif
     DBGFR3InfoRegisterInternalEx(pVM, "cpumguestinstr",   "Displays the current guest instruction.",
                                  &cpumR3InfoGuestInstr, DBGFINFO_FLAGS_ALL_EMTS);
-    DBGFR3InfoRegisterInternal(  pVM, "cpuid",            "Displays the guest cpuid leaves.",
+    DBGFR3InfoRegisterInternal(  pVM, "cpuid",            "Displays the guest CPU ID registers.",
                                  &cpumR3CpuIdInfo);
+    DBGFR3InfoRegisterInternal(  pVM, "cpuidhost",        "Displays the host CPU ID registers.",
+                                 &cpumR3CpuIdInfoHost);
 # if defined(RT_ARCH_ARM64) || defined(RT_ARCH_ARM32)
     DBGFR3InfoRegisterInternal(pVM, "cpufeathost", "Displays the host features.", &cpumR3InfoCpuFeatHost);
 #endif

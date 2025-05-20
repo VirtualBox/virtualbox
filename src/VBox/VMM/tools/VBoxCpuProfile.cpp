@@ -1,4 +1,4 @@
-/* $Id: VBoxCpuProfile.cpp 168936 2025-05-19 19:47:17Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxCpuProfile.cpp 168941 2025-05-20 21:23:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxCpuProfile - For testing and poking at the CPU profile DB.
  */
@@ -37,13 +37,14 @@
 #include <iprt/initterm.h>
 #include <iprt/ldr.h>
 #include <iprt/message.h>
+#include <iprt/mem.h>
 #include <iprt/path.h>
 #include <iprt/string.h>
 #include <iprt/stream.h>
 
 
 /*********************************************************************************************************************************
-*   Defined Constants And Macros                                                                                                 *
+*   Global Variables                                                                                                             *
 *********************************************************************************************************************************/
 static RTLDRMOD                                 g_hModVMM = NIL_RTLDRMOD;
 static PCVMMR3VTABLE                            g_pVMM    = NULL;
@@ -55,6 +56,18 @@ static PFNCPUMDBGETBESTENTRYBYNAME              g_pfnCPUMR3DbGetBestEntryByName;
 static PFNCPUMDBGETBESTENTRYBYARM64MAINID       g_pfnCPUMR3DbGetBestEntryByArm64MainId;
 static PFNCPUMCPUIDPRINTARMV8FEATURES           g_pfnCPUMR3CpuIdPrintArmV8Features;
 static PFNCPUMCPUIDDETERMINEARMV8MICROARCHEX    g_pfnCPUMCpuIdDetermineArmV8MicroarchEx;
+static PFNCPUMR3CPUIDINFOX86                    g_pfnCPUMR3CpuIdInfoX86;
+static PFNCPUMR3CPUIDINFOARMV8                  g_pfnCPUMR3CpuIdInfoArmV8;
+static DECLCALLBACKMEMBER(int, g_pfnCPUMCpuIdExplodeFeaturesX86,(PCCPUMCPUIDLEAF paLeaves, uint32_t cLeaves, CPUMFEATURESX86 *pFeatures));
+static DECLCALLBACKMEMBER(int, g_pfnCPUMCpuIdExplodeFeaturesArmV8FromSysRegs,(PCSUPARMSYSREGVAL paSysRegs, uint32_t cSysRegs, CPUMFEATURESARMV8 *pFeatures));
+#if defined(RT_ARCH_AMD64)
+static DECLCALLBACKMEMBER(int, g_pfnCPUMCpuIdCollectLeavesFromX86Host,(PCPUMCPUIDLEAF *ppaLeaves, uint32_t *pcLeaves));
+typedef CPUMCPUIDINFOSTATEX86       CPUMCPUIDINFOSTATEHOST;
+#elif defined(RT_ARCH_ARM64)
+static DECLCALLBACKMEMBER(int, g_pfnCPUMCpuIdCollectIdSysRegsFromArmV8Host,(PSUPARMSYSREGVAL *ppaSysRegs, uint32_t *pcSysRegs));
+typedef CPUMCPUIDINFOSTATEARMV8     CPUMCPUIDINFOSTATEHOST;
+#endif
+
 
 static const struct
 {
@@ -66,17 +79,63 @@ static const struct
     uintptr_t  *ppfn;
 } g_aImports[] =
 {
-    { false, VMMR3VTABLE_GETTER_NAME,              (uintptr_t *)&g_pfnVMMR3GetVTable                     },
-    { false, "CPUMR3DbGetEntries",                 (uintptr_t *)&g_pfnCPUMR3DbGetEntries                 },
-    { false, "CPUMR3DbGetEntryByIndex",            (uintptr_t *)&g_pfnCPUMR3DbGetEntryByIndex            },
-    { false, "CPUMR3DbGetEntryByName",             (uintptr_t *)&g_pfnCPUMR3DbGetEntryByName             },
-    { false, "CPUMR3DbGetBestEntryByName",         (uintptr_t *)&g_pfnCPUMR3DbGetBestEntryByName         },
-    { true,  "CPUMR3DbGetBestEntryByArm64MainId",  (uintptr_t *)&g_pfnCPUMR3DbGetBestEntryByArm64MainId  },
-    { true,  "CPUMR3CpuIdPrintArmV8Features",      (uintptr_t *)&g_pfnCPUMR3CpuIdPrintArmV8Features      },
-    { true,  "CPUMCpuIdDetermineArmV8MicroarchEx", (uintptr_t *)&g_pfnCPUMCpuIdDetermineArmV8MicroarchEx },
+    { false, VMMR3VTABLE_GETTER_NAME,                       (uintptr_t *)&g_pfnVMMR3GetVTable                           },
+    { false, "CPUMR3DbGetEntries",                          (uintptr_t *)&g_pfnCPUMR3DbGetEntries                       },
+    { false, "CPUMR3DbGetEntryByIndex",                     (uintptr_t *)&g_pfnCPUMR3DbGetEntryByIndex                  },
+    { false, "CPUMR3DbGetEntryByName",                      (uintptr_t *)&g_pfnCPUMR3DbGetEntryByName                   },
+    { false, "CPUMR3DbGetBestEntryByName",                  (uintptr_t *)&g_pfnCPUMR3DbGetBestEntryByName               },
+    { true,  "CPUMR3DbGetBestEntryByArm64MainId",           (uintptr_t *)&g_pfnCPUMR3DbGetBestEntryByArm64MainId        },
+    { true,  "CPUMR3CpuIdPrintArmV8Features",               (uintptr_t *)&g_pfnCPUMR3CpuIdPrintArmV8Features            },
+    { true,  "CPUMCpuIdDetermineArmV8MicroarchEx",          (uintptr_t *)&g_pfnCPUMCpuIdDetermineArmV8MicroarchEx       },
+    { true,  "CPUMR3CpuIdInfoX86",                          (uintptr_t *)&g_pfnCPUMR3CpuIdInfoX86                       },
+    { true,  "CPUMR3CpuIdInfoArmV8",                        (uintptr_t *)&g_pfnCPUMR3CpuIdInfoArmV8                     },
+    { true,  "CPUMCpuIdExplodeFeaturesX86",                 (uintptr_t *)&g_pfnCPUMCpuIdExplodeFeaturesX86              },
+    { true,  "CPUMCpuIdExplodeFeaturesArmV8FromSysRegs",    (uintptr_t *)&g_pfnCPUMCpuIdExplodeFeaturesArmV8FromSysRegs },
+#if defined(RT_ARCH_AMD64)
+    { true,  "CPUMCpuIdCollectLeavesFromX86Host",           (uintptr_t *)&g_pfnCPUMCpuIdCollectLeavesFromX86Host        },
+#elif defined(RT_ARCH_ARM64)
+    { true,  "CPUMCpuIdCollectIdSysRegsFromArmV8Host",      (uintptr_t *)&g_pfnCPUMCpuIdCollectIdSysRegsFromArmV8Host   },
+#endif
 };
 
 static unsigned g_cVerbosity = 1;
+
+
+/** @interface_method_impl{DBGFINFOHLP,pfnPrintfV} */
+static DECLCALLBACK(void) vboxCpuProfileHlp_PrintfV(PCDBGFINFOHLP pHlp, const char *pszFormat, va_list va)
+{
+    RT_NOREF_PV(pHlp);
+    RTPrintfV(pszFormat, va);
+}
+
+
+/** @interface_method_impl{DBGFINFOHLP,pfnPrintf} */
+static DECLCALLBACK(void) vboxCpuProfileHlp_Printf(PCDBGFINFOHLP pHlp, const char *pszFormat, ...)
+{
+    va_list va;
+    va_start(va, pszFormat);
+    vboxCpuProfileHlp_PrintfV(pHlp, pszFormat, va);
+    va_end(va);
+}
+
+
+/** @interface_method_impl{DBGFINFOHLP,pfnGetOptError} */
+static DECLCALLBACK(void) vboxCpuProfileHlp_GetOptError(PCDBGFINFOHLP pHlp, int rc, union RTGETOPTUNION *pValueUnion,
+                                                        struct RTGETOPTSTATE *pState)
+{
+    RT_NOREF(pHlp, pState);
+    RTGetOptPrintError(rc, pValueUnion);
+}
+
+
+/** For making info handler code output to stdout. */
+static DBGFINFOHLP g_StdOutInfoHlp =
+{
+    vboxCpuProfileHlp_Printf,
+    vboxCpuProfileHlp_PrintfV,
+    vboxCpuProfileHlp_GetOptError
+};
+
 
 
 #define DISPLAY_ENTRY_F_NOTHING     UINT32_C(0x00000000)
@@ -97,6 +156,181 @@ void displayEntry(PCCPUMDBENTRY pEntry, uint32_t uInfo, uint32_t fFlags)
         RTPrintf(" - score %u%%", uInfo);
     RTPrintf("\n");
     /** @todo more detailed listing if -v is high enough...   */
+
+    /*
+     * Display the CPU ID info for the entry.
+     */
+    if (g_cVerbosity >= 2)
+    {
+        bool fSameAsHost = false;
+        if (   pEntry->enmEntryType == CPUMDBENTRYTYPE_X86
+            && g_pfnCPUMCpuIdExplodeFeaturesX86
+            && g_pfnCPUMR3CpuIdInfoX86)
+        {
+            PCCPUMDBENTRYX86 const pEntryX86   = (PCCPUMDBENTRYX86)pEntry;
+            CPUMFEATURESX86        FeaturesX86;
+            int rc = g_pfnCPUMCpuIdExplodeFeaturesX86(pEntryX86->paCpuIdLeaves, pEntryX86->cCpuIdLeaves, &FeaturesX86);
+            if (RT_SUCCESS(rc))
+            {
+                CPUMCPUIDINFOSTATEX86 InfoState =
+                {
+                    {
+                        /* .pHlp        = */    &g_StdOutInfoHlp,
+                        /* .iVerbosity  = */    g_cVerbosity - 2,
+                        /* .cchLabelMax = */    5,
+                        /* .pszShort    = */    "Gst",
+                        /* .pszLabel    = */    "Guest",
+                        /* .cchLabel    = */    5,
+                        /* .cchLabel2   = */    0,
+                        /* .pszShort2   = */    fSameAsHost ? "Hst"  : NULL,
+                        /* .pszLabel2   = */    fSameAsHost ? "Host" : NULL,
+                    },
+                    /* .pFeatures         = */  &FeaturesX86,
+                    /* .paLeaves/IdRegs   = */  pEntryX86->paCpuIdLeaves,
+                    /* .cLeaves/IdRegs    = */  pEntryX86->cCpuIdLeaves,
+                    /* .cLeaves2/IdRegs2  = */  fSameAsHost ? pEntryX86->cCpuIdLeaves  : 0,
+                    /* .paLeaves2/IdRegs2 = */  fSameAsHost ? pEntryX86->paCpuIdLeaves : NULL,
+                };
+                g_pfnCPUMR3CpuIdInfoX86(&InfoState);
+            }
+            else
+                RTMsgError("CPUMCpuIdExplodeFeaturesX86 failed: %Rrc", rc);
+        }
+        else if (   pEntry->enmEntryType == CPUMDBENTRYTYPE_ARM
+                 && g_pfnCPUMCpuIdExplodeFeaturesArmV8FromSysRegs
+                 && g_pfnCPUMR3CpuIdInfoArmV8)
+        {
+            PCCPUMDBENTRYARM const pEntryArm   = (PCCPUMDBENTRYARM)pEntry;
+            uint32_t               cSysRegs    = pEntryArm->cSysRegCmnVals + pEntryArm->aVariants[0].cSysRegVals;
+            PSUPARMSYSREGVAL       paSysRegs   = (PSUPARMSYSREGVAL)RTMemAllocZ(sizeof(paSysRegs[0]) * cSysRegs);
+            if (paSysRegs)
+            {
+                memcpy(paSysRegs,
+                       pEntryArm->aVariants[0].paSysRegVals,
+                       pEntryArm->aVariants[0].cSysRegVals * sizeof(paSysRegs[0]));
+                memcpy(&paSysRegs[pEntryArm->aVariants[0].cSysRegVals],
+                       pEntryArm->paSysRegCmnVals,
+                       pEntryArm->cSysRegCmnVals * sizeof(paSysRegs[0]));
+
+                CPUMFEATURESARMV8  FeaturesArm;
+                int rc = g_pfnCPUMCpuIdExplodeFeaturesArmV8FromSysRegs(paSysRegs, cSysRegs, &FeaturesArm);
+                if (RT_SUCCESS(rc))
+                {
+                    CPUMCPUIDINFOSTATEARMV8 InfoState =
+                    {
+                        {
+                            /* .pHlp        = */    &g_StdOutInfoHlp,
+                            /* .iVerbosity  = */    g_cVerbosity - 2,
+                            /* .cchLabelMax = */    5,
+                            /* .pszShort    = */    "Gst",
+                            /* .pszLabel    = */    "Guest",
+                            /* .cchLabel    = */    5,
+                            /* .cchLabel2   = */    0,
+                            /* .pszShort2   = */    fSameAsHost ? "Hst"  : NULL,
+                            /* .pszLabel2   = */    fSameAsHost ? "Host" : NULL,
+                        },
+                        /* .pFeatures         = */  &FeaturesArm,
+                        /* .paLeaves/IdRegs   = */  paSysRegs,
+                        /* .cLeaves/IdRegs    = */  cSysRegs,
+                        /* .cLeaves2/IdRegs2  = */  fSameAsHost ? cSysRegs  : 0,
+                        /* .paLeaves2/IdRegs2 = */  fSameAsHost ? paSysRegs : NULL,
+                    };
+                    g_pfnCPUMR3CpuIdInfoArmV8(&InfoState);
+                }
+                else
+                    RTMsgError("CPUMCpuIdExplodeFeaturesArmV8FromSysRegs failed: %Rrc", rc);
+                RTMemFree(paSysRegs);
+            }
+            else
+                RTMsgError("RTMemAllocZ failed");
+        }
+    }
+}
+
+
+/**
+ * Handles the 'host' command.
+ */
+static RTEXITCODE cmdHost(const char *pszCmd)
+{
+    /*
+     * Collect the CPU ID register values and explode the features.
+     */
+    uint32_t        cIdValues;
+
+#if defined(RT_ARCH_AMD64)
+    if (!g_pfnCPUMCpuIdCollectLeavesFromX86Host)
+        return RTMsgErrorExitFailure("%s: CPUMCpuIdCollectLeavesFromX86Host missing from the current VMM", pszCmd);
+    if (!g_pfnCPUMCpuIdExplodeFeaturesX86)
+        return RTMsgErrorExitFailure("%s: CPUMCpuIdExplodeFeaturesX86 missing from the current VMM", pszCmd);
+    if (!g_pfnCPUMR3CpuIdInfoX86)
+        return RTMsgErrorExitFailure("%s: CPUMR3CpuIdInfoX86 missing from the current VMM", pszCmd);
+
+    PCPUMCPUIDLEAF paIdValues;
+    int rc = g_pfnCPUMCpuIdCollectLeavesFromX86Host(&paIdValues, &cIdValues);
+    if (RT_FAILURE(rc))
+        return RTMsgErrorExitFailure("%s: CPUMCpuIdCollectLeavesFromX86Host failed: %Rrc", pszCmd, rc);
+
+    CPUMFEATURESX86 Features = {0};
+    rc = g_pfnCPUMCpuIdExplodeFeaturesX86(paIdValues, cIdValues, &Features);
+    if (RT_FAILURE(rc))
+        return RTMsgErrorExitFailure("%s: CPUMCpuIdExplodeFeaturesX86 failed: %Rrc", pszCmd, rc);
+
+#elif defined(RT_ARCH_ARM64)
+    if (!g_pfnCPUMCpuIdCollectIdSysRegsFromArmV8Host)
+        return RTMsgErrorExitFailure("%s: CPUMCpuIdCollectIdSysRegsFromArmV8Host missing from the current VMM", pszCmd);
+    if (!g_pfnCPUMCpuIdExplodeFeaturesArmV8FromSysRegs)
+        return RTMsgErrorExitFailure("%s: CPUMCpuIdExplodeFeaturesArmV8FromSysRegs missing from the current VMM", pszCmd);
+    if (!g_pfnCPUMR3CpuIdInfoArmV8)
+        return RTMsgErrorExitFailure("%s: CPUMR3CpuIdInfoArmV8 missing from the current VMM", pszCmd);
+
+    PSUPARMSYSREGVAL paIdValues;
+    int rc = g_pfnCPUMCpuIdCollectIdSysRegsFromArmV8Host(&paIdValues, &cIdValues);
+    if (RT_FAILURE(rc))
+        return RTMsgErrorExitFailure("%s: CPUMCpuIdCollectLeavesFromX86Host failed: %Rrc", pszCmd, rc);
+
+    CPUMFEATURESARMV8 Features;
+    rc = g_pfnCPUMCpuIdExplodeFeaturesArmV8FromSysRegs(paIdValues, cIdValues, &Features);
+    if (RT_FAILURE(rc))
+        return RTMsgErrorExitFailure("%s: CPUMCpuIdExplodeFeaturesArmV8FromSysRegs failed: %Rrc", pszCmd, rc);
+
+#else
+# error "port me"
+#endif
+
+    /*
+     * Print the info.
+     */
+    CPUMCPUIDINFOSTATEHOST InfoState =
+    {
+        {
+            /* .pHlp        = */    &g_StdOutInfoHlp,
+            /* .iVerbosity  = */    g_cVerbosity,
+            /* .cchLabelMax = */    4,
+            /* .pszShort    = */    "Hst",
+            /* .pszLabel    = */    "Host",
+            /* .cchLabel    = */    4,
+            /* .cchLabel2   = */    0,
+            /* .pszShort2   = */    NULL,
+            /* .pszLabel2   = */    NULL,
+        },
+        /* .pFeatures         = */  &Features,
+        /* .paLeaves/IdRegs   = */  paIdValues,
+        /* .cLeaves/IdRegs    = */  cIdValues,
+        /* .cLeaves2/IdRegs2  = */  0,
+        /* .paLeaves2/IdRegs2 = */  NULL,
+    };
+
+#if defined(RT_ARCH_AMD64)
+    g_pfnCPUMR3CpuIdInfoX86(&InfoState);
+#elif defined(RT_ARCH_ARM64)
+    g_pfnCPUMR3CpuIdInfoArmV8(&InfoState);
+#else
+# error "port me"
+#endif
+
+    RTMemFree(paIdValues);
+    return RTEXITCODE_SUCCESS;
 }
 
 
@@ -110,6 +344,7 @@ static void echoCommand(const char *pszFormat, ...)
         va_end(va);
     }
 }
+
 
 int main(int argc, char **argv)
 {
@@ -266,6 +501,11 @@ int main(int argc, char **argv)
                     else
                         rcExit = RTMsgErrorExitFailure("%s: CPUMR3DbGetBestEntryByArm64MainId missing from the current VMM",
                                                        pszCmd);
+                }
+                else if (strcmp(pszCmd, "host") == 0)
+                {
+                    echoCommand("%s", pszCmd, ValueUnion.u64);
+                    rcExit = cmdHost(pszCmd);
                 }
                 else
                     return RTMsgSyntax("Unknown command: %s", pszCmd);

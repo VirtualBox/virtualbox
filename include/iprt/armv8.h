@@ -606,6 +606,9 @@
 /** CNTKCTL_EL1 register - RW. */
 #define ARMV8_AARCH64_SYSREG_CNTKCTL_EL1            ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 14,  1, 0)
 
+/** CLIDR_EL1 register - RO. */
+#define ARMV8_AARCH64_SYSREG_CLIDR_EL1              ARMV8_AARCH64_SYSREG_ID_CREATE(3, 1,  0,  0, 1)
+
 /** SMIDR_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_SMIDR_EL1              ARMV8_AARCH64_SYSREG_ID_CREATE(3, 1,  0,  0, 6)
 

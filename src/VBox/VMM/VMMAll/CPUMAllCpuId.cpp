@@ -1,4 +1,4 @@
-/* $Id: CPUMAllCpuId.cpp 168917 2025-05-17 05:17:31Z alexander.eichner@oracle.com $ */
+/* $Id: CPUMAllCpuId.cpp 168941 2025-05-20 21:23:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part, common bits.
  */
@@ -1674,7 +1674,7 @@ void cpumCpuIdExplodeFeaturesX86SetSummaryBits(CPUMFEATURESX86 *pFeatures)
 }
 
 
-int cpumCpuIdExplodeFeaturesX86(PCCPUMCPUIDLEAF paLeaves, uint32_t cLeaves, CPUMFEATURESX86 *pFeatures)
+VMMDECL(int) CPUMCpuIdExplodeFeaturesX86(PCCPUMCPUIDLEAF paLeaves, uint32_t cLeaves, CPUMFEATURESX86 *pFeatures)
 {
     RT_ZERO(*pFeatures);
     if (cLeaves >= 2)

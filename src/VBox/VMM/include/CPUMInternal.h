@@ -1,4 +1,4 @@
-/* $Id: CPUMInternal.h 168915 2025-05-16 21:41:53Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMInternal.h 168941 2025-05-20 21:23:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - Internal header file.
  */
@@ -475,17 +475,24 @@ typedef struct CPUM
 #endif
 
 #ifdef RT_ARCH_ARM64
-    /** Host system registers used for identification. */
-    PSUPARMSYSREGVAL        paHostIdRegs;
+    /** Host system registers used for identification.
+     * @note Can be NULL if we got HostFeatures from ring-0.  */
+    R3PTRTYPE(PSUPARMSYSREGVAL) paHostIdRegsR3;
     /** Number of registers in paHostSysRegs.   */
-    uint32_t                cHostIdRegs;
+    uint32_t                    cHostIdRegs;
 
     /** Host CPU ID registers. */
-    CPUMARMV8IDREGS         HostIdRegs;
+    CPUMARMV8IDREGS             HostIdRegs;
 
 #elif defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64)
     /** The host MXCSR mask (determined at init). */
-    uint32_t                fHostMxCsrMask;
+    uint32_t                    fHostMxCsrMask;
+
+    /** Number of host leaves. */
+    uint32_t                    cHostLeaves;
+    /** Host CPUID leaves.
+     * @note Can be NULL if we got HostFeatures from ring-0.  */
+    R3PTRTYPE(PCPUMCPUIDLEAF)   paHostLeavesR3;
 #endif
 } CPUM;
 #ifndef VBOX_FOR_DTRACE_LIB
@@ -570,7 +577,6 @@ PCPUMCPUIDLEAF      cpumCpuIdEnsureSpace(PVM pVM, PCPUMCPUIDLEAF *ppaLeaves, uin
 #  ifdef VBOX_STRICT
 void                cpumCpuIdAssertOrder(PCPUMCPUIDLEAF paLeaves, uint32_t cLeaves);
 #  endif
-int                 cpumCpuIdExplodeFeaturesX86(PCCPUMCPUIDLEAF paLeaves, uint32_t cLeaves, CPUMFEATURESX86 *pFeatures);
 void                cpumCpuIdExplodeFeaturesX86SetSummaryBits(CPUMFEATURESX86 *pFeatures);
 DECLHIDDEN(void)    cpumCpuIdExplodeFeaturesX86Vmx(struct VMXMSRS const *pVmxMsrs, CPUMFEATURESX86 *pFeatures);
 DECLHIDDEN(void)    cpumCpuIdExplodeFeaturesX86VmxFromSupMsrs(PCSUPHWVIRTMSRS pMsrs, CPUMFEATURESX86 *pFeatures);
@@ -578,8 +584,6 @@ void                cpumCpuIdExplodeArchCapabilities(CPUMFEATURESX86 *pFeatures,
 # endif /* defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64) || defined(VBOX_VMM_TARGET_X86) */
 # if defined(RT_ARCH_ARM64) || defined(VBOX_VMM_TARGET_ARMV8)
 DECLHIDDEN(int)     cpumCpuIdExplodeFeaturesArmV8FromIdRegs(PCCPUMARMV8IDREGS pIdRegs, CPUMFEATURESARMV8 *pFeatures);
-DECLHIDDEN(int)     cpumCpuIdExplodeFeaturesArmV8FromSysRegs(PCSUPARMSYSREGVAL paSysRegs, uint32_t cSysRegs,
-                                                             CPUMFEATURESARMV8 *pFeatures);
 # endif
 
 
@@ -674,8 +678,26 @@ int                 cpumR3LoadCpuIdPre32(PVM pVM, PSSMHANDLE pSSM, uint32_t uVer
 int                 cpumR3LoadCpuIdArmV8(PVM pVM, PSSMHANDLE pSSM, uint32_t uVersion);
 DECLCALLBACK(void)  cpumR3CpuFeatInfo(PVM pVM, PCDBGFINFOHLP pHlp, const char *pszArgs);
 #  endif
-DECLCALLBACK(void)  cpumR3CpuIdInfo(PVM pVM, PCDBGFINFOHLP pHlp, const char *pszArgs);
 DECLHIDDEN(void)    cpumR3InfoParseArg(const char *pszArgs, CPUMDUMPTYPE *penmType, const char **ppszComment);
+DECLCALLBACK(void)  cpumR3CpuIdInfo(PVM pVM, PCDBGFINFOHLP pHlp, const char *pszArgs);
+DECLCALLBACK(void)  cpumR3CpuIdInfoHost(PVM pVM, PCDBGFINFOHLP pHlp, const char *pszArgs);
+DECLHIDDEN(void)    cpumR3CpuIdInfoMnemonicListU32(PCPUMCPUIDINFOSTATE pThis, uint32_t uVal,
+                                                   struct DBGFREGSUBFIELD const *paDescs,
+                                                   const char *pszLeadIn, uint32_t cchWidth,
+                                                   const char *pszLeadIn2 = "", uint32_t cchWidth2 = 0);
+DECLHIDDEN(void)    cpumR3CpuIdInfoMnemonicListU64(PCPUMCPUIDINFOSTATE pThis, uint64_t uVal,
+                                                   struct DBGFREGSUBFIELD const *paDescs,
+                                                   const char *pszLeadIn, uint32_t cchWidth);
+DECLHIDDEN(void)    cpumR3CpuIdInfoValueWithMnemonicListU64(PCPUMCPUIDINFOSTATE pThis, uint64_t uVal,
+                                                            struct DBGFREGSUBFIELD const *paDescs,
+                                                            const char *pszLeadIn, uint32_t cchWidth,
+                                                            const char *pszLeadIn2, uint32_t cchWidth2);
+DECLHIDDEN(void)    cpumR3CpuIdInfoVerboseCompareListU32(PCPUMCPUIDINFOSTATE pThis, uint32_t uVal1, uint32_t uVal2,
+                                                         struct DBGFREGSUBFIELD const *paDescs,
+                                                         const char *pszLeadIn = NULL, uint32_t cchWidth = 0);
+DECLHIDDEN(void)    cpumR3CpuIdInfoVerboseCompareListU64(PCPUMCPUIDINFOSTATE pThis, uint64_t uVal1, uint64_t uVal2,
+                                                         struct DBGFREGSUBFIELD const *paDescs, uint32_t cchWidth,
+                                                         bool fColumnHeaders = false, const char *pszLeadIn = NULL);
 
 int                 cpumR3DbGetCpuInfo(const char *pszName, PCPUMINFO pInfo);
 #  ifdef VBOX_VMM_TARGET_X86
