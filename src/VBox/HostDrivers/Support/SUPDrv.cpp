@@ -1,4 +1,4 @@
-/* $Id: SUPDrv.cpp 168732 2025-05-06 12:16:11Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPDrv.cpp 168954 2025-05-21 23:48:11Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Common code.
  */
@@ -7308,16 +7308,14 @@ static void supdrvIOCtl_ArmGetSysRegsOnCpu(PSUPARMGETSYSREGS pReq, uint32_t cons
 # define READ_SYS_REG__TODO(a_Op0, a_Op1, a_CRn, a_CRm, a_Op2, a_SysRegName) READ_SYS_REG_UNDEF(a_Op0, a_Op1, a_CRn, a_CRm, a_Op2)
     /*
      * Standard ID registers.
+     *
+     * DDI0487L.a section D23.3.1, 3rd item in note states that the registers in
+     * the range 3,0,0,2,0 thru 3,0,0,7,7 are defined to be accessible and if not
+     * defined will read-as-zero.
      */
     READ_SYS_REG_NAMED(3, 0, 0, 0, 0, MIDR_EL1);
     READ_SYS_REG_NAMED(3, 0, 0, 0, 5, MPIDR_EL1);
     READ_SYS_REG_NAMED(3, 0, 0, 0, 6, REVIDR_EL1);
-    READ_SYS_REG__TODO(3, 1, 0, 0, 0, CCSIDR_EL1); /** @todo CCSIDR_EL1? */
-    READ_SYS_REG__TODO(3, 1, 0, 0, 1, CLIDR_EL1);
-    READ_SYS_REG__TODO(3, 1, 0, 0, 7, AIDR_EL1);
-    READ_SYS_REG_NAMED(3, 3, 0, 0, 1, CTR_EL0);
-    READ_SYS_REG_NAMED(3, 3, 0, 0, 7, DCZID_EL0);
-    READ_SYS_REG_NAMED(3, 3,14, 0, 0, CNTFRQ_EL0);
 
     READ_SYS_REG_NAMED(3, 0, 0, 4, 0, ID_AA64PFR0_EL1);
     uint64_t const fPfr0 = uRegVal;
@@ -7327,17 +7325,17 @@ static void supdrvIOCtl_ArmGetSysRegsOnCpu(PSUPARMGETSYSREGS pReq, uint32_t cons
                    || ((fPfr0 & ARMV8_ID_AA64PFR0_EL1_EL3_MASK) >> ARMV8_ID_AA64PFR0_EL1_EL3_SHIFT) == ARMV8_ID_AA64PFR0_EL1_EL3_AARCH64_AARCH32;
     READ_SYS_REG_NAMED(3, 0, 0, 4, 1, ID_AA64PFR1_EL1);
     uint64_t const fPfr1 = uRegVal;
-    READ_SYS_REG_UNDEF(3, 0, 0, 4, 2);
+    READ_SYS_REG_NAMED(3, 0, 0, 4, 2, ID_AA64PFR2_EL1);
     READ_SYS_REG_UNDEF(3, 0, 0, 4, 3);
     READ_SYS_REG_NAMED(3, 0, 0, 4, 4, ID_AA64ZFR0_EL1);
     READ_SYS_REG_NAMED(3, 0, 0, 4, 5, ID_AA64SMFR0_EL1);
     READ_SYS_REG_UNDEF(3, 0, 0, 4, 6);
-    READ_SYS_REG_UNDEF(3, 0, 0, 4, 7);
+    READ_SYS_REG_NAMED(3, 0, 0, 4, 7, ID_AA64FPFR0_EL1);
 
     READ_SYS_REG_NAMED(3, 0, 0, 5, 0, ID_AA64DFR0_EL1);
     uint64_t const fDfr0 = uRegVal;
     READ_SYS_REG_NAMED(3, 0, 0, 5, 1, ID_AA64DFR1_EL1);
-    READ_SYS_REG_UNDEF(3, 0, 0, 5, 2);
+    READ_SYS_REG_NAMED(3, 0, 0, 5, 2, ID_AA64DFR2_EL1);
     READ_SYS_REG_UNDEF(3, 0, 0, 5, 3);
     READ_SYS_REG_NAMED(3, 0, 0, 5, 4, ID_AA64AFR0_EL1);
     READ_SYS_REG_NAMED(3, 0, 0, 5, 5, ID_AA64AFR1_EL1);
@@ -7347,7 +7345,7 @@ static void supdrvIOCtl_ArmGetSysRegsOnCpu(PSUPARMGETSYSREGS pReq, uint32_t cons
     READ_SYS_REG_NAMED(3, 0, 0, 6, 0, ID_AA64ISAR0_EL1);
     READ_SYS_REG_NAMED(3, 0, 0, 6, 1, ID_AA64ISAR1_EL1);
     READ_SYS_REG_NAMED(3, 0, 0, 6, 2, ID_AA64ISAR2_EL1);
-    READ_SYS_REG__TODO(3, 0, 0, 6, 3, ID_AA64ISAR3_EL1);
+    READ_SYS_REG_NAMED(3, 0, 0, 6, 3, ID_AA64ISAR3_EL1);
     READ_SYS_REG_UNDEF(3, 0, 0, 6, 4);
     READ_SYS_REG_UNDEF(3, 0, 0, 6, 5);
     READ_SYS_REG_UNDEF(3, 0, 0, 6, 6);
@@ -7356,15 +7354,15 @@ static void supdrvIOCtl_ArmGetSysRegsOnCpu(PSUPARMGETSYSREGS pReq, uint32_t cons
     READ_SYS_REG_NAMED(3, 0, 0, 7, 0, ID_AA64MMFR0_EL1);
     READ_SYS_REG_NAMED(3, 0, 0, 7, 1, ID_AA64MMFR1_EL1);
     READ_SYS_REG_NAMED(3, 0, 0, 7, 2, ID_AA64MMFR2_EL1);
-    uint64_t const fMmfr2 = uRegVal;
-    READ_SYS_REG__TODO(3, 0, 0, 7, 3, ID_AA64MMFR3_EL1);
-    READ_SYS_REG__TODO(3, 0, 0, 7, 4, ID_AA64MMFR4_EL1);
+    //uint64_t const fMmfr2 = uRegVal;
+    READ_SYS_REG_NAMED(3, 0, 0, 7, 3, ID_AA64MMFR3_EL1);
+    READ_SYS_REG_NAMED(3, 0, 0, 7, 4, ID_AA64MMFR4_EL1);
     READ_SYS_REG_UNDEF(3, 0, 0, 7, 5);
     READ_SYS_REG_UNDEF(3, 0, 0, 7, 6);
     READ_SYS_REG_UNDEF(3, 0, 0, 7, 7);
 
     /*
-     * AArch32 feature registers.
+     * AArch32 feature registers (covered by the D23.3.1 note).
      * If AA64PFR0 doesn't indicate any AARCH32 support, switch to only report
      * these registers if they are non-zero.
      */
@@ -7397,52 +7395,99 @@ static void supdrvIOCtl_ArmGetSysRegsOnCpu(PSUPARMGETSYSREGS pReq, uint32_t cons
     READ_SYS_REG_NAMED(3, 0, 0, 3, 1, MVFR1_EL1);
     READ_SYS_REG_NAMED(3, 0, 0, 3, 2, MVFR2_EL1);
 
+    READ_SYS_REG_UNDEF(3, 0, 0, 3, 3);
+
     READ_SYS_REG_NAMED(3, 0, 0, 3, 4, ID_PFR2_EL1);
 
     READ_SYS_REG_NAMED(3, 0, 0, 3, 5, ID_DFR1_EL1);
 
     READ_SYS_REG_NAMED(3, 0, 0, 3, 6, ID_MMFR5_EL1);
+
+    READ_SYS_REG_UNDEF(3, 0, 0, 3, 7);
     fFlags = fSavedFlags; /* restore SUP_ARM_SYS_REG_F_INC_ZERO_REG_VAL */
 
     /*
      * Feature dependent registers:
      */
-    if ((fMmfr2 & (UINT32_C(15) << 20) /*CCIDX*/) == RT_BIT_32(20))
-        READ_SYS_REG__TODO(3, 1, 0, 0, 2, CCSIDR2_EL1); /*?*/
-
-    if (fPfr0 & ARMV8_ID_AA64PFR0_EL1_RAS_MASK)
+    bool const fFeatRas = ((fPfr0 >> ARMV8_ID_AA64PFR0_EL1_RAS_SHIFT) & 0xfU) >= 1; /* FEAT_RAS <->  ID_AA64PFR0_EL1.RAS >= 1 */
+    if (fFeatRas)
         READ_SYS_REG_NAMED(3, 0, 5, 3, 0, ERRIDR_EL1);
 
-    if ((fPfr1 & ARMV8_ID_AA64PFR1_EL1_MTE_MASK) >= (ARMV8_ID_AA64PFR1_EL1_MTE_FULL << ARMV8_ID_AA64PFR1_EL1_MTE_SHIFT))
-        READ_SYS_REG__TODO(3, 1, 0, 0, 4, GMID_EL1);
-    if ((fPfr0 & ARMV8_ID_AA64PFR0_EL1_MPAM_MASK) || (fPfr1 & ARMV8_ID_AA64PFR1_EL1_MPAMFRAC_MASK))
+    bool const fFeatSpe = ((fDfr0 >> 32) & 0xfU) >= 1;  /* FEAT_SPS <-> ID_AA64DFR0_EL1.PMSVer >= 1 */
+    if (fFeatSpe)
     {
-        READ_SYS_REG__TODO(3, 0, 10, 4, 4, MPAMIDR_EL1);
-        uint64_t fMpamidr;
-        COMPILER_READ_SYS_REG(fMpamidr, 3, 0, 10, 4, 4);
-        if (fMpamidr & RT_BIT_64(56) /*HAS_BW_CTRL*/)
-            READ_SYS_REG__TODO(3, 0, 10, 4, 5, MPAMBWIDR_EL1);
+        READ_SYS_REG_NAMED(3, 0, 9,  9, 7, PMSIDR_EL1);
+        READ_SYS_REG_NAMED(3, 0, 9, 10, 7, PMBIDR_EL1);
     }
 
-    if (fDfr0 & (UINT64_C(15) << 32) /*PMSVer*/)
+    bool const fFeatTrbe = ((fDfr0 >> 44) & 0xfU) >= 1;  /* FEAT_TRBE <-> ID_AA64DFR0_EL1.TraceBuffer >= 1 */
+    if (fFeatTrbe)
+        READ_SYS_REG_NAMED(3, 0, 9, 11, 7, TRBIDR_EL1);
+
+    uint32_t const uPMUVer = (uint32_t)((fDfr0 >> 8) & 0xfU);
+    bool const fFeatPmuV3P4 = uPMUVer >= 5 && uPMUVer < 15; /* FEAT_PMUv3p4 <-> ID_AA64DFR0_EL1.PMUVer >= 5 && ID_AA64DFR0_EL1.PMUVer < 15 */
+    if (fFeatPmuV3P4)
+        READ_SYS_REG_NAMED(3, 0, 9, 14, 6, PMMIR_EL1);
+
+    bool const fFeatMpam = ((fPfr0 >> ARMV8_ID_AA64PFR0_EL1_MPAM_SHIFT) & 0xfU) >= 1; /* FEAT_MPAM <-> ID_AA64PFR0_EL1.MPAM >= 1 */
+    if (fFeatMpam)
     {
-        READ_SYS_REG__TODO(3, 0, 9, 10, 7, PMBIDR_EL1);
-        READ_SYS_REG__TODO(3, 0, 9,  8, 7, PMSIDR_EL1);
+        READ_SYS_REG_NAMED(3, 0, 10, 4, 4, MPAMIDR_EL1);
+        uint64_t const fMpamidr = uRegVal;
+        bool const fFeatMpamPeBwCtrl = !!(fMpamidr & RT_BIT_64(56)); /* FEAT_MPAM_PE_BW_CTRL <-> FEAT_MPAM && MPAMIDR_EL1.HAS_BW_CTRL */
+        if (fFeatMpamPeBwCtrl)
+            READ_SYS_REG_NAMED(3, 0, 10, 4, 5, MPAMBWIDR_EL1);
     }
-    if (fDfr0 & (UINT64_C(15) << 44) /*TraceBuffer*/)
-        READ_SYS_REG__TODO(3, 0, 9, 11, 7, TRBIDR_EL1);
 
-    /** @todo FEAT_ETE: READ_SYS_REG(TRCIDR0);  */
-    /** @todo FEAT_ETE: READ_SYS_REG(TRCIDR1);  */
-    /** @todo FEAT_ETE: READ_SYS_REG(TRCIDR2);  */
-    /** @todo FEAT_ETE: READ_SYS_REG(TRCIDR3);  */
-    /** @todo FEAT_ETE: READ_SYS_REG(TRCIDR4);  */
-    /** @todo FEAT_ETE: READ_SYS_REG(TRCIDR5);  */
-    /** @todo FEAT_ETE: READ_SYS_REG(TRCIDR6);  */
-    /** @todo FEAT_ETE: READ_SYS_REG(TRCIDR7);  */
-    /** @todo FEAT_ETE: READ_SYS_REG(TRCIDR8);  */
-    /** @todo FEAT_ETE: READ_SYS_REG(TRCIDR9);  */
+    /// @todo LORID_EL1 3,0,10,4,7  - FEAT_LOR
+    /// @todo PMCEID0_EL0 ?
+    /// @todo PMCEID1_EL0 ?
+    /// @todo AMCFGR_EL0 ?
+    /// @todo AMCGCR_EL0 ?
+    /// @todo AMCG1IDR_EL0 ?
+    /// @todo AMEVTYPER0<n>_EL0 ?
 
+    bool const fFeatMte2 = ((fPfr1 >> ARMV8_ID_AA64PFR1_EL1_MTE_SHIFT) & 0xfU) >= 2; /* FEAT_MTE2 <-> ID_AA64PFR1_EL1.MTE >= 2 */
+    if (fFeatMte2)
+        READ_SYS_REG_NAMED(3, 1, 0, 0, 4, GMID_EL1);
+
+    bool const fFeatSme = ((fPfr1 >> 24) & 0xfU) >= 1; /* FEAT_SME <-> ID_AA64PFR1_EL1.SME >= 1 */
+    if (fFeatSme)
+        READ_SYS_REG_NAMED(3, 1, 0, 0, 6, SMIDR_EL1);
+
+    /** @todo FEAT_ETE: READ_SYS_REG_NAMED(2, 1, 0,  8, 7, TRCIDR0);  */
+    /** @todo FEAT_ETE: READ_SYS_REG_NAMED(2, 1, 0,  9, 7, TRCIDR1);  */
+    /** @todo FEAT_ETE: READ_SYS_REG_NAMED(2, 1, 0, 10, 7, TRCIDR2);  */
+    /** @todo FEAT_ETE: READ_SYS_REG_NAMED(2, 1, 0, 11, 7, TRCIDR3);  */
+    /** @todo FEAT_ETE: READ_SYS_REG_NAMED(2, 1, 0, 12, 7, TRCIDR4);  */
+    /** @todo FEAT_ETE: READ_SYS_REG_NAMED(2, 1, 0, 13, 7, TRCIDR5);  */
+    /** @todo FEAT_ETE: READ_SYS_REG_NAMED(2, 1, 0, 14, 7, TRCIDR6);  */
+    /** @todo FEAT_ETE: READ_SYS_REG_NAMED(2, 1, 0, 15, 7, TRCIDR7);  */
+    /** @todo FEAT_ETE: READ_SYS_REG_NAMED(2, 1, 0,  0, 6, TRCIDR8);  */
+    /** @todo FEAT_ETE: READ_SYS_REG_NAMED(2, 1, 0,  1, 6, TRCIDR10);  */
+    /** @todo FEAT_ETE: READ_SYS_REG_NAMED(2, 1, 0,  2, 6, TRCIDR11);  */
+    /** @todo FEAT_ETE: READ_SYS_REG_NAMED(2, 1, 0,  4, 6, TRCIDR12);  */
+    /** @todo FEAT_ETE: READ_SYS_REG_NAMED(2, 1, 0,  5, 6, TRCIDR13);  */
+
+    bool const fFeatEte = ((fDfr0 >> 4) & 0xfU) >= 1U; /* FEAT_ETE <-> ID_AA64DFR0_EL1.TraceVer >= 1 */
+    if (fFeatEte)
+        READ_SYS_REG_NAMED(2, 1, 7, 15, 6, TRCDEVARCH);
+
+    /*
+     * Collections of other read-only registers.
+     */
+    READ_SYS_REG_NAMED(3, 1, 0, 0, 1, CLIDR_EL1);   /* cache level id register */
+    READ_SYS_REG_NAMED(3, 1, 0, 0, 7, AIDR_EL1);
+    READ_SYS_REG_NAMED(3, 3, 0, 0, 1, CTR_EL0);     /* cache type register */
+    READ_SYS_REG_NAMED(3, 3, 0, 0, 7, DCZID_EL0);
+    READ_SYS_REG_NAMED(3, 3,14, 0, 0, CNTFRQ_EL0);
+
+    /*
+     * Extract cache size details using CSSELR_EL1 and CCSIDR_EL1.
+     */
+    //READ_SYS_REG_NAMED(3, 1, 0, 0, 0, CCSIDR_EL1); /** @todo CCSIDR_EL1 - current cache size? */
+    //if ((fMmfr2 & (UINT32_C(15) << 20) /*CCIDX*/) == RT_BIT_32(20))
+    //    READ_SYS_REG_NAMED(3, 1, 0, 0, 2, CCSIDR2_EL1); /** @todo CCSIDR2_EL1 - current cache size \#2? */
 
 # undef READ_SYS_REG
 # undef COMPILER_READ_SYS_REG

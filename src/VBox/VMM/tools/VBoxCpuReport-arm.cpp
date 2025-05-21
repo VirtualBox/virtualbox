@@ -1,4 +1,4 @@
-/* $Id: VBoxCpuReport-arm.cpp 168915 2025-05-16 21:41:53Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxCpuReport-arm.cpp 168954 2025-05-21 23:48:11Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxCpuReport - Produces the basis for a CPU DB entry, x86 specifics.
  */
@@ -131,25 +131,19 @@ static const char *sysRegNoToName(uint32_t idReg)
         READ_SYS_REG_NAMED(3, 0, 0, 0, 0, MIDR_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 0, 5, MPIDR_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 0, 6, REVIDR_EL1);
-        READ_SYS_REG__TODO(3, 1, 0, 0, 0, CCSIDR_EL1);
-        READ_SYS_REG__TODO(3, 1, 0, 0, 1, CLIDR_EL1);
-        READ_SYS_REG__TODO(3, 1, 0, 0, 7, AIDR_EL1);
-        READ_SYS_REG_NAMED(3, 3, 0, 0, 1, CTR_EL0);
-        READ_SYS_REG_NAMED(3, 3, 0, 0, 7, DCZID_EL0);
-        READ_SYS_REG_NAMED(3, 3,14, 0, 0, CNTFRQ_EL0);
 
         READ_SYS_REG_NAMED(3, 0, 0, 4, 0, ID_AA64PFR0_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 4, 1, ID_AA64PFR1_EL1);
-        READ_SYS_REG_UNDEF(3, 0, 0, 4, 2);
+        READ_SYS_REG_NAMED(3, 0, 0, 4, 2, ID_AA64PFR2_EL1);
         READ_SYS_REG_UNDEF(3, 0, 0, 4, 3);
         READ_SYS_REG_NAMED(3, 0, 0, 4, 4, ID_AA64ZFR0_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 4, 5, ID_AA64SMFR0_EL1);
         READ_SYS_REG_UNDEF(3, 0, 0, 4, 6);
-        READ_SYS_REG_UNDEF(3, 0, 0, 4, 7);
+        READ_SYS_REG_NAMED(3, 0, 0, 4, 7, ID_AA64FPFR0_EL1);
 
         READ_SYS_REG_NAMED(3, 0, 0, 5, 0, ID_AA64DFR0_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 5, 1, ID_AA64DFR1_EL1);
-        READ_SYS_REG_UNDEF(3, 0, 0, 5, 2);
+        READ_SYS_REG_NAMED(3, 0, 0, 5, 2, ID_AA64DFR2_EL1);
         READ_SYS_REG_UNDEF(3, 0, 0, 5, 3);
         READ_SYS_REG_NAMED(3, 0, 0, 5, 4, ID_AA64AFR0_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 5, 5, ID_AA64AFR1_EL1);
@@ -159,7 +153,7 @@ static const char *sysRegNoToName(uint32_t idReg)
         READ_SYS_REG_NAMED(3, 0, 0, 6, 0, ID_AA64ISAR0_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 6, 1, ID_AA64ISAR1_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 6, 2, ID_AA64ISAR2_EL1);
-        READ_SYS_REG__TODO(3, 0, 0, 6, 3, ID_AA64ISAR3_EL1);
+        READ_SYS_REG_NAMED(3, 0, 0, 6, 3, ID_AA64ISAR3_EL1);
         READ_SYS_REG_UNDEF(3, 0, 0, 6, 4);
         READ_SYS_REG_UNDEF(3, 0, 0, 6, 5);
         READ_SYS_REG_UNDEF(3, 0, 0, 6, 6);
@@ -168,8 +162,8 @@ static const char *sysRegNoToName(uint32_t idReg)
         READ_SYS_REG_NAMED(3, 0, 0, 7, 0, ID_AA64MMFR0_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 7, 1, ID_AA64MMFR1_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 7, 2, ID_AA64MMFR2_EL1);
-        READ_SYS_REG__TODO(3, 0, 0, 7, 3, ID_AA64MMFR3_EL1);
-        READ_SYS_REG__TODO(3, 0, 0, 7, 4, ID_AA64MMFR4_EL1);
+        READ_SYS_REG_NAMED(3, 0, 0, 7, 3, ID_AA64MMFR3_EL1);
+        READ_SYS_REG_NAMED(3, 0, 0, 7, 4, ID_AA64MMFR4_EL1);
         READ_SYS_REG_UNDEF(3, 0, 0, 7, 5);
         READ_SYS_REG_UNDEF(3, 0, 0, 7, 6);
         READ_SYS_REG_UNDEF(3, 0, 0, 7, 7);
@@ -201,25 +195,27 @@ static const char *sysRegNoToName(uint32_t idReg)
         READ_SYS_REG_NAMED(3, 0, 0, 3, 1, MVFR1_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 3, 2, MVFR2_EL1);
 
+        READ_SYS_REG_UNDEF(3, 0, 0, 3, 3);
+
         READ_SYS_REG_NAMED(3, 0, 0, 3, 4, ID_PFR2_EL1);
 
         READ_SYS_REG_NAMED(3, 0, 0, 3, 5, ID_DFR1_EL1);
 
         READ_SYS_REG_NAMED(3, 0, 0, 3, 6, ID_MMFR5_EL1);
 
-        READ_SYS_REG__TODO(3, 1, 0, 0, 2, CCSIDR2_EL1); /*?*/
+        READ_SYS_REG_UNDEF(3, 0, 0, 3, 7);
 
         READ_SYS_REG_NAMED(3, 0, 5, 3, 0, ERRIDR_EL1);
 
-        READ_SYS_REG__TODO(3, 1, 0, 0, 4, GMID_EL1);
+        READ_SYS_REG_NAMED(3, 0, 9,  9, 7, PMSIDR_EL1);
+        READ_SYS_REG_NAMED(3, 0, 9, 10, 7, PMBIDR_EL1);
+        READ_SYS_REG_NAMED(3, 0, 9, 11, 7, TRBIDR_EL1);
+        READ_SYS_REG_NAMED(3, 0, 9, 14, 6, PMMIR_EL1);
+        READ_SYS_REG_NAMED(3, 0, 10, 4, 4, MPAMIDR_EL1);
+        READ_SYS_REG_NAMED(3, 0, 10, 4, 5, MPAMBWIDR_EL1);
 
-        READ_SYS_REG__TODO(3, 0, 10, 4, 4, MPAMIDR_EL1);
-        READ_SYS_REG__TODO(3, 0, 10, 4, 5, MPAMBWIDR_EL1);
-
-        READ_SYS_REG__TODO(3, 0, 9, 10, 7, PMBIDR_EL1);
-        READ_SYS_REG__TODO(3, 0, 9,  8, 7, PMSIDR_EL1);
-
-        READ_SYS_REG__TODO(3, 0, 9, 11, 7, TRBIDR_EL1);
+        READ_SYS_REG_NAMED(3, 1, 0, 0, 4, GMID_EL1);
+        READ_SYS_REG_NAMED(3, 1, 0, 0, 6, SMIDR_EL1);
 
         READ_SYS_REG__TODO(2, 1, 0, 8, 7, TRCIDR0); /*?*/
         READ_SYS_REG__TODO(2, 1, 0, 9, 7, TRCIDR1);
@@ -235,6 +231,18 @@ static const char *sysRegNoToName(uint32_t idReg)
         READ_SYS_REG__TODO(2, 1, 0, 3, 6, TRCIDR11);
         READ_SYS_REG__TODO(2, 1, 0, 4, 6, TRCIDR12);
         READ_SYS_REG__TODO(2, 1, 0, 5, 6, TRCIDR13);
+
+        READ_SYS_REG_NAMED(2, 1, 7, 15, 6, TRCDEVARCH);
+
+        READ_SYS_REG_NAMED(3, 1, 0, 0, 1, CLIDR_EL1);
+        READ_SYS_REG_NAMED(3, 1, 0, 0, 7, AIDR_EL1);
+        READ_SYS_REG_NAMED(3, 3, 0, 0, 1, CTR_EL0);
+        READ_SYS_REG_NAMED(3, 3, 0, 0, 7, DCZID_EL0);
+        READ_SYS_REG_NAMED(3, 3,14, 0, 0, CNTFRQ_EL0);
+
+        /* cache size stuff in case we start using it */
+        READ_SYS_REG_NAMED(3, 1, 0, 0, 0, CCSIDR_EL1);
+        READ_SYS_REG_NAMED(3, 1, 0, 0, 2, CCSIDR2_EL1);
 
 #undef READ_SYS_REG_NAMED
 #undef READ_SYS_REG__TODO
@@ -486,6 +494,8 @@ static int populateSystemRegisters(void)
                     g_aVariations[iVar].cSysRegVals = ++iReg; \
                 } while (0)
 
+            /* The stuff here is copied from SUPDrv.cpp, stripped down a little
+               (no aarch32) and amended with feature vs sysreg access info: */
 # define READ_SYS_REG_UNDEF_U(a_Op0, a_Op1, a_CRn, a_CRm, a_Op2) do { \
                 uint64_t uValue = 0; \
                 hv_sys_reg_t const enmSysReg = (hv_sys_reg_t)ARMV8_AARCH64_SYSREG_ID_CREATE(a_Op0, a_Op1, a_CRn, a_CRm, a_Op2); \
@@ -550,25 +560,19 @@ static int populateSystemRegisters(void)
             READ_SYS_REG_NAMED_S(3, 0, 0, 0, 0, MIDR_EL1);
             READ_SYS_REG_NAMED_S(3, 0, 0, 0, 5, MPIDR_EL1);
             READ_SYS_REG_NAMED_U(3, 0, 0, 0, 6, REVIDR_EL1);
-            READ_SYS_REG__TODO_U(3, 1, 0, 0, 0, CCSIDR_EL1);
-            READ_SYS_REG__TODO_F(3, 1, 0, 0, 1, CLIDR_EL1);
-            READ_SYS_REG__TODO_U(3, 1, 0, 0, 7, AIDR_EL1);
-            READ_SYS_REG_NAMED_F(3, 3, 0, 0, 1, CTR_EL0); /** @todo */
-            READ_SYS_REG_NAMED_F(3, 3, 0, 0, 7, DCZID_EL0);
-            READ_SYS_REG_NAMED_U(3, 3,14, 0, 0, CNTFRQ_EL0);
 
             READ_SYS_REG_NAMED_B(3, 0, 0, 4, 0, ID_AA64PFR0_EL1);
             READ_SYS_REG_NAMED_B(3, 0, 0, 4, 1, ID_AA64PFR1_EL1);
-            READ_SYS_REG_UNDEF_U(3, 0, 0, 4, 2);
+            READ_SYS_REG_NAMED_U(3, 0, 0, 4, 2, ID_AA64PFR2_EL1);
             READ_SYS_REG_UNDEF_U(3, 0, 0, 4, 3);
             READ_SYS_REG_NAMED_U(3, 0, 0, 4, 4, ID_AA64ZFR0_EL1);  // undefined in older SDKs.
             READ_SYS_REG_NAMED_U(3, 0, 0, 4, 5, ID_AA64SMFR0_EL1); // undefined in older SDKs.
             READ_SYS_REG_UNDEF_U(3, 0, 0, 4, 6);
-            READ_SYS_REG_UNDEF_U(3, 0, 0, 4, 7);
+            READ_SYS_REG_NAMED_U(3, 0, 0, 4, 7, ID_AA64FPFR0_EL1);
 
             READ_SYS_REG_NAMED_B(3, 0, 0, 5, 0, ID_AA64DFR0_EL1);
             READ_SYS_REG_NAMED_B(3, 0, 0, 5, 1, ID_AA64DFR1_EL1);
-            READ_SYS_REG_UNDEF_U(3, 0, 0, 5, 2);
+            READ_SYS_REG_NAMED_U(3, 0, 0, 5, 2, ID_AA64DFR2_EL1);
             READ_SYS_REG_UNDEF_U(3, 0, 0, 5, 3);
             READ_SYS_REG_NAMED_U(3, 0, 0, 5, 4, ID_AA64AFR0_EL1);
             READ_SYS_REG_NAMED_U(3, 0, 0, 5, 5, ID_AA64AFR1_EL1);
@@ -578,7 +582,7 @@ static int populateSystemRegisters(void)
             READ_SYS_REG_NAMED_B(3, 0, 0, 6, 0, ID_AA64ISAR0_EL1);
             READ_SYS_REG_NAMED_B(3, 0, 0, 6, 1, ID_AA64ISAR1_EL1);
             READ_SYS_REG_NAMED_U(3, 0, 0, 6, 2, ID_AA64ISAR2_EL1);
-            READ_SYS_REG__TODO_U(3, 0, 0, 6, 3, ID_AA64ISAR3_EL1);
+            READ_SYS_REG_NAMED_U(3, 0, 0, 6, 3, ID_AA64ISAR3_EL1);
             READ_SYS_REG_UNDEF_U(3, 0, 0, 6, 4);
             READ_SYS_REG_UNDEF_U(3, 0, 0, 6, 5);
             READ_SYS_REG_UNDEF_U(3, 0, 0, 6, 6);
@@ -587,23 +591,33 @@ static int populateSystemRegisters(void)
             READ_SYS_REG_NAMED_B(3, 0, 0, 7, 0, ID_AA64MMFR0_EL1);
             READ_SYS_REG_NAMED_B(3, 0, 0, 7, 1, ID_AA64MMFR1_EL1);
             READ_SYS_REG_NAMED_B(3, 0, 0, 7, 2, ID_AA64MMFR2_EL1);
-            READ_SYS_REG__TODO_U(3, 0, 0, 7, 3, ID_AA64MMFR3_EL1);
-            READ_SYS_REG__TODO_U(3, 0, 0, 7, 4, ID_AA64MMFR4_EL1);
+            READ_SYS_REG_NAMED_U(3, 0, 0, 7, 3, ID_AA64MMFR3_EL1);
+            READ_SYS_REG_NAMED_U(3, 0, 0, 7, 4, ID_AA64MMFR4_EL1);
             READ_SYS_REG_UNDEF_U(3, 0, 0, 7, 5);
             READ_SYS_REG_UNDEF_U(3, 0, 0, 7, 6);
             READ_SYS_REG_UNDEF_U(3, 0, 0, 7, 7);
 
-            READ_SYS_REG__TODO_U(3, 1, 0, 0, 2, CCSIDR2_EL1);
             READ_SYS_REG_NAMED_U(3, 0, 5, 3, 0, ERRIDR_EL1);
-            READ_SYS_REG__TODO_U(3, 1, 0, 0, 4, GMID_EL1);
 
-            READ_SYS_REG__TODO_U(3, 0, 10, 4, 4, MPAMIDR_EL1);
-            READ_SYS_REG__TODO_U(3, 0, 10, 4, 5, MPAMBWIDR_EL1);
+            READ_SYS_REG_NAMED_U(3, 0, 9,  9, 7, PMSIDR_EL1);
+            READ_SYS_REG_NAMED_U(3, 0, 9, 10, 7, PMBIDR_EL1);
+            READ_SYS_REG_NAMED_U(3, 0, 9, 11, 7, TRBIDR_EL1);
+            READ_SYS_REG_NAMED_U(3, 0, 9, 14, 6, PMMIR_EL1);
+            READ_SYS_REG_NAMED_U(3, 0, 10, 4, 4, MPAMIDR_EL1);
+            READ_SYS_REG_NAMED_U(3, 0, 10, 4, 5, MPAMBWIDR_EL1);
 
-            READ_SYS_REG__TODO_U(3, 0, 9, 10, 7, PMBIDR_EL1);
-            READ_SYS_REG__TODO_U(3, 0, 9,  8, 7, PMSIDR_EL1);
+            READ_SYS_REG_NAMED_U(3, 1, 0, 0, 4, GMID_EL1);
+            READ_SYS_REG_NAMED_U(3, 1, 0, 0, 6, SMIDR_EL1);
 
-            READ_SYS_REG__TODO_U(3, 0, 9, 11, 7, TRBIDR_EL1);
+            READ_SYS_REG_NAMED_U(2, 1, 7, 15, 6, TRCDEVARCH);
+
+            READ_SYS_REG_NAMED_F(3, 1, 0, 0, 1, CLIDR_EL1);
+            READ_SYS_REG_NAMED_U(3, 1, 0, 0, 7, AIDR_EL1);
+            READ_SYS_REG_NAMED_F(3, 3, 0, 0, 1, CTR_EL0); /** @todo */
+            READ_SYS_REG_NAMED_F(3, 3, 0, 0, 7, DCZID_EL0);
+            READ_SYS_REG_NAMED_U(3, 3,14, 0, 0, CNTFRQ_EL0);
+
+            /** @todo cache level sizes (hv_vcpu_config_get_ccsidr_el1_sys_reg_values) */
 
             /* Sort it. */
             RTSortShell(g_aVariations[iVar].aSysRegVals, g_aVariations[iVar].cSysRegVals,

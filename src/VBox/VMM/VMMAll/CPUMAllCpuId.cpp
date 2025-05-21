@@ -1,4 +1,4 @@
-/* $Id: CPUMAllCpuId.cpp 168944 2025-05-20 21:30:27Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMAllCpuId.cpp 168954 2025-05-21 23:48:11Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part, common bits.
  */
@@ -2241,29 +2241,19 @@ VMMDECL(int) CPUMCpuIdCollectIdSysRegsFromArmV8Host(PSUPARMSYSREGVAL *ppaSysRegs
         READ_SYS_REG_NAMED(3, 0, 0, 0, 0, MIDR_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 0, 5, MPIDR_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 0, 6, REVIDR_EL1);
-#  if 0 /* not exposed  */
-        READ_SYS_REG__TODO(3, 1, 0, 0, 0, CCSIDR_EL1); /** @todo CCSIDR_EL1? */
-        READ_SYS_REG__TODO(3, 1, 0, 0, 1, CLIDR_EL1);
-        READ_SYS_REG__TODO(3, 1, 0, 0, 7, AIDR_EL1);
-#  endif
-#  if 0 /* read by common code further down */
-        READ_SYS_REG_NAMED(3, 3, 0, 0, 1, CTR_EL0);
-        READ_SYS_REG_NAMED(3, 3, 0, 0, 7, DCZID_EL0);
-        READ_SYS_REG_NAMED(3, 3,14, 0, 0, CNTFRQ_EL0);
-#  endif
 
         READ_SYS_REG_NAMED(3, 0, 0, 4, 0, ID_AA64PFR0_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 4, 1, ID_AA64PFR1_EL1);
-        READ_SYS_REG_UNDEF(3, 0, 0, 4, 2);
+        READ_SYS_REG_NAMED(3, 0, 0, 4, 2, ID_AA64PFR2_EL1);
         READ_SYS_REG_UNDEF(3, 0, 0, 4, 3);
         READ_SYS_REG_NAMED(3, 0, 0, 4, 4, ID_AA64ZFR0_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 4, 5, ID_AA64SMFR0_EL1);
         READ_SYS_REG_UNDEF(3, 0, 0, 4, 6);
-        READ_SYS_REG_UNDEF(3, 0, 0, 4, 7);
+        READ_SYS_REG_NAMED(3, 0, 0, 4, 7, ID_AA64FPFR0_EL1);
 
         READ_SYS_REG_NAMED(3, 0, 0, 5, 0, ID_AA64DFR0_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 5, 1, ID_AA64DFR1_EL1);
-        READ_SYS_REG_UNDEF(3, 0, 0, 5, 2);
+        READ_SYS_REG_NAMED(3, 0, 0, 5, 2, ID_AA64DFR2_EL1);
         READ_SYS_REG_UNDEF(3, 0, 0, 5, 3);
         READ_SYS_REG_NAMED(3, 0, 0, 5, 4, ID_AA64AFR0_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 5, 5, ID_AA64AFR1_EL1);
@@ -2273,7 +2263,7 @@ VMMDECL(int) CPUMCpuIdCollectIdSysRegsFromArmV8Host(PSUPARMSYSREGVAL *ppaSysRegs
         READ_SYS_REG_NAMED(3, 0, 0, 6, 0, ID_AA64ISAR0_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 6, 1, ID_AA64ISAR1_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 6, 2, ID_AA64ISAR2_EL1);
-        READ_SYS_REG__TODO(3, 0, 0, 6, 3, ID_AA64ISAR3_EL1);
+        READ_SYS_REG_NAMED(3, 0, 0, 6, 3, ID_AA64ISAR3_EL1);
         READ_SYS_REG_UNDEF(3, 0, 0, 6, 4);
         READ_SYS_REG_UNDEF(3, 0, 0, 6, 5);
         READ_SYS_REG_UNDEF(3, 0, 0, 6, 6);
@@ -2282,8 +2272,8 @@ VMMDECL(int) CPUMCpuIdCollectIdSysRegsFromArmV8Host(PSUPARMSYSREGVAL *ppaSysRegs
         READ_SYS_REG_NAMED(3, 0, 0, 7, 0, ID_AA64MMFR0_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 7, 1, ID_AA64MMFR1_EL1);
         READ_SYS_REG_NAMED(3, 0, 0, 7, 2, ID_AA64MMFR2_EL1);
-        READ_SYS_REG__TODO(3, 0, 0, 7, 3, ID_AA64MMFR3_EL1);
-        READ_SYS_REG__TODO(3, 0, 0, 7, 4, ID_AA64MMFR4_EL1);
+        READ_SYS_REG_NAMED(3, 0, 0, 7, 3, ID_AA64MMFR3_EL1);
+        READ_SYS_REG_NAMED(3, 0, 0, 7, 4, ID_AA64MMFR4_EL1);
         READ_SYS_REG_UNDEF(3, 0, 0, 7, 5);
         READ_SYS_REG_UNDEF(3, 0, 0, 7, 6);
         READ_SYS_REG_UNDEF(3, 0, 0, 7, 7);
@@ -2295,6 +2285,8 @@ VMMDECL(int) CPUMCpuIdCollectIdSysRegsFromArmV8Host(PSUPARMSYSREGVAL *ppaSysRegs
         RTSystemQueryOSInfo(RTSYSOSINFO_RELEASE, szRelease, sizeof(szRelease));
         if (RTStrVersionCompare(szRelease[0], "6.1") >= 0 && RTStrVersionCompare(szRelease[0], "99.99") < 0)
         {
+            /* 3,0,0,1,x is not exposed */
+
             READ_SYS_REG_NAMED(3, 0, 0, 2, 0, ID_ISAR0_EL1);
             READ_SYS_REG_NAMED(3, 0, 0, 2, 1, ID_ISAR1_EL1);
             READ_SYS_REG_NAMED(3, 0, 0, 2, 2, ID_ISAR2_EL1);
@@ -2310,12 +2302,18 @@ VMMDECL(int) CPUMCpuIdCollectIdSysRegsFromArmV8Host(PSUPARMSYSREGVAL *ppaSysRegs
             READ_SYS_REG_NAMED(3, 0, 0, 3, 1, MVFR1_EL1);
             READ_SYS_REG_NAMED(3, 0, 0, 3, 2, MVFR2_EL1);
 
+            READ_SYS_REG_UNDEF(3, 0, 0, 3, 3);
+
             READ_SYS_REG_NAMED(3, 0, 0, 3, 4, ID_PFR2_EL1);
 
             READ_SYS_REG_NAMED(3, 0, 0, 3, 5, ID_DFR1_EL1);
 
             READ_SYS_REG_NAMED(3, 0, 0, 3, 6, ID_MMFR5_EL1);
+
+            READ_SYS_REG_UNDEF(3, 0, 0, 3, 7);
         }
+
+        /* The rest is either not exposed or read below (CTR_EL0, DCZID_EL0, CNTFRQ_EL0) */
     }
 #  endif /* RT_OS_LINUX */
 

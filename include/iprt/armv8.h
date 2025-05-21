@@ -335,6 +335,7 @@
 #define ARMV8_AARCH64_SYSREG_MPIDR_EL1              ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 0, 5)
 /** REVIDR_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_REVIDR_EL1             ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 0, 6)
+
 /** ID_PFR0_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_PFR0_EL1            ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 1, 0)
 /** ID_PFR1_EL1 register - RO. */
@@ -375,12 +376,14 @@
 #define ARMV8_AARCH64_SYSREG_MVFR1_EL1              ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 3, 1)
 /** MVFR2_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_MVFR2_EL1              ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 3, 2)
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 3, 3) */
 /** ID_PFR2_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_PFR2_EL1            ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 3, 4)
 /** ID_DFR1_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_DFR1_EL1            ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 3, 5)
 /** ID_MMFR5_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_MMFR5_EL1           ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 3, 6)
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 3, 7) */
 
 /** ID_AA64PFR0_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_AA64PFR0_EL1        ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 4, 0)
@@ -388,10 +391,12 @@
 #define ARMV8_AARCH64_SYSREG_ID_AA64PFR1_EL1        ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 4, 1)
 /** ID_AA64PFR2_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_AA64PFR2_EL1        ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 4, 2)
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 4, 3) */
 /** ID_AA64ZFR0_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_AA64ZFR0_EL1        ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 4, 4)
 /** ID_AA64SMFR0_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_AA64SMFR0_EL1       ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 4, 5)
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 4, 6) */
 /** ID_AA64FPFR0_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_AA64FPFR0_EL1       ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 4, 7)
 
@@ -401,10 +406,13 @@
 #define ARMV8_AARCH64_SYSREG_ID_AA64DFR1_EL1        ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 5, 1)
 /** ID_AA64DFR0_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_AA64DFR2_EL1        ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 5, 2)
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 5, 3) */
 /** ID_AA64AFR0_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_AA64AFR0_EL1        ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 5, 4)
 /** ID_AA64AFR1_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_AA64AFR1_EL1        ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 5, 5)
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 5, 6) */
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 5, 7) */
 
 /** ID_AA64ISAR0_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_AA64ISAR0_EL1       ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 6, 0)
@@ -414,6 +422,10 @@
 #define ARMV8_AARCH64_SYSREG_ID_AA64ISAR2_EL1       ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 6, 2)
 /** ID_AA64ISAR3_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_AA64ISAR3_EL1       ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 6, 3)
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 6, 4) */
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 6, 5) */
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 6, 6) */
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 6, 7) */
 
 /** ID_AA64MMFR0_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_AA64MMFR0_EL1       ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 7, 0)
@@ -425,6 +437,9 @@
 #define ARMV8_AARCH64_SYSREG_ID_AA64MMFR3_EL1       ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 7, 3)
 /** ID_AA64MMFR4_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_ID_AA64MMFR4_EL1       ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 7, 4)
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 7, 5) */
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 7, 6) */
+/* Reserved, RAZ:                                   ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 0, 7, 7) */
 
 /** SCTRL_EL1 register - RW. */
 #define ARMV8_AARCH64_SYSREG_SCTRL_EL1              ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 1, 0, 0)
@@ -521,6 +536,9 @@
 /** PMSIDR_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_PMSIDR_EL1             ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 9, 9, 7)
 
+/** PMBIDR_EL1 register - RO. */
+#define ARMV8_AARCH64_SYSREG_PMBIDR_EL1             ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 9, 10, 7)
+
 /** TRBIDR_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_TRBIDR_EL1             ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 9, 11, 7)
 
@@ -536,8 +554,10 @@
 /** AMAIR_EL1 register - RW. */
 #define ARMV8_AARCH64_SYSREG_AMAIR_EL1              ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 10, 3, 0)
 
-/** MPAMIDR_EL1 register - RO. */
+/** MPAMIDR_EL1 register - RO - FEAT_MPAM. */
 #define ARMV8_AARCH64_SYSREG_MPAMIDR_EL1            ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 10, 4, 4)
+/** MPAMBWIDR_EL1 register - RO - FEAT_MPAM_PE_BW_CTRL. */
+#define ARMV8_AARCH64_SYSREG_MPAMBWIDR_EL1          ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 10, 4, 5)
 
 /** VBAR_EL1 register - RW. */
 #define ARMV8_AARCH64_SYSREG_VBAR_EL1               ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 12, 0, 0)
@@ -606,11 +626,18 @@
 /** CNTKCTL_EL1 register - RW. */
 #define ARMV8_AARCH64_SYSREG_CNTKCTL_EL1            ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 14,  1, 0)
 
+/** CCSIDR_EL1 register - RO. */
+#define ARMV8_AARCH64_SYSREG_CCSIDR_EL1             ARMV8_AARCH64_SYSREG_ID_CREATE(3, 1,  0,  0, 0)
 /** CLIDR_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_CLIDR_EL1              ARMV8_AARCH64_SYSREG_ID_CREATE(3, 1,  0,  0, 1)
-
+/** CCSIDR2_EL1 register - RO. */
+#define ARMV8_AARCH64_SYSREG_CCSIDR2_EL1            ARMV8_AARCH64_SYSREG_ID_CREATE(3, 1,  0,  0, 2)
+/** GMID_EL1 register - RO - FEAT_MTE2. */
+#define ARMV8_AARCH64_SYSREG_GMID_EL1               ARMV8_AARCH64_SYSREG_ID_CREATE(3, 1,  0,  0, 4)
 /** SMIDR_EL1 register - RO. */
 #define ARMV8_AARCH64_SYSREG_SMIDR_EL1              ARMV8_AARCH64_SYSREG_ID_CREATE(3, 1,  0,  0, 6)
+/** AIDR_EL1 register - RO. */
+#define ARMV8_AARCH64_SYSREG_AIDR_EL1               ARMV8_AARCH64_SYSREG_ID_CREATE(3, 1,  0,  0, 7)
 
 /** CSSELR_EL1 register - RW. */
 #define ARMV8_AARCH64_SYSREG_CSSELR_EL1             ARMV8_AARCH64_SYSREG_ID_CREATE(3, 2,  0,  0, 0)
@@ -923,7 +950,7 @@ typedef const ARMV8SPSREL2 *PCXARMV8SPSREL2;
 /** Bit 5 - T - T32 instruction set state (only valid when ARMV8_SPSR_EL2_AARCH64_M4 is set). */
 #define ARMV8_SPSR_EL2_AARCH64_T                    RT_BIT_64(5)
 #define ARMV8_SPSR_EL2_AARCH64_T_BIT                5
-/** Bit 6 - I - FIQ interrupt mask. */
+/** Bit 6 - F - FIQ interrupt mask. */
 #define ARMV8_SPSR_EL2_AARCH64_F                    RT_BIT_64(6)
 #define ARMV8_SPSR_EL2_AARCH64_F_BIT                6
 /** Bit 7 - I - IRQ interrupt mask. */
