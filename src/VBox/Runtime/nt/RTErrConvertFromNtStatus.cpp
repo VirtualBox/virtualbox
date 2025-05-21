@@ -1,4 +1,4 @@
-/* $Id: RTErrConvertFromNtStatus.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: RTErrConvertFromNtStatus.cpp 168950 2025-05-21 08:25:13Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Convert NT status codes to iprt status codes.
  */
@@ -103,6 +103,7 @@ RTDECL(int)  RTErrConvertFromNtStatus(long lNativeCode)
                                             return VERR_NET_IO_ERROR;
         case STATUS_INVALID_IMAGE_HASH:     return VERR_LDR_IMAGE_HASH;
         case STATUS_LOGON_FAILURE:          return VERR_AUTHENTICATION_FAILURE;
+        case STATUS_INTERNAL_ERROR:         return VERR_INTERNAL_ERROR;
 #ifdef VBOX
         case STATUS_TRUST_FAILURE:          return VERR_SUPLIB_NT_PROCESS_UNTRUSTED_5;
 #endif

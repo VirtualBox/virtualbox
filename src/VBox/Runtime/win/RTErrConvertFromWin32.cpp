@@ -1,4 +1,4 @@
-/* $Id: RTErrConvertFromWin32.cpp 168554 2025-04-19 22:23:06Z knut.osmundsen@oracle.com $ */
+/* $Id: RTErrConvertFromWin32.cpp 168950 2025-05-21 08:25:13Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Convert win32 error codes to iprt status codes.
  */
@@ -223,6 +223,7 @@ RTR3DECL(int)  RTErrConvertFromWin32(unsigned uNativeCode)
 
         case ERROR_SERVICE_ALREADY_RUNNING: return VERR_ALREADY_LOADED; /* Not the best match, but seen it with VBoxSup.sys. */
         case ERROR_NOT_FOUND:               return VERR_NOT_FOUND;
+        case ERROR_INTERNAL_ERROR:          return VERR_INTERNAL_ERROR;
 
 
         /*
