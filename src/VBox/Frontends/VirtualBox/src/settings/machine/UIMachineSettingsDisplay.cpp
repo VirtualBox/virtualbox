@@ -1,4 +1,4 @@
-/* $Id: UIMachineSettingsDisplay.cpp 107608 2025-01-08 18:20:54Z sergey.dubov@oracle.com $ */
+/* $Id: UIMachineSettingsDisplay.cpp 109627 2025-05-21 13:54:24Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineSettingsDisplay class implementation.
  */
@@ -643,6 +643,9 @@ bool UIMachineSettingsDisplay::validate(QList<UIValidationMessage> &messages)
         m_f3DAccelerationSupported = graphicsControllerTypeCurrent() == KGraphicsControllerType_VBoxSVGA
                                    ? UIGuestOSTypeHelpers::isWddmCompatibleOsType(m_strGuestOSTypeId)
                                    : false;
+    /* Special handling for MacOS guests, 3D is NOT available at all: */
+    else if (m_strGuestOSTypeId.startsWith("MacOS"))
+        m_f3DAccelerationSupported = false;
     /* For the rest of guest OS types 3D is available for VMSVGA only: */
     else
         m_f3DAccelerationSupported = graphicsControllerTypeCurrent() == KGraphicsControllerType_VMSVGA;
