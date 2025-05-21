@@ -304,10 +304,15 @@ DECLINLINE(void) ASMSetFlags(RTCCUINTREG uFlags)
  * Are interrupts enabled?
  *
  * @returns true / false.
+ * @arm     This is ambigious, as there are two interrupt related masks on arm,
+ *          one for IRQ and one for FIQ.  This function currently considers
+ *          interrupts enabled if either IRQ or FIQ are unmasked (windows seems
+ *          to leave FIQ masked).
  */
 DECLINLINE(bool) ASMIntAreEnabled(void)
 {
-    return (ASMGetFlags() & 0xc0 /* IRQ and FIQ bits */) == 0;
+    /** @todo should we perhaps just check the IRQ bit? */
+    return (ASMGetFlags() & 0xc0 /* IRQ and FIQ bits */) != 0xc0;
 }
 
 
