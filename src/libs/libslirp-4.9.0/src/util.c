@@ -309,7 +309,7 @@ slirp_os_socket slirp_socket_wrap(int domain, int type, int protocol)
 {
     slirp_os_socket ret;
     ret = socket(domain, type, protocol);
-    if (ret < 0) {
+    if (ret == SLIRP_INVALID_SOCKET) {
         errno = win32_socket_error();
     }
     return ret;
