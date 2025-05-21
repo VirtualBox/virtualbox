@@ -1,4 +1,4 @@
-/* $Id: UIParavirtProviderEditor.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UIParavirtProviderEditor.cpp 168951 2025-05-21 10:21:17Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIParavirtProviderEditor class implementation.
  */
@@ -79,7 +79,7 @@ void UIParavirtProviderEditor::setMinimumLayoutIndent(int iIndent)
 void UIParavirtProviderEditor::sltRetranslateUI()
 {
     if (m_pLabel)
-        m_pLabel->setText(tr("&Paravirtualization Interface:"));
+        m_pLabel->setText(tr("&Paravirtualization Interface"));
     if (m_pCombo)
     {
         for (int i = 0; i < m_pCombo->count(); ++i)
@@ -87,8 +87,7 @@ void UIParavirtProviderEditor::sltRetranslateUI()
             const KParavirtProvider enmType = m_pCombo->itemData(i).value<KParavirtProvider>();
             m_pCombo->setItemText(i, gpConverter->toString(enmType));
         }
-        m_pCombo->setToolTip(tr("Selects the paravirtualization guest interface "
-                                "provider to be used by this virtual machine."));
+        m_pCombo->setToolTip(tr("The paravirtualization guest interface provider used by this virtual machine"));
     }
 }
 

@@ -1,4 +1,4 @@
-/* $Id: UIVirtualCPUEditor.cpp 167477 2025-02-11 16:25:21Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIVirtualCPUEditor.cpp 168951 2025-05-21 10:21:17Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVirtualCPUEditor class implementation.
  */
@@ -83,9 +83,9 @@ void UIVirtualCPUEditor::setMinimumLayoutIndent(int iIndent)
 void UIVirtualCPUEditor::sltRetranslateUI()
 {
     if (m_pLabelVCPU)
-        m_pLabelVCPU->setText(tr("&Processors"));
+        m_pLabelVCPU->setText(tr("&Number of CPUs"));
 
-    QString strToolTip(tr("The number of virtual CPUs in the virtual machine. Do not assign more than half of the total processor threads on the host."));
+    QString strToolTip(tr("Number of virtual CPUs in this VM"));
 
     if (m_pSlider)
         m_pSlider->setToolTip(strToolTip);
@@ -95,12 +95,12 @@ void UIVirtualCPUEditor::sltRetranslateUI()
     if (m_pLabelVCPUMin)
     {
         m_pLabelVCPUMin->setText(tr("%1 CPU", "%1 is 1 for now").arg(m_uMinVCPUCount));
-        m_pLabelVCPUMin->setToolTip(tr("Minimum possible virtual CPU count"));
+        m_pLabelVCPUMin->setToolTip(tr("Minimum number of virtual CPUs"));
     }
     if (m_pLabelVCPUMax)
     {
         m_pLabelVCPUMax->setText(tr("%1 CPUs", "%1 is host cpu count * 2 for now").arg(m_uMaxVCPUCount));
-        m_pLabelVCPUMax->setToolTip(tr("Maximum possible virtual CPU count"));
+        m_pLabelVCPUMax->setToolTip(tr("Maximum number of virtual CPUs"));
     }
 }
 

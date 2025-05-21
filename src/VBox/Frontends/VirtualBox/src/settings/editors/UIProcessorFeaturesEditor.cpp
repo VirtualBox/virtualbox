@@ -1,4 +1,4 @@
-/* $Id: UIProcessorFeaturesEditor.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UIProcessorFeaturesEditor.cpp 168951 2025-05-21 10:21:17Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIProcessorFeaturesEditor class implementation.
  */
@@ -107,18 +107,18 @@ void UIProcessorFeaturesEditor::setMinimumLayoutIndent(int iIndent)
 void UIProcessorFeaturesEditor::sltRetranslateUI()
 {
     if (m_pLabel)
-        m_pLabel->setText(tr("Extended Features:"));
+        m_pLabel->setText(tr("CPU Features"));
     if (m_pCheckBoxEnablePae)
     {
-        m_pCheckBoxEnablePae->setText(tr("Enable PA&E/NX"));
-        m_pCheckBoxEnablePae->setToolTip(tr("When checked, the Physical Address Extension (PAE) feature of the host CPU will be "
-                                            "exposed to the virtual machine."));
+        m_pCheckBoxEnablePae->setText(tr("PA&E/NX"));
+        m_pCheckBoxEnablePae->setToolTip(tr("Use the Physical Address Extension (PAE) feature "
+                                            "of the host CPU on the virtual machine"));
     }
     if (m_pCheckBoxEnableNestedVirtualization)
     {
-        m_pCheckBoxEnableNestedVirtualization->setText(tr("Enable Nested &VT-x/AMD-V"));
-        m_pCheckBoxEnableNestedVirtualization->setToolTip(tr("When checked, the nested hardware virtualization CPU feature will "
-                                                             "be exposed to the virtual machine."));
+        m_pCheckBoxEnableNestedVirtualization->setText(tr("Nested &VT-x/AMD-V"));
+        m_pCheckBoxEnableNestedVirtualization->setToolTip(tr("Use the nested hardware virtualization "
+                                                             "CPU feature on the virtual machine"));
     }
 }
 

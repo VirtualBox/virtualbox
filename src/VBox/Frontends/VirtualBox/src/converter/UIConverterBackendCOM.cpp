@@ -1,4 +1,4 @@
-/* $Id: UIConverterBackendCOM.cpp 167165 2025-01-24 09:43:35Z andreas.loeffler@oracle.com $ */
+/* $Id: UIConverterBackendCOM.cpp 168951 2025-05-21 10:21:17Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIConverterBackendCOM implementation.
  */
@@ -301,7 +301,7 @@ template<> SHARED_LIBRARY_STUFF QString UIConverter::toString(const KPointingHID
         case KPointingHIDType_USBTablet:                  return QApplication::translate("UICommon", "USB Tablet", "PointingHIDType");
         case KPointingHIDType_ComboMouse:                 return QApplication::translate("UICommon", "PS/2 and USB Mouse", "PointingHIDType");
         case KPointingHIDType_USBMultiTouch:              return QApplication::translate("UICommon", "USB Multi-Touch Tablet", "PointingHIDType");
-        case KPointingHIDType_USBMultiTouchScreenPlusPad: return QApplication::translate("UICommon", "USB MT TouchScreen and TouchPad", "PointingHIDType");
+        case KPointingHIDType_USBMultiTouchScreenPlusPad: return QApplication::translate("UICommon", "USB Multi-Touch TouchScreen and TouchPad", "PointingHIDType");
         default: AssertMsgFailed(("No text for %d", type)); break;
     }
     return QString();
@@ -739,8 +739,8 @@ template<> SHARED_LIBRARY_STUFF QString UIConverter::toString(const KTpmType &ty
     switch (type)
     {
         case KTpmType_None:  return QApplication::translate("UICommon", "None", "TpmType");
-        case KTpmType_v1_2:  return QApplication::translate("UICommon", "v1.2", "TpmType");
-        case KTpmType_v2_0:  return QApplication::translate("UICommon", "v2.0", "TpmType");
+        case KTpmType_v1_2:  return QApplication::translate("UICommon", "1.2", "TpmType");
+        case KTpmType_v2_0:  return QApplication::translate("UICommon", "2.0", "TpmType");
         case KTpmType_Host:  return QApplication::translate("UICommon", "Host", "TpmType");
         case KTpmType_Swtpm: return QApplication::translate("UICommon", "SWTPM", "TpmType");
         default: AssertMsgFailed(("No text for %d", type)); break;

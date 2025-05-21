@@ -1,4 +1,4 @@
-/* $Id: UIMotherboardFeaturesEditor.cpp 166105 2024-11-25 14:07:45Z sergey.dubov@oracle.com $ */
+/* $Id: UIMotherboardFeaturesEditor.cpp 168951 2025-05-21 10:21:17Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMotherboardFeaturesEditor class implementation.
  */
@@ -168,36 +168,32 @@ void UIMotherboardFeaturesEditor::handleFilterChange()
 void UIMotherboardFeaturesEditor::sltRetranslateUI()
 {
     if (m_pLabel)
-        m_pLabel->setText(tr("Extended Features:"));
+        m_pLabel->setText(tr("Use These Features"));
     if (m_pCheckBoxEnableIoApic)
     {
-        m_pCheckBoxEnableIoApic->setText(tr("Enable &I/O APIC"));
-        m_pCheckBoxEnableIoApic->setToolTip(tr("When checked, the virtual machine will support the Input Output APIC (I/O APIC), "
-                                               "which may slightly decrease performance. Note: don't disable this feature "
-                                               "after having installed a Windows guest operating system!"));
+        m_pCheckBoxEnableIoApic->setText(tr("&I/O APIC"));
+        m_pCheckBoxEnableIoApic->setToolTip(tr("Use I/O APIC. Performance may be slower."));
     }
     if (m_pCheckBoxEnableUtcTime)
     {
-        m_pCheckBoxEnableUtcTime->setText(tr("Enable Hardware Clock in &UTC Time"));
-        m_pCheckBoxEnableUtcTime->setToolTip(tr("When checked, the RTC device will report the time in UTC, otherwise in local "
-                                                "(host) time. Unix usually expects the hardware clock to be set to UTC."));
+        m_pCheckBoxEnableUtcTime->setText(tr("Hardware Clock in &UTC"));
+        m_pCheckBoxEnableUtcTime->setToolTip(tr("Emulated RTC device reports time in UTC "
+                                                "rather than local time on the host"));
     }
     if (m_pCheckBoxEnableEfi)
     {
-        m_pCheckBoxEnableEfi->setText(tr("Enable &EFI (special OSes only)"));
-        m_pCheckBoxEnableEfi->setToolTip(tr("When checked, the guest will support the Extended Firmware Interface (EFI), "
-                                            "which is required to boot certain guest OSes. Non-EFI aware OSes will not be able "
-                                            "to boot if this option is activated."));
+        m_pCheckBoxEnableEfi->setText(tr("U&EFI"));
+        m_pCheckBoxEnableEfi->setToolTip(tr("VM uses UEFI to boot OS instead of BIOS"));
     }
     if (m_pCheckBoxEnableSecureBoot)
     {
-        m_pCheckBoxEnableSecureBoot->setText(tr("Enable &Secure Boot"));
-        m_pCheckBoxEnableSecureBoot->setToolTip(tr("When checked, the secure boot emulation will be enabled."));
+        m_pCheckBoxEnableSecureBoot->setText(tr("&Secure Boot"));
+        m_pCheckBoxEnableSecureBoot->setToolTip(tr("Use secure boot emulation"));
     }
     if (m_pPushButtonResetSecureBoot)
     {
-        m_pPushButtonResetSecureBoot->setText(tr("&Reset Keys to Default"));
-        m_pPushButtonResetSecureBoot->setToolTip(tr("Resets secure boot keys to default."));
+        m_pPushButtonResetSecureBoot->setText(tr("&Reset Secure Boot Keys"));
+        m_pPushButtonResetSecureBoot->setToolTip(tr("Resets secure boot keys to default"));
     }
 }
 

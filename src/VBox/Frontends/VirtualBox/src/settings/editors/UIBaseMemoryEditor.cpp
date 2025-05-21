@@ -1,4 +1,4 @@
-/* $Id: UIBaseMemoryEditor.cpp 167476 2025-02-11 16:23:34Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIBaseMemoryEditor.cpp 168951 2025-05-21 10:21:17Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIBaseMemoryEditor class implementation.
  */
@@ -303,7 +303,7 @@ void UIBaseMemoryEditor::sltRetranslateUI()
     if (m_pLabelMemory)
         m_pLabelMemory->setText(tr("Base &Memory"));
 
-    const QString strToolTip(tr("The amount of RAM that VirtualBox will allocate to the virtual machine every time it is started"));
+    const QString strToolTip(tr("VM's installed RAM"));
     if (m_pSlider)
         m_pSlider->setToolTip(strToolTip);
     if (m_pSpinBox)
@@ -315,12 +315,12 @@ void UIBaseMemoryEditor::sltRetranslateUI()
     if (m_pLabelMemoryMin)
     {
         m_pLabelMemoryMin->setText(tr("%1 MB").arg(m_pSlider->minRAM()));
-        m_pLabelMemoryMin->setToolTip(tr("Minimum possible base memory size"));
+        m_pLabelMemoryMin->setToolTip(tr("Minimum RAM"));
     }
     if (m_pLabelMemoryMax)
     {
         m_pLabelMemoryMax->setText(tr("%1 MB").arg(m_pSlider->maxRAM()));
-        m_pLabelMemoryMax->setToolTip(tr("Maximum possible base memory size"));
+        m_pLabelMemoryMax->setToolTip(tr("Maximum RAM"));
     }
 }
 

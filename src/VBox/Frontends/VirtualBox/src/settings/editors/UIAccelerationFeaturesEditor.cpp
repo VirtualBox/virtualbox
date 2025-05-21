@@ -1,4 +1,4 @@
-/* $Id: UIAccelerationFeaturesEditor.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UIAccelerationFeaturesEditor.cpp 168951 2025-05-21 10:21:17Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIAccelerationFeaturesEditor class implementation.
  */
@@ -82,12 +82,12 @@ void UIAccelerationFeaturesEditor::setMinimumLayoutIndent(int iIndent)
 void UIAccelerationFeaturesEditor::sltRetranslateUI()
 {
     if (m_pLabel)
-        m_pLabel->setText(tr("Hardware Virtualization:"));
+        m_pLabel->setText(tr("Hardware Virtualization"));
     if (m_pCheckBoxEnableNestedPaging)
     {
-        m_pCheckBoxEnableNestedPaging->setText(tr("Enable Nested Pa&ging"));
-        m_pCheckBoxEnableNestedPaging->setToolTip(tr("When checked, the virtual machine will try to make use of the nested "
-                                                     "paging extension of Intel VT-x and AMD-V."));
+        m_pCheckBoxEnableNestedPaging->setText(tr("Nested Pa&ging"));
+        m_pCheckBoxEnableNestedPaging->setToolTip(tr("Use the nested paging extension of Intel VT-x "
+                                                     "and AMD-V on the virtual machine"));
     }
 }
 

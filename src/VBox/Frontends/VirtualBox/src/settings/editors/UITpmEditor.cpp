@@ -1,4 +1,4 @@
-/* $Id: UITpmEditor.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UITpmEditor.cpp 168951 2025-05-21 10:21:17Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UITpmEditor class implementation.
  */
@@ -79,7 +79,7 @@ void UITpmEditor::setMinimumLayoutIndent(int iIndent)
 void UITpmEditor::sltRetranslateUI()
 {
     if (m_pLabel)
-        m_pLabel->setText(tr("&TPM:"));
+        m_pLabel->setText(tr("&TPM Version"));
     if (m_pCombo)
     {
         for (int i = 0; i < m_pCombo->count(); ++i)
@@ -87,7 +87,7 @@ void UITpmEditor::sltRetranslateUI()
             const KTpmType enmType = m_pCombo->itemData(i).value<KTpmType>();
             m_pCombo->setItemText(i, gpConverter->toString(enmType));
         }
-        m_pCombo->setToolTip(tr("Selects the TPM type to be emulated in this virtual machine."));
+        m_pCombo->setToolTip(tr("Emulate this Trusted Platform Module on this VM"));
     }
 }
 
