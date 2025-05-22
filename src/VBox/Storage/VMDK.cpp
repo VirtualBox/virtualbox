@@ -1,4 +1,4 @@
-/* $Id: VMDK.cpp 168479 2025-04-14 09:44:18Z michal.necasek@oracle.com $ */
+/* $Id: VMDK.cpp 168955 2025-05-22 06:31:05Z jack.doherty@oracle.com $ */
 /** @file
  * VMDK disk image, core code.
  */
@@ -8350,21 +8350,15 @@ static DECLCALLBACK(void) vmdkDump(void *pBackendData)
  */
 static uint64_t vmdkGetNewOverhead(PVMDKEXTENT pExtent, uint64_t cSectorsNew)
 {
-    uint64_t cNewDirEntries = cSectorsNew / pExtent->cSectorsPerGDE;
-    if (cSectorsNew % pExtent->cSectorsPerGDE)
-        cNewDirEntries++;
-
-    size_t cbNewGD = cNewDirEntries * sizeof(uint32_t);
-    uint64_t cbNewDirSize = RT_ALIGN_64(cbNewGD, 512);
-    uint64_t cbNewAllTablesSize = RT_ALIGN_64(cNewDirEntries * pExtent->cGTEntries * sizeof(uint32_t), 512);
-    uint64_t cbNewOverhead = RT_ALIGN_Z(RT_MAX(pExtent->uDescriptorSector
-                                                + pExtent->cDescriptorSectors, 1)
-                                                + cbNewDirSize + cbNewAllTablesSize, 512);
-    cbNewOverhead += cbNewDirSize + cbNewAllTablesSize;
-    cbNewOverhead = RT_ALIGN_64(cbNewOverhead,
-                                VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain));
-
-    return cbNewOverhead;
+    uint32_t cGDEntries = (cSectorsNew + pExtent->cSectorsPerGDE - 1) / pExtent->cSectorsPerGDE;
+    size_t cbGD = cGDEntries * sizeof(uint32_t);
+    size_t cbGDRounded = RT_ALIGN_64(cbGD, 512);
+    size_t cbGTRounded = RT_ALIGN_64(cGDEntries * pExtent->cGTEntries * sizeof(uint32_t), 512);
+    size_t cbOverhead  = VMDK_SECTOR2BYTE(RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1)) + cbGDRounded + cbGTRounded;
+    cbOverhead += cbGDRounded + cbGTRounded; // Add redundant copies
+    cbOverhead = RT_ALIGN_64(cbOverhead,
+                             VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain)); // Align to grain
+    return cbOverhead;
 }
 
 /**
@@ -8421,197 +8415,140 @@ static int vmdkReplaceExtentSize(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, unsigne
  * @param   cSectorsNew     Number of sectors after resize.
  */
 static int vmdkRelocateSectorsForSparseResize(PVMDKIMAGE pImage, PVMDKEXTENT pExtent,
-                                              uint64_t cSectorsNew)
+                                              uint64_t cSectorsNew, uint64_t cNewOverheadSectors)
 {
     int rc = VINF_SUCCESS;
 
-    uint64_t cbNewOverhead = vmdkGetNewOverhead(pExtent, cSectorsNew);
+    pExtent->fMetaDirty = true;
 
-    uint64_t cNewOverheadSectors = VMDK_BYTE2SECTOR(cbNewOverhead);
-    uint64_t cOverheadSectorDiff = cNewOverheadSectors - pExtent->cOverheadSectors;
+    size_t cbGD = pExtent->cGDEntries * sizeof(uint32_t);
+    size_t cbGDRounded = RT_ALIGN_64(cbGD, 512);
+    size_t cbGTRounded = RT_ALIGN_64(pExtent->cGDEntries * pExtent->cGTEntries * sizeof(uint32_t), 512);
+    size_t cbOverhead  = VMDK_SECTOR2BYTE(RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1)) + cbGDRounded + cbGTRounded;
+    cbOverhead += cbGDRounded + cbGTRounded; // Add redundant copies
+    cbOverhead = RT_ALIGN_64(cbOverhead,
+                             VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain)); // Align to grain
 
-    uint64_t cbFile = 0;
-    rc = vdIfIoIntFileGetSize(pImage->pIfIo, pExtent->pFile->pStorage, &cbFile);
+    uint64_t uOldDataStartSector = pExtent->cOverheadSectors;
+    size_t uSectorDiff = cNewOverheadSectors - uOldDataStartSector;
 
-    uint64_t uNewAppendPosition;
+    pExtent->uAppendPosition += RT_ALIGN_64(VMDK_SECTOR2BYTE(cNewOverheadSectors), _64K);
 
-    /* Calculate how many sectors need to be relocated. */
-    unsigned cSectorsReloc = cOverheadSectorDiff;
-    if (cbNewOverhead % VMDK_SECTOR_SIZE)
-        cSectorsReloc++;
-
-    if (cSectorsReloc < pExtent->cSectors)
-        uNewAppendPosition = RT_ALIGN_Z(cbFile + VMDK_SECTOR2BYTE(cOverheadSectorDiff), 512);
-    else
-        uNewAppendPosition = cbFile;
-
-    /*
-    * Get the blocks we need to relocate first, they are appended to the end
-    * of the image.
-    */
-    void *pvBuf = NULL, *pvZero = NULL;
-    do
+    if (pExtent->cSectors < cSectorsNew)
     {
-        /* Allocate data buffer. */
-        pvBuf = RTMemAllocZ(VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain));
-        if (!pvBuf)
+        uint64_t cbFile;
+        rc = vdIfIoIntFileGetSize(pImage->pIfIo, pExtent->pFile->pStorage, &cbFile);
+        if (RT_SUCCESS(rc))
         {
-            rc = VERR_NO_MEMORY;
-            break;
+            rc = vdIfIoIntFileSetSize(pImage->pIfIo, pExtent->pFile->pStorage, cbFile + VMDK_SECTOR2BYTE(uSectorDiff) + _64K);
+            if (RT_FAILURE(rc))
+                return vdIfError(pImage->pIfError, rc, RT_SRC_POS, N_("VMDK: cannot set size of '%s'"), pExtent->pszFullname);
+        }
+        else
+            return vdIfError(pImage->pIfError, rc, RT_SRC_POS, N_("VMDK: cannot get size of '%s'"), pExtent->pszFullname);
+    }
+
+
+    // 1. Move GT down
+    size_t cbGT = pExtent->cGTEntries * sizeof(uint32_t);
+    Assert(cbGT > 0);
+
+    uint32_t *pTmpGT1 = (uint32_t *)RTMemAlloc(cbGT);
+    uint32_t *pTmpGT2 = (uint32_t *)RTMemAlloc(cbGT);
+
+    if (   !pTmpGT1
+        || !pTmpGT2)
+        return VERR_NO_MEMORY;
+
+    size_t i = pExtent->cGDEntries;
+    uint32_t *pGDTmp = pExtent->pGD;
+    uint32_t *pRGDTmp = pExtent->pRGD;
+
+    /* Loop through all entries. */
+    while (i-- > 0)
+    {
+        uint32_t uGTFlag = pGDTmp[i];
+        uint32_t uRGTFlag = pRGDTmp[i];
+        size_t   cbGTRead = cbGT;
+
+        /* If no grain table is allocated skip the entry. */
+        if (*pGDTmp == 0 && *pRGDTmp == 0)
+        {
+            i--;
+            continue;
         }
 
-        /* Allocate buffer for overwriting with zeroes. */
-        pvZero = RTMemAllocZ(VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain));
-        if (!pvZero)
+        if (RT_SUCCESS(rc))
         {
-            RTMemFree(pvBuf);
-            pvBuf = NULL;
-
-            rc = VERR_NO_MEMORY;
-            break;
-        }
-
-        uint32_t *aGTDataTmp = (uint32_t *)RTMemAllocZ(sizeof(uint32_t) * pExtent->cGTEntries);
-        if(!aGTDataTmp)
-        {
-            RTMemFree(pvBuf);
-            pvBuf = NULL;
-
-            RTMemFree(pvZero);
-            pvZero = NULL;
-
-            rc = VERR_NO_MEMORY;
-            break;
-        }
-
-        uint32_t *aRGTDataTmp = (uint32_t *)RTMemAllocZ(sizeof(uint32_t) * pExtent->cGTEntries);
-        if(!aRGTDataTmp)
-        {
-            RTMemFree(pvBuf);
-            pvBuf = NULL;
-
-            RTMemFree(pvZero);
-            pvZero = NULL;
-
-            RTMemFree(aGTDataTmp);
-            aGTDataTmp = NULL;
-
-            rc = VERR_NO_MEMORY;
-            break;
-        }
-
-        /* Search for overlap sector in the grain table. */
-        for (uint32_t idxGD = 0; idxGD < pExtent->cGDEntries; idxGD++)
-        {
-            uint64_t uGTSector = pExtent->pGD[idxGD];
-            uint64_t uRGTSector = pExtent->pRGD[idxGD];
 
             rc = vdIfIoIntFileReadSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                        VMDK_SECTOR2BYTE(uGTSector),
-                                        aGTDataTmp, sizeof(uint32_t) * pExtent->cGTEntries);
-
+                                       VMDK_SECTOR2BYTE(uGTFlag),
+                                       pTmpGT1, cbGTRead);
             if (RT_FAILURE(rc))
-                break;
-
-            rc = vdIfIoIntFileReadSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                        VMDK_SECTOR2BYTE(uRGTSector),
-                                        aRGTDataTmp, sizeof(uint32_t) * pExtent->cGTEntries);
-
-            if (RT_FAILURE(rc))
-                break;
-
-            for (uint32_t idxGT = 0; idxGT < pExtent->cGTEntries; idxGT++)
             {
-                uint64_t aGTEntryLE = RT_LE2H_U64(aGTDataTmp[idxGT]);
-                uint64_t aRGTEntryLE = RT_LE2H_U64(aRGTDataTmp[idxGT]);
+                rc = vdIfError(pImage->pIfError, rc, RT_SRC_POS,
+                               N_("VMDK: error reading grain table in '%s'"), pExtent->pszFullname);
+                break;
+            }
 
-                /**
-                 * Check if grain table is valid. If not dump out with an error.
-                 * Shoudln't ever get here (given other checks) but good sanity check.
-                */
-                if (aGTEntryLE != aRGTEntryLE)
-                {
-                    rc = vdIfError(pImage->pIfError, VERR_VD_VMDK_INVALID_HEADER, RT_SRC_POS,
-                                    N_("VMDK: inconsistent references within grain table in '%s'"), pExtent->pszFullname);
-                    break;
-                }
+            rc = vdIfIoIntFileReadSync(pImage->pIfIo, pExtent->pFile->pStorage,
+                                       VMDK_SECTOR2BYTE(uRGTFlag),
+                                       pTmpGT2, cbGTRead);
+            if (RT_FAILURE(rc))
+            {
+                rc = vdIfError(pImage->pIfError, rc, RT_SRC_POS,
+                               N_("VMDK: error reading backup grain table in '%s'"), pExtent->pszFullname);
+                break;
+            }
 
-                if (aGTEntryLE < cNewOverheadSectors
-                    && aGTEntryLE != 0)
+            uint32_t cGTEsRead = cbGTRead / sizeof(uint32_t);
+            char *pGrainTmp = (char *)RTMemAlloc(VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain));
+            for (int64_t j = cGTEsRead - 1; j >= 0; j--)
+            {
+                if (pTmpGT1[j] != 0)
                 {
-                    /* Read data and append grain to the end of the image. */
+                    uint32_t uGTSector = RT_LE2H_U32(pTmpGT1[j]);
                     rc = vdIfIoIntFileReadSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                                VMDK_SECTOR2BYTE(aGTEntryLE), pvBuf,
-                                                VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain));
-                    if (RT_FAILURE(rc))
-                        break;
+                        VMDK_SECTOR2BYTE(uGTSector),
+                        pGrainTmp, VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain));
 
+                    pTmpGT1[j] = RT_H2LE_U32(VMDK_BYTE2SECTOR(pExtent->uAppendPosition));
+                    pTmpGT2[j] = RT_H2LE_U32(VMDK_BYTE2SECTOR(pExtent->uAppendPosition));
+
+                    /* Write the grain to disk, moved down a bit. */
                     rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                                uNewAppendPosition, pvBuf,
-                                                VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain));
-                    if (RT_FAILURE(rc))
-                        break;
+                        pExtent->uAppendPosition,
+                        pGrainTmp, VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain));
 
-                    /* Zero out the old block area. */
-                    rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                                VMDK_SECTOR2BYTE(aGTEntryLE), pvZero,
-                                                VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain));
-                    if (RT_FAILURE(rc))
-                        break;
-
-                    /* Write updated grain tables to file */
-                    aGTDataTmp[idxGT] = VMDK_BYTE2SECTOR(uNewAppendPosition);
-                    aRGTDataTmp[idxGT] = VMDK_BYTE2SECTOR(uNewAppendPosition);
-
-                    if (memcmp(aGTDataTmp, aRGTDataTmp, sizeof(uint32_t) * pExtent->cGTEntries))
-                    {
-                        rc = vdIfError(pImage->pIfError, VERR_VD_VMDK_INVALID_HEADER, RT_SRC_POS,
-                                    N_("VMDK: inconsistency between grain table and backup grain table in '%s'"), pExtent->pszFullname);
-                        break;
-                    }
-
-                    rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                                VMDK_SECTOR2BYTE(uGTSector),
-                                                aGTDataTmp, sizeof(uint32_t) * pExtent->cGTEntries);
-
-                    if (RT_FAILURE(rc))
-                        break;
-
-                    rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                                VMDK_SECTOR2BYTE(uRGTSector),
-                                                aRGTDataTmp, sizeof(uint32_t) * pExtent->cGTEntries);
-
-                    break;
+                    pExtent->uAppendPosition += VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain);
                 }
             }
+
+            if (pGrainTmp)
+                RTMemFree(pGrainTmp);
+
+            /* Write the grain table to disk, with updated locations of grains. */
+            rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
+                VMDK_SECTOR2BYTE(uGTFlag),
+                pTmpGT1, cbGTRead);
+
+            rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
+                VMDK_SECTOR2BYTE(uRGTFlag),
+                pTmpGT2, cbGTRead);
         }
+    } /* while (i >= 0) */
 
-        RTMemFree(aGTDataTmp);
-        aGTDataTmp = NULL;
+    /** @todo figure out what to do for unclean VMDKs. */
+    if (pTmpGT1)
+        RTMemFree(pTmpGT1);
+    if (pTmpGT2)
+        RTMemFree(pTmpGT2);
 
-        RTMemFree(aRGTDataTmp);
-        aRGTDataTmp = NULL;
-
-        if (RT_FAILURE(rc))
-            break;
-
-        uNewAppendPosition += VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain);
-    } while (0);
-
-    if (pvBuf)
+    if (RT_SUCCESS(rc))
     {
-        RTMemFree(pvBuf);
-        pvBuf = NULL;
+        pExtent->cOverheadSectors = cNewOverheadSectors;
+        pExtent->cSectors = cSectorsNew;
     }
-
-    if (pvZero)
-    {
-        RTMemFree(pvZero);
-        pvZero = NULL;
-    }
-
-    // Update append position for extent
-    pExtent->uAppendPosition = uNewAppendPosition;
 
     return rc;
 }
@@ -8622,217 +8559,253 @@ static int vmdkRelocateSectorsForSparseResize(PVMDKIMAGE pImage, PVMDKEXTENT pEx
  * @returns VBox status code.
  * @param   pImage          VMDK image instance.
  * @param   pExtent         VMDK extent instance.
- * @param   cSectorsNew     Number of sectors after resize.
+ * @param   cSectorsNew     Size of new image in sectors.
  */
-static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent,
-                                uint64_t cSectorsNew)
+static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t cSectorsNew)
 {
-    uint32_t cOldGDEntries = pExtent->cGDEntries;
+    int rc = VINF_SUCCESS;
 
-    uint64_t cNewDirEntries = cSectorsNew / pExtent->cSectorsPerGDE;
-    if (cSectorsNew % pExtent->cSectorsPerGDE)
-        cNewDirEntries++;
+    pExtent->fMetaDirty = true;
 
-    size_t cbNewGD = cNewDirEntries * sizeof(uint32_t);
+    size_t cbOldGD = pExtent->cGDEntries * sizeof(uint32_t);
+    size_t cbOldGDRounded = RT_ALIGN_64(cbOldGD, 512);
+    size_t cbOldGTRounded = RT_ALIGN_64(pExtent->cGDEntries * pExtent->cGTEntries * sizeof(uint32_t), 512);
 
-    uint64_t cbNewDirSize = RT_ALIGN_64(cbNewGD, 512);
-    uint64_t cbCurrDirSize = RT_ALIGN_64(pExtent->cGDEntries * VMDK_GRAIN_DIR_ENTRY_SIZE, 512);
-    uint64_t cDirSectorDiff = VMDK_BYTE2SECTOR(cbNewDirSize - cbCurrDirSize);
+    uint32_t cNewGDEntries = (cSectorsNew + pExtent->cSectorsPerGDE - 1) / pExtent->cSectorsPerGDE;
+    size_t cbNewGD = cNewGDEntries * sizeof(uint32_t);
+    size_t cbNewGDRounded = RT_ALIGN_64(cbNewGD, 512);
+    size_t cbNewGTRounded = RT_ALIGN_64(cNewGDEntries * pExtent->cGTEntries * sizeof(uint32_t), 512);
 
-    uint64_t cbNewAllTablesSize = RT_ALIGN_64(cNewDirEntries * pExtent->cGTEntries * sizeof(uint32_t), 512);
-    uint64_t cbCurrAllTablesSize = RT_ALIGN_64(pExtent->cGDEntries * VMDK_GRAIN_TABLE_SIZE, 512);
-    uint64_t cTableSectorDiff = VMDK_BYTE2SECTOR(cbNewAllTablesSize - cbCurrAllTablesSize);
-
-    uint64_t cbNewOverhead = vmdkGetNewOverhead(pExtent, cSectorsNew);
-    uint64_t cNewOverheadSectors = VMDK_BYTE2SECTOR(cbNewOverhead);
-    uint64_t cOverheadSectorDiff = cNewOverheadSectors - pExtent->cOverheadSectors;
-
-    /*
-    * Get the blocks we need to relocate first, they are appended to the end
-    * of the image.
-    */
-    void *pvBuf = NULL;
-    AssertCompile(sizeof(g_abRTZero4K) >= VMDK_GRAIN_TABLE_SIZE);
-
-    /* Allocate data buffer. */
-    pvBuf = RTMemAllocZ(VMDK_GRAIN_TABLE_SIZE);
-    if (!pvBuf)
-        return VERR_NO_MEMORY;
-
-    /** @todo r=aeichner Carefully review the error handling logic, we mustn't leave the image in an inconsistent
-     *                   state if something fails, apart from hard underlying I/O errors of course.
-     *                   Memory allocation failures should not cause any corruptions.
-     */
-    int rc;
-    do
     {
-        uint32_t uGTStart = VMDK_SECTOR2BYTE(pExtent->uSectorGD) + (cOldGDEntries * VMDK_GRAIN_DIR_ENTRY_SIZE);
+        // move and grow the grain table
+        size_t cbGT = pExtent->cGTEntries * sizeof(uint32_t);
+        uint32_t *pTmpGT1 = (uint32_t *)RTMemAlloc(cbGT);
+        if (!pTmpGT1)
+            return VERR_NO_MEMORY;
 
-        // points to last element in the grain table
-        uint32_t uGTTail = uGTStart + (pExtent->cGDEntries * VMDK_GRAIN_TABLE_SIZE) - VMDK_GRAIN_TABLE_SIZE;
-        uint32_t cbGTOff = RT_ALIGN_Z(VMDK_SECTOR2BYTE(cDirSectorDiff + cTableSectorDiff + cDirSectorDiff), 512);
+        uint32_t uGTMin = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded) + VMDK_BYTE2SECTOR(cbNewGDRounded); //inclusive
+        uint32_t uGTMax = pExtent->cOverheadSectors; //not inclusive
 
-        /** @todo r=aeichner An error here doesn't make the whole operation fail, it just breaks out of the loop. */
-        for (int i = pExtent->cGDEntries - 1; i >= 0; i--)
+        size_t i = pExtent->cGDEntries - 1;
+        /* Loop through all entries. */
+        do
         {
+            // uint32_t uNewGTStart = pExtent->pGD[i] + VMDK_BYTE2SECTOR((cbNewGDRounded + cbNewGTRounded + cbNewGDRounded) - (cbOldGDRounded + cbOldGTRounded + cbOldGDRounded));
+            uint32_t uNewGTStart = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded + cbNewGDRounded) + (i * sizeof(uint32_t));
+            uint32_t uOldGTStart = pExtent->pGD[i];
+            size_t   cbGTRead = cbGT;
+
+            Assert(uNewGTStart < uGTMax && uNewGTStart >= uGTMin);
+
             rc = vdIfIoIntFileReadSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                        uGTTail, pvBuf,
-                                        VMDK_GRAIN_TABLE_SIZE);
+                                    VMDK_SECTOR2BYTE(uOldGTStart),
+                                    pTmpGT1, cbGTRead);
             if (RT_FAILURE(rc))
+            {
+                rc = vdIfError(pImage->pIfError, rc, RT_SRC_POS,
+                            N_("VMDK: error reading grain table in '%s'"), pExtent->pszFullname);
                 break;
+            }
 
+            /* Write the grain to disk, moved down a bit. */
             rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                        RT_ALIGN_Z(uGTTail + cbGTOff, 512), pvBuf,
-                                        VMDK_GRAIN_TABLE_SIZE);
+                                        VMDK_SECTOR2BYTE(uNewGTStart),
+                                        pTmpGT1, cbGTRead);
+
             if (RT_FAILURE(rc))
+            {
+                rc = vdIfError(pImage->pIfError, rc, RT_SRC_POS,
+                            N_("VMDK: error relocating grain table in '%s'"), pExtent->pszFullname);
                 break;
+            }
+        } while (i-- > 0);
 
-            // This overshoots when i == 0, but we don't need it anymore.
-            uGTTail -= VMDK_GRAIN_TABLE_SIZE;
-        }
+        /** @todo figure out what to do for unclean VMDKs. */
+        if (pTmpGT1)
+            RTMemFree(pTmpGT1);
+    }
 
-
-        /* Find the end of the grain directory and start bumping everything down. Update locations of GT entries. */
-        rc = vdIfIoIntFileReadSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                    VMDK_SECTOR2BYTE(pExtent->uSectorGD), pvBuf,
-                                    pExtent->cGDEntries * VMDK_GRAIN_DIR_ENTRY_SIZE);
-        if (RT_FAILURE(rc))
-            break;
-
-        int * tmpBuf = (int *)pvBuf;
-
-        for (uint32_t i = 0; i < pExtent->cGDEntries; i++)
+    // rewrite grain directory
+    if (RT_SUCCESS(rc))
+    {
+        // resize internal grain directories (plural) structs
+        pExtent->pGD = (uint32_t *)RTMemReallocZ(pExtent->pGD, cbOldGDRounded, cbNewGD);
+        if (RT_UNLIKELY(!pExtent->pGD))
+            rc = VERR_NO_MEMORY;
+        else
         {
-            tmpBuf[i] = tmpBuf[i] + VMDK_BYTE2SECTOR(cbGTOff);
-            pExtent->pGD[i] = pExtent->pGD[i] + VMDK_BYTE2SECTOR(cbGTOff);
+            uint32_t uGTSectorLE;
+            uint32_t uOffsetSectors = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded + cbNewGDRounded);
+            uint64_t uNewGD = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded);
+            for (uint32_t i = 0; i < cNewGDEntries; i++)
+            {
+                pExtent->pGD[i] = uOffsetSectors;
+                uGTSectorLE = RT_H2LE_U64(uOffsetSectors);
+                /* Write the grain directory entry to disk. */
+                rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
+                                            VMDK_SECTOR2BYTE(uNewGD) + i * sizeof(uGTSectorLE),
+                                            &uGTSectorLE, sizeof(uGTSectorLE));
+                if (RT_FAILURE(rc))
+                {
+                    rc = vdIfError(pImage->pIfError, rc, RT_SRC_POS, N_("VMDK: cannot write new grain directory entry in '%s'"), pExtent->pszFullname);
+                    break;
+                }
+
+                uOffsetSectors += VMDK_BYTE2SECTOR(pExtent->cGTEntries * sizeof(uint32_t));
+            }
         }
+    }
 
-        rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                    RT_ALIGN_Z(VMDK_SECTOR2BYTE(pExtent->uSectorGD + cTableSectorDiff + cDirSectorDiff), 512), pvBuf,
-                                    pExtent->cGDEntries * VMDK_GRAIN_DIR_ENTRY_SIZE);
-        if (RT_FAILURE(rc))
-            break;
+    // zero out new grain tables
+    if (RT_SUCCESS(rc))
+    {
+        size_t cbGTDataTmp = pExtent->cGTEntries * sizeof(uint32_t);
+        uint32_t *paGTDataTmp = (uint32_t *)RTMemTmpAllocZ(cbGTDataTmp);
 
-        pExtent->uSectorGD = pExtent->uSectorGD + cDirSectorDiff + cTableSectorDiff;
-
-        /* Repeat both steps with the redundant grain table/directory. */
-
-        uint32_t uRGTStart = VMDK_SECTOR2BYTE(pExtent->uSectorRGD) + (cOldGDEntries * VMDK_GRAIN_DIR_ENTRY_SIZE);
-
-        // points to last element in the grain table
-        uint32_t uRGTTail = uRGTStart + (pExtent->cGDEntries * VMDK_GRAIN_TABLE_SIZE) - VMDK_GRAIN_TABLE_SIZE;
-        uint32_t cbRGTOff = RT_ALIGN_Z(VMDK_SECTOR2BYTE(cDirSectorDiff), 512);
-
-        for (int i = pExtent->cGDEntries - 1; i >= 0; i--)
+        if (RT_UNLIKELY(!paGTDataTmp))
+            rc = VERR_NO_MEMORY;
+        else
         {
-            rc = vdIfIoIntFileReadSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                        uRGTTail, pvBuf,
-                                        VMDK_GRAIN_TABLE_SIZE);
-            if (RT_FAILURE(rc))
-                break;
+            memset(paGTDataTmp, '\0', cbGTDataTmp);
 
-            rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                        RT_ALIGN_Z(uRGTTail + cbRGTOff, 512), pvBuf,
-                                        VMDK_GRAIN_TABLE_SIZE);
-            if (RT_FAILURE(rc))
-                break;
+            for (uint32_t i = pExtent->cGDEntries; i < cNewGDEntries; i++)
+            {
+                uint32_t uGTSector = pExtent->pGD[i];
+                /* Zero out new grain table. */
+                rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
+                                            VMDK_SECTOR2BYTE(uGTSector),
+                                            paGTDataTmp, cbGTDataTmp);
 
-            // This overshoots when i == 0, but we don't need it anymore.
-            uRGTTail -= VMDK_GRAIN_TABLE_SIZE;
+                if (RT_FAILURE(rc))
+                {
+                    rc = vdIfError(pImage->pIfError, rc, RT_SRC_POS, N_("VMDK: cannot write zero'd grain in '%s'"), pExtent->pszFullname);
+                    break;
+                }
+            }
         }
+    }
 
-        /* Update locations of GT entries. */
-        rc = vdIfIoIntFileReadSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                    VMDK_SECTOR2BYTE(pExtent->uSectorRGD), pvBuf,
-                                    pExtent->cGDEntries * VMDK_GRAIN_DIR_ENTRY_SIZE);
-        if (RT_FAILURE(rc))
-            break;
+    // rewrite the redundant grain table
+    if (RT_SUCCESS(rc))
+    {
+        size_t cbGT = pExtent->cGTEntries * sizeof(uint32_t);
+        size_t cbGTBuffers = cbGT; /* Start with space for one GT. */
 
-        tmpBuf = (int *)pvBuf;
+        uint32_t *pTmpGT1 = (uint32_t *)RTMemAlloc(cbGTBuffers);
 
-        for (uint32_t i = 0; i < pExtent->cGDEntries; i++)
+        uint32_t uGTMin = pExtent->pRGD[0] + VMDK_BYTE2SECTOR(cbNewGDRounded - cbOldGDRounded); //inclusive
+        uint32_t uGTMax = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded); //not inclusive
+
+        if (RT_UNLIKELY(!pTmpGT1))
+            rc = VERR_NO_MEMORY;
+        else
         {
-            tmpBuf[i] = tmpBuf[i] + cDirSectorDiff;
-            pExtent->pRGD[i] = pExtent->pRGD[i] + cDirSectorDiff;
+            size_t i = pExtent->cGDEntries - 1;
+
+            /* Loop through all entries. */
+            do
+            {
+                // uint32_t uNewGTStart = pExtent->pRGD[i] + VMDK_BYTE2SECTOR(cbNewGDRounded - cbOldGDRounded);
+                uint32_t uNewGTStart = pExtent->uSectorRGD + VMDK_BYTE2SECTOR(cbNewGDRounded) + (i * sizeof(uint32_t));
+                uint32_t uOldGTStart = pExtent->pRGD[i];
+                size_t   cbGTRead = cbGT;
+
+                Assert(uNewGTStart < uGTMax && uNewGTStart >= uGTMin);
+
+                if (RT_SUCCESS(rc))
+                {
+                    rc = vdIfIoIntFileReadSync(pImage->pIfIo, pExtent->pFile->pStorage,
+                                            VMDK_SECTOR2BYTE(uOldGTStart),
+                                            pTmpGT1, cbGTRead);
+                    if (RT_FAILURE(rc))
+                    {
+                        rc = vdIfError(pImage->pIfError, rc, RT_SRC_POS,
+                                    N_("VMDK: error reading grain table in '%s'"), pExtent->pszFullname);
+                        break;
+                    }
+
+                    /* Write the grain to disk, moved down a bit. */
+                    rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
+                                                VMDK_SECTOR2BYTE(uNewGTStart),
+                                                pTmpGT1, cbGTRead);
+
+                    if (RT_FAILURE(rc))
+                    {
+                        rc = vdIfError(pImage->pIfError, rc, RT_SRC_POS,
+                                    N_("VMDK: error writing grain table in '%s'"), pExtent->pszFullname);
+                        break;
+                    }
+                }
+            } while (i-- > 0);
         }
+    }
 
-        rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                    VMDK_SECTOR2BYTE(pExtent->uSectorRGD), pvBuf,
-                                    pExtent->cGDEntries * VMDK_GRAIN_DIR_ENTRY_SIZE);
-        if (RT_FAILURE(rc))
-            break;
-
-        pExtent->uSectorRGD = pExtent->uSectorRGD;
-        pExtent->cOverheadSectors += cOverheadSectorDiff;
-
-    } while (0);
-
-    RTMemFree(pvBuf);
-    pvBuf = NULL;
-
-    pExtent->cGDEntries = cNewDirEntries;
-
-    // Allocate additional grain dir
-    pExtent->pGD = (uint32_t *) RTMemReallocZ(pExtent->pGD, pExtent->cGDEntries * sizeof(uint32_t), cbNewGD);
-    if (RT_LIKELY(pExtent->pGD))
+    // rewrite redundant grain directory
+    if (RT_SUCCESS(rc))
     {
         if (pExtent->uSectorRGD)
         {
-            pExtent->pRGD = (uint32_t *)RTMemReallocZ(pExtent->pRGD, pExtent->cGDEntries * sizeof(uint32_t), cbNewGD);
+            pExtent->pRGD = (uint32_t *)RTMemReallocZ(pExtent->pRGD, cbOldGDRounded, cbNewGD);
             if (RT_UNLIKELY(!pExtent->pRGD))
-                return VERR_NO_MEMORY;
+                rc = VERR_NO_MEMORY;
+        }
+
+        if (RT_SUCCESS(rc) && pExtent->pRGD)
+        {
+            // uSectorRGD doesn't get changed unless the descriptor changes (which it shouldn't on resize)
+            uint32_t uGTSectorLE;
+            uint32_t uOffsetSectors = pExtent->uSectorRGD + VMDK_BYTE2SECTOR(cbNewGDRounded);
+            for (uint32_t i = 0; i < cNewGDEntries; i++)
+            {
+                pExtent->pRGD[i] = uOffsetSectors;
+                uGTSectorLE = RT_H2LE_U64(uOffsetSectors);
+                /* Write the redundant grain directory entry to disk. */
+                rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
+                                            VMDK_SECTOR2BYTE(pExtent->uSectorRGD) + i * sizeof(uGTSectorLE),
+                                            &uGTSectorLE, sizeof(uGTSectorLE));
+                if (RT_FAILURE(rc))
+                {
+                    rc = vdIfError(pImage->pIfError, rc, RT_SRC_POS, N_("VMDK: cannot write new redundant grain directory entry in '%s'"), pExtent->pszFullname);
+                    break;
+                }
+                uOffsetSectors += VMDK_BYTE2SECTOR(pExtent->cGTEntries * sizeof(uint32_t));
+            }
         }
     }
-    else
-        return VERR_NO_MEMORY;
 
-
-    uint32_t uTmpDirVal = pExtent->pGD[cOldGDEntries - 1] + VMDK_GRAIN_DIR_ENTRY_SIZE;
-    for (uint32_t i = cOldGDEntries; i < pExtent->cGDEntries; i++)
+    // zero out new redundant grain tables
+    if (RT_SUCCESS(rc))
     {
-        pExtent->pGD[i] = uTmpDirVal;
+        size_t cbGTDataTmp = pExtent->cGTEntries * sizeof(uint32_t);
+        uint32_t *paGTDataTmp = (uint32_t *)RTMemTmpAllocZ(cbGTDataTmp);
 
-        rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                    VMDK_SECTOR2BYTE(uTmpDirVal), &g_abRTZero4K[0],
-                                    VMDK_GRAIN_TABLE_SIZE);
+        if (RT_UNLIKELY(!paGTDataTmp))
+            rc = VERR_NO_MEMORY;
+        else
+        {
+            memset(paGTDataTmp, '\0', cbGTDataTmp);
 
-        if (RT_FAILURE(rc))
-            return rc;
+            for (uint32_t i = pExtent->cGDEntries; i < cNewGDEntries; i++)
+            {
+                uint32_t uGTSector = pExtent->pRGD[i];
+                uint32_t uGTSectorLE = RT_H2LE_U64(uGTSector);
+                /* Write the zero'd grain to disk */
+                rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
+                                            VMDK_SECTOR2BYTE(uGTSectorLE),
+                                            paGTDataTmp, cbGTDataTmp);
 
-        uTmpDirVal += VMDK_GRAIN_DIR_ENTRY_SIZE;
+                if (RT_FAILURE(rc))
+                {
+                    rc = vdIfError(pImage->pIfError, rc, RT_SRC_POS, N_("VMDK: cannot write zero'd grain in '%s'"), pExtent->pszFullname);
+                    break;
+                }
+            }
+
+            // finalize metadata
+            pExtent->uSectorGD = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded);
+            pExtent->cGDEntries = (cSectorsNew + pExtent->cSectorsPerGDE - 1) / pExtent->cSectorsPerGDE;
+        }
     }
-
-    uint32_t uRTmpDirVal = pExtent->pRGD[cOldGDEntries - 1] + VMDK_GRAIN_DIR_ENTRY_SIZE;
-    for (uint32_t i = cOldGDEntries; i < pExtent->cGDEntries; i++)
-    {
-        pExtent->pRGD[i] = uRTmpDirVal;
-
-        rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                    VMDK_SECTOR2BYTE(uRTmpDirVal), &g_abRTZero4K[0],
-                                    VMDK_GRAIN_TABLE_SIZE);
-
-        if (RT_FAILURE(rc))
-            return rc;
-
-        uRTmpDirVal += VMDK_GRAIN_DIR_ENTRY_SIZE;
-    }
-
-    rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                VMDK_SECTOR2BYTE(pExtent->uSectorGD), pExtent->pGD,
-                                pExtent->cGDEntries * VMDK_GRAIN_DIR_ENTRY_SIZE);
-    if (RT_FAILURE(rc))
-        return rc;
-
-    rc = vdIfIoIntFileWriteSync(pImage->pIfIo, pExtent->pFile->pStorage,
-                                VMDK_SECTOR2BYTE(pExtent->uSectorRGD), pExtent->pRGD,
-                                pExtent->cGDEntries * VMDK_GRAIN_DIR_ENTRY_SIZE);
-    if (RT_FAILURE(rc))
-        return rc;
-
-    rc = vmdkReplaceExtentSize(pImage, pExtent, pImage->Descriptor.uFirstExtent + pExtent->uExtent,
-                                pExtent->cNominalSectors, cSectorsNew);
-    if (RT_FAILURE(rc))
-        return rc;
 
     return rc;
 }
@@ -8846,18 +8819,18 @@ static DECLCALLBACK(int) vmdkResize(void *pBackendData, uint64_t cbSize,
 {
     RT_NOREF5(uPercentStart, uPercentSpan, pVDIfsDisk, pVDIfsImage, pVDIfsOperation);
 
-    // Establish variables and objects needed
     int rc = VINF_SUCCESS;
     PVMDKIMAGE pImage = (PVMDKIMAGE)pBackendData;
     unsigned uImageFlags = pImage->uImageFlags;
     PVMDKEXTENT pExtent = &pImage->pExtents[0];
     pExtent->fMetaDirty = true;
 
-    uint64_t cSectorsNew = cbSize / VMDK_SECTOR_SIZE;   /** < New number of sectors in the image after the resize */
+    uint64_t cSectorsNew = cbSize / VMDK_SECTOR_SIZE;
     if (cbSize % VMDK_SECTOR_SIZE)
         cSectorsNew++;
+    cSectorsNew = VMDK_BYTE2SECTOR(RT_ALIGN_64(cbSize, _64K));
 
-    uint64_t cSectorsOld = pImage->cbSize / VMDK_SECTOR_SIZE; /** < Number of sectors before the resize. Only for FLAT images. */
+    uint64_t cSectorsOld = pImage->cbSize / VMDK_SECTOR_SIZE;
     if (pImage->cbSize % VMDK_SECTOR_SIZE)
         cSectorsOld++;
     unsigned cExtents = pImage->cExtents;
@@ -8877,7 +8850,7 @@ static DECLCALLBACK(int) vmdkResize(void *pBackendData, uint64_t cbSize,
         rc = VERR_VD_SHRINK_NOT_SUPPORTED;
     else if (cbSize > pImage->cbSize)
     {
-        /**
+        /*
          * monolithicFlat. FIXED flag and not split up into 2 GB parts.
          */
         if ((uImageFlags & VD_IMAGE_FLAGS_FIXED) && !(uImageFlags & VD_VMDK_IMAGE_FLAGS_SPLIT_2G))
@@ -8897,7 +8870,7 @@ static DECLCALLBACK(int) vmdkResize(void *pBackendData, uint64_t cbSize,
                 return rc;
         }
 
-        /**
+        /*
          * twoGbMaxExtentFlat. FIXED flag and SPLIT into 2 GB parts.
          */
         if ((uImageFlags & VD_IMAGE_FLAGS_FIXED) && (uImageFlags & VD_VMDK_IMAGE_FLAGS_SPLIT_2G))
@@ -8925,7 +8898,7 @@ static DECLCALLBACK(int) vmdkResize(void *pBackendData, uint64_t cbSize,
                 if (RT_FAILURE(rc))
                     return rc;
             }
-            //** Need more extent files to handle all the requested space. */
+            /* Need more extent files to handle all the requested space. */
             else
             {
                 if (fSpaceAvailible)
@@ -8972,16 +8945,14 @@ static DECLCALLBACK(int) vmdkResize(void *pBackendData, uint64_t cbSize,
             }
         }
 
-        /**
+        /*
          * monolithicSparse.
          */
         if (pExtent->enmType == VMDKETYPE_HOSTED_SPARSE && !(uImageFlags & VD_VMDK_IMAGE_FLAGS_SPLIT_2G))
         {
             // 1. Calculate sectors needed for new overhead.
-
             uint64_t cbNewOverhead = vmdkGetNewOverhead(pExtent, cSectorsNew);
-            uint64_t cNewOverheadSectors = VMDK_BYTE2SECTOR(cbNewOverhead);
-            uint64_t cOverheadSectorDiff = cNewOverheadSectors - pExtent->cOverheadSectors;
+            uint64_t cOverheadSectorDiff = VMDK_BYTE2SECTOR(cbNewOverhead) - pExtent->cOverheadSectors;
 
             // 2. Relocate sectors to make room for new GD/GT, update entries in GD/GT
             if (cOverheadSectorDiff > 0)
@@ -8990,22 +8961,19 @@ static DECLCALLBACK(int) vmdkResize(void *pBackendData, uint64_t cbSize,
                 {
                     /* Do the relocation. */
                     LogFlow(("Relocating VMDK sectors\n"));
-                    rc = vmdkRelocateSectorsForSparseResize(pImage, pExtent, cSectorsNew);
-                    if (RT_FAILURE(rc))
-                        return rc;
-
-                    rc = vmdkFlushImage(pImage, NULL);
-                    if (RT_FAILURE(rc))
-                        return rc;
+                    rc = vmdkRelocateSectorsForSparseResize(pImage, pExtent, cSectorsNew, VMDK_BYTE2SECTOR(cbNewOverhead));
                 }
 
-                rc = vmdkResizeSparseMeta(pImage, pExtent, cSectorsNew);
-                if (RT_FAILURE(rc))
-                    return rc;
+                if (RT_SUCCESS(rc))
+                    rc = vmdkResizeSparseMeta(pImage, pExtent, cSectorsNew);
+
+                /** @todo r=jack: only supports single extent */
+                if (RT_SUCCESS(rc))
+                    rc = vmdkReplaceExtentSize(pImage, pExtent, pImage->Descriptor.uFirstExtent, cSectorsOld, cSectorsNew);
             }
         }
 
-        /**
+        /*
          * twoGbSparseExtent
          */
         if (pExtent->enmType == VMDKETYPE_HOSTED_SPARSE && (uImageFlags & VD_VMDK_IMAGE_FLAGS_SPLIT_2G))
@@ -9021,7 +8989,7 @@ static DECLCALLBACK(int) vmdkResize(void *pBackendData, uint64_t cbSize,
             if (fSpaceAvailible && cSectorsNeeded + cLastExtentRemSectors <= VMDK_BYTE2SECTOR(VMDK_2G_SPLIT_SIZE))
             {
                 pExtent = &pImage->pExtents[cExtents - 1];
-                rc = vmdkRelocateSectorsForSparseResize(pImage, pExtent, cSectorsNeeded + cLastExtentRemSectors);
+                rc = vmdkRelocateSectorsForSparseResize(pImage, pExtent, cSectorsNeeded + cLastExtentRemSectors, vmdkGetNewOverhead(pExtent, cSectorsNeeded + cLastExtentRemSectors));
                 if (RT_FAILURE(rc))
                     return rc;
 
@@ -9038,7 +9006,7 @@ static DECLCALLBACK(int) vmdkResize(void *pBackendData, uint64_t cbSize,
                 if (fSpaceAvailible)
                 {
                     pExtent = &pImage->pExtents[cExtents - 1];
-                    rc = vmdkRelocateSectorsForSparseResize(pImage, pExtent, VMDK_BYTE2SECTOR(VMDK_2G_SPLIT_SIZE));
+                    rc = vmdkRelocateSectorsForSparseResize(pImage, pExtent, VMDK_BYTE2SECTOR(VMDK_2G_SPLIT_SIZE), vmdkGetNewOverhead(pExtent, VMDK_BYTE2SECTOR(VMDK_2G_SPLIT_SIZE)));
                     if (RT_FAILURE(rc))
                         return rc;
 
@@ -9066,10 +9034,6 @@ static DECLCALLBACK(int) vmdkResize(void *pBackendData, uint64_t cbSize,
                         return rc;
 
                     pExtent = &pImage->pExtents[i];
-
-                    rc = vmdkFlushImage(pImage, NULL);
-                    if (RT_FAILURE(rc))
-                        return rc;
 
                     pExtent->cSectors = VMDK_BYTE2SECTOR(VMDK_2G_SPLIT_SIZE);
                     cSectorsNeeded -= VMDK_BYTE2SECTOR(VMDK_2G_SPLIT_SIZE);
@@ -9104,9 +9068,7 @@ static DECLCALLBACK(int) vmdkResize(void *pBackendData, uint64_t cbSize,
         }
 
         /* Update header information in base image file. */
-        pImage->Descriptor.fDirty = true;
         rc = vmdkWriteDescriptor(pImage, NULL);
-
         if (RT_SUCCESS(rc))
             rc = vmdkFlushImage(pImage, NULL);
     }
