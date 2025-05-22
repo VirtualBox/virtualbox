@@ -1,4 +1,4 @@
-/* $Id: UIActionPool.cpp 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIActionPool.cpp 168963 2025-05-22 12:05:00Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIActionPool class implementation.
  */
@@ -3015,7 +3015,7 @@ protected:
     /** Handles translation event. */
     virtual void retranslateUi() RT_OVERRIDE
     {
-        setName(QApplication::translate("UIActionPool", "&Activity"));
+        setName(QApplication::translate("UIActionPool", "&Resource Use"));
     }
 };
 
@@ -3081,10 +3081,10 @@ protected:
     /** Handles translation event. */
     virtual void retranslateUi() RT_OVERRIDE
     {
-        setName(QApplication::translate("UIActionPool", "&Activity Overview..."));
+        setName(QApplication::translate("UIActionPool", "&Resources..."));
         setShortcutScope(QApplication::translate("UIActionPool", "Activity Monitor"));
-        setStatusTip(QApplication::translate("UIActionPool", "Navigate to the vm activity overview"));
-        setToolTip(  QApplication::translate("UIActionPool", "Navigate to VM Activity Overview")
+        setStatusTip(QApplication::translate("UIActionPool", "Navigate to the global resources view"));
+        setToolTip(  QApplication::translate("UIActionPool", "Navigate to the Global Resources View")
                    + (shortcut().isEmpty() ? QString() : QString(" (%1)").arg(shortcut().toString())));
     }
 };

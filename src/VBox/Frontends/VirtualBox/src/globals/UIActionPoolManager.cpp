@@ -1,4 +1,4 @@
-/* $Id: UIActionPoolManager.cpp 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIActionPoolManager.cpp 168963 2025-05-22 12:05:00Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIActionPoolManager class implementation.
  */
@@ -420,7 +420,7 @@ protected:
     /** Handles translation event. */
     virtual void retranslateUi() RT_OVERRIDE
     {
-        setName(QApplication::translate("UIActionPool", "&Resource Usage"));
+        setName(QApplication::translate("UIActionPool", "&Resources"));
         setStatusTip(QApplication::translate("UIActionPool", "Open the VM Activity Overview"));
     }
 };
@@ -3545,10 +3545,10 @@ protected:
     /** Handles translation event. */
     virtual void retranslateUi() RT_OVERRIDE
     {
-        setName(QApplication::translate("UIActionPool", "VM Activity"));
-        setShortcutScope(QApplication::translate("UIActionPool", "VM Activity Overview"));
-        setStatusTip(QApplication::translate("UIActionPool", "View activity for selected virtual machine"));
-        setToolTip(  QApplication::translate("UIActionPool", "View activity for selected virtual machine")
+        setName(QApplication::translate("UIActionPool", "Resource Use"));
+        setShortcutScope(QApplication::translate("UIActionPool", "Resources"));
+        setStatusTip(QApplication::translate("UIActionPool", "View resource use of the selected virtual machine"));
+        setToolTip(  QApplication::translate("UIActionPool", "View Resource Use of the Selected Virtual Machine")
                    + (shortcut().isEmpty() ? QString() : QString(" (%1)").arg(shortcut().toString())));
     }
 };
