@@ -1,4 +1,4 @@
-/* $Id: VMDK.cpp 168958 2025-05-22 07:14:30Z jack.doherty@oracle.com $ */
+/* $Id: VMDK.cpp 168964 2025-05-22 13:35:21Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VMDK disk image, core code.
  */
@@ -8582,7 +8582,7 @@ static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t
         if (!pTmpGT1)
             return VERR_NO_MEMORY;
 
-#ifdef DEBUG
+#ifdef RT_STRICT
         uint64_t uGTMin = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded) + VMDK_BYTE2SECTOR(cbNewGDRounded); //inclusive
         uint64_t uGTMax = pExtent->cOverheadSectors; //not inclusive
 #endif
@@ -8693,7 +8693,7 @@ static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t
 
         uint32_t *pTmpGT1 = (uint32_t *)RTMemAlloc(cbGTBuffers);
 
-#ifdef DEBUG
+#ifdef RT_STRICT
         uint64_t uGTMin = pExtent->pRGD[0] + VMDK_BYTE2SECTOR(cbNewGDRounded - cbOldGDRounded); //inclusive
         uint64_t uGTMax = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded); //not inclusive
 #endif
