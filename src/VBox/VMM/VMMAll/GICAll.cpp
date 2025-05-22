@@ -1,4 +1,4 @@
-/* $Id: GICAll.cpp 168959 2025-05-22 09:01:18Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICAll.cpp 168960 2025-05-22 09:06:17Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC) - All Contexts.
  */
@@ -431,8 +431,6 @@ static uint16_t gicReDistGetIndexFromIntId(uint16_t uIntId)
 static void gicUpdateInterruptFF(PVMCPUCC pVCpu, bool fIrq, bool fFiq)
 {
     LogFlowFunc(("pVCpu=%p{.idCpu=%u} fIrq=%RTbool fFiq=%RTbool\n", pVCpu, pVCpu->idCpu, fIrq, fFiq));
-    Assert(fFiq == false);
-
     /** @todo Could be faster if the caller directly supplied set and clear masks. */
     if (fIrq)
     {
@@ -755,7 +753,6 @@ static void gicDistHasIrqPendingForVCpu(PCGICDEV pGicDev, PCVMCPUCC pVCpu, VMCPU
             {
                 *pfFiq = fIsGroup0Enabled && RT_BOOL(Intr.fIntrGroupMask & GIC_INTR_GROUP_0);
                 *pfIrq = fIsGroup1Enabled && RT_BOOL(Intr.fIntrGroupMask & (GIC_INTR_GROUP_1S | GIC_INTR_GROUP_1NS));
-                Assert(*pfFiq == false);
                 return;
             }
         }
@@ -1546,7 +1543,6 @@ static VBOXSTRICTRC gicReDistWriteIntrSetActiveReg(PCGICDEV pGicDev, PVMCPUCC pV
     Assert(idxReg < RT_ELEMENTS(pGicCpu->bmIntrActive));
     pGicCpu->bmIntrActive[idxReg] |= uValue;
     LogFlowFunc(("idxReg=%#x written %#x\n", idxReg, pGicCpu->bmIntrActive[idxReg]));
-    AssertMsgFailed(("here idxReg=%#x val=%#x\n", uValue));
     return gicReDistUpdateIrqState(pGicDev, pVCpu);
 }
 
@@ -3037,7 +3033,6 @@ static DECLCALLBACK(VBOXSTRICTRC) gicWriteSysReg(PVMCPUCC pVCpu, uint32_t u32Reg
                 /* SGIs and PPIs. */
                 AssertCompile(GIC_INTID_RANGE_PPI_LAST < 8 * sizeof(pGicDev->bmIntrActive[0]));
                 Assert(pGicDev->fAffRoutingEnabled);
-                Assert(pGicCpu->bmIntrActive[0] & RT_BIT_32(uIntId)); /* Unless cleared by GICR_ICACTIVER this should succeed. */
                 pGicCpu->bmIntrActive[0] &= ~RT_BIT_32(uIntId);
             }
             else if (uIntId <= GIC_INTID_RANGE_SPI_LAST)
@@ -3045,7 +3040,6 @@ static DECLCALLBACK(VBOXSTRICTRC) gicWriteSysReg(PVMCPUCC pVCpu, uint32_t u32Reg
                 /* SPIs. */
                 uint16_t const idxIntr = /*gicDistGetIndexFromIntId*/(uIntId);
                 AssertReturn(idxIntr < sizeof(pGicDev->bmIntrActive) * 8, VERR_BUFFER_OVERFLOW);
-                Assert(ASMBitTest(&pGicDev->bmIntrActive[0], idxIntr)); /* Unless cleared by GICD_ICACTIVER this should succeed. */
                 ASMBitClear(&pGicDev->bmIntrActive[0], idxIntr);
                 fIsRedistIntId = false;
             }
