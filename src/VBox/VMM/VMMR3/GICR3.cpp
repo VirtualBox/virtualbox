@@ -1,4 +1,4 @@
-/* $Id: GICR3.cpp 168922 2025-05-19 09:18:22Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICR3.cpp 168959 2025-05-22 09:01:18Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC).
  */
@@ -51,7 +51,7 @@
 *   Defined Constants And Macros                                                                                                 *
 *********************************************************************************************************************************/
 /** GIC saved state version. */
-#define GIC_SAVED_STATE_VERSION                     9
+#define GIC_SAVED_STATE_VERSION                     10
 
 # define GIC_SYSREGRANGE(a_uFirst, a_uLast, a_szName) \
     { (a_uFirst), (a_uLast), kCpumSysRegRdFn_GicIcc, kCpumSysRegWrFn_GicIcc, 0, 0, 0, 0, 0, 0, a_szName, { 0 }, { 0 }, { 0 }, { 0 } }
@@ -158,6 +158,7 @@ static DECLCALLBACK(void) gicR3DbgInfoDist(PVM pVM, PCDBGFINFOHLP pHlp, const ch
     GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrEnabled", pGicDev->bmIntrEnabled);
     GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrPending", pGicDev->bmIntrPending);
     GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrActive",  pGicDev->bmIntrActive);
+    GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrLevel",   pGicDev->bmIntrLevel);
 #undef GIC_DBGFINFO_DIST_INTR_BITMAP
 
     /* Interrupt config (edge-triggered or level-sensitive). */
@@ -255,12 +256,14 @@ static DECLCALLBACK(void) gicR3DbgInfoReDist(PVM pVM, PCDBGFINFOHLP pHlp, const 
     AssertCompile(RT_ELEMENTS(pGicCpu->bmIntrEnabled) >= 3);
     AssertCompile(RT_ELEMENTS(pGicCpu->bmIntrPending) >= 3);
     AssertCompile(RT_ELEMENTS(pGicCpu->bmIntrActive)  >= 3);
+    AssertCompile(RT_ELEMENTS(pGicCpu->bmIntrLevel)  >= 3);
 
 #define GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(a_bmIntr) pGicCpu->a_bmIntr[0], pGicCpu->a_bmIntr[1], pGicCpu->a_bmIntr[2]
     pHlp->pfnPrintf(pHlp, "  bmIntrGroup[0..2]   = %#010x %#010x %#010x\n", GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(bmIntrGroup));
     pHlp->pfnPrintf(pHlp, "  bmIntrEnabled[0..2] = %#010x %#010x %#010x\n", GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(bmIntrEnabled));
     pHlp->pfnPrintf(pHlp, "  bmIntrPending[0..2] = %#010x %#010x %#010x\n", GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(bmIntrPending));
     pHlp->pfnPrintf(pHlp, "  bmIntrActive[0..2]  = %#010x %#010x %#010x\n", GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(bmIntrActive));
+    pHlp->pfnPrintf(pHlp, "  bmIntrLevel[0..2]   = %#010x %#010x %#010x\n", GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(bmIntrLevel));
 #undef GIC_DBGFINFO_REDIST_INTR_BITMAPS
 
     /* Interrupt config (edge-triggered or level-sensitive). */
@@ -319,6 +322,20 @@ static DECLCALLBACK(void) gicR3DbgInfoReDist(PVM pVM, PCDBGFINFOHLP pHlp, const 
                                   pGicCpu->abRunningPriorities[i + 10], pGicCpu->abRunningPriorities[i + 11],
                                   pGicCpu->abRunningPriorities[i + 12], pGicCpu->abRunningPriorities[i + 13],
                                   pGicCpu->abRunningPriorities[i + 14], pGicCpu->abRunningPriorities[i + 15]);
+
+        for (uint32_t i = 0; i < cPriorities; i += 16)
+            pHlp->pfnPrintf(pHlp, "    [%3u..%-3u] = %5u %5u %5u %5u %5u %5u %5u %5u"
+                                  "    [%3u..%-3u] = %5u %5u %5u %5u %5u %5u %5u %5u\n",
+                                  i,                                    i + 7,
+                                  pGicCpu->abRunningIntId[i],      pGicCpu->abRunningIntId[i + 1],
+                                  pGicCpu->abRunningIntId[i + 2],  pGicCpu->abRunningIntId[i + 3],
+                                  pGicCpu->abRunningIntId[i + 4],  pGicCpu->abRunningIntId[i + 5],
+                                  pGicCpu->abRunningIntId[i + 6],  pGicCpu->abRunningIntId[i + 7],
+                                  i + 8,                                i + 15,
+                                  pGicCpu->abRunningIntId[i + 8],  pGicCpu->abRunningIntId[i + 9],
+                                  pGicCpu->abRunningIntId[i + 10], pGicCpu->abRunningIntId[i + 11],
+                                  pGicCpu->abRunningIntId[i + 12], pGicCpu->abRunningIntId[i + 13],
+                                  pGicCpu->abRunningIntId[i + 14], pGicCpu->abRunningIntId[i + 15]);
     }
 
     AssertCompile(RT_ELEMENTS(pGicCpu->bmActivePriorityGroup0) >= 4);
@@ -549,6 +566,7 @@ static DECLCALLBACK(int) gicR3SaveExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM)
     pHlp->pfnSSMPutMem(pSSM,  &pGicDev->bmIntrEnabled[0],     sizeof(pGicDev->bmIntrEnabled));
     pHlp->pfnSSMPutMem(pSSM,  &pGicDev->bmIntrPending[0],     sizeof(pGicDev->bmIntrPending));
     pHlp->pfnSSMPutMem(pSSM,  &pGicDev->bmIntrActive[0],      sizeof(pGicDev->bmIntrActive));
+    pHlp->pfnSSMPutMem(pSSM,  &pGicDev->bmIntrLevel[0],       sizeof(pGicDev->bmIntrLevel));
     pHlp->pfnSSMPutMem(pSSM,  &pGicDev->abIntrPriority[0],    sizeof(pGicDev->abIntrPriority));
     pHlp->pfnSSMPutMem(pSSM,  &pGicDev->au32IntrRouting[0],   sizeof(pGicDev->au32IntrRouting));
     pHlp->pfnSSMPutMem(pSSM,  &pGicDev->bmIntrRoutingMode[0], sizeof(pGicDev->bmIntrRoutingMode));
@@ -578,6 +596,7 @@ static DECLCALLBACK(int) gicR3SaveExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM)
         pHlp->pfnSSMPutMem(pSSM, &pGicCpu->bmIntrEnabled[0],  sizeof(pGicCpu->bmIntrEnabled));
         pHlp->pfnSSMPutMem(pSSM, &pGicCpu->bmIntrPending[0],  sizeof(pGicCpu->bmIntrPending));
         pHlp->pfnSSMPutMem(pSSM, &pGicCpu->bmIntrActive[0],   sizeof(pGicCpu->bmIntrActive));
+        pHlp->pfnSSMPutMem(pSSM, &pGicCpu->bmIntrLevel[0],    sizeof(pGicCpu->bmIntrLevel));
         pHlp->pfnSSMPutMem(pSSM, &pGicCpu->abIntrPriority[0], sizeof(pGicCpu->abIntrPriority));
 
         /* ICC system register state. */
@@ -649,6 +668,7 @@ static DECLCALLBACK(int) gicR3LoadExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, uint
     pHlp->pfnSSMGetMem(pSSM,  &pGicDev->bmIntrEnabled[0],     sizeof(pGicDev->bmIntrEnabled));
     pHlp->pfnSSMGetMem(pSSM,  &pGicDev->bmIntrPending[0],     sizeof(pGicDev->bmIntrPending));
     pHlp->pfnSSMGetMem(pSSM,  &pGicDev->bmIntrActive[0],      sizeof(pGicDev->bmIntrActive));
+    pHlp->pfnSSMGetMem(pSSM,  &pGicDev->bmIntrLevel[0],       sizeof(pGicDev->bmIntrLevel));
     pHlp->pfnSSMGetMem(pSSM,  &pGicDev->abIntrPriority[0],    sizeof(pGicDev->abIntrPriority));
     pHlp->pfnSSMGetMem(pSSM,  &pGicDev->au32IntrRouting[0],   sizeof(pGicDev->au32IntrRouting));
     pHlp->pfnSSMGetMem(pSSM,  &pGicDev->bmIntrRoutingMode[0], sizeof(pGicDev->bmIntrRoutingMode));
@@ -693,6 +713,7 @@ static DECLCALLBACK(int) gicR3LoadExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, uint
         pHlp->pfnSSMGetMem(pSSM, &pGicCpu->bmIntrEnabled[0],  sizeof(pGicCpu->bmIntrEnabled));
         pHlp->pfnSSMGetMem(pSSM, &pGicCpu->bmIntrPending[0],  sizeof(pGicCpu->bmIntrPending));
         pHlp->pfnSSMGetMem(pSSM, &pGicCpu->bmIntrActive[0],   sizeof(pGicCpu->bmIntrActive));
+        pHlp->pfnSSMGetMem(pSSM, &pGicCpu->bmIntrLevel[0],    sizeof(pGicCpu->bmIntrLevel));
         pHlp->pfnSSMGetMem(pSSM, &pGicCpu->abIntrPriority[0], sizeof(pGicCpu->abIntrPriority));
 
         /* ICC system register state. */

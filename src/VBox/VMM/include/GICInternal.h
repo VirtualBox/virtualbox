@@ -1,4 +1,4 @@
-/* $Id: GICInternal.h 168922 2025-05-19 09:18:22Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICInternal.h 168959 2025-05-22 09:01:18Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC).
  */
@@ -161,6 +161,8 @@ typedef struct GICDEV
     uint32_t                    bmIntrPending[64];
     /** Interrupt active bitmap. */
     uint32_t                    bmIntrActive[64];
+    /** Interrupt line-level bitmap. */
+    uint32_t                    bmIntrLevel[64];
     /** Interrupt priorities. */
     uint8_t                     abIntrPriority[2048];
     /** Interrupt routing info. */
@@ -273,6 +275,8 @@ typedef struct GICCPU
     uint32_t                    bmIntrPending[3];
     /** Interrupt active bitmap. */
     uint32_t                    bmIntrActive[3];
+    /** Interrupt line-level bitmap. */
+    uint32_t                    bmIntrLevel[64];
     /** Interrupt priorities. */
     uint8_t                     abIntrPriority[96];
     /** @} */
@@ -299,6 +303,8 @@ typedef struct GICCPU
     bool                        fIntrGroup0Enabled;
     /** Flag whether group 1 interrupts are enabled. */
     bool                        fIntrGroup1Enabled;
+    /** The INTID of the running interrupts (for debugging). */
+    uint16_t                    abRunningIntId[256];
     /** @} */
 
     /** @name LPIs.
