@@ -1,4 +1,4 @@
-/* $Id: VMDK.cpp 168957 2025-05-22 07:03:42Z jack.doherty@oracle.com $ */
+/* $Id: VMDK.cpp 168958 2025-05-22 07:14:30Z jack.doherty@oracle.com $ */
 /** @file
  * VMDK disk image, core code.
  */
@@ -8582,8 +8582,10 @@ static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t
         if (!pTmpGT1)
             return VERR_NO_MEMORY;
 
+#ifdef DEBUG
         uint64_t uGTMin = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded) + VMDK_BYTE2SECTOR(cbNewGDRounded); //inclusive
         uint64_t uGTMax = pExtent->cOverheadSectors; //not inclusive
+#endif
 
         size_t i = pExtent->cGDEntries - 1;
         /* Loop through all entries. */
@@ -8691,8 +8693,10 @@ static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t
 
         uint32_t *pTmpGT1 = (uint32_t *)RTMemAlloc(cbGTBuffers);
 
+#ifdef DEBUG
         uint64_t uGTMin = pExtent->pRGD[0] + VMDK_BYTE2SECTOR(cbNewGDRounded - cbOldGDRounded); //inclusive
         uint64_t uGTMax = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded); //not inclusive
+#endif
 
         if (RT_UNLIKELY(!pTmpGT1))
             rc = VERR_NO_MEMORY;
@@ -8751,7 +8755,7 @@ static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t
         {
             // uSectorRGD doesn't get changed unless the descriptor changes (which it shouldn't on resize)
             uint32_t uGTSectorLE;
-            uint32_t uOffsetSectors = pExtent->uSectorRGD + VMDK_BYTE2SECTOR(cbNewGDRounded);
+            uint64_t uOffsetSectors = pExtent->uSectorRGD + VMDK_BYTE2SECTOR(cbNewGDRounded);
             for (size_t i = 0; i < cNewGDEntries; i++)
             {
                 pExtent->pRGD[i] = uOffsetSectors;
