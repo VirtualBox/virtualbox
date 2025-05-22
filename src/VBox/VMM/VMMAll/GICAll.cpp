@@ -1,4 +1,4 @@
-/* $Id: GICAll.cpp 168960 2025-05-22 09:06:17Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICAll.cpp 168961 2025-05-22 09:31:47Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC) - All Contexts.
  */
@@ -693,23 +693,27 @@ static void gicReDistHasIrqPending(PCGICCPU pGicCpu, bool *pfIrq, bool *pfFiq)
     bool const fIsGroup0Enabled = pGicCpu->fIntrGroup0Enabled;
     Assert(!fIsGroup0Enabled);
 
-    LogFlowFunc(("fIsGroup0Enabled=%RTbool fIsGroup1Enabled=%RTbool\n", fIsGroup0Enabled, fIsGroup1Enabled));
-
-    /* Get the highest pending priority interrupt from the redistributor. */
-    GICINTR Intr;
-    uint32_t const fIntrGroupMask = (fIsGroup0Enabled ? GIC_INTR_GROUP_0 : 0)
-                                  | (fIsGroup1Enabled ? GIC_INTR_GROUP_1S | GIC_INTR_GROUP_1NS : 0);
-    gicReDistGetHighestPriorityPendingIntr(pGicCpu, fIntrGroupMask, &Intr);
-    if (Intr.uIntId != GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT)
+    /* Quick bailout if all interrupts are fully masked. */
+    if (pGicCpu->bIntrPriorityMask > 0)
     {
-        /* Check if it has sufficient priority to be signalled to the PE. */
-        bool const fGroup0 = RT_BOOL(fIntrGroupMask & GIC_INTR_GROUP_0);
-        bool const fSufficientPriority = gicReDistIsSufficientPriority(pGicCpu, Intr.bPriority, fGroup0);
-        if (fSufficientPriority)
+        LogFlowFunc(("fIsGroup0Enabled=%RTbool fIsGroup1Enabled=%RTbool\n", fIsGroup0Enabled, fIsGroup1Enabled));
+
+        /* Get the highest pending priority interrupt from the redistributor. */
+        GICINTR Intr;
+        uint32_t const fIntrGroupMask = (fIsGroup0Enabled ? GIC_INTR_GROUP_0 : 0)
+                                      | (fIsGroup1Enabled ? GIC_INTR_GROUP_1S | GIC_INTR_GROUP_1NS : 0);
+        gicReDistGetHighestPriorityPendingIntr(pGicCpu, fIntrGroupMask, &Intr);
+        if (Intr.uIntId != GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT)
         {
-            *pfFiq = fIsGroup0Enabled && RT_BOOL(Intr.fIntrGroupMask & GIC_INTR_GROUP_0);
-            *pfIrq = fIsGroup1Enabled && RT_BOOL(Intr.fIntrGroupMask & (GIC_INTR_GROUP_1S | GIC_INTR_GROUP_1NS));
-            return;
+            /* Check if it has sufficient priority to be signalled to the PE. */
+            bool const fGroup0 = RT_BOOL(fIntrGroupMask & GIC_INTR_GROUP_0);
+            bool const fSufficientPriority = gicReDistIsSufficientPriority(pGicCpu, Intr.bPriority, fGroup0);
+            if (fSufficientPriority)
+            {
+                *pfFiq = fIsGroup0Enabled && RT_BOOL(Intr.fIntrGroupMask & GIC_INTR_GROUP_0);
+                *pfIrq = fIsGroup1Enabled && RT_BOOL(Intr.fIntrGroupMask & (GIC_INTR_GROUP_1S | GIC_INTR_GROUP_1NS));
+                return;
+            }
         }
     }
 
@@ -734,26 +738,30 @@ static void gicDistHasIrqPendingForVCpu(PCGICDEV pGicDev, PCVMCPUCC pVCpu, VMCPU
     bool const fIsGroup0Enabled = pGicDev->fIntrGroup0Enabled;
     LogFlowFunc(("fIsGroup1Enabled=%RTbool fIsGroup0Enabled=%RTbool\n", fIsGroup1Enabled, fIsGroup0Enabled));
 
-    /* Get the highest pending priority interrupt from the distributor. */
-    GICINTR Intr;
-    uint32_t const fIntrGroupMask = (fIsGroup0Enabled ? GIC_INTR_GROUP_0 : 0)
-                                  | (fIsGroup1Enabled ? (GIC_INTR_GROUP_1S | GIC_INTR_GROUP_1NS) : 0);
-    gicDistGetHighestPriorityPendingIntr(pGicDev, fIntrGroupMask, &Intr);
-    if (Intr.uIntId != GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT)
+    /* Quick bailout if all interrupts are fully masked. */
+    PCGICCPU pGicCpu = VMCPU_TO_GICCPU(pVCpu);
+    if (pGicCpu->bIntrPriorityMask > 0)
     {
-        /* Check that the interrupt should be routed to the target VCPU. */
-        Assert(Intr.idxIntr < RT_ELEMENTS(pGicDev->au32IntrRouting));
-        if (pGicDev->au32IntrRouting[Intr.idxIntr] == idCpu)
+        /* Get the highest pending priority interrupt from the distributor. */
+        GICINTR Intr;
+        uint32_t const fIntrGroupMask = (fIsGroup0Enabled ? GIC_INTR_GROUP_0 : 0)
+                                      | (fIsGroup1Enabled ? (GIC_INTR_GROUP_1S | GIC_INTR_GROUP_1NS) : 0);
+        gicDistGetHighestPriorityPendingIntr(pGicDev, fIntrGroupMask, &Intr);
+        if (Intr.uIntId != GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT)
         {
-            /* Check if it has sufficient priority to be signalled to the PE. */
-            PCGICCPU   pGicCpu = VMCPU_TO_GICCPU(pVCpu);
-            bool const fGroup0 = RT_BOOL(fIntrGroupMask & GIC_INTR_GROUP_0);
-            bool const fSufficientPriority = gicReDistIsSufficientPriority(pGicCpu, Intr.bPriority, fGroup0);
-            if (fSufficientPriority)
+            /* Check that the interrupt should be routed to the target VCPU. */
+            Assert(Intr.idxIntr < RT_ELEMENTS(pGicDev->au32IntrRouting));
+            if (pGicDev->au32IntrRouting[Intr.idxIntr] == idCpu)
             {
-                *pfFiq = fIsGroup0Enabled && RT_BOOL(Intr.fIntrGroupMask & GIC_INTR_GROUP_0);
-                *pfIrq = fIsGroup1Enabled && RT_BOOL(Intr.fIntrGroupMask & (GIC_INTR_GROUP_1S | GIC_INTR_GROUP_1NS));
-                return;
+                /* Check if it has sufficient priority to be signalled to the PE. */
+                bool const fGroup0 = RT_BOOL(fIntrGroupMask & GIC_INTR_GROUP_0);
+                bool const fSufficientPriority = gicReDistIsSufficientPriority(pGicCpu, Intr.bPriority, fGroup0);
+                if (fSufficientPriority)
+                {
+                    *pfFiq = fIsGroup0Enabled && RT_BOOL(Intr.fIntrGroupMask & GIC_INTR_GROUP_0);
+                    *pfIrq = fIsGroup1Enabled && RT_BOOL(Intr.fIntrGroupMask & (GIC_INTR_GROUP_1S | GIC_INTR_GROUP_1NS));
+                    return;
+                }
             }
         }
     }
@@ -1687,45 +1695,59 @@ DECL_FORCE_INLINE(VMCPUID) gicGetCpuIdFromAffinity(uint8_t idCpuInterface, uint8
  */
 static uint16_t gicGetHighestPriorityPendingIntr(PCGICDEV pGicDev, PCGICCPU pGicCpu, uint32_t fIntrGroupMask, PGICINTR pIntr)
 {
-    GICINTR IntrRedist;
-    gicReDistGetHighestPriorityPendingIntr(pGicCpu, fIntrGroupMask, &IntrRedist);
-
-    GICINTR IntrDist;
-    gicDistGetHighestPriorityPendingIntr(pGicDev, fIntrGroupMask, &IntrDist);
-
-    /* Get the interrupt ID of the highest priority pending interrupt if any. */
-    PGICINTR pHighestIntr = IntrRedist.bPriority < IntrDist.bPriority ? &IntrRedist : &IntrDist;
-    uint16_t uIntId       = pHighestIntr->uIntId;
-
-    /* Check if it has sufficient priority to be signalled to the PE. */
-    if (uIntId != GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT)
+    /* Quick bailout if all interrupts are fully masked. */
+    uint16_t uIntId;
+    if (pGicCpu->bIntrPriorityMask > 0)
     {
-        bool const fGroup0 = RT_BOOL(fIntrGroupMask & GIC_INTR_GROUP_0);
-        bool const fSufficientPriority = gicReDistIsSufficientPriority(pGicCpu, pHighestIntr->bPriority, fGroup0);
-        if (!fSufficientPriority)
+        GICINTR IntrRedist;
+        gicReDistGetHighestPriorityPendingIntr(pGicCpu, fIntrGroupMask, &IntrRedist);
+
+        GICINTR IntrDist;
+        gicDistGetHighestPriorityPendingIntr(pGicDev, fIntrGroupMask, &IntrDist);
+
+        /* Get the interrupt ID of the highest priority pending interrupt if any. */
+        PGICINTR pHighestIntr = IntrRedist.bPriority < IntrDist.bPriority ? &IntrRedist : &IntrDist;
+        uIntId = pHighestIntr->uIntId;
+
+        /* Check if it has sufficient priority to be signalled to the PE. */
+        if (uIntId != GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT)
         {
-            uIntId = GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT;
-            pHighestIntr->uIntId    = uIntId;
-            pHighestIntr->idxIntr   = UINT16_MAX;
-            pHighestIntr->bPriority = GIC_IDLE_PRIORITY;
+            bool const fGroup0 = RT_BOOL(fIntrGroupMask & GIC_INTR_GROUP_0);
+            bool const fSufficientPriority = gicReDistIsSufficientPriority(pGicCpu, pHighestIntr->bPriority, fGroup0);
+            if (!fSufficientPriority)
+            {
+                uIntId = GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT;
+                pHighestIntr->uIntId    = uIntId;
+                pHighestIntr->idxIntr   = UINT16_MAX;
+                pHighestIntr->bPriority = GIC_IDLE_PRIORITY;
+                Assert(pHighestIntr->fIntrGroupMask == fIntrGroupMask);
+            }
+        }
+
+        /* Populate the pending interrupt data and we're done. */
+        if (pIntr)
+            *pIntr = *pHighestIntr;
+    }
+    else
+    {
+        uIntId = GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT;
+        if (pIntr)
+        {
+            RT_BZERO(pIntr, sizeof(*pIntr));
+            pIntr->fIntrGroupMask = fIntrGroupMask;
+            pIntr->uIntId         = GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT;
+            pIntr->idxIntr        = UINT16_MAX;
+            pIntr->bPriority      = GIC_IDLE_PRIORITY;
         }
     }
 
     /* Ensure that if no interrupt is pending, the idle priority is returned. */
-    Assert(uIntId != GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT || pHighestIntr->bPriority == GIC_IDLE_PRIORITY);
+    Assert(uIntId != GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT || pIntr->bPriority == GIC_IDLE_PRIORITY);
 
     /* Ensure that if no interrupt is pending, the index is invalid. */
-    Assert(uIntId != GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT || pHighestIntr->idxIntr == UINT16_MAX);
+    Assert(uIntId != GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT || pIntr->idxIntr == UINT16_MAX);
 
-    /* Populate the pending interrupt data and we're done. */
-    if (pIntr)
-    {
-        AssertCompile(sizeof(*pIntr) == sizeof(*pHighestIntr));
-        memcpy(pIntr, pHighestIntr, sizeof(*pIntr));
-    }
-
-    LogFlowFunc(("uIntId=%u [idxIntr=%u bPriority=%u fIntrGroupMask=%#RX32]\n", uIntId, pHighestIntr->idxIntr,
-                 pHighestIntr->bPriority, fIntrGroupMask));
+    LogFlowFunc(("uIntId=%u fIntrGroupMask=%#RX32\n", uIntId, fIntrGroupMask));
     return uIntId;
 }
 
@@ -3118,10 +3140,12 @@ static DECLCALLBACK(VBOXSTRICTRC) gicWriteSysReg(PVMCPUCC pVCpu, uint32_t u32Reg
 
         case ARMV8_AARCH64_SYSREG_ICC_IGRPEN0_EL1:
             pGicCpu->fIntrGroup0Enabled = RT_BOOL(u64Value & ARMV8_ICC_IGRPEN0_EL1_AARCH64_ENABLE);
+            rcStrict = gicReDistUpdateIrqState(pGicDev, pVCpu);
             break;
 
         case ARMV8_AARCH64_SYSREG_ICC_IGRPEN1_EL1:
             pGicCpu->fIntrGroup1Enabled = RT_BOOL(u64Value & ARMV8_ICC_IGRPEN1_EL1_AARCH64_ENABLE);
+            rcStrict = gicReDistUpdateIrqState(pGicDev, pVCpu);
             break;
 
         default:
