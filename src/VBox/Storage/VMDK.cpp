@@ -1,4 +1,4 @@
-/* $Id: VMDK.cpp 168955 2025-05-22 06:31:05Z jack.doherty@oracle.com $ */
+/* $Id: VMDK.cpp 168956 2025-05-22 06:46:31Z jack.doherty@oracle.com $ */
 /** @file
  * VMDK disk image, core code.
  */
@@ -8569,7 +8569,6 @@ static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t
 
     size_t cbOldGD = pExtent->cGDEntries * sizeof(uint32_t);
     size_t cbOldGDRounded = RT_ALIGN_64(cbOldGD, 512);
-    size_t cbOldGTRounded = RT_ALIGN_64(pExtent->cGDEntries * pExtent->cGTEntries * sizeof(uint32_t), 512);
 
     uint32_t cNewGDEntries = (cSectorsNew + pExtent->cSectorsPerGDE - 1) / pExtent->cSectorsPerGDE;
     size_t cbNewGD = cNewGDEntries * sizeof(uint32_t);
@@ -8590,7 +8589,6 @@ static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t
         /* Loop through all entries. */
         do
         {
-            // uint32_t uNewGTStart = pExtent->pGD[i] + VMDK_BYTE2SECTOR((cbNewGDRounded + cbNewGTRounded + cbNewGDRounded) - (cbOldGDRounded + cbOldGTRounded + cbOldGDRounded));
             uint32_t uNewGTStart = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded + cbNewGDRounded) + (i * sizeof(uint32_t));
             uint32_t uOldGTStart = pExtent->pGD[i];
             size_t   cbGTRead = cbGT;
