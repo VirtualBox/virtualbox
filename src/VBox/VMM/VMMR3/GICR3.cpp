@@ -1,4 +1,4 @@
-/* $Id: GICR3.cpp 168959 2025-05-22 09:01:18Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICR3.cpp 168962 2025-05-22 10:09:08Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC).
  */
@@ -157,8 +157,8 @@ static DECLCALLBACK(void) gicR3DbgInfoDist(PVM pVM, PCDBGFINFOHLP pHlp, const ch
     GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrGroup",   pGicDev->bmIntrGroup);
     GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrEnabled", pGicDev->bmIntrEnabled);
     GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrPending", pGicDev->bmIntrPending);
-    GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrActive",  pGicDev->bmIntrActive);
     GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrLevel",   pGicDev->bmIntrLevel);
+    GIC_DBGFINFO_DIST_INTR_BITMAP("bmIntrActive",  pGicDev->bmIntrActive);
 #undef GIC_DBGFINFO_DIST_INTR_BITMAP
 
     /* Interrupt config (edge-triggered or level-sensitive). */
@@ -262,8 +262,8 @@ static DECLCALLBACK(void) gicR3DbgInfoReDist(PVM pVM, PCDBGFINFOHLP pHlp, const 
     pHlp->pfnPrintf(pHlp, "  bmIntrGroup[0..2]   = %#010x %#010x %#010x\n", GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(bmIntrGroup));
     pHlp->pfnPrintf(pHlp, "  bmIntrEnabled[0..2] = %#010x %#010x %#010x\n", GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(bmIntrEnabled));
     pHlp->pfnPrintf(pHlp, "  bmIntrPending[0..2] = %#010x %#010x %#010x\n", GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(bmIntrPending));
-    pHlp->pfnPrintf(pHlp, "  bmIntrActive[0..2]  = %#010x %#010x %#010x\n", GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(bmIntrActive));
     pHlp->pfnPrintf(pHlp, "  bmIntrLevel[0..2]   = %#010x %#010x %#010x\n", GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(bmIntrLevel));
+    pHlp->pfnPrintf(pHlp, "  bmIntrActive[0..2]  = %#010x %#010x %#010x\n", GIC_DBGFINFO_REDIST_INTR_BITMAPS_3(bmIntrActive));
 #undef GIC_DBGFINFO_REDIST_INTR_BITMAPS
 
     /* Interrupt config (edge-triggered or level-sensitive). */
