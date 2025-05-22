@@ -1,4 +1,4 @@
-/* $Id: VMDK.cpp 168956 2025-05-22 06:46:31Z jack.doherty@oracle.com $ */
+/* $Id: VMDK.cpp 168957 2025-05-22 07:03:42Z jack.doherty@oracle.com $ */
 /** @file
  * VMDK disk image, core code.
  */
@@ -8501,7 +8501,7 @@ static int vmdkRelocateSectorsForSparseResize(PVMDKIMAGE pImage, PVMDKEXTENT pEx
                 break;
             }
 
-            uint32_t cGTEsRead = cbGTRead / sizeof(uint32_t);
+            size_t cGTEsRead = cbGTRead / sizeof(uint32_t);
             char *pGrainTmp = (char *)RTMemAlloc(VMDK_SECTOR2BYTE(pExtent->cSectorsPerGrain));
             for (int64_t j = cGTEsRead - 1; j >= 0; j--)
             {
@@ -8582,15 +8582,15 @@ static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t
         if (!pTmpGT1)
             return VERR_NO_MEMORY;
 
-        uint32_t uGTMin = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded) + VMDK_BYTE2SECTOR(cbNewGDRounded); //inclusive
-        uint32_t uGTMax = pExtent->cOverheadSectors; //not inclusive
+        uint64_t uGTMin = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded) + VMDK_BYTE2SECTOR(cbNewGDRounded); //inclusive
+        uint64_t uGTMax = pExtent->cOverheadSectors; //not inclusive
 
         size_t i = pExtent->cGDEntries - 1;
         /* Loop through all entries. */
         do
         {
-            uint32_t uNewGTStart = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded + cbNewGDRounded) + (i * sizeof(uint32_t));
-            uint32_t uOldGTStart = pExtent->pGD[i];
+            uint64_t uNewGTStart = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded + cbNewGDRounded) + (i * sizeof(uint32_t));
+            uint64_t uOldGTStart = pExtent->pGD[i];
             size_t   cbGTRead = cbGT;
 
             Assert(uNewGTStart < uGTMax && uNewGTStart >= uGTMin);
@@ -8633,9 +8633,9 @@ static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t
         else
         {
             uint32_t uGTSectorLE;
-            uint32_t uOffsetSectors = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded + cbNewGDRounded);
+            uint64_t uOffsetSectors = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded + cbNewGDRounded);
             uint64_t uNewGD = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded);
-            for (uint32_t i = 0; i < cNewGDEntries; i++)
+            for (size_t i = 0; i < cNewGDEntries; i++)
             {
                 pExtent->pGD[i] = uOffsetSectors;
                 uGTSectorLE = RT_H2LE_U64(uOffsetSectors);
@@ -8666,7 +8666,7 @@ static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t
         {
             memset(paGTDataTmp, '\0', cbGTDataTmp);
 
-            for (uint32_t i = pExtent->cGDEntries; i < cNewGDEntries; i++)
+            for (size_t i = pExtent->cGDEntries; i < cNewGDEntries; i++)
             {
                 uint32_t uGTSector = pExtent->pGD[i];
                 /* Zero out new grain table. */
@@ -8691,8 +8691,8 @@ static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t
 
         uint32_t *pTmpGT1 = (uint32_t *)RTMemAlloc(cbGTBuffers);
 
-        uint32_t uGTMin = pExtent->pRGD[0] + VMDK_BYTE2SECTOR(cbNewGDRounded - cbOldGDRounded); //inclusive
-        uint32_t uGTMax = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded); //not inclusive
+        uint64_t uGTMin = pExtent->pRGD[0] + VMDK_BYTE2SECTOR(cbNewGDRounded - cbOldGDRounded); //inclusive
+        uint64_t uGTMax = RT_MAX(pExtent->uDescriptorSector + pExtent->cDescriptorSectors, 1) + VMDK_BYTE2SECTOR(cbNewGDRounded + cbNewGTRounded); //not inclusive
 
         if (RT_UNLIKELY(!pTmpGT1))
             rc = VERR_NO_MEMORY;
@@ -8703,9 +8703,8 @@ static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t
             /* Loop through all entries. */
             do
             {
-                // uint32_t uNewGTStart = pExtent->pRGD[i] + VMDK_BYTE2SECTOR(cbNewGDRounded - cbOldGDRounded);
-                uint32_t uNewGTStart = pExtent->uSectorRGD + VMDK_BYTE2SECTOR(cbNewGDRounded) + (i * sizeof(uint32_t));
-                uint32_t uOldGTStart = pExtent->pRGD[i];
+                uint64_t uNewGTStart = pExtent->uSectorRGD + VMDK_BYTE2SECTOR(cbNewGDRounded) + (i * sizeof(uint32_t));
+                uint64_t uOldGTStart = pExtent->pRGD[i];
                 size_t   cbGTRead = cbGT;
 
                 Assert(uNewGTStart < uGTMax && uNewGTStart >= uGTMin);
@@ -8753,7 +8752,7 @@ static int vmdkResizeSparseMeta(PVMDKIMAGE pImage, PVMDKEXTENT pExtent, uint64_t
             // uSectorRGD doesn't get changed unless the descriptor changes (which it shouldn't on resize)
             uint32_t uGTSectorLE;
             uint32_t uOffsetSectors = pExtent->uSectorRGD + VMDK_BYTE2SECTOR(cbNewGDRounded);
-            for (uint32_t i = 0; i < cNewGDEntries; i++)
+            for (size_t i = 0; i < cNewGDEntries; i++)
             {
                 pExtent->pRGD[i] = uOffsetSectors;
                 uGTSectorLE = RT_H2LE_U64(uOffsetSectors);
