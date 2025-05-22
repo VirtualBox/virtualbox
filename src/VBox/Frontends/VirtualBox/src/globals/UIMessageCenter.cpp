@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.cpp 168615 2025-04-24 17:02:18Z sergey.dubov@oracle.com $ */
+/* $Id: UIMessageCenter.cpp 168965 2025-05-22 14:49:38Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class implementation.
  */
@@ -1973,20 +1973,6 @@ void UIMessageCenter::cannotSwitchScreenInSeamless(quint64 uMinVRAM) const
 }
 
 #ifdef VBOX_WITH_DRAG_AND_DROP
-void UIMessageCenter::cannotDropDataToGuest(const CDnDTarget &dndTarget, QWidget *pParent /* = 0 */) const
-{
-    error(pParent, MessageType_Error,
-          tr("Drag and drop operation from host to guest failed."),
-          UIErrorString::formatErrorInfo(dndTarget));
-}
-
-void UIMessageCenter::cannotDropDataToGuest(const CProgress &progress, QWidget *pParent /* = 0 */) const
-{
-    error(pParent, MessageType_Error,
-          tr("Drag and drop operation from host to guest failed."),
-          UIErrorString::formatErrorInfo(progress));
-}
-
 void UIMessageCenter::cannotDropDataToHost(const CDnDSource &dndSource, QWidget *pParent /* = 0 */) const
 {
     error(pParent, MessageType_Error,

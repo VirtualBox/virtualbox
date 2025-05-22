@@ -1,4 +1,4 @@
-/* $Id: UIDnDHandler.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UIDnDHandler.cpp 168965 2025-05-22 14:49:38Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIDnDHandler class implementation.
  */
@@ -49,6 +49,7 @@
 #endif /* VBOX_WITH_DRAG_AND_DROP_GH */
 #include "UIMachine.h"
 #include "UIMessageCenter.h"
+#include "UINotificationCenter.h"
 #include "UISession.h"
 
 /* COM includes: */
@@ -128,7 +129,7 @@ Qt::DropAction UIDnDHandler::dragEnter(ulong screenID, int x, int y,
         return toQtDnDAction(result);
     }
 
-    msgCenter().cannotDropDataToGuest(m_dndTarget, m_pParent);
+    UINotificationMessage::cannotDropDataToGuest(m_dndTarget);
     return Qt::IgnoreAction;
 }
 
@@ -152,7 +153,7 @@ Qt::DropAction UIDnDHandler::dragMove(ulong screenID, int x, int y,
     if (m_dndTarget.isOk())
         return toQtDnDAction(result);
 
-    msgCenter().cannotDropDataToGuest(m_dndTarget, m_pParent);
+    UINotificationMessage::cannotDropDataToGuest(m_dndTarget);
     return Qt::IgnoreAction;
 }
 
@@ -176,7 +177,7 @@ Qt::DropAction UIDnDHandler::dragDrop(ulong screenID, int x, int y,
                                             pMimeData->formats().toVector(), strFormat);
     if (!m_dndTarget.isOk())
     {
-        msgCenter().cannotDropDataToGuest(m_dndTarget, m_pParent);
+        UINotificationMessage::cannotDropDataToGuest(m_dndTarget);
     }
     else if (enmResult != KDnDAction_Ignore) /* Has the guest accepted the drop event? */
     {
@@ -252,13 +253,13 @@ Qt::DropAction UIDnDHandler::dragDrop(ulong screenID, int x, int y,
                     && (   !progress.isOk()
                         ||  progress.GetResultCode() != 0))
                 {
-                    msgCenter().cannotDropDataToGuest(progress, m_pParent);
+                    UINotificationMessage::cannotDropDataToGuest(progress);
                     enmResult = KDnDAction_Ignore;
                 }
             }
             else
             {
-                msgCenter().cannotDropDataToGuest(m_dndTarget, m_pParent);
+                UINotificationMessage::cannotDropDataToGuest(m_dndTarget);
                 enmResult = KDnDAction_Ignore;
             }
         }
@@ -280,7 +281,7 @@ void UIDnDHandler::dragLeave(ulong screenID)
     if (m_dndTarget.isOk())
         return;
 
-    msgCenter().cannotDropDataToGuest(m_dndTarget, m_pParent);
+    UINotificationMessage::cannotDropDataToGuest(m_dndTarget);
     return;
 }
 

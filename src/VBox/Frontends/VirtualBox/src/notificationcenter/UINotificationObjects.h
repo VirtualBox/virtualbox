@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjects.h 166725 2025-01-10 11:27:46Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjects.h 168965 2025-05-22 14:49:38Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationObjects declarations.
  */
@@ -85,6 +85,9 @@ class CVirtualBoxErrorInfo;
 class CVRDEServer;
 class CVRDEServerInfo;
 class CUnattended;
+#ifdef VBOX_WITH_DRAG_AND_DROP
+class CDnDTarget;
+#endif
 
 /** UINotificationObject extension for message functionality. */
 class SHARED_LIBRARY_STUFF UINotificationMessage : public UINotificationSimple
@@ -716,6 +719,15 @@ public:
           * @param  fEnable         Brings whether server is enabled or not. */
         static void cannotToggleVRDEServer(const CVRDEServer &comServer,
                                            const QString &strMachineName, bool fEnable);
+
+#ifdef VBOX_WITH_DRAG_AND_DROP
+        /** Notifies about inability to drop data to guest.
+          * @param  comDndTarget  Brings the data being dropped. */
+        static void cannotDropDataToGuest(const CDnDTarget &comDndTarget);
+        /** Notifies about inability to drop data to guest.
+          * @param  comProgress  Brings the drop-progress being executed. */
+        static void cannotDropDataToGuest(const CProgress &comProgress);
+#endif /* VBOX_WITH_DRAG_AND_DROP */
     /** @} */
 
 protected:
