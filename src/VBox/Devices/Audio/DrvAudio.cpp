@@ -1,4 +1,4 @@
-/* $Id: DrvAudio.cpp 108045 2025-01-23 17:32:37Z andreas.loeffler@oracle.com $ */
+/* $Id: DrvAudio.cpp 109648 2025-05-23 15:15:44Z andreas.loeffler@oracle.com $ */
 /** @file
  * Intermediate audio driver - Connects the audio device emulation with the host backend.
  */
@@ -3168,8 +3168,8 @@ static int drvAudioStreamPreBufComitting(PDRVAUDIO pThis, PDRVAUDIOSTREAM pStrea
         uint32_t cbPreBufWritten = 0;
         rc = pThis->pHostDrvAudio->pfnStreamPlay(pThis->pHostDrvAudio, pStreamEx->pBackend, &pStreamEx->Out.pbPreBuf[off],
                                                  cbToWrite, &cbPreBufWritten);
-        AssertRCBreak(rc);
-        if (!cbPreBufWritten)
+        if (   RT_FAILURE(rc)
+            || !cbPreBufWritten)
             break;
         AssertStmt(cbPreBufWritten <= cbToWrite, cbPreBufWritten = cbToWrite);
         off     = (off + cbPreBufWritten) % cbAlloc;
