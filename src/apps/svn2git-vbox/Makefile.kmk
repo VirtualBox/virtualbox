@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 168972 2025-05-23 12:25:31Z alexander.eichner@oracle.com $
+# $Id: Makefile.kmk 168978 2025-05-23 15:27:51Z alexander.eichner@oracle.com $
 ## @file
 # Sub-Makefile for svn2git-vbox.
 #
@@ -33,6 +33,7 @@ PROGRAMS += svn2git-vbox
 svn2git-vbox_TEMPLATE = VBoxAdvBldProg
 svn2git-vbox_SOURCES = \
 	svn2git.cpp \
+	git.cpp \
 	../../VBox/Runtime/common/misc/json.cpp
 svn2git-vbox_INCS = \
 	$(PATH_ROOT)/src/VBox/Runtime/include

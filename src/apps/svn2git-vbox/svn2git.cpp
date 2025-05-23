@@ -1,4 +1,4 @@
-/* $Id: svn2git.cpp 168973 2025-05-23 12:30:03Z alexander.eichner@oracle.com $ */
+/* $Id: svn2git.cpp 168978 2025-05-23 15:27:51Z alexander.eichner@oracle.com $ */
 /** @file
  * svn2git - Convert a svn repository to git.
  */
@@ -51,6 +51,8 @@
 #include <svn_subst.h>
 #include <svn_props.h>
 #include <svn_time.h>
+
+#include "svn2git-internal.h"
 
 
 /*********************************************************************************************************************************
@@ -117,6 +119,8 @@ typedef struct S2GCTX
     /** The input subversion repository path. */
     const char      *pszSvnRepo;
 
+    /** The git repository path. */
+    char            *pszGitRepoPath;
     /** The default git branch. */
     const char      *pszGitDefBranch;
 
@@ -130,6 +134,12 @@ typedef struct S2GCTX
     svn_repos_t     *pSvnRepos;
     /** The filesystem layer handle for the repository. */
     svn_fs_t        *pSvnFs;
+    /** @} */
+
+    /** @name Git repository related members.
+     * @{ */
+    /** The destination git repository. */
+    S2GREPOSITORYGIT hGitRepo;
     /** @} */
 } S2GCTX;
 /** Pointer to an svn -> git conversion context. */
@@ -174,6 +184,7 @@ static void s2gCtxInit(PS2GCTX pThis)
     pThis->idRevEnd        = UINT32_MAX;
     pThis->pszCfgFilename  = NULL;
     pThis->pszSvnRepo      = NULL;
+    pThis->pszGitRepoPath  = NULL;
     pThis->pszGitDefBranch = "main";
 
     pThis->pPoolDefault    = NULL;
@@ -251,7 +262,7 @@ static RTEXITCODE s2gParseArguments(PS2GCTX pThis, int argc, char **argv)
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                static const char s_szRev[] = "$Revision: 168973 $";
+                static const char s_szRev[] = "$Revision: 168978 $";
                 const char *psz = RTStrStripL(strchr(s_szRev, ' '));
                 RTMsgInfo("r%.*s\n", strchr(psz, ' ') - psz, psz);
                 return RTEXITCODE_SUCCESS;
@@ -288,7 +299,11 @@ static RTEXITCODE s2gLoadConfig(PS2GCTX pThis)
     int rc = RTJsonParseFromFile(&hRoot, RTJSON_PARSE_F_JSON5, pThis->pszCfgFilename, &ErrInfo.Core);
     if (RT_SUCCESS(rc))
     {
+        rc = RTJsonValueQueryStringByName(hRoot, "GitRepoPath", &pThis->pszGitRepoPath);
         RTJsonValueRelease(hRoot);
+        if (RT_FAILURE(rc))
+            return RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to query GitRepoPath from '%s': %Rrc", pThis->pszCfgFilename, rc);
+
         return RTEXITCODE_SUCCESS;
     }
 
@@ -357,6 +372,19 @@ static const char *s2gSvnChangeKindToStr(svn_fs_path_change_kind_t enmKind)
 }
 
 
+static RTEXITCODE s2gSvnExportSinglePath(PCS2GCTX pThis, PS2GSVNREV pRev, const char *pszSvnPath, const char *pszGitPath,
+                                         bool fIsDir, svn_fs_path_change2_t *pChange)
+{
+    if (pChange->change_kind == svn_fs_path_change_add)
+    {
+
+    }
+
+    RT_NOREF(pThis, pRev, pszSvnPath, pszGitPath, fIsDir, pChange);
+    return RTEXITCODE_FAILURE;
+}
+
+
 static RTEXITCODE s2gSvnRevisionExportPaths(PCS2GCTX pThis, PS2GSVNREV pRev)
 {
     RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
@@ -400,6 +428,44 @@ static RTEXITCODE s2gSvnRevisionExportPaths(PCS2GCTX pThis, PS2GSVNREV pRev)
         {
             if (g_cVerbosity > 1)
                 RTMsgInfo("    %s %s\n", pIt->pszPath, s2gSvnChangeKindToStr(pIt->pChange->change_kind));
+
+            /* Ignore /trunk, /branches and /tags. */
+            if (   !strcmp(pIt->pszPath, "/trunk")
+                || !strcmp(pIt->pszPath, "/branches")
+                || !strcmp(pIt->pszPath, "/tags"))
+                continue;
+
+            /* Query whether this is a directory. */
+            bool fIsDir = false;
+            svn_boolean_t SvnIsDir;
+            pSvnErr = svn_fs_is_dir(&SvnIsDir, pRev->pSvnFsRoot, pIt->pszPath, pRev->pPoolRev);
+            if (pSvnErr)
+            {
+                svn_error_trace(pSvnErr);
+                rcExit = RTEXITCODE_FAILURE;
+                break;
+            }
+            fIsDir = RT_BOOL(SvnIsDir);
+
+            /*
+             * If this is a directory which was just added check whether the next entry starts with the path,
+             * meaning we can skip it as git doesn't handle empty directories and we don't want unnecessary .gitignore
+             * files.
+             */
+            if (fIsDir && pIt->pChange->change_kind == svn_fs_path_change_add)
+            {
+                PS2GSVNREVCHANGE pNext = RTListGetNext(&pRev->LstChanges, pIt, S2GSVNREVCHANGE, NdChanges);
+                if (   pNext
+                    && RTStrStartsWith(pNext->pszPath, pIt->pszPath))
+                    continue;
+            }
+
+            /** @todo Make this configurable. */
+            if (RTStrStartsWith(pIt->pszPath, "/trunk/"))
+            {
+                const char *pszGitPath = pIt->pszPath + sizeof("/trunk/") - 1;
+                rcExit = s2gSvnExportSinglePath(pThis, pRev, pIt->pszPath, pszGitPath, fIsDir, pIt->pChange);
+            }
         }
 
         RT_NOREF(pThis);
@@ -457,7 +523,21 @@ static RTEXITCODE s2gSvnExportRevision(PS2GCTX pThis, uint32_t idRev)
                 if (g_cVerbosity)
                     RTMsgInfo("    %s %s %s\n", Rev.pszSvnAuthor, pSvnDate->data, Rev.pszSvnXref ? Rev.pszSvnXref : "");
 
-                rcExit = s2gSvnRevisionExportPaths(pThis, &Rev);
+                int rc = s2gGitTransactionStart(pThis->hGitRepo);
+                if (RT_SUCCESS(rc))
+                {
+                    rcExit = s2gSvnRevisionExportPaths(pThis, &Rev);
+                    if (rcExit == RTEXITCODE_SUCCESS)
+                    {
+                        /** @todo Ammend svn log with xref. */
+                        rc = s2gGitTransactionCommit(pThis->hGitRepo, Rev.pszSvnAuthor, NULL /*Rev.pszSvnAuthor*/,
+                                                     Rev.pszSvnLog, Rev.cEpochSecs);
+                        if (RT_FAILURE(rc))
+                            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to commit git transaction with: %Rrc", rc);
+                    }
+                }
+                else
+                    rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to start new git transaction with: %Rrc", rc);
             }
             else
             {
@@ -495,6 +575,17 @@ static RTEXITCODE s2gSvnExport(PS2GCTX pThis)
 }
 
 
+static RTEXITCODE s2gGitInit(PS2GCTX pThis)
+{
+    int rc = s2gGitRepositoryCreate(&pThis->hGitRepo, pThis->pszGitRepoPath, pThis->pszGitDefBranch);
+    if (RT_SUCCESS(rc))
+        return RTEXITCODE_SUCCESS;
+
+    return RTMsgErrorExit(RTEXITCODE_FAILURE, "Creating the git repository under '%s' failed with: %Rrc",
+                          pThis->pszGitRepoPath, rc);
+}
+
+
 int main(int argc, char *argv[])
 {
     int rc = RTR3InitExe(argc, &argv, 0);
@@ -512,7 +603,11 @@ int main(int argc, char *argv[])
             rcExit = s2gSvnInit(&This);
             if (rcExit == RTEXITCODE_SUCCESS)
             {
-                rcExit = s2gSvnExport(&This);
+                rcExit = s2gGitInit(&This);
+                if (rcExit == RTEXITCODE_SUCCESS)
+                    rcExit = s2gSvnExport(&This);
+
+                s2gGitRepositoryClose(This.hGitRepo);
             }
         }
     }
