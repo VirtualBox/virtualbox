@@ -1,4 +1,4 @@
-/* $Id: svn2git.cpp 168971 2025-05-23 12:24:46Z alexander.eichner@oracle.com $ */
+/* $Id: svn2git.cpp 168973 2025-05-23 12:30:03Z alexander.eichner@oracle.com $ */
 /** @file
  * svn2git - Convert a svn repository to git.
  */
@@ -130,7 +130,7 @@ typedef struct S2GCTX
     svn_repos_t     *pSvnRepos;
     /** The filesystem layer handle for the repository. */
     svn_fs_t        *pSvnFs;
-    /** @} */ 
+    /** @} */
 } S2GCTX;
 /** Pointer to an svn -> git conversion context. */
 typedef S2GCTX *PS2GCTX;
@@ -251,7 +251,7 @@ static RTEXITCODE s2gParseArguments(PS2GCTX pThis, int argc, char **argv)
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                static const char s_szRev[] = "$Revision: 168971 $";
+                static const char s_szRev[] = "$Revision: 168973 $";
                 const char *psz = RTStrStripL(strchr(s_szRev, ' '));
                 RTMsgInfo("r%.*s\n", strchr(psz, ' ') - psz, psz);
                 return RTEXITCODE_SUCCESS;
@@ -513,7 +513,7 @@ int main(int argc, char *argv[])
             if (rcExit == RTEXITCODE_SUCCESS)
             {
                 rcExit = s2gSvnExport(&This);
-            } 
+            }
         }
     }
     s2gCtxDestroy(&This);
