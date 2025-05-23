@@ -1,0 +1,58 @@
+# $Id: Makefile.kmk 168972 2025-05-23 12:25:31Z alexander.eichner@oracle.com $
+## @file
+# Sub-Makefile for svn2git-vbox.
+#
+
+#
+# Copyright (C) 2025 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH = ../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+PROGRAMS += svn2git-vbox
+
+svn2git-vbox_TEMPLATE = VBoxAdvBldProg
+svn2git-vbox_SOURCES = \
+	svn2git.cpp \
+	../../VBox/Runtime/common/misc/json.cpp
+svn2git-vbox_INCS = \
+	$(PATH_ROOT)/src/VBox/Runtime/include
+svn2git-vbox_INCS.darwin = \
+	/opt/homebrew/include/subversion-1 \
+	/opt/homebrew/Cellar/apr/1.7.6/include/apr-1
+svn2git-vbox_LIBPATH.darwin = \
+	/opt/homebrew/lib \
+	/opt/homebrew/Cellar/apr/1.7.6/lib
+svn2git-vbox_LIBS = \
+	svn_ra-1 \
+	svn_ra_svn-1 \
+	svn_ra_local-1 \
+	svn_repos-1 \
+	svn_fs-1 \
+	svn_fs_fs-1 \
+	svn_delta-1 \
+	svn_subr-1 \
+	apr-1 \
+	aprutil-1
+
+include $(FILE_KBUILD_SUB_FOOTER)
+
