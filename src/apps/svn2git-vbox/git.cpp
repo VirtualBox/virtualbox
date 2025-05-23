@@ -1,4 +1,4 @@
-/* $Id: git.cpp 168978 2025-05-23 15:27:51Z alexander.eichner@oracle.com $ */
+/* $Id: git.cpp 168979 2025-05-23 15:42:25Z alexander.eichner@oracle.com $ */
 /** @file
  * svn2git - Convert a svn repository to git.
  */
@@ -119,8 +119,10 @@ DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *
         PS2GREPOSITORYGITINT pThis = (PS2GREPOSITORYGITINT)RTMemAllocZ(sizeof(*pThis));
         if (pThis)
         {
+            pThis->idCommitMark = 1;
+
             RTPIPE hPipeFiR = NIL_RTPIPE;
-            rc = RTPipeCreate(&pThis->hPipeWrite, &hPipeFiR, RTPIPE_C_INHERIT_WRITE);
+            rc = RTPipeCreate(&hPipeFiR, &pThis->hPipeWrite, RTPIPE_C_INHERIT_READ);
             if (RT_SUCCESS(rc))
             {
                 RTHANDLE HndIn;
@@ -133,7 +135,12 @@ DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *
                                     NULL, NULL, (void *)pszGitRepoPath,
                                     &pThis->hProcFastImport);
                 RTPipeClose(hPipeFiR);
-                if (RT_FAILURE(rc))
+                if (RT_SUCCESS(rc))
+                {
+                    *phGitRepo = pThis;
+                    return VINF_SUCCESS;
+                }
+                else
                     RTPipeClose(pThis->hPipeWrite);
             }
 
@@ -171,13 +178,13 @@ DECLHIDDEN(int) s2gGitTransactionStart(S2GREPOSITORYGIT hGitRepo)
 {
     PS2GREPOSITORYGITINT pThis = hGitRepo;
 
-    if (pThis->idCommitMark % 10000 == 0)
+    if ((pThis->idCommitMark % 10000) == 0)
     {
         int rc = RTPipeWriteBlocking(pThis->hPipeWrite, "checkpoint\n", sizeof("checkpoint\n") - 1, NULL /*pcbWritten*/);
         if (RT_FAILURE(rc))
             return rc;
 
-        pThis->idCommitMark = 0;
+        pThis->idCommitMark = 1;
     }
 
     pThis->idFileMark = UINT64_MAX - 1;

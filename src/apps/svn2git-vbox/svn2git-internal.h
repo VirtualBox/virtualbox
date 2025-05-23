@@ -1,4 +1,4 @@
-/* $Id: svn2git-internal.h 168978 2025-05-23 15:27:51Z alexander.eichner@oracle.com $ */
+/* $Id: svn2git-internal.h 168979 2025-05-23 15:42:25Z alexander.eichner@oracle.com $ */
 /** @file
  * IPRT - Internal svn2git header.
  */
@@ -22,20 +22,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, see <https://www.gnu.org/licenses>.
  *
- * The contents of this file may alternatively be used under the terms
- * of the Common Development and Distribution License Version 1.0
- * (CDDL), a copy of it is provided in the "COPYING.CDDL" file included
- * in the VirtualBox distribution, in which case the provisions of the
- * CDDL are applicable instead of those of the GPL.
- *
- * You may elect to license modified versions of this file under the
- * terms and conditions of either the GPL or the CDDL or both.
- *
- * SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
-#ifndef IPRT_INCLUDED_INTERNAL_svn2git_internal_h
-#define IPRT_INCLUDED_INTERNAL_svn2git_internal_h
+#ifndef VBOX_INCLUDED_SRC_svn2git_vbox_svn2git_internal_h
+#define VBOX_INCLUDED_SRC_svn2git_vbox_svn2git_internal_h
 #ifndef RT_WITHOUT_PRAGMA_ONCE
 # pragma once
 #endif
@@ -63,5 +54,5 @@ DECLHIDDEN(int) s2gGitTransactionSubmoduleAdd(S2GREPOSITORYGIT hGitRepo, const c
 
 RT_C_DECLS_END
 
-#endif /* !IPRT_INCLUDED_INTERNAL_svn2git_internal_h */
+#endif /* !VBOX_INCLUDED_SRC_svn2git_vbox_svn2git_internal_h */
 
