@@ -1,4 +1,4 @@
-/* $Id: UIMonitorCountEditor.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UIMonitorCountEditor.cpp 168969 2025-05-23 11:22:24Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMonitorCountEditor class implementation.
  */
@@ -84,17 +84,18 @@ void UIMonitorCountEditor::setMinimumLayoutIndent(int iIndent)
 void UIMonitorCountEditor::sltRetranslateUI()
 {
     if (m_pLabel)
-        m_pLabel->setText(tr("Mo&nitor Count:"));
+        m_pLabel->setText(tr("Number of Virtual Mo&nitors"));
 
+    const QString strToolTip = tr("The number of virtual monitors the virtual machine has");
     if (m_pSlider)
-        m_pSlider->setToolTip(tr("Holds the amount of virtual monitors provided to the virtual machine."));
+        m_pSlider->setToolTip(strToolTip);
     if (m_pSpinBox)
-        m_pSpinBox->setToolTip(tr("Holds the amount of virtual monitors provided to the virtual machine."));
+        m_pSpinBox->setToolTip(strToolTip);
 
     if (m_pLabelMin)
-        m_pLabelMin->setToolTip(tr("Minimum possible monitor count."));
+        m_pLabelMin->setToolTip(tr("Minimum virtual monitor number"));
     if (m_pLabelMax)
-        m_pLabelMax->setToolTip(tr("Maximum possible monitor count."));
+        m_pLabelMax->setToolTip(tr("Maximum virtual monitor number"));
 }
 
 void UIMonitorCountEditor::sltHandleSliderChange()

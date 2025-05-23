@@ -1,4 +1,4 @@
-/* $Id: UIScaleFactorEditor.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UIScaleFactorEditor.cpp 168969 2025-05-23 11:22:24Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIScaleFactorEditor class implementation.
  */
@@ -180,7 +180,7 @@ void UIScaleFactorEditor::setMinimumLayoutIndent(int iIndent)
 void UIScaleFactorEditor::sltRetranslateUI()
 {
     if (m_pLabel)
-        m_pLabel->setText(tr("Scale &Factor:"));
+        m_pLabel->setText(tr("Scale &Factor"));
 
     if (m_pMonitorComboBox)
     {
@@ -190,23 +190,24 @@ void UIScaleFactorEditor::sltRetranslateUI()
             for (int i = 1; i < m_pMonitorComboBox->count(); ++i)
                 m_pMonitorComboBox->setItemText(i, tr("Monitor %1").arg(i));
         }
-        m_pMonitorComboBox->setToolTip(tr("Selects the index of monitor guest screen scale factor being defined for."));
+        m_pMonitorComboBox->setToolTip(tr("The index of virtual monitor guest screen scale factor being defined for"));
     }
 
+    const QString strToolTip = tr("The guest screen scale factor the virtual machine has");
     if (m_pScaleSlider)
-        m_pScaleSlider->setToolTip(tr("Holds the guest screen scale factor."));
+        m_pScaleSlider->setToolTip(strToolTip);
     if (m_pScaleSpinBox)
-        m_pScaleSpinBox->setToolTip(tr("Holds the guest screen scale factor."));
+        m_pScaleSpinBox->setToolTip(strToolTip);
 
     if (m_pMinScaleLabel)
     {
         m_pMinScaleLabel->setText(QString("%1%").arg(m_pScaleSlider->minimum()));
-        m_pMinScaleLabel->setToolTip(tr("Minimum possible scale factor."));
+        m_pMinScaleLabel->setToolTip(tr("Minimum guest screen scale factor"));
     }
     if (m_pMaxScaleLabel)
     {
         m_pMaxScaleLabel->setText(QString("%1%").arg(m_pScaleSlider->maximum()));
-        m_pMaxScaleLabel->setToolTip(tr("Maximum possible scale factor."));
+        m_pMaxScaleLabel->setToolTip(tr("Maximum guest screen scale factor"));
     }
 }
 

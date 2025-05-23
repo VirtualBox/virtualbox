@@ -1,4 +1,4 @@
-/* $Id: UIDisplayScreenFeaturesEditor.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UIDisplayScreenFeaturesEditor.cpp 168969 2025-05-23 11:22:24Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIDisplayScreenFeaturesEditor class implementation.
  */
@@ -78,12 +78,12 @@ void UIDisplayScreenFeaturesEditor::setMinimumLayoutIndent(int iIndent)
 void UIDisplayScreenFeaturesEditor::sltRetranslateUI()
 {
     if (m_pLabel)
-        m_pLabel->setText(tr("Extended Features:"));
+        m_pLabel->setText(tr("Use These Features"));
     if (m_pCheckBoxEnable3DAcceleration)
     {
-        m_pCheckBoxEnable3DAcceleration->setText(tr("Enable &3D Acceleration"));
-        m_pCheckBoxEnable3DAcceleration->setToolTip(tr("When checked, the virtual machine will be given access "
-                                                       "to the 3D graphics capabilities available on the host."));
+        m_pCheckBoxEnable3DAcceleration->setText(tr("&3D Acceleration"));
+        m_pCheckBoxEnable3DAcceleration->setToolTip(tr("The virtual machine will be given access "
+                                                       "to the 3D graphics capabilities available on the host"));
     }
 }
 

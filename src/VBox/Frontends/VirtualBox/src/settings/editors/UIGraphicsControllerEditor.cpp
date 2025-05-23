@@ -1,4 +1,4 @@
-/* $Id: UIGraphicsControllerEditor.cpp 167056 2025-01-20 15:19:56Z sergey.dubov@oracle.com $ */
+/* $Id: UIGraphicsControllerEditor.cpp 168969 2025-05-23 11:22:24Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIGraphicsControllerEditor class implementation.
  */
@@ -80,7 +80,7 @@ void UIGraphicsControllerEditor::setMinimumLayoutIndent(int iIndent)
 void UIGraphicsControllerEditor::sltRetranslateUI()
 {
     if (m_pLabel)
-        m_pLabel->setText(tr("&Graphics Controller:"));
+        m_pLabel->setText(tr("&Graphics Controller"));
     if (m_pCombo)
     {
         for (int i = 0; i < m_pCombo->count(); ++i)
@@ -88,7 +88,7 @@ void UIGraphicsControllerEditor::sltRetranslateUI()
             const KGraphicsControllerType enmType = m_pCombo->itemData(i).value<KGraphicsControllerType>();
             m_pCombo->setItemText(i, gpConverter->toString(enmType));
         }
-        m_pCombo->setToolTip(tr("Selects the graphics adapter type the virtual machine will use."));
+        m_pCombo->setToolTip(tr("The graphics controller type the virtual machine will use"));
     }
 }
 

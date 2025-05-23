@@ -1,4 +1,4 @@
-/* $Id: UIVRDESettingsEditor.cpp 164928 2024-09-25 16:32:45Z sergey.dubov@oracle.com $ */
+/* $Id: UIVRDESettingsEditor.cpp 168969 2025-05-23 11:22:24Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVRDESettingsEditor class implementation.
  */
@@ -175,19 +175,18 @@ void UIVRDESettingsEditor::sltRetranslateUI()
     if (m_pCheckboxFeature)
     {
         m_pCheckboxFeature->setText(tr("&Enable Server"));
-        m_pCheckboxFeature->setToolTip(tr("When checked, the VM will act as a Remote Desktop Protocol (RDP) server, allowing "
+        m_pCheckboxFeature->setToolTip(tr("The VM will act as a Remote Desktop Protocol (RDP) server, allowing "
                                           "remote clients to connect and operate the VM (when it is running) using a standard "
-                                          "RDP client."));
+                                          "RDP client"));
     }
 
     if (m_pLabelPort)
-        m_pLabelPort->setText(tr("Server &Port:"));
+        m_pLabelPort->setText(tr("Server &Port"));
     if (m_pEditorPort)
-        m_pEditorPort->setToolTip(tr("Holds the VRDP Server port number. You may specify 0 (zero), to select port 3389, the "
-                                     "standard port for RDP."));
+        m_pEditorPort->setToolTip(tr("VRDP server port number. 3389 is the standard port for RDP."));
 
     if (m_pLabelSecurityMethod)
-        m_pLabelSecurityMethod->setText(tr("&Security Method:"));
+        m_pLabelSecurityMethod->setText(tr("&Security Method"));
     if (m_pComboSecurityMethod)
     {
         for (int iIndex = 0; iIndex < m_pComboSecurityMethod->count(); ++iIndex)
@@ -195,11 +194,11 @@ void UIVRDESettingsEditor::sltRetranslateUI()
             const UIVRDESecurityMethod enmType = m_pComboSecurityMethod->itemData(iIndex).value<UIVRDESecurityMethod>();
             m_pComboSecurityMethod->setItemText(iIndex, gpConverter->toString(enmType));
         }
-        m_pComboSecurityMethod->setToolTip(tr("Selects the VRDP security method."));
+        m_pComboSecurityMethod->setToolTip(tr("VRDP security method"));
     }
 
     if (m_pLabelAuthMethod)
-        m_pLabelAuthMethod->setText(tr("Authentication &Method:"));
+        m_pLabelAuthMethod->setText(tr("Authentication &Method"));
     if (m_pComboAuthType)
     {
         for (int iIndex = 0; iIndex < m_pComboAuthType->count(); ++iIndex)
@@ -207,21 +206,20 @@ void UIVRDESettingsEditor::sltRetranslateUI()
             const KAuthType enmType = m_pComboAuthType->itemData(iIndex).value<KAuthType>();
             m_pComboAuthType->setItemText(iIndex, gpConverter->toString(enmType));
         }
-        m_pComboAuthType->setToolTip(tr("Selects the VRDP authentication method."));
+        m_pComboAuthType->setToolTip(tr("VRDP authentication method"));
     }
 
     if (m_pLabelTimeout)
-        m_pLabelTimeout->setText(tr("Authentication &Timeout:"));
+        m_pLabelTimeout->setText(tr("Authentication &Timeout"));
     if (m_pEditorTimeout)
-        m_pEditorTimeout->setToolTip(tr("Holds the timeout for guest authentication, in milliseconds."));
+        m_pEditorTimeout->setToolTip(tr("Timeout for guest authentication, in milliseconds"));
 
     if (m_pLabelOptions)
-        m_pLabelOptions->setText(tr("Extended Features:"));
+        m_pLabelOptions->setText(tr("Use These Features"));
     if (m_pCheckboxMultipleConnections)
     {
-        m_pCheckboxMultipleConnections->setText(tr("&Allow Multiple Connections"));
-        m_pCheckboxMultipleConnections->setToolTip(tr("When checked, multiple simultaneous connections to the VM are "
-                                                      "permitted."));
+        m_pCheckboxMultipleConnections->setText(tr("&Multiple Connections"));
+        m_pCheckboxMultipleConnections->setToolTip(tr("Multiple simultaneous connections to the VM will be permitted"));
     }
 }
 
