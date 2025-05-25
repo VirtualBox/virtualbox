@@ -13,15 +13,15 @@
             <p><b outputclass="bold">Runtime Information</b>. Displays runtime information for the guest session in a tabular format similar to the Configuration Details tab. </p>
          </li>
          <li>
-            <p><uicontrol>VM Resource Use</uicontrol>. Includes several time series charts which monitor guest resource usage including CPU, RAM, Disk I/O, and Network. Note that the RAM chart requires the Guest Additions to be running on the guest system. The <uicontrol>VM Resource Use</uicontrol> tab can also be accessed directly from the <uicontrol>Resource Dashboard</uicontrol>. See <xref href="vm-activity-overview.dita"/>. </p>
+            <p><uicontrol>Resource Use</uicontrol>. Includes several time series charts which monitor guest resource usage including CPU, RAM, Disk I/O, and Network. Note that the RAM chart requires the Guest Additions to be running on the guest system. The <uicontrol>Resource Use</uicontrol> tab can also be accessed directly from the <uicontrol>Resources</uicontrol>. See <xref href="vm-activity-overview.dita"/>. </p>
          </li>
          <li>
             <p><b outputclass="bold">Guest Control</b>. Details of processes used by the Guest Control File Manager. See <xref href="guestadd-gc-file-manager.dita"/>.</p>
          </li>
       </ul>
       <note>
-         <p>For cloud VMs, only the <uicontrol>VM Resource Use</uicontrol> tab is shown.</p>
+         <p>For cloud VMs, only the <uicontrol>Resource Use</uicontrol> tab is shown.</p>
       </note>
-      <p>To display session information for a guest VM or a cloud VM, select the VM name in the <uicontrol>Machines</uicontrol> list and click the <uicontrol>VM Resource Use</uicontrol> tab.</p>
+      <p>To display session information for a guest VM or a cloud VM, select the VM name in the <uicontrol>Machines</uicontrol> list and click the <uicontrol>Resource Use</uicontrol> tab.</p>
    </body>
 </topic>

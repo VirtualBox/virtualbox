@@ -4,26 +4,10 @@
   <title>Guest Control of Applications</title>
   
   <body>
-    <p>
-      The Guest Additions enable starting of applications inside a guest
-      VM from the host system. This feature can be used to automate
-      deployment of software within the guest.
-    </p>
-    <p>
-      For this to work, the application needs to be installed on the
-      guest. No additional software needs to be installed on the host.
-      Additionally, text mode output to stdout and stderr can be shown
-      on the host for further processing. There are options to specify
-      user credentials and a timeout value, in milliseconds, to limit
-      the time the application is able to run.
-    </p>
-    <p>
-      The Guest Additions for Windows allow for automatic updating. This
-      applies for already installed Guest Additions versions. Also,
-      copying files from host to the guest as well as remotely creating
-      guest directories is available.
-    </p>
-    <p> To use these features, use the <ph conkeyref="vbox-conkeyref-phrases/product-name"/> command line. See <xref href="../cli_topics/vboxmanage-guestcontrol.dita"/>. </p>
+    <p>The Guest Additions enable starting of applications inside a guest VM from the host system. This feature can be used to automate deployment of software within the guest.</p>
+    <p>For this to work, the application needs to be installed on the guest. No additional software needs to be installed on the host. Additionally, text mode output to stdout and stderr can be shown on the host for further processing. There are options to specify user credentials and a timeout value, in milliseconds, to limit the time the application is able to run.</p>
+    <p>The Guest Additions for Windows allow for automatic updating. This applies for already installed Guest Additions versions. Also, copying files from host to the guest as well as remotely creating guest directories is available.</p>
+    <p>To use these features, use the <ph conkeyref="vbox-conkeyref-phrases/product-name"/> command line. See <xref href="../cli_topics/vboxmanage-guestcontrol.dita"/>. </p>
   </body>
   
 </topic>

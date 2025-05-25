@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
+<topic id="ts-se-linux-prevents-guest-control">
+    <title>Guest Control Not Working</title>
+    <body>
+        <dl>
+            <dlentry>
+                <dt>Details</dt>
+                <dd>
+                    <p><xref href="guestadd-gc-file-manager.dita"/>, or other processes to control guest applications from the host using <xref href="../cli_topics/vboxmanage-guestcontrol.dita"/>, may be prevented from running by Security-Enhanced Linux (SELinux).</p>
+                </dd>
+            </dlentry>
+            <dlentry>
+                <dt>Workaround</dt>
+                <dd>In SELinux, if your security policies permit, allow the <codeph>execve()</codeph> call for the <codeph>VBoxService</codeph> binary only.</dd>
+            </dlentry>
+        </dl>
+    </body>
+</topic>

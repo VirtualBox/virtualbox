@@ -11,7 +11,7 @@
                 documentation for more details.</p></note>
                <ul>
                   <li>
-                     <p><uicontrol>Resource Dashboard</uicontrol>. Displays an overview of performance metrics for all running virtual machines and cloud VM instances. </p>
+                     <p><uicontrol>Resources</uicontrol>. Displays an overview of performance metrics for all running virtual machines and cloud VM instances. </p>
                      <p> See <xref href="vm-activity-overview.dita"/>.</p>
                   </li>
                   <li>

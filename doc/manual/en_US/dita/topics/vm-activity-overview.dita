@@ -2,15 +2,15 @@
 <!DOCTYPE topic
   PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
 <topic xml:lang="en-us" id="tk_vm-activity-overview">
-  <title>Resource Dashboard</title>
+  <title>Resources</title>
   <body>
-    <p>The <uicontrol>Resource Dashboard</uicontrol> tool displays several performance metrics for all running virtual machines and cloud VM instances, and for the host system. This provides an overview of system resources used by individual virtual machines and the host system.</p>
-    <p>To display the <uicontrol>Resource Dashboard</uicontrol>, in <ph conkeyref="vbox-conkeyref-phrases/vbox-mgr"/> click <uicontrol>Resource Dashboard</uicontrol>.</p>
+    <p>The <uicontrol>Resources</uicontrol> tool displays several performance metrics for all running virtual machines and cloud VM instances, and for the host system. This provides an overview of system resources used by individual virtual machines and the host system.</p>
+    <p>To display the <uicontrol>Resources</uicontrol>, in <ph conkeyref="vbox-conkeyref-phrases/vbox-mgr"/> click <uicontrol>Resources</uicontrol>.</p>
     <ul id="ul_hqh_5hg_ccc">
       <li>To show metrics for <i>all</i> virtual machines, including those that are not running, right-click the list of virtual machines and select <b outputclass="bold">List All Virtual Machines</b>. </li>
       <li>To show metrics for cloud VMs, right-click the list of virtual machines and select <b outputclass="bold">Show Cloud Virtual Machines</b>.</li>
       <li>To configure the set of metrics to be shown, click <b outputclass="bold">Columns</b> in the toolbar. You can then sort the list of virtual machines by a particular metric.</li>
-      <li>To see more performance information for a virtual machine, select the VM name and click <uicontrol>VM Resource Use</uicontrol> in the toolbar. The <uicontrol>VM Resource Use</uicontrol> tab of the <b outputclass="bold">Session Information</b> dialog is shown, see <xref href="vm-activity-session-information.dita"/>.</li>
+      <li>To see more performance information for a virtual machine, select the VM name and click <uicontrol>Resource Use</uicontrol> in the toolbar. The <uicontrol>Resource Use</uicontrol> tab of the <b outputclass="bold">Session Information</b> dialog is shown, see <xref href="vm-activity-session-information.dita"/>.</li>
     </ul>
   </body>
 </topic>
