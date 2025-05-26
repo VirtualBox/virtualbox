@@ -1,4 +1,4 @@
-/* $Id: tstRTProcCreateEx.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: tstRTProcCreateEx.cpp 169006 2025-05-26 22:58:20Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT Testcase - RTProcCreateEx.
  */
@@ -132,9 +132,7 @@ static int tstRTCreateProcExCwdChild(int argc, char **argv)
             char *pszUser = NULL;
             if (   argc >= 4
                 && argv[3][0] != '\0')
-            {
                 pszUser = argv[3];
-            }
 
             RTFSOBJINFO objInfo;
             rc = RTPathQueryInfo(szCWD, &objInfo, RTFSOBJATTRADD_NOTHING);
@@ -232,6 +230,7 @@ static void tstRTCreateProcExCwd(const char *pszAsUser, const char *pszPassword)
     if (ProcStatus.enmReason != RTPROCEXITREASON_NORMAL || ProcStatus.iStatus != 0)
         RTTestIFailed("enmReason=%d iStatus=%d", ProcStatus.enmReason, ProcStatus.iStatus);
 
+#if 0 /* braindead - the home directory of the wrong user, so, typically inaccessible. */
     /* Try user home. */
     RTTESTI_CHECK_RC_OK_RETV(RTPathUserHome(szCWD, sizeof(szCWD)));
     RTTESTI_CHECK_RC_OK_RETV(RTPathReal(szCWD, szResolved, sizeof(szResolved)));
@@ -243,6 +242,17 @@ static void tstRTCreateProcExCwd(const char *pszAsUser, const char *pszPassword)
     RTTESTI_CHECK_RC(RTProcWait(hProc, RTPROCWAIT_FLAGS_BLOCK, &ProcStatus), VINF_SUCCESS);
     if (ProcStatus.enmReason != RTPROCEXITREASON_NORMAL || ProcStatus.iStatus != 0)
         RTTestIFailed("enmReason=%d iStatus=%d", ProcStatus.enmReason, ProcStatus.iStatus);
+#endif
+
+    /* Try non-existing directory. */
+    RTTESTI_CHECK_RC_OK_RETV(RTPathTemp(szCWD, sizeof(szCWD)));
+    RTTESTI_CHECK_RC_OK_RETV(RTPathAppend(szCWD, sizeof(szCWD), "no-such-directory" RTPATH_SLASH_STR "no-such-subdir" RTPATH_SLASH_STR "no-such-subsubdir"));
+    apszArgs[2] = szCWD;
+    rc = RTProcCreateEx(g_szExecName, apszArgs, RTENV_DEFAULT, fFlags,
+                        NULL, NULL, NULL, pszAsUser, pszPassword,
+                        (void *)szCWD /* pvExtraData (CWD) */, &hProc);
+    if (rc != VERR_PATH_NOT_FOUND && rc != VERR_FILE_NOT_FOUND) /* Not sure why I get the latter on wsl1/ubuntu_24_04 */
+        RTTestIFailed("Invalid CWD -> rc=%Rrc; expected VERR_PATH_NOT_FOUND or VERR_FILE_NOT_FOUND", rc);
 
     RTAssertSetMayPanic(fMayPanic);
     RTAssertSetQuiet(fQuiet);

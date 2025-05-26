@@ -1,4 +1,4 @@
-/* $Id: process-creation-posix.cpp 168907 2025-05-16 14:35:53Z andreas.loeffler@oracle.com $ */
+/* $Id: process-creation-posix.cpp 169006 2025-05-26 22:58:20Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Process Creation, POSIX.
  */
@@ -77,6 +77,9 @@
 #endif
 #if defined(RT_OS_LINUX) || defined(RT_OS_SOLARIS)
 # include <shadow.h>
+#endif
+#ifdef RT_OS_LINUX
+# include <sys/syscall.h>
 #endif
 #if defined(RT_OS_DARWIN)
 # include <xlocale.h> /* for newlocale() */
@@ -1739,12 +1742,10 @@ RTR3DECL(int)   RTProcCreateEx(const char *pszExec, const char * const *papszArg
 
     /* Extra data: */
     if (fFlags & RTPROC_FLAGS_CWD)
-    {
         AssertPtrReturn(pvExtraData, VERR_INVALID_POINTER);
-    }
     else
         AssertReturn(pvExtraData == NULL, VERR_INVALID_PARAMETER);
-    /* Note: Windows-specific flags will be quietly ignored. */
+    /* Note: Windows-specific flags will be quietly ignored, unless they use pvExtraData. */
 
     /*
      * Get the file descriptors for the handles we've been passed.
@@ -1943,6 +1944,164 @@ RTR3DECL(int)   RTProcCreateEx(const char *pszExec, const char * const *papszArg
     if (hEnvToUse != hEnv)
         RTEnvDestroy(hEnvToUse);
     return rc;
+}
+
+
+/**
+ * Creates the fork-status-pipe.
+ *
+ * This must be create as close-on-exec.
+ *
+ * @returns IPRT status code.
+ * @param   pfdStatusPipeR  Where to return the read end.
+ * @param   pfdStatusPipeW  Where to return the write end.
+ */
+static int rtProcPosixForkStatusPipeCreate(int *pfdStatusPipeR, int *pfdStatusPipeW)
+{
+    int aFds[2] = { -1, -1 };
+
+#if defined(RT_OS_LINUX) && defined(__NR_pipe2) && defined(O_CLOEXEC)
+    /* Try pipe2 first as it is race-free. */
+    long rcSyscall = syscall(__NR_pipe2, aFds, O_CLOEXEC);
+    if (rcSyscall >= 0)
+    {
+        *pfdStatusPipeR = aFds[0];
+        *pfdStatusPipeW = aFds[1];
+        return VINF_SUCCESS;
+    }
+#endif /** @todo solaris & freebsd has pipe2() */
+
+    if (pipe(aFds) == 0)
+    {
+        int fOldFlags = fcntl(aFds[0], F_GETFD, 0);
+        if (fOldFlags >= 0)
+        {
+            if (fcntl(aFds[0], F_SETFD, fOldFlags | FD_CLOEXEC) >= 0)
+            {
+                fOldFlags = fcntl(aFds[1], F_GETFD, 0);
+                if (fOldFlags >= 0)
+                {
+                    if (fcntl(aFds[1], F_SETFD, fOldFlags | FD_CLOEXEC) >= 0)
+                    {
+                        *pfdStatusPipeR = aFds[0];
+                        *pfdStatusPipeW = aFds[1];
+                        return VINF_SUCCESS;
+                    }
+                }
+            }
+        }
+        int iErrNoSaved = errno;
+        close(aFds[0]);
+        close(aFds[1]);
+        errno = iErrNoSaved;
+    }
+    return RTErrConvertFromErrno(errno);
+}
+
+
+/**
+ * Writes status to the fork-status-pipe and exits the process (child side).
+ */
+static DECL_NO_RETURN(void) rtProcPosixForkStatusPipeWrite(int fdStatusPipeW, int32_t rcStatus, int rcExit, uint32_t fFlags)
+{
+    ssize_t cbWritten;
+    do
+        cbWritten = write(fdStatusPipeW, &rcStatus, sizeof(rcStatus));
+    while (cbWritten < 0 && errno == EINTR);
+    Assert(cbWritten == (ssize_t)sizeof(rcStatus));
+
+    close(fdStatusPipeW);
+
+    if (fFlags & RTPROC_FLAGS_DETACHED)
+        _Exit(rcExit);
+    else
+        exit(rcExit);
+}
+
+
+/**
+ * Helper for closing the fork-status-pipe (parent side).
+ */
+static int rtProcPosixForkStatusPipeCleanupFailure(int rcRet, int fdStatusPipeR, int fdStatusPipeW)
+{
+    if (fdStatusPipeR >= 0)
+        close(fdStatusPipeR);
+    if (fdStatusPipeW >= 0)
+        close(fdStatusPipeW);
+    return rcRet;
+}
+
+
+/**
+ * Helper that reads the status from fork-status-pipe and closes it (parent side).
+ *
+ * @returns Status from the fork-status-pipe.
+ * @param   pid             The child pid, in case of failure where we have to
+ *                          wait for it to terminate.
+ * @param   fdStatusPipeR   The read pipe (read & then closed before returning).
+ * @param   fdStatusPipeW   The write pipe (to be closed immediately).
+ */
+static int rtProcPosixForkStatusPipeReadAndCleanup(pid_t pid, int fdStatusPipeR, int fdStatusPipeW)
+{
+    /*
+     * Should close the write end first to avoid deadlock trouble.
+     */
+    close(fdStatusPipeW);
+
+    /*
+     * Read and wait for the child side to report a problem or a successful execve.
+     * In the latter case we end up with a zero byte return as the child end closes.
+     */
+    union
+    {
+        int32_t rcForkStatus;
+        uint8_t ab[4];
+    } uBuf = {{0}};
+    ssize_t cbRead;
+    do
+        cbRead = read(fdStatusPipeR, &uBuf, sizeof(uBuf));
+    while (cbRead < 0 && errno == EINTR);
+    if (cbRead == 0)
+    {
+        close(fdStatusPipeR);
+        LogFlow(("rtProcPosixForkStatusPipeReadAndCleanup: pid=%u -> VINF_SUCCESS\n", pid));
+        return VINF_SUCCESS;
+    }
+
+    /*
+     * This is almost impossible, but just in case the pipe implementation breaks...
+     */
+    AssertMsg(cbRead == (ssize_t)sizeof(uBuf), ("cbRead=%zd errno=%d\n", cbRead, errno));
+    while ((size_t)cbRead < sizeof(uBuf))
+    {
+        ssize_t cbRead2;
+        do
+            cbRead2 = read(fdStatusPipeR, &uBuf.ab[cbRead], sizeof(uBuf) - cbRead);
+        while (cbRead2 < 0 && errno == EINTR);
+        AssertBreak(cbRead > 0);
+        cbRead += cbRead2;
+    }
+
+    if (cbRead == (ssize_t)sizeof(uBuf))
+        AssertMsgStmt(RT_FAILURE_NP(uBuf.rcForkStatus), ("%#x cbRead=%zu\n", uBuf.rcForkStatus, cbRead),
+                      uBuf.rcForkStatus = VERR_INTERNAL_ERROR_4);
+    else
+        uBuf.rcForkStatus = VERR_INTERNAL_ERROR_5;
+    close(fdStatusPipeR);
+    LogFlow(("rtProcPosixForkStatusPipeReadAndCleanup: pid=%u -> %Rrc (%d)\n", pid, uBuf.rcForkStatus, uBuf.rcForkStatus));
+
+    /*
+     * Wait for the fork-child to terminate so we don't leave any zombies behind.
+     */
+    int   iStatusIgn = 0;
+    pid_t pidWait;
+    do
+        pidWait = waitpid(pid, &iStatusIgn, 0);
+    while (pidWait == -1 && errno == EINTR);
+
+    LogFlow(("rtProcPosixForkStatusPipeReadAndCleanup: pid=%u -> pidWait=%d errno=%d rcForkStatus=%Rrc\n",
+             pid, pidWait, errno, uBuf.rcForkStatus));
+    return uBuf.rcForkStatus;
 }
 
 
@@ -2163,18 +2322,28 @@ static int rtProcPosixCreateInner(const char *pszNativeExec, const char * const 
     else
 #endif
     {
+        int fdStatusPipeR, fdStatusPipeW;
+        rc = rtProcPosixForkStatusPipeCreate(&fdStatusPipeR, &fdStatusPipeW);
+        if (RT_FAILURE(rc))
+            return rc;
+
 #ifdef RT_OS_SOLARIS
         int templateFd = -1;
         if (!(fFlags & RTPROC_FLAGS_SAME_CONTRACT))
         {
             templateFd = rtSolarisContractPreFork();
             if (templateFd == -1)
-                return VERR_OPEN_FAILED;
+                return rtProcPosixForkStatusPipeCleanupFailure(VERR_OPEN_FAILED, fdStatusPipeR, fdStatusPipeW);
         }
 #endif /* RT_OS_SOLARIS */
+
         pid = fork();
         if (!pid)
         {
+            /*
+             * Child:
+             */
+            close(fdStatusPipeR);
 #ifdef RT_OS_SOLARIS
             if (!(fFlags & RTPROC_FLAGS_SAME_CONTRACT))
                 rtSolarisContractPostForkChild(templateFd);
@@ -2190,33 +2359,18 @@ static int rtProcPosixCreateInner(const char *pszNativeExec, const char * const 
             {
                 int ret = initgroups(pszAsUser, gid);
                 if (ret)
-                {
-                    if (fFlags & RTPROC_FLAGS_DETACHED)
-                        _Exit(126);
-                    else
-                        exit(126);
-                }
+                    rtProcPosixForkStatusPipeWrite(fdStatusPipeW, RTErrConvertFromErrno(errno), 126, fFlags);
             }
             if (gid != ~(gid_t)0)
             {
                 if (setgid(gid))
-                {
-                    if (fFlags & RTPROC_FLAGS_DETACHED)
-                        _Exit(126);
-                    else
-                        exit(126);
-                }
+                    rtProcPosixForkStatusPipeWrite(fdStatusPipeW, RTErrConvertFromErrno(errno), 126, fFlags);
             }
 
             if (uid != ~(uid_t)0)
             {
                 if (setuid(uid))
-                {
-                    if (fFlags & RTPROC_FLAGS_DETACHED)
-                        _Exit(126);
-                    else
-                        exit(126);
-                }
+                    rtProcPosixForkStatusPipeWrite(fdStatusPipeW, RTErrConvertFromErrno(errno), 126, fFlags);
             }
 #endif
             if (fFlags & RTPROC_FLAGS_CWD)
@@ -2226,13 +2380,7 @@ static int rtProcPosixCreateInner(const char *pszNativeExec, const char * const 
                 {
                     rc = RTPathSetCurrent(pszCwd);
                     if (RT_FAILURE(rc))
-                    {
-                        /** @todo r=bela What is the right exit code here?? */
-                        if (fFlags & RTPROC_FLAGS_DETACHED)
-                            _Exit(126);
-                        else
-                            /*exit*/_Exit(126);
-                    }
+                        rtProcPosixForkStatusPipeWrite(fdStatusPipeW, rc, 126, fFlags);
                 }
             }
 
@@ -2247,12 +2395,7 @@ static int rtProcPosixCreateInner(const char *pszNativeExec, const char * const 
                 rc = rtProcPosixAdjustProfileEnvFromChild(hEnvToUse, fFlags, hEnv);
                 papszEnv = RTEnvGetExecEnvP(hEnvToUse);
                 if (RT_FAILURE(rc) || !papszEnv)
-                {
-                    if (fFlags & RTPROC_FLAGS_DETACHED)
-                        _Exit(126);
-                    else
-                        exit(126);
-                }
+                    rtProcPosixForkStatusPipeWrite(fdStatusPipeW, RT_FAILURE_NP(rc) ? rc : VERR_NO_MEMORY, 126, fFlags);
             }
 
             /*
@@ -2275,12 +2418,7 @@ static int rtProcPosixCreateInner(const char *pszNativeExec, const char * const 
                 {
                     int rc2 = dup2(fd, i);
                     if (rc2 != (int)i)
-                    {
-                        if (fFlags & RTPROC_FLAGS_DETACHED)
-                            _Exit(125);
-                        else
-                            exit(125);
-                    }
+                        rtProcPosixForkStatusPipeWrite(fdStatusPipeW, RTErrConvertFromErrno(errno), 125, fFlags);
                     for (unsigned j = i + 1; j < cRedirFds; j++)
                         if (paRedirFds[j] == fd)
                         {
@@ -2300,39 +2438,52 @@ static int rtProcPosixCreateInner(const char *pszNativeExec, const char * const 
             {
                 /* This can happen when trying to start a shell script without the magic #!/bin/sh */
                 RTAssertMsg2Weak("Cannot execute this binary format!\n");
+                rtProcPosixForkStatusPipeWrite(fdStatusPipeW, VERR_BAD_EXE_FORMAT, 127, fFlags);
             }
             else if (errno == EACCES)
             {
                 /* This can happen if file isn't marked as being executable or SELinux is enabled for prohibits using execve.*/
                 RTAssertMsg2Weak("Permission denied executing this binary -- check execute permissions and/or SELinux policies!\n");
+                rtProcPosixForkStatusPipeWrite(fdStatusPipeW, VERR_ACCESS_DENIED, 127, fFlags);
             }
             else
+            {
                 RTAssertMsg2Weak("execve returns %d errno=%d (%s)\n", rc, errno, pszNativeExec);
-            RTAssertReleasePanic();
-            if (fFlags & RTPROC_FLAGS_DETACHED)
-                _Exit(127);
-            else
-                exit(127);
+                rtProcPosixForkStatusPipeWrite(fdStatusPipeW, RTErrConvertFromErrno(errno), 127, fFlags);
+            }
+            /* end of child */
         }
+
+        /*
+         * Parent:
+         */
 #ifdef RT_OS_SOLARIS
         if (!(fFlags & RTPROC_FLAGS_SAME_CONTRACT))
             rtSolarisContractPostForkParent(templateFd, pid);
 #endif /* RT_OS_SOLARIS */
         if (pid > 0)
         {
-            /* For a detached process this happens in the temp process, so
-             * it's not worth doing anything as this process must exit. */
-            if (fFlags & RTPROC_FLAGS_DETACHED)
-                _Exit(0);
-            if (phProcess)
-                *phProcess = pid;
-            return VINF_SUCCESS;
+            /* Get the execv++ status from the pipe. */
+            rc = rtProcPosixForkStatusPipeReadAndCleanup(pid, fdStatusPipeR, fdStatusPipeW);
+            if (RT_SUCCESS(rc))
+            {
+                /* For a detached process this happens in the temp process, so
+                 * it's not worth doing anything as this process must exit. */
+                if (fFlags & RTPROC_FLAGS_DETACHED)
+                    _Exit(0);
+                if (phProcess)
+                    *phProcess = pid;
+                return VINF_SUCCESS;
+            }
         }
+        else
+            rc = rtProcPosixForkStatusPipeCleanupFailure(RTErrConvertFromErrno(errno), fdStatusPipeR, fdStatusPipeW);
+
         /* For a detached process this happens in the temp process, so
          * it's not worth doing anything as this process must exit. */
         if (fFlags & RTPROC_FLAGS_DETACHED)
             _Exit(124);
-        return RTErrConvertFromErrno(errno);
+        return rc;
     }
 
     return VERR_NOT_IMPLEMENTED;
