@@ -85,6 +85,15 @@ Rules for adding a changelog entry to make them look more uniform:
           hosts (bug #22175)</para>
       </listitem>
 
+      <listitem>
+        <para>Audio: Fixed device switching on Windows hosts (bug #22267)</para>
+      </listitem>
+
+      <listitem>
+        <para>Windows host installer: Fixed multiple installation entries in the
+          'Add or remove programs' dialog and upgrade issues</para>
+      </listitem>
+
     </itemizedlist>
   </sect1>
 
