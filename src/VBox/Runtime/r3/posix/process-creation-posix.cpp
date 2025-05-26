@@ -1,4 +1,4 @@
-/* $Id: process-creation-posix.cpp 169007 2025-05-26 23:03:41Z knut.osmundsen@oracle.com $ */
+/* $Id: process-creation-posix.cpp 169008 2025-05-26 23:52:19Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Process Creation, POSIX.
  */
@@ -2322,7 +2322,8 @@ static int rtProcPosixCreateInner(const char *pszNativeExec, const char * const 
     else
 #endif
     {
-        int fdStatusPipeR, fdStatusPipeW;
+        int fdStatusPipeR = -1;
+        int fdStatusPipeW = -1;
         rc = rtProcPosixForkStatusPipeCreate(&fdStatusPipeR, &fdStatusPipeW);
         if (RT_FAILURE(rc))
             return rc;
