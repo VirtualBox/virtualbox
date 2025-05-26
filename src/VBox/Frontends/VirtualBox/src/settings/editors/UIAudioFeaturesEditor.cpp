@@ -1,4 +1,4 @@
-/* $Id: UIAudioFeaturesEditor.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UIAudioFeaturesEditor.cpp 168997 2025-05-26 16:35:29Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIAudioFeaturesEditor class implementation.
  */
@@ -97,17 +97,17 @@ void UIAudioFeaturesEditor::setMinimumLayoutIndent(int iIndent)
 void UIAudioFeaturesEditor::sltRetranslateUI()
 {
     if (m_pLabel)
-        m_pLabel->setText(tr("Extended Features:"));
+        m_pLabel->setText(tr("Audio Features"));
     if (m_pCheckBoxEnableOutput)
     {
-        m_pCheckBoxEnableOutput->setText(tr("Enable Audio &Output"));
-        m_pCheckBoxEnableOutput->setToolTip(tr("When checked, output to the virtual audio device will reach the host. "
+        m_pCheckBoxEnableOutput->setText(tr("Audio &Output"));
+        m_pCheckBoxEnableOutput->setToolTip(tr("Output to the virtual audio device will reach the host. "
                                                "Otherwise the guest is muted."));
     }
     if (m_pCheckBoxEnableInput)
     {
-        m_pCheckBoxEnableInput->setText(tr("Enable Audio &Input"));
-        m_pCheckBoxEnableInput->setToolTip(tr("When checked, the guest will be able to capture audio input from the host. "
+        m_pCheckBoxEnableInput->setText(tr("Audio &Input"));
+        m_pCheckBoxEnableInput->setToolTip(tr("The guest will be able to capture audio input from the host. "
                                               "Otherwise the guest will capture only silence."));
     }
 }

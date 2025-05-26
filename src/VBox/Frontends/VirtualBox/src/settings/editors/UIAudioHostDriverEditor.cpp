@@ -1,4 +1,4 @@
-/* $Id: UIAudioHostDriverEditor.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UIAudioHostDriverEditor.cpp 168997 2025-05-26 16:35:29Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIAudioHostDriverEditor class implementation.
  */
@@ -79,7 +79,7 @@ void UIAudioHostDriverEditor::setMinimumLayoutIndent(int iIndent)
 void UIAudioHostDriverEditor::sltRetranslateUI()
 {
     if (m_pLabel)
-        m_pLabel->setText(tr("Host Audio &Driver:"));
+        m_pLabel->setText(tr("Host Audio &Driver"));
     if (m_pCombo)
     {
         for (int i = 0; i < m_pCombo->count(); ++i)
@@ -87,7 +87,7 @@ void UIAudioHostDriverEditor::sltRetranslateUI()
             const KAudioDriverType enmType = m_pCombo->itemData(i).value<KAudioDriverType>();
             m_pCombo->setItemText(i, gpConverter->toString(enmType));
         }
-        m_pCombo->setToolTip(tr("Selects the audio output driver. The Null Audio Driver makes the guest "
+        m_pCombo->setToolTip(tr("The audio output driver. The Null Audio Driver makes the guest "
                                 "see an audio card, however every access to it will be ignored."));
     }
 }

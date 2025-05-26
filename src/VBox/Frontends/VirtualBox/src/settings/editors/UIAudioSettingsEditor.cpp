@@ -1,4 +1,4 @@
-/* $Id: UIAudioSettingsEditor.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UIAudioSettingsEditor.cpp 168997 2025-05-26 16:35:29Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIAudioSettingsEditor class implementation.
  */
@@ -137,8 +137,8 @@ void UIAudioSettingsEditor::sltRetranslateUI()
     if (m_pCheckboxFeature)
     {
         m_pCheckboxFeature->setText(tr("Enable &Audio"));
-        m_pCheckboxFeature->setToolTip(tr("When checked, a virtual PCI audio card will be plugged into the virtual machine "
-                                          "and will communicate with the host audio system using the specified driver."));
+        m_pCheckboxFeature->setToolTip(tr("A virtual PCI audio card will be plugged into the virtual machine "
+                                          "and will communicate with the host audio system using the specified driver"));
     }
 
     updateMinimumLayoutHint();
