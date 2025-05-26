@@ -1,4 +1,4 @@
-/* $Id: GICAll.cpp 168983 2025-05-26 06:36:30Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICAll.cpp 168987 2025-05-26 08:38:58Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC) - All Contexts.
  */
@@ -651,15 +651,17 @@ static uint16_t gicReDistGetHighestPriorityPendingIntr(PCGICCPU pGicCpu, uint32_
 
 
 /**
- * Get the highest priority pending interrupt from the distributor.
+ * Get the highest priority pending interrupt from the distributor that could be
+ * routed to the given VCPU.
  *
  * @returns The interrupt ID or GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT if no
  *          interrupts are pending or not in a state to be signalled.
  * @param   pGicDev         The GIC distributor state.
+ * @param   pVCpu           The cross context virtual CPU structure.
  * @param   fIntrGroupMask  The interrupt groups to consider.
  * @param   pIntr           Where to store the pending interrupt. Optional, can be NULL.
  */
-static uint16_t gicDistGetHighestPriorityPendingIntr(PCGICDEV pGicDev, uint32_t fIntrGroupMask, PGICINTR pIntr)
+static uint16_t gicDistGetHighestPriorityPendingIntr(PCGICDEV pGicDev, PCVMCPUCC pVCpu, uint32_t fIntrGroupMask, PGICINTR pIntr)
 {
     uint16_t idxIntr   = UINT16_MAX;
     uint16_t uIntId    = GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT;
@@ -690,7 +692,9 @@ static uint16_t gicDistGetHighestPriorityPendingIntr(PCGICDEV pGicDev, uint32_t 
         {
             do
             {
-                if (pGicDev->abIntrPriority[idxPending] < bPriority)
+                /* Get the highest priority pending interrupt that can be routed to the target VCPU. */
+                if (   pGicDev->abIntrPriority[idxPending] < bPriority
+                    && pGicDev->au32IntrRouting[idxPending] == pVCpu->idCpu)
                 {
                     idxHighest = (uint16_t)idxPending;
                     bPriority  = pGicDev->abIntrPriority[idxPending];
@@ -777,11 +781,10 @@ static void gicReDistHasIrqPending(PCGICCPU pGicCpu, bool *pfIrq, bool *pfFiq)
  *
  * @param   pGicDev     The GIC distributor state.
  * @param   pVCpu       The cross context virtual CPU structure.
- * @param   idCpu       The ID of the virtual CPU.
  * @param   pfIrq       Where to store whether there are IRQs can be signalled.
  * @param   pfFiq       Where to store whether there are FIQs can be signalled.
  */
-static void gicDistHasIrqPendingForVCpu(PCGICDEV pGicDev, PCVMCPUCC pVCpu, VMCPUID idCpu, bool *pfIrq, bool *pfFiq)
+static void gicDistHasIrqPendingForVCpu(PCGICDEV pGicDev, PCVMCPUCC pVCpu, bool *pfIrq, bool *pfFiq)
 {
     bool const fIsGroup1Enabled = pGicDev->fIntrGroup1Enabled;
     bool const fIsGroup0Enabled = pGicDev->fIntrGroup0Enabled;
@@ -796,22 +799,17 @@ static void gicDistHasIrqPendingForVCpu(PCGICDEV pGicDev, PCVMCPUCC pVCpu, VMCPU
         GICINTR Intr;
         uint32_t const fIntrGroupMask = (fIsGroup0Enabled ? GIC_INTR_GROUP_0 : 0)
                                       | (fIsGroup1Enabled ? (GIC_INTR_GROUP_1S | GIC_INTR_GROUP_1NS) : 0);
-        gicDistGetHighestPriorityPendingIntr(pGicDev, fIntrGroupMask, &Intr);
+        gicDistGetHighestPriorityPendingIntr(pGicDev, pVCpu, fIntrGroupMask, &Intr);
         if (Intr.uIntId != GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT)
         {
-            /* Check that the interrupt should be routed to the target VCPU. */
-            Assert(Intr.idxIntr < RT_ELEMENTS(pGicDev->au32IntrRouting));
-            if (pGicDev->au32IntrRouting[Intr.idxIntr] == idCpu)
+            /* Check if it has sufficient priority to be signalled to the PE. */
+            bool const fGroup0 = RT_BOOL(fIntrGroupMask & GIC_INTR_GROUP_0);
+            bool const fSufficientPriority = gicReDistIsSufficientPriority(pGicCpu, Intr.bPriority, fGroup0);
+            if (fSufficientPriority)
             {
-                /* Check if it has sufficient priority to be signalled to the PE. */
-                bool const fGroup0 = RT_BOOL(fIntrGroupMask & GIC_INTR_GROUP_0);
-                bool const fSufficientPriority = gicReDistIsSufficientPriority(pGicCpu, Intr.bPriority, fGroup0);
-                if (fSufficientPriority)
-                {
-                    *pfFiq = fIsGroup0Enabled && RT_BOOL(Intr.fIntrGroupMask & GIC_INTR_GROUP_0);
-                    *pfIrq = fIsGroup1Enabled && RT_BOOL(Intr.fIntrGroupMask & (GIC_INTR_GROUP_1S | GIC_INTR_GROUP_1NS));
-                    return;
-                }
+                *pfFiq = fIsGroup0Enabled && RT_BOOL(Intr.fIntrGroupMask & GIC_INTR_GROUP_0);
+                *pfIrq = fIsGroup1Enabled && RT_BOOL(Intr.fIntrGroupMask & (GIC_INTR_GROUP_1S | GIC_INTR_GROUP_1NS));
+                return;
             }
         }
     }
@@ -904,7 +902,7 @@ static VBOXSTRICTRC gicReDistUpdateIrqState(PCGICDEV pGicDev, PVMCPUCC pVCpu)
     gicReDistHasIrqPending(VMCPU_TO_GICCPU(pVCpu), &fIrq, &fFiq);
 
     bool fIrqDist, fFiqDist;
-    gicDistHasIrqPendingForVCpu(pGicDev, pVCpu, pVCpu->idCpu, &fIrqDist, &fFiqDist);
+    gicDistHasIrqPendingForVCpu(pGicDev, pVCpu, &fIrqDist, &fFiqDist);
 
     fIrq |= fIrqDist;
     fFiq |= fFiqDist;
@@ -932,7 +930,7 @@ static VBOXSTRICTRC gicDistUpdateIrqState(PCVMCC pVM, PCGICDEV pGicDev)
         gicReDistHasIrqPending(pGicCpu, &fIrq, &fFiq);
 
         bool fIrqDist, fFiqDist;
-        gicDistHasIrqPendingForVCpu(pGicDev, pVCpu, idCpu, &fIrqDist, &fFiqDist);
+        gicDistHasIrqPendingForVCpu(pGicDev, pVCpu, &fIrqDist, &fFiqDist);
         fIrq |= fIrqDist;
         fFiq |= fFiqDist;
 
@@ -1729,12 +1727,14 @@ DECL_FORCE_INLINE(VMCPUID) gicGetCpuIdFromAffinity(uint8_t idCpuInterface, uint8
  * @returns The interrupt ID or GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT if no interrupt
  *          is pending or not in a state to be signalled to the PE.
  * @param   pGicDev         The GIC distributor state.
- * @param   pGicCpu         The GIC redistributor and CPU interface state.
+ * @param   pVCpu           The cross context virtual CPU structure.
  * @param   fIntrGroupMask  The interrupt groups to consider.
  * @param   pIntr           Where to store the pending interrupt. Optional, can be NULL.
  */
-static uint16_t gicGetHighestPriorityPendingIntr(PCGICDEV pGicDev, PCGICCPU pGicCpu, uint32_t fIntrGroupMask, PGICINTR pIntr)
+static uint16_t gicGetHighestPriorityPendingIntr(PCGICDEV pGicDev, PCVMCPUCC pVCpu, uint32_t fIntrGroupMask, PGICINTR pIntr)
 {
+    PCGICCPU pGicCpu = VMCPU_TO_GICCPU(pVCpu);
+
     /* Quick bailout if all interrupts are fully masked. */
     uint16_t uIntId;
     if (   pGicCpu->bIntrPriorityMask
@@ -1744,7 +1744,7 @@ static uint16_t gicGetHighestPriorityPendingIntr(PCGICDEV pGicDev, PCGICCPU pGic
         gicReDistGetHighestPriorityPendingIntr(pGicCpu, fIntrGroupMask, &IntrRedist);
 
         GICINTR IntrDist;
-        gicDistGetHighestPriorityPendingIntr(pGicDev, fIntrGroupMask, &IntrDist);
+        gicDistGetHighestPriorityPendingIntr(pGicDev, pVCpu, fIntrGroupMask, &IntrDist);
 
         /* Get the interrupt ID of the highest priority pending interrupt if any. */
         PGICINTR pHighestIntr = IntrRedist.bPriority < IntrDist.bPriority ? &IntrRedist : &IntrDist;
@@ -1819,7 +1819,7 @@ static uint16_t gicAckHighestPriorityPendingIntr(PGICDEV pGicDev, PVMCPUCC pVCpu
      */
     GICINTR Intr;
     PGICCPU pGicCpu = VMCPU_TO_GICCPU(pVCpu);
-    gicGetHighestPriorityPendingIntr(pGicDev, pGicCpu, fIntrGroupMask, &Intr);
+    gicGetHighestPriorityPendingIntr(pGicDev, pVCpu, fIntrGroupMask, &Intr);
     if (Intr.uIntId == GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT)
     {
         STAM_PROFILE_STOP(&pGicCpu->StatProfIntrAck, x);
@@ -2995,7 +2995,7 @@ static DECLCALLBACK(VBOXSTRICTRC) gicReadSysReg(PVMCPUCC pVCpu, uint32_t u32Reg,
             break;
 
         case ARMV8_AARCH64_SYSREG_ICC_HPPIR1_EL1:
-            *pu64Value = gicGetHighestPriorityPendingIntr(pGicDev, pGicCpu, GIC_INTR_GROUP_1NS, NULL /*pIntr*/);
+            *pu64Value = gicGetHighestPriorityPendingIntr(pGicDev, pVCpu, GIC_INTR_GROUP_1NS, NULL /*pIntr*/);
             break;
 
         case ARMV8_AARCH64_SYSREG_ICC_BPR1_EL1:
