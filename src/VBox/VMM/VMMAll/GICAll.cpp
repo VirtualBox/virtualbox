@@ -1,4 +1,4 @@
-/* $Id: GICAll.cpp 168961 2025-05-22 09:31:47Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICAll.cpp 168983 2025-05-26 06:36:30Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC) - All Contexts.
  */
@@ -207,7 +207,6 @@ static const char *gicDistGetRegDescription(uint16_t offReg)
    }
 }
 #endif /* LOG_ENABLED */
-
 
 
 /**
@@ -537,6 +536,51 @@ static bool gicReDistIsSufficientPriority(PCGICCPU pGicCpu, uint8_t bIntrPriorit
 }
 
 
+/**
+ * Gets the distributor's pending-interrupt bitmap for a given index.
+ *
+ * @returns The pending interrupt bitmap.
+ * @param   pGicDev     The GIC distributor state.
+ * @param   idxReg      The index of the pending-interrupt bitmap.
+ */
+DECL_FORCE_INLINE(uint32_t) gicDistGetPendingIntrAt(PCGICDEV pGicDev, uint16_t idxReg)
+{
+    Assert(idxReg < RT_ELEMENTS(pGicDev->bmIntrPending));
+    Assert(2 * idxReg + 1 < RT_ELEMENTS(pGicDev->bmIntrConfig));
+    uint32_t const bmIntrConfig   = gicGetAltBits(pGicDev->bmIntrConfig[2 * idxReg], pGicDev->bmIntrConfig[2 * idxReg + 1]);
+    uint32_t const bmLevelPending = pGicDev->bmIntrLevel[idxReg]   & ~bmIntrConfig;
+    uint32_t const bmIntrPending  = pGicDev->bmIntrPending[idxReg] | bmLevelPending;
+    return bmIntrPending;
+}
+
+
+/**
+ * Gets the redistributor's pending-interrupt bitmap for a given index.
+ *
+ * @return  The pending interrupt bitmap.
+ * @param   pGicCpu     The GIC redistributor and CPU interface state.
+ * @param   idxReg      The index of the pending-interrupt bitmap.
+ */
+DECL_FORCE_INLINE(uint32_t) gicReDistGetPendingIntrAt(PCGICCPU pGicCpu, uint16_t idxReg)
+{
+    Assert(idxReg < RT_ELEMENTS(pGicCpu->bmIntrPending));
+    Assert(2 * idxReg + 1 < RT_ELEMENTS(pGicCpu->bmIntrConfig));
+    uint32_t const bmIntrConfig   = gicGetAltBits(pGicCpu->bmIntrConfig[2 * idxReg], pGicCpu->bmIntrConfig[2 * idxReg + 1]);
+    uint32_t const bmLevelPending = pGicCpu->bmIntrLevel[idxReg]   & ~bmIntrConfig;
+    uint32_t const bmIntrPending  = pGicCpu->bmIntrPending[idxReg] | bmLevelPending;
+    return bmIntrPending;
+}
+
+
+/**
+ * Get the highest priority pending interrupt from the redistributor.
+ *
+ * @returns The interrupt ID or GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT if no
+ *          interrupts are pending or not in a state to be signalled.
+ * @param   pGicCpu         The GIC redistributor and CPU interface state.
+ * @param   fIntrGroupMask  The interrupt groups to consider.
+ * @param   pIntr           Where to store the pending interrupt. Optional, can be NULL.
+ */
 static uint16_t gicReDistGetHighestPriorityPendingIntr(PCGICCPU pGicCpu, uint32_t fIntrGroupMask, PGICINTR pIntr)
 {
     uint16_t idxIntr   = UINT16_MAX;
@@ -548,9 +592,7 @@ static uint16_t gicReDistGetHighestPriorityPendingIntr(PCGICCPU pGicCpu, uint32_
     for (uint16_t i = 0; i < RT_ELEMENTS(bmReDistIntrs); i++)
     {
         /* Collect interrupts are pending, enabled and inactive. */
-        uint32_t const bmIntrConfig   = gicGetAltBits(pGicCpu->bmIntrConfig[2 * i], pGicCpu->bmIntrConfig[2 * i + 1]);
-        uint32_t const bmLevelPending = pGicCpu->bmIntrLevel[i]   & ~bmIntrConfig;
-        uint32_t const bmIntrPending  = pGicCpu->bmIntrPending[i] | bmLevelPending;
+        uint32_t const bmIntrPending = gicReDistGetPendingIntrAt(pGicCpu, i);
         bmReDistIntrs[i] = (bmIntrPending & pGicCpu->bmIntrEnabled[i]) & ~pGicCpu->bmIntrActive[i];
 
         /* Discard interrupts if the group they belong to is not requested. */
@@ -608,6 +650,15 @@ static uint16_t gicReDistGetHighestPriorityPendingIntr(PCGICCPU pGicCpu, uint32_
 }
 
 
+/**
+ * Get the highest priority pending interrupt from the distributor.
+ *
+ * @returns The interrupt ID or GIC_INTID_RANGE_SPECIAL_NO_INTERRUPT if no
+ *          interrupts are pending or not in a state to be signalled.
+ * @param   pGicDev         The GIC distributor state.
+ * @param   fIntrGroupMask  The interrupt groups to consider.
+ * @param   pIntr           Where to store the pending interrupt. Optional, can be NULL.
+ */
 static uint16_t gicDistGetHighestPriorityPendingIntr(PCGICDEV pGicDev, uint32_t fIntrGroupMask, PGICINTR pIntr)
 {
     uint16_t idxIntr   = UINT16_MAX;
@@ -619,9 +670,7 @@ static uint16_t gicDistGetHighestPriorityPendingIntr(PCGICDEV pGicDev, uint32_t 
     for (uint16_t i = 0; i < RT_ELEMENTS(bmDistIntrs); i++)
     {
         /* Collect interrupts are pending, enabled and inactive. */
-        uint32_t const bmIntrConfig   = gicGetAltBits(pGicDev->bmIntrConfig[2 * i], pGicDev->bmIntrConfig[2 * i + 1]);
-        uint32_t const bmLevelPending = pGicDev->bmIntrLevel[i]   & ~bmIntrConfig;
-        uint32_t const bmIntrPending  = pGicDev->bmIntrPending[i] | bmLevelPending;
+        uint32_t const bmIntrPending  = gicDistGetPendingIntrAt(pGicDev, i);
         bmDistIntrs[i] = (bmIntrPending & pGicDev->bmIntrEnabled[i]) & ~pGicDev->bmIntrActive[i];
 
         /* Discard interrupts if the group they belong to is not requested. */
@@ -692,12 +741,12 @@ static void gicReDistHasIrqPending(PCGICCPU pGicCpu, bool *pfIrq, bool *pfFiq)
     bool const fIsGroup1Enabled = pGicCpu->fIntrGroup1Enabled;
     bool const fIsGroup0Enabled = pGicCpu->fIntrGroup0Enabled;
     Assert(!fIsGroup0Enabled);
+    LogFlowFunc(("fIsGroup0Enabled=%RTbool fIsGroup1Enabled=%RTbool\n", fIsGroup0Enabled, fIsGroup1Enabled));
 
     /* Quick bailout if all interrupts are fully masked. */
-    if (pGicCpu->bIntrPriorityMask > 0)
+    if (   pGicCpu->bIntrPriorityMask
+        && pGicCpu->abRunningPriorities[pGicCpu->idxRunningPriority])
     {
-        LogFlowFunc(("fIsGroup0Enabled=%RTbool fIsGroup1Enabled=%RTbool\n", fIsGroup0Enabled, fIsGroup1Enabled));
-
         /* Get the highest pending priority interrupt from the redistributor. */
         GICINTR Intr;
         uint32_t const fIntrGroupMask = (fIsGroup0Enabled ? GIC_INTR_GROUP_0 : 0)
@@ -740,7 +789,8 @@ static void gicDistHasIrqPendingForVCpu(PCGICDEV pGicDev, PCVMCPUCC pVCpu, VMCPU
 
     /* Quick bailout if all interrupts are fully masked. */
     PCGICCPU pGicCpu = VMCPU_TO_GICCPU(pVCpu);
-    if (pGicCpu->bIntrPriorityMask > 0)
+    if (   pGicCpu->bIntrPriorityMask
+        && pGicCpu->abRunningPriorities[pGicCpu->idxRunningPriority])
     {
         /* Get the highest pending priority interrupt from the distributor. */
         GICINTR Intr;
@@ -850,12 +900,10 @@ DECLHIDDEN(void) gicReDistSetLpi(PPDMDEVINS pDevIns, PVMCPUCC pVCpu, uint16_t uI
 static VBOXSTRICTRC gicReDistUpdateIrqState(PCGICDEV pGicDev, PVMCPUCC pVCpu)
 {
     LogFlowFunc(("\n"));
-    bool fIrq;
-    bool fFiq;
+    bool fIrq, fFiq;
     gicReDistHasIrqPending(VMCPU_TO_GICCPU(pVCpu), &fIrq, &fFiq);
 
-    bool fIrqDist;
-    bool fFiqDist;
+    bool fIrqDist, fFiqDist;
     gicDistHasIrqPendingForVCpu(pGicDev, pVCpu, pVCpu->idCpu, &fIrqDist, &fFiqDist);
 
     fIrq |= fIrqDist;
@@ -1182,11 +1230,7 @@ static VBOXSTRICTRC gicDistReadIntrPendingReg(PGICDEV pGicDev, uint16_t idxReg, 
     if (idxReg > 0)
     {
         Assert(idxReg < RT_ELEMENTS(pGicDev->bmIntrPending));
-        Assert(2 * idxReg + 1 < RT_ELEMENTS(pGicDev->bmIntrConfig));
-        uint32_t const bmIntrConfig   = gicGetAltBits(pGicDev->bmIntrConfig[2 * idxReg], pGicDev->bmIntrConfig[2 * idxReg + 1]);
-        uint32_t const bmLevelPending = pGicDev->bmIntrLevel[idxReg]   & ~bmIntrConfig;
-        uint32_t const bmIntrPending  = pGicDev->bmIntrPending[idxReg] | bmLevelPending;
-        *puValue = bmIntrPending;
+        *puValue = gicDistGetPendingIntrAt(pGicDev, idxReg);
     }
     else
     {
@@ -1405,11 +1449,7 @@ static VBOXSTRICTRC gicReDistReadIntrPendingReg(PCGICDEV pGicDev, PGICCPU pGicCp
     /* When affinity routing is disabled, reads return 0. */
     Assert(pGicDev->fAffRoutingEnabled); RT_NOREF(pGicDev);
     Assert(idxReg < RT_ELEMENTS(pGicCpu->bmIntrPending));
-    Assert(2 * idxReg + 1 < RT_ELEMENTS(pGicCpu->bmIntrConfig));
-    uint32_t const bmIntrConfig   = gicGetAltBits(pGicCpu->bmIntrConfig[2 * idxReg], pGicCpu->bmIntrConfig[2 * idxReg + 1]);
-    uint32_t const bmLevelPending = pGicCpu->bmIntrLevel[idxReg]   & ~bmIntrConfig;
-    uint32_t const bmIntrPending  = pGicCpu->bmIntrPending[idxReg] | bmLevelPending;
-    *puValue = bmIntrPending;
+    *puValue = gicReDistGetPendingIntrAt(pGicCpu, idxReg);
     LogFlowFunc(("idxReg=%#x read %#x\n", idxReg, pGicCpu->bmIntrPending[idxReg]));
     return VINF_SUCCESS;
 }
@@ -1697,7 +1737,8 @@ static uint16_t gicGetHighestPriorityPendingIntr(PCGICDEV pGicDev, PCGICCPU pGic
 {
     /* Quick bailout if all interrupts are fully masked. */
     uint16_t uIntId;
-    if (pGicCpu->bIntrPriorityMask > 0)
+    if (   pGicCpu->bIntrPriorityMask
+        && pGicCpu->abRunningPriorities[pGicCpu->idxRunningPriority])
     {
         GICINTR IntrRedist;
         gicReDistGetHighestPriorityPendingIntr(pGicCpu, fIntrGroupMask, &IntrRedist);
@@ -3008,7 +3049,6 @@ static DECLCALLBACK(VBOXSTRICTRC) gicWriteSysReg(PVMCPUCC pVCpu, uint32_t u32Reg
     switch (u32Reg)
     {
         case ARMV8_AARCH64_SYSREG_ICC_PMR_EL1:
-            LogFlowFunc(("ICC_PMR_EL1: Interrupt priority now %u\n", (uint8_t)u64Value));
             pGicCpu->bIntrPriorityMask = (uint8_t)u64Value;
             rcStrict = gicReDistUpdateIrqState(pGicDev, pVCpu);
             break;
