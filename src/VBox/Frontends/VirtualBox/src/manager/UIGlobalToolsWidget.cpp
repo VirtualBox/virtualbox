@@ -1,4 +1,4 @@
-/* $Id: UIGlobalToolsWidget.cpp 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIGlobalToolsWidget.cpp 168992 2025-05-26 13:30:39Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIGlobalToolsWidget class implementation.
  */
@@ -170,9 +170,9 @@ void UIGlobalToolsWidget::sltHandleChooserPaneNavigationListChange()
 
 void UIGlobalToolsWidget::sltHandleCloudProfileStateChange(const QString &, const QString &)
 {
-    /* If Global Activities tool is currently chosen: */
+    /* If Global Resources tool is currently chosen: */
     AssertPtrReturnVoid(toolPane());
-    if (toolPane()->currentTool() == UIToolType_Activities)
+    if (toolPane()->currentTool() == UIToolType_Resources)
     {
         /* Propagate a set of cloud machine items to Management tool-pane: */
         toolPane()->setCloudMachineItems(chooser()->cloudMachineItems());
@@ -219,9 +219,9 @@ void UIGlobalToolsWidget::sltHandleToolsMenuIndexChange(UIToolType enmType)
         /* Switch tool-pane accordingly: */
         switchToolTo(enmType);
 
-        /* Special handling for Activities Global tool,
+        /* Special handling for Global Resources tool,
          * start unconditionally updating all cloud VMs: */
-        if (enmType == UIToolType_Activities)
+        if (enmType == UIToolType_Resources)
         {
             chooser()->setKeepCloudNodesUpdated(true);
             toolPane()->setCloudMachineItems(chooser()->cloudMachineItems());
@@ -243,7 +243,7 @@ void UIGlobalToolsWidget::sltSwitchToVMActivityTool(const QUuid &uMachineId)
 
 void UIGlobalToolsWidget::sltSwitchToActivitiesTool()
 {
-    setMenuToolType(UIToolType_Activities);
+    setMenuToolType(UIToolType_Resources);
 }
 
 void UIGlobalToolsWidget::prepare()

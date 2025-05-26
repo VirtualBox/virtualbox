@@ -1,4 +1,4 @@
-/* $Id: UIExtraDataDefs.cpp 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIExtraDataDefs.cpp 168992 2025-05-26 13:30:39Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Extra-data related definitions.
  */
@@ -296,7 +296,7 @@ UIToolClass UIToolStuff::castTypeToClass(UIToolType enmType)
         case UIToolType_Network:
         case UIToolType_Cloud:
         case UIToolType_CloudConsole:
-        case UIToolType_Activities:
+        case UIToolType_Resources:
             return UIToolClass_Global;
         case UIToolType_Error:
         case UIToolType_Details:

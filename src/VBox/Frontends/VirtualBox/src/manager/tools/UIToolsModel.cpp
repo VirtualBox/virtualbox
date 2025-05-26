@@ -1,4 +1,4 @@
-﻿/* $Id: UIToolsModel.cpp 168963 2025-05-22 12:05:00Z serkan.bayraktar@oracle.com $ */
+﻿/* $Id: UIToolsModel.cpp 168992 2025-05-26 13:30:39Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIToolsModel class implementation.
  */
@@ -485,7 +485,7 @@ void UIToolsModel::sltRetranslateUI()
             case UIToolType_Media:       pItem->setName(tr("Media")); break;
             case UIToolType_Network:     pItem->setName(tr("Network")); break;
             case UIToolType_Cloud:       pItem->setName(tr("Cloud")); break;
-            case UIToolType_Activities:  pItem->setName(tr("Resources")); break;
+            case UIToolType_Resources:   pItem->setName(tr("Resources")); break;
             // Machine
             case UIToolType_Details:     pItem->setName(tr("Details")); break;
             case UIToolType_Snapshots:   pItem->setName(tr("Snapshots")); break;
@@ -563,10 +563,10 @@ void UIToolsModel::prepareItems()
                                                                     ":/cloud_profile_manager_disabled_24px.png"),
                                        UIToolType_Cloud);
 
-            /* Activities: */
+            /* Resources: */
             m_items << new UIToolsItem(scene(), UIIconPool::iconSet(":/resources_monitor_24px.png",
                                                                     ":/resources_monitor_disabled_24px.png"),
-                                       UIToolType_Activities);
+                                       UIToolType_Resources);
 
             /* Toggle: */
             m_items << new UIToolsItem(scene(), UIIconPool::iconSet(":/tools_menu_24px.png",

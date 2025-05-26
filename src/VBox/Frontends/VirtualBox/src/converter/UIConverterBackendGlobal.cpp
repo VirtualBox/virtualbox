@@ -1,4 +1,4 @@
-/* $Id: UIConverterBackendGlobal.cpp 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIConverterBackendGlobal.cpp 168992 2025-05-26 13:30:39Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIConverterBackendGlobal implementation.
  */
@@ -1699,7 +1699,7 @@ template<> SHARED_LIBRARY_STUFF QString UIConverter::toInternalString(const UITo
         case UIToolType_Network:      strResult = "Network"; break;
         case UIToolType_Cloud:        strResult = "Cloud"; break;
         case UIToolType_CloudConsole: strResult = "CloudConsole"; break;
-        case UIToolType_Activities:   strResult = "Activities"; break;
+        case UIToolType_Resources:    strResult = "Resources"; break;
         case UIToolType_Details:      strResult = "Details"; break;
         case UIToolType_Snapshots:    strResult = "Snapshots"; break;
         case UIToolType_Logs:         strResult = "Logs"; break;
@@ -1731,8 +1731,8 @@ template<> SHARED_LIBRARY_STUFF UIToolType UIConverter::fromInternalString<UIToo
         return UIToolType_Cloud;
     if (strToolType.compare("CloudConsole", Qt::CaseInsensitive) == 0)
         return UIToolType_CloudConsole;
-    if (strToolType.compare("Activities", Qt::CaseInsensitive) == 0)
-        return UIToolType_Activities;
+    if (strToolType.compare("Resources", Qt::CaseInsensitive) == 0)
+        return UIToolType_Resources;
     if (strToolType.compare("Details", Qt::CaseInsensitive) == 0)
         return UIToolType_Details;
     if (strToolType.compare("Snapshots", Qt::CaseInsensitive) == 0)
