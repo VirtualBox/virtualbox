@@ -1,4 +1,4 @@
-/* $Id: process-creation-posix.cpp 169006 2025-05-26 22:58:20Z knut.osmundsen@oracle.com $ */
+/* $Id: process-creation-posix.cpp 169007 2025-05-26 23:03:41Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Process Creation, POSIX.
  */
@@ -2056,7 +2056,7 @@ static int rtProcPosixForkStatusPipeReadAndCleanup(pid_t pid, int fdStatusPipeR,
     {
         int32_t rcForkStatus;
         uint8_t ab[4];
-    } uBuf = {{0}};
+    } uBuf = {0};
     ssize_t cbRead;
     do
         cbRead = read(fdStatusPipeR, &uBuf, sizeof(uBuf));
