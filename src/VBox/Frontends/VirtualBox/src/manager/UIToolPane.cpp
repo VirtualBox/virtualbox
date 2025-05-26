@@ -1,4 +1,4 @@
-/* $Id: UIToolPane.cpp 168994 2025-05-26 14:37:46Z sergey.dubov@oracle.com $ */
+/* $Id: UIToolPane.cpp 168995 2025-05-26 15:10:02Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIToolPane class implementation.
  */
@@ -61,19 +61,21 @@ UIToolPane::UIToolPane(QWidget *pParent, UIToolClass enmClass, UIActionPool *pAc
     , m_pActionPool(pActionPool)
     , m_fActive(false)
     , m_pLayout(0)
+    // Global tools
     , m_pPaneHome(0)
     , m_pPaneMachines(0)
+    , m_pPaneExtensions(0)
+    , m_pPaneMedia(0)
+    , m_pPaneNetwork(0)
+    , m_pPaneCloud(0)
+    , m_pPaneVMActivityOverview(0)
+    // Machine tools
     , m_pPaneError(0)
     , m_pPaneDetails(0)
     , m_pPaneSnapshots(0)
     , m_pPaneLogViewer(0)
     , m_pPaneVMActivityTool(0)
     , m_pPaneFileManager(0)
-    , m_pPaneExtensions(0)
-    , m_pPaneMedia(0)
-    , m_pPaneNetwork(0)
-    , m_pPaneCloud(0)
-    , m_pPaneVMActivityOverview(0)
 {
     prepare();
 }
@@ -502,6 +504,19 @@ UIMachineToolsWidget *UIToolPane::machineToolsWidget() const
     return m_pPaneMachines;
 }
 
+void UIToolPane::setCloudMachineItems(const QList<UIVirtualMachineItemCloud*> &cloudItems)
+{
+    /* Cache passed value: */
+    m_cloudItems = cloudItems;
+
+    /* Update VM Activity Overview pane if it is open: */
+    if (isToolOpened(UIToolType_Resources))
+    {
+        AssertPtrReturnVoid(m_pPaneVMActivityOverview);
+        m_pPaneVMActivityOverview->setCloudMachineItems(m_cloudItems);
+    }
+}
+
 void UIToolPane::setErrorDetails(const QString &strDetails)
 {
     /* Update Error pane: */
@@ -555,19 +570,6 @@ bool UIToolPane::isCurrentStateItemSelected() const
 QUuid UIToolPane::currentSnapshotId()
 {
     return m_pPaneSnapshots ? m_pPaneSnapshots->currentSnapshotId() : QUuid();
-}
-
-void UIToolPane::setCloudMachineItems(const QList<UIVirtualMachineItemCloud*> &cloudItems)
-{
-    /* Cache passed value: */
-    m_cloudItems = cloudItems;
-
-    /* Update VM Activity Overview pane if it is open: */
-    if (isToolOpened(UIToolType_Resources))
-    {
-        AssertPtrReturnVoid(m_pPaneVMActivityOverview);
-        m_pPaneVMActivityOverview->setCloudMachineItems(m_cloudItems);
-    }
 }
 
 void UIToolPane::sltDetachToolPane()
