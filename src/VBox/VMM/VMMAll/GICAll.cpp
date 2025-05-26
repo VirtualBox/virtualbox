@@ -1,4 +1,4 @@
-/* $Id: GICAll.cpp 168987 2025-05-26 08:38:58Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICAll.cpp 168990 2025-05-26 10:13:21Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC) - All Contexts.
  */
@@ -747,7 +747,7 @@ static void gicReDistHasIrqPending(PCGICCPU pGicCpu, bool *pfIrq, bool *pfFiq)
     Assert(!fIsGroup0Enabled);
     LogFlowFunc(("fIsGroup0Enabled=%RTbool fIsGroup1Enabled=%RTbool\n", fIsGroup0Enabled, fIsGroup1Enabled));
 
-    /* Quick bailout if all interrupts are fully masked. */
+    /* Quick bailout if all interrupts are fully masked or if the active interrupt is at the highest priority. */
     if (   pGicCpu->bIntrPriorityMask
         && pGicCpu->abRunningPriorities[pGicCpu->idxRunningPriority])
     {
@@ -790,7 +790,7 @@ static void gicDistHasIrqPendingForVCpu(PCGICDEV pGicDev, PCVMCPUCC pVCpu, bool 
     bool const fIsGroup0Enabled = pGicDev->fIntrGroup0Enabled;
     LogFlowFunc(("fIsGroup1Enabled=%RTbool fIsGroup0Enabled=%RTbool\n", fIsGroup1Enabled, fIsGroup0Enabled));
 
-    /* Quick bailout if all interrupts are fully masked. */
+    /* Quick bailout if all interrupts are fully masked or if the active interrupt is at the highest priority. */
     PCGICCPU pGicCpu = VMCPU_TO_GICCPU(pVCpu);
     if (   pGicCpu->bIntrPriorityMask
         && pGicCpu->abRunningPriorities[pGicCpu->idxRunningPriority])
@@ -1735,7 +1735,7 @@ static uint16_t gicGetHighestPriorityPendingIntr(PCGICDEV pGicDev, PCVMCPUCC pVC
 {
     PCGICCPU pGicCpu = VMCPU_TO_GICCPU(pVCpu);
 
-    /* Quick bailout if all interrupts are fully masked. */
+    /* Quick bailout if all interrupts are fully masked or if the active interrupt is at the highest priority. */
     uint16_t uIntId;
     if (   pGicCpu->bIntrPriorityMask
         && pGicCpu->abRunningPriorities[pGicCpu->idxRunningPriority])
