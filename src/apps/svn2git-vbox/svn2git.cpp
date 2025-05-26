@@ -1,4 +1,4 @@
-/* $Id: svn2git.cpp 168989 2025-05-26 09:45:34Z alexander.eichner@oracle.com $ */
+/* $Id: svn2git.cpp 168991 2025-05-26 12:30:41Z alexander.eichner@oracle.com $ */
 /** @file
  * svn2git - Convert a svn repository to git.
  */
@@ -29,6 +29,7 @@
 /*********************************************************************************************************************************
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
+#include <iprt/err.h>
 #include <iprt/getopt.h>
 #include <iprt/initterm.h>
 #include <iprt/json.h>
@@ -73,6 +74,25 @@ typedef const S2GSVNREVCHANGE *PCS2GSVNREVCHANGE;
 
 
 /**
+ * Author entry.
+ */
+typedef struct S2GAUTHOR
+{
+    /** String space core, the subversion author is the key. */
+    RTSTRSPACECORE  Core;
+    /** The matching git author. */
+    const char      *pszGitAuthor;
+    /** The E-Mail to use for git commits. */
+    const char      *pszGitEmail;
+    /** The allocated string buffer for everything. */
+    RT_GCC_EXTENSION
+    char            achStr[RT_FLEXIBLE_ARRAY];
+} S2GAUTHOR;
+typedef S2GAUTHOR *PS2GAUTHOR;
+typedef const S2GAUTHOR *PCS2GAUTHOR;
+
+
+/**
  * The state for a single revision.
  */
 typedef struct S2GSVNREV
@@ -94,6 +114,11 @@ typedef struct S2GSVNREV
     const char      *pszSvnLog;
     /** The sync-xref-src-repo-rev. */
     const char      *pszSvnXref;
+
+    /** The Git author's E-Mail. */
+    const char      *pszGitAuthorEmail;
+    /** The Git author's name. */
+    const char      *pszGitAuthor;
 
     /** List of changes in that revision, sorted by the path. */
     RTLISTANCHOR    LstChanges;
@@ -141,6 +166,11 @@ typedef struct S2GCTX
     /** The destination git repository. */
     S2GREPOSITORYGIT hGitRepo;
     /** @} */
+
+    /** SVN -> Git author information string space. */
+    RTSTRSPACE       StrSpaceAuthors;
+    /** Scratch buffer. */
+    S2GSCRATCHBUF    BufScratch;
 } S2GCTX;
 /** Pointer to an svn -> git conversion context. */
 typedef S2GCTX *PS2GCTX;
@@ -191,6 +221,9 @@ static void s2gCtxInit(PS2GCTX pThis)
     pThis->pPoolScratch    = NULL;
     pThis->pSvnRepos       = NULL;
     pThis->pSvnFs          = NULL;
+
+    pThis->StrSpaceAuthors = NULL;
+    s2gScratchBufInit(&pThis->BufScratch);
 }
 
 
@@ -262,7 +295,7 @@ static RTEXITCODE s2gParseArguments(PS2GCTX pThis, int argc, char **argv)
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                static const char s_szRev[] = "$Revision: 168989 $";
+                static const char s_szRev[] = "$Revision: 168991 $";
                 const char *psz = RTStrStripL(strchr(s_szRev, ' '));
                 RTMsgInfo("r%.*s\n", strchr(psz, ' ') - psz, psz);
                 return RTEXITCODE_SUCCESS;
@@ -291,6 +324,124 @@ static RTEXITCODE s2gParseArguments(PS2GCTX pThis, int argc, char **argv)
 }
 
 
+static RTEXITCODE s2gLoadConfigAuthor(PS2GCTX pThis, RTJSONVAL hAuthor)
+{
+    RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
+    RTJSONVAL hValSvnAuthor = NIL_RTJSONVAL;
+    int rc = RTJsonValueQueryByName(hAuthor, "svn", &hValSvnAuthor);
+    if (RT_SUCCESS(rc))
+    {
+        RTJSONVAL hValGitAuthor = NIL_RTJSONVAL;
+        rc = RTJsonValueQueryByName(hAuthor, "git", &hValGitAuthor);
+        if (RT_SUCCESS(rc))
+        {
+            RTJSONVAL hValGitEmail = NIL_RTJSONVAL;
+            rc = RTJsonValueQueryByName(hAuthor, "email", &hValGitEmail);
+            if (RT_SUCCESS(rc))
+            {
+                const char *pszSvnAuthor = RTJsonValueGetString(hValSvnAuthor);
+                const char *pszGitAuthor = RTJsonValueGetString(hValGitAuthor);
+                const char *pszGitEmail  = RTJsonValueGetString(hValGitEmail);
+
+                if (pszSvnAuthor && pszGitAuthor && pszGitEmail)
+                {
+                    size_t cchSvnAuthor = strlen(pszSvnAuthor);
+                    size_t cchGitAuthor = strlen(pszGitAuthor);
+                    size_t cchGitEmail  = strlen(pszGitEmail);
+                    size_t cbAuthor = RT_UOFFSETOF_DYN(S2GAUTHOR, achStr[cchSvnAuthor + cchGitAuthor + cchGitEmail + 3]);
+                    PS2GAUTHOR pAuthor = (PS2GAUTHOR)RTMemAllocZ(cbAuthor);
+                    if (pAuthor)
+                    {
+                        memcpy(&pAuthor->achStr[0], pszSvnAuthor, cchSvnAuthor);
+                        pAuthor->achStr[cchSvnAuthor] = '\0';
+                        pAuthor->Core.pszString = &pAuthor->achStr[0];
+                        pAuthor->Core.cchString = cchSvnAuthor;
+
+                        pAuthor->pszGitAuthor = &pAuthor->achStr[cchSvnAuthor + 1];
+                        memcpy(&pAuthor->achStr[cchSvnAuthor + 1], pszGitAuthor, cchGitAuthor);
+                        pAuthor->achStr[cchSvnAuthor + 1 + cchGitAuthor] = '\0';
+
+                        pAuthor->pszGitEmail = &pAuthor->pszGitAuthor[cchGitAuthor + 1];
+                        memcpy(&pAuthor->achStr[cchSvnAuthor + 1 + cchGitAuthor + 1], pszGitEmail, cchGitEmail);
+                        pAuthor->achStr[cchSvnAuthor + 1 + cchGitAuthor + 1 + cchGitEmail] = '\0';
+
+                        if (!RTStrSpaceInsert(&pThis->StrSpaceAuthors, &pAuthor->Core))
+                        {
+                            RTMemFree(pAuthor);
+                            rcExit  = RTMsgErrorExit(RTEXITCODE_FAILURE, "Duplicate author '%s'", pszSvnAuthor);
+                        }
+                        else if (g_cVerbosity >= 3)
+                            RTMsgInfo(" Author map: %s %s %s\n", pAuthor->Core.pszString, pAuthor->pszGitAuthor, pAuthor->pszGitEmail);
+                    }
+                    else
+                        rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to allocate %zu bytes for author '%s'", cbAuthor, pszSvnAuthor);
+                }
+                else
+                    rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "The author object is malformed");
+
+                RTJsonValueRelease(hValGitEmail);
+            }
+            else
+                rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to query 'email' from author object: %Rrc", rc);
+
+            RTJsonValueRelease(hValGitAuthor);
+        }
+        else
+            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to query 'git' from author object: %Rrc", rc);
+
+        RTJsonValueRelease(hValSvnAuthor);
+    }
+    else
+        rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to query 'svn' from author object: %Rrc", rc);
+
+    return rcExit;
+}
+
+
+static RTEXITCODE s2gLoadConfigAuthorMap(PS2GCTX pThis, RTJSONVAL hJsonValAuthorMap)
+{
+    if (RTJsonValueGetType(hJsonValAuthorMap) != RTJSONVALTYPE_ARRAY)
+        return RTMsgErrorExit(RTEXITCODE_FAILURE, "'AuthorMap' in '%s' is not a JSON array", pThis->pszCfgFilename);
+
+    RTJSONIT hIt = NIL_RTJSONIT;
+    int rc = RTJsonIteratorBeginArray(hJsonValAuthorMap, &hIt);
+    if (rc == VERR_JSON_IS_EMPTY) /* Weird but okay. */
+        return RTEXITCODE_SUCCESS;
+    else if (RT_FAILURE(rc))
+        return RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to iterate over author map: %Rrc", rc);
+
+    AssertRC(rc);
+    RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
+    for (;;)
+    {
+        RTJSONVAL hAuthor = NIL_RTJSONVAL;
+        rc = RTJsonIteratorQueryValue(hIt, &hAuthor,  NULL /*ppszName*/);
+        if (RT_FAILURE(rc))
+        {
+            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to iterate over author map: %Rrc", rc);
+            break;
+        }
+
+        rcExit = s2gLoadConfigAuthor(pThis, hAuthor);
+        RTJsonValueRelease(hAuthor);
+        if (rcExit == RTEXITCODE_FAILURE)
+            break;
+
+        rc = RTJsonIteratorNext(hIt);
+        if (rc == VERR_JSON_ITERATOR_END)
+            break;
+        else if (RT_FAILURE(rc))
+        {
+            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to iterate over author map: %Rrc", rc);
+            break;
+        }
+    }
+
+    RTJsonIteratorFree(hIt);
+    return rcExit;
+}
+
+
 static RTEXITCODE s2gLoadConfig(PS2GCTX pThis)
 {
     RTJSONVAL hRoot = NIL_RTJSONVAL;
@@ -299,12 +450,26 @@ static RTEXITCODE s2gLoadConfig(PS2GCTX pThis)
     int rc = RTJsonParseFromFile(&hRoot, RTJSON_PARSE_F_JSON5, pThis->pszCfgFilename, &ErrInfo.Core);
     if (RT_SUCCESS(rc))
     {
-        rc = RTJsonValueQueryStringByName(hRoot, "GitRepoPath", &pThis->pszGitRepoPath);
-        RTJsonValueRelease(hRoot);
-        if (RT_FAILURE(rc))
-            return RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to query GitRepoPath from '%s': %Rrc", pThis->pszCfgFilename, rc);
+        RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
 
-        return RTEXITCODE_SUCCESS;
+        rc = RTJsonValueQueryStringByName(hRoot, "GitRepoPath", &pThis->pszGitRepoPath);
+        if (RT_SUCCESS(rc))
+        {
+            RTJSONVAL hAuthorMap = NIL_RTJSONVAL;
+            rc = RTJsonValueQueryByName(hRoot, "AuthorMap", &hAuthorMap);
+            if (RT_SUCCESS(rc))
+            {
+                rcExit = s2gLoadConfigAuthorMap(pThis, hAuthorMap);
+                RTJsonValueRelease(hAuthorMap);
+            }
+            else if (rc != VERR_NOT_FOUND)
+                rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to query AuthorMap from '%s': %Rrc", pThis->pszCfgFilename, rc);
+        }
+        else
+            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to query GitRepoPath from '%s': %Rrc", pThis->pszCfgFilename, rc);
+
+        RTJsonValueRelease(hRoot);
+        return rcExit;
     }
 
     return RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to load config file '%s': %s", pThis->pszCfgFilename, ErrInfo.Core.pszMsg);
@@ -375,7 +540,7 @@ static const char *s2gSvnChangeKindToStr(svn_fs_path_change_kind_t enmKind)
 static bool s2gPathIsExec(PCS2GSVNREV pRev, const char *pszSvnPath, apr_pool_t *pSvnPool)
 {
     svn_string_t *pPropVal = NULL;
-    svn_error_t *pSvnErr = svn_fs_node_prop(&pPropVal, pThis->pSvnFsRoot, pszSvnPath, "svn:executable", pSvnPool);
+    svn_error_t *pSvnErr = svn_fs_node_prop(&pPropVal, pRev->pSvnFsRoot, pszSvnPath, "svn:executable", pSvnPool);
     if (pSvnErr)
         svn_error_trace(pSvnErr);
 
@@ -394,7 +559,7 @@ static bool s2gPathIsSymlink(PCS2GSVNREV pRev, const char *pszSvnPath, apr_pool_
 }
 
 
-static RTEXITCODE s2gSvnDumpBlob(PCS2GCTX pThis, PS2GSVNREV pRev, const char *pszSvnPath, const char *pszGitPath)
+static RTEXITCODE s2gSvnDumpBlob(PS2GCTX pThis, PS2GSVNREV pRev, const char *pszSvnPath, const char *pszGitPath)
 {
     /* Create a new temporary pool. */
     apr_pool_t *pPool = svn_pool_create(pRev->pPoolRev);
@@ -407,42 +572,96 @@ static RTEXITCODE s2gSvnDumpBlob(PCS2GCTX pThis, PS2GSVNREV pRev, const char *ps
     /** @todo Symlinks. */
     if (!s2gPathIsSymlink(pRev, pszSvnPath, pPool))
     {
-        svn_filesize_t cbSvnFile = 0;
-        svn_error_t *pSvnErr = svn_fs_file_length(&cbSvnFile, pRev->pSvnFsRoot, pszSvnPath, pPool);
+        svn_stream_t *pSvnStrmIn = NULL;
+        svn_error_t *pSvnErr = svn_fs_file_contents(&pSvnStrmIn, pRev->pSvnFsRoot, pszSvnPath, pPool);
         if (!pSvnErr)
         {
-            svn_stream_t pSvnStrmIn = NULL;
-            pSvnErr = svn_fs_file_contents(&pSvnStrmIn, pRev->pSvnFsRoot, pszSvnPath, pPool);
+            /* Do EOL style conversions and keyword substitutions. */
+            apr_hash_t *pProps = NULL;
+            pSvnErr = svn_fs_node_proplist(&pProps, pRev->pSvnFsRoot, pszSvnPath, pPool);
             if (!pSvnErr)
             {
-                /* Do EOL style conversions and keyword substitutions. */
-                apr_hash_t *pProps = NULL;
-                pSvnErr = svn_fs_node_proplist(&pProps, pRev->pSvnFsRoot, pszSvnPath, pPool);
-                if (!pSvnErr)
+                svn_string_t *pSvnStrEolStyle = (svn_string_t *)apr_hash_get(pProps, SVN_PROP_EOL_STYLE, APR_HASH_KEY_STRING);
+                svn_string_t *pSvnStrKeywords = (svn_string_t *)apr_hash_get(pProps, SVN_PROP_KEYWORDS,  APR_HASH_KEY_STRING);
+                if (pSvnStrEolStyle || pSvnStrKeywords)
                 {
-                    svn_string_t *pSvnStrEolStyle = (svn_string_t *)apr_hash_get(pProps, SVN_PROP_EOL_STYLE, APR_HASH_KEY_STRING);
-                    svn_string_t *pSvnStrKeywords = (svn_string_t *)apr_hash_get(pProps, SVN_PROP_KEYWORDS,  APR_HASH_KEY_STRING);
-                    if (pSvnStrEolStyle || pSvnStrKeywords)
+                    apr_hash_t *pHashKeywords = NULL;
+                    const char *pszEolStr = NULL;
+                    svn_subst_eol_style_t SvnEolStyle = svn_subst_eol_style_none;
+
+                    if (pSvnStrEolStyle)
+                        svn_subst_eol_style_from_value(&SvnEolStyle, &pszEolStr, pSvnStrEolStyle->data);
+
+                    if (pSvnStrKeywords)
                     {
-                        apr_hash_t *pHashKeywords = NULL;
-                        const char *pszEolStr = NULL;
-                        svn_subst_eol_style_t SvnEolStyle = svn_subst_eol_style_none;
+                        /** @todo */
+                        char aszRev[32];
+                        snprintf(aszRev, sizeof(aszRev), "%u", pRev->idRev);
 
-                        if (pSvnStrEolStyle)
-                            svn_subst_eol_style_from_value(&SvnEolStyle, &pszEolStr, pSvnStrEolStyle->data);
-
-                        if (pSvnStrKeywords)
+                        char aszUrl[4096];
+                        snprintf(aszUrl, sizeof(aszUrl), "https://localhost/vbox/svn");
+                        char *pb = &aszUrl[sizeof("https://localhost/vbox/svn") - 1];
+                        while (*pszSvnPath)
                         {
+                            if (*pszSvnPath == ' ')
+                            {
+                                *pb++ = '%';
+                                *pb++ = '2';
+                                *pb++ = '0';
+                            }
+                            else
+                                *pb++ = *pszSvnPath;
+                            pszSvnPath++;
                         }
+                        *pb = '\0';
 
+                        pSvnErr = svn_subst_build_keywords3(&pHashKeywords, pSvnStrKeywords->data,
+                                                            aszRev, aszUrl,
+                                                            "https://localhost/vbox/svn", pRev->AprTime,
+                                                            pRev->pszGitAuthorEmail, pPool);
+                    }
+
+                    if (!pSvnErr)
+                    {
                         pSvnStrmIn = svn_subst_stream_translated(svn_stream_disown(pSvnStrmIn, pPool),
                                                                  pszEolStr, FALSE, pHashKeywords, TRUE,
                                                                  pPool);
                         if (!pSvnStrmIn)
                             rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to inject translated stream for '%s'", pszSvnPath);
                     }
+                }
 
-                    /* When doing substitutions we need to determine the new stream length as substitutions change that. */
+                if (!pSvnErr && rcExit == RTEXITCODE_SUCCESS)
+                {
+                    /* Determine stream length, due to substitutions this is  almost always different compared to what svn reports. */
+                    s2gScratchBufReset(&pThis->BufScratch);
+                    uint64_t cbFile = 0;
+                    for (;;)
+                    {
+                        void *pv = s2gScratchBufEnsureSize(&pThis->BufScratch, _4K);
+                        apr_size_t cbThisRead = _4K;
+                        pSvnErr = svn_stream_read_full(pSvnStrmIn, (char *)pv, &cbThisRead);
+                        if (pSvnErr)
+                            break;
+                        s2gScratchBufAdvance(&pThis->BufScratch, cbThisRead);
+
+                        cbFile += cbThisRead;
+                        if (cbThisRead < _4K)
+                            break;
+                    }
+
+                    /* Add the file and stream the data. */
+                    int rc = s2gGitTransactionFileAdd(pThis->hGitRepo, pszGitPath, fIsExec, cbFile);
+                    if (RT_SUCCESS(rc))
+                    {
+                        rc = s2gGitTransactionFileWriteData(pThis->hGitRepo, pThis->BufScratch.pbBuf, cbFile);
+                        if (RT_FAILURE(rc))
+                            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to write data for file '%s' to git repository under '%s': %Rrc",
+                                                    pszSvnPath, pszGitPath, rc);
+                    }
+                    else
+                        rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to add file '%s' to git repository under '%s': %Rrc",
+                                                pszSvnPath, pszGitPath, rc);
                 }
             }
         }
@@ -461,20 +680,46 @@ static RTEXITCODE s2gSvnDumpBlob(PCS2GCTX pThis, PS2GSVNREV pRev, const char *ps
 }
 
 
-static RTEXITCODE s2gSvnExportSinglePath(PCS2GCTX pThis, PS2GSVNREV pRev, const char *pszSvnPath, const char *pszGitPath,
+static RTEXITCODE s2gSvnExportSinglePath(PS2GCTX pThis, PS2GSVNREV pRev, const char *pszSvnPath, const char *pszGitPath,
                                          bool fIsDir, svn_fs_path_change2_t *pChange)
 {
-    if (pChange->change_kind == svn_fs_path_change_add)
+    /* Different strategies depending on the type and change type. */
+    RTEXITCODE rcExit = RTEXITCODE_FAILURE;
+    if (fIsDir)
     {
-
+        if (pChange->change_kind == svn_fs_path_change_add)
+        {
+            /* An empty directory was added, so add a .gitignore file. */
+            rcExit = RTEXITCODE_SUCCESS;
+        }
+        else
+            AssertReleaseFailed();
+    }
+    else
+    {
+        /* File being added, just dump the contents to the  git repository. */
+        /** @todo Handle copies from branches where the source branch is part of the git repository. */
+        if (   pChange->change_kind == svn_fs_path_change_add
+            || pChange->change_kind == svn_fs_path_change_modify
+            || pChange->change_kind == svn_fs_path_change_replace)
+            rcExit = s2gSvnDumpBlob(pThis, pRev, pszSvnPath, pszGitPath);
+        else if (pChange->change_kind == svn_fs_path_change_delete)
+        {
+            int rc = s2gGitTransactionFileRemove(pThis->hGitRepo, pszGitPath);
+            if (RT_SUCCESS(rc))
+                rcExit = RTEXITCODE_SUCCESS;
+            else
+                rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to remove '%s' from git repository", pszGitPath);
+        }
+        else
+            AssertReleaseFailed();
     }
 
-    RT_NOREF(pThis, pRev, pszSvnPath, pszGitPath, fIsDir, pChange);
-    return RTEXITCODE_FAILURE;
+    return rcExit;
 }
 
 
-static RTEXITCODE s2gSvnRevisionExportPaths(PCS2GCTX pThis, PS2GSVNREV pRev)
+static RTEXITCODE s2gSvnRevisionExportPaths(PS2GCTX pThis, PS2GSVNREV pRev)
 {
     RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
     apr_hash_t *pSvnChanges;
@@ -582,7 +827,9 @@ static RTEXITCODE s2gSvnExportRevision(PS2GCTX pThis, uint32_t idRev)
 
     /* Open revision and fetch properties. */
     RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
-    Rev.idRev = idRev;
+    Rev.idRev             = idRev;
+    Rev.pszGitAuthor      = NULL;
+    Rev.pszGitAuthorEmail = NULL;
     svn_error_t *pSvnErr = svn_fs_revision_root(&Rev.pSvnFsRoot, pThis->pSvnFs, idRev, Rev.pPoolRev);
     if (!pSvnErr)
     {
@@ -606,27 +853,36 @@ static RTEXITCODE s2gSvnExportRevision(PS2GCTX pThis, uint32_t idRev)
                 Rev.pszSvnLog    = pSvnLog->data;
                 Rev.pszSvnXref   = pSvnXRef ? pSvnXRef->data : NULL;
 
-                RTTIMESPEC Tm;
-                RTTimeSpecFromString(&Tm, pSvnDate->data);
-                Rev.cEpochSecs = RTTimeSpecGetSeconds(&Tm);
-                if (g_cVerbosity)
-                    RTMsgInfo("    %s %s %s\n", Rev.pszSvnAuthor, pSvnDate->data, Rev.pszSvnXref ? Rev.pszSvnXref : "");
-
-                int rc = s2gGitTransactionStart(pThis->hGitRepo);
-                if (RT_SUCCESS(rc))
+                PCS2GAUTHOR pAuthor = (PCS2GAUTHOR)RTStrSpaceGet(&pThis->StrSpaceAuthors, Rev.pszSvnAuthor);
+                if (pAuthor)
                 {
-                    rcExit = s2gSvnRevisionExportPaths(pThis, &Rev);
-                    if (rcExit == RTEXITCODE_SUCCESS)
+                    Rev.pszGitAuthor      = pAuthor->pszGitAuthor;
+                    Rev.pszGitAuthorEmail = pAuthor->pszGitEmail;
+
+                    RTTIMESPEC Tm;
+                    RTTimeSpecFromString(&Tm, pSvnDate->data);
+                    Rev.cEpochSecs = RTTimeSpecGetSeconds(&Tm);
+                    if (g_cVerbosity)
+                        RTMsgInfo("    %s %s %s\n", Rev.pszSvnAuthor, pSvnDate->data, Rev.pszSvnXref ? Rev.pszSvnXref : "");
+
+                    int rc = s2gGitTransactionStart(pThis->hGitRepo);
+                    if (RT_SUCCESS(rc))
                     {
-                        /** @todo Ammend svn log with xref. */
-                        rc = s2gGitTransactionCommit(pThis->hGitRepo, Rev.pszSvnAuthor, NULL /*Rev.pszSvnAuthor*/,
-                                                     Rev.pszSvnLog, Rev.cEpochSecs);
-                        if (RT_FAILURE(rc))
-                            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to commit git transaction with: %Rrc", rc);
+                        rcExit = s2gSvnRevisionExportPaths(pThis, &Rev);
+                        if (rcExit == RTEXITCODE_SUCCESS)
+                        {
+                            /** @todo Ammend svn log with xref. */
+                            rc = s2gGitTransactionCommit(pThis->hGitRepo, Rev.pszGitAuthor, Rev.pszGitAuthorEmail,
+                                                         Rev.pszSvnLog, Rev.cEpochSecs);
+                            if (RT_FAILURE(rc))
+                                rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to commit git transaction with: %Rrc", rc);
+                        }
                     }
+                    else
+                        rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to start new git transaction with: %Rrc", rc);
                 }
                 else
-                    rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to start new git transaction with: %Rrc", rc);
+                    rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Author '%s' is not known", Rev.pszSvnAuthor);
             }
             else
             {

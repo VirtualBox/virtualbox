@@ -1,4 +1,4 @@
-/* $Id: git.cpp 168986 2025-05-26 08:33:00Z alexander.eichner@oracle.com $ */
+/* $Id: git.cpp 168991 2025-05-26 12:30:41Z alexander.eichner@oracle.com $ */
 /** @file
  * svn2git - Convert a svn repository to git.
  */
@@ -31,12 +31,9 @@
 *********************************************************************************************************************************/
 #include <iprt/dir.h>
 #include <iprt/env.h>
-#include <iprt/errcore.h>
-#include <iprt/mem.h>
 #include <iprt/path.h>
 #include <iprt/pipe.h>
 #include <iprt/process.h>
-#include <iprt/string.h>
 
 #include "svn2git-internal.h"
 
@@ -46,18 +43,6 @@
 *********************************************************************************************************************************/
 
 #define GIT_BINARY "git"
-
-
-typedef struct S2GFASTIMPORTBUF
-{
-    /** Pointer to the buffer. */
-    char            *pchBuf;
-    /** Size of the buffer. */
-    size_t          cbBuf;
-    /** Offset where to append data next. */
-    size_t          offBuf;
-} S2GFASTIMPORTBUF;
-typedef S2GFASTIMPORTBUF *PS2GFASTIMPORTBUF;
 
 
 /**
@@ -80,65 +65,14 @@ typedef struct S2GREPOSITORYGITINT
     uint64_t        idCommitMark;
 
     /** Buffer holding all deleted files for the current transaction. */
-    S2GFASTIMPORTBUF BufDeletedFiles;
+    S2GSCRATCHBUF   BufDeletedFiles;
     /** Buffer for files being added/modified. */
-    S2GFASTIMPORTBUF BufModifiedFiles;
+    S2GSCRATCHBUF   BufModifiedFiles;
     /** Scratch buffer. */
-    S2GFASTIMPORTBUF BufScratch;
+    S2GSCRATCHBUF   BufScratch;
 } S2GREPOSITORYGITINT;
 typedef S2GREPOSITORYGITINT *PS2GREPOSITORYGITINT;
 typedef const S2GREPOSITORYGITINT *PCS2GREPOSITORYGITINT;
-
-
-static void s2gGitFiBufInit(PS2GFASTIMPORTBUF pBuf)
-{
-    pBuf->pchBuf = NULL;
-    pBuf->cbBuf  = 0;
-    pBuf->offBuf = 0;
-}
-
-
-static void s2gGitFiBufFree(PS2GFASTIMPORTBUF pBuf)
-{
-    if (pBuf->pchBuf)
-        RTMemFree(pBuf->pchBuf);
-}
-
-
-static void s2gGitFiBufReset(PS2GFASTIMPORTBUF pBuf)
-{
-    pBuf->offBuf = 0;
-}
-
-
-static int s2gGitFiBufPrintf(PS2GFASTIMPORTBUF pBuf, const char *pszFmt, ...) RT_IPRT_FORMAT_ATTR(1, 2)
-{
-    va_list va;
-    va_start(va, pszFmt);
-    int rc = VINF_SUCCESS;
-    ssize_t cchReq = RTStrPrintf2V(pBuf->pchBuf + pBuf->offBuf, pBuf->cbBuf - pBuf->offBuf,
-                                   pszFmt, va);
-    if (cchReq < 0)
-    {
-        size_t cbBufNew = RT_ALIGN_Z((-cchReq) + pBuf->cbBuf, _4K);
-        char *pchBufNew = (char *)RTMemRealloc(pBuf->pchBuf, cbBufNew);
-        if (pchBufNew)
-        {
-            pBuf->pchBuf = pchBufNew;
-            pBuf->cbBuf  = cbBufNew;
-            cchReq = RTStrPrintf2V(pBuf->pchBuf + pBuf->offBuf, pBuf->cbBuf - pBuf->offBuf,
-                                   pszFmt, va);
-            Assert(cchReq > 0);
-        }
-        else
-            rc = VERR_NO_MEMORY;
-    }
-    if (RT_SUCCESS(rc))
-        pBuf->offBuf += cchReq;
-
-    va_end(va);
-    return rc;
-}
 
 
 static int s2gGitExecWrapper(const char *pszExec, const char *pszCwd, const char * const *papszArgs)
@@ -186,9 +120,9 @@ DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *
         PS2GREPOSITORYGITINT pThis = (PS2GREPOSITORYGITINT)RTMemAllocZ(sizeof(*pThis));
         if (pThis)
         {
-            s2gGitFiBufInit(&pThis->BufDeletedFiles);
-            s2gGitFiBufInit(&pThis->BufModifiedFiles);
-            s2gGitFiBufInit(&pThis->BufScratch);
+            s2gScratchBufInit(&pThis->BufDeletedFiles);
+            s2gScratchBufInit(&pThis->BufModifiedFiles);
+            s2gScratchBufInit(&pThis->BufScratch);
             pThis->idCommitMark = 1;
 
             RTPIPE hPipeFiR = NIL_RTPIPE;
@@ -239,9 +173,9 @@ DECLHIDDEN(int) s2gGitRepositoryClose(S2GREPOSITORYGIT hGitRepo)
             rc = VERR_INVALID_HANDLE; /** @todo */
     }
 
-    s2gGitFiBufFree(&pThis->BufDeletedFiles);
-    s2gGitFiBufFree(&pThis->BufModifiedFiles);
-    s2gGitFiBufFree(&pThis->BufScratch);
+    s2gScratchBufFree(&pThis->BufDeletedFiles);
+    s2gScratchBufFree(&pThis->BufModifiedFiles);
+    s2gScratchBufFree(&pThis->BufScratch);
     RTMemFree(pThis);
     return rc;
 }
@@ -261,8 +195,8 @@ DECLHIDDEN(int) s2gGitTransactionStart(S2GREPOSITORYGIT hGitRepo)
     }
 
     pThis->idFileMark = UINT64_MAX - 1;
-    s2gGitFiBufReset(&pThis->BufDeletedFiles);
-    s2gGitFiBufReset(&pThis->BufModifiedFiles);
+    s2gScratchBufReset(&pThis->BufDeletedFiles);
+    s2gScratchBufReset(&pThis->BufModifiedFiles);
     return VINF_SUCCESS;
 }
 
@@ -272,26 +206,26 @@ DECLHIDDEN(int) s2gGitTransactionCommit(S2GREPOSITORYGIT hGitRepo, const char *p
 {
     PS2GREPOSITORYGITINT pThis = hGitRepo;
 
-    s2gGitFiBufReset(&pThis->BufScratch);
+    s2gScratchBufReset(&pThis->BufScratch);
     size_t cchLog = strlen(pszLog);
-    int rc = s2gGitFiBufPrintf(&pThis->BufScratch,
-                               "commit refs/head/%s\n"
-                               "mark :%RU64\n",
-                               "committer %s <%s> %RI64 +0000\n"
-                               "data %zu\n"
-                               "%s\n",
-                               "main" /** @todo Make branch configurable*/,
-                               pThis->idCommitMark++,
-                               pszAuthor, pszAuthorEmail, cEpochSecs,
-                               cchLog, pszLog);
+    int rc = s2gScratchBufPrintf(&pThis->BufScratch,
+                                 "commit refs/heads/%s\n"
+                                 "mark :%RU64\n"
+                                 "committer %s <%s> %RI64 +0000\n"
+                                 "data %zu\n"
+                                 "%s\n",
+                                 "main" /** @todo Make branch configurable*/,
+                                 pThis->idCommitMark++,
+                                 pszAuthor, pszAuthorEmail, cEpochSecs,
+                                 cchLog, pszLog);
     if (RT_SUCCESS(rc))
     {
-        rc = RTPipeWriteBlocking(pThis->hPipeWrite, pThis->BufScratch.pchBuf, pThis->BufScratch.offBuf, NULL /*pcbWritten*/);
-        if (RT_SUCCESS(rc))
-            rc = RTPipeWriteBlocking(pThis->hPipeWrite, pThis->BufDeletedFiles.pchBuf, pThis->BufDeletedFiles.offBuf,
+        rc = RTPipeWriteBlocking(pThis->hPipeWrite, pThis->BufScratch.pbBuf, pThis->BufScratch.offBuf, NULL /*pcbWritten*/);
+        if (RT_SUCCESS(rc) && pThis->BufDeletedFiles.offBuf)
+            rc = RTPipeWriteBlocking(pThis->hPipeWrite, pThis->BufDeletedFiles.pbBuf, pThis->BufDeletedFiles.offBuf,
                                      NULL /*pcbWritten*/);
-        if (RT_SUCCESS(rc))
-            rc = RTPipeWriteBlocking(pThis->hPipeWrite, pThis->BufModifiedFiles.pchBuf, pThis->BufModifiedFiles.offBuf,
+        if (RT_SUCCESS(rc) && pThis->BufModifiedFiles.offBuf)
+            rc = RTPipeWriteBlocking(pThis->hPipeWrite, pThis->BufModifiedFiles.pbBuf, pThis->BufModifiedFiles.offBuf,
                                      NULL /*pcbWritten*/);
     }
 
@@ -302,20 +236,20 @@ DECLHIDDEN(int) s2gGitTransactionCommit(S2GREPOSITORYGIT hGitRepo, const char *p
 DECLHIDDEN(int) s2gGitTransactionFileAdd(S2GREPOSITORYGIT hGitRepo, const char *pszPath, bool fIsExec, uint64_t cbFile)
 {
     PS2GREPOSITORYGITINT pThis = hGitRepo;
-    s2gGitFiBufReset(&pThis->BufScratch);
+    s2gScratchBufReset(&pThis->BufScratch);
     uint64_t idFileMark = pThis->idFileMark--;
-    int rc = s2gGitFiBufPrintf(&pThis->BufModifiedFiles, "M %s :%RU64 %s\n",
-                               fIsExec ? "100755" : "100644",
-                               idFileMark, pszPath);
+    int rc = s2gScratchBufPrintf(&pThis->BufModifiedFiles, "M %s :%RU64 %s\n",
+                                 fIsExec ? "100755" : "100644",
+                                 idFileMark, pszPath);
     if (RT_SUCCESS(rc))
     {
-        rc = s2gGitFiBufPrintf(&pThis->BufScratch,
-                               "blob\n"
-                               "mark :%RU64\n"
-                               "data %RU64\n",
-                               idFileMark, cbFile);
+        rc = s2gScratchBufPrintf(&pThis->BufScratch,
+                                 "blob\n"
+                                 "mark :%RU64\n"
+                                 "data %RU64\n",
+                                 idFileMark, cbFile);
         if (RT_SUCCESS(rc))
-            RTPipeWriteBlocking(pThis->hPipeWrite, pThis->BufScratch.pchBuf, pThis->BufScratch.offBuf, NULL /*pcbWritten*/);
+            RTPipeWriteBlocking(pThis->hPipeWrite, pThis->BufScratch.pbBuf, pThis->BufScratch.offBuf, NULL /*pcbWritten*/);
     }
 
     return rc;
@@ -326,20 +260,24 @@ DECLHIDDEN(int) s2gGitTransactionFileWriteData(S2GREPOSITORYGIT hGitRepo, const 
 {
     PS2GREPOSITORYGITINT pThis = hGitRepo;
 
-    return RTPipeWriteBlocking(pThis->hPipeWrite, pvBuf, cb, NULL /*pcbWritten*/);
+    int rc = RTPipeWriteBlocking(pThis->hPipeWrite, pvBuf, cb, NULL /*pcbWritten*/);
+    if (RT_SUCCESS(rc)) /* Need to print an ending line after the file data. */
+        rc = RTPipeWriteBlocking(pThis->hPipeWrite, "\n", sizeof("\n") - 1, NULL /*pcbWritten*/);
+
+    return rc;
 }
 
 
 DECLHIDDEN(int) s2gGitTransactionFileRemove(S2GREPOSITORYGIT hGitRepo, const char *pszPath)
 {
     PS2GREPOSITORYGITINT pThis = hGitRepo;
-    return s2gGitFiBufPrintf(&pThis->BufDeletedFiles, "D %s\n", pszPath);
+    return s2gScratchBufPrintf(&pThis->BufDeletedFiles, "D %s\n", pszPath);
 }
 
 
 DECLHIDDEN(int) s2gGitTransactionSubmoduleAdd(S2GREPOSITORYGIT hGitRepo, const char *pszPath, const char *pszSha1CommitId)
 {
     PS2GREPOSITORYGITINT pThis = hGitRepo;
-    return s2gGitFiBufPrintf(&pThis->BufModifiedFiles, "M 160000 %s %s\n", pszSha1CommitId, pszPath);
+    return s2gScratchBufPrintf(&pThis->BufModifiedFiles, "M 160000 %s %s\n", pszSha1CommitId, pszPath);
 }
 
