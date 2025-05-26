@@ -1,5 +1,4 @@
-/* $Id: vboximgMedia.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ $Revision: 106320 $ $Date: 2024-10-15 14:08:41 +0200 (Tue, 15 Oct 2024) $ $Author: klaus.espenlaub@oracle.com $ */
-
+/* $Id: vboximgMedia.h 109672 2025-05-26 19:56:08Z klaus.espenlaub@oracle.com $ */
 /** @file
  * vboximgMedia.h
  */

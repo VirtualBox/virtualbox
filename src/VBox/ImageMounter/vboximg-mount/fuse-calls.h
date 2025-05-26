@@ -1,3 +1,4 @@
+/* $Id: fuse-calls.h 109672 2025-05-26 19:56:08Z klaus.espenlaub@oracle.com $ */
 /** @file
  * Stubs for dynamically loading libfuse/libosxfuse and the symbols which are needed by
  * VirtualBox.

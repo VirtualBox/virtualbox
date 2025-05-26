@@ -1,7 +1,6 @@
-/* $Id: fuse.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: fuse.cpp 109672 2025-05-26 19:56:08Z klaus.espenlaub@oracle.com $ */
 /** @file
- *
- * Module to dynamically load libfuse and load all symbols
+ * Module to dynamically load libfuse/libosxfuse and load all symbols
  * which are needed by vboximg-mount.
  */
 
