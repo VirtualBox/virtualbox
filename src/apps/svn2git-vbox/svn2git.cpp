@@ -1,4 +1,4 @@
-/* $Id: svn2git.cpp 168978 2025-05-23 15:27:51Z alexander.eichner@oracle.com $ */
+/* $Id: svn2git.cpp 168986 2025-05-26 08:33:00Z alexander.eichner@oracle.com $ */
 /** @file
  * svn2git - Convert a svn repository to git.
  */
@@ -262,7 +262,7 @@ static RTEXITCODE s2gParseArguments(PS2GCTX pThis, int argc, char **argv)
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                static const char s_szRev[] = "$Revision: 168978 $";
+                static const char s_szRev[] = "$Revision: 168986 $";
                 const char *psz = RTStrStripL(strchr(s_szRev, ' '));
                 RTMsgInfo("r%.*s\n", strchr(psz, ' ') - psz, psz);
                 return RTEXITCODE_SUCCESS;
@@ -369,6 +369,96 @@ static const char *s2gSvnChangeKindToStr(svn_fs_path_change_kind_t enmKind)
 
     AssertFailed();
     return "<UNKNOWN>";
+}
+
+
+static bool s2gPathIsExec(PCS2GSVNREV pRev, const char *pszSvnPath, apr_pool_t *pSvnPool)
+{
+    svn_string_t *pPropVal = NULL;
+    svn_error_t *pSvnErr = svn_fs_node_prop(&pPropVal, pThis->pSvnFsRoot, pszSvnPath, "svn:executable", pSvnPool);
+    if (pSvnErr)
+        svn_error_trace(pSvnErr);
+
+    return pPropVal != NULL;
+}
+
+
+static bool s2gPathIsSymlink(PCS2GSVNREV pRev, const char *pszSvnPath, apr_pool_t *pSvnPool)
+{
+    svn_string_t *pPropVal = NULL;
+    svn_error_t *pSvnErr = svn_fs_node_prop(&pPropVal, pRev->pSvnFsRoot, pszSvnPath, "svn:special", pSvnPool);
+    if (pSvnErr)
+        svn_error_trace(pSvnErr);
+
+    return pPropVal != NULL;
+}
+
+
+static RTEXITCODE s2gSvnDumpBlob(PCS2GCTX pThis, PS2GSVNREV pRev, const char *pszSvnPath, const char *pszGitPath)
+{
+    /* Create a new temporary pool. */
+    apr_pool_t *pPool = svn_pool_create(pRev->pPoolRev);
+    if (!pPool)
+        return RTMsgErrorExit(RTEXITCODE_FAILURE, "Allocating pool trying to dump '%s' failed", pszSvnPath);
+
+    bool fIsExec = s2gPathIsExec(pRev, pszSvnPath, pPool);
+    RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
+
+    /** @todo Symlinks. */
+    if (!s2gPathIsSymlink(pRev, pszSvnPath, pPool))
+    {
+        svn_filesize_t cbSvnFile = 0;
+        svn_error_t *pSvnErr = svn_fs_file_length(&cbSvnFile, pRev->pSvnFsRoot, pszSvnPath, pPool);
+        if (!pSvnErr)
+        {
+            svn_stream_t pSvnStrmIn = NULL;
+            pSvnErr = svn_fs_file_contents(&pSvnStrmIn, pRev->pSvnFsRoot, pszSvnPath, pPool);
+            if (!pSvnErr)
+            {
+                /* Do EOL style conversions and keyword substitutions. */
+                apr_hash_t *pProps = NULL;
+                pSvnErr = svn_fs_node_proplist(&pProps, pRev->pSvnFsRoot, pszSvnPath, pPool);
+                if (!pSvnErr)
+                {
+                    svn_string_t *pSvnStrEolStyle = (svn_string_t *)apr_hash_get(pProps, SVN_PROP_EOL_STYLE, APR_HASH_KEY_STRING);
+                    svn_string_t *pSvnStrKeywords = (svn_string_t *)apr_hash_get(pProps, SVN_PROP_KEYWORDS,  APR_HASH_KEY_STRING);
+                    if (pSvnStrEolStyle || pSvnStrKeywords)
+                    {
+                        apr_hash_t *pHashKeywords = NULL;
+                        const char *pszEolStr = NULL;
+                        svn_subst_eol_style_t SvnEolStyle = svn_subst_eol_style_none;
+
+                        if (pSvnStrEolStyle)
+                            svn_subst_eol_style_from_value(&SvnEolStyle, &pszEolStr, pSvnStrEolStyle->data);
+
+                        if (pSvnStrKeywords)
+                        {
+                        }
+
+                        pSvnStrmIn = svn_subst_stream_translated(svn_stream_disown(pSvnStrmIn, pPool),
+                                                                 pszEolStr, FALSE, pHashKeywords, TRUE,
+                                                                 pPool);
+                        if (!pSvnStrmIn)
+                            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to inject translated stream for '%s'", pszSvnPath);
+                    }
+
+                    /* When doing substitutions we need to determine the new stream length as substitutions change that. */
+                    
+                }
+            }
+        }
+
+        if (pSvnErr)
+        {
+            svn_error_trace(pSvnErr);
+            rcExit = RTEXITCODE_FAILURE;
+        }
+    }
+    else
+        rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "'%s' is a special file (probably symlink), NOT IMPLEMENTED", pszSvnPath);
+
+    svn_pool_destroy(pPool);
+    return rcExit;
 }
 
 
