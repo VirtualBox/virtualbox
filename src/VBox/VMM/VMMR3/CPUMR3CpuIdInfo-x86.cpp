@@ -1,4 +1,4 @@
-/* $Id: CPUMR3CpuIdInfo-x86.cpp 168946 2025-05-20 23:25:45Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMR3CpuIdInfo-x86.cpp 168988 2025-05-26 08:43:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part.
  */
@@ -536,7 +536,6 @@ static void cpumR3CpuIdInfoStdLeaf1Details(PCPUMCPUIDINFOSTATEX86 pThis, PCCPUMC
  * Produces a detailed summary of standard leaf 0x00000007.
  *
  * @param   pThis       The info dumper state.
- * @param   pHlp        The info helper functions.
  * @param   pCurLeaf    The first 0x00000007 leaf.
  */
 static void cpumR3CpuIdInfoStdLeaf7Details(PCPUMCPUIDINFOSTATEX86 pThis, PCCPUMCPUIDLEAF pCurLeaf)
