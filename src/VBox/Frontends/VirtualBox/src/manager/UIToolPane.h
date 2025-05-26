@@ -1,4 +1,4 @@
-/* $Id: UIToolPane.h 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIToolPane.h 168994 2025-05-26 14:37:46Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIToolPane class declaration.
  */
@@ -203,8 +203,8 @@ private:
         UISnapshotPane         *m_pPaneSnapshots;
         /** Holds the Logviewer pane instance. */
         UIVMLogViewerWidget    *m_pPaneLogViewer;
-        /** Holds the Performance Monitor pane instance. */
-        UIVMActivityToolWidget *m_pPaneVMActivityMonitor;
+        /** Holds the VM Activity Tool pane instance. */
+        UIVMActivityToolWidget *m_pPaneVMActivityTool;
         /** Holds the File Manager pane instance. */
         UIFileManager          *m_pPaneFileManager;
 
@@ -223,7 +223,7 @@ private:
         /** Holds the Cloud Profile Manager instance. */
         UICloudProfileManagerWidget  *m_pPaneCloud;
         /** Holds the VM Activity Overview instance. */
-        UIVMActivityOverviewWidget   *m_pPaneActivities;
+        UIVMActivityOverviewWidget   *m_pPaneVMActivityOverview;
 
         /** Holds the cache of passed cloud machine items. */
         QList<UIVirtualMachineItemCloud*>  m_cloudItems;

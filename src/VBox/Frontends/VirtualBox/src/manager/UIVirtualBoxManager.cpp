@@ -1,4 +1,4 @@
-/* $Id: UIVirtualBoxManager.cpp 168993 2025-05-26 13:42:51Z sergey.dubov@oracle.com $ */
+/* $Id: UIVirtualBoxManager.cpp 168994 2025-05-26 14:37:46Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVirtualBoxManager class implementation.
  */
@@ -3567,9 +3567,9 @@ void UIVirtualBoxManager::updateActionsVisibility()
     /* Determine whether Cloud menu should be visible: */
     const bool fCloudMenuShown = fGlobalToolShown && m_pWidget->currentGlobalTool() == UIToolType_Cloud;
     actionPool()->action(UIActionIndexMN_M_Cloud)->setVisible(fCloudMenuShown);
-    /* Determine whether Activities menu should be visible: */
-    const bool fResourcesMenuShown = fGlobalToolShown && m_pWidget->currentGlobalTool() == UIToolType_Resources;
-    actionPool()->action(UIActionIndexMN_M_VMActivityOverview)->setVisible(fResourcesMenuShown);
+    /* Determine whether VM Activity Overview menu should be visible: */
+    const bool fVMActivityOverviewMenuShown = fGlobalToolShown && m_pWidget->currentGlobalTool() == UIToolType_Resources;
+    actionPool()->action(UIActionIndexMN_M_VMActivityOverview)->setVisible(fVMActivityOverviewMenuShown);
 
     /* Determine whether Snapshots menu should be visible: */
     const bool fSnapshotMenuShown = (fMachineMenuShown || fGroupMenuShown) &&

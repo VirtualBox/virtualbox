@@ -1,4 +1,4 @@
-/* $Id: UIActionPoolManager.cpp 168993 2025-05-26 13:42:51Z sergey.dubov@oracle.com $ */
+/* $Id: UIActionPoolManager.cpp 168994 2025-05-26 14:37:46Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIActionPoolManager class implementation.
  */
@@ -1893,7 +1893,7 @@ protected:
     }
 };
 
-/** Simple action extension, used as 'Show VM Activity Monitor' action class. */
+/** Simple action extension, used as 'Show VM Activity Tool' action class. */
 class UIActionToggleManagerToolsMachineShowActivity : public UIActionToggle
 {
     Q_OBJECT;

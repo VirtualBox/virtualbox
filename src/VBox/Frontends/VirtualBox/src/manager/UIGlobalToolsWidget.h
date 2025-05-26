@@ -1,4 +1,4 @@
-/* $Id: UIGlobalToolsWidget.h 168940 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIGlobalToolsWidget.h 168994 2025-05-26 14:37:46Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIGlobalToolsWidget class declaration.
  */
@@ -140,10 +140,10 @@ private slots:
           * @param  enmType  Brings current tool type. */
         void sltHandleToolsMenuIndexChange(UIToolType enmType);
 
-        /** Handles signal requesting switch to Activities tool. */
-        void sltSwitchToActivitiesTool();
-        /** Handles signal requesting switch to VM Activity tool. */
-        void sltSwitchToVMActivityTool(const QUuid &uMachineId);
+        /** Handles signal requesting switch to Resources tool. */
+        void sltSwitchToResourcesTool();
+        /** Handles signal requesting switch to Resource Use tool. */
+        void sltSwitchToResourceUseTool(const QUuid &uMachineId);
     /** @} */
 
 private:
