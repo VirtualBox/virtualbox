@@ -1,4 +1,4 @@
-/* $Id: UIActionPoolManager.cpp 168992 2025-05-26 13:30:39Z sergey.dubov@oracle.com $ */
+/* $Id: UIActionPoolManager.cpp 168993 2025-05-26 13:42:51Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIActionPoolManager class implementation.
  */
@@ -1904,7 +1904,7 @@ public:
     UIActionToggleManagerToolsMachineShowActivity(UIActionPool *pParent)
         : UIActionToggle(pParent)
     {
-        setProperty("UIToolType", QVariant::fromValue(UIToolType_VMActivity));
+        setProperty("UIToolType", QVariant::fromValue(UIToolType_ResourceUse));
         /// @todo use icons with check-boxes
         setIcon(UIIconPool::iconSetFull(":/performance_monitor_32px.png", ":/performance_monitor_16px.png",
                                         ":/performance_monitor_disabled_32px.png", ":/performance_monitor_disabled_16px.png"));

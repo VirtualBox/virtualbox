@@ -1,4 +1,4 @@
-/* $Id: UIVirtualBoxWidget.cpp 168992 2025-05-26 13:30:39Z sergey.dubov@oracle.com $ */
+/* $Id: UIVirtualBoxWidget.cpp 168993 2025-05-26 13:42:51Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVirtualBoxWidget class implementation.
  */
@@ -590,7 +590,7 @@ void UIVirtualBoxWidget::updateToolbar()
                 m_pToolBar->addAction(actionPool()->action(UIActionIndexMN_M_Machine_S_Show));
             break;
         }
-        case UIToolType_VMActivity:
+        case UIToolType_ResourceUse:
         {
             m_pToolBar->addAction(actionPool()->action(UIActionIndex_M_Activity_S_Export));
             m_pToolBar->addAction(actionPool()->action(UIActionIndex_M_Activity_S_ToVMActivityOverview));

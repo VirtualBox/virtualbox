@@ -1,4 +1,4 @@
-/* $Id: UIToolPane.cpp 168992 2025-05-26 13:30:39Z sergey.dubov@oracle.com $ */
+/* $Id: UIToolPane.cpp 168993 2025-05-26 13:42:51Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIToolPane class implementation.
  */
@@ -344,15 +344,15 @@ void UIToolPane::openTool(UIToolType enmType)
                 }
                 break;
             }
-            case UIToolType_VMActivity:
+            case UIToolType_ResourceUse:
             {
-                /* Create Activity pane: */
+                /* Create VM Activity Monitor pane: */
                 m_pPaneVMActivityMonitor = new UIVMActivityToolWidget(EmbedTo_Stack, m_pActionPool,
                                                                       false /* Show toolbar */, 0 /* Parent */);
                 AssertPtrReturnVoid(m_pPaneVMActivityMonitor);
                 {
                     /* Configure pane: */
-                    m_pPaneVMActivityMonitor->setProperty("ToolType", QVariant::fromValue(UIToolType_VMActivity));
+                    m_pPaneVMActivityMonitor->setProperty("ToolType", QVariant::fromValue(UIToolType_ResourceUse));
                     m_pPaneVMActivityMonitor->setSelectedVMListItems(m_items);
                     connect(m_pPaneVMActivityMonitor, &UIVMActivityToolWidget::sigSwitchToActivityOverviewPane,
                             this, &UIToolPane::sigSwitchToActivityOverviewPane);
@@ -427,7 +427,7 @@ void UIToolPane::closeTool(UIToolType enmType)
             case UIToolType_Details:     m_pPaneDetails = 0; break;
             case UIToolType_Snapshots:   m_pPaneSnapshots = 0; break;
             case UIToolType_Logs:        m_pPaneLogViewer = 0; break;
-            case UIToolType_VMActivity:  m_pPaneVMActivityMonitor = 0; break;
+            case UIToolType_ResourceUse: m_pPaneVMActivityMonitor = 0; break;
             case UIToolType_FileManager: m_pPaneFileManager = 0; break;
             default: break;
         }
@@ -479,7 +479,7 @@ QString UIToolPane::currentHelpKeyword() const
         case UIToolType_Logs:
             pCurrentToolWidget = m_pPaneLogViewer;
             break;
-        case UIToolType_VMActivity:
+        case UIToolType_ResourceUse:
             pCurrentToolWidget = m_pPaneVMActivityMonitor;
             break;
         case UIToolType_FileManager:
@@ -526,8 +526,8 @@ void UIToolPane::setItems(const QList<UIVirtualMachineItem*> &items)
         AssertPtrReturnVoid(m_pPaneLogViewer);
         m_pPaneLogViewer->setSelectedVMListItems(m_items);
     }
-    /* Update performance monitor pane if it is open: */
-    if (isToolOpened(UIToolType_VMActivity))
+    /* Update VM activity monitor pane if it is open: */
+    if (isToolOpened(UIToolType_ResourceUse))
     {
         AssertPtrReturnVoid(m_pPaneVMActivityMonitor);
         m_pPaneVMActivityMonitor->setSelectedVMListItems(m_items);

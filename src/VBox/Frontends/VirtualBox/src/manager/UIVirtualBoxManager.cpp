@@ -1,4 +1,4 @@
-/* $Id: UIVirtualBoxManager.cpp 168992 2025-05-26 13:30:39Z sergey.dubov@oracle.com $ */
+/* $Id: UIVirtualBoxManager.cpp 168993 2025-05-26 13:42:51Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVirtualBoxManager class implementation.
  */
@@ -3579,10 +3579,10 @@ void UIVirtualBoxManager::updateActionsVisibility()
     const bool fLogViewerMenuShown = (fMachineMenuShown || fGroupMenuShown) &&
                                      m_pWidget->currentMachineTool() == UIToolType_Logs;
     actionPool()->action(UIActionIndex_M_Log)->setVisible(fLogViewerMenuShown);
-    /* Determine whether Performance menu should be visible: */
-    const bool fPerformanceMenuShown = (fMachineMenuShown || fGroupMenuShown) &&
-                                       m_pWidget->currentMachineTool() == UIToolType_VMActivity;
-    actionPool()->action(UIActionIndex_M_Activity)->setVisible(fPerformanceMenuShown);
+    /* Determine whether Activity menu should be visible: */
+    const bool fActivityMenuShown = (fMachineMenuShown || fGroupMenuShown) &&
+                                    m_pWidget->currentMachineTool() == UIToolType_ResourceUse;
+    actionPool()->action(UIActionIndex_M_Activity)->setVisible(fActivityMenuShown);
     /* Determine whether File Manager menu item should be visible: */
     const bool fFileManagerMenuShown = (fMachineMenuShown || fGroupMenuShown) &&
                                        m_pWidget->currentMachineTool() == UIToolType_FileManager;
@@ -3783,7 +3783,7 @@ void UIVirtualBoxManager::updateActionsAppearance()
                 actionPool()->action(UIActionIndexMN_M_Machine_M_Tools_T_Logs)->setChecked(true);
                 break;
             }
-            case UIToolType_VMActivity:
+            case UIToolType_ResourceUse:
             {
                 actionPool()->action(UIActionIndexMN_M_Group_M_Tools_T_Activity)->setChecked(true);
                 actionPool()->action(UIActionIndexMN_M_Machine_M_Tools_T_Activity)->setChecked(true);

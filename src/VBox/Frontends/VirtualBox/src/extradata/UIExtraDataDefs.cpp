@@ -1,4 +1,4 @@
-/* $Id: UIExtraDataDefs.cpp 168992 2025-05-26 13:30:39Z sergey.dubov@oracle.com $ */
+/* $Id: UIExtraDataDefs.cpp 168993 2025-05-26 13:42:51Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Extra-data related definitions.
  */
@@ -302,7 +302,7 @@ UIToolClass UIToolStuff::castTypeToClass(UIToolType enmType)
         case UIToolType_Details:
         case UIToolType_Snapshots:
         case UIToolType_Logs:
-        case UIToolType_VMActivity:
+        case UIToolType_ResourceUse:
         case UIToolType_FileManager:
             return UIToolClass_Machine;
         default:
