@@ -1,5 +1,4 @@
-/* $Id: vboximgCrypto.cpp 166567 2025-01-08 13:14:48Z alexander.eichner@oracle.com $ $Revision: 166567 $ */
-
+/* $Id: vboximgCrypto.cpp 169001 2025-05-26 19:52:08Z klaus.espenlaub@oracle.com $ */
 /** @file
  * vboximgCypto.cpp - Disk Image Flattening FUSE Program.
  */
