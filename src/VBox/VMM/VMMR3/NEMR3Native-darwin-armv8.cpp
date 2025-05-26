@@ -1,4 +1,4 @@
-/* $Id: NEMR3Native-darwin-armv8.cpp 168293 2025-04-04 08:36:32Z alexander.eichner@oracle.com $ */
+/* $Id: NEMR3Native-darwin-armv8.cpp 168982 2025-05-26 05:42:12Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 macOS backend using Hypervisor.framework, ARMv8 variant.
  *
@@ -1328,6 +1328,34 @@ static int nemR3DarwinGicCreate(PVM pVM)
 
 
 /**
+ * Registers statistics for the given vCPU.
+ *
+ * @returns VBox status code.
+ * @param   pVM             The cross context VM structure.
+ * @param   idCpu           The CPU ID.
+ * @param   pNemCpu         The NEM CPU structure.
+ */
+static int nemR3DarwinStatisticsRegister(PVM pVM, VMCPUID idCpu, PNEMCPU pNemCpu)
+{
+#define NEM_REG_STAT(a_pVar, a_enmType, s_enmVisibility, a_enmUnit, a_szNmFmt, a_szDesc) do { \
+                int rc = STAMR3RegisterF(pVM, a_pVar, a_enmType, s_enmVisibility, a_enmUnit, a_szDesc, a_szNmFmt, idCpu); \
+                AssertRC(rc); \
+            } while (0)
+#define NEM_REG_PROFILE(a_pVar, a_szNmFmt, a_szDesc) \
+           NEM_REG_STAT(a_pVar, STAMTYPE_PROFILE, STAMVISIBILITY_USED, STAMUNIT_TICKS_PER_CALL, a_szNmFmt, a_szDesc)
+#define NEM_REG_COUNTER(a, b, desc) NEM_REG_STAT(a, STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_OCCURENCES, b, desc)
+
+    NEM_REG_COUNTER(&pNemCpu->StatExitAll, "/NEM/CPU%u/Exit/All", "Total exits (including nested-guest exits).");
+
+    return VINF_SUCCESS;
+
+#undef NEM_REG_COUNTER
+#undef NEM_REG_PROFILE
+#undef NEM_REG_STAT
+}
+
+
+/**
  * Try initialize the native API.
  *
  * This may only do part of the job, more can be done in
@@ -1434,6 +1462,14 @@ int nemR3NativeInit(PVM pVM, bool fFallback, bool fForced)
         VM_SET_MAIN_EXECUTION_ENGINE(pVM, VM_EXEC_ENGINE_NATIVE_API);
         Log(("NEM: Marked active!\n"));
         PGMR3EnableNemMode(pVM);
+
+        /* Register statistics for all VCPUs. */
+        for (VMCPUID idCpu = 0; idCpu < pVM->cCpus; idCpu++)
+        {
+            PNEMCPU pNemCpu = &pVM->apCpusR3[idCpu]->nem.s;
+            nemR3DarwinStatisticsRegister(pVM, idCpu, pNemCpu);
+        }
+
         return VINF_SUCCESS;
     }
 
@@ -2217,6 +2253,8 @@ static VBOXSTRICTRC nemR3DarwinHandleExit(PVM pVM, PVMCPU pVCpu)
     if (LogIs3Enabled())
         nemR3DarwinLogState(pVM, pVCpu);
 #endif
+
+    STAM_REL_COUNTER_INC(&pVCpu->nem.s.StatExitAll);
 
     hv_vcpu_exit_t *pExit = pVCpu->nem.s.pHvExit;
     switch (pExit->reason)
