@@ -1,4 +1,4 @@
-/* $Id: UIStorageSettingsEditor.cpp 164916 2024-09-24 12:36:53Z sergey.dubov@oracle.com $ */
+/* $Id: UIStorageSettingsEditor.cpp 168996 2025-05-26 16:09:52Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIStorageSettingsEditor class implementation.
  */
@@ -3190,53 +3190,52 @@ void UIStorageSettingsEditor::sltRetranslateUI()
     m_pLabelInfo->setText(tr("The Storage Tree can contain several controllers of different types. This machine currently has no "
                              "controllers."));
     m_pLabelSeparatorParameters->setText(tr("Attributes"));
-    m_pLabelName->setText(tr("&Name:"));
-    m_pEditorName->setToolTip(tr("Holds the name of the storage controller currently selected in the Storage Tree."));
-    m_pLabelType->setText(tr("&Type:"));
-    m_pComboType->setToolTip(tr("Selects the sub-type of the storage controller currently selected in the Storage Tree."));
-    m_pLabelPortCount->setText(tr("&Port Count:"));
-    m_pSpinboxPortCount->setToolTip(tr("Selects the port count of the SATA storage controller currently selected in the "
-                                       "Storage Tree. This must be at least one more than the highest port number you need to "
-                                       "use."));
-    m_pCheckBoxIoCache->setToolTip(tr("When checked, allows to use host I/O caching capabilities."));
+    m_pLabelName->setText(tr("&Name"));
+    m_pEditorName->setToolTip(tr("The name of the storage controller currently selected in the Storage Tree"));
+    m_pLabelType->setText(tr("&Type"));
+    m_pComboType->setToolTip(tr("The sub-type of the storage controller currently selected in the Storage Tree"));
+    m_pLabelPortCount->setText(tr("&Port Count"));
+    m_pSpinboxPortCount->setToolTip(tr("The number of ports allocated to the controller. "
+                                       "This must always be one greater than the number of ports that can be used."));
+    m_pCheckBoxIoCache->setToolTip(tr("Allow to use host I/O caching capabilities"));
     m_pCheckBoxIoCache->setText(tr("Use Host I/O Cache"));
     m_pLabelSeparatorAttributes->setText(tr("Attributes"));
-    m_pLabelHD->setText(tr("Hard &Disk:"));
-    m_pLabelCD->setText(tr("Optical &Drive:"));
-    m_pLabelFD->setText(tr("Floppy &Drive:"));
-    m_pComboSlot->setToolTip(tr("Selects the slot on the storage controller used by this attachment. The available slots depend "
+    m_pLabelHD->setText(tr("Hard &Disk"));
+    m_pLabelCD->setText(tr("Optical &Drive"));
+    m_pLabelFD->setText(tr("Floppy &Drive"));
+    m_pComboSlot->setToolTip(tr("The slot on the storage controller used by this attachment. The available slots depend "
                                 "on the type of the controller and other attachments on it."));
     m_pToolButtonOpen->setText(QString());
-    m_pCheckBoxPassthrough->setToolTip(tr("When checked, allows the guest to send ATAPI commands directly to the host-drive "
+    m_pCheckBoxPassthrough->setToolTip(tr("Allow the guest to send ATAPI commands directly to the host-drive "
                                           "which makes it possible to use CD/DVD writers connected to the host inside the VM. "
                                           "Note that writing audio CD inside the VM is not yet supported."));
     m_pCheckBoxPassthrough->setText(tr("&Passthrough"));
-    m_pCheckBoxTempEject->setToolTip(tr("When checked, the virtual disk will not be removed when the guest system ejects it."));
+    m_pCheckBoxTempEject->setToolTip(tr("The virtual disk will not be removed when the guest system ejects it"));
     m_pCheckBoxTempEject->setText(tr("&Live CD/DVD"));
-    m_pCheckBoxNonRotational->setToolTip(tr("When checked, the guest system will see the virtual disk as a solid-state device."));
+    m_pCheckBoxNonRotational->setToolTip(tr("The guest system will see the virtual disk as a solid-state device"));
     m_pCheckBoxNonRotational->setText(tr("&Solid-state Drive"));
-    m_pCheckBoxHotPluggable->setToolTip(tr("When checked, the guest system will see the virtual disk as a hot-pluggable device."));
+    m_pCheckBoxHotPluggable->setToolTip(tr("The guest system will see the virtual disk as a hot-pluggable device"));
     m_pCheckBoxHotPluggable->setText(tr("&Hot-pluggable"));
     m_pLabelSeparatorInformation->setText(tr("Information"));
-    m_pLabelHDFormat->setText(tr("Type (Format):"));
-    m_pLabelHDVirtualSize->setText(tr("Virtual size:"));
-    m_pLabelHDActualSize->setText(tr("Actual size:"));
-    m_pLabelHDDetails->setText(tr("Storage details:"));
-    m_pLabelHDLocation->setText(tr("Location:"));
-    m_pLabelHDUsage->setText(tr("Attached to:"));
-    m_pLabelHDEncryption->setText(tr("Encryption key:"));
-    m_pLabelCDType->setText(tr("Type:"));
-    m_pLabelCDSize->setText(tr("Size:"));
-    m_pLabelCDLocation->setText(tr("Location:"));
-    m_pLabelCDUsage->setText(tr("Attached to:"));
-    m_pLabelFDType->setText(tr("Type:"));
-    m_pLabelFDSize->setText(tr("Size:"));
-    m_pLabelFDLocation->setText(tr("Location:"));
-    m_pLabelFDUsage->setText(tr("Attached to:"));
+    m_pLabelHDFormat->setText(tr("Type (Format)"));
+    m_pLabelHDVirtualSize->setText(tr("Virtual size"));
+    m_pLabelHDActualSize->setText(tr("Actual size"));
+    m_pLabelHDDetails->setText(tr("Storage details"));
+    m_pLabelHDLocation->setText(tr("Location"));
+    m_pLabelHDUsage->setText(tr("Attached to"));
+    m_pLabelHDEncryption->setText(tr("Encryption key"));
+    m_pLabelCDType->setText(tr("Type"));
+    m_pLabelCDSize->setText(tr("Size"));
+    m_pLabelCDLocation->setText(tr("Location"));
+    m_pLabelCDUsage->setText(tr("Attached to"));
+    m_pLabelFDType->setText(tr("Type"));
+    m_pLabelFDSize->setText(tr("Size"));
+    m_pLabelFDLocation->setText(tr("Location"));
+    m_pLabelFDUsage->setText(tr("Attached to"));
 
     /* Translate storage-view: */
-    m_pTreeViewStorage->setWhatsThis(tr("Lists all storage controllers for this machine and "
-                                        "the virtual images and host drives attached to them."));
+    m_pTreeViewStorage->setWhatsThis(tr("All storage controllers for this machine and "
+                                        "the virtual images and host drives attached to them"));
 
     /* Translate tool-bar: */
     m_pActionAddController->setShortcut(QKeySequence("Ins"));
@@ -3263,10 +3262,10 @@ void UIStorageSettingsEditor::sltRetranslateUI()
     m_pActionAddAttachmentFD->setText(tr("Floppy Drive"));
     m_pActionRemoveAttachment->setText(tr("Remove Attachment"));
 
-    m_pActionAddController->setToolTip(tr("Adds new storage controller."));
-    m_pActionRemoveController->setToolTip(tr("Removes selected storage controller."));
-    m_pActionAddAttachment->setToolTip(tr("Adds new storage attachment."));
-    m_pActionRemoveAttachment->setToolTip(tr("Removes selected storage attachment."));
+    m_pActionAddController->setToolTip(tr("Add new storage controller"));
+    m_pActionRemoveController->setToolTip(tr("Remove selected storage controller"));
+    m_pActionAddAttachment->setToolTip(tr("Add new storage attachment"));
+    m_pActionRemoveAttachment->setToolTip(tr("Remove selected storage attachment"));
 
     m_pActionAddController->setToolTip(m_pActionAddController->whatsThis());
     m_pActionRemoveController->setToolTip(m_pActionRemoveController->whatsThis());
