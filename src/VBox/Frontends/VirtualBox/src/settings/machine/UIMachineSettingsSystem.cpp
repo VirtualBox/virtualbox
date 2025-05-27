@@ -1,4 +1,4 @@
-/* $Id: UIMachineSettingsSystem.cpp 167376 2025-02-05 17:37:00Z sergey.dubov@oracle.com $ */
+/* $Id: UIMachineSettingsSystem.cpp 169023 2025-05-27 15:31:04Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineSettingsSystem class implementation.
  */
@@ -392,6 +392,12 @@ void UIMachineSettingsSystem::putToCache()
     if (!m_pCache)
         return;
 
+    /* Some options for x86 machines only: */
+    const KPlatformArchitecture enmArch = optionalFlags().contains("arch")
+                                        ? optionalFlags().value("arch").value<KPlatformArchitecture>()
+                                        : KPlatformArchitecture_x86;
+    const bool fx86Machine = enmArch == KPlatformArchitecture_x86;
+
     /* Prepare new data: */
     UIDataSettingsMachineSystem newSystemData;
 
@@ -414,8 +420,8 @@ void UIMachineSettingsSystem::putToCache()
     if (   m_pEditorMotherboardFeatures
         && m_pEditorVCPU)
         newSystemData.m_fEnabledIoApic =    m_pEditorMotherboardFeatures->isEnabledIoApic()
-                                         || m_pEditorVCPU->value() > 1
-                                         || chipsetType() == KChipsetType_ICH9;
+                                         || (m_pEditorVCPU->value() > 1 && fx86Machine)
+                                         || (chipsetType() == KChipsetType_ICH9 && fx86Machine);
     if (m_pEditorMotherboardFeatures)
         newSystemData.m_fEnabledEFI = m_pEditorMotherboardFeatures->isEnabledEfi();
     if (m_pEditorMotherboardFeatures)
@@ -466,6 +472,12 @@ bool UIMachineSettingsSystem::validate(QList<UIValidationMessage> &messages)
     /* Pass by default: */
     bool fPass = true;
 
+    /* Some options for x86 machines only: */
+    const KPlatformArchitecture enmArch = optionalFlags().contains("arch")
+                                        ? optionalFlags().value("arch").value<KPlatformArchitecture>()
+                                        : KPlatformArchitecture_x86;
+    const bool fx86Machine = enmArch == KPlatformArchitecture_x86;
+
     /* Motherboard tab: */
     {
         /* Prepare message: */
@@ -493,7 +505,8 @@ bool UIMachineSettingsSystem::validate(QList<UIValidationMessage> &messages)
         }
 
         /* Chipset type vs IO-APIC test: */
-        if (   chipsetType() == KChipsetType_ICH9
+        if (   fx86Machine
+            && chipsetType() == KChipsetType_ICH9
             && !m_pEditorMotherboardFeatures->isEnabledIoApic())
         {
             message.second << tr(
@@ -541,7 +554,9 @@ bool UIMachineSettingsSystem::validate(QList<UIValidationMessage> &messages)
         }
 
         /* VCPU vs IO-APIC test: */
-        if (m_pEditorVCPU->value() > 1 && !m_pEditorMotherboardFeatures->isEnabledIoApic())
+        if (   fx86Machine
+            && m_pEditorVCPU->value() > 1
+            && !m_pEditorMotherboardFeatures->isEnabledIoApic())
         {
             message.second << tr(
                 "The I/O APIC feature is not currently enabled in the Motherboard section of the System page. "
