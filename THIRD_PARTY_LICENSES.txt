@@ -1,0 +1,1 @@
+See doc/manual/en_US/dita/topics/licensing/vbox-base for all 3rd party licenses.
