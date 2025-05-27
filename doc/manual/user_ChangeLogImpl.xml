@@ -73,14 +73,27 @@ Rules for adding a changelog entry to make them look more uniform:
                            So, we use chapter and xpointer="xpointer(/chapter/)" with xi:include. -->
   <sect1>
 
-    <title>Version X.Y.Z (date tbd)</title>
+    <title>Version 7.2.0 (2025-05-27)</title>
 
     <para>This is a major update. The following new features were added:</para>
 
     <itemizedlist>
 
       <listitem>
-        <para>placeholder</para>
+        <para>GUI: Moved global and VM tools from hamburger menus to
+          global tools taskbar (vertically on the left) and the VM tools
+          tabs (horizontally above the right hand panel) to make them
+          easier to reach</para>
+      </listitem>
+
+      <listitem>
+        <para>Windows/Arm host: Arm virtualization of Windows, Linux and
+          BSD VMs added, using the Windows installer package</para>
+      </listitem>
+
+      <listitem>
+        <para>Windows/Arm guest: Guest additions for new OS type Windows
+          11/Arm</para>
       </listitem>
 
     </itemizedlist>
@@ -90,7 +103,30 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
-        <para>placeholder</para>
+        <para>Arm VMs: Note that the saved state of Arm VMs from
+          VirtualBox 7.1 is <b>incompatible</b> with VirtualBox 7.2, so
+          please shut down such VMs using saved state before upgrading
+          to 7.2</para>
+      </listitem>
+
+      <listitem>
+        <para>Arm host: vboxwebsrv is now included in the packages</para>
+      </listitem>
+
+      <listitem>
+        <para>macOS/Arm host: Arm virtualization of Windows 11/Arm</para>
+      </listitem>
+
+      <listitem>
+        <para>macOS/Arm host: Arm virtualization of Windows 11/Arm</para>
+      </listitem>
+
+      <listitem>
+        <para>Arm VMs: ACPI now available</para>
+      </listitem>
+
+      <listitem>
+        <para>3rd Party Tools: Eliminated dependency on libIDL and IASL</para>
       </listitem>
 
     </itemizedlist>
