@@ -1,4 +1,4 @@
-/* $Id: process-creation-posix.cpp 169008 2025-05-26 23:52:19Z knut.osmundsen@oracle.com $ */
+/* $Id: process-creation-posix.cpp 169009 2025-05-27 07:39:14Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Process Creation, POSIX.
  */
@@ -1873,6 +1873,9 @@ RTR3DECL(int)   RTProcCreateEx(const char *pszExec, const char * const *papszArg
 
     /*
      * Check for execute access to the file, searching the PATH if needed.
+     *
+     * Note! This ASSUMES that both the current user and pszAsUser can access
+     *       the executable file we're about to start.
      */
     const char *pszNativeExec = NULL;
     rc = rtPathToNative(&pszNativeExec, pszExec, NULL);
@@ -2314,10 +2317,7 @@ static int rtProcPosixCreateInner(const char *pszNativeExec, const char * const 
                 return VINF_SUCCESS;
             }
         }
-        /* For a detached process this happens in the temp process, so
-         * it's not worth doing anything as this process must exit. */
-        if (fFlags & RTPROC_FLAGS_DETACHED)
-            _Exit(124);
+        rc = RTErrConvertFromErrno(rc);
     }
     else
 #endif
@@ -2479,15 +2479,14 @@ static int rtProcPosixCreateInner(const char *pszNativeExec, const char * const 
         }
         else
             rc = rtProcPosixForkStatusPipeCleanupFailure(RTErrConvertFromErrno(errno), fdStatusPipeR, fdStatusPipeW);
-
-        /* For a detached process this happens in the temp process, so
-         * it's not worth doing anything as this process must exit. */
-        if (fFlags & RTPROC_FLAGS_DETACHED)
-            _Exit(124);
-        return rc;
     }
 
-    return VERR_NOT_IMPLEMENTED;
+    /* For a detached process this happens in the temp process, so
+     * it's not worth doing anything as this process must exit. */
+    if (fFlags & RTPROC_FLAGS_DETACHED)
+        _Exit(124);
+
+    return rc;
 }
 
 
@@ -2513,8 +2512,7 @@ RTR3DECL(int)   RTProcDaemonizeUsingFork(bool fNoChDir, bool fNoClose, const cha
     int fdPidfile = -1;
     if (pszPidfile != NULL)
     {
-        /* @note the exclusive create is not guaranteed on all file
-         * systems (e.g. NFSv2) */
+        /* Note! The exclusive create is not guaranteed on all file systems (e.g. NFSv2) */
         if ((fdPidfile = open(pszPidfile, O_RDWR | O_CREAT | O_EXCL, 0644)) == -1)
             return RTErrConvertFromErrno(errno);
     }
