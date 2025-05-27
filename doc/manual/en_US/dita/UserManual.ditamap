@@ -326,7 +326,6 @@
       <topicref format="ditamap" href="cli_topics/man_VBoxHeadless.ditamap"/>
    </chapter>
 
-   <!-- VBoxManage Refentry command topics -->
    <chapter href="topics/AdvancedTopics.dita" chunk="to-content">
       <topicref href="topics/autologon.dita">
          <topicref href="topics/autologon_win.dita"/>
@@ -560,6 +559,8 @@
          </topicref>
       </topicref>
    </chapter>
+
+  <!-- VBoxManage Refentry command topics -->
   <chapter href="topics/vboxmanage.dita" chunk="to-content">
     <topicref href="topics/vboxmanage-intro.dita"/>
     <!-- Commands Overview -->
