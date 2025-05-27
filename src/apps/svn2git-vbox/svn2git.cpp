@@ -1,4 +1,4 @@
-/* $Id: svn2git.cpp 168991 2025-05-26 12:30:41Z alexander.eichner@oracle.com $ */
+/* $Id: svn2git.cpp 169010 2025-05-27 08:45:26Z alexander.eichner@oracle.com $ */
 /** @file
  * svn2git - Convert a svn repository to git.
  */
@@ -36,6 +36,7 @@
 #include <iprt/list.h>
 #include <iprt/mem.h>
 #include <iprt/message.h>
+#include <iprt/sha.h>
 #include <iprt/string.h>
 #include <iprt/stdarg.h>
 #include <iprt/time.h>
@@ -93,6 +94,27 @@ typedef const S2GAUTHOR *PCS2GAUTHOR;
 
 
 /**
+ * Externals revision to git commit hash map.
+ */
+typedef struct S2GEXTREVMAP
+{
+    /** List node. */
+    RTLISTNODE      NdExternals;
+    /** Name of the external  */
+    const char      *pszName;
+    /** Number of entries in the map sorted by revision. */
+    uint32_t        cEntries;
+    /** Pointer to the array to commit ID hash strings, indexed by revision. */
+    const char      **papszRev2CommitHash;
+    /** The string table for the git commnit hashes. */
+    RT_GCC_EXTENSION
+    char            achStr[RT_FLEXIBLE_ARRAY];
+} S2GEXTREVMAP;
+typedef S2GEXTREVMAP *PS2GEXTREVMAP;
+typedef const S2GEXTREVMAP *PCS2GEXTREVMAP;
+
+
+/**
  * The state for a single revision.
  */
 typedef struct S2GSVNREV
@@ -143,6 +165,8 @@ typedef struct S2GCTX
     const char      *pszCfgFilename;
     /** The input subversion repository path. */
     const char      *pszSvnRepo;
+    /** Dump filename, optional. */
+    const char      *pszDumpFilename;
 
     /** The git repository path. */
     char            *pszGitRepoPath;
@@ -171,6 +195,8 @@ typedef struct S2GCTX
     RTSTRSPACE       StrSpaceAuthors;
     /** Scratch buffer. */
     S2GSCRATCHBUF    BufScratch;
+    /** List of known externals with their revision to git commit hash map. */
+    RTLISTANCHOR     LstExternals;
 } S2GCTX;
 /** Pointer to an svn -> git conversion context. */
 typedef S2GCTX *PS2GCTX;
@@ -200,6 +226,7 @@ static RTEXITCODE s2gUsage(const char *argv0)
               "  --quiet                                  Quiet execution.\n"
               "  --rev-start <revision>                   The revision to start conversion at\n"
               "  --rev-end   <revision>                   The last revision to convert (default is last repository revision)\n"
+              "  --dump-file <file path>                  File to dump the fast-import stream to\n"
               , argv0);
     return RTEXITCODE_SUCCESS;
 }
@@ -216,6 +243,7 @@ static void s2gCtxInit(PS2GCTX pThis)
     pThis->pszSvnRepo      = NULL;
     pThis->pszGitRepoPath  = NULL;
     pThis->pszGitDefBranch = "main";
+    pThis->pszDumpFilename = NULL;
 
     pThis->pPoolDefault    = NULL;
     pThis->pPoolScratch    = NULL;
@@ -224,6 +252,7 @@ static void s2gCtxInit(PS2GCTX pThis)
 
     pThis->StrSpaceAuthors = NULL;
     s2gScratchBufInit(&pThis->BufScratch);
+    RTListInit(&pThis->LstExternals);
 }
 
 
@@ -240,6 +269,8 @@ static void s2gCtxDestroy(PS2GCTX pThis)
         svn_pool_destroy(pThis->pPoolDefault);
         pThis->pPoolDefault = NULL;
     }
+
+    s2gScratchBufFree(&pThis->BufScratch);
 }
 
 
@@ -257,6 +288,7 @@ static RTEXITCODE s2gParseArguments(PS2GCTX pThis, int argc, char **argv)
         { "--verbose",                          'v', RTGETOPT_REQ_NOTHING },
         { "--rev-start",                        's', RTGETOPT_REQ_UINT32  },
         { "--rev-end",                          'e', RTGETOPT_REQ_UINT32  },
+        { "--dump-file",                        'd', RTGETOPT_REQ_STRING  },
     };
 
     RTGETOPTUNION   ValueUnion;
@@ -292,10 +324,14 @@ static RTEXITCODE s2gParseArguments(PS2GCTX pThis, int argc, char **argv)
                 pThis->idRevEnd = ValueUnion.u32;
                 break;
 
+            case 'd':
+                pThis->pszDumpFilename = ValueUnion.psz;
+                break;
+
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                static const char s_szRev[] = "$Revision: 168991 $";
+                static const char s_szRev[] = "$Revision: 169010 $";
                 const char *psz = RTStrStripL(strchr(s_szRev, ' '));
                 RTMsgInfo("r%.*s\n", strchr(psz, ' ') - psz, psz);
                 return RTEXITCODE_SUCCESS;
@@ -442,6 +478,210 @@ static RTEXITCODE s2gLoadConfigAuthorMap(PS2GCTX pThis, RTJSONVAL hJsonValAuthor
 }
 
 
+static RTEXITCODE s2gLoadConfigExternalMap(PS2GCTX pThis, const char *pszName, const char *pszFilename)
+{
+    RTJSONVAL hRoot = NIL_RTJSONVAL;
+    RTERRINFOSTATIC ErrInfo;
+    RTErrInfoInitStatic(&ErrInfo);
+    int rc = RTJsonParseFromFile(&hRoot, RTJSON_PARSE_F_JSON5, pszFilename, &ErrInfo.Core);
+    if (RT_SUCCESS(rc))
+    {
+        RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
+
+        if (RTJsonValueGetType(hRoot) == RTJSONVALTYPE_OBJECT)
+        {
+            uint32_t cItems = RTJsonValueGetObjectMemberCount(hRoot);
+
+            size_t cbName = (strlen(pszName) + 1) * sizeof(char);
+            size_t cbExternal = RT_UOFFSETOF_DYN(S2GEXTREVMAP, achStr[  cbName
+                                                                      + cItems * (RTSHA1_DIGEST_LEN + 1) * sizeof(char)]);
+            PS2GEXTREVMAP pExternal = (PS2GEXTREVMAP)RTMemAllocZ(cbExternal);
+            if (pExternal)
+            {
+                size_t offStr = cbName;
+                memcpy(&pExternal->achStr[offStr], pszName, cbName);
+                pExternal->pszName = &pExternal->achStr[offStr];
+
+                pExternal->cEntries = 0;
+
+                RTJSONIT hIt = NIL_RTJSONIT;
+                rc = RTJsonIteratorBeginObject(hRoot, &hIt);
+                if (RT_SUCCESS(rc))
+                {
+                    for (;;)
+                    {
+                        const char *pszShaCommitHash = NULL;
+                        RTJSONVAL hRevision = NIL_RTJSONVAL;
+                        rc = RTJsonIteratorQueryValue(hIt, &hRevision,  &pszShaCommitHash);
+                        if (RT_FAILURE(rc))
+                        {
+                            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to iterate over revision map: %Rrc", rc);
+                            break;
+                        }
+
+                        int64_t i64RevNum = 0;
+                        rc = RTJsonValueQueryInteger(hRevision, &i64RevNum);
+                        if (RT_FAILURE(rc))
+                        {
+                            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Revision for '%s' is not a number", pszShaCommitHash);
+                            RTJsonValueRelease(hRevision);
+                            break;
+                        }
+                        RTJsonValueRelease(hRevision);
+
+                        if (strlen(pszShaCommitHash) != RTSHA1_DIGEST_LEN)
+                        {
+                            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Commit hash '%s' is malformed", pszShaCommitHash);
+                            break;
+                        }
+
+                        if (i64RevNum < 0)
+                        {
+                            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Revision %RI64 for '%s' is negative",
+                                                    i64RevNum, pszShaCommitHash);
+                            break;
+                        }
+
+                        if (i64RevNum >= pExternal->cEntries)
+                        {
+                            const char **papszNew = (const char **)RTMemReallocZ(pExternal->papszRev2CommitHash,
+                                                                                 pExternal->cEntries * sizeof(const char **),
+                                                                                 (i64RevNum + 1) * sizeof(const char **));
+                            if (!papszNew)
+                            {
+                                rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to allocate memory for the revision map");
+                                break;
+                            }
+
+                            pExternal->papszRev2CommitHash = papszNew;
+                            pExternal->cEntries            = i64RevNum + 1;
+                        }
+
+                        if (pExternal->papszRev2CommitHash[i64RevNum] != NULL)
+                        {
+                            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Revision %RI64 for '%s' is already used",
+                                                    i64RevNum, pszShaCommitHash);
+                            break;
+                        }
+
+                        pExternal->papszRev2CommitHash[i64RevNum] = &pExternal->achStr[offStr];
+                        memcpy(&pExternal->achStr[offStr], pszShaCommitHash, RTSHA1_DIGEST_LEN + 1);
+                        offStr += RTSHA1_DIGEST_LEN + 1;
+
+                        rc = RTJsonIteratorNext(hIt);
+                        if (rc == VERR_JSON_ITERATOR_END)
+                            break;
+                        else if (RT_FAILURE(rc))
+                        {
+                            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to iterate over revision map: %Rrc", rc);
+                            break;
+                        }
+                    }
+                }
+                else
+                    rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to iterate over revision map: %Rrc", rc);
+
+                if (rcExit == RTEXITCODE_SUCCESS)
+                    RTListAppend(&pThis->LstExternals, &pExternal->NdExternals);
+                else
+                {
+                    if (pExternal->papszRev2CommitHash)
+                        RTMemFree(pExternal->papszRev2CommitHash);
+                    RTMemFree(pExternal);
+                }
+            }
+            else
+                rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to allocate %zu bytes for the external '%s'",
+                                        cbExternal, pszFilename);
+        }
+        else
+            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "External map '%s' is not a JSON object", pszFilename);
+
+        RTJsonValueRelease(hRoot);
+        return rcExit;
+    }
+
+    return RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to load external map file '%s': %s", pszFilename, ErrInfo.Core.pszMsg);
+
+}
+
+
+static RTEXITCODE s2gLoadConfigExternal(PS2GCTX pThis, RTJSONVAL hExternal)
+{
+    RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
+    RTJSONVAL hValName = NIL_RTJSONVAL;
+    int rc = RTJsonValueQueryByName(hExternal, "name", &hValName);
+    if (RT_SUCCESS(rc))
+    {
+        RTJSONVAL hValFile = NIL_RTJSONVAL;
+        rc = RTJsonValueQueryByName(hExternal, "file", &hValFile);
+        if (RT_SUCCESS(rc))
+        {
+            const char *pszName     = RTJsonValueGetString(hValName);
+            const char *pszFilename = RTJsonValueGetString(hValFile);
+            if (pszName && pszFilename)
+                rcExit = s2gLoadConfigExternalMap(pThis, pszName, pszFilename);
+            else
+                rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "The external object is malformed");
+
+            RTJsonValueRelease(hValFile);
+        }
+        else
+            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to query 'file' from external object: %Rrc", rc);
+
+        RTJsonValueRelease(hValName);
+    }
+    else
+        rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to query 'name' from external object: %Rrc", rc);
+
+    return rcExit;
+}
+
+
+static RTEXITCODE s2gLoadConfigExternals(PS2GCTX pThis, RTJSONVAL hJsonValExternals)
+{
+    if (RTJsonValueGetType(hJsonValExternals) != RTJSONVALTYPE_ARRAY)
+        return RTMsgErrorExit(RTEXITCODE_FAILURE, "'ExternalsMap' in '%s' is not a JSON array", pThis->pszCfgFilename);
+
+    RTJSONIT hIt = NIL_RTJSONIT;
+    int rc = RTJsonIteratorBeginArray(hJsonValExternals, &hIt);
+    if (rc == VERR_JSON_IS_EMPTY) /* Weird but okay. */
+        return RTEXITCODE_SUCCESS;
+    else if (RT_FAILURE(rc))
+        return RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to iterate over externals map: %Rrc", rc);
+
+    AssertRC(rc);
+    RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
+    for (;;)
+    {
+        RTJSONVAL hExternal = NIL_RTJSONVAL;
+        rc = RTJsonIteratorQueryValue(hIt, &hExternal,  NULL /*ppszName*/);
+        if (RT_FAILURE(rc))
+        {
+            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to iterate over externals map: %Rrc", rc);
+            break;
+        }
+
+        rcExit = s2gLoadConfigExternal(pThis, hExternal);
+        RTJsonValueRelease(hExternal);
+        if (rcExit == RTEXITCODE_FAILURE)
+            break;
+
+        rc = RTJsonIteratorNext(hIt);
+        if (rc == VERR_JSON_ITERATOR_END)
+            break;
+        else if (RT_FAILURE(rc))
+        {
+            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to iterate over externals map: %Rrc", rc);
+            break;
+        }
+    }
+
+    RTJsonIteratorFree(hIt);
+    return rcExit;
+}
+
+
 static RTEXITCODE s2gLoadConfig(PS2GCTX pThis)
 {
     RTJSONVAL hRoot = NIL_RTJSONVAL;
@@ -461,6 +701,18 @@ static RTEXITCODE s2gLoadConfig(PS2GCTX pThis)
             {
                 rcExit = s2gLoadConfigAuthorMap(pThis, hAuthorMap);
                 RTJsonValueRelease(hAuthorMap);
+                if (rcExit == RTEXITCODE_SUCCESS)
+                {
+                    RTJSONVAL hExternalsMap = NIL_RTJSONVAL;
+                    rc = RTJsonValueQueryByName(hRoot, "ExternalsMap", &hExternalsMap);
+                    if (RT_SUCCESS(rc))
+                    {
+                        rcExit = s2gLoadConfigExternals(pThis, hExternalsMap);
+                        RTJsonValueRelease(hExternalsMap);
+                    }
+                    else if (rc != VERR_NOT_FOUND)
+                        rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to query ExternalsMap from '%s': %Rrc", pThis->pszCfgFilename, rc);
+                }
             }
             else if (rc != VERR_NOT_FOUND)
                 rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to query AuthorMap from '%s': %Rrc", pThis->pszCfgFilename, rc);
@@ -687,7 +939,8 @@ static RTEXITCODE s2gSvnExportSinglePath(PS2GCTX pThis, PS2GSVNREV pRev, const c
     RTEXITCODE rcExit = RTEXITCODE_FAILURE;
     if (fIsDir)
     {
-        if (pChange->change_kind == svn_fs_path_change_add)
+        if (   pChange->change_kind == svn_fs_path_change_add
+            || pChange->change_kind == svn_fs_path_change_modify)
         {
             /* An empty directory was added, so add a .gitignore file. */
             rcExit = RTEXITCODE_SUCCESS;
@@ -697,7 +950,7 @@ static RTEXITCODE s2gSvnExportSinglePath(PS2GCTX pThis, PS2GSVNREV pRev, const c
     }
     else
     {
-        /* File being added, just dump the contents to the  git repository. */
+        /* File being added, just dump the contents to the git repository. */
         /** @todo Handle copies from branches where the source branch is part of the git repository. */
         if (   pChange->change_kind == svn_fs_path_change_add
             || pChange->change_kind == svn_fs_path_change_modify
@@ -871,9 +1124,15 @@ static RTEXITCODE s2gSvnExportRevision(PS2GCTX pThis, uint32_t idRev)
                         rcExit = s2gSvnRevisionExportPaths(pThis, &Rev);
                         if (rcExit == RTEXITCODE_SUCCESS)
                         {
-                            /** @todo Ammend svn log with xref. */
-                            rc = s2gGitTransactionCommit(pThis->hGitRepo, Rev.pszGitAuthor, Rev.pszGitAuthorEmail,
-                                                         Rev.pszSvnLog, Rev.cEpochSecs);
+                            size_t cchRevLog = strlen(Rev.pszSvnLog);
+
+                            s2gScratchBufReset(&pThis->BufScratch);
+                            rc = s2gScratchBufPrintf(&pThis->BufScratch, "%s%s\nsvn:sync-xref-src-repo-rev: r%u\n",
+                                                     Rev.pszSvnLog, Rev.pszSvnLog[cchRevLog] == '\n' ? "" : "\n",
+                                                     Rev.idRev);
+                            if (RT_SUCCESS(rc))
+                                rc = s2gGitTransactionCommit(pThis->hGitRepo, Rev.pszGitAuthor, Rev.pszGitAuthorEmail,
+                                                             pThis->BufScratch.pbBuf, Rev.cEpochSecs);
                             if (RT_FAILURE(rc))
                                 rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to commit git transaction with: %Rrc", rc);
                         }
@@ -922,7 +1181,8 @@ static RTEXITCODE s2gSvnExport(PS2GCTX pThis)
 
 static RTEXITCODE s2gGitInit(PS2GCTX pThis)
 {
-    int rc = s2gGitRepositoryCreate(&pThis->hGitRepo, pThis->pszGitRepoPath, pThis->pszGitDefBranch);
+    int rc = s2gGitRepositoryCreate(&pThis->hGitRepo, pThis->pszGitRepoPath, pThis->pszGitDefBranch,
+                                    pThis->pszDumpFilename);
     if (RT_SUCCESS(rc))
         return RTEXITCODE_SUCCESS;
 

@@ -1,4 +1,4 @@
-/* $Id: git.cpp 168991 2025-05-26 12:30:41Z alexander.eichner@oracle.com $ */
+/* $Id: git.cpp 169010 2025-05-27 08:45:26Z alexander.eichner@oracle.com $ */
 /** @file
  * svn2git - Convert a svn repository to git.
  */
@@ -30,6 +30,7 @@
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
 #include <iprt/dir.h>
+#include <iprt/file.h>
 #include <iprt/env.h>
 #include <iprt/path.h>
 #include <iprt/pipe.h>
@@ -58,6 +59,9 @@ typedef struct S2GREPOSITORYGITINT
     RTPIPE          hPipeStderr;
     /** stdout of git fast-import. */
     RTPIPE          hPipeStdout;
+
+    /* The dump file handle. */
+    RTFILE          hFileDump;
 
     /** The next file mark. */
     uint64_t        idFileMark;
@@ -96,9 +100,29 @@ static int s2gGitExecWrapper(const char *pszExec, const char *pszCwd, const char
 }
 
 
-DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *pszGitRepoPath, const char *pszDefaultBranch)
+DECLINLINE(int) s2gGitWrite(PS2GREPOSITORYGITINT pThis, const void *pvBuf, size_t cbWrite)
 {
-    RT_NOREF(phGitRepo, pszGitRepoPath, pszDefaultBranch);
+    int rc = VINF_SUCCESS;
+
+    if (pThis->hPipeWrite != NIL_RTPIPE)
+        rc = RTPipeWriteBlocking(pThis->hPipeWrite, pvBuf, cbWrite, NULL /*pcbWritten*/);
+
+    if (pThis->hFileDump != NIL_RTFILE)
+    {
+        int rc2 = RTFileWrite(pThis->hFileDump, pvBuf, cbWrite, NULL /*pcbWritten*/);
+        if (RT_SUCCESS(rc))
+            rc = rc2;
+    }
+
+    return rc;
+}
+
+
+DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *pszGitRepoPath, const char *pszDefaultBranch,
+                                       const char *pszDumpFilename)
+{
+    RT_NOREF(pszDefaultBranch);
+
     int rc = VINF_SUCCESS;
     if (!RTPathExists(pszGitRepoPath))
     {
@@ -124,28 +148,41 @@ DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *
             s2gScratchBufInit(&pThis->BufModifiedFiles);
             s2gScratchBufInit(&pThis->BufScratch);
             pThis->idCommitMark = 1;
+            pThis->hFileDump    = NIL_RTFILE;
 
-            RTPIPE hPipeFiR = NIL_RTPIPE;
-            rc = RTPipeCreate(&hPipeFiR, &pThis->hPipeWrite, RTPIPE_C_INHERIT_READ);
+            if (pszDumpFilename)
+                rc = RTFileOpen(&pThis->hFileDump, pszDumpFilename, RTFILE_O_WRITE | RTFILE_O_CREATE_REPLACE | RTFILE_O_DENY_NONE);
+
             if (RT_SUCCESS(rc))
             {
-                RTHANDLE HndIn;
-                HndIn.enmType = RTHANDLETYPE_PIPE;
-                HndIn.u.hPipe = hPipeFiR;
-
-                const char *apszArgs[] = { GIT_BINARY, "fast-import", NULL };
-                rc = RTProcCreateEx(GIT_BINARY, &apszArgs[0], RTENV_DEFAULT, RTPROC_FLAGS_SEARCH_PATH | RTPROC_FLAGS_CWD,
-                                    &HndIn, NULL, NULL,
-                                    NULL, NULL, (void *)pszGitRepoPath,
-                                    &pThis->hProcFastImport);
-                RTPipeClose(hPipeFiR);
+                RTPIPE hPipeFiR = NIL_RTPIPE;
+                rc = RTPipeCreate(&hPipeFiR, &pThis->hPipeWrite, RTPIPE_C_INHERIT_READ);
                 if (RT_SUCCESS(rc))
                 {
-                    *phGitRepo = pThis;
-                    return VINF_SUCCESS;
+                    RTHANDLE HndIn;
+                    HndIn.enmType = RTHANDLETYPE_PIPE;
+                    HndIn.u.hPipe = hPipeFiR;
+
+                    const char *apszArgs[] = { GIT_BINARY, "fast-import", NULL };
+                    rc = RTProcCreateEx(GIT_BINARY, &apszArgs[0], RTENV_DEFAULT, RTPROC_FLAGS_SEARCH_PATH | RTPROC_FLAGS_CWD,
+                                        &HndIn, NULL, NULL,
+                                        NULL, NULL, (void *)pszGitRepoPath,
+                                        &pThis->hProcFastImport);
+                    RTPipeClose(hPipeFiR);
+                    if (RT_SUCCESS(rc))
+                    {
+                        *phGitRepo = pThis;
+                        return VINF_SUCCESS;
+                    }
+                    else
+                        RTPipeClose(pThis->hPipeWrite);
                 }
-                else
-                    RTPipeClose(pThis->hPipeWrite);
+            }
+
+            if (pThis->hFileDump != NIL_RTFILE)
+            {
+                RTFileClose(pThis->hFileDump);
+                RTFileDelete(pszDumpFilename);
             }
 
             RTMemFree(pThis);
@@ -161,7 +198,7 @@ DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *
 DECLHIDDEN(int) s2gGitRepositoryClose(S2GREPOSITORYGIT hGitRepo)
 {
     PS2GREPOSITORYGITINT pThis = hGitRepo;
-    RTPipeWriteBlocking(pThis->hPipeWrite, "checkpoint\n", sizeof("checkpoint\n") - 1, NULL /*pcbWritten*/);
+    s2gGitWrite(pThis, "checkpoint\n", sizeof("checkpoint\n") - 1);
     RTPipeClose(pThis->hPipeWrite);
 
     RTPROCSTATUS Sts;
@@ -172,6 +209,9 @@ DECLHIDDEN(int) s2gGitRepositoryClose(S2GREPOSITORYGIT hGitRepo)
             || Sts.iStatus != 0)
             rc = VERR_INVALID_HANDLE; /** @todo */
     }
+
+    if (pThis->hFileDump != NIL_RTFILE)
+        RTFileClose(pThis->hFileDump);
 
     s2gScratchBufFree(&pThis->BufDeletedFiles);
     s2gScratchBufFree(&pThis->BufModifiedFiles);
@@ -187,7 +227,7 @@ DECLHIDDEN(int) s2gGitTransactionStart(S2GREPOSITORYGIT hGitRepo)
 
     if ((pThis->idCommitMark % 10000) == 0)
     {
-        int rc = RTPipeWriteBlocking(pThis->hPipeWrite, "checkpoint\n", sizeof("checkpoint\n") - 1, NULL /*pcbWritten*/);
+        int rc = s2gGitWrite(pThis, "checkpoint\n", sizeof("checkpoint\n") - 1);
         if (RT_FAILURE(rc))
             return rc;
 
@@ -220,13 +260,11 @@ DECLHIDDEN(int) s2gGitTransactionCommit(S2GREPOSITORYGIT hGitRepo, const char *p
                                  cchLog, pszLog);
     if (RT_SUCCESS(rc))
     {
-        rc = RTPipeWriteBlocking(pThis->hPipeWrite, pThis->BufScratch.pbBuf, pThis->BufScratch.offBuf, NULL /*pcbWritten*/);
+        rc = s2gGitWrite(pThis, pThis->BufScratch.pbBuf, pThis->BufScratch.offBuf);
         if (RT_SUCCESS(rc) && pThis->BufDeletedFiles.offBuf)
-            rc = RTPipeWriteBlocking(pThis->hPipeWrite, pThis->BufDeletedFiles.pbBuf, pThis->BufDeletedFiles.offBuf,
-                                     NULL /*pcbWritten*/);
+            rc = s2gGitWrite(pThis, pThis->BufDeletedFiles.pbBuf, pThis->BufDeletedFiles.offBuf);
         if (RT_SUCCESS(rc) && pThis->BufModifiedFiles.offBuf)
-            rc = RTPipeWriteBlocking(pThis->hPipeWrite, pThis->BufModifiedFiles.pbBuf, pThis->BufModifiedFiles.offBuf,
-                                     NULL /*pcbWritten*/);
+            rc = s2gGitWrite(pThis, pThis->BufModifiedFiles.pbBuf, pThis->BufModifiedFiles.offBuf);
     }
 
     return rc;
@@ -249,7 +287,7 @@ DECLHIDDEN(int) s2gGitTransactionFileAdd(S2GREPOSITORYGIT hGitRepo, const char *
                                  "data %RU64\n",
                                  idFileMark, cbFile);
         if (RT_SUCCESS(rc))
-            RTPipeWriteBlocking(pThis->hPipeWrite, pThis->BufScratch.pbBuf, pThis->BufScratch.offBuf, NULL /*pcbWritten*/);
+            s2gGitWrite(pThis, pThis->BufScratch.pbBuf, pThis->BufScratch.offBuf);
     }
 
     return rc;
@@ -260,9 +298,9 @@ DECLHIDDEN(int) s2gGitTransactionFileWriteData(S2GREPOSITORYGIT hGitRepo, const 
 {
     PS2GREPOSITORYGITINT pThis = hGitRepo;
 
-    int rc = RTPipeWriteBlocking(pThis->hPipeWrite, pvBuf, cb, NULL /*pcbWritten*/);
+    int rc = s2gGitWrite(pThis, pvBuf, cb);
     if (RT_SUCCESS(rc)) /* Need to print an ending line after the file data. */
-        rc = RTPipeWriteBlocking(pThis->hPipeWrite, "\n", sizeof("\n") - 1, NULL /*pcbWritten*/);
+        rc = s2gGitWrite(pThis, "\n", sizeof("\n") - 1);
 
     return rc;
 }

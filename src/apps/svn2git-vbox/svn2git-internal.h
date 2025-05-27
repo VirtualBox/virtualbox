@@ -1,4 +1,4 @@
-/* $Id: svn2git-internal.h 168991 2025-05-26 12:30:41Z alexander.eichner@oracle.com $ */
+/* $Id: svn2git-internal.h 169010 2025-05-27 08:45:26Z alexander.eichner@oracle.com $ */
 /** @file
  * IPRT - Internal svn2git header.
  */
@@ -152,7 +152,8 @@ DECLINLINE(int) s2gScratchBufWrite(PS2GSCRATCHBUF pBuf, const void *pvBuf, size_
 typedef struct S2GREPOSITORYGITINT *S2GREPOSITORYGIT;
 typedef S2GREPOSITORYGIT *PS2GREPOSITORYGIT;
 
-DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *pszGitRepoPath, const char *pszDefaultBranch);
+DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *pszGitRepoPath, const char *pszDefaultBranch,
+                                       const char *pszDumpFilename);
 DECLHIDDEN(int) s2gGitRepositoryClose(S2GREPOSITORYGIT hGitRepo);
 
 DECLHIDDEN(int) s2gGitTransactionStart(S2GREPOSITORYGIT hGitRepo);
