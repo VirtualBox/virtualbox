@@ -1,4 +1,4 @@
-Source: virtualbox-7.1
+Source: virtualbox-7.2
 Section: contrib/misc
 Priority: optional
 Maintainer: Oracle Corporation <info@virtualbox.org>
@@ -14,7 +14,7 @@ Build-Depends: debhelper (>= 5), libz-dev, libssl-dev,
   libvulkan-dev
 XS-Python-Version: >= 2.4
 
-Package: virtualbox-7.1
+Package: virtualbox-7.2
 Architecture: i386 amd64
 Pre-Depends: debconf (>= 1.1) | debconf-2.0
 Depends: debconf (>= 0.5) | debconf-2.0, psmisc, adduser, libvulkan1,
@@ -40,9 +40,9 @@ Description: Oracle VirtualBox
  software solution on the market.
 XB-Python-Version: ${python:Versions}
 
-Package: virtualbox-7.1-dbg
+Package: virtualbox-7.2-dbg
 Architecture: i386 amd64
-Depends: virtualbox-7.1 (= ${binary:Version})
+Depends: virtualbox-7.2 (= ${binary:Version})
 Provides: virtualbox-dbg
 Replaces: virtualbox-dbg
 Conflicts: virtualbox-dbg, virtualbox-ose-dbg, virtualbox-qt-dbg

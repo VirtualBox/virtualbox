@@ -1,5 +1,5 @@
 #!/usr/bin/make -f
-# $Id: rules 168804 2025-05-09 14:15:43Z vadim.galitsyn@oracle.com $
+# $Id: rules 169013 2025-05-27 10:35:36Z vadim.galitsyn@oracle.com $
 ## @file
 # VirtualBox rules.
 #
@@ -55,7 +55,7 @@
 #
 # Wine will not be required if STAGEDISO is set.
 
-verpkg   := VirtualBox-7.1
+verpkg   := VirtualBox-7.2
 vboxroot := $(shell while ! test -r configure && ! test "$$PWD" = "/"; do cd ..; done; pwd)
 instlin  := $(vboxroot)/src/VBox/Installer/linux
 pkgdir   := $(if $(PKGDIR),$(PKGDIR),$(shell cd $(vboxroot)/..; pwd))
