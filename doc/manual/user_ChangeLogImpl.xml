@@ -87,8 +87,12 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
-        <para>Windows/Arm host: Arm virtualization of Windows, Linux and
-          BSD VMs added, using the Windows installer package</para>
+        <para>Windows/Arm host: Arm virtualization of VMs added, in
+          the unified Windows installer package</para>
+      </listitem>
+
+      <listitem>
+        <para>Arm host: Virtualization of Windows 11/Arm VMs</para>
       </listitem>
 
       <listitem>
@@ -105,16 +109,13 @@ Rules for adding a changelog entry to make them look more uniform:
       <listitem>
         <para>Arm VMs: Note that the saved state of Arm VMs from
           VirtualBox 7.1 is <b>incompatible</b> with VirtualBox 7.2, so
-          please shut down such VMs using saved state before upgrading
-          to 7.2</para>
+          please shut down such VMs in saved state before upgrading
+          to 7.2 (snapshots with associated saved state created with 7.1
+          will no longer work with 7.2)</para>
       </listitem>
 
       <listitem>
         <para>Arm host: vboxwebsrv is now included in the packages</para>
-      </listitem>
-
-      <listitem>
-        <para>macOS/Arm host: Arm virtualization of Windows 11/Arm</para>
       </listitem>
 
       <listitem>
