@@ -1,4 +1,4 @@
-/* $Id: svn2git.cpp 169034 2025-05-28 14:41:54Z alexander.eichner@oracle.com $ */
+/* $Id: svn2git.cpp 169037 2025-05-28 15:06:35Z alexander.eichner@oracle.com $ */
 /** @file
  * svn2git - Convert a svn repository to git.
  */
@@ -348,7 +348,7 @@ static RTEXITCODE s2gParseArguments(PS2GCTX pThis, int argc, char **argv)
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                static const char s_szRev[] = "$Revision: 169034 $";
+                static const char s_szRev[] = "$Revision: 169037 $";
                 const char *psz = RTStrStripL(strchr(s_szRev, ' '));
                 RTMsgInfo("r%.*s\n", strchr(psz, ' ') - psz, psz);
                 return RTEXITCODE_SUCCESS;
@@ -1018,7 +1018,7 @@ static RTEXITCODE s2gSvnProcessExternals(PS2GCTX pThis, PS2GSVNREV pRev, const c
                            || *pszExternal == '\t')
                         *pszExternal++;
 
-                    if (strcmp(pszExternal, "-r") == 0)
+                    if (strncmp(pszExternal, "-r", 2) == 0)
                     {
                         pszExternal += sizeof("-r") - 1;
 
@@ -1026,7 +1026,7 @@ static RTEXITCODE s2gSvnProcessExternals(PS2GCTX pThis, PS2GSVNREV pRev, const c
                                || *pszExternal == '\t')
                             *pszExternal++;
 
-                        /* Try to convert to a revisio number. */
+                        /* Try to convert to a revision number. */
                         uint32_t idExternalRev = 0;
                         int rc = RTStrToUInt32Full(pszExternal, 10, &idExternalRev);
                         if (   rc == VINF_SUCCESS
