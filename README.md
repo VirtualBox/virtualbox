@@ -44,7 +44,7 @@ Oracle customers with a support contract covering Oracle VirtualBox should
 reach out to [Oracle Support](https://www.oracle.com/support/).
 
 Everyone can use the [VirtualBox Forums](https://forums.virtualbox.org/)
-for questions about the product or discussing its functionality. Open an [issue][issues]
+for questions about the product or discussing its functionality. Open an [issue](https://github.com/VirtualBox/virtualbox/issues)
 for bug reports or request for enhancements. Report a security vulnerability
 according to the [Reporting Vulnerabilities Guide](https://www.oracle.com/corporate/security-practices/assurance/vulnerability/reporting.html).
 
