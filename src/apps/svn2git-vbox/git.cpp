@@ -1,4 +1,4 @@
-/* $Id: git.cpp 169031 2025-05-28 12:00:48Z alexander.eichner@oracle.com $ */
+/* $Id: git.cpp 169034 2025-05-28 14:41:54Z alexander.eichner@oracle.com $ */
 /** @file
  * svn2git - Convert a svn repository to git.
  */
@@ -391,14 +391,13 @@ DECLHIDDEN(int) s2gGitTransactionCommit(S2GREPOSITORYGIT hGitRepo, const char *p
 }
 
 
-DECLHIDDEN(int) s2gGitTransactionFileAdd(S2GREPOSITORYGIT hGitRepo, const char *pszPath, bool fIsExec, uint64_t cbFile)
+static int s2gGitTransactionFileAddWorker(S2GREPOSITORYGIT hGitRepo, const char *pszPath, const char *pszMode, uint64_t cbFile)
 {
     PS2GREPOSITORYGITINT pThis = hGitRepo;
     s2gScratchBufReset(&pThis->BufScratch);
     uint64_t idFileMark = pThis->idFileMark--;
     int rc = s2gScratchBufPrintf(&pThis->BufModifiedFiles, "M %s :%RU64 %s\n",
-                                 fIsExec ? "100755" : "100644",
-                                 idFileMark, pszPath);
+                                 pszMode, idFileMark, pszPath);
     if (RT_SUCCESS(rc))
     {
         rc = s2gScratchBufPrintf(&pThis->BufScratch,
@@ -411,6 +410,12 @@ DECLHIDDEN(int) s2gGitTransactionFileAdd(S2GREPOSITORYGIT hGitRepo, const char *
     }
 
     return rc;
+}
+
+
+DECLHIDDEN(int) s2gGitTransactionFileAdd(S2GREPOSITORYGIT hGitRepo, const char *pszPath, bool fIsExec, uint64_t cbFile)
+{
+    return s2gGitTransactionFileAddWorker(hGitRepo, pszPath, fIsExec ? "100755" : "100644", cbFile);
 }
 
 
@@ -440,5 +445,15 @@ DECLHIDDEN(int) s2gGitTransactionSubmoduleAdd(S2GREPOSITORYGIT hGitRepo, const c
 {
     PS2GREPOSITORYGITINT pThis = hGitRepo;
     return s2gScratchBufPrintf(&pThis->BufModifiedFiles, "M 160000 %s %s\n", pszSha1CommitId, pszPath);
+}
+
+
+DECLHIDDEN(int) s2gGitTransactionLinkAdd(S2GREPOSITORYGIT hGitRepo, const char *pszPath, const void *pvData, size_t cbData)
+{
+    int rc = s2gGitTransactionFileAddWorker(hGitRepo, pszPath, "120000", cbData);
+    if (RT_SUCCESS(rc))
+        rc = s2gGitTransactionFileWriteData(hGitRepo, pvData, cbData);
+
+    return rc;
 }
 
