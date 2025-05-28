@@ -1,4 +1,4 @@
-/* $Id: RecordingInternals.cpp 164827 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: RecordingInternals.cpp 169029 2025-05-28 08:48:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording internals code.
  */
@@ -276,6 +276,27 @@ DECLINLINE(int) recordingVideoBlitRaw(uint8_t *pu8Dst, size_t cbDst, uint32_t uD
     return VINF_SUCCESS;
 }
 
+/**
+ * Simple blitting function for raw image data.
+ *
+ * @returns VBox status code.
+ * @param   pu8Dst              Destination buffer.
+ * @param   cbDst               Size (in bytes) of \a pu8Dst.
+ * @param   uDstX               X destination (in pixel) within destination frame.
+ * @param   uDstY               Y destination (in pixel) within destination frame.
+ * @param   uDstBytesPerLine    Bytes per line in destination buffer.
+ * @param   uDstBPP             BPP of destination buffer.
+ * @param   enmDstFmt           Pixel format of source data. Must match \a pFrame.
+ * @param   pu8Src              Source data to blit. Must be in the same pixel format as \a pFrame.
+ * @param   cbSrc               Size (in bytes) of \a pu8Src.
+ * @param   uSrcX               X start (in pixel) within source data.
+ * @param   uSrcY               Y start (in pixel) within source data.
+ * @param   uSrcWidth           Width (in pixel) to blit from source data.
+ * @param   uSrcHeight          Height (in pixel) to blit from data.
+ * @param   uSrcBytesPerLine    Bytes per line in source data.
+ * @param   uSrcBPP             BPP of source data. Must match \a pFrame.
+ * @param   enmSrcFmt           Pixel format of source data. Must match \a pFrame.
+ */
 int RecordingVideoBlitRaw(uint8_t *pu8Dst, size_t cbDst, uint32_t uDstX, uint32_t uDstY,
                           uint32_t uDstBytesPerLine, uint8_t uDstBPP, RECORDINGPIXELFMT enmDstFmt,
                           const uint8_t *pu8Src, size_t cbSrc, uint32_t uSrcX, uint32_t uSrcY, uint32_t uSrcWidth, uint32_t uSrcHeight,
