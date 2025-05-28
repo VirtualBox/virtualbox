@@ -33,17 +33,20 @@ endif
 #
 PYTHON_PACKAGE_NAME=vbox_server
 
-#Hack for java on Windows. Java doesn't recognize a path in Cygwin form. See the comments below.
-#But when the '.' is used as the path to the current directory it helps on Windows.
+# Hack for java on Windows. Java doesn't recognize a path in Cygwin form. See the comments below.
+# But when the '.' is used as the path to the current directory it helps on Windows.
 ifeq ($(OS),Windows_NT)
 	CURDIR='.'
 endif
 
-#Possible values are:
-#'swagger20' - for Swagger2.0
+# Possible values are:
+# 'swagger20' - for Swagger2.0
 GENERATOR_TYPE=swagger20
 
-#Used as name convention to point out which case style is used for the attributes\parameters names
+# Support Connexion 2 and 3. Possible values are: 2,3
+CONNEXION_VERSION=3
+
+# Used as name convention to point out which case style is used for the attributes\parameters names
 CASE_STYLE=camel #available values are 'snake' and 'camel'
 
 SRC_DIR=$(CURDIR)/vbox_server
@@ -77,7 +80,12 @@ GENERATOR_CONFIG_FILE = $(CURDIR)/config.json
 
 CASE_STYLE=camel
 
-GENERATOR=swagger-codegen-cli.jar
+ifeq ($(CONNEXION_VERSION), 3)
+	GENERATOR=swagger-codegen-cli.jar
+else
+	GENERATOR=swagger-codegen-cli_connexion2.jar
+endif
+
 GENERATOR_FLAG = -l
 OPTIONS=$(GENERATOR_FLAG) python-flask -c $(GENERATOR_CONFIG_FILE)
 
@@ -109,9 +117,9 @@ code-generation: flask-connexion enum-conversion-code
 # The variable CLASSPATH isn't picked up properly on Windows
 # That's why the path to Xalan is added directly via the parameter "-classpath"
 # Apart from that, the error occurs when "-classpath" has the Cygwin form of path, for example:
-# java -classpath /cygdrive/d/workspace/git_workspace/vbox-api-xlst-transform/tools/bin/xalan-2.4.1.jar
-# org.apache.xalan.xslt.Process -in D:\workspace\git_workspace\vbox-api-xlst-transform\src\idl/VirtualBox.xidl -xsl
-# /cygdrive/d/workspace/git_workspace/vbox-api-xlst-transform/src/xlst/restapi-enumerations.xsl -out
+# java -classpath /cygdrive/d/workspace/git_workspace/vbox-api-xlst-transform/tools/bin/xalan-2.4.1.jar \
+# org.apache.xalan.xslt.Process -in D:\workspace\git_workspace\vbox-api-xlst-transform\src\idl/VirtualBox.xidl -xsl \
+# /cygdrive/d/workspace/git_workspace/vbox-api-xlst-transform/src/xlst/restapi-enumerations.xsl -out \
 # /cygdrive/d/workspace/git_workspace/vbox-api-xlst-transform/out/yaml/restapi-enumerations.yml
 #
 # Error: Could not find or load main class org.apache.xalan.xslt.Process
@@ -193,14 +201,20 @@ copy:
 	mv $(DEST_CODE_DIR)/swagger/swagger.yaml $(DEST_CODE_DIR)/static/virtualbox.yaml
 	rmdir $(DEST_CODE_DIR)/swagger
 
-# Copy requirements.txt file to the output folder
-	cp requirements.txt $(DEST_DIR)
+# Delete unused folder
+	rm -rf $(DEST_CODE_DIR)/test
 
 # Copy the rest to the output folder
 	cp -r --update=none $(SRC_DIR)/utils $(DEST_CODE_DIR)
-	cp $(SRC_DIR)/__init__.py $(SRC_DIR)/global_settings.py $(SRC_DIR)/wsgi.py $(DEST_CODE_DIR)
+	cp $(SRC_DIR)/__init__.py $(SRC_DIR)/global_settings.py $(DEST_CODE_DIR)
+
+ifeq ($(CONNEXION_VERSION), 3)
+		cp $(SRC_DIR)/asgi.py $(DEST_CODE_DIR)
+else
+		cp $(SRC_DIR)/wsgi.py $(DEST_CODE_DIR)
+endif
+
 	cp -r $(SRC_DIR)/controllers/internal/* $(DEST_INT_CONTROLLER_DIR)
 
 clean:
 	rm -rf out
-
