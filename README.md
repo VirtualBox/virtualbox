@@ -53,7 +53,7 @@ Please consult the [security guide](./SECURITY.md) for our responsible security 
 
 The correct copyright notice format for both documentation and software is
 
-    Copyright (C) 2006-2025 Oracle and/or its affiliates.
+    Copyright (C) [year-]year Oracle and/or its affiliates.
 
     This file is part of VirtualBox base platform packages, as
     available from https://www.virtualbox.org.
