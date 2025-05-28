@@ -1,4 +1,4 @@
-/* $Id: git.cpp 169030 2025-05-28 11:29:24Z alexander.eichner@oracle.com $ */
+/* $Id: git.cpp 169031 2025-05-28 12:00:48Z alexander.eichner@oracle.com $ */
 /** @file
  * svn2git - Convert a svn repository to git.
  */
@@ -36,6 +36,7 @@
 #include <iprt/path.h>
 #include <iprt/pipe.h>
 #include <iprt/process.h>
+#include <iprt/sha.h>
 
 #include "svn2git-internal.h"
 
@@ -188,7 +189,9 @@ DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *
     RT_NOREF(pszDefaultBranch);
 
     int rc = VINF_SUCCESS;
-    if (!RTPathExists(pszGitRepoPath))
+    char szBranchReset[RTSHA1_DIGEST_LEN + 1];
+    bool fIncremental = RTPathExists(pszGitRepoPath);
+    if (!fIncremental)
     {
         rc = RTDirCreate(pszGitRepoPath, 0700, RTDIRCREATE_FLAGS_NO_SYMLINKS);
         if (RT_SUCCESS(rc))
@@ -226,6 +229,15 @@ DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *
                     if (*pszRevision == 'r')
                         *pidRevLast = RTStrToUInt32(pszRevision + 1);
                 }
+
+                /* Get the last commit hash for continuing with the incremental import. */
+                if (RTStrStartsWith(StdOut.pbBuf, "commit "))
+                {
+                    memcpy(&szBranchReset[0], StdOut.pbBuf + sizeof("commit ") - 1, RTSHA1_DIGEST_LEN);
+                    szBranchReset[RTSHA1_DIGEST_LEN] = '\0';
+                }
+                else
+                    rc = VERR_NOT_FOUND;
             }
             else
                 rc = VERR_NO_MEMORY;
@@ -264,8 +276,23 @@ DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *
                     RTPipeClose(hPipeFiR);
                     if (RT_SUCCESS(rc))
                     {
-                        *phGitRepo = pThis;
-                        return VINF_SUCCESS;
+                        if (fIncremental)
+                        {
+                            /* Reload the branches. */
+                            s2gScratchBufReset(&pThis->BufScratch);
+                            rc = s2gScratchBufPrintf(&pThis->BufScratch,
+                                                     "reset refs/heads/%s\n"
+                                                     "from %s\n\n",
+                                                     pszDefaultBranch, szBranchReset);
+                            if (RT_SUCCESS(rc))
+                                rc = s2gGitWrite(pThis, pThis->BufScratch.pbBuf, pThis->BufScratch.offBuf);
+                        }
+
+                        if (RT_SUCCESS(rc))
+                        {
+                            *phGitRepo = pThis;
+                            return VINF_SUCCESS;
+                        }
                     }
                     else
                         RTPipeClose(pThis->hPipeWrite);
