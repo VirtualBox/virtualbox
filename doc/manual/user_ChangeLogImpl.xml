@@ -112,6 +112,10 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
+        <para>Linux host: video decoding acceleration when 3D is enabled</para>
+      </listitem>
+
+      <listitem>
         <para>Windows/Arm guest: Guest additions for new OS type Windows
           11/Arm</para>
       </listitem>
