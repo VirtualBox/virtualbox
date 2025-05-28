@@ -34,11 +34,19 @@ many aspects of the project and its features.
 
 ## Examples
 
-*Describe any included examples or provide a link to a demo/tutorial*
+Tutorials on how to install and use Oracle VirtualBox are available at
+[Learn to Install Oracle VirtualBox and Run Virtual Machines](https://blogs.oracle.com/linux/post/learn-to-install-oracle-virtualbox-and-run-virtual-machines)
+and [Use Oracle VirtualBox on Oracle Linux](https://docs.oracle.com/en/learn/ol-vbox/index.html).
 
 ## Help
 
-*Inform users on where to get help or how to receive official support from Oracle (if applicable)*
+Oracle customers with a support contract covering Oracle VirtualBox should
+reach out to [Oracle Support](https://www.oracle.com/support/).
+
+Everyone can use the [VirtualBox Forums](https://forums.virtualbox.org/)
+for questions about the product or discussing its functionality. Open an [issue](issues)
+for bug reports or request for enhancements. Report a security vulnerability
+according to the [Reporting Vulnerabilities Guide](https://www.oracle.com/corporate/security-practices/assurance/vulnerability/reporting.html).
 
 ## Contributing
 
@@ -47,7 +55,7 @@ pull request, please [review our contribution guide](./CONTRIBUTING.md)
 
 ## Security
 
-Please consult the [security guide](./SECURITY.md) for our responsible security vulnerability disclosure process
+Please consult the [security guide](./SECURITY.md) for our responsible security vulnerability disclosure process.
 
 ## License
 
