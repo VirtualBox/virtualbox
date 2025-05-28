@@ -1,4 +1,4 @@
-/* $Id: svn2git.cpp 169010 2025-05-27 08:45:26Z alexander.eichner@oracle.com $ */
+/* $Id: svn2git.cpp 169030 2025-05-28 11:29:24Z alexander.eichner@oracle.com $ */
 /** @file
  * svn2git - Convert a svn repository to git.
  */
@@ -36,6 +36,7 @@
 #include <iprt/list.h>
 #include <iprt/mem.h>
 #include <iprt/message.h>
+#include <iprt/path.h>
 #include <iprt/sha.h>
 #include <iprt/string.h>
 #include <iprt/stdarg.h>
@@ -237,7 +238,7 @@ static RTEXITCODE s2gUsage(const char *argv0)
  */
 static void s2gCtxInit(PS2GCTX pThis)
 {
-    pThis->idRevStart      = 1;
+    pThis->idRevStart      = UINT32_MAX;
     pThis->idRevEnd        = UINT32_MAX;
     pThis->pszCfgFilename  = NULL;
     pThis->pszSvnRepo      = NULL;
@@ -331,7 +332,7 @@ static RTEXITCODE s2gParseArguments(PS2GCTX pThis, int argc, char **argv)
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                static const char s_szRev[] = "$Revision: 169010 $";
+                static const char s_szRev[] = "$Revision: 169030 $";
                 const char *psz = RTStrStripL(strchr(s_szRev, ' '));
                 RTMsgInfo("r%.*s\n", strchr(psz, ' ') - psz, psz);
                 return RTEXITCODE_SUCCESS;
@@ -499,8 +500,8 @@ static RTEXITCODE s2gLoadConfigExternalMap(PS2GCTX pThis, const char *pszName, c
             if (pExternal)
             {
                 size_t offStr = cbName;
-                memcpy(&pExternal->achStr[offStr], pszName, cbName);
-                pExternal->pszName = &pExternal->achStr[offStr];
+                memcpy(&pExternal->achStr[0], pszName, cbName);
+                pExternal->pszName = &pExternal->achStr[0];
 
                 pExternal->cEntries = 0;
 
@@ -932,6 +933,230 @@ static RTEXITCODE s2gSvnDumpBlob(PS2GCTX pThis, PS2GSVNREV pRev, const char *psz
 }
 
 
+static RTEXITCODE s2gSvnProcessExternals(PS2GCTX pThis, PS2GSVNREV pRev, const char *pszSvnPath)
+{
+    svn_string_t *pProp = NULL;
+    svn_error_t *pSvnErr = svn_fs_node_prop(&pProp, pRev->pSvnFsRoot, pszSvnPath, "svn:externals", pRev->pPoolRev);
+    RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
+    if (!pSvnErr)
+    {
+        if (pProp)
+        {
+            const char *pszExternals = pProp->data;
+            /* Go through all known externals and add them as a submodule if existing. */
+            PCS2GEXTREVMAP pIt;
+            RTListForEach(&pThis->LstExternals, pIt, S2GEXTREVMAP, NdExternals)
+            {
+                const char *pszExternal = RTStrStr(pszExternals, pIt->pszName);
+                if (pszExternal)
+                {
+                    pszExternal += strlen(pIt->pszName);
+
+                    /* We need a revision parameter, otherwise we can't map it to a commit hash. */
+                    while (   *pszExternal == ' '
+                           || *pszExternal == '\t')
+                        *pszExternal++;
+
+                    if (strcmp(pszExternal, "-r") == 0)
+                    {
+                        pszExternal += sizeof("-r") - 1;
+
+                        while (   *pszExternal == ' '
+                               || *pszExternal == '\t')
+                            *pszExternal++;
+
+                        /* Try to convert to a revisio number. */
+                        uint32_t idExternalRev = 0;
+                        int rc = RTStrToUInt32Full(pszExternal, 10, &idExternalRev);
+                        if (   rc == VINF_SUCCESS
+                            || rc == VERR_TRAILING_SPACES
+                            || rc == VERR_TRAILING_CHARS)
+                        {
+                            if (   idExternalRev < pIt->cEntries
+                                && pIt->papszRev2CommitHash[idExternalRev])
+                            {
+                                rc = s2gGitTransactionSubmoduleAdd(pThis->hGitRepo, pIt->pszName, pIt->papszRev2CommitHash[idExternalRev]);
+                                if (RT_FAILURE(rc))
+                                    rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE,
+                                                            "Adding submodule for external '%s' with commit hash '%s' for revision number r%u failed: %Rrc",
+                                                            pIt->pszName, pIt->papszRev2CommitHash[idExternalRev], idExternalRev);
+                            }
+                            else
+                                rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Revision number r%u for external '%s' lacks a git commit hash",
+                                                        idExternalRev, pIt->pszName);
+                        }
+                        else
+                            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to extract revision number for external '%s': %Rrc",
+                                                    pIt->pszName, rc);
+                    }
+                    else
+                        RTMsgWarning("No revision parameter for external '%s', skipping", pIt->pszName);
+
+                    break;
+                }
+            }
+        }
+    }
+    else
+    {
+        svn_error_trace(pSvnErr);
+        rcExit = RTEXITCODE_FAILURE;
+    }
+
+    return rcExit;
+}
+
+
+static RTEXITCODE s2gSvnAddGitIgnore(PS2GCTX pThis, const char *pszGitPath, const void *pvData, size_t cbData)
+{
+    RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
+    char szPath[RTPATH_MAX];
+    int rc;
+    if (*pszGitPath == '\0')
+    {
+        strcpy(&szPath[0], ".gitignore");
+        rc = 1;
+    }
+    else
+        rc = RTStrPrintf2(&szPath[0], sizeof(szPath), "%s/%s", pszGitPath, ".gitignore");
+    if (rc > 0)
+    {
+        rc = s2gGitTransactionFileAdd(pThis->hGitRepo, szPath, false /*fIsExec*/, cbData);
+        if (RT_SUCCESS(rc))
+            rc = s2gGitTransactionFileWriteData(pThis->hGitRepo, pvData, cbData);
+
+        if (RT_FAILURE(rc))
+            rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to add .gitignore '%s': %Rrc", szPath, rc);
+    }
+    else
+        rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to prepare .gitginore path for '%s'", pszGitPath);
+
+    return rcExit;
+}
+
+
+static RTEXITCODE s2gSvnProcessIgnoreContent(PS2GSCRATCHBUF pBuf, const char *pszSvnIgnore, bool fGlobal)
+{
+    RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
+
+    /** @todo This assumes no whitespace fun in filenames. */
+    while (*pszSvnIgnore != '\0')
+    {
+        /* Skip any new line characters. */
+        while (   *pszSvnIgnore == '\r'
+               || *pszSvnIgnore == '\n')
+            pszSvnIgnore++;
+
+        if (*pszSvnIgnore != '\0')
+        {
+            size_t cchName = 0;
+            char *pch = (char *)s2gScratchBufEnsureSize(pBuf, _1K); /** @todo A single filename can't be longer than this. */
+            if (!fGlobal)
+                *pch++ = '/';
+
+            while (   *pszSvnIgnore != '\r'
+                   && *pszSvnIgnore != '\n'
+                   && *pszSvnIgnore != '\0')
+            {
+                /* Patterns containing slashes or backslashes are not supported by git. */
+                if (   *pszSvnIgnore == '/'
+                    || *pszSvnIgnore == '\\')
+                {
+                    while (   *pszSvnIgnore != '\r'
+                           && *pszSvnIgnore != '\n'
+                           && *pszSvnIgnore != '\0')
+                        pszSvnIgnore++;
+                    cchName = 0;
+                    break;
+                }
+
+                cchName++;
+                if (*pszSvnIgnore == '*')
+                {
+                    /* Multiple asterisks are not supported by git, convert to a single one. */
+                    pszSvnIgnore++;
+                    *pch++ = '*';
+                    while (*pszSvnIgnore == '*')
+                        pszSvnIgnore++;
+                }
+                else
+                    *pch++ = *pszSvnIgnore++;
+            }
+
+            if (cchName)
+            {
+                if (!fGlobal)
+                    cchName++;
+                *pch++ = '\n';
+                cchName++;
+                s2gScratchBufAdvance(pBuf, cchName);
+            }
+        }
+    }
+
+    return rcExit;
+}
+
+
+static RTEXITCODE s2gSvnProcessIgnores(PS2GCTX pThis, PS2GSVNREV pRev, const char *pszSvnPath, const char *pszGitPath)
+{
+    s2gScratchBufReset(&pThis->BufScratch);
+
+    RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
+    svn_string_t *pProp = NULL;
+    svn_error_t *pSvnErr = svn_fs_node_prop(&pProp, pRev->pSvnFsRoot, pszSvnPath, "svn:ignore", pRev->pPoolRev);
+    if (!pSvnErr)
+    {
+        if (pProp)
+            rcExit = s2gSvnProcessIgnoreContent(&pThis->BufScratch, pProp->data, false /*fGlobal*/);
+
+        /* Process global ignores only in the root path. */
+        if (   rcExit == RTEXITCODE_SUCCESS
+            && *pszGitPath == '\0')
+        {
+            pProp = NULL;
+            pSvnErr = svn_fs_node_prop(&pProp, pRev->pSvnFsRoot, pszSvnPath, "svn:global-ignores", pRev->pPoolRev);
+            if (!pSvnErr)
+            {
+                if (pProp)
+                    rcExit = s2gSvnProcessIgnoreContent(&pThis->BufScratch, pProp->data, true /*fGlobal*/);
+            }
+            else
+            {
+                svn_error_trace(pSvnErr);
+                rcExit = RTEXITCODE_FAILURE;
+            }
+        }
+
+        if (   rcExit == RTEXITCODE_SUCCESS
+            && pThis->BufScratch.offBuf)
+            rcExit = s2gSvnAddGitIgnore(pThis, pszGitPath, pThis->BufScratch.pbBuf, pThis->BufScratch.offBuf);
+    }
+    else
+    {
+        svn_error_trace(pSvnErr);
+        rcExit = RTEXITCODE_FAILURE;
+    }
+
+    return rcExit;
+}
+
+
+static RTEXITCODE s2gSvnPathIsEmptyDir(PCS2GSVNREV pRev, const char *pszSvnPath, bool *pfIsEmpty)
+{
+    apr_hash_t *pEntries = NULL;
+    svn_error_t *pSvnErr = svn_fs_dir_entries(&pEntries, pRev->pSvnFsRoot, pszSvnPath, pRev->pPoolRev);
+    if (pSvnErr)
+    {
+        svn_error_trace(pSvnErr);
+        return RTEXITCODE_FAILURE;
+    }
+
+    *pfIsEmpty = apr_hash_count(pEntries) == 0;
+    return RTEXITCODE_SUCCESS;
+}
+
+
 static RTEXITCODE s2gSvnExportSinglePath(PS2GCTX pThis, PS2GSVNREV pRev, const char *pszSvnPath, const char *pszGitPath,
                                          bool fIsDir, svn_fs_path_change2_t *pChange)
 {
@@ -942,8 +1167,25 @@ static RTEXITCODE s2gSvnExportSinglePath(PS2GCTX pThis, PS2GSVNREV pRev, const c
         if (   pChange->change_kind == svn_fs_path_change_add
             || pChange->change_kind == svn_fs_path_change_modify)
         {
-            /* An empty directory was added, so add a .gitignore file. */
-            rcExit = RTEXITCODE_SUCCESS;
+            /* Check properties. */
+            if (pChange->prop_mod)
+            {
+                rcExit = s2gSvnProcessExternals(pThis, pRev, pszSvnPath);
+                if (rcExit == RTEXITCODE_SUCCESS)
+                {
+                    /* Process svn:ignore. */
+                    rcExit = s2gSvnProcessIgnores(pThis, pRev, pszSvnPath, pszGitPath);
+                }
+            }
+            else
+            {
+                /* If the directory is empty we need to add a .gitignore. */
+                bool fIsEmpty = false;
+                rcExit = s2gSvnPathIsEmptyDir(pRev, pszSvnPath, &fIsEmpty);
+                if (   rcExit == RTEXITCODE_SUCCESS
+                    && fIsEmpty)
+                    rcExit = s2gSvnAddGitIgnore(pThis, pszGitPath, NULL /*pvData*/, 0 /*cbData*/);
+            }
         }
         else
             AssertReleaseFailed();
@@ -960,7 +1202,12 @@ static RTEXITCODE s2gSvnExportSinglePath(PS2GCTX pThis, PS2GSVNREV pRev, const c
         {
             int rc = s2gGitTransactionFileRemove(pThis->hGitRepo, pszGitPath);
             if (RT_SUCCESS(rc))
+            {
+                /** @todo Check whether the directory is empty now and add a .gitignore file if it has not already due to
+                 * svn:ignore properties.
+                 */
                 rcExit = RTEXITCODE_SUCCESS;
+            }
             else
                 rcExit = RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to remove '%s' from git repository", pszGitPath);
         }
@@ -1016,12 +1263,6 @@ static RTEXITCODE s2gSvnRevisionExportPaths(PS2GCTX pThis, PS2GSVNREV pRev)
             if (g_cVerbosity > 1)
                 RTMsgInfo("    %s %s\n", pIt->pszPath, s2gSvnChangeKindToStr(pIt->pChange->change_kind));
 
-            /* Ignore /trunk, /branches and /tags. */
-            if (   !strcmp(pIt->pszPath, "/trunk")
-                || !strcmp(pIt->pszPath, "/branches")
-                || !strcmp(pIt->pszPath, "/tags"))
-                continue;
-
             /* Query whether this is a directory. */
             bool fIsDir = false;
             svn_boolean_t SvnIsDir;
@@ -1035,11 +1276,13 @@ static RTEXITCODE s2gSvnRevisionExportPaths(PS2GCTX pThis, PS2GSVNREV pRev)
             fIsDir = RT_BOOL(SvnIsDir);
 
             /*
-             * If this is a directory which was just added check whether the next entry starts with the path,
+             * If this is a directory which was just added without any properties check whether the next entry starts with the path,
              * meaning we can skip it as git doesn't handle empty directories and we don't want unnecessary .gitignore
              * files.
              */
-            if (fIsDir && pIt->pChange->change_kind == svn_fs_path_change_add)
+            if (   fIsDir
+                && pIt->pChange->change_kind == svn_fs_path_change_add
+                && pIt->pChange->prop_mod == 0)
             {
                 PS2GSVNREVCHANGE pNext = RTListGetNext(&pRev->LstChanges, pIt, S2GSVNREVCHANGE, NdChanges);
                 if (   pNext
@@ -1047,15 +1290,17 @@ static RTEXITCODE s2gSvnRevisionExportPaths(PS2GCTX pThis, PS2GSVNREV pRev)
                     continue;
             }
 
-            /** @todo Make this configurable. */
-            if (RTStrStartsWith(pIt->pszPath, "/trunk/"))
+            if (RTStrStartsWith(pIt->pszPath, "/trunk"))
             {
-                const char *pszGitPath = pIt->pszPath + sizeof("/trunk/") - 1;
+                const char *pszGitPath = pIt->pszPath + sizeof("/trunk") - 1;
+                if (*pszGitPath == '/')
+                    pszGitPath++;
+
                 rcExit = s2gSvnExportSinglePath(pThis, pRev, pIt->pszPath, pszGitPath, fIsDir, pIt->pChange);
+                if (rcExit != RTEXITCODE_SUCCESS)
+                    break;
             }
         }
-
-        RT_NOREF(pThis);
     }
     else
     {
@@ -1127,9 +1372,9 @@ static RTEXITCODE s2gSvnExportRevision(PS2GCTX pThis, uint32_t idRev)
                             size_t cchRevLog = strlen(Rev.pszSvnLog);
 
                             s2gScratchBufReset(&pThis->BufScratch);
-                            rc = s2gScratchBufPrintf(&pThis->BufScratch, "%s%s\nsvn:sync-xref-src-repo-rev: r%u\n",
+                            rc = s2gScratchBufPrintf(&pThis->BufScratch, "%s%s\nsvn:sync-xref-src-repo-rev: r%s\n",
                                                      Rev.pszSvnLog, Rev.pszSvnLog[cchRevLog] == '\n' ? "" : "\n",
-                                                     Rev.idRev);
+                                                     Rev.pszSvnXref);
                             if (RT_SUCCESS(rc))
                                 rc = s2gGitTransactionCommit(pThis->hGitRepo, Rev.pszGitAuthor, Rev.pszGitAuthorEmail,
                                                              pThis->BufScratch.pbBuf, Rev.cEpochSecs);
@@ -1179,12 +1424,93 @@ static RTEXITCODE s2gSvnExport(PS2GCTX pThis)
 }
 
 
+static RTEXITCODE s2gSvnFindMatchingRevision(PS2GCTX pThis, uint32_t idRevInternal, uint32_t *pidRev)
+{
+    /* Work backwards from the youngest revision and try to get svn:sync-xref-src-repo-rev and check whether it matches. */
+    uint32_t idRev = pThis->idRevEnd;
+    apr_pool_t *pPool = svn_pool_create(NULL);
+    if (!pPool)
+        return RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to create APR pool");
+
+    while (idRev)
+    {
+        svn_string_t *pSvnXRef = NULL;
+        RT_GCC_NO_WARN_DEPRECATED_BEGIN
+        svn_error_t *pSvnErr = svn_fs_revision_prop(&pSvnXRef, pThis->pSvnFs, idRev, "svn:sync-xref-src-repo-rev", pPool);
+        RT_GCC_NO_WARN_DEPRECATED_END
+        if (!pSvnErr)
+        {
+            if (g_cVerbosity >= 4)
+                RTMsgInfo("Searching r%u: %s\n", idRev, pSvnXRef ? pSvnXRef->data : "");
+
+            if (pSvnXRef)
+            {
+                uint32_t idRevRef = RTStrToUInt32(pSvnXRef->data);
+                if (idRevRef)
+                {
+                    if (idRevRef == idRevInternal)
+                    {
+                        *pidRev = idRev;
+                        svn_pool_destroy(pPool);
+                        return RTEXITCODE_SUCCESS;
+                    }
+                }
+                else
+                {
+                    RTMsgErrorExit(RTEXITCODE_FAILURE, "r%u's svn:sync-xref-src-repo-rev property contains invalid data: %s",
+                                   idRev, pSvnXRef->data);
+                    break;
+                }
+            }
+            else
+            {
+                RTMsgErrorExit(RTEXITCODE_FAILURE, "r%u misses svn:sync-xref-src-repo-rev property", idRev);
+                break;
+            }
+        }
+        else
+        {
+            svn_error_trace(pSvnErr);
+            break;
+        }
+
+        idRev--;
+        svn_pool_clear(pPool);
+    }
+
+    svn_pool_destroy(pPool);
+    return RTMsgErrorExit(RTEXITCODE_FAILURE, "Couldn't match internal revision r%u to external one", idRevInternal);
+}
+
+
 static RTEXITCODE s2gGitInit(PS2GCTX pThis)
 {
+    uint32_t idRevLast = 0;
     int rc = s2gGitRepositoryCreate(&pThis->hGitRepo, pThis->pszGitRepoPath, pThis->pszGitDefBranch,
-                                    pThis->pszDumpFilename);
+                                    pThis->pszDumpFilename, &idRevLast);
     if (RT_SUCCESS(rc))
+    {
+        if (   pThis->idRevStart == UINT32_MAX
+            && idRevLast != 0)
+        {
+            /*
+             * We need to match the revision to the one of the repository as svn:sync-xref-src-repo-rev
+             * is a property.
+             */
+            uint32_t idRevPublic = 0;
+            RTEXITCODE rcExit = s2gSvnFindMatchingRevision(pThis, idRevLast + 1, &idRevPublic);
+            if (rcExit != RTEXITCODE_SUCCESS)
+                return rcExit;
+
+            RTMsgInfo("Matched internal revision r%u to public r%u, continuing at that revision\n",
+                      idRevLast + 1, idRevPublic);
+
+            pThis->idRevStart = idRevPublic;
+        }
+        else
+            pThis->idRevStart = 1;
         return RTEXITCODE_SUCCESS;
+    }
 
     return RTMsgErrorExit(RTEXITCODE_FAILURE, "Creating the git repository under '%s' failed with: %Rrc",
                           pThis->pszGitRepoPath, rc);

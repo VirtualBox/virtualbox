@@ -1,4 +1,4 @@
-/* $Id: git.cpp 169010 2025-05-27 08:45:26Z alexander.eichner@oracle.com $ */
+/* $Id: git.cpp 169030 2025-05-28 11:29:24Z alexander.eichner@oracle.com $ */
 /** @file
  * svn2git - Convert a svn repository to git.
  */
@@ -30,6 +30,7 @@
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
 #include <iprt/dir.h>
+#include <iprt/err.h>
 #include <iprt/file.h>
 #include <iprt/env.h>
 #include <iprt/path.h>
@@ -100,6 +101,69 @@ static int s2gGitExecWrapper(const char *pszExec, const char *pszCwd, const char
 }
 
 
+static int s2gGitExecWrapperStdOut(const char *pszExec, const char *pszCwd, const char * const *papszArgs,
+                                   PS2GSCRATCHBUF pStdOut)
+{
+    RTPROCESS hProc;
+    RTPIPE hPipeStdOutR = NIL_RTPIPE;
+    RTPIPE hPipeStdOutW = NIL_RTPIPE;
+    int rc = RTPipeCreate(&hPipeStdOutR, &hPipeStdOutW, RTPIPE_C_INHERIT_WRITE);
+    if (RT_SUCCESS(rc))
+    {
+        RTHANDLE HndOut;
+        HndOut.enmType = RTHANDLETYPE_PIPE;
+        HndOut.u.hPipe = hPipeStdOutW;
+
+        rc = RTProcCreateEx(pszExec, papszArgs, RTENV_DEFAULT, RTPROC_FLAGS_SEARCH_PATH | RTPROC_FLAGS_CWD,
+                            NULL, &HndOut, NULL,
+                            NULL, NULL, (void *)pszCwd,
+                            &hProc);
+        RTPipeClose(hPipeStdOutW);
+        if (RT_SUCCESS(rc))
+        {
+            /* Read stdout until we get a broken pipe. */
+            for (;;)
+            {
+                void *pvStdout = s2gScratchBufEnsureSize(pStdOut, _2K);
+                if (!pvStdout)
+                {
+                    rc = VERR_NO_MEMORY;
+                    break;
+                }
+
+                size_t cbRead = 0;
+                rc = RTPipeReadBlocking(hPipeStdOutR, pvStdout, _2K, &cbRead);
+                if (RT_FAILURE(rc))
+                    break;
+
+                s2gScratchBufAdvance(pStdOut, cbRead);
+            }
+
+            if (rc == VERR_BROKEN_PIPE)
+                rc = VINF_SUCCESS;
+            else if (RT_FAILURE(rc))
+                RTProcTerminate(hProc);
+
+            RTPROCSTATUS Sts;
+            int rc2 = RTProcWait(hProc, RTPROCWAIT_FLAGS_BLOCK, &Sts);
+            if (RT_SUCCESS(rc2))
+            {
+                if (   Sts.enmReason != RTPROCEXITREASON_NORMAL
+                    || Sts.iStatus != 0)
+                    rc2 = VERR_INVALID_HANDLE; /** @todo */
+            }
+
+            if (RT_SUCCESS(rc))
+                rc = rc2;
+        }
+
+        RTPipeClose(hPipeStdOutR);
+    }
+
+    return rc;
+}
+
+
 DECLINLINE(int) s2gGitWrite(PS2GREPOSITORYGITINT pThis, const void *pvBuf, size_t cbWrite)
 {
     int rc = VINF_SUCCESS;
@@ -119,7 +183,7 @@ DECLINLINE(int) s2gGitWrite(PS2GREPOSITORYGITINT pThis, const void *pvBuf, size_
 
 
 DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *pszGitRepoPath, const char *pszDefaultBranch,
-                                       const char *pszDumpFilename)
+                                       const char *pszDumpFilename, uint32_t *pidRevLast)
 {
     RT_NOREF(pszDefaultBranch);
 
@@ -136,6 +200,35 @@ DECLHIDDEN(int) s2gGitRepositoryCreate(PS2GREPOSITORYGIT phGitRepo, const char *
                 const char *apszArgsCfg[] = { GIT_BINARY, "config", "core.ignorecase", "false", NULL };
                 rc = s2gGitExecWrapper(GIT_BINARY, pszGitRepoPath, &apszArgsCfg[0]);
             }
+        }
+    }
+    else
+    {
+        /* Try to gather the svn revision to continue at from the commit log. */
+        S2GSCRATCHBUF StdOut;
+        s2gScratchBufInit(&StdOut);
+
+        *pidRevLast = 0;
+
+        const char *apszArgs[] = { GIT_BINARY, "log", "HEAD", "-1", NULL };
+        rc = s2gGitExecWrapperStdOut(GIT_BINARY, pszGitRepoPath, &apszArgs[0], &StdOut);
+        if (RT_SUCCESS(rc))
+        {
+            char *pb = (char *)s2gScratchBufEnsureSize(&StdOut, 1);
+            if (pb)
+            {
+                *pb = '\0';
+
+                const char *pszRevision = RTStrStr(StdOut.pbBuf, "svn:sync-xref-src-repo-rev: ");
+                if (pszRevision)
+                {
+                    pszRevision += sizeof("svn:sync-xref-src-repo-rev: ") - 1;
+                    if (*pszRevision == 'r')
+                        *pidRevLast = RTStrToUInt32(pszRevision + 1);
+                }
+            }
+            else
+                rc = VERR_NO_MEMORY;
         }
     }
 
@@ -287,7 +380,7 @@ DECLHIDDEN(int) s2gGitTransactionFileAdd(S2GREPOSITORYGIT hGitRepo, const char *
                                  "data %RU64\n",
                                  idFileMark, cbFile);
         if (RT_SUCCESS(rc))
-            s2gGitWrite(pThis, pThis->BufScratch.pbBuf, pThis->BufScratch.offBuf);
+            rc = s2gGitWrite(pThis, pThis->BufScratch.pbBuf, pThis->BufScratch.offBuf);
     }
 
     return rc;
@@ -298,7 +391,10 @@ DECLHIDDEN(int) s2gGitTransactionFileWriteData(S2GREPOSITORYGIT hGitRepo, const 
 {
     PS2GREPOSITORYGITINT pThis = hGitRepo;
 
-    int rc = s2gGitWrite(pThis, pvBuf, cb);
+    int rc = VINF_SUCCESS;
+    if (cb)
+        rc = s2gGitWrite(pThis, pvBuf, cb);
+
     if (RT_SUCCESS(rc)) /* Need to print an ending line after the file data. */
         rc = s2gGitWrite(pThis, "\n", sizeof("\n") - 1);
 
