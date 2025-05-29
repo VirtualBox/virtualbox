@@ -903,6 +903,42 @@ def i_medium_getproperty(oVBoxMedium, name=None):  # noqa: E501
     return response, httpCode
 
 
+@findMedium_decorator
+def i_medium_getsnapshotids(oVBoxMedium, machineId=None):  # noqa: E501
+    """
+    Call interface method IMedium::getSnapshotIds
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param machineId: 
+    :type machineId: str
+
+    :rtype: MediumGetsnapshotidsResponse
+    """
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oMediumGetsnapshotidsResponse = MediumGetsnapshotidsResponse()
+
+    try:
+        lIds = oVBoxMedium.getSnapshotIds(machineId)
+        if lIds is not None and len(lIds) > 0:
+            logging.info('Getting the list of snapshots Ids has been done successfully')
+            for item in lIds:
+                oMediumGetsnapshotidsResponse.snapshot_ids.append(item)
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, f"Something wrong with getting the list of snapshots Ids for machine {machineId}")
+
+    except Exception as e:
+        logging.info(f"Exception during getting the list of snapshots Ids for machine {machineId}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMediumGetsnapshotidsResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
@@ -967,21 +1003,6 @@ def i_medium_deletestorage(mediumid):  # noqa: E501
     :type mediumid: str
 
     :rtype: ProgressResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_getsnapshotids(mediumid, machineId=None):  # noqa: E501
-    """
-    Call interface method IMedium::getSnapshotIds
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param machineId: 
-    :type machineId: str
-
-    :rtype: MediumGetsnapshotidsResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
