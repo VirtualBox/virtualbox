@@ -16,6 +16,8 @@ import logging
 from http import HTTPStatus
 from flask import jsonify
 
+from typing import List
+
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
 from vbox_server.utils.restapi_objects_functions import *
@@ -913,7 +915,7 @@ def i_medium_getsnapshotids(oVBoxMedium, machineId=None):  # noqa: E501
 
     oError = None
     httpCode = HTTPStatus.OK
-    oMediumGetsnapshotidsResponse = MediumGetsnapshotidsResponse()
+    oMediumGetsnapshotidsResponse = MediumGetsnapshotidsResponse([])
 
     try:
         lIds = oVBoxMedium.getSnapshotIds(machineId)
