@@ -869,6 +869,40 @@ def i_medium_getproperties(oVBoxMedium, names=None):  # noqa: E501
     return response, httpCode
 
 
+@findMedium_decorator
+def i_medium_getproperty(oVBoxMedium, name=None):  # noqa: E501
+    """
+    Call interface method IMedium::getProperty
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param name: 
+    :type name: str
+
+    :rtype: MediumGetpropertyResponse
+    """
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oMediumGetpropertyResponse = MediumGetpropertyResponse()
+
+    try:
+        strPropertyValue = oVBoxMedium.getProperty(name)
+        if strPropertyValue and len(strPropertyValue) > 0:
+            oMediumGetpropertyResponse.value = strPropertyValue
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, f"Something wrong with getting the value of property {name}")
+
+    except Exception as e:
+        logging.info(f"Exception during getting the value of property {name}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMediumGetpropertyResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
@@ -933,21 +967,6 @@ def i_medium_deletestorage(mediumid):  # noqa: E501
     :type mediumid: str
 
     :rtype: ProgressResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_getproperty(mediumid, name=None):  # noqa: E501
-    """
-    Call interface method IMedium::getProperty
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param name: 
-    :type name: str
-
-    :rtype: MediumGetpropertyResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
