@@ -1011,6 +1011,41 @@ def i_medium_setproperties(oVBoxMedium, oMediumSetPropertiesRequestBody: MediumS
     return response, httpCode
 
 
+@findMedium_decorator
+def i_medium_setproperty(oVBoxMedium, oMediumSetPropertyRequestBody: MediumSetPropertyRequestBody):  # noqa: E501
+    """
+    Call interface method IMedium::setProperty
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param oMediumSetPropertyRequestBody: 
+    :type oMediumSetPropertyRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    name = oMediumSetPropertyRequestBody.name
+    value = oMediumSetPropertyRequestBody.value
+
+    try:
+        res = oVBoxMedium.setProperty(name, value)
+        if res != 0:
+            nErrorHex = c_uint32(res).value
+            strError = f"Error {nErrorHex} during setting the value of the property {name}"
+            logging.info(strError)
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, strError)
+    except Exception as e:
+        logging.info(f"Exception during setting the value of the property {name}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else f"Setting the value of the property {name} has been done successfully")
+    return response, httpCode
+
+
 ############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
@@ -1158,18 +1193,4 @@ def medium_resizeandcloneto(mediumid, oMediumResizeAndCloneToRequestBody):  # no
     :rtype: ProgressResponse
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_setproperty(mediumid, oMediumSetPropertyRequestBody):  # noqa: E501
-    """
-    Call interface method IMedium::setProperty
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param oMediumSetPropertyRequestBody: 
-    :type oMediumSetPropertyRequestBody: dict | bytes
-
-    :rtype: None
-    """
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
