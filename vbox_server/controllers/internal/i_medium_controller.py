@@ -939,6 +939,43 @@ def i_medium_getsnapshotids(oVBoxMedium, machineId=None):  # noqa: E501
     return response, httpCode
 
 
+@findMedium_decorator
+def i_medium_setids(oVBoxMedium, oMediumSetIdsRequestBody: MediumSetIdsRequestBody):  # noqa: E501
+    """
+    Call interface method IMedium::setIds
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param oMediumSetIdsRequestBody: 
+    :type oMediumSetIdsRequestBody: dict | bytes
+
+    :rtype: None
+    """
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    imageId = oMediumSetIdsRequestBody.image_id
+    parentId = oMediumSetIdsRequestBody.parent_id
+    fSetImageId = oMediumSetIdsRequestBody.set_image_id
+    fSetParentId = oMediumSetIdsRequestBody.set_parent_id
+
+    try:
+        res = oVBoxMedium.setIds(fSetImageId, imageId, fSetParentId, parentId)
+        if res != 0:
+            nErrorHex = c_uint32(res).value
+            strError = f"Error {nErrorHex} during changing the UUID and parent UUID for a hard disk medium"
+            logging.info(strError)
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, strError)
+    except Exception as e:
+        logging.info(f"Exception during changing the UUID and parent UUID for a hard disk medium")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else "Changing the UUID and parent UUID for a hard disk medium has been done successfully")
+    return response, httpCode
+
+
 ############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
@@ -1086,19 +1123,6 @@ def medium_resizeandcloneto(mediumid, oMediumResizeAndCloneToRequestBody):  # no
     :rtype: ProgressResponse
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-def i_medium_setids(mediumid, oMediumSetIdsRequestBody):  # noqa: E501
-    """
-    Call interface method IMedium::setIds
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param oMediumSetIdsRequestBody: 
-    :type oMediumSetIdsRequestBody: dict | bytes
-
-    :rtype: None
-    """
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
