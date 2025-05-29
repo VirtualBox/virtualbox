@@ -199,7 +199,7 @@ def i_virtualbox_checkfirmwarepresent(platformArchitecture=None, firmwareType=No
     oVirtualboxCheckfirmwarepresentResponse = VirtualboxCheckfirmwarepresentResponse()
     try:
         oVBox = ctx['vb']
-        bRes, sFile, sUrl = oVBox.checkFirmwarePresent(vBoxPlatformArchitecture, firmwareType, version)
+        bRes, sFile, sUrl = oVBox.checkFirmwarePresent(vBoxPlatformArchitecture, vBoxFirmwareType, version)
         if bRes == True:
             logging.info('Successfully get the information about firmware')
             logging.info('The command result is ' + str(bRes))
