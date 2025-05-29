@@ -17,6 +17,7 @@ from http import HTTPStatus
 from flask import jsonify
 
 from typing import List
+from ctypes import c_uint32
 
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
@@ -992,19 +993,15 @@ def i_medium_setproperties(oVBoxMedium, oMediumSetPropertiesRequestBody: MediumS
     lValues = oMediumSetPropertiesRequestBody.values
 
     try:
-        res = oVBoxMedium.setProperties(lNames, lValues)
-        if res != 0:
-            nErrorHex = c_uint32(res).value
-            strError = f"Error {nErrorHex} during setting the values of the properties {lNames}"
-            logging.info(strError)
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, strError)
+        # Always returns S_OK (0)
+        oVBoxMedium.setProperties(lNames, lValues)
+
     except Exception as e:
         logging.info(f"Exception during setting the values of the properties {lNames}")
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else f"Setting the values of the properties {lNames} has been done successfully")
+    response = jsonify(oError if oError is not None else f"All properties {lNames} have been set successfully")
     return response, httpCode
 
 
@@ -1027,13 +1024,8 @@ def i_medium_setproperty(oVBoxMedium, oMediumSetPropertyRequestBody: MediumSetPr
     value = oMediumSetPropertyRequestBody.value
 
     try:
-        res = oVBoxMedium.setProperty(name, value)
-        if res != 0:
-            nErrorHex = c_uint32(res).value
-            strError = f"Error {nErrorHex} during setting the value of the property {name}"
-            logging.info(strError)
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, strError)
+        # Always returns S_OK (0)
+        oVBoxMedium.setProperty(name, value)
     except Exception as e:
         logging.info(f"Exception during setting the value of the property {name}")
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
