@@ -830,6 +830,45 @@ def i_medium_getencryptionsettings(oVBoxMedium):  # noqa: E501
     return response, httpCode
 
 
+@findMedium_decorator
+def i_medium_getproperties(oVBoxMedium, names=None):  # noqa: E501
+    """
+    Call interface method IMedium::getProperties
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+    :param names: 
+    :type names: str
+
+    :rtype: MediumGetpropertiesResponse
+    """
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oMediumGetpropertiesResponse = MediumGetpropertiesResponse(list(), list())
+
+    try:
+        lValue, lName = oVBoxMedium.getProperties(names)
+        if lName and len(lName) > 0:
+            for count, item in enumerate(lName):
+                oMediumGetpropertiesResponse.return_names.append(item)
+                if lValue[count] and len(lValue[count])!=0:
+                    oMediumGetpropertiesResponse.return_values.append(lValue[count])
+                else:
+                    oMediumGetpropertiesResponse.return_values.append("")
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, f"Something wrong with getting the list of properties {names}")
+
+    except Exception as e:
+        logging.info(f"Exception during getting the list of properties {names}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMediumGetpropertiesResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
@@ -894,21 +933,6 @@ def i_medium_deletestorage(mediumid):  # noqa: E501
     :type mediumid: str
 
     :rtype: ProgressResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_getproperties(mediumid, names=None):  # noqa: E501
-    """
-    Call interface method IMedium::getProperties
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param names: 
-    :type names: str
-
-    :rtype: MediumGetpropertiesResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
