@@ -887,12 +887,7 @@ def i_medium_getproperty(oVBoxMedium, name=None):  # noqa: E501
     oMediumGetpropertyResponse = MediumGetpropertyResponse()
 
     try:
-        strPropertyValue = oVBoxMedium.getProperty(name)
-        if strPropertyValue and len(strPropertyValue) > 0:
-            oMediumGetpropertyResponse.value = strPropertyValue
-        else:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, f"Something wrong with getting the value of property {name}")
+        oMediumGetpropertyResponse.value = oVBoxMedium.getProperty(name)
 
     except Exception as e:
         logging.info(f"Exception during getting the value of property {name}")
