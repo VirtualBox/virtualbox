@@ -255,27 +255,18 @@
     <xsl:value-of select="concat($httpRequest,':')"/>
     <xsl:text>&#x0A;</xsl:text>
 
-    <xsl:if test="string-length($defaultTag)!=0 or string-length($replaceTag)!=0">
-      <xsl:value-of select="$sixSpaces"/>
-      <xsl:text>tags: </xsl:text>
-      <xsl:text>&#x0A;</xsl:text>
+    <xsl:value-of select="$sixSpaces"/>
+    <xsl:text>tags: </xsl:text>
+    <xsl:text>&#x0A;</xsl:text>
 
-      <xsl:value-of select="$sixSpaces"/>
-      <xsl:text>- </xsl:text>
-      <xsl:value-of select="$aposDouble"/>
+    <xsl:value-of select="$sixSpaces"/>
+    <xsl:text>- </xsl:text>
+    <xsl:value-of select="$aposDouble"/>
 
-      <xsl:choose>
-        <xsl:when test="string-length($replaceTag)!=0">
-          <xsl:value-of select="$replaceTag"/>
-        </xsl:when>
-        <xsl:otherwise>
-          <xsl:value-of select="$defaultTag"/>
-        </xsl:otherwise>
-      </xsl:choose>
+    <xsl:value-of select="$basePath"/>
 
-      <xsl:value-of select="$aposDouble"/>
-      <xsl:text>&#x0A;</xsl:text>
-    </xsl:if>
+    <xsl:value-of select="$aposDouble"/>
+    <xsl:text>&#x0A;</xsl:text>
 
     <xsl:value-of select="$sixSpaces"/>
     <xsl:text>operationId: </xsl:text>
