@@ -1969,7 +1969,7 @@ def i_machine_getmedium(vmid, select=None, name=None, controllerPort=None, devic
     oMediumResponse = MediumResponse()
     try:
         oVBoxMedium = oVM.getMedium(name, controllerPort, device)
-        oMediumResponse.medium = i_fill_medium(oVBoxMedium)
+        oMediumResponse.medium = i_fill_medium(oVBoxMedium, select)
         fFound = True
     except Exception as e:
         logging.info(str(e))
@@ -2365,7 +2365,7 @@ def i_platformx86_getcpuproperty(vmid, property=None):  # noqa: E501
     oPlatformx86GetcpupropertyResponse = Platformx86GetcpupropertyResponse()
 
     try:
-        vBoxCPUProperty = swagger_to_vbox_cpu_x86_property(property)
+        vBoxCPUProperty = swagger_to_vbox_cpu_property_type_x86(property)
         if vBoxCPUProperty is None:
             return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
         
@@ -2408,7 +2408,7 @@ def i_platformarm_getcpuproperty(vmid, property=None):  # noqa: E501
     oPlatformARMGetcpupropertyResponse = PlatformarmGetcpupropertyResponse()
 
     try:
-        vBoxCPUProperty = swagger_to_vbox_cpu_x86_property(property)
+        vBoxCPUProperty = swagger_to_vbox_cpu_property_type_arm(property)
         if vBoxCPUProperty is None:
             return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
         
@@ -2451,7 +2451,7 @@ def i_platformx86_gethwvirtexproperty(vmid, property=None):  # noqa: E501
     oPlatformx86GetcpupropertyResponse = Platformx86GetcpupropertyResponse()
 
     try:
-        vBoxHWVirtExProperty = swagger_to_vbox_hw_virt_ex_property(property)
+        vBoxHWVirtExProperty = swagger_to_vbox_hw_virt_ex_property_type(property)
         if vBoxHWVirtExProperty is None:
             return "The requested hardware property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
         
@@ -2542,7 +2542,7 @@ def i_platformx86_setcpuproperty(vmid, oPlatformX86SetCPUPropertyRequestBody: Pl
     logging.info('The passed CPU property ' + property + ' is ' + str(value))
 
     try:
-        vBoxCPUProperty = swagger_to_vbox_cpu_x86_property(property)
+        vBoxCPUProperty = swagger_to_vbox_cpu_property_type_x86(property)
         if vBoxCPUProperty is None:
             return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
 
@@ -2874,7 +2874,7 @@ def i_machine_getguestpropertytimestamp(vmid, property=None):  # noqa: E501
         timestamp = oVM.getGuestPropertyTimestamp(property)
         oMachineGetguestpropertytimestampResponse.value= timestamp
 
-        logging.info('Successfully get the timestamp of VM guest property ' + property)
+        logging.info('Successfully get the timestamp of VM guest property ' + str(property))
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -2914,7 +2914,7 @@ def i_machine_getguestpropertyvalue(vmid, property=None):  # noqa: E501
         value = oVM.getGuestPropertyValue(property)
         oMediumGetpropertyResponse.value = value
 
-        logging.info('Successfully get the value of VM guest property ' + property)
+        logging.info('Successfully get the value of VM guest property ' + str(property))
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
