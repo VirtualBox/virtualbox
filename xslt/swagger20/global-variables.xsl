@@ -76,10 +76,10 @@
 </xsl:variable>
 
 <xsl:variable name="G_tagsMap">
-  <tag name="server" interface="IVirtualBox" path="server"/>
+  <!-- <tag name="server" interface="IVirtualBox" path="server"/>
   <tag name="vm" interface="IMachine" path="vms"/>
   <tag name="progress" interface="IProgress" path="progresses"/>
-  <tag name="medium" interface="IMedium" path="media"/>  
+  <tag name="medium" interface="IMedium" path="media"/>   -->
 </xsl:variable>
 
 <xsl:variable name="G_httpResponses">
