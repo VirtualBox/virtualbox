@@ -796,6 +796,40 @@ def i_medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: Me
     return response, httpCode
 
 
+@findMedium_decorator
+def i_medium_getencryptionsettings(oVBoxMedium):  # noqa: E501
+    """
+    Call interface method IMedium::getEncryptionSettings
+
+    :param mediumid: The Id of medium
+    :type mediumid: str
+
+    :rtype: MediumGetencryptionsettingsResponse
+    """
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oMediumGetencryptionsettingsResponse = MediumGetencryptionsettingsResponse()
+    oMediumGetencryptionsettingsResponse.cipher = ""
+    oMediumGetencryptionsettingsResponse.password_id = ""
+
+    try:
+        strCipher, strPassId = oVBoxMedium.getEncryptionSettings()
+        logging.info('Getting the list of encription settings has been done successfully')
+        if strCipher and len(strCipher) !=0:
+            oMediumGetencryptionsettingsResponse.cipher = strCipher    
+        if strPassId and len(strCipher) !=0:
+            oMediumGetencryptionsettingsResponse.password_id = strPassId
+
+    except Exception as e:
+        logging.info(f"Exception during getting the list encription settings")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMediumGetencryptionsettingsResponse)
+    return response, httpCode
+
+
 ############################# Not implemented yet or not used #############################
 def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
@@ -860,19 +894,6 @@ def i_medium_deletestorage(mediumid):  # noqa: E501
     :type mediumid: str
 
     :rtype: ProgressResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_getencryptionsettings(mediumid):  # noqa: E501
-    """
-    Call interface method IMedium::getEncryptionSettings
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-
-    :rtype: MediumGetencryptionsettingsResponse
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
