@@ -27,16 +27,16 @@
 
 
 #
-# By default, only show the maintence help info.
+# By default, only show the maintenance help info.
 #
-PASS_MAINTHELP      := Maintence Help
-PASS_MAINTHELP_trgs := show-maintence-help
+PASS_MAINTHELP      := Maintenance Help
+PASS_MAINTHELP_trgs := show-maintenance-help
 PASS_MAINTHELP_vars :=
-PASS_MAINTHELP_pass := maintence-help
+PASS_MAINTHELP_pass := maintenance-help
 
 override DEFAULT_PASSES := MAINTHELP
 
-show-maintence-help:
+show-maintenance-help:
 	@$(ECHO) ""
 	@$(ECHO) "up update         - Update svn and fetch tools."
 	@$(ECHO) "up2 update2       - Update svn and fetch tools, ignore externals (kBuild)."

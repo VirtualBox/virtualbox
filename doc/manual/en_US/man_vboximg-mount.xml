@@ -80,8 +80,8 @@
     <title>Description</title>
     <para>
       The <command>vboximg-mount</command> command enables you to make
-      &product-name; disk images available to a Mac OS or Linux host
-      operating system (OS) for privileged or non-priviliged access. You
+      &product-name; disk images available to a macOS or Linux host
+      operating system (OS) for privileged or non-privileged access. You
       can mount any version of the disk from its available history of
       snapshots. Use this command to mount, view, and optionally modify
       the contents of an &product-name; virtual disk image, and you can
