@@ -1,4 +1,4 @@
-/* $Id: RecordingCodec.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: RecordingCodec.cpp 109717 2025-05-30 07:45:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording codec wrapper.
  */
@@ -415,6 +415,7 @@ static DECLCALLBACK(int) recordingCodecVPXEncode(PRECORDINGCODEC pCodec, PRECORD
 
         case RECORDINGFRAME_TYPE_CURSOR_SHAPE:
         {
+            RecordingVideoFrameFree(pCodec->Video.VPX.pCursorShape);
             pCodec->Video.VPX.pCursorShape = RecordingVideoFrameDup(&pFrame->u.CursorShape);
             AssertPtr(pCodec->Video.VPX.pCursorShape);
 
