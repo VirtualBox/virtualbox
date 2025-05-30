@@ -411,7 +411,7 @@ check_environment()
         # alternative binaries can be found in 'amd64' subdirs of the 'bin'
         # ones. So, in order to find the right stuff (esp. sdl-config) we'll
         # have to make sure the */bin/amd64 dirs are searched before the */bin
-        # ones. (The sed has some sideeffects, but they shouldn't harm us...)
+        # ones. (The sed has some side effects, but they shouldn't harm us...)
         echo "64-bit Solaris detected, hacking the PATH" >> $LOG
         echo "old PATH: $PATH" >> $LOG
         PATH=`echo ":$PATH:" | sed -e 's,\(:[^:]*/bin\):,\1/amd64:\1:,g' \

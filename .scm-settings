@@ -6,7 +6,7 @@
 # VirtualBox source tree.  It will recursively load all .scm-settings files
 # it find in or above directories or files it's told to work on.  So,
 # .scm-settings files can be placed in sub-directories in the tree to provide
-# additional settins specific to that sub-tree.
+# additional settings specific to that sub-tree.
 #
 
 #

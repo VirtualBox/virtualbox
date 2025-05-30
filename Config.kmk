@@ -64,7 +64,7 @@ BLD_TYPE_asan_EXTENDS_BY = appending
 
 ## 'dbgopt' builds
 # Same as debug builds, except that compiler optimizations are enabled.  This
-# intended for cases where all the debug facitities (logging, assertions, ++)
+# intended for cases where all the debug facilities (logging, assertions, ++)
 # is wanted but actual source level debugging as important as execution speed.
 KBUILD_BLD_TYPES += dbgopt
 BLD_TYPE_dbgopt_EXTENDS = debug
@@ -1488,7 +1488,7 @@ endif
 if defined(VBOX_WITH_PARFAIT)
  #
  # This includes the tool overrides for running with parfait.
- # Ideally there would be a dedicated parfait tool but when targetting
+ # Ideally there would be a dedicated parfait tool but when targeting
  # different hosts with different compiler toolchains and compiler flags
  # we would have to duplicate a lot of the already existing tools for each
  # supported toolchain. Instead we just override the paths to the compilers
@@ -2762,7 +2762,7 @@ VBOX_GOOD_COMSPEC_BS ?= $(subst /,\,$(VBOX_GOOD_COMSPEC))
 # version is assumed to be the
 #
 ifeq ($(KBUILD_TARGET),darwin)
- # The minimum macOS version we're targetting.
+ # The minimum macOS version we're targeting.
  ifndef VBOX_DEF_MACOSX_VERSION_MIN
   if1of ($(VBOX_GCC_TOOL), GXX4MACHO GXX42MACHO) # For GAs.
    VBOX_DEF_MACOSX_VERSION_MIN := 10.6#  Snow Leopard
@@ -4535,7 +4535,7 @@ ifdef VBOX_SIGNING_MODE
    endif
   endif
   ## Enable signing of the additions drivers, i.e. create CAT files.
-  ## @todo r=bird: This bugger is entirely misplaced, as it belongs in the additions config section so it can be properly overriden.
+  ## @todo r=bird: This bugger is entirely misplaced, as it belongs in the additions config section so it can be properly overridden.
   VBOX_SIGN_ADDITIONS   ?= 1
   ## Set if we should include the legacy timestamp CA.
   ifndef VBOX_WITH_VBOX_LEGACY_TS_CA
@@ -5156,7 +5156,7 @@ SDK_VBoxOpenSslStatic-x86_LIBS               ?= \
 	$(PATH_STAGE_LIB)/VBox-libcrypto-x86$(VBOX_SUFF_LIB)
 
 ifdef VBOX_WITH_BLD_RTSIGNTOOL_SIGNING
- SDK_VBoxOpenSslBldProg               := OpenSSL - Build tools verison (i.e. bldRTSignTool)
+ SDK_VBoxOpenSslBldProg               := OpenSSL - Build tools version (i.e. bldRTSignTool)
  SDK_VBoxOpenSslBldProg_INCS          ?= $(SDK_VBoxOpenSslStatic_VBOX_DEFAULT_INCS)
  SDK_VBoxOpenSslBldProg_ORDERDEPS     ?= $(crypto-headers_1_TARGET)
  if   !defined(VBOX_ONLY_SDK) \
@@ -6063,7 +6063,7 @@ ifeq ($(KBUILD_TARGET),solaris)
  TEMPLATE_VBoxR0Drv_INCS               = $(VBOX_SOLARIS_SYS_INCS)
  TEMPLATE_VBoxR0Drv_LDFLAGS            = -r -dy
  TEMPLATE_VBoxR0Drv_LDFLAGS.amd64      = $(if $(eq $(KBUILD_HOST),solaris),-64,-m elf_x86_64)
- # Exclude -Wall because of solaris headers' pragma ident warnings that gcc refuses to supress.
+ # Exclude -Wall because of solaris headers' pragma ident warnings that gcc refuses to suppress.
  TEMPLATE_VBoxR0Drv_CFLAGS             = -Wpointer-arith -Winline $(VBOX_GCC_Wno-pointer-sign) \
  	-Wmissing-prototypes -Wstrict-prototypes $(VBOX_GCC_fdiagnostics-show-option) $(VBOX_GCC_fdiagnostics-color) \
  	-Wshadow -Wuninitialized -Wunused-function -Wunused-label -Wunused-value -Wunused-variable \
@@ -8827,7 +8827,7 @@ else ifeq ($(KBUILD_TARGET),solaris)
 endif
 
 # Use older versions of APIs which were improved in versions of glibc later
-# than what we are targetting, and do not use the stack protector, which
+# than what we are targeting, and do not use the stack protector, which
 # needs glibc 2.4 or later.
 TEMPLATE_VBoxGuestR3ExeBase_CXXFLAGS.linux    = \
 	-include $(PATH_ROOT)/include/iprt/linux/symvers.h \
