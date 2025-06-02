@@ -94,6 +94,30 @@ Rules for adding a changelog entry to make them look more uniform:
           'Add or remove programs' dialog and upgrade issues</para>
       </listitem>
 
+      <listitem>
+        <para>Linux host: Fixed issue which caused VM Selector process crash
+          due to missing libdl.so and libpthread.so libraries (bug #22193)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux host: Removed libIDL as a build time dependency when
+          building VirtualBox from source code (bug #21169)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux guest and host: Added initial support for kernel 6.15 (bug #22420)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux guest and host: Fixed issue with building modules
+          for UEK8 kernel on Oracle Linux 9 distribution</para>
+      </listitem>
+
+      <listitem>
+        <para>RDP: Fixed issue when it was not possible to paste clipboard buffer
+          into a guest over RDP remote session</para>
+      </listitem>
+
     </itemizedlist>
   </sect1>
 
