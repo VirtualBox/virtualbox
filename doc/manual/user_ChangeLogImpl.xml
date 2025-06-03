@@ -109,6 +109,10 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
+        <para>Linux guest: Added initial support for kernel 6.16-RC0</para>
+      </listitem>
+
+      <listitem>
         <para>Linux guest and host: Fixed issue with building modules
           for UEK8 kernel on Oracle Linux 9 distribution</para>
       </listitem>
