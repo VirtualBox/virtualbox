@@ -2,18 +2,18 @@
 swagger: "2.0"
 info:
   description: "This is VirtualBox REST API.\n"
-  version: 0.0.1
+  version: 0.0.2
   title: VirtualBox REST API
   termsOfService: http://swagger.io/terms/
   contact:
     email: valery.portnyagin@oracle.com
   license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
+    name: Universal Permissive License v 1.0
+    url: https://oss.oracle.com/licenses/upl
 
 
 host: localhost:8080
-basePath: /virtualbox/0.0.1
+basePath: /virtualbox/0.0.2
 
 schemes:
 - http
