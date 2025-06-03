@@ -20,7 +20,6 @@ from vbox_server.utils.restapi_objects_functions import *
 
 from vbox_server.models.error import Error  # noqa: E501
 from vbox_server.models.progress_response import ProgressResponse  # noqa: E501
-from vbox_server.models.progress_wait_for_operation_completion_request_body import ProgressWaitForOperationCompletionRequestBody  # noqa: E501
 from vbox_server import util
 
 
@@ -34,35 +33,6 @@ def i_progress_cancel(progressid):  # noqa: E501
     :rtype: None
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_progress_waitforcompletion(progressid, timeout=None):  # noqa: E501
-    """
-    Call interface method IProgress::waitForCompletion
-
-    :param progressid: The Id of progress
-    :type progressid: str
-    :param timeout: 
-    :type timeout: int
-
-    :rtype: None
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_progress_waitforoperationcompletion(progressid, oProgressWaitForOperationCompletionRequestBody):  # noqa: E501
-    """
-    Call interface method IProgress::waitForOperationCompletion
-
-    :param progressid: The Id of progress
-    :type progressid: str
-    :param oProgressWaitForOperationCompletionRequestBody: 
-    :type oProgressWaitForOperationCompletionRequestBody: dict | bytes
-
-    :rtype: None
-    """
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
