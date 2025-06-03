@@ -14,12 +14,7 @@ import logging
 from http import HTTPStatus
 from flask import jsonify
 
-from vbox_server.models.appliance_add_passwords_request_body import ApplianceAddPasswordsRequestBody  # noqa: E501
-from vbox_server.models.appliance_createvirtualsystemdescriptions_response import ApplianceCreatevirtualsystemdescriptionsResponse  # noqa: E501
-from vbox_server.models.appliance_getmediumidsforpasswordid_response import ApplianceGetmediumidsforpasswordidResponse  # noqa: E501
-from vbox_server.models.appliance_getwarnings_response import ApplianceGetwarningsResponse  # noqa: E501
 from vbox_server.models.appliance_response import ApplianceResponse  # noqa: E501
-from vbox_server.models.appliance_write_request_body import ApplianceWriteRequestBody  # noqa: E501
 from vbox_server.models.error import Error  # noqa: E501
 from vbox_server.models.progress_response import ProgressResponse  # noqa: E501
 from vbox_server import util
