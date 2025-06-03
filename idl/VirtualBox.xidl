@@ -2068,7 +2068,7 @@
     </attribute>
 
     <method name="addLocalMapping">
-      <rest request="post" path="/natnetwork/{networkid}/configuration/"/>
+      <rest request="post" path="/natnetwork/{networkname}/config/"/>
       <desc>
       </desc>
       <param name="hostid" type="wstring" dir="in"/>
@@ -2086,7 +2086,7 @@
       </desc>
     </attribute>
     <method name="addPortForwardRule">
-      <rest request="post" path="/natnetwork/{networkid}/configuration/"/>
+      <rest request="post" path="/natnetwork/{networkname}/config/"/>
       <param name="isIpv6" type="boolean" dir="in"/>
       <param name="ruleName" type="wstring" dir="in"/>
       <param name="proto" type="NATProtocol" dir="in">
@@ -2110,15 +2110,15 @@
         </param>
     </method>
     <method name="removePortForwardRule">
-      <rest request="post" path="/natnetwork/{networkid}/configuration/"/>
+      <rest request="post" path="/natnetwork/{networkname}/config/"/>
       <param name="isIpv6" type="boolean" dir="in"/>
       <param name="ruleName" type="wstring" dir="in"/>
     </method>
     <method name="start">
-      <rest request="post" path="/natnetwork/{networkid}/action/"/>
+      <rest request="post" path="/natnetwork/{networkname}/action/"/>
     </method>
     <method name="stop">
-      <rest request="post" path="/natnetwork/{networkid}/action/"/>
+      <rest request="post" path="/natnetwork/{networkname}/action/"/>
     </method>
   </interface>
 
@@ -2413,7 +2413,7 @@
          NATNetwork.
     -->
     <method name="setConfiguration">
-      <rest request="post" path="/dhcpserver/{serverid}/configuration/"/>
+      <rest request="post" path="/dhcpserver/{networkname}/config/"/>
       <desc>
         configures the server
         <result name="E_INVALIDARG">
@@ -2443,7 +2443,7 @@
     </method>
 
     <method name="start">
-      <rest request="post" path="/dhcpserver/{serverid}/action/"/>
+      <rest request="post" path="/dhcpserver/{networkname}/action/"/>
       <desc>
         Starts DHCP server process.
         <result name="E_FAIL">
@@ -2463,7 +2463,7 @@
     </method>
 
     <method name="stop">
-      <rest request="post" path="/dhcpserver/{serverid}/action/"/>
+      <rest request="post" path="/dhcpserver/{networkname}/action/"/>
       <desc>
         Stops DHCP server process.
         <result name="E_FAIL">
@@ -2473,7 +2473,7 @@
     </method>
 
     <method name="restart">
-      <rest request="post" path="/dhcpserver/{serverid}/action/"/>
+      <rest request="post" path="/dhcpserver/{networkname}/action/"/>
       <desc>
         Restart running DHCP server process.
         <result name="E_FAIL">
@@ -2513,7 +2513,7 @@
     </method>
 
     <method name="getConfig">
-      <rest request="get" path="/dhcpserver/{serverid}/configuration/"/>
+      <rest request="get" path="/dhcpserver/{networkname}/configuration/"/>
       <desc>
         Gets or adds a configuration.
       </desc>
@@ -3080,7 +3080,7 @@
     </method>
 
     <method name="getPlatformProperties">
-      <rest name="find" request="get" path="/platform/properties/"/>
+      <rest name="find" request="get" path="/platform/property/"/>
       <desc>
         Gets the associated properties object for the given VM platform architecture.
       </desc>
@@ -3222,7 +3222,6 @@
     </method>
 
     <method name="openMachine">
-      <rest name="open" request="post" path="/vm/{vmid}/action/"/>
       <desc>
         Opens a virtual machine from the existing settings file.
         The opened machine remains unregistered until you call
@@ -3268,7 +3267,6 @@
     </method>
 
     <method name="registerMachine">
-      <rest name="register" request="post" path="/vm/{vmid}/action/"/>
       <desc>
 
         Registers the machine previously created using
@@ -3543,7 +3541,7 @@
     </method>
 
     <method name="getGuestOSType">
-      <rest request="get" path="/server/method/"/>
+      <rest name="find" request="get" path="/guest/os/type/"/>
       <desc>
         Returns an object describing the specified guest OS type.
 
@@ -3576,7 +3574,7 @@
     </method>
 
     <method name="getGuestOSSubtypesByFamilyId">
-      <rest request="get" path="/server/method/"/>
+      <rest name="list" request="get" path="/guest/os/subtype/"/>
       <desc>
         Returns a list of guest OS family subtypes for a corresponding
         guest OS family ID type.
@@ -3602,7 +3600,7 @@
     </method>
 
     <method name="getGuestOSDescsBySubtype">
-      <rest request="get" path="/server/method/"/>
+      <rest name="list" request="get" path="/guest/os/subtype/desc/"/>
       <desc>
         Returns a list of guest OS family descriptions for a corresponding
         guest OS family subtype.
@@ -3955,7 +3953,7 @@
     </method>
 
     <method name="checkFirmwarePresent">
-      <rest request="get" path="/server/method/"/>
+      <rest name="support" request="get" path="/server/firmware/"/>
       <desc>
         Check if this VirtualBox installation has a firmware
         of the given type available, either system-wide or per-user.
@@ -4493,7 +4491,6 @@
     </attribute>
 
     <method name="read">
-      <rest request="post" path="/appliance/{applianceid}/action/"/>
       <desc>
         Reads an OVF file into the appliance object.
 
@@ -4513,7 +4510,6 @@
     </method>
 
     <method name="interpret">
-      <rest request="post" path="/appliance/{applianceid}/action/"/>
       <desc>
         Interprets the OVF data that was read when the appliance was constructed. After
         calling this method, one can inspect the
@@ -4531,7 +4527,6 @@
     </method>
 
     <method name="importMachines">
-      <rest request="post" path="/appliance/{applianceid}/action/"/>
       <desc>
         Imports the appliance into VirtualBox by creating instances of <link to="IMachine" />
         and other interfaces that match the information contained in the appliance as
@@ -4571,7 +4566,6 @@
     </method>
 
     <method name="write">
-      <rest request="post" path="/appliance/{applianceid}/action/"/>
       <desc>
           Writes the contents of the appliance exports into a new OVF file.
 
@@ -4607,7 +4601,6 @@
     </method>
 
     <method name="getWarnings">
-      <rest request="get" path="/appliance/{applianceid}/configuration/"/>
       <desc>Returns textual warnings which occurred during execution of <link to="#interpret" />.</desc>
 
       <param name="warnings" type="wstring" dir="return" safearray="yes">
@@ -4616,7 +4609,6 @@
     </method>
 
     <method name="getPasswordIds">
-      <rest request="get" path="/appliance/{applianceid}/configuration/"/>
       <desc>
         Returns a list of password identifiers which must be supplied to import or export
         encrypted virtual machines.
@@ -4628,7 +4620,6 @@
     </method>
 
     <method name="getMediumIdsForPasswordId">
-      <rest request="get" path="/appliance/{applianceid}/configuration/"/>
       <desc>
         Returns a list of medium identifiers which use the given password identifier.
       </desc>
@@ -4642,7 +4633,6 @@
     </method>
 
     <method name="addPasswords">
-      <rest request="post" path="/appliance/{applianceid}/configuration/"/>
       <desc>
         Adds a list of passwords required to import or export encrypted virtual
         machines.
@@ -4658,7 +4648,6 @@
     </method>
 
     <method name="createVirtualSystemDescriptions">
-      <rest request="post" path="/appliance/{applianceid}/configuration/"/>
       <desc>Creates a number of <link to="IVirtualSystemDescription" /> objects and store them
       in the <link to="#virtualSystemDescriptions" /> array.
       </desc>
@@ -5923,6 +5912,7 @@
     </attribute>
 
     <method name="setFeature">
+      <rest request="post" path="/graphic/adapter/conf/"/>
       <desc>Sets a graphics controller feature.
         <result name="VBOX_E_NOT_SUPPORTED">
           The feature is not supported on the current platform.
@@ -5941,6 +5931,7 @@
     </method>
 
     <method name="isFeatureEnabled" const="yes">
+      <rest request="post" path="/graphic/adapter/conf/"/>
       <desc>Returns whether a particular feature is enabled for this adapter
         or not.</desc>
       <param name="feature" type="GraphicsFeature" dir="in">
@@ -7202,7 +7193,7 @@
     </attribute>
 
     <method name="getCPUProperty" const="yes">
-      <rest name="CPUPropertyX86" request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="property" request="get" path="/vm/{vmid}/config/cpu/x86/"/>
       <desc>
         Returns the virtual CPU boolean value of the specified property.
 
@@ -7224,7 +7215,7 @@
     </method>
 
     <method name="setCPUProperty">
-      <rest name="CPUPropertyX86" request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="property" request="post" path="/vm/{vmid}/config/cpu/x86/"/>
       <desc>
         Sets the virtual CPU boolean value of the specified property.
 
@@ -7424,7 +7415,7 @@
     </method>
 
     <method name="getHWVirtExProperty" const="yes">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="HWVirtExProperty" request="get" path="/vm/{vmid}/config/"/>
       <desc>
         Returns the value of the specified hardware virtualization boolean property.
 
@@ -7446,7 +7437,7 @@
     </method>
 
     <method name="setHWVirtExProperty">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="HWVirtExProperty" request="post" path="/vm/{vmid}/config/"/>
       <desc>
         Sets a new value for the specified hardware virtualization boolean property.
 
@@ -7483,7 +7474,7 @@
     </desc>
 
     <method name="getCPUProperty" const="yes">
-      <rest name="CPUPropertyARM" request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="property" request="get" path="/vm/{vmid}/config/cpu/arm/"/>
       <desc>
         Returns the virtual CPU boolean value of the specified property.
 
@@ -7505,7 +7496,7 @@
     </method>
 
     <method name="setCPUProperty">
-      <rest name="CPUPropertyARM" request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="property" request="post" path="/vm/{vmid}/config/cpu/arm/"/>
       <desc>
         Sets the virtual CPU boolean value of the specified property.
 
@@ -8544,7 +8535,7 @@
     </method>
 
     <method name="setBootOrder">
-      <rest name="bootorder" request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="bootorder" request="post" path="/vm/{vmid}/config/"/>
       <desc>
         Puts the given device to the specified position in
         the boot order.
@@ -8577,7 +8568,7 @@
     </method>
 
     <method name="getBootOrder" const="yes">
-      <rest name="bootorder" request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="bootorder" request="get" path="/vm/{vmid}/config/"/>
       <desc>
         Returns the device type that occupies the specified
         position in the boot order.
@@ -8612,7 +8603,7 @@
     </method>
 
     <method name="attachDevice">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="attach" request="post" path="/vm/{vmid}/dev/action/"/>
       <desc>
         Attaches a device and optionally mounts a medium to the given storage
         controller (<link to="IStorageController" />, identified by @a name),
@@ -8706,7 +8697,7 @@
     </method>
 
     <method name="attachDeviceWithoutMedium">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="attachempty" request="post" path="/vm/{vmid}/dev/action/"/>
       <desc>
       Attaches a device and optionally mounts a medium to the given storage
       controller (<link to="IStorageController" />, identified by @a name),
@@ -8792,7 +8783,7 @@
     </method>
 
     <method name="detachDevice">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="detach" request="post" path="/vm/{vmid}/dev/action/"/>
       <desc>
         Detaches the device attached to a device slot of the specified bus.
 
@@ -8839,7 +8830,7 @@
     </method>
 
     <method name="passthroughDevice">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest request="post" path="/vm/{vmid}/dev/config/"/>
       <desc>
         Sets the passthrough mode of an existing DVD device. Changing the
         setting while the VM is running is forbidden. The setting is only used
@@ -8876,7 +8867,7 @@
     </method>
 
     <method name="temporaryEjectDevice">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest request="post" path="/vm/{vmid}/dev/config/"/>
       <desc>
         Sets the behavior for guest-triggered medium eject. In some situations
         it is desirable that such ejects update the VM configuration, and in
@@ -8913,7 +8904,7 @@
     </method>
 
     <method name="nonRotationalDevice">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest request="post" path="/vm/{vmid}/dev/config/"/>
       <desc>
         Sets a flag in the device information which indicates that the medium
         is not based on rotational technology, i.e. that the access times are
@@ -8953,7 +8944,7 @@
     </method>
 
     <method name="setAutoDiscardForDevice">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="AutoDiscard" request="post" path="/vm/{vmid}/dev/config/"/>
       <desc>
         Sets a flag in the device information which indicates that the medium
         supports discarding unused blocks (called trimming for SATA or unmap
@@ -8993,7 +8984,7 @@
     </method>
 
     <method name="setHotPluggableForDevice">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="HotPluggable" request="post" path="/vm/{vmid}/dev/config/"/>
       <desc>
         Sets a flag in the device information which indicates that the attached
         device is hot pluggable or not. This may or may not be supported by a
@@ -9034,7 +9025,7 @@
     </method>
 
     <method name="setBandwidthGroupForDevice">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="BandwidthGroup" request="post" path="/vm/{vmid}/dev/config/"/>
       <desc>
         Sets the bandwidth group of an existing storage device.
         The device must already exist; see <link to="IMachine::attachDevice"/>
@@ -9069,7 +9060,7 @@
     </method>
 
     <method name="setNoBandwidthGroupForDevice">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="NoBandwidthGroup" request="post" path="/vm/{vmid}/dev/config/"/>
       <desc>
       Sets no bandwidth group for an existing storage device.
       The device must already exist; see <link to="IMachine::attachDevice"/>
@@ -9238,7 +9229,7 @@
     </method>
 
     <method name="getMediumAttachmentsOfController" const="yes">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="AttachmentsList" request="get" path="/vm/{vmid}/controller/"/>
       <desc>
         Returns an array of medium attachments which are attached to the
         the controller with the given name.
@@ -9252,7 +9243,7 @@
     </method>
 
     <method name="getMediumAttachment" const="yes">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="Attachment" request="get" path="/vm/{vmid}/controller/"/>
       <desc>
         Returns a medium attachment which corresponds to the controller with
         the given name, on the given port and device slot.
@@ -9268,7 +9259,6 @@
     </method>
 
     <method name="attachHostPCIDevice">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
       <desc>
         Attaches host PCI device with the given (host) PCI address to the
         PCI bus of the virtual machine. Please note, that this operation
@@ -9301,7 +9291,6 @@
     </method>
 
     <method name="detachHostPCIDevice">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
       <desc>
         Detach host PCI device from the virtual machine.
         Also HostPCIDevicePlugEvent on IVirtualBox event source
@@ -9329,7 +9318,7 @@
     </method>
 
     <method name="getNetworkAdapter" const="yes">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="find" request="get" path="/vm/{vmid}/networkadapter/"/>
       <desc>
         Returns the network adapter associated with the given slot.
         Slots are numbered sequentially, starting with zero. The total
@@ -9347,7 +9336,7 @@
     </method>
 
     <method name="addStorageController">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="add" request="post" path="/vm/{vmid}/storagecontroller/action/"/>
       <desc>
         Adds a new storage controller (SCSI, SAS or SATA controller) to the
         machine and returns it as an instance of
@@ -9375,7 +9364,7 @@
     </method>
 
     <method name="getStorageControllerByName" const="yes">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="findbyname" request="get" path="/vm/{vmid}/storagecontroller/"/>
       <desc>
         Returns a storage controller with the given name.
 
@@ -9388,7 +9377,7 @@
     </method>
 
     <method name="getStorageControllerByInstance" const="yes">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="findbyinstance" request="get" path="/vm/{vmid}/storagecontroller/"/>
       <desc>
         Returns a storage controller of a specific storage bus
         with the given instance number.
@@ -9403,7 +9392,7 @@
     </method>
 
     <method name="removeStorageController">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="remove" request="post" path="/vm/{vmid}/storagecontroller/action/"/>
       <desc>
         Removes a storage controller from the machine with all devices attached to it.
 
@@ -9419,7 +9408,7 @@
     </method>
 
     <method name="setStorageControllerBootable">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="bootable" request="post" path="/vm/{vmid}/storagecontroller/config/"/>
       <desc>
         Sets the bootable flag of the storage controller with the given name.
 
@@ -9435,7 +9424,7 @@
     </method>
 
     <method name="addUSBController">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="add" request="post" path="/vm/{vmid}/usbcontroller/action/"/>
       <desc>
         Adds a new USB controller to the machine and returns it as an instance of
         <link to="IUSBController" />.
@@ -9453,7 +9442,7 @@
     </method>
 
     <method name="removeUSBController">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="remove" request="post" path="/vm/{vmid}/usbcontroller/action/"/>
       <desc>
         Removes a USB controller from the machine.
 
@@ -9465,7 +9454,7 @@
     </method>
 
     <method name="getUSBControllerByName" const="yes">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="find" request="get" path="/vm/{vmid}/usbcontroller/"/>
       <desc>
         Returns a USB controller with the given type.
 
@@ -9478,7 +9467,7 @@
     </method>
 
     <method name="getUSBControllerCountByType" const="yes">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="number" request="get" path="/vm/{vmid}/usbcontroller/config/"/>
       <desc>
         Returns the number of USB controllers of the given type attached to the VM.
       </desc>
@@ -9487,7 +9476,7 @@
     </method>
 
     <method name="getSerialPort" const="yes">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="find" request="get" path="/vm/{vmid}/serialport/"/>
       <desc>
         Returns the serial port associated with the given slot.
         Slots are numbered sequentially, starting with zero. The total
@@ -9505,7 +9494,7 @@
     </method>
 
     <method name="getParallelPort" const="yes">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="find" request="get" path="/vm/{vmid}/parallelport/"/>
       <desc>
         Returns the parallel port associated with the given slot.
         Slots are numbered sequentially, starting with zero. The total
@@ -9523,7 +9512,7 @@
     </method>
 
     <method name="getExtraDataKeys">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="ExtraDataKeyList" request="get" path="/vm/{vmid}/config/"/>
       <desc>
             Returns an array representing the machine-specific extra data keys
             which currently have values defined.
@@ -9534,7 +9523,7 @@
     </method>
 
     <method name="getExtraData">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="ExtraData" request="get" path="/vm/{vmid}/config/"/>
       <desc>
         Returns associated machine-specific extra data.
 
@@ -9558,7 +9547,7 @@
     </method>
 
     <method name="setExtraData">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="ExtraData" request="post" path="/vm/{vmid}/config/"/>
       <desc>
         Sets associated machine-specific extra data.
 
@@ -9607,7 +9596,7 @@
     </method>
 
     <method name="setSettingsFilePath">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="SettingsFilePath" request="post" path="/vm/{vmid}/config/"/>
       <desc>
         Currently, it is an error to change this property on any machine.
         Later this will allow setting a new path for the settings file, with
@@ -9637,7 +9626,7 @@
     </method>
 
     <method name="saveSettings">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="save" request="post" path="/vm/{vmid}/config/"/>
       <desc>
         Saves any changes to machine settings made since the session
         has been opened or a new machine has been created, or since the
@@ -9672,7 +9661,7 @@
     </method>
 
     <method name="discardSettings">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="discard" request="post" path="/vm/{vmid}/config/"/>
       <desc>
         Discards any changes to the machine settings made since the session
         has been opened or since the last call to <link to="#saveSettings"/>
@@ -9829,7 +9818,6 @@
     </method>
 
     <method name="exportTo">
-      <rest name="export" request="post" path="/vm/{vmid}/action/"/>
       <desc>Exports the machine to an OVF appliance. See <link to="IAppliance" /> for the
             steps required to export VirtualBox machines to OVF.
       </desc>
@@ -9846,7 +9834,7 @@
     </method>
 
     <method name="findSnapshot">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="find" request="get" path="/vm/{vmid}/snapshot/"/>
       <desc>
         Returns a snapshot of this machine with the given name or UUID.
 
@@ -9870,7 +9858,7 @@
     </method>
 
     <method name="createSharedFolder">
-      <rest request="post" path="/vm/{vmid}/method/"/>
+      <rest name="create" request="post" path="/vm/{vmid}/sharedfolder/action/"/>
       <desc>
         Creates a new permanent shared folder by associating the given logical
         name with the given host path, adds it to the collection of shared
@@ -9907,7 +9895,7 @@
     </method>
 
     <method name="removeSharedFolder">
-      <rest request="delete" path="/vm/{vmid}/method/"/>
+      <rest name="remove" request="delete" path="/vm/{vmid}/sharedfolder/action/"/>
       <desc>
         Removes the permanent shared folder with the given name previously
         created by <link to="#createSharedFolder"/> from the collection of
@@ -9982,7 +9970,7 @@
     </method>
 
     <method name="getGuestProperty" const="yes">
-      <rest name="property" request="get" path="/vm/{vmid}/guest/configuration/"/>
+      <rest name="property" request="get" path="/vm/{vmid}/guest/config/"/>
 
       <desc>
         Reads an entry from the machine's guest property store.
@@ -10018,7 +10006,7 @@
     </method>
 
     <method name="getGuestPropertyValue" const="yes">
-      <rest name="propertyvalue" request="get" path="/vm/{vmid}/guest/configuration/"/>
+      <rest name="propertyvalue" request="get" path="/vm/{vmid}/guest/config/"/>
       <desc>
         Reads a value from the machine's guest property store.
 
@@ -10041,7 +10029,7 @@
     </method>
 
     <method name="getGuestPropertyTimestamp" const="yes">
-      <rest name="propertytimestamp" request="get" path="/vm/{vmid}/guest/configuration/"/>
+      <rest name="propertytimestamp" request="get" path="/vm/{vmid}/guest/config/"/>
       <desc>
         Reads a property timestamp from the machine's guest property store.
 
@@ -10064,7 +10052,7 @@
     </method>
 
     <method name="setGuestProperty">
-      <rest name="property" request="post" path="/vm/{vmid}/guest/configuration/"/>
+      <rest name="property" request="post" path="/vm/{vmid}/guest/config/"/>
       <desc>
         Sets, changes or deletes an entry in the machine's guest property
         store.
@@ -10105,7 +10093,7 @@
     </method>
 
     <method name="setGuestPropertyValue">
-      <rest name="propertyvalue" request="post" path="/vm/{vmid}/guest/configuration/"/>
+      <rest name="propertyvalue" request="post" path="/vm/{vmid}/guest/config/"/>
       <desc>
         Sets or changes a value in the machine's guest property
         store. The flags field will be left unchanged or created empty for a
@@ -10137,7 +10125,7 @@
     </method>
 
     <method name="deleteGuestProperty" const="yes">
-      <rest name="property" request="delete" path="/vm/{vmid}/guest/configuration/"/>
+      <rest name="remove" request="delete" path="/vm/{vmid}/guest/property/"/>
       <desc>
         Deletes an entry from the machine's guest property store.
 
@@ -10154,7 +10142,7 @@
     </method>
 
     <method name="enumerateGuestProperties" const="yes">
-      <rest request="get" path="/vm/{vmid}/guest/configuration/"/>
+      <rest name="propertylist" request="get" path="/vm/{vmid}/guest/config/"/>
       <desc>
         Return a list of the guest properties matching a set of patterns along
         with their values, timestamps and flags.
@@ -10315,7 +10303,7 @@
     </method>
 
     <method name="hotPlugCPU">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="plug" request="post" path="/vm/{vmid}/cpu/action/"/>
       <desc>
         Plugs a CPU into the machine.
       </desc>
@@ -10327,7 +10315,7 @@
     </method>
 
     <method name="hotUnplugCPU">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="unplug" request="post" path="/vm/{vmid}/cpu/action/"/>
       <desc>
         Removes a CPU from the machine.
       </desc>
@@ -10339,7 +10327,7 @@
     </method>
 
     <method name="getCPUStatus">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="status" request="get" path="/vm/{vmid}/cpu/"/>
       <desc>
         Returns the current status of the given CPU.
       </desc>
@@ -10356,7 +10344,7 @@
     </method>
 
     <method name="getEffectiveParavirtProvider"  const="yes">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="ParavirtProvider" request="get" path="/vm/{vmid}/config/"/>
       <desc>
         Returns the effective paravirtualization provider for this VM.
       </desc>
@@ -10368,7 +10356,7 @@
     </method>
 
     <method name="queryLogFilename">
-      <rest request="get" path="/vm/{vmid}/logs/"/>
+      <rest name="queryname" request="get" path="/vm/{vmid}/log/"/>
       <desc>
         Queries for the VM log file name of an given index. Returns an empty
         string if a log file with that index doesn't exists.
@@ -10386,7 +10374,7 @@
     </method>
 
     <method name="readLog">
-      <rest request="get" path="/vm/{vmid}/logs/"/>
+      <rest name="read" request="get" path="/vm/{vmid}/log/action/"/>
       <desc>
         Reads the VM log file. The chunk size is limited, so even if you
         ask for a big piece there might be less data returned.
@@ -10582,7 +10570,7 @@
     </method>
 
     <method name="takeSnapshot">
-      <rest request="put" path="/vm/{vmid}/action/"/>
+      <rest name="take" request="put" path="/vm/{vmid}/snapshot/action/"/>
       <desc>
         Saves the current execution state
         and all settings of the machine and creates differencing images
@@ -10630,7 +10618,7 @@
     </method>
 
     <method name="deleteSnapshot">
-      <rest request="delete" path="/vm/{vmid}/action/"/>
+      <rest name="remove" request="delete" path="/vm/{vmid}/snapshot/"/>
       <desc>
         Starts deleting the specified snapshot asynchronously.
         See <link to="ISnapshot" /> for an introduction to snapshots.
@@ -10702,7 +10690,7 @@
     </method>
 
     <method name="deleteSnapshotAndAllChildren">
-      <rest request="post" path="/vm/{vmid}/action/"/>
+      <rest name="deleteall" request="delete" path="/vm/{vmid}/snapshot/action/"/>
       <desc>
         Starts deleting the specified snapshot and all its children
         asynchronously. See <link to="ISnapshot" /> for an introduction to
@@ -10736,7 +10724,7 @@
     </method>
 
     <method name="deleteSnapshotRange">
-      <rest request="post" path="/vm/{vmid}/action/"/>
+      <rest name="deleterange" request="delete" path="/vm/{vmid}/snapshot/action/"/>
       <desc>
         Starts deleting the specified snapshot range. This is limited to
         linear snapshot lists, which means there may not be any other child
@@ -10775,7 +10763,7 @@
     </method>
 
     <method name="restoreSnapshot">
-      <rest request="post" path="/vm/{vmid}/action/"/>
+      <rest name="restore" request="post" path="/vm/{vmid}/snapshot/action/"/>
       <desc>
         Starts resetting the machine's current state to the state contained
         in the given snapshot, asynchronously. All current settings of the
@@ -10815,7 +10803,7 @@
     </method>
 
     <method name="applyDefaults">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest request="post" path="/vm/{vmid}/guest/config/"/>
       <desc>
         Applies the defaults for the configured guest OS type. This is
         primarily for getting sane settings straight after creating a
@@ -11493,7 +11481,7 @@
     </method>
 
     <method name="attachUSBDevice">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="attach" request="post" path="/vm/{vmid}/usb/action/"/>
       <desc>
         Attaches a host USB device with the given UUID to the
         USB controller of the virtual machine.
@@ -11526,7 +11514,7 @@
     </method>
 
     <method name="detachUSBDevice">
-      <rest request="post" path="/vm/{vmid}/configuration/"/>
+      <rest name="detach" request="post" path="/vm/{vmid}/usb/action/"/>
       <desc>
         Detaches a USB device with the given UUID from the USB controller
         of the virtual machine.
@@ -11555,7 +11543,7 @@
     </method>
 
     <method name="findUSBDeviceByAddress">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="findByAddress" request="get" path="/vm/{vmid}/usb/"/>
       <desc>
         Searches for a USB device with the given host address.
 
@@ -11577,7 +11565,7 @@
     </method>
 
     <method name="findUSBDeviceById">
-      <rest request="get" path="/vm/{vmid}/configuration/"/>
+      <rest name="findById" request="get" path="/vm/{vmid}/usb/"/>
       <desc>
         Searches for a USB device with the given UUID.
 
@@ -11596,7 +11584,7 @@
     </method>
 
     <method name="createSharedFolder">
-      <rest request="post" path="/vm/{vmid}/console/method/"/>
+      <rest request="post" path="/vm/{vmid}/console/action/"/>
       <desc>
         Creates a transient new shared folder by associating the given logical
         name with the given host path, adds it to the collection of shared
@@ -11632,7 +11620,7 @@
     </method>
 
     <method name="removeSharedFolder">
-      <rest request="post" path="/vm/{vmid}/console/method/"/>
+      <rest request="post" path="/vm/{vmid}/console/action/"/>
       <desc>
         Removes a transient shared folder with the given name previously
         created by <link to="#createSharedFolder"/> from the collection of
@@ -18310,7 +18298,6 @@
     <attribute name="eventSource" type="IEventSource" readonly="yes" rest="suppress"/>
 
     <method name="waitForCompletion">
-      <rest request="post" path="/progress/{progressid}/action/"/>
       <desc>
           Waits until the task is done (including all sub-operations)
           with a given timeout in milliseconds; specify -1 for an indefinite wait.
@@ -18336,7 +18323,6 @@
     </method>
 
     <method name="waitForOperationCompletion">
-      <rest request="post" path="/progress/{progressid}/action/"/>
       <desc>
           Waits until the given operation is done with a given timeout in
           milliseconds; specify -1 for an indefinite wait.
@@ -19498,7 +19484,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </attribute>
 
     <method name="setIds" wrap-hint-server="passcaller">
-      <rest request="post" path="/media/{mediumid}/configuration/"/>
+      <rest request="post" path="/media/{mediumid}/config/"/>
       <desc>
         Changes the UUID and parent UUID for a hard disk medium.
       </desc>
@@ -19535,7 +19521,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="refreshState" wrap-hint-server="passcaller">
-      <rest request="post" path="/media/{mediumid}/configuration/"/>
+      <rest request="post" path="/media/{mediumid}/config/"/>
       <desc>
         If the current medium state (see <link to="MediumState"/>) is one of
         "Created", "Inaccessible" or "LockedRead", then this performs an
@@ -19572,7 +19558,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="getSnapshotIds">
-      <rest request="get" path="/media/{mediumid}/configuration/"/>
+      <rest name="SnapshotIdList" request="get" path="/media/{mediumid}/"/>
       <desc>
         Returns an array of UUIDs of all snapshots of the given machine where
         this medium is attached to.
@@ -19602,7 +19588,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="lockRead">
-      <rest request="post" path="/media/{mediumid}/configuration/"/>
+      <rest request="post" path="/media/{mediumid}/config/"/>
       <desc>
         Locks this medium for reading.
 
@@ -19664,7 +19650,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="lockWrite">
-      <rest request="post" path="/media/{mediumid}/configuration/"/>
+      <rest request="post" path="/media/{mediumid}/config/"/>
       <desc>
         Locks this medium for writing.
 
@@ -19757,7 +19743,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <!-- property methods -->
 
     <method name="getProperty" const="yes">
-      <rest request="get" path="/media/{mediumid}/configuration/"/>
+      <rest name="property" request="get" path="/media/{mediumid}/config/"/>
       <desc>
         Returns the value of the custom medium property with the given name.
 
@@ -19781,7 +19767,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="setProperty">
-      <rest request="post" path="/media/{mediumid}/configuration/"/>
+      <rest name="property" request="post" path="/media/{mediumid}/config/"/>
       <desc>
         Sets the value of the custom medium property with the given name.
 
@@ -19807,7 +19793,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="getProperties" const="yes">
-      <rest request="get" path="/media/{mediumid}/configuration/"/>
+      <rest name="propertylist" request="get" path="/media/{mediumid}/config/"/>
       <desc>
         Returns values for a group of properties in one call.
 
@@ -19844,7 +19830,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="setProperties">
-      <rest request="post" path="/media/{mediumid}/configuration/"/>
+      <rest name="propertylist" request="post" path="/media/{mediumid}/config/"/>
       <desc>
         Sets values for a group of properties in one call.
 
@@ -19999,7 +19985,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="mergeTo">
-      <rest request="post" path="/media/{mediumid}/action/"/>
+      <rest name="merge" request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Starts merging the contents of this medium and all intermediate
         differencing media in the chain to the given target medium.
@@ -20082,7 +20068,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <!-- clone method -->
 
     <method name="cloneTo">
-      <rest request="post" path="/media/{mediumid}/action/"/>
+      <rest name="clone" request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Starts creating a clone of this medium in the format and at the
         location defined by the @a target argument.
@@ -20180,7 +20166,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <!-- other methods -->
 
     <method name="moveTo" wrap-hint-server="passcaller">
-      <rest request="post" path="/media/{mediumid}/action/"/>
+      <rest name="move" request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Changes the location of this medium. Some medium types may support
         changing the storage unit location by simply changing the value of the
@@ -20303,7 +20289,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="changeEncryption">
-      <rest request="post" path="/media/{mediumid}/action/"/>
+      <rest name="encript" request="post" path="/media/{mediumid}/action/"/>
       <desc>
         Starts encryption of this medium. This means that the stored data in the
         medium is encrypted.
@@ -20347,7 +20333,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="getEncryptionSettings" const="yes" wrap-hint-server="passcaller">
-      <rest request="get" path="/media/{mediumid}/configuration/"/>
+      <rest name="EncryptionSettingList" request="get" path="/media/{mediumid}/config/"/>
       <desc>
         Returns the encryption settings for this medium.
 
@@ -20364,7 +20350,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="checkEncryptionPassword" const="yes">
-      <rest request="get" path="/media/{mediumid}/configuration/"/>
+      <rest request="get" path="/media/{mediumid}/config/"/>
       <desc>
         Checks whether the supplied password is correct for the medium.
 
@@ -20397,7 +20383,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="resizeAndCloneTo">
-      <rest request="post" path="/media/{mediumid}/action/"/>
+      <rest name="resizeAndClone" request="post" path="/media/{mediumid}/action/"/>
 
       <desc>
         This is a helper function that combines the functionality of
@@ -20606,6 +20592,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </attribute>
 
     <method name="describeFileExtensions" const="yes">
+      <rest name="description" request="get" path="/mediumformat/{formatid}/"/>
       <desc>
         Returns two arrays describing the supported file extensions.
 
@@ -20626,6 +20613,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="describeProperties" const="yes">
+      <rest name="description" request="get" path="/mediumformat/{formatid}/property/"/>
       <desc>
         Returns several arrays describing the properties supported by this
         format.
@@ -23489,7 +23477,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </attribute>
 
     <method name="createDeviceFilter">
-      <rest name='create' request="post" path="/usb/{vmid}/devicefilter/"/>
+      <rest name='create' request="post" path="/vm/{vmid}/usbdevicefilter/action/"/>
       <desc>
         Creates a new USB device filter. All attributes except
         the filter name are set to empty (any match),
@@ -23516,7 +23504,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="insertDeviceFilter">
-      <rest name='insert' request="patch" path="/usb/{vmid}/devicefilter/{filterid}/action/"/>
+      <rest name='insert' request="patch" path="/vm/{vmid}/usbdevicefilter/{filterid}/action/"/>
       <desc>
         Inserts the given USB device to the specified position
         in the list of filters.
@@ -23552,7 +23540,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="removeDeviceFilter">
-      <rest name='remove' request="delete" path="/usb/devicefilter/"/>
+      <rest name='remove' request="delete" path="/vm/{vmid}/usbdevicefilter/{filterid}/action/"/>
       <desc>
         Removes a USB device filter from the specified position in the
         list of filters.
