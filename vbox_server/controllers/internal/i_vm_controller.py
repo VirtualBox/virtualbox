@@ -101,11 +101,8 @@ from vbox_server.models.machine_temporary_eject_device_request_body import Machi
 ############################# Not implemented yet or not used #############################
 from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
 from vbox_server.models.console_add_encryption_passwords_request_body import ConsoleAddEncryptionPasswordsRequestBody  # noqa: E501
-from vbox_server.models.machine_attach_host_pci_device_request_body import MachineAttachHostPCIDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_delete_snapshot_range_request_body import MachineDeleteSnapshotRangeRequestBody  # noqa: E501
-from vbox_server.models.machine_export_to_request_body import MachineExportToRequestBody  # noqa: E501
 from vbox_server.models.machine_lock_machine_request_body import MachineLockMachineRequestBody  # noqa: E501
-from vbox_server.models.virtual_box_open_machine_request_body import VirtualBoxOpenMachineRequestBody  
 
 
 # Set logging level for module
@@ -2416,7 +2413,7 @@ def i_platformarm_getcpuproperty(vmid, property=None):  # noqa: E501
         vBoxCPUProperty = swagger_to_vbox_cpu_property_type_arm(property)
         if vBoxCPUProperty is None:
             return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
-        
+
         strArchtype = vbox_to_swagger_platform_architecture(oVM.platform.architecture)
         if strArchtype == "ARM":
             oPlatformARM = oVM.platform.arm
@@ -2464,7 +2461,7 @@ def i_platformx86_gethwvirtexproperty(vmid, property=None):  # noqa: E501
         vBoxHWVirtExProperty = swagger_to_vbox_hw_virt_ex_property_type(property)
         if vBoxHWVirtExProperty is None:
             return "The requested hardware property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
-        
+
         strArchtype = vbox_to_swagger_platform_architecture(oVM.platform.architecture)
         if strArchtype == "X86":
             oPlatformX86 = oVM.platform.x86
@@ -2575,6 +2572,7 @@ def i_platformx86_setcpuproperty(vmid, oPlatformX86SetCPUPropertyRequestBody: Pl
         else:
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, f"Virtual CPU isn't X86 architecture CPU")
+
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -2626,6 +2624,7 @@ def i_platformarm_setcpuproperty(vmid, oPlatformARMSetCPUPropertyRequestBody: Pl
         else:
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, "Virtual CPU isn't ARM architecture CPU")
+
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
