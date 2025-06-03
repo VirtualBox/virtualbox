@@ -2368,10 +2368,15 @@ def i_platformx86_getcpuproperty(vmid, property=None):  # noqa: E501
         vBoxCPUProperty = swagger_to_vbox_cpu_property_type_x86(property)
         if vBoxCPUProperty is None:
             return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
-        
-        oPlatformX86 = oVM.platform.x86
-        oPlatformx86GetcpupropertyResponse.value = oPlatformX86.getCPUProperty(vBoxCPUProperty)
-        logging.info('The CPU property ' + property + ' is ' + str(oPlatformx86GetcpupropertyResponse.value))
+
+        strArchtype = vbox_to_swagger_platform_architecture(oVM.platform.architecture)
+        if strArchtype == "X86":
+            oPlatformX86 = oVM.platform.x86
+            oPlatformx86GetcpupropertyResponse.value = oPlatformX86.getCPUProperty(vBoxCPUProperty)
+            logging.info('The CPU property ' + property + ' is ' + str(oPlatformx86GetcpupropertyResponse.value))
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "Virtual CPU isn't X86 architecture CPU")
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -2412,9 +2417,14 @@ def i_platformarm_getcpuproperty(vmid, property=None):  # noqa: E501
         if vBoxCPUProperty is None:
             return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
         
-        oPlatformARM = oVM.platform.arm
-        oPlatformARMGetcpupropertyResponse.value = oPlatformARM.getCPUProperty(vBoxCPUProperty)
-        logging.info('The CPU property ' + property + ' is ' + str(oPlatformARMGetcpupropertyResponse.value))
+        strArchtype = vbox_to_swagger_platform_architecture(oVM.platform.architecture)
+        if strArchtype == "ARM":
+            oPlatformARM = oVM.platform.arm
+            oPlatformARMGetcpupropertyResponse.value = oPlatformARM.getCPUProperty(vBoxCPUProperty)
+            logging.info('The CPU property ' + property + ' is ' + str(oPlatformARMGetcpupropertyResponse.value))
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "Virtual CPU isn't ARM architecture CPU")
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -2455,9 +2465,14 @@ def i_platformx86_gethwvirtexproperty(vmid, property=None):  # noqa: E501
         if vBoxHWVirtExProperty is None:
             return "The requested hardware property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
         
-        oPlatformX86 = oVM.platform.x86
-        oPlatformx86GetcpupropertyResponse.value = oPlatformX86.getHWVirtExProperty(vBoxHWVirtExProperty)
-        logging.info('The property ' + property + ' is ' + str(oPlatformx86GetcpupropertyResponse.value))
+        strArchtype = vbox_to_swagger_platform_architecture(oVM.platform.architecture)
+        if strArchtype == "X86":
+            oPlatformX86 = oVM.platform.x86
+            oPlatformx86GetcpupropertyResponse.value = oPlatformX86.getHWVirtExProperty(vBoxHWVirtExProperty)
+            logging.info('The property ' + property + ' is ' + str(oPlatformx86GetcpupropertyResponse.value))
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "Virtual CPU isn't X86 architecture CPU")
     except Exception as e:
         logging.info('Exception during obtaining the specified hardware virtualization property ' + property)
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -2494,15 +2509,20 @@ def i_platformx86_sethwvirtexproperty(vmid, oPlatformX86SetHWVirtExPropertyReque
     value = oPlatformX86SetHWVirtExPropertyRequestBody.value
 
     try:
-        vBoxHWVirtExProperty = swagger_to_vbox_hw_virt_ex_property(property)
+        vBoxHWVirtExProperty = swagger_to_vbox_hw_virt_ex_property_type(property)
         if vBoxHWVirtExProperty is None:
             return "The requested hardware property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
 
-        oPlatformX86 = oCurrMachine.platform.x86
-        oPlatformX86.setHWVirtExProperty(vBoxHWVirtExProperty, value)
-        oCurrMachine.saveSettings()
-        logging.info("Successfully set VM hardware virtualization property "  + "'" \
-            + property  + "'" + " to value " + "'" + str(value) + "'")
+        strArchtype = vbox_to_swagger_platform_architecture(oCurrMachine.platform.architecture)
+        if strArchtype == "X86":
+            oPlatformX86 = oCurrMachine.platform.x86
+            oPlatformX86.setHWVirtExProperty(vBoxHWVirtExProperty, value)
+            oCurrMachine.saveSettings()
+            logging.info("Successfully set VM hardware virtualization property "  + "'" \
+                        + property  + "'" + " to value " + "'" + str(value) + "'")
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "Virtual CPU isn't X86 architecture CPU")
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -2546,11 +2566,15 @@ def i_platformx86_setcpuproperty(vmid, oPlatformX86SetCPUPropertyRequestBody: Pl
         if vBoxCPUProperty is None:
             return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
 
-        oPlatformX86 = oCurrMachine.platform.x86
-        oPlatformX86.setCPUProperty(vBoxCPUProperty, value)
-        oCurrMachine.saveSettings()
-        logging.info('Successfully set the virtual CPU property ' + property + ' to ' + str(value))
-
+        strArchtype = vbox_to_swagger_platform_architecture(oCurrMachine.platform.architecture)
+        if strArchtype == "X86":
+            oPlatformX86 = oCurrMachine.platform.x86
+            oPlatformX86.setCPUProperty(vBoxCPUProperty, value)
+            oCurrMachine.saveSettings()
+            logging.info('Successfully set the virtual CPU property ' + property + ' to ' + str(value))
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, f"Virtual CPU isn't X86 architecture CPU")
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -2589,15 +2613,19 @@ def i_platformarm_setcpuproperty(vmid, oPlatformARMSetCPUPropertyRequestBody: Pl
     logging.info('The passed CPU property ' + property + ' is ' + str(value))
 
     try:
-        vBoxCPUProperty = swagger_to_vbox_cpu_arm_property(property)
+        vBoxCPUProperty = swagger_to_vbox_cpu_property_type_arm(property)
         if vBoxCPUProperty is None:
             return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
 
-        oPlatformARM = oCurrMachine.platform.arm
-        oPlatformARM.setCPUProperty(vBoxCPUProperty, value)
-        oCurrMachine.saveSettings()
-        logging.info('Successfully set the virtual CPU property ' + property + ' to ' + str(value))
-
+        strArchtype = vbox_to_swagger_platform_architecture(oCurrMachine.platform.architecture)
+        if strArchtype == "ARM":
+            oPlatformARM = oCurrMachine.platform.arm
+            oPlatformARM.setCPUProperty(vBoxCPUProperty, value)
+            oCurrMachine.saveSettings()
+            logging.info('Successfully set the virtual CPU property ' + property + ' to ' + str(value))
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, "Virtual CPU isn't ARM architecture CPU")
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
