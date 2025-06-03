@@ -1,4 +1,4 @@
-/* $Id: regops.c 108499 2025-02-21 12:03:56Z vadim.galitsyn@oracle.com $ */
+/* $Id: regops.c 109762 2025-06-03 08:26:33Z vadim.galitsyn@oracle.com $ */
 /** @file
  * vboxsf - VBox Linux Shared Folders VFS, regular file inode and file operations.
  */
@@ -3695,11 +3695,12 @@ static int vbsf_readpage(struct file *file, struct page *page)
  * Needed for mmap and writes when the file is mmapped in a shared+writeable
  * fashion.
  */
-#if RTLNX_VER_MIN(2,5,52)
+#if RTLNX_VER_MAX(6,16,0)
+# if RTLNX_VER_MIN(2,5,52)
 static int vbsf_writepage(struct page *page, struct writeback_control *wbc)
-#else
+# else
 static int vbsf_writepage(struct page *page)
-#endif
+# endif
 {
     struct address_space   *mapping = page->mapping;
     struct inode           *inode   = mapping->host;
@@ -3742,11 +3743,11 @@ static int vbsf_writepage(struct page *page)
                     && offEndOfWrite > i_size_read(inode))
                     i_size_write(inode, offEndOfWrite);
 
-#if RTLNX_VER_MAX(6,12,0)
+# if RTLNX_VER_MAX(6,12,0)
                 /* Update and unlock the page. */
                 if (PageError(page))
                     ClearPageError(page);
-#endif
+# endif
                 SetPageUptodate(page);
                 unlock_page(page);
 
@@ -3768,12 +3769,13 @@ static int vbsf_writepage(struct page *page)
             printk("vbsf_writepage: no writable handle for %s..\n", sf_i->path->String.ach);
         err = -EIO;
     }
-#if RTLNX_VER_MAX(6,12,0)
+# if RTLNX_VER_MAX(6,12,0)
     SetPageError(page);
-#endif
+# endif
     unlock_page(page);
     return err;
 }
+#endif /* < 6.16.0 */
 
 
 #if RTLNX_VER_MIN(2,6,24)
@@ -3905,7 +3907,9 @@ struct address_space_operations vbsf_reg_aops = {
 #else
     .readpage       = vbsf_readpage,
 #endif
+#if RTLNX_VER_MAX(6,16,0)
     .writepage      = vbsf_writepage,
+#endif
     /** @todo Need .writepages if we want msync performance...  */
 #if RTLNX_VER_MIN(5,18,0) || RTLNX_RHEL_RANGE(9,2, 9,99)
     .dirty_folio = filemap_dirty_folio,
