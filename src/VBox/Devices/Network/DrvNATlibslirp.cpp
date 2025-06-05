@@ -1,4 +1,4 @@
-/* $Id: DrvNATlibslirp.cpp 109156 2025-04-09 16:04:13Z klaus.espenlaub@oracle.com $ */
+/* $Id: DrvNATlibslirp.cpp 109782 2025-06-05 05:36:28Z jack.doherty@oracle.com $ */
 /** @file
  * DrvNATlibslirp - NATlibslirp network transport driver.
  */
@@ -94,6 +94,7 @@
 /** The maximum (default) poll/WSAPoll timeout. */
 #define DRVNAT_DEFAULT_TIMEOUT (int)RT_MS_1HOUR
 #define MAX_IP_ADDRESS_STR_LEN_W_NULL 16
+#define BOOTP_FILE_MAX_LEN 127
 
 /** @todo r=bird: this is a load of weirdness... 'extradata' != cfgm.   */
 #define GET_EXTRADATA(pdrvins, node, name, rc, type, type_name, var)                                  \
@@ -1619,6 +1620,8 @@ static DECLCALLBACK(int) drvNATConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg, uin
 
     GET_STRING_ALLOC(rc, pDrvIns, pCfg, "TFTPPrefix", pThis->pszTFTPPrefix);
     GET_STRING_ALLOC(rc, pDrvIns, pCfg, "BootFile", pThis->pszBootFile);
+    rc = RTStrATruncate(&pThis->pszBootFile, BOOTP_FILE_MAX_LEN);
+    AssertRCReturn(rc, rc);
     GET_STRING_ALLOC(rc, pDrvIns, pCfg, "NextServer", pThis->pszNextServer);
 
     int fDNSProxy = 0;
