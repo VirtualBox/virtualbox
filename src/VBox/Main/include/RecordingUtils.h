@@ -1,4 +1,4 @@
-/* $Id: RecordingUtils.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: RecordingUtils.h 109818 2025-06-11 08:31:50Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording utility header.
  */
@@ -39,11 +39,13 @@ void RecordingUtilsConvBGRA32ToYUVI420(uint8_t *paDst, uint32_t uDstWidth, uint3
 void RecordingUtilsConvBGRA32ToYUVI420Ex(uint8_t *paDst, uint32_t dx, uint32_t dy, uint32_t uDstWidth, uint32_t uDstHeight,
                                          uint8_t *paSrc, uint32_t sx, uint32_t sy, uint32_t uSrcWidth, uint32_t uSrcHeight, uint32_t uSrcStride, uint8_t uBPP);
 int RecordingUtilsCoordsCropCenter(PRECORDINGCODECPARMS pCodecParms, int32_t *sx, int32_t *sy, int32_t *sw, int32_t *sh, int32_t *dx, int32_t *dy);
+const char *RecordingUtilsRecordingFrameTypeToStr(RECORDINGFRAME_TYPE enmType);
 
 #ifdef DEBUG
-int RecordingUtilsDbgDumpImageData(const uint8_t *pu8RGBBuf, size_t cbRGBBuf, const char *pszPath, const char *pszWhat, uint32_t uWidth, uint32_t uHeight, uint32_t uBytesPerLine, uint8_t uBPP);
+int RecordingUtilsDbgDumpImageData(const uint8_t *pu8RGBBuf, size_t cbRGBBuf, const char *pszPath, const char *pszWhat, uint32_t uX, uint32_t uY, uint32_t uWidth, uint32_t uHeight, uint32_t uBytesPerLine, uint8_t uBPP);
 int RecordingUtilsDbgDumpVideoFrameEx(const PRECORDINGVIDEOFRAME pFrame, const char *pszPath, const char *pszWhat);
 int RecordingUtilsDbgDumpVideoFrame(const PRECORDINGVIDEOFRAME pFrame, const char *pszWhat);
+void RecordingUtilsDbgLogFrame(PRECORDINGFRAME pFrame);
 #endif
 
 #endif /* !MAIN_INCLUDED_RecordingUtils_h */

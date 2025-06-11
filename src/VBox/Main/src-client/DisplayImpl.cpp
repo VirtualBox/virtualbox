@@ -1,4 +1,4 @@
-/* $Id: DisplayImpl.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: DisplayImpl.cpp 109818 2025-06-11 08:31:50Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -2181,61 +2181,30 @@ int Display::i_recordingScreenChanged(unsigned uScreenId, const DISPLAYFBINFO *p
 {
     RecordingContext *pCtx = Recording.pCtx;
 
-    Log2Func(("uScreenId=%u\n", uScreenId));
+    Log2Func(("uScreenId=%u, w=%u, h=%u, bpp=%u\n", uScreenId, pFBInfo->w, pFBInfo->h, pFBInfo->u16BitsPerPixel));
 
-    if (uScreenId == 0xFFFFFFFF /* SVGA_ID_INVALID -- The old register interface is single screen only */)
-        uScreenId = VBOX_VIDEO_PRIMARY_SCREEN;
-
-    if (!pCtx->IsFeatureEnabled(uScreenId, RecordingFeature_Video))
+    if (   !pCtx->IsFeatureEnabled(uScreenId, RecordingFeature_Video)
+        || !pFBInfo->pu8FramebufferVRAM)
     {
         /* Skip recording this screen. */
         return VINF_SUCCESS;
     }
 
+    if (uScreenId == 0xFFFFFFFF /* SVGA_ID_INVALID -- The old register interface is single screen only */)
+        uScreenId = VBOX_VIDEO_PRIMARY_SCREEN;
+
     AssertReturn(uScreenId < mcMonitors, VERR_INVALID_PARAMETER);
-
-    RT_NOREF(pFBInfo);
-
-    /* We have to go the official way of querying the source bitmap, as this function creates it if it does not exist yet. */
-    ComPtr<IDisplaySourceBitmap> sourceBitmap;
-    HRESULT hrc = querySourceBitmap(uScreenId, sourceBitmap);
-    if (FAILED(hrc)) /* Blank, skip. */
-        return VINF_SUCCESS;
-
-    BYTE *pbAddress;
-    ULONG ulWidth;
-    ULONG ulHeight;
-    ULONG ulBitsPerPixel;
-    ULONG ulBytesPerLine;
-    BitmapFormat_T bitmapFormat = BitmapFormat_Opaque;
-    hrc = sourceBitmap->QueryBitmapInfo(&pbAddress,
-                                        &ulWidth,
-                                        &ulHeight,
-                                        &ulBitsPerPixel,
-                                        &ulBytesPerLine,
-                                        &bitmapFormat);
-    AssertComRC(hrc);
-
-    Log2Func(("pbAddress=%p, ulWidth=%RU32, ulHeight=%RU32, ulBitsPerPixel=%RU32\n",
-              pbAddress, ulWidth, ulHeight, ulBitsPerPixel));
-
-    Assert(ulWidth);
-    Assert(ulHeight);
-    Assert(ulBitsPerPixel);
-    Assert(ulBytesPerLine);
-
-    if (!pbAddress)
-    {
-        AssertFailed();
-        return VINF_SUCCESS;
-    }
+    AssertReturn(pFBInfo->w, VERR_INVALID_PARAMETER);
+    AssertReturn(pFBInfo->h, VERR_INVALID_PARAMETER);
+    AssertReturn(pFBInfo->u16BitsPerPixel, VERR_INVALID_PARAMETER);
+    AssertReturn(pFBInfo->u32LineSize, VERR_INVALID_PARAMETER);
 
     i_updateDeviceCursorCapabilities();
 
     RECORDINGSURFACEINFO ScreenInfo;
-    ScreenInfo.uWidth      = ulWidth;
-    ScreenInfo.uHeight     = ulHeight;
-    ScreenInfo.uBPP        = ulBitsPerPixel;
+    ScreenInfo.uWidth      = pFBInfo->w;
+    ScreenInfo.uHeight     = pFBInfo->h;
+    ScreenInfo.uBPP        = pFBInfo->u16BitsPerPixel;
     ScreenInfo.enmPixelFmt = RECORDINGPIXELFMT_BRGA32; /** @todo Does this apply everywhere? */
 
     uint64_t const tsNowMs = pCtx->GetCurrentPTS();
@@ -2251,10 +2220,11 @@ int Display::i_recordingScreenChanged(unsigned uScreenId, const DISPLAYFBINFO *p
                                               pointerData.width, pointerData.height,
                                               pointerData.pu8Shape, pointerData.cbShape);
         /* Send the full screen update. */
-        vrc = i_recordingScreenUpdate(uScreenId, pbAddress, ulHeight * ulBytesPerLine,
-                                      0, 0, ulWidth, ulHeight, ulBytesPerLine);
+        vrc = i_recordingScreenUpdate(uScreenId, pFBInfo->pu8FramebufferVRAM, pFBInfo->h * pFBInfo->u32LineSize,
+                                      0, 0, pFBInfo->w, pFBInfo->h, pFBInfo->u32LineSize);
     }
 
+    Log2Func(("LEAVE: %Rrc\n", vrc));
     return vrc;
 }
 
@@ -2315,10 +2285,11 @@ int Display::i_recordingScreenUpdate(unsigned uScreenId, uint8_t *pauFramebuffer
                                    "/tmp/recording", "display-screen-update", w, h, uBytesPerLine, 32 /* BPP */);
 #endif
 
-    int vrc = pCtx->SendVideoFrame(uScreenId, &Frame, tsNowMs);
+    int const vrc = pCtx->SendVideoFrame(uScreenId, &Frame, tsNowMs);
 
     STAM_PROFILE_STOP(&Stats.Monitor[uScreenId].Recording.profileRecording, a);
 
+    Log2Func(("LEAVE: %Rrc\n", vrc));
     return vrc;
 }
 
@@ -2368,9 +2339,11 @@ int Display::i_recordingScreenUpdate(unsigned uScreenId, uint32_t x, uint32_t y,
     Log2Func(("uScreenId=%u, pbAddress=%p, ulWidth=%RU32, ulHeight=%RU32, ulBitsPerPixel=%RU32\n",
               uScreenId, pbAddress, ulWidth, ulHeight, ulBitsPerPixel));
 
-    return i_recordingScreenUpdate(uScreenId,
-                                   pbAddress, ulHeight * ulBytesPerLine,
-                                   x, y, w, h, ulBytesPerLine);
+    int const vrc = i_recordingScreenUpdate(uScreenId,
+                                            pbAddress, ulHeight * ulBytesPerLine,
+                                            x, y, w, h, ulBytesPerLine);
+    Log2Func(("LEAVE: %Rrc\n", vrc));
+    return vrc;
 }
 
 /**

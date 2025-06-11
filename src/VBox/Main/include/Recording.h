@@ -1,4 +1,4 @@
-/* $Id: Recording.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: Recording.h 109818 2025-06-11 08:31:50Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording code header.
  */
@@ -249,6 +249,14 @@ protected:
      *  point in time. */
     RECORDINGCODEC               m_CodecAudio;
 #endif /* VBOX_WITH_AUDIO_RECORDING */
+#ifdef VBOX_WITH_STATISTICS
+    /** STAM values. */
+    struct
+    {
+        STAMPROFILE              profileDataCommon;
+        STAMPROFILE              profileDataStreams;
+    } m_STAM;
+#endif /* VBOX_WITH_STATISTICS */
     /** Block map of raw common data blocks which need to get encoded first. */
     RecordingBlockMap            m_mapBlocksRaw;
     /** Block map of encoded common blocks.

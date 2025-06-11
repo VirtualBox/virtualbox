@@ -1,4 +1,4 @@
-/* $Id: RecordingStream.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: RecordingStream.cpp 109818 2025-06-11 08:31:50Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording stream code.
  */
@@ -41,13 +41,20 @@
 # include <VBox/vmm/pdmaudioinline.h>
 #endif
 
+#ifdef VBOX_WITH_STATISTICS
+#include <VBox/vmm/vmmr3vtable.h>
+#endif
+
+#include "ConsoleImpl.h"
 #include "Recording.h"
 #include "RecordingUtils.h"
 #include "WebMWriter.h"
 
 
-RecordingStream::RecordingStream(RecordingContext *a_pCtx, uint32_t uScreen, const settings::RecordingScreen &Settings)
-    : m_enmState(RECORDINGSTREAMSTATE_UNINITIALIZED)
+RecordingStream::RecordingStream(Console *pConsole, RecordingContext *a_pCtx,
+                                 uint32_t uScreen, const settings::RecordingScreen &Settings)
+    : m_pConsole(pConsole)
+    , m_enmState(RECORDINGSTREAMSTATE_UNINITIALIZED)
 {
     int vrc2 = initInternal(a_pCtx, uScreen, Settings);
     if (RT_FAILURE(vrc2))
@@ -269,12 +276,12 @@ bool RecordingStream::NeedsUpdate(uint64_t msTimestamp) const
  * As this can be very CPU intensive, this function usually is called from a separate thread.
  *
  * @returns VBox status code.
- * @param   streamBlocks        Block set of stream to process.
- * @param   commonBlocks        Block set of common blocks to process for this stream.
+ * @param   streamBlockSet      Block set of stream to process.
+ * @param   commonBlockSet      Block set of common blocks to process for this stream.
  *
  * @note    Runs in recording thread.
  */
-int RecordingStream::process(const RecordingBlockSet &streamBlocks, RecordingBlockMap &commonBlocks)
+int RecordingStream::process(RecordingBlockSet &streamBlockSet, RecordingBlockMap &commonBlockSet)
 {
     LogFlowFuncEnter();
 
@@ -286,10 +293,14 @@ int RecordingStream::process(const RecordingBlockSet &streamBlocks, RecordingBlo
         return VINF_SUCCESS;
     }
 
+    STAM_PROFILE_START(&m_STAM.profileFnProcessTotal, total);
+
+    STAM_PROFILE_START(&m_STAM.profileFnProcessVideo, video);
+
     int vrc = VINF_SUCCESS;
 
-    RecordingBlockMap::const_iterator itStreamBlock = streamBlocks.Map.begin();
-    while (itStreamBlock != streamBlocks.Map.end())
+    RecordingBlockMap::const_iterator itStreamBlock = streamBlockSet.Map.begin();
+    while (itStreamBlock != streamBlockSet.Map.end())
     {
         uint64_t const   msTimestamp = itStreamBlock->first; RT_NOREF(msTimestamp);
         RecordingBlocks *pBlocks     = itStreamBlock->second;
@@ -299,16 +310,27 @@ int RecordingStream::process(const RecordingBlockSet &streamBlocks, RecordingBlo
         RecordingBlockList::const_iterator itBlockInList = pBlocks->List.cbegin();
         while (itBlockInList != pBlocks->List.cend())
         {
+            /* Block alreaady processed (e.g. no references to it anymore)? Skip. */
+            uint64_t const cRefs = (*itBlockInList)->GetRefs();
+            if (cRefs == 0)
+            {
+                ++itBlockInList;
+                continue;
+            }
+
             PRECORDINGFRAME pFrame = (PRECORDINGFRAME)(*itBlockInList)->pvData;
-            AssertPtr(pFrame);
+            AssertPtrBreakStmt(pFrame, vrc = VERR_INVALID_POINTER);
             Assert(pFrame->msTimestamp == msTimestamp);
+
+            LogFlowFunc(("id=%RU64, type=%s (%#x), ts=%RU64\n",
+                         pFrame->idStream, RecordingUtilsRecordingFrameTypeToStr(pFrame->enmType), pFrame->enmType, pFrame->msTimestamp));
+
+            unlock();
 
             switch (pFrame->enmType)
             {
                 case RECORDINGFRAME_TYPE_VIDEO:
-                    RT_FALL_THROUGH();
                 case RECORDINGFRAME_TYPE_CURSOR_SHAPE:
-                    RT_FALL_THROUGH();
                 case RECORDINGFRAME_TYPE_CURSOR_POS:
                 {
                     int vrc2 = recordingCodecEncodeFrame(&m_CodecVideo, pFrame, pFrame->msTimestamp, m_pCtx /* pvUser */);
@@ -325,14 +347,29 @@ int RecordingStream::process(const RecordingBlockSet &streamBlocks, RecordingBlo
                 }
 
                 default:
+                    AssertFailed();
                     break;
             }
 
-            ++itBlockInList;
+            lock();
+
+            /* Release the block from the block list so that the housekeeping can handle it later. */
+            (*itBlockInList)->Release();
+
+            STAM_COUNTER_INC(&m_STAM.cFramesEncoded);
         }
 
-        ++itStreamBlock;
+        /* Move block set to housekeeping set. */
+        streamBlockSet.Map.erase(itStreamBlock);
+        m_BlockSetHousekeeping.Insert(msTimestamp, itStreamBlock->second);
+        itStreamBlock = streamBlockSet.Map.begin();
     }
+
+    streamBlockSet.tsLastProcessedMs = RTTimeMilliTS();
+
+    STAM_PROFILE_STOP(&m_STAM.profileFnProcessVideo, video);
+
+    STAM_PROFILE_START(&m_STAM.profileFnProcessAudio, audio);
 
 #ifdef VBOX_WITH_AUDIO_RECORDING
     /* Do we need to multiplex the common audio data to this stream? */
@@ -340,8 +377,8 @@ int RecordingStream::process(const RecordingBlockSet &streamBlocks, RecordingBlo
     {
         /* As each (enabled) screen has to get the same audio data, look for common (audio) data which needs to be
          * written to the screen's assigned recording stream. */
-        RecordingBlockMap::const_iterator itBlockMap = commonBlocks.begin();
-        while (itBlockMap != commonBlocks.end())
+        RecordingBlockMap::const_iterator itBlockMap = commonBlockSet.begin();
+        while (itBlockMap != commonBlockSet.end())
         {
             RecordingBlockList &blockList = itBlockMap->second->List;
 
@@ -360,9 +397,7 @@ int RecordingStream::process(const RecordingBlockSet &streamBlocks, RecordingBlo
 
                 Log3Func(("RECORDINGFRAME_TYPE_AUDIO: %zu bytes -> %Rrc\n", pAudioFrame->cbBuf, vrc2));
 
-                Assert(pBlock->cRefs);
-                pBlock->cRefs--;
-                if (pBlock->cRefs == 0)
+                if (pBlock->Release() == 0)
                 {
                     blockList.erase(itBlockList);
                     delete pBlock;
@@ -376,21 +411,42 @@ int RecordingStream::process(const RecordingBlockSet &streamBlocks, RecordingBlo
             if (blockList.empty())
             {
                 delete itBlockMap->second;
-                commonBlocks.erase(itBlockMap);
-                itBlockMap = commonBlocks.begin();
+                commonBlockSet.erase(itBlockMap);
+                itBlockMap = commonBlockSet.begin();
             }
             else
                 ++itBlockMap;
         }
     }
 #else
-    RT_NOREF(commonBlocks);
+    RT_NOREF(commonBlockSet);
 #endif /* VBOX_WITH_AUDIO_RECORDING */
+
+    STAM_PROFILE_STOP(&m_STAM.profileFnProcessAudio, audio);
+
+    STAM_PROFILE_STOP(&m_STAM.profileFnProcessTotal, total);
 
     unlock();
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;
+}
+
+/**
+ * Worker function (callback) to do housekeeping on a given recording block set.
+ *
+ * Runs in a separate request pool thread to unblock a stream's main thread as much as possible.
+ */
+/* static */
+DECLCALLBACK(void) RecordingStream::doHousekeepingCallback(RecordingStream *pThis, RecordingBlockSet *pSet)
+{
+    RT_NOREF(pThis);
+
+    LogFunc(("Running housekeeping ...\n"));
+
+    pSet->Clear();
+
+    LogFunc(("Running housekeeping done\n"));
 }
 
 /**
@@ -420,29 +476,25 @@ int RecordingStream::ThreadMain(int rcWait, uint64_t msTimestamp, RecordingBlock
         return recordingCodecEncodeCurrent(&m_CodecVideo, msTimestamp);
     }
 
-    int vrc = process(m_Blocks, commonBlocks);
+    int vrc = process(m_BlockSet, commonBlocks);
 
     /*
      * Housekeeping.
      *
-     * Here we delete all processed stream blocks of this stream.
+     * Here we delete all processed stream blocks of this stream. Currently hardcoded to 5s.
      * The common blocks will be deleted by the recording context (which owns those).
      */
     lock();
 
-    RecordingBlockMap::iterator itStreamBlocks = m_Blocks.Map.begin();
-    while (itStreamBlocks != m_Blocks.Map.end())
+    uint64_t const tsNowMs = RTTimeMilliTS();
+    if (tsNowMs - m_BlockSetHousekeeping.tsLastProcessedMs >= RT_MS_5SEC)
     {
-        RecordingBlocks *pBlocks = itStreamBlocks->second;
-        AssertPtr(pBlocks);
-        pBlocks->Clear();
-        Assert(pBlocks->List.empty());
-        delete pBlocks;
+        m_BlockSetHousekeeping.tsLastProcessedMs = tsNowMs;
 
-        m_Blocks.Map.erase(itStreamBlocks);
-        itStreamBlocks = m_Blocks.Map.begin();
+        int const  rc2 = RTReqPoolCallVoidWait(m_hReqPool,
+                                               (PFNRT)RecordingStream::doHousekeepingCallback, 2, this, &m_BlockSetHousekeeping);
+        AssertRC(rc2); RT_NOREF(rc2);
     }
-    Assert(m_Blocks.Map.empty());
 
     unlock();
 
@@ -462,6 +514,8 @@ int RecordingStream::ThreadMain(int rcWait, uint64_t msTimestamp, RecordingBlock
  */
 int RecordingStream::addFrame(PRECORDINGFRAME pFrame, uint64_t msTimestamp)
 {
+    LogFlowFuncEnter();
+
     int vrc;
 
     Assert(pFrame->msTimestamp == msTimestamp); /* Sanity. */
@@ -472,16 +526,39 @@ int RecordingStream::addFrame(PRECORDINGFRAME pFrame, uint64_t msTimestamp)
 
         pBlock->pvData = pFrame;
         pBlock->cbData = sizeof(RECORDINGFRAME);
+        pBlock->AddRef();
 
+        STAM_COUNTER_INC(&m_STAM.cFramesAdded);
+#if 0
+        RecordingUtilsDbgLogFrame(pFrame);
+
+        if (!m_BlockSet.Map.empty())
+            Log3(("Current blocks (%zu):\n", m_BlockSet.Map.size()));
+
+        RecordingBlockMap::const_iterator itStreamBlocks = m_BlockSet.Map.cbegin();
+        while (itStreamBlocks != m_BlockSet.Map.cend())
+        {
+            RecordingBlocks *pBlocks = itStreamBlocks->second;
+            AssertPtr(pBlocks);
+            RecordingBlockList::const_iterator itBlocks = pBlocks->List.cbegin();
+            while (itBlocks != pBlocks->List.cend())
+            {
+                PRECORDINGFRAME pBlockFrame = (PRECORDINGFRAME)(*itBlocks)->pvData;
+                RecordingUtilsDbgLogFrame(pBlockFrame);
+                itBlocks++;
+            }
+            itStreamBlocks++;
+        }
+#endif
         try
         {
             RecordingBlocks *pRecordingBlocks;
-            RecordingBlockMap::const_iterator it = m_Blocks.Map.find(msTimestamp);
-            if (it == m_Blocks.Map.end())
+            RecordingBlockMap::const_iterator it = m_BlockSet.Map.find(msTimestamp);
+            if (it == m_BlockSet.Map.end())
             {
                 pRecordingBlocks = new RecordingBlocks();
                 pRecordingBlocks->List.push_back(pBlock);
-                m_Blocks.Map.insert(std::make_pair(msTimestamp, pRecordingBlocks));
+                m_BlockSet.Map.insert(std::make_pair(msTimestamp, pRecordingBlocks));
             }
             else
             {
@@ -502,6 +579,7 @@ int RecordingStream::addFrame(PRECORDINGFRAME pFrame, uint64_t msTimestamp)
         vrc = VERR_NO_MEMORY;
     }
 
+    LogFlowFuncLeaveRC(vrc);
     return vrc;
 }
 
@@ -727,7 +805,7 @@ int RecordingStream::initInternal(RecordingContext *pCtx, uint32_t uScreen,
 {
     AssertReturn(m_enmState == RECORDINGSTREAMSTATE_UNINITIALIZED, VERR_WRONG_ORDER);
 
-    m_pCtx         = pCtx;
+    m_pCtx           = pCtx;
     m_uTrackAudio    = UINT8_MAX;
     m_uTrackVideo    = UINT8_MAX;
     m_tsStartMs      = 0;
@@ -844,6 +922,46 @@ int RecordingStream::initInternal(RecordingContext *pCtx, uint32_t uScreen,
 
     if (RT_SUCCESS(vrc))
     {
+        char szName[16];
+        RTStrPrintf(szName, sizeof(szName), "Rec%uWr", uScreen);
+        RTREQPOOL hReqPool = NIL_RTREQPOOL;
+        vrc = RTReqPoolCreate(1 /*cMaxThreads*/, RT_MS_30SEC /*cMsMinIdle*/, UINT32_MAX /*cThreadsPushBackThreshold*/,
+                              1 /*cMsMaxPushBack*/, szName, &hReqPool);
+        if (RT_SUCCESS(vrc))
+        {
+            vrc = RTReqPoolSetCfgVar(hReqPool, RTREQPOOLCFGVAR_THREAD_FLAGS, RTTHREADFLAGS_COM_MTA);
+            if (RT_SUCCESS(vrc))
+                vrc = RTReqPoolSetCfgVar(hReqPool, RTREQPOOLCFGVAR_MIN_THREADS, 1);
+
+            if (RT_SUCCESS(vrc))
+                m_hReqPool = hReqPool;
+        }
+    }
+
+#ifdef VBOX_WITH_STATISTICS
+    Console::SafeVMPtrQuiet ptrVM(m_pCtx->m_pConsole);
+    if (ptrVM.isOk())
+    {
+        ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.cFramesAdded,
+                                            STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_COUNT,
+                                            "Total recording frames added.", "/Main/Recording/Stream%RU32/FramesAdded", uScreen);
+        ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.cFramesEncoded,
+                                            STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_COUNT,
+                                            "Total recording frames encoded.", "/Main/Recording/Stream%RU32/FramesEncoded", uScreen);
+        ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.profileFnProcessTotal,
+                                            STAMTYPE_PROFILE, STAMVISIBILITY_ALWAYS, STAMUNIT_NS_PER_CALL,
+                                            "Profiling the processing function (total).", "/Main/Recording/Stream%RU32/ProfileFnProcessTotal", uScreen);
+        ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.profileFnProcessVideo,
+                                            STAMTYPE_PROFILE, STAMVISIBILITY_ALWAYS, STAMUNIT_NS_PER_CALL,
+                                            "Profiling the processing function (video).", "/Main/Recording/Stream%RU32/ProfileFnProcessVideo", uScreen);
+        ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.profileFnProcessAudio,
+                                            STAMTYPE_PROFILE, STAMVISIBILITY_ALWAYS, STAMUNIT_NS_PER_CALL,
+                                            "Profiling the processing function (audio).", "/Main/Recording/Stream%RU32/ProfileFnProcessAudio", uScreen);
+    }
+#endif
+
+    if (RT_SUCCESS(vrc))
+    {
         m_enmState  = RECORDINGSTREAMSTATE_INITIALIZED;
         m_fEnabled  = true;
         m_tsStartMs = RTTimeMilliTS();
@@ -885,7 +1003,7 @@ int RecordingStream::close(void)
             break;
     }
 
-    m_Blocks.Clear();
+    m_BlockSet.Clear();
 
     LogRel(("Recording: Recording screen #%u stopped\n", m_uScreenID));
 
@@ -977,9 +1095,26 @@ int RecordingStream::uninitInternal(void)
     {
         RTCritSectDelete(&m_CritSect);
 
+        uint32_t const cRefs = RTReqPoolRelease(m_hReqPool);
+        Assert(cRefs == 0); RT_NOREF(cRefs);
+        m_hReqPool = NIL_RTREQPOOL;
+
         m_enmState = RECORDINGSTREAMSTATE_UNINITIALIZED;
         m_fEnabled = false;
     }
+
+#ifdef VBOX_WITH_STATISTICS
+    Console::SafeVMPtrQuiet ptrVM(m_pCtx->m_pConsole);
+    if (ptrVM.isOk())
+    {
+        ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(),"/Main/Recording/Stream%RU32/FramesAdded", m_uScreenID);
+        ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/FramesEncoded", m_uScreenID);
+
+        ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/ProfileFnProcessTotal", m_uScreenID);
+        ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/ProfileFnProcessVideo", m_uScreenID);
+        ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/ProfileFnProcessAudio", m_uScreenID);
+    }
+#endif
 
     return vrc;
 }

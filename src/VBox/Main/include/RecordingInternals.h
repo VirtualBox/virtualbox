@@ -1,4 +1,4 @@
-/* $Id: RecordingInternals.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: RecordingInternals.h 109818 2025-06-11 08:31:50Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording internals header.
  */
@@ -33,6 +33,7 @@
 
 #include <list>
 
+#include <iprt/asm.h>
 #include <iprt/assert.h>
 #include <iprt/types.h> /* drag in stdint.h before vpx does it. */
 
@@ -566,13 +567,70 @@ struct RecordingBlock
         Destroy();
     }
 
+    /**
+     * Returns the current reference count.
+     *
+     * @returns  Number of current references.
+     */
+    uint64_t GetRefs(void)
+    {
+        Assert(cRefs <= 4); /* Helps finding refcounting bugs. Value chosen at random. */
+        return ASMAtomicReadU64(&cRefs);
+    }
+
+    /**
+     * Adds a reference to a recording block.
+     *
+     * @returns  Number of new references.
+     */
+    uint64_t AddRef(void)
+    {
+        Assert(cRefs <= 4); /* Helps finding refcounting bugs. Value chosen at random. */
+        return ASMAtomicIncU64(&cRefs);
+    }
+
+    /**
+     * Releases a reference to a recording block.
+     *
+     * @returns  Number of new references after release.
+     */
+    uint64_t Release(void)
+    {
+        Assert(cRefs);
+        return ASMAtomicDecU64(&cRefs);
+    }
+
+    /**
+     * Unlinks the stored data (giving up ownership).
+     *
+     * @note All references to this recording block must be released first.
+     *
+     * @returns Pointer to unlinked data. Can be NULL if no data stored.
+     * @param   pcbData         Where to return the size (in bytes) of the returned data. Optional and can be NULL.
+     */
+    void *Unlink(size_t *pcbData)
+    {
+        AssertMsgReturn(cRefs == 0, ("Can't unlink data, as there are references to it (%RU64)\n", cRefs), NULL);
+
+        void *pvDataUnlinked = pvData;
+        if (pcbData)
+            *pcbData = cbData;
+
+        pvData  = NULL;
+        cbData  = 0;
+
+        return pvDataUnlinked;
+    }
+
+    /**
+     * Destroys a recording block.
+     *
+     * @note Must be released via Release() first.
+     */
     void Destroy(void)
     {
-        PRECORDINGFRAME pFrame = (PRECORDINGFRAME)pvData;
-        if (!pFrame)
-            return;
-
-        RecordingFrameFree(pFrame);
+        AssertMsgReturnVoid(cRefs == 0, ("Recording block still holds references (%RU64)\n", cRefs));
+        RecordingFrameFree((PRECORDINGFRAME)pvData);
 
         cRefs   = 0;
         pvData  = NULL;
@@ -580,7 +638,7 @@ struct RecordingBlock
     }
 
     /** Number of references held of this block. */
-    uint16_t           cRefs;
+    uint64_t           cRefs;
     /** Block flags of type RECORDINGCODEC_ENC_F_XXX. */
     uint64_t           uFlags;
     /** The (absolute) timestamp (in ms, PTS) of this block. */

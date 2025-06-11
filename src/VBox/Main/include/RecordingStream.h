@@ -1,4 +1,4 @@
-/* $Id: RecordingStream.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: RecordingStream.h 109818 2025-06-11 08:31:50Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording stream code header.
  */
@@ -35,9 +35,11 @@
 #include <vector>
 
 #include <iprt/critsect.h>
+#include <iprt/req.h>
 
 #include "RecordingInternals.h"
 
+class Console;
 class WebMWriter;
 class RecordingContext;
 
@@ -59,8 +61,11 @@ struct RecordingBlocks
         while (!List.empty())
         {
             RecordingBlock *pBlock = List.front();
-            List.pop_front();
-            delete pBlock;
+            if (pBlock->GetRefs() == 0)
+            {
+                List.pop_front();
+                delete pBlock;
+            }
         }
 
         Assert(List.size() == 0);
@@ -80,9 +85,46 @@ typedef std::map<uint64_t, RecordingBlocks *> RecordingBlockMap;
  */
 struct RecordingBlockSet
 {
+    /**
+     * Constructor.
+     *
+     * Will throw rc on failure.
+     */
+    RecordingBlockSet()
+        : tsLastProcessedMs(0)
+    {
+        int const vrc = RTCritSectInit(&CritSect);
+        if (RT_FAILURE(vrc))
+            throw vrc;
+    }
+
     virtual ~RecordingBlockSet()
     {
         Clear();
+
+        RTCritSectDelete(&CritSect);
+    }
+
+    /**
+     * Inserts a block list within the given PTS.
+     */
+    int Insert(uint64_t uPTS, RecordingBlocks *pBlocks)
+    {
+        int vrc = RTCritSectEnter(&CritSect);
+        if (RT_SUCCESS(vrc))
+        {
+            try
+            {
+                Map.insert(std::make_pair(uPTS, pBlocks));
+            }
+            catch (std::bad_alloc &)
+            {
+                vrc = VERR_NO_MEMORY;
+            }
+            RTCritSectLeave(&CritSect);
+        }
+
+        return vrc;
     }
 
     /**
@@ -91,20 +133,29 @@ struct RecordingBlockSet
      */
     void Clear(void)
     {
-        RecordingBlockMap::iterator it = Map.begin();
-        while (it != Map.end())
+        int vrc = RTCritSectEnter(&CritSect);
+        if (RT_SUCCESS(vrc))
         {
-            it->second->Clear();
-            delete it->second;
-            Map.erase(it);
-            it = Map.begin();
-        }
+            RecordingBlockMap::iterator it = Map.begin();
+            while (it != Map.end())
+            {
+                it->second->Clear();
+                delete it->second;
+                Map.erase(it);
+                it = Map.begin();
+            }
 
-        Assert(Map.size() == 0);
+            Assert(Map.size() == 0);
+
+            RTCritSectLeave(&CritSect);
+        }
     }
 
-    /** Timestamp (in ms) when this set was last processed. */
-    uint64_t         tsLastProcessedMs;
+    /** Critical section for protecting the set. */
+    RTCRITSECT        CritSect;
+    /** Timestamp (in ms) when this set was last processed.
+     *  Set to 0 if not processed yet. */
+    uint64_t          tsLastProcessedMs;
     /** All blocks related to this block set. */
     RecordingBlockMap Map;
 };
@@ -119,7 +170,7 @@ class RecordingStream
 {
 public:
 
-    RecordingStream(RecordingContext *pCtx, uint32_t uScreen, const settings::RecordingScreen &Settings);
+    RecordingStream(Console *pConsole, RecordingContext *pCtx, uint32_t uScreen, const settings::RecordingScreen &Settings);
 
     virtual ~RecordingStream(void);
 
@@ -165,11 +216,15 @@ protected:
     int iterateInternal(uint64_t msTimestamp);
 
     int addFrame(PRECORDINGFRAME pFrame, uint64_t msTimestamp);
-    int process(const RecordingBlockSet &streamBlocks, RecordingBlockMap &commonBlocks);
+    int process(RecordingBlockSet &streamBlocks, RecordingBlockMap &commonBlocks);
     int codecWriteToWebM(PRECORDINGCODEC pCodec, const void *pvData, size_t cbData, uint64_t msAbsPTS, uint32_t uFlags);
 
     void lock(void);
     void unlock(void);
+
+protected:
+
+    static DECLCALLBACK(void) doHousekeepingCallback(RecordingStream *pThis, RecordingBlockSet *pSet);
 
 protected:
 
@@ -186,6 +241,9 @@ protected:
         RECORDINGSTREAMSTATE_32BIT_HACK    = 0x7fffffff
     };
 
+    /** Pointer (weak) to console object.
+     *  Needed for STAM. */
+    Console * const         m_pConsole;
     /** Recording context this stream is associated to. */
     RecordingContext       *m_pCtx;
     /** The current state. */
@@ -221,13 +279,30 @@ protected:
      *  Might be NULL if not being used. */
     PRECORDINGCODEC     m_pCodecAudio;
 #endif /* VBOX_WITH_AUDIO_RECORDING */
+#ifdef VBOX_WITH_STATISTICS
+    /** STAM values. */
+    struct
+    {
+        STAMCOUNTER     cFramesAdded;
+        STAMCOUNTER     cFramesEncoded;
+        STAMPROFILE     profileFrameEncode;
+        STAMPROFILE     profileFnProcessTotal;
+        STAMPROFILE     profileFnProcessVideo;
+        STAMPROFILE     profileFnProcessAudio;
+        STAMPROFILE     profileFnHouekeeping;
+    } m_STAM;
+#endif /* VBOX_WITH_STATISTICS */
     /** Video codec instance data to use. */
     RECORDINGCODEC      m_CodecVideo;
     /** Screen settings to use. */
     settings::RecordingScreen
                         m_ScreenSettings;
-    /** Set of recording (data) blocks for this stream. */
-    RecordingBlockSet   m_Blocks;
+    /** Request pool for async tasks. */
+    RTREQPOOL           m_hReqPool;
+    /** Set of unprocessed recording (data) blocks for this stream. */
+    RecordingBlockSet   m_BlockSet;
+    /** Set of recording (data) blocks for this stream done processing. */
+    RecordingBlockSet   m_BlockSetHousekeeping;
 };
 
 /** Vector of recording streams. */
