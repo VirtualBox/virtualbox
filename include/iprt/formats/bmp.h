@@ -1,4 +1,4 @@
-/* $Id: bmp.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: bmp.h 109819 2025-06-11 12:09:40Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT - Microsoft Bitmap Formats (BMP).
  */
@@ -55,6 +55,8 @@
 #define BMP_HDR_SIZE_OS21      12
 #define BMP_HDR_SIZE_OS22      64
 #define BMP_HDR_SIZE_WIN3X     40
+#define BMP_HDR_SIZE_NT4       108
+#define BMP_HDR_SIZE_W2K       124
 /** @} */
 
 
@@ -177,13 +179,89 @@ AssertCompileSize(BMPWIN3XINFOHDR, BMP_HDR_SIZE_WIN3X);
 /** Pointer to a Windows 3.x BMP information header. */
 typedef BMPWIN3XINFOHDR *PBMPWIN3XINFOHDR;
 
+typedef struct BMPWINCIEXYZ
+{
+    int32_t     x, y, z;
+} BMPWINCIEXYZ;
+AssertCompileSize(BMPWINCIEXYZ, 12);
+
+typedef struct BMPWINCIEXYZTRIPLE
+{
+    BMPWINCIEXYZ Red, Green, Blue;
+} BMPWINCIEXYZTRIPLE;
+AssertCompileSize(BMPWINCIEXYZTRIPLE, 36);
+
+typedef struct BMPWINV4INFOHDR
+{
+    uint32_t    cbSize;
+    int32_t     cx;
+    int32_t     cy;
+    uint16_t    cPlanes;
+    uint16_t    cBits;
+    uint32_t    enmCompression; /**< Differs from BMPWIN3XINFOHDR::enmCompression? */
+    uint32_t    cbImage;
+    int32_t     cXPelsPerMeter;
+    int32_t     cYPelsPerMeter;
+    uint32_t    cColorsUsed;
+    uint32_t    cColorsImportant;
+    /* New v4 fields: */
+    uint32_t    fRedMask;
+    uint32_t    fGreenMask;
+    uint32_t    fBlueMask;
+    uint32_t    fAlphaMask;
+    uint32_t    enmCSType;
+    BMPWINCIEXYZTRIPLE Endpoints;
+    uint32_t    uGammaRed;
+    uint32_t    uGammaGreen;
+    uint32_t    uGammaBlue;
+} BMPWINV4INFOHDR;
+AssertCompileSize(BMPWINV4INFOHDR, BMP_HDR_SIZE_NT4);
+
+typedef struct BMPWINV5INFOHDR
+{
+    uint32_t    cbSize;
+    int32_t     cx;
+    int32_t     cy;
+    uint16_t    cPlanes;
+    uint16_t    cBits;
+    uint32_t    enmCompression; /**< Differs from BMPWIN3XINFOHDR::enmCompression? */
+    uint32_t    cbImage;
+    int32_t     cXPelsPerMeter;
+    int32_t     cYPelsPerMeter;
+    uint32_t    cColorsUsed;
+    uint32_t    cColorsImportant;
+    /* New v4 fields: */
+    uint32_t    fRedMask;
+    uint32_t    fGreenMask;
+    uint32_t    fBlueMask;
+    uint32_t    fAlphaMask;
+    uint32_t    enmCSType;
+    BMPWINCIEXYZTRIPLE Endpoints;
+    uint32_t    uGammaRed;
+    uint32_t    uGammaGreen;
+    uint32_t    uGammaBlue;
+    /* New v5 fields: */
+    uint32_t    fIntent;
+    uint32_t    offProfileData;
+    uint32_t    cbProfileData;
+    uint32_t    uReserved;
+} BMPWINV5INFOHDR;
+AssertCompileSize(BMPWINV5INFOHDR, BMP_HDR_SIZE_W2K);
+
 
 
 /** @name BMP compression types.
  * @{  */
-#define BMP_COMPRESSION_TYPE_NONE  0
-#define BMP_COMPRESSION_TYPE_RLE8  1
-#define BMP_COMPRESSION_TYPE_RLE4  2
+#define BMP_COMPRESSION_TYPE_NONE               0
+#define BMP_COMPRESSION_TYPE_RLE8               1
+#define BMP_COMPRESSION_TYPE_RLE4               2
+#define BMP_COMPRESSION_TYPE_BITFIELDS          3
+#define BMP_COMPRESSION_TYPE_JPEG               4
+#define BMP_COMPRESSION_TYPE_PNG                5
+#define BMP_COMPRESSION_TYPE_ALPHABITFIELDS     6
+#define BMP_COMPRESSION_TYPE_CMYK               11
+#define BMP_COMPRESSION_TYPE_CMYKRLE8           12
+#define BMP_COMPRESSION_TYPE_CMYKRLE4           13
 /** @} */
 
 /** @} */
