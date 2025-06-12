@@ -1,4 +1,4 @@
-/* $Id: xkbtoscan.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: xkbtoscan.h 109836 2025-06-12 10:45:14Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox/Frontends/Common - X11 keyboard driver translation tables (XT scan
  *                         code mappings for XKB key names).
@@ -113,7 +113,7 @@ struct
     { "FK08", 0x42 },
     { "FK09", 0x43 },
     { "FK10", 0x44 },
-    { "NMLK", 0x145 },
+    { "NMLK", 0x45 },
     { "SCLK", 0x46 },
     { "KP7", 0x47 },
     { "KP8", 0x48 },
@@ -165,7 +165,7 @@ struct
     { "POWR", 0x15e },
     { "KPEQ", 0x0 },
     { "I126", 0x0 },
-    { "PAUS", 0x45 },
+    { "PAUS", 0x145 },
     { "I128", 0x0 },
     { "I129", 0x7e },
     { "KPPT", 0x7e },
