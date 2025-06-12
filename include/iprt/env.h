@@ -205,8 +205,7 @@ RTDECL(void) RTEnvFreeUtf8Block(char *pszzBlock);
 /**
  * Checks if an environment variable exists in the default environment block.
  *
- * @returns IPRT status code. Typical error is VERR_NO_MEMORY.
- *
+ * @returns \c true if the environment variable exists, \c false if not.
  * @param   pszVar      The environment variable name.
  * @remark  WARNING! The current implementation does not perform the appropriate
  *          codeset conversion. We'll figure this out when it becomes necessary.
@@ -218,8 +217,7 @@ RTDECL(bool) RTEnvExistsUtf8(const char *pszVar);
 /**
  * Checks if an environment variable exists in a specific environment block.
  *
- * @returns IPRT status code. Typical error is VERR_NO_MEMORY.
- *
+ * @returns \c true if the environment variable exists, \c false if not.
  * @param   Env         The environment handle.
  * @param   pszVar      The environment variable name.
  */
@@ -232,7 +230,6 @@ RTDECL(bool) RTEnvExistEx(RTENV Env, const char *pszVar);
  * while it's using the returned string pointer!
  *
  * @returns Pointer to read only string on success, NULL if the variable wasn't found.
- *
  * @param   pszVar      The environment variable name.
  *
  * @remark  WARNING! The current implementation does not perform the appropriate
@@ -240,6 +237,23 @@ RTDECL(bool) RTEnvExistEx(RTENV Env, const char *pszVar);
  */
 RTDECL(const char *) RTEnvGet(const char *pszVar);
 RTDECL(const char *) RTEnvGetBad(const char *pszVar);
+
+/**
+ * Gets an environment variable from the default environment block. (getenv).
+ *
+ * The caller is responsible for ensuring that nobody changes the environment
+ * while it's using the returned string pointer!
+ *
+ * @returns IPRT status code.
+ * @param   pszVar      The environment variable name.
+ * @param   pszValue    Where to store the environment variable value on success.
+ * @param   cbValue     Size (in bytes) of \a pszValue.
+ * @param   pcchActual  Where to return the actual size (in bytes) of \a pszValue on success.
+ *                      Optional and can be NULL.
+ *
+ * @remark  WARNING! The current implementation does not perform the appropriate
+ *          codeset conversion. We'll figure this out when it becomes necessary.
+ */
 RTDECL(int) RTEnvGetUtf8(const char *pszVar, char *pszValue, size_t cbValue, size_t *pcchActual);
 
 /**

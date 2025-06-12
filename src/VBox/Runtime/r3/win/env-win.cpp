@@ -1,4 +1,4 @@
-/* $Id: env-win.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: env-win.cpp 109843 2025-06-12 11:54:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT - Environment, Posix.
  */
@@ -495,7 +495,7 @@ RTDECL(int) RTEnvUnsetUtf8(const char *pszVar)
 #ifndef IPRT_NO_CRT
         if (_wgetenv(pwszVar))
         {
-            errno_t rcErrno = _wputenv_s(pwszVar, NULL);
+            errno_t rcErrno = _wputenv_s(pwszVar, L"");
             if (rcErrno == 0)
                 rc = VINF_SUCCESS;
             else
