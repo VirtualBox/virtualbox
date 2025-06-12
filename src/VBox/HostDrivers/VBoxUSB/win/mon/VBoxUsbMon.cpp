@@ -1,4 +1,4 @@
-/* $Id: VBoxUsbMon.cpp 109847 2025-06-12 12:16:09Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxUsbMon.cpp 109849 2025-06-12 12:19:24Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox USB Monitor
  */
@@ -1117,7 +1117,9 @@ static NTSTATUS _stdcall VBoxUsbMonClose(PDEVICE_OBJECT pDevObj, PIRP pIrp)
             RtlInitUnicodeString(&UniName, USBMON_DEVICE_NAME_NT);
             NTSTATUS tmpStatus = IoGetDeviceObjectPointer(&UniName, FILE_ALL_ACCESS, &g_VBoxUsbMonGlobals.pPreventUnloadFileObj, &pTmpDevObj);
             if (tmpStatus == STATUS_SUCCESS)
-                Assert(pTmpDevObj == pDevObj);
+            {
+                Assert(pTmpDevObj == pDevObj); RT_NOREF(pDevObj);
+            }
             else
             {
                 WARN(("IoGetDeviceObjectPointer() failed with status 0x%x", tmpStatus));
