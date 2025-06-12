@@ -30,7 +30,7 @@
 ]>
 <refentry id="vboxmanage-modifyvm" lang="en">
   <refentryinfo>
-    <pubdate>$Date: 2025-06-12 07:06:01 +0200 (Thu, 12 Jun 2025) $</pubdate>
+    <pubdate>$Date: 2025-06-12 07:08:39 +0200 (Thu, 12 Jun 2025) $</pubdate>
     <title>VBoxManage modifyvm</title>
   </refentryinfo>
 
@@ -375,21 +375,23 @@ time on documenting it. -->
           <arg choice="plain">on</arg>
           <arg choice="plain">off</arg>
         </group></arg>
+      <arg>--nat-dns-proxy<replaceable>N</replaceable>=<group choice="plain">
+          <arg choice="plain">on</arg>
+          <arg choice="plain">off</arg>
+        </group></arg>
+      <arg>--nat-dns-host-resolver<replaceable>N</replaceable>=<group choice="plain">
+          <arg choice="plain">on</arg>
+          <arg choice="plain">off</arg>
+        </group></arg>
       <arg>--nat-localhostreachable<replaceable>N</replaceable>=<group choice="plain">
           <arg choice="plain">on</arg>
           <arg choice="plain">off</arg>
         </group></arg>
-      <arg>--nat-settings<replaceable>N</replaceable>=[<replaceable>mtu</replaceable>]</arg>
-      <arg>--nat-forward-broadcast<replaceable>N</replaceable>=<group choice="plain">
-          <arg choice="plain">on</arg>
-          <arg choice="plain">off</arg>
-        </group>
-      </arg>
-      <arg>--nat-enable-tftp<replaceable>N</replaceable>=<group choice="plain">
-          <arg choice="plain">on</arg>
-          <arg choice="plain">off</arg>
-        </group>
-      </arg>
+      <arg>--nat-settings<replaceable>N</replaceable>=[<replaceable>mtu</replaceable>],[<replaceable>socksnd</replaceable>],[<replaceable>sockrcv</replaceable>],[<replaceable>tcpsnd</replaceable>],[<replaceable>tcprcv</replaceable>]</arg>
+      <arg>--nat-alias-mode<replaceable>N</replaceable>=<group choice="plain">
+          <arg choice="plain">default</arg>
+          <arg choice="plain">[log],[proxyonly],[sameports]</arg>
+        </group></arg>
     </cmdsynopsis>
 
     <cmdsynopsis id="synopsis-vboxmanage-modifyvm-other-hardware">
