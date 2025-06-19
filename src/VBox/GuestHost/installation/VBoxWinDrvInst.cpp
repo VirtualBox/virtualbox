@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvInst.cpp 108658 2025-03-07 08:00:16Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvInst.cpp 109903 2025-06-19 15:32:32Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvInst - Windows driver installation handling.
  */
@@ -42,6 +42,7 @@
 #include <iprt/buildconfig.h>
 #include <iprt/cdefs.h>
 #include <iprt/dir.h>
+#include <iprt/file.h>
 #include <iprt/ldr.h>
 #include <iprt/list.h>
 #include <iprt/mem.h>
@@ -149,6 +150,35 @@ DECL_HIDDEN_DATA(PFNSETUPUNINSTALLOEMINFW)               g_pfnSetupUninstallOEMI
 DECL_HIDDEN_DATA(PFNSETUPSETNONINTERACTIVEMODE)          g_pfnSetupSetNonInteractiveMode          = NULL; /* For W2K+. */
 /* advapi32.dll: */
 DECL_HIDDEN_DATA(PFNQUERYSERVICESTATUSEX)                g_pfnQueryServiceStatusEx                = NULL; /* For W2K+. */
+
+/**
+ * Structure for keeping a single SetupAPI log section.
+ */
+typedef struct VBOXWINDRVSETUPAPILOGSECT
+{
+    /** Section (text) data. */
+    char    *pszBuf;
+    /** Size (in bytes) of \a pszBuf. */
+    size_t   cbBuf;
+    /** Used for internal accounting. Don't touch. */
+    uint64_t offBuf;
+} VBOXWINDRVSETUPAPILOGSECT;
+/** Pointer to a structure for keeping a single SetupAPI log section. */
+typedef VBOXWINDRVSETUPAPILOGSECT *PVBOXWINDRVSETUPAPILOGSECT;
+
+/**
+ * Structure for keeping SetupAPI log instance data.
+ */
+typedef struct VBOXWINDRVSETUPAPILOG
+{
+    /** Array of log sections.
+     *  Not necessarily all sections. */
+    PVBOXWINDRVSETUPAPILOGSECT paSections;
+    /** Number of sections in \a paSections. */
+    unsigned                   cSections;
+} VBOXWINDRVSETUPAPILOG;
+/** Pointer to a structure for keeping SetupAPI log instance data. */
+typedef VBOXWINDRVSETUPAPILOG *PVBOXWINDRVSETUPAPILOG;
 
 /**
  * Structure for keeping the internal Windows driver context.
@@ -1678,6 +1708,183 @@ static int vboxWinDrvQueryFromDriverStore(PVBOXWINDRVINSTINTERNAL pCtx, PVBOXWIN
 }
 
 /**
+ * Destroys setupapi section entries.
+ *
+ * @returns VBox status code.
+ * @param   pLog                SetupAPI log entries to destroy.
+ */
+void vboxWinDrvInstSetupAPILogDestroySections(PVBOXWINDRVSETUPAPILOG pLog)
+{
+    for (unsigned i = 0; i < pLog->cSections; i++)
+    {
+        if (pLog->paSections[i].pszBuf)
+        {
+            RTMemFree(pLog->paSections[i].pszBuf);
+            pLog->paSections[i].pszBuf = NULL;
+        }
+    }
+
+    RTMemFree(pLog->paSections);
+    pLog->cSections = 0;
+}
+
+/**
+ * Queries the last N sections (i.e. tail) from a given setupapi.log file.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                Windows driver installer context.
+ * @param   pszFile             Absolute path to setupapi.log file.
+ * @param   cLastSections       Number of last sections to query.
+ * @param   pLog                Where to store the result.
+ */
+static int vboxWinDrvInstSetupAPILogQuerySections(PVBOXWINDRVINSTINTERNAL pCtx, const char *pszFile,
+                                                  unsigned cLastSections, PVBOXWINDRVSETUPAPILOG pLog)
+{
+    RT_NOREF(pCtx);
+    AssertReturn(cLastSections, VERR_INVALID_PARAMETER);
+
+    /* We only keep the last N sections in our buffers. */
+    unsigned idxSection = 0;
+    AssertReturn(pLog->paSections == NULL && pLog->cSections == 0, VERR_INVALID_PARAMETER);
+    pLog->paSections = (PVBOXWINDRVSETUPAPILOGSECT)RTMemAllocZ(  cLastSections
+                                                               * sizeof(VBOXWINDRVSETUPAPILOGSECT));
+    AssertPtrReturn(pLog->paSections, VERR_NO_TMP_MEMORY);
+    pLog->cSections = cLastSections;
+
+    int rc = VINF_SUCCESS;
+
+    if (RT_FAILURE(rc))
+        return rc;
+
+    RTFILE hFile;
+    rc = RTFileOpen(&hFile, pszFile, RTFILE_O_OPEN | RTFILE_O_READ | RTFILE_O_DENY_WRITE);
+    if (RT_SUCCESS(rc))
+    {
+        char szLine[_1K];
+        for (;;)
+        {
+            size_t cbRead;
+            rc = RTFileRead(hFile, szLine, sizeof(szLine), &cbRead);
+            if (   !cbRead
+                || RT_FAILURE(rc))
+                break;
+            const char *pszEnd = RTStrStr(szLine, "\n");
+            size_t const cbLine = pszEnd - szLine;
+            if (   !pszEnd
+                || !cbLine)
+                break;
+            rc = RTFileSeek(hFile, 0 - cbRead + cbLine + 1 /* Skip EOL terminator */, RTFILE_SEEK_CURRENT, NULL);
+            AssertRCBreak(rc);
+            szLine[cbLine] = '\0';
+            const char *pszSectionStart = RTStrStr(szLine, "Section start");
+            if (pszSectionStart)
+            {
+                if (++idxSection >= cLastSections)
+                    idxSection = 0;
+                //vboxWinDrvInstLogInfo(pCtx, "sec start @ %zu: %.*s -> section #%u", RTFileTell(hFile), cbLine, szLine, idxSection);
+                pLog->paSections[idxSection].offBuf = 0;
+            }
+            if (pLog->paSections[idxSection].offBuf + cbLine + 1 /* Terminator */ >= pLog->paSections[idxSection].cbBuf)
+            {
+                size_t const cbGrow = _64K;
+                pLog->paSections[idxSection].pszBuf =
+                                      pLog->paSections[idxSection].pszBuf == NULL
+                                    ? (char *)RTMemAlloc(cbGrow)
+                                    : (char *)RTMemRealloc(pLog->paSections[idxSection].pszBuf, pLog->paSections[idxSection].cbBuf + cbGrow);
+                pLog->paSections[idxSection].cbBuf += cbGrow;
+            }
+            AssertBreakStmt(pLog->paSections[idxSection].offBuf + cbLine < pLog->paSections[idxSection].cbBuf, rc = VERR_BUFFER_OVERFLOW);
+            memcpy(pLog->paSections[idxSection].pszBuf + pLog->paSections[idxSection].offBuf, szLine, cbLine);
+            pLog->paSections[idxSection].offBuf += cbLine;
+            pLog->paSections[idxSection].pszBuf[pLog->paSections[idxSection].offBuf] = '\0';
+        }
+
+        RTFileClose(hFile);
+
+        if (RT_FAILURE(rc))
+            vboxWinDrvInstSetupAPILogDestroySections(pLog);
+    }
+
+    return rc;
+}
+
+/**
+ * Logs the setupapi(.dev).log file to the installation logging instance.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                Windows driver installer context.
+ * @param   cLastSections       Number of installation sections to log (i.e. tail).
+ */
+static int vboxWinDrvInstSetupAPILog(PVBOXWINDRVINSTINTERNAL pCtx, unsigned cLastSections)
+{
+    int rc;
+
+    /* Note: Don't call vboxWinDrvInstLogError() here to prevent increasing the errror count. */
+
+    RTUTF16 wszWinDir[RTPATH_MAX];
+    if (GetWindowsDirectoryW(wszWinDir, RTPATH_MAX))
+    {
+        char *pszWinDir = NULL;
+        rc = RTUtf16ToUtf8(wszWinDir, &pszWinDir);
+        if (RT_SUCCESS(rc))
+        {
+            static const char *s_asLogLocations[] =
+            {
+                "INF\\setupapi.dev.log",
+                /* Combined log (<= Windows XP, including NT4). */
+                "setupapi.log",
+            };
+
+            for (size_t i = 0; i < RT_ELEMENTS(s_asLogLocations); i++)
+            {
+                char szSetupAPILog[RTPATH_MAX];
+                rc = RTStrCopy(szSetupAPILog, sizeof(szSetupAPILog), pszWinDir);
+                if (RT_SUCCESS(rc))
+                {
+                    rc = RTPathAppend(szSetupAPILog, sizeof(szSetupAPILog), s_asLogLocations[i]);
+                    if (RT_SUCCESS(rc))
+                    {
+                        VBOXWINDRVSETUPAPILOG Log;
+                        RT_ZERO(Log);
+                        rc = vboxWinDrvInstSetupAPILogQuerySections(pCtx, szSetupAPILog, cLastSections, &Log);
+                        if (RT_SUCCESS(rc))
+                        {
+                            vboxWinDrvInstLogInfo(pCtx, "Output of '%s' (last %u sections):", szSetupAPILog, cLastSections);
+
+                            for (unsigned s = 0; s < Log.cSections; s++)
+                            {
+                                if (Log.paSections[s].pszBuf)
+                                    vboxWinDrvInstLogInfo(pCtx, "%s", Log.paSections[s].pszBuf);
+                            }
+
+                            vboxWinDrvInstSetupAPILogDestroySections(&Log);
+                        }
+                        else if (rc != VERR_FILE_NOT_FOUND) /* Skip non-existing log files. */
+                             vboxWinDrvInstLogEx(pCtx, VBOXWINDRIVERLOGTYPE_ERROR,
+                                                 "Error processing '%s', rc=%Rrc", szSetupAPILog, rc);
+
+                        vboxWinDrvInstLogVerbose(pCtx, 1, "Processed '%s' with %Rrc", szSetupAPILog, rc);
+
+                        if (rc == VERR_FILE_NOT_FOUND) /* Ditto. */
+                            rc = VINF_SUCCESS;
+                    }
+                }
+            }
+
+            RTStrFree(pszWinDir);
+            pszWinDir = NULL;
+        }
+    }
+    else
+        rc = vboxWinDrvInstLogLastError(pCtx, "Could not determine Windows installation directory");
+
+    if (RT_FAILURE(rc))
+        vboxWinDrvInstLogEx(pCtx, VBOXWINDRIVERLOGTYPE_ERROR, "Error retrieving SetupAPI log, rc=%Rrc", rc);
+
+    return rc;
+}
+
+/**
  * Callback implementation for invoking a section for uninstallation.
  *
  * @returns VBox status code.
@@ -1902,6 +2109,10 @@ static int vboxWinDrvInstMain(PVBOXWINDRVINSTINTERNAL pCtx, PVBOXWINDRVINSTPARMS
     else if (pCtx->cWarnings)
         vboxWinDrvInstLogEx(pCtx, VBOXWINDRIVERLOGTYPE_WARN, "%sstalling driver(s) succeeded with %u warnings",
                             fInstall ? "In" : "Unin", pCtx->cWarnings);
+
+    if (   pCtx->cErrors
+        || pCtx->uVerbosity)
+        /* ignore rc */ vboxWinDrvInstSetupAPILog(pCtx, pCtx->uVerbosity <= 1 ? 1 : 3 /* Last sections */);
 
     return rc;
 }
