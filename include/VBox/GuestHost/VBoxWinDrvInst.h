@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvInst.h 108658 2025-03-07 08:00:16Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvInst.h 109910 2025-06-20 10:11:55Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvInst - Header for Windows driver installation handling.
  */
@@ -147,6 +147,13 @@ int VBoxWinDrvInstUninstall(VBOXWINDRVINST hDrvInst, const char *pszInfFile, con
 int VBoxWinDrvInstUninstallExecuteInf(VBOXWINDRVINST hDrvInst, const char *pszInfFile, const char *pszSection, uint32_t fFlags);
 int VBoxWinDrvInstControlService(VBOXWINDRVINST hDrvInst, const char *pszService, VBOXWINDRVSVCFN enmFn);
 int VBoxWinDrvInstControlServiceEx(VBOXWINDRVINST hDrvInst, const char *pszService, VBOXWINDRVSVCFN enmFn, uint32_t fFlags, RTMSINTERVAL msTimeout);
+
+/** @name Log functions
+ * @{
+ */
+int VBoxWinDrvInstLogSetupAPI(VBOXWINDRVINST hDrvInst, unsigned cLastSections);
+/** @} */
+
 RT_C_DECLS_END
 
 #endif /* !VBOX_INCLUDED_GuestHost_VBoxWinDrvInst_h */

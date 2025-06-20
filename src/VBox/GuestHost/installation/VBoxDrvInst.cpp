@@ -1,4 +1,4 @@
-/* $Id: VBoxDrvInst.cpp 108659 2025-03-07 08:02:44Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxDrvInst.cpp 109910 2025-06-20 10:11:55Z andreas.loeffler@oracle.com $ */
 /** @file
  * Driver installation utility for Windows hosts and guests.
  */
@@ -62,10 +62,12 @@
 *   Prototypes                                                                                                                   *
 *********************************************************************************************************************************/
 static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdListMain(PRTGETOPTSTATE pGetState);
+static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdLogMain(PRTGETOPTSTATE pGetState);
 static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdInstallMain(PRTGETOPTSTATE pGetState);
 static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdUninstallMain(PRTGETOPTSTATE pGetState);
 static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdServiceMain(PRTGETOPTSTATE pGetState);
 
+static DECLCALLBACK(const char *) vboxDrvInstCmdLogHelp(PCRTGETOPTDEF pOpt);
 static DECLCALLBACK(const char *) vboxDrvInstCmdListHelp(PCRTGETOPTDEF pOpt);
 static DECLCALLBACK(const char *) vboxDrvInstCmdInstallHelp(PCRTGETOPTDEF pOpt);
 static DECLCALLBACK(const char *) vboxDrvInstCmdUninstallHelp(PCRTGETOPTDEF pOpt);
@@ -129,6 +131,35 @@ const VBOXDRVINSTCMD g_CmdList =
     NULL, /* paOptions */
     0,    /* cOptions */
     vboxDrvInstCmdListHelp
+};
+
+/**
+ * Long option values for the 'log' command.
+ */
+enum
+{
+    VBOXDRVINST_LOG_OPT_LAST = 900
+};
+
+/**
+ * Command line parameters for the 'log' command.
+ */
+static const RTGETOPTDEF g_aCmdLogOptions[] =
+{
+    { "--last",          VBOXDRVINST_LOG_OPT_LAST,        RTGETOPT_REQ_UINT32 }
+};
+
+/**
+ * Command definition for the 'log' command.
+ */
+const VBOXDRVINSTCMD g_CmdLog =
+{
+    "log",
+    vboxDrvInstCmdLogMain,
+    "Outputs log files.",
+    g_aCmdLogOptions,
+    RT_ELEMENTS(g_aCmdLogOptions),
+    vboxDrvInstCmdLogHelp
 };
 
 /**
@@ -270,6 +301,7 @@ const VBOXDRVINSTCMD g_CmdService =
 static const VBOXDRVINSTCMD * const g_apCommands[] =
 {
     &g_CmdList,
+    &g_CmdLog,
     &g_CmdInstall,
     &g_CmdUninstall,
     &g_CmdService
@@ -449,6 +481,57 @@ static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdListMain(PRTGETOPTSTATE pGetState)
 
     vboxDrvInstLog("\nUse DOS-style wildcards to adjust results.\n");
     vboxDrvInstLog("Use \"--help\" to print syntax help.\n");
+
+    return RTEXITCODE_SUCCESS;
+}
+
+/** Option help for the 'log' command. */
+static DECLCALLBACK(const char *) vboxDrvInstCmdLogHelp(PCRTGETOPTDEF pOpt)
+{
+    switch (pOpt->iShort)
+    {
+        case VBOXDRVINST_LOG_OPT_LAST: return "Returns the last N entries (if applicable)";
+        default:
+            break;
+    }
+    return NULL;
+}
+
+/**
+ * Main (entry) function for the 'log' command.
+ *
+ * @returns Program exit code.
+ * @param   pGetState   RTGetOpt state.
+ */
+static DECLCALLBACK(RTEXITCODE) vboxDrvInstCmdLogMain(PRTGETOPTSTATE pGetState)
+{
+    unsigned cLast = 1;
+
+    int           ch;
+    RTGETOPTUNION ValueUnion;
+    while ((ch = RTGetOpt(pGetState, &ValueUnion)))
+    {
+        switch (ch)
+        {
+            case 'h':
+                return vboxDrvInstShowUsage(g_pStdOut, &g_CmdLog);
+
+            case VBOXDRVINST_LOG_OPT_LAST:
+                cLast = ValueUnion.u32;
+                break;
+
+            default:
+                return RTGetOptPrintError(ch, &ValueUnion);
+        }
+    }
+
+    VBOXWINDRVINST hWinDrvInst;
+    int rc = VBoxWinDrvInstCreateEx(&hWinDrvInst, g_uVerbosity, &vboxDrvInstLogCallback, NULL /* pvUser */);
+    if (RT_SUCCESS(rc))
+    {
+        VBoxWinDrvInstLogSetupAPI(hWinDrvInst, cLast);
+        VBoxWinDrvInstDestroy(hWinDrvInst);
+    }
 
     return RTEXITCODE_SUCCESS;
 }
@@ -994,7 +1077,8 @@ static RTEXITCODE vboxDrvInstShowUsage(PRTSTREAM pStrm, PCVBOXDRVINSTCMD pOnlyCm
     RTStrmPrintf(pStrm, "\t%s service   VBoxSDS stop\n", pszProcName);
     RTStrmPrintf(pStrm, "\t%s service   VBoxSDS start --no-wait\n", pszProcName);
     RTStrmPrintf(pStrm, "\t%s service   VBoxSDS restart --wait 180\n", pszProcName);
-    RTStrmPrintf(pStrm, "\t%s list      \"VBox*\"\n\n", pszProcName);
+    RTStrmPrintf(pStrm, "\t%s list      \"VBox*\"\n", pszProcName);
+    RTStrmPrintf(pStrm, "\t%s log --last 2\n\n", pszProcName);
     RTStrmPrintf(pStrm, "Exit codes:\n");
     RTStrmPrintf(pStrm, "\t1 - The requested command failed.\n");
     RTStrmPrintf(pStrm, "\t2 - Syntax error.\n");

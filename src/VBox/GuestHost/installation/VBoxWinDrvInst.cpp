@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvInst.cpp 109905 2025-06-20 06:56:36Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvInst.cpp 109910 2025-06-20 10:11:55Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvInst - Windows driver installation handling.
  */
@@ -1774,11 +1774,11 @@ static int vboxWinDrvInstSetupAPILogQuerySections(PVBOXWINDRVINSTINTERNAL pCtx, 
                 || RT_FAILURE(rc))
                 break;
             const char *pszEnd = RTStrStr(szLine, "\n");
-            size_t const cbLine = pszEnd - szLine;
+            size_t const cbLine = pszEnd - szLine + 1 /* Include '\n' */;
             if (   !pszEnd
                 || !cbLine)
                 break;
-            rc = RTFileSeek(hFile, 0 - cbRead + cbLine + 1 /* Skip EOL terminator */, RTFILE_SEEK_CURRENT, NULL);
+            rc = RTFileSeek(hFile, 0 - cbRead + cbLine + 0 /* Skip EOL terminator */, RTFILE_SEEK_CURRENT, NULL);
             AssertRCBreak(rc);
             szLine[cbLine] = '\0';
             const char *pszSectionStart = RTStrStr(szLine, "Section start");
@@ -1786,10 +1786,13 @@ static int vboxWinDrvInstSetupAPILogQuerySections(PVBOXWINDRVINSTINTERNAL pCtx, 
             {
                 if (++idxSection >= cLastSections)
                     idxSection = 0;
-                //vboxWinDrvInstLogInfo(pCtx, "sec start @ %zu: %.*s -> section #%u", RTFileTell(hFile), cbLine, szLine, idxSection);
+#ifdef DEBUG
+                vboxWinDrvInstLogVerbose(pCtx, 4, "Section@%08RU64: %.*s -> Stored in #%u (%zu)",
+                                         RTFileTell(hFile), cbLine - 1 /* Skip '\n' */, szLine, idxSection, pLog->paSections[idxSection].cbBuf);
+#endif
                 pLog->paSections[idxSection].offBuf = 0;
             }
-            if (pLog->paSections[idxSection].offBuf + cbLine + 1 /* Terminator */ >= pLog->paSections[idxSection].cbBuf)
+            if (pLog->paSections[idxSection].offBuf + cbLine + 0 /* Terminator */ >= pLog->paSections[idxSection].cbBuf)
             {
                 size_t const cbGrow = _64K;
                 pLog->paSections[idxSection].pszBuf =
@@ -1800,6 +1803,9 @@ static int vboxWinDrvInstSetupAPILogQuerySections(PVBOXWINDRVINSTINTERNAL pCtx, 
             }
             AssertBreakStmt(pLog->paSections[idxSection].offBuf + cbLine < pLog->paSections[idxSection].cbBuf, rc = VERR_BUFFER_OVERFLOW);
             memcpy(pLog->paSections[idxSection].pszBuf + pLog->paSections[idxSection].offBuf, szLine, cbLine);
+#ifdef DEBUG
+            vboxWinDrvInstLogVerbose(pCtx, 4, "Section #%u: %.*s", idxSection, cbLine - 1 /* Skip '\n' */, pLog->paSections[idxSection].pszBuf + pLog->paSections[idxSection].offBuf);
+#endif
             pLog->paSections[idxSection].offBuf += cbLine;
             pLog->paSections[idxSection].pszBuf[pLog->paSections[idxSection].offBuf] = '\0';
         }
@@ -1887,6 +1893,21 @@ static int vboxWinDrvInstSetupAPILog(PVBOXWINDRVINSTINTERNAL pCtx, unsigned cLas
         vboxWinDrvInstLogEx(pCtx, VBOXWINDRIVERLOGTYPE_ERROR, "Error retrieving SetupAPI log, rc=%Rrc", rc);
 
     return rc;
+}
+
+/**
+ * Logs the setupapi(.dev).log file to the installation logging instance.
+ *
+ * @returns VBox status code.
+ * @param   hDrvInst            Windows driver installer handle to use.
+ * @param   cLastSections       Number of installation sections to log (i.e. tail).
+ */
+int VBoxWinDrvInstLogSetupAPI(VBOXWINDRVINST hDrvInst, unsigned cLastSections)
+{
+    PVBOXWINDRVINSTINTERNAL pCtx = hDrvInst;
+    VBOXWINDRVINST_VALID_RETURN(pCtx);
+
+    return vboxWinDrvInstSetupAPILog(pCtx, cLastSections);
 }
 
 /**
