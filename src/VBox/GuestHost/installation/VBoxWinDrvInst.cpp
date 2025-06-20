@@ -1,4 +1,4 @@
-/* $Id: VBoxWinDrvInst.cpp 109903 2025-06-19 15:32:32Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxWinDrvInst.cpp 109905 2025-06-20 06:56:36Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxWinDrvInst - Windows driver installation handling.
  */
@@ -228,6 +228,7 @@ typedef struct VBOXWINDRVINSTIMPORTSYMBOL
 *   Prototypes                                                                                                                   *
 *********************************************************************************************************************************/
 static int vboxWinDrvParmsDetermine(PVBOXWINDRVINSTINTERNAL pCtx, PVBOXWINDRVINSTPARMS pParms, bool fForce);
+static int vboxWinDrvInstSetupAPILog(PVBOXWINDRVINSTINTERNAL pCtx, unsigned cLastSections);
 
 
 /*********************************************************************************************************************************
@@ -1460,6 +1461,10 @@ static int vboxWinDrvInstallPerform(PVBOXWINDRVINSTINTERNAL pCtx, PVBOXWINDRVINS
             break;
     }
 
+    if (   pCtx->cErrors
+        && !(pParms->fFlags & VBOX_WIN_DRIVERINSTALL_F_DRYRUN))
+        /* ignore rc */ vboxWinDrvInstSetupAPILog(pCtx, pCtx->uVerbosity <= 1 ? 1 : 3 /* Last sections */);
+
     return rc;
 }
 
@@ -2041,6 +2046,10 @@ static int vboxWinDrvUninstallPerform(PVBOXWINDRVINSTINTERNAL pCtx, PVBOXWINDRVI
             rc = VINF_SUCCESS;
             break;
     }
+
+    if (   pCtx->cErrors
+        && !(pParms->fFlags & VBOX_WIN_DRIVERINSTALL_F_DRYRUN))
+        /* ignore rc */ vboxWinDrvInstSetupAPILog(pCtx, pCtx->uVerbosity <= 1 ? 1 : 3 /* Last sections */);
 
     return rc;
 }
