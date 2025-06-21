@@ -54,9 +54,6 @@
 /** Log2 of the ring buffer size. */
 #define GEFORCE3_FIFO_SIZE_LOG2             12
 
-/** Convert device instance data to ring-3 state. */
-#define PDMDEVINS_2_DATA_CC(pDevIns, type)  ((type)(pDevIns)->CTX_SUFF(pvInstanceDataCC))
-
 
 /*********************************************************************************************************************************
 *   Internal Functions                                                                                                           *
@@ -291,6 +288,11 @@ static DECLCALLBACK(int) geforce3SaveExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM)
     pHlp->pfnSSMPutU32(pSSM, pThis->cbVram);
     pHlp->pfnSSMPutBool(pSSM, pThis->fEnabled);
     pHlp->pfnSSMPutBool(pSSM, pThis->fInterruptsEnabled);
+
+    /* Save device state */
+    pHlp->pfnSSMPutU32(pSSM, pThis->cbVram);
+    pHlp->pfnSSMPutBool(pSSM, pThis->fEnabled);
+    pHlp->pfnSSMPutBool(pSSM, pThis->fInterruptsEnabled);
     
     /* Save registers */
     pHlp->pfnSSMPutMem(pSSM, pThis->aRegisters, sizeof(pThis->aRegisters));
@@ -330,6 +332,11 @@ static DECLCALLBACK(int) geforce3LoadExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, u
     pHlp->pfnSSMGetU32(pSSM, &pThis->cbVram);
     pHlp->pfnSSMGetBool(pSSM, &pThis->fEnabled);
     pHlp->pfnSSMGetBool(pSSM, &pThis->fInterruptsEnabled);
+
+    /* Load device state */
+    pHlp->pfnSSMGetU32(pSSM, &pThis->cbVram);
+    pHlp->pfnSSMGetBool(pSSM, &pThis->fEnabled);
+    pHlp->pfnSSMGetBool(pSSM, &pThis->fInterruptsEnabled);
     
     /* Load registers */
     pHlp->pfnSSMGetMem(pSSM, pThis->aRegisters, sizeof(pThis->aRegisters));
@@ -353,6 +360,8 @@ static DECLCALLBACK(int) geforce3LoadExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, u
 /*********************************************************************************************************************************
 *   Device Interface                                                                                                             *
 *********************************************************************************************************************************/
+
+#ifdef IN_RING3
 
 /**
  * @interface_method_impl{PDMDEVREG,pfnReset}
@@ -477,7 +486,7 @@ static DECLCALLBACK(int) geforce3R3Construct(PPDMDEVINS pDevIns, int iInstance, 
 
     /* BAR1: Frame buffer (VRAM) */
     rc = PDMDevHlpPCIIORegionCreateMmio2(pDevIns, GEFORCE3_PCI_BAR_FRAMEBUFFER, pThis->cbVram,
-                                         PCI_ADDRESS_SPACE_MEM | PCI_ADDRESS_SPACE_BAR64, "GeForce3 VRAM",
+                                         (PCIADDRESSSPACE)(PCI_ADDRESS_SPACE_MEM | PCI_ADDRESS_SPACE_BAR64), "GeForce3 VRAM",
                                          (void **)&pThisCC->pbVram, &pThis->hMmio2Vram);
     AssertRCReturn(rc, rc);
 

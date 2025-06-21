@@ -111,9 +111,6 @@ typedef GEFORCE3DISPLAYMODE *PGEFORCE3DISPLAYMODE;
  */
 typedef struct GEFORCE3STATE
 {
-    /** The PCI device. */
-    PDMPCIDEV               PciDev;
-
     /** The MMIO handle for registers. */
     IOMMMIOHANDLE           hMmioRegisters;
     /** The MMIO2 handle for VRAM. */
@@ -143,6 +140,9 @@ typedef struct GEFORCE3STATE
     bool                    fEnabled;
     /** Flag indicating if interrupts are enabled. */
     bool                    fInterruptsEnabled;
+
+    /** The PCI device - must be last due to flexible array member. */
+    PDMPCIDEV               PciDev;
 
 } GEFORCE3STATE;
 /** Pointer to the GeForce3 device state. */
@@ -192,13 +192,13 @@ typedef CTX_SUFF(PGEFORCE3STATE) PGEFORCE3STATECC;
 *********************************************************************************************************************************/
 
 #ifdef IN_RING3
-DECLCALLBACK(int) geforce3R3Construct(PPDMDEVINS pDevIns, int iInstance, PCFGMNODE pCfg);
-DECLCALLBACK(int) geforce3R3Destruct(PPDMDEVINS pDevIns);
-DECLCALLBACK(int) geforce3R3Reset(PPDMDEVINS pDevIns);
+static DECLCALLBACK(int) geforce3R3Construct(PPDMDEVINS pDevIns, int iInstance, PCFGMNODE pCfg);
+static DECLCALLBACK(int) geforce3R3Destruct(PPDMDEVINS pDevIns);
+static DECLCALLBACK(void) geforce3R3Reset(PPDMDEVINS pDevIns);
 #endif
 
 #if defined(IN_RING0) || defined(IN_RC)
-DECLCALLBACK(int) geforce3RZConstruct(PPDMDEVINS pDevIns);
+static DECLCALLBACK(int) geforce3RZConstruct(PPDMDEVINS pDevIns);
 #endif
 
 #endif /* !VBOX_INCLUDED_SRC_Graphics_DevGeForce3_h */
