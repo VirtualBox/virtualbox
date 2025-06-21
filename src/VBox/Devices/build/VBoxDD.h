@@ -58,6 +58,7 @@ extern const PDMDEVREG g_DeviceMC146818;
 extern const PDMDEVREG g_DevicePIIX3IDE;
 extern const PDMDEVREG g_DeviceFloppyController;
 extern const PDMDEVREG g_DeviceVga;
+extern const PDMDEVREG g_DeviceGeForce3;
 extern const PDMDEVREG g_DeviceVMMDev;
 extern const PDMDEVREG g_DevicePCNet;
 #ifdef VBOX_WITH_E1000

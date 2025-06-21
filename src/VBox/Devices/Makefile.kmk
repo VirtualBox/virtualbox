@@ -200,6 +200,7 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
  	EFI/DevFlash.cpp \
  	EFI/FlashCore.cpp \
  	Graphics/DevVGA.cpp \
+ 	Graphics/DevGeForce3.cpp \
  	Storage/DevATA.cpp \
  	PC/DevPit-i8254.cpp \
  	PC/DevPIC.cpp \
