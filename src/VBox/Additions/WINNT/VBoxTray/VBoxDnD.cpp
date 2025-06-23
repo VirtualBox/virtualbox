@@ -1,4 +1,4 @@
-/* $Id: VBoxDnD.cpp 108106 2025-01-28 16:26:46Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxDnD.cpp 109932 2025-06-23 17:37:16Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxDnD.cpp - Windows-specific bits of the drag and drop service.
  */
@@ -353,8 +353,9 @@ void VBoxDnDWnd::Destroy(void)
         if (RT_SUCCESS(rc))
             rc = rc2;
 #endif
-        OleUninitialize();
     }
+
+    OleUninitialize();
 
     if (!fSignalled)
     {

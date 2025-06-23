@@ -1,4 +1,4 @@
-/* $Id: VBoxHelpers.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxHelpers.cpp 109932 2025-06-23 17:37:16Z andreas.loeffler@oracle.com $ */
 /** @file
  * helpers - Guest Additions Service helper functions
  */
@@ -70,7 +70,7 @@ static const char *vboxTrayGstFacilityStsToStr(VBoxGuestFacilityStatus faStatus,
 
 int VBoxTrayHlpReportStatus(VBoxGuestFacilityStatus statusCurrent)
 {
-    if (g_cVerbosity)
+    if (g_cVerbosity >= 4) /* Too annoying otherwise. */
         VBoxTrayHlpShowBalloonTip(vboxTrayGstFacilityStsToStr(statusCurrent, false /* fShort */),
                                   "Reporting status to host", RT_MS_5SEC);
 
@@ -490,7 +490,7 @@ RTEXITCODE VBoxTrayError(const char *pszFormat, ...)
     va_end(args);
 
     AssertPtr(psz);
-    LogRel(("Error: %s", psz));
+    LogRel(("*** Error: %s", psz));
 
     RTStrFree(psz);
 

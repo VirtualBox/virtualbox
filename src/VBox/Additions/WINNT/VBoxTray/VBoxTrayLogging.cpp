@@ -1,4 +1,4 @@
-/* $Id: VBoxTrayLogging.cpp 108086 2025-01-28 09:22:12Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxTrayLogging.cpp 109932 2025-06-23 17:37:16Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxTrayLogging.cpp - Logging.
  */
@@ -37,6 +37,7 @@
 
 #include <iprt/buildconfig.h>
 #include <iprt/process.h>
+#include <iprt/stream.h>
 #include <iprt/system.h>
 
 
@@ -122,6 +123,12 @@ static DECLCALLBACK(void) vboxTrayLogHeaderFooter(PRTLOGGER pLoggerRelease, RTLO
     }
 }
 
+RTDECL(void) RTLogWriteUser(const char* pachChars, size_t cbChars)
+{
+    if (pachChars)
+        RTPrintf("%s: %.*s", VBOX_VBOXTRAY_TITLE, cbChars, pachChars);
+}
+
 /**
  * Creates the default release logger outputting to the specified file.
  *
@@ -143,7 +150,7 @@ int VBoxTrayLogCreate(const char *pszLogFile)
     int rc = RTLogCreateEx(&g_pLoggerRelease, s_szEnvVarPfx,
                            RTLOGFLAGS_PREFIX_THREAD | RTLOGFLAGS_PREFIX_TIME_PROG | RTLOGFLAGS_USECRLF,
                            s_szGroupSettings, RT_ELEMENTS(s_apszGroups), s_apszGroups, UINT32_MAX,
-                           0 /*cBufDescs*/, NULL /*paBufDescs*/, RTLOGDEST_STDOUT,
+                           0 /*cBufDescs*/, NULL /*paBufDescs*/, RTLOGDEST_STDOUT | RTLOGDEST_USER,
                            vboxTrayLogHeaderFooter, g_cHistory, g_uHistoryFileSize, g_uHistoryFileTime,
                            NULL /*pOutputIf*/, NULL /*pvOutputIfUser*/,
                            RTErrInfoInitStatic(&ErrInfo), "%s", pszLogFile ? pszLogFile : "");
