@@ -1,4 +1,4 @@
-/* $Id: ConsoleImpl.cpp 108651 2025-03-06 11:15:45Z alexander.eichner@oracle.com $ */
+/* $Id: ConsoleImpl.cpp 109938 2025-06-23 19:03:50Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console COM Class implementation
  */
@@ -11527,15 +11527,21 @@ void Console::i_powerUpThreadTask(VMPowerUpTask *pTask)
                     {
                         com::ErrorInfoKeeper eik;
                         ComPtr<IVirtualBoxErrorInfo> pErrorInfo = eik.takeError();
-                        Bstr strMsg;
-                        hrc = pErrorInfo->COMGETTER(Text)(strMsg.asOutParam());
-                        AssertComRCBreak(hrc, RT_NOTHING);
-                        LONG lRc;
-                        hrc = pErrorInfo->COMGETTER(ResultCode)(&lRc);
-                        AssertComRCBreak(hrc, RT_NOTHING);
+                        if (pErrorInfo.isNotNull())
+                        {
+                            Bstr strMsg;
+                            hrc = pErrorInfo->COMGETTER(Text)(strMsg.asOutParam());
+                            AssertComRCBreak(hrc, RT_NOTHING);
+                            LONG lRc;
+                            hrc = pErrorInfo->COMGETTER(ResultCode)(&lRc);
+                            AssertComRCBreak(hrc, RT_NOTHING);
 
-                        LogRel(("Recording: Failed to start on VM power up: %ls (%Rrc)\n",
-                                strMsg.raw(), lRc));
+                            LogRel(("Recording: Failed to start on VM power up: %ls (%Rrc)\n",
+                                    strMsg.raw(), lRc));
+                        }
+                        else
+                            LogRel(("Recording: Failed to start on VM power up (%Rhrc)\n", hrc));
+
                     }
                 }
 #endif

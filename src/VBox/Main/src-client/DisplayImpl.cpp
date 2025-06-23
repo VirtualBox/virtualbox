@@ -1,4 +1,4 @@
-/* $Id: DisplayImpl.cpp 109818 2025-06-11 08:31:50Z andreas.loeffler@oracle.com $ */
+/* $Id: DisplayImpl.cpp 109938 2025-06-23 19:03:50Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -2196,7 +2196,7 @@ int Display::i_recordingScreenChanged(unsigned uScreenId, const DISPLAYFBINFO *p
     AssertReturn(uScreenId < mcMonitors, VERR_INVALID_PARAMETER);
     AssertReturn(pFBInfo->w, VERR_INVALID_PARAMETER);
     AssertReturn(pFBInfo->h, VERR_INVALID_PARAMETER);
-    AssertReturn(pFBInfo->u16BitsPerPixel, VERR_INVALID_PARAMETER);
+    AssertReturn(pFBInfo->u16BitsPerPixel && pFBInfo->u16BitsPerPixel % 8 == 0, VERR_INVALID_PARAMETER);
     AssertReturn(pFBInfo->u32LineSize, VERR_INVALID_PARAMETER);
 
     i_updateDeviceCursorCapabilities();

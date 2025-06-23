@@ -1,4 +1,4 @@
-/* $Id: Recording.cpp 109818 2025-06-11 08:31:50Z andreas.loeffler@oracle.com $ */
+/* $Id: Recording.cpp 109938 2025-06-23 19:03:50Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording context code.
  *
@@ -1383,17 +1383,20 @@ int RecordingContext::SendVideoFrame(uint32_t uScreen, PRECORDINGVIDEOFRAME pFra
 {
     AssertPtrReturn(pFrame, VERR_INVALID_POINTER);
 
-    LogFlowFunc(("uScreen=%RU32, offX=%RU32, offY=%RU32, w=%RU32, h=%RU32 (%zu bytes), ts=%RU64\n",
-                 uScreen, pFrame->Pos.x, pFrame->Pos.y, pFrame->Info.uWidth, pFrame->Info.uHeight,
+    LogFlowFunc(("uScreen=%RU32, offX=%RU32, offY=%RU32, w=%RU32, h=%RU32, fmt=%#x (%zu bytes), ts=%RU64\n",
+                 uScreen, pFrame->Pos.x, pFrame->Pos.y, pFrame->Info.uWidth, pFrame->Info.uHeight, pFrame->Info.enmPixelFmt,
                  pFrame->Info.uHeight * pFrame->Info.uWidth * (pFrame->Info.uBPP / 8), msTimestamp));
 
     if (!pFrame->pau8Buf) /* Empty / invalid frame, skip. */
         return VINF_SUCCESS;
 
+#ifdef VBOX_STRICT
     /* Sanity. */
-    AssertReturn(pFrame->Info.uBPP, VERR_INVALID_PARAMETER);
-    AssertReturn(pFrame->cbBuf, VERR_INVALID_PARAMETER);
+    AssertReturn(pFrame->Info.uBPP % 8 == 0, VERR_INVALID_PARAMETER);
+    AssertReturn(pFrame->Info.enmPixelFmt == RECORDINGPIXELFMT_BRGA32 /* Only format we support for now */, VERR_INVALID_PARAMETER);
     AssertReturn(pFrame->Info.uWidth  * pFrame->Info.uHeight * (pFrame->Info.uBPP / 8) <= pFrame->cbBuf, VERR_INVALID_PARAMETER);
+    AssertReturn(pFrame->cbBuf, VERR_INVALID_PARAMETER);
+#endif
 
     lock();
 
@@ -1519,8 +1522,8 @@ int RecordingContext::SendCursorShapeChange(bool fVisible, bool fAlpha, uint32_t
  */
 int RecordingContext::SendScreenChange(uint32_t uScreen, PRECORDINGSURFACEINFO pInfo, uint64_t msTimestamp)
 {
-    LogFlowFunc(("uScreen=%RU32, w=%RU32, h=%RU32, bpp=%RU8, ts=%RU64\n",
-                 uScreen, pInfo->uWidth, pInfo->uHeight, pInfo->uBPP, msTimestamp));
+    LogFlowFunc(("uScreen=%RU32, w=%RU32, h=%RU32, bpp=%RU8, fmt=%#x, bytesPerLine=%RU32, ts=%RU64\n",
+                 uScreen, pInfo->uWidth, pInfo->uHeight, pInfo->uBPP, pInfo->enmPixelFmt, pInfo->uBytesPerLine, msTimestamp));
 
     lock();
 

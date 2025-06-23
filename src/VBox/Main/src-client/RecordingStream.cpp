@@ -1,4 +1,4 @@
-/* $Id: RecordingStream.cpp 109818 2025-06-11 08:31:50Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingStream.cpp 109938 2025-06-23 19:03:50Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording stream code.
  */
@@ -1197,9 +1197,12 @@ int RecordingStream::initVideo(const settings::RecordingScreen &screenSettings)
     Callbacks.pfnWriteData = RecordingStream::codecWriteDataCallback;
 
     RECORDINGSURFACEINFO ScreenInfo;
-    ScreenInfo.uWidth  = screenSettings.Video.ulWidth;
-    ScreenInfo.uHeight = screenSettings.Video.ulHeight;
-    ScreenInfo.uBPP    = 32; /* We always start with 32 bit. */
+    RT_ZERO(ScreenInfo);
+    ScreenInfo.uWidth        = screenSettings.Video.ulWidth;
+    ScreenInfo.uHeight       = screenSettings.Video.ulHeight;
+    ScreenInfo.uBPP          = 32; /* We always start with 32 bit. */
+    ScreenInfo.enmPixelFmt   = RECORDINGPIXELFMT_BRGA32 /* Only format we support right now */;
+    ScreenInfo.uBytesPerLine = screenSettings.Video.ulWidth * (ScreenInfo.uBPP / 8);
 
     int vrc = SendScreenChange(&ScreenInfo, true /* fForce */);
     if (RT_SUCCESS(vrc))
