@@ -1,4 +1,4 @@
-/* $Id: Settings.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: Settings.cpp 109947 2025-06-24 19:50:56Z jack.doherty@oracle.com $ */
 /** @file
  * Settings File Manipulation API.
  *
@@ -3547,7 +3547,9 @@ bool NAT::areDefaultSettings(SettingsVersion_T sv) const
         && areAliasDefaultSettings()
         && areTFTPDefaultSettings()
         && mapRules.size() == 0
-        && areLocalhostReachableDefaultSettings(sv);
+        && areLocalhostReachableDefaultSettings(sv)
+        && fForwardBroadcast == false
+        && fEnableTFTP == false;
 }
 
 /**
@@ -3575,6 +3577,8 @@ bool NAT::operator==(const NAT &n) const
             && fAliasProxyOnly     == n.fAliasProxyOnly
             && fAliasUseSamePorts  == n.fAliasUseSamePorts
             && fLocalhostReachable == n.fLocalhostReachable
+            && fForwardBroadcast   == n.fForwardBroadcast
+            && fEnableTFTP         == n.fEnableTFTP
             && mapRules            == n.mapRules);
 }
 
@@ -4765,6 +4769,8 @@ void MachineConfigFile::readAttachedNetworkMode(const xml::ElementNode &elmMode,
         elmMode.getAttributeValue("tcprcv", nic.nat.u32TcpRcv);
         elmMode.getAttributeValue("tcpsnd", nic.nat.u32TcpSnd);
         elmMode.getAttributeValue("localhost-reachable", nic.nat.fLocalhostReachable);
+        elmMode.getAttributeValue("forward-broadcast", nic.nat.fForwardBroadcast);
+        elmMode.getAttributeValue("enable-tftp", nic.nat.fEnableTFTP);
         const xml::ElementNode *pelmDNS;
         if ((pelmDNS = elmMode.findChildElement("DNS")))
         {
@@ -8526,6 +8532,10 @@ void MachineConfigFile::buildNetworkXML(NetworkAttachmentType_T mode,
                         pelmNAT->setAttribute("tcpsnd", nic.nat.u32TcpSnd);
                     if (!nic.nat.areLocalhostReachableDefaultSettings(m->sv))
                         pelmNAT->setAttribute("localhost-reachable", nic.nat.fLocalhostReachable);
+                    if (nic.nat.fForwardBroadcast)
+                        pelmNAT->setAttribute("forward-broadcast", nic.nat.fForwardBroadcast);
+                    if (nic.nat.fEnableTFTP)
+                        pelmNAT->setAttribute("enable-tftp", nic.nat.fEnableTFTP);
                     if (!nic.nat.areDNSDefaultSettings())
                     {
                         xml::ElementNode *pelmDNS = pelmNAT->createChild("DNS");
@@ -9550,6 +9560,33 @@ AudioDriverType_T MachineConfigFile::getHostDefaultAudioDriver()
  */
 void MachineConfigFile::bumpSettingsVersionIfNeeded()
 {
+    if (m->sv < SettingsVersion_v1_21)
+    {
+#ifdef VBOX_WITH_VIRT_ARMV8
+        // VirtualBox 7.2 (settings v1.21) adds support enabling ITS component of the GIC.
+        if (hardwareMachine.platformSettings.arm.fGicIts)
+        {
+            m->sv = SettingsVersion_v1_21;
+            return;
+        }
+#endif
+
+        NetworkAdaptersList::const_iterator netit;
+        for (netit = hardwareMachine.llNetworkAdapters.begin();
+             netit != hardwareMachine.llNetworkAdapters.end();
+             ++netit)
+        {
+            if (( netit->fEnabled // VirtualBox 7.2 adds a flag if NAT has enabled TFTP
+                && netit->mode == NetworkAttachmentType_NAT
+                && netit->nat.fEnableTFTP))
+            {
+                m->sv = SettingsVersion_v1_21;
+                break;
+            }
+        }
+    }
+
+    if (m->sv < SettingsVersion_v1_20)
     if (m->sv < SettingsVersion_v1_20)
     {
         // VirtualBox 7.1 (settings v1.20) adds support for different VM platforms and the QEMU RAM based framebuffer device.
@@ -9575,6 +9612,21 @@ void MachineConfigFile::bumpSettingsVersionIfNeeded()
                     m->sv = SettingsVersion_v1_20;
                     return;
                 }
+            }
+        }
+
+        NetworkAdaptersList::const_iterator netit;
+        for (netit = hardwareMachine.llNetworkAdapters.begin();
+             netit != hardwareMachine.llNetworkAdapters.end();
+             ++netit)
+        {
+            if ((  netit->fEnabled // VirtualBox 7.1 adds a flag if NAT can forward
+                                   // broadcast packets to external, host-side network.
+                && netit->mode == NetworkAttachmentType_NAT
+                && netit->nat.fForwardBroadcast))
+            {
+                m->sv = SettingsVersion_v1_20;
+                break;
             }
         }
     }

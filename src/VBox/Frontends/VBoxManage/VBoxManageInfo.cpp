@@ -1,4 +1,4 @@
-/* $Id: VBoxManageInfo.cpp 107885 2025-01-15 23:24:57Z brent.paulson@oracle.com $ */
+/* $Id: VBoxManageInfo.cpp 109947 2025-06-24 19:50:56Z jack.doherty@oracle.com $ */
 /** @file
  * VBoxManage - The 'showvminfo' command and helper routines.
  */
@@ -1770,19 +1770,31 @@ HRESULT showVMInfo(ComPtr<IVirtualBox> pVirtualBox,
                         ULONG tcpRcv = 0;
                         engine->GetNetworkSettings(&mtu, &sockSnd, &sockRcv, &tcpSnd, &tcpRcv);
 
+                        BOOL fLocalhostReachable = false;
+                        BOOL fForwardBroadcast = false;
+                        BOOL fEnableTFTP = false;
+                        engine->COMGETTER(LocalhostReachable)(&fLocalhostReachable);
+                        engine->COMGETTER(ForwardBroadcast)(&fForwardBroadcast);
+                        engine->COMGETTER(EnableTFTP)(&fEnableTFTP);
+
 /** @todo r=klaus dnsproxy etc needs to be dumped, too */
                         if (details == VMINFO_MACHINEREADABLE)
                         {
                             RTPrintf("natnet%d=\"%ls\"\n", currentNIC + 1, strNetwork.length() ? strNetwork.raw(): Bstr("nat").raw());
                             strAttachment = "nat";
-                            strNatSettings.printf("mtu=\"%d\"\nsockSnd=\"%d\"\nsockRcv=\"%d\"\ntcpWndSnd=\"%d\"\ntcpWndRcv=\"%d\"\n",
-                                                  mtu, sockSnd ? sockSnd : 64, sockRcv ? sockRcv : 64, tcpSnd ? tcpSnd : 64, tcpRcv ? tcpRcv : 64);
+                            strNatSettings.printf("mtu=\"%d\"\nsockSnd=\"%d\"\nsockRcv=\"%d\"\ntcpWndSnd=\"%d\"\ntcpWndRcv=\"%d\"\n"
+                                                  "localhostReachable=\"%d\"\nforwardBroadcast=\"%d\"\nenableTFTP=\"%d\"\n",
+                                                  mtu, sockSnd ? sockSnd : 64, sockRcv ? sockRcv : 64, tcpSnd ? tcpSnd : 64,
+                                                  tcpRcv ? tcpRcv : 64, fLocalhostReachable, fForwardBroadcast, fEnableTFTP);
                         }
                         else
                         {
                             strAttachment = "NAT";
-                            strNatSettings.printf(Info::tr("NIC %d Settings:  MTU: %d, Socket (send: %d, receive: %d), TCP Window (send:%d, receive: %d)\n"),
-                                                  currentNIC + 1, mtu, sockSnd ? sockSnd : 64, sockRcv ? sockRcv : 64, tcpSnd ? tcpSnd : 64, tcpRcv ? tcpRcv : 64);
+                            strNatSettings.printf(Info::tr("NIC %d Settings:\n"
+                                                            "\tMTU: %d, Socket (send: %d, receive: %d), TCP Window (send:%d, receive: %d),\n"
+                                                            "\tLocalhostReachable: %d, ForwardBroadcast: %d, EnableTFTP: %d\n"),
+                                                  currentNIC + 1, mtu, sockSnd ? sockSnd : 64, sockRcv ? sockRcv : 64, tcpSnd ? tcpSnd : 64,
+                                                  tcpRcv ? tcpRcv : 64, fLocalhostReachable, fForwardBroadcast, fEnableTFTP);
                         }
                         break;
                     }

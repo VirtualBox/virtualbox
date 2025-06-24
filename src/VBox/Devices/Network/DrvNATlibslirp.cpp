@@ -1,4 +1,4 @@
-/* $Id: DrvNATlibslirp.cpp 109784 2025-06-05 06:24:07Z jack.doherty@oracle.com $ */
+/* $Id: DrvNATlibslirp.cpp 109947 2025-06-24 19:50:56Z jack.doherty@oracle.com $ */
 /** @file
  * DrvNATlibslirp - NATlibslirp network transport driver.
  */
@@ -961,13 +961,17 @@ static int drvNATConstructRedir(unsigned iInstance, PDRVNAT pThis, PCFGMNODE pCf
         /** @todo r=jack: why are we using IP INADD_ANY for port forward when FE does not do so. */
         /* host address ("BindIP" name is rather unfortunate given "HostPort" to go with it) */
         char szHostIp[MAX_IP_ADDRESS_STR_LEN_W_NULL] = {0};
-        // GETIP_DEF(rc, pDrvIns, pNode, szHostIp, INADDR_ANY);
-        GET_STRING(rc, pDrvIns, pNode, "BindIP", szHostIp[0], sizeof(szHostIp));
+        rc = pHlp->pfnCFGMQueryStringDef(pNode, "BindIP", szHostIp, sizeof(szHostIp), "");
+        if (RT_FAILURE(rc) && rc != VERR_CFGM_VALUE_NOT_FOUND)
+            return PDMDrvHlpVMSetError(pDrvIns, rc, RT_SRC_POS,
+                                       N_("NAT#%d: configuration query for \"%s/BindIP\" failed"), iInstance, szNodeNm);
 
         /* guest address */
         char szGuestIp[MAX_IP_ADDRESS_STR_LEN_W_NULL] = {0};
-        // GETIP_DEF(rc, pDrvIns, pNode, szGuestIp, INADDR_ANY);
-        GET_STRING(rc, pDrvIns, pNode, "GuestIP", szGuestIp[0], sizeof(szGuestIp));
+        rc = pHlp->pfnCFGMQueryStringDef(pNode, "GuestIP", szGuestIp, sizeof(szGuestIp), "");
+        if (RT_FAILURE(rc) && rc != VERR_CFGM_VALUE_NOT_FOUND)
+            return PDMDrvHlpVMSetError(pDrvIns, rc, RT_SRC_POS,
+                                       N_("NAT#%d: configuration query for \"%s/GuestIP\" failed"), iInstance, szNodeNm);
 
         LogRelMax(256, ("Preconfigured port forward rule discovered on startup: fUdp=%d, HostIp=%s, u16HostPort=%u, GuestIp=%s, u16GuestPort=%u\n",
                         RT_BOOL(fUDP), szHostIp, iHostPort, szGuestIp, iGuestPort));
