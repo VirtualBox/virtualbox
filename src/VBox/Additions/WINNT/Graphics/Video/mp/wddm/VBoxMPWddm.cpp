@@ -1,4 +1,4 @@
-/* $Id: VBoxMPWddm.cpp 109967 2025-06-25 16:24:55Z dmitrii.grigorev@oracle.com $ */
+/* $Id: VBoxMPWddm.cpp 109969 2025-06-25 16:36:39Z dmitrii.grigorev@oracle.com $ */
 /** @file
  * VBox WDDM Miniport driver
  */
@@ -1115,6 +1115,7 @@ NTSTATUS DxgkDdiStartDevice(
                     if (hKey)
                     {
                         Status = vboxWddmRegQueryValueDword(hKey, VBOXWDDM_REG_DRV_FLAGS_NAME, &dwVal);
+                        LogRel2((VBOX_VIDEO_LOG_NAME ": RegQueryDword '%ls'. Status 0x%X, dwVal %d\n", VBOXWDDM_REG_DRV_FLAGS_NAME, Status, dwVal));
                         if (!NT_SUCCESS(Status))
                         {
                             LOG(("vboxWddmRegQueryValueDword failed, Status = 0x%x", Status));
@@ -1137,6 +1138,7 @@ NTSTATUS DxgkDdiStartDevice(
                             WCHAR wszNameBuf[sizeof(VBOXWDDM_REG_DRV_DISPFLAGS_PREFIX) / sizeof(WCHAR) + 32];
                             RTUtf16Printf(wszNameBuf, RT_ELEMENTS(wszNameBuf), "%ls%u", VBOXWDDM_REG_DRV_DISPFLAGS_PREFIX, i);
                             Status = vboxWddmRegQueryValueDword(hKey, wszNameBuf, &dwVal);
+                            LogRel2((VBOX_VIDEO_LOG_NAME ": RegQueryDword '%ls'. Status 0x%X, dwVal %d\n", wszNameBuf, Status, dwVal));
                             if (NT_SUCCESS(Status))
                             {
                                 pTarget->fConnected = !!(dwVal & VBOXWDDM_CFG_DRVTARGET_CONNECTED);
@@ -3462,6 +3464,7 @@ DxgkDdiEscape(
                     WCHAR wszNameBuf[sizeof(VBOXWDDM_REG_DRV_DISPFLAGS_PREFIX) / sizeof(WCHAR) + 32];
                     RTUtf16Printf(wszNameBuf, RT_ELEMENTS(wszNameBuf), "%ls%d", VBOXWDDM_REG_DRV_DISPFLAGS_PREFIX, i);
                     Status = vboxWddmRegSetValueDword(hKey, wszNameBuf, VBOXWDDM_CFG_DRVTARGET_CONNECTED);
+                    LogRel2((VBOX_VIDEO_LOG_NAME ": RegSetDword '%ls'. Status 0x%X, dwVal %d\n", wszNameBuf, Status, VBOXWDDM_CFG_DRVTARGET_CONNECTED));
                     if (!NT_SUCCESS(Status))
                         WARN(("VBOXESC_CONFIGURETARGETS vboxWddmRegSetValueDword (%ls) failed Status 0x%x\n", wszNameBuf, Status));
 
@@ -3510,6 +3513,8 @@ DxgkDdiEscape(
                 uint32_t u32ConnectMask = pVBoxEscapeReconnectTargets->u32ConnectMask;
                 uint32_t u32DisconnectMask = pVBoxEscapeReconnectTargets->u32DisconnectMask;
 
+                LogRel2((VBOX_VIDEO_LOG_NAME ": VBOXESC_RECONNECT_TARGETS 0x%X, 0x%X\n", u32ConnectMask, u32DisconnectMask));
+
                 if (u32ConnectMask & u32DisconnectMask)
                 {
                     WARN(("VBOXESC_RECONNECT_TARGETS (u32ConnectMask & u32DisconnectMask) is not zero\n"));
@@ -3542,7 +3547,7 @@ DxgkDdiEscape(
                     if (pTarget->fConnected != fConnectReq)
                     {
                         Status = VBoxWddmChildStatusConnect(pDevExt, (uint32_t)i, fConnectReq);
-                        LOG(("VBOXESC_RECONNECT_TARGETS %sconnecting target %d, status 0x%x", fConnectReq ? "" : "dis", i, Status));
+                        LogRel2((VBOX_VIDEO_LOG_NAME ": VBOXESC_RECONNECT_TARGETS %sconnecting target %d, status 0x%x\n", fConnectReq ? "" : "dis", i, Status));
                         pTarget->fConnected = fConnectReq;
 
                         if (RT_LIKELY(hKey))
@@ -3550,6 +3555,7 @@ DxgkDdiEscape(
                             WCHAR wszNameBuf[sizeof(VBOXWDDM_REG_DRV_DISPFLAGS_PREFIX) / sizeof(WCHAR) + 32];
                             RTUtf16Printf(wszNameBuf, RT_ELEMENTS(wszNameBuf), "%ls%u", VBOXWDDM_REG_DRV_DISPFLAGS_PREFIX, i);
                             Status = vboxWddmRegSetValueDword(hKey, wszNameBuf, fConnectReq);
+                            LogRel2((VBOX_VIDEO_LOG_NAME ": RegSetDword '%ls'. Status 0x%X, dwVal %d\n", wszNameBuf, Status, fConnectReq));
                         }
                     }
                 }
