@@ -1,4 +1,4 @@
-/* $Id: RecordingCodec.cpp 109938 2025-06-23 19:03:50Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingCodec.cpp 109954 2025-06-25 09:54:21Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording codec wrapper.
  */
@@ -538,11 +538,6 @@ static DECLCALLBACK(int) recordingCodecVPXEncode(PRECORDINGCODEC pCodec, PRECORD
 static DECLCALLBACK(int) recordingCodecVPXScreenChange(PRECORDINGCODEC pCodec, PRECORDINGSURFACEINFO pInfo)
 {
     LogFunc(("ENTER: w=%RU32, h=%RU32, bpp=%RU8\n", pInfo->uWidth, pInfo->uHeight, pInfo->uBPP));
-
-    /* The VPX encoder only understands even frame sizes. */
-    if (   (pInfo->uWidth  % 2) != 0
-        || (pInfo->uHeight % 2) != 0)
-        return VERR_INVALID_PARAMETER;
 
     PRECORDINGCODECVPX pVPX = &pCodec->Video.VPX;
 

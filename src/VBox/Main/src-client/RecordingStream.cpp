@@ -1,4 +1,4 @@
-/* $Id: RecordingStream.cpp 109938 2025-06-23 19:03:50Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingStream.cpp 109954 2025-06-25 09:54:21Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording stream code.
  */
@@ -333,7 +333,7 @@ int RecordingStream::process(RecordingBlockSet &streamBlockSet, RecordingBlockMa
                 case RECORDINGFRAME_TYPE_CURSOR_SHAPE:
                 case RECORDINGFRAME_TYPE_CURSOR_POS:
                 {
-                    int vrc2 = recordingCodecEncodeFrame(&m_CodecVideo, pFrame, pFrame->msTimestamp, m_pCtx /* pvUser */);
+                    int const vrc2 = recordingCodecEncodeFrame(&m_CodecVideo, pFrame, pFrame->msTimestamp, m_pCtx /* pvUser */);
                     AssertRC(vrc2);
                     if (RT_SUCCESS(vrc))
                         vrc = vrc2;
@@ -342,7 +342,9 @@ int RecordingStream::process(RecordingBlockSet &streamBlockSet, RecordingBlockMa
 
                 case RECORDINGFRAME_TYPE_SCREEN_CHANGE:
                 {
-                    /* ignore rc */ recordingCodecScreenChange(&m_CodecVideo, &pFrame->u.ScreenInfo);
+                    int const vrc2 = recordingCodecScreenChange(&m_CodecVideo, &pFrame->u.ScreenInfo);
+                    if (RT_SUCCESS(vrc))
+                        vrc = vrc2;
                     break;
                 }
 
