@@ -30,7 +30,7 @@
 ]>
 <refentry id="vboxmanage-modifyvm" lang="en">
   <refentryinfo>
-    <pubdate>$Date: 2025-06-12 07:08:39 +0200 (Thu, 12 Jun 2025) $</pubdate>
+    <pubdate>$Date: 2025-06-26 09:57:04 +0200 (Thu, 26 Jun 2025) $</pubdate>
     <title>VBoxManage modifyvm</title>
   </refentryinfo>
 
@@ -517,7 +517,7 @@ time on documenting it. -->
         </group></arg>
       <arg>--recording-file=<replaceable>filename</replaceable></arg>
       <arg>--recording-max-size=<replaceable>MB</replaceable></arg>
-      <arg>--recording-max-time=<replaceable>msec</replaceable></arg>
+      <arg>--recording-max-time=<replaceable>seconds</replaceable></arg>
       <arg>--recording-opts= <arg choice="plain"><replaceable>key</replaceable>=<replaceable>value</replaceable>[,<replaceable>key</replaceable>=<replaceable>value</replaceable>...]</arg></arg>
       <arg>--recording-video-fps=<replaceable>fps</replaceable></arg>
       <arg>--recording-video-rate=<replaceable>rate</replaceable></arg>
