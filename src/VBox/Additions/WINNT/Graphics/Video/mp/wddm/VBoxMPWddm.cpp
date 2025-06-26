@@ -1,4 +1,4 @@
-/* $Id: VBoxMPWddm.cpp 109969 2025-06-25 16:36:39Z dmitrii.grigorev@oracle.com $ */
+/* $Id: VBoxMPWddm.cpp 110001 2025-06-26 20:39:09Z dmitrii.grigorev@oracle.com $ */
 /** @file
  * VBox WDDM Miniport driver
  */
@@ -5481,8 +5481,12 @@ DriverEntry(
 
     AssertRelease(!NT_SUCCESS(Status));
 
-    PRTLOGGER pLogger = RTLogSetDefaultInstance(NULL);
-
+    PRTLOGGER pLogger = RTLogRelSetDefaultInstance(NULL);
+    if (pLogger)
+    {
+        RTLogDestroy(pLogger);
+    }
+    pLogger = RTLogSetDefaultInstance(NULL);
     if (pLogger)
     {
         RTLogDestroy(pLogger);
