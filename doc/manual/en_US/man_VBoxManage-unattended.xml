@@ -30,7 +30,7 @@
 ]>
 <refentry id="vboxmanage-unattended" lang="en">
   <refentryinfo>
-    <pubdate>$Date: 2024-10-15 14:08:41 +0200 (Tue, 15 Oct 2024) $</pubdate>
+    <pubdate>$Date: 2025-06-27 17:15:52 +0200 (Fri, 27 Jun 2025) $</pubdate>
     <title>VBoxManage unattended</title>
   </refentryinfo>
 
@@ -60,8 +60,9 @@
       <arg choice="req">--iso=<replaceable>install-iso</replaceable></arg>
       <arg>--user=<replaceable>login</replaceable></arg>
       <arg>--user-password=<replaceable>password</replaceable></arg>
+      <arg>--user-password-file=<replaceable>file</replaceable></arg>
       <arg>--admin-password=<replaceable>password</replaceable></arg>
-      <arg>--password-file=<replaceable>file</replaceable></arg>
+      <arg>--admin-password-file=<replaceable>file</replaceable></arg>
       <arg>--full-user-name=<replaceable>name</replaceable></arg>
       <arg>--key=<replaceable>product-key</replaceable></arg>
       <arg>--install-additions</arg>
@@ -73,6 +74,7 @@
       <arg>--locale=<replaceable>ll_CC</replaceable></arg>
       <arg>--country=<replaceable>CC</replaceable></arg>
       <arg>--time-zone=<replaceable>tz</replaceable></arg>
+      <arg>--proxy=<replaceable>url</replaceable></arg>
       <arg>--hostname=<replaceable>fqdn</replaceable></arg>
       <arg>--package-selection-adjustment=<replaceable>keyword</replaceable></arg>
       <arg>--dry-run</arg>
@@ -194,6 +196,10 @@
         <varlistentry>
           <term><option>--time-zone=<replaceable>tz</replaceable></option></term>
           <listitem><para>The time zone to set up the guest OS with. (default: host time zone or UTC)</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><option>--proxy=<replaceable>url</replaceable></option></term>
+          <listitem><para>Proxy URL to use.</para></listitem>
         </varlistentry>
         <varlistentry>
           <term><option>--hostname=<replaceable>fqdn</replaceable></option></term>
