@@ -50,18 +50,11 @@
     <p>To allow for completely unattended guest installations, you can specify a command line parameter to the install
       launcher: </p>
     <pre xml:space="preserve">VBoxWindowsAdditions.exe /S</pre>
-    <p>This automatically installs the right files and drivers for the corresponding platform, either 32-bit or 64-bit. </p>
+    <p>This automatically installs the right files and drivers for the corresponding platform, either 32-bit or 64-bit.</p>
     <note>
-      <p>By default on an unattended installation on a Vista or Windows 7 guest, there will be the XPDM graphics driver
-        installed. This graphics driver does not support Windows Aero / Direct3D on the guest. Instead, the WDDM
-        graphics driver needs to be installed. To select this driver by default, add the command line parameter
-          <codeph>/with_wddm</codeph> when invoking the Windows Guest Additions installer. This is only required for
-        Vista and Windows 7. </p>
+      <p>For Windows Aero to run correctly on a guest, the guest's VRAM size needs to be configured to at least 128 MB.</p>
     </note>
-    <note>
-      <p>For Windows Aero to run correctly on a guest, the guest's VRAM size needs to be configured to at least 128 MB. </p>
-    </note>
-    <p>For more options regarding unattended guest installations, consult the command line help by using the command: </p>
+    <p>For more options regarding unattended guest installations, consult the command line help by using the command:</p>
     <pre xml:space="preserve">VBoxWindowsAdditions.exe /?</pre>
   </body>
   

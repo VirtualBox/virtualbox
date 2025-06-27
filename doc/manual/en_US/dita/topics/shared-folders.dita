@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE topic
   PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
-<topic xml:lang="en-us" id="shared-folders">
-            <title>Shared Folders</title>
-            
-            <body>
-               <p>Shared folders enable you to easily exchange data between a virtual machine and your host. This
-      feature requires that the <ph conkeyref="vbox-conkeyref-phrases/product-name"/> Guest Additions be installed in a
-      virtual machine and is described in detail in <xref href="sharedfolders.dita#sharedfolders"/>. </p>
-            </body>
-            
-         </topic>
+<topic xml:lang="en-us" id="ct_shared-folders">
+  <title>Shared Folders</title>
+  <body>
+    <p>Shared folders enable you to easily exchange data between a virtual machine and your host. This feature requires that the <ph conkeyref="vbox-conkeyref-phrases/product-name"/> Guest Additions be installed in a virtual machine and is described in detail in <xref href="sharedfolders.dita#sharedfolders"/>. </p>
+  </body>
+</topic>

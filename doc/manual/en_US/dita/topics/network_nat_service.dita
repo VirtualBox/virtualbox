@@ -2,7 +2,7 @@
 <!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
 <topic xml:lang="en-us" id="network_nat_service">
   <title>Network Address Translation Service</title>
-  
+
   <body>
     <p>The Network Address Translation (NAT) service works in a similar way to a home router, grouping the systems using
       it into a network and preventing systems outside of this network from directly accessing systems inside it, but
@@ -44,13 +44,8 @@
         conkeyref="vbox-conkeyref-phrases/vbox-mgr"/>. Click <b outputclass="bold">File</b>, <b outputclass="bold">
         Tools</b>, <b outputclass="bold">Network Manager</b>. See <xref href="network-manager.dita#network-manager"/>. </p>
     <note>
-      <p>Even though the NAT service separates the VM from the host, the VM has access to the host's loopback interface
-        and the network services running on it. The host's loopback interface is accessible as IP address 10.0.2.2
-        (assuming the default configuration, in other configurations it's the respective address in the configured IPv4
-        or IPv6 network range). This access to the host's loopback interface can be extremely useful in some cases, for
-        example when running a web application under development in the VM and the database server on the loopback
-        interface on the host. </p>
+      <p>Even though the NAT service separates the VM from the host, the VM has access to the host's loopback interface and the network services running on it. The host's loopback interface is accessible as IP address 10.0.2.2 (assuming the default configuration, in other configurations it's the respective address in the configured IPv4 or IPv6 network range). This access to the host's loopback interface can be extremely useful in some cases, for example when running a web application under development in the VM and the database server on the loopback interface on the host.  To enable traffic to pass to the host's loopback interface, see <xref href="vboxmanage-common.dita"/>, NAT Networking Settings.</p>
     </note>
   </body>
-  
+
 </topic>

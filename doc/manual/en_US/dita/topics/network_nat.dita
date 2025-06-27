@@ -21,12 +21,6 @@
       host, it looks like the data was sent by the <ph conkeyref="vbox-conkeyref-phrases/product-name"/> application on
       the host, using an IP address belonging to the host. <ph conkeyref="vbox-conkeyref-phrases/product-name"/> listens
       for replies to the packages sent, and repacks and resends them to the guest machine on its private network. </p>
-    <note>
-      <p>Even though the NAT engine separates the VM from the host, the VM has access to the host's loopback interface
-        and the network services running on it. The host's loopback interface is accessible as IP address 10.0.2.2. This
-        access to the host's loopback interface can be extremely useful in some cases, for example when running a web
-        application under development in the VM and the database server on the loopback interface on the host. </p>
-    </note>
     <p>The virtual machine receives its network address and configuration on the private network from a DHCP server
       integrated into <ph conkeyref="vbox-conkeyref-phrases/product-name"/>. The IP address thus assigned to the virtual
       machine is usually on a completely different network than the host. As more than one card of a virtual machine can
