@@ -1,4 +1,4 @@
-/* $Id: Svga.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: Svga.cpp 110023 2025-06-27 16:06:42Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - VMSVGA.
  */
@@ -183,17 +183,16 @@ static NTSTATUS svgaObjectTablesNotify(VBOXWDDM_EXT_VMSVGA *pSvga, SVGAOTableTyp
             pCmd->validSizeInBytes = pOT->cEntries * pOTInfo->cbEntry;
             pCmd->ptDepth          = gbo.enmMobFormat;
 
-            SvgaCmdBufCommit(pSvga, sizeof(*pCmd));
+            /* Command buffer completion callback to free the old OT. */
+            struct VMSVGAOTFREE callbackData;
+            callbackData.gbo = pOT->gbo;
+            callbackData.hMemObj = pOT->hMemObj;
+            SvgaCmdBufCommitWithCompletionCallback(pSvga, sizeof(*pCmd),
+                svgaOTFreeCb, &callbackData, sizeof(callbackData));
         }
         else
             AssertFailedReturnStmt(SvgaGboFree(&gbo); RTR0MemObjFree(hMemObjOT, true),
                                    STATUS_INSUFFICIENT_RESOURCES);
-
-        /* Command buffer completion callback to free the OT. */
-        struct VMSVGAOTFREE callbackData;
-        callbackData.gbo = pOT->gbo;
-        callbackData.hMemObj = pOT->hMemObj;
-        SvgaCmdBufSetCompletionCallback(pSvga, svgaOTFreeCb, &callbackData, sizeof(callbackData));
 
         memset(&pOT->gbo, 0, sizeof(pOT->gbo));
         pOT->hMemObj = NIL_RTR0MEMOBJ;

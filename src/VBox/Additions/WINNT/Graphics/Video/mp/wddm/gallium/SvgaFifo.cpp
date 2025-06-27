@@ -1,4 +1,4 @@
-/* $Id: SvgaFifo.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: SvgaFifo.cpp 110023 2025-06-27 16:06:42Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - VMSVGA FIFO.
  */
@@ -722,6 +722,33 @@ void SvgaCmdBufCommit(PVBOXWDDM_EXT_VMSVGA pSvga, uint32_t cbActual)
 }
 
 
+/** Commit space for the current command in the current miniport command buffer
+ *  and attach a completion callback to the command buffer.
+ *
+ * @param pSvga            The device instance.
+ * @param cbActual         Actual size of the command data. Must be not greater than the reserved size.
+ * @param pfn              Callback to invoke when the command buffer has been processed by the host.
+ * @param pv               Callback parameters.
+ * @param cb               Size of callback parameters.
+ */
+void SvgaCmdBufCommitWithCompletionCallback(PVBOXWDDM_EXT_VMSVGA pSvga, uint32_t cbActual,
+    PFNCBCOMPLETION pfn, void const *pv, uint32_t cb)
+{
+    PVMSVGACBSTATE pCBState = pSvga->pCBState;
+
+    VMSVGACBCOMPLETION *p = (VMSVGACBCOMPLETION *)RTMemAlloc(sizeof(VMSVGACBCOMPLETION) + cb);
+    AssertReturnVoidStmt(p, ExReleaseFastMutex(&pCBState->CBCurrentMutex));
+
+    p->pfn = pfn;
+    p->cb = cb;
+    memcpy(&p[1], pv, cb);
+
+    RTListAppend(&pCBState->pCBCurrent->listCompletion, &p->nodeCompletion);
+
+    SvgaCmdBufCommit(pSvga, cbActual);
+}
+
+
 /** Submit the current miniport command buffer to the host.
  * If the buffer contains no command data, then this function does nothing.
  *
@@ -889,22 +916,6 @@ bool SvgaCmdBufIsIdle(PVBOXWDDM_EXT_VMSVGA pSvga)
     KeReleaseSpinLock(&pCBState->SpinLock, OldIrql);
 
     return fIdle;
-}
-
-
-void SvgaCmdBufSetCompletionCallback(PVBOXWDDM_EXT_VMSVGA pSvga, PFNCBCOMPLETION pfn, void const *pv, uint32_t cb)
-{
-    VMSVGACBCOMPLETION *p = (VMSVGACBCOMPLETION *)RTMemAlloc(sizeof(VMSVGACBCOMPLETION) + cb);
-    AssertReturnVoid(p);
-
-    p->pfn = pfn;
-    p->cb = cb;
-    memcpy(&p[1], pv, cb);
-
-    PVMSVGACBSTATE pCBState = pSvga->pCBState;
-    ExAcquireFastMutex(&pCBState->CBCurrentMutex);
-    RTListAppend(&pCBState->pCBCurrent->listCompletion, &p->nodeCompletion);
-    ExReleaseFastMutex(&pCBState->CBCurrentMutex);
 }
 
 

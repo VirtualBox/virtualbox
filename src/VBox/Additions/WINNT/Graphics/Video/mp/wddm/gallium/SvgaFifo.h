@@ -1,4 +1,4 @@
-/* $Id: SvgaFifo.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: SvgaFifo.h 110023 2025-06-27 16:06:42Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Gallium driver VMSVGA FIFO operations.
  */
@@ -48,9 +48,9 @@ void *SvgaCmdBuf3dCmdReserve(PVBOXWDDM_EXT_VMSVGA pSvga, SVGAFifo3dCmdId enmCmd,
 void *SvgaCmdBufFifoCmdReserve(PVBOXWDDM_EXT_VMSVGA pSvga, SVGAFifoCmdId enmCmd, uint32_t cbReserve);
 void *SvgaCmdBufReserve(PVBOXWDDM_EXT_VMSVGA pSvga, uint32_t cbReserve, uint32_t idDXContext);
 void  SvgaCmdBufCommit(PVBOXWDDM_EXT_VMSVGA pSvga, uint32_t cbActual);
+void  SvgaCmdBufCommitWithCompletionCallback(PVBOXWDDM_EXT_VMSVGA pSvga, uint32_t cbActual, PFNCBCOMPLETION pfn, void const *pv, uint32_t cb);
 void  SvgaCmdBufFlush(PVBOXWDDM_EXT_VMSVGA pSvga);
 void  SvgaCmdBufProcess(PVBOXWDDM_EXT_VMSVGA pSvga);
-void SvgaCmdBufSetCompletionCallback(PVBOXWDDM_EXT_VMSVGA pSvga, PFNCBCOMPLETION pfn, void const *pv, uint32_t cb);
 bool SvgaCmdBufIsIdle(PVBOXWDDM_EXT_VMSVGA pSvga);
 
 NTSTATUS SvgaCmdBufAllocUMD(PVBOXWDDM_EXT_VMSVGA pSvga, PHYSICAL_ADDRESS DmaBufferPhysicalAddress,
