@@ -1,4 +1,4 @@
-/* $Id: Svga.cpp 110023 2025-06-27 16:06:42Z vitali.pelenjow@oracle.com $ */
+/* $Id: Svga.cpp 110039 2025-06-29 17:07:07Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - VMSVGA.
  */
@@ -226,36 +226,13 @@ static NTSTATUS svgaCreateMiniportMob(VBOXWDDM_EXT_VMSVGA *pSvga)
     NTSTATUS Status;
 
     uint32_t const cbMiniportMob = RT_ALIGN_32(sizeof(VMSVGAMINIPORTMOB), PAGE_SIZE);
-    RTR0MEMOBJ hMemObjMiniportMob;
-    int rc = RTR0MemObjAllocPageTag(&hMemObjMiniportMob, cbMiniportMob,
+    int rc = RTR0MemObjAllocPageTag(&pSvga->hMemObjMiniportMob, cbMiniportMob,
                                     false /* executable R0 mapping */, "VMSVGAMOB0");
     if (RT_SUCCESS(rc))
     {
-        Status = SvgaMobCreate(pSvga, &pSvga->pMiniportMob, cbMiniportMob / PAGE_SIZE, 0);
-        if (NT_SUCCESS(Status))
-        {
-            Status = SvgaMobSetMemObj(pSvga->pMiniportMob, hMemObjMiniportMob);
-            if (NT_SUCCESS(Status))
-            {
-                void *pvCmd = SvgaCmdBuf3dCmdReserve(pSvga, SVGA_3D_CMD_DEFINE_GB_MOB64, sizeof(SVGA3dCmdDefineGBMob64), SVGA3D_INVALID_ID);
-                if (pvCmd)
-                {
-                    SVGA3dCmdDefineGBMob64 *pCmd = (SVGA3dCmdDefineGBMob64 *)pvCmd;
-                    pCmd->mobid       = VMSVGAMOB_ID(pSvga->pMiniportMob);
-                    pCmd->ptDepth     = pSvga->pMiniportMob->gbo.enmMobFormat;
-                    pCmd->base        = pSvga->pMiniportMob->gbo.base;
-                    pCmd->sizeInBytes = pSvga->pMiniportMob->gbo.cbGbo;
-                    SvgaCmdBufCommit(pSvga, sizeof(*pCmd));
-
-                    pSvga->pMiniportMobData = (VMSVGAMINIPORTMOB volatile *)RTR0MemObjAddress(hMemObjMiniportMob);
-                    memset((void *)pSvga->pMiniportMobData, 0, cbMiniportMob);
-                    RTListInit(&pSvga->listMobDeferredDestruction);
-                    //pSvga->u64MobFence = 0;
-                }
-                else
-                    AssertFailedStmt(Status = STATUS_INSUFFICIENT_RESOURCES);
-            }
-        }
+        pSvga->pMiniportMobData = (VMSVGAMINIPORTMOB volatile *)RTR0MemObjAddress(pSvga->hMemObjMiniportMob);
+        memset((void *)pSvga->pMiniportMobData, 0, cbMiniportMob);
+        Status = STATUS_SUCCESS;
     }
     else
         AssertFailedStmt(Status = STATUS_INSUFFICIENT_RESOURCES);
@@ -478,7 +455,21 @@ NTSTATUS SvgaAdapterStart(PVBOXWDDM_EXT_VMSVGA *ppSvga,
                 if (NT_SUCCESS(Status))
                 {
                     if (RT_BOOL(pSvga->u32Caps & SVGA_CAP_DX))
+                    {
+                        RTListInit(&pSvga->listMobDeferredDestruction);
+                        //pSvga->u64MobFence = 0;
+
+                        /* Allocate memory for the MiniportMob.
+                         *
+                         * The MiniportMob id will be allocated on-demand in SvgaMobAlloc, because
+                         * a mob allocation requires sending commands to the host device, but DxgkDdiStartDevice,
+                         * which calls the SvgaAdapterStart function, is not allowed to send commands.
+                         *
+                         * If the device processes commands and generates an IRQ before DxgkDdiStartDevice returns,
+                         * then OS stops using the device. Apparently Windows treats the early IRQ as an error.
+                         */
                         Status = svgaCreateMiniportMob(pSvga);
+                    }
                 }
             }
         }
@@ -2439,10 +2430,11 @@ PVMSVGAMOB SvgaMobQuery(VBOXWDDM_EXT_VMSVGA *pSvga,
     return pMob;
 }
 
-NTSTATUS SvgaMobCreate(VBOXWDDM_EXT_VMSVGA *pSvga,
-                       PVMSVGAMOB *ppMob,
-                       uint32_t cMobPages,
-                       HANDLE hAllocation)
+
+static NTSTATUS svgaMobCreate(VBOXWDDM_EXT_VMSVGA *pSvga,
+                              PVMSVGAMOB *ppMob,
+                              uint32_t cMobPages,
+                              HANDLE hAllocation)
 {
     PVMSVGAMOB pMob;
     NTSTATUS Status = svgaMobAlloc(pSvga, &pMob);
@@ -2460,6 +2452,47 @@ NTSTATUS SvgaMobCreate(VBOXWDDM_EXT_VMSVGA *pSvga,
 #endif
 
     return STATUS_SUCCESS;
+}
+
+
+NTSTATUS SvgaMobCreate(VBOXWDDM_EXT_VMSVGA *pSvga,
+                       PVMSVGAMOB *ppMob,
+                       uint32_t cMobPages,
+                       HANDLE hAllocation)
+{
+    /* This function also performs one time initialization of miniport MOB. */
+    if (RT_LIKELY(pSvga->pMiniportMob != NULL))
+    { /* likely */ }
+    else
+    {
+        NTSTATUS Status = svgaMobCreate(pSvga, &pSvga->pMiniportMob, (uint32_t)(RTR0MemObjSize(pSvga->hMemObjMiniportMob) / PAGE_SIZE), 0);
+        if (NT_SUCCESS(Status))
+        {
+            Status = SvgaMobSetMemObj(pSvga->pMiniportMob, pSvga->hMemObjMiniportMob);
+            if (NT_SUCCESS(Status))
+            {
+                void *pvCmd = SvgaCmdBuf3dCmdReserve(pSvga, SVGA_3D_CMD_DEFINE_GB_MOB64, sizeof(SVGA3dCmdDefineGBMob64), SVGA3D_INVALID_ID);
+                if (pvCmd)
+                {
+                    SVGA3dCmdDefineGBMob64 *pCmd = (SVGA3dCmdDefineGBMob64 *)pvCmd;
+                    pCmd->mobid       = VMSVGAMOB_ID(pSvga->pMiniportMob);
+                    pCmd->ptDepth     = pSvga->pMiniportMob->gbo.enmMobFormat;
+                    pCmd->base        = pSvga->pMiniportMob->gbo.base;
+                    pCmd->sizeInBytes = pSvga->pMiniportMob->gbo.cbGbo;
+                    SvgaCmdBufCommit(pSvga, sizeof(*pCmd));
+
+                }
+                else
+                    AssertFailedReturn(STATUS_INSUFFICIENT_RESOURCES);
+            }
+            else
+                AssertFailedReturn(Status);
+        }
+        else
+            AssertFailedReturn(Status);
+    }
+
+    return svgaMobCreate(pSvga, ppMob, cMobPages, hAllocation);
 }
 
 NTSTATUS SvgaMobSetMemObj(PVMSVGAMOB pMob,

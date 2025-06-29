@@ -1,4 +1,4 @@
-/* $Id: Svga.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: Svga.h 110039 2025-06-29 17:07:07Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Gallium driver VMSVGA.
  */
@@ -260,6 +260,7 @@ typedef struct VBOXWDDM_EXT_VMSVGA
 
     VMSVGAOT aOT[SVGA_OTABLE_DX_MAX];
 
+    RTR0MEMOBJ hMemObjMiniportMob; /* MiniportMob memory. */
     PVMSVGAMOB pMiniportMob; /* Used by miniport to communicate with the device. */
     struct VMSVGAMINIPORTMOB volatile *pMiniportMobData; /* Pointer to the miniport mob content. */
 
