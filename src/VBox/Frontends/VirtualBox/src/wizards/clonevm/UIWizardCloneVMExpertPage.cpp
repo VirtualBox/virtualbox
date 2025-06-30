@@ -1,4 +1,4 @@
-/* $Id: UIWizardCloneVMExpertPage.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIWizardCloneVMExpertPage.cpp 110043 2025-06-30 10:09:23Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardCloneVMExpertPage class implementation.
  */
@@ -91,7 +91,9 @@ void UIWizardCloneVMExpertPage::prepare(const QString &strOriginalName, const QS
     if (m_pCloneTypeGroupBox)
         connect(m_pCloneTypeGroupBox, &UICloneVMCloneTypeGroupBox::sigFullCloneSelected,
                 this, &UIWizardCloneVMExpertPage::sltCloneTypeChanged);
-
+    if (m_pCloneModeGroupBox)
+        connect(m_pCloneModeGroupBox, &UICloneVMCloneModeGroupBox::sigCloneModeChanged,
+                this, &UIWizardCloneVMExpertPage::sltCloneModeChanged);
     sltRetranslateUI();
 }
 
@@ -198,4 +200,13 @@ void UIWizardCloneVMExpertPage::sltCloneTypeChanged(bool fIsFullClone)
     AssertReturnVoid(pWizard);
     pWizard->setLinkedClone(!fIsFullClone);
     setCloneModeGroupBoxEnabled();
+    emit completeChanged();
+}
+
+void UIWizardCloneVMExpertPage::sltCloneModeChanged(KCloneMode enmCloneMode)
+{
+    UIWizardCloneVM *pWizard = wizardWindow<UIWizardCloneVM>();
+    AssertReturnVoid(pWizard);
+    pWizard->setCloneMode(enmCloneMode);
+    emit completeChanged();
 }
