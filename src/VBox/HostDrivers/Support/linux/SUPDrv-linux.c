@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c 109524 2025-05-14 10:16:16Z vadim.galitsyn@oracle.com $ */
+/* $Id: SUPDrv-linux.c 110052 2025-07-01 06:29:10Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -109,6 +109,13 @@
 #ifndef VBOX_EXTRA_VERSION_STRING
 # define VBOX_EXTRA_VERSION_STRING ""
 #endif
+
+/* Macro was renamed in 6.16. */
+# if RTLNX_VER_MIN(6,16,0)
+#  define VBOX_RDMSR_SAFE rdmsrq_safe
+# else
+#  define VBOX_RDMSR_SAFE rdmsrl_safe
+# endif
 
 
 /*********************************************************************************************************************************
@@ -1575,7 +1582,7 @@ static DECLCALLBACK(void) supdrvLnxMsrProberModifyOnCpu(RTCPUID idCpu, void *pvU
     if (!fFaster)
         ASMWriteBackAndInvalidateCaches();
 
-    rcBefore = rdmsrl_safe(uMsr, &uBefore);
+    rcBefore = VBOX_RDMSR_SAFE(uMsr, &uBefore);
     if (rcBefore >= 0)
     {
         register uint64_t uRestore = uBefore;
@@ -1584,7 +1591,7 @@ static DECLCALLBACK(void) supdrvLnxMsrProberModifyOnCpu(RTCPUID idCpu, void *pvU
         uWritten |= pReq->u.In.uArgs.Modify.fOrMask;
 
         rcWrite   = wrmsr_safe(uMsr, RT_LODWORD(uWritten), RT_HIDWORD(uWritten));
-        rcAfter   = rdmsrl_safe(uMsr, &uAfter);
+        rcAfter   = VBOX_RDMSR_SAFE(uMsr, &uAfter);
         rcRestore = wrmsr_safe(uMsr, RT_LODWORD(uRestore), RT_HIDWORD(uRestore));
 
         if (!fFaster)

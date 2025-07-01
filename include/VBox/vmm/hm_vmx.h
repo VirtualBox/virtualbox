@@ -542,9 +542,11 @@
 /** Suppress \#VE. */
 #define VMX_BF_EPT_PT_SUPPRESS_VE_SHIFT                 63
 #define VMX_BF_EPT_PT_SUPPRESS_VE_MASK                  UINT64_C(0x8000000000000000)
+#if !defined(READ) && !defined(WRITE)
 RT_BF_ASSERT_COMPILE_CHECKS(VMX_BF_EPT_PT_, UINT64_C(0), UINT64_MAX,
                             (READ, WRITE, EXECUTE, MEMTYPE, IGNORE_PAT, IGN_7, ACCESSED, DIRTY, EXECUTE_USER, IGN_59_11,
                             SUPER_SHW_STACK, IGN_62_61, SUPPRESS_VE));
+#endif
 /** @} */
 
 

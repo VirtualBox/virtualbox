@@ -1,4 +1,4 @@
-/* $Id: regops.c 109762 2025-06-03 08:26:33Z vadim.galitsyn@oracle.com $ */
+/* $Id: regops.c 110052 2025-07-01 06:29:10Z vadim.galitsyn@oracle.com $ */
 /** @file
  * vboxsf - VBox Linux Shared Folders VFS, regular file inode and file operations.
  */
@@ -82,6 +82,12 @@
 
 #if RTLNX_VER_MAX(2,5,12)
 # define PageUptodate(a_pPage) Page_Uptodate(a_pPage)
+#endif
+
+#if RTLNX_VER_MIN(6,16,0)
+# define VBOX_PAGE_INDEX(_page) (_page->__folio_index)
+#else
+# define VBOX_PAGE_INDEX(_page) (_page->index)
 #endif
 
 
@@ -1789,7 +1795,7 @@ static void vbsf_reg_write_sync_page_cache(struct address_space *mapping, loff_t
             struct page  *pDstPage   = find_lock_page(mapping, idxPage);
             if (pDstPage) {
                 if (   pDstPage->mapping == mapping /* ignore if re-purposed (paranoia) */
-                    && pDstPage->index == idxPage
+                    && VBOX_PAGE_INDEX(pDstPage) == idxPage
                     && !PageDirty(pDstPage)         /* ignore if dirty */
                     && !PageWriteback(pDstPage)     /* ignore if being written back */ ) {
                     /*
@@ -1820,7 +1826,7 @@ static void vbsf_reg_write_sync_page_cache(struct address_space *mapping, loff_t
 # endif
                 } else
                     SFLOGFLOW(("vbsf_reg_write_sync_page_cache: Skipping page %p: mapping=%p (vs %p) writeback=%d offset=%#lx (vs%#lx)\n",
-                               pDstPage, pDstPage->mapping, mapping, PageWriteback(pDstPage), pDstPage->index, idxPage));
+                               pDstPage, pDstPage->mapping, mapping, PageWriteback(pDstPage), VBOX_PAGE_INDEX(pDstPage), idxPage));
                 unlock_page(pDstPage);
                 vbsf_put_page(pDstPage);
             }
@@ -3632,7 +3638,7 @@ static int vbsf_readpage(struct file *file, struct page *page)
     struct inode *inode = VBSF_GET_F_DENTRY(file)->d_inode;
     int           err;
 
-    SFLOGFLOW(("vbsf_readpage: inode=%p file=%p page=%p off=%#llx\n", inode, file, page, (uint64_t)page->index << PAGE_SHIFT));
+    SFLOGFLOW(("vbsf_readpage: inode=%p file=%p page=%p off=%#llx\n", inode, file, page, (uint64_t)VBOX_PAGE_INDEX(page) << PAGE_SHIFT));
     Assert(PageLocked(page));
 
     if (PageUptodate(page)) {
@@ -3653,7 +3659,7 @@ static int vbsf_readpage(struct file *file, struct page *page)
             vrc = VbglR0SfHostReqReadPgLst(pSuperInfo->map.root,
                                            pReq,
                                            sf_r->Handle.hHost,
-                                           (uint64_t)page->index << PAGE_SHIFT,
+                                           (uint64_t)VBOX_PAGE_INDEX(page) << PAGE_SHIFT,
                                            PAGE_SIZE,
                                            1 /*cPages*/);
 
