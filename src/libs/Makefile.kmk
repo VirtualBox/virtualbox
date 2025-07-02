@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 109493 2025-05-09 12:17:25Z aleksey.ilyushin@oracle.com $
+# $Id: Makefile.kmk 110090 2025-07-02 13:37:08Z andreas.loeffler@oracle.com $
 ## @file
 # Top-level makefile for the external libraries.
 #
@@ -98,8 +98,8 @@ endif
 if   !defined(VBOX_ONLY_EXTPACKS_USE_IMPLIBS) \
   && !defined(VBOX_ONLY_ADDITIONS) \
   && !defined(VBOX_ONLY_SDK)
- ifeq ($(SDK_VBoxLibXml2_INCS),$(PATH_ROOT)/src/libs/libxml2-2.13.2/include)
-  include $(PATH_SUB_CURRENT)/libxml2-2.13.2/Makefile.kmk
+ ifeq ($(SDK_VBoxLibXml2_INCS),$(PATH_ROOT)/src/libs/libxml2-2.13.8/include)
+  include $(PATH_SUB_CURRENT)/libxml2-2.13.8/Makefile.kmk
  endif
 endif
 
