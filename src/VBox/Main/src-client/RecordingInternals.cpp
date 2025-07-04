@@ -1,4 +1,4 @@
-/* $Id: RecordingInternals.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: RecordingInternals.cpp 110118 2025-07-04 12:03:20Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording internals code.
  */
@@ -288,7 +288,6 @@ int RecordingVideoBlitRaw(uint8_t *pu8Dst, size_t cbDst, uint32_t uDstX, uint32_
 /**
  * Simple blitting function for raw image data with alpha channel, inlined version.
  *
- * @returns VBox status code.
  * @param   pFrame              Destination frame.
  * @param   uDstX               X destination (in pixel) within destination frame.
  * @param   uDstY               Y destination (in pixel) within destination frame.
@@ -301,56 +300,67 @@ int RecordingVideoBlitRaw(uint8_t *pu8Dst, size_t cbDst, uint32_t uDstX, uint32_
  * @param   uSrcBytesPerLine    Bytes per line in source data.
  * @param   uSrcBPP             BPP of source data. Must match \a pFrame.
  * @param   enmFmt              Pixel format of source data. Must match \a pFrame.
+ *                              Only supports RECORDINGPIXELFMT_BRGA32 for now.
  */
-DECLINLINE(int) recordingVideoFrameBlitRawAlpha(PRECORDINGVIDEOFRAME pFrame, uint32_t uDstX, uint32_t uDstY,
-                                                const uint8_t *pu8Src, size_t cbSrc, uint32_t uSrcX, uint32_t uSrcY, uint32_t uSrcWidth, uint32_t uSrcHeight,
-                                                uint32_t uSrcBytesPerLine, uint8_t uSrcBPP, RECORDINGPIXELFMT enmFmt)
+DECLINLINE(void) recordingVideoFrameBlitRawAlpha(PRECORDINGVIDEOFRAME pFrame, uint32_t uDstX, uint32_t uDstY,
+                                                 const uint8_t *pu8Src, size_t cbSrc, uint32_t uSrcX, uint32_t uSrcY, uint32_t uSrcWidth, uint32_t uSrcHeight,
+                                                 uint32_t uSrcBytesPerLine, uint8_t uSrcBPP, RECORDINGPIXELFMT enmFmt)
 {
-    AssertReturn(pFrame->Info.enmPixelFmt == enmFmt, VERR_NOT_SUPPORTED);
-    AssertReturn(pFrame->Info.uBPP == uSrcBPP, VERR_NOT_SUPPORTED);
+    RT_NOREF(cbSrc, uSrcBytesPerLine, uSrcBPP, enmFmt);
 
-    RT_NOREF(uDstX, uDstY, cbSrc, uSrcX, uSrcY, uSrcBytesPerLine);
-    uint8_t const uDstBytesPerPixel = pFrame->Info.uBPP / 8;
-    uint8_t const uSrcBytesPerPixel = uSrcBPP / 8;
+    Assert(enmFmt == RECORDINGPIXELFMT_BRGA32);
+    Assert(pFrame->Info.enmPixelFmt == enmFmt);
+    Assert(pFrame->Info.uBPP == uSrcBPP);
+
+    Assert(uSrcBPP / 8 == 4); /* BGRA, 32-bit, must hold. */
+    Assert(pFrame->Info.uBPP / 8 == 4); /* Ditto. */
+
+    uint32_t uDstWidth  = pFrame->Info.uWidth;
+    uint32_t uDstHeight = pFrame->Info.uHeight;
 
     for (uint32_t y = 0; y < uSrcHeight; y++)
     {
-        size_t offSrc = RT_MIN((uSrcY + y) * uSrcBytesPerLine + uSrcX * uSrcBytesPerPixel, cbSrc);
-        size_t offDst = RT_MIN((uDstY + y) * pFrame->Info.uBytesPerLine + uDstX * uDstBytesPerPixel, pFrame->cbBuf);
+        uint32_t const uSrcCurY = uSrcY + y;
+        uint32_t const uDstCurY = uDstY + y;
+
+        if (!uSrcCurY || uSrcCurY >= uSrcHeight)
+            continue; /* Skip rows outside source. */
+        if (!uDstCurY || uDstCurY >= uDstHeight)
+            continue; /* Skip rows outside destination. */
+
+        const uint8_t *puSrcRow = pu8Src          + 4 * uSrcWidth * uSrcCurY;
+              uint8_t *puDstRow = pFrame->pau8Buf + 4 * uDstWidth * uDstCurY;
 
         for (uint32_t x = 0; x < uSrcWidth; x++)
         {
-            /* BGRA */
-            int const idx_b = 0;
-            int const idx_g = 1;
-            int const idx_r = 2;
-            int const idx_a = 3;
+            uint32_t const uSrcCurX = uSrcX + x;
+            uint32_t const uDstCurX = uDstX + x;
+            if (!uSrcCurX || uSrcCurX >= uSrcWidth)
+                continue; /* Skip columns outside source. */
+            if (!uDstCurX || uDstCurX >= uDstWidth)
+                continue; /* skip columns outside destination. */
 
-            unsigned int const alpha = pu8Src[offSrc + idx_a] + 1;
-            unsigned int const inv_alpha = 256 - pu8Src[offSrc + idx_a];
-            if (pu8Src[offSrc + idx_a])
+            uint8_t const *pu8SrcBlend = puSrcRow + 4 * uSrcCurX;
+            uint8_t       *pu8DstBlend = puDstRow + 4 * uDstCurX;
+
+            if (pu8SrcBlend[3])
             {
-                pFrame->pau8Buf[offDst + idx_r] = (unsigned char)((alpha * pu8Src[offSrc + idx_r] + inv_alpha * pFrame->pau8Buf[offDst + idx_r]) >> 8);
-                pFrame->pau8Buf[offDst + idx_g] = (unsigned char)((alpha * pu8Src[offSrc + idx_g] + inv_alpha * pFrame->pau8Buf[offDst + idx_g]) >> 8);
-                pFrame->pau8Buf[offDst + idx_b] = (unsigned char)((alpha * pu8Src[offSrc + idx_b] + inv_alpha * pFrame->pau8Buf[offDst + idx_b]) >> 8);
-                pFrame->pau8Buf[offDst + idx_a] = 0xff;
+                uint8_t const u8SrcAlpha    = pu8SrcBlend[3];
+                uint8_t const u8SrcAlphaInv = 255 - u8SrcAlpha;
+                pu8DstBlend[2] = (unsigned char)((u8SrcAlpha * pu8SrcBlend[2] + u8SrcAlphaInv * pu8SrcBlend[2]) >> 8); /* R */
+                pu8DstBlend[1] = (unsigned char)((u8SrcAlpha * pu8SrcBlend[1] + u8SrcAlphaInv * pu8SrcBlend[1]) >> 8); /* G*/
+                pu8DstBlend[0] = (unsigned char)((u8SrcAlpha * pu8SrcBlend[0] + u8SrcAlphaInv * pu8SrcBlend[0]) >> 8); /* B */
+                pu8DstBlend[3] = 0xff;                                                                                 /* A */
             }
-
-            offSrc = RT_MIN(offSrc + uSrcBytesPerPixel, cbSrc);
-            if (offSrc >= cbSrc)
-                break;
-            offDst = RT_MIN(offDst + uDstBytesPerPixel, pFrame->cbBuf);
-            if (offDst >= pFrame->cbBuf)
-                break;
         }
     }
 
 #if 0
-    RecordingUtilsDbgDumpImageData(pu8Src, cbSrc, "/tmp", "cursor-src", uSrcWidth, uSrcHeight, uSrcBytesPerLine, 32);
-    RecordingUtilsDbgDumpVideoFrameEx(pFrame, "/tmp", "cursor-dst");
+    RecordingUtilsDbgDumpImageData(pu8Src, cbSrc, NULL /* pszPath */, "cursor-src", uSrcX, uSrcY, uSrcWidth, uSrcHeight, uSrcBytesPerLine, 32);
+    RecordingUtilsDbgDumpVideoFrameEx(pFrame, NULL /* pszPath */, "cursor-dst");
 #endif
 
-    return VINF_SUCCESS;
+    return;
 }
 
 /**
@@ -384,7 +394,6 @@ int RecordingVideoFrameBlitRaw(PRECORDINGVIDEOFRAME pDstFrame, uint32_t uDstX, u
 /**
  * Simple blitting function for raw image data with alpha channel.
  *
- * @returns VBox status code.
  * @param   pDstFrame           Destination frame.
  * @param   uDstX               X destination (in pixel) within destination frame.
  * @param   uDstY               Y destination (in pixel) within destination frame.
@@ -398,12 +407,12 @@ int RecordingVideoFrameBlitRaw(PRECORDINGVIDEOFRAME pDstFrame, uint32_t uDstX, u
  * @param   uSrcBPP             BPP of source data. Must match \a pFrame.
  * @param   enmFmt              Pixel format of source data. Must match \a pFrame.
  */
-int RecordingVideoFrameBlitRawAlpha(PRECORDINGVIDEOFRAME pDstFrame, uint32_t uDstX, uint32_t uDstY,
-                                    const uint8_t *pu8Src, size_t cbSrc, uint32_t uSrcX, uint32_t uSrcY, uint32_t uSrcWidth, uint32_t uSrcHeight,
-                                    uint32_t uSrcBytesPerLine, uint8_t uSrcBPP, RECORDINGPIXELFMT enmFmt)
+void RecordingVideoFrameBlitRawAlpha(PRECORDINGVIDEOFRAME pDstFrame, uint32_t uDstX, uint32_t uDstY,
+                                     const uint8_t *pu8Src, size_t cbSrc, uint32_t uSrcX, uint32_t uSrcY, uint32_t uSrcWidth, uint32_t uSrcHeight,
+                                     uint32_t uSrcBytesPerLine, uint8_t uSrcBPP, RECORDINGPIXELFMT enmFmt)
 {
-    return recordingVideoFrameBlitRawAlpha(pDstFrame, uDstX, uDstY,
-                                           pu8Src, cbSrc, uSrcX, uSrcY, uSrcWidth, uSrcHeight, uSrcBytesPerLine, uSrcBPP, enmFmt);
+    recordingVideoFrameBlitRawAlpha(pDstFrame, uDstX, uDstY,
+                                    pu8Src, cbSrc, uSrcX, uSrcY, uSrcWidth, uSrcHeight, uSrcBytesPerLine, uSrcBPP, enmFmt);
 }
 
 /**
