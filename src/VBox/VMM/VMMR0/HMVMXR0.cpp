@@ -1,4 +1,4 @@
-/* $Id: HMVMXR0.cpp 110113 2025-07-04 08:55:57Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: HMVMXR0.cpp 110114 2025-07-04 09:15:22Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * HM VMX (Intel VT-x) - Host Context Ring-0.
  */
@@ -72,6 +72,9 @@
 # define HMVMX_GST_VMCS_MAGIC                    0xacce55edc01df00d
 # define HMVMX_NST_GST_VMCS_MAGIC                0xde7ec7edbaddecaf
 #endif
+
+/** Sync relevant VMCS cache fields for nested-guests (slight performance hit). */
+#define HMVMX_ALWAYS_SYNC_VMCS_CACHE
 
 /** Enables the fAlwaysInterceptMovDRx related code. */
 #define VMX_WITH_MAYBE_ALWAYS_INTERCEPT_MOV_DRX 1
@@ -6451,6 +6454,49 @@ static void hmR0VmxPostRunGuest(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransient, int
 }
 
 
+#ifdef HMVMX_ALWAYS_SYNC_VMCS_CACHE
+/**
+ * Sync the VMCS cache controls from the active, current VMCS.
+ *
+ * @param   pVmcsInfo   The VMCS info. object.
+ */
+static void hmR0VmxSyncVmcsCache(PVMXVMCSINFO pVmcsInfo)
+{
+    /** @todo We currently need to re-sync the cache here otherwise we end up with
+     *        stale/mismatched controls when executing nested-guests. This is currently
+     *        a bit more "broad" workaround to stop the bleeding first. We may be able
+     *        restrict this to fewer fields. The reason this is NOT done only for the
+     *        nested-guest VMCS is because it was observed the VMCS_SHADOWING control
+     *        (ProcCtls2) bit for the "outer" VMCS gets out-of-sync as well. While
+     *        implementing a more pointed fix, extensive testing is required as the
+     *        problem does NOT manifest immediately while executing nested guests.
+     *        It can take many minutes for the problem to show up, see @bugref{10795}
+     *        for more details. */
+    int rc = VMXReadVmcs32(VMX_VMCS32_CTRL_PIN_EXEC,                &pVmcsInfo->u32PinCtls);
+    rc    |= VMXReadVmcs32(VMX_VMCS32_CTRL_PROC_EXEC,               &pVmcsInfo->u32ProcCtls);
+    rc    |= VMXReadVmcs32(VMX_VMCS32_CTRL_PROC_EXEC2,              &pVmcsInfo->u32ProcCtls2);
+    rc    |= VMXReadVmcs32(VMX_VMCS32_CTRL_ENTRY,                   &pVmcsInfo->u32EntryCtls);
+    rc    |= VMXReadVmcs32(VMX_VMCS32_CTRL_EXIT,                    &pVmcsInfo->u32ExitCtls);
+    rc    |= VMXReadVmcs32(VMX_VMCS32_CTRL_EXCEPTION_BITMAP,        &pVmcsInfo->u32XcptBitmap);
+    rc    |= VMXReadVmcsNw(VMX_VMCS_CTRL_CR0_MASK,                  &pVmcsInfo->u64Cr0Mask);
+    rc    |= VMXReadVmcsNw(VMX_VMCS_CTRL_CR4_MASK,                  &pVmcsInfo->u64Cr4Mask);
+    rc    |= VMXReadVmcs32(VMX_VMCS32_CTRL_PAGEFAULT_ERROR_MASK,    &pVmcsInfo->u32XcptPFMask);
+    rc    |= VMXReadVmcs32(VMX_VMCS32_CTRL_PAGEFAULT_ERROR_MATCH,   &pVmcsInfo->u32XcptPFMatch);
+    rc    |= VMXReadVmcs64(VMX_VMCS64_CTRL_VIRT_APIC_PAGEADDR_FULL, &pVmcsInfo->HCPhysVirtApic);
+    rc    |= VMXReadVmcs64(VMX_VMCS64_CTRL_TSC_OFFSET_FULL,         &pVmcsInfo->u64TscOffset);
+    rc    |= VMXReadVmcs64(VMX_VMCS64_GUEST_VMCS_LINK_PTR_FULL,     &pVmcsInfo->u64VmcsLinkPtr);
+    AssertRC(rc);
+
+    /*
+     * Also invalidate the host RIP and host RSP cache as I suspect this might be causing
+     * the issues mentioned in @bugref{10795#c14}.
+     */
+    pVmcsInfo->uHostRip = 0;
+    pVmcsInfo->uHostRsp = 0;
+}
+#endif
+
+
 /**
  * Runs the guest code using hardware-assisted VMX the normal way.
  *
@@ -6491,6 +6537,10 @@ static VBOXSTRICTRC hmR0VmxRunGuestCodeNormal(PVMCPUCC pVCpu, uint32_t *pcLoops)
 
     /* Paranoia. */
     Assert(VmxTransient.pVmcsInfo == &pVCpu->hmr0.s.vmx.VmcsInfo);
+
+#ifdef HMVMX_ALWAYS_SYNC_VMCS_CACHE
+    hmR0VmxSyncVmcsCache(VmxTransient.pVmcsInfo);
+#endif
 
     VBOXSTRICTRC rcStrict = VERR_INTERNAL_ERROR_5;
     for (;;)
@@ -6604,6 +6654,10 @@ static VBOXSTRICTRC hmR0VmxRunGuestCodeNested(PVMCPUCC pVCpu, uint32_t *pcLoops)
 
     /* Paranoia. */
     Assert(VmxTransient.pVmcsInfo == &pVCpu->hmr0.s.vmx.VmcsInfoNstGst);
+
+#ifdef HMVMX_ALWAYS_SYNC_VMCS_CACHE
+    hmR0VmxSyncVmcsCache(VmxTransient.pVmcsInfo);
+#endif
 
     /* Setup pointer so PGM/IEM can query VM-exit auxiliary info on demand in ring-0. */
     pVCpu->hmr0.s.vmx.pVmxTransient = &VmxTransient;
@@ -6726,6 +6780,10 @@ static VBOXSTRICTRC hmR0VmxRunGuestCodeDebug(PVMCPUCC pVCpu, uint32_t *pcLoops)
     VMXTRANSIENT VmxTransient;
     RT_ZERO(VmxTransient);
     VmxTransient.pVmcsInfo = hmGetVmxActiveVmcsInfo(pVCpu);
+
+#ifdef HMVMX_ALWAYS_SYNC_VMCS_CACHE
+    hmR0VmxSyncVmcsCache(VmxTransient.pVmcsInfo);
+#endif
 
     /* Set HMCPU indicators.  */
     bool const fSavedSingleInstruction = pVCpu->hm.s.fSingleInstruction;
