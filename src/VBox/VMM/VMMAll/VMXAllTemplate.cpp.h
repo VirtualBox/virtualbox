@@ -1,4 +1,4 @@
-/* $Id: VMXAllTemplate.cpp.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VMXAllTemplate.cpp.h 110113 2025-07-04 08:55:57Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * HM VMX (Intel VT-x) - Code template for our own hypervisor and the NEM darwin backend using Apple's Hypervisor.framework.
  */
@@ -1100,8 +1100,6 @@ static int vmxHCSwitchToGstOrNstGstVmcs(PVMCPUCC pVCpu, bool fSwitchToNstGstVmcs
         else
             ASMAtomicUoOrU64(&VCPU_2_VMXSTATE(pVCpu).fCtxChanged, HM_CHANGED_HOST_CONTEXT | HM_CHANGED_VMX_HOST_GUEST_SHARED_STATE);
 
-        ASMSetFlags(fEFlags);
-
         /*
          * We use a different VM-exit MSR-store areas for the guest and nested-guest. Hence,
          * flag that we need to update the host MSR values there. Even if we decide in the
@@ -1109,9 +1107,14 @@ static int vmxHCSwitchToGstOrNstGstVmcs(PVMCPUCC pVCpu, bool fSwitchToNstGstVmcs
          * if its content differs, we would have to update the host MSRs anyway.
          */
         pVCpu->hmr0.s.vmx.fUpdatedHostAutoMsrs = false;
+
+#ifdef HMVMX_VERIFY_VMCS_MAGIC
+        AssertRC(hmR0VmxCheckVmcsMagic(fSwitchToNstGstVmcs));
+#endif
     }
-    else
-        ASMSetFlags(fEFlags);
+
+    ASMSetFlags(fEFlags);
+    AssertRC(rc);
     return rc;
 }
 
@@ -1397,6 +1400,19 @@ static int vmxHCCheckCachedVmcsCtls(PVMCPUCC pVCpu, PCVMXVMCSINFO pVmcsInfo, boo
 {
     const char * const pcszVmcs = fIsNstGstVmcs ? "Nested-guest VMCS" : "VMCS";
 
+#ifdef HMVMX_VERIFY_VMCS_MAGIC
+    {
+        uint64_t       uVmcsMagic = 0;
+        uint64_t const uExpectedMagic = fIsNstGstVmcs ? HMVMX_NST_GST_VMCS_MAGIC : HMVMX_GST_VMCS_MAGIC;
+        int const rcMagic = VMX_VMCS_READ_64(pVCpu, VMX_VMCS64_CTRL_EXEC_VMCS_PTR_FULL, &uVmcsMagic);
+        AssertRC(rcMagic);
+        AssertMsgReturnStmt(uVmcsMagic == uExpectedMagic,
+                            ("%s VMCS magic mismatch: Expected=%#RX32 VMCS=%#RX32\n", pcszVmcs, uExpectedMagic, uVmcsMagic),
+                            pVCpu->hm.s.u32HMError = VMX_VCI_VMCS_MAGIC_MISMATCH,
+                            VERR_VMX_VMCS_FIELD_CACHE_INVALID);
+    }
+#endif
+
     uint32_t u32Val;
     int rc = VMX_VMCS_READ_32(pVCpu, VMX_VMCS32_CTRL_ENTRY, &u32Val);
     AssertRC(rc);
@@ -1419,18 +1435,12 @@ static int vmxHCCheckCachedVmcsCtls(PVMCPUCC pVCpu, PCVMXVMCSINFO pVmcsInfo, boo
                         VCPU_2_VMXSTATE(pVCpu).u32HMError = VMX_VCI_CTRL_PIN_EXEC,
                         VERR_VMX_VMCS_FIELD_CACHE_INVALID);
 
-    /** @todo Currently disabled for nested-guests because we run into bit differences
-     *        with for INT_WINDOW, RDTSC/P, see @bugref{10318}. Later try figure out
-     *        why and re-enable. */
-    if (!fIsNstGstVmcs)
-    {
-        rc = VMX_VMCS_READ_32(pVCpu, VMX_VMCS32_CTRL_PROC_EXEC, &u32Val);
-        AssertRC(rc);
-        AssertMsgReturnStmt(pVmcsInfo->u32ProcCtls == u32Val,
-                            ("%s proc controls mismatch: Cache=%#RX32 VMCS=%#RX32\n", pcszVmcs, pVmcsInfo->u32ProcCtls, u32Val),
-                            VCPU_2_VMXSTATE(pVCpu).u32HMError = VMX_VCI_CTRL_PROC_EXEC,
-                            VERR_VMX_VMCS_FIELD_CACHE_INVALID);
-    }
+    rc = VMX_VMCS_READ_32(pVCpu, VMX_VMCS32_CTRL_PROC_EXEC, &u32Val);
+    AssertRC(rc);
+    AssertMsgReturnStmt(pVmcsInfo->u32ProcCtls == u32Val,
+                        ("%s proc controls mismatch: Cache=%#RX32 VMCS=%#RX32\n", pcszVmcs, pVmcsInfo->u32ProcCtls, u32Val),
+                        VCPU_2_VMXSTATE(pVCpu).u32HMError = VMX_VCI_CTRL_PROC_EXEC,
+                        VERR_VMX_VMCS_FIELD_CACHE_INVALID);
 
     if (pVmcsInfo->u32ProcCtls & VMX_PROC_CTLS_USE_SECONDARY_CTLS)
     {
@@ -1805,11 +1815,13 @@ static void vmxHCExportGuestXcptIntercepts(PVMCPUCC pVCpu, PCVMXTRANSIENT pVmxTr
     if (ASMAtomicUoReadU64(&VCPU_2_VMXSTATE(pVCpu).fCtxChanged) & HM_CHANGED_VMX_XCPT_INTERCEPTS)
     {
         /* When executing a nested-guest, we do not need to trap GIM hypercalls by intercepting #UD. */
-        if (   !pVmxTransient->fIsNestedGuest
-            &&  VCPU_2_VMXSTATE(pVCpu).fGIMTrapXcptUD)
-            vmxHCAddXcptIntercept(pVCpu, pVmxTransient, X86_XCPT_UD);
-        else
-            vmxHCRemoveXcptIntercept(pVCpu, pVmxTransient, X86_XCPT_UD);
+        if (!pVmxTransient->fIsNestedGuest)
+        {
+            if (VCPU_2_VMXSTATE(pVCpu).fGIMTrapXcptUD)
+                vmxHCAddXcptIntercept(pVCpu, pVmxTransient, X86_XCPT_UD);
+            else
+                vmxHCRemoveXcptIntercept(pVCpu, pVmxTransient, X86_XCPT_UD);
+        }
 
         /* Other exception intercepts are handled elsewhere, e.g. while exporting guest CR0. */
         ASMAtomicUoAndU64(&VCPU_2_VMXSTATE(pVCpu).fCtxChanged, ~HM_CHANGED_VMX_XCPT_INTERCEPTS);
@@ -3895,6 +3907,7 @@ static int vmxHCImportGuestStateEx(PVMCPUCC pVCpu, PVMXVMCSINFO pVmcsInfo, uint6
                 {
                     Assert(CPUMIsGuestInVmxRootMode(pCtx));
                     rc = vmxHCCopyShadowToNstGstVmcs(pVCpu, pVmcsInfo);
+                    pVCpu->hm.s.vmx.fCopiedNstGstToShadowVmcs = false;
                     if (RT_SUCCESS(rc))
                     { /* likely */ }
                     else
@@ -4163,6 +4176,7 @@ static int vmxHCImportGuestStateInner(PVMCPUCC pVCpu, PVMXVMCSINFO pVmcsInfo, ui
             Assert(CPUMIsGuestInVmxRootMode(&pVCpu->cpum.GstCtx));
             int const rc = vmxHCCopyShadowToNstGstVmcs(pVCpu, pVmcsInfo);
             AssertRCReturn(rc, rc);
+            pVCpu->hm.s.vmx.fCopiedNstGstToShadowVmcs = false;
         }
     }
 #endif

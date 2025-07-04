@@ -120,6 +120,8 @@
 #define VMX_VCI_CTRL_TSC_OFFSET                                 306
 /** Cache of tertiary processor-based VM-execution controls invalid. */
 #define VMX_VCI_CTRL_PROC_EXEC3                                 307
+/** VirtualBox VMCS magic field mismatch. */
+#define VMX_VCI_VMCS_MAGIC_MISMATCH                             308
 /** @} */
 
 /** @name VMX HM-error codes for VERR_VMX_INVALID_GUEST_STATE.

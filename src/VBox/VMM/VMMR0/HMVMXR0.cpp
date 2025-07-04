@@ -1,4 +1,4 @@
-/* $Id: HMVMXR0.cpp 107963 2025-01-20 16:26:58Z knut.osmundsen@oracle.com $ */
+/* $Id: HMVMXR0.cpp 110113 2025-07-04 08:55:57Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * HM VMX (Intel VT-x) - Host Context Ring-0.
  */
@@ -68,6 +68,9 @@
 # define HMVMX_ALWAYS_TRAP_PF
 # define HMVMX_ALWAYS_FLUSH_TLB
 # define HMVMX_ALWAYS_SWAP_EFER
+# define HMVMX_VERIFY_VMCS_MAGIC
+# define HMVMX_GST_VMCS_MAGIC                    0xacce55edc01df00d
+# define HMVMX_NST_GST_VMCS_MAGIC                0xde7ec7edbaddecaf
 #endif
 
 /** Enables the fAlwaysInterceptMovDRx related code. */
@@ -189,6 +192,30 @@ DECLINLINE(PVMXVMCSINFO) hmGetVmxActiveVmcsInfo(PVMCPUCC pVCpu)
         return &pVCpu->hmr0.s.vmx.VmcsInfo;
     return &pVCpu->hmr0.s.vmx.VmcsInfoNstGst;
 }
+
+
+#ifdef HMVMX_VERIFY_VMCS_MAGIC
+/**
+ * Returns whether the VMCS magic field matches its expected value.
+ *
+ * @returns VBox status code.
+ * @param   fIsNstGstVmcs   Whether this is a nested-guest VMCS.
+ */
+static int hmR0VmxCheckVmcsMagic(bool fIsNstGstVmcs)
+{
+    uint64_t       uVmcsMagic     = 0;
+    uint64_t const uExpectedMagic = fIsNstGstVmcs ? HMVMX_NST_GST_VMCS_MAGIC : HMVMX_GST_VMCS_MAGIC;
+    uint32_t const uVmcsField     = VMX_VMCS64_CTRL_EXEC_VMCS_PTR_FULL;
+    int const rc = VMXReadVmcs64(uVmcsField, &uVmcsMagic);
+    if (RT_SUCCESS(rc))
+    {
+        if (uVmcsMagic == uExpectedMagic)
+            return VINF_SUCCESS;
+        return VERR_INVALID_MAGIC;
+    }
+    return rc;
+}
+#endif
 
 
 /**
@@ -3023,6 +3050,11 @@ static int hmR0VmxSetupVmcs(PVMCPUCC pVCpu, PVMXVMCSINFO pVmcsInfo, bool fIsNstG
     else
         LogRelFunc(("Failed to clear the %s. rc=%Rrc\n", rc, pszVmcs));
 
+#ifdef HMVMX_VERIFY_VMCS_MAGIC
+    rc = VMXWriteVmcs64(VMX_VMCS64_CTRL_EXEC_VMCS_PTR_FULL, fIsNstGstVmcs ? HMVMX_NST_GST_VMCS_MAGIC : HMVMX_GST_VMCS_MAGIC);
+    AssertRC(rc);
+#endif
+
     /* Sync any CPU internal VMCS data back into our VMCS in memory. */
     if (RT_SUCCESS(rc))
     {
@@ -3752,7 +3784,8 @@ static int hmR0VmxExportGuestHwvirtState(PVMCPUCC pVCpu, PCVMXTRANSIENT pVmxTran
          * Check if the VMX feature is exposed to the guest and if the host CPU supports
          * VMCS shadowing.
          */
-        if (pVCpu->CTX_SUFF(pVM)->hmr0.s.vmx.fUseVmcsShadowing)
+        if (   !pVmxTransient->fIsNestedGuest
+            &&  pVCpu->CTX_SUFF(pVM)->hmr0.s.vmx.fUseVmcsShadowing)
         {
             /*
              * If the nested hypervisor has loaded a current VMCS and is in VMX root mode,
@@ -3768,9 +3801,6 @@ static int hmR0VmxExportGuestHwvirtState(PVMCPUCC pVCpu, PCVMXTRANSIENT pVmxTran
                 && !CPUMIsGuestInVmxNonRootMode(&pVCpu->cpum.GstCtx)
                 && CPUMIsGuestVmxCurrentVmcsValid(&pVCpu->cpum.GstCtx))
             {
-                /* Paranoia. */
-                Assert(!pVmxTransient->fIsNestedGuest);
-
                 /*
                  * For performance reasons, also check if the nested hypervisor's current VMCS
                  * was newly loaded or modified before copying it to the shadow VMCS.
@@ -4958,6 +4988,10 @@ VMMR0DECL(int) VMXR0AssertionCallback(PVMCPUCC pVCpu)
     /* Clear the current VMCS data back to memory (shadow VMCS if any would have been
        cleared as part of importing the guest state above. */
     hmR0VmxClearVmcs(pVmcsInfo);
+
+#ifdef VBOX_WITH_NESTED_HWVIRT_VMX
+    Assert(!pVmcsInfo->pvShadowVmcs || pVmcsInfo->fShadowVmcsState == VMX_V_VMCS_LAUNCH_STATE_CLEAR);
+#endif
 
     /** @todo eliminate the need for calling VMMR0ThreadCtxHookDisable here!  */
     VMMR0ThreadCtxHookDisable(pVCpu);
@@ -6271,6 +6305,7 @@ static void hmR0VmxPostRunGuest(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransient, int
 
     pVCpu->hmr0.s.vmx.fRestoreHostFlags |= VMX_RESTORE_HOST_REQUIRED;   /* Some host state messed up by VMX needs restoring. */
     pVmcsInfo->fVmcsState = VMX_V_VMCS_LAUNCH_STATE_LAUNCHED;           /* Use VMRESUME instead of VMLAUNCH in the next run. */
+    pVmcsInfo->fShadowVmcsState = VMX_V_VMCS_LAUNCH_STATE_LAUNCHED;     /* Shadow VMCS isn't launched but set it as not clear. */
 #ifdef VBOX_STRICT
     hmR0VmxCheckHostEferMsr(pVmcsInfo);                                 /* Verify that the host EFER MSR wasn't modified. */
 #endif
