@@ -3317,7 +3317,7 @@ int AudioTestWaveFileOpen(const char *pszFile, PAUDIOTESTWAVEFILE pWaveFile, PRT
                     /*
                      * Find the 'data' chunk with the audio samples.
                      *
-                     * There can be INFO lists both preceeding this and succeeding
+                     * There can be INFO lists both preceding this and succeeding
                      * it, containing IART and other things we can ignored.  Thus
                      * we read a list header here rather than just a chunk header,
                      * since it doesn't matter if we read 4 bytes extra as

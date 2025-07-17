@@ -1876,7 +1876,7 @@ typedef PGMPAGER0MAPTLB *PPGMPAGER0MAPTLB;
 /** @name Context neutral page mapper TLB.
  *
  * Hoping to avoid some code and bug duplication parts of the GCxxx->CCPtr
- * code is writting in a kind of context neutral way. Time will show whether
+ * code is writing in a kind of context neutral way. Time will show whether
  * this actually makes sense or not...
  *
  * @todo this needs to be reconsidered and dropped/redone since the ring-0

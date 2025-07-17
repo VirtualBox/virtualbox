@@ -82,7 +82,7 @@ void UINetworkRequest::sltHandleNetworkReplyFinish()
         /* Notify network-request listeners: */
         emit sigCanceled();
     }
-    /* If some other error occured: */
+    /* If some other error occurred: */
     else
     {
         /* Check if we are able to handle error: */

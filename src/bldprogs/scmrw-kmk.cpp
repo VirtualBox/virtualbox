@@ -443,7 +443,7 @@ static size_t scmKmkWordLength(const char *pchLine, size_t cchLine, size_t offSt
 
     /*
      * Drop any line continuation slash from the line length, so we don't count
-     * it into the word length. Also, any spaces preceeding it (for multiline
+     * it into the word length. Also, any spaces preceding it (for multiline
      * variable function expansion).  ASSUMES no trailing slash escaping.
      */
     if (cchLine > 0 && pchLine[cchLine - 1] == '\\')
@@ -746,7 +746,7 @@ static bool scmKmkHandleIfParentheses(KMKPARSER *pParser, size_t offToken, KMKTO
         offSrc++;
 
     /*
-     * Work up to the ',' separator.  It shall likewise not be preceeded by any spaces.
+     * Work up to the ',' separator.  It shall likewise not be preceded by any spaces.
      * Need to take $(func 1,2,3) calls into account here, so we trac () and {} while
      * skipping ahead.
      *

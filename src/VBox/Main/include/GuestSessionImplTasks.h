@@ -161,7 +161,7 @@ public:
 typedef std::vector<FsList *> FsLists;
 
 /**
- * Abstract base class for a lenghtly per-session operation which
+ * Abstract base class for a lengthy per-session operation which
  * runs in a Main worker thread.
  */
 class GuestSessionTask

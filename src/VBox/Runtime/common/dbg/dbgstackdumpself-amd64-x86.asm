@@ -109,7 +109,7 @@ RT_BEGINPROC RTDbgStackDumpSelf
         SEH64_PUSH_GREG xAX
 
         ;
-        ; ... preceeded by the EIP/RIP.
+        ; ... preceded by the EIP/RIP.
         ;
 %ifdef RT_ARCH_AMD64
         mov     r10, [xBP + xCB]

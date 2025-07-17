@@ -580,7 +580,7 @@ void UIMachineLogic::sltAdditionsStateChanged()
 
 void UIMachineLogic::sltMouseCapabilityChanged()
 {
-    /* Variable falgs: */
+    /* Variable flags: */
     bool fIsMouseSupportsAbsolute = uimachine()->isMouseSupportsAbsolute();
     bool fIsMouseSupportsRelative = uimachine()->isMouseSupportsRelative();
     bool fIsMouseSupportsTouchScreen = uimachine()->isMouseSupportsTouchScreen();
@@ -1371,7 +1371,7 @@ void UIMachineLogic::updateDock()
     else
     {
         m_DockIconPreviewMonitor = 0;
-        /* Remove the seperator as well: */
+        /* Remove the separator as well: */
         if (m_pDockSettingsMenuSeparator)
         {
             pDockSettingsMenu->removeAction(m_pDockSettingsMenuSeparator);

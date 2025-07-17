@@ -789,7 +789,7 @@ static int hdaRegLookup(uint32_t offReg)
  * @returns Register index on success, -1 if not found.
  * @param   offReg      The register offset.
  * @param   pcbBefore   Where to return the number of bytes in the matching
- *                      register preceeding @a offReg.
+ *                      register preceding @a offReg.
  */
 static int hdaR3RegLookupWithin(uint32_t offReg, uint32_t *pcbBefore)
 {

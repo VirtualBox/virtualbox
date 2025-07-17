@@ -169,13 +169,13 @@
  *   @code
            PDMDEV_CHECK_VERSIONS_RETURN(pDevIns);
      @endcode
- *   There shall be absolutely nothing preceeding that and it is mandatory.
+ *   There shall be absolutely nothing preceding that and it is mandatory.
  *
  * - Ensure that the first statement in the destructors is
  *   @code
            PDMDEV_CHECK_VERSIONS_RETURN_QUIET(pDevIns);
      @endcode
- *   There shall be absolutely nothing preceeding that and it is mandatory.
+ *   There shall be absolutely nothing preceding that and it is mandatory.
  *
  * - Use 'nm -u' (tools/win.amd64/mingw-w64/r1/bin/nm.exe on windows) to check
  *   for VBoxVMM and VMMR0 function you forgot to convert to device help calls

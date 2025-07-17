@@ -559,7 +559,7 @@ static int dbgcCmdHelpCmdOrFunc(PDBGCCMDHLP pCmdHlp, const char *pszName, bool f
             return DBGCCmdHlpPrintf(pCmdHlp, "%*s %s\n", cchPadding, "", pszDescription);
         else
         {
-            /* Split on preceeding blank. */
+            /* Split on preceding blank. */
             const char *pszEnd  = &pszDescription[cchCurWidth];
             if (!RT_C_IS_BLANK(*pszEnd))
                 while (pszEnd != pszDescription && !RT_C_IS_BLANK(pszEnd[-1]))

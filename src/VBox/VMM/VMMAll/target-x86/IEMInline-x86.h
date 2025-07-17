@@ -2987,7 +2987,7 @@ DECLINLINE(void) iemFpuUpdateOpcodeAndIpWorkerEx(PVMCPUCC pVCpu, PX86FXSTATE pFp
 {
     Assert(uFpuOpcode != UINT16_MAX);
     pFpuCtx->FOP = uFpuOpcode;
-    /** @todo x87.CS and FPUIP needs to be kept seperately. */
+    /** @todo x87.CS and FPUIP needs to be kept separately. */
     if (IEM_IS_REAL_OR_V86_MODE(pVCpu))
     {
         /** @todo Testcase: making assumptions about how FPUIP and FPUDP are handled

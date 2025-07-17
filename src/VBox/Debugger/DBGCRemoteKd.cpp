@@ -636,7 +636,7 @@ typedef const KDPACKETSTATECHANGE64 *PCKDPACKETSTATECHANGE64;
  * @{ */
 /** Minimum state change type. */
 #define KD_PACKET_STATE_CHANGE_MIN                  UINT32_C(0x00003030)
-/** An exception occured. */
+/** An exception occurred. */
 #define KD_PACKET_STATE_CHANGE_EXCEPTION            KD_PACKET_STATE_CHANGE_MIN
 /** Symbols were loaded(?). */
 #define KD_PACKET_STATE_CHANGE_LOAD_SYMBOLS         UINT32_C(0x00003031)

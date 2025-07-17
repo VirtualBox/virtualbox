@@ -209,7 +209,7 @@
 
         <xsl:apply-templates select="title"/>
 
-        <!-- Must put cmdsynopsis in a paragraph or it'll get too close to any preceeding section title -->
+        <!-- Must put cmdsynopsis in a paragraph or it'll get too close to any preceding section title -->
         <xsl:element name="body">
           <xsl:for-each select="node()">
             <xsl:choose>

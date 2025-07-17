@@ -1597,7 +1597,7 @@ rewrite_Copyright_CommentCallback(PCSCMCOMMENTINFO pInfo, const char *pszBody, s
             /* If there wasn't exactly one blank line before the comment, trigger a rewrite. */
             if (pInfo->cBlankLinesBefore != 1)
             {
-                ScmVerbose(pState->pState, 1, "* copyright comment is preceeded by %u blank lines instead of 1\n",
+                ScmVerbose(pState->pState, 1, "* copyright comment is preceded by %u blank lines instead of 1\n",
                            pInfo->cBlankLinesBefore);
                 pState->fWellFormedCopyright = false;
             }
@@ -1607,7 +1607,7 @@ rewrite_Copyright_CommentCallback(PCSCMCOMMENTINFO pInfo, const char *pszBody, s
             {
                 ScmVerbose(pState->pState, 1, "* copyright comment starts in column %u instead of 1\n", pInfo->offStart + 1);
                 pState->fWellFormedCopyright = false;
-                /** @todo check that there isn't any code preceeding the comment. */
+                /** @todo check that there isn't any code preceding the comment. */
             }
 
             if (pchContributedBy)
@@ -1815,7 +1815,7 @@ rewrite_Copyright_CommentCallback(PCSCMCOMMENTINFO pInfo, const char *pszBody, s
                                               - pInfo->iLineStart;
                     }
                     else
-                        ScmError(pState->pState, VERR_WRONG_ORDER, "License should be preceeded by the copyright!\n");
+                        ScmError(pState->pState, VERR_WRONG_ORDER, "License should be preceded by the copyright!\n");
                     break;
                 }
             }
@@ -2952,7 +2952,7 @@ static int ScmMatchWords(const char *pchLine, size_t cchLine, SCMMATCHWORD const
         SCMMATCHWORD const *pWord = &paWords[i];
 
         /*
-         * Deal with spaces preceeding the word first:
+         * Deal with spaces preceding the word first:
          */
         if (pWord->fSpacesBefore)
         {
@@ -3167,7 +3167,7 @@ SCMREWRITERRES rewrite_FixHeaderGuards(PSCMRWSTATE pState, PSCMSTREAM pIn, PSCMS
                 }
 
                 /*
-                 * Write guard, making sure we've got a single blank line preceeding it.
+                 * Write guard, making sure we've got a single blank line preceding it.
                  */
                 ScmStreamPutEol(pOut, enmEol);
                 ScmStreamWrite(pOut, RT_STR_TUPLE("#ifndef "));

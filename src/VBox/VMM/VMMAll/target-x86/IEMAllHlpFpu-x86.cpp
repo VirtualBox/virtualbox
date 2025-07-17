@@ -80,7 +80,7 @@ DECLINLINE(void) iemFpuUpdateDP(PVMCPUCC pVCpu, PX86FXSTATE pFpuCtx, uint8_t iEf
             AssertMsgFailed(("%d\n", iEffSeg));
             sel = pVCpu->cpum.GstCtx.ds.Sel;
     }
-    /** @todo pFpuCtx->DS and FPUDP needs to be kept seperately. */
+    /** @todo pFpuCtx->DS and FPUDP needs to be kept separately. */
     if (IEM_IS_REAL_OR_V86_MODE(pVCpu))
     {
         pFpuCtx->DS    = 0;

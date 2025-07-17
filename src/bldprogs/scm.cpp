@@ -2967,7 +2967,7 @@ static int scmHelp(PCRTGETOPTDEF paOpts, size_t cOpts)
                 break;
             case SCMOPT_GUARD_RELATIVE_TO_DIR:
                 RTPrintf("      Header guard should be normalized relative to given dir.\n"
-                         "      When relative to settings files, no preceeding slash.\n"
+                         "      When relative to settings files, no preceding slash.\n"
                          "      Header relative directory specification: {dir} and {parent}\n"
                          "      If empty no normalization takes place.  Default: '%s'\n", g_Defaults.pszGuardRelativeToDir);
                 break;

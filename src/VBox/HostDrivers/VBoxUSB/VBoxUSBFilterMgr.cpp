@@ -455,7 +455,7 @@ void VBoxUSBFilterRemoveOwner(VBOXUSBFILTER_CONTEXT Owner)
  * @param   fRemoveFltIfOneShot Whether or not to remove one-shot filters on
  *                              match.
  * @param   pfFilter            Where to store whether the device must be filtered or not
- * @param   pfIsOneShot         Where to return whetehr the match was a one-shot
+ * @param   pfIsOneShot         Where to return whether the match was a one-shot
  *                              filter or not.  Optional.
  *
  */

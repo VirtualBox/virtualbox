@@ -463,7 +463,7 @@ static int rtUriParse(const char *pszUri, PRTURIPARSED pParsed)
 
     /*
      * RFC-3986, section 3.2:
-     *      The authority component is preceeded by a double slash ("//")...
+     *      The authority component is preceded by a double slash ("//")...
      */
     if (   pszUri[off] == '/'
         && pszUri[off + 1] == '/')

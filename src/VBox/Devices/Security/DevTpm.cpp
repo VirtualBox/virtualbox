@@ -123,13 +123,13 @@
 
 /** Interrupt status register. */
 #define TPM_FIFO_LOCALITY_REG_INT_STS                        0x10
-/** Data available interrupt occured bit, writing a 1 clears the bit. */
+/** Data available interrupt occurred bit, writing a 1 clears the bit. */
 # define TPM_FIFO_LOCALITY_REG_INT_STS_DATA_AVAIL            RT_BIT_32(0)
-/** Status valid interrupt occured bit, writing a 1 clears the bit. */
+/** Status valid interrupt occurred bit, writing a 1 clears the bit. */
 # define TPM_FIFO_LOCALITY_REG_INT_STS_STS_VALID             RT_BIT_32(1)
-/** Locality change interrupt occured bit, writing a 1 clears the bit. */
+/** Locality change interrupt occurred bit, writing a 1 clears the bit. */
 # define TPM_FIFO_LOCALITY_REG_INT_STS_LOCALITY_CHANGE       RT_BIT_32(2)
-/** Command ready occured bit, writing a 1 clears the bit. */
+/** Command ready occurred bit, writing a 1 clears the bit. */
 # define TPM_FIFO_LOCALITY_REG_INT_STS_CMD_RDY               RT_BIT_32(7)
 /** Writable mask. */
 # define TPM_FIFO_LOCALITY_REG_INT_STS_WR_MASK               UINT32_C(0x87)

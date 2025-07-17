@@ -142,7 +142,7 @@ static ssize_t rtTimeFormatDurationCopyOutResult(char *pszDst, size_t cbDst, con
  * Formats duration as best we can according to ISO-8601.
  *
  * The returned value is on the form "[-]PnnnnnWnDTnnHnnMnn.fffffffffS", where a
- * sequence of 'n' can be between 1 and the given lenght, and all but the
+ * sequence of 'n' can be between 1 and the given length, and all but the
  * "nn.fffffffffS" part is optional and will only be outputted when the duration
  * is sufficiently large.  The code currently does not omit any inbetween
  * elements other than the day count (D), so an exactly 7 day duration is

@@ -275,7 +275,7 @@ int netPfStrToPf(const char *pcszStrPortForward, bool fIPv6, PPORTFORWARDRULE pP
 
     size_t cchRaw = strlen(pcszStrPortForward);
 
-    /* Minimal rule ":tcp:[]:0:[]:0" has got lenght 14 */
+    /* Minimal rule ":tcp:[]:0:[]:0" has got length 14 */
     AssertReturn(cchRaw > 14, VERR_INVALID_PARAMETER);
 
     char *pszRaw = RTStrDup(pcszStrPortForward);

@@ -496,7 +496,7 @@ VBoxDrvStartIO(PVOID HwDeviceExtension, PVIDEO_REQUEST_PACKET RequestPacket)
             break;
         }
 
-        /* Called by the display driver when it recieves visible regions information. */
+        /* Called by the display driver when it receives visible regions information. */
         case IOCTL_VIDEO_VBOX_SETVISIBLEREGION:
         {
             STARTIO_IN(RTRECT, pRects);

@@ -30,7 +30,7 @@
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
 /* Enable to disassemble defined shaders. (Windows host only) */
-#if defined(RT_OS_WINDOWS) && defined(DEBUG) && 0 /* Disabled as we don't have the DirectX SDK avaible atm. */
+#if defined(RT_OS_WINDOWS) && defined(DEBUG) && 0 /* Disabled as we don't have the DirectX SDK available atm. */
 # define DUMP_SHADER_DISASSEMBLY
 #endif
 #ifdef DEBUG_bird
