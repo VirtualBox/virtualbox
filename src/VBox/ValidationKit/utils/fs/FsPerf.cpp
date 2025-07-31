@@ -1,4 +1,4 @@
-/* $Id: FsPerf.cpp 109871 2025-06-16 17:28:40Z andreas.loeffler@oracle.com $ */
+/* $Id: FsPerf.cpp 110174 2025-07-09 17:20:33Z knut.osmundsen@oracle.com $ */
 /** @file
  * FsPerf - File System (Shared Folders) Performance Benchmark.
  */
@@ -6600,9 +6600,14 @@ int main(int argc, char *argv[])
 #undef CASE_OPT
 
             case kCmdOpt_ManyFiles:
-                g_fManyFiles = ValueUnion.u32 > 0;
-                g_cManyFiles = ValueUnion.u32;
-                break;
+                if (ValueUnion.u32 <= _256K * 8) /* Limit bitmap size to 256KB to avoid running out of stack. */
+                {
+                    g_fManyFiles = ValueUnion.u32 > 0;
+                    g_cManyFiles = ValueUnion.u32;
+                    break;
+                }
+                RTTestFailed(g_hTest, "Out of range --many-files value: %u (%#x)\n", ValueUnion.u32, ValueUnion.u32);
+                return RTTestSummaryAndDestroy(g_hTest);
 
             case kCmdOpt_NoManyFiles:
                 g_fManyFiles = false;
@@ -6713,7 +6718,7 @@ int main(int argc, char *argv[])
 
             case 'V':
             {
-                char szRev[] = "$Revision: 109871 $";
+                char szRev[] = "$Revision: 110174 $";
                 szRev[RT_ELEMENTS(szRev) - 2] = '\0';
                 RTPrintf(RTStrStrip(strchr(szRev, ':') + 1));
                 return RTEXITCODE_SUCCESS;

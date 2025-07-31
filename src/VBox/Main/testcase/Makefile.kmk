@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 107651 2025-01-09 11:04:40Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 110350 2025-07-22 15:21:20Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the VBox API testcases.
 #
@@ -39,7 +39,7 @@ ifndef VBOX_ONLY_SDK
   	tstVBoxAPI \
   	tstVBoxAPIPerf \
   	tstVBoxMultipleVM \
-  	$(if $(VBOX_OSE),,tstOVF) \
+  	tstOVF \
   	$(if $(VBOX_WITH_XPCOM),tstVBoxAPIXPCOM,tstVBoxAPIWin msiDarwinDescriptorDecoder) \
   	$(if $(VBOX_WITH_RESOURCE_USAGE_API),tstCollector,) \
   	$(if $(VBOX_WITH_GUEST_CONTROL),tstGuestCtrlContextID,) \
@@ -110,19 +110,17 @@ tstOVF_TEMPLATE = VBoxMainClientTstExe
 #tstOVF_INST = $(INST_SDK)bindings/gluecom/samples/
 tstOVF_SOURCES  = tstOVF.cpp
 
-ifndef VBOX_OSE
- #
- # OVF test data.
- #
- INSTALLS += ovf-testcases
- ovf-testcases_MODE = a+r,u+w
- ovf-testcases_INST = $(INST_TESTCASE)ovf-testcases/
- ovf-testcases_SOURCES = \
- 	ovf-dummy.vmdk \
- 	ovf-joomla-0.9/joomla-1.1.4-ovf.ovf=>ovf-joomla-0.9/joomla-1.1.4-ovf.ovf \
- 	ovf-winhost-audio-nodisks/WinXP.ovf=>ovf-winhost-audio-nodisks/WinXP.ovf \
- 	ovf-winxp-vbox-sharedfolders/winxp.ovf=>ovf-winxp-vbox-sharedfolders/winxp.ovf
-endif
+#
+# OVF test data.
+#
+INSTALLS += ovf-testcases
+ovf-testcases_MODE = a+r,u+w
+ovf-testcases_INST = $(INST_TESTCASE)ovf-testcases/
+ovf-testcases_SOURCES = \
+	ovf-dummy.vmdk \
+	ovf-joomla-0.9/joomla-1.1.4-ovf.ovf=>ovf-joomla-0.9/joomla-1.1.4-ovf.ovf \
+	ovf-winhost-audio-nodisks/WinXP.ovf=>ovf-winhost-audio-nodisks/WinXP.ovf \
+	ovf-winxp-vbox-sharedfolders/winxp.ovf=>ovf-winxp-vbox-sharedfolders/winxp.ovf
 
 
 #
@@ -311,7 +309,7 @@ tstSafeArray_SOURCES  = tstSafeArray.cpp
 tstRecording_TEMPLATE = VBoxMainClientTstExe
 tstRecording_SOURCES  = \
 	tstRecording.cpp \
-	../src-client/RecordingUtils.cpp
+	../src-all/RecordingUtils.cpp
 tstRecording_INCS     = \
 	../include
 
@@ -330,7 +328,9 @@ tstSettings_INCS     = \
 	$(dir $(VBOX_XML_SCHEMADEFS_H))
 tstSettings_SOURCES  = \
 	tstSettings.cpp \
+	../src-all/AudioUtils.cpp \
 	../src-all/HashedPw.cpp \
+	../src-all/RecordingUtils.cpp \
 	../xml/Settings.cpp
 
 #

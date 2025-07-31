@@ -1,4 +1,4 @@
-/* $Id: DisplayImpl.h 108837 2025-03-20 12:48:42Z andreas.loeffler@oracle.com $ */
+/* $Id: DisplayImpl.h 110427 2025-07-28 10:43:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -44,8 +44,7 @@
 #include "GuestScreenInfoWrap.h"
 
 #ifdef VBOX_WITH_RECORDING
-# include "RecordingInternals.h"
-class RecordingContext;
+# include "RecordingContext.h"
 #endif
 
 class Console;

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# $Id: utils.py 109581 2025-05-16 12:31:15Z knut.osmundsen@oracle.com $
+# $Id: utils.py 110195 2025-07-10 16:00:55Z ksenia.s.stepanova@oracle.com $
 # pylint: disable=too-many-lines
 
 """
@@ -39,7 +39,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 109581 $"
+__version__ = "$Revision: 110195 $"
 
 
 # Standard Python imports.
@@ -310,8 +310,8 @@ def getHostOsVersion():
                                        "13": "Ventura",
                                        "14": "Sonoma",
                                        "15": "Sequoia",
-                                       "16": "Unknown 16",
-                                       "17": "Unknown 17"}
+                                       "26": "Tahoe",
+                                       "27": "Unknown 27"}
 
             if aOsVersion[0] == '10':
                 sResult = codenames[aOsVersion[1]]
@@ -348,11 +348,17 @@ def getHostOsVersion():
         if rc == 0:
             # Python platform.release() is not reliable for newer server releases
             if oOsVersion.wProductType != 1:
-                if oOsVersion.dwMajorVersion == 10 and oOsVersion.dwMinorVersion == 0 \
-                                                   and oOsVersion.dwBuildNumber == 17763:
-                    sVersion = '2019Server'
-                elif oOsVersion.dwMajorVersion == 10 and oOsVersion.dwMinorVersion == 0:
-                    sVersion = '2016Server'; #todo: should probably add dwBuildNumber for it as well..
+                if oOsVersion.dwMajorVersion == 10 and oOsVersion.dwMinorVersion == 0:
+                    if oOsVersion.dwBuildNumber == 26100:
+                        sVersion = '2025Server'
+                    elif oOsVersion.dwBuildNumber == 20348:
+                        sVersion = '2022Server'
+                    elif oOsVersion.dwBuildNumber == 17763:
+                        sVersion = '2019Server'
+                    elif oOsVersion.dwBuildNumber == 14393:
+                        sVersion = '2016Server'
+                    else:
+                        sVersion = 'unknown win server'
                 elif oOsVersion.dwMajorVersion == 6 and oOsVersion.dwMinorVersion == 3:
                     sVersion = '2012ServerR2';
                 elif oOsVersion.dwMajorVersion == 6 and oOsVersion.dwMinorVersion == 2:
@@ -363,6 +369,17 @@ def getHostOsVersion():
                     sVersion = '2008Server';
                 elif oOsVersion.dwMajorVersion == 5 and oOsVersion.dwMinorVersion == 2:
                     sVersion = '2003Server';
+            else:
+                if oOsVersion.dwBuildNumber == 26100:
+                    sVersion = '11 24H2'
+                elif oOsVersion.dwBuildNumber == 22631:
+                    sVersion = '11 23H2'
+                elif oOsVersion.dwBuildNumber == 22621:
+                    sVersion = '11 22H2'
+                elif oOsVersion.dwBuildNumber == 22000:
+                    sVersion = '11 21H2'
+                else:
+                    sVersion = '11 unknown'
             sVersion += ' build ' + str(oOsVersion.dwBuildNumber)
             if oOsVersion.wServicePackMajor:
                 sVersion += ' SP' + str(oOsVersion.wServicePackMajor)

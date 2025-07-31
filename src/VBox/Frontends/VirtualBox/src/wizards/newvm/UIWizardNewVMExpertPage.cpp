@@ -1,4 +1,4 @@
-/* $Id: UIWizardNewVMExpertPage.cpp 109891 2025-06-18 13:18:04Z sergey.dubov@oracle.com $ */
+/* $Id: UIWizardNewVMExpertPage.cpp 110477 2025-07-30 12:07:17Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardNewVMExpertPage class implementation.
  */
@@ -245,7 +245,7 @@ void UIWizardNewVMExpertPage::sltRetranslateUI()
     if (m_pUnattendedCheckBox)
     {
         m_pUnattendedCheckBox->setText(UIWizardNewVM::tr("&Proceed with Unattended Installation"));
-        m_pUnattendedCheckBox->setToolTip(UIWizardNewVM::tr("The ISO is attached to the VM, so you can install the OS manually"));
+        m_pUnattendedCheckBox->setToolTip(UIWizardNewVM::tr("The ISO is attached to the VM, so you can install the OS automatically"));
     }
 
     if (m_pToolBox)
@@ -672,7 +672,7 @@ bool UIWizardNewVMExpertPage::isComplete() const
         {
             m_pToolBox->setPageTitleIcon(ExpertToolboxItems_NameAndOSType,
                                          UIIconPool::iconSet(":/status_error_16px.png"),
-                                         UIWizardNewVM::tr("Virtual` machine path is not unique"));
+                                         UIWizardNewVM::tr("Virtual machine path is not unique"));
             fIsComplete = false;
         }
         if (!UIWizardNewVMNameOSTypeCommon::checkISOFile(m_pNameAndSystemEditor->ISOImagePath()))

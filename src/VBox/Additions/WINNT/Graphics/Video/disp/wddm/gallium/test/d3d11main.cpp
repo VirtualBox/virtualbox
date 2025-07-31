@@ -1,4 +1,4 @@
-/* $Id: d3d11main.cpp 109970 2025-06-25 16:43:47Z vitali.pelenjow@oracle.com $ */
+/* $Id: d3d11main.cpp 110306 2025-07-18 13:59:09Z vitali.pelenjow@oracle.com $ */
 /** @file
  * D3D testcase. Win32 application to run D3D11 tests.
  */
@@ -147,6 +147,8 @@ private:
     UINT mRTWidth;
     UINT mRTHeight;
 
+    DXGI_FORMAT mFormat;
+
     struct
     {
         ID3D11Device           *pDevice;               /* Device for rendering. */
@@ -182,6 +184,7 @@ D3D11Test::D3D11Test()
     mHwnd(0),
     mRTWidth(0),
     mRTHeight(0),
+    mFormat(DXGI_FORMAT_B8G8R8A8_UNORM),
     mSharedHandle(0),
     mpRender(0)
 {
@@ -392,7 +395,7 @@ HRESULT D3D11Test::initDirect3D11()
             texDesc.Height    = mRTHeight;
             texDesc.MipLevels = 1;
             texDesc.ArraySize = 1;
-            texDesc.Format    = DXGI_FORMAT_B8G8R8A8_UNORM;
+            texDesc.Format    = mFormat;
             texDesc.SampleDesc.Count   = 1;
             texDesc.SampleDesc.Quality = 0;
             texDesc.Usage          = D3D11_USAGE_DEFAULT;
@@ -457,7 +460,7 @@ HRESULT D3D11Test::initDirect3D11()
             sd.BufferDesc.Height = mRTHeight;
             sd.BufferDesc.RefreshRate.Numerator = 60;
             sd.BufferDesc.RefreshRate.Denominator = 1;
-            sd.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+            sd.BufferDesc.Format = mFormat;
             sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
             sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
             sd.SampleDesc.Count   = 1;
@@ -471,7 +474,7 @@ HRESULT D3D11Test::initDirect3D11()
 
             HTEST(mRender.pDxgiFactory->CreateSwapChain(mRender.pDevice, &sd, &mOutput.pSwapChain));
 
-            HTEST(mOutput.pSwapChain->ResizeBuffers(1, mRTWidth, mRTHeight, DXGI_FORMAT_B8G8R8A8_UNORM, 0));
+            HTEST(mOutput.pSwapChain->ResizeBuffers(1, mRTWidth, mRTHeight, mFormat, 0));
         }
     }
     else
@@ -487,7 +490,7 @@ HRESULT D3D11Test::initDirect3D11()
             sd.BufferDesc.Height = mRTHeight;
             sd.BufferDesc.RefreshRate.Numerator = 60;
             sd.BufferDesc.RefreshRate.Denominator = 1;
-            sd.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+            sd.BufferDesc.Format = mFormat;
             sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
             sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
             sd.SampleDesc.Count   = 1;
@@ -501,7 +504,7 @@ HRESULT D3D11Test::initDirect3D11()
 
             HTEST(mOutput.pDxgiFactory->CreateSwapChain(mOutput.pDevice, &sd, &mOutput.pSwapChain));
 
-            HTEST(mOutput.pSwapChain->ResizeBuffers(1, mRTWidth, mRTHeight, DXGI_FORMAT_B8G8R8A8_UNORM, 0));
+            HTEST(mOutput.pSwapChain->ResizeBuffers(1, mRTWidth, mRTHeight, mFormat, 0));
 
             HTEST(mOutput.pDevice->OpenSharedResource(mSharedHandle, __uuidof(ID3D11Texture2D), (void**)&mOutput.pSharedTexture));
             HTEST(mOutput.pSharedTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (LPVOID*)&mOutput.pDXGIKeyedMutex));

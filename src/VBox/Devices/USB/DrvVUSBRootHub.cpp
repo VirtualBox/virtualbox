@@ -1,4 +1,4 @@
-/* $Id: DrvVUSBRootHub.cpp 108247 2025-02-06 09:58:06Z aleksey.ilyushin@oracle.com $ */
+/* $Id: DrvVUSBRootHub.cpp 110377 2025-07-23 12:22:40Z michal.necasek@oracle.com $ */
 /** @file
  * Virtual USB - Root Hub Driver.
  */
@@ -1029,27 +1029,6 @@ static DECLCALLBACK(void) vusbRhReapAsyncUrbs(PVUSBIROOTHUBCONNECTOR pInterface,
     vusbDevRelease(pDev, "vusbRhReapAsyncUrbs");
 }
 
-
-/** @interface_method_impl{VUSBIROOTHUBCONNECTOR,pfnCancelUrbsEp} */
-static DECLCALLBACK(int) vusbRhCancelUrbsEp(PVUSBIROOTHUBCONNECTOR pInterface, PVUSBURB pUrb)
-{
-    PVUSBROOTHUB pRh = VUSBIROOTHUBCONNECTOR_2_VUSBROOTHUB(pInterface);
-    AssertReturn(pRh, VERR_INVALID_PARAMETER);
-    AssertReturn(pUrb, VERR_INVALID_PARAMETER);
-
-    /// @todo This method of URB canceling may not work on non-Linux hosts.
-    /*
-     * Cancel and reap the URB(s) on an endpoint.
-     */
-    LogFlow(("vusbRhCancelUrbsEp: pRh=%p pUrb=%p\n", pRh, pUrb));
-
-    vusbUrbCancelAsync(pUrb, CANCELMODE_UNDO);
-
-    /* The reaper thread will take care of completing the URB. */
-
-    return VINF_SUCCESS;
-}
-
 /**
  * Worker doing the actual cancelling of all outstanding URBs on the device I/O thread.
  *
@@ -1698,7 +1677,6 @@ static DECLCALLBACK(int) vusbRhConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg, uin
     pThis->IRhConnector.pfnFreeUrb                    = vusbRhConnFreeUrb;
     pThis->IRhConnector.pfnSubmitUrb                  = vusbRhSubmitUrb;
     pThis->IRhConnector.pfnReapAsyncUrbs              = vusbRhReapAsyncUrbs;
-    pThis->IRhConnector.pfnCancelUrbsEp               = vusbRhCancelUrbsEp;
     pThis->IRhConnector.pfnCancelAllUrbs              = vusbRhCancelAllUrbs;
     pThis->IRhConnector.pfnAbortEpByPort              = vusbRhAbortEpByPort;
     pThis->IRhConnector.pfnAbortEpByAddr              = vusbRhAbortEpByAddr;

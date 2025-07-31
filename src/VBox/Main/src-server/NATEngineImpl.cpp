@@ -1,4 +1,4 @@
-/* $Id: NATEngineImpl.cpp 109824 2025-06-12 04:12:17Z jack.doherty@oracle.com $ */
+/* $Id: NATEngineImpl.cpp 110268 2025-07-16 17:45:40Z jack.doherty@oracle.com $ */
 /** @file
  * Implementation of INATEngine in VBoxSVC.
  */
@@ -503,6 +503,42 @@ HRESULT NATEngine::getEnableTFTP(BOOL *pfEnableTFTP)
     AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
     *pfEnableTFTP = mData->m->fEnableTFTP;
     return S_OK;
+}
+
+HRESULT NATEngine::setNatMRU(ULONG uMRU)
+{
+    RT_NOREF(uMRU);
+    return E_NOTIMPL;
+}
+
+HRESULT NATEngine::getNatMRU(ULONG *puMRU)
+{
+    RT_NOREF(puMRU);
+    return E_NOTIMPL;
+}
+
+HRESULT NATEngine::setIPv6Enabled(BOOL fEnableIPv6)
+{
+    RT_NOREF(fEnableIPv6);
+    return E_NOTIMPL;
+}
+
+HRESULT NATEngine::getIPv6Enabled(BOOL *pfEnableIPv6)
+{
+    RT_NOREF(pfEnableIPv6);
+    return E_NOTIMPL;
+}
+
+HRESULT NATEngine::setIPv6Prefix(const com::Utf8Str &aIPv6Prefix)
+{
+    RT_NOREF(aIPv6Prefix);
+    return E_NOTIMPL;
+}
+
+HRESULT NATEngine::getIPv6Prefix(com::Utf8Str &aIPv6Prefix)
+{
+    RT_NOREF(aIPv6Prefix);
+    return E_NOTIMPL;
 }
 
 HRESULT NATEngine::setTFTPPrefix(const com::Utf8Str &aTFTPPrefix)

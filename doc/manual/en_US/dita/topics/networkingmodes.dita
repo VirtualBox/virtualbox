@@ -4,94 +4,43 @@
   <title>Introduction to Networking Modes</title>
   
   <body>
-    <p>Each of the networking adapters can be separately configured to operate in one of the following modes: </p>
+    <p>Each of the networking adapters can be separately configured to operate in one of the following modes:</p>
     <ul>
       <li>
-        <p><b outputclass="bold">Not attached.</b> In this mode,
-          <ph conkeyref="vbox-conkeyref-phrases/product-name"/> reports to the guest that a network card is
-          present, but that there is no connection. This is as if no
-          Ethernet cable was plugged into the card. Using this mode, it
-          is possible to <i>pull</i> the virtual Ethernet
-          cable and disrupt the connection, which can be useful to
-          inform a guest operating system that no network connection is
-          available and enforce a reconfiguration.
-        </p>
+        <p><b outputclass="bold">Not attached</b>. In this mode, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> reports to the guest that a network card is present, but that there is no connection. This is as if no Ethernet cable was plugged into the card. Using this mode, it is possible to <i>pull</i> the virtual Ethernet cable and disrupt the connection, which can be useful to inform a guest operating system that no network connection is available and enforce a reconfiguration.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Network Address Translation
-          (NAT)</b>. If all you want is to browse the Web,
-          download files, and view email inside the guest, then this
-          default mode should be sufficient for you, and you can skip
-          the rest of this section. Please note that there are certain
-          limitations when using Windows file sharing. See
-          <xref href="nat-limitations.dita#nat-limitations"/>.
-        </p>
+        <p><b outputclass="bold">Network Address Translation (NAT)</b>. If all you want is to browse the Web, download files, and view email inside the guest, then this default mode should be sufficient for you, and you can skip the rest of this section. Please note that there are certain limitations when using Windows file sharing. See <xref href="nat-limitations.dita#nat-limitations"/>.</p>
       </li>
       <li>
-        <p><b outputclass="bold">NAT Network.</b> A NAT network is
-          a type of internal network that allows outbound connections.
-          See <xref href="network_nat_service.dita#network_nat_service"/>.
-        </p>
+        <p><b outputclass="bold">NAT Network</b>. This mode allows you to use NAT between your VMs, as well as with external connections. You first have to create the NAT Network service that you want to use, and then select NAT Network as the network mode. See <xref href="network_nat_service.dita#network_nat_service"/>.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Bridged networking.</b> This is
-          for more advanced networking needs, such as network
-          simulations and running servers in a guest. When enabled,
-          <ph conkeyref="vbox-conkeyref-phrases/product-name"/> connects to one of your installed network cards
-          and exchanges network packets directly, circumventing your
-          host operating system's network stack.
-        </p>
+        <p><b outputclass="bold">Bridged networking</b>. This is for more advanced networking needs, such as network simulations and running servers in a guest. When enabled, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> connects to one of your installed network cards and exchanges network packets directly, circumventing your host operating system's network stack.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Internal networking.</b> This can
-          be used to create a different kind of software-based network
-          which is visible to selected virtual machines, but not to
-          applications running on the host or to the outside world.
-        </p>
+        <p><b outputclass="bold">Internal networking</b>. This can be used to create a different kind of software-based network which is visible to selected virtual machines, but not to applications running on the host or to the outside world.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Host-only networking.</b> This
-          can be used to create a network containing the host and a set
-          of virtual machines, without the need for the host's physical
-          network interface. Instead, a virtual network interface,
-          similar to a loopback interface, is created on the host,
-          providing connectivity among virtual machines and the host.
-        </p>
+        <p><b outputclass="bold">Host-only networking</b>. This can be used to create a network containing the host and a set of virtual machines, without the need for the host's physical network interface. Instead, a virtual network interface, similar to a loopback interface, is created on the host, providing connectivity among virtual machines and the host.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Cloud networking.</b> This can be
-          used to connect a local VM to a subnet on a remote cloud
-          service.
-        </p>
+        <p><b outputclass="bold">Cloud networking.</b> This can be used to connect a local VM to a subnet on a remote cloud service.</p>
       </li>
       <li>
-        <p><b outputclass="bold"> Generic networking.</b> Rarely
-          used modes which share the same generic network interface, by
-          allowing the user to select a driver which can be included
-          with <ph conkeyref="vbox-conkeyref-phrases/product-name"/> or be distributed in an extension pack.
-        </p>
-        <p> The following submodes are available: </p>
+        <p><b outputclass="bold">Generic networking.</b> Rarely used modes that share the same generic network interface, by allowing the user to select a driver which can be included with <ph conkeyref="vbox-conkeyref-phrases/product-name"/> or be distributed in an extension pack. </p>
+        <p> The following submodes are available:</p>
         <ul>
           <li>
-            <p><b outputclass="bold">UDP Tunnel:</b> Used to
-              interconnect virtual machines running on different hosts
-              directly, easily, and transparently, over an existing
-              network infrastructure.
-            </p>
+            <p><b outputclass="bold">UDP Tunnel:</b> Used to interconnect virtual machines running on different hosts directly, easily, and transparently, over an existing network infrastructure.</p>
           </li>
           <li>
-            <p><b outputclass="bold">VDE (Virtual Distributed Ethernet)
-              networking:</b> Used to connect to a Virtual
-              Distributed Ethernet switch on a Linux or a FreeBSD host.
-              At the moment this option requires compilation of
-              <ph conkeyref="vbox-conkeyref-phrases/product-name"/> from sources, as the Oracle packages do not
-              include it.
-            </p>
+            <p><b outputclass="bold">VDE (Virtual Distributed Ethernet) networking:</b> Used to connect to a Virtual Distributed Ethernet switch on a Linux or a FreeBSD host. At the moment this option requires compilation of <ph conkeyref="vbox-conkeyref-phrases/product-name"/> from sources, as the Oracle packages do not include it.</p>
           </li>
         </ul>
       </li>
     </ul>
-    <p>The following table provides an overview of the most important networking modes. </p>
+    <p>The following table provides an overview of the most important networking modes.</p>
     <table id="table-networking-modes">
       <title>Overview of Networking Modes</title>
       <desc>Overview of Networking Modes</desc>
@@ -265,9 +214,7 @@
           </row>
           <row>
             <entry>
-              <p>
-                NATservice
-              </p>
+              <p> NAT Network</p>
             </entry>
             <entry>
               <p>
@@ -298,7 +245,7 @@
         </tbody>
       </tgroup>
     </table>
-    <p>The following sections describe the available network modes in more detail. </p>
+    <p>The following sections describe the available network modes in more detail.</p>
   </body>
   
 </topic>

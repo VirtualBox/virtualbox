@@ -1,4 +1,4 @@
-/* $Id: UIIndicatorsPool.cpp 105804 2024-08-21 22:51:31Z sergey.dubov@oracle.com $ */
+/* $Id: UIIndicatorsPool.cpp 110192 2025-07-10 14:13:01Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIIndicatorsPool class implementation.
  */
@@ -885,9 +885,9 @@ private:
 class UIIndicatorRecording : public UISessionStateStatusBarIndicator
 {
     Q_OBJECT;
-    Q_PROPERTY(double rotationAngleStart READ rotationAngleStart);
-    Q_PROPERTY(double rotationAngleFinal READ rotationAngleFinal);
-    Q_PROPERTY(double rotationAngle READ rotationAngle WRITE setRotationAngle);
+    Q_PROPERTY(int alphaFactorMin READ alphaFactorMin);
+    Q_PROPERTY(int alphaFactorMax READ alphaFactorMax);
+    Q_PROPERTY(int alphaFactor READ alphaFactor WRITE setAlphaFactor);
 
     /** Recording states. */
     enum RecordingState
@@ -904,7 +904,7 @@ public:
     UIIndicatorRecording(UIMachine *pMachine)
         : UISessionStateStatusBarIndicator(IndicatorType_Recording, pMachine)
         , m_pAnimation(0)
-        , m_dRotationAngle(0)
+        , m_iAlphaFactor(0)
         , m_enmState(RecordingState_Unavailable)
     {
         /* Assign state-icons: */
@@ -918,9 +918,9 @@ public:
         connect(m_pMachine, &UIMachine::sigRecordingChange,
                 this, &UIIndicatorRecording::updateAppearance);
         /* Create *enabled* state animation: */
-        m_pAnimation = UIAnimationLoop::installAnimationLoop(this, "rotationAngle",
-                                                             "rotationAngleStart", "rotationAngleFinal",
-                                                             1000);
+        m_pAnimation = UIAnimationLoop::installAnimationLoop(this, "alphaFactor",
+                                                             "alphaFactorMin", "alphaFactorMax",
+                                                             2000);
         /* Update & translate finally: */
         updateAppearance();
     }
@@ -930,26 +930,41 @@ protected:
     /** Handles paint @a pEvent. */
     virtual void paintEvent(QPaintEvent *pEvent) RT_OVERRIDE
     {
-        /* Call to base-class: */
-        UISessionStateStatusBarIndicator::paintEvent(pEvent);
+        /* For Disabled indicator => Call to base-class: */
+        if (state() == RecordingState_Disabled)
+            return UISessionStateStatusBarIndicator::paintEvent(pEvent);
 
-        /* Create new painter: */
+        /* Create and configure painter: */
         QPainter painter(this);
-        /* Configure painter for *enabled* state: */
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform);
+
+        /* Default alpha is alphaFactorMin(), for Paused state: */
+        int iAlpha = alphaFactorMin();
+
+        /* Configure alpha for Enabled state: */
         if (state() == RecordingState_Enabled)
         {
-            /* Configure painter for smooth animation: */
-            painter.setRenderHint(QPainter::Antialiasing);
-            painter.setRenderHint(QPainter::SmoothPixmapTransform);
-            /* Shift rotation origin according pixmap center: */
-            painter.translate(height() / 2, height() / 2);
-            /* Rotate painter: */
-            painter.rotate(rotationAngle());
-            /* Unshift rotation origin according pixmap center: */
-            painter.translate(- height() / 2, - height() / 2);
+            /* UIAnimationFramework returns an value in increasing order.
+             * Convert it to a value between min and max that ping pongs between min and max: */
+
+            /* First get normalized value: */
+            double dAlpha = (double)(alphaFactor() - alphaFactorMin()) / (alphaFactorMax() - alphaFactorMin());
+            /* Convert it ping-pong value between 0-1: */
+            dAlpha = 1 - qAbs(2 * dAlpha - 1);
+            /* Map it to the original min-max range: */
+            iAlpha = alphaFactorMin() + (alphaFactorMax() - alphaFactorMin()) * dAlpha;
         }
-        /* Draw contents: */
-        drawContents(&painter);
+
+        /* Configure brush (red circle with black border): */
+        QPen pen(Qt::black);
+        pen.setWidth(0);
+        painter.setPen(pen);
+        QColor bgc(Qt::red);
+        bgc.setAlpha(iAlpha);
+        painter.setBrush(bgc);
+        const int iRadius = 0.4 * qMin(width(), height());
+        painter.drawEllipse(contentsRect().center() + QPoint(0, 1), iRadius, iRadius);
     }
 
 protected slots:
@@ -1012,7 +1027,7 @@ private slots:
         {
             case RecordingState_Disabled:
                 m_pAnimation->stop();
-                m_dRotationAngle = 0;
+                m_iAlphaFactor = 0;
                 break;
             case RecordingState_Enabled:
                 m_pAnimation->start();
@@ -1029,19 +1044,19 @@ private slots:
 
 private:
 
-    /** Returns rotation start angle. */
-    double rotationAngleStart() const { return 0; }
-    /** Returns rotation finish angle. */
-    double rotationAngleFinal() const { return 360; }
-    /** Returns current rotation angle. */
-    double rotationAngle() const { return m_dRotationAngle; }
-    /** Defines current rotation angle. */
-    void setRotationAngle(double dRotationAngle) { m_dRotationAngle = dRotationAngle; update(); }
+    /** Returns minimum alpha factor. */
+    int alphaFactorMin() const { return 55; }
+    /** Returns maximum alpha factor. */
+    int alphaFactorMax() const { return 255; }
+    /** Returns current alpha factor. */
+    int alphaFactor() const { return m_iAlphaFactor; }
+    /** Defines current alpha factor. */
+    void setAlphaFactor(int iAlphaFactor) { m_iAlphaFactor = iAlphaFactor; update(); }
 
-    /** Holds the rotation animation instance. */
+    /** Holds the animation instance. */
     UIAnimationLoop *m_pAnimation;
-    /** Holds current rotation angle. */
-    double           m_dRotationAngle;
+    /** Holds current alpha factor. */
+    int              m_iAlphaFactor;
 
     /** Holds the recording state. */
     RecordingState  m_enmState;

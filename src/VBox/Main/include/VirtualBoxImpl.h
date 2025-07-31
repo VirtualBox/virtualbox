@@ -1,4 +1,4 @@
-/* $Id: VirtualBoxImpl.h 108190 2025-02-04 05:24:54Z samantha.scholz@oracle.com $ */
+/* $Id: VirtualBoxImpl.h 110242 2025-07-16 08:35:24Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -96,10 +96,6 @@ public:
     typedef std::list<ComPtr<IInternalSessionControl> > InternalControlList;
     typedef ObjectsList<Machine> MachinesOList;
 
-#if 0 /* obsoleted by AsyncEvent */
-    class CallbackEvent;
-    friend class CallbackEvent;
-#endif
     class AsyncEvent;
     friend class AsyncEvent;
 

@@ -1,32 +1,19 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
 <topic xml:lang="en-us" id="settings-basic">
-  <title>Basic Tab</title>
+  <title>Identity Tab</title>
   
   <body>
-    <p>In the <b outputclass="bold">Basic</b> tab of the <b outputclass="bold">General</b> settings category, you can
-      find these settings: </p>
+    <p>On the <b outputclass="bold">Identity</b> tab of the <b outputclass="bold">General</b> settings category, you can find these settings:</p>
     <ul>
       <li>
-        <p><b outputclass="bold">Name:</b> The name of the the
-            VM, as shown in the list of VMs in the main VirtualBox
-            Manager window. Using this name, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> also saves
-            the VM's configuration files. If you change the name,
-            <ph conkeyref="vbox-conkeyref-phrases/product-name"/> renames these files as well. As a result, you
-            can only use characters which are allowed for file names on your host OS.
-          </p>
-        <p>Note that internally, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> uses unique identifiers (UUIDs)
-          to identify virtual machines. You can display these using the <userinput>VBoxManage</userinput> commands. </p>
+        <p><uicontrol>VM Name</uicontrol>: The name of the the VM, as shown in the list of VMs in the main VirtualBox Manager window. Using this name, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> also saves the VM's configuration files. If you change the name, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> renames these files as well. As a result, you can only use characters which are allowed for file names on your host OS.</p>
+        <p>Note that internally, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> uses unique identifiers (UUIDs) to identify virtual machines. You can display these using the <userinput>VBoxManage</userinput> commands.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Type and Subtype:</b> The type and subtype of the guest
-            OS for the VM. For example, if the <b>Type</b> is Linux, the <b>Subtype</b> might be 
-          Oracle Linux.</p>
+        <p><uicontrol>OS</uicontrol>: The type of guest OS for the VM. Additionally, set the <uicontrol>OS Distribution</uicontrol> or <uicontrol>OS Edition</uicontrol>, and <uicontrol>OS Version</uicontrol>. For example, if the <uicontrol>OS</uicontrol> is Linux, the <uicontrol>OS Distribution</uicontrol> might be Oracle Linux and the <uicontrol>OS Version</uicontrol> might be Oracle Linux 8.x (64-bit).</p>
         <p>These are the same settings that are specified in the <b outputclass="bold">New Virtual Machine</b> workflow. See <xref href="create-vm.dita"/>.</p>
-        <p>Whereas the default settings of a newly created VM depend on the selected OS type, changing the type later has no effect on VM settings.</p>
-      </li>
-      <li>
-        <p><b outputclass="bold">Version:</b> The version of the guest OS for the VM. This is the same setting that is specified in the <b outputclass="bold">New Virtual Machine</b> workflow. See <xref href="create-vm.dita"/>.</p>
+        <p>Whereas the default settings of a newly created VM depend on the selected OS, changing the OS later has no effect on VM settings.</p>
       </li>
     </ul>
   </body>

@@ -1,4 +1,4 @@
-/* $Id: uri.cpp 107513 2025-01-07 10:16:43Z alexander.eichner@oracle.com $ */
+/* $Id: uri.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT - Uniform Resource Identifier handling.
  */

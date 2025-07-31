@@ -12,10 +12,7 @@
         href="vrde.dita">Remote Display (VRDP Support)</xref>. </p>
     <ul>
       <li>
-        <p><b outputclass="bold">Enable Server:</b> Select this
-            check box and configure settings for the remote display
-            connection.
-          </p>
+        <p><b outputclass="bold">Enable Server</b>: Select this check box and configure settings for the remote display connection.</p>
       </li>
     </ul>
   </body>

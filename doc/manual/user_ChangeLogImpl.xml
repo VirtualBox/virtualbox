@@ -73,15 +73,61 @@ Rules for adding a changelog entry to make them look more uniform:
                            So, we use chapter and xpointer="xpointer(/chapter/)" with xi:include. -->
   <sect1>
 
-    <title>Version X.Y.Z (date tbd)</title>
+    <title>Version 7.2.0_RC1 (2025-07-31)</title>
 
-    <para>This is a maintenance release. The following items were fixed and/or
+    <para>This is a maintenance release. The following items were fixed or
       added:</para>
 
     <itemizedlist>
 
       <listitem>
-        <para>GUI: Fixed a bug in clone VM wizard which made impossible to include snaphots in clone result.</para>
+        <para>VMM: Fixed issue when X86_64-v3 features were not
+          passed to the guest (github:gh-36)</para>
+      </listitem>
+
+      <listitem>
+        <para>VMM: Fixed issue when VM was not able to start when using Hyper-V
+          on older Intel CPUs (github:gh-85)</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Fixed a bug in clone VM wizard which made impossible to include
+          snapshots in clone result (github:GH-59)</para>
+      </listitem>
+
+      <listitem>
+        <para>Audio: Fixed crash in rare circumstances (github:gh-72)</para>
+      </listitem>
+
+      <listitem>
+        <para>NAT: Fixed possible crash in rare circumstances when no nameservers
+          could be detected in the host system</para>
+      </listitem>
+
+      <listitem>
+        <para>Main/Unattended: Added explicit unattended installation support for Oracle Linux 10</para>
+      </listitem>
+
+      <listitem>
+        <para>Main: Fixed issue when OVF/OVA import resulted in a broken VM on Arm (bug #22370)</para>
+      </listitem>
+
+      <listitem>
+        <para>Main: Fixed issue when exporting a VM which had an inaccessible
+          disk resulted in crash</para>
+      </listitem>
+
+      <listitem>
+        <para>Windows Host: Added improvements in Windows drivers installation</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Guest Additions: Fixed issue when autorun installer was not automatically
+          starting on Additions ISO image insert for Oracle Linux 10 and RHEL 10 guests</para>
+      </listitem>
+
+      <listitem>
+        <para>EFI: Fixed macOS kernel logging over serial port (github:gh-82)</para>
       </listitem>
 
     </itemizedlist>
@@ -91,7 +137,7 @@ Rules for adding a changelog entry to make them look more uniform:
 
     <title>Version 7.2.0_BETA2 (2025-06-26)</title>
 
-    <para>This is a maintenance release. The following items were fixed and/or
+    <para>This is a maintenance release. The following items were fixed or
       added:</para>
 
     <itemizedlist>
@@ -242,7 +288,7 @@ Rules for adding a changelog entry to make them look more uniform:
 
     </itemizedlist>
 
-    <para>In addition, the following items were fixed and/or added:</para>
+    <para>In addition, the following items were fixed or added:</para>
 
     <itemizedlist>
 

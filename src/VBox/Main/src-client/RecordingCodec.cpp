@@ -1,4 +1,4 @@
-/* $Id: RecordingCodec.cpp 110109 2025-07-04 07:23:45Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingCodec.cpp 110425 2025-07-28 09:18:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording codec wrapper.
  */
@@ -65,7 +65,6 @@
 #include <VBox/vmm/pdmaudioifs.h>
 #include <VBox/vmm/pdmaudioinline.h>
 
-#include "Recording.h"
 #include "RecordingInternals.h"
 #include "RecordingUtils.h"
 #include "WebMWriter.h"
@@ -741,7 +740,6 @@ static DECLCALLBACK(int) recordingCodecVorbisEncode(PRECORDINGCODEC pCodec,
 #ifdef LOG_ENABLED
             cBlocksEncoded++;
 #endif
-
             vrc = pCodec->Callbacks.pfnWriteData(pCodec, op.packet, (size_t)op.bytes, pCodec->State.tsLastWrittenMs,
                                                  RECORDINGCODEC_ENC_F_BLOCK_IS_KEY /* Every Vorbis frame is a key frame */,
                                                  pCodec->Callbacks.pvUser);
@@ -799,22 +797,31 @@ static DECLCALLBACK(int) recordingCodecVorbisFinalize(PRECORDINGCODEC pCodec)
  * @returns VBox status code.
  * @param   pCodec              Codec instance to initialize.
  * @param   pCallbacks          Codec callback table to use for the codec.
- * @param   Settings            Screen settings to use for initialization.
+ * @param   ScreenSettings      Recording screen settings to use for initialization.
  */
-static int recordingCodecInitAudio(const PRECORDINGCODEC pCodec,
-                                   const PRECORDINGCODECCALLBACKS pCallbacks, const settings::RecordingScreen &Settings)
+static int recordingCodecInitAudio(const PRECORDINGCODEC pCodec, const PRECORDINGCODECCALLBACKS pCallbacks,
+                                   const ComPtr<IRecordingScreenSettings> &ScreenSettings)
 {
     AssertReturn(pCodec->Parms.enmType == RECORDINGCODECTYPE_AUDIO, VERR_INVALID_PARAMETER);
 
-    com::Utf8Str strCodec;
-    settings::RecordingScreen::audioCodecToString(pCodec->Parms.enmAudioCodec, strCodec);
-    LogRel(("Recording: Initializing audio codec '%s'\n", strCodec.c_str()));
+    LogRel(("Recording: Initializing audio codec '%s'\n", RecordingUtilsAudioCodecToStr(pCodec->Parms.enmAudioCodec)));
 
     const PPDMAUDIOPCMPROPS pPCMProps = &pCodec->Parms.u.Audio.PCMProps;
 
-    PDMAudioPropsInit(pPCMProps,
-                      Settings.Audio.cBits / 8,
-                      true /* fSigned */, Settings.Audio.cChannels, Settings.Audio.uHz);
+    ULONG uBits;
+    HRESULT hrc = ScreenSettings->COMGETTER(AudioBits)(&uBits);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    ULONG cChannels;
+    hrc = ScreenSettings->COMGETTER(AudioChannels)(&cChannels);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    ULONG uHz;
+    hrc = ScreenSettings->COMGETTER(AudioHz)(&uHz);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    com::Bstr bstrOpts;
+    hrc = ScreenSettings->COMGETTER(Options)(bstrOpts.asOutParam());
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+
+    PDMAudioPropsInit(pPCMProps, uBits / 8, true /* fSigned */, cChannels, uHz);
     pCodec->Parms.uBitrate = 0; /** @todo No bitrate management for audio yet. */
 
     if (pCallbacks)
@@ -823,7 +830,7 @@ static int recordingCodecInitAudio(const PRECORDINGCODEC pCodec,
     int vrc = VINF_SUCCESS;
 
     if (pCodec->Ops.pfnParseOptions)
-        vrc = pCodec->Ops.pfnParseOptions(pCodec, Settings.strOptions);
+        vrc = pCodec->Ops.pfnParseOptions(pCodec, com::Utf8Str(bstrOpts).c_str());
 
     if (RT_SUCCESS(vrc))
         vrc = pCodec->Ops.pfnInit(pCodec);
@@ -859,19 +866,30 @@ static int recordingCodecInitAudio(const PRECORDINGCODEC pCodec,
  * @returns VBox status code.
  * @param   pCodec              Codec instance to initialize.
  * @param   pCallbacks          Codec callback table to use for the codec.
- * @param   Settings            Screen settings to use for initialization.
+ * @param   ScreenSettings      Recording screen settings to use for initialization.
  */
-static int recordingCodecInitVideo(const PRECORDINGCODEC pCodec,
-                                   const PRECORDINGCODECCALLBACKS pCallbacks, const settings::RecordingScreen &Settings)
+static int recordingCodecInitVideo(const PRECORDINGCODEC pCodec, const PRECORDINGCODECCALLBACKS pCallbacks,
+                                   const ComPtr<IRecordingScreenSettings> &ScreenSettings)
 {
-    com::Utf8Str strTemp;
-    settings::RecordingScreen::videoCodecToString(pCodec->Parms.enmVideoCodec, strTemp);
-    LogRel(("Recording: Initializing video codec '%s'\n", strTemp.c_str()));
+    LogRel(("Recording: Initializing video codec '%s'\n", RecordingUtilsVideoCodecToStr(pCodec->Parms.enmVideoCodec)));
 
-    pCodec->Parms.uBitrate         = Settings.Video.ulRate;
-    pCodec->Parms.u.Video.uFPS     = Settings.Video.ulFPS;
-    pCodec->Parms.u.Video.uWidth   = Settings.Video.ulWidth;
-    pCodec->Parms.u.Video.uHeight  = Settings.Video.ulHeight;
+    ULONG uRate;
+    HRESULT hrc = ScreenSettings->COMGETTER(VideoRate)(&uRate);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    ULONG uFPS;
+    hrc = ScreenSettings->COMGETTER(VideoFPS)(&uFPS);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    ULONG uWidth;
+    hrc = ScreenSettings->COMGETTER(VideoWidth)(&uWidth);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    ULONG uHeight;
+    hrc = ScreenSettings->COMGETTER(VideoHeight)(&uHeight);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+
+    pCodec->Parms.uBitrate         = uRate;
+    pCodec->Parms.u.Video.uFPS     = uFPS;
+    pCodec->Parms.u.Video.uWidth   = uWidth;
+    pCodec->Parms.u.Video.uHeight  = uHeight;
     pCodec->Parms.u.Video.uDelayMs = RT_MS_1SEC / pCodec->Parms.u.Video.uFPS;
 
     if (pCallbacks)
@@ -887,7 +905,13 @@ static int recordingCodecInitVideo(const PRECORDINGCODEC pCodec,
     int vrc = VINF_SUCCESS;
 
     if (pCodec->Ops.pfnParseOptions)
-        vrc = pCodec->Ops.pfnParseOptions(pCodec, Settings.strOptions);
+    {
+        com::Bstr bstrOptions;
+        hrc = ScreenSettings->COMGETTER(Options)(bstrOptions.asOutParam());
+        AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+
+        vrc = pCodec->Ops.pfnParseOptions(pCodec, com::Utf8Str(bstrOptions).c_str());
+    }
 
     if (   RT_SUCCESS(vrc)
         && pCodec->Ops.pfnInit)
@@ -1055,9 +1079,10 @@ int recordingCodecCreateVideo(PRECORDINGCODEC pCodec, RecordingVideoCodec_T enmV
  * @returns VBox status code.
  * @param   pCodec              Codec to initialize.
  * @param   pCallbacks          Codec callback table to use. Optional and may be NULL.
- * @param   Settings            Settings to use for initializing the codec.
+ * @param   ScreenSettings      Screen settings to use for initializing the codec.
  */
-int recordingCodecInit(const PRECORDINGCODEC pCodec, const PRECORDINGCODECCALLBACKS pCallbacks, const settings::RecordingScreen &Settings)
+int recordingCodecInit(const PRECORDINGCODEC pCodec, const PRECORDINGCODECCALLBACKS pCallbacks,
+                       const ComPtr<IRecordingScreenSettings> &ScreenSettings)
 {
     int vrc = RTCritSectInit(&pCodec->CritSect);
     AssertRCReturn(vrc, vrc);
@@ -1068,9 +1093,9 @@ int recordingCodecInit(const PRECORDINGCODEC pCodec, const PRECORDINGCODECCALLBA
     recordingCodecReset(pCodec);
 
     if (pCodec->Parms.enmType == RECORDINGCODECTYPE_AUDIO)
-        vrc = recordingCodecInitAudio(pCodec, pCallbacks, Settings);
+        vrc = recordingCodecInitAudio(pCodec, pCallbacks, ScreenSettings);
     else if (pCodec->Parms.enmType == RECORDINGCODECTYPE_VIDEO)
-        vrc = recordingCodecInitVideo(pCodec, pCallbacks, Settings);
+        vrc = recordingCodecInitVideo(pCodec, pCallbacks, ScreenSettings);
     else
         AssertFailedStmt(vrc = VERR_NOT_SUPPORTED);
 

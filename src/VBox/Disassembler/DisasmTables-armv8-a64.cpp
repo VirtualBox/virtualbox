@@ -1,4 +1,4 @@
-/* $Id: DisasmTables-armv8-a64.cpp 106773 2024-10-28 18:00:32Z alexander.eichner@oracle.com $ */
+/* $Id: DisasmTables-armv8-a64.cpp 110452 2025-07-28 22:30:39Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBox disassembler - Tables for ARMv8 A64.
  */
@@ -87,15 +87,21 @@ DIS_ARMV8_DECODE_INSN_CLASS_DEFINE_END(Adr, 0x9f000000 /*fFixedInsn*/,
 /* ADD/ADDS/SUB/SUBS - shifted immediate variant */
 DIS_ARMV8_DECODE_INSN_CLASS_DEFINE_DECODER(AddSubImm)
     DIS_ARMV8_INSN_DECODE(kDisParmParseSf,    31,  1, DIS_ARMV8_INSN_PARAM_UNSET),
+    DIS_ARMV8_INSN_DECODE(kDisParmParseGprSp,  0,  5, 0 /*idxParam*/),
+    DIS_ARMV8_INSN_DECODE(kDisParmParseGprSp,  5,  5, 1 /*idxParam*/),
+    DIS_ARMV8_INSN_DECODE(kDisParmParseImm,   10, 12, 2 /*idxParam*/),
+    DIS_ARMV8_INSN_DECODE(kDisParmParseSh12,  22,  1, 2 /*idxParam*/),
+DIS_ARMV8_DECODE_INSN_CLASS_DEFINE_DECODER_ALTERNATIVE(AddSubImmS)
+    DIS_ARMV8_INSN_DECODE(kDisParmParseSf,    31,  1, DIS_ARMV8_INSN_PARAM_UNSET),
     DIS_ARMV8_INSN_DECODE(kDisParmParseGprZr,  0,  5, 0 /*idxParam*/),
     DIS_ARMV8_INSN_DECODE(kDisParmParseGprSp,  5,  5, 1 /*idxParam*/),
     DIS_ARMV8_INSN_DECODE(kDisParmParseImm,   10, 12, 2 /*idxParam*/),
     DIS_ARMV8_INSN_DECODE(kDisParmParseSh12,  22,  1, 2 /*idxParam*/),
 DIS_ARMV8_DECODE_INSN_CLASS_DEFINE_BEGIN(AddSubImm)
-    DIS_ARMV8_OP(0x11000000, "add" ,            OP_ARMV8_A64_ADD,       DISOPTYPE_HARMLESS),
-    DIS_ARMV8_OP(0x31000000, "adds" ,           OP_ARMV8_A64_ADDS,      DISOPTYPE_HARMLESS),
-    DIS_ARMV8_OP(0x51000000, "sub" ,            OP_ARMV8_A64_SUB,       DISOPTYPE_HARMLESS),
-    DIS_ARMV8_OP(0x71000000, "subs" ,           OP_ARMV8_A64_SUBS,      DISOPTYPE_HARMLESS),
+    DIS_ARMV8_OP(           0x11000000, "add" ,            OP_ARMV8_A64_ADD,       DISOPTYPE_HARMLESS),
+    DIS_ARMV8_OP_ALT_DECODE(0x31000000, "adds" ,           OP_ARMV8_A64_ADDS,      DISOPTYPE_HARMLESS, AddSubImmS),
+    DIS_ARMV8_OP(           0x51000000, "sub" ,            OP_ARMV8_A64_SUB,       DISOPTYPE_HARMLESS),
+    DIS_ARMV8_OP_ALT_DECODE(0x71000000, "subs" ,           OP_ARMV8_A64_SUBS,      DISOPTYPE_HARMLESS, AddSubImmS),
 DIS_ARMV8_DECODE_INSN_CLASS_DEFINE_END(AddSubImm, 0x7f800000 /*fFixedInsn*/,
                                        kDisArmV8OpcDecodeNop, RT_BIT_32(29) | RT_BIT_32(30), 29);
 

@@ -7,15 +7,15 @@
       <p>The <b outputclass="bold">User Interface</b> section enables you to change certain aspects of the user interface of the selected VM. </p>
       <ul>
          <li>
-            <p><b outputclass="bold">Menu Bar:</b> This widget enables you to disable a complete menu, by clicking on the menu name to deselect it. Menu entries can be disabled, by deselecting the check box next to the entry. On Windows and Linux hosts, the complete menu bar can be disabled by deselecting the check box on the right. </p>
+            <p><b outputclass="bold">Menu Bar:</b> This widget enables you to disable a complete menu, by clicking on the menu name to deselect it. Menu entries can be disabled, by deselecting the check box next to the entry. On Windows and Linux hosts, the complete menu bar can be disabled by deselecting the check box on the right, after the menus.</p>
          </li>
          <li>
-            <p><b outputclass="bold">Mini ToolBar:</b> In full screen or seamless mode, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> can display a small toolbar that contains some of the items that are normally available from the virtual machine's menu bar. This toolbar reduces itself to a small gray line unless you move the mouse over it. With the toolbar, you can return from full screen or seamless mode, control machine execution, or enable certain devices. If you do not want to see the toolbar, disable the <b outputclass="bold">Show in Full Screen/Seamless</b> setting. </p>
-            <p>The <b outputclass="bold">Show at Top of Screen</b> setting enables you to show the toolbar at the top of the screen, instead of showing it at the bottom. </p>
+            <p><b outputclass="bold">Mini ToolBar:</b> In full screen or seamless mode, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> can display a small toolbar that contains some of the items that are normally available from the virtual machine's menu bar. This toolbar reduces itself to a small gray line unless you move the mouse over it. With the toolbar, you can return from full screen or seamless mode, control machine execution, or enable certain devices. If you do not want to see the toolbar, disable the <b outputclass="bold">Show in Full Screen/Seamless</b> setting.</p>
+            <p>The <b outputclass="bold">Show at Top of Screen</b> setting enables you to show the toolbar at the top of the screen, instead of showing it at the bottom.</p>
             <p>The Mini Toolbar is not available on macOS hosts. </p>
          </li>
          <li>
-            <p><b outputclass="bold">Status Bar:</b> This widget enables you to disable and reorder icons on the status bar. Deselect the check box of an icon to disable it, or rearrange icons by dragging and dropping the icon. To disable the complete status bar deselect the check box on the left. </p>
+            <p><b outputclass="bold">Status Bar:</b> This widget enables you to disable and reorder icons on the status bar. Deselect the check box of an icon to disable it, or rearrange icons by dragging and dropping the icon. To disable the complete status bar deselect the check box on the left, before the icons.</p>
          </li>
       </ul>
    </body>

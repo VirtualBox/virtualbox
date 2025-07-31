@@ -1,4 +1,4 @@
-/* $Id: RecordingStream.cpp 110112 2025-07-04 07:57:42Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingStream.cpp 110491 2025-07-31 09:28:23Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording stream code.
  */
@@ -32,6 +32,8 @@
 #include "LoggingNew.h"
 
 #include <iprt/path.h>
+#include <iprt/semaphore.h>
+#include <iprt/cpp/utils.h> /* For unconst() */
 
 #ifdef VBOX_RECORDING_DUMP
 # include <iprt/formats/bmp.h>
@@ -46,17 +48,18 @@
 #endif
 
 #include "ConsoleImpl.h"
-#include "Recording.h"
+#include "RecordingStream.h"
+#include "RecordingInternals.h"
 #include "RecordingUtils.h"
 #include "WebMWriter.h"
 
 
-RecordingStream::RecordingStream(Console *pConsole, RecordingContext *a_pCtx,
-                                 uint32_t uScreen, const settings::RecordingScreen &Settings)
-    : m_pConsole(pConsole)
+RecordingStream::RecordingStream(RecordingContext *a_pCtx, uint32_t uScreen,
+                                 const ComPtr<IRecordingScreenSettings> &ScreenSettings, PRECORDINGCODEC pCodecAudio)
+    : m_pConsole(NULL)
     , m_enmState(RECORDINGSTREAMSTATE_UNINITIALIZED)
 {
-    int vrc2 = initInternal(a_pCtx, uScreen, Settings);
+    int vrc2 = initInternal(a_pCtx, uScreen, ScreenSettings, pCodecAudio);
     if (RT_FAILURE(vrc2))
         throw vrc2;
 }
@@ -71,22 +74,26 @@ RecordingStream::~RecordingStream(void)
  * Opens a recording stream.
  *
  * @returns VBox status code.
- * @param   screenSettings      Recording settings to use.
+ * @param   ScreenSettings      Recording screen settings to use.
  */
-int RecordingStream::open(const settings::RecordingScreen &screenSettings)
+int RecordingStream::open(const ComPtr<IRecordingScreenSettings> &ScreenSettings)
 {
     /* Sanity. */
-    Assert(screenSettings.enmDest != RecordingDestination_None);
+    Assert(m_SettingsCache.enmDestination != RecordingDestination_None);
 
     int vrc;
 
-    switch (screenSettings.enmDest)
+    switch (m_SettingsCache.enmDestination)
     {
         case RecordingDestination_File:
         {
-            Assert(screenSettings.File.strName.isNotEmpty());
+            Bstr bstrFilename;
+            HRESULT hrc = ScreenSettings->COMGETTER(Filename)(bstrFilename.asOutParam());
+            AssertComRCBreak(hrc, vrc = VERR_INVALID_PARAMETER);
+            AssertBreakStmt(bstrFilename.isNotEmpty(), vrc = VERR_INVALID_PARAMETER);
 
-            const char *pszFile = screenSettings.File.strName.c_str();
+            Utf8Str strFilename(bstrFilename);
+            const char *pszFile = strFilename.c_str();
 
             RTFILE hFile = NIL_RTFILE;
             vrc = RTFileOpen(&hFile, pszFile, RTFILE_O_CREATE_REPLACE | RTFILE_O_WRITE | RTFILE_O_DENY_WRITE);
@@ -105,10 +112,7 @@ int RecordingStream::open(const settings::RecordingScreen &screenSettings)
                 }
 
                 if (RT_SUCCESS(vrc))
-                {
                     this->File.m_hFile = hFile;
-                    m_ScreenSettings.File.strName = pszFile;
-                }
             }
             else
                 LogRel(("Recording: Failed to open file '%s' for screen %RU32, vrc=%Rrc\n",
@@ -137,9 +141,9 @@ int RecordingStream::open(const settings::RecordingScreen &screenSettings)
  *
  * @returns The recording stream's used configuration.
  */
-const settings::RecordingScreen &RecordingStream::GetConfig(void) const
+const ComPtr<IRecordingScreenSettings> &RecordingStream::GetSettings(void) const
 {
-    return m_ScreenSettings;
+    return m_Settings;
 }
 
 /**
@@ -151,25 +155,25 @@ const settings::RecordingScreen &RecordingStream::GetConfig(void) const
 bool RecordingStream::isLimitReachedInternal(uint64_t msTimestamp) const
 {
     LogFlowThisFunc(("msTimestamp=%RU64, ulMaxTimeS=%RU32, tsStartMs=%RU64\n",
-                     msTimestamp, m_ScreenSettings.ulMaxTimeS, m_tsStartMs));
+                     msTimestamp, m_SettingsCache.uMaxTime, m_tsStartMs));
 
-    if (   m_ScreenSettings.ulMaxTimeS
-        && msTimestamp >= m_ScreenSettings.ulMaxTimeS * RT_MS_1SEC)
+    if (   m_SettingsCache.uMaxTime
+        && msTimestamp >= m_SettingsCache.uMaxTime * RT_MS_1SEC)
     {
         LogRel(("Recording: Time limit for stream #%RU16 has been reached (%RU32s)\n",
-                m_uScreenID, m_ScreenSettings.ulMaxTimeS));
+                m_uScreenID, m_SettingsCache.uMaxTime));
         return true;
     }
 
-    if (m_ScreenSettings.enmDest == RecordingDestination_File)
+    if (m_SettingsCache.enmDestination == RecordingDestination_File)
     {
-        if (m_ScreenSettings.File.ulMaxSizeMB)
+        if (m_SettingsCache.uMaxFileSize)
         {
-            uint64_t sizeInMB = this->File.m_pWEBM->GetFileSize() / _1M;
-            if(sizeInMB >= m_ScreenSettings.File.ulMaxSizeMB)
+            uint64_t const sizeInMB = this->File.m_pWEBM->GetFileSize() / _1M;
+            if (sizeInMB >= m_SettingsCache.uMaxFileSize)
             {
                 LogRel(("Recording: File size limit for stream #%RU16 has been reached (%RU64MB)\n",
-                        m_uScreenID, m_ScreenSettings.File.ulMaxSizeMB));
+                        m_uScreenID, m_SettingsCache.uMaxFileSize));
                 return true;
             }
         }
@@ -200,7 +204,8 @@ int RecordingStream::iterateInternal(uint64_t msTimestamp)
 {
     AssertReturn(!RTCritSectIsOwner(&m_CritSect), VERR_WRONG_ORDER);
 
-    if (!m_fEnabled)
+    if (   m_enmState != RECORDINGSTREAMSTATE_STARTED
+        && m_enmState != RECORDINGSTREAMSTATE_STOPPING)
         return VINF_SUCCESS;
 
     int vrc;
@@ -218,9 +223,9 @@ int RecordingStream::iterateInternal(uint64_t msTimestamp)
     {
         case VINF_RECORDING_LIMIT_REACHED:
         {
-            m_fEnabled = false;
+            m_enmState = RECORDINGSTREAMSTATE_STOPPED;
 
-            int vrc2 = m_pCtx->onLimitReached(m_uScreenID, VINF_SUCCESS /* vrc */);
+            int vrc2 = m_pCtx->OnLimitReached(m_uScreenID, VINF_SUCCESS /* vrc */);
             AssertRC(vrc2);
             break;
         }
@@ -241,7 +246,7 @@ int RecordingStream::iterateInternal(uint64_t msTimestamp)
  */
 bool RecordingStream::IsLimitReached(uint64_t msTimestamp) const
 {
-    if (!m_fEnabled)
+    if (m_enmState != RECORDINGSTREAMSTATE_STARTED)
         return true;
 
     return isLimitReachedInternal(msTimestamp);
@@ -250,12 +255,16 @@ bool RecordingStream::IsLimitReached(uint64_t msTimestamp) const
 /**
  * Returns whether a feature for a recording stream is enabled or not.
  *
- * @returns @c true if ready, @c false if not.
+ * @returns @c true if enabled, @c false if not.
  * @param   enmFeature          Feature of stream to check enabled status for.
  */
 bool RecordingStream::IsFeatureEnabled(RecordingFeature_T enmFeature) const
 {
-    return m_fEnabled && m_ScreenSettings.isFeatureEnabled(enmFeature);
+    RecordingFeatureMap::const_iterator itFeat = m_SettingsCache.mapFeatures.find(enmFeature);
+    if (itFeat != m_SettingsCache.mapFeatures.end())
+        return RT_BOOL(itFeat->second);
+
+    return false;
 }
 
 /**
@@ -287,7 +296,7 @@ int RecordingStream::process(RecordingBlockSet &streamBlockSet, RecordingBlockMa
 
     lock();
 
-    if (!m_ScreenSettings.fEnabled)
+    if (!m_SettingsCache.fEnabled)
     {
         unlock();
         return VINF_SUCCESS;
@@ -358,11 +367,13 @@ int RecordingStream::process(RecordingBlockSet &streamBlockSet, RecordingBlockMa
             /* Release the block from the block list so that the housekeeping can handle it later. */
             (*itBlockInList)->Release();
 
-            STAM_COUNTER_INC(&m_STAM.cFramesEncoded);
+            STAM_COUNTER_DEC(&m_STAM.cVideoFramesToEncode);
+            STAM_COUNTER_INC(&m_STAM.cVideoFramesEncoded);
+            STAM_COUNTER_INC(&m_STAM.cVideoFramesHousekeeping);
         }
 
         /* Move block set to housekeeping set. */
-        m_BlockSetHousekeeping.Insert(msTimestamp, itStreamBlock->second);
+        m_Housekeeping.Insert(msTimestamp, itStreamBlock->second);
         streamBlockSet.Map.erase(itStreamBlock);
         itStreamBlock = streamBlockSet.Map.begin();
     }
@@ -375,7 +386,7 @@ int RecordingStream::process(RecordingBlockSet &streamBlockSet, RecordingBlockMa
 
 #ifdef VBOX_WITH_AUDIO_RECORDING
     /* Do we need to multiplex the common audio data to this stream? */
-    if (m_ScreenSettings.isFeatureEnabled(RecordingFeature_Audio))
+    if (IsFeatureEnabled(RecordingFeature_Audio))
     {
         /* As each (enabled) screen has to get the same audio data, look for common (audio) data which needs to be
          * written to the screen's assigned recording stream. */
@@ -435,20 +446,102 @@ int RecordingStream::process(RecordingBlockSet &streamBlockSet, RecordingBlockMa
 }
 
 /**
- * Worker function (callback) to do housekeeping on a given recording block set.
+ * Runs one iteration of the worker until the timeout (if defined)
+ * or error is reached.
  *
- * Runs in a separate request pool thread to unblock a stream's main thread as much as possible.
+ * @returns VBox status code.
  */
-/* static */
-DECLCALLBACK(void) RecordingStream::doHousekeepingCallback(RecordingStream *pThis, RecordingBlockSet *pSet)
+int RecordingBlockWorker::Run(void)
 {
-    RT_NOREF(pThis);
+    int vrc = VINF_SUCCESS;
 
-    LogFunc(("Running housekeeping ...\n"));
+    /* Set last run initial timestamp. */
+    if (m_tsLastRunMs == 0)
+        m_tsLastRunMs = RTTimeMilliTS();
 
-    pSet->Clear();
+    uint64_t msTimeout = timeoutRemaining();
+    while (m_fShutdown || msTimeout > 0)
+    {
+        vrc = Worker(msTimeout, m_fShutdown, m_pvUser);
+        if (   vrc == VINF_CALLBACK_RETURN
+            || m_fShutdown
+            || RT_FAILURE(vrc))
+            break;
 
+        if (m_msWait)
+        {
+            vrc = RTSemEventWait(m_hSemEvent, m_msWait);
+            if (   RT_FAILURE(vrc)
+                && vrc != VERR_TIMEOUT)
+                break;
+
+            timeoutReset();
+            vrc = VINF_SUCCESS;
+        }
+
+        msTimeout = timeoutRemaining();
+    }
+
+    timeoutReset();
+    return vrc;
+}
+
+/**
+ * Notifies the worker.
+ *
+ * @returns VBox status code.
+ */
+int RecordingBlockWorker::Notify(void)
+{
+    return RTSemEventSignal(m_hSemEvent);
+}
+
+/**
+ * Inserts a block list within the given PTS.
+ *
+ * @param  uPTS             Timestamp (PTS) to insert block list to.
+ * @param  pBlocks          Block list to insert.
+ *                          This class will take ownership of the data.
+ */
+int RecordingBlockWorkerHousekeeping::Insert(uint64_t uPTS, RecordingBlocks *pBlocks)
+{
+    int vrc;
+
+    try
+    {
+        m_BlockSet.Map.insert(std::make_pair(uPTS, pBlocks));
+        vrc = VINF_SUCCESS;
+    }
+    catch (std::bad_alloc &)
+    {
+        vrc = VERR_NO_MEMORY;
+    }
+
+    return vrc;
+}
+
+/** @copydoc RecordingBlockWorker::Worker */
+DECLCALLBACK(int) RecordingBlockWorkerHousekeeping::Worker(uint64_t msTimeout, bool fShutdown, void *pvUser)
+{
+    RT_NOREF(msTimeout, fShutdown, pvUser);
+
+#if 0
+    size_t const cFrames = m_HousekeepingBlockSet.Map.size();
+    LogFunc(("Running housekeeping (%zu frames)...\n", cFrames));
+#endif
+
+    m_BlockSet.Clear();
+
+    LogFunc(("Running housekeeping (shutdown is %RTbool)\n", fShutdown));
+
+#if 0
+    Assert(m_HousekeepingBlockSet.Map.size() == 0);
+    for (size_t i = 0; i < cFrames; i++)
+        STAM_COUNTER_DEC(&m_STAM.cVideoFramesHousekeeping); /** @todo No STAM_COUNTER_[REMOVE|SUBTRACT], gah! */
     LogFunc(("Running housekeeping done\n"));
+#endif
+
+    return VINF_CALLBACK_RETURN;
 }
 
 /**
@@ -473,7 +566,7 @@ int RecordingStream::ThreadMain(int rcWait, uint64_t msTimestamp, RecordingBlock
      * This is necessary in order to render a video which has a consistent time line,
      * as we only encode data when something has changed ("dirty areas"). */
     if (   rcWait == VERR_TIMEOUT
-        && m_ScreenSettings.isFeatureEnabled(RecordingFeature_Video))
+        && IsFeatureEnabled(RecordingFeature_Video))
     {
         return recordingCodecEncodeCurrent(&m_CodecVideo, msTimestamp);
     }
@@ -486,19 +579,7 @@ int RecordingStream::ThreadMain(int rcWait, uint64_t msTimestamp, RecordingBlock
      * Here we delete all processed stream blocks of this stream. Currently hardcoded to 5s.
      * The common blocks will be deleted by the recording context (which owns those).
      */
-    lock();
-
-    uint64_t const tsNowMs = RTTimeMilliTS();
-    if (tsNowMs - m_BlockSetHousekeeping.tsLastProcessedMs >= RT_MS_5SEC)
-    {
-        m_BlockSetHousekeeping.tsLastProcessedMs = tsNowMs;
-
-        int const  rc2 = RTReqPoolCallVoidWait(m_hReqPool,
-                                               (PFNRT)RecordingStream::doHousekeepingCallback, 2, this, &m_BlockSetHousekeeping);
-        AssertRC(rc2); RT_NOREF(rc2);
-    }
-
-    unlock();
+    m_Housekeeping.Run();
 
     return vrc;
 }
@@ -507,6 +588,7 @@ int RecordingStream::ThreadMain(int rcWait, uint64_t msTimestamp, RecordingBlock
  * Adds a recording frame to be fed to the encoder.
  *
  * @returns VBox status code.
+ * @retval  VWRN_RECORDING_ENCODING_SKIPPED if the frame isn't accepted at that given point in time.
  * @param   pFrame              Recording frame to add.
  *                              Ownership of the frame will be transferred to the encoder on success then.
  *                              Must be free'd by the caller on failure.
@@ -516,11 +598,21 @@ int RecordingStream::ThreadMain(int rcWait, uint64_t msTimestamp, RecordingBlock
  */
 int RecordingStream::addFrame(PRECORDINGFRAME pFrame, uint64_t msTimestamp)
 {
-    LogFlowFuncEnter();
+    LogFlowFunc(("type=%#x, ts=%RU64, tsStartMs=%RU64\n", pFrame->enmType, pFrame->msTimestamp, m_tsStartMs));
 
     int vrc;
 
     Assert(pFrame->msTimestamp == msTimestamp); /* Sanity. */
+
+    /* Set starting timestamp as soon as the first screen change frame arrives.
+     * That way the picture will be in a consistent state. Ignore anything else before that.
+     * We don't want to have any blank content in the encoded file. */
+    if (!m_tsStartMs)
+    {
+        if (pFrame->enmType != RECORDINGFRAME_TYPE_SCREEN_CHANGE)
+            return VWRN_RECORDING_ENCODING_SKIPPED;
+        m_tsStartMs = RTTimeMilliTS();
+    }
 
     try
     {
@@ -530,7 +622,8 @@ int RecordingStream::addFrame(PRECORDINGFRAME pFrame, uint64_t msTimestamp)
         pBlock->cbData = sizeof(RECORDINGFRAME);
         pBlock->AddRef();
 
-        STAM_COUNTER_INC(&m_STAM.cFramesAdded);
+        STAM_COUNTER_INC(&m_STAM.cVideoFramesAdded);
+        STAM_COUNTER_INC(&m_STAM.cVideoFramesToEncode);
 #if 0
         RecordingUtilsDbgLogFrame(pFrame);
 
@@ -595,7 +688,18 @@ int RecordingStream::addFrame(PRECORDINGFRAME pFrame, uint64_t msTimestamp)
  */
 int RecordingStream::SendAudioFrame(const void *pvData, size_t cbData, uint64_t msTimestamp)
 {
-    AssertPtrReturn(m_pCtx, VERR_WRONG_ORDER);
+#ifdef DEBUG
+    lock();
+
+    AssertPtrReturn(pvData, VERR_INVALID_POINTER);
+    AssertReturnStmt(m_enmState == RECORDINGSTREAMSTATE_STARTED, unlock(), VERR_WRONG_ORDER);
+
+    unlock();
+#endif
+
+#ifdef VBOX_WITH_AUDIO_RECORDING
+    STAM_COUNTER_INC(&m_STAM.cAudioFramesAdded);
+#endif
 
     /* As audio data is common across all streams, re-route this to the recording context, where
      * the data is being encoded and stored in the common blocks queue. */
@@ -609,11 +713,19 @@ int RecordingStream::SendAudioFrame(const void *pvData, size_t cbData, uint64_t 
  * @param   idCursor            Cursor ID. Currently unused and always set to 0.
  * @param   pPos                Cursor information to send.
  * @param   msTimestamp         Timestamp (PTS, in ms).
+ *
+ * @thread  EMT
  */
 int RecordingStream::SendCursorPos(uint8_t idCursor, PRECORDINGPOS pPos, uint64_t msTimestamp)
 {
     RT_NOREF(idCursor);
+
+#ifdef DEBUG
+    lock();
     AssertPtrReturn(pPos, VERR_INVALID_POINTER);
+    AssertReturnStmt(m_enmState == RECORDINGSTREAMSTATE_STARTED, unlock(), VERR_WRONG_ORDER);
+    unlock();
+#endif
 
     int vrc = iterateInternal(msTimestamp);
     if (vrc != VINF_SUCCESS) /* Can return VINF_RECORDING_LIMIT_REACHED. */
@@ -649,8 +761,13 @@ int RecordingStream::SendCursorPos(uint8_t idCursor, PRECORDINGPOS pPos, uint64_
 int RecordingStream::SendCursorShape(uint8_t idCursor, PRECORDINGVIDEOFRAME pShape, uint64_t msTimestamp)
 {
     RT_NOREF(idCursor);
+
+#ifdef DEBUG
+    lock();
     AssertPtrReturn(pShape, VERR_INVALID_POINTER);
-    AssertPtrReturn(m_pCtx, VERR_WRONG_ORDER);
+    AssertReturnStmt(m_enmState == RECORDINGSTREAMSTATE_STARTED, unlock(), VERR_WRONG_ORDER);
+    unlock();
+#endif
 
     int vrc = iterateInternal(msTimestamp);
     if (vrc != VINF_SUCCESS) /* Can return VINF_RECORDING_LIMIT_REACHED. */
@@ -698,8 +815,12 @@ int RecordingStream::SendCursorShape(uint8_t idCursor, PRECORDINGVIDEOFRAME pSha
  */
 int RecordingStream::SendVideoFrame(PRECORDINGVIDEOFRAME pVideoFrame, uint64_t msTimestamp)
 {
+#ifdef DEBUG
+    lock();
     AssertPtrReturn(pVideoFrame, VERR_INVALID_POINTER);
-    AssertPtrReturn(m_pCtx, VERR_WRONG_ORDER);
+    AssertReturnStmt(m_enmState == RECORDINGSTREAMSTATE_STARTED, unlock(), VERR_WRONG_ORDER);
+    unlock();
+#endif
 
     int vrc = iterateInternal(msTimestamp);
     if (vrc != VINF_SUCCESS) /* Can return VINF_RECORDING_LIMIT_REACHED. */
@@ -750,28 +871,42 @@ int RecordingStream::SendVideoFrame(PRECORDINGVIDEOFRAME pVideoFrame, uint64_t m
  * @param   pInfo               Recording screen info to use.
  * @param   msTimestamp         Timestamp (PTS, in ms).
  * @param   fForce              Set to \c true to force a change, otherwise to \c false.
+ *
+ * @thread  EMT
  */
 int RecordingStream::SendScreenChange(PRECORDINGSURFACEINFO pInfo, uint64_t msTimestamp, bool fForce /* = false */)
 {
+#ifdef DEBUG
+    lock();
     AssertPtrReturn(pInfo, VERR_INVALID_POINTER);
-
-    if (   !pInfo->uWidth
-        || !pInfo->uHeight)
-        return VINF_SUCCESS;
+    AssertReturnStmt(m_enmState == RECORDINGSTREAMSTATE_STARTED, unlock(), VERR_WRONG_ORDER);
+    unlock();
+#endif
 
     RT_NOREF(fForce);
 
-    LogRel(("Recording: Size of screen #%RU32 changed to %RU32x%RU32 (%RU8 BPP)\n",
-            m_uScreenID, pInfo->uWidth, pInfo->uHeight, pInfo->uBPP));
-
     lock();
+
+    /* Fend off screen change requests which match the current screen info we already have. */
+    if (   m_Video.ScreenInfo.uWidth  == pInfo->uWidth
+        && m_Video.ScreenInfo.uHeight == pInfo->uHeight
+        && m_Video.ScreenInfo.uBPP    == pInfo->uBPP)
+    {
+        unlock();
+        return VINF_SUCCESS;
+    }
+
+    m_Video.ScreenInfo = *pInfo;
+
+    LogRel(("Recording: Screen size of stream #%RU32 changed to %RU32x%RU32 (%RU8 BPP)\n",
+            m_uScreenID, m_Video.ScreenInfo.uWidth, m_Video.ScreenInfo.uHeight, m_Video.ScreenInfo.uBPP));
 
     PRECORDINGFRAME pFrame = (PRECORDINGFRAME)RTMemAlloc(sizeof(RECORDINGFRAME));
     AssertPtrReturn(pFrame, VERR_NO_MEMORY);
     pFrame->enmType      = RECORDINGFRAME_TYPE_SCREEN_CHANGE;
     pFrame->msTimestamp  = msTimestamp;
 
-    pFrame->u.ScreenInfo = *pInfo;
+    pFrame->u.ScreenInfo = m_Video.ScreenInfo;
 
     int vrc = addFrame(pFrame, msTimestamp);
 
@@ -782,30 +917,88 @@ int RecordingStream::SendScreenChange(PRECORDINGSURFACEINFO pInfo, uint64_t msTi
 }
 
 /**
+ * Starts an initialized recording stream.
+ *
+ * @returns VBox status code.
+ *
+ * @thread  EMT
+ */
+int RecordingStream::Start(void)
+{
+    lock();
+
+    AssertReturnStmt(m_enmState == RECORDINGSTREAMSTATE_INITIALIZED, unlock(), VERR_WRONG_ORDER);
+
+    int vrc = 0;
+
+    LogRel(("Recording: Starting to record stream #%RU32\n", m_uScreenID));
+    m_enmState = RECORDINGSTREAMSTATE_STARTED;
+
+    unlock();
+
+    return vrc;
+}
+
+/**
+ * Stops an started or paused recording stream.
+ *
+ * @returns VBox status code.
+ *
+ * @thread  EMT
+ */
+int RecordingStream::Stop(void)
+{
+    lock();
+
+    AssertReturnStmt(   m_enmState == RECORDINGSTREAMSTATE_STARTED
+                     || m_enmState == RECORDINGSTREAMSTATE_PAUSED, unlock(), VERR_WRONG_ORDER);
+
+    int vrc = 0;
+
+    LogRel(("Recording: Stopping to record stream #%RU32\n", m_uScreenID));
+    m_enmState = RECORDINGSTREAMSTATE_STOPPING;
+
+    unlock();
+
+    return vrc;
+}
+
+/**
  * Initializes a recording stream.
  *
  * @returns VBox status code.
- * @param   pCtx                Pointer to recording context.
- * @param   uScreen             Screen number to use for this recording stream.
- * @param   Settings            Recording screen configuration to use for initialization.
+ * @param   pCtx                        Pointer to recording context.
+ * @param   uScreen                     Screen number to use for this recording stream.
+ * @param   ScreenSettings              Recording screen settings to use for initialization.
+ * @param   pCodecAudio                 Pointer to audio codec instance to use.
+ *                                      Might be NULL if no audio should be recorded for this stream.
+ *
+ * @note    This does not start the stream. Use Start() for this.
+ * @thread  EMT
  */
-int RecordingStream::Init(RecordingContext *pCtx, uint32_t uScreen, const settings::RecordingScreen &Settings)
+int RecordingStream::Init(RecordingContext *pCtx, uint32_t uScreen,
+                          const ComPtr<IRecordingScreenSettings> &ScreenSettings, PRECORDINGCODEC pCodecAudio)
 {
-    return initInternal(pCtx, uScreen, Settings);
+    return initInternal(pCtx, uScreen, ScreenSettings, pCodecAudio);
 }
 
 /**
  * Initializes a recording stream, internal version.
  *
  * @returns VBox status code.
- * @param   pCtx                Pointer to recording context.
- * @param   uScreen             Screen number to use for this recording stream.
- * @param   screenSettings      Recording screen configuration to use for initialization.
+ * @param   pCtx                        Pointer to recording context.
+ * @param   uScreen                     Screen number to use for this recording stream.
+ * @param   ScreenSettings              Recording screen settings to use for initialization.
+ * @param   pCodecAudio                 Pointer to audio codec instance to use.
+ *                                      Might be NULL if no audio should be recorded for this stream.
  */
 int RecordingStream::initInternal(RecordingContext *pCtx, uint32_t uScreen,
-                                  const settings::RecordingScreen &screenSettings)
+                                  const ComPtr<IRecordingScreenSettings> &ScreenSettings,
+                                  PRECORDINGCODEC pCodecAudio)
 {
     AssertReturn(m_enmState == RECORDINGSTREAMSTATE_UNINITIALIZED, VERR_WRONG_ORDER);
+
+    unconst(m_pConsole) = pCtx->GetConsole();
 
     m_pCtx           = pCtx;
     m_uTrackAudio    = UINT8_MAX;
@@ -813,12 +1006,30 @@ int RecordingStream::initInternal(RecordingContext *pCtx, uint32_t uScreen,
     m_tsStartMs      = 0;
     m_uScreenID      = uScreen;
 #ifdef VBOX_WITH_AUDIO_RECORDING
-    /* We use the codec from the recording context, as this stream only receives multiplexed data (same audio for all streams). */
-    m_pCodecAudio    = m_pCtx->GetCodecAudio();
+    m_pCodecAudio    = pCodecAudio;
+#else
+    RT_NOREF(pCodecAudio);
 #endif
-    m_ScreenSettings = screenSettings;
+    m_Settings = ScreenSettings;
 
-    settings::RecordingScreen *pSettings = &m_ScreenSettings;
+    RT_ZERO(m_Video.ScreenInfo);
+
+    /*
+     * Populate cached settings.
+     */
+    HRESULT hrc = ScreenSettings->COMGETTER(Enabled)(&m_SettingsCache.fEnabled);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    com::SafeArray<RecordingFeature_T> aFeatures;
+    hrc = m_Settings->COMGETTER(Features)(ComSafeArrayAsOutParam(aFeatures));
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    for (size_t i = 0; i < aFeatures.size(); i++)
+        m_SettingsCache.mapFeatures[aFeatures[i]] = true;
+    hrc = ScreenSettings->COMGETTER(Destination)(&m_SettingsCache.enmDestination);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    hrc = ScreenSettings->COMGETTER(MaxTime)(&m_SettingsCache.uMaxTime);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    hrc = ScreenSettings->COMGETTER(MaxFileSize)(&m_SettingsCache.uMaxFileSize);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
 
     int vrc = RTCritSectInit(&m_CritSect);
     if (RT_FAILURE(vrc))
@@ -827,31 +1038,44 @@ int RecordingStream::initInternal(RecordingContext *pCtx, uint32_t uScreen,
     this->File.m_pWEBM = NULL;
     this->File.m_hFile = NIL_RTFILE;
 
-    vrc = open(*pSettings);
+    vrc = open(ScreenSettings);
     if (RT_FAILURE(vrc))
         return vrc;
 
-    const bool fVideoEnabled = pSettings->isFeatureEnabled(RecordingFeature_Video);
-    const bool fAudioEnabled = pSettings->isFeatureEnabled(RecordingFeature_Audio);
+    bool const fVideoEnabled = IsFeatureEnabled(RecordingFeature_Video);
+    bool const fAudioEnabled = IsFeatureEnabled(RecordingFeature_Audio);
 
     if (fVideoEnabled)
     {
-        vrc = initVideo(*pSettings);
+        vrc = initVideo(ScreenSettings);
         if (RT_FAILURE(vrc))
             return vrc;
     }
 
-    switch (pSettings->enmDest)
+    switch (m_SettingsCache.enmDestination)
     {
         case RecordingDestination_File:
         {
-            Assert(pSettings->File.strName.isNotEmpty());
-            const char *pszFile = pSettings->File.strName.c_str();
+            Bstr bstrFilename;
+            hrc = ScreenSettings->COMGETTER(Filename)(bstrFilename.asOutParam());
+            AssertComRCBreak(hrc, vrc = VERR_INVALID_PARAMETER);
+            AssertBreakStmt(bstrFilename.isNotEmpty(), vrc = VERR_INVALID_PARAMETER);
+
+            Utf8Str strFilename(bstrFilename);
+            const char *pszFile = strFilename.c_str();
+
+            RecordingAudioCodec_T enmAudioCodec;
+            hrc = ScreenSettings->COMGETTER(AudioCodec)(&enmAudioCodec);
+            AssertComRCBreak(hrc, vrc = VERR_INVALID_PARAMETER);
+
+            RecordingVideoCodec_T enmVideoCodec;
+            hrc = ScreenSettings->COMGETTER(VideoCodec)(&enmVideoCodec);
+            AssertComRCBreak(hrc, vrc = VERR_INVALID_PARAMETER);
 
             AssertPtr(File.m_pWEBM);
             vrc = File.m_pWEBM->OpenEx(pszFile, &this->File.m_hFile,
-                                     fAudioEnabled ? pSettings->Audio.enmCodec : RecordingAudioCodec_None,
-                                     fVideoEnabled ? pSettings->Video.enmCodec : RecordingVideoCodec_None);
+                                     fAudioEnabled ? enmAudioCodec : RecordingAudioCodec_None,
+                                     fVideoEnabled ? enmVideoCodec : RecordingVideoCodec_None);
             if (RT_FAILURE(vrc))
             {
                 LogRel(("Recording: Failed to create output file '%s' (%Rrc)\n", pszFile, vrc));
@@ -860,9 +1084,20 @@ int RecordingStream::initInternal(RecordingContext *pCtx, uint32_t uScreen,
 
             if (fVideoEnabled)
             {
-                vrc = this->File.m_pWEBM->AddVideoTrack(&m_CodecVideo,
-                                                      pSettings->Video.ulWidth, pSettings->Video.ulHeight, pSettings->Video.ulFPS,
-                                                      &m_uTrackVideo);
+                ULONG uWidth;
+                hrc = ScreenSettings->COMGETTER(VideoWidth)(&uWidth);
+                AssertComRCBreak(hrc, vrc = VERR_INVALID_PARAMETER);
+                ULONG uHeight;
+                hrc = ScreenSettings->COMGETTER(VideoHeight)(&uHeight);
+                AssertComRCBreak(hrc, vrc = VERR_INVALID_PARAMETER);
+                ULONG uRate;
+                hrc = ScreenSettings->COMGETTER(VideoRate)(&uRate);
+                AssertComRCBreak(hrc, vrc = VERR_INVALID_PARAMETER);
+                ULONG uFPS;
+                hrc = ScreenSettings->COMGETTER(VideoFPS)(&uFPS);
+                AssertComRCBreak(hrc, vrc = VERR_INVALID_PARAMETER);
+
+                vrc = this->File.m_pWEBM->AddVideoTrack(&m_CodecVideo, uWidth, uHeight, uFPS, &m_uTrackVideo);
                 if (RT_FAILURE(vrc))
                 {
                     LogRel(("Recording: Failed to add video track to output file '%s' (%Rrc)\n", pszFile, vrc));
@@ -870,17 +1105,28 @@ int RecordingStream::initInternal(RecordingContext *pCtx, uint32_t uScreen,
                 }
 
                 LogRel(("Recording: Recording video of screen #%u with %RU32x%RU32 @ %RU32 kbps, %RU32 FPS (track #%RU8)\n",
-                        m_uScreenID, pSettings->Video.ulWidth, pSettings->Video.ulHeight,
-                        pSettings->Video.ulRate, pSettings->Video.ulFPS, m_uTrackVideo));
+                        m_uScreenID, uWidth, uHeight, uRate, uFPS, m_uTrackVideo));
             }
 
 #ifdef VBOX_WITH_AUDIO_RECORDING
             if (fAudioEnabled)
             {
+                ULONG uBits;
+                hrc = ScreenSettings->COMGETTER(AudioBits)(&uBits);
+                AssertComRCBreak(hrc, vrc = VERR_RECORDING_INIT_FAILED);
+                ULONG cChannels;
+                hrc = ScreenSettings->COMGETTER(AudioChannels)(&cChannels);
+                AssertComRCBreak(hrc, vrc = VERR_RECORDING_INIT_FAILED);
+                AssertBreakStmt(cChannels, vrc = VERR_RECORDING_INIT_FAILED);
+                ULONG uHz;
+                hrc = ScreenSettings->COMGETTER(AudioHz)(&uHz);
+                AssertComRCBreak(hrc, vrc = VERR_RECORDING_INIT_FAILED);
+                com::Bstr bstrOpts;
+                hrc = ScreenSettings->COMGETTER(Options)(bstrOpts.asOutParam());
+                AssertComRCBreak(hrc, vrc = VERR_RECORDING_INIT_FAILED);
+
                 AssertPtr(m_pCodecAudio);
-                vrc = this->File.m_pWEBM->AddAudioTrack(m_pCodecAudio,
-                                                      pSettings->Audio.uHz, pSettings->Audio.cChannels, pSettings->Audio.cBits,
-                                                      &m_uTrackAudio);
+                vrc = this->File.m_pWEBM->AddAudioTrack(m_pCodecAudio, uHz, cChannels, uBits, &m_uTrackAudio);
                 if (RT_FAILURE(vrc))
                 {
                     LogRel(("Recording: Failed to add audio track to output file '%s' (%Rrc)\n", pszFile, vrc));
@@ -888,8 +1134,7 @@ int RecordingStream::initInternal(RecordingContext *pCtx, uint32_t uScreen,
                 }
 
                 LogRel(("Recording: Recording audio of screen #%u in %RU16Hz, %RU8 bit, %RU8 %s (track #%RU8)\n",
-                        m_uScreenID, pSettings->Audio.uHz, pSettings->Audio.cBits, pSettings->Audio.cChannels,
-                        pSettings->Audio.cChannels ? "channels" : "channel", m_uTrackAudio));
+                        m_uScreenID, uHz, uBits, cChannels, cChannels >= 2 ? "channels" : "channel", m_uTrackAudio));
             }
 #endif
 
@@ -922,52 +1167,53 @@ int RecordingStream::initInternal(RecordingContext *pCtx, uint32_t uScreen,
             break;
     }
 
-    if (RT_SUCCESS(vrc))
-    {
-        char szName[16];
-        RTStrPrintf(szName, sizeof(szName), "Rec%uWr", uScreen);
-        RTREQPOOL hReqPool = NIL_RTREQPOOL;
-        vrc = RTReqPoolCreate(1 /*cMaxThreads*/, RT_MS_30SEC /*cMsMinIdle*/, UINT32_MAX /*cThreadsPushBackThreshold*/,
-                              1 /*cMsMaxPushBack*/, szName, &hReqPool);
-        if (RT_SUCCESS(vrc))
-        {
-            vrc = RTReqPoolSetCfgVar(hReqPool, RTREQPOOLCFGVAR_THREAD_FLAGS, RTTHREADFLAGS_COM_MTA);
-            if (RT_SUCCESS(vrc))
-                vrc = RTReqPoolSetCfgVar(hReqPool, RTREQPOOLCFGVAR_MIN_THREADS, 1);
-
-            if (RT_SUCCESS(vrc))
-                m_hReqPool = hReqPool;
-        }
-    }
-
 #ifdef VBOX_WITH_STATISTICS
-    Console::SafeVMPtrQuiet ptrVM(m_pCtx->m_pConsole);
+    Console::SafeVMPtrQuiet ptrVM(m_pCtx->GetConsole());
     if (ptrVM.isOk())
     {
-        ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.cFramesAdded,
-                                            STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_COUNT,
-                                            "Total recording frames added.", "/Main/Recording/Stream%RU32/FramesAdded", uScreen);
-        ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.cFramesEncoded,
-                                            STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_COUNT,
-                                            "Total recording frames encoded.", "/Main/Recording/Stream%RU32/FramesEncoded", uScreen);
-        ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.profileFnProcessTotal,
-                                            STAMTYPE_PROFILE, STAMVISIBILITY_ALWAYS, STAMUNIT_NS_PER_CALL,
-                                            "Profiling the processing function (total).", "/Main/Recording/Stream%RU32/ProfileFnProcessTotal", uScreen);
-        ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.profileFnProcessVideo,
-                                            STAMTYPE_PROFILE, STAMVISIBILITY_ALWAYS, STAMUNIT_NS_PER_CALL,
-                                            "Profiling the processing function (video).", "/Main/Recording/Stream%RU32/ProfileFnProcessVideo", uScreen);
-        ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.profileFnProcessAudio,
-                                            STAMTYPE_PROFILE, STAMVISIBILITY_ALWAYS, STAMUNIT_NS_PER_CALL,
-                                            "Profiling the processing function (audio).", "/Main/Recording/Stream%RU32/ProfileFnProcessAudio", uScreen);
+         ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.cVideoFramesAdded,
+                                             STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_COUNT,
+                                             "Total video frames added.", "/Main/Recording/Stream%RU32/VideoFramesAdded", uScreen);
+         ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.cVideoFramesToEncode,
+                                             STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_COUNT,
+                                             "Current video frames (pending) to encode.", "/Main/Recording/Stream%RU32/VideoFramesToEncode", uScreen);
+         ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.cVideoFramesEncoded,
+                                             STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_COUNT,
+                                             "Total video frames encoded.", "/Main/Recording/Stream%RU32/VideoFramesEncoded", uScreen);
+         ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.cVideoFramesHousekeeping,
+                                             STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_COUNT,
+                                             "Current video frames in housekeeping queue.", "/Main/Recording/Stream%RU32/VideoFramesHousekeeping", uScreen);
+
+         ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.profileFnProcessTotal,
+                                             STAMTYPE_PROFILE, STAMVISIBILITY_ALWAYS, STAMUNIT_NS_PER_CALL,
+                                             "Profiling the processing function (audio + video).", "/Main/Recording/Stream%RU32/ProfileFnProcessTotal", uScreen);
+         ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.profileFnProcessVideo,
+                                             STAMTYPE_PROFILE, STAMVISIBILITY_ALWAYS, STAMUNIT_NS_PER_CALL,
+                                             "Profiling the processing function (video).", "/Main/Recording/Stream%RU32/ProfileFnProcessVideo", uScreen);
+# ifdef VBOX_WITH_AUDIO_RECORDING
+         ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.cAudioFramesAdded,
+                                              STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_COUNT,
+                                              "Total audio frames added.", "/Main/Recording/Stream%RU32/AudioFramesAdded", uScreen);
+         ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.cAudioFramesToEncode,
+                                              STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_COUNT,
+                                              "Current audio frames (pending) to encode.", "/Main/Recording/Stream%RU32/AudioFramesToEncode", uScreen);
+         ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.cAudioFramesEncoded,
+                                              STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_COUNT,
+                                              "Total audio frames encoded.", "/Main/Recording/Stream%RU32/AudioFramesEncoded", uScreen);
+         ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.cAudioFramesHousekeeping,
+                                             STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_COUNT,
+                                             "Current audio frames in housekeeping queue.", "/Main/Recording/Stream%RU32/AudioFramesHousekeeping", uScreen);
+
+         ptrVM.vtable()->pfnSTAMR3RegisterFU(ptrVM.rawUVM(), &m_STAM.profileFnProcessAudio,
+                                             STAMTYPE_PROFILE, STAMVISIBILITY_ALWAYS, STAMUNIT_NS_PER_CALL,
+                                             "Profiling the processing function (audio).", "/Main/Recording/Stream%RU32/ProfileFnProcessAudio", uScreen);
+# endif
     }
 #endif
 
     if (RT_SUCCESS(vrc))
     {
         m_enmState  = RECORDINGSTREAMSTATE_INITIALIZED;
-        m_fEnabled  = true;
-        m_tsStartMs = RTTimeMilliTS();
-
         return VINF_SUCCESS;
     }
 
@@ -991,7 +1237,7 @@ int RecordingStream::close(void)
 
     /* ignore rc */ recordingCodecFinalize(&m_CodecVideo);
 
-    switch (m_ScreenSettings.enmDest)
+    switch (m_SettingsCache.enmDestination)
     {
         case RecordingDestination_File:
         {
@@ -1015,20 +1261,26 @@ int RecordingStream::close(void)
         return vrc;
     }
 
-    switch (m_ScreenSettings.enmDest)
+    switch (m_SettingsCache.enmDestination)
     {
         case RecordingDestination_File:
         {
+            Bstr bstrFilename;
+            HRESULT hrc = m_Settings->COMGETTER(Filename)(bstrFilename.asOutParam());
+            AssertComRCBreak(hrc, vrc = VERR_INVALID_PARAMETER);
+
+            Utf8Str strFilename(bstrFilename);
+
             if (RTFileIsValid(this->File.m_hFile))
             {
                 vrc = RTFileClose(this->File.m_hFile);
                 if (RT_SUCCESS(vrc))
                 {
-                    LogRel(("Recording: Closed file '%s'\n", m_ScreenSettings.File.strName.c_str()));
+                    LogRel(("Recording: Closed file '%s'\n", strFilename.c_str()));
                 }
                 else
                 {
-                    LogRel(("Recording: Error closing file '%s', vrc=%Rrc\n", m_ScreenSettings.File.strName.c_str(), vrc));
+                    LogRel(("Recording: Error closing file '%s', vrc=%Rrc\n", strFilename.c_str(), vrc));
                     break;
                 }
             }
@@ -1041,7 +1293,7 @@ int RecordingStream::close(void)
                 /* If no clusters (= data) was written, delete the file again. */
                 if (pWebMWriter->GetClusters() == 0)
                 {
-                    int vrc2 = RTFileDelete(m_ScreenSettings.File.strName.c_str());
+                    int vrc2 = RTFileDelete(strFilename.c_str());
                     AssertRC(vrc2); /* Ignore vrc on non-debug builds. */
                 }
 
@@ -1079,8 +1331,10 @@ int RecordingStream::Uninit(void)
  */
 int RecordingStream::uninitInternal(void)
 {
-    if (m_enmState != RECORDINGSTREAMSTATE_INITIALIZED)
+    if (m_enmState == RECORDINGSTREAMSTATE_UNINITIALIZED)
         return VINF_SUCCESS;
+
+    lock();
 
     int vrc = close();
     if (RT_FAILURE(vrc))
@@ -1090,34 +1344,45 @@ int RecordingStream::uninitInternal(void)
     m_pCodecAudio = NULL;
 #endif
 
-    if (m_ScreenSettings.isFeatureEnabled(RecordingFeature_Video))
+    if (IsFeatureEnabled(RecordingFeature_Video))
         vrc = recordingCodecDestroy(&m_CodecVideo);
 
     if (RT_SUCCESS(vrc))
     {
+        m_enmState = RECORDINGSTREAMSTATE_UNINITIALIZED;
+
+        unlock();
+
         RTCritSectDelete(&m_CritSect);
 
-        uint32_t const cRefs = RTReqPoolRelease(m_hReqPool);
-        Assert(cRefs == 0); RT_NOREF(cRefs);
-        m_hReqPool = NIL_RTREQPOOL;
-
-        m_enmState = RECORDINGSTREAMSTATE_UNINITIALIZED;
-        m_fEnabled = false;
-    }
-
 #ifdef VBOX_WITH_STATISTICS
-    Console::SafeVMPtrQuiet ptrVM(m_pCtx->m_pConsole);
-    if (ptrVM.isOk())
-    {
-        ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(),"/Main/Recording/Stream%RU32/FramesAdded", m_uScreenID);
-        ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/FramesEncoded", m_uScreenID);
+        Console::SafeVMPtrQuiet ptrVM(m_pCtx->GetConsole());
+        if (ptrVM.isOk())
+        {
+            ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/VideoFramesAdded", m_uScreenID);
+            ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/VideoFramesToEncode", m_uScreenID);
+            ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/VideoFramesEncoded", m_uScreenID);
 
-        ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/ProfileFnProcessTotal", m_uScreenID);
-        ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/ProfileFnProcessVideo", m_uScreenID);
-        ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/ProfileFnProcessAudio", m_uScreenID);
-    }
+            ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/VideoFramesHousekeeping", m_uScreenID);
+
+            ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/ProfileFnProcessVideo", m_uScreenID);
+# ifdef VBOX_WITH_AUDIO_RECORDING
+            ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/AudioFramesAdded", m_uScreenID);
+            ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/AudioFramesToEncode", m_uScreenID);
+            ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/AudioFramesEncoded", m_uScreenID);
+
+            ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/AudioFramesHousekeeping", m_uScreenID);
+
+            ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/ProfileFnProcessAudio", m_uScreenID);
+# endif
+            ptrVM.vtable()->pfnSTAMR3DeregisterF(ptrVM.rawUVM(), "/Main/Recording/Stream%RU32/ProfileFnProcessTotal", m_uScreenID);
+        }
 #endif
 
+        return VINF_SUCCESS;
+    }
+
+    unlock();
     return vrc;
 }
 
@@ -1182,37 +1447,23 @@ DECLCALLBACK(int) RecordingStream::codecWriteDataCallback(PRECORDINGCODEC pCodec
  * Initializes the video recording for a recording stream.
  *
  * @returns VBox status code.
- * @param   screenSettings      Screen settings to use.
+ * @param   ScreenSettings      Screen settings to use.
  */
-int RecordingStream::initVideo(const settings::RecordingScreen &screenSettings)
+int RecordingStream::initVideo(const ComPtr<IRecordingScreenSettings> &ScreenSettings)
 {
-    /* Sanity. */
-    AssertReturn(screenSettings.Video.ulRate,   VERR_INVALID_PARAMETER);
-    AssertReturn(screenSettings.Video.ulWidth,  VERR_INVALID_PARAMETER);
-    AssertReturn(screenSettings.Video.ulHeight, VERR_INVALID_PARAMETER);
-    AssertReturn(screenSettings.Video.ulFPS,    VERR_INVALID_PARAMETER);
-
     PRECORDINGCODEC pCodec = &m_CodecVideo;
 
     RECORDINGCODECCALLBACKS Callbacks;
     Callbacks.pvUser       = this;
     Callbacks.pfnWriteData = RecordingStream::codecWriteDataCallback;
 
-    RECORDINGSURFACEINFO ScreenInfo;
-    RT_ZERO(ScreenInfo);
-    ScreenInfo.uWidth        = screenSettings.Video.ulWidth;
-    ScreenInfo.uHeight       = screenSettings.Video.ulHeight;
-    ScreenInfo.uBPP          = 32; /* We always start with 32 bit. */
-    ScreenInfo.enmPixelFmt   = RECORDINGPIXELFMT_BRGA32 /* Only format we support right now */;
-    ScreenInfo.uBytesPerLine = screenSettings.Video.ulWidth * (ScreenInfo.uBPP / 8);
+    RecordingVideoCodec_T enmVideoCodec;
+    HRESULT hrc = ScreenSettings->COMGETTER(VideoCodec)(&enmVideoCodec);
+    AssertComRCReturn(hrc, VERR_INVALID_PARAMETER);
 
-    int vrc = SendScreenChange(&ScreenInfo, true /* fForce */);
+    int vrc = recordingCodecCreateVideo(pCodec, enmVideoCodec);
     if (RT_SUCCESS(vrc))
-    {
-        vrc = recordingCodecCreateVideo(pCodec, screenSettings.Video.enmCodec);
-        if (RT_SUCCESS(vrc))
-            vrc = recordingCodecInit(pCodec, &Callbacks, screenSettings);
-    }
+        vrc = recordingCodecInit(pCodec, &Callbacks, ScreenSettings);
 
     if (RT_FAILURE(vrc))
         LogRel(("Recording: Initializing video codec failed with %Rrc\n", vrc));
@@ -1237,4 +1488,3 @@ void RecordingStream::unlock(void)
     int vrc = RTCritSectLeave(&m_CritSect);
     AssertRC(vrc);
 }
-

@@ -1,4 +1,4 @@
-/* $Id: CPUM.cpp 109857 2025-06-15 22:05:36Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUM.cpp 110144 2025-07-07 22:13:01Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU Monitor / Manager.
  */
@@ -670,61 +670,6 @@ static DECLCALLBACK(void) cpumR3InfoGuestInstr(PVM pVM, PCDBGFINFOHLP pHlp, cons
 }
 
 
-#if defined(VBOX_VMM_TARGET_X86) || defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64)
-/**
- * Formats the EFLAGS value into mnemonics.
- *
- * @param   pszEFlags   Where to write the mnemonics. (Assumes sufficient buffer space.)
- * @param   efl         The EFLAGS value with both guest hardware and VBox
- *                      internal bits included.
- */
-DECLHIDDEN(void) cpumR3InfoFormatFlagsX86(char *pszEFlags, uint32_t efl)
-{
-    /*
-     * Format the flags.
-     */
-    static const struct
-    {
-        const char *pszSet; const char *pszClear; uint32_t fFlag;
-    }   s_aFlags[] =
-    {
-        { "vip",NULL, X86_EFL_VIP },
-        { "vif",NULL, X86_EFL_VIF },
-        { "ac", NULL, X86_EFL_AC },
-        { "vm", NULL, X86_EFL_VM },
-        { "rf", NULL, X86_EFL_RF },
-        { "nt", NULL, X86_EFL_NT },
-        { "ov", "nv", X86_EFL_OF },
-        { "dn", "up", X86_EFL_DF },
-        { "ei", "di", X86_EFL_IF },
-        { "tf", NULL, X86_EFL_TF },
-        { "nt", "pl", X86_EFL_SF },
-        { "nz", "zr", X86_EFL_ZF },
-        { "ac", "na", X86_EFL_AF },
-        { "po", "pe", X86_EFL_PF },
-        { "cy", "nc", X86_EFL_CF },
-# ifdef VBOX_VMM_TARGET_X86
-        { "inh-ss",  NULL, CPUMCTX_INHIBIT_SHADOW_SS },
-        { "inh-sti", NULL, CPUMCTX_INHIBIT_SHADOW_STI },
-        { "inh-nmi", NULL, CPUMCTX_INHIBIT_NMI },
-# endif
-    };
-    char *psz = pszEFlags;
-    for (unsigned i = 0; i < RT_ELEMENTS(s_aFlags); i++)
-    {
-        const char *pszAdd = s_aFlags[i].fFlag & efl ? s_aFlags[i].pszSet : s_aFlags[i].pszClear;
-        if (pszAdd)
-        {
-            strcpy(psz, pszAdd);
-            psz += strlen(pszAdd);
-            *psz++ = ' ';
-        }
-    }
-    psz[-1] = '\0';
-}
-#endif /* VBOX_VMM_TARGET_X86 || RT_ARCH_X86 || RT_ARCH_AMD64 */
-
-
 #ifdef RT_ARCH_AMD64
 /**
  * Display the host cpu state.
@@ -748,9 +693,9 @@ static DECLCALLBACK(void) cpumR3InfoHost(PVM pVM, PCDBGFINFOHLP pHlp, const char
     /*
      * Format the EFLAGS.
      */
-    uint64_t efl = pCtx->rflags;
-    char szEFlags[80];
-    cpumR3InfoFormatFlagsX86(&szEFlags[0], efl);
+    char           szEFlags[160];
+    uint64_t const efl = pCtx->rflags;
+    DBGFR3RegFormatX86EFlags(szEFlags, pCtx->rflags);
 
     /*
      * Format the registers.

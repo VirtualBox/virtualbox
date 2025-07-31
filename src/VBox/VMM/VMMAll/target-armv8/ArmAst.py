@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# $Id: ArmAst.py 110116 2025-07-04 10:11:49Z knut.osmundsen@oracle.com $
+# $Id: ArmAst.py 110124 2025-07-05 01:55:01Z knut.osmundsen@oracle.com $
 
 """
 ARM BSD / OpenSource specification reader - AST related bits.
@@ -30,7 +30,7 @@ along with this program; if not, see <https://www.gnu.org/licenses>.
 
 SPDX-License-Identifier: GPL-3.0-only
 """
-__version__ = "$Revision: 110116 $"
+__version__ = "$Revision: 110124 $"
 
 # Standard python imports.
 import re;
@@ -323,9 +323,23 @@ class ArmAstBase(object):
                 oChild.walk(fnCallback, oCallbackArg, fDepthFirst);
         return True;
 
+    def walk(self, fnCallback, oCallbackArg = None, fDepthFirst = True):
+        """ Walker. """
+        _ = fnCallback; _ = oCallbackArg; _ = fDepthFirst;
+        raise Exception('Not implemented by %s' % (type(self).__name__,));
+
     def isLeaf(self):
         """ Checks if this is a leaf node or not. """
         return False;
+
+    def containsNode(self, oNodeToFind):
+        """ Checks if oNodeToFind is part of this tree. """
+        dResult = {'ret': False,};
+        def callback(oNode, dResult):
+            if oNode == oNodeToFind:
+                dResult['ret'] = True;
+        self.walk(callback, dResult);
+        return dResult['ret'];
 
     #
     # Convenience matching routines, matching node type and type specific value.
@@ -405,6 +419,14 @@ class ArmAstBase(object):
         """
         # This is overridden by ArmAstFunction.
         _ = sFunctionName; _ = aoArgMatches;
+        return False;
+
+    def isMatchingField(self, sField, sName, sState = 'AArch64'):
+        """
+        Checks if this is a field access node for the given field and register.
+        A sField of None will match any field.  The other two arguments must be strings.
+        """
+        _ = sField; _ = sName; _ = sState;
         return False;
 
 
@@ -1022,7 +1044,10 @@ class ArmAstSquareOp(ArmAstBase):
         return None;
 
     def toStringEx(self, sLang = None, cchMaxWidth = 120):
-        return '%s[%s]' % (self.oVar.toStringEx(sLang, cchMaxWidth),
+        sVar  = self.oVar.toStringEx(sLang, cchMaxWidth);
+        if not isinstance(self.oVar, (ArmAstIdentifier, ArmAstField,)):
+            sVar = '(%s)' % (sVar);
+        return '%s<%s>' % (sVar,
                            ','.join([oValue.toStringEx(sLang, cchMaxWidth) for oValue in self.aoValues]),);
 
     def toCExpr(self, oHelper):
@@ -1183,7 +1208,7 @@ class ArmAstFunctionCallBase(ArmAstBase):
     def toStringEx(self, sLang = None, cchMaxWidth = 120):
         asArgs   = [oArg.toStringEx(sLang, max(cchMaxWidth - len(self.sName) - 1, 60)) for oArg in self.aoArgs];
         sArgList = ', '.join(asArgs);
-        if '\n' in sArgList:
+        if '\n' in sArgList or len(self.sName) + len(sArgList) + 2 > cchMaxWidth:
             sNlIndent = '\n' + ' ' * (len(self.sName) + 1);
             sArgList  = '';
             for i, sArg in enumerate(asArgs):
@@ -1633,6 +1658,14 @@ class ArmAstField(ArmAstLeafBase):
         (_, cBitsWidth) = oHelper.getFieldInfo(self.sField, self.sName, self.sState);
         return cBitsWidth;
 
+    def isMatchingField(self, sField, sName, sState = 'AArch64'):
+        return (    (   sField is None
+                     or self.sField == sField)
+                and self.sName  == sName
+                and self.sState == sState
+                and self.sSlices is None
+                and self.sInstance is None);
+
 
 class ArmAstRegisterType(ArmAstLeafBase):
     def __init__(self, sName, sState = 'AArch64', sSlices = None, sInstance = None):
@@ -1864,7 +1897,6 @@ class ArmAstNop(ArmAstStatementBase):
         return True;
 
 
-
 class ArmAstAssignment(ArmAstStatementBase):
     """ We classify assignments as statements. """
 
@@ -2060,7 +2092,7 @@ class ArmAstIfList(ArmAstStatementBase):
             oIfStmt = self.aoIfStatements[i];
             if isinstance(oIfStmt, ArmAstStatementBase):
                 asStmts = oIfStmt.toStringList(sNextIndent, sLang, cchNextMaxWidth);
-                if sLang == 'C' and len(asStmts) != 1:
+                if sLang == 'C' and isinstance(oIfStmt, (ArmAstStatementList, ArmAstIfList)):
                     asLines.append(sIndent + '{');
                     asLines.extend(asStmts);
                     asLines.append(sIndent + '}');
@@ -2079,7 +2111,7 @@ class ArmAstIfList(ArmAstStatementBase):
                 cchNextMaxWidth = cchMaxWidth; # Trick.
             if isinstance(self.oElseStatement, ArmAstStatementBase):
                 asStmts = self.oElseStatement.toStringList(sNextIndent, sLang, cchNextMaxWidth);
-                if sLang == 'C' and len(asStmts) != 1 and fNeedElse:
+                if sLang == 'C' and isinstance(self.oElseStatement, (ArmAstStatementList, ArmAstIfList)) and fNeedElse:
                     asLines.append(sIndent + '{');
                     asLines.extend(asStmts);
                     asLines.append(sIndent + '}');
@@ -2256,36 +2288,4 @@ class ArmAstCppCall(ArmAstFunctionCallBase, ArmAstCppExprBase):
     def getWidth(self, oHelper):
         _ = oHelper;
         return self.cBitsWidth;
-
-
-class ArmAstCppStmt(ArmAstStatementBase):
-    """ C++ AST statement node. """
-    def __init__(self, *asStmts):
-        ArmAstStatementBase.__init__(self, 'C++ Statement');
-        self.asStmts = list(asStmts);
-
-    def clone(self):
-        return ArmAstCppStmt(*self.asStmts);
-
-    def isSame(self, oOther):
-        if isinstance(oOther, ArmAstCppStmt):
-            if len(self.asStmts) == len(oOther.asStmts):
-                for i, sMyStmt in enumerate(self.asStmts):
-                    if sMyStmt != oOther.asStmts[i]:
-                        return False;
-                return True;
-        return False;
-
-    def walk(self, fnCallback, oCallbackArg = None, fDepthFirst = True):
-        return self._walker(fnCallback, oCallbackArg, fDepthFirst);
-
-    def transform(self, fnCallback, fEliminationAllowed, oCallbackArg, aoStack):
-        return fnCallback(self, fEliminationAllowed, oCallbackArg, aoStack);
-
-    def toStringList(self, sIndent = '', sLang = None, cchMaxWidth = 120):
-        _ = sLang; _ = cchMaxWidth;
-        return [ sIndent + sStmt for sStmt in self.asStmts ];
-
-    def isLeaf(self):
-        return True;
 

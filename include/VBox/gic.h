@@ -42,25 +42,25 @@
 #include <iprt/types.h>
 #include <iprt/armv8.h>
 
-/** @name INTIDs - Interrupt identifier ranges.
+/** @name GIC Interrupt identifiers (INTID) ranges.
  * @{ */
 /** Start of the SGI (Software Generated Interrupts) range. */
-#define GIC_INTID_RANGE_SGI_START                          0
-/** Last valid SGI (Software Generated Interrupts) identifier. */
-#define GIC_INTID_RANGE_SGI_LAST                          15
+#define GIC_INTID_RANGE_SGI_START                       0
+/** Last valid SGI. */
+#define GIC_INTID_RANGE_SGI_LAST                        15
 /** Number of SGIs. */
 #define GIC_INTID_SGI_RANGE_SIZE                        (GIC_INTID_RANGE_SGI_LAST - GIC_INTID_RANGE_SGI_START + 1)
 
 /** Start of the PPI (Private Peripheral Interrupts) range. */
-#define GIC_INTID_RANGE_PPI_START                         16
-/** Last valid PPI (Private Peripheral Interrupts) identifier. */
-#define GIC_INTID_RANGE_PPI_LAST                          31
+#define GIC_INTID_RANGE_PPI_START                       16
+/** Last valid PPI. */
+#define GIC_INTID_RANGE_PPI_LAST                        31
 /** Number of PPIs. */
 #define GIC_INTID_PPI_RANGE_SIZE                        (GIC_INTID_RANGE_PPI_LAST - GIC_INTID_RANGE_PPI_START + 1)
 
 /** Start of the SPI (Shared Peripheral Interrupts) range. */
-#define GIC_INTID_RANGE_SPI_START                         32
-/** Last valid SPI (Shared Peripheral Interrupts) identifier. */
+#define GIC_INTID_RANGE_SPI_START                       32
+/** Last valid SPI. */
 #define GIC_INTID_RANGE_SPI_LAST                        1019
 /** The size of the SPI range. */
 #define GIC_INTID_SPI_RANGE_SIZE                        (GIC_INTID_RANGE_SPI_LAST - GIC_INTID_RANGE_SPI_START + 1)
@@ -77,14 +77,14 @@
 
 /** Start of the extended PPI (Private Peripheral Interrupts) range. */
 #define GIC_INTID_RANGE_EXT_PPI_START                   1056
-/** Last valid extended PPI (Private Peripheral Interrupts) identifier. */
+/** Last valid extended PPI. */
 #define GIC_INTID_RANGE_EXT_PPI_LAST                    1119
 /** The size of the extended PPI range. */
 #define GIC_INTID_EXT_PPI_RANGE_SIZE                    (GIC_INTID_RANGE_EXT_PPI_LAST - GIC_INTID_RANGE_EXT_PPI_START + 1)
 
 /** Start of the extended SPI (Shared Peripheral Interrupts) range. */
 #define GIC_INTID_RANGE_EXT_SPI_START                   4096
-/** Last valid extended SPI (Shared Peripheral Interrupts) identifier. */
+/** Last valid extended SPI. */
 #define GIC_INTID_RANGE_EXT_SPI_LAST                    5119
 /** The size of the extended SPI range. */
 #define GIC_INTID_EXT_SPI_RANGE_SIZE                    (GIC_INTID_RANGE_EXT_SPI_LAST - GIC_INTID_RANGE_EXT_SPI_START + 1)
@@ -94,7 +94,7 @@
 /** @} */
 
 
-/** @name GICD - GIC Distributor registers.
+/** @name GIC Distributor registers.
  * @{ */
 /** Size of the distributor register frame. */
 #define GIC_DIST_REG_FRAME_SIZE                         _64K
@@ -129,8 +129,7 @@
 /** Interrupt Controller Type Register - RO. */
 #define GIC_DIST_REG_TYPER_OFF                          0x0004
 /** Bit 0 - 4 - Maximum number of SPIs supported. */
-# define GIC_DIST_REG_TYPER_NUM_ITLINES                 (  RT_BIT_32(0) | RT_BIT_32(1) | RT_BIT(2) \
-                                                         | RT_BIT_32(3) | RT_BIT_32(4))
+# define GIC_DIST_REG_TYPER_NUM_ITLINES                 (RT_BIT_32(0) | RT_BIT_32(1) | RT_BIT(2) | RT_BIT_32(3) | RT_BIT_32(4))
 # define GIC_DIST_REG_TYPER_NUM_ITLINES_SET(a_NumSpis)  ((a_NumSpis) & GIC_DIST_REG_TYPER_NUM_ITLINES)
 /** Bit 5 - 7 - Reports number of PEs that can be used when affinity routing is not enabled, minus 1. */
 # define GIC_DIST_REG_TYPER_NUM_PES                     (RT_BIT_32(5) | RT_BIT_32(6) | RT_BIT(7))
@@ -410,7 +409,7 @@
 /** @} */
 
 
-/** @name GICD - GIC Redistributor registers.
+/** @name GIC Redistributor registers.
  * @{ */
 /** Size of the redistributor register frame. */
 #define GIC_REDIST_REG_FRAME_SIZE                       _64K
@@ -444,7 +443,7 @@
 #define GIC_REDIST_REG_CTLR_UWP                         RT_BIT_32(31)
 /** GICR_CTLR: Mask of valid read-write bits. */
 #define GIC_REDIST_REG_CTLR_RW_MASK                     (  GIC_REDIST_REG_CTLR_ENABLE_LPI \
-                                                         |  GIC_REDIST_REG_CTLR_DPG0 \
+                                                         | GIC_REDIST_REG_CTLR_DPG0 \
                                                          | GIC_REDIST_REG_CTLR_DPG1NS \
                                                          | GIC_REDIST_REG_CTLR_DPG1S)
 
@@ -487,17 +486,16 @@
 /** Bit 8 - 23 - A unique identifier for the PE. */
 # define GIC_REDIST_REG_TYPER_CPU_NUMBER                UINT32_C(0x00ffff00)
 # define GIC_REDIST_REG_TYPER_CPU_NUMBER_SET(a_CpuNum)  (((a_CpuNum) << 8) & GIC_REDIST_REG_TYPER_CPU_NUMBER)
-/** Bit 24 - 25 - The affinity level at Redistributors share an LPI Configuration
- *  table. */
+/** Bit 24 - 25 - The affinity level at Redistributors share an LPI configuration table. */
 # define GIC_REDIST_REG_TYPER_CMN_LPI_AFF               (RT_BIT_32(24) | RT_BIT_32(25))
 # define GIC_REDIST_REG_TYPER_CMN_LPI_AFF_SET(a_LpiAff) (((a_LpiAff) << 24) & GIC_REDIST_REG_TYPER_CMN_LPI_AFF)
 /** All Redistributors must share an LPI Configuration table. */
 #  define GIC_REDIST_REG_TYPER_CMN_LPI_AFF_ALL          0
-/** All Redistributors with the same affinity 3 value must share an LPI Configuration table. */
+/** All Redistributors with the same affinity 3 value must share an LPI configuration table. */
 #  define GIC_REDIST_REG_TYPER_CMN_LPI_AFF_3            1
-/** All Redistributors with the same affinity 3.2 value must share an LPI Configuration table. */
+/** All Redistributors with the same affinity 3.2 value must share an LPI configuration table. */
 #  define GIC_REDIST_REG_TYPER_CMN_LPI_AFF_3_2          2
-/** All Redistributors with the same affinity 3.2.1 value must share an LPI Configuration table. */
+/** All Redistributors with the same affinity 3.2.1 value must share an LPI configuration table. */
 #  define GIC_REDIST_REG_TYPER_CMN_LPI_AFF_3_2_1        3
 /** Bit 26 - Indicates whether vSGIs are supported. */
 # define GIC_REDIST_REG_TYPER_VSGI                      RT_BIT_32(26)
@@ -519,7 +517,6 @@
 /** Bit 0 - 31 - The identity of the PE associated with this Redistributor. */
 # define GIC_REDIST_REG_TYPER_AFFINITY_VALUE            UINT32_C(0xffffffff)
 # define GIC_REDIST_REG_TYPER_AFFINITY_VALUE_SET(a_Aff) ((a_Aff) & GIC_REDIST_REG_TYPER_AFFINITY_VALUE)
-
 
 /** Redistributor Error Reporting Status Register (optional) - RW. */
 #define GIC_REDIST_REG_STATUSR_OFF                      0x0010
@@ -612,7 +609,8 @@ RT_BF_ASSERT_COMPILE_CHECKS(GIC_BF_REDIST_REG_PENDBASER_, UINT64_C(0), UINT64_MA
 /** @} */
 
 
-/** @name GICD - GIC SGI and PPI Redistributor registers (Adjacent to the GIC Redistributor register space).
+/** @name GIC SGI and PPI Redistributor registers
+ *  (Adjacent to the GIC Redistributor register space).
  * @{ */
 /** Size of the SGI and PPI redistributor register frame. */
 #define GIC_REDIST_SGI_PPI_REG_FRAME_SIZE               _64K
@@ -728,16 +726,15 @@ RT_BF_ASSERT_COMPILE_CHECKS(GIC_BF_REDIST_REG_PENDBASER_, UINT64_C(0), UINT64_MA
 /** @} */
 
 
-/** @name LPI configuration table entry.
+/** @name GIC LPIs.
  * @{ */
-/** GITS LPI Configuration   */
-/** GITS LPI CTE: Enable. */
+/** Configuration Table Entry: Enable. */
 #define GIC_BF_LPI_CTE_ENABLE_SHIFT                     0
 #define GIC_BF_LPI_CTE_ENABLE_MASK                      UINT8_C(0x1)
-/** GITS LPI CTE: Reserved (bit 1). */
+/** Configuration Table Entry: Reserved (bit 1). */
 #define GIC_BF_LPI_CTE_RSVD_1_SHIFT                     1
 #define GIC_BF_LPI_CTE_RSVD_1_MASK                      UINT8_C(0x2)
-/** GITS LPI CTE: Priority. */
+/** Configuration Table Entry: Priority. */
 #define GIC_BF_LPI_CTE_PRIORITY_SHIFT                   2
 #define GIC_BF_LPI_CTE_PRIORITY_MASK                    UINT8_C(0xfc)
 RT_BF_ASSERT_COMPILE_CHECKS(GIC_BF_LPI_CTE_, UINT8_C(0), UINT8_MAX,
@@ -746,8 +743,10 @@ RT_BF_ASSERT_COMPILE_CHECKS(GIC_BF_LPI_CTE_, UINT8_C(0), UINT8_MAX,
 /** Minimum number of bits required to enable LPIs (i.e. should accomodate
  *  GIC_INTID_RANGE_LPI_START). */
 #define GIC_LPI_ID_BITS_MIN                             14
-
 /** @} */
+
+/** GIC idle priority. */
+#define GIC_IDLE_PRIORITY                               0xff
 
 #endif /* !VBOX_INCLUDED_gic_h */
 

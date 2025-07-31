@@ -1,4 +1,4 @@
-/* $Id: DHCPServerImpl.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: DHCPServerImpl.cpp 110486 2025-07-30 17:39:08Z alexander.eichner@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -569,14 +569,13 @@ HRESULT DHCPServer::setConfiguration(const com::Utf8Str &aIPAddress,
     /*
      * Input is valid, effect the changes.
      */
-    HRESULT hrc;
     {
         AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
         m->IPAddress  = aIPAddress;
         m->lowerIP    = aLowerIP;
         m->upperIP    = aUpperIP;
-        hrc = m->globalConfig->i_setNetworkMask(aNetworkMask);
     }
+    HRESULT hrc = m->globalConfig->i_setNetworkMask(aNetworkMask);
     if (SUCCEEDED(hrc))
         hrc = i_doSaveSettings();
     return hrc;

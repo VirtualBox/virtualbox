@@ -1,4 +1,4 @@
-/* $Id: UIHostnameDomainNameEditor.cpp 108552 2025-02-25 14:54:58Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIHostnameDomainNameEditor.cpp 110463 2025-07-29 16:48:53Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIHostnameDomainNameEditor class implementation.
  */
@@ -127,7 +127,7 @@ void UIHostnameDomainNameEditor::sltRetranslateUI()
     if (m_pDomainNameLabel)
         m_pDomainNameLabel->setText(tr("&Domain Name"));
     if (m_pDomainNameLineEdit)
-        m_pDomainNameLineEdit->setToolTip(tr("Doamin name to be assigned to the virtual machine"));
+        m_pDomainNameLineEdit->setToolTip(tr("Domain name to be assigned to the virtual machine"));
     if (m_pProductKeyLabel)
         m_pProductKeyLabel->setText(UIWizardNewVM::tr("&Product Key"));
     if (m_pProductKeyLineEdit)

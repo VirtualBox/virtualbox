@@ -1,4 +1,4 @@
-/* $Id: VBoxDX.h 109095 2025-04-08 09:27:48Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxDX.h 110310 2025-07-18 15:27:55Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBoxVideo Display D3D User mode dll
  */
@@ -46,6 +46,8 @@
 #pragma pack()
 
 #include <d3d11_1.h>
+
+#define VBOXDX_SHADER_ALLOCATION_SIZE SVGA3D_MAX_SHADER_MEMORY_BYTES
 
 #ifdef DEBUG_sunlover
 #define DEBUG_BREAKPOINT_TEST() do { ASMBreakpoint(); } while (0)
@@ -148,6 +150,10 @@ typedef struct VBOXDXKMRESOURCE
             uint64_t               u64Bitmap;               /* Bitmap of allocated blocks. */
             uint32_t               aOffset[VBOXDX_COALLOCATION_MAX_OBJECTS]; /* Start offsets of blocks. */
         } co;
+        struct /* Shaders allocation */
+        {
+            RTLISTNODE             nodeAllocationsChain;    /* Shaders allocations are chained (VBOXDX_DEVICE::listShadersAllocations). */
+        } shaders;
     };
 } VBOXDXKMRESOURCE, *PVBOXDXKMRESOURCE;
 
@@ -159,9 +165,10 @@ typedef struct VBOXDXSHADER
     SVGA3dShaderType            enmShaderType;
     uint32_t                    cbShader;                   /* Size of the shader code in bytes. */
     uint32_t                    cbSignatures;               /* Size of the shader signatures, which follow the shader bytecode. */
-    uint32_t                    offShader;                  /* Offset of the shader in the shader allocation. */
+    uint32_t                    offShader;                  /* Offset of the shader in the shaders allocation. */
     uint32_t                   *pu32Bytecode;               /* Bytecode follows the VBOXDXSHADER structure. */
     SVGA3dDXSignatureHeader    *pSignatures;                /* Signatures follow the bytecode. */
+    PVBOXDXKMRESOURCE           pShadersAllocation;         /* Where the bytecode and signatures are placed to. */
     struct
     {
         UINT                    NumEntries;
@@ -588,10 +595,8 @@ typedef struct VBOXDX_DEVICE
     RTLISTANCHOR                listStagingResources;       /* List of staging resources for uploads. */
 
     /* Shaders */
-    PVBOXDXKMRESOURCE           pShadersKMResource;         /* Shader's allocation: SVGA3D_MAX_SHADER_MEMORY_BYTES. */
-    uint32_t                    cbShaderAvailable;          /* How many bytes is free in the shader's allocation. */
-    uint32_t                    offShaderFree;              /* Offset of the next free byte in the shader's allocation. */
-    RTLISTANCHOR                listShaders;                /* All shaders of this device, to be able to repack them in the shaders allocation. */
+    RTLISTANCHOR                listShaders;                /* All shaders of this device. */
+    RTLISTANCHOR                listShadersAllocations;     /* Allocations with shaders bytescode and signatures. */
 
     /* Queries */
     RTLISTANCHOR                listQueries;                /* All queries of this device, to be able to repack them in the allocation. */

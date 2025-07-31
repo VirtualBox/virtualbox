@@ -1,0 +1,67 @@
+# $Id: Makefile.kmk 110274 2025-07-16 18:22:54Z klaus.espenlaub@oracle.com $
+## @file
+# Sub-Makefile for VBoxInstallHelper.dll.
+#
+
+#
+# Copyright (C) 2008-2024 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH = ../../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+VBOX_DRV_INST_SOURCES := \
+	$(PATH_ROOT)/src/VBox/GuestHost/Installation/VBoxWinDrvCommon.cpp \
+	$(PATH_ROOT)/src/VBox/GuestHost/Installation/VBoxWinDrvInst.cpp \
+	$(PATH_ROOT)/src/VBox/GuestHost/Installation/VBoxWinDrvStore.cpp
+
+PROGRAMS += tstVBoxInstHlpCheckTargetDir
+tstVBoxInstHlpCheckTargetDir_TEMPLATE    = VBoxR3TstExe
+tstVBoxInstHlpCheckTargetDir_DEFS        = _WIN32_WINNT=0x0501 _UNICODE UNICODE VBOX_SVN_REV=$(VBOX_SVN_REV)
+tstVBoxInstHlpCheckTargetDir_DEFS       += VBOX_OSE # For leaving out the serial number checking stuff.
+tstVBoxInstHlpCheckTargetDir_DEFS       += TESTCASE # For overriding stuff.
+tstVBoxInstHlpCheckTargetDir_LIBS        = \
+	$(PATH_SDK_$(VBOX_WINPSDK)_LIB)/Msi.lib
+tstVBoxInstHlpCheckTargetDir_SOURCES     = \
+	tstVBoxInstHlpCheckTargetDir.cpp \
+	../VBoxInstallHelper.cpp \
+	../VBoxCommon.cpp \
+	$(VBOX_DRV_INST_SOURCES)
+tstVBoxInstHlpCheckTargetDir_INCS       += \
+	$(PATH_ROOT)/src/VBox/GuestHost/installation
+
+PROGRAMS += tstVBoxInstHlpDrvInst
+tstVBoxInstHlpDrvInst_TEMPLATE    = VBoxR3TstExe
+tstVBoxInstHlpDrvInst_DEFS        = _WIN32_WINNT=0x0501 _UNICODE UNICODE VBOX_SVN_REV=$(VBOX_SVN_REV)
+tstVBoxInstHlpDrvInst_DEFS       += VBOX_OSE # For leaving out the serial number checking stuff.
+tstVBoxInstHlpDrvInst_DEFS       += TESTCASE # For overriding stuff.
+tstVBoxInstHlpDrvInst_LIBS        = \
+	$(PATH_SDK_$(VBOX_WINPSDK)_LIB)/Msi.lib
+tstVBoxInstHlpDrvInst_SOURCES     = \
+	tstVBoxInstHlpDrvInst.cpp \
+	../VBoxInstallHelper.cpp \
+	../VBoxCommon.cpp \
+	$(VBOX_DRV_INST_SOURCES)
+tstVBoxInstHlpDrvInst_INCS       += \
+	$(PATH_ROOT)/src/VBox/GuestHost/installation
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

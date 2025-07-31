@@ -1,4 +1,4 @@
-/* $Id: SystemPropertiesImpl.cpp 109259 2025-04-16 20:59:36Z knut.osmundsen@oracle.com $ */
+/* $Id: SystemPropertiesImpl.cpp 110418 2025-07-25 20:26:17Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -32,8 +32,9 @@
 #ifdef VBOX_WITH_EXTPACK
 # include "ExtPackManagerImpl.h"
 #endif
-#include "CPUProfileImpl.h"
+#include "AudioUtils.h" /* For VBoxAudioGetDefaultDriver(). */
 #include "AutoCaller.h"
+#include "CPUProfileImpl.h"
 #include "Global.h"
 #include "LoggingNew.h"
 #include "AutostartDb.h"
@@ -852,7 +853,7 @@ HRESULT SystemProperties::getDefaultAudioDriver(AudioDriverType_T *aAudioDriver)
 {
     AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
 
-    *aAudioDriver = settings::MachineConfigFile::getHostDefaultAudioDriver();
+    *aAudioDriver = VBoxAudioGetDefaultDriver();
 
     return S_OK;
 }
@@ -1039,8 +1040,11 @@ HRESULT SystemProperties::getSupportedPlatformArchitectures(std::vector<Platform
     static const PlatformArchitecture_T s_aPlatformArchitectures[] =
     {
 #if   defined(RT_ARCH_X86)   || defined(RT_ARCH_AMD64)
-        /* Currently x86 can run x86 VMs only. */
+        /* Currently, x86 can only run x86 VMs and, if enabled, pretend to run ARM VMs. */
         PlatformArchitecture_x86
+# ifdef VBOX_WITH_VIRT_ARMV8
+        , PlatformArchitecture_ARM
+# endif
 #elif defined(RT_ARCH_ARM32) || defined(RT_ARCH_ARM64)
         /* Currently ARM can run x86 emulation and if enabled ARM VMs. */
         PlatformArchitecture_x86
@@ -1062,6 +1066,16 @@ HRESULT SystemProperties::getSupportedPlatformArchitectures(std::vector<Platform
         Assert(aSupportedPlatformArchitectures[0] == PlatformArchitecture_x86);
         if (aSupportedPlatformArchitectures[0] == PlatformArchitecture_x86)
             aSupportedPlatformArchitectures.erase(aSupportedPlatformArchitectures.begin());
+    }
+#endif
+#if !defined(RT_ARCH_ARM64) && defined(VBOX_WITH_VIRT_ARMV8) && !defined(VBOX_WITH_ARM_ON_X86_ENABLED)
+    Bstr bstrEnableArmOnX86;
+    HRESULT hrc = mParent->GetExtraData(Bstr("VBoxInternal2/EnableArmOnX86").raw(), bstrEnableArmOnX86.asOutParam());
+    if (FAILED(hrc) || !bstrEnableArmOnX86.equals("1"))
+    {
+        Assert(aSupportedPlatformArchitectures[1] == PlatformArchitecture_ARM);
+        if (aSupportedPlatformArchitectures[1] == PlatformArchitecture_ARM)
+            aSupportedPlatformArchitectures.erase(std::next(aSupportedPlatformArchitectures.begin()));
     }
 #endif
     return S_OK;

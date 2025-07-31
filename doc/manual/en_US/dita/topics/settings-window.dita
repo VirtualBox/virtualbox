@@ -7,7 +7,7 @@
     <p>To display the <b>Settings</b> window, do either of the following:</p>
     <ul>
       <li>
-        <p>In the <uicontrol>Machines</uicontrol> list, right-click the virtual machine name, and click <b>Settings</b>.</p>
+        <p>In the <uicontrol>Machines</uicontrol> list, right-click the virtual machine name, and click <b>Settings...</b>.</p>
       </li>
       <li>
         <p>In the <uicontrol>Machines</uicontrol> list, click the virtual machine name, and then click <uicontrol>Settings</uicontrol> on the toolbar.</p>

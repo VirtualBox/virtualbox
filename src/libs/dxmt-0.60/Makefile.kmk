@@ -1,0 +1,324 @@
+# $Id: Makefile.kmk 110444 2025-07-28 15:48:35Z alexander.eichner@oracle.com $
+## @file
+# Sub-Makefile for the DXMT library.
+#
+
+#
+# Copyright (C) 2025 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH = ../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# Targets.
+#
+LIBRARIES += VBox-DxMtNativeUtil VBox-DxMtNativeMetal VBox-DxMtNativeDxbcParser VBox-DxMtNativeDxMt VBox-DxMtNativeD3D10 VBox-DxMtNativeD3D11
+DLLS      += VBoxDxMt
+
+include $(KBUILD_TOOL_PATHS)/VBoxXClangMacho.kmk
+
+#
+# Globals.
+#
+VBOX_PATH_DXMT := $(PATH_SUB_CURRENT)
+
+#
+# The LLVM static libraries required for DXMT
+#
+VBOX_LLVM_PATH ?= $(lastword $(sort $(wildcard $(KBUILD_DEVTOOLS_TRG)/llvm/v*)))
+
+
+# The metal shader compiler
+# @todo This needs to be integrated better
+VBOX_METAL_PATH ?= $(lastword $(sort $(wildcard $(KBUILD_DEVTOOLS)/darwin/metal/v*)))
+ifeq ($(VBOX_METAL_PATH),)
+ VBOX_METAL    ?= xcrun -sdk macosx metal
+ VBOX_METALLIB ?= xcrun -sdk macosx metallib
+else
+ VBOX_METAL    ?= $(VBOX_METAL_PATH)/bin/metal
+ VBOX_METALLIB ?= $(VBOX_METAL_PATH)/bin/metallib
+endif
+
+
+#
+# The common template for all libraries
+#
+TEMPLATE_VBoxDxMtBase         = VBox DXMT library template
+TEMPLATE_VBoxDxMtBase_EXTENDS = VBoxR3DllNonPedantic
+TEMPLATE_VBoxDxMtBase_TOOL    = VBoxXClangMacho
+if "$(VBOX_DEF_MACOSX_VERSION_MIN)" vlt "14.5"
+ TEMPLATE_VBoxDxMtBase_SDKS.darwin = MACOSX145
+ TEMPLATE_VBoxDxMtBase_DEFS.darwin = \
+ 	$(filter-out $(VBOX_DARWIN_DEF_SDK_DEFS),$(TEMPLATE_VBoxR3DllNonPedantic_DEFS.darwin)) \
+ 	MAC_OS_X_VERSION_MIN_REQUIRED=145000 \
+ 	MAC_OS_X_VERSION_MAX_ALLOWED=145000
+endif
+TEMPLATE_VBoxDxMtBase_CXXFLAGS = \
+	$(filter-out $(VBOX_GCC_std),$(TEMPLATE_VBoxR3DllNonPedantic_CXXFLAGS)) \
+	-std=c++20
+TEMPLATE_VBoxDxMtBase_DEFS    = \
+	IN_RING3 \
+	DXMT_NATIVE \
+	DXMT_PAGE_SIZE=4096 \
+	NOMINMAX \
+	_WIN32_WINNT=0xa00
+TEMPLATE_VBoxDxMtBase_INCS    = \
+	$(VBOX_PATH_DXMT) \
+	$(VBOX_PATH_DXMT)/include/ \
+	$(VBOX_PATH_DXMT)/src/util/ \
+	$(VBOX_PATH_DXMT)/include/native/ \
+	$(VBOX_PATH_DXMT)/include/native/windows \
+	$(VBOX_PATH_DXMT)/include/native/directx
+
+
+#
+# Some stuff for compiling shaders into header files and making the target depend on these.
+#
+
+## Internal.
+## @param 1 full path to shader source.
+define def_VBoxDxMtCompileShader
+ $(1)/shaders/$(basename $(notdir $(2))).h: $(2) $$$$(VBOX_BIN2C) | $$$$(dir $$$$@)
+	$(VBOX_METAL) -o "$$@.air" -c "$$<"
+	$(VBOX_METALLIB) -o "$$@.metallib" "$$@.air"
+	$(VBOX_BIN2C) "$$(basename $(notdir $(2)))_metallib" "$$@.metallib" "$$@"
+endef
+
+## Process the VBOX_SHADERS for a target.
+## @param 1 target name
+define def_VBoxDxMtCompilerShaders
+ $$(call KB_FN_DO_PASS0_ON_TARGET,$(1))
+ $(1)_INCS         += $$($(1)_0_OUTDIR)/shaders
+ $(1)_BLDDIRS      += $$($(1)_0_OUTDIR)/shaders
+ $(1)_INTERMEDIATES := $$(foreach shader,$$($(1)_VBOX_SHADERS) \
+ 	,$$($(1)_0_OUTDIR)/shaders/$$(basename $$(notdir $$(shader))).h)
+ $$(foreach shader,$$($(1)_VBOX_SHADERS),$$(evalcall2 def_VBoxDxMtCompileShader,$$($(1)_0_OUTDIR),$$(shader)))
+endef
+
+#
+# DXMT utilities static library
+#
+VBox-DxMtNativeUtil_TEMPLATE       = VBoxDxMtBase
+VBox-DxMtNativeUtil_SOURCES        = \
+	src/util/util_env.cpp \
+	src/util/util_string.cpp \
+	src/util/util_bloom.cpp \
+	src/util/thread.cpp \
+	src/util/com/com_guid.cpp \
+	src/util/com/com_private_data.cpp \
+	src/util/config/config.cpp \
+	src/util/log/log.cpp \
+	src/util/sha1/sha1.c \
+	src/util/sha1/sha1_util.cpp \
+	src/util/wsi_monitor_headless.cpp \
+	src/util/wsi_window_headless.cpp \
+	src/util/wsi_platform_darwin.cpp
+
+
+#
+# DXMT Metal bridge static library
+#
+VBox-DxMtNativeMetal_TEMPLATE       = VBoxDxMtBase
+VBox-DxMtNativeMetal_INCS           += \
+	$(VBOX_PATH_DXMT)/src/airconv/ \
+	$(VBOX_PATH_DXMT)/src/nativemetal/
+VBox-DxMtNativeMetal_SOURCES        = \
+	src/winemetal/unix_thunks.c \
+	src/winemetal/winemetal_thunks.c \
+	src/winemetal/unix/winemetal_unix.c
+
+src/winemetal/unix/winemetal_unix.c_CFLAGS += -ObjC
+
+
+#
+# DXMT DXBC parser static library
+#
+VBox-DxMtNativeDxbcParser_TEMPLATE       = VBoxDxMtBase
+VBox-DxMtNativeDxbcParser_SOURCES        = \
+	libs/DXBCParser/BlobContainer.cpp \
+	libs/DXBCParser/DXBCUtils.cpp \
+	libs/DXBCParser/ShaderBinary.cpp
+
+
+#
+# Core DXMT library.
+#
+VBox-DxMtNativeDxMt_TEMPLATE       = VBoxDxMtBase
+VBox-DxMtNativeDxMt_CXXFLAGS.darwin += \
+	-fno-rtti
+VBox-DxMtNativeDxMt_INCS           += \
+	$(VBOX_PATH_DXMT)/libs/ \
+	$(VBOX_PATH_DXMT)/src/airconv/ \
+	$(VBOX_PATH_DXMT)/src/dxmt/ \
+	$(VBOX_PATH_DXMT)/src/util/ \
+	$(VBOX_PATH_DXMT)/src/winemetal/ \
+	$(VBOX_LLVM_PATH)/include
+VBox-DxMtNativeDxMt_SOURCES        = \
+	src/airconv/air_operations.cpp \
+	src/airconv/air_signature.cpp \
+	src/airconv/air_type.cpp \
+	src/airconv/airconv_context.cpp \
+	src/airconv/dxbc_converter.cpp \
+	src/airconv/dxbc_converter_basicblock.cpp \
+	src/airconv/dxbc_converter_gs.cpp \
+	src/airconv/dxbc_instructions.cpp \
+	src/airconv/dxbc_signature.cpp \
+	src/airconv/metallib_writer.cpp \
+	\
+	src/dxgi/dxgi.cpp \
+	src/dxgi/dxgi_adapter.cpp \
+	src/dxgi/dxgi_factory.cpp \
+	src/dxgi/dxgi_options.cpp \
+	src/dxgi/dxgi_output.cpp \
+	\
+	src/dxmt/dxmt_format.cpp \
+	src/dxmt/dxmt_names.cpp \
+	src/dxmt/dxmt_command_queue.cpp \
+	src/dxmt/dxmt_command.cpp \
+	src/dxmt/dxmt_capture.cpp \
+	src/dxmt/dxmt_info.cpp \
+	src/dxmt/dxmt_device.cpp \
+	src/dxmt/dxmt_buffer.cpp \
+	src/dxmt/dxmt_texture.cpp \
+	src/dxmt/dxmt_context.cpp \
+	src/dxmt/dxmt_dynamic.cpp \
+	src/dxmt/dxmt_staging.cpp \
+	src/dxmt/dxmt_hud_state.cpp \
+	src/dxmt/dxmt_allocation.cpp \
+	src/dxmt/dxmt_presenter.cpp
+VBox-DxMtNativeDxMt_VBOX_SHADERS = \
+	$(PATH_SUB_CURRENT)/src/dxmt/dxmt_command.metal
+$(evalcall2 def_VBoxDxMtCompilerShaders,VBox-DxMtNativeDxMt)
+
+
+#
+# DXVK D3D10 interface library
+#
+VBox-DxMtNativeD3D10_TEMPLATE        = VBoxDxMtBase
+VBox-DxMtNativeD3D10_INCS            += \
+	$(VBOX_PATH_DXMT)/libs/ \
+	$(VBOX_PATH_DXMT)/src/airconv/ \
+	$(VBOX_PATH_DXMT)/src/dxgi/ \
+	$(VBOX_PATH_DXMT)/src/dxmt/ \
+	$(VBOX_PATH_DXMT)/src/winemetal/
+VBox-DxMtNativeD3D10_SOURCES        = \
+	src/d3d10/d3d10_buffer.cpp \
+	src/d3d10/d3d10_device.cpp \
+	src/d3d10/d3d10_state_object.cpp \
+	src/d3d10/d3d10_texture.cpp \
+	src/d3d10/d3d10_util.cpp \
+	src/d3d10/d3d10_view.cpp \
+	src/d3d10/d3d10core.cpp
+
+#
+# DXVK D3D11 interface library
+#
+VBox-DxMtNativeD3D11_TEMPLATE        = VBoxDxMtBase
+VBox-DxMtNativeD3D11_INCS            += \
+	$(VBOX_PATH_DXMT)/libs/ \
+	$(VBOX_PATH_DXMT)/src/airconv/ \
+	$(VBOX_PATH_DXMT)/src/dxgi/ \
+	$(VBOX_PATH_DXMT)/src/dxmt/ \
+	$(VBOX_PATH_DXMT)/src/winemetal/
+VBox-DxMtNativeD3D11_SOURCES        = \
+	src/d3d11/d3d11.cpp \
+	src/d3d11/d3d11_buffer.cpp \
+	src/d3d11/d3d11_class_linkage.cpp \
+	src/d3d11/d3d11_context_def.cpp \
+	src/d3d11/d3d11_context_imm.cpp \
+	src/d3d11/d3d11_context_impl.cpp \
+	src/d3d11/d3d11_device.cpp \
+	src/d3d11/d3d11_fence.cpp \
+	src/d3d11/d3d11_input_layout.cpp \
+	src/d3d11/d3d11_inspection.cpp \
+	src/d3d11/d3d11_multithread.cpp \
+	src/d3d11/d3d11_pipeline.cpp \
+	src/d3d11/d3d11_pipeline_cache.cpp \
+	src/d3d11/d3d11_pipeline_gs.cpp \
+	src/d3d11/d3d11_pipeline_tess.cpp \
+	src/d3d11/d3d11_query.cpp \
+	src/d3d11/d3d11_shader.cpp \
+	src/d3d11/d3d11_state_object.cpp \
+	src/d3d11/d3d11_swapchain.cpp \
+	src/d3d11/d3d11_texture.cpp \
+	src/d3d11/dxmt_resource_binding.cpp \
+	src/d3d11/mtld11_resource_device.cpp \
+	src/d3d11/mtld11_resource_dynamic.cpp \
+	src/d3d11/mtld11_resource_helper.cpp \
+	src/d3d11/mtld11_resource_staging.cpp \
+	src/d3d11/mtld11_resource_view_helper.cpp
+
+#
+# VBoxDxMt - Shared Object / DLL version.
+#
+VBoxDxMt_TEMPLATE = VBoxDxMtBase
+VBoxDxMt_SOURCES = \
+	VBoxDxMtDeps.cpp
+VBoxDxMt_LIBS    = \
+	$(PATH_STAGE_LIB)/VBox-DxMtNativeD3D11$(VBOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/VBox-DxMtNativeD3D10$(VBOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/VBox-DxMtNativeDxMt$(VBOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/VBox-DxMtNativeUtil$(VBOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/VBox-DxMtNativeDxbcParser$(VBOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/VBox-DxMtNativeMetal$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMPasses$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMTarget$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMObjCARCOpts$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMCoroutines$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMipo$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMInstrumentation$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMVectorize$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMLinker$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMIRReader$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMAsmParser$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMFrontendOpenMP$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMScalarOpts$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMInstCombine$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMAggressiveInstCombine$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMTransformUtils$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMBitWriter$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMAnalysis$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMProfileData$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMDebugInfoDWARF$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMObject$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMTextAPI$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMMCParser$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMMC$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMBitReader$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMCore$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMRemarks$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMBitstreamReader$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMBinaryFormat$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMSupport$(VBOX_SUFF_LIB) \
+	$(VBOX_LLVM_PATH)/lib/libLLVMDemangle$(VBOX_SUFF_LIB) \
+	$(LIB_RUNTIME)
+VBoxDxMt_LDFLAGS += \
+	-weak_framework CoreFoundation \
+	-weak_framework Metal \
+	-weak_framework Foundation \
+	-weak_framework CoreGraphics \
+	-weak_framework QuartzCore \
+	-weak_framework ColorSync \
+	-weak_framework Cocoa
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

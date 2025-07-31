@@ -194,6 +194,13 @@ namespace dxvk {
       externalInfo.handleTypes = m_info.sharing.type;
     }
 
+#ifdef VBOX_WITH_DXVK_VIDEO
+    if (m_info.next) {
+        VkBaseInStructure *p = (VkBaseInStructure *)m_info.next->data();
+        p->pNext = (VkBaseInStructure *)std::exchange(imageInfo.pNext, p);
+    }
+#endif
+
     // Set up shared memory properties
     void* sharedMemoryInfo = nullptr;
 
@@ -450,6 +457,12 @@ namespace dxvk {
 
   VkImageView DxvkImageView::createView(VkImageViewType type) const {
     constexpr VkImageUsageFlags ViewUsage =
+#ifdef VBOX_WITH_DXVK_VIDEO
+      VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+      VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR |
+      VK_IMAGE_USAGE_VIDEO_DECODE_SRC_BIT_KHR |
+      VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR |
+#endif
       VK_IMAGE_USAGE_SAMPLED_BIT |
       VK_IMAGE_USAGE_STORAGE_BIT |
       VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |

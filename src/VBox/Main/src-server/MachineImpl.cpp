@@ -1,4 +1,4 @@
-/* $Id: MachineImpl.cpp 108837 2025-03-20 12:48:42Z andreas.loeffler@oracle.com $ */
+/* $Id: MachineImpl.cpp 110489 2025-07-31 08:32:38Z andreas.loeffler@oracle.com $ */
 /** @file
  * Implementation of IMachine in VBoxSVC.
  */
@@ -629,6 +629,17 @@ HRESULT Machine::initFromSettings(VirtualBox *aParent,
                 mData->pMachineConfigFile = new settings::MachineConfigFile(&mData->m_strConfigFileFull,
                                                                             pCryptoIf,
                                                                             strPassword.c_str());
+
+                // reject VM with zero or invalid UUID, could happen if the
+                // code for parsing machine XML is buggy and it would cause
+                // a VBoxSVC start crash which is hard to fix for users
+                if (   mData->pMachineConfigFile->uuid.isZero()
+                    || !mData->pMachineConfigFile->uuid.isValid())
+                {
+                    throw setError(E_FAIL,
+                                   tr("Trying to open a VM config '%s' which has a zero or invalid UUID"),
+                                   mData->m_strConfigFile.c_str());
+                }
 
                 // reject VM UUID duplicates, they can happen if someone
                 // tries to register an already known VM config again
@@ -2843,13 +2854,22 @@ HRESULT Machine::lockMachine(const ComPtr<ISession> &aSession,
 #endif /* VBOX_WITH_GENERIC_SESSION_WATCHER */
             LogFlowThisFunc(("AssignMachine() returned %08X\n", hrc));
 
-            /* The failure may occur w/o any error info (from RPC), so provide one */
+            /* The failure may occur w/o any error info (from RPC), so provide a message if there is none. */
             if (FAILED(hrc))
-                setError(VBOX_E_VM_ERROR, tr("Failed to assign the machine to the session (%Rhrc)"), hrc);
+            {
+                ErrorInfoKeeper eik;
+                eik.restore();
+                if (!eik.isBasicAvailable())
+                {
+                    eik.forget();
+                    setError(VBOX_E_VM_ERROR, tr("Failed to assign the machine to the session (%Rhrc)"), hrc);
+                }
+            }
 
             // get session name, either to remember or to compare against
             // the already known session name.
             {
+                ErrorInfoKeeper eik; // do not lose relevant error info from above in API call below
                 Bstr bstrSessionName;
                 HRESULT hrc2 = aSession->COMGETTER(Name)(bstrSessionName.asOutParam());
                 if (SUCCEEDED(hrc2))
@@ -2918,7 +2938,8 @@ HRESULT Machine::lockMachine(const ComPtr<ISession> &aSession,
                  * and reset session state to Closed (@note keep the code in sync
                  * with the relevant part in checkForSpawnFailure()). */
 
-                Assert(mData->mSession.mRemoteControls.size() == 1);
+                if (hrc != VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED)
+                    Assert(mData->mSession.mRemoteControls.size() == 1);
                 if (mData->mSession.mRemoteControls.size() == 1)
                 {
                     ErrorInfoKeeper eik;
@@ -3068,6 +3089,56 @@ HRESULT Machine::launchVMProcess(const ComPtr<ISession> &aSession,
         hrc = COMGETTER(TeleporterEnabled)(&fTeleporterEnabled);
         if (FAILED(hrc))
             return hrc;
+
+        ComPtr<IPlatform> pPlatform;
+        hrc = COMGETTER(Platform)(pPlatform.asOutParam());
+        AssertComRCReturnRC(hrc);
+
+        PlatformArchitecture_T platformArch;
+        hrc = pPlatform->COMGETTER(Architecture)(&platformArch);
+        AssertComRCReturnRC(hrc);
+
+        switch (platformArch)
+        {
+            case PlatformArchitecture_x86:
+#if !defined(RT_ARCH_AMD64)
+# if !defined(VBOX_WITH_X86_ON_ARM_ENABLED)
+                {
+                    Bstr bstrEnableX86OnArm;
+                    hrc = mParent->GetExtraData(Bstr("VBoxInternal2/EnableX86OnArm").raw(), bstrEnableX86OnArm.asOutParam());
+                    if (SUCCEEDED(hrc) && bstrEnableX86OnArm.equals("1"))
+                        break;
+                }
+                return setError(VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED,
+                                tr("Cannot run the machine because its platform architecture %s is not supported on %s"),
+                                Global::stringifyPlatformArchitecture(platformArch),
+                                Global::stringifyPlatformArchitecture(PlatformArchitecture_ARM));
+# endif
+#endif
+                break;
+
+            case PlatformArchitecture_ARM:
+#if !defined(RT_ARCH_ARM64)
+# if !defined(VBOX_WITH_ARM_ON_X86_ENABLED)
+                {
+                    Bstr bstrEnableArmOnX86;
+                    hrc = mParent->GetExtraData(Bstr("VBoxInternal2/EnableArmOnX86").raw(), bstrEnableArmOnX86.asOutParam());
+                    if (SUCCEEDED(hrc) && bstrEnableArmOnX86.equals("1"))
+                        break;
+                }
+                return setError(VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED,
+                                tr("Cannot run the machine because its platform architecture %s is not supported on %s"),
+                                Global::stringifyPlatformArchitecture(platformArch),
+                                Global::stringifyPlatformArchitecture(PlatformArchitecture_x86));
+# endif
+#endif
+                break;
+
+            default:
+                return setError(VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED,
+                                tr("Cannot run the machine because its platform architecture %s is not supported"),
+                                Global::stringifyPlatformArchitecture(platformArch));
+        }
 
         /* create a progress object */
         ComObjPtr<ProgressProxy> progress;
@@ -12872,6 +12943,7 @@ void SessionMachine::uninit(Uninit::Reason aReason)
 
     /* remove the association between the peer machine and this session machine */
     Assert(   (SessionMachine*)mData->mSession.mMachine == this
+            || aReason == Uninit::Abnormal
             || aReason == Uninit::Unexpected);
 
     /* reset the rest of session data */
@@ -14272,7 +14344,7 @@ HRESULT SessionMachine::i_onVRDEServerChange(BOOL aRestart)
 /**
  * @note Caller needs to take the machine's lock if needed.
  */
-HRESULT SessionMachine::i_onRecordingStateChange(BOOL aEnable, IProgress **aProgress)
+HRESULT SessionMachine::i_onRecordingStateChange(RecordingState_T aState, IProgress **aProgress)
 {
     LogFlowThisFunc(("\n"));
 
@@ -14289,13 +14361,13 @@ HRESULT SessionMachine::i_onRecordingStateChange(BOOL aEnable, IProgress **aProg
     if (!directControl)
         return S_OK;
 
-    return directControl->OnRecordingStateChange(aEnable, aProgress);
+    return directControl->OnRecordingStateChange(aState, aProgress);
 }
 
 /**
  * @note Locks this object for reading.
  */
-HRESULT SessionMachine::i_onRecordingScreenStateChange(BOOL aEnable, ULONG aScreen)
+HRESULT SessionMachine::i_onRecordingScreenStateChange(RecordingState_T aState, ULONG aScreen)
 {
     LogFlowThisFunc(("\n"));
 
@@ -14313,7 +14385,7 @@ HRESULT SessionMachine::i_onRecordingScreenStateChange(BOOL aEnable, ULONG aScre
     if (!directControl)
         return S_OK;
 
-    return directControl->OnRecordingScreenStateChange(aEnable, aScreen);
+    return directControl->OnRecordingScreenStateChange(aState, aScreen);
 }
 
 /**

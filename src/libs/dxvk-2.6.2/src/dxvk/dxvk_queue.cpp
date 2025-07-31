@@ -21,6 +21,17 @@ namespace dxvk {
       throw DxvkError(str::format("Failed to create timeline semaphores: ",
         vrGraphics > vrTransfer ? vrGraphics : vrTransfer));
     }
+
+#ifdef VBOX_WITH_DXVK_VIDEO
+    if (m_device->queues().videoDecode.queueFamily != VK_QUEUE_FAMILY_IGNORED) {
+      VkResult vrVideoDecode = vk->vkCreateSemaphore(vk->device(), &semaphoreInfo, nullptr, &m_semaphores.videoDecode);
+
+      if (vrVideoDecode) {
+        throw DxvkError(str::format("Failed to create video decode timeline semaphore: ",
+          vrVideoDecode));
+      }
+    }
+#endif
   }
   
   
@@ -39,6 +50,10 @@ namespace dxvk {
 
     vk->vkDestroySemaphore(vk->device(), m_semaphores.graphics, nullptr);
     vk->vkDestroySemaphore(vk->device(), m_semaphores.transfer, nullptr);
+#ifdef VBOX_WITH_DXVK_VIDEO
+    if (m_semaphores.videoDecode != VK_NULL_HANDLE)
+      vk->vkDestroySemaphore(vk->device(), m_semaphores.videoDecode, nullptr);
+#endif
   }
   
   
@@ -248,8 +263,23 @@ namespace dxvk {
         VkResult status = m_lastError.load();
 
         if (status != VK_ERROR_DEVICE_LOST) {
+#ifdef VBOX_WITH_DXVK_VIDEO
+          small_vector<VkSemaphore, 3> semaphores;
+          small_vector<uint64_t, 3> timelines;
+
+          semaphores.push_back(m_semaphores.graphics);
+          semaphores.push_back(m_semaphores.transfer);
+          timelines.push_back(entry.timelines.graphics);
+          timelines.push_back(entry.timelines.transfer);
+
+          if (m_semaphores.videoDecode != VK_NULL_HANDLE) {
+            semaphores.push_back(m_semaphores.videoDecode);
+            timelines.push_back(entry.timelines.videoDecode);
+          }
+#else
           std::array<VkSemaphore, 2> semaphores = { m_semaphores.graphics, m_semaphores.transfer };
           std::array<uint64_t, 2> timelines = { entry.timelines.graphics, entry.timelines.transfer };
+#endif
 
           if (entry.latency.tracker)
             entry.latency.tracker->notifyGpuExecutionBegin(entry.latency.frameId);

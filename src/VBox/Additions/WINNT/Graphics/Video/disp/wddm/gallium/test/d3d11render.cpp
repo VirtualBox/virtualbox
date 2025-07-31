@@ -1,4 +1,4 @@
-/* $Id: d3d11render.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: d3d11render.cpp 110306 2025-07-18 13:59:09Z vitali.pelenjow@oracle.com $ */
 /** @file
  * Gallium D3D testcase. Simple D3D11 tests.
  */
@@ -680,7 +680,147 @@ HRESULT D3D11RenderDrawIndexed::DoRender(D3D11DeviceProvider *pDP)
     return S_OK;
 }
 
-//#include "D3D11RenderVMCloud.txt"
+
+
+
+/*
+ * CopySubresourceRegion from DYNAMIC to DEFAULT to STAGING structured buffer.
+ */
+
+class D3D11RenderStructuredBuffer: public D3D11Render
+{
+public:
+    D3D11RenderStructuredBuffer();
+    virtual ~D3D11RenderStructuredBuffer();
+    virtual HRESULT InitRender(D3D11DeviceProvider *pDP);
+    virtual HRESULT DoRender(D3D11DeviceProvider *pDP);
+
+private:
+    ID3D11Buffer *mpBufferDynamic;
+    ID3D11Buffer *mpBufferDefault;
+    ID3D11Buffer *mpBufferStaging;
+
+    struct BufferStruct
+    {
+        float position[4];
+    };
+
+    BufferStruct aData[2];
+};
+
+D3D11RenderStructuredBuffer::D3D11RenderStructuredBuffer()
+    : mpBufferDynamic(0)
+    , mpBufferDefault(0)
+    , mpBufferStaging(0)
+{
+}
+
+D3D11RenderStructuredBuffer::~D3D11RenderStructuredBuffer()
+{
+    D3D_RELEASE(mpBufferDynamic);
+    D3D_RELEASE(mpBufferDefault);
+    D3D_RELEASE(mpBufferStaging);
+}
+
+HRESULT D3D11RenderStructuredBuffer::InitRender(D3D11DeviceProvider *pDP)
+{
+    ID3D11Device *pDevice = pDP->Device();
+
+    for (int i = 0; i < RT_ELEMENTS(aData); ++i)
+    {
+        aData[i].position[0] = 4.0f * (float)i + 0.0f;
+        aData[i].position[1] = 4.0f * (float)i + 1.0f;
+        aData[i].position[2] = 4.0f * (float)i + 2.0f;
+        aData[i].position[3] = 4.0f * (float)i + 3.0f;
+    }
+
+    HRESULT hr;
+
+    D3D11_BUFFER_DESC bd;
+
+    RT_ZERO(bd);
+    bd.Usage               = D3D11_USAGE_DYNAMIC;
+    bd.ByteWidth           = sizeof(aData);
+    bd.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
+    bd.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
+    bd.MiscFlags           = 0;//D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+    bd.StructureByteStride = 0;//sizeof(aData[0]);
+    HTEST(pDevice->CreateBuffer(&bd, NULL, &mpBufferDynamic));
+
+    RT_ZERO(bd);
+    bd.Usage               = D3D11_USAGE_DEFAULT;
+    bd.ByteWidth           = sizeof(aData);
+    bd.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
+    bd.CPUAccessFlags      = 0;
+    bd.MiscFlags           = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+    bd.StructureByteStride = sizeof(aData[0]);
+    HTEST(pDevice->CreateBuffer(&bd, NULL, &mpBufferDefault));
+
+    RT_ZERO(bd);
+    bd.Usage               = D3D11_USAGE_STAGING;
+    bd.ByteWidth           = sizeof(aData);
+    bd.BindFlags           = 0;
+    bd.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE | D3D11_CPU_ACCESS_READ;
+    bd.MiscFlags           = 0;//D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+    bd.StructureByteStride = 0;//sizeof(aData[0]);
+    HTEST(pDevice->CreateBuffer(&bd, NULL, &mpBufferStaging));
+
+    return hr;
+}
+
+HRESULT D3D11RenderStructuredBuffer::DoRender(D3D11DeviceProvider *pDP)
+{
+    ID3D11DeviceContext *pImmediateContext = pDP->ImmediateContext();
+
+    FLOAT aColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    pImmediateContext->ClearRenderTargetView(pDP->RenderTargetView(), aColor);
+    if (pDP->DepthStencilView())
+        pImmediateContext->ClearDepthStencilView(pDP->DepthStencilView(),
+                                                 D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+    HRESULT hr;
+
+    /* Init dynamic buffer. */
+    D3D11_MAPPED_SUBRESOURCE mapped;
+
+    RT_ZERO(mapped);
+    HTEST(pImmediateContext->Map(mpBufferDynamic, 0, D3D11_MAP_WRITE_DISCARD, /* MapFlags =  */ 0, &mapped));
+    memcpy(mapped.pData, aData, sizeof(aData));
+    pImmediateContext->Unmap(mpBufferDynamic, 0);
+
+    /* Dynamic -> Default */
+    ID3D11Resource *pDstResource = mpBufferDefault;
+    UINT DstSubresource = 0;
+    UINT DstX = 0;
+    UINT DstY = 0;
+    UINT DstZ = 0;
+    ID3D11Resource *pSrcResource = mpBufferDynamic;
+    UINT SrcSubresource = 0;
+    D3D11_BOX SrcBox;
+    SrcBox.left   = DstX;
+    SrcBox.top    = DstY;
+    SrcBox.front  = DstZ;
+    SrcBox.right  = DstX + sizeof(aData);
+    SrcBox.bottom = DstY + 1;
+    SrcBox.back   = DstZ + 1;
+    pImmediateContext->CopySubresourceRegion(pDstResource, DstSubresource, DstX, DstY, DstZ,
+                                             pSrcResource, SrcSubresource, &SrcBox);
+
+    /* Default -> Staging */
+    pDstResource = mpBufferStaging;
+    pSrcResource = mpBufferDefault;
+    pImmediateContext->CopySubresourceRegion(pDstResource, DstSubresource, DstX, DstY, DstZ,
+                                             pSrcResource, SrcSubresource, &SrcBox);
+
+    RT_ZERO(mapped);
+    HTEST(pImmediateContext->Map(mpBufferStaging, 0, D3D11_MAP_READ, /* MapFlags =  */ 0, &mapped));
+    if (memcmp(mapped.pData, aData, sizeof(aData)) != 0)
+        ASMBreakpoint();
+    pImmediateContext->Unmap(mpBufferStaging, 0);
+
+    return S_OK;
+}
+
 
 /*
  * "Public" interface.
@@ -702,6 +842,8 @@ D3D11Render *CreateRender(int iRenderId)
             return new D3D11RenderDrawIndexed();
 //        case 5:
 //            return new D3D11RenderTest();
+        case 6:
+            return new D3D11RenderStructuredBuffer();
         default:
             break;
     }

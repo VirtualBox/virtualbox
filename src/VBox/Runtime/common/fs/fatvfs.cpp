@@ -1,4 +1,4 @@
-/* $Id: fatvfs.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: fatvfs.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT - FAT Virtual Filesystem.
  */
@@ -3769,7 +3769,7 @@ static int rtFsFatChain_GrowDirectory(PRTFSFATDIRSHRD pThis, uint32_t cMinNewEnt
 
 
 /**
- * Inserts a directory with zero of more long name slots preceeding it.
+ * Inserts a directory with zero of more long name slots preceding it.
  *
  * @returns IPRT status code.
  * @param   pThis           The directory.

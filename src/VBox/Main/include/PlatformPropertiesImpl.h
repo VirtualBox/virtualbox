@@ -1,4 +1,4 @@
-/* $Id: PlatformPropertiesImpl.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: PlatformPropertiesImpl.h 110370 2025-07-23 09:14:02Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation - Platform properties.
  */
@@ -132,10 +132,11 @@ private:
     /** Flag set to \c true if this instance handles platform properties
      *  for the host, or set to \c false for guests. */
     bool const             mfIsHost;
-
-    // Data
-
-    settings::PlatformProperties *m;
+    /** Configurable data. */
+    struct
+    {
+        bool               fExclusiveHwVirt;
+    } mData;
 };
 
 #endif /* !MAIN_INCLUDED_PlatformPropertiesImpl_h */

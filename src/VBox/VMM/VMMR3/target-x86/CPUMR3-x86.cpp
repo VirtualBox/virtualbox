@@ -1,4 +1,4 @@
-/* $Id: CPUMR3-x86.cpp 109485 2025-05-09 07:50:57Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMR3-x86.cpp 110144 2025-07-07 22:13:01Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU Monitor / Manager.
  */
@@ -3395,8 +3395,8 @@ DECLHIDDEN(void) cpumR3InfoOneTarget(PVM pVM, PCVMCPU pVCpu, PCDBGFINFOHLP pHlp,
     /*
      * Format the EFLAGS.
      */
-    char szEFlags[80];
-    cpumR3InfoFormatFlagsX86(&szEFlags[0], pCtx->eflags.uBoth);
+    char szEFlags[160];
+    DBGFR3RegFormatX86EFlags(szEFlags, pCtx->eflags.uBoth);
 
     /*
      * Format the registers.
@@ -3882,8 +3882,8 @@ static void cpumR3InfoSvmVmcbStateSave(PCDBGFINFOHLP pHlp, PCSVMVMCBSTATESAVE pV
     AssertReturnVoid(pHlp);
     AssertReturnVoid(pVmcbStateSave);
 
-    char szEFlags[80];
-    cpumR3InfoFormatFlagsX86(&szEFlags[0], pVmcbStateSave->u64RFlags);
+    char szEFlags[160];
+    DBGFR3RegFormatX86EFlags(szEFlags, pVmcbStateSave->u64RFlags);
 
     cpumR3InfoSvmVmcbSelReg(pHlp, &pVmcbStateSave->CS,   "CS",   pszPrefix);
     cpumR3InfoSvmVmcbSelReg(pHlp, &pVmcbStateSave->SS,   "SS",   pszPrefix);
@@ -4055,8 +4055,8 @@ static void cpumR3InfoVmxVmcs(PVMCPU pVCpu, PCDBGFINFOHLP pHlp, PCVMXVVMCS pVmcs
 
     /* Guest state. */
     {
-        char szEFlags[80];
-        cpumR3InfoFormatFlagsX86(&szEFlags[0], pVmcs->u64GuestRFlags.u);
+        char szEFlags[160];
+        DBGFR3RegFormatX86EFlags(szEFlags, pVmcs->u64GuestRFlags.u);
         pHlp->pfnPrintf(pHlp, "%sGuest state:\n", pszPrefix);
 
         /* 16-bit. */
@@ -4246,8 +4246,9 @@ DECLCALLBACK(void) cpumR3InfoGuestHwvirt(PVM pVM, PCDBGFINFOHLP pHlp, const char
         pHlp->pfnPrintf(pHlp, "SVM hwvirt state:\n");
         pHlp->pfnPrintf(pHlp, "  fGif                       = %RTbool\n", pCtx->hwvirt.fGif);
 
-        char szEFlags[80];
-        cpumR3InfoFormatFlagsX86(&szEFlags[0], pCtx->hwvirt.svm.HostState.rflags.u);
+        char szEFlags[160];
+        DBGFR3RegFormatX86EFlags(szEFlags, pCtx->hwvirt.svm.HostState.rflags.u);
+
         pHlp->pfnPrintf(pHlp, "  uMsrHSavePa                = %#RX64\n",    pCtx->hwvirt.svm.uMsrHSavePa);
         pHlp->pfnPrintf(pHlp, "  GCPhysVmcb                 = %#RGp\n",     pCtx->hwvirt.svm.GCPhysVmcb);
         pHlp->pfnPrintf(pHlp, "  VmcbCtrl:\n");

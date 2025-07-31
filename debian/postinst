@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: postinst 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+# $Id: postinst 110417 2025-07-25 17:52:57Z klaus.espenlaub@oracle.com $
 ## @file
 # VirtualBox postinst
 #
@@ -64,16 +64,10 @@ if [ "$1" = "configure" ]; then
     addgroup --system vboxusers || true
   fi
 
-  # The starters need to be Suid root. They drop the privileges before starting
-  # the real frontend.
-  if test -e /usr/lib/virtualbox/VirtualBoxVM; then
-    if ! dpkg-statoverride --list /usr/lib/virtualbox/VirtualBoxVM > /dev/null 2>&1; then
-      chmod 4511 /usr/lib/virtualbox/VirtualBoxVM
-    fi
-  else
-    if ! dpkg-statoverride --list /usr/lib/virtualbox/VirtualBox > /dev/null 2>&1; then
-      chmod 4511 /usr/lib/virtualbox/VirtualBox
-    fi
+  # The starters need to be set-uid-to-root. They drop the privileges before
+  # starting the real frontend.
+  if ! dpkg-statoverride --list /usr/lib/virtualbox/VirtualBoxVM > /dev/null 2>&1; then
+    chmod 4511 /usr/lib/virtualbox/VirtualBoxVM
   fi
   if ! dpkg-statoverride --list /usr/lib/virtualbox/VBoxHeadless > /dev/null 2>&1; then
     chmod 4511 /usr/lib/virtualbox/VBoxHeadless

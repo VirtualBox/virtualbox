@@ -1,4 +1,4 @@
-/* $Id: ldrELF.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: ldrELF.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT - Binary Image Loader, Executable and Linker Format (ELF).
  */
@@ -95,7 +95,7 @@ typedef struct RTLDRLNXMODSIG
     uint8_t         cbKeyId;
     /** Zero padding. */
     uint8_t         abReserved[3];
-    /** The length of the signature preceeding this footer structure. */
+    /** The length of the signature preceding this footer structure. */
     uint32_t        cbSignature;
     /** Magic value identifying this structure.   */
     char            achMagic[sizeof(RTLDRLNXMODSIG_MAGIC) - 1];

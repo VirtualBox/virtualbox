@@ -1487,13 +1487,13 @@ namespace dxvk {
       "\n  extension supported                    : " << (features.nvxImageViewHandle ? "1" : "0") <<
       "\n" << VK_KHR_WIN32_KEYED_MUTEX_EXTENSION_NAME <<
       "\n  extension supported                    : " << (features.khrWin32KeyedMutex ? "1" : "0");
+#ifdef VBOX_WITH_DXVK_VIDEO
+    message <<
+      "\n" << VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME <<
+      "\n  extension supported                    : "  << (features.khrVideoDecodeQueue ? "1" : "0");
+#endif
 
     Logger::info(message.str());
-#ifdef VBOX_WITH_DXVK_VIDEO
-    Logger::info(str::format(
-      "",  VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME,
-      "\n  extension supported                    : ", features.khrVideoDecodeQueue ? "1" : "0"));
-#endif
   }
 
 
@@ -1501,11 +1501,10 @@ namespace dxvk {
     Logger::info(str::format("Queue families:",
       "\n  Graphics : ", queues.graphics,
       "\n  Transfer : ", queues.transfer,
-#ifdef VBOX_WITH_DXVK_VIDEO
-      "\n  Sparse   : ", queues.sparse != VK_QUEUE_FAMILY_IGNORED ? str::format(queues.sparse) : "n/a",
-      "\n  VideoDec : ", queues.videoDecode != VK_QUEUE_FAMILY_IGNORED ? str::format(queues.videoDecode) : "n/a"));
-#else
       "\n  Sparse   : ", queues.sparse != VK_QUEUE_FAMILY_IGNORED ? str::format(queues.sparse) : "n/a"));
+#ifdef VBOX_WITH_DXVK_VIDEO
+    Logger::info(str::format(
+      "  VideoDec : ", queues.videoDecode != VK_QUEUE_FAMILY_IGNORED ? str::format(queues.videoDecode) : "n/a"));
 #endif
   }
   

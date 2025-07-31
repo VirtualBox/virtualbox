@@ -7,58 +7,33 @@
     <p>On the <b outputclass="bold">Recording</b> tab you can enable video and audio recording for a virtual machine and change related settings. Note that these features can be enabled and disabled while a VM is running. Settings apply to all selected screens.</p>
     <ul>
       <li>
-        <p><b outputclass="bold">Enable Recording:</b> Select
-            this check box and select a <b outputclass="bold">Recording
-            Mode</b> option.
-          </p>
+        <p><b outputclass="bold">Enable Recording</b>: Select this check box and select a <b outputclass="bold">Recording Mode</b> option.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Recording Mode:</b> You can
-            choose to record video, audio, or both video and audio.
-          </p>
+        <p><b outputclass="bold">Recording Mode</b>: You can choose to record video, audio, or both video and audio.</p>
         <p>Some settings on the <b outputclass="bold">Recording</b> tab may be grayed out, depending on the <b
             outputclass="bold">Recording Mode</b> setting. </p>
       </li>
       <li>
-        <p><b outputclass="bold">File Path:</b> The file where
-            the recording is saved.
-          </p>
+        <p><b outputclass="bold">File Path</b>: The file where the recording is saved.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Frame Size:</b> The video
-            resolution of the recorded video, in pixels. The drop-down
-            list enables you to select from common frame sizes.
-          </p>
+        <p><b outputclass="bold">Frame Size</b>: The video resolution of the recorded video, in pixels. The drop-down list enables you to select from common frame sizes.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Frame Rate:</b> Use the slider
-            to set the maximum number of video frames per second (FPS)
-            to record. Frames that have a higher frequency are skipped.
-            Increasing this value reduces the number of skipped frames
-            and increases the file size.
-          </p>
+        <p><b outputclass="bold">Frame Rate</b>: Use the slider to set the maximum number of video frames per second (FPS) to record. Frames that have a higher frequency are skipped. Increasing this value reduces the number of skipped frames and increases the file size.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Video Quality:</b> Use the slider to set the bit rate of the video
-          in kilobits per second. Increasing this value improves the appearance of the video at the
-          cost of an increased file size. </p>
+        <p><b outputclass="bold">Video Quality</b>: Use the slider to set the bit rate of the video in kilobits per second. Increasing this value improves the appearance of the video at the cost of an increased file size.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Audio Quality:</b> Use the
-            slider to set the quality of the audio recording. Increasing
-            this value improves the audio quality at the cost of an
-            increased file size.
-          </p>
+        <p><b outputclass="bold">Audio Quality</b>: Use the slider to set the quality of the audio recording. Increasing this value improves the audio quality at the cost of an increased file size.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Screens:</b> For a multiple
-            monitor display, you can select which screens to record
-            video from.
-          </p>
+        <p><b outputclass="bold">Screens</b>: For a multiple monitor display, you can select which screens to record video from.</p>
       </li>
     </ul>
-    <p>As you adjust the video and audio recording settings, the approximate output file size for a five minute video is
-      shown. </p>
+    <p>As you adjust the video and audio recording settings, the approximate output file size for a five minute video is shown.</p>
   </body>
   
 </topic>

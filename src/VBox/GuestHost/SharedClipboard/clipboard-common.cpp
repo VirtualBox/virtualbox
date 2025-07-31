@@ -1,4 +1,4 @@
-/* $Id: clipboard-common.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-common.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Some helper function for converting between the various eol.
  */
@@ -936,7 +936,7 @@ int ShClConvUtf16LFToCRLF(PCRTUTF16 pcwszSrc, size_t cwcSrc, PRTUTF16 pu16Dst, s
         if (pcwszSrc[offSrc] == 0)
             break;
 
-        /* Check for newlines not preceeded by carriage return: "\n" -> "\r\n";  but not "\r\n" to "\r\r\n"! */
+        /* Check for newlines not preceded by carriage return: "\n" -> "\r\n";  but not "\r\n" to "\r\r\n"! */
         if (   pcwszSrc[offSrc] == VBOX_SHCL_LINEFEED
             && (offSrc == 0 || pcwszSrc[offSrc - 1] != VBOX_SHCL_CARRIAGERETURN))
         {

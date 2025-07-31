@@ -5,24 +5,16 @@
             <title>Shared Folders</title>
             
             <body>
-               <p>With the <i>shared folders</i> feature of <ph conkeyref="vbox-conkeyref-phrases/product-name"/>, you can access files of your host system from within the guest system. This is similar to how you would use network shares in Windows networks, except that shared folders do not require networking, only the Guest Additions. Shared folders can be used with Windows 2000 or later, Linux, and Oracle Solaris guests.</p>
-               <p>Shared folders physically reside on the <i>host</i> and are then shared with the guest, which uses a
-      special file system driver in the Guest Additions to talk to the host. For Windows guests, shared folders are
-      implemented as a pseudo-network redirector. For Linux and Oracle Solaris guests, the Guest Additions provide a
-      virtual file system. </p>
-               <p>To share a host folder with a virtual machine in <ph conkeyref="vbox-conkeyref-phrases/product-name"
-      />, you must specify the path of the folder and choose a <i>share name</i> that the guest can use to access the
-      shared folder. This happens on the host. In the guest you can then use the share name to connect to it and access
-      files. </p>
-               <p>There are several ways in which shared folders can be set up for a virtual machine: </p>
+               <p>With the <i>shared folders</i> feature of <ph conkeyref="vbox-conkeyref-phrases/product-name"/>, you can access files of your host system from within one or all virtual machines. This is similar to how you would use network shares in Windows networks, except that shared folders do not require networking, only the Guest Additions. Shared folders can be used with Windows 2000 or later, Linux, and Oracle Solaris guests.</p>
+               <p>Shared folders physically reside on the host and are then shared with the guest, which uses a special file system driver in the Guest Additions to talk to the host. For Windows guests, shared folders are implemented as a pseudo-network redirector. For Linux and Oracle Solaris guests, the Guest Additions provide a virtual file system.</p>
+               <p>To share a host folder with a virtual machine in <ph conkeyref="vbox-conkeyref-phrases/product-name"/>, you must specify the path of the folder and choose a <i>share name</i> that the guest can use to access the shared folder. This happens on the host. In the guest you can then use the share name to connect to it and access files. Global shared folders are folders shared with all VMs on the host. Use the <uicontrol>Make Global</uicontrol> option in <ph conkeyref="vbox-conkeyref-phrases/vbox-mgr"/> VM Settings, or the <codeph>global</codeph> option in <codeph>VBoxManage sharedfolder</codeph>.</p>
+               <p>There are several ways in which shared folders can be set up for a virtual machine:</p>
                <ul>
                   <li>
-                     <p>In the window of a running VM, you select <b outputclass="bold">Shared Folders</b> from the <b
-            outputclass="bold">Devices</b> menu, or click the folder icon on the status bar in the bottom right corner. </p>
+                     <p>In the window of a running VM, you select <b outputclass="bold">Shared Folders</b> from the <b outputclass="bold">Devices</b> menu, or click the folder icon on the status bar in the bottom right corner.</p>
                   </li>
                   <li>
-                     <p>If a VM is not currently running, you can configure shared folders in the virtual machine's <b
-            outputclass="bold">Settings</b> window. </p>
+                     <p>If a VM is not currently running, you can configure shared folders in the virtual machine's <b outputclass="bold">Settings</b> window.</p>
                   </li>
                   <li>
                      <p>From the command line, you can create shared folders using <userinput>VBoxManage</userinput>, as
@@ -31,15 +23,13 @@
                      <p> See <xref href="../cli_topics/vboxmanage-sharedfolder.dita"/>.</p>
                   </li>
                </ul>
-               <p>There are two types of shares: </p>
+               <p>There are two types of shares:</p>
                <ul>
                   <li>
-                     <p>Permanent shares, that are saved with the VM settings. </p>
+                     <p>Permanent shares, that are saved with the VM settings.</p>
                   </li>
                   <li>
-                     <p>Transient shares, that are added at runtime and disappear when the VM is powered off. These can
-          be created using a check box in <ph conkeyref="vbox-conkeyref-phrases/vbox-mgr"/>, or by using the
-            <codeph>--transient</codeph> option of the <userinput>VBoxManage sharedfolder add</userinput> command. </p>
+                     <p>Transient shares, that are added at runtime and disappear when the VM is powered off. These can be created using a check box in <ph conkeyref="vbox-conkeyref-phrases/vbox-mgr"/>, or by using the <codeph>--transient</codeph> option of the <userinput>VBoxManage sharedfolder add</userinput> command.</p>
                   </li>
                </ul>
                <p>Shared folders can either be read-write or read-only. This means that the guest is either allowed to
@@ -64,14 +54,11 @@
                      <pre xml:space="preserve">VBoxManage setextradata <varname>VM-name</varname> VBoxInternal2/SharedFoldersEnableSymlinksCreate/<varname>sharename</varname> 1</pre>
                   </li>
                </ul>
-            <p>If a symbolic link is created inside a shared folder on the host and the installed Guest Additions do not
-      support symbolic links then the guest will see the target of the symlink as a file inside the shared folder. For
-      example, if a symlink is created to a file on a Linux host: </p>
-            <p>
+            <p>If a symbolic link is created inside a shared folder on the host and the installed Guest Additions do not support symbolic links then the guest will see the target of the symlink as a file inside the shared folder. For example, if a symlink is created to a file on a Linux host:</p>
+               <p>
                      <pre xml:space="preserve">$ cd /SharedFolder &amp;&amp; ln -s filename symlink-to-filename</pre>
         </p>
-               <p>When the shared folder is viewed on a Windows guest there will be two identical files listed,
-        <userinput>filename</userinput> and <userinput>symlink-to-filename</userinput>. </p>
+               <p>When the shared folder is viewed on a Windows guest there will be two identical files listed, <userinput>filename</userinput> and <userinput>symlink-to-filename</userinput>.</p>
             </body>
             
             

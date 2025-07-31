@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
+<topic xml:lang="en-us" id="license-a-profile-architecture-2024-12">
+  
+ <title>A-Profile Architecture</title>
+  
+ <body>
+  <pre xml:space="preserve">A-Profile Architecture
+
+Copyright (c) 2010-2024 Arm Limited or its affiliates. All rights reserved.
+
+This document is Non-confidential and licensed under the BSD 3-clause license.
+
+AARCHMRS containing the JSON files for Arm A-profile architecture (2024-12)
+16th December 2024
+
+*****************
+
+Intention and quality statements for all ArmARM architecture releases
+The intention and scope of the Architecture releases is to describe changes from the existing architecture to the next release. The quality of the architecture releases refers to the accuracy and completeness of the changes described in the specifications.
+
+The intention and scope of the XML releases is to describe the content and behavior of the registers, system registers, instructions, pseudocode, and features of the architecture in full for human readers. The release enables correct information for the current or any previous release to be deduced. The quality of the XML releases refers to the accuracy and completeness of the content to a human reader.
+
+The intention and scope of the JSON releases is to describe aspects of the XML releases in a structured, machine readable format. The content of the architectural content will be approximately equivalent to the corresponding XML release. However there are some aspects of the architecture which cannot yet be represented in a machine readable format.
+
+The intention and scope of the Schema for the JSON releases is to describe the syntax and format of the JSON files used in the JSON releases. The schema is still under development and is subject to change.
+
+Product status
+The content and quality of this JSON release is approximately equivalent to the 2024-12 XML release.
+
+There are some aspects of the architecture which cannot yet be represented in a machine readable format, and will be omitted.
+
+The package contains the Proprietary Notice which defines the terms and conditions for this release. The README file describes the contents of the package.
+
+**************
+
+The 3-Clause BSD License
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</pre>
+  </body>
+ </topic>

@@ -1987,7 +1987,7 @@ RTDECL(bool) RTVfsChainIsSpec(const char *pszSpec);
 RTDECL(int) RTVfsChainQueryFinalPath(const char *pszSpec, char **ppszFinalPath, uint32_t *poffError);
 
 /**
- * Splits the given chain spec into a final path and the preceeding spec.
+ * Splits the given chain spec into a final path and the preceding spec.
  *
  * This works on plain paths too.
  *

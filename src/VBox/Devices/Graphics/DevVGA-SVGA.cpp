@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 109767 2025-06-03 12:29:06Z knut.osmundsen@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 110484 2025-07-30 17:17:10Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -1774,6 +1774,25 @@ int vmsvgaR3ChangeMode(PVGASTATE pThis, PVGASTATECC pThisCC)
 
 int vmsvgaR3UpdateScreen(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen, int x, int y, int w, int h)
 {
+    /* The update rectangle should be within the screen dimensions. */
+    SVGASignedRect screenRect;
+    screenRect.left   = 0;
+    screenRect.top    = 0;
+    screenRect.right  = (int32)pScreen->cWidth;
+    screenRect.bottom = (int32)pScreen->cHeight;
+
+    SVGASignedRect clipRect;
+    clipRect.left = (int32)x;
+    clipRect.top  = (int32)y;
+    clipRect.right  = (int32)(x + w);
+    clipRect.bottom = (int32)(y + h);
+    vmsvgaR3ClipRect(&screenRect, &clipRect);
+
+    x = clipRect.left;
+    y = clipRect.top;
+    w = clipRect.right - clipRect.left;
+    h = clipRect.bottom - clipRect.top;
+
     ASSERT_GUEST_LOGREL_MSG_RETURN(w > 0 && h > 0,
                                    ("vmsvgaR3UpdateScreen: screen %d (%d,%d) %dx%d: Invalid height and/or width supplied.\n",
                                    pScreen->idScreen, x, y, w, h),
@@ -3421,9 +3440,11 @@ static SVGACBStatus vmsvgaR3CmdBufDCPreempt(PPDMDEVINS pDevIns, PVMSVGAR3STATE p
  */
 #define VMSVGA_INC_CMD_SIZE_BREAK(a_cbMore) \
      if (1) { \
-          cbCmd += (a_cbMore); \
-          ASSERT_GUEST_MSG_STMT_BREAK(cbRemain >= cbCmd, ("size=%#x remain=%#zx\n", cbCmd, (size_t)cbRemain), CBstatus = SVGA_CB_STATUS_COMMAND_ERROR); \
+          ASSERT_GUEST_MSG_STMT_BREAK(cbRemain >= cbCmd && cbRemain - cbCmd >= (a_cbMore), \
+              ("size=%#x more=%#zx remain=%#x\n", cbCmd, (size_t)(a_cbMore), cbRemain), \
+              CBstatus = SVGA_CB_STATUS_COMMAND_ERROR); \
           RT_UNTRUSTED_VALIDATED_FENCE(); \
+          cbCmd += (a_cbMore); \
      } else do {} while (0)
 
 
@@ -3441,8 +3462,8 @@ static SVGACBStatus vmsvgaR3CmdBufProcessDC(PPDMDEVINS pDevIns, PVMSVGAR3STATE p
 {
     SVGACBStatus CBstatus = SVGA_CB_STATUS_COMPLETED;
 
-    uint8_t const *pu8Cmd = (uint8_t *)pvCommands;
-    uint32_t cbRemain = cbCommands;
+    uint8_t const *pu8Cmd = (uint8_t *)pvCommands + (*poffNextCmd);
+    uint32_t cbRemain = cbCommands - (*poffNextCmd);
     while (cbRemain)
     {
         /* Command identifier is a 32 bit value. */
@@ -3617,16 +3638,21 @@ static void vmsvgaR3CmdBufSubmit(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATEC
             /* Verify the command buffer header. */
             if (RT_LIKELY(   pCmdBuf->hdr.status == SVGA_CB_STATUS_NONE
                           && (pCmdBuf->hdr.flags & ~(SVGA_CB_FLAG_NO_IRQ | SVGA_CB_FLAG_DX_CONTEXT)) == 0 /* No unexpected flags. */
-                          && pCmdBuf->hdr.length <= SVGA_CB_MAX_SIZE))
+                          && pCmdBuf->hdr.length <= SVGA_CB_MAX_SIZE)
+                          && pCmdBuf->hdr.offset <= pCmdBuf->hdr.length)
             {
                 RT_UNTRUSTED_VALIDATED_FENCE();
 
-                /* Read the command buffer content. */
-                pCmdBuf->pvCommands = RTMemAlloc(pCmdBuf->hdr.length);
-                if (pCmdBuf->pvCommands)
+                /* Read the command buffer content. Zero sized buffers can be submitted too. */
+                pCmdBuf->pvCommands = pCmdBuf->hdr.length ? RTMemAlloc(pCmdBuf->hdr.length) : NULL;
+                if (pCmdBuf->pvCommands || pCmdBuf->hdr.length == 0)
                 {
                     RTGCPHYS const GCPhysCmd = (RTGCPHYS)pCmdBuf->hdr.ptr.pa;
-                    rc = PDMDevHlpPCIPhysRead(pDevIns, GCPhysCmd, pCmdBuf->pvCommands, pCmdBuf->hdr.length);
+                    if (pCmdBuf->hdr.length)
+                    {
+                        /* Read entire command buffer ignoring the offset in order to simplify code. */
+                        rc = PDMDevHlpPCIPhysRead(pDevIns, GCPhysCmd, pCmdBuf->pvCommands, pCmdBuf->hdr.length);
+                    }
                     if (RT_SUCCESS(rc))
                     {
                         /* Submit the buffer. Device context buffers will be processed synchronously. */
@@ -3634,7 +3660,11 @@ static void vmsvgaR3CmdBufSubmit(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATEC
                             /* This usually processes the CB async and sets pCmbBuf to NULL. */
                             CBstatus = vmsvgaR3CmdBufSubmitCtx(pDevIns, pThis, pThisCC, &pCmdBuf);
                         else
+                        {
+                            offNextCmd = RT_BOOL(pThis->svga.u32DeviceCaps & SVGA_CAP_CMD_BUFFERS_2)
+                                       ? pCmdBuf->hdr.offset : 0;
                             CBstatus = vmsvgaR3CmdBufSubmitDC(pDevIns, pThisCC, &pCmdBuf, &offNextCmd);
+                        }
                     }
                     else
                     {
@@ -3696,6 +3726,51 @@ static bool vmsvgaR3CmdBufHasWork(PVGASTATECC pThisCC)
 }
 
 
+static void vmsvgaR3UpdateFence(PVGASTATE pThis, PVGASTATECC pThisCC, uint32_t u32FenceId, uint32_t *pu32IrqStatus)
+{
+    if (pThis->fVmSvga3)
+    {
+        pThis->svga.u32FenceLast = u32FenceId;
+
+        if (pThis->svga.u32IrqMask & SVGA_IRQFLAG_ANY_FENCE)
+        {
+            Log(("any fence irq\n"));
+            *pu32IrqStatus |= SVGA_IRQFLAG_ANY_FENCE;
+        }
+        else if (pThis->svga.u32IrqMask & SVGA_IRQFLAG_FENCE_GOAL)
+        {
+            Log(("fence goal reached irq (fence=%#x)\n", u32FenceId));
+            *pu32IrqStatus |= SVGA_IRQFLAG_FENCE_GOAL;
+        }
+    }
+    else
+    {
+        uint32_t RT_UNTRUSTED_VOLATILE_GUEST * const pFIFO = pThisCC->svga.pau32FIFO;
+
+        uint32_t const offFifoMin = pFIFO[SVGA_FIFO_MIN];
+        if (VMSVGA_IS_VALID_FIFO_REG(SVGA_FIFO_FENCE, offFifoMin))
+        {
+            pFIFO[SVGA_FIFO_FENCE] = u32FenceId;
+
+            if (pThis->svga.u32IrqMask & SVGA_IRQFLAG_ANY_FENCE)
+            {
+                Log(("any fence irq\n"));
+                *pu32IrqStatus |= SVGA_IRQFLAG_ANY_FENCE;
+            }
+            else if (    VMSVGA_IS_VALID_FIFO_REG(SVGA_FIFO_FENCE_GOAL, offFifoMin)
+                     &&  (pThis->svga.u32IrqMask & SVGA_IRQFLAG_FENCE_GOAL)
+                     &&  pFIFO[SVGA_FIFO_FENCE_GOAL] == u32FenceId)
+            {
+                Log(("fence goal reached irq (fence=%#x)\n", u32FenceId));
+                *pu32IrqStatus |= SVGA_IRQFLAG_FENCE_GOAL;
+            }
+        }
+        else
+            Log(("SVGA_CMD_FENCE is bogus when offFifoMin is %#x!\n", offFifoMin));
+    }
+}
+
+
 /** Processes a command buffer.
  *
  * @param pDevIns      The device instance.
@@ -3732,10 +3807,8 @@ static SVGACBStatus vmsvgaR3CmdBufProcessCommands(PPDMDEVINS pDevIns, PVGASTATE 
 #  endif
 # endif
 
-    uint32_t RT_UNTRUSTED_VOLATILE_GUEST * const pFIFO = pThisCC->svga.pau32FIFO;
-
-    uint8_t const *pu8Cmd = (uint8_t *)pvCommands;
-    uint32_t cbRemain = cbCommands;
+    uint8_t const *pu8Cmd = (uint8_t *)pvCommands + (*poffNextCmd);
+    uint32_t cbRemain = cbCommands - (*poffNextCmd);
     while (cbRemain)
     {
         /* Command identifier is a 32 bit value. */
@@ -3792,44 +3865,7 @@ static SVGACBStatus vmsvgaR3CmdBufProcessCommands(PPDMDEVINS pDevIns, PVGASTATE 
                 STAM_REL_COUNTER_INC(&pSvgaR3State->StatR3CmdFence);
                 Log(("SVGA_CMD_FENCE %#x\n", pCmd->fence));
 
-                if (pThis->fVmSvga3)
-                {
-                    pThis->svga.u32FenceLast = pCmd->fence;
-
-                    if (pThis->svga.u32IrqMask & SVGA_IRQFLAG_ANY_FENCE)
-                    {
-                        Log(("any fence irq\n"));
-                        *pu32IrqStatus |= SVGA_IRQFLAG_ANY_FENCE;
-                    }
-                    else if (pThis->svga.u32IrqMask & SVGA_IRQFLAG_FENCE_GOAL)
-                    {
-                        Log(("fence goal reached irq (fence=%#x)\n", pCmd->fence));
-                        *pu32IrqStatus |= SVGA_IRQFLAG_FENCE_GOAL;
-                    }
-                }
-                else
-                {
-                    uint32_t const offFifoMin = pFIFO[SVGA_FIFO_MIN];
-                    if (VMSVGA_IS_VALID_FIFO_REG(SVGA_FIFO_FENCE, offFifoMin))
-                    {
-                        pFIFO[SVGA_FIFO_FENCE] = pCmd->fence;
-
-                        if (pThis->svga.u32IrqMask & SVGA_IRQFLAG_ANY_FENCE)
-                        {
-                            Log(("any fence irq\n"));
-                            *pu32IrqStatus |= SVGA_IRQFLAG_ANY_FENCE;
-                        }
-                        else if (    VMSVGA_IS_VALID_FIFO_REG(SVGA_FIFO_FENCE_GOAL, offFifoMin)
-                                 &&  (pThis->svga.u32IrqMask & SVGA_IRQFLAG_FENCE_GOAL)
-                                 &&  pFIFO[SVGA_FIFO_FENCE_GOAL] == pCmd->fence)
-                        {
-                            Log(("fence goal reached irq (fence=%#x)\n", pCmd->fence));
-                            *pu32IrqStatus |= SVGA_IRQFLAG_FENCE_GOAL;
-                        }
-                    }
-                    else
-                        Log(("SVGA_CMD_FENCE is bogus when offFifoMin is %#x!\n", offFifoMin));
-                }
+                vmsvgaR3UpdateFence(pThis, pThisCC, pCmd->fence, pu32IrqStatus);
                 break;
             }
 
@@ -3994,11 +4030,14 @@ static SVGACBStatus vmsvgaR3CmdBufProcessCommands(PPDMDEVINS pDevIns, PVGASTATE 
                 /* The size of this command is specified by the guest and depends on capabilities. */
                 SVGAFifoCmdDefineScreen *pCmd = (SVGAFifoCmdDefineScreen *)&pu8Cmd[cbCmd];
                 VMSVGA_INC_CMD_SIZE_BREAK(sizeof(pCmd->screen.structSize));
-                ASSERT_GUEST_STMT_BREAK(pCmd->screen.structSize < pThis->svga.cbFIFO, CBstatus = SVGA_CB_STATUS_COMMAND_ERROR);
-                RT_UNTRUSTED_VALIDATED_FENCE();
 
-                VMSVGA_INC_CMD_SIZE_BREAK(RT_MAX(sizeof(pCmd->screen.structSize), pCmd->screen.structSize) - sizeof(pCmd->screen.structSize));
-                vmsvgaR3CmdDefineScreen(pThis, pThisCC, pCmd);
+                uint32_t const structSize = RT_MAX(sizeof(pCmd->screen.structSize), pCmd->screen.structSize);
+                VMSVGA_INC_CMD_SIZE_BREAK(structSize - sizeof(pCmd->screen.structSize));
+
+                SVGAFifoCmdDefineScreen cmd;
+                RT_ZERO(cmd);
+                memcpy(&cmd, pCmd, RT_MIN(structSize, sizeof(cmd)));
+                vmsvgaR3CmdDefineScreen(pThis, pThisCC, &cmd);
                 break;
             }
 
@@ -4193,13 +4232,26 @@ static void vmsvgaR3CmdBufProcessBuffers(PPDMDEVINS pDevIns, PVGASTATE pThis, PV
         RTCritSectLeave(&pSvgaR3State->CritSectCmdBuf);
 
         SVGACBStatus CBstatus = SVGA_CB_STATUS_NONE;
-        uint32_t offNextCmd = 0;
+        uint32_t offNextCmd = RT_BOOL(pThis->svga.u32DeviceCaps & SVGA_CAP_CMD_BUFFERS_2)
+                            ? pCmdBuf->hdr.offset : 0;
         uint32_t u32IrqStatus = 0;
         uint32_t const idDXContext = RT_BOOL(pCmdBuf->hdr.flags & SVGA_CB_FLAG_DX_CONTEXT)
                                    ? pCmdBuf->hdr.dxContext
                                    : SVGA3D_INVALID_ID;
         /* Process one buffer. */
         CBstatus = vmsvgaR3CmdBufProcessCommands(pDevIns, pThis, pThisCC, idDXContext, pCmdBuf->pvCommands, pCmdBuf->hdr.length, &offNextCmd, &u32IrqStatus);
+
+        if (   RT_BOOL(pThis->svga.u32DeviceCaps & SVGA_CAP_CMD_BUFFERS_2)
+            && pThis->svga.fVBoxExtensions) /* Only for VBoxSVGA and Windows guest. */
+        {
+            /* Check if the guest has passed SubmissionFenceId */
+            if (RT_HI_U32(pCmdBuf->hdr.id) & 1)
+            {
+                uint32_t const SubmissionFenceId = RT_LO_U32(pCmdBuf->hdr.id);
+                if (SubmissionFenceId)
+                    vmsvgaR3UpdateFence(pThis, pThisCC, SubmissionFenceId, &u32IrqStatus);
+            }
+        }
 
         if (!RT_BOOL(pCmdBuf->hdr.flags & SVGA_CB_FLAG_NO_IRQ))
             u32IrqStatus |= SVGA_IRQFLAG_COMMAND_BUFFER;
@@ -5943,8 +5995,8 @@ static int vmsvgaR3LoadBufCtx(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATECC p
         }
         else
         {
-            uint32_t offNextCmd = 0;
-            vmsvgaR3CmdBufSubmitDC(pDevIns, pThisCC, &pCmdBuf, &offNextCmd);
+            /* CBCtx is the device context, it is processed synchronously on EMT and cSubmitted is always 0 for it. */
+            AssertFailedReturnStmt(vmsvgaR3CmdBufFree(pCmdBuf), VERR_INVALID_STATE);
         }
 
         /* Free the buffer if CmdBufSubmit* did not consume it. */
@@ -5998,6 +6050,7 @@ static int vmsvgaR3LoadGbo(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, VMSVGAGBO *pGbo)
     pHlp->pfnSSMGetU32(pSSM, &pGbo->fGboFlags);
     pHlp->pfnSSMGetU32(pSSM, &pGbo->cTotalPages);
     pHlp->pfnSSMGetU32(pSSM, &pGbo->cbTotal);
+#ifndef VMSVGA_WITH_PGM_LOCKING
     rc = pHlp->pfnSSMGetU32(pSSM, &pGbo->cDescriptors);
     AssertRCReturn(rc, rc);
 
@@ -6013,6 +6066,41 @@ static int vmsvgaR3LoadGbo(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, VMSVGAGBO *pGbo)
         pHlp->pfnSSMGetGCPhys(pSSM, &pDesc->GCPhys);
         rc = pHlp->pfnSSMGetU64(pSSM, &pDesc->cPages);
     }
+#else
+    rc = vmsvgaR3GboAllocDescriptors(pGbo);
+    AssertRCReturn(rc, rc);
+
+    uint32_t cDescriptors;
+    rc = pHlp->pfnSSMGetU32(pSSM, &cDescriptors);
+    AssertRCReturnStmt(rc, vmsvgaR3GboFreeDescriptors(pGbo), rc);
+
+    uint32_t iGCPhysPage = 0;
+    for (uint32_t iDesc = 0; iDesc < cDescriptors; ++iDesc)
+    {
+        RTGCPHYS GCPhys;
+        uint64_t cPages;
+        pHlp->pfnSSMGetGCPhys(pSSM, &GCPhys);
+        rc = pHlp->pfnSSMGetU64(pSSM, &cPages);
+        AssertRCReturnStmt(rc, vmsvgaR3GboFreeDescriptors(pGbo), rc);
+
+        /* pGbo->paGCPhysPages stores addresses of every page, even though
+         * contiguous pages may be stored as a single descriptor in a saved state.
+         */
+        for (uint32_t i = 0; i < cPages; ++i, GCPhys += X86_PAGE_SIZE)
+        {
+            if (iGCPhysPage < pGbo->cTotalPages)
+               pGbo->paGCPhysPages[iGCPhysPage] = GCPhys;
+            ++iGCPhysPage;
+        }
+    }
+
+    AssertLogRelMsgReturnStmt(iGCPhysPage == pGbo->cTotalPages,
+                              ("iGCPhysPage=%#x, cTotalPages=%#x\n", iGCPhysPage, pGbo->cTotalPages),
+                              vmsvgaR3GboFreeDescriptors(pGbo), VERR_SSM_DATA_UNIT_FORMAT_CHANGED);
+
+    rc = vmsvgaR3GboMapPages(pDevIns, pGbo);
+    AssertRCReturnStmt(rc, vmsvgaR3GboFreeDescriptors(pGbo), rc);
+#endif
 
     if (pGbo->fGboFlags & VMSVGAGBO_F_HOST_BACKED)
     {
@@ -6376,6 +6464,7 @@ static int vmsvgaR3SaveGbo(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, VMSVGAGBO *pGbo)
     pHlp->pfnSSMPutU32(pSSM, pGbo->fGboFlags);
     pHlp->pfnSSMPutU32(pSSM, pGbo->cTotalPages);
     pHlp->pfnSSMPutU32(pSSM, pGbo->cbTotal);
+#ifndef VMSVGA_WITH_PGM_LOCKING
     rc =  pHlp->pfnSSMPutU32(pSSM, pGbo->cDescriptors);
     for (uint32_t iDesc = 0; iDesc < pGbo->cDescriptors; ++iDesc)
     {
@@ -6383,6 +6472,14 @@ static int vmsvgaR3SaveGbo(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, VMSVGAGBO *pGbo)
         pHlp->pfnSSMPutGCPhys(pSSM, pDesc->GCPhys);
         rc = pHlp->pfnSSMPutU64(pSSM, pDesc->cPages);
     }
+#else
+    rc = pHlp->pfnSSMPutU32(pSSM, pGbo->cTotalPages);
+    for (uint32_t iPage = 0; iPage < pGbo->cTotalPages; ++iPage)
+    {
+        pHlp->pfnSSMPutGCPhys(pSSM, pGbo->paGCPhysPages[iPage]);
+        rc = pHlp->pfnSSMPutU64(pSSM, 1);
+    }
+#endif
     if (pGbo->fGboFlags & VMSVGAGBO_F_HOST_BACKED)
         rc = pHlp->pfnSSMPutMem(pSSM, pGbo->pvHost, pGbo->cbTotal);
     return rc;
@@ -6785,6 +6882,7 @@ static void vmsvgaR3GetCaps(PVGASTATE pThis, PVGASTATECC pThisCC, uint32_t *pu32
                     | SVGA_CAP_ALPHA_CURSOR;
 
     *pu32DeviceCaps |= SVGA_CAP_COMMAND_BUFFERS   /* Enable register based command buffer submission. */
+                    |  SVGA_CAP_CMD_BUFFERS_2     /* Enable SVGACBHeader::offset field. */
                     ;
 
     *pu32DeviceCaps2 = SVGA_CAP2_NONE;

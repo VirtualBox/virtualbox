@@ -1,4 +1,4 @@
-/* $Id: VBoxClipboard.cpp 106468 2024-10-18 07:03:23Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxClipboard.cpp 110197 2025-07-11 09:24:08Z dmitrii.grigorev@oracle.com $ */
 /** @file
  * VBoxClipboard - Shared clipboard, Windows Guest Implementation.
  */
@@ -132,14 +132,14 @@ static DECLCALLBACK(int) vbtrShClDataObjectTransferBeginCallback(ShClWinDataObje
  */
 static DECLCALLBACK(void) vbtrShClTransferCreatedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
 {
-    LogFlowFuncEnter();
+    LogRelFlowFuncEnter();
 
     PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pCbCtx->pvUser;
     AssertPtr(pCtx);
 
     int rc = ShClWinTransferCreate(&pCtx->Win, pCbCtx->pTransfer);
 
-    LogFlowFuncLeaveRC(rc);
+    LogRelFlowFuncLeaveRC(rc);
 }
 
 /**
@@ -324,7 +324,7 @@ static DECLCALLBACK(void) vbtrShClTransferCompletedCallback(PSHCLTRANSFERCALLBAC
     PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pCbCtx->pvUser;
     AssertPtr(pCtx);
 
-    LogFlowFunc(("rcCompletion=%Rrc\n", rcCompletion));
+    LogRelFlowFunc(("rcCompletion=%Rrc\n", rcCompletion));
 
     VBoxTrayVerbose(1, "Shared Clipboard: Transfer %RU16 %s\n",
                     ShClTransferGetID(pCbCtx->pTransfer), rcCompletion == VERR_CANCELLED ? "canceled" : "complete");
@@ -347,7 +347,7 @@ static DECLCALLBACK(void) vbtrShClTransferCompletedCallback(PSHCLTRANSFERCALLBAC
     }
 
     int rc = VbglR3ClipboardTransferSendStatus(&pCtx->CmdCtx, pCbCtx->pTransfer, enmSts, rcCompletion);
-    LogFlowFuncLeaveRC(rc);
+    LogRelFlowFuncLeaveRC(rc);
 }
 
 /** @copydoc SHCLTRANSFERCALLBACKS::pfnOnError */
@@ -374,7 +374,7 @@ static DECLCALLBACK(void) vbtrShClTransferErrorCallback(PSHCLTRANSFERCALLBACKCTX
     }
 
     int rc = VbglR3ClipboardTransferSendStatus(&pCtx->CmdCtx, pCbCtx->pTransfer, SHCLTRANSFERSTATUS_ERROR, rcError);
-    LogFlowFuncLeaveRC(rc);
+    LogRelFlowFuncLeaveRC(rc);
 }
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 

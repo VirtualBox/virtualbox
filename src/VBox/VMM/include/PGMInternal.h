@@ -1,4 +1,4 @@
-/* $Id: PGMInternal.h 109194 2025-04-11 13:04:57Z alexander.eichner@oracle.com $ */
+/* $Id: PGMInternal.h 110395 2025-07-23 18:44:18Z klaus.espenlaub@oracle.com $ */
 /** @file
  * PGM - Internal header file.
  */
@@ -892,7 +892,7 @@ typedef PPGMPAGE *PPPGMPAGE;
 # ifndef VBOX_WITH_ONLY_PGM_NEM_MODE
 #  define PGM_PAGE_GET_HCPHYS_NA(a_pPage)       ( (a_pPage)->au64[0] & UINT64_C(0x0000fffffffff000) )
 # else
-#  define PGM_PAGE_GET_HCPHYS_NA(a_pPage)       ( 0 )
+#  define PGM_PAGE_GET_HCPHYS_NA(a_pPage)       ( 0ULL )
 # endif
 # if defined(__GNUC__) && defined(VBOX_STRICT)
 #  define PGM_PAGE_GET_HCPHYS(a_pPage)      __extension__ ({ PGM_PAGE_ASSERT_LOCK(pVM); PGM_PAGE_GET_HCPHYS_NA(a_pPage); })

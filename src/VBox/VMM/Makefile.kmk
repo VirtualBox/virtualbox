@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 110102 2025-07-03 12:17:47Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 110145 2025-07-07 22:14:15Z knut.osmundsen@oracle.com $
 ## @file
 # Top-level makefile for the VMM.
 #
@@ -587,6 +587,7 @@ ifdef VBOX_WITH_VIRT_ARMV8
   	VMMAll/target-armv8/IEMAllXcpt-armv8.cpp \
   	VMMAll/target-armv8/IEMAllIntprA64Tables-armv8.cpp \
   	VMMAll/target-armv8/IEMAllOpcodeFetch-armv8.cpp \
+  	VMMAll/target-armv8/IEMAllCImpl-armv8.cpp \
   	VMMAll/target-armv8/IEMAllCImplSysRegs-armv8.cpp
   VMMAll/target-armv8/IEMAllIntprA64Tables-armv8.cpp_CXXFLAGS.win := -bigobj
  else

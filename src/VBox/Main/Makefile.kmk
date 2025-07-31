@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 108837 2025-03-20 12:48:42Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 110428 2025-07-28 10:47:44Z andreas.loeffler@oracle.com $
 ## @file
 # Makefile for the VBox Main module.
 #
@@ -213,6 +213,9 @@ ifdef VBOX_WITH_GSTCTL_TOOLBOX_AS_CMDS
 endif
 ifdef VBOX_WITH_X86_ON_ARM_ENABLED
  VBOX_MAIN_DEFS += VBOX_WITH_X86_ON_ARM_ENABLED
+endif
+ifdef VBOX_WITH_ARM_ON_X86_ENABLED
+ VBOX_MAIN_DEFS += VBOX_WITH_ARM_ON_X86_ENABLED
 endif
 ifdef VBOX_WITH_MAIN_OBJECT_TRACKER
  VBOX_MAIN_DEFS += VBOX_WITH_MAIN_OBJECT_TRACKER
@@ -616,6 +619,7 @@ if !defined(VBOX_ONLY_SDK) && !defined(VBOX_ONLY_EXTPACKS) # Note this goes on f
  VBoxSVC_SOURCES = \
  	$(VBOX_SVC_CERTS_FILE) \
  	$(VBoxAPIWrap_0_OUTDIR)/VBoxAPI.d \
+ 	src-all/AudioUtils.cpp \
  	src-all/AuthLibrary.cpp \
  	src-all/CryptoUtils.cpp \
  	src-all/DisplayPNGUtil.cpp \
@@ -631,6 +635,7 @@ if !defined(VBOX_ONLY_SDK) && !defined(VBOX_ONLY_EXTPACKS) # Note this goes on f
  	src-all/PCIDeviceAttachmentImpl.cpp \
  	src-all/PlatformPropertiesImpl.cpp \
  	src-all/ProgressImpl.cpp \
+ 	src-all/RecordingUtils.cpp \
  	src-all/SecretKeyStore.cpp \
  	src-all/SharedFolderImpl.cpp \
  	src-all/AutoCaller.cpp \
@@ -1063,33 +1068,23 @@ if !defined(VBOX_ONLY_SDK) && !defined(VBOX_ONLY_EXTPACKS) # Note this goes on f
    VBoxC_DEFS += VBOX_WITH_LIBVPX
   endif
   VBoxC_SOURCES += \
+  	src-all/RecordingUtils.cpp \
   	src-client/EBMLWriter.cpp \
   	src-client/WebMWriter.cpp \
-  	src-client/Recording.cpp \
+  	src-client/RecordingContext.cpp \
   	src-client/RecordingInternals.cpp \
   	src-client/RecordingCodec.cpp \
-  	src-client/RecordingStream.cpp \
-  	src-client/RecordingUtils.cpp
+  	src-client/RecordingStream.cpp
 
   ifdef VBOX_WITH_AUDIO_RECORDING
-   VBoxC_DEFS += VBOX_WITH_AUDIO_RECORDING
-   # Needed in VBoxSVC for ISystemProperties.
-   src-server/SystemPropertiesImpl.cpp_DEFS += VBOX_WITH_AUDIO_RECORDING
    ifdef VBOX_WITH_LIBOGG
-    VBOX_MAIN_DEFS += VBOX_WITH_LIBOGG
-    VBoxC_SDKS    += VBoxLibOgg
-    VBoxC_DEFS    += VBOX_WITH_LIBOGG
-    ## @todo We need this for libvorbis down below. Remove once the libvorbis @todo is resolved.
-    VBoxSVC_SDKS  += VBoxLibOgg
+    VBoxC_SDKS += VBoxLibOgg
    endif
    ifdef VBOX_WITH_LIBVORBIS
-    VBOX_MAIN_DEFS += VBOX_WITH_LIBVORBIS
-    VBoxC_SDKS    += VBoxLibVorbis
-    ## @todo We also need to specify this for VBoxSVC, as we need to have VBOX_WITH_LIBVORBIS defined
-    ##       for SystemProperties::getSupportedRecordingAudioCodecs().
-    #        SystemPropertiesImpl_DEFS += VBOX_WITH_LIBVORBIS didn't work for precompiled headers on Windows --
-    #        needs to be solved properly so that we can remove the following _SDKS from VBoxSVC again.
-    VBoxSVC_SDKS  += VBoxLibVorbis
+    VBoxC_DEFS   += VBOX_WITH_LIBVORBIS
+    VBoxC_SDKS   += VBoxLibVorbis
+    # Needed in VBoxSVC for ISystemProperties + xml/Settings.cpp.
+    VBoxSVC_DEFS += VBOX_WITH_LIBVORBIS
    endif
    VBoxC_SOURCES += src-client/DrvAudioRec.cpp
   endif # VBOX_WITH_AUDIO_RECORDING
@@ -1149,6 +1144,7 @@ if !defined(VBOX_ONLY_SDK) && !defined(VBOX_ONLY_EXTPACKS) # Note this goes on f
 
  VBoxC_SOURCES += \
  	$(VBoxAPIWrap_0_OUTDIR)/VBoxAPI.d \
+ 	src-all/AudioUtils.cpp \
  	src-all/CryptoUtils.cpp \
  	src-all/ConsoleSharedFolderImpl.cpp \
  	src-all/DisplayPNGUtil.cpp \
@@ -1199,7 +1195,6 @@ if !defined(VBOX_ONLY_SDK) && !defined(VBOX_ONLY_EXTPACKS) # Note this goes on f
  	src-client/VBoxDriversRegister.cpp \
  	src-client/VirtualBoxClientImpl.cpp \
  	src-client/VMMDevInterface.cpp \
- 	xml/Settings.cpp \
  	$(VBOX_AUTOGEN_EVENT_CPP) \
  	$(VBOX_AUTOGEN_STRINGIFY_ENUMS_CPP) \
  	$(VBOX_XML_SCHEMADEFS_CPP)
@@ -1604,6 +1599,7 @@ ifdef VBOX_WITH_MAIN_NLS
 	$(call MSG_L1,lupdate all languages (nls/*.ts))
 	$(QUIET)$(TOOL_QT6_LUPDATE) \
 		$^ \
+		-locations none \
 		-ts \
 		$(filter-out nls/VirtualBoxAPI_en.ts, $(VirtualBoxAPI_QT_TRANSLATIONS)) \
 		$(VBOX_PATH_MAIN_SRC)/nls/VirtualBoxAPI_xx_YY.ts
@@ -1626,6 +1622,7 @@ ifdef VBOX_WITH_MAIN_NLS
 	$(call MSG_L1,lupdate $@)
 	$(QUIET)$(TOOL_QT6_LUPDATE) \
 		$^ \
+		-locations none \
 		-ts \
 		"$@"
 	$(QUIET)$(SED) -n -i \

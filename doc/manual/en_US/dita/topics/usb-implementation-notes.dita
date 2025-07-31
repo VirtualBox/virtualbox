@@ -5,15 +5,8 @@
                <title>Implementation Notes for Windows and Linux Hosts</title>
                
                <body>
-                  <p>On Windows hosts, a kernel mode device driver provides USB proxy support. It implements both a USB
-      monitor, which enables <ph conkeyref="vbox-conkeyref-phrases/product-name"/> to capture devices when they are
-      plugged in, and a USB device driver to claim USB devices for a particular virtual machine. System reboots are not
-      necessary after installing the driver. Also, you do not need to replug devices for <ph
-        conkeyref="vbox-conkeyref-phrases/product-name"/> to claim them. </p>
-                  <p>On supported Linux hosts, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> accesses USB
-      devices through special files in the file system. When <ph conkeyref="vbox-conkeyref-phrases/product-name"/> is
-      installed, these are made available to all users in the <codeph>vboxusers</codeph> system group. In order to be
-      able to access USB from guest systems, make sure that you are a member of this group. </p>
+                  <p>On Windows hosts, a kernel mode device driver provides USB proxy support. It implements both a USB monitor, which enables <ph conkeyref="vbox-conkeyref-phrases/product-name"/> to capture devices when they are plugged in, and a USB device driver to claim USB devices for a particular virtual machine. System reboots are not necessary after installing the driver. Also, you do not need to replug devices for <ph conkeyref="vbox-conkeyref-phrases/product-name"/> to claim them.</p>
+                  <p>On supported Linux hosts, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> accesses USB devices through special files in the file system. When <ph conkeyref="vbox-conkeyref-phrases/product-name"/> is installed, these are made available to all users in the <codeph>vboxusers</codeph> system group. In order to be able to access USB from guest systems, make sure that you are a member of this group.</p>
                </body>
                
             </topic>

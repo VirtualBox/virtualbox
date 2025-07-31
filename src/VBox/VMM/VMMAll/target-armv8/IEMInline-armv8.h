@@ -1,4 +1,4 @@
-/* $Id: IEMInline-armv8.h 110116 2025-07-04 10:11:49Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMInline-armv8.h 110467 2025-07-30 08:31:12Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager - Inlined Functions, ARMv8 target.
  */
@@ -138,9 +138,12 @@ DECL_FORCE_INLINE(uint32_t) iemCalcExecAcFlag(PVMCPUCC pVCpu, uint32_t fExecMode
     /** @todo armv8: EL3 */
     AssertCompile(ARMV8_SCTLR_EL1_A   == ARMV8_SCTLR_EL2_A);
     AssertCompile(ARMV8_SCTLR_EL1_NAA == ARMV8_SCTLR_EL2_NAA);
+    AssertCompile(ARMV8_SCTLR_EL1_SA  == ARMV8_SCTLR_EL2_SA);
+    AssertCompile(ARMV8_SCTLR_EL1_SA0 == ARMV8_SCTLR_EL2_SA0);
 
     return ((fSctlr & ARMV8_SCTLR_EL1_A)   ? IEM_F_ARM_A : 0)
-         | ((fSctlr & ARMV8_SCTLR_EL1_NAA) ? 0 : IEM_F_ARM_AA);
+         | ((fSctlr & ARMV8_SCTLR_EL1_NAA) ? 0 : IEM_F_ARM_AA)
+         | ((fSctlr & (IEM_F_MODE_ARM_GET_EL(fExecMode) == 0 ? ARMV8_SCTLR_EL1_SA0 : ARMV8_SCTLR_EL1_SA)) ? IEM_F_ARM_SA : 0);
 }
 
 
@@ -374,7 +377,7 @@ DECL_FORCE_INLINE(uint16_t) iemGRegFetchU16(PVMCPUCC pVCpu, uint8_t iReg, bool f
  * @param   iReg    The register.
  * @param   fSp     Set if register 31 is SP, otherwise it's zero.
  */
-DECL_FORCE_INLINE(uint32_t) iemGRegFetchU32(PVMCPUCC pVCpu, uint8_t iReg, bool fSp) RT_NOEXCEPT
+DECL_FORCE_INLINE(uint32_t) iemGRegFetchU32(PVMCPUCC pVCpu, uint8_t iReg, bool fSp = false) RT_NOEXCEPT
 {
     Assert(iReg < 32);
     return iReg < 31 ? pVCpu->cpum.GstCtx.aGRegs[iReg].w
@@ -401,15 +404,41 @@ DECL_FORCE_INLINE(uint64_t) iemGRegFetchU64(PVMCPUCC pVCpu, uint8_t iReg, bool f
 
 
 /**
+ * Fetches the value of a 64-bit general purpose register, with SP alignment
+ * checking.
+ *
+ * @returns The register value.
+ * @param   pVCpu   The cross context virtual CPU structure of the calling thread.
+ * @param   iReg    The register.
+ */
+DECL_FORCE_INLINE_THROW(uint64_t) iemGRegFetchU64WithSpAlignCheck(PVMCPUCC pVCpu, uint8_t iReg)
+{
+    Assert(iReg < 32);
+    uint64_t uRet;
+    if (iReg < 31)
+        uRet = pVCpu->cpum.GstCtx.aGRegs[iReg].x;
+    else
+    {
+        uRet = pVCpu->cpum.GstCtx.aSpReg[IEM_F_ARM_GET_SP_IDX(pVCpu->iem.s.fExec)].u64;
+        if (RT_LIKELY(!(uRet & 15) || !(pVCpu->iem.s.fExec & IEM_F_ARM_SA)))
+        { /* likely */ }
+        else
+            iemRaiseSpAlignmentCheck(pVCpu);
+    }
+    return uRet;
+}
+
+
+/**
  * Stores a 8-bit value to a general purpose register, zeroing extending it to
  * the full register width.
  *
  * @param   pVCpu   The cross context virtual CPU structure of the calling thread.
  * @param   iReg    The register.
- * @param   fSp     Set if register 31 is SP, otherwise it's zero.
  * @param   uValue  The value to store.
+ * @param   fSp     Set if register 31 is SP, otherwise it's zero.
  */
-DECL_FORCE_INLINE(void) iemGRegStoreU8(PVMCPUCC pVCpu, uint8_t iReg, bool fSp, uint8_t uValue) RT_NOEXCEPT
+DECL_FORCE_INLINE(void) iemGRegStoreU8(PVMCPUCC pVCpu, uint8_t iReg, uint8_t uValue, bool fSp = false) RT_NOEXCEPT
 {
     Assert(iReg < 32);
     if (iReg < 31)
@@ -425,10 +454,10 @@ DECL_FORCE_INLINE(void) iemGRegStoreU8(PVMCPUCC pVCpu, uint8_t iReg, bool fSp, u
  *
  * @param   pVCpu   The cross context virtual CPU structure of the calling thread.
  * @param   iReg    The register.
- * @param   fSp     Set if register 31 is SP, otherwise it's zero.
  * @param   uValue  The value to store.
+ * @param   fSp     Set if register 31 is SP, otherwise it's zero.
  */
-DECL_FORCE_INLINE(void) iemGRegStoreU16(PVMCPUCC pVCpu, uint8_t iReg, bool fSp, uint16_t uValue) RT_NOEXCEPT
+DECL_FORCE_INLINE(void) iemGRegStoreU16(PVMCPUCC pVCpu, uint8_t iReg, uint16_t uValue, bool fSp = false) RT_NOEXCEPT
 {
     Assert(iReg < 32);
     if (iReg < 31)
@@ -444,10 +473,10 @@ DECL_FORCE_INLINE(void) iemGRegStoreU16(PVMCPUCC pVCpu, uint8_t iReg, bool fSp, 
  *
  * @param   pVCpu   The cross context virtual CPU structure of the calling thread.
  * @param   iReg    The register.
- * @param   fSp     Set if register 31 is SP, otherwise it's zero.
  * @param   uValue  The value to store.
+ * @param   fSp     Set if register 31 is SP, otherwise it's zero.
  */
-DECL_FORCE_INLINE(void) iemGRegStoreU32(PVMCPUCC pVCpu, uint8_t iReg, bool fSp, uint32_t uValue) RT_NOEXCEPT
+DECL_FORCE_INLINE(void) iemGRegStoreU32(PVMCPUCC pVCpu, uint8_t iReg, uint32_t uValue, bool fSp = false) RT_NOEXCEPT
 {
     Assert(iReg < 32);
     if (iReg < 31)
@@ -462,10 +491,10 @@ DECL_FORCE_INLINE(void) iemGRegStoreU32(PVMCPUCC pVCpu, uint8_t iReg, bool fSp, 
  *
  * @param   pVCpu   The cross context virtual CPU structure of the calling thread.
  * @param   iReg    The register.
- * @param   fSp     Set if register 31 is SP, otherwise it's zero.
  * @param   uValue  The value to store.
+ * @param   fSp     Set if register 31 is SP, otherwise it's zero.
  */
-DECL_FORCE_INLINE(void) iemGRegStoreU64(PVMCPUCC pVCpu, uint8_t iReg, bool fSp, uint64_t uValue) RT_NOEXCEPT
+DECL_FORCE_INLINE(void) iemGRegStoreU64(PVMCPUCC pVCpu, uint8_t iReg, uint64_t uValue, bool fSp = false) RT_NOEXCEPT
 {
     Assert(iReg < 32);
     if (iReg < 31)
@@ -3206,6 +3235,30 @@ DECLINLINE(uint64_t) iemGetEffActlrMaskEl1(PVMCPU pVCpu, const CPUMFEATURESARMV8
 
 
 /**
+ * Gets the effective CPACRMASK_EL1 value.
+ */
+DECLINLINE(uint64_t) iemGetEffCpacrMaskEl1(PVMCPU pVCpu, const CPUMFEATURESARMV8 * const pGstFeats)
+{
+    /** @todo implement CPACRMASK_EL1 & FEAT_SRMASK */
+    Assert(!pGstFeats->fSrMask);
+    RT_NOREF(pVCpu, pGstFeats);
+    return 0;
+}
+
+
+/**
+ * Gets the effective CPTRMASK_EL2 value.
+ */
+DECLINLINE(uint64_t) iemGetEffCptrMaskEl2(PVMCPU pVCpu, const CPUMFEATURESARMV8 * const pGstFeats)
+{
+    /** @todo implement CPTRMASK_EL2 & FEAT_SRMASK */
+    Assert(!pGstFeats->fSrMask);
+    RT_NOREF(pVCpu, pGstFeats);
+    return 0;
+}
+
+
+/**
  * Gets the effective SCTLRMASK_EL1 value.
  */
 DECLINLINE(uint64_t) iemGetEffSctlrMaskEl1(PVMCPU pVCpu, const CPUMFEATURESARMV8 * const pGstFeats)
@@ -3226,6 +3279,18 @@ DECLINLINE(uint64_t) iemGetEffSctlrMaskEl2(PVMCPU pVCpu, const CPUMFEATURESARMV8
     Assert(!pGstFeats->fSrMask);
     RT_NOREF(pVCpu, pGstFeats);
     return 0;
+}
+
+
+/**
+ * Gets GCSCR_EL1/2/3.EXLOCKEN corresponding to PSTATE.EL.
+ */
+DECLINLINE(bool) iemGetCurrentExlockEn(PVMCPU pVCpu, const CPUMFEATURESARMV8 * const pGstFeats)
+{
+    /** @todo implement FEAT_GCS */
+    Assert(!pGstFeats->fGcs);
+    RT_NOREF(pVCpu, pGstFeats);
+    return false;
 }
 
 /** @} */

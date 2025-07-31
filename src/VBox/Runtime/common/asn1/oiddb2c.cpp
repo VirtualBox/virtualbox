@@ -1,4 +1,4 @@
-/* $Id: oiddb2c.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: oiddb2c.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT - OID text database to C converter.
  *
@@ -236,7 +236,7 @@ static RTEXITCODE addOidToTree(uint32_t const *pauComponents, unsigned cComponen
     if (cchName >= BLDPROG_STRTAB_MAX_STRLEN)
         return warning("%s(%d): OID name is too long (%u)!\n", pszFile, iLineNo, (unsigned)cchName);
     if (cComponents == 0)
-        return warning("%s(%d): 'Description' without valid OID preceeding it!\n", pszFile, iLineNo);
+        return warning("%s(%d): 'Description' without valid OID preceding it!\n", pszFile, iLineNo);
     if (!isNiceAsciiString(pszName))
         return warning("%s(%d): Contains unwanted characters!\n", pszFile, iLineNo);
 

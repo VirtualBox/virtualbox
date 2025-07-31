@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.h 106188 2024-10-01 09:52:02Z dmitrii.grigorev@oracle.com $ */
+/* $Id: DevVGA-SVGA.h 110487 2025-07-30 17:55:38Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device
  */
@@ -35,6 +35,8 @@
 #endif
 
 #define VMSVGA_USE_EMT_HALT_CODE
+
+#define VMSVGA_WITH_PGM_LOCKING
 
 #include <VBox/pci.h>
 #include <VBox/vmm/pdmifs.h>
@@ -617,6 +619,7 @@ void vmsvgaR3Clip3dRect(SVGA3dRect const *pBound, SVGA3dRect RT_UNTRUSTED_GUEST 
  * map the guest pages into the host R3 memory and access them directly.
  */
 
+#ifndef VMSVGA_WITH_PGM_LOCKING
 /* GBO descriptor. */
 typedef struct VMSVGAGBODESCRIPTOR
 {
@@ -624,6 +627,7 @@ typedef struct VMSVGAGBODESCRIPTOR
    uint64_t                 cPages;
 } VMSVGAGBODESCRIPTOR, *PVMSVGAGBODESCRIPTOR;
 typedef VMSVGAGBODESCRIPTOR const *PCVMSVGAGBODESCRIPTOR;
+#endif
 
 /* GBO.
  */
@@ -632,8 +636,17 @@ typedef struct VMSVGAGBO
     uint32_t                fGboFlags;
     uint32_t                cTotalPages;
     uint32_t                cbTotal;
+#ifndef VMSVGA_WITH_PGM_LOCKING
     uint32_t                cDescriptors;
     PVMSVGAGBODESCRIPTOR    paDescriptors;
+#else
+    uint32_t                cSegsUsed;        /**< Number of segments used in VMSVGAGBO::paSegs. */
+    void                   *pvDescriptors;    /**< Pointer to the memory for holding all the parallel arrays. */
+    RTGCPHYS               *paGCPhysPages;    /**< Pointer to the array of guest physical address for the pages. */
+    PPGMPAGEMAPLOCK         paPageLocks;      /**< Pointer to the array of PGM page map locks. */
+    void                  **papvPages;        /**< Pointer to the host adresses of mapped pages. */
+    PRTSGSEG                paSegs;           /**< Pointer to an array of segments. */
+#endif
     void                   *pvHost; /* Pointer to cbTotal bytes on the host if VMSVGAGBO_F_HOST_BACKED is set. */
 } VMSVGAGBO, *PVMSVGAGBO;
 typedef VMSVGAGBO const *PCVMSVGAGBO;
@@ -641,7 +654,14 @@ typedef VMSVGAGBO const *PCVMSVGAGBO;
 #define VMSVGAGBO_F_OBSOLETE_0x1    0x1
 #define VMSVGAGBO_F_HOST_BACKED     0x2
 
-#define VMSVGA_IS_GBO_CREATED(a_Gbo) ((a_Gbo)->paDescriptors != NULL)
+#ifndef VMSVGA_WITH_PGM_LOCKING
+# define VMSVGA_IS_GBO_CREATED(a_Gbo) ((a_Gbo)->paDescriptors != NULL)
+#else
+# define VMSVGA_IS_GBO_CREATED(a_Gbo) ((a_Gbo)->pvDescriptors != NULL)
+int vmsvgaR3GboAllocDescriptors(PVMSVGAGBO pGbo);
+void vmsvgaR3GboFreeDescriptors(PVMSVGAGBO pGbo);
+int vmsvgaR3GboMapPages(PPDMDEVINS pDevIns, PVMSVGAGBO pGbo);
+#endif
 
 int vmsvgaR3OTableReadSurface(PVMSVGAR3STATE pSvgaR3State, uint32_t sid, SVGAOTableSurfaceEntry *pEntrySurface);
 

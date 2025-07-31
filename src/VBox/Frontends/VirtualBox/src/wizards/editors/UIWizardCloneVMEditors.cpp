@@ -1,4 +1,4 @@
-/* $Id: UIWizardCloneVMEditors.cpp 110092 2025-07-02 14:39:25Z sergey.dubov@oracle.com $ */
+/* $Id: UIWizardCloneVMEditors.cpp 110419 2025-07-27 09:13:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIUserNamePasswordEditor class implementation.
  */
@@ -335,7 +335,7 @@ void UICloneVMAdditionalOptionsEditor::prepare()
 void UICloneVMAdditionalOptionsEditor::sltRetranslateUI()
 {
     m_pMACComboBoxLabel->setText(UIWizardCloneVM::tr("MAC Address P&olicy:"));
-    m_pMACComboBox->setToolTip(UIWizardCloneVM::tr("Determines MAC address policy for clonning."));
+    m_pMACComboBox->setToolTip(UIWizardCloneVM::tr("Determines MAC address policy for cloning."));
     for (int i = 0; i < m_pMACComboBox->count(); ++i)
     {
         const MACAddressClonePolicy enmPolicy = m_pMACComboBox->itemData(i).value<MACAddressClonePolicy>();

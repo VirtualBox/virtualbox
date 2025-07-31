@@ -1,4 +1,4 @@
-/* $Id: dxvk_video_decoder.h 110079 2025-07-02 06:39:24Z alexander.eichner@oracle.com $ */
+/* $Id: dxvk_video_decoder.h 110305 2025-07-18 12:42:15Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBoxDxVk - Video decoder.
  */
@@ -156,7 +156,7 @@ namespace dxvk {
    * 
    * Manages a handle of video session object.
    */
-  class DxvkVideoSessionHandle : public DxvkResource {
+  class DxvkVideoSessionHandle : public RcObject {
 
   public:
     DxvkVideoSessionHandle(
@@ -183,7 +183,7 @@ namespace dxvk {
    * 
    * Manages a handle of video session parameters object.
    */
-  class DxvkVideoSessionParametersHandle : public DxvkResource {
+  class DxvkVideoSessionParametersHandle : public RcObject {
 
   public:
     DxvkVideoSessionParametersHandle(
@@ -213,7 +213,7 @@ namespace dxvk {
    * 
    * Manages a buffer for source bitstream for the decoder.
    */
-  class DxvkVideoBitstreamBuffer : public DxvkResource {
+  class DxvkVideoBitstreamBuffer : public RcObject {
 
   public:
     DxvkVideoBitstreamBuffer(
@@ -226,7 +226,7 @@ namespace dxvk {
       VkDeviceSize size);
 
     VkBuffer buffer() const {
-      return m_buffer.buffer;
+      return m_buffer;
     }
 
     void* mapPtr(VkDeviceSize offset) const  {
@@ -241,7 +241,9 @@ namespace dxvk {
 
     Rc<DxvkDevice>              m_device;
     DxvkMemoryAllocator&        m_memAlloc;
-    DxvkBufferHandle            m_buffer;
+
+    VkBuffer                    m_buffer = VK_NULL_HANDLE;
+    Rc<DxvkResourceAllocation>  m_allocation;
 
     /* Shortcuts. */
     uint8_t*                    m_mapPtr = nullptr;
@@ -302,7 +304,7 @@ namespace dxvk {
 
     /* Vulkan video decoding objects. */
     Rc<DxvkVideoSessionHandle>          m_videoSession;
-    std::vector<DxvkMemory>             m_videoSessionMemory;
+    std::vector< Rc<DxvkResourceAllocation> > m_videoSessionMemory;
     Rc<DxvkVideoSessionParametersHandle> m_videoSessionParameters;
 
     /* Whether Vulkan video decoder requires an initial reset. */

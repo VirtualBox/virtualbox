@@ -1,4 +1,4 @@
-/* $Id: IEMAllOpcodeFetch-armv8.cpp 109899 2025-06-18 20:56:31Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMAllOpcodeFetch-armv8.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager - Opcode Fetching, ARMv8.
  */
@@ -72,7 +72,7 @@
  * @tparam  a_fTlbLoad          Set if this a TLB load that and should just set
  *                              pbInstrBuf, cbInstrBuf and friends before
  *                              returning zero.
- * @tparam  a_cbPrevInstrHalf   Number of instruction bytes preceeding the
+ * @tparam  a_cbPrevInstrHalf   Number of instruction bytes preceding the
  *                              fetch.  This is non-zero when fetching the 2nd
  *                              16-bit word in a 32-bit T32 instruction.
  *                              Otherwise it will always be zero.

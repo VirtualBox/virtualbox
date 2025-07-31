@@ -3,9 +3,9 @@
 <topic xml:lang="en-us" id="ct_settings-network">
   <title>Network Settings</title>
   <body>
-    <p>The <b outputclass="bold">Network</b> section in a virtual machine's <b outputclass="bold">Settings</b> window enables you to configure how <ph conkeyref="vbox-conkeyref-phrases/product-name"/> presents virtual network cards to your VM, and how they operate. </p>
-    <p>When you first create a virtual machine, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> by default enables one virtual network card and selects the Network Address Translation (NAT) mode for it. This way the guest can connect to the outside world using the host's networking and the outside world can connect to services on the guest which you choose to make visible outside of the virtual machine. </p>
+    <p>The <b outputclass="bold">Network</b> section in a virtual machine's <b outputclass="bold">Settings</b> window enables you to configure how <ph conkeyref="vbox-conkeyref-phrases/product-name"/> presents virtual network cards to your VM, and how they operate.</p>
+    <p>When you first create a virtual machine, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> by default enables one virtual network card and selects the Network Address Translation (NAT) mode for it. This way the guest can connect to the outside world using the host's networking and the outside world can connect to services on the guest which you choose to make visible outside of the virtual machine.</p>
     <p>This default setup is good for the majority of <ph conkeyref="vbox-conkeyref-phrases/product-name"/> users. However, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> is extremely flexible in how it can virtualize networking. It supports many virtual network cards per virtual machine. The first four virtual network cards can be configured in detail in <ph conkeyref="vbox-conkeyref-phrases/vbox-mgr"/>. Additional network cards can be configured using the <userinput>VBoxManage</userinput> command. </p>
-    <p>Many networking options are available. See <xref href="networkingdetails.dita#networkingdetails"/> for more information. </p>
+    <p>Many networking options are available. See <xref href="networkingdetails.dita#networkingdetails"/> for more information.</p>
   </body>
 </topic>

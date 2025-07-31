@@ -1,4 +1,4 @@
-/* $Id: IEMAllN8veEmit-x86.h 107239 2024-11-30 00:55:28Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMAllN8veEmit-x86.h 110154 2025-07-08 14:57:17Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Native Recompiler, x86 Target - Code Emitters.
  */
@@ -833,7 +833,7 @@ iemNativeEmitEFlagsForArithmetic(PIEMRECOMPILERSTATE pReNative, uint32_t off, ui
         uint8_t const         idxTmpReg2 = cOpBits >= 32 ? UINT8_MAX : iemNativeRegAllocTmp(pReNative, &off);
         PIEMNATIVEINSTR const pCodeBuf   = iemNativeInstrBufEnsure(pReNative, off, 20);
 
-        /* Invert CF (stored inved on ARM) and load the flags into the temporary register. */
+        /* Invert CF (stored inverted on ARM) and load the flags into the temporary register. */
         if (fInvertCarry)
             pCodeBuf[off++] = ARMV8_A64_INSTR_CFINV;
         pCodeBuf[off++] = Armv8A64MkInstrMrs(idxTmpReg, ARMV8_AARCH64_SYSREG_NZCV); /* Bits: 31=N; 30=Z; 29=C; 28=V; */

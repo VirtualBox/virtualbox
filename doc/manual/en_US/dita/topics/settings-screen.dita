@@ -6,21 +6,21 @@
   <body>
     <ul>
       <li>
-        <p><b outputclass="bold">Video Memory:</b> Sets the size of the memory provided by the virtual graphics card available to the guest, in megabytes. As with the main memory, the specified amount will be allocated from the host's resident memory. Based on the amount of video memory, higher resolutions and color depths may be available.</p>
+        <p><b outputclass="bold">Video Memory</b>: Sets the size of the memory provided by the virtual graphics card available to the guest, in megabytes. As with the main memory, the specified amount will be allocated from the host's resident memory. Based on the amount of video memory, higher resolutions and color depths may be available.</p>
         <p><ph conkeyref="vbox-conkeyref-phrases/vbox-mgr"/> will show a warning if the amount of video memory is too small to be able to switch the VM into full screen mode. The minimum value depends on the number of virtual monitors, the screen resolution and the color depth of the host display as well as on the use of <i>3D acceleration</i>. A rough estimate is (<i>color depth</i> / 8) x <i>vertical pixels</i> x <i>horizontal pixels</i> x <i>number of screens</i> = <i>number of bytes</i>. Extra memory may be required if display acceleration is used.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Monitor Count:</b> With this setting, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> can provide more than one virtual monitor to a virtual machine. If a guest OS supports multiple attached monitors, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> can pretend that multiple virtual monitors are present. Up to eight such virtual monitors are supported.</p>
+        <p><b outputclass="bold">Number of Virtual Monitors</b>: With this setting, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> can provide more than one virtual monitor to a virtual machine. If a guest OS supports multiple attached monitors, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> can pretend that multiple virtual monitors are present. Up to eight such virtual monitors are supported.</p>
         <p>The output of the multiple monitors are displayed on the host in multiple VM windows which are running side by side. However, in full screen and seamless mode, they use the available physical monitors attached to the host. As a result, for full screen and seamless modes to work with multiple monitors, you will need at least as many physical monitors as you have virtual monitors configured, or <ph conkeyref="vbox-conkeyref-phrases/product-name"/> will report an error.</p>
         <p>You can configure the relationship between guest and host monitors using the <b outputclass="bold">View</b> menu by pressing Host key + Home when you are in full screen or seamless mode.</p>
         <p>See also <xref href="known-issues.dita"/>.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Scale Factor:</b> Enables scaling of the display size. For multiple monitor displays, you can set the scale factor for individual monitors, or globally for all of the monitors. Use the slider to select a scaling factor up to 200%.</p>
+        <p><b outputclass="bold">Scale Factor</b>: Enables scaling of the display size. For multiple monitor displays, you can set the scale factor for individual monitors, or globally for all of the monitors. Use the slider to select a scaling factor up to 200%.</p>
         <p>You can set a default scale factor for all VMs. Use the <b outputclass="bold">Display</b> tab in the Preferences window.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Graphics Controller:</b> Specifies the graphics adapter type used by the guest VM. Note that you must install the Guest Additions on the guest VM to specify the VBoxSVGA or VMSVGA graphics controller. The following options are available:</p>
+        <p><b outputclass="bold">Graphics Controller</b>: Specifies the graphics adapter type used by the guest VM. Note that you must install the Guest Additions on the guest VM to specify the VBoxSVGA or VMSVGA graphics controller. The following options are available:</p>
         <ul>
           <li>
             <p><b outputclass="bold">VBoxSVGA:</b> The default
@@ -42,7 +42,7 @@
         </ul>
       </li>
       <li>
-        <p><b outputclass="bold">Enable 3D Acceleration:</b> If a virtual machine has Guest Additions installed, you can enable accelerated 3D graphics on the VM. With 3D acceleration enabled, the VM also uses video decoding acceleration if the host also supports video decoding acceleration. See <xref href="guestadd-video.dita"/>.</p>
+        <p><b outputclass="bold">3D Acceleration</b>: If a virtual machine has Guest Additions installed, you can enable accelerated 3D graphics on the VM. With 3D acceleration enabled, the VM also uses video decoding acceleration if the host also supports video decoding acceleration. See <xref href="guestadd-video.dita"/>.</p>
       </li>
     </ul>
   </body>

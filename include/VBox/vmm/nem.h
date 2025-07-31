@@ -147,7 +147,7 @@ VMMR3_INT_DECL(int)  NEMR3NotifyPhysRomRegisterEarly(PVM pVM, RTGCPHYS GCPhys, R
 /**
  * Called after the ROM range has been fully completed.
  *
- * This will be preceeded by a NEMR3NotifyPhysRomRegisterEarly() call as well a
+ * This will be preceded by a NEMR3NotifyPhysRomRegisterEarly() call as well a
  * number of NEMHCNotifyPhysPageProtChanged calls.
  *
  * @returns VBox status code

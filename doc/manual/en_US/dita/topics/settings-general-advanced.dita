@@ -1,44 +1,25 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
 <topic xml:lang="en-us" id="settings-general-advanced">
-  <title>Advanced Tab</title>
+  <title>Features Tab</title>
   
   <body>
-    <p>The following settings are available in the <b outputclass="bold">Advanced</b> tab: </p>
+    <p>The following settings are available in the <uicontrol>Features</uicontrol> tab:</p>
     <ul>
       <li>
-        <p><b outputclass="bold">Snapshot Folder:</b> By
-            default, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> saves snapshot data together with
-            your other <ph conkeyref="vbox-conkeyref-phrases/product-name"/> configuration data. See
-            <xref href="vboxconfigdata.dita">Where <ph conkeyref="vbox-conkeyref-phrases/product-name"/> Stores its Files</xref>. With this setting, you
-            can specify any other folder for each VM.
-          </p>
+        <p><uicontrol>Snapshot Folder</uicontrol>: By default, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> saves snapshot data together with your other <ph conkeyref="vbox-conkeyref-phrases/product-name"/> configuration data. See <xref href="vboxconfigdata.dita">Where <ph conkeyref="vbox-conkeyref-phrases/product-name"/> Stores its Files</xref>. With this setting, you can specify any other folder for each VM.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Shared Clipboard:</b> You can
-            select here whether the clipboard of the guest OS should be
-            shared with that of your host. If you select
-            <b outputclass="bold">Bidirectional</b>, then
-            <ph conkeyref="vbox-conkeyref-phrases/product-name"/> will always make sure that both clipboards
-            contain the same data. If you select
-            <b outputclass="bold">Host to Guest</b> or
-            <b outputclass="bold">Guest to Host</b>, then
-            <ph conkeyref="vbox-conkeyref-phrases/product-name"/> will only ever copy clipboard data in one
-            direction.
-          </p>
+        <p><b outputclass="bold">Shared Clipboard</b>: You can select here whether the clipboard of the guest OS should be shared with that of your host. If you select <b outputclass="bold">Bidirectional</b>, then <ph conkeyref="vbox-conkeyref-phrases/product-name"/> will always make sure that both clipboards contain the same data. If you select <b outputclass="bold">Host to Guest</b> or <b outputclass="bold">Guest to Host</b>, then <ph conkeyref="vbox-conkeyref-phrases/product-name"/> will only ever copy clipboard data in one direction.</p>
         <p>Clipboard sharing requires the <ph conkeyref="vbox-conkeyref-phrases/product-name"/>
           <xref href="guestadditions.dita#guestadditions"/>.</p>
-        <p>For security reasons, the shared clipboard is disabled by default. This setting can be changed at any time
-          using the <b outputclass="bold">Shared Clipboard</b> menu item in the <b outputclass="bold">Devices</b> menu
-          of the virtual machine. </p>
+        <p>For security reasons, the shared clipboard is disabled by default. This setting can be changed at any time using the <b outputclass="bold">Shared Clipboard</b> menu item in the <b outputclass="bold">Devices</b> menu of the virtual machine.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Drag and Drop:</b> You can select multiple drag and drop modes for a VM to enable or restrict access in either direction.</p>
+        <p><b outputclass="bold">Drag and Drop</b>: You can select multiple drag and drop modes for a VM to enable or restrict access in either direction.</p>
         <p>For drag and drop to work, the Guest Additions need to be installed on the guest.</p>
         <note>
-          <p>Drag and drop is disabled by default. This setting can be changed at any time using the <b
-              outputclass="bold">Drag and Drop</b> menu item in the <b outputclass="bold">Devices</b> menu of the
-            virtual machine. </p>
+          <p>Drag and drop is disabled by default. This setting can be changed at any time using the <b outputclass="bold">Drag and Drop</b> menu item in the <b outputclass="bold">Devices</b> menu of the virtual machine.</p>
           <p>See <xref href="guestadd-dnd.dita#guestadd-dnd"/>. </p>
         </note>
       </li>

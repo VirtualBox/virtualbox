@@ -1,4 +1,4 @@
-/* $Id: DevOHCI.cpp 106281 2024-10-10 09:16:39Z knut.osmundsen@oracle.com $ */
+/* $Id: DevOHCI.cpp 110179 2025-07-09 18:25:13Z michal.necasek@oracle.com $ */
 /** @file
  * DevOHCI - Open Host Controller Interface for USB.
  */
@@ -4314,7 +4314,14 @@ static void ohciR3CancelOrphanedURBs(PPDMDEVINS pDevIns, POHCI pThis, POHCICC pT
 
     /* In-flight URBs still marked as inactive are not used anymore and need
      * to be canceled.
+     * On most hosts we only have the option to abort endpoint/pipe, and can't cancel
+     * a single URB. So we first collect information about which endpoints need to be
+     * aborted and then abort every such endpoint only once.
+     * The endpoint information for each device/address is packed into a 32-bit integer.
      */
+    uint32_t    uDevEps[256] = { 0 };
+    AssertCompile(sizeof(pUrb->DstAddress) == 1);
+
     for (i = 0, cLeft = pThisCC->cInFlight; cLeft && i < RT_ELEMENTS(pThisCC->aInFlight); i++)
     {
         if (pThisCC->aInFlight[i].pUrb)
@@ -4324,10 +4331,33 @@ static void ohciR3CancelOrphanedURBs(PPDMDEVINS pDevIns, POHCI pThis, POHCICC pT
             if (   pThisCC->aInFlight[i].fInactive
                 && pUrb->enmState == VUSBURBSTATE_IN_FLIGHT
                 && pUrb->enmType != VUSBXFERTYPE_CTRL)
-                pThisCC->RootHub.pIRhConn->pfnCancelUrbsEp(pThisCC->RootHub.pIRhConn, pUrb);
+            {
+                if (pUrb->enmDir == VUSBDIRECTION_OUT || pUrb->enmDir == VUSBDIRECTION_IN)
+                    uDevEps[pUrb->DstAddress] |= (pUrb->enmDir == VUSBDIRECTION_OUT ? 1 : 2) << (pUrb->EndPt * 2);
+            }
         }
     }
     Assert(cLeft == 0);
+
+    ohciR3Unlock(pThisCC);
+    for (unsigned uAddr = 0; uAddr < 256; ++uAddr)
+    {
+        if (uDevEps[uAddr])
+        {
+            for (unsigned uEp = 0; uEp < 16; ++uEp)
+            {
+                unsigned uDirs = (uDevEps[uAddr] >> (uEp * 2)) & 3;
+                if (uDirs)
+                {
+                    if (uDirs & 1)
+                        pThisCC->RootHub.pIRhConn->pfnAbortEpByAddr(pThisCC->RootHub.pIRhConn, uAddr, uEp, VUSBDIRECTION_OUT);
+                    if (uDirs & 2)
+                        pThisCC->RootHub.pIRhConn->pfnAbortEpByAddr(pThisCC->RootHub.pIRhConn, uAddr, uEp, VUSBDIRECTION_IN);
+                }
+            }
+        }
+    }
+    ohciR3Lock(pThisCC);
 }
 
 

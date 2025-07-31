@@ -3195,11 +3195,10 @@ namespace dxvk {
      || dxvkDevice->queues().videoDecode.queueHandle == VK_NULL_HANDLE)
       return;
 
-<<<<<<< .working
     /* Filter out profiles that do not work well. */
     std::vector<VkVideoCodecOperationFlagBitsKHR> disabledCodecs;
 
-    if (dxvkDevice->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA, 0, 0)) {
+    if (dxvkDevice->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA, Version(), Version())) {
       /* H265: decoded picture consists of multiple small tiles with garbled content. */
       disabledCodecs.push_back(VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR);
 

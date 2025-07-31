@@ -250,7 +250,7 @@
  * reported formats are no longer avaible (logout, shutdown, whatever).
  *
  * There was a period during 6.1 development where it would take three
- * parameters, a 64-bit context ID preceeded the formats and a 32-bit MBZ flags
+ * parameters, a 64-bit context ID preceded the formats and a 32-bit MBZ flags
  * parameter was appended.  This is still accepted, though deprecated.
  *
  * @returns May return informational statuses indicating partial success, just

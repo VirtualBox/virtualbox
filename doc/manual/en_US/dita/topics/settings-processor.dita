@@ -4,55 +4,25 @@
   <title>Processor Tab</title>
   
   <body>
-    <p>On the <b outputclass="bold">Processor</b> tab, you can configure settings for the CPU used by the virtual
-      machine. </p>
+    <p>On the <b outputclass="bold">Processor</b> tab, you can configure settings for the CPU used by the virtual machine.</p>
     <ul>
       <li>
-        <p><b outputclass="bold">Processor(s):</b> Sets the
-            number of virtual CPU cores the guest OSes can see.
-            <ph conkeyref="vbox-conkeyref-phrases/product-name"/> supports symmetrical multiprocessing (SMP)
-            and can present up to 32 virtual CPU cores to each virtual
-            machine.
-          </p>
-        <p>
-            You should not configure virtual machines to use more CPU
-            cores than are available physically. This includes real
-            cores, with no hyperthreads.
-          </p>
+        <p><b outputclass="bold">Number of CPUs</b>: Sets the number of virtual CPU cores the guest OSes can see. <ph conkeyref="vbox-conkeyref-phrases/product-name"/> supports symmetrical multiprocessing (SMP) and can present up to 32 virtual CPU cores to each virtual machine.</p>
+        <p>You should not configure virtual machines to use more CPU cores than are available physically. This includes real cores, with no hyperthreads.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Execution Cap:</b> Configures
-            the CPU execution cap. This limits the amount of time a host
-            CPU spends to emulate a virtual CPU. The default setting is
-            100%, meaning that there is no limitation. A setting of 50%
-            implies a single virtual CPU can use up to 50% of a single
-            host CPU. Note that limiting the execution time of the
-            virtual CPUs may cause guest timing problems.
-          </p>
-        <p>
-            A warning is displayed at the bottom of the Processor tab if
-            an Execution Cap setting is made that may affect system
-            performance.
-          </p>
+        <p><b outputclass="bold">Processing Cap</b>: Configures the CPU processing cap. This limits the amount of time a host CPU spends to emulate a virtual CPU. The default setting is 100%, meaning that there is no limitation. A setting of 50% implies a single virtual CPU can use up to 50% of a single host CPU. Note that limiting the execution time of the virtual CPUs may cause guest timing problems.</p>
+        <p>A warning is displayed at the bottom of the Processor tab if a Processing Cap setting is made that may affect system performance.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Enable PAE/NX (Can't be changed on VMs with an Arm architecture):</b> Determines whether the PAE and NX capabilities of the host CPU will be exposed to the virtual machine. </p>
-        <p>
-            PAE stands for Physical Address Extension. Normally, if
-            enabled and supported by the OS, then even a 32-bit x86 CPU
-            can access more than 4 GB of RAM. This is made possible by
-            adding another 4 bits to memory addresses, so that with 36
-            bits, up to 64 GB can be addressed. Some OSes, such as
-            Ubuntu Server, require PAE support from the CPU and cannot
-            be run in a virtual machine without it.
-          </p>
+        <p><b outputclass="bold">PAE/NX</b>: Determines whether the PAE (Physical Address Extension) and NX capabilities of the host CPU will be exposed to the virtual machine. Can't be changed on VMs with an Arm architecture.</p>
+        <p>Normally, if enabled and supported by the OS, then even a 32-bit x86 CPU can access more than 4 GB of RAM. This is made possible by adding another 4 bits to memory addresses, so that with 36 bits, up to 64 GB can be addressed. Some OSs, such as Ubuntu Server, require PAE support from the CPU and cannot be run in a virtual machine without it.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Enable Nested VT-x/AMD-V (Can't be changed on VMs with an Arm architecture)</b>: Enables nested virtualization, with passthrough of hardware virtualization functions to the guest VM. </p>
+        <p><b outputclass="bold">Nested VT-x/AMD-V</b>: Enables nested virtualization, with passthrough of hardware virtualization functions to the guest VM. Can't be changed on VMs with an Arm architecture.</p>
       </li>
     </ul>
-    <p>With virtual machines running modern server OSes, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> also
-      supports CPU hot-plugging. For details, see <xref href="cpuhotplug.dita">CPU Hot-Plugging</xref>. </p>
+    <p>With virtual machines running modern server OSs, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> also supports CPU hot-plugging. For details, see <xref href="cpuhotplug.dita">CPU Hot-Plugging</xref>.</p>
   </body>
   
 </topic>

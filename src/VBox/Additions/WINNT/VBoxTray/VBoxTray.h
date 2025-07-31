@@ -1,4 +1,4 @@
-/* $Id: VBoxTray.h 106468 2024-10-18 07:03:23Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxTray.h 110349 2025-07-22 15:06:53Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxTray - Guest Additions Tray, Internal Header.
  */

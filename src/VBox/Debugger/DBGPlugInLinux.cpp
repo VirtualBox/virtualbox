@@ -1,4 +1,4 @@
-/* $Id: DBGPlugInLinux.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: DBGPlugInLinux.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * DBGPlugInLinux - Debugger and Guest OS Digger Plugin For Linux.
  */
@@ -1487,10 +1487,10 @@ static int dbgDiggerLinuxFindStartOfNamesAndSymbolCount(PUVM pUVM, PCVMMR3VTABLE
          *
          *     The kallsyms_addresses are mostly sorted (except for the start where the
          *     absolute symbols are), so we'll spot a bunch of kernel addresses
-         *     immediately preceeding the kallsyms_num_syms field.
+         *     immediately preceding the kallsyms_num_syms field.
          *
          *     Lazy bird: If kallsyms_num_syms is on a buffer boundrary, we skip
-         *                the check for kernel addresses preceeding it.
+         *                the check for kernel addresses preceding it.
          *
          * For relative offsets most of the assumptions from above are true too
          * except that we have to distinguish between the relative base address and the offsets.
@@ -1682,7 +1682,7 @@ static int dbgDiggerLinuxFindEndOfNamesAndMore(PUVM pUVM, PCVMMR3VTABLE pVMM, PD
 
         /*
          * The kallsyms_names table is followed by kallsyms_markers we assume,
-         * using sizeof(unsigned long) alignment like the preceeding symbols.
+         * using sizeof(unsigned long) alignment like the preceding symbols.
          *
          * The kallsyms_markers table has entried sizeof(unsigned long) and
          * contains offsets into kallsyms_names.  The kallsyms_markers used to

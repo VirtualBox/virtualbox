@@ -1,4 +1,4 @@
-/* $Id: VBoxTrayInternal.h 106412 2024-10-17 07:44:43Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxTrayInternal.h 110349 2025-07-22 15:06:53Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxSeamless - Display notifications
  */

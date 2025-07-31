@@ -1,4 +1,4 @@
-/* $Id: NEMInternal.h 110060 2025-07-01 09:52:27Z alexander.eichner@oracle.com $ */
+/* $Id: NEMInternal.h 110394 2025-07-23 18:42:15Z klaus.espenlaub@oracle.com $ */
 /** @file
  * NEM - Internal header file.
  */
@@ -40,7 +40,7 @@
 #ifdef RT_OS_WINDOWS
 # include <iprt/nt/hyperv.h>
 # include <iprt/critsect.h>
-#elif defined(RT_OS_DARWIN)
+#elif defined(RT_OS_DARWIN) && defined(VBOX_WITH_NATIVE_NEM)
 # ifdef VBOX_VMM_TARGET_ARMV8
 #  include <Hypervisor/Hypervisor.h>
 # else
@@ -110,7 +110,7 @@ typedef struct NEMWINIOCTL
 #endif /* RT_OS_WINDOWS */
 
 
-#ifdef RT_OS_DARWIN
+#if defined(RT_OS_DARWIN) && defined(VBOX_WITH_NATIVE_NEM)
 # ifndef VBOX_VMM_TARGET_ARMV8
 /** vCPU ID declaration to avoid dragging in HV headers here. */
 typedef unsigned hv_vcpuid_t;
@@ -335,7 +335,7 @@ typedef struct NEM
     uint32_t                    cWatchpoints;
 # endif
 
-#elif defined(RT_OS_DARWIN)
+#elif defined(RT_OS_DARWIN) && defined(VBOX_WITH_NATIVE_NEM)
     /** Set if we've created the EMTs. */
     bool                        fCreatedEmts : 1;
     /** Set if hv_vm_create() was called successfully. */
@@ -399,7 +399,7 @@ typedef struct NEM
     STAMCOUNTER                 StatUnmapPage;
     STAMCOUNTER                 StatMapPageFailed;
     STAMCOUNTER                 StatUnmapPageFailed;
-#endif /* RT_OS_DARWIN */
+#endif /* RT_OS_DARWIN && VBOX_WITH_NATIVE_NEM */
 } NEM;
 /** Pointer to NEM VM instance data. */
 typedef NEM *PNEM;
@@ -577,7 +577,7 @@ typedef struct NEMCPU
     STAMCOUNTER                 StatQueryCpuTick;
     /** @} */
 
-#elif defined(RT_OS_DARWIN)
+#elif defined(RT_OS_DARWIN) && defined(VBOX_WITH_NATIVE_NEM)
 # ifdef VBOX_VMM_TARGET_ARMV8
     /** The vCPU handle associated with the EMT executing this vCPU. */
     hv_vcpu_t                   hVCpu;
@@ -681,7 +681,7 @@ typedef struct NEMCPU
     /** @} */
 
     /** @} */
-#endif /* RT_OS_DARWIN */
+#endif /* RT_OS_DARWIN && VBOX_WITH_NATIVE_NEM */
 } NEMCPU;
 /** Pointer to NEM VMCPU instance data. */
 typedef NEMCPU *PNEMCPU;

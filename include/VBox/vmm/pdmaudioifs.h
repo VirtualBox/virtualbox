@@ -435,7 +435,7 @@ typedef PDMAUDIOBACKENDCFG *PPDMAUDIOBACKENDCFG;
 /** PDMIHOSTAUDIO::pfnStreamConfigHint should preferably be called on a
  *  worker thread rather than EMT as it may take a good while. */
 #define PDMAUDIOBACKEND_F_ASYNC_HINT            RT_BIT_32(0)
-/** PDMIHOSTAUDIO::pfnStreamDestroy and any preceeding
+/** PDMIHOSTAUDIO::pfnStreamDestroy and any preceding
  *  PDMIHOSTAUDIO::pfnStreamControl/DISABLE should be preferably be called on a
  *  worker thread rather than EMT as it may take a good while. */
 #define PDMAUDIOBACKEND_F_ASYNC_STREAM_DESTROY  RT_BIT_32(1)

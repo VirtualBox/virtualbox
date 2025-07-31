@@ -1,4 +1,4 @@
-/* $Id: NATNetworkImpl.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: NATNetworkImpl.h 110268 2025-07-16 17:45:40Z jack.doherty@oracle.com $ */
 /** @file
  * INATNetwork implementation header, lives in VBoxSVC.
  */
@@ -107,6 +107,14 @@ private:
     HRESULT getLoopbackIp6(LONG *aLoopbackIp6);
     HRESULT setLoopbackIp6(LONG aLoopbackIp6);
     HRESULT getPortForwardRules6(std::vector<com::Utf8Str> &aPortForwardRules6);
+    HRESULT setLocalhostReachable(BOOL fLocalhostReachable);
+    HRESULT getLocalhostReachable(BOOL *pfLocalhostReachable);
+    HRESULT setForwardBroadcast(BOOL fForwardBroadcast);
+    HRESULT getForwardBroadcast(BOOL *pfForwardBroadcast);
+    HRESULT setNatMTU(ULONG uMTU);
+    HRESULT getNatMTU(ULONG *puMTU);
+    HRESULT setNatMRU(ULONG uMRU);
+    HRESULT getNatMRU(ULONG *puMRU);
 
     // wrapped INATNetwork methods
     HRESULT addLocalMapping(const com::Utf8Str &aHostid,

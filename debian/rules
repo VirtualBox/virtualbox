@@ -1,5 +1,5 @@
 #!/usr/bin/make -f
-# $Id: rules 107426 2024-12-18 21:23:24Z klaus.espenlaub@oracle.com $
+# $Id: rules 110417 2025-07-25 17:52:57Z klaus.espenlaub@oracle.com $
 ## @file
 # VirtualBox rules.
 #
@@ -256,17 +256,13 @@ binary: build $(if $(NOMODS),,$(bldbase)/modules-stamp)
 	fi
 	$(if $(NOMODS),,for d in $(moddir)/*; do \
 	    if [ -f $$d/vboxdrv.ko -a -f $$d/vboxnetflt.ko -a -f $$d/vboxnetadp.ko ]; then \
-	        install -D -g 0 -o 0 -m 0644 \
-		    $$d/vboxdrv.ko $(prefix)/lib/modules/$$(basename $$d)/misc/vboxdrv.ko; \
-	        install -D -g 0 -o 0 -m 0644 \
-		    $$d/vboxnetflt.ko $(prefix)/lib/modules/$$(basename $$d)/misc/vboxnetflt.ko; \
-	        install -D -g 0 -o 0 -m 0644 \
-		    $$d/vboxnetadp.ko $(prefix)/lib/modules/$$(basename $$d)/misc/vboxnetadp.ko; \
+	        install -D -g 0 -o 0 -m 0644 $$d/vboxdrv.ko $(prefix)/lib/modules/$$(basename $$d)/misc/vboxdrv.ko; \
+	        install -D -g 0 -o 0 -m 0644 $$d/vboxnetflt.ko $(prefix)/lib/modules/$$(basename $$d)/misc/vboxnetflt.ko; \
+	        install -D -g 0 -o 0 -m 0644 $$d/vboxnetadp.ko $(prefix)/lib/modules/$$(basename $$d)/misc/vboxnetadp.ko; \
 	        if [ -f $$d/vboxpci.ko ]; then \
-	            install -D -g 0 -o 0 -m 0644 \
-		        $$d/vboxpci.ko $(prefix)/lib/modules/$$(basename $$d)/misc/vboxpci.ko; \
-	        fi \
-	    fi \
+	            install -D -g 0 -o 0 -m 0644 $$d/vboxpci.ko $(prefix)/lib/modules/$$(basename $$d)/misc/vboxpci.ko; \
+	        fi; \
+	    fi; \
 	    done)
 	dh_installdocs $(addprefix $(archdir)/,UserManual*.pdf UserManual*.qch UserManual*.qhc LICENSE)
 	# Remove User Manual duplicated files, only keep them under location which was used by dh_installdocs.
@@ -277,11 +273,12 @@ binary: build $(if $(NOMODS),,$(bldbase)/modules-stamp)
 	    $(vboxroot)/tools/linux.$(chrarch)/bin/chrpath \
 	        --keepgoing --replace /usr/lib/$(package) \
 	        $(prefix)/usr/lib/$(package)/*.so.6 \
-	        $(prefix)/usr/lib/$(package)/plugins/platforms/*.so; \
-	        $(prefix)/usr/lib/$(package)/plugins/platformthemes/*.so; \
-	        $(prefix)/usr/lib/$(package)/plugins/sqldrivers/*.so; \
-	        $(prefix)/usr/lib/$(package)/plugins/styles/*.so; \
-	        $(prefix)/usr/lib/$(package)/plugins/wayland-shell-integration/*.so; \
+	        $(prefix)/usr/lib/$(package)/plugins/platforms/*.so \
+	        $(prefix)/usr/lib/$(package)/plugins/platformthemes/*.so \
+	        $(prefix)/usr/lib/$(package)/plugins/sqldrivers/*.so \
+	        $(prefix)/usr/lib/$(package)/plugins/styles/*.so \
+	        $(prefix)/usr/lib/$(package)/plugins/wayland-shell-integration/*.so \
+	        $(prefix)/usr/lib/$(package)/plugins/wayland-decoration-client/*.so; \
 	    echo "[Paths]" > $(prefix)/usr/lib/$(package)/qt.conf; \
 	    echo "Plugins = /usr/lib/$(package)/plugins" >> $(prefix)/usr/lib/$(package)/qt.conf; \
 	fi
@@ -290,6 +287,9 @@ binary: build $(if $(NOMODS),,$(bldbase)/modules-stamp)
 	    $(PYTHON) ./vboxapisetup.py install --root $(prefix)
 	rm -rf $(prefix)/usr/lib/$(package)/sdk/installer
 	ln -s ../VBoxVMM.so $(prefix)/usr/lib/$(package)/components/VBoxVMM.so
+	if [ -f $(prefix)/usr/lib/$(package)/VBoxVMMArm.so ]; then \
+	    ln -s ../VBoxVMMArm.so $(prefix)/usr/lib/$(package)/components/VBoxVMMArm.so; \
+	fi
 	rmdir $(prefix)/opt
 	dh_link \
 	    $(if $(NOQT),,usr/bin/VBox          usr/bin/VirtualBox) \

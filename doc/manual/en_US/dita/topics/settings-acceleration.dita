@@ -7,15 +7,14 @@
     <p>On this tab, you can configure <ph conkeyref="vbox-conkeyref-phrases/product-name"/> to use hardware virtualization extensions that your host CPU supports.</p>
     <ul>
       <li>
-        <p><b outputclass="bold">Paravirtualization Interface:</b>
-          <ph conkeyref="vbox-conkeyref-phrases/product-name"/> provides paravirtualization interfaces to improve time-keeping accuracy and performance of guest OSs. The options available are documented under the <codeph>--paravirt-provider</codeph> option in <xref href="vboxmanage.dita"/>
+        <p><b outputclass="bold">Paravirtualization Interface</b>: <ph conkeyref="vbox-conkeyref-phrases/product-name"/> provides paravirtualization interfaces to improve time-keeping accuracy and performance of guest OSs. The options available are documented under the <codeph>--paravirt-provider</codeph> option in <xref href="vboxmanage.dita"/>
           <cmdname>modifyvm</cmdname>. For further details on the paravirtualization providers, see <xref href="gimproviders.dita">Paravirtualization Providers</xref>.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Hardware Virtualization:</b></p>
+        <p><b outputclass="bold">Hardware Virtualization</b>:</p>
         <ul>
           <li>
-            <p><b outputclass="bold">Enable Nested Paging:</b> If the host CPU supports the nested paging (AMD-V) or EPT (Intel VT-x) features, then you can expect a significant performance increase by enabling nested paging in addition to hardware virtualization. For technical details, see <xref href="nestedpaging.dita">Nested Paging and VPIDs</xref>. For Intel EPT security recommendations, see <xref href="sec-rec-cve-2018-3646.dita">CVE-2018-3646</xref>.</p>
+            <p><b outputclass="bold">Nested Paging</b>: If the host CPU supports the nested paging (AMD-V) or EPT (Intel VT-x) features, then you can expect a significant performance increase by enabling nested paging in addition to hardware virtualization. For technical details, see <xref href="nestedpaging.dita">Nested Paging and VPIDs</xref>. For Intel EPT security recommendations, see <xref href="sec-rec-cve-2018-3646.dita">CVE-2018-3646</xref>.</p>
           </li>
         </ul>
       </li>

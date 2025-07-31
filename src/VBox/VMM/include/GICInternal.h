@@ -1,4 +1,4 @@
-/* $Id: GICInternal.h 110057 2025-07-01 06:36:50Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: GICInternal.h 110423 2025-07-28 07:16:43Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * GIC - Generic Interrupt Controller Architecture (GIC).
  */
@@ -61,7 +61,6 @@ extern const PDMGICBACKEND g_GicKvmBackend;
 
 #define VMCPU_TO_GICCPU(a_pVCpu)            (&(a_pVCpu)->gic.s)
 #define VM_TO_GIC(a_pVM)                    (&(a_pVM)->gic.s)
-#define VM_TO_GICDEV(a_pVM)                 CTX_SUFF(VM_TO_GIC(a_pVM)->pGicDev)
 #define GICDEV_TO_GITSDEV(a_GicDev)         (&(a_GicDev)->Gits)
 #ifdef IN_RING3
 # define VMCPU_TO_DEVINS(a_pVCpu)           ((a_pVCpu)->pVMR3->gic.s.pDevInsR3)
@@ -143,6 +142,18 @@ extern const PDMGICBACKEND g_GicKvmBackend;
         (a_uReg) = ((a_uReg) & ~(a_fRwMask)) | ((uint32_t)(a_uValue) & (uint32_t)(a_fRwMask)); \
     } while (0)
 
+/** @name GIC interrupt ID range checks macros.
+ * @{ */
+#define GIC_IS_INTR_SGI(a_uIntId)        ((uint32_t)(a_uIntId) - (uint32_t)GIC_INTID_RANGE_SGI_START < (uint32_t)GIC_INTID_SGI_RANGE_SIZE)
+#define GIC_IS_INTR_PPI(a_uIntId)        ((uint32_t)(a_uIntId) - (uint32_t)GIC_INTID_RANGE_PPI_START < (uint32_t)GIC_INTID_PPI_RANGE_SIZE)
+#define GIC_IS_INTR_SGI_OR_PPI(a_uIntId) ((uint32_t)(a_uIntId) - (uint32_t)GIC_INTID_RANGE_SGI_START < (uint32_t)(GIC_INTID_SGI_RANGE_SIZE + GIC_INTID_PPI_RANGE_SIZE))
+#define GIC_IS_INTR_SPI(a_uIntId)        ((uint32_t)(a_uIntId) - (uint32_t)GIC_INTID_RANGE_SPI_START < (uint32_t)GIC_INTID_SPI_RANGE_SIZE)
+#define GIC_IS_INTR_SPECIAL(a_uIntId)    ((uint32_t)(a_uIntId) - (uint32_t)GIC_INTID_RANGE_SPECIAL_START < (uint32_t)GIC_INTID_SPECIAL_RANGE_SIZE)
+#define GIC_IS_INTR_EXT_PPI(a_uIntId)    ((uint32_t)(a_uIntId) - (uint32_t)GIC_INTID_RANGE_EXT_PPI_START < (uint32_t)GIC_INTID_EXT_PPI_RANGE_SIZE)
+#define GIC_IS_INTR_EXT_SPI(a_uIntId)    ((uint32_t)(a_uIntId) - (uint32_t)GIC_INTID_RANGE_EXT_SPI_START < (uint32_t)GIC_INTID_EXT_SPI_RANGE_SIZE)
+#define GIC_IS_INTR_LPI(a_uIntId)        ((uint32_t)(a_uIntId) - (uint32_t)GIC_INTID_RANGE_LPI_START < (uint32_t)RT_ELEMENTS(GICDEV::abLpiConfig))
+/** @} */
+
 /** @name GIC interrupt groups.
  * @{ */
 /** Interrupt Group 0. */
@@ -158,9 +169,9 @@ extern const PDMGICBACKEND g_GicKvmBackend;
  */
 typedef union GICDISTINTRBMP
 {
-    /** The 32-bit view. */
-    uint64_t        au64[32];
     /** The 64-bit view. */
+    uint64_t        au64[32];
+    /** The 32-bit view. */
     uint32_t        au32[64];
 } GICDISTINTRBMP;
 AssertCompileSize(GICDISTINTRBMP, 256);
@@ -187,16 +198,14 @@ typedef struct GICDEV
     GICDISTINTRBMP              IntrActive;
     /** Interrupt line-level bitmap. */
     GICDISTINTRBMP              IntrLevel;
+    /** Interrupt priorities. */
+    uint8_t                     abIntrPriority[2048];
     /** Interrupt routine mode bitmap. */
     GICDISTINTRBMP              IntrRoutingMode;
     /** Interrupt routing info. */
     uint32_t                    au32IntrRouting[2048];
-    /** Interrupt priorities. */
-    uint8_t                     abIntrPriority[2048];
     /** Mask of enabled interrupt groups (see GIC_INTR_GROUP_XXX). */
     uint32_t                    fIntrGroupMask;
-    /** Flag whether affinity routing is enabled. */
-    bool                        fAffRoutingEnabled;
     /** @} */
 
     /** @name Configurables.
@@ -205,15 +214,15 @@ typedef struct GICDEV
     uint8_t                     uArchRev;
     /** The GIC architecture minor revision (currently 1 as we only support GICv3.1). */
     uint8_t                     uArchRevMinor;
-    /** The maximum SPI supported (GICD_TYPER.ItLinesNumber). */
+    /** Maximum SPIs supported (GICD_TYPER.ItLinesNumber). */
     uint8_t                     uMaxSpi;
     /** Whether extended SPIs are supported (GICD_ESPI). */
     bool                        fExtSpi;
-    /** The maximum extended SPI supported (GICD_TYPER.ESPI_range).  */
+    /** Maximum extended SPIs supported (GICD_TYPER.ESPI_range).  */
     uint8_t                     uMaxExtSpi;
     /** Whether extended PPIs are supported. */
     bool                        fExtPpi;
-    /** The maximum extended PPI supported (GICR_TYPER.PPInum). */
+    /** Maximum extended PPI supported (GICR_TYPER.PPInum). */
     uint8_t                     uMaxExtPpi;
     /** Whether range-selector is supported (GICD_TYPER.RSS and ICC_CTLR_EL1.RSS). */
     bool                        fRangeSel;
@@ -221,12 +230,14 @@ typedef struct GICDEV
     bool                        fNmi;
     /** Whether message-based interrupts are supported (GICD_TYPER.MBIS). */
     bool                        fMbi;
+    /** Flag whether affinity routing is enabled. */
+    bool                        fAffRouting;
     /** Whether non-zero affinity 3 levels are supported (GICD_TYPER.A3V) and
      *  (ICC_CTLR.A3V). */
     bool                        fAff3Levels;
     /** Whether LPIs are supported (GICD_TYPER.PLPIS). */
     bool                        fLpi;
-    /** The maximum LPI supported (GICD_TYPER.num_LPI). */
+    /** Maximum LPI supported (GICD_TYPER.num_LPI). */
     uint8_t                     uMaxLpi;
     /** @} */
 
@@ -235,47 +246,51 @@ typedef struct GICDEV
     /** Whether LPIs are enabled (GICR_CTLR.EnableLpis of all redistributors). */
     bool                        fEnableLpis;
     /** Padding. */
-    bool                        afPadding1[1];
+    bool                        afPadding0[5];
+    /** LPI config table. */
+    uint8_t                     abLpiConfig[8192];
+    /** LPI config table base register (GICR_PROPBASER). */
+    RTUINT64U                   uLpiConfigBaseReg;
+    /** LPI pending table base register (GICR_PENDBASER). */
+    RTUINT64U                   uLpiPendingBaseReg;
     /** ITS device state. */
     GITSDEV                     Gits;
-    /** LPI config table. */
-    uint8_t                     abLpiConfig[4096];
-    /** The LPI config table base register (GICR_PROPBASER). */
-    RTUINT64U                   uLpiConfigBaseReg;
-    /** The LPI pending table base register (GICR_PENDBASER). */
-    RTUINT64U                   uLpiPendingBaseReg;
     /** @} */
 
     /** @name MMIO data.
      * @{ */
-    /** The distributor MMIO handle. */
+    /** Distributor MMIO handle. */
     IOMMMIOHANDLE               hMmioDist;
-    /** The redistributor MMIO handle. */
+    /** Redistributor MMIO handle. */
     IOMMMIOHANDLE               hMmioReDist;
-    /** The interrupt translation service MMIO handle. */
+    /** Interrupt translation service MMIO handle. */
     IOMMMIOHANDLE               hMmioGits;
-    /** The physical address of the ITS. */
+    /** Physical address of the ITS. */
     RTGCPHYS                    GCPhysGits;
     /** @} */
 
+#ifdef VBOX_WITH_STATISTICS
     /** @name Statistics.
      * @{ */
-#ifdef VBOX_WITH_STATISTICS
     /** Number of set SPI callbacks. */
     STAMCOUNTER                 StatSetSpi;
     /** Number of set LPI callbacks. */
     STAMCOUNTER                 StatSetLpi;
+    /** Profiling of set SPI callback. */
+    STAMPROFILE                 StatProfSetSpi;
+    /** @} */
 #endif
 } GICDEV;
 /** Pointer to a GIC device. */
 typedef GICDEV *PGICDEV;
 /** Pointer to a const GIC device. */
 typedef GICDEV const *PCGICDEV;
-AssertCompileMemberAlignment(GICDEV, au32IntrRouting, 4);
-AssertCompileMemberAlignment(GICDEV, abIntrPriority, 4);
-AssertCompileMemberSizeAlignment(GICDEV, Gits, 8);
-AssertCompileMemberAlignment(GICDEV, abLpiConfig, 8);
-AssertCompileMemberAlignment(GICDEV, hMmioDist, 8);
+AssertCompileMemberAlignment(GICDEV, abIntrPriority,  8);
+AssertCompileMemberAlignment(GICDEV, au32IntrRouting, 8);
+AssertCompileMemberAlignment(GICDEV, fIntrGroupMask,  8);
+AssertCompileMemberAlignment(GICDEV, abLpiConfig,     8);
+AssertCompileMemberAlignment(GICDEV, Gits,            8);
+AssertCompileMemberAlignment(GICDEV, hMmioDist,       8);
 
 /**
  * GIC VM Instance data.
@@ -290,6 +305,21 @@ typedef GIC *PGIC;
 /** Pointer to const GIC VM instance data. */
 typedef GIC const *PCGIC;
 AssertCompileSizeAlignment(GIC, 8);
+
+/**
+ * GIC LPI pending bitmap.
+ * This contains the same number of LPIs to match GICDEV::abLpiConfig.
+ */
+typedef union GICLPIBMP
+{
+    /** The 64-bit view. */
+    uint64_t        au64[128];
+    /** The 32-bit view. */
+    uint32_t        au32[256];
+} GICLPIBMP;
+AssertCompileSize(GICLPIBMP, RT_ELEMENTS(GICDEV::abLpiConfig) / 8);
+AssertCompileMembersSameSize(GICLPIBMP, au64, GICLPIBMP, au32);
+AssertCompileMemberAlignment(GICLPIBMP, au32, 4);
 
 /**
  * GIC VMCPU Instance data.
@@ -309,46 +339,44 @@ typedef struct GICCPU
     /** Interrupt active bitmap. */
     uint32_t                    bmIntrActive[3];
     /** Interrupt line-level bitmap. */
-    uint32_t                    bmIntrLevel[64];
+    uint32_t                    bmIntrLevel[3];
     /** Interrupt priorities. */
     uint8_t                     abIntrPriority[96];
     /** @} */
 
     /** @name ICC system register state.
      * @{ */
-    /** The control register (ICC_CTLR_EL1). */
+    /** Control register (ICC_CTLR_EL1). */
     uint64_t                    uIccCtlr;
-    /** The interrupt priority mask of the CPU interface (ICC_PMR_EL1). */
-    uint8_t                     bIntrPriorityMask;
-    /** The index to the current running priority. */
-    uint8_t                     idxRunningPriority;
-    /** The running priorities caused by preemption. */
-    uint8_t                     abRunningPriorities[256];
-    /** The active priorities group 0 bitmap. */
-    uint32_t                    bmActivePriorityGroup0[4];
-    /** The active priorities group 1 bitmap. */
-    uint32_t                    bmActivePriorityGroup1[4];
-    /** The binary point register for group 0 interrupts. */
-    uint8_t                     bBinaryPtGroup0;
-    /** The binary point register for group 1 interrupts. */
-    uint8_t                     bBinaryPtGroup1;
-    /** Alignment. */
-    bool                        afPadding1[2];
     /** Mask of enabled interrupt groups (see GIC_INTR_GROUP_XXX). */
     uint32_t                    fIntrGroupMask;
-    /** The INTID of the running interrupts (for debugging). */
+    /** Interrupt priority mask of the CPU interface (ICC_PMR_EL1). */
+    uint8_t                     bIntrPriorityMask;
+    /** Index to the current running priority. */
+    uint8_t                     idxRunningPriority;
+    /** Binary point register for group 0 interrupts. */
+    uint8_t                     bBinaryPtGroup0;
+    /** Binary point register for group 1 interrupts. */
+    uint8_t                     bBinaryPtGroup1;
+    /** Running priorities caused by preemption. */
+    uint8_t                     abRunningPriorities[256];
+    /** Active priorities group 0 bitmap. */
+    uint32_t                    bmActivePriorityGroup0[4];
+    /** Active priorities group 1 bitmap. */
+    uint32_t                    bmActivePriorityGroup1[4];
+    /** INTID of the running interrupts (for debugging). */
     uint16_t                    abRunningIntId[256];
     /** @} */
 
     /** @name LPIs.
      * @{ */
     /** LPI pending bitmap. */
-    uint64_t                    bmLpiPending[64];
+    GICLPIBMP                   LpiPending;
     /** @} */
 
+#ifdef VBOX_WITH_STATISTICS
     /** @name Statistics.
      * @{ */
-#ifdef VBOX_WITH_STATISTICS
     /** Number of MMIO reads. */
     STAMCOUNTER                 StatMmioRead;
     /** Number of MMIO writes. */
@@ -368,22 +396,31 @@ typedef struct GICCPU
 
     /** Profiling of interrupt acknowledge (IAR). */
     STAMPROFILE                 StatProfIntrAck;
-    /** Profiling of set SPI callback. */
-    STAMPROFILE                 StatProfSetSpi;
     /** Profiling of set PPI callback. */
     STAMPROFILE                 StatProfSetPpi;
     /** Profiling of set SGI function. */
     STAMPROFILE                 StatProfSetSgi;
-#endif
     /** @} */
+#endif
 } GICCPU;
 /** Pointer to GIC VMCPU instance data. */
 typedef GICCPU *PGICCPU;
 /** Pointer to a const GIC VMCPU instance data. */
 typedef GICCPU const *PCGICCPU;
 /* Ensure the LPI pending bitmap's capacity is sufficient for the number of LPIs we support. */
-AssertCompileMemberSize(GICCPU, bmLpiPending, RT_ELEMENTS(GICDEV::abLpiConfig) / 8);
-AssertCompileMemberAlignment(GICCPU, bmLpiPending, 8);
+AssertCompileMemberSize(GICCPU, LpiPending, RT_ELEMENTS(GICDEV::abLpiConfig) / 8);
+AssertCompileMemberAlignment(GICCPU, abIntrPriority,      8);
+AssertCompileMemberAlignment(GICCPU, uIccCtlr,            8);
+AssertCompileMemberAlignment(GICCPU, abRunningPriorities, 8);
+AssertCompileMemberAlignment(GICCPU, LpiPending,          8);
+AssertCompileMemberSize(GICCPU, bmIntrGroup,     12);
+AssertCompileMemberSize(GICCPU, bmIntrConfig,    12);
+AssertCompileMemberSize(GICCPU, bmIntrEnabled,   12);
+AssertCompileMemberSize(GICCPU, bmIntrPending,   12);
+AssertCompileMemberSize(GICCPU, bmIntrActive,    12);
+AssertCompileMemberSize(GICCPU, bmIntrLevel,     12);
+AssertCompileMemberSize(GICCPU, abIntrPriority,  RT_SIZEOFMEMB(GICCPU, bmIntrGroup) * 8);
+AssertCompileMemberAlignment(GICCPU, bmIntrGroup, 8);
 
 DECL_HIDDEN_CALLBACK(VBOXSTRICTRC) gicDistMmioRead(PPDMDEVINS pDevIns, void *pvUser, RTGCPHYS off, void *pv, unsigned cb);
 DECL_HIDDEN_CALLBACK(VBOXSTRICTRC) gicDistMmioWrite(PPDMDEVINS pDevIns, void *pvUser, RTGCPHYS off, void const *pv, unsigned cb);
@@ -394,7 +431,6 @@ DECL_HIDDEN_CALLBACK(VBOXSTRICTRC) gicItsMmioRead(PPDMDEVINS pDevIns, void *pvUs
 
 DECLHIDDEN(void)                   gicReDistSetLpi(PPDMDEVINS pDevIns, PVMCPUCC pVCpu, uint16_t uIntId, bool fAsserted);
 DECLHIDDEN(void)                   gicDistReadLpiConfigTableFromMem(PPDMDEVINS pDevIns);
-DECLHIDDEN(bool)                   gicDistIsLpiValid(PPDMDEVINS pDevIns, uint16_t uIntId);
 
 DECLHIDDEN(void)                   gicResetCpu(PPDMDEVINS pDevIns, PVMCPUCC pVCpu);
 DECLHIDDEN(void)                   gicReset(PPDMDEVINS pDevIns);

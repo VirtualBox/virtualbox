@@ -89,7 +89,6 @@ TARGET_CPU=""
 WITH_XPCOM=1
 WITH_PYTHON=1
 WITH_JAVA=1
-WITH_VMMRAW=1
 WITH_QT6=1
 WITH_SDL=1
 WITH_SDL_TTF=1
@@ -173,7 +172,7 @@ PYTHONDIR="/usr /usr/local"
 QT6DIR="/usr/lib/qt6 /usr/share/qt6 /usr/lib64/qt6 /usr /usr/local"
 QT6DIR_PKGCONFIG=1
 QT6MAJ=6
-QT6MIN=6
+QT6MIN=8
 #
 # Git submodules can only mirror whole repositories, not sub directories,
 # meaning that kBuild is residing a level deeper than with svn externals.
@@ -519,7 +518,7 @@ check_gcc()
         [ -z "$CC64"  ] && CC64="$CC -m64"
         [ -z "$CXX64" ] && CXX64="$CXX -m64"
       fi
-      if [ "$TARGET_MACHINE" = "amd64" -a $WITH_VMMRAW -eq 0 ]; then
+      if [ "$TARGET_MACHINE" = "amd64" ]; then
         CC32="undefined"
         CXX32="undefined"
       fi
@@ -1838,7 +1837,7 @@ check_libvorbis()
     if [ $? -eq 0 ]; then
       FLGVRB=`pkg-config vorbis --cflags`
       INCVRB=`strip_I "$FLGVRB"`
-      LIBVRB=`pkg-config vorbis --libs`
+      LIBVRB=`pkg-config vorbis vorbisenc --libs`
     fi
     cat > $ODIR.tmp_src.cc << EOF
 #include <cstdio>
@@ -1847,8 +1846,18 @@ extern "C" int main(void)
 {
   vorbis_info v;
   vorbis_info_init(&v);
-  printf("found, OK.\n");
-  return 0;
+  int vorbis_rc = vorbis_encode_init_vbr(&v, 2 /* channels */, 44100 /* hz */, (float).4 /* quality */);
+  if (vorbis_rc == 0)
+  {
+    vorbis_rc = vorbis_encode_setup_init(&v);
+    if (vorbis_rc)
+      printf("vorbis_encode_setup_init() failed (%d)\n", vorbis_rc);
+  }
+  else
+    printf("vorbis_encode_init_vbr() failed (%d)\n", vorbis_rc);
+  if (vorbis_rc == 0)
+    printf("Vorbis found, OK.\n");
+  return vorbis_rc;
 }
 EOF
     [ -n "$INCVRB" ] && I_INCVRB=`prefix_I "$INCVRB"`
@@ -2075,45 +2084,6 @@ EOF
       log_success "found"
     fi
   fi
-}
-
-#
-# Check if we are able to build 32-bit applications (needed for the guest additions)
-#
-check_32bit()
-{
-  test_header "32-bit support"
-  cat > $ODIR.tmp_src.c << EOF
-#include <stdint.h>
-int main(void)
-{
-  return 0;
-}
-EOF
-  echo "compiling the following source file:" >> $LOG
-  cat $ODIR.tmp_src.c >> $LOG
-  echo "using the following command line:" >> $LOG
-  echo "$CC -m32 -O -Wall -o $ODIR.tmp_out $ODIR.tmp_src.c" >> $LOG
-  $CC -m32 -O -Wall -o $ODIR.tmp_out $ODIR.tmp_src.c >> $LOG 2>&1
-  if [ $? -ne 0 ]; then
-    echo
-    echo "  Cannot compile 32-bit applications (missing headers and/or libraries)!"
-    echo "  Check the file $LOG for detailed error information."
-    fail
-  else
-    echo "executing the binary" >> $LOG
-    $ODIR.tmp_out 2> $ODIR.test_execute.log
-    rc=$?
-    cat $ODIR.test_execute.log >> $LOG
-    if [ $rc -ne 0 ]; then
-      echo
-      echo "  Cannot execute 32-bit applications! Either enable 32-bit support in the"
-      echo "  kernel configuration or use --disable-vmmraw to disable 32-bit guests."
-      fail
-      return 1
-    fi
-  fi
-  log_success ""
 }
 
 
@@ -2490,7 +2460,6 @@ EOF
 [ $WITH_XPCOM   -eq 1 ] && echo "  --disable-xpcom          disable XPCOM and related stuff"
 [ $WITH_PYTHON  -eq 1 ] && echo "  --disable-python         disable python bindings"
 [ $WITH_JAVA    -eq 1 ] && echo "  --disable-java           disable java bindings"
-[ $WITH_VMMRAW  -eq 1 ] && echo "  --disable-vmmraw         disable VMM raw mode (VT-x/AMD-V mandatory!)"
 [ $WITH_SDL_TTF -eq 1 ] && echo "  --disable-sdl-ttf        disable SDL_ttf detection"
 [ $WITH_QT6     -eq 1 ] && echo "  --disable-qt             disable Qt detection"
 [ $WITH_ALSA    -eq 1 ] && echo "  --disable-alsa           disable the ALSA sound backend"
@@ -2686,7 +2655,6 @@ for option in "$@"; do
       [ $WITH_JAVA -eq 1 ] && WITH_JAVA=0
       ;;
     --disable-vmmraw)
-      [ $WITH_VMMRAW -eq 1 ] && WITH_VMMRAW=0
       ;;
     --disable-sdl-ttf)
       [ $WITH_SDL_TTF -eq 1 ] && WITH_SDL_TTF=0
@@ -2950,7 +2918,6 @@ fi
 [ $WITH_JAVA      -eq 0 ] && cnf_append "VBOX_WITH_JWS" ""
 [ $WITH_HARDENING -eq 0 ] && cnf_append "VBOX_WITHOUT_HARDENING" "1"
 [ $WITH_HARDENING -eq 2 ] && cnf_append "VBOX_WITH_HARDENING" "2"
-[ $WITH_VMMRAW    -eq 0 ] && cnf_append "VBOX_WITH_RAW_MODE" ""
 [ $WITH_LIBTPMS   -eq 0 ] && cnf_append "VBOX_WITH_LIBTPMS" ""
 [ $WITH_LIBLZMA   -eq 0 ] && cnf_append "VBOX_WITH_LIBLZMA" ""
 if [ $WITH_LIBVPX -eq 0 ]; then
@@ -3044,7 +3011,6 @@ if [ "$OS" = "linux" ]; then
     check_libcap
   fi
   check_compiler_h
-  [ $ONLY_ADDITIONS -eq 0 -a "$BUILD_MACHINE" = "amd64" -a $WITH_VMMRAW -eq 1 ] && check_32bit
   # tools/common/makeself*
   [ $OSE -ge 1 ] && check_makeself
 fi

@@ -1080,7 +1080,7 @@ private:
  *
  * @code
     Document doc;
-    Element *pElmRoot = doc.createRootElement();
+    Element *pElmRoot = doc.createRootElement("element-name");
     // add children
     xml::XmlFileWriter writer(doc);
     writer.write("file.xml", true);

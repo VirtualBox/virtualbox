@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-dtrace.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPDrv-dtrace.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - DTrace Provider.
  */
@@ -422,7 +422,7 @@ static void     vboxDtPOps_Provide(void *pvProv, const dtrace_probedesc_t *pDtPr
          size_t      cch;
          if (psz)
          {
-             /* skip blanks preceeding the parameter parenthesis. */
+             /* skip blanks preceding the parameter parenthesis. */
              while (   (uintptr_t)psz > (uintptr_t)pProbeLocRO->pszFunction
                     && RT_C_IS_BLANK(psz[-1]))
                  psz--;

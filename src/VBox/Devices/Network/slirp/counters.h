@@ -1,4 +1,4 @@
-/** $Id: counters.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/** $Id: counters.h 110275 2025-07-16 18:34:13Z jack.doherty@oracle.com $ */
 /** @file
  * Counters macro invocation template.
  *

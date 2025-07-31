@@ -1,0 +1,25 @@
+This code is based on lwip git master
+git://git.savannah.nongnu.org/lwip.git
+
+commit cd02450095e0d8e5574bd4490ceff27566229212
+Date:   Sun Jan 19 14:28:17 2014 +0100
+
+
+Cherry-picked fixes:
+
+commit 0d7805a86a538404ea89a51f85dd16cd435cecbe
+Date: 2016-10-04 22:12:13 +0200
+
+  http://savannah.nongnu.org/patch/?9125
+  tcp: fix FIN ACK handling with unsent data
+
+commit e4ddd6cb6d499a7a705a7b1c2d05383c7808cf3b
+Date:   Wed Apr 30 12:22:31 2014 +0200
+
+    Multiple fixes found by coverity scan
+
+commit 0f24fba28aa53b46b40dd5d069da072edea5f2af
+Date:   Thu Feb 20 22:07:58 2014 +0100
+
+    IGMP: fixed !define LWIP_RAND case
+

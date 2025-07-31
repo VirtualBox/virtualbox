@@ -2012,10 +2012,10 @@
   -->
 
   <interface name="INATNetwork" extends="$unknown"
-    uuid="4fdebbf0-be30-49c0-b315-e9749e1bded1"
+    uuid="90b89e78-1a61-4e66-af61-b9d2532e5632"
     wsmap="managed"
     rest="managed"
-    reservedMethods="2" reservedAttributes="8"
+    reservedMethods="4" reservedAttributes="8"
     >
 
     <attribute name="networkName" type="wstring">
@@ -2065,6 +2065,20 @@
     <attribute name="localMappings" type="wstring" readonly="yes" safearray="yes">
       <desc>Array of mappings (address,offset),e.g. ("127.0.1.1=4") maps 127.0.1.1 to networkid + 4.
       </desc>
+    </attribute>
+    <attribute name="localhostReachable" type="boolean">
+      <desc>Whether traffic from the guest directed to 10.0.2.2 will reach the
+        host's loopback interface, i.e. localhost or 127.0.0.1.</desc>
+    </attribute>
+    <attribute name="forwardBroadcast" type="boolean">
+      <desc>Forwards broadcast packets sent by the guest to the host machine as
+        such. IP address will show to host as 255.255.255.255.</desc>
+    </attribute>
+    <attribute name="natMTU" type="unsigned long">
+      <desc>MTU (maximum transmission unit) of the NAT engine in bytes.</desc>
+    </attribute>
+    <attribute name="natMRU" type="unsigned long">
+      <desc>MRU (maximum receive unit) of the NAT engine in bytes.</desc>
     </attribute>
 
     <method name="addLocalMapping">
@@ -4742,6 +4756,7 @@
     <const name="CloudImageFreeFormTags" value="56" />
     <const name="HardDiskControllerVirtioSCSI" value="60" />
     <const name="HardDiskControllerNVMe" value="61" />
+    <const name="NVRAM" value="0x8000" />
   </enum>
 
   <enum
@@ -6260,6 +6275,47 @@
     </const>
   </enum>
 
+  <enum
+    name="RecordingState"
+    uuid="c8a770a9-0412-467b-8dae-0e861279d0be"
+    >
+    <desc>
+      Recording state enumeration.
+      <note>Not all states might be available / implemented for all codecs.</note>
+    </desc>
+
+    <const name="Unknown" value="0">
+      <desc>Recording state is unknown currently, i.e. if no recording has been ever started yet.</desc>
+    </const>
+    <const name="Initializing" value="1">
+      <desc>Recording has been requested to start (enabled) and is initializing.</desc>
+    </const>
+    <const name="Started" value="2">
+      <desc>Recording has been started and is recording.</desc>
+    </const>
+    <const name="Paused" value="3">
+      <desc>Recording has been paused.</desc>
+    </const>
+    <const name="Resumed" value="4">
+      <desc>Recording has been resumed from the paused state.</desc>
+    </const>
+    <const name="Finalizing" value="5">
+      <desc>Recording has been requested to stop and currently is in its finalizing stage.</desc>
+    </const>
+    <const name="Stopped" value="6">
+      <desc>Recording has been stopped.</desc>
+    </const>
+    <const name="Canceled" value="7">
+      <desc>Recording has been canceled.</desc>
+    </const>
+    <const name="LimitReached" value="8">
+      <desc>A recording limit has been reached (time / size).</desc>
+    </const>
+    <const name="Error" value="9">
+      <desc>Recording has reached an unrecoverable error state and can't continue.</desc>
+    </const>
+   </enum>
+
   <interface
     name="IRecordingScreenSettings" extends="$unknown"
     uuid="c1844087-ec6b-488d-afbb-c90f6452a04b"
@@ -6465,7 +6521,7 @@
 
   <interface
     name="IRecordingSettings" extends="$unknown"
-    uuid="bea3ef5c-de2f-4b74-aa3a-15d6249371a0"
+    uuid="83cfdc66-4f20-4569-ad39-8722f7d472b3"
     wsmap="managed"
     rest="managed"
     >
@@ -6497,6 +6553,45 @@
       </result>
     </method>
 
+    <method name="resume">
+      <desc>
+        Resumes the recording.
+        <note>
+          Currently not implemented.
+        </note>
+        <note>
+          This will not affect the recording progress object.
+        </note>
+      </desc>
+      <result name="E_FAIL">
+        Unable to resume recording due to recording not being started
+        or not available. See error message for more information.
+      </result>
+      <result name="VBOX_E_NOT_SUPPORTED">
+        Resuming (and thus pausing also) is not supported.
+      </result>
+    </method>
+
+    <attribute name="paused" type="boolean" readonly="no">
+      <desc>
+        Pauses the recording or returns the current paused status.
+        <note>
+          Currently not implemented.
+        </note>
+        <note>
+          This will not affect the recording progress object.
+        </note>
+        If recording already has been paused, this attribute does nothing.
+        <result name="E_FAIL">
+          Unable to pause recording due to pausing not available.
+          See error message for more information.
+        </result>
+        <result name="VBOX_E_NOT_SUPPORTED">
+          Pausing is not supported.
+        </result>
+      </desc>
+    </attribute>
+
     <attribute name="enabled" type="boolean" default="false">
       <desc>
         This setting determines whether recording is enabled for this VM.
@@ -6518,7 +6613,7 @@
 
     <attribute name="progress" type="IProgress" readonly="yes">
       <desc>
-        Returns the recording progress object.
+        Returns the recording progress object. Also valid when recording has been paused.
 
         Cancelling the progress will stop the recording.
 
@@ -24806,7 +24901,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
 
   <interface
     name="IInternalSessionControl" extends="$unknown"
-    uuid="739160a6-53ea-465b-bb6b-5326c20a3c0c"
+    uuid="84a4e585-4f4a-45bb-99e8-fc9b226376ad"
     internal="yes"
     wsmap="suppress"
     >
@@ -25166,7 +25261,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
       <desc>
         Triggered when a recording state got changed.
       </desc>
-      <param name="enabled" type="boolean" dir="in">
+      <param name="state" type="RecordingState" dir="in">
         <desc>
           Whether recording was enabled or disabled.
         </desc>
@@ -25180,7 +25275,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
       <desc>
         Triggered when a recording screen state got changed.
       </desc>
-      <param name="enabled" type="boolean" dir="in">
+      <param name="state" type="RecordingState" dir="in">
         <desc>
           Whether recording for that screen was enabled or disabled.
         </desc>
@@ -26440,7 +26535,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
 
   <interface
     name="INATEngine" extends="$unknown"
-    uuid="00aaaf38-5571-4d85-b338-bde82612d973"
+    uuid="55f6cedb-141d-41bb-9995-ee2fc7f9101a"
     wsmap="managed"
     rest="managed"
     reservedMethods="4" reservedAttributes="6"
@@ -26459,16 +26554,21 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </attribute>
     <attribute name="TFTPPrefix" type="wstring">
       <desc>TFTP prefix attribute which is used with the built-in DHCP server to fill
-        the corresponding fields of DHCP leases.</desc>
+        the corresponding fields of DHCP leases.
+        <note>Ignored if TFTP is disabled.</note>
+      </desc>
     </attribute>
     <attribute name="TFTPBootFile" type="wstring">
       <desc>TFTP boot file attribute which is used with the built-in DHCP server to fill
-        the corresponding fields of DHCP leases.</desc>
+        the corresponding fields of DHCP leases.
+        <note>Ignored if TFTP is disabled.</note>
+      </desc>
     </attribute>
     <attribute name="TFTPNextServer" type="wstring">
       <desc>TFTP server attribute which is used with the built-in DHCP server to fill
         the corresponding fields of DHCP leases.
         <note>The preferred form is IPv4 addresses.</note>
+        <note>Ignored if TFTP is disabled.</note>
       </desc>
     </attribute>
     <attribute name="aliasMode" type="unsigned long">
@@ -26500,6 +26600,26 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <attribute name="enableTFTP" type="boolean">
       <desc>Enables TFTP functionality, and related configuration options.</desc>
     </attribute>
+<!-- TODO r=jack: Consider this instead of setNetworkSettings.
+    <attribute name="natMTU" type="boolean">
+      <desc>MTU (maximum transmission unit) of the NAT engine in bytes.</desc>
+    </attribute> -->
+    <attribute name="natMRU" type="unsigned long">
+      <desc>MRU (maximum receive unit) of the NAT engine in bytes.</desc>
+    </attribute>
+    <attribute name="IPv6Enabled" type="boolean">
+      <desc>
+        This attribute define whether gateway will support IPv6 or not.
+      </desc>
+    </attribute>
+    <attribute name="IPv6Prefix" type="wstring">
+      <desc>
+        This a CIDR IPv6 defining prefix for link-local addresses
+        autoconfiguration within network. Note: ignored if attribute
+        IPv6Enabled is false.
+      </desc>
+    </attribute>
+
     <method name="setNetworkSettings">
       <desc>Sets network configuration of the NAT engine.</desc>
       <param name="mtu" type="unsigned long" dir="in">
@@ -29237,15 +29357,15 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
 
   <interface
     name="IRecordingStateChangedEvent" extends="IEvent"
-    uuid="e578bb9c-e88d-416b-bb45-08a4e7a5b463"
+    uuid="210498ae-c922-4e86-9c45-8cfb51395fc3"
     wsmap="managed" autogen="VBoxEvent" id="OnRecordingStateChanged"
     >
     <desc>
       Notification when the machine's recording state has changed.
     </desc>
-    <attribute name="enabled" type="boolean" readonly="yes">
+    <attribute name="state" type="RecordingState" readonly="yes">
       <desc>
-        Whether recording was enabled or disabled.
+        New recording state.
       </desc>
     </attribute>
     <attribute name="error" type="IVirtualBoxErrorInfo" readonly="yes">

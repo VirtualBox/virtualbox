@@ -1,4 +1,4 @@
-/* $Id: DBGCCmdHlp.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: DBGCCmdHlp.cpp 110144 2025-07-07 22:13:01Z knut.osmundsen@oracle.com $ */
 /** @file
  * DBGC - Debugger Console, Command Helpers.
  */
@@ -1440,49 +1440,49 @@ static DECLCALLBACK(int) dbgcHlpRegPrintf(PDBGCCMDHLP pCmdHlp, VMCPUID idCpu, in
         if (f64BitMode)
             rc = DBGFR3RegPrintf(pDbgc->pUVM, idCpu, &szDisAndRegs[0], sizeof(szDisAndRegs),
                                  "u %016VR{pc} L 0\n"
-                                 "x0=%016VR{x0} x1=%016VR{x1} x2=%016VR{x2} x3=%016VR{x3}\n"
-                                 "x4=%016VR{x4} x5=%016VR{x5} x6=%016VR{x6} x7=%016VR{x7}\n"
-                                 "x8=%016VR{x8} x9=%016VR{x9} x10=%016VR{x10} x11=%016VR{x11}\n"
+                                 " x0=%016VR{x0}  x1=%016VR{x1}  x2=%016VR{x2}  x3=%016VR{x3}\n"
+                                 " x4=%016VR{x4}  x5=%016VR{x5}  x6=%016VR{x6}  x7=%016VR{x7}\n"
+                                 " x8=%016VR{x8}  x9=%016VR{x9} x10=%016VR{x10} x11=%016VR{x11}\n"
                                  "x12=%016VR{x12} x13=%016VR{x13} x14=%016VR{x14} x15=%016VR{x15}\n"
                                  "x16=%016VR{x16} x17=%016VR{x17} x18=%016VR{x18} x19=%016VR{x19}\n"
                                  "x20=%016VR{x20} x21=%016VR{x21} x22=%016VR{x22} x23=%016VR{x23}\n"
                                  "x24=%016VR{x24} x25=%016VR{x25} x26=%016VR{x26} x27=%016VR{x27}\n"
                                  "x28=%016VR{x28} x29=%016VR{x29} x30=%016VR{x30}\n"
-                                 "pc=%016VR{pc} pstate=%016VR{pstate}\n"
-                                 "sp_el0=%016VR{sp_el0} sp_el1=%016VR{sp_el1} elr_el1=%016VR{elr_el1}\n");
+                                 " pc=%016VR{pc} psr=%010VR{pstate} %VRF{pstate}\n"
+                                 "sp_el0=%016VR{sp_el0} sp_el1=%010VR{sp_el1} elr_el1=%016VR{elr_el1}\n");
         else
             rc = DBGFR3RegPrintf(pDbgc->pUVM, idCpu, szDisAndRegs, sizeof(szDisAndRegs),
                                  "u %08VR{pc} L 0\n"
                                  "r0=%016VR{r0} r1=%016VR{r1} r2=%016VR{r2} r3=%016VR{r3}\n"
                                  "r4=%016VR{r4} r5=%016VR{r5} r6=%016VR{r6} r7=%016VR{r7}\n"
                                  "r8=%016VR{r8} r9=%016VR{r9} r10=%016VR{r10} r11=%016VR{r11}\n"
-                                 "pc=%016VR{pc} pstate=%016VR{pstate}\n");
+                                 "pc=%016VR{pc} pstate=%010VR{pstate}\n");
     }
     else
     {
         if (f64BitMode)
             rc = DBGFR3RegPrintf(pDbgc->pUVM, idCpu, &szDisAndRegs[0], sizeof(szDisAndRegs),
                                  "u %016VR{pc} L 0\n"
-                                 "x0=%016VR{x0} x1=%016VR{x1} x2=%016VR{x2} x3=%016VR{x3}\n"
-                                 "x4=%016VR{x4} x5=%016VR{x5} x6=%016VR{x6} x7=%016VR{x7}\n"
-                                 "x8=%016VR{x8} x9=%016VR{x9} x10=%016VR{x10} x11=%016VR{x11}\n"
+                                 " x0=%016VR{x0}  x1=%016VR{x1}  x2=%016VR{x2}  x3=%016VR{x3}\n"
+                                 " x4=%016VR{x4}  x5=%016VR{x5}  x6=%016VR{x6}  x7=%016VR{x7}\n"
+                                 " x8=%016VR{x8}  x9=%016VR{x9} x10=%016VR{x10} x11=%016VR{x11}\n"
                                  "x12=%016VR{x12} x13=%016VR{x13} x14=%016VR{x14} x15=%016VR{x15}\n"
                                  "x16=%016VR{x16} x17=%016VR{x17} x18=%016VR{x18} x19=%016VR{x19}\n"
                                  "x20=%016VR{x20} x21=%016VR{x21} x22=%016VR{x22} x23=%016VR{x23}\n"
                                  "x24=%016VR{x24} x25=%016VR{x25} x26=%016VR{x26} x27=%016VR{x27}\n"
                                  "x28=%016VR{x28} x29=%016VR{x29} x30=%016VR{x30}\n"
-                                 "pc=%016VR{pc} pstate=%016VR{pstate}\n"
+                                 "pc=%016VR{pc} psr=%010VR{pstate} %VRF{pstate}\n"
                                  "sp_el0=%016VR{sp_el0} sp_el1=%016VR{sp_el1} elr_el1=%016VR{elr_el1}\n"
-                                 "sctlr_el1=%016VR{sctlr_el1} tcr_el1=%016VR{tcr_el1}\n"
+                                 "sctlr_el1=%016VR{sctlr_el1}   tcr_el1=%016VR{tcr_el1}\n"
                                  "ttbr0_el1=%016VR{ttbr0_el1} ttbr1_el1=%016VR{ttbr1_el1}\n"
-                                 "vbar_el1=%016VR{vbar_el1}\n");
+                                 " vbar_el1=%016VR{vbar_el1}\n");
         else
             rc = DBGFR3RegPrintf(pDbgc->pUVM, idCpu, szDisAndRegs, sizeof(szDisAndRegs),
                                  "u %08VR{pc} L 0\n"
                                  "r0=%016VR{r0} r1=%016VR{r1} r2=%016VR{r2} r3=%016VR{r3}\n"
                                  "r4=%016VR{r4} r5=%016VR{r5} r6=%016VR{r6} r7=%016VR{r7}\n"
                                  "r8=%016VR{r8} r9=%016VR{r9} r10=%016VR{r10} r11=%016VR{r11}\n"
-                                 "pc=%016VR{pc} pstate=%016VR{pstate}\n");
+                                 "pc=%016VR{pc} psr=%010VR{pstate}\n");
     }
 #endif
     if (RT_FAILURE(rc))

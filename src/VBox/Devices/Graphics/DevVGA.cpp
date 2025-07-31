@@ -1,4 +1,4 @@
-/* $Id: DevVGA.cpp 108837 2025-03-20 12:48:42Z andreas.loeffler@oracle.com $ */
+/* $Id: DevVGA.cpp 110351 2025-07-22 15:36:21Z michal.necasek@oracle.com $ */
 /** @file
  * DevVGA - VBox VGA/VESA device.
  */
@@ -1835,7 +1835,6 @@ static int vgaR3DrawText(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATER3 pThisC
         cw = 9;
     if (pThis->sr[1] & 0x08)
         cw = 16; /* NOTE: no 18 pixel wide */
-    x_incr = cw * ((pDrv->cBits + 7) >> 3);
     width = (pThis->cr[0x01] + 1);
     if (pThis->cr[0x06] == 100) {
         /* ugly hack for CGA 160x100x16 - explain me the logic */
@@ -1853,15 +1852,18 @@ static int vgaR3DrawText(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATER3 pThisC
         return VINF_SUCCESS;
     }
 
+    int const scr_width = width * cw;
+    int const scr_height = height * cheight;
     if (width != (int)pThis->last_width || height != (int)pThis->last_height ||
-        cw != pThis->last_cw || cheight != pThis->last_ch) {
+        cw != pThis->last_cw || cheight != pThis->last_ch ||
+        scr_width != (int)pDrv->cx || scr_height != (int)pDrv->cy) {
         if (fFailOnResize)
         {
             /* The caller does not want to call the pfnResize. */
             return VERR_TRY_AGAIN;
         }
-        pThis->last_scr_width = width * cw;
-        pThis->last_scr_height = height * cheight;
+        pThis->last_scr_width = scr_width;
+        pThis->last_scr_height = scr_height;
         /* For text modes the direct use of guest VRAM is not implemented, so bpp and cbLine are 0 here. */
         int rc = pDrv->pfnResize(pDrv, 0, NULL, 0, pThis->last_scr_width, pThis->last_scr_height);
         pThis->last_width = width;
@@ -1871,8 +1873,12 @@ static int vgaR3DrawText(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATER3 pThisC
         full_update = true;
         if (rc == VINF_VGA_RESIZE_IN_PROGRESS)
             return rc;
-        AssertRC(rc);
+        AssertRCReturn(rc, rc);
     }
+    AssertReturn(scr_width == (int)pDrv->cx && scr_height == (int)pDrv->cy, VERR_INVALID_STATE);
+
+    x_incr = cw * ((pDrv->cBits + 7) >> 3);
+
     cursor_offset = ((pThis->cr[0x0e] << 8) | pThis->cr[0x0f]) - pThis->start_addr;
     if (cursor_offset != pThis->cursor_offset ||
         pThis->cr[0xa] != pThis->cursor_start ||
@@ -2314,7 +2320,11 @@ static int vmsvgaR3DrawGraphic(PVGASTATE pThis, PVGASTATER3 pThisCC, bool fFullU
         || cy    == VMSVGA_VAL_UNINITIALIZED
         || cy    == 0
         || cBits == VMSVGA_VAL_UNINITIALIZED
-        || cBits == 0)
+        || cBits == 0
+        || cx    != pDrv->cx
+        || cy    != pDrv->cy
+        || cBits != pDrv->cBits
+        || (cx * cBits + 7) / 8 > pDrv->cbScanline)
     {
         /* Intermediate state; skip redraws. */
         return VINF_SUCCESS;
@@ -2498,7 +2508,9 @@ static int vgaR3DrawGraphic(PVGASTATE pThis, PVGASTATER3 pThisCC, bool full_upda
     if (    disp_width     != (int)pThis->last_width
         ||  height         != (int)pThis->last_height
         ||  pThisCC->get_bpp(pThis)  != (int)pThis->last_bpp
-        || (offsets_changed && !pThis->fRenderVRAM))
+        || (offsets_changed && !pThis->fRenderVRAM)
+        || disp_width      != (int)pDrv->cx
+        || height          != (int)pDrv->cy)
     {
         if (fFailOnResize)
         {
@@ -4366,7 +4378,7 @@ static DECLCALLBACK(void) vgaR3InfoState(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp,
     NOREF(pszArgs);
 
     is_graph  = pThis->gr[6] & 1;
-    char_dots = (pThis->sr[0x01] & 1) ? 8 : 9;
+    char_dots = is_graph ? 8 : (pThis->sr[0x01] & 1) ? 8 : 9;
     double_scan = pThis->cr[9] >> 7;
     pHlp->pfnPrintf(pHlp, "decoding memory at %s\n", mem_map[(pThis->gr[6] >> 2) & 3]);
     pHlp->pfnPrintf(pHlp, "Misc status reg. MSR:%02X\n", pThis->msr);
@@ -4380,7 +4392,7 @@ static DECLCALLBACK(void) vgaR3InfoState(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp,
     val = pThis->cr[1] + 1;
     w   = val * char_dots;
     pHlp->pfnPrintf(pHlp, "hdisp : %d px (%d cclk)\n", w, val);
-    val = pThis->cr[0x12] + ((pThis->cr[7] & 2) << 7) + ((pThis->cr[7] & 0x40) << 4) + 1;
+    val = pThis->cr[0x12] + ((pThis->cr[7] & 2) << 7) + ((pThis->cr[7] & 0x40) << 3) + 1;
     h   = val;
     pHlp->pfnPrintf(pHlp, "vdisp : %d px\n", val);
     val = ((pThis->cr[9] & 0x40) << 3) + ((pThis->cr[7] & 0x10) << 4) + pThis->cr[0x18];

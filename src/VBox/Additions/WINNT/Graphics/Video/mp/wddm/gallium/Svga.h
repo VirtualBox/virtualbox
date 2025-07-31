@@ -1,4 +1,4 @@
-/* $Id: Svga.h 110044 2025-06-30 10:32:37Z vitali.pelenjow@oracle.com $ */
+/* $Id: Svga.h 110485 2025-07-30 17:22:08Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Gallium driver VMSVGA.
  */
@@ -111,6 +111,7 @@ typedef struct VMSVGACB
     RTLISTNODE           nodeQueue;                /* For a queue where the buffer is currently resides. */
     VMSVGACBTYPE         enmType;                  /* Type of the buffer. */
     uint32_t             idDXContext;              /* DX context of the buffer or SVGA3D_INVALID_ID. */
+    uint32_t             idFence;                  /* SubmissionFenceId. */
     uint32_t             cbBuffer;                 /* Total size. */
     uint32_t             cbCommand;                /* Size of commands. */
     uint32_t             cbReservedCmdHeader;      /* Reserved for the command header. */

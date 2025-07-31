@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE bookmap PUBLIC "-//OASIS//DTD DITA BookMap//EN" "bookmap.dtd">
-<bookmap id="EN-VBOX-7-1-LICENSING" xml:lang="en-US">
+<bookmap id="EN-VBOX-7-2-LICENSING" xml:lang="en-US">
   <!--
          booklibrary renders in bold and is equivalent to title in docbook;
          mainbooktitle is not in bold and is equivalent to subtitle
@@ -10,14 +10,14 @@
     -->
   <booktitle>
     <booklibrary>Oracle VirtualBox</booklibrary>
-    <mainbooktitle>Licensing Information User Manual for Release 7.1</mainbooktitle>
+    <mainbooktitle>Licensing Information User Manual for Release 7.2</mainbooktitle>
   </booktitle>
   <bookmeta>
     <publisherinformation>
       <published>
         <completed>
-          <month>September</month>
-          <year>2024</year>
+          <month>July</month>
+          <year>2025</year>
         </completed>
       </published>
     </publisherinformation>
@@ -30,28 +30,28 @@
          To make sure the title is correctly set run:
          'DitaUtils.py title -d template.ditamap'  or 'DitaUtils.py map-prep -d template.ditamap'
       -->
-    <othermeta name="title" content="Oracle VirtualBox: Licensing Information User Manual for Release 7.1"/>
-    <othermeta name="docbuilderDocument" content="virtualization-virtualbox-oracle-vm-7.1-EN-VBOX-7-1-LICENSING"/>
+    <othermeta name="title" content="Oracle VirtualBox: Licensing Information User Manual for Release 7.2"/>
+    <othermeta name="docbuilderDocument" content="virtualization-virtualbox-oracle-vm-7.2-EN-VBOX-7-1-LICENSING"/>
     <othermeta name="docbuilderId" content="29917"/>
     <!--
            Th othermeta pubAlias detemines what the final part of the URL for your book will be (the pubalias in Jarvis).
            If you don't set it, it will default to the docid in PDB.
       -->
     <othermeta name="pubAlias" content="licensing"/>
-    <othermeta name="jarvis-url" content="https://docs.oracle.com/en/virtualization/virtualbox/7.1/licensing/"/>
+    <othermeta name="jarvis-url" content="https://docs.oracle.com/en/virtualization/virtualbox/7.2/licensing/"/>
     <othermeta name="category" content="virtualization"/>
     <othermeta name="suite" content="oracle-vm"/>
     <othermeta name="productGroup" content="not-applicable"/>
     <othermeta name="product" content="virtualbox"/>
-    <othermeta name="release" content="7.1"/>
+    <othermeta name="release" content="7.2"/>
     <!--
          For SVN Revision information, you *must* do: `svn propset svn:keywords "Date Author Rev" template.ditamap`
          on the ditamap when you first add it. You can automatically handle this by editing ~/.subversion/config
          to add a line entry under [auto-props]:
          *.ditamap = svn:mime-type=text/xml;svn:keywords=Author Date Id Rev URL;
       -->
-    <othermeta name="revision" content="$Rev: 106040 $"/>
-    <othermeta name="rev-date" content="$Date: 2024-09-13 10:44:00 +0200 (Fri, 13 Sep 2024) $"/>
+    <othermeta name="revision" content="$Rev: 110403 $"/>
+    <othermeta name="rev-date" content="$Date: 2025-07-25 09:07:34 +0200 (Fri, 25 Jul 2025) $"/>
     <!-- If this publication has profiling enabled, specify ditaval below -->
     <!-- The bookpartno matches the part and revision in PDB  -->
     <bookid>
@@ -88,12 +88,13 @@
     <topicref href="vbox-base/licensing-licenses-oss-vbox-base.dita"/>
     <topicref href="vbox-base/licensing-sw-licenses-vbox-base.dita">
       <!--Copy in content from generated ditamap here-->
+      <topicref href="vbox-base/licensing-license-vbox-base-a-profile-architecture-2024-12.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-alsa-lib-1.1.4.1.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-bochs-rom-bios-2005.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-cereal-1.3.2.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-compositeproto-0.4.2.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-curl-8.7.1.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-digia-qt-6.5.3.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-digia-qt-6.8.0.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-dnsproxy-1.15.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-dri2proto-2.8.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-dxvk-2.3.1.dita"/>
@@ -101,24 +102,26 @@
       <topicref href="vbox-base/licensing-license-vbox-base-egl-registry-ac494c21.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-fixesproto-5.0.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-fontsproto-2.1.3.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-freebsd-7.2.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-glib-2.76.4.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-glibc-2.17-326.0.9.el7_9.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-glproto-1.4.17.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-gsoap-2.8.122.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-glslang-11.9.0.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-gsoap-2.8.136.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-gtk3-gnome-desktop-3.24.43.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-inputproto-1.9.99.902.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-ipxe-1.21.1.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-jpeg-image-decoding-software-9f.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-kbproto-1.0.7.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-libdevmapper-2.03.20.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-libdrm-2.4.112.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-libgd-2.3.3.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-libjpeg-turbo-2.1.3.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-libogg-1.3.5.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-libpam-1.1.8-23.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-libpciaccess-0.10.8.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-libpng-1.6.43.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-libpng-1.6.45.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-libslirp-4.8.0.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-libslirp-4.9.0.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-libssh-0.10.6.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-libtpms-0.9.6.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-libvorbis-1.3.7.dita"/>
@@ -128,23 +131,20 @@
       <topicref href="vbox-base/licensing-license-vbox-base-libxext-1.3.4.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-libxfixes-4.0.3.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-libxml2-2.13.2.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-libxshmfence-1.3.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-lightweight-tcp-ip-stack-lwip-2.2.1.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-linux-kernel-5.10.110.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-lzf-3.6.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-moltenvk-1.1.9.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-mozilla-suite-1.8a4-1.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-nasm-2.12.02.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-nasm-2.16.01.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-nsis-accesscontrol-plugin-1.0.8.3.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-nasm-2.16.03.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-nsis-nsprocess-plugin-1.6.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-nullsoft-scriptable-install-system-nsis-3.08.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-nullsoft-scriptable-install-system-nsis-3.09.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-openssl-3.3.0.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-openssl-3.1.7.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-nullsoft-scriptable-install-system-nsis-3.10.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-openvr-2.5.1.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-opus-1.3.1.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-pixman-0.43.4.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-plex86-bochs-lgpl-vgabios-0.5c.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-pulseaudio-10.0-6.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-pylibfdt-1.7.2.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-qemu-0.10.0.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-randrproto-1.5.0.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-reference-implementations-for-intel-arch.dita"/>
@@ -154,9 +154,9 @@
       <topicref href="vbox-base/licensing-license-vbox-base-spir-v-headers-1.3.283.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-vulkan-headers-1.3.289.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-wayland-1.20.0.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-wayland-protocols-4264185d.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-wine-1.5.14.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-wix-windows-installer-xml-toolset-4.0.5.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-wix-windows-installer-xml-toolset-5.0.2.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-xextproto-7.1.1.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-xf86-input-mouse-1.0.4.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-xf86-video-vesa-1.0.1.3.dita"/>
@@ -181,7 +181,8 @@
       <topicref href="vbox-base/licensing-license-vbox-base-xorg-server-1.17.1.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-xorg-server-1.18.0.dita"/>
       <topicref href="vbox-base/licensing-license-vbox-base-xproto-7.0.31.dita"/>
-      <topicref href="vbox-base/licensing-license-vbox-base-zlib-data-compression-library-1.2.13.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-zlib-data-compression-library-1.3.1.dita"/>
+      <topicref href="vbox-base/licensing-license-vbox-base-zlib-data-compression-library-1.3.1.dita"/>
     </topicref>
   </chapter>
   <chapter chunk="to-content" href="vbox-ext/licensing-licensing-info-ext.dita">
@@ -190,10 +191,12 @@
     <topicref href="vbox-ext/licensing-sw-licenses-vbox-ext.dita">
       <!--Copy in content from generated ditamap here-->
       <topicref href="vbox-ext/licensing-license-vbox-ext-curl-8.7.1.dita"/>
-      <topicref href="vbox-ext/licensing-license-vbox-ext-glibc-2.17-326.0.9.el7_9.dita"/>
+      <topicref href="vbox-ext/licensing-license-vbox-ext-libssh-0.10.5.dita"/>
+      <topicref href="vbox-ext/licensing-license-vbox-ext-light-weight-ip-cd024500-1.dita"/>
       <topicref href="vbox-ext/licensing-license-vbox-ext-mozilla-suite-1.8a4-1.dita"/>
-      <topicref href="vbox-ext/licensing-license-vbox-ext-openssl-3.1.7.dita"/>
+      <topicref href="vbox-ext/licensing-license-vbox-ext-openssl-3.1.5.dita"/>
       <topicref href="vbox-ext/licensing-license-vbox-ext-qemu-0.10.0.dita"/>
+      <topicref href="vbox-ext/licensing-license-vbox-ext-softfloat-3e.dita"/>
       <topicref href="vbox-ext/licensing-license-vbox-ext-wine-1.5.14.dita"/>
       <topicref href="vbox-ext/licensing-license-vbox-ext-zlib-data-compression-library-1.2.13.dita"/>
     </topicref>

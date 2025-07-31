@@ -1,4 +1,4 @@
-/* $Id: VUSBUrb.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: VUSBUrb.cpp 110377 2025-07-23 12:22:40Z michal.necasek@oracle.com $ */
 /** @file
  * Virtual USB - URBs.
  */
@@ -1357,7 +1357,26 @@ static void vusbUrbCompletion(PVUSBURB pUrb)
 }
 
 /**
- * The worker for vusbUrbCancel() which is executed on the I/O thread.
+ * The worker for URB cancellation which is executed on the I/O thread.
+ * Cancels a URB with CRC failure.
+ *
+ * Cancelling a URB is a tricky thing. The USBProxy backend can not
+ * cancel it immediately and we must keep the URB around until it's ripe
+ * and can be reaped the normal way. However, we must complete the URB
+ * now, before leaving this function. This is not nice. sigh.
+ *
+ * This function will cancel the URB if it's in-flight and complete
+ * it. The device will in its pfnCancel method be given the chance to
+ * say that the URB doesn't need reaping and should be unlinked.
+ *
+ * An URB which is in the cancel state after pfnCancel will remain in that
+ * state and in the async list until its reaped. When it's finally reaped
+ * it will be unlinked and freed without doing any completion.
+ *
+ * There are different modes of canceling an URB. When devices are being
+ * disconnected etc., they will be completed with an error (CRC). However,
+ * when the HC needs to temporarily halt communication with a device, the
+ * URB/TD must be left alone if possible.
  *
  * @returns IPRT status code.
  * @param   pUrb        The URB to cancel.
@@ -1419,51 +1438,6 @@ DECLHIDDEN(int) vusbUrbCancelWorker(PVUSBURB pUrb, CANCELMODE enmMode)
     }
     return VINF_SUCCESS;
 }
-
-/**
- * Cancels an URB with CRC failure.
- *
- * Cancelling an URB is a tricky thing. The USBProxy backend can not
- * all cancel it and we must keep the URB around until it's ripe and
- * can be reaped the normal way. However, we must complete the URB
- * now, before leaving this function. This is not nice. sigh.
- *
- * This function will cancel the URB if it's in-flight and complete
- * it. The device will in its pfnCancel method be given the chance to
- * say that the URB doesn't need reaping and should be unlinked.
- *
- * An URB which is in the cancel state after pfnCancel will remain in that
- * state and in the async list until its reaped. When it's finally reaped
- * it will be unlinked and freed without doing any completion.
- *
- * There are different modes of canceling an URB. When devices are being
- * disconnected etc., they will be completed with an error (CRC). However,
- * when the HC needs to temporarily halt communication with a device, the
- * URB/TD must be left alone if possible.
- *
- * @param   pUrb        The URB to cancel.
- * @param   mode        The way the URB should be canceled.
- */
-void vusbUrbCancel(PVUSBURB pUrb, CANCELMODE mode)
-{
-    int rc = vusbDevIoThreadExecSync(pUrb->pVUsb->pDev, (PFNRT)vusbUrbCancelWorker, 2, pUrb, mode);
-    AssertRC(rc);
-}
-
-
-/**
- * Async version of vusbUrbCancel() - doesn't wait for the cancelling to be complete.
- */
-void vusbUrbCancelAsync(PVUSBURB pUrb, CANCELMODE mode)
-{
-    /* Don't try to cancel the URB when completion is in progress at the moment. */
-    if (!ASMAtomicXchgBool(&pUrb->fCompleting, true))
-    {
-        int rc = vusbDevIoThreadExec(pUrb->pVUsb->pDev, 0 /* fFlags */, (PFNRT)vusbUrbCancelWorker, 2, pUrb, mode);
-        AssertRC(rc);
-    }
-}
-
 
 /**
  * Deals with a ripe URB (i.e. after reaping it).

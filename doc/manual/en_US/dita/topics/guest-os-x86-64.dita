@@ -19,7 +19,7 @@
         <tbody>
           <row>
             <entry>Windows 11 (64-bit). Released versions only.</entry>
-            <entry morerows="6">Premier</entry>
+            <entry morerows="7">Premier</entry>
           </row>
           <row>
             <entry>Windows 10 (32-bit and 64-bit). Released versions only.</entry>
@@ -34,14 +34,17 @@
             <entry>Oracle Solaris 11 (32-bit and 64-bit)</entry>
           </row>
           <row>
-            <entry>Oracle Linux 9 (64-bit), Red Hat Enterprise Linux 9 (64-bit), CentOS Stream 9 (64-bit)</entry>
+            <entry>Oracle Linux 10 (64-bit), Red Hat Enterprise Linux 10 (64-bit)</entry>
+          </row>
+          <row>
+            <entry>Oracle Linux 9 (64-bit), Red Hat Enterprise Linux 9 (64-bit)</entry>
           </row>
           <row>
             <entry>Oracle Linux 8 (64-bit), Red Hat Enterprise Linux 8 (64-bit)</entry>
           </row>
           <row>
             <entry>Windows 8.1 and 8 (32-bit and 64-bit)</entry>
-            <entry morerows="24">Limited</entry>
+            <entry morerows="23">Limited</entry>
           </row>
           <row>
             <entry>Windows 7 (32-bit and 64-bit)</entry>
@@ -74,16 +77,13 @@
             <entry>Oracle Solaris 10 8/11 Update 10 and later (32-bit and 64-bit)</entry>
           </row>
           <row>
-            <entry>CentOS Stream 8 (64-bit)</entry>
+            <entry>Oracle Linux 7 (64-bit), Red Hat Enterprise Linux 7 (64-bit)</entry>
           </row>
           <row>
-            <entry>Oracle Linux 7 (64-bit), Red Hat Enterprise Linux 7 (64-bit), CentOS Linux 7 (64-bit)</entry>
+            <entry>Oracle Linux 6 (32-bit and 64-bit), Red Hat Enterprise Linux 6 (32-bit and 64-bit)</entry>
           </row>
           <row>
-            <entry>Oracle Linux 6 (32-bit and 64-bit), Red Hat Enterprise Linux 6 (32-bit and 64-bit), CentOS 6 (32-bit and 64-bit)</entry>
-          </row>
-          <row>
-            <entry>Oracle Linux 5 (32-bit and 64-bit), Red Hat Enterprise Linux 5 (32-bit and 64-bit), CentOS 5 (32-bit and 64-bit)</entry>
+            <entry>Oracle Linux 5 (32-bit and 64-bit), Red Hat Enterprise Linux 5 (32-bit and 64-bit)</entry>
           </row>
           <row>
             <entry>Ubuntu 24.10 LTS (Oracular Oriole) (64-bit)</entry>

@@ -1,4 +1,4 @@
-/* $Id: ApplianceImplImport.cpp 107661 2025-01-09 13:18:25Z alexander.eichner@oracle.com $ */
+/* $Id: ApplianceImplImport.cpp 110133 2025-07-07 12:49:50Z brent.paulson@oracle.com $ */
 /** @file
  * IAppliance and IVirtualSystem COM class implementations.
  */
@@ -377,6 +377,10 @@ HRESULT Appliance::interpret()
                                  "",
                                  Utf8StrFmt("%RU64", vsysThis.ullMemorySize),
                                  Utf8StrFmt("%RU64", ullMemSizeVBox));
+
+            /* The NVRAM file does not have a <vbox:Machine> entry so we only need to check the OVF details. */
+            if (vsysThis.strNvramPath.isNotEmpty())
+                pNewDesc->i_addEntry(VirtualSystemDescriptionType_NVRAM, "", vsysThis.strNvramPath, vsysThis.strNvramPath);
 
             /* Audio */
             Utf8Str strSoundCard;
@@ -4608,6 +4612,31 @@ void Appliance::i_importMachineGeneric(const ovf::VirtualSystem &vsysThis,
         if (FAILED(hrc)) throw hrc;
     }
 
+    if (stack.strNvramPath.isNotEmpty())
+    {
+        /* Construct source file path */
+        Utf8Str strSrcFilePath;
+        if (stack.hVfsFssOva != NIL_RTVFSFSSTREAM)
+            strSrcFilePath = stack.strNvramPath;
+        else
+        {
+            strSrcFilePath = stack.strSourceDir;
+            strSrcFilePath.append(RTPATH_SLASH_STR);
+            strSrcFilePath.append(stack.strNvramPath);
+        }
+
+        /* The basename of the destination filename needs to be the VM's name in
+         * order to match the VM's INvramStore::nonVolatileStorageFile attribute so
+         * that EFI can find it when booting the VM. */
+        Utf8Str strAbsDstPath;
+        Utf8Str strDstFilename = stack.strNameVBox;
+        strDstFilename += ".nvram";
+        int vrc = RTPathAbsExCxx(strAbsDstPath, stack.strMachineFolder, strDstFilename);
+        AssertRCStmt(vrc, throw Global::vboxStatusCodeToCOM(vrc));
+
+        i_importCopyFile(stack, strSrcFilePath, strAbsDstPath, stack.strNvramPath.c_str());
+    }
+
     if (!stack.strAudioAdapter.isEmpty())
         if (stack.strAudioAdapter.compare("null", Utf8Str::CaseInsensitive) != 0)
         {
@@ -5538,6 +5567,32 @@ void Appliance::i_importVBoxMachine(ComObjPtr<VirtualSystemDescription> &vsdescT
         }
     }
 
+    /* Import the NRAM file if present */
+    if (stack.strNvramPath.isNotEmpty())
+    {
+        /* Construct source file path */
+        Utf8Str strSrcFilePath;
+        if (stack.hVfsFssOva != NIL_RTVFSFSSTREAM)
+            strSrcFilePath = stack.strNvramPath;
+        else
+        {
+            strSrcFilePath = stack.strSourceDir;
+            strSrcFilePath.append(RTPATH_SLASH_STR);
+            strSrcFilePath.append(stack.strNvramPath);
+        }
+
+        /* The basename of the destination filename needs to be the VM's name in
+         * order to match the VM's INvramStore::nonVolatileStorageFile attribute so
+         * that EFI can find it when booting the VM. */
+        Utf8Str strAbsDstPath;
+        Utf8Str strDstFilename = stack.strNameVBox;
+        strDstFilename += ".nvram";
+        int vrc = RTPathAbsExCxx(strAbsDstPath, stack.strMachineFolder, strDstFilename);
+        AssertRCStmt(vrc, throw Global::vboxStatusCodeToCOM(vrc));
+
+        i_importCopyFile(stack, strSrcFilePath, strAbsDstPath, stack.strNvramPath.c_str());
+    }
+
     /* Floppy controller */
     bool fFloppy = vsdescThis->i_findByType(VirtualSystemDescriptionType_Floppy).size() > 0;
     /* DVD controller */
@@ -6202,6 +6257,12 @@ void Appliance::i_importMachines(ImportStack &stack)
         /* It's alway stored in bytes in VSD according to the old internal agreement within the team */
         uint64_t ullMemorySizeMB = vsdeRAM.front()->strVBoxCurrent.toUInt64() / _1M;
         stack.ulMemorySizeMB = (uint32_t)ullMemorySizeMB;
+
+        // NVRAM file for VMs using EFI
+        stack.strNvramPath.setNull();
+        std::list<VirtualSystemDescriptionEntry*> vsdeNvram = vsdescThis->i_findByType(VirtualSystemDescriptionType_NVRAM);
+        if (!vsdeNvram.empty())
+            stack.strNvramPath = vsdeNvram.front()->strVBoxCurrent;
 
 #ifdef VBOX_WITH_USB
         // USB controller

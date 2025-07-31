@@ -1,4 +1,4 @@
-/* $Id: VUSBInternal.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: VUSBInternal.h 110377 2025-07-23 12:22:40Z michal.necasek@oracle.com $ */
 /** @file
  * Virtual USB - Internal header.
  *
@@ -494,7 +494,6 @@ int  vusbUrbSubmit(PVUSBURB pUrb);
 void vusbUrbDoReapAsync(PRTLISTANCHOR pUrbLst, RTMSINTERVAL cMillies);
 void vusbUrbDoReapAsyncDev(PVUSBDEV pDev, RTMSINTERVAL cMillies);
 void vusbUrbCancel(PVUSBURB pUrb, CANCELMODE mode);
-void vusbUrbCancelAsync(PVUSBURB pUrb, CANCELMODE mode);
 void vusbUrbRipe(PVUSBURB pUrb);
 void vusbUrbCompletionRhEx(PVUSBROOTHUB pRh, PVUSBURB pUrb);
 int vusbUrbSubmitHardError(PVUSBURB pUrb);

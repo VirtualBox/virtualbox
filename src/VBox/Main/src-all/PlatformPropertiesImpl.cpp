@@ -1,4 +1,4 @@
-/* $Id: PlatformPropertiesImpl.cpp 109914 2025-06-20 11:01:36Z vitali.pelenjow@oracle.com $ */
+/* $Id: PlatformPropertiesImpl.cpp 110370 2025-07-23 09:14:02Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation - Platform properties.
  */
@@ -51,7 +51,6 @@ PlatformProperties::PlatformProperties()
     : mParent(NULL)
     , mPlatformArchitecture(PlatformArchitecture_None)
     , mfIsHost(false)
-    , m(NULL)
 {
 }
 
@@ -86,10 +85,7 @@ HRESULT PlatformProperties::init(VirtualBox *aParent, bool fIsHost /* = false */
     AutoInitSpan autoInitSpan(this);
     AssertReturn(autoInitSpan.isOk(), E_FAIL);
 
-    unconst(mParent) = aParent;
-
-    m = new settings::PlatformProperties;
-
+    unconst(mParent)  = aParent;
     unconst(mfIsHost) = fIsHost;
 
     if (mfIsHost)
@@ -100,9 +96,9 @@ HRESULT PlatformProperties::init(VirtualBox *aParent, bool fIsHost /* = false */
          * NB: See also PlatformProperties constructor in settings.h
          */
 #if defined(RT_OS_DARWIN) || defined(RT_OS_WINDOWS) || defined(RT_OS_SOLARIS)
-        m->fExclusiveHwVirt = false; /** @todo BUGBUG Applies for MacOS on ARM as well? */
+        mData.fExclusiveHwVirt = false; /** @todo BUGBUG Applies for MacOS on ARM as well? */
 #else
-        m->fExclusiveHwVirt = true;
+        mData.fExclusiveHwVirt = true;
 #endif
     }
 
@@ -156,12 +152,6 @@ void PlatformProperties::uninit()
     AutoUninitSpan autoUninitSpan(this);
     if (autoUninitSpan.uninitDone())
         return;
-
-    if (m)
-    {
-        delete m;
-        m = NULL;
-    }
 }
 
 HRESULT PlatformProperties::getSerialPortCount(ULONG *count)
@@ -212,7 +202,7 @@ HRESULT PlatformProperties::getExclusiveHwVirt(BOOL *aExclusiveHwVirt)
 {
     AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
 
-    *aExclusiveHwVirt = m->fExclusiveHwVirt;
+    *aExclusiveHwVirt = mData.fExclusiveHwVirt;
 
     /* Makes no sense for guest platform properties, but we return FALSE anyway. */
     return S_OK;
@@ -227,7 +217,7 @@ HRESULT PlatformProperties::setExclusiveHwVirt(BOOL aExclusiveHwVirt)
         return S_OK;
 
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
-    m->fExclusiveHwVirt = !!aExclusiveHwVirt;
+    mData.fExclusiveHwVirt = !!aExclusiveHwVirt;
     alock.release();
 
     // VirtualBox::i_saveSettings() needs vbox write lock

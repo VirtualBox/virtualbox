@@ -1,4 +1,4 @@
-/* $Id: DevHda.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: DevHda.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * Intel HD Audio Controller Emulation.
  *

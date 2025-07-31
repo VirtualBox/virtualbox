@@ -1,4 +1,4 @@
-/* $Id: VSCSILunSbc.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: VSCSILunSbc.cpp 110132 2025-07-07 11:33:52Z michal.necasek@oracle.com $ */
 /** @file
  * Virtual SCSI driver: SBC LUN implementation (hard disks)
  */
@@ -210,8 +210,6 @@ static DECLCALLBACK(int) vscsiLunSbcReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQ
     {
         case SCSI_INQUIRY:
         {
-            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
-
             /* Check for EVPD bit. */
             if (pVScsiReq->pbCDB[1] & 0x1)
             {
@@ -234,8 +232,6 @@ static DECLCALLBACK(int) vscsiLunSbcReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQ
                 {
                     SCSIINQUIRYDATA ScsiInquiryReply;
 
-                    uint16_t cbDataReq = scsiBE2H_U16(&pVScsiReq->pbCDB[3]);
-                    vscsiReqSetXferSize(pVScsiReq, RT_MIN(sizeof(SCSIINQUIRYDATA), cbDataReq));
                     memset(&ScsiInquiryReply, 0, sizeof(ScsiInquiryReply));
 
                     ScsiInquiryReply.cbAdditional           = 31;
@@ -255,6 +251,11 @@ static DECLCALLBACK(int) vscsiLunSbcReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQ
                     scsiPadStrS(ScsiInquiryReply.achProductId, pszProductId, 16);
                     scsiPadStrS(ScsiInquiryReply.achProductLevel, pszProductLevel, 4);
 
+                    uint16_t cbDataReq = scsiBE2H_U16(&pVScsiReq->pbCDB[3]);
+                    vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
+                    vscsiReqSetXferSize(pVScsiReq, RT_MIN(sizeof(SCSIINQUIRYDATA), cbDataReq));
+
+
                     RTSgBufCopyFromBuf(&pVScsiReq->SgBuf, (uint8_t *)&ScsiInquiryReply, sizeof(SCSIINQUIRYDATA));
                     rcReq = vscsiLunReqSenseOkSet(pVScsiLun, pVScsiReq);
                 }
@@ -268,9 +269,6 @@ static DECLCALLBACK(int) vscsiLunSbcReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQ
             uint8_t aReply[8];
             memset(aReply, 0, sizeof(aReply));
 
-            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
-            vscsiReqSetXferSize(pVScsiReq, sizeof(aReply));
-
             /*
              * If sector size exceeds the maximum value that is
              * able to be stored in 4 bytes return 0xffffffff in this field
@@ -280,6 +278,10 @@ static DECLCALLBACK(int) vscsiLunSbcReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQ
             else
                 scsiH2BE_U32(aReply, pVScsiLunSbc->cSectors - 1);
             scsiH2BE_U32(&aReply[4], (uint32_t)pVScsiLunSbc->cbSector);
+
+            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
+            vscsiReqSetXferSize(pVScsiReq, sizeof(aReply));
+
             RTSgBufCopyFromBuf(&pVScsiReq->SgBuf, aReply, sizeof(aReply));
             rcReq = vscsiLunReqSenseOkSet(pVScsiLun, pVScsiReq);
             break;
@@ -287,17 +289,15 @@ static DECLCALLBACK(int) vscsiLunSbcReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQ
         case SCSI_MODE_SENSE_6:
         {
             uint8_t uModePage = pVScsiReq->pbCDB[2] & 0x3f;
-            uint8_t aReply[24];
+            uint8_t aReply[16];
             uint8_t *pu8ReplyPos;
             bool    fValid = false;
 
-            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
-            vscsiReqSetXferSize(pVScsiReq, pVScsiReq->pbCDB[4]);
             memset(aReply, 0, sizeof(aReply));
-            aReply[0] = 4; /* Reply length 4. */
-            aReply[1] = 0; /* Default media type. */
-            aReply[2] = RT_BIT(4); /* Caching supported. */
-            aReply[3] = 0; /* Block descriptor length. */
+            aReply[0] = 4 - 1;      /* Reply length 4 (sans length byte). */
+            aReply[1] = 0;          /* Default media type. */
+            aReply[2] = RT_BIT(4);  /* Caching supported. */
+            aReply[3] = 0;          /* Block descriptor length. */
 
             if (pVScsiLun->fFeatures & VSCSI_LUN_FEATURE_READONLY)
                 aReply[2] |= RT_BIT(7); /* Set write protect bit */
@@ -306,10 +306,10 @@ static DECLCALLBACK(int) vscsiLunSbcReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQ
 
             if ((uModePage == 0x08) || (uModePage == 0x3f))
             {
-                memset(pu8ReplyPos, 0, 20);
-                *pu8ReplyPos++ = 0x08; /* Page code. */
-                *pu8ReplyPos++ = 0x12; /* Size of the page. */
-                *pu8ReplyPos++ = 0x4;  /* Write cache enabled. */
+                *pu8ReplyPos++ = 0x08;  /* Caching Page code. */
+                *pu8ReplyPos++ = 10;    /* Size of the page minus header, SCSI-2 format. */
+                *pu8ReplyPos++ = 0x4;   /* Write cache enabled. */
+                aReply[0] += 12;        /* Add page size to total reply length. */
                 fValid = true;
             } else if (uModePage == 0) {
                 fValid = true;
@@ -317,6 +317,9 @@ static DECLCALLBACK(int) vscsiLunSbcReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQ
 
             /* Querying unknown pages must fail. */
             if (fValid) {
+                vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
+                vscsiReqSetXferSize(pVScsiReq, RT_MIN(sizeof(aReply), pVScsiReq->pbCDB[4]));
+
                 RTSgBufCopyFromBuf(&pVScsiReq->SgBuf, aReply, sizeof(aReply));
                 rcReq = vscsiLunReqSenseOkSet(pVScsiLun, pVScsiReq);
             } else {
@@ -426,9 +429,6 @@ static DECLCALLBACK(int) vscsiLunSbcReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQ
         {
             uint8_t uDataMode = pVScsiReq->pbCDB[1] & 0x1f;
 
-            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
-            vscsiReqSetXferSize(pVScsiReq, scsiBE2H_U24(&pVScsiReq->pbCDB[6]));
-
             switch (uDataMode)
             {
                 case 0x00:
@@ -443,6 +443,9 @@ static DECLCALLBACK(int) vscsiLunSbcReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQ
 
                     /* We do not implement an echo buffer. */
                     memset(aReply, 0, sizeof(aReply));
+
+                    vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
+                    vscsiReqSetXferSize(pVScsiReq, RT_MIN(sizeof(aReply), scsiBE2H_U24(&pVScsiReq->pbCDB[6])));
 
                     RTSgBufCopyFromBuf(&pVScsiReq->SgBuf, aReply, sizeof(aReply));
                     rcReq =  vscsiLunReqSenseOkSet(pVScsiLun, pVScsiReq);
@@ -469,9 +472,6 @@ static DECLCALLBACK(int) vscsiLunSbcReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQ
             uint8_t uPageCode = pVScsiReq->pbCDB[2] & 0x3f;
             uint8_t uSubPageCode = pVScsiReq->pbCDB[3];
 
-            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
-            vscsiReqSetXferSize(pVScsiReq, scsiBE2H_U16(&pVScsiReq->pbCDB[7]));
-
             switch (uPageCode)
             {
                 case 0x00:
@@ -484,6 +484,10 @@ static DECLCALLBACK(int) vscsiLunSbcReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQ
                         aReply[1] = 0;
                         aReply[2] = 0;
                         aReply[3] = 0;
+
+                        vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
+                        vscsiReqSetXferSize(pVScsiReq, RT_MIN(sizeof(aReply), scsiBE2H_U16(&pVScsiReq->pbCDB[7])));
+
                         RTSgBufCopyFromBuf(&pVScsiReq->SgBuf, aReply, sizeof(aReply));
                         rcReq = vscsiLunReqSenseOkSet(pVScsiLun, pVScsiReq);
                         break;

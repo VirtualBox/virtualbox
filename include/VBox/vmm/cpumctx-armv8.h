@@ -170,11 +170,11 @@ typedef struct CPUMCTX
 {
     /** The general purpose register array view. */
     CPUMCTXGREG         aGRegs[31];
-    CPUMCTXGREG         uPadding0;
+    CPUMCTXGREG         Padding0;
     /** The NEON SIMD & FP register array view. */
     CPUMCTXVREG         aVRegs[32];
-    /** The stack registers (EL0, EL1). */
-    CPUMCTXSYSREG       aSpReg[2]; /**< @todo extend to 4 entries! */
+    /** The stack registers (SP_EL0, SP_EL1, SP_EL2, SP_EL3). */
+    CPUMCTXSYSREG       aSpReg[4];
     /** The program counter. */
     CPUMCTXSYSREG       Pc;
     /** The SPSR_EL1 register (Saved Program Status Register). */
@@ -232,8 +232,8 @@ typedef struct CPUMCTX
     CPUMCTXSYSREG       Par;
     /** The TPIDRRO_EL0 register. */
     CPUMCTXSYSREG       TpIdrRoEl0;
-    /** The TPIDR_ELn registers. */
-    CPUMCTXSYSREG       aTpIdr[2]; /**< @todo extend to 4 entries. */
+    /** The TPIDR_EL0, TPIDR_EL1, TPIDR_EL2, TPIDR_EL3 registers. */
+    CPUMCTXSYSREG       aTpIdr[4];
     /** The MDCCINT_EL1 register. */
     CPUMCTXSYSREG       MDccInt;
     /** The ACTLR_EL1 register. */
@@ -271,12 +271,8 @@ typedef struct CPUMCTX
     CPUMCTXSYSREG       SctlrEl2;
     /** The SPSR_EL2 register. */
     CPUMCTXSYSREG       SpsrEl2;
-    /** The SP_EL2 register. */
-    CPUMCTXSYSREG       SpEl2;
     /** The TCR_EL2 register. */
     CPUMCTXSYSREG       TcrEl2;
-    /** The TPIDR_EL2 register. */
-    CPUMCTXSYSREG       TpidrEl2;
     /** The TTBR0_EL2 register. */
     CPUMCTXSYSREG       Ttbr0El2;
     /** The TTBR1_EL2 register. */
@@ -313,7 +309,7 @@ typedef struct CPUMCTX
     /** The CNTV_CVAL_EL0 register, always synced during VM-exit. */
     uint64_t            CntvCValEl0;
 
-    uint64_t            au64Padding2[2];
+    /*uint64_t            au64Padding2[0]; */
 } CPUMCTX;
 
 

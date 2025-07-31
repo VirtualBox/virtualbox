@@ -1,4 +1,4 @@
-/* $Id: nocrt-RTLogWriteStdOut-win.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: nocrt-RTLogWriteStdOut-win.cpp 110280 2025-07-17 13:53:03Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT - Log To StdOut, Windows no-CRT.
  */
@@ -47,11 +47,11 @@
 RTDECL(void) RTLogWriteStdOut(const char *pch, size_t cb)
 {
     /** @todo should flush the stdout stream first... */
-    HANDLE hStdErr = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (hStdErr != NULL && hStdErr != INVALID_HANDLE_VALUE)
+    HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hStdOut != NULL && hStdOut != INVALID_HANDLE_VALUE)
     {
         DWORD cbIgn; /* NT3.1 requires the return size parameter. */
-        WriteFile(hStdErr, pch, (DWORD)cb, &cbIgn, NULL); /** @todo do we need to translate \\n to \\r\\n? */
+        WriteFile(hStdOut, pch, (DWORD)cb, &cbIgn, NULL); /** @todo do we need to translate \\n to \\r\\n? */
     }
 }
 RT_EXPORT_SYMBOL(RTLogWriteStdOut);

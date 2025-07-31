@@ -642,9 +642,31 @@ RT_BF_ASSERT_COMPILE_CHECKS(GITS_BF_CMD_INVALL_DW0_, UINT64_C(0), UINT64_MAX,
 #define GITS_BF_CMD_INVALL_DW2_RSVD_63_16_MASK                  UINT64_C(0xffffffffffff0000)
 RT_BF_ASSERT_COMPILE_CHECKS(GITS_BF_CMD_INVALL_DW2_, UINT64_C(0), UINT64_MAX,
                             (IC_ID, RSVD_63_16));
+/** @} */
 
-/** INVALL DW3: Reserved (bits 63:0). */
-#define GITS_BF_CMD_INVALL_DW3_RSVD_63_0_MASK                   UINT64_MAX
+
+/** @name GITS command: DISCARD.
+ * @{ */
+/** DISCARD DW0: Command ID. */
+#define GITS_BF_CMD_DISCARD_DW0_CMD_ID_SHIFT                    0
+#define GITS_BF_CMD_DISCARD_DW0_CMD_ID_MASK                     UINT64_C(0x00000000000000ff)
+/** DISCARD DW0: Reserved (bits 31:8). */
+#define GITS_BF_CMD_DISCARD_DW0_RSVD_31_8_SHIFT                 8
+#define GITS_BF_CMD_DISCARD_DW0_RSVD_31_8_MASK                  UINT64_C(0x00000000ffffff00)
+/** DISCARD DW0: Device ID. */
+#define GITS_BF_CMD_DISCARD_DW0_DEV_ID_SHIFT                    32
+#define GITS_BF_CMD_DISCARD_DW0_DEV_ID_MASK                     UINT64_C(0xffffffff00000000)
+RT_BF_ASSERT_COMPILE_CHECKS(GITS_BF_CMD_DISCARD_DW0_, UINT64_C(0), UINT64_MAX,
+                            (CMD_ID, RSVD_31_8, DEV_ID));
+
+/** DISCARD DW1: Event ID. */
+#define GITS_BF_CMD_DISCARD_DW1_EVENT_ID_SHIFT                  0
+#define GITS_BF_CMD_DISCARD_DW1_EVENT_ID_MASK                   UINT64_C(0x00000000ffffffff)
+/** DISCARD DW1: Reserved (bits 63:32). */
+#define GITS_BF_CMD_DISCARD_DW1_RSVD_63_32_SHIFT                32
+#define GITS_BF_CMD_DISCARD_DW1_RSVD_63_32_MASK                 UINT64_C(0xffffffff00000000)
+RT_BF_ASSERT_COMPILE_CHECKS(GITS_BF_CMD_DISCARD_DW1_, UINT64_C(0), UINT64_MAX,
+                            (EVENT_ID, RSVD_63_32));
 /** @} */
 
 #endif /* !VBOX_INCLUDED_gic_its_h */

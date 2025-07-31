@@ -1,4 +1,4 @@
-/* $Id: NEMR3Native-darwin-armv8.cpp 109780 2025-06-04 20:39:12Z knut.osmundsen@oracle.com $ */
+/* $Id: NEMR3Native-darwin-armv8.cpp 110152 2025-07-08 14:36:58Z knut.osmundsen@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 macOS backend using Hypervisor.framework, ARMv8 variant.
  *
@@ -571,9 +571,9 @@ static const struct
     //{ ARMV8_AARCH64_SYSREG_MDCR_EL2,       RT_UOFFSETOF(CPUMCTX, MdcrEl2.u64)       },
     { ARMV8_AARCH64_SYSREG_SCTLR_EL2,      RT_UOFFSETOF(CPUMCTX, SctlrEl2.u64)      },
     { ARMV8_AARCH64_SYSREG_SPSR_EL2,       RT_UOFFSETOF(CPUMCTX, SpsrEl2.u64)       },
-    { ARMV8_AARCH64_SYSREG_SP_EL2,         RT_UOFFSETOF(CPUMCTX, SpEl2.u64)         },
+    { ARMV8_AARCH64_SYSREG_SP_EL2,         RT_UOFFSETOF(CPUMCTX, aSpReg[2].u64)        },
     { ARMV8_AARCH64_SYSREG_TCR_EL2,        RT_UOFFSETOF(CPUMCTX, TcrEl2.u64)        },
-    { ARMV8_AARCH64_SYSREG_TPIDR_EL2,      RT_UOFFSETOF(CPUMCTX, TpidrEl2.u64)      },
+    { ARMV8_AARCH64_SYSREG_TPIDR_EL2,      RT_UOFFSETOF(CPUMCTX, aTpIdr[2].u64)      },
     { ARMV8_AARCH64_SYSREG_TTBR0_EL2,      RT_UOFFSETOF(CPUMCTX, Ttbr0El2.u64)      },
     { ARMV8_AARCH64_SYSREG_TTBR1_EL2,      RT_UOFFSETOF(CPUMCTX, Ttbr1El2.u64)      },
     { ARMV8_AARCH64_SYSREG_VBAR_EL2,       RT_UOFFSETOF(CPUMCTX, VBarEl2.u64)       },

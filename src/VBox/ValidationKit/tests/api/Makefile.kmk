@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 110219 2025-07-14 20:46:18Z brent.paulson@oracle.com $
 ## @file
 # VirtualBox Validation Kit - API Tests.
 #
@@ -46,6 +46,7 @@ ValidationKitTestsApi_EXEC_SOURCES := \
 	$(PATH_SUB_CURRENT)/tdAppliance1.py \
 	$(PATH_SUB_CURRENT)/tdCloneMedium1.py \
 	$(PATH_SUB_CURRENT)/tdCreateVMWithDefaults1.py \
+	$(PATH_SUB_CURRENT)/tdImportExport1.py \
 	$(PATH_SUB_CURRENT)/tdMoveMedium1.py \
 	$(PATH_SUB_CURRENT)/tdMoveVm1.py \
 	$(PATH_SUB_CURRENT)/tdPython1.py \

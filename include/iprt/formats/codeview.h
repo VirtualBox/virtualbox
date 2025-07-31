@@ -384,7 +384,7 @@ typedef RTCVSRCMODULE const *PCRTCVSRCMODULE;
  * (RTCVSRCRANGE), cSegs in length.  Just like for RTCVSRCMODULE this may
  * contain zero entries.
  *
- * After the range table is the filename, which is preceeded by a 8-bit length
+ * After the range table is the filename, which is preceded by a 8-bit length
  * (actually documented to be 16-bit, but seeing 8-bit here with wlink).
  */
 typedef struct RTCVSRCFILE

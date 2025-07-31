@@ -1,4 +1,4 @@
-/* $Id: IEMOpHlp-x86.h 108447 2025-02-18 15:46:53Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMOpHlp-x86.h 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager - Opcode Helpers.
  */
@@ -301,7 +301,7 @@
             pVCpu->iem.s.enmEffOpSize = pVCpu->iem.s.enmDefOpSize = IEMMODE_64BIT; \
     } while (0)
 
-/** Only a REX prefix immediately preceeding the first opcode byte takes
+/** Only a REX prefix immediately preceding the first opcode byte takes
  * effect. This macro helps ensuring this as well as logging bad guest code.  */
 #define IEMOP_HLP_CLEAR_REX_NOT_BEFORE_OPCODE(a_szPrf) \
     do \

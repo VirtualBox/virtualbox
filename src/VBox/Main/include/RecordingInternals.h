@@ -1,4 +1,4 @@
-/* $Id: RecordingInternals.h 110109 2025-07-04 07:23:45Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingInternals.h 110427 2025-07-28 10:43:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording internals header.
  */
@@ -31,7 +31,12 @@
 # pragma once
 #endif
 
+#ifdef IN_VBOXSVC
+# error "Using RecordingInternals.h is prohibited in VBoxSVC!"
+#endif
+
 #include <list>
+#include <map>
 
 #include <iprt/asm.h>
 #include <iprt/assert.h>
@@ -39,7 +44,6 @@
 
 #include "VBox/com/string.h"
 #include "VBox/com/VirtualBox.h"
-#include "VBox/settings.h"
 #include <VBox/vmm/pdmaudioifs.h>
 
 #ifdef VBOX_WITH_LIBVPX
@@ -52,6 +56,8 @@
 #ifdef VBOX_WITH_LIBVORBIS
 # include "vorbis/vorbisenc.h"
 #endif
+
+#include "RecordingContext.h" /* For RECORDINGPIXELFMT. */
 
 
 /*********************************************************************************************************************************
@@ -74,19 +80,6 @@ typedef RECORDINGFRAME *PRECORDINGFRAME;
 /*********************************************************************************************************************************
 *   Internal structures, defines and APIs                                                                                        *
 *********************************************************************************************************************************/
-
-/**
- * Enumeration for supported pixel formats.
- */
-enum RECORDINGPIXELFMT
-{
-    /** Unknown pixel format. */
-    RECORDINGPIXELFMT_UNKNOWN    = 0,
-    /** BRGA 32. */
-    RECORDINGPIXELFMT_BRGA32     = 1,
-    /** The usual 32-bit hack. */
-    RECORDINGPIXELFMT_32BIT_HACK = 0x7fffffff
-};
 
 /**
  * Structure for keeping recording surface information.
@@ -653,9 +646,130 @@ struct RecordingBlock
 /** List for keeping video recording (data) blocks. */
 typedef std::list<RecordingBlock *> RecordingBlockList;
 
+/** Structure for queuing all blocks bound to a single timecode.
+ *  This can happen if multiple tracks are being involved. */
+struct RecordingBlocks
+{
+    virtual ~RecordingBlocks()
+    {
+        Clear();
+    }
+
+    /**
+     * Resets a recording block list by removing (destroying)
+     * all current elements.
+     */
+    void Clear()
+    {
+        while (!List.empty())
+        {
+            RecordingBlock *pBlock = List.front();
+            if (pBlock->GetRefs() == 0)
+            {
+                List.pop_front();
+                delete pBlock;
+            }
+        }
+
+        Assert(List.size() == 0);
+    }
+
+    /** The actual block list for this timecode. */
+    RecordingBlockList List;
+};
+
+/** A block map containing all currently queued blocks.
+ *  The key specifies a unique timecode, whereas the value
+ *  is a list of blocks which all correlate to the same key (timecode). */
+typedef std::map<uint64_t, RecordingBlocks *> RecordingBlockMap;
+
+/**
+ * Structure for holding a set of recording (data) blocks.
+ */
+struct RecordingBlockSet
+{
+    /**
+     * Constructor.
+     *
+     * Will throw rc on failure.
+     */
+    RecordingBlockSet()
+        : tsLastProcessedMs(0)
+    {
+        int const vrc = RTCritSectInit(&CritSect);
+        if (RT_FAILURE(vrc))
+            throw vrc;
+    }
+
+    virtual ~RecordingBlockSet()
+    {
+        Clear();
+
+        RTCritSectDelete(&CritSect);
+    }
+
+    /**
+     * Inserts a block list within the given PTS.
+     *
+     * @param  uPTS             Timestamp (PTS) to insert block list to.
+     * @param  pBlocks          Block list to insert.
+     *                          This class will take ownership of the data.
+     */
+    int Insert(uint64_t uPTS, RecordingBlocks *pBlocks)
+    {
+        int vrc = RTCritSectEnter(&CritSect);
+        if (RT_SUCCESS(vrc))
+        {
+            try
+            {
+                Map.insert(std::make_pair(uPTS, pBlocks));
+            }
+            catch (std::bad_alloc &)
+            {
+                vrc = VERR_NO_MEMORY;
+            }
+            RTCritSectLeave(&CritSect);
+        }
+
+        return vrc;
+    }
+
+    /**
+     * Resets a recording block set by removing (destroying)
+     * all current elements.
+     */
+    void Clear(void)
+    {
+        int vrc = RTCritSectEnter(&CritSect);
+        if (RT_SUCCESS(vrc))
+        {
+            RecordingBlockMap::iterator it = Map.begin();
+            while (it != Map.end())
+            {
+                it->second->Clear();
+                delete it->second;
+                Map.erase(it);
+                it = Map.begin();
+            }
+
+            Assert(Map.size() == 0);
+
+            RTCritSectLeave(&CritSect);
+        }
+    }
+
+    /** Critical section for protecting the set. */
+    RTCRITSECT        CritSect;
+    /** Timestamp (in ms) when this set was last processed.
+     *  Set to 0 if not processed yet. */
+    uint64_t          tsLastProcessedMs;
+    /** All blocks related to this block set. */
+    RecordingBlockMap Map;
+};
+
 int recordingCodecCreateAudio(PRECORDINGCODEC pCodec, RecordingAudioCodec_T enmAudioCodec);
 int recordingCodecCreateVideo(PRECORDINGCODEC pCodec, RecordingVideoCodec_T enmVideoCodec);
-int recordingCodecInit(const PRECORDINGCODEC pCodec, const PRECORDINGCODECCALLBACKS pCallbacks, const settings::RecordingScreen &Settings);
+int recordingCodecInit(const PRECORDINGCODEC pCodec, const PRECORDINGCODECCALLBACKS pCallbacks, const ComPtr<IRecordingScreenSettings> &ScreenSettings);
 int recordingCodecDestroy(PRECORDINGCODEC pCodec);
 int recordingCodecEncodeFrame(PRECORDINGCODEC pCodec, const PRECORDINGFRAME pFrame, uint64_t msTimestamp, void *pvUser);
 int recordingCodecEncodeCurrent(PRECORDINGCODEC pCodec, uint64_t msTimestamp);

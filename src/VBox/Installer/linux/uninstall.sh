@@ -109,6 +109,7 @@ rm -f \
   /usr/bin/vboxaudiotest \
   /usr/bin/vboxbugreport \
   "$PREV_INSTALLATION/components/VBoxVMM.so" \
+  "$PREV_INSTALLATION/components/VBoxVMMArm.so" \
   "$PREV_INSTALLATION/components/VBoxREM.so" \
   "$PREV_INSTALLATION/components/VBoxRT.so" \
   "$PREV_INSTALLATION/components/VBoxDDU.so" \

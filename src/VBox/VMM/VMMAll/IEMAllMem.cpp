@@ -1,4 +1,4 @@
-/* $Id: IEMAllMem.cpp 108785 2025-03-18 10:08:56Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMAllMem.cpp 110422 2025-07-27 22:59:43Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager - Common Memory Routines.
  */
@@ -281,20 +281,6 @@ static VBOXSTRICTRC iemMemBounceBufferCommitAndUnmap(PVMCPUCC pVCpu, unsigned iM
     Assert(pVCpu->iem.s.cActiveMappings != 0);
     pVCpu->iem.s.cActiveMappings--;
     return VINF_SUCCESS;
-}
-
-
-/**
- * Helper for iemMemMap, iemMemMapJmp and iemMemBounceBufferMapCrossPage.
- * @todo duplicated
- */
-DECL_FORCE_INLINE(uint32_t)
-iemMemCheckDataBreakpoint(PVMCC pVM, PVMCPUCC pVCpu, RTGCPTR GCPtrMem, size_t cbMem, uint32_t fAccess)
-{
-    bool const  fSysAccess = (fAccess & IEM_ACCESS_WHAT_MASK) == IEM_ACCESS_WHAT_SYS;
-    if (fAccess & IEM_ACCESS_TYPE_WRITE)
-        return DBGFBpCheckDataWrite(pVM, pVCpu, GCPtrMem, (uint32_t)cbMem, fSysAccess);
-    return DBGFBpCheckDataRead(pVM, pVCpu, GCPtrMem, (uint32_t)cbMem, fSysAccess);
 }
 
 

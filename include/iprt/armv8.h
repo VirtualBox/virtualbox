@@ -1007,10 +1007,27 @@ typedef const ARMV8SPSREL2 *PCXARMV8SPSREL2;
 /** Bit 31 - N - Negative condition flag. */
 #define ARMV8_SPSR_EL2_AARCH64_N                    RT_BIT_64(31)
 #define ARMV8_SPSR_EL2_AARCH64_N_BIT                31
-/** Bit 32 - 63 - Reserved (read as zero). */
-#define ARMV8_SPSR_EL2_AARCH64_RSVD_32_63           (UINT64_C(0xffffffff00000000))
+/** Bit 32 - PM - Profiling exception mask bit. */
+#define ARMV8_SPSR_EL2_AARCH64_PM                   RT_BIT_64(32)
+#define ARMV8_SPSR_EL2_AARCH64_PM_BIT               32
+/** Bit 33 - PPEND - Profiling exception pending. */
+#define ARMV8_SPSR_EL2_AARCH64_PPEND                RT_BIT_64(33)
+#define ARMV8_SPSR_EL2_AARCH64_PPEND_BIT            33
+/** Bit 34 - EXLOCK - Exception return state lock. */
+#define ARMV8_SPSR_EL2_AARCH64_EXLOCK               RT_BIT_64(34)
+#define ARMV8_SPSR_EL2_AARCH64_EXLOCK_BIT           34
+/** Bit 35 - PACM - PAuth related. */
+#define ARMV8_SPSR_EL2_AARCH64_PACM                 RT_BIT_64(35)
+#define ARMV8_SPSR_EL2_AARCH64_PACM_BIT             35
+/** Bit 36 - UINJ - Inject undefined instruction exception. */
+#define ARMV8_SPSR_EL2_AARCH64_UINJ                 RT_BIT_64(36)
+#define ARMV8_SPSR_EL2_AARCH64_UINJ_BIT             36
+/** Bit 37 - 63 - Reserved (read as zero). */
+#define ARMV8_SPSR_EL2_AARCH64_RSVD_32_63           (UINT64_C(0xffffffe000000000))
 /** Checks whether the given SPSR value contains a AARCH64 execution state. */
 #define ARMV8_SPSR_EL2_IS_AARCH64_STATE(a_Spsr)     (!((a_Spsr) & ARMV8_SPSR_EL2_AARCH64_M4))
+/** AArch64 conditional flag mask. */
+#define ARMV8_SPSR_EL2_AARCH64_NZCV                 UINT64_C(0x00000000f0000000)
 /** @} */
 
 /** @name Aarch64 Exception levels

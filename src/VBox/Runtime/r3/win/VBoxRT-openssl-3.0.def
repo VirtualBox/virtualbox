@@ -1,4 +1,4 @@
-; $Id: VBoxRT-openssl-3.0.def 109407 2025-05-05 10:24:23Z alexander.eichner@oracle.com $
+; $Id: VBoxRT-openssl-3.0.def 110150 2025-07-08 10:22:12Z aleksey.ilyushin@oracle.com $
 ;; @file
 ; IPRT - Windows OpenSSL exports we use outside VBoxRT (keep them few!).
 ;
@@ -326,6 +326,7 @@
     EC_GROUP_cmp
     EC_GROUP_get_curve_name
     EC_GROUP_get_degree
+    EC_GROUP_new_by_curve_name_ex
     EC_KEY_dup
     EC_KEY_free
     EC_KEY_generate_key
@@ -359,10 +360,12 @@
     EVP_DigestFinal
     EVP_DigestInit
     EVP_DigestInit_ex
+    EVP_DigestSign
     EVP_DigestSignFinal
     EVP_DigestSignInit
     EVP_DigestSignUpdate
     EVP_DigestUpdate
+    EVP_DigestVerify
     EVP_DigestVerifyFinal
     EVP_DigestVerifyInit
     EVP_DigestVerifyUpdate
@@ -371,12 +374,21 @@
     EVP_MD_CTX_new
     EVP_MD_CTX_reset
     EVP_md5
+    EVP_PKEY_CTX_new
+    EVP_PKEY_CTX_new_id
     EVP_PKEY_get_base_id
     EVP_PKEY_free
+    EVP_PKEY_get_raw_private_key
+    EVP_PKEY_get_raw_public_key
+    EVP_PKEY_get_utf8_string_param
     EVP_PKEY_get1_DSA
     EVP_PKEY_get1_EC_KEY
     EVP_PKEY_get1_RSA
+    EVP_PKEY_keygen
     EVP_PKEY_new
+    EVP_PKEY_new_raw_private_key
+    EVP_PKEY_new_raw_public_key
+    EVP_PKEY_Q_keygen
     EVP_PKEY_set1_DSA
     EVP_PKEY_set1_EC_KEY
     EVP_PKEY_set1_RSA
@@ -420,15 +432,20 @@
     EVP_PKEY_set_bn_param
     EVP_PKEY_todata
     EVP_PKEY_up_ref
+    OSSL_EC_curve_nid2name
     OSSL_PARAM_BLD_free
     OSSL_PARAM_BLD_new
     OSSL_PARAM_BLD_push_BN
+    OSSL_PARAM_BLD_push_octet_string
+    OSSL_PARAM_BLD_push_utf8_string
     OSSL_PARAM_BLD_to_param
     OSSL_PARAM_construct_end
     OSSL_PARAM_construct_int
     OSSL_PARAM_construct_uint
     OSSL_PARAM_free
     OSSL_PARAM_get_BN
+    OSSL_PARAM_get_octet_string_ptr
+    OSSL_PARAM_locate
     OSSL_PARAM_locate_const
     OSSL_PARAM_merge
 

@@ -1,4 +1,4 @@
-/* $Id: NEMR3Native-win.cpp 110060 2025-07-01 09:52:27Z alexander.eichner@oracle.com $ */
+/* $Id: NEMR3Native-win.cpp 110475 2025-07-30 10:35:20Z alexander.eichner@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 Windows backend.
  *
@@ -830,7 +830,6 @@ static int nemR3WinInitCheckCapabilities(PVM pVM, PRTERRINFO pErrInfo)
         if (Caps.ProcessorXsaveFeatures.AsUINT64 & ~fKnownXsave)
             NEM_LOG_REL_CAP_SUB_EX("Unknown xsave features", "%#RX64", Caps.ProcessorXsaveFeatures.AsUINT64 & ~fKnownXsave);
 
-        pVM->nem.s.fXsaveComp = RT_BOOL(Caps.ProcessorXsaveFeatures.XsaveCompSupport);
 #undef  NEM_LOG_REL_XSAVE_FEATURE
     }
 
@@ -1011,7 +1010,7 @@ static int nemR3WinInitCheckCapabilities(PVM pVM, PRTERRINFO pErrInfo)
     return VINF_SUCCESS;
 }
 
-#ifdef LOG_ENABLED
+#if 0 /* def LOG_ENABLED */ /** r=aeichner: Causes assertions with newer hosts and isn't of much use anymore anyway. */
 
 /**
  * Used to fill in g_IoCtlGetHvPartitionId.
@@ -1209,7 +1208,7 @@ static int nemR3WinInitDiscoverIoControlProperties(PVM pVM, PRTERRINFO pErrInfo)
      * them directly from ring-0 and better log them.
      *
      */
-#ifdef LOG_ENABLED
+#if 0 /* def LOG_ENABLED */ /** r=aeichner: Causes assertions with newer hosts and isn't of much use anymore anyway. */
     decltype(NtDeviceIoControlFile) * const pfnOrg = *g_ppfnVidNtDeviceIoControlFile;
 
     /* VidGetHvPartitionId - must work due to our memory management. */
@@ -1814,6 +1813,19 @@ DECLHIDDEN(int) nemR3NativeInitAfterCPUM(PVM pVM)
                               ("Returned XSAVE area exceeds what VirtualBox supported (%u > %zu)\n",
                               pVM->nem.s.cbXSaveArea, sizeof(pVCpu->cpum.GstCtx.XState)),
                               VERR_NEM_VM_CREATE_FAILED);
+
+        /*
+         * Query the default xsave area layout and check whether Hyper-V wants the compacted form. This can't be deduced from the
+         * features exposed because at least on Intel CPUs older than Skylake XSaveComp is false but Hyper-V still expects the compacted form.
+         * So we just query the default xsave area and the deduce the flag from there.
+         */
+        X86XSAVEAREA XState;
+        hrc = WHvGetVirtualProcessorXsaveState(pVM->nem.s.hPartition, pVCpu->idCpu, &XState, pVM->nem.s.cbXSaveArea, NULL);
+        AssertLogRelMsgReturn(hrc == ERROR_SUCCESS, ("WHvGetVirtualProcessorState(%p, %u,%x,,) -> %Rhrc (Last=%#x/%u)\n",
+                              pVM->nem.s.hPartition, pVCpu->idCpu, WHvVirtualProcessorStateTypeXsaveState,
+                              hrc, RTNtLastStatusValue(), RTNtLastErrorValue()), VERR_NEM_VM_CREATE_FAILED);
+       pVM->nem.s.fXsaveComp = RT_BOOL(XState.Hdr.bmXComp & XSAVE_C_X);
+       LogRel(("NEM: Default XSAVE area returned by Hyper-V\n%.*Rhxd\n", pVM->nem.s.cbXSaveArea, &XState));
     }
 
     LogRel(("NEM: Successfully set up partition (device handle %p, partition ID %#llx)\n", hPartitionDevice, idHvPartition));

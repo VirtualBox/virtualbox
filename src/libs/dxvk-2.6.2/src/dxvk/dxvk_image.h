@@ -78,7 +78,8 @@ namespace dxvk {
     const char* debugName = nullptr;
 
 #ifdef VBOX_WITH_DXVK_VIDEO
-    void* pNext = nullptr;
+    // Structures to add to VkImageCreateInfo::pNext chain
+    Rc<util::RcMemoryBuffer> next;
 #endif
   };
   

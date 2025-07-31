@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# $Id: ArmBsdSpecCodeGen.py 110119 2025-07-04 13:08:12Z knut.osmundsen@oracle.com $
+# $Id: ArmBsdSpecCodeGen.py 110476 2025-07-30 11:37:14Z knut.osmundsen@oracle.com $
 
 """
 ARM BSD / OpenSource specification code generator.
@@ -30,7 +30,9 @@ along with this program; if not, see <https://www.gnu.org/licenses>.
 
 SPDX-License-Identifier: GPL-3.0-only
 """
-__version__ = "$Revision: 110119 $"
+__version__ = "$Revision: 110476 $"
+
+# pylint: disable=too-many-lines
 
 # Standard python imports.
 import argparse;
@@ -51,7 +53,6 @@ from ArmAst import ArmAstConcat;
 from ArmAst import ArmAstCppExpr;
 from ArmAst import ArmAstCppExprBase;
 from ArmAst import ArmAstCppCall;
-from ArmAst import ArmAstCppStmt;
 from ArmAst import ArmAstDotAtom;
 from ArmAst import ArmAstField;
 from ArmAst import ArmAstFunction;
@@ -475,6 +476,7 @@ g_dRegToCpumCtx = {
     ## @todo 'AArch64.PMSELR_EL0':  ( '.u64', ), - FEAT_PMUv3 / ARMv8.0; not sure if zero is a passable value here...
     ## @todo 'AArch64.PMUACR_EL1':  ( '.u64', ), - FEAT_PMUv3p9; not sure if zero is a passable value here...
     ## @todo 'AArch64.SCR_EL3':     ( '.u64', ), - we don't do EL3, so some stuff isn't eliminated properly...
+    'AArch64.SCR_EL3':          ( 0, ), # CNTPCTSS_EL0 and others accesses it w/o HaveEL(EL3). ## @todo EL3
     ## @todo 'AArch64.SPMSELR_EL0': ( '.u64', ), - FEAT_SPMU / ARMv8.8
     ## @todo 'AArch64.TRCIDR0':     ( '.u64', ), - FEAT_ETE / ARMv9.0
     ## @todo 'AArch64.TRCIDR2':     ( '.u64', ), - FEAT_ETE / ARMv9.0
@@ -485,7 +487,7 @@ g_dRegToCpumCtx = {
 
     'AArch64.SP_EL0':           ('aSpReg[0].u64',),
     'AArch64.SP_EL1':           ('aSpReg[1].u64',),
-    'AArch64.SP_EL2':           ('SpEl2.u64',),
+    'AArch64.SP_EL2':           ('aSpReg[2].u64',),
 
     'AArch64.SPSR_EL1':         ('Spsr.u64',),
     'AArch64.ELR_EL1':          ('Elr.u64',),
@@ -593,6 +595,7 @@ g_dRegToCpumCtx = {
     'AArch64.TPIDRRO_EL0':      ('TpIdrRoEl0.u64',),
     'AArch64.TPIDR_EL0':        ('aTpIdr[0].u64',),
     'AArch64.TPIDR_EL1':        ('aTpIdr[1].u64',),
+    'AArch64.TPIDR_EL2':        ('aTpIdr[2].u64',),
     'AArch64.MDCCINT_EL1':      ('MDccInt.u64',),
     'AArch64.ACTLR_EL1':        ('Actlr.u64',),
 
@@ -612,7 +615,6 @@ g_dRegToCpumCtx = {
     'AArch64.SCTLR_EL2':        ('SctlrEl2.u64',),
     'AArch64.SPSR_EL2':         ('SpsrEl2.u64',),
     'AArch64.TCR_EL2':          ('TcrEl2.u64',),
-    'AArch64.TPIDR_EL2':        ('TpidrEl2.u64',),
     'AArch64.TTBR0_EL2':        ('Ttbr0El2.u64',),
     'AArch64.TTBR1_EL2':        ('Ttbr1El2.u64',),
     'AArch64.VBAR_EL2':         ('VBarEl2.u64',),
@@ -1288,6 +1290,22 @@ class SysRegGeneratorBase(object):
 
     kdELxToNum = { 'EL0': 0, 'EL1': 1, 'EL2': 2, 'EL3': 3, }
 
+    ## Register names that requires post modification state updates.
+    kdRegsRequiringRecalcs = {
+        'SCR_EL1':   'iemCImplHlpRecalcFlags',
+        'SCR_EL2':   'iemCImplHlpRecalcFlags',
+        'SCR_EL3':   'iemCImplHlpRecalcFlags',
+        'SCTLR_EL1': 'iemCImplHlpRecalcFlagsAndPgmModeEl1',
+        'SCTLR_EL2': 'iemCImplHlpRecalcFlagsAndPgmModeEl2',
+        'SCTLR_EL3': 'iemCImplHlpRecalcFlagsAndPgmModeEl3',
+        'HCR_EL2':   'iemCImplHlpRecalcFlags',
+        'HCRX_EL2':  'iemCImplHlpRecalcFlags',
+        'TCR_EL1':   'iemCImplHlpRecalcFlagsAndPgmModeEl1',
+        'TCR_EL2':   'iemCImplHlpRecalcFlagsAndPgmModeEl2',
+        'TCR_EL3':   'iemCImplHlpRecalcFlagsAndPgmModeEl3',
+        'MDSCR_EL1': 'iemCImplHlpRecalcFlags',
+    };
+
     def __init__(self, sInstr, sFuncPrefix):
         self.sInstr         = sInstr;
         self.sFuncPrefix    = sFuncPrefix;
@@ -1348,28 +1366,131 @@ class SysRegGeneratorBase(object):
                 oInfo.cGstFeatsRefs     += 1;
             return True;
 
-        elif isinstance(oNode, (ArmAstBool, ArmAstCppExprBase, ArmAstCppStmt, ArmAstIfList, ArmAstInteger, ArmAstUnaryOp,
+        elif isinstance(oNode, (ArmAstBool, ArmAstCppExprBase, ArmAstIfList, ArmAstInteger, ArmAstUnaryOp,
                                 ArmAstAssignment, ArmAstStatementList, self.VBoxAstCppConcat)):
             return True;
 
         oInfo.cIncompleteNodes += 1;
         return True;
 
-    def morphCodeToC(self, oInfo):
-        """ Morphs the accessor code and assigns the result to self.oCode """
-        assert oInfo.oCode is None;
-        oInfo.oCode = self.transformCodePass2(oInfo, self.transformCodePass1(oInfo, oInfo.oAccessor.oAccess.clone()));
+    def checkCConversion(self, oInfo, oNode):
+        """
+        Update the completion status and other statistics.
+        Returns True if completely converted, False if not.
 
-        # Add a return statement if necessary.
-        if not oInfo.oCode.doAllPathsReturn():
-            oInfo.oCode = ArmAstStatementList([oInfo.oCode, ArmAstReturn(ArmAstCppExpr('VINF_SUCCESS')),]);
-
-        # Update the completion status and other statistics.
+        Note! Can be used on sub-trees by supplying a root node other than oInfo.oCode.
+        """
         oInfo.cIncompleteNodes  = 0;
         oInfo.cGstFeatsRefs     = 0;
         oInfo.cInstrEssenceRefs = 0;
-        oInfo.oCode.walk(self.checkCConversionCallback, oInfo);
+        oNode.walk(self.checkCConversionCallback, oInfo);
+        return oInfo.cIncompleteNodes == 0;
+
+    def morphCodeToC(self, oInfo):
+        """ Morphs the accessor code and assigns the result to self.oCode """
+        assert oInfo.oCode is None;
+        oInfo.oCode = self.transformCodePass0(oInfo, oInfo.oAccessor.oAccess.clone());
+        oInfo.oCode = self.transformCodePass1(oInfo, oInfo.oCode);
+        oInfo.oCode = self.transformCodePass2(oInfo, oInfo.oCode);
+
+        # Add a return statement if necessary.
+        if not oInfo.oCode.doAllPathsReturn():
+            oInfo.oCode = ArmAstStatementList([
+                oInfo.oCode,
+                ArmAstReturn(ArmAstCppExpr('iemRegPc%sIncAndFinishingClearingFlags(pVCpu, VINF_SUCCESS)'
+                                           % ('A64' if self.isA64Instruction() else 'A32',), 32)),
+            ]);
+
+        # Update the completion status and other statistics.
+        self.checkCConversion(oInfo, oInfo.oCode);
         return True;
+
+
+    #
+    # Pass 0 - Resolve troublesome stuff before expand and eliminate anything.
+    #
+
+    def transformCodePass0Callback(self, oNode, fEliminationAllowed, oInfo, aoStack):
+        """
+        Callback for pass 0: Disambiguation of CNTHCTL_EL2.EL1PCTEN and others.
+        """
+
+        #
+        # CNTHCTL_EL2.EL1PCTEN which can either be bit 0 or bit 10 depending on
+        # whether ELIsInHost(EL2).  The specification of CNTPCT_EL0 __seems__ to
+        # be checking the context and then referencing a field, probably
+        # expecting the field to be picked depending on the context.  Sigh.
+        #   - At EL0: EL2Enabled()    && !ELIsInHost(EL2)           && AArch64.CNTHCTL_EL2.EL1PCTEN == '0'
+        #   - At EL0: ELIsInHost(EL2) && AArch64.HCR_EL2.TGE == '0' && AArch64.CNTHCTL_EL2.EL1PCTEN == '0'
+        #   - At EL1: EL2Enabled()                                  && AArch64.CNTHCTL_EL2.EL1PCTEN == '0'
+        #
+        if oNode.isMatchingField('EL1PCTEN', 'CNTHCTL_EL2', 'AArch64'):
+            # The first stack level is usually where we find the list of 'PSTATE.EL == ELx'
+            # conditions.  Locate the relevant one and get our EL value.
+            idxEl = -1;
+            for oStackNode in aoStack:
+                if isinstance(oStackNode, ArmAstIfList):
+                    for idxIfStmt, oIfStmt in enumerate(oStackNode.aoIfStatements):
+                        if oIfStmt.containsNode(oNode):
+                            oIfCond = oStackNode.aoIfConditions[idxIfStmt];
+                            if (    isinstance(oIfCond, ArmAstBinaryOp)
+                                and oIfCond.sOp == '=='
+                                and oIfCond.oLeft.isMatchingDotAtom('PSTATE', 'EL')):
+                                idxEl = self.kdELxToNum.get(oIfCond.oRight.getIdentifierName(), -1);
+                                if idxEl < 0: raise Exception('Unexpected EL value: %s' % (oIfCond.toString(),));
+                                break;
+            if idxEl < 0: raise Exception('Unable to determine EL for "%s" in %s' % (oNode.toString(), aoStack,));
+
+            # ELIsInHost(ELx) cannot be true at EL1 or at EL3, so the field is at bit 0.
+            if idxEl in (1, 3):
+                oNode.sField = 'EL1PCTEN_AT_00';
+                return oNode;
+
+            # At EL0 and EL2 we have to look for ELIsInHost in sibiling BinaryOp
+            # node.  Go up the stack till we encounter the if-list node and locate
+            # the condition oNode belongs to (tedious).
+            oIfListNode = None;
+            for oStack in reversed(aoStack):
+                if isinstance(oStack, ArmAstIfList):
+                    oIfListNode = oStack;
+                    break;
+            if not oIfListNode:
+                raise Exception('No if-list node on stack: %s' % (aoStack,));
+
+            oIfCond = None;
+            for oCurIfCond in oIfListNode.aoIfConditions:
+                if oCurIfCond.containsNode(oNode):
+                    oIfCond = oCurIfCond;
+                    break;
+            if not oIfCond:
+                raise Exception('Node "%s" not found in any of the if-list conditions: %s'
+                                % (oNode.toString(), oIfListNode.toString(),));
+
+            # This is a bit weird, but it's easier to do the rest of the work
+            # on a string representation of the expression.
+            sIfCond = oIfCond.toStringEx(sLang = 'C', cchMaxWidth = 999999);
+            if sIfCond.find('||') >= 0:
+                raise Exception('Unexpectedly complicated condition: %s' % (sIfCond,));
+            offInHost = sIfCond.find('ELIsInHost(EL');
+            if offInHost < 0 or sIfCond[offInHost + 13] not in ('2', '0'):
+                raise Exception('Unable to resolve ambigious CNTHCTL_EL2.EL1PCTEN access: %s' % (sIfCond,));
+
+            if offInHost == 0 or sIfCond[offInHost - 1] == ' ':
+                oNode.sField = 'EL1PCTEN_AT_10';
+                return oNode;
+            if sIfCond[offInHost - 1] == '!':
+                oNode.sField = 'EL1PCTEN_AT_00';
+                return oNode;
+
+            _ = fEliminationAllowed; _ = oInfo; _ = aoStack;
+            raise Exception('Unable to resolve ambigious CNTHCTL_EL2.EL1PCTEN access: %s' % (sIfCond,));
+
+        return oNode;
+
+    def transformCodePass0(self, oInfo, oCode):
+        """ Code transformation pass 1: Field disambiguation. """
+        return oCode.transform(self.transformCodePass0Callback, True, oInfo, []);
+
 
     #
     # Pass 1 - Expanding calls & code elimination.
@@ -1394,14 +1515,29 @@ class SysRegGeneratorBase(object):
 
     def transformCodePass1_HaveEL(self, oNode):
         """ Pass 1: HaveEL(ELx) - Translate it into the corresponding feature checks. """
-        if oNode.aoArgs[0].isMatchingIdentifier('EL3'):
-            return ArmAstBool(False); # EL3 is not implemented.
-            #return ArmAstFunction('IsFeatureImplemented', [ArmAstIdentifier('FEAT_EL3')]); ## @todo EL3
-        if oNode.aoArgs[0].isMatchingIdentifier('EL2'):
-            return ArmAstFunction('IsFeatureImplemented', [ArmAstIdentifier('FEAT_EL2')]);
-        if oNode.aoArgs[0].isMatchingIdentifier('EL1') or oNode.aoArgs[0].isMatchingIdentifier('EL0'):
-            return ArmAstBool(True); # EL0 and EL1 are mandatory.
+        if len(oNode.aoArgs) == 1:
+            if oNode.aoArgs[0].isMatchingIdentifier('EL3'):
+                return ArmAstBool(False); # EL3 is not implemented.
+                #return ArmAstFunction('IsFeatureImplemented', [ArmAstIdentifier('FEAT_EL3')]); ## @todo EL3
+            if oNode.aoArgs[0].isMatchingIdentifier('EL2'):
+                return ArmAstFunction('IsFeatureImplemented', [ArmAstIdentifier('FEAT_EL2')]);
+            if oNode.aoArgs[0].isMatchingIdentifier('EL1') or oNode.aoArgs[0].isMatchingIdentifier('EL0'):
+                return ArmAstBool(True); # EL0 and EL1 are mandatory.
         raise Exception('Unexpected HaveEL call: %s' % (oNode.toString(),));
+
+    def transformCodePass1_HaveAArch32EL(self, oNode):
+        """ Pass 1: HaveAArch32EL(ELx) - Translate into corresponding feature checks. """
+        if len(oNode.aoArgs) == 1:
+            if oNode.aoArgs[0].isMatchingIdentifier('EL3'):
+                return ArmAstBool(False); # EL3 is not implemented.
+                #return ArmAstFunction('IsFeatureImplemented', [ArmAstIdentifier('FEAT_AA32EL3')]); ## @todo EL3
+            if oNode.aoArgs[0].isMatchingIdentifier('EL2'):
+                return ArmAstFunction('IsFeatureImplemented', [ArmAstIdentifier('FEAT_AA32EL2')]);
+            if oNode.aoArgs[0].isMatchingIdentifier('EL1'):
+                return ArmAstFunction('IsFeatureImplemented', [ArmAstIdentifier('FEAT_AA32EL1')]);
+            if oNode.aoArgs[0].isMatchingIdentifier('EL0'):
+                return ArmAstFunction('IsFeatureImplemented', [ArmAstIdentifier('FEAT_AA32EL0')]);
+        raise Exception('Unexpected HaveAArch32EL call: %s' % (oNode.toString(),));
 
     def transformCodePass1_ELIsInHost(self, oNode):
         """ Pass 1: ELIsInHost(ELx) - Translate this into appropriate AST. """
@@ -1411,10 +1547,10 @@ class SysRegGeneratorBase(object):
                 ArmAstFunction('IsFeatureImplemented', [ArmAstIdentifier('FEAT_VHE')]),
                 ArmAstFunction('EL2Enabled', []),
                 ArmAstBinaryOp(ArmAstUnaryOp('!', ArmAstFunction('IsFeatureImplemented', [ArmAstIdentifier('FEAT_E2H0')])),
-                               '||', ArmAstField('E2H', 'HCR_EL2')),
+                               '||', ArmAstBinaryOp(ArmAstField('E2H', 'HCR_EL2'), '!=', ArmAstInteger(0))),
             ]);
             if oNode.aoArgs[0].isMatchingIdentifier('EL0'):
-                return ArmAstBinaryOp(oCommon, '&&', ArmAstField('TGE', 'HCR_EL2'));
+                return ArmAstBinaryOp(oCommon, '&&', ArmAstBinaryOp(ArmAstField('TGE', 'HCR_EL2'), '!=', ArmAstInteger(0)));
             return oCommon;
         if oNode.aoArgs[0].isMatchingIdentifier('EL3') or oNode.aoArgs[0].isMatchingIdentifier('EL1'):
             return ArmAstBool(False); # Only EL0 and EL2 can be in hosted. mode.
@@ -1451,6 +1587,31 @@ class SysRegGeneratorBase(object):
             if oNode.aoArgs[0].sName == 'SS_NonSecure':
                 # Without EL3, everything is non-secure.
                 return ArmAstBool(True);
+        raise Exception('Unexpected: %s' % (oNode.toString(),));
+
+    def transformCodePass1_IsHighestEL(self, oNode):
+        """ Pass 1: IsHighestEL(ELx). """
+        ## @todo EL3
+        if len(oNode.aoArgs) == 1:
+            if isinstance(oNode.aoArgs[0], ArmAstIdentifier):
+                # EL1 is the higest if we don't have EL2.
+                if oNode.aoArgs[0].sName == 'EL1':
+                    return ArmAstUnaryOp('!', ArmAstFunction('IsFeatureImplemented', [ArmAstIdentifier('FEAT_EL2')]));
+                # EL2 is the higest if we have EL2.
+                if oNode.aoArgs[0].sName == 'EL2':
+                    return ArmAstFunction('IsFeatureImplemented', [ArmAstIdentifier('FEAT_EL2')]);
+                # Neither EL0 nor EL3 can be the highest, as EL0 and EL1 are mandator and we don't implement EL3.
+                if oNode.aoArgs[0].sName in ('EL0', 'EL3'):
+                    return ArmAstBool(False);
+            elif oNode.aoArgs[0].isMatchingDotAtom('PSTATE', 'EL'):
+                return ArmAstBinaryOp(ArmAstBinaryOp(ArmAstFunction('IsFeatureImplemented', [ArmAstIdentifier('FEAT_EL2')]),
+                                                     '&&',
+                                                     ArmAstBinaryOp(oNode.aoArgs[0], '==', ArmAstIdentifier('EL2'))),
+                                      '||',
+                                      ArmAstBinaryOp(ArmAstUnaryOp('!', ArmAstFunction('IsFeatureImplemented',
+                                                                                       [ArmAstIdentifier('FEAT_EL2')])),
+                                                     '&&',
+                                                     ArmAstBinaryOp(oNode.aoArgs[0], '==', ArmAstIdentifier('EL1'))));
         raise Exception('Unexpected: %s' % (oNode.toString(),));
 
     kasImpDefBoolRetTrue = (
@@ -1638,12 +1799,16 @@ class SysRegGeneratorBase(object):
                 return self.transformCodePass1_HaveAArch64();
             if oNode.sName == 'HaveEL':
                 return self.transformCodePass1_HaveEL(oNode);
+            if oNode.sName == 'HaveAArch32EL':
+                return self.transformCodePass1(oInfo, self.transformCodePass1_HaveAArch32EL(oNode));
             if oNode.sName == 'ELIsInHost':
                 return self.transformCodePass1(oInfo, self.transformCodePass1_ELIsInHost(oNode));
             if oNode.sName == 'IsFeatureImplemented':
                 return self.transformCodePass1_IsFeatureImplemented(oNode);
             if oNode.sName == 'IsCurrentSecurityState':
                 return self.transformCodePass1_IsCurrentSecurityState(oNode);
+            if oNode.sName == 'IsHighestEL':
+                return self.transformCodePass1_IsHighestEL(oNode);
             if oNode.sName == 'ImpDefBool':
                 return self.transformCodePass1_ImpDefBool(oNode);
 
@@ -1722,9 +1887,12 @@ class SysRegGeneratorBase(object):
 
         aoFields = oReg.daoFields.get(sField); # List[ArmFieldsBase]
         if not aoFields:
-            oXcpt = Exception('%s: Field "%s" not found in register "%s"' % (sWhatFor, sField, sRegisterName,));
-            if fWarnOnly: return self.warnXcpt(oXcpt, (None, None, None));
-            raise oXcpt;
+            if sField in ('EL1PCTEN_AT_00', 'EL1PCTEN_AT_10') and sRegisterName == 'CNTHCTL_EL2': # HACK ALERT! See pass 0.
+                aoFields = [spec.ArmFieldsField(None, [spec.ArmRange(int(sField[-2:]), 1),], sField),];
+            else:
+                oXcpt = Exception('%s: Field "%s" not found in register "%s"' % (sWhatFor, sField, sRegisterName,));
+                if fWarnOnly: return self.warnXcpt(oXcpt, (None, None, None));
+                raise oXcpt;
 
         tCpumCtxInfo = g_dRegToCpumCtx.get('%s.%s' % (sState, sRegisterName));
         if tCpumCtxInfo:
@@ -1836,6 +2004,20 @@ class SysRegGeneratorBase(object):
                                  cBitsWidth = 64);
         raise Exception('Unexpected: %s' % (oNode,));
 
+    def transformCodePass2_EffectiveCPACRMASK_EL1(self, oNode): # pylint: disable=invalid-name
+        """ Pass 2: EffectiveCPACRMASK_EL1() -> helper call. """
+        if len(oNode.aoArgs) == 0:
+            return ArmAstCppCall('iemGetEffCpacrMaskEl1', [ ArmAstCppExpr('pVCpu'), ArmAstCppExpr('pGstFeats'), ],
+                                 cBitsWidth = 64);
+        raise Exception('Unexpected: %s' % (oNode,));
+
+    def transformCodePass2_EffectiveCPTRMASK_EL2(self, oNode): # pylint: disable=invalid-name
+        """ Pass 2: EffectiveCPTRMASK_EL2() -> helper call. """
+        if len(oNode.aoArgs) == 0:
+            return ArmAstCppCall('iemGetEffCptrMaskEl2', [ ArmAstCppExpr('pVCpu'), ArmAstCppExpr('pGstFeats'), ],
+                                 cBitsWidth = 64);
+        raise Exception('Unexpected: %s' % (oNode,));
+
     def transformCodePass2_EffectiveSCTLRMASK_EL1(self, oNode): # pylint: disable=invalid-name
         """ Pass 2: EffectiveSCTLRMASK_EL1() -> helper call. """
         if len(oNode.aoArgs) == 0:
@@ -1848,6 +2030,13 @@ class SysRegGeneratorBase(object):
         if len(oNode.aoArgs) == 0:
             return ArmAstCppCall('iemGetEffSctlrMaskEl2', [ ArmAstCppExpr('pVCpu'), ArmAstCppExpr('pGstFeats'), ],
                                  cBitsWidth = 64);
+        raise Exception('Unexpected: %s' % (oNode,));
+
+    def transformCodePass2_GetCurrentEXLOCKEN(self, oNode): # pylint: disable=invalid-name
+        """ Pass 2: GetCurrentEXLOCKEN() -> helper call. """
+        if len(oNode.aoArgs) == 0:
+            return ArmAstCppCall('iemGetCurrentExlockEn', [ ArmAstCppExpr('pVCpu'), ArmAstCppExpr('pGstFeats'), ],
+                                 cBitsWidth = 1);
         raise Exception('Unexpected: %s' % (oNode,));
 
     def transformCodePass2_PhysicalCountInt(self, oNode):
@@ -1874,26 +2063,58 @@ class SysRegGeneratorBase(object):
                 return ArmAstInteger(0, cBits);
         raise Exception('Unexpected: %s' % (oNode,));
 
-    def transformCodePass2_ZeroExtend(self, oNode):
-        """ Pass 2: Eliminate ZeroExtend(value, bits). """
+    def transformCodePass2_ZeroExtend(self, oNode, oInfo):
+        """ Pass 2: Eliminate ZeroExtend(value<x:y>, bits). """
         if len(oNode.aoArgs) == 2:
             cBits = oNode.aoArgs[1].getIntegerOrValue();
-            if cBits is not None and 0 < cBits <= 64:
-                #oValue = oNode.aoArgs[0];
-                #if isinstance(oValue, (ArmAstInteger,)):
-                #return ArmAstInteger(0, cBits);
-                return oNode; ## @todo fix this.
+            if cBits is not None and cBits in (64, 32):
+                oValue = oNode.aoArgs[0];
+                if isinstance(oValue, ArmAstSquareOp):
+                    if len(oValue.aoValues) == 1 and isinstance(oValue.aoValues[0], ArmAstSlice):
+                        iFrom  = oValue.aoValues[0].oFrom.getIntegerOrValue();
+                        iTo    = oValue.aoValues[0].oTo.getIntegerOrValue();
+                        if iFrom is not None and iTo is not None and 0 <= iTo < iFrom < 63:
+                            if self.checkCConversion(oInfo, oValue.oVar):
+                                sValueExpr = oValue.oVar.toStringEx(sLang = 'C', cchMaxWidth = 99999);
+                                if iTo == 0 and iFrom == 31:
+                                    if cBits == 64:
+                                        return ArmAstCppExpr('(uint64_t)(uint32_t)(%s)' % (sValueExpr,));
+                                    if cBits == 32:
+                                        return ArmAstCppExpr('(uint32_t)(%s)' % (sValueExpr,));
+                                if iTo > 0:
+                                    sValueExpr = '((%s) >> %u)' % (sValueExpr, iTo);
+                                iFrom -= iTo;
+                                if iFrom == 31:
+                                    sValueExpr = '(uint32_t)(%s)' % (sValueExpr,);
+                                    if cBits == 64:
+                                        sValueExpr = '(uint64_t)%s' % (sValueExpr,);
+                                else:
+                                    sValueExpr = '((%s) & UINT%u_C(%#x)' % (sValueExpr, cBits, (1 << (iFrom + 1)) - 1,);
+                                return ArmAstCppExpr(sValueExpr, cBitsWidth = cBits);
+                            return oNode;
         raise Exception('Unexpected: %s' % (oNode,));
 
     def transformCodePass2_SignExtend(self, oNode):
-        """ Pass 2: Eliminate SignExtend(value, bits). """
+        """ Pass 2: Eliminate SignExtend(value<x:y>, bits). """
         if len(oNode.aoArgs) == 2:
             cBits = oNode.aoArgs[1].getIntegerOrValue();
-            if cBits is not None and 0 < cBits <= 64:
-                #oValue = oNode.aoArgs[0]; AST.SquareOp
-                #if isinstance(oValue, (ArmAstInteger,)):
-                #return ArmAstInteger(0, cBits);
-                return oNode; ## @todo fix this.
+            if cBits is not None and cBits in (64, 32):
+                oValue = oNode.aoArgs[0];
+                if isinstance(oValue, ArmAstSquareOp):
+                    if len(oValue.aoValues) == 1 and isinstance(oValue.aoValues[0], ArmAstSlice):
+                        iFrom  = oValue.aoValues[0].oFrom.getIntegerOrValue();
+                        iTo    = oValue.aoValues[0].oTo.getIntegerOrValue();
+                        if iFrom is not None and iTo is not None and 0 <= iTo < iFrom < 63:
+                            if isinstance(oValue.oVar, (ArmAstCppExpr,)):
+                                sValueExpr = oValue.oVar.toStringEx(sLang = 'C', cchMaxWidth = 99999);
+                                if iTo == 0 and iFrom == 31:
+                                    if cBits == 64:
+                                        return ArmAstCppExpr('(int64_t)(int32_t)(%s)' % (sValueExpr,));
+                                    if cBits == 32:
+                                        return ArmAstCppExpr('(int32_t)(%s)' % (sValueExpr,));
+                                return ArmAstCppExpr('((int%u_t)((%s) << %d) >> %d)'
+                                                     % (cBits, sValueExpr, cBits - iFrom - 1, cBits - iFrom - 1 + iTo, ),
+                                                     cBitsWidth = cBits);
         raise Exception('Unexpected: %s' % (oNode,));
 
 
@@ -2402,6 +2623,8 @@ class SysRegGeneratorBase(object):
             # Undefined() -> return iemRaiseUndefined(pVCpu);
             if oNode.isMatchingFunctionCall('Undefined'):
                 return ArmAstReturn(ArmAstCppCall('iemRaiseUndefined', [ArmAstCppExpr('pVCpu')]));
+            if oNode.isMatchingFunctionCall('EXLOCKException'):
+                return ArmAstReturn(ArmAstCppCall('iemRaiseExlockException', [ArmAstCppExpr('pVCpu')]));
 
             # IsFeatureImplemented(FEAT_xxxx) -> pGstFeat->fXxxx:
             if oNode.sName == 'IsFeatureImplemented':
@@ -2412,10 +2635,17 @@ class SysRegGeneratorBase(object):
                 return self.transformCodePass2_EffectiveHCR_EL2_NVx(oNode);
             if oNode.sName == 'EffectiveACTLRMASK_EL1':
                 return self.transformCodePass2_EffectiveACTLRMASK_EL1(oNode);
+            if oNode.sName == 'EffectiveCPACRMASK_EL1':
+                return self.transformCodePass2_EffectiveCPACRMASK_EL1(oNode);
+            if oNode.sName == 'EffectiveCPTRMASK_EL2':
+                return self.transformCodePass2_EffectiveCPTRMASK_EL2(oNode);
             if oNode.sName == 'EffectiveSCTLRMASK_EL1':
                 return self.transformCodePass2_EffectiveSCTLRMASK_EL1(oNode);
             if oNode.sName == 'EffectiveSCTLRMASK_EL2':
                 return self.transformCodePass2_EffectiveSCTLRMASK_EL1(oNode);
+
+            if oNode.sName == 'GetCurrentEXLOCKEN':
+                return self.transformCodePass2_GetCurrentEXLOCKEN(oNode);
 
             if oNode.sName == 'PhysicalCountInt':
                 return self.transformCodePass2_PhysicalCountInt(oNode);
@@ -2427,7 +2657,10 @@ class SysRegGeneratorBase(object):
             # Zeros.  Don't convert in concats as we want to handle those specially.
             if oNode.sName == 'Zeros' and (not aoStack or not isinstance(aoStack[-1], ArmAstConcat)):
                 return self.transformCodePass2_Zeros(oNode);
-
+            if oNode.sName == 'ZeroExtend':
+                return self.transformCodePass2_ZeroExtend(oNode, oInfo);
+            if oNode.sName == 'SignExtend':
+                return self.transformCodePass2_SignExtend(oNode);
 
         elif isinstance(oNode, ArmAstBinaryOp):
             # PSTATE.EL == EL0 and similar:
@@ -2688,7 +2921,7 @@ class SysRegGeneratorA64MsrReg(SysRegGeneratorBase):
             ' * @param   uValue      The value to write.',
             ' */',
             'DECLHIDDEN(VBOXSTRICTRC) iemCImplA64_msr_generic(PVMCPU pVCpu, uint32_t idSysReg, uint32_t idxGprSrc,',
-            '                                                 uint64_t uValue)'
+            '                                                 uint64_t uValue)',
             '{',
             '    uint32_t const uInstrEssence = IEM_CIMPL_SYSREG_INSTR_ESSENCE_MAKE(idSysReg, idxGprSrc, 1, 0xf);',
             '    switch (idSysReg)',
@@ -2696,9 +2929,15 @@ class SysRegGeneratorA64MsrReg(SysRegGeneratorBase):
         ];
         for oInfo in self.aoInfo:
             if oInfo.sEnc[0] == 'A':
-                asLines.append('        case %s: %sreturn iemCImplA64_msr_%s(pVCpu, uValue%s);'
-                               % (oInfo.sEnc, ' ' * (45 - len(oInfo.sEnc)), oInfo.oAccessor.oEncoding.sAsmValue,
-                                  ', uInstrEssence' if oInfo.cInstrEssenceRefs else '',));
+                if oInfo.sRegName in self.kdRegsRequiringRecalcs:
+                    asLines.append('        case %s: %sreturn %s(pVCpu, iemCImplA64_msr_%s(pVCpu, uValue%s));'
+                                   % (oInfo.sEnc, ' ' * (45 - len(oInfo.sEnc)), self.kdRegsRequiringRecalcs[oInfo.sRegName],
+                                      oInfo.oAccessor.oEncoding.sAsmValue,
+                                      ', uInstrEssence' if oInfo.cInstrEssenceRefs else '',));
+                else:
+                    asLines.append('        case %s: %sreturn iemCImplA64_msr_%s(pVCpu, uValue%s);'
+                                   % (oInfo.sEnc, ' ' * (45 - len(oInfo.sEnc)), oInfo.oAccessor.oEncoding.sAsmValue,
+                                      ', uInstrEssence' if oInfo.cInstrEssenceRefs else '',));
         asLines += [
             '    }',
             '    /* Fall back on handcoded handler. */',
@@ -2730,7 +2969,7 @@ class SysRegGeneratorA64MsrReg(SysRegGeneratorBase):
         # Return statements w/o a value are NOP branches, make them return VINF_SUCCESS.
         elif isinstance(oNode, ArmAstReturn):
             if not oNode.oValue:
-                return ArmAstReturn(ArmAstCppExpr('VINF_SUCCESS', 32));
+                return ArmAstReturn(ArmAstCppExpr('iemRegPcA64IncAndFinishingClearingFlags(pVCpu, VINF_SUCCESS)', 32));
 
         return super().transformCodePass2Callback(oNode, fEliminationAllowed, oInfo, aoStack);
 
@@ -2771,7 +3010,7 @@ class IEMArmGenerator(object):
             sDashYear = '';
         return [
             '/*',
-            ' * Autogenerated by $Id: ArmBsdSpecCodeGen.py 110119 2025-07-04 13:08:12Z knut.osmundsen@oracle.com $',
+            ' * Autogenerated by $Id: ArmBsdSpecCodeGen.py 110476 2025-07-30 11:37:14Z knut.osmundsen@oracle.com $',
             ' * from the open source %s specs, build %s (%s)'
             % (oVerInfo['architecture'], oVerInfo['build'], oVerInfo['ref'],),
             ' * dated %s.' % (oVerInfo['timestamp'],),
@@ -2915,7 +3154,7 @@ class IEMArmGenerator(object):
                     '    {',
                 ];
                 asTail  = [
-                    '    Log(("Invalid instruction %%#x at %%x\\n", uOpcode, pVCpu->cpum.GstCtx.Pc.u64));',
+                    '    Log(("Invalid instruction %#x at %x\\n", uOpcode, pVCpu->cpum.GstCtx.Pc.u64));',
                     '    IEMOP_RAISE_INVALID_OPCODE_RET();',
                     '}',
                 ];
@@ -3198,11 +3437,12 @@ class IEMArmGenerator(object):
         asLines += [
             '#define LOG_GROUP LOG_GROUP_IEM',
             '#define VMCPU_INCL_CPUM_GST_CTX',
+            '#include <iprt/asm.h> /* needed for Armv8A64ConvertImmRImmS2Mask32 and friends in iprt/armv8.h */',
             '#include "IEMInternal.h"',
             '#include <VBox/vmm/vm.h>',
             '#include "VBox/err.h"',
             '',
-            '#include "iprt/armv8.h"',
+            '#include <iprt/armv8.h>',
             '',
             '#include "IEMMc.h"',
             '#include "IEMInline-armv8.h"',

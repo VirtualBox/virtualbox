@@ -97,7 +97,7 @@ typedef struct PDMGICBACKENDR3
     DECLR3CALLBACKMEMBER(VBOXSTRICTRC, pfnWriteSysReg, (PVMCPUCC pVCpu, uint32_t u32Reg, uint64_t u64Value));
 
     /**
-     * Sets the specified shared peripheral interrupt starting.
+     * Sets the specified shared peripheral interrupt.
      *
      * @returns VBox status code.
      * @param   pVM         The cross context virtual machine structure.
@@ -108,7 +108,7 @@ typedef struct PDMGICBACKENDR3
     DECLR3CALLBACKMEMBER(int, pfnSetSpi, (PVMCC pVM, uint32_t uSpiIntId, bool fAsserted));
 
     /**
-     * Sets the specified private peripheral interrupt starting.
+     * Sets the specified private peripheral interrupt.
      *
      * @returns VBox status code.
      * @param   pVCpu       The cross context virtual CPU structure.

@@ -3,12 +3,12 @@
 <topic xml:lang="en-us" id="ct_settings-storage">
   <title>Storage Settings</title>
   <body>
-    <p>The <b outputclass="bold">Storage</b> category in the VM settings enables you to connect virtual hard disk and CD/DVD images and drives to your virtual machine. </p>
-    <p>In a real computer, so-called <i>storage controllers</i> connect physical disk drives to the rest of the computer. Similarly, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> presents virtual storage controllers to a virtual machine. Under each controller, the virtual devices, such as hard disks and CD/DVD drives, attached to the controller are shown. </p>
+    <p>The <b outputclass="bold">Storage</b> category in the VM settings enables you to connect virtual hard disk and CD/DVD images and drives to your virtual machine.</p>
+    <p>In a real computer, so-called <i>storage controllers</i> connect physical disk drives to the rest of the computer. Similarly, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> presents virtual storage controllers to a virtual machine. Under each controller, the virtual devices, such as hard disks and CD/DVD drives, attached to the controller are shown.</p>
     <note>
-      <p>This section gives a quick introduction to the <ph conkeyref="vbox-conkeyref-phrases/product-name"/> storage settings. See <xref href="storage.dita#storage"/> for a full description of the available storage settings in <ph conkeyref="vbox-conkeyref-phrases/product-name"/>. </p>
+      <p>This section gives a quick introduction to the <ph conkeyref="vbox-conkeyref-phrases/product-name"/> storage settings. See <xref href="storage.dita#storage"/> for a full description of the available storage settings in <ph conkeyref="vbox-conkeyref-phrases/product-name"/>.</p>
     </note>
-    <p>Depending on the guest OS type that you selected when you created the VM, a new VM includes the following storage devices: </p>
+    <p>Depending on the guest OS type that you selected when you created the VM, a new VM includes the following storage devices:</p>
     <ul>
       <li>
         <p><b outputclass="bold">IDE controller.</b> A virtual CD/DVD drive is attached to device 0 on the secondary channel of the IDE controller. </p>
@@ -43,6 +43,6 @@
         <p>To <b outputclass="bold">remove an attachment</b>, either select it and click the <b outputclass="bold">Remove</b> icon at the bottom, or right-click the attachment and select the menu item. </p>
       </li>
     </ul>
-    <p>Removable media, such as CD/DVDs and floppies, can be changed while the guest is running. Since the <b outputclass="bold">Settings</b> window is not available at that time, you can also access these settings from the <b outputclass="bold">Devices</b> menu of your virtual machine window. </p>
+    <p>Removable media, such as CD/DVDs and floppies, can be changed while the guest is running. Since the <b outputclass="bold">Settings</b> window is not available at that time, you can also access these settings from the <b outputclass="bold">Devices</b> menu of your virtual machine window.</p>
   </body>
 </topic>

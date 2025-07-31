@@ -155,7 +155,7 @@
               <p>Settings for shared folders.</p>
               <p>Right-click to change shared folder settings or to add a new 
                 shared folder.</p>
-              <p>See also <xref href="shared-folders.dita#shared-folders"/>.</p>
+              <p>See also <xref href="shared-folders.dita"/>.</p>
             </entry>
           </row>
           <row>
@@ -196,19 +196,14 @@
               <p>Settings for video and audio recording.</p>
               <p>Right-click to show options to enable and disable recording, or to change recording
                 settings.</p>
-              <p>To enable recording, right-click the status bar icon and select the
-                  <b>Recording</b> option. The icon changes to show a movie reel animation, as
-                follows:</p>
-             <p>
-               <xref href="images/icon_recording_enabled.png" format="png" platform="htmlhelp"> 
-                 <image href="images/icon_recording_enabled.png" placement="break" align="center">
-                 <alt>Recording settings icon on the virtual machine status bar. Recording is enabled.</alt>
-               </image>
-               </xref>
-               <image platform="ohc" href="images/icon_recording_enabled.png" align="center" placement="break">
-                 <alt>Recording settings icon on the virtual machine status bar. Recording is enabled.</alt>
-               </image>
-             </p>
+              <p>To enable recording, right-click the status bar icon and select the <b>Recording</b> option. The icon changes to a pulsing red dot <xref href="images/icon_recording_enabled.png" format="png" platform="htmlhelp">
+                  <image href="images/icon_recording_enabled.png" placement="inline" align="center">
+                    <alt>Recording settings icon on the virtual machine status bar. Recording is enabled.</alt>
+                  </image>
+                </xref><image platform="ohc" href="images/icon_recording_enabled.png" align="center" placement="inline">
+                  <alt>Recording settings icon on the virtual machine status bar. Recording is enabled.</alt>
+                </image>to indicate that recording is in progress.</p>
+              <p> </p>
               <p>To disable recording, right-click the status bar icon and deselect the
                   <b>Recording</b> option. The icon changes back to the default image.</p>
               <p>See also <xref href="settings-capture.dita#settings-capture"/>.</p>

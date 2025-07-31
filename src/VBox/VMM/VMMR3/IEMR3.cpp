@@ -1,4 +1,4 @@
-/* $Id: IEMR3.cpp 109859 2025-06-15 22:07:50Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMR3.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager.
  */
@@ -1611,7 +1611,7 @@ static void iemR3InfoTlbCommon(PVM pVM, PCDBGFINFOHLP pHlp, int cArgs, char **pa
                                 "    Only show valid TLB entries (TAG, not phys)\n"
                                 "\n"
                                 "Non-options are interpreted according to the last -a, -r or -s option,\n"
-                                "defaulting to addresses if not preceeded by any of those options.\n"
+                                "defaulting to addresses if not preceded by any of those options.\n"
                                 , fITlb ? 'i' : 'd');
                 return;
 

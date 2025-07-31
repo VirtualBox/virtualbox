@@ -1,4 +1,4 @@
-/* $Id: IEMMc-x86.h 108483 2025-02-20 15:34:57Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMMc-x86.h 110154 2025-07-08 14:57:17Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager - IEM_MC_XXX, x86 target.
  */
@@ -296,7 +296,7 @@ AssertCompile(X86_CR4_FSGSBASE > UINT8_MAX);
 
 /** x86: preserve upper register bits.   */
 #define IEM_MC_SUB_GREG_U16(a_iGReg, a_u8Const)         *iemGRegRefU16(pVCpu, (a_iGReg)) -= (a_u8Const)
-#define IEM_MC_SUB_LOCAL_U16(a_u16Value, a_u16Const)     do { (a_u16Value) -= a_u16Const; } while (0)
+#define IEM_MC_SUB_LOCAL_U16(a_u16Value, a_u16Const)    do { (a_u16Value) -= a_u16Const; } while (0)
 
 /** x86: preserve upper register bits.   */
 #define IEM_MC_AND_GREG_U8(a_iGReg, a_u8Value)          *iemGRegRefU8( pVCpu, (a_iGReg)) &= (a_u8Value)

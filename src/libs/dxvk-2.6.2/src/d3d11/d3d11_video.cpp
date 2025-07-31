@@ -1169,10 +1169,10 @@ namespace dxvk {
      */
     Rc<DxvkImage> dxvkImage = GetCommonTexture(pResource)->GetImage();
 
-    DxvkImageViewCreateInfo viewInfo;
+    DxvkImageViewKey viewInfo;
     viewInfo.format  = formatInfo.Format;
-    viewInfo.aspect  = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.swizzle = formatInfo.Swizzle;
+    viewInfo.aspects = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(formatInfo.Swizzle);
     viewInfo.usage   = dxvkImage->info().usage & ~VK_IMAGE_USAGE_SAMPLED_BIT;
 
     switch (m_desc.ViewDimension) {
@@ -1180,11 +1180,11 @@ namespace dxvk {
         if (m_desc.Texture2D.ArraySlice >= dxvkImage->info().numLayers)
           throw DxvkError(str::format("Invalid video decoder output view ArraySlice ", m_desc.Texture2D.ArraySlice));
 
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.minLevel   = 0;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = m_desc.Texture2D.ArraySlice;
-        viewInfo.numLayers  = 1;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.mipIndex   = 0;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = m_desc.Texture2D.ArraySlice;
+        viewInfo.layerCount = 1;
         break;
 
       case D3D11_VDOV_DIMENSION_UNKNOWN:
@@ -1192,8 +1192,7 @@ namespace dxvk {
         throw DxvkError("Invalid view dimension");
     }
 
-    m_view = pDevice->GetDXVKDevice()->createImageView(
-      dxvkImage, viewInfo);
+    m_view = dxvkImage->createView(viewInfo);
   }
 
 

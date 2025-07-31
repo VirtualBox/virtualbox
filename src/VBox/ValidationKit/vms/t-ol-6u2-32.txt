@@ -1,0 +1,10 @@
+
+Test VM - tst-ol-6u2-32
+=======================
+
+Setup:
+ - Configure a VM tst-ol-6u2-32 with default Oracle Linux 32-bit settings,
+   with a 6 GB or larger disk.
+ - Configure the VM with 4 GB of RAM.
+ - Install Oracle Linux oracle-linux-6u2-x86 (6u2).
+ - Proceed as shown in readme_first.txt

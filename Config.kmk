@@ -1,4 +1,4 @@
-# $Id: Config.kmk 110085 2025-07-02 12:20:29Z andreas.loeffler@oracle.com $
+# $Id: Config.kmk 110439 2025-07-28 13:40:31Z alexander.eichner@oracle.com $
 ## @file
 # The global build configuration file for VBox.
 #
@@ -569,13 +569,15 @@ if1of ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH), darwin.amd64 darwin.arm64 linux.a
 endif
 # Enables the new breakpoint handling code, see @bugref{8650}
 VBOX_WITH_DBGF_FLOW_TRACING = 1
-# Enables ARMv8 virtualization, see @bugref{10383}
-if1of ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH), darwin.arm64 linux.arm64 win.arm64)
- VBOX_WITH_VIRT_ARMV8 = 1
-endif
+# Enables ARMv8 API support and if possible virtualization, see @bugref{10383}
+VBOX_WITH_VIRT_ARMV8 = 1
 # Makes x86 emulation on ARM hosts available in the GUI.
 if1of ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH), empty-set)
  VBOX_WITH_X86_ON_ARM_ENABLED = 1
+endif
+# Makes ARM emulation on x86 hosts available in the GUI.
+if1of ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH), empty-set)
+ VBOX_WITH_ARM_ON_X86_ENABLED = 1
 endif
 
 if1of ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH), linux.amd64)
@@ -658,8 +660,12 @@ endif
 ifdef VBOX_WITH_VMSVGA3D
  VBOX_WITH_VMSVGA3D_DX = 1
  # Enable DXVK library for supporting VGPU10 DX on non Windows hosts
- if1of ($(KBUILD_TARGET), linux darwin)
+ if1of ($(KBUILD_TARGET), linux)
   VBOX_WITH_DXVK = 1
+ endif
+ # Enable DXMT library for supporting VGPU10 DX on macOS
+ if1of ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH), darwin.arm64)
+  VBOX_WITH_DXMT = 1
  endif
 endif
 # Enable video decoding in DXVK library
@@ -5089,11 +5095,21 @@ VBOXLNX32GUEST_SUFF_LIB = .a
 ifdef VBOX_WITH_DXVK
  SDK_VBoxDxVk                  := Direct3D 9/10/11 to Vulkan - for dll linking.
  SDK_VBoxDxVk_DEFAULT_INCS     := \
- 	$(PATH_ROOT)/src/libs/dxvk-2.3.1/include/native/directx \
- 	$(PATH_ROOT)/src/libs/dxvk-2.3.1/include/native/windows
+ 	$(PATH_ROOT)/src/libs/dxvk-2.6.2/include/native/directx \
+ 	$(PATH_ROOT)/src/libs/dxvk-2.6.2/include/native/windows
  SDK_VBoxDxVk_INCS             ?= $(SDK_VBoxDxVk_DEFAULT_INCS)
  # Loaded dynamically
  SDK_VBoxDxVk_LIBS             ?=
+endif
+
+ifdef VBOX_WITH_DXMT
+ SDK_VBoxDxMt                  := Direct3D 9/10/11 to Metal - for dll linking.
+ SDK_VBoxDxMt_DEFAULT_INCS     := \
+ 	$(PATH_ROOT)/src/libs/dxmt-0.60/include/native/directx \
+ 	$(PATH_ROOT)/src/libs/dxmt-0.60/include/native/windows
+ SDK_VBoxDxMt_INCS             ?= $(SDK_VBoxDxMt_DEFAULT_INCS)
+ # Loaded dynamically
+ SDK_VBoxDxMt_LIBS             ?=
 endif
 
 ifdef VBOX_WITH_LIBCURL
@@ -5226,7 +5242,7 @@ SDK_VBoxSoftFloatGuestR3Shared_LIBS.$(KBUILD_TARGET_ARCH) = \
 
 ifdef VBOX_WITH_LIBSSH
  SDK_VBoxLibSsh                := libssh for dynamic dll loading with assembly stubs.
- SDK_VBoxLibSsh_INCS           ?= $(PATH_ROOT)/src/libs/libssh-0.10.6/include
+ SDK_VBoxLibSsh_INCS           ?= $(PATH_ROOT)/src/libs/libssh-0.11.2/include
  # SDK_VBoxLibSsh_LIBS is not defined, as VBoxLibSsh dll is not linked, but loaded explicitly
  # by auto-generated stub code (lazy loading)
 endif
@@ -9434,7 +9450,7 @@ SVN                    ?= svn$(HOSTSUFF_EXE)
 GIT                    ?= git$(HOSTSUFF_EXE)
 VBOX_SVN_REV_KMK        = $(PATH_OUT)/revision.kmk
 ifndef VBOX_SVN_REV
- VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 110085 $  )
+ VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 110439 $  )
  VBOX_SVN_REV_FALLBACK := $(if-expr $(VBOX_SVN_REV_CONFIG_FALLBACK) > $(VBOX_SVN_REV_VERSION_FALLBACK),$(VBOX_SVN_REV_CONFIG_FALLBACK),$(VBOX_SVN_REV_VERSION_FALLBACK))
  VBOX_SVN_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.svn/wc.db $(abspath $(PATH_ROOT)/../.svn/wc.db) $(abspath $(PATH_ROOT)/../../.svn/wc.db) $(PATH_ROOT)/.svn/entries))
  VBOX_GIT_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.git/config $(abspath $(PATH_ROOT)/../.git/config) $(abspath $(PATH_ROOT)/../../.git/config)))
@@ -9448,7 +9464,7 @@ ifndef VBOX_SVN_REV
  ifneq ($(VBOX_GIT_DEP),)
   #
   # VBOX_SVN_REV_CONFIG_FALLBACK is not properly populated for a git checkout,
-  # as the $Rev: 110085 $ is not expanded, so we have to set it based on the information in the repo.
+  # as the $Rev: 110439 $ is not expanded, so we have to set it based on the information in the repo.
   #
   VBOX_SVN_REV_FALLBACK := $(shell $(GIT) log -1 $(PATH_ROOT)/Config.kmk | $(SED) -e 's/^[ \t]*//' -e '/svn:sync-xref-src-repo-rev\: r/!d' -e 's/svn:sync-xref-src-repo-rev\: r*//; t a; :a q')
  endif

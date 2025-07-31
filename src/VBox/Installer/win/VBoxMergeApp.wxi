@@ -190,7 +190,7 @@
         <File Id="file_VBoxSupLib.dll" Name="VBoxSupLib.dll" Source="$(env.PATH_OUT)\bin\VBoxSupLib.dll" />
 <?endif?>
         <File Id="file_VBoxVMM.dll" Name="VBoxVMM.dll" Source="$(env.PATH_OUT)\bin\VBoxVMM.dll" />
-<?if $(env.KBUILD_TARGET_ARCH) = "arm64" ?>
+<?if $(env.VBOX_WITH_VIRT_ARMV8) = "yes" ?>
         <File Id="file_VBoxVMMArm.dll" Name="VBoxVMMArm.dll" Source="$(env.PATH_OUT)\bin\VBoxVMMArm.dll" />
 <?endif?>
 <?if $(env.VBOX_WITH_LIBSSH) = "yes" ?>
@@ -307,7 +307,7 @@
 <?if $(env.VBOX_WITH_EFIFW_PACKING) = "yes" ?>
         <File Id="file_VBoxEFI-x86.fd"   Name="VBoxEFI-x86.fd"   DiskId="$(var.Property_DiskIdCommon)" Source="$(env.PATH_OUT)\bin\VBoxEFI-x86.fd" />
         <File Id="file_VBoxEFI-amd64.fd" Name="VBoxEFI-amd64.fd" DiskId="$(var.Property_DiskIdCommon)" Source="$(env.PATH_OUT)\bin\VBoxEFI-amd64.fd" />
-    <?if $(env.KBUILD_TARGET_ARCH) = "arm64" ?>
+    <?if $(env.VBOX_WITH_VIRT_ARMV8) = "yes" ?>
         <File Id="file_VBoxEFI-arm32.fd" Name="VBoxEFI-arm32.fd" DiskId="$(var.Property_DiskIdCommon)" Source="$(env.PATH_OUT)\bin\VBoxEFI-arm32.fd" />
         <File Id="file_VBoxEFI-arm64.fd" Name="VBoxEFI-arm64.fd" DiskId="$(var.Property_DiskIdCommon)" Source="$(env.PATH_OUT)\bin\VBoxEFI-arm64.fd" />
     <?endif?>

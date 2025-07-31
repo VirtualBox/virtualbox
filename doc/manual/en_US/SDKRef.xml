@@ -2680,102 +2680,102 @@ es.unregisterListener(listener); </screen></para>
             </row>
 
             <row>
-              <entry>IPlatformProperties::rawModeSupported</entry>
+              <entry>ISystemProperties::rawModeSupported</entry>
               <entry><link linkend="IPlatformProperties__rawModeSupported">IPlatformProperties::rawModeSupported</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::exclusiveHwVirt</entry>
+              <entry>ISystemProperties::exclusiveHwVirt</entry>
               <entry><link linkend="IPlatformProperties__exclusiveHwVirt">IPlatformProperties::exclusiveHwVirt</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::serialPortCount</entry>
+              <entry>ISystemProperties::serialPortCount</entry>
               <entry><link linkend="IPlatformProperties__serialPortCount">IPlatformProperties::serialPortCount</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::parallelPortCount</entry>
+              <entry>ISystemProperties::parallelPortCount</entry>
               <entry><link linkend="IPlatformProperties__parallelPortCount">IPlatformProperties::parallelPortCount</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::maxBootPosition</entry>
+              <entry>ISystemProperties::maxBootPosition</entry>
               <entry><link linkend="IPlatformProperties__maxBootPosition">IPlatformProperties::maxBootPosition</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedParavirtProviders[]</entry>
+              <entry>ISystemProperties::supportedParavirtProviders[]</entry>
               <entry><link linkend="IPlatformProperties__supportedParavirtProviders">IPlatformProperties::supportedParavirtProviders[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedFirmwareTypes[]</entry>
+              <entry>ISystemProperties::supportedFirmwareTypes[]</entry>
               <entry><link linkend="IPlatformProperties__supportedFirmwareTypes">IPlatformProperties::supportedFirmwareTypes[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedGuestOSTypes[]</entry>
+              <entry>ISystemProperties::supportedGuestOSTypes[]</entry>
               <entry><link linkend="IPlatformProperties__supportedGuestOSTypes">IPlatformProperties::supportedGuestOSTypes[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::getSupportedGfxControllerTypes[]</entry>
+              <entry>ISystemProperties::getSupportedGfxControllerTypes[]</entry>
               <entry><link linkend="IPlatformProperties__supportedGfxControllerTypes">IPlatformProperties::getSupportedGfxControllerTypes[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedNetAdpPromiscModePols[]</entry>
+              <entry>ISystemProperties::supportedNetAdpPromiscModePols[]</entry>
               <entry><link linkend="IPlatformProperties__supportedNetAdpPromiscModePols">IPlatformProperties::supportedNetAdpPromiscModePols[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedNetworkAdapterTypes[]</entry>
+              <entry>ISystemProperties::supportedNetworkAdapterTypes[]</entry>
               <entry><link linkend="IPlatformProperties__supportedNetworkAdapterTypes">IPlatformProperties::supportedNetworkAdapterTypes[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedUartTypes[]</entry>
+              <entry>ISystemProperties::supportedUartTypes[]</entry>
               <entry><link linkend="IPlatformProperties__supportedUartTypes">IPlatformProperties::supportedUartTypes[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedUSBControllerTypes[]</entry>
+              <entry>ISystemProperties::supportedUSBControllerTypes[]</entry>
               <entry><link linkend="IPlatformProperties__supportedUSBControllerTypes">IPlatformProperties::supportedUSBControllerTypes[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedAudioControllerTypes[]</entry>
+              <entry>ISystemProperties::supportedAudioControllerTypes[]</entry>
               <entry><link linkend="IPlatformProperties__supportedAudioControllerTypes">IPlatformProperties::supportedAudioControllerTypes[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedBootDevices[]</entry>
+              <entry>ISystemProperties::supportedBootDevices[]</entry>
               <entry><link linkend="IPlatformProperties__supportedBootDevices">IPlatformProperties::supportedBootDevices[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedStorageBuses[]</entry>
+              <entry>ISystemProperties::supportedStorageBuses[]</entry>
               <entry><link linkend="IPlatformProperties__supportedStorageBuses">IPlatformProperties::supportedStorageBuses[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedStorageControllerTypes[]</entry>
+              <entry>ISystemProperties::supportedStorageControllerTypes[]</entry>
               <entry><link linkend="IPlatformProperties__supportedStorageControllerTypes">IPlatformProperties::supportedStorageControllerTypes[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedChipsetTypes[]</entry>
+              <entry>ISystemProperties::supportedChipsetTypes[]</entry>
               <entry><link linkend="IPlatformProperties__supportedChipsetTypes">IPlatformProperties::supportedChipsetTypes[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedIommuTypes[]</entry>
+              <entry>ISystemProperties::supportedIommuTypes[]</entry>
               <entry><link linkend="IPlatformProperties__supportedIommuTypes">IPlatformProperties::supportedIommuTypes[]</link></entry>
             </row>
 
             <row>
-              <entry>IPlatformProperties::supportedTpmTypes[]</entry>
+              <entry>ISystemProperties::supportedTpmTypes[]</entry>
               <entry><link linkend="IPlatformProperties__supportedTpmTypes">IPlatformProperties::supportedTpmTypes[]</link></entry>
             </row>
 
@@ -2793,57 +2793,57 @@ es.unregisterListener(listener); </screen></para>
             </row>
 
            <row>
-             <entry>IPlatformProperties::getDeviceTypesForStorageBus</entry>
+             <entry>ISystemProperties::getDeviceTypesForStorageBus</entry>
              <entry><link linkend="IPlatformProperties__getDeviceTypesForStorageBus">IPlatformProperties::getDeviceTypesForStorageBus</link></entry>
            </row>
 
            <row>
-             <entry>IPlatformProperties::getMaxDevicesPerPortForStorageBus</entry>
+             <entry>ISystemProperties::getMaxDevicesPerPortForStorageBus</entry>
              <entry><link linkend="IPlatformProperties__getMaxDevicesPerPortForStorageBus">IPlatformProperties::getMaxDevicesPerPortForStorageBus</link></entry>
            </row>
 
            <row>
-             <entry>IPlatformProperties::getMaxInstancesOfStorageBus</entry>
+             <entry>ISystemProperties::getMaxInstancesOfStorageBus</entry>
              <entry><link linkend="IPlatformProperties__getMaxInstancesOfStorageBus">IPlatformProperties::getMaxInstancesOfStorageBus</link></entry>
            </row>
 
            <row>
-             <entry>IPlatformProperties::getMaxInstancesOfUSBControllerType</entry>
+             <entry>ISystemProperties::getMaxInstancesOfUSBControllerType</entry>
              <entry><link linkend="IPlatformProperties__getMaxInstancesOfUSBControllerType">IPlatformProperties::getMaxInstancesOfUSBControllerType</link></entry>
            </row>
 
            <row>
-             <entry>IPlatformProperties::getMaxNetworkAdapters</entry>
+             <entry>ISystemProperties::getMaxNetworkAdapters</entry>
              <entry><link linkend="IPlatformProperties__getMaxNetworkAdapters">IPlatformProperties::getMaxNetworkAdapters</link></entry>
            </row>
 
            <row>
-             <entry>IPlatformProperties::getMaxNetworkAdaptersOfType</entry>
+             <entry>ISystemProperties::getMaxNetworkAdaptersOfType</entry>
              <entry><link linkend="IPlatformProperties__getMaxNetworkAdaptersOfType">IPlatformProperties::getMaxNetworkAdaptersOfType</link></entry>
            </row>
 
            <row>
-             <entry>IPlatformProperties::getMaxPortCountForStorageBus</entry>
+             <entry>ISystemProperties::getMaxPortCountForStorageBus</entry>
              <entry><link linkend="IPlatformProperties__getMaxPortCountForStorageBus">IPlatformProperties::getMaxPortCountForStorageBus</link></entry>
            </row>
 
            <row>
-             <entry>IPlatformProperties::getMinPortCountForStorageBus</entry>
+             <entry>ISystemProperties::getMinPortCountForStorageBus</entry>
              <entry><link linkend="IPlatformProperties__getMinPortCountForStorageBus">IPlatformProperties::getMinPortCountForStorageBus</link></entry>
            </row>
 
            <row>
-             <entry>IPlatformProperties::getStorageBusForControllerType</entry>
+             <entry>ISystemProperties::getStorageBusForControllerType</entry>
              <entry><link linkend="IPlatformProperties__getStorageBusForControllerType">IPlatformProperties::getStorageBusForControllerType</link></entry>
            </row>
 
            <row>
-             <entry>IPlatformProperties::getStorageControllerHotplugCapable</entry>
+             <entry>ISystemProperties::getStorageControllerHotplugCapable</entry>
              <entry><link linkend="IPlatformProperties__getStorageControllerHotplugCapable">IPlatformProperties::getStorageControllerHotplugCapable</link></entry>
            </row>
 
            <row>
-             <entry>IPlatformProperties::getStorageControllerTypesForBus</entry>
+             <entry>ISystemProperties::getStorageControllerTypesForBus</entry>
              <entry><link linkend="IPlatformProperties__getStorageControllerTypesForBus">IPlatformProperties::getStorageControllerTypesForBus</link></entry>
            </row>
 
@@ -4819,6 +4819,11 @@ AuthResult AUTHCALL AuthEntry(
 
         <listitem><para>The attribute GraphicsFeature::Acceleration2DVideo has been removed.</para></listitem>
         <listitem><para>The attribute GuestOSType::recommended2DVideoAcceleration has been removed.</para></listitem>
+        <listitem><para>The <link linkend="RecordingState">RecordingState</link> enumeration
+          has been added and is being used for the
+          <link linkend="IRecordingStateChangedEvent">IRecordingStateChanged</link> and
+          <link linkend="IRecordingScreenStateChangedEvent">IRecordingScreenStateChanged</link> events.</para>
+        </listitem>
 
       </itemizedlist>
     </sect1>

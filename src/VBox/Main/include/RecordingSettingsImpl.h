@@ -1,4 +1,4 @@
-/* $Id: RecordingSettingsImpl.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: RecordingSettingsImpl.h 110489 2025-07-31 08:32:38Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation - Machine recording screen settings.
  */
@@ -90,11 +90,14 @@ private:
     // wrapped IRecordingSettings properties
     HRESULT getEnabled(BOOL *enabled);
     HRESULT setEnabled(BOOL enable);
+    HRESULT getPaused(BOOL *paused);
+    HRESULT setPaused(BOOL paused);
     HRESULT getScreens(std::vector<ComPtr<IRecordingScreenSettings> > &aRecordScreenSettings);
     HRESULT getProgress(ComPtr<IProgress> &aProgress);
 
     // wrapped IRecordingSettings methods
     HRESULT getScreenSettings(ULONG uScreenId, ComPtr<IRecordingScreenSettings> &aRecordScreenSettings);
+    HRESULT resume(void);
     HRESULT start(ComPtr<IProgress> &aProgress);
 
 private:

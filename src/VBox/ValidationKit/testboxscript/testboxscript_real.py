@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# $Id: testboxscript_real.py 106275 2024-10-10 08:09:48Z alex.hasani@oracle.com $
+# $Id: testboxscript_real.py 110227 2025-07-15 12:51:01Z ksenia.s.stepanova@oracle.com $
 
 """
 TestBox Script - main().
@@ -37,7 +37,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 106275 $"
+__version__ = "$Revision: 110227 $"
 
 
 # Standard python imports.
@@ -302,6 +302,8 @@ class TestBoxScript(object):
                 raise TestBoxScriptException('Unsupported server type %s.' % (sType,));
 
         elif sHostOs == 'linux':
+            if sShare == 'builds':
+                sMountOpt = 'vers=2.1'  # right now only linux unhappy with builds mount, adding vers to avoid it
             if sMountOpt != '':
                 sMountOpt = ',' + sMountOpt
             utils.sudoProcessCall(['/bin/umount', sMountPoint]);

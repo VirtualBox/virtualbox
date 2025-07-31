@@ -1,4 +1,4 @@
-/* $Id: VBoxTrayLogging.cpp 110073 2025-07-01 17:01:09Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxTrayLogging.cpp 110349 2025-07-22 15:06:53Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxTrayLogging.cpp - Logging.
  */
@@ -121,12 +121,6 @@ static DECLCALLBACK(void) vboxTrayLogHeaderFooter(PRTLOGGER pLoggerRelease, RTLO
         default:
             /* nothing */;
     }
-}
-
-RTDECL(void) RTLogWriteStdOut(const char* pachChars, size_t cbChars)
-{
-    if (pachChars)
-        RTPrintf("%s: %.*s", VBOX_VBOXTRAY_TITLE, cbChars, pachChars);
 }
 
 /**

@@ -1,4 +1,4 @@
-/* $Id: DrvAudioRec.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: DrvAudioRec.cpp 110425 2025-07-28 09:18:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Video recording audio backend for Main.
  *
@@ -46,6 +46,7 @@
 
 #include "DrvAudioRec.h"
 #include "ConsoleImpl.h"
+#include "RecordingStream.h"
 
 #include "WebMWriter.h"
 
@@ -59,7 +60,6 @@
 #include <VBox/vmm/pdmaudioinline.h>
 #include <VBox/vmm/vmmr3vtable.h>
 #include <VBox/err.h>
-#include "VBox/settings.h"
 
 
 /*********************************************************************************************************************************
@@ -184,17 +184,17 @@ typedef struct DRVAUDIORECORDING
 
 AudioVideoRec::AudioVideoRec(Console *pConsole)
     : AudioDriver(pConsole)
-    , mpDrv(NULL)
+    , m_pDrv(NULL)
 {
 }
 
 
 AudioVideoRec::~AudioVideoRec(void)
 {
-    if (mpDrv)
+    if (m_pDrv)
     {
-        mpDrv->pAudioVideoRec = NULL;
-        mpDrv = NULL;
+        m_pDrv->pAudioVideoRec = NULL;
+        m_pDrv = NULL;
     }
 }
 
@@ -205,10 +205,10 @@ AudioVideoRec::~AudioVideoRec(void)
  * @returns VBox status code.
  * @param   Settings        Recording settings to apply.
  */
-int AudioVideoRec::applyConfiguration(const settings::Recording &Settings)
+int AudioVideoRec::applyConfiguration(const ComPtr<IRecordingSettings> &Settings)
 {
     /** @todo Do some validation here. */
-    mSettings = Settings; /* Note: Does have an own copy operator. */
+    m_Settings = Settings; /* Note: Does have an own copy operator. */
     return VINF_SUCCESS;
 }
 
@@ -218,14 +218,26 @@ int AudioVideoRec::configureDriver(PCFGMNODE pLunCfg, PCVMMR3VTABLE pVMM)
     /** @todo For now we're using the configuration of the first screen (screen 0) here audio-wise. */
     unsigned const idxScreen = 0;
 
-    AssertReturn(mSettings.mapScreens.size() >= 1, VERR_INVALID_PARAMETER);
-    const settings::RecordingScreen &screenSettings = mSettings.mapScreens[idxScreen];
+    SafeIfaceArray<IRecordingScreenSettings> paRecScreens;
+    HRESULT hrc = m_Settings->COMGETTER(Screens)(ComSafeArrayAsOutParam(paRecScreens));
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
 
-    int vrc = pVMM->pfnCFGMR3InsertInteger(pLunCfg, "ContainerType", (uint64_t)screenSettings.enmDest);
+    AssertReturn(paRecScreens.size() > idxScreen, VERR_INVALID_PARAMETER);
+    ComPtr<IRecordingScreenSettings> ScreenSettings = paRecScreens[idxScreen];
+
+    RecordingDestination_T enmDst;
+    hrc = ScreenSettings->COMGETTER(Destination)(&enmDst);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+
+    Bstr bstrFilename;
+    hrc = ScreenSettings->COMGETTER(Filename)(bstrFilename.asOutParam());
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+
+    int vrc = pVMM->pfnCFGMR3InsertInteger(pLunCfg, "ContainerType", (uint64_t)enmDst);
     AssertRCReturn(vrc, vrc);
-    if (screenSettings.enmDest == RecordingDestination_File)
+    if (enmDst == RecordingDestination_File)
     {
-        vrc = pVMM->pfnCFGMR3InsertString(pLunCfg, "ContainerFileName", Utf8Str(screenSettings.File.strName).c_str());
+        vrc = pVMM->pfnCFGMR3InsertString(pLunCfg, "ContainerFileName", Utf8Str(bstrFilename).c_str());
         AssertRCReturn(vrc, vrc);
     }
 
@@ -704,7 +716,7 @@ static void avRecSinkShutdown(PAVRECSINK pSink)
      */
     if (pThis->pAudioVideoRec)
     {
-        pThis->pAudioVideoRec->mpDrv = NULL;
+        pThis->pAudioVideoRec->m_pDrv = NULL;
         pThis->pAudioVideoRec = NULL;
     }
 
@@ -874,7 +886,7 @@ static int avRecSinkInit(PDRVAUDIORECORDING pThis, PAVRECSINK pSink, PAVRECCONTA
     pThis->pAudioVideoRec = pConsole->i_recordingGetAudioDrv();
     AssertPtrReturn(pThis->pAudioVideoRec, VERR_INVALID_POINTER);
 
-    pThis->pAudioVideoRec->mpDrv = pThis;
+    pThis->pAudioVideoRec->m_pDrv = pThis;
 
     /*
      * Get the recording container parameters from the audio driver instance.

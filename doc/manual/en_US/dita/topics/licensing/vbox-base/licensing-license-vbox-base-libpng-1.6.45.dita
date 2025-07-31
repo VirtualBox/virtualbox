@@ -1,0 +1,3238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
+<topic xml:lang="en-us" id="license-libpng-1.6.45">
+  
+ <title>libpng 1.6.45</title>
+  
+ <body>
+  <pre xml:space="preserve">## libpng v1.6.43
+
+### libpng License
+&lt;pre&gt;
+
+COPYRIGHT NOTICE, DISCLAIMER, and LICENSE
+=========================================
+
+PNG Reference Library License version 2
+---------------------------------------
+
+Copyright (C) 1995-2024 The PNG Reference Library Authors.
+Copyright (C) 2018-2024 Cosmin Truta
+Copyright (C) 1998-2018 Glenn Randers-Pehrson
+Copyright (C) 1996-1997 Andreas Dilger
+Copyright (C) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+
+The software is supplied &#34;as is&#34;, without warranty of any kind,
+express or implied, including, without limitation, the warranties
+of merchantability, fitness for a particular purpose, title, and
+non-infringement.  In no event shall the Copyright owners, or
+anyone distributing the software, be liable for any damages or
+other liability, whether in contract, tort or otherwise, arising
+from, out of, or in connection with the software, or the use or
+other dealings in the software, even if advised of the possibility
+of such damage.
+
+Permission is hereby granted to use, copy, modify, and distribute
+this software, or portions hereof, for any purpose, without fee,
+subject to the following restrictions:
+
+ 1. The origin of this software must not be misrepresented; you
+    must not claim that you wrote the original software.  If you
+    use this software in a product, an acknowledgment in the product
+    documentation would be appreciated, but is not required.
+
+ 2. Altered source versions must be plainly marked as such, and must
+    not be misrepresented as being the original software.
+
+ 3. This Copyright notice may not be removed or altered from any
+    source or altered source distribution.
+
+
+PNG Reference Library License version 1 (for libpng 0.5 through 1.6.35)
+-----------------------------------------------------------------------
+
+libpng versions 1.0.7, July 1, 2000, through 1.6.35, July 15, 2018 are
+Copyright (c) 2000-2002, 2004, 2006-2018 Glenn Randers-Pehrson, are
+derived from libpng-1.0.6, and are distributed according to the same
+disclaimer and license as libpng-1.0.6 with the following individuals
+added to the list of Contributing Authors:
+
+    Simon-Pierre Cadieux
+    Eric S. Raymond
+    Mans Rullgard
+    Cosmin Truta
+    Gilles Vollant
+    James Yu
+    Mandar Sahastrabuddhe
+    Google Inc.
+    Vadim Barkov
+
+and with the following additions to the disclaimer:
+
+    There is no warranty against interference with your enjoyment of
+    the library or against infringement.  There is no warranty that our
+    efforts or the library will fulfill any of your particular purposes
+    or needs.  This library is provided with all faults, and the entire
+    risk of satisfactory quality, performance, accuracy, and effort is
+    with the user.
+
+Some files in the &#34;contrib&#34; directory and some configure-generated
+files that are distributed with libpng have other copyright owners, and
+are released under other open source licenses.
+
+libpng versions 0.97, January 1998, through 1.0.6, March 20, 2000, are
+Copyright (c) 1998-2000 Glenn Randers-Pehrson, are derived from
+libpng-0.96, and are distributed according to the same disclaimer and
+license as libpng-0.96, with the following individuals added to the
+list of Contributing Authors:
+
+    Tom Lane
+    Glenn Randers-Pehrson
+    Willem van Schaik
+
+libpng versions 0.89, June 1996, through 0.96, May 1997, are
+Copyright (c) 1996-1997 Andreas Dilger, are derived from libpng-0.88,
+and are distributed according to the same disclaimer and license as
+libpng-0.88, with the following individuals added to the list of
+Contributing Authors:
+
+    John Bowler
+    Kevin Bracey
+    Sam Bushell
+    Magnus Holmgren
+    Greg Roelofs
+    Tom Tanner
+
+Some files in the &#34;scripts&#34; directory have other copyright owners,
+but are released under this license.
+
+libpng versions 0.5, May 1995, through 0.88, January 1996, are
+Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+
+For the purposes of this copyright and license, &#34;Contributing Authors&#34;
+is defined as the following set of individuals:
+
+    Andreas Dilger
+    Dave Martindale
+    Guy Eric Schalnat
+    Paul Schmidt
+    Tim Wegner
+
+The PNG Reference Library is supplied &#34;AS IS&#34;.  The Contributing
+Authors and Group 42, Inc. disclaim all warranties, expressed or
+implied, including, without limitation, the warranties of
+merchantability and of fitness for any purpose.  The Contributing
+Authors and Group 42, Inc. assume no liability for direct, indirect,
+incidental, special, exemplary, or consequential damages, which may
+result from the use of the PNG Reference Library, even if advised of
+the possibility of such damage.
+
+Permission is hereby granted to use, copy, modify, and distribute this
+source code, or portions hereof, for any purpose, without fee, subject
+to the following restrictions:
+
+ 1. The origin of this source code must not be misrepresented.
+
+ 2. Altered versions must be plainly marked as such and must not
+    be misrepresented as being the original source.
+
+ 3. This Copyright notice may not be removed or altered from any
+    source or altered source distribution.
+
+The Contributing Authors and Group 42, Inc. specifically permit,
+without fee, and encourage the use of this source code as a component
+to supporting the PNG file format in commercial products.  If you use
+this source code in a product, acknowledgment is not required but would
+be appreciated.
+
+TRADEMARK
+=========
+
+The name &#34;libpng&#34; has not been registered by the Copyright owners
+as a trademark in any jurisdiction.  However, because libpng has
+been distributed and maintained world-wide, continually since 1995,
+the Copyright owners claim &#34;common-law trademark protection&#34; in any
+jurisdiction where common-law trademark is recognized.
+
+&lt;/pre&gt;
+
+### AUTHORS File Information
+```
+PNG REFERENCE LIBRARY AUTHORS
+=============================
+
+This is the list of PNG Reference Library (&#34;libpng&#34;) Contributing
+Authors, for copyright and licensing purposes.
+
+ * Adam Richter
+ * Andreas Dilger
+ * Chris Blume
+ * Cosmin Truta
+ * Dave Martindale
+ * Eric S. Raymond
+ * Gilles Vollant
+ * Glenn Randers-Pehrson
+ * Greg Roelofs
+ * Guy Eric Schalnat
+ * James Yu
+ * John Bowler
+ * Kevin Bracey
+ * Magnus Holmgren
+ * Mandar Sahastrabuddhe
+ * Mans Rullgard
+ * Matt Sarett
+ * Mike Klein
+ * Pascal Massimino
+ * Paul Schmidt
+ * Philippe Antoine
+ * Qiang Zhou
+ * Sam Bushell
+ * Samuel Williams
+ * Simon-Pierre Cadieux
+ * Tim Wegner
+ * Tom Lane
+ * Tom Tanner
+ * Vadim Barkov
+ * Willem van Schaik
+ * Zhijie Liang
+ * Apple Inc.
+    - Zixu Wang (王子旭)
+ * Arm Holdings
+    - Richard Townsend
+ * Google Inc.
+    - Dan Field
+    - Leon Scroggins III
+    - Matt Sarett
+    - Mike Klein
+    - Sami Boukortt
+    - Wan-Teh Chang
+ * Loongson Technology Corporation Ltd.
+    - GuXiWei (顾希伟)
+    - JinBo (金波)
+    - ZhangLixia (张利霞)
+
+The build projects, the build scripts, the test scripts, and other
+files in the &#34;projects&#34;, &#34;scripts&#34; and &#34;tests&#34; directories, have
+other copyright owners, but are released under the libpng license.
+
+Some files in the &#34;ci&#34; and &#34;contrib&#34; directories, as well as some
+of the tools-generated files that are distributed with libpng, have
+other copyright owners, and are released under other open source
+licenses.
+```
+
+## Files:
+arm/palette_neon_intrinsics.c
+
+/* palette_neon_intrinsics.c - NEON optimised palette expansion functions
+ *
+ * Copyright (c) 2018-2019 Cosmin Truta
+ * Copyright (c) 2017-2018 Arm Holdings. All rights reserved.
+ * Written by Richard Townsend &lt;Richard.Townsend@arm.com&gt;, February 2017.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/gregbook/readpng.h
+
+/*---------------------------------------------------------------------------
+
+   rpng - simple PNG display program                              readpng.h
+
+  ---------------------------------------------------------------------------
+
+      Copyright (c) 1998-2007 Greg Roelofs.  All rights reserved.
+
+      This software is provided &#34;as is,&#34; without warranty of any kind,
+      express or implied.  In no event shall the author or contributors
+      be held liable for any damages arising in any way from the use of
+      this software.
+
+      The contents of this file are DUAL-LICENSED.  You may modify and/or
+      redistribute this software according to the terms of one of the
+      following two licenses (at your option):
+
+
+      LICENSE 1 (&#34;BSD-like with advertising clause&#34;):
+
+      Permission is granted to anyone to use this software for any purpose,
+      including commercial applications, and to alter it and redistribute
+      it freely, subject to the following restrictions:
+
+      1. Redistributions of source code must retain the above copyright
+         notice, disclaimer, and this list of conditions.
+      2. Redistributions in binary form must reproduce the above copyright
+         notice, disclaimer, and this list of conditions in the documenta-
+         tion and/or other materials provided with the distribution.
+      3. All advertising materials mentioning features or use of this
+         software must display the following acknowledgment:
+
+            This product includes software developed by Greg Roelofs
+            and contributors for the book, &#34;PNG: The Definitive Guide,&#34;
+            published by O&#39;Reilly and Associates.
+
+
+      LICENSE 2 (GNU GPL v2 or later):
+
+      This program is free software; you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation; either version 2 of the License, or
+      (at your option) any later version.
+
+      This program is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program; if not, write to the Free Software Foundation,
+      Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  ---------------------------------------------------------------------------*/
+
+## Files:
+contrib/pngminus/pnm2png.c
+
+/*
+ *  pnm2png.c --- conversion from PBM/PGM/PPM-file to PNG-file
+ *  copyright (C) 1999-2019 by Willem van Schaik &lt;willem at schaik dot com&gt;
+ *
+ *  This software is released under the MIT license. For conditions of
+ *  distribution and use, see the LICENSE file part of this package.
+ */
+
+## Files:
+png.h
+
+/*
+ * A &#34;png_get_copyright&#34; function is available, for convenient use in &#34;about&#34;
+ * boxes and the like:
+ *
+ *    printf(&#34;%s&#34;, png_get_copyright(NULL));
+ *
+ * Also, the PNG logo (in PNG format, of course) is supplied in the
+ * files &#34;pngbar.png&#34; and &#34;pngbar.jpg (88x31) and &#34;pngnow.png&#34; (98x31).
+ */
+
+## Files:
+powerpc/powerpc_init.c
+
+/* powerpc_init.c - POWERPC optimised filter functions
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 2017 Glenn Randers-Pehrson
+ * Written by Vadim Barkov, 2017.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/visupng/cexcept.h
+
+/*===
+cexcept.h 2.0.1 (2008-Jul-19-Sat)
+http://www.nicemice.net/cexcept/
+Adam M. Costello
+http://www.nicemice.net/amc/
+
+An interface for exception-handling in ANSI C (C89 and subsequent ISO
+standards), developed jointly with Cosmin Truta.
+
+    Copyright (c) 2000-2008 Adam M. Costello and Cosmin Truta.
+    This software may be modified only if its author and version
+    information is updated accurately, and may be redistributed
+    only if accompanied by this unaltered notice.  Subject to those
+    restrictions, permission is granted to anyone to do anything
+    with this software.  The copyright holders make no guarantees
+    regarding this software, and are not responsible for any damage
+    resulting from its use.
+
+The cexcept interface is not compatible with and cannot interact
+with system exceptions (like division by zero or memory segmentation
+violation), compiler-generated exceptions (like C++ exceptions), or
+other exception-handling interfaces.
+
+When using this interface across multiple .c files, do not include
+this header file directly.  Instead, create a wrapper header file that
+includes this header file and then invokes the define_exception_type
+macro (see below).  The .c files should then include that header file.
+
+The interface consists of one type, one well-known name, and six macros.
+
+
+define_exception_type(type_name);
+
+    This macro is used like an external declaration.  It specifies
+    the type of object that gets copied from the exception thrower to
+    the exception catcher.  The type_name can be any type that can be
+    assigned to, that is, a non-constant arithmetic type, struct, union,
+    or pointer.  Examples:
+
+        define_exception_type(int);
+
+        enum exception { out_of_memory, bad_arguments, disk_full };
+        define_exception_type(enum exception);
+
+        struct exception { int code; const char *msg; };
+        define_exception_type(struct exception);
+
+    Because throwing an exception causes the object to be copied (not
+    just once, but twice), programmers may wish to consider size when
+    choosing the exception type.
+
+
+struct exception_context;
+
+    This type may be used after the define_exception_type() macro has
+    been invoked.  A struct exception_context must be known to both
+    the thrower and the catcher.  It is expected that there be one
+    context for each thread that uses exceptions.  It would certainly
+    be dangerous for multiple threads to access the same context.
+    One thread can use multiple contexts, but that is likely to be
+    confusing and not typically useful.  The application can allocate
+    this structure in any way it pleases--automatic, static, or dynamic.
+    The application programmer should pretend not to know the structure
+    members, which are subject to change.
+
+
+struct exception_context *the_exception_context;
+
+    The Try/Catch and Throw statements (described below) implicitly
+    refer to a context, using the name the_exception_context.  It is
+    the application&#39;s responsibility to make sure that this name yields
+    the address of a mutable (non-constant) struct exception_context
+    wherever those statements are used.  Subject to that constraint, the
+    application may declare a variable of this name anywhere it likes
+    (inside a function, in a parameter list, or externally), and may
+    use whatever storage class specifiers (static, extern, etc) or type
+    qualifiers (const, volatile, etc) it likes.  Examples:
+
+        static struct exception_context
+          * const the_exception_context = &amp;foo;
+
+        { struct exception_context *the_exception_context = bar; ... }
+
+        int blah(struct exception_context *the_exception_context, ...);
+
+        extern struct exception_context the_exception_context[1];
+
+    The last example illustrates a trick that avoids creating a pointer
+    object separate from the structure object.
+
+    The name could even be a macro, for example:
+
+        struct exception_context ec_array[numthreads];
+        #define the_exception_context (ec_array + thread_id)
+
+    Be aware that the_exception_context is used several times by the
+    Try/Catch/Throw macros, so it shouldn&#39;t be expensive or have side
+    effects.  The expansion must be a drop-in replacement for an
+    identifier, so it&#39;s safest to put parentheses around it.
+
+
+void init_exception_context(struct exception_context *ec);
+
+    For context structures allocated statically (by an external
+    definition or using the &#34;static&#34; keyword), the implicit
+    initialization to all zeros is sufficient, but contexts allocated
+    by other means must be initialized using this macro before they
+    are used by a Try/Catch statement.  It does no harm to initialize
+    a context more than once (by using this macro on a statically
+    allocated context, or using this macro twice on the same context),
+    but a context must not be re-initialized after it has been used by a
+    Try/Catch statement.
+
+
+Try statement
+Catch (expression) statement
+
+    The Try/Catch/Throw macros are capitalized in order to avoid
+    confusion with the C++ keywords, which have subtly different
+    semantics.
+
+    A Try/Catch statement has a syntax similar to an if/else statement,
+    except that the parenthesized expression goes after the second
+    keyword rather than the first.  As with if/else, there are two
+    clauses, each of which may be a simple statement ending with a
+    semicolon or a brace-enclosed compound statement.  But whereas
+    the else clause is optional, the Catch clause is required.  The
+    expression must be a modifiable lvalue (something capable of being
+    assigned to) of the same type (disregarding type qualifiers) that
+    was passed to define_exception_type().
+
+    If a Throw that uses the same exception context as the Try/Catch is
+    executed within the Try clause (typically within a function called
+    by the Try clause), and the exception is not caught by a nested
+    Try/Catch statement, then a copy of the exception will be assigned
+    to the expression, and control will jump to the Catch clause.  If no
+    such Throw is executed, then the assignment is not performed, and
+    the Catch clause is not executed.
+
+    The expression is not evaluated unless and until the exception is
+    caught, which is significant if it has side effects, for example:
+
+        Try foo();
+        Catch (p[++i].e) { ... }
+
+    IMPORTANT: Jumping into or out of a Try clause (for example via
+    return, break, continue, goto, longjmp) is forbidden--the compiler
+    will not complain, but bad things will happen at run-time.  Jumping
+    into or out of a Catch clause is okay, and so is jumping around
+    inside a Try clause.  In many cases where one is tempted to return
+    from a Try clause, it will suffice to use Throw, and then return
+    from the Catch clause.  Another option is to set a flag variable and
+    use goto to jump to the end of the Try clause, then check the flag
+    after the Try/Catch statement.
+
+    IMPORTANT: The values of any non-volatile automatic variables
+    changed within the Try clause are undefined after an exception is
+    caught.  Therefore, variables modified inside the Try block whose
+    values are needed later outside the Try block must either use static
+    storage or be declared with the &#34;volatile&#34; type qualifier.
+
+
+Throw expression;
+
+    A Throw statement is very much like a return statement, except that
+    the expression is required.  Whereas return jumps back to the place
+    where the current function was called, Throw jumps back to the Catch
+    clause of the innermost enclosing Try clause.  The expression must
+    be compatible with the type passed to define_exception_type().  The
+    exception must be caught, otherwise the program may crash.
+
+    Slight limitation:  If the expression is a comma-expression, it must
+    be enclosed in parentheses.
+
+
+Try statement
+Catch_anonymous statement
+
+    When the value of the exception is not needed, a Try/Catch statement
+    can use Catch_anonymous instead of Catch (expression).
+
+
+Everything below this point is for the benefit of the compiler.  The
+application programmer should pretend not to know any of it, because it
+is subject to change.
+
+===*/
+
+## Files:
+contrib/tools/sRGB.h
+
+/*-
+ * sRGB.h
+ *
+ * Last changed in libpng 1.6.0 [February 14, 2013]
+ *
+ * COPYRIGHT: Written by John Cunningham Bowler, 2013.
+ * To the extent possible under law, the author has waived all copyright and
+ * related or neighboring rights to this work.  This work is published from:
+ * United States.
+ *
+ * Utility file; not actually a header, this contains definitions of sRGB
+ * calculation functions for inclusion in those test programs that need them.
+ *
+ * All routines take and return a floating point value in the range
+ * 0 to 1.0, doing a calculation according to the sRGB specification
+ * (in fact the source of the numbers is the wikipedia article at
+ * https://en.wikipedia.org/wiki/SRGB).
+ */
+
+## Files:
+contrib/libtests/timepng.c
+
+/* timepng.c
+ *
+ * Copyright (c) 2013,2016 John Cunningham Bowler
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Load an arbitrary number of PNG files (from the command line, or, if there
+ * are no arguments on the command line, from stdin) then run a time test by
+ * reading each file by row or by image (possibly with transforms in the latter
+ * case).  The only output is a time as a floating point number of seconds with
+ * 9 decimal digits.
+ */
+
+## Files:
+example.c
+
+/* example.c - an example of using libpng
+ *
+ * Maintained 2018 Cosmin Truta
+ * Maintained 1998-2016 Glenn Randers-Pehrson
+ * Maintained 1996-1997 Andreas Dilger
+ * Written 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * To the extent possible under law, the authors have waived
+ * all copyright and related or neighboring rights to this file.
+ * This work is published from: United States, Canada.
+ */
+
+## Files:
+intel/filter_sse2_intrinsics.c
+
+/* filter_sse2_intrinsics.c - SSE2 optimized filter functions
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 2016-2017 Glenn Randers-Pehrson
+ * Written by Mike Klein and Matt Sarett
+ * Derived from arm/filter_neon_intrinsics.c
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/libtests/makepng.c
+
+/* Max out the text compression level in an attempt to make the license
+ * small.   If --small then do the same for the IDAT.
+ */
+
+## Files:
+powerpc/filter_vsx_intrinsics.c
+
+/* filter_vsx_intrinsics.c - PowerPC optimised filter functions
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 2017 Glenn Randers-Pehrson
+ * Written by Vadim Barkov, 2017.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/examples/iccfrompng.c
+
+/*- iccfrompng
+ *
+ * COPYRIGHT: Written by John Cunningham Bowler, 2011.
+ * To the extent possible under law, the author has waived all copyright and
+ * related or neighboring rights to this work.  This work is published from:
+ * United States.
+ *
+ * Extract any icc profiles found in the given PNG files.  This is a simple
+ * example of a program that extracts information from the header of a PNG file
+ * without processing the image.  Notice that some header information may occur
+ * after the image data. Textual data and comments are an example; the approach
+ * in this file won&#39;t work reliably for such data because it only looks for the
+ * information in the section of the file that precedes the image data.
+ *
+ * Compile and link against libpng and zlib, plus anything else required on the
+ * system you use.
+ *
+ * To use supply a list of PNG files containing iCCP chunks, the chunks will be
+ * extracted to a similarly named file with the extension replaced by &#39;icc&#39;,
+ * which will be overwritten without warning.
+ */
+
+## Files:
+contrib/examples/pngpixel.c
+
+/*- pngpixel
+ *
+ * COPYRIGHT: Written by John Cunningham Bowler, 2011.
+ * To the extent possible under law, the author has waived all copyright and
+ * related or neighboring rights to this work.  This work is published from:
+ * United States.
+ *
+ * Read a single pixel value from a PNG file.
+ *
+ * This code illustrates basic &#39;by-row&#39; reading of a PNG file using libpng.
+ * Rows are read until a particular pixel is found; the value of this pixel is
+ * then printed on stdout.
+ *
+ * The code illustrates how to do this on interlaced as well as non-interlaced
+ * images.  Normally you would call png_set_interlace_handling() to have libpng
+ * deal with the interlace for you, but that obliges you to buffer half of the
+ * image to assemble the interlaced rows.  In this code
+ * png_set_interlace_handling() is not called and, instead, the code handles the
+ * interlace passes directly looking for the required pixel.
+ */
+
+## Files:
+contrib/gregbook/readppm.c
+
+/*---------------------------------------------------------------------------
+
+   rpng - simple PNG display program                              readppm.c
+
+  ---------------------------------------------------------------------------
+
+   This is a special-purpose replacement for readpng.c that allows binary
+   PPM files to be used in place of PNG images.
+
+  ---------------------------------------------------------------------------
+
+      Copyright (c) 1998-2007,2017 Greg Roelofs.  All rights reserved.
+
+      This software is provided &#34;as is,&#34; without warranty of any kind,
+      express or implied.  In no event shall the author or contributors
+      be held liable for any damages arising in any way from the use of
+      this software.
+
+      The contents of this file are DUAL-LICENSED.  You may modify and/or
+      redistribute this software according to the terms of one of the
+      following two licenses (at your option):
+
+
+      LICENSE 1 (&#34;BSD-like with advertising clause&#34;):
+
+      Permission is granted to anyone to use this software for any purpose,
+      including commercial applications, and to alter it and redistribute
+      it freely, subject to the following restrictions:
+
+      1. Redistributions of source code must retain the above copyright
+         notice, disclaimer, and this list of conditions.
+      2. Redistributions in binary form must reproduce the above copyright
+         notice, disclaimer, and this list of conditions in the documenta-
+         tion and/or other materials provided with the distribution.
+      3. All advertising materials mentioning features or use of this
+         software must display the following acknowledgment:
+
+            This product includes software developed by Greg Roelofs
+            and contributors for the book, &#34;PNG: The Definitive Guide,&#34;
+            published by O&#39;Reilly and Associates.
+
+
+      LICENSE 2 (GNU GPL v2 or later):
+
+      This program is free software; you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation; either version 2 of the License, or
+      (at your option) any later version.
+
+      This program is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program; if not, write to the Free Software Foundation,
+      Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  ---------------------------------------------------------------------------*/
+
+## Files:
+pngrutil.c
+
+/* pngrutil.c - utilities to read a PNG file
+ *
+ * Copyright (c) 2018-2022 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * This file contains routines that are only called from within
+ * libpng itself during the course of reading an image.
+ */
+
+## Files:
+contrib/libtests/makepng.c
+
+/*
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Make a test PNG image.  The arguments are as follows:
+ *
+ *    makepng [--sRGB|--linear|--1.8] [--tRNS] [--nofilters] \
+ *       color-type bit-depth [file-name]
+ *
+ * The color-type may be numeric (and must match the numbers used by the PNG
+ * specification) or one of the format names listed below.  The bit-depth is the
+ * component bit depth, or the pixel bit-depth for a color-mapped image.
+ *
+ * Without any options no color-space information is written, with the options
+ * an sRGB or the appropriate gAMA chunk is written.  &#34;1.8&#34; refers to the
+ * display system used on older Apple computers to correct for high ambient
+ * light levels in the viewing environment; it applies a transform of
+ * approximately value^(1/1.45) to the color values and so a gAMA chunk of 65909
+ * is written (1.45/2.2).
+ *
+ * The image data is generated internally.  Unless --color is given the images
+ * used are as follows:
+ *
+ * 1 channel: a square image with a diamond, the least luminous colors are on
+ *    the edge of the image, the most luminous in the center.
+ *
+ * 2 channels: the color channel increases in luminosity from top to bottom, the
+ *    alpha channel increases in opacity from left to right.
+ *
+ * 3 channels: linear combinations of, from the top-left corner clockwise,
+ *    black, green, white, red.
+ *
+ * 4 channels: linear combinations of, from the top-left corner clockwise,
+ *    transparent, red, green, blue.
+ *
+ * For color-mapped images a four channel color-map is used and if --tRNS is
+ * given the PNG file has a tRNS chunk, as follows:
+ *
+ * 1-bit: entry 0 is transparent-red, entry 1 is opaque-white
+ * 2-bit: entry 0: transparent-green
+ *        entry 1: 40%-red
+ *        entry 2: 80%-blue
+ *        entry 3: opaque-white
+ * 4-bit: the 16 combinations of the 2-bit case
+ * 8-bit: the 256 combinations of the 4-bit case
+ *
+ * The palette always has 2^bit-depth entries and the tRNS chunk one fewer.  The
+ * image is the 1-channel diamond, but using palette index, not luminosity.
+ *
+ * For formats other than color-mapped ones if --tRNS is specified a tRNS chunk
+ * is generated with all channels equal to the low bits of 0x0101.
+ *
+ * Image size is determined by the final pixel depth in bits, i.e. channels x
+ * bit-depth, as follows:
+ *
+ * 8 bits or less:    64x64
+ * 16 bits:           256x256
+ * More than 16 bits: 1024x1024
+ *
+ * Row filtering is the libpng default but may be turned off (the &#39;none&#39; filter
+ * is used on every row) with the --nofilters option.
+ *
+ * The images are not interlaced.
+ *
+ * If file-name is given then the PNG is written to that file, else it is
+ * written to stdout.  Notice that stdout is not supported on systems where, by
+ * default, it assumes text output; this program makes no attempt to change the
+ * text mode of stdout!
+ *
+ *    makepng --color=&lt;color&gt; ...
+ *
+ * If --color is given then the whole image has that color, color-mapped images
+ * will have exactly one palette entry and all image files with be 16x16 in
+ * size.  The color value is 1 to 4 decimal numbers as appropriate for the color
+ * type.
+ *
+ *    makepng --small ...
+ *
+ * If --small is given the images are no larger than required to include every
+ * possible pixel value for the format.
+ *
+ * For formats with pixels 8 bits or fewer in size the images consist of a
+ * single row with 2^pixel-depth pixels, one of every possible value.
+ *
+ * For formats with 16-bit pixels a 256x256 image is generated containing every
+ * possible pixel value.
+ *
+ * For larger pixel sizes a 256x256 image is generated where the first row
+ * consists of each pixel that has identical byte values throughout the pixel
+ * followed by rows where the byte values differ within the pixel.
+ *
+ * In all cases the pixel values are arranged in such a way that the SUB and UP
+ * filters give byte sequences for maximal zlib compression.  By default (if
+ * --nofilters is not given) the SUB filter is used on the first row and the UP
+ * filter on all following rows.
+ *
+ * The --small option is meant to provide good test-case coverage, however the
+ * images are not easy to examine visually.  Without the --small option the
+ * images contain identical color values; the pixel values are adjusted
+ * according to the gamma encoding with no gamma encoding being interpreted as
+ * sRGB.
+ *
+ * LICENSING
+ * =========
+ *
+ * This code is copyright of the authors, see the COPYRIGHT define above.  The
+ * code is licensed as above, using the libpng license.  The code generates
+ * images which are solely the product of the code; the options choose which of
+ * the many possibilities to generate.  The images that result (but not the code
+ * which generates them) are licensed as defined here:
+ *
+ * IMPORTANT: the COPYRIGHT #define must contain ISO-Latin-1 characters, the
+ * IMAGE_LICENSING #define must contain UTF-8 characters.  The &#39;copyright&#39;
+ * symbol 0xA9U (\251) in ISO-Latin-1 encoding and 0xC20xA9 (\302\251) in UTF-8.
+ */
+
+## Files:
+contrib/powerpc-vsx/linux.c
+
+/* contrib/powerpc-vsx/linux.c
+ *
+ * Copyright (c) 2017 Glenn Randers-Pehrson
+ * Written by Vadim Barkov, 2017.
+ * Last changed in libpng 1.6.29 [March 16, 2017]
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * STATUS: TESTED
+ * BUG REPORTS: png-mng-implement@sourceforge.net
+ *
+ * png_have_vsx implemented for Linux by reading the widely available
+ * pseudo-file /proc/cpuinfo. 
+ *
+ * This code is strict ANSI-C and is probably moderately portable; it does
+ * however use &lt;stdio.h&gt; and it assumes that /proc/cpuinfo is never localized.
+ */
+
+## Files:
+pngerror.c
+
+/* pngerror.c - stub functions for i/o and memory allocation
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2017 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * This file provides a location for all error handling.  Users who
+ * need special error handling are expected to write replacement functions
+ * and use png_set_error_fn() to use those functions.  See the instructions
+ * at each function.
+ */
+
+## Files:
+contrib/pngminim/decoder/pngusr.h
+
+/* minrdpngconf.h: headers to make a minimal png-read-only library
+ *
+ * Copyright (c) 2007, 2010-2013 Glenn Randers-Pehrson
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Derived from pngcrush.h, Copyright 1998-2007, Glenn Randers-Pehrson
+ */
+
+## Files:
+contrib/libtests/pngunknown.c
+
+/* pngunknown.c - test the read side unknown chunk handling
+ *
+ * Copyright (c) 2021 Cosmin Truta
+ * Copyright (c) 2015,2017 Glenn Randers-Pehrson
+ * Written by John Cunningham Bowler
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * NOTES:
+ *   This is a C program that is intended to be linked against libpng.  It
+ *   allows the libpng unknown handling code to be tested by interpreting
+ *   arguments to save or discard combinations of chunks.  The program is
+ *   currently just a minimal validation for the built-in libpng facilities.
+ */
+
+## Files:
+pngwtran.c
+
+/* pngwtran.c - transforms the data in a row for PNG writers
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2016,2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+ci/ci_cmake.sh
+
+# ci_cmake.sh
+# Continuously integrate libpng using CMake.
+#
+# Copyright (c) 2019-2022 Cosmin Truta.
+#
+# This software is released under the libpng license.
+# For conditions of distribution and use, see the disclaimer
+# and license in png.h.
+
+## Files:
+contrib/pngminim/encoder/pngusr.h
+
+/* minwrpngconf.h: headers to make a minimal png-write-only library
+ *
+ * Copyright (c) 2007, 2010-2013 Glenn Randers-Pehrson
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Derived from pngcrush.h, Copyright 1998-2007, Glenn Randers-Pehrson
+ */
+
+## Files:
+contrib/pngminus/png2pnm.c
+
+/*
+ *  png2pnm.c --- conversion from PNG-file to PGM/PPM-file
+ *  copyright (C) 1999-2019 by Willem van Schaik &lt;willem at schaik dot com&gt;
+ *
+ *  This software is released under the MIT license. For conditions of
+ *  distribution and use, see the LICENSE file part of this package.
+ */
+
+## Files:
+pngconf.h
+
+/* pngconf.h - machine-configurable file for libpng
+ *
+ * libpng version 1.6.38
+ *
+ * Copyright (c) 2018-2022 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2016,2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Any machine specific code is near the front of this file, so if you
+ * are configuring libpng for a machine, you may want to read the section
+ * starting here down to where it starts to typedef png_color, png_text,
+ * and png_info.
+ */
+
+## Files:
+contrib/arm-neon/linux-auxv.c
+
+/* contrib/arm-neon/linux-auxv.c
+ *
+ * Copyright (c) 2014 Glenn Randers-Pehrson
+ * Written by Mans Rullgard, 2011.
+ * Last changed in libpng 1.6.10 [March 6, 2014]
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * SEE contrib/arm-neon/README before reporting bugs
+ *
+ * STATUS: COMPILED, TESTED
+ * BUG REPORTS: png-mng-implement@sourceforge.net
+ *
+ * png_have_neon implemented for Linux versions which allow access to
+ * /proc/self/auxv.  This is probably faster, cleaner and safer than the code to
+ * read /proc/cpuinfo in contrib/arm-neon/linux, however it is yet another piece
+ * of potentially untested code and has more complex dependencies than the code
+ * to read cpuinfo.
+ *
+ * This generic __linux__ implementation requires reading /proc/self/auxv and
+ * looking at each element for one that records NEON capabilities.
+ */
+
+## Files:
+contrib/gregbook/rpng2-win.c
+
+/*---------------------------------------------------------------------------
+
+   rpng2 - progressive-model PNG display program                rpng2-win.c
+
+   This program decodes and displays PNG files progressively, as if it were
+   a web browser (though the front end is only set up to read from files).
+   It supports gamma correction, user-specified background colors, and user-
+   specified background patterns (for transparent images).  This version is
+   for 32-bit Windows; it may compile under 16-bit Windows with a little
+   tweaking (or maybe not).  Thanks to Adam Costello and Pieter S. van der
+   Meulen for the &#34;diamond&#34; and &#34;radial waves&#34; patterns, respectively.
+
+   to do (someday, maybe):
+    - handle quoted command-line args (especially filenames with spaces)
+    - finish resizable checkerboard-gradient (sizes 4-128?)
+    - use %.1023s to simplify truncation of title-bar string?
+    - have minimum window width:  oh well
+
+  ---------------------------------------------------------------------------
+
+   Changelog:
+    - 1.01:  initial public release
+    - 1.02:  fixed cut-and-paste error in usage screen (oops...)
+    - 1.03:  modified to allow abbreviated options
+    - 1.04:  removed bogus extra argument from usage fprintf() [Glenn R-P?];
+              fixed command-line parsing bug
+    - 1.10:  enabled &#34;message window&#34;/console (thanks to David Geldreich)
+    - 1.20:  added runtime MMX-enabling/disabling and new -mmx* options
+    - 1.21:  made minor tweak to usage screen to fit within 25-line console
+    - 1.22:  added AMD64/EM64T support (__x86_64__)
+    - 2.00:  dual-licensed (added GNU GPL)
+    - 2.01:  fixed 64-bit typo in readpng2.c
+    - 2.02:  fixed improper display of usage screen on PNG error(s); fixed
+              unexpected-EOF and file-read-error cases
+    - 2.03:  removed runtime MMX-enabling/disabling and obsolete -mmx* options
+    - 2.04:  check for integer overflow (Glenn R-P)
+
+  ---------------------------------------------------------------------------
+
+      Copyright (c) 1998-2008, 2017 Greg Roelofs.  All rights reserved.
+
+      This software is provided &#34;as is,&#34; without warranty of any kind,
+      express or implied.  In no event shall the author or contributors
+      be held liable for any damages arising in any way from the use of
+      this software.
+
+      The contents of this file are DUAL-LICENSED.  You may modify and/or
+      redistribute this software according to the terms of one of the
+      following two licenses (at your option):
+
+
+      LICENSE 1 (&#34;BSD-like with advertising clause&#34;):
+
+      Permission is granted to anyone to use this software for any purpose,
+      including commercial applications, and to alter it and redistribute
+      it freely, subject to the following restrictions:
+
+      1. Redistributions of source code must retain the above copyright
+         notice, disclaimer, and this list of conditions.
+      2. Redistributions in binary form must reproduce the above copyright
+         notice, disclaimer, and this list of conditions in the documenta-
+         tion and/or other materials provided with the distribution.
+      3. All advertising materials mentioning features or use of this
+         software must display the following acknowledgment:
+
+            This product includes software developed by Greg Roelofs
+            and contributors for the book, &#34;PNG: The Definitive Guide,&#34;
+            published by O&#39;Reilly and Associates.
+
+
+      LICENSE 2 (GNU GPL v2 or later):
+
+      This program is free software; you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation; either version 2 of the License, or
+      (at your option) any later version.
+
+      This program is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program; if not, write to the Free Software Foundation,
+      Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  ---------------------------------------------------------------------------*/
+
+## Files:
+contrib/libtests/pngstest-errors.h
+
+/* contrib/libtests/pngstest-errors.h
+ *
+ * BUILT USING: libpng version 1.6.19beta03 - September 25, 2015
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * THIS IS A MACHINE GENERATED FILE: do not edit it directly!
+ * Instead run:
+ *
+ *    pngstest --accumulate
+ *
+ * on as many PNG files as possible; at least PNGSuite and
+ * contrib/libtests/testpngs.
+ */
+
+## Files:
+pngmem.c
+
+/* pngmem.c - stub functions for memory allocation
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2014,2016 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * This file provides a location for all memory allocation.  Users who
+ * need special memory handling are expected to supply replacement
+ * functions for png_malloc() and png_free(), and to use
+ * png_create_read_struct_2() and png_create_write_struct_2() to
+ * identify the replacement functions.
+ */
+
+## Files:
+ltmain.sh
+
+# This file is a library for parsing options in your shell scripts along
+# with assorted other useful supporting features that you can make use
+# of too.
+#
+# For the simplest scripts you might need only:
+#
+#   #!/bin/sh
+#   . relative/path/to/funclib.sh
+#   . relative/path/to/options-parser
+#   scriptversion=1.0
+#   func_options ${1+&#34;$@&#34;}
+#   eval set dummy &#34;$func_options_result&#34;; shift
+#   ...rest of your script...
+#
+# In order for the &#39;--version&#39; option to work, you will need to have a
+# suitably formatted comment like the one at the top of this file
+# starting with &#39;# Written by &#39; and ending with &#39;# Copyright&#39;.
+#
+# For &#39;-h&#39; and &#39;--help&#39; to work, you will also need a one line
+# description of your script&#39;s purpose in a comment directly above the
+# &#39;# Written by &#39; line, like the one at the top of this file.
+#
+# The default options also support &#39;--debug&#39;, which will turn on shell
+# execution tracing (see the comment above debug_cmd below for another
+# use), and &#39;--verbose&#39; and the func_verbose function to allow your script
+# to display verbose messages only when your user has specified
+# &#39;--verbose&#39;.
+#
+# After sourcing this file, you can plug in processing for additional
+# options by amending the variables from the &#39;Configuration&#39; section
+# below, and following the instructions in the &#39;Option parsing&#39;
+# section further down.
+
+## Files:
+pngrio.c
+
+/* pngrio.c - functions for data input
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2016,2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * This file provides a location for all input.  Users who need
+ * special handling are expected to write a function that has the same
+ * arguments as this and performs a similar function, but that possibly
+ * has a different input method.  Note that you shouldn&#39;t change this
+ * function, but rather write a replacement function and then make
+ * libpng use it at run time with png_set_read_fn(...).
+ */
+
+## Files:
+png.h
+
+/* png.h - header file for PNG reference library
+ *
+ * libpng version 1.6.38 - September 14, 2022
+ *
+ * Copyright (c) 2018-2022 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license. (See LICENSE, below.)
+ *
+ * Authors and maintainers:
+ *   libpng versions 0.71, May 1995, through 0.88, January 1996: Guy Schalnat
+ *   libpng versions 0.89, June 1996, through 0.96, May 1997: Andreas Dilger
+ *   libpng versions 0.97, January 1998, through 1.6.35, July 2018:
+ *     Glenn Randers-Pehrson
+ *   libpng versions 1.6.36, December 2018, through 1.6.38, September 2022:
+ *     Cosmin Truta
+ *   See also &#34;Contributing Authors&#34;, below.
+ */
+
+## Files:
+ltmain.sh
+
+# GNU Libtool is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# As a special exception to the GNU General Public License,
+# if you distribute this file as part of a program or library that
+# is built using GNU Libtool, you may include this file under the
+# same distribution terms that you use for the rest of that program.
+#
+# GNU Libtool is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.
+
+## Files:
+arm/arm_init.c
+
+/* arm_init.c - NEON optimised filter functions
+ *
+ * Copyright (c) 2018-2022 Cosmin Truta
+ * Copyright (c) 2014,2016 Glenn Randers-Pehrson
+ * Written by Mans Rullgard, 2011.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/libtests/makepng.c
+
+/* Insert standard copyright and licence text. */
+
+## Files:
+contrib/oss-fuzz/build.sh
+
+#!/bin/bash -eu
+# Copyright 2017-2018 Glenn Randers-Pehrson
+# Copyright 2016 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Last changed in libpng 1.6.35 [July 15, 2018]
+#
+# Revisions by Glenn Randers-Pehrson, 2017:
+# 1. Build only the library, not the tools (changed &#34;make -j$(nproc) all&#34; to
+#     &#34;make -j$(nproc) libpng16.la&#34;).
+# 2. Disabled WARNING and WRITE options in pnglibconf.dfa.
+# 3. Build zlib alongside libpng
+################################################################################
+
+## Files:
+example.c
+
+/* This is an example of how to use libpng to read and write PNG files.
+ * The file libpng-manual.txt is much more verbose then this.  If you have
+ * not read it, do so first.  This was designed to be a starting point of an
+ * implementation.  This is not officially part of libpng, is hereby placed
+ * in the public domain, and therefore does not require a copyright notice.
+ *
+ * This file does not currently compile, because it is missing certain
+ * parts, like allocating memory to hold an image.  You will have to
+ * supply these parts to get it to compile.  For an example of a minimal
+ * working PNG reader/writer, see pngtest.c, included in this distribution;
+ * see also the programs in the contrib directory.
+ */
+
+## Files:
+contrib/libtests/gentests.sh
+
+#!/bin/sh
+#
+# Copyright (c) 2013 John Cunningham Bowler
+#
+# This code is released under the libpng license.
+# For conditions of distribution and use, see the disclaimer
+# and license in png.h
+#
+# Generate a set of PNG test images.  The images are generated in a
+# sub-directory called &#39;tests&#39; by default, however a command line argument will
+# change that name.  The generation requires a built version of makepng in the
+# current directory.
+#
+
+## Files:
+arm/filter_neon_intrinsics.c
+
+/* filter_neon_intrinsics.c - NEON optimised filter functions
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 2014,2016 Glenn Randers-Pehrson
+ * Written by James Yu &lt;james.yu at linaro.org&gt;, October 2013.
+ * Based on filter_neon.S, written by Mans Rullgard, 2011.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+scripts/symbols.c
+
+/* symbols.c - find all exported symbols
+ *
+ * Last changed in libpng version 1.6.16 [December 22, 2014]
+ * Copyright (c) 2011-2014 Glenn Randers-Pehrson
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/libtests/makepng.c
+
+/* These are used to insert Copyright and Licence fields, they allow the text to
+ * have \n unlike the --insert option.
+ */
+
+## Files:
+contrib/powerpc-vsx/linux_aux.c
+
+/* contrib/powerpc-vsx/linux_aux.c
+ *
+ * Copyright (c) 2017 Glenn Randers-Pehrson
+ * Written by Vadim Barkov, 2017.
+ * Last changed in libpng 1.6.29 [March 16, 2017]
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * STATUS: TESTED
+ * BUG REPORTS: png-mng-implement@sourceforge.net
+ *
+ * png_have_vsx implemented for Linux by using the auxiliary vector mechanism.
+ *
+ * This code is strict ANSI-C and is probably moderately portable; it does
+ * however use &lt;stdio.h&gt; and it assumes that /proc/cpuinfo is never localized.
+ */
+
+## Files:
+contrib/visupng/PngFile.c
+
+/*-------------------------------------
+ *  PNGFILE.C -- Image File Functions
+ *-------------------------------------
+ *
+ * Copyright 2000,2017 Willem van Schaik.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+pngwutil.c
+
+/* pngwutil.c - utilities to write a PNG file
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+pngread.c
+
+/* pngread.c - read a PNG file
+ *
+ * Copyright (c) 2018-2019 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * This file contains routines that an application calls directly to
+ * read a PNG file or stream.
+ */
+
+## Files:
+contrib/gregbook/readpng.c
+
+/*---------------------------------------------------------------------------
+
+   rpng - simple PNG display program                              readpng.c
+
+  ---------------------------------------------------------------------------
+
+      Copyright (c) 1998-2007,2017 Greg Roelofs.  All rights reserved.
+
+      This software is provided &#34;as is,&#34; without warranty of any kind,
+      express or implied.  In no event shall the author or contributors
+      be held liable for any damages arising in any way from the use of
+      this software.
+
+      The contents of this file are DUAL-LICENSED.  You may modify and/or
+      redistribute this software according to the terms of one of the
+      following two licenses (at your option):
+
+
+      LICENSE 1 (&#34;BSD-like with advertising clause&#34;):
+
+      Permission is granted to anyone to use this software for any purpose,
+      including commercial applications, and to alter it and redistribute
+      it freely, subject to the following restrictions:
+
+      1. Redistributions of source code must retain the above copyright
+         notice, disclaimer, and this list of conditions.
+      2. Redistributions in binary form must reproduce the above copyright
+         notice, disclaimer, and this list of conditions in the documenta-
+         tion and/or other materials provided with the distribution.
+      3. All advertising materials mentioning features or use of this
+         software must display the following acknowledgment:
+
+            This product includes software developed by Greg Roelofs
+            and contributors for the book, &#34;PNG: The Definitive Guide,&#34;
+            published by O&#39;Reilly and Associates.
+
+
+      LICENSE 2 (GNU GPL v2 or later):
+
+      This program is free software; you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation; either version 2 of the License, or
+      (at your option) any later version.
+
+      This program is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program; if not, write to the Free Software Foundation,
+      Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  ---------------------------------------------------------------------------*/
+
+## Files:
+mips/mips_init.c
+
+/* mips_init.c - MSA optimised filter functions
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 2016 Glenn Randers-Pehrson
+ * Written by Mandar Sahastrabuddhe, 2016.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+ltmain.sh
+
+# Copyright (C) 1996-2019, 2021-2022 Free Software Foundation, Inc.
+# This is free software; see the source for copying conditions.  There is NO
+# warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+## Files:
+contrib/mips-msa/linux.c
+
+/* contrib/mips-msa/linux.c
+ *
+ * Copyright (c) 2020 Cosmin Truta
+ * Copyright (c) 2016 Glenn Randers-Pehrson
+ * Written by Mandar Sahastrabuddhe, 2016.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * SEE contrib/mips-msa/README before reporting bugs
+ *
+ * STATUS: SUPPORTED
+ * BUG REPORTS: png-mng-implement@sourceforge.net
+ *
+ * png_have_msa implemented for Linux by reading the widely available
+ * pseudo-file /proc/cpuinfo.
+ *
+ * This code is strict ANSI-C and is probably moderately portable; it does
+ * however use &lt;stdio.h&gt; and it assumes that /proc/cpuinfo is never localized.
+ */
+
+## Files:
+pngset.c
+
+/* pngset.c - storage of image information into info struct
+ *
+ * Copyright (c) 2018-2022 Cosmin Truta
+ * Copyright (c) 1998-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * The functions here are used during reads to store data from the file
+ * into the info struct, and during writes to store application data
+ * into the info struct for writing into the file.  This abstracts the
+ * info struct and allows us to change the structure in the future.
+ */
+
+## Files:
+contrib/tools/makesRGB.c
+
+/* makesRGB.c -- build sRGB-to-linear and linear-to-sRGB conversion tables
+ *
+ * Last changed in libpng 1.6.0 [February 14, 2013]
+ *
+ * COPYRIGHT: Written by John Cunningham Bowler, 2013.
+ * To the extent possible under law, the author has waived all copyright and
+ * related or neighboring rights to this work.  This work is published from:
+ * United States.
+ *
+ * Make a table to convert 8-bit sRGB encoding values into the closest 16-bit
+ * linear value.
+ *
+ * Make two tables to take a linear value scaled to 255*65535 and return an
+ * approximation to the 8-bit sRGB encoded value.  Calculate the error in these
+ * tables and display it.
+ */
+
+## Files:
+pngtrans.c
+
+/* pngtrans.c - transforms the data in a row (used by both readers and writers)
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/libtests/fakepng.c
+
+/* Fake a PNG - just write it out directly.
+ *
+ * COPYRIGHT: Written by John Cunningham Bowler, 2014.
+ * To the extent possible under law, the author has waived all copyright and
+ * related or neighboring rights to this work.  This work is published from:
+ * United States.
+ *
+ */
+
+## Files:
+contrib/gregbook/rpng-win.c
+
+/*---------------------------------------------------------------------------
+
+   rpng - simple PNG display program                             rpng-win.c
+
+   This program decodes and displays PNG images, with gamma correction and
+   optionally with a user-specified background color (in case the image has
+   transparency).  It is very nearly the most basic PNG viewer possible.
+   This version is for 32-bit Windows; it may compile under 16-bit Windows
+   with a little tweaking (or maybe not).
+
+   to do:
+    - handle quoted command-line args (especially filenames with spaces)
+    - have minimum window width:  oh well
+    - use %.1023s to simplify truncation of title-bar string?
+
+  ---------------------------------------------------------------------------
+
+   Changelog:
+    - 1.00:  initial public release
+    - 1.01:  modified to allow abbreviated options; fixed long/ulong mis-
+              match; switched to png_jmpbuf() macro
+    - 1.02:  added extra set of parentheses to png_jmpbuf() macro; fixed
+              command-line parsing bug
+    - 1.10:  enabled &#34;message window&#34;/console (thanks to David Geldreich)
+    - 2.00:  dual-licensed (added GNU GPL)
+    - 2.01:  fixed improper display of usage screen on PNG error(s)
+    - 2.02:  check for integer overflow (Glenn R-P)
+
+  ---------------------------------------------------------------------------
+
+      Copyright (c) 1998-2008, 2017 Greg Roelofs.  All rights reserved.
+
+      This software is provided &#34;as is,&#34; without warranty of any kind,
+      express or implied.  In no event shall the author or contributors
+      be held liable for any damages arising in any way from the use of
+      this software.
+
+      The contents of this file are DUAL-LICENSED.  You may modify and/or
+      redistribute this software according to the terms of one of the
+      following two licenses (at your option):
+
+
+      LICENSE 1 (&#34;BSD-like with advertising clause&#34;):
+
+      Permission is granted to anyone to use this software for any purpose,
+      including commercial applications, and to alter it and redistribute
+      it freely, subject to the following restrictions:
+
+      1. Redistributions of source code must retain the above copyright
+         notice, disclaimer, and this list of conditions.
+      2. Redistributions in binary form must reproduce the above copyright
+         notice, disclaimer, and this list of conditions in the documenta-
+         tion and/or other materials provided with the distribution.
+      3. All advertising materials mentioning features or use of this
+         software must display the following acknowledgment:
+
+            This product includes software developed by Greg Roelofs
+            and contributors for the book, &#34;PNG: The Definitive Guide,&#34;
+            published by O&#39;Reilly and Associates.
+
+
+      LICENSE 2 (GNU GPL v2 or later):
+
+      This program is free software; you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation; either version 2 of the License, or
+      (at your option) any later version.
+
+      This program is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program; if not, write to the Free Software Foundation,
+      Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  ---------------------------------------------------------------------------*/
+
+## Files:
+scripts/intprefix.c
+
+/* intprefix.c - generate an unprefixed internal symbol list
+ *
+ * Last changed in libpng version 1.6.16 [December 22, 2014]
+ * Copyright (c) 2013-2014 Glenn Randers-Pehrson
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/tools/pngfix.c
+
+/* pngfix.c
+ *
+ * Last changed in libpng 1.6.31 [July 27, 2017]
+ * Copyright (c) 2014-2017 John Cunningham Bowler
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Tool to check and fix the zlib inflate &#39;too far back&#39; problem.
+ * See the usage message for more information.
+ */
+
+## Files:
+pngtest.c
+
+/* pngtest.c - a simple test program to test libpng
+ *
+ * Copyright (c) 2018-2019 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * This program reads in a PNG image, writes it out again, and then
+ * compares the two files.  If the files are identical, this shows that
+ * the basic chunk handling, filtering, and (de)compression code is working
+ * properly.  It does not currently test all of the transforms, although
+ * it probably should.
+ *
+ * The program will report &#34;FAIL&#34; in certain legitimate cases:
+ * 1) when the compression level or filter selection method is changed.
+ * 2) when the maximum IDAT size (PNG_ZBUF_SIZE in pngconf.h) is not 8192.
+ * 3) unknown unsafe-to-copy ancillary chunks or unknown critical chunks
+ *    exist in the input file.
+ * 4) others not listed here...
+ * In these cases, it is best to check with another tool such as &#34;pngcheck&#34;
+ * to see what the differences between the two files are.
+ *
+ * If a filename is given on the command-line, then this file is used
+ * for the input, rather than the default &#34;pngtest.png&#34;.  This allows
+ * testing a wide variety of files easily.  You can also test a number
+ * of files at once by typing &#34;pngtest -m file1.png file2.png ...&#34;
+ */
+
+## Files:
+contrib/oss-fuzz/libpng_read_fuzzer.cc
+
+// libpng_read_fuzzer.cc
+// Copyright 2017-2018 Glenn Randers-Pehrson
+// Copyright 2015 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that may
+// be found in the LICENSE file https://cs.chromium.org/chromium/src/LICENSE
+
+## Files:
+pngrtran.c
+
+/* pngrtran.c - transforms the data in a row for PNG readers
+ *
+ * Copyright (c) 2018-2019 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * This file contains functions optionally called by an application
+ * in order to tell libpng how to handle data when reading a PNG.
+ * Transformations that are used in both reading and writing are
+ * in pngtrans.c.
+ */
+
+## Files:
+pngget.c
+
+/* pngget.c - retrieval of values from info struct
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ */
+
+## Files:
+contrib/libtests/readpng.c
+
+/* readpng.c
+ *
+ * Copyright (c) 2013 John Cunningham Bowler
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Load an arbitrary number of PNG files (from the command line, or, if there
+ * are no arguments on the command line, from stdin) then run a time test by
+ * reading each file by row.  The test does nothing with the read result and
+ * does no transforms.  The only output is a time as a floating point number of
+ * seconds with 9 decimal digits.
+ */
+
+## Files:
+pngstruct.h
+
+/* pngstruct.h - header file for PNG reference library
+ *
+ * Copyright (c) 2018-2022 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+pngpread.c
+
+/* pngpread.c - read a png file in push mode
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+png.c
+
+/* png.c - location for general purpose libpng functions
+ *
+ * Copyright (c) 2018-2022 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/gregbook/writepng.c
+
+/*---------------------------------------------------------------------------
+
+   wpng - simple PNG-writing program                             writepng.c
+
+  ---------------------------------------------------------------------------
+
+      Copyright (c) 1998-2007, 2017 Greg Roelofs.  All rights reserved.
+
+      This software is provided &#34;as is,&#34; without warranty of any kind,
+      express or implied.  In no event shall the author or contributors
+      be held liable for any damages arising in any way from the use of
+      this software.
+
+      The contents of this file are DUAL-LICENSED.  You may modify and/or
+      redistribute this software according to the terms of one of the
+      following two licenses (at your option):
+
+
+      LICENSE 1 (&#34;BSD-like with advertising clause&#34;):
+
+      Permission is granted to anyone to use this software for any purpose,
+      including commercial applications, and to alter it and redistribute
+      it freely, subject to the following restrictions:
+
+      1. Redistributions of source code must retain the above copyright
+         notice, disclaimer, and this list of conditions.
+      2. Redistributions in binary form must reproduce the above copyright
+         notice, disclaimer, and this list of conditions in the documenta-
+         tion and/or other materials provided with the distribution.
+      3. All advertising materials mentioning features or use of this
+         software must display the following acknowledgment:
+
+            This product includes software developed by Greg Roelofs
+            and contributors for the book, &#34;PNG: The Definitive Guide,&#34;
+            published by O&#39;Reilly and Associates.
+
+
+      LICENSE 2 (GNU GPL v2 or later):
+
+      This program is free software; you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation; either version 2 of the License, or
+      (at your option) any later version.
+
+      This program is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program; if not, write to the Free Software Foundation,
+      Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  ---------------------------------------------------------------------------*/
+
+## Files:
+contrib/testpngs/makepngs.sh
+
+# Copyright (c) 2015 John Cunningham Bowler
+
+## Files:
+pnginfo.h
+
+/* pnginfo.h - header file for PNG reference library
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2013,2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/gregbook/writepng.h
+
+/*---------------------------------------------------------------------------
+
+   wpng - simple PNG-writing program                             writepng.h
+
+  ---------------------------------------------------------------------------
+
+      Copyright (c) 1998-2007 Greg Roelofs.  All rights reserved.
+
+      This software is provided &#34;as is,&#34; without warranty of any kind,
+      express or implied.  In no event shall the author or contributors
+      be held liable for any damages arising in any way from the use of
+      this software.
+
+      The contents of this file are DUAL-LICENSED.  You may modify and/or
+      redistribute this software according to the terms of one of the
+      following two licenses (at your option):
+
+
+      LICENSE 1 (&#34;BSD-like with advertising clause&#34;):
+
+      Permission is granted to anyone to use this software for any purpose,
+      including commercial applications, and to alter it and redistribute
+      it freely, subject to the following restrictions:
+
+      1. Redistributions of source code must retain the above copyright
+         notice, disclaimer, and this list of conditions.
+      2. Redistributions in binary form must reproduce the above copyright
+         notice, disclaimer, and this list of conditions in the documenta-
+         tion and/or other materials provided with the distribution.
+      3. All advertising materials mentioning features or use of this
+         software must display the following acknowledgment:
+
+            This product includes software developed by Greg Roelofs
+            and contributors for the book, &#34;PNG: The Definitive Guide,&#34;
+            published by O&#39;Reilly and Associates.
+
+
+      LICENSE 2 (GNU GPL v2 or later):
+
+      This program is free software; you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation; either version 2 of the License, or
+      (at your option) any later version.
+
+      This program is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program; if not, write to the Free Software Foundation,
+      Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  ---------------------------------------------------------------------------*/
+
+## Files:
+contrib/visupng/PngFile.h
+
+/* Copyright 2000, Willem van Schaik.*/
+
+## Files:
+contrib/tools/pngcp.c
+
+/* pngcp.c
+ *
+ * Copyright (c) 2016 John Cunningham Bowler
+ *
+ * Last changed in libpng 1.6.24 [August 4, 2016]
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * This is an example of copying a PNG without changes using the png_read_png
+ * and png_write_png interfaces.  A considerable number of options are provided
+ * to manipulate the compression of the PNG data and other compressed chunks.
+ *
+ * For a more extensive example that uses the transforms see
+ * contrib/libtests/pngimage.c in the libpng distribution.
+ */
+
+## Files:
+png.h
+
+/* With all write APIs if image is in one of the linear formats with 16-bit
+ * data then setting convert_to_8_bit will cause the output to be an 8-bit PNG
+ * gamma encoded according to the sRGB specification, otherwise a 16-bit linear
+ * encoded PNG file is written.
+ *
+ * With color-mapped data formats the colormap parameter point to a color-map
+ * with at least image-&gt;colormap_entries encoded in the specified format.  If
+ * the format is linear the written PNG color-map will be converted to sRGB
+ * regardless of the convert_to_8_bit flag.
+ *
+ * With all APIs row_stride is handled as in the read APIs - it is the spacing
+ * from one row to the next in component sized units (1 or 2 bytes) and if
+ * negative indicates a bottom-up row layout in the buffer.  If row_stride is
+ * zero, libpng will calculate it for you from the image width and number of
+ * channels.
+ *
+ * Note that the write API does not support interlacing, sub-8-bit pixels or
+ * most ancillary chunks.  If you need to write text chunks (e.g. for copyright
+ * notices) you need to use one of the other APIs.
+ */
+
+## Files:
+contrib/tools/cvtcolor.c
+
+/*-
+ * convert.c
+ *
+ * Last changed in libpng 1.6.0 [February 14, 2013]
+ *
+ * COPYRIGHT: Written by John Cunningham Bowler, 2013.
+ * To the extent possible under law, the author has waived all copyright and
+ * related or neighboring rights to this work.  This work is published from:
+ * United States.
+ *
+ * Convert 8-bit sRGB or 16-bit linear values to another format.
+ */
+
+## Files:
+png.h
+
+/*
+ * COPYRIGHT NOTICE, DISCLAIMER, and LICENSE
+ * =========================================
+ *
+ * PNG Reference Library License version 2
+ * ---------------------------------------
+ *
+ *  * Copyright (c) 1995-2022 The PNG Reference Library Authors.
+ *  * Copyright (c) 2018-2022 Cosmin Truta.
+ *  * Copyright (c) 2000-2002, 2004, 2006-2018 Glenn Randers-Pehrson.
+ *  * Copyright (c) 1996-1997 Andreas Dilger.
+ *  * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * The software is supplied &#34;as is&#34;, without warranty of any kind,
+ * express or implied, including, without limitation, the warranties
+ * of merchantability, fitness for a particular purpose, title, and
+ * non-infringement.  In no event shall the Copyright owners, or
+ * anyone distributing the software, be liable for any damages or
+ * other liability, whether in contract, tort or otherwise, arising
+ * from, out of, or in connection with the software, or the use or
+ * other dealings in the software, even if advised of the possibility
+ * of such damage.
+ *
+ * Permission is hereby granted to use, copy, modify, and distribute
+ * this software, or portions hereof, for any purpose, without fee,
+ * subject to the following restrictions:
+ *
+ *  1. The origin of this software must not be misrepresented; you
+ *     must not claim that you wrote the original software.  If you
+ *     use this software in a product, an acknowledgment in the product
+ *     documentation would be appreciated, but is not required.
+ *
+ *  2. Altered source versions must be plainly marked as such, and must
+ *     not be misrepresented as being the original software.
+ *
+ *  3. This Copyright notice may not be removed or altered from any
+ *     source or altered source distribution.
+ *
+ *
+ * PNG Reference Library License version 1 (for libpng 0.5 through 1.6.35)
+ * -----------------------------------------------------------------------
+ *
+ * libpng versions 1.0.7, July 1, 2000, through 1.6.35, July 15, 2018 are
+ * Copyright (c) 2000-2002, 2004, 2006-2018 Glenn Randers-Pehrson, are
+ * derived from libpng-1.0.6, and are distributed according to the same
+ * disclaimer and license as libpng-1.0.6 with the following individuals
+ * added to the list of Contributing Authors:
+ *
+ *     Simon-Pierre Cadieux
+ *     Eric S. Raymond
+ *     Mans Rullgard
+ *     Cosmin Truta
+ *     Gilles Vollant
+ *     James Yu
+ *     Mandar Sahastrabuddhe
+ *     Google Inc.
+ *     Vadim Barkov
+ *
+ * and with the following additions to the disclaimer:
+ *
+ *     There is no warranty against interference with your enjoyment of
+ *     the library or against infringement.  There is no warranty that our
+ *     efforts or the library will fulfill any of your particular purposes
+ *     or needs.  This library is provided with all faults, and the entire
+ *     risk of satisfactory quality, performance, accuracy, and effort is
+ *     with the user.
+ *
+ * Some files in the &#34;contrib&#34; directory and some configure-generated
+ * files that are distributed with libpng have other copyright owners, and
+ * are released under other open source licenses.
+ *
+ * libpng versions 0.97, January 1998, through 1.0.6, March 20, 2000, are
+ * Copyright (c) 1998-2000 Glenn Randers-Pehrson, are derived from
+ * libpng-0.96, and are distributed according to the same disclaimer and
+ * license as libpng-0.96, with the following individuals added to the
+ * list of Contributing Authors:
+ *
+ *     Tom Lane
+ *     Glenn Randers-Pehrson
+ *     Willem van Schaik
+ *
+ * libpng versions 0.89, June 1996, through 0.96, May 1997, are
+ * Copyright (c) 1996-1997 Andreas Dilger, are derived from libpng-0.88,
+ * and are distributed according to the same disclaimer and license as
+ * libpng-0.88, with the following individuals added to the list of
+ * Contributing Authors:
+ *
+ *     John Bowler
+ *     Kevin Bracey
+ *     Sam Bushell
+ *     Magnus Holmgren
+ *     Greg Roelofs
+ *     Tom Tanner
+ *
+ * Some files in the &#34;scripts&#34; directory have other copyright owners,
+ * but are released under this license.
+ *
+ * libpng versions 0.5, May 1995, through 0.88, January 1996, are
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * For the purposes of this copyright and license, &#34;Contributing Authors&#34;
+ * is defined as the following set of individuals:
+ *
+ *     Andreas Dilger
+ *     Dave Martindale
+ *     Guy Eric Schalnat
+ *     Paul Schmidt
+ *     Tim Wegner
+ *
+ * The PNG Reference Library is supplied &#34;AS IS&#34;.  The Contributing
+ * Authors and Group 42, Inc. disclaim all warranties, expressed or
+ * implied, including, without limitation, the warranties of
+ * merchantability and of fitness for any purpose.  The Contributing
+ * Authors and Group 42, Inc. assume no liability for direct, indirect,
+ * incidental, special, exemplary, or consequential damages, which may
+ * result from the use of the PNG Reference Library, even if advised of
+ * the possibility of such damage.
+ *
+ * Permission is hereby granted to use, copy, modify, and distribute this
+ * source code, or portions hereof, for any purpose, without fee, subject
+ * to the following restrictions:
+ *
+ *  1. The origin of this source code must not be misrepresented.
+ *
+ *  2. Altered versions must be plainly marked as such and must not
+ *     be misrepresented as being the original source.
+ *
+ *  3. This Copyright notice may not be removed or altered from any
+ *     source or altered source distribution.
+ *
+ * The Contributing Authors and Group 42, Inc. specifically permit,
+ * without fee, and encourage the use of this source code as a component
+ * to supporting the PNG file format in commercial products.  If you use
+ * this source code in a product, acknowledgment is not required but would
+ * be appreciated.
+ *
+ * END OF COPYRIGHT NOTICE, DISCLAIMER, and LICENSE.
+ *
+ * TRADEMARK
+ * =========
+ *
+ * The name &#34;libpng&#34; has not been registered by the Copyright owners
+ * as a trademark in any jurisdiction.  However, because libpng has
+ * been distributed and maintained world-wide, continually since 1995,
+ * the Copyright owners claim &#34;common-law trademark protection&#34; in any
+ * jurisdiction where common-law trademark is recognized.
+ */
+
+## Files:
+scripts/sym.c
+
+/* sym.c - define format of libpng.sym
+ *
+ * Last changed in libpng version 1.6.16 [December 22, 2014]
+ * Copyright (c) 2011-2014 Glenn Randers-Pehrson
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/gregbook/rpng2-x.c
+
+/*---------------------------------------------------------------------------
+
+   rpng2 - progressive-model PNG display program                  rpng2-x.c
+
+   This program decodes and displays PNG files progressively, as if it were
+   a web browser (though the front end is only set up to read from files).
+   It supports gamma correction, user-specified background colors, and user-
+   specified background patterns (for transparent images).  This version is
+   for the X Window System (tested by the author under Unix and by Martin
+   Zinser under OpenVMS; may work under OS/2 with a little tweaking).
+
+   Thanks to Adam Costello and Pieter S. van der Meulen for the &#34;diamond&#34;
+   and &#34;radial waves&#34; patterns, respectively.
+
+   to do (someday, maybe):
+    - fix expose/redraw code:  don&#39;t draw entire row if only part exposed
+    - 8-bit (colormapped) X support
+    - finish resizable checkerboard-gradient (sizes 4-128?)
+    - use %.1023s to simplify truncation of title-bar string?
+
+  ---------------------------------------------------------------------------
+
+   Changelog:
+    - 1.01:  initial public release
+    - 1.02:  modified to allow abbreviated options; fixed char/uchar mismatch
+    - 1.10:  added support for non-default visuals; fixed X pixel-conversion
+    - 1.11:  added -usleep option for demos; fixed command-line parsing bug
+    - 1.12:  added -pause option for demos and testing
+    - 1.20:  added runtime MMX-enabling/disabling and new -mmx* options
+    - 1.21:  fixed some small X memory leaks (thanks to Fran�ois Petitjean)
+    - 1.22:  fixed XFreeGC() crash bug (thanks to Patrick Welche)
+    - 1.23:  added -bgpat 0 mode (std white/gray checkerboard, 8x8 squares)
+    - 1.30:  added -loop option for -bgpat (ifdef FEATURE_LOOP); fixed bpp =
+              24; added support for X resources (thanks to Gerhard Niklasch)
+    - 1.31:  added code to skip unused chunks (thanks to Glenn Randers-Pehrson)
+    - 1.32:  added AMD64/EM64T support (__x86_64__); added basic expose/redraw
+              handling
+    - 2.00:  dual-licensed (added GNU GPL)
+    - 2.01:  fixed 64-bit typo in readpng2.c; fixed -pause usage description
+    - 2.02:  fixed improper display of usage screen on PNG error(s); fixed
+              unexpected-EOF and file-read-error cases; fixed Trace() cut-and-
+              paste bugs
+    - 2.03:  deleted runtime MMX-enabling/disabling and obsolete -mmx* options
+    - 2.04:  Added &#34;void(foo);&#34; statements to quiet pedantic compiler warnings
+             about unused variables (GR-P)
+    - 2.05:  Use nanosleep() instead of usleep(), which is deprecated (GR-P).
+    - 2.06:  check for integer overflow (Glenn R-P)
+  ---------------------------------------------------------------------------
+
+      Copyright (c) 1998-2010, 2014-2015, 2017 Greg Roelofs.  All rights
+      reserved.
+
+      This software is provided &#34;as is,&#34; without warranty of any kind,
+      express or implied.  In no event shall the author or contributors
+      be held liable for any damages arising in any way from the use of
+      this software.
+
+      The contents of this file are DUAL-LICENSED.  You may modify and/or
+      redistribute this software according to the terms of one of the
+      following two licenses (at your option):
+
+
+      LICENSE 1 (&#34;BSD-like with advertising clause&#34;):
+
+      Permission is granted to anyone to use this software for any purpose,
+      including commercial applications, and to alter it and redistribute
+      it freely, subject to the following restrictions:
+
+      1. Redistributions of source code must retain the above copyright
+         notice, disclaimer, and this list of conditions.
+      2. Redistributions in binary form must reproduce the above copyright
+         notice, disclaimer, and this list of conditions in the documenta-
+         tion and/or other materials provided with the distribution.
+      3. All advertising materials mentioning features or use of this
+         software must display the following acknowledgment:
+
+            This product includes software developed by Greg Roelofs
+            and contributors for the book, &#34;PNG: The Definitive Guide,&#34;
+            published by O&#39;Reilly and Associates.
+
+
+      LICENSE 2 (GNU GPL v2 or later):
+
+      This program is free software; you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation; either version 2 of the License, or
+      (at your option) any later version.
+
+      This program is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program; if not, write to the Free Software Foundation,
+      Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  ---------------------------------------------------------------------------*/
+
+## Files:
+contrib/gregbook/readpng2.c
+
+/*---------------------------------------------------------------------------
+
+   rpng2 - progressive-model PNG display program                 readpng2.c
+
+  ---------------------------------------------------------------------------
+
+      Copyright (c) 1998-2015 Greg Roelofs.  All rights reserved.
+
+      This software is provided &#34;as is,&#34; without warranty of any kind,
+      express or implied.  In no event shall the author or contributors
+      be held liable for any damages arising in any way from the use of
+      this software.
+
+      The contents of this file are DUAL-LICENSED.  You may modify and/or
+      redistribute this software according to the terms of one of the
+      following two licenses (at your option):
+
+
+      LICENSE 1 (&#34;BSD-like with advertising clause&#34;):
+
+      Permission is granted to anyone to use this software for any purpose,
+      including commercial applications, and to alter it and redistribute
+      it freely, subject to the following restrictions:
+
+      1. Redistributions of source code must retain the above copyright
+         notice, disclaimer, and this list of conditions.
+      2. Redistributions in binary form must reproduce the above copyright
+         notice, disclaimer, and this list of conditions in the documenta-
+         tion and/or other materials provided with the distribution.
+      3. All advertising materials mentioning features or use of this
+         software must display the following acknowledgment:
+
+            This product includes software developed by Greg Roelofs
+            and contributors for the book, &#34;PNG: The Definitive Guide,&#34;
+            published by O&#39;Reilly and Associates.
+
+
+      LICENSE 2 (GNU GPL v2 or later):
+
+      This program is free software; you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation; either version 2 of the License, or
+      (at your option) any later version.
+
+      This program is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program; if not, write to the Free Software Foundation,
+      Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  ---------------------------------------------------------------------------
+
+   Changelog:
+     2015-11-12 - Check return value of png_get_bKGD() (Glenn R-P)
+     2017-04-22 - Guard against integer overflow (Glenn R-P)
+
+  ---------------------------------------------------------------------------*/
+
+## Files:
+contrib/examples/simpleover.c
+
+/*- simpleover
+ *
+ * COPYRIGHT: Written by John Cunningham Bowler, 2015.
+ * To the extent possible under law, the author has waived all copyright and
+ * related or neighboring rights to this work.  This work is published from:
+ * United States.
+ *
+ * Read several PNG files, which should have an alpha channel or transparency
+ * information, and composite them together to produce one or more 16-bit linear
+ * RGBA intermediates.  This involves doing the correct &#39;over&#39; composition to
+ * combine the alpha channels and corresponding data.
+ *
+ * Finally read an output (background) PNG using the 24-bit RGB format (the
+ * PNG will be composited on green (#00ff00) by default if it has an alpha
+ * channel), and apply the intermediate image generated above to specified
+ * locations in the image.
+ *
+ * The command line has the general format:
+ *
+ *    simpleover &lt;background.png&gt; [output.png]
+ *        {--sprite=width,height,name {[--at=x,y] {sprite.png}}}
+ *        {--add=name {x,y}}
+ *
+ * The --sprite and --add options may occur multiple times. They are executed
+ * in order.  --add may refer to any sprite already read.
+ *
+ * This code is intended to show how to composite multiple images together
+ * correctly.  Apart from the libpng Simplified API the only work done in here
+ * is to combine multiple input PNG images into a single sprite; this involves
+ * a Porter-Duff &#39;over&#39; operation and the input PNG images may, as a result,
+ * be regarded as being layered one on top of the other with the first (leftmost
+ * on the command line) being at the bottom and the last on the top.
+ */
+
+## Files:
+ci/ci_autotools.sh
+
+# ci_autotools.sh
+# Continuously integrate libpng using the GNU Autotools.
+#
+# Copyright (c) 2019-2022 Cosmin Truta.
+#
+# This software is released under the libpng license.
+# For conditions of distribution and use, see the disclaimer
+# and license in png.h.
+
+## Files:
+contrib/examples/pngtopng.c
+
+/*- pngtopng
+ *
+ * COPYRIGHT: Written by John Cunningham Bowler, 2011, 2017.
+ * To the extent possible under law, the author has waived all copyright and
+ * related or neighboring rights to this work.  This work is published from:
+ * United States.
+ *
+ * Last changed in libpng 1.6.29 [March 16, 2017]
+ *
+ * Read a PNG and write it out in a fixed format, using the &#39;simplified API&#39;
+ * that was introduced in libpng-1.6.0.
+ *
+ * This sample code is just the code from the top of &#39;example.c&#39; with some error
+ * handling added.  See example.c for more comments.
+ */
+
+## Files:
+contrib/pngminim/preader/pngusr.h
+
+/* minrdpngconf.h: headers to make a minimal png-read-only library
+ *
+ * Copyright (c) 2009, 2010-2013 Glenn Randers-Pehrson
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Derived from pngcrush.h, Copyright 1998-2007, Glenn Randers-Pehrson
+ */
+
+## Files:
+contrib/arm-neon/android-ndk.c
+
+/* contrib/arm-neon/android-ndk.c
+ *
+ * Copyright (c) 2014 Glenn Randers-Pehrson
+ * Written by John Bowler, 2014.
+ * Last changed in libpng 1.6.10 [March 6, 2014]
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * SEE contrib/arm-neon/README before reporting bugs
+ *
+ * STATUS: COMPILED, UNTESTED
+ * BUG REPORTS: png-mng-implement@sourceforge.net
+ *
+ * png_have_neon implemented for the Android NDK, see:
+ *
+ * Documentation:
+ *    http://www.kandroid.org/ndk/docs/CPU-ARM-NEON.html
+ *    https://code.google.com/p/android/issues/detail?id=49065
+ *
+ * NOTE: this requires that libpng is built against the Android NDK and linked
+ * with an implementation of the Android ARM &#39;cpu-features&#39; library.  The code
+ * has been compiled only, not linked: no version of the library has been found,
+ * only the header files exist in the NDK.
+ */
+
+## Files:
+contrib/libtests/tarith.c
+
+/* tarith.c
+ *
+ * Copyright (c) 2021 Cosmin Truta
+ * Copyright (c) 2011-2013 John Cunningham Bowler
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Test internal arithmetic functions of libpng.
+ *
+ * This code must be linked against a math library (-lm), but does not require
+ * libpng or zlib to work.  Because it includes the complete source of &#39;png.c&#39;
+ * it tests the code with whatever compiler options are used to build it.
+ * Changing these options can substantially change the errors in the
+ * calculations that the compiler chooses!
+ */
+
+## Files:
+contrib/tools/genpng.c
+
+/*- genpng
+ *
+ * COPYRIGHT: Written by John Cunningham Bowler, 2015.
+ * Revised by Glenn Randers-Pehrson, 2017, to add buffer-size check.
+ * To the extent possible under law, the authors have waived all copyright and
+ * related or neighboring rights to this work.  This work is published from:
+ * United States.
+ *
+ * Generate a PNG with an alpha channel, correctly.
+ *
+ * This is a test case generator; the resultant PNG files are only of interest
+ * to those of us who care about whether the edges of circles are green, red,
+ * or yellow.
+ *
+ * The program generates an RGB+Alpha PNG of a given size containing the given
+ * shapes on a transparent background:
+ *
+ *  genpng width height { shape }
+ *    shape ::= color width shape x1 y1 x2 y2
+ *
+ * &#39;color&#39; is:
+ *
+ *  black white red green yellow blue brown purple pink orange gray cyan
+ *
+ * The point is to have colors that are linguistically meaningful plus that old
+ * bugbear of the department store dress murders, Cyan, the only color we argue
+ * about.
+ *
+ * &#39;shape&#39; is:
+ *
+ *  circle: an ellipse
+ *  square: a rectangle
+ *  line: a straight line
+ *
+ * Each shape is followed by four numbers, these are two points in the output
+ * coordinate space (as real numbers) which describe the circle, square, or
+ * line.  The shape is filled if it is preceded by &#39;filled&#39; (not valid for
+ * &#39;line&#39;) or is drawn with a line, in which case the width of the line must
+ * precede the shape.
+ *
+ * The whole set of information can be repeated as many times as desired:
+ *
+ *    shape ::= color width shape x1 y1 x2 y2
+ *
+ *    color ::= black|white|red|green|yellow|blue
+ *    color ::= brown|purple|pink|orange|gray|cyan
+ *    width ::= filled
+ *    width ::= &lt;number&gt;
+ *    shape ::= circle|square|line
+ *    x1    ::= &lt;number&gt;
+ *    x2    ::= &lt;number&gt;
+ *    y1    ::= &lt;number&gt;
+ *    y2    ::= &lt;number&gt;
+ *
+ * The output PNG is generated by down-sampling a 4x supersampled image using
+ * a bi-cubic filter.  The bi-cubic has a 2 (output) pixel width, so an 8x8
+ * array of super-sampled points contribute to each output pixel.  The value of
+ * a super-sampled point is found using an unfiltered, aliased, infinite
+ * precision image: Each shape from the last to the first is checked to see if
+ * the point is in the drawn area and, if it is, the color of the point is the
+ * color of the shape and the alpha is 1, if not the previous shape is checked.
+ *
+ * This is an aliased algorithm because no filtering is done; a point is either
+ * inside or outside each shape and &#39;close&#39; points do not contribute to the
+ * sample.  The down-sampling is relied on to correct the error of not using
+ * a filter.
+ *
+ * The line end-caps are &#39;flat&#39;; they go through the points.  The square line
+ * joins are mitres; the outside of the lines are continued to the point of
+ * intersection.
+ */
+
+## Files:
+contrib/tools/png-fix-itxt.c
+
+/* png-fix-itxt version 1.0.0
+ *
+ * Copyright 2015 Glenn Randers-Pehrson
+ * Last changed in libpng 1.6.18 [July 23, 2015]
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Usage:
+ *
+ *     png-fix-itxt.exe &lt; bad.png &gt; good.png
+ *
+ * Fixes a PNG file written with libpng-1.6.0 or 1.6.1 that has one or more
+ * uncompressed iTXt chunks.  Assumes that the actual length is greater
+ * than or equal to the value in the length byte, and that the CRC is
+ * correct for the actual length.  This program hunts for the CRC and
+ * adjusts the length byte accordingly.  It is not an error to process a
+ * PNG file that has no iTXt chunks or one that has valid iTXt chunks;
+ * such files will simply be copied.
+ *
+ * Requires zlib (for crc32 and Z_NULL); build with
+ *
+ *     gcc -O -o png-fix-itxt png-fix-itxt.c -lz
+ *
+ * If you need to handle iTXt chunks larger than 500000 kbytes you must
+ * rebuild png-fix-itxt with a larger values of MAX_LENGTH (or a smaller value
+ * if you know you will never encounter such huge iTXt chunks).
+ */
+
+## Files:
+pngwrite.c
+
+/* pngwrite.c - general routines to write a PNG file
+ *
+ * Copyright (c) 2018-2022 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/visupng/VisualPng.c
+
+/*------------------------------------
+ *  VisualPng.C -- Shows a PNG image
+ *------------------------------------
+ *
+ * Copyright 2000,2017 Willem van Schaik.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/testpngs/makepngs.sh
+
+# This code is released under the libpng license.
+# For conditions of distribution and use, see the disclaimer
+# and license in png.h
+
+## Files:
+pngdebug.h
+
+/* pngdebug.h - Debugging macros for libpng, also used in pngtest.c
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2013 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+mips/filter_msa_intrinsics.c
+
+/* filter_msa_intrinsics.c - MSA optimised filter functions
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 2016 Glenn Randers-Pehrson
+ * Written by Mandar Sahastrabuddhe, August 2016.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+pngpriv.h
+
+/* pngpriv.h - private declarations for use inside libpng
+ *
+ * Copyright (c) 2018-2022 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+ltmain.sh
+
+# This is free software.  There is NO warranty; not even for
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# Copyright (C) 2010-2019, 2021 Bootstrap Authors
+#
+# This file is dual licensed under the terms of the MIT license
+# &lt;https://opensource.org/license/MIT&gt;, and GPL version 2 or later
+# &lt;http://www.gnu.org/licenses/gpl-2.0.html&gt;.  You must apply one of
+# these licenses when using or redistributing this software or any of
+# the files within it.  See the URLs above, or the file `LICENSE`
+# included in the Bootstrap distribution for the full license texts.
+
+## Files:
+scripts/prefix.c
+
+/* prefix.c - generate an unprefixed symbol list
+ *
+ * Last changed in libpng version 1.6.16 [December 22, 2014]
+ * Copyright (c) 2013-2014 Glenn Randers-Pehrson
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+ci/ci_legacy.sh
+
+# ci_legacy.sh
+# Continuously integrate libpng using the legacy makefiles.
+#
+# Copyright (c) 2019-2022 Cosmin Truta.
+#
+# This software is released under the libpng license.
+# For conditions of distribution and use, see the disclaimer
+# and license in png.h.
+
+## Files:
+contrib/libtests/pngvalid.c
+
+/* pngvalid.c - validate libpng by constructing then reading png files.
+ *
+ * Copyright (c) 2021 Cosmin Truta
+ * Copyright (c) 2014-2017 John Cunningham Bowler
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * NOTES:
+ *   This is a C program that is intended to be linked against libpng.  It
+ *   generates bitmaps internally, stores them as PNG files (using the
+ *   sequential write code) then reads them back (using the sequential
+ *   read code) and validates that the result has the correct data.
+ *
+ *   The program can be modified and extended to test the correctness of
+ *   transformations performed by libpng.
+ */
+
+## Files:
+contrib/visupng/PngFile.h
+
+/* This code is released under the libpng license.*/
+
+## Files:
+contrib/gregbook/readpng2.h
+
+/*---------------------------------------------------------------------------
+
+   rpng2 - progressive-model PNG display program                 readpng2.h
+
+  ---------------------------------------------------------------------------
+
+      Copyright (c) 1998-2008 Greg Roelofs.  All rights reserved.
+
+      This software is provided &#34;as is,&#34; without warranty of any kind,
+      express or implied.  In no event shall the author or contributors
+      be held liable for any damages arising in any way from the use of
+      this software.
+
+      The contents of this file are DUAL-LICENSED.  You may modify and/or
+      redistribute this software according to the terms of one of the
+      following two licenses (at your option):
+
+
+      LICENSE 1 (&#34;BSD-like with advertising clause&#34;):
+
+      Permission is granted to anyone to use this software for any purpose,
+      including commercial applications, and to alter it and redistribute
+      it freely, subject to the following restrictions:
+
+      1. Redistributions of source code must retain the above copyright
+         notice, disclaimer, and this list of conditions.
+      2. Redistributions in binary form must reproduce the above copyright
+         notice, disclaimer, and this list of conditions in the documenta-
+         tion and/or other materials provided with the distribution.
+      3. All advertising materials mentioning features or use of this
+         software must display the following acknowledgment:
+
+            This product includes software developed by Greg Roelofs
+            and contributors for the book, &#34;PNG: The Definitive Guide,&#34;
+            published by O&#39;Reilly and Associates.
+
+
+      LICENSE 2 (GNU GPL v2 or later):
+
+      This program is free software; you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation; either version 2 of the License, or
+      (at your option) any later version.
+
+      This program is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program; if not, write to the Free Software Foundation,
+      Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  ---------------------------------------------------------------------------*/
+
+## Files:
+scripts/vers.c
+
+/* vers.c - define format of libpng.vers
+ *
+ * Last changed in libpng version 1.6.16 [December 22, 2014]
+ * Copyright (c) 2011-2014 Glenn Randers-Pehrson
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/gregbook/wpng.c
+
+/*---------------------------------------------------------------------------
+
+   wpng - simple PNG-writing program                                 wpng.c
+
+   This program converts certain NetPBM binary files (grayscale and RGB,
+   maxval = 255) to PNG.  Non-interlaced PNGs are written progressively;
+   interlaced PNGs are read and written in one memory-intensive blast.
+
+   Thanks to Jean-loup Gailly for providing the necessary trick to read
+   interactive text from the keyboard while stdin is redirected.  Thanks
+   to Cosmin Truta for Cygwin fixes.
+
+   NOTE:  includes provisional support for PNM type &#34;8&#34; (portable alphamap)
+          images, presumed to be a 32-bit interleaved RGBA format; no pro-
+          vision for possible interleaved grayscale+alpha (16-bit) format.
+          THIS IS UNLIKELY TO BECOME AN OFFICIAL NETPBM ALPHA FORMAT!
+
+   to do:
+    - delete output file if quit before calling any writepng routines
+    - process backspace with -text option under DOS/Win? (currently get ^H)
+
+  ---------------------------------------------------------------------------
+
+   Changelog:
+    - 1.01:  initial public release
+    - 1.02:  modified to allow abbreviated options
+    - 1.03:  removed extraneous character from usage screen; fixed bug in
+              command-line parsing
+    - 1.04:  fixed DOS/OS2/Win32 detection, including partial Cygwin fix
+              (see http://home.att.net/~perlspinr/diffs/GregBook_cygwin.diff)
+    - 2.00:  dual-licensed (added GNU GPL)
+    - 2.01:  check for integer overflow (Glenn R-P)
+
+        [REPORTED BUG (win32 only):  &#34;contrib/gregbook/wpng.c - cmd line
+         dose not work!  In order to do something useful I needed to redirect
+         both input and output, with cygwin and with bcc32 as well.  Under
+         Linux, the same wpng appears to work fine.  I don&#39;t know what is
+         the problem.&#34;]
+
+  ---------------------------------------------------------------------------
+
+      Copyright (c) 1998-2007, 2017 Greg Roelofs.  All rights reserved.
+
+      This software is provided &#34;as is,&#34; without warranty of any kind,
+      express or implied.  In no event shall the author or contributors
+      be held liable for any damages arising in any way from the use of
+      this software.
+
+      The contents of this file are DUAL-LICENSED.  You may modify and/or
+      redistribute this software according to the terms of one of the
+      following two licenses (at your option):
+
+
+      LICENSE 1 (&#34;BSD-like with advertising clause&#34;):
+
+      Permission is granted to anyone to use this software for any purpose,
+      including commercial applications, and to alter it and redistribute
+      it freely, subject to the following restrictions:
+
+      1. Redistributions of source code must retain the above copyright
+         notice, disclaimer, and this list of conditions.
+      2. Redistributions in binary form must reproduce the above copyright
+         notice, disclaimer, and this list of conditions in the documenta-
+         tion and/or other materials provided with the distribution.
+      3. All advertising materials mentioning features or use of this
+         software must display the following acknowledgment:
+
+            This product includes software developed by Greg Roelofs
+            and contributors for the book, &#34;PNG: The Definitive Guide,&#34;
+            published by O&#39;Reilly and Associates.
+
+
+      LICENSE 2 (GNU GPL v2 or later):
+
+      This program is free software; you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation; either version 2 of the License, or
+      (at your option) any later version.
+
+      This program is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program; if not, write to the Free Software Foundation,
+      Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  ---------------------------------------------------------------------------*/
+
+## Files:
+contrib/libtests/pngstest.c
+
+/* pngstest.c
+ *
+ * Copyright (c) 2021 Cosmin Truta
+ * Copyright (c) 2013-2017 John Cunningham Bowler
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Test for the PNG &#39;simplified&#39; APIs.
+ */
+
+## Files:
+ltmain.sh
+
+# func_version
+# ------------
+# Echo version message to standard output and exit.
+# The version message is extracted from the calling file&#39;s header
+# comments, with leading &#39;# &#39; stripped:
+#   1. First display the progname and version
+#   2. Followed by the header comment line matching  /^# Written by /
+#   3. Then a blank line followed by the first following line matching
+#      /^# Copyright /
+#   4. Immediately followed by any lines between the previous matches,
+#      except lines preceding the intervening completely blank line.
+# For example, see the header comments of this file.
+
+## Files:
+intel/intel_init.c
+
+/* intel_init.c - SSE2 optimized filter functions
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 2016-2017 Glenn Randers-Pehrson
+ * Written by Mike Klein and Matt Sarett, Google, Inc.
+ * Derived from arm/arm_init.c
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ */
+
+## Files:
+contrib/arm-neon/linux.c
+
+/* contrib/arm-neon/linux.c
+ *
+ * Last changed in libpng 1.6.31 [July 27, 2017]
+ * Copyright (c) 2014, 2017 Glenn Randers-Pehrson
+ * Written by John Bowler, 2014, 2017.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * SEE contrib/arm-neon/README before reporting bugs
+ *
+ * STATUS: SUPPORTED
+ * BUG REPORTS: png-mng-implement@sourceforge.net
+ *
+ * png_have_neon implemented for Linux by reading the widely available
+ * pseudo-file /proc/cpuinfo.
+ *
+ * This code is strict ANSI-C and is probably moderately portable; it does
+ * however use &lt;stdio.h&gt; and it assumes that /proc/cpuinfo is never localized.
+ */
+
+## Files:
+contrib/tools/checksum-icc.c
+
+/* checksum-icc.c
+ *
+ * Copyright (c) 2013 John Cunningham Bowler
+ *
+ * Last changed in libpng 1.6.0 [February 14, 2013]
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Generate crc32 and adler32 checksums of the given input files, used to
+ * generate check-codes for use when matching ICC profiles within libpng.
+ */
+
+## Files:
+contrib/gregbook/rpng-x.c
+
+/*---------------------------------------------------------------------------
+
+   rpng - simple PNG display program                               rpng-x.c
+
+   This program decodes and displays PNG images, with gamma correction and
+   optionally with a user-specified background color (in case the image has
+   transparency).  It is very nearly the most basic PNG viewer possible.
+   This version is for the X Window System (tested by author under Unix and
+   by Martin Zinser under OpenVMS; may work under OS/2 with some tweaking).
+
+   to do:
+    - 8-bit (colormapped) X support
+    - use %.1023s to simplify truncation of title-bar string?
+
+  ---------------------------------------------------------------------------
+
+   Changelog:
+    - 1.01:  initial public release
+    - 1.02:  modified to allow abbreviated options; fixed long/ulong mis-
+              match; switched to png_jmpbuf() macro
+    - 1.10:  added support for non-default visuals; fixed X pixel-conversion
+    - 1.11:  added extra set of parentheses to png_jmpbuf() macro; fixed
+              command-line parsing bug
+    - 1.12:  fixed some small X memory leaks (thanks to Fran�ois Petitjean)
+    - 1.13:  fixed XFreeGC() crash bug (thanks to Patrick Welche)
+    - 1.14:  added support for X resources (thanks to Gerhard Niklasch)
+    - 2.00:  dual-licensed (added GNU GPL)
+    - 2.01:  fixed improper display of usage screen on PNG error(s)
+    - 2.02:  Added &#34;void(argc);&#34; statement to quiet pedantic compiler warnings
+             about unused variable (GR-P)
+    - 2.03:  check for integer overflow (Glenn R-P)
+
+  ---------------------------------------------------------------------------
+
+      Copyright (c) 1998-2008, 2017 Greg Roelofs.  All rights reserved.
+
+      This software is provided &#34;as is,&#34; without warranty of any kind,
+      express or implied.  In no event shall the author or contributors
+      be held liable for any damages arising in any way from the use of
+      this software.
+
+      The contents of this file are DUAL-LICENSED.  You may modify and/or
+      redistribute this software according to the terms of one of the
+      following two licenses (at your option):
+
+
+      LICENSE 1 (&#34;BSD-like with advertising clause&#34;):
+
+      Permission is granted to anyone to use this software for any purpose,
+      including commercial applications, and to alter it and redistribute
+      it freely, subject to the following restrictions:
+
+      1. Redistributions of source code must retain the above copyright
+         notice, disclaimer, and this list of conditions.
+      2. Redistributions in binary form must reproduce the above copyright
+         notice, disclaimer, and this list of conditions in the documenta-
+         tion and/or other materials provided with the distribution.
+      3. All advertising materials mentioning features or use of this
+         software must display the following acknowledgment:
+
+            This product includes software developed by Greg Roelofs
+            and contributors for the book, &#34;PNG: The Definitive Guide,&#34;
+            published by O&#39;Reilly and Associates.
+
+
+      LICENSE 2 (GNU GPL v2 or later):
+
+      This program is free software; you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation; either version 2 of the License, or
+      (at your option) any later version.
+
+      This program is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program; if not, write to the Free Software Foundation,
+      Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  ---------------------------------------------------------------------------*/
+
+## Files:
+contrib/libtests/makepng.c
+
+/* Copyright: */
+
+## Files:
+contrib/libtests/pngimage.c
+
+/* pngimage.c
+ *
+ * Copyright (c) 2021 Cosmin Truta
+ * Copyright (c) 2015,2016 John Cunningham Bowler
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Test the png_read_png and png_write_png interfaces.  Given a PNG file load it
+ * using png_read_png and then write with png_write_png.  Test all possible
+ * transforms.
+ */
+
+## Files:
+ltmain.sh
+
+# This is free software.  There is NO warranty; not even for
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# Copyright (C) 2004-2019, 2021 Bootstrap Authors
+#
+# This file is dual licensed under the terms of the MIT license
+# &lt;https://opensource.org/license/MIT&gt;, and GPL version 2 or later
+# &lt;http://www.gnu.org/licenses/gpl-2.0.html&gt;.  You must apply one of
+# these licenses when using or redistributing this software or any of
+# the files within it.  See the URLs above, or the file `LICENSE`
+# included in the Bootstrap distribution for the full license texts.
+
+## Files:
+contrib/visupng/PngFile.h
+
+/* and license in png.h*/
+
+## Files:
+contrib/tools/intgamma.sh
+
+#!/bin/sh
+#
+# intgamma.sh
+#
+# Last changed in libpng 1.6.0 [February 14, 2013]
+#
+# COPYRIGHT: Written by John Cunningham Bowler, 2013.
+# To the extent possible under law, the author has waived all copyright and
+# related or neighboring rights to this work.  This work is published from:
+# United States.
+#
+# Shell script to generate png.c 8-bit and 16-bit log tables (see the code in
+# png.c for details).
+#
+# This script uses the &#34;bc&#34; arbitrary precision calculator to calculate 32-bit
+# fixed point values of logarithms appropriate to finding the log of an 8-bit
+# (0..255) value and a similar table for the exponent calculation.
+#
+# &#34;bc&#34; must be on the path when the script is executed, and the math library
+# (-lm) must be available
+#
+# function to print out a list of numbers as integers; the function truncates
+# the integers which must be one-per-line
+
+## Files:
+pngwio.c
+
+/* pngwio.c - functions for data output
+ *
+ * Copyright (c) 2018 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2014,2016,2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * This file provides a location for all output.  Users who need
+ * special handling are expected to write functions that have the same
+ * arguments as these and perform similar functions, but that possibly
+ * use different output methods.  Note that you shouldn&#39;t change these
+ * functions, but rather write replacement functions and then change
+ * them at run time with png_set_write_fn(...).
+ */</pre>
+  </body>
+ </topic>

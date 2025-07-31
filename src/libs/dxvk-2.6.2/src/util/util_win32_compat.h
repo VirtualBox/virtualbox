@@ -1,5 +1,9 @@
 #pragma once
 
+#if defined(VBOX) && defined(RT_OS_DARWIN)
+# define __unix__
+#endif
+
 #if defined(__unix__)
 
 #include <windows.h>

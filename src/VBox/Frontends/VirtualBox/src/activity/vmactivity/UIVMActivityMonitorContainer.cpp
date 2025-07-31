@@ -1,4 +1,4 @@
-/* $Id: UIVMActivityMonitorContainer.cpp 109614 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIVMActivityMonitorContainer.cpp 110344 2025-07-22 07:46:07Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVMLogViewer class implementation.
  */
@@ -346,16 +346,4 @@ void UIVMActivityMonitorContainer::sltTogglePreferencesPane(bool fChecked)
 {
     AssertReturnVoid(m_pPaneContainer);
     m_pPaneContainer->setVisible(fChecked);
-}
-
-void UIVMActivityMonitorContainer::guestAdditionsStateChange(const QUuid &machineId)
-{
-    for (int i = m_pTabWidget->count() - 1; i >= 0; --i)
-    {
-        UIVMActivityMonitorLocal *pMonitor = qobject_cast<UIVMActivityMonitorLocal*>(m_pTabWidget->widget(i));
-        if (!pMonitor)
-            continue;
-        if (pMonitor->machineId() == machineId)
-            pMonitor->guestAdditionsStateChange();
-    }
 }

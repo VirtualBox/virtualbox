@@ -1,4 +1,4 @@
-/* $Id: CPUMInternal.h 109749 2025-06-02 22:03:55Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMInternal.h 110144 2025-07-07 22:13:01Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - Internal header file.
  */
@@ -714,7 +714,6 @@ DECLHIDDEN(void)    cpumR3CpuIdInfoVerboseCompareListU64(PCPUMCPUIDINFOSTATE pTh
 
 int                 cpumR3DbGetCpuInfo(const char *pszName, PCPUMINFO pInfo);
 #  ifdef VBOX_VMM_TARGET_X86
-DECLHIDDEN(void)    cpumR3InfoFormatFlagsX86(char *pszEFlags, uint32_t efl);
 int                 cpumR3MsrRangesInsert(PVM pVM, PCPUMMSRRANGE *ppaMsrRanges, uint32_t *pcMsrRanges, PCCPUMMSRRANGE pNewRange);
 DECLHIDDEN(int)     cpumR3MsrReconcileWithCpuId(PVM pVM, bool fForceFlushCmd, bool fForceSpecCtrl);
 int                 cpumR3MsrApplyFudge(PVM pVM);

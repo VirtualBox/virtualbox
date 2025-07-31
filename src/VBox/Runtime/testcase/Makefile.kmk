@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 108268 2025-02-07 14:05:39Z alexander.eichner@oracle.com $
+# $Id: Makefile.kmk 110187 2025-07-10 11:16:13Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the IPRT testcases.
 #
@@ -185,7 +185,8 @@ ifdef VBOX_WITH_TESTCASES # The whole file
   	tstRTVfs \
   	tstRTZip \
   	tstRTJson \
-  	tstRTShMem
+  	tstRTShMem \
+  	tstRTXml
 
   PROGRAMS.win += \
   	tstRTCritSectW32 \
@@ -979,6 +980,9 @@ ifdef VBOX_WITH_TESTCASES # The whole file
 
  tstRTShMem_TEMPLATE = VBoxR3TstExe
  tstRTShMem_SOURCES = tstRTShMem.cpp
+
+ tstRTXml_TEMPLATE = VBoxR3TstExe
+ tstRTXml_SOURCES = tstRTXml.cpp
 
  #
  # Ring-0 testcases.

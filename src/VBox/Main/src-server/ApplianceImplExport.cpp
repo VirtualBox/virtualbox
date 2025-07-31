@@ -1,4 +1,4 @@
-/* $Id: ApplianceImplExport.cpp 107669 2025-01-09 16:54:30Z andreas.loeffler@oracle.com $ */
+/* $Id: ApplianceImplExport.cpp 110133 2025-07-07 12:49:50Z brent.paulson@oracle.com $ */
 /** @file
  * IAppliance and IVirtualSystem COM class implementations.
  */
@@ -202,6 +202,34 @@ HRESULT Machine::exportTo(const ComPtr<IAppliance> &aAppliance, const com::Utf8S
                              "",
                              strMemory,
                              strMemory);
+
+        /* NVRAM file */
+        FirmwareType_T enmFirmwareType = FirmwareType_BIOS;
+        hrc = mFirmwareSettings->COMGETTER(FirmwareType)(&enmFirmwareType);
+        if (FAILED(hrc)) throw hrc;
+
+        if (enmFirmwareType != FirmwareType_BIOS)
+        {
+            Bstr bstrNonVolatilePath;
+            hrc = mNvramStore->COMGETTER(NonVolatileStorageFile)(bstrNonVolatilePath.asOutParam());
+            if (FAILED(hrc)) throw hrc;
+
+            Utf8Str strNvramPath = bstrNonVolatilePath;
+            if (strNvramPath.isNotEmpty() && RTFileExists(strNvramPath.c_str()))
+            {
+                /* The OVFValues[] array item here will be used for the 'ovf:href' attribute
+                 * in the <File> child element of the <References> element and must be a
+                 * relative pathname according to the OVF specification (section 7.1).
+                 * The aVBoxValues[] array item is the absolute path to the source VM's
+                 * NVRAM file which will be used for getting its size and accessing the file
+                 * later. */
+                Utf8Str strNvramOvfName = Utf8StrFmt("%s.nvram", strVMName.c_str());
+                pNewDesc->i_addEntry(VirtualSystemDescriptionType_NVRAM,
+                                     "",
+                                     strNvramOvfName, // aOvfValue - NVRAM filename based on target VM's name
+                                     strNvramPath);   // aVBoxValue - absolute path to src VM's NVRAM file
+            }
+        }
 
         // the one VirtualBox IDE controller has two channels with two ports each, which is
         // considered two IDE controllers with two ports each by OVF, so export it as two
@@ -443,7 +471,7 @@ HRESULT Machine::exportTo(const ComPtr<IAppliance> &aAppliance, const com::Utf8S
                         // returns pMedium if there are no diff images
                 if (FAILED(hrc)) throw hrc;
 
-                strTargetImageName = Utf8StrFmt("%s-disk%.3d.vmdk", strBasename.c_str(), ++pAppliance->m->cDisks);
+                strTargetImageName = Utf8StrFmt("%s-disk%.3d.vmdk", strVMName.c_str(), ++pAppliance->m->cDisks);
                 if (strTargetImageName.length() > RTZIPTAR_NAME_MAX)
                     throw setError(VBOX_E_NOT_SUPPORTED,
                                 tr("Cannot attach disk '%s' -- file name too long"), strTargetImageName.c_str());
@@ -534,7 +562,7 @@ HRESULT Machine::exportTo(const ComPtr<IAppliance> &aAppliance, const com::Utf8S
                 if (eq != 0)
                     continue;
 
-                strTargetImageName = Utf8StrFmt("%s-disk%.3d.iso", strBasename.c_str(), ++pAppliance->m->cDisks);
+                strTargetImageName = Utf8StrFmt("%s-disk%.3d.iso", strVMName.c_str(), ++pAppliance->m->cDisks);
                 if (strTargetImageName.length() > RTZIPTAR_NAME_MAX)
                     throw setError(VBOX_E_NOT_SUPPORTED,
                                 tr("Cannot attach image '%s' -- file name too long"), strTargetImageName.c_str());
@@ -623,7 +651,7 @@ HRESULT Machine::exportTo(const ComPtr<IAppliance> &aAppliance, const com::Utf8S
                                          strTargetImageName,   // disk ID: let's use the name
                                          strTargetImageName,   // OVF value:
                                          strLocation, // vbox value: media path
-                                        (uint32_t)(llSize / _1M),
+                                         (uint32_t)(llSize / _1M),
                                          strExtra);
                     break;
 
@@ -1065,14 +1093,11 @@ HRESULT Appliance::i_writeOPCImpl(ovf::OVFVersion_T aFormat, const LocationInfo 
  * @param doc                                The xml document to fill.
  * @param stack                              Structure for temporary private
  *                                           data shared with caller.
- * @param strPath                            Path to the target OVF.
- *                                           instance for which to write XML.
  * @param enFormat                           OVF format (0.9 or 1.0).
  */
 void Appliance::i_buildXML(AutoWriteLockBase& writeLock,
                            xml::Document &doc,
                            XMLStack &stack,
-                           const Utf8Str &strPath,
                            ovf::OVFVersion_T enFormat)
 {
     xml::ElementNode *pelmRoot = doc.createRootElement("Envelope");
@@ -1188,11 +1213,38 @@ void Appliance::i_buildXML(AutoWriteLockBase& writeLock,
         i_buildXMLForOneVirtualSystem(writeLock,
                                       *pelmToAddVirtualSystemsTo,
                                       &llElementsWithUuidAttributes,
+                                      ulFile,
                                       vsdescThis,
                                       enFormat,
-                                      stack);         // disks and networks stack
+                                      stack);         // disks, networks, and files stack
 
-        list<Utf8Str> diskList;
+        if (!stack.mapNvramFileForOneVM.empty())
+        {
+            /* This VM contains an NVRAM file so first we set up the <File> element's
+             * details to be placed in the <References> element as described in section
+             * 7.1 of the OVF specification using the information collected previously. */
+            std::map<Utf8Str, std::pair<Utf8Str, Utf8Str> >::const_iterator
+                it = stack.mapNvramFileForOneVM.begin();
+
+            Utf8Str strFileRef = it->first; // e.g. file1
+            Utf8Str strNvramSrcPath = it->second.first;
+            Utf8Str strNvramTargetFile = it->second.second;
+
+            uint64_t cbFile = 0;
+            int vrc = RTFileQuerySizeByPath(strNvramSrcPath.c_str(), &cbFile);
+            if (RT_FAILURE(vrc))
+                throw setError(E_FAIL, tr("Failed to query size of NVRAM file '%s'"), strNvramSrcPath.c_str());
+
+            /* Update the <References> element of the OVF file with the NVRAM file's
+             * details using a <File> element containing the following details:
+             * <File ovf:id="file1" ovf:href="vmname.nvram" ovf:size="1234"/> */
+            xml::ElementNode *pelmFile = pelmReferences->createChild("File");
+            pelmFile->setAttribute("ovf:id", strFileRef);
+            pelmFile->setAttribute("ovf:href", strNvramTargetFile);
+            pelmFile->setAttribute("ovf:size", Utf8StrFmt("%RI64", cbFile).c_str());
+
+            stack.mapNvramFileForOneVM.clear();
+        }
 
         for (list<Utf8Str>::const_iterator
              itDisk = stack.mapDiskSequenceForOneVM.begin();
@@ -1252,16 +1304,8 @@ void Appliance::i_buildXML(AutoWriteLockBase& writeLock,
             // output filename
             const Utf8Str &strTargetFileNameOnly = pDiskEntry->strOvf;
 
-            // target path needs to be composed from where the output OVF is
-            Utf8Str strTargetFilePath(strPath);
-            strTargetFilePath.stripFilename();
-            strTargetFilePath.append("/");
-            strTargetFilePath.append(strTargetFileNameOnly);
-
             // We are always exporting to VMDK stream optimized for now
             //Bstr bstrSrcFormat = L"VMDK";//not used
-
-            diskList.push_back(strTargetFilePath);
 
             LONG64 cbCapacity = 0;     // size reported to guest
             hrc = pSourceDisk->COMGETTER(LogicalSize)(&cbCapacity);
@@ -1345,7 +1389,6 @@ void Appliance::i_buildXML(AutoWriteLockBase& writeLock,
         pelmNetwork->setAttribute("ovf:name", strNetwork.c_str());
         pelmNetwork->createChild("Description")->addContent("Logical network used by this appliance.");
     }
-
 }
 
 /**
@@ -1357,6 +1400,7 @@ void Appliance::i_buildXML(AutoWriteLockBase& writeLock,
  * @param pllElementsWithUuidAttributes out: list of XML elements produced here
  *                                           with UUID attributes for quick
  *                                           fixing by caller later
+ * @param ulFile                             The index for a 'File' element in the 'References' section.
  * @param vsdescThis                         The IVirtualSystemDescription
  *                                           instance for which to write XML.
  * @param enFormat                           OVF format (0.9 or 1.0).
@@ -1366,6 +1410,7 @@ void Appliance::i_buildXML(AutoWriteLockBase& writeLock,
 void Appliance::i_buildXMLForOneVirtualSystem(AutoWriteLockBase& writeLock,
                                               xml::ElementNode &elmToAddVirtualSystemsTo,
                                               std::list<xml::ElementNode*> *pllElementsWithUuidAttributes,
+                                              uint32_t &ulFile,
                                               ComObjPtr<VirtualSystemDescription> &vsdescThis,
                                               ovf::OVFVersion_T enFormat,
                                               XMLStack &stack)
@@ -1636,8 +1681,8 @@ void Appliance::i_buildXMLForOneVirtualSystem(AutoWriteLockBase& writeLock,
                         type = ovf::ResourceType_Processor; // 3
                         desc.strVBoxCurrent.toInt(uTemp);
                         lVirtualQuantity = (int32_t)uTemp;
-                        strCaption = Utf8StrFmt("%d virtual CPU", lVirtualQuantity);     // without this ovftool
-                                                                                         // won't eat the item
+                        // without this ovftool won't eat the item
+                        strCaption = Utf8StrFmt("%d virtual CPU%s", lVirtualQuantity, lVirtualQuantity > 1 ? "s" : "");
                     }
                 break;
 
@@ -1661,6 +1706,36 @@ void Appliance::i_buildXMLForOneVirtualSystem(AutoWriteLockBase& writeLock,
                         strAllocationUnits = "MegaBytes";
                         strCaption = Utf8StrFmt("%d MB of memory", lVirtualQuantity);     // without this ovftool
                                                                                           // won't eat the item
+                    }
+                    break;
+
+                case VirtualSystemDescriptionType_NVRAM:
+                    /*  <Item>
+                            <rasd:Caption>NVRAM</rasd:Caption>
+                            <rasd:Description>NVRAM pathname</rasd:Description>
+                            <rasd:ElementName>NVRAM</rasd:ElementName>
+                            <rasd:HostResource>ovf:/file/file1</rasd:HostResource>
+                            <rasd:InstanceID>2</rasd:InstanceID>
+                            <rasd:ResourceType>0x8000</rasd:ResourceType>
+                        </Item> */
+                    if (uLoop == 1)
+                    {
+                        strCaption = "NVRAM";
+                        strDescription = "NVRAM pathname";
+                        strHostResource = Utf8StrFmt("ovf:/file/file%RI32", ulFile);
+                        type = ovf::ResourceType_NVRAM; // 0x8000
+                        stack.mapFilesSequence.push_back(strHostResource);
+
+                        /* Store the key details of the NVRAM file for reference when adding
+                         * the <File> entry to the <References> element and also when writing
+                         * the archive later. */
+                        Utf8StrFmt strNvramKey("file%RI32", ulFile++);
+                        Utf8Str strNvramSrcPath = desc.strVBoxCurrent;
+                        Utf8Str strNvramTargetFile = desc.strOvf;
+                        stack.mapNvramFileForOneVM[strNvramKey] =
+                            std::pair<Utf8Str, Utf8Str>(strNvramSrcPath, strNvramTargetFile);
+                        stack.mapNvramFiles[strNvramKey] =
+                            std::pair<Utf8Str, Utf8Str>(strNvramSrcPath, strNvramTargetFile);
                     }
                     break;
 
@@ -1846,7 +1921,7 @@ void Appliance::i_buildXMLForOneVirtualSystem(AutoWriteLockBase& writeLock,
                         type = ovf::ResourceType_HardDisk; // 17
 
                         // the following references the "<Disks>" XML block
-                        strHostResource = Utf8StrFmt("/disk/%s", strDiskID.c_str());
+                        strHostResource = Utf8StrFmt("ovf:/disk/%s", strDiskID.c_str());
 
                         // controller=<index>;channel=<c>
                         size_t pos1 = desc.strExtraConfigCurrent.find("controller=");
@@ -1883,9 +1958,10 @@ void Appliance::i_buildXMLForOneVirtualSystem(AutoWriteLockBase& writeLock,
                                            desc.strExtraConfigCurrent.c_str());
                         stack.mapDisks[strDiskID] = &desc;
 
-                        //use the list stack.mapDiskSequence where the disks go as the "VirtualSystem" should be placed
-                        //in the OVF description file.
-                        stack.mapDiskSequence.push_back(strDiskID);
+                        // Use the list stack.mapFilesSequence to store where the disks (and any
+                        // other collected files) according to each <VirtualSystem> in the OVF
+                        // description file.
+                        stack.mapFilesSequence.push_back(strHostResource);
                         stack.mapDiskSequenceForOneVM.push_back(strDiskID);
                     }
                     break;
@@ -1925,7 +2001,8 @@ void Appliance::i_buildXMLForOneVirtualSystem(AutoWriteLockBase& writeLock,
                             desc.skipIt == false)
                         {
                             // the following references the "<Disks>" XML block
-                            strHostResource = Utf8StrFmt("/disk/%s", strDiskID.c_str());
+                            strHostResource = Utf8StrFmt("ovf:/disk/%s", strDiskID.c_str());
+                            stack.mapFilesSequence.push_back(strHostResource);
                         }
 
                         // controller=<index>;channel=<c>
@@ -1964,7 +2041,6 @@ void Appliance::i_buildXMLForOneVirtualSystem(AutoWriteLockBase& writeLock,
 
                         //use the list stack.mapDiskSequence where the disks go as the "VirtualSystem" should be placed
                         //in the OVF description file.
-                        stack.mapDiskSequence.push_back(strDiskID);
                         stack.mapDiskSequenceForOneVM.push_back(strDiskID);
                         // there is no DVD drive map to update because it is
                         // handled completely with this entry.
@@ -2508,18 +2584,25 @@ HRESULT Appliance::i_writeFSOPC(TaskOPC *pTask)
     XMLStack stack;
     {
         xml::Document doc;
-        i_buildXML(multiLock, doc, stack, pTask->locInfo.strPath, ovf::OVFVersion_2_0);
+        i_buildXML(multiLock, doc, stack, ovf::OVFVersion_2_0);
     }
 
     /*
      * Process the disk images.
      */
     unsigned cTarballs = 0;
-    for (list<Utf8Str>::const_iterator it = stack.mapDiskSequence.begin();
-         it != stack.mapDiskSequence.end();
+    for (list<Utf8Str>::const_iterator it = stack.mapFilesSequence.begin();
+         it != stack.mapFilesSequence.end();
          ++it)
     {
-        const Utf8Str                       &strDiskID = *it;
+        const Utf8Str                       &strHostResource = *it;
+
+        /* Skip any NVRAM files */
+        if (strHostResource.startsWith("ovf:/file/"))
+            continue;
+
+        /* Skip over the 'ovf:/disk/' prefix. */
+        const Utf8Str                       strDiskID = strHostResource.substr(10);
         const VirtualSystemDescriptionEntry *pDiskEntry = stack.mapDisks[strDiskID];
         const Utf8Str                       &strSrcFilePath = pDiskEntry->strVBoxCurrent;  // where the VBox image is
 
@@ -2694,7 +2777,7 @@ HRESULT Appliance::i_writeFSImpl(TaskOVF *pTask, AutoWriteLockBase &writeLock, R
             /* Render a valid ovf document into a memory buffer.  The unknown
                version upgrade relates to the OPC hack up in Appliance::write(). */
             xml::Document doc;
-            i_buildXML(writeLock, doc, stack, pTask->locInfo.strPath,
+            i_buildXML(writeLock, doc, stack,
                        pTask->enFormat != ovf::OVFVersion_unknown ? pTask->enFormat : ovf::OVFVersion_2_0);
 
             void *pvBuf = NULL;
@@ -2728,17 +2811,42 @@ HRESULT Appliance::i_writeFSImpl(TaskOVF *pTask, AutoWriteLockBase &writeLock, R
         }
 
         // Finally, write out the disks!
-        //use the list stack.mapDiskSequence where the disks were put as the "VirtualSystem"s had been placed
+        //use the list stack.mapFilesSequence where the disks were put as the "VirtualSystem"s had been placed
         //in the OVF description file. I.e. we have one "VirtualSystem" in the OVF file, we extract all disks
-        //attached to it. And these disks are stored in the stack.mapDiskSequence. Next we shift to the next
+        //attached to it. And these disks are stored in the stack.mapFilesSequence. Next we shift to the next
         //"VirtualSystem" and repeat the operation.
         //And here we go through the list and extract all disks in the same sequence
         for (list<Utf8Str>::const_iterator
-             it = stack.mapDiskSequence.begin();
-             it != stack.mapDiskSequence.end();
+             it = stack.mapFilesSequence.begin();
+             it != stack.mapFilesSequence.end();
              ++it)
         {
-            const Utf8Str &strDiskID = *it;
+            const Utf8Str &strHostResource = *it;
+
+            /* We process the NVRAM files here along with the disks to maintain the
+             * order which the files and disks were added to the 'mapFilesSequence' list
+             * which is the same sequence used to write out the <File> elements in the
+             * <References> section. This must also be the same order that the files are
+             * added to the archive as required by the OVF specification in section 5.3
+             * which is why we add them here in the midst of the disk processing. */
+            if (strHostResource.startsWith("ovf:/file/"))
+            {
+                const Utf8Str strNvramKey = strHostResource.substr(10);
+                std::map<Utf8Str, std::pair<Utf8Str, Utf8Str> >::const_iterator
+                    itMap = stack.mapNvramFiles.find(strNvramKey);
+                if (itMap == stack.mapNvramFiles.end())
+                    throw setError(E_FAIL, tr("Failed to find NVRAM file '%s' in map", strNvramKey.c_str()));
+
+                Utf8Str strNvramSrcPath = itMap->second.first;
+                Utf8Str strNvramTargetFile = itMap->second.second;
+                hrc = i_writeNvramFileToIoStream(strNvramSrcPath, strNvramTargetFile, hVfsFssDst);
+                if (FAILED(hrc))
+                    throw hrc;
+                continue;
+            }
+
+            // Skip over the 'ovf:/disk/' prefix.
+            const Utf8Str strDiskID = strHostResource.substr(10);
             const VirtualSystemDescriptionEntry *pDiskEntry = stack.mapDisks[strDiskID];
 
             // source path: where the VBox image is
@@ -2780,16 +2888,13 @@ HRESULT Appliance::i_writeFSImpl(TaskOVF *pTask, AutoWriteLockBase &writeLock, R
             // output filename
             const Utf8Str &strTargetFileNameOnly = pDiskEntry->strOvf;
 
-            // target path needs to be composed from where the output OVF is
-            const Utf8Str &strTargetFilePath = strTargetFileNameOnly;
-
             // The exporting requests a lock on the media tree. So leave our lock temporary.
             writeLock.release();
             try
             {
                 // advance to the next operation
                 pTask->pProgress->SetNextOperation(BstrFmt(tr("Exporting to disk image '%s'"),
-                                                           RTPathFilename(strTargetFilePath.c_str())).raw(),
+                                                           RTPathFilename(strTargetFileNameOnly.c_str())).raw(),
                                                    pDiskEntry->ulSizeMB);     // operation's weight, as set up
                                                                               // with the IProgress originally
 
@@ -2801,16 +2906,16 @@ HRESULT Appliance::i_writeFSImpl(TaskOVF *pTask, AutoWriteLockBase &writeLock, R
                      */
                     /* For compressed VMDK fun, we let i_exportFile produce the image bytes. */
                     RTVFSIOSTREAM hVfsIosDst;
-                    vrc = RTVfsFsStrmPushFile(hVfsFssDst, strTargetFilePath.c_str(), UINT64_MAX,
+                    vrc = RTVfsFsStrmPushFile(hVfsFssDst, strTargetFileNameOnly.c_str(), UINT64_MAX,
                                               NULL /*paObjInfo*/, 0 /*cObjInfo*/, RTVFSFSSTRM_PUSH_F_STREAM, &hVfsIosDst);
                     if (RT_FAILURE(vrc))
-                        throw setErrorVrc(vrc, tr("RTVfsFsStrmPushFile failed for '%s' (%Rrc)"), strTargetFilePath.c_str(), vrc);
-                    hVfsIosDst = i_manifestSetupDigestCalculationForGivenIoStream(hVfsIosDst, strTargetFilePath.c_str(),
+                        throw setErrorVrc(vrc, tr("RTVfsFsStrmPushFile failed for '%s' (%Rrc)"), strTargetFileNameOnly.c_str(), vrc);
+                    hVfsIosDst = i_manifestSetupDigestCalculationForGivenIoStream(hVfsIosDst, strTargetFileNameOnly.c_str(),
                                                                                   false /*fRead*/);
                     if (hVfsIosDst == NIL_RTVFSIOSTREAM)
-                        throw setError(E_FAIL, "i_manifestSetupDigestCalculationForGivenIoStream(%s)", strTargetFilePath.c_str());
+                        throw setError(E_FAIL, "i_manifestSetupDigestCalculationForGivenIoStream(%s)", strTargetFileNameOnly.c_str());
 
-                    hrc = pSourceDisk->i_exportFile(strTargetFilePath.c_str(),
+                    hrc = pSourceDisk->i_exportFile(strTargetFileNameOnly.c_str(),
                                                     format,
                                                     MediumVariant_VmdkStreamOptimized,
                                                     m->m_pSecretKeyStore,
@@ -2824,7 +2929,7 @@ HRESULT Appliance::i_writeFSImpl(TaskOVF *pTask, AutoWriteLockBase &writeLock, R
                      * Copy CD/DVD/floppy image.
                      */
                     Assert(pDiskEntry->type == VirtualSystemDescriptionType_CDROM);
-                    hrc = pSourceDisk->i_addRawToFss(strTargetFilePath.c_str(), m->m_pSecretKeyStore, hVfsFssDst,
+                    hrc = pSourceDisk->i_addRawToFss(strTargetFileNameOnly.c_str(), m->m_pSecretKeyStore, hVfsFssDst,
                                                     pTask->pProgress, false /*fSparse*/);
                 }
                 if (FAILED(hrc)) throw hrc;
@@ -2934,6 +3039,45 @@ HRESULT Appliance::i_writeBufferToFile(RTVFSFSSTREAM hVfsFssDst, const char *psz
     }
     else
         hrc = setErrorVrc(vrc, "RTVfsIoStrmFromBuffer");
+    return hrc;
+}
+
+
+/**
+ * Writes an NVRAM file to the output file system stream.
+ *
+ * @returns COM status code.
+ * @param   strNvramSrcPath The path to the NVRAM file.
+ * @param   strNvramDstFile The name of the output file to store in the stream.
+ * @param   hVfsFssDst      The file system stream to add the file to.
+ */
+HRESULT Appliance::i_writeNvramFileToIoStream(Utf8Str strNvramSrcPath, Utf8Str strNvramDstFile, RTVFSFSSTREAM hVfsFssDst)
+{
+    HRESULT hrc = S_OK;
+    RTVFSIOSTREAM hVfsIosSrc = NIL_RTVFSIOSTREAM;
+    int vrc = RTVfsChainOpenIoStream(strNvramSrcPath.c_str(), RTFILE_O_READ | RTFILE_O_OPEN | RTFILE_O_DENY_NONE,
+                                     &hVfsIosSrc, NULL /*poffError*/, NULL);
+    if (RT_FAILURE(vrc))
+        return setErrorVrc(vrc, tr("RTVfsChainOpenIoStream() failed for '%s' (%Rrc)"), strNvramSrcPath.c_str(), vrc);
+
+    RTVFSIOSTREAM hVfsIosDst;
+    vrc = RTVfsFsStrmPushFile(hVfsFssDst, strNvramDstFile.c_str(), UINT64_MAX,
+                              NULL /*paObjInfo*/, 0 /*cObjInfo*/, RTVFSFSSTRM_PUSH_F_STREAM, &hVfsIosDst);
+    if (RT_FAILURE(vrc))
+        return setErrorVrc(vrc, tr("RTVfsFsStrmPushFile() failed for '%s' (%Rrc)"), strNvramDstFile.c_str(), vrc);
+
+    hVfsIosDst = i_manifestSetupDigestCalculationForGivenIoStream(hVfsIosDst, strNvramDstFile.c_str(),
+                                                                  false /*fRead*/);
+    if (hVfsIosDst == NIL_RTVFSIOSTREAM)
+        return setError(E_FAIL, "i_manifestSetupDigestCalculationForGivenIoStream(%s)", strNvramDstFile.c_str());
+
+    vrc = RTVfsUtilPumpIoStreams(hVfsIosSrc, hVfsIosDst, 0);
+    if (RT_FAILURE(vrc))
+        return setErrorVrc(vrc, tr("RTVfsUtilPumpIoStreams() failed for '%s' (%Rrc)"), strNvramDstFile.c_str(), vrc);
+
+    RTVfsIoStrmRelease(hVfsIosSrc);
+    RTVfsIoStrmRelease(hVfsIosDst);
+
     return hrc;
 }
 

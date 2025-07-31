@@ -1,4 +1,4 @@
-/* $Id: DisplayImpl.cpp 109937 2025-06-23 19:01:34Z andreas.loeffler@oracle.com $ */
+/* $Id: DisplayImpl.cpp 110436 2025-07-28 13:25:09Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -56,12 +56,7 @@
 #include <VBox/com/array.h>
 
 #ifdef VBOX_WITH_RECORDING
-# include <iprt/path.h>
-# include "Recording.h"
-# include "RecordingUtils.h"
-
-# include <VBox/vmm/pdmapi.h>
-# include <VBox/vmm/pdmaudioifs.h>
+# include "RecordingContext.h"
 #endif
 
 /**
@@ -1954,26 +1949,22 @@ HRESULT Display::takeScreenShotWorker(ULONG aScreenId,
                                       BitmapFormat_T aBitmapFormat,
                                       ULONG *pcbOut)
 {
-    HRESULT hrc = S_OK;
-
     /* Do not allow too small and too large screenshots. This also filters out negative
      * values passed as either 'aWidth' or 'aHeight'.
      */
-    CheckComArgExpr(aWidth, aWidth != 0 && aWidth <= 32767);
-    CheckComArgExpr(aHeight, aHeight != 0 && aHeight <= 32767);
+    if (aWidth == 0 || aWidth > 32767 || aHeight == 0 || aHeight > 32767)
+        return setError(E_INVALIDARG, tr("Unsupported resolution for screen shot: %ux%u (screen %u)"), aWidth, aHeight, aScreenId);
 
     if (   aBitmapFormat != BitmapFormat_BGR0
         && aBitmapFormat != BitmapFormat_BGRA
         && aBitmapFormat != BitmapFormat_RGBA
         && aBitmapFormat != BitmapFormat_PNG)
-    {
-        return setError(E_NOTIMPL,
-                        tr("Unsupported screenshot format 0x%08X"), aBitmapFormat);
-    }
+        return setError(E_NOTIMPL, tr("Unsupported screenshot format 0x%08X"), aBitmapFormat);
 
     Console::SafeVMPtr ptrVM(mParent);
-    if (!ptrVM.isOk())
-        return ptrVM.hrc();
+    HRESULT hrc = ptrVM.hrc();
+    if (!FAILED(hrc))
+        return hrc;
 
     int vrc = i_displayTakeScreenshot(ptrVM.rawUVM(), ptrVM.vtable(), this, mpDrv, aScreenId, aAddress, aWidth, aHeight);
     if (RT_SUCCESS(vrc))
@@ -2048,7 +2039,7 @@ HRESULT Display::takeScreenShot(ULONG aScreenId,
                                 BitmapFormat_T aBitmapFormat)
 {
     LogRelFlowFunc(("[%d] address=%p, width=%d, height=%d, format 0x%08X\n",
-                     aScreenId, aAddress, aWidth, aHeight, aBitmapFormat));
+                    aScreenId, aAddress, aWidth, aHeight, aBitmapFormat));
 
     ULONG cbOut = 0;
     HRESULT hrc = takeScreenShotWorker(aScreenId, aAddress, aWidth, aHeight, aBitmapFormat, &cbOut);
@@ -2065,13 +2056,13 @@ HRESULT Display::takeScreenShotToArray(ULONG aScreenId,
                                        std::vector<BYTE> &aScreenData)
 {
     LogRelFlowFunc(("[%d] width=%d, height=%d, format 0x%08X\n",
-                     aScreenId, aWidth, aHeight, aBitmapFormat));
+                    aScreenId, aWidth, aHeight, aBitmapFormat));
 
     /* Do not allow too small and too large screenshots. This also filters out negative
      * values passed as either 'aWidth' or 'aHeight'.
      */
-    CheckComArgExpr(aWidth, aWidth != 0 && aWidth <= 32767);
-    CheckComArgExpr(aHeight, aHeight != 0 && aHeight <= 32767);
+    if (aWidth == 0 || aWidth > 32767 || aHeight == 0 || aHeight > 32767)
+        return setError(E_INVALIDARG, tr("Unsupported resolution for screen shot: %ux%u (screen %u)"), aWidth, aHeight, aScreenId);
 
     const size_t cbData = aWidth * 4 * aHeight;
     aScreenData.resize(cbData);
@@ -2174,35 +2165,27 @@ int Display::i_recordingScreenChanged(unsigned uScreenId, const DISPLAYFBINFO *p
 {
     RecordingContext *pCtx = Recording.pCtx;
 
-    Log2Func(("uScreenId=%u, w=%u, h=%u, bpp=%u\n", uScreenId, pFBInfo->w, pFBInfo->h, pFBInfo->u16BitsPerPixel));
+    Log2Func(("uScreenId=%u, VRAM=%p, w=%u, h=%u, bpp=%u, disabled=%RTbool\n",
+              uScreenId, pFBInfo->pu8FramebufferVRAM, pFBInfo->w, pFBInfo->h, pFBInfo->u16BitsPerPixel, pFBInfo->fDisabled));
 
     if (   !pCtx->IsFeatureEnabled(uScreenId, RecordingFeature_Video)
-        || !pFBInfo->pu8FramebufferVRAM)
-    {
-        /* Skip recording this screen. */
+        /* Skip disabled framebuffers or blank screens.
+         * Also will happen on VM restore when starting recording automatically. */
+        || !pFBInfo->pu8FramebufferVRAM
+        ||  pFBInfo->fDisabled)
         return VINF_SUCCESS;
-    }
 
     if (uScreenId == 0xFFFFFFFF /* SVGA_ID_INVALID -- The old register interface is single screen only */)
         uScreenId = VBOX_VIDEO_PRIMARY_SCREEN;
 
     AssertReturn(uScreenId < mcMonitors, VERR_INVALID_PARAMETER);
-    AssertReturn(pFBInfo->w, VERR_INVALID_PARAMETER);
-    AssertReturn(pFBInfo->h, VERR_INVALID_PARAMETER);
-    AssertReturn(pFBInfo->u16BitsPerPixel && pFBInfo->u16BitsPerPixel % 8 == 0, VERR_INVALID_PARAMETER);
-    AssertReturn(pFBInfo->u32LineSize, VERR_INVALID_PARAMETER);
 
     i_updateDeviceCursorCapabilities();
 
-    RECORDINGSURFACEINFO ScreenInfo;
-    ScreenInfo.uWidth      = pFBInfo->w;
-    ScreenInfo.uHeight     = pFBInfo->h;
-    ScreenInfo.uBPP        = pFBInfo->u16BitsPerPixel;
-    ScreenInfo.enmPixelFmt = RECORDINGPIXELFMT_BRGA32; /** @todo Does this apply everywhere? */
-
     uint64_t const tsNowMs = pCtx->GetCurrentPTS();
 
-    int vrc = pCtx->SendScreenChange(uScreenId, &ScreenInfo, tsNowMs);
+    int vrc = pCtx->SendScreenChange(uScreenId, pFBInfo->w, pFBInfo->h, RECORDINGPIXELFMT_BRGA32, pFBInfo->w * 4 /* Bytes */,
+                                     tsNowMs);
     if (RT_SUCCESS(vrc))
     {
         /* Make sure that we get the latest mouse pointer shape required for recording. */
@@ -2262,23 +2245,12 @@ int Display::i_recordingScreenUpdate(unsigned uScreenId, uint8_t *pauFramebuffer
 
     STAM_PROFILE_START(&Stats.Monitor[uScreenId].Recording.profileRecording, a);
 
-    uint8_t const uBytesPerPixel = 4;
+    uint8_t const uBytesPerPixel = 4 /* 32 BPP */;
     size_t  const offFrame = (y * uBytesPerLine) + (x * uBytesPerPixel);
     size_t  const cbFrame  = w * h * uBytesPerPixel;
 
-    RECORDINGVIDEOFRAME Frame =
-    {
-        { w, h, 32 /* BPP */, RECORDINGPIXELFMT_BRGA32, uBytesPerLine },
-        pauFramebuffer + offFrame, cbFrame,
-        { x, y }
-    };
-
-#if 0
-    RecordingUtilsDbgDumpImageData(pauFramebuffer + offFrame, cbFramebuffer,
-                                   "/tmp/recording", "display-screen-update", w, h, uBytesPerLine, 32 /* BPP */);
-#endif
-
-    int const vrc = pCtx->SendVideoFrame(uScreenId, &Frame, tsNowMs);
+    int const vrc = pCtx->SendVideoFrame(uScreenId, w, h, RECORDINGPIXELFMT_BRGA32, uBytesPerLine,
+                                         pauFramebuffer + offFrame, cbFrame, x, y, tsNowMs);
 
     STAM_PROFILE_STOP(&Stats.Monitor[uScreenId].Recording.profileRecording, a);
 

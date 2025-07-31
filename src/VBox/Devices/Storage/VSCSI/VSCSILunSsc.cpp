@@ -1,4 +1,4 @@
-/* $Id: VSCSILunSsc.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: VSCSILunSsc.cpp 110132 2025-07-07 11:33:52Z michal.necasek@oracle.com $ */
 /** @file
  * Virtual SCSI driver: SSC LUN implementation (Streaming tape)
  */
@@ -132,6 +132,7 @@ static int vscsiLUNSSCReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQINT pVScsiReq)
         {
         case SCSI_TEST_UNIT_READY:
             Assert(!pVScsiLUNSSC->Core.fReady); /* Only should get here if LUN isn't ready. */
+            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_NONE);
             rcReq = vscsiLunReqSenseErrorSet(pVScsiLun, pVScsiReq, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIUM_NOT_PRESENT, 0x00);
             break;
 
@@ -151,6 +152,10 @@ static int vscsiLUNSSCReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQINT pVScsiReq)
             scsiPadStrS(ScsiInquiryReply.achVendorId, "VBOX", 8);
             scsiPadStrS(ScsiInquiryReply.achProductId, "TAPE DRIVE", 16);
             scsiPadStrS(ScsiInquiryReply.achProductLevel, "1.0", 4);
+
+            uint16_t cbDataReq = scsiBE2H_U16(&pVScsiReq->pbCDB[3]);
+            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
+            vscsiReqSetXferSize(pVScsiReq, RT_MIN(sizeof(SCSIINQUIRYDATA), cbDataReq));
 
             RTSgBufCopyFromBuf(&pVScsiReq->SgBuf, (uint8_t *)&ScsiInquiryReply, sizeof(SCSIINQUIRYDATA));
             rcReq = vscsiLunReqSenseOkSet(pVScsiLun, pVScsiReq);
@@ -177,16 +182,6 @@ static int vscsiLUNSSCReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQINT pVScsiReq)
 
             pu8ReplyPos = aReply + 4;
 
-#if 0
-            if ((uModePage == 0x08) || (uModePage == 0x3f))
-            {
-                memset(pu8ReplyPos, 0, 20);
-                *pu8ReplyPos++ = 0x08; /* Page code. */
-                *pu8ReplyPos++ = 0x12; /* Size of the page. */
-                *pu8ReplyPos++ = 0x4;  /* Write cache enabled. */
-            }
-#endif
-
             /* Fill out the Block Descriptor. */
             if (fWantBlkDesc)
             {
@@ -200,6 +195,9 @@ static int vscsiLUNSSCReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQINT pVScsiReq)
                 *pu8ReplyPos++ = 0x00;
             }
 
+            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
+            vscsiReqSetXferSize(pVScsiReq, RT_MIN(sizeof(aReply), pVScsiReq->pbCDB[4]));
+
             RTSgBufCopyFromBuf(&pVScsiReq->SgBuf, aReply, sizeof(aReply));
             rcReq = vscsiLunReqSenseOkSet(pVScsiLun, pVScsiReq);
             break;
@@ -207,6 +205,8 @@ static int vscsiLUNSSCReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQINT pVScsiReq)
         case SCSI_MODE_SELECT_6:
         {
             /** @todo implement!! */
+            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_I2T);
+            vscsiReqSetXferSize(pVScsiReq, pVScsiReq->pbCDB[4]);
             rcReq = vscsiLunReqSenseOkSet(pVScsiLun, pVScsiReq);
             break;
         }
@@ -253,6 +253,9 @@ static int vscsiLUNSSCReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQINT pVScsiReq)
                     /* We do not implement an echo buffer. */
                     memset(aReply, 0, sizeof(aReply));
 
+                    vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
+                    vscsiReqSetXferSize(pVScsiReq, RT_MIN(sizeof(aReply), scsiBE2H_U24(&pVScsiReq->pbCDB[6])));
+
                     RTSgBufCopyFromBuf(&pVScsiReq->SgBuf, aReply, sizeof(aReply));
                     rcReq = vscsiLunReqSenseOkSet(pVScsiLun, pVScsiReq);
                     break;
@@ -265,10 +268,11 @@ static int vscsiLUNSSCReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQINT pVScsiReq)
             }
             break;
         }
-        case SCSI_VERIFY_10:
         case SCSI_LOAD_UNLOAD:
         {
-            /// @todo should load/unload do anyhting? is verify even supported?
+            /// @todo should load/unload do anyhting?
+            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_NONE);
+            vscsiReqSetXferSize(pVScsiReq, 0);
             rcReq = vscsiLunReqSenseOkSet(pVScsiLun, pVScsiReq);
             break;
         }
@@ -289,6 +293,9 @@ static int vscsiLUNSSCReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQINT pVScsiReq)
                         aReply[1] = 0;
                         aReply[2] = 0;
                         aReply[3] = 0;
+
+                        vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
+                        vscsiReqSetXferSize(pVScsiReq, RT_MIN(sizeof(aReply), scsiBE2H_U16(&pVScsiReq->pbCDB[7])));
 
                         RTSgBufCopyFromBuf(&pVScsiReq->SgBuf, aReply, sizeof(aReply));
                         rcReq = vscsiLunReqSenseOkSet(pVScsiLun, pVScsiReq);
@@ -338,6 +345,10 @@ static int vscsiLUNSSCReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQINT pVScsiReq)
             /// @todo Helpers for big-endian 16-bit/24-bit/32-bit constants?
             aReply[1] = aReply[2] = aReply[3] = 0xff;
             aReply[5] = 0x01;
+
+            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
+            vscsiReqSetXferSize(pVScsiReq, sizeof(aReply));
+
             RTSgBufCopyFromBuf(&pVScsiReq->SgBuf, aReply, sizeof(aReply));
             rcReq = vscsiLunReqSenseOkSet(pVScsiLun, pVScsiReq);
             break;
@@ -360,6 +371,8 @@ static int vscsiLUNSSCReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQINT pVScsiReq)
             if (enmTxDir == VSCSIIOREQTXDIR_READ && cbResidue < cbTransfer)
             {
                 /* If it's a read and some data is still available, read what we can. */
+                vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
+                vscsiReqSetXferSize(pVScsiReq, cbTransfer - cbResidue);
                 rc = vscsiIoReqTransferEnqueue(pVScsiLun, pVScsiReq, enmTxDir,
                                                uTransferStart, cbTransfer - cbResidue);
                 rcReq = vscsiLunReqSenseErrorInfoSet(pVScsiLun, pVScsiReq, SCSI_SENSE_NONE | SCSI_SENSE_FLAG_FILEMARK, SCSI_ASC_NONE, SCSI_ASCQ_FILEMARK_DETECTED, cbResidue);
@@ -368,6 +381,7 @@ static int vscsiLUNSSCReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQINT pVScsiReq)
             {
 //                rcReq = vscsiLunReqSenseErrorSet(pVScsiLun, pVScsiReq, SCSI_SENSE_, SCSI_ASC_NONE, SCSI_ASCQ_END_OF_DATA_DETECTED);
                 /* Report a file mark. */
+                vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_NONE);
                 rcReq = vscsiLunReqSenseErrorSet(pVScsiLun, pVScsiReq, SCSI_SENSE_NONE | SCSI_SENSE_FLAG_FILEMARK, SCSI_ASC_NONE, SCSI_ASCQ_FILEMARK_DETECTED);
                 vscsiDeviceReqComplete(pVScsiLun->pVScsiDevice, pVScsiReq, rcReq, false, VINF_SUCCESS);
             }
@@ -375,12 +389,15 @@ static int vscsiLUNSSCReqProcess(PVSCSILUNINT pVScsiLun, PVSCSIREQINT pVScsiReq)
         else if (!cbTransfer)
         {
             /* A 0 transfer length is not an error. */
+            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_NONE);
             rcReq = vscsiLunReqSenseOkSet(pVScsiLun, pVScsiReq);
             vscsiDeviceReqComplete(pVScsiLun->pVScsiDevice, pVScsiReq, rcReq, false, VINF_SUCCESS);
         }
         else
         {
             /* Enqueue new I/O request */
+            vscsiReqSetXferDir(pVScsiReq, enmTxDir == VSCSIIOREQTXDIR_WRITE ? VSCSIXFERDIR_I2T : VSCSIXFERDIR_T2I);
+            vscsiReqSetXferSize(pVScsiReq, cbTransfer);
             rc = vscsiIoReqTransferEnqueue(pVScsiLun, pVScsiReq, enmTxDir,
                                            uTransferStart, cbTransfer);
         }

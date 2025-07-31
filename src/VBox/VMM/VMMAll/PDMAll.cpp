@@ -1,4 +1,4 @@
-/* $Id: PDMAll.cpp 109482 2025-05-09 06:25:38Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: PDMAll.cpp 110211 2025-07-14 10:40:56Z ramshankar.venkataraman@oracle.com $ */
 /** @file
  * PDM Critical Sections
  */
@@ -275,6 +275,7 @@ VMM_INT_DECL(void) PDMIoApicSendMsi(PVMCC pVM, PCIBDF uBusDevFn, PCMSIMSG pMsi, 
 {
     Log9(("PDMIoApicSendMsi: addr=%#RX64 data=%#RX32 tag=%#x src=%#x\n", pMsi->Addr.u64, pMsi->Data.u32, uTagSrc, uBusDevFn));
 #ifdef VBOX_VMM_TARGET_ARMV8
+    NOREF(uBusDevFn);
     PCPDMGICBACKEND pGic = &pVM->pdm.s.Ic.u.armv8.GicBackend;
     if (pGic->pfnSendMsi)
         pGic->pfnSendMsi(pVM, uBusDevFn, pMsi, uTagSrc);

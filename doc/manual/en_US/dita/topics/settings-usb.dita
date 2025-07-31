@@ -5,14 +5,9 @@
                <title>USB Settings</title>
                
                <body>
-                  <p>The <b outputclass="bold">USB</b> section in a virtual machine's <b
-        outputclass="bold">Settings</b> window enables you to configure <ph
-        conkeyref="vbox-conkeyref-phrases/product-name"/>'s sophisticated USB support. </p>
-                  <p><ph conkeyref="vbox-conkeyref-phrases/product-name"/> can enable virtual
-      machines to access the USB devices on your host directly. To achieve this, <ph
-        conkeyref="vbox-conkeyref-phrases/product-name"/> presents the guest OS with a virtual USB
-      controller. </p>
-                  <p>
+                  <p>The <b outputclass="bold">USB</b> section in a virtual machine's <b outputclass="bold">Settings</b> window enables you to configure <ph conkeyref="vbox-conkeyref-phrases/product-name"/>'s sophisticated USB support.</p>
+                  <p><ph conkeyref="vbox-conkeyref-phrases/product-name"/> can enable virtual machines to access the USB devices on your host directly. To achieve this, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> presents the guest OS with a virtual USB controller.</p>
+    <p>
       <note id="note_bzl_prv_qbc" type="caution">
         <p>As soon as the guest system starts using a USB device, it will be disconnected from the
           host without a proper shutdown. This may cause data loss.</p>
@@ -45,55 +40,25 @@
       
    
                   
-                     <li>Specify which devices can be attached to the guest by adding <b
-          outputclass="bold">USB Device Filters</b>. USB devices with a matching filter will be
-        automatically passed to the guest once they are attached to the host. USB devices without a
-        matching filter can be passed manually to the guest, for example by using the <b
-          outputclass="bold">Devices</b>, <b outputclass="bold">USB</b> menu. <ul
-          id="ul_jjz_cxv_qbc">
-          <li>Click the <b>USB filter</b> button to create a new filter with blank fields, and then
-            complete the fields. </li>
-          <li>Or, click the <b>Add USB filter</b> button to create a filter with the fields
-            completed for the selected USB device. </li>
-        </ul><p>Give the filter a name, for later reference, and specify the filter criteria. The
-          more criteria you specify, the more precisely devices will be selected. For instance, if
-          you specify only a vendor ID of 046d, all devices produced by Logitech will be available
-          to the guest. If you fill in all fields, on the other hand, the filter will only apply to
-          a particular device model from a particular vendor, and not even to other devices of the
-          same type with a different revision and serial number. </p><p>The following criteria are
-          available: </p><ul id="ul_av4_41w_qbc">
-                     <li>
-            <p><b outputclass="bold">Vendor and Product ID.</b> With USB, each vendor of USB
-              products carries an identification number that is unique world-wide, called the
-                <i>vendor ID</i>. Similarly, each line of products is assigned a <i>product ID</i>
-              number. Both numbers are commonly written in hexadecimal, and a colon separates the
-              vendor from the product ID. For example, <codeph>046d:c016</codeph> stands for
-              Logitech as a vendor, and the M-UV69a Optical Wheel Mouse product. </p>
-            <p>Alternatively, you can also specify <b outputclass="bold">Manufacturer</b> and <b
-                outputclass="bold">Product</b> by name. </p>
-            <p>To list all the USB devices that are connected to your host machine with their
-              respective vendor IDs and product IDs, use the following command: </p>
+                     <li>Specify which devices can be attached to the guest by adding <b outputclass="bold">USB Device Filters</b>. USB devices with a matching filter will be automatically passed to the guest once they are attached to the host. USB devices without a matching filter can be passed manually to the guest, for example by using the <b outputclass="bold">Devices</b>, <b outputclass="bold">USB</b> menu. <ul id="ul_jjz_cxv_qbc">
+          <li>Click the <b>USB filter</b> button to create a new filter with blank fields, and then complete the fields. </li>
+          <li>Or, click the <b>Add USB filter</b> button to create a filter with the fields completed for the selected USB device. </li>
+        </ul><p>Give the filter a name, for later reference, and specify the filter criteria. The more criteria you specify, the more precisely devices will be selected. For instance, if you specify only a vendor ID of 046d, all devices produced by Logitech will be available to the guest. If you fill in all fields, on the other hand, the filter will only apply to a particular device model from a particular vendor, and not even to other devices of the same type with a different revision and serial number. </p><p>The following criteria are available: </p><ul id="ul_av4_41w_qbc">
+          <li>
+            <p><b outputclass="bold">Vendor and Product ID.</b> With USB, each vendor of USB products carries an identification number that is unique world-wide, called the <i>vendor ID</i>. Similarly, each line of products is assigned a <i>product ID</i> number. Both numbers are commonly written in hexadecimal, and a colon separates the vendor from the product ID. For example, <codeph>046d:c016</codeph> stands for Logitech as a vendor, and the M-UV69a Optical Wheel Mouse product. </p>
+            <p>Alternatively, you can also specify <b outputclass="bold">Manufacturer</b> and <b outputclass="bold">Product</b> by name. </p>
+            <p>To list all the USB devices that are connected to your host machine with their respective vendor IDs and product IDs, use the following command: </p>
             <pre xml:space="preserve" id="pre_bv4_41w_qbc">VBoxManage list usbhost</pre>
-            <p>On Windows, you can also see all USB devices that are attached to your system in the
-              Device Manager. On Linux, you can use the <userinput>lsusb</userinput> command. </p>
-                           </li>
-                           <li>
-            <p><b outputclass="bold">Serial Number.</b> While vendor ID and product ID are quite
-              specific to identify USB devices, if you have two identical devices of the same brand
-              and product line, you will also need their serial numbers to filter them out
-              correctly. </p>
-                           </li>
-                           <li>
-            <p><b outputclass="bold">Remote.</b> This setting specifies whether the device will be
-              local only, remote only, such as over VRDP, or either. </p>
-                           </li>
-        </ul><p>As an example, you could create a new USB filter and specify a vendor ID of 046d for
-          Logitech, Inc, a manufacturer index of 1, and <i>not remote</i>. Then any USB devices on
-          the host system produced by Logitech, Inc with a manufacturer index of 1 will be visible
-          to the guest system. </p><p>Several filters can select a single device. For example, a
-          filter which selects all Logitech devices, and one which selects a particular webcam.
-        </p></li>
-                     <li>
+            <p>On Windows, you can also see all USB devices that are attached to your system in the Device Manager. On Linux, you can use the <userinput>lsusb</userinput> command. </p>
+          </li>
+          <li>
+            <p><b outputclass="bold">Serial Number.</b> While vendor ID and product ID are quite specific to identify USB devices, if you have two identical devices of the same brand and product line, you will also need their serial numbers to filter them out correctly. </p>
+          </li>
+          <li>
+            <p><b outputclass="bold">Remote.</b> This setting specifies whether the device will be local only, remote only, such as over VRDP, or either. </p>
+          </li>
+        </ul><p>As an example, you could create a new USB filter and specify a vendor ID of 046d for Logitech, Inc, a manufacturer index of 1, and <i>not remote</i>. Then any USB devices on the host system produced by Logitech, Inc with a manufacturer index of 1 will be visible to the guest system.</p><p>Several filters can select a single device. For example, a filter which selects all Logitech devices, and one which selects a particular webcam.</p></li>
+      <li>
         <p>On a Windows host, you will need to unplug and reconnect a USB device to use it after
           creating a filter for it. </p>
                            </li>

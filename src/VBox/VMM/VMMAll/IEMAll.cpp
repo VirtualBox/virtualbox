@@ -1,4 +1,4 @@
-/* $Id: IEMAll.cpp 109859 2025-06-15 22:07:50Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMAll.cpp 110152 2025-07-08 14:36:58Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager - All Contexts.
  */
@@ -422,7 +422,7 @@ static void iemLogCurInstr(PVMCPUCC pVCpu, const char *pszFunction) RT_NOEXCEPT
               " x20=%016RX64 x21=%016RX64 x22=%016RX64 x23=%016RX64\n"
               " x24=%016RX64 x25=%016RX64 x26=%016RX64 x27=%016RX64\n"
               " x28=%016RX64  bp=%016RX64  lr=%016RX64  sp=%016RX64\n"
-              "  pc=%016RX64 psr=%08RX64 EL%u\n"
+              "  pc=%016RX64 psr=%012RX64 EL%u\n"
               " %s\n"
               , pszFunction, pVCpu->iem.s.fExec,
               pVCpu->cpum.GstCtx.aGRegs[0],  pVCpu->cpum.GstCtx.aGRegs[1],  pVCpu->cpum.GstCtx.aGRegs[2],  pVCpu->cpum.GstCtx.aGRegs[3],
@@ -457,12 +457,12 @@ static void iemLogCurInstr(PVMCPUCC pVCpu, const char *pszFunction) RT_NOEXCEPT
              pVCpu->cpum.GstCtx.eflags.u, __VA_ARGS__))
 
 # elif defined(VBOX_VMM_TARGET_ARMV8)
-    LogFlow(("%s: pc=%08RX64 lr=%08RX64 sp=%08RX64 psr=%08RX64 EL%u\n",
+    LogFlow(("%s: pc=%08RX64 lr=%08RX64 sp=%08RX64 psr=%012RX64 EL%u\n",
              pszFunction, pVCpu->cpum.GstCtx.Pc, pVCpu->cpum.GstCtx.aGRegs[ARMV8_A64_REG_LR],
              pVCpu->cpum.GstCtx.aSpReg[IEM_F_MODE_ARM_GET_EL(pVCpu->iem.s.fExec) > 0], pVCpu->cpum.GstCtx.fPState,
              IEM_F_MODE_ARM_GET_EL(pVCpu->iem.s.fExec) ));
 #  define LOGFLOW_REG_STATE_EX(a_pszName, a_szExtraFmt, ...) \
-    LogFlow(("%s: pc=%08RX64 lr=%08RX64 sp=%08RX64 psr=%08RX64 EL%u" a_szExtraFmt "\n", \
+    LogFlow(("%s: pc=%08RX64 lr=%08RX64 sp=%08RX64 psr=%012RX64 EL%u" a_szExtraFmt "\n", \
              (a_pszName), pVCpu->cpum.GstCtx.Pc, pVCpu->cpum.GstCtx.aGRegs[ARMV8_A64_REG_LR], \
              pVCpu->cpum.GstCtx.aSpReg[IEM_F_MODE_ARM_GET_EL(pVCpu->iem.s.fExec) > 0], pVCpu->cpum.GstCtx.fPState, \
              IEM_F_MODE_ARM_GET_EL(pVCpu->iem.s.fExec), __VA_ARGS__))

@@ -1,4 +1,4 @@
-/* $Id: VBoxNetSlirpNAT.cpp 110059 2025-07-01 09:04:11Z alexander.eichner@oracle.com $ */
+/* $Id: VBoxNetSlirpNAT.cpp 110448 2025-07-28 20:27:59Z jack.doherty@oracle.com $ */
 /** @file
  * VBoxNetNAT - NAT Service for connecting to IntNet.
  */
@@ -1842,7 +1842,7 @@ void VBoxNetSlirpNAT::slirpNotifyPollThread(const char *pszWho)
 {
     VBoxNetSlirpNAT *pThis = static_cast<VBoxNetSlirpNAT *>(opaque);
     RT_NOREF(pThis);
-    //drvNATNotifyNATThread(pThis, "drvNAT_NotifyCb");
+    // pThis->slirpNotifyPollThread("slirpNotifyCb");
 }
 
 /**
@@ -2004,7 +2004,7 @@ VBoxNetSlirpNAT::pollThread(RTTHREAD hThreadSelf, void *pvUser)
 
     /* The first polling entry is for the control/wakeup pipe. */
 #ifdef RT_OS_WINDOWS
-    pThis->polls[0].fd = pThis->m_ahWakeupSockPair[1];
+    pThis->slirpAddPollCb(pThis->m_ahWakeupSockPair[1], SLIRP_POLL_IN | SLIRP_POLL_HUP, pThis);
 #else
     unsigned int cPollNegRet = 0;
     RTHCINTPTR const i64NativeReadPipe = RTPipeToNative(pThis->m_hPipeRead);
@@ -2156,7 +2156,10 @@ VBoxNetSlirpNAT::processFrame(void *pvUser, void *pvFrame, uint32_t cbFrame)
 
     /* we expect normal ethernet frame including .1Q and FCS */
     if (cbFrame > 1522)
+    {
+        Log2Func(("Error: Frame larger than expected.\n"));
         return;
+    }
 
     AssertReturnVoid(pvUser != NULL);
     VBoxNetSlirpNAT *pThis = static_cast<VBoxNetSlirpNAT *>(pvUser);

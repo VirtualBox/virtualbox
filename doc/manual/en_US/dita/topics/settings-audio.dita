@@ -13,13 +13,13 @@
         <p>Only OSS is supported on Oracle Solaris hosts. The Oracle Solaris Audio audio backend is no longer supported on Oracle Solaris hosts. </p>
       </li>
       <li>
-        <p><b outputclass="bold">Audio Controller:</b> You can choose between the emulation of an Intel AC'97 controller, an Intel HD Audio controller, or a SoundBlaster 16 card. </p>
+        <p><b outputclass="bold">Audio Controller</b>: You can choose between the emulation of an Intel AC'97 controller, an Intel HD Audio controller, or a SoundBlaster 16 card.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Enable Audio Output:</b> Enables audio output only for the VM. </p>
+        <p><b outputclass="bold">Audio Output</b>: Enables audio output only for the VM.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Enable Audio Input:</b> Enables audio input only for the VM. </p>
+        <p><b outputclass="bold">Audio Input</b>: Enables audio input only for the VM.</p>
       </li>
     </ul>
   </body>

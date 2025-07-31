@@ -1,4 +1,4 @@
-/* $Id: PGMAllGst-armv8.cpp.h 109859 2025-06-15 22:07:50Z knut.osmundsen@oracle.com $ */
+/* $Id: PGMAllGst-armv8.cpp.h 110390 2025-07-23 16:27:25Z klaus.espenlaub@oracle.com $ */
 /** @file
  * PGM - Page Manager, ARMv8 Guest Paging Template - All context code.
  */
@@ -409,7 +409,9 @@ DECL_FORCE_INLINE(int) pgmGstWalkWorker(PVMCPUCC pVCpu, RTGCPTR GCPtr, PPGMPTWAL
             GCPhysPt = (RTGCPHYS)(Desc & fNextTableOrPageMask);
         }
 
-        AssertCompile(a_InitialLookupLvl <= PGM_MODE_ARMV8_INITIAL_LOOKUP_LVL_THREE);
+        AssertCompile(   a_InitialLookupLvl <= PGM_MODE_ARMV8_INITIAL_LOOKUP_LVL_THREE
+                      /* This part is to shut up gcc which isn't smart enough to spot the condition above. */
+                      || a_InitialLookupLvl == PGM_MODE_ARMV8_INITIAL_LOOKUP_LVL_INVALID);
         uint8_t const uLvl = 3;
 
         /* Next level. */
@@ -785,7 +787,9 @@ static PGM_CTX_DECL(int) PGM_CTX(pgm,GstQueryPageFast)(PVMCPUCC pVCpu, RTGCPTR G
             GCPhysPt = (RTGCPHYS)(Desc & fNextTableOrPageMask);
         }
 
-        AssertCompile(a_InitialLookupLvl <= PGM_MODE_ARMV8_INITIAL_LOOKUP_LVL_THREE);
+        AssertCompile(  a_InitialLookupLvl <= PGM_MODE_ARMV8_INITIAL_LOOKUP_LVL_THREE
+                      /* This part is to shut up gcc which isn't smart enough to spot the condition above. */
+                      || a_InitialLookupLvl == PGM_MODE_ARMV8_INITIAL_LOOKUP_LVL_INVALID);
         uint8_t const uLvl = 3;
 
         /* Next level. */

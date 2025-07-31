@@ -1,0 +1,15 @@
+api
+corpus/
+genSeed
+html
+lint
+reader
+regexp
+schema
+seed/
+testFuzzer
+uri
+valid
+xinclude
+xml
+xpath

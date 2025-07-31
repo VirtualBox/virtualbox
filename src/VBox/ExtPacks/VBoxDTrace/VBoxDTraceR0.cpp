@@ -1,4 +1,4 @@
-/* $Id: VBoxDTraceR0.cpp 106939 2024-11-11 09:51:28Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxDTraceR0.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxDTraceR0.
  *
@@ -1444,7 +1444,7 @@ static void     vboxDtPOps_Provide(void *pvProv, const dtrace_probedesc_t *pDtPr
          size_t      cch;
          if (psz)
          {
-             /* skip blanks preceeding the parameter parenthesis. */
+             /* skip blanks preceding the parameter parenthesis. */
              while (   (uintptr_t)psz > (uintptr_t)pProbeLocRO->pszFunction
                     && RT_C_IS_BLANK(psz[-1]))
                  psz--;

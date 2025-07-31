@@ -1,5 +1,0 @@
-[Desktop Entry]
-Name=VirtualBox Greeter
-Comment=Provides Single Sign-On (SSO) support
-Exec=/usr/sbin/vbox-greeter
-Type=Application

@@ -1,4 +1,4 @@
-; $Id: DevEFI-binaries.asm 109215 2025-04-14 20:45:36Z knut.osmundsen@oracle.com $
+; $Id: DevEFI-binaries.asm 110371 2025-07-23 09:57:35Z klaus.espenlaub@oracle.com $
 ;; @file
 ; DevEFI - firmware binaries.
 ;
@@ -82,7 +82,7 @@ EXPORTEDNAME g_cbEfiFirmwareArm64
         dd  end_arm64_firmware - NAME(g_abEfiFirmwareArm64)
 
  %ifdef ASM_FORMAT_ELF
-size g_abEfiFirmwareArm32 end_arm_firmware - NAME(g_abEfiFirmwareArm32)
+size g_abEfiFirmwareArm32 end_arm32_firmware - NAME(g_abEfiFirmwareArm32)
 type g_abEfiFirmwareArm32 object
 size g_cbEfiFirmwareArm32 4
 type g_cbEfiFirmwareArm32 object

@@ -250,8 +250,8 @@ do
                 fi
                 ;;
 
-            ## @todo Add per-module options handling, e.g. --lightdm-greeter-dir
-             #       or --lightdm-config
+            ## @todo Add per-module options handling, e.g. --mymodule-greeter-dir
+             #       or --mymodule-config
 
             ## @todo Add listing all available modules (+ their options, e.g.
              #       with callback mod_mymod_show_options?)

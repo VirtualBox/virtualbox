@@ -3,17 +3,17 @@
 <topic xml:lang="en-us" id="licenses-oss-vbox-ext">
   <title>Open Source or Other Separately Licensed Software</title>
   <body>
-  <p>Required notices for open source or other separately licensed software products or components distributed in <ph
-        conkeyref="vbox-conkeyref-phrases/vbox-ext"/> are identified in the following table, along with the applicable
-      licensing information. Additional notices and/or licenses may be found in the included documentation or readme
-      files of the individual third party software.</p>
+  
+    <p>Required notices for open source or other separately licensed software products or components distributed in <ph conkeyref="vbox-conkeyref-phrases/vbox-ext"/> are identified in the following table, along with the applicable licensing information. Additional notices and/or licenses may be found in the included documentation or readme files of the individual third party software.</p>
+        
         <table id="table-oss-vbox-ext">
-        <title>Open Source or Other Separately Licensed Software Included With <ph
-          conkeyref="vbox-conkeyref-phrases/vbox-ext"/></title>
+                
+          <title>Open Source or Other Separately Licensed Software Included With <ph conkeyref="vbox-conkeyref-phrases/vbox-ext"/></title>
          <desc>
-        <ph>This table shows the additional licensing information for the software packages and container images used
-          for <ph conkeyref="vbox-conkeyref-phrases/vbox-ext"/></ph>
-      </desc>
+           <ph>This table shows the additional licensing information for
+             the software packages and container images used for <ph conkeyref="vbox-conkeyref-phrases/vbox-ext"/></ph>
+        </desc>
+                
         <tgroup cols="3">
           <colspec/>
           <colspec/>
@@ -27,6 +27,22 @@
           </thead>
           <tbody>
           
+           <row>
+             <entry>
+               <p>Aris Adamantiadis and Andreas Schneider</p>
+             </entry>     
+             
+             <entry>
+            <p>libssh</p>
+              </entry>
+             
+            <entry>
+               <p>
+             A copy of the License is reproduced in 
+                 <xref href="licensing-license-vbox-ext-libssh-0.10.5.dita#license-libssh-0.10.5" scope="local"/>
+              </p>
+             </entry>        
+            </row>
            <row>
              <entry>
                <p>Daniel Stenberg</p>
@@ -61,22 +77,6 @@
             </row>
            <row>
              <entry>
-               <p>Free Software Foundation, Inc.</p>
-             </entry>     
-             
-             <entry>
-            <p>glibc</p>
-              </entry>
-             
-            <entry>
-               <p>
-             A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-ext-glibc-2.17-326.0.9.el7_9.dita#license-glibc-2.17-326.0.9.el7_9" scope="local"/>
-              </p>
-             </entry>        
-            </row>
-           <row>
-             <entry>
                <p>Jean-loup Gailly and Mark Adler</p>
              </entry>     
              
@@ -88,6 +88,22 @@
                <p>
              A copy of the License is reproduced in 
                  <xref href="licensing-license-vbox-ext-zlib-data-compression-library-1.2.13.dita#license-zlib-data-compression-library-1.2.13" scope="local"/>
+              </p>
+             </entry>        
+            </row>
+           <row>
+             <entry>
+               <p>John Hauser</p>
+             </entry>     
+             
+             <entry>
+            <p>SoftFloat</p>
+              </entry>
+             
+            <entry>
+               <p>
+             A copy of the License is reproduced in 
+                 <xref href="licensing-license-vbox-ext-softfloat-3e.dita#license-softfloat-3e" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -119,7 +135,23 @@
             <entry>
                <p>
              A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-ext-openssl-3.1.7.dita#license-openssl-3.1.7" scope="local"/>
+                 <xref href="licensing-license-vbox-ext-openssl-3.1.5.dita#license-openssl-3.1.5" scope="local"/>
+              </p>
+             </entry>        
+            </row>
+           <row>
+             <entry>
+               <p>Swedish Institute of Computer Science (“SICS”)</p>
+             </entry>     
+             
+             <entry>
+            <p>Light Weight IP</p>
+              </entry>
+             
+            <entry>
+               <p>
+             A copy of the License is reproduced in 
+                 <xref href="licensing-license-vbox-ext-light-weight-ip-cd024500-1.dita#license-light-weight-ip-cd024500-1" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -139,7 +171,6 @@
               </p>
              </entry>        
             </row>
-          
        </tbody>
         </tgroup>
         </table>

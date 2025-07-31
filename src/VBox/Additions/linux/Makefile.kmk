@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 108901 2025-03-24 06:59:38Z alexander.eichner@oracle.com $
+# $Id: Makefile.kmk 110263 2025-07-16 16:36:00Z klaus.espenlaub@oracle.com $
 ## @file
 # Makefile for the linux guest additions base directory.
 #
@@ -33,9 +33,6 @@ include $(KBUILD_PATH)/subheader.kmk
 #
 include $(PATH_SUB_CURRENT)/sharedfolders/Makefile.kmk
 include $(PATH_SUB_CURRENT)/drm/Makefile.kmk
-ifdef VBOX_WITH_LIGHTDM_GREETER
- include $(PATH_SUB_CURRENT)/lightdm-greeter/Makefile.kmk
-endif
 
 
 #
@@ -140,8 +137,7 @@ ifdef VBOX_WITH_WAYLAND_ADDITIONS
 endif
 
 VBOX_LNX_ADD_STRIP_SBIN += \
-	VBoxService \
-	$(if $(VBOX_WITH_LIGHTDM_GREETER),vbox-greeter)
+	VBoxService
 
 VBOX_LNX_ADD_STRIP_MOD = \
 	$(if $(VBOX_WITH_PAM),pam_vbox.so,) \
@@ -191,11 +187,6 @@ VBOX_LNX_ADD_DBG_FILES := \
 	$(addprefix $(VBOX_LNX_ADD_DBG_SBIN_DIR),$(VBOX_LNX_ADD_STRIP_SBIN)) \
 	$(addprefix $(VBOX_LNX_ADD_DBG_LIB_DIR),$(VBOX_LNX_ADD_STRIP_LIB)) \
 	$(addprefix $(VBOX_LNX_ADD_DBG_OTHER_DIR),$(VBOX_LNX_ADD_STRIP_MOD))
-
-ifdef VBOX_WITH_LIGHTDM_GREETER_PACKING
- VBOX_LNX_ADD_INST_FILES += \
- 	$(addprefix $(VBOX_LNX_ADD_INST_SBIN_DIR),vbox-greeter)
-endif
 
 # Cleanup of the installer directory files
 OTHER_CLEAN += $(VBOX_LNX_ADD_INST_FILES) $(VBOX_LNX_ADD_DBG_FILES)
@@ -315,7 +306,6 @@ lnx_add_inst-noexec_INSTTYPE = stage
 lnx_add_inst-noexec_SOURCES  = \
 	$(VBOX_REL_X11_ADD_INST)vboxclient.desktop \
 	$(VBOX_REL_X11_ADD_INST)vboxvideo.ids \
-	$(if $(VBOX_WITH_LIGHTDM_GREETER_PACKING),lightdm-greeter/vbox-greeter.desktop,) \
 	selinux-fedora/vbox_x11.pp \
 	selinux-fedora/vbox_accel.pp
 
@@ -337,11 +327,6 @@ LnxAdd-scripts_SOURCES  = \
 	$(VBOX_REL_LNX_ADD_INST)deffiles
 LnxAdd-scripts_EXEC_SOURCES  = \
 	$(VBOX_REL_LNX_INST_SRC)routines.sh
-
-ifdef VBOX_WITH_LIGHTDM_GREETER_PACKING
- LnxAdd-scripts_EXEC_SOURCES += \
- 	$(VBOX_REL_LNX_ADD_INST)module-autologon.sh=>installer/module-autologon
-endif
 
 
 #

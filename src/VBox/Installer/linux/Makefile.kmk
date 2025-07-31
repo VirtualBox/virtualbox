@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 109988 2025-06-26 09:15:21Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 110417 2025-07-25 17:52:57Z klaus.espenlaub@oracle.com $
 ## @file
 # Makefile for the Linux installer.
 #
@@ -156,6 +156,7 @@ VBOX_LNX_STRIP_BIN = \
 	VBoxDD2.so \
 	VBoxDDU.so \
 	VBoxVMM.so \
+	$(if $(VBOX_WITH_VIRT_ARMV8),VBoxVMMArm.so,) \
 	VBoxRT.so \
 	$(if $(VBOX_WITH_LIBSSH),VBoxLibSsh.so,) \
 	$(if $(VBOX_WITH_VBOXSDL),VBoxSDL $(if $(VBOX_WITH_HARDENING),VBoxSDL.so),) \
@@ -190,11 +191,6 @@ VBOX_LNX_STRIP_BIN = \
 		ExtensionPacks/VNC/$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH)/VBoxVNCMain.so,) \
 	$(if $(VBOX_WITH_DTRACE),VBoxDTrace,) \
 	$(if $(VBOX_WITH_HOST_SHIPPING_AUDIO_TEST),VBoxAudioTest,)
-
-ifdef VBOX_WITH_VIRT_ARMV8
- VBOX_LNX_STRIP_BIN += \
- 	VBoxVMMArm.so
-endif
 
 ifdef VBOX_WITH_R0_MODULES
  # Do not remove relocation information of these binaries
@@ -357,6 +353,11 @@ ifdef VBOX_WITH_EFIFW_PACKING
  VBOX_LNX_NO_STRIP += \
  	VBoxEFI-x86.fd \
  	VBoxEFI-amd64.fd
+ ifdef VBOX_WITH_VIRT_ARMV8
+  VBOX_LNX_NO_STRIP += \
+  	VBoxEFI-arm32.fd \
+  	VBoxEFI-arm64.fd
+ endif
 endif
 
 # DTrace library and scripts.

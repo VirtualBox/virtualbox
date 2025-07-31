@@ -1,4 +1,4 @@
-/* $Id: NATNetworkImpl.cpp 109774 2025-06-03 20:19:59Z jack.doherty@oracle.com $ */
+/* $Id: NATNetworkImpl.cpp 110269 2025-07-16 17:58:19Z jack.doherty@oracle.com $ */
 /** @file
  * INATNetwork implementation.
  */
@@ -704,6 +704,54 @@ HRESULT NATNetwork::getPortForwardRules6(std::vector<com::Utf8Str> &aPortForward
     return S_OK;
 }
 
+HRESULT NATNetwork::setLocalhostReachable(BOOL fLocalhostReachable)
+{
+    RT_NOREF(fLocalhostReachable);
+    return E_NOTIMPL;
+}
+
+HRESULT NATNetwork::getLocalhostReachable(BOOL *pfLocalhostReachable)
+{
+    RT_NOREF(pfLocalhostReachable);
+    return E_NOTIMPL;
+}
+
+HRESULT NATNetwork::setForwardBroadcast(BOOL fForwardBroadcast)
+{
+    RT_NOREF(fForwardBroadcast);
+    return E_NOTIMPL;
+}
+
+HRESULT NATNetwork::getForwardBroadcast(BOOL *pfForwardBroadcast)
+{
+    RT_NOREF(pfForwardBroadcast);
+    return E_NOTIMPL;
+}
+
+HRESULT NATNetwork::setNatMTU(ULONG uMTU)
+{
+    RT_NOREF(uMTU);
+    return E_NOTIMPL;
+}
+
+HRESULT NATNetwork::getNatMTU(ULONG *puMTU)
+{
+    RT_NOREF(puMTU);
+    return E_NOTIMPL;
+}
+
+HRESULT NATNetwork::setNatMRU(ULONG uMRU)
+{
+    RT_NOREF(uMRU);
+    return E_NOTIMPL;
+}
+
+HRESULT NATNetwork::getNatMRU(ULONG *puMRU)
+{
+    RT_NOREF(puMRU);
+    return E_NOTIMPL;
+}
+
 HRESULT NATNetwork::addPortForwardRule(BOOL aIsIpv6,
                                        const com::Utf8Str &aPortForwardRuleName,
                                        NATProtocol_T aProto,
@@ -1175,7 +1223,7 @@ int NATNetwork::i_recalculateIpv4AddressAssignments()
     RTStrPrintf(szTmpIp, 16, "%RTnaipv4", netmask);
     m->IPv4NetworkMask = szTmpIp;
 
-    LogFlowFunc(("getaway:%RTnaipv4, netmask:%RTnaipv4\n", gateway, netmask));
+    LogFlowFunc(("gateway:%RTnaipv4, netmask:%RTnaipv4\n", gateway, netmask));
     return VINF_SUCCESS;
 }
 

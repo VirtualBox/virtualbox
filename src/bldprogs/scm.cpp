@@ -1,4 +1,4 @@
-/* $Id: scm.cpp 106502 2024-10-19 03:13:15Z knut.osmundsen@oracle.com $ */
+/* $Id: scm.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT Testcase / Tool - Source Code Massager.
  */
@@ -3149,7 +3149,7 @@ int main(int argc, char **argv)
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                static const char s_szRev[] = "$Revision: 106502 $";
+                static const char s_szRev[] = "$Revision: 110494 $";
                 const char *psz = RTStrStripL(strchr(s_szRev, ' '));
                 RTPrintf("r%.*s\n", strchr(psz, ' ') - psz, psz);
                 return 0;

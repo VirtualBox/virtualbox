@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 109324 2025-04-24 11:38:27Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 110417 2025-07-25 17:52:57Z klaus.espenlaub@oracle.com $
 ## @file
 # Install misc stuff and create dist packages for Mac OS X.
 #
@@ -497,6 +497,10 @@ ifdef VBOX_WITH_DXVK
  	MacOS/VBoxDxVk.dylib \
  	MacOS/libMoltenVK.dylib
 endif
+ifdef VBOX_WITH_DXMT
+ VBOX_DI_VBAPP_DYLIBS += \
+ 	MacOS/VBoxDxMt.dylib
+endif
 
 if defined(VBOX_WITH_JXPCOM)
  VBOX_DI_VBAPP_DYLIBS += \
@@ -580,6 +584,11 @@ ifdef VBOX_WITH_EFIFW_PACKING
  VBOX_DI_VBAPP_MISC_FILES += \
  	MacOS/VBoxEFI-x86.fd \
  	MacOS/VBoxEFI-amd64.fd
+ ifdef VBOX_WITH_VIRT_ARMV8
+  VBOX_DI_VBAPP_MISC_FILES += \
+  	MacOS/VBoxEFI-arm32.fd \
+  	MacOS/VBoxEFI-arm64.fd
+ endif
 endif
 VBOX_DI_VBAPP_SYMLINKS =
 ifdef VBOX_WITH_QTGUI

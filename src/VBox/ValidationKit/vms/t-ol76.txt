@@ -1,0 +1,11 @@
+
+Test VM - tst-ol76-64 - Oracle Linux smoke test
+===============================================
+
+Setup:
+ - Configure a VM tst-ol76-64 with default OL76 64-bit setting,
+   with a 6 GB or larger disk.
+ - Configure the VM with 4 GB of RAM.
+ - Make sure networking is NAT.
+ - Install Oracle Linux server 7.6 amd64.
+ - Proceed as shown in readme_first.txt

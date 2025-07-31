@@ -1,10 +1,10 @@
-/* $Id: UIVirtualBoxWidget.cpp 109664 2025-05-26 13:42:51Z sergey.dubov@oracle.com $ */
+/* $Id: UIVirtualBoxWidget.cpp 110391 2025-07-23 17:16:20Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVirtualBoxWidget class implementation.
  */
 
 /*
- * Copyright (C) 2006-2024 Oracle and/or its affiliates.
+ * Copyright (C) 2006-2025 Oracle and/or its affiliates.
  *
  * This file is part of VirtualBox base platform packages, as
  * available from https://www.virtualbox.org.
@@ -37,7 +37,9 @@
 #include "UIChooser.h"
 #include "UICommon.h"
 #include "UIExtraDataManager.h"
+#include "UIGlobalSession.h"
 #include "UIGlobalToolsWidget.h"
+#include "UIIconPool.h"
 #include "UIMachineToolsWidget.h"
 #include "UINotificationCenter.h"
 #include "UIToolPane.h"
@@ -45,16 +47,9 @@
 #include "UIVirtualBoxManager.h"
 #include "UIVirtualBoxWidget.h"
 #include "UIVirtualMachineItem.h"
-#if defined(VBOX_WS_MAC) && (defined(RT_ARCH_ARM64) || defined(RT_ARCH_ARM32))
-# include "UIGlobalSession.h"
-# include "UIIconPool.h"
-# include "UIVersion.h"
-#endif /* VBOX_WS_MAC && (RT_ARCH_ARM64 || RT_ARCH_ARM32) */
 
 /* COM includes: */
-#if defined(VBOX_WS_MAC) && (defined(RT_ARCH_ARM64) || defined(RT_ARCH_ARM32))
-# include "CSystemProperties.h"
-#endif /* VBOX_WS_MAC && (RT_ARCH_ARM64 || RT_ARCH_ARM32) */
+#include "CSystemProperties.h"
 
 
 UIVirtualBoxWidget::UIVirtualBoxWidget(UIVirtualBoxManager *pParent)
@@ -373,27 +368,31 @@ void UIVirtualBoxWidget::prepareWidgets()
             m_pToolBar->setContextMenuPolicy(Qt::CustomContextMenu);
             m_pToolBar->setUseTextLabels(true);
 
-#if defined(VBOX_WS_MAC) && (defined(RT_ARCH_ARM64) || defined(RT_ARCH_ARM32))
             /* Check whether we should show Dev Preview tag: */
             bool fShowDevPreviewTag = false;
             const CVirtualBox comVBox = gpGlobalSession->virtualBox();
             if (comVBox.isNotNull())
             {
+#if defined(RT_ARCH_ARM64) || defined(RT_ARCH_ARM32)
+                const KPlatformArchitecture enmArch = KPlatformArchitecture_x86;
+#elif defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64)
+                const KPlatformArchitecture enmArch = KPlatformArchitecture_ARM;
+#else
+                const KPlatformArchitecture enmArch = KPlatformArchitecture_None;
+#endif
                 const CSystemProperties comSystemProps = comVBox.GetSystemProperties();
                 if (comVBox.isOk() && comSystemProps.isNotNull())
-                    fShowDevPreviewTag =
-                        comSystemProps.GetSupportedPlatformArchitectures().contains(KPlatformArchitecture_x86);
+                    fShowDevPreviewTag = comSystemProps.GetSupportedPlatformArchitectures().contains(enmArch);
             }
             /* Enable Dev Preview tag: */
             if (fShowDevPreviewTag)
             {
-                m_pToolBar->emulateMacToolbar();
+                m_pToolBar->emulateUnifiedToolbar();
                 m_pToolBar->enableBranding(UIIconPool::iconSet(":/explosion_hazard_32px.png"),
                                            "Dev Preview", // do we need to make it NLS?
                                            QColor(246, 179, 0),
                                            74 /* width of BETA label */);
             }
-#endif /* VBOX_WS_MAC && (RT_ARCH_ARM64 || RT_ARCH_ARM32) */
 
             /* Add toolbar into layout: */
             m_pGlobalToolsWidget->addToolBar(m_pToolBar);

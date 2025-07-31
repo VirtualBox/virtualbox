@@ -349,8 +349,16 @@ namespace dxvk {
 
       // Submit initialization commands, if any
       for (auto cmdBuffer : InitCmdBuffers) {
+#ifdef VBOX_WITH_DXVK_VIDEO
+        if (cmd.cmdBuffers[uint32_t(cmdBuffer)]) {
+          if (cmdBuffer == DxvkCmdBuffer::InitBuffer)
+            addSubmissionFences(cmdBuffer, cmd);
+          m_commandSubmission.executeCommandBuffer(cmd.cmdBuffers[uint32_t(cmdBuffer)]);
+        }
+#else
         if (cmd.cmdBuffers[uint32_t(cmdBuffer)])
           m_commandSubmission.executeCommandBuffer(cmd.cmdBuffers[uint32_t(cmdBuffer)]);
+#endif
       }
 
       // Only submit the main command buffer if it has actually been used
@@ -393,16 +401,17 @@ namespace dxvk {
       if (videoDecode.queueFamily != VK_QUEUE_FAMILY_IGNORED) {
         // Submit video decode commands as necessary
 
-        // Always signal the vdec command buffer completion. synchronizeFence waits for it.
-        m_commandSubmission.signalSemaphore(m_vdecSemaphore, ++m_vdecSemaphoreValue, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+        // Always signal the vdec command buffer completion. DxvkSubmissionQueue::finishCmdLists() waits for it.
+        m_commandSubmission.signalSemaphore(semaphores.videoDecode,
+          ++timelines.videoDecode, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
 
-        if (cmd.usedFlags.test(DxvkCmdBuffer::VDecBuffer)) {
+        if (cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::VDecBuffer)]) {
           addSubmissionFences(DxvkCmdBuffer::VDecBuffer, cmd);
-          m_commandSubmission.executeCommandBuffer(cmd.vdecBuffer);
+          m_commandSubmission.executeCommandBuffer(cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::VDecBuffer)]);
         }
 
         // Submit all video decode commands of the current submission
-        if ((status = m_commandSubmission.submit(m_device, videoDecode.queueHandle)))
+        if ((status = m_commandSubmission.submit(m_device, videoDecode.queueHandle, trackedId)))
           return status;
       }
 #endif
@@ -428,10 +437,6 @@ namespace dxvk {
     // during command recording.
     m_cmd = DxvkCommandSubmissionInfo();
     m_cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::ExecBuffer)] = allocateCommandBuffer(DxvkCmdBuffer::ExecBuffer);
-#ifdef VBOX_WITH_DXVK_VIDEO
-    if (m_videoDecodePool.ptr() != nullptr)
-      m_cmd.vdecBuffer = m_videoDecodePool->getCommandBuffer();
-#endif
   }
   
   
@@ -444,10 +449,6 @@ namespace dxvk {
       if (m_cmd.cmdBuffers[i])
         endCommandBuffer(m_cmd.cmdBuffers[i]);
     }
-#ifdef VBOX_WITH_DXVK_VIDEO
-    if (m_videoDecodePool.ptr() != nullptr)
-      this->endCommandBuffer(m_cmd.vdecBuffer);
-#endif
 
     // Reset all command buffer handles
     m_cmd = DxvkCommandSubmissionInfo();
@@ -459,6 +460,7 @@ namespace dxvk {
 
 
   void DxvkCommandList::next() {
+#ifndef VBOX_WITH_DXVK_VIDEO
     bool push = m_cmd.sparseBind || m_cmd.execCommands;
 
     for (uint32_t i = 0; i < m_cmd.cmdBuffers.size(); i++) {
@@ -486,18 +488,41 @@ namespace dxvk {
     m_cmd.execCommands = VK_FALSE;
     m_cmd.syncSdma = VK_FALSE;
     m_cmd.sparseBind = VK_FALSE;
+#else /* VBOX_WITH_DXVK_VIDEO */
+    bool push = m_cmd.sparseBind || m_cmd.execCommands;
 
-#ifdef VBOX_WITH_DXVK_VIDEO /** @todo */
-    if (m_videoDecodePool.ptr() != nullptr) {
-      if (m_cmd.usedFlags.test(DxvkCmdBuffer::VDecBuffer)) {
-        this->endCommandBuffer(m_cmd.vdecBuffer);
-        m_cmd.vdecBuffer = m_videoDecodePool->getCommandBuffer();
+    for (uint32_t i = 0; i < m_cmd.cmdBuffers.size(); i++) {
+      DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer(i);
+
+      if (cmdBuffer == DxvkCmdBuffer::ExecBuffer && !m_cmd.execCommands)
+        continue;
+
+      if (m_cmd.cmdBuffers[i]) {
+        endCommandBuffer(m_cmd.cmdBuffers[i]);
+
+        push = true;
       }
     }
 
-    m_cmd.submissionFences.clear();
-#endif
+    if (!push)
+      return;
 
+    m_cmdSubmissions.push_back(m_cmd);
+
+    for (uint32_t i = 0; i < m_cmd.cmdBuffers.size(); i++) {
+      DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer(i);
+
+      m_cmd.cmdBuffers[i] = cmdBuffer == DxvkCmdBuffer::ExecBuffer
+        ? allocateCommandBuffer(cmdBuffer)
+        : VK_NULL_HANDLE;
+    }
+
+    m_cmd.execCommands = VK_FALSE;
+    m_cmd.syncSdma = VK_FALSE;
+    m_cmd.sparseBind = VK_FALSE;
+
+    m_cmd.submissionFences.clear();
+#endif /* VBOX_WITH_DXVK_VIDEO */
   }
 
   
@@ -552,6 +577,12 @@ namespace dxvk {
 
 
   VkCommandBuffer DxvkCommandList::allocateCommandBuffer(DxvkCmdBuffer type) {
+#ifdef VBOX_WITH_DXVK_VIDEO
+    if (type == DxvkCmdBuffer::VDecBuffer)
+      return m_videoDecodePool.ptr() != nullptr
+        ? m_videoDecodePool->getCommandBuffer(type)
+        : VK_NULL_HANDLE;
+#endif
     return type == DxvkCmdBuffer::SdmaBuffer || type == DxvkCmdBuffer::SdmaBarriers
       ? m_transferPool->getCommandBuffer(type)
       : m_graphicsPool->getCommandBuffer(type);

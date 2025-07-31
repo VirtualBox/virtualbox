@@ -1,4 +1,4 @@
-/* $Id: UIWizardNewVMSummaryPage.cpp 108784 2025-03-18 09:57:14Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIWizardNewVMSummaryPage.cpp 110477 2025-07-30 12:07:17Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardNewVMSummaryPage class implementation.
  */
@@ -367,7 +367,7 @@ void UIWizardNewVMSummaryModel::populateData(UIWizardNewVM *pWizard)
 
     const QString &ISOPath = pWizard->ISOFilePath();
     if (!ISOPath.isNull() && !ISOPath.isEmpty())
-        pNameRoot->addChild(UIWizardNewVM::tr("Proceed with Unattended Install"), !pWizard->skipUnattendedInstall());
+        pNameRoot->addChild(UIWizardNewVM::tr("Proceed with Unattended Installation"), !pWizard->skipUnattendedInstall());
 
     /* Unattended install related info: */
     if (pWizard->isUnattendedEnabled())

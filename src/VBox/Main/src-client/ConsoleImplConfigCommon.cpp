@@ -1,4 +1,4 @@
-/* $Id: ConsoleImplConfigCommon.cpp 109824 2025-06-12 04:12:17Z jack.doherty@oracle.com $ */
+/* $Id: ConsoleImplConfigCommon.cpp 110348 2025-07-22 15:04:28Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console COM Class implementation - VM Configuration Bits.
  *
@@ -87,7 +87,6 @@
 #include <VBox/vmm/vmapi.h>
 #include <VBox/err.h>
 #include <VBox/param.h>
-#include <VBox/settings.h> /* For MachineConfigFile::getHostDefaultAudioDriver(). */
 #include <VBox/vmm/pdmapi.h> /* For PDMR3DriverAttach/PDMR3DriverDetach. */
 #include <VBox/vmm/pdmusb.h> /* For PDMR3UsbCreateEmulatedDevice. */
 #include <VBox/vmm/pdmdev.h> /* For PDMAPICMODE enum. */
@@ -135,6 +134,7 @@
 # endif
 #endif /* VBOX_WITH_NETFLT */
 
+#include "AudioUtils.h" /* For VBoxAudioGetDefaultDriver(). */
 #ifdef VBOX_WITH_AUDIO_VRDE
 # include "DrvAudioVRDE.h"
 #endif
@@ -3748,7 +3748,7 @@ int Console::i_configAudioCtrl(ComPtr<IVirtualBox> pVBox, ComPtr<IMachine> pMach
              * by default on the current platform. */
             bool const fUseDefaultDrv = enmAudioDriver == AudioDriverType_Default;
 
-            AudioDriverType_T const enmDefaultAudioDriver = settings::MachineConfigFile::getHostDefaultAudioDriver();
+            AudioDriverType_T const enmDefaultAudioDriver = VBoxAudioGetDefaultDriver();
 
             if (fUseDefaultDrv)
             {

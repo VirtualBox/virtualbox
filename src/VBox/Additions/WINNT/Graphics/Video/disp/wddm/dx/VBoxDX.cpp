@@ -1,4 +1,4 @@
-/* $Id: VBoxDX.cpp 109971 2025-06-25 17:47:32Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxDX.cpp 110318 2025-07-19 10:46:18Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox D3D user mode driver.
  */
@@ -1679,23 +1679,74 @@ static void shadersAllocationDesc(VBOXDXALLOCATIONDESC *pDesc, void const *pvIni
 }
 
 
-static bool vboxDXEnsureShaderAllocation(PVBOXDX_DEVICE pDevice)
+static uint32_t vboxdxNumberOfShadersAllocations(PVBOXDX_DEVICE pDevice)
 {
-    if (!pDevice->pShadersKMResource)
+    uint32_t cAllocations = 0;
+    PVBOXDXKMRESOURCE pIter;
+    RTListForEach(&pDevice->listShadersAllocations, pIter, VBOXDXKMRESOURCE, shaders.nodeAllocationsChain)
+        ++cAllocations;
+    return cAllocations;
+}
+
+
+static PVBOXDXKMRESOURCE vboxdxShadersAllocationFromOffset(PVBOXDX_DEVICE pDevice, uint32_t off)
+{
+    uint32_t offStart = 0;
+    PVBOXDXKMRESOURCE pIter;
+    RTListForEach(&pDevice->listShadersAllocations, pIter, VBOXDXKMRESOURCE, shaders.nodeAllocationsChain)
     {
-        uint32_t const cbAllocation = SVGA3D_MAX_SHADER_MEMORY_BYTES;
-        pDevice->pShadersKMResource = vboxDXAllocateKMResource(pDevice, 0, shadersAllocationDesc,
-                                                               &cbAllocation, false);
-        if (!pDevice->pShadersKMResource)
-            return false;
+        offStart += VBOXDX_SHADER_ALLOCATION_SIZE;
+        if (off < offStart)
+            return pIter;
+    }
+    return NULL;
+}
 
-        pDevice->cbShaderAvailable  = cbAllocation;
-        pDevice->offShaderFree      = 0;
 
-        RTListAppend(&pDevice->listResources, &pDevice->pShadersKMResource->nodeResource);
+static uint32_t vboxdxFindPlaceForShader(PVBOXDX_DEVICE pDevice, PVBOXDXSHADER pShader)
+{
+    uint32_t const cbShaderTotal = pShader->cbShader + pShader->cbSignatures;
+
+    uint32_t offShader = SVGA3D_INVALID_ID; /* Offset in shaders allocations where to place the new shader. */
+
+    /* First try to place the new shader right after the last shader in the same allocation. */
+    uint32_t offFree = 0;
+    PVBOXDXSHADER pLastShader = RTListGetLast(&pDevice->listShaders, VBOXDXSHADER, node);
+    if (pLastShader)
+    {
+        offFree = pLastShader->offShader + pLastShader->cbShader + pLastShader->cbSignatures;
+        uint32_t const cbRemaining = VBOXDX_SHADER_ALLOCATION_SIZE - offFree % VBOXDX_SHADER_ALLOCATION_SIZE;
+
+        if (cbRemaining >= cbShaderTotal)
+            offShader = offFree; /* Enough space. */
     }
 
-    return true;
+    if (offShader == SVGA3D_INVALID_ID)
+    {
+        /* There is no space in the allocation where the currently last shader resides.
+         * Check if there is an allocation after it. */
+        offFree = RT_ALIGN_32(offFree, VBOXDX_SHADER_ALLOCATION_SIZE); /* Offset of the start of subsequent allocation. */
+
+        uint32_t cShadersAllocations = vboxdxNumberOfShadersAllocations(pDevice);
+        if (offFree / VBOXDX_SHADER_ALLOCATION_SIZE >= cShadersAllocations)
+        {
+            /* Allocate a new shaders allocation and place the new shader at the beginning of it. */
+            uint32_t const cbAllocation = VBOXDX_SHADER_ALLOCATION_SIZE;
+            PVBOXDXKMRESOURCE pShadersAllocation = vboxDXAllocateKMResource(pDevice, 0, shadersAllocationDesc,
+                                                                            &cbAllocation, false);
+            AssertReturnStmt(pShadersAllocation, vboxDXDeviceSetError(pDevice, E_OUTOFMEMORY), SVGA3D_INVALID_ID);
+
+            RTListAppend(&pDevice->listShadersAllocations, &pShadersAllocation->shaders.nodeAllocationsChain);
+
+            /* Add to the global list of resources. */
+            RTListAppend(&pDevice->listResources, &pShadersAllocation->nodeResource);
+        }
+
+        /* Place the new shader at the beginning of subsequent allocation. */
+        offShader = offFree;
+    }
+
+    return offShader;
 }
 
 
@@ -1725,6 +1776,11 @@ void vboxDXCreateShader(PVBOXDX_DEVICE pDevice, SVGA3dShaderType enmShaderType, 
                         const D3D11_1DDIARG_SIGNATURE_ENTRY2* pOutputSignature, UINT NumOutputSignatureEntries,
                         const D3D11_1DDIARG_SIGNATURE_ENTRY2* pPatchConstantSignature, UINT NumPatchConstantSignatureEntries)
 {
+    AssertReturnVoidStmt(   NumInputSignatureEntries <= 4096 /* An arbitrary large value. */
+                         && NumOutputSignatureEntries <= 4096
+                         && NumPatchConstantSignatureEntries <= 4096,
+                         vboxDXDeviceSetError(pDevice, E_INVALIDARG));
+
     /* CreateGeometryShaderWithStreamOutput sometimes passes pShaderCode == NULL. */
     pShader->enmShaderType = enmShaderType;
     pShader->cbShader = pShaderCode ? pShaderCode[1] * sizeof(UINT) : 0;
@@ -1732,6 +1788,13 @@ void vboxDXCreateShader(PVBOXDX_DEVICE pDevice, SVGA3dShaderType enmShaderType, 
        + NumInputSignatureEntries * sizeof(SVGA3dDXShaderSignatureEntry)
        + NumOutputSignatureEntries * sizeof(SVGA3dDXShaderSignatureEntry)
        + NumPatchConstantSignatureEntries * sizeof(SVGA3dDXShaderSignatureEntry);
+    AssertReturnVoidStmt(   pShader->cbShader < VBOXDX_SHADER_ALLOCATION_SIZE
+                         && pShader->cbSignatures < VBOXDX_SHADER_ALLOCATION_SIZE,
+                         vboxDXDeviceSetError(pDevice, E_INVALIDARG));
+
+    uint32_t const cbShaderTotal = pShader->cbShader + pShader->cbSignatures;
+    AssertReturnVoidStmt(cbShaderTotal <= VBOXDX_SHADER_ALLOCATION_SIZE,
+                         vboxDXDeviceSetError(pDevice, E_INVALIDARG));
 
     if (pShader->enmShaderType == SVGA3D_SHADERTYPE_GS)
     {
@@ -1747,33 +1810,22 @@ void vboxDXCreateShader(PVBOXDX_DEVICE pDevice, SVGA3dShaderType enmShaderType, 
         pShader->offShader = SVGA3D_INVALID_ID;
         pShader->pu32Bytecode = NULL;
         pShader->pSignatures = NULL;
+        pShader->pShadersAllocation = NULL;
         return;
     }
 
     int rc = RTHandleTableAlloc(pDevice->hHTShader, pShader, &pShader->uShaderId);
     AssertRCReturnVoidStmt(rc, vboxDXDeviceSetError(pDevice, E_OUTOFMEMORY));
 
-    if (!vboxDXEnsureShaderAllocation(pDevice))
-    {
-        RTHandleTableFree(pDevice->hHTShader, pShader->uShaderId);
-        return;
-    }
+    /*
+     * Find a place for the shader in a shaders allocation.
+     */
+    pShader->offShader = vboxdxFindPlaceForShader(pDevice, pShader);
+    AssertReturnVoidStmt(pShader->offShader != SVGA3D_INVALID_ID,
+                         RTHandleTableFree(pDevice->hHTShader, pShader->uShaderId));
 
-    uint32_t const cbShaderTotal = pShader->cbShader + pShader->cbSignatures;
-    if (pDevice->pShadersKMResource->AllocationDesc.cbAllocation - pDevice->offShaderFree < cbShaderTotal)
-    {
-        if (pDevice->cbShaderAvailable < cbShaderTotal)
-        {
-            /** @todo Unbind some shaders until there is enough space for the new shader. */
-            DEBUG_BREAKPOINT_TEST();
-        }
-        Assert(pDevice->cbShaderAvailable < cbShaderTotal);
+    pShader->pShadersAllocation = vboxdxShadersAllocationFromOffset(pDevice, pShader->offShader);
 
-        /** @todo Pack shaders in order to have one free area in the end of the allocation. */
-        DEBUG_BREAKPOINT_TEST();
-    }
-
-    pShader->offShader = pDevice->offShaderFree;
     pShader->pu32Bytecode = (uint32_t *)&pShader[1];
     pShader->pSignatures = (SVGA3dDXSignatureHeader *)((uint8_t *)pShader->pu32Bytecode + pShader->cbShader);
 
@@ -1812,12 +1864,12 @@ void vboxDXCreateShader(PVBOXDX_DEVICE pDevice, SVGA3dShaderType enmShaderType, 
 
     D3DDDICB_LOCK ddiLock;
     RT_ZERO(ddiLock);
-    ddiLock.hAllocation = vboxDXGetAllocation(pDevice->pShadersKMResource);
+    ddiLock.hAllocation = vboxDXGetAllocation(pShader->pShadersAllocation);
     ddiLock.Flags.WriteOnly = 1;
     HRESULT hr = pDevice->pRTCallbacks->pfnLockCb(pDevice->hRTDevice.handle, &ddiLock);
     if (SUCCEEDED(hr))
     {
-        uint8_t *pu8 = (uint8_t *)ddiLock.pData + pShader->offShader;
+        uint8_t *pu8 = (uint8_t *)ddiLock.pData + pShader->offShader % VBOXDX_SHADER_ALLOCATION_SIZE;
 
         memcpy(pu8, pShader->pu32Bytecode, pShader->cbShader);
         pu8 += pShader->cbShader;
@@ -1835,11 +1887,8 @@ void vboxDXCreateShader(PVBOXDX_DEVICE pDevice, SVGA3dShaderType enmShaderType, 
 
     RTListAppend(&pDevice->listShaders, &pShader->node);
 
-    pDevice->cbShaderAvailable -= cbShaderTotal;
-    pDevice->offShaderFree     += cbShaderTotal;
-
     vgpu10DefineShader(pDevice, pShader->uShaderId, pShader->enmShaderType, cbShaderTotal);
-    vgpu10BindShader(pDevice, pShader->uShaderId, pDevice->pShadersKMResource, pShader->offShader);
+    vgpu10BindShader(pDevice, pShader->uShaderId, pShader->pShadersAllocation, pShader->offShader % VBOXDX_SHADER_ALLOCATION_SIZE);
 }
 
 
@@ -1951,10 +2000,6 @@ void vboxDXDestroyShader(PVBOXDX_DEVICE pDevice, PVBOXDXSHADER pShader)
         vgpu10BindShader(pDevice, pShader->uShaderId, 0, 0);
         vgpu10DestroyShader(pDevice, pShader->uShaderId);
         vboxDXDeviceFlushCommands(pDevice);
-
-        /* Take the freed space into account. */
-        uint32_t const cbShaderTotal = pShader->cbShader + pShader->cbSignatures;
-        pDevice->cbShaderAvailable += cbShaderTotal;
 
         RTListNodeRemove(&pShader->node);
         RTHandleTableFree(pDevice->hHTShader, pShader->uShaderId);
@@ -2742,6 +2787,7 @@ void vboxDXResourceUnmap(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE pResource, UIN
     if (SUCCEEDED(hr))
     {
         if (   pResource->DDIMap == D3D10_DDI_MAP_WRITE
+            || pResource->DDIMap == D3D10_DDI_MAP_READWRITE
             || pResource->DDIMap == D3D10_DDI_MAP_WRITE_DISCARD
             || pResource->DDIMap == D3D10_DDI_MAP_WRITE_NOOVERWRITE)
         {
@@ -3004,6 +3050,20 @@ void vboxDXSetRenderTargets(PVBOXDX_DEVICE pDevice, PVBOXDXDEPTHSTENCILVIEW pDep
 
     for (unsigned i = 0; i < ClearSlots; ++i)
         pDevice->pipeline.apRenderTargetViews[NumRTVs + i] = NULL;
+
+    /* 'ClearSlots' does not cover all previously bound RTs sometimes.
+     * "The range of render target surfaces between the number that NumViews specifies
+     *  and the maximum number of render target surfaces that are allowed is required
+     *  to contain all NULL or unbound values."
+     */
+    for (unsigned i = NumRTVs + ClearSlots; i < SVGA3D_MAX_SIMULTANEOUS_RENDER_TARGETS; ++i)
+    {
+        if (pDevice->pipeline.apRenderTargetViews[i])
+        {
+            ClearSlots = i - NumRTVs + 1;
+            pDevice->pipeline.apRenderTargetViews[i] = NULL;
+        }
+    }
 
     pDevice->pipeline.pDepthStencilView = pDepthStencilView;
 
@@ -3911,6 +3971,7 @@ static int vboxDXDeviceCreateObjects(PVBOXDX_DEVICE pDevice)
     RTListInit(&pDevice->listDestroyedResources);
     RTListInit(&pDevice->listStagingResources);
     RTListInit(&pDevice->listShaders);
+    RTListInit(&pDevice->listShadersAllocations);
     RTListInit(&pDevice->listQueries);
     RTListInit(&pDevice->listCOAQuery);
     RTListInit(&pDevice->listCOAStreamOutput);
@@ -4068,11 +4129,10 @@ void vboxDXDestroyDevice(PVBOXDX_DEVICE pDevice)
     RTListForEachSafe(&pDevice->listCOAStreamOutput, pCOA, pNextCOA, VBOXDXKMRESOURCE, co.nodeAllocationsChain)
         vboxDXDestroyCOAllocation(pDevice, pCOA);
 
-    if (pDevice->pShadersKMResource)
+    RTListForEachSafe(&pDevice->listResources, pKMResource, pNextKMResource, VBOXDXKMRESOURCE, nodeResource)
     {
-        RTListNodeRemove(&pDevice->pShadersKMResource->nodeResource);
-        vboxDXDeallocateKMResource(pDevice, pDevice->pShadersKMResource);
-        pDevice->pShadersKMResource = 0;
+        RTListNodeRemove(&pKMResource->nodeResource);
+        vboxDXDeallocateKMResource(pDevice, pKMResource);
     }
 
     D3DDDICB_DESTROYCONTEXT ddiDestroyContext;

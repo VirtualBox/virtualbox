@@ -19,20 +19,20 @@
         <tbody>
           <row>
             <entry>Windows 11 (64-bit). Released versions only.</entry>
-            <entry morerows="2">Premier</entry>
+            <entry morerows="3">Premier</entry>
           </row>
           <row>
-            <entry>Oracle Linux 9, Red Hat Enterprise Linux 9, CentOS Stream 9</entry>
+            <entry>Oracle Linux 10, Red Hat Enterprise Linux 10</entry>
+          </row>
+          <row>
+            <entry>Oracle Linux 9, Red Hat Enterprise Linux 9</entry>
           </row>
           <row>
             <entry>Oracle Linux 8, Red Hat Enterprise Linux 8</entry>
           </row>
           <row>
-            <entry>CentOS Stream 8</entry>
-            <entry morerows="10">Limited</entry>
-          </row>
-          <row>
-            <entry>Oracle Linux 7, Red Hat Enterprise Linux 7, CentOS Linux 7</entry>
+            <entry>Oracle Linux 7, Red Hat Enterprise Linux 7</entry>
+            <entry morerows="9">Limited</entry>
           </row>
           <row>
             <entry>Debian 12</entry>

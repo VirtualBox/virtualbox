@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 108837 2025-03-20 12:48:42Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 110417 2025-07-25 17:52:57Z klaus.espenlaub@oracle.com $
 ## @file
 # Makefile for the Windows installer.
 #
@@ -550,6 +550,7 @@ VBOX_WIN_INST_ENV := \
 	-E 'VBOX_WITH_USB=$(if $(VBOX_WITH_USB),yes,no)' \
 	-E 'VBOX_WITH_VBOX_IMG=$(if $(VBOX_WITH_VBOX_IMG),yes,no)' \
 	-E 'VBOX_WITH_VBOXSDL=$(if $(VBOX_WITH_VBOXSDL),yes,no)' \
+	-E 'VBOX_WITH_VIRT_ARMV8=$(if $(VBOX_WITH_VIRT_ARMV8),yes,no)' \
 	-E 'VBOX_WITH_VMSVGA3D=$(if $(VBOX_WITH_VMSVGA3D),yes,no)' \
 	-E 'VBOX_WITH_VRDP=$(if-expr defined(VBOX_WITH_VRDP) && !defined(VBOX_WITH_EXTPACK_PUEL),yes,no)' \
 	-E 'VBOX_WITH_WEBSERVICES=$(if $(VBOX_WITH_WEBSERVICES),yes,no)'

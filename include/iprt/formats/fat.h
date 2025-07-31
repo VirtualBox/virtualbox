@@ -1,4 +1,4 @@
-/* $Id: fat.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: fat.h 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT, File Allocation Table (FAT).
  */
@@ -133,7 +133,7 @@ typedef struct FATBPB30
 {
     /** DOS v3.0 BPB bits that survived.   */
     FATBPB30CMN     Core30;
-    /** 0x1c / 0x11: Number of hidden sectors preceeding the volume. This is zero
+    /** 0x1c / 0x11: Number of hidden sectors preceding the volume. This is zero
      * on unpartitioned media. */
     uint16_t        cHiddenSectors;
 } FATBPB30;
@@ -175,7 +175,7 @@ typedef struct FATBPB30FLAT
     uint16_t        cSectorsPerTrack;
     /** 0x1a / 0x0f: Number of heads. Zero means reserved and not used. */
     uint16_t        cTracksPerCylinder;
-    /** 0x1c / 0x11: Number of hidden sectors preceeding the volume. This is zero
+    /** 0x1c / 0x11: Number of hidden sectors preceding the volume. This is zero
      * on unpartitioned media. */
     uint16_t        cHiddenSectors;
     /** @} */
@@ -238,7 +238,7 @@ typedef struct FATBPB32FLAT
     uint16_t        cSectorsPerTrack;
     /** 0x1a / 0x0f: Number of heads. Zero means reserved and not used. */
     uint16_t        cTracksPerCylinder;
-    /** 0x1c / 0x11: Number of hidden sectors preceeding the volume. This is zero
+    /** 0x1c / 0x11: Number of hidden sectors preceding the volume. This is zero
      * on unpartitioned media. */
     uint16_t        cHiddenSectors;
     /** @} */
@@ -265,7 +265,7 @@ typedef struct FATBPB331
 {
     /** DOS v3.0 BPB bits that survived.   */
     FATBPB30CMN     Core30;
-    /** 0x1c / 0x11: Number of hidden sectors preceeding the volume.  This is zero
+    /** 0x1c / 0x11: Number of hidden sectors preceding the volume.  This is zero
      * on unpartitioned media.  Values higher than 65535 are complicated due to
      * the field overlapping FATBPB32::cAnotherTotalSectors */
     uint32_t        cHiddenSectors;
@@ -316,7 +316,7 @@ typedef struct FATBPB331FLAT
     /** @} */
     /** @name New in DOS 3.31
      * @{ */
-    /** 0x1c / 0x11: Number of hidden sectors preceeding the volume.  This is zero
+    /** 0x1c / 0x11: Number of hidden sectors preceding the volume.  This is zero
      * on unpartitioned media.  Values higher than 65535 are complicated due to
      * the field overlapping FATBPB32::cAnotherTotalSectors */
     uint32_t        cHiddenSectors;

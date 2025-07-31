@@ -1,4 +1,4 @@
-/* $Id: dxvk_video_decoder.cpp 110079 2025-07-02 06:39:24Z alexander.eichner@oracle.com $ */
+/* $Id: dxvk_video_decoder.cpp 110305 2025-07-18 12:42:15Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBoxDxVk - Video decoder.
  */
@@ -30,6 +30,50 @@
 #include "dxvk_device.h"
 
 namespace dxvk {
+  /* VkVideoProfileListInfoKHR structure for VkImageCreateInfo::pNext.
+   *
+   * DxvkImage keeps a copy of DxvkImageCreateInfo parameter in order to
+   * be able to re-create Vulkan image resource. Therefore the video decoder
+   * specific additional structures for VkImageCreateInfo::pNext chain are
+   * passed now as a memory buffer with a reference counter.
+   */
+  struct DxvkVideoDecodeProfileListInfo {
+    VkVideoProfileListInfoKHR             profileListInfo;
+    /* Vulkan profile info. */
+    VkVideoProfileInfoKHR                 profileInfo;
+    /* Vulkan profile specific information. profileInfo.pNext */
+    union {
+      VkVideoDecodeH264ProfileInfoKHR     h264ProfileInfo;
+      VkVideoDecodeH265ProfileInfoKHR     h265ProfileInfo;
+      VkVideoDecodeAV1ProfileInfoKHR      av1ProfileInfo;
+    };
+
+    static void init(DxvkVideoDecodeProfileListInfo *pThis, VkVideoProfileInfoKHR const &p) {
+        pThis->profileInfo = p;
+
+        if (pThis->profileInfo.videoCodecOperation == VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR) {
+          pThis->h264ProfileInfo   = *(VkVideoDecodeH264ProfileInfoKHR *)p.pNext;
+          pThis->profileInfo.pNext = &pThis->h264ProfileInfo;
+        }
+        else if (pThis->profileInfo.videoCodecOperation == VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR) {
+          pThis->h265ProfileInfo   = *(VkVideoDecodeH265ProfileInfoKHR *)p.pNext;
+          pThis->profileInfo.pNext = &pThis->h265ProfileInfo;
+        }
+        else if (pThis->profileInfo.videoCodecOperation == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR) {
+          pThis->av1ProfileInfo    = *(VkVideoDecodeAV1ProfileInfoKHR *)p.pNext;
+          pThis->profileInfo.pNext = &pThis->av1ProfileInfo;
+        }
+        else {
+          throw DxvkError(str::format("DxvkVideoDecoder: videoCodecOperation ", pThis->profileInfo.videoCodecOperation,
+            " is not supported"));
+        }
+
+        pThis->profileListInfo = { VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR };
+        pThis->profileListInfo.profileCount = 1;
+        pThis->profileListInfo.pProfiles    = &pThis->profileInfo;
+    };
+  };
+
 
   DxvkVideoSessionHandle::DxvkVideoSessionHandle(
     const Rc<DxvkDevice>& device)
@@ -93,8 +137,8 @@ namespace dxvk {
 
 
   DxvkVideoBitstreamBuffer::~DxvkVideoBitstreamBuffer() {
-    if (m_buffer.buffer != VK_NULL_HANDLE) {
-      m_device->vkd()->vkDestroyBuffer(m_device->vkd()->device(), m_buffer.buffer, nullptr);
+    if (m_buffer != VK_NULL_HANDLE) {
+      m_device->vkd()->vkDestroyBuffer(m_device->vkd()->device(), m_buffer, nullptr);
     }
   }
 
@@ -117,7 +161,7 @@ namespace dxvk {
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     if (m_device->vkd()->vkCreateBuffer(m_device->vkd()->device(),
-      &bufferCreateInfo, nullptr, &m_buffer.buffer))
+      &bufferCreateInfo, nullptr, &m_buffer))
       throw DxvkError(str::format(
         "DxvkBuffer: Failed to create video bitstream buffer:"
         "\n  flags: ", std::hex, bufferCreateInfo.flags,
@@ -125,47 +169,43 @@ namespace dxvk {
         "\n  usage: ", std::hex, bufferCreateInfo.usage));
 
     // Query memory requirements
-    DxvkMemoryRequirements memoryRequirements = { };
-    memoryRequirements.tiling = VK_IMAGE_TILING_LINEAR;
-    memoryRequirements.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
-    memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &memoryRequirements.dedicated };
+    VkMemoryDedicatedRequirements dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
+    VkMemoryRequirements2 memoryRequirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &dedicated };
 
     VkBufferMemoryRequirementsInfo2 memoryRequirementInfo = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2 };
-    memoryRequirementInfo.buffer = m_buffer.buffer;
+    memoryRequirementInfo.buffer = m_buffer;
 
     m_device->vkd()->vkGetBufferMemoryRequirements2(m_device->vkd()->device(),
-      &memoryRequirementInfo, &memoryRequirements.core);
+      &memoryRequirementInfo, &memoryRequirements);
 
-    if (m_device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS, 0, 0)
-     || m_device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA, 0, 0)) {
-      /* The memoryRequirements.alignment field is not actually used when allocating a dedicated memory
-       * via vkAllocateMemory. However align the size just in case.
-       */
-      //memoryRequirements.core.memoryRequirements.alignment =
-      //  align(memoryRequirements.core.memoryRequirements.alignment, 4096);
-      memoryRequirements.core.memoryRequirements.size =
-        align(memoryRequirements.core.memoryRequirements.size, 4096);
+    if (m_device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS, Version(), Version())
+     || m_device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA, Version(), Version())) {
+      memoryRequirements.memoryRequirements.alignment =
+        align(memoryRequirements.memoryRequirements.alignment, 4096);
+      memoryRequirements.memoryRequirements.size =
+        align(memoryRequirements.memoryRequirements.size, 4096);
     }
 
-    // Fill in desired memory properties. Request a dedicated allocation.
-    DxvkMemoryProperties memoryProperties = { };
-    memoryProperties.flags = memFlags;
-    memoryProperties.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
-    memoryProperties.dedicated.buffer = m_buffer.buffer;
+    DxvkAllocationInfo allocationInfo;
+    allocationInfo.resourceCookie = (uint64_t)0u;
+    allocationInfo.properties = memFlags;
+    allocationInfo.mode = 0u;
 
-    DxvkMemoryFlags hints(DxvkMemoryFlag::GpuReadable);
+    VkMemoryDedicatedAllocateInfo dedicatedInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
+    dedicatedInfo.buffer = m_buffer;
 
-    m_buffer.memory = m_memAlloc.alloc(
-      memoryRequirements, memoryProperties, hints);
-    if (!m_buffer.memory)
+    m_allocation = m_memAlloc.allocateDedicatedMemory(memoryRequirements.memoryRequirements,
+      allocationInfo, &dedicatedInfo);
+    if (!m_allocation)
       throw DxvkError("DxvkBuffer: Failed to allocate device memory for video bitstream buffer");
 
-    if (m_device->vkd()->vkBindBufferMemory(m_device->vkd()->device(), m_buffer.buffer,
-        m_buffer.memory.memory(), m_buffer.memory.offset()) != VK_SUCCESS)
+    DxvkResourceMemoryInfo memoryInfo = m_allocation->getMemoryInfo();
+    if (m_device->vkd()->vkBindBufferMemory(m_device->vkd()->device(),
+          m_buffer, memoryInfo.memory, memoryInfo.offset) != VK_SUCCESS)
       throw DxvkError("DxvkBuffer: Failed to bind device memory for video bitstream buffer");
 
     /* Fetch data for quicker access. */
-    m_mapPtr = (uint8_t *)m_buffer.memory.mapPtr(0);
+    m_mapPtr = (uint8_t *)m_allocation->mapPtr();
     m_length = bufferCreateInfo.size;
   }
 
@@ -261,12 +301,16 @@ namespace dxvk {
     /*
      * Create resources.
      */
-    VkVideoProfileListInfoKHR profileListInfo =
-      { VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR };
-    profileListInfo.profileCount = 1;
-    profileListInfo.pProfiles    = &m_profile.profileInfo;
+    /* Allocate and initialize a memory buffer with a reference counter. The buffer holds
+     * VkVideoProfileListInfoKHR structure which is required for VkImageCreateInfo::pNext chain.
+     * DxvkImage keeps a copy of DxvkImageCreateInfo parameter in order to be able to re-create
+     * Vulkan image resource.
+     */
+    util::RcMemoryBuffer *pNext = new util::RcMemoryBuffer(sizeof(DxvkVideoDecodeProfileListInfo));
+    DxvkVideoDecodeProfileListInfo *profileListInfo = (DxvkVideoDecodeProfileListInfo *)pNext->data();
+    DxvkVideoDecodeProfileListInfo::init(profileListInfo, m_profile.profileInfo);
 
-    m_bitstreamBuffer->create(profileListInfo, bitstreamBufferSize);
+    m_bitstreamBuffer->create(profileListInfo->profileListInfo, bitstreamBufferSize);
 
     /* Decoded Picture Buffer (DPB), i.e. array of decoded frames.
      * AMD mesa/vulkan driver asserts if the number of slots is greater than the spec requirement.
@@ -290,7 +334,7 @@ namespace dxvk {
        * as the data layout of such DPB-only images may be implementation- and codec-dependent."
        * When m_caps.distinctOutputImage is true the DPB images have the "only DPB usage".
        */
-      imgInfo.pNext       = &profileListInfo;
+      imgInfo.next        = pNext;
       imgInfo.type        = VK_IMAGE_TYPE_2D;
       imgInfo.format      = m_outputFormat;
       imgInfo.flags       = 0;
@@ -321,17 +365,17 @@ namespace dxvk {
 
       slot.image = m_device->createImage(imgInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-      DxvkImageViewCreateInfo viewInfo = {};
-      viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
+      DxvkImageViewKey viewInfo = {};
+      viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
       viewInfo.format     = m_outputFormat;
       viewInfo.usage      = imgInfo.usage;
-      viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
-      viewInfo.minLevel   = 0;
-      viewInfo.numLevels  = 1;
-      viewInfo.minLayer   = 0;
-      viewInfo.numLayers  = 1;
+      viewInfo.aspects    = VK_IMAGE_ASPECT_COLOR_BIT;
+      viewInfo.mipIndex   = 0;
+      viewInfo.mipCount   = 1;
+      viewInfo.layerIndex = 0;
+      viewInfo.layerCount = 1;
 
-      slot.imageView = m_device->createImageView(slot.image, viewInfo);
+      slot.imageView = slot.image->createView(viewInfo);
 
       slot.deactivate();
     }
@@ -340,7 +384,7 @@ namespace dxvk {
      || m_profile.profileInfo.videoCodecOperation == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR) {
       /* Create an additional output image. Also for a possible usage of AV1 film grain feature. */
       DxvkImageCreateInfo imgInfo = {};
-      imgInfo.pNext       = &profileListInfo;
+      imgInfo.next        = pNext;
       imgInfo.type        = VK_IMAGE_TYPE_2D;
       imgInfo.format      = m_outputFormat;
       imgInfo.flags       = 0;
@@ -363,17 +407,17 @@ namespace dxvk {
 
       m_imageDecodeDst = m_device->createImage(imgInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-      DxvkImageViewCreateInfo viewInfo = {};
-      viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
+      DxvkImageViewKey viewInfo = {};
+      viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
       viewInfo.format     = m_outputFormat;
       viewInfo.usage      = imgInfo.usage;
-      viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
-      viewInfo.minLevel   = 0;
-      viewInfo.numLevels  = 1;
-      viewInfo.minLayer   = 0;
-      viewInfo.numLayers  = 1;
+      viewInfo.aspects    = VK_IMAGE_ASPECT_COLOR_BIT;
+      viewInfo.mipIndex   = 0;
+      viewInfo.mipCount   = 1;
+      viewInfo.layerIndex = 0;
+      viewInfo.layerCount = 1;
 
-      m_imageViewDecodeDst = m_device->createImageView(m_imageDecodeDst, viewInfo);
+      m_imageViewDecodeDst = m_imageDecodeDst->createView(viewInfo);
     }
 
     /*
@@ -412,22 +456,61 @@ namespace dxvk {
 
       std::vector<VkBindVideoSessionMemoryInfoKHR> bindMemoryInfos(memoryRequirementsCount);
 
+      VkPhysicalDeviceMemoryProperties memoryProperties = m_device->adapter()->memoryProperties();
+
       for (uint32_t i = 0; i < memoryRequirementsCount; ++i) {
-        const VkVideoSessionMemoryRequirementsKHR &requirement = memoryRequirements[i];
+        VkVideoSessionMemoryRequirementsKHR requirement = memoryRequirements[i];
 
-        DxvkMemoryRequirements reqs = { };
-        reqs.tiling                  = VK_IMAGE_TILING_LINEAR; /* Plain memory. */
-        reqs.core                    = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
-        reqs.core.memoryRequirements = requirement.memoryRequirements;
-        DxvkMemoryProperties props = { };
-        DxvkMemoryFlags hints;
+        /* AMD radv driver from Mesa returns alignment == 0.
+         * DxvkMemoryAllocator::allocateMemory aligns the size:
+         *   VkDeviceSize size = align(requirements.size, requirements.alignment);
+         * The size becomes zero.
+         */
+        if (requirement.memoryRequirements.alignment == 0)
+          requirement.memoryRequirements.alignment = 4096; /* Page align to be on safe side. */
 
-        m_videoSessionMemory[i] = m_memAlloc.alloc(reqs, props, hints);
+        /* Find memory properties of the required memory type. */
+        VkMemoryPropertyFlags memoryPropertyFlags = 0;
+        for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++) {
+          if (requirement.memoryRequirements.memoryTypeBits & (UINT32_C(1) << i)) {
+            memoryPropertyFlags = memoryProperties.memoryTypes[i].propertyFlags;
+            break;
+          }
+        }
+
+        if (memoryPropertyFlags == 0)
+          throw DxvkError(str::format("DxvkVideoDecoder: no properties for memoryTypeBits: ",
+            std::hex, requirement.memoryRequirements.memoryTypeBits, std::dec));
+
+        DxvkAllocationInfo allocationInfo;
+        allocationInfo.resourceCookie = (uint64_t)0u;
+        allocationInfo.properties = memoryPropertyFlags;
+        allocationInfo.mode = 0u;
+
+        if (m_device->adapter()->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR, Version(), Version())
+         || m_device->adapter()->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR, Version(), Version())) {
+          /* RADV allocates two memory buffers for a video session: 128KB in device local
+           * and 36MB in host visible memory.
+           * The latter allocation causes allocation failures of D3D11 dynamic resources later.
+           * Allocating a dedicated memory for it works around this issue.
+           */
+          VkMemoryDedicatedAllocateInfo dedicatedInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
+
+          m_videoSessionMemory[i] = m_memAlloc.allocateDedicatedMemory(requirement.memoryRequirements,
+            allocationInfo, &dedicatedInfo);
+        }
+        else
+          m_videoSessionMemory[i] = m_memAlloc.allocateMemory(requirement.memoryRequirements, allocationInfo);
+
+        if (!m_videoSessionMemory[i])
+          throw DxvkError("DxvkVideoDecoder: Failed to allocate device memory for video session");
+
+        DxvkResourceMemoryInfo memoryInfo = m_videoSessionMemory[i]->getMemoryInfo();
 
         VkBindVideoSessionMemoryInfoKHR &bindMemoryInfo = bindMemoryInfos[i];
         bindMemoryInfo.sType           = VK_STRUCTURE_TYPE_BIND_VIDEO_SESSION_MEMORY_INFO_KHR;
-        bindMemoryInfo.memory          = m_videoSessionMemory[i].memory();
-        bindMemoryInfo.memoryOffset    = m_videoSessionMemory[i].offset();
+        bindMemoryInfo.memory          = memoryInfo.memory;
+        bindMemoryInfo.memoryOffset    = memoryInfo.offset;
         /* Use original size instead of m_videoSessionMemory[i].length() because the latter
          * can be greater and then Vulkan validation complains.
          */
@@ -547,7 +630,7 @@ namespace dxvk {
 
     if (m_profile.videoQueueHasTransfer) {
       /* Acquire ownership of the image to the video queue. */
-      this->TransferImageQueueOwnership(ctx, m_outputImageView->image(), m_outputImageView->info().minLayer,
+      this->TransferImageQueueOwnership(ctx, m_outputImageView->image(), m_outputImageView->info().layerIndex,
         DxvkCmdBuffer::InitBuffer,
         m_device->queues().graphics.queueFamily,
         VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
@@ -567,7 +650,7 @@ namespace dxvk {
 
     if (m_profile.videoQueueHasTransfer) {
       /* Return ownership of the image back to the graphics queue. */
-      this->TransferImageQueueOwnership(ctx, m_outputImageView->image(), m_outputImageView->info().minLayer,
+      this->TransferImageQueueOwnership(ctx, m_outputImageView->image(), m_outputImageView->info().layerIndex,
         DxvkCmdBuffer::VDecBuffer,
         m_device->queues().videoDecode.queueFamily,
         VK_PIPELINE_STAGE_2_TRANSFER_BIT_KHR,
@@ -1632,7 +1715,7 @@ namespace dxvk {
 
       Logger::debug(str::format("VREF:  RefSlot[", i, "]: slotIndex=", s.slotIndex,
         ", FrameNum=", FrameNum,
-        ", image=", dpbSlot.imageView->imageHandle(),
+        ", image=", dpbSlot.imageView->image()->handle(),
         ", view=", s.pPictureResource->imageViewBinding));
     }
 #endif
@@ -1798,7 +1881,7 @@ namespace dxvk {
     }
 
     /* Prepare parameters for copying decoded image to the output view. */
-    VkExtent3D outputExtent = m_outputImageView->imageInfo().extent;
+    VkExtent3D outputExtent = m_outputImageView->mipLevelExtent(0u);
     VkExtent3D copyExtent = {
       std::min(outputExtent.width, m_DPB.decodedPictureExtent.width),
       std::min(outputExtent.height, m_DPB.decodedPictureExtent.height),
@@ -1815,7 +1898,7 @@ namespace dxvk {
     //regions[0].srcOffset                     = { 0, 0, 0 };
     regions[0].dstSubresource.aspectMask       = VK_IMAGE_ASPECT_PLANE_0_BIT;
     //regions[0].dstSubresource.mipLevel       = 0;
-    regions[0].dstSubresource.baseArrayLayer   = m_outputImageView->info().minLayer;
+    regions[0].dstSubresource.baseArrayLayer   = m_outputImageView->info().layerIndex;
     regions[0].dstSubresource.layerCount       = 1;
     //regions[0].dstOffset                     = { 0, 0, 0 };
     regions[0].extent                          = copyExtent;
@@ -1828,7 +1911,7 @@ namespace dxvk {
     //regions[1].srcOffset                     = { 0, 0, 0 };
     regions[1].dstSubresource.aspectMask       = VK_IMAGE_ASPECT_PLANE_1_BIT;
     //regions[1].dstSubresource.mipLevel       = 0;
-    regions[1].dstSubresource.baseArrayLayer   = m_outputImageView->info().minLayer;
+    regions[1].dstSubresource.baseArrayLayer   = m_outputImageView->info().layerIndex;
     regions[1].dstSubresource.layerCount       = 1;
     //regions[1].dstOffset                     = { 0, 0, 0 };
     regions[1].extent                          = { copyExtent.width / 2, copyExtent.height / 2, 1 };
@@ -1837,7 +1920,7 @@ namespace dxvk {
       { VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2 };
     copyImageInfo.srcImage       = decodedPicture->handle();
     copyImageInfo.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    copyImageInfo.dstImage       = m_outputImageView->imageHandle();
+    copyImageInfo.dstImage       = m_outputImageView->image()->handle();
     copyImageInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     copyImageInfo.regionCount    = 2;
     copyImageInfo.pRegions       = regions.data();
@@ -1923,11 +2006,11 @@ namespace dxvk {
       barrier.newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
       barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
       barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      barrier.image               = m_outputImageView->imageHandle();
+      barrier.image               = m_outputImageView->image()->handle();
       barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
       barrier.subresourceRange.baseMipLevel   = 0;
       barrier.subresourceRange.levelCount     = 1;
-      barrier.subresourceRange.baseArrayLayer = m_outputImageView->info().minLayer;
+      barrier.subresourceRange.baseArrayLayer = m_outputImageView->info().layerIndex;
       barrier.subresourceRange.layerCount     = 1;
 
       dependencyInfo =
@@ -1949,11 +2032,11 @@ namespace dxvk {
       barrier.newLayout           = m_outputImageView->image()->info().layout; /* VK_IMAGE_LAYOUT_GENERAL. */
       barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
       barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      barrier.image               = m_outputImageView->imageHandle();
+      barrier.image               = m_outputImageView->image()->handle();
       barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
       barrier.subresourceRange.baseMipLevel   = 0;
       barrier.subresourceRange.levelCount     = 1;
-      barrier.subresourceRange.baseArrayLayer = m_outputImageView->info().minLayer;
+      barrier.subresourceRange.baseArrayLayer = m_outputImageView->info().layerIndex;
       barrier.subresourceRange.layerCount     = 1;
 
       dependencyInfo =
@@ -1980,8 +2063,8 @@ namespace dxvk {
     /*
      * Make sure that the involved objects are alive during command buffer execution.
      */
-    ctx->trackResource(DxvkAccess::None, m_videoSession);
-    ctx->trackResource(DxvkAccess::None, m_videoSessionParameters);
+    ctx->trackObject(m_videoSession);
+    ctx->trackObject(m_videoSessionParameters);
     ctx->trackResource(DxvkAccess::Write, m_outputImageView->image());
     if (m_profile.videoCapabilities.flags & VK_VIDEO_CAPABILITY_SEPARATE_REFERENCE_IMAGES_BIT_KHR) {
       for (auto &slot: m_DPB.slots)
@@ -1991,7 +2074,7 @@ namespace dxvk {
       ctx->trackResource(DxvkAccess::Write, dstDPBSlot.image); /* Same image in every slot. */
     if (fUseDistinctOutputImage)
       ctx->trackResource(DxvkAccess::Write, m_imageDecodeDst);
-    ctx->trackResource(DxvkAccess::Read, m_bitstreamBuffer);
+    ctx->trackObject(m_bitstreamBuffer);
 
     /*
      * Keep reference picture and update its information if necessary.

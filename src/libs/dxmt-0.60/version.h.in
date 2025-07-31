@@ -1,0 +1,3 @@
+#pragma once
+
+#define DXMT_VERSION "@VCS_TAG@"

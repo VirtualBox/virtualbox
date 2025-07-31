@@ -1,4 +1,4 @@
-/* $Id: VirtualBoxImpl.cpp 109215 2025-04-14 20:45:36Z knut.osmundsen@oracle.com $ */
+/* $Id: VirtualBoxImpl.cpp 110340 2025-07-21 14:14:57Z klaus.espenlaub@oracle.com $ */
 /** @file
  * Implementation of IVirtualBox in VBoxSVC.
  */
@@ -158,48 +158,6 @@ std::map<com::Utf8Str, int> VirtualBox::sNatNetworkNameToRefCount;
 // static leaked (todo: find better place to free it.)
 RWLockHandle *VirtualBox::spMtxNatNetworkNameToRefCountLock;
 
-
-#if 0 /* obsoleted by AsyncEvent */
-////////////////////////////////////////////////////////////////////////////////
-//
-// CallbackEvent class
-//
-////////////////////////////////////////////////////////////////////////////////
-
-/**
- *  Abstract callback event class to asynchronously call VirtualBox callbacks
- *  on a dedicated event thread. Subclasses reimplement #prepareEventDesc()
- *  to initialize the event depending on the event to be dispatched.
- *
- *  @note The VirtualBox instance passed to the constructor is strongly
- *  referenced, so that the VirtualBox singleton won't be released until the
- *  event gets handled by the event thread.
- */
-class VirtualBox::CallbackEvent : public Event
-{
-public:
-
-    CallbackEvent(VirtualBox *aVirtualBox, VBoxEventType_T aWhat)
-        : mVirtualBox(aVirtualBox), mWhat(aWhat)
-    {
-        Assert(aVirtualBox);
-    }
-
-    void *handler();
-
-    virtual HRESULT prepareEventDesc(IEventSource* aSource, VBoxEventDesc& aEvDesc) = 0;
-
-private:
-
-    /**
-     *  Note that this is a weak ref -- the CallbackEvent handler thread
-     *  is bound to the lifetime of the VirtualBox instance, so it's safe.
-     */
-    VirtualBox         *mVirtualBox;
-protected:
-    VBoxEventType_T     mWhat;
-};
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -2094,7 +2052,7 @@ HRESULT VirtualBox::getGuestOSFamilies(std::vector<com::Utf8Str> &aOSFamilies)
          it != m->allGuestOSTypes.end(); ++it)
     {
         const Utf8Str &familyId = (*it)->i_familyId();
-        AssertMsg(!familyId.isEmpty(), ("familfyId must not be NULL"));
+        AssertMsg(!familyId.isEmpty(), ("familyId must not be NULL"));
         allOSFamilies.push_back(familyId);
     }
 
@@ -4745,7 +4703,7 @@ HRESULT VirtualBox::getGuestOSSubtypesByFamilyId(const Utf8Str &strOSFamily,
          it != m->allGuestOSTypes.end(); ++it)
     {
         const Utf8Str &familyId = (*it)->i_familyId();
-        AssertMsg(!familyId.isEmpty(), ("familfyId must not be NULL"));
+        AssertMsg(!familyId.isEmpty(), ("familyId must not be NULL"));
         if (familyId.compare(strOSFamily, Utf8Str::CaseInsensitive) == 0)
         {
             fFoundGuestOSType = true;
@@ -4761,7 +4719,7 @@ HRESULT VirtualBox::getGuestOSSubtypesByFamilyId(const Utf8Str &strOSFamily,
          it != m->allGuestOSTypes.end(); ++it)
     {
         const Utf8Str &familyId = (*it)->i_familyId();
-        AssertMsg(!familyId.isEmpty(), ("familfyId must not be NULL"));
+        AssertMsg(!familyId.isEmpty(), ("familyId must not be NULL"));
         if (familyId.compare(strOSFamily, Utf8Str::CaseInsensitive) == 0)
         {
             const Utf8Str &strOSSubtype = (*it)->i_subtype();
@@ -6204,39 +6162,6 @@ DECLCALLBACK(int) VirtualBox::AsyncEventHandler(RTTHREAD thread, void *pvUser)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0 /* obsoleted by AsyncEvent */
-/**
- * Prepare the event using the overwritten #prepareEventDesc method and fire.
- *
- *  @note Locks the managed VirtualBox object for reading but leaves the lock
- *        before iterating over callbacks and calling their methods.
- */
-void *VirtualBox::CallbackEvent::handler()
-{
-    if (!mVirtualBox)
-        return NULL;
-
-    AutoCaller autoCaller(mVirtualBox);
-    if (!autoCaller.isOk())
-    {
-        Log1WarningFunc(("VirtualBox has been uninitialized (state=%d), the callback event is discarded!\n",
-                         mVirtualBox->getObjectState().getState()));
-        /* We don't need mVirtualBox any more, so release it */
-        mVirtualBox = NULL;
-        return NULL;
-    }
-
-    {
-        VBoxEventDesc evDesc;
-        prepareEventDesc(mVirtualBox->m->pEventSource, evDesc);
-
-        evDesc.fire(/* don't wait for delivery */0);
-    }
-
-    mVirtualBox = NULL; /* Not needed any longer. Still make sense to do this? */
-    return NULL;
-}
-#endif
 
 /**
  * Called on the event handler thread.

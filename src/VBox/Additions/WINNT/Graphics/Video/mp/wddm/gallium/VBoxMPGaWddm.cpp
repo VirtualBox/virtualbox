@@ -1,4 +1,4 @@
-/* $Id: VBoxMPGaWddm.cpp 109912 2025-06-20 10:53:01Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPGaWddm.cpp 110485 2025-07-30 17:22:08Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Gallium driver interface for WDDM kernel mode driver.
  */
@@ -1448,7 +1448,9 @@ NTSTATUS APIENTRY GaDxgkDdiSubmitCommand(const HANDLE hAdapter, const DXGKARG_SU
         ++pRenderData;
     }
 
-    if (cbDmaBufferSubmission)
+    bool fFenceSubmitted = false;
+    /* Allow to send empty "fence only" buffers if the host supports fence id in a buffer header. */
+    if (cbDmaBufferSubmission || RT_BOOL(pGaDevExt->hw.pSvga->u32Caps & SVGA_CAP_CMD_BUFFERS_2))
     {
         if (pGaDevExt->hw.pSvga->pCBState)
         {
@@ -1458,15 +1460,18 @@ NTSTATUS APIENTRY GaDxgkDdiSubmitCommand(const HANDLE hAdapter, const DXGKARG_SU
             PHYSICAL_ADDRESS phys = pSubmitCommand->DmaBufferPhysicalAddress;
             phys.QuadPart += pSubmitCommand->DmaBufferSubmissionStartOffset;
 
+            uint32_t const SubmissionFenceId = RT_BOOL(pGaDevExt->hw.pSvga->u32Caps & SVGA_CAP_CMD_BUFFERS_2)
+                                             ? pSubmitCommand->SubmissionFenceId
+                                             : 0;
             PVMSVGACB pCB;
             NTSTATUS Status = SvgaCmdBufAllocUMD(pGaDevExt->hw.pSvga, phys,
-                                                 pSubmitCommand->DmaBufferSize - pSubmitCommand->DmaBufferSubmissionStartOffset,
-                                                 cbDmaBufferSubmission, cid, &pCB);
+                                                 cbDmaBufferSubmission, cid, SubmissionFenceId, &pCB);
             GALOG(("Allocated UMD buffer %p\n", pCB));
             if (NT_SUCCESS(Status))
             {
-                Status = SvgaCmdBufSubmitUMD(pGaDevExt->hw.pSvga, pCB);
-                Assert(NT_SUCCESS(Status)); RT_NOREF(Status);
+                Status = SvgaCmdBufSubmit(pGaDevExt->hw.pSvga, pCB);
+                if (NT_SUCCESS(Status))
+                    fFenceSubmitted = SubmissionFenceId != 0;
             }
         }
 #if defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86)
@@ -1499,6 +1504,12 @@ NTSTATUS APIENTRY GaDxgkDdiSubmitCommand(const HANDLE hAdapter, const DXGKARG_SU
     }
 
     ASMAtomicWriteU32(&pGaDevExt->u32LastSubmittedFenceId, pSubmitCommand->SubmissionFenceId);
+
+    if (fFenceSubmitted)
+    {
+        GALOG(("done %d\n", pSubmitCommand->SubmissionFenceId));
+        return STATUS_SUCCESS;
+    }
 
     /* Submit the fence. */
     if (pGaDevExt->hw.pSvga->pCBState)
@@ -1553,7 +1564,7 @@ BOOLEAN GaDxgkDdiInterruptRoutine(const PVOID MiniportDeviceContext,
     /* Check what happened. */
     if (u32IrqStatus & SVGA_IRQFLAG_ANY_FENCE)
     {
-        /* A SVGA_CMD_FENCE command has been processed by the device. */
+        /* A fence has been processed by the device. */
         gaReportFence(pDevExt);
     }
 
@@ -1661,9 +1672,6 @@ VOID GaDxgkDdiDpcRoutine(const PVOID MiniportDeviceContext)
         }
     }
 
-    if (ASMAtomicCmpXchgBool(&pSvga->fCommandBufferIrq, false, true) && pSvga->pCBState)
-        SvgaCmdBufProcess(pSvga);
-
     /*
      * Deferred MOB destruction.
      */
@@ -1681,6 +1689,12 @@ VOID GaDxgkDdiDpcRoutine(const PVOID MiniportDeviceContext)
             IoQueueWorkItemEx(pWorkItem, dxDeferredMobDestruction, DelayedWorkQueue, pSvga);
         }
     }
+
+    /* Dispose completed buffers.
+     * Must be done as last step to avoid race with cQueuedWorkItems when unloading the driver.
+     */
+    if (ASMAtomicCmpXchgBool(&pSvga->fCommandBufferIrq, false, true) && pSvga->pCBState)
+        SvgaCmdBufProcess(pSvga);
 }
 
 typedef struct GAPREEMPTCOMMANDCBCTX
@@ -1749,14 +1763,24 @@ NTSTATUS APIENTRY GaDxgkDdiPreemptCommand(const HANDLE hAdapter,
             Assert(pGaDevExt->u32PreemptionFenceId == 0);
             ASMAtomicWriteU32(&pGaDevExt->u32PreemptionFenceId, pPreemptCommand->PreemptionFenceId);
 
-            struct
+            if (RT_BOOL(pGaDevExt->hw.pSvga->u32Caps & SVGA_CAP_CMD_BUFFERS_2))
             {
-                uint32_t id;
-                uint32_t fence;
-            } fence;
-            fence.id = SVGA_CMD_FENCE;
-            fence.fence = pPreemptCommand->PreemptionFenceId;
-            Status = SvgaCmdBufSubmitMiniportCommand(pGaDevExt->hw.pSvga, &fence, sizeof(fence));
+                PVMSVGACB pCB;
+                Status = SvgaCmdBufAllocMiniport(pGaDevExt->hw.pSvga, 0, pPreemptCommand->PreemptionFenceId, &pCB);
+                if (NT_SUCCESS(Status))
+                    Status = SvgaCmdBufSubmit(pGaDevExt->hw.pSvga, pCB);
+            }
+            else
+            {
+                struct
+                {
+                    uint32_t id;
+                    uint32_t fence;
+                } fence;
+                fence.id = SVGA_CMD_FENCE;
+                fence.fence = pPreemptCommand->PreemptionFenceId;
+                Status = SvgaCmdBufSubmitMiniportCommand(pGaDevExt->hw.pSvga, &fence, sizeof(fence));
+            }
         }
         else
         {

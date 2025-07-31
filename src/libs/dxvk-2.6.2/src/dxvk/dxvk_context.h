@@ -921,15 +921,19 @@ namespace dxvk {
       m_cmd->waitSubmissionFence(dstCmdBuffer, fence, value);
     }
 
-    void trackResource(
-            DxvkAccess access,
-      const DxvkResourceRef resource) {
-      if (access == DxvkAccess::Write)
-        m_cmd->trackResource<DxvkAccess::Write>(resource);
-      else if (access == DxvkAccess::Read)
-        m_cmd->trackResource<DxvkAccess::Read>(resource);
-      else
-        m_cmd->trackResource<DxvkAccess::None>(resource);
+    template<typename T>
+    void trackObject(Rc<T> object) {
+      m_cmd->track(object);
+    }
+
+    template<typename T>
+    void trackResource(DxvkAccess access, Rc<T> object) {
+      m_cmd->track(object, access);
+    }
+
+    template<typename T>
+    void trackResource(DxvkAccess access, T* object) {
+      m_cmd->track(object, access);
     }
 #endif
 

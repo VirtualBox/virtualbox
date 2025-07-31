@@ -26,6 +26,9 @@ namespace dxvk {
   struct DxvkTimelineSemaphores {
     VkSemaphore graphics = VK_NULL_HANDLE;
     VkSemaphore transfer = VK_NULL_HANDLE;
+#ifdef VBOX_WITH_DXVK_VIDEO
+    VkSemaphore videoDecode = VK_NULL_HANDLE;
+#endif
   };
 
 
@@ -35,6 +38,9 @@ namespace dxvk {
   struct DxvkTimelineSemaphoreValues {
     uint64_t graphics = 0u;
     uint64_t transfer = 0u;
+#ifdef VBOX_WITH_DXVK_VIDEO
+    uint64_t videoDecode = 0u;
+#endif
   };
 
 
@@ -52,7 +58,6 @@ namespace dxvk {
     SdmaBarriers,
 #ifdef VBOX_WITH_DXVK_VIDEO
     VDecBuffer,
-    VDecBarriers,
 #endif
 
     Count
@@ -161,9 +166,6 @@ namespace dxvk {
     bool                syncSdma    = false;
     bool                sparseBind  = false;
     bool                reserved    = false;
-#ifdef VBOX_WITH_DXVK_VIDEO
-    bool                videoDec    = false;
-#endif
     uint32_t            sparseCmd   = 0;
 
     std::array<VkCommandBuffer, uint32_t(DxvkCmdBuffer::Count)> cmdBuffers = { };
@@ -1156,35 +1158,23 @@ namespace dxvk {
 
 #ifdef VBOX_WITH_DXVK_VIDEO
     void cmdBeginVideoCodingKHR(
-            DxvkCmdBuffer           cmdBuffer,
             VkVideoBeginCodingInfoKHR *videoBeginCodingInfo) {
-      m_cmd.videoDec = true;
-
-      m_vkd->vkCmdBeginVideoCodingKHR(getCmdBuffer(cmdBuffer), videoBeginCodingInfo);
+      m_vkd->vkCmdBeginVideoCodingKHR(getCmdBuffer(DxvkCmdBuffer::VDecBuffer), videoBeginCodingInfo);
     }
 
     void cmdControlVideoCodingKHR(
-            DxvkCmdBuffer           cmdBuffer,
             VkVideoCodingControlInfoKHR *videoCodingControlInfo) {
-      m_cmd.videoDec = true;
-
-      m_vkd->vkCmdControlVideoCodingKHR(getCmdBuffer(cmdBuffer), videoCodingControlInfo);
+      m_vkd->vkCmdControlVideoCodingKHR(getCmdBuffer(DxvkCmdBuffer::VDecBuffer), videoCodingControlInfo);
     }
 
     void cmdDecodeVideoKHR(
-            DxvkCmdBuffer           cmdBuffer,
             VkVideoDecodeInfoKHR *videoDecodeInfo) {
-      m_cmd.videoDec = true;
-
-      m_vkd->vkCmdDecodeVideoKHR(getCmdBuffer(cmdBuffer), videoDecodeInfo);
+      m_vkd->vkCmdDecodeVideoKHR(getCmdBuffer(DxvkCmdBuffer::VDecBuffer), videoDecodeInfo);
     }
 
     void cmdEndVideoCodingKHR(
-            DxvkCmdBuffer           cmdBuffer,
             VkVideoEndCodingInfoKHR *videoEndCodingInfo) {
-      m_cmd.videoDec = true;
-
-      m_vkd->vkCmdEndVideoCodingKHR(getCmdBuffer(cmdBuffer), videoEndCodingInfo);
+      m_vkd->vkCmdEndVideoCodingKHR(getCmdBuffer(DxvkCmdBuffer::VDecBuffer), videoEndCodingInfo);
     }
 
     void waitSubmissionFence(DxvkCmdBuffer cmdBuffer, Rc<DxvkFence> fence, uint64_t value) {

@@ -531,4 +531,29 @@ namespace dxvk::util {
     }
   }
 
+#ifdef VBOX_WITH_DXVK_VIDEO
+  class RcMemoryBuffer : public RcObject {
+
+  public:
+    RcMemoryBuffer(
+      size_t sizeInBytes) {
+      m_buffer.resize(sizeInBytes);
+    }
+
+    ~RcMemoryBuffer() {}
+
+    void *data() {
+      return m_buffer.data();
+    }
+
+    size_t size() {
+      return m_buffer.size();
+    }
+
+  private:
+
+    std::vector<uint8_t> m_buffer;
+  };
+#endif
+
 }

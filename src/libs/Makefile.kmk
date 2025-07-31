@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 110082 2025-07-02 11:58:38Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 110314 2025-07-18 17:51:58Z alexander.eichner@oracle.com $
 ## @file
 # Top-level makefile for the external libraries.
 #
@@ -47,12 +47,21 @@ if   defined(VBOX_WITH_LIBCURL) \
 endif
 
 
-# dxvk-native for supporting DirectX over Vulkan on platforms other than Windows.
+# dxvk for supporting DirectX over Vulkan on platforms other than Windows.
 if   defined(VBOX_WITH_DXVK) \
   && !defined(VBOX_ONLY_BUILD) \
   && "$(SDK_VBoxDxVk_INCS)" == "$(SDK_VBoxDxVk_DEFAULT_INCS)" \
   && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SUPPORTED_HOST_ARCHS))" != ""
- include $(PATH_SUB_CURRENT)/dxvk-2.3.1/Makefile.kmk
+ include $(PATH_SUB_CURRENT)/dxvk-2.6.2/Makefile.kmk
+endif
+
+
+# DXMT for supporting DirectX over Vulkan on macOS.
+if   defined(VBOX_WITH_DXMT) \
+  && !defined(VBOX_ONLY_BUILD) \
+  && "$(SDK_VBoxDxMt_INCS)" == "$(SDK_VBoxDxMt_DEFAULT_INCS)" \
+  && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SUPPORTED_HOST_ARCHS))" != ""
+ include $(PATH_SUB_CURRENT)/dxmt-0.60/Makefile.kmk
 endif
 
 
@@ -75,14 +84,14 @@ endif
 if   defined(VBOX_WITH_LIBSLIRP) \
   && !defined(VBOX_ONLY_BUILD) \
   && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SUPPORTED_HOST_ARCHS))" != ""
- include $(PATH_SUB_CURRENT)/libslirp-4.9.0/Makefile.kmk
+ include $(PATH_SUB_CURRENT)/libslirp-4.9.1/Makefile.kmk
 endif
 
 # libssh for cloud integration.
 if   defined(VBOX_WITH_LIBSSH) \
   && !defined(VBOX_ONLY_BUILD) \
   && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SUPPORTED_HOST_ARCHS))" != ""
- include $(PATH_SUB_CURRENT)/libssh-0.10.6/Makefile.kmk
+ include $(PATH_SUB_CURRENT)/libssh-0.11.2/Makefile.kmk
 endif
 
 

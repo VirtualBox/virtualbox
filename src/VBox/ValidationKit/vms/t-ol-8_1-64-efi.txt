@@ -1,0 +1,11 @@
+
+Test VM - tst-ol-8_1-64-efi
+===========================
+
+Setup:
+ - Configure a VM tst-ol-8_1-64-efi with default Oracle Linux 64-bit settings,
+   with a 12 GB or larger disk.
+ - Configure the VM with 4 GB of RAM.
+ - Configure the VM to use EFI.
+ - Install Oracle Linux oracle-linux-8_1-amd64 (8u1).
+ - Proceed as shown in readme_first.txt

@@ -1,4 +1,4 @@
-/* $Id: IEMInline.h 108590 2025-02-27 10:35:39Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMInline.h 110424 2025-07-28 07:29:06Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager - Inlined Functions, Common.
  */
@@ -282,6 +282,7 @@ DECL_INLINE_THROW(void) iemMemCommitAndUnmapRoJmp(PVMCPUCC pVCpu, uint8_t bMapIn
     iemMemCommitAndUnmapRoSafeJmp(pVCpu, bMapInfo);
 }
 
+
 DECLINLINE(void) iemMemRollbackAndUnmapWo(PVMCPUCC pVCpu, uint8_t bMapInfo) RT_NOEXCEPT
 {
 #if defined(IEM_WITH_DATA_TLB) && defined(IN_RING3)
@@ -289,6 +290,19 @@ DECLINLINE(void) iemMemRollbackAndUnmapWo(PVMCPUCC pVCpu, uint8_t bMapInfo) RT_N
         return;
 #endif
     iemMemRollbackAndUnmapWoSafe(pVCpu, bMapInfo);
+}
+
+
+/**
+ * Helper for iemMemMap, iemMemMapJmp and iemMemBounceBufferMapCrossPage.
+ */
+DECL_FORCE_INLINE(uint32_t)
+iemMemCheckDataBreakpoint(PVMCC pVM, PVMCPUCC pVCpu, RTGCPTR GCPtrMem, size_t cbMem, uint32_t fAccess)
+{
+    bool const  fSysAccess = (fAccess & IEM_ACCESS_WHAT_MASK) == IEM_ACCESS_WHAT_SYS;
+    if (fAccess & IEM_ACCESS_TYPE_WRITE)
+        return DBGFBpCheckDataWrite(pVM, pVCpu, GCPtrMem, (uint32_t)cbMem, fSysAccess);
+    return DBGFBpCheckDataRead(pVM, pVCpu, GCPtrMem, (uint32_t)cbMem, fSysAccess);
 }
 
 /** @} */

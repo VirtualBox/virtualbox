@@ -1,4 +1,4 @@
-/* $Id: VSCSIDevice.cpp 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: VSCSIDevice.cpp 110132 2025-07-07 11:33:52Z michal.necasek@oracle.com $ */
 /** @file
  * Virtual SCSI driver: Device handling
  */
@@ -112,22 +112,20 @@ static bool vscsiDeviceReqProcess(PVSCSIDEVICEINT pVScsiDevice, PVSCSIREQINT pVS
              * If allocation length is less than 16 bytes SPC compliant devices have
              * to return an error.
              */
-            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
-            vscsiReqSetXferSize(pVScsiReq, scsiBE2H_U32(&pVScsiReq->pbCDB[6]));
-            if (pVScsiReq->cbXfer < 16)
+            uint32_t cbDataReq = scsiBE2H_U32(&pVScsiReq->pbCDB[6]);
+            if (cbDataReq < 16)
                 *prcReq = vscsiReqSenseErrorSet(&pVScsiDevice->VScsiSense, pVScsiReq, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_INV_FIELD_IN_CMD_PACKET, 0x00);
             else
             {
                 size_t cbData;
                 uint8_t aReply[16]; /* We report only one LUN. */
 
+                vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
+                vscsiReqSetXferSize(pVScsiReq, RT_MIN(sizeof(aReply), cbDataReq));
                 memset(aReply, 0, sizeof(aReply));
                 scsiH2BE_U32(&aReply[0], 8); /* List length starts at position 0. */
                 cbData = RTSgBufCopyFromBuf(&pVScsiReq->SgBuf, aReply, sizeof(aReply));
-                if (cbData < 16)
-                    *prcReq = vscsiReqSenseErrorSet(&pVScsiDevice->VScsiSense, pVScsiReq, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_INV_FIELD_IN_CMD_PACKET, 0x00);
-                else
-                    *prcReq = vscsiReqSenseOkSet(&pVScsiDevice->VScsiSense, pVScsiReq);
+                *prcReq = vscsiReqSenseOkSet(&pVScsiDevice->VScsiSense, pVScsiReq);
             }
             break;
         }
@@ -150,14 +148,16 @@ static bool vscsiDeviceReqProcess(PVSCSIDEVICEINT pVScsiDevice, PVSCSIREQINT pVS
                 break;
             }
 
-            vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
-            vscsiReqSetXferSize(pVScsiReq, pVScsiReq->pbCDB[4]);
-
             /* Descriptor format sense data is not supported and results in an error. */
             if ((pVScsiReq->pbCDB[1] & 0x1) != 0)
                 *prcReq = vscsiReqSenseErrorSet(&pVScsiDevice->VScsiSense, pVScsiReq, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_INV_FIELD_IN_CMD_PACKET, 0x00);
             else
+            {
+                vscsiReqSetXferDir(pVScsiReq, VSCSIXFERDIR_T2I);
+                vscsiReqSetXferSize(pVScsiReq, RT_MIN(sizeof(pVScsiDevice->VScsiSense.abSenseBuf), pVScsiReq->pbCDB[4]));
+
                 *prcReq = vscsiReqSenseCmd(&pVScsiDevice->VScsiSense, pVScsiReq);
+            }
             break;
         }
 #if 0

@@ -1,10 +1,10 @@
-/* $Id: QIToolBar.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: QIToolBar.h 110384 2025-07-23 13:12:08Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - QIToolBar class declaration.
  */
 
 /*
- * Copyright (C) 2006-2024 Oracle and/or its affiliates.
+ * Copyright (C) 2006-2025 Oracle and/or its affiliates.
  *
  * This file is part of VirtualBox base platform packages, as
  * available from https://www.virtualbox.org.
@@ -32,22 +32,18 @@
 #endif
 
 /* Qt includes: */
+#include <QColor>
+#include <QIcon>
 #include <QToolBar>
-#ifdef VBOX_WS_MAC
-# include <QColor>
-# include <QIcon>
-#endif
 
 /* GUI includes: */
 #include "UILibraryDefs.h"
 
 /* Forward declarations: */
 class QMainWindow;
+class QPaintEvent;
 class QResizeEvent;
 class QWidget;
-#ifdef VBOX_WS_MAC
-class QPaintEvent;
-#endif
 
 /** QToolBar extension with few settings presets. */
 class SHARED_LIBRARY_STUFF QIToolBar : public QToolBar
@@ -72,13 +68,15 @@ public:
 #ifdef VBOX_WS_MAC
     /** Mac OS X: Defines whether native tool-bar should be enabled. */
     void enableMacToolbar();
-    /** Mac OS X: Defines whether native tool-bar should be emulated. */
-    void emulateMacToolbar();
 
     /** Mac OS X: Defines whether native tool-bar button should be shown. */
     void setShowToolBarButton(bool fShow);
+#endif /* VBOX_WS_MAC */
 
-    /** Mac OS X: Defines branding stuff to be shown.
+    /** Defines whether unified tool-bar should be emulated. */
+    void emulateUnifiedToolbar();
+
+    /** Defines branding stuff to be shown.
       * @param  icnBranding     Brings branding icon to be shown.
       * @param  strBranding     Brings branding text to be shown.
       * @param  clrBranding     Brings branding color to be used.
@@ -87,7 +85,6 @@ public:
                         const QString &strBranding,
                         const QColor &clrBranding,
                         int iBrandingWidth);
-#endif /* VBOX_WS_MAC */
 
 protected:
 
@@ -97,40 +94,34 @@ protected:
     /** Handles resize @a pEvent. */
     virtual void resizeEvent(QResizeEvent *pEvent) RT_OVERRIDE;
 
-#ifdef VBOX_WS_MAC
     /** Handles paint @a pEvent. */
     virtual void paintEvent(QPaintEvent *pEvent) RT_OVERRIDE;
-#endif
 
 private:
 
     /** Prepares all. */
     void prepare();
 
-#ifdef VBOX_WS_MAC
     /** Recalculates overall contents width. */
     void recalculateOverallContentsWidth();
-#endif /* VBOX_WS_MAC */
 
     /** Holds the parent main-window isntance. */
     QMainWindow *m_pMainWindow;
 
-#ifdef VBOX_WS_MAC
-    /** Mac OS X: Holds whether unified tool-bar should be emulated. */
+    /** Holds whether unified tool-bar should be emulated. */
     bool  m_fEmulateUnifiedToolbar;
 
     /** Holds overall contents width. */
     int  m_iOverallContentsWidth;
 
-    /** Mac OS X: Holds branding icon to be shown. */
+    /** Holds branding icon to be shown. */
     QIcon    m_icnBranding;
-    /** Mac OS X: Holds branding text to be shown. */
+    /** Holds branding text to be shown. */
     QString  m_strBranding;
-    /** Mac OS X: Holds branding color to be used. */
+    /** Holds branding color to be used. */
     QColor   m_clrBranding;
-    /** Mac OS X: Holds the branding stuff width. */
+    /** Holds the branding stuff width. */
     int      m_iBrandingWidth;
-#endif /* VBOX_WS_MAC */
 };
 
 #endif /* !FEQT_INCLUDED_SRC_extensions_QIToolBar_h */

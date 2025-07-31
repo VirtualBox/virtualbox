@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 110028 2025-06-27 19:15:37Z vitali.pelenjow@oracle.com $
+# $Id: Makefile.kmk 110299 2025-07-18 10:45:03Z alexander.eichner@oracle.com $
 ## @file
 # Top-level sub-makefile for the devices, drivers and services.
 #
@@ -351,22 +351,30 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
   	Graphics/DevVGA-SVGA3d-savedstate.cpp
   ifdef VBOX_WITH_VMSVGA3D_DX
    VBoxDD_DEFS          += VMSVGA3D_DX
-   VBoxDD_DEFS          += $(if $(VBOX_WITH_DXVK),VBOX_WITH_DXVK,)
+   VBoxDD_DEFS          += \
+   	$(if $(VBOX_WITH_DXVK),VBOX_WITH_DXVK,) \
+   	$(if $(VBOX_WITH_DXMT),VBOX_WITH_DXMT,)
    VBoxDD_SOURCES       += \
    	Graphics/DevVGA-SVGA3d-dx.cpp \
    	Graphics/DevVGA-SVGA3d-dx-savedstate.cpp \
    	Graphics/DevVGA-SVGA3d-dx-shader.cpp
-   if "$(KBUILD_TARGET)" == "win" || defined(VBOX_WITH_DXVK)
+   if "$(KBUILD_TARGET)" == "win" || defined(VBOX_WITH_DXVK) || defined(VBOX_WITH_DXMT)
     VBoxDD_SDKS.linux   += VBoxDxVk
-    VBoxDD_SDKS.darwin  += VBoxDxVk
+    ifdef VBOX_WITH_DXMT
+     VBoxDD_SDKS.darwin  += VBoxDxMt
+    else
+     VBoxDD_SDKS.darwin  += VBoxDxVk
+    endif
     # DXVK is not used on Windows however VBOX_WITH_DXVK can be enabled for development purposes
     VBoxDD_SDKS.win     += $(if $(VBOX_WITH_DXVK),VBoxDxVk,)
     VBoxDD_DEFS         += VMSVGA3D_DX_BACKEND
     VBoxDD_SOURCES      += \
     	Graphics/DevVGA-SVGA3d-dx-dx11.cpp
-    # @todo This is probably not the nicest way to do this...
-    VBoxDD_POST_CMDS.darwin  += \
-    	$(INSTALL) -m 0644 $(lastword $(sort $(wildcard $(KBUILD_DEVTOOLS_TRG)/moltenvk/v*)))/libMoltenVK.dylib $(PATH_STAGE_BIN)/libMoltenVK.dylib
+    ifdef VBOX_WITH_DXVK
+     # @todo This is probably not the nicest way to do this...
+     VBoxDD_POST_CMDS.darwin  += \
+     	$(INSTALL) -m 0644 $(lastword $(sort $(wildcard $(KBUILD_DEVTOOLS_TRG)/moltenvk/v*)))/libMoltenVK.dylib $(PATH_STAGE_BIN)/libMoltenVK.dylib
+    endif
 
     # mac2 clang is too old to know the -Wclass-conversion switch in the ignore pragma it seems.
     Graphics/DevVGA-SVGA3d-dx-dx11.cpp_CXXFLAGS.darwin += -Wno-error
@@ -772,7 +780,7 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
   VBoxDD_LIBS    += $(PATH_STAGE_LIB)/VBox-libslirp$(VBOX_SUFF_LIB)
   VBoxDD_LIBS.darwin += resolv
   Network/DrvNATlibslirp.cpp_INCS = \
-  	$(PATH_ROOT)/src/libs/libslirp-4.9.0/include
+  	$(PATH_ROOT)/src/libs/libslirp-4.9.1/include
 
  else  # !VBOX_WITH_LIBSLIRP
 

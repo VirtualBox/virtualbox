@@ -1,4 +1,4 @@
-/* $Id: IEMAllThrdFuncsBltIn.cpp 108427 2025-02-17 15:24:14Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMAllThrdFuncsBltIn.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * IEM - Instruction Decoding and Emulation, Built-in Threaded Functions.
  *
@@ -386,7 +386,7 @@ IEM_DECL_IEMTHREADEDFUNC_DEF(iemThreadedFunc_BltIn_CheckHwInstrBps)
             if (GCPhysRangePageWithOffset == pVCpu->iem.s.GCPhysInstrBuf + off) \
             { /* we're good */ } \
             /** @todo r=bird: Not sure if we need the TB obsolete complication here. \
-             * If we're preceeded by an indirect jump, there is no reason why the TB \
+             * If we're preceded by an indirect jump, there is no reason why the TB \
              * would be 'obsolete' just because this time around the indirect jump ends \
              * up at the same offset in a different page.  This would be real bad for \
              * indirect trampolines/validators. */ \

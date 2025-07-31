@@ -1,4 +1,4 @@
-/* $Id: UIVMActivityMonitorContainer.h 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: UIVMActivityMonitorContainer.h 110344 2025-07-22 07:46:07Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVMActivityMonitorPanel class declaration.
  */
@@ -100,7 +100,6 @@ public:
     void removeTabs(const QVector<QUuid> &machineIdsToRemove);
     void addLocalMachine(const CMachine &comMachine);
     void addCloudMachine(const CCloudMachine &comMachine);
-    void guestAdditionsStateChange(const QUuid &machineId);
 
 private slots:
 

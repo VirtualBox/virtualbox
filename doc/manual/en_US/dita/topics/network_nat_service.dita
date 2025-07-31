@@ -1,24 +1,24 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
 <topic xml:lang="en-us" id="network_nat_service">
-  <title><ph conkeyref="vbox-conkeyref-phrases/product-name"/>NAT Service</title>
+  <title><ph conkeyref="vbox-conkeyref-phrases/product-name"/> NAT Network Service</title>
   <body>
-    <p>The Network Address Translation (NAT) service works in a similar way to a home router, grouping the systems using it into a network and preventing systems outside of this network from directly accessing systems inside it, but letting systems inside communicate with each other and with systems outside using TCP and UDP over IPv4 and IPv6. </p>
-    <p>A NAT service is attached to an internal network. Virtual machines which are to make use of it should be attached to that internal network. The name of internal network is chosen when the NAT service is created and the internal network will be created if it does not already exist. The following is an example command to create a NAT network: </p>
+    <p>The Network Address Translation (NAT) Network service works in a similar way to a home router, grouping the systems using it into a network and preventing systems outside of this network from directly accessing systems inside it, but letting systems inside communicate with each other and with systems outside using TCP and UDP over IPv4 and IPv6. </p>
+    <p>A NAT Network service is attached to an internal network. Virtual machines which are to make use of it should be attached to that internal network. The name of internal network is chosen when the NAT service is created and the internal network will be created if it does not already exist. The following is an example command to create a NAT network: </p>
     <pre xml:space="preserve">VBoxManage natnetwork add --netname natnet1 --network "192.168.15.0/24" --enable</pre>
-    <p>Here, natnet1 is the name of the internal network to be used and 192.168.15.0/24 is the network address and mask of the NAT service interface. By default in this static configuration the gateway will be assigned the address 192.168.15.1, the address following the interface address, though this is subject to change. To attach a DHCP server to the internal network, modify the example command as follows: </p>
+    <p>Here, natnet1 is the name of the internal network to be used and 192.168.15.0/24 is the network address and mask of the NAT Network service interface. By default in this static configuration the gateway will be assigned the address 192.168.15.1, the address following the interface address, though this is subject to change. To attach a DHCP server to the internal network, modify the example command as follows: </p>
     <pre xml:space="preserve">VBoxManage natnetwork add --netname natnet1 --network "192.168.15.0/24" --enable --dhcp on</pre>
     <p>To add a DHCP server to an existing network, use the following command: </p>
     <pre xml:space="preserve">VBoxManage natnetwork modify --netname natnet1 --dhcp on</pre>
     <p>To disable the DHCP server, use the following command: </p>
     <pre xml:space="preserve">VBoxManage natnetwork modify --netname natnet1 --dhcp off</pre>
-    <p>A DHCP server provides a list of registered nameservers, but does not map servers from the 127/8 network. </p>
-    <p>To start the NAT service, use the following command: </p>
+    <p>A DHCP server provides a list of registered name servers, but does not map servers from the 127/8 network. </p>
+    <p>To start the NAT Network service, use the following command: </p>
     <pre xml:space="preserve">VBoxManage natnetwork start --netname natnet1</pre>
-    <p>If the network has a DHCP server attached then it will start together with the NAT network service. </p>
-    <p>To stop the NAT network service, together with any DHCP server: </p>
+    <p>If the network has a DHCP server attached then it will start together with the NAT Network service. </p>
+    <p>To stop the NAT Network service, together with any DHCP server: </p>
     <pre xml:space="preserve">VBoxManage natnetwork stop --netname natnet1</pre>
-    <p>To delete the NAT network service: </p>
+    <p>To delete the NAT Network service: </p>
     <pre xml:space="preserve">VBoxManage natnetwork remove --netname natnet1</pre>
     <p>This command does not remove the DHCP server if one is enabled on the internal network. </p>
     <p>Port-forwarding is supported, using the <codeph>--port-forward-4</codeph> switch for IPv4 and <codeph>--port-forward-6</codeph> for IPv6. For example: </p>
@@ -26,11 +26,11 @@
   --netname natnet1 --port-forward-4 "ssh:tcp:[]:1022:[192.168.15.5]:22"</pre>
     <p>This adds a port-forwarding rule from the host's TCP 1022 port to the port 22 on the guest with IP address 192.168.15.5. Host port, guest port and guest IP are mandatory. To delete the rule, use the following command: </p>
     <pre xml:space="preserve">VBoxManage natnetwork modify --netname natnet1 --port-forward-4 delete ssh</pre>
-    <p>It is possible to bind a NAT service to specified interface. For example: </p>
+    <p>It is possible to bind a NAT Network service to specified interface. For example: </p>
     <pre xml:space="preserve">VBoxManage setextradata global "NAT/win-nat-test-0/SourceIp4" 192.168.1.185</pre>
-    <p>To see the list of registered NAT networks, use the following command: </p>
+    <p>To see the list of registered NAT Network services, use the following command: </p>
     <pre xml:space="preserve">VBoxManage list natnetworks</pre>
-    <p>NAT networks can also be created, deleted, and configured using the Network Manager tool in <ph conkeyref="vbox-conkeyref-phrases/vbox-mgr"/>. Click <b outputclass="bold">File</b>, <b outputclass="bold"> Tools</b>, <b outputclass="bold">Network Manager</b>. See <xref href="config-network.dita"/>.</p>
+    <p>NAT network services can also be created, deleted, and configured using the Network Manager tool in <ph conkeyref="vbox-conkeyref-phrases/vbox-mgr"/>. Click <b outputclass="bold">File</b>, <b outputclass="bold"> Tools</b>, <b outputclass="bold">Network Manager</b>. See <xref href="config-network.dita"/>.</p>
     <note>
       <p>Even though the NAT service separates the VM from the host, the VM has access to the host's loopback interface and the network services running on it. The host's loopback interface is accessible as IP address 10.0.2.2 (assuming the default configuration, in other configurations it's the respective address in the configured IPv4 or IPv6 network range). This access to the host's loopback interface can be extremely useful in some cases, for example when running a web application under development in the VM and the database server on the loopback interface on the host. To enable traffic to pass to the host's loopback interface, see <xref href="../cli_topics/vboxmanage-common.dita"/>, NAT Networking Settings.</p>
     </note>

@@ -300,6 +300,9 @@ if [ "$ACTION" = "install" ]; then
         test -e $INSTALLATION_DIR/VBoxNetNAT     && chmod 4511 $INSTALLATION_DIR/VBoxNetNAT
 
         ln -sf $INSTALLATION_DIR/VBoxVMM.so   $INSTALLATION_DIR/components/VBoxVMM.so
+        if [ -f $INSTALLATION_DIR/VBoxVMMArm.so ]; then
+            ln -sf $INSTALLATION_DIR/VBoxVMMArm.so $INSTALLATION_DIR/components/VBoxVMMArm.so
+        fi
         ln -sf $INSTALLATION_DIR/VBoxRT.so    $INSTALLATION_DIR/components/VBoxRT.so
 
         chmod go-w $INSTALLATION_DIR

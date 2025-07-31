@@ -4,32 +4,30 @@
   <title>Motherboard Tab</title>
   
   <body>
-    <p>On the <b outputclass="bold">Motherboard</b> tab, you can configure virtual hardware that would normally be on
-      the motherboard of a real computer. </p>
+    <p>On the <b outputclass="bold">Motherboard</b> tab, you can configure virtual hardware that would normally be on the motherboard of a real computer.</p>
     <ul>
       <li>
-        <p><b outputclass="bold">Base Memory:</b> Sets the amount of RAM that is allocated and given to the VM when it is running. The specified amount of memory will be requested from the host OS, so it must be available or made available as free memory on the host when attempting to start the VM and will not be available to the host while the VM is running. This is the same setting that was specified in the <b outputclass="bold">New Virtual Machine</b> wizard, as described in <xref href="create-vm.dita"/>. </p>
-        <p>Generally, it is possible to change the memory size after installing the guest OS. But you must not reduce
-          the memory to an amount where the OS would no longer boot. </p>
+        <p><b outputclass="bold">Base Memory</b>: Sets the amount of RAM that is allocated and given to the VM when it is running. The specified amount of memory will be requested from the host OS, so it must be available or made available as free memory on the host when attempting to start the VM and will not be available to the host while the VM is running. This is the same setting that was specified when <xref href="create-vm.dita"/>.</p>
+        <p>Generally, it is possible to change the memory size after installing the guest OS. But you must not reduce the memory to an amount where the OS would no longer boot.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Boot Order:</b> Determines the order in which the guest OS will attempt to boot from the various virtual boot devices. Analogous to a real PC's BIOS setting, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> can tell a guest OS to start from the virtual floppy, the virtual CD/DVD drive, the virtual hard drive (each of these as defined by the other VM settings), the network, or none of these. </p>
+        <p><b outputclass="bold">Boot Device Order (BIOS only)</b>: Determines the order in which the guest OS will attempt to boot from the various virtual boot devices. Analogous to a real PC's BIOS setting, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> can tell a guest OS to start from the virtual floppy, the virtual CD/DVD drive, the virtual hard drive (each of these as defined by the other VM settings), the network, or none of these.</p>
         <p>If you select <b outputclass="bold">Network</b>, the VM will attempt to boot from a network using the PXE mechanism. This needs to be configured in detail on the command line. See <xref href="../cli_topics/vboxmanage-modifyvm.dita"/>.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Chipset (Can't be changed on VMs with an Arm architecture):</b> You can select which chipset will be presented to the virtual machine. PIIX3 is the default chipset for most guests. For some guest OSs, the PIIX3 chipset is not well supported. As a result, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> provides an emulation of the ICH9 chipset, which supports PCI express, three PCI buses, PCI-to-PCI bridges and Message Signaled Interrupts (MSI). This enables modern OSs to address more PCI devices and no longer requires IRQ sharing. Using the ICH9 chipset it is also possible to configure up to 36 network cards, compared to a maximum of eight network adapters with PIIX3.</p>
+        <p><b outputclass="bold">Chipset</b>: You can select which chipset will be presented to the virtual machine. This can't be changed on VMs with an Arm architecture. PIIX3 is the default chipset for most guests. For some guest OSs, the PIIX3 chipset is not well supported. As a result, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> provides an emulation of the ICH9 chipset, which supports PCI express, three PCI buses, PCI-to-PCI bridges and Message Signaled Interrupts (MSI). This enables modern OSs to address more PCI devices and no longer requires IRQ sharing. Using the ICH9 chipset it is also possible to configure up to 36 network cards, compared to a maximum of eight network adapters with PIIX3.</p>
       </li>
       <li>
-        <p><b outputclass="bold">TPM (Can't be changed on VMs with an Arm architecture):</b> Enables support for a Trusted Platform Module (TPM) security processor. Choose from the available TPM versions.</p>
+        <p><b outputclass="bold">TPM Version</b>: Enables support for a Trusted Platform Module (TPM) security processor. Choose from the available TPM versions. This can't be changed on VMs with an Arm architecture.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Pointing Device:</b> The default virtual pointing device for some guest OSs is the traditional PS/2 mouse. If set to <b outputclass="bold">USB Tablet</b>, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> reports to the virtual machine that a USB tablet device is present and communicates mouse events to the virtual machine through this device. Another setting is <b outputclass="bold">USB Multi-Touch Tablet</b>, which is suitable for guests running Windows 8 or later.</p>
+        <p><b outputclass="bold">Pointing Device</b>: The default virtual pointing device for some guest OSs is the traditional PS/2 mouse. If set to <b outputclass="bold">USB Tablet</b>, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> reports to the virtual machine that a USB tablet device is present and communicates mouse events to the virtual machine through this device. Another setting is <b outputclass="bold">USB Multi-Touch Tablet</b>, which is suitable for guests running Windows 8 or later.</p>
         <p>Using the virtual USB tablet has the advantage that movements are reported in absolute coordinates, instead of as relative position changes. This enables <ph conkeyref="vbox-conkeyref-phrases/product-name"/> to translate mouse events over the VM window into tablet events without having to capture the mouse in the guest as described in <xref href="keyb_mouse_normal.dita#keyb_mouse_normal"/>. This makes using the VM less tedious even if Guest Additions are not installed.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Enable I/O APIC (Can't be changed on VMs with an Arm architecture):</b> Advanced Programmable Interrupt Controllers (APICs) are an x86 hardware feature that have replaced Programmable Interrupt Controllers (PICs). With an I/O APIC, OSs can use more than 16 interrupt requests (IRQs) and therefore avoid IRQ sharing for improved reliability.</p>
+        <p><b outputclass="bold">I/O APIC</b>: Advanced Programmable Interrupt Controllers (APICs) are an x86 hardware feature that have replaced Programmable Interrupt Controllers (PICs). With an I/O APIC, OSs can use more than 16 interrupt requests (IRQs) and therefore avoid IRQ sharing for improved reliability. Can't be changed on VMs with an Arm architecture.</p>
         <note>
-          <p>Enabling the I/O APIC is <i>required</i>, especially for 64-bit Windows guest OSs. It is also required if you want to use more than one virtual CPU in a virtual machine.</p>
+          <p>Enabling the I/O APIC is <i>required</i> for 64-bit Windows guest OSs. It is also required if you want to use more than one virtual CPU in a virtual machine.</p>
         </note>
         <p>However, software support for I/O APICs has been unreliable with some OSs other than Windows. Also, the use of an I/O APIC slightly increases the overhead of virtualization and therefore slows down the guest OS a little.</p>
         <note>
@@ -37,16 +35,13 @@
         </note>
       </li>
       <li>
-        <p><b outputclass="bold">Hardware Clock in UTC Time:</b> If selected, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> will report the system time in UTC format to the guest instead of the local (host) time. This affects how the virtual real-time clock (RTC) operates and may be useful for UNIX-like guest OSs, which typically expect the hardware clock to be set to UTC. </p>
+        <p><b outputclass="bold">Hardware Clock in UTC</b>: If selected, <ph conkeyref="vbox-conkeyref-phrases/product-name"/> will report the system time in UTC format to the guest instead of the local (host) time. This affects how the virtual real-time clock (RTC) operates and may be useful for UNIX-like guest OSs, which typically expect the hardware clock to be set to UTC. </p>
       </li>
       <li>
-        <p><b outputclass="bold">Enable EFI (Can't be changed on VMs with an Arm architecture):</b> Enables Extensible Firmware Interface (EFI), which replaces the legacy BIOS and may be useful for certain advanced use cases. See <xref href="efi.dita#efi"/>. </p>
+        <p><b outputclass="bold">UEFI</b> Enables Extensible Firmware Interface (EFI), which replaces the legacy BIOS and may be useful for certain advanced use cases. See <xref href="efi.dita#efi"/>. Can't be changed on VMs with an Arm architecture.</p>
       </li>
       <li>
-        <p><b outputclass="bold">Enable Secure Boot:</b> Enables
-            Secure Boot, to provide a secure environment for starting
-            the guest OS.
-          </p>
+        <p><b outputclass="bold">Secure Boot</b>: Enables Secure Boot, to provide a secure environment for starting the guest OS.</p>
       </li>
     </ul>
     <p>In addition, you can turn off the <b outputclass="bold">Advanced Configuration and Power Interface (ACPI)</b> which <ph conkeyref="vbox-conkeyref-phrases/product-name"/> presents to the guest OS by default. </p>

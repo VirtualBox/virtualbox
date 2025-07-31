@@ -1,4 +1,4 @@
-/* $Id: scmrw-kmk.cpp 106772 2024-10-28 16:06:43Z knut.osmundsen@oracle.com $ */
+/* $Id: scmrw-kmk.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT Testcase / Tool - Source Code Massager, Makefile.kmk/kup.
  */

@@ -1,0 +1,11 @@
+
+Test VM - tst-ubuntu-18_04_3-64
+===============================
+
+Setup:
+ - Configure a VM tst-ubuntu-18_04_3-64 with default Ubuntu 64-bit setting,
+   with a 6 GB or larger disk.
+ - Configure the VM with 4 GB of RAM.
+ - Make sure networking is NAT.
+ - Install Ubuntu server 18.04.3 amd64.
+ - Proceed as shown in readme_first.txt

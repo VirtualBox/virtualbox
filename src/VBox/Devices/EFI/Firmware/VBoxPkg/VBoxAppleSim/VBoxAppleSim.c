@@ -1,4 +1,4 @@
-/* $Id: VBoxAppleSim.c 109526 2025-05-14 10:34:03Z alexander.eichner@oracle.com $ */
+/* $Id: VBoxAppleSim.c 110304 2025-07-18 11:07:06Z alexander.eichner@oracle.com $ */
 /** @file
  * VBoxAppleSim.c - VirtualBox Apple Firmware simulation support
  */
@@ -266,8 +266,8 @@ SetProperVariables(IN EFI_HANDLE ImageHandle, EFI_RUNTIME_SERVICES * rs)
 
     //static const CHAR8  vBootArgs[]      = "debug=0x15e keepsyms=1 acpi=0xffffffff acpi_debug=0xff acpi_level=7 -v -x32 -s"; // or just "debug=0x8 -legacy"
     // 0x14e for serial output
-    //static const CHAR8  vDefBootArgs[]      = "debug=0x146 usb=0x800 keepsyms=1 -v -serial=0x1";
-    static const CHAR8  vDefBootArgs[]      = "usb=0x800 keepsyms=1 -v -serial=0x1";
+    //static const CHAR8  vDefBootArgs[]      = "debug=0x146 usb=0x800 keepsyms=1 -v serial=0x1";
+    static const CHAR8  vDefBootArgs[]      = "usb=0x800 keepsyms=1";
     CHAR8  vBootArgs[256];
     UINT32 BootArgsLen;
 

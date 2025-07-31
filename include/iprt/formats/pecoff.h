@@ -1,4 +1,4 @@
-/* $Id: pecoff.h 106745 2024-10-27 22:54:55Z knut.osmundsen@oracle.com $ */
+/* $Id: pecoff.h 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT - Windows NT PE & COFF Structures and Constants.
  */
@@ -56,7 +56,7 @@
 /**
  * PE & COFF file header.
  *
- * This starts COFF files, while in PE files it's preceeded by the PE signature
+ * This starts COFF files, while in PE files it's preceded by the PE signature
  * (see IMAGE_NT_HEADERS32, IMAGE_NT_HEADERS64).
  */
 typedef struct _IMAGE_FILE_HEADER

@@ -1,4 +1,4 @@
-/* $Id: UIVMActivityMonitor.cpp 109614 2025-05-20 14:00:56Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIVMActivityMonitor.cpp 110400 2025-07-24 12:52:28Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVMActivityMonitor class implementation.
  */
@@ -54,7 +54,7 @@
 #include "UIVirtualBoxEventHandler.h"
 
 /* COM includes: */
-#include "CConsole.h"
+#include "CEventSource.h"
 #include "CGuest.h"
 #include "CPerformanceCollector.h"
 #include "CPerformanceMetric.h"
@@ -1349,11 +1349,30 @@ void UIVMActivityMonitorLocal::openSession()
     m_comSession = UILocalMachineStuff::openSession(m_comMachine.GetId(), KLockType_Shared);
     AssertReturnVoid(!m_comSession.isNull());
 
-    CConsole comConsole = m_comSession.GetConsole();
-    AssertReturnVoid(!comConsole.isNull());
-    m_comGuest = comConsole.GetGuest();
+    m_comConsole = m_comSession.GetConsole();
+    AssertReturnVoid(!m_comConsole.isNull());
+    m_comGuest = m_comConsole.GetGuest();
 
-    m_comMachineDebugger = comConsole.GetDebugger();
+    m_comMachineDebugger = m_comConsole.GetDebugger();
+
+    QVector<KVBoxEventType> eventTypes;
+    eventTypes << KVBoxEventType_OnAdditionsStateChanged;
+
+    m_pQtConsoleListener.createObject();
+    m_pQtConsoleListener->init(new UIMainEventListener, this);
+    m_comConsoleListener = CEventListener(m_pQtConsoleListener);
+
+    /* Register event listener for CProgress event source: */
+    m_comConsole.GetEventSource().RegisterListener(m_comConsoleListener, eventTypes, FALSE /* active? */);
+
+    /* Register event sources in their listeners as well: */
+    m_pQtConsoleListener->getWrapped()->registerSource(m_comConsole.GetEventSource(), m_comConsoleListener);
+
+
+
+    connect(m_pQtConsoleListener->getWrapped(), &UIMainEventListener::sigAdditionsChange,
+            this, &UIVMActivityMonitorLocal::sltGuestAdditionsStateChange);
+
 }
 
 void UIVMActivityMonitorLocal::obtainDataAndUpdate()
@@ -1400,10 +1419,6 @@ void UIVMActivityMonitorLocal::obtainDataAndUpdate()
         UIMonitorCommon::getVMMExitCount(m_comMachineDebugger, cTotalVMExits);
         updateVMExitMetric(cTotalVMExits);
     }
-    /* In case of Manager UI we don't get addition state chage event, since it needs a new session etc.
-    * thus we check explicitly: */
-    if (uiCommon().uiType() == UIType_ManagerUI && m_iTimeStep % 5 == 0)
-        guestAdditionsStateChange();
 }
 
 void UIVMActivityMonitorLocal::sltMachineStateChange(const QUuid &uId)
@@ -1436,7 +1451,7 @@ QString UIVMActivityMonitorLocal::defaultMachineFolder() const
         return QString();
 }
 
-void UIVMActivityMonitorLocal::guestAdditionsStateChange()
+void UIVMActivityMonitorLocal::sltGuestAdditionsStateChange()
 {
     bool fGuestAdditionsAvailable = guestAdditionsAvailable("6.1");
     if (m_fGuestAdditionsAvailable == fGuestAdditionsAvailable)
@@ -1447,16 +1462,30 @@ void UIVMActivityMonitorLocal::guestAdditionsStateChange()
 
 void UIVMActivityMonitorLocal::sltClearCOMData()
 {
+    if (!m_comConsole.isNull() && m_comConsole.isOk() && m_comConsole.GetEventSource().isOk())
+    {
+        if (!m_pQtConsoleListener.isNull())
+        {
+            m_pQtConsoleListener->getWrapped()->unregisterSources();
+            m_pQtConsoleListener.setNull();
+        }
+        if (gpGlobalSession->isVBoxSVCAvailable())
+            m_comConsole.GetEventSource().UnregisterListener(m_comConsoleListener);
+    }
+
     if (!m_comSession.isNull())
     {
         m_comSession.UnlockMachine();
         m_comSession.detach();
     }
+    if (!m_comConsole.isNull())
+        m_comConsole.detach();
 }
 
 void UIVMActivityMonitorLocal::reset()
 {
     m_fGuestAdditionsAvailable = false;
+    m_fCOMPerformanceCollectorConfigured = false;
     setEnabled(false);
 
     if (m_pTimer)
@@ -2116,7 +2145,6 @@ void UIVMActivityMonitorCloud::reset()
     resetDiskIOReadInfoLabel();
 
     update();
-    //sltClearCOMData();
 }
 
 void UIVMActivityMonitorCloud::start()

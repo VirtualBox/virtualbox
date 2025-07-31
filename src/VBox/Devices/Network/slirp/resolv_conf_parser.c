@@ -1,4 +1,4 @@
-/* $Id: resolv_conf_parser.c 106061 2024-09-16 14:03:52Z knut.osmundsen@oracle.com $ */
+/* $Id: resolv_conf_parser.c 110275 2025-07-16 18:34:13Z jack.doherty@oracle.com $ */
 /** @file
  * resolv_conf_parser.c - parser of resolv.conf resolver(5)
  */

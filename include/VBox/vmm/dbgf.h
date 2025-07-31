@@ -2065,7 +2065,7 @@ typedef enum DBGFREG
     /** @name ARMv8 register identifiers.
      * @{ */
     DBGFREG_ARMV8_FIRST,
-    /** General purpose registers. */
+    /* General purpose registers: */
     DBGFREG_ARMV8_GREG_X0 = DBGFREG_ARMV8_FIRST,
     DBGFREG_ARMV8_GREG_W0 = DBGFREG_ARMV8_GREG_X0,
     DBGFREG_ARMV8_GREG_X1,
@@ -2171,7 +2171,7 @@ typedef enum DBGFREG
     DBGFREG_ARMV8_FPCR,
     DBGFREG_ARMV8_FPSR,
 
-    /** System registers: */
+    /* System registers: */
     DBGFREG_ARMV8_SP_EL0,
     DBGFREG_ARMV8_SP_EL1,
     DBGFREG_ARMV8_SPSR_EL1,
@@ -2184,7 +2184,7 @@ typedef enum DBGFREG
     DBGFREG_ARMV8_VBAR_EL1,
     DBGFREG_ARMV8_ACTLR_EL1,
 
-    /** EL2 system registers: */
+    /* EL2 system registers: */
     DBGFREG_ARMV8_CNTHCTL_EL2,
     DBGFREG_ARMV8_CNTHP_CTL_EL2,
     DBGFREG_ARMV8_CNTHP_CVAL_EL2,
@@ -2213,7 +2213,7 @@ typedef enum DBGFREG
     DBGFREG_ARMV8_LAST = DBGFREG_ARMV8_VTTBR_EL2,
     /** @} */
 
-    /** The end of the registers.  */
+    /** The end of the registers. */
     DBGFREG_END,
     /** The usual 32-bit type hack. */
     DBGFREG_32BIT_HACK = 0x7fffffff
@@ -2318,6 +2318,10 @@ typedef DBGFREGVALEX const *PCDBGFREGVALEX;
 VMMDECL(ssize_t) DBGFR3RegFormatValue(char *pszBuf, size_t cbBuf, PCDBGFREGVAL pValue, DBGFREGVALTYPE enmType, bool fSpecial);
 VMMDECL(ssize_t) DBGFR3RegFormatValueEx(char *pszBuf, size_t cbBuf, PCDBGFREGVAL pValue, DBGFREGVALTYPE enmType,
                                         unsigned uBase, signed int cchWidth, signed int cchPrecision, uint32_t fFlags);
+
+VMMR3_INT_DECL(size_t) DBGFR3RegFormatX86EFlags(char pszDst[160], uint32_t fEFlags);
+VMMR3_INT_DECL(size_t) DBGFR3RegFormatArmV8PState(char pszDst[160], uint64_t fPState);
+
 
 /**
  * Register sub-field descriptor.

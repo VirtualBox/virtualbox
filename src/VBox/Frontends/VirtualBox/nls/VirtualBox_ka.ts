@@ -87,6 +87,14 @@
         <source>The VirtualBox kernel modules do not match this version of VirtualBox. The installation of VirtualBox was apparently not successful. Executing&lt;br/&gt;&lt;br/&gt;  &lt;font color=blue&gt;&apos;/sbin/vboxconfig&apos;&lt;/font&gt;&lt;br/&gt;&lt;br/&gt;may correct this. Make sure that you are not mixing builds of VirtualBox from different sources.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>This VirtualBox application was built for a different CPU architecture (&lt;b&gt;%1&lt;/b&gt;) than the host (&lt;b&gt;%2&lt;/b&gt;). Please reinstall.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Mismatching CPU Architecture</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>QIArrowButtonPress</name>
@@ -200,15 +208,27 @@
     <name>UIAccelerationFeaturesEditor</name>
     <message>
         <source>Hardware Virtualization:</source>
-        <translation>აპარატურული ვირტუალიზაცია:</translation>
+        <translation type="vanished">აპარატურული ვირტუალიზაცია:</translation>
     </message>
     <message>
         <source>Enable Nested Pa&amp;ging</source>
-        <translation>მეხსიერების გვერდების ერთმანეთში ჩალაგების მხარდაჭერა</translation>
+        <translation type="vanished">მეხსიერების გვერდების ერთმანეთში ჩალაგების მხარდაჭერა</translation>
     </message>
     <message>
         <source>When checked, the virtual machine will try to make use of the nested paging extension of Intel VT-x and AMD-V.</source>
-        <translation>როცა ჩართულია, ვირტუალური მანქანა, სცდის, Intel VT-x-ის და AMD-V-ის ერთმანეთში ჩალაგებული გვერდების გაფართოება გამოიყენოს.</translation>
+        <translation type="vanished">როცა ჩართულია, ვირტუალური მანქანა, სცდის, Intel VT-x-ის და AMD-V-ის ერთმანეთში ჩალაგებული გვერდების გაფართოება გამოიყენოს.</translation>
+    </message>
+    <message>
+        <source>Hardware Virtualization</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Nested Pa&amp;ging</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use the nested paging extension of Intel VT-x and AMD-V on the virtual machine</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -616,11 +636,11 @@
     </message>
     <message>
         <source>&amp;Add Machine...</source>
-        <translation>&amp;მანქანის დამატება...</translation>
+        <translation type="vanished">&amp;მანქანის დამატება...</translation>
     </message>
     <message>
         <source>Add existing virtual machine</source>
-        <translation>არსებული ვირტუალური მანქანის დამატება</translation>
+        <translation type="vanished">არსებული ვირტუალური მანქანის დამატება</translation>
     </message>
     <message>
         <source>Rena&amp;me Group...</source>
@@ -660,7 +680,7 @@
     </message>
     <message>
         <source>Add new group based on selected virtual machines</source>
-        <translation>მონიშნული ვირტუალური მანქანებისგან ჯგუფის შექმნა</translation>
+        <translation type="vanished">მონიშნული ვირტუალური მანქანებისგან ჯგუფის შექმნა</translation>
     </message>
     <message>
         <source>&amp;Settings...</source>
@@ -716,11 +736,11 @@
     </message>
     <message>
         <source>&amp;Normal Start</source>
-        <translation>&amp;ნორმალური გაშვება</translation>
+        <translation type="vanished">&amp;ნორმალური გაშვება</translation>
     </message>
     <message>
         <source>&amp;Headless Start</source>
-        <translation>&amp;უთავო გაშება</translation>
+        <translation type="vanished">&amp;უთავო გაშება</translation>
     </message>
     <message>
         <source>Start selected virtual machines in the background</source>
@@ -728,11 +748,11 @@
     </message>
     <message>
         <source>&amp;Detachable Start</source>
-        <translation>&amp;მოხსნადი გაშვება</translation>
+        <translation type="vanished">&amp;მოხსნადი გაშვება</translation>
     </message>
     <message>
         <source>Start selected virtual machines with option of continuing in background</source>
-        <translation>მონიშნული ვირტუალური მანქანების ფონურად გაშვების შესაძლებლობით შესრულება</translation>
+        <translation type="vanished">მონიშნული ვირტუალური მანქანების ფონურად გაშვების შესაძლებლობით შესრულება</translation>
     </message>
     <message>
         <source>&amp;Pause</source>
@@ -836,11 +856,11 @@
     </message>
     <message>
         <source>ACPI Sh&amp;utdown</source>
-        <translation>ACPI გამორთვა</translation>
+        <translation type="vanished">ACPI გამორთვა</translation>
     </message>
     <message>
         <source>Send ACPI Shutdown signal to selected virtual machines</source>
-        <translation>ვირტუალური მანქანისთვის ACPI გამორთვის სიგნალის გაგზავნა</translation>
+        <translation type="vanished">ვირტუალური მანქანისთვის ACPI გამორთვის სიგნალის გაგზავნა</translation>
     </message>
     <message>
         <source>Po&amp;wer Off</source>
@@ -876,7 +896,7 @@
     </message>
     <message>
         <source>&amp;Virtual Media Manager</source>
-        <translation>&amp;ვირტუალური მედიის მმართველი</translation>
+        <translation type="vanished">&amp;ვირტუალური მედიის მმართველი</translation>
     </message>
     <message>
         <source>Open the Virtual Media Manager</source>
@@ -884,7 +904,7 @@
     </message>
     <message>
         <source>&amp;Cloud Profile Manager</source>
-        <translation>&amp;ღრუბლოვანი პროფილის მმართველი</translation>
+        <translation type="vanished">&amp;ღრუბლოვანი პროფილის მმართველი</translation>
     </message>
     <message>
         <source>Open the Cloud Profile Manager</source>
@@ -1080,7 +1100,7 @@
     </message>
     <message>
         <source>Send the ACPI Shutdown signal to the virtual machine</source>
-        <translation>ვირტუალური მანქანისთვის ACPI გამორთვის სიგნალის გაგზავნა</translation>
+        <translation type="vanished">ვირტუალური მანქანისთვის ACPI გამორთვის სიგნალის გაგზავნა</translation>
     </message>
     <message>
         <source>Power off the virtual machine</source>
@@ -1707,7 +1727,7 @@
     <message>
         <source>[Root]</source>
         <comment>group</comment>
-        <translation>[Root]</translation>
+        <translation type="vanished">[Root]</translation>
     </message>
     <message>
         <source>Copy Key Fingerprint (%1)</source>
@@ -1858,7 +1878,7 @@
     </message>
     <message>
         <source>&amp;Activity Overview...</source>
-        <translation>&amp;აქტივობის გადახედვა...</translation>
+        <translation type="vanished">&amp;აქტივობის გადახედვა...</translation>
     </message>
     <message>
         <source>Activity Monitor</source>
@@ -1866,19 +1886,19 @@
     </message>
     <message>
         <source>Navigate to the vm activity overview</source>
-        <translation>ვმ-ის აქტივობის მონიტორზე გადასვლა</translation>
+        <translation type="vanished">ვმ-ის აქტივობის მონიტორზე გადასვლა</translation>
     </message>
     <message>
         <source>&amp;Welcome Screen</source>
-        <translation>&amp;საწყისი ეკრანი</translation>
+        <translation type="vanished">&amp;საწყისი ეკრანი</translation>
     </message>
     <message>
         <source>Open the Welcome Screen</source>
-        <translation>საწყისი ეკრანის გახსნა</translation>
+        <translation type="vanished">საწყისი ეკრანის გახსნა</translation>
     </message>
     <message>
         <source>&amp;Extension Pack Manager</source>
-        <translation>&amp;დამატებების პაკეტების მმართველი</translation>
+        <translation type="vanished">&amp;დამატებების პაკეტების მმართველი</translation>
     </message>
     <message>
         <source>Open the Extension Pack Manager</source>
@@ -1886,7 +1906,7 @@
     </message>
     <message>
         <source>&amp;Network Manager</source>
-        <translation>&amp;ქსელის მმართველი</translation>
+        <translation type="vanished">&amp;ქსელის მმართველი</translation>
     </message>
     <message>
         <source>Open the Network Manager</source>
@@ -1894,7 +1914,7 @@
     </message>
     <message>
         <source>&amp;VM Activity Overview</source>
-        <translation>&amp;ვმ-ის აქტივობის მონიტორი</translation>
+        <translation type="vanished">&amp;ვმ-ის აქტივობის მონიტორი</translation>
     </message>
     <message>
         <source>Open the VM Activity Overview</source>
@@ -1907,7 +1927,7 @@
     <message>
         <source>[New]</source>
         <comment>group</comment>
-        <translation>[ახალი]</translation>
+        <translation type="vanished">[ახალი]</translation>
     </message>
     <message>
         <source>Move to Gro&amp;up</source>
@@ -2111,11 +2131,11 @@
     </message>
     <message>
         <source>VM Activity</source>
-        <translation>ვმ-ის აქტივობა</translation>
+        <translation type="vanished">ვმ-ის აქტივობა</translation>
     </message>
     <message>
         <source>Switch to selected virtual machine&apos;s activity monitor pane</source>
-        <translation>მონიშნული ვირტუალური მანქანის აქტივობის მონიტორის პანელზე გადართვა</translation>
+        <translation type="vanished">მონიშნული ვირტუალური მანქანის აქტივობის მონიტორის პანელზე გადართვა</translation>
     </message>
     <message>
         <source>Refresh Viewed Log</source>
@@ -2147,7 +2167,7 @@
     </message>
     <message>
         <source>Navigate to VM Activity Overview</source>
-        <translation>ვმ-ის აქტივობის მონიტორზე გადასვლა</translation>
+        <translation type="vanished">ვმ-ის აქტივობის მონიტორზე გადასვლა</translation>
     </message>
     <message>
         <source>Remove Inaccessible Media</source>
@@ -2335,6 +2355,146 @@
     </message>
     <message>
         <source>Upgrade guest additions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No Group</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Edit...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edit existing disk image file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edit Disk Image File</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Resource Use</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Resources...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Navigate to the global resources view</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Navigate to the Global Resources View</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Home</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open the Home Screen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Machines</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open the Machine Manager</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Extensions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Media</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Open</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Open Machine...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open existing virtual machine</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Open...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>New Group</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Create new group based on selected virtual machines</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Start with &amp;GUI</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Start selected virtual machines with GUI</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Start with&amp;out GUI</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Start with &amp;detachable GUI</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Start selected virtual machines with option of continuing in the background</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sh&amp;ut Down</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Send ACPI shutdown signal to selected virtual machines</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Edit</source>
+        <translation type="unfinished">&amp;ჩასწორება</translation>
+    </message>
+    <message>
+        <source>Edit selected media</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edit Media</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Resource Use</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Resources</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>View resource use of the selected virtual machine</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>View Resource Use of the Selected Virtual Machine</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Send the ACPI shutdown signal to the virtual machine</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2719,10 +2879,14 @@
     <name>UIAudioControllerEditor</name>
     <message>
         <source>Audio &amp;Controller:</source>
-        <translation>აუდიო &amp;კონტროლერი:</translation>
+        <translation type="vanished">აუდიო &amp;კონტროლერი:</translation>
     </message>
     <message>
-        <source>Selects the type of the virtual sound card. Depending on this value, VirtualBox will provide different audio hardware to the virtual machine.</source>
+        <source>Audio &amp;Controller</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual sound card type. Depending on this value, VirtualBox will provide different audio hardware to the virtual machine.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2730,22 +2894,34 @@
     <name>UIAudioFeaturesEditor</name>
     <message>
         <source>Extended Features:</source>
-        <translation>გაფართოებული თვისებები:</translation>
+        <translation type="vanished">გაფართოებული თვისებები:</translation>
     </message>
     <message>
         <source>Enable Audio &amp;Output</source>
-        <translation>აუდიო &amp;გამოტანის ჩართვა</translation>
-    </message>
-    <message>
-        <source>When checked, output to the virtual audio device will reach the host. Otherwise the guest is muted.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">აუდიო &amp;გამოტანის ჩართვა</translation>
     </message>
     <message>
         <source>Enable Audio &amp;Input</source>
-        <translation>აუდიო შეტანის &amp;ჩართვა</translation>
+        <translation type="vanished">აუდიო შეტანის &amp;ჩართვა</translation>
     </message>
     <message>
-        <source>When checked, the guest will be able to capture audio input from the host. Otherwise the guest will capture only silence.</source>
+        <source>Features</source>
+        <translation type="unfinished">თვისებები</translation>
+    </message>
+    <message>
+        <source>Audio &amp;Output</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Output to the virtual audio device will reach the host. Otherwise the guest is muted.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Audio &amp;Input</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The guest will be able to capture audio input from the host. Otherwise the guest will capture only silence.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2753,10 +2929,14 @@
     <name>UIAudioHostDriverEditor</name>
     <message>
         <source>Host Audio &amp;Driver:</source>
-        <translation>ჰოსტის აუდიო &amp;დრაივერი:</translation>
+        <translation type="vanished">ჰოსტის აუდიო &amp;დრაივერი:</translation>
     </message>
     <message>
-        <source>Selects the audio output driver. The Null Audio Driver makes the guest see an audio card, however every access to it will be ignored.</source>
+        <source>Host Audio &amp;Driver</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Audio output driver. The Null Audio Driver makes the guest see an audio card, however every access to it will be ignored.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2767,7 +2947,7 @@
         <translation>აუდიოს ჩართვა</translation>
     </message>
     <message>
-        <source>When checked, a virtual PCI audio card will be plugged into the virtual machine and will communicate with the host audio system using the specified driver.</source>
+        <source>A virtual PCI audio card will be plugged into the virtual machine and will communicate with the host audio system using the specified driver</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2775,14 +2955,18 @@
     <name>UIAutoCaptureKeyboardEditor</name>
     <message>
         <source>Extended Features:</source>
-        <translation>გაფართოებული თვისებები:</translation>
+        <translation type="vanished">გაფართოებული თვისებები:</translation>
     </message>
     <message>
         <source>&amp;Auto Capture Keyboard</source>
         <translation>&amp;კლავიატურის ავტომატური გადაჭერა</translation>
     </message>
     <message>
-        <source>When checked, the keyboard is automatically captured every time the VM window is activated. When the keyboard is captured, all keystrokes (including system ones like Alt-Tab) are directed to the VM.</source>
+        <source>Features</source>
+        <translation type="unfinished">თვისებები</translation>
+    </message>
+    <message>
+        <source>Keyboard is automatically captured every time the VM window is activated. When the keyboard is captured, all keystrokes (including system ones like Alt-Tab) are directed to the VM.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2790,7 +2974,7 @@
     <name>UIBaseMemoryEditor</name>
     <message>
         <source>Base &amp;Memory:</source>
-        <translation>&amp;საბაზისო მეხსიერება:</translation>
+        <translation type="vanished">&amp;საბაზისო მეხსიერება:</translation>
     </message>
     <message>
         <source>%1 MB</source>
@@ -2802,15 +2986,31 @@
     </message>
     <message>
         <source>Holds the amount of base memory the virtual machine will have.</source>
-        <translation>შეიცავს ვირტუალური მანქანის საბაზისო მეხსიერების რაოდენობას.</translation>
+        <translation type="vanished">შეიცავს ვირტუალური მანქანის საბაზისო მეხსიერების რაოდენობას.</translation>
     </message>
     <message>
         <source>Minimum possible base memory size.</source>
-        <translation>მინიმალური შესაძლო საბაზისო მეხსიერების ზომა.</translation>
+        <translation type="vanished">მინიმალური შესაძლო საბაზისო მეხსიერების ზომა.</translation>
     </message>
     <message>
         <source>Maximum possible base memory size.</source>
-        <translation>მაქსიმალური შესაძლო საბაზისო მეხსიერების ზომა.</translation>
+        <translation type="vanished">მაქსიმალური შესაძლო საბაზისო მეხსიერების ზომა.</translation>
+    </message>
+    <message>
+        <source>Base &amp;Memory</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VM&apos;s installed RAM</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Minimum RAM</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum RAM</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2868,18 +3068,30 @@
     <name>UIBootOrderEditor</name>
     <message>
         <source>&amp;Boot Order:</source>
-        <translation>&amp;ჩატვირთვის მიმდევრობა:</translation>
+        <translation type="vanished">&amp;ჩატვირთვის მიმდევრობა:</translation>
     </message>
     <message>
         <source>Moves selected boot item up.</source>
-        <translation>მონიშნული ჩასატვირთი ჩანაწერის მაღლა აწევა.</translation>
+        <translation type="vanished">მონიშნული ჩასატვირთი ჩანაწერის მაღლა აწევა.</translation>
     </message>
     <message>
         <source>Moves selected boot item down.</source>
-        <translation>მონიშნული ჩასატვირთი ჩანაწერის დაბლა ჩამოწევა.</translation>
+        <translation type="vanished">მონიშნული ჩასატვირთი ჩანაწერის დაბლა ჩამოწევა.</translation>
     </message>
     <message>
-        <source>Defines the boot device order. Use the checkboxes on the left to enable or disable individual boot devices. Move items up and down to change the device order. Note: only supported for BIOS firmware type, i.e. when below EFI option is off.</source>
+        <source>&amp;Boot Device Order (BIOS only)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VM will attempt to boot from checked devices, in order. Note: only supported for BIOS firmware type, i.e. when below UEFI option is off.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move device up in boot order</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move device down in boot order</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2887,10 +3099,14 @@
     <name>UIChipsetEditor</name>
     <message>
         <source>&amp;Chipset:</source>
-        <translation>&amp;ჩიპსეტი:</translation>
+        <translation type="vanished">&amp;ჩიპსეტი:</translation>
     </message>
     <message>
-        <source>Selects the chipset to be emulated in this virtual machine. Note that the ICH9 chipset emulation is experimental and not recommended except for guest systems (such as Mac OS X) which require it.</source>
+        <source>&amp;Chipset</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Emulated chipset type</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2898,7 +3114,11 @@
     <name>UIChooserAbstractModel</name>
     <message>
         <source>New group</source>
-        <translation>ახალი ჯგუფი</translation>
+        <translation type="vanished">ახალი ჯგუფი</translation>
+    </message>
+    <message>
+        <source>New Group</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2960,11 +3180,11 @@
     <name>UIChooserNodeGlobal</name>
     <message>
         <source>Tools</source>
-        <translation>ხელსაწყოები</translation>
+        <translation type="vanished">ხელსაწყოები</translation>
     </message>
     <message>
         <source>Item</source>
-        <translation>ელემენტი</translation>
+        <translation type="vanished">ელემენტი</translation>
     </message>
 </context>
 <context>
@@ -4698,7 +4918,7 @@
     <message>
         <source>USB MT TouchScreen and TouchPad</source>
         <comment>PointingHIDType</comment>
-        <translation>USB MT სენსორული ეკრანი და თაჩპედი</translation>
+        <translation type="vanished">USB MT სენსორული ეკრანი და თაჩპედი</translation>
     </message>
     <message>
         <source>Host-only Adapter [DEPRECATED]</source>
@@ -4974,12 +5194,12 @@
     <message>
         <source>v1.2</source>
         <comment>TpmType</comment>
-        <translation>v1.2</translation>
+        <translation type="vanished">v1.2</translation>
     </message>
     <message>
         <source>v2.0</source>
         <comment>TpmType</comment>
-        <translation>v2.0</translation>
+        <translation type="vanished">v2.0</translation>
     </message>
     <message>
         <source>Host</source>
@@ -5031,6 +5251,26 @@
         <source>NEGOTIATE</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>USB Multi-Touch TouchScreen and TouchPad</source>
+        <comment>PointingHIDType</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Ethernet over USB (usbnet)</source>
+        <comment>NetworkAdapterType</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>1.2</source>
+        <comment>TpmType</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>2.0</source>
+        <comment>TpmType</comment>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>UICustomFileSystemModel</name>
@@ -5071,17 +5311,21 @@
     <name>UIDefaultMachineFolderEditor</name>
     <message>
         <source>Default &amp;Machine Folder:</source>
-        <translation>მანქანების &amp;ნაგულისხმები საქაღალდე:</translation>
+        <translation type="vanished">მანქანების &amp;ნაგულისხმები საქაღალდე:</translation>
     </message>
     <message>
-        <source>Holds the path to the default virtual machine folder. This folder is used, if not explicitly specified otherwise, when creating new virtual machines.</source>
+        <source>Default &amp;Machine Folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Path to the default virtual machine folder. This folder is used, if not explicitly specified otherwise, when creating new virtual machines.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>UIDescriptionEditor</name>
     <message>
-        <source>Holds the description of the virtual machine. The description field is useful for commenting on configuration details of the installed guest OS.</source>
+        <source>Description of the VM&apos;s configuration</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -5672,40 +5916,60 @@
     <name>UIDiskEncryptionSettingsEditor</name>
     <message>
         <source>En&amp;able Disk Encryption</source>
-        <translation>&amp;დისკის დაშიფვრის ჩართვა</translation>
-    </message>
-    <message>
-        <source>When checked, disks attached to this virtual machine will be encrypted.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;დისკის დაშიფვრის ჩართვა</translation>
     </message>
     <message>
         <source>Disk Encryption C&amp;ipher:</source>
-        <translation>&amp;დისკის დაშიფვრის მექანიზმი:</translation>
-    </message>
-    <message>
-        <source>Holds the cipher to be used for encrypting the virtual machine disks.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;დისკის დაშიფვრის მექანიზმი:</translation>
     </message>
     <message>
         <source>E&amp;nter New Password:</source>
-        <translation>&amp;შეყვანეთ ახალი პაროლი:</translation>
-    </message>
-    <message>
-        <source>Holds the encryption password for disks attached to this virtual machine.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;შეყვანეთ ახალი პაროლი:</translation>
     </message>
     <message>
         <source>C&amp;onfirm New Password:</source>
-        <translation>&amp;დაადასტურეთ ახალი პაროლი:</translation>
+        <translation type="vanished">&amp;დაადასტურეთ ახალი პაროლი:</translation>
     </message>
     <message>
         <source>Confirms the disk encryption password.</source>
-        <translation>დაადასტურეთ დისკის დაშიფვრის პაროლი.</translation>
+        <translation type="vanished">დაადასტურეთ დისკის დაშიფვრის პაროლი.</translation>
     </message>
     <message>
         <source>Leave Unchanged</source>
         <comment>cipher type</comment>
         <translation>შეუცვლელად დატოვება</translation>
+    </message>
+    <message>
+        <source>&amp;Encrypt Disks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Encrypt the disks attached to this VM</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Disk Encryption C&amp;ipher</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cipher type used to encrypt the disks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>E&amp;nter New Encryption Password</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Password to access disks attached to this VM</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>C&amp;onfirm New Encryption Password</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Re-enter the password to confirm it matches</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -5715,19 +5979,23 @@
         <translation>&amp;სრული ზომის წინასწარი გამოთხოვა</translation>
     </message>
     <message>
-        <source>When checked, the virtual disk image is allocated with its full size during VM creation time</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>&amp;Split into 2GB parts</source>
         <translation type="vanished">2გბ-იანი ფაილებად &amp;დახლეჩა</translation>
     </message>
     <message>
         <source>When checked, the virtual hard disk file is split into 2GB parts.</source>
-        <translation>როცა ჩართულია, ვირტუალური მყარი დისკის 2გბ ნაწილებად დაიყოფა.</translation>
+        <translation type="vanished">როცა ჩართულია, ვირტუალური მყარი დისკის 2გბ ნაწილებად დაიყოფა.</translation>
     </message>
     <message>
-        <source>&amp;Split Into 2GB Parts</source>
+        <source>Disk space is allocated in full to the virtual machine when created</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Split Disk Into 2 GB Parts</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The virtual hard disk file is split into 2 GB parts</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -5735,7 +6003,7 @@
     <name>UIDisplayFeaturesEditor</name>
     <message>
         <source>Extended Features:</source>
-        <translation>გაფართოებული თვისებები:</translation>
+        <translation type="vanished">გაფართოებული თვისებები:</translation>
     </message>
     <message>
         <source>&amp;Raise Window Under Mouse Pointer</source>
@@ -5743,7 +6011,7 @@
     </message>
     <message>
         <source>When checked, machine windows will be raised when the mouse pointer moves over them.</source>
-        <translation>როცა ჩართულია, მანქანის ფანჯრები ამოიწევა, როცა თაგუნას კურსორს ზედ გადაატარებთ.</translation>
+        <translation type="vanished">როცა ჩართულია, მანქანის ფანჯრები ამოიწევა, როცა თაგუნას კურსორს ზედ გადაატარებთ.</translation>
     </message>
     <message>
         <source>&amp;Disable Host Screen Saver</source>
@@ -5751,22 +6019,46 @@
     </message>
     <message>
         <source>When checked, screen saver of the host OS is disabled.</source>
-        <translation>როცა ჩართულია, ჰოსტი ოს-ის ეკრანის ჩამმართველი გაითიშება.</translation>
+        <translation type="vanished">როცა ჩართულია, ჰოსტი ოს-ის ეკრანის ჩამმართველი გაითიშება.</translation>
+    </message>
+    <message>
+        <source>Features</source>
+        <translation type="unfinished">თვისებები</translation>
+    </message>
+    <message>
+        <source>Machine windows will be raised when the mouse pointer moves over them</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Screen saver of the host OS is disabled</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>UIDisplayScreenFeaturesEditor</name>
     <message>
         <source>Extended Features:</source>
-        <translation>გაფართოებული თვისებები:</translation>
+        <translation type="vanished">გაფართოებული თვისებები:</translation>
     </message>
     <message>
         <source>Enable &amp;3D Acceleration</source>
-        <translation>&amp;3D აჩქარების ჩართვა</translation>
+        <translation type="vanished">&amp;3D აჩქარების ჩართვა</translation>
     </message>
     <message>
         <source>When checked, the virtual machine will be given access to the 3D graphics capabilities available on the host.</source>
-        <translation>როცა ჩართულია, ვირტუალურ მანქანას ჰოსტის 3D გრაფიკის შესაძლებლობებთან მიეცემა წვდომა.</translation>
+        <translation type="vanished">როცა ჩართულია, ვირტუალურ მანქანას ჰოსტის 3D გრაფიკის შესაძლებლობებთან მიეცემა წვდომა.</translation>
+    </message>
+    <message>
+        <source>Features</source>
+        <translation type="unfinished">თვისებები</translation>
+    </message>
+    <message>
+        <source>&amp;3D Acceleration</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The VM will be given access to the 3D graphics capabilities available on the host</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -5840,10 +6132,14 @@
     <name>UIDragAndDropEditor</name>
     <message>
         <source>D&amp;rag&apos;n&apos;Drop:</source>
-        <translation>წაღება და დაგდება:</translation>
+        <translation type="vanished">წაღება და დაგდება:</translation>
     </message>
     <message>
-        <source>Holds which data will be copied between the guest and the host OS by drag&apos;n&apos;drop. This feature requires Guest Additions to be installed in the guest OS.</source>
+        <source>D&amp;rag-and-Drop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable the dragging method of copying data between file manager tools</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -5895,19 +6191,31 @@
     <name>UIExecutionCapEditor</name>
     <message>
         <source>&amp;Execution Cap:</source>
-        <translation>&amp;შესრულების პიკი:</translation>
-    </message>
-    <message>
-        <source>Limits the amount of time that each virtual CPU is allowed to run for. Each virtual CPU will be allowed to use up to this percentage of the processing time available on one physical CPU.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;შესრულების პიკი:</translation>
     </message>
     <message>
         <source>Minimum possible execution cap.</source>
-        <translation>შესრულების მინიმალური შესაძლო შეზღუდვა.</translation>
+        <translation type="vanished">შესრულების მინიმალური შესაძლო შეზღუდვა.</translation>
     </message>
     <message>
         <source>Maximum possible virtual CPU count.</source>
-        <translation>მაქსიმალური შესაძლო ვირტუალური CPU-ების რაოდენობა.</translation>
+        <translation type="vanished">მაქსიმალური შესაძლო ვირტუალური CPU-ების რაოდენობა.</translation>
+    </message>
+    <message>
+        <source>&amp;Processing Cap</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Percentage of processing time allowed per virtual CPU</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Minimum execution cap</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum execution cap</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6411,6 +6719,14 @@
         <source>NewDirectory</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Interactive Column Widths</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow setting column widths interactively</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>UIFilePathSelector</name>
@@ -6463,19 +6779,35 @@
     <name>UIFontScaleEditor</name>
     <message>
         <source>F&amp;ont Scaling:</source>
-        <translation>&amp;ფონტის მასშტაბი:</translation>
+        <translation type="vanished">&amp;ფონტის მასშტაბი:</translation>
     </message>
     <message>
         <source>Holds the scaling factor for the font size.</source>
-        <translation>შეიცავს ფონტის ზომის გადიდების მასშტაბს.</translation>
+        <translation type="vanished">შეიცავს ფონტის ზომის გადიდების მასშტაბს.</translation>
     </message>
     <message>
         <source>Minimum possible scale factor.</source>
-        <translation>მინიმალური შესაძლებელი მასშტაბირების ფაქტორი.</translation>
+        <translation type="vanished">მინიმალური შესაძლებელი მასშტაბირების ფაქტორი.</translation>
     </message>
     <message>
         <source>Maximum possible scale factor.</source>
-        <translation>მაქსიმალური შესაძლებელი მასშტაბირების ფაქტორი.</translation>
+        <translation type="vanished">მაქსიმალური შესაძლებელი მასშტაბირების ფაქტორი.</translation>
+    </message>
+    <message>
+        <source>F&amp;ont Scaling</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Scale factor for the font size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Minimum font scale factor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum font scale factor</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6534,11 +6866,19 @@
     <name>UIGraphicsControllerEditor</name>
     <message>
         <source>&amp;Graphics Controller:</source>
-        <translation>&amp;გრაფიკული კონტროლერი:</translation>
+        <translation type="vanished">&amp;გრაფიკული კონტროლერი:</translation>
     </message>
     <message>
         <source>Selects the graphics adapter type the virtual machine will use.</source>
-        <translation>აირჩიეთ ვირტუალური მანქანის გრაფიკული ადაპტერის ტიპი.</translation>
+        <translation type="vanished">აირჩიეთ ვირტუალური მანქანის გრაფიკული ადაპტერის ტიპი.</translation>
+    </message>
+    <message>
+        <source>&amp;Graphics Controller</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Graphics controller type the virtual machine will use</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6872,6 +7212,25 @@
     </message>
 </context>
 <context>
+    <name>UIHomePane</name>
+    <message>
+        <source>&lt;h3&gt;Get started with VirtualBox&lt;/h3&gt;&lt;p&gt;&lt;a href=#configure#&gt;Configure VirtualBox Manager to work with your computer&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#create#&gt;Create a new virtual machine (VM)&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#open#&gt;Open a saved VirtualBox VM&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#import#&gt;Import a VM from open virtualization or cloud formats&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Refer to the &lt;a href=https://docs.oracle.com/en/virtualization/virtualbox/index.html&gt;VirtualBox documentation&lt;/a&gt; or press %1 for help.&lt;/p&gt;&lt;p&gt;Visit &lt;a href=https://www.virtualbox.org&gt;virtualbox.org&lt;/a&gt; to download test builds, access the source code, and more.&lt;/p&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;h3&gt;Please choose Experience Mode!&lt;/h3&gt;By default, the VirtualBox GUI is hiding some options, tools and wizards. &lt;p&gt;The &lt;b&gt;Basic Mode&lt;/b&gt; is intended for those users who are not interested in advanced functionality and prefer a simpler, cleaner interface.&lt;/p&gt;&lt;p&gt;The &lt;b&gt;Expert Mode&lt;/b&gt; is intended for experienced users who wish to utilize all VirtualBox functionality.&lt;/p&gt;&lt;p&gt;You can choose whether you are a beginner or experienced user by selecting required option at the right. This choice can always be changed in Global Preferences or Machine Settings windows.&lt;/p&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Basic Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Expert Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>UIHostComboEditor</name>
     <message>
         <source>Left %1</source>
@@ -6945,35 +7304,59 @@
 <context>
     <name>UIHostnameDomainNameEditor</name>
     <message>
-        <source>Hostname should be at least 2 character long. Allowed characters are alphanumerics, &quot;-&quot; and &quot;.&quot;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Domain name should be at least 2 character long. Allowed characters are alphanumerics, &quot;-&quot; and &quot;.&quot;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Hostna&amp;me:</source>
-        <translation>&amp;ჰოსტის სახელი:</translation>
+        <translation type="vanished">&amp;ჰოსტის სახელი:</translation>
     </message>
     <message>
         <source>Holds the hostname.</source>
-        <translation>შეიცავს ჰოსტის სახელს.</translation>
+        <translation type="vanished">შეიცავს ჰოსტის სახელს.</translation>
     </message>
     <message>
         <source>&amp;Domain Name:</source>
-        <translation>&amp;დომენის სახელი:</translation>
+        <translation type="vanished">&amp;დომენის სახელი:</translation>
     </message>
     <message>
         <source>Holds the domain name.</source>
-        <translation>შეიცავს დომენის სახელს.</translation>
-    </message>
-    <message>
-        <source>Hostname is valid</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">შეიცავს დომენის სახელს.</translation>
     </message>
     <message>
         <source>Domain name is valid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Host name should be at least 2 character long. Allowed characters are alphanumerics, &quot;-&quot; and &quot;.&quot;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Host name is valid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Selected OS requires a valid product key</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Product key is valid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Host Na&amp;me</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Host name to be assigned to the virtual machine</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Domain Name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Domain name to be assigned to the virtual machine</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -7469,10 +7852,6 @@
         <translation type="vanished">&amp;მომხმარებლის ინტერფეისის ენები</translation>
     </message>
     <message>
-        <source>Lists all available user interface languages. The effective language is written in bold. Select Default to reset to the system default language.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Author</source>
         <translation>ავტორი</translation>
     </message>
@@ -7495,6 +7874,10 @@
     <message>
         <source>Author(s):</source>
         <translation>ავტორები:</translation>
+    </message>
+    <message>
+        <source>Available user interface languages. The effective language is written in bold. Select Default to reset to the system default language.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -7601,11 +7984,11 @@
     <name>UIMachineSettingsGeneral</name>
     <message>
         <source>Basi&amp;c</source>
-        <translation>&amp;ძირითადი</translation>
+        <translation type="vanished">&amp;ძირითადი</translation>
     </message>
     <message>
         <source>A&amp;dvanced</source>
-        <translation>&amp;დამატებითი</translation>
+        <translation type="vanished">&amp;დამატებითი</translation>
     </message>
     <message>
         <source>D&amp;escription</source>
@@ -7634,6 +8017,14 @@
     <message>
         <source>Disk encryption passwords do not match.</source>
         <translation>დისკის დაშიფვრის პაროლები არ ემთხვევა.</translation>
+    </message>
+    <message>
+        <source>&amp;Identity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Features</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -7872,27 +8263,51 @@
     <name>UIMaximumGuestScreenSizeEditor</name>
     <message>
         <source>Maximum Guest Screen &amp;Size:</source>
-        <translation>სტუმრის ეკრანის მაქსიმალური &amp;ზომა:</translation>
+        <translation type="vanished">სტუმრის ეკრანის მაქსიმალური &amp;ზომა:</translation>
     </message>
     <message>
         <source>&amp;Width:</source>
-        <translation>&amp;სიგანე:</translation>
+        <translation type="vanished">&amp;სიგანე:</translation>
     </message>
     <message>
         <source>Holds the maximum width which we would like the guest to use.</source>
-        <translation>შეიცავს მაქსიმალურ სიგანეს, რომელიც გვსურს, სტუმარმა გამოიყენოს.</translation>
+        <translation type="vanished">შეიცავს მაქსიმალურ სიგანეს, რომელიც გვსურს, სტუმარმა გამოიყენოს.</translation>
     </message>
     <message>
         <source>&amp;Height:</source>
-        <translation>&amp;სიმაღლე:</translation>
+        <translation type="vanished">&amp;სიმაღლე:</translation>
     </message>
     <message>
         <source>Holds the maximum height which we would like the guest to use.</source>
-        <translation>შეიცავს მაქსიმალურ სიმაღლეს, რომელიც გვსურს, სტუმარმა გამოიყენოს.</translation>
+        <translation type="vanished">შეიცავს მაქსიმალურ სიმაღლეს, რომელიც გვსურს, სტუმარმა გამოიყენოს.</translation>
     </message>
     <message>
         <source>Selects maximum guest screen size policy.</source>
-        <translation>ირჩევს სტუმრის ეკრანის მაქსიმალური ზომის პოლიტიკას.</translation>
+        <translation type="vanished">ირჩევს სტუმრის ეკრანის მაქსიმალური ზომის პოლიტიკას.</translation>
+    </message>
+    <message>
+        <source>Maximum Guest Screen &amp;Size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Width</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum width which we would like the guest to use</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Height</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum height which we would like the guest to use</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum guest screen size policy</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -7970,10 +8385,6 @@
         <translation type="unfinished">შემოწმება…</translation>
     </message>
     <message>
-        <source>Some of the files in this hard disk chain are inaccessible. Please use the Virtual Medium Manager to inspect these files.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>This base hard disk is indirectly attached using the following differencing hard disk:</source>
         <translation type="unfinished"></translation>
     </message>
@@ -7981,6 +8392,10 @@
         <source>Differencing</source>
         <comment>medium</comment>
         <translation type="unfinished">განსხვავება</translation>
+    </message>
+    <message>
+        <source>Some of the files in this hard disk chain are inaccessible. Please use the Virtual Media Manager to inspect these files.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -8371,12 +8786,16 @@
         <source>Disk file name is valid</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Specify the location for the new virtual hard disk file...</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>UIMediumSizeEditor</name>
     <message>
         <source>Holds the size of this medium.</source>
-        <translation>შეიცავს ამ დისკის ზომას.</translation>
+        <translation type="vanished">შეიცავს ამ დისკის ზომას.</translation>
     </message>
     <message>
         <source>&lt;nobr&gt;%1 (%2 B)&lt;/nobr&gt;</source>
@@ -8384,14 +8803,30 @@
     </message>
     <message>
         <source>Minimum size for this medium.</source>
-        <translation>ამ დისკის მინიმალური ზომა.</translation>
+        <translation type="vanished">ამ დისკის მინიმალური ზომა.</translation>
     </message>
     <message>
         <source>Maximum size for this medium.</source>
-        <translation>ამ დისკის მაქსიმალური ზომა.</translation>
+        <translation type="vanished">ამ დისკის მაქსიმალური ზომა.</translation>
     </message>
     <message>
-        <source>%1 (%2 B)</source>
+        <source>D&amp;isk Size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Medium size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Minimum possible disk size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum possible disk size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Disk size set to %1</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -8478,7 +8913,11 @@
     </message>
     <message>
         <source>Allows to modify VM menu-bar contents.</source>
-        <translation>ვმ-ის მენიუს ზოლის ჩასწორების ნების დართვა.</translation>
+        <translation type="vanished">ვმ-ის მენიუს ზოლის ჩასწორების ნების დართვა.</translation>
+    </message>
+    <message>
+        <source>Configure the virtual machine menus</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -8618,28 +9057,12 @@
         <translation>ვირტუალური მანქანის ჯგუფების დაყენების შეცდომა &lt;b&gt;%1&lt;/b&gt;.</translation>
     </message>
     <message>
-        <source>&lt;p&gt;You are about to remove following virtual machine items from the machine list:&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;Do you wish to proceed?&lt;/p&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Remove</source>
         <translation>წაშლა</translation>
     </message>
     <message>
-        <source>&lt;p&gt;You are about to remove following inaccessible virtual machines from the machine list:&lt;/p&gt;&lt;p&gt;%1&lt;/p&gt;&lt;p&gt;Do you wish to proceed?&lt;/p&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>&lt;p&gt;You are about to remove following virtual machines from the machine list:&lt;/p&gt;&lt;p&gt;%1&lt;/p&gt;&lt;p&gt;Would you like to delete the files containing the virtual machine from your hard disk as well? Doing this will also remove the files containing the machine&apos;s virtual hard disks if they are not in use by another machine.&lt;/p&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>&lt;p&gt;You are about to remove following virtual machines from the machine list:&lt;/p&gt;&lt;p&gt;%1&lt;/p&gt;&lt;p&gt;Would you like to delete the files containing the virtual machine from your hard disk as well?&lt;/p&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Delete all files</source>
-        <translation>ყველა ფაილის წაშლა</translation>
+        <translation type="vanished">ყველა ფაილის წაშლა</translation>
     </message>
     <message>
         <source>Remove only</source>
@@ -8663,10 +9086,6 @@
         <translation>იგნორი</translation>
     </message>
     <message>
-        <source>&lt;p&gt;Are you sure you want to discard the saved state of the following virtual machines?&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;This operation is equivalent to resetting or powering off the machine without doing a proper shutdown of the guest OS.&lt;/p&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Discard</source>
         <comment>saved state</comment>
         <translation>გაუქმება</translation>
@@ -8681,17 +9100,9 @@
         <translation>თავიდან ჩართვა</translation>
     </message>
     <message>
-        <source>&lt;p&gt;Do you really want to send an ACPI shutdown signal to the following virtual machines?&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>ACPI Shutdown</source>
         <comment>machine</comment>
-        <translation>ACPI-ით გამორთვა</translation>
-    </message>
-    <message>
-        <source>&lt;p&gt;Do you really want to power off the following virtual machines?&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;This will cause any unsaved data in applications running inside it to be lost.&lt;/p&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">ACPI-ით გამორთვა</translation>
     </message>
     <message>
         <source>Power Off</source>
@@ -8712,7 +9123,7 @@
     </message>
     <message>
         <source>Failed to send the ACPI Power Button press event to the virtual machine &lt;b&gt;%1&lt;/b&gt;.</source>
-        <translation>ვირტუალური მანქანისთვის ACPI ღილაკის დაჭერის გაგზავნის შეცდომა: &lt;b&gt;%1&lt;/b&gt;.</translation>
+        <translation type="vanished">ვირტუალური მანქანისთვის ACPI ღილაკის დაჭერის გაგზავნის შეცდომა: &lt;b&gt;%1&lt;/b&gt;.</translation>
     </message>
     <message>
         <source>&lt;p&gt;You are about to start all of the following virtual machines:&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;This could take some time and consume a lot of host system resources. Do you wish to proceed?&lt;/p&gt;</source>
@@ -9242,7 +9653,7 @@
     </message>
     <message>
         <source>Drag and drop operation from host to guest failed.</source>
-        <translation>ჰოსტიდან სტუმრამდე გადმოტანა/დაგდების ოპერაციის შეცდომა.</translation>
+        <translation type="vanished">ჰოსტიდან სტუმრამდე გადმოტანა/დაგდების ოპერაციის შეცდომა.</translation>
     </message>
     <message>
         <source>Drag and drop operation from guest to host failed.</source>
@@ -9284,10 +9695,6 @@
     <message>
         <source>Ok</source>
         <translation>დიახ</translation>
-    </message>
-    <message>
-        <source>You are trying to shut down the guest with the ACPI power button. This is currently not possible because the guest does not support software shutdown.</source>
-        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>&lt;p&gt;The Virtual Machine reports that the guest OS supports &lt;b&gt;mouse pointer integration&lt;/b&gt;. This means that you do not need to &lt;i&gt;capture&lt;/i&gt; the mouse pointer to be able to use it in your guest OS -- all mouse actions you perform when the mouse pointer is over the Virtual Machine&apos;s display are directly sent to the guest OS. If the mouse is currently captured, it will be automatically uncaptured.&lt;/p&gt;&lt;p&gt;The mouse icon on the status bar will look like&amp;nbsp;&lt;img src=:/mouse_seamless_16px.png/&gt;&amp;nbsp;to inform you that mouse pointer integration is supported by the guest OS and is currently turned on.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Note&lt;/b&gt;: Some applications may behave incorrectly in mouse pointer integration mode. You can always disable it for the current session (and enable it again) by selecting the corresponding action from the menu bar.&lt;/p&gt;</source>
@@ -9702,7 +10109,7 @@
     </message>
     <message>
         <source>Can&apos;t send ACPI shutdown ...</source>
-        <translation>ACPI-ით გამორთვის სიგნალის გაგზავნის შეცდომა ...</translation>
+        <translation type="vanished">ACPI-ით გამორთვის სიგნალის გაგზავნის შეცდომა ...</translation>
     </message>
     <message>
         <source>Auto capture keyboard ...</source>
@@ -9910,7 +10317,7 @@
     </message>
     <message>
         <source>Can&apos;t shutdown machine ...</source>
-        <translation>მანქანის გამორთვის შეცდომა ...</translation>
+        <translation type="vanished">მანქანის გამორთვის შეცდომა ...</translation>
     </message>
     <message>
         <source>Can&apos;t create appliance ...</source>
@@ -10509,11 +10916,68 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Failed to change mouse parameter.</source>
+        <source>Failed to change VSD parameter.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Failed to change VSD parameter.</source>
+        <source>Don&apos;t show again</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;p&gt;Are you sure you want to discard the saved state of the following virtual machines?&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;This operation is equivalent to resetting or powering off the machine without doing a proper shut down of the guest OS.&lt;/p&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;p&gt;Shut down these VMs by sending the ACPI shutdown signal?&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Shut Down</source>
+        <comment>machine</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;p&gt;Close these VMs with no shutdown procedure?&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;Unsaved data in applications running on the VM will be lost.&lt;/p&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;p&gt;Remove these virtual machine items from the machine list?&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;p&gt;Remove these virtual machines from the machine list?&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete the virtual machine files and virtual hard disks.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete the virtual machine files.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Can&apos;t send shutdown signal ...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You are trying to shut down the guest with the ACPI power button. This is currently not possible because the guest does not support software shut down.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed to change storage controller parameter.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Can&apos;t shut down machine ...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed to send the ACPI power button press event to the virtual machine &lt;b&gt;%1&lt;/b&gt;.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Can&apos;t drop data to guest ...</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -10540,22 +11004,26 @@
     <name>UIMiniToolbarSettingsEditor</name>
     <message>
         <source>Mini ToolBar:</source>
-        <translation>მინი ზოლი:</translation>
+        <translation type="vanished">მინი ზოლი:</translation>
     </message>
     <message>
         <source>Show in &amp;Full-screen/Seamless</source>
         <translation>&amp;მთელ ეკრანზე/გამჭვირვალე რეჟიმში ჩვენება</translation>
     </message>
     <message>
-        <source>When checked, show the Mini ToolBar in full-screen and seamless modes.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Show at &amp;Top of Screen</source>
         <translation>&amp;ეკრანის თავზე ჩვენება</translation>
     </message>
     <message>
-        <source>When checked, show the Mini ToolBar at the top of the screen, rather than in its default position at the bottom of the screen.</source>
+        <source>Mini ToolBar</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show the Mini ToolBar in full-screen and seamless modes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show the Mini ToolBar at the top of the screen, rather than in its default position at the bottom of the screen</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -10563,65 +11031,97 @@
     <name>UIMonitorCountEditor</name>
     <message>
         <source>Mo&amp;nitor Count:</source>
-        <translation>&amp;ეკრანების რაოდენობა:</translation>
+        <translation type="vanished">&amp;ეკრანების რაოდენობა:</translation>
     </message>
     <message>
         <source>Holds the amount of virtual monitors provided to the virtual machine.</source>
-        <translation>შეიცავს ვირტუალური მანქანისთვის გამოყოფილი მონიტორების რაოდენობას.</translation>
+        <translation type="vanished">შეიცავს ვირტუალური მანქანისთვის გამოყოფილი მონიტორების რაოდენობას.</translation>
     </message>
     <message>
         <source>Minimum possible monitor count.</source>
-        <translation>მონიტორების მინიმალური შესაძლო რაოდენობა.</translation>
+        <translation type="vanished">მონიტორების მინიმალური შესაძლო რაოდენობა.</translation>
     </message>
     <message>
         <source>Maximum possible monitor count.</source>
-        <translation>მონიტორების მაქსიმალური შესაძლო რაოდენობა.</translation>
+        <translation type="vanished">მონიტორების მაქსიმალური შესაძლო რაოდენობა.</translation>
+    </message>
+    <message>
+        <source>Number of Virtual Mo&amp;nitors</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Number of virtual monitors the virtual machine has</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Minimum virtual monitor number</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum virtual monitor number</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>UIMotherboardFeaturesEditor</name>
     <message>
         <source>Extended Features:</source>
-        <translation>გაფართოებული თვისებები:</translation>
+        <translation type="vanished">გაფართოებული თვისებები:</translation>
     </message>
     <message>
         <source>Enable &amp;I/O APIC</source>
-        <translation>&amp;I/O APIC-ის ჩართვა</translation>
-    </message>
-    <message>
-        <source>When checked, the virtual machine will support the Input Output APIC (I/O APIC), which may slightly decrease performance. Note: don&apos;t disable this feature after having installed a Windows guest operating system!</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;I/O APIC-ის ჩართვა</translation>
     </message>
     <message>
         <source>Enable &amp;EFI (special OSes only)</source>
-        <translation>&amp;EFI-ის ჩართვა (მხოლოდ სპეციალური ოს-ებისთვის)</translation>
-    </message>
-    <message>
-        <source>When checked, the guest will support the Extended Firmware Interface (EFI), which is required to boot certain guest OSes. Non-EFI aware OSes will not be able to boot if this option is activated.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>When checked, the RTC device will report the time in UTC, otherwise in local (host) time. Unix usually expects the hardware clock to be set to UTC.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Enable Hardware Clock in &amp;UTC Time</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;EFI-ის ჩართვა (მხოლოდ სპეციალური ოს-ებისთვის)</translation>
     </message>
     <message>
         <source>Enable &amp;Secure Boot</source>
-        <translation>&amp;უსაფრთხო ჩატვირთვის ჩართვა</translation>
+        <translation type="vanished">&amp;უსაფრთხო ჩატვირთვის ჩართვა</translation>
     </message>
     <message>
-        <source>When checked, the secure boot emulation will be enabled.</source>
+        <source>Features</source>
+        <translation type="unfinished">თვისებები</translation>
+    </message>
+    <message>
+        <source>&amp;I/O APIC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>&amp;Reset Keys to Default</source>
+        <source>Use I/O APIC. Performance may be slower.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Resets secure boot keys to default.</source>
+        <source>Hardware Clock in &amp;UTC</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Emulated RTC device reports time in UTC rather than local time on the host</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>U&amp;EFI</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VM uses UEFI to boot OS instead of BIOS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Secure Boot</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use secure boot emulation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Reset Secure Boot Keys</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset secure boot keys to default</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -10629,11 +11129,11 @@
     <name>UINameAndSystemEditor</name>
     <message>
         <source>&amp;Type:</source>
-        <translation>&amp;ტიპი:</translation>
+        <translation type="vanished">&amp;ტიპი:</translation>
     </message>
     <message>
         <source>&amp;Version:</source>
-        <translation>&amp;ვერსია:</translation>
+        <translation type="vanished">&amp;ვერსია:</translation>
     </message>
     <message>
         <source>Invalid name</source>
@@ -10641,58 +11141,78 @@
     </message>
     <message>
         <source>&amp;Name:</source>
-        <translation>&amp;სახელი:</translation>
+        <translation type="vanished">&amp;სახელი:</translation>
     </message>
     <message>
         <source>&amp;Folder:</source>
-        <translation>&amp;საქაღალდე:</translation>
+        <translation type="vanished">&amp;საქაღალდე:</translation>
     </message>
     <message>
         <source>&amp;ISO Image:</source>
-        <translation>&amp;ISO ასლი:</translation>
+        <translation type="vanished">&amp;ISO ასლი:</translation>
     </message>
     <message>
         <source>&amp;Edition:</source>
-        <translation>&amp;გამოცემა:</translation>
+        <translation type="vanished">&amp;გამოცემა:</translation>
     </message>
     <message>
         <source>Holds the name for virtual machine.</source>
-        <translation>შეიცავს ვირტუალური მანქანის სახელს.</translation>
+        <translation type="vanished">შეიცავს ვირტუალური მანქანის სახელს.</translation>
     </message>
     <message>
-        <source>Selects the folder hosting virtual machine.</source>
+        <source>VM &amp;Name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Selects an ISO image to be attached to the virtual machine or used in unattended install.</source>
+        <source>VM &amp;Folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Invalid guest machine name</source>
+        <source>&amp;ISO Image</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Guest machine name is valid</source>
+        <source>OS &amp;Edition</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>&amp;Subtype:</source>
+        <source>&amp;OS</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Selects the operating system edition when possible.</source>
+        <source>OS &amp;Distribution</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Selects the operating system type that you plan to install into this virtual machine.</source>
+        <source>OS &amp;Version</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Selects the operating system subtype that you plan to install into this virtual machine.</source>
+        <source>Descriptive name to uniquely identify the virtual machine</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Selects the operating system version that you plan to install into this virtual machine (called a guest operating system).</source>
+        <source>Storage location for virtual machine files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edition of guest operating system to install</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Operating system, for example Linux, Windows</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>OS distribution, if applicable</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Version of OS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>ISO image to be attached to the virtual machine and possibly used in unattended install</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -10751,11 +11271,11 @@
     <name>UINetworkAttachmentEditor</name>
     <message>
         <source>&amp;Attached to:</source>
-        <translation>&amp;რაზეა მიბმული:</translation>
+        <translation type="vanished">&amp;რაზეა მიბმული:</translation>
     </message>
     <message>
         <source>&amp;Name:</source>
-        <translation>&amp;სახელი:</translation>
+        <translation type="vanished">&amp;სახელი:</translation>
     </message>
     <message>
         <source>Not selected</source>
@@ -10763,35 +11283,43 @@
         <translation>მონიშნული არაა</translation>
     </message>
     <message>
-        <source>Holds the name of the internal network that this network card will be connected to. You can create a new internal network by choosing a name which is not used by any other network cards in this virtual machine or others.</source>
+        <source>&amp;Attached to</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds how this virtual adapter is attached to the real network of the Host OS.</source>
+        <source>&amp;Name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds the network adapter on the host system that traffic to and from this network card will go through.</source>
+        <source>The way this virtual adapter is attached to the real network of the host OS</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds the driver to be used with this network card.</source>
+        <source>Network adapter on the host system that traffic to and from this network card will go through</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds the name of the NAT network that this network card will be connected to. You can create and remove networks using the Network Manager tool in the virtual machine manager window.</source>
+        <source>Name of the internal network that this network card will be connected to. You can create a new internal network by choosing a name which is not used by any other network cards in this virtual machine or others.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds the name of the host-only network that this network card will be connected to. You can add and remove networks using the Network Manager tool in the virtual machine manager window.</source>
+        <source>Virtual network adapter on the host system that traffic to and from this network card will go through. You can create and remove adapters using the Network Manager tool in the virtual machine manager window.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds the virtual network adapter on the host system that traffic to and from this network card will go through. You can create and remove adapters using the Network Manager tool in the virtual machine manager window.</source>
+        <source>Driver to be used with this network card</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>(experimental) Holds the name of the cloud network that this network card will be connected to. You can add and remove networks using the Network Manager tool in the virtual machine manager window.</source>
+        <source>Name of the NAT network that this network card will be connected to. You can create and remove networks using the Network Manager tool in the virtual machine manager window.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>(experimental) Name of the cloud network that this network card will be connected to. You can add and remove networks using the Network Manager tool in the virtual machine manager window.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Name of the host-only network that this network card will be connected to. You can add and remove networks using the Network Manager tool in the virtual machine manager window.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -10807,47 +11335,27 @@
     </message>
     <message>
         <source>Adapter &amp;Type:</source>
-        <translation>ადაპტერი და ტიპი:</translation>
-    </message>
-    <message>
-        <source>Holds the type of the virtual network adapter. Depending on this value, VirtualBox will provide different network hardware to the virtual machine.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>&amp;Promiscuous Mode:</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Holds the promiscuous mode policy of the network adapter when attached to an internal network, host only network or a bridge.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">ადაპტერი და ტიპი:</translation>
     </message>
     <message>
         <source>&amp;MAC Address:</source>
-        <translation>&amp;MAC მისამართი:</translation>
-    </message>
-    <message>
-        <source>Holds the MAC address of this adapter. It contains exactly 12 characters chosen from {0-9,A-F}. Note that the second character must be an even digit.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;MAC მისამართი:</translation>
     </message>
     <message>
         <source>Generates a new random MAC address.</source>
-        <translation>ახალი MAC მისამართის გენერაცია.</translation>
+        <translation type="vanished">ახალი MAC მისამართის გენერაცია.</translation>
     </message>
     <message>
         <source>Generic Properties:</source>
-        <translation>ზოგადი პარამეტრები:</translation>
-    </message>
-    <message>
-        <source>Holds the configuration settings for the network attachment driver. The settings should be of the form name=value and will depend on the driver. Use shift-enter to add a new entry.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">ზოგადი პარამეტრები:</translation>
     </message>
     <message>
         <source>&amp;Cable Connected</source>
-        <translation>&amp;კაბელი მიერთებულია</translation>
+        <translation type="vanished">&amp;კაბელი მიერთებულია</translation>
     </message>
     <message>
         <source>When checked, the virtual network cable is plugged in.</source>
-        <translation>როცა ჩართულია, ვირტუალური ქსელის კაბელი შეერთებულია.</translation>
+        <translation type="vanished">როცა ჩართულია, ვირტუალური ქსელის კაბელი შეერთებულია.</translation>
     </message>
     <message>
         <source>&amp;Port Forwarding</source>
@@ -10855,7 +11363,55 @@
     </message>
     <message>
         <source>Displays a window to configure port forwarding rules.</source>
-        <translation>პორტის გადამისამართების მორგების ფანჯრის ჩვენება.</translation>
+        <translation type="vanished">პორტის გადამისამართების მორგების ფანჯრის ჩვენება.</translation>
+    </message>
+    <message>
+        <source>Adapter &amp;Type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual network adapter type. Depending on this value, VirtualBox will provide different network hardware to the virtual machine.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Promiscuous Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Promiscuous mode policy of the network adapter when attached to an internal network, host only network or a bridge</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;MAC Address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>MAC address of this adapter. It contains exactly 12 characters chosen from {0-9,A-F}. Note that the second character must be an even digit.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Generate a new random MAC address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Generic Properties</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Configuration settings for the network attachment driver. The settings should be of the form name=value and will depend on the driver. Use shift-enter to add a new entry.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual &amp;Cable Connected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual network cable will be plugged in</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Configure port forwarding rules</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -11389,7 +11945,7 @@
         <translation>&amp;ქსელის ადაპტერის ჩართვა</translation>
     </message>
     <message>
-        <source>When checked, plugs this virtual network adapter into the virtual machine.</source>
+        <source>Plug this virtual network adapter into the virtual machine</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -11733,10 +12289,14 @@
     <name>UIParavirtProviderEditor</name>
     <message>
         <source>&amp;Paravirtualization Interface:</source>
-        <translation>&amp;პარავირტუალიზაციის ინტერფეისი:</translation>
+        <translation type="vanished">&amp;პარავირტუალიზაციის ინტერფეისი:</translation>
     </message>
     <message>
-        <source>Selects the paravirtualization guest interface provider to be used by this virtual machine.</source>
+        <source>&amp;Paravirtualization Interface</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Paravirtualization guest interface provider used by this virtual machine</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -11744,10 +12304,14 @@
     <name>UIPointingHIDEditor</name>
     <message>
         <source>&amp;Pointing Device:</source>
-        <translation>&amp;მისათითებელი მოწყობილობა:</translation>
+        <translation type="vanished">&amp;მისათითებელი მოწყობილობა:</translation>
     </message>
     <message>
-        <source>Determines whether the emulated pointing device is a standard PS/2 mouse, a USB tablet or a USB multi-touch tablet.</source>
+        <source>&amp;Pointing Device</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Type of emulated pointing device</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -11828,22 +12392,38 @@
     <name>UIProcessorFeaturesEditor</name>
     <message>
         <source>Extended Features:</source>
-        <translation>გაფართოებული თვისებები:</translation>
+        <translation type="vanished">გაფართოებული თვისებები:</translation>
     </message>
     <message>
         <source>Enable PA&amp;E/NX</source>
-        <translation>PA&amp;E/NX-ის ჩართვა</translation>
+        <translation type="vanished">PA&amp;E/NX-ის ჩართვა</translation>
     </message>
     <message>
         <source>When checked, the Physical Address Extension (PAE) feature of the host CPU will be exposed to the virtual machine.</source>
-        <translation>თუ ჩართულია, ვირტუალური მანქანა დაინახავს CPU-ის ფიზიკური მისამართის გაფართოების (PAE) თვისებას.</translation>
+        <translation type="vanished">თუ ჩართულია, ვირტუალური მანქანა დაინახავს CPU-ის ფიზიკური მისამართის გაფართოების (PAE) თვისებას.</translation>
     </message>
     <message>
         <source>Enable Nested &amp;VT-x/AMD-V</source>
-        <translation>ჩალაგებული &amp;VT-x/AMD-V-ის ჩართვა</translation>
+        <translation type="vanished">ჩალაგებული &amp;VT-x/AMD-V-ის ჩართვა</translation>
     </message>
     <message>
-        <source>When checked, the nested hardware virtualization CPU feature will be exposed to the virtual machine.</source>
+        <source>Features</source>
+        <translation type="unfinished">თვისებები</translation>
+    </message>
+    <message>
+        <source>PA&amp;E/NX</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use the Physical Address Extension (PAE) feature of the host CPU on the virtual machine</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Nested &amp;VT-x/AMD-V</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use the nested hardware virtualization CPU feature on the virtual machine</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -11883,31 +12463,35 @@
         <translation>ჰოსტის &amp;პროქსის პარამეტრების ავტომატური გამოცნობა</translation>
     </message>
     <message>
-        <source>When chosen, VirtualBox will try to auto-detect host proxy settings for tasks like downloading Guest Additions from the network or checking for updates.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>&amp;Direct Connection to the Internet</source>
         <translation>&amp;პირდაპირი კავშირი ინტერნეტთან</translation>
-    </message>
-    <message>
-        <source>When chosen, VirtualBox will use direct Internet connection for tasks like downloading Guest Additions from the network or checking for updates.</source>
-        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>&amp;Manual Proxy Configuration</source>
         <translation>&amp;პროქსის პარამეტრების ხელით შეყვანა</translation>
     </message>
     <message>
-        <source>When chosen, VirtualBox will use the proxy settings supplied for tasks like downloading Guest Additions from the network or checking for updates.</source>
+        <source>&amp;URL:</source>
+        <translation type="vanished">&amp;URL:</translation>
+    </message>
+    <message>
+        <source>VirtualBox will try to auto-detect host proxy settings for tasks like downloading Guest Additions from the network or checking for updates</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>&amp;URL:</source>
-        <translation>&amp;URL:</translation>
+        <source>VirtualBox will use direct Internet connection for tasks like downloading Guest Additions from the network or checking for updates</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds the proxy URL. The format is: &lt;table cellspacing=0 style=&apos;white-space:pre&apos;&gt;&lt;tr&gt;&lt;td&gt;[{type}://][{userid}[:{password}]@]{server}[:{port}]&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;http://username:password@proxy.host.com:port&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</source>
+        <source>VirtualBox will use the proxy settings supplied for tasks like downloading Guest Additions from the network or checking for updates</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;URL</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Proxy URL. The format is: &lt;table cellspacing=0 style=&apos;white-space:pre&apos;&gt;&lt;tr&gt;&lt;td&gt;[{type}://][{userid}[:{password}]@]{server}[:{port}]&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;http://username:password@proxy.host.com:port&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -11918,52 +12502,28 @@
         <translation>&amp;ჩაწერის ჩართვა</translation>
     </message>
     <message>
-        <source>When checked, VirtualBox will record the virtual machine session as a video file.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Recording &amp;Mode:</source>
-        <translation>&amp;ჩაწერის რეჟიმი:</translation>
+        <translation type="vanished">&amp;ჩაწერის რეჟიმი:</translation>
     </message>
     <message>
         <source>Holds the recording mode.</source>
-        <translation>შეიცავს ჩაწერის რეჟიმს.</translation>
+        <translation type="vanished">შეიცავს ჩაწერის რეჟიმს.</translation>
     </message>
     <message>
         <source>File &amp;Path:</source>
-        <translation>ფაილის &amp;ბილიკი:</translation>
-    </message>
-    <message>
-        <source>Holds the filename VirtualBox uses to save the recorded content.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">ფაილის &amp;ბილიკი:</translation>
     </message>
     <message>
         <source>Frame Si&amp;ze:</source>
-        <translation>კადრის &amp;ზომა:</translation>
+        <translation type="vanished">კადრის &amp;ზომა:</translation>
     </message>
     <message>
         <source>User Defined</source>
         <translation>საწყისი სამომხმარებლო</translation>
     </message>
     <message>
-        <source>Holds the resolution (frame size) of the recorded video.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Holds the horizontal resolution (frame width) of the recorded video.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Holds the vertical resolution (frame height) of the recorded video.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Frame R&amp;ate:</source>
-        <translation>&amp;კადრების სიხშირე:</translation>
-    </message>
-    <message>
-        <source>Holds the maximum number of frames per second. Additional frames will be skipped. Reducing this value will increase the number of skipped frames and reduce the file size.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;კადრების სიხშირე:</translation>
     </message>
     <message>
         <source>fps</source>
@@ -11975,27 +12535,19 @@
     </message>
     <message>
         <source>Minimum possible frame rate.</source>
-        <translation>კადრების მინიმალური შესაძლო სიჩქარე.</translation>
+        <translation type="vanished">კადრების მინიმალური შესაძლო სიჩქარე.</translation>
     </message>
     <message>
         <source>Maximum possible frame rate.</source>
-        <translation>კადრების მაქსიმალური შესაძლო სიჩქარე.</translation>
+        <translation type="vanished">კადრების მაქსიმალური შესაძლო სიჩქარე.</translation>
     </message>
     <message>
         <source>&amp;Video Quality:</source>
-        <translation>&amp;ვიდეოს ხარისხი:</translation>
-    </message>
-    <message>
-        <source>Holds the quality. Increasing this value will make the video look better at the cost of an increased file size.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;ვიდეოს ხარისხი:</translation>
     </message>
     <message>
         <source>kbps</source>
         <translation>კბ/წმ</translation>
-    </message>
-    <message>
-        <source>Holds the bitrate in kilobits per second. Increasing this value will make the video look better at the cost of an increased file size.</source>
-        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>low</source>
@@ -12014,19 +12566,91 @@
     </message>
     <message>
         <source>&amp;Audio Quality:</source>
-        <translation>&amp;აუდიოს ხარისხი:</translation>
-    </message>
-    <message>
-        <source>Holds the quality. Increasing this value will make the audio sound better at the cost of an increased file size.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;აუდიოს ხარისხი:</translation>
     </message>
     <message>
         <source>Scree&amp;ns:</source>
-        <translation>&amp;ეკრანები:</translation>
+        <translation type="vanished">&amp;ეკრანები:</translation>
     </message>
     <message>
         <source>&lt;i&gt;About %1MB per 5 minute video&lt;/i&gt;</source>
         <translation>&lt;i&gt;დაახლოებით %1მბ ვიდეოს ყოველ 5 წუთში&lt;/i&gt;</translation>
+    </message>
+    <message>
+        <source>VirtualBox will record the virtual machine session as a video file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Recording &amp;Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Recording mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File &amp;Path</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The filename VirtualBox uses to save the recorded content</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Frame Si&amp;ze</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Resolution (frame size) of the recorded video</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Horizontal resolution (frame width) of the recorded video</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Vertical resolution (frame height) of the recorded video</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Frame R&amp;ate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum number of frames per second. Additional frames will be skipped. Reducing this value will increase the number of skipped frames and reduce the file size.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Minimum recording frame rate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum recording frame rate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Video Quality</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Video quality. Increasing this value will make the video look better at the cost of an increased file size.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bitrate in kilobits per second. Increasing this value will make the video look better at the cost of an increased file size.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Audio Quality</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Audio quality. Increasing this value will make the audio sound better at the cost of an increased file size.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Scree&amp;ns</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -12041,23 +12665,39 @@
     </message>
     <message>
         <source>Scale &amp;Factor:</source>
-        <translation>გადიდების &amp;კოეფიციენტი:</translation>
-    </message>
-    <message>
-        <source>Selects the index of monitor guest screen scale factor being defined for.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">გადიდების &amp;კოეფიციენტი:</translation>
     </message>
     <message>
         <source>Holds the guest screen scale factor.</source>
-        <translation>შეიცავს სტუმრის ეკრანის მასშტაბის ფაქტორს.</translation>
+        <translation type="vanished">შეიცავს სტუმრის ეკრანის მასშტაბის ფაქტორს.</translation>
     </message>
     <message>
         <source>Minimum possible scale factor.</source>
-        <translation>მინიმალური შესაძლებელი მასშტაბირების ფაქტორი.</translation>
+        <translation type="vanished">მინიმალური შესაძლებელი მასშტაბირების ფაქტორი.</translation>
     </message>
     <message>
         <source>Maximum possible scale factor.</source>
-        <translation>მაქსიმალური შესაძლებელი მასშტაბირების ფაქტორი.</translation>
+        <translation type="vanished">მაქსიმალური შესაძლებელი მასშტაბირების ფაქტორი.</translation>
+    </message>
+    <message>
+        <source>Scale &amp;Factor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Index of virtual monitor guest screen scale factor being defined for</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Guest screen scale factor the virtual machine has</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Minimum guest screen scale factor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum guest screen scale factor</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -12083,54 +12723,78 @@
     </message>
     <message>
         <source>When checked, enables the given serial port of the virtual machine.</source>
-        <translation type="unfinished">თუ ჩართულია, ვირტუალურ მანქანაში შესაბამისისერიული პორტი ჩაირთვება.</translation>
+        <translation type="obsolete">თუ ჩართულია, ვირტუალურ მანქანაში შესაბამისისერიული პორტი ჩაირთვება.</translation>
     </message>
     <message>
         <source>Port &amp;Number:</source>
-        <translation type="unfinished">პორტის &amp;ნომერი:</translation>
-    </message>
-    <message>
-        <source>Selects the serial port number. You can choose one of the standard serial ports or select User-defined and specify port parameters manually.</source>
-        <translation type="unfinished"></translation>
+        <translation type="obsolete">პორტის &amp;ნომერი:</translation>
     </message>
     <message>
         <source>&amp;IRQ:</source>
-        <translation type="unfinished">&amp;IRQ:</translation>
-    </message>
-    <message>
-        <source>Holds the IRQ number of this serial port. This should be a whole number between &apos;0&apos; and &apos;255&apos;. Values greater than &apos;15&apos; may only be used if the I/O APIC setting is enabled for this virtual machine.</source>
-        <translation type="unfinished"></translation>
+        <translation type="obsolete">&amp;IRQ:</translation>
     </message>
     <message>
         <source>I/O Po&amp;rt:</source>
-        <translation type="unfinished">I/O პო&amp;რტი:</translation>
-    </message>
-    <message>
-        <source>Holds the base I/O port address of this serial port. Valid values are integer numbers in range from &apos;0&apos; to &apos;0xFFFF&apos;.</source>
-        <translation type="unfinished"></translation>
+        <translation type="obsolete">I/O პო&amp;რტი:</translation>
     </message>
     <message>
         <source>Port &amp;Mode:</source>
-        <translation type="unfinished">პორტის რ&amp;ეჟიმი:</translation>
-    </message>
-    <message>
-        <source>Selects the working mode of this serial port. If you select Disconnected, the guest OS will detect the serial port but will not be able to operate it.</source>
-        <translation type="unfinished"></translation>
+        <translation type="obsolete">პორტის რ&amp;ეჟიმი:</translation>
     </message>
     <message>
         <source>&amp;Connect to existing pipe/socket</source>
         <translation type="unfinished">&amp;არსებულ ფაიფთან/სოკეტთან დაკავშირება</translation>
     </message>
     <message>
-        <source>When checked, the virtual machine will assume that the pipe or socket specified in the Path/Address field exists and try to use it. Otherwise, the pipe or socket will be created by the virtual machine when it starts.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>&amp;Path/Address:</source>
-        <translation type="unfinished">&amp;ბილიკი/მისამართი:</translation>
+        <translation type="obsolete">&amp;ბილიკი/მისამართი:</translation>
     </message>
     <message>
         <source>In Host Pipe mode: Holds the path to the serial port&apos;s pipe on the host. Examples: &quot;\\.\pipe\myvbox&quot; or &quot;/tmp/myvbox&quot;, for Windows and UNIX-like systems respectively. In Host Device mode: Holds the host serial device name. Examples: &quot;COM1&quot; or &quot;/dev/ttyS0&quot;. In Raw File mode: Holds the file-path on the host system, where the serial output will be dumped. In TCP mode: Holds the TCP &quot;port&quot; when in server mode, or &quot;hostname:port&quot; when in client mode.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable this serial port of the virtual machine</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Port &amp;Number</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Serial port number. You can choose one of the standard serial ports or select User-defined and specify port parameters manually.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;IRQ</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>IRQ number of this serial port. This should be a whole number between &apos;0&apos; and &apos;255&apos;. Values greater than &apos;15&apos; may only be used if the I/O APIC setting is enabled for this virtual machine.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>I/O Po&amp;rt</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Base I/O port address of this serial port. Valid values are integer numbers in range from &apos;0&apos; to &apos;0xFFFF&apos;.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Port &amp;Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Working mode of this serial port. If you select Disconnected, the guest OS will detect the serial port but will not be able to operate it.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual machine will assume that the pipe or socket specified in the Path/Address field exists and try to use it. Otherwise, the pipe or socket will be created by the virtual machine when it starts.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Path/Address</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -12285,10 +12949,14 @@
     <name>UISharedClipboardEditor</name>
     <message>
         <source>&amp;Shared Clipboard:</source>
-        <translation>&amp;გაზიარებული ბუფერი:</translation>
+        <translation type="vanished">&amp;გაზიარებული ბუფერი:</translation>
     </message>
     <message>
-        <source>Holds which clipboard data will be copied between the guest and the host OS. This feature requires Guest Additions to be installed in the guest OS.</source>
+        <source>&amp;Shared Clipboard</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable sharing of clipboard data as required</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -12304,19 +12972,11 @@
     </message>
     <message>
         <source>Folder Path:</source>
-        <translation>საქაღალდის ბილიკი:</translation>
+        <translation type="vanished">საქაღალდის ბილიკი:</translation>
     </message>
     <message>
         <source>Folder Name:</source>
-        <translation>საქაღალდის სახელი:</translation>
-    </message>
-    <message>
-        <source>Holds the name of the shared folder (as it will be seen by the guest OS).</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Holds the path of the shared folder</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">საქაღალდის სახელი:</translation>
     </message>
     <message>
         <source>Apply the changes and close this dialog</source>
@@ -12331,31 +12991,63 @@
         <translation>მხოლოდ წაკითხვა</translation>
     </message>
     <message>
-        <source>When checked, the guest OS will not be able to write to the specified shared folder.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>&amp;Auto-mount</source>
         <translation>&amp;ავტომატური მიმაგრება</translation>
     </message>
     <message>
-        <source>When checked, the guest OS will try to automatically mount the shared folder on startup.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Mount point:</source>
-        <translation>მიმაგრების წერტილი:</translation>
-    </message>
-    <message>
-        <source>Where to automatically mount the folder in the guest.  A drive letter (e.g. &apos;G:&apos;) for Windows and OS/2 guests, path for the others.  If left empty the guest will pick something fitting.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">მიმაგრების წერტილი:</translation>
     </message>
     <message>
         <source>&amp;Make Permanent</source>
-        <translation>&amp;მუდმივად გარდაქმნა</translation>
+        <translation type="vanished">&amp;მუდმივად გარდაქმნა</translation>
     </message>
     <message>
-        <source>When checked, this shared folder will be permanent.</source>
+        <source>Folder Path</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Folder Name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Name of the shared folder (as it will be seen by the guest OS)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Path of the shared folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Guest OS will not be able to write to the specified shared folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Guest OS will try to automatically mount the shared folder on startup</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Mount Point</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Path to automatically mount the folder in the guest. A drive letter (e.g. &apos;G:&apos;) for Windows and OS/2 guests, path for the others. If left empty the guest will pick something fitting.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Make Machine-permanent</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This shared folder will be permanent to this guest machine</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Make Global</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This shared folder will be available to all VMs</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -12364,10 +13056,6 @@
     <message>
         <source>Shared &amp;Folders</source>
         <translation type="vanished">გაზიარებული &amp;საქაღალდე</translation>
-    </message>
-    <message>
-        <source>Lists all shared folders accessible to this machine. Use &apos;net use x: \\vboxsvr\share&apos; to access a shared folder named &apos;share&apos; from a DOS-like OS, or &apos;mount -t vboxsf share mount_point&apos; to access it from a Linux OS. This feature requires Guest Additions.</source>
-        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>At</source>
@@ -12395,7 +13083,7 @@
     </message>
     <message>
         <source>Adds new shared folder.</source>
-        <translation>ახალი გაზიარებული საქაღალდის დამატება.</translation>
+        <translation type="vanished">ახალი გაზიარებული საქაღალდის დამატება.</translation>
     </message>
     <message>
         <source>Edit Shared Folder</source>
@@ -12403,7 +13091,7 @@
     </message>
     <message>
         <source>Edits selected shared folder.</source>
-        <translation>გაზიარებული საქაღალდის ჩასწორება.</translation>
+        <translation type="vanished">გაზიარებული საქაღალდის ჩასწორება.</translation>
     </message>
     <message>
         <source>Remove Shared Folder</source>
@@ -12411,7 +13099,7 @@
     </message>
     <message>
         <source>Removes selected shared folder.</source>
-        <translation>მონიშნული გაზიარებული საქაღალდის წაშლა.</translation>
+        <translation type="vanished">მონიშნული გაზიარებული საქაღალდის წაშლა.</translation>
     </message>
     <message>
         <source> Machine Folders</source>
@@ -12420,6 +13108,26 @@
     <message>
         <source> Transient Folders</source>
         <translation> დროებითი საქაღალდეები</translation>
+    </message>
+    <message>
+        <source>All shared folders accessible to this machine. Use &apos;net use x: \\vboxsvr\share&apos; to access a shared folder named &apos;share&apos; from a DOS-like OS, or &apos;mount -t vboxsf share mount_point&apos; to access it from a Linux OS. This feature requires Guest Additions.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add new shared folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edit selected shared folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove selected shared folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> Global Folders</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -12434,11 +13142,7 @@
     </message>
     <message>
         <source>Lists all available shortcuts which can be configured.</source>
-        <translation>ყველა კონფიგურირებადი მალსახმობის სია.</translation>
-    </message>
-    <message>
-        <source>Holds a sequence to filter the shortcut list.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">ყველა კონფიგურირებადი მალსახმობის სია.</translation>
     </message>
     <message>
         <source>Name</source>
@@ -12447,6 +13151,14 @@
     <message>
         <source>Shortcut</source>
         <translation>მალსახმობი</translation>
+    </message>
+    <message>
+        <source>Configurable shortcuts</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Shortcut list filter</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -12532,10 +13244,14 @@
     <name>UISnapshotFolderEditor</name>
     <message>
         <source>S&amp;napshot Folder:</source>
-        <translation>&amp;სწრაფი ასლის საქაღალდე:</translation>
+        <translation type="vanished">&amp;სწრაფი ასლის საქაღალდე:</translation>
     </message>
     <message>
-        <source>Holds the path where snapshots of this virtual machine will be stored. Be aware that snapshots can take quite a lot of storage space.</source>
+        <source>S&amp;napshot Folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Folder where snapshots of this VM are saved</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -12914,7 +13630,11 @@
     </message>
     <message>
         <source>Allows to modify VM status-bar contents.</source>
-        <translation>ვმ-ის სტატუსის ზოლის ჩასწორების ნების დართვა.</translation>
+        <translation type="vanished">ვმ-ის სტატუსის ზოლის ჩასწორების ნების დართვა.</translation>
+    </message>
+    <message>
+        <source>Configure the virtual machine status bar</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -12938,19 +13658,19 @@
     </message>
     <message>
         <source>&lt;nobr&gt;Expands/Collapses&amp;nbsp;item.&lt;/nobr&gt;</source>
-        <translation>&lt;nobr&gt;ჩანაწერის&amp;nbsp;ჩაკეცვა/ამოკეცვა.&lt;/nobr&gt;</translation>
+        <translation type="vanished">&lt;nobr&gt;ჩანაწერის&amp;nbsp;ჩაკეცვა/ამოკეცვა.&lt;/nobr&gt;</translation>
     </message>
     <message>
         <source>&lt;nobr&gt;Adds&amp;nbsp;hard&amp;nbsp;disk.&lt;/nobr&gt;</source>
-        <translation>&lt;nobr&gt;მყარი&amp;nbsp;დისკის&amp;nbsp;დამატება.&lt;/nobr&gt;</translation>
+        <translation type="vanished">&lt;nobr&gt;მყარი&amp;nbsp;დისკის&amp;nbsp;დამატება.&lt;/nobr&gt;</translation>
     </message>
     <message>
         <source>&lt;nobr&gt;Adds&amp;nbsp;optical&amp;nbsp;drive.&lt;/nobr&gt;</source>
-        <translation>&lt;nobr&gt;ოპტიკური&amp;nbsp;დისკის&amp;nbsp;დამატება.&lt;/nobr&gt;</translation>
+        <translation type="vanished">&lt;nobr&gt;ოპტიკური&amp;nbsp;დისკის&amp;nbsp;დამატება.&lt;/nobr&gt;</translation>
     </message>
     <message>
         <source>&lt;nobr&gt;Adds&amp;nbsp;floppy&amp;nbsp;drive.&lt;/nobr&gt;</source>
-        <translation>&lt;nobr&gt;დისკეტის&amp;nbsp;დამატება&amp;nbsp;.&lt;/nobr&gt;</translation>
+        <translation type="vanished">&lt;nobr&gt;დისკეტის&amp;nbsp;დამატება&amp;nbsp;.&lt;/nobr&gt;</translation>
     </message>
     <message>
         <source>&amp;Storage Devices</source>
@@ -12961,76 +13681,36 @@
         <translation>ინფორმაცია</translation>
     </message>
     <message>
-        <source>The Storage Tree can contain several controllers of different types. This machine currently has no controllers.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Attributes</source>
         <translation>ატრიბუტები</translation>
     </message>
     <message>
         <source>&amp;Name:</source>
-        <translation>&amp;სახელი:</translation>
-    </message>
-    <message>
-        <source>Holds the name of the storage controller currently selected in the Storage Tree.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;სახელი:</translation>
     </message>
     <message>
         <source>&amp;Type:</source>
-        <translation>&amp;ტიპი:</translation>
-    </message>
-    <message>
-        <source>Selects the sub-type of the storage controller currently selected in the Storage Tree.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;ტიპი:</translation>
     </message>
     <message>
         <source>&amp;Port Count:</source>
-        <translation>&amp;პორტების რიცხვი:</translation>
-    </message>
-    <message>
-        <source>Selects the port count of the SATA storage controller currently selected in the Storage Tree. This must be at least one more than the highest port number you need to use.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>When checked, allows to use host I/O caching capabilities.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;პორტების რიცხვი:</translation>
     </message>
     <message>
         <source>Use Host I/O Cache</source>
         <translation>ჰოსტის I/O ქეშის გამოყენება</translation>
     </message>
     <message>
-        <source>Selects the slot on the storage controller used by this attachment. The available slots depend on the type of the controller and other attachments on it.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>When checked, allows the guest to send ATAPI commands directly to the host-drive which makes it possible to use CD/DVD writers connected to the host inside the VM. Note that writing audio CD inside the VM is not yet supported.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>&amp;Passthrough</source>
         <translation>&amp;გამჭოლი</translation>
-    </message>
-    <message>
-        <source>When checked, the virtual disk will not be removed when the guest system ejects it.</source>
-        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>&amp;Live CD/DVD</source>
         <translation>ცოცხალი &amp;CD/DVD</translation>
     </message>
     <message>
-        <source>When checked, the guest system will see the virtual disk as a solid-state device.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>&amp;Solid-state Drive</source>
         <translation>&amp;SSD</translation>
-    </message>
-    <message>
-        <source>When checked, the guest system will see the virtual disk as a hot-pluggable device.</source>
-        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>&amp;Hot-pluggable</source>
@@ -13038,11 +13718,11 @@
     </message>
     <message>
         <source>Type (Format):</source>
-        <translation>ტიპი (ფორმატი)</translation>
+        <translation type="vanished">ტიპი (ფორმატი)</translation>
     </message>
     <message>
         <source>Type:</source>
-        <translation>ტიპი:</translation>
+        <translation type="vanished">ტიპი:</translation>
     </message>
     <message>
         <source>Virtual Size:</source>
@@ -13054,7 +13734,7 @@
     </message>
     <message>
         <source>Size:</source>
-        <translation>ზომა:</translation>
+        <translation type="vanished">ზომა:</translation>
     </message>
     <message>
         <source>Details:</source>
@@ -13062,23 +13742,19 @@
     </message>
     <message>
         <source>Location:</source>
-        <translation>მდებარეობა:</translation>
+        <translation type="vanished">მდებარეობა:</translation>
     </message>
     <message>
         <source>Attached to:</source>
-        <translation>მიბმულია:</translation>
+        <translation type="vanished">მიბმულია:</translation>
     </message>
     <message>
         <source>Encrypted with key:</source>
         <translation type="vanished">დაშიფვრის გასაღები:</translation>
     </message>
     <message>
-        <source>Lists all storage controllers for this machine and the virtual images and host drives attached to them.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Add Controller</source>
-        <translation>კონტროლერის დაატება</translation>
+        <translation type="vanished">კონტროლერის დაატება</translation>
     </message>
     <message>
         <source>PIIX3 (IDE)</source>
@@ -13126,47 +13802,47 @@
     </message>
     <message>
         <source>Remove Controller</source>
-        <translation>კონტროლერის წაშლა</translation>
+        <translation type="vanished">კონტროლერის წაშლა</translation>
     </message>
     <message>
         <source>Add Attachment</source>
-        <translation>მიმაგრების დამატება</translation>
+        <translation type="vanished">მიმაგრების დამატება</translation>
     </message>
     <message>
         <source>Hard Disk</source>
-        <translation>მყარი დისკი</translation>
+        <translation type="vanished">მყარი დისკი</translation>
     </message>
     <message>
         <source>Optical Drive</source>
-        <translation>ოპტიკური დისკი</translation>
+        <translation type="vanished">ოპტიკური დისკი</translation>
     </message>
     <message>
         <source>Floppy Drive</source>
-        <translation>დისკეტა</translation>
+        <translation type="vanished">დისკეტა</translation>
     </message>
     <message>
         <source>Remove Attachment</source>
-        <translation>მიმაგრებულის წაშლა</translation>
+        <translation type="vanished">მიმაგრებულის წაშლა</translation>
     </message>
     <message>
         <source>Adds new storage controller.</source>
-        <translation>საცავის ახალი კონტროლერის დამატება.</translation>
+        <translation type="vanished">საცავის ახალი კონტროლერის დამატება.</translation>
     </message>
     <message>
         <source>Removes selected storage controller.</source>
-        <translation>საცავის მონიშნული კონტროლერის წაშლა.</translation>
+        <translation type="vanished">საცავის მონიშნული კონტროლერის წაშლა.</translation>
     </message>
     <message>
         <source>Adds new storage attachment.</source>
-        <translation>ახალი საცავის მიბმა.</translation>
+        <translation type="vanished">ახალი საცავის მიბმა.</translation>
     </message>
     <message>
         <source>Removes selected storage attachment.</source>
-        <translation>მონიშნული მიბმული საცავის მოხსნა.</translation>
+        <translation type="vanished">მონიშნული მიბმული საცავის მოხსნა.</translation>
     </message>
     <message>
         <source>Hard &amp;Disk:</source>
-        <translation>მყარი &amp;დისკი:</translation>
+        <translation type="vanished">მყარი &amp;დისკი:</translation>
     </message>
     <message>
         <source>Choose or create a virtual hard disk file. The virtual machine will see the data in the file as the contents of the virtual hard disk.</source>
@@ -13174,7 +13850,7 @@
     </message>
     <message>
         <source>Optical &amp;Drive:</source>
-        <translation>ოპტიკური &amp;დისკი:</translation>
+        <translation type="vanished">ოპტიკური &amp;დისკი:</translation>
     </message>
     <message>
         <source>Choose a virtual optical disk or a physical drive to use with the virtual drive. The virtual machine will see a disk inserted into the drive with the data in the file or on the disk in the physical drive as its contents.</source>
@@ -13182,7 +13858,7 @@
     </message>
     <message>
         <source>Floppy &amp;Drive:</source>
-        <translation>&amp;დისკეტა:</translation>
+        <translation type="vanished">&amp;დისკეტა:</translation>
     </message>
     <message>
         <source>Choose a virtual floppy disk or a physical drive to use with the virtual drive. The virtual machine will see a disk inserted into the drive with the data in the file or on the disk in the physical drive as its contents.</source>
@@ -13217,20 +13893,8 @@
         <translation type="unfinished">მოწყობ&amp;ილობები</translation>
     </message>
     <message>
-        <source>Encryption key:</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Virtual size:</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Actual size:</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Storage details:</source>
-        <translation type="unfinished">საცავის დეტალები:</translation>
+        <translation type="obsolete">საცავის დეტალები:</translation>
     </message>
     <message>
         <source>Choose a Disk File...</source>
@@ -13238,6 +13902,170 @@
     </message>
     <message>
         <source>Remove Disk From Virtual Drive</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;nobr&gt;Expand/Collapse&amp;nbsp;item&lt;/nobr&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;nobr&gt;Add&amp;nbsp;hard&amp;nbsp;disk&lt;/nobr&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;nobr&gt;Add&amp;nbsp;optical&amp;nbsp;drive&lt;/nobr&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;nobr&gt;Add&amp;nbsp;floppy&amp;nbsp;drive&lt;/nobr&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Storage tree can contain several controllers of different types. This machine currently has no controllers.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Name of the storage controller currently selected in the storage tree</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sub-type of the storage controller currently selected in the storage tree</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Port Count</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Number of ports allocated to the controller. This must always be one greater than the number of ports that can be used.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow to use host I/O caching capabilities</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hard &amp;Disk</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Optical &amp;Drive</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Floppy &amp;Drive</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Slot on the storage controller used by this attachment. The available slots depend on the type of the controller and other attachments on it.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow the guest to send ATAPI commands directly to the host-drive which makes it possible to use CD/DVD writers connected to the host inside the VM. Note that writing audio CD inside the VM is not yet supported.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual disk will not be removed when the guest system ejects it</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Guest system will see the virtual disk as a solid-state device</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Guest system will see the virtual disk as a hot-pluggable device</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Type (Format)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Actual size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Storage details</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Location</source>
+        <translation type="unfinished">ადგილმდებარეობა</translation>
+    </message>
+    <message>
+        <source>Attached to</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Encryption key</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Size</source>
+        <translation type="unfinished">ზომა</translation>
+    </message>
+    <message>
+        <source>All storage controllers for this machine and the virtual images and host drives attached to them</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add controller</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove controller</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add attachment</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hard disk</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Optical drive</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Floppy drive</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove attachment</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add new storage controller</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove selected storage controller</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add new storage attachment</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove selected storage attachment</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -13353,7 +14181,7 @@
     <name>UIToolsModel</name>
     <message>
         <source>Welcome</source>
-        <translation>მოგესლამებათ</translation>
+        <translation type="vanished">მოგესლამებათ</translation>
     </message>
     <message>
         <source>Media</source>
@@ -13385,15 +14213,35 @@
     </message>
     <message>
         <source>Activities</source>
-        <translation>ქმედებები</translation>
+        <translation type="vanished">ქმედებები</translation>
     </message>
     <message>
         <source>Activity</source>
-        <translation>აქტივობა</translation>
+        <translation type="vanished">აქტივობა</translation>
     </message>
     <message>
         <source>File Manager</source>
         <translation>ფაილების მმართველი</translation>
+    </message>
+    <message>
+        <source>Show text</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Home</source>
+        <translation type="unfinished">სახლი</translation>
+    </message>
+    <message>
+        <source>Machines</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Resources</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Resource Use</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -13407,11 +14255,19 @@
     <name>UITpmEditor</name>
     <message>
         <source>&amp;TPM:</source>
-        <translation>&amp;TPM:</translation>
+        <translation type="vanished">&amp;TPM:</translation>
     </message>
     <message>
         <source>Selects the TPM type to be emulated in this virtual machine.</source>
-        <translation>აირჩიეთ ვირტუალური მანქანისთვის ემულირებული TPM-ის ტიპი.</translation>
+        <translation type="vanished">აირჩიეთ ვირტუალური მანქანისთვის ემულირებული TPM-ის ტიპი.</translation>
+    </message>
+    <message>
+        <source>&amp;TPM Version</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Emulate this Trusted Platform Module on this VM</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -13543,23 +14399,23 @@
         <translation>USB &amp;1.1 (OHCI) კონტროლერი</translation>
     </message>
     <message>
-        <source>When chosen, enables the virtual USB OHCI controller of this machine. The USB OHCI controller provides USB 1.0 support.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>USB &amp;2.0 (OHCI + EHCI) Controller</source>
         <translation>USB &amp;2.0 (OHCI + EHCI) კონტროლერი</translation>
-    </message>
-    <message>
-        <source>When chosen, enables the virtual USB OHCI and EHCI controllers of this machine. Together they provide USB 2.0 support.</source>
-        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>USB &amp;3.0 (xHCI) Controller</source>
         <translation>USB &amp;3.0 (xHCI) კონტროლერი</translation>
     </message>
     <message>
-        <source>When chosen, enables the virtual USB xHCI controller of this machine. The USB xHCI controller provides USB 3.0 support.</source>
+        <source>Enable virtual USB OHCI controller of this machine. The USB OHCI controller provides USB 1.0 support.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable virtual USB OHCI and EHCI controllers of this machine. Together they provide USB 2.0 support.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable virtual USB xHCI controller of this machine. The USB xHCI controller provides USB 3.0 support.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -13571,15 +14427,15 @@
     </message>
     <message>
         <source>&amp;Name:</source>
-        <translation>&amp;სახელი:</translation>
+        <translation type="vanished">&amp;სახელი:</translation>
     </message>
     <message>
         <source>Holds the filter name.</source>
-        <translation>შეიცავს ფილტრის სახელს.</translation>
+        <translation type="vanished">შეიცავს ფილტრის სახელს.</translation>
     </message>
     <message>
         <source>&amp;Vendor ID:</source>
-        <translation>&amp;მომწოდებლის ID:</translation>
+        <translation type="vanished">&amp;მომწოდებლის ID:</translation>
     </message>
     <message>
         <source>Holds the vendor ID filter. The &lt;i&gt;exact match&lt;/i&gt; string format is &lt;tt&gt;XXXX&lt;/tt&gt; where &lt;tt&gt;X&lt;/tt&gt; is a hexadecimal digit. An empty string will match any value.</source>
@@ -13587,7 +14443,7 @@
     </message>
     <message>
         <source>&amp;Product ID:</source>
-        <translation>&amp;პროდუქტის ID:</translation>
+        <translation type="vanished">&amp;პროდუქტის ID:</translation>
     </message>
     <message>
         <source>Holds the product ID filter. The &lt;i&gt;exact match&lt;/i&gt; string format is &lt;tt&gt;XXXX&lt;/tt&gt; where &lt;tt&gt;X&lt;/tt&gt; is a hexadecimal digit. An empty string will match any value.</source>
@@ -13595,58 +14451,98 @@
     </message>
     <message>
         <source>&amp;Revision:</source>
-        <translation>&amp;რევიზია:</translation>
+        <translation type="vanished">&amp;რევიზია:</translation>
     </message>
     <message>
         <source>&amp;Manufacturer:</source>
-        <translation>&amp;მწარმოებელი:</translation>
+        <translation type="vanished">&amp;მწარმოებელი:</translation>
     </message>
     <message>
         <source>Pro&amp;duct:</source>
-        <translation>&amp;პროდუქტი:</translation>
+        <translation type="vanished">&amp;პროდუქტი:</translation>
     </message>
     <message>
         <source>&amp;Serial No.:</source>
-        <translation>&amp;სერიული ნომერი:</translation>
+        <translation type="vanished">&amp;სერიული ნომერი:</translation>
     </message>
     <message>
         <source>Por&amp;t:</source>
-        <translation>&amp;პორტი:</translation>
+        <translation type="vanished">&amp;პორტი:</translation>
     </message>
     <message>
         <source>R&amp;emote:</source>
-        <translation>&amp;დაშორებული:</translation>
+        <translation type="vanished">&amp;დაშორებული:</translation>
     </message>
     <message>
-        <source>Holds whether this filter applies to USB devices attached locally to the host computer (No), to a VRDP client&apos;s computer (Yes), or both (Any).</source>
+        <source>&amp;Name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds the vendor ID filter. The exact match string format is &apos;XXXX&apos; where &apos;X&apos; is a hexadecimal digit. An empty string will match any value.</source>
+        <source>Filter name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds the product ID filter. The exact match string format is &apos;XXXX&apos; where &apos;X&apos; is a hexadecimal digit. An empty string will match any value.</source>
+        <source>&amp;Vendor ID</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds the revision number filter. The exact match string format is &apos;IIFF&apos; where &apos;I&apos; is a decimal digit of the integer part and &apos;F&apos; is a decimal digit of the fractional part. An empty string will match any value.</source>
+        <source>Vendor ID filter. The exact match string format is &apos;XXXX&apos; where &apos;X&apos; is a hexadecimal digit. An empty string will match any value.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds the manufacturer filter as an exact match string. An empty string will match any value.</source>
+        <source>&amp;Product ID</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds the product name filter as an exact match string. An empty string will match any value.</source>
+        <source>Product ID filter. The exact match string format is &apos;XXXX&apos; where &apos;X&apos; is a hexadecimal digit. An empty string will match any value.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds the serial number filter as an exact match string. An empty string will match any value.</source>
+        <source>&amp;Revision</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Holds the host USB port filter as an exact match string. An empty string will match any value.</source>
+        <source>Revision number filter. The exact match string format is &apos;IIFF&apos; where &apos;I&apos; is a decimal digit of the integer part and &apos;F&apos; is a decimal digit of the fractional part. An empty string will match any value.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Manufacturer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Manufacturer filter as an exact match string. An empty string will match any value.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pro&amp;duct</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Product name filter as an exact match string. An empty string will match any value.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Serial No.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Serial number filter as an exact match string. An empty string will match any value.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Por&amp;t</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Host USB port filter as an exact match string. An empty string will match any value.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>R&amp;emote</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Coverage of the USB filter. Defines whether it&apos;s applied to devices attached locally to the host computer (No), to a VRDP client&apos;s computer (Yes), or both (Any).</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -13662,24 +14558,12 @@
         <translation>&amp;USB მოწყობილობების ფილტრი</translation>
     </message>
     <message>
-        <source>Lists all USB filters of this machine. The checkbox to the left defines whether the particular filter is enabled or not. Use the context menu or buttons to the right to add or remove USB filters.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Add Empty Filter</source>
         <translation>ცარიელი ფილტრის დაატება</translation>
     </message>
     <message>
-        <source>Adds new USB filter with all fields initially set to empty strings. Note that such a filter will match any attached USB device.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Add Filter From Device</source>
         <translation>ფილტრის მოწყობილობიდან დამატება</translation>
-    </message>
-    <message>
-        <source>Adds new USB filter with all fields set to the values of the selected USB device attached to the host PC.</source>
-        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Edit Filter</source>
@@ -13687,7 +14571,7 @@
     </message>
     <message>
         <source>Edits selected USB filter.</source>
-        <translation>მონიშნული USB ფილტრის ჩასწორება.</translation>
+        <translation type="vanished">მონიშნული USB ფილტრის ჩასწორება.</translation>
     </message>
     <message>
         <source>Remove Filter</source>
@@ -13695,7 +14579,7 @@
     </message>
     <message>
         <source>Removes selected USB filter.</source>
-        <translation>მონიშნული USB ფილტრის წაშლა.</translation>
+        <translation type="vanished">მონიშნული USB ფილტრის წაშლა.</translation>
     </message>
     <message>
         <source>Move Filter Up</source>
@@ -13703,7 +14587,7 @@
     </message>
     <message>
         <source>Moves selected USB filter up.</source>
-        <translation>მონიშნული USB ფილტრის მაღლა აწევა.</translation>
+        <translation type="vanished">მონიშნული USB ფილტრის მაღლა აწევა.</translation>
     </message>
     <message>
         <source>Move Filter Down</source>
@@ -13711,12 +14595,40 @@
     </message>
     <message>
         <source>Moves selected USB filter down.</source>
-        <translation>მონიშნული USB ფილტრის დაბლა დაწევა.</translation>
+        <translation type="vanished">მონიშნული USB ფილტრის დაბლა დაწევა.</translation>
     </message>
     <message>
         <source>%1, Active</source>
         <comment>col.1 text, col.1 state</comment>
         <translation>%1 აქტიურია</translation>
+    </message>
+    <message>
+        <source>All USB filters of this machine. The checkbox to the left defines whether the particular filter is enabled or not. Use the context menu or buttons to the right to add or remove USB filters.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add new USB filter with all fields initially set to empty strings. Note that such a filter will match any attached USB device.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add new USB filter with all fields set to the values of the selected USB device attached to the host PC</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edit selected USB filter</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove selected USB filter</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move selected USB filter up</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move selected USB filter down</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -13740,7 +14652,11 @@
     </message>
     <message>
         <source>When checked, enables the virtual USB controller of this machine.</source>
-        <translation>თუ ჩართულია, ამ მანქანაზე ვირტუალური USB კონტროლერი ჩაირთვება.</translation>
+        <translation type="vanished">თუ ჩართულია, ამ მანქანაზე ვირტუალური USB კონტროლერი ჩაირთვება.</translation>
+    </message>
+    <message>
+        <source>Enable virtual USB controller of this machine</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -13861,59 +14777,67 @@
 <context>
     <name>UIUpdateSettingsEditor</name>
     <message>
-        <source>When checked, the application will periodically connect to the VirtualBox website and check whether a new VirtualBox version is available.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>&amp;Check for Updates</source>
         <translation>განახ&amp;ლების შემოწმება</translation>
     </message>
     <message>
         <source>&amp;Once per:</source>
-        <translation>&amp;შემოწმების პერიოდი:</translation>
-    </message>
-    <message>
-        <source>Selects how often the new version check should be performed.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;შემოწმების პერიოდი:</translation>
     </message>
     <message>
         <source>Next Check:</source>
-        <translation>შემდეგი შემოწმება:</translation>
+        <translation type="vanished">შემდეგი შემოწმება:</translation>
     </message>
     <message>
         <source>Check for:</source>
-        <translation>შემოწმება:</translation>
+        <translation type="vanished">შემოწმება:</translation>
     </message>
     <message>
         <source>&amp;Stable Release Versions</source>
         <translation>&amp;სტაბილური რელიზები</translation>
     </message>
     <message>
-        <source>When chosen, you will be notified about stable updates to VirtualBox.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>&amp;All New Releases</source>
         <translation>&amp;ყველა რელიზი</translation>
-    </message>
-    <message>
-        <source>When chosen, you will be notified about all new VirtualBox releases.</source>
-        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>All New Releases and &amp;Pre-Releases</source>
         <translation>ყველა ახალი რელიზი და &amp;პრე-რელიზი</translation>
     </message>
     <message>
-        <source>When chosen, you will be notified about all new VirtualBox releases and pre-release versions of VirtualBox.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>All New Releases, &amp;Pre-Releases and Testing Builds</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>When chosen, you will be notified about all new VirtualBox releases, pre-release versions and testing builds of VirtualBox.</source>
+        <source>Notify about stable updates to VirtualBox</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Notify about all new VirtualBox releases</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Notify about all new VirtualBox releases and pre-release versions of VirtualBox</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Notify about all new VirtualBox releases, pre-release versions and testing builds of VirtualBox.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Periodically connect to the VirtualBox website and check whether a new VirtualBox version is available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Once per</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>How often the new version check should be performed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Next Check</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -13929,34 +14853,54 @@
     </message>
     <message>
         <source>&amp;Repeat Password</source>
-        <translation>&amp;გაიმეორეთ პაროლი</translation>
+        <translation type="vanished">&amp;გაიმეორეთ პაროლი</translation>
     </message>
     <message>
         <source>U&amp;sername</source>
-        <translation>&amp;მომხარებლის სახელი</translation>
+        <translation type="vanished">&amp;მომხარებლის სახელი</translation>
     </message>
     <message>
         <source>Holds username.</source>
-        <translation>შეიცავს მომხმარებლის სახელს.</translation>
+        <translation type="vanished">შეიცავს მომხმარებლის სახელს.</translation>
     </message>
     <message>
         <source>Holds password.</source>
-        <translation>შეიცავს პაროლს.</translation>
+        <translation type="vanished">შეიცავს პაროლს.</translation>
     </message>
     <message>
         <source>Holds the repeated password.</source>
-        <translation>შეიცავს გამეორებულ პაროლს.</translation>
+        <translation type="vanished">შეიცავს გამეორებულ პაროლს.</translation>
     </message>
     <message>
         <source>Invalid password pair</source>
         <translation>პაროლების არასწორი წყვილი</translation>
     </message>
     <message>
-        <source>Username is valid</source>
+        <source>User name cannot be an empty string</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Username cannot be an empty string</source>
+        <source>User name is valid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Confirm Password</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>U&amp;ser Name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>User name for the guest operating system</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Password for the guest operating system user account</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Password must match</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -14039,19 +14983,19 @@
     </message>
     <message>
         <source>Network Up Rate</source>
-        <translation>ატვირთვის სიჩქარე</translation>
+        <translation type="vanished">ატვირთვის სიჩქარე</translation>
     </message>
     <message>
         <source>Network Down Rate</source>
-        <translation>გადმოწერის სიჩქარე</translation>
+        <translation type="vanished">გადმოწერის სიჩქარე</translation>
     </message>
     <message>
         <source>Network Up Total</source>
-        <translation>ატვირთვა ჯამში</translation>
+        <translation type="vanished">ატვირთვა ჯამში</translation>
     </message>
     <message>
         <source>Network Down Total</source>
-        <translation>გადმოწერა ჯამში</translation>
+        <translation type="vanished">გადმოწერა ჯამში</translation>
     </message>
     <message>
         <source>Disk Read Rate</source>
@@ -14089,6 +15033,22 @@
         <source>Show Cloud Virtual Machines</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Network Upload Rate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Network Download Rate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Network Upload Total</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Network Download Total</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>UIVMCloseDialog</name>
@@ -14121,10 +15081,6 @@
         <translation>&amp;გამორთვის სიგნალის გაშვება</translation>
     </message>
     <message>
-        <source>&lt;p&gt;Sends the ACPI Power Button press event to the virtual machine.&lt;/p&gt;&lt;p&gt;Normally, the guest operating system running inside the virtual machine will detect this event and perform a clean shutdown procedure. This is a recommended way to turn off the virtual machine because all applications running inside it will get a chance to save their data and state.&lt;/p&gt;&lt;p&gt;If the machine doesn&apos;t respond to this action then the guest operating system may be misconfigured or doesn&apos;t understand ACPI Power Button events at all. In this case you should select the &lt;b&gt;Power off the machine&lt;/b&gt; action to stop virtual machine execution.&lt;/p&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>&amp;Power off the machine</source>
         <translation>&amp;მანქანის გამორთვა</translation>
     </message>
@@ -14138,6 +15094,10 @@
     </message>
     <message>
         <source>&lt;p&gt;When checked, the machine will be returned to the state stored in the current snapshot after it is turned off. This is useful if you are sure that you want to discard the results of your last sessions and start again at that snapshot.&lt;/p&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;p&gt;Sends the ACPI power button press event to the virtual machine.&lt;/p&gt;&lt;p&gt;Normally, the guest operating system running inside the virtual machine will detect this event and perform a clean shutdown procedure. This is a recommended way to turn off the virtual machine because all applications running inside it will get a chance to save their data and state.&lt;/p&gt;&lt;p&gt;If the machine doesn&apos;t respond to this action then the guest operating system may be misconfigured or doesn&apos;t understand ACPI power button events at all. In this case you should select the &lt;b&gt;Power off the machine&lt;/b&gt; action to stop virtual machine execution.&lt;/p&gt;</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -14237,19 +15197,19 @@
     </message>
     <message>
         <source>Receive Rate</source>
-        <translation>მიღების სიჩქარე</translation>
+        <translation type="vanished">მიღების სიჩქარე</translation>
     </message>
     <message>
         <source>Transmit Rate</source>
-        <translation>გადაცემის სიჩქარე</translation>
+        <translation type="vanished">გადაცემის სიჩქარე</translation>
     </message>
     <message>
         <source>Total Received</source>
-        <translation>სულ მიღებული</translation>
+        <translation type="vanished">სულ მიღებული</translation>
     </message>
     <message>
         <source>Total Transmitted</source>
-        <translation>სულ გადაცემული</translation>
+        <translation type="vanished">სულ გადაცემული</translation>
     </message>
     <message>
         <source>Disk IO Rate</source>
@@ -14454,6 +15414,22 @@
         <comment>short from minutes</comment>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Download Rate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Upload Rate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Total Downloaded</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Total Uploaded</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>UIVMLogViewerWidget</name>
@@ -14654,10 +15630,14 @@
     <name>UIVRDEAuthLibraryEditor</name>
     <message>
         <source>V&amp;RDP Authentication Library:</source>
-        <translation>V&amp;RDP-ის ავთენტიკაციის ბიბლიოთეკა:</translation>
+        <translation type="vanished">V&amp;RDP-ის ავთენტიკაციის ბიბლიოთეკა:</translation>
     </message>
     <message>
-        <source>Holds the path to the library that provides authentication for Remote Display (VRDP) clients.</source>
+        <source>V&amp;RDP Authentication Library</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Path to the library that provides authentication for Remote Display (VRDP) clients</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -14668,51 +15648,75 @@
         <translation>&amp;სერვერის ჩართვა</translation>
     </message>
     <message>
-        <source>When checked, the VM will act as a Remote Desktop Protocol (RDP) server, allowing remote clients to connect and operate the VM (when it is running) using a standard RDP client.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Server &amp;Port:</source>
-        <translation>სერვერის &amp;პორტი:</translation>
-    </message>
-    <message>
-        <source>Holds the VRDP Server port number. You may specify 0 (zero), to select port 3389, the standard port for RDP.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">სერვერის &amp;პორტი:</translation>
     </message>
     <message>
         <source>Authentication &amp;Method:</source>
-        <translation>ავთენტიკაციის &amp;მეთოდი:</translation>
+        <translation type="vanished">ავთენტიკაციის &amp;მეთოდი:</translation>
     </message>
     <message>
         <source>Selects the VRDP authentication method.</source>
-        <translation>აირჩევს VRDP-ის ავთენტიკაციის მეთოდს.</translation>
+        <translation type="vanished">აირჩევს VRDP-ის ავთენტიკაციის მეთოდს.</translation>
     </message>
     <message>
         <source>Authentication &amp;Timeout:</source>
-        <translation>ავთენტიკაციის &amp;ვადა:</translation>
-    </message>
-    <message>
-        <source>Holds the timeout for guest authentication, in milliseconds.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">ავთენტიკაციის &amp;ვადა:</translation>
     </message>
     <message>
         <source>Extended Features:</source>
-        <translation>გაფართოებული თვისებები:</translation>
+        <translation type="vanished">გაფართოებული თვისებები:</translation>
     </message>
     <message>
         <source>&amp;Allow Multiple Connections</source>
-        <translation>ბევრი &amp;კავშირის დაშვება</translation>
+        <translation type="vanished">ბევრი &amp;კავშირის დაშვება</translation>
     </message>
     <message>
-        <source>When checked, multiple simultaneous connections to the VM are permitted.</source>
+        <source>VM will act as a Remote Desktop Protocol (RDP) server, allowing remote clients to connect and operate the VM (when it is running) using a standard RDP client</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>&amp;Security Method:</source>
+        <source>Server &amp;Port</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Selects the VRDP security method.</source>
+        <source>VRDP server port number. 3389 is the standard port for RDP.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Security Method</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VRDP security method</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Authentication &amp;Method</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VRDP authentication method</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Authentication &amp;Timeout</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Timeout for guest authentication, in milliseconds</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Features</source>
+        <translation type="unfinished">თვისებები</translation>
+    </message>
+    <message>
+        <source>&amp;Multiple Connections</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Multiple simultaneous connections to the VM will be permitted</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -14720,7 +15724,7 @@
     <name>UIVideoMemoryEditor</name>
     <message>
         <source>Video &amp;Memory:</source>
-        <translation>ვიდეო &amp;მეხსიერება:</translation>
+        <translation type="vanished">ვიდეო &amp;მეხსიერება:</translation>
     </message>
     <message>
         <source>%1 MB</source>
@@ -14731,16 +15735,28 @@
         <translation>მბ</translation>
     </message>
     <message>
-        <source>Holds the amount of video memory provided to the virtual machine.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Minimum possible video memory size.</source>
-        <translation>მინიმალური შესაძლო ვიდეომეხსიერების ზომა.</translation>
+        <translation type="vanished">მინიმალური შესაძლო ვიდეომეხსიერების ზომა.</translation>
     </message>
     <message>
         <source>Maximum possible video memory size.</source>
-        <translation>მაქსიმალური შესაძლო ვიდეომეხსიერების ზომა.</translation>
+        <translation type="vanished">მაქსიმალური შესაძლო ვიდეომეხსიერების ზომა.</translation>
+    </message>
+    <message>
+        <source>Video &amp;Memory</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Amount of video memory the virtual machine has</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Minimum video memory size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum video memory size</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -14771,11 +15787,7 @@
     <name>UIVirtualCPUEditor</name>
     <message>
         <source>&amp;Processors:</source>
-        <translation>&amp;პროცესორები:</translation>
-    </message>
-    <message>
-        <source>Holds the number of virtual CPUs in the virtual machine. You need hardware virtualization support on your host system to use more than one virtual CPU.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;პროცესორები:</translation>
     </message>
     <message>
         <source>%1 CPU</source>
@@ -14784,7 +15796,7 @@
     </message>
     <message>
         <source>Minimum possible virtual CPU count.</source>
-        <translation>მინიმალური შესაძლო ვირტუალური CPU-ების რაოდენობა.</translation>
+        <translation type="vanished">მინიმალური შესაძლო ვირტუალური CPU-ების რაოდენობა.</translation>
     </message>
     <message>
         <source>%1 CPUs</source>
@@ -14793,7 +15805,23 @@
     </message>
     <message>
         <source>Maximum possible virtual CPU count.</source>
-        <translation>მაქსიმალური შესაძლო ვირტუალური CPU-ების რაოდენობა.</translation>
+        <translation type="vanished">მაქსიმალური შესაძლო ვირტუალური CPU-ების რაოდენობა.</translation>
+    </message>
+    <message>
+        <source>&amp;Number of CPUs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Number of virtual CPUs in this VM</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Minimum number of virtual CPUs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum number of virtual CPUs</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -14973,29 +16001,14 @@
     <name>UIVisualStateEditor</name>
     <message>
         <source>Visual &amp;State:</source>
-        <translation>ვიზუალური &amp;მდგომარეობა:</translation>
+        <translation type="vanished">ვიზუალური &amp;მდგომარეობა:</translation>
     </message>
     <message>
-        <source>Selects the visual state. If machine is running it will be applied as soon as possible, otherwise desired one will be defined.</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>UIWelcomePane</name>
-    <message>
-        <source>&lt;h3&gt;Welcome to VirtualBox!&lt;/h3&gt;&lt;p&gt;The left part of application window contains global tools and lists all virtual machines and virtual machine groups on your computer. You can import, add and create new VMs using corresponding toolbar buttons. You can popup a tools of currently selected element using corresponding element button.&lt;/p&gt;&lt;p&gt;You can press the &lt;b&gt;%1&lt;/b&gt; key to get instant help, or visit &lt;a href=https://www.virtualbox.org&gt;www.virtualbox.org&lt;/a&gt; for more information and latest news.&lt;/p&gt;</source>
+        <source>&amp;Appearance</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>&lt;h3&gt;Please choose Experience Mode!&lt;/h3&gt;By default, the VirtualBox GUI is hiding some options, tools and wizards. &lt;p&gt;The &lt;b&gt;Basic Mode&lt;/b&gt; is intended for those users who are not interested in advanced functionality and prefer a simpler, cleaner interface.&lt;/p&gt;&lt;p&gt;The &lt;b&gt;Expert Mode&lt;/b&gt; is intended for experienced users who wish to utilize all VirtualBox functionality.&lt;/p&gt;&lt;p&gt;You can choose whether you are a beginner or experienced user by selecting required option at the right. This choice can always be changed in Global Preferences or Machine Settings windows.&lt;/p&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Basic Mode</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Expert Mode</source>
+        <source>Virtual machine visual appearance. If machine is running it will be applied as soon as possible, otherwise desired one will be defined.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -15180,10 +16193,6 @@
         <translation>MAC მისამართების &amp;პოლიტიკა:</translation>
     </message>
     <message>
-        <source>Determines MAC address policy for clonning:</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Include all network adapter MAC addresses</source>
         <translation>ყველა ქსელის ბარათის MAC მისამართის დამატება</translation>
     </message>
@@ -15209,7 +16218,7 @@
     </message>
     <message>
         <source>Additional Options:</source>
-        <translation>დამატებითი პარამეტრები:</translation>
+        <translation type="vanished">დამატებითი პარამეტრები:</translation>
     </message>
     <message>
         <source>Keep &amp;Disk Names</source>
@@ -15317,7 +16326,19 @@
     </message>
     <message>
         <source>Additional Options</source>
-        <translation type="unfinished">დამატებითი პარამეტრები</translation>
+        <translation type="obsolete">დამატებითი პარამეტრები</translation>
+    </message>
+    <message>
+        <source>Determines MAC address policy for cloning.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>OS Installation Options:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>OS Installation Options</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -15671,7 +16692,7 @@
     </message>
     <message>
         <source>&amp;Import hard drives as VDI</source>
-        <translation>&amp;მყარი დისკების VDI ფორმატში შემოტანა</translation>
+        <translation type="vanished">&amp;მყარი დისკების VDI ფორმატში შემოტანა</translation>
     </message>
     <message>
         <source>When checked, all the hard drives that belong to this appliance will be imported in VDI format.</source>
@@ -15701,6 +16722,10 @@
         <source>Holds the path to the base virtual machine folder. This folder is used when creating new virtual machine.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>&amp;Import Hard Drives as VDI</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>UIWizardNewCloudVM</name>
@@ -15714,7 +16739,7 @@
     </message>
     <message>
         <source>Cloud Virtual Machine settings</source>
-        <translation>ღრუბლოვანი ვირტუალური მანქანის მორგება</translation>
+        <translation type="vanished">ღრუბლოვანი ვირტუალური მანქანის მორგება</translation>
     </message>
     <message>
         <source>These are the the suggested settings of the cloud VM creation procedure, they are influencing the resulting cloud VM instance.  You can change many of the properties shown by double-clicking on the items and disable others using the check boxes below.</source>
@@ -15797,11 +16822,15 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>&amp;Options:</source>
+        <source>Lists all the cloud VM properties.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Lists all the cloud VM properties.</source>
+        <source>&amp;Settings:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cloud virtual machine settings</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -15845,7 +16874,7 @@
     </message>
     <message>
         <source>Hard Disk File &amp;Type and Variant</source>
-        <translation>მყარი დისკის ფაილის &amp;ტიპი და ვარიანტი</translation>
+        <translation type="vanished">მყარი დისკის ფაილის &amp;ტიპი და ვარიანტი</translation>
     </message>
     <message>
         <source>copy</source>
@@ -15867,32 +16896,32 @@
         <source>Copy Virtual Hard Disk</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Hard Disk File &amp;Type and Format</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>UIWizardNewVM</name>
     <message>
         <source>Create Virtual Machine</source>
-        <translation>ვირტუალური მანქანის შექმნა</translation>
+        <translation type="vanished">ვირტუალური მანქანის შექმნა</translation>
     </message>
     <message>
         <source>Username and Password</source>
-        <translation>მომხმარებელი და პაროლი</translation>
-    </message>
-    <message>
-        <source>Selects an installation medium (ISO file) for the Guest Additions.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">მომხმარებელი და პაროლი</translation>
     </message>
     <message>
         <source>Gu&amp;est Additions</source>
-        <translation>&amp;სტუმრის დამატებები</translation>
+        <translation type="vanished">&amp;სტუმრის დამატებები</translation>
     </message>
     <message>
         <source>Additional Options</source>
-        <translation>დამატებითი პარამეტრები</translation>
+        <translation type="vanished">დამატებითი პარამეტრები</translation>
     </message>
     <message>
         <source>&amp;Product Key:</source>
-        <translation>&amp;პროდუქტის გასაღები:</translation>
+        <translation type="vanished">&amp;პროდუქტის გასაღები:</translation>
     </message>
     <message>
         <source>&amp;Install in Background</source>
@@ -15900,42 +16929,22 @@
     </message>
     <message>
         <source>&amp;Enable EFI (special OSes only)</source>
-        <translation>&amp;EFI-ის ჩართვა (მხოლოდ სპეციალური ოს-ებისთვის)</translation>
+        <translation type="vanished">&amp;EFI-ის ჩართვა (მხოლოდ სპეციალური ოს-ებისთვის)</translation>
     </message>
     <message>
         <source>Virtual machine Name and Operating System</source>
-        <translation>ვირტუალური მანქანის სახელი და ოპერაციული სისტემა</translation>
-    </message>
-    <message>
-        <source>Please choose a descriptive name and destination folder for the new virtual machine. The name you choose will be used throughout VirtualBox to identify this machine. Additionally, you can select an ISO image which may be used to install the guest operating system.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">ვირტუალური მანქანის სახელი და ოპერაციული სისტემა</translation>
     </message>
     <message>
         <source>&amp;Skip Unattended Installation</source>
-        <translation>უყურადღებოდ დაყენების &amp;გამოტოვება</translation>
-    </message>
-    <message>
-        <source>When checked, the unattended install is disabled and the selected ISO is mounted on the vm.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">უყურადღებოდ დაყენების &amp;გამოტოვება</translation>
     </message>
     <message>
         <source>No ISO image is selected, the guest OS will need to be installed manually.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>OS type cannot be determined from the selected ISO, the guest OS will need to be installed manually.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>This OS type cannot be installed unattendedly. The install needs to be started manually.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>You have selected to skip unattended guest OS install, the guest OS will need to be installed manually.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>This OS type can be installed unattendedly. The install will start after this wizard is closed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -15944,23 +16953,23 @@
     </message>
     <message>
         <source>Unattended Guest OS Install Setup</source>
-        <translation>სტუმრის ოს-ის უყურადღებოდ დაყენების მორგება</translation>
+        <translation type="vanished">სტუმრის ოს-ის უყურადღებოდ დაყენების მორგება</translation>
     </message>
     <message>
         <source>Hardware</source>
-        <translation>აპარატურა</translation>
+        <translation type="vanished">აპარატურა</translation>
     </message>
     <message>
         <source>Virtual Hard disk</source>
-        <translation>ვირტუალური მყარი დისკი</translation>
+        <translation type="vanished">ვირტუალური მყარი დისკი</translation>
     </message>
     <message>
         <source>&amp;Do Not Add a Virtual Hard Disk</source>
-        <translation>&amp;არ დაამატო ვირტუალური მყარი დისკი</translation>
+        <translation type="vanished">&amp;არ დაამატო ვირტუალური მყარი დისკი</translation>
     </message>
     <message>
         <source>&amp;Create a Virtual Hard Disk Now</source>
-        <translation>&amp;ვირტუალური მყარი დისკის ახლა დამატება</translation>
+        <translation type="vanished">&amp;ვირტუალური მყარი დისკის ახლა დამატება</translation>
     </message>
     <message>
         <source>U&amp;se an Existing Virtual Hard Disk File</source>
@@ -15968,51 +16977,35 @@
     </message>
     <message>
         <source>Chooses a Virtual Hard Fisk File...</source>
-        <translation>აირჩიეთ ვირტუალური მყარი დისკის ფაილი...</translation>
+        <translation type="vanished">აირჩიეთ ვირტუალური მყარი დისკის ფაილი...</translation>
     </message>
     <message>
         <source>D&amp;isk Size:</source>
-        <translation>&amp;დისკის ზომა:</translation>
+        <translation type="vanished">&amp;დისკის ზომა:</translation>
     </message>
     <message>
         <source>Pre-allocate &amp;Full Size</source>
-        <translation>&amp;სრული ზომის წინასწარი გამოთხოვა</translation>
-    </message>
-    <message>
-        <source>When checked, the virtual disk image is allocated with its full size during VM creation time</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Please choose whether the new virtual hard disk file should grow as it is used (dynamically allocated) or if it should be created at its maximum size (fixed size).</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>&lt;p&gt;A &lt;b&gt;dynamically allocated&lt;/b&gt; hard disk file will only use space on your physical hard disk as it fills up (up to a maximum &lt;b&gt;fixed size&lt;/b&gt;), although it will not shrink again automatically when space on it is freed.&lt;/p&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>&lt;p&gt;A &lt;b&gt;fixed size&lt;/b&gt; hard disk file may take longer to create on some systems but is often faster to use.&lt;/p&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">&amp;სრული ზომის წინასწარი გამოთხოვა</translation>
     </message>
     <message>
         <source>Name and &amp;Operating System</source>
-        <translation>სახელი და &amp;ოპერაციული სისტემა</translation>
+        <translation type="vanished">სახელი და &amp;ოპერაციული სისტემა</translation>
     </message>
     <message>
         <source>&amp;Unattended Install</source>
-        <translation>&amp;უყურადღებოდ დაყენება</translation>
+        <translation type="vanished">&amp;უყურადღებოდ დაყენება</translation>
     </message>
     <message>
         <source>Hard Dis&amp;k</source>
-        <translation>&amp;მყარი დისკი</translation>
+        <translation type="vanished">&amp;მყარი დისკი</translation>
     </message>
     <message>
         <source>H&amp;ardware</source>
-        <translation>&amp;აპარატურა</translation>
+        <translation type="vanished">&amp;აპარატურა</translation>
     </message>
     <message>
         <source>Hard Disk File &amp;Type and Variant</source>
-        <translation>მყარი დისკის ფაილის &amp;ტიპი და ვარიანტი</translation>
+        <translation type="vanished">მყარი დისკის ფაილის &amp;ტიპი და ვარიანტი</translation>
     </message>
     <message>
         <source>Invalid path or unreadable ISO file</source>
@@ -16020,15 +17013,15 @@
     </message>
     <message>
         <source>Invalid username and/or password</source>
-        <translation>მომხმარებელი ან პაროლი არასწორია</translation>
+        <translation type="vanished">მომხმარებელი ან პაროლი არასწორია</translation>
     </message>
     <message>
         <source>Invalid hostname or domain name</source>
-        <translation>არასწორი ჰოსტის ან დომენის სახელი</translation>
+        <translation type="vanished">არასწორი ჰოსტის ან დომენის სახელი</translation>
     </message>
     <message>
         <source>Virtual machine name is invalid</source>
-        <translation>ვირტუალური მანქანის სახელი არასწორია</translation>
+        <translation type="vanished">ვირტუალური მანქანის სახელი არასწორია</translation>
     </message>
     <message>
         <source>Invalid ISO file</source>
@@ -16044,15 +17037,15 @@
     </message>
     <message>
         <source>Machine Name and OS Type</source>
-        <translation>მანქანის სახელი და ოს-ის ტიპი</translation>
+        <translation type="vanished">მანქანის სახელი და ოს-ის ტიპი</translation>
     </message>
     <message>
         <source>Machine Name</source>
-        <translation>მანქანის სახელი</translation>
+        <translation type="vanished">მანქანის სახელი</translation>
     </message>
     <message>
         <source>Machine Folder</source>
-        <translation>მანქანის საქაღალდე</translation>
+        <translation type="vanished">მანქანის საქაღალდე</translation>
     </message>
     <message>
         <source>ISO Image</source>
@@ -16064,15 +17057,15 @@
     </message>
     <message>
         <source>Skip Unattended Install</source>
-        <translation>უყურადღებოდ დაყენების გამოტოვება</translation>
+        <translation type="vanished">უყურადღებოდ დაყენების გამოტოვება</translation>
     </message>
     <message>
         <source>Unattended Install</source>
-        <translation>უყურადღებოდ დაყენება</translation>
+        <translation type="vanished">უყურადღებოდ დაყენება</translation>
     </message>
     <message>
         <source>Username</source>
-        <translation>მომხმარებლის სახელი</translation>
+        <translation type="vanished">მომხმარებლის სახელი</translation>
     </message>
     <message>
         <source>Product Key</source>
@@ -16080,7 +17073,7 @@
     </message>
     <message>
         <source>Hostname/Domain Name</source>
-        <translation>ჰოსტის/დომენის სახელი</translation>
+        <translation type="vanished">ჰოსტის/დომენის სახელი</translation>
     </message>
     <message>
         <source>Install in Background</source>
@@ -16092,7 +17085,7 @@
     </message>
     <message>
         <source>Guest Additions ISO</source>
-        <translation>სტუმრის დამატებების ISO</translation>
+        <translation type="vanished">სტუმრის დამატებების ISO</translation>
     </message>
     <message>
         <source>Base Memory</source>
@@ -16100,23 +17093,23 @@
     </message>
     <message>
         <source>Processor(s)</source>
-        <translation>პროცესორები</translation>
+        <translation type="vanished">პროცესორები</translation>
     </message>
     <message>
         <source>EFI Enable</source>
-        <translation>EFI -ის ჩართვა</translation>
+        <translation type="vanished">EFI -ის ჩართვა</translation>
     </message>
     <message>
         <source>Disk</source>
-        <translation>დისკი</translation>
+        <translation type="vanished">დისკი</translation>
     </message>
     <message>
         <source>Disk Size</source>
-        <translation>დისკის ზომა</translation>
+        <translation type="vanished">დისკის ზომა</translation>
     </message>
     <message>
         <source>Pre-allocate Full Size</source>
-        <translation>სრული ზომის წინასწარი გამოთხოვა</translation>
+        <translation type="vanished">სრული ზომის წინასწარი გამოთხოვა</translation>
     </message>
     <message>
         <source>Attached Disk</source>
@@ -16131,48 +17124,20 @@
         <translation>შეჯამება</translation>
     </message>
     <message>
-        <source>The following table summarizes the configuration you have chosen for the new virtual machine. When you are happy with the configuration press Finish to create the virtual machine. Alternatively you can go back and modify the configuration.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Invalid Guest Additions installation media</source>
         <translation type="vanished">სტუმრის დამატებების დაყენების არასწორი მედია</translation>
     </message>
     <message>
         <source>Holds the product key.</source>
-        <translation>შეიცავს პროდუქტის გასაღებს.</translation>
-    </message>
-    <message>
-        <source>When checked, the guest additions will be installed after the guest OS install.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>When checked, headless boot (with no GUI) will be enabled for unattended guest OS installation of newly created virtual machine.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>When checked, the guest will support the Extended Firmware Interface (EFI), which is required to boot certain guest OSes. Non-EFI aware OSes will not be able to boot if this option is activated.</source>
-        <translation type="unfinished"></translation>
+        <translation type="vanished">შეიცავს პროდუქტის გასაღებს.</translation>
     </message>
     <message>
         <source>Detected OS type: %1. %2</source>
         <translation>ნაპოვნი ოს-ის ტიპი: %1. %2</translation>
     </message>
     <message>
-        <source>You can configure the unattended guest OS install by modifying username, password, and hostname. Additionally you can enable guest additions install. For Microsoft Windows guests it is possible to provide a product key.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>You can modify virtual machine&apos;s hardware by changing amount of RAM and virtual CPU count. Enabling EFI is also possible.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>If you wish you can add a virtual hard disk to the new machine. You can either create a new hard disk file or select an existing one. Alternatively you can create a virtual machine without a virtual hard disk.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Guest &amp;Additions ISO:</source>
-        <translation>სტუმრის &amp;დამატებების ISO:</translation>
+        <translation type="vanished">სტუმრის &amp;დამატებების ISO:</translation>
     </message>
     <message>
         <source>Invalid guest additions installation media</source>
@@ -16187,11 +17152,215 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Choose a Virtual Hard Fisk File</source>
+        <source>Lists chosen configuration of the guest system.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Lists chosen configuration of the guest system.</source>
+        <source>&amp;Product Key</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The product key</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Start the virtual machine without a GUI</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>User Name and Password</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The ISO file to install the VirtualBox Guest Additions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Guest &amp;Additions ISO Image:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Install Gu&amp;est Additions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Install the VirtualBox Guest Additions on the guest OS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>OS Installation Options</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Use EFI</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use Extended Firmware Interface (EFI). This is required to boot some OSs.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>New Virtual Machine</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual machine name and operating system</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The ISO image is used to install the operating system on the VM.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Proceed with Unattended Installation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VirtualBox can&apos;t install an OS from the selected ISO. OS cannot be determined, the guest OS will need to be installed manually.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This OS can&apos;t be installed using Unattended Installation. The installation needs to be done manually.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VirtualBox will install the OS using an unattended installation when the VM is created. Supply the required information in the following steps.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual machine name cannot be empty</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual machine name is valid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual machine path is not unique</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Set up unattended guest OS installation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter the information that will be required when the OS is installed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Specify virtual hardware</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Specify the VM&apos;s hardware. Resources allocated to the VM will not be available to the host when the VM is running.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual machine name and &amp;operating system</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Set up &amp;unattended guest OS installation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Specify virtual hard dis&amp;k</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Specify virtual h&amp;ardware</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>C&amp;reate Virtual Machine Without a Virtual Hard Disk</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Create a New Virtual Hard Disk</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a Virtual Hard Disk File...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a Virtual Hard Disk File</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hard Disk File &amp;Type and Format</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid user name and/or password</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid host name or domain name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid product key</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual machine name is invalid (possibly empty)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual Machine Name and Operating System</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VM Name</source>
+        <translation type="unfinished">ვმ-ის სახელი</translation>
+    </message>
+    <message>
+        <source>VM Folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unattended Installation of Guest OS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>User Name</source>
+        <translation type="unfinished">მომხმარებლის სახელი</translation>
+    </message>
+    <message>
+        <source>Host Name/Domain Name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Guest Additions ISO Image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Virtual Hardware</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Processors</source>
+        <translation type="unfinished">პროცესორი</translation>
+    </message>
+    <message>
+        <source>Use EFI</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hard Disk Size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>A new VM will be created with the following configuration.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The ISO is attached to the VM, so you can install the OS automatically</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Proceed with Unattended Installation</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

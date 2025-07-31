@@ -4,10 +4,8 @@
   <title>Description Tab</title>
   
   <body>
-    <p>On the <b outputclass="bold">Description</b> tab you can enter a description for your virtual machine. This has
-      no effect on the functionality of the machine, but you may find this space useful to note down things such as the
-      configuration of a virtual machine and the software that has been installed into it. </p>
-    <p>To insert a line break into the <b outputclass="bold">Description</b> text field, press Shift+Enter. </p>
+    <p>On the <b outputclass="bold">Description</b> tab you can enter a description for your virtual machine. This has no effect on the functionality of the machine, but you may find this space useful to note down things such as the configuration of a virtual machine and the software that has been installed into it.</p>
+    <p>To insert a line break into the <b outputclass="bold">Description</b> text field, press Shift+Enter.</p>
   </body>
   
 </topic>

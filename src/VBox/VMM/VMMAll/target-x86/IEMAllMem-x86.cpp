@@ -1,4 +1,4 @@
-/* $Id: IEMAllMem-x86.cpp 109000 2025-03-28 21:58:31Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMAllMem-x86.cpp 110494 2025-07-31 10:11:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager - x86 target, memory.
  */
@@ -268,22 +268,6 @@ static unsigned iemMemMapFindFree(PVMCPUCC pVCpu)
 
     AssertFailedReturn(1024);
 }
-
-
-#ifdef IEM_WITH_DATA_TLB
-/**
- * Helper for iemMemMap, iemMemMapJmp and iemMemBounceBufferMapCrossPage.
- * @todo duplicated
- */
-DECL_FORCE_INLINE(uint32_t)
-iemMemCheckDataBreakpoint(PVMCC pVM, PVMCPUCC pVCpu, RTGCPTR GCPtrMem, size_t cbMem, uint32_t fAccess)
-{
-    bool const  fSysAccess = (fAccess & IEM_ACCESS_WHAT_MASK) == IEM_ACCESS_WHAT_SYS;
-    if (fAccess & IEM_ACCESS_TYPE_WRITE)
-        return DBGFBpCheckDataWrite(pVM, pVCpu, GCPtrMem, (uint32_t)cbMem, fSysAccess);
-    return DBGFBpCheckDataRead(pVM, pVCpu, GCPtrMem, (uint32_t)cbMem, fSysAccess);
-}
-#endif
 
 
 /**
@@ -1849,7 +1833,7 @@ VBOXSTRICTRC iemMemMarkSelDescAccessed(PVMCPUCC pVCpu, uint16_t uSel) RT_NOEXCEP
         rcStrict = iemMemMap(pVCpu, (void **)&pu32, &bUnmapInfo, 4, UINT8_MAX, GCPtr, IEM_ACCESS_SYS_RW, 0);
         if (rcStrict != VINF_SUCCESS)
             return rcStrict;
-        ASMAtomicBitSet(pu32, 8); /* X86_SEL_TYPE_ACCESSED is 1, but it is preceeded by u8BaseHigh1. */
+        ASMAtomicBitSet(pu32, 8); /* X86_SEL_TYPE_ACCESSED is 1, but it is preceded by u8BaseHigh1. */
     }
     else
     {

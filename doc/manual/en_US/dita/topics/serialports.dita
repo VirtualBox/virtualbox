@@ -8,7 +8,7 @@
     <p>While serial ports are no longer as common as they used to be, there are still some important uses left for them. For example, serial ports can be used to set up a primitive network over a null-modem cable, in case Ethernet is not available. Also, serial ports are indispensable for system programmers needing to do kernel debugging, since kernel debugging software usually interacts with developers over a serial port. With virtual serial ports, system programmers can do kernel debugging on a virtual machine instead of needing a real computer to connect to. </p>
     <p>If a virtual serial port is enabled, the guest OS sees a standard 16550A compatible UART device. Other UART types can be configured using the <userinput>VBoxManage modifyvm</userinput> command. Both receiving and transmitting data is supported. How this virtual serial port is then connected to the host is configurable, and the details depend on your host OS. </p>
     <p>You can use either the Settings tabs or the <userinput>VBoxManage</userinput> command to set up virtual serial ports. For the latter, see <xref href="../cli_topics/vboxmanage-modifyvm.dita"/> for information on the <codeph>--uart</codeph>, <codeph>--uart-mode</codeph> and <codeph>--uart-type</codeph> options.</p>
-    <p>You can configure up to four virtual serial ports per virtual machine. For each device, you must set the following: </p>
+    <p>You can configure up to four virtual serial ports per virtual machine. For each device, you must set the following:</p>
     <ol>
       <li>
         <p><b outputclass="bold">Port Number:</b> This determines the serial port that the virtual machine should see. For best results, use the traditional values as follows: </p>
@@ -26,10 +26,10 @@
             <p> COM4: I/O base 0x2E8, IRQ 3 </p>
           </li>
         </ul>
-        <p> You can also configure a user-defined serial port. Enter an I/O base address and interrupt (IRQ). </p>
+        <p>You can also configure a user-defined serial port. Enter an I/O base address and interrupt (IRQ).</p>
       </li>
       <li>
-        <p><b outputclass="bold">Port Mode:</b> What the virtual port is connected to. For each virtual serial port, you have the following options: </p>
+        <p><b outputclass="bold">Port Mode:</b> What the virtual port is connected to. For each virtual serial port, you have the following options:</p>
         <ul>
           <li>
             <p><b outputclass="bold">Disconnected:</b> The guest will see the device, but it will behave as if no cable had been connected to it. </p>

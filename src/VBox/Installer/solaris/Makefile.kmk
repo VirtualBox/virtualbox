@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 109324 2025-04-24 11:38:27Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 110417 2025-07-25 17:52:57Z klaus.espenlaub@oracle.com $
 ## @file
 # Sub-Makefile for the Solaris installer.
 #
@@ -344,6 +344,7 @@ SOLARIS_STRIP_BINS = \
 	VBoxRT.so \
 	VBoxDDU.so \
 	VBoxVMM.so \
+	$(if $(VBOX_WITH_VIRT_ARMV8),VBoxVMMArm.so,) \
 	$(if $(VBOX_WITH_LIBSSH),VBoxLibSsh.so,) \
 	VBoxXPCOM.so \
 	VBoxXPCOMC.so \
@@ -505,6 +506,11 @@ ifdef VBOX_WITH_EFIFW_PACKING
  SOLARIS_COMMON += \
  	VBoxEFI-x86.fd \
  	VBoxEFI-amd64.fd
+ ifdef VBOX_WITH_VIRT_ARMV8
+  SOLARIS_COMMON += \
+  	VBoxEFI-arm32.fd \
+  	VBoxEFI-arm64.fd
+ endif
 endif
 
 # Unattended installation template scripts.

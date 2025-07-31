@@ -1,4 +1,4 @@
-/* $Id: CPUMR3Dbg-armv8.cpp 109485 2025-05-09 07:50:57Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMR3Dbg-armv8.cpp 110152 2025-07-08 14:36:58Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU Monitor / Manager, Debugger & Debugging APIs.
  */
@@ -329,9 +329,9 @@ static DBGFREGDESC const g_aCpumRegGstDescs[] =
     CPU_REG_RW_AS("mdcr_el2",       MDCR_EL2,       U64, MdcrEl2,         cpumR3RegGet_Generic,         cpumR3RegSet_Generic,         NULL,                       NULL                    ),
     CPU_REG_RW_AS("sctlr_el2",      SCTLR_EL2,      U64, SctlrEl2,        cpumR3RegGet_Generic,         cpumR3RegSet_Generic,         NULL,                       NULL                    ),
     CPU_REG_RW_AS("spsr_el2",       SPSR_EL2,       U64, SpsrEl2,         cpumR3RegGet_Generic,         cpumR3RegSet_Generic,         NULL,                       NULL                    ),
-    CPU_REG_RW_AS("sp_el2",         SP_EL2,         U64, SpEl2,           cpumR3RegGet_Generic,         cpumR3RegSet_Generic,         NULL,                       NULL                    ),
+    CPU_REG_RW_AS("sp_el2",         SP_EL2,         U64, aSpReg[2],       cpumR3RegGet_Generic,         cpumR3RegSet_Generic,         NULL,                       NULL                    ),
     CPU_REG_RW_AS("tcr_el2",        TCR_EL2,        U64, TcrEl2,          cpumR3RegGet_Generic,         cpumR3RegSet_Generic,         NULL,                       NULL                    ),
-    CPU_REG_RW_AS("tpidr_el2",      TPIDR_EL2,      U64, TpidrEl2,        cpumR3RegGet_Generic,         cpumR3RegSet_Generic,         NULL,                       NULL                    ),
+    CPU_REG_RW_AS("tpidr_el2",      TPIDR_EL2,      U64, aTpIdr[2],       cpumR3RegGet_Generic,         cpumR3RegSet_Generic,         NULL,                       NULL                    ),
     CPU_REG_RW_AS("ttbr0_el2",      TTBR0_EL2,      U64, Ttbr0El2,        cpumR3RegGet_Generic,         cpumR3RegSet_Generic,         NULL,                       NULL                    ),
     CPU_REG_RW_AS("ttbr1_el2",      TTBR1_EL2,      U64, Ttbr1El2,        cpumR3RegGet_Generic,         cpumR3RegSet_Generic,         NULL,                       NULL                    ),
     CPU_REG_RW_AS("vbar_el2",       VBAR_EL2,       U64, VBarEl2,         cpumR3RegGet_Generic,         cpumR3RegSet_Generic,         NULL,                       NULL                    ),

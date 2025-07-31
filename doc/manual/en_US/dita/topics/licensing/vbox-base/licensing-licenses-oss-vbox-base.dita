@@ -3,17 +3,16 @@
 <topic xml:lang="en-us" id="licenses-oss-vbox-base">
   <title>Open Source or Other Separately Licensed Software</title>
   <body>
-  <p>Required notices for open source or other separately licensed software products or components distributed in <ph
-        conkeyref="vbox-conkeyref-phrases/vbox-base"/> are identified in the following table, along with the applicable
-      licensing information. Additional notices and/or licenses may be found in the included documentation or readme
-      files of the individual third party software.</p>
+  
+  <p>Required notices for open source or other separately licensed software products or components distributed in <ph conkeyref="vbox-conkeyref-phrases/vbox-base"/> are identified in the following table, along with the applicable licensing information. Additional notices and/or licenses may be found in the included documentation or readme files of the individual third party software.</p>
+        
         <table id="table-oss-vbox-base">
-        <title>Open Source or Other Separately Licensed Software Included With <ph
-          conkeyref="vbox-conkeyref-phrases/vbox-base"/></title>
+                
+          <title>Open Source or Other Separately Licensed Software Included With <ph conkeyref="vbox-conkeyref-phrases/vbox-base"/></title>
          <desc>
-        <ph>This table shows the additional licensing information for the software packages and container images used
-          for <ph conkeyref="vbox-conkeyref-phrases/vbox-base"/></ph>
+           <ph>This table shows the additional licensing information for the software packages and container images used for <ph conkeyref="vbox-conkeyref-phrases/vbox-base"/></ph>
       </desc>
+                
         <tgroup cols="3">
           <colspec/>
           <colspec/>
@@ -27,6 +26,22 @@
           </thead>
           <tbody>
           
+           <row>
+             <entry>
+               <p>ARM</p>
+             </entry>     
+             
+             <entry>
+            <p>A-Profile Architecture</p>
+              </entry>
+             
+            <entry>
+               <p>
+             A copy of the License is reproduced in 
+                 <xref href="licensing-license-vbox-base-a-profile-architecture-2024-12.dita#license-a-profile-architecture-2024-12" scope="local"/>
+              </p>
+             </entry>        
+            </row>
            <row>
              <entry>
                <p>Aleksander Shengalts</p>
@@ -129,29 +144,13 @@
              </entry>     
              
              <entry>
-            <p>nullsoft scriptable install system (NSIS) 3.08</p>
-             </entry>
-            
-            <entry>
-               <p>
-             A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-nullsoft-scriptable-install-system-nsis-3.08.dita#license-nullsoft-scriptable-install-system-nsis-3.08" scope="local"/>
-              </p>
-             </entry>        
-            </row>
-           <row>
-             <entry>
-               <p>Contributors</p>
-             </entry>     
+            <p>nullsoft scriptable install system (NSIS)</p>
+              </entry>
              
-             <entry>
-            <p>nullsoft scriptable install system (NSIS) 3.09</p>
-             </entry>
-            
             <entry>
                <p>
              A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-nullsoft-scriptable-install-system-nsis-3.09.dita#license-nullsoft-scriptable-install-system-nsis-3.09" scope="local"/>
+                 <xref href="licensing-license-vbox-base-nullsoft-scriptable-install-system-nsis-3.10.dita#license-nullsoft-scriptable-install-system-nsis-3.10" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -173,27 +172,11 @@
             </row>
            <row>
              <entry>
-               <p>Daniel Stenberg</p>
-             </entry>     
-             
-             <entry>
-            <p>curl</p>
-              </entry>
-             
-            <entry>
-               <p>
-             A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-curl-8.7.1.dita#license-curl-8.7.1" scope="local"/>
-              </p>
-             </entry>        
-            </row>
-           <row>
-             <entry>
                <p>Daniel Veillard</p>
              </entry>     
              
              <entry>
-            <p>Libxml2</p>
+            <p>libxml2</p>
               </entry>
              
             <entry>
@@ -225,13 +208,45 @@
              </entry>     
              
              <entry>
-            <p>libslirp</p>
+            <p>libslirp 4.8.0</p>
+             </entry>
+            
+            <entry>
+               <p>
+             A copy of the License is reproduced in 
+                 <xref href="licensing-license-vbox-base-libslirp-4.8.0.dita#license-libslirp-4.8.0" scope="local"/>
+              </p>
+             </entry>        
+            </row>
+           <row>
+             <entry>
+               <p>Danny Gasparovski</p>
+             </entry>     
+             
+             <entry>
+            <p>libslirp 4.9.0</p>
+             </entry>
+            
+            <entry>
+               <p>
+             A copy of the License is reproduced in 
+                 <xref href="licensing-license-vbox-base-libslirp-4.9.0.dita#license-libslirp-4.9.0" scope="local"/>
+              </p>
+             </entry>        
+            </row>
+           <row>
+             <entry>
+               <p>Devicetree</p>
+             </entry>     
+             
+             <entry>
+            <p>pylibfdt</p>
               </entry>
              
             <entry>
                <p>
              A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-libslirp-4.8.0.dita#license-libslirp-4.8.0" scope="local"/>
+                 <xref href="licensing-license-vbox-base-pylibfdt-1.7.2.dita#license-pylibfdt-1.7.2" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -269,17 +284,17 @@
             </row>
            <row>
              <entry>
-               <p>Freedesktop.org</p>
+               <p>FreeBSD</p>
              </entry>     
              
              <entry>
-            <p>libdrm</p>
+            <p>FreeBSD</p>
               </entry>
              
             <entry>
                <p>
              A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-libdrm-2.4.112.dita#license-libdrm-2.4.112" scope="local"/>
+                 <xref href="licensing-license-vbox-base-freebsd-7.2.dita#license-freebsd-7.2" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -311,23 +326,7 @@
             <entry>
                <p>
              A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-gsoap-2.8.122.dita#license-gsoap-2.8.122" scope="local"/>
-              </p>
-             </entry>        
-            </row>
-           <row>
-             <entry>
-               <p>Glenn Randers-Pehrson et al</p>
-             </entry>     
-             
-             <entry>
-            <p>libpng</p>
-              </entry>
-             
-            <entry>
-               <p>
-             A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-libpng-1.6.43.dita#license-libpng-1.6.43" scope="local"/>
+                 <xref href="licensing-license-vbox-base-gsoap-2.8.136.dita#license-gsoap-2.8.136" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -344,22 +343,6 @@
                <p>
              A copy of the License is reproduced in 
                  <xref href="licensing-license-vbox-base-libvpx-1.14.1.dita#license-libvpx-1.14.1" scope="local"/>
-              </p>
-             </entry>        
-            </row>
-           <row>
-             <entry>
-               <p>H. Peter Anvin</p>
-             </entry>     
-             
-             <entry>
-            <p>nasm 2.12.02</p>
-             </entry>
-            
-            <entry>
-               <p>
-             A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-nasm-2.12.02.dita#license-nasm-2.12.02" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -415,13 +398,29 @@
              </entry>     
              
              <entry>
-            <p>Zlib Data Compression Library</p>
-              </entry>
-             
+            <p>Zlib Data Compression Library 1.3.1</p>
+             </entry>
+            
             <entry>
                <p>
              A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-zlib-data-compression-library-1.2.13.dita#license-zlib-data-compression-library-1.2.13" scope="local"/>
+                 <xref href="licensing-license-vbox-base-zlib-data-compression-library-1.3.1.dita#license-zlib-data-compression-library-1.3.1" scope="local"/>
+              </p>
+             </entry>        
+            </row>
+           <row>
+             <entry>
+               <p>Jean-loup Gailly and Mark Adler</p>
+             </entry>     
+             
+             <entry>
+            <p>Zlib Data Compression Library 1.3.1</p>
+             </entry>
+            
+            <entry>
+               <p>
+             A copy of the License is reproduced in 
+                 <xref href="licensing-license-vbox-base-zlib-data-compression-library-1.3.1.dita#license-zlib-data-compression-library-1.3.1" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -507,6 +506,22 @@
             </row>
            <row>
              <entry>
+               <p>Khronos Group</p>
+             </entry>     
+             
+             <entry>
+            <p>glslang</p>
+              </entry>
+             
+            <entry>
+               <p>
+             A copy of the License is reproduced in 
+                 <xref href="licensing-license-vbox-base-glslang-11.9.0.dita#license-glslang-11.9.0" scope="local"/>
+              </p>
+             </entry>        
+            </row>
+           <row>
+             <entry>
                <p>Kristian Høgsberg, Intel Corporation, Benjamin Franzke, Collabora, Ltd.</p>
              </entry>     
              
@@ -587,17 +602,17 @@
             </row>
            <row>
              <entry>
-               <p>Mathias Hasselmann</p>
+               <p>Microsoft</p>
              </entry>     
              
              <entry>
-            <p>NSIS AccessControl plugin</p>
-              </entry>
-             
+            <p>WiX (Windows Installer XML toolset) 4.0.5</p>
+             </entry>
+            
             <entry>
                <p>
              A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-nsis-accesscontrol-plugin-1.0.8.3.dita#license-nsis-accesscontrol-plugin-1.0.8.3" scope="local"/>
+                 <xref href="licensing-license-vbox-base-wix-windows-installer-xml-toolset-4.0.5.dita#license-wix-windows-installer-xml-toolset-4.0.5" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -607,13 +622,13 @@
              </entry>     
              
              <entry>
-            <p>WiX (Windows Installer XML toolset)</p>
-              </entry>
-             
+            <p>WiX (Windows Installer XML toolset) 5.0.2</p>
+             </entry>
+            
             <entry>
                <p>
              A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-wix-windows-installer-xml-toolset-4.0.5.dita#license-wix-windows-installer-xml-toolset-4.0.5" scope="local"/>
+                 <xref href="licensing-license-vbox-base-wix-windows-installer-xml-toolset-5.0.2.dita#license-wix-windows-installer-xml-toolset-5.0.2" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -635,33 +650,17 @@
             </row>
            <row>
              <entry>
-               <p>OpenSSL Project</p>
+               <p>Opensource</p>
              </entry>     
              
              <entry>
-            <p>OpenSSL 3.3.0</p>
+            <p>Digia QT 6.5.3</p>
              </entry>
             
             <entry>
                <p>
              A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-openssl-3.3.0.dita#license-openssl-3.3.0" scope="local"/>
-              </p>
-             </entry>        
-            </row>
-           <row>
-             <entry>
-               <p>OpenSSL Project</p>
-             </entry>     
-             
-             <entry>
-            <p>OpenSSL 3.1.7</p>
-             </entry>
-            
-            <entry>
-               <p>
-             A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-openssl-3.1.7.dita#license-openssl-3.1.7" scope="local"/>
+                 <xref href="licensing-license-vbox-base-digia-qt-6.5.3.dita#license-digia-qt-6.5.3" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -671,13 +670,13 @@
              </entry>     
              
              <entry>
-            <p>Digia QT</p>
-              </entry>
-             
+            <p>Digia QT 6.8.0</p>
+             </entry>
+            
             <entry>
                <p>
              A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-digia-qt-6.5.3.dita#license-digia-qt-6.5.3" scope="local"/>
+                 <xref href="licensing-license-vbox-base-digia-qt-6.8.0.dita#license-digia-qt-6.8.0" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -715,33 +714,49 @@
             </row>
            <row>
              <entry>
-               <p>RedHat, Inc., JBoss community</p>
+               <p>Swedish Institute of Computer Science (“SICS”)</p>
              </entry>     
              
              <entry>
-            <p>libdevmapper</p>
+            <p>Lightweight TCP/IP stack (LWIP)</p>
               </entry>
              
             <entry>
                <p>
              A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-libdevmapper-2.03.20.dita#license-libdevmapper-2.03.20" scope="local"/>
+                 <xref href="licensing-license-vbox-base-lightweight-tcp-ip-stack-lwip-2.2.1.dita#license-lightweight-tcp-ip-stack-lwip-2.2.1" scope="local"/>
               </p>
              </entry>        
             </row>
            <row>
              <entry>
-               <p>Simon Ser, Ivan Molodetskikh</p>
+               <p>The PNG Reference Library Authors</p>
              </entry>     
              
              <entry>
-            <p>Wayland protocols</p>
-              </entry>
-             
+            <p>libpng 1.6.43</p>
+             </entry>
+            
             <entry>
                <p>
              A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-wayland-protocols-4264185d.dita#license-wayland-protocols-4264185d" scope="local"/>
+                 <xref href="licensing-license-vbox-base-libpng-1.6.43.dita#license-libpng-1.6.43" scope="local"/>
+              </p>
+             </entry>        
+            </row>
+           <row>
+             <entry>
+               <p>The PNG Reference Library Authors</p>
+             </entry>     
+             
+             <entry>
+            <p>libpng 1.6.45</p>
+             </entry>
+            
+            <entry>
+               <p>
+             A copy of the License is reproduced in 
+                 <xref href="licensing-license-vbox-base-libpng-1.6.45.dita#license-libpng-1.6.45" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -758,6 +773,22 @@
                <p>
              A copy of the License is reproduced in 
                  <xref href="licensing-license-vbox-base-xfree86--vidmode-extension-4.3.dita#license-xfree86--vidmode-extension-4.3" scope="local"/>
+              </p>
+             </entry>        
+            </row>
+           <row>
+             <entry>
+               <p>Valve Corporation</p>
+             </entry>     
+             
+             <entry>
+            <p>OpenVR</p>
+              </entry>
+             
+            <entry>
+               <p>
+             A copy of the License is reproduced in 
+                 <xref href="licensing-license-vbox-base-openvr-2.5.1.dita#license-openvr-2.5.1" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -991,22 +1022,6 @@
              </entry>     
              
              <entry>
-            <p>libxshmfence</p>
-              </entry>
-             
-            <entry>
-               <p>
-             A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-libxshmfence-1.3.dita#license-libxshmfence-1.3" scope="local"/>
-              </p>
-             </entry>        
-            </row>
-           <row>
-             <entry>
-               <p>X.Org Foundation</p>
-             </entry>     
-             
-             <entry>
             <p>pixman</p>
               </entry>
              
@@ -1110,22 +1125,6 @@
                <p>
              A copy of the License is reproduced in 
                  <xref href="licensing-license-vbox-base-xf86driproto-2.1.1.dita#license-xf86driproto-2.1.1" scope="local"/>
-              </p>
-             </entry>        
-            </row>
-           <row>
-             <entry>
-               <p>X.Org Foundation</p>
-             </entry>     
-             
-             <entry>
-            <p>xorg-server 1.14.0</p>
-             </entry>
-            
-            <entry>
-               <p>
-             A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-xorg-server-1.14.0.dita#license-xorg-server-1.14.0" scope="local"/>
               </p>
              </entry>        
             </row>
@@ -1343,6 +1342,22 @@
              </entry>     
              
              <entry>
+            <p>xorg-server 1.14.0</p>
+             </entry>
+            
+            <entry>
+               <p>
+             A copy of the License is reproduced in 
+                 <xref href="licensing-license-vbox-base-xorg-server-1.14.0.dita#license-xorg-server-1.14.0" scope="local"/>
+              </p>
+             </entry>        
+            </row>
+           <row>
+             <entry>
+               <p>X.Org Foundation</p>
+             </entry>     
+             
+             <entry>
             <p>xorg-server 1.15.0</p>
              </entry>
             
@@ -1481,20 +1496,22 @@
               </p>
              </entry>        
             </row>
-          <row>
+           <row>
+             <entry>
+               <p>various</p>
+             </entry>     
+             
+             <entry>
+            <p>EDK2</p>
+              </entry>
+             
             <entry>
-              <p>various</p>
-            </entry>
-            <entry>
-              <p>EDK2</p>
-            </entry>
-            <entry>
-              <p> A copy of the License is reproduced in <xref
-                  href="licensing-license-vbox-base-edk2-edk2-stable202405.dita#license-edk2-edk2-stable202405"
-                  scope="local"/>
+               <p>
+             A copy of the License is reproduced in 
+                 <xref href="licensing-license-vbox-base-edk2-edk2-stable202405.dita#license-edk2-edk2-stable202405" scope="local"/>
               </p>
-            </entry>
-          </row>
+             </entry>        
+            </row>
            <row>
              <entry>
                <p>various</p>
@@ -1517,13 +1534,13 @@
              </entry>     
              
              <entry>
-            <p>NASM 2.16.01</p>
-             </entry>
-            
+            <p>NASM</p>
+              </entry>
+             
             <entry>
                <p>
              A copy of the License is reproduced in 
-                 <xref href="licensing-license-vbox-base-nasm-2.16.01.dita#license-nasm-2.16.01" scope="local"/>
+                 <xref href="licensing-license-vbox-base-nasm-2.16.03.dita#license-nasm-2.16.03" scope="local"/>
               </p>
              </entry>        
             </row>

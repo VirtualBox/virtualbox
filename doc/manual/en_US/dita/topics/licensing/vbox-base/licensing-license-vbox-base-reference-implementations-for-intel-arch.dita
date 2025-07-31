@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
 <topic xml:lang="en-us" id="license-reference-implementations-for-intel-arch">
-  
- <title>Reference Implementations for Intel® Architecture Approximation Instructions VRCP14, VRSQRT14, VRCP28, VRSQRT28, and VEXP2</title>
-  
- <body>
-  <pre xml:space="preserve">/* Copyright (c) 2015, Intel Corporation Redistribution and use in source and 
+  <title>Reference Implementations for Intel® Architecture Approximation Instructions VRCP14, VRSQRT14, VRCP28, VRSQRT28, and VEXP2</title>
+  <body>
+    <pre xml:space="preserve">/* Copyright (c) 2015, Intel Corporation Redistribution and use in source and 
    binary forms, with or without modification, are permitted provided that the 
    following conditions are met:
  
@@ -30,4 +28,4 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
 </pre>
   </body>
- </topic>
+</topic>

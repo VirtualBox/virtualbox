@@ -4,16 +4,6 @@
   <title>Introduction</title>
   <body>
     
-    <p>This Licensing Information document is a part of the product or program documentation under
-      the terms of your Oracle license agreement and is intended to help you understand the program
-      editions, entitlements, restrictions, prerequisites, special license rights, and/or separately
-      licensed third party technology terms associated with the <ph conkeyref="vbox-conkeyref-phrases/company-name"/> software program(s) covered by this
-      document (the “Program(s)”). Entitled or restricted use products or components identified in
-      this document that are not provided with the particular Program may be obtained from the <ph conkeyref="vbox-conkeyref-phrases/company-name"/> Software Delivery Cloud 
-      website (<xref href="https://edelivery.oracle.com" format="html" scope="external"/>) or from media <ph conkeyref="vbox-conkeyref-phrases/company-name"/> may provide. 
-      If you have a question about your license rights and obligations, please contact your <ph conkeyref="vbox-conkeyref-phrases/company-name"/> sales representative, review the
-      information provided in <ph conkeyref="vbox-conkeyref-phrases/company-name"/>’s Software
-      Investment Guide (<xref href="https://www.oracle.com/corporate/pricing/" format="html" scope="external"/>), and/or contact the applicable <ph conkeyref="vbox-conkeyref-phrases/company-name"/> License Management Services
-      representative listed on <xref href="https://www.oracle.com/corporate/license-management-services/" format="html" scope="external"/>.</p>
+    <p>This Licensing Information document is a part of the product or program documentation under the terms of your Oracle license agreement and is intended to help you understand the program editions, entitlements, restrictions, prerequisites, special license rights, and/or separately licensed third party technology terms associated with the <ph conkeyref="vbox-conkeyref-phrases/company-name"/> software program(s) covered by this document (the “Program(s)”). Entitled or restricted use products or components identified in this document that are not provided with the particular Program may be obtained from the <xref href="https://edelivery.oracle.com" format="html" scope="external"><ph conkeyref="vbox-conkeyref-phrases/company-name"/> Software Delivery Cloud</xref> or from media <ph conkeyref="vbox-conkeyref-phrases/company-name"/> may provide. If you have a question about your license rights and obligations, please contact your <ph conkeyref="vbox-conkeyref-phrases/company-name"/> sales representative, review the information provided in <xref href="https://www.oracle.com/corporate/pricing/" format="html" scope="external"><ph conkeyref="vbox-conkeyref-phrases/company-name"/>’s Software Investment Guide</xref>, or contact the applicable <xref href="https://www.oracle.com/corporate/license-management-services/" format="html" scope="external"><ph conkeyref="vbox-conkeyref-phrases/company-name"/> License Management Services</xref> representative.</p>
   </body>
 </topic>

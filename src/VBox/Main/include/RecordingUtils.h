@@ -1,4 +1,4 @@
-/* $Id: RecordingUtils.h 109802 2025-06-10 06:21:49Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingUtils.h 110425 2025-07-28 09:18:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording utility header.
  */
@@ -31,8 +31,8 @@
 # pragma once
 #endif
 
+#ifndef IN_VBOXSVC /* Code only used in VBoxC. */
 #include "RecordingInternals.h"
-
 
 void RecordingUtilsConvBGRA32ToYUVI420(uint8_t *paDst, uint32_t uDstWidth, uint32_t uDstHeight,
                                        uint8_t *paSrc, uint32_t uSrcWidth, uint32_t uSrcHeight);
@@ -40,12 +40,19 @@ void RecordingUtilsConvBGRA32ToYUVI420Ex(uint8_t *paDst, uint32_t dx, uint32_t d
                                          uint8_t *paSrc, uint32_t sx, uint32_t sy, uint32_t uSrcWidth, uint32_t uSrcHeight, uint32_t uSrcStride, uint8_t uBPP);
 int RecordingUtilsCoordsCropCenter(PRECORDINGCODECPARMS pCodecParms, int32_t *sx, int32_t *sy, int32_t *sw, int32_t *sh, int32_t *dx, int32_t *dy);
 const char *RecordingUtilsRecordingFrameTypeToStr(RECORDINGFRAME_TYPE enmType);
+#endif
+
+const char *RecordingUtilsAudioCodecToStr(RecordingAudioCodec_T enmCodec);
+const char *RecordingUtilsVideoCodecToStr(RecordingVideoCodec_T enmCodec);
+
+#ifndef IN_VBOXSVC /* Code only used in VBoxC. */
 
 #ifdef DEBUG
 int RecordingUtilsDbgDumpImageData(const uint8_t *pu8RGBBuf, size_t cbRGBBuf, const char *pszPath, const char *pszWhat, uint32_t uX, uint32_t uY, uint32_t uWidth, uint32_t uHeight, uint32_t uBytesPerLine, uint8_t uBPP);
 int RecordingUtilsDbgDumpVideoFrameEx(const PRECORDINGVIDEOFRAME pFrame, const char *pszPath, const char *pszWhat);
 int RecordingUtilsDbgDumpVideoFrame(const PRECORDINGVIDEOFRAME pFrame, const char *pszWhat);
 void RecordingUtilsDbgLogFrame(PRECORDINGFRAME pFrame);
+#endif
 #endif
 
 #endif /* !MAIN_INCLUDED_RecordingUtils_h */
