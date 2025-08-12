@@ -4,6 +4,8 @@
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     xmlns:exsl="http://exslt.org/common"
     extension-element-prefixes="exsl">
+    
+<xsl:param name="case-style" select="'camel'"/>
 
 <xsl:output method="text"/>
 
@@ -50,11 +52,18 @@
     </xsl:variable>
 
     <xsl:variable name="swaggerAttrName">
-        <xsl:call-template name="replaceUppercaseWithUnderscore">
-            <xsl:with-param name="lettersNodeSet" select="$attributeSplittedByLetters"/>
-            <xsl:with-param name="letter" select="letter"/>
-            <xsl:with-param name="fSkipFirst" select="false"/>
-        </xsl:call-template>
+        <xsl:choose>
+            <xsl:when test="$case-style='snake'">
+                <xsl:call-template name="replaceUppercaseWithUnderscore">
+                    <xsl:with-param name="lettersNodeSet" select="$attributeSplittedByLetters"/>
+                    <xsl:with-param name="letter" select="letter"/>
+                    <xsl:with-param name="fSkipFirst" select="false"/>
+                </xsl:call-template>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:value-of select="@name"/>
+            </xsl:otherwise>
+        </xsl:choose>
     </xsl:variable>
 
     <xsl:variable name="attributeTypeSplittedByLetters">
@@ -64,11 +73,20 @@
     </xsl:variable>
 
     <xsl:variable name="swaggerAttrType">
-        <xsl:call-template name="replaceUppercaseWithUnderscore">
-            <xsl:with-param name="lettersNodeSet" select="$attributeTypeSplittedByLetters"/>
-            <xsl:with-param name="letter" select="letter"/>
-            <xsl:with-param name="fSkipFirst" select="false"/>
-        </xsl:call-template>
+        <xsl:choose>
+            <xsl:when test="$case-style='snake'">
+                <xsl:call-template name="replaceUppercaseWithUnderscore">
+                    <xsl:with-param name="lettersNodeSet" select="$attributeTypeSplittedByLetters"/>
+                    <xsl:with-param name="letter" select="letter"/>
+                    <xsl:with-param name="fSkipFirst" select="false"/>
+                </xsl:call-template>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:call-template name="stringToLower">
+                    <xsl:with-param name="str" select="$type"/>
+                </xsl:call-template>
+            </xsl:otherwise>
+        </xsl:choose>
     </xsl:variable>
 
     <xsl:choose>
@@ -576,11 +594,20 @@
     </xsl:variable>
 
     <xsl:variable name="funcName">
-        <xsl:call-template name="replaceUppercaseWithUnderscore">
-            <xsl:with-param name="lettersNodeSet" select="$interfaceSplittedByLetters"/>
-            <xsl:with-param name="letter" select="letter"/>
-            <xsl:with-param name="fSkipFirst" select="false"/>
-        </xsl:call-template>
+        <xsl:choose>
+            <xsl:when test="$case-style='snake'">
+                <xsl:call-template name="replaceUppercaseWithUnderscore">
+                    <xsl:with-param name="lettersNodeSet" select="$interfaceSplittedByLetters"/>
+                    <xsl:with-param name="letter" select="letter"/>
+                    <xsl:with-param name="fSkipFirst" select="false"/>
+                </xsl:call-template>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:call-template name="stringToLower">
+                    <xsl:with-param name="str" select="@name"/>
+                </xsl:call-template>
+            </xsl:otherwise>
+        </xsl:choose>
     </xsl:variable>
 
     <xsl:variable name="coreFuncName">
