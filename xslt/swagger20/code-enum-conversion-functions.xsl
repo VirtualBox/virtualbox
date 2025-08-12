@@ -5,6 +5,8 @@
     xmlns:exsl="http://exslt.org/common"
     extension-element-prefixes="exsl">
 
+<xsl:param name="case-style" select="'camel'"/>
+
 <xsl:output method="text"/>
 
 <xsl:include href="global-variables.xsl" />
@@ -101,12 +103,21 @@
       </xsl:call-template>
   </xsl:variable>
 
-  <xsl:variable name="enumUnderscoreName">
-      <xsl:call-template name="replaceUppercaseWithUnderscore">
-          <xsl:with-param name="lettersNodeSet" select="$enumSplittedByLetters"/>
-          <xsl:with-param name="letter" select="letter"/>
-          <xsl:with-param name="fSkipFirst" select="false"/>
-      </xsl:call-template>
+  <xsl:variable name="enumName">
+    <xsl:choose>
+        <xsl:when test="$case-style='snake'">
+          <xsl:call-template name="replaceUppercaseWithUnderscore">
+              <xsl:with-param name="lettersNodeSet" select="$enumSplittedByLetters"/>
+              <xsl:with-param name="letter" select="letter"/>
+              <xsl:with-param name="fSkipFirst" select="false"/>
+          </xsl:call-template>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:call-template name="stringToLower">
+            <xsl:with-param name="str" select="@name"/>
+          </xsl:call-template>
+        </xsl:otherwise>
+    </xsl:choose>
   </xsl:variable>
 
   <xsl:variable name="hashline">
@@ -128,7 +139,7 @@
   <xsl:text>&#x0A;</xsl:text>
 
   <!-- Conversion VirtualBox -> Swagger -->
-  <xsl:value-of select="concat('def vbox_to_swagger_', $enumUnderscoreName, '(', $inVBoxVal, '):')"/>
+  <xsl:value-of select="concat('def vbox_to_swagger_', $enumName, '(', $inVBoxVal, '):')"/>
   <xsl:text>&#x0A;</xsl:text><xsl:value-of select="$fourSpaces"/>
   <xsl:value-of select="concat($outSwaggerVal, ' = ', @name, '()')"/>
   <xsl:text>&#x0A;</xsl:text><xsl:value-of select="$fourSpaces"/>
@@ -139,7 +150,7 @@
   <xsl:text>&#x0A;</xsl:text>
 
   <!-- Conversion Swagger -> VirtualBox -->
-  <xsl:value-of select="concat('def swagger_to_vbox_', $enumUnderscoreName, '(', $inSwaggerVal, ': str):')"/>
+  <xsl:value-of select="concat('def swagger_to_vbox_', $enumName, '(', $inSwaggerVal, ': str):')"/>
 
   <xsl:for-each select="const">
 
