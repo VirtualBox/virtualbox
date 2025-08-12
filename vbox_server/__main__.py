@@ -32,7 +32,7 @@ def create_app():
     CORS(app.app)
 
     ### setup API url for Swagger UI ###
-    SWAGGER_URL = '/virtualbox/0.0.1/api'
+    SWAGGER_URL = '/virtualbox/0.0.2/api'
     API_URL = '/static/virtualbox.yaml'
     SWAGGERUI_BLUEPRINT = get_swaggerui_blueprint(
         SWAGGER_URL,
