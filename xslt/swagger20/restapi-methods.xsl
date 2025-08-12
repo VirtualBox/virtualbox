@@ -511,29 +511,40 @@
             <xsl:if test="(@dir='out' or @dir='return')">
               <xsl:choose>
                 <xsl:when test="($fInterface!='' or $fEnumeration!='')">
-                  <xsl:variable name="temp">
+                  <xsl:choose>
+                    <xsl:when test="$fInterface!=''">
+                      <xsl:value-of select="substring($fInterface,2)"/>
+                      <xsl:text>Obj</xsl:text>
+                    </xsl:when>
+                    <xsl:otherwise>
+                      <xsl:value-of select="$fEnumeration"/>
+                      <xsl:text>Enum</xsl:text>
+                    </xsl:otherwise>
+                  </xsl:choose>
+                  <xsl:if test="@safearray='yes'">
+                  <xsl:text>Array</xsl:text>
+                  </xsl:if>
+                  <xsl:text>WrapperResponse</xsl:text>
+                  <!-- <xsl:variable name="temp">
                       <xsl:choose>
                         <xsl:when test="$fInterface!=''">
                           <xsl:value-of select="substring($fInterface,2)"/>
+                          <xsl:text>Iface</xsl:text>
                         </xsl:when>
                         <xsl:otherwise>
                           <xsl:value-of select="$fEnumeration"/>
+                          <xsl:text>Enum</xsl:text>
                         </xsl:otherwise>
                       </xsl:choose>
                       <xsl:if test="@safearray='yes'">
-                      <xsl:text>_array</xsl:text>
+                      <xsl:text>Array</xsl:text>
                       </xsl:if>
-                  </xsl:variable>
-                  <xsl:value-of select="concat($aposDouble, $temp, '_response', $aposDouble)"/>
+                  </xsl:variable> -->
+                  <!-- <xsl:value-of select="concat($aposDouble, $temp, 'WrapperResponse', $aposDouble)"/> -->
                 </xsl:when>
 
                 <xsl:otherwise>
-                  <xsl:value-of select="$aposDouble"/>
-                  <xsl:call-template name="stringToLower">
-                    <xsl:with-param name="str" select="$defaultOperationId" />
-                  </xsl:call-template>
-                  <xsl:text>_response</xsl:text>
-                  <xsl:value-of select="$aposDouble"/>
+                  <xsl:value-of select="concat($aposDouble, $parameterRequestBodyPrefix, 'Response', $aposDouble)"/>
                 </xsl:otherwise>
 
               </xsl:choose>
@@ -543,12 +554,7 @@
         <xsl:otherwise>
           <xsl:value-of select="$twelveSpaces"/>
           <xsl:text>title: </xsl:text>
-          <xsl:value-of select="$aposDouble"/>
-          <xsl:call-template name="stringToLower">
-            <xsl:with-param name="str" select="$defaultOperationId" />
-          </xsl:call-template>
-          <xsl:text>_response</xsl:text>
-          <xsl:value-of select="$aposDouble"/>
+          <xsl:value-of select="concat($aposDouble, $parameterRequestBodyPrefix, 'Response', $aposDouble)"/>
         </xsl:otherwise>
       </xsl:choose>
       <xsl:text>&#x0A;</xsl:text>
