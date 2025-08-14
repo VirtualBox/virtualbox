@@ -16,11 +16,11 @@ from flask import jsonify
 
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
-from vbox_server.utils.restapi_objects_functions import *
+# from vbox_server.utils.restapi_objects_functions import *
+from vbox_server.utils.object_conversion import *
 
 from vbox_server.models.error import Error  # noqa: E501
-from vbox_server.models.progress_response import ProgressResponse  # noqa: E501
-from vbox_server import util
+from vbox_server.models.progress_obj_wrapper_response import ProgressObjWrapperResponse  # noqa: E501
 
 
 def i_progress_cancel(progressid):  # noqa: E501
@@ -61,7 +61,7 @@ def i_virtualbox_findprogressbyid(progressid, select=None, id=None):  # noqa: E5
         oError = Error(500, str(e))
         return jsonify(oError), 500
 
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
     try:
         oVBoxProgress = oVBox.findProgressById(progressid)
         oProgressResponse.progress = i_fill_progress(oVBoxProgress)
