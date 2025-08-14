@@ -25,84 +25,72 @@ from werkzeug.datastructures import Headers
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
 from vbox_server.utils.enum_conversion import *
+from vbox_server.utils.object_conversion import *
 from vbox_server.utils.vbox_utils import vbox_utils_tryLockMachine as tryLockMachine
 from vbox_server.utils.vbox_utils import vbox_utils_unlockAndDeleteSession as unlockAndDeleteSession
 from vbox_server.utils.vbox_utils import vbox_utils_unlockSession as unlockSession
-from vbox_server.utils.restapi_objects_functions import *
-from vbox_server.utils.decorators import session_decorator as sessionDecorator
+from vbox_server.utils.decorators import consoleDecorator
+from vbox_server.utils.decorators import sessionDecorator
 from vbox_server.utils.decorators import open_exclusive_session as openExclusiveSession
 from vbox_server.utils.decorators import open_session as openSession
 
 ############################ Implemented or used ############################
-from vbox_server.models.device_type import DeviceType
-from vbox_server.models.error import Error
-from vbox_server.models.progress import Progress
-from vbox_server.models.progress_response import ProgressResponse
-from vbox_server.models.cleanup_mode import CleanupMode
-from vbox_server.models.usb_device_response import USBDeviceResponse
-from vbox_server.models.machine_getguestproperty_response import MachineGetguestpropertyResponse  # noqa: E501
-from vbox_server.models.machine_querylogfilename_response import MachineQuerylogfilenameResponse  # noqa: E501
-from vbox_server.models.machine_readlog_response import MachineReadlogResponse  # noqa: E501
-from vbox_server.models.medium_array_response import MediumArrayResponse  # noqa: E501
-from vbox_server.models.medium_getproperty_response import MediumGetpropertyResponse  # noqa: E501
-from vbox_server.models.virtualbox_getextradatakeys_response import VirtualboxGetextradatakeysResponse  # noqa: E501
-from vbox_server.models.machine_mount_medium_request_body import MachineMountMediumRequestBody  # noqa: E501
+from vbox_server.models.error import Error  # noqa: E501
+from vbox_server.models.console_attach_usb_device_request_body import ConsoleAttachUSBDeviceRequestBody  # noqa: E501
+from vbox_server.models.console_create_shared_folder_request_body import ConsoleCreateSharedFolderRequestBody  # noqa: E501
+from vbox_server.models.machine_add_storage_controller_request_body import MachineAddStorageControllerRequestBody  # noqa: E501
+from vbox_server.models.machine_add_usb_controller_request_body import MachineAddUSBControllerRequestBody  # noqa: E501
+from vbox_server.models.machine_attach_device_request_body import MachineAttachDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_attach_device_without_medium_request_body import MachineAttachDeviceWithoutMediumRequestBody  # noqa: E501
 from vbox_server.models.machine_clone_to_request_body import MachineCloneToRequestBody  # noqa: E501
-from vbox_server.models.machine_move_to_request_body import MachineMoveToRequestBody  # noqa: E501
-from vbox_server.models.machine_unmount_medium_request_body import MachineUnmountMediumRequestBody  # noqa: E501
-from vbox_server.models.machine_launch_vm_process_request_body import MachineLaunchVMProcessRequestBody  # noqa: E501
 from vbox_server.models.machine_create_shared_folder_request_body import MachineCreateSharedFolderRequestBody  # noqa: E501
+from vbox_server.models.machine_detach_device_request_body import MachineDetachDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_enumerate_guest_properties_response import MachineEnumerateGuestPropertiesResponse  # noqa: E501
+from vbox_server.models.machine_get_cpu_status_response import MachineGetCPUStatusResponse  # noqa: E501
+from vbox_server.models.machine_get_guest_property_response import MachineGetGuestPropertyResponse  # noqa: E501
+from vbox_server.models.machine_get_guest_property_timestamp_response import MachineGetGuestPropertyTimestampResponse  # noqa: E501
+from vbox_server.models.machine_get_usb_controller_count_by_type_response import MachineGetUSBControllerCountByTypeResponse  # noqa: E501
+from vbox_server.models.machine_launch_vm_process_request_body import MachineLaunchVMProcessRequestBody  # noqa: E501
+from vbox_server.models.machine_mount_medium_request_body import MachineMountMediumRequestBody  # noqa: E501
+from vbox_server.models.machine_move_to_request_body import MachineMoveToRequestBody  # noqa: E501
+from vbox_server.models.machine_non_rotational_device_request_body import MachineNonRotationalDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_obj_wrapper_response import MachineObjWrapperResponse  # noqa: E501
+from vbox_server.models.machine_passthrough_device_request_body import MachinePassthroughDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_query_log_filename_response import MachineQueryLogFilenameResponse  # noqa: E501
+from vbox_server.models.machine_read_log_response import MachineReadLogResponse  # noqa: E501
+from vbox_server.models.machine_set_auto_discard_for_device_request_body import MachineSetAutoDiscardForDeviceRequestBody  # noqa: E501
+from vbox_server.models.machine_set_bandwidth_group_for_device_request_body import MachineSetBandwidthGroupForDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_set_boot_order_request_body import MachineSetBootOrderRequestBody  # noqa: E501
 from vbox_server.models.machine_set_extra_data_request_body import MachineSetExtraDataRequestBody  # noqa: E501
 from vbox_server.models.machine_set_guest_property_request_body import MachineSetGuestPropertyRequestBody  # noqa: E501
-from vbox_server.models.virtual_box_create_machine_request_body import VirtualBoxCreateMachineRequestBody  # noqa: E501
-from vbox_server.models.machine_attach_device_request_body import MachineAttachDeviceRequestBody  # noqa: E501
-from vbox_server.models.machine_detach_device_request_body import MachineDetachDeviceRequestBody  # noqa: E501
-from vbox_server.models.parallel_port_response import ParallelPortResponse  # noqa: E501
-from vbox_server.models.serial_port_response import SerialPortResponse  # noqa: E501
-from vbox_server.models.medium_attachment_array_response import MediumAttachmentArrayResponse  # noqa: E501
-from vbox_server.models.medium_response import MediumResponse  # noqa: E501
-from vbox_server.models.machine_takesnapshot_response import MachineTakesnapshotResponse  # noqa: E501
-from vbox_server.models.snapshot_response import SnapshotResponse  # noqa: E501
-from vbox_server.models.device_type_response import DeviceTypeResponse  # noqa: E501
-from vbox_server.models.machine_response import MachineResponse  # noqa: E501
-from vbox_server.models.medium_attachment_response import MediumAttachmentResponse  # noqa: E501
-from vbox_server.models.network_adapter_response import NetworkAdapterResponse  # noqa: E501
-from vbox_server.models.storage_controller_response import StorageControllerResponse  # noqa: E501
-from vbox_server.models.platform_arm_set_cpu_property_request_body import PlatformARMSetCPUPropertyRequestBody  # noqa: E501
-from vbox_server.models.platform_x86_set_cpu_property_request_body import PlatformX86SetCPUPropertyRequestBody  # noqa: E501
-from vbox_server.models.platformarm_getcpuproperty_response import PlatformarmGetcpupropertyResponse  # noqa: E501
-from vbox_server.models.platformarm_getcpuproperty_response import PlatformarmGetcpupropertyResponse as Platformx86GetcpupropertyResponse # noqa: E501
-from vbox_server.models.platform_x86_set_hw_virt_ex_property_request_body import PlatformX86SetHWVirtExPropertyRequestBody  # noqa: E501
-from vbox_server.models.console_attach_usb_device_request_body import ConsoleAttachUSBDeviceRequestBody  # noqa: E501
-from vbox_server.models.machine_take_snapshot_request_body import MachineTakeSnapshotRequestBody  # noqa: E501
-from vbox_server.models.platform_x86_set_cpu_property_request_body import PlatformX86SetCPUPropertyRequestBody  # noqa: E501
-from vbox_server.models.platform_x86_set_hw_virt_ex_property_request_body import PlatformX86SetHWVirtExPropertyRequestBody  # noqa: E501
-from vbox_server.models.machine_getcpustatus_response import MachineGetcpustatusResponse  # noqa: E501
-from vbox_server.models.machine_enumerateguestproperties_response import MachineEnumerateguestpropertiesResponse  # noqa: E501
-from vbox_server.models.machine_getguestpropertytimestamp_response import MachineGetguestpropertytimestampResponse  # noqa: E501
 from vbox_server.models.machine_set_guest_property_value_request_body import MachineSetGuestPropertyValueRequestBody  # noqa: E501
-from vbox_server.models.machine_add_storage_controller_request_body import MachineAddStorageControllerRequestBody  # noqa: E501
-from vbox_server.models.machine_attach_device_without_medium_request_body import MachineAttachDeviceWithoutMediumRequestBody  # noqa: E501
-from vbox_server.models.machine_set_storage_controller_bootable_request_body import MachineSetStorageControllerBootableRequestBody  # noqa: E501
-from vbox_server.models.console_create_shared_folder_request_body import ConsoleCreateSharedFolderRequestBody  # noqa: E501
-from vbox_server.models.machine_add_usb_controller_request_body import MachineAddUSBControllerRequestBody  # noqa: E501
-from vbox_server.models.machine_getusbcontrollercountbytype_response import MachineGetusbcontrollercountbytypeResponse  # noqa: E501
-from vbox_server.models.usb_controller_response import USBControllerResponse  # noqa: E501
-from vbox_server.models.machine_non_rotational_device_request_body import MachineNonRotationalDeviceRequestBody  # noqa: E501
-from vbox_server.models.machine_passthrough_device_request_body import MachinePassthroughDeviceRequestBody  # noqa: E501
-from vbox_server.models.machine_set_auto_discard_for_device_request_body import MachineSetAutoDiscardForDeviceRequestBody  # noqa: E501
-from vbox_server.models.machine_set_bandwidth_group_for_device_request_body import MachineSetBandwidthGroupForDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_set_hot_pluggable_for_device_request_body import MachineSetHotPluggableForDeviceRequestBody  # noqa: E501
 from vbox_server.models.machine_set_no_bandwidth_group_for_device_request_body import MachineSetNoBandwidthGroupForDeviceRequestBody  # noqa: E501
-from vbox_server.models.paravirt_provider_response import ParavirtProviderResponse  # noqa: E501
+from vbox_server.models.machine_set_storage_controller_bootable_request_body import MachineSetStorageControllerBootableRequestBody  # noqa: E501
+from vbox_server.models.machine_take_snapshot_request_body import MachineTakeSnapshotRequestBody  # noqa: E501
+from vbox_server.models.machine_take_snapshot_response import MachineTakeSnapshotResponse  # noqa: E501
 from vbox_server.models.machine_temporary_eject_device_request_body import MachineTemporaryEjectDeviceRequestBody  # noqa: E501
-
-############################# Not implemented yet or not used #############################
-from vbox_server.models.console_add_encryption_password_request_body import ConsoleAddEncryptionPasswordRequestBody  # noqa: E501
-from vbox_server.models.console_add_encryption_passwords_request_body import ConsoleAddEncryptionPasswordsRequestBody  # noqa: E501
-from vbox_server.models.machine_delete_snapshot_range_request_body import MachineDeleteSnapshotRangeRequestBody  # noqa: E501
-from vbox_server.models.machine_lock_machine_request_body import MachineLockMachineRequestBody  # noqa: E501
+from vbox_server.models.machine_unmount_medium_request_body import MachineUnmountMediumRequestBody  # noqa: E501
+from vbox_server.models.medium_attachment_obj_array_wrapper_response import MediumAttachmentObjArrayWrapperResponse  # noqa: E501
+from vbox_server.models.medium_attachment_obj_wrapper_response import MediumAttachmentObjWrapperResponse  # noqa: E501
+from vbox_server.models.medium_get_property_response import MediumGetPropertyResponse  # noqa: E501
+from vbox_server.models.medium_obj_array_wrapper_response import MediumObjArrayWrapperResponse  # noqa: E501
+from vbox_server.models.medium_obj_wrapper_response import MediumObjWrapperResponse  # noqa: E501
+from vbox_server.models.network_adapter_obj_wrapper_response import NetworkAdapterObjWrapperResponse  # noqa: E501
+from vbox_server.models.parallel_port_obj_wrapper_response import ParallelPortObjWrapperResponse  # noqa: E501
+from vbox_server.models.paravirt_provider_enum_wrapper_response import ParavirtProviderEnumWrapperResponse  # noqa: E501
+from vbox_server.models.platform_arm_get_cpu_property_response import PlatformARMGetCPUPropertyResponse  # noqa: E501
+from vbox_server.models.platform_arm_set_cpu_property_request_body import PlatformARMSetCPUPropertyRequestBody  # noqa: E501
+from vbox_server.models.platform_x86_set_cpu_property_request_body import PlatformX86SetCPUPropertyRequestBody  # noqa: E501
+from vbox_server.models.platform_x86_set_hw_virt_ex_property_request_body import PlatformX86SetHWVirtExPropertyRequestBody  # noqa: E501
+from vbox_server.models.progress_obj_wrapper_response import ProgressObjWrapperResponse  # noqa: E501
+from vbox_server.models.serial_port_obj_wrapper_response import SerialPortObjWrapperResponse  # noqa: E501
+from vbox_server.models.snapshot_obj_wrapper_response import SnapshotObjWrapperResponse  # noqa: E501
+from vbox_server.models.storage_controller_obj_wrapper_response import StorageControllerObjWrapperResponse  # noqa: E501
+from vbox_server.models.usb_controller_obj_wrapper_response import USBControllerObjWrapperResponse  # noqa: E501
+from vbox_server.models.usb_device_obj_wrapper_response import USBDeviceObjWrapperResponse  # noqa: E501
+from vbox_server.models.virtual_box_create_machine_request_body import VirtualBoxCreateMachineRequestBody  # noqa: E501
+from vbox_server.models.virtual_box_get_extra_data_keys_response import VirtualBoxGetExtraDataKeysResponse  # noqa: E501
 
 
 # Set logging level for module
@@ -175,28 +163,28 @@ def i_machine_action(vmid, action, *var_args_tuple):  # noqa: E501
     return response, httpCode
 
 
-def i_console_pause(vmid):  # noqa: E501
-      """
-      Call interface method IConsole::pause
+# def i_console_pause(vmid):  # noqa: E501
+#       """
+#       Call interface method IConsole::pause
 
-      :param vmid: The Id of vm
-      :type vmid: str
+#       :param vmid: The Id of vm
+#       :type vmid: str
 
-      :rtype: None
-      """
-      return i_machine_action(vmid, "PAUSE")
+#       :rtype: None
+#       """
+#       return i_machine_action(vmid, "PAUSE")
 
 
-def i_console_powerbutton(vmid):  # noqa: E501
-      """
-      Call interface method IConsole::powerButton
+# def i_console_powerbutton(vmid):  # noqa: E501
+#       """
+#       Call interface method IConsole::powerButton
 
-      :param vmid: The Id of vm
-      :type vmid: str
+#       :param vmid: The Id of vm
+#       :type vmid: str
 
-      :rtype: None
-      """
-      return i_machine_action(vmid, "ACPIPOWERBUTTON")
+#       :rtype: None
+#       """
+#       return i_machine_action(vmid, "ACPIPOWERBUTTON")
 
 
 def i_console_powerdown(vmid):  # noqa: E501
@@ -235,41 +223,41 @@ def i_console_poweruppaused(vmid):  # noqa: E501
     return i_machine_action(vmid, "STARTANDPAUSE")
 
 
-def i_console_reset(vmid):  # noqa: E501
-    """
-    Call interface method IConsole::reset
+# def i_console_reset(vmid):  # noqa: E501
+#     """
+#     Call interface method IConsole::reset
 
-    :param vmid: The Id of vm
-    :type vmid: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_console_resume(vmid):  # noqa: E501
-    """
-    Call interface method IConsole::resume
-
-    :param vmid: The Id of vm
-    :type vmid: str
-
-    :rtype: None
-    """
-    return i_machine_action(vmid, "RESTORE")
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_console_sleepbutton(vmid):  # noqa: E501
-    """
-    Call interface method IConsole::sleepButton
+# def i_console_resume(vmid):  # noqa: E501
+#     """
+#     Call interface method IConsole::resume
 
-    :param vmid: The Id of vm
-    :type vmid: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
 
-    :rtype: None
-    """
-    return i_machine_action(vmid, "ACPISLEEP")
+#     :rtype: None
+#     """
+#     return i_machine_action(vmid, "RESTORE")
+
+
+# def i_console_sleepbutton(vmid):  # noqa: E501
+#     """
+#     Call interface method IConsole::sleepButton
+
+#     :param vmid: The Id of vm
+#     :type vmid: str
+
+#     :rtype: None
+#     """
+#     return i_machine_action(vmid, "ACPISLEEP")
 
 
 def i_machine_deleteconfig(vmid, media=None):
@@ -326,86 +314,86 @@ def i_machine_deleteconfig(vmid, media=None):
     return response, httpCode
 
 
-def i_machine_getbootorder(vmid, position=None):  # noqa: E501
-    """
-    Call interface method IMachine::getBootOrder
+# def i_machine_getbootorder(vmid, position=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::getBootOrder
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param position: 
-    :type position: int
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param position: 
+#     :type position: int
 
-    :rtype: DeviceTypeResponse
-    """
+#     :rtype: DeviceTypeResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    httpCode = HTTPStatus.OK
+#     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+#     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
 
-    oDeviceTypeResponse = DeviceTypeResponse()
-    try:
-        oVBoxMediumdeviceType = oVM.getBootOrder(position)
-        oDeviceTypeResponse.device = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMediumdeviceType)
-        logging.info('The command result is ' + str(oDeviceTypeResponse.device))            
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     oDeviceTypeResponse = DeviceTypeResponse()
+#     try:
+#         oVBoxMediumdeviceType = oVM.getBootOrder(position)
+#         oDeviceTypeResponse.device = ctx[ 'global'].getEnumValueName('DeviceType', oVBoxMediumdeviceType)
+#         logging.info('The command result is ' + str(oDeviceTypeResponse.device))            
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oDeviceTypeResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oDeviceTypeResponse)
+#     return response, httpCode
 
 
-def i_machine_getextradata(vmid, key=None):  # noqa: E501
-    """
-    Call interface method IMachine::getExtraData
+# def i_machine_getextradata(vmid, key=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::getExtraData
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param key: 
-    :type key: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param key: 
+#     :type key: str
 
-    :rtype: MediumGetpropertyResponse
-    """
+#     :rtype: MediumGetpropertyResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    httpCode = HTTPStatus.OK
+#     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+#     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
 
-    oMediumGetpropertyResponse = MediumGetpropertyResponse()
+#     oMediumGetpropertyResponse = MediumGetpropertyResponse()
 
-    try:
-        oMediumGetpropertyResponse.value = oVM.getExtraData(key)
-        if oMediumGetpropertyResponse.value!='':
-            logging.info("Successfully get the value '" + oMediumGetpropertyResponse.value + "' of VM extra data key '" + key + "'")
-        else:
-            logging.info("Unknown extra data key '" + key + "' or the value is empty ")
-            httpCode = HTTPStatus.NOT_FOUND
-            oError = Error(httpCode, "Unknown extra data key '" + key + "' or the value is empty ")
+#     try:
+#         oMediumGetpropertyResponse.value = oVM.getExtraData(key)
+#         if oMediumGetpropertyResponse.value!='':
+#             logging.info("Successfully get the value '" + oMediumGetpropertyResponse.value + "' of VM extra data key '" + key + "'")
+#         else:
+#             logging.info("Unknown extra data key '" + key + "' or the value is empty ")
+#             httpCode = HTTPStatus.NOT_FOUND
+#             oError = Error(httpCode, "Unknown extra data key '" + key + "' or the value is empty ")
 
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oMediumGetpropertyResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oMediumGetpropertyResponse)
+#     return response, httpCode
 
 
 def i_machine_getextradatakeys(vmid):  # noqa: E501
@@ -431,8 +419,7 @@ def i_machine_getextradatakeys(vmid):  # noqa: E501
         #set to None
         oError = None
 
-    oVirtualboxGetextradatakeysResponse = VirtualboxGetextradatakeysResponse()
-
+    oVirtualboxGetextradatakeysResponse = VirtualBoxGetExtraDataKeysResponse()
     if oVM is not None:
         try:
             olKeys = oVM.getExtraDataKeys()
@@ -478,8 +465,7 @@ def i_machine_getguestproperty(vmid, name=None):  # noqa: E501
         #set to None
         oError = None
 
-    oMachineGetguestpropertyResponse = MachineGetguestpropertyResponse()
-
+    oMachineGetguestpropertyResponse = MachineGetGuestPropertyResponse()
     if oVM is not None:
         try:
             [v,t,f] = oVM.getGuestProperty(name)
@@ -512,7 +498,7 @@ def i_machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody: MachineL
     httpCode = HTTPStatus.OK
     oSessionId = o.session
     name = o.name
-    environmentChanges = o.environment_changes
+    environmentChanges = o.environmentChanges
 
     vbox_utils_commonChecks()
 
@@ -582,40 +568,41 @@ def i_machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody: MachineL
     return response, httpCode
 
 
-def i_machine_querylogfilename(vmid, idx=None):  # noqa: E501
-    """
-    Call interface method IMachine::queryLogFilename
+# def i_machine_querylogfilename(vmid, idx=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::queryLogFilename
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param idx: 
-    :type idx: int
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param idx: 
+#     :type idx: int
 
-    :rtype: MachineQuerylogfilenameResponse
-    """
+#     :rtype: MachineQuerylogfilenameResponse
+#     """
 
-    httpCode = HTTPStatus.OK
+#     httpCode = HTTPStatus.OK
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
 
-    oMachineQuerylogfilenameResponse = MachineQuerylogfilenameResponse()
+#     oMachineQuerylogfilenameResponse = MachineQueryLogFilenameResponse()
+#     # oMachineQuerylogfilenameResponse = MachineQuerylogfilenameResponse()
 
-    try:
-        if idx is None: idx = 0
-        oMachineQuerylogfilenameResponse.filename = oVM.queryLogFilename(idx)
+#     try:
+#         if idx is None: idx = 0
+#         oMachineQuerylogfilenameResponse.filename = oVM.queryLogFilename(idx)
 
-    except Exception as e:
-        logging.info("Can't find VM's log file '%d': %s" % (idx, str(e)))
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         logging.info("Can't find VM's log file '%d': %s" % (idx, str(e)))
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oMachineQuerylogfilenameResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oMachineQuerylogfilenameResponse)
+#     return response, httpCode
 
 
 def i_machine_readlog(vmid, idx=None, offset=None, size=None):  # noqa: E501
@@ -643,7 +630,7 @@ def i_machine_readlog(vmid, idx=None, offset=None, size=None):  # noqa: E501
         #set to None
         oError = None
 
-    oMachineReadlogResponse = MachineReadlogResponse()
+    oMachineReadlogResponse = MachineReadLogResponse()
     try:
         if (idx is not None and idx < 0) \
             or (offset is not None and offset < 0) \
@@ -721,10 +708,10 @@ def i_machine_createsharedfolder(vmid, oMachineCreateSharedFolderRequestBody: Ma
 
     o = oMachineCreateSharedFolderRequestBody
     name = o.name
-    hostPath = o.host_path
+    hostPath = o.hostPath
     fWritable = o.writable
     fAutomount = o.automount
-    autoMountPoint = o.auto_mount_point
+    autoMountPoint = o.autoMountPoint
 
     logging.info("Try to create the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
 
@@ -756,87 +743,87 @@ def i_machine_createsharedfolder(vmid, oMachineCreateSharedFolderRequestBody: Ma
     return response, httpCode
 
 
-@sessionDecorator
-def i_machine_removesharedfolder(vmid, name=None, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IMachine::removeSharedFolder
+# @sessionDecorator
+# def i_machine_removesharedfolder(vmid, name=None, *var_args_tuple):  # noqa: E501
+#     """
+#     Call interface method IMachine::removeSharedFolder
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param name: 
-    :type name: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param name: 
+#     :type name: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    oVM = var_args_tuple[0]
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oVM = var_args_tuple[0]
+#     oSession = var_args_tuple[1]
+#     oCurrMachine = oSession.machine
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    logging.info("Try to remove the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
+#     logging.info("Try to remove the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
 
-    fFound = False
-    for sf in ctx['global'].getArray(oVM, 'sharedFolders'):
-        if sf.name == name:
-            try:
-                fFound = True
-                # No return result check.
-                # removeSharedFolder returns None instead of the result S_OK.
-                oCurrMachine.removeSharedFolder(name)
-                logging.info("Removed the shared folder %s" % (name))
+#     fFound = False
+#     for sf in ctx['global'].getArray(oVM, 'sharedFolders'):
+#         if sf.name == name:
+#             try:
+#                 fFound = True
+#                 # No return result check.
+#                 # removeSharedFolder returns None instead of the result S_OK.
+#                 oCurrMachine.removeSharedFolder(name)
+#                 logging.info("Removed the shared folder %s" % (name))
 
-                #Don't forget to save
-                oCurrMachine.saveSettings()
-                break
+#                 #Don't forget to save
+#                 oCurrMachine.saveSettings()
+#                 break
 
-            except Exception as e:
-                logging.info("Exception during removing the shared folder %s" % (name))
-                httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-                oError = Error(httpCode, str(e))
+#             except Exception as e:
+#                 logging.info("Exception during removing the shared folder %s" % (name))
+#                 httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#                 oError = Error(httpCode, str(e))
 
-    if fFound is False and oError is None:
-        logging.info("The shared folder with the name %s doesn\'t exists" % (name))
-        httpCode = HTTPStatus.NOT_FOUND
-        oError = Error(httpCode, "The shared folder with the name %s doesn\'t exists" % (name))
+#     if fFound is False and oError is None:
+#         logging.info("The shared folder with the name %s doesn\'t exists" % (name))
+#         httpCode = HTTPStatus.NOT_FOUND
+#         oError = Error(httpCode, "The shared folder with the name %s doesn\'t exists" % (name))
 
-    response = jsonify(oError if oError is not None else "Successfully removed the shared folder")
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else "Successfully removed the shared folder")
+#     return response, httpCode
 
 
-@sessionDecorator
-def i_machine_savesettings(vmid, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IMachine::saveSettings
+# @sessionDecorator
+# def i_machine_savesettings(vmid, *var_args_tuple):  # noqa: E501
+#     """
+#     Call interface method IMachine::saveSettings
 
-    :param vmid: The Id of vm
-    :type vmid: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+#     logging.info('Passed machine Id is ' + vmid)
 
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+#     oSession = var_args_tuple[1]
+#     oCurrMachine = oSession.machine
 
-    if oCurrMachine is not None:
-        try:
-            oCurrMachine.saveSettings()
-        except Exception as e:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, str(e))
+#     if oCurrMachine is not None:
+#         try:
+#             oCurrMachine.saveSettings()
+#         except Exception as e:
+#             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#             oError = Error(httpCode, str(e))
 
-    if oError is not None:
-        return jsonify(oError), httpCode
+#     if oError is not None:
+#         return jsonify(oError), httpCode
 
-    return "Machine's settings has been successfully saved " + "(uuid " + vmid + ")"
+#     return "Machine's settings has been successfully saved " + "(uuid " + vmid + ")"
 
 
 def i_machine_savestate(vmid):  # noqa: E501
@@ -879,7 +866,7 @@ def i_machine_setbootorder(vmid, oMachineSetBootOrderRequestBody: MachineSetBoot
     position = o.position
 
     try:
-        device = swagger_to_vbox_device_type(o.device)
+        device = swagger_to_vbox_devicetype(o.device)
         if device is None:
             return "The requested device " + str(o.device) + " is not supported for booting", HTTPStatus.PRECONDITION_FAILED
 
@@ -1009,7 +996,7 @@ def i_machine_unregister(vmid, cleanupMode=None):  # noqa: E501
     vbox_utils_logVmInfo(oVM)
 
     try:
-        vBoxCleanupMode = swagger_to_vbox_cleanup_mode(cleanupMode)
+        vBoxCleanupMode = swagger_to_vbox_cleanupmode(cleanupMode)
         if vBoxCleanupMode is None:
             return "The requested cleanup mode " + str(cleanupMode) + " wasn't found", HTTPStatus.NOT_FOUND
 
@@ -1018,7 +1005,7 @@ def i_machine_unregister(vmid, cleanupMode=None):  # noqa: E501
             for item in oVBoxMediumList:
                 oMediumList.append(i_fill_medium(item))
 
-            oMediumArrayResponse = MediumArrayResponse()
+            oMediumArrayResponse = MediumObjArrayWrapperResponse()
             oMediumArrayResponse.media = oMediumList
             logging.info ('VM ' + vmid + ' was successfully unregistered')
         else:
@@ -1062,16 +1049,16 @@ def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody: VirtualBoxCr
     o = oVirtualBoxCreateMachineRequestBody
     print(o)
     name = o.name
-    osTypeId = o.os_type_id
+    osTypeId = o.osTypeId
     groups = o.groups
     flags = o.flags
-    settingsFile = o.settings_file# check or ignore?
+    settingsFile = o.settingsFile# check or ignore?
 
-    platform = swagger_to_vbox_platform_architecture(o.platform)
+    platform = swagger_to_vbox_platformarchitecture(o.platform)
     logging.info('The passed PlatformArchitecture is ' + str(platform))
 
     cipher = o.cipher
-    passwordId = o.password_id
+    passwordId = o.passwordId
     password = o.password
 
     oVM, oError = vbox_utils_find_machine(name)
@@ -1118,46 +1105,47 @@ def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody: VirtualBoxCr
     return response, httpCode
 
 
-def i_virtualbox_findmachine(vmid, select=None, nameOrId=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::findMachine
+# def i_virtualbox_findmachine(vmid, select=None, nameOrId=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::findMachine
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param nameOrId: 
-    :type nameOrId: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param select: The object attributes separated by comma
+#     :type select: str
+#     :param nameOrId: 
+#     :type nameOrId: str
 
-    :rtype: MachineResponse
-    """
+#     :rtype: MachineResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    httpCode = HTTPStatus.OK
+#     httpCode = HTTPStatus.OK
 
-    logging.info ('Passed machine Id is ' + vmid)
+#     logging.info ('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
 
-    vbox_utils_logVmInfo(oVM)
+#     vbox_utils_logVmInfo(oVM)
 
-    oMachineResponse = MachineResponse()
+#     oMachineResponse = MachineObjWrapperResponse()
+#     # oMachineResponse = MachineResponse()
 
-    try:
-        oMachineResponse.machine = i_fill_machine(oVM, select)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     try:
+#         oMachineResponse.machine = i_fill_machine(oVM, select)
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oMachineResponse)
+#     response = jsonify(oError if oError is not None else oMachineResponse)
 
-    return response, httpCode
+#     return response, httpCode
 
 
 @sessionDecorator
@@ -1182,9 +1170,9 @@ def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody: MachineAttachD
 
     o = oMachineAttachDeviceRequestBody
     name = o.name
-    port = o.controller_port
+    port = o.controllerPort
     slot = o.device
-    devType = swagger_to_vbox_device_type(o.type)
+    devType = swagger_to_vbox_devicetype(o.type)
     if devType is None:
         return "The requested type " + str(o.type) + " is not supported", HTTPStatus.NOT_FOUND
     mediumPath = o.medium
@@ -1259,7 +1247,7 @@ def i_machine_detachdevice(vmid, oMachineDetachDeviceRequestBody: MachineDetachD
 
     o = oMachineDetachDeviceRequestBody
     name = o.name
-    port = o.controller_port
+    port = o.controllerPort
     slot = o.device
 
     machineState = oCurrMachine.state
@@ -1332,10 +1320,10 @@ def i_machine_getmediumattachment(vmid, select=None, name=None, controllerPort=N
         #set to None
         oError = None
 
-    oMediumAttachmentResponse = MediumAttachmentResponse()
+    oMediumAttachmentResponse = MediumAttachmentObjWrapperResponse()
     try:
         oVBoxMedium = oVM.getMediumAttachment(name, controllerPort, device)
-        oMediumAttachmentResponse.attachment = i_fill_medium_attachment(oVBoxMedium, select)
+        oMediumAttachmentResponse.attachment = i_fill_mediumattachment(oVBoxMedium, select)
     except Exception as e:
         logging.info("Can't get medium attachment for VM '%s': %s" % (oVM.name, str(e)))
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -1367,7 +1355,7 @@ def i_machine_mountmedium(vmid, oMachineMountMediumRequestBody: MachineMountMedi
     o = oMachineMountMediumRequestBody
     print(o)
     name = o.name
-    controllerPort = o.controller_port
+    controllerPort = o.controllerPort
     device = o.device
     force = o.force
     mediumId = o.medium
@@ -1416,7 +1404,7 @@ def i_machine_mountmedium(vmid, oMachineMountMediumRequestBody: MachineMountMedi
 
 
 @sessionDecorator
-def i_machine_unmountmedium(vmid, oMachineUnmountMediumRequestBody: MachineUnmountMediumRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_unmountmedium(oVBoxObj, oMachineUnmountMediumRequestBody: MachineUnmountMediumRequestBody):  # noqa: E501
     """
     Call interface method IMachine::unmountMedium
 
@@ -1430,25 +1418,26 @@ def i_machine_unmountmedium(vmid, oMachineUnmountMediumRequestBody: MachineUnmou
 
     vbox_utils_commonChecks()
 
-    oVM = var_args_tuple[0]
     oError = None
     httpCode = HTTPStatus.OK
 
     o = oMachineUnmountMediumRequestBody
     print(o)
     name = o.name
-    controllerPort = o.controller_port
+    controllerPort = o.controllerPort
     device = o.device
     force = o.force
 
     oMedium = None
     found = False
+    
+    oCurrMachine = oVBoxObj
 
-    if oVM is not None:
+    if oCurrMachine is not None:
         try:
-            oVBoxMedium = oVM.getMedium(name, controllerPort, device)
+            oVBoxMedium = oCurrMachine.getMedium(name, controllerPort, device)
             oMedium = i_fill_medium(oVBoxMedium)
-            if oMedium.device_type == 'HardDisk':
+            if oMedium.deviceType == 'HardDisk':
                 raise 'Wrong medium device type. Must be DVD or Floppy.'
             logging.info('Successfully found the medium on the controller ' + name + ' on port ' + str(controllerPort) + ' on device ' + str(device))
             found = True
@@ -1465,12 +1454,8 @@ def i_machine_unmountmedium(vmid, oMachineUnmountMediumRequestBody: MachineUnmou
         oError = Error(httpCode, "Couldn\'t find the medium on the controller " + name + ' on port ' + str(controllerPort) + ' on device ' + str(device))
         return jsonify(oError), httpCode
 
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
-
     try:
         oCurrMachine.unmountMedium(name, controllerPort, device, force)
-        oCurrMachine.saveSettings()
 
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -1520,7 +1505,7 @@ def i_machine_moveto(vmid, oMachineMoveToRequestBody: MachineMoveToRequestBody, 
             oError = Error(httpCode, "Machine must be in one of the states - PoweredOff, Aborted, AbortedSaved, Saved")
             return jsonify(oError), httpCode
 
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
 
     try:
         oVBoxProgress = oCurrMachine.moveTo(sLocation, sType)
@@ -1573,8 +1558,8 @@ def i_machine_cloneto(vmid, oMachineCloneToRequestBody: MachineCloneToRequestBod
     logging.info('Passed source machine Id is ' + vmid)
 
     o = oMachineCloneToRequestBody
-    
-    mode = swagger_to_vbox_clone_mode(o.mode)
+
+    mode = swagger_to_vbox_clonemode(o.mode)
     if mode is None:
         return "The requested type " + str(o.mode) + " is not supported", HTTPStatus.NOT_FOUND
 
@@ -1633,7 +1618,7 @@ def i_machine_cloneto(vmid, oMachineCloneToRequestBody: MachineCloneToRequestBod
             oError = Error(httpCode, "Source machine must be in one of the states - PoweredOff, Aborted, AbortedSaved, Saved")
             return jsonify(oError), httpCode
 
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
 
     try:
         oVBoxProgress = oSourceMachine.cloneTo(oTargetMachine, mode, options)
@@ -1657,8 +1642,8 @@ def i_machine_cloneto(vmid, oMachineCloneToRequestBody: MachineCloneToRequestBod
     return response, httpCode
 
 
-@sessionDecorator
-def i_console_attachusbdevice(vmid, oConsoleAttachUSBDeviceRequestBody: ConsoleAttachUSBDeviceRequestBody, *var_args_tuple):  # noqa: E501
+@consoleDecorator
+def i_console_attachusbdevice(oVBoxObj, oConsoleAttachUSBDeviceRequestBody: ConsoleAttachUSBDeviceRequestBody):  # noqa: E501
     """
     Call interface method IConsole::attachUSBDevice
 
@@ -1675,30 +1660,28 @@ def i_console_attachusbdevice(vmid, oConsoleAttachUSBDeviceRequestBody: ConsoleA
     httpCode = HTTPStatus.OK
     oError = None
 
-    logging.info('Passed machine Id is ' + vmid)
+    logging.info('Passed machine Id is ' + oVBoxObj.machine.id)
 
-    oVM = var_args_tuple[0]
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
-    oConsole = oSession.console
+    oConsole = oVBoxObj
 
     o = oConsoleAttachUSBDeviceRequestBody
     try:
-        logging.info("Try to attach USB device to the machine " + oVM.name + " (UUID " + oVM.id + ")")
+        logging.info("Try to attach USB device to the machine " + oVBoxObj.machine.name + " (UUID " + oVBoxObj.machine.id + ")")
 
         ol_usb_devices = ctx['global'].getArray(oConsole,'USBDevices')
         for item in ol_usb_devices:
-            oUsb = i_fill_usb_device(item)
+            oUsb = i_fill_usbdevice(item)
 
-        if o.capture_filename is None or o.capture_filename == '':
+        if o.captureFilename is None or o.captureFilename == '':
             oConsole.attachUSBDevice(o.id, '')
         else:
-            oConsole.attachUSBDevice(o.id, o.capture_filename)
+            #Get VBox asertion on debug build with non-empty name
+            oConsole.attachUSBDevice(o.id, o.captureFilename)
 
-        oCurrMachine.saveSettings()
+        response = jsonify("Successfully attached USB device with id " + o.id + " to the machine " + oVBoxObj.machine.name)
 
     except Exception as e:
-        logging.info("Exception during attaching USB device to the machine " + oVM.name + " (UUID " + oVM.id + ")")
+        logging.info("Exception during attaching USB device to the machine " + oVBoxObj.machine.name + " (UUID " + oVBoxObj.machine.id + ")")
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
 
@@ -1706,231 +1689,241 @@ def i_console_attachusbdevice(vmid, oConsoleAttachUSBDeviceRequestBody: ConsoleA
         response = jsonify(oError)
         return response, httpCode
 
-    return "Successfully attached USB device with id " + str(o.id) + " to the machine " + oVM.name
-
-
-@sessionDecorator
-def i_console_detachusbdevice(vmid, id=None, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IConsole::detachUSBDevice
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param id: 
-    :type id: str
-
-    :rtype: USBDeviceResponse
-    """
-
-    vbox_utils_commonChecks()
-
-    oError = None
-    httpCode = HTTPStatus.OK
-
-    logging.info('Passed machine Id is ' + vmid)
-
-    oVM = var_args_tuple[0]
-    oSession = var_args_tuple[1]
-    oConsole = oSession.console
-
-    oUSBDeviceResponse = USBDeviceResponse()
-    try:
-        if id is not None and id != '':
-            logging.info("Try to detach USB device from the machine " + oVM.name + " (UUID " + oVM.id + ")")
-            oUsbDev = oConsole.detachUSBDevice(id)
-            o = i_fill_usb_device(oUsbDev)
-            oUSBDeviceResponse.device = o
-        else:
-            httpCode = HTTPStatus.NOT_FOUND
-            oError = Error(httpCode, "The passed USB id is empty or hasn't been passed at all")
-            return jsonify(oError), httpCode
-
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        logging.info("Exception during detaching USB device with id " + id)
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else oUSBDeviceResponse)
-
     return response, httpCode
 
 
-@sessionDecorator
-def i_console_findusbdevicebyid(vmid, select=None, id=None, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IConsole::findUSBDeviceById
+# @sessionDecorator
+# def i_console_detachusbdevice(vmid, id=None, *var_args_tuple):  # noqa: E501
+#     """
+#     Call interface method IConsole::detachUSBDevice
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param id: 
-    :type id: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param id: 
+#     :type id: str
 
-    :rtype: USBDeviceResponse
-    """
+#     :rtype: USBDeviceResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    # oVM = var_args_tuple[0]
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+#     logging.info('Passed machine Id is ' + vmid)
 
-    oSession = var_args_tuple[1]
-    oConsole = oSession.console
+#     oVM = var_args_tuple[0]
+#     oSession = var_args_tuple[1]
+#     oConsole = oSession.console
 
-    oUSBDeviceResponse = USBDeviceResponse()
-    try:
-        if id is not None and id!='':
-            logging.info("Try to find USB device by id " + id)
-            oUsbDev = oConsole.findUSBDeviceById(id)
-            o = i_fill_usb_device(oUsbDev, select)
-            oUSBDeviceResponse.device = o
-        else:
-            httpCode = HTTPStatus.PRECONDITION_FAILED
-            oError = Error(httpCode, "The passed USB id is empty or hasn't been passed at all")
-            return jsonify(oError), httpCode
+#     oUSBDeviceResponse = USBDeviceObjWrapperResponse()
+#     # oUSBDeviceResponse = USBDeviceResponse()
+#     try:
+#         if id is not None and id != '':
+#             logging.info("Try to detach USB device from the machine " + oVM.name + " (UUID " + oVM.id + ")")
+#             oUsbDev = oConsole.detachUSBDevice(id)
+#             o = i_fill_usbdevice(oUsbDev)
+#             # o = i_fill_usb_device(oUsbDev)
+#             oUSBDeviceResponse.device = o
+#         else:
+#             httpCode = HTTPStatus.NOT_FOUND
+#             oError = Error(httpCode, "The passed USB id is empty or hasn't been passed at all")
+#             return jsonify(oError), httpCode
 
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        logging.info("Exception during finding USB device by id " + id)
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         logging.info("Exception during detaching USB device with id " + id)
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oUSBDeviceResponse)
+#     response = jsonify(oError if oError is not None else oUSBDeviceResponse)
 
-    return response, httpCode
-
-
-@sessionDecorator
-def i_console_findusbdevicebyaddress(vmid, select=None, name=None, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IConsole::findUSBDeviceByAddress
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param name: 
-    :type name: str
-
-    :rtype: USBDeviceResponse
-    """
-
-    vbox_utils_commonChecks()
-
-    oVM = var_args_tuple[0]
-    oError = None
-    httpCode = HTTPStatus.OK
-
-    logging.info('Passed machine Id is ' + vmid)
-
-    oSession = var_args_tuple[1]
-    oConsole = oSession.console
-
-    oUSBDeviceResponse = USBDeviceResponse()
-    try:
-        if name is not None and name!='':
-            logging.info("Try to find USB device by address " + name)
-            oUsbDev = oConsole.findUSBDeviceByAddress(name)
-            o = i_fill_usb_device(oUsbDev, select)
-            oUSBDeviceResponse.device = o
-        else:
-            httpCode = HTTPStatus.PRECONDITION_FAILED
-            oError = Error(httpCode, "The passed USB name is empty or hasn't been passed at all")
-            return jsonify(oError), httpCode
-
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        logging.info("Exception during finding USB device with name " + name)
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else oUSBDeviceResponse)
-
-    return response, httpCode
+#     return response, httpCode
 
 
-def i_machine_getparallelport(vmid, select=None, slot=None):  # noqa: E501
-    """
-    Call interface method IMachine::getParallelPort
+# @sessionDecorator
+# def i_console_findusbdevicebyid(vmid, select=None, id=None, *var_args_tuple):  # noqa: E501
+#     """
+#     Call interface method IConsole::findUSBDeviceById
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param slot: 
-    :type slot: int
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param select: The object attributes separated by comma
+#     :type select: str
+#     :param id: 
+#     :type id: str
 
-    :rtype: ParallelPortResponse
-    """
+#     :rtype: USBDeviceResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    httpCode = HTTPStatus.OK
+#     # oVM = var_args_tuple[0]
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+#     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oSession = var_args_tuple[1]
+#     oConsole = oSession.console
 
-    oParallelPortResponse = ParallelPortResponse()
+#     oUSBDeviceResponse = USBDeviceObjWrapperResponse()
+#     # oUSBDeviceResponse = USBDeviceResponse()
+#     try:
+#         if id is not None and id!='':
+#             logging.info("Try to find USB device by id " + id)
+#             oUsbDev = oConsole.findUSBDeviceById(id)
+#             o = i_fill_usbdevice(oUsbDev, select)
+#             # o = i_fill_usb_device(oUsbDev, select)
+#             oUSBDeviceResponse.device = o
+#         else:
+#             httpCode = HTTPStatus.PRECONDITION_FAILED
+#             oError = Error(httpCode, "The passed USB id is empty or hasn't been passed at all")
+#             return jsonify(oError), httpCode
 
-    try:
-        oVBoxParallelPort = oVM.getParallelPort(slot)
-        oParallelPortResponse.port = i_fill_parallel_port(oVBoxParallelPort, select)
-        logging.info('Successfully get the parallel port')
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         logging.info("Exception during finding USB device by id " + id)
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oParallelPortResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oUSBDeviceResponse)
+
+#     return response, httpCode
 
 
-def i_machine_getserialport(vmid, select=None, slot=None):  # noqa: E501
-    """
-    Call interface method IMachine::getSerialPort
+# @sessionDecorator
+# def i_console_findusbdevicebyaddress(vmid, select=None, name=None, *var_args_tuple):  # noqa: E501
+#     """
+#     Call interface method IConsole::findUSBDeviceByAddress
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param slot: 
-    :type slot: int
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param select: The object attributes separated by comma
+#     :type select: str
+#     :param name: 
+#     :type name: str
 
-    :rtype: SerialPortResponse
-    """
+#     :rtype: USBDeviceResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    httpCode = HTTPStatus.OK
+#     oVM = var_args_tuple[0]
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+#     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oSession = var_args_tuple[1]
+#     oConsole = oSession.console
 
-    oSerialPortResponse = SerialPortResponse()
+#     oUSBDeviceResponse = USBDeviceObjWrapperResponse()
+#     # oUSBDeviceResponse = USBDeviceResponse()
+#     try:
+#         if name is not None and name!='':
+#             logging.info("Try to find USB device by address " + name)
+#             oUsbDev = oConsole.findUSBDeviceByAddress(name)
+#             o = i_fill_usbdevice(oUsbDev, select)
+#             # o = i_fill_usb_device(oUsbDev, select)
+#             oUSBDeviceResponse.device = o
+#         else:
+#             httpCode = HTTPStatus.PRECONDITION_FAILED
+#             oError = Error(httpCode, "The passed USB name is empty or hasn't been passed at all")
+#             return jsonify(oError), httpCode
 
-    try:
-        oVBoxSerialPort = oVM.getSerialPort(slot)
-        oSerialPortResponse.port = i_fill_serial_port(oVBoxSerialPort, select)
-        logging.info('Successfully get the serial port')
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         logging.info("Exception during finding USB device with name " + name)
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oSerialPortResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oUSBDeviceResponse)
+
+#     return response, httpCode
+
+
+# def i_machine_getparallelport(vmid, select=None, slot=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::getParallelPort
+
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param select: The object attributes separated by comma
+#     :type select: str
+#     :param slot: 
+#     :type slot: int
+
+#     :rtype: ParallelPortResponse
+#     """
+
+#     vbox_utils_commonChecks()
+
+#     httpCode = HTTPStatus.OK
+
+#     logging.info('Passed machine Id is ' + vmid)
+
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
+
+#     oParallelPortResponse = ParallelPortObjWrapperResponse()
+#     # oParallelPortResponse = ParallelPortResponse()
+
+#     try:
+#         oVBoxParallelPort = oVM.getParallelPort(slot)
+#         oParallelPortResponse.port = i_fill_parallelport(oVBoxParallelPort, select)
+#         # oParallelPortResponse.port = i_fill_parallel_port(oVBoxParallelPort, select)
+#         logging.info('Successfully get the parallel port')
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+
+#     response = jsonify(oError if oError is not None else oParallelPortResponse)
+#     return response, httpCode
+
+
+# def i_machine_getserialport(vmid, select=None, slot=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::getSerialPort
+
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param select: The object attributes separated by comma
+#     :type select: str
+#     :param slot: 
+#     :type slot: int
+
+#     :rtype: SerialPortResponse
+#     """
+
+#     vbox_utils_commonChecks()
+
+#     httpCode = HTTPStatus.OK
+
+#     logging.info('Passed machine Id is ' + vmid)
+
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
+
+#     oSerialPortResponse = SerialPortObjWrapperResponse()
+#     # oSerialPortResponse = SerialPortResponse()
+
+#     try:
+#         oVBoxSerialPort = oVM.getSerialPort(slot)
+#         oSerialPortResponse.port = i_fill_serialport(oVBoxSerialPort, select)
+#         # oSerialPortResponse.port = i_fill_serial_port(oVBoxSerialPort, select)
+#         logging.info('Successfully get the serial port')
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+
+#     response = jsonify(oError if oError is not None else oSerialPortResponse)
+#     return response, httpCode
 
 
 def i_machine_getmedium(vmid, select=None, name=None, controllerPort=None, device=None):  # noqa: E501
@@ -1963,7 +1956,7 @@ def i_machine_getmedium(vmid, select=None, name=None, controllerPort=None, devic
         oError = None
 
     fFound = False
-    oMediumResponse = MediumResponse()
+    oMediumResponse = MediumObjWrapperResponse()
     try:
         oVBoxMedium = oVM.getMedium(name, controllerPort, device)
         oMediumResponse.medium = i_fill_medium(oVBoxMedium, select)
@@ -2009,15 +2002,15 @@ def i_machine_getmediumattachmentsofcontroller(vmid, select=None, name=None):  #
         #set to None
         oError = None
 
-    oMediumAttachmentArrayResponse = MediumAttachmentArrayResponse()
+    oMediumAttachmentArrayResponse = MediumAttachmentObjArrayWrapperResponse()
     olMediumAttachment = list()
     try:
         oVmMediumAttch = oVM.getMediumAttachmentsOfController(name)
         for item in oVmMediumAttch:
-            oMediumAttachment = i_fill_medium_attachment(item)
+            oMediumAttachment = i_fill_mediumattachment(item)
             olMediumAttachment.append(oMediumAttachment)
 
-        oMediumAttachmentArrayResponse.medium_attachments = olMediumAttachment
+        oMediumAttachmentArrayResponse.mediumAttachments = olMediumAttachment
 
     except Exception as e:
         logging.info("Can't get medium attachments for VM '%s': %s" % (oVM.name, str(e)))
@@ -2056,7 +2049,7 @@ def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody: MachineTakeSna
     sName = oMachineTakeSnapshotRequestBody.name
     sDescription = oMachineTakeSnapshotRequestBody.description
 
-    oMachineTakesnapshotResponse = MachineTakesnapshotResponse()
+    oMachineTakesnapshotResponse = MachineTakeSnapshotResponse()
 
     logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oCurrMachine.state))
     
@@ -2092,52 +2085,53 @@ def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody: MachineTakeSna
     return response, httpCode
 
 
-def i_machine_findsnapshot(vmid, select=None, nameOrId=None):  # noqa: E501
-    """
-    Call interface method IMachine::findSnapshot
+# def i_machine_findsnapshot(vmid, select=None, nameOrId=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::findSnapshot
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param nameOrId: 
-    :type nameOrId: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param select: The object attributes separated by comma
+#     :type select: str
+#     :param nameOrId: 
+#     :type nameOrId: str
 
-    :rtype: SnapshotResponse
-    """
+#     :rtype: SnapshotResponse
+#     """
 
-    httpCode = HTTPStatus.OK
+#     httpCode = HTTPStatus.OK
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    logging.info('Passed machine Id is ' + vmid)
-    if nameOrId is None:
-        nameOrId = ''
-    logging.info('Passed nameOrId is ' + nameOrId)
+#     logging.info('Passed machine Id is ' + vmid)
+#     if nameOrId is None:
+#         nameOrId = ''
+#     logging.info('Passed nameOrId is ' + nameOrId)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
 
-    oSnapshotResponse = SnapshotResponse()
-    try:
-        oSnapshot = oVM.findSnapshot(nameOrId)
-        if oSnapshot is None:
-            httpCode = HTTPStatus.NOT_FOUND
-            oError = Error(httpCode, "Snapshot with the name or Id %s wasn\'t found" % (nameOrId))
-            return jsonify(oError), httpCode
+#     oSnapshotResponse = SnapshotObjWrapperResponse()
+#     # oSnapshotResponse = SnapshotResponse()
+#     try:
+#         oSnapshot = oVM.findSnapshot(nameOrId)
+#         if oSnapshot is None:
+#             httpCode = HTTPStatus.NOT_FOUND
+#             oError = Error(httpCode, "Snapshot with the name or Id %s wasn\'t found" % (nameOrId))
+#             return jsonify(oError), httpCode
 
-        oSnapshotResponse.snapshot = i_fill_snapshot(oSnapshot)
-    except Exception as e:
-        logging.info("Exception during finding the snapshot '%s' for VM '%s': %s" % (nameOrId, oVM.name, str(e)))
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#         oSnapshotResponse.snapshot = i_fill_snapshot(oSnapshot)
+#     except Exception as e:
+#         logging.info("Exception during finding the snapshot '%s' for VM '%s': %s" % (nameOrId, oVM.name, str(e)))
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oSnapshotResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oSnapshotResponse)
+#     return response, httpCode
 
 
 # close the session is done inside session_observer.py in SessionObserver::run()
@@ -2164,7 +2158,7 @@ def i_machine_deletesnapshot(vmid, id=None, *var_args_tuple):  # noqa: E501
     oProgress = None
     oCurrMachine = oSession.machine
 
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
 
     try:
         oSnapshot = oCurrMachine.findSnapshot(id)
@@ -2221,7 +2215,8 @@ def i_machine_restoresnapshot(vmid, snapshot=None, *var_args_tuple):  # noqa: E5
     oProgress = None
     oCurrMachine = oSession.machine
 
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
+
     oSnapshot = None
     try:
         oSnapshot = oCurrMachine.findSnapshot(snapshot)
@@ -2291,192 +2286,192 @@ def i_machine_deletesnapshotrange(vmid, oMachineDeleteSnapshotRangeRequestBody):
     return "This API method is right now not implemented!", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_machine_getnetworkadapter(vmid, select=None, slot=None):  # noqa: E501
-    """
-    Call interface method IMachine::getNetworkAdapter
+# def i_machine_getnetworkadapter(vmid, select=None, slot=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::getNetworkAdapter
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param slot:
-    :type slot: int
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param select: The object attributes separated by comma
+#     :type select: str
+#     :param slot:
+#     :type slot: int
 
-    :rtype: NetworkAdapterResponse
-    """
+#     :rtype: NetworkAdapterResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    httpCode = HTTPStatus.OK
+#     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+#     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
 
-    oNetworkAdapterResponse = NetworkAdapterResponse()
+#     oNetworkAdapterResponse = NetworkAdapterObjWrapperResponse()
 
-    try:
-        if slot is None or slot=="": slot = 0
-        oVBoxNetworkAdapter = oVM.getNetworkAdapter(slot)
-        oNetworkAdapterResponse.adapter = i_fill_network_adapter(oVBoxNetworkAdapter, select)
-        logging.info('Successfully get the network adapter')
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     try:
+#         if slot is None or slot=="": slot = 0
+#         oVBoxNetworkAdapter = oVM.getNetworkAdapter(slot)
+#         oNetworkAdapterResponse.adapter = i_fill_networkadapter(oVBoxNetworkAdapter, select)
+#         # oNetworkAdapterResponse.adapter = i_fill_network_adapter(oVBoxNetworkAdapter, select)
+#         logging.info('Successfully get the network adapter')
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oNetworkAdapterResponse)
-    return response, httpCode
-
-
-def i_platformx86_getcpuproperty(vmid, property=None):  # noqa: E501
-    """
-    Call interface method IPlatformX86::getCPUProperty
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param property: For the possible values of enumeration look into #/definitions/CPUPropertyTypeX86
-    :type property: str
-
-    :rtype: Platformx86GetcpupropertyResponse
-    """
-
-    vbox_utils_commonChecks()
+#     response = jsonify(oError if oError is not None else oNetworkAdapterResponse)
+#     return response, httpCode
 
 
-    httpCode = HTTPStatus.OK
+# def i_platformx86_getcpuproperty(vmid, property=None):  # noqa: E501
+#     """
+#     Call interface method IPlatformX86::getCPUProperty
 
-    logging.info('Passed machine Id is ' + vmid)
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param property: For the possible values of enumeration look into #/definitions/CPUPropertyTypeX86
+#     :type property: str
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     :rtype: Platformx86GetcpupropertyResponse
+#     """
 
-    oPlatformx86GetcpupropertyResponse = Platformx86GetcpupropertyResponse()
-
-    try:
-        vBoxCPUProperty = swagger_to_vbox_cpu_property_type_x86(property)
-        if vBoxCPUProperty is None:
-            return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
-
-        strArchtype = vbox_to_swagger_platform_architecture(oVM.platform.architecture)
-        if strArchtype == "X86":
-            oPlatformX86 = oVM.platform.x86
-            oPlatformx86GetcpupropertyResponse.value = oPlatformX86.getCPUProperty(vBoxCPUProperty)
-            logging.info('The CPU property ' + property + ' is ' + str(oPlatformx86GetcpupropertyResponse.value))
-        else:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, "Virtual CPU isn't X86 architecture CPU")
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else oPlatformx86GetcpupropertyResponse)
-    return response, httpCode
+#     vbox_utils_commonChecks()
 
 
-def i_platformarm_getcpuproperty(vmid, property=None):  # noqa: E501
-    """
-    Call interface method IPlatformARM::getCPUProperty
+#     httpCode = HTTPStatus.OK
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param property: For the possible values of enumeration look into #/definitions/CPUPropertyTypeARM
-    :type property: str
+#     logging.info('Passed machine Id is ' + vmid)
 
-    :rtype: PlatformarmGetcpupropertyResponse
-    """
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
 
-    vbox_utils_commonChecks()
+#     oPlatformx86GetcpupropertyResponse = PlatformARMGetCPUPropertyResponse()
+#     # oPlatformx86GetcpupropertyResponse = Platformx86GetcpupropertyResponse()
 
-    httpCode = HTTPStatus.OK
+#     try:
+#         vBoxCPUProperty = swagger_to_vbox_cpupropertytypex86(property)
+#         if vBoxCPUProperty is None:
+#             return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
 
-    logging.info('Passed machine Id is ' + vmid)
+#         strArchtype = vbox_to_swagger_platformarchitecture(oVM.platform.architecture)
+#         if strArchtype == "X86":
+#             oPlatformX86 = oVM.platform.x86
+#             oPlatformx86GetcpupropertyResponse.value = oPlatformX86.getCPUProperty(vBoxCPUProperty)
+#             logging.info('The CPU property ' + property + ' is ' + str(oPlatformx86GetcpupropertyResponse.value))
+#         else:
+#             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#             oError = Error(httpCode, "Virtual CPU isn't X86 architecture CPU")
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
-
-    oPlatformARMGetcpupropertyResponse = PlatformarmGetcpupropertyResponse()
-
-    try:
-        vBoxCPUProperty = swagger_to_vbox_cpu_property_type_arm(property)
-        if vBoxCPUProperty is None:
-            return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
-
-        strArchtype = vbox_to_swagger_platform_architecture(oVM.platform.architecture)
-        if strArchtype == "ARM":
-            oPlatformARM = oVM.platform.arm
-            oPlatformARMGetcpupropertyResponse.value = oPlatformARM.getCPUProperty(vBoxCPUProperty)
-            logging.info('The CPU property ' + property + ' is ' + str(oPlatformARMGetcpupropertyResponse.value))
-        else:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, "Virtual CPU isn't ARM architecture CPU")
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else oPlatformARMGetcpupropertyResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oPlatformx86GetcpupropertyResponse)
+#     return response, httpCode
 
 
-def i_platformx86_gethwvirtexproperty(vmid, property=None):  # noqa: E501
-    """
-    Call interface method IPlatformX86::getHWVirtExProperty
+# def i_platformarm_getcpuproperty(vmid, property=None):  # noqa: E501
+#     """
+#     Call interface method IPlatformARM::getCPUProperty
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param property: For the possible values of enumeration look into #/definitions/HWVirtExPropertyType
-    :type property: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param property: For the possible values of enumeration look into #/definitions/CPUPropertyTypeARM
+#     :type property: str
 
-    :rtype: Platformx86GetcpupropertyResponse
-    """
+#     :rtype: PlatformarmGetcpupropertyResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    httpCode = HTTPStatus.OK
+#     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+#     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
 
-    oPlatformx86GetcpupropertyResponse = Platformx86GetcpupropertyResponse()
+#     oPlatformARMGetcpupropertyResponse = PlatformARMGetCPUPropertyResponse()
+#     try:
+#         vBoxCPUProperty = swagger_to_vbox_cpupropertytypearm(property)
+#         if vBoxCPUProperty is None:
+#             return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
 
-    try:
-        vBoxHWVirtExProperty = swagger_to_vbox_hw_virt_ex_property_type(property)
-        if vBoxHWVirtExProperty is None:
-            return "The requested hardware property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
+#         strArchtype = vbox_to_swagger_platformarchitecture(oVM.platform.architecture)
+#         if strArchtype == "ARM":
+#             oPlatformARM = oVM.platform.arm
+#             oPlatformARMGetcpupropertyResponse.value = oPlatformARM.getCPUProperty(vBoxCPUProperty)
+#             logging.info('The CPU property ' + property + ' is ' + str(oPlatformARMGetcpupropertyResponse.value))
+#         else:
+#             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#             oError = Error(httpCode, "Virtual CPU isn't ARM architecture CPU")
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-        strArchtype = vbox_to_swagger_platform_architecture(oVM.platform.architecture)
-        if strArchtype == "X86":
-            oPlatformX86 = oVM.platform.x86
-            oPlatformx86GetcpupropertyResponse.value = oPlatformX86.getHWVirtExProperty(vBoxHWVirtExProperty)
-            logging.info('The property ' + property + ' is ' + str(oPlatformx86GetcpupropertyResponse.value))
-        else:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, "Virtual CPU isn't X86 architecture CPU")
-    except Exception as e:
-        logging.info('Exception during obtaining the specified hardware virtualization property ' + property)
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     response = jsonify(oError if oError is not None else oPlatformARMGetcpupropertyResponse)
+#     return response, httpCode
 
-    response = jsonify(oError if oError is not None else oPlatformx86GetcpupropertyResponse)
-    return response, httpCode
+
+# def i_platformx86_gethwvirtexproperty(vmid, property=None):  # noqa: E501
+#     """
+#     Call interface method IPlatformX86::getHWVirtExProperty
+
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param property: For the possible values of enumeration look into #/definitions/HWVirtExPropertyType
+#     :type property: str
+
+#     :rtype: Platformx86GetcpupropertyResponse
+#     """
+
+#     vbox_utils_commonChecks()
+
+#     httpCode = HTTPStatus.OK
+
+#     logging.info('Passed machine Id is ' + vmid)
+
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
+
+#     oPlatformx86GetcpupropertyResponse = PlatformARMGetCPUPropertyResponse()
+#     try:
+#         vBoxHWVirtExProperty = swagger_to_vbox_hwvirtexpropertytype(property)
+#         if vBoxHWVirtExProperty is None:
+#             return "The requested hardware property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
+
+#         strArchtype = vbox_to_swagger_platformarchitecture(oVM.platform.architecture)
+#         if strArchtype == "X86":
+#             oPlatformX86 = oVM.platform.x86
+#             oPlatformx86GetcpupropertyResponse.value = oPlatformX86.getHWVirtExProperty(vBoxHWVirtExProperty)
+#             logging.info('The property ' + property + ' is ' + str(oPlatformx86GetcpupropertyResponse.value))
+#         else:
+#             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#             oError = Error(httpCode, "Virtual CPU isn't X86 architecture CPU")
+#     except Exception as e:
+#         logging.info('Exception during obtaining the specified hardware virtualization property ' + property)
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+
+#     response = jsonify(oError if oError is not None else oPlatformx86GetcpupropertyResponse)
+#     return response, httpCode
 
 
 @sessionDecorator
@@ -2506,11 +2501,11 @@ def i_platformx86_sethwvirtexproperty(vmid, oPlatformX86SetHWVirtExPropertyReque
     value = oPlatformX86SetHWVirtExPropertyRequestBody.value
 
     try:
-        vBoxHWVirtExProperty = swagger_to_vbox_hw_virt_ex_property_type(property)
+        vBoxHWVirtExProperty = swagger_to_vbox_hwvirtexpropertytype(property)
         if vBoxHWVirtExProperty is None:
             return "The requested hardware property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
 
-        strArchtype = vbox_to_swagger_platform_architecture(oCurrMachine.platform.architecture)
+        strArchtype = vbox_to_swagger_platformarchitecture(oCurrMachine.platform.architecture)
         if strArchtype == "X86":
             oPlatformX86 = oCurrMachine.platform.x86
             oPlatformX86.setHWVirtExProperty(vBoxHWVirtExProperty, value)
@@ -2559,11 +2554,11 @@ def i_platformx86_setcpuproperty(vmid, oPlatformX86SetCPUPropertyRequestBody: Pl
     logging.info('The passed CPU property ' + property + ' is ' + str(value))
 
     try:
-        vBoxCPUProperty = swagger_to_vbox_cpu_property_type_x86(property)
+        vBoxCPUProperty = swagger_to_vbox_cpupropertytypex86(property)
         if vBoxCPUProperty is None:
             return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
 
-        strArchtype = vbox_to_swagger_platform_architecture(oCurrMachine.platform.architecture)
+        strArchtype = vbox_to_swagger_platformarchitecture(oCurrMachine.platform.architecture)
         if strArchtype == "X86":
             oPlatformX86 = oCurrMachine.platform.x86
             oPlatformX86.setCPUProperty(vBoxCPUProperty, value)
@@ -2611,11 +2606,11 @@ def i_platformarm_setcpuproperty(vmid, oPlatformARMSetCPUPropertyRequestBody: Pl
     logging.info('The passed CPU property ' + property + ' is ' + str(value))
 
     try:
-        vBoxCPUProperty = swagger_to_vbox_cpu_property_type_arm(property)
+        vBoxCPUProperty = swagger_to_vbox_cpupropertytypearm(property)
         if vBoxCPUProperty is None:
             return "The requested property " + str(property) + " wasn't found", HTTPStatus.NOT_FOUND
 
-        strArchtype = vbox_to_swagger_platform_architecture(oCurrMachine.platform.architecture)
+        strArchtype = vbox_to_swagger_platformarchitecture(oCurrMachine.platform.architecture)
         if strArchtype == "ARM":
             oPlatformARM = oCurrMachine.platform.arm
             oPlatformARM.setCPUProperty(vBoxCPUProperty, value)
@@ -2635,115 +2630,115 @@ def i_platformarm_setcpuproperty(vmid, oPlatformARMSetCPUPropertyRequestBody: Pl
     return 'Successfully set the virtual CPU property ' + property + ' to ' + str(value)
 
 
-@sessionDecorator
-def i_machine_hotplugcpu(vmid, cpu=None, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IMachine::hotPlugCPU
+# @sessionDecorator
+# def i_machine_hotplugcpu(vmid, cpu=None, *var_args_tuple):  # noqa: E501
+#     """
+#     Call interface method IMachine::hotPlugCPU
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param cpu:
-    :type cpu: int
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param cpu:
+#     :type cpu: int
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+#     logging.info('Passed machine Id is ' + vmid)
 
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+#     oSession = var_args_tuple[1]
+#     oCurrMachine = oSession.machine
 
-    try:
-        # No return value
-        oCurrMachine.hotPlugCPU(cpu)
-        oCurrMachine.saveSettings()
-        logging.info('Successfully plugged CPU ' + str(cpu))
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     try:
+#         # No return value
+#         oCurrMachine.hotPlugCPU(cpu)
+#         oCurrMachine.saveSettings()
+#         logging.info('Successfully plugged CPU ' + str(cpu))
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else 'Successfully plugged CPU ' + str(cpu))
-    return response, httpCode
-
-
-@sessionDecorator
-def i_machine_hotunplugcpu(vmid, cpu=None, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IMachine::hotUnplugCPU
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param cpu:
-    :type cpu: int
-
-    :rtype: None
-    """
-
-    vbox_utils_commonChecks()
-
-    oError = None
-    httpCode = HTTPStatus.OK
-
-    logging.info('Passed machine Id is ' + vmid)
-
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
-
-    try:
-        # No return value
-        oCurrMachine.hotUnplugCPU(cpu)
-        oCurrMachine.saveSettings()
-        logging.info('Successfully unplugged CPU ' + str(cpu))
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else 'Successfully unplugged CPU ' + str(cpu))
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else 'Successfully plugged CPU ' + str(cpu))
+#     return response, httpCode
 
 
-def i_machine_getcpustatus(vmid, cpu=None):  # noqa: E501
-    """
-    Call interface method IMachine::getCPUStatus
+# @sessionDecorator
+# def i_machine_hotunplugcpu(vmid, cpu=None, *var_args_tuple):  # noqa: E501
+#     """
+#     Call interface method IMachine::hotUnplugCPU
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param cpu: 
-    :type cpu: int
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param cpu:
+#     :type cpu: int
 
-    :rtype: MachineGetcpustatusResponse
-    """
+#     :rtype: None
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+#     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oSession = var_args_tuple[1]
+#     oCurrMachine = oSession.machine
 
-    oMachineGetcpustatusResponse = MachineGetcpustatusResponse()
+#     try:
+#         # No return value
+#         oCurrMachine.hotUnplugCPU(cpu)
+#         oCurrMachine.saveSettings()
+#         logging.info('Successfully unplugged CPU ' + str(cpu))
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    try:
-        bStatus = oVM.getCPUStatus(cpu)
-        oMachineGetcpustatusResponse.attached = bStatus
-        logging.info('Successfully get the CPU status')
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     response = jsonify(oError if oError is not None else 'Successfully unplugged CPU ' + str(cpu))
+#     return response, httpCode
 
-    response = jsonify(oError if oError is not None else oMachineGetcpustatusResponse)
-    return response, httpCode
+
+# def i_machine_getcpustatus(vmid, cpu=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::getCPUStatus
+
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param cpu: 
+#     :type cpu: int
+
+#     :rtype: MachineGetcpustatusResponse
+#     """
+
+#     vbox_utils_commonChecks()
+
+#     httpCode = HTTPStatus.OK
+
+#     logging.info('Passed machine Id is ' + vmid)
+
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
+
+#     oMachineGetcpustatusResponse = MachineGetCPUStatusResponse()
+
+#     try:
+#         bStatus = oVM.getCPUStatus(cpu)
+#         oMachineGetcpustatusResponse.attached = bStatus
+#         logging.info('Successfully get the CPU status')
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+
+#     response = jsonify(oError if oError is not None else oMachineGetcpustatusResponse)
+#     return response, httpCode
 
 
 def i_machine_enumerateguestproperties(vmid, patterns=None):  # noqa: E501
@@ -2771,8 +2766,7 @@ def i_machine_enumerateguestproperties(vmid, patterns=None):  # noqa: E501
         #set to None
         oError = None
 
-    oMachineEnumerateguestpropertiesResponse = MachineEnumerateguestpropertiesResponse()
-
+    oMachineEnumerateguestpropertiesResponse = MachineEnumerateGuestPropertiesResponse()
     try:
         names, values, timestamps, flags = oVM.enumerateGuestProperties(patterns)
 
@@ -2790,39 +2784,39 @@ def i_machine_enumerateguestproperties(vmid, patterns=None):  # noqa: E501
     return response, httpCode
 
 
-@sessionDecorator
-def i_machine_deleteguestproperty(vmid, name=None, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IMachine::deleteGuestProperty
+# @sessionDecorator
+# def i_machine_deleteguestproperty(vmid, name=None, *var_args_tuple):  # noqa: E501
+#     """
+#     Call interface method IMachine::deleteGuestProperty
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param name: 
-    :type name: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param name: 
+#     :type name: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+#     logging.info('Passed machine Id is ' + vmid)
 
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+#     oSession = var_args_tuple[1]
+#     oCurrMachine = oSession.machine
 
-    try:
-        oCurrMachine.deleteGuestProperty(name)
-        oCurrMachine.saveSettings()
-        logging.info('Successfully deleted the guest property ' + name)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     try:
+#         oCurrMachine.deleteGuestProperty(name)
+#         oCurrMachine.saveSettings()
+#         logging.info('Successfully deleted the guest property ' + name)
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else 'Successfully deleted the guest property ' + name)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else 'Successfully deleted the guest property ' + name)
+#     return response, httpCode
 
 
 @sessionDecorator
@@ -2870,84 +2864,84 @@ def i_machine_setguestpropertyvalue(vmid, oMachineSetGuestPropertyValueRequestBo
     return "Successfully set VM guest property " + "'" + sProperty + "'" + " to value " + "'" + sValue + "'"
 
 
-def i_machine_getguestpropertytimestamp(vmid, property=None):  # noqa: E501
-    """
-    Call interface method IMachine::getGuestPropertyTimestamp
+# def i_machine_getguestpropertytimestamp(vmid, property=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::getGuestPropertyTimestamp
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param _property: 
-    :type _property: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param _property: 
+#     :type _property: str
 
-    :rtype: MachineGetguestpropertytimestampResponse
-    """
+#     :rtype: MachineGetguestpropertytimestampResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    httpCode = HTTPStatus.OK
+#     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+#     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
 
-    oMachineGetguestpropertytimestampResponse = MachineGetguestpropertytimestampResponse()
+#     oMachineGetguestpropertytimestampResponse = MachineGetGuestPropertyTimestampResponse()
 
-    try:
-        timestamp = oVM.getGuestPropertyTimestamp(property)
-        oMachineGetguestpropertytimestampResponse.value= timestamp
+#     try:
+#         timestamp = oVM.getGuestPropertyTimestamp(property)
+#         oMachineGetguestpropertytimestampResponse.value= timestamp
 
-        logging.info('Successfully get the timestamp of VM guest property ' + str(property))
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#         logging.info('Successfully get the timestamp of VM guest property ' + str(property))
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oMachineGetguestpropertytimestampResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oMachineGetguestpropertytimestampResponse)
+#     return response, httpCode
 
 
-def i_machine_getguestpropertyvalue(vmid, property=None):  # noqa: E501
-    """
-    Call interface method IMachine::getGuestPropertyValue
+# def i_machine_getguestpropertyvalue(vmid, property=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::getGuestPropertyValue
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param _property: 
-    :type _property: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param _property: 
+#     :type _property: str
 
-    :rtype: MediumGetpropertyResponse
-    """
+#     :rtype: MediumGetpropertyResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    httpCode = HTTPStatus.OK
+#     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+#     logging.info('Passed machine Id is ' + vmid)
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
 
-    oMediumGetpropertyResponse = MediumGetpropertyResponse()
+#     oMediumGetpropertyResponse = MediumGetPropertyResponse()
 
-    try:
-        value = oVM.getGuestPropertyValue(property)
-        oMediumGetpropertyResponse.value = value
+#     try:
+#         value = oVM.getGuestPropertyValue(property)
+#         oMediumGetpropertyResponse.value = value
 
-        logging.info('Successfully get the value of VM guest property ' + str(property))
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#         logging.info('Successfully get the value of VM guest property ' + str(property))
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oMediumGetpropertyResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oMediumGetpropertyResponse)
+#     return response, httpCode
 
 
 @sessionDecorator
@@ -2974,9 +2968,9 @@ def i_machine_addstoragecontroller(vmid, oMachineAddStorageControllerRequestBody
     name = o.name
 
     oCurrMachine = oSession.machine
-    oStorageControllerResponse = StorageControllerResponse()
+    oStorageControllerResponse = StorageControllerObjWrapperResponse()
     try:
-        connectionType = swagger_to_vbox_storage_bus(o.connection_type)
+        connectionType = swagger_to_vbox_storagebus(o.connection_type)
         if connectionType:
             oStorageController = oCurrMachine.addStorageController(name, connectionType)
             oCurrMachine.saveSettings()
@@ -2989,79 +2983,79 @@ def i_machine_addstoragecontroller(vmid, oMachineAddStorageControllerRequestBody
         oError = Error(httpCode, str(e))
 
     if oError is None:
-        oStorageControllerResponse.controller = i_fill_storage_controller(oStorageController)
+        oStorageControllerResponse.controller = i_fill_storagecontroller(oStorageController)
 
     response = jsonify(oError if oError is not None else oStorageControllerResponse)
     return response, httpCode
 
 
-@sessionDecorator
-def i_machine_removestoragecontroller(vmid, name=None, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IMachine::removeStorageController
+# @sessionDecorator
+# def i_machine_removestoragecontroller(vmid, name=None, *var_args_tuple):  # noqa: E501
+#     """
+#     Call interface method IMachine::removeStorageController
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param name:
-    :type name: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param name:
+#     :type name: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    oError = None
-    httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     oSession = var_args_tuple[1]
 
-    oCurrMachine = oSession.machine
-    try:
-        oCurrMachine.removeStorageController(name)
-        oCurrMachine.saveSettings()
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     oCurrMachine = oSession.machine
+#     try:
+#         oCurrMachine.removeStorageController(name)
+#         oCurrMachine.saveSettings()
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else "The controller named %s has been successfully removed" % (name))
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else "The controller named %s has been successfully removed" % (name))
+#     return response, httpCode
 
 
-def i_machine_getstoragecontrollerbyname(vmid, select=None, name=None):  # noqa: E501
-    """
-    Call interface method IMachine::getStorageControllerByName
+# def i_machine_getstoragecontrollerbyname(vmid, select=None, name=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::getStorageControllerByName
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param name:
-    :type name: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param select: The object attributes separated by comma
+#     :type select: str
+#     :param name:
+#     :type name: str
 
-    :rtype: StorageControllerResponse1
-    """
+#     :rtype: StorageControllerResponse1
+#     """
 
-    vbox_utils_commonChecks()
-    httpCode = HTTPStatus.OK
+#     vbox_utils_commonChecks()
+#     httpCode = HTTPStatus.OK
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
 
-    oStorageControllerResponse = StorageControllerResponse()
-    try:
-        oStorageController = oVM.getStorageControllerByName(name)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     oStorageControllerResponse = StorageControllerObjWrapperResponse()
+#     try:
+#         oStorageController = oVM.getStorageControllerByName(name)
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    if oError is None:
-        oStorageControllerResponse.controller = i_fill_storage_controller(oStorageController, select)
+#     if oError is None:
+#         oStorageControllerResponse.controller = i_fill_storagecontroller(oStorageController, select)
 
-    response = jsonify(oError if oError is not None else oStorageControllerResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oStorageControllerResponse)
+#     return response, httpCode
 
 
 def i_machine_getstoragecontrollerbyinstance(vmid, select=None, connectionType=None, instance=None):  # noqa: E501
@@ -3090,9 +3084,9 @@ def i_machine_getstoragecontrollerbyinstance(vmid, select=None, connectionType=N
         #set to None
         oError = None
 
-    oStorageControllerResponse = StorageControllerResponse()
+    oStorageControllerResponse = StorageControllerObjWrapperResponse()
     try:
-        vBoxConnectionType = swagger_to_vbox_storage_bus(connectionType)
+        vBoxConnectionType = swagger_to_vbox_storagebus(connectionType)
         if vBoxConnectionType:
             oStorageController = oVM.getStorageControllerByInstance(vBoxConnectionType, instance)
         else:
@@ -3104,7 +3098,7 @@ def i_machine_getstoragecontrollerbyinstance(vmid, select=None, connectionType=N
         oError = Error(httpCode, str(e))
 
     if oError is None:
-        oStorageControllerResponse.controller = i_fill_storage_controller(oStorageController, select)
+        oStorageControllerResponse.controller = i_fill_storagecontroller(oStorageController, select)
 
     response = jsonify(oError if oError is not None else oStorageControllerResponse)
     return response, httpCode
@@ -3175,11 +3169,11 @@ def i_machine_attachdevicewithoutmedium(vmid, oMachineAttachDeviceWithoutMediumR
     o = oMachineAttachDeviceWithoutMediumRequestBody
     print(o)
     name = o.name
-    controllerPort = o.controller_port
+    controllerPort = o.controllerPort
     device = o.device
 
     try:
-        type = swagger_to_vbox_device_type(o.type)
+        type = swagger_to_vbox_devicetype(o.type)
 
         if type != ctx['const'].DeviceType_Floppy and type != ctx['const'].DeviceType_DVD:
             logging.info("VBox REST API doesn't support the type %s for this operation" % (o.type))
@@ -3222,10 +3216,10 @@ def i_console_createsharedfolder(vmid, oConsoleCreateSharedFolderRequestBody: Co
 
     o = oConsoleCreateSharedFolderRequestBody
     name = o.name
-    hostPath = o.host_path
+    hostPath = o.hostPath
     fWritable = o.writable
     fAutomount = o.automount
-    autoMountPoint = o.auto_mount_point
+    autoMountPoint = o.autoMountPoint
 
     logging.info("Try to create the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
 
@@ -3257,44 +3251,44 @@ def i_console_createsharedfolder(vmid, oConsoleCreateSharedFolderRequestBody: Co
     return response, httpCode
 
 
-@sessionDecorator
-def i_console_removesharedfolder(vmid, name=None, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IConsole::removeSharedFolder
+# @sessionDecorator
+# def i_console_removesharedfolder(vmid, name=None, *var_args_tuple):  # noqa: E501
+#     """
+#     Call interface method IConsole::removeSharedFolder
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param name: 
-    :type name: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param name: 
+#     :type name: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    oVM = var_args_tuple[0]
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
-    oConsole = oSession.console
+#     oVM = var_args_tuple[0]
+#     oSession = var_args_tuple[1]
+#     oCurrMachine = oSession.machine
+#     oConsole = oSession.console
 
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    logging.info("Try to remove the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
+#     logging.info("Try to remove the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
 
-    try:
-        # No return result check.
-        # removeSharedFolder returns None instead of the result S_OK.
-        oConsole.removeSharedFolder(name)
-        logging.info("Removed the shared folder %s" % (name))
+#     try:
+#         # No return result check.
+#         # removeSharedFolder returns None instead of the result S_OK.
+#         oConsole.removeSharedFolder(name)
+#         logging.info("Removed the shared folder %s" % (name))
 
-        #Don't forget to save
-        oCurrMachine.saveSettings()
-    except Exception as e:
-        logging.info("Exception during removing the shared folder %s" % (name))
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#         #Don't forget to save
+#         oCurrMachine.saveSettings()
+#     except Exception as e:
+#         logging.info("Exception during removing the shared folder %s" % (name))
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else "Successfully removed the shared folder")
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else "Successfully removed the shared folder")
+#     return response, httpCode
 
 
 @sessionDecorator
@@ -3321,9 +3315,9 @@ def i_machine_addusbcontroller(vmid, oMachineAddUSBControllerRequestBody: Machin
     name = o.name
 
     oCurrMachine = oSession.machine
-    oUSBControllerResponse = USBControllerResponse()
+    oUSBControllerResponse = USBControllerObjWrapperResponse()
     try:
-        usbType = swagger_to_vbox_usb_controller_type(o.type)
+        usbType = swagger_to_vbox_usbcontrollertype(o.type)
         if usbType:
             oUSBController = oCurrMachine.addUSBController(name, usbType)
             oCurrMachine.saveSettings()
@@ -3336,116 +3330,116 @@ def i_machine_addusbcontroller(vmid, oMachineAddUSBControllerRequestBody: Machin
         oError = Error(httpCode, str(e))
 
     if oError is None:
-        oUSBControllerResponse.controller = i_fill_storage_controller(oUSBController)
+        oUSBControllerResponse.controller = i_fill_storagecontroller(oUSBController)
 
     response = jsonify(oError if oError is not None else oUSBControllerResponse)
     return response, httpCode
 
 
-@sessionDecorator
-def i_machine_removeusbcontroller(vmid, name=None, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IMachine::removeUSBController
+# @sessionDecorator
+# def i_machine_removeusbcontroller(vmid, name=None, *var_args_tuple):  # noqa: E501
+#     """
+#     Call interface method IMachine::removeUSBController
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param name: 
-    :type name: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param name: 
+#     :type name: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    oError = None
-    httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     oSession = var_args_tuple[1]
 
-    oCurrMachine = oSession.machine
-    try:
-        oCurrMachine.removeUSBController(name)
-        oCurrMachine.saveSettings()
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     oCurrMachine = oSession.machine
+#     try:
+#         oCurrMachine.removeUSBController(name)
+#         oCurrMachine.saveSettings()
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else "The controller named %s has been successfully removed" % (name))
-    return response, httpCode
-
-
-def i_machine_getusbcontrollerbyname(vmid, select=None, name=None):  # noqa: E501
-    """
-    Call interface method IMachine::getUSBControllerByName
-
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param name: 
-    :type name: str
-
-    :rtype: USBControllerResponse
-    """
-
-    vbox_utils_commonChecks()
-    httpCode = HTTPStatus.OK
-
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
-
-    oUSBControllerResponse = USBControllerResponse()
-    try:
-        oUSBController = oVM.getUSBControllerByName(name)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    if oError is None:
-        oUSBControllerResponse.controller = i_fill_usb_controller(oUSBController, select)
-
-    response = jsonify(oError if oError is not None else oUSBControllerResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else "The controller named %s has been successfully removed" % (name))
+#     return response, httpCode
 
 
-def i_machine_getusbcontrollercountbytype(vmid, type=None):  # noqa: E501
-    """
-    Call interface method IMachine::getUSBControllerCountByType
+# def i_machine_getusbcontrollerbyname(vmid, select=None, name=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::getUSBControllerByName
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param type: For the possible values of enumeration look into #/definitions/USBControllerType
-    :type type: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param select: The object attributes separated by comma
+#     :type select: str
+#     :param name: 
+#     :type name: str
 
-    :rtype: MachineGetusbcontrollercountbytypeResponse
-    """
+#     :rtype: USBControllerResponse
+#     """
 
-    vbox_utils_commonChecks()
-    httpCode = HTTPStatus.OK
+#     vbox_utils_commonChecks()
+#     httpCode = HTTPStatus.OK
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
 
-    oMachineGetusbcontrollercountbytypeResponse = MachineGetusbcontrollercountbytypeResponse()
-    try:
-        cType = swagger_to_vbox_usb_controller_type(type)
-        cNum = oVM.getUSBControllerCountByType(cType)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     oUSBControllerResponse = USBControllerObjWrapperResponse()
+#     try:
+#         oUSBController = oVM.getUSBControllerByName(name)
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    if oError is None:
-        oMachineGetusbcontrollercountbytypeResponse.controllers = cNum
+#     if oError is None:
+#         oUSBControllerResponse.controller = i_fill_usbcontroller(oUSBController, select)
 
-    response = jsonify(oError if oError is not None else oMachineGetusbcontrollercountbytypeResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oUSBControllerResponse)
+#     return response, httpCode
+
+
+# def i_machine_getusbcontrollercountbytype(vmid, type=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::getUSBControllerCountByType
+
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param type: For the possible values of enumeration look into #/definitions/USBControllerType
+#     :type type: str
+
+#     :rtype: MachineGetusbcontrollercountbytypeResponse
+#     """
+
+#     vbox_utils_commonChecks()
+#     httpCode = HTTPStatus.OK
+
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
+
+#     oMachineGetusbcontrollercountbytypeResponse = MachineGetUSBControllerCountByTypeResponse()
+#     try:
+#         cType = swagger_to_vbox_usbcontrollertype(type)
+#         cNum = oVM.getUSBControllerCountByType(cType)
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+
+#     if oError is None:
+#         oMachineGetusbcontrollercountbytypeResponse.controllers = cNum
+
+#     response = jsonify(oError if oError is not None else oMachineGetusbcontrollercountbytypeResponse)
+#     return response, httpCode
 
 
 @sessionDecorator
@@ -3471,7 +3465,7 @@ def i_machine_setautodiscardfordevice(vmid, oMachineSetAutoDiscardForDeviceReque
     o = oMachineSetAutoDiscardForDeviceRequestBody
     print(o)
     name = o.name
-    controllerPort = o.controller_port
+    controllerPort = o.controllerPort
     device = o.device
     fDiscard = o.discard
 
@@ -3516,7 +3510,7 @@ def i_machine_setnobandwidthgroupfordevice(vmid, oMachineSetNoBandwidthGroupForD
     o = oMachineSetNoBandwidthGroupForDeviceRequestBody
     print(o)
     name = o.name
-    controllerPort = o.controller_port
+    controllerPort = o.controllerPort
     device = o.device
 
     try:
@@ -3560,9 +3554,9 @@ def i_machine_setbandwidthgroupfordevice(vmid, oMachineSetBandwidthGroupForDevic
     o = oMachineSetBandwidthGroupForDeviceRequestBody
     print(o)
     name = o.name
-    controllerPort = o.controller_port
+    controllerPort = o.controllerPort
     device = o.device
-    bandwidthGroup = o.bandwidth_group
+    bandwidthGroup = o.bandwidthGroup
     # oVBoxBandwidthGroup = i_find_bandwidth_group_by_name(bandwidthGroup)
     # if oVBoxBandwidthGroup is None:
     #     oVBoxBandwidthGroup = ''
@@ -3600,9 +3594,9 @@ def i_machine_sethotpluggablefordevice(vmid, oMachineSetHotPluggableForDeviceReq
     o = oMachineSetHotPluggableForDeviceRequestBody
     print(o)
     name = o.name
-    controllerPort = o.controller_port
+    controllerPort = o.controllerPort
     device = o.device
-    fhotPluggable = o.hot_pluggable
+    fhotPluggable = o.hotPluggable
 
     try:
         oCurrMachine.setHotPluggableForDevice(name, controllerPort, device, fhotPluggable)
@@ -3644,7 +3638,7 @@ def i_machine_passthroughdevice(vmid, oMachinePassthroughDeviceRequestBody: Mach
 
     o = oMachinePassthroughDeviceRequestBody
     name = o.name
-    controllerPort = o.controller_port
+    controllerPort = o.controllerPort
     device = o.device
     fPassthrough = o.passthrough
 
@@ -3688,9 +3682,9 @@ def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody: 
 
     o = oMachineNonRotationalDeviceRequestBody
     name = o.name
-    controllerPort = o.controller_port
+    controllerPort = o.controllerPort
     device = o.device
-    fNonRotational = o.non_rotational
+    fNonRotational = o.nonRotational
 
     try:
         oCurrMachine.nonRotationalDevice(name, controllerPort, device, fNonRotational)
@@ -3711,40 +3705,40 @@ def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody: 
     return response, httpCode
 
 
-@sessionDecorator
-def i_machine_applydefaults(vmid, flags=None, *var_args_tuple):  # noqa: E501
-    """
-    Call interface method IMachine::applyDefaults
+# @sessionDecorator
+# def i_machine_applydefaults(vmid, flags=None, *var_args_tuple):  # noqa: E501
+#     """
+#     Call interface method IMachine::applyDefaults
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param flags:
-    :type flags: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param flags:
+#     :type flags: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    httpCode = HTTPStatus.OK
-    oError = None
+#     httpCode = HTTPStatus.OK
+#     oError = None
 
-    oVM = var_args_tuple[0]
-    vbox_utils_logVmInfo(oVM)
+#     oVM = var_args_tuple[0]
+#     vbox_utils_logVmInfo(oVM)
 
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+#     oSession = var_args_tuple[1]
+#     oCurrMachine = oSession.machine
 
-    if flags is None: flags = ''
+#     if flags is None: flags = ''
 
-    try:
-        oCurrMachine.applyDefaults(flags)
-        oCurrMachine.saveSettings()
-    except Exception as e:
-        logging.info("Exception in i_machine_applydefaults for VM '%s': %s" % (oVM.name, str(e)))
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     try:
+#         oCurrMachine.applyDefaults(flags)
+#         oCurrMachine.saveSettings()
+#     except Exception as e:
+#         logging.info("Exception in i_machine_applydefaults for VM '%s': %s" % (oVM.name, str(e)))
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else "Successful")
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else "Successful")
+#     return response, httpCode
 
 
 @sessionDecorator
@@ -3769,9 +3763,9 @@ def i_machine_temporaryejectdevice(vmid, oMachineTemporaryEjectDeviceRequestBody
 
     o = oMachineTemporaryEjectDeviceRequestBody
     name = o.name
-    controllerPort = o.controller_port
+    controllerPort = o.controllerPort
     device = o.device
-    fTemporaryEject = o.temporary_eject
+    fTemporaryEject = o.temporaryEject
 
     try:
         oCurrMachine.temporaryEjectDevice(name, controllerPort, device, fTemporaryEject)
@@ -3792,54 +3786,54 @@ def i_machine_temporaryejectdevice(vmid, oMachineTemporaryEjectDeviceRequestBody
     return response, httpCode
 
 
-def i_machine_geteffectiveparavirtprovider(vmid):  # noqa: E501
-    """
-    Call interface method IMachine::getEffectiveParavirtProvider
+# def i_machine_geteffectiveparavirtprovider(vmid):  # noqa: E501
+#     """
+#     Call interface method IMachine::getEffectiveParavirtProvider
 
-    :param vmid: The Id of vm
-    :type vmid: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
 
-    :rtype: ParavirtProviderResponse
-    """
+#     :rtype: ParavirtProviderResponse
+#     """
 
-    vbox_utils_commonChecks()
-    httpCode = HTTPStatus.OK
+#     vbox_utils_commonChecks()
+#     httpCode = HTTPStatus.OK
 
-    oVM, oError = vbox_utils_find_machine(vmid)
-    if oVM is None:
-        return jsonify(oError), HTTPStatus.NOT_FOUND
-    else:
-        #set to None
-        oError = None
+#     oVM, oError = vbox_utils_find_machine(vmid)
+#     if oVM is None:
+#         return jsonify(oError), HTTPStatus.NOT_FOUND
+#     else:
+#         #set to None
+#         oError = None
 
-    oParavirtProviderResponse = ParavirtProviderResponse()
-    try:
-        nVXoxEPPValue = oVM.getEffectiveParavirtProvider()
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     oParavirtProviderResponse = ParavirtProviderEnumWrapperResponse()
+#     try:
+#         nVXoxEPPValue = oVM.getEffectiveParavirtProvider()
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    if oError is None:
-        oParavirtProviderResponse.paravirt_provider = vbox_to_swagger_paravirt_provider(nVXoxEPPValue)
+#     if oError is None:
+#         oParavirtProviderResponse.paravirt_provider = vbox_to_swagger_paravirtprovider(nVXoxEPPValue)
 
-    response = jsonify(oError if oError is not None else oParavirtProviderResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oParavirtProviderResponse)
+#     return response, httpCode
 
 
 ############################# Not implemented yet #############################
-def i_machine_discardsavedstate(vmid, fRemoveFile=None):  # noqa: E501
-    """
-    Call interface method IMachine::discardSavedState
+# def i_machine_discardsavedstate(vmid, fRemoveFile=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::discardSavedState
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param fRemoveFile: 
-    :type fRemoveFile: bool
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param fRemoveFile: 
+#     :type fRemoveFile: bool
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
 def i_console_addencryptionpassword(vmid, oConsoleAddEncryptionPasswordRequestBody):  # noqa: E501
@@ -3872,32 +3866,32 @@ def i_console_addencryptionpasswords(vmid, oConsoleAddEncryptionPasswordsRequest
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_console_clearallencryptionpasswords(vmid):  # noqa: E501
-    """
-    Call interface method IConsole::clearAllEncryptionPasswords
+# def i_console_clearallencryptionpasswords(vmid):  # noqa: E501
+#     """
+#     Call interface method IConsole::clearAllEncryptionPasswords
 
-    :param vmid: The Id of vm
-    :type vmid: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_console_removeencryptionpassword(vmid, id=None):  # noqa: E501
-    """
-    Call interface method IConsole::removeEncryptionPassword
+# def i_console_removeencryptionpassword(vmid, id=None):  # noqa: E501
+#     """
+#     Call interface method IConsole::removeEncryptionPassword
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param id:
-    :type id: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param id:
+#     :type id: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
 def i_machine_attachhostpcidevice(vmid, oMachineAttachHostPCIDeviceRequestBody):  # noqa: E501
@@ -3915,32 +3909,32 @@ def i_machine_attachhostpcidevice(vmid, oMachineAttachHostPCIDeviceRequestBody):
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_machine_detachhostpcidevice(vmid, hostAddress=None):  # noqa: E501
-    """
-    Call interface method IMachine::detachHostPCIDevice
+# def i_machine_detachhostpcidevice(vmid, hostAddress=None):  # noqa: E501
+#     """
+#     Call interface method IMachine::detachHostPCIDevice
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param hostAddress:
-    :type hostAddress: int
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param hostAddress:
+#     :type hostAddress: int
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_machine_discardsettings(vmid):  # noqa: E501
-    """
-    Call interface method IMachine::discardSettings
+# def i_machine_discardsettings(vmid):  # noqa: E501
+#     """
+#     Call interface method IMachine::discardSettings
 
-    :param vmid: The Id of vm
-    :type vmid: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
 def i_machine_exportto(vmid, oMachineExportToRequestBody):  # noqa: E501
@@ -4003,16 +3997,16 @@ def i_virtualbox_openmachine(vmid, oVirtualBoxOpenMachineRequestBody):  # noqa: 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_virtualbox_registermachine(vmid, machine=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::registerMachine
+# def i_virtualbox_registermachine(vmid, machine=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::registerMachine
 
-    :param vmid: The Id of vm
-    :type vmid: str
-    :param machine: Put here an ID of requested IMachine VirtualBox object
-    :type machine: str
+#     :param vmid: The Id of vm
+#     :type vmid: str
+#     :param machine: Put here an ID of requested IMachine VirtualBox object
+#     :type machine: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
