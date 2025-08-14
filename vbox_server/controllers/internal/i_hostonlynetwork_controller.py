@@ -14,47 +14,45 @@ import logging
 from http import HTTPStatus
 from flask import jsonify
 
-from vbox_server.models.error import Error  # noqa: E501
-from vbox_server.models.host_only_network_response import HostOnlyNetworkResponse  # noqa: E501
-from vbox_server import util
+from vbox_server.models.host_only_network_obj_wrapper_response import HostOnlyNetworkObjWrapperResponse  # noqa: E501
 
 
-def i_virtualbox_createhostonlynetwork(networkName=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::createHostOnlyNetwork
+# def i_virtualbox_createhostonlynetwork(networkName=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::createHostOnlyNetwork
 
-    :param networkName: 
-    :type networkName: str
+#     :param networkName: 
+#     :type networkName: str
 
-    :rtype: HostOnlyNetworkResponse
-    """
+#     :rtype: HostOnlyNetworkObjWrapperResponse
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_virtualbox_findhostonlynetworkbyid(select=None, id=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::findHostOnlyNetworkById
-
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param id: 
-    :type id: str
-
-    :rtype: HostOnlyNetworkResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_virtualbox_removehostonlynetwork(network=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::removeHostOnlyNetwork
+# def i_virtualbox_findhostonlynetworkbyid(select=None, id=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::findHostOnlyNetworkById
 
-    :param network: Put here an ID of requested IHostOnlyNetwork VirtualBox object
-    :type network: str
+#     :param select: The object attributes separated by comma
+#     :type select: str
+#     :param id: 
+#     :type id: str
 
-    :rtype: None
-    """
+#     :rtype: HostOnlyNetworkObjWrapperResponse
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+# def i_virtualbox_removehostonlynetwork(network=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::removeHostOnlyNetwork
+
+#     :param network: Put here an ID of requested IHostOnlyNetwork VirtualBox object
+#     :type network: str
+
+#     :rtype: None
+#     """
+
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
