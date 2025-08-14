@@ -68,11 +68,11 @@ def sessionDecorator(func):
 
         logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
         logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
-        
+
         new_args_repr = []
+        new_args_repr.append(oSession.machine)
         if len(args_repr) != 0:
             if len(args_repr) > 1:
-                new_args_repr.append(oSession.machine)
                 if len(args_repr) == 2:
                     for a in args_repr[1:]:
                         new_args_repr.append(a)
@@ -80,13 +80,9 @@ def sessionDecorator(func):
                     for a in args_repr[2:]:
                         new_args_repr.append(a)
             else:
-                new_args_repr.append(oSession.machine)
                 for a in args_repr:
                     new_args_repr.append(a)
-        else:
-            args_repr.append(oSession.machine)
-            new_args_repr = args_repr
-            
+
         value = func(*new_args_repr, **kwargs)
 
         # Always save setting for assurance
