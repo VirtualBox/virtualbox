@@ -1,0 +1,51 @@
+{% set iface_name = iface[1:] | lower %}
+{% set iface_decorator = "@" ~ iface_name ~ "Decorator" %}
+{% set is_machine = iface == "IMachine" %}
+{% set has_output = output_param is defined and output_param %}
+{% set output_name = output_param if has_output else None %}
+{% set input_name = input_param if input_param is defined and input_param %}
+{% set func_name = ("i_" ~ iface_name ~ "_" ~ method_name) | lower %}
+
+{{ iface_decorator }}
+{% if is_machine -%}
+@sessionDecorator
+{% endif %}
+def {{ func_name }}(oVBoxObj{% if input_name %}, {{ input_name }}{% endif %}):
+    """ Call interface method {{ iface }}::{{ method_name }} """
+
+    vbox_utils_commonChecks()
+    httpCode = HTTPStatus.OK
+    oError = None
+
+    oCurr{{ iface[1:] }} = oVBoxObj
+    {% if input_name %}
+    l_{{ input_name }} = {{ input_name }}
+    {#=== Input transformations ===#}
+    {% if input_type and input_type.startswith('I') %}
+    l_{{ input_name }} = i_fill_{{ input_type[1:] | lower }}(l_{{ input_name }})
+    {% elif input_type and input_type[:1].isupper() %}
+    l_{{ input_name }} = swagger_to_vbox_{{ input_type | lower }}(l_{{ input_name }})
+    {% endif %}
+    {%- endif %}
+
+    try:
+        {% if has_output %}
+        {{ output_name }} = oCurr{{ iface[1:] }}.{{ method_name }}({% if input_name %}l_{{ input_name }}{% endif %})
+        {#=== Output transformations ===#}
+        {% if output_name and output_type and output_type.startswith('I') %}
+        {{ output_name }} = i_fill_{{ output_type[1:] | lower }}({{ output_name }})
+        {% elif output_name and output_type and output_type[:1].isupper() %}
+        {{ output_name }} = vbox_to_swagger_{{ output_type | lower }}({{ output_name }})
+        {% endif %}
+        {% else %}
+        oCurr{{ iface[1:] }}.{{ method_name }}({% if input_name %}l_{{ input_name }}{% endif %})
+        {% if is_machine %}
+        oCurr{{ iface[1:] }}.saveSettings()
+        {% endif %}
+        {% endif %}
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else {% if has_output %}{{ output_name }}{% else %}"Successfull operation"{% endif %})
+    return response, httpCode

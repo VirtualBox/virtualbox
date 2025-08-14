@@ -1,0 +1,2 @@
+{% set iface_name_lower = iface[1:] | lower %}
+from vbox_server.models.{{ iface[1:] | to_snake_case }} import {{ iface[1:] }}
