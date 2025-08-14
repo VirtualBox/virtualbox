@@ -25,23 +25,20 @@ from typing import List, Dict  # noqa: F401
 
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
-from vbox_server.utils.restapi_objects_functions import *
 from vbox_server.utils.enum_conversion import *
+from vbox_server.utils.object_conversion import *
 from vbox_server.models.machine import Machine  # noqa: E501
-from vbox_server.models.virtual_box_response import VirtualBoxResponse  # noqa: E501
-from vbox_server.models.progress_response import ProgressResponse  # noqa: E501
-from vbox_server.models.progress import Progress  # noqa: E501
-from vbox_server.models.session import Session
-from vbox_server.models.error import Error  # noqa: E501
-from vbox_server.models.virtualbox_checkfirmwarepresent_response import VirtualboxCheckfirmwarepresentResponse # noqa: E501
-from vbox_server.models.virtualbox_composemachinefilename_response import VirtualboxComposemachinefilenameResponse  # noqa: E501
-from vbox_server.models.virtualbox_getextradatakeys_response import VirtualboxGetextradatakeysResponse  # noqa: E501
-from vbox_server.models.guest_os_type_response import GuestOSTypeResponse # noqa: E501
-from vbox_server.models.machine_state_array_response import MachineStateArrayResponse  # noqa: E501
-from vbox_server.models.medium_response import MediumResponse  # noqa: E501
 
-from vbox_server.models.virtualbox_gettrackedobject_response import VirtualboxGettrackedobjectResponse  # noqa: E501
-from vbox_server.models.virtualbox_gettrackedobjectids_response import VirtualboxGettrackedobjectidsResponse  # noqa: E501
+from vbox_server.models.error import Error  # noqa: E501
+from vbox_server.models.machine_state_enum_array_wrapper_response import MachineStateEnumArrayWrapperResponse  # noqa: E501
+from vbox_server.models.medium_obj_wrapper_response import MediumObjWrapperResponse  # noqa: E501
+from vbox_server.models.virtual_box_check_firmware_present_response import VirtualBoxCheckFirmwarePresentResponse  # noqa: E501
+from vbox_server.models.virtual_box_compose_machine_filename_response import VirtualBoxComposeMachineFilenameResponse  # noqa: E501
+from vbox_server.models.virtual_box_get_extra_data_keys_response import VirtualBoxGetExtraDataKeysResponse  # noqa: E501
+from vbox_server.models.virtual_box_get_tracked_object_ids_response import VirtualBoxGetTrackedObjectIdsResponse  # noqa: E501
+from vbox_server.models.virtual_box_get_tracked_object_response import VirtualBoxGetTrackedObjectResponse  # noqa: E501
+from vbox_server.models.virtual_box_obj_wrapper_response import VirtualBoxObjWrapperResponse  # noqa: E501
+
 
 def i_list_machines(fAll=False, select=None, groups=None):  # noqa: E501
     """List VirtualBox machines.
@@ -142,9 +139,9 @@ def i_synthetic_getserver(select=None):  # noqa: E501
         oError = Error(httpCode, str(e))
         return jsonify(oError), httpCode
 
-    oVirtualBoxResponse = VirtualBoxResponse()
+    oVirtualBoxResponse = VirtualBoxObjWrapperResponse()
     try:
-        oVirtualBoxResponse.server = i_fill_virtual_box(oVBox, select)
+        oVirtualBoxResponse.server = i_fill_virtualbox(oVBox, select)
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -189,14 +186,14 @@ def i_virtualbox_checkfirmwarepresent(platformArchitecture=None, firmwareType=No
 
     oError = None
     httpCode = HTTPStatus.OK
-    vBoxPlatformArchitecture = swagger_to_vbox_platform_architecture(platformArchitecture)
-    vBoxFirmwareType = swagger_to_vbox_firmware_type(firmwareType)
+    vBoxPlatformArchitecture = swagger_to_vbox_platformarchitecture(platformArchitecture)
+    vBoxFirmwareType = swagger_to_vbox_firmwaretype(firmwareType)
     if vBoxFirmwareType is None:
         return "The requested firmware type " + str(firmwareType) + " wasn't found", HTTPStatus.NOT_FOUND
     
     if version is None: version=''
 
-    oVirtualboxCheckfirmwarepresentResponse = VirtualboxCheckfirmwarepresentResponse()
+    oVirtualboxCheckfirmwarepresentResponse = VirtualBoxCheckFirmwarePresentResponse()
     try:
         oVBox = ctx['vb']
         bRes, sFile, sUrl = oVBox.checkFirmwarePresent(vBoxPlatformArchitecture, vBoxFirmwareType, version)
@@ -238,7 +235,7 @@ def i_virtualbox_composemachinefilename(name=None, group=None, createFlags=None,
     oError = None
     httpCode = HTTPStatus.OK
 
-    oVirtualboxComposemachinefilenameResponse = VirtualboxComposemachinefilenameResponse()
+    oVirtualboxComposemachinefilenameResponse = VirtualBoxComposeMachineFilenameResponse()
     try:
         oVBox = ctx['vb']
         sFullSettingFilePath = oVBox.composeMachineFilename(name, group, createFlags, baseFolder)
@@ -257,47 +254,47 @@ def i_virtualbox_composemachinefilename(name=None, group=None, createFlags=None,
     return response, httpCode
 
 
-def i_virtualbox_createunattendedinstaller():  # noqa: E501
-    """
-    Call interface method IVirtualBox::createUnattendedInstaller
+# def i_virtualbox_createunattendedinstaller():  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::createUnattendedInstaller
 
 
-    :rtype: UnattendedResponse
-    """
+#     :rtype: UnattendedResponse
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_virtualbox_getextradata(key=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::getExtraData
+# def i_virtualbox_getextradata(key=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::getExtraData
 
-    :param key: 
-    :type key: str
+#     :param key: 
+#     :type key: str
 
-    :rtype: MediumGetpropertyResponse
-    """
+#     :rtype: MediumGetpropertyResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    try:
-        oVBox = ctx['vb']
-        res = oVBox.getExtraData(key)
-        if res!='':
-            logging.info('Successfully get the value of VirtualBox extra data ' + key)
-            logging.info('The command result is ' + res)
-        else:
-            logging.info('Unknown extra data or the value is empty ')
+#     try:
+#         oVBox = ctx['vb']
+#         res = oVBox.getExtraData(key)
+#         if res!='':
+#             logging.info('Successfully get the value of VirtualBox extra data ' + key)
+#             logging.info('The command result is ' + res)
+#         else:
+#             logging.info('Unknown extra data or the value is empty ')
 
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else res)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else res)
+#     return response, httpCode
 
 
 def i_virtualbox_getextradatakeys():  # noqa: E501
@@ -314,8 +311,7 @@ def i_virtualbox_getextradatakeys():  # noqa: E501
     oError = None
     httpCode = HTTPStatus.OK
 
-    oVirtualboxGetextradatakeysResponse = VirtualboxGetextradatakeysResponse()
-
+    oVirtualboxGetextradatakeysResponse = VirtualBoxGetExtraDataKeysResponse()
     try:
         oVBox = ctx['vb']
         olKeys = oVBox.getExtraDataKeys()
@@ -362,14 +358,14 @@ def i_virtualbox_getmachinestates(machines=None):  # noqa: E501
         else:
             oError = None
             lMachine.append(oVM)
-    
-    oMachineStateArrayResponse = MachineStateArrayResponse()
+
+    oMachineStateArrayResponse = MachineStateEnumArrayWrapperResponse()
     try:
         oVBox = ctx['vb']
         oVMStateList = oVBox.getMachineStates(lMachine)
         lMachineState = []
         for state in oVMStateList:
-            sState = vbox_to_swagger_machine_state(state)
+            sState = vbox_to_swagger_machinestate(state)
             lMachineState.append(sState)
 
         oMachineStateArrayResponse.states = lMachineState
@@ -398,13 +394,13 @@ def i_virtualbox_openmedium(oVirtualBoxOpenMediumRequestBody):  # noqa: E501
 
     location = oVirtualBoxOpenMediumRequestBody.location
 
-    oMediumResponse = MediumResponse()
+    oMediumResponse = MediumObjWrapperResponse()
 
-    accessMode = swagger_to_vbox_access_mode(oVirtualBoxOpenMediumRequestBody.access_mode)
+    accessMode = swagger_to_vbox_accessmode(oVirtualBoxOpenMediumRequestBody.access_mode)
     if accessMode is None:
         return "Unknown access mode " + str(accessMode), HTTPStatus.NOT_FOUND
 
-    deviceType = swagger_to_vbox_device_type(oVirtualBoxOpenMediumRequestBody.device_type)
+    deviceType = swagger_to_vbox_devicetype(oVirtualBoxOpenMediumRequestBody.device_type)
     if deviceType is None or deviceType == ctx['const'].DeviceType_Network:
         return "Unknown or unsupported device type " + str(deviceType), HTTPStatus.NOT_FOUND
 
@@ -458,18 +454,20 @@ def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
         oError = Error(httpCode, str(e))
         return jsonify(oError), httpCode
 
-    o = VirtualboxGettrackedobjectResponse()
+    o = VirtualBoxGetTrackedObjectResponse()
     try:
         oIUnknown, enmState, creationTime, deletionTime = oVBox.getTrackedObject(trObjId)
-        o.state = vbox_to_swagger_tracked_object_state(enmState)
-        o.creation_time = creationTime/1000
+        o.state = vbox_to_swagger_trackedobjectstate(enmState)
+        o.creationTime = creationTime/1000
         if (deletionTime != 0):
-            o.deletion_time = deletionTime/1000
+            o.deletionTime = deletionTime/1000
         else:
-            o.deletion_time = 0
+            o.deletionTime = 0
+
         logging.info('state ' + o.state)
-        logging.info('creation time ' + str(datetime.fromtimestamp(o.creation_time)))
-        logging.info('deletion time ' + str(datetime.fromtimestamp(o.deletion_time)))
+        logging.info('creation time ' + str(datetime.fromtimestamp(o.creationTime)))
+        logging.info('deletion time ' + str(datetime.fromtimestamp(o.deletionTime)))
+
         if oIUnknown is None:
             httpCode = HTTPStatus.NOT_FOUND
             oError = Error(httpCode, str("Can\'t find the object with Id " + trObjId + ' on the server'))
@@ -561,14 +559,14 @@ def i_virtualbox_gettrackedobjectids(name=None):
         oError = Error(httpCode, str(e))
         return jsonify(oError), httpCode
 
-    oVirtualboxGettrackedobjectidsResponse = VirtualboxGettrackedobjectidsResponse()
+    oVirtualboxGettrackedobjectidsResponse = VirtualBoxGetTrackedObjectIdsResponse()
     try:
         if name and len(name) != 0:
             oObjIdList = oVBox.getTrackedObjectIds(name)
             if len(oObjIdList) != 0:
-                oVirtualboxGettrackedobjectidsResponse.obj_ids_list = list()
+                oVirtualboxGettrackedobjectidsResponse.objIdsList = list()
                 for i in oObjIdList:
-                    oVirtualboxGettrackedobjectidsResponse.obj_ids_list.append(i)
+                    oVirtualboxGettrackedobjectidsResponse.objIdsList.append(i)
             else:
                 httpCode = HTTPStatus.NOT_FOUND
                 oError = Error(httpCode, 'Unknown interface or no objects were found for the passed interface name')
