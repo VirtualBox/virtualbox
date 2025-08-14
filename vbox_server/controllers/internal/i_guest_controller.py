@@ -18,23 +18,15 @@ import six
 
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
-from vbox_server.utils.restapi_objects_functions import *
+# from vbox_server.utils.restapi_objects_functions import *
 from vbox_server.utils.enum_conversion import *
-from vbox_server.utils.decorators import session_decorator as sessionDecorator
+from vbox_server.utils.object_conversion import *
 
 
 from vbox_server.models.error import Error  # noqa: E501
-# from vbox_server.models.guest_findsession_response import GuestFindsessionResponse  # noqa: E501
-# from vbox_server.models.guest_getadditionsstatus_response import GuestGetadditionsstatusResponse  # noqa: E501
-# from vbox_server.models.guest_getfacilitystatus_response import GuestGetfacilitystatusResponse  # noqa: E501
-from vbox_server.models.guest_os_type_response import GuestOSTypeResponse  # noqa: E501
-from vbox_server.models.machine_enumerateguestproperties_response import MachineEnumerateguestpropertiesResponse  # noqa: E501
-from vbox_server.models.machine_getguestproperty_response import MachineGetguestpropertyResponse  # noqa: E501
-from vbox_server.models.machine_set_guest_property_request_body import MachineSetGuestPropertyRequestBody  # noqa: E501
-from vbox_server.models.virtualbox_getguestosdescsbysubtype_response import VirtualboxGetguestosdescsbysubtypeResponse  # noqa: E501
-from vbox_server.models.virtualbox_getguestossubtypesbyfamilyid_response import VirtualboxGetguestossubtypesbyfamilyidResponse  # noqa: E501
-from vbox_server import util
-from vbox_server.controllers.internal.i_guest_controller import *
+from vbox_server.models.guest_os_type_obj_wrapper_response import GuestOSTypeObjWrapperResponse  # noqa: E501
+from vbox_server.models.virtual_box_get_guest_os_descs_by_subtype_response import VirtualBoxGetGuestOSDescsBySubtypeResponse  # noqa: E501
+from vbox_server.models.virtual_box_get_guest_os_subtypes_by_family_id_response import VirtualBoxGetGuestOSSubtypesByFamilyIdResponse  # noqa: E501
 
 
 def i_guest_findsession(sessionName=None):  # noqa: E501
@@ -49,16 +41,16 @@ def i_guest_findsession(sessionName=None):  # noqa: E501
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_guest_getadditionsstatus(level=None):  # noqa: E501
-    """
-    Call interface method IGuest::getAdditionsStatus
+# def i_guest_getadditionsstatus(level=None):  # noqa: E501
+#     """
+#     Call interface method IGuest::getAdditionsStatus
 
-    :param level: For the possible values of enumeration look into #/definitions/AdditionsRunLevelType
-    :type level: str
+#     :param level: For the possible values of enumeration look into #/definitions/AdditionsRunLevelType
+#     :type level: str
 
-    :rtype: GuestGetadditionsstatusResponse
-    """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     :rtype: GuestGetadditionsstatusResponse
+#     """
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
 def i_guest_getfacilitystatus(facility=None):  # noqa: E501
@@ -87,15 +79,18 @@ def i_virtualbox_getguestosdescsbysubtype(OSSubtype=None):  # noqa: E501
     httpCode = HTTPStatus.OK
 
     vbox_utils_commonChecks()
+    oVirtualboxGetguestosdescsbysubtypeResponse = VirtualBoxGetGuestOSDescsBySubtypeResponse()
 
     try:
         oVBox = ctx['vb']
-        olVBoxGuestOSDesc= oVBox.getGuestOSDescsBySubtype(OSSubtype)
+        olVBoxGuestOSDesc = oVBox.getGuestOSDescsBySubtype(OSSubtype)
+        for item in olVBoxGuestOSDesc:
+            oVirtualboxGetguestosdescsbysubtypeResponse.guestOsDescs.append(item)
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else olVBoxGuestOSDesc)
+    response = jsonify(oError if oError is not None else oVirtualboxGetguestosdescsbysubtypeResponse)
     return response, httpCode
 
 
@@ -106,50 +101,55 @@ def i_virtualbox_getguestossubtypesbyfamilyid(family=None):  # noqa: E501
     :param family: 
     :type family: str
 
-    :rtype: VirtualboxGetguestossubtypesbyfamilyidResponse
+    :rtype: VirtualBoxGetGuestOSSubtypesByFamilyIdResponse
     """
 
     oError = None
     httpCode = HTTPStatus.OK
 
     vbox_utils_commonChecks()
+
+    oVirtualboxGetguestossubtypesbyfamilyidResponse = VirtualBoxGetGuestOSSubtypesByFamilyIdResponse()
 
     try:
         oVBox = ctx['vb']
         olVBoxGuestOSSubtype = oVBox.getGuestOSSubtypesByFamilyId(family)
+        for item in olVBoxGuestOSSubtype:
+            oVirtualboxGetguestossubtypesbyfamilyidResponse.OSsubtypes.append(item)
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else olVBoxGuestOSSubtype)
+    response = jsonify(oError if oError is not None else oVirtualboxGetguestossubtypesbyfamilyidResponse)
     return response, httpCode
 
 
-def i_virtualbox_getguestostype(select=None, id=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::getGuestOSType
+# def i_virtualbox_getguestostype(select=None, id=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::getGuestOSType
 
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param id: 
-    :type id: str
+#     :param select: The object attributes separated by comma
+#     :type select: str
+#     :param id: 
+#     :type id: str
 
-    :rtype: GuestOSTypeResponse
-    """
+#     :rtype: GuestOSTypeObjWrapperResponse
+#     """
 
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    oGuestOSTypeResponse = GuestOSTypeResponse()
-    try:
-        oVBox = ctx['vb']
-        oVBoxGuestOSType = oVBox.getGuestOSType(id)
-        oGuestOSTypeResponse = i_fill_guest_os_type(oVBoxGuestOSType, select)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     oGuestOSTypeResponse = GuestOSTypeObjWrapperResponse()
 
-    response = jsonify(oError if oError is not None else oGuestOSTypeResponse)
-    return response, httpCode
+#     try:
+#         oVBox = ctx['vb']
+#         oVBoxGuestOSType = oVBox.getGuestOSType(id)
+#         oGuestOSTypeResponse = i_fill_guestostype(oVBoxGuestOSType, select)
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+
+#     response = jsonify(oError if oError is not None else oGuestOSTypeResponse)
+#     return response, httpCode
