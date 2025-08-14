@@ -16,40 +16,41 @@ from flask import jsonify
 
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
-from vbox_server.utils.restapi_objects_functions import *
+# from vbox_server.utils.restapi_objects_functions import *
+from vbox_server.utils.object_conversion import *
 from vbox_server.utils.enum_conversion import *
 
 from vbox_server.models.error import Error  # noqa: E501
-from vbox_server.models.platform_properties_response import PlatformPropertiesResponse  # noqa: E501
-from vbox_server.controllers.internal.i_platform_controller import *
+from vbox_server.models.platform_properties_obj_wrapper_response import PlatformPropertiesObjWrapperResponse  # noqa: E501
 
 
-def i_virtualbox_getplatformproperties(select=None, architecture=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::getPlatformProperties
+# def i_virtualbox_getplatformproperties(select=None, architecture=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::getPlatformProperties
 
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param architecture: For the possible values of enumeration look into #/definitions/PlatformArchitecture
-    :type architecture: str
+#     :param select: The object attributes separated by comma
+#     :type select: str
+#     :param architecture: For the possible values of enumeration look into #/definitions/PlatformArchitecture
+#     :type architecture: str
 
-    :rtype: PlatformPropertiesResponse
-    """
+#     :rtype: PlatformPropertiesObjWrapperResponse
+#     """
 
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    oPlatformPropertiesResponse = PlatformPropertiesResponse()
-    try:
-        oVBox = ctx['vb']
-        vBoxPlatformArchitecture = swagger_to_vbox_platform_architecture(architecture)
-        oPlatformProperties = oVBox.getPlatformProperties(vBoxPlatformArchitecture)
-        oPlatformPropertiesResponse.properties = i_fill_platform_properties(oPlatformProperties, select)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     oPlatformPropertiesResponse = PlatformPropertiesObjWrapperResponse()
 
-    response = jsonify(oError if oError is not None else oPlatformPropertiesResponse)
-    return response, httpCode
+#     try:
+#         oVBox = ctx['vb']
+#         vBoxPlatformArchitecture = swagger_to_vbox_platformarchitecture(architecture)
+#         oPlatformProperties = oVBox.getPlatformProperties(vBoxPlatformArchitecture)
+#         oPlatformPropertiesResponse.properties = i_fill_platformproperties(oPlatformProperties, select)
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+
+#     response = jsonify(oError if oError is not None else oPlatformPropertiesResponse)
+#     return response, httpCode
