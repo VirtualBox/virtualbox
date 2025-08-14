@@ -31,14 +31,14 @@ def i_virtualbox_createsharedfolder(oVirtualBoxCreateSharedFolderRequestBody):  
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_virtualbox_removesharedfolder(name=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::removeSharedFolder
+# def i_virtualbox_removesharedfolder(name=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::removeSharedFolder
 
-    :param name: 
-    :type name: str
+#     :param name: 
+#     :type name: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
