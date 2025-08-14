@@ -21,28 +21,27 @@ from ctypes import c_uint32
 
 from vbox_server.global_settings import *
 from vbox_server.utils.vbox_utils import *
-from vbox_server.utils.restapi_objects_functions import *
+from vbox_server.utils.object_conversion import *
+from vbox_server.utils.enum_conversion import *
+from vbox_server.utils.decorators import *
 
 from vbox_server.models.error import Error  # noqa: E501
-from vbox_server.models.medium_change_encryption_request_body import MediumChangeEncryptionRequestBody  # noqa: E501
 from vbox_server.models.medium_clone_to_base_request_body import MediumCloneToBaseRequestBody  # noqa: E501
 from vbox_server.models.medium_clone_to_request_body import MediumCloneToRequestBody  # noqa: E501
 from vbox_server.models.medium_create_base_storage_request_body import MediumCreateBaseStorageRequestBody  # noqa: E501
 from vbox_server.models.medium_create_diff_storage_request_body import MediumCreateDiffStorageRequestBody  # noqa: E501
-from vbox_server.models.medium_getencryptionsettings_response import MediumGetencryptionsettingsResponse  # noqa: E501
-from vbox_server.models.medium_getproperties_response import MediumGetpropertiesResponse  # noqa: E501
-from vbox_server.models.medium_getproperty_response import MediumGetpropertyResponse  # noqa: E501
-from vbox_server.models.medium_getsnapshotids_response import MediumGetsnapshotidsResponse  # noqa: E501
+from vbox_server.models.medium_get_encryption_settings_response import MediumGetEncryptionSettingsResponse  # noqa: E501
+from vbox_server.models.medium_get_properties_response import MediumGetPropertiesResponse  # noqa: E501
+from vbox_server.models.medium_get_property_response import MediumGetPropertyResponse  # noqa: E501
+from vbox_server.models.medium_get_snapshot_ids_response import MediumGetSnapshotIdsResponse  # noqa: E501
+from vbox_server.models.medium_obj_wrapper_response import MediumObjWrapperResponse  # noqa: E501
 from vbox_server.models.medium_resize_and_clone_to_request_body import MediumResizeAndCloneToRequestBody  # noqa: E501
-from vbox_server.models.medium_response import MediumResponse  # noqa: E501
 from vbox_server.models.medium_set_ids_request_body import MediumSetIdsRequestBody  # noqa: E501
 from vbox_server.models.medium_set_properties_request_body import MediumSetPropertiesRequestBody  # noqa: E501
 from vbox_server.models.medium_set_property_request_body import MediumSetPropertyRequestBody  # noqa: E501
-from vbox_server.models.medium_state_response import MediumStateResponse  # noqa: E501
-from vbox_server.models.progress_response import ProgressResponse  # noqa: E501
-from vbox_server.models.token_response import TokenResponse  # noqa: E501
+from vbox_server.models.progress_obj_wrapper_response import ProgressObjWrapperResponse  # noqa: E501
 from vbox_server.models.virtual_box_create_medium_request_body import VirtualBoxCreateMediumRequestBody  # noqa: E501
-from vbox_server import util
+
 
 ############################ Helpers ############################
 # local list to keep a newly created mediums that wait to be registered in VirtualBox
@@ -142,7 +141,7 @@ def i_synthetic_getmedium(mediumid, select=None):  # noqa: E501
         return jsonify(oError), 500
 
     fFound = False
-    oMediumResponse = MediumResponse()
+    oMediumResponse = MediumObjWrapperResponse()
     try:
         olDisks = ctx['global'].getArray(oVBox,'hardDisks')
         for count, item in enumerate(olDisks):
@@ -197,15 +196,15 @@ def i_virtualbox_createmedium(oVirtualBoxCreateMediumRequestBody: VirtualBoxCrea
 
     format = oVirtualBoxCreateMediumRequestBody.format
     location = oVirtualBoxCreateMediumRequestBody.location
-    accessMode = swagger_to_vbox_access_mode(oVirtualBoxCreateMediumRequestBody.access_mode)
-    deviceType = swagger_to_vbox_device_type(oVirtualBoxCreateMediumRequestBody.a_device_type_type)
+    accessMode = swagger_to_vbox_accessmode(oVirtualBoxCreateMediumRequestBody.access_mode)
+    deviceType = swagger_to_vbox_devicetype(oVirtualBoxCreateMediumRequestBody.a_device_type_type)
 
     logging.info(f"Creating medium in location {location}")
 
     oVBox = ctx['vb']
     oError = None
     httpCode = HTTPStatus.OK
-    oMediumResponse = MediumResponse()
+    oMediumResponse = MediumObjWrapperResponse()
 
     try:
         oHdd = oVBox.createMedium(format, location, accessMode, deviceType)
@@ -246,7 +245,7 @@ def i_medium_compact(oVBoxMedium):  # noqa: E501
 
     oError = None
     httpCode = HTTPStatus.OK
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
 
     try:
         oVBoxProgress = oVBoxMedium.compact()
@@ -288,7 +287,7 @@ def i_medium_resize(oVBoxMedium, logicalSize=None):  # noqa: E501
 
     oError = None
     httpCode = HTTPStatus.OK
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
 
     if logicalSize is None or logicalSize == 0:
         httpCode = HTTPStatus.PRECONDITION_FAILED
@@ -333,7 +332,7 @@ def i_medium_deletestorage(oVBoxMedium):  # noqa: E501
 
     oError = None
     httpCode = HTTPStatus.OK
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
 
     try:
         oVBoxProgress = oVBoxMedium.deleteStorage()
@@ -373,7 +372,7 @@ def i_medium_close(oVBoxMedium):  # noqa: E501
 
     oError = None
     httpCode = HTTPStatus.OK
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
 
     try:
         # Note that after this method successfully returns, the given medium object becomes uninitialized.
@@ -417,7 +416,8 @@ def i_medium_reset(oVBoxMedium):  # noqa: E501
 
     oError = None
     httpCode = HTTPStatus.OK
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
+    # oProgressResponse = ProgressResponse()
 
     try:
         oVBoxProgress = oVBoxMedium.reset()
@@ -457,13 +457,13 @@ def i_medium_cloneto(oVBoxMedium, oMediumCloneToRequestBody: MediumCloneToReques
 
     oError = None
     httpCode = HTTPStatus.OK
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
 
     strParentId = oMediumCloneToRequestBody.parent
     strTargetId = oMediumCloneToRequestBody.target
     lMediumVariant = list()
     for item in oMediumCloneToRequestBody.variant:
-        variant = swagger_to_vbox_medium_variant(item)
+        variant = swagger_to_vbox_mediumvariant(item)
         lMediumVariant.append(variant)
 
     if len(lMediumVariant) == 0:#try to use kind of standard medium variant
@@ -543,7 +543,7 @@ def i_medium_mergeto(oVBoxMedium, target=None):  # noqa: E501
 
     oError = None
     httpCode = HTTPStatus.OK
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
     
     strTargetId = target
     oTargetMedium, oError = __find_medium_by_id(strTargetId)
@@ -593,7 +593,7 @@ def i_medium_moveto(oVBoxMedium, location=None):
 
     oError = None
     httpCode = HTTPStatus.OK
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
 
     if __testLocation(location) is False:
         logging.info("The passed new location %s isn't a fully qualified path or hasn't existed" % (location))
@@ -633,14 +633,14 @@ def i_medium_resizeandcloneto(oVBoxMedium, oMediumResizeAndCloneToRequestBody: M
 
     oError = None
     httpCode = HTTPStatus.OK
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
 
     strParentId = oMediumResizeAndCloneToRequestBody.parent
     strTargetId = oMediumResizeAndCloneToRequestBody.target
-    nLogicalSize = oMediumResizeAndCloneToRequestBody.logical_size
+    nLogicalSize = oMediumResizeAndCloneToRequestBody.logicalSize
     lMediumVariant = list()
     for item in oMediumResizeAndCloneToRequestBody.variant:
-        variant = swagger_to_vbox_medium_variant(item)
+        variant = swagger_to_vbox_mediumvariant(item)
         lMediumVariant.append(variant)
 
     if len(lMediumVariant) == 0:#try to use kind of standard medium variant
@@ -699,7 +699,7 @@ def i_medium_createbasestorage(mediumid, oMediumCreateBaseStorageRequestBody: Me
 
     oError = None
     httpCode = HTTPStatus.OK
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
 
     # Trying to get VirtualBox Medium object that had been created earlier
     # mediumid, in this case, is a value returned in oMediumResponse.medium.id (see the function i_virtualbox_createmedium())
@@ -711,8 +711,8 @@ def i_medium_createbasestorage(mediumid, oMediumCreateBaseStorageRequestBody: Me
         oError = Error(httpCode, str(e))
         return jsonify(oError), httpCode
 
-    nLogicalSize = oMediumCreateBaseStorageRequestBody.logical_size
-    variant = swagger_to_vbox_medium_variant(oMediumCreateBaseStorageRequestBody.variant)
+    nLogicalSize = oMediumCreateBaseStorageRequestBody.logicalSize
+    variant = swagger_to_vbox_mediumvariant(oMediumCreateBaseStorageRequestBody.variant)
 
     try:
         oVBoxProgress = oVBoxMedium.createBaseStorage(nLogicalSize, variant)
@@ -754,7 +754,7 @@ def i_medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: Me
 
     oError = None
     httpCode = HTTPStatus.OK
-    oProgressResponse = ProgressResponse()
+    oProgressResponse = ProgressObjWrapperResponse()
 
     # Trying to get VirtualBox Medium object that had been created earlier
     # mediumid, in this case, is a value returned in oMediumResponse.medium.id (see the function i_virtualbox_createmedium())
@@ -773,7 +773,7 @@ def i_medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: Me
         oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'target' with Id {strTargetId} wasn't found")
         return jsonify(oError), HTTPStatus.NOT_FOUND
 
-    variant = swagger_to_vbox_medium_variant(oMediumCreateDiffStorageRequestBody.variant)
+    variant = swagger_to_vbox_mediumvariant(oMediumCreateDiffStorageRequestBody.variant)
 
     try:
         oVBoxProgress = oVBoxMedium.createDiffStorage(strTargetId, variant)
@@ -812,9 +812,9 @@ def i_medium_getencryptionsettings(oVBoxMedium):  # noqa: E501
 
     oError = None
     httpCode = HTTPStatus.OK
-    oMediumGetencryptionsettingsResponse = MediumGetencryptionsettingsResponse()
+    oMediumGetencryptionsettingsResponse = MediumGetEncryptionSettingsResponse()
     oMediumGetencryptionsettingsResponse.cipher = ""
-    oMediumGetencryptionsettingsResponse.password_id = ""
+    oMediumGetencryptionsettingsResponse.passwordId = ""
 
     try:
         strCipher, strPassId = oVBoxMedium.getEncryptionSettings()
@@ -822,7 +822,7 @@ def i_medium_getencryptionsettings(oVBoxMedium):  # noqa: E501
         if strCipher and len(strCipher) !=0:
             oMediumGetencryptionsettingsResponse.cipher = strCipher    
         if strPassId and len(strCipher) !=0:
-            oMediumGetencryptionsettingsResponse.password_id = strPassId
+            oMediumGetencryptionsettingsResponse.passwordId = strPassId
 
     except Exception as e:
         logging.info(f"Exception during getting the list encription settings")
@@ -848,17 +848,17 @@ def i_medium_getproperties(oVBoxMedium, names=None):  # noqa: E501
 
     oError = None
     httpCode = HTTPStatus.OK
-    oMediumGetpropertiesResponse = MediumGetpropertiesResponse(list(), list())
+    oMediumGetpropertiesResponse = MediumGetPropertiesResponse(list(), list())
 
     try:
         lValue, lName = oVBoxMedium.getProperties(names)
         if lName and len(lName) > 0:
             for count, item in enumerate(lName):
-                oMediumGetpropertiesResponse.return_names.append(item)
+                oMediumGetpropertiesResponse.returnNames.append(item)
                 if lValue[count] and len(lValue[count])!=0:
-                    oMediumGetpropertiesResponse.return_values.append(lValue[count])
+                    oMediumGetpropertiesResponse.returnValues.append(lValue[count])
                 else:
-                    oMediumGetpropertiesResponse.return_values.append("")
+                    oMediumGetpropertiesResponse.returnValues.append("")
         else:
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, f"Something wrong with getting the list of properties {names}")
@@ -887,7 +887,7 @@ def i_medium_getproperty(oVBoxMedium, name=None):  # noqa: E501
 
     oError = None
     httpCode = HTTPStatus.OK
-    oMediumGetpropertyResponse = MediumGetpropertyResponse()
+    oMediumGetpropertyResponse = MediumGetPropertyResponse()
 
     try:
         oMediumGetpropertyResponse.value = oVBoxMedium.getProperty(name)
@@ -916,14 +916,14 @@ def i_medium_getsnapshotids(oVBoxMedium, machineId=None):  # noqa: E501
 
     oError = None
     httpCode = HTTPStatus.OK
-    oMediumGetsnapshotidsResponse = MediumGetsnapshotidsResponse([])
+    oMediumGetsnapshotidsResponse = MediumGetSnapshotIdsResponse([])
 
     try:
         lIds = oVBoxMedium.getSnapshotIds(machineId)
         if lIds is not None and len(lIds) > 0:
             logging.info('Getting the list of snapshots Ids has been done successfully')
             for item in lIds:
-                oMediumGetsnapshotidsResponse.snapshot_ids.append(item)
+                oMediumGetsnapshotidsResponse.snapshotIds.append(item)
         else:
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, f"Something wrong with getting the list of snapshots Ids for machine {machineId}")
@@ -952,10 +952,10 @@ def i_medium_setids(oVBoxMedium, oMediumSetIdsRequestBody: MediumSetIdsRequestBo
 
     oError = None
     httpCode = HTTPStatus.OK
-    imageId = oMediumSetIdsRequestBody.image_id
-    parentId = oMediumSetIdsRequestBody.parent_id
-    fSetImageId = oMediumSetIdsRequestBody.set_image_id
-    fSetParentId = oMediumSetIdsRequestBody.set_parent_id
+    imageId = oMediumSetIdsRequestBody.imageId
+    parentId = oMediumSetIdsRequestBody.parentId
+    fSetImageId = oMediumSetIdsRequestBody.setImageId
+    fSetParentId = oMediumSetIdsRequestBody.setParentId
 
     try:
         res = oVBoxMedium.setIds(fSetImageId, imageId, fSetParentId, parentId)
@@ -1050,32 +1050,32 @@ def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_medium_checkencryptionpassword(mediumid, password=None):  # noqa: E501
-    """
-    Call interface method IMedium::checkEncryptionPassword
+# def i_medium_checkencryptionpassword(mediumid, password=None):  # noqa: E501
+#     """
+#     Call interface method IMedium::checkEncryptionPassword
 
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param password: 
-    :type password: str
+#     :param mediumid: The Id of medium
+#     :type mediumid: str
+#     :param password: 
+#     :type password: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_medium_close(mediumid):  # noqa: E501
-    """
-    Call interface method IMedium::close
+# def i_medium_close(mediumid):  # noqa: E501
+#     """
+#     Call interface method IMedium::close
 
-    :param mediumid: The Id of medium
-    :type mediumid: str
+#     :param mediumid: The Id of medium
+#     :type mediumid: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
 def i_medium_compact(mediumid):  # noqa: E501
@@ -1104,43 +1104,43 @@ def i_medium_deletestorage(mediumid):  # noqa: E501
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_medium_lockread(mediumid):  # noqa: E501
-    """
-    Call interface method IMedium::lockRead
+# def i_medium_lockread(mediumid):  # noqa: E501
+#     """
+#     Call interface method IMedium::lockRead
 
-    :param mediumid: The Id of medium
-    :type mediumid: str
+#     :param mediumid: The Id of medium
+#     :type mediumid: str
 
-    :rtype: TokenResponse
-    """
+#     :rtype: TokenResponse
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_lockwrite(mediumid):  # noqa: E501
-    """
-    Call interface method IMedium::lockWrite
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-
-    :rtype: TokenResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_medium_refreshstate(mediumid):  # noqa: E501
-    """
-    Call interface method IMedium::refreshState
+# def i_medium_lockwrite(mediumid):  # noqa: E501
+#     """
+#     Call interface method IMedium::lockWrite
 
-    :param mediumid: The Id of medium
-    :type mediumid: str
+#     :param mediumid: The Id of medium
+#     :type mediumid: str
 
-    :rtype: MediumStateResponse
-    """
+#     :rtype: TokenResponse
+#     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+
+# def i_medium_refreshstate(mediumid):  # noqa: E501
+#     """
+#     Call interface method IMedium::refreshState
+
+#     :param mediumid: The Id of medium
+#     :type mediumid: str
+
+#     :rtype: MediumStateResponse
+#     """
+
+#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
 def i_medium_reset(mediumid):  # noqa: E501
