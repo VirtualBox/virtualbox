@@ -525,22 +525,6 @@
                   <xsl:text>Array</xsl:text>
                   </xsl:if>
                   <xsl:text>WrapperResponse</xsl:text>
-                  <!-- <xsl:variable name="temp">
-                      <xsl:choose>
-                        <xsl:when test="$fInterface!=''">
-                          <xsl:value-of select="substring($fInterface,2)"/>
-                          <xsl:text>Iface</xsl:text>
-                        </xsl:when>
-                        <xsl:otherwise>
-                          <xsl:value-of select="$fEnumeration"/>
-                          <xsl:text>Enum</xsl:text>
-                        </xsl:otherwise>
-                      </xsl:choose>
-                      <xsl:if test="@safearray='yes'">
-                      <xsl:text>Array</xsl:text>
-                      </xsl:if>
-                  </xsl:variable> -->
-                  <!-- <xsl:value-of select="concat($aposDouble, $temp, 'WrapperResponse', $aposDouble)"/> -->
                 </xsl:when>
 
                 <xsl:otherwise>
