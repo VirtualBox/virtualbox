@@ -6,7 +6,7 @@
 #
 # Default case:
 # Copy your VirtualBox.xidl into the folder "idl".
-ifndef $$VBOX_XIDL_FILE
+ifndef VBOX_XIDL_FILE
 	VBOX_XIDL_FILE=./idl/VirtualBox.xidl
 endif
 
@@ -48,12 +48,14 @@ CONNEXION_VERSION=3
 
 # Used as name convention to point out which case style is used for the attributes\parameters names
 CASE_STYLE=camel #available values are 'snake' and 'camel'
+CASE_STYLE_SWAGGER=modelPropertyNaming=camelCase
 
 SRC_DIR=$(CURDIR)/vbox_server
 TOOLS_DIR=$(CURDIR)/tools
 
 SRC_XSL_DIR=$(CURDIR)/xslt/$(GENERATOR_TYPE)
 SRC_YAML_DIR=$(CURDIR)/yaml/$(GENERATOR_TYPE)
+SRC_JINJA_DIR=$(CURDIR)/jinja/$(GENERATOR_TYPE)
 
 SRC_MODEL_DIR=$(SRC_DIR)/models
 SRC_CONTROLLER_DIR=$(SRC_DIR)/controllers
@@ -69,6 +71,8 @@ DEST_DOCS_DIR=$(DEST_DIR)/html
 
 DEST_UTILS_DIR=$(DEST_CODE_DIR)/utils
 
+DEST_INTERMEDIATE_DIR=$(DEST_DIR)/intermediate
+
 DEST_MODEL_DIR=$(DEST_CODE_DIR)/models
 DEST_CONTROLLER_DIR=$(DEST_CODE_DIR)/controllers
 DEST_INT_MODEL_DIR=$(DEST_MODEL_DIR)/internal
@@ -78,10 +82,10 @@ SRC_REST_API_DIR=$(DEST_YAML_DIR)
 
 GENERATOR_CONFIG_FILE = $(CURDIR)/config.json
 
-CASE_STYLE=camel
-
 ifeq ($(CONNEXION_VERSION), 3)
-	GENERATOR=swagger-codegen-cli.jar
+#	GENERATOR=swagger-codegen-cli.jar
+	GENERATOR=swagger-codegen-cli_experimental.jar
+#	GENERATOR=swagger-codegen-cli_no-snake-case-rule.jar
 else
 	GENERATOR=swagger-codegen-cli_connexion2.jar
 endif
@@ -89,7 +93,7 @@ endif
 GENERATOR_FLAG = -l
 OPTIONS=$(GENERATOR_FLAG) python-flask -c $(GENERATOR_CONFIG_FILE)
 
-COMMON_XSLT_OPTIONS += -param case_style $(CASE_STYLE)
+COMMON_XSLT_OPTIONS += -param case-style "$(CASE_STYLE)"
 
 export CLASSPATH=$(TOOLS_DIR)/bin/xalan-2.4.1.jar:$(TOOLS_DIR)/bin/xercesImpl-2.2.1.jar:$(TOOLS_DIR)/bin/xml-apis.jar
 
@@ -112,7 +116,7 @@ preparations:
 
 api-generation: enums objects methods requestbody fullapi
 
-code-generation: flask-connexion enum-conversion-code
+code-generation: flask-connexion enum-conversion-code object-conversion-code simple-function-json simple-function-code
 
 # The variable CLASSPATH isn't picked up properly on Windows
 # That's why the path to Xalan is added directly via the parameter "-classpath"
@@ -164,7 +168,8 @@ fullapi:
 
 flask-connexion:
 	@echo "@@@@@@@@@@@@@@@@ $(GENERATOR) @@@@@@@@@@@@@@@@"
-	java -jar $(TOOLS_DIR)/bin/$(GENERATOR) generate $(OPTIONS) -i $(DEST_YAML_DIR)/restapi.yaml -o $(DEST_DIR)
+	java -jar $(TOOLS_DIR)/bin/$(GENERATOR) generate $(OPTIONS) -i $(DEST_YAML_DIR)/restapi.yaml -o $(DEST_DIR) \
+	-D$(CASE_STYLE_SWAGGER)
 
 enum-conversion-code:
 	java -classpath $(TOOLS_DIR)/bin/xalan-2.4.1.jar org.apache.xalan.xslt.Process \
@@ -172,6 +177,31 @@ enum-conversion-code:
 	-in $(VBOX_XIDL_FILE) \
 	-xsl $(SRC_XSL_DIR)/code-enum-conversion-functions.xsl \
 	-out $(DEST_UTILS_DIR)/enum_conversion.py
+
+object-conversion-code:
+	java -classpath $(TOOLS_DIR)/bin/xalan-2.4.1.jar org.apache.xalan.xslt.Process \
+	$(COMMON_XSLT_OPTIONS) \
+	-in $(VBOX_XIDL_FILE) \
+	-xsl $(SRC_XSL_DIR)/code-restapi-objects-functions.xsl \
+	-out $(DEST_UTILS_DIR)/object_conversion.py
+
+JSON_FILE = simple_function_list.json
+simple-function-json:
+	python $(TOOLS_DIR)/scripts/generate_simple_function_list_in_json.py \
+	--xidl $(VBOX_XIDL_FILE) \
+	--out-dir $(DEST_INTERMEDIATE_DIR) \
+	--out-file $(JSON_FILE)
+
+JINJA_CODE_TEMPLATE = simple_function_template.j2
+JINJA_IMPORT_TEMPLATE = simple_class_import_template.j2
+SIMPLE_GENERATED = i_generated_functions.py
+simple-function-code:
+	python $(TOOLS_DIR)/scripts/generate_simple_function_code_from_json.py \
+	--in-json-file-path $(DEST_INTERMEDIATE_DIR)/$(JSON_FILE) \
+	--in-template-file-path $(SRC_JINJA_DIR)/$(JINJA_CODE_TEMPLATE) \
+	--in-template-header-file-path $(SRC_JINJA_DIR)/$(JINJA_IMPORT_TEMPLATE) \
+	--out-dir $(DEST_INT_CONTROLLER_DIR) \
+	--out-file $(SIMPLE_GENERATED)
 
 docs: html-docs
 
