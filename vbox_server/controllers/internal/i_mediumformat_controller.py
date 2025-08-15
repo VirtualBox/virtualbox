@@ -65,7 +65,6 @@ def i_mediumformat_describefileextensions(formatid):  # noqa: E501
     oError = None
 
     oMediumformatDescribefileextensionsResponse = MediumFormatDescribeFileExtensionsResponse()
-    # oMediumformatDescribefileextensionsResponse = MediumformatDescribefileextensionsResponse()
 
     oVBox = ctx['vb']
     try:
@@ -102,7 +101,6 @@ def i_mediumformat_describefileextensions(formatid):  # noqa: E501
                         logging.info(item)
                         oMediumformatDescribefileextensionsResponse.extensions = item
                         oMediumformatDescribefileextensionsResponse.types = vbox_to_swagger_devicetype(olDeviceType[c])
-                        # oMediumformatDescribefileextensionsResponse.types = vbox_to_swagger_device_type(olDeviceType[c])
                     break
 
             if fFound == False:
@@ -135,7 +133,6 @@ def i_mediumformat_describeproperties(formatid):  # noqa: E501
     oError = None
 
     oMediumformatDescribepropertiesResponse = MediumFormatDescribePropertiesResponse([],[],[],[],[])
-    # oMediumformatDescribepropertiesResponse = MediumformatDescribepropertiesResponse([],[],[],[],[])
 
     oVBox = ctx['vb']
     try:
@@ -161,7 +158,6 @@ def i_mediumformat_describeproperties(formatid):  # noqa: E501
                         oMediumformatDescribepropertiesResponse.names.append(item)
                         oMediumformatDescribepropertiesResponse.descriptions.append(olDesc[c])
                         oMediumformatDescribepropertiesResponse.types.append(vbox_to_swagger_datatype(olType[c]))
-                        # oMediumformatDescribepropertiesResponse.types.append(vbox_to_swagger_data_type(olType[c]))
                         oMediumformatDescribepropertiesResponse.flags.append(olFlag[c])
                         oMediumformatDescribepropertiesResponse.defaults.append(olDefault[c])
                     break
