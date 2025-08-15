@@ -79,9 +79,6 @@ def sessionDecorator(func):
                 if len(args_repr) == 3:
                     for a in args_repr[2:]:
                         new_args_repr.append(a)
-            else:
-                for a in args_repr:
-                    new_args_repr.append(a)
 
         value = func(*new_args_repr, **kwargs)
 
@@ -501,9 +498,6 @@ def consoleDecorator(func):
                 if len(args_repr) == 3:
                     for a in args_repr[2:]:
                         new_args_repr.append(a)
-            else:
-                for a in args_repr:
-                    new_args_repr.append(a)
             
         value = func(*new_args_repr, **kwargs)
 
