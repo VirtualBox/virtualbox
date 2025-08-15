@@ -102,8 +102,8 @@ if sys.version_info[0] >= 3:
     xrange = range; # pylint: disable=redefined-builtin,invalid-name
 
 
-@sessionDecorator
-def i_machine_action(vmid, action, *var_args_tuple):  # noqa: E501
+@consoleDecorator
+def i_machine_action(oVBoxObj, action):  # noqa: E501
     """machine_action
 
     Performs one of the following power actions on the specified machine: 
@@ -124,19 +124,17 @@ def i_machine_action(vmid, action, *var_args_tuple):  # noqa: E501
 
     vbox_utils_commonChecks()
 
-    logging.info('Passed machine Id is ' + vmid)
+    oConsole = oVBoxObj
+    
+    logging.info('Passed machine Id is ' + oConsole.machine.id)
     logging.info('Passed action type is ' + action)
 
     oError = Error()
-    oVM = var_args_tuple[0]
 
-    vbox_utils_logVmInfo(oVM)
+    vbox_utils_logVmInfo(oConsole.machine)
 
-    oSession = var_args_tuple[1]
     oProgress = None
-    oCurrMachine = oSession.machine
 
-    oConsole = oSession.console
     ops = { 'PAUSE':            lambda: oConsole.pause(),
             'RESTORE':          lambda: oConsole.resume(),
             'STOP':             lambda: oConsole.powerDown(),
@@ -144,7 +142,7 @@ def i_machine_action(vmid, action, *var_args_tuple):  # noqa: E501
             'STARTANDPAUSE':    lambda: oConsole.powerUpPaused(),
             'ACPISLEEP':        lambda: oConsole.sleepButton(),#doesn't work#
             'RESET':            lambda: oConsole.reset(),
-            'SAVE':             lambda: oCurrMachine.saveState(),
+            # 'SAVE':             lambda: oCurrMachine.saveState(),
             }
 
     try:
@@ -690,7 +688,7 @@ def i_machine_readlog(vmid, idx=None, offset=None, size=None):  # noqa: E501
 
 
 @sessionDecorator
-def i_machine_createsharedfolder(vmid, oMachineCreateSharedFolderRequestBody: MachineCreateSharedFolderRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_createsharedfolder(oVBoxObj, oMachineCreateSharedFolderRequestBody: MachineCreateSharedFolderRequestBody):  # noqa: E501
     """
     Call interface method IMachine::createSharedFolder
 
@@ -702,9 +700,7 @@ def i_machine_createsharedfolder(vmid, oMachineCreateSharedFolderRequestBody: Ma
     :rtype: None
     """
 
-    oVM = var_args_tuple[0]
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+    oCurrMachine = oVBoxObj
 
     o = oMachineCreateSharedFolderRequestBody
     name = o.name
@@ -713,12 +709,12 @@ def i_machine_createsharedfolder(vmid, oMachineCreateSharedFolderRequestBody: Ma
     fAutomount = o.automount
     autoMountPoint = o.autoMountPoint
 
-    logging.info("Try to create the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
+    logging.info("Try to create the shared folder " + name + " for machine " + oCurrMachine.name + " (UUID " + oCurrMachine.id + ")")
 
     oError = None
     httpCode = HTTPStatus.OK
 
-    for sf in ctx['global'].getArray(oVM, 'sharedFolders'):
+    for sf in ctx['global'].getArray(oCurrMachine, 'sharedFolders'):
         if sf.name == name:
             logging.info("The shared folder with the name %s exists" % (name))
             httpCode = HTTPStatus.PRECONDITION_FAILED
@@ -839,7 +835,7 @@ def i_machine_savestate(vmid):  # noqa: E501
 
 
 @sessionDecorator
-def i_machine_setbootorder(vmid, oMachineSetBootOrderRequestBody: MachineSetBootOrderRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_setbootorder(oVBoxObj, oMachineSetBootOrderRequestBody: MachineSetBootOrderRequestBody):  # noqa: E501
     """
     Call interface method IMachine::setBootOrder
 
@@ -856,11 +852,9 @@ def i_machine_setbootorder(vmid, oMachineSetBootOrderRequestBody: MachineSetBoot
     oError = None
     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
-
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
-
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
+    
     o = oMachineSetBootOrderRequestBody
     device = o.device
     position = o.position
@@ -884,7 +878,7 @@ def i_machine_setbootorder(vmid, oMachineSetBootOrderRequestBody: MachineSetBoot
 
 
 @sessionDecorator
-def i_machine_setextradata(vmid, oMachineSetExtraDataRequestBody: MachineSetExtraDataRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_setextradata(oVBoxObj, oMachineSetExtraDataRequestBody: MachineSetExtraDataRequestBody):  # noqa: E501
     """
     Call interface method IMachine::setExtraData
 
@@ -901,11 +895,9 @@ def i_machine_setextradata(vmid, oMachineSetExtraDataRequestBody: MachineSetExtr
     oError = None
     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
-
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
-
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
+    
     o = oMachineSetExtraDataRequestBody
 
     try:
@@ -924,7 +916,7 @@ def i_machine_setextradata(vmid, oMachineSetExtraDataRequestBody: MachineSetExtr
 
 
 @sessionDecorator
-def i_machine_setguestproperty(vmid, oMachineSetGuestPropertyRequestBody: MachineSetGuestPropertyRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_setguestproperty(oVBoxObj, oMachineSetGuestPropertyRequestBody: MachineSetGuestPropertyRequestBody):  # noqa: E501
     """
     Call interface method IMachine::setGuestProperty
 
@@ -939,10 +931,8 @@ def i_machine_setguestproperty(vmid, oMachineSetGuestPropertyRequestBody: Machin
     oError = None
     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
-
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineSetGuestPropertyRequestBody
     sProperty = o._property
@@ -1149,7 +1139,7 @@ def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody: VirtualBoxCr
 
 
 @sessionDecorator
-def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody: MachineAttachDeviceRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_attachdevice(oVBoxObj, oMachineAttachDeviceRequestBody: MachineAttachDeviceRequestBody):  # noqa: E501
     """
     Call interface method IMachine::attachDevice
 
@@ -1166,7 +1156,8 @@ def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody: MachineAttachD
     oError = None
     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineAttachDeviceRequestBody
     name = o.name
@@ -1177,9 +1168,7 @@ def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody: MachineAttachD
         return "The requested type " + str(o.type) + " is not supported", HTTPStatus.NOT_FOUND
     mediumPath = o.medium
 
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
-    machineState = oSession.machine.state
+    machineState = oCurrMachine.state
 
     if machineState != ctx['const'].MachineState_PoweredOff and \
         machineState != ctx['const'].MachineState_Aborted and \
@@ -1221,7 +1210,7 @@ def i_machine_attachdevice(vmid, oMachineAttachDeviceRequestBody: MachineAttachD
 
 
 @sessionDecorator
-def i_machine_detachdevice(vmid, oMachineDetachDeviceRequestBody: MachineDetachDeviceRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_detachdevice(oVBoxObj, oMachineDetachDeviceRequestBody: MachineDetachDeviceRequestBody):  # noqa: E501
     """
     Call interface method IMachine::detachDevice
 
@@ -1238,12 +1227,8 @@ def i_machine_detachdevice(vmid, oMachineDetachDeviceRequestBody: MachineDetachD
     oError = None
     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
-
-    oVM = var_args_tuple[0]
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
-    machineState = oSession.machine.state
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineDetachDeviceRequestBody
     name = o.name
@@ -1251,7 +1236,6 @@ def i_machine_detachdevice(vmid, oMachineDetachDeviceRequestBody: MachineDetachD
     slot = o.device
 
     machineState = oCurrMachine.state
-
     if machineState != ctx['const'].MachineState_PoweredOff and \
         machineState != ctx['const'].MachineState_Aborted and \
         machineState != ctx['const'].MachineState_AbortedSaved and \
@@ -1262,12 +1246,12 @@ def i_machine_detachdevice(vmid, oMachineDetachDeviceRequestBody: MachineDetachD
 
     oMediumAttachment = None
     try:
-        oResponse, httpCode = i_machine_getmediumattachment(vmid, None, name, port, slot)
+        oResponse, httpCode = i_machine_getmediumattachment(oCurrMachine.id, None, name, port, slot)
 
         if oResponse.is_json is True: logging.info(oResponse.get_json())
 
         if httpCode == HTTPStatus.OK:
-            logging.info("Try to detach device from the machine " + oVM.name + " (UUID " + oVM.id + ")")
+            logging.info("Try to detach device from the machine " + oCurrMachine.name + " (UUID " + oCurrMachine.id + ")")
             oMediumAttachment = MediumAttachment.from_dict(oResponse.get_json())
             oCurrMachine.detachDevice(name, port, slot)
             oCurrMachine.saveSettings()
@@ -1334,7 +1318,7 @@ def i_machine_getmediumattachment(vmid, select=None, name=None, controllerPort=N
 
 
 @sessionDecorator
-def i_machine_mountmedium(vmid, oMachineMountMediumRequestBody: MachineMountMediumRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_mountmedium(oVBoxObj, oMachineMountMediumRequestBody: MachineMountMediumRequestBody):  # noqa: E501
     """
     Call interface method IMachine::mountMedium
 
@@ -1350,7 +1334,9 @@ def i_machine_mountmedium(vmid, oMachineMountMediumRequestBody: MachineMountMedi
 
     oError = None
     httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
+    
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineMountMediumRequestBody
     print(o)
@@ -1387,8 +1373,6 @@ def i_machine_mountmedium(vmid, oMachineMountMediumRequestBody: MachineMountMedi
         httpCode = HTTPStatus.NOT_FOUND
         oError = Error(httpCode, 'The passed medium with uuid ' + mediumId + ' wasn\'t found among DVD or floppy images')
         return jsonify(oError), httpCode
-
-    oCurrMachine = oSession.machine
 
     try:
         oCurrMachine.mountMedium(name, controllerPort, device, oFoundMedium, force)
@@ -2475,7 +2459,7 @@ def i_machine_deletesnapshotrange(vmid, oMachineDeleteSnapshotRangeRequestBody):
 
 
 @sessionDecorator
-def i_platformx86_sethwvirtexproperty(vmid, oPlatformX86SetHWVirtExPropertyRequestBody: PlatformX86SetHWVirtExPropertyRequestBody, *var_args_tuple):  # noqa: E501
+def i_platformx86_sethwvirtexproperty(oVBoxObj, oPlatformX86SetHWVirtExPropertyRequestBody: PlatformX86SetHWVirtExPropertyRequestBody):  # noqa: E501
     """
     Call interface method IPlatformX86::setHWVirtExProperty
 
@@ -2492,10 +2476,8 @@ def i_platformx86_sethwvirtexproperty(vmid, oPlatformX86SetHWVirtExPropertyReque
     oError = None
     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
-
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     property = oPlatformX86SetHWVirtExPropertyRequestBody._property
     value = oPlatformX86SetHWVirtExPropertyRequestBody.value
@@ -2527,7 +2509,7 @@ def i_platformx86_sethwvirtexproperty(vmid, oPlatformX86SetHWVirtExPropertyReque
 
 
 @sessionDecorator
-def i_platformx86_setcpuproperty(vmid, oPlatformX86SetCPUPropertyRequestBody: PlatformX86SetCPUPropertyRequestBody, *var_args_tuple):  # noqa: E501
+def i_platformx86_setcpuproperty(oVBoxObj, oPlatformX86SetCPUPropertyRequestBody: PlatformX86SetCPUPropertyRequestBody):  # noqa: E501
     """
     Call interface method IPlatformX86::setCPUProperty
 
@@ -2544,10 +2526,8 @@ def i_platformx86_setcpuproperty(vmid, oPlatformX86SetCPUPropertyRequestBody: Pl
     oError = None
     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
-
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     property = oPlatformX86SetCPUPropertyRequestBody._property
     value = oPlatformX86SetCPUPropertyRequestBody.value
@@ -2579,7 +2559,7 @@ def i_platformx86_setcpuproperty(vmid, oPlatformX86SetCPUPropertyRequestBody: Pl
 
 
 @sessionDecorator
-def i_platformarm_setcpuproperty(vmid, oPlatformARMSetCPUPropertyRequestBody: PlatformARMSetCPUPropertyRequestBody, *var_args_tuple):  # noqa: E501
+def i_platformarm_setcpuproperty(oVBoxObj, oPlatformARMSetCPUPropertyRequestBody: PlatformARMSetCPUPropertyRequestBody):  # noqa: E501
     """
     Call interface method IPlatformARM::setCPUProperty
 
@@ -2596,10 +2576,8 @@ def i_platformarm_setcpuproperty(vmid, oPlatformARMSetCPUPropertyRequestBody: Pl
     oError = None
     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
-
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     property = oPlatformARMSetCPUPropertyRequestBody._property
     value = oPlatformARMSetCPUPropertyRequestBody.value
@@ -2820,7 +2798,7 @@ def i_machine_enumerateguestproperties(vmid, patterns=None):  # noqa: E501
 
 
 @sessionDecorator
-def i_machine_setguestpropertyvalue(vmid, oMachineSetGuestPropertyValueRequestBody: MachineSetGuestPropertyValueRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_setguestpropertyvalue(oVBoxObj, oMachineSetGuestPropertyValueRequestBody: MachineSetGuestPropertyValueRequestBody):  # noqa: E501
     """
     Call interface method IMachine::setGuestPropertyValue
 
@@ -2837,10 +2815,8 @@ def i_machine_setguestpropertyvalue(vmid, oMachineSetGuestPropertyValueRequestBo
     oError = None
     httpCode = HTTPStatus.OK
 
-    logging.info('Passed machine Id is ' + vmid)
-
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineSetGuestPropertyValueRequestBody
 
@@ -2945,7 +2921,7 @@ def i_machine_setguestpropertyvalue(vmid, oMachineSetGuestPropertyValueRequestBo
 
 
 @sessionDecorator
-def i_machine_addstoragecontroller(vmid, oMachineAddStorageControllerRequestBody: MachineAddStorageControllerRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_addstoragecontroller(oVBoxObj, oMachineAddStorageControllerRequestBody: MachineAddStorageControllerRequestBody):  # noqa: E501
     """
     Call interface method IMachine::addStorageController
 
@@ -2961,13 +2937,14 @@ def i_machine_addstoragecontroller(vmid, oMachineAddStorageControllerRequestBody
 
     oError = None
     httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
+
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineAddStorageControllerRequestBody
     print(o)
     name = o.name
 
-    oCurrMachine = oSession.machine
     oStorageControllerResponse = StorageControllerObjWrapperResponse()
     try:
         connectionType = swagger_to_vbox_storagebus(o.connectionType)
@@ -3105,7 +3082,7 @@ def i_machine_getstoragecontrollerbyinstance(vmid, select=None, connectionType=N
 
 
 @sessionDecorator
-def i_machine_setstoragecontrollerbootable(vmid, oMachineSetStorageControllerBootableRequestBody: MachineSetStorageControllerBootableRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_setstoragecontrollerbootable(oVBoxObj, oMachineSetStorageControllerBootableRequestBody: MachineSetStorageControllerBootableRequestBody):  # noqa: E501
     """
     Call interface method IMachine::setStorageControllerBootable
 
@@ -3121,8 +3098,9 @@ def i_machine_setstoragecontrollerbootable(vmid, oMachineSetStorageControllerBoo
 
     oError = None
     httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineSetStorageControllerBootableRequestBody
     name = o.name
@@ -3148,7 +3126,7 @@ def i_machine_setstoragecontrollerbootable(vmid, oMachineSetStorageControllerBoo
 
 
 @sessionDecorator
-def i_machine_attachdevicewithoutmedium(vmid, oMachineAttachDeviceWithoutMediumRequestBody: MachineAttachDeviceWithoutMediumRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_attachdevicewithoutmedium(oVBoxObj, oMachineAttachDeviceWithoutMediumRequestBody: MachineAttachDeviceWithoutMediumRequestBody):  # noqa: E501
     """
     Call interface method IMachine::attachDeviceWithoutMedium
 
@@ -3164,7 +3142,9 @@ def i_machine_attachdevicewithoutmedium(vmid, oMachineAttachDeviceWithoutMediumR
 
     oError = None
     httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
+
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineAttachDeviceWithoutMediumRequestBody
     print(o)
@@ -3184,7 +3164,6 @@ def i_machine_attachdevicewithoutmedium(vmid, oMachineAttachDeviceWithoutMediumR
         oError = Error(httpCode, str(e))
 
     if oError is None:
-        oCurrMachine = oSession.machine
         try:
             oCurrMachine.attachDeviceWithoutMedium(name, controllerPort, device, type)
             oCurrMachine.saveSettings()
@@ -3196,8 +3175,8 @@ def i_machine_attachdevicewithoutmedium(vmid, oMachineAttachDeviceWithoutMediumR
     return response, httpCode
 
 
-@sessionDecorator
-def i_console_createsharedfolder(vmid, oConsoleCreateSharedFolderRequestBody: ConsoleCreateSharedFolderRequestBody, *var_args_tuple):  # noqa: E501
+@consoleDecorator
+def i_console_createsharedfolder(oVBoxObj, oConsoleCreateSharedFolderRequestBody: ConsoleCreateSharedFolderRequestBody):  # noqa: E501
     """
     Call interface method IConsole::createSharedFolder
 
@@ -3209,10 +3188,8 @@ def i_console_createsharedfolder(vmid, oConsoleCreateSharedFolderRequestBody: Co
     :rtype: None
     """
 
-    oVM = var_args_tuple[0]
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
-    oConsole = oSession.console
+    oConsole = oVBoxObj
+    logging.info('Passed machine Id is ' + oConsole.machine.id)
 
     o = oConsoleCreateSharedFolderRequestBody
     name = o.name
@@ -3221,12 +3198,12 @@ def i_console_createsharedfolder(vmid, oConsoleCreateSharedFolderRequestBody: Co
     fAutomount = o.automount
     autoMountPoint = o.autoMountPoint
 
-    logging.info("Try to create the shared folder " + name + " for machine " + oVM.name + " (UUID " + oVM.id + ")")
+    logging.info("Try to create the shared folder " + name + " for machine " + oConsole.machine.name + " (UUID " + oConsole.machine.id + ")")
 
     oError = None
     httpCode = HTTPStatus.OK
 
-    for sf in ctx['global'].getArray(oVM, 'sharedFolders'):
+    for sf in ctx['global'].getArray(oConsole.machine, 'sharedFolders'):
         if sf.name == name:
             logging.info("The shared folder with the name %s exists" % (name))
             httpCode = HTTPStatus.PRECONDITION_FAILED
@@ -3238,9 +3215,6 @@ def i_console_createsharedfolder(vmid, oConsoleCreateSharedFolderRequestBody: Co
             # No return result check
             oConsole.createSharedFolder(name, hostPath, fWritable, fAutomount, autoMountPoint)
             logging.info("Created the shared folder %s" % (name))
-
-            #Don't forget to save
-            oCurrMachine.saveSettings()
 
         except Exception as e:
             logging.info("Exception during creation the shared folder %s" % (name))
@@ -3292,7 +3266,7 @@ def i_console_createsharedfolder(vmid, oConsoleCreateSharedFolderRequestBody: Co
 
 
 @sessionDecorator
-def i_machine_addusbcontroller(vmid, oMachineAddUSBControllerRequestBody: MachineAddUSBControllerRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_addusbcontroller(oVBoxObj, oMachineAddUSBControllerRequestBody: MachineAddUSBControllerRequestBody):  # noqa: E501
     """
     Call interface method IMachine::addUSBController
 
@@ -3308,13 +3282,14 @@ def i_machine_addusbcontroller(vmid, oMachineAddUSBControllerRequestBody: Machin
 
     oError = None
     httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
+
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineAddUSBControllerRequestBody
     print(o)
     name = o.name
 
-    oCurrMachine = oSession.machine
     oUSBControllerResponse = USBControllerObjWrapperResponse()
     try:
         usbType = swagger_to_vbox_usbcontrollertype(o.type)
@@ -3443,7 +3418,7 @@ def i_machine_addusbcontroller(vmid, oMachineAddUSBControllerRequestBody: Machin
 
 
 @sessionDecorator
-def i_machine_setautodiscardfordevice(vmid, oMachineSetAutoDiscardForDeviceRequestBody: MachineSetAutoDiscardForDeviceRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_setautodiscardfordevice(oVBoxObj, oMachineSetAutoDiscardForDeviceRequestBody: MachineSetAutoDiscardForDeviceRequestBody):  # noqa: E501
     """
     Call interface method IMachine::setAutoDiscardForDevice
 
@@ -3459,8 +3434,9 @@ def i_machine_setautodiscardfordevice(vmid, oMachineSetAutoDiscardForDeviceReque
 
     oError = None
     httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineSetAutoDiscardForDeviceRequestBody
     print(o)
@@ -3488,7 +3464,7 @@ def i_machine_setautodiscardfordevice(vmid, oMachineSetAutoDiscardForDeviceReque
 
 
 @sessionDecorator
-def i_machine_setnobandwidthgroupfordevice(vmid, oMachineSetNoBandwidthGroupForDeviceRequestBody: MachineSetNoBandwidthGroupForDeviceRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_setnobandwidthgroupfordevice(oVBoxObj, oMachineSetNoBandwidthGroupForDeviceRequestBody: MachineSetNoBandwidthGroupForDeviceRequestBody):  # noqa: E501
     """
     Call interface method IMachine::setNoBandwidthGroupForDevice
 
@@ -3504,8 +3480,9 @@ def i_machine_setnobandwidthgroupfordevice(vmid, oMachineSetNoBandwidthGroupForD
 
     oError = None
     httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineSetNoBandwidthGroupForDeviceRequestBody
     print(o)
@@ -3532,7 +3509,7 @@ def i_machine_setnobandwidthgroupfordevice(vmid, oMachineSetNoBandwidthGroupForD
 
 
 @sessionDecorator
-def i_machine_setbandwidthgroupfordevice(vmid, oMachineSetBandwidthGroupForDeviceRequestBody: MachineSetBandwidthGroupForDeviceRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_setbandwidthgroupfordevice(oVBoxObj, oMachineSetBandwidthGroupForDeviceRequestBody: MachineSetBandwidthGroupForDeviceRequestBody):  # noqa: E501
     """
     Call interface method IMachine::setBandwidthGroupForDevice
 
@@ -3548,8 +3525,9 @@ def i_machine_setbandwidthgroupfordevice(vmid, oMachineSetBandwidthGroupForDevic
 
     oError = None
     httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineSetBandwidthGroupForDeviceRequestBody
     print(o)
@@ -3572,7 +3550,7 @@ def i_machine_setbandwidthgroupfordevice(vmid, oMachineSetBandwidthGroupForDevic
 
 
 @sessionDecorator
-def i_machine_sethotpluggablefordevice(vmid, oMachineSetHotPluggableForDeviceRequestBody: MachineSetHotPluggableForDeviceRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_sethotpluggablefordevice(oVBoxObj, oMachineSetHotPluggableForDeviceRequestBody: MachineSetHotPluggableForDeviceRequestBody):  # noqa: E501
     """
     Call interface method IMachine::setHotPluggableForDevice
 
@@ -3588,8 +3566,9 @@ def i_machine_sethotpluggablefordevice(vmid, oMachineSetHotPluggableForDeviceReq
 
     oError = None
     httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineSetHotPluggableForDeviceRequestBody
     print(o)
@@ -3617,7 +3596,7 @@ def i_machine_sethotpluggablefordevice(vmid, oMachineSetHotPluggableForDeviceReq
 
 
 @sessionDecorator
-def i_machine_passthroughdevice(vmid, oMachinePassthroughDeviceRequestBody: MachinePassthroughDeviceRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_passthroughdevice(oVBoxObj, oMachinePassthroughDeviceRequestBody: MachinePassthroughDeviceRequestBody):  # noqa: E501
     """
     Call interface method IMachine::passthroughDevice
 
@@ -3633,8 +3612,9 @@ def i_machine_passthroughdevice(vmid, oMachinePassthroughDeviceRequestBody: Mach
 
     oError = None
     httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachinePassthroughDeviceRequestBody
     name = o.name
@@ -3661,7 +3641,7 @@ def i_machine_passthroughdevice(vmid, oMachinePassthroughDeviceRequestBody: Mach
 
 
 @sessionDecorator
-def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody: MachineNonRotationalDeviceRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_nonrotationaldevice(oVBoxObj, oMachineNonRotationalDeviceRequestBody: MachineNonRotationalDeviceRequestBody):  # noqa: E501
     """
     Call interface method IMachine::nonRotationalDevice
 
@@ -3677,8 +3657,9 @@ def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody: 
 
     oError = None
     httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineNonRotationalDeviceRequestBody
     name = o.name
@@ -3742,7 +3723,7 @@ def i_machine_nonrotationaldevice(vmid, oMachineNonRotationalDeviceRequestBody: 
 
 
 @sessionDecorator
-def i_machine_temporaryejectdevice(vmid, oMachineTemporaryEjectDeviceRequestBody: MachineTemporaryEjectDeviceRequestBody, *var_args_tuple):  # noqa: E501
+def i_machine_temporaryejectdevice(oVBoxObj, oMachineTemporaryEjectDeviceRequestBody: MachineTemporaryEjectDeviceRequestBody):  # noqa: E501
     """
     Call interface method IMachine::temporaryEjectDevice
 
@@ -3758,8 +3739,9 @@ def i_machine_temporaryejectdevice(vmid, oMachineTemporaryEjectDeviceRequestBody
 
     oError = None
     httpCode = HTTPStatus.OK
-    oSession = var_args_tuple[1]
-    oCurrMachine = oSession.machine
+
+    oCurrMachine = oVBoxObj
+    logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineTemporaryEjectDeviceRequestBody
     name = o.name
