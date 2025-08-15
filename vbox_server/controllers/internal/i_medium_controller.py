@@ -88,8 +88,6 @@ def findMedium_decorator(func):
 
         oVBoxMedium, oError = __find_medium_by_id(mediumid)
         if oVBoxMedium is not None:
-            #append the Medium object at the end of the argument's list
-            # args_repr.append(oVBoxMedium)
             args_repr[0] = oVBoxMedium #replace the first argument "mediumid" by oVBoxMedium
         else:
             if oError:
@@ -97,7 +95,6 @@ def findMedium_decorator(func):
             else:
                 return jsonify("The medium with UUID " + mediumid + " wasn't found"), HTTPStatus.NOT_FOUND
 
-        # new_args_repr=args_repr[1:] #remove the first argument "mediumid" from the argument list because we added oVBoxMedium into the end of one
         new_args_repr=args_repr
 
         #Call the general function with the updated arguments list
@@ -196,8 +193,8 @@ def i_virtualbox_createmedium(oVirtualBoxCreateMediumRequestBody: VirtualBoxCrea
 
     format = oVirtualBoxCreateMediumRequestBody.format
     location = oVirtualBoxCreateMediumRequestBody.location
-    accessMode = swagger_to_vbox_accessmode(oVirtualBoxCreateMediumRequestBody.access_mode)
-    deviceType = swagger_to_vbox_devicetype(oVirtualBoxCreateMediumRequestBody.a_device_type_type)
+    accessMode = swagger_to_vbox_accessmode(oVirtualBoxCreateMediumRequestBody.accessMode)
+    deviceType = swagger_to_vbox_devicetype(oVirtualBoxCreateMediumRequestBody.aDeviceTypeType)
 
     logging.info(f"Creating medium in location {location}")
 

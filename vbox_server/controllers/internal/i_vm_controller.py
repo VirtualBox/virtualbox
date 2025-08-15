@@ -2970,14 +2970,14 @@ def i_machine_addstoragecontroller(vmid, oMachineAddStorageControllerRequestBody
     oCurrMachine = oSession.machine
     oStorageControllerResponse = StorageControllerObjWrapperResponse()
     try:
-        connectionType = swagger_to_vbox_storagebus(o.connection_type)
+        connectionType = swagger_to_vbox_storagebus(o.connectionType)
         if connectionType:
             oStorageController = oCurrMachine.addStorageController(name, connectionType)
             oCurrMachine.saveSettings()
         else:
-            logging.info("The passed connection type %s isn't supported or unknown" % (o.connection_type))
+            logging.info("The passed connection type %s isn't supported or unknown" % (o.connectionType))
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, "The passed connection type %s isn't supported or unknown" % (o.connection_type))
+            oError = Error(httpCode, "The passed connection type %s isn't supported or unknown" % (o.connectionType))
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))

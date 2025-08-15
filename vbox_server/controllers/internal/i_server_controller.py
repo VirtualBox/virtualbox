@@ -396,11 +396,11 @@ def i_virtualbox_openmedium(oVirtualBoxOpenMediumRequestBody):  # noqa: E501
 
     oMediumResponse = MediumObjWrapperResponse()
 
-    accessMode = swagger_to_vbox_accessmode(oVirtualBoxOpenMediumRequestBody.access_mode)
+    accessMode = swagger_to_vbox_accessmode(oVirtualBoxOpenMediumRequestBody.accessMode)
     if accessMode is None:
         return "Unknown access mode " + str(accessMode), HTTPStatus.NOT_FOUND
 
-    deviceType = swagger_to_vbox_devicetype(oVirtualBoxOpenMediumRequestBody.device_type)
+    deviceType = swagger_to_vbox_devicetype(oVirtualBoxOpenMediumRequestBody.deviceType)
     if deviceType is None or deviceType == ctx['const'].DeviceType_Network:
         return "Unknown or unsupported device type " + str(deviceType), HTTPStatus.NOT_FOUND
 
@@ -529,7 +529,6 @@ def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
         if oRes: break
 
     if oRes: o.p_iface = oRes
-    # if oRes is None: oRes = VirtualboxGettrackedobjectResponse()
 
     response = jsonify(oError if oError is not None else o)
     return response, httpCode
