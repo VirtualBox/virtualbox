@@ -727,9 +727,6 @@ def i_machine_createsharedfolder(oVBoxObj, oMachineCreateSharedFolderRequestBody
             oCurrMachine.createSharedFolder(name, hostPath, fWritable, fAutomount, autoMountPoint)
             logging.info("Created the shared folder %s" % (name))
 
-            #Don't forget to save
-            oCurrMachine.saveSettings()
-
         except Exception as e:
             logging.info("Exception during creation the shared folder %s" % (name))
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -865,7 +862,6 @@ def i_machine_setbootorder(oVBoxObj, oMachineSetBootOrderRequestBody: MachineSet
             return "The requested device " + str(o.device) + " is not supported for booting", HTTPStatus.PRECONDITION_FAILED
 
         oCurrMachine.setBootOrder(position, device)
-        oCurrMachine.saveSettings()
         logging.info('Set boot order [%d] for device %s' % (position, str(device)))
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -902,7 +898,6 @@ def i_machine_setextradata(oVBoxObj, oMachineSetExtraDataRequestBody: MachineSet
 
     try:
         oCurrMachine.setExtraData(o.key, o.value)
-        oCurrMachine.saveSettings()
         logging.info("Successfully set VM extra data key " + "'" + o.key + "'" + " to value " + "'" + o.value + "'")
 
     except Exception as e:
@@ -941,7 +936,6 @@ def i_machine_setguestproperty(oVBoxObj, oMachineSetGuestPropertyRequestBody: Ma
 
     try:
         oCurrMachine.setGuestProperty(sProperty, sValue, sFlags)
-        oCurrMachine.saveSettings()
         logging.info("Successfully set VM guest property " + "'" + sProperty + "'" + " to value " + "'" + sValue + "'")
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -1190,8 +1184,6 @@ def i_machine_attachdevice(oVBoxObj, oMachineAttachDeviceRequestBody: MachineAtt
         else:
             oCurrMachine.attachDevice(name, port, slot, devType, None)
 
-        oCurrMachine.saveSettings()
-
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         logging.info("Exception during attaching the device to the controller " + name +
@@ -1254,7 +1246,6 @@ def i_machine_detachdevice(oVBoxObj, oMachineDetachDeviceRequestBody: MachineDet
             logging.info("Try to detach device from the machine " + oCurrMachine.name + " (UUID " + oCurrMachine.id + ")")
             oMediumAttachment = MediumAttachment.from_dict(oResponse.get_json())
             oCurrMachine.detachDevice(name, port, slot)
-            oCurrMachine.saveSettings()
         else:
             oError = oResponse
 
@@ -1376,7 +1367,6 @@ def i_machine_mountmedium(oVBoxObj, oMachineMountMediumRequestBody: MachineMount
 
     try:
         oCurrMachine.mountMedium(name, controllerPort, device, oFoundMedium, force)
-        oCurrMachine.saveSettings()
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -2491,7 +2481,6 @@ def i_platformx86_sethwvirtexproperty(oVBoxObj, oPlatformX86SetHWVirtExPropertyR
         if strArchtype == "X86":
             oPlatformX86 = oCurrMachine.platform.x86
             oPlatformX86.setHWVirtExProperty(vBoxHWVirtExProperty, value)
-            oCurrMachine.saveSettings()
             logging.info("Successfully set VM hardware virtualization property "  + "'" \
                         + property  + "'" + " to value " + "'" + str(value) + "'")
         else:
@@ -2542,7 +2531,6 @@ def i_platformx86_setcpuproperty(oVBoxObj, oPlatformX86SetCPUPropertyRequestBody
         if strArchtype == "X86":
             oPlatformX86 = oCurrMachine.platform.x86
             oPlatformX86.setCPUProperty(vBoxCPUProperty, value)
-            oCurrMachine.saveSettings()
             logging.info('Successfully set the virtual CPU property ' + property + ' to ' + str(value))
         else:
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -2592,7 +2580,6 @@ def i_platformarm_setcpuproperty(oVBoxObj, oPlatformARMSetCPUPropertyRequestBody
         if strArchtype == "ARM":
             oPlatformARM = oCurrMachine.platform.arm
             oPlatformARM.setCPUProperty(vBoxCPUProperty, value)
-            oCurrMachine.saveSettings()
             logging.info('Successfully set the virtual CPU property ' + property + ' to ' + str(value))
         else:
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -2828,7 +2815,6 @@ def i_machine_setguestpropertyvalue(oVBoxObj, oMachineSetGuestPropertyValueReque
         logging.info(o._property)
         logging.info(o.value)
         oCurrMachine.setGuestPropertyValue(sProperty, sValue)
-        oCurrMachine.saveSettings()
         logging.info("Successfully set VM guest property " + "'" + sProperty + "'" + " to value " + "'" + sValue + "'")
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -2950,7 +2936,6 @@ def i_machine_addstoragecontroller(oVBoxObj, oMachineAddStorageControllerRequest
         connectionType = swagger_to_vbox_storagebus(o.connectionType)
         if connectionType:
             oStorageController = oCurrMachine.addStorageController(name, connectionType)
-            oCurrMachine.saveSettings()
         else:
             logging.info("The passed connection type %s isn't supported or unknown" % (o.connectionType))
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -3108,7 +3093,6 @@ def i_machine_setstoragecontrollerbootable(oVBoxObj, oMachineSetStorageControlle
 
     try:
         oCurrMachine.setStorageControllerBootable(name, fBootable)
-        oCurrMachine.saveSettings()
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -3166,7 +3150,6 @@ def i_machine_attachdevicewithoutmedium(oVBoxObj, oMachineAttachDeviceWithoutMed
     if oError is None:
         try:
             oCurrMachine.attachDeviceWithoutMedium(name, controllerPort, device, type)
-            oCurrMachine.saveSettings()
         except Exception as e:
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
             oError = Error(httpCode, str(e))
@@ -3295,7 +3278,6 @@ def i_machine_addusbcontroller(oVBoxObj, oMachineAddUSBControllerRequestBody: Ma
         usbType = swagger_to_vbox_usbcontrollertype(o.type)
         if usbType:
             oUSBController = oCurrMachine.addUSBController(name, usbType)
-            oCurrMachine.saveSettings()
         else:
             logging.info("The passed connection type %s isn't supported or unknown" % (o.type))
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -3447,7 +3429,6 @@ def i_machine_setautodiscardfordevice(oVBoxObj, oMachineSetAutoDiscardForDeviceR
 
     try:
         oCurrMachine.setAutoDiscardForDevice(name, controllerPort, device, fDiscard)
-        oCurrMachine.saveSettings()
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -3492,7 +3473,6 @@ def i_machine_setnobandwidthgroupfordevice(oVBoxObj, oMachineSetNoBandwidthGroup
 
     try:
         oCurrMachine.setNoBandwidthGroupForDevice(name, controllerPort, device)
-        oCurrMachine.saveSettings()
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -3579,7 +3559,6 @@ def i_machine_sethotpluggablefordevice(oVBoxObj, oMachineSetHotPluggableForDevic
 
     try:
         oCurrMachine.setHotPluggableForDevice(name, controllerPort, device, fhotPluggable)
-        oCurrMachine.saveSettings()
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -3624,7 +3603,6 @@ def i_machine_passthroughdevice(oVBoxObj, oMachinePassthroughDeviceRequestBody: 
 
     try:
         oCurrMachine.passthroughDevice(name, controllerPort, device, fPassthrough)
-        oCurrMachine.saveSettings()
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -3669,7 +3647,6 @@ def i_machine_nonrotationaldevice(oVBoxObj, oMachineNonRotationalDeviceRequestBo
 
     try:
         oCurrMachine.nonRotationalDevice(name, controllerPort, device, fNonRotational)
-        oCurrMachine.saveSettings()
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -3751,7 +3728,6 @@ def i_machine_temporaryejectdevice(oVBoxObj, oMachineTemporaryEjectDeviceRequest
 
     try:
         oCurrMachine.temporaryEjectDevice(name, controllerPort, device, fTemporaryEject)
-        oCurrMachine.saveSettings()
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
