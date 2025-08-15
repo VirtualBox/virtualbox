@@ -79,13 +79,13 @@ def i_virtualbox_getguestosdescsbysubtype(OSSubtype=None):  # noqa: E501
     httpCode = HTTPStatus.OK
 
     vbox_utils_commonChecks()
-    oVirtualboxGetguestosdescsbysubtypeResponse = VirtualBoxGetGuestOSDescsBySubtypeResponse()
+    oVirtualboxGetguestosdescsbysubtypeResponse = VirtualBoxGetGuestOSDescsBySubtypeResponse([])
 
     try:
         oVBox = ctx['vb']
         olVBoxGuestOSDesc = oVBox.getGuestOSDescsBySubtype(OSSubtype)
         for item in olVBoxGuestOSDesc:
-            oVirtualboxGetguestosdescsbysubtypeResponse.guestOsDescs.append(item)
+            oVirtualboxGetguestosdescsbysubtypeResponse.GuestOSDescs.append(item)
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
@@ -109,7 +109,7 @@ def i_virtualbox_getguestossubtypesbyfamilyid(family=None):  # noqa: E501
 
     vbox_utils_commonChecks()
 
-    oVirtualboxGetguestossubtypesbyfamilyidResponse = VirtualBoxGetGuestOSSubtypesByFamilyIdResponse()
+    oVirtualboxGetguestossubtypesbyfamilyidResponse = VirtualBoxGetGuestOSSubtypesByFamilyIdResponse([])
 
     try:
         oVBox = ctx['vb']
