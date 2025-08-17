@@ -8,11 +8,9 @@ The project is intended to help VirtualBox users interact with VirtualBox server
 
 ## Prerequisities
 - Python 3.8, 3.9, 3.10, 3.11
-- Connexion 2.14.1 or below
-- Flask 2.3.0 or below
 
 ## Current API version
-0.0.1
+0.0.2
 
 ## Getting Started
 
@@ -63,7 +61,7 @@ Run ```python -m venv ./```
     ```source bin/activate```
 ### Install VirtualBox python binding
 Go to the VBox SDK installation folder (inside VirtualBox SDK folder)\
-```cd /path/to/<virualbox-sdk-folder>/sdk/installer```\
+```cd /path/to/<virualbox-sdk-folder>/sdk/installer/python```\
 and run\
 ```python vboxapisetup.py install```
 ### Copy the server code into the destination server folder
@@ -76,39 +74,60 @@ and run\
 ### Install the requirements
 - Run ```pip install -r requirements.txt```
 - Check the packages versions
-  - Run `flask --version`. The version mustn't be higher than 2.3.
+  - Run `uvicorn --version`. The last tested version was 0.35.0.
+  
+    Example of output:
+
+    _Running uvicorn 0.35.0 with CPython 3.10.17 on Linux_
+
+  - Run `gunicorn --version`. The last tested version was 23.0.0.
+  
+    Example of output:
+
+    _gunicorn (version 23.0.0)_
+
+  - Run `connexion --version`. The last tested version was 3.2.0.
+  
+    Example of output:
+
+    _Connexion 3.2.0_
+
+  - Run `flask --version`. The last tested version was 3.1.1.
 
     Example of output:
 
-    _Python 3.8.0\
-    Flask 2.2.\
-    Werkzeug 2.3.8_
+    _Python 3.10.17 \
+     Flask 3.1.1 \
+     Werkzeug 3.1.3_
 
-  - Run `connexion --version`. The version mustn't be higher than 2.14.1.
-    Example of output:
-
-    _Connexion 2.14.1_
-### Set the environment variable FLASK_APP
-- Windows:\
-    ```set FLASK_APP=vbox_server.wsgi:application```
-- Linux:\
-    ```export FLASK_APP=vbox_server.wsgi:application```
 ### Start server
 Run\
-```python -m flask run --port=8080```\
+```uvicorn vbox_server.asgi:application --port=8080 --host=0.0.0.0 --reload```\
 or\
-```flask --app=vbox_server.wsgi run --port=8080```\
-or\
-```flask run --port=8080```
+```gunicorn -b 0.0.0.0:8080 --log-level=debug -k uvicorn.workers.UvicornWorker vbox_server.asgi:application```\
 
-If all is correct you will see the output like:
+If all is correct you will see the output like this for uvicorn:
 ```
-    Serving Flask app vbox_server.wsgi:application
-    Debug mode: off
-    [internal.py:187 -  _log() ] WARNING: This is a development server. Do not use it in a
-    production deployment. Use a production WSGI server instead.
-    Running on all addresses (0.0.0.0)
-    Running on http://127.0.0.1:8080
+INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
+INFO:     Started reloader process [326372] using StatReload
+INFO:     Started server process [326374]
+INFO:     Waiting for application startup.
+[swagger_ui.py:80 -     add_openapi_json() ] Adding spec json: /virtualbox/0.0.2/swagger.json
+INFO:     Application startup complete.
+```
+or for gunicorn:
+```
+[2025-08-17 16:54:23 +0400] [331089] [INFO] Starting gunicorn 23.0.0
+[2025-08-17 16:54:23 +0400] [331089] [DEBUG] Arbiter booted
+[2025-08-17 16:54:23 +0400] [331089] [INFO] Listening at: http://0.0.0.0:8080 (331089)
+[2025-08-17 16:54:23 +0400] [331089] [INFO] Using worker: uvicorn.workers.UvicornWorker
+[2025-08-17 16:54:23 +0400] [331090] [INFO] Booting worker with pid: 331090
+[2025-08-17 16:54:23 +0400] [331089] [DEBUG] 1 workers
+[2025-08-17 16:54:26 +0400] [331090] [INFO] Started server process [331090]
+[2025-08-17 16:54:26 +0400] [331090] [INFO] Waiting for application startup.
+[swagger_ui.py:80 -     add_openapi_json() ] Adding spec json: /virtualbox/0.0.2/swagger.json
+[2025-08-17 16:54:26 +0400] [331090] [INFO] Application startup complete.
+
 ```
 
 If you want a server to be visible across the network you can add "--host=0.0.0.0" to the command line. 
