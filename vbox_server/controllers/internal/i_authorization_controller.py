@@ -1,7 +1,10 @@
 from typing import List
-"""
-controller generated to handled auth operation described at:
-https://connexion.readthedocs.io/en/latest/security.html
+"""VBox REST API
+
+Copyright (c) 2025 Oracle and/or its affiliates.
+Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl
+
+SPDX-License-Identifier: UPL-1.0
 """
 
 # pylint: disable=invalid-name
