@@ -1,6 +1,6 @@
-connexion >= 2.6.0, < 2.14.2
-werkzeug<3
-flask >= 2.0.2, < 2.3.*
+connexion >= 3.2.0
+werkzeug > 3.1.3
+flask >= 3.1.1
 flask_swagger_ui >= 3.36.0
 flask-cors
 pyjwt
