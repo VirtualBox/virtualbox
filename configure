@@ -1695,7 +1695,7 @@ EOF
       fail
     fi
   else
-    log_failure "qt6 not found"
+    log_failure "qt6 >= $QT6MAJ.$QT6MIN.0 not found"
     fail
   fi
 }
