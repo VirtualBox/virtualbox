@@ -1,0 +1,97 @@
+This is a list of 3rd/4th party components used by this project.
+
+3rd party components:
+swagger-ui           Apache-2.0 license    https://github.com/swagger-api/swagger-ui
+uvicorn              BSD-3-Clause license  https://github.com/encode/uvicorn
+connexion            Apache-2.0 license    https://github.com/spec-first/connexion
+flask                BSD-3-Clause license  https://github.com/pallets/flask
+Werkzeug             BSD-3-Clause license  https://github.com/pallets/werkzeug
+flask-cors           MIT license           https://github.com/corydolphin/flask-cors
+pyjwt                MIT license           https://github.com/jpadilla/pyjwt
+dateutil             Apache-2.0 license    https://github.com/dateutil/dateutil
+setuptools           MIT license           https://github.com/pypa/setuptools
+
+swagger-codegen-cli  Apache-2.0 license    https://github.com/swagger-api/swagger-codegen
+xalan                Apache-2.0 license    https://dlcdn.apache.org/xalan/xalan-j
+Jinja2               BSD-3-Clause license  https://github.com/pallets/jinja/
+
+4th party dependencies:
+# related to swagger-ui
+babel/runtime-corejs3           MIT license                   https://github.com/Cweili/babel-runtime-corejs3
+scarf                           Apache-2.0 license            https://github.com/scarf-sh/scarf-js
+base64-js                       BSD-3-Clause license          https://github.com/dankogai/js-base64
+classnames                      MIT license                   https://github.com/JedWatson/classnames
+css.escape                      MIT license                   https://github.com/mathiasbynens/CSS.escape
+deep-extend                     MIT license                   https://github.com/unclechu/node-deep-extend
+dompurify                       Apache-2.0 license            https://github.com/cure53/DOMPurify
+ieee754                         BSD-3-Clause license          https://github.com/feross/ieee754
+immutable                       MIT license                   https://github.com/immutable-js/immutable-js
+js-file-download                MIT license                   https://github.com/kennethjiang/js-file-download
+js-yaml                         MIT license                   https://github.com/nodeca/js-yaml
+lodash                          MIT license                   https://github.com/lodash/lodash
+prop-types                      MIT license                   https://github.com/facebook/prop-types
+randexp                         MIT license                   https://github.com/fent/randexp.js
+randombytes                     MIT license                   https://github.com/fent/randexp.js
+react                           MIT license                   https://github.com/facebook/react
+react-copy-to-clipboard         MIT license                   https://github.com/nkbt/react-copy-to-clipboard
+react-debounce-input            MIT license                   https://github.com/nkbt/react-debounce-input
+react-dom                       MIT license                   https://github.com/facebook/react/tree/main/packages/react-dom
+react-immutable-proptypes       MIT license                   https://github.com/HurricaneJames/react-immutable-proptypes
+react-immutable-pure-component  MIT license                   https://github.com/Monar/react-immutable-pure-component
+react-inspector                 MIT license                   https://github.com/xyc/react-object-inspector
+react-redux                     MIT license                   https://github.com/reduxjs/react-redux
+react-syntax-highlighter        MIT license                   https://github.com/react-syntax-highlighter/react-syntax-highlighter
+redux                           MIT license                   https://github.com/reduxjs/redux
+redux-immutable                 BSD-3-Clause license          https://github.com/gajus/redux-immutable
+remarkable                      MIT license                   https://github.com/jonschlinkert/remarkable
+reselect                        MIT license                   https://github.com/reduxjs/reselect
+serialize-error                 MIT license                   https://github.com/sindresorhus/serialize-error
+sha.js                          MIT AND BSD-3-Clause license  https://github.com/browserify/sha.js
+swagger-client                  Apache-2.0 license            https://github.com/swagger-api/swagger-js
+url-parse                       MIT license                   https://github.com/unshiftio/url-parse
+xml                             MIT license                   https://github.com/dylang/node-xml
+xml-but-prettier                MIT license                   https://github.com/shockey/xml-but-prettier
+zenscroll                       Unlicense                     https://github.com/zengabor/zenscroll
+
+# related to uvicorn
+click                BSD-3-Clause license  https://github.com/pallets/click
+h11                  MIT license           https://github.com/python-hyper/h11
+typing-extensions    PSF-2 license         https://github.com/python/typing_extensions
+
+# related to connexion
+asgiref              BSD-3-Clause license  https://github.com/django/asgiref
+httpx                BSD-3-Clause license  https://github.com/encode/httpx
+inflection           MIT license           https://github.com/jpvanhal/inflection
+jsonschema           MIT license           https://github.com/python-jsonschema/jsonschema
+python-multipart     Apache-2.0 license    https://github.com/Kludex/python-multipart
+PyYAML               MIT license           https://github.com/yaml/pyyaml
+requests             Apache-2.0 license    https://github.com/psf/requests
+starlette            BSD-3-Clause license  https://github.com/encode/starlette
+swagger-ui-bundle    Apache-2.0 license    https://github.com/spec-first/swagger_ui_bundle
+
+# related to httpx
+certifi              MPL-2.0 license       https://github.com/certifi/python-certifi
+httpcore             BSD-3-Clause license  https://github.com/encode/httpcore
+anyio                MIT license           https://github.com/agronholm/anyio
+idna                 BSD-3-Clause license  https://github.com/kjd/idna
+
+# related to anyio
+sniffio              MIT OR Apache-2.0 license  https://github.com/python-trio/sniffio
+
+# related to jsonschema
+attrs                      MIT license     https://github.com/python-attrs/attrs
+jsonschema-specifications  MIT license     https://github.com/python-jsonschema/jsonschema-specifications
+referencing                MIT license     https://github.com/python-jsonschema/referencing
+rpds-py                    MIT license     https://github.com/crate-py/rpds
+
+# related to flask
+blinker              MIT license           https://github.com/pallets-eco/blinker
+itsdangerous         BSD-3-Clause license  https://github.com/pallets/itsdangerous
+markupsafe           BSD-3-Clause license  https://github.com/pallets/markupsafe
+
+# related to pyjwt
+cryptography         Apache-2.0 OR BSD-3-Clause license  https://github.com/pyca/cryptography
+
+# related to swagger-codegen-cli
+Java JDK 11+         OTN License         https://www.oracle.com/uk/java/technologies/javase/jdk11-archive-downloads.html
+maven                Apache-2.0 license  https://github.com/apache/maven
