@@ -1,11 +1,11 @@
 connexion >= 3.2.0
-werkzeug > 3.1.3
-flask >= 3.1.1
-flask_swagger_ui >= 3.36.0
-flask-cors
-pyjwt
-python_dateutil
-setuptools
-gunicorn[gevent]
+connexion[flask]
 connexion[swagger-ui]
+pyjwt
+setuptools
+python_dateutil
+flask-swagger-ui
+flask_cors
+six
+uvicorn
 pywin32; platform_system == "Windows"
