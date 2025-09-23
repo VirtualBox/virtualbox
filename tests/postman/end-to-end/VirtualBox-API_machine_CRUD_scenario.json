@@ -1,0 +1,1284 @@
+{
+	"info": {
+		"name": "VirtualBox API — Create→Run→Stop→Cleanup Scenario",
+		"description": "This is VirtualBox REST API.\n\n\nContact Support:\n Email: valery.portnyagin@oracle.com",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "00 Init Defaults",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"if (!pm.environment.get('testsrcpath')) pm.environment.set('testsrcpath', '');",
+							"if (!pm.environment.get('baseUrl')) pm.environment.set('baseUrl', 'http://localhost:8080/virtualbox/0.0.2');",
+							"if (!pm.environment.get('controllerNameSATA')) pm.environment.set('controllerNameSATA', 'SATA');",
+							"if (!pm.environment.get('controllerNameIDE')) pm.environment.set('controllerNameIDE', 'IDE');",
+							"if (!pm.environment.get('sataPort')) pm.environment.set('sataPort', '0');",
+							"if (!pm.environment.get('sataDevice')) pm.environment.set('sataDevice', '0');",
+							"if (!pm.environment.get('idePort')) pm.environment.set('idePort', '0');",
+							"if (!pm.environment.get('ideDevice')) pm.environment.set('ideDevice', '0');",
+							"if (!pm.environment.get('testGroupName')) pm.environment.set('testGroupName', 'VBoxRESTAPI');",
+							"if (!pm.environment.get('vmFolderPath')) pm.environment.set('vmFolderPath', '');",
+							"if (!pm.environment.get('machineName')) pm.environment.set('machineName', 'VBox-RESTAPI-test');"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "01 IVirtualBox::openMedium (open testrestapi_OL9.5.vdi)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('openMedium status 200/201', function(){ pm.expect([200,201]).to.include(pm.response.code); });",
+							"let responseData = {}; try{ responseData = pm.response.json(); }catch(e){}",
+							"const mediumId = responseData.medium.id",
+							"let fFound = false;",
+							"console.log(`id ${mediumId} found!`);",
+							"pm.environment.set(\"mediumId\", mediumId)"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"location\": \"{{testsrcpath}}/testrestapi_OL9.5.vdi\",\n  \"deviceType\": \"HARDDISK\",\n  \"accessMode\": \"READWRITE\",\n  \"forceNewUuid\": false\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/server/method/openmedium",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"server",
+						"method",
+						"openmedium"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "02 IVirtualBox::openMedium (open testrestapi_VBoxGuestAdditions.iso)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('openMedium status 200/201', function(){ pm.expect([200,201]).to.include(pm.response.code); });",
+							"let responseData = {}; try{ responseData = pm.response.json(); }catch(e){}",
+							"const dvdId = responseData.medium.id",
+							"let fFound = false;",
+							"console.log(`id ${dvdId} found!`);",
+							"pm.environment.set(\"dvdId\", dvdId)"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"location\": \"{{testsrcpath}}/testrestapi_VBoxGuestAdditions.iso\",\n  \"deviceType\": \"DVD\",\n  \"accessMode\": \"READONLY\",\n  \"forceNewUuid\": false\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/server/method/openmedium",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"server",
+						"method",
+						"openmedium"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "03 IVirtualBox::createMachine",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const path = require('path');",
+							"pm.test('createMachine status 200', function(){ pm.response.to.have.status(200); });",
+							"var json = pm.response.json();",
+							"pm.expect(json).to.have.property(\"id\");",
+							"pm.environment.set(\"machineId\", json.id);",
+							"pm.expect(json).to.have.property(\"settingsFilePath\");",
+    							"pm.environment.set(\"vmFolderPath\", path.dirname(json.settingsFilePath));",
+    							"var vmFolderPath = pm.environment.get(\"vmFolderPath\");",
+    							"console.log(`vmFolderPath is ${vmFolderPath}`);",
+    							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"settingsFile\": \"\",\n  \"name\": \"{{machineName}}_{{$timestamp}}\",\n  \"platform\": \"X86\",\n  \"groups\": [\n    \"/{{testGroupName}}\"\n  ],\n  \"osTypeId\": \"Oracle9_64\",\n  \"flags\": \"\",\n  \"cipher\": \"\",\n  \"passwordId\": \"\",\n  \"password\": \"\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/vm/",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "04 IMachine::applyDefaults",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('applyDefaults 200', function(){ pm.response.to.have.status(200); });"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/guest/config/applydefaults?flags=\"\"",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"guest",
+						"config",
+						"applydefaults"
+					],
+					"query": [
+						{
+							"key": "flags",
+							"value": "\"\""
+						}
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "05 ISynthetic::getServer (hardDisks)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('getServer hardDisks 200', function(){ pm.response.to.have.status(200); });",
+							"let responseData = {}; try{ responseData = pm.response.json(); }catch(e){}",
+							"const hardDisks = responseData.server.hardDisks",
+							"let fFound = false;",
+							"const target = pm.environment.get(\"mediumId\");",
+							"",
+							"if (Array.isArray(hardDisks) && hardDisks.length > 0) {",
+							"    hardDisks.forEach((item, index) => {",
+							"        console.log(`Processing item at index ${index}...`);",
+							"        pm.expect(item).to.have.property(\"name\");",
+							"        pm.expect(item).to.have.property(\"id\");",
+							"        if (item.id === target)",
+							"        {",
+							"            console.log(`id ${item.id} found!`, item);",
+							"            fFound = true;",
+							"            return;",
+							"        }",
+							"    });",
+							"} else {",
+							"    console.log(\"Response data is not an array or is empty.\");",
+							"}",
+							"",
+							"if (fFound) { pm.execution.setNextRequest('06 IMachine::attachDevice (HARDDISK→SATA)'); }",
+							"else { console.warn('Hard disk not found: ' + target); pm.execution.setNextRequest(null); }"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/server/?select=hardDisks",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"server",
+						""
+					],
+					"query": [
+						{
+							"key": "select",
+							"value": "hardDisks"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "06 IMachine::attachDevice (HARDDISK→SATA)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('attachDevice SATA HDD 200/201', function(){ pm.expect([200,201]).to.include(pm.response.code); });"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"{{controllerNameSATA}}\",\n  \"controllerPort\": {{sataPort}},\n  \"device\": {{sataDevice}},\n  \"type\": \"HARDDISK\",\n  \"medium\": \"{{mediumId}}\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/dev/action/attach",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"dev",
+						"action",
+						"attach"
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "07 IMachine::setStorageControllerBootable (SATA)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('setStorageControllerBootable 200', function(){ pm.response.to.have.status(200); });"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"{{controllerNameSATA}}\",\n  \"bootable\": true\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/storagecontroller/config/bootable",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"storagecontroller",
+						"config",
+						"bootable"
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "08 IMachine::getStorageControllerByName (SATA)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('getStorageControllerByName 200', function(){ pm.response.to.have.status(200); });",
+							"let json={}; try{ json = pm.response.json(); }catch(e){}",
+							"pm.test('controller name matches', function(){ pm.expect((json.name || (json.controller && json.controller.name))).to.eql(pm.environment.get('controllerNameSATA')); });"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/storagecontroller/findbyname?select=<string>&name={{controllerNameSATA}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"storagecontroller",
+						"findbyname"
+					],
+					"query": [
+						{
+							"key": "select",
+							"value": "<string>"
+						},
+						{
+							"key": "name",
+							"value": "{{controllerNameSATA}}"
+						}
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "09 IMachine::getMedium (SATA slot)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('getMedium 200', function(){ pm.response.to.have.status(200); });"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/media/?select=<string>&name={{controllerNameSATA}}&controllerPort={{sataPort}}&device={{sataDevice}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"media",
+						""
+					],
+					"query": [
+						{
+							"key": "select",
+							"value": "<string>"
+						},
+						{
+							"key": "name",
+							"value": "{{controllerNameSATA}}"
+						},
+						{
+							"key": "controllerPort",
+							"value": "{{sataPort}}"
+						},
+						{
+							"key": "device",
+							"value": "{{sataDevice}}"
+						}
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "10 ISynthetic::getServer (DVDImages)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('getServer DVDImages 200', function(){ pm.response.to.have.status(200); });",
+							"let responseData = {}; try{ responseData = pm.response.json(); }catch(e){}",
+							"const DVDDisks = responseData.server.DVDImages",
+							"let fFound = false;",
+							"const target = pm.environment.get(\"dvdId\");",
+							"",
+							"if (Array.isArray(DVDDisks) && DVDDisks.length > 0) {",
+							"    DVDDisks.forEach((item, index) => {",
+							"        console.log(`Processing item at index ${index}...`);",
+							"        pm.expect(item).to.have.property(\"name\");",
+							"        pm.expect(item).to.have.property(\"id\");",
+							"        if (item.id === target)",
+							"        {",
+							"            console.log(`id ${item.id} found!`, item);",
+							"            fFound = true;",
+							"            return; // Use return instead of break",
+							"        }",
+							"    });",
+							"} else {",
+							"    console.log(\"Response data is not an array or is empty.\");",
+							"}",
+							" ",
+							"if (fFound) { pm.execution.setNextRequest('11 IMachine::attachDeviceWithoutMedium (IDE/DVD empty)'); }",
+							"else { console.warn('DVD image not found: ' + target); pm.execution.setNextRequest(null); }"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/server/?select=DVDImages",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"server",
+						""
+					],
+					"query": [
+						{
+							"key": "select",
+							"value": "DVDImages"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "11 IMachine::attachDeviceWithoutMedium (IDE/DVD empty)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('attachDeviceWithoutMedium 200/201', function(){ pm.expect([200,201]).to.include(pm.response.code); });"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"{{controllerNameIDE}}\",\n  \"controllerPort\": {{idePort}},\n  \"device\": {{ideDevice}},\n  \"type\": \"DVD\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/dev/action/attachempty",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"dev",
+						"action",
+						"attachempty"
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "12 IMachine::mountMedium (IDE/DVD)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('mountMedium 200/201', function(){ pm.expect([200,201]).to.include(pm.response.code); });"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"{{controllerNameIDE}}\",\n  \"controllerPort\": {{idePort}},\n  \"device\": {{ideDevice}},\n  \"medium\": \"{{dvdId}}\",\n  \"force\": false\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/media/action/mount",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"media",
+						"action",
+						"mount"
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "13 IMachine::launchVMProcess",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('launchVMProcess 200/201', function(){ pm.expect([200,201]).to.include(pm.response.code); });",
+							"let json={}; try{ json = pm.response.json(); }catch(e){}",
+							"if (json && json.progress && json.progress.id) { pm.environment.set('progressId', json.progress.id); }",
+							"setTimeout(function(){ pm.execution.setNextRequest('14 IConsole::pause'); }, 5000);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"session\": \"\",\n  \"name\": \"GUI\",\n  \"environmentChanges\": [\n    \"restapi=true\"\n  ]\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/action/launch",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"action",
+						"launch"
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "14 IConsole::pause",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('pause 200', function(){ pm.response.to.have.status(200); });",
+							"setTimeout(function(){ pm.execution.setNextRequest('15 IConsole::resume'); }, 1000);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/console/action/pause",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"console",
+						"action",
+						"pause"
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "15 IConsole::resume",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('resume 200', function(){ pm.response.to.have.status(200); });",
+							"setTimeout(function(){ pm.execution.setNextRequest('16 IConsole::powerDown'); }, 1000);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/console/action/resume",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"console",
+						"action",
+						"resume"
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "16 IConsole::powerDown",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('powerDown 200', function(){ pm.response.to.have.status(200); });",
+							"setTimeout(function(){ pm.execution.setNextRequest('17 IVirtualBox::findMachine'); }, 1000);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/console/action/powerdown",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"console",
+						"action",
+						"powerdown"
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "17 IVirtualBox::findMachine",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('findMachine 200', function(){ pm.response.to.have.status(200); });",
+							"let responseData = {}; try{ responseData = pm.response.json(); }catch(e){}",
+							"const mediumAttachments = responseData.mediumAttachments",
+							"let fFound = false;",
+							"let mediumIdList = [];",
+							"",
+							"if (Array.isArray(mediumAttachments) && mediumAttachments.length > 0) {",
+							"    mediumAttachments.forEach((item, index) => {",
+							"        console.log(`Processing item at index ${index}:`, item);",
+							"        pm.expect(item).to.have.property(\"medium\");",
+							"        console.log(`id ${item.medium} found!`);",
+							"        mediumIdList.push(item.medium);",
+							"    });",
+							"    pm.environment.set(\"mediumIdList\", JSON.stringify(mediumIdList))",
+							"} else {",
+							"    console.log(\"Response data is not an array or is empty.\");",
+							"}",
+							" ",
+							"setTimeout(function(){ pm.execution.setNextRequest('18 IMachine::detachDevice (SATA)'); }, 1000);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/?nameOrId={{machineId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						""
+					],
+					"query": [
+						{
+							"key": "nameOrId",
+							"value": "{{machineId}}"
+						}
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "18 IMachine::detachDevice (SATA)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('detachDevice SATA 200', function(){ pm.response.to.have.status(200); });"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"{{controllerNameSATA}}\",\n  \"controllerPort\": {{sataPort}},\n  \"device\": {{sataDevice}}\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/dev/action/detach",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"dev",
+						"action",
+						"detach"
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "19 IMachine::unmountMedium (IDE)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('unmountMedium 200', function(){ pm.response.to.have.status(200); });"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"{{controllerNameIDE}}\",\n  \"controllerPort\": {{idePort}},\n  \"device\": {{ideDevice}},\n  \"force\": true\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/media/action/unmount",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"media",
+						"action",
+						"unmount"
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "20 IMachine::detachDevice (IDE)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('detachDevice IDE 200', function(){ pm.response.to.have.status(200); });"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"{{controllerNameIDE}}\",\n  \"controllerPort\": {{idePort}},\n  \"device\": {{ideDevice}}\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/dev/action/detach",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"dev",
+						"action",
+						"detach"
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "21 IMedium::close (harddisk)",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const mediumIdList = pm.environment.get('mediumIdList');",
+							"console.log(mediumIdList);",
+							"",
+							"const convertedList = JSON.parse(mediumIdList);",
+							"console.log(convertedList[0]);",
+							"",
+							"const targetId = pm.environment.get(\"mediumId\");",
+							"",
+							"const fFound = convertedList.includes(targetId);",
+							"",
+							"if (fFound) {",
+							"    console.log('Found element:', fFound);",
+							"    pm.environment.set('foundId', targetId);",
+							"} else {",
+							"    console.log('Element with ID', targetId, 'not found.');",
+							"    pm.execution.setNextRequest(null);",
+							"}",
+							"",
+							"setTimeout(function(){ pm.execution.setNextRequest('22 IMedium::close (dvd disk)'); }, 1000);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/media/{{mediumId}}/action/close",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"media",
+						"{{mediumId}}",
+						"action",
+						"close"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "22 IMedium::close (dvd disk)",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const mediumIdList = pm.environment.get('mediumIdList');",
+							"console.log(mediumIdList);",
+							"",
+							"const convertedList = JSON.parse(mediumIdList);",
+							"",
+							"const targetId = pm.environment.get(\"dvdId\");",
+							"",
+							"const fFound = convertedList.includes(targetId);",
+							"",
+							"if (fFound) {",
+							"    console.log('Found element:', fFound);",
+							"    pm.environment.set('foundId', targetId);",
+							"    pm.environment.set('mediumId', targetId);",
+							"} else {",
+							"    console.log('Element with ID', targetId, 'not found.');",
+							"    pm.execution.setNextRequest(null);",
+							"}",
+							"",
+							"setTimeout(function(){ pm.execution.setNextRequest('23 IMachine::removeStorageController (SATA)'); }, 1000);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/media/{{mediumId}}/action/close",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"media",
+						"{{mediumId}}",
+						"action",
+						"close"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "23 IMachine::removeStorageController (SATA)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('removeStorageController SATA 200', function(){ pm.response.to.have.status(200); });"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/storagecontroller/action/remove?name={{controllerNameSATA}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"storagecontroller",
+						"action",
+						"remove"
+					],
+					"query": [
+						{
+							"key": "name",
+							"value": "{{controllerNameSATA}}"
+						}
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "24 IMachine::removeStorageController (IDE)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('removeStorageController IDE 200', function(){ pm.response.to.have.status(200); });"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/storagecontroller/action/remove?name={{controllerNameIDE}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						"storagecontroller",
+						"action",
+						"remove"
+					],
+					"query": [
+						{
+							"key": "name",
+							"value": "{{controllerNameIDE}}"
+						}
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "25 IMachine::deleteConfig",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('deleteConfig 200', function(){ pm.expect(\"200\").to.include(pm.response.code); });",
+							"let responseData = {}; try{ responseData = pm.response.json(); }catch(e){}",
+							"pm.expect(responseData).to.have.nested.property(\"progress.id\");",
+							"pm.expect(responseData).to.have.nested.property(\"progress.completed\");",
+							"pm.expect(responseData).to.have.nested.property(\"progress.canceled\");",
+							"",
+							"const progressId = responseData.progress.id",
+							"const fProgressCompletion = responseData.progress.completed",
+							"const fProgressCancelation = responseData.progress.canceled",
+							"",
+							"if (progressId) { ",
+							"    console.log(`id ${progressId} found!`);",
+							"    pm.environment.set(\"nextAfterPoll\", null);",
+							"    pm.environment.set(\"progressId\", progressId);",
+							"    pm.environment.set(\"pollTries\", \"0\");",
+							"    pm.environment.set(\"pollMax\", \"60\");",
+							"    pm.execution.setNextRequest(null);",
+							"    }",
+							"else { ",
+							"    console.warn(`Something went wrong during deleting machine ${pm.environment.get(\"machineId\")}`); ",
+							"    pm.execution.setNextRequest(null); ",
+							"    }",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/vm/:vmid/?media=\"\"",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"vm",
+						":vmid",
+						""
+					],
+					"query": [
+						{
+							"key": "media",
+							"value": "\"\""
+						}
+					],
+					"variable": [
+						{
+							"key": "vmid",
+							"value": "{{machineId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "machineId",
+			"value": ""
+		}
+	]
+}
