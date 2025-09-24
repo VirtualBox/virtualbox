@@ -1,6 +1,6 @@
 """VBox REST API
 
-Copyright (c) 2025 Oracle and/or its affiliates.
+Copyright (c) 2024-2025 Oracle and/or its affiliates.
 Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl
 
 SPDX-License-Identifier: UPL-1.0
@@ -297,18 +297,40 @@ def i_machine_deleteconfig(vmid, media=None):
         try:
             logging.info ('Nobody locks the machine. Try to get the lock back for ' + oVM.id)
             oVBoxMediumList = oVM.unregister(ctx['const'].CleanupMode_DetachAllReturnHardDisksOnly)
-            oProgress = oVM.deleteConfig(oVBoxMediumList)
+            # Try to close all disks, ignoring any exceptions
+            for currMediumObj in oVBoxMediumList:
+                try:
+                    # Note that after this method successfully returns, the given medium object becomes uninitialized.
+                    # This means that any attempt to call any of its methods or attributes will fail with the "Object not ready" (E_ACCESSDENIED) error.
+                    oVBoxProgress = currMediumObj.close()
+                    if oVBoxProgress is not None:
+                        oProgressResponse = ProgressObjWrapperResponse()
+                        oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+                        logging.info('The closing of medium has been successfully started')
+
+                        # Add Progress Id object into the tracking lists
+                        ctx['tracker'][oProgressResponse.progress.id] = None
+                    else:
+                        httpCode = HTTPStatus.OK
+                        oError = Error(httpCode, f"The medium {id} has been successfully closed without using Progress object")
+
+                except Exception as e:
+                    logging.info(f"Exception during closing the medium {id}")
+
+            oVBoxProgress = oVM.deleteConfig(oVBoxMediumList)
+            if oVBoxProgress is not None:
+                oProgressResponse = ProgressObjWrapperResponse()
+                oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+            else:
+                httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+                oError = Error(httpCode, f"No progress response, check the machine deletion status")
+
         except Exception as e:
             logging.info("Can't delete VM '%s': %s" % (oVM.name, str(e)))
             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR            
             oError = Error(httpCode, str(e))
-
-    data = {
-        'progress id': oProgress.id if oProgress is not None else 'Null',
-    }
-
-    response = jsonify(oError if oError is not None else data)
-
+    
+    response = jsonify(oError if oError is not None else oProgressResponse)
     return response, httpCode
 
 
@@ -1244,6 +1266,7 @@ def i_machine_detachdevice(oVBoxObj, oMachineDetachDeviceRequestBody: MachineDet
 
         if httpCode == HTTPStatus.OK:
             logging.info("Try to detach device from the machine " + oCurrMachine.name + " (UUID " + oCurrMachine.id + ")")
+            # TODO: check the result, it may be empty
             oMediumAttachment = MediumAttachment.from_dict(oResponse.get_json())
             oCurrMachine.detachDevice(name, port, slot)
         else:
@@ -1260,8 +1283,8 @@ def i_machine_detachdevice(oVBoxObj, oMachineDetachDeviceRequestBody: MachineDet
     else:
         response = "Successfuly detached the device from the controller " + name + \
         " (port " + str(port) + "; slot " + str(slot) + ")."
-        if oMediumAttachment is not None:
-            response = response + " The device has uuid " + oMediumAttachment.medium
+        # if oMediumAttachment is not None:
+        #     response = response + " The device has uuid " + oMediumAttachment.medium
 
     return response, httpCode
 
