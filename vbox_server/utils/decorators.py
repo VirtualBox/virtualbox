@@ -528,9 +528,58 @@ def consoleDecorator(func):
     return wrapper_decorator
 
 
+def __find_dhcpserver_by_networkname(networkname: str):
+    oVBox = ctx['vb']
+    oFoundItem = None
+    oError = None
+
+    try:
+        olDHCPServers = ctx['global'].getArray(oVBox,'DHCPServers')
+        for item in olDHCPServers:
+            if str(item.networkName) == networkname:
+                oFoundItem = item
+                break
+
+    except Exception as e:
+        logging.info('Error walking through the array of DHCPServers')
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        oFoundItem = None
+
+    return oFoundItem, oError
+
+
+def dhcpserverDecorator(func):
+    """
+    Searches a DHCP server settings to be used for the given internal network name
+    The first parameter must be network name always.
+    Appends the arguments list by the flag which indicates whether the DHCP server was found or not
+    """
+    @functools.wraps(func)
+    def wrapper_decorator(*args, **kwargs):
+        args_repr = [a for a in args]
+        networkname = args_repr[0]
+        oVBoxDHCPServer = None
+
+        oVBoxDHCPServer, oError = __find_dhcpserver_by_networkname(networkname)
+        if oVBoxDHCPServer is not None:
+            args_repr[0] = oVBoxDHCPServer
+        else:
+            if oError:
+                return jsonify(f"The DHCP server with internal network name '{networkname}' wasn't found. Internal error is '{oError.message}'"), oError.code
+            else:
+                return jsonify(f"The DHCP server with internal network name '{networkname}' wasn't found"), HTTPStatus.NOT_FOUND
+
+        new_args_repr=args_repr
+
+        value = func(*new_args_repr, **kwargs)
+
+        return value
+
+    return wrapper_decorator
+
 dhcpgroupconfigDecorator = commonObjDecorator
 natnetworkDecorator = commonObjDecorator
-dhcpserverDecorator = commonObjDecorator
 dhcpconfigDecorator = commonObjDecorator
 dhcpgroupconditionDecorator = commonObjDecorator
 certificateDecorator = commonObjDecorator
