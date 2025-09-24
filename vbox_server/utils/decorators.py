@@ -629,8 +629,61 @@ def hostonlyNetworkDecorator(func):
     return wrapper_decorator
 
 
+def __find_natnetwork_by_name(name: str):
+    oVBox = ctx['vb']
+    oFoundItem = None
+    oError = None
+
+    try:
+        olNatNetworks = ctx['global'].getArray(oVBox,'NATNetworks')
+        for item in olNatNetworks:
+            if str(item.networkName) == name:
+                oFoundItem = item
+                break
+
+    except Exception as e:
+        logging.info('Error walking through the array of NATNetworks')
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        oFoundItem = None
+
+    return oFoundItem, oError
+
+
+def natnetworkDecorator(func):
+    """
+    Find the NAT Network object using the passed ID
+    The first parameter must be network name always.
+    Appends the arguments list by the flag which indicates whether the network was found or not
+    """
+    @functools.wraps(func)
+    def wrapper_decorator(*args, **kwargs):
+        args_repr = [a for a in args]
+        networkName = args_repr[0]
+        oVBoxNATNetwork = None
+
+        oVBoxNATNetwork, oError = __find_natnetwork_by_name(networkName)
+        if oVBoxNATNetwork is not None:
+            #append the NAT Network object at the end of the argument's list
+            args_repr[0] = oVBoxNATNetwork #replace the first argument "networkid" by oVBoxNATNetwork
+        else:
+            if oError:
+                return jsonify(f"The NAT Network with name '{networkName}' wasn't found. Internal error is {oError.message}"), oError.code
+            else:
+                return jsonify(f"The NAT Network with name '{networkName}' wasn't found"), HTTPStatus.NOT_FOUND
+
+        # new_args_repr=args_repr[1:] #remove the first argument "networkName" from the argument list because we added oVBoxNATNetwork into the end of one
+        new_args_repr=args_repr
+
+        #Call the general function with the updated arguments list
+        value = func(*new_args_repr, **kwargs)
+
+        return value
+
+    return wrapper_decorator
+
+
 dhcpgroupconfigDecorator = commonObjDecorator
-natnetworkDecorator = commonObjDecorator
 dhcpconfigDecorator = commonObjDecorator
 dhcpgroupconditionDecorator = commonObjDecorator
 certificateDecorator = commonObjDecorator
