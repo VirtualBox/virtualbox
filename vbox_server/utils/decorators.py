@@ -578,6 +578,57 @@ def dhcpserverDecorator(func):
 
     return wrapper_decorator
 
+def __find_hostonlynetwork_by_name(name: str):
+    oVBox = ctx['vb']
+    oFoundItem = None
+    oError = None
+
+    try:
+        olHostOnlyNetworks = ctx['global'].getArray(oVBox,'HostOnlyNetworks')
+        for item in olHostOnlyNetworks:
+            if str(item.networkName) == name:
+                oFoundItem = item
+                break
+
+    except Exception as e:
+        logging.info('Error walking through the array of hostOnlyNetworks')
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        oFoundItem = None
+
+    return oFoundItem, oError
+
+
+def hostonlyNetworkDecorator(func):
+    """
+    Find the "hostonly" Network object using the passed network name
+    The first parameter must be network name always.
+    Appends the arguments list by the flag which indicates whether the network was found or not
+    """
+    @functools.wraps(func)
+    def wrapper_decorator(*args, **kwargs):
+        args_repr = [a for a in args]
+        networkName = args_repr[0]
+        oVBoxHostOnlyNetwork = None
+
+        oVBoxHostOnlyNetwork, oError = __find_hostonlynetwork_by_name(networkName)
+        if oVBoxHostOnlyNetwork is not None:
+            args_repr[0] = oVBoxHostOnlyNetwork
+        else:
+            if oError:
+                return jsonify(f"The HostOnly Network with name '{networkName}' wasn't found. Internal error is {oError.message}"), oError.code
+            else:
+                return jsonify(f"The HostOnly Network with name '{networkName}' wasn't found"), HTTPStatus.NOT_FOUND
+
+        new_args_repr=args_repr
+
+        value = func(*new_args_repr, **kwargs)
+
+        return value
+
+    return wrapper_decorator
+
+
 dhcpgroupconfigDecorator = commonObjDecorator
 natnetworkDecorator = commonObjDecorator
 dhcpconfigDecorator = commonObjDecorator
