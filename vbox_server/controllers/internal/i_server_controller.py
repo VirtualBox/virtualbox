@@ -426,7 +426,22 @@ def i_virtualbox_setextradata(oVirtualBoxSetExtraDataRequestBody):  # noqa: E501
     :rtype: None
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    oError = None
+    httpCode = HTTPStatus.OK
+    
+    o = oVirtualBoxSetExtraDataRequestBody
+
+    try:
+        oVBox = ctx['vb']
+        oVBox.setExtraData(o.key, o.value)
+        logging.info(f'Successfully set VirtualBox extra data key "{o.key}" to value "{o.value}"')
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else f'Successfully set VirtualBox extra data key "{o.key}" to value "{o.value}"')
+    return response, httpCode
 
 
 from datetime import datetime
