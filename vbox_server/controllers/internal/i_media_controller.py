@@ -1088,19 +1088,6 @@ def i_medium_compact(mediumid):  # noqa: E501
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_medium_deletestorage(mediumid):  # noqa: E501
-    """
-    Call interface method IMedium::deleteStorage
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-
-    :rtype: ProgressResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
 # def i_medium_lockread(mediumid):  # noqa: E501
 #     """
 #     Call interface method IMedium::lockRead
