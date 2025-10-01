@@ -597,36 +597,6 @@ def __find_dhcpserver_by_networkname(networkname: str):
     return oFoundItem, oError
 
 
-def dhcpserverDecorator(func):
-    """
-    Searches a DHCP server settings to be used for the given internal network name
-    The first parameter must be network name always.
-    Appends the arguments list by the flag which indicates whether the DHCP server was found or not
-    """
-    @functools.wraps(func)
-    def wrapper_decorator(*args, **kwargs):
-        args_repr = [a for a in args]
-        networkname = args_repr[0]
-        oVBoxDHCPServer = None
-
-        oVBoxDHCPServer, oError = __find_dhcpserver_by_networkname(networkname)
-        if oVBoxDHCPServer is not None:
-            args_repr[0] = oVBoxDHCPServer
-        else:
-            if oError:
-                return jsonify(f"The DHCP server with internal network name '{networkname}' wasn't found. Internal error is '{oError.message}'"), oError.code
-            else:
-                return jsonify(f"The DHCP server with internal network name '{networkname}' wasn't found"), HTTPStatus.NOT_FOUND
-
-        new_args_repr=args_repr
-
-        value = func(*new_args_repr, **kwargs)
-
-        return value
-
-    return wrapper_decorator
-
-
 def __find_hostonlynetwork_by_name(name: str):
     oVBox = ctx['vb']
     oFoundItem = None
@@ -730,6 +700,13 @@ def natnetworkDecorator(func):
         return value
 
     return wrapper_decorator
+
+
+def _resolve_dhcpserver_by_networkname(networkname):
+    oReqObj, oError = __find_dhcpserver_by_networkname(networkname)
+    return oReqObj, oError
+
+dhcpserverDecorator = _make_resolving_decorator("DHCP server", _resolve_dhcpserver_by_networkname)
 
 
 dhcpgroupconfigDecorator = commonObjDecorator
