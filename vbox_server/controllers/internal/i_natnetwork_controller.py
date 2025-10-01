@@ -13,6 +13,7 @@ SPDX-License-Identifier: UPL-1.0
 import logging
 from http import HTTPStatus
 from flask import jsonify
+from vbox_server.utils.decorators import *
 
 from vbox_server.models.error import Error  # noqa: E501
 from vbox_server.models.nat_network_add_local_mapping_request_body import NATNetworkAddLocalMappingRequestBody  # noqa: E501
@@ -22,7 +23,8 @@ from vbox_server.models.nat_network_obj_wrapper_response import NATNetworkObjWra
 from vbox_server import util
 
 
-def i_natnetwork_addlocalmapping(networkid, oNATNetworkAddLocalMappingRequestBody):  # noqa: E501
+@natnetworkDecorator
+def i_natnetwork_addlocalmapping(oVBoxObj, oNATNetworkAddLocalMappingRequestBody: NATNetworkAddLocalMappingRequestBody):  # noqa: E501
     """
     Call interface method INATNetwork::addLocalMapping
 
@@ -33,10 +35,28 @@ def i_natnetwork_addlocalmapping(networkid, oNATNetworkAddLocalMappingRequestBod
 
     :rtype: None
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    
+    vbox_utils_commonChecks()
+
+    hostId = oNATNetworkAddLocalMappingRequestBody.hostid
+    offset = oNATNetworkAddLocalMappingRequestBody.offset
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oCurrNATNetwork = oVBoxObj
+
+    try:
+        oCurrNATNetwork.addLocalMapping(hostId, offset)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else f"The local mapping for NAT network '{oCurrNATNetwork.networkName}' was successfully added")
+    return response, httpCode
 
 
-def i_natnetwork_addportforwardrule(networkid, oNATNetworkAddPortForwardRuleRequestBody):  # noqa: E501
+@natnetworkDecorator
+def i_natnetwork_addportforwardrule(oVBoxObj, oNATNetworkAddPortForwardRuleRequestBody: NATNetworkAddPortForwardRuleRequestBody):  # noqa: E501
     """
     Call interface method INATNetwork::addPortForwardRule
 
@@ -47,10 +67,33 @@ def i_natnetwork_addportforwardrule(networkid, oNATNetworkAddPortForwardRuleRequ
 
     :rtype: None
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+    vbox_utils_commonChecks()
+
+    fIPv6 = oNATNetworkAddPortForwardRuleRequestBody.isIpv6
+    guestIP = oNATNetworkAddPortForwardRuleRequestBody.guestIP
+    guestPort= oNATNetworkAddPortForwardRuleRequestBody.guestPort
+    hostIP = oNATNetworkAddPortForwardRuleRequestBody.hostIP
+    hostPort = oNATNetworkAddPortForwardRuleRequestBody.hostPort
+    proto = swagger_to_vbox_natprotocol(oNATNetworkAddPortForwardRuleRequestBody.proto)
+    ruleName = oNATNetworkAddPortForwardRuleRequestBody.ruleName
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oCurrNATNetwork = oVBoxObj
+
+    try:
+        oCurrNATNetwork.addPortForwardRule(fIPv6, ruleName, proto, hostIP, hostPort, guestIP, guestPort)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else f"The rule '{ruleName}' for NAT network '{oCurrNATNetwork.networkName}' was successfully added")
+    return response, httpCode
 
 
-def i_natnetwork_removeportforwardrule(networkid, oNATNetworkRemovePortForwardRuleRequestBody):  # noqa: E501
+@natnetworkDecorator
+def i_natnetwork_removeportforwardrule(oVBoxObj, oNATNetworkRemovePortForwardRuleRequestBody: NATNetworkRemovePortForwardRuleRequestBody):  # noqa: E501
     """
     Call interface method INATNetwork::removePortForwardRule
 
@@ -61,7 +104,25 @@ def i_natnetwork_removeportforwardrule(networkid, oNATNetworkRemovePortForwardRu
 
     :rtype: None
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+
+    vbox_utils_commonChecks()
+
+    ruleName = oNATNetworkRemovePortForwardRuleRequestBody.ruleName
+    fIPv6 = oNATNetworkRemovePortForwardRuleRequestBody.isIpv6
+
+    oError = None
+    httpCode = HTTPStatus.OK
+    oCurrNATNetwork = oVBoxObj
+
+
+    try:
+        oCurrNATNetwork.removePortForwardRule(fIPv6, ruleName)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else f"The rule '{ruleName}' for NAT network '{oCurrNATNetwork.networkName}' was successfully removed")
+    return response, httpCode
 
 
 # def i_natnetwork_start(networkid):  # noqa: E501
