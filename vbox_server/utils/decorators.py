@@ -709,8 +709,72 @@ def _resolve_dhcpserver_by_networkname(networkname):
 dhcpserverDecorator = _make_resolving_decorator("DHCP server", _resolve_dhcpserver_by_networkname)
 
 
+def _resolve_dhcpconfig_by_networkname(networkname):
+    oVBoxDHCPServer, oError = __find_dhcpserver_by_networkname(networkname)
+    if oVBoxDHCPServer is None:
+        return None, oError
+    try:
+        oReqObj = oVBoxDHCPServer.getConfig()
+        return oReqObj, None
+    except Exception as e:
+        return None, Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
+
+dhcpconfigDecorator = _make_resolving_decorator("DHCP config", _resolve_dhcpconfig_by_networkname)
+
+
+def _resolve_host():
+    oVBoxObj, oError = __find_server()
+    if oVBoxObj is None:
+        return None, oError
+    try:
+        oReqObj = oVBoxObj.host
+        return oReqObj, None
+    except Exception as e:
+        return None, Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
+
+hostDecorator = _make_resolving_decorator("Host", _resolve_host)
+
+
+def _resolve_systemproperties():
+    oVBoxObj, oError = __find_server()
+    if oVBoxObj is None:
+        return None, oError
+    try:
+        oReqObj = oVBoxObj.systemProperties
+        return oReqObj, None
+    except Exception as e:
+        return None, Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
+    
+systempropertiesDecorator = _make_resolving_decorator("Host", _resolve_systemproperties)
+
+
+def _resolve_platformproperties():
+    oVBoxObj, oError = _resolve_systemproperties()
+    if oVBoxObj is None:
+        return None, oError
+    try:
+        oReqObj = oVBoxObj.platform
+        return oReqObj, None
+    except Exception as e:
+        return None, Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
+
+platformpropertiesDecorator = _make_resolving_decorator("Host", _resolve_platformproperties)
+
+
+def _resolve_progress(progressId: str):
+    oVBoxObj, oError = __find_server()
+    if oVBoxObj is None:
+        return None, oError
+    try:
+        oReqObj = oVBoxObj.findPfindProgressById(progressId)
+        return oReqObj, None
+    except Exception as e:
+        return None, Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
+
+progressDecorator = _make_resolving_decorator("Host", _resolve_progress)
+
+
 dhcpgroupconfigDecorator = commonObjDecorator
-dhcpconfigDecorator = commonObjDecorator
 dhcpgroupconditionDecorator = commonObjDecorator
 certificateDecorator = commonObjDecorator
 applianceDecorator = commonObjDecorator
@@ -726,9 +790,6 @@ nvramstoreDecorator = commonObjDecorator
 emulatedusbDecorator = commonObjDecorator
 hostnetworkinterfaceDecorator = commonObjDecorator
 updateagentDecorator = commonObjDecorator
-hostDecorator = commonObjDecorator
-platformpropertiesDecorator = commonObjDecorator
-systempropertiesDecorator = commonObjDecorator
 dndbaseDecorator = commonObjDecorator
 dndtargetDecorator = commonObjDecorator
 guestsessionDecorator = commonObjDecorator
@@ -736,7 +797,6 @@ processDecorator = commonObjDecorator
 directoryDecorator = commonObjDecorator
 fileDecorator = commonObjDecorator
 guestDecorator = commonObjDecorator
-progressDecorator = commonObjDecorator
 internalprogresscontrolDecorator = commonObjDecorator
 mediumioDecorator = commonObjDecorator
 tokenDecorator = commonObjDecorator
