@@ -13,14 +13,16 @@ SPDX-License-Identifier: UPL-1.0
 import logging
 from http import HTTPStatus
 from flask import jsonify
+from vbox_server.utils.vbox_utils import *
+from vbox_server.utils.decorators import *
 
 from vbox_server.models.dhcp_config_obj_wrapper_response import DHCPConfigObjWrapperResponse  # noqa: E501
 from vbox_server.models.dhcp_server_obj_wrapper_response import DHCPServerObjWrapperResponse  # noqa: E501
 from vbox_server.models.dhcp_server_set_configuration_request_body import DHCPServerSetConfigurationRequestBody  # noqa: E501
 from vbox_server.models.dhcp_server_start_request_body import DHCPServerStartRequestBody  # noqa: E501
 
-
-def i_dhcpserver_getconfig(serverid, select=None, scope=None, name=None, slot=None, mayAdd=None):  # noqa: E501
+@dhcpserverDecorator
+def i_dhcpserver_getconfig(oVBoxObj, select=None, scope=None, name=None, slot=None, mayAdd=None):  # noqa: E501
     """
     Call interface method IDHCPServer::getConfig
 
@@ -40,7 +42,25 @@ def i_dhcpserver_getconfig(serverid, select=None, scope=None, name=None, slot=No
     :rtype: DHCPConfigResponse
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    oError = None
+    httpCode = HTTPStatus.OK
+
+    oDHCPConfigResponse = DHCPConfigObjWrapperResponse()
+
+    vbox_utils_commonChecks()
+
+    oVBoxDHCPServer = oVBoxObj
+
+    try:
+        if scope == "GLOBAL": name = ""
+        oVBoxDHCPConfig = oVBoxDHCPServer.getConfig(swagger_to_vbox_dhcpconfigscope(scope), name, slot, mayAdd)
+        oDHCPConfigResponse.config = i_fill_dhcpconfig(oVBoxDHCPConfig, select)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oDHCPConfigResponse)
+    return response, httpCode
 
 
 # def i_dhcpserver_restart(serverid):  # noqa: E501
@@ -56,7 +76,8 @@ def i_dhcpserver_getconfig(serverid, select=None, scope=None, name=None, slot=No
 #     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_dhcpserver_setconfiguration(serverid, oDHCPServerSetConfigurationRequestBody):  # noqa: E501
+@dhcpserverDecorator
+def i_dhcpserver_setconfiguration(oVBoxObj, oDHCPServerSetConfigurationRequestBody: DHCPServerSetConfigurationRequestBody):  # noqa: E501
     """
     Call interface method IDHCPServer::setConfiguration
 
@@ -68,10 +89,29 @@ def i_dhcpserver_setconfiguration(serverid, oDHCPServerSetConfigurationRequestBo
     :rtype: None
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    oError = None
+    httpCode = HTTPStatus.OK
+    ipAddressFrom = oDHCPServerSetConfigurationRequestBody.FromIPAddress
+    ipAddressTo = oDHCPServerSetConfigurationRequestBody.ToIPAddress
+    ipAddress = oDHCPServerSetConfigurationRequestBody.IPAddress
+    netMask = oDHCPServerSetConfigurationRequestBody.networkMask
+
+    vbox_utils_commonChecks()
+
+    oVBoxDHCPServer = oVBoxObj
+
+    try:
+        oVBoxDHCPServer.setConfiguration(ipAddress, netMask, ipAddressFrom, ipAddressTo)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else f"Configuration for DHCP server using the internal network name '{oVBoxDHCPServer.networkName}' was set successfully")
+    return response, httpCode
 
 
-def i_dhcpserver_start(serverid, oDHCPServerStartRequestBody):  # noqa: E501
+@dhcpserverDecorator
+def i_dhcpserver_start(oVBoxObj, oDHCPServerStartRequestBody: DHCPServerStartRequestBody):  # noqa: E501
     """
     Call interface method IDHCPServer::start
 
@@ -83,7 +123,23 @@ def i_dhcpserver_start(serverid, oDHCPServerStartRequestBody):  # noqa: E501
     :rtype: None
     """
 
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
+    oError = None
+    httpCode = HTTPStatus.OK
+    strTrunkName = oDHCPServerStartRequestBody.trunkName
+    strTrunktype = oDHCPServerStartRequestBody.trunkType
+
+    vbox_utils_commonChecks()
+
+    oVBoxDHCPServer = oVBoxObj
+
+    try:
+        oVBoxDHCPServer.start(strTrunkName, strTrunktype)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else f"DHCP server using the internal network name '{oVBoxDHCPServer.networkName}' was started successfully")
+    return response, httpCode
 
 
 # def i_dhcpserver_stop(serverid):  # noqa: E501
