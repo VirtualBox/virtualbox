@@ -353,50 +353,6 @@ def i_medium_deletestorage(oVBoxMedium):  # noqa: E501
 
 
 @findMedium_decorator
-def i_medium_close(oVBoxMedium):  # noqa: E501
-    """
-    Call interface method IMedium::close
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-
-    :rtype: None
-    """
-
-    vbox_utils_commonChecks()
-
-    logging.info(f"Closing the medium {oVBoxMedium.id}")
-
-    oError = None
-    httpCode = HTTPStatus.OK
-    oProgressResponse = ProgressObjWrapperResponse()
-
-    try:
-        # Note that after this method successfully returns, the given medium object becomes uninitialized.
-        # This means that any attempt to call any of its methods or attributes will fail with the "Object not ready" (E_ACCESSDENIED) error.
-        # save oVBoxMedium.id in the temporary variable
-        id = oVBoxMedium.id
-        oVBoxProgress = oVBoxMedium.close()
-        if oVBoxProgress is not None:
-            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
-            logging.info('The closing of medium has been successfully started')
-
-            # Add Progress Id object into the tracking lists
-            ctx['tracker'][oProgressResponse.progress.id] = None
-        else:
-            httpCode = HTTPStatus.OK
-            oError = Error(httpCode, f"The medium {id} has been successfully closed without using Progress object")
-
-    except Exception as e:
-        logging.info(f"Exception during closing the medium {id}")
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else oProgressResponse)
-    return response, httpCode
-
-
-@findMedium_decorator
 def i_medium_reset(oVBoxMedium):  # noqa: E501
     """
     Call interface method IMedium::reset
@@ -870,35 +826,6 @@ def i_medium_getproperties(oVBoxMedium, names=None):  # noqa: E501
 
 
 @findMedium_decorator
-def i_medium_getproperty(oVBoxMedium, name=None):  # noqa: E501
-    """
-    Call interface method IMedium::getProperty
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param name: 
-    :type name: str
-
-    :rtype: MediumGetpropertyResponse
-    """
-
-    oError = None
-    httpCode = HTTPStatus.OK
-    oMediumGetpropertyResponse = MediumGetPropertyResponse()
-
-    try:
-        oMediumGetpropertyResponse.value = oVBoxMedium.getProperty(name)
-
-    except Exception as e:
-        logging.info(f"Exception during getting the value of property {name}")
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else oMediumGetpropertyResponse)
-    return response, httpCode
-
-
-@findMedium_decorator
 def i_medium_getsnapshotids(oVBoxMedium, machineId=None):  # noqa: E501
     """
     Call interface method IMedium::getSnapshotIds
@@ -1047,34 +974,6 @@ def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-# def i_medium_checkencryptionpassword(mediumid, password=None):  # noqa: E501
-#     """
-#     Call interface method IMedium::checkEncryptionPassword
-
-#     :param mediumid: The Id of medium
-#     :type mediumid: str
-#     :param password: 
-#     :type password: str
-
-#     :rtype: None
-#     """
-
-#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-# def i_medium_close(mediumid):  # noqa: E501
-#     """
-#     Call interface method IMedium::close
-
-#     :param mediumid: The Id of medium
-#     :type mediumid: str
-
-#     :rtype: None
-#     """
-
-#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
 def i_medium_compact(mediumid):  # noqa: E501
     """
     Call interface method IMedium::compact
@@ -1086,45 +985,6 @@ def i_medium_compact(mediumid):  # noqa: E501
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-# def i_medium_lockread(mediumid):  # noqa: E501
-#     """
-#     Call interface method IMedium::lockRead
-
-#     :param mediumid: The Id of medium
-#     :type mediumid: str
-
-#     :rtype: TokenResponse
-#     """
-
-#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-# def i_medium_lockwrite(mediumid):  # noqa: E501
-#     """
-#     Call interface method IMedium::lockWrite
-
-#     :param mediumid: The Id of medium
-#     :type mediumid: str
-
-#     :rtype: TokenResponse
-#     """
-
-#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-# def i_medium_refreshstate(mediumid):  # noqa: E501
-#     """
-#     Call interface method IMedium::refreshState
-
-#     :param mediumid: The Id of medium
-#     :type mediumid: str
-
-#     :rtype: MediumStateResponse
-#     """
-
-#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
 def i_medium_reset(mediumid):  # noqa: E501
