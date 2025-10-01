@@ -29,6 +29,54 @@ def get_default_args(func):
     }
 
 
+def _make_resolving_decorator(not_found_label: str, resolver):
+    """
+    not_found_label: the line for the messages ("DHCP server", "DHCP config" и т.п.)
+    resolver(first_arg) -> (resolved_obj or None, oError or None)
+    """
+    def _decorator(func):
+        @functools.wraps(func)
+        def _wrapper(*args, **kwargs):
+            if not args:
+                return jsonify(f"{not_found_label} lookup requires the first positional argument"), HTTPStatus.BAD_REQUEST
+
+            args_list = list(args)
+            original_first = args_list[0]
+
+            try:
+                resolved_obj, oError = resolver(original_first)
+            except Exception as e:
+                return jsonify(f"Failed to resolve {not_found_label} for '{original_first}': {e}"), HTTPStatus.INTERNAL_SERVER_ERROR
+
+            if resolved_obj is None:
+                if oError:
+                    return jsonify(
+                        f"The {not_found_label} for '{original_first}' wasn't found. Internal error is '{oError.message}'"
+                    ), oError.code
+                else:
+                    return jsonify(
+                        f"The {not_found_label} for '{original_first}' wasn't found"
+                    ), HTTPStatus.NOT_FOUND
+
+            args_list[0] = resolved_obj
+            return func(*tuple(args_list), **kwargs)
+        return _wrapper
+    return _decorator
+
+
+def __find_server():
+    oError = None
+    oVBoxObj = None
+    try:
+        oVBoxObj = ctx['vb']
+    except Exception as e:
+        logging.info('Exception during getting VirtualBox object')
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    return oVBoxObj, oError
+
+
 def sessionDecorator(func):
     """
     Automatically open a session for VM and close the session in the end.
@@ -577,6 +625,7 @@ def dhcpserverDecorator(func):
         return value
 
     return wrapper_decorator
+
 
 def __find_hostonlynetwork_by_name(name: str):
     oVBox = ctx['vb']
