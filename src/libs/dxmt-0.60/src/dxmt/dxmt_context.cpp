@@ -37,11 +37,10 @@ ArgumentEncodingContext::ArgumentEncodingContext(CommandQueue &queue, WMT::Devic
                                 WMTResourceHazardTrackingModeUntracked;
   dummy_cbuffer_ = device.newBuffer(dummy_cbuffer_info_);
   std::memset(dummy_cbuffer_info_.memory.get(), 0, 65536);
-  cpu_buffer_ = malloc(kEncodingContextCPUHeapSize);
+  cpu_buffer_chunks_.emplace_back();
 };
 
 ArgumentEncodingContext::~ArgumentEncodingContext() {
-  free(cpu_buffer_);
   wsi::aligned_free(dummy_cbuffer_host_);
 };
 
@@ -679,6 +678,8 @@ ArgumentEncodingContext::currentFrameStatistics() {
 
 void
 ArgumentEncodingContext::$$setEncodingContext(uint64_t seq_id, uint64_t frame_id) {
+  current_buffer_chunk_ = 0;
+  cpu_buffer_ = cpu_buffer_chunks_[current_buffer_chunk_].ptr;
   cpu_buffer_offset_ = 0;
   seq_id_ = seq_id;
   frame_id_ = frame_id;
@@ -918,6 +919,12 @@ ArgumentEncodingContext::flushCommands(WMT::CommandBuffer cmdbuf, uint64_t seqId
   encoder_count_ = 0;
 
   cmdbuf.encodeSignalEvent(queue_.event, event_seq_id);
+
+  for (size_t i = cpu_buffer_chunks_.size() - 1; i > current_buffer_chunk_; i--) {
+    if (++cpu_buffer_chunks_[i].underused_times > kEncodingContextCPUHeapLifetime) {
+      cpu_buffer_chunks_.pop_back();
+    }
+  }
 
   return visibility_readback;
 }

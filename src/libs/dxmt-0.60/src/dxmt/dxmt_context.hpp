@@ -20,7 +20,8 @@ namespace dxmt {
 
 constexpr size_t kCommandChunkCPUHeapSize = 0x400000;
 constexpr size_t kCommandChunkGPUHeapSize = 0x400000;
-constexpr size_t kEncodingContextCPUHeapSize = 0x1000000;
+constexpr size_t kEncodingContextCPUHeapSize = 0x100000;
+constexpr size_t kEncodingContextCPUHeapLifetime = 600;
 
 inline std::size_t
 align_forward_adjustment(const void *const ptr, const std::size_t &alignment) noexcept {
@@ -584,13 +585,24 @@ public:
 
   void *
   allocate_cpu_heap(size_t size, size_t alignment) {
-    std::size_t adjustment = align_forward_adjustment((void *)cpu_buffer_offset_, alignment);
-    auto aligned = cpu_buffer_offset_ + adjustment;
-    cpu_buffer_offset_ = aligned + size;
-    if (cpu_buffer_offset_ >= kEncodingContextCPUHeapSize) {
-      ERR(cpu_buffer_offset_, " - cpu argument heap overflow, expect error.");
+    assert(size < kEncodingContextCPUHeapSize);
+    for (;;) {
+      std::size_t adjustment = align_forward_adjustment((void *)cpu_buffer_offset_, alignment);
+      auto aligned = cpu_buffer_offset_ + adjustment;
+      cpu_buffer_offset_ = aligned + size;
+      if (unlikely(cpu_buffer_offset_ >= kEncodingContextCPUHeapSize)) {
+        current_buffer_chunk_++;
+        while (current_buffer_chunk_ >= cpu_buffer_chunks_.size()) {
+          cpu_buffer_chunks_.emplace_back();
+        }
+        auto &chunk = cpu_buffer_chunks_[current_buffer_chunk_];
+        chunk.underused_times = 0;
+        cpu_buffer_ = chunk.ptr;
+        cpu_buffer_offset_ = 0;
+        continue;
+      }
+      return ptr_add(cpu_buffer_, aligned);
     }
-    return ptr_add(cpu_buffer_, aligned);
   }
 
   template <typename T, bool ComputeCommandEncoder = false>
@@ -693,10 +705,32 @@ private:
   EncoderData *encoder_current = nullptr;
   unsigned encoder_count_ = 0;
 
-  void *cpu_buffer_;
-  uint64_t cpu_buffer_offset_;
   uint64_t seq_id_;
   uint64_t frame_id_;
+
+  struct chunk {
+    void *ptr;
+    size_t underused_times;
+
+    chunk() {
+      ptr = malloc(kEncodingContextCPUHeapSize);
+      underused_times = 0;
+    }
+    chunk(const chunk &copy) = delete;
+    chunk(chunk &&move) {
+      ptr = move.ptr;
+      underused_times = move.underused_times;
+      move.ptr = nullptr;
+    };
+    ~chunk() {
+      free(ptr);
+      ptr = nullptr;
+    }
+  };
+  std::vector<chunk> cpu_buffer_chunks_;
+  uint32_t current_buffer_chunk_ = 0;
+  void *cpu_buffer_;
+  uint64_t cpu_buffer_offset_;
 
   VisibilityResultOffsetBumpState vro_state_;
   std::vector<Rc<VisibilityResultQuery>> pending_queries_;
