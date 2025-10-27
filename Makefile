@@ -46,6 +46,10 @@ GENERATOR_TYPE=swagger20
 # Support Connexion 2 and 3. Possible values are: 2,3
 CONNEXION_VERSION=3
 
+# Possible values are:
+# 'jinja', 'xslt'
+INTERNAL_GENERATOR_TYPE=jinja
+
 # Used as name convention to point out which case style is used for the attributes\parameters names
 CASE_STYLE=camel #available values are 'snake' and 'camel'
 CASE_STYLE_SWAGGER=modelPropertyNaming=camelCase
@@ -116,7 +120,7 @@ preparations:
 
 api-generation: enums objects methods requestbody fullapi
 
-code-generation: flask-connexion enum-conversion-code object-conversion-code simple-function-json simple-function-code
+code-generation: flask-connexion enum-conversion-code object-conversion-code simple-function-code
 
 # The variable CLASSPATH isn't picked up properly on Windows
 # That's why the path to Xalan is added directly via the parameter "-classpath"
@@ -171,21 +175,47 @@ flask-connexion:
 	java -jar $(TOOLS_DIR)/bin/$(GENERATOR) generate $(OPTIONS) -i $(DEST_YAML_DIR)/restapi.yaml -o $(DEST_DIR) \
 	-D$(CASE_STYLE_SWAGGER)
 
+ENUM_GENERATED_FILE = enum_conversion.py
+
+ifeq ($(INTERNAL_GENERATOR_TYPE), jinja)
+	ENUM_JSON_FILE = enumeration_list.json
+	JINJA_ENUM_CODE_TEMPLATE = enum_conversion.j2
+endif
+
+enum-json:
+	python $(TOOLS_DIR)/scripts/generate_enum_list_in_json.py \
+	--xidl $(VBOX_XIDL_FILE) \
+	--out-dir $(DEST_INTERMEDIATE_DIR) \
+	--out-file $(ENUM_JSON_FILE)
+
+enum-conversion-code: $(if $(filter jinja,$(INTERNAL_GENERATOR_TYPE)),enum-json)
+
 enum-conversion-code:
+ifeq ($(INTERNAL_GENERATOR_TYPE), jinja)
+	python $(TOOLS_DIR)/scripts/enum_conversion.py \
+	--in-json-file-path $(DEST_INTERMEDIATE_DIR)/$(ENUM_JSON_FILE) \
+	--in-template-file-path $(SRC_JINJA_DIR)/$(JINJA_ENUM_CODE_TEMPLATE) \
+	--out-dir $(DEST_UTILS_DIR) \
+	--out-file $(ENUM_GENERATED_FILE)
+else
 	java -classpath $(TOOLS_DIR)/bin/xalan-2.4.1.jar org.apache.xalan.xslt.Process \
 	$(COMMON_XSLT_OPTIONS) \
 	-in $(VBOX_XIDL_FILE) \
 	-xsl $(SRC_XSL_DIR)/code-enum-conversion-functions.xsl \
-	-out $(DEST_UTILS_DIR)/enum_conversion.py
+	-out $(DEST_UTILS_DIR)/$(ENUM_GENERATED_FILE)
+endif
+
+OBJECT_GENERATED_FILE = object_conversion.py
 
 object-conversion-code:
 	java -classpath $(TOOLS_DIR)/bin/xalan-2.4.1.jar org.apache.xalan.xslt.Process \
 	$(COMMON_XSLT_OPTIONS) \
 	-in $(VBOX_XIDL_FILE) \
 	-xsl $(SRC_XSL_DIR)/code-restapi-objects-functions.xsl \
-	-out $(DEST_UTILS_DIR)/object_conversion.py
+	-out $(DEST_UTILS_DIR)/$(OBJECT_GENERATED_FILE)
 
 JSON_FILE = simple_function_list.json
+
 simple-function-json:
 	python $(TOOLS_DIR)/scripts/generate_simple_function_list_in_json.py \
 	--xidl $(VBOX_XIDL_FILE) \
@@ -195,7 +225,8 @@ simple-function-json:
 JINJA_CODE_TEMPLATE = simple_function_template.j2
 JINJA_IMPORT_TEMPLATE = simple_class_import_template.j2
 SIMPLE_GENERATED = i_generated_functions.py
-simple-function-code:
+
+simple-function-code: simple-function-json
 	python $(TOOLS_DIR)/scripts/generate_simple_function_code_from_json.py \
 	--in-json-file-path $(DEST_INTERMEDIATE_DIR)/$(JSON_FILE) \
 	--in-template-file-path $(SRC_JINJA_DIR)/$(JINJA_CODE_TEMPLATE) \
