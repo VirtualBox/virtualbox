@@ -1,0 +1,23 @@
+
+########################### {{ enum_name }}: VirtualBox-Swagger vice versa conversion ###########################
+from vbox_server.models.{{ enum_name | to_snake_case }} import {{ enum_name }}
+
+def vbox_to_swagger_{{ enum_name | lower }}(inEnumVal):
+    out = {{ enum_name }}()
+    out = ctx['global'].getEnumValueName('{{ enum_name }}', inEnumVal)
+    return out.upper()
+
+
+def swagger_to_vbox_{{ enum_name | lower }}(inEnumVal: str):
+{% for val in vbox_values %}
+    {% if loop.first %}
+    if inEnumVal == '{{ val.upper() }}':
+        out = ctx['const'].{{ enum_name }}_{{ val }}
+    {% else %}
+    elif inEnumVal == '{{ val.upper() }}':
+        out = ctx['const'].{{ enum_name }}_{{ val }}
+    {% endif %}
+{% endfor %}
+    else:
+        out = None
+    return out
