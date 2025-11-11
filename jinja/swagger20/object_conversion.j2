@@ -1,0 +1,137 @@
+
+#################### Convertion VirtualBox {{ iface_name }} object to Swagger object ####################
+# import interface
+from vbox_server.models.{{ iface_name | to_snake_case }} import {{ iface_name }}
+
+{# ---------------------- i_fill_<interface> ---------------------- #}
+def i_fill_{{ iface_name|lower }}(oVBoxObj, select=None):
+    """Convert VirtualBox {{ iface_name }} object to Swagger object"""
+    logging.info('Enter function')
+    oObj = {{ swagger_class }}()
+    try:
+        if oVBoxObj is not None:
+            if select is not None and len(select) > 0:
+                oObj = i_fill_partial_{{ iface_name|lower }}(oVBoxObj, select)
+            else:
+                oObj = i_fill_whole_{{ iface_name|lower }}(oVBoxObj)
+    except COMException as e:
+        logging.info('Abnormal function exit')
+        oObj = None
+        text = 'Exception trying to convert the VirtualBox object oVBoxObj into Swagger object oObj. '
+        exceptionText = str(e)
+        raise COMException(e.errno, text + ' {Original: ' + exceptionText + '} ')
+    except Exception as e:
+        logging.info('Abnormal function exit')
+        oObj = None
+        exceptionText = str(e)
+        raise Exception(f"Exception converting VirtualBox object to Swagger object: {exceptionText}")
+    logging.info('Normal function exit')
+    return oObj
+
+{# ---------------------- i_fill_whole_<interface> ---------------------- #}
+def i_fill_whole_{{ iface_name|lower }}(oVBoxObj):
+    logging.info('Enter function')
+    oObj = {{ swagger_class }}()
+    try:
+        if oVBoxObj is not None:
+            {% for attr in attributes %}
+            try:
+                {%if attr.is_array %}
+                ol{{ attr.name | capitalize }} = ctx['global'].getArray(oVBoxObj, '{{ attr.name }}')
+                oObj.{{ attr.dest_name }} = list()
+                for count, item in enumerate(ol{{ attr.name | capitalize }}):
+                    {% if attr.rest_is_uuid %}
+                    oObj.{{ attr.dest_name }}.append(item.id if hasattr(item, 'id') else item)
+                    {% elif attr.is_enum %}
+                    o = ctx['global'].getEnumValueName('{{ attr.enum_type }}', item)
+                    if o not in oObj.{{ attr.dest_name }}:
+                        oObj.{{ attr.dest_name }}.append(o)
+                    {% elif attr.is_interface %}
+                    oObj.{{ attr.dest_name }}.append({{ attr.transform_function }}(item))
+                    {% else %}
+                    oObj.{{ attr.dest_name }}.append(item)
+                    {% endif %}
+                {% elif attr.rest_is_uuid %}
+                val = getattr(oVBoxObj, '{{ attr.name }}', None)
+                oObj.{{ attr.dest_name }} = val.id if val is not None and hasattr(val, 'id') else val
+                {% elif attr.is_enum %}
+                oObj.{{ attr.dest_name }} = ctx['global'].getEnumValueName('{{ attr.enum_type }}', oVBoxObj.{{ attr.name }})
+                {% elif attr.is_interface %}
+                oTmp = oVBoxObj.{{ attr.name }} if oVBoxObj.{{ attr.name }} is not None else None
+                if oTmp is not None:
+                    oObj.{{ attr.dest_name }} = {{ attr.transform_function }}(oTmp)
+                {% else %}
+                oObj.{{ attr.dest_name }} = oVBoxObj.{{ attr.name }}
+                {% endif %}
+            except Exception as e:
+                logging.info('Error getting attribute "{{ attr.name }}"')
+            {% endfor %}
+    except COMException as e:
+        logging.info('Abnormal function exit')
+        oObj = None
+        text = 'Exception trying to fill the object oObj. '
+        exceptionText = str(e)
+        raise COMException(e.errno, text + ' {Original: ' + exceptionText + '} ')
+    except Exception as e:
+        logging.info('Abnormal function exit')
+        oObj = None
+        exceptionText = str(e)
+        raise Exception(f"Exception trying to fill the object: {exceptionText}")
+    logging.info('Normal function exit')
+    return oObj
+
+{# ---------------------- i_fill_partial_<interface> ---------------------- #}
+def i_fill_partial_{{ iface_name|lower }}(oVBoxObj, select):
+    logging.info('Enter function')
+    oObj = {{ swagger_class }}()
+    try:
+        if oVBoxObj is not None:
+            selected_attrs = select.split(',')
+            for currAttr in selected_attrs:
+                {% for attr in attributes %}
+                if currAttr == '{{ attr.name }}':
+                    try:
+                        {% if attr.is_array %}
+                        ol{{ attr.name | capitalize }} = ctx['global'].getArray(oVBoxObj, '{{ attr.name }}')
+                        oObj.{{ attr.dest_name }} = list()
+                        for count, item in enumerate(ol{{ attr.name | capitalize }}):
+                            {% if attr.rest_is_uuid %}
+                            oObj.{{ attr.dest_name }}.append(item.id if hasattr(item, 'id') else item)
+                            {%- elif attr.is_enum %}
+                            o = ctx['global'].getEnumValueName('{{ attr.enum_type }}', item)
+                            if o not in oObj.{{ attr.dest_name }}:
+                                oObj.{{ attr.dest_name }}.append(o)
+                            {% elif attr.is_interface %}
+                            oObj.{{ attr.dest_name }}.append({{ attr.transform_function }}(item))
+                            {% else %}
+                                oObj.{{ attr.dest_name }}.append(item)
+                            {% endif %}
+                        {% elif attr.rest_is_uuid %}
+                        val = getattr(oVBoxObj, '{{ attr.name }}', None)
+                        oObj.{{ attr.dest_name }} = val.id if val is not None and hasattr(val, 'id') else val
+                        {% elif attr.is_enum %}
+                        oObj.{{ attr.dest_name }} = ctx['global'].getEnumValueName('{{ attr.enum_type }}', oVBoxObj.{{ attr.name }})
+                        {% elif attr.is_interface %}
+                        oTmp = oVBoxObj.{{ attr.name }} if oVBoxObj.{{ attr.name }} is not None else None
+                        if oTmp is not None:
+                            oObj.{{ attr.dest_name }} = {{ attr.transform_function }}(oTmp)
+                        {% else %}
+                        oObj.{{ attr.dest_name }} = oVBoxObj.{{ attr.name }}
+                        {% endif %}
+                    except Exception as e:
+                        logging.info('Error getting attribute "{{ attr.name }}"')
+                        raise Exception('Error getting attribute "{{ attr.name }}"')
+                {% endfor %}
+    except COMException as e:
+        logging.info('Abnormal function exit')
+        oObj = None
+        text = 'Exception trying to fill the object oObj. '
+        exceptionText = str(e)
+        raise COMException(e.errno, text + ' {Original: ' + exceptionText + '} ')
+    except Exception as e:
+        logging.info('Abnormal function exit')
+        oObj = None
+        exceptionText = str(e)
+        raise Exception(f"Exception trying to fill the object: {exceptionText}")
+    logging.info('Normal function exit')
+    return oObj
