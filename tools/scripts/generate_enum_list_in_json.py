@@ -23,7 +23,7 @@ def main():
     args = parser.parse_args()
     xidl_file = Path(args.xidl)
     output_dir = Path(args.out_dir)
-    output_dir.parent.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     output_file = Path(args.out_file)
     
     if not xidl_file.exists():
@@ -43,7 +43,6 @@ def main():
         output.append({'enum': enum_name, 'values': enum_values})
 
     out_path = Path(f"{output_dir}/{output_file}")
-    out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, 'w', encoding='utf-8') as jf:
         json.dump(output, jf, ensure_ascii=False, indent=4)
 
