@@ -111,6 +111,7 @@ preparations:
 	mkdir -p $(DEST_UTILS_DIR)
 	mkdir -p $(DEST_INT_MODEL_DIR)
 	mkdir -p $(DEST_INT_CONTROLLER_DIR)
+	mkdir -p $(DEST_INTERMEDIATE_DIR)
 
 	@echo ""
 	@echo CLASSPATH is $$CLASSPATH
@@ -118,7 +119,7 @@ preparations:
 	@echo VBOX_XIDL_FILE is $(VBOX_XIDL_FILE)
 	@echo ""
 
-api-generation: enums objects methods requestbody fullapi
+api-generation: fullapi
 
 code-generation: flask-connexion enum-conversion-code object-conversion-code simple-function-code
 
@@ -161,7 +162,7 @@ requestbody:
 	-xsl $(SRC_XSL_DIR)/restapi-request-body-definitions.xsl \
 	-out $(DEST_YAML_DIR)/restapi-request-body-definitions.yaml
 
-fullapi:
+fullapi: requestbody methods objects enums
 	cat $(SRC_YAML_DIR)/restapi-header.yaml \
 	$(DEST_YAML_DIR)/restapi-enumerations.yaml \
 	$(DEST_YAML_DIR)/restapi-request-body-definitions.yaml \
@@ -174,6 +175,7 @@ flask-connexion:
 	@echo "@@@@@@@@@@@@@@@@ $(GENERATOR) @@@@@@@@@@@@@@@@"
 	java -jar $(TOOLS_DIR)/bin/$(GENERATOR) generate $(OPTIONS) -i $(DEST_YAML_DIR)/restapi.yaml -o $(DEST_DIR) \
 	-D$(CASE_STYLE_SWAGGER)
+	cp $(DEST_CODE_DIR)/swagger/swagger.yaml $(DEST_INTERMEDIATE_DIR)/
 
 ENUM_GENERATED_FILE = enum_conversion.py
 
@@ -207,12 +209,34 @@ endif
 
 OBJECT_GENERATED_FILE = object_conversion.py
 
+ifeq ($(INTERNAL_GENERATOR_TYPE), jinja)
+	OBJECT_JSON_FILE = object_list.json
+	JINJA_OBJECT_CODE_TEMPLATE = object_conversion.j2
+endif
+
+object-json:
+	python $(TOOLS_DIR)/scripts/generate_obj_list_in_json.py \
+	--yaml-api-def $(DEST_CODE_DIR)/swagger/swagger.yaml \
+	--interface all \
+	--out-dir $(DEST_INTERMEDIATE_DIR) \
+	--out-file $(OBJECT_JSON_FILE)
+
+object-conversion-code: $(if $(filter jinja,$(INTERNAL_GENERATOR_TYPE)),object-json)
+
 object-conversion-code:
+ifeq ($(INTERNAL_GENERATOR_TYPE), jinja)
+	python $(TOOLS_DIR)/scripts/object_conversion.py \
+	--in-json-file-path $(DEST_INTERMEDIATE_DIR)/$(OBJECT_JSON_FILE) \
+	--in-template-file-path $(SRC_JINJA_DIR)/$(JINJA_OBJECT_CODE_TEMPLATE) \
+	--out-dir $(DEST_UTILS_DIR) \
+	--out-file $(OBJECT_GENERATED_FILE)
+else
 	java -classpath $(TOOLS_DIR)/bin/xalan-2.4.1.jar org.apache.xalan.xslt.Process \
 	$(COMMON_XSLT_OPTIONS) \
 	-in $(VBOX_XIDL_FILE) \
 	-xsl $(SRC_XSL_DIR)/code-restapi-objects-functions.xsl \
 	-out $(DEST_UTILS_DIR)/$(OBJECT_GENERATED_FILE)
+endif
 
 JSON_FILE = simple_function_list.json
 
