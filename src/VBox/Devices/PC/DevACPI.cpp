@@ -485,6 +485,8 @@ typedef struct ACPISTATE
     uint32_t            u32CreatorRev;
     /** ACPI custom OEM Tab ID */
     uint8_t             au8OemTabId[8];
+    /** ACPI configurable custom OEM Tab ID */
+    uint8_t             au8OemCustTabId[4];
     /** ACPI custom OEM Rev */
     uint32_t            u32OemRevision;
 
@@ -2921,7 +2923,7 @@ static void acpiR3PrepareHeader(PACPISTATE pThis, ACPITBLHEADER *header,
     header->u32Length             = RT_H2LE_U32(u32Length);
     header->u8Revision            = u8Revision;
     memcpy(header->au8OemId, pThis->au8OemId, 6);
-    memcpy(header->au8OemTabId, "VBOX", 4);
+    memcpy(header->au8OemTabId, pThis->au8OemCustTabId, 4);
     memcpy(header->au8OemTabId+4, au8Signature, 4);
     header->u32OemRevision        = RT_H2LE_U32(1);
     memcpy(header->au8CreatorId, pThis->au8CreatorId, 4);
@@ -4365,6 +4367,7 @@ static DECLCALLBACK(int) acpiR3Construct(PPDMDEVINS pDevIns, int iInstance, PCFG
                                   "|Serial2Irq"
                                   "|Serial3Irq"
                                   "|AcpiOemId"
+                                  "|AcpiOemTabId"
                                   "|AcpiCreatorId"
                                   "|AcpiCreatorRev"
                                   "|CustomTable"
@@ -4672,6 +4675,15 @@ static DECLCALLBACK(int) acpiR3Construct(PPDMDEVINS pDevIns, int iInstance, PCFG
         return PDMDEV_SET_ERROR(pDevIns, rc, N_("Configuration error: \"AcpiOemId\" must contain not more than 6 characters"));
     memset(pThis->au8OemId, ' ', sizeof(pThis->au8OemId));
     memcpy(pThis->au8OemId, szOemId, cchOemId);
+
+    char szOemTabId[16];
+    rc = pHlp->pfnCFGMQueryStringDef(pCfg, "AcpiOemTabId", szOemTabId, sizeof(szOemTabId), "VBOX");
+    if (RT_FAILURE(rc))
+        return PDMDEV_SET_ERROR(pDevIns, rc, N_("Configuration error: Querying \"AcpiOemTabId\" as string failed"));
+    size_t cchOemTabId = strlen(szOemTabId);
+    if (cchOemTabId != 4)
+        return PDMDEV_SET_ERROR(pDevIns, rc, N_("Configuration error: \"AcpiOemTabId\" must contain exactly 4 characters"));
+    memcpy(pThis->au8OemCustTabId, szOemTabId, cchOemTabId);
 
     char szCreatorId[16];
     rc = pHlp->pfnCFGMQueryStringDef(pCfg, "AcpiCreatorId", szCreatorId, sizeof(szCreatorId), "ASL ");
