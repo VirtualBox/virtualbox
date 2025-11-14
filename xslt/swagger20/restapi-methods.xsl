@@ -568,10 +568,32 @@
       <xsl:if test="@dir='out' or @dir='return'">
 
         <xsl:value-of select="$fourteenSpaces"/>
-        <xsl:value-of select="@name"/>
-         <xsl:text>:&#x0A;</xsl:text>
 
-         <xsl:value-of select="$sixteenSpaces"/>
+        <xsl:choose>
+          <xsl:when test="$numberOfOutputParams=1 and ($fInterface!='' or $fEnumeration!='')">
+            <xsl:choose>
+              <xsl:when test="$fInterface!=''">
+                <xsl:call-template name="stringToLower">
+                  <xsl:with-param name="str" select="substring($fInterface,2)" />
+                </xsl:call-template>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:call-template name="stringToLower">
+                  <xsl:with-param name="str" select="$fEnumeration" />
+                </xsl:call-template>
+              </xsl:otherwise>
+            </xsl:choose>
+            <xsl:if test="@safearray='yes'">
+            <xsl:text>array</xsl:text>
+            </xsl:if>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:value-of select="@name"/>
+          </xsl:otherwise>
+        </xsl:choose>
+
+        <xsl:text>:&#x0A;</xsl:text>
+        <xsl:value-of select="$sixteenSpaces"/>
 
         <xsl:choose>
 
