@@ -36,9 +36,10 @@
   <type idlname="double" type="number" format="double"/>
   <type idlname="float" type="number" format="float"/>
   <type idlname="wstring" type="string"/>
-  <type idlname="uuid" type="string"/>
+  <type idlname="uuid" type="string" format="uuid"/>
   <type idlname="result" type="integer" format="int32"/>
   <type idlname="safearray" type="array"/>
+  <type idlname="uuidstring" type="string" format="attruuid"/>
 </xsl:variable>
 
 <xsl:variable name="apos">'</xsl:variable>
