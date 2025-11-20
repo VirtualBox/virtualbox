@@ -14,16 +14,22 @@ def analyze_property(prop_name, prop_schema, definitions):
     enum_type = ""
     interface_type = ""
     transform_fn = "item"
+    use_obj_uuid = False
 
     prop_type = prop_schema.get("type")
     ref = prop_schema.get("$ref")
     enum = prop_schema.get("enum", None)
+    format = prop_schema.get("format", None)
 
     if prop_type == "array":
         is_array = True
         items = prop_schema.get("items", {})
         ref = items.get("$ref")
         enum = items.get("enum")
+        format = items.get("format", None)
+
+    if format == "attruuid":
+        use_obj_uuid = True
 
     ref_type = None
     if ref:
@@ -53,6 +59,7 @@ def analyze_property(prop_name, prop_schema, definitions):
         "is_interface": is_interface,
         "enum_type": enum_type,
         "interface": interface_type,
+        "use_obj_uuid":  use_obj_uuid,
         "transform_function": transform_fn
     }
 
