@@ -40,7 +40,7 @@ def i_fill_whole_{{ iface_name|lower }}(oVBoxObj):
                 ol{{ attr.name | capitalize }} = ctx['global'].getArray(oVBoxObj, '{{ attr.name }}')
                 oObj.{{ attr.dest_name }} = list()
                 for count, item in enumerate(ol{{ attr.name | capitalize }}):
-                    {% if attr.rest_is_uuid %}
+                    {% if attr.use_obj_uuid %}
                     oObj.{{ attr.dest_name }}.append(item.id if hasattr(item, 'id') else item)
                     {% elif attr.is_enum %}
                     o = ctx['global'].getEnumValueName('{{ attr.enum_type }}', item)
@@ -51,7 +51,7 @@ def i_fill_whole_{{ iface_name|lower }}(oVBoxObj):
                     {% else %}
                     oObj.{{ attr.dest_name }}.append(item)
                     {% endif %}
-                {% elif attr.rest_is_uuid %}
+                {% elif attr.use_obj_uuid %}
                 val = getattr(oVBoxObj, '{{ attr.name }}', None)
                 oObj.{{ attr.dest_name }} = val.id if val is not None and hasattr(val, 'id') else val
                 {% elif attr.is_enum %}
@@ -95,9 +95,9 @@ def i_fill_partial_{{ iface_name|lower }}(oVBoxObj, select):
                         ol{{ attr.name | capitalize }} = ctx['global'].getArray(oVBoxObj, '{{ attr.name }}')
                         oObj.{{ attr.dest_name }} = list()
                         for count, item in enumerate(ol{{ attr.name | capitalize }}):
-                            {% if attr.rest_is_uuid %}
+                            {% if attr.use_obj_uuid %}
                             oObj.{{ attr.dest_name }}.append(item.id if hasattr(item, 'id') else item)
-                            {%- elif attr.is_enum %}
+                            {% elif attr.is_enum %}
                             o = ctx['global'].getEnumValueName('{{ attr.enum_type }}', item)
                             if o not in oObj.{{ attr.dest_name }}:
                                 oObj.{{ attr.dest_name }}.append(o)
@@ -106,7 +106,7 @@ def i_fill_partial_{{ iface_name|lower }}(oVBoxObj, select):
                             {% else %}
                                 oObj.{{ attr.dest_name }}.append(item)
                             {% endif %}
-                        {% elif attr.rest_is_uuid %}
+                        {% elif attr.use_obj_uuid %}
                         val = getattr(oVBoxObj, '{{ attr.name }}', None)
                         oObj.{{ attr.dest_name }} = val.id if val is not None and hasattr(val, 'id') else val
                         {% elif attr.is_enum %}
