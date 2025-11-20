@@ -19,10 +19,10 @@
 
   <xsl:variable name="readonly" select="@readonly"/>
 
-  <xsl:variable name="final_type">
+  <xsl:variable name="typeFormat">
     <xsl:choose>
-      <xsl:when test="@rest='uuid'">
-        <xsl:value-of select="@rest"/>
+      <xsl:when test="@http-type!=''">
+        <xsl:value-of select="@http-type"/>
       </xsl:when>
       <xsl:otherwise>
         <xsl:value-of select="@type"/>
@@ -30,14 +30,14 @@
     </xsl:choose>
   </xsl:variable>
 
-  <xsl:variable name="swaggerFormat" select="exsl:node-set($G_aSwaggerTypes)/type[@idlname=$final_type]/@format"/>
+  <xsl:variable name="swaggerFormat" select="exsl:node-set($G_aSwaggerTypes)/type[@idlname=$typeFormat]/@format"/>
 
-  <xsl:text>      </xsl:text>
+  <xsl:value-of select="$sixSpaces"/>
   <xsl:value-of select="@name"/>
   <xsl:text>:&#x0A;</xsl:text>
 
   <xsl:choose>
-    <xsl:when test="key('G_keyEnumsByName', $final_type) or starts-with($final_type, 'I')">
+    <xsl:when test="key('G_keyEnumsByName', $typeFormat) or starts-with($typeFormat, 'I')">
 
       <xsl:value-of select="$eightSpaces"/>
 
@@ -49,11 +49,11 @@
       </xsl:if>
 
       <xsl:choose>
-        <xsl:when test="key('G_keyEnumsByName', $final_type)">
-          <xsl:value-of select="concat('$ref: ', $aposDouble, '#/definitions/', $final_type, $aposDouble)"/>
+        <xsl:when test="key('G_keyEnumsByName', $typeFormat)">
+          <xsl:value-of select="concat('$ref: ', $aposDouble, '#/definitions/', $typeFormat, $aposDouble)"/>
         </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="concat('$ref: ', $aposDouble, '#/definitions/', substring($final_type,2), $aposDouble)"/>
+          <xsl:value-of select="concat('$ref: ', $aposDouble, '#/definitions/', substring($typeFormat,2), $aposDouble)"/>
         </xsl:otherwise>
       </xsl:choose>
 
@@ -62,9 +62,9 @@
     <xsl:when test="@type='octet'">
       <xsl:value-of select="$eightSpaces"/>
       <xsl:text>type: </xsl:text>
-      <xsl:value-of select="exsl:node-set($G_aSwaggerTypes)/type[@idlname=$final_type]/@type"/>
+      <xsl:value-of select="exsl:node-set($G_aSwaggerTypes)/type[@idlname=$typeFormat]/@type"/>
       <xsl:text>&#x0A;</xsl:text>
-      <xsl:variable name="swaggerFormat" select="exsl:node-set($G_aSwaggerTypes)/type[@idlname=$final_type]/@format"/>
+      <xsl:variable name="swaggerFormat" select="exsl:node-set($G_aSwaggerTypes)/type[@idlname=$typeFormat]/@format"/>
       <xsl:if test="$swaggerFormat='byte'">
         <xsl:value-of select="$eightSpaces"/>
         <xsl:text>format: </xsl:text>
@@ -88,11 +88,23 @@
               <xsl:text>type: </xsl:text>
           </xsl:otherwise>
       </xsl:choose>
-      <xsl:value-of select="exsl:node-set($G_aSwaggerTypes)/type[@idlname=$final_type]/@type"/>
+      <xsl:value-of select="exsl:node-set($G_aSwaggerTypes)/type[@idlname=$typeFormat]/@type"/>
       <xsl:if test="$swaggerFormat">
         <xsl:text>&#x0A;</xsl:text>
-        <xsl:text>        format: </xsl:text>
-        <xsl:value-of select="$swaggerFormat"/>
+
+        <xsl:choose>
+          <xsl:when test="@safearray='yes' and @type!='octet'">
+            <xsl:value-of select="$tenSpaces"/>
+            <xsl:text>format: </xsl:text>
+            <xsl:value-of select="$swaggerFormat"/>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:value-of select="$eightSpaces"/>
+            <xsl:text>format: </xsl:text>
+            <xsl:value-of select="$swaggerFormat"/>
+          </xsl:otherwise>
+        </xsl:choose>
+
       </xsl:if>
     </xsl:otherwise>
   </xsl:choose>
