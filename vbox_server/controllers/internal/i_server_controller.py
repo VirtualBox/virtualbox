@@ -141,7 +141,7 @@ def i_synthetic_getserver(select=None):  # noqa: E501
 
     oVirtualBoxResponse = VirtualBoxObjWrapperResponse()
     try:
-        oVirtualBoxResponse.server = i_fill_virtualbox(oVBox, select)
+        oVirtualBoxResponse.virtualbox = i_fill_virtualbox(oVBox, select)
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
