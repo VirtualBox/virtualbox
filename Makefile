@@ -290,7 +290,7 @@ copy:
 	rm -rf $(DEST_CODE_DIR)/test
 
 # Copy the rest to the output folder
-	cp -r --update=none $(SRC_DIR)/utils $(DEST_CODE_DIR)
+	cp -r --update $(SRC_DIR)/utils $(DEST_CODE_DIR)
 	cp $(SRC_DIR)/__init__.py $(SRC_DIR)/global_settings.py $(DEST_CODE_DIR)
 
 ifeq ($(CONNEXION_VERSION), 3)
