@@ -1012,7 +1012,7 @@ def i_machine_unregister(vmid, cleanupMode=None):  # noqa: E501
                 oMediumList.append(i_fill_medium(item))
 
             oMediumArrayResponse = MediumObjArrayWrapperResponse()
-            oMediumArrayResponse.media = oMediumList
+            oMediumArrayResponse.mediumarray = oMediumList
             logging.info ('VM ' + vmid + ' was successfully unregistered')
         else:
             logging.info ('Can\'t unregister VM ' + vmid)
@@ -1321,7 +1321,7 @@ def i_machine_getmediumattachment(vmid, select=None, name=None, controllerPort=N
     oMediumAttachmentResponse = MediumAttachmentObjWrapperResponse()
     try:
         oVBoxMedium = oVM.getMediumAttachment(name, controllerPort, device)
-        oMediumAttachmentResponse.attachment = i_fill_mediumattachment(oVBoxMedium, select)
+        oMediumAttachmentResponse.mediumattachment = i_fill_mediumattachment(oVBoxMedium, select)
     except Exception as e:
         logging.info("Can't get medium attachment for VM '%s': %s" % (oVM.name, str(e)))
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -3310,7 +3310,7 @@ def i_machine_addusbcontroller(oVBoxObj, oMachineAddUSBControllerRequestBody: Ma
         oError = Error(httpCode, str(e))
 
     if oError is None:
-        oUSBControllerResponse.controller = i_fill_storagecontroller(oUSBController)
+        oUSBControllerResponse.usbcontroller = i_fill_storagecontroller(oUSBController)
 
     response = jsonify(oError if oError is not None else oUSBControllerResponse)
     return response, httpCode
@@ -3379,7 +3379,7 @@ def i_machine_addusbcontroller(oVBoxObj, oMachineAddUSBControllerRequestBody: Ma
 #         oError = Error(httpCode, str(e))
 
 #     if oError is None:
-#         oUSBControllerResponse.controller = i_fill_usbcontroller(oUSBController, select)
+#         oUSBControllerResponse.usbcontroller = i_fill_usbcontroller(oUSBController, select)
 
 #     response = jsonify(oError if oError is not None else oUSBControllerResponse)
 #     return response, httpCode
