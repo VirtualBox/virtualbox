@@ -21,8 +21,8 @@
 
   <xsl:variable name="typeFormat">
     <xsl:choose>
-      <xsl:when test="@http-type!=''">
-        <xsl:value-of select="@http-type"/>
+      <xsl:when test="@rest='uuid'">
+        <xsl:text>uuidstring</xsl:text>
       </xsl:when>
       <xsl:otherwise>
         <xsl:value-of select="@type"/>
