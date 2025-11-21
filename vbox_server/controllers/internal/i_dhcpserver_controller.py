@@ -54,7 +54,7 @@ def i_dhcpserver_getconfig(oVBoxObj, select=None, scope=None, name=None, slot=No
     try:
         if scope == "GLOBAL": name = ""
         oVBoxDHCPConfig = oVBoxDHCPServer.getConfig(swagger_to_vbox_dhcpconfigscope(scope), name, slot, mayAdd)
-        oDHCPConfigResponse.config = i_fill_dhcpconfig(oVBoxDHCPConfig, select)
+        oDHCPConfigResponse.dhcpconfig = i_fill_dhcpconfig(oVBoxDHCPConfig, select)
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
