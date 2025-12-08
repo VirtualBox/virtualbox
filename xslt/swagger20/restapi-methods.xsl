@@ -263,7 +263,12 @@
     <xsl:text>- </xsl:text>
     <xsl:value-of select="$aposDouble"/>
 
-    <xsl:value-of select="$basePath"/>
+    <xsl:variable name="interfaceLowCase">
+      <xsl:call-template name="stringToLower">
+        <xsl:with-param name="str" select="@interfaceName"/>
+      </xsl:call-template>
+    </xsl:variable>
+    <xsl:value-of select="substring($interfaceLowCase,2)"/>
 
     <xsl:value-of select="$aposDouble"/>
     <xsl:text>&#x0A;</xsl:text>
