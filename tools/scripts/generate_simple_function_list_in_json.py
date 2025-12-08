@@ -27,7 +27,7 @@ def main():
     output_file = Path(args.out_file)
     
     if not xidl_file.exists():
-        print(f'Error: Input JSON file not found: {xidl_file}')
+        print(f'Error: Input XIDL file not found: {xidl_file}')
         exit(1)
 
     tree = ET.parse(xidl_file)
