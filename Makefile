@@ -87,8 +87,8 @@ SRC_REST_API_DIR=$(DEST_YAML_DIR)
 GENERATOR_CONFIG_FILE = $(CURDIR)/config.json
 
 ifeq ($(CONNEXION_VERSION), 3)
-#	GENERATOR=swagger-codegen-cli.jar
-	GENERATOR=swagger-codegen-cli_experimental.jar
+	GENERATOR=swagger-codegen-cli.jar
+# 	GENERATOR=swagger-codegen-cli_experimental.jar
 #	GENERATOR=swagger-codegen-cli_no-snake-case-rule.jar
 else
 	GENERATOR=swagger-codegen-cli_connexion2.jar
@@ -121,7 +121,7 @@ preparations:
 
 api-generation: fullapi
 
-code-generation: flask-connexion enum-conversion-code object-conversion-code simple-function-code
+code-generation: flask-connexion enum-conversion-code object-conversion-code
 
 # The variable CLASSPATH isn't picked up properly on Windows
 # That's why the path to Xalan is added directly via the parameter "-classpath"
@@ -237,26 +237,6 @@ else
 	-xsl $(SRC_XSL_DIR)/code-restapi-objects-functions.xsl \
 	-out $(DEST_UTILS_DIR)/$(OBJECT_GENERATED_FILE)
 endif
-
-JSON_FILE = simple_function_list.json
-
-simple-function-json:
-	python $(TOOLS_DIR)/scripts/generate_simple_function_list_in_json.py \
-	--xidl $(VBOX_XIDL_FILE) \
-	--out-dir $(DEST_INTERMEDIATE_DIR) \
-	--out-file $(JSON_FILE)
-
-JINJA_CODE_TEMPLATE = simple_function_template.j2
-JINJA_IMPORT_TEMPLATE = simple_class_import_template.j2
-SIMPLE_GENERATED = i_generated_functions.py
-
-simple-function-code: simple-function-json
-	python $(TOOLS_DIR)/scripts/generate_simple_function_code_from_json.py \
-	--in-json-file-path $(DEST_INTERMEDIATE_DIR)/$(JSON_FILE) \
-	--in-template-file-path $(SRC_JINJA_DIR)/$(JINJA_CODE_TEMPLATE) \
-	--in-template-header-file-path $(SRC_JINJA_DIR)/$(JINJA_IMPORT_TEMPLATE) \
-	--out-dir $(DEST_INT_CONTROLLER_DIR) \
-	--out-file $(SIMPLE_GENERATED)
 
 docs: html-docs
 
