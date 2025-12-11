@@ -121,7 +121,7 @@ preparations:
 
 api-generation: fullapi
 
-code-generation: flask-connexion enum-conversion-code object-conversion-code
+code-generation: flask-connexion enum-conversion-code object-conversion-code function-json
 
 # The variable CLASSPATH isn't picked up properly on Windows
 # That's why the path to Xalan is added directly via the parameter "-classpath"
@@ -236,6 +236,17 @@ else
 	-in $(VBOX_XIDL_FILE) \
 	-xsl $(SRC_XSL_DIR)/code-restapi-objects-functions.xsl \
 	-out $(DEST_UTILS_DIR)/$(OBJECT_GENERATED_FILE)
+endif
+
+FUNCTION_JSON_FILE = function_list.json
+
+function-json:
+ifeq ($(INTERNAL_GENERATOR_TYPE), jinja)
+	python $(TOOLS_DIR)/scripts/generate_function_list_in_json.py \
+	--yaml-api-def $(DEST_CODE_DIR)/swagger/swagger.yaml \
+	--interface all \
+	--out-dir $(DEST_INTERMEDIATE_DIR) \
+	--out-file $(FUNCTION_JSON_FILE)
 endif
 
 docs: html-docs
