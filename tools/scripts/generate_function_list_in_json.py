@@ -36,7 +36,7 @@ def extract_enum_from_description(description, definitions):
     return None
 
 
-def prepare_endpoint_data(path, method, operation_data, definitions, excluded_operation_id_list):
+def prepare_endpoint_data(path, method, operation_data, definitions):
     operation_id = operation_data.get('operationId', 'unknown_operation')
     method_upper = method.upper()
 
@@ -196,7 +196,6 @@ def prepare_endpoint_data(path, method, operation_data, definitions, excluded_op
         'iface_decorator_name': iface_decorator_name,
         'method_name': method_name,
         'function_name': function_name,
-        'creation_style': 'manual' if str(iface_name + '_' + method_name).lower() in excluded_operation_id_list else 'generated',
         'file_name': file_name,
         'is_session_req': session,
         'in_params': in_main_param_list,
@@ -220,7 +219,6 @@ def prepare_endpoint_data(path, method, operation_data, definitions, excluded_op
 def main():
     parser = argparse.ArgumentParser(description='Function list data preparation in JSON')
     parser.add_argument('--yaml-api-def', type=str, default='all', help='Full path to YAML VBox API defintion file')
-    parser.add_argument('--excluded-func-list', type=str, default="hardcoded_function_list.json", help='Full path to JSON file with the list of functions excluded from the generation process')
     parser.add_argument('--interface', type=str, default='all', help='Interface name to generate functions for (e.g., machine)')
     parser.add_argument('--out-dir', type=str, default="generated", help='Path where the result is kept')
     parser.add_argument('--out-file', type=str, default="function_list.json", help='JSON file name')
@@ -229,7 +227,6 @@ def main():
     interface_name = args.interface.lower()
     
     yaml_api_def = Path(args.yaml_api_def)
-    excluded_func_list_file = Path(args.excluded_func_list)
     out_file = Path(args.out_file)
     output_dir = Path(args.out_dir)
     output_path = Path(output_dir/out_file)
@@ -237,12 +234,6 @@ def main():
     if not yaml_api_def.exists():
         print(f'Error: YAML file not found: {yaml_api_def}')
         exit(1)
-
-    if excluded_func_list_file.exists():
-        with open(excluded_func_list_file, 'r', encoding='utf-8') as jf:
-            data = json.load(jf)
-        print (data)
-        excluded_operation_id_list = create_operation_id_list(data)
 
     output_dir.mkdir(parents=True, exist_ok=True) 
     
@@ -272,7 +263,7 @@ def main():
     filtered = {(p, m): d for p, methods in paths.items() for m, d in methods.items() if d.get('operationId') in target_operations}
             
     for (path, method), details in filtered.items():
-        data = prepare_endpoint_data(path, method, details, definitions, excluded_operation_id_list)
+        data = prepare_endpoint_data(path, method, details, definitions)
         output.append(data)
 
     f.write(json.dumps(output, indent=4, ensure_ascii=False))
