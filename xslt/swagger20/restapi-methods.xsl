@@ -673,6 +673,12 @@
       <xsl:text>&#x0A;</xsl:text>
     </xsl:for-each>
 
+    <xsl:value-of select="$sixSpaces"/>
+    <xsl:text>x-vbox-stub: </xsl:text>
+    <xsl:value-of select="$aposDouble"/>
+    <xsl:value-of select="@stub"/>
+    <xsl:value-of select="$aposDouble"/>
+    <xsl:text>&#x0A;</xsl:text>
 </xsl:template>
 
 </xsl:stylesheet>

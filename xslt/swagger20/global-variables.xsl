@@ -213,13 +213,13 @@
 </xsl:variable>
 
 <xsl:variable name="G_syntheticEndpointsNodeSet">
-    <endpoint uri="/server/" restName="find" httpRequest="get" restPath="/server/"
-        interfaceName="ISynthetic" methodName="getServer" precedingSibling="">
+    <endpoint uri="/server/" restName="find" httpRequest="get" restPath="/server/" stub="hardcoded"
+        interfaceName="IVirtualBox" methodName="getServer" precedingSibling="">
         <desc>Getting VirtualBox server object</desc>
         <param name="server" type="IVirtualBox" dir="return"/>
     </endpoint>
-    <endpoint uri="/media/{{mediumid}}/" restName="find" httpRequest="get" restPath="/media/{mediumid}/"
-        interfaceName="ISynthetic" methodName="getMedium" precedingSibling="">
+    <endpoint uri="/media/{{mediumid}}/" restName="find" httpRequest="get" restPath="/media/{mediumid}/" stub="hardcoded"
+        interfaceName="IMedium" methodName="getMedium" precedingSibling="">
         <desc>Getting VirtualBox Medium object</desc>
         <param name="medium" type="IMedium" dir="return"/>
     </endpoint>
@@ -252,6 +252,17 @@
             </xsl:when>
             <xsl:otherwise>
               <xsl:value-of select="$name"/>
+            </xsl:otherwise>
+        </xsl:choose>
+      </xsl:variable>
+
+      <xsl:variable name="stub">
+        <xsl:choose>
+            <xsl:when test="rest/@stub!=''">
+              <xsl:value-of select="rest/@stub"/>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:text>generate</xsl:text>
             </xsl:otherwise>
         </xsl:choose>
       </xsl:variable>
@@ -294,6 +305,9 @@
         </xsl:attribute>
         <xsl:attribute name="interfaceName">
           <xsl:value-of select="../@name"/>
+        </xsl:attribute>
+        <xsl:attribute name="stub">
+          <xsl:value-of select="$stub"/>
         </xsl:attribute>
         <xsl:attribute name="precedingSibling">
             <xsl:value-of select="preceding-sibling::*[1]/@name"/>
