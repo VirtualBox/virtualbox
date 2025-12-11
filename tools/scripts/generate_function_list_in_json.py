@@ -56,7 +56,10 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
 
     session = None
     if path.startswith('/vm'):
-        if method_upper == 'GET' or method_name.lower().startswith(('get', 'check', 'test', 'find', 'query', 'read', 'enumerate')):
+        tags = operation_data.get('tags', '')
+        if tags.count("console") !=0 or \
+            method_upper == 'GET' or \
+            method_name.lower().startswith(('get', 'check', 'test', 'find', 'query', 'read', 'enumerate')):
             session = False
         else:
             session = True
@@ -213,6 +216,8 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
         'returned_param_list': returned_param_list,
         'param_names_map': param_names_map,
         'response_item_type': response_item_type,
+        'x_vbox_stub': operation_data.get('x-vbox-stub', 'generate'),
+        'tags': operation_data.get('tags', '')
     }
 
 
