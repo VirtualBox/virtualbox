@@ -229,6 +229,10 @@ log_command_in_target /bin/bash "${MY_CHROOT_CDROM}/vboxadditions/@@VBOX_INSERT_
 log_command_in_target /bin/bash -c "udevadm control --reload-rules" # GAs doesn't yet do this.
 log_command_in_target /bin/bash -c "udevadm trigger"                 # (ditto)
 MY_IGNORE_EXITCODE=
+# Currently in Ubuntu, the vboxsf group does not exist when this script executes.
+# But if it does in the future, the --force option will ensure the command
+# still succeeds.
+log_command_in_target groupadd --force --system vboxsf
 log_command_in_target usermod -a -G vboxsf "@@VBOX_INSERT_USER_LOGIN@@"
 @@VBOX_COND_END@@
 
