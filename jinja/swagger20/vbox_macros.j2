@@ -1,0 +1,70 @@
+{% macro vm_lookup_block() -%}
+    oCurrMachine, oError = vbox_utils_find_machine(vmid)
+    if oCurrMachine is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        oError = None
+{%- endmacro %}
+
+{% macro try_catch_block(statement, indent=0) -%}
+{%- set pad = ' ' * indent %}
+{{ pad }}try:
+{{ pad }}    {{ statement }}
+{{ pad }}except Exception as e:
+{{ pad }}    httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+{{ pad }}    oError = Error(httpCode, str(e))
+{%- endmacro %}
+
+{% macro jsonify_response_block(obj_name) %}
+    {% if obj_name %}
+response = jsonify(oError if oError is not None else {{ obj_name }})
+    {% else %}
+response = jsonify(oError if oError is not None else "Successfull operation")
+    {% endif %}
+    return response, httpCode
+{%- endmacro %}
+
+{% macro to_snake_case(name) -%}
+{%- set result = [] -%}
+{%- for i in range(0, name|length) -%}
+    {%- set c = name[i] -%}
+    {%- if i > 0 and c.isupper() -%}
+        {%- set result = result + ['_', c.lower()] -%}
+    {%- else -%}
+        {%- set result = result + [c.lower()] -%}
+    {%- endif -%}
+{%- endfor -%}
+{{ result | join('') }}
+{%- endmacro %}
+
+{# 
+    Macro: vbox_find_func_name
+
+    Purpose:
+    Generate VBox object lookup function name from x_vbox_type.
+
+    Rule:
+    - x_vbox_type must start with 'I'
+    - drop leading 'I'
+    - convert to snake_case //uncomment the line with "set iface_snake", replace "find_{{ iface_name }}_by_id" by "find_{{ iface_snake }}_by_id" 
+    - prepend 'find_'
+    - append '_by_id'
+
+    Example:
+    IMachine            -> find_machine_by_id
+    IUSBDevice          -> find_usb_device_by_id
+    IMediumAttachment   -> find_medium_attachment_by_id
+#}
+{% macro vbox_find_func_name(x_vbox_type) -%}
+    {%- if not x_vbox_type -%}
+        {{ raise('vbox_find_func_name: x_vbox_type is required') }}
+    {%- endif -%}
+
+    {%- if not x_vbox_type.startswith('I') -%}
+        {{ raise('vbox_find_func_name: invalid VBox interface name: ' ~ x_vbox_type) }}
+    {%- endif -%}
+
+    {%- set iface_name = x_vbox_type[1:] | lower -%}
+{#    {%- set iface_snake = iface_name | to_snake_case -%}#}
+find_{{ iface_name }}_by_id
+{%- endmacro %}
