@@ -462,19 +462,34 @@
 
                       <xsl:value-of select="$eightSpaces"/>
 
-                      <xsl:if test="@safearray='yes'">
-
-                        <xsl:text>type: "array"</xsl:text>
-                        <xsl:text>&#x0A;</xsl:text>
-
-                        <xsl:value-of select="$eightSpaces"/>
-                        <xsl:text>items:</xsl:text>
-                        <xsl:text>&#x0A;</xsl:text>
-                        <xsl:value-of select="$tenSpaces"/>
-
-                      </xsl:if>
-
-                      <xsl:text>type: "string"</xsl:text>
+                      <xsl:choose>
+                        <xsl:when test="@safearray='yes'">
+                          <xsl:text>type: "array"</xsl:text>
+                          <xsl:text>&#x0A;</xsl:text>
+                          <xsl:value-of select="$eightSpaces"/>
+                          <xsl:text>items:</xsl:text>
+                          <xsl:text>&#x0A;</xsl:text>
+                          <xsl:value-of select="$tenSpaces"/>
+                          <xsl:text>type: "string"</xsl:text>
+                          <xsl:text>&#x0A;</xsl:text>
+                          <xsl:value-of select="$tenSpaces"/>
+                          <xsl:text>format: "uuid"</xsl:text>
+                          <xsl:text>&#x0A;</xsl:text>
+                          <xsl:value-of select="$tenSpaces"/>
+                          <xsl:text>x-vbox-type: </xsl:text>
+                          <xsl:value-of select="$type"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                          <xsl:text>type: "string"</xsl:text>
+                          <xsl:text>&#x0A;</xsl:text>
+                          <xsl:value-of select="$eightSpaces"/>
+                          <xsl:text>format: "uuid"</xsl:text>
+                          <xsl:text>&#x0A;</xsl:text>
+                          <xsl:value-of select="$eightSpaces"/>
+                          <xsl:text>x-vbox-type: </xsl:text>
+                          <xsl:value-of select="$type"/>
+                        </xsl:otherwise>
+                      </xsl:choose>
                     </xsl:when>
 
                         <xsl:otherwise>
