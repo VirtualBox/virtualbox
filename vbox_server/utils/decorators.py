@@ -266,7 +266,15 @@ def machineDecorator(func):
         vmid = args_repr[0]
         oError = None
 
-        oVBoxMachine, oError = vbox_utils_find_machine(vmid)
+        if isinstance(vmid, str):
+            oVBoxMachine, oError = vbox_utils_find_machine(vmid)
+            if oVBoxMachine:
+                args_repr[0] = oVBoxMachine
+            else:
+                logging.info (oError)
+                return jsonify(oError), HTTPStatus.NOT_FOUND
+        else:
+            oVBoxMachine = vmid
         
         if oVBoxMachine is not None:
             args_repr[0] = oVBoxMachine #replace the first argument "machineid" by oVBoxMachine
@@ -423,7 +431,17 @@ def platformarmDecorator(func):
         vmid = args_repr[0]
         oError = None
 
-        oVBoxMachine, oError = vbox_utils_find_machine(vmid)
+        if isinstance(vmid, str):
+            oVBoxMachine, oErr = vbox_utils_find_machine(vmid)
+            if oVBoxMachine:
+                args_repr[0] = oVBoxMachine
+            else:
+                logging.info (oErr)
+                return jsonify(oErr), HTTPStatus.NOT_FOUND
+        else:
+            oVBoxMachine = vmid
+
+        vmid = oVBoxMachine.id
         
         if oVBoxMachine is not None:
             strArchtype = vbox_to_swagger_platformarchitecture(oVBoxMachine.platform.architecture)
@@ -457,7 +475,17 @@ def platformx86Decorator(func):
         vmid = args_repr[0]
         oError = None
 
-        oVBoxMachine, oError = vbox_utils_find_machine(vmid)
+        if isinstance(vmid, str):
+            oVBoxMachine, oErr = vbox_utils_find_machine(vmid)
+            if oVBoxMachine:
+                args_repr[0] = oVBoxMachine
+            else:
+                logging.info (oErr)
+                return jsonify(oErr), HTTPStatus.NOT_FOUND
+        else:
+            oVBoxMachine = vmid
+
+        vmid = oVBoxMachine.id
         
         if oVBoxMachine is not None:
             strArchtype = vbox_to_swagger_platformarchitecture(oVBoxMachine.platform.architecture)
