@@ -196,7 +196,6 @@ def open_exclusive_session(func):
         args_repr.append(oSession)
         new_args_repr=[a for a in args_repr]
 
-        #Call the general function with the updated arguments list
         value = func(*new_args_repr, **kwargs)
 
         return value
@@ -248,7 +247,6 @@ def open_session(func):
         args_repr.append(oSession)
         new_args_repr=[a for a in args_repr]
 
-        #Call the general function with the updated arguments list
         value = func(*new_args_repr, **kwargs)
 
         return value
@@ -277,7 +275,7 @@ def machineDecorator(func):
             oVBoxMachine = vmid
         
         if oVBoxMachine is not None:
-            args_repr[0] = oVBoxMachine #replace the first argument "machineid" by oVBoxMachine
+            args_repr[0] = oVBoxMachine
         else:
             if oError:
                 return jsonify('The machine with UUID ' + vmid + ' wasn\'t found. Internal error is ' + '"' + oError.message + '"'), oError.code
@@ -335,7 +333,7 @@ def mediumDecorator(func):
 
         oVBoxMedium, oError = __find_medium_by_id(mediumid)
         if oVBoxMedium is not None:
-            args_repr[0] = oVBoxMedium #replace the first argument "mediumid" by oVBoxMedium
+            args_repr[0] = oVBoxMedium
         else:
             if oError:
                 return jsonify('The medium with UUID ' + mediumid + ' wasn\'t found. Internal error is ' + '"' + oError.message + '"'), oError.code
@@ -344,7 +342,6 @@ def mediumDecorator(func):
 
         new_args_repr=args_repr
 
-        #Call the general function with the updated arguments list
         value = func(*new_args_repr, **kwargs)
 
         return value
@@ -446,7 +443,7 @@ def platformarmDecorator(func):
         if oVBoxMachine is not None:
             strArchtype = vbox_to_swagger_platformarchitecture(oVBoxMachine.platform.architecture)
             if strArchtype == "ARM":
-                args_repr[0] = oVBoxMachine.platform.arm #replace the first argument by oVBoxMachine.platform.arm
+                args_repr[0] = oVBoxMachine.platform.arm
             else:
                 httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
                 oError = Error(httpCode, "Virtual CPU isn't ARM architecture CPU")
@@ -490,7 +487,7 @@ def platformx86Decorator(func):
         if oVBoxMachine is not None:
             strArchtype = vbox_to_swagger_platformarchitecture(oVBoxMachine.platform.architecture)
             if strArchtype == "X86":
-                args_repr[0] = oVBoxMachine.platform.x86 #replace the first argument by oVBoxMachine.platform.x86
+                args_repr[0] = oVBoxMachine.platform.x86
             else:
                 httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
                 oError = Error(httpCode, "Virtual CPU isn't X86 architecture CPU")
@@ -690,18 +687,15 @@ def natnetworkDecorator(func):
 
         oVBoxNATNetwork, oError = __find_natnetwork_by_name(networkName)
         if oVBoxNATNetwork is not None:
-            #append the NAT Network object at the end of the argument's list
-            args_repr[0] = oVBoxNATNetwork #replace the first argument "networkid" by oVBoxNATNetwork
+            args_repr[0] = oVBoxNATNetwork
         else:
             if oError:
                 return jsonify(f"The NAT Network with name '{networkName}' wasn't found. Internal error is {oError.message}"), oError.code
             else:
                 return jsonify(f"The NAT Network with name '{networkName}' wasn't found"), HTTPStatus.NOT_FOUND
 
-        # new_args_repr=args_repr[1:] #remove the first argument "networkName" from the argument list because we added oVBoxNATNetwork into the end of one
         new_args_repr=args_repr
 
-        #Call the general function with the updated arguments list
         value = func(*new_args_repr, **kwargs)
 
         return value
@@ -752,7 +746,7 @@ def _resolve_systemproperties():
     except Exception as e:
         return None, Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
     
-systempropertiesDecorator = _make_resolving_decorator("Host", _resolve_systemproperties)
+systempropertiesDecorator = _make_resolving_decorator("System properties", _resolve_systemproperties)
 
 
 def _resolve_platformproperties():
@@ -765,7 +759,7 @@ def _resolve_platformproperties():
     except Exception as e:
         return None, Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
 
-platformpropertiesDecorator = _make_resolving_decorator("Host", _resolve_platformproperties)
+platformpropertiesDecorator = _make_resolving_decorator("Platform", _resolve_platformproperties)
 
 
 def _resolve_progress(progressId: str):
@@ -778,7 +772,7 @@ def _resolve_progress(progressId: str):
     except Exception as e:
         return None, Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
 
-progressDecorator = _make_resolving_decorator("Host", _resolve_progress)
+progressDecorator = _make_resolving_decorator("Progress", _resolve_progress)
 
 
 dhcpgroupconfigDecorator = commonObjDecorator
