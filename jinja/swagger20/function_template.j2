@@ -56,17 +56,20 @@ def {{ function_name }}({% if select_param %}, {{ select_param | join(', ') }}{%
     {% else %}
         {% if vbox_type %}
             {% if is_array %}
-    {{ pname }}_ids = [s.strip() for s in {{ pname }}.split(',') if s and s.strip()]
+    {{ pname }}_ids = [s.strip() for s in {{ pname }} if s and s.strip()]
     l_{{ pname }} = []
     for _id in {{ pname }}_ids:
-        l_{{ pname }}.append({{ m.vbox_find_func_name(vbox_type) }}(_id))
+        l_{{ pname }}.append({{ m.vbox_find_func_name(vbox_type) }}({{ curr_vbox_obj }}, _id))
             {% else %}
-    l_{{ pname }} = {{ m.vbox_find_func_name(vbox_type) }}({{ pname }})
+    l_{{ pname }} = {{ m.vbox_find_func_name(vbox_type) }}({{ curr_vbox_obj }}, {{ pname }})
             {% endif %}
+        {% elif is_array %}
+    if {{ pname }} and len({{ pname }}) !=0:
+      l_{{ pname }} = [s.strip() for s in {{ pname }} if s and s.strip()]
+    else:
+      l_{{ pname }} = []
         {% else %}
-            {% if is_array %}
-    l_{{ pname }} = [s.strip() for s in {{ pname }}.split(',') if s and s.strip()]
-            {% endif %}
+    l_{{ pname }} = {{ pname }}
         {% endif %}
     {% endif %}
     {% set _ = call_args.append('l_' ~ pname) %}
