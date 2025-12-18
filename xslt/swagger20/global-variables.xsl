@@ -42,6 +42,10 @@
   <type idlname="uuidstring" type="string" format="attruuid"/>
 </xsl:variable>
 
+<xsl:variable name="G_aSwaggerReservedWords">
+  <word reserved="property" replacement="propertyName"/>
+</xsl:variable>
+
 <xsl:variable name="apos">'</xsl:variable>
 <xsl:variable name="aposDouble">"</xsl:variable>
 
