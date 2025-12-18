@@ -492,9 +492,26 @@
                       </xsl:choose>
                     </xsl:when>
 
+                    <xsl:otherwise>
+                      <xsl:choose>
+                        <xsl:when test="@safearray='yes'">
+                          <xsl:text>type: "array"</xsl:text>
+                          <xsl:text>&#x0A;</xsl:text>
+                          <xsl:value-of select="$eightSpaces"/>
+                          <xsl:text>items:</xsl:text>
+                          <xsl:text>&#x0A;</xsl:text>
+                          <xsl:value-of select="$tenSpaces"/>
+                          <xsl:text>type: "string"</xsl:text>
+                          <xsl:text>&#x0A;</xsl:text>
+                          <xsl:value-of select="$eightSpaces"/>
+                          <xsl:text>collectionFormat: pipes</xsl:text>
+                          <xsl:text>&#x0A;</xsl:text>
+                        </xsl:when>
                         <xsl:otherwise>
                           <xsl:text>type: </xsl:text>
                           <xsl:value-of select="exsl:node-set($G_aSwaggerTypes)/type[@idlname=$type]/@type"/>
+                        </xsl:otherwise>
+                      </xsl:choose>
                     </xsl:otherwise>
                   </xsl:choose>
                   <xsl:text>&#x0A;</xsl:text>
