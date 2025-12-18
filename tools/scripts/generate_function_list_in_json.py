@@ -113,12 +113,15 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
                     lextra_attr ={}
                     if lattr['type'] == 'array':
                         lextra_attr = {'is_array': True}
-                        larr_items = param.get('items', {})
-                        if len(larr_items) != 0:
-                            x_vbox_type = larr_items.get('x-vbox-type','')
-                            if x_vbox_type!='':
-                                lextra_attr['format'] = larr_items.get('format') 
-                                lextra_attr['x_vbox_type'] = larr_items.get('x-vbox-type')
+                        if (
+                            (items := param.get('items')) and
+                            (fmt := items.get('format')) and
+                            (x_vbox_type := items.get('x-vbox-type'))
+                        ):
+                            lextra_attr.update({
+                                'format': fmt,
+                                'x_vbox_type': x_vbox_type,
+                            })
                     else:
                         lextra_attr = {'format': param.get('format'), 'x_vbox_type': param.get('x-vbox-type')}
 
