@@ -61,6 +61,11 @@ def vbox_utils_find_machine(vmid):
     return oVM, oError
 
 
+def find_machine_by_id(vmid):
+    oVM, oError = vbox_utils_find_machine(vmid)
+    return oVM if oVM is not None else None
+
+
 def vbox_utils_commonChecks():
     logging.info ('global_settings.oVBoxMgr is ' + str(ctx['global']))
     logging.info ('global_settings.oVBox is ' + str(ctx['vb']))
@@ -199,3 +204,127 @@ def vbox_utils_dec_to_hex(signed):
 
     unsigned, = struct.unpack("L", struct.pack("l", signed))
     return unsigned
+
+
+def vbox_utils_find_medium(id: str):
+    lDiskType = ['hardDisks', 'DVDImages', 'floppyImages']
+    oVBox = ctx['vb']
+    fFound = False
+    oFoundMedium = None
+    oError = None
+
+    for diskType in lDiskType:
+        try:
+            olDisks = ctx['global'].getArray(oVBox, diskType)
+            for item in olDisks:
+                if str(item.id) == id:
+                    oFoundMedium = item
+                    fFound = True
+                    break
+        except Exception as e:
+            logging.info('Error walking through the array of ' + diskType)
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            oFoundMedium = None
+
+        if fFound is True:
+            break
+
+    return oFoundMedium, oError
+
+
+def find_medium_by_id(id: str):
+    oMedium, oError = vbox_utils_find_medium(id)
+    return oMedium if oMedium is not None else None
+
+
+def vbox_utils_find_snapshot(oVBoxObj, id: str):
+    oError = None
+    try:
+        oSnapshot = oVBoxObj.findSnapshot(id)
+    except Exception as e:
+        oSnapshot = None
+        logging.info('Error getting the snapshot ' + id)
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    return oSnapshot, oError
+
+
+def find_snapshot_by_id(oVBoxObj, id: str):
+    oSnapshot, oError = vbox_utils_find_snapshot(oVBoxObj, id)
+    return oSnapshot if oSnapshot is not None else None
+
+
+def vbox_utils_find_dhcpserver(oVBoxObj, networkname: str):
+    oFoundItem = None
+    oError = None
+
+    try:
+        olDHCPServers = ctx['global'].getArray(oVBoxObj,'DHCPServers')
+        for item in olDHCPServers:
+            if str(item.networkName) == networkname:
+                oFoundItem = item
+                break
+
+    except Exception as e:
+        logging.info('Error walking through the array of DHCPServers')
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        oFoundItem = None
+
+    return oFoundItem, oError
+
+
+def find_dhcpserver_by_id(oVBoxObj, id: str):
+    oDHCPserver, oError = vbox_utils_find_dhcpserver(oVBoxObj, id)
+    return oDHCPserver if oDHCPserver is not None else None
+
+
+def vbox_utils_find_hostonlynetwork(oVBoxObj, name: str):
+    oFoundItem = None
+    oError = None
+
+    try:
+        olHostOnlyNetworks = ctx['global'].getArray(oVBoxObj,'HostOnlyNetworks')
+        for item in olHostOnlyNetworks:
+            if str(item.networkName) == name:
+                oFoundItem = item
+                break
+
+    except Exception as e:
+        logging.info('Error walking through the array of hostOnlyNetworks')
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        oFoundItem = None
+
+    return oFoundItem, oError
+
+
+def find_hostonlynetwork_by_id(oVBoxObj, id: str):
+    oHostonlynetwork, oError = vbox_utils_find_hostonlynetwork(oVBoxObj, id)
+    return oHostonlynetwork if oHostonlynetwork is not None else None
+
+
+def vbox_utils_find_natnetwork(oVBoxObj, name: str):
+    oFoundItem = None
+    oError = None
+
+    try:
+        olNatNetworks = ctx['global'].getArray(oVBoxObj,'NATNetworks')
+        for item in olNatNetworks:
+            if str(item.networkName) == name:
+                oFoundItem = item
+                break
+
+    except Exception as e:
+        logging.info('Error walking through the array of NATNetworks')
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        oFoundItem = None
+
+    return oFoundItem, oError
+
+def find_natnetwork_by_id(oVBoxObj, id: str):
+    oNATnetwork, oError = vbox_utils_find_natnetwork(oVBoxObj, id)
+    return oNATnetwork if oNATnetwork is not None else None
