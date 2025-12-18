@@ -408,7 +408,17 @@
                 <xsl:if test="@dir='in'">
                   <xsl:value-of select="$sixSpaces"/>
                   <xsl:text>- name: </xsl:text>
-                  <xsl:value-of select="@name"/>
+                  <!-- check replacement -->
+                  <xsl:variable name="curName" select="@name"/>
+                  <xsl:variable name="replacement" select="exsl:node-set($G_aSwaggerReservedWords)/word[@reserved=$curName]/@replacement"/>
+                  <xsl:choose>
+                    <xsl:when test="$replacement and $replacement!=''">
+                      <xsl:value-of select="$replacement"/>
+                    </xsl:when>
+                    <xsl:otherwise>
+                      <xsl:value-of select="@name"/>
+                    </xsl:otherwise>
+                  </xsl:choose>
                   <xsl:text>&#x0A;</xsl:text>
 
                   <xsl:value-of select="$eightSpaces"/>
@@ -467,9 +477,9 @@
                       <xsl:text>type: "string"</xsl:text>
                     </xsl:when>
 
-                    <xsl:otherwise>
-                        <xsl:text>type: </xsl:text>
-                        <xsl:value-of select="exsl:node-set($G_aSwaggerTypes)/type[@idlname=$type]/@type"/>
+                        <xsl:otherwise>
+                          <xsl:text>type: </xsl:text>
+                          <xsl:value-of select="exsl:node-set($G_aSwaggerTypes)/type[@idlname=$type]/@type"/>
                     </xsl:otherwise>
                   </xsl:choose>
                   <xsl:text>&#x0A;</xsl:text>

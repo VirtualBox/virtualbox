@@ -33,7 +33,17 @@
   <xsl:variable name="swaggerFormat" select="exsl:node-set($G_aSwaggerTypes)/type[@idlname=$typeFormat]/@format"/>
 
   <xsl:value-of select="$sixSpaces"/>
-  <xsl:value-of select="@name"/>
+  <!-- check replacement -->
+  <xsl:variable name="curName" select="@name"/>
+  <xsl:variable name="replacement" select="exsl:node-set($G_aSwaggerReservedWords)/word[@reserved=$curName]/@replacement"/>
+  <xsl:choose>
+    <xsl:when test="$replacement and $replacement!=''">
+      <xsl:value-of select="$replacement"/>
+    </xsl:when>
+    <xsl:otherwise>
+      <xsl:value-of select="@name"/>
+    </xsl:otherwise>
+  </xsl:choose>
   <xsl:text>:&#x0A;</xsl:text>
 
   <xsl:choose>
