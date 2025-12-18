@@ -109,7 +109,20 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
                     enum_in_params.append({'name': pname, 'type': enum})
                     in_main_param_list.append({'name': pname, 'type': enum})
                 else:
-                    in_main_param_list.append({'name': pname, 'type': param.get('type', 'string')})
+                    lattr = {'name': pname, 'type': param.get('type', 'string')}
+                    if lattr['type'] == 'array':
+                        lextra_attr = {'is_array': True}
+                        larr_items = param.get('items', {})
+                        if len(larr_items) != 0:
+                            x_vbox_type = larr_items.get('x-vbox-type','')
+                            if x_vbox_type!='':
+                                lextra_attr['format'] = larr_items.get('format') 
+                                lextra_attr['x_vbox_type'] = larr_items.get('x-vbox-type')
+                    else:
+                        lextra_attr = {'format': param.get('format'), 'x_vbox_type': param.get('x-vbox-type')}
+
+                    lattr.update({k: v for k, v in lextra_attr.items() if v not in (None, 0)})
+                    in_main_param_list.append(lattr)
 
     in_param_names = [p['name'] for p in in_main_param_list]
     param_names_map = {name: to_snake_case_simple(name) for name in in_param_names}
