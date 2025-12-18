@@ -337,7 +337,7 @@
       <xsl:text>description: </xsl:text>
       <xsl:value-of select="$aposDouble"/>
       <xsl:text>The Id of </xsl:text>
-      <xsl:value-of select="substring(current(), 1, string-length() - 2)"/>
+      <xsl:value-of select="substring(current(), 1, string-length())"/>
       <xsl:value-of select="$aposDouble"/>
       <xsl:text>&#x0A;</xsl:text>
 
