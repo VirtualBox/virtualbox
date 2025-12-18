@@ -703,7 +703,32 @@ def _resolve_host():
     except Exception as e:
         return None, Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
 
-hostDecorator = _make_resolving_decorator("Host", _resolve_host)
+def hostDecorator(func):
+    """
+    Find the "host" object
+    Appends the arguments list by the flag which indicates whether the host was found or not
+    """
+    @functools.wraps(func)
+    def wrapper_decorator(*args, **kwargs):
+        args_repr = [a for a in args]
+        new_args_repr =[]
+        oVBoxObj, oError = __find_server()
+        if oVBoxObj is not None:
+            new_args_repr.append(oVBoxObj.host)
+        else:
+            if oError:
+                return jsonify(f"The Host wasn't found. Internal error is {oError.message}"), oError.code
+            else:
+                return jsonify(f"The Host wasn't found"), HTTPStatus.NOT_FOUND
+        
+        for a in args_repr:
+            new_args_repr.append(a)
+            
+        value = func(*new_args_repr, **kwargs)
+
+        return value
+
+    return wrapper_decorator
 
 
 def _resolve_systemproperties():
@@ -744,6 +769,8 @@ def _resolve_progress(progressId: str):
 
 progressDecorator = _make_resolving_decorator("Progress", _resolve_progress)
 
+syntheticDecorator = virtualboxDecorator
+mediumformatDecorator = virtualboxDecorator
 
 dhcpgroupconfigDecorator = commonObjDecorator
 dhcpgroupconditionDecorator = commonObjDecorator
