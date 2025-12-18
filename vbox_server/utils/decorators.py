@@ -119,14 +119,8 @@ def sessionDecorator(func):
 
         new_args_repr = []
         new_args_repr.append(oSession.machine)
-        if len(args_repr) != 0:
-            if len(args_repr) > 1:
-                if len(args_repr) == 2:
-                    for a in args_repr[1:]:
-                        new_args_repr.append(a)
-                if len(args_repr) == 3:
-                    for a in args_repr[2:]:
-                        new_args_repr.append(a)
+        for a in args_repr[1:]:
+            new_args_repr.append(a)
 
         value = func(*new_args_repr, **kwargs)
 
@@ -374,17 +368,8 @@ def virtualboxDecorator(func):
         new_args_repr = []
         if oError is None and oVBoxObj is not None:
             new_args_repr.append(oVBoxObj)
-            if len(args_repr) != 0:
-                if len(args_repr) > 1:
-                    if len(args_repr) == 2:
-                        for a in args_repr[1:]:
-                            new_args_repr.append(a)
-                    if len(args_repr) == 3:
-                        for a in args_repr[2:]:
-                            new_args_repr.append(a)
-                else:
-                    for a in args_repr:
-                        new_args_repr.append(a)
+            for a in args_repr:
+                new_args_repr.append(a)
 
         else:
             if oError:
@@ -538,15 +523,9 @@ def consoleDecorator(func):
 
         new_args_repr = []
         new_args_repr.append(oSession.console)
-        if len(args_repr) != 0:
-            if len(args_repr) > 1:
-                if len(args_repr) == 2:
-                    for a in args_repr[1:]:
-                        new_args_repr.append(a)
-                if len(args_repr) == 3:
-                    for a in args_repr[2:]:
-                        new_args_repr.append(a)
-            
+        for a in args_repr[1:]:
+            new_args_repr.append(a)
+
         value = func(*new_args_repr, **kwargs)
 
         # Always save setting for assurance
