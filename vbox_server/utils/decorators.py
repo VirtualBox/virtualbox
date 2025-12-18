@@ -290,36 +290,6 @@ def machineDecorator(func):
     return wrapper_decorator
 
 
-# local list to keep a newly created mediums that wait to be registered in VirtualBox
-lNewAndNotRegisteredStorage = dict()
-
-def __find_medium_by_id(id: str):
-    lDiskType = ['hardDisks', 'DVDImages', 'floppyImages']
-    oVBox = ctx['vb']
-    fFound = False
-    oFoundMedium = None
-    oError = None
-
-    for diskType in lDiskType:
-        try:
-            olDisks = ctx['global'].getArray(oVBox, diskType)
-            for item in olDisks:
-                if str(item.id) == id:
-                    oFoundMedium = item
-                    fFound = True
-                    break
-        except Exception as e:
-            logging.info('Error walking through the array of ' + diskType)
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, str(e))
-            oFoundMedium = None
-
-        if fFound is True:
-            break
-
-    return oFoundMedium, oError
-
-
 def mediumDecorator(func):
     """
     Find the medium object using the passed ID
@@ -331,7 +301,7 @@ def mediumDecorator(func):
         mediumid = args_repr[0]
         oVBoxMedium = None
 
-        oVBoxMedium, oError = __find_medium_by_id(mediumid)
+        oVBoxMedium, oError = vbox_utils_find_medium(mediumid)
         if oVBoxMedium is not None:
             args_repr[0] = oVBoxMedium
         else:
