@@ -110,6 +110,7 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
                     in_main_param_list.append({'name': pname, 'type': enum})
                 else:
                     lattr = {'name': pname, 'type': param.get('type', 'string')}
+                    lextra_attr ={}
                     if lattr['type'] == 'array':
                         lextra_attr = {'is_array': True}
                         larr_items = param.get('items', {})
