@@ -5843,7 +5843,7 @@
     <message>
         <source>QCOW (QEMU Copy-On-Write)</source>
         <comment>UIMediumFormat</comment>
-        <translation type="unfinished">QCOM (Copie à l&apos;écriture QEMU)</translation>
+        <translation type="unfinished">QCOW (Copie à l&apos;écriture QEMU)</translation>
     </message>
     <message>
         <source>Video/Audio</source>
@@ -30340,7 +30340,7 @@ And the size is not necessarily &quot;in megabytes&quot;, the slider chooses the
     </message>
     <message>
         <source>QCOW (QEMU Copy-On-Write)</source>
-        <translation type="vanished">QCOM (Copie à l&apos;écriture QEMU)</translation>
+        <translation type="vanished">QCOW (Copie à l&apos;écriture QEMU)</translation>
     </message>
     <message>
         <source>Please choose a location for new virtual hard drive file</source>
@@ -30954,7 +30954,7 @@ And the size is not necessarily &quot;in megabytes&quot;, the slider chooses the
     <message>
         <source>QCOW (QEMU Copy-On-Write)</source>
         <comment>UIMediumFormat</comment>
-        <translation type="vanished">QCOM (Copie à l&apos;écriture QEMU)</translation>
+        <translation type="vanished">QCOW (Copie à l&apos;écriture QEMU)</translation>
     </message>
     <message>
         <source>Video/Audio</source>
