@@ -217,7 +217,7 @@ int RT_NOCRT(vsscanf)(const char *pszString, const char *pszFormat, va_list va)
                 while (RT_C_IS_SPACE(*pszFormat))
                     pszFormat++;
                 while (RT_C_IS_SPACE(*pszString))
-                    pszFormat++;
+                    pszString++;
                 break;
 
             /*
