@@ -227,6 +227,11 @@
         <desc>Getting VirtualBox Medium object</desc>
         <param name="medium" type="IMedium" dir="return"/>
     </endpoint>
+    <endpoint uri="/host/" restName="find" httpRequest="get" restPath="/host/" stub="hardcoded"
+        interfaceName="IVirtualBox" methodName="getHost" precedingSibling="">
+        <desc>Getting VirtualBox host object</desc>
+        <param name="host" type="IHost" dir="return"/>
+    </endpoint>
 </xsl:variable>
 
 <xsl:variable name="G_endpointsNodeSet">
