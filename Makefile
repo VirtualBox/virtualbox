@@ -121,7 +121,7 @@ preparations:
 
 api-generation: fullapi
 
-code-generation: flask-connexion enum-conversion-code object-conversion-code function-json
+code-generation: flask-connexion enum-conversion-code object-conversion-code function-code
 
 # The variable CLASSPATH isn't picked up properly on Windows
 # That's why the path to Xalan is added directly via the parameter "-classpath"
@@ -248,6 +248,18 @@ ifeq ($(INTERNAL_GENERATOR_TYPE), jinja)
 	--out-dir $(DEST_INTERMEDIATE_DIR) \
 	--out-file $(FUNCTION_JSON_FILE)
 endif
+
+JINJA_FUNCTION_CODE_TEMPLATE = function_template.j2
+JINJA_FUNCTION_IMPORT_TEMPLATE = function_import_template.j2
+
+function-code: $(if $(filter jinja,$(INTERNAL_GENERATOR_TYPE)),function-json)
+
+function-code:
+	python $(TOOLS_DIR)/scripts/generate_functions.py \
+	--in-json-file-path $(DEST_INTERMEDIATE_DIR)/$(FUNCTION_JSON_FILE) \
+	--in-template-file-path $(SRC_JINJA_DIR)/$(JINJA_FUNCTION_CODE_TEMPLATE) \
+	--in-template-header-file-path $(SRC_JINJA_DIR)/$(JINJA_FUNCTION_IMPORT_TEMPLATE) \
+	--out-dir $(DEST_INT_CONTROLLER_DIR)
 
 docs: html-docs
 
