@@ -20,48 +20,48 @@ from vbox_server.models.virtual_box_create_shared_folder_request_body import Vir
 from vbox_server import util
 
 
-@virtualboxDecorator
-def i_virtualbox_createsharedfolder(oVBoxObj, oVirtualBoxCreateSharedFolderRequestBody):  # noqa: E501
-    """
-    Call interface method IVirtualBox::createSharedFolder
+# @virtualboxDecorator
+# def i_virtualbox_createsharedfolder(oVBoxObj, oVirtualBoxCreateSharedFolderRequestBody):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::createSharedFolder
 
-    :param oVirtualBoxCreateSharedFolderRequestBody: 
-    :type oVirtualBoxCreateSharedFolderRequestBody: dict | bytes
+#     :param oVirtualBoxCreateSharedFolderRequestBody: 
+#     :type oVirtualBoxCreateSharedFolderRequestBody: dict | bytes
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    vbox_utils_commonChecks()
-    httpCode = HTTPStatus.OK
-    oError = None
+#     vbox_utils_commonChecks()
+#     httpCode = HTTPStatus.OK
+#     oError = None
 
-    oCurrVirtualBox = oVBoxObj
+#     oCurrVirtualBox = oVBoxObj
     
-    o = oVirtualBoxCreateSharedFolderRequestBody
-    name = o.name
-    hostPath = o.hostPath
-    fWritable = o.writable
-    fAutomount = o.automount
-    autoMountPoint = o.autoMountPoint
+#     o = oVirtualBoxCreateSharedFolderRequestBody
+#     name = o.name
+#     hostPath = o.hostPath
+#     fWritable = o.writable
+#     fAutomount = o.automount
+#     autoMountPoint = o.autoMountPoint
 
-    logging.info(f'Try to create the shared folder {name}')
+#     logging.info(f'Try to create the shared folder {name}')
 
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    if oError is None:
-        try:
-            # No return result check
-            oCurrVirtualBox.createSharedFolder(name, hostPath, fWritable, fAutomount, autoMountPoint)
-            logging.info(f'Created the shared folder {name}')
+#     if oError is None:
+#         try:
+#             # No return result check
+#             oCurrVirtualBox.createSharedFolder(name, hostPath, fWritable, fAutomount, autoMountPoint)
+#             logging.info(f'Created the shared folder {name}')
 
-        except Exception as e:
-            logging.info(f'Exception during creation the shared folder {name}')
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, str(e))
+#         except Exception as e:
+#             logging.info(f'Exception during creation the shared folder {name}')
+#             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#             oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else f'Successfully created the shared folder {name}')
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else f'Successfully created the shared folder {name}')
+#     return response, httpCode
 
 
 # def i_virtualbox_removesharedfolder(name=None):  # noqa: E501
