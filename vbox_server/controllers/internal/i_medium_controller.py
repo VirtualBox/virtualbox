@@ -113,10 +113,10 @@ def __testLocation(sLocation: str):
 
 
 ############################ Implemented or used ############################
-def i_synthetic_getmedium(mediumid, select=None):  # noqa: E501
+def i_medium_getmedium(mediumid, select=None):  # noqa: E501
     """
-    Call interface method ISynthetic::getMedium
-
+    :param mediumid: The Id of medium
+    :type mediumid: str
     :param select: The object attributes separated by comma
     :type select: str
 
@@ -179,50 +179,50 @@ def i_synthetic_getmedium(mediumid, select=None):  # noqa: E501
 # Because medium registration is done only inside IMedium::createBaseStorage.
 # User can't find a new medium after returning from IVirtualBox::createMedium.
 # Workaround is the using the dictionary lNewAndNotRegisteredStorage as the temporary storage for a new VirtualBox Medium object
-def i_virtualbox_createmedium(oVirtualBoxCreateMediumRequestBody: VirtualBoxCreateMediumRequestBody):  # noqa: E501
-    """
-    Call interface method IVirtualBox::createMedium
+# def i_virtualbox_createmedium(oVirtualBoxCreateMediumRequestBody: VirtualBoxCreateMediumRequestBody):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::createMedium
 
-    :param oVirtualBoxCreateMediumRequestBody: 
-    :type oVirtualBoxCreateMediumRequestBody: dict | bytes
+#     :param oVirtualBoxCreateMediumRequestBody: 
+#     :type oVirtualBoxCreateMediumRequestBody: dict | bytes
 
-    :rtype: MediumResponse
-    """
+#     :rtype: MediumResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    format = oVirtualBoxCreateMediumRequestBody.format
-    location = oVirtualBoxCreateMediumRequestBody.location
-    accessMode = swagger_to_vbox_accessmode(oVirtualBoxCreateMediumRequestBody.accessMode)
-    deviceType = swagger_to_vbox_devicetype(oVirtualBoxCreateMediumRequestBody.aDeviceTypeType)
+#     format = oVirtualBoxCreateMediumRequestBody.format
+#     location = oVirtualBoxCreateMediumRequestBody.location
+#     accessMode = swagger_to_vbox_accessmode(oVirtualBoxCreateMediumRequestBody.accessMode)
+#     deviceType = swagger_to_vbox_devicetype(oVirtualBoxCreateMediumRequestBody.aDeviceTypeType)
 
-    logging.info(f"Creating medium in location {location}")
+#     logging.info(f"Creating medium in location {location}")
 
-    oVBox = ctx['vb']
-    oError = None
-    httpCode = HTTPStatus.OK
-    oMediumResponse = MediumObjWrapperResponse()
+#     oVBox = ctx['vb']
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     oMediumResponse = MediumObjWrapperResponse()
 
-    try:
-        oHdd = oVBox.createMedium(format, location, accessMode, deviceType)
-        if oHdd is not None:
-            tempUuid = uuid.uuid4()
-            strUuid = str(tempUuid)
-            lNewAndNotRegisteredStorage[strUuid] = oHdd
-            oMediumResponse.medium = i_fill_medium(oHdd)
-            oMediumResponse.medium.id = strUuid
-            logging.info('The medium creation has been done successfully')
-        else:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, f"Something wrong with medium creation in location {location}")
+#     try:
+#         oHdd = oVBox.createMedium(format, location, accessMode, deviceType)
+#         if oHdd is not None:
+#             tempUuid = uuid.uuid4()
+#             strUuid = str(tempUuid)
+#             lNewAndNotRegisteredStorage[strUuid] = oHdd
+#             oMediumResponse.medium = i_fill_medium(oHdd)
+#             oMediumResponse.medium.id = strUuid
+#             logging.info('The medium creation has been done successfully')
+#         else:
+#             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#             oError = Error(httpCode, f"Something wrong with medium creation in location {location}")
 
-    except Exception as e:
-        logging.info(f"Exception during medium creation in location {location}")
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         logging.info(f"Exception during medium creation in location {location}")
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oMediumResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oMediumResponse)
+#     return response, httpCode
 
 
 @findMedium_decorator
@@ -352,48 +352,48 @@ def i_medium_deletestorage(oVBoxMedium):  # noqa: E501
     return response, httpCode
 
 
-@findMedium_decorator
-def i_medium_close(oVBoxMedium):  # noqa: E501
-    """
-    Call interface method IMedium::close
+# @findMedium_decorator
+# def i_medium_close(oVBoxMedium):  # noqa: E501
+#     """
+#     Call interface method IMedium::close
 
-    :param mediumid: The Id of medium
-    :type mediumid: str
+#     :param mediumid: The Id of medium
+#     :type mediumid: str
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    logging.info(f"Closing the medium {oVBoxMedium.id}")
+#     logging.info(f"Closing the medium {oVBoxMedium.id}")
 
-    oError = None
-    httpCode = HTTPStatus.OK
-    oProgressResponse = ProgressObjWrapperResponse()
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     oProgressResponse = ProgressObjWrapperResponse()
 
-    try:
-        # Note that after this method successfully returns, the given medium object becomes uninitialized.
-        # This means that any attempt to call any of its methods or attributes will fail with the "Object not ready" (E_ACCESSDENIED) error.
-        # save oVBoxMedium.id in the temporary variable
-        id = oVBoxMedium.id
-        oVBoxProgress = oVBoxMedium.close()
-        if oVBoxProgress is not None:
-            oProgressResponse.progress = i_fill_progress(oVBoxProgress)
-            logging.info('The closing of medium has been successfully started')
+#     try:
+#         # Note that after this method successfully returns, the given medium object becomes uninitialized.
+#         # This means that any attempt to call any of its methods or attributes will fail with the "Object not ready" (E_ACCESSDENIED) error.
+#         # save oVBoxMedium.id in the temporary variable
+#         id = oVBoxMedium.id
+#         oVBoxProgress = oVBoxMedium.close()
+#         if oVBoxProgress is not None:
+#             oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+#             logging.info('The closing of medium has been successfully started')
 
-            # Add Progress Id object into the tracking lists
-            ctx['tracker'][oProgressResponse.progress.id] = None
-        else:
-            httpCode = HTTPStatus.OK
-            oError = Error(httpCode, f"The medium {id} has been successfully closed without using Progress object")
+#             # Add Progress Id object into the tracking lists
+#             ctx['tracker'][oProgressResponse.progress.id] = None
+#         else:
+#             httpCode = HTTPStatus.OK
+#             oError = Error(httpCode, f"The medium {id} has been successfully closed without using Progress object")
 
-    except Exception as e:
-        logging.info(f"Exception during closing the medium {id}")
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         logging.info(f"Exception during closing the medium {id}")
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oProgressResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oProgressResponse)
+#     return response, httpCode
 
 
 @findMedium_decorator
@@ -414,7 +414,6 @@ def i_medium_reset(oVBoxMedium):  # noqa: E501
     oError = None
     httpCode = HTTPStatus.OK
     oProgressResponse = ProgressObjWrapperResponse()
-    # oProgressResponse = ProgressResponse()
 
     try:
         oVBoxProgress = oVBoxMedium.reset()
@@ -796,240 +795,240 @@ def i_medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: Me
     return response, httpCode
 
 
-@findMedium_decorator
-def i_medium_getencryptionsettings(oVBoxMedium):  # noqa: E501
-    """
-    Call interface method IMedium::getEncryptionSettings
+# @findMedium_decorator
+# def i_medium_getencryptionsettings(oVBoxMedium):  # noqa: E501
+#     """
+#     Call interface method IMedium::getEncryptionSettings
 
-    :param mediumid: The Id of medium
-    :type mediumid: str
+#     :param mediumid: The Id of medium
+#     :type mediumid: str
 
-    :rtype: MediumGetencryptionsettingsResponse
-    """
+#     :rtype: MediumGetencryptionsettingsResponse
+#     """
 
-    oError = None
-    httpCode = HTTPStatus.OK
-    oMediumGetencryptionsettingsResponse = MediumGetEncryptionSettingsResponse()
-    oMediumGetencryptionsettingsResponse.cipher = ""
-    oMediumGetencryptionsettingsResponse.passwordId = ""
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     oMediumGetencryptionsettingsResponse = MediumGetEncryptionSettingsResponse()
+#     oMediumGetencryptionsettingsResponse.cipher = ""
+#     oMediumGetencryptionsettingsResponse.passwordId = ""
 
-    try:
-        strCipher, strPassId = oVBoxMedium.getEncryptionSettings()
-        logging.info('Getting the list of encription settings has been done successfully')
-        if strCipher and len(strCipher) !=0:
-            oMediumGetencryptionsettingsResponse.cipher = strCipher    
-        if strPassId and len(strCipher) !=0:
-            oMediumGetencryptionsettingsResponse.passwordId = strPassId
+#     try:
+#         strCipher, strPassId = oVBoxMedium.getEncryptionSettings()
+#         logging.info('Getting the list of encription settings has been done successfully')
+#         if strCipher and len(strCipher) !=0:
+#             oMediumGetencryptionsettingsResponse.cipher = strCipher    
+#         if strPassId and len(strCipher) !=0:
+#             oMediumGetencryptionsettingsResponse.passwordId = strPassId
 
-    except Exception as e:
-        logging.info(f"Exception during getting the list encription settings")
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         logging.info(f"Exception during getting the list encription settings")
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oMediumGetencryptionsettingsResponse)
-    return response, httpCode
-
-
-@findMedium_decorator
-def i_medium_getproperties(oVBoxMedium, names=None):  # noqa: E501
-    """
-    Call interface method IMedium::getProperties
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param names: 
-    :type names: str
-
-    :rtype: MediumGetpropertiesResponse
-    """
-
-    oError = None
-    httpCode = HTTPStatus.OK
-    oMediumGetpropertiesResponse = MediumGetPropertiesResponse(list(), list())
-
-    try:
-        lValue, lName = oVBoxMedium.getProperties(names)
-        if lName and len(lName) > 0:
-            for count, item in enumerate(lName):
-                oMediumGetpropertiesResponse.returnNames.append(item)
-                if lValue[count] and len(lValue[count])!=0:
-                    oMediumGetpropertiesResponse.returnValues.append(lValue[count])
-                else:
-                    oMediumGetpropertiesResponse.returnValues.append("")
-        else:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, f"Something wrong with getting the list of properties {names}")
-
-    except Exception as e:
-        logging.info(f"Exception during getting the list of properties {names}")
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else oMediumGetpropertiesResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oMediumGetencryptionsettingsResponse)
+#     return response, httpCode
 
 
-@findMedium_decorator
-def i_medium_getproperty(oVBoxMedium, name=None):  # noqa: E501
-    """
-    Call interface method IMedium::getProperty
+# @findMedium_decorator
+# def i_medium_getproperties(oVBoxMedium, names=None):  # noqa: E501
+#     """
+#     Call interface method IMedium::getProperties
 
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param name: 
-    :type name: str
+#     :param mediumid: The Id of medium
+#     :type mediumid: str
+#     :param names: 
+#     :type names: str
 
-    :rtype: MediumGetpropertyResponse
-    """
+#     :rtype: MediumGetpropertiesResponse
+#     """
 
-    oError = None
-    httpCode = HTTPStatus.OK
-    oMediumGetpropertyResponse = MediumGetPropertyResponse()
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     oMediumGetpropertiesResponse = MediumGetPropertiesResponse(list(), list())
 
-    try:
-        oMediumGetpropertyResponse.value = oVBoxMedium.getProperty(name)
+#     try:
+#         lValue, lName = oVBoxMedium.getProperties(names)
+#         if lName and len(lName) > 0:
+#             for count, item in enumerate(lName):
+#                 oMediumGetpropertiesResponse.returnNames.append(item)
+#                 if lValue[count] and len(lValue[count])!=0:
+#                     oMediumGetpropertiesResponse.returnValues.append(lValue[count])
+#                 else:
+#                     oMediumGetpropertiesResponse.returnValues.append("")
+#         else:
+#             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#             oError = Error(httpCode, f"Something wrong with getting the list of properties {names}")
 
-    except Exception as e:
-        logging.info(f"Exception during getting the value of property {name}")
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         logging.info(f"Exception during getting the list of properties {names}")
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oMediumGetpropertyResponse)
-    return response, httpCode
-
-
-@findMedium_decorator
-def i_medium_getsnapshotids(oVBoxMedium, machineId=None):  # noqa: E501
-    """
-    Call interface method IMedium::getSnapshotIds
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param machineId: 
-    :type machineId: str
-
-    :rtype: MediumGetsnapshotidsResponse
-    """
-
-    oError = None
-    httpCode = HTTPStatus.OK
-    oMediumGetsnapshotidsResponse = MediumGetSnapshotIdsResponse([])
-
-    try:
-        lIds = oVBoxMedium.getSnapshotIds(machineId)
-        if lIds is not None and len(lIds) > 0:
-            logging.info('Getting the list of snapshots Ids has been done successfully')
-            for item in lIds:
-                oMediumGetsnapshotidsResponse.snapshotIds.append(item)
-        else:
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, f"Something wrong with getting the list of snapshots Ids for machine {machineId}")
-
-    except Exception as e:
-        logging.info(f"Exception during getting the list of snapshots Ids for machine {machineId}")
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else oMediumGetsnapshotidsResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oMediumGetpropertiesResponse)
+#     return response, httpCode
 
 
-@findMedium_decorator
-def i_medium_setids(oVBoxMedium, oMediumSetIdsRequestBody: MediumSetIdsRequestBody):  # noqa: E501
-    """
-    Call interface method IMedium::setIds
+# @findMedium_decorator
+# def i_medium_getproperty(oVBoxMedium, name=None):  # noqa: E501
+#     """
+#     Call interface method IMedium::getProperty
 
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param oMediumSetIdsRequestBody: 
-    :type oMediumSetIdsRequestBody: dict | bytes
+#     :param mediumid: The Id of medium
+#     :type mediumid: str
+#     :param name: 
+#     :type name: str
 
-    :rtype: None
-    """
+#     :rtype: MediumGetpropertyResponse
+#     """
 
-    oError = None
-    httpCode = HTTPStatus.OK
-    imageId = oMediumSetIdsRequestBody.imageId
-    parentId = oMediumSetIdsRequestBody.parentId
-    fSetImageId = oMediumSetIdsRequestBody.setImageId
-    fSetParentId = oMediumSetIdsRequestBody.setParentId
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     oMediumGetpropertyResponse = MediumGetPropertyResponse()
 
-    try:
-        res = oVBoxMedium.setIds(fSetImageId, imageId, fSetParentId, parentId)
-        if res != 0:
-            nErrorHex = c_uint32(res).value
-            strError = f"Error {nErrorHex} during changing the UUID and parent UUID for a hard disk medium"
-            logging.info(strError)
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, strError)
-    except Exception as e:
-        logging.info(f"Exception during changing the UUID and parent UUID for a hard disk medium")
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     try:
+#         oMediumGetpropertyResponse.value = oVBoxMedium.getProperty(name)
 
-    response = jsonify(oError if oError is not None else "Changing the UUID and parent UUID for a hard disk medium has been done successfully")
-    return response, httpCode
+#     except Exception as e:
+#         logging.info(f"Exception during getting the value of property {name}")
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+
+#     response = jsonify(oError if oError is not None else oMediumGetpropertyResponse)
+#     return response, httpCode
 
 
-@findMedium_decorator
-def i_medium_setproperties(oVBoxMedium, oMediumSetPropertiesRequestBody: MediumSetPropertiesRequestBody):  # noqa: E501
-    """
-    Call interface method IMedium::setProperties
+# @findMedium_decorator
+# def i_medium_getsnapshotids(oVBoxMedium, machineId=None):  # noqa: E501
+#     """
+#     Call interface method IMedium::getSnapshotIds
 
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param oMediumSetPropertiesRequestBody: 
-    :type oMediumSetPropertiesRequestBody: dict | bytes
+#     :param mediumid: The Id of medium
+#     :type mediumid: str
+#     :param machineId: 
+#     :type machineId: str
 
-    :rtype: None
-    """
+#     :rtype: MediumGetsnapshotidsResponse
+#     """
 
-    oError = None
-    httpCode = HTTPStatus.OK
-    lNames = oMediumSetPropertiesRequestBody.names
-    lValues = oMediumSetPropertiesRequestBody.values
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     oMediumGetsnapshotidsResponse = MediumGetSnapshotIdsResponse([])
 
-    try:
-        # Always returns S_OK (0)
-        oVBoxMedium.setProperties(lNames, lValues)
+#     try:
+#         lIds = oVBoxMedium.getSnapshotIds(machineId)
+#         if lIds is not None and len(lIds) > 0:
+#             logging.info('Getting the list of snapshots Ids has been done successfully')
+#             for item in lIds:
+#                 oMediumGetsnapshotidsResponse.snapshotIds.append(item)
+#         else:
+#             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#             oError = Error(httpCode, f"Something wrong with getting the list of snapshots Ids for machine {machineId}")
 
-    except Exception as e:
-        logging.info(f"Exception during setting the values of the properties {lNames}")
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         logging.info(f"Exception during getting the list of snapshots Ids for machine {machineId}")
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else f"All properties {lNames} have been set successfully")
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oMediumGetsnapshotidsResponse)
+#     return response, httpCode
 
 
-@findMedium_decorator
-def i_medium_setproperty(oVBoxMedium, oMediumSetPropertyRequestBody: MediumSetPropertyRequestBody):  # noqa: E501
-    """
-    Call interface method IMedium::setProperty
+# @findMedium_decorator
+# def i_medium_setids(oVBoxMedium, oMediumSetIdsRequestBody: MediumSetIdsRequestBody):  # noqa: E501
+#     """
+#     Call interface method IMedium::setIds
 
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param oMediumSetPropertyRequestBody: 
-    :type oMediumSetPropertyRequestBody: dict | bytes
+#     :param mediumid: The Id of medium
+#     :type mediumid: str
+#     :param oMediumSetIdsRequestBody: 
+#     :type oMediumSetIdsRequestBody: dict | bytes
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    oError = None
-    httpCode = HTTPStatus.OK
-    name = oMediumSetPropertyRequestBody.name
-    value = oMediumSetPropertyRequestBody.value
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     imageId = oMediumSetIdsRequestBody.imageId
+#     parentId = oMediumSetIdsRequestBody.parentId
+#     fSetImageId = oMediumSetIdsRequestBody.setImageId
+#     fSetParentId = oMediumSetIdsRequestBody.setParentId
 
-    try:
-        # Always returns S_OK (0)
-        oVBoxMedium.setProperty(name, value)
-    except Exception as e:
-        logging.info(f"Exception during setting the value of the property {name}")
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     try:
+#         res = oVBoxMedium.setIds(fSetImageId, imageId, fSetParentId, parentId)
+#         if res != 0:
+#             nErrorHex = c_uint32(res).value
+#             strError = f"Error {nErrorHex} during changing the UUID and parent UUID for a hard disk medium"
+#             logging.info(strError)
+#             httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#             oError = Error(httpCode, strError)
+#     except Exception as e:
+#         logging.info(f"Exception during changing the UUID and parent UUID for a hard disk medium")
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else f"Setting the value of the property {name} has been done successfully")
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else "Changing the UUID and parent UUID for a hard disk medium has been done successfully")
+#     return response, httpCode
+
+
+# @findMedium_decorator
+# def i_medium_setproperties(oVBoxMedium, oMediumSetPropertiesRequestBody: MediumSetPropertiesRequestBody):  # noqa: E501
+#     """
+#     Call interface method IMedium::setProperties
+
+#     :param mediumid: The Id of medium
+#     :type mediumid: str
+#     :param oMediumSetPropertiesRequestBody: 
+#     :type oMediumSetPropertiesRequestBody: dict | bytes
+
+#     :rtype: None
+#     """
+
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     lNames = oMediumSetPropertiesRequestBody.names
+#     lValues = oMediumSetPropertiesRequestBody.values
+
+#     try:
+#         # Always returns S_OK (0)
+#         oVBoxMedium.setProperties(lNames, lValues)
+
+#     except Exception as e:
+#         logging.info(f"Exception during setting the values of the properties {lNames}")
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+
+#     response = jsonify(oError if oError is not None else f"All properties {lNames} have been set successfully")
+#     return response, httpCode
+
+
+# @findMedium_decorator
+# def i_medium_setproperty(oVBoxMedium, oMediumSetPropertyRequestBody: MediumSetPropertyRequestBody):  # noqa: E501
+#     """
+#     Call interface method IMedium::setProperty
+
+#     :param mediumid: The Id of medium
+#     :type mediumid: str
+#     :param oMediumSetPropertyRequestBody: 
+#     :type oMediumSetPropertyRequestBody: dict | bytes
+
+#     :rtype: None
+#     """
+
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     name = oMediumSetPropertyRequestBody.name
+#     value = oMediumSetPropertyRequestBody.value
+
+#     try:
+#         # Always returns S_OK (0)
+#         oVBoxMedium.setProperty(name, value)
+#     except Exception as e:
+#         logging.info(f"Exception during setting the value of the property {name}")
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+
+#     response = jsonify(oError if oError is not None else f"Setting the value of the property {name} has been done successfully")
+#     return response, httpCode
 
 
 ############################# Not implemented yet or not used #############################
@@ -1047,34 +1046,6 @@ def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-# def i_medium_checkencryptionpassword(mediumid, password=None):  # noqa: E501
-#     """
-#     Call interface method IMedium::checkEncryptionPassword
-
-#     :param mediumid: The Id of medium
-#     :type mediumid: str
-#     :param password: 
-#     :type password: str
-
-#     :rtype: None
-#     """
-
-#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-# def i_medium_close(mediumid):  # noqa: E501
-#     """
-#     Call interface method IMedium::close
-
-#     :param mediumid: The Id of medium
-#     :type mediumid: str
-
-#     :rtype: None
-#     """
-
-#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
 def i_medium_compact(mediumid):  # noqa: E501
     """
     Call interface method IMedium::compact
@@ -1086,58 +1057,6 @@ def i_medium_compact(mediumid):  # noqa: E501
     """
 
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_deletestorage(mediumid):  # noqa: E501
-    """
-    Call interface method IMedium::deleteStorage
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-
-    :rtype: ProgressResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-# def i_medium_lockread(mediumid):  # noqa: E501
-#     """
-#     Call interface method IMedium::lockRead
-
-#     :param mediumid: The Id of medium
-#     :type mediumid: str
-
-#     :rtype: TokenResponse
-#     """
-
-#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-# def i_medium_lockwrite(mediumid):  # noqa: E501
-#     """
-#     Call interface method IMedium::lockWrite
-
-#     :param mediumid: The Id of medium
-#     :type mediumid: str
-
-#     :rtype: TokenResponse
-#     """
-
-#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-# def i_medium_refreshstate(mediumid):  # noqa: E501
-#     """
-#     Call interface method IMedium::refreshState
-
-#     :param mediumid: The Id of medium
-#     :type mediumid: str
-
-#     :rtype: MediumStateResponse
-#     """
-
-#     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
 def i_medium_reset(mediumid):  # noqa: E501
