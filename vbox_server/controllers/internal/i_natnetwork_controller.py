@@ -23,106 +23,106 @@ from vbox_server.models.nat_network_obj_wrapper_response import NATNetworkObjWra
 from vbox_server import util
 
 
-@natnetworkDecorator
-def i_natnetwork_addlocalmapping(oVBoxObj, oNATNetworkAddLocalMappingRequestBody: NATNetworkAddLocalMappingRequestBody):  # noqa: E501
-    """
-    Call interface method INATNetwork::addLocalMapping
+# @natnetworkDecorator
+# def i_natnetwork_addlocalmapping(oVBoxObj, oNATNetworkAddLocalMappingRequestBody: NATNetworkAddLocalMappingRequestBody):  # noqa: E501
+#     """
+#     Call interface method INATNetwork::addLocalMapping
 
-    :param networkid: The Id of network
-    :type networkid: str
-    :param oNATNetworkAddLocalMappingRequestBody: 
-    :type oNATNetworkAddLocalMappingRequestBody: dict | bytes
+#     :param networkid: The Id of network
+#     :type networkid: str
+#     :param oNATNetworkAddLocalMappingRequestBody: 
+#     :type oNATNetworkAddLocalMappingRequestBody: dict | bytes
 
-    :rtype: None
-    """
-    
-    vbox_utils_commonChecks()
+#     :rtype: None
+#     """
 
-    hostId = oNATNetworkAddLocalMappingRequestBody.hostid
-    offset = oNATNetworkAddLocalMappingRequestBody.offset
+#     vbox_utils_commonChecks()
 
-    oError = None
-    httpCode = HTTPStatus.OK
-    oCurrNATNetwork = oVBoxObj
+#     hostId = oNATNetworkAddLocalMappingRequestBody.hostid
+#     offset = oNATNetworkAddLocalMappingRequestBody.offset
 
-    try:
-        oCurrNATNetwork.addLocalMapping(hostId, offset)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     oCurrNATNetwork = oVBoxObj
 
-    response = jsonify(oError if oError is not None else f"The local mapping for NAT network '{oCurrNATNetwork.networkName}' was successfully added")
-    return response, httpCode
+#     try:
+#         oCurrNATNetwork.addLocalMapping(hostId, offset)
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-
-@natnetworkDecorator
-def i_natnetwork_addportforwardrule(oVBoxObj, oNATNetworkAddPortForwardRuleRequestBody: NATNetworkAddPortForwardRuleRequestBody):  # noqa: E501
-    """
-    Call interface method INATNetwork::addPortForwardRule
-
-    :param networkid: The Id of network
-    :type networkid: str
-    :param oNATNetworkAddPortForwardRuleRequestBody: 
-    :type oNATNetworkAddPortForwardRuleRequestBody: dict | bytes
-
-    :rtype: None
-    """
-
-    vbox_utils_commonChecks()
-
-    fIPv6 = oNATNetworkAddPortForwardRuleRequestBody.isIpv6
-    guestIP = oNATNetworkAddPortForwardRuleRequestBody.guestIP
-    guestPort= oNATNetworkAddPortForwardRuleRequestBody.guestPort
-    hostIP = oNATNetworkAddPortForwardRuleRequestBody.hostIP
-    hostPort = oNATNetworkAddPortForwardRuleRequestBody.hostPort
-    proto = swagger_to_vbox_natprotocol(oNATNetworkAddPortForwardRuleRequestBody.proto)
-    ruleName = oNATNetworkAddPortForwardRuleRequestBody.ruleName
-
-    oError = None
-    httpCode = HTTPStatus.OK
-    oCurrNATNetwork = oVBoxObj
-
-    try:
-        oCurrNATNetwork.addPortForwardRule(fIPv6, ruleName, proto, hostIP, hostPort, guestIP, guestPort)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else f"The rule '{ruleName}' for NAT network '{oCurrNATNetwork.networkName}' was successfully added")
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else f"The local mapping for NAT network '{oCurrNATNetwork.networkName}' was successfully added")
+#     return response, httpCode
 
 
-@natnetworkDecorator
-def i_natnetwork_removeportforwardrule(oVBoxObj, oNATNetworkRemovePortForwardRuleRequestBody: NATNetworkRemovePortForwardRuleRequestBody):  # noqa: E501
-    """
-    Call interface method INATNetwork::removePortForwardRule
+# @natnetworkDecorator
+# def i_natnetwork_addportforwardrule(oVBoxObj, oNATNetworkAddPortForwardRuleRequestBody: NATNetworkAddPortForwardRuleRequestBody):  # noqa: E501
+#     """
+#     Call interface method INATNetwork::addPortForwardRule
 
-    :param networkid: The Id of network
-    :type networkid: str
-    :param oNATNetworkRemovePortForwardRuleRequestBody: 
-    :type oNATNetworkRemovePortForwardRuleRequestBody: dict | bytes
+#     :param networkid: The Id of network
+#     :type networkid: str
+#     :param oNATNetworkAddPortForwardRuleRequestBody: 
+#     :type oNATNetworkAddPortForwardRuleRequestBody: dict | bytes
 
-    :rtype: None
-    """
+#     :rtype: None
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    ruleName = oNATNetworkRemovePortForwardRuleRequestBody.ruleName
-    fIPv6 = oNATNetworkRemovePortForwardRuleRequestBody.isIpv6
+#     fIPv6 = oNATNetworkAddPortForwardRuleRequestBody.isIpv6
+#     guestIP = oNATNetworkAddPortForwardRuleRequestBody.guestIP
+#     guestPort= oNATNetworkAddPortForwardRuleRequestBody.guestPort
+#     hostIP = oNATNetworkAddPortForwardRuleRequestBody.hostIP
+#     hostPort = oNATNetworkAddPortForwardRuleRequestBody.hostPort
+#     proto = swagger_to_vbox_natprotocol(oNATNetworkAddPortForwardRuleRequestBody.proto)
+#     ruleName = oNATNetworkAddPortForwardRuleRequestBody.ruleName
 
-    oError = None
-    httpCode = HTTPStatus.OK
-    oCurrNATNetwork = oVBoxObj
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     oCurrNATNetwork = oVBoxObj
+
+#     try:
+#         oCurrNATNetwork.addPortForwardRule(fIPv6, ruleName, proto, hostIP, hostPort, guestIP, guestPort)
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+
+#     response = jsonify(oError if oError is not None else f"The rule '{ruleName}' for NAT network '{oCurrNATNetwork.networkName}' was successfully added")
+#     return response, httpCode
 
 
-    try:
-        oCurrNATNetwork.removePortForwardRule(fIPv6, ruleName)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+# @natnetworkDecorator
+# def i_natnetwork_removeportforwardrule(oVBoxObj, oNATNetworkRemovePortForwardRuleRequestBody: NATNetworkRemovePortForwardRuleRequestBody):  # noqa: E501
+#     """
+#     Call interface method INATNetwork::removePortForwardRule
 
-    response = jsonify(oError if oError is not None else f"The rule '{ruleName}' for NAT network '{oCurrNATNetwork.networkName}' was successfully removed")
-    return response, httpCode
+#     :param networkid: The Id of network
+#     :type networkid: str
+#     :param oNATNetworkRemovePortForwardRuleRequestBody: 
+#     :type oNATNetworkRemovePortForwardRuleRequestBody: dict | bytes
+
+#     :rtype: None
+#     """
+
+#     vbox_utils_commonChecks()
+
+#     ruleName = oNATNetworkRemovePortForwardRuleRequestBody.ruleName
+#     fIPv6 = oNATNetworkRemovePortForwardRuleRequestBody.isIpv6
+
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     oCurrNATNetwork = oVBoxObj
+
+
+#     try:
+#         oCurrNATNetwork.removePortForwardRule(fIPv6, ruleName)
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+
+#     response = jsonify(oError if oError is not None else f"The rule '{ruleName}' for NAT network '{oCurrNATNetwork.networkName}' was successfully removed")
+#     return response, httpCode
 
 
 # def i_natnetwork_start(networkid):  # noqa: E501
