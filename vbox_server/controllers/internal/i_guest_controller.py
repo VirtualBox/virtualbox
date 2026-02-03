@@ -65,63 +65,63 @@ def i_guest_getfacilitystatus(facility=None):  # noqa: E501
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
 
 
-def i_virtualbox_getguestosdescsbysubtype(OSSubtype=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::getGuestOSDescsBySubtype
+# def i_virtualbox_getguestosdescsbysubtype(OSSubtype=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::getGuestOSDescsBySubtype
 
-    :param OSSubtype: 
-    :type OSSubtype: str
+#     :param OSSubtype: 
+#     :type OSSubtype: str
 
-    :rtype: VirtualboxGetguestosdescsbysubtypeResponse
-    """
+#     :rtype: VirtualboxGetguestosdescsbysubtypeResponse
+#     """
 
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    vbox_utils_commonChecks()
-    oVirtualboxGetguestosdescsbysubtypeResponse = VirtualBoxGetGuestOSDescsBySubtypeResponse([])
+#     vbox_utils_commonChecks()
+#     oVirtualboxGetguestosdescsbysubtypeResponse = VirtualBoxGetGuestOSDescsBySubtypeResponse([])
 
-    try:
-        oVBox = ctx['vb']
-        olVBoxGuestOSDesc = oVBox.getGuestOSDescsBySubtype(OSSubtype)
-        for item in olVBoxGuestOSDesc:
-            oVirtualboxGetguestosdescsbysubtypeResponse.GuestOSDescs.append(item)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     try:
+#         oVBox = ctx['vb']
+#         olVBoxGuestOSDesc = oVBox.getGuestOSDescsBySubtype(OSSubtype)
+#         for item in olVBoxGuestOSDesc:
+#             oVirtualboxGetguestosdescsbysubtypeResponse.GuestOSDescs.append(item)
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oVirtualboxGetguestosdescsbysubtypeResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oVirtualboxGetguestosdescsbysubtypeResponse)
+#     return response, httpCode
 
 
-def i_virtualbox_getguestossubtypesbyfamilyid(family=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::getGuestOSSubtypesByFamilyId
+# def i_virtualbox_getguestossubtypesbyfamilyid(family=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::getGuestOSSubtypesByFamilyId
 
-    :param family: 
-    :type family: str
+#     :param family: 
+#     :type family: str
 
-    :rtype: VirtualBoxGetGuestOSSubtypesByFamilyIdResponse
-    """
+#     :rtype: VirtualBoxGetGuestOSSubtypesByFamilyIdResponse
+#     """
 
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    oVirtualboxGetguestossubtypesbyfamilyidResponse = VirtualBoxGetGuestOSSubtypesByFamilyIdResponse([])
+#     oVirtualboxGetguestossubtypesbyfamilyidResponse = VirtualBoxGetGuestOSSubtypesByFamilyIdResponse([])
 
-    try:
-        oVBox = ctx['vb']
-        olVBoxGuestOSSubtype = oVBox.getGuestOSSubtypesByFamilyId(family)
-        for item in olVBoxGuestOSSubtype:
-            oVirtualboxGetguestossubtypesbyfamilyidResponse.OSsubtypes.append(item)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     try:
+#         oVBox = ctx['vb']
+#         olVBoxGuestOSSubtype = oVBox.getGuestOSSubtypesByFamilyId(family)
+#         for item in olVBoxGuestOSSubtype:
+#             oVirtualboxGetguestossubtypesbyfamilyidResponse.OSsubtypes.append(item)
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oVirtualboxGetguestossubtypesbyfamilyidResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oVirtualboxGetguestossubtypesbyfamilyidResponse)
+#     return response, httpCode
 
 
 # def i_virtualbox_getguestostype(select=None, id=None):  # noqa: E501
