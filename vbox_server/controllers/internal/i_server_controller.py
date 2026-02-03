@@ -38,6 +38,74 @@ from vbox_server.models.virtual_box_get_extra_data_keys_response import VirtualB
 from vbox_server.models.virtual_box_get_tracked_object_ids_response import VirtualBoxGetTrackedObjectIdsResponse  # noqa: E501
 from vbox_server.models.virtual_box_get_tracked_object_response import VirtualBoxGetTrackedObjectResponse  # noqa: E501
 from vbox_server.models.virtual_box_obj_wrapper_response import VirtualBoxObjWrapperResponse  # noqa: E501
+from vbox_server.models.virtual_box_create_machine_request_body import VirtualBoxCreateMachineRequestBody  # noqa: E501
+from vbox_server.models.virtual_box_create_medium_request_body import VirtualBoxCreateMediumRequestBody
+from vbox_server.models.progress_obj_wrapper_response import ProgressObjWrapperResponse  # noqa: E501
+from vbox_server.models.host import Host  # noqa: E501
+
+
+def i_virtualbox_getserver(select=None):  # noqa: E501
+    """
+    :param select: The object attributes separated by comma
+    :type select: str
+
+    :rtype: VirtualBoxObjWrapperResponse
+    """
+
+    oError = None
+    httpCode = 200 #(OK)
+
+    vbox_utils_commonChecks()
+
+    try:
+        oVBox = ctx['vb']
+    except Exception as e:
+        logging.info ('couldn\'t get the VirtualBox object')
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    oVirtualBoxResponse = VirtualBoxObjWrapperResponse()
+    try:
+        oVirtualBoxResponse.virtualbox = i_fill_virtualbox(oVBox, select)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oVirtualBoxResponse)
+    return response, httpCode
+
+
+def i_virtualbox_gethost(select=None):  # noqa: E501
+    """
+    :param select: The object attributes separated by comma
+    :type select: str
+
+    :rtype: Host
+    """
+
+    oError = None
+    httpCode = 200 #(OK)
+
+    vbox_utils_commonChecks()
+
+    try:
+        oVBox = ctx['vb']
+    except Exception as e:
+        logging.info ('couldn\'t get the VirtualBox object')
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode
+
+    oHost = Host()
+    try:
+        oHost = i_fill_host(oVBox.host, select)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oHost)
+    return response, httpCode
 
 
 def i_list_machines(fAll=False, select=None, groups=None):  # noqa: E501
@@ -116,16 +184,19 @@ def i_list_machines(fAll=False, select=None, groups=None):  # noqa: E501
     return response, httpCode
 
 
-def i_synthetic_getserver(select=None):  # noqa: E501
+def i_virtualbox_findprogressbyid(progressid, select=None, id=None):  # noqa: E501
     """
-    Call interface method IVirtualBox::syntheticGetServer
+    Call interface method IVirtualBox::findProgressById
 
+    :param progressid: The Id of progress
+    :type progressid: str
     :param select: The object attributes separated by comma
     :type select: str
+    :param id: 
+    :type id: str
 
-    :rtype: VirtualBoxResponse
+    :rtype: ProgressResponse
     """
-
     oError = None
     httpCode = 200 #(OK)
 
@@ -135,123 +206,248 @@ def i_synthetic_getserver(select=None):  # noqa: E501
         oVBox = ctx['vb']
     except Exception as e:
         logging.info ('couldn\'t get the VirtualBox object')
+        oError = Error(500, str(e))
+        return jsonify(oError), 500
+
+    oProgressResponse = ProgressObjWrapperResponse()
+    try:
+        oVBoxProgress = oVBox.findProgressById(progressid)
+        oProgressResponse.progress = i_fill_progress(oVBoxProgress)
+    except Exception as e:
+        httpCode = 500
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oProgressResponse)
+    return response, httpCode
+
+
+# Problem! IVirtualBox::createMedium must be called together with IMedium::createBaseStorage inside one action
+# Because medium registration is done only inside IMedium::createBaseStorage.
+# User can't find a new medium after returning from IVirtualBox::createMedium.
+# Workaround is the using the dictionary lNewAndNotRegisteredStorage as the temporary storage for a new VirtualBox Medium object
+import uuid
+from vbox_server.controllers.internal.i_m_medium_controller import lNewAndNotRegisteredStorage
+def i_virtualbox_createmedium(oVirtualBoxCreateMediumRequestBody: VirtualBoxCreateMediumRequestBody):  # noqa: E501
+    """
+    Call interface method IVirtualBox::createMedium
+
+    :param oVirtualBoxCreateMediumRequestBody: 
+    :type oVirtualBoxCreateMediumRequestBody: dict | bytes
+
+    :rtype: MediumResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    format = oVirtualBoxCreateMediumRequestBody.format
+    location = oVirtualBoxCreateMediumRequestBody.location
+    accessMode = swagger_to_vbox_accessmode(oVirtualBoxCreateMediumRequestBody.accessMode)
+    deviceType = swagger_to_vbox_devicetype(oVirtualBoxCreateMediumRequestBody.aDeviceTypeType)
+
+    logging.info(f"Creating medium in location {location}")
+
+    oVBox = ctx['vb']
+    oError = None
+    httpCode = HTTPStatus.OK
+    oMediumResponse = MediumObjWrapperResponse()
+
+    try:
+        oHdd = oVBox.createMedium(format, location, accessMode, deviceType)
+        if oHdd is not None:
+            tempUuid = uuid.uuid4()
+            strUuid = str(tempUuid)
+            lNewAndNotRegisteredStorage[strUuid] = oHdd
+            oMediumResponse.medium = i_fill_medium(oHdd)
+            oMediumResponse.medium.id = strUuid
+            logging.info('The medium creation has been done successfully')
+        else:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, f"Something wrong with medium creation in location {location}")
+
+    except Exception as e:
+        logging.info(f"Exception during medium creation in location {location}")
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMediumResponse)
+    return response, httpCode
+
+
+def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody: VirtualBoxCreateMachineRequestBody):  # noqa: E501
+    """
+    Call interface method IVirtualBox::createMachine
+
+    :param oVirtualBoxCreateMachineRequestBody: 
+    :type oVirtualBoxCreateMachineRequestBody: dict | bytes
+
+    :rtype: MachineResponse
+    """
+
+    vbox_utils_commonChecks()
+
+    httpCode = HTTPStatus.OK
+
+    o = oVirtualBoxCreateMachineRequestBody
+    print(o)
+    name = o.name
+    osTypeId = o.osTypeId
+    groups = o.groups
+    flags = o.flags
+    settingsFile = o.settingsFile# check or ignore?
+
+    platform = swagger_to_vbox_platformarchitecture(o.platform)
+    logging.info('The passed PlatformArchitecture is ' + str(platform))
+
+    cipher = o.cipher
+    passwordId = o.passwordId
+    password = o.password
+
+    oVM, oError = vbox_utils_find_machine(name)
+    if oVM is not None:
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, "Machine with the name %s has already registered in VirtualBox" % (name))
+        return jsonify(oError), httpCode
+    else:
+        #set to None
+        oError = None
+
+    try:
+        ctx['vb'].getGuestOSType(osTypeId)
+    except Exception as e:
+        httpCode = HTTPStatus.PRECONDITION_FAILED
+        oError = Error(httpCode, str(e))
+        return jsonify(oError), httpCode 
+
+    oVBox = ctx['vb']
+
+    try:
+        oVM = oVBox.createMachine(settingsFile, name, platform, groups, osTypeId, flags, cipher, passwordId, password)
+        oVM.saveSettings()
+        logging.info("created machine with UUID", str(oVM.id))
+        oVBox.registerMachine(oVM)
+        logging.info("registered machine with UUID", str(oVM.id))
+    except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
         return jsonify(oError), httpCode
 
-    oVirtualBoxResponse = VirtualBoxObjWrapperResponse()
-    try:
-        oVirtualBoxResponse.virtualbox = i_fill_virtualbox(oVBox, select)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+    if oVM is not None:
+        vbox_utils_logVmInfo(oVM)
 
-    response = jsonify(oError if oError is not None else oVirtualBoxResponse)
+        oMachine = None
+        try:
+            oMachine = i_fill_machine(oVM)
+        except Exception as e:
+            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+            oError = Error(httpCode, str(e))
+            return jsonify(oError), httpCode
+
+    response = jsonify(oMachine if oMachine is not None else oError)
     return response, httpCode
 
 
-def i_virtualbox_getmachinesbygroups(select=None, groups=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::getMachinesByGroups
+# def i_virtualbox_getmachinesbygroups(select=None, groups=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::getMachinesByGroups
 
-    :param select: The object attributes separated by comma
-    :type select: str
-    :param groups: 
-    :type groups: str
+#     :param select: The object attributes separated by comma
+#     :type select: str
+#     :param groups: 
+#     :type groups: str
 
-    :rtype: MachineArrayResponse
-    """
+#     :rtype: MachineArrayResponse
+#     """
 
-    if groups is None or len(groups) == 0:
-        return i_list_machines(True, select, groups)
+#     if groups is None or len(groups) == 0:
+#         return i_list_machines(True, select, groups)
 
-    return i_list_machines(False, select, groups)
+#     return i_list_machines(False, select, groups)
 
 
-def i_virtualbox_checkfirmwarepresent(platformArchitecture=None, firmwareType=None, version=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::checkFirmwarePresent
+# def i_virtualbox_checkfirmwarepresent(platformArchitecture=None, firmwareType=None, version=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::checkFirmwarePresent
 
-    :param platformArchitecture: For the possible values of enumeration look into #/definitions/PlatformArchitecture
-    :type platformArchitecture: str
-    :param firmwareType: For the possible values of enumeration look into #/definitions/FirmwareType
-    :type firmwareType: str
-    :param version: 
-    :type version: str
+#     :param platformArchitecture: For the possible values of enumeration look into #/definitions/PlatformArchitecture
+#     :type platformArchitecture: str
+#     :param firmwareType: For the possible values of enumeration look into #/definitions/FirmwareType
+#     :type firmwareType: str
+#     :param version: 
+#     :type version: str
 
-    :rtype: VirtualboxCheckfirmwarepresentResponse
-    """
+#     :rtype: VirtualboxCheckfirmwarepresentResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    oError = None
-    httpCode = HTTPStatus.OK
-    vBoxPlatformArchitecture = swagger_to_vbox_platformarchitecture(platformArchitecture)
-    vBoxFirmwareType = swagger_to_vbox_firmwaretype(firmwareType)
-    if vBoxFirmwareType is None:
-        return "The requested firmware type " + str(firmwareType) + " wasn't found", HTTPStatus.NOT_FOUND
+#     oError = None
+#     httpCode = HTTPStatus.OK
+#     vBoxPlatformArchitecture = swagger_to_vbox_platformarchitecture(platformArchitecture)
+#     vBoxFirmwareType = swagger_to_vbox_firmwaretype(firmwareType)
+#     if vBoxFirmwareType is None:
+#         return "The requested firmware type " + str(firmwareType) + " wasn't found", HTTPStatus.NOT_FOUND
     
-    if version is None: version=''
+#     if version is None: version=''
 
-    oVirtualboxCheckfirmwarepresentResponse = VirtualBoxCheckFirmwarePresentResponse()
-    try:
-        oVBox = ctx['vb']
-        bRes, sFile, sUrl = oVBox.checkFirmwarePresent(vBoxPlatformArchitecture, vBoxFirmwareType, version)
-        if bRes == True:
-            logging.info('Successfully get the information about firmware')
-            logging.info('The command result is ' + str(bRes))
-            oVirtualboxCheckfirmwarepresentResponse.url = sUrl
-            oVirtualboxCheckfirmwarepresentResponse.file = sFile
-            oVirtualboxCheckfirmwarepresentResponse.result = bRes
-        else:
-            logging.info('Something is wrong with the passed data or some values are empty ')
+#     oVirtualboxCheckfirmwarepresentResponse = VirtualBoxCheckFirmwarePresentResponse()
+#     try:
+#         oVBox = ctx['vb']
+#         bRes, sFile, sUrl = oVBox.checkFirmwarePresent(vBoxPlatformArchitecture, vBoxFirmwareType, version)
+#         if bRes == True:
+#             logging.info('Successfully get the information about firmware')
+#             logging.info('The command result is ' + str(bRes))
+#             oVirtualboxCheckfirmwarepresentResponse.url = sUrl
+#             oVirtualboxCheckfirmwarepresentResponse.file = sFile
+#             oVirtualboxCheckfirmwarepresentResponse.result = bRes
+#         else:
+#             logging.info('Something is wrong with the passed data or some values are empty ')
 
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oVirtualboxCheckfirmwarepresentResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oVirtualboxCheckfirmwarepresentResponse)
+#     return response, httpCode
 
 
-def i_virtualbox_composemachinefilename(name=None, group=None, createFlags=None, baseFolder=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::composeMachineFilename
+# def i_virtualbox_composemachinefilename(name=None, group=None, createFlags=None, baseFolder=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::composeMachineFilename
 
-    :param name: 
-    :type name: str
-    :param group: 
-    :type group: str
-    :param createFlags: 
-    :type createFlags: str
-    :param baseFolder: 
-    :type baseFolder: str
+#     :param name: 
+#     :type name: str
+#     :param group: 
+#     :type group: str
+#     :param createFlags: 
+#     :type createFlags: str
+#     :param baseFolder: 
+#     :type baseFolder: str
 
-    :rtype: VirtualboxComposemachinefilenameResponse
-    """
+#     :rtype: VirtualboxComposemachinefilenameResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    oVirtualboxComposemachinefilenameResponse = VirtualBoxComposeMachineFilenameResponse()
-    try:
-        oVBox = ctx['vb']
-        sFullSettingFilePath = oVBox.composeMachineFilename(name, group, createFlags, baseFolder)
-        if sFullSettingFilePath!='':
-            logging.info('Successfully get the full path of the settings file name')
-            logging.info('The command result is ' + sFullSettingFilePath)
-            oVirtualboxComposemachinefilenameResponse.file = sFullSettingFilePath
-        else:
-            logging.info('Weird! The full path of the settings file name is empty')
+#     oVirtualboxComposemachinefilenameResponse = VirtualBoxComposeMachineFilenameResponse()
+#     try:
+#         oVBox = ctx['vb']
+#         sFullSettingFilePath = oVBox.composeMachineFilename(name, group, createFlags, baseFolder)
+#         if sFullSettingFilePath!='':
+#             logging.info('Successfully get the full path of the settings file name')
+#             logging.info('The command result is ' + sFullSettingFilePath)
+#             oVirtualboxComposemachinefilenameResponse.file = sFullSettingFilePath
+#         else:
+#             logging.info('Weird! The full path of the settings file name is empty')
 
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oVirtualboxComposemachinefilenameResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oVirtualboxComposemachinefilenameResponse)
+#     return response, httpCode
 
 
 # def i_virtualbox_createunattendedinstaller():  # noqa: E501
@@ -297,151 +493,151 @@ def i_virtualbox_composemachinefilename(name=None, group=None, createFlags=None,
 #     return response, httpCode
 
 
-def i_virtualbox_getextradatakeys():  # noqa: E501
-    """
-    Call interface method IVirtualBox::getExtraDataKeys
+# def i_virtualbox_getextradatakeys():  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::getExtraDataKeys
 
 
-    :rtype: VirtualboxGetextradatakeysResponse
-    """
+#     :rtype: VirtualboxGetextradatakeysResponse
+#     """
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    oVM = None
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oVM = None
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    oVirtualboxGetextradatakeysResponse = VirtualBoxGetExtraDataKeysResponse()
-    try:
-        oVBox = ctx['vb']
-        olKeys = oVBox.getExtraDataKeys()
-        keys = []
-        for item in olKeys:
-            logging.info(item)
-            keys.append(item)
+#     oVirtualboxGetextradatakeysResponse = VirtualBoxGetExtraDataKeysResponse()
+#     try:
+#         oVBox = ctx['vb']
+#         olKeys = oVBox.getExtraDataKeys()
+#         keys = []
+#         for item in olKeys:
+#             logging.info(item)
+#             keys.append(item)
 
-        oVirtualboxGetextradatakeysResponse.keys = keys
-        logging.info('Successfully get the list of VirtualBox extra keys')
+#         oVirtualboxGetextradatakeysResponse.keys = keys
+#         logging.info('Successfully get the list of VirtualBox extra keys')
 
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else oVirtualboxGetextradatakeysResponse)
-    return response, httpCode
-
-
-def i_virtualbox_getmachinestates(machines=None):  # noqa: E501
-    """
-    Call interface method IVirtualBox::getMachineStates
-
-    :param machines: Put here an ID of requested IMachine VirtualBox object
-    :type machines: List[str]
-
-    :rtype: MachineStateArrayResponse
-    """
-
-    oError = None
-    httpCode = HTTPStatus.OK
-
-    vbox_utils_commonChecks()
-
-    lMachine = []
-
-    for vmid in machines:
-        # reset oError to None after this call
-        oVM, oError = vbox_utils_find_machine(vmid)
-        if oVM is None:
-            httpCode = HTTPStatus.PRECONDITION_FAILED
-            oError = Error(httpCode, "Machine with the id %vmid hasn\'t registered in VirtualBox" % (vmid))
-            return jsonify(oError), httpCode
-        else:
-            oError = None
-            lMachine.append(oVM)
-
-    oMachineStateArrayResponse = MachineStateEnumArrayWrapperResponse()
-    try:
-        oVBox = ctx['vb']
-        oVMStateList = oVBox.getMachineStates(lMachine)
-        lMachineState = []
-        for state in oVMStateList:
-            sState = vbox_to_swagger_machinestate(state)
-            lMachineState.append(sState)
-
-        oMachineStateArrayResponse.states = lMachineState
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else oMachineStateArrayResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oVirtualboxGetextradatakeysResponse)
+#     return response, httpCode
 
 
-def i_virtualbox_openmedium(oVirtualBoxOpenMediumRequestBody):  # noqa: E501
-    """
-    Call interface method IVirtualBox::openMedium
+# def i_virtualbox_getmachinestates(machines=None):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::getMachineStates
 
-    :param oVirtualBoxOpenMediumRequestBody: 
-    :type oVirtualBoxOpenMediumRequestBody: dict | bytes
+#     :param machines: Put here an ID of requested IMachine VirtualBox object
+#     :type machines: List[str]
 
-    :rtype: MediumResponse
-    """
+#     :rtype: MachineStateArrayResponse
+#     """
 
-    oError = None
-    httpCode = 200 #(OK)
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    location = oVirtualBoxOpenMediumRequestBody.location
+#     lMachine = []
 
-    oMediumResponse = MediumObjWrapperResponse()
+#     for vmid in machines:
+#         # reset oError to None after this call
+#         oVM, oError = vbox_utils_find_machine(vmid)
+#         if oVM is None:
+#             httpCode = HTTPStatus.PRECONDITION_FAILED
+#             oError = Error(httpCode, "Machine with the id %vmid hasn\'t registered in VirtualBox" % (vmid))
+#             return jsonify(oError), httpCode
+#         else:
+#             oError = None
+#             lMachine.append(oVM)
 
-    accessMode = swagger_to_vbox_accessmode(oVirtualBoxOpenMediumRequestBody.accessMode)
-    if accessMode is None:
-        return "Unknown access mode " + str(accessMode), HTTPStatus.NOT_FOUND
+#     oMachineStateArrayResponse = MachineStateEnumArrayWrapperResponse()
+#     try:
+#         oVBox = ctx['vb']
+#         oVMStateList = oVBox.getMachineStates(lMachine)
+#         lMachineState = []
+#         for state in oVMStateList:
+#             sState = vbox_to_swagger_machinestate(state)
+#             lMachineState.append(sState)
 
-    deviceType = swagger_to_vbox_devicetype(oVirtualBoxOpenMediumRequestBody.deviceType)
-    if deviceType is None or deviceType == ctx['const'].DeviceType_Network:
-        return "Unknown or unsupported device type " + str(deviceType), HTTPStatus.NOT_FOUND
+#         oMachineStateArrayResponse.states = lMachineState
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    try:
-        oVBox = ctx['vb']
-        oMedium = oVBox.openMedium(location, deviceType, accessMode, False)
-        oMediumResponse.medium = i_fill_medium(oMedium)
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-
-    response = jsonify(oError if oError is not None else oMediumResponse)
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else oMachineStateArrayResponse)
+#     return response, httpCode
 
 
-def i_virtualbox_setextradata(oVirtualBoxSetExtraDataRequestBody):  # noqa: E501
-    """
-    Call interface method IVirtualBox::setExtraData
+# def i_virtualbox_openmedium(oVirtualBoxOpenMediumRequestBody):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::openMedium
 
-    :param oVirtualBoxSetExtraDataRequestBody: 
-    :type oVirtualBoxSetExtraDataRequestBody: dict | bytes
+#     :param oVirtualBoxOpenMediumRequestBody: 
+#     :type oVirtualBoxOpenMediumRequestBody: dict | bytes
 
-    :rtype: None
-    """
+#     :rtype: MediumResponse
+#     """
 
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = 200 #(OK)
+
+#     vbox_utils_commonChecks()
+
+#     location = oVirtualBoxOpenMediumRequestBody.location
+
+#     oMediumResponse = MediumObjWrapperResponse()
+
+#     accessMode = swagger_to_vbox_accessmode(oVirtualBoxOpenMediumRequestBody.accessMode)
+#     if accessMode is None:
+#         return "Unknown access mode " + str(accessMode), HTTPStatus.NOT_FOUND
+
+#     deviceType = swagger_to_vbox_devicetype(oVirtualBoxOpenMediumRequestBody.deviceType)
+#     if deviceType is None or deviceType == ctx['const'].DeviceType_Network:
+#         return "Unknown or unsupported device type " + str(deviceType), HTTPStatus.NOT_FOUND
+
+#     try:
+#         oVBox = ctx['vb']
+#         oMedium = oVBox.openMedium(location, deviceType, accessMode, False)
+#         oMediumResponse.medium = i_fill_medium(oMedium)
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+
+#     response = jsonify(oError if oError is not None else oMediumResponse)
+#     return response, httpCode
+
+
+# def i_virtualbox_setextradata(oVirtualBoxSetExtraDataRequestBody):  # noqa: E501
+#     """
+#     Call interface method IVirtualBox::setExtraData
+
+#     :param oVirtualBoxSetExtraDataRequestBody: 
+#     :type oVirtualBoxSetExtraDataRequestBody: dict | bytes
+
+#     :rtype: None
+#     """
+
+#     oError = None
+#     httpCode = HTTPStatus.OK
     
-    o = oVirtualBoxSetExtraDataRequestBody
+#     o = oVirtualBoxSetExtraDataRequestBody
 
-    try:
-        oVBox = ctx['vb']
-        oVBox.setExtraData(o.key, o.value)
-        logging.info(f'Successfully set VirtualBox extra data key "{o.key}" to value "{o.value}"')
+#     try:
+#         oVBox = ctx['vb']
+#         oVBox.setExtraData(o.key, o.value)
+#         logging.info(f'Successfully set VirtualBox extra data key "{o.key}" to value "{o.value}"')
 
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
 
-    response = jsonify(oError if oError is not None else f'Successfully set VirtualBox extra data key "{o.key}" to value "{o.value}"')
-    return response, httpCode
+#     response = jsonify(oError if oError is not None else f'Successfully set VirtualBox extra data key "{o.key}" to value "{o.value}"')
+#     return response, httpCode
 
 
 from datetime import datetime
@@ -549,58 +745,58 @@ def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
     return response, httpCode
 
 
-def i_virtualbox_gettrackedobjectids(name=None):
-    """
-    Call interface method IVirtualBox::getTrackedObjectIds
+# def i_virtualbox_gettrackedobjectids(name=None):
+#     """
+#     Call interface method IVirtualBox::getTrackedObjectIds
 
-    :param name: 
-    :type name: str
+#     :param name: 
+#     :type name: str
 
-    :rtype: VirtualboxGettrackedobjectidsResponse
-    """
+#     :rtype: VirtualboxGettrackedobjectidsResponse
+#     """
 
-    oError = None
-    httpCode = HTTPStatus.OK
+#     oError = None
+#     httpCode = HTTPStatus.OK
 
-    vbox_utils_commonChecks()
+#     vbox_utils_commonChecks()
 
-    try:
-        oVBox = ctx['vb']
+#     try:
+#         oVBox = ctx['vb']
 
-    except Exception as e:
-        logging.info ('couldn\'t get the VirtualBox object')
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        oError = Error(httpCode, str(e))
-        return jsonify(oError), httpCode
+#     except Exception as e:
+#         logging.info ('couldn\'t get the VirtualBox object')
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         oError = Error(httpCode, str(e))
+#         return jsonify(oError), httpCode
 
-    oVirtualboxGettrackedobjectidsResponse = VirtualBoxGetTrackedObjectIdsResponse()
-    try:
-        if name and len(name) != 0:
-            oObjIdList = oVBox.getTrackedObjectIds(name)
-            if len(oObjIdList) != 0:
-                oVirtualboxGettrackedobjectidsResponse.objIdsList = list()
-                for i in oObjIdList:
-                    oVirtualboxGettrackedobjectidsResponse.objIdsList.append(i)
-            else:
-                httpCode = HTTPStatus.NOT_FOUND
-                oError = Error(httpCode, 'Unknown interface or no objects were found for the passed interface name')
-        else:
-            httpCode = HTTPStatus.BAD_REQUEST
-            oError = Error(httpCode, 'The passed interface name string is Null or empty')
+#     oVirtualboxGettrackedobjectidsResponse = VirtualBoxGetTrackedObjectIdsResponse()
+#     try:
+#         if name and len(name) != 0:
+#             oObjIdList = oVBox.getTrackedObjectIds(name)
+#             if len(oObjIdList) != 0:
+#                 oVirtualboxGettrackedobjectidsResponse.objIdsList = list()
+#                 for i in oObjIdList:
+#                     oVirtualboxGettrackedobjectidsResponse.objIdsList.append(i)
+#             else:
+#                 httpCode = HTTPStatus.NOT_FOUND
+#                 oError = Error(httpCode, 'Unknown interface or no objects were found for the passed interface name')
+#         else:
+#             httpCode = HTTPStatus.BAD_REQUEST
+#             oError = Error(httpCode, 'The passed interface name string is Null or empty')
 
-    except COMException as e:
-        httpCode = HTTPStatus.NOT_FOUND
-        from ctypes import c_uint32
-        comErrorHex = c_uint32(e.args[0]).value
-        if platform.system() == "Windows":
-            logging.info ('COM error 0x%X' % (comErrorHex))
-        else:
-            logging.info ('XPCOM error %X' % (comErrorHex))
-        oError = Error(httpCode, str(e))
+#     except COMException as e:
+#         httpCode = HTTPStatus.NOT_FOUND
+#         from ctypes import c_uint32
+#         comErrorHex = c_uint32(e.args[0]).value
+#         if platform.system() == "Windows":
+#             logging.info ('COM error 0x%X' % (comErrorHex))
+#         else:
+#             logging.info ('XPCOM error %X' % (comErrorHex))
+#         oError = Error(httpCode, str(e))
 
-    except Exception as e:
-        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-        e.msg = e.msg + ' At least, check that VirtualBox is running.'
-        oError = Error(httpCode, str(e))
-    response = jsonify(oError if oError is not None else oVirtualboxGettrackedobjectidsResponse)
-    return response, httpCode
+#     except Exception as e:
+#         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+#         e.msg = e.msg + ' At least, check that VirtualBox is running.'
+#         oError = Error(httpCode, str(e))
+#     response = jsonify(oError if oError is not None else oVirtualboxGettrackedobjectidsResponse)
+#     return response, httpCode
