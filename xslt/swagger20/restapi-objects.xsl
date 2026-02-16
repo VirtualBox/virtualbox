@@ -202,6 +202,9 @@
      </xsl:for-each>
     </xsl:if>
 
+    <xsl:text>    x-vbox-type: interface</xsl:text>
+    <xsl:text>&#x0A;</xsl:text>
+
     <xsl:text>&#x0A;</xsl:text>
 
 </xsl:template>
