@@ -8,6 +8,366 @@ from collections import defaultdict
 
 logging.basicConfig(level=logging.INFO)
 
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
+
+
+@dataclass
+class FieldNode:
+    name: str
+    base_kind: str
+    is_array: bool = False
+    ref: Optional[str] = None
+    item_ref: Optional[str] = None
+    enum_name: Optional[str] = None
+    interface_name: Optional[str] = None
+
+
+@dataclass
+class TypeNode:
+    kind: str = "unknown"
+
+    ref: Optional[str] = None
+
+    swagger_type: Optional[str] = None
+    swagger_format: Optional[str] = None
+
+    is_array: bool = False
+    item_ref: Optional[str] = None
+    item_kind: Optional[str] = None
+
+    is_wrapper: bool = False
+    is_wrapper_multi: bool = False
+    inner_ref: Optional[str] = None
+    inner_kind: Optional[str] = None
+    wrapper_field: Optional[str] = None
+
+
+def build_returned_param_list_from_node(node: TypeNode) -> list:
+    if not node or node.kind in ("unknown", "no_body"):
+        return []
+
+    def pack(name: str, base_kind: str, is_array: bool, ref: str = None, item_ref: str = None, item_kind: str = None):
+        return {
+            "name": name,
+            "base_kind": base_kind,
+            "is_array": bool(is_array),
+            "ref": ref,
+            "item_ref": item_ref,
+            "item_kind": item_kind,
+        }
+
+    if node.kind == "wrapper_multi":
+        return [pack("returnValue", "object", False, ref=node.ref)]
+
+    if node.kind == "wrapper":
+        if node.is_array:
+            return [pack("returnValue", "array", True, ref=node.ref, item_ref=node.item_ref, item_kind=node.item_kind)]
+        return [pack("returnValue", node.inner_kind or "object", False, ref=node.inner_ref or node.ref)]
+
+    if node.kind == "array":
+        return [pack("returnValue", "array", True, item_ref=node.item_ref, item_kind=node.item_kind)]
+
+    if node.kind in ("enum", "interface", "object", "simple"):
+        return [pack("returnValue", node.kind, False, ref=node.ref)]
+
+    return [pack("returnValue", "object", False)]
+
+
+def pick_success_response(responses: dict):
+    for code in ('200', '201', '202', '204'):
+        if code in responses:
+            v = responses.get(code)
+            return code, (v if isinstance(v, dict) else {})
+    if 'default' in responses:
+        v = responses.get('default')
+        return 'default', (v if isinstance(v, dict) else {})
+    for k, v in (responses or {}).items():
+        return k, (v if isinstance(v, dict) else {})
+    return '', {}
+
+
+def parse_response(responses: dict, definitions: dict):
+    code, resp = pick_success_response(responses or {})
+
+    if not isinstance(resp, dict):
+        return code, TypeNode(kind="no_body"), True
+
+    schema = resp.get("schema")
+    if not isinstance(schema, dict):
+        return code, TypeNode(kind="no_body"), True
+
+    node = parse_schema_to_typenode_shallow(schema, definitions)
+    return code, node, False
+
+
+def typenode_to_dict(n: TypeNode) -> dict:
+    if n is None:
+        return {}
+    d = {
+        "kind": n.kind,
+        "ref": n.ref,
+        "is_array": n.is_array,
+        "item_ref": n.item_ref,
+        "item_kind": n.item_kind,
+        "is_wrapper": n.is_wrapper,
+        "is_wrapper_multi": n.is_wrapper_multi,
+        "inner_ref": n.inner_ref,
+        "inner_kind": n.inner_kind,
+        "wrapper_field": n.wrapper_field,
+        "swagger_type": n.swagger_type,
+        "swagger_format": n.swagger_format,
+    }
+    return {k: v for k, v in d.items() if v not in (None, False, "", [])}
+
+
+def extract_ref_name(sref: str) -> str:
+    return sref.split("/")[-1] if isinstance(sref, str) else ""
+
+
+def get_def(definitions: dict, name: str) -> dict:
+    d = definitions.get(name, {})
+    return d if isinstance(d, dict) else {}
+
+
+def is_enum_ref(definitions: dict, name: str) -> bool:
+    d = get_def(definitions, name)
+    return isinstance(d.get("enum"), list) and len(d["enum"]) > 0
+
+
+def is_interface_ref(definitions: dict, name: str) -> bool:
+    d = get_def(definitions, name)
+    return bool(d.get("x-vbox-type"))
+
+
+def classify_ref(definitions: dict, ref_name: str) -> str:
+    if is_enum_ref(definitions, ref_name):
+        return "enum"
+    if is_interface_ref(definitions, ref_name):
+        return "interface"
+    return "object"
+
+
+def classify_response_type(node: TypeNode) -> str:
+    if not node or node.kind == 'unknown':
+        return "No Response"
+    if node.kind == 'enum':
+        return "Enum"
+    if node.kind == 'array':
+        return "Array"
+    if node.kind == 'obj':
+        if node.x_vbox_type:
+            return "Interface"
+        return "Standard"
+    if node.kind in ('union', 'complex'):
+        return "Standard"
+    if node.kind == 'simple':
+        return "Standard"
+    return "Standard"
+
+
+def unwrap_wrapper_one_level(definitions: dict, wrapper_ref: str):
+    """
+    Returns:
+      (wrapper_kind, field_name, inner_schema_dict)
+    wrapper_kind: 'single'|'multi'|None
+    """
+    d = get_def(definitions, wrapper_ref)
+
+    if is_enum_ref(definitions, wrapper_ref) or is_interface_ref(definitions, wrapper_ref):
+        return (None, None, None)
+
+    props = d.get("properties")
+    if not isinstance(props, dict) or len(props) == 0:
+        return (None, None, None)
+
+    if len(props) > 1:
+        return ("multi", None, None)
+
+    field_name, field_schema = next(iter(props.items()))
+    if isinstance(field_schema, dict):
+        return ("single", field_name, field_schema)
+
+    return (None, None, None)
+
+
+def parse_schema_to_typenode_shallow(schema: dict, definitions: dict) -> TypeNode:
+    n = TypeNode(kind="unknown")
+
+    if not isinstance(schema, dict):
+        return n
+
+    if schema.get("type") == "array":
+        n.kind = "array"
+        n.is_array = True
+        items = schema.get("items", {})
+        if isinstance(items, dict):
+            iref = items.get("$ref")
+            if iref:
+                n.item_ref = extract_ref_name(iref)
+                n.item_kind = classify_ref(definitions, n.item_ref)
+            else:
+                itype = items.get("type")
+                if itype in ("string", "integer", "number", "boolean"):
+                    n.item_kind = "simple"
+                    n.swagger_type = itype
+        return n
+
+    stype = schema.get("type")
+    if stype in ("string", "integer", "number", "boolean"):
+        n.kind = "simple"
+        n.swagger_type = stype
+        n.swagger_format = schema.get("format")
+        return n
+
+    sref = schema.get("$ref")
+    if sref:
+        ref_name = extract_ref_name(sref)
+        n.ref = ref_name
+
+        direct_kind = classify_ref(definitions, ref_name)
+        if direct_kind in ("enum", "interface"):
+            n.kind = direct_kind
+            return n
+
+        wkind, field_name, field_schema = unwrap_wrapper_one_level(definitions, ref_name)
+
+        if wkind == "multi":
+            n.kind = "wrapper_multi"
+            n.is_wrapper = True
+            n.is_wrapper_multi = True
+            return n
+
+        if wkind == "single" and isinstance(field_schema, dict):
+            n.kind = "wrapper"
+            n.is_wrapper = True
+            n.wrapper_field = field_name
+
+            if "$ref" in field_schema:
+                inner_ref = extract_ref_name(field_schema["$ref"])
+                n.inner_ref = inner_ref
+                n.inner_kind = classify_ref(definitions, inner_ref)
+                return n
+
+            if field_schema.get("type") == "array":
+                n.is_array = True
+                n.inner_kind = "array"
+                items = field_schema.get("items", {})
+                if isinstance(items, dict) and "$ref" in items:
+                    inner_ref = extract_ref_name(items["$ref"])
+                    n.inner_ref = inner_ref
+                    n.item_ref = inner_ref
+                    n.item_kind = classify_ref(definitions, inner_ref)
+                else:
+                    itype = (items or {}).get("type") if isinstance(items, dict) else None
+                    if itype in ("string", "integer", "number", "boolean"):
+                        n.item_kind = "simple"
+                        n.swagger_type = itype
+                return n
+
+            ftype = field_schema.get("type")
+            if ftype in ("string", "integer", "number", "boolean"):
+                n.inner_kind = "simple"
+                n.swagger_type = ftype
+                n.swagger_format = field_schema.get("format")
+                return n
+
+            n.inner_kind = "unknown"
+            return n
+
+        n.kind = "object"
+        return n
+
+    if stype == "object" or "properties" in schema:
+        n.kind = "object"
+        return n
+
+    return n
+
+
+def parse_request_body(body_param: dict, definitions: dict):
+    """
+    Returns:
+      has_request_body: bool
+      request_body_type: str|None
+      request_body_fields: list[dict]  # [{'name':..., 'type':...}, ...]
+    """
+    if not isinstance(body_param, dict):
+        return False, None, []
+
+    schema = body_param.get("schema", {})
+    if not isinstance(schema, dict):
+        return True, None, []
+
+    sref = schema.get("$ref", "")
+    if not isinstance(sref, str) or not sref:
+        return True, None, []
+
+    request_body_type = sref.split("/")[-1]
+    request_body_fields = extract_body_fields(request_body_type, definitions)
+        
+    return True, request_body_type, request_body_fields
+
+
+def extract_body_fields(body_type: str, definitions: dict):
+    props = definitions.get(body_type, {}).get("properties", {})
+    if not isinstance(props, dict):
+        return []
+
+    def is_enum_ref(ref_name: str) -> bool:
+        d = definitions.get(ref_name, {})
+        return isinstance(d, dict) and isinstance(d.get("enum"), list) and len(d["enum"]) > 0
+
+    fields = []
+    for fname, finfo in props.items():
+        if not isinstance(finfo, dict):
+            fields.append({"name": fname, "type": "string"})
+            continue
+
+        if "$ref" in finfo:
+            ref_name = finfo["$ref"].split("/")[-1]
+            if is_enum_ref(ref_name):
+                fields.append({"name": fname, "type": "enum", "enum": ref_name})
+            else:
+                fields.append({"name": fname, "type": "ref", "ref": ref_name})
+            continue
+
+        ftype = finfo.get("type", "string")
+
+        if ftype == "array":
+            item = finfo.get("items", {})
+            item_type = "string"
+            item_ref = None
+            item_enum = None
+
+            if isinstance(item, dict):
+                if "$ref" in item:
+                    item_ref = item["$ref"].split("/")[-1]
+                    if is_enum_ref(item_ref):
+                        item_enum = item_ref
+                        item_type = "enum"
+                    else:
+                        item_type = "ref"
+                else:
+                    item_type = item.get("type", "string")
+
+            out = {"name": fname, "type": "array", "items_type": item_type}
+            if item_ref:
+                out["items_ref"] = item_ref
+            if item_enum:
+                out["items_enum"] = item_enum
+            fields.append(out)
+            continue
+
+        out = {"name": fname, "type": ftype}
+        fmt = finfo.get("format")
+        if fmt:
+            out["format"] = fmt
+        fields.append(out)
+
+    return fields
+
+
 def create_operation_id_list(data):
     id_list = set()
     for entry in data:
@@ -15,6 +375,7 @@ def create_operation_id_list(data):
         for item in entry.get('methods'):
             id_list.add(str(iface_name + '_' + item.get('method_name')).lower())
     return id_list
+
 
 def to_snake_case_simple(name):
     result = []
@@ -70,146 +431,68 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
     has_request_body, request_body_type = False, None
     request_body_fields = []
 
-    for param in operation_data.get('parameters', []):
+    params = operation_data.get('parameters', []) or []
+
+    x_vbox_stub = operation_data.get('x-vbox-stub', 'generate')
+    
+    body_param = None
+    for param in params:
         param_in = param.get('in')
-        pname = param.get('name')
-
         if param_in == 'body':
-            has_request_body = True
-            schema_ref = param.get('schema', {}).get('$ref', '')
-            request_body_type = schema_ref.split('/')[-1]
-            request_body_fields = list(definitions.get(request_body_type, {}).get('properties', {}).keys())
-
-            request_body_properties = definitions.get(request_body_type, {}).get('properties', {})
-            for field_name, field_info in request_body_properties.items():
-                ref = field_info.get('$ref')
-                if ref:
-                    ref_name = ref.split('/')[-1]
-                    if 'enum' in definitions.get(ref_name, {}):
-                        enum_in_params.append({'name': field_name, 'type': ref_name})
+            body_param = param
         elif param_in == 'path':
-            in_path_param_list.append(param)
+            if x_vbox_stub != 'generate':
+                in_path_param_list.append(param)
         elif param_in == 'query':
             in_query_param_list.append(param)
+            
+    has_request_body, request_body_type, request_body_fields = parse_request_body(body_param, definitions)
+
+    for f in request_body_fields:
+        if f.get("type") == "enum":
+            enum_in_params.append({"name": f["name"], "type": f["enum"]})
+        if f.get("type") == "array" and f.get("items_type") == "enum":
+            enum_in_params.append({"name": f["name"], "type": f["items_enum"]})
+ 
+    in_main_param_list = []
+
+    for p in in_path_param_list:
+        in_main_param_list.append({"name": p.get("name"), "type": "string"})
+
+    for p in in_query_param_list:
+        pname = p.get("name")
+        in_main_param_list.append({"name": pname, "type": "string"})
+        if pname == "select":
+            in_help_param_list.append(p)
+
+    if has_request_body:
+        in_main_param_list.append({"name": "oRequest", "type": request_body_type})
 
     iface_decorator_name = '@' + iface_name + 'Decorator'
 
     curr_vbox_obj = 'oCurr' + iface_name[0].upper() + iface_name[1:]
 
-    if has_request_body:
-        in_help_param_list = in_path_param_list + in_query_param_list
-    else:
-        for param in in_query_param_list:
-            pname = param.get('name')
-            if pname == 'select':
-                in_help_param_list.append(param)
-            else:
-                enum = extract_enum_from_description(param.get('description', ''), definitions)
-                if enum:
-                    enum_in_params.append({'name': pname, 'type': enum})
-                    in_main_param_list.append({'name': pname, 'type': enum})
-                else:
-                    lattr = {'name': pname, 'type': param.get('type', 'string')}
-                    lextra_attr ={}
-                    if lattr['type'] == 'array':
-                        lextra_attr = {'is_array': True}
-                        if (
-                            (items := param.get('items')) and
-                            (fmt := items.get('format')) and
-                            (x_vbox_type := items.get('x-vbox-type'))
-                        ):
-                            lextra_attr.update({
-                                'format': fmt,
-                                'x_vbox_type': x_vbox_type,
-                            })
-                    else:
-                        lextra_attr = {'format': param.get('format'), 'x_vbox_type': param.get('x-vbox-type')}
-
-                    lattr.update({k: v for k, v in lextra_attr.items() if v not in (None, 0)})
-                    in_main_param_list.append(lattr)
-
     in_param_names = [p['name'] for p in in_main_param_list]
-    param_names_map = {name: to_snake_case_simple(name) for name in in_param_names}
 
     responses = operation_data.get('responses', {})
 
-    response_ref, response_category, response_type, response_var, returned_param_list = None, 'No Response', None, None, []
+    success_code, resp_node, no_body = parse_response(responses, definitions)
+    response_success_code = success_code
+    response_category = classify_response_type(resp_node)
+    response_type_node = typenode_to_dict(resp_node)
+    response_has_body = (not no_body)
+    returned_param_list = build_returned_param_list_from_node(resp_node)
+    
+    response_ref, response_type, response_var = None, None, None
     response_item_type = None
 
-    response_200 = responses.get('200', {})
+    if getattr(resp_node, "ref", None):
+        response_ref = resp_node.ref
+        response_type = response_ref
+        response_var = f"o{response_type}"
 
-    if 'schema' in response_200:
-        ref = response_200['schema'].get('$ref')
-        if ref:
-            response_ref = ref.split('/')[-1]
-            response_type = response_ref
-            response_var = f"o{response_type}"
-
-            prop = definitions.get(response_ref, {}).get('properties', {})
-            returned_param_list = [{'name': key, 'value': val} for key, val in prop.items()] if prop else []
-
-            if 'ObjArrayWrapper' in response_ref or 'EnumArrayWrapper' in response_ref:
-                response_category = 'Array'
-                for key, value in prop.items():
-                    if value.get('type') == 'array':
-                        items_info = value.get('items', {})
-                        if '$ref' in items_info:
-                            response_item_type = items_info['$ref'].split('/')[-1]
-                        elif 'type' in items_info:
-                            response_item_type = items_info['type']
-                        break
-
-            elif 'ObjWrapper' in response_ref:
-                response_category = 'Interface'
-                for value in prop.values():
-                    if '$ref' in value:
-                        response_item_type = value['$ref'].split('/')[-1]
-                        break
-
-            elif 'EnumWrapper' in response_ref:
-                response_category = 'Enum'
-                for value in prop.values():
-                    if '$ref' in value:
-                        response_item_type = value['$ref'].split('/')[-1]
-                        break
-            else:
-                response_category = 'Standard'
-                standard_param_list = []
-
-                for field_name, field_info in prop.items():
-                    is_array = False
-                    is_enum = False
-                    field_type = None
-
-                    if field_info.get('type') == 'array':
-                        is_array = True
-                        items = field_info.get('items', {})
-
-                        if '$ref' in items:
-                            ref_name = items['$ref'].split('/')[-1]
-                            field_type = ref_name
-                            if 'enum' in definitions.get(ref_name, {}):
-                                is_enum = True
-                        elif 'type' in items:
-                            field_type = items['type']
-
-                    elif '$ref' in field_info:
-                        ref_name = field_info['$ref'].split('/')[-1]
-                        field_type = ref_name
-                        if 'enum' in definitions.get(ref_name, {}):
-                            is_enum = True
-
-                    elif 'type' in field_info:
-                        field_type = field_info['type']
-
-                    standard_param_list.append({
-                        'name': field_name,
-                        'is_array': is_array,
-                        'type': field_type,
-                        'is_enum': is_enum
-                    })
-
-                returned_param_list = standard_param_list
+    if getattr(resp_node, "kind", None) == "array" and resp_node.items:
+        response_item_type = resp_node.items.ref or resp_node.items.swagger_type
 
     return {
         'iface_name': iface_name,
@@ -231,10 +514,12 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
         'response_type': response_type,
         'response_var': response_var,
         'returned_param_list': returned_param_list,
-        'param_names_map': param_names_map,
         'response_item_type': response_item_type,
         'x_vbox_stub': operation_data.get('x-vbox-stub', 'generate'),
-        'tags': operation_data.get('tags', '')
+        'tags': operation_data.get('tags', ''),
+        'response_success_code': response_success_code,
+        'response_has_body': response_has_body,
+        'response_type_node': response_type_node,
     }
 
 
