@@ -239,10 +239,11 @@ else
 endif
 
 FUNCTION_JSON_FILE = function_list.json
+FUNCTION_JSON_FILE_SCRIPT = generate_function_list_in_json.py
 
 function-json:
 ifeq ($(INTERNAL_GENERATOR_TYPE), jinja)
-	python $(TOOLS_DIR)/scripts/generate_function_list_in_json.py \
+	python $(TOOLS_DIR)/scripts/$(FUNCTION_JSON_FILE_SCRIPT) \
 	--yaml-api-def $(DEST_CODE_DIR)/swagger/swagger.yaml \
 	--interface all \
 	--out-dir $(DEST_INTERMEDIATE_DIR) \
