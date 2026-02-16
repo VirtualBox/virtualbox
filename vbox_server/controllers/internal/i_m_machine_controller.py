@@ -258,7 +258,11 @@ if sys.version_info[0] >= 3:
 #     return i_machine_action(vmid, "ACPISLEEP")
 
 
-def i_machine_deleteconfig(vmid, media=None):
+def i_wrapper_machine_deleteconfig(vmid, media=None):
+    return _machine_deleteconfig(vmid, media)
+
+
+def _machine_deleteconfig(vmid, media=None):
     """
     Call interface method IMachine::deleteConfig
 
@@ -502,7 +506,11 @@ def i_machine_deleteconfig(vmid, media=None):
 #     return response, httpCode
 
 
-def i_machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody: MachineLaunchVMProcessRequestBody):  # noqa: E501
+def i_wrapper_machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody: MachineLaunchVMProcessRequestBody):
+    return _machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody)
+
+
+def _machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody: MachineLaunchVMProcessRequestBody):  # noqa: E501
     """
     Call interface method IMachine::launchVMProcess
 
@@ -625,7 +633,11 @@ def i_machine_launchvmprocess(vmid, oMachineLaunchVMProcessRequestBody: MachineL
 #     return response, httpCode
 
 
-def i_machine_readlog(vmid, idx=None, offset=None, size=None):  # noqa: E501
+def i_wrapper_machine_readlog(vmid, idx=None, offset=None, size=None):
+    return _machine_readlog(vmid, idx, offset, size)
+
+
+def _machine_readlog(vmid, idx=None, offset=None, size=None):  # noqa: E501
     """
     Call interface method IMachine::readLog
 
@@ -1154,8 +1166,12 @@ def i_machine_readlog(vmid, idx=None, offset=None, size=None):  # noqa: E501
 #     return response, httpCode
 
 
+def i_wrapper_machine_attachdevice(oVBoxObj, oMachineAttachDeviceRequestBody: MachineAttachDeviceRequestBody):
+    return _machine_attachdevice(oVBoxObj, oMachineAttachDeviceRequestBody)
+
+
 @sessionDecorator
-def i_machine_attachdevice(oVBoxObj, oMachineAttachDeviceRequestBody: MachineAttachDeviceRequestBody):  # noqa: E501
+def _machine_attachdevice(oVBoxObj, oMachineAttachDeviceRequestBody: MachineAttachDeviceRequestBody):  # noqa: E501
     """
     Call interface method IMachine::attachDevice
 
@@ -1331,8 +1347,12 @@ def i_machine_attachdevice(oVBoxObj, oMachineAttachDeviceRequestBody: MachineAtt
 #     return response, httpCode
 
 
+def i_wrapper_machine_mountmedium(oVBoxObj, oMachineMountMediumRequestBody: MachineMountMediumRequestBody):
+    return _machine_mountmedium(oVBoxObj, oMachineMountMediumRequestBody)
+
+
 @sessionDecorator
-def i_machine_mountmedium(oVBoxObj, oMachineMountMediumRequestBody: MachineMountMediumRequestBody):  # noqa: E501
+def _machine_mountmedium(oVBoxObj, oMachineMountMediumRequestBody: MachineMountMediumRequestBody):  # noqa: E501
     """
     Call interface method IMachine::mountMedium
 
@@ -2018,6 +2038,10 @@ def i_machine_cloneto(vmid, oMachineCloneToRequestBody: MachineCloneToRequestBod
 #     return response, httpCode
 
 
+def i_wrapper_machine_takesnapshot(oVBoxObj, oMachineTakeSnapshotRequestBody: MachineTakeSnapshotRequestBody):
+    return _machine_takesnapshot(oVBoxObj, oMachineTakeSnapshotRequestBody)
+
+
 # close the session is done inside session_observer.py in SessionObserver::run()
 @openSession
 def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody: MachineTakeSnapshotRequestBody, *var_args_tuple):  # noqa: E501
@@ -2131,9 +2155,13 @@ def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody: MachineTakeSna
 #     return response, httpCode
 
 
+def i_wrapper_machine_deletesnapshot(oVBoxObj, id=None):
+    return _machine_deletesnapshot(oVBoxObj, id)
+
+
 # close the session is done inside session_observer.py in SessionObserver::run()
 @openSession
-def i_machine_deletesnapshot(vmid, id=None, *var_args_tuple):  # noqa: E501
+def _machine_deletesnapshot(oVBoxObj, id=None):  # noqa: E501
     """
     Call interface method IMachine::deleteSnapshot
 
@@ -2188,9 +2216,13 @@ def i_machine_deletesnapshot(vmid, id=None, *var_args_tuple):  # noqa: E501
     return response, httpCode
 
 
+def i_wrapper_machine_restoresnapshot(oVBoxObj, snapshot=None):
+    return _machine_restoresnapshot(oVBoxObj, snapshot)
+
+
 # close the session is done inside session_observer.py in SessionObserver::run()
 @openSession
-def i_machine_restoresnapshot(vmid, snapshot=None, *var_args_tuple):  # noqa: E501
+def _machine_restoresnapshot(oVBoxObj, snapshot=None):  # noqa: E501
     """
     Call interface method IMachine::restoreSnapshot
 
