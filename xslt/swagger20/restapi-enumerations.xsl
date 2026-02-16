@@ -84,23 +84,26 @@
   <xsl:for-each select="const">
     <xsl:text>     - </xsl:text>
 
-  <xsl:choose>
-      <xsl:when test="@name!='Null'">
-          <xsl:variable name="enum_value" select="@name"/>
-          <xsl:value-of select="$aposDouble"/>
-          <!--  Uppercase conversion template approach-->
-          <xsl:call-template name="stringToUpper">
-            <xsl:with-param name="str" select="$enum_value"/>
-          </xsl:call-template>
-          <xsl:value-of select="$aposDouble"/>
-      </xsl:when>
-      <xsl:otherwise>
-          <xsl:text>"null"</xsl:text>
-      </xsl:otherwise>
-  </xsl:choose>
+    <xsl:choose>
+        <xsl:when test="@name!='Null'">
+            <xsl:variable name="enum_value" select="@name"/>
+            <xsl:value-of select="$aposDouble"/>
+            <!--  Uppercase conversion template approach-->
+            <xsl:call-template name="stringToUpper">
+              <xsl:with-param name="str" select="$enum_value"/>
+            </xsl:call-template>
+            <xsl:value-of select="$aposDouble"/>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:text>"null"</xsl:text>
+        </xsl:otherwise>
+    </xsl:choose>
 
     <xsl:text>&#x0A;</xsl:text>
   </xsl:for-each>
+
+  <xsl:text>    x-vbox-type: enum</xsl:text>
+  <xsl:text>&#x0A;</xsl:text>
 
   <xsl:text>&#x0A;</xsl:text>
 </xsl:template>
