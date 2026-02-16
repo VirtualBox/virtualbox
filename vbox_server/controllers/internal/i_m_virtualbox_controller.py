@@ -44,7 +44,11 @@ from vbox_server.models.progress_obj_wrapper_response import ProgressObjWrapperR
 from vbox_server.models.host import Host  # noqa: E501
 
 
-def i_virtualbox_getserver(select=None):  # noqa: E501
+def i_wrapper_virtualbox_getserver(select=None):
+    return _virtualbox_getserver(select)
+
+
+def _virtualbox_getserver(select=None):  # noqa: E501
     """
     :param select: The object attributes separated by comma
     :type select: str
@@ -76,7 +80,11 @@ def i_virtualbox_getserver(select=None):  # noqa: E501
     return response, httpCode
 
 
-def i_virtualbox_gethost(select=None):  # noqa: E501
+def i_wrapper_virtualbox_gethost(select=None):
+    return _virtualbox_gethost(select)
+
+
+def _virtualbox_gethost(select=None):  # noqa: E501
     """
     :param select: The object attributes separated by comma
     :type select: str
@@ -107,7 +115,7 @@ def i_virtualbox_gethost(select=None):  # noqa: E501
     response = jsonify(oError if oError is not None else oHost)
     return response, httpCode
 
-
+# Not used anymore at present
 def i_list_machines(fAll=False, select=None, groups=None):  # noqa: E501
     """List VirtualBox machines.
 
@@ -184,7 +192,11 @@ def i_list_machines(fAll=False, select=None, groups=None):  # noqa: E501
     return response, httpCode
 
 
-def i_virtualbox_findprogressbyid(progressid, select=None, id=None):  # noqa: E501
+def i_wrapper_virtualbox_findprogressbyid(progressid, select=None, id=None):
+    return _virtualbox_findprogressbyid(progressid, select, id)
+
+
+def _virtualbox_findprogressbyid(progressid, select=None, id=None):  # noqa: E501
     """
     Call interface method IVirtualBox::findProgressById
 
@@ -225,9 +237,13 @@ def i_virtualbox_findprogressbyid(progressid, select=None, id=None):  # noqa: E5
 # Because medium registration is done only inside IMedium::createBaseStorage.
 # User can't find a new medium after returning from IVirtualBox::createMedium.
 # Workaround is the using the dictionary lNewAndNotRegisteredStorage as the temporary storage for a new VirtualBox Medium object
+def i_wrapper_virtualbox_createmedium(oVirtualBoxCreateMediumRequestBody: VirtualBoxCreateMediumRequestBody):
+    return _virtualbox_createmedium(oVirtualBoxCreateMediumRequestBody)
+
+
 import uuid
 from vbox_server.controllers.internal.i_m_medium_controller import lNewAndNotRegisteredStorage
-def i_virtualbox_createmedium(oVirtualBoxCreateMediumRequestBody: VirtualBoxCreateMediumRequestBody):  # noqa: E501
+def _virtualbox_createmedium(oVirtualBoxCreateMediumRequestBody: VirtualBoxCreateMediumRequestBody):  # noqa: E501
     """
     Call interface method IVirtualBox::createMedium
 
@@ -273,7 +289,11 @@ def i_virtualbox_createmedium(oVirtualBoxCreateMediumRequestBody: VirtualBoxCrea
     return response, httpCode
 
 
-def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody: VirtualBoxCreateMachineRequestBody):  # noqa: E501
+def i_wrapper_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody: VirtualBoxCreateMachineRequestBody):
+    return _virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody)
+
+
+def _virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody: VirtualBoxCreateMachineRequestBody):  # noqa: E501
     """
     Call interface method IVirtualBox::createMachine
 
@@ -640,8 +660,12 @@ def i_virtualbox_createmachine(oVirtualBoxCreateMachineRequestBody: VirtualBoxCr
 #     return response, httpCode
 
 
+def i_wrapper_virtualbox_gettrackedobject(trObjId=None):
+    return _virtualbox_gettrackedobject(trObjId)
+
+
 from datetime import datetime
-def i_virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
+def _virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
     """
     Call interface method IVirtualBox::getTrackedObject
 
