@@ -1,7 +1,7 @@
 <?xml version="1.0"  encoding="utf-8"?>
 
 <!--
-    Copyright (C) 2006-2025 Oracle and/or its affiliates.
+    Copyright (C) 2006-2026 Oracle and/or its affiliates.
 
     This file is part of VirtualBox base platform packages, as
     available from https://www.virtualbox.org.
@@ -3111,7 +3111,7 @@
     </method>
 
     <method name="createMachine">
-      <rest name="create" request="post" path="/vm/"/>
+      <rest name="create" request="post" path="/vm/" stub="hardcoded"/>
       <desc>
         Creates a new virtual machine by creating a machine settings file at
         the given location.
@@ -3343,6 +3343,7 @@
 
     <method name="getMachineStates">
       <rest request="get" path="/server/method/"/>
+<!--  <rest request="get" path="/server/method/" stub="hardcoded"/>    -->
       <desc>
         Gets the state of several machines in a single operation.
       </desc>
@@ -3379,7 +3380,7 @@
     </method>
 
     <method name="createMedium">
-      <rest name="create" request="post" path="/media/"/>
+      <rest name="create" request="post" path="/media/" stub="hardcoded"/>
       <desc>
         Creates a new base medium object that will use the given storage
         format and location for medium data.
@@ -3910,6 +3911,7 @@
           Returns the host-only network by name.
     -->
     <method name="findHostOnlyNetworkByName">
+      <rest name="findByName" request="get" path="/hostonlynetwork/"/>
       <param name="networkName" type="wstring" dir="in"/>
       <param name="network" type="IHostOnlyNetwork" dir="return"/>
     </method>
@@ -3917,7 +3919,7 @@
           Returns the host-only network by id.
     -->
     <method name="findHostOnlyNetworkById">
-      <rest name="find" request="get" path="/hostonlynetwork/"/>
+      <rest name="findById" request="get" path="/hostonlynetwork/"/>
       <desc>
         Searches through all host networks for one with
         the given GUID.
@@ -4006,7 +4008,7 @@
     </method>
 
     <method name="findProgressById">
-      <rest name="find" request="get" path="/progress/{progressid}/"/>
+      <rest name="find" request="get" path="/progress/{progressid}/" stub="hardcoded"/>
       <desc>
         Searches through all progress objects known to VBoxSVC for an
         instance with the given GUID.
@@ -4024,7 +4026,7 @@
     </method>
 
     <method name="getTrackedObject">
-      <rest request="get" path="/server/methods/"/>
+      <rest request="get" path="/server/methods/" stub="hardcoded"/>
       <desc>
         Queries the IUnknown interface to an object from the tracked object list.
       </desc>
@@ -6521,7 +6523,7 @@
 
   <interface
     name="IRecordingSettings" extends="$unknown"
-    uuid="83cfdc66-4f20-4569-ad39-8722f7d472b3"
+    uuid="454da458-ff50-454a-9978-a03968b36270"
     wsmap="managed"
     rest="managed"
     >
@@ -6551,6 +6553,20 @@
         Unable to start recording due to recording already being started or not
         available. See error message for more information.
       </result>
+    </method>
+
+    <method name="stop">
+      <desc>
+        Stops the recording.
+        <note>
+          The recording progress object will be canceled by this call.
+        </note>
+        If recording already has been stopped, this attribute does nothing.
+        <result name="E_FAIL">
+          Unable to stop recording.
+          See error message for more information.
+        </result>
+      </desc>
     </method>
 
     <method name="resume">
@@ -6615,7 +6631,8 @@
       <desc>
         Returns the recording progress object. Also valid when recording has been paused.
 
-        Cancelling the progress will stop the recording.
+        Cancelling the progress will stop the recording. This has the same
+        effect as <link to="IRecordingSettings::stop"/>.
 
         <result name="E_FAIL">
           Failed to get the recording progress object due to not (yet) started
@@ -7227,11 +7244,11 @@
 
         Changes to this object will not necessarily be preserved unless
         <link to="IPlatform::architecture"/> is set to <link to="PlatformArchitecture_x86"/>.
-      </desc>
 
-      <result name="VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED">
-        Current platform  architecture is not x86.
-      </result>
+        <result name="VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED">
+          Current platform  architecture is not x86.
+        </result>
+      </desc>
     </attribute>
 
     <attribute name="ARM" type="IPlatformARM" readonly="yes">
@@ -7240,11 +7257,11 @@
 
         Changes to this object will not necessarily be preserved unless
         <link to="IPlatform::architecture"/> is set to <link to="PlatformArchitecture_ARM"/>.
-      </desc>
 
-      <result name="VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED">
-        Current platform  architecture is not ARM.
-      </result>
+        <result name="VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED">
+          Current platform  architecture is not ARM.
+        </result>
+      </desc>
     </attribute>
 
     <!-- Properties common to both (placed here to reduce IMachine bloat): -->
@@ -8520,7 +8537,7 @@
     </method>
 
     <method name="launchVMProcess">
-      <rest name="launch" request="post" path="/vm/{vmid}/action/"/>
+      <rest name="launch" request="post" path="/vm/{vmid}/action/" stub="hardcoded"/>
       <desc>
         Spawns a new process that will execute the virtual machine and obtains a shared
         lock on the machine for the calling session.
@@ -8698,7 +8715,7 @@
     </method>
 
     <method name="attachDevice">
-      <rest name="attach" request="post" path="/vm/{vmid}/dev/action/"/>
+      <rest name="attach" request="post" path="/vm/{vmid}/dev/action/" stub="hardcoded"/>
       <desc>
         Attaches a device and optionally mounts a medium to the given storage
         controller (<link to="IStorageController" />, identified by @a name),
@@ -9238,7 +9255,7 @@
     </method>
 
     <method name="mountMedium">
-      <rest name="mount" request="post" path="/vm/{vmid}/media/action/"/>
+      <rest name="mount" request="post" path="/vm/{vmid}/media/action/" stub="hardcoded"/>
       <desc>
         Mounts a medium (<link to="IMedium" />, identified
         by the given UUID @a id) to the given storage controller
@@ -9861,7 +9878,7 @@
     </method>
 
     <method name="deleteConfig">
-      <rest name="remove" request="delete" path="/vm/{vmid}/"/>
+      <rest name="remove" request="delete" path="/vm/{vmid}/" stub="hardcoded"/>
       <desc>
         Deletes the files associated with this machine from disk. If medium objects are passed
         in with the @a aMedia argument, they are closed and, if closing was successful, their
@@ -10469,7 +10486,7 @@
     </method>
 
     <method name="readLog">
-      <rest name="read" request="get" path="/vm/{vmid}/log/action/"/>
+      <rest name="read" request="get" path="/vm/{vmid}/log/action/" stub="hardcoded"/>
       <desc>
         Reads the VM log file. The chunk size is limited, so even if you
         ask for a big piece there might be less data returned.
@@ -10500,7 +10517,7 @@
     </method>
 
     <method name="cloneTo">
-      <rest name="clone" request="post" path="/vm/{vmid}/action/"/>
+      <rest name="clone" request="post" path="/vm/{vmid}/action/" stub="hardcoded"/>
       <desc>
         Creates a clone of this machine, either as a full clone (which means
         creating independent copies of the hard disk media, save states and so
@@ -10536,7 +10553,7 @@
     </method>
 
     <method name="moveTo">
-      <rest name="move" request="post" path="/vm/{vmid}/action/"/>
+      <rest name="move" request="post" path="/vm/{vmid}/action/" stub="hardcoded"/>
       <desc>
         Move machine on to new place/folder
       </desc>
@@ -10563,7 +10580,7 @@
     </method>
 
     <method name="saveState">
-      <rest name="save" request="post" path="/vm/{vmid}/action/"/>
+      <rest name="save" request="post" path="/vm/{vmid}/action/" stub="hardcoded"/>
       <desc>
         Saves the current execution state of a running virtual machine
         and stops its execution.
@@ -10665,7 +10682,7 @@
     </method>
 
     <method name="takeSnapshot">
-      <rest name="take" request="put" path="/vm/{vmid}/snapshot/action/"/>
+      <rest name="take" request="put" path="/vm/{vmid}/snapshot/action/" stub="hardcoded"/>
       <desc>
         Saves the current execution state
         and all settings of the machine and creates differencing images
@@ -10713,7 +10730,7 @@
     </method>
 
     <method name="deleteSnapshot">
-      <rest name="remove" request="delete" path="/vm/{vmid}/snapshot/"/>
+      <rest name="remove" request="delete" path="/vm/{vmid}/snapshot/" stub="hardcoded"/>
       <desc>
         Starts deleting the specified snapshot asynchronously.
         See <link to="ISnapshot" /> for an introduction to snapshots.
@@ -10785,7 +10802,7 @@
     </method>
 
     <method name="deleteSnapshotAndAllChildren">
-      <rest name="deleteall" request="delete" path="/vm/{vmid}/snapshot/action/"/>
+      <rest name="deleteall" request="delete" path="/vm/{vmid}/snapshot/action/" stub="hardcoded"/>
       <desc>
         Starts deleting the specified snapshot and all its children
         asynchronously. See <link to="ISnapshot" /> for an introduction to
@@ -10819,7 +10836,7 @@
     </method>
 
     <method name="deleteSnapshotRange">
-      <rest name="deleterange" request="delete" path="/vm/{vmid}/snapshot/action/"/>
+      <rest name="deleterange" request="delete" path="/vm/{vmid}/snapshot/action/" stub="hardcoded"/>
       <desc>
         Starts deleting the specified snapshot range. This is limited to
         linear snapshot lists, which means there may not be any other child
@@ -11063,10 +11080,11 @@
           <link to="IMachine::addEncryptionPassword"/> or
           <link to="IMachine::addEncryptionPasswords"/> methods.
         </note>
+
+        <result name="VBOX_E_INVALID_VM_STATE">
+          The VM is not in proper state e.g powered on.
+        </result>
       </desc>
-      <result name="VBOX_E_INVALID_VM_STATE">
-        The VM is not in proper state e.g powered on.
-      </result>
       <param name="id" type="wstring" dir="in">
         <desc>
           The identifier used for the password. Must match the identifier
@@ -12166,10 +12184,10 @@
     <method name="download">
       <desc>
         Downloads the update.
+        <result name="VBOX_E_NOT_SUPPORTED">
+          Downloading update not supported.
+        </result>
       </desc>
-      <result name="VBOX_E_NOT_SUPPORTED">
-        Downloading update not supported.
-      </result>
       <param name="progress" type="IProgress" dir="return">
         <desc>Progress object to track operation completion.</desc>
       </param>
@@ -12178,10 +12196,10 @@
     <method name="install">
       <desc>
         Installs the update.
+        <result name="VBOX_E_NOT_SUPPORTED">
+          Installing update not supported.
+        </result>
       </desc>
-      <result name="VBOX_E_NOT_SUPPORTED">
-        Installing update not supported.
-      </result>
       <param name="progress" type="IProgress" dir="return">
         <desc>Progress object to track operation completion.</desc>
       </param>
@@ -12211,59 +12229,59 @@
     <attribute name="order" type="unsigned long" readonly="yes">
       <desc>
         Order hint the update component needs to run at, in conjunction with other update components.
+        <result name="0">
+          No order preferred / disabled.
+        </result>
+        <note>
+          Lower numbers mean higher priority. 0 means no order or disabled.
+        </note>
       </desc>
-      <result name="0">
-        No order preferred / disabled.
-      </result>
-      <note>
-        Lower numbers mean higher priority. 0 means no order or disabled.
-      </note>
     </attribute>
 
     <attribute name="dependsOn" type="wstring" readonly="yes" safearray="yes">
       <desc>
         Array of other update component names this component depends on before being able to get installed.
+        <note>
+          Ordered entries, highest priority first. No dependencies when array is empty.
+          Dependency entries also can contain a minimum version number after the update component name, separated by an "@",
+          e.g. "Guest Additions@7.1.0_BETA2".
+        </note>
       </desc>
-      <note>
-        Ordered entries, highest priority first. No dependencies when array is empty.
-        Dependency entries also can contain a minimum version number after the update component name, separated by an "@",
-        e.g. "Guest Additions@7.1.0_BETA2".
-      </note>
     </attribute>
 
     <attribute name="version" type="wstring" readonly="yes">
-      <result name="VBOX_E_INVALID_OBJECT_STATE">
-        Result not available yet.
-      </result>
       <desc>
         Version the update contains.
+        <result name="VBOX_E_INVALID_OBJECT_STATE">
+          Result not available yet.
+        </result>
       </desc>
     </attribute>
 
     <attribute name="downloadUrl" type="wstring" readonly="yes">
-      <result name="VBOX_E_INVALID_OBJECT_STATE">
-        Result not available yet.
-      </result>
       <desc>
         Download URL of the update.
+        <result name="VBOX_E_INVALID_OBJECT_STATE">
+          Result not available yet.
+        </result>
       </desc>
     </attribute>
 
     <attribute name="webUrl" type="wstring" readonly="yes">
-      <result name="VBOX_E_INVALID_OBJECT_STATE">
-        Result not available yet.
-      </result>
       <desc>
         Web URL of the update.
+        <result name="VBOX_E_INVALID_OBJECT_STATE">
+          Result not available yet.
+        </result>
       </desc>
     </attribute>
 
     <attribute name="releaseNotes" type="wstring" readonly="yes">
-      <result name="VBOX_E_INVALID_OBJECT_STATE">
-        Result not available yet.
-      </result>
       <desc>
         Release notes of the update.
+        <result name="VBOX_E_INVALID_OBJECT_STATE">
+          Result not available yet.
+        </result>
       </desc>
     </attribute>
 
@@ -12300,19 +12318,19 @@
     <attribute name="repositoryURL" type="wstring" readonly="no">
       <desc>
         Update repository URL to use for retrieving the update.
+        <note>
+          Only repositories with the https:// URL scheme are allowed.
+        </note>
       </desc>
-      <note>
-        Only repositories with the https:// URL scheme are allowed.
-      </note>
     </attribute>
 
     <attribute name="lastCheckDate" type="wstring" readonly="yes">
       <desc>
         Date of last update check.
+        <note>
+         In ISO 8601 format (e.g. 2020-05-11T21:13:39.348416000Z).
+        </note>
       </desc>
-      <note>
-        In ISO 8601 format (e.g. 2020-05-11T21:13:39.348416000Z).
-      </note>
     </attribute>
 
     <attribute name="checkCount" type="unsigned long" readonly="yes">
@@ -12347,10 +12365,10 @@
     <desc>
       Implementation of the <link to="IUpdateAgent" /> object
       for VirtualBox host updates.
+      <note>
+        If no proxy is explicitly set, the proxy settings from <link to="ISystemProperties" /> will be used.
+      </note>
     </desc>
-    <note>
-      If no proxy is explicitly set, the proxy settings from <link to="ISystemProperties" /> will be used.
-    </note>
     <attribute name="midlDoesNotLikeEmptyInterfaces" readonly="yes" type="boolean"/>
   </interface>
 
@@ -12594,7 +12612,7 @@
     uuid="d5dcece0-b202-4416-a138-03502784cc07"
     wsmap="managed"
     rest="managed"
-    reservedMethods="6" reservedAttributes="12"
+    reservedMethods="6" reservedAttributes="11"
     >
     <desc>
       The IHost interface represents the physical machine that this VirtualBox
@@ -12674,7 +12692,11 @@
     </attribute>
 
     <attribute name="nameServers" type="wstring" safearray="yes" readonly="yes">
-      <desc> The list of nameservers registered in host's name resolving system.</desc>
+      <desc>The list of nameservers registered in host's name resolving system.</desc>
+    </attribute>
+
+    <attribute name="v6NameServers" type="wstring" safearray="yes" readonly="yes">
+      <desc>The list of IPv6 nameservers registered in the host's name resolving system.</desc>
     </attribute>
 
     <attribute name="domainName" type="wstring" readonly="yes">
@@ -12706,6 +12728,7 @@
     </attribute>
 
     <method name="getProcessorSpeed">
+      <rest name="speed" request="get" path="/host/processor/"/>
       <desc>Query the (approximate) maximum speed of a specified host CPU in
         Megahertz.
       </desc>
@@ -12723,6 +12746,7 @@
     </method>
 
     <method name="getProcessorFeature">
+      <rest name="feature" request="get" path="/host/processor/"/>
       <desc>Query whether a CPU feature is supported or not.</desc>
       <param name="feature" type="ProcessorFeature" dir="in">
         <desc>
@@ -12737,6 +12761,7 @@
     </method>
 
     <method name="getProcessorDescription">
+      <rest name="description" request="get" path="/host/processor/"/>
       <desc>Query the model string of a specified host CPU.
       </desc>
       <param name="cpuId" type="unsigned long" dir="in">
@@ -12777,6 +12802,7 @@
     </attribute>
 
     <method name="createHostOnlyNetworkInterface">
+      <rest name="create" request="post" path="/host/network/hostonly/"/>
       <desc>
         Creates a new adapter for Host Only Networking.
         <result name="E_INVALIDARG">
@@ -12796,6 +12822,7 @@
     </method>
 
     <method name="removeHostOnlyNetworkInterface">
+      <rest name="remove" request="delete" path="/host/network/hostonly/"/>
       <desc>
         Removes the given Host Only Networking interface.
         <result name="VBOX_E_OBJECT_NOT_FOUND">
@@ -12898,6 +12925,7 @@
     </method>
 
     <method name="findHostDVDDrive">
+      <rest name="find" request="get" path="/host/drive/dvd"/>
       <desc>
         Searches for a host DVD drive with the given @c name.
 
@@ -12915,6 +12943,7 @@
     </method>
 
     <method name="findHostFloppyDrive">
+      <rest name="find" request="get" path="/host/drive/floppy"/>
       <desc>
         Searches for a host floppy drive with the given @c name.
 
@@ -12932,6 +12961,7 @@
     </method>
 
     <method name="findHostNetworkInterfaceByName">
+      <rest name="find" request="get" path="/host/network"/>
       <desc>
         Searches through all host network interfaces for an interface with
         the given @c name.
@@ -12964,6 +12994,7 @@
       </param>
     </method>
     <method name="findHostNetworkInterfacesOfType">
+      <rest name="findType" request="get" path="/host/network"/>
       <desc>
         Searches through all host network interfaces and returns a list of interfaces of the specified type
       </desc>
@@ -13121,7 +13152,7 @@
     uuid="5bae19d0-ca40-4ca2-a485-c8065190bbe5"
     wsmap="managed"
     rest="managed"
-    reservedMethods="4" reservedAttributes="16"
+    reservedMethods="3" reservedAttributes="16"
     >
     <desc>
       Properties of a specific virtualization platform.
@@ -13493,6 +13524,24 @@
       </param>
     </method>
 
+    <method name="getMinGuestRAM">
+      <desc>Returns minimum guest system memory size in Megabytes for the
+        given firmware choice.
+
+        The firmwares have built-in expectations about how much memory must
+        be present in the system for them to work.  These limits are not
+        enforced anywhere, so you can still configure a VM with as little as
+        <link to="ISystemProperties::minGuestRAM"/> specifies, it just is not
+        very likely to boot up.</desc>
+
+      <param name="firmware" type="FirmwareType" dir="in">
+        <desc>The chipset type to get the value for.</desc>
+      </param>
+      <param name="minMegabytes" type="unsigned long" dir="return">
+        <desc>Minimum number of megabytes (mebibytes).</desc>
+      </param>
+    </method>
+
   </interface>
 
   <!--
@@ -13535,7 +13584,10 @@
     </attribute>
 
     <attribute name="minGuestRAM" type="unsigned long" readonly="yes">
-      <desc>Minimum guest system memory in Megabytes.</desc>
+      <desc>Minimum guest system memory in Megabytes.
+
+      See also <link to="IPlatformProperties::getMinGuestRAM"/>,
+      <link to="IGuestOSType::recommendedRAM"/>.</desc>
     </attribute>
 
     <attribute name="maxGuestRAM" type="unsigned long" readonly="yes">
@@ -19960,7 +20012,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <!-- storage methods -->
 
     <method name="createBaseStorage">
-      <rest request="post" path="/media/{mediumid}/action/"/>
+      <rest request="post" path="/media/{mediumid}/action/" stub="hardcoded"/>
       <desc>
         Starts creating a hard disk storage unit (fixed/dynamic, according
         to the variant flags) in the background. The previous storage unit
@@ -20042,7 +20094,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <!-- diff methods -->
 
     <method name="createDiffStorage" wrap-hint-server="passcaller">
-      <rest request="post" path="/media/{mediumid}/action/"/>
+      <rest request="post" path="/media/{mediumid}/action/" stub="hardcoded"/>
       <desc>
         Starts creating an empty differencing storage unit based on this
         medium in the format and at the location defined by the @a target
@@ -20080,7 +20132,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="mergeTo">
-      <rest name="merge" request="post" path="/media/{mediumid}/action/"/>
+      <rest name="merge" request="post" path="/media/{mediumid}/action/" stub="hardcoded"/>
       <desc>
         Starts merging the contents of this medium and all intermediate
         differencing media in the chain to the given target medium.
@@ -20163,7 +20215,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <!-- clone method -->
 
     <method name="cloneTo">
-      <rest name="clone" request="post" path="/media/{mediumid}/action/"/>
+      <rest name="clone" request="post" path="/media/{mediumid}/action/" stub="hardcoded"/>
       <desc>
         Starts creating a clone of this medium in the format and at the
         location defined by the @a target argument.
@@ -20213,7 +20265,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="cloneToBase">
-      <rest request="post" path="/media/{mediumid}/action/"/>
+      <rest request="post" path="/media/{mediumid}/action/" stub="hardcoded"/>
     <desc>
     Starts creating a clone of this medium in the format and at the
     location defined by the @a target argument.
@@ -20261,7 +20313,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <!-- other methods -->
 
     <method name="moveTo" wrap-hint-server="passcaller">
-      <rest name="move" request="post" path="/media/{mediumid}/action/"/>
+      <rest name="move" request="post" path="/media/{mediumid}/action/" stub="hardcoded"/>
       <desc>
         Changes the location of this medium. Some medium types may support
         changing the storage unit location by simply changing the value of the
@@ -20298,7 +20350,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="compact">
-      <rest request="post" path="/media/{mediumid}/action/"/>
+      <rest request="post" path="/media/{mediumid}/action/" stub="hardcoded"/>
       <desc>
         Starts compacting of this medium. This means that the medium is
         transformed into a possibly more compact storage representation.
@@ -20325,7 +20377,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="resize">
-      <rest request="post" path="/media/{mediumid}/action/"/>
+      <rest request="post" path="/media/{mediumid}/action/" stub="hardcoded"/>
       <desc>
         Starts resizing this medium. This means that the nominal size of the
         medium is set to the new value. Both increasing and decreasing the
@@ -20357,7 +20409,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="reset" wrap-hint-server="passcaller">
-      <rest request="post" path="/media/{mediumid}/action/"/>
+      <rest request="post" path="/media/{mediumid}/action/" stub="hardcoded"/>
       <desc>
         Starts erasing the contents of this differencing medium.
 
@@ -20384,7 +20436,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="changeEncryption">
-      <rest name="encript" request="post" path="/media/{mediumid}/action/"/>
+      <rest name="encript" request="post" path="/media/{mediumid}/action/" stub="hardcoded"/>
       <desc>
         Starts encryption of this medium. This means that the stored data in the
         medium is encrypted.
@@ -20478,7 +20530,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="resizeAndCloneTo">
-      <rest name="resizeAndClone" request="post" path="/media/{mediumid}/action/"/>
+      <rest name="resizeAndClone" request="post" path="/media/{mediumid}/action/" stub="hardcoded"/>
 
       <desc>
         This is a helper function that combines the functionality of
@@ -20687,7 +20739,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </attribute>
 
     <method name="describeFileExtensions" const="yes">
-      <rest name="description" request="get" path="/mediumformat/{formatid}/"/>
+      <rest name="description" request="get" path="/mediumformat/{formatid}/" stub="hardcoded"/>
       <desc>
         Returns two arrays describing the supported file extensions.
 
@@ -20708,7 +20760,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     </method>
 
     <method name="describeProperties" const="yes">
-      <rest name="description" request="get" path="/mediumformat/{formatid}/property/"/>
+      <rest name="description" request="get" path="/mediumformat/{formatid}/property/" stub="hardcoded"/>
       <desc>
         Returns several arrays describing the properties supported by this
         format.
@@ -23005,7 +23057,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     uuid="fa43579a-2272-47c4-a443-9713f19a902f"
     wsmap="managed"
     rest="managed"
-    reservedMethods="16" reservedAttributes="16"
+    reservedMethods="16" reservedAttributes="14"
     >
     <method name="dumpGuestCore">
       <desc>
@@ -23438,9 +23490,17 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
 
     <attribute name="executeAllInIEM" type="boolean">
       <desc>
-        Whether to execute all the code in the instruction interpreter. This
-        is mainly for testing the interpreter and not an execution mode
-        intended for general consumption.
+        Whether to execute all the code in the instruction interpreter.
+
+        When @c true the VM execution engine changes to
+        <link to="VMExecutionEngine_Interpreter"/> (or
+        <link to="VMExecutionEngine_Recompiler"/> when
+        <link to="IMachineDebugger::recompiledIEMExecution"/> is set to @c true).
+
+        This is mainly for temporarily testing the interpreter and its recompiler.
+
+        See also <link to="IMachine::VMExecutionEngine"/> for how to permanently
+        configure a VM to run in <link to="VMExecutionEngine_Interpreter"/> mode.
       </desc>
     </attribute>
 
@@ -23532,6 +23592,25 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <attribute name="uptime" type="long long" readonly="yes">
       <desc>VM uptime in milliseconds, i.e. time in which it could have been
         executing guest code. Excludes the time when the VM was paused.</desc>
+    </attribute>
+
+    <attribute name="recompiledIEMExecution" type="boolean">
+      <desc>
+        Whether to use the recompiler when executing in the interpreter.
+
+        This is used together with <link to="IMachineDebugger::executeAllInIEM"/>
+        to temporarily change the main VM execution engine to
+        <link to="VMExecutionEngine_Recompiler"/>.
+
+        If the VM is configured to run in <link to="VMExecutionEngine_Interpreter"/>
+        via <link to="IMachine::VMExecutionEngine"/>, setting this to @c true temporarily
+        changes it to <link to="VMExecutionEngine_Recompiler"/>.
+
+        This mainly for testing the instruction interpreter in recompiler mode.
+
+        See also <link to="IMachine::VMExecutionEngine"/> for how to permanently
+        configure a VM to run in <link to="VMExecutionEngine_Recompiler"/> mode.
+      </desc>
     </attribute>
 
   </interface>
@@ -25057,16 +25136,16 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
         Triggerd when the state of a host audio device
         has changed.
       </desc>
-      <param name="device" type="IHostAudioDevice" dir="in" readonly="yes">
+      <param name="device" type="IHostAudioDevice" dir="in">
         <desc>Device the state has been changed for.</desc>
       </param>
-      <param name="isNew" type="boolean" dir="in" readonly="yes">
+      <param name="isNew" type="boolean" dir="in">
         <desc>Whether this is a newly detected device or not.</desc>
       </param>
-      <param name="state" type="AudioDeviceState" dir="in" readonly="yes">
+      <param name="state" type="AudioDeviceState" dir="in">
         <desc>The new device state.</desc>
       </param>
-      <param name="errorInfo" type="IVirtualBoxErrorInfo" dir="in" readonly="yes">
+      <param name="errorInfo" type="IVirtualBoxErrorInfo" dir="in">
         <desc>Error information.</desc>
       </param>
     </method>

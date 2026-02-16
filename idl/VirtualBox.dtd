@@ -6,7 +6,7 @@
      XIDL syntax.
 -->
 <!--
-    Copyright (C) 2008-2024 Oracle and/or its affiliates.
+    Copyright (C) 2008-2026 Oracle and/or its affiliates.
 
     This file is part of VirtualBox base platform packages, as
     available from https://www.virtualbox.org.
@@ -26,7 +26,7 @@
 
     SPDX-License-Identifier: GPL-3.0-only
 -->
-  <!ELEMENT idl (desc|if|library)*>                           <!-- done -->
+  <!ELEMENT idl (desc|if|library|cpp)*>                       <!-- done -->
   <!ELEMENT if ANY>                                           <!-- done -->
     <!ATTLIST if target (midl|xpidl|wsdl) #REQUIRED>
   <!ELEMENT cpp ANY>                                          <!-- done -->
@@ -128,6 +128,7 @@
     <!ATTLIST rest name CDATA #IMPLIED>
     <!ATTLIST rest request (get|put|post|delete|patch) "get">
     <!ATTLIST rest path CDATA #REQUIRED>
+    <!ATTLIST rest stub (generate|hardcoded) "generate">
   <!ELEMENT param (desc?)>                                    <!-- done -->
     <!ATTLIST param name CDATA #REQUIRED>
     <!ATTLIST param type CDATA #REQUIRED>
@@ -137,7 +138,7 @@
   <!ELEMENT descGroup (desc)*>                                <!-- done (ignoring, butt-ugly hack, improper nesting enforced all over the .xsl files!) -->
     <!ATTLIST descGroup id CDATA #IMPLIED>
     <!ATTLIST descGroup title CDATA #IMPLIED>
-  <!ELEMENT desc (#PCDATA|link|note|see|b|tt|i|pre|para|ul|ol|h3|table|result)*>   <!-- done (ignoring) -->
+  <!ELEMENT desc (#PCDATA|link|note|see|b|tt|i|pre|para|ul|ol|h3|table|dl|dd|dt|result)*>   <!-- done (ignoring) -->
   <!-- the following only appear within descriptions -->
   <!ELEMENT link (#PCDATA)>
     <!ATTLIST link to CDATA #REQUIRED>
@@ -157,3 +158,6 @@
   <!ELEMENT tr (td|th)+>
   <!ELEMENT th ANY>
   <!ELEMENT td ANY>
+  <!ELEMENT dl ANY>
+  <!ELEMENT dd ANY>
+  <!ELEMENT dt ANY>
