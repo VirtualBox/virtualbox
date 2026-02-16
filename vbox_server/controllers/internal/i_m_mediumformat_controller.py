@@ -49,7 +49,11 @@ def swagger_to_vbox_medim_extension(inVal: str):
     return out
 
 
-def i_mediumformat_describefileextensions(formatid):  # noqa: E501
+def i_wrapper_mediumformat_describefileextensions(formatid):
+    return _mediumformat_describefileextensions(formatid)
+
+
+def _mediumformat_describefileextensions(formatid):  # noqa: E501
     """
     Call interface method IMediumFormat::describeFileExtensions
 
@@ -117,7 +121,11 @@ def i_mediumformat_describefileextensions(formatid):  # noqa: E501
     return response, httpCode
 
 
-def i_mediumformat_describeproperties(formatid):  # noqa: E501
+def i_wrapper_mediumformat_describeproperties(formatid):
+    return _mediumformat_describeproperties(formatid)
+
+
+def _mediumformat_describeproperties(formatid):  # noqa: E501
     """
     Call interface method IMediumFormat::describeProperties
 
