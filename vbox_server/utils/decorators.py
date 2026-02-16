@@ -201,6 +201,52 @@ def open_exclusive_session(func):
     return wrapper_decorator
 
 
+def openSessionDecorator(func):
+    """
+    Automatically open a session for VM.
+    Try to get a shared access rights to a machine (LockType_Shared)
+    The first parameter must be VM uuid always.
+    Appends the arguments list by the VirtualBox objects Machine and Session
+    """
+    @functools.wraps(func)
+    def wrapper_decorator(*args, **kwargs):
+        args_repr = [a for a in args]
+        vmid = args_repr[0]
+        oError = None
+
+        oVM, oErr = vbox_utils_find_machine(vmid)
+        if oErr:
+            logging.info (oErr)
+            return jsonify(oErr), HTTPStatus.NOT_FOUND
+
+        oSession = None
+        try:
+            oSession = ctx['global'].openMachineSession(oVM)
+        except Exception as e:
+            logging.info("Session to '%s' not open: %s" % (oVM.name, str(e)))
+            oError = Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
+            return jsonify(oError), HTTPStatus.INTERNAL_SERVER_ERROR
+
+        if oSession.state != ctx['const'].SessionState_Locked:
+            logging.info("Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+            oSession.unlockMachine()
+            oError = Error(HTTPStatus.PRECONDITION_FAILED, "Session to '%s' in wrong state: %s" % (oVM.name, oSession.state))
+            return jsonify(oError), HTTPStatus.PRECONDITION_FAILED
+
+        logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
+        logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
+        logging.info ('Session type is ' + ctx['global'].getEnumValueName('SessionType', oSession.type))
+
+        args_repr[0] = oSession
+        new_args_repr = args_repr
+
+        value = func(*new_args_repr, **kwargs)
+
+        return value
+
+    return wrapper_decorator
+
+
 def open_session(func):
     """
     Automatically open a session for VM.
