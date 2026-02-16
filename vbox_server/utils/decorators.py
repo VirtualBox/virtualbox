@@ -117,10 +117,8 @@ def sessionDecorator(func):
         logging.info ('MachineState is ' +  ctx['global'].getEnumValueName('MachineState', oSession.machine.state))
         logging.info ('Session state is ' + ctx['global'].getEnumValueName('SessionState', oSession.state))
 
-        new_args_repr = []
-        new_args_repr.append(oSession.machine)
-        for a in args_repr[1:]:
-            new_args_repr.append(a)
+        args_repr[0] = oSession
+        new_args_repr = args_repr
 
         value = func(*new_args_repr, **kwargs)
 
