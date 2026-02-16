@@ -43,67 +43,6 @@ from vbox_server.models.progress_obj_wrapper_response import ProgressObjWrapperR
 from vbox_server.models.virtual_box_create_medium_request_body import VirtualBoxCreateMediumRequestBody  # noqa: E501
 from vbox_server.models.medium_change_encryption_request_body import MediumChangeEncryptionRequestBody
 
-############################ Helpers ############################
-# local list to keep a newly created mediums that wait to be registered in VirtualBox
-lNewAndNotRegisteredStorage = dict()
-
-def __find_medium_by_id(id: str):
-    lDiskType = ['hardDisks', 'DVDImages', 'floppyImages']
-    oVBox = ctx['vb']
-    fFound = False
-    oFoundMedium = None
-    oError = None
-
-    for diskType in lDiskType:
-        try:
-            olDisks = ctx['global'].getArray(oVBox, diskType)
-            for item in olDisks:
-                if str(item.id) == id:
-                    oFoundMedium = item
-                    fFound = True
-                    break
-        except Exception as e:
-            logging.info('Error walking through the array of ' + diskType)
-            httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
-            oError = Error(httpCode, str(e))
-            oFoundMedium = None
-
-        if fFound is True:
-            break
-
-    return oFoundMedium, oError
-
-
-def findMedium_decorator(func):
-    """
-    Find the medium object using the passed ID
-    The first parameter must be medium uuid always.
-    Appends the arguments list by the flag which indicates whether the medium was found or not
-    """
-    @functools.wraps(func)
-    def wrapper_decorator(*args, **kwargs):
-        args_repr = [a for a in args]
-        mediumid = args_repr[0]
-        oVBoxMedium = None
-
-        oVBoxMedium, oError = __find_medium_by_id(mediumid)
-        if oVBoxMedium is not None:
-            args_repr[0] = oVBoxMedium #replace the first argument "mediumid" by oVBoxMedium
-        else:
-            if oError:
-                return jsonify('The medium with UUID ' + mediumid + ' wasn\'t found. Internal error is ' + '"' + oError.message + '"'), oError.code
-            else:
-                return jsonify("The medium with UUID " + mediumid + " wasn't found"), HTTPStatus.NOT_FOUND
-
-        new_args_repr=args_repr
-
-        #Call the general function with the updated arguments list
-        value = func(*new_args_repr, **kwargs)
-
-        return value
-
-    return wrapper_decorator
-
 
 def __testLocation(sLocation: str):
     fRes = True
@@ -233,7 +172,7 @@ def i_wrapper_medium_compact(mediumid):
     return _medium_compact(mediumid)
 
 
-@findMedium_decorator
+@mediumDecorator
 def _medium_compact(oVBoxMedium):  # noqa: E501
     """
     Call interface method IMedium::compact
@@ -277,7 +216,7 @@ def i_wrapper_medium_resize(mediumid, logicalSize=None):
     return _medium_resize(mediumid, logicalSize)
 
 
-@findMedium_decorator
+@mediumDecorator
 def _medium_resize(oVBoxMedium, logicalSize=None):  # noqa: E501
     """
     Call interface method IMedium::resize
@@ -324,7 +263,7 @@ def _medium_resize(oVBoxMedium, logicalSize=None):  # noqa: E501
     return response, httpCode
 
 
-@findMedium_decorator
+@mediumDecorator
 def i_medium_deletestorage(oVBoxMedium):  # noqa: E501
     """
     Call interface method IMedium::deleteStorage
@@ -364,7 +303,7 @@ def i_medium_deletestorage(oVBoxMedium):  # noqa: E501
     return response, httpCode
 
 
-# @findMedium_decorator
+# @mediumDecorator
 # def i_medium_close(oVBoxMedium):  # noqa: E501
 #     """
 #     Call interface method IMedium::close
@@ -412,7 +351,7 @@ def i_wrapper_medium_reset(mediumid):
     return _medium_reset(mediumid)
 
 
-@findMedium_decorator
+@mediumDecorator
 def _medium_reset(oVBoxMedium):  # noqa: E501
     """
     Call interface method IMedium::reset
@@ -456,7 +395,7 @@ def i_wrapper_medium_cloneto(mediumid, oMediumCloneToRequestBody: MediumCloneToR
     return _medium_cloneto(mediumid, oMediumCloneToRequestBody)
 
 
-@findMedium_decorator
+@mediumDecorator
 def _medium_cloneto(oVBoxMedium, oMediumCloneToRequestBody: MediumCloneToRequestBody):  # noqa: E501
     """
     Call interface method IMedium::cloneTo
@@ -550,7 +489,7 @@ def i_wrapper_medium_mergeto(mediumid, target=None):
     return _medium_mergeto(mediumid, target)
 
 
-@findMedium_decorator
+@mediumDecorator
 def _medium_mergeto(oVBoxMedium, target=None):  # noqa: E501
     """
     Call interface method IMedium::mergeTo
@@ -598,7 +537,7 @@ def _medium_mergeto(oVBoxMedium, target=None):  # noqa: E501
     return response, httpCode
 
 
-@findMedium_decorator
+@mediumDecorator
 def i_medium_moveto(oVBoxMedium, location=None):
     """
     Call interface method IMedium::moveTo
@@ -646,7 +585,7 @@ def i_wrapper_medium_resizeandcloneto(mediumid, oMediumResizeAndCloneToRequestBo
     return _medium_resizeandcloneto(mediumid, oMediumResizeAndCloneToRequestBody)
 
 
-@findMedium_decorator
+@mediumDecorator
 def _medium_resizeandcloneto(oVBoxMedium, oMediumResizeAndCloneToRequestBody: MediumResizeAndCloneToRequestBody):  # noqa: E501
     """
     Call interface method IMedium::resizeAndCloneTo
@@ -835,7 +774,7 @@ def _medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: Med
     return response, httpCode
 
 
-# @findMedium_decorator
+# @mediumDecorator
 # def i_medium_getencryptionsettings(oVBoxMedium):  # noqa: E501
 #     """
 #     Call interface method IMedium::getEncryptionSettings
@@ -869,7 +808,7 @@ def _medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: Med
 #     return response, httpCode
 
 
-# @findMedium_decorator
+# @mediumDecorator
 # def i_medium_getproperties(oVBoxMedium, names=None):  # noqa: E501
 #     """
 #     Call interface method IMedium::getProperties
@@ -908,7 +847,7 @@ def _medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: Med
 #     return response, httpCode
 
 
-# @findMedium_decorator
+# @mediumDecorator
 # def i_medium_getproperty(oVBoxMedium, name=None):  # noqa: E501
 #     """
 #     Call interface method IMedium::getProperty
@@ -937,7 +876,7 @@ def _medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: Med
 #     return response, httpCode
 
 
-# @findMedium_decorator
+# @mediumDecorator
 # def i_medium_getsnapshotids(oVBoxMedium, machineId=None):  # noqa: E501
 #     """
 #     Call interface method IMedium::getSnapshotIds
@@ -973,7 +912,7 @@ def _medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: Med
 #     return response, httpCode
 
 
-# @findMedium_decorator
+# @mediumDecorator
 # def i_medium_setids(oVBoxMedium, oMediumSetIdsRequestBody: MediumSetIdsRequestBody):  # noqa: E501
 #     """
 #     Call interface method IMedium::setIds
@@ -1010,7 +949,7 @@ def _medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: Med
 #     return response, httpCode
 
 
-# @findMedium_decorator
+# @mediumDecorator
 # def i_medium_setproperties(oVBoxMedium, oMediumSetPropertiesRequestBody: MediumSetPropertiesRequestBody):  # noqa: E501
 #     """
 #     Call interface method IMedium::setProperties
@@ -1041,7 +980,7 @@ def _medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: Med
 #     return response, httpCode
 
 
-# @findMedium_decorator
+# @mediumDecorator
 # def i_medium_setproperty(oVBoxMedium, oMediumSetPropertyRequestBody: MediumSetPropertyRequestBody):  # noqa: E501
 #     """
 #     Call interface method IMedium::setProperty
