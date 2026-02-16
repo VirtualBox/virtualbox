@@ -1188,7 +1188,7 @@ def _machine_attachdevice(oVBoxObj, oMachineAttachDeviceRequestBody: MachineAtta
     oError = None
     httpCode = HTTPStatus.OK
 
-    oCurrMachine = oVBoxObj
+    oCurrMachine = oVBoxObj.machine
     logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineAttachDeviceRequestBody
@@ -1369,7 +1369,7 @@ def _machine_mountmedium(oVBoxObj, oMachineMountMediumRequestBody: MachineMountM
     oError = None
     httpCode = HTTPStatus.OK
     
-    oCurrMachine = oVBoxObj
+    oCurrMachine = oVBoxObj.machine
     logging.info('Passed machine Id is ' + oCurrMachine.id)
 
     o = oMachineMountMediumRequestBody
@@ -2043,7 +2043,7 @@ def i_wrapper_machine_takesnapshot(oVBoxObj, oMachineTakeSnapshotRequestBody: Ma
 
 
 # close the session is done inside session_observer.py in SessionObserver::run()
-@openSession
+@openSessionDecorator
 def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody: MachineTakeSnapshotRequestBody, *var_args_tuple):  # noqa: E501
     """
     Call interface method IMachine::takeSnapshot
@@ -2058,13 +2058,12 @@ def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody: MachineTakeSna
 
     httpCode = HTTPStatus.OK
     oError = None
+    
+    oCurrMachine = oVBoxObj.machine
+    vbox_utils_logVmInfo(oCurrMachine)
 
-    oVM = var_args_tuple[0]
-    vbox_utils_logVmInfo(oVM)
-
-    oSession = var_args_tuple[1]
+    oSession = oVBoxObj
     oProgress = None
-    oCurrMachine = oSession.machine
 
     fPause = oMachineTakeSnapshotRequestBody.pause
     sName = oMachineTakeSnapshotRequestBody.name
@@ -2092,7 +2091,7 @@ def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody: MachineTakeSna
         try:
             # Add Progress Id and Session object into the tracking lists
             ctx['tracker'][oProgress.id] = oSession
-            ctx['vms'][oVM.id] = oProgress.id
+            ctx['vms'][oCurrMachine.id] = oProgress.id
             oSession = None
 
             oMachineTakesnapshotResponse.id = uuidSnapshot
@@ -2176,12 +2175,11 @@ def _machine_deletesnapshot(oVBoxObj, id=None):  # noqa: E501
     httpCode = HTTPStatus.OK
     oError = None
 
-    oVM = var_args_tuple[0]
-    vbox_utils_logVmInfo(oVM)
+    oCurrMachine = oVBoxObj.machine
+    vbox_utils_logVmInfo(oCurrMachine)
 
-    oSession = var_args_tuple[1]
+    oSession = oVBoxObj
     oProgress = None
-    oCurrMachine = oSession.machine
 
     oProgressResponse = ProgressObjWrapperResponse()
 
@@ -2195,7 +2193,7 @@ def _machine_deletesnapshot(oVBoxObj, id=None):  # noqa: E501
         oProgress = oCurrMachine.deleteSnapshot(id)
 
     except Exception as e:
-        logging.info("Exception during deleting the snapshot '%s' for VM '%s': %s" % (id, oVM.name, str(e)))
+        logging.info("Exception during deleting the snapshot '%s' for VM '%s': %s" % (id, oCurrMachine.name, str(e)))
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
 
@@ -2203,7 +2201,7 @@ def _machine_deletesnapshot(oVBoxObj, id=None):  # noqa: E501
         try:
             # Add Progress Id and Session object into the tracking lists
             ctx['tracker'][oProgress.id] = oSession
-            ctx['vms'][oVM.id] = oProgress.id
+            ctx['vms'][oCurrMachine.id] = oProgress.id
             oSession = None
 
             oProgressResponse.progress = i_fill_progress(oProgress)
@@ -2221,7 +2219,7 @@ def i_wrapper_machine_restoresnapshot(oVBoxObj, snapshot=None):
 
 
 # close the session is done inside session_observer.py in SessionObserver::run()
-@openSession
+@openSessionDecorator
 def _machine_restoresnapshot(oVBoxObj, snapshot=None):  # noqa: E501
     """
     Call interface method IMachine::restoreSnapshot
@@ -2237,12 +2235,11 @@ def _machine_restoresnapshot(oVBoxObj, snapshot=None):  # noqa: E501
     httpCode = HTTPStatus.OK
     oError = None
 
-    oVM = var_args_tuple[0]
-    vbox_utils_logVmInfo(oVM)
+    oCurrMachine = oVBoxObj.machine
+    vbox_utils_logVmInfo(oCurrMachine)
 
-    oSession = var_args_tuple[1]
+    oSession = oVBoxObj
     oProgress = None
-    oCurrMachine = oSession.machine
 
     oProgressResponse = ProgressObjWrapperResponse()
 
@@ -2250,7 +2247,7 @@ def _machine_restoresnapshot(oVBoxObj, snapshot=None):  # noqa: E501
     try:
         oSnapshot = oCurrMachine.findSnapshot(snapshot)
     except Exception as e:
-        logging.info("Exception during finding the snapshot '%s' for VM '%s': %s" % (snapshot, oVM.name, str(e)))
+        logging.info("Exception during finding the snapshot '%s' for VM '%s': %s" % (snapshot, oCurrMachine.name, str(e)))
         httpCode = HTTPStatus.NOT_FOUND
         oError = Error(httpCode, "Snapshot with the name or Id %s wasn\'t found" % (snapshot))
         return jsonify(oError), httpCode
@@ -2262,7 +2259,7 @@ def _machine_restoresnapshot(oVBoxObj, snapshot=None):  # noqa: E501
         # and take some time to complete.
         time.sleep(0.2)
     except Exception as e:
-        logging.info("Exception during restoring the snapshot '%s' for VM '%s': %s" % (snapshot, oVM.name, str(e)))
+        logging.info("Exception during restoring the snapshot '%s' for VM '%s': %s" % (snapshot, oCurrMachine.name, str(e)))
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
 
@@ -2270,7 +2267,7 @@ def _machine_restoresnapshot(oVBoxObj, snapshot=None):  # noqa: E501
         try:
             # Add Progress Id and Session object into the tracking lists
             ctx['tracker'][oProgress.id] = oSession
-            ctx['vms'][oVM.id] = oProgress.id
+            ctx['vms'][oCurrMachine.id] = oProgress.id
             oSession = None
 
             oProgressResponse.progress = i_fill_progress(oProgress)
