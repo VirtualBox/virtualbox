@@ -1,28 +1,29 @@
 {% import "vbox_macros.j2" as m %}
+{% if x_vbox_stub == 'generate'%}
 {% if is_session_req %}
 @sessionDecorator
 {% endif -%}
 {%- if iface_decorator_name %}
 {{ iface_decorator_name }}
 {% endif -%}
-
+{% endif -%}
 
 {%- set select_param = in_help_param_list | selectattr('name', 'equalto', 'select') | map(attribute='name') | list %}
-{%- if iface_decorator_name %}
-{%- set obj_name = 'oVBoxObj' %}
-{%- if has_request_body %}
-def {{ function_name }}({{ obj_name }}, oRequest: {{ request_type }}):
+{%- set obj_name = none -%}
+{%- if x_vbox_stub == 'generate' -%}
+    {%- set obj_name = 'oVBoxObj' -%}
+{%- endif -%}
+{%- set param_list = m.build_def_param_list(obj_name, select_param, in_params, has_request_body, request_type) -%}
+{%- set args_list = m.build_call_arg_list(obj_name, select_param, in_params, has_request_body) -%}
+
+def {{ function_name }}({{ param_list }}):
+{% if x_vbox_stub == 'hardcoded' %}
+    """ Calls a wrapper that calls a hand-written function. """
+    from vbox_server.controllers.internal.i_m_{{iface_name}}_controller import i_wrapper_{{iface_name}}_{{ method_name | lower}} as wrapper
+    return wrapper({{ args_list }})
+
 {% else %}
-def {{ function_name }}({{ obj_name }}{% if select_param %}, {{ select_param | join(', ') }}{% endif %}{% for param in in_params %}, {{ param.name }}{% endfor %}):
-{% endif %}
-{% else %}
-{%- if has_request_body %}
-def {{ function_name }}({% if select_param %}, {{ select_param | join(', ') }}{% endif %} oRequest: {{ request_type }}):
-{% else %}
-def {{ function_name }}({% if select_param %}, {{ select_param | join(', ') }}{% endif %} {% for param in in_params %}{{ param.name }}{% if not loop.last %}, {% endif %}{% endfor %}):
-{% endif %}
-{% endif %}
-    """ Call interface method I{{ iface_name | capitalize }}::{{ method_name }} """
+    """ Calls interface method I{{ iface_name | capitalize }}::{{ method_name }} """
 
     vbox_utils_commonChecks()
     httpCode = HTTPStatus.OK
@@ -134,4 +135,4 @@ def {{ function_name }}({% if select_param %}, {{ select_param | join(', ') }}{%
     {% else %}{# No response #}
     {{ m.jsonify_response_block() }}
     {% endif %}
-
+{% endif %}

@@ -88,7 +88,7 @@ def main():
 
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    env = Environment(loader=FileSystemLoader(in_template_file.parent), trim_blocks=True, lstrip_blocks=True)
+    env = Environment(loader=FileSystemLoader(in_template_file.parent), trim_blocks=True, lstrip_blocks=True, extensions=['jinja2.ext.do'])
     env.filters['to_snake_case'] = to_snake_case
     try:
         code_template = env.get_template(in_template_file.name)
@@ -114,10 +114,6 @@ def main():
 
     for file_name, func_data_list in groups.items():
         for entry in func_data_list:
-            x_vbox_stub = entry.get('x_vbox_stub')
-            if x_vbox_stub is not None and x_vbox_stub != "generate":
-                continue
-
             response_category = entry.get('response_category')
             if response_category != "No Response":
                 response_type = entry.get('response_type')
