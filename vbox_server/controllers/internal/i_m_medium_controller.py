@@ -41,7 +41,7 @@ from vbox_server.models.medium_set_properties_request_body import MediumSetPrope
 from vbox_server.models.medium_set_property_request_body import MediumSetPropertyRequestBody  # noqa: E501
 from vbox_server.models.progress_obj_wrapper_response import ProgressObjWrapperResponse  # noqa: E501
 from vbox_server.models.virtual_box_create_medium_request_body import VirtualBoxCreateMediumRequestBody  # noqa: E501
-
+from vbox_server.models.medium_change_encryption_request_body import MediumChangeEncryptionRequestBody
 
 ############################ Helpers ############################
 # local list to keep a newly created mediums that wait to be registered in VirtualBox
@@ -113,7 +113,11 @@ def __testLocation(sLocation: str):
 
 
 ############################ Implemented or used ############################
-def i_medium_getmedium(mediumid, select=None):  # noqa: E501
+def i_wrapper_medium_getmedium(mediumid, select=None):
+    return _medium_getmedium(mediumid, select)
+
+
+def _medium_getmedium(mediumid, select=None):  # noqa: E501
     """
     :param mediumid: The Id of medium
     :type mediumid: str
@@ -225,8 +229,12 @@ def i_medium_getmedium(mediumid, select=None):  # noqa: E501
 #     return response, httpCode
 
 
+def i_wrapper_medium_compact(mediumid):
+    return _medium_compact(mediumid)
+
+
 @findMedium_decorator
-def i_medium_compact(oVBoxMedium):  # noqa: E501
+def _medium_compact(oVBoxMedium):  # noqa: E501
     """
     Call interface method IMedium::compact
 
@@ -265,8 +273,12 @@ def i_medium_compact(oVBoxMedium):  # noqa: E501
     return response, httpCode
 
 
+def i_wrapper_medium_resize(mediumid, logicalSize=None):
+    return _medium_resize(mediumid, logicalSize)
+
+
 @findMedium_decorator
-def i_medium_resize(oVBoxMedium, logicalSize=None):  # noqa: E501
+def _medium_resize(oVBoxMedium, logicalSize=None):  # noqa: E501
     """
     Call interface method IMedium::resize
 
@@ -396,8 +408,12 @@ def i_medium_deletestorage(oVBoxMedium):  # noqa: E501
 #     return response, httpCode
 
 
+def i_wrapper_medium_reset(mediumid):
+    return _medium_reset(mediumid)
+
+
 @findMedium_decorator
-def i_medium_reset(oVBoxMedium):  # noqa: E501
+def _medium_reset(oVBoxMedium):  # noqa: E501
     """
     Call interface method IMedium::reset
 
@@ -436,8 +452,12 @@ def i_medium_reset(oVBoxMedium):  # noqa: E501
     return response, httpCode
 
 
+def i_wrapper_medium_cloneto(mediumid, oMediumCloneToRequestBody: MediumCloneToRequestBody):
+    return _medium_cloneto(mediumid, oMediumCloneToRequestBody)
+
+
 @findMedium_decorator
-def i_medium_cloneto(oVBoxMedium, oMediumCloneToRequestBody: MediumCloneToRequestBody):  # noqa: E501
+def _medium_cloneto(oVBoxMedium, oMediumCloneToRequestBody: MediumCloneToRequestBody):  # noqa: E501
     """
     Call interface method IMedium::cloneTo
 
@@ -502,7 +522,11 @@ def i_medium_cloneto(oVBoxMedium, oMediumCloneToRequestBody: MediumCloneToReques
     return response, httpCode
 
 
-def i_medium_clonetobase(mediumid, oMediumCloneToBaseRequestBody: MediumCloneToBaseRequestBody):  # noqa: E501
+def i_wrapper_medium_clonetobase(mediumid, oMediumCloneToBaseRequestBody: MediumCloneToBaseRequestBody):
+    return _medium_clonetobase(mediumid, oMediumCloneToBaseRequestBody)
+
+
+def _medium_clonetobase(mediumid, oMediumCloneToBaseRequestBody: MediumCloneToBaseRequestBody):  # noqa: E501
     """
     Call interface method IMedium::cloneToBase
 
@@ -519,11 +543,15 @@ def i_medium_clonetobase(mediumid, oMediumCloneToBaseRequestBody: MediumCloneToB
     oMediumCloneToRequestBody.target = oMediumCloneToBaseRequestBody.target
     oMediumCloneToRequestBody.variant = oMediumCloneToBaseRequestBody.variant
 
-    return i_medium_cloneto(mediumid, oMediumCloneToRequestBody)
+    return _medium_cloneto(mediumid, oMediumCloneToRequestBody)
+
+
+def i_wrapper_medium_mergeto(mediumid, target=None):
+    return _medium_mergeto(mediumid, target)
 
 
 @findMedium_decorator
-def i_medium_mergeto(oVBoxMedium, target=None):  # noqa: E501
+def _medium_mergeto(oVBoxMedium, target=None):  # noqa: E501
     """
     Call interface method IMedium::mergeTo
 
@@ -614,8 +642,12 @@ def i_medium_moveto(oVBoxMedium, location=None):
     return response, httpCode
 
 
+def i_wrapper_medium_resizeandcloneto(mediumid, oMediumResizeAndCloneToRequestBody: MediumResizeAndCloneToRequestBody):
+    return _medium_resizeandcloneto(mediumid, oMediumResizeAndCloneToRequestBody)
+
+
 @findMedium_decorator
-def i_medium_resizeandcloneto(oVBoxMedium, oMediumResizeAndCloneToRequestBody: MediumResizeAndCloneToRequestBody):  # noqa: E501
+def _medium_resizeandcloneto(oVBoxMedium, oMediumResizeAndCloneToRequestBody: MediumResizeAndCloneToRequestBody):  # noqa: E501
     """
     Call interface method IMedium::resizeAndCloneTo
 
@@ -679,7 +711,11 @@ def i_medium_resizeandcloneto(oVBoxMedium, oMediumResizeAndCloneToRequestBody: M
     return response, httpCode
 
 
-def i_medium_createbasestorage(mediumid, oMediumCreateBaseStorageRequestBody: MediumCreateBaseStorageRequestBody):  # noqa: E501
+def i_wrapper_medium_createbasestorage(mediumid, oMediumCreateBaseStorageRequestBody: MediumCreateBaseStorageRequestBody):
+    return _medium_createbasestorage(mediumid, oMediumCreateBaseStorageRequestBody)
+
+
+def _medium_createbasestorage(mediumid, oMediumCreateBaseStorageRequestBody: MediumCreateBaseStorageRequestBody):  # noqa: E501
     """
     Call interface method IMedium::createBaseStorage
 
@@ -734,7 +770,11 @@ def i_medium_createbasestorage(mediumid, oMediumCreateBaseStorageRequestBody: Me
     return response, httpCode
 
 
-def i_medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: MediumCreateDiffStorageRequestBody):  # noqa: E501
+def i_wrapper_medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: MediumCreateDiffStorageRequestBody):
+    return _medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody)
+
+
+def _medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: MediumCreateDiffStorageRequestBody):  # noqa: E501
     """
     Call interface method IMedium::createDiffStorage
 
@@ -1032,7 +1072,11 @@ def i_medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: Me
 
 
 ############################# Not implemented yet or not used #############################
-def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
+def i_wrapper_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody: MediumChangeEncryptionRequestBody):
+    return _medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody)
+
+
+def _medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # noqa: E501
     """
     Call interface method IMedium::changeEncryption
 
@@ -1043,59 +1087,4 @@ def i_medium_changeencryption(mediumid, oMediumChangeEncryptionRequestBody):  # 
 
     :rtype: ProgressResponse
     """
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_compact(mediumid):  # noqa: E501
-    """
-    Call interface method IMedium::compact
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-
-    :rtype: ProgressResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_reset(mediumid):  # noqa: E501
-    """
-    Call interface method IMedium::reset
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-
-    :rtype: ProgressResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-
-def i_medium_resize(mediumid, logicalSize=None):  # noqa: E501
-    """
-    Call interface method IMedium::resize
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param logicalSize: 
-    :type logicalSize: int
-
-    :rtype: ProgressResponse
-    """
-
-    return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
-
-def medium_resizeandcloneto(mediumid, oMediumResizeAndCloneToRequestBody):  # noqa: E501
-    """
-    Call interface method IMedium::resizeAndCloneTo
-
-    :param mediumid: The Id of medium
-    :type mediumid: str
-    :param oMediumResizeAndCloneToRequestBody: 
-    :type oMediumResizeAndCloneToRequestBody: dict | bytes
-
-    :rtype: ProgressResponse
-    """
-
     return "Not implemented yet", HTTPStatus.NOT_IMPLEMENTED
