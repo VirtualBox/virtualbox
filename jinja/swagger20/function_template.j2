@@ -8,8 +8,9 @@
 {% endif -%}
 {% endif -%}
 
-{%- set select_param = in_help_param_list | selectattr('name', 'equalto', 'select') | map(attribute='name') | list %}
-{%- set obj_name = none -%}
+{%- set select_param = in_help_param_list | selectattr('name', 'equalto', 'select') | map(attribute='name') | list -%}
+{%- set params = [] -%}
+
 {%- if x_vbox_stub == 'generate' -%}
     {%- do params.append('oVBoxObj') -%}
 {%- endif -%}
@@ -110,42 +111,45 @@ def {{ function_name }}({{ param_list }}):
     {# ------------------------------
        Response building
        ------------------------------ #}
-    {% if response_has_body %}
-    {% set out_var = 'oResponse' %}
-    {{ out_var }} = {{ response_type }}()
-    {% if node_kind == 'wrapper' %}
-        {%- set field = node.wrapper_field -%}
-        {% if node.is_array %}
-    {{ out_var }}.{{ field }} = []
-    for item in {{ rv_name }} or []:
-            {% if node.item_kind == 'enum' and node.item_ref %}
-        {{ out_var }}.{{ field }}.append(vbox_to_swagger_{{ node.item_ref | lower }}(item))
-            {% elif node.item_kind == 'object' and node.item_ref %}
-        {{ out_var }}.{{ field }}.append(i_fill_{{ node.item_ref | lower }}(item{% if select_param %}, {{ select_param | join(', ') }}{% endif %}))
+{% if response_has_body %}
+    {% set rt = response_type_node %}
+    {% if rt.type == "object" and rt.ref and rt.items %}
+    o{{ rt.ref }} = {{ rt.ref }}()
+    {% for item in rt.items %}
+    {{ m.assign_response_item("o" ~ rt.ref, item) }}
+    {% endfor %}
+    response = jsonify(oError if oError is not None else o{{ rt.ref }})
+    {% else %}
+        {% if rt.is_array %}
+            {% if rt.type == "enum" %}
+    response = jsonify([
+        vbox_to_swagger_{{ rt.ref | lower }}(nEnumValue)
+        for nEnumValue in returnValue
+    ])
+            {% elif rt.type == "interface" %}
+    response = jsonify([
+        {{ rt.ref }}_to_swagger(oItem)
+        for oItem in returnValue
+    ])
             {% else %}
-        {{ out_var }}.{{ field }}.append(item)
+    response = jsonify(returnValue)
             {% endif %}
         {% else %}
-            {% if node.inner_kind == 'enum' and node.inner_ref %}
-    {{ out_var }}.{{ field }} = vbox_to_swagger_{{ node.inner_ref | lower }}({{ rv_name }})
-            {% elif node.inner_kind == 'object' and node.inner_ref %}
-    {{ out_var }}.{{ field }} = i_fill_{{ node.inner_ref | lower }}({{ rv_name }}{% if select_param %}, {{ select_param | join(', ') }}{% endif %})
+            {% if rt.type == "enum" %}
+    nEnumValue = returnValue
+    response = jsonify(
+        vbox_to_swagger_{{ rt.ref | lower }}(nEnumValue)
+    )
+            {% elif rt.type == "interface" %}
+    response = jsonify(
+        {{ rt.ref }}_to_swagger(returnValue)
+    )
             {% else %}
-    {{ out_var }}.{{ field }} = {{ rv_name }}
+    response = jsonify(returnValue)
             {% endif %}
         {% endif %}
-    {% elif node_kind == 'wrapper_multi' %}
-        {% for it in node.wrapper_multi_items %}
-            {%- set f = it.field -%}
-            {%- set fnode = it.node if it.node is defined else {} -%}
-            {{ m.assign_response_field(out_var, f, f, fnode, (select_param | join(', ') if select_param else none)) }}
-        {% endfor %}
-    {% elif node_kind == 'no_body' %}
-    pass
-    {% else %}
     {% endif %}
-    {{ m.jsonify_response_block(out_var) }}
-    {% else %}
-    {{ m.jsonify_response_block() }}
-    {% endif %}
+{% else %}
+    response = jsonify("Successful operation")
+{% endif %}
 {% endif %}
