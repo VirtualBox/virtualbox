@@ -15,12 +15,11 @@ from typing import Any, Dict, List, Optional, Tuple
 @dataclass
 class FieldNode:
     name: str
-    base_kind: str
-    is_array: bool = False
+    kind: str
     ref: Optional[str] = None
+    is_array: bool = False
+    item_kind: Optional[str] = None
     item_ref: Optional[str] = None
-    enum_name: Optional[str] = None
-    interface_name: Optional[str] = None
 
 
 @dataclass
@@ -41,13 +40,15 @@ class TypeNode:
     inner_ref: Optional[str] = None
     inner_kind: Optional[str] = None
     wrapper_field: Optional[str] = None
+    wrapper_multi_items: List[dict] = field(default_factory=list)
 
 
 def build_returned_param_list_from_node(node: TypeNode) -> list:
     if not node or node.kind in ("unknown", "no_body"):
         return []
 
-    def pack(name: str, base_kind: str, is_array: bool, ref: str = None, item_ref: str = None, item_kind: str = None):
+    def pack(name: str, base_kind: str, is_array: bool,
+             ref: str = None, item_ref: str = None, item_kind: str = None):
         return {
             "name": name,
             "base_kind": base_kind,
@@ -58,7 +59,34 @@ def build_returned_param_list_from_node(node: TypeNode) -> list:
         }
 
     if node.kind == "wrapper_multi":
-        return [pack("returnValue", "object", False, ref=node.ref)]
+        out = []
+        for it in (node.wrapper_multi_items or []):
+            fname = it.get("field")
+            nd = it.get("node") or {}
+            k = nd.get("kind", "unknown")
+
+            if not fname:
+                continue
+
+            if k == "array":
+                out.append(pack(
+                    fname, "array", True,
+                    item_ref=nd.get("item_ref"),
+                    item_kind=nd.get("item_kind"),
+                ))
+                continue
+
+            if k == "simple":
+                out.append(pack(fname, "simple", False))
+                continue
+
+            if k in ("enum", "interface", "object"):
+                out.append(pack(fname, k, False, ref=nd.get("ref")))
+                continue
+
+            out.append(pack(fname, "object", False, ref=nd.get("ref")))
+
+        return out
 
     if node.kind == "wrapper":
         if node.is_array:
@@ -115,6 +143,7 @@ def typenode_to_dict(n: TypeNode) -> dict:
         "inner_ref": n.inner_ref,
         "inner_kind": n.inner_kind,
         "wrapper_field": n.wrapper_field,
+        "wrapper_multi_items": n.wrapper_multi_items,
         "swagger_type": n.swagger_type,
         "swagger_format": n.swagger_format,
     }
@@ -132,12 +161,16 @@ def get_def(definitions: dict, name: str) -> dict:
 
 def is_enum_ref(definitions: dict, name: str) -> bool:
     d = get_def(definitions, name)
-    return isinstance(d.get("enum"), list) and len(d["enum"]) > 0
+    if bool(d.get("x-vbox-type") == 'enum'):
+        return True
+    return False
 
 
 def is_interface_ref(definitions: dict, name: str) -> bool:
     d = get_def(definitions, name)
-    return bool(d.get("x-vbox-type"))
+    if bool(d.get("x-vbox-type") == 'interface'):
+        return True
+    return False
 
 
 def classify_ref(definitions: dict, ref_name: str) -> str:
@@ -182,7 +215,7 @@ def unwrap_wrapper_one_level(definitions: dict, wrapper_ref: str):
         return (None, None, None)
 
     if len(props) > 1:
-        return ("multi", None, None)
+        return ("multi", list(props.items()), None)
 
     field_name, field_schema = next(iter(props.items()))
     if isinstance(field_schema, dict):
@@ -236,6 +269,15 @@ def parse_schema_to_typenode_shallow(schema: dict, definitions: dict) -> TypeNod
             n.kind = "wrapper_multi"
             n.is_wrapper = True
             n.is_wrapper_multi = True
+
+            # collect per-field type info (order is preserved from YAML definitions)
+            props_items = field_name if isinstance(field_name, list) else []
+            for fname, fschema in props_items:
+                if not isinstance(fschema, dict):
+                    n.wrapper_multi_items.append({"field": fname, "node": {"kind": "simple", "swagger_type": "string"}})
+                    continue
+                fnode = parse_schema_to_typenode_shallow(fschema, definitions)
+                n.wrapper_multi_items.append({"field": fname, "node": typenode_to_dict(fnode)})
             return n
 
         if wkind == "single" and isinstance(field_schema, dict):
@@ -433,16 +475,13 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
 
     params = operation_data.get('parameters', []) or []
 
-    x_vbox_stub = operation_data.get('x-vbox-stub', 'generate')
-    
     body_param = None
     for param in params:
         param_in = param.get('in')
         if param_in == 'body':
             body_param = param
         elif param_in == 'path':
-            if x_vbox_stub != 'generate':
-                in_path_param_list.append(param)
+            in_path_param_list.append(param)
         elif param_in == 'query':
             in_query_param_list.append(param)
             
@@ -456,8 +495,10 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
  
     in_main_param_list = []
 
+    x_vbox_stub = operation_data.get('x-vbox-stub', 'generate')
     for p in in_path_param_list:
-        in_main_param_list.append({"name": p.get("name"), "type": "string"})
+        if x_vbox_stub != 'generate':
+            in_main_param_list.append({"name": p.get("name"), "type": "string"})
 
     for p in in_query_param_list:
         pname = p.get("name")
@@ -473,6 +514,7 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
     curr_vbox_obj = 'oCurr' + iface_name[0].upper() + iface_name[1:]
 
     in_param_names = [p['name'] for p in in_main_param_list]
+    param_names_map = {name: to_snake_case_simple(name) for name in in_param_names}
 
     responses = operation_data.get('responses', {})
 
@@ -514,6 +556,7 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
         'response_type': response_type,
         'response_var': response_var,
         'returned_param_list': returned_param_list,
+        'param_names_map': param_names_map,
         'response_item_type': response_item_type,
         'x_vbox_stub': operation_data.get('x-vbox-stub', 'generate'),
         'tags': operation_data.get('tags', ''),
