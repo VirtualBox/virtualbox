@@ -43,38 +43,6 @@ class TypeNode:
     wrapper_multi_items: List[dict] = field(default_factory=list)
 
 
-def build_returned_param_list_from_node(node: TypeNode) -> list:
-    if not node or node.kind in ("unknown", "no_body"):
-        return []
-
-    def pack(name: str, base_kind: str, is_array: bool,
-             ref: str = None, item_ref: str = None, item_kind: str = None):
-        return {
-            "name": name,
-            "base_kind": base_kind,
-            "is_array": bool(is_array),
-            "ref": ref,
-            "item_ref": item_ref,
-            "item_kind": item_kind,
-        }
-
-    if node.kind == "wrapper_multi":
-        return [pack("returnValue", "object", False, ref=node.ref)]
-
-    if node.kind == "wrapper":
-        if node.is_array:
-            return [pack("returnValue", "array", True, ref=node.ref, item_ref=node.item_ref, item_kind=node.item_kind)]
-        return [pack("returnValue", node.inner_kind or "object", False, ref=node.inner_ref or node.ref)]
-
-    if node.kind == "array":
-        return [pack("returnValue", "array", True, item_ref=node.item_ref, item_kind=node.item_kind)]
-
-    if node.kind in ("enum", "interface", "object", "simple"):
-        return [pack("returnValue", node.kind, False, ref=node.ref)]
-
-    return [pack("returnValue", "object", False)]
-
-
 def pick_success_response(responses: dict):
     for code in ('200', '201', '202', '204'):
         if code in responses:
@@ -279,24 +247,6 @@ def classify_ref(definitions: dict, ref_name: str) -> str:
     if is_interface_ref(definitions, ref_name):
         return "interface"
     return "object"
-
-
-def classify_response_type(node: TypeNode) -> str:
-    if not node or node.kind == 'unknown':
-        return "No Response"
-    if node.kind == 'enum':
-        return "Enum"
-    if node.kind == 'array':
-        return "Array"
-    if node.kind == 'obj':
-        if node.x_vbox_type:
-            return "Interface"
-        return "Standard"
-    if node.kind in ('union', 'complex'):
-        return "Standard"
-    if node.kind == 'simple':
-        return "Standard"
-    return "Standard"
 
 
 def unwrap_wrapper_one_level(definitions: dict, wrapper_ref: str):
@@ -568,7 +518,6 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
             session = True
 
     in_path_param_list, in_query_param_list = [], []
-    in_main_param_list, in_help_param_list = [], []
     enum_in_params = []
     has_request_body, request_body_type = False, None
     request_body_fields = []
@@ -603,8 +552,6 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
     for p in in_query_param_list:
         pname = p.get("name")
         in_main_param_list.append({"name": pname, "type": "string"})
-        if pname == "select":
-            in_help_param_list.append(p)
 
     if has_request_body:
         in_main_param_list.append({"name": "oRequest", "type": request_body_type})
@@ -618,18 +565,9 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
     responses = operation_data.get('responses', {})
 
     success_code, resp_node, no_body = parse_response(responses, definitions)
-
     response_success_code = success_code
-
     response_type_node = build_response_type_node(resp_node)
-
     response_has_body = (not no_body)
-    
-    response_ref, response_type, response_var = None, None, None
-
-    if getattr(resp_node, "ref", None):
-        response_ref = resp_node.ref
-        response_type = response_ref
 
     return {
         'iface_name': iface_name,
@@ -639,14 +577,11 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
         'file_name': file_name,
         'is_session_req': session,
         'in_params': in_main_param_list,
-        'in_param_list': ', '.join(in_param_names),
         'enum_in_params': enum_in_params,
-        'in_help_param_list': in_help_param_list,
         'curr_vbox_obj': curr_vbox_obj,
         'has_request_body': has_request_body,
         'request_type': request_body_type,
         'request_body_fields': request_body_fields,
-        'response_type': response_type,
         'x_vbox_stub': operation_data.get('x-vbox-stub', 'generate'),
         'tags': operation_data.get('tags', ''),
         'response_success_code': response_success_code,
@@ -664,7 +599,6 @@ def main():
 
     args = parser.parse_args()
     interface_name = args.interface.lower()
-    
     yaml_api_def = Path(args.yaml_api_def)
     out_file = Path(args.out_file)
     output_dir = Path(args.out_dir)
