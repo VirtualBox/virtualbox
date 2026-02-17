@@ -59,34 +59,7 @@ def build_returned_param_list_from_node(node: TypeNode) -> list:
         }
 
     if node.kind == "wrapper_multi":
-        out = []
-        for it in (node.wrapper_multi_items or []):
-            fname = it.get("field")
-            nd = it.get("node") or {}
-            k = nd.get("kind", "unknown")
-
-            if not fname:
-                continue
-
-            if k == "array":
-                out.append(pack(
-                    fname, "array", True,
-                    item_ref=nd.get("item_ref"),
-                    item_kind=nd.get("item_kind"),
-                ))
-                continue
-
-            if k == "simple":
-                out.append(pack(fname, "simple", False))
-                continue
-
-            if k in ("enum", "interface", "object"):
-                out.append(pack(fname, k, False, ref=nd.get("ref")))
-                continue
-
-            out.append(pack(fname, "object", False, ref=nd.get("ref")))
-
-        return out
+        return [pack("returnValue", "object", False, ref=node.ref)]
 
     if node.kind == "wrapper":
         if node.is_array:
@@ -551,13 +524,13 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
         'has_request_body': has_request_body,
         'request_type': request_body_type,
         'request_body_fields': request_body_fields,
-        'response_ref': response_ref,
-        'response_category': response_category,
+        # 'response_ref': response_ref,
+        # 'response_category': response_category,
         'response_type': response_type,
-        'response_var': response_var,
-        'returned_param_list': returned_param_list,
-        'param_names_map': param_names_map,
-        'response_item_type': response_item_type,
+        # 'response_var': response_var,
+        # 'returned_param_list': returned_param_list,
+        # 'param_names_map': param_names_map,
+        # 'response_item_type': response_item_type,
         'x_vbox_stub': operation_data.get('x-vbox-stub', 'generate'),
         'tags': operation_data.get('tags', ''),
         'response_success_code': response_success_code,
