@@ -11,128 +11,141 @@
 {%- set select_param = in_help_param_list | selectattr('name', 'equalto', 'select') | map(attribute='name') | list %}
 {%- set obj_name = none -%}
 {%- if x_vbox_stub == 'generate' -%}
-    {%- set obj_name = 'oVBoxObj' -%}
+    {%- do params.append('oVBoxObj') -%}
 {%- endif -%}
-{%- set param_list = m.build_def_param_list(obj_name, select_param, in_params, has_request_body, request_type) -%}
-{%- set args_list = m.build_call_arg_list(obj_name, select_param, in_params, has_request_body) -%}
+
+{%- if in_params -%}
+    {%- for p in in_params -%}
+        {%- if p.name != 'oRequest' -%}
+            {%- set py_name = p.name -%}
+            {%- do params.append(py_name) -%}
+        {%- endif -%}
+    {%- endfor -%}
+{%- endif -%}
+
+{%- if has_request_body -%}
+    {%- if request_type -%}
+        {%- do params.append('oRequest: ' ~ request_type) -%}
+    {%- else -%}
+        {%- do params.append('oRequest') -%}
+    {%- endif -%}
+{%- endif -%}
+
+{%- set param_list = params | join(', ') -%}
 
 def {{ function_name }}({{ param_list }}):
 {% if x_vbox_stub == 'hardcoded' %}
     """ Calls a wrapper that calls a hand-written function. """
-    from vbox_server.controllers.internal.i_m_{{iface_name}}_controller import i_wrapper_{{iface_name}}_{{ method_name | lower}} as wrapper
-    return wrapper({{ args_list }})
+    from vbox_server.controllers.internal.i_m_{{ iface_name }}_controller import i_wrapper_{{ iface_name }}_{{ method_name | lower }} as wrapper
 
+    {%- set hardcoded_args = [] -%}
+    {% for a in params %}
+        {%- set arg = a.split(':')[0].strip() -%}
+        {% do hardcoded_args.append(arg) %}
+    {% endfor %}
+    return wrapper({{ hardcoded_args | join(', ') }})
 {% else %}
     """ Calls interface method I{{ iface_name | capitalize }}::{{ method_name }} """
 
     vbox_utils_commonChecks()
+    {% if response_success_code %}
+    httpCode = HTTPStatus({{ response_success_code }})
+    {% else %}
     httpCode = HTTPStatus.OK
+    {% endif %}
     oError = None
-
-    {% if iface_decorator_name %}
-    {{ curr_vbox_obj }} = oVBoxObj
+    {{ curr_vbox_obj }} = {{params[0]}}
+    {% set call_args = [] %}
+    {% if in_params %}
+        {% for p in in_params %}
+            {% if p.name != 'oRequest' %}
+                {%- set pname = p.name -%}
+                {%- set py_name = p.name -%}
+                {%- set enum_match = enum_in_params | selectattr('name', 'equalto', pname) | list | first -%}
+    {% if enum_match %}
+    l_{{ py_name }} = swagger_to_vbox_{{ enum_match.type|lower }}({{ py_name }})
+    {% else %}
+    l_{{ py_name }} = {{ py_name }}
     {% endif %}
-
-    {%- set call_args = [] %}
-
-    {%- if has_request_body %}
-    o = oRequest
-    {% for param in request_body_fields %}
-    {% set enum_match = enum_in_params | selectattr("name", "equalto", param) | list | first %}
-    {% if enum_match %}
-    l_{{ param }} = swagger_to_vbox_{{ enum_match.type|lower }}(o.{{ param }})
-    {% else %}
-    l_{{ param }} = o.{{ param }}
-    {% endif -%}
-    {% set _ = call_args.append('l_' ~ param) %}
-    {% endfor -%}
-    {% else %}
-    {% for param in in_params %}
-    {% set pname = param.name %}
-    {% set is_array = param.is_array | default(false) %}
-    {% set vbox_type = param.x_vbox_type | default(None) %}
-    {% set enum_match = enum_in_params | selectattr("name", "equalto", pname) | list | first %}
-    {% if enum_match %}
-    l_{{ pname }} = swagger_to_vbox_{{ enum_match.type|lower }}({{ pname }})
-    {% else %}
-        {% if vbox_type %}
-            {% if is_array %}
-    {{ pname }}_ids = [s.strip() for s in {{ pname }} if s and s.strip()]
-    l_{{ pname }} = []
-    for _id in {{ pname }}_ids:
-        l_{{ pname }}.append({{ m.vbox_find_func_name(vbox_type) }}({{ curr_vbox_obj }}, _id))
-            {% else %}
-    l_{{ pname }} = {{ m.vbox_find_func_name(vbox_type) }}({{ curr_vbox_obj }}, {{ pname }})
+                {%- do call_args.append('l_' ~ py_name) -%}
             {% endif %}
-        {% elif is_array %}
-    if {{ pname }} and len({{ pname }}) !=0:
-      l_{{ pname }} = [s.strip() for s in {{ pname }} if s and s.strip()]
-    else:
-      l_{{ pname }} = []
-        {% else %}
-    l_{{ pname }} = {{ pname }}
-        {% endif %}
+        {% endfor %}
     {% endif %}
-    {% set _ = call_args.append('l_' ~ pname) %}
-    {% endfor -%}
+    {% if has_request_body %}
+        {% for f in request_body_fields %}
+            {% set fname = f.name %}
+            {% set enum_match = enum_in_params | selectattr('name', 'equalto', fname) | list | first %}
+            {% if f.type == 'array' %}
+                {% if (f.items_type | default('')) == 'enum' and enum_match %}
+    l_{{ fname }} = []
+    for item in (oRequest.{{ fname }} or []):
+        l_{{ fname }}.append(swagger_to_vbox_{{ enum_match.type|lower }}(item))
+                {% else %}
+    l_{{ fname }} = oRequest.{{ fname }} or []
+                {% endif %}
+            {% else %}
+                {% if enum_match %}
+    l_{{ fname }} = swagger_to_vbox_{{ enum_match.type|lower }}(oRequest.{{ fname }})
+                {% else %}
+    l_{{ fname }} = oRequest.{{ fname }}
+                {% endif %}
+            {% endif %}
+            {% do call_args.append('l_' ~ fname) %}
+        {% endfor %}
     {% endif %}
-
+    {% set node = response_type_node if response_type_node is defined else {} %}
+    {% set node_kind = node.kind if node and node.kind is defined else 'unknown' %}
+    {% set rv_name = 'retValue' %}
     try:
-        {% if returned_param_list|length > 1 %}
-        [{{ returned_param_list | map(attribute='name') | join(', ') }}] = {{ curr_vbox_obj }}.{{ method_name }}({{ call_args | join(', ') }})
-        {% elif returned_param_list|length == 1 %}
-        {% if response_category == 'Standard' %}
-        {{ returned_param_list[0].name }} = {{ curr_vbox_obj }}.{{ method_name }}({{ call_args | join(', ') }})
+        {% set call_args_no_select = call_args | reject('equalto', 'l_select') | list%}
+        {% if node_kind == 'wrapper_multi' and node.wrapper_multi_items is defined and node.wrapper_multi_items %}
+        [{{ node.wrapper_multi_items | map(attribute='field') | join(', ') }}] = {{ curr_vbox_obj }}.{{ method_name }}({{ call_args_no_select | join(', ') }})
         {% else %}
-        {{ returned_param_list[0].name }} = {{ curr_vbox_obj }}.{{ method_name }}({{ call_args | join(', ') }})
-        {% endif %}
-        {% else %}
-        {{ curr_vbox_obj }}.{{ method_name }}({{ call_args | join(', ') }})
+        {{ rv_name }} = {{ curr_vbox_obj }}.{{ method_name }}({{ call_args_no_select | join(', ') }})
         {% endif %}
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
 
-    {% if response_var is defined and response_var%}
-    {%- set response_var = 'oResponse' %}
-    {{ response_var }} = {{ response_type }}()
-    {% for param in returned_param_list %}
-        {% if response_category == 'Interface' %}
-    {{ response_var }}.{{ param.name }} = i_fill_{{ response_item_type | lower }}({{ param.name }}{% if select_param %}, {{ select_param | join(', ') }}{% endif %})
-
-        {% elif response_category == 'Enum' %}
-    {{ response_var }}.{{ param.name }} = vbox_to_swagger_{{ response_item_type | lower }}({{ param.name }})
-
-        {% elif response_category == 'Array' %}
-    {{ response_var }}.{{ param.name }} = []
-    for item in {{ param.name }}:
-            {% if response_item_type in enum_definitions %}
-        {{ response_var }}.{{ param.name }}.append(vbox_to_swagger_{{ response_item_type | lower }}(item))
+    {# ------------------------------
+       Response building
+       ------------------------------ #}
+    {% if response_has_body %}
+    {% set out_var = 'oResponse' %}
+    {{ out_var }} = {{ response_type }}()
+    {% if node_kind == 'wrapper' %}
+        {%- set field = node.wrapper_field -%}
+        {% if node.is_array %}
+    {{ out_var }}.{{ field }} = []
+    for item in {{ rv_name }} or []:
+            {% if node.item_kind == 'enum' and node.item_ref %}
+        {{ out_var }}.{{ field }}.append(vbox_to_swagger_{{ node.item_ref | lower }}(item))
+            {% elif node.item_kind == 'object' and node.item_ref %}
+        {{ out_var }}.{{ field }}.append(i_fill_{{ node.item_ref | lower }}(item{% if select_param %}, {{ select_param | join(', ') }}{% endif %}))
             {% else %}
-        {{ response_var }}.{{ param.name }}.append(i_fill_{{ response_item_type | lower }}(item{% if select_param %}, {{ select_param | join(', ') }}{% endif %}))
+        {{ out_var }}.{{ field }}.append(item)
             {% endif %}
-
-        {% elif response_category == 'Standard' %}
-            {% if param.is_array %}
-    {{ response_var }}.{{ param.name }} = []
-    for item in {{ param.name }}:
-                {% if param.is_enum %}
-        {{ response_var }}.{{ param.name }}.append(vbox_to_swagger_{{ param.type | lower }}(item))
-                {% else %}
-        {{ response_var }}.{{ param.name }}.append(item)
-                {% endif %}
+        {% else %}
+            {% if node.inner_kind == 'enum' and node.inner_ref %}
+    {{ out_var }}.{{ field }} = vbox_to_swagger_{{ node.inner_ref | lower }}({{ rv_name }})
+            {% elif node.inner_kind == 'object' and node.inner_ref %}
+    {{ out_var }}.{{ field }} = i_fill_{{ node.inner_ref | lower }}({{ rv_name }}{% if select_param %}, {{ select_param | join(', ') }}{% endif %})
             {% else %}
-                {% if param.is_enum %}
-    {{ response_var }}.{{ param.name }} = vbox_to_swagger_{{ param.type | lower }}({{ param.name }})
-                {% else %}
-    {{ response_var }}.{{ param.name }} = {{ param.name }}
-                {% endif %}
+    {{ out_var }}.{{ field }} = {{ rv_name }}
             {% endif %}
         {% endif %}
-        {#{% elif response_category == 'Complex' %}#}
-    {% endfor %}
-    {{ m.jsonify_response_block(response_var) }}
-    {% else %}{# No response #}
+    {% elif node_kind == 'wrapper_multi' %}
+        {% for it in node.wrapper_multi_items %}
+            {%- set f = it.field -%}
+            {%- set fnode = it.node if it.node is defined else {} -%}
+            {{ m.assign_response_field(out_var, f, f, fnode, (select_param | join(', ') if select_param else none)) }}
+        {% endfor %}
+    {% elif node_kind == 'no_body' %}
+    pass
+    {% else %}
+    {% endif %}
+    {{ m.jsonify_response_block(out_var) }}
+    {% else %}
     {{ m.jsonify_response_block() }}
     {% endif %}
 {% endif %}
