@@ -70,47 +70,35 @@ find_{{ iface_name }}_by_id
 {%- endmacro %}
 
 
-{# 
-    Macro: assign_response_field
+{%- macro assign_response_item(o_response_var, item) -%}
+{%- set n = item.node -%}
 
-    Purpose:
-    Assign a field in response object based on response TypeNode dict.
+{%- if item.is_array -%}
 
-    Rules:
-      - For enum we call vbox_to_swagger_<ref>()
-      - For arrays we apply conversion per element.
+    {%- if n.type == "enum" -%}
+    {{ o_response_var }}.{{ item.name }} = [
+        vbox_to_swagger_{{ n.ref | lower }}(nEnumValue)
+        for nEnumValue in {{ item.name }}
+    ]
+    {%- elif n.type == "interface" -%}
+    {{ o_response_var }}.{{ item.name }} = [
+        {{ n.ref }}_to_swagger(oItem)
+        for oItem in {{ item.name }}
+    ]
+    {%- else -%}
+    {{ o_response_var }}.{{ item.name }} = {{ item.name }}
+    {%- endif -%}
 
-    Params:
-      out_var:    name of response object variable (e.g. oResponse)
-      field:      response field name to set (string)
-      src_expr:   python expression containing source value (string)
-      node:       dict describing the source value type
-      select_arg: optional select param expression to be passed into i_fill_* (string)
-      indent:     base indentation (int, default=4)
-#}
-{% macro assign_response_field(out_var, field, src_expr, node, select_arg=None, indent=4) -%}
-{%- set pad = ' ' * indent -%}
-{%- set kind = node.kind if node is mapping and node.kind is defined else (node['kind'] if node is mapping and 'kind' in node else 'unknown') -%}
-{%- set is_array = (node.is_array if node is mapping and node.is_array is defined else (node['is_array'] if node is mapping and 'is_array' in node else False)) -%}
-{%- set ref = node.ref if node is mapping and node.ref is defined else (node['ref'] if node is mapping and 'ref' in node else '') -%}
-{%- set item_kind = node.item_kind if node is mapping and node.item_kind is defined else (node['item_kind'] if node is mapping and 'item_kind' in node else '') -%}
-{%- set item_ref = node.item_ref if node is mapping and node.item_ref is defined else (node['item_ref'] if node is mapping and 'item_ref' in node else '') -%}
-
-{% if kind == 'array' or is_array %}
-{{ pad }}{{ out_var }}.{{ field }} = []
-{{ pad }}for item in ({{ src_expr }} or []):
-{% if item_kind == 'enum' and item_ref %}
-{{ pad }}    {{ out_var }}.{{ field }}.append(vbox_to_swagger_{{ item_ref | lower }}(item))
-{% elif item_kind in ('object', 'interface') and item_ref %}
-{{ pad }}    {{ out_var }}.{{ field }}.append(i_fill_{{ item_ref | lower }}(item{% if select_arg %}, {{ select_arg }}{% endif %}))
-{% else %}
-{{ pad }}    {{ out_var }}.{{ field }}.append(item)
-{% endif %}
-{%- elif kind == 'enum' and ref -%}
-{{ pad }}{{ out_var }}.{{ field }} = vbox_to_swagger_{{ ref | lower }}({{ src_expr }})
-{%- elif kind in ('object', 'interface') and ref -%}
-{{ pad }}{{ out_var }}.{{ field }} = i_fill_{{ ref | lower }}({{ src_expr }}{% if select_arg %}, {{ select_arg }}{% endif %})
 {%- else -%}
-{{ pad }}{{ out_var }}.{{ field }} = {{ src_expr }}
+
+    {%- if n.type == "enum" -%}
+    nEnumValue = {{ item.name }}
+    {{ o_response_var }}.{{ item.name }} = vbox_to_swagger_{{ n.ref | lower }}(nEnumValue)
+    {%- elif n.type == "interface" -%}
+    {{ o_response_var }}.{{ item.name }} = {{ n.ref }}_to_swagger({{ item.name }})
+    {%- else -%}
+    {{ o_response_var }}.{{ item.name }} = {{ item.name }}
+    {%- endif -%}
+
 {%- endif -%}
-{%- endmacro %}
+{%- endmacro -%}
