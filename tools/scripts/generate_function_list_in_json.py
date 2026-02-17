@@ -123,6 +123,133 @@ def typenode_to_dict(n: TypeNode) -> dict:
     return {k: v for k, v in d.items() if v not in (None, False, "", [])}
 
 
+def build_response_type_node(node: TypeNode) -> dict:
+    """
+    Unified response_type_node structure:
+      - Non-wrapper:
+          { "type": <simple|enum|interface|object>, "ref"?: <str>, "is_array"?: true }
+      - Swagger wrapper (top-level only):
+          { "type": "object", "ref": <WrapperName>, "items": [ { "name": <field>, "is_array"?: true, "node": {...} }, ... ] }
+
+    NOTE: Per invariant: Swagger wrapper can be only top-level; below it are only simple / native interface / native enum.
+    """
+
+    def _simple_node_dict(t: str, ref: str = None) -> dict:
+        d = {"type": t}
+        if ref:
+            d["ref"] = ref
+        return d
+
+    def _from_typenode(n: TypeNode) -> dict:
+        if n.kind == "array":
+            base_kind = n.item_kind or "object"
+            if base_kind == "simple":
+                base_type = n.swagger_type or "string"
+                d = _simple_node_dict(base_type)
+            elif base_kind in ("enum", "interface", "object"):
+                d = _simple_node_dict(base_kind, n.item_ref)
+            else:
+                d = _simple_node_dict("object")
+            d["is_array"] = True
+            return d
+
+        if n.kind == "simple":
+            return _simple_node_dict(n.swagger_type or "string")
+
+        if n.kind in ("enum", "interface", "object"):
+            return _simple_node_dict(n.kind, n.ref)
+
+        return _simple_node_dict("object", n.ref)
+
+    def _from_typenode_dict(d: dict) -> dict:
+        kind = d.get("kind")
+        if kind == "array":
+            base_kind = d.get("item_kind") or "object"
+            if base_kind == "simple":
+                base_type = d.get("swagger_type") or "string"
+                out = {"type": base_type, "is_array": True}
+            elif base_kind in ("enum", "interface", "object"):
+                out = {"type": base_kind, "ref": d.get("item_ref"), "is_array": True}
+            else:
+                out = {"type": "object", "is_array": True}
+            return out
+
+        if kind == "simple":
+            return {"type": d.get("swagger_type") or "string"}
+
+        if kind in ("enum", "interface", "object"):
+            out = {"type": kind}
+            if d.get("ref"):
+                out["ref"] = d["ref"]
+            return out
+
+        # fallback
+        out = {"type": "object"}
+        if d.get("ref"):
+            out["ref"] = d["ref"]
+        return out
+
+    if not node or node.kind in ("unknown", "no_body"):
+        return {}
+
+    if node.kind == "wrapper_multi":
+        items = []
+        for it in (node.wrapper_multi_items or []):
+            fname = it.get("field") or "returnValue"
+            nd = it.get("node") or {}
+            items.append({
+                "name": fname,
+                **({"is_array": True} if (nd.get("kind") == "array") else {}),
+                "node": _from_typenode_dict(nd),
+            })
+
+        return {
+            "type": "object",
+            "ref": node.ref,
+            "items": items,
+        }
+
+    if node.kind == "wrapper":
+        field_name = node.wrapper_field or "returnValue"
+
+        if node.is_array:
+            base_kind = node.item_kind or "object"
+            if base_kind == "simple":
+                inner_node = {"type": node.swagger_type or "string"}
+            elif base_kind in ("enum", "interface", "object"):
+                inner_node = {"type": base_kind, "ref": node.item_ref}
+            else:
+                inner_node = {"type": "object"}
+
+            return {
+                "type": "object",
+                "ref": node.ref,
+                "items": [{
+                    "name": field_name,
+                    "is_array": True,
+                    "node": inner_node,
+                }]
+            }
+
+        if node.inner_kind == "simple":
+            inner_node = {"type": node.swagger_type or "string"}
+        elif node.inner_kind in ("enum", "interface", "object"):
+            inner_node = {"type": node.inner_kind, "ref": node.inner_ref}
+        else:
+            inner_node = {"type": "object"}
+
+        return {
+            "type": "object",
+            "ref": node.ref,
+            "items": [{
+                "name": field_name,
+                "node": inner_node,
+            }]
+        }
+
+    return _from_typenode(node)
+
+
 def extract_ref_name(sref: str) -> str:
     return sref.split("/")[-1] if isinstance(sref, str) else ""
 
@@ -487,27 +614,22 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
     curr_vbox_obj = 'oCurr' + iface_name[0].upper() + iface_name[1:]
 
     in_param_names = [p['name'] for p in in_main_param_list]
-    param_names_map = {name: to_snake_case_simple(name) for name in in_param_names}
 
     responses = operation_data.get('responses', {})
 
     success_code, resp_node, no_body = parse_response(responses, definitions)
+
     response_success_code = success_code
-    response_category = classify_response_type(resp_node)
-    response_type_node = typenode_to_dict(resp_node)
+
+    response_type_node = build_response_type_node(resp_node)
+
     response_has_body = (not no_body)
-    returned_param_list = build_returned_param_list_from_node(resp_node)
     
     response_ref, response_type, response_var = None, None, None
-    response_item_type = None
 
     if getattr(resp_node, "ref", None):
         response_ref = resp_node.ref
         response_type = response_ref
-        response_var = f"o{response_type}"
-
-    if getattr(resp_node, "kind", None) == "array" and resp_node.items:
-        response_item_type = resp_node.items.ref or resp_node.items.swagger_type
 
     return {
         'iface_name': iface_name,
@@ -524,13 +646,7 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
         'has_request_body': has_request_body,
         'request_type': request_body_type,
         'request_body_fields': request_body_fields,
-        # 'response_ref': response_ref,
-        # 'response_category': response_category,
         'response_type': response_type,
-        # 'response_var': response_var,
-        # 'returned_param_list': returned_param_list,
-        # 'param_names_map': param_names_map,
-        # 'response_item_type': response_item_type,
         'x_vbox_stub': operation_data.get('x-vbox-stub', 'generate'),
         'tags': operation_data.get('tags', ''),
         'response_success_code': response_success_code,
