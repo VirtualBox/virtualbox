@@ -65,7 +65,6 @@ response = jsonify(oError if oError is not None else "Successfull operation")
     {%- endif -%}
 
     {%- set iface_name = x_vbox_type[1:] | lower -%}
-{#    {%- set iface_snake = iface_name | to_snake_case -%}#}
 find_{{ iface_name }}_by_id
 {%- endmacro %}
 
