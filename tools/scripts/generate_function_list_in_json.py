@@ -4,43 +4,10 @@ from pathlib import Path
 import argparse
 import logging
 import re
-from collections import defaultdict
 
 logging.basicConfig(level=logging.INFO)
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
-
-
-@dataclass
-class FieldNode:
-    name: str
-    kind: str
-    ref: Optional[str] = None
-    is_array: bool = False
-    item_kind: Optional[str] = None
-    item_ref: Optional[str] = None
-
-
-@dataclass
-class TypeNode:
-    kind: str = "unknown"
-
-    ref: Optional[str] = None
-
-    swagger_type: Optional[str] = None
-    swagger_format: Optional[str] = None
-
-    is_array: bool = False
-    item_ref: Optional[str] = None
-    item_kind: Optional[str] = None
-
-    is_wrapper: bool = False
-    is_wrapper_multi: bool = False
-    inner_ref: Optional[str] = None
-    inner_kind: Optional[str] = None
-    wrapper_field: Optional[str] = None
-    wrapper_multi_items: List[dict] = field(default_factory=list)
+from typing import Optional, List, Tuple, Dict, Any
 
 
 def pick_success_response(responses: dict):
@@ -56,166 +23,63 @@ def pick_success_response(responses: dict):
     return '', {}
 
 
+def parse_schema_to_response_node(schema: dict, definitions: dict) -> dict:
+    if not isinstance(schema, dict):
+        return {}
+
+    if schema.get("type") == "array":
+        items = schema.get("items") or {}
+        if isinstance(items, dict) and "$ref" in items:
+            ref = extract_ref_name(items["$ref"])
+            kind = classify_ref(definitions, ref)
+            return {"type": kind, "ref": ref, "is_array": True}
+        itype = items.get("type") if isinstance(items, dict) else None
+        if itype in ("string", "integer", "number", "boolean"):
+            return {"type": itype, "is_array": True}
+        return {"type": "object", "is_array": True}
+
+    stype = schema.get("type")
+    if stype in ("string", "integer", "number", "boolean"):
+        return {"type": stype}
+
+    sref = schema.get("$ref")
+    if sref:
+        ref_name = extract_ref_name(sref)
+        direct_kind = classify_ref(definitions, ref_name)
+        if direct_kind in ("enum", "interface"):
+            return {"type": direct_kind, "ref": ref_name}
+
+        props_items = unwrap_wrapper_one_level(definitions, ref_name)
+        if props_items is not None:
+            items_out = []
+            for fname, fschema in props_items:
+                node = parse_schema_to_response_node(fschema, definitions)
+                item = {"name": fname, "node": {k: v for k, v in node.items() if k != "is_array"}}
+                if node.get("is_array"):
+                    item["is_array"] = True
+                items_out.append(item)
+            return {"type":"object", "ref": ref_name, "items": items_out}
+
+        return {"type":"object", "ref": ref_name}
+
+    if stype == "object" or "properties" in schema:
+        return {"type": "object"}
+
+    return {}
+
+
 def parse_response(responses: dict, definitions: dict):
     code, resp = pick_success_response(responses or {})
 
     if not isinstance(resp, dict):
-        return code, TypeNode(kind="no_body"), True
+        return code, {}, False
 
     schema = resp.get("schema")
     if not isinstance(schema, dict):
-        return code, TypeNode(kind="no_body"), True
+        return code, {}, False
 
-    node = parse_schema_to_typenode_shallow(schema, definitions)
-    return code, node, False
-
-
-def typenode_to_dict(n: TypeNode) -> dict:
-    if n is None:
-        return {}
-    d = {
-        "kind": n.kind,
-        "ref": n.ref,
-        "is_array": n.is_array,
-        "item_ref": n.item_ref,
-        "item_kind": n.item_kind,
-        "is_wrapper": n.is_wrapper,
-        "is_wrapper_multi": n.is_wrapper_multi,
-        "inner_ref": n.inner_ref,
-        "inner_kind": n.inner_kind,
-        "wrapper_field": n.wrapper_field,
-        "wrapper_multi_items": n.wrapper_multi_items,
-        "swagger_type": n.swagger_type,
-        "swagger_format": n.swagger_format,
-    }
-    return {k: v for k, v in d.items() if v not in (None, False, "", [])}
-
-
-def build_response_type_node(node: TypeNode) -> dict:
-    """
-    Unified response_type_node structure:
-      - Non-wrapper:
-          { "type": <simple|enum|interface|object>, "ref"?: <str>, "is_array"?: true }
-      - Swagger wrapper (top-level only):
-          { "type": "object", "ref": <WrapperName>, "items": [ { "name": <field>, "is_array"?: true, "node": {...} }, ... ] }
-
-    NOTE: Per invariant: Swagger wrapper can be only top-level; below it are only simple / native interface / native enum.
-    """
-
-    def _simple_node_dict(t: str, ref: str = None) -> dict:
-        d = {"type": t}
-        if ref:
-            d["ref"] = ref
-        return d
-
-    def _from_typenode(n: TypeNode) -> dict:
-        if n.kind == "array":
-            base_kind = n.item_kind or "object"
-            if base_kind == "simple":
-                base_type = n.swagger_type or "string"
-                d = _simple_node_dict(base_type)
-            elif base_kind in ("enum", "interface", "object"):
-                d = _simple_node_dict(base_kind, n.item_ref)
-            else:
-                d = _simple_node_dict("object")
-            d["is_array"] = True
-            return d
-
-        if n.kind == "simple":
-            return _simple_node_dict(n.swagger_type or "string")
-
-        if n.kind in ("enum", "interface", "object"):
-            return _simple_node_dict(n.kind, n.ref)
-
-        return _simple_node_dict("object", n.ref)
-
-    def _from_typenode_dict(d: dict) -> dict:
-        kind = d.get("kind")
-        if kind == "array":
-            base_kind = d.get("item_kind") or "object"
-            if base_kind == "simple":
-                base_type = d.get("swagger_type") or "string"
-                out = {"type": base_type, "is_array": True}
-            elif base_kind in ("enum", "interface", "object"):
-                out = {"type": base_kind, "ref": d.get("item_ref"), "is_array": True}
-            else:
-                out = {"type": "object", "is_array": True}
-            return out
-
-        if kind == "simple":
-            return {"type": d.get("swagger_type") or "string"}
-
-        if kind in ("enum", "interface", "object"):
-            out = {"type": kind}
-            if d.get("ref"):
-                out["ref"] = d["ref"]
-            return out
-
-        # fallback
-        out = {"type": "object"}
-        if d.get("ref"):
-            out["ref"] = d["ref"]
-        return out
-
-    if not node or node.kind in ("unknown", "no_body"):
-        return {}
-
-    if node.kind == "wrapper_multi":
-        items = []
-        for it in (node.wrapper_multi_items or []):
-            fname = it.get("field") or "returnValue"
-            nd = it.get("node") or {}
-            items.append({
-                "name": fname,
-                **({"is_array": True} if (nd.get("kind") == "array") else {}),
-                "node": _from_typenode_dict(nd),
-            })
-
-        return {
-            "type": "object",
-            "ref": node.ref,
-            "items": items,
-        }
-
-    if node.kind == "wrapper":
-        field_name = node.wrapper_field or "returnValue"
-
-        if node.is_array:
-            base_kind = node.item_kind or "object"
-            if base_kind == "simple":
-                inner_node = {"type": node.swagger_type or "string"}
-            elif base_kind in ("enum", "interface", "object"):
-                inner_node = {"type": base_kind, "ref": node.item_ref}
-            else:
-                inner_node = {"type": "object"}
-
-            return {
-                "type": "object",
-                "ref": node.ref,
-                "items": [{
-                    "name": field_name,
-                    "is_array": True,
-                    "node": inner_node,
-                }]
-            }
-
-        if node.inner_kind == "simple":
-            inner_node = {"type": node.swagger_type or "string"}
-        elif node.inner_kind in ("enum", "interface", "object"):
-            inner_node = {"type": node.inner_kind, "ref": node.inner_ref}
-        else:
-            inner_node = {"type": "object"}
-
-        return {
-            "type": "object",
-            "ref": node.ref,
-            "items": [{
-                "name": field_name,
-                "node": inner_node,
-            }]
-        }
-
-    return _from_typenode(node)
+    response_type_node = parse_schema_to_response_node(schema, definitions)
+    return code, response_type_node, bool(response_type_node)
 
 
 def extract_ref_name(sref: str) -> str:
@@ -231,7 +95,8 @@ def is_enum_ref(definitions: dict, name: str) -> bool:
     d = get_def(definitions, name)
     if bool(d.get("x-vbox-type") == 'enum'):
         return True
-    return False
+
+    return isinstance(d.get("enum"), list) and len(d["enum"]) > 0
 
 
 def is_interface_ref(definitions: dict, name: str) -> bool:
@@ -249,132 +114,31 @@ def classify_ref(definitions: dict, ref_name: str) -> str:
     return "object"
 
 
-def unwrap_wrapper_one_level(definitions: dict, wrapper_ref: str):
+def unwrap_wrapper_one_level(definitions: dict, wrapper_ref: str) -> Optional[List[Tuple[str, Dict[str, Any]]]]:
     """
     Returns:
-      (wrapper_kind, field_name, inner_schema_dict)
-    wrapper_kind: 'single'|'multi'|None
+      - None, if wrapper_ref NOT a Swagger wrapper
+      - list (field_name, field_schema_dict) if it's wrapper
+        (always list 1+ items; single wrapper => list contains only 1 item)
     """
-    d = get_def(definitions, wrapper_ref)
 
     if is_enum_ref(definitions, wrapper_ref) or is_interface_ref(definitions, wrapper_ref):
-        return (None, None, None)
+        return None
 
+    d = get_def(definitions, wrapper_ref)
     props = d.get("properties")
-    if not isinstance(props, dict) or len(props) == 0:
-        return (None, None, None)
 
-    if len(props) > 1:
-        return ("multi", list(props.items()), None)
+    if not isinstance(props, dict) or not props:
+        return None
 
-    field_name, field_schema = next(iter(props.items()))
-    if isinstance(field_schema, dict):
-        return ("single", field_name, field_schema)
+    items: List[Tuple[str, Dict[str, Any]]] = []
+    for fname, fschema in props.items():
+        if isinstance(fschema, dict):
+            items.append((fname, fschema))
+        else:
+            items.append((fname, {"type": "string"}))
 
-    return (None, None, None)
-
-
-def parse_schema_to_typenode_shallow(schema: dict, definitions: dict) -> TypeNode:
-    n = TypeNode(kind="unknown")
-
-    if not isinstance(schema, dict):
-        return n
-
-    if schema.get("type") == "array":
-        n.kind = "array"
-        n.is_array = True
-        items = schema.get("items", {})
-        if isinstance(items, dict):
-            iref = items.get("$ref")
-            if iref:
-                n.item_ref = extract_ref_name(iref)
-                n.item_kind = classify_ref(definitions, n.item_ref)
-            else:
-                itype = items.get("type")
-                if itype in ("string", "integer", "number", "boolean"):
-                    n.item_kind = "simple"
-                    n.swagger_type = itype
-        return n
-
-    stype = schema.get("type")
-    if stype in ("string", "integer", "number", "boolean"):
-        n.kind = "simple"
-        n.swagger_type = stype
-        n.swagger_format = schema.get("format")
-        return n
-
-    sref = schema.get("$ref")
-    if sref:
-        ref_name = extract_ref_name(sref)
-        n.ref = ref_name
-
-        direct_kind = classify_ref(definitions, ref_name)
-        if direct_kind in ("enum", "interface"):
-            n.kind = direct_kind
-            return n
-
-        wkind, field_name, field_schema = unwrap_wrapper_one_level(definitions, ref_name)
-
-        if wkind == "multi":
-            n.kind = "wrapper_multi"
-            n.is_wrapper = True
-            n.is_wrapper_multi = True
-
-            # collect per-field type info (order is preserved from YAML definitions)
-            props_items = field_name if isinstance(field_name, list) else []
-            for fname, fschema in props_items:
-                if not isinstance(fschema, dict):
-                    n.wrapper_multi_items.append({"field": fname, "node": {"kind": "simple", "swagger_type": "string"}})
-                    continue
-                fnode = parse_schema_to_typenode_shallow(fschema, definitions)
-                n.wrapper_multi_items.append({"field": fname, "node": typenode_to_dict(fnode)})
-            return n
-
-        if wkind == "single" and isinstance(field_schema, dict):
-            n.kind = "wrapper"
-            n.is_wrapper = True
-            n.wrapper_field = field_name
-
-            if "$ref" in field_schema:
-                inner_ref = extract_ref_name(field_schema["$ref"])
-                n.inner_ref = inner_ref
-                n.inner_kind = classify_ref(definitions, inner_ref)
-                return n
-
-            if field_schema.get("type") == "array":
-                n.is_array = True
-                n.inner_kind = "array"
-                items = field_schema.get("items", {})
-                if isinstance(items, dict) and "$ref" in items:
-                    inner_ref = extract_ref_name(items["$ref"])
-                    n.inner_ref = inner_ref
-                    n.item_ref = inner_ref
-                    n.item_kind = classify_ref(definitions, inner_ref)
-                else:
-                    itype = (items or {}).get("type") if isinstance(items, dict) else None
-                    if itype in ("string", "integer", "number", "boolean"):
-                        n.item_kind = "simple"
-                        n.swagger_type = itype
-                return n
-
-            ftype = field_schema.get("type")
-            if ftype in ("string", "integer", "number", "boolean"):
-                n.inner_kind = "simple"
-                n.swagger_type = ftype
-                n.swagger_format = field_schema.get("format")
-                return n
-
-            n.inner_kind = "unknown"
-            return n
-
-        n.kind = "object"
-        return n
-
-    if stype == "object" or "properties" in schema:
-        n.kind = "object"
-        return n
-
-    return n
+    return items
 
 
 def parse_request_body(body_param: dict, definitions: dict):
@@ -460,35 +224,6 @@ def extract_body_fields(body_type: str, definitions: dict):
     return fields
 
 
-def create_operation_id_list(data):
-    id_list = set()
-    for entry in data:
-        iface_name = str(entry["iface_name"])
-        for item in entry.get('methods'):
-            id_list.add(str(iface_name + '_' + item.get('method_name')).lower())
-    return id_list
-
-
-def to_snake_case_simple(name):
-    result = []
-    for i, c in enumerate(name):
-        if i > 0 and c.isupper():
-            result.append('_')
-            result.append(c.lower())
-        else:
-            result.append(c.lower())
-    return ''.join(result)
-
-
-def extract_enum_from_description(description, definitions):
-    match = re.search(r'#/definitions/(\w+)', description)
-    if match:
-        enum_name = match.group(1)
-        if enum_name in definitions and 'enum' in definitions[enum_name]:
-            return enum_name
-    return None
-
-
 def prepare_endpoint_data(path, method, operation_data, definitions):
     operation_id = operation_data.get('operationId', 'unknown_operation')
     method_upper = method.upper()
@@ -561,11 +296,7 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
     curr_vbox_obj = 'oCurr' + iface_name[0].upper() + iface_name[1:]
 
     responses = operation_data.get('responses', {})
-
-    success_code, resp_node, no_body = parse_response(responses, definitions)
-    response_success_code = success_code
-    response_type_node = build_response_type_node(resp_node)
-    response_has_body = (not no_body)
+    success_code, response_type_node, response_has_body = parse_response(responses, definitions)
 
     return {
         'iface_name': iface_name,
@@ -580,9 +311,9 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
         'has_request_body': has_request_body,
         'request_type': request_body_type,
         'request_body_fields': request_body_fields,
-        'x_vbox_stub': operation_data.get('x-vbox-stub', 'generate'),
+        'x_vbox_stub': x_vbox_stub,
         'tags': operation_data.get('tags', ''),
-        'response_success_code': response_success_code,
+        'response_success_code': success_code,
         'response_has_body': response_has_body,
         'response_type_node': response_type_node,
     }
