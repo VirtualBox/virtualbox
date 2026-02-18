@@ -115,40 +115,32 @@ def {{ function_name }}({{ param_list }}):
        Response building
        ------------------------------ #}
 {% if response_has_body and response_type_node %}
+    {% set has_select = (in_params is defined)
+        and ((in_params | selectattr("name", "equalto", "select") | list | length) > 0) %}
+    {% set select = ("l_select" if has_select else "None") %}
     {% set rt = response_type_node %}
     {% if rt.type == "object" and rt.ref and rt["items"] %}
     {% set res = 'oResponse' %}
     {{ res }} = {{ rt.ref }}()
     {% for item in rt["items"] %}
-    {{ m.assign_response_item(res, item) }}
+    {{ m.assign_response_item(res, item, select) }}
     {% endfor %}
 
     response = jsonify(oError if oError is not None else {{ res }})
     {% else %}
         {% if rt.is_array %}
             {% if rt.type == "enum" %}
-    response = jsonify([
-        vbox_to_swagger_{{ rt.ref | lower }}(nEnumValue)
-        for nEnumValue in {{ res }}
-    ])
+    response = jsonify([vbox_to_swagger_{{ rt.ref | lower }}(item) for item in {{ res }}])
             {% elif rt.type == "interface" %}
-    response = jsonify([
-        i_fill_{{ rt.ref | lower }}(oItem)
-        for oItem in {{ res }}
-    ])
+    response = jsonify([i_fill_{{ rt.ref | lower }}(item, select) for item in {{ res }}])
             {% else %}
     response = jsonify({{ res }})
             {% endif %}
         {% else %}
             {% if rt.type == "enum" %}
-    nEnumValue = {{ res }}
-    response = jsonify(
-        vbox_to_swagger_{{ rt.ref | lower }}(nEnumValue)
-    )
+    response = jsonify(vbox_to_swagger_{{ rt.ref | lower }}({{ res }}))
             {% elif rt.type == "interface" %}
-    response = jsonify(
-        i_fill_{{ rt.ref | lower }}({{ res }})
-    )
+    response = jsonify(i_fill_{{ rt.ref | lower }}({{ res }}, select))
             {% else %}
     response = jsonify({{ res }})
             {% endif %}

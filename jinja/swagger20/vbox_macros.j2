@@ -70,13 +70,13 @@ find_{{ iface_name }}_by_id
 {%- endmacro %}
 
 
-{% macro assign_response_item(o_response_var, item) %}
+{% macro assign_response_item(o_response_var, item, select=None) %}
 {% set n = item["node"] %}
 {% if item.get("is_array") %}
     {%- if n["type"] == "enum" %}
 {{ o_response_var }}.{{ item["name"] }} = [vbox_to_swagger_{{ n["ref"] | lower }}(item) for item in {{ item["name"] }}]
     {%- elif n["type"] == "interface" %}
-{{ o_response_var }}.{{ item["name"] }} = [i_fill_{{ n["ref"] | lower }}(item) for item in {{ item["name"] }}]
+{{ o_response_var }}.{{ item["name"] }} = [i_fill_{{ n["ref"] | lower }}(item, {{ select }}) for item in {{ item["name"] }}]
     {%- else %}
 {{ o_response_var }}.{{ item["name"] }} = {{ item["name"] }}
     {%- endif %}
@@ -84,7 +84,7 @@ find_{{ iface_name }}_by_id
     {%- if n["type"] == "enum" %}
 {{ o_response_var }}.{{ item["name"] }} = vbox_to_swagger_{{ n["ref"] | lower }}({{ item["name"] }})
     {%- elif n["type"] == "interface" %}
-{{ o_response_var }}.{{ item["name"] }} = i_fill_{{ n["ref"] | lower }}({{ item["name"] }})
+{{ o_response_var }}.{{ item["name"] }} = i_fill_{{ n["ref"] | lower }}({{ item["name"] }}, {{ select }})
     {%- else %}
 {{ o_response_var }}.{{ item["name"] }} = {{ item["name"] }}
     {%- endif %}
