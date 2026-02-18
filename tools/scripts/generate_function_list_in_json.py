@@ -560,8 +560,6 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
 
     curr_vbox_obj = 'oCurr' + iface_name[0].upper() + iface_name[1:]
 
-    in_param_names = [p['name'] for p in in_main_param_list]
-
     responses = operation_data.get('responses', {})
 
     success_code, resp_node, no_body = parse_response(responses, definitions)
