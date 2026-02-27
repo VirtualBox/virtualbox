@@ -8,7 +8,7 @@ stages:
 before_script:
   - echo "Before script section"
   - echo "For example you might run an update here or install a build dependency"
-  - curl -o ./idl/VirtualBox.xidl https://www.virtualbox.org/export/105087/vbox/trunk/src/VBox/Main/idl/VirtualBox.xidl
+  - curl -o ./idl/VirtualBox.xidl https://github.com/VirtualBox/virtualbox/blob/main/src/VBox/Main/idl/VirtualBox.xidl
 
 after_script:
   - echo "After script section"
