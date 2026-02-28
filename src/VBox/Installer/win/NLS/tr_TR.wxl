@@ -70,7 +70,7 @@
     <String Id="WrongOS" Value="[ProductName] yalnızca Windows 10 veya üzerinde çalışır." />
     <String Id="Only64Bit" Value="[ProductName] yalnızca 64-bit Windows sistemlerinde çalışır." />
     <String Id="WrongPlatformArch" Value="[ProductName] uygulamasının bu sürümü farklı bir platform mimarisi için geliştirilmiştir ve bu nedenle yüklenemez. Lütfen [ProductName] uygulamasının eşleşen bir sürümünü yükleyin!" />
-    <String Id="NewerVersionDetected" Value="A newer version of VirtualBox is already installed. Please uninstall it first before installing older versions of VirtualBox." />
+    <String Id="NewerVersionDetected" Value="VirtualBox'ın daha yeni bir sürümü zaten yüklü. Lütfen VirtualBox'ın eski sürümlerini kurmadan önce bunu kaldırın." />
     <String Id="InvalidTargetDir" Value="Geçersiz kurulum dizini belirtildi! [ProductName] uygulamasını yüklemek için lütfen başka bir kurulum dizini kullanın. Daha fazla bilgi için [ProductName] kılavuzuna bakın." />
 
     <!---->
