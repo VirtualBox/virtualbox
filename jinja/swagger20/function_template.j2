@@ -72,6 +72,9 @@ def {{ function_name }}({{ param_list }}):
     httpCode = HTTPStatus.OK
     {% endif %}
     oError = None
+    {% if is_session_req and returns_progress %}
+    {% set curr_machine_session = params[0] %}
+    {% endif %}
     {% if is_session_req %}
     {{ curr_vbox_obj }} = {{params[0]}}.machine
     {% else %}
@@ -89,7 +92,6 @@ def {{ function_name }}({{ param_list }}):
     {% else %}
     l_{{ py_name }} = {{ py_name }}
     {% endif %}
-    {# 2) Затем, при необходимости, делаем lookup по UUID -> VBox object #}
     {% if p.is_find_func_req and p.interface %}
         {% if p.type == "array" %}
     l_{{ py_name }}_objs = []
@@ -142,6 +144,12 @@ def {{ function_name }}({{ param_list }}):
         [{{ response_type_node["items"] | map(attribute="name") | join(", ") }}] = {{ curr_vbox_obj }}.{{ method_name }}({{ call_args_no_select | join(", ") }})
         {% else %}
         {{ curr_vbox_obj }}.{{ method_name }}({{ call_args_no_select | join(", ") }})
+        {% endif %}
+        {% if is_session_req and returns_progress %}
+        {# time.sleep(0.2) #}
+        ctx['tracker'][{{ progress_var }}.id] = {{ curr_machine_session }}
+        ctx['vms'][{{ curr_vbox_obj }}.id] = {{ progress_var }}.id
+        {{ curr_machine_session }} = None
         {% endif %}
     except Exception as e:
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
