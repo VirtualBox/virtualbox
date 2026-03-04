@@ -212,12 +212,11 @@ def openSessionDecorator(func):
     def wrapper_decorator(*args, **kwargs):
         args_repr = [a for a in args]
         vmid = args_repr[0]
-        oError = None
 
-        oVM, oErr = vbox_utils_find_machine(vmid)
-        if oErr:
-            logging.info (oErr)
-            return jsonify(oErr), HTTPStatus.NOT_FOUND
+        oVM, oError = vbox_utils_find_machine(vmid)
+        if oError:
+            logging.info (oError)
+            return jsonify(oError), HTTPStatus.NOT_FOUND
 
         oSession = None
         try:
@@ -298,6 +297,10 @@ def open_session(func):
     return wrapper_decorator
 
 
+def find_machine_by_id(id: str):
+    return vbox_utils_find_machine(id)
+
+
 def machineDecorator(func):
     """
     Find Machine by Id
@@ -332,6 +335,10 @@ def machineDecorator(func):
         return value
 
     return wrapper_decorator
+
+
+def find_medium_by_id(id: str):
+    return vbox_utils_find_medium(id)
 
 
 def mediumDecorator(func):
@@ -594,7 +601,7 @@ def consoleDecorator(func):
     return wrapper_decorator
 
 
-def __find_dhcpserver_by_networkname(networkname: str):
+def _find_dhcpserver_by_networkname(name: str):
     oVBox = ctx['vb']
     oFoundItem = None
     oError = None
@@ -615,7 +622,11 @@ def __find_dhcpserver_by_networkname(networkname: str):
     return oFoundItem, oError
 
 
-def __find_hostonlynetwork_by_name(name: str):
+def find_dhcpserver_by_id(id: str):
+    return _find_dhcpserver_by_networkname(id)
+
+
+def _find_hostonlynetwork_by_name(name: str):
     oVBox = ctx['vb']
     oFoundItem = None
     oError = None
@@ -636,6 +647,10 @@ def __find_hostonlynetwork_by_name(name: str):
     return oFoundItem, oError
 
 
+def find_hostonlynetwork_by_id(id: str):
+    return _find_hostonlynetwork_by_name(id)
+
+
 def hostonlyNetworkDecorator(func):
     """
     Find the "hostonly" Network object using the passed network name
@@ -648,7 +663,7 @@ def hostonlyNetworkDecorator(func):
         networkName = args_repr[0]
         oVBoxHostOnlyNetwork = None
 
-        oVBoxHostOnlyNetwork, oError = __find_hostonlynetwork_by_name(networkName)
+        oVBoxHostOnlyNetwork, oError = _find_hostonlynetwork_by_name(networkName)
         if oVBoxHostOnlyNetwork is not None:
             args_repr[0] = oVBoxHostOnlyNetwork
         else:
@@ -666,7 +681,7 @@ def hostonlyNetworkDecorator(func):
     return wrapper_decorator
 
 
-def __find_natnetwork_by_name(name: str):
+def _find_natnetwork_by_name(id: str):
     oVBox = ctx['vb']
     oFoundItem = None
     oError = None
@@ -674,7 +689,7 @@ def __find_natnetwork_by_name(name: str):
     try:
         olNatNetworks = ctx['global'].getArray(oVBox,'NATNetworks')
         for item in olNatNetworks:
-            if str(item.networkName) == name:
+            if str(item.networkName) == id:
                 oFoundItem = item
                 break
 
@@ -685,6 +700,10 @@ def __find_natnetwork_by_name(name: str):
         oFoundItem = None
 
     return oFoundItem, oError
+
+
+def find_natnetwork_by_id(id: str):
+    return _find_natnetwork_by_name(id)
 
 
 def natnetworkDecorator(func):
@@ -699,7 +718,7 @@ def natnetworkDecorator(func):
         networkName = args_repr[0]
         oVBoxNATNetwork = None
 
-        oVBoxNATNetwork, oError = __find_natnetwork_by_name(networkName)
+        oVBoxNATNetwork, oError = _find_natnetwork_by_name(networkName)
         if oVBoxNATNetwork is not None:
             args_repr[0] = oVBoxNATNetwork
         else:
@@ -812,6 +831,54 @@ def _resolve_progress(progressId: str):
         return None, Error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
 
 progressDecorator = _make_resolving_decorator("Progress", _resolve_progress)
+
+
+def _find_snapshot_by_name(oVBoxObj, name: str):
+    oVBox = ctx['vb']
+    oFoundItem = None
+    oError = None
+    oCurrMachine = oVBoxObj
+
+    try:
+        oFoundItem = oCurrMachine.findSnapshot(name)
+        if oFoundItem is None:
+            httpCode = HTTPStatus.NOT_FOUND
+            oError = Error(httpCode, "Snapshot with the name or Id %s wasn\'t found" % (name))
+    
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, "Exception during finding snapshot with the name or Id %s" % (name))
+        oFoundItem = None
+
+    return oFoundItem, oError
+
+
+def find_snapshot_by_id(oVBoxObj, id: str):
+    return _find_snapshot_by_name(oVBoxObj, id)
+
+
+def _find_cloudnetwork_by_name(name: str):
+    oCurrVirtualBox = ctx['vb']
+    oFoundItem = None
+    oError = None
+
+    try:
+        oFoundItem = oCurrVirtualBox.findCloudNetworkByName(name)
+        if oFoundItem is None:
+            httpCode = HTTPStatus.NOT_FOUND
+            oError = Error(httpCode, "Cloud network with the name %s wasn\'t found" % (name))
+
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, "Exception during finding Cloud network with the name %s" % (name))
+        oFoundItem = None
+
+    return oFoundItem, oError
+
+
+def find_cloudnetwork_by_id(id: str):
+    return _find_cloudnetwork_by_name(id)
+
 
 syntheticDecorator = virtualboxDecorator
 mediumformatDecorator = virtualboxDecorator
