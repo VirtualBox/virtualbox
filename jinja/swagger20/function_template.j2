@@ -89,6 +89,24 @@ def {{ function_name }}({{ param_list }}):
     {% else %}
     l_{{ py_name }} = {{ py_name }}
     {% endif %}
+    {# 2) Затем, при необходимости, делаем lookup по UUID -> VBox object #}
+    {% if p.is_find_func_req and p.interface %}
+        {% if p.type == "array" %}
+    l_{{ py_name }}_objs = []
+    for _id in (l_{{ py_name }} or []):
+        _obj, _err = find_{{ p.interface[1:] | lower }}_by_id(_id)
+        if _obj is None:
+            return jsonify(_err), HTTPStatus.NOT_FOUND
+        l_{{ py_name }}_objs.append(_obj)
+    l_{{ py_name }} = l_{{ py_name }}_objs
+        {% else %}
+    if l_{{ py_name }} is not None:
+        _obj, _err = find_{{ p.interface[1:] | lower }}_by_id(l_{{ py_name }})
+        if _obj is None:
+            return jsonify(_err), HTTPStatus.NOT_FOUND
+        l_{{ py_name }} = _obj
+        {% endif %}
+    {% endif %}
                 {%- do call_args.append('l_' ~ py_name) -%}
             {% endif %}
         {% endfor %}
