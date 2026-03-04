@@ -44,6 +44,9 @@ from vbox_server.models.virtual_box_create_medium_request_body import VirtualBox
 from vbox_server.models.medium_change_encryption_request_body import MediumChangeEncryptionRequestBody
 
 
+# local list to keep a newly created mediums that wait to be registered in VirtualBox
+lNewAndNotRegisteredStorage = dict()
+
 def __testLocation(sLocation: str):
     fRes = True
     if not os.path.exists(sLocation):
@@ -426,7 +429,7 @@ def _medium_cloneto(oVBoxMedium, oMediumCloneToRequestBody: MediumCloneToRequest
 
     logging.info(f"Cloning the medium {oVBoxMedium.id} to the medium {strTargetId}")
 
-    oTargetMedium, oError = __find_medium_by_id(strTargetId)
+    oTargetMedium, oError = find_medium_by_id(strTargetId)
     if oError or oTargetMedium is None:
         logging.info(f"The medium passed as 'target' with Id {strTargetId} wasn't found")
         oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'target' with Id {strTargetId} wasn't found")
@@ -434,7 +437,7 @@ def _medium_cloneto(oVBoxMedium, oMediumCloneToRequestBody: MediumCloneToRequest
 
     oParentMedium = None
     if strParentId is not None and strParentId != '':
-        oParentMedium, oError = __find_medium_by_id(strParentId)
+        oParentMedium, oError = find_medium_by_id(strParentId)
         if oError or oParentMedium is None:
             logging.info(f"The medium passed as 'parent' with Id {strParentId} wasn't found")
             oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'parent' with Id {strParentId} wasn't found")
@@ -509,7 +512,7 @@ def _medium_mergeto(oVBoxMedium, target=None):  # noqa: E501
     oProgressResponse = ProgressObjWrapperResponse()
     
     strTargetId = target
-    oTargetMedium, oError = __find_medium_by_id(strTargetId)
+    oTargetMedium, oError = find_medium_by_id(strTargetId)
     if oError or oTargetMedium is None:
         logging.info(f"The medium passed as 'target' with Id {strTargetId} wasn't found")
         oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'target' with Id {strTargetId} wasn't found")
@@ -615,7 +618,7 @@ def _medium_resizeandcloneto(oVBoxMedium, oMediumResizeAndCloneToRequestBody: Me
 
     logging.info(f"Resizing and cloning the medium {oVBoxMedium.id} to the medium {strTargetId} with the size {nLogicalSize}")
 
-    oTargetMedium, oError = __find_medium_by_id(strTargetId)
+    oTargetMedium, oError = find_medium_by_id(strTargetId)
     if oError or oTargetMedium is None:
         logging.info(f"The medium passed as 'target' with Id {strTargetId} wasn't found")
         oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'target' with Id {strTargetId} wasn't found")
@@ -623,7 +626,7 @@ def _medium_resizeandcloneto(oVBoxMedium, oMediumResizeAndCloneToRequestBody: Me
 
     oParentMedium = None
     if strParentId is not None and strParentId != '':
-        oParentMedium, oError = __find_medium_by_id(strParentId)
+        oParentMedium, oError = find_medium_by_id(strParentId)
         if oError or oParentMedium is None:
             logging.info(f"The medium passed as 'parent' with Id {strParentId} wasn't found")
             oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'parent' with Id {strParentId} wasn't found")
@@ -742,7 +745,7 @@ def _medium_creatediffstorage(mediumid, oMediumCreateDiffStorageRequestBody: Med
         return jsonify(oError), httpCode
 
     strTargetId = oMediumCreateDiffStorageRequestBody.target
-    oTargetMedium, oError = __find_medium_by_id(strTargetId)
+    oTargetMedium, oError = find_medium_by_id(strTargetId)
     if oError or oTargetMedium is None:
         logging.info(f"The medium passed as 'target' with Id {strTargetId} wasn't found")
         oError = Error(HTTPStatus.NOT_FOUND, f"The medium passed as 'target' with Id {strTargetId} wasn't found")
