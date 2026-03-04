@@ -23,6 +23,27 @@ def pick_success_response(responses: dict):
     return '', {}
 
 
+def extract_query_param_node(p: dict) -> dict:
+    node = {"name": p.get("name")}
+
+    ptype = p.get("type")
+    if ptype == "array":
+        node["type"] = "array"
+        items = p.get("items") or {}
+        iface = items.get("x-vbox-type")
+        if items.get("type") == "string" and items.get("format") == "uuid" and iface:
+            node["interface"] = iface
+            node["is_find_func_req"] = True
+    else:
+        node["type"] = ptype or "string"
+        iface = p.get("x-vbox-type")
+        if p.get("type") == "string" and p.get("format") == "uuid" and iface:
+            node["interface"] = iface
+            node["is_find_func_req"] = True
+
+    return node
+
+
 def parse_schema_to_response_node(schema: dict, definitions: dict) -> dict:
     if not isinstance(schema, dict):
         return {}
@@ -112,6 +133,15 @@ def classify_ref(definitions: dict, ref_name: str) -> str:
     if is_interface_ref(definitions, ref_name):
         return "interface"
     return "object"
+
+
+def extract_enum_from_description(description, definitions):
+    match = re.search(r'#/definitions/(\w+)', description)
+    if match:
+        enum_name = match.group(1)
+        if enum_name in definitions and 'enum' in definitions[enum_name]:
+            return enum_name
+    return None
 
 
 def unwrap_wrapper_one_level(definitions: dict, wrapper_ref: str) -> Optional[List[Tuple[str, Dict[str, Any]]]]:
@@ -267,6 +297,9 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
         elif param_in == 'path':
             in_path_param_list.append(param)
         elif param_in == 'query':
+            enum = extract_enum_from_description(param.get('description', ''), definitions)
+            if enum:
+                enum_in_params.append({'name': param.get('name', ''), 'type': enum})
             in_query_param_list.append(param)
             
     has_request_body, request_body_type, request_body_fields = parse_request_body(body_param, definitions)
@@ -286,7 +319,7 @@ def prepare_endpoint_data(path, method, operation_data, definitions):
 
     for p in in_query_param_list:
         pname = p.get("name")
-        in_main_param_list.append({"name": pname, "type": "string"})
+        in_main_param_list.append(extract_query_param_node(p))
 
     if has_request_body:
         in_main_param_list.append({"name": "oRequest", "type": request_body_type})
