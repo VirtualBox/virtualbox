@@ -114,15 +114,16 @@ def {{ function_name }}({{ param_list }}):
        Response building
        ------------------------------ #}
 {% if response_has_body and response_type_node %}
+    if oError is None:
     {% set has_select = (in_params is defined)
         and ((in_params | selectattr("name", "equalto", "select") | list | length) > 0) %}
     {% set select = ("l_select" if has_select else "None") %}
     {% set rt = response_type_node %}
     {% if rt.type == "object" and rt.ref and rt["items"] %}
     {% set res = 'oResponse' %}
-    {{ res }} = {{ rt.ref }}()
+        {{ res }} = {{ rt.ref }}()
     {% for item in rt["items"] %}
-    {{ m.assign_response_item(res, item, select) }}
+        {{ m.assign_response_item(res, item, select) }}
     {% endfor %}
 
     response = jsonify(oError if oError is not None else {{ res }})
@@ -146,7 +147,10 @@ def {{ function_name }}({{ param_list }}):
         {% endif %}
     {% endif %}
 {% else %}
-    response = jsonify("Successful operation")
+    if oError is None:
+        response = jsonify("Successful operation")
+    else:
+        response = jsonify(oError)
 {% endif %}
 
     return response, httpCode
