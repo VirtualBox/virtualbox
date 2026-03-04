@@ -50,7 +50,7 @@ def vbox_utils_logVmInfo(oVM):
 
 
 def vbox_utils_find_machine(vmid):
-    oError = Error()
+    oError = None
     oVM = None
     try:
         oVM = ctx['vb'].findMachine(vmid)
@@ -59,11 +59,6 @@ def vbox_utils_find_machine(vmid):
         oError = Error(HTTPStatus.NOT_FOUND, str(e))
     
     return oVM, oError
-
-
-def find_machine_by_id(vmid):
-    oVM, oError = vbox_utils_find_machine(vmid)
-    return oVM if oVM is not None else None
 
 
 def vbox_utils_commonChecks():
@@ -233,11 +228,6 @@ def vbox_utils_find_medium(id: str):
     return oFoundMedium, oError
 
 
-def find_medium_by_id(id: str):
-    oMedium, oError = vbox_utils_find_medium(id)
-    return oMedium if oMedium is not None else None
-
-
 def vbox_utils_find_snapshot(oVBoxObj, id: str):
     oError = None
     try:
@@ -249,11 +239,6 @@ def vbox_utils_find_snapshot(oVBoxObj, id: str):
         oError = Error(httpCode, str(e))
 
     return oSnapshot, oError
-
-
-def find_snapshot_by_id(oVBoxObj, id: str):
-    oSnapshot, oError = vbox_utils_find_snapshot(oVBoxObj, id)
-    return oSnapshot if oSnapshot is not None else None
 
 
 def vbox_utils_find_dhcpserver(oVBoxObj, networkname: str):
@@ -276,11 +261,6 @@ def vbox_utils_find_dhcpserver(oVBoxObj, networkname: str):
     return oFoundItem, oError
 
 
-def find_dhcpserver_by_id(oVBoxObj, id: str):
-    oDHCPserver, oError = vbox_utils_find_dhcpserver(oVBoxObj, id)
-    return oDHCPserver if oDHCPserver is not None else None
-
-
 def vbox_utils_find_hostonlynetwork(oVBoxObj, name: str):
     oFoundItem = None
     oError = None
@@ -301,11 +281,6 @@ def vbox_utils_find_hostonlynetwork(oVBoxObj, name: str):
     return oFoundItem, oError
 
 
-def find_hostonlynetwork_by_id(oVBoxObj, id: str):
-    oHostonlynetwork, oError = vbox_utils_find_hostonlynetwork(oVBoxObj, id)
-    return oHostonlynetwork if oHostonlynetwork is not None else None
-
-
 def vbox_utils_find_natnetwork(oVBoxObj, name: str):
     oFoundItem = None
     oError = None
@@ -324,7 +299,3 @@ def vbox_utils_find_natnetwork(oVBoxObj, name: str):
         oFoundItem = None
 
     return oFoundItem, oError
-
-def find_natnetwork_by_id(oVBoxObj, id: str):
-    oNATnetwork, oError = vbox_utils_find_natnetwork(oVBoxObj, id)
-    return oNATnetwork if oNATnetwork is not None else None
