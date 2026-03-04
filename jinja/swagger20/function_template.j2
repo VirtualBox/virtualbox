@@ -141,7 +141,13 @@ def {{ function_name }}({{ param_list }}):
         {% set call_args_no_select = call_args | reject('equalto', 'l_select') | list %}
         {% if response_has_body and response_type_node and response_type_node.type == "object"
             and response_type_node.ref and response_type_node["items"] %}
-        [{{ response_type_node["items"] | map(attribute="name") | join(", ") }}] = {{ curr_vbox_obj }}.{{ method_name }}({{ call_args_no_select | join(", ") }})
+            {% set resp_items = response_type_node["items"] %}
+            {% if resp_items | length == 1 %}
+                {% set single_name = resp_items[0]["name"] %}
+        {{ single_name }} = {{ curr_vbox_obj }}.{{ method_name }}({{ call_args_no_select | join(", ") }})
+            {% else %}
+        [{{ resp_items | map(attribute="name") | join(", ") }}] = {{ curr_vbox_obj }}.{{ method_name }}({{ call_args_no_select | join(", ") }})
+            {% endif %}
         {% else %}
         {{ curr_vbox_obj }}.{{ method_name }}({{ call_args_no_select | join(", ") }})
         {% endif %}
