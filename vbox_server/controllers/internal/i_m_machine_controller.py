@@ -32,7 +32,7 @@ from vbox_server.utils.vbox_utils import vbox_utils_unlockSession as unlockSessi
 from vbox_server.utils.decorators import consoleDecorator
 from vbox_server.utils.decorators import sessionDecorator
 from vbox_server.utils.decorators import open_exclusive_session as openExclusiveSession
-from vbox_server.utils.decorators import open_session as openSession
+from vbox_server.utils.decorators import openSessionDecorator
 
 ############################ Implemented or used ############################
 from vbox_server.models.error import Error  # noqa: E501
@@ -1547,7 +1547,11 @@ def i_machine_moveto(vmid, oMachineMoveToRequestBody: MachineMoveToRequestBody, 
     return response, httpCode
 
 
-def i_machine_cloneto(vmid, oMachineCloneToRequestBody: MachineCloneToRequestBody):
+def i_wrapper_machine_cloneto(vmid, oMachineCloneToRequestBody: MachineCloneToRequestBody):
+    return _machine_cloneto(vmid, oMachineMountMediumRequestBody)
+
+
+def _machine_cloneto(vmid, oMachineCloneToRequestBody: MachineCloneToRequestBody):
     """
     Call interface method IMachine::cloneTo
 
@@ -2044,12 +2048,12 @@ def i_wrapper_machine_takesnapshot(oVBoxObj, oMachineTakeSnapshotRequestBody: Ma
 
 # close the session is done inside session_observer.py in SessionObserver::run()
 @openSessionDecorator
-def i_machine_takesnapshot(vmid, oMachineTakeSnapshotRequestBody: MachineTakeSnapshotRequestBody, *var_args_tuple):  # noqa: E501
+def _machine_takesnapshot(oVBoxObj, oMachineTakeSnapshotRequestBody: MachineTakeSnapshotRequestBody):  # noqa: E501
     """
     Call interface method IMachine::takeSnapshot
 
-    :param vmid: The Id of vm
-    :type vmid: str
+    :param oVBoxObj: Session
+    :type oVBoxObj: VirtualBox Object
     :param oMachineTakeSnapshotRequestBody: 
     :type oMachineTakeSnapshotRequestBody: dict | bytes
 
@@ -2159,7 +2163,7 @@ def i_wrapper_machine_deletesnapshot(oVBoxObj, id=None):
 
 
 # close the session is done inside session_observer.py in SessionObserver::run()
-@openSession
+@openSessionDecorator
 def _machine_deletesnapshot(oVBoxObj, id=None):  # noqa: E501
     """
     Call interface method IMachine::deleteSnapshot
