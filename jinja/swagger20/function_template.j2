@@ -1,11 +1,26 @@
 {% import "vbox_macros.j2" as m %}
-{% if x_vbox_stub == 'generate'%}
+{% set progress_items = [] %}
+{% if response_type_node and response_type_node.get("items") %}
+    {%- set progress_items = response_type_node["items"]
+        | selectattr("node", "defined")
+        | selectattr("node.type", "equalto", "interface")
+        | selectattr("node.ref", "equalto", "Progress")
+        | list
+    -%}
+{% endif %}
+{% set returns_progress = (progress_items | length) > 0 %}
+{% set progress_var = (progress_items[0].name if returns_progress else None) %}
+
+{% if x_vbox_stub == 'generate' %}
 {% if is_session_req %}
+    {% if returns_progress %}
+@openSessionDecorator
+    {% else %}
 @sessionDecorator
-{% endif -%}
-{%- if iface_decorator_name %}
+    {% endif %}
+{% else %}
 {{ iface_decorator_name }}
-{% endif -%}
+{% endif %}
 {% endif -%}
 
 {# ------------------------------
