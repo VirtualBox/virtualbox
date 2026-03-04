@@ -146,7 +146,7 @@ def {{ function_name }}({{ param_list }}):
                 {% set single_name = resp_items[0]["name"] %}
         {{ single_name }} = {{ curr_vbox_obj }}.{{ method_name }}({{ call_args_no_select | join(", ") }})
             {% else %}
-        [{{ resp_items | map(attribute="name") | join(", ") }}] = {{ curr_vbox_obj }}.{{ method_name }}({{ call_args_no_select | join(", ") }})
+        [{{ resp_items | map(attribute="name") | reverse | list | join(", ") }}] = {{ curr_vbox_obj }}.{{ method_name }}({{ call_args_no_select | join(", ") }})
             {% endif %}
         {% else %}
         {{ curr_vbox_obj }}.{{ method_name }}({{ call_args_no_select | join(", ") }})
