@@ -824,3 +824,35 @@ def _virtualbox_gettrackedobject(trObjId=None):  # noqa: E501
 #         oError = Error(httpCode, str(e))
 #     response = jsonify(oError if oError is not None else oVirtualboxGettrackedobjectidsResponse)
 #     return response, httpCode
+
+
+def i_wrapper_virtualbox_findmachine(vmid, select=None, nameOrId=None):
+    return _virtualbox_findmachine(vmid, select, nameOrId)
+
+
+def _virtualbox_findmachine(vmid, select=None, nameOrId=None):  # noqa: E501
+
+    vbox_utils_commonChecks()
+    httpCode = HTTPStatus.OK
+    logging.info ('Passed machine Id is ' + vmid)
+
+    oVM, oError = vbox_utils_find_machine(vmid)
+    if oVM is None:
+        return jsonify(oError), HTTPStatus.NOT_FOUND
+    else:
+        #set to None
+        oError = None
+
+    vbox_utils_logVmInfo(oVM)
+
+    oMachineResponse = MachineObjWrapperResponse()
+
+    try:
+        oMachineResponse.machine = i_fill_machine(oVM, select)
+    except Exception as e:
+        httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
+        oError = Error(httpCode, str(e))
+
+    response = jsonify(oError if oError is not None else oMachineResponse)
+
+    return response, httpCode
