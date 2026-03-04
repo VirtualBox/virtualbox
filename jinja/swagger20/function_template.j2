@@ -158,6 +158,26 @@ def {{ function_name }}({{ param_list }}):
         {{ curr_machine_session }} = None
         {% endif %}
     except Exception as e:
+        {% if is_session_req and returns_progress %}
+        # Close the machine session on failure
+        if {{ curr_machine_session }} is not None:
+            try:
+                if {{ curr_machine_session }}.state == ctx['const'].SessionState_Locked:
+                    {{ curr_machine_session }}.unlockMachine()
+                    logging.info('Unlocked the current machine ' + {{ curr_vbox_obj }}.id)
+                    {{ curr_machine_session }} = None
+            except:
+                try:
+                    fIgnore = {{ curr_machine_session }}.state == ctx['const'].SessionState_Unlocked
+                except:
+                    fIgnore = False
+
+                if fIgnore:
+                    {{ curr_machine_session }} = None  # Must prevent a retry during GC.
+                else:
+                    logging.warning('ISession::unlockMachine failed on %s' % ({{ curr_machine_session }}))
+        {% endif %}
+
         httpCode = HTTPStatus.INTERNAL_SERVER_ERROR
         oError = Error(httpCode, str(e))
 
