@@ -56,9 +56,9 @@ def {{ function_name }}({{ param_list }}):
     """ Calls a wrapper that calls a hand-written function. """
     from vbox_server.controllers.internal.i_m_{{ iface_name }}_controller import i_wrapper_{{ iface_name }}_{{ method_name | lower }} as wrapper
 
-    {%- set hardcoded_args = [] -%}
+    {% set hardcoded_args = [] %}
     {% for a in params %}
-        {%- set arg = a.split(':')[0].strip() -%}
+        {% set arg = a.split(':')[0].strip() %}
         {% do hardcoded_args.append(arg) %}
     {% endfor %}
     return wrapper({{ hardcoded_args | join(', ') }})
@@ -72,7 +72,11 @@ def {{ function_name }}({{ param_list }}):
     httpCode = HTTPStatus.OK
     {% endif %}
     oError = None
+    {% if is_session_req %}
+    {{ curr_vbox_obj }} = {{params[0]}}.machine
+    {% else %}
     {{ curr_vbox_obj }} = {{params[0]}}
+    {% endif %}
     {% set call_args = [] %}
     {% if in_params %}
         {% for p in in_params %}
