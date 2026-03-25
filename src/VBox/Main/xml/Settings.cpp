@@ -3185,7 +3185,7 @@ void RecordingScreen::applyDefaults(void)
     Audio.uHz            = 22050;
 
     featureMap[RecordingFeature_Video] = true;
-    featureMap[RecordingFeature_Audio] = false; /** @todo Audio is not yet enabled by default. */
+    featureMap[RecordingFeature_Audio] = true;
 }
 
 /**
@@ -3227,7 +3227,7 @@ bool RecordingScreen::areDefaultSettings(void) const
            && Audio.cChannels                                 == 2
            && Audio.uHz                                       == 22050
            && featureMap.find(RecordingFeature_Video)->second == true
-           && featureMap.find(RecordingFeature_Audio)->second == false;
+           && featureMap.find(RecordingFeature_Audio)->second == true;
 }
 
 /**
