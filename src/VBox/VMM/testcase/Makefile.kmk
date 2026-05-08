@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 113650 2026-03-30 10:47:35Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114109 2026-05-08 22:10:30Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for the VMM testcases.
 #
@@ -83,6 +83,7 @@ ifndef VBOX_ONLY_EXTPACKS_USE_IMPLIBS
   	tstIEMCheckMc \
   	tstIEMAImpl \
   	tstPDMQueue \
+  	tstPGMMemCopy \
   	tstSSM \
   	tstVMMUnitTests-1
   PROGRAMS.amd64 += tstIEMAImplAsm
@@ -992,7 +993,6 @@ tstPDMQueue_DEFS      = VBOX_VMM_TARGET_AGNOSTIC $(VMM_COMMON_DEFS)
 tstPDMQueue_SOURCES  := tstPDMQueue.cpp
 tstPDMQueue_LIBS     := $(LIB_VMM) $(LIB_RUNTIME)
 
-
 ifdef VBOX_WITH_PDM_ASYNC_COMPLETION
  #
  # PDM asynchronous completation test.
@@ -1037,6 +1037,19 @@ ifdef VBOX_WITH_PDM_ASYNC_COMPLETION
  tstPDMAsyncCompletionStress_LIBS      = $(LIB_VMM) $(LIB_REM) $(LIB_RUNTIME)
 endif
 
+#
+# PGM memcpy replacement test.
+#
+tstPGMMemCopy_TEMPLATE   = VBoxR3TstExe
+tstPGMMemCopy_DEFS       = $(VMM_COMMON_DEFS)
+tstPGMMemCopy_DEFS.amd64 = VBOX_VMM_TARGET_X86
+tstPGMMemCopy_DEFS.arm64 = VBOX_VMM_TARGET_ARMV8
+tstPGMMemCopy_DEFS.x86   = VBOX_VMM_TARGET_X86
+tstPGMMemCopy_SOURCES    = tstPGMMemCopy.cpp
+
+#
+# ???
+#
 ifndef VBOX_ONLY_EXTPACKS
  PROGRAMS += tstSSM-2
  tstSSM-2_TEMPLATE      = VBoxR3TstExe

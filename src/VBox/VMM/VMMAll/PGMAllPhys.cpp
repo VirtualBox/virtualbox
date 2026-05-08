@@ -1,4 +1,4 @@
-/* $Id: PGMAllPhys.cpp 114062 2026-05-04 08:56:49Z alexander.eichner@oracle.com $ */
+/* $Id: PGMAllPhys.cpp 114109 2026-05-08 22:10:30Z knut.osmundsen@oracle.com $ */
 /** @file
  * PGM - Page Manager and Monitor, Physical Memory Addressing.
  */
@@ -43,7 +43,10 @@
 #include <VBox/vmm/nem.h>
 #include "PGMInternal.h"
 #include <VBox/vmm/vmcc.h>
+
 #include "PGMInline.h"
+#include "PGMMemCopy.h"
+
 #include <VBox/param.h>
 #include <VBox/err.h>
 #include <iprt/assert.h>

@@ -1,4 +1,4 @@
-/* $Id: PGMInternal.h 114062 2026-05-04 08:56:49Z alexander.eichner@oracle.com $ */
+/* $Id: PGMInternal.h 114109 2026-05-08 22:10:30Z knut.osmundsen@oracle.com $ */
 /** @file
  * PGM - Internal header file.
  */
@@ -4130,108 +4130,6 @@ FNDBGCCMD       pgmR3CmdShowSharedModules;
 void            pgmLogState(PVM pVM);
 
 RT_C_DECLS_END
-
-
-/**
- * Deals with the odd sizes, making sure that the writes are as well aligned as
- * possible.
- */
-template<bool const a_fIsRead>
-static void pgmPhysPredictableOddSizedMemCopy(uint8_t volatile *pbDst, uint8_t volatile const *pbSrc, size_t cb)
-{
-    while (cb > 0)
-    {
-        if (cb >= 8 && ((a_fIsRead ? (uintptr_t)pbSrc : (uintptr_t)pbDst) & 7) == 0)
-        {
-            *(uint64_t volatile *)pbDst = *(uint64_t volatile const *)pbSrc;
-            pbDst += 8;
-            pbSrc += 8;
-            cb    -= 8;
-        }
-        else if (cb >= 4 && ((a_fIsRead ? (uintptr_t)pbSrc : (uintptr_t)pbDst) & 3) == 0)
-        {
-            *(uint32_t volatile *)pbDst = *(uint32_t volatile const *)pbSrc;
-            pbDst += 4;
-            pbSrc += 4;
-            cb    -= 4;
-        }
-        else if (cb >= 2 && ((a_fIsRead ? (uintptr_t)pbSrc : (uintptr_t)pbDst) & 1) == 0)
-        {
-            *(uint16_t volatile *)pbDst = *(uint16_t volatile const *)pbSrc;
-            pbDst += 2;
-            pbSrc += 2;
-            cb    -= 2;
-        }
-        else
-        {
-            *pbDst++ = *pbSrc++;
-            cb      -= 1;
-        }
-    }
-}
-
-
-/**
- * Wraps memcpy to make the behaviour more predictable for small reads and
- * writes.
- *
- * Background: memcpy(x, y, 2) could easily be split up into two interations of
- * REP MOVSB.  This is bad if the memory is concurrently being used by someone
- * else (i.e. guest updates it while we read it byte-by-byte).
- */
-template <bool const a_fIsRead>
-static void pgmPhysMemCopyWrapper(void *pvDst, void const *pvSrc, size_t cb)
-{
-    if (cb > 16)
-        memcpy(pvDst, pvSrc, cb);
-    else if RT_CONSTEXPR_IF(a_fIsRead)
-        switch (cb)
-        {
-            case 1:
-                *(uint8_t *)pvDst = *(uint8_t volatile const *)pvSrc;
-                return;
-            case 2:
-                *(uint16_t *)pvDst = *(uint16_t volatile const *)pvSrc;
-                return;
-            case 4:
-                *(uint32_t *)pvDst = *(uint32_t volatile const *)pvSrc;
-                return;
-            case 8:
-                *(uint64_t *)pvDst = *(uint64_t volatile const *)pvSrc;
-                return;
-            case 16:
-                ((uint64_t *)pvDst)[0] = ((uint64_t volatile const *)pvSrc)[0];
-                ((uint64_t *)pvDst)[1] = ((uint64_t volatile const *)pvSrc)[1];
-                return;
-            default:
-                pgmPhysPredictableOddSizedMemCopy<true>((uint8_t volatile *)pvDst, (uint8_t volatile const *)pvSrc, cb);
-                return;
-        }
-    else
-        switch (cb)
-        {
-            case 1:
-                *(uint8_t volatile *)pvDst = *(uint8_t const *)pvSrc;
-                return;
-            case 2:
-                *(uint16_t volatile *)pvDst = *(uint16_t const *)pvSrc;
-                return;
-            case 4:
-                *(uint32_t volatile *)pvDst = *(uint32_t const *)pvSrc;
-                return;
-            case 8:
-                *(uint64_t volatile *)pvDst = *(uint64_t const *)pvSrc;
-                return;
-            case 16:
-                ((uint64_t volatile *)pvDst)[0] = ((uint64_t const *)pvSrc)[0];
-                ((uint64_t volatile *)pvDst)[1] = ((uint64_t const *)pvSrc)[1];
-                return;
-            default:
-                pgmPhysPredictableOddSizedMemCopy<false>((uint8_t volatile *)pvDst, (uint8_t volatile const *)pvSrc, cb);
-                return;
-        }
-}
-
 
 /** @} */
 
