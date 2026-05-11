@@ -1,4 +1,4 @@
-/* $Id: UIDesktopWidgetWatchdog.cpp 112467 2026-01-13 12:36:38Z sergey.dubov@oracle.com $ */
+/* $Id: UIDesktopWidgetWatchdog.cpp 114119 2026-05-11 13:50:26Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIDesktopWidgetWatchdog class implementation.
  */
@@ -910,19 +910,20 @@ void UIDesktopWidgetWatchdog::sltHandleHostScreenWorkAreaResized(const QRect &av
 #if defined(VBOX_WS_NIX) && !defined(VBOX_GUI_WITH_CUSTOMIZATIONS1)
 void UIDesktopWidgetWatchdog::sltHandleHostScreenAvailableGeometryCalculated(int iHostScreenIndex, QRect availableGeometry)
 {
+    /* Process the signal iff the sender is the worker of the current screen index, else bail out:*/
+    QWidget *pWorker = m_availableGeometryWorkers.value(iHostScreenIndex);
+    if (!pWorker || pWorker != sender())
+        return;
+
     LogRel(("GUI: UIDesktopWidgetWatchdog::sltHandleHostScreenAvailableGeometryCalculated: "
             "Screen %d work area is actually resized to: %dx%d x %dx%d\n",
             iHostScreenIndex, availableGeometry.x(), availableGeometry.y(),
             availableGeometry.width(), availableGeometry.height()));
 
     /* Forget finished worker: */
-    QWidget *pWorker = m_availableGeometryWorkers.value(iHostScreenIndex);
-    if (pWorker)
-    {
-        pWorker->disconnect();
-        pWorker->deleteLater();
-        m_availableGeometryWorkers[iHostScreenIndex] = 0;
-    }
+    pWorker->disconnect();
+    pWorker->deleteLater();
+    m_availableGeometryWorkers[iHostScreenIndex] = 0;
 
     /* We'll need to notify listeners if geometry recalculated (not the 1st time): */
     const bool fSendSignal = m_availableGeometryData.value(iHostScreenIndex).isValid();
@@ -1069,8 +1070,12 @@ void UIDesktopWidgetWatchdog::updateHostScreenAvailableGeometry(int iHostScreenI
     AssertPtrReturnVoid(pWorker);
     {
         /* Remember created worker (replace if necessary): */
-        if (m_availableGeometryWorkers.value(iHostScreenIndex))
-            delete m_availableGeometryWorkers.value(iHostScreenIndex);
+        QWidget *pOldWorker = m_availableGeometryWorkers.value(iHostScreenIndex);
+        if (pOldWorker)
+        {
+            pOldWorker->disconnect();
+            pOldWorker->deleteLater();
+        }
         m_availableGeometryWorkers[iHostScreenIndex] = pWorker;
 
         /* Get the screen-geometry: */
@@ -1094,7 +1099,14 @@ void UIDesktopWidgetWatchdog::cleanupExistingWorkers()
         return;
 
     /* Destroy existing workers: */
-    qDeleteAll(m_availableGeometryWorkers);
+    foreach (QWidget *pWorker, m_availableGeometryWorkers)
+    {
+        if (pWorker)
+        {
+            pWorker->disconnect();
+            pWorker->deleteLater();
+        }
+    }
     /* And clear their vector: */
     m_availableGeometryWorkers.clear();
 }
