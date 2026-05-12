@@ -202,9 +202,10 @@ VMMR0_INT_DECL(int) IOMR0MmioGrowRegistrationTables(PGVM pGVM, uint64_t cReqMinE
              */
             if (pGVM->iomr0.s.paMmioRegs != NULL)
             {
-                memcpy(paRing0,  pGVM->iomr0.s.paMmioRegs,      sizeof(paRing0[0])  * cOldEntries);
-                memcpy(paRing3,  pGVM->iomr0.s.paMmioRing3Regs, sizeof(paRing3[0])  * cOldEntries);
-                memcpy(paLookup, pGVM->iomr0.s.paMmioLookup,    sizeof(paLookup[0]) * cOldEntries);
+                uint32_t const cSafeCopyEntries = RT_MIN(cOldEntries, cNewEntries);
+                memcpy(paRing0,  pGVM->iomr0.s.paMmioRegs,      sizeof(paRing0[0])  * cSafeCopyEntries);
+                memcpy(paRing3,  pGVM->iomr0.s.paMmioRing3Regs, sizeof(paRing3[0])  * cSafeCopyEntries);
+                memcpy(paLookup, pGVM->iomr0.s.paMmioLookup,    sizeof(paLookup[0]) * cSafeCopyEntries);
             }
 
             size_t i = cbRing0 / sizeof(*paRing0);
@@ -311,7 +312,7 @@ VMMR0_INT_DECL(int) IOMR0MmioGrowStatisticsTable(PGVM pGVM, uint64_t cReqMinEntr
              * Anything to copy over and free up?
              */
             if (pGVM->iomr0.s.paMmioStats)
-                memcpy(pMmioStats, pGVM->iomr0.s.paMmioStats, cOldEntries * sizeof(IOMMMIOSTATSENTRY));
+                memcpy(pMmioStats, pGVM->iomr0.s.paMmioStats, RT_MIN(cOldEntries, cNewEntries) * sizeof(IOMMMIOSTATSENTRY));
 
             /*
              * Switch the memory handles.
