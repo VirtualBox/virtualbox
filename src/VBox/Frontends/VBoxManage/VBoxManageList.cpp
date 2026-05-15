@@ -1,4 +1,4 @@
-/* $Id: VBoxManageList.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxManageList.cpp 114143 2026-05-15 14:23:32Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxManage - The 'list' command.
  */
@@ -1236,6 +1236,7 @@ static HRESULT showDhcpConfig(ComPtr<IDHCPConfig> ptrConfig)
         RTPrintf("\n");
     }
 
+    Options.setNull();
     CHECK_ERROR2_STMT(hrc, ptrConfig, COMGETTER(SuppressedOptions(ComSafeArrayAsOutParam(Options))), hrcRet = hrc);
     if (FAILED(hrc))
         RTPrintf(List::tr("    Suppressed opt.s: %Rhrc\n"), hrc);
@@ -1251,6 +1252,7 @@ static HRESULT showDhcpConfig(ComPtr<IDHCPConfig> ptrConfig)
 
     com::SafeArray<DHCPOptionEncoding_T> Encodings;
     com::SafeArray<BSTR>                 Values;
+    Options.setNull();
     CHECK_ERROR2_STMT(hrc, ptrConfig, GetAllOptions(ComSafeArrayAsOutParam(Options),
                                                     ComSafeArrayAsOutParam(Encodings),
                                                     ComSafeArrayAsOutParam(Values)), hrcRet = hrc);
