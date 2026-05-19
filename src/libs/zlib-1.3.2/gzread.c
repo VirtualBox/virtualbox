@@ -687,7 +687,6 @@ int ZEXPORT gzclose_r(gzFile file) {
     err = state->err == Z_BUF_ERROR ? Z_BUF_ERROR : Z_OK;
     gz_error(state, Z_OK, NULL);
     free(state->path);
-    free(state->path);
 #ifndef IPRT_NO_CRT                                                                                     /* VBox */
     ret = close(state->fd);
 #else                                                                                                   /* VBox */
