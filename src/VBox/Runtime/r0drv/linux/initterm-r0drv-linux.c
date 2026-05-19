@@ -1,4 +1,4 @@
-/* $Id: initterm-r0drv-linux.c 113604 2026-03-26 23:38:33Z knut.osmundsen@oracle.com $ */
+/* $Id: initterm-r0drv-linux.c 114150 2026-05-19 11:56:11Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Initialization & Termination, R0 Driver, Linux.
  */
@@ -46,6 +46,9 @@
 #include "internal/initterm.h"
 
 
+#define X86_CPUID_STEXT_FEATURE_EDX_CET_IBT RT_BIT_32(20)
+
+
 /*********************************************************************************************************************************
 *   Global Variables                                                                                                             *
 *********************************************************************************************************************************/
@@ -59,6 +62,12 @@ static DECLARE_TASK_QUEUE(g_rtR0LnxWorkQueue);
 /** Pointer to init_mm, if we have it.
  * This is a special mm structure used to manage the kernel address space. */
 struct mm_struct *g_pLnxInitMm = NULL;
+
+
+/** Whether CET is supported on this CPU. */
+bool g_fLnxIsCetSupported = false;
+/** Whether CET is enabled. */
+bool g_fLnxIsCetEnabled  = false;
 
 #if RTLNX_VER_MIN(6,19,0) && (defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86))
 /** Pointer to __flush_tlb_all kernel symbol. */
@@ -127,6 +136,24 @@ DECLHIDDEN(int) rtR0InitNative(void)
     if (!g_prtR0LnxWorkQueue)
         rc = VERR_NO_MEMORY;
 #endif
+
+    /*
+     * Support for calling dynamic functions on CET-enabled (control flow
+     * enforcement technology) kernels.
+     */
+    g_fLnxIsCetSupported = false;
+    g_fLnxIsCetEnabled   = false;
+    {
+        uint32_t uLeaves = ASMCpuId_EAX(0);
+        if (   uLeaves >= 7
+            && RTX86IsValidStdRange(uLeaves)
+            && (ASMCpuIdEx_EDX(7, 0) & X86_CPUID_STEXT_FEATURE_EDX_CET_IBT))
+        {
+            uint64_t const fSupCet = ASMRdMsr(MSR_IA32_S_CET);
+            g_fLnxIsCetSupported = true;
+            g_fLnxIsCetEnabled   = RT_BOOL(fSupCet & MSR_IA32_CET_ENDBR_EN);
+        }
+    }
 
     /*
      * There are some unexported symbols we want, try get them:

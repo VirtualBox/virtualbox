@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c 114087 2026-05-06 09:34:17Z vadim.galitsyn@oracle.com $ */
+/* $Id: SUPDrv-linux.c 114150 2026-05-19 11:56:11Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -113,17 +113,6 @@
 #define X86_EFL_AC          RT_BIT(18)
 #define X86_EFL_DF          RT_BIT(10)
 #define X86_EFL_IOPL        (RT_BIT(12) | RT_BIT(13))
-
-#define X86_CPUID_STEXT_FEATURE_EDX_CET_IBT RT_BIT_32(20)
-#ifndef MSR_IA32_S_CET
-# define MSR_IA32_S_CET                     0x6a2
-#endif
-#ifndef MSR_IA32_CET_ENDBR_EN
-# define MSR_IA32_CET_ENDBR_EN              RT_BIT_64(2)
-#endif
-#ifndef MSR_IA32_CET_SUPPRESS
-# define MSR_IA32_CET_SUPPRESS              RT_BIT_64(10)
-#endif
 
 /* To include the version number of VirtualBox into kernel backtraces: */
 #define VBoxDrvLinuxVersion RT_CONCAT3(RT_CONCAT(VBOX_VERSION_MAJOR, _), \
@@ -498,23 +487,8 @@ static int __init supdrvLinuxInitKvmSymbols(PRTDBGKRNLINFO phKrnlInfo)
             bool fPutFindModule = supdrvLinuxFunction(NULL, "find_module", (PFNRT *)&pfnFindModule, phKrnlInfo);
             if (pfnFindModule)
             {
-                RTTHREADPREEMPTSTATE Preempt = RTTHREADPREEMPTSTATE_INITIALIZER;
-                uint32_t             uLeaves = ASMCpuId_EAX(0);
                 struct module       *pModule;
-                RTThreadPreemptDisable(&Preempt);
-                if (   uLeaves >= 7
-                    && RTX86IsValidStdRange(uLeaves)
-                    && (ASMCpuIdEx_EDX(7, 0) & X86_CPUID_STEXT_FEATURE_EDX_CET_IBT))
-                {
-                    uint64_t const fSupCet = ASMRdMsr(MSR_IA32_S_CET);
-                    ASMWrMsr(MSR_IA32_S_CET, fSupCet & ~MSR_IA32_CET_ENDBR_EN);
-                    pModule = pfnFindModule(pszModName);
-                    ASMWrMsr(MSR_IA32_S_CET, fSupCet);
-                }
-                else
-                    pModule = pfnFindModule(pszModName);
-                RTThreadPreemptRestore(&Preempt);
-
+                RTLNX_CET_UNSAFE_CALL(pfnFindModule, pModule = pfnFindModule(pszModName));
                 if (fPutFindModule)
                     symbol_put_addr(pfnFindModule);
 
@@ -1279,9 +1253,12 @@ EXPORT_SYMBOL(SUPDrvLinuxLdrDeregisterWrappedModule);
 DECLINLINE(unsigned long) supdrvLinux_cr4_read_shadow(void)
 {
 #  ifdef SUPDRV_LINUX_DYNAMIC_CR4_FUNCTIONS
+    unsigned long fRet;
     if (RT_LIKELY(g_pfnCr4ReadShadow))
-        return g_pfnCr4ReadShadow();
-    return ASMGetCR4(); /* This better not happen! */
+        RTLNX_CET_UNSAFE_CALL(g_pfnCr4ReadShadow, fRet = g_pfnCr4ReadShadow());
+    else
+        fRet = ASMGetCR4(); /* This better not happen! */
+    return fRet;
 #  else
     return cr4_read_shadow();
 #  endif
@@ -1297,7 +1274,7 @@ RTCCUINTREG VBOXCALL supdrvOSChangeCR4(RTCCUINTREG fOrMask, RTCCUINTREG fAndMask
 
 #  ifdef SUPDRV_LINUX_DYNAMIC_CR4_FUNCTIONS
     if (RT_LIKELY(g_pfnCr4UpdateIrqsoff))
-        g_pfnCr4UpdateIrqsoff(fOrMask, ~fAndMask);
+        RTLNX_CET_UNSAFE_CALL(g_pfnCr4UpdateIrqsoff, g_pfnCr4UpdateIrqsoff(fOrMask, ~fAndMask));
     else
         ASMSetCR4((uOld & fAndMask) | fOrMask); /* This better not happen! */
 #  else
@@ -1712,7 +1689,7 @@ void VBOXCALL   supdrvOSLdrNotifyOpened(PSUPDRVDEVEXT pDevExt, PSUPDRVLDRIMAGE p
             list_add_rcu(&pMyMod->list, &pSelfMod->list);
             pImage->pLnxModHack = pMyMod;
 # ifdef CONFIG_MODULES_TREE_LOOKUP
-            g_pfnModTreeInsert(&pMyMod->mtn_core); /* __mod_tree_insert */
+            RTLNX_CET_UNSAFE_CALL(g_pfnModTreeInsert, g_pfnModTreeInsert(&pMyMod->mtn_core)); /* __mod_tree_insert */
 # endif
             mutex_unlock(&module_mutex);
 
@@ -1759,7 +1736,7 @@ void VBOXCALL   supdrvOSLdrNotifyUnloaded(PSUPDRVDEVEXT pDevExt, PSUPDRVLDRIMAGE
         mutex_lock(&module_mutex);
         list_del_rcu(&pMyMod->list);
 # ifdef CONFIG_MODULES_TREE_LOOKUP
-        g_pfnModTreeRemove(&pMyMod->mtn_core);
+        RTLNX_CET_UNSAFE_CALL(g_pfnModTreeRemove, g_pfnModTreeRemove(&pMyMod->mtn_core));
 # endif
         synchronize_sched();
         mutex_unlock(&module_mutex);
@@ -1959,7 +1936,8 @@ int VBOXCALL supdrvOSEnableHwvirt(bool fEnable)
     if (fEnable)
     {
         /* kvm_enable_virtualization() is guarded by kvm_usage_count reference counter inside a mutex. */
-        int const rc = g_pfnKvmEnableVirtualization();
+        int rc;
+        RTLNX_CET_UNSAFE_CALL(g_pfnKvmEnableVirtualization, rc = g_pfnKvmEnableVirtualization());
         if (!rc)
         {
             g_fEnabledHwvirtUsingKvm = true;
@@ -1972,7 +1950,7 @@ int VBOXCALL supdrvOSEnableHwvirt(bool fEnable)
 
     if (g_fEnabledHwvirtUsingKvm)
     {
-        g_pfnKvmDisableVirtualization();
+        RTLNX_CET_UNSAFE_CALL(g_pfnKvmDisableVirtualization, g_pfnKvmDisableVirtualization());
         g_fEnabledHwvirtUsingKvm = false;
     }
     return VINF_SUCCESS;
@@ -2114,7 +2092,7 @@ SUPR0DECL(uint32_t) SUPR0FpuBegin(bool fCtxHook)
     if (fCtxHook && g_pfnSwitchFpuReturn)
     {
         if (test_thread_flag(TIF_NEED_FPU_LOAD))
-            g_pfnSwitchFpuReturn();
+            RTLNX_CET_UNSAFE_CALL(g_pfnSwitchFpuReturn, g_pfnSwitchFpuReturn());
         fBegin |= SUPR0FPU_BEGIN_F_CTX_HOOK | SUPR0FPU_BEGIN_F_HOST_MAY_REPLACE_STATE;
     }
     else
@@ -2150,7 +2128,7 @@ SUPR0DECL(bool) SUPR0FpuEnsureCurrent(uint32_t fBegin)
     {
         Assert(!(fBegin & SUPR0FPU_BEGIN_F_HOST_STATE_LOCKED));
         AssertReturn(g_pfnSwitchFpuReturn, false);
-        g_pfnSwitchFpuReturn();
+        RTLNX_CET_UNSAFE_CALL(g_pfnSwitchFpuReturn, g_pfnSwitchFpuReturn());
         return true;
     }
 #  endif
@@ -2182,7 +2160,7 @@ SUPR0DECL(uint32_t) SUPR0FpuLock(uint32_t fBegin)
         if (test_thread_flag(TIF_NEED_FPU_LOAD))
         {
             AssertReturn(g_pfnSwitchFpuReturn, fBegin);
-            g_pfnSwitchFpuReturn();
+            RTLNX_CET_UNSAFE_CALL(g_pfnSwitchFpuReturn, g_pfnSwitchFpuReturn());
         }
     }
 #  endif
