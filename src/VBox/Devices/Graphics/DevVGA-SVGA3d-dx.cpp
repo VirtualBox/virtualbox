@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx.cpp 114161 2026-05-20 15:38:42Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx.cpp 114164 2026-05-21 11:20:44Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common code for DX backend interface.
  */
@@ -401,7 +401,6 @@ int vmsvga3dDXDestroyContext(PVGASTATECC pThisCC, uint32_t cid)
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDestroyContext(pThisCC, pDXContext);
 
-#ifdef COTABLE_NO_BACKING
     RTMemFree(pDXContext->cot.paRTView);
     RTMemFree(pDXContext->cot.paDSView);
     RTMemFree(pDXContext->cot.paSRView);
@@ -419,7 +418,6 @@ int vmsvga3dDXDestroyContext(PVGASTATECC pThisCC, uint32_t cid)
     RTMemFree(pDXContext->cot.paVideoDecoder);
     RTMemFree(pDXContext->cot.paVideoProcessorInputView);
     RTMemFree(pDXContext->cot.paVideoProcessorOutputView);
-#endif
 
     RT_ZERO(*pDXContext);
     pDXContext->cid = SVGA3D_INVALID_ID;
@@ -2189,7 +2187,6 @@ static int dxSetOrGrowCOTable(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext
         ASSERT_GUEST_FAILED_RETURN(VERR_INVALID_PARAMETER);
     RT_UNTRUSTED_VALIDATED_FENCE();
 
-#ifdef COTABLE_NO_BACKING
    /*
     * 3 cases.
     *   1) pMob != NULL, fGrow = false:
@@ -2325,173 +2322,6 @@ static int dxSetOrGrowCOTable(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext
     pDXContext->aCOTMobs[idxCOTable] = vmsvgaR3MobId(pMob);
 
     rc = pSvgaR3State->pFuncsDX->pfnDXSetCOTable(pThisCC, pDXContext, enmType, cValidEntries);
-#else
-    uint32_t cbCOT;
-    if (pMob)
-    {
-        /* Bind a new mob to the COTable. */
-        cbCOT = vmsvgaR3MobSize(pMob);
-
-        ASSERT_GUEST_RETURN(validSizeInBytes <= cbCOT, VERR_INVALID_PARAMETER);
-        RT_UNTRUSTED_VALIDATED_FENCE();
-
-        /* When growing a COTable, the valid size can't be greater than the old COTable size. */
-        if (fGrow)
-            validSizeInBytes = RT_MIN(validSizeInBytes, vmsvgaR3MobSize(pDXContext->aCOTMobs[idxCOTable]));
-
-        /* Create a memory pointer, which is accessible by host. */
-        rc = vmsvgaR3MobBackingStoreCreate(pSvgaR3State, pMob, fGrow ? 0 : validSizeInBytes);
-    }
-    else
-    {
-        /* Unbind. */
-        validSizeInBytes = 0;
-        cbCOT = 0;
-        vmsvgaR3MobBackingStoreDelete(pSvgaR3State, pDXContext->aCOTMobs[idxCOTable]);
-    }
-
-    uint32_t cEntries = 0;
-    uint32_t cValidEntries = 0;
-    if (RT_SUCCESS(rc))
-    {
-        static uint32_t const s_acbEntry[] =
-        {
-            sizeof(SVGACOTableDXRTViewEntry),
-            sizeof(SVGACOTableDXDSViewEntry),
-            sizeof(SVGACOTableDXSRViewEntry),
-            sizeof(SVGACOTableDXElementLayoutEntry),
-            sizeof(SVGACOTableDXBlendStateEntry),
-            sizeof(SVGACOTableDXDepthStencilEntry),
-            sizeof(SVGACOTableDXRasterizerStateEntry),
-            sizeof(SVGACOTableDXSamplerEntry),
-            sizeof(SVGACOTableDXStreamOutputEntry),
-            sizeof(SVGACOTableDXQueryEntry),
-            sizeof(SVGACOTableDXShaderEntry),
-            sizeof(SVGACOTableDXUAViewEntry),
-            sizeof(VBSVGACOTableDXVideoProcessorEntry),
-            sizeof(VBSVGACOTableDXVideoDecoderOutputViewEntry),
-            sizeof(VBSVGACOTableDXVideoDecoderEntry),
-            sizeof(VBSVGACOTableDXVideoProcessorInputViewEntry),
-            sizeof(VBSVGACOTableDXVideoProcessorOutputViewEntry),
-        };
-        AssertCompile(RT_ELEMENTS(s_acbEntry) == VBSVGA_NUM_COTABLES);
-
-        uint32_t const cbEntry = s_acbEntry[idxCOTable];
-
-        cEntries = cbCOT / cbEntry;
-        cEntries = RT_MIN(cEntries, SVGA_COTABLE_MAX_IDS);
-
-        cValidEntries = validSizeInBytes / cbEntry;
-        cValidEntries = RT_MIN(cValidEntries, cEntries);
-
-        validSizeInBytes = cValidEntries * cbEntry;
-    }
-
-    if (RT_SUCCESS(rc))
-    {
-        if (   fGrow
-            && pDXContext->aCOTMobs[idxCOTable]
-            && cValidEntries)
-        {
-            /* Copy entries from the current mob to the new mob. */
-            void const *pvSrc = vmsvgaR3MobBackingStorePtr(pDXContext->aCOTMobs[idxCOTable], 0);
-            void *pvDst = vmsvgaR3MobBackingStorePtr(pMob, 0);
-            if (pvSrc && pvDst)
-                memcpy(pvDst, pvSrc, validSizeInBytes);
-            else
-                AssertFailedStmt(rc = VERR_INVALID_STATE);
-        }
-    }
-
-    if (RT_SUCCESS(rc))
-    {
-        pDXContext->aCOTMobs[idxCOTable] = pMob;
-
-        void *pvCOT = vmsvgaR3MobBackingStorePtr(pMob, 0);
-        switch (enmType)
-        {
-            case SVGA_COTABLE_RTVIEW:
-                pDXContext->cot.paRTView          = (SVGACOTableDXRTViewEntry *)pvCOT;
-                pDXContext->cot.cRTView           = cEntries;
-                break;
-            case SVGA_COTABLE_DSVIEW:
-                pDXContext->cot.paDSView          = (SVGACOTableDXDSViewEntry *)pvCOT;
-                pDXContext->cot.cDSView           = cEntries;
-                break;
-            case SVGA_COTABLE_SRVIEW:
-                pDXContext->cot.paSRView          = (SVGACOTableDXSRViewEntry *)pvCOT;
-                pDXContext->cot.cSRView           = cEntries;
-                break;
-            case SVGA_COTABLE_ELEMENTLAYOUT:
-                pDXContext->cot.paElementLayout   = (SVGACOTableDXElementLayoutEntry *)pvCOT;
-                pDXContext->cot.cElementLayout    = cEntries;
-                break;
-            case SVGA_COTABLE_BLENDSTATE:
-                pDXContext->cot.paBlendState      = (SVGACOTableDXBlendStateEntry *)pvCOT;
-                pDXContext->cot.cBlendState       = cEntries;
-                break;
-            case SVGA_COTABLE_DEPTHSTENCIL:
-                pDXContext->cot.paDepthStencil    = (SVGACOTableDXDepthStencilEntry *)pvCOT;
-                pDXContext->cot.cDepthStencil     = cEntries;
-                break;
-            case SVGA_COTABLE_RASTERIZERSTATE:
-                pDXContext->cot.paRasterizerState = (SVGACOTableDXRasterizerStateEntry *)pvCOT;
-                pDXContext->cot.cRasterizerState  = cEntries;
-                break;
-            case SVGA_COTABLE_SAMPLER:
-                pDXContext->cot.paSampler         = (SVGACOTableDXSamplerEntry *)pvCOT;
-                pDXContext->cot.cSampler          = cEntries;
-                break;
-            case SVGA_COTABLE_STREAMOUTPUT:
-                pDXContext->cot.paStreamOutput    = (SVGACOTableDXStreamOutputEntry *)pvCOT;
-                pDXContext->cot.cStreamOutput     = cEntries;
-                break;
-            case SVGA_COTABLE_DXQUERY:
-                pDXContext->cot.paQuery           = (SVGACOTableDXQueryEntry *)pvCOT;
-                pDXContext->cot.cQuery            = cEntries;
-                break;
-            case SVGA_COTABLE_DXSHADER:
-                pDXContext->cot.paShader          = (SVGACOTableDXShaderEntry *)pvCOT;
-                pDXContext->cot.cShader           = cEntries;
-                break;
-            case SVGA_COTABLE_UAVIEW:
-                pDXContext->cot.paUAView          = (SVGACOTableDXUAViewEntry *)pvCOT;
-                pDXContext->cot.cUAView           = cEntries;
-                break;
-            case SVGA_COTABLE_MAX: break; /* Compiler warning */
-            case VBSVGA_COTABLE_VIDEOPROCESSOR:
-                pDXContext->cot.paVideoProcessor  = (VBSVGACOTableDXVideoProcessorEntry *)pvCOT;
-                pDXContext->cot.cVideoProcessor   = cEntries;
-                break;
-            case VBSVGA_COTABLE_VDOV:
-                pDXContext->cot.paVideoDecoderOutputView  = (VBSVGACOTableDXVideoDecoderOutputViewEntry *)pvCOT;
-                pDXContext->cot.cVideoDecoderOutputView   = cEntries;
-                break;
-            case VBSVGA_COTABLE_VIDEODECODER:
-                pDXContext->cot.paVideoDecoder  = (VBSVGACOTableDXVideoDecoderEntry *)pvCOT;
-                pDXContext->cot.cVideoDecoder   = cEntries;
-                break;
-            case VBSVGA_COTABLE_VPIV:
-                pDXContext->cot.paVideoProcessorInputView  = (VBSVGACOTableDXVideoProcessorInputViewEntry *)pvCOT;
-                pDXContext->cot.cVideoProcessorInputView   = cEntries;
-                break;
-            case VBSVGA_COTABLE_VPOV:
-                pDXContext->cot.paVideoProcessorOutputView  = (VBSVGACOTableDXVideoProcessorOutputViewEntry *)pvCOT;
-                pDXContext->cot.cVideoProcessorOutputView   = cEntries;
-                break;
-            case VBSVGA_COTABLE_MAX: break; /* Compiler warning */
-#ifndef DEBUG_sunlover
-            default: break; /* Compiler warning. */
-#endif
-        }
-    }
-    else
-        vmsvgaR3MobBackingStoreDelete(pSvgaR3State, pMob);
-
-    /* Notify the backend. */
-    if (RT_SUCCESS(rc))
-        rc = pSvgaR3State->pFuncsDX->pfnDXSetCOTable(pThisCC, pDXContext, enmType, cValidEntries);
-#endif
 
     return rc;
 }
@@ -2527,7 +2357,6 @@ int vmsvga3dDXReadbackCOTable(PVGASTATECC pThisCC, SVGA3dCmdDXReadbackCOTable co
     AssertRCReturn(rc, rc);
     RT_UNTRUSTED_VALIDATED_FENCE();
 
-#ifdef COTABLE_NO_BACKING
     SVGACOTableType const enmType = pCmd->type;
 
     uint32_t idxCOTable;
@@ -2582,13 +2411,7 @@ int vmsvga3dDXReadbackCOTable(PVGASTATECC pThisCC, SVGA3dCmdDXReadbackCOTable co
     cbCOT = RT_MIN(cbCOT, cbMob);
 
     rc = vmsvgaR3MobWrite(pSvgaR3State, pMob, 0, pvCOT, cbCOT);
-#else
-    ASSERT_GUEST_RETURN(pCmd->type < RT_ELEMENTS(pDXContext->aCOTMobs), VERR_INVALID_PARAMETER);
-    RT_UNTRUSTED_VALIDATED_FENCE();
 
-    PVMSVGAMOB pMob = pDXContext->aCOTMobs[pCmd->type];
-    rc = vmsvgaR3MobBackingStoreWriteToGuest(pSvgaR3State, pMob);
-#endif
     return rc;
 }
 
