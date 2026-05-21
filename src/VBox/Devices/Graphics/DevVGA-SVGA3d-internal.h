@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-internal.h 113826 2026-04-12 21:37:29Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-internal.h 114163 2026-05-21 11:20:26Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device - 3D part, internal header.
  */
@@ -983,9 +983,6 @@ static SSMFIELD const g_aVMSVGA3DCONTEXTFields[] =
 /* The 3D backend DX context. The actual structure is 3D API specific. */
 typedef struct VMSVGA3DBACKENDDXCONTEXT *PVMSVGA3DBACKENDDXCONTEXT;
 
-/** @todo Make it default and remove. */
-#define COTABLE_NO_BACKING
-
 /**
  * VMSVGA3D DX context (VGPU10+). DX contexts ids are a separate namespace from legacy context ids.
  */
@@ -1002,11 +999,7 @@ typedef struct VMSVGA3DDXCONTEXT
     /** Copy of the guest memory for this context. The guest will be updated on unbind. */
     SVGADXContextMobFormat    svgaDXContext;
     /* Context-Object Tables bound to this context. */
-#ifndef COTABLE_NO_BACKING
-    PVMSVGAMOB aCOTMobs[VBSVGA_NUM_COTABLES];
-#else
     uint32_t aCOTMobs[VBSVGA_NUM_COTABLES];
-#endif
     struct
     {
         SVGACOTableDXRTViewEntry          *paRTView;
