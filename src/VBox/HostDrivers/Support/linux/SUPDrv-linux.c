@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c 114169 2026-05-21 12:30:06Z vadim.galitsyn@oracle.com $ */
+/* $Id: SUPDrv-linux.c 114173 2026-05-21 14:33:00Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -2096,6 +2096,7 @@ SUPR0DECL(uint32_t) SUPR0FpuBegin(bool fCtxHook)
         fpregs_lock();
         kernel_fpu_begin();
         /** @todo consider setting SUPR0FPU_BEGIN_F_FULLY_SAVED in fBegin */
+        /** @todo not entirely logical not to set SUPR0FPU_BEGIN_F_HOST_STATE_LOCKED here... */
     }
     local_irq_restore(fSavedIrqs);
     Assert(fCtxHook || !irq_fpu_usable());
@@ -2204,8 +2205,8 @@ SUPR0DECL(void) SUPR0FpuEnd(uint32_t fBegin)
         /* Always disable IRQs and explicitly unlock the FPU state. */
         unsigned long fSavedIrqs;
         local_irq_save(fSavedIrqs);
-        fpregs_unlock();
         kernel_fpu_end();
+        fpregs_unlock();
         local_irq_restore(fSavedIrqs);
     }
 
