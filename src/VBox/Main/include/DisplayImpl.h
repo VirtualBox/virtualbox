@@ -1,4 +1,4 @@
-/* $Id: DisplayImpl.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: DisplayImpl.h 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -164,6 +164,9 @@ public:
     void i_handleUpdateVBVAInputMapping(int32_t xOrigin, int32_t yOrigin, uint32_t cx, uint32_t cy);
     int  i_handle3DNotifyProcess(VBOX3DNOTIFY *p3DNotify);
 
+    void i_handleOnOutputTargetCreated(uint32_t uScreenId, uint64_t u64OutputTargetToken, int rcCreated);
+    void i_handleOnOutputTargetRetired(uint32_t uScreenId, uint64_t u64OutputTargetToken);
+
     int  i_saveVisibleRegion(uint32_t cRect, PRTRECT pRect);
     int  i_handleSetVisibleRegion(uint32_t cRect, PRTRECT pRect);
     int  i_handleUpdateMonitorPositions(uint32_t cPositions, PCRTPOINT paPositions);
@@ -323,6 +326,15 @@ private:
     static DECLCALLBACK(int)  i_display3DNotifyProcess(PPDMIDISPLAYCONNECTOR pInterface,
                                                        VBOX3DNOTIFY *p3DNotify);
 
+    static DECLCALLBACK(void) i_displayOnOutputTargetCreated(PPDMIDISPLAYCONNECTOR pInterface,
+                                                             uint32_t uScreenId,
+                                                             uint64_t u64OutputTargetToken,
+                                                             int vrcCreated);
+    static DECLCALLBACK(void) i_displayOnOutputTargetRetired(PPDMIDISPLAYCONNECTOR pInterface,
+                                                             uint32_t uScreenId,
+                                                             uint64_t u64OutputTargetToken);
+
+
 #ifdef VBOX_WITH_HGSMI
     static DECLCALLBACK(int)   i_displayVBVAEnable(PPDMIDISPLAYCONNECTOR pInterface, unsigned uScreenId,
                                                    VBVAHOSTFLAGS RT_UNTRUSTED_VOLATILE_GUEST *pHostFlags);
@@ -461,7 +473,29 @@ private:
 
 private:
     DECLARE_CLS_COPY_CTOR_ASSIGN_NOOP(Display); /* Shuts up MSC warning C4625. */
+
+    friend class DisplaySourceBitmap;
 };
+
+/**
+ * Display driver instance data.
+ *
+ * @implements PDMIDISPLAYCONNECTOR
+ */
+typedef struct DRVMAINDISPLAY
+{
+    /** Pointer to the display object. */
+    Display                    *pDisplay;
+    /** Pointer to the driver instance structure. */
+    PPDMDRVINS                  pDrvIns;
+    /** Pointer to the display port interface of the driver/device above us. */
+    PPDMIDISPLAYPORT            pUpPort;
+    /** Our display connector interface. */
+    PDMIDISPLAYCONNECTOR        IConnector;
+} DRVMAINDISPLAY, *PDRVMAINDISPLAY;
+
+/** Converts PDMIDISPLAYCONNECTOR pointer to a DRVMAINDISPLAY pointer. */
+#define PDMIDISPLAYCONNECTOR_2_MAINDISPLAY(pInterface)  RT_FROM_MEMBER(pInterface, DRVMAINDISPLAY, IConnector)
 
 /* The legacy VBVA helpers. */
 int videoAccelConstruct(VIDEOACCEL *pVideoAccel);
@@ -524,6 +558,7 @@ private:
         DISPLAYFBINFO *pFBInfo;
 
         uint8_t *pu8Allocated;
+        uint64_t u64OutputTargetToken;
 
         uint8_t *pu8Address;
         ULONG ulWidth;

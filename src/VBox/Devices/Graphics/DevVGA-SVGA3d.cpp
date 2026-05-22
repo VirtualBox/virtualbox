@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.cpp 113826 2026-04-12 21:37:29Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.cpp 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common core code.
  */
@@ -1070,7 +1070,8 @@ static int vmsvga3dScreenUpdate(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen
     /* Update the screen from a surface. */
     /* Screen which is associated with a screen target must have a system buffer, because this function
      * writes to system memory. */
-    AssertReturn(pScreen->pvScreenBitmap || pScreen->offVRAM != VMSVGA_VRAM_OFFSET_SCREEN_TARGET, VERR_INVALID_PARAMETER);
+    AssertReturn(   (pScreen->pScreenOutputTarget && pScreen->pScreenOutputTarget->desc.pvOutputBuffer)
+                 || pScreen->offVRAM != VMSVGA_VRAM_OFFSET_SCREEN_TARGET, VERR_INVALID_PARAMETER);
 
     uint32_t const cbScreenPixel = (pScreen->cBpp + 7) / 8;
     ASSERT_GUEST_RETURN(cbScreenPixel == pSurface->cbBlock,
@@ -1146,12 +1147,8 @@ static int vmsvga3dScreenUpdate(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen
 
         uint32_t const cbDst = pScreen->cHeight * pScreen->cbPitch;
         uint8_t *pu8Dst;
-#ifndef PERMANENT_SCREEN_BITMAP
-        if (pScreen->pvScreenBitmap)
-#else
         if (pScreen->offVRAM == VMSVGA_VRAM_OFFSET_SCREEN_TARGET)
-#endif
-            pu8Dst = (uint8_t *)pScreen->pvScreenBitmap;
+            pu8Dst = (uint8_t *)pScreen->pScreenOutputTarget->desc.pvOutputBuffer;
         else
             pu8Dst = (uint8_t *)pThisCC->pbVRam + pScreen->offVRAM;
 
@@ -1301,6 +1298,25 @@ void vmsvga3dProcessPendingTasks(PVGASTATE pThis, PVGASTATECC pThisCC)
 
     if (pSvgaR3State->pFuncs3D && pSvgaR3State->pFuncs3D->pfnProcessPendingTasks)
         pSvgaR3State->pFuncs3D->pfnProcessPendingTasks(pThis, pThisCC);
+}
+
+
+int vmsvga3dCreateOutputTarget(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGAOUTPUTTARGET *pOutputTarget)
+{
+    PVMSVGAR3STATE const pSvgaR3State = pThisCC->svga.pSvgaR3State;
+
+    if (pSvgaR3State->pFuncs3D && pSvgaR3State->pFuncs3D->pfnCreateOutputTarget)
+        return pSvgaR3State->pFuncs3D->pfnCreateOutputTarget(pThis, pThisCC, pOutputTarget);
+    return VERR_NOT_IMPLEMENTED;
+}
+
+
+void vmsvga3dDestroyOutputTarget(PVGASTATECC pThisCC, VMSVGAOUTPUTTARGET *pOutputTarget)
+{
+    PVMSVGAR3STATE const pSvgaR3State = pThisCC->svga.pSvgaR3State;
+
+    if (pSvgaR3State->pFuncs3D && pSvgaR3State->pFuncs3D->pfnCreateOutputTarget)
+        pSvgaR3State->pFuncs3D->pfnDestroyOutputTarget(pThisCC, pOutputTarget);
 }
 
 

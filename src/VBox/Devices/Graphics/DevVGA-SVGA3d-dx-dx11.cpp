@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114160 2026-05-20 15:38:26Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -51,19 +51,7 @@
 #include "DevVGA-SVGA3d-internal.h"
 #include "DevVGA-SVGA3d-dx-shader.h"
 
-/* d3d11_1.h has a structure field named 'Status' but Status is defined as int on Linux host */
-#if defined(Status)
-#undef Status
-#endif
-#ifndef RT_OS_WINDOWS
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wpedantic"
-#endif
-#include <d3d11_1.h>
-#ifndef RT_OS_WINDOWS
-# pragma GCC diagnostic pop
-#endif
-
+#include "DevVGA-SVGA3d-dx-dx11.h"
 
 /* One ID3D11Device object is used for all VMSVGA guest contexts because the VGPU design makes resources
  * independent from rendering contexts. I.e. multiple guest contexts freely access a surface.
@@ -222,7 +210,7 @@ typedef struct VMSVGAHWSCREEN
 
     ID3D11Texture2D            *pScreenTexture;        /* Texture for the screen content. Possibly scaled. */
     ID3D11RenderTargetView     *pScreenTextureRTV;     /* Render target view of pScreenTexture. */
-    ID3D11Texture2D            *pStagingTexture;       /* Same resolution as pScreenTexture for async copy to system memory. */
+    ID3D11ShaderResourceView   *pScreenTextureSRV;     /* Shader resource view of pScreenTexture. */
 
     ID3D11Texture2D            *pScreenObjectTextureBGRA; /* Target texture for a screen object BlitToScreen.
                                                            * NULL if a screen target is used by the guest (rather than screen object). */
@@ -3459,19 +3447,11 @@ static int vmsvga3dHwScreenCreate(PVMSVGA3DSTATE pState, uint32_t cWidth, uint32
     td.SampleDesc.Count   = 1;
     td.SampleDesc.Quality = 0;
     td.Usage              = D3D11_USAGE_DEFAULT;
-    td.BindFlags          = D3D11_BIND_RENDER_TARGET;
+    td.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
     td.CPUAccessFlags     = 0;
     td.MiscFlags          = 0;
 
     hr = pDXDevice->pDevice->CreateTexture2D(&td, 0, &p->pScreenTexture);
-    AssertReturn(SUCCEEDED(hr), VERR_NO_MEMORY);
-
-    /* Staging texture for downloading the screen content to the system memory. */
-    td.Usage              = D3D11_USAGE_STAGING;
-    td.BindFlags          = 0;
-    td.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
-
-    hr = pDXDevice->pDevice->CreateTexture2D(&td, 0, &p->pStagingTexture);
     AssertReturn(SUCCEEDED(hr), VERR_NO_MEMORY);
 
     /* Render target view for the screen texture. */
@@ -3480,6 +3460,15 @@ static int vmsvga3dHwScreenCreate(PVMSVGA3DSTATE pState, uint32_t cWidth, uint32
     rtvDesc.ViewDimension      = D3D11_RTV_DIMENSION_TEXTURE2D;
     rtvDesc.Texture2D.MipSlice = 0;
     hr = pDXDevice->pDevice->CreateRenderTargetView(p->pScreenTexture, &rtvDesc, &p->pScreenTextureRTV);
+    AssertReturn(SUCCEEDED(hr), VERR_NO_MEMORY);
+
+    RT_ZERO(srvDesc);
+    srvDesc.Format                    = td.Format;
+    srvDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    srvDesc.Texture2D.MipLevels       = 1;
+    hr = pDXDevice->pDevice->CreateShaderResourceView(p->pScreenTexture, &srvDesc, &p->pScreenTextureSRV);
+    AssertReturn(SUCCEEDED(hr), VERR_NO_MEMORY);
 
     if (!fScreenTarget)
     {
@@ -3638,8 +3627,8 @@ static void vmsvga3dHwScreenDestroy(PVMSVGA3DSTATE pState, VMSVGAHWSCREEN *p)
     D3D_RELEASE(p->pScreenTargetSrvBGRA);
     D3D_RELEASE(p->pScreenObjectTextureRGBA);
     D3D_RELEASE(p->pScreenObjectTextureBGRA);
+    D3D_RELEASE(p->pScreenTextureSRV);
     D3D_RELEASE(p->pScreenTextureRTV);
-    D3D_RELEASE(p->pStagingTexture);
     D3D_RELEASE(p->pScreenTexture);
     D3D_RELEASE(p->pScreenReadbackQuery);
 }
@@ -3873,64 +3862,6 @@ static void dxUpdateScreenEnd(DXDEVICE *pDXDevice, DXPIPELINESTATE &SavedState)
 }
 
 
-static void dxCopyStagingTextureToScreenBitmap(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen, DXDEVICE *pDXDevice,
-                                               SVGASignedRect const &updateRect)
-{
-    AssertReturnVoid(pScreen->pvScreenBitmap || pScreen->offVRAM != VMSVGA_VRAM_OFFSET_SCREEN_TARGET);
-    AssertReturnVoid(pScreen->cBpp == 32);
-    const uint32_t cbPixel = 4;
-
-    VMSVGAHWSCREEN *p = pScreen->pHwScreen;
-
-    /* Copy data from staging resource to the system memory. */
-    D3D11_MAPPED_SUBRESOURCE map;
-    RT_ZERO(map);
-
-    HRESULT hr = pDXDevice->pImmediateContext->Map(p->pStagingTexture, 0, D3D11_MAP_READ, 0, &map);
-    AssertReturnVoid(SUCCEEDED(hr));
-
-    uint8_t const *pu8Src = (uint8_t *)map.pData;
-    uint8_t *pu8Dst;
-#ifndef PERMANENT_SCREEN_BITMAP
-    if (pScreen->pvScreenBitmap)
-#else
-    if (pScreen->offVRAM == VMSVGA_VRAM_OFFSET_SCREEN_TARGET)
-#endif
-        pu8Dst = (uint8_t *)pScreen->pvScreenBitmap;
-    else
-        pu8Dst = (uint8_t *)pThisCC->pbVRam + pScreen->offVRAM;
-
-    if (   updateRect.left == 0
-        && updateRect.top == 0
-        && updateRect.right == (int32_t)p->cHwScreenWidth
-        && updateRect.bottom == (int32_t)p->cHwScreenHeight
-        && p->cHwScreenWidth * cbPixel == map.RowPitch)
-    {
-        memcpy(pu8Dst, pu8Src, map.RowPitch * p->cHwScreenHeight);
-    }
-    else
-    {
-        /* 'pu8Src' points to the mapped 'srcRect'. Take the clipping box into account. */
-        uint8_t const *pu8SrcBox = pu8Src
-            + updateRect.left * cbPixel + updateRect.top * map.RowPitch;
-
-        uint8_t *pu8DstBox = pu8Dst
-            + updateRect.left * cbPixel + updateRect.top * cbPixel * p->cHwScreenWidth;
-
-        uint32_t const cbWidth = cbPixel * (updateRect.right - updateRect.left);
-        for (int32_t iRow = 0; iRow < updateRect.bottom - updateRect.top; ++iRow)
-        {
-            memcpy(pu8DstBox, pu8SrcBox, cbWidth);
-
-            pu8SrcBox += map.RowPitch;
-            pu8DstBox += cbPixel * p->cHwScreenWidth;
-        }
-    }
-
-    pDXDevice->pImmediateContext->Unmap(p->pStagingTexture, 0);
-}
-
-
 DECLINLINE(int) dxFenceCmp64(uint64_t u64FenceA, uint64_t u64FenceB)
 {
      if (   u64FenceA < u64FenceB
@@ -3952,8 +3883,18 @@ static void dxStartScreenReadback(VMSVGASCREENOBJECT *pScreen, DXDEVICE *pDXDevi
     /* Get the screen data to the system memory. */
     VMSVGAHWSCREEN *p = pScreen->pHwScreen;
 
-    pDXDevice->pImmediateContext->CopySubresourceRegion(p->pStagingTexture, 0, 0, 0, 0, p->pScreenTexture, 0, NULL);
+    /* Check targets. Targets are created and deleted on FIFO thread so it is ok to access them without a lock. */
+    VMSVGAOUTPUTTARGET *pOutputTarget;
+    RTListForEach(&pScreen->listOutputTargets, pOutputTarget, VMSVGAOUTPUTTARGET, nodeOutputTarget)
+    {
+        VMSVGAHWOUTPUTTARGET *pHwOutputTarget = pOutputTarget->pHwOutputTarget;
+        AssertContinue(pHwOutputTarget);
 
+        dxHwOutputTargetConvert(pOutputTarget, pDXDevice->pImmediateContext,
+                                p->pScreenTextureSRV, p->cHwScreenWidth, p->cHwScreenHeight);
+    }
+
+    /* Submit all the work: target conversion and readback to staging resources. */
     pDXDevice->pImmediateContext->Flush();
 
     /* Issue a query in order to be able to know when the transfer to the system memory will complete. */
@@ -3990,7 +3931,23 @@ static void dxProcessPendingUpdates(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pSc
                     break;
 
                 SVGASignedRect const &updateRect = p->aUpdates[p->idxLastUpdate].rect;
-                dxCopyStagingTextureToScreenBitmap(pThisCC, pScreen, pDXDevice, updateRect);
+
+                /* Check targets. Targets are created and deleted on FIFO thread so it is ok to access them. */
+                VMSVGAOUTPUTTARGET *pOutputTarget;
+                RTListForEach(&pScreen->listOutputTargets, pOutputTarget, VMSVGAOUTPUTTARGET, nodeOutputTarget)
+                {
+                    VMSVGAHWOUTPUTTARGET *pHwOutputTarget = pOutputTarget->pHwOutputTarget;
+                    AssertContinue(pHwOutputTarget);
+
+                    dxHwOutputTargetReadback(pOutputTarget, pDXDevice->pImmediateContext, updateRect);
+
+                    /* Increment u64UpdateSequenceNumber, skipping 0 on rollover. */
+                    uint64_t u64 = pOutputTarget->u64UpdateSequenceNumber + 1;
+                    if (u64 == 0)
+                        u64 = 1;
+                    ASMAtomicWriteU64(&pOutputTarget->u64UpdateSequenceNumber, u64);
+                }
+
                 p->aUpdates[p->idxLastUpdate].u64ReadbackFence = 0;
 
                 vmsvgaR3UpdateScreen(pThisCC, pScreen,
@@ -4224,6 +4181,36 @@ static DECLCALLBACK(void) vmsvga3dBackProcessPendingTasks(PVGASTATE pThis, PVGAS
         RTListNodeRemove(&pDXQuery->nodePendingQuery);
         pDXQuery->u32QueryFlags &= ~DX_QUERY_F_PENDING;
     }
+}
+
+
+static DECLCALLBACK(int) vmsvga3dBackCreateOutputTarget(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGAOUTPUTTARGET *pOutputTarget)
+{
+    RT_NOREF(pThis);
+
+    PVMSVGA3DSTATE pState = pThisCC->svga.p3dState;
+    AssertReturn(pState, VERR_INVALID_STATE);
+
+    DXDEVICE *pDXDevice = dxDeviceGet(pState);
+    AssertReturn(pDXDevice->pDevice, VERR_INVALID_STATE);
+
+    int rc = dxHwOutputTargetCreate(pOutputTarget, pDXDevice->pDevice);
+    if (RT_FAILURE(rc))
+        dxHwOutputTargetDestroy(pOutputTarget);
+
+    return rc;
+}
+
+
+static DECLCALLBACK(void) vmsvga3dBackDestroyOutputTarget(PVGASTATECC pThisCC, VMSVGAOUTPUTTARGET *pOutputTarget)
+{
+    PVMSVGA3DSTATE pState = pThisCC->svga.p3dState;
+    AssertReturnVoid(pState);
+
+    DXDEVICE *pDXDevice = dxDeviceGet(pState);
+    AssertReturnVoid(pDXDevice->pDevice);
+
+    dxHwOutputTargetDestroy(pOutputTarget);
 }
 
 
@@ -13006,6 +12993,8 @@ static DECLCALLBACK(int) vmsvga3dBackQueryInterface(PVGASTATECC pThisCC, char co
                 p->pfnSurfaceUpdateHeapBuffers = vmsvga3dBackSurfaceUpdateHeapBuffers;
                 p->pfnFlush                    = vmsvga3dBackFlush;
                 p->pfnProcessPendingTasks      = vmsvga3dBackProcessPendingTasks;
+                p->pfnCreateOutputTarget       = vmsvga3dBackCreateOutputTarget;
+                p->pfnDestroyOutputTarget      = vmsvga3dBackDestroyOutputTarget;
             }
         }
         else

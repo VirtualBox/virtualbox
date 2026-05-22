@@ -1,4 +1,4 @@
-/* $Id: DisplayImpl.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: DisplayImpl.cpp 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -58,26 +58,6 @@
 #ifdef VBOX_WITH_RECORDING
 # include "RecordingContext.h"
 #endif
-
-/**
- * Display driver instance data.
- *
- * @implements PDMIDISPLAYCONNECTOR
- */
-typedef struct DRVMAINDISPLAY
-{
-    /** Pointer to the display object. */
-    Display                    *pDisplay;
-    /** Pointer to the driver instance structure. */
-    PPDMDRVINS                  pDrvIns;
-    /** Pointer to the display port interface of the driver/device above us. */
-    PPDMIDISPLAYPORT            pUpPort;
-    /** Our display connector interface. */
-    PDMIDISPLAYCONNECTOR        IConnector;
-} DRVMAINDISPLAY, *PDRVMAINDISPLAY;
-
-/** Converts PDMIDISPLAYCONNECTOR pointer to a DRVMAINDISPLAY pointer. */
-#define PDMIDISPLAYCONNECTOR_2_MAINDISPLAY(pInterface)  RT_FROM_MEMBER(pInterface, DRVMAINDISPLAY, IConnector)
 
 // constructor / destructor
 /////////////////////////////////////////////////////////////////////////////
@@ -223,41 +203,45 @@ DECLCALLBACK(int) Display::i_displaySSMSaveScreenshot(PSSMHANDLE pSSM, PCVMMR3VT
     if (ptrVM.isOk())
     {
         /* Query RGB bitmap. */
-        /* SSM code is executed on EMT(0), therefore no need to use VMR3ReqCallWait. */
-        uint8_t *pbData = NULL;
-        size_t cbData = 0;
-        uint32_t cx = 0;
-        uint32_t cy = 0;
-        bool fFreeMem = false;
-        int vrc = Display::i_displayTakeScreenshotEMT(pThat, VBOX_VIDEO_PRIMARY_SCREEN, &pbData, &cbData, &cx, &cy, &fFreeMem);
-
-        /*
-         * It is possible that success is returned but everything is 0 or NULL.
-         * (no display attached if a VM is running with VBoxHeadless on OSE for example)
-         */
-        if (RT_SUCCESS(vrc) && pbData)
+        if (pThat->mfSourceBitmapEnabled)
         {
-            Assert(cx && cy);
-
-            /* Prepare a small thumbnail and a PNG screenshot. */
-            displayMakeThumbnail(pbData, cx, cy, &pu8Thumbnail, &cbThumbnail, &cxThumbnail, &cyThumbnail);
-            vrc = DisplayMakePNG(pbData, cx, cy, &pu8PNG, &cbPNG, &cxPNG, &cyPNG, 1);
-            if (RT_FAILURE(vrc))
+            ComPtr<IDisplaySourceBitmap> pSourceBitmap;
+            HRESULT hrc = pThat->QuerySourceBitmap(VBOX_VIDEO_PRIMARY_SCREEN, pSourceBitmap.asOutParam());
+            if (SUCCEEDED(hrc) && !pSourceBitmap.isNull())
             {
-                if (pu8PNG)
-                {
-                    RTMemFree(pu8PNG);
-                    pu8PNG = NULL;
-                }
-                cbPNG = 0;
-                cxPNG = 0;
-                cyPNG = 0;
-            }
+                BYTE *pBitmapAddress = NULL;
+                ULONG ulBitmapWidth = 0;
+                ULONG ulBitmapHeight = 0;
+                ULONG ulBitmapBitsPerPixel = 0;
+                ULONG ulBitmapBytesPerLine = 0;
+                BitmapFormat_T bitmapFormat = BitmapFormat_Opaque;
 
-            if (fFreeMem)
-                RTMemFree(pbData);
-            else
-                pThat->mpDrv->pUpPort->pfnFreeScreenshot(pThat->mpDrv->pUpPort, pbData);
+                hrc = pSourceBitmap->QueryBitmapInfo(&pBitmapAddress,
+                                                     &ulBitmapWidth,
+                                                     &ulBitmapHeight,
+                                                     &ulBitmapBitsPerPixel,
+                                                     &ulBitmapBytesPerLine,
+                                                     &bitmapFormat);
+                if (SUCCEEDED(hrc))
+                {
+                    /* Prepare a small thumbnail and a PNG screenshot. */
+                    displayMakeThumbnail(pBitmapAddress, ulBitmapWidth, ulBitmapHeight, &pu8Thumbnail, &cbThumbnail, &cxThumbnail, &cyThumbnail);
+                    int vrc = DisplayMakePNG(pBitmapAddress, ulBitmapWidth, ulBitmapHeight, &pu8PNG, &cbPNG, &cxPNG, &cyPNG, 1);
+                    if (RT_FAILURE(vrc))
+                    {
+                        if (pu8PNG)
+                        {
+                            RTMemFree(pu8PNG);
+                            pu8PNG = NULL;
+                        }
+                        cbPNG = 0;
+                        cxPNG = 0;
+                        cyPNG = 0;
+                    }
+                }
+
+                pSourceBitmap.setNull();
+            }
         }
     }
     else
@@ -767,11 +751,55 @@ int Display::i_handleDisplayResize(unsigned uScreenId, uint32_t bpp, void *pvVRA
         pFBInfo->fDisabled = false;
     }
 
+    if (mfSourceBitmapEnabled)
+    {
+        /* Create a new object. */
+        ComObjPtr<DisplaySourceBitmap> obj;
+        HRESULT hrc = obj.createObject();
+        if (SUCCEEDED(hrc))
+            hrc = obj->init(this, uScreenId, pFBInfo);
+
+        if (SUCCEEDED(hrc))
+        {
+            pFBInfo->pSourceBitmap = obj;
+            pFBInfo->fDefaultFormat = !obj->i_usesVRAM();
+
+            if (uScreenId == VBOX_VIDEO_PRIMARY_SCREEN)
+            {
+                BYTE *pAddress = NULL;
+                ULONG ulWidth = 0;
+                ULONG ulHeight = 0;
+                ULONG ulBitsPerPixel = 0;
+                ULONG ulBytesPerLine = 0;
+                BitmapFormat_T bitmapFormat = BitmapFormat_Opaque;
+
+                pFBInfo->pSourceBitmap->QueryBitmapInfo(&pAddress,
+                                                        &ulWidth,
+                                                        &ulHeight,
+                                                        &ulBitsPerPixel,
+                                                        &ulBytesPerLine,
+                                                        &bitmapFormat);
+
+                mpDrv->IConnector.pbData     = pAddress;
+                mpDrv->IConnector.cbScanline = ulBytesPerLine;
+                mpDrv->IConnector.cBits      = ulBitsPerPixel;
+                mpDrv->IConnector.cx         = ulWidth;
+                mpDrv->IConnector.cy         = ulHeight;
+            }
+        }
+    }
+
     /* Prepare local vars for the notification code below. */
     ComPtr<IFramebuffer> pFramebuffer = pFBInfo->pFramebuffer;
     const bool fDisabled = pFBInfo->fDisabled;
 
     alock.release(); /* Release lock before recording code gets involved below. */
+
+    if (pFBInfo->pSourceBitmap.isNotNull() && mpDrv)
+    {
+        if (uScreenId == VBOX_VIDEO_PRIMARY_SCREEN && pFBInfo->fDefaultFormat)
+            mpDrv->pUpPort->pfnSetRenderVRAM(mpDrv->pUpPort, true);
+    }
 
 #ifdef VBOX_WITH_RECORDING
     /* Recording needs to be called before releasing the display's lock below. */
@@ -1803,7 +1831,8 @@ Display::i_displayTakeScreenshotEMT(Display *pDisplay, ULONG aScreenId, uint8_t 
             uint8_t *pbDst = (uint8_t *)RTMemAlloc(cbRequired);
             if (pbDst != NULL)
             {
-                if (pFBInfo->flags & VBVA_SCREEN_F_ACTIVE)
+                if (   RT_BOOL(pFBInfo->flags & VBVA_SCREEN_F_ACTIVE)
+                    && pFBInfo->pu8FramebufferVRAM)
                 {
                     /* Copy guest VRAM to the allocated 32bpp buffer. */
                     const uint8_t *pu8Src       = pFBInfo->pu8FramebufferVRAM;
@@ -1966,7 +1995,75 @@ HRESULT Display::takeScreenShotWorker(ULONG aScreenId,
     if (FAILED(hrc))
         return hrc;
 
-    int vrc = i_displayTakeScreenshot(ptrVM.rawUVM(), ptrVM.vtable(), this, mpDrv, aScreenId, aAddress, aWidth, aHeight);
+    int vrc = VINF_SUCCESS;
+
+    if (mfSourceBitmapEnabled)
+    {
+        ComPtr<IDisplaySourceBitmap> pSourceBitmap;
+        hrc = QuerySourceBitmap(aScreenId, pSourceBitmap.asOutParam());
+        if (SUCCEEDED(hrc) && !pSourceBitmap.isNull())
+        {
+            BYTE *pBitmapAddress = NULL;
+            ULONG ulBitmapWidth = 0;
+            ULONG ulBitmapHeight = 0;
+            ULONG ulBitmapBitsPerPixel = 0;
+            ULONG ulBitmapBytesPerLine = 0;
+            BitmapFormat_T bitmapFormat = BitmapFormat_Opaque;
+
+            hrc = pSourceBitmap->QueryBitmapInfo(&pBitmapAddress,
+                                                 &ulBitmapWidth,
+                                                 &ulBitmapHeight,
+                                                 &ulBitmapBitsPerPixel,
+                                                 &ulBitmapBytesPerLine,
+                                                 &bitmapFormat);
+            if (SUCCEEDED(hrc))
+            {
+                if (aWidth == ulBitmapWidth && aHeight == ulBitmapHeight)
+                {
+                    /* No scaling required. */
+                    size_t const cbData = ulBitmapWidth * 4 * ulBitmapHeight;
+                    memcpy(aAddress, pBitmapAddress, cbData);
+                }
+                else
+                {
+                    /* Scale. */
+                    LogRelFlowFunc(("SCALE: %dx%d -> %dx%d\n", ulBitmapWidth, ulBitmapHeight, aWidth, aHeight));
+
+                    uint8_t *dst = aAddress;
+                    uint8_t *src = pBitmapAddress;
+                    int dstW = aWidth;
+                    int dstH = aHeight;
+                    int srcW = ulBitmapWidth;
+                    int srcH = ulBitmapHeight;
+                    int iDeltaLine = ulBitmapWidth * 4;
+
+                    BitmapScale32(dst,
+                                  dstW, dstH,
+                                  src,
+                                  iDeltaLine,
+                                  srcW, srcH);
+                }
+            }
+            else
+                vrc = VERR_NOT_SUPPORTED;
+
+            pSourceBitmap.setNull();
+        }
+        else
+            vrc = VERR_NOT_SUPPORTED;
+    }
+    else
+    {
+        vrc = VERR_NOT_SUPPORTED;
+    }
+
+    if (RT_FAILURE(vrc))
+    {
+        /** @todo For now, invoke the legacy code. Though it should not be necessary, because the guest display output
+         *  actually always goes through the SourceBitmap. */
+        vrc = i_displayTakeScreenshot(ptrVM.rawUVM(), ptrVM.vtable(), this, mpDrv, aScreenId, aAddress, aWidth, aHeight);
+    }
+
     if (RT_SUCCESS(vrc))
     {
         const size_t cbData = aWidth * 4 * aHeight;
@@ -2171,7 +2268,7 @@ int Display::i_recordingScreenChanged(unsigned uScreenId, const DISPLAYFBINFO *p
     if (   !pCtx->IsFeatureEnabled(uScreenId, RecordingFeature_Video)
         /* Skip disabled framebuffers or blank screens.
          * Also will happen on VM restore when starting recording automatically. */
-        || !pFBInfo->pu8FramebufferVRAM
+        ||  pFBInfo->pSourceBitmap.isNull()
         ||  pFBInfo->fDisabled)
         return VINF_SUCCESS;
 
@@ -2196,8 +2293,7 @@ int Display::i_recordingScreenChanged(unsigned uScreenId, const DISPLAYFBINFO *p
                                               pointerData.width, pointerData.height,
                                               pointerData.pu8Shape, pointerData.cbShape);
         /* Send the full screen update. */
-        vrc = i_recordingScreenUpdate(uScreenId, pFBInfo->pu8FramebufferVRAM, pFBInfo->h * pFBInfo->u32LineSize,
-                                      0, 0, pFBInfo->w, pFBInfo->h, pFBInfo->u32LineSize);
+        vrc = i_recordingScreenUpdate(uScreenId, 0, 0, pFBInfo->w, pFBInfo->h);
     }
 
     Log2Func(("LEAVE: %Rrc\n", vrc));
@@ -2281,25 +2377,28 @@ int Display::i_recordingScreenUpdate(unsigned uScreenId, uint32_t x, uint32_t y,
     ULONG ulBitsPerPixel;
     ULONG ulBytesPerLine;
 
-    if (   uScreenId == VBOX_VIDEO_PRIMARY_SCREEN /* Take a shortcut for the primary screen. */
-        && mpDrv)
-    {
-        pbAddress      = mpDrv->IConnector.pbData;
-        ulWidth        = mpDrv->IConnector.cx;
-        ulHeight       = mpDrv->IConnector.cy;
-        ulBitsPerPixel = mpDrv->IConnector.cBits;
-        ulBytesPerLine = mpDrv->IConnector.cbScanline;
-    }
-    else
-    {
-        BitmapFormat_T bitmapFormat = BitmapFormat_Opaque;
-        maFramebuffers[uScreenId].pSourceBitmap->QueryBitmapInfo(&pbAddress,
-                                                                 &ulWidth,
-                                                                 &ulHeight,
-                                                                 &ulBitsPerPixel,
-                                                                 &ulBytesPerLine,
-                                                                 &bitmapFormat);
-    }
+    /* Always use SourceBitmap because it encapsulates various display modes. */
+    /** @todo It is enough to query the bitmap information once and save it in Recording
+     * along with a ComPtr<IDisplaySourceBitmap> (the latter is to make sure that the memory
+     * is not gone while it is still in use).
+     */
+
+    ComPtr<IDisplaySourceBitmap> pSourceBitmap;
+
+    AutoReadLock arlock(this COMMA_LOCKVAL_SRC_POS);
+    pSourceBitmap = maFramebuffers[uScreenId].pSourceBitmap;
+    arlock.release();
+
+    if (pSourceBitmap.isNull())
+        return VERR_INVALID_STATE;
+
+    BitmapFormat_T bitmapFormat = BitmapFormat_Opaque;
+    pSourceBitmap->QueryBitmapInfo(&pbAddress,
+                                   &ulWidth,
+                                   &ulHeight,
+                                   &ulBitsPerPixel,
+                                   &ulBytesPerLine,
+                                   &bitmapFormat);
 
     Log2Func(("uScreenId=%u, pbAddress=%p, ulWidth=%RU32, ulHeight=%RU32, ulBitsPerPixel=%RU32\n",
               uScreenId, pbAddress, ulWidth, ulHeight, ulBitsPerPixel));
@@ -2351,7 +2450,7 @@ Display::i_drawToScreenEMT(Display *pDisplay, ULONG aScreenId, BYTE *address, UL
     {
         vrc = pDisplay->mpDrv->pUpPort->pfnDisplayBlt(pDisplay->mpDrv->pUpPort, address, x, y, width, height);
     }
-    else if (aScreenId < pDisplay->mcMonitors)
+    else if (aScreenId < pDisplay->mcMonitors && pFBInfo->pu8FramebufferVRAM != NULL)
     {
         /* Copy the bitmap to the guest VRAM. */
         const uint8_t *pu8Src       = address;
@@ -2527,7 +2626,7 @@ HRESULT Display::drawToScreen(ULONG aScreenId, BYTE *aAddress, ULONG aX, ULONG a
                 /* Render complete VRAM screen to the framebuffer.
                  * When framebuffer uses VRAM directly, just notify it to update.
                  */
-                if (pFBInfo->fDefaultFormat && !pFBInfo->pSourceBitmap.isNull())
+                if (pFBInfo->fDefaultFormat && !pFBInfo->pSourceBitmap.isNull() && pFBInfo->pu8FramebufferVRAM != NULL)
                 {
                     BYTE *pAddress = NULL;
                     ULONG ulWidth = 0;
@@ -2668,10 +2767,7 @@ HRESULT Display::querySourceBitmap(ULONG aScreenId,
 
     CHECK_CONSOLE_DRV(mpDrv);
 
-    bool fSetRenderVRAM = false;
-    bool fInvalidate = false;
-
-    AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+    AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
 
     if (aScreenId >= mcMonitors)
         return setError(E_INVALIDARG, tr("QuerySourceBitmap: Invalid screen %d (total %d)"), aScreenId, mcMonitors);
@@ -2691,76 +2787,11 @@ HRESULT Display::querySourceBitmap(ULONG aScreenId,
         return E_FAIL;
     }
 
-    HRESULT hr = S_OK;
-
     if (pFBInfo->pSourceBitmap.isNull())
-    {
-        /* Create a new object. */
-        ComObjPtr<DisplaySourceBitmap> obj;
-        hr = obj.createObject();
-        if (SUCCEEDED(hr))
-            hr = obj->init(this, aScreenId, pFBInfo);
+        return E_FAIL;
 
-        if (SUCCEEDED(hr))
-        {
-            pFBInfo->pSourceBitmap = obj;
-            pFBInfo->fDefaultFormat = !obj->i_usesVRAM();
-
-            if (aScreenId == VBOX_VIDEO_PRIMARY_SCREEN)
-            {
-                /* Start buffer updates. */
-                BYTE *pAddress = NULL;
-                ULONG ulWidth = 0;
-                ULONG ulHeight = 0;
-                ULONG ulBitsPerPixel = 0;
-                ULONG ulBytesPerLine = 0;
-                BitmapFormat_T bitmapFormat = BitmapFormat_Opaque;
-
-                pFBInfo->pSourceBitmap->QueryBitmapInfo(&pAddress,
-                                                        &ulWidth,
-                                                        &ulHeight,
-                                                        &ulBitsPerPixel,
-                                                        &ulBytesPerLine,
-                                                        &bitmapFormat);
-
-                mpDrv->IConnector.pbData     = pAddress;
-                mpDrv->IConnector.cbScanline = ulBytesPerLine;
-                mpDrv->IConnector.cBits      = ulBitsPerPixel;
-                mpDrv->IConnector.cx         = ulWidth;
-                mpDrv->IConnector.cy         = ulHeight;
-
-                fSetRenderVRAM = pFBInfo->fDefaultFormat;
-            }
-
-            /* Make sure that the bitmap contains the latest image. */
-            fInvalidate = pFBInfo->fDefaultFormat;
-        }
-    }
-
-    if (SUCCEEDED(hr))
-    {
-        pFBInfo->pSourceBitmap.queryInterfaceTo(aDisplaySourceBitmap.asOutParam());
-    }
-
-    /* Leave the IDisplay lock because the VGA device must not be called under it. */
-    alock.release();
-
-    if (SUCCEEDED(hr))
-    {
-        if (fSetRenderVRAM)
-            mpDrv->pUpPort->pfnSetRenderVRAM(mpDrv->pUpPort, true);
-
-        if (fInvalidate)
-#if 1 /* bird: Cannot see why this needs to run on an EMT. It deadlocks now with timer callback moving to non-EMT worker threads. */
-            Display::i_InvalidateAndUpdateEMT(this, aScreenId, false /*fUpdateAll*/);
-#else
-            VMR3ReqCallWaitU(ptrVM.rawUVM(), VMCPUID_ANY, (PFNRT)Display::i_InvalidateAndUpdateEMT,
-                             3, this, aScreenId, false);
-#endif
-    }
-
-    LogRelFlowFunc(("%Rhrc\n", hr));
-    return hr;
+    pFBInfo->pSourceBitmap.queryInterfaceTo(aDisplaySourceBitmap.asOutParam());
+    return S_OK;
 }
 
 HRESULT Display::getGuestScreenLayout(std::vector<ComPtr<IGuestScreenInfo> > &aGuestScreenLayout)
@@ -3253,6 +3284,34 @@ DECLCALLBACK(int) Display::i_display3DNotifyProcess(PPDMIDISPLAYCONNECTOR pInter
     return pDrv->pDisplay->i_handle3DNotifyProcess(p3DNotify);
 }
 
+void Display::i_handleOnOutputTargetCreated(uint32_t uScreenId, uint64_t u64OutputTargetToken, int vrcCreated)
+{
+    RT_NOREF(uScreenId, u64OutputTargetToken, vrcCreated);
+    AssertFailed(); /* Not expected, because the Display code does not use mpDrv->pfnCreateOutputTargetAsync. */
+}
+
+void Display::i_handleOnOutputTargetRetired(uint32_t uScreenId, uint64_t u64OutputTargetToken)
+{
+    RT_NOREF(uScreenId, u64OutputTargetToken);
+}
+
+DECLCALLBACK(void) Display::i_displayOnOutputTargetCreated(PPDMIDISPLAYCONNECTOR pInterface,
+                                                           uint32_t uScreenId,
+                                                           uint64_t u64OutputTargetToken,
+                                                           int vrcCreated)
+{
+    PDRVMAINDISPLAY pDrv = PDMIDISPLAYCONNECTOR_2_MAINDISPLAY(pInterface);
+    return pDrv->pDisplay->i_handleOnOutputTargetCreated(uScreenId, u64OutputTargetToken, vrcCreated);
+}
+
+DECLCALLBACK(void) Display::i_displayOnOutputTargetRetired(PPDMIDISPLAYCONNECTOR pInterface,
+                                                           uint32_t uScreenId,
+                                                           uint64_t u64OutputTargetToken)
+{
+    PDRVMAINDISPLAY pDrv = PDMIDISPLAYCONNECTOR_2_MAINDISPLAY(pInterface);
+    return pDrv->pDisplay->i_handleOnOutputTargetRetired(uScreenId, u64OutputTargetToken);
+}
+
 HRESULT Display::notifyScaleFactorChange(ULONG aScreenId, ULONG aScaleFactorWMultiplied, ULONG aScaleFactorHMultiplied)
 {
     RT_NOREF(aScreenId, aScaleFactorWMultiplied, aScaleFactorHMultiplied);
@@ -3394,7 +3453,8 @@ DECLCALLBACK(void) Display::i_displayVBVAUpdateProcess(PPDMIDISPLAYCONNECTOR pIn
             pDrv->pUpPort->pfnUpdateDisplayRect(pDrv->pUpPort, hdrSaved.x, hdrSaved.y, hdrSaved.w, hdrSaved.h);
         }
         else if (   !pFBInfo->pSourceBitmap.isNull()
-                 && !pFBInfo->fDisabled)
+                 && !pFBInfo->fDisabled
+                 && pFBInfo->pu8FramebufferVRAM != NULL)
         {
             /* Render VRAM content to the framebuffer. */
             BYTE *pAddress = NULL;
@@ -3820,6 +3880,8 @@ DECLCALLBACK(int) Display::i_drvConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg, ui
     pThis->IConnector.pfnVBVAReportCursorPosition = Display::i_displayVBVAReportCursorPosition;
 #endif
     pThis->IConnector.pfn3DNotifyProcess       = Display::i_display3DNotifyProcess;
+    pThis->IConnector.pfnOnOutputTargetCreated = Display::i_displayOnOutputTargetCreated;
+    pThis->IConnector.pfnOnOutputTargetRetired = Display::i_displayOnOutputTargetRetired;
 
     /*
      * Get the IDisplayPort interface of the above driver/device.

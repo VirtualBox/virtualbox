@@ -1,4 +1,4 @@
-/* $Id: DisplaySourceBitmapImpl.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: DisplaySourceBitmapImpl.cpp 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $ */
 /** @file
  * Bitmap of a guest screen implementation.
  */
@@ -29,6 +29,8 @@
 #include "LoggingNew.h"
 
 #include "DisplayImpl.h"
+
+#include <VBox/vmm/pdmifs.h>
 
 /*
  * DisplaySourceBitmap implementation.
@@ -62,6 +64,7 @@ HRESULT DisplaySourceBitmap::init(ComObjPtr<Display> pDisplay, unsigned uScreenI
     m.pFBInfo = pFBInfo;
 
     m.pu8Allocated = NULL;
+    m.u64OutputTargetToken = 0;
 
     m.pu8Address = NULL;
     m.ulWidth = 0;
@@ -90,6 +93,14 @@ void DisplaySourceBitmap::uninit()
     LogFlowThisFunc(("[%u]\n", m.uScreenId));
 
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+
+    if (m.u64OutputTargetToken != 0)
+    {
+        /* mpDrv can be NULL when VM is powered off. The graphics device cleans up output targets in this case. */
+        if (m.pDisplay->mpDrv)
+            m.pDisplay->mpDrv->pUpPort->pfnReleaseOutputTarget(m.pDisplay->mpDrv->pUpPort, m.u64OutputTargetToken);
+        m.u64OutputTargetToken = 0;
+    }
 
     m.pDisplay.setNull();
     RTMemFree(m.pu8Allocated);
@@ -142,7 +153,31 @@ int DisplaySourceBitmap::initSourceBitmap(unsigned aScreenId,
     ULONG ulBytesPerLine = 0;
     BitmapFormat_T bitmapFormat = BitmapFormat_Opaque;
 
-    if (pFBInfo->pu8FramebufferVRAM && pFBInfo->u16BitsPerPixel == 32 && !pFBInfo->fDisabled)
+    /* If VRAM pointer is NULL, then it is either a VGA mode or the output targets interface must be used. */
+    int vrc2 = pFBInfo->pu8FramebufferVRAM == NULL
+             ? m.pDisplay->mpDrv->pUpPort->pfnQueryDefaultOutputTargetToken(m.pDisplay->mpDrv->pUpPort,
+                                                                            m.uScreenId,
+                                                                            &m.u64OutputTargetToken)
+             : VERR_NOT_SUPPORTED;
+    if (RT_SUCCESS(vrc2))
+    {
+        /* From output target. */
+        LogFunc(("%d from output target\n", aScreenId));
+        PDMDISPLAYOUTPUTTARGETDESC desc;
+        vrc = m.pDisplay->mpDrv->pUpPort->pfnOutputTargetDesc(m.pDisplay->mpDrv->pUpPort,
+                                                              m.u64OutputTargetToken, &desc);
+        if (RT_SUCCESS(vrc))
+        {
+            pAddress       = (BYTE *)desc.pvOutputBuffer;
+            ulWidth        = desc.cWidth;
+            ulHeight       = desc.cHeight;
+            ulBitsPerPixel = 32;
+            ulBytesPerLine = desc.cWidth * 4;
+            bitmapFormat   = BitmapFormat_BGR;
+            m.pu8Allocated = NULL;
+        }
+    }
+    else if (pFBInfo->pu8FramebufferVRAM && pFBInfo->u16BitsPerPixel == 32 && !pFBInfo->fDisabled)
     {
         /* From VRAM. */
         LogFunc(("%d from VRAM\n", aScreenId));
@@ -165,7 +200,7 @@ int DisplaySourceBitmap::initSourceBitmap(unsigned aScreenId,
         ulBytesPerLine = ulWidth * 4;
         bitmapFormat   = BitmapFormat_BGR;
 
-        m.pu8Allocated = (uint8_t *)RTMemAlloc(ulBytesPerLine * ulHeight);
+        m.pu8Allocated = (uint8_t *)RTMemAllocZ(ulBytesPerLine * ulHeight);
         if (m.pu8Allocated == NULL)
         {
             vrc = VERR_NO_MEMORY;

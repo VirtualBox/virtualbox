@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA-internal.h 113569 2026-03-25 09:19:55Z andreas.loeffler@oracle.com $ */
+/* $Id: DevVGA-SVGA-internal.h 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMWare SVGA device - internal header for DevVGA-SVGA* source files.
  */
@@ -163,6 +163,17 @@ typedef struct VMSVGAR3STATE
     /** Information about screens. */
     VMSVGASCREENOBJECT      aScreens[64];
 
+    /** Critical section for accessing the output targets data. */
+    RTCRITSECT              critSectOutputTargets;
+    /** All output targets. The key is u64OutputTargetToken. Access serialized by critSectOutputTargets. */
+    AVLU64TREE              treeOutputTargets;
+    /** Parameters for output targets to be created by FIFO thread (VMSVGAOUTPUTTARGETCREATEPARMS). */
+    RTLISTANCHOR            listOutputTargetCreating;
+    /** Output targets to be deleted by FIFO thread once their reference count reaches 0. */
+    RTLISTANCHOR            listOutputTargetDeleting;
+    /** New output target tokens are taken from this value. */
+    uint64_t volatile       u64OutputTargetTokenSource;
+
     /** Command buffer contexts. */
     PVMSVGACMDBUFCTX        apCmdBufCtxs[SVGA_CB_CONTEXT_MAX];
     /** The special Device Context for synchronous commands. */
@@ -293,6 +304,12 @@ DECLCALLBACK(int) vmsvgaR3DeregisterGmr(PPDMDEVINS pDevIns, uint32_t gmrId);
 #endif
 
 int vmsvgaR3DestroyScreen(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen);
+
+int vmsvgaR3CreateScreenOutputTarget(PVGASTATE pThis, PVGASTATECC pThisCC,
+                                     VMSVGASCREENOBJECT *pScreen,
+                                     VMSVGAOUTPUTTARGET **ppOutputTarget);
+void vmsvgaR3RetireOutputTargets(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen);
+void vmsvgaR3CleanupOutputTargets(PVGASTATECC pThisCC);
 
 void vmsvgaR3ResetScreens(PVGASTATE pThis, PVGASTATECC pThisCC);
 void vmsvgaR3ResetSvgaState(PVGASTATE pThis, PVGASTATECC pThisCC);

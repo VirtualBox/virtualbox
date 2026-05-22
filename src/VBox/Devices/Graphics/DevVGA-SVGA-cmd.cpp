@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA-cmd.cpp 113841 2026-04-13 13:02:56Z dmitrii.grigorev@oracle.com $ */
+/* $Id: DevVGA-SVGA-cmd.cpp 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device - implementation of VMSVGA commands.
  */
@@ -1363,13 +1363,20 @@ int vmsvgaR3DestroyScreen(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGASCREENOBJE
     /* Notify frontend that the screen is about to be deleted. */
     vmsvgaR3ChangeMode(pThis, pThisCC);
 
+    if (pScreen->pScreenOutputTarget)
+    {
+        LogFunc(("OUTPUTTARGET: release internal %RU64 ref 0x%RX64\n", pScreen->pScreenOutputTarget->coreOutputTarget.Key, pScreen->pScreenOutputTarget->cCombinedRefs));
+        vmsvgaOutputTargetReleaseInternal(pScreen->pScreenOutputTarget);
+        pScreen->pScreenOutputTarget = NULL;
+    }
+
+    /* Mark output targets of this screen for deletion. */
+    vmsvgaR3RetireOutputTargets(pThis, pThisCC, pScreen);
+
 #ifdef VBOX_WITH_VMSVGA3D
     if (RT_LIKELY(pThis->svga.f3DEnabled))
         vmsvga3dDestroyScreen(pThisCC, pScreen);
 #endif
-
-    RTMemFree(pScreen->pvScreenBitmap);
-    pScreen->pvScreenBitmap = NULL;
 
     return VINF_SUCCESS;
 }
@@ -1383,6 +1390,8 @@ void vmsvgaR3ResetScreens(PVGASTATE pThis, PVGASTATECC pThisCC)
         if (pScreen)
             vmsvgaR3DestroyScreen(pThis, pThisCC, pScreen);
     }
+
+    vmsvgaR3CleanupOutputTargets(pThisCC);
 }
 
 
@@ -2532,6 +2541,10 @@ static void vmsvga3dCmdDefineGBScreenTarget(PVGASTATE pThis, PVGASTATECC pThisCC
         /** @todo Generic screen object/target interface. */
         VMSVGASCREENOBJECT *pScreen = &pSvgaR3State->aScreens[pCmd->stid];
         Assert(pScreen->idScreen == pCmd->stid);
+
+        if (pScreen->fDefined)
+            vmsvgaR3DestroyScreen(pThis, pThisCC, pScreen);
+
         pScreen->fDefined  = true;
         pScreen->fModified = true;
         pScreen->fuScreen  = SVGA_SCREEN_MUST_BE_SET
@@ -2546,34 +2559,19 @@ static void vmsvga3dCmdDefineGBScreenTarget(PVGASTATE pThis, PVGASTATECC pThisCC
         pScreen->cBpp    = 32;
         pScreen->cDpi    = pCmd->dpi;
 
-#ifndef PERMANENT_SCREEN_BITMAP
-        /* The screen bitmap must be deallocated after 'vmsvgaR3ChangeMode'. */
-        void *pvOldScreenBitmap = pScreen->pvScreenBitmap;
-        pScreen->pvScreenBitmap = 0;
-#endif
-
         if (RT_LIKELY(pThis->svga.f3DEnabled))
             vmsvga3dDefineScreen(pThis, pThisCC, pScreen);
 
-        /* Always allocate a system memory buffer for screen targets.
-         * D3D11 backend copies the screen target surface content to this buffer asynchronously.
+        /* Create an output target for the guest screen content.
+         * D3D11 backend copies the screen target surface content to this target asynchronously.
          */
-#ifndef PERMANENT_SCREEN_BITMAP
-        pScreen->pvScreenBitmap = RTMemAllocZ(pScreen->cHeight * pScreen->cbPitch);
-#else
-        if (!pScreen->pvScreenBitmap)
-            pScreen->pvScreenBitmap = RTMemAllocZ(pThis->svga.u32MaxWidth * pThis->svga.u32MaxHeight * 4);
-#endif
-        AssertLogRelMsg(pScreen->pvScreenBitmap,
-            ("VMSVGA3D: failed to allocate memory buffer for screen target %u (%ux%u)\n",
-             pCmd->stid, pCmd->width, pCmd->height));
+        rc = vmsvgaR3CreateScreenOutputTarget(pThis, pThisCC, pScreen, &pScreen->pScreenOutputTarget);
+        AssertLogRelMsg(RT_SUCCESS(rc),
+            ("VMSVGA: failed to create output target for screen %u (%ux%u) %Rrc\n",
+             pCmd->stid, pCmd->width, pCmd->height, rc));
 
         pThis->svga.fGFBRegisters = false;
         vmsvgaR3ChangeMode(pThis, pThisCC);
-
-#ifndef PERMANENT_SCREEN_BITMAP
-        RTMemFree(pvOldScreenBitmap);
-#endif
     }
 }
 
@@ -2597,7 +2595,8 @@ static void vmsvga3dCmdDestroyGBScreenTarget(PVGASTATE pThis, PVGASTATECC pThisC
         /* Screen objects and screen targets are similar, therefore we will use the same for both. */
         /** @todo Generic screen object/target interface. */
         VMSVGASCREENOBJECT *pScreen = &pSvgaR3State->aScreens[pCmd->stid];
-        vmsvgaR3DestroyScreen(pThis, pThisCC, pScreen);
+        if (pScreen->fDefined)
+            vmsvgaR3DestroyScreen(pThis, pThisCC, pScreen);
     }
 }
 
@@ -8166,17 +8165,14 @@ void vmsvgaR3CmdDefineScreen(PVGASTATE pThis, PVGASTATECC pThisCC, SVGAFifoCmdDe
 
     VMSVGASCREENOBJECT *pScreen = &pSvgaR3State->aScreens[idScreen];
     Assert(pScreen->idScreen == idScreen);
+    if (pScreen->fDefined)
+        vmsvgaR3DestroyScreen(pThis, pThisCC, pScreen);
+
     pScreen->cDpi      = 0; /* SVGAFifoCmdDefineScreen does not support dpi. */
 
-#ifndef PERMANENT_SCREEN_BITMAP
-    /* SVGAFifoCmdDefineScreen uses the guest VRAM. The screen bitmap must be deallocated after 'vmsvgaR3ChangeMode'. */
-    void *pvOldScreenBitmap = pScreen->pvScreenBitmap;
-    pScreen->pvScreenBitmap = 0;
-#else
     /* The screen is not a screen target anymore. */
     if (pScreen->offVRAM == VMSVGA_VRAM_OFFSET_SCREEN_TARGET)
         pScreen->offVRAM = uScreenOffset;
-#endif
 
     pScreen->fDefined  = true;
     pScreen->fModified = true;
@@ -8205,12 +8201,14 @@ void vmsvgaR3CmdDefineScreen(PVGASTATE pThis, PVGASTATECC pThisCC, SVGAFifoCmdDe
         vmsvga3dDefineScreen(pThis, pThisCC, pScreen);
 #endif
 
+    /* Create an output target for the guest screen content. */
+    int rc = vmsvgaR3CreateScreenOutputTarget(pThis, pThisCC, pScreen, &pScreen->pScreenOutputTarget);
+    AssertLogRelMsg(RT_SUCCESS(rc),
+        ("VMSVGA: failed to create output target for screen %u (%ux%u) %Rrc\n",
+         idScreen, uWidth, uHeight, rc));
+
     pThis->svga.fGFBRegisters = false;
     vmsvgaR3ChangeMode(pThis, pThisCC);
-
-#ifndef PERMANENT_SCREEN_BITMAP
-    RTMemFree(pvOldScreenBitmap);
-#endif
 }
 
 
@@ -8228,7 +8226,8 @@ void vmsvgaR3CmdDestroyScreen(PVGASTATE pThis, PVGASTATECC pThisCC, SVGAFifoCmdD
 
     VMSVGASCREENOBJECT *pScreen = &pSvgaR3State->aScreens[idScreen];
     Assert(pScreen->idScreen == idScreen);
-    vmsvgaR3DestroyScreen(pThis, pThisCC, pScreen);
+    if (pScreen->fDefined)
+        vmsvgaR3DestroyScreen(pThis, pThisCC, pScreen);
 }
 
 

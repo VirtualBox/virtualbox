@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $
 ## @file
 # Makefile for D3D11 shader compilation.
 #
@@ -28,47 +28,46 @@
 SUB_DEPTH = ../../../../..
 include $(KBUILD_PATH)/subheader.kmk
 
-OTHERS        += \
+SHADER_H_FILES := \
 	$(PATH_SUB_CURRENT)/d3d11blitter.hlsl.vs.h \
-	$(PATH_SUB_CURRENT)/d3d11blitter.hlsl.ps.h
-OTHERS_CLEAN  += \
-	$(PATH_SUB_CURRENT)/d3d11blitter.hlsl.vs.h \
-	$(PATH_SUB_CURRENT)/d3d11blitter.hlsl.ps.h
+	$(PATH_SUB_CURRENT)/d3d11blitter.hlsl.ps.h \
+	$(PATH_SUB_CURRENT)/d3d11screen.hlsl.vs.h \
+	$(PATH_SUB_CURRENT)/d3d11screen.hlsl.ps.h \
+	$(PATH_SUB_CURRENT)/d3d11screen.hlsl.ps_SRGB.h \
+	$(PATH_SUB_CURRENT)/d3d11yuv.hlsl.cs_y.h \
+	$(PATH_SUB_CURRENT)/d3d11yuv.hlsl.cs_uv.h
 
 OTHERS        += \
-	$(PATH_SUB_CURRENT)/d3d11screen.hlsl.vs.h \
-	$(PATH_SUB_CURRENT)/d3d11screen.hlsl.ps.h \
-	$(PATH_SUB_CURRENT)/d3d11screen.hlsl.ps_SRGB.h
+	$(SHADER_H_FILES)
+
 OTHERS_CLEAN  += \
-	$(PATH_SUB_CURRENT)/d3d11screen.hlsl.vs.h \
-	$(PATH_SUB_CURRENT)/d3d11screen.hlsl.ps.h \
-	$(PATH_SUB_CURRENT)/d3d11screen.hlsl.ps_SRGB.h
+	$(SHADER_H_FILES)
 
 VBOX_FXC ?= $(PATH_SDK_$(VBOX_WINPSDK)_BIN)/fxc.exe
 
-$(PATH_SUB_CURRENT)/d3d11blitter.hlsl.vs.h: \
-		$(PATH_SUB_CURRENT)/Makefile.kmk \
-		$(PATH_SUB_CURRENT)/d3d11blitter.hlsl
-	$(VBOX_FXC) /nologo /Fhd3d11blitter.hlsl.vs.h /Evs_blitter /Tvs_5_0 d3d11blitter.hlsl
+##
+# Generates a rule for compiling a HLSL shader and creating a C header file with the shader hex dump.
+#
+# @param    1        The output C header file.
+# @param    2        The input .hlsl filename relative to the current sub-makefile.
+# @param    3        The entry point name in the .hlsl file.
+# @param    4        The shader type and version (vs_5_0, ps_4_0, etc).
+#
+define CREATE_SHADER_H_RULE
+ $(PATH_SUB_CURRENT)/$(1): \
+ 		$(PATH_SUB_CURRENT)/Makefile.kmk \
+ 		$(PATH_SUB_CURRENT)/$(2)
+	$(VBOX_FXC) /nologo /Fh$(1) /E$(3) /T$(4) $(PATH_SUB_CURRENT)/$(2)
+endef
 
-$(PATH_SUB_CURRENT)/d3d11blitter.hlsl.ps.h: \
-		$(PATH_SUB_CURRENT)/Makefile.kmk \
-		$(PATH_SUB_CURRENT)/d3d11blitter.hlsl
-	$(VBOX_FXC) /nologo /Fhd3d11blitter.hlsl.ps.h /Eps_blitter /Tps_5_0 d3d11blitter.hlsl
+$(eval $(call CREATE_SHADER_H_RULE,d3d11blitter.hlsl.vs.h,d3d11blitter.hlsl,vs_blitter,vs_5_0))
+$(eval $(call CREATE_SHADER_H_RULE,d3d11blitter.hlsl.ps.h,d3d11blitter.hlsl,ps_blitter,ps_5_0))
 
-$(PATH_SUB_CURRENT)/d3d11screen.hlsl.vs.h: \
-		$(PATH_SUB_CURRENT)/Makefile.kmk \
-		$(PATH_SUB_CURRENT)/d3d11screen.hlsl
-	$(VBOX_FXC) /nologo /Fhd3d11screen.hlsl.vs.h /Evs_screen /Tvs_5_0 d3d11screen.hlsl
+$(eval $(call CREATE_SHADER_H_RULE,d3d11screen.hlsl.vs.h,d3d11screen.hlsl,vs_screen,vs_5_0))
+$(eval $(call CREATE_SHADER_H_RULE,d3d11screen.hlsl.ps.h,d3d11screen.hlsl,ps_screen,ps_5_0))
+$(eval $(call CREATE_SHADER_H_RULE,d3d11screen.hlsl.ps_SRGB.h,d3d11screen.hlsl,ps_screen_SRGB,ps_5_0))
 
-$(PATH_SUB_CURRENT)/d3d11screen.hlsl.ps.h: \
-		$(PATH_SUB_CURRENT)/Makefile.kmk \
-		$(PATH_SUB_CURRENT)/d3d11screen.hlsl
-	$(VBOX_FXC) /nologo /Fhd3d11screen.hlsl.ps.h /Eps_screen /Tps_5_0 d3d11screen.hlsl
-
-$(PATH_SUB_CURRENT)/d3d11screen.hlsl.ps_SRGB.h: \
-		$(PATH_SUB_CURRENT)/Makefile.kmk \
-		$(PATH_SUB_CURRENT)/d3d11screen.hlsl
-	$(VBOX_FXC) /nologo /Fhd3d11screen.hlsl.ps_SRGB.h /Eps_screen_SRGB /Tps_5_0 d3d11screen.hlsl
+$(eval $(call CREATE_SHADER_H_RULE,d3d11yuv.hlsl.cs_y.h,d3d11yuv.hlsl,cs_y,cs_5_0))
+$(eval $(call CREATE_SHADER_H_RULE,d3d11yuv.hlsl.cs_uv.h,d3d11yuv.hlsl,cs_uv,cs_5_0))
 
 include $(FILE_KBUILD_SUB_FOOTER)

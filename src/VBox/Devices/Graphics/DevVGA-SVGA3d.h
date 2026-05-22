@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.h 113248 2026-03-04 12:43:56Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.h 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device - 3D part.
  */
@@ -146,6 +146,9 @@ int vmsvga3dScreenUpdateFromSurface(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pDs
 int vmsvga3dScreenUpdateFromScreenTarget(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pDstScreen, SVGA3dRect const &rect,
                                          SVGA3dSurfaceImageId const &srcImage);
 void vmsvga3dProcessPendingTasks(PVGASTATE pThis, PVGASTATECC pThisCC);
+
+int vmsvga3dCreateOutputTarget(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGAOUTPUTTARGET *pOutputTarget);
+void vmsvga3dDestroyOutputTarget(PVGASTATECC pThisCC, VMSVGAOUTPUTTARGET *pOutputTarget);
 
 int vmsvga3dSetTransform(PVGASTATECC pThisCC, uint32_t cid, SVGA3dTransformType type, float matrix[16]);
 int vmsvga3dSetZRange(PVGASTATECC pThisCC, uint32_t cid, SVGA3dZRange zRange);
@@ -421,6 +424,10 @@ typedef struct
     DECLCALLBACKMEMBER(void, pfnFlush,                    (PVGASTATECC pThisCC));
     /* Optional method that is called on refresh timer and processes any pending tasks the backend might have. */
     DECLCALLBACKMEMBER(void, pfnProcessPendingTasks,      (PVGASTATE pThis, PVGASTATECC pThisCC));
+    /* Optional method that is called to create a new output target (3D backend specific part). */
+    DECLCALLBACKMEMBER(int, pfnCreateOutputTarget,        (PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGAOUTPUTTARGET *pOutputTarget));
+    /* Optional method that is called to destroy a output target (3D backend specific part). */
+    DECLCALLBACKMEMBER(void, pfnDestroyOutputTarget,      (PVGASTATECC pThisCC, VMSVGAOUTPUTTARGET *pOutputTarget));
 } VMSVGA3DBACKENDFUNCS3D;
 
 /* VGPU9 3D */
