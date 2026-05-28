@@ -1,4 +1,4 @@
-/* $Id: DisplayImpl.cpp 110588 2025-08-06 14:26:58Z alexander.eichner@oracle.com $ */
+/* $Id: DisplayImpl.cpp 114200 2026-05-28 22:18:30Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -865,10 +865,7 @@ void Display::i_handleDisplayUpdate(unsigned uScreenId, int x, int y, int w, int
      * Safe to use VBVA vars and take the framebuffer lock.
      */
 
-#ifdef DEBUG_sunlover
-    LogFlowFunc(("[%d] %d,%d %dx%d\n",
-                 uScreenId, x, y, w, h));
-#endif /* DEBUG_sunlover */
+    LogRel4(("%s: [%d] %d,%d %dx%d %RTbool\n", __FUNCTION__, uScreenId, x, y, w, h, maFramebuffers[uScreenId].fDisabled));
 
     /* No updates for a disabled guest screen. */
     if (maFramebuffers[uScreenId].fDisabled)
@@ -1253,7 +1250,7 @@ int Display::i_handleSetVisibleRegion(uint32_t cRect, PRTRECT pRect)
 {
     RTRECT *pVisibleRegion = (RTRECT *)RTMemTmpAlloc(  RT_MAX(cRect, 1)
                                                      * sizeof(RTRECT));
-    LogRel2(("%s: cRect=%u\n", __PRETTY_FUNCTION__, cRect));
+    LogRel2(("%s: cRect=%u\n", __FUNCTION__, cRect));
     if (!pVisibleRegion)
     {
         return VERR_NO_TMP_MEMORY;
@@ -3550,6 +3547,7 @@ DECLCALLBACK(void) Display::i_displayVBVAUpdateEnd(PPDMIDISPLAYCONNECTOR pInterf
                                                    uint32_t cx, uint32_t cy)
 {
     LogFlowFunc(("uScreenId %d %d,%d %dx%d\n", uScreenId, x, y, cx, cy));
+    LogRel4(("%s: uScreenId %d %d,%d %dx%d\n", __FUNCTION__, uScreenId, x, y, cx, cy));
 
     PDRVMAINDISPLAY pDrv = PDMIDISPLAYCONNECTOR_2_MAINDISPLAY(pInterface);
     Display *pThis = pDrv->pDisplay;
@@ -3718,7 +3716,7 @@ DECLCALLBACK(int) Display::i_displayVBVAMousePointerShape(PPDMIDISPLAYCONNECTOR 
                                                           const void *pvShape)
 {
     LogFlowFunc(("\n"));
-    LogRel2(("%s: fVisible=%RTbool\n", __PRETTY_FUNCTION__, fVisible));
+    LogRel2(("%s: fVisible=%RTbool\n", __FUNCTION__, fVisible));
 
     PDRVMAINDISPLAY pDrv = PDMIDISPLAYCONNECTOR_2_MAINDISPLAY(pInterface);
 
@@ -3739,6 +3737,7 @@ DECLCALLBACK(int) Display::i_displayVBVAMousePointerShape(PPDMIDISPLAYCONNECTOR 
 DECLCALLBACK(void) Display::i_displayVBVAGuestCapabilityUpdate(PPDMIDISPLAYCONNECTOR pInterface, uint32_t fCapabilities)
 {
     LogFlowFunc(("\n"));
+    LogRel4(("%s: fCapabilities 0x%x\n", __FUNCTION__, fCapabilities));
 
     PDRVMAINDISPLAY pDrv = PDMIDISPLAYCONNECTOR_2_MAINDISPLAY(pInterface);
     Display *pThis = pDrv->pDisplay;
@@ -3761,7 +3760,7 @@ DECLCALLBACK(void) Display::i_displayVBVAReportCursorPosition(PPDMIDISPLAYCONNEC
 {
     LogFlowFunc(("\n"));
     LogRel2(("%s: fFlags=%RU32, aScreenId=%RU32, x=%RU32, y=%RU32\n",
-             __PRETTY_FUNCTION__, fFlags, aScreenId, x, y));
+             __FUNCTION__, fFlags, aScreenId, x, y));
 
     PDRVMAINDISPLAY pDrv = PDMIDISPLAYCONNECTOR_2_MAINDISPLAY(pInterface);
     Display *pThis = pDrv->pDisplay;
