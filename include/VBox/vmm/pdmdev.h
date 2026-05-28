@@ -6860,7 +6860,7 @@ DECLINLINE(int) PDMDevHlpMmio2Create(PPDMDEVINS pDevIns, PPDMPCIDEV pPciDev, uin
 DECLINLINE(int) PDMDevHlpMmio2CreateFromExisting(PPDMDEVINS pDevIns, PPDMPCIDEV pPciDev, uint32_t iPciRegion, RTGCPHYS cbRegion,
                                                  uint32_t fFlags, const char *pszDesc, void *pvBacking, PPGMMMIO2HANDLE phRegion)
 {
-    return pDevIns->pHlpR3->pfnMmio2CreateFromExisting(pDevIns, pPciDev, iPciRegion, cbRegion, fFlags, pszDesc, pvBacking, phRegion);
+    return pDevIns->pHlpR3->pfnMmio2CreateFromExisting(pDevIns, pPciDev, iPciRegion << 16, cbRegion, fFlags, pszDesc, pvBacking, phRegion);
 }
 
 /**
@@ -8026,6 +8026,26 @@ DECLINLINE(int) PDMDevHlpPCIIORegionCreateIoEx(PPDMDEVINS pDevIns, PPDMPCIDEV pP
 }
 
 /**
+ * Registers a MMIO region for the default PCI device, custom map/unmap.
+ *
+ * @returns VBox status code.
+ * @param   pDevIns         The device instance.
+ * @param   iRegion         The region number.
+ * @param   cbRegion        Size of the region.
+ * @param   pfnMapUnmap     Callback for doing the mapping, optional.  The
+ *                          callback will be invoked holding only the PDM lock.
+ *                          The device lock will _not_ be taken (due to lock
+ *                          order).
+ */
+DECLINLINE(int) PDMDevHlpPCIIORegionRegisterMmioCustom(PPDMDEVINS pDevIns, uint32_t iRegion, RTGCPHYS cbRegion,
+                                                       PCIADDRESSSPACE enmType, PFNPCIIOREGIONMAP pfnMapUnmap)
+{
+    return pDevIns->pHlpR3->pfnPCIIORegionRegister(pDevIns, NULL, iRegion, cbRegion, enmType,
+                                                   PDMPCIDEV_IORGN_F_NO_HANDLE | PDMPCIDEV_IORGN_F_NEW_STYLE,
+                                                   UINT64_MAX, pfnMapUnmap);
+}
+
+/**
  * Registers an MMIO region for the default PCI device.
  *
  * @returns VBox status code.
@@ -8201,6 +8221,10 @@ DECLINLINE(int) PDMDevHlpPCIIORegionCreateMmio2FromExisting(PPDMDEVINS pDevIns, 
  * @param   pPciDev         The PCI device structure.
  * @param   cbRegion        The size of the region in bytes.
  * @param   iPciRegion      The PCI device region.
+ * @param   pfnMapUnmap     Callback for doing the mapping, optional.  The
+ *                          callback will be invoked holding only the PDM lock.
+ *                          The device lock will _not_ be taken (due to lock
+ *                          order).
  * @param   enmType         PCI_ADDRESS_SPACE_MEM or
  *                          PCI_ADDRESS_SPACE_MEM_PREFETCH, optionally or-ing in
  *                          PCI_ADDRESS_SPACE_BAR64 or PCI_ADDRESS_SPACE_BAR32.
@@ -8210,7 +8234,8 @@ DECLINLINE(int) PDMDevHlpPCIIORegionCreateMmio2FromExisting(PPDMDEVINS pDevIns, 
  *
  */
 DECLINLINE(int) PDMDevHlpPCIIORegionCreateMmio2FromExistingEx(PPDMDEVINS pDevIns, PPDMPCIDEV pPciDev, uint32_t iPciRegion,
-                                                              RTGCPHYS cbRegion, PCIADDRESSSPACE enmType, const char *pszDesc,
+                                                              RTGCPHYS cbRegion, PFNPCIIOREGIONMAP pfnMapUnmap,
+                                                              PCIADDRESSSPACE enmType, const char *pszDesc,
                                                               void *pvBacking, PPGMMMIO2HANDLE phRegion)
 
 {
@@ -8219,7 +8244,7 @@ DECLINLINE(int) PDMDevHlpPCIIORegionCreateMmio2FromExistingEx(PPDMDEVINS pDevIns
     if (RT_SUCCESS(rc))
         rc = pDevIns->pHlpR3->pfnPCIIORegionRegister(pDevIns, pPciDev, iPciRegion, cbRegion, enmType,
                                                      PDMPCIDEV_IORGN_F_MMIO2_HANDLE | PDMPCIDEV_IORGN_F_NEW_STYLE,
-                                                     *phRegion, NULL /*pfnCallback*/);
+                                                     *phRegion, pfnMapUnmap);
     return rc;
 }
 
