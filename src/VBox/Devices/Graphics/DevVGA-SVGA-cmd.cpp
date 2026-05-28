@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA-cmd.cpp 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA-cmd.cpp 114199 2026-05-28 22:18:15Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device - implementation of VMSVGA commands.
  */
@@ -8253,7 +8253,7 @@ void vmsvgaR3CmdBlitGMRFBToScreen(PVGASTATE pThis, PVGASTATECC pThisCC, SVGAFifo
     PVMSVGAR3STATE const pSvgaR3State = pThisCC->svga.pSvgaR3State;
 
     STAM_REL_COUNTER_INC(&pSvgaR3State->StatR3CmdBlitGmrFbToScreen);
-    Log(("SVGA_CMD_BLIT_GMRFB_TO_SCREEN src=(%d,%d) dest id=%d (%d,%d)(%d,%d)\n",
+    LogRel5(("SVGA_CMD_BLIT_GMRFB_TO_SCREEN src=(%d,%d) dest id=%d (%d,%d)(%d,%d)\n",
              pCmd->srcOrigin.x, pCmd->srcOrigin.y, pCmd->destScreenId, pCmd->destRect.left, pCmd->destRect.top, pCmd->destRect.right, pCmd->destRect.bottom));
 
     ASSERT_GUEST_RETURN_VOID(pCmd->destScreenId < RT_ELEMENTS(pSvgaR3State->aScreens));
@@ -8262,7 +8262,7 @@ void vmsvgaR3CmdBlitGMRFBToScreen(PVGASTATE pThis, PVGASTATECC pThisCC, SVGAFifo
     VMSVGASCREENOBJECT *pScreen = vmsvgaR3GetScreenObject(pThisCC, pCmd->destScreenId);
     AssertPtrReturnVoid(pScreen);
 
-    Log(("SVGA_CMD_BLIT_GMRFB_TO_SCREEN screen(%d): x=%d y=%d w=%d h=%d offVRAM=0x%x cbPitch=0x%x(%d)\n",
+    LogRel5(("SVGA_CMD_BLIT_GMRFB_TO_SCREEN screen(%d): x=%d y=%d w=%d h=%d offVRAM=0x%x cbPitch=0x%x(%d)\n",
             pScreen->idScreen,
             pScreen->xOrigin, pScreen->yOrigin, pScreen->cWidth, pScreen->cHeight,
             pScreen->offVRAM, pScreen->cbPitch, pScreen->cbPitch));
