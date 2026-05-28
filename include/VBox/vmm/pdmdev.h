@@ -8032,6 +8032,9 @@ DECLINLINE(int) PDMDevHlpPCIIORegionCreateIoEx(PPDMDEVINS pDevIns, PPDMPCIDEV pP
  * @param   pDevIns         The device instance.
  * @param   iRegion         The region number.
  * @param   cbRegion        Size of the region.
+ * @param   enmType         PCI_ADDRESS_SPACE_MEM or
+ *                          PCI_ADDRESS_SPACE_MEM_PREFETCH, optionally or-ing in
+ *                          PCI_ADDRESS_SPACE_BAR64 or PCI_ADDRESS_SPACE_BAR32.
  * @param   pfnMapUnmap     Callback for doing the mapping, optional.  The
  *                          callback will be invoked holding only the PDM lock.
  *                          The device lock will _not_ be taken (due to lock
