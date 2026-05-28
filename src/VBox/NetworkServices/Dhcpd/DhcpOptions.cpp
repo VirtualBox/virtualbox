@@ -1,4 +1,4 @@
-/* $Id: DhcpOptions.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: DhcpOptions.cpp 114192 2026-05-28 07:52:53Z andreas.loeffler@oracle.com $ */
 /** @file
  * DHCP server - DHCP options
  */
@@ -36,6 +36,7 @@
 #endif
 
 #include <iprt/cidr.h>
+#include <iprt/string.h>
 
 
 #ifndef IN_VBOXSVC
@@ -293,6 +294,67 @@ int DhcpOption::parseHex(octets_t &aRawValue, const char *pcszValue)
     return rc;
 }
 
+/*static*/ int OptDomainSearch::parseDomainSearchList(octets_t &aRawValue, const char *pcszValue)
+{
+    aRawValue.clear();
+    pcszValue = RTStrStripL(pcszValue);
+    if (*pcszValue == '\0')
+        return VERR_NO_DATA;
+
+    while (*pcszValue != '\0')
+    {
+        const char *pszNext = strpbrk(pcszValue, " ,;:\t\n\r");
+        const char *pszEnd  = pszNext ? pszNext : pcszValue + strlen(pcszValue);
+        if (pszEnd == pcszValue)
+            return VERR_INVALID_PARAMETER;
+
+        bool fSawLabel = false;
+        const char *pszLabel = pcszValue;
+        for (const char *pszCur = pcszValue;; ++pszCur)
+        {
+            if (pszCur == pszEnd || *pszCur == '.')
+            {
+                size_t const cchLabel = (size_t)(pszCur - pszLabel);
+                if (cchLabel > 0)
+                {
+                    if (cchLabel > 63)
+                        return VERR_INVALID_PARAMETER;
+                    if (aRawValue.size() + cchLabel + 2 > UINT8_MAX)
+                        return VERR_BUFFER_OVERFLOW;
+
+                    aRawValue.push_back((uint8_t)cchLabel);
+                    aRawValue.insert(aRawValue.end(), pszLabel, pszLabel + cchLabel);
+                    fSawLabel = true;
+                }
+                else if (pszCur != pszEnd)
+                {
+                    if (pszCur + 1 != pszEnd)
+                        return VERR_INVALID_PARAMETER;
+                    break;
+                }
+
+                if (pszCur == pszEnd)
+                    break;
+                pszLabel = pszCur + 1;
+            }
+        }
+
+        if (!fSawLabel)
+            return VERR_INVALID_PARAMETER;
+
+        aRawValue.push_back(0);
+
+        if (!pszNext)
+            break;
+
+        pcszValue = pszNext + 1;
+        while (*pcszValue == ' ' || *pcszValue == ',' || *pcszValue == ':' || *pcszValue == ';'
+            || *pcszValue == '\t' || *pcszValue == '\n' || *pcszValue == '\r')
+            ++pcszValue;
+    }
+
+    return VINF_SUCCESS;
+}
 
 /*static*/ DhcpOption *DhcpOption::parse(uint8_t aOptCode, int aEnc, const char *pcszValue, int *prc /*= NULL*/)
 {
@@ -391,8 +453,7 @@ int DhcpOption::parseHex(octets_t &aRawValue, const char *pcszValue)
                 //HANDLE(OptSLPDirectoryAgent);           // 78 - Only DHCPOptionEncoding_hex
                 //HANDLE(OptSLPServiceScope);             // 79 - Only DHCPOptionEncoding_hex
                 // OptRapidCommit (80) is not configurable.
-
-                //HANDLE(OptDomainSearch);                // 119 - Only DHCPOptionEncoding_hex
+                HANDLE(OptDomainSearch);                // 119 - RFC3397
 
 #undef HANDLE
                 default:
@@ -505,11 +566,10 @@ int DhcpOption::parseHex(octets_t &aRawValue, const char *pcszValue)
         HANDLE(OptSLPServiceScope);             // 79 - Only DHCPOptionEncoding_hex
         HANDLE(OptRapidCommit);                 // 80
 
-        HANDLE(OptDomainSearch);                // 119 - Only DHCPOptionEncoding_hex
+        HANDLE(OptDomainSearch);                // 119 - RFC3397
 
 #undef HANDLE
         default:
             return "unknown";
     }
 }
-

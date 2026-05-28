@@ -1,4 +1,4 @@
-/* $Id: DhcpOptions.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: DhcpOptions.h 114192 2026-05-28 07:52:53Z andreas.loeffler@oracle.com $ */
 /** @file
  * DHCP server - DHCP options
  *
@@ -749,6 +749,46 @@ public:
 };
 
 
+class OptDomainSearch
+    : public RawOption
+{
+public:
+    static const uint8_t optcode = 119;
+
+    OptDomainSearch()
+        : RawOption(optcode)
+    {}
+
+    explicit OptDomainSearch(const octets_t &aSrc)
+        : RawOption(optcode, aSrc)
+    {}
+
+    explicit OptDomainSearch(const DhcpClientMessage &req)
+        : RawOption(optcode)
+    {
+        decode(req);
+    }
+
+    virtual OptDomainSearch *clone() const
+    {
+        return new OptDomainSearch(*this);
+    }
+
+    static OptDomainSearch *parse(const char *pcszValue, int *prc)
+    {
+        octets_t data;
+        int rc = parseDomainSearchList(data, pcszValue);
+        *prc = rc;
+        if (RT_SUCCESS(rc))
+            return new OptDomainSearch(data);
+        return NULL;
+    }
+
+private:
+    static int parseDomainSearchList(octets_t &aRawValue, const char *pcszValue);
+};
+
+
 
 /** @name The DHCP options types.
  * @{
@@ -834,7 +874,6 @@ typedef OptList<77, uint8_t>            OptUserClassId;
 typedef OptList<78, uint8_t>            OptSLPDirectoryAgent;       /**< complicated, so just byte list for now. RFC2610 */
 typedef OptList<79, uint8_t>            OptSLPServiceScope;         /**< complicated, so just byte list for now. RFC2610 */
 typedef OptNoValue<80>                  OptRapidCommit;             /**< RFC4039 */
-typedef OptList<119, uint8_t>           OptDomainSearch;            /**< RFC3397 */
 /** @} */
 
 #endif /* !VBOX_INCLUDED_SRC_Dhcpd_DhcpOptions_h */

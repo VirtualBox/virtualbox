@@ -1,4 +1,4 @@
-/* $Id: NATNetworkImpl.cpp 113312 2026-03-10 22:17:23Z jack.doherty@oracle.com $ */
+/* $Id: NATNetworkImpl.cpp 114192 2026-05-28 07:52:53Z andreas.loeffler@oracle.com $ */
 /** @file
  * INATNetwork implementation.
  */
@@ -52,7 +52,6 @@
 #else
 # define IN_LOOPBACKNET 127
 #endif
-
 
 // constructor / destructor
 /////////////////////////////////////////////////////////////////////////////
@@ -904,7 +903,7 @@ void NATNetwork::i_updateDomainNameServerOption(ComPtr<IHost> &host)
     HRESULT hrc = host->COMGETTER(NameServers)(ComSafeArrayAsOutParam(nameServers));
     if (FAILED(hrc))
     {
-        LogRel(("NATNetwork: Failed to get name servers from host with %Rhrc\n", hrc));
+        LogRel(("NATNetwork: Failed to get IPv4 name servers from host with %Rhrc\n", hrc));
         return;
     }
     ComPtr<IDHCPGlobalConfig> pDHCPConfig;
@@ -976,6 +975,43 @@ void NATNetwork::i_updateDomainNameServerOption(ComPtr<IHost> &host)
         pDHCPConfig->RemoveOption(DHCPOption_DomainNameServers);
 }
 
+void NATNetwork::i_updateDomainSearchOption(ComPtr<IHost> &host)
+{
+    com::SafeArray<BSTR> searchDomains;
+    HRESULT hrc = host->COMGETTER(SearchStrings)(ComSafeArrayAsOutParam(searchDomains));
+    if (FAILED(hrc))
+    {
+        LogRel(("NATNetwork: Failed to get host search strings with %Rhrc\n", hrc));
+        return;
+    }
+
+    ComPtr<IDHCPGlobalConfig> pDHCPConfig;
+    hrc = m->dhcpServer->COMGETTER(GlobalConfig)(pDHCPConfig.asOutParam());
+    if (FAILED(hrc))
+    {
+        LogRel(("NATNetwork: Failed to get global DHCP config when updating domain search option with %Rhrc\n", hrc));
+        return;
+    }
+
+    RTCList<RTCString> lstSearchDomains;
+    for (size_t i = 0; i < searchDomains.size(); i++)
+    {
+        RTCString const strDomain(com::Utf8Str(searchDomains[i]).c_str());
+        if (!strDomain.isEmpty())
+            lstSearchDomains.append(strDomain);
+    }
+
+    if (!lstSearchDomains.isEmpty())
+    {
+        RTCString const strDomains = RTCString::join(lstSearchDomains, " ");
+        hrc = pDHCPConfig->SetOption(DHCPOption_DomainSearch, DHCPOptionEncoding_Normal, Bstr(strDomains).raw());
+        if (FAILED(hrc))
+            LogRel(("NATNetwork: Failed to add domain search option '%s' with %Rhrc\n", strDomains.c_str(), hrc));
+    }
+    else
+        pDHCPConfig->RemoveOption(DHCPOption_DomainSearch);
+}
+
 void NATNetwork::i_updateDnsOptions()
 {
     ComPtr<IHost> host;
@@ -983,6 +1019,7 @@ void NATNetwork::i_updateDnsOptions()
     {
         i_updateDomainNameOption(host);
         i_updateDomainNameServerOption(host);
+        i_updateDomainSearchOption(host);
     }
 }
 
