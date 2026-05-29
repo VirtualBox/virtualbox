@@ -1,4 +1,4 @@
-/* $Id: tstVBoxWinDrvInstInf.cpp 111786 2025-11-18 10:33:09Z andreas.loeffler@oracle.com $ */
+/* $Id: tstVBoxWinDrvInstInf.cpp 114215 2026-05-29 14:41:41Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Windows driver installation tests.
  */
@@ -217,8 +217,7 @@ int main(int argc, char **argv)
 
     /* Simply create + destroy. */
     VBOXWINDRVINST hWinDrvInst;
-    RTTEST_CHECK_RC_OK_BREAK(hTest, VBoxWinDrvInstCreateEx(&hWinDrvInst, 4 /* Verbosity */,
-                                                           NULL, NULL /* pvUser */));
+    RTTEST_CHECK_RC_OK(hTest, VBoxWinDrvInstCreateEx(&hWinDrvInst, 4 /* Verbosity */, NULL, NULL /* pvUser */));
     VBoxWinDrvInstDestroy(hWinDrvInst);
 
     /* Run all tests. */
