@@ -1,4 +1,4 @@
-/* $Id: DrvIntNet.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: DrvIntNet.cpp 114206 2026-05-29 14:01:31Z andreas.loeffler@oracle.com $ */
 /** @file
  * DrvIntNet - Internal network transport driver.
  */
@@ -289,6 +289,7 @@ static int drvR3IntNetCallSvcAsync(PDRVINTNET pThis, uint32_t uOperation, void *
         xpc_dictionary_set_uint64(hObj, "req-id", uOperation);
         xpc_dictionary_set_data(hObj, "req", pvArg, cbArg);
         xpc_connection_send_message(pThis->hXpcCon, hObj);
+        xpc_release(hObj);
         return VINF_SUCCESS;
     }
     else

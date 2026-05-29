@@ -1,4 +1,4 @@
-/* $Id: IntNetIf.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: IntNetIf.cpp 114206 2026-05-29 14:01:31Z andreas.loeffler@oracle.com $ */
 /** @file
  * IntNetIfCtx - Abstract API implementing an IntNet connection using the R0 support driver or some R3 IPC variant.
  */
@@ -148,6 +148,7 @@ static int intnetR3IfCallSvcAsync(PINTNETIFCTXINT pThis, uint32_t uOperation, PS
         xpc_dictionary_set_uint64(hObj, "req-id", uOperation);
         xpc_dictionary_set_data(hObj, "req", pReqHdr, pReqHdr->cbReq);
         xpc_connection_send_message(pThis->hXpcCon, hObj);
+        xpc_release(hObj);
         return VINF_SUCCESS;
     }
     else
