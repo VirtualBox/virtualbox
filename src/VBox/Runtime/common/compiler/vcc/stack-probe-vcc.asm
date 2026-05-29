@@ -1,4 +1,4 @@
-; $Id: stack-probe-vcc.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: stack-probe-vcc.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Stack related Visual C++ support routines.
 ;
@@ -56,7 +56,7 @@
 ;           x86:    ESP = ESP - EAX; EFLAGS, nothing else
 ;
 ALIGNCODE(64)
-GLOBALNAME_RAW  __alloca_probe, __alloca_probe, function
+GLOBALNAME_RAW  __alloca_probe, __alloca_probe, function, CALC_PROC_SIZE_RAW(__chkstk)
 BEGINPROC_RAW   __chkstk
         push    xBP
         SEH64_PUSH_xBP

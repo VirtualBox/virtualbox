@@ -1,4 +1,4 @@
-; $Id: HMR0UtilA-x86.asm 112438 2026-01-13 09:00:11Z knut.osmundsen@oracle.com $
+; $Id: HMR0UtilA-x86.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; HM - Ring-0 VMX & SVM Helpers.
 ;
@@ -356,7 +356,11 @@ BEGINPROC SVMR0InvlpgA
     mov     rcx, rdx
 %endif
 
+%ifdef __YASM__
     invlpga [xAX], ecx
+%else
+    invlpga rax, ecx
+%endif
     ret
 ENDPROC SVMR0InvlpgA
 

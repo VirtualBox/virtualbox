@@ -1,4 +1,4 @@
-; $Id: bs3-cpu-instr-2-template.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bs3-cpu-instr-2-template.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; BS3Kit - bs3-cpu-instr-2 assembly template.
 ;
@@ -1257,7 +1257,8 @@ BS3_PROC_END_CMN   bs3CpuInstr2_lock_cmpxchg16b_rdi_ud2
 
 
 BS3_PROC_BEGIN_CMN bs3CpuInstr2_o16_cmpxchg16b_rdi_ud2, BS3_PBC_NEAR
-        o16 cmpxchg16b [rdi]
+        db 066h
+        cmpxchg16b [rdi]
 .again:
         ud2
         jmp     .again

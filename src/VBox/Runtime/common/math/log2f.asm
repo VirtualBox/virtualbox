@@ -1,4 +1,4 @@
-; $Id: log2f.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: log2f.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT log2f - AMD64 & X86.
 ;
@@ -105,11 +105,11 @@ RT_NOCRT_BEGINPROC log2f
         fxch    st0, st1                    ; -> st0=input; st1=1.0
 
         ; Check if the input is within the fyl2xp1 range.
-        fld     qword [.s_r64AbsFyL2xP1InputMax xWrtRIP]
+        fld     qword [RT_WRT_RIP(.s_r64AbsFyL2xP1InputMax)]
         fcomip  st0, st1
         jbe     .cannot_use_fyl2xp1
 
-        fld     qword [.s_r64AbsFyL2xP1InputMin xWrtRIP]
+        fld     qword [RT_WRT_RIP(.s_r64AbsFyL2xP1InputMin)]
         fcomip  st0, st1
         jae     .cannot_use_fyl2xp1
 
@@ -162,9 +162,9 @@ RT_NOCRT_BEGINPROC log2f
 
         ; Load NaN
 %ifdef RT_ARCH_AMD64
-        movss   xmm0, [.s_r32NaN xWrtRIP]
+        movss   xmm0, [RT_WRT_RIP(.s_r32NaN)]
 %else
-        fld     dword [.s_r32NaN xWrtRIP]
+        fld     dword [RT_WRT_RIP(.s_r32NaN)]
 %endif
         jmp     .return
 
@@ -188,9 +188,9 @@ RT_NOCRT_BEGINPROC log2f
 
         ; Load +Inf
 %ifdef RT_ARCH_AMD64
-        movss   xmm0, [.s_r32MinusInf xWrtRIP]
+        movss   xmm0, [RT_WRT_RIP(.s_r32MinusInf)]
 %else
-        fld     dword [.s_r32MinusInf xWrtRIP]
+        fld     dword [RT_WRT_RIP(.s_r32MinusInf)]
 %endif
         jmp     .return
 

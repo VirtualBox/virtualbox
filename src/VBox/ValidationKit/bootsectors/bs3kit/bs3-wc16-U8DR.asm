@@ -1,4 +1,4 @@
-; $Id: bs3-wc16-U8DR.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bs3-wc16-U8DR.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; BS3Kit - 16-bit Watcom C/C++, 64-bit unsigned integer modulo.
 ;
@@ -48,8 +48,8 @@ BS3_EXTERN_CMN Bs3UInt64Div
 ;
 ; @uses     Nothing.
 ;
-global $_?U8DR
-$_?U8DR:
+global _?U8DR
+_?U8DR:
         push    es
         push    ss
         pop     es
@@ -73,8 +73,8 @@ $_?U8DR:
 ;
 ; @uses     Nothing.
 ;
-global $_?U8DRE
-$_?U8DRE:
+global _?U8DRE
+_?U8DRE:
         push    ds
         push    es
 

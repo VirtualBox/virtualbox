@@ -1,4 +1,4 @@
-; $Id: ASMRdMsrEx.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: ASMRdMsrEx.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMRdMsrEx().
 ;
@@ -37,6 +37,7 @@
 ;*******************************************************************************
 ;* Header Files                                                                *
 ;*******************************************************************************
+%define RT_ASM_WITH_SEH64
 %include "iprt/asmdefs.mac"
 
 BEGINCODE
@@ -50,10 +51,9 @@ BEGINCODE
 ;
 RT_BEGINPROC ASMRdMsrEx
 %ifdef ASM_CALL64_MSC
-proc_frame ASMRdMsrEx_DupWarningHack
         push    rdi
-        [pushreg rdi]
-[endprolog]
+        SEH64_PUSH_GREG rdi
+SEH64_END_PROLOGUE
         and     ecx, ecx                ; serious paranoia
         mov     rdi, rdx
         xor     eax, eax
@@ -64,7 +64,6 @@ proc_frame ASMRdMsrEx_DupWarningHack
         shl     rdx, 32
         or      rax, rdx
         ret
-endproc_frame
 %elifdef ASM_CALL64_GCC
         mov     ecx, edi
         mov     rdi, rsi

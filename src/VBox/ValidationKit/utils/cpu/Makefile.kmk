@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ## @file
 # VirtualBox Validation Kit - CPU Test Utilities.
 #
@@ -62,6 +62,7 @@ if1of ($(KBUILD_TARGET_ARCH), x86 amd64)
   PROGRAMS += cidet-app
  endif
  cidet-app_TEMPLATE = VBoxValidationKitR3
+ cidet-app_INCS     = .
  cidet-app_SOURCES  = \
  	cidet-app.cpp \
  	cidet-appA.asm \

@@ -1,4 +1,4 @@
-; $Id: cosf.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: cosf.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT cosf - AMD64 & X86.
 ;
@@ -117,12 +117,12 @@ RT_NOCRT_BEGINPROC cosf
 .finite:
         fld     st0
         fabs
-        fld     qword [.s_r64TinyCosTo1 xWrtRIP]
+        fld     qword [RT_WRT_RIP(.s_r64TinyCosTo1)]
         fcomip  st1
         ja      .zero_extra_pop
 
 .not_that_tiny_input:
-        fld     qword [.s_r64FCosOkay xWrtRIP]
+        fld     qword [RT_WRT_RIP(.s_r64FCosOkay)]
         fcomip  st1
         ffreep  st0                         ; pop fabs(input)
         ja      .do_fcos                    ; jmp if fabs(input) < .s_r64FCosOkay
@@ -139,7 +139,7 @@ RT_NOCRT_BEGINPROC cosf
         fldpi
         fadd    st0, st0                    ; st0=2pi
         fldpi
-        fdiv    qword [.s_r64Two xWrtRIP]   ; st1=2pi; st0=pi/2
+        fdiv    qword [RT_WRT_RIP(.s_r64Two)]   ; st1=2pi; st0=pi/2
         fsubp   st1, st0                    ; st0=3pi/2
         fchs                                ; st0=-3pi/2
         jmp     .make_sine_adjustment
@@ -147,7 +147,7 @@ RT_NOCRT_BEGINPROC cosf
 .adjust_negative_to_sine:
         ; Calc +pi/2.
         fldpi
-        fdiv    qword [.s_r64Two xWrtRIP]   ; st1=2pi; st0=pi/2
+        fdiv    qword [RT_WRT_RIP(.s_r64Two)]   ; st1=2pi; st0=pi/2
 
 .make_sine_adjustment:
         faddp   st1, st0

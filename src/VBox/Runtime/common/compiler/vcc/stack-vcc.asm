@@ -1,4 +1,4 @@
-; $Id: stack-vcc.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: stack-vcc.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Stack related Visual C++ support routines.
 ;
@@ -380,7 +380,7 @@ ENDPROC_RAW     FASTCALL_NAME(_RTC_AllocaHelper, 12)
 ALIGNCODE(16)
 BEGINPROC_RAW   FASTCALL_NAME(__security_check_cookie, 4)
         SEH64_END_PROLOGUE
-        cmp     xCX, [NAME(__security_cookie) xWrtRIP]
+        cmp     xCX, [RT_WRT_RIP(NAME(__security_cookie))]
         jne     rtVccSecurityCookieFailed
         ;; amd64 version checks if the top 16 bits are zero, we skip that for now.
         ret

@@ -1,4 +1,4 @@
-; $Id: bootsector2-common-init-code.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bootsector2-common-init-code.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; Common bootsector code init.
 ;
@@ -1952,7 +1952,7 @@ BEGINPROC Bs2Thunk_lm64_lm16
         mov     ax, BS2_SEL_SS16
         push    BS2_SEL_CS16
         push    .code16_start
-        retf
+        o64 retf                            ; NASM defaults to 32-bit op size (YASM to the more senible 64-bit).
 BITS 16
 .code16_start:
         mov     ss, ax
@@ -2039,7 +2039,7 @@ BEGINPROC Bs2Thunk_lm64_lm32
         mov     ax, BS2_SEL_SS32
         push    BS2_SEL_CS32
         push    .code32_start
-        retf
+        o64 retf                            ; NASM defaults to 32-bit op size (YASM to the more senible 64-bit).
 BITS 32
 .code32_start:
         mov     ss, ax
@@ -2307,7 +2307,7 @@ bs2DoneInit:
         ; Call the user 'main' procedure (shouldn't return).
         ;
         call    main
-.panic_again
+.panic_again:
         call    Bs2Panic
         jmp     .panic_again
 

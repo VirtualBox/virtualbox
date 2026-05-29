@@ -1,4 +1,4 @@
-; $Id: bootsector2-cpu-xcpt-1-template.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bootsector2-cpu-xcpt-1-template.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; Bootsector test for basic exceptions - multi mode template.
 ;
@@ -114,9 +114,11 @@
 %macro ASSERT_SIMPLE 4
         cmp     %1, %2
         %3      %%.ok
-        push    dword __LINE__
  %ifdef TMPL_16BIT
+        push    dword __LINE__
         push    ds
+ %else
+        push    __LINE__
  %endif
         push    %%.s_szMsg
         call    TMPL_NM_CMN(TestFailedF)
@@ -125,6 +127,7 @@
 %%.s_szMsg: db %4, " (0x%RX32)", 0
 %%.ok:
 %endmacro
+;        ASSERT_SIMPLE xDI, xSP, je, "Someone busted xSP during this test."
 
 
  ;;
@@ -135,12 +138,12 @@
  ; @uses         rax, flags, and stack.
  ;
  %macro ASSERT_TRAP_EFLAGS_IF 1
-        test    word [g_u64LastTrapHandlerRFlags xWrtRIP], X86_EFL_IF
+        test    word [RT_WRT_RIP(g_u64LastTrapHandlerRFlags)], X86_EFL_IF
         %1      %%.ok
   %ifdef TMPL_LM64
         push    __LINE__
-        push    qword [g_u64LastTrapHandlerRFlags xWrtRIP]
-        lea     rax, [g_szWrongIfStateFmt wrt RIP]
+        push    qword [RT_WRT_RIP(g_u64LastTrapHandlerRFlags)]
+        lea     rax, [RT_WRT_RIP(g_szWrongIfStateFmt)]
         push    rax
         call    TMPL_NM_CMN(TestFailedF)
         add     xSP, 24
@@ -170,14 +173,14 @@
  ; @uses        rax, flags, and stack.
  ;
  %macro ASSERT_TRAP_CS_VALUE 1
-        cmp     word [g_u16LastTrapHandlerCS xWrtRIP], (%1)
+        cmp     word [RT_WRT_RIP(g_u16LastTrapHandlerCS)], (%1)
         je      %%.ok
   %ifdef TMPL_LM64
         push    __LINE__
         push    (%1)
-        movzx   eax, word [g_u16LastTrapHandlerCS xWrtRIP]
+        movzx   eax, word [RT_WRT_RIP(g_u16LastTrapHandlerCS)]
         push    rax
-        lea     rax, [g_szWrongHandlerCsFmt wrt RIP]
+        lea     rax, [RT_WRT_RIP(g_szWrongHandlerCsFmt)]
         push    rax
         call    TMPL_NM_CMN(TestFailedF)
         add     xSP, 32
@@ -216,7 +219,7 @@
         push    __LINE__
         push    (%1)
         push    rbx
-        lea     rax, [g_szWrongCurCsFmt wrt RIP]
+        lea     rax, [RT_WRT_RIP(g_szWrongCurCsFmt)]
         push    rax
         call    TMPL_NM_CMN(TestFailedF)
         add     xSP, 32
@@ -254,7 +257,7 @@
         push    __LINE__
         push    (%2)
         push    rax
-        lea     rax, [g_szWrongCurSRegFmt_ %+ %1 wrt RIP]
+        lea     rax, [RT_WRT_RIP(g_szWrongCurSRegFmt_ %+ %1)]
         push    rax
         call    TMPL_NM_CMN(TestFailedF)
         add     xSP, 32
@@ -307,11 +310,11 @@ BEGINPROC TMPL_NM(TestGateType)
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3 ; check that int3 works before we start messing around...
 
 %ifdef TMPL_LM64
-        push    qword [bs2Idt_BP     xWrtRIP]
-        push    qword [bs2Idt_BP + 8 xWrtRIP]
+        push    qword [RT_WRT_RIP(bs2Idt_BP    )]
+        push    qword [RT_WRT_RIP(bs2Idt_BP + 8)]
 %else
-        push    dword [bs2Idt_BP     xWrtRIP]
-        push    dword [bs2Idt_BP + 4 xWrtRIP]
+        push    dword [RT_WRT_RIP(bs2Idt_BP    )]
+        push    dword [RT_WRT_RIP(bs2Idt_BP + 4)]
 %endif
         mov     xDI, xSP                ; for catching stack errors
 
@@ -320,8 +323,8 @@ BEGINPROC TMPL_NM(TestGateType)
         ;
 %assign u4Type 0
 %rep 16
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], RT_BIT(4) | u4Type
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], RT_BIT(4) | u4Type
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
  %assign u4Type (u4Type + 1)
 %endrep
@@ -332,54 +335,54 @@ BEGINPROC TMPL_NM(TestGateType)
 %ifdef TMPL_LM64
  %assign u4Type 0
  %rep 14
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], u4Type
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], u4Type
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
   %assign u4Type (u4Type + 1)
  %endrep
 %else
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_UNDEFINED
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_UNDEFINED
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_286_TSS_AVAIL
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_286_TSS_AVAIL
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_LDT
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_LDT
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_286_TSS_BUSY
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_286_TSS_BUSY
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_286_CALL_GATE
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_286_CALL_GATE
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_UNDEFINED2
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_UNDEFINED2
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_386_TSS_AVAIL
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_386_TSS_AVAIL
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_UNDEFINED3
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_UNDEFINED3
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_386_TSS_BUSY
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_386_TSS_BUSY
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_UNDEFINED4
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_UNDEFINED4
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_386_CALL_GATE
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_386_CALL_GATE
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 %endif
 
@@ -390,23 +393,23 @@ BEGINPROC TMPL_NM(TestGateType)
         sti                             ; make sure interrupts are enabled.
 
 %ifdef TMPL_LM64
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], AMD64_SEL_TYPE_SYS_INT_GATE
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], AMD64_SEL_TYPE_SYS_INT_GATE
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
         ASSERT_TRAP_EFLAGS_IF jz
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], AMD64_SEL_TYPE_SYS_TRAP_GATE
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], AMD64_SEL_TYPE_SYS_TRAP_GATE
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
         ASSERT_TRAP_EFLAGS_IF jnz
 %else
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_386_INT_GATE
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_386_INT_GATE
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
         ASSERT_TRAP_EFLAGS_IF jz
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_386_TRAP_GATE
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_386_TRAP_GATE
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
         ASSERT_TRAP_EFLAGS_IF jnz
 
@@ -418,15 +421,15 @@ BEGINPROC TMPL_NM(TestGateType)
         ;
         ; Check that a not-present gate GPs. The not-present bit is 0x2f.
         ;
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
 %ifdef TMPL_LM64
-        or      byte [bs2Idt_BP + 5  xWrtRIP], AMD64_SEL_TYPE_SYS_INT_GATE
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], AMD64_SEL_TYPE_SYS_INT_GATE
 %else
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_386_TRAP_GATE
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_386_TRAP_GATE
 %endif
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 07fh
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 07fh
         BS2_TRAP_INSTR X86_XCPT_NP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
         ;
@@ -434,11 +437,11 @@ BEGINPROC TMPL_NM(TestGateType)
         ;
         ASSERT_SIMPLE xDI, xSP, je, "Someone busted xSP during this test."
 %ifdef TMPL_LM64
-        pop     qword [bs2Idt_BP + 8 xWrtRIP]
-        pop     qword [bs2Idt_BP     xWrtRIP]
+        pop     qword [RT_WRT_RIP(bs2Idt_BP + 8)]
+        pop     qword [RT_WRT_RIP(bs2Idt_BP    )]
 %else
-        pop     dword [bs2Idt_BP + 4 xWrtRIP]
-        pop     dword [bs2Idt_BP     xWrtRIP]
+        pop     dword [RT_WRT_RIP(bs2Idt_BP + 4)]
+        pop     dword [RT_WRT_RIP(bs2Idt_BP    )]
 %endif
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
@@ -487,198 +490,198 @@ BEGINPROC TMPL_NM(TestCodeSelector)
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3 ; check that int3 works before we start messing around...
 
 %ifdef TMPL_LM64
-        push    qword [bs2Idt_BP     xWrtRIP]
-        push    qword [bs2Idt_BP + 8 xWrtRIP]
+        push    qword [RT_WRT_RIP(bs2Idt_BP    )]
+        push    qword [RT_WRT_RIP(bs2Idt_BP + 8)]
 %else
-        push    dword [bs2Idt_BP     xWrtRIP]
-        push    dword [bs2Idt_BP + 4 xWrtRIP]
+        push    dword [RT_WRT_RIP(bs2Idt_BP    )]
+        push    dword [RT_WRT_RIP(bs2Idt_BP + 4)]
 %endif
 
-        mov     ecx, [bs2Gdt + MY_R0_CS  xWrtRIP]
-        mov     [bs2GdtSpare0  xWrtRIP], ecx
-        mov     ecx, [bs2Gdt + MY_R0_CS + 4  xWrtRIP]
-        mov     [bs2GdtSpare0 + 4  xWrtRIP], ecx ; GdtSpare0 is a copy of the CS descriptor now.
+        mov     ecx, [RT_WRT_RIP(bs2Gdt + MY_R0_CS )]
+        mov     [RT_WRT_RIP(bs2GdtSpare0 )], ecx
+        mov     ecx, [RT_WRT_RIP(bs2Gdt + MY_R0_CS + 4 )]
+        mov     [RT_WRT_RIP(bs2GdtSpare0 + 4 )], ecx ; GdtSpare0 is a copy of the CS descriptor now.
 
-        mov     word [bs2Idt_BP + 2  xWrtRIP], BS2_SEL_SPARE0
+        mov     word [RT_WRT_RIP(bs2Idt_BP + 2 )], BS2_SEL_SPARE0
 
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3 ; check again to make sure the CS copy is fine.
 
 
         ; Data selector (u4Type starts at bit 0x28, that is byte 5) .
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_RO
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_RO
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_RO_ACC
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_RO_ACC
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_RW
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_RW
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_RW_ACC
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_RW_ACC
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_RO_DOWN
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_RO_DOWN
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_RO_DOWN_ACC
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_RO_DOWN_ACC
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_RW_DOWN
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_RW_DOWN
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_RW_DOWN_ACC
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_RW_DOWN_ACC
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
         ; Executable selector types (works fine).
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_EO
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_EO
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_EO_ACC
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_EO_ACC
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_ER
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_ER
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_ER_ACC
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_ER_ACC
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_EO_CONF
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_EO_CONF
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_EO_CONF_ACC
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_EO_CONF_ACC
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_ER_CONF
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_ER_CONF
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_ER_CONF_ACC
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_ER_CONF_ACC
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
         ;
         ; Test with the code selector set to NULL.
         ;
-        mov     word [bs2Idt_BP + 2  xWrtRIP], 0
+        mov     word [RT_WRT_RIP(bs2Idt_BP + 2 )], 0
         BS2_TRAP_INSTR X86_XCPT_GP, 0, int3
 
-        mov     word [bs2Idt_BP + 2  xWrtRIP], 1
+        mov     word [RT_WRT_RIP(bs2Idt_BP + 2 )], 1
         BS2_TRAP_INSTR X86_XCPT_GP, 0, int3
 
-        mov     word [bs2Idt_BP + 2  xWrtRIP], 2
+        mov     word [RT_WRT_RIP(bs2Idt_BP + 2 )], 2
         BS2_TRAP_INSTR X86_XCPT_GP, 0, int3
 
-        mov     word [bs2Idt_BP + 2  xWrtRIP], 3
+        mov     word [RT_WRT_RIP(bs2Idt_BP + 2 )], 3
         BS2_TRAP_INSTR X86_XCPT_GP, 0, int3
 
-        mov     word [bs2Idt_BP + 2  xWrtRIP], BS2_SEL_SPARE0 ; restore our CS
+        mov     word [RT_WRT_RIP(bs2Idt_BP + 2 )], BS2_SEL_SPARE0 ; restore our CS
 
         ;
         ; Test with the code selector marked as not present but otherwise valid.
         ;
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_ER_ACC
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_ER_ACC
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 07fh
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 07fh
         BS2_TRAP_INSTR X86_XCPT_NP, BS2_SEL_SPARE0, int3
 
         ;
         ; Invalid CS selector and not present, we should get a GP.
         ; Intel states that the present bit is checked after the type.
         ;
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 070h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_RW_DOWN_ACC
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 070h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_RW_DOWN_ACC
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
 %ifdef TMPL_LM64
         ; Long mode variations on invalid (L and D bits) pitted against NP.
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 070h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_ER_ACC
-        and     byte [bs2GdtSpare0 + 6  xWrtRIP], ~(RT_BIT(5) | RT_BIT(6))      ; (0x35=u1Long, 0x36=u1DefBig) = (0, 0)
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 070h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_ER_ACC
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 6 )], ~(RT_BIT(5) | RT_BIT(6))      ; (0x35=u1Long, 0x36=u1DefBig) = (0, 0)
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
-        or      byte [bs2GdtSpare0 + 6  xWrtRIP], RT_BIT(6)                     ; (0x35=u1Long, 0x36=u1DefBig) = (0, 1)
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 6 )], RT_BIT(6)                     ; (0x35=u1Long, 0x36=u1DefBig) = (0, 1)
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
-        or      byte [bs2GdtSpare0 + 6  xWrtRIP], RT_BIT(5)                     ; (0x35=u1Long, 0x36=u1DefBig) = (1, 1)
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 6 )], RT_BIT(5)                     ; (0x35=u1Long, 0x36=u1DefBig) = (1, 1)
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
-        and     byte [bs2GdtSpare0 + 6  xWrtRIP], ~(RT_BIT(5) | RT_BIT(6))
-        or      byte [bs2GdtSpare0 + 6  xWrtRIP], RT_BIT(5)                     ; restored
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 6 )], ~(RT_BIT(5) | RT_BIT(6))
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 6 )], RT_BIT(5)                     ; restored
 %endif
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 070h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_ER_ACC | 080h    ; restore CS to present & valid.
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 070h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_ER_ACC | 080h    ; restore CS to present & valid.
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3                                     ; make sure this is so.
 
         ;
         ; Check the CS DPL vs IDTE DPL.
         ; X86DESCGENERIC.u2Dpl is at bit 0x2d (i.e. in byte 5).
         ;
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], ~(RT_BIT(5) | RT_BIT(6))
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], 0                             ; CS.DPL == 0 == CPL
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], ~(RT_BIT(5) | RT_BIT(6))
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0                             ; CS.DPL == 0 == CPL
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], ~(RT_BIT(5) | RT_BIT(6))
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], 1 << 5                        ; CS.DPL == 1 < CPL
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], ~(RT_BIT(5) | RT_BIT(6))
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 1 << 5                        ; CS.DPL == 1 < CPL
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], ~(RT_BIT(5) | RT_BIT(6))
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], 2 << 5                        ; CS.DPL == 2 < CPL
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], ~(RT_BIT(5) | RT_BIT(6))
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 2 << 5                        ; CS.DPL == 2 < CPL
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], ~(RT_BIT(5) | RT_BIT(6))
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], 3 << 5                        ; CS.DPL == 3 < CPL
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], ~(RT_BIT(5) | RT_BIT(6))
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 3 << 5                        ; CS.DPL == 3 < CPL
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
         ; Restore.
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 010h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_ER_ACC | 080h    ; restore CS to present, valid and DPL=0
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 010h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_ER_ACC | 080h    ; restore CS to present, valid and DPL=0
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3                                     ; make sure it's restored.
 
         ;
         ; Is RPL is ignored? Yes, it is.
         ;
-        and     word [bs2Idt_BP + 2  xWrtRIP], X86_SEL_MASK_OFF_RPL             ; RPL = 0
+        and     word [RT_WRT_RIP(bs2Idt_BP + 2 )], X86_SEL_MASK_OFF_RPL             ; RPL = 0
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
         ASSERT_TRAP_CS_VALUE BS2_SEL_SPARE0
 
-        and     word [bs2Idt_BP + 2  xWrtRIP], X86_SEL_MASK_OFF_RPL
-        or      byte [bs2Idt_BP + 2  xWrtRIP], 1                                ; RPL = 1
+        and     word [RT_WRT_RIP(bs2Idt_BP + 2 )], X86_SEL_MASK_OFF_RPL
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 2 )], 1                                ; RPL = 1
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
         ASSERT_TRAP_CS_VALUE BS2_SEL_SPARE0
 
-        and     word [bs2Idt_BP + 2  xWrtRIP], X86_SEL_MASK_OFF_RPL
-        or      byte [bs2Idt_BP + 2  xWrtRIP], 2                                ; RPL = 2
+        and     word [RT_WRT_RIP(bs2Idt_BP + 2 )], X86_SEL_MASK_OFF_RPL
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 2 )], 2                                ; RPL = 2
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
         ASSERT_TRAP_CS_VALUE BS2_SEL_SPARE0
 
-        and     word [bs2Idt_BP + 2  xWrtRIP], X86_SEL_MASK_OFF_RPL
-        or      byte [bs2Idt_BP + 2  xWrtRIP], 3                                ; RPL = 3
+        and     word [RT_WRT_RIP(bs2Idt_BP + 2 )], X86_SEL_MASK_OFF_RPL
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 2 )], 3                                ; RPL = 3
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
         ASSERT_TRAP_CS_VALUE BS2_SEL_SPARE0
 
         ;
         ; Conforming CS.
         ;
-        or      byte [bs2Idt_BP + 5  xWrtRIP], (3 << 5)                         ; IDTE.DPL = 3
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 090h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_ER_CONF_ACC      ; CS.DPL=0, code, read, conforming
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], (3 << 5)                         ; IDTE.DPL = 3
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 090h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_ER_CONF_ACC      ; CS.DPL=0, code, read, conforming
 
         call    TMPL_NM_CMN(Bs2ToRing1)
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
@@ -699,36 +702,36 @@ BEGINPROC TMPL_NM(TestCodeSelector)
         ASSERT_TRAP_CS_VALUE BS2_SEL_SPARE0 | 0
 
         ; RPL is ignored. Only CPL matters.
-        or      byte [bs2Idt_BP + 2  xWrtRIP], (3 << 5)                         ; IDTE.CS.RPL=3
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 2 )], (3 << 5)                         ; IDTE.CS.RPL=3
         call    TMPL_NM_CMN(Bs2ToRing2)
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
         call    TMPL_NM_CMN(Bs2ToRing0)
         ASSERT_TRAP_CS_VALUE BS2_SEL_SPARE0 | 2
 
-        and     word [bs2Idt_BP + 2  xWrtRIP], X86_SEL_MASK_OFF_RPL
-        or      byte [bs2Idt_BP + 2  xWrtRIP], (1 << 5)                         ; IDTE.CS.RPL=1
+        and     word [RT_WRT_RIP(bs2Idt_BP + 2 )], X86_SEL_MASK_OFF_RPL
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 2 )], (1 << 5)                         ; IDTE.CS.RPL=1
         call    TMPL_NM_CMN(Bs2ToRing2)
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
         call    TMPL_NM_CMN(Bs2ToRing0)
         ASSERT_TRAP_CS_VALUE BS2_SEL_SPARE0 | 2
 
-        and     word [bs2Idt_BP + 2  xWrtRIP], X86_SEL_MASK_OFF_RPL
-        or      byte [bs2Idt_BP + 2  xWrtRIP], (2 << 5)                         ; IDTE.CS.RPL=2
+        and     word [RT_WRT_RIP(bs2Idt_BP + 2 )], X86_SEL_MASK_OFF_RPL
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 2 )], (2 << 5)                         ; IDTE.CS.RPL=2
         call    TMPL_NM_CMN(Bs2ToRing2)
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
         call    TMPL_NM_CMN(Bs2ToRing0)
         ASSERT_TRAP_CS_VALUE BS2_SEL_SPARE0 | 2
 
         ; Change the CS.DPL to 1 and try it from ring-0.
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 09fh
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], (1 << 5)                      ; CS.DPL=1
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 09fh
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], (1 << 5)                      ; CS.DPL=1
         BS2_TRAP_INSTR X86_XCPT_GP, BS2_SEL_SPARE0, int3
 
         ; Restore.
-        and     word [bs2Idt_BP + 2  xWrtRIP], X86_SEL_MASK_OFF_RPL
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0x9f                             ; IDTE.DPL=0
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 010h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_ER_ACC | 080h    ; restore CS to present, valid and DPL=0
+        and     word [RT_WRT_RIP(bs2Idt_BP + 2 )], X86_SEL_MASK_OFF_RPL
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0x9f                             ; IDTE.DPL=0
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 010h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_ER_ACC | 080h    ; restore CS to present, valid and DPL=0
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3                                     ; make sure it's restored.
 
         ;
@@ -738,8 +741,8 @@ BEGINPROC TMPL_NM(TestCodeSelector)
         ; X86DESCGENERIC.u4LimitHigh which is at bit 0x30, and
         ; X86DESCGENERIC.u1Granularity which is at bit 0x37.
         ;
-        mov     word [bs2GdtSpare0      xWrtRIP], 0010h
-        and     byte [bs2GdtSpare0 + 6  xWrtRIP], 070h                  ; setting limit to 0x10, ASSUMES IDTE.off > 0x10
+        mov     word [RT_WRT_RIP(bs2GdtSpare0     )], 0010h
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 6 )], 070h                  ; setting limit to 0x10, ASSUMES IDTE.off > 0x10
 %ifdef TMPL_LM64
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 %else
@@ -747,19 +750,19 @@ BEGINPROC TMPL_NM(TestCodeSelector)
 %endif
 
 %ifdef TMPL_LM64
-        or      dword [bs2Idt_BP + 8  xWrtRIP], 0x007f7f33
+        or      dword [RT_WRT_RIP(bs2Idt_BP + 8 )], 0x007f7f33
         BS2_TRAP_INSTR X86_XCPT_GP, 0, int3
 %endif
 
         ; Who takes precedence? CS NP or the above GP? NP does.
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 07fh
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 07fh
         BS2_TRAP_INSTR X86_XCPT_NP, BS2_SEL_SPARE0, int3
 
 
 %ifdef TMPL_LM64
         ; Who takes precedence? IDTE NP or the not canoncial GP? NP does.
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], 80h
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 07fh
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 80h
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 07fh
         BS2_TRAP_INSTR X86_XCPT_NP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 %endif
 
@@ -767,11 +770,11 @@ BEGINPROC TMPL_NM(TestCodeSelector)
         ; Restore the descriptor and make sure it works.
         ;
 %ifdef TMPL_LM64
-        pop     qword [bs2Idt_BP + 8 xWrtRIP]
-        pop     qword [bs2Idt_BP     xWrtRIP]
+        pop     qword [RT_WRT_RIP(bs2Idt_BP + 8)]
+        pop     qword [RT_WRT_RIP(bs2Idt_BP    )]
 %else
-        pop     dword [bs2Idt_BP + 4 xWrtRIP]
-        pop     dword [bs2Idt_BP     xWrtRIP]
+        pop     dword [RT_WRT_RIP(bs2Idt_BP + 4)]
+        pop     dword [RT_WRT_RIP(bs2Idt_BP    )]
 %endif
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
@@ -823,22 +826,22 @@ BEGINPROC TMPL_NM(TestCheckOrderCsTypeVsIdteType)
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3 ; check that int3 works before we start messing around...
 
 %ifdef TMPL_LM64
-        push    qword [bs2Idt_BP     xWrtRIP]
-        push    qword [bs2Idt_BP + 8 xWrtRIP]
+        push    qword [RT_WRT_RIP(bs2Idt_BP    )]
+        push    qword [RT_WRT_RIP(bs2Idt_BP + 8)]
 %else
-        push    dword [bs2Idt_BP     xWrtRIP]
-        push    dword [bs2Idt_BP + 4 xWrtRIP]
+        push    dword [RT_WRT_RIP(bs2Idt_BP    )]
+        push    dword [RT_WRT_RIP(bs2Idt_BP + 4)]
 %endif
 
         ;
         ; Make a copy of our CS descriptor into spare one and make INT3 use it.
         ;
-        mov     ecx, [bs2Gdt + MY_R0_CS  xWrtRIP]
-        mov     [bs2GdtSpare0  xWrtRIP], ecx
-        mov     ecx, [bs2Gdt + MY_R0_CS + 4  xWrtRIP]
-        mov     [bs2GdtSpare0 + 4  xWrtRIP], ecx ; GdtSpare0 is a copy of the CS descriptor now.
+        mov     ecx, [RT_WRT_RIP(bs2Gdt + MY_R0_CS )]
+        mov     [RT_WRT_RIP(bs2GdtSpare0 )], ecx
+        mov     ecx, [RT_WRT_RIP(bs2Gdt + MY_R0_CS + 4 )]
+        mov     [RT_WRT_RIP(bs2GdtSpare0 + 4 )], ecx ; GdtSpare0 is a copy of the CS descriptor now.
 
-        mov     word [bs2Idt_BP + 2  xWrtRIP], BS2_SEL_SPARE0
+        mov     word [RT_WRT_RIP(bs2Idt_BP + 2 )], BS2_SEL_SPARE0
 
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3 ; check again to make sure the CS copy is fine.
 
@@ -846,52 +849,52 @@ BEGINPROC TMPL_NM(TestCheckOrderCsTypeVsIdteType)
         ; Make both the IDTE type and CS invalid, we should end up with a IDT GP not the CS one.
         ; CS = data selector and IDTE invalid 0 type.
         ;
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 0f0h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_RO
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_RO
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0e0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_UNDEFINED
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0e0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_UNDEFINED
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
         ;
         ; Make the IDTE not-present but otherwise fine, keeping CS invalid.
         ;
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 070h
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 070h
 %ifdef TMPL_LM64
-        or      byte [bs2Idt_BP + 5  xWrtRIP], AMD64_SEL_TYPE_SYS_INT_GATE
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], AMD64_SEL_TYPE_SYS_INT_GATE
 %else
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_386_TRAP_GATE
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_386_TRAP_GATE
 %endif
         BS2_TRAP_INSTR X86_XCPT_NP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
         ;
         ; Make the CS not present as well.
         ;
-        and     byte [bs2GdtSpare0 + 5  xWrtRIP], 070h
-        or      byte [bs2GdtSpare0 + 5  xWrtRIP], X86_SEL_TYPE_EO
+        and     byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], 070h
+        or      byte [RT_WRT_RIP(bs2GdtSpare0 + 5 )], X86_SEL_TYPE_EO
         BS2_TRAP_INSTR X86_XCPT_NP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
         ;
         ; CS not present, IDTE invalid but present.
         ;
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 0f0h
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_UNDEFINED | 0x80
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 0f0h
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_UNDEFINED | 0x80
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
         ;
         ; CS NULL, IDTE invalid but present.
         ;
-        mov     word [bs2Idt_BP + 2  xWrtRIP], 0
+        mov     word [RT_WRT_RIP(bs2Idt_BP + 2 )], 0
         BS2_TRAP_INSTR X86_XCPT_GP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
         ;
         ; CS NULL, IDTE valid but not present.
         ;
-        and     byte [bs2Idt_BP + 5  xWrtRIP], 070h
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 070h
 %ifdef TMPL_LM64
-        or      byte [bs2Idt_BP + 5  xWrtRIP], AMD64_SEL_TYPE_SYS_INT_GATE
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], AMD64_SEL_TYPE_SYS_INT_GATE
 %else
-        or      byte [bs2Idt_BP + 5  xWrtRIP], X86_SEL_TYPE_SYS_386_TRAP_GATE
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], X86_SEL_TYPE_SYS_386_TRAP_GATE
 %endif
         BS2_TRAP_INSTR X86_XCPT_NP, (3 << X86_TRAP_ERR_SEL_SHIFT) | X86_TRAP_ERR_IDT, int3
 
@@ -899,11 +902,11 @@ BEGINPROC TMPL_NM(TestCheckOrderCsTypeVsIdteType)
         ; Restore the descriptor and make sure it works.
         ;
 %ifdef TMPL_LM64
-        pop     qword [bs2Idt_BP + 8 xWrtRIP]
-        pop     qword [bs2Idt_BP     xWrtRIP]
+        pop     qword [RT_WRT_RIP(bs2Idt_BP + 8)]
+        pop     qword [RT_WRT_RIP(bs2Idt_BP    )]
 %else
-        pop     dword [bs2Idt_BP + 4 xWrtRIP]
-        pop     dword [bs2Idt_BP     xWrtRIP]
+        pop     dword [RT_WRT_RIP(bs2Idt_BP + 4)]
+        pop     dword [RT_WRT_RIP(bs2Idt_BP    )]
 %endif
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
@@ -955,15 +958,15 @@ BEGINPROC TMPL_NM(TestStack)
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3 ; check that int3 works before we start messing around...
 
 %ifdef TMPL_LM64
-        push    qword [bs2Idt_BP     xWrtRIP]
-        push    qword [bs2Idt_BP + 8 xWrtRIP]
+        push    qword [RT_WRT_RIP(bs2Idt_BP    )]
+        push    qword [RT_WRT_RIP(bs2Idt_BP + 8)]
 %else
-        push    dword [bs2Idt_BP     xWrtRIP]
-        push    dword [bs2Idt_BP + 4 xWrtRIP]
+        push    dword [RT_WRT_RIP(bs2Idt_BP    )]
+        push    dword [RT_WRT_RIP(bs2Idt_BP + 4)]
 %endif
 
-        and     byte [bs2Idt_BP + 5  xWrtRIP], ~(RT_BIT(5) | RT_BIT(6))
-        or      byte [bs2Idt_BP + 5  xWrtRIP], 3 << 5       ; DPL == 3
+        and     byte [RT_WRT_RIP(bs2Idt_BP + 5 )], ~(RT_BIT(5) | RT_BIT(6))
+        or      byte [RT_WRT_RIP(bs2Idt_BP + 5 )], 3 << 5       ; DPL == 3
 
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
@@ -1152,11 +1155,11 @@ BEGINPROC TMPL_NM(TestStack)
         ; Restore the descriptor and make sure it works.
         ;
 %ifdef TMPL_LM64
-        pop     qword [bs2Idt_BP + 8 xWrtRIP]
-        pop     qword [bs2Idt_BP     xWrtRIP]
+        pop     qword [RT_WRT_RIP(bs2Idt_BP + 8)]
+        pop     qword [RT_WRT_RIP(bs2Idt_BP    )]
 %else
-        pop     dword [bs2Idt_BP + 4 xWrtRIP]
-        pop     dword [bs2Idt_BP     xWrtRIP]
+        pop     dword [RT_WRT_RIP(bs2Idt_BP + 4)]
+        pop     dword [RT_WRT_RIP(bs2Idt_BP    )]
 %endif
         BS2_TRAP_INSTR X86_XCPT_BP, 0, int3
 
@@ -1206,7 +1209,11 @@ BEGINPROC TMPL_NM(TestLoadMyCS)
         mov     [xSP + xCB*2], xAX
 
         pop     xAX
+%ifdef TMPL_64BIT
+        o64 retf                        ; NASM defaults to 32-bit op size (YASM to the more sensible 64-bit).
+%else
         retf
+%endif
 ENDPROC   TMPL_NM(TestLoadMyCS)
 
 
@@ -1243,10 +1250,10 @@ BEGINPROC TMPL_NM(TestConforming)
         ; is different, iret cannot dermine the CPL to return to among other
         ; interesting problems.
         ;
-        mov     ecx, [bs2Gdt + MY_R0_CS  xWrtRIP]
-        mov     [bs2GdtSpare0  xWrtRIP], ecx
-        mov     ecx, [bs2Gdt + MY_R0_CS + 4  xWrtRIP]
-        mov     [bs2GdtSpare0 + 4  xWrtRIP], ecx ; GdtSpare0 is a copy of the CS descriptor now.
+        mov     ecx, [RT_WRT_RIP(bs2Gdt + MY_R0_CS )]
+        mov     [RT_WRT_RIP(bs2GdtSpare0 )], ecx
+        mov     ecx, [RT_WRT_RIP(bs2Gdt + MY_R0_CS + 4 )]
+        mov     [RT_WRT_RIP(bs2GdtSpare0 + 4 )], ecx ; GdtSpare0 is a copy of the CS descriptor now.
         and     byte [bs2GdtSpare0 + 5], 0x90 ; DPL = 0
         or      byte [bs2GdtSpare0 + 5], X86_SEL_TYPE_ER_CONF_ACC
 
@@ -1705,7 +1712,7 @@ BEGINPROC TMPL_NM(TestReturn)
         mov     [rsp + 18h], rsp
         mov     [rsp + 10h], rdi
         mov     qword [rsp + 08h], MY_R0_CS
-        lea     rax, [.resume1 wrt rip]
+        lea     rax, [RT_WRT_RIP(.resume1)]
         mov     [rsp + 00h], rax
         iretq
 
@@ -1726,7 +1733,7 @@ BEGINPROC TMPL_NM(TestReturn)
         mov     [rsp + 18h], rax
         mov     [rsp + 10h], rdi
         mov     qword [rsp + 08h], MY_R0_CS
-        lea     rax, [.resume2 wrt rip]
+        lea     rax, [RT_WRT_RIP(.resume2)]
         mov     [rsp + 00h], rax
         push    rdi
         or      dword [rsp], X86_EFL_NT
@@ -1753,7 +1760,7 @@ BEGINPROC TMPL_NM(TestReturn)
         mov     [rsp + 10h], rdi
         or      dword [rsp + 10h], X86_EFL_VM
         mov     qword [rsp + 08h], MY_R0_CS
-        lea     rax, [.resume3 wrt rip]
+        lea     rax, [RT_WRT_RIP(.resume3)]
         mov     [rsp + 00h], rax
         iretq
 .resume3:
@@ -1777,7 +1784,7 @@ BEGINPROC TMPL_NM(TestReturn)
         mov     [rsp + 0ch], eax
         mov     [rsp + 08h], edi
         mov     dword [rsp + 04h], MY_R0_CS
-        lea     eax, [.resume20 wrt rip]
+        lea     eax, [RT_WRT_RIP(.resume20)]
         mov     [rsp + 00h], eax
         iretd
 .resume20:
@@ -1841,7 +1848,7 @@ BEGINCODEHIGH
 %endif
         mov     sAX, BS2_SEL_R3_CS16 | 3
         push    sAX                     ; Return CS
-        lea     sAX, [.resume100 xWrtRIP]
+        lea     sAX, [RT_WRT_RIP(.resume100)]
         push    sAX                     ; Return sIP
 %ifdef TMPL_64BIT
         iretq
@@ -1881,7 +1888,7 @@ BEGINCODEHIGH
  %endif
         mov     sAX, BS2_SEL_R3_CS16 | 3
         push    sAX                     ; Return CS
-        lea     sAX, [.resume101 xWrtRIP]
+        lea     sAX, [RT_WRT_RIP(.resume101)]
         push    sAX                     ; Return sIP
  %ifdef TMPL_64BIT
         iretq

@@ -1,4 +1,4 @@
-; $Id: bs3kit.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bs3kit.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; BS3Kit - structures, symbols, macros and stuff.
 ;
@@ -65,7 +65,7 @@
   %define xDX  rdx
   %define xDI  rdi
   %define xSI  rsi
-  %define xWrtRIP wrt rip
+  %define RT_WRT_RIP(a_Sym) rel a_Sym
   %define xPUSHF pushfq
   %define xPOPF  popfq
   %define xRETF  o64 retf
@@ -82,7 +82,7 @@
   %define xDX  edx
   %define xDI  edi
   %define xSI  esi
-  %define xWrtRIP
+  %define RT_WRT_RIP(a_Sym) a_Sym
   %define xPUSHF pushfd
   %define xPOPF  popfd
   %define xRETF  retf
@@ -99,7 +99,7 @@
   %define xDX  dx
   %define xDI  di
   %define xSI  si
-  %define xWrtRIP
+  %define RT_WRT_RIP(a_Sym) a_Sym
   %define xPUSHF pushf
   %define xPOPF  popf
   %define xRETF  retf
@@ -196,16 +196,16 @@
 
  ;; For RIP relative addressing in 64-bit mode and absolute addressing in
  ; other modes. Follows BS3_SET_BITS.
- %undef   BS3_WRT_RIP
+ %undef   RT_WRT_RIP
  %if %1 == 64
-  %define BS3_WRT_RIP(a_Sym)        rel a_Sym
+  %define RT_WRT_RIP(a_Sym)         rel a_Sym
  %else
-  %define BS3_WRT_RIP(a_Sym)        a_Sym
+  %define RT_WRT_RIP(a_Sym)         a_Sym
  %endif
 
  %undef   BS3_LEA_MOV_WRT_RIP
  %if %1 == 64
-  %define BS3_LEA_MOV_WRT_RIP(a_DstReg, a_Sym)  lea a_DstReg, [BS3_WRT_RIP(a_Sym)]
+  %define BS3_LEA_MOV_WRT_RIP(a_DstReg, a_Sym)  lea a_DstReg, [RT_WRT_RIP(a_Sym)]
  %else
   %define BS3_LEA_MOV_WRT_RIP(a_DstReg, a_Sym)  mov a_DstReg, a_Sym
  %endif
@@ -219,7 +219,7 @@
  %elif %1 == 32
   %define BS3_DATA16_WRT(a_Var)     a_Var wrt FLAT
  %else
-  %define BS3_DATA16_WRT(a_Var)     BS3_WRT_RIP(a_Var) wrt FLAT
+  %define BS3_DATA16_WRT(a_Var)     RT_WRT_RIP(a_Var) wrt FLAT
  %endif
 
  ;; @def BS3_TEXT16_WRT
@@ -231,7 +231,7 @@
  %elif %1 == 32
   %define BS3_TEXT16_WRT(a_Label)   a_Label wrt FLAT
  %else
-  %define BS3_TEXT16_WRT(a_Label)   BS3_WRT_RIP(a_Label) wrt FLAT
+  %define BS3_TEXT16_WRT(a_Label)   RT_WRT_RIP(a_Label) wrt FLAT
  %endif
 
  %undef   BS3_IF_16BIT_OTHERWISE

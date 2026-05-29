@@ -1,4 +1,4 @@
-# $Id: Config.kmk 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+# $Id: Config.kmk 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ## @file
 # kBuild Configuration file for VirtualBox Boot Sector Kit 3.
 #
@@ -263,6 +263,25 @@ define TOOL_VBoxNasm_COMPILE_AS_CMDS
 		$(abspath $(source))
  endif
 	$(QUIET)$(VBOX_BS3KIT_KSUBMIT_OBJ_CONV) $(VBoxBs3ObjConverter_1_TARGET) "$(obj)"
+endef
+
+#
+# An NASM tool variant for BIN targets that produces a .map-file (like yasm).
+#
+TOOL_VBoxNasmBin                        := NASM tool for binaries (boot sector 2).
+TOOL_VBoxNasmBin_AS                      = $(TOOL_VBoxNasm_AS)
+TOOL_VBoxNasmBin_ASFLAGS                 = $(TOOL_VBoxNasm_ASFLAGS)
+TOOL_VBoxNasmBin_COMPILE_AS_OUTPUT       = $(TOOL_VBoxNasm_COMPILE_AS_OUTPUT) $(outbase).map
+TOOL_VBoxNasmBin_COMPILE_AS_OUTPUT_MAYBE = $(TOOL_VBoxNasm_COMPILE_AS_OUTPUT_MAYBE)
+TOOL_VBoxNasmBin_COMPILE_AS_DEPEND       =
+TOOL_VBoxNasmBin_COMPILE_AS_DEPORD       =
+define TOOL_VBoxNasmBin_COMPILE_AS_CMDS
+	$(QUIET)$(REDIRECT) -C $(PATH_OUT_BASE) -w+to "$(outbase).map" -- $(TOOL_VBoxNasm_AS)\
+		$(flags) $(addsuffix /,$(addprefix -i, $(incs))) $(addprefix -D, $(defs))\
+		-l $(outbase).lst\
+		-o $(obj)\
+               -MD "$(dep)" -MP\
+		$(abspath $(source))
 endef
 
 #
@@ -983,9 +1002,16 @@ TEMPLATE_VBoxBS3KitBS_INST            = $(INST_VALIDATIONKIT)bootsectors/
 TEMPLATE_VBoxBS3KitBS_INSTTYPE        = none
 TEMPLATE_VBoxBS3KitBS_BINSUFF         = .img
 TEMPLATE_VBoxBS3KitBS_MODE            = 0644
-TEMPLATE_VBoxBS3KitBS_ASTOOL          = YASM
-TEMPLATE_VBoxBS3KitBS_ASFLAGS         = -f bin --mapfile
-TEMPLATE_VBoxBS3KitBS_ASDEFS          = ASM_FORMAT_BIN RT_NOINC_SEGMENTS ARCH_BITS=16 __YASM__ \
+ifdef DONT_USE_YASM
+ TEMPLATE_VBoxBS3KitBS_ASTOOL         = VBoxNasmBin
+ TEMPLATE_VBoxBS3KitBS_ASFLAGS        = -f bin
+ TEMPLATE_VBoxBS3KitBS_ASDEFS        += __NASM__
+else
+ TEMPLATE_VBoxBS3KitBS_ASTOOL         = YASM
+ TEMPLATE_VBoxBS3KitBS_ASFLAGS        = -f bin --mapfile
+ TEMPLATE_VBoxBS3KitBS_ASDEFS        += __YASM__
+endif
+TEMPLATE_VBoxBS3KitBS_ASDEFS         += ASM_FORMAT_BIN RT_NOINC_SEGMENTS ARCH_BITS=16 \
 	BS3CLASS16CODE=$(BS3KIT_CLASS_CODE16) BS3KIT_CLASS_DATA16=$(BS3KIT_CLASS_DATA16) \
 	BS3KIT_GRPNM_DATA16=$(BS3KIT_GRPNM_DATA16) BS3KIT_CLASS_BSS16=$(BS3KIT_CLASS_BSS16)
 TEMPLATE_VBoxBS3KitBS_INCS            = $(VBOX_PATH_BS3KIT_SRC) .

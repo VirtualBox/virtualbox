@@ -1,4 +1,4 @@
-; $Id: bs3-wc16-U4D.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bs3-wc16-U4D.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; BS3Kit - 16-bit Watcom C/C++, 32-bit unsigned integer division.
 ;
@@ -51,8 +51,8 @@
 global __U4D
 __U4D:
 %endif
-global $_?U4D
-$_?U4D:
+global _?U4D
+_?U4D:
 %if TMPL_BITS >= 32
         ; Move dividend into EDX:EAX
         shl     eax, 10h

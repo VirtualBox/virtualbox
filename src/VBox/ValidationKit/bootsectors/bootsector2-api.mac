@@ -1,4 +1,4 @@
-; $Id: bootsector2-api.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bootsector2-api.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; Bootsector2 API definition for use by split images (kernel < 1MB < image).
 ;
@@ -52,7 +52,7 @@
 ;;
 ; API Template for lazy birds.
 ;
-%macro BS2_API_TEMPLATE 0,
+%macro BS2_API_TEMPLATE 0
 
  BS2_API_TEMPLATE_ACTION(Bs2DisableA20)
  BS2_API_TEMPLATE_ACTION(Bs2DisableA20ViaKbd)

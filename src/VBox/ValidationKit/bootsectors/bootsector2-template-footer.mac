@@ -1,4 +1,4 @@
-; $Id: bootsector2-template-footer.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bootsector2-template-footer.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; bootsector2 footer for multi-mode code templates.
 ;
@@ -99,7 +99,7 @@
 %undef xDX
 %undef xDI
 %undef xSI
-%undef xWrtRIP
+%undef RT_WRT_RIP
 
 %undef sCB
 %undef sDEF

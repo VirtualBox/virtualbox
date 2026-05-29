@@ -1,4 +1,4 @@
-; $Id: bootsector2-cpu-xcpt-2-template.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bootsector2-cpu-xcpt-2-template.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; Bootsector test for debug exceptions - multi mode template.
 ;
@@ -107,9 +107,11 @@
         cmp     %1, %2
         %3      %%.ok
         cli                             ; raw-mode hack
-        push    dword __LINE__
   %ifdef TMPL_16BIT
+        push    dword __LINE__
         push    ds
+  %else
+        push    __LINE__
   %endif
         push    %%.s_szMsg
         call    TMPL_NM_CMN(TestFailedF)
@@ -272,13 +274,13 @@ BEGINPROC TMPL_NM(TestBpExec)
 %else
         mov     ecx, 0x80000
 %endif
-        lea     sAX, [.bp_dr0 xWrtRIP]
+        lea     sAX, [RT_WRT_RIP(.bp_dr0)]
         mov     dr0, sAX
-        lea     sAX, [.bp_dr1 xWrtRIP]
+        lea     sAX, [RT_WRT_RIP(.bp_dr1)]
         mov     dr1, sAX
-        lea     sAX, [.bp_dr2 xWrtRIP]
+        lea     sAX, [RT_WRT_RIP(.bp_dr2)]
         mov     dr2, sAX
-        lea     sAX, [.bp_dr3 xWrtRIP]
+        lea     sAX, [RT_WRT_RIP(.bp_dr3)]
         mov     dr3, sAX
         mov     eax, X86_DR7_RA1_MASK | X86_DR7_G0 | X86_DR7_G1 | X86_DR7_G2 | X86_DR7_G3 | X86_DR7_GE
         mov     dr7, sAX
@@ -329,14 +331,14 @@ BEGINPROC TMPL_NM(TestBpExec)
         ;
         ; Touch the code, making sure the BPs don't trigger on data access.
         ;
-        mov     al, [.bp_dr0 xWrtRIP]
-        mov     [.bp_dr0 xWrtRIP], al
-        mov     al, [.bp_dr1 xWrtRIP]
-        mov     [.bp_dr1 xWrtRIP], al
-        mov     al, [.bp_dr2 xWrtRIP]
-        mov     [.bp_dr2 xWrtRIP], al
-        mov     al, [.bp_dr3 xWrtRIP]
-        mov     [.bp_dr3 xWrtRIP], al
+        mov     al, [RT_WRT_RIP(.bp_dr0)]
+        mov     [RT_WRT_RIP(.bp_dr0)], al
+        mov     al, [RT_WRT_RIP(.bp_dr1)]
+        mov     [RT_WRT_RIP(.bp_dr1)], al
+        mov     al, [RT_WRT_RIP(.bp_dr2)]
+        mov     [RT_WRT_RIP(.bp_dr2)], al
+        mov     al, [RT_WRT_RIP(.bp_dr3)]
+        mov     [RT_WRT_RIP(.bp_dr3)], al
 
         ;
         ; Done.

@@ -1,4 +1,4 @@
-; $Id: SUPDrvTracerA.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: SUPDrvTracerA.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; VirtualBox Support Driver - Tracer Interface, Assembly bits.
 ;
@@ -53,13 +53,8 @@ ENDPROC   supdrvTracerProbeFireStub
 
 
 ;; Tail jump function.
-EXPORTEDNAME SUPR0TracerFireProbe
-%ifdef RT_ARCH_AMD64
-        mov     rax, [NAME(g_pfnSupdrvProbeFireKernel) wrt rip]
-        jmp     rax
-%else
-        mov     eax, [NAME(g_pfnSupdrvProbeFireKernel)]
-        jmp     eax
-%endif
+BEGINPROC_EXPORTED SUPR0TracerFireProbe
+        mov     xAX, [RT_WRT_RIP(NAME(g_pfnSupdrvProbeFireKernel))]
+        jmp     xAX
 ENDPROC SUPR0TracerFireProbe
 

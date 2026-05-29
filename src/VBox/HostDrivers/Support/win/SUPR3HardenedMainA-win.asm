@@ -1,4 +1,4 @@
-; $Id: SUPR3HardenedMainA-win.asm 113917 2026-04-16 21:00:53Z knut.osmundsen@oracle.com $
+; $Id: SUPR3HardenedMainA-win.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; VirtualBox Support Library - Hardened main(), Windows assembly bits.
 ;
@@ -534,7 +534,7 @@ GLOBALNAME g_uApiNo %+ %1
 BEGINCODE
 global SUPHNTIMP_STDCALL_NAME(%1, %2)
 SUPHNTIMP_STDCALL_NAME(%1, %2):
-        jmp     RTCCPTR_PRE [NAME(g_pfn %+ %1) xWrtRIP]
+        jmp     RTCCPTR_PRE [RT_WRT_RIP(NAME(g_pfn %+ %1))]
 
  %if %3
         ;
@@ -546,7 +546,7 @@ BEGINPROC %1 %+ _SyscallType1
    %if %5
         call    NAME(HardenedSyscallHashStackPreSetup)
    %endif
-        mov     eax, [NAME(g_uApiNo %+ %1) xWrtRIP]
+        mov     eax, [RT_WRT_RIP(NAME(g_uApiNo %+ %1))]
         mov     r10, rcx
         syscall
    %if %5
@@ -560,7 +560,7 @@ BEGINPROC %1 %+ _SyscallType2 ; Introduced with build 10525
    %if %5
         call    NAME(HardenedSyscallHashStackPreSetup)
    %endif
-        mov     eax, [NAME(g_uApiNo %+ %1) xWrtRIP]
+        mov     eax, [RT_WRT_RIP(NAME(g_uApiNo %+ %1))]
         test    byte [07ffe0308h], 1    ; SharedUserData!Something
         mov     r10, rcx
         jnz     .int_alternative
@@ -580,7 +580,7 @@ ENDPROC %1 %+ _SyscallType2
   %else  ; !RT_ARCH_AMD64
 BEGINPROC %1 %+ _SyscallType1
         mov     edx, 07ffe0300h         ; SharedUserData!SystemCallStub
-        mov     eax, [NAME(g_uApiNo %+ %1) xWrtRIP]
+        mov     eax, [RT_WRT_RIP(NAME(g_uApiNo %+ %1))]
         call    dword [edx]
         ret     %2
 ENDPROC %1 %+ _SyscallType1
@@ -588,7 +588,7 @@ ENDPROC %1 %+ _SyscallType1
 BEGINPROC %1 %+ _SyscallType2
         push    .return
         mov     edx, esp
-        mov     eax, [NAME(g_uApiNo %+ %1) xWrtRIP]
+        mov     eax, [RT_WRT_RIP(NAME(g_uApiNo %+ %1))]
         sysenter
         add     esp, 4
 .return:

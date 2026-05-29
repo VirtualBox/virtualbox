@@ -1,4 +1,4 @@
-; $Id: security-cookie-vcc.asm 113664 2026-03-30 11:49:16Z knut.osmundsen@oracle.com $
+; $Id: security-cookie-vcc.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Stack related Visual C++ support routines, ring-0.
 ;
@@ -98,9 +98,9 @@ BEGINPROC __security_init_cookie
         SEH64_END_PROLOGUE
 
         ; Don't initialize it again if already done.
-        cmp     dword [NAME(__security_cookie) xWrtRIP], RT_VCC_SECURITY_COOKIE_DEFAULT_LOW
+        cmp     dword [RT_WRT_RIP(NAME(__security_cookie))], RT_VCC_SECURITY_COOKIE_DEFAULT_LOW
         je      .need_init
-        cmp     dword [NAME(__security_cookie) + 4 xWrtRIP], RT_VCC_SECURITY_COOKIE_DEFAULT_HIGH
+        cmp     dword [RT_WRT_RIP(NAME(__security_cookie) + 4)], RT_VCC_SECURITY_COOKIE_DEFAULT_HIGH
         jne     .already_initialized
 
         ; Use TSC to get a random-ish number.
@@ -112,7 +112,7 @@ BEGINPROC __security_init_cookie
         xor     edx, RT_VCC_SECURITY_COOKIE_XOR_HIGH
 
         ; Let KASLR do some work.
-        lea     xCX, [NAME(__security_cookie) + 4 xWrtRIP]
+        lea     xCX, [RT_WRT_RIP(NAME(__security_cookie) + 4)]
         xor     eax, ecx
         xor     edx, esp
 
@@ -125,13 +125,13 @@ BEGINPROC __security_init_cookie
 
         ; Store the result.
 .store_result:
-        mov     [NAME(__security_cookie) xWrtRIP], eax
-        mov     [NAME(__security_cookie) + 4 xWrtRIP], edx
+        mov     [RT_WRT_RIP(NAME(__security_cookie))], eax
+        mov     [RT_WRT_RIP(NAME(__security_cookie) + 4)], edx
 
         not     eax
         not     edx
-        mov     [NAME(__security_cookie_complement) xWrtRIP], eax
-        mov     [NAME(__security_cookie_complement) + 4 xWrtRIP], edx
+        mov     [RT_WRT_RIP(NAME(__security_cookie_complement))], eax
+        mov     [RT_WRT_RIP(NAME(__security_cookie_complement) + 4)], edx
 
 .already_initialized:
         leave

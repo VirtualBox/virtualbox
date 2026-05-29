@@ -1,4 +1,4 @@
-; $Id: logf.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: logf.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT logf - AMD64 & X86.
 ;
@@ -65,11 +65,11 @@ RT_NOCRT_BEGINPROC logf
         fld     dword [xBP + xCB*2]         ; st1=log(2) st0=lrd
 %endif
         fld     st0                         ; st1=log(2) st0=lrd st0=lrd
-        fsub    qword [.one xWrtRIP]        ; st2=log(2) st1=lrd st0=lrd-1.0
+        fsub    qword [RT_WRT_RIP(.one)]    ; st2=log(2) st1=lrd st0=lrd-1.0
         fld     st0                         ; st3=log(2) st2=lrd st1=lrd-1.0 st0=lrd-1.0
 
         fabs                                ; st3=log(2) st2=lrd st1=lrd-1.0 st0=abs(lrd-1.0)
-        fcomp   qword [.limit xWrtRIP]      ; st2=log(2) st1=lrd st0=lrd-1.0
+        fcomp   qword [RT_WRT_RIP(.limit)]  ; st2=log(2) st1=lrd st0=lrd-1.0
         fnstsw  ax
         and     eax, X86_FSW_C3 | X86_FSW_C2 | X86_FSW_C0
         jnz     .use_st1

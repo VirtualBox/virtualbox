@@ -1,4 +1,4 @@
-; $Id: feraiseexcept.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: feraiseexcept.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT feraiseexcept - AMD64 & X86.
 ;
@@ -89,7 +89,7 @@ RT_NOCRT_BEGINPROC feraiseexcept
         test    cl, X86_FSW_IE
         jz      .not_ie
 %ifdef RT_NOCRT_RAISE_FPU_EXCEPT_IN_SSE_MODE
-        movss   xmm0, [g_r32Zero xWrtRIP]
+        movss   xmm0, [RT_WRT_RIP(g_r32Zero)]
         divss   xmm0, xmm0
 %else
         fnstenv [xBP - 20h]
@@ -103,8 +103,8 @@ RT_NOCRT_BEGINPROC feraiseexcept
         test    cl, X86_FSW_ZE
         jz      .not_ze
 %ifdef RT_NOCRT_RAISE_FPU_EXCEPT_IN_SSE_MODE
-        movss   xmm0, [g_r32One  xWrtRIP]
-        movss   xmm1, [g_r32Zero xWrtRIP]
+        movss   xmm0, [RT_WRT_RIP(g_r32One )]
+        movss   xmm1, [RT_WRT_RIP(g_r32Zero)]
         divss   xmm0, xmm1
 %else
         fnstenv [xBP - 20h]
@@ -118,8 +118,8 @@ RT_NOCRT_BEGINPROC feraiseexcept
         test    cl, X86_FSW_OE
         jz      .not_oe
 %ifdef RT_NOCRT_RAISE_FPU_EXCEPT_IN_SSE_MODE
-        xorps   xmm0, [g_r32Large xWrtRIP]
-        movss   xmm1, [g_r32Tiny  xWrtRIP]
+        xorps   xmm0, [RT_WRT_RIP(g_r32Large)]
+        movss   xmm1, [RT_WRT_RIP(g_r32Tiny )]
         divss   xmm0, xmm1
 %else
         fnstenv [xBP - 20h]
@@ -133,8 +133,8 @@ RT_NOCRT_BEGINPROC feraiseexcept
         test    cl, X86_FSW_UE
         jz      .not_ue
 %ifdef RT_NOCRT_RAISE_FPU_EXCEPT_IN_SSE_MODE
-        xorps   xmm0, [g_r32Tiny  xWrtRIP]
-        movss   xmm1, [g_r32Large xWrtRIP]
+        xorps   xmm0, [RT_WRT_RIP(g_r32Tiny )]
+        movss   xmm1, [RT_WRT_RIP(g_r32Large)]
         divss   xmm0, xmm1
 %else
         fnstenv [xBP - 20h]
@@ -148,8 +148,8 @@ RT_NOCRT_BEGINPROC feraiseexcept
         test    cl, X86_FSW_PE
         jz      .not_pe
 %ifdef RT_NOCRT_RAISE_FPU_EXCEPT_IN_SSE_MODE
-        xorps   xmm0, [g_r32Two   xWrtRIP]
-        movss   xmm1, [g_r32Three xWrtRIP]
+        xorps   xmm0, [RT_WRT_RIP(g_r32Two  )]
+        movss   xmm1, [RT_WRT_RIP(g_r32Three)]
         divss   xmm0, xmm1
 %else
         fnstenv [xBP - 20h]

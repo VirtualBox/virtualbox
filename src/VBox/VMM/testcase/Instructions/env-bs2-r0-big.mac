@@ -1,4 +1,4 @@
-; $Id: env-bs2-r0-big.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: env-bs2-r0-big.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; Instruction Test Environment - Big Boot Sector Type 2, Ring-0.
 ;
@@ -35,28 +35,28 @@
 
 
 ;; Call RTTestISub like function.
-%define VBINSTST_CALL_FN_SUB_TEST   call [TMPL_NM_CMN(g_pfnTestSub) xWrtRIP]
+%define VBINSTST_CALL_FN_SUB_TEST   call [RT_WRT_RIP(TMPL_NM_CMN(g_pfnTestSub))]
 
 ;; Call RTTestIFailure like function with simple message.
-%define VBINSTST_CALL_FN_FAILURE    call [TMPL_NM_CMN(g_pfnTestFailedF) xWrtRIP]
+%define VBINSTST_CALL_FN_FAILURE    call [RT_WRT_RIP(TMPL_NM_CMN(g_pfnTestFailedF))]
 
 ;; Call RTTestIFailure like function with format message + 1 arg.
-%define VBINSTST_CALL_FN_FAILURE_1  call [TMPL_NM_CMN(g_pfnTestFailedF) xWrtRIP]
+%define VBINSTST_CALL_FN_FAILURE_1  call [RT_WRT_RIP(TMPL_NM_CMN(g_pfnTestFailedF))]
 
 ;; Call RTTestIFailure like function with format message + 2 args.
-%define VBINSTST_CALL_FN_FAILURE_2  call [TMPL_NM_CMN(g_pfnTestFailedF) xWrtRIP]
+%define VBINSTST_CALL_FN_FAILURE_2  call [RT_WRT_RIP(TMPL_NM_CMN(g_pfnTestFailedF))]
 
 ;; Call RTTestIFailure like function with format message + 3 args.
-%define VBINSTST_CALL_FN_FAILURE_3  call [TMPL_NM_CMN(g_pfnTestFailedF) xWrtRIP]
+%define VBINSTST_CALL_FN_FAILURE_3  call [RT_WRT_RIP(TMPL_NM_CMN(g_pfnTestFailedF))]
 
 ;; Call RTTestIFailure like function with format message + 4 args.
-%define VBINSTST_CALL_FN_FAILURE_4  call [TMPL_NM_CMN(g_pfnTestFailedF) xWrtRIP]
+%define VBINSTST_CALL_FN_FAILURE_4  call [RT_WRT_RIP(TMPL_NM_CMN(g_pfnTestFailedF))]
 
 ;; The image base label (used by the trap macros).
 %define VBINSTST_IMAGE_BASE_LABLE bs2_big_image_start
 
 ;; Wrapper for calling TestInstallTrapRecs (used by the trap macros).
-%define VBINSTST_CALL_TEST_INSTALL_TRAP_RECS  call [TMPL_NM_CMN(g_pfnTestInstallTrapRecs) xWrtRIP]
+%define VBINSTST_CALL_TEST_INSTALL_TRAP_RECS  call [RT_WRT_RIP(TMPL_NM_CMN(g_pfnTestInstallTrapRecs))]
 
 ;
 ; Include the common bits (contains code using above macros)

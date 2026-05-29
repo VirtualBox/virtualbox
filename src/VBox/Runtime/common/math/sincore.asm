@@ -1,4 +1,4 @@
-; $Id: sincore.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: sincore.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT common sin & cos - AMD64 & X86.
 ;
@@ -70,19 +70,19 @@ BEGINPROC   rtNoCrtMathSinCore
         ;
         ; Load the pointer to the rounding crudeness factor into xDX.
         ;
-        lea     xDX, [.s_ar64NearZero xWrtRIP]
+        lea     xDX, [RT_WRT_RIP(.s_ar64NearZero)]
         lea     xDX, [xDX + xCX * xCB]
 
         ;
         ; Finite number.  We want it in the range [0,2pi] and will preform
         ; a remainder division if it isn't.
         ;
-        fcom    qword [.s_r64Max xWrtRIP]   ; compares st0 and 2*pi
+        fcom    qword [RT_WRT_RIP(.s_r64Max)]   ; compares st0 and 2*pi
         fnstsw  ax
         test    ax, X86_FSW_C3 | X86_FSW_C0 | X86_FSW_C2 ; C3 := st0 == mem;  C0 := st0 < mem;  C2 := unordered (should be the case);
         jz      .reduce_st0                 ; Jump if st0 > mem
 
-        fcom    qword [.s_r64Min xWrtRIP]   ; compares st0 and 0.0
+        fcom    qword [RT_WRT_RIP(.s_r64Min)]   ; compares st0 and 0.0
         fnstsw  ax
         test    ax, X86_FSW_C3 | X86_FSW_C0
         jnz     .reduce_st0                 ; Jump if st0 <= mem
@@ -108,7 +108,7 @@ BEGINPROC   rtNoCrtMathSinCore
         ; input in the range [0,pi[
         ;
 .smaller_than_pi:
-        fdiv    qword [.s_r64Two xWrtRIP]   ; st0 = pi/2
+        fdiv    qword [RT_WRT_RIP(.s_r64Two)]   ; st0 = pi/2
 
         ; if (st0 < pi/2)
         fcom    st1                         ; compares st0 (pi/2) with st1
@@ -182,7 +182,7 @@ BEGINPROC   rtNoCrtMathSinCore
         ;
 .larger_than_pi:
         fsub    st1, st0                    ; st1 -= pi
-        fdiv    qword [.s_r64Two xWrtRIP]   ; st0 = pi/2
+        fdiv    qword [RT_WRT_RIP(.s_r64Two)]   ; st0 = pi/2
 
         ; if (st0 < pi/2)
         fcom    st1                         ; compares st0 (pi/2) with reduced st1

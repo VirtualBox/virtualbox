@@ -1,4 +1,4 @@
- ; $Id: CPUMR0A.asm 112438 2026-01-13 09:00:11Z knut.osmundsen@oracle.com $
+ ; $Id: CPUMR0A.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; CPUM - Ring-0 Assembly Routines (supporting HM and IEM).
 ;
@@ -298,7 +298,7 @@ SEH64_END_PROLOGUE
 
         ; Restore the CR0 value we saved in cpumR0SaveHostRestoreGuestFPUState or
         ; in cpumRZSaveHostFPUState.
-        mov     xCX, [pCpumCpu + CPUMCPU.Host.cr0Fpu]
+        mov     xCX, [pCpumCpu + CPUMCPU.Host.cr0]
         CPUMRZ_RESTORE_CR0_IF_TS_OR_EM_SET xCX
         and     dword [pCpumCpu + CPUMCPU.fUseFlags], ~(CPUM_USED_FPU_GUEST | CPUM_USED_FPU_HOST)
         mov     byte [pCpumCpu + CPUMCPU.Guest.fUsedFpuGuest], 0

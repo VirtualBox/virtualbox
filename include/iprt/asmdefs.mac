@@ -162,6 +162,9 @@
 %ifdef RT_ASM_WITH_SEH64
  %ifndef ASM_FORMAT_PE64
   %undef RT_ASM_WITH_SEH64
+ %elifdef __NASM__ ; NASM doesn't have built-in support
+  %undef  RT_ASM_WITH_SEH64
+  %define RT_ASM_WITH_SEH64_ALT
  %endif
 %endif
 
@@ -558,7 +561,7 @@ RT_CONCAT(.seh64_op_label_,seh64_idxOps):
 ; Gets the pointer to an imported object.
 %ifdef ASM_FORMAT_PE
  %ifdef RT_ARCH_AMD64
-  %define IMP(name)     qword [IMPNAME(name) wrt rip]
+  %define IMP(name)     qword [RT_WRT_RIP(IMPNAME(name))]
  %else
   %define IMP(name)     dword [IMPNAME(name)]
  %endif
@@ -570,7 +573,7 @@ RT_CONCAT(.seh64_op_label_,seh64_idxOps):
 ; Gets the pointer to an imported object.
 %ifdef ASM_FORMAT_PE
  %ifdef RT_ARCH_AMD64
-  %define IMP_SEG(SegOverride, name)  qword [SegOverride:IMPNAME(name) wrt rip]
+  %define IMP_SEG(SegOverride, name)  qword [RT_WRT_RIP(SegOverride:IMPNAME(name))]
  %else
   %define IMP_SEG(SegOverride, name)  dword [SegOverride:IMPNAME(name)]
  %endif
@@ -593,7 +596,7 @@ RT_CONCAT(.seh64_op_label_,seh64_idxOps):
 ; Gets the pointer to an imported object, version 2.
 %ifdef ASM_FORMAT_PE
  %ifdef RT_ARCH_AMD64
-  %define IMP2(name)    qword [IMPNAME(name) wrt rip]
+  %define IMP2(name)    qword [RT_WRT_RIP(IMPNAME(name))]
  %else
   %define IMP2(name)    dword [IMPNAME(name)]
  %endif
@@ -606,7 +609,7 @@ RT_CONCAT(.seh64_op_label_,seh64_idxOps):
   %endif
  %endif
 %elifdef ASM_FORMAT_MACHO
- %define IMP2(name)     RTCCPTR_PRE [g_Imp2_ %+ name xWrtRIP]
+ %define IMP2(name)     RTCCPTR_PRE [RT_WRT_RIP(g_Imp2_ %+ name)]
 %endif
 %ifndef IMP2
  %define IMP2(name)     IMPNAME(name)
@@ -622,6 +625,8 @@ $%1:
 
 ;;
 ; Global marker which is DECLASM() compatible.
+; @param %1     The symbol name - subjected to NAME().
+; @param %2     The symbol size expression. Defaults to 0.
 %macro GLOBALNAME 1
 %ifndef ASM_FORMAT_BIN
 global NAME(%1)
@@ -651,18 +656,35 @@ GLOBALNAME %1
 ;               PE ignores all but 'function' (yasm only).  Other formats ignores
 ;               this completely.
 ; @param %3     Symbol visibility: 'hidden', 'protected', 'internal', and
-;                                   RT_NOTHING (for 'default' visibility).
+;                                  'default' (the default).
 ;               These are ELF attributes, but 'hidden' is translated to
 ;               'private_extern' for the Macho-O format.
 ;               Ignored by other formats.
+; @param %4     The symbol size expression.
 ;
-%macro GLOBALNAME_RAW 3
+%macro GLOBALNAME_RAW 2-4 default, 0
 %ifdef ASM_FORMAT_ELF
-global %1:%2 %3
+ %ifdef __YASM__
+  %ifidn %2,notype       ; YASM doesn't grok notype
+   %ifidn %3,default     ; YASM doesn't grok default
+global %1:%4
+   %else
+global %1:%3 %4
+   %endif
+  %elifidn %3,default     ; YASM doesn't grok default
+global %1:%2 %4
+  %else
+global %1:%2 %3 %4
+  %endif
+ %else
+global %1:%2 %3 %4
+ %endif
 
 %elifdef ASM_FORMAT_PE
  %ifidn %2,function
-  %ifdef __YASM__      ; nasm does not support any attributes, it errors out. So, nasm is no good with control flow guard atm.
+  %ifdef __YASM__
+global %1:function
+  %elif __NASM_VERSION_ID__ >= 0x03016361 ;; @todo NASM: This assuming 3.02rc7 with pull request #233 applied!
 global %1:function
   %else
 global %1
@@ -694,13 +716,14 @@ global %1
 ;               PE ignores all but 'function' (yasm only).  Other formats ignores
 ;               this completely.
 ; @param %3     Symbol visibility: 'hidden', 'protected', 'internal', and
-;                                   RT_NOTHING (for 'default' visibility).
+;                                  'default' (the default).
 ;               These are ELF attributes, but 'hidden' is translated to
 ;               'private_extern' for the Macho-O format.
 ;               Ignored by other formats.
+; @param %4     The symbol size expression.
 ;
-%macro GLOBALNAME_EX 3
-GLOBALNAME_RAW NAME(%1), %2, %3
+%macro GLOBALNAME_EX 2-4
+GLOBALNAME_RAW NAME(%1), %2, %3, %4
 %endmacro
 
 
@@ -710,10 +733,11 @@ GLOBALNAME_RAW NAME(%1), %2, %3
 ; @param %1     The internal symbol name.
 ; @param %2     The external symbol name.
 ; @param %3     ELF and PE attributes: 'function', 'object', 'data', 'notype'.
-;               PE ignores all but 'function' (yasm only).  Other formats ignores
-;               this completely.
+;               PE ignores all but 'function'.  Other formats ignores this
+;               completely.
+; @param %4     The symbol size expression.
 ;
-%macro EXPORTEDNAME_RAW 3
+%macro EXPORTEDNAME_RAW 3-4
  %ifdef ASM_FORMAT_PE
   export %2=%1
  %endif
@@ -722,7 +746,7 @@ GLOBALNAME_RAW NAME(%1), %2, %3
    export %1 %2
   %endif
 %endif
-GLOBALNAME_RAW %1, %3, RT_NOTHING
+GLOBALNAME_RAW %1, %3, default, %4
 %endmacro
 
 ;;
@@ -732,18 +756,28 @@ GLOBALNAME_RAW %1, %3, RT_NOTHING
 ; @param %2     ELF and PE attributes: 'function', 'object', 'data', 'notype'.
 ;               PE ignores all but 'function' (yasm only).  Other formats ignores
 ;               this completely.
+; @param %3     The symbol size expression. Optional.
 ;
-%macro EXPORTEDNAME_EX 2
-EXPORTEDNAME_RAW NAME(%1), %1, %2
+%macro EXPORTEDNAME_EX 2-3 0
+EXPORTEDNAME_RAW NAME(%1), %1, %2, %3
 %endmacro
 
 
 ;;
+; Calculate the size of the procedure %1.
+%define CALC_PROC_SIZE_RAW(a_RawName)  (RT_CONCAT(a_RawName,_EndProc) - a_RawName)
+
+;;
+; Calculate the size of the procedure %1 applying NAME to it.
+%define CALC_PROC_SIZE(a_Name)         CALC_PROC_SIZE_RAW(NAME(a_Name))
+
+;;
 ; Begins a procedure, raw version w/o automatic name mangling.
-; @param 1  The (raw) name.
-; @param 2  Whether to manually apply IBT_ENDBRxx (1) or
-;           not (0, default). Optional
-%macro BEGINPROC_RAW 1-2 0
+; @param %1     The (raw) name.
+; @param %2     Whether to manually apply IBT_ENDBRxx (1) or
+;               not (0, default). Optional
+; @param %3     The symbol size expression. Optional.
+%macro BEGINPROC_RAW 1-3 0,0
  %ifdef RT_ASM_WITH_SEH64_ALT
   SEH64_ALT_START_UNWIND_INFO %1
  %endif
@@ -751,7 +785,7 @@ EXPORTEDNAME_RAW NAME(%1), %1, %2
 global     %1:function
 proc_frame %1
  %else
-GLOBALNAME_RAW %1, function, hidden
+GLOBALNAME_RAW %1, function, hidden, %3
  %endif
 .start_of_prologue:
  %if %2 == 0
@@ -762,7 +796,7 @@ GLOBALNAME_RAW %1, function, hidden
 ;;
 ; Begins a C callable (DECLASM) procedure.
 %macro BEGINPROC 1-2 0
-BEGINPROC_RAW NAME(%1), %2
+BEGINPROC_RAW NAME(%1), %2, CALC_PROC_SIZE(%1)
 %endmacro
 
 
@@ -783,7 +817,7 @@ export  %2=%1
 global     %1:function
 proc_frame %1
  %else
-EXPORTEDNAME_RAW %1, %2, function
+EXPORTEDNAME_RAW %1, %2, function, CALC_PROC_SIZE_RAW(%1)
  %endif
 .start_of_prologue:
  %if %3 == 0
@@ -804,13 +838,7 @@ BEGINPROC_EXPORTED_RAW NAME(%1), %1, %2
  %ifdef RT_ASM_WITH_SEH64
 endproc_frame
  %endif
-GLOBALNAME_RAW %1 %+ _EndProc, , hidden ; no function here, this isn't a valid code flow target.
-%ifdef ASM_FORMAT_ELF
- %ifndef __NASM__ ; nasm does this in the global directive.
-size %1               %1 %+ _EndProc - %1
-size %1 %+ _EndProc   4 ; make it non-zero to shut up warnigns from Linux's objtool.
- %endif
-%endif
+GLOBALNAME_RAW %1 %+ _EndProc, notype, hidden, 4 ; no function here, this isn't a valid code flow target.
     db  0xCC, 0xCC, 0xCC, 0xCC
 
  %ifdef RT_ASM_WITH_SEH64_ALT
@@ -840,7 +868,7 @@ ENDPROC_RAW NAME(%1)
 
 
 ;
-; Do OMF, Mach-O/Yasm and ELF/Yasm segment definitions.
+; Do segment definitions and switch to the code segment.
 ;
 ; For OMF and Mach-O it is to get the segment order right. For Mach-O it's only
 ; to make sure the .bss section ends up last (it's not declared here).
@@ -848,10 +876,12 @@ ENDPROC_RAW NAME(%1)
 ; Neither Mach-O nor ELF have data alignments propagated to the section
 ; alignment, so we have to explictly set the .data section and .rodata/.text
 ; alignments here to 16 bytes to ensure we can cope with most stuff.
-; TODO: Check what nasm does!
 ;
-%ifdef ASM_FORMAT_OMF
- %ifndef RT_NOINC_SEGMENTS
+; We do the same for NASM for now.
+;; @todo NASM: Check what's needed for ELF and Mach-O.
+;
+%ifndef RT_NOINC_SEGMENTS
+ %ifdef ASM_FORMAT_OMF
 
   ; 16-bit segments first (OMF / OS/2 specific).
   %ifdef RT_INCL_16BIT_SEGMENTS
@@ -896,29 +926,23 @@ ENDPROC_RAW NAME(%1)
 
   ; Make the TEXT32 segment default.
   segment TEXT32
- %endif ; RT_NOINC_SEGMENTS
-%endif
 
-%ifdef ASM_FORMAT_MACHO
- %ifdef __YASM__
-  %ifndef RT_NOINC_SEGMENTS
-   section .text
-   section .data   align=16
-   section .rodata align=16
-   section .text    ; Make the .text segment default and w/o attributes
-  %endif
- %endif
-%endif
+ %elifdef ASM_FORMAT_MACHO
+  section .text
+  section .data   align=16
+  section .rodata align=16
+  section .text    ; Make the .text segment default and w/o attributes
 
-%ifdef ASM_FORMAT_ELF
- %ifdef __YASM__
-  %ifndef RT_NOINC_SEGMENTS
-   section .text align=16
-   section .data align=16
-   section .text    ; Make the .text segment default and w/o attributes (or stuc/endstruc will trigger warnings).
-  %endif
+ %elifdef ASM_FORMAT_ELF
+  section .text align=16
+  section .data align=16
+  section .text    ; Make the .text segment default and w/o attributes (or stuc/endstruc will trigger warnings).
+
+ %else
+
+  section .text
  %endif
-%endif
+%endif ; RT_NOINC_SEGMENTS
 
 
 ;;
@@ -1346,20 +1370,24 @@ BEGINPROC_EXPORTED %1, 0
 ;
 %macro RT_NOCRT_BEGINPROC 1
  %ifdef RT_WITH_NOCRT_ALIASES
-  %ifdef IN_RT_STATIC
-BEGINPROC          RT_NOCRT(%1), 1 ; Do our own IBT_ENDBRxx after aliasing/
-  %else
-BEGINPROC_EXPORTED RT_NOCRT(%1), 1 ; Do our own IBT_ENDBRxx after aliasing/
-  %endif
   %ifdef ASM_FORMAT_ELF
    ; ELF
    %ifdef RT_WITH_NOCRT_UNDERSCORE_ALIASES
+    %ifdef __NASM__
+global NAME(_ %+ %1):function weak
+    %else
 global NAME(_ %+ %1):function
 weak NAME(_ %+ %1)
+    %endif
 SAFE_LABEL NAME(_ %+ %1)
-   %endif
+   %endif ; RT_WITH_NOCRT_UNDERSCORE_ALIASES
+
+   %ifdef __NASM__
+global NAME(%1):function weak
+   %else
 global NAME(%1):function
 weak NAME(%1)
+   %endif
 SAFE_LABEL NAME(%1)
 
   %elifndef RT_WITH_GENALIAS_NOCRT_ALIASES
@@ -1369,14 +1397,12 @@ GLOBALNAME _%1
    %endif
 GLOBALNAME %1
   %endif
-        IBT_ENDBRxx
- %else  ; !RT_WITH_NOCRT_ALIASES
-  %ifdef IN_RT_STATIC
+ %endif ; RT_WITH_NOCRT_ALIASES
+ %ifdef IN_RT_STATIC
 BEGINPROC          RT_NOCRT(%1), 0
-  %else
+ %else
 BEGINPROC_EXPORTED RT_NOCRT(%1), 0
-  %endif
- %endif ; !RT_WITH_NOCRT_ALIASES
+ %endif
 %endmacro ; RT_NOCRT_BEGINPROC
 
 
@@ -1408,8 +1434,9 @@ BEGINPROC_EXPORTED RT_NOCRT(%1), 0
 ;; @def xSI
 ; RSI or ESI depending on context.
 
-;; @def xWrtRIP
-; 'wrt rip' for AMD64 targets, nothing for x86 ones.
+;; @def RT_WRT_RIP
+; @param a_Sym  The symbol being referenced.
+; RIP-relative for AMD64 targets, nothing for x86 ones.
 
 %ifdef RT_ARCH_AMD64
  %define xCB 8
@@ -1421,7 +1448,11 @@ BEGINPROC_EXPORTED RT_NOCRT(%1), 0
  %define xDX rdx
  %define xDI rdi
  %define xSI rsi
- %define xWrtRIP wrt rip
+ ;%ifdef __YASM__
+ ; %define RT_WRT_RIP(a_Sym)  a_Sym wrt rip
+ ;%else
+  %define RT_WRT_RIP(a_Sym)  rel a_Sym
+ ;%endif
 %else
  %define xCB 4
  %define xSP esp
@@ -1432,7 +1463,7 @@ BEGINPROC_EXPORTED RT_NOCRT(%1), 0
  %define xDX edx
  %define xDI edi
  %define xSI esi
- %define xWrtRIP
+ %define RT_WRT_RIP(a_Sym)  a_Sym
 %endif
 
 

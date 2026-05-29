@@ -1,4 +1,4 @@
-; $Id: bs3-cpu-state64-1-asm.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bs3-cpu-state64-1-asm.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; BS3Kit - bs3-cpu-state64-1
 ;
@@ -87,7 +87,7 @@ BS3_PROC_BEGIN NAME(bs3CpuState64Worker)
         ;
         ; Save the current register state so we can return with the exact state we entered.
         ;
-        lea     rcx, [BS3_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64CtxCaller)) wrt FLAT]
+        lea     rcx, [RT_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64CtxCaller)) wrt FLAT]
         mov     [rsp], rcx
         call    NAME(Bs3RegCtxSave_c64)
 
@@ -95,9 +95,9 @@ BS3_PROC_BEGIN NAME(bs3CpuState64Worker)
         ; Load the context.  We modify the state to be loaded so that it fits
         ; into the code flow here..
         ;
-        lea     rcx, [BS3_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64CtxToLoad)) wrt FLAT]
+        lea     rcx, [RT_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64CtxToLoad)) wrt FLAT]
         mov     [rcx + BS3REGCTX.rsp], rsp
-        ;lea     rdx, [BS3_WRT_RIP(.ctx_loaded) wrt FLAT] - absolute address cannot be relative. wtf?
+        ;lea     rdx, [RT_WRT_RIP(.ctx_loaded) wrt FLAT] - absolute address cannot be relative. wtf?
         mov     edx, .ctx_loaded wrt FLAT
         mov     [rcx + BS3REGCTX.rip], rdx
         mov     edx, [rbp + 16]         ; Worker address. Putting it in the BX register relative to 16-bit CS.
@@ -156,19 +156,19 @@ BS3_GLOBAL_LOCAL_LABEL .sixtyfour_bit_segment
         ;
         ; We're back in long mode, save the context.
         ;
-        mov     [BS3_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64RCX)) wrt FLAT], rcx
-        lea     rcx, [BS3_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64CtxSaved)) wrt FLAT]
+        mov     [RT_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64RCX)) wrt FLAT], rcx
+        lea     rcx, [RT_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64CtxSaved)) wrt FLAT]
         mov     [rsp], rcx
         call    NAME(Bs3RegCtxSave_c64)
-        lea     rcx, [BS3_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64CtxSaved)) wrt FLAT]
-        mov     rax, [BS3_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64RCX)) wrt FLAT]
+        lea     rcx, [RT_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64CtxSaved)) wrt FLAT]
+        mov     rax, [RT_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64RCX)) wrt FLAT]
         mov     [rcx + BS3REGCTX.rcx], rax
 
         ;
         ; Load the caller's context.
         ;
-        lea     rcx, [BS3_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64CtxCaller)) wrt FLAT]
-        ;lea     rdx, [BS3_WRT_RIP(.return_sequence) wrt FLAT] - absolute address cannot be relative. wtf?
+        lea     rcx, [RT_WRT_RIP(BS3_DATA_NM(g_bs3CpuState64CtxCaller)) wrt FLAT]
+        ;lea     rdx, [RT_WRT_RIP(.return_sequence) wrt FLAT] - absolute address cannot be relative. wtf?
         mov     edx, .return_sequence wrt FLAT
         mov     [rcx + BS3REGCTX.rip], rdx
         mov     edx, 0

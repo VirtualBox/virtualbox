@@ -1,4 +1,4 @@
-; $Id: bs3-cpu-instr-2-gen-asm.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bs3-cpu-instr-2-gen-asm.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; BS3Kit - bs3-cpu-instr-2-gen - assembly helpers for test data generator.
 ;
@@ -203,7 +203,7 @@ BEGINPROC   GenU8_ %+ %1 %+ _Ib
         mov     al, cl
         mov     rdx, r9
 
-        lea     r10, [.first_imm wrt rip]
+        lea     r10, [RT_WRT_RIP(.first_imm)]
         lea     r10, [r10 + r11 * 8]        ;; @todo assert that the entry size is 8 bytes
         jmp     r10
 .return:
@@ -231,7 +231,7 @@ BEGINPROC   GenU16_ %+ %1 %+ _Ib
         mov     ax, cx
         mov     rdx, r9
 
-        lea     r10, [.first_imm wrt rip]
+        lea     r10, [RT_WRT_RIP(.first_imm)]
         lea     r10, [r10 + r11]            ;; @todo assert that the entry size is 9 bytes
         lea     r10, [r10 + r11 * 8]
         jmp     r10
@@ -260,7 +260,7 @@ BEGINPROC   GenU32_ %+ %1 %+ _Ib
         mov     eax, ecx
         mov     rdx, r9
 
-        lea     r10, [.first_imm wrt rip]
+        lea     r10, [RT_WRT_RIP(.first_imm)]
         lea     r10, [r10 + r11 * 8]        ;; @todo assert that the entry size is 8 bytes
         jmp     r10
 .return:
@@ -288,7 +288,7 @@ BEGINPROC   GenU64_ %+ %1 %+ _Ib
         mov     rax, rcx
         mov     rdx, r9
 
-        lea     r10, [.first_imm wrt rip]
+        lea     r10, [RT_WRT_RIP(.first_imm)]
         lea     r10, [r10 + r11]            ;; @todo assert that the entry size is 9 bytes
         lea     r10, [r10 + r11 * 8]
         jmp     r10

@@ -1,4 +1,4 @@
-; $Id: bootsector2-cpu-instr-1-template.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bootsector2-cpu-instr-1-template.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; Bootsector test for misc instruction - multi mode template.
 ;
@@ -219,7 +219,7 @@ BEGINPROC TMPL_NM(TestCvtSize)
         ; Load 64-bit double -2.75 into XMM0
         ;
         mov     rax, 0C006000000000000h
-        movd    xmm0, rax
+        movq    xmm0, rax
         mov     rbx, -1
         cvtsd2si ebx, xmm0
         mov     eax, -3
@@ -227,7 +227,7 @@ BEGINPROC TMPL_NM(TestCvtSize)
 
         mov     rax, 0C006000000000000h
         mov     rbx, -1
-        movd    xmm0, rax
+        movq    xmm0, rax
         cvttsd2si ebx, xmm0
         mov     eax,-2
         TEST_ASSERT_SIMPLE rbx, rax, jz, "CVTTSD2SI EBX"
@@ -460,7 +460,7 @@ BEGINPROC TMPL_NM(TestBSwap)
         ;
 %ifndef TestBSwap16_defined
  %define TestBSwap16_defined
- %macro TestBSwap16 3,
+ %macro TestBSwap16 4
         mov     %3, %2                  ; save the primary register.
   %ifdef TMPL_64BIT
         mov     %2, 0ffffffff98765432h  ; Set the upper bit as well.
@@ -472,27 +472,32 @@ BEGINPROC TMPL_NM(TestBSwap)
   %endif
         bswap   %1
         xchg    %2, %3                  ; Restore and save the result (xSP).
+  %ifdef TMPL_64BIT
+        mov     %4, 0ffffffff98760000h
+        TEST_ASSERT_SIMPLE %3, %4, jz, "Unexpected 16-bit BSWAP error."
+  %else
         TEST_ASSERT_SIMPLE %3, 98760000h, jz, "Unexpected 16-bit BSWAP error."
+  %endif
  %endmacro
 %endif
 
-        TestBSwap16 eax, sAX, sSI
-        TestBSwap16 ebx, sBX, sSI
-        TestBSwap16 ecx, sCX, sSI
-        TestBSwap16 edx, sDX, sSI
-        TestBSwap16 esp, sSP, sSI
-        TestBSwap16 ebp, sBP, sSI
-        TestBSwap16 edi, sDI, sSI
-        TestBSwap16 esi, sSI, sDI
+        TestBSwap16 eax, sAX, sSI, r8
+        TestBSwap16 ebx, sBX, sSI, r8
+        TestBSwap16 ecx, sCX, sSI, r8
+        TestBSwap16 edx, sDX, sSI, r8
+        TestBSwap16 esp, sSP, sSI, r8
+        TestBSwap16 ebp, sBP, sSI, r8
+        TestBSwap16 edi, sDI, sSI, r8
+        TestBSwap16 esi, sSI, sDI, r8
 %ifdef TMPL_64BIT
-        TestBSwap16 r8d,   r8, rax
-        TestBSwap16 r9d,   r9, rax
-        TestBSwap16 r10d, r10, rax
-        TestBSwap16 r11d, r11, rax
-        TestBSwap16 r12d, r12, rax
-        TestBSwap16 r13d, r13, rax
-        TestBSwap16 r14d, r14, rax
-        TestBSwap16 r15d, r15, rax
+        TestBSwap16 r8d,   r8, rax, rbx
+        TestBSwap16 r9d,   r9, rax, rbx
+        TestBSwap16 r10d, r10, rax, rbx
+        TestBSwap16 r11d, r11, rax, rbx
+        TestBSwap16 r12d, r12, rax, rbx
+        TestBSwap16 r13d, r13, rax, rbx
+        TestBSwap16 r14d, r14, rax, rbx
+        TestBSwap16 r15d, r15, rax, rbx
 %endif
 
         ;

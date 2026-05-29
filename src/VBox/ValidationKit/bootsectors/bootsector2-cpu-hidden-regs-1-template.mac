@@ -1,4 +1,4 @@
-; $Id: bootsector2-cpu-hidden-regs-1-template.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bootsector2-cpu-hidden-regs-1-template.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; bootsector2 hidden CPU registers - multi mode template.
 ;
@@ -58,7 +58,7 @@ BEGINPROC TMPL_NM(TestValueRegSZZ)
         je      .done
         jmp     .next
 
-.done
+.done:
         pop     sBX
         pop     sAX
         ret
@@ -104,7 +104,7 @@ BEGINPROC TMPL_NM(doLdtrTests)
         mov     sAX, .szLdtr3
         call    TMPL_NM(TestValueRegSZZ)
 
-.done
+.done:
         pop     sAX
         ret
 
@@ -200,7 +200,7 @@ BEGINPROC TMPL_NM(doTrTests)
 
         ; Note! Loading 0 into TR is not possible, unlike with LDTR.
 
-.done
+.done:
         pop     sAX
         ret
 ENDPROC   TMPL_NM(doTrTests)
@@ -290,13 +290,13 @@ BEGINPROC TMPL_NM(doNullSelTests)
         db      'SS(0) limit:ss_lim', 0
         db      'SS(0) attr:ss_attr', 0
         db      0
-.szSs1Ring2
+.szSs1Ring2:
         db      'ring-2 SS(2) sel:ss', 0
         db      'ring-2 SS(2) base:ss_base', 0
         db      'ring-2 SS(2) limit:ss_lim', 0
         db      'ring-2 SS(2) attr:ss_attr', 0
         db      0
-.szSs3Ring2
+.szSs3Ring2:
         db      'ring-2 SS(3) sel:ss', 0
         db      'ring-2 SS(3) base:ss_base', 0
         db      'ring-2 SS(3) limit:ss_lim', 0
@@ -315,7 +315,7 @@ BEGINPROC TMPL_NM(doTestsWorker)
         call    TMPL_NM(doTrTests)
         call    TMPL_NM(doNullSelTests)
 
-.done
+.done:
         pop     sAX
         ret
 

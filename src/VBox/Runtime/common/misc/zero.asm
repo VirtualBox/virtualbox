@@ -1,4 +1,4 @@
-; $Id: zero.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: zero.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Zero Memory.
 ;
@@ -61,23 +61,15 @@ BEGINCODE
 ;;
 ; 64KB of zero memory with various sized labels.
 ;
-EXPORTEDNAME_EX g_abRTZeroPage, object
-EXPORTEDNAME_EX g_abRTZero4K, object
-EXPORTEDNAME_EX g_abRTZero8K, object
-EXPORTEDNAME_EX g_abRTZero16K, object
-EXPORTEDNAME_EX g_abRTZero32K, object
-EXPORTEDNAME_EX g_abRTZero64K, object
+EXPORTEDNAME_EX g_abRTZeroPage, object,  _4K ;; hmm page size assumption!
+EXPORTEDNAME_EX g_abRTZero4K,   object,  _4K
+EXPORTEDNAME_EX g_abRTZero8K,   object,  _8K
+EXPORTEDNAME_EX g_abRTZero16K,  object, _16K
+EXPORTEDNAME_EX g_abRTZero32K,  object, _32K
+EXPORTEDNAME_EX g_abRTZero64K,  object, _64K
 %ifdef ASM_FORMAT_PE
         resb  0x10000
 %else
         times 0x10000/(16*4) dd 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0
-%endif
-%ifdef ASM_FORMAT_ELF
-size g_abRTZeroPage     _4K
-size g_abRTZero4K       _4K
-size g_abRTZero8K       _8K
-size g_abRTZero16K     _16K
-size g_abRTZero32K     _32K
-size g_abRTZero64K     _64K
 %endif
 

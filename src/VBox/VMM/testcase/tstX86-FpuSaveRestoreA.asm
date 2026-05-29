@@ -1,4 +1,4 @@
-; $Id: tstX86-FpuSaveRestoreA.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: tstX86-FpuSaveRestoreA.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; tstX86-FpuSaveRestore - Experimenting with saving and restoring FPU, assembly bits.
 ;
@@ -46,8 +46,8 @@ BEGINCODE
 
 ;; Prepares a FPU exception.
 BEGINPROC MyFpuPrepXcpt
-        fld tword [g_r80_One  xWrtRIP]
-        fld tword [g_r80_Zero xWrtRIP]
+        fld tword [RT_WRT_RIP(g_r80_One) ]
+        fld tword [RT_WRT_RIP(g_r80_Zero)]
         fdiv    st0
         ret
 ENDPROC   MyFpuPrepXcpt
@@ -55,8 +55,8 @@ ENDPROC   MyFpuPrepXcpt
 
 ;; Same as above, just different address.
 BEGINPROC MyFpuPrepXcpt2
-        fld tword [g_r80_One  xWrtRIP]
-        fld tword [g_r80_Zero xWrtRIP]
+        fld tword [RT_WRT_RIP(g_r80_One) ]
+        fld tword [RT_WRT_RIP(g_r80_Zero)]
         fdiv    st0
         ret
 ENDPROC   MyFpuPrepXcpt2

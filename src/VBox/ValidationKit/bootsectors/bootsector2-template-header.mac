@@ -1,4 +1,4 @@
-; $Id: bootsector2-template-header.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bootsector2-template-header.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; bootsector2 header for multi-mode code templates.
 ;
@@ -694,7 +694,11 @@
  %define xDX  rdx
  %define xDI  rdi
  %define xSI  rsi
- %define xWrtRIP wrt rip
+ %ifdef __YASM__
+  %define RT_WRT_RIP(a_Sym) a_Sym wrt rip
+ %else
+  %define RT_WRT_RIP(a_Sym) rel a_Sym
+ %endif
  %define xPUSHF pushq
  %define xPOPF  popfq
 %else
@@ -711,7 +715,7 @@
   %define xDX  edx
   %define xDI  edi
   %define xSI  esi
-  %define xWrtRIP
+  %define RT_WRT_RIP(a_Sym) a_Sym
   %define xPUSHF pushfd
   %define xPOPF  popfd
  %else
@@ -730,7 +734,7 @@
   %define xDX  dx
   %define xDI  di
   %define xSI  si
-  %define xWrtRIP
+  %define RT_WRT_RIP(a_Sym) a_Sym
   %define xPUSHF pushf
   %define xPOPF  popf
  %endif

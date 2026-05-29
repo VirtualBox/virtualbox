@@ -1,4 +1,4 @@
-; $Id: bootsector2-common-traprec.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bootsector2-common-traprec.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; Boot sector 2 - Trap Records.
 ;
@@ -66,7 +66,7 @@
 ;
 ; @sa BS2_TRAP_BRANCH_INSTR
 ;
-%macro BS2_TRAP_INSTR 3+,
+%macro BS2_TRAP_INSTR 3+
         [section .traprecs]
     istruc BS2TRAPREC
         at BS2TRAPREC.offWhere,           dd (%%trapinstr - BS2_TRAP_RECS_BASE)
@@ -94,7 +94,7 @@
 ; @param    3       The name of the branch label.
 ; @param    4+      The instruction.
 ;
-%macro BS2_TRAP_BRANCH_INSTR 4+,
+%macro BS2_TRAP_BRANCH_INSTR 4+
         [section .traprecs]
     istruc BS2TRAPREC
         at BS2TRAPREC.offWhere,           dd (%%trapinstr - BS2_TRAP_RECS_BASE)
@@ -113,7 +113,7 @@
 ;;
 ; Sets up the trap records section.
 ; @internal
-%macro BS2_TRAP_RECS_BEGIN 0,
+%macro BS2_TRAP_RECS_BEGIN 0
         [section .traprecs] ; Declared in bootsector2-common-init-code.mac
         dq 0ffffffffeeeeeeeeh
 g_aTrapRecs:
@@ -123,7 +123,7 @@ g_aTrapRecs:
 ;;
 ; Terminates the trap records section.
 ; @internal
-%macro BS2_TRAP_RECS_END 0,
+%macro BS2_TRAP_RECS_END 0
         [section .traprecs]
 g_aTrapRecsEnd:
         dq 0ddddddddcccccccch
@@ -138,7 +138,7 @@ g_aTrapRecsEnd:
 ;
 ; @uses Stack
 ;
-%macro BS2_TRAP_RECS_INSTALL 0,
+%macro BS2_TRAP_RECS_INSTALL 0
         push    sAX
         push    sDX
         push    sCX
@@ -160,7 +160,7 @@ g_aTrapRecsEnd:
 ;
 ; @uses Stack
 ;
-%macro BS2_TRAP_RECS_UNINSTALL 0,
+%macro BS2_TRAP_RECS_UNINSTALL 0
         push    sAX
         push    sDX
         push    sCX

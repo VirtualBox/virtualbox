@@ -1,4 +1,4 @@
-; $Id: bootsector2-common-routines.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bootsector2-common-routines.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; Common bootsector routines.
 ;
@@ -85,7 +85,7 @@
 ;*      Global Variables                                                       *
 ;*******************************************************************************
 BEGINCODELOW
-ALIGNDATA(32)
+ALIGNDATA(16)
 ;; Indicates whether the VMMDev is operational.
 GLOBALNAME g_fbBs2VMMDevTesting
         db 1
@@ -98,7 +98,7 @@ g_npszBs2Test:
 g_uscBs2TestErrors:
         dw 0
 ;; The subtest name (DS16:xxx).
-g_npszBs2SubTest
+g_npszBs2SubTest:
         dd 0
 ;; The start error count of the current subtest.
 g_uscBs2SubTestAtErrors:

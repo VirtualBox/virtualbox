@@ -1,4 +1,4 @@
-; $Id: bootsector2-common-init-traps.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bootsector2-common-init-traps.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; Common bootsector code init, traps.
 ;
@@ -466,7 +466,7 @@ bs2Idt32bit_BP:
         dw bs2TrapService32bit,BS2_SEL_CS32,0ee00h, 00000h, 0, 0, 0, 0 ; p=1 dpl=3 type=int32gate
 %define BS2_TRAP_SERVICE_NO     30h
 ;; @todo
-bs2Idt32bitEnd
+bs2Idt32bitEnd:
 
 ;
 ; 32-bit trap handlers.
@@ -1101,7 +1101,7 @@ bs2Idt64bit_BP:
         dw bs2Trap_1eh_64bit, BS2_SEL_CS64, 08e00h, 00000h, 0, 0, 0, 0 ; p=1 dpl=0 type=int64gate
         dw bs2Trap_1fh_64bit, BS2_SEL_CS64, 08e00h, 00000h, 0, 0, 0, 0 ; p=1 dpl=0 type=int64gate
         dw bs2TrapService64bit,BS2_SEL_CS64,0ee00h, 00000h, 0, 0, 0, 0 ; p=1 dpl=3 type=int64gate
-bs2Idt64bitEnd
+bs2Idt64bitEnd:
 
 
 ;
@@ -1337,7 +1337,7 @@ BEGINPROC bs2Trap_XX_64bit
         ;
         ; Fail the test if we got the wrong trap or error code.
         ;
-        mov     al, [g_u8LastTrapNo wrt rip]
+        mov     al, [rel g_u8LastTrapNo]
         cmp     al, [rbx + BS2TRAPREC.u8TrapNo]
         je      .traprec_ok_trap
         push    rax
@@ -1348,7 +1348,7 @@ BEGINPROC bs2Trap_XX_64bit
         add     rsp, 24
 
 .traprec_ok_trap:
-        mov     ax, [g_u64LastTrapErr wrt rip]
+        mov     ax, [rel g_u64LastTrapErr]
         cmp     ax, [rbx + BS2TRAPREC.u16ErrCd]
         je      .traprec_ok_err_cd
         push    rax

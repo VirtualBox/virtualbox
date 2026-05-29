@@ -1,4 +1,4 @@
-; $Id: env-bs2-r0-common.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: env-bs2-r0-common.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; Instruction Test Environment - Boot Sector Type 2, Ring-0.
 ;
@@ -31,12 +31,12 @@
 
 ;; Same as BEGINPROC in asmdefs.mac.
 %macro VBINSTST_BEGINPROC 1
-VBINSTST_GLOBALNAME_EX %1, function hidden
+VBINSTST_GLOBALNAME_EX %1, function, hidden, CALC_PROC_SIZE(%1)
 %endm
 
 ;; Same as ENDPROC in asmdefs.mac.
 %macro VBINSTST_ENDPROC 1,
-VBINSTST_GLOBALNAME_EX %1 %+ _EndProc, function hidden
+VBINSTST_GLOBALNAME_EX %1 %+ _EndProc, notype, hidden, 0
 %endm
 
 ;; Same as NAME in asmdefs.mac.
@@ -88,13 +88,13 @@ BEGINDATA
         section .traprecs progbits valign=8 vfollows=.data align=8 follows=.data
         dq 0ffffffffeeeeeeeeh
         dq 0ddddddddcccccccch
-VBINSTST_GLOBALNAME_EX g_aTrapRecs, hidden
+VBINSTST_GLOBALNAME_EX g_aTrapRecs, object, hidden, g_aTrapRecs - g_aTrapRecsEnd
         VBINSTST_BEGINCODE
 %endmacro
 
 %macro VBINSTST_TRAP_RECS_END 0,
         section .traprecs
-VBINSTST_GLOBALNAME_EX g_aTrapRecsEnd, hidden
+VBINSTST_GLOBALNAME_EX g_aTrapRecsEnd, object, hidden, 0
         dq 0ddddddddcccccccch
         dq 0ffffffffeeeeeeeeh
         VBINSTST_BEGINCODE

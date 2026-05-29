@@ -1,4 +1,4 @@
-; $Id: rdtsc-asm.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: rdtsc-asm.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; RDTSC test, assembly code
 ;
@@ -106,18 +106,18 @@ BEGINPROC DoTscReads
         rdtsc
 
         ; Store the values (64-bit).
-        mov     [NAME(g_aRdTscResults) + 10h xWrtRIP], r8
-        mov     [NAME(g_aRdTscResults) + 18h xWrtRIP], r9
-        mov     [NAME(g_aRdTscResults) + 20h xWrtRIP], r10
-        mov     [NAME(g_aRdTscResults) + 28h xWrtRIP], r11
-        mov     [NAME(g_aRdTscResults) + 30h xWrtRIP], r12
-        mov     [NAME(g_aRdTscResults) + 38h xWrtRIP], r13
-        mov     [NAME(g_aRdTscResults) + 40h xWrtRIP], r14
-        mov     [NAME(g_aRdTscResults) + 48h xWrtRIP], r15
-        mov     [NAME(g_aRdTscResults) + 50h xWrtRIP], rbx
-        mov     [NAME(g_aRdTscResults) + 58h xWrtRIP], rcx
-        mov     [NAME(g_aRdTscResults) + 60h xWrtRIP], rax
-        mov     [NAME(g_aRdTscResults) + 68h xWrtRIP], rdx
+        mov     [RT_WRT_RIP(NAME(g_aRdTscResults) + 10h)], r8
+        mov     [RT_WRT_RIP(NAME(g_aRdTscResults) + 18h)], r9
+        mov     [RT_WRT_RIP(NAME(g_aRdTscResults) + 20h)], r10
+        mov     [RT_WRT_RIP(NAME(g_aRdTscResults) + 28h)], r11
+        mov     [RT_WRT_RIP(NAME(g_aRdTscResults) + 30h)], r12
+        mov     [RT_WRT_RIP(NAME(g_aRdTscResults) + 38h)], r13
+        mov     [RT_WRT_RIP(NAME(g_aRdTscResults) + 40h)], r14
+        mov     [RT_WRT_RIP(NAME(g_aRdTscResults) + 48h)], r15
+        mov     [RT_WRT_RIP(NAME(g_aRdTscResults) + 50h)], rbx
+        mov     [RT_WRT_RIP(NAME(g_aRdTscResults) + 58h)], rcx
+        mov     [RT_WRT_RIP(NAME(g_aRdTscResults) + 60h)], rax
+        mov     [RT_WRT_RIP(NAME(g_aRdTscResults) + 68h)], rdx
 
         pop     r15
         pop     r14

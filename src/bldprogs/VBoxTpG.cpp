@@ -1,4 +1,4 @@
-/* $Id: VBoxTpG.cpp 114002 2026-04-23 23:07:16Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxTpG.cpp 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBox Build Tool - VBox Tracepoint Generator.
  */
@@ -454,7 +454,7 @@ static RTEXITCODE generateAssembly(PSCMSTREAM pStrm)
      * Write the file header.
      */
     ScmStreamPrintf(pStrm,
-                    "; $Id: VBoxTpG.cpp 114002 2026-04-23 23:07:16Z knut.osmundsen@oracle.com $ \n"
+                    "; $Id: VBoxTpG.cpp 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $ \n"
                     ";; @file\n"
                     "; Automatically generated from %s. Do NOT edit!\n"
                     ";\n"
@@ -501,20 +501,40 @@ static RTEXITCODE generateAssembly(PSCMSTREAM pStrm)
                     "  extern section$end$__VTG$__VTGObj\n"
                     " %%else\n"
                     "  ; Creating 32-bit kext of the type MH_OBJECT. No fancy section end/start symbols handy.\n"
+                    "  %%ifdef __?NASM_VER?__\n"
+                    "  [section __VTG,__VTGObj        align=16]\n"
+                    "  %%else\n"
                     "  [section __VTG __VTGObj        align=16]\n"
+                    "  %%endif\n"
                     "VTG_GLOBAL g_aVTGObj_LinkerPleaseNoticeMe, data\n"
+                    "  %%ifdef __?NASM_VER?__\n"
+                    "  [section __VTG,__VTGPrLc.Begin align=16]\n"
+                    "  %%else\n"
                     "  [section __VTG __VTGPrLc.Begin align=16]\n"
+                    "  %%endif\n"
                     "  dq 0, 0 ; Paranoia, related to the fudge below.\n"
                     "VTG_GLOBAL g_aVTGPrLc, data\n"
+                    "  %%ifdef __?NASM_VER?__\n"
+                    "  [section __VTG,__VTGPrLc align=16]\n"
+                    "  %%else\n"
                     "  [section __VTG __VTGPrLc align=16]\n"
+                    "  %%endif\n"
                     "VTG_GLOBAL g_aVTGPrLc_LinkerPleaseNoticeMe, data\n"
+                    "  %%ifdef __?NASM_VER?__\n"
+                    "  [section __VTG,__VTGPrLc.End   align=16]\n"
+                    "  %%else\n"
                     "  [section __VTG __VTGPrLc.End   align=16]\n"
+                    "  %%endif\n"
                     "VTG_GLOBAL g_aVTGPrLc_End, data\n"
                     "  dq 0, 0 ; Fudge to work around unidentified linker where it would otherwise generate\n"
                     "          ; a fix up of the first dword in __VTGPrLc.Begin despite the fact that it were\n"
                     "          ; an empty section with nothing whatsoever to fix up.\n"
                     " %%endif\n"
+                    " %%ifdef __?NASM_VER?__\n"
+                    " [section __VTG,__VTGObj]\n"
+                    " %%else\n"
                     " [section __VTG __VTGObj]\n"
+                    " %%endif\n"
                     "\n"
                     "%%elifdef ASM_FORMAT_PE\n"
                     " %%macro VTG_GLOBAL 2-3\n"
@@ -989,7 +1009,7 @@ static RTEXITCODE generateHeader(PSCMSTREAM pStrm)
     }
 
     ScmStreamPrintf(pStrm,
-                    "/* $Id: VBoxTpG.cpp 114002 2026-04-23 23:07:16Z knut.osmundsen@oracle.com $ */\n"
+                    "/* $Id: VBoxTpG.cpp 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $ */\n"
                     "/** @file\n"
                     " * Automatically generated from %s.  Do NOT edit!\n"
                     " */\n"
@@ -1195,7 +1215,7 @@ static RTEXITCODE generateWrapperHeader(PSCMSTREAM pStrm)
     }
 
     ScmStreamPrintf(pStrm,
-                    "/* $Id: VBoxTpG.cpp 114002 2026-04-23 23:07:16Z knut.osmundsen@oracle.com $ */\n"
+                    "/* $Id: VBoxTpG.cpp 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $ */\n"
                     "/** @file\n"
                     " * Automatically generated from %s.  Do NOT edit!\n"
                     " */\n"
@@ -2523,7 +2543,7 @@ static RTEXITCODE parseArguments(int argc,  char **argv)
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                static const char s_szRev[] = "$Revision: 114002 $";
+                static const char s_szRev[] = "$Revision: 114226 $";
                 const char *psz = RTStrStripL(strchr(s_szRev, ' '));
                 RTPrintf("r%.*s\n", strchr(psz, ' ') - psz, psz);
                 return RTEXITCODE_SUCCESS;

@@ -1,4 +1,4 @@
-; $Id: powcore.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: powcore.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT common pow code - AMD64 & X86.
 ;
@@ -133,11 +133,11 @@ BEGINPROC rtNoCrtMathPowCore
         ; GRP as that is simpler to handle accurately.
         ;
         ; In 64-bit integer range?
-        fld     tword [.s_r80MaxInt xWrtRIP]
+        fld     tword [RT_WRT_RIP(.s_r80MaxInt)]
         fcomip  st0, st1
         jb      .not_integer_exp
 
-        fld     tword [.s_r80MinInt xWrtRIP]
+        fld     tword [RT_WRT_RIP(.s_r80MinInt)]
         fcomip  st0, st1
         ja      .not_integer_exp
 
@@ -245,11 +245,11 @@ BEGINPROC rtNoCrtMathPowCore
         fxch    st0, st1                    ; -> st0=base; st1=1.0; st2=exponent
 
         ; Check if the input is within the fyl2xp1 range.
-        fld     qword [.s_r64AbsFyL2xP1InputMax xWrtRIP]
+        fld     qword [RT_WRT_RIP(.s_r64AbsFyL2xP1InputMax)]
         fcomip  st0, st1
         jbe     .cannot_use_fyl2xp1
 
-        fld     qword [.s_r64AbsFyL2xP1InputMin xWrtRIP]
+        fld     qword [RT_WRT_RIP(.s_r64AbsFyL2xP1InputMin)]
         fcomip  st0, st1
         jae     .cannot_use_fyl2xp1
 
@@ -481,21 +481,21 @@ BEGINPROC rtNoCrtMathPowCore
         ; Pops the two values off the FPU stack and returns NaN.
         ;
 .return_nan:
-        fld     qword [.s_r64QNan xWrtRIP]
+        fld     qword [RT_WRT_RIP(.s_r64QNan)]
         jmp     .return_pop_pop_val
 
         ;
         ; Pops the two values off the FPU stack and returns +Inf.
         ;
 .return_plus_inf:
-        fld     qword [.s_r64PlusInf xWrtRIP]
+        fld     qword [RT_WRT_RIP(.s_r64PlusInf)]
         jmp     .return_pop_pop_val
 
         ;
         ; Pops the two values off the FPU stack and returns -Inf.
         ;
 .return_minus_inf:
-        fld     qword [.s_r64MinusInf xWrtRIP]
+        fld     qword [RT_WRT_RIP(.s_r64MinusInf)]
         jmp     .return_pop_pop_val
 
         ;

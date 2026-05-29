@@ -1,4 +1,4 @@
-; $Id: IEMAllAImpl-x86-amd64.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: IEMAllAImpl-x86-amd64.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IEM - Instruction Implementation in Assembly, x86 target, amd64 host.
 ;
@@ -80,7 +80,7 @@
 ; @param        2       The argument size on x86.
 ;
 %macro BEGINPROC_FASTCALL 2
-GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden
+GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden, CALC_PROC_SIZE_RAW(NAME_FASTCALL(%1,%2,@))
         IBT_ENDBRxx
 %endmacro
 
@@ -407,7 +407,7 @@ GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden
 ; @param        3       The mask of undefined flags to (maybe) save.
 ; @param        4       The mask of flags that are zeroed (and thus doesn't require loading, just clearing)
 ;
-%macro IEM_SAVE_FLAGS_RETVAL 4 0
+%macro IEM_SAVE_FLAGS_RETVAL 3-4 0
  %if (%2 | %3 | %4) != 0
         mov     T1_32, %1                                       ; flags
   %ifdef IEM_AIMPL_WITH_LOAD_AND_SAVE_ALL_STATUS_FLAGS
@@ -501,7 +501,7 @@ GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden
         ; Parity last.
         and     %6, 0xff
  %ifdef RT_ARCH_AMD64
-        lea     T1, [NAME(g_afParity) xWrtRIP]
+        lea     T1, [RT_WRT_RIP(NAME(g_afParity))]
         or      T0_8, [T1 + %6]
  %else
         or      T0_8, [NAME(g_afParity) + %6]
@@ -548,7 +548,7 @@ GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden
  %endif
         and     %4, 0xff
  %ifdef RT_ARCH_AMD64
-        lea     T2, [NAME(g_afParity) xWrtRIP]
+        lea     T2, [RT_WRT_RIP(NAME(g_afParity))]
         or      T0_8, [T2 + %4]
  %else
         or      T0_8, [NAME(g_afParity) + %4]
@@ -684,7 +684,7 @@ GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden
 ; @param        3       The mask of undefined flags to (maybe) save.
 ; @param        4       The mask of flags that are zeroed (and thus doesn't require loading, just clearing)
 ;
-%macro IEM_SAVE_FLAGS_OLD 4 0
+%macro IEM_SAVE_FLAGS_OLD 3-4 0
  %if (%2 | %3 | %4) != 0
         mov     T1_32, [%1]                                     ; flags
   %ifdef IEM_AIMPL_WITH_LOAD_AND_SAVE_ALL_STATUS_FLAGS
@@ -791,7 +791,7 @@ GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden
         ; Parity last.
         and     %6, 0xff
  %ifdef RT_ARCH_AMD64
-        lea     T2, [NAME(g_afParity) xWrtRIP]
+        lea     T2, [RT_WRT_RIP(NAME(g_afParity))]
         or      T1_8, [T2 + %6]
  %else
         or      T1_8, [NAME(g_afParity) + %6]
@@ -838,7 +838,7 @@ GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden
  %endif
         and     %4, 0xff
  %ifdef RT_ARCH_AMD64
-        lea     T2, [NAME(g_afParity) xWrtRIP]
+        lea     T2, [RT_WRT_RIP(NAME(g_afParity))]
         or      T0_8, [T2 + %4]
  %else
         or      T0_8, [NAME(g_afParity) + %4]
@@ -862,7 +862,7 @@ GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden
 ; Emits the equivalent (in actual code) of `lea %1, [.imm0 + %2 * %3]`.
 ;
 %macro IEMIMPL_JUMP_TABLE_TARGET_INT 3
-        lea     %1, [.imm0 xWrtRIP]
+        lea     %1, [RT_WRT_RIP(.imm0)]
   %if   %3 == 5
         lea     T0, [%2 + %2*4]  ; *5
         lea     %1, [%1 + T0]    ; *5 + .imm0
@@ -2122,7 +2122,7 @@ ENDPROC iemAImpl_cmpxchg16b_locked
 ; IEM_DECL_IMPL_DEF(void, iemAImpl_cmpxchg,(uintX_t *puXDst, uintX_t puEax, uintX_t uReg, uint32_t *pEFlags));
 ;
 BEGINCODE
-%macro IEMIMPL_CMPXCHG 2
+%macro IEMIMPL_CMPXCHG 0-2
 BEGINPROC_FASTCALL iemAImpl_cmpxchg_u8 %+ %2, 16
         PROLOGUE_4_ARGS
         IEM_MAYBE_LOAD_FLAGS_OLD A3, (X86_EFL_ZF | X86_EFL_CF | X86_EFL_PF | X86_EFL_AF | X86_EFL_SF | X86_EFL_OF), 0, 0 ; clobbers T0 (eax)
@@ -2209,7 +2209,7 @@ BEGINPROC_FASTCALL iemAImpl_cmpxchg_u64 %+ %2, 16
 ENDPROC iemAImpl_cmpxchg_u64 %+ %2
 %endmacro ; IEMIMPL_CMPXCHG
 
-IEMIMPL_CMPXCHG , ,
+IEMIMPL_CMPXCHG
 IEMIMPL_CMPXCHG lock, _locked
 
 
@@ -4688,7 +4688,7 @@ BEGINPROC_FASTCALL iemAImpl_pmovmskb_u64, 8
         IEMIMPL_MMX_PROLOGUE
 
         movq    mm1, [A1]
-        pmovmskb T0, mm1
+        pmovmskb T0_32, mm1         ; NASM v3 doesn't accept T0 as dest
         mov     [A0], T0
 %ifdef RT_ARCH_X86
         mov     dword [A0 + 4], 0
@@ -4702,7 +4702,7 @@ BEGINPROC_FASTCALL iemAImpl_pmovmskb_u128, 8
         IEMIMPL_SSE_PROLOGUE
 
         movdqu  xmm1, [A1]
-        pmovmskb T0, xmm1
+        pmovmskb T0_32, xmm1        ; NASM v3 doesn't accept T0 as dest
         mov     [A0], T0
 %ifdef RT_ARCH_X86
         mov     dword [A0 + 4], 0
@@ -5278,7 +5278,7 @@ BEGINPROC_FASTCALL iemAImpl_ %+ %1 %+ _u128, 12
         PROLOGUE_2_ARGS
         IEMIMPL_SSE_PROLOGUE
 
-        movd     xmm0, A1
+        movq     xmm0, A1
         %1       xmm0, xmm0
         vmovdqu  [A0], xmm0
 
@@ -5290,7 +5290,7 @@ BEGINPROC_FASTCALL iemAImpl_v %+ %1 %+ _u128, 12
         PROLOGUE_2_ARGS
         IEMIMPL_AVX_PROLOGUE
 
-        movd     xmm0, A1
+        movq     xmm0, A1
         v %+ %1  xmm0, xmm0
         vmovdqu  [A0], xmm0
 

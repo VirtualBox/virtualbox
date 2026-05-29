@@ -1,4 +1,4 @@
-; $Id: bs3-c64-Trap64Generic.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bs3-c64-Trap64Generic.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; BS3Kit - Trap, 64-bit assembly handlers.
 ;
@@ -315,7 +315,7 @@ BS3_PROC_BEGIN Bs3Trap64GenericCommon
         mov     rax, [rax + rbx * 8]
         or      rax, rax
         jnz     .call_handler
-        lea     rax, [BS3_WRT_RIP(Bs3TrapDefaultHandler)]
+        lea     rax, [RT_WRT_RIP(Bs3TrapDefaultHandler)]
 .call_handler:
         sub     rsp, 20h
         mov     [rsp], rdi

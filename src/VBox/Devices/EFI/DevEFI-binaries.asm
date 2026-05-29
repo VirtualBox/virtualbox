@@ -1,4 +1,4 @@
-; $Id: DevEFI-binaries.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: DevEFI-binaries.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; DevEFI - firmware binaries.
 ;
@@ -35,30 +35,18 @@
 
 
 BEGINCONST
-EXPORTEDNAME g_abEfiFirmwareX86
+EXPORTEDNAME_EX g_abEfiFirmwareX86, object, end_x86_firmware - NAME(g_abEfiFirmwareX86)
         incbin "VBoxEFI-x86.fd"
 end_x86_firmware:
-EXPORTEDNAME g_cbEfiFirmwareX86
+EXPORTEDNAME_EX g_cbEfiFirmwareX86, object, 4
         dd  end_x86_firmware - NAME(g_abEfiFirmwareX86)
 
 ALIGNDATA(64)
-EXPORTEDNAME g_abEfiFirmwareAmd64
+EXPORTEDNAME_EX g_abEfiFirmwareAmd64, object, end_amd64_firmware - NAME(g_abEfiFirmwareAmd64)
         incbin "VBoxEFI-amd64.fd"
 end_amd64_firmware:
-EXPORTEDNAME g_cbEfiFirmwareAmd64
+EXPORTEDNAME_EX g_cbEfiFirmwareAmd64, object, 4
         dd  end_amd64_firmware - NAME(g_abEfiFirmwareAmd64)
-
-%ifdef ASM_FORMAT_ELF
-size g_abEfiFirmwareX86 end_x86_firmware - NAME(g_abEfiFirmwareX86)
-type g_abEfiFirmwareX86 object
-size g_cbEfiFirmwareX86 4
-type g_cbEfiFirmwareX86 object
-
-size g_abEfiFirmwareAmd64 end_amd64_firmware - NAME(g_abEfiFirmwareAmd64)
-type g_abEfiFirmwareAmd64 object
-size g_cbEfiFirmwareAmd64 4
-type g_cbEfiFirmwareAmd64 object
-%endif
 
 %ifdef VBOX_WITH_VIRT_ARMV8
 ;
@@ -68,29 +56,17 @@ type g_cbEfiFirmwareAmd64 object
 ; 32-bit firmware:
 ALIGNDATA(64)
 
-EXPORTEDNAME g_abEfiFirmwareArm32
+EXPORTEDNAME_EX g_abEfiFirmwareArm32, object, end_arm32_firmware - NAME(g_abEfiFirmwareArm32)
         incbin "VBoxEFI-arm32.fd"
 end_arm32_firmware:
-EXPORTEDNAME g_cbEfiFirmwareArm32
+EXPORTEDNAME_EX g_cbEfiFirmwareArm32, object, 4
         dd  end_arm32_firmware - NAME(g_abEfiFirmwareArm32)
 
 ALIGNDATA(64)
-EXPORTEDNAME g_abEfiFirmwareArm64
+EXPORTEDNAME_EX g_abEfiFirmwareArm64, object, end_arm64_firmware - NAME(g_abEfiFirmwareArm64)
         incbin "VBoxEFI-arm64.fd"
 end_arm64_firmware:
-EXPORTEDNAME g_cbEfiFirmwareArm64
+EXPORTEDNAME_EX g_cbEfiFirmwareArm64, object, 4
         dd  end_arm64_firmware - NAME(g_abEfiFirmwareArm64)
-
- %ifdef ASM_FORMAT_ELF
-size g_abEfiFirmwareArm32 end_arm32_firmware - NAME(g_abEfiFirmwareArm32)
-type g_abEfiFirmwareArm32 object
-size g_cbEfiFirmwareArm32 4
-type g_cbEfiFirmwareArm32 object
-
-size g_abEfiFirmwareArm64 end_arm64_firmware - NAME(g_abEfiFirmwareArm64)
-type g_abEfiFirmwareArm64 object
-size g_cbEfiFirmwareArm64 4
-type g_cbEfiFirmwareArm64 object
- %endif
 
 %endif ; VBOX_WITH_VIRT_ARMV8

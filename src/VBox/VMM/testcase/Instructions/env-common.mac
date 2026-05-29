@@ -1,4 +1,4 @@
-; $Id: env-common.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: env-common.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; Instruction Test Environment - Common Bits.
 ;
@@ -132,28 +132,28 @@ VBINSTST_BEGINPROC Common_BadValue
         mov     [xSP + 38h], xAX
 
 %ifdef ASM_CALL64_GCC
-        mov     r8d, [VBINSTST_NAME(g_uVBInsTstSubTestIndicator) wrt rip]
+        mov     r8d, [RT_WRT_RIP(VBINSTST_NAME(g_uVBInsTstSubTestIndicator))]
         mov     rcx, [rbp + 10h] ; expected
         mov     rdx, [rbp + 18h] ; actual
         mov     rsi, [rbp + 20h] ; reg#
-        lea     rdi, [.szFmt wrt rip]
+        lea     rdi, [RT_WRT_RIP(.szFmt)]
         VBINSTST_CALL_FN_FAILURE_4
 
 %elifdef ASM_CALL64_MSC
-        mov     r10d, [VBINSTST_NAME(g_uVBInsTstSubTestIndicator) wrt rip]
+        mov     r10d, [RT_WRT_RIP(VBINSTST_NAME(g_uVBInsTstSubTestIndicator))]
         mov     [rsp + 20h], r10
         mov     r9,  [rbp + 10h] ; expected
         mov     r8,  [rbp + 18h] ; actual
         mov     rdx, [rbp + 20h] ; reg#
-        lea     rcx, [.szFmt wrt rip]
+        lea     rcx, [RT_WRT_RIP(.szFmt)]
         VBINSTST_CALL_FN_FAILURE_4
 
 %elifdef ASM_CALL64_BS2
-        mov     sBX, [VBINSTST_NAME(g_uVBInsTstSubTestIndicator) xWrtRIP]
+        mov     sBX, [RT_WRT_RIP(VBINSTST_NAME(g_uVBInsTstSubTestIndicator))]
         mov     sCX, [xBP + xCB + xCB]     ; expected
         mov     sAX, [xBP + xCB + xCB + sCB*1] ; actual
         mov     sDX, [xBP + xCB + xCB + sCB*2] ; reg#
-        lea     sSI, [.szFmt xWrtRIP]
+        lea     sSI, [RT_WRT_RIP(.szFmt)]
         mov     qword [xSP + xCB + 3*sCB], sBX
         mov     qword [xSP + xCB + 2*sCB], sCX
         mov     qword [xSP + xCB + 1*sCB], sAX
@@ -205,21 +205,21 @@ VBINSTST_BEGINPROC Common_MissingTrap
         mov     [xSP + 38h], xAX
 
  %ifdef ASM_CALL64_GCC
-        mov     rdx, [VBINSTST_NAME(g_uVBInsTstSubTestIndicator) wrt rip]
+        mov     rdx, [RT_WRT_RIP(VBINSTST_NAME(g_uVBInsTstSubTestIndicator))]
         movzx   rsi, byte [rbp + 10h] ; expected
-        lea     rdi, [.szFmt wrt rip]
+        lea     rdi, [RT_WRT_RIP(.szFmt)]
         VBINSTST_CALL_FN_FAILURE_2
 
  %elifdef ASM_CALL64_MSC
-        mov     r8d, [VBINSTST_NAME(g_uVBInsTstSubTestIndicator) wrt rip]
+        mov     r8d, [RT_WRT_RIP(VBINSTST_NAME(g_uVBInsTstSubTestIndicator))]
         movzx   rdx, byte [rbp + 10h] ; expected
-        lea     rcx, [.szFmt wrt rip]
+        lea     rcx, [RT_WRT_RIP(.szFmt)]
         VBINSTST_CALL_FN_FAILURE_2
 
  %elifdef ASM_CALL64_BS2
-        mov     sBX, [VBINSTST_NAME(g_uVBInsTstSubTestIndicator) xWrtRIP]
+        mov     sBX, [RT_WRT_RIP(VBINSTST_NAME(g_uVBInsTstSubTestIndicator))]
         mov     sDX, [xBP + xCB + xCB]     ; expected
-        lea     sSI, [.szFmt xWrtRIP]
+        lea     sSI, [RT_WRT_RIP(.szFmt)]
         mov     qword [xSP + xCB + 1*sCB], sBX
         mov     qword [xSP + xCB], sDX
         mov     [xSP], sSI
@@ -281,18 +281,18 @@ VBINSTST_ENDPROC   Common_MissingTrap
 VBINSTST_BEGINDATA
         align 64
         dd      09d8af498h, 09ab3e5f8h
-VBINSTST_GLOBALNAME_EX g_u64Data, data hidden
+VBINSTST_GLOBALNAME_EX g_u64Data, data, hidden, 16
         dq      0
         dd      07d7af797h, 096b36562h
-VBINSTST_GLOBALNAME_EX g_u32Data, data hidden
+VBINSTST_GLOBALNAME_EX g_u32Data, data, hidden, 8
         dd      0
         dd      012305987h
-VBINSTST_GLOBALNAME_EX g_u16Data, data hidden
+VBINSTST_GLOBALNAME_EX g_u16Data, data, hidden, 8
         dw      0
         dw      05865h
         dw      03863h
         dw      02679h
-VBINSTST_GLOBALNAME_EX g_u8Data, data hidden
+VBINSTST_GLOBALNAME_EX g_u8Data, data, hidden, 8
         db      0
         db      90h
         dw      0865ah
@@ -306,7 +306,7 @@ VBINSTST_BEGINCODE
 VBINSTST_BEGINPROC Common_SetupMemReadU8
         push    sAX
         mov     ax, [xSP + sCB + xCB]
-        mov     [VBINSTST_NAME(g_u8Data) xWrtRIP], ax
+        mov     [RT_WRT_RIP(VBINSTST_NAME(g_u8Data))], ax
         pop     sAX
         ret sCB
 VBINSTST_ENDPROC   Common_SetupMemReadU8
@@ -317,7 +317,7 @@ VBINSTST_ENDPROC   Common_SetupMemReadU8
 VBINSTST_BEGINPROC Common_SetupMemReadU16
         push    sAX
         mov     ax, [xSP + sCB + xCB]
-        mov     [VBINSTST_NAME(g_u16Data) xWrtRIP], ax
+        mov     [RT_WRT_RIP(VBINSTST_NAME(g_u16Data))], ax
         pop     sAX
         ret sCB
 VBINSTST_ENDPROC   Common_SetupMemReadU16
@@ -328,7 +328,7 @@ VBINSTST_ENDPROC   Common_SetupMemReadU16
 VBINSTST_BEGINPROC Common_SetupMemReadU32
         push    sAX
         mov     eax, [xSP + sCB + xCB]
-        mov     [VBINSTST_NAME(g_u32Data) xWrtRIP], eax
+        mov     [RT_WRT_RIP(VBINSTST_NAME(g_u32Data))], eax
         pop     sAX
         ret sCB
 VBINSTST_ENDPROC   Common_SetupMemReadU32
@@ -340,12 +340,12 @@ VBINSTST_BEGINPROC Common_SetupMemReadU64
         push    sAX
 %ifdef RT_ARCH_AMD64
         mov     rax, [xSP + sCB + xCB]
-        mov     [VBINSTST_NAME(g_u64Data) xWrtRIP], rax
+        mov     [RT_WRT_RIP(VBINSTST_NAME(g_u64Data))], rax
 %else
         mov     eax, [xSP + sCB + xCB]
-        mov     [VBINSTST_NAME(g_u64Data) xWrtRIP], eax
+        mov     [RT_WRT_RIP(VBINSTST_NAME(g_u64Data))], eax
         mov     eax, [xSP + sCB + xCB + 4]
-        mov     [VBINSTST_NAME(g_u64Data) + 4 xWrtRIP], eax
+        mov     [RT_WRT_RIP(VBINSTST_NAME(g_u64Data) + 4)], eax
 %endif
         pop     sAX
         ret sCB

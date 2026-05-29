@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# $Id: InstructionTestGen.py 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+# $Id: InstructionTestGen.py 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 
 """
 Instruction Test Generator.
@@ -30,7 +30,7 @@ along with this program; if not, see <https://www.gnu.org/licenses>.
 
 SPDX-License-Identifier: GPL-3.0-only
 """
-__version__ = "$Revision: 111747 $";
+__version__ = "$Revision: 114226 $";
 
 
 # pylint: disable=C0103,R0913
@@ -581,10 +581,10 @@ class InstrTest_MemOrGreg_2_Greg(InstrTestBase):
             # Note! Cannot test this in 64-bit mode in any sensible way because the disp is 32-bit
             #       and we cannot (yet) make assumtions about where we're loaded.
             ## @todo Enable testing this in environments where we can make assumptions (boot sector).
-            oGen.write('        %s %s, [VBINSTST_NAME(g_u%sData) xWrtRIP]\n'
+            oGen.write('        %s %s, [RT_WRT_RIP(VBINSTST_NAME(g_u%sData))]\n'
                        % ( self.sInstr, oGen.gregNameBytes(iOp1, cbEffOp), cbEffOp * 8,));
         else:
-            oGen.write('        altsibx%u %s %s, [VBINSTST_NAME(g_u%sData) xWrtRIP] ; iOp1=%s cbEffOp=%s\n'
+            oGen.write('        altsibx%u %s %s, [RT_WRT_RIP(VBINSTST_NAME(g_u%sData))] ; iOp1=%s cbEffOp=%s\n'
                        % ( iScale, self.sInstr, oGen.gregNameBytes(iOp1, cbEffOp), cbEffOp * 8, iOp1, cbEffOp));
         return True;
 
@@ -1540,14 +1540,14 @@ class InstructionTestGen(object): # pylint: disable=R0902
         """
         Indicates that a new subtest has started.
         """
-        self.write('        mov     dword [VBINSTST_NAME(g_uVBInsTstSubTestIndicator) xWrtRIP], __LINE__\n');
+        self.write('        mov     dword [RT_WRT_RIP(VBINSTST_NAME(g_uVBInsTstSubTestIndicator))], __LINE__\n');
         return True;
 
     def newSubTestEx(self, sIndicator):
         """
         Indicates that a new subtest has started.
         """
-        self.write('        mov     dword [VBINSTST_NAME(g_uVBInsTstSubTestIndicator) xWrtRIP], %s\n' % (sIndicator, ));
+        self.write('        mov     dword [RT_WRT_RIP(VBINSTST_NAME(g_uVBInsTstSubTestIndicator))], %s\n' % (sIndicator, ));
         return True;
 
     def needGRegChecker(self, iReg1, iReg2 = None, iReg3 = None):
@@ -1623,7 +1623,7 @@ class InstructionTestGen(object): # pylint: disable=R0902
         Emits a push constant value, taking care of high values on 64-bit hosts.
         """
         if self.oTarget.is64Bit() and uResult >= 0x80000000:
-            self.write('        push    qword [%s wrt rip]\n' % (self.need64BitConstant(uResult),));
+            self.write('        push    qword [RT_WRT_RIP(%s)]\n' % (self.need64BitConstant(uResult),));
         else:
             self.write('        push    dword 0x%x\n' % (uResult,));
         return True;
@@ -1723,7 +1723,7 @@ class InstructionTestGen(object): # pylint: disable=R0902
         Writes the file header.
         Raises exception on trouble.
         """
-        self.write('; $Id: InstructionTestGen.py 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $\n'
+        self.write('; $Id: InstructionTestGen.py 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $\n'
                    ';; @file %s\n'
                    '; Autogenerate by %s %s. DO NOT EDIT\n'
                    ';\n'
@@ -1788,11 +1788,11 @@ class InstructionTestGen(object): # pylint: disable=R0902
                    '%ifdef RT_ARCH_AMD64\n');
         for i in range(len(g_asGRegs64NoSp)):
             if g_asGRegs64NoSp[i]:
-                self.write('        cmp     %s, [g_u64KnownValue_%s wrt rip]\n'
+                self.write('        cmp     %s, [RT_WRT_RIP(g_u64KnownValue_%s)]\n'
                            '        je      .ok_%u\n'
                            '        push    %u         ; register number\n'
                            '        push    %s         ; actual\n'
-                           '        push    qword [g_u64KnownValue_%s wrt rip] ; expected\n'
+                           '        push    qword [RT_WRT_RIP(g_u64KnownValue_%s)] ; expected\n'
                            '        call    VBINSTST_NAME(Common_BadValue)\n'
                            '.ok_%u:\n'
                            % ( g_asGRegs64NoSp[i], g_asGRegs64NoSp[i], i, i, g_asGRegs64NoSp[i], g_asGRegs64NoSp[i], i,));
@@ -1895,9 +1895,9 @@ class InstructionTestGen(object): # pylint: disable=R0902
                            '        push    sDX\n'
                            % (self.oTarget.asGRegs[iTmpReg2],));
                 if cAddrBits == 16:
-                    self.write('        mov     %s, [VBINSTST_NAME(g_pvLow16Mem4K) xWrtRIP]\n' % (sTmpReg2,));
+                    self.write('        mov     %s, [RT_WRT_RIP(VBINSTST_NAME(g_pvLow16Mem4K))]\n' % (sTmpReg2,));
                 else:
-                    self.write('        mov     %s, [VBINSTST_NAME(g_pvLow32Mem4K) xWrtRIP]\n' % (sTmpReg2,));
+                    self.write('        mov     %s, [RT_WRT_RIP(VBINSTST_NAME(g_pvLow32Mem4K))]\n' % (sTmpReg2,));
                 self.write('        add     %s, 0x200\n' % (sTmpReg2,));
                 self.write('        mov     %s, %s\n' % (self.gregNameBits(X86_GREG_xAX, cAddrBits), sTmpReg2,));
                 if u32Disp is not None:
@@ -1928,13 +1928,13 @@ class InstructionTestGen(object): # pylint: disable=R0902
                 sAddrReg = sBaseReg if sBaseReg is not None else sIndexReg;
                 self.write('        mov     %s, [xSP + sCB + MY_PUSH_FLAGS_SIZE + xCB]\n' % (sTmpReg1,));
                 if cAddrBits >= cDefAddrBits:
-                    self.write('        mov     [%s xWrtRIP], %s\n' % (sDataVar, sTmpReg1,));
-                    self.write('        lea     %s, [%s xWrtRIP]\n' % (sAddrReg, sDataVar,));
+                    self.write('        mov     [RT_WRT_RIP(%s)], %s\n' % (sDataVar, sTmpReg1,));
+                    self.write('        lea     %s, [RT_WRT_RIP(%s)]\n' % (sAddrReg, sDataVar,));
                 else:
                     if cAddrBits == 16:
-                        self.write('        mov     %s, [VBINSTST_NAME(g_pvLow16Mem4K) xWrtRIP]\n' % (sAddrReg,));
+                        self.write('        mov     %s, [RT_WRT_RIP(VBINSTST_NAME(g_pvLow16Mem4K))]\n' % (sAddrReg,));
                     else:
-                        self.write('        mov     %s, [VBINSTST_NAME(g_pvLow32Mem4K) xWrtRIP]\n' % (sAddrReg,));
+                        self.write('        mov     %s, [RT_WRT_RIP(VBINSTST_NAME(g_pvLow32Mem4K))]\n' % (sAddrReg,));
                     self.write('        add     %s, %s\n' % (sAddrReg, (randU16() << cEffOpBits) & 0xfff, ));
                     self.write('        mov     [%s], %s\n' % (sAddrReg, sTmpReg1, ));
 
@@ -2082,7 +2082,7 @@ class InstructionTestGen(object): # pylint: disable=R0902
                 # Restore known register values and check the other registers.
                 for sReg in asRegs:
                     if self.oTarget.is64Bit():
-                        self.write('        mov     %s, [g_u64KnownValue_%s wrt rip]\n' % (sReg, sReg,));
+                        self.write('        mov     %s, [RT_WRT_RIP(g_u64KnownValue_%s)]\n' % (sReg, sReg,));
                     else:
                         iReg = self.oTarget.asGRegs.index(sReg)
                         self.write('        mov     %s, 0x%x\n' % (sReg, self.au32Regs[iReg],));
@@ -2154,9 +2154,9 @@ class InstructionTestGen(object): # pylint: disable=R0902
                 oInstrTest = g_aoInstructionTests[iInstrTest];
                 if oInstrTest.isApplicable(self):
                     self.write('%%ifdef ASM_CALL64_GCC\n'
-                               '        lea  rdi, [.szInstr%03u wrt rip]\n'
+                               '        lea  rdi, [RT_WRT_RIP(.szInstr%03u)]\n'
                                '%%elifdef ASM_CALL64_MSC\n'
-                               '        lea  rcx, [.szInstr%03u wrt rip]\n'
+                               '        lea  rcx, [RT_WRT_RIP(.szInstr%03u)]\n'
                                '%%else\n'
                                '        mov  xAX, .szInstr%03u\n'
                                '        mov  [xSP], xAX\n'

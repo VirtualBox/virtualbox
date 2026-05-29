@@ -1,4 +1,4 @@
-; $Id: SUPR3HardenedMainA-posix.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: SUPR3HardenedMainA-posix.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; VirtualBox Support Library - Hardened main(), Posix assembly bits.
 ;
@@ -98,7 +98,7 @@ BEGINPROC supR3HardenedPosixMonitor_Dlopen
         je short .failed
 
         ; Resume the original dlopen call by jumping into the saved code.
-        jmp     [NAME(g_pfnDlopenReal) xWrtRIP]
+        jmp     [RT_WRT_RIP(NAME(g_pfnDlopenReal))]
 
 .failed:
         ;
@@ -156,7 +156,7 @@ BEGINPROC supR3HardenedPosixMonitor_Dlmopen
         je short .failed
 
         ; Resume the original dlopen call by jumping into the saved code.
-        jmp     [NAME(g_pfnDlmopenReal) xWrtRIP]
+        jmp     [RT_WRT_RIP(NAME(g_pfnDlmopenReal))]
 
 .failed:
         ;

@@ -1,4 +1,4 @@
-; $Id: env-bs2-r0-64-big.mac 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: env-bs2-r0-64-big.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; Instruction Test Environment - Big Boot Sector Type 2, Ring-0, 64-Bit.
 ;
@@ -33,13 +33,13 @@
 %undef  ASM_CALL64_GCC
 %undef  ASM_CALL64_BS2
 %undef  ARCH_BITS
-%undef  xWrtRIP
+%undef  RT_WRT_RIP
 
-%define ARCH_BITS       64
+%define ARCH_BITS           64
 %define RT_ARCH_AMD64
 %define ASM_CALL64_BS2
-%define xWrtRIP         wrt rip
-%define RTCCPTR_PRE     qword
+%define RT_WRT_RIP(a_Sym)   a_Sym wrt rip
+%define RTCCPTR_PRE         qword
 
 %include "env-bs2-r0-big.mac"
 

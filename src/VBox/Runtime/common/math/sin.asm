@@ -1,4 +1,4 @@
-; $Id: sin.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: sin.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT sin - AMD64 & X86.
 ;
@@ -107,7 +107,7 @@ RT_NOCRT_BEGINPROC sin
         ; input value directly.
         fld     st0                         ; duplicate st0
         fabs                                ; make it an absolute (positive) value.
-        fld     qword [.s_r64Tiny xWrtRIP]
+        fld     qword [RT_WRT_RIP(.s_r64Tiny)]
         fcomip  st1                         ; compare s_r64Tiny and fabs(input)
         ja      .return_tiny_number_as_is   ; jump if fabs(input) is smaller
 
@@ -116,7 +116,7 @@ RT_NOCRT_BEGINPROC sin
         ; allow rtNoCrtMathSinCore to assume it won't see values very close to
         ; zero, except by cos -> sin conversion where they won't be relevant to
         ; any assumpttions about precision approximation.
-        fld     qword [.s_r64FSinOkay xWrtRIP]
+        fld     qword [RT_WRT_RIP(.s_r64FSinOkay)]
         fcomip  st1
         ffreep  st0                         ; drop the fabs(input) value
         ja      .do_sin

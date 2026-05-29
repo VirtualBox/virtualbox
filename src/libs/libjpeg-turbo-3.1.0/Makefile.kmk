@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for libjpeg-turbo.
 #
@@ -176,8 +176,8 @@ ifdef VBOX_WITH_LIBJPEG_SIMD
   VBox-libjpeg_DEFS += MACHO
  endif
 
- VBox-libjpeg_INCS.amd64 += simd/nasm
- VBox-libjpeg_INCS.x86 += simd/nasm
+ VBox-libjpeg_INCS.amd64 += simd/x86_64 simd/nasm
+ VBox-libjpeg_INCS.x86   += simd/i386   simd/nasm
  VBox-libjpeg_INCS.arm64 += simd/arm
 
  VBox-libjpeg_SOURCES.x86 += \

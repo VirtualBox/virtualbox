@@ -1,4 +1,4 @@
-; $Id: tstX86-1A.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: tstX86-1A.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; X86 instruction set exploration/testcase #1.
 ;
@@ -113,16 +113,26 @@ g_r80_Three:    dt 3.0
 g_r80_Ten:      dt 10.0
 g_r80_Eleven:   dt 11.0
 g_r80_ThirtyTwo:dt 32.0
-g_r80_Min:      dt 000018000000000000000h
-g_r80_Max:      dt 07ffeffffffffffffffffh
-g_r80_Inf:      dt 07fff8000000000000000h
-g_r80_QNaN:     dt 07fffc000000000000000h
-g_r80_QNaNMax:  dt 07fffffffffffffffffffh
-g_r80_NegQNaN:  dt 0ffffc000000000000000h
-g_r80_SNaN:     dt 07fff8000000000000001h
-g_r80_SNaNMax:  dt 07fffbfffffffffffffffh
-g_r80_DnMin:    dt 000000000000000000001h
-g_r80_DnMax:    dt 000007fffffffffffffffh
+g_r80_Min:      dq 08000000000000000h
+                dw 00001h
+g_r80_Max:      dq 0ffffffffffffffffh
+                dw 07ffeh
+g_r80_Inf:      dq 08000000000000000h
+                dw 07fffh
+g_r80_QNaN:     dq 0c000000000000000h
+                dw 07fffh
+g_r80_QNaNMax:  dq 0ffffffffffffffffh
+                dw 07fffh
+g_r80_NegQNaN:  dq 0c000000000000000h
+                dw 0ffffh
+g_r80_SNaN:     dq 08000000000000001h
+                dw 07fffh
+g_r80_SNaNMax:  dq 0bfffffffffffffffh
+                dw 07fffh
+g_r80_DnMin:    dq 00000000000000001h
+                dw 00000h
+g_r80_DnMax:    dq 07fffffffffffffffh
+                dw 00000h
 
 g_r32V1:        dd 3.2
 g_r32V2:        dd -1.9
@@ -136,7 +146,8 @@ g_r32D0:        dd 000200000h
 ;; @name Upconverted Floating point constants
 ; @{
 ;g_r80_r32_0dot1:        dt 0.1
-g_r80_r32_3dot2:        dt 04000cccccd0000000000h
+g_r80_r32_3dot2:        dq 0cccccd0000000000h
+                        dw 04000h
 ;g_r80_r32_Zero:         dt 0.0
 ;g_r80_r32_One:          dt 1.0
 ;g_r80_r32_Two:          dt 2.0
@@ -149,9 +160,9 @@ g_r80_r32_3dot2:        dt 04000cccccd0000000000h
 ;; @name Decimal constants.
 ; @{
 g_u64Zero:      dd 0
-g_u32Zero:      dw 0
+g_u32Zero:      dd 0
 g_u64Two:       dd 2
-g_u32Two:       dw 2
+g_u32Two:       dd 2
 ;; @}
 
 
@@ -165,18 +176,10 @@ GLOBALNAME g_aTrapInfo
 ;   Defined Constants And Macros                                              ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Reference a variable
-%ifdef RT_ARCH_AMD64
- %define REF(a_Name)     a_Name wrt rip
-%else
- %define REF(a_Name)     a_Name
-%endif
+%define REF(a_Name)         RT_WRT_RIP(a_Name)
 
 ;; Reference a global variable
-%ifdef RT_ARCH_AMD64
- %define REF_EXTERN(a_Name)     NAME(a_Name) wrt rip
-%else
- %define REF_EXTERN(a_Name)     NAME(a_Name)
-%endif
+%define REF_EXTERN(a_Name)  RT_WRT_RIP(NAME(a_Name))
 
 
 ;;
@@ -466,10 +469,10 @@ BEGINCODE
         mov     eax, 40000000 + __LINE__
         jmp     .return
 %%ok1:
-        mov     eax, [4 + %3]
+        mov     eax, [%3 + 4]
         cmp     dword [%1 + X86FXSTATE.st0 + %2 * 16 + 4], eax
         jne     %%bad
-        mov     ax, [8 + %3]
+        mov     ax, [%3 + 4]
         cmp     word  [%1 + X86FXSTATE.st0 + %2 * 16 + 8], ax
         jne     %%bad
 %endmacro
@@ -2483,9 +2486,9 @@ extern NAME(RTTestISub)
 %macro SetSubTest 1
 %ifdef RT_ARCH_AMD64
  %ifdef ASM_CALL64_GCC
-        lea     rdi, [%%s_szName wrt rip]
+        lea     rdi, [RT_WRT_RIP(%%s_szName)]
  %else
-        lea     rcx, [%%s_szName wrt rip]
+        lea     rcx, [RT_WRT_RIP(%%s_szName)]
  %endif
         call    NAME(RTTestISub)
 %else
