@@ -993,13 +993,13 @@ RTR3DECL(int) RTTestRestoreAssertions(RTTEST hTest);
  *                          that can be used as return value.
  */
 #define RTTEST_CHECK_RC_OK_BREAK(hTest, rcExpr) \
-    do { \
+    if (1) { \
         int rcCheck = (rcExpr); \
         if (RT_FAILURE(rcCheck)) { \
             RTTestFailed((hTest), "line %u: %s: %Rrc", __LINE__, #rcExpr, rcCheck); \
             break; \
         } \
-    } while (0)
+    } else do {} while (0)
 /** @def RTTEST_CHECK_RC_OK_RET
  * Check whether a IPRT style status code indicates success.
  *
@@ -1549,13 +1549,13 @@ RTR3DECL(int) RTTestIRestoreAssertions(void);
  * @param   rcExpr          The expression resulting in an IPRT status code.
  */
 #define RTTESTI_CHECK_RC_OK_BREAK(rcExpr) \
-    do { \
+    if (1) { \
         int rcCheck = (rcExpr); \
         if (RT_FAILURE(rcCheck)) { \
             RTTestIFailed("line %u: %s: %Rrc", __LINE__, #rcExpr, rcCheck); \
             break; \
         } \
-    } while (0)
+    } else do {} while (0)
 /** @def RTTESTI_CHECK_RC_OK_RET
  * Check whether a IPRT style status code indicates success.
  *
