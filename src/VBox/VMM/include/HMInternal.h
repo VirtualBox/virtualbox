@@ -1,4 +1,4 @@
-/* $Id: HMInternal.h 113503 2026-03-23 13:48:19Z knut.osmundsen@oracle.com $ */
+/* $Id: HMInternal.h 114221 2026-05-29 20:53:08Z knut.osmundsen@oracle.com $ */
 /** @file
  * HM - Internal header file.
  */
@@ -510,6 +510,9 @@ typedef struct HMR0PERVM
     /** Set if we can support 64-bit guests or not. */
     bool                        fAllow64BitGuests;
     bool                        afAlignment1[1];
+
+    /** State variable for SUPR0EnableHwvirtForVm. */
+    R0PTRTYPE(void *)           pvSupR0EnableState;
 
     /** AMD-V specific data. */
     struct HMR0SVMVM
