@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c 114173 2026-05-21 14:33:00Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPDrv-linux.c 114222 2026-05-29 20:59:06Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -78,17 +78,38 @@
 
 #include <iprt/asm-amd64-x86.h>
 
-#if RTLNX_VER_RANGE(6,16,0, 7,1,0) && defined(CONFIG_MODULES) && defined(CONFIG_KVM_GENERIC_HARDWARE_ENABLING) && defined(VBOX_WITH_HOST_VMX)
-# if defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86)
-#  include <linux/kvm_host.h>
-#  define SUPDRV_LINUX_HAS_KVM_HWVIRT_API
-# endif
-#endif
 #if RTLNX_VER_MIN(5,13,0)
 # include <linux/vtime.h>
 #else
 # define vtime_account_guest_enter() do { } while(0)
 # define vtime_account_guest_exit()  do { } while(0)
+#endif
+
+#ifndef IS_ENABLED
+# define IS_ENABLED(a) 0
+#endif
+#if RTLNX_VER_MIN(6,16,0) && IS_ENABLED(CONFIG_KVM_X86) && (defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86)) && defined(VBOX_WITH_HOST_VMX)
+/*
+ * Open /dev/kvm and create a dummy VM for each VBox VM process, to ensure that
+ * KVM initializes VT-x for us and can be used in parallel.  We have to do this
+ * on a per-process basis, as KVM will reference task_struct::mm of the creator
+ * and we don't want the first VM process's mm to be kept around for ever as it
+ * could have unwanted side-effects ("leaks").
+ *
+ * The SUPDRV_LINUX_WITH_DUMMY_KVM_VM_OPENED_VIA_INODE option is for bypassing
+ * the root file system, /dev populating, and associated risks by opening the
+ * kvm device via our own pseudo file system.  This is obviously a bit more
+ * complicated.
+ *
+ * Note! Unlike the original SUPDRV_LINUX_HAS_KVM_HWVIRT_API approach, this is
+ *       not restricted to 6.16+. It should work a lot further back.
+ */
+# define SUPDRV_LINUX_WITH_DUMMY_KVM_VM
+# define SUPDRV_LINUX_WITH_DUMMY_KVM_VM_OPENED_VIA_INODE
+# include <linux/file.h>
+# include <linux/fdtable.h>
+# include <linux/kvm_host.h>
+# include <linux/pseudo_fs.h>
 #endif
 
 
@@ -177,6 +198,10 @@ static void VBoxDevRelease(struct device *pDev);
 static int  supdrvLinuxLdrModuleNotifyCallback(struct notifier_block *pBlock,
                                                unsigned long uModuleState, void *pvModule);
 #endif
+#ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM_OPENED_VIA_INODE
+static int  supdrvLnxFsInitCtx(struct fs_context *pFsCtx);
+static void supdrvLnxFsRelease(void);
+#endif
 
 
 /*********************************************************************************************************************************
@@ -187,22 +212,28 @@ static int  supdrvLinuxLdrModuleNotifyCallback(struct notifier_block *pBlock,
  */
 static SUPDRVDEVEXT         g_DevExt;
 
-#ifdef SUPDRV_LINUX_HAS_KVM_HWVIRT_API
-/** Whether we have called kvm_enable_virtualization(). */
-static bool                                     g_fEnabledHwvirtUsingKvm;
-/** Whether we think AMD-V is supported by the CPU. */
-static bool                                     g_fCpuSupportsSvm;
-/** Whether we think VT-x is supported by the CPU. */
-static bool                                     g_fCpuSupportsVmx;
-/** Whether we need to put the corresponding KVM function pointers. */
-static bool                                     g_fPutKvmEnableVirtualization, g_fPutKvmDisableVirtualization;
-/** Function pointer to kvm_enable_virtualization(). */
-static __typeof__(kvm_enable_virtualization)   *g_pfnKvmEnableVirtualization;
-/** Function pointer to kvm_disable_virtualization(). */
-static __typeof__(kvm_disable_virtualization)  *g_pfnKvmDisableVirtualization;
-/** Pointer to the KVM hardware specific module. */
-static struct module                           *g_pKvmHwvirtModule;
-#endif
+#ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM
+/** Spinlock protecting g_cDevKvmFileRefs & g_pDevKvmFile. */
+static spinlock_t                               g_DevKvmSpinlock;
+/** File for /dev/kvm. */
+static struct file                             *g_pDevKvmFile = NULL;
+/** Reference counter for g_pDevKvmFile. */
+static uint32_t volatile                        g_cDevKvmFileRefs = 0;
+# ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM_OPENED_VIA_INODE
+/** Internal file system so we can open KVM_MINOR w/o going thru the file system. */
+static struct vfsmount                         *g_pSupDrvLnxFsMnt = NULL;
+/** References counter for the internal file system. */
+static int                                      g_cSupDrvLnxFsRefs = 0;
+/** Internal file system so we can open KVM_MINOR w/o going thru the file system. */
+static struct file_system_type                  g_SupDrvLnxFsType =
+{
+    .name               = "supdrv",
+    .owner              = THIS_MODULE,
+    .init_fs_context    = supdrvLnxFsInitCtx,
+    .kill_sb            = kill_anon_super
+};
+# endif /* SUPDRV_LINUX_WITH_DUMMY_KVM_VM_OPENED_VIA_INODE */
+#endif /* SUPDRV_LINUX_WITH_DUMMY_KVM_VM */
 
 #if RTLNX_VER_MIN(6,15,0) && (defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86))
 /** Pointer to the switch_fpu_return function. */
@@ -375,7 +406,7 @@ DECLINLINE(RTUID) vboxdrvLinuxEuid(void)
 #endif
 
 
-#if (RTLNX_VER_MIN(6,15,0) || defined(SUPDRV_LINUX_HAS_KVM_HWVIRT_API)) && (defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86))
+#if RTLNX_VER_MIN(6,15,0) && (defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86))
 /**
  * Dynamically resolves a function we need.
  *
@@ -408,116 +439,6 @@ supdrvLinuxFunction(const char *pszModule, const char *pszFunctionNm, PFNRT *ppf
 }
 #endif
 
-#ifdef SUPDRV_LINUX_HAS_KVM_HWVIRT_API
-
-/**
- * This is a hack/workaround that attempts to detect whether
- * kvm_enable_virtualization() is likely to have been called. See
- * @bugref{10963#c14} for details.
- */
-static bool supdrvLinuxIsKvmVirtEnabledLikelyCalled(void)
-{
-    /** @todo Try get address of kvm_usage_count and its mutex via kallsyms_lookup_name()
-      *       which in turn should be looked up by a kprobe. */
-    /*
-     * We don't disable preemption/interrupts here because we assume all CPUs will have
-     * the relevant bits identical in CR4 and EFER.
-     */
-    uint64_t const fVmxeMask = RT_BIT_64(13); /* CR4.VMXE bit. */
-    if (   g_fCpuSupportsVmx
-        && (ASMGetCR4() & fVmxeMask))
-        return true;
-
-    uint32_t const idEfer    = 0xc0000080; /* EFER MSR. */
-    uint64_t const fSvmeMask = RT_BIT_64(12); /* EFER.SVME bit. */
-    if (   g_fCpuSupportsSvm
-        && (ASMRdMsr(idEfer) & fSvmeMask))
-           return true;
-
-    return false;
-}
-
-
-/**
- * Initializes usage of KVM hardware-virtualization symbols.
- */
-static int __init supdrvLinuxInitKvmSymbols(PRTDBGKRNLINFO phKrnlInfo)
-{
-    /*
-     * Figure out the module name first using SUPR0GetVTSupport
-     * and just stop early if we cannot figure out the module name.
-     */
-    uint32_t fCaps = 0;
-    int rc = SUPR0GetVTSupport(&fCaps);
-    g_fCpuSupportsSvm = (fCaps & SUPVTCAPS_AMD_V) || rc == VERR_SVM_NO_SVM;
-    g_fCpuSupportsVmx = (fCaps & SUPVTCAPS_VT_X)  || rc == VERR_VMX_NO_VMX;
-    const char * const pszModName = g_fCpuSupportsVmx ? "kvm_intel"
-                                  : g_fCpuSupportsSvm ? "kvm_amd" : NULL;
-    if (!pszModName)
-    {
-        printk(KERN_WARNING "vboxdrv: Cannot determine KVM module name for this CPU architecture! (%d)\n", rc);
-        return RT_FAILURE(rc) ? rc : VERR_NOT_FOUND;
-    }
-
-    /*
-     * Get the enable & disable functions.
-     */
-    g_fPutKvmEnableVirtualization = supdrvLinuxFunction("kvm", "kvm_enable_virtualization",
-                                                        (PFNRT *)&g_pfnKvmEnableVirtualization, phKrnlInfo);
-    if (g_pfnKvmEnableVirtualization)
-    {
-        g_fPutKvmDisableVirtualization = supdrvLinuxFunction("kvm", "kvm_disable_virtualization",
-                                                             (PFNRT *)&g_pfnKvmDisableVirtualization, phKrnlInfo);
-        if (g_pfnKvmDisableVirtualization)
-        {
-            /*
-             * Try to obtain a reference to kvm_intel/kvm_amd module in addition to the
-             * reference to the kvm module. If we fail, we will not try to use KVM for
-             * enabling/disable hardware-virtualization. This is due a a bug in the Linux
-             * kernel, see @bugref{10963}.
-             *
-             * Note! find_module isn't exported, so we have to temporarily disable the
-             *       indirect branch track machinery in order to call it safely.
-             *       (Setting the SUPPORESS bit to 1 probably won't help much here, as
-             *       the call is done via __x86_indirect_thunk_xxx.)
-             */
-            struct module * (*pfnFindModule)(const char *) = NULL;
-            bool fPutFindModule = supdrvLinuxFunction(NULL, "find_module", (PFNRT *)&pfnFindModule, phKrnlInfo);
-            if (pfnFindModule)
-            {
-                struct module       *pModule;
-                RTLNX_CET_UNSAFE_CALL(pfnFindModule, pModule = pfnFindModule(pszModName));
-                if (fPutFindModule)
-                    symbol_put_addr(pfnFindModule);
-
-                if (pModule)
-                {
-                    if (try_module_get(pModule))
-                    {
-                        g_pKvmHwvirtModule = pModule;
-                        return VINF_SUCCESS;
-                    }
-                    printk(KERN_WARNING "vboxdrv: Failed to obtain reference for the KVM impl module (%s)\n", pszModName);
-                }
-                else
-                    printk(KERN_WARNING "vboxdrv: Failed to find the KVM impl module (%s)\n", pszModName);
-            }
-            if (g_fPutKvmDisableVirtualization)
-                symbol_put_addr(g_pfnKvmDisableVirtualization);
-        }
-        if (g_fPutKvmEnableVirtualization)
-            symbol_put_addr(g_pfnKvmEnableVirtualization);
-    }
-
-    g_pfnKvmDisableVirtualization  = NULL;
-    g_pfnKvmEnableVirtualization   = NULL;
-    g_pKvmHwvirtModule             = NULL;
-    g_fPutKvmEnableVirtualization  = false;
-    g_fPutKvmDisableVirtualization = false;
-    return VERR_NOT_FOUND;
-}
-
-#endif /* SUPDRV_LINUX_HAS_KVM_HWVIRT_API */
 
 /**
  * Initialize module.
@@ -532,6 +453,9 @@ static int __init VBoxDrvLinuxInit(void)
     if (!vbox_mod_should_load())
         return -EINVAL;
 
+#ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM
+    spin_lock_init(&g_DevKvmSpinlock);
+#endif
 #if RTLNX_VER_MIN(5,0,0)
     spin_lock_init(&g_supdrvLinuxWrapperModuleSpinlock);
     RTListInit(&g_supdrvLinuxWrapperModuleList);
@@ -582,23 +506,14 @@ static int __init VBoxDrvLinuxInit(void)
                         /*
                          * Resolve symbols that was made difficult to access with 6.19.
                          */
-#if (defined(SUPDRV_LINUX_HAS_KVM_HWVIRT_API) || RTLNX_VER_MIN(6,15,0)) && (defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86))
+#if RTLNX_VER_MIN(6,15,0) && (defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86))
                         RTDBGKRNLINFO hKrnlInfo = NIL_RTDBGKRNLINFO;
-# if RTLNX_VER_MIN(6,15,0)
                         /* Needed for FPU management. */
                         supdrvLinuxFunction(NULL, "switch_fpu_return",  (PFNRT *)&g_pfnSwitchFpuReturn,  &hKrnlInfo);
-# endif
 # ifdef SUPDRV_LINUX_DYNAMIC_CR4_FUNCTIONS
                         /* Shadow CR4 */
                         supdrvLinuxFunction(NULL, "cr4_update_irqsoff", (PFNRT *)&g_pfnCr4UpdateIrqsoff, &hKrnlInfo);
                         supdrvLinuxFunction(NULL, "cr4_read_shadow",    (PFNRT *)&g_pfnCr4ReadShadow,    &hKrnlInfo);
-# endif
-# ifdef SUPDRV_LINUX_HAS_KVM_HWVIRT_API
-                        int rc2 = supdrvLinuxInitKvmSymbols(&hKrnlInfo);
-                        if (RT_SUCCESS(rc2))
-                            printk(KERN_INFO "vboxdrv: Found KVM hardware-virtualization symbols\n");
-                        else
-                            printk(KERN_WARNING "vboxdrv: Failed to find KVM hardware-virtualization symbols\n");
 # endif
                         if (hKrnlInfo != NIL_RTDBGKRNLINFO)
                             RTR0DbgKrnlInfoRelease(hKrnlInfo);
@@ -668,22 +583,8 @@ static void __exit VBoxDrvLinuxUnload(void)
 #endif
 
     /*
-     * Release symbol and module references.
+     * Release symbol references.
      */
-#ifdef SUPDRV_LINUX_HAS_KVM_HWVIRT_API
-    /* Put the kvm symbols and module. */
-    if (g_fPutKvmEnableVirtualization && g_pfnKvmEnableVirtualization)
-        symbol_put_addr(g_pfnKvmEnableVirtualization);
-    g_pfnKvmEnableVirtualization = NULL;
-    if (g_fPutKvmDisableVirtualization && g_pfnKvmDisableVirtualization)
-        symbol_put_addr(g_pfnKvmDisableVirtualization);
-    if (g_pKvmHwvirtModule)
-    {
-        module_put(g_pKvmHwvirtModule);
-        g_pKvmHwvirtModule = NULL;
-    }
-#endif
-
 #ifdef SUPDRV_LINUX_DYNAMIC_CR4_FUNCTIONS
     /* We don't need to put these, they should be in core_kernel_text(). */
     g_pfnCr4UpdateIrqsoff = NULL;
@@ -715,9 +616,34 @@ static void __exit VBoxDrvLinuxUnload(void)
 #endif
 
     /*
-     * Destroy GIP, delete the device extension and terminate IPRT.
+     * Destroy GIP and delete the device extension.
      */
     supdrvDeleteDevExt(&g_DevExt);
+
+#ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM
+    /*
+     * Make sure we release the /dev/kvm file. (Shouldn't be open here!)
+     */
+    spin_lock(&g_DevKvmSpinlock);
+    struct file *pFile = g_pDevKvmFile;
+    g_pDevKvmFile     = NULL;
+    g_cDevKvmFileRefs = 0;
+    spin_unlock(&g_DevKvmSpinlock);
+    if (pFile)
+    {
+        printk(KERN_WARNING "vboxdrv: g_pDevKvmFile not zero at unload!\n");
+        fput(pFile);
+# ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM_OPENED_VIA_INODE
+        supdrvLnxFsRelease();
+        AssertMsg(g_cSupDrvLnxFsRefs == 0 && g_pSupDrvLnxFsMnt == NULL,
+                  ("g_cSupDrvLnxFsRefs=%d g_pSupDrvLnxFsMnt=%p\n", g_cSupDrvLnxFsRefs, g_pSupDrvLnxFsMnt));
+# endif
+    }
+#endif
+
+    /*
+     * Finally terminate IPRT.
+     */
     RTR0TermForced();
 }
 
@@ -1915,45 +1841,314 @@ int VBOXCALL    supdrvOSMsrProberModify(RTCPUID idCpu, PSUPMSRPROBER pReq)
 }
 
 #endif /* SUPDRV_WITH_MSR_PROBER */
+#ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM_OPENED_VIA_INODE
 
+/** Callback referenced in g_SupDrvLnxFsType. */
+static int supdrvLnxFsInitCtx(struct fs_context *pFsCtx)
+{
+    return init_pseudo(pFsCtx, 0x0c0ffee0) ? 0 : -ENOMEM;
+}
+
+
+/** Releases an inode allocated by supdrvLnxFsPathToDevNoWithInode. */
+static void supdrvLnxFsRelease(void)
+{
+    Assert(g_cSupDrvLnxFsRefs > 0);
+    simple_release_fs(&g_pSupDrvLnxFsMnt, &g_cSupDrvLnxFsRefs);
+}
+
+
+/** Initializes a path for @a uDevNo. */
+static int supdrvLnxFsPathForDevNo(struct path *pPath, dev_t uDevNo)
+{
+    /*
+     * Reference/create the dummy file system.
+     */
+    int rc = simple_pin_fs(&g_SupDrvLnxFsType, &g_pSupDrvLnxFsMnt, &g_cSupDrvLnxFsRefs);
+    if (rc >= 0)
+    {
+        /*
+         * Allocate an initialize the inode for uDevNo.
+         */
+        struct inode *pInode = alloc_anon_inode(g_pSupDrvLnxFsMnt->mnt_sb);
+        if (!IS_ERR(pInode))
+        {
+            init_special_inode(pInode, 0666 | S_IFCHR, uDevNo);
+
+            /*
+             * Now, do the path. We need a dentry first of all.
+             * Note! The d_obtain_alias call consumes the pInode reference
+             *       both in the success and failure paths.
+             */
+            pPath->dentry = d_obtain_alias(pInode);
+            if (!IS_ERR(pPath->dentry))
+            {
+                pPath->mnt = mntget(g_pSupDrvLnxFsMnt);
+                return 0;
+            }
+            rc = PTR_ERR(pPath->dentry);
+            printk(KERN_ERR"vboxdrv: d_obtain_alias failed: %d\n", rc);
+        }
+        else
+        {
+            rc = PTR_ERR(pInode);
+            printk(KERN_ERR"vboxdrv: alloc_anon_inode failed: %d\n", rc);
+        }
+        simple_release_fs(&g_pSupDrvLnxFsMnt, &g_cSupDrvLnxFsRefs);
+    }
+    else
+        printk(KERN_ERR"vboxdrv: simple_pin_fs failed: %d\n", rc);
+    pPath->dentry = NULL;
+    pPath->mnt    = NULL;
+    return rc;
+}
+
+#endif /* SUPDRV_LINUX_WITH_DUMMY_KVM_VM_OPENED_VIA_INODE */
+
+#ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM
+static bool supdrvLnxIsVtxHost(void)
+{
+    uint32_t fVtCaps = 0;
+    int rc = SUPR0GetVTSupport(&fVtCaps);
+    return RT_SUCCESS(rc) && (fVtCaps & SUPVTCAPS_VT_X);
+
+}
+#endif
 
 /**
  * @copydoc SUPR0EnableHwvirt
  */
 int VBOXCALL supdrvOSEnableHwvirt(bool fEnable)
 {
-#ifdef SUPDRV_LINUX_HAS_KVM_HWVIRT_API
-    if (   g_pfnKvmEnableVirtualization
-        && g_pfnKvmDisableVirtualization
-        && supdrvLinuxIsKvmVirtEnabledLikelyCalled())
-    { /* likely */ }
-    else
-        return VERR_NOT_AVAILABLE;
+#ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM
+    struct file *pFile;
+    int rc;
 
+    spin_lock(&g_DevKvmSpinlock);
+    pFile = g_pDevKvmFile;
     if (fEnable)
     {
-        /* kvm_enable_virtualization() is guarded by kvm_usage_count reference counter inside a mutex. */
-        int rc;
-        RTLNX_CET_UNSAFE_CALL(g_pfnKvmEnableVirtualization, rc = g_pfnKvmEnableVirtualization());
-        if (!rc)
+        /*
+         * Retain reference to the file if already open (paranoia).
+         */
+        if (pFile)
         {
-            g_fEnabledHwvirtUsingKvm = true;
-            printk(KERN_INFO "vboxdrv: Enabled hardware-virtualization using KVM\n");
-            return VINF_SUCCESS;
+            uint32_t const cRefs = ASMAtomicIncU32(&g_cDevKvmFileRefs);
+            Assert(cRefs > 1); RT_NOREF(cRefs);
+            spin_unlock(&g_DevKvmSpinlock);
+            rc = VINF_SUCCESS;
         }
-        printk(KERN_ERR "vboxdrv: Failed to enable hardware-virtualization using KVM. rc=%d\n", rc);
-        return VERR_NOT_AVAILABLE;
+        /*
+         * Otherwise, try open it.
+         */
+        else
+        {
+            struct path Path;
+            spin_unlock(&g_DevKvmSpinlock);
+
+# ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM_OPENED_VIA_INODE
+            rc = supdrvLnxFsPathForDevNo(&Path, MKDEV(MISC_MAJOR, KVM_MINOR));
+# else
+            rc = kern_path("/dev/kvm", 0, &Path);
+# endif
+            if (!rc)
+            {
+                int fOpenMode = O_RDWR;
+# if RTLNX_VER_MIN(6,10,0)
+                pFile = kernel_file_open(&Path, fOpenMode, current_cred());
+# elif RTLNX_VER_MIN(6,5,0)
+                pFile = kernel_file_open(&Path, fOpenMode, d_inode(Path.dentry), current_cred());
+# else
+#  error "not supported"
+# endif
+                path_put(&Path);
+                if (!IS_ERR(pFile))
+                {
+                    spin_lock(&g_DevKvmSpinlock);
+                    if (g_pDevKvmFile == NULL)
+                    {
+                        Assert(g_cDevKvmFileRefs == 0);
+                        g_pDevKvmFile = pFile;
+                        ASMAtomicWriteU32(&g_cDevKvmFileRefs, 1);
+                        spin_unlock(&g_DevKvmSpinlock);
+# ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM_OPENED_VIA_INODE
+                        printk(KERN_DEBUG"vboxdrv: opened /dev/kvm (file refs=%lu); i_node refs %ld\n",
+                               (unsigned long)file_count(pFile), (unsigned long)atomic_read(&pFile->f_inode->i_count));
+# else
+                        printk(KERN_DEBUG"vboxdrv: opened /dev/kvm (file refs=%lu)\n", (unsigned long)file_count(pFile));
+# endif
+                    }
+                    else
+                    {
+                        struct file * const pExtraFile = pFile;
+                        uint32_t cRefs;
+                        pFile = g_pDevKvmFile;
+                        cRefs = ASMAtomicIncU32(&g_cDevKvmFileRefs);
+                        Assert(cRefs > 1); RT_NOREF(cRefs);
+                        spin_unlock(&g_DevKvmSpinlock);
+
+                        printk(KERN_DEBUG"vboxdrv: race opening /dev/kvm\n");
+                        fput(pExtraFile);
+# ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM_OPENED_VIA_INODE
+                        supdrvLnxFsRelease();
+# endif
+                    }
+                    rc = VINF_SUCCESS;
+                }
+                else
+                {
+                    rc = PTR_ERR(pFile);
+                    if (rc == -ENODEV /* via inode */)
+                    {
+                        printk(KERN_DEBUG"vboxdrv: /dev/kvm not found (ENODEV)\n");
+                        rc = VERR_NOT_SUPPORTED;
+                    }
+                    else
+                    {
+                        printk(KERN_WARNING"vboxdrv: kernel_file_open failed on /dev/kvm: %d\n", rc);
+                        rc = supdrvLnxIsVtxHost() ? VERR_VMX_IN_VMX_ROOT_MODE : VERR_NOT_AVAILABLE;
+                    }
+# ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM_OPENED_VIA_INODE
+                    supdrvLnxFsRelease();
+# endif
+                }
+            }
+            else if (rc == -ENOENT)
+            {
+                printk(KERN_DEBUG"vboxdrv: /dev/kvm not found (ENOENT)\n");
+                rc = VERR_NOT_SUPPORTED;
+            }
+            else
+            {
+                printk(KERN_WARNING"vboxdrv: kern_path failed on /dev/kvm: %d\n", rc);
+                rc = supdrvLnxIsVtxHost() ? VERR_VMX_IN_VMX_ROOT_MODE : VERR_NOT_AVAILABLE;
+            }
+        }
+    }
+    else
+    {
+        /*
+         * Release the file /dev/kvm file.
+         */
+        if (pFile)
+        {
+            uint32_t const cRefs = ASMAtomicDecU32(&g_cDevKvmFileRefs);
+            if (cRefs != 0)
+            {
+                spin_unlock(&g_DevKvmSpinlock);
+                printk(KERN_DEBUG"vboxdrv: releasing /dev/kvm: cRefs=%u\n", cRefs);
+            }
+            else
+            {
+                g_pDevKvmFile = NULL;
+                spin_unlock(&g_DevKvmSpinlock);
+                printk(KERN_DEBUG"vboxdrv: releasing /dev/kvm: cRefs=0 file-refs=%lu (before)\n",
+                       (unsigned long)file_count(pFile));
+                fput(pFile);
+# ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM_OPENED_VIA_INODE
+                supdrvLnxFsRelease();
+                printk(KERN_DEBUG"vboxdrv: g_cSupDrvLnxFsRefs=%d g_pSupDrvLnxFsMnt=%p\n",
+                       g_cSupDrvLnxFsRefs, g_pSupDrvLnxFsMnt);
+# endif
+            }
+            rc = VINF_SUCCESS;
+        }
+        else
+        {
+            Assert(g_cDevKvmFileRefs == 0);
+            spin_unlock(&g_DevKvmSpinlock);
+            printk(KERN_WARNING"vboxdrv: supdrvOSEnableHwvirt called when g_pDevKvmFile is NULL!\n");
+            rc = VERR_WRONG_ORDER;
+        }
+    }
+    return rc;
+
+#else  /* !SUPDRV_LINUX_WITH_DUMMY_KVM_VM */
+    RT_NOREF(fEnable);
+    return VERR_NOT_SUPPORTED;
+#endif /* !SUPDRV_LINUX_WITH_DUMMY_KVM_VM */
+}
+
+
+/**
+ * @copydoc SUPR0EnableHwvirtForVm
+ */
+int VBOXCALL supdrvOSEnableHwvirtForVm(bool fEnable, void **ppvState)
+{
+    int rc = VINF_SUCCESS;
+#ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM
+    struct file *pVmFile = (struct file *)*ppvState;
+    if (fEnable)
+    {
+        Assert(!pVmFile);
+        if (!pVmFile)
+        {
+            /* Grab a reference to the /dev/kvm file. */
+            struct file *pKvmFile;
+            spin_lock(&g_DevKvmSpinlock);
+            pKvmFile = g_pDevKvmFile;
+            if (pKvmFile)
+                pKvmFile = get_file(pKvmFile);
+            spin_unlock(&g_DevKvmSpinlock);
+            if (pKvmFile)
+            {
+                if (pKvmFile->f_op && pKvmFile->f_op->unlocked_ioctl)
+                {
+                    /* Create the dummy VM. Returns file descriptor. */
+                    int fdVm = pKvmFile->f_op->unlocked_ioctl(pKvmFile, KVM_CREATE_VM, 0UL /* type must be zero on x86 */);
+                    if (fdVm >= 0)
+                    {
+                        /* Get a reference to the file and close the descriptor,
+                           as ring-3 shouldn't have access to this. */
+                        pVmFile = fget(fdVm);
+                        rc = close_fd(fdVm);
+                        AssertMsg(rc >= 0, ("rc=%d\n", rc));
+                        if (pVmFile)
+                        {
+                            *ppvState = pVmFile;
+                            printk(KERN_DEBUG"vboxdrv: for vm: VINF_SUCCESS! (rc=%d) vm-file-refs=%lu\n",
+                                   rc, (unsigned long)file_count(pVmFile));
+                            rc = VINF_SUCCESS;
+                        }
+                        else
+                        {
+                            printk(KERN_ERR"vboxdrv: for vm: VERR_INTERNAL_ERROR_4 rc=%d\n", rc);
+                            rc = VERR_INTERNAL_ERROR_4;
+                        }
+                    }
+                    else
+                    {
+                        printk(KERN_ERR"vboxdrv: for vm: KVM_CREATE_VM -> %d\n", fdVm);
+                        rc = RTErrConvertFromErrno(fdVm);
+                    }
+                }
+                else
+                {
+                    printk(KERN_WARNING"vboxdrv: for vm: VERR_INTERNAL_ERROR_5\n");
+                    rc = VERR_INTERNAL_ERROR_5;
+                }
+                fput(pKvmFile);
+            }
+            else
+            {
+                rc = VERR_WRONG_ORDER;
+                printk(KERN_WARNING"vboxdrv: for vm: VERR_WRONG_ORDER\n");
+            }
+        }
+        else
+            printk(KERN_WARNING"vboxdrv: no /dev/kvm file!\n");
+    }
+    else if (pVmFile)
+    {
+        printk(KERN_DEBUG"vboxdrv: releasing kvm-vm vm-file-refs=%lu\n", (unsigned long)file_count(pVmFile));
+        fput(pVmFile);
+        *ppvState = NULL;
     }
 
-    if (g_fEnabledHwvirtUsingKvm)
-    {
-        RTLNX_CET_UNSAFE_CALL(g_pfnKvmDisableVirtualization, g_pfnKvmDisableVirtualization());
-        g_fEnabledHwvirtUsingKvm = false;
-    }
-    return VINF_SUCCESS;
 #else
-    return VERR_NOT_SUPPORTED;
+    RT_NOREF(fEnable, ppvState);
 #endif
+    return rc;
 }
 
 
@@ -2239,7 +2434,7 @@ MODULE_LICENSE("GPL");
 #ifdef MODULE_VERSION
 MODULE_VERSION(VBOX_VERSION_STRING " r" RT_XSTR(VBOX_SVN_REV) " (" RT_XSTR(SUPDRV_IOC_VERSION) ")");
 #endif
-#ifdef SUPDRV_LINUX_HAS_KVM_HWVIRT_API
+#ifdef SUPDRV_LINUX_WITH_DUMMY_KVM_VM
 MODULE_SOFTDEP("pre: kvm_intel kvm_amd");
 #endif
 

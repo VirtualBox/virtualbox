@@ -1,4 +1,4 @@
-/* $Id: SUPDrv.cpp 113519 2026-03-23 23:21:05Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPDrv.cpp 114222 2026-05-29 20:59:06Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Common code.
  */
@@ -273,6 +273,7 @@ static SUPFUNC g_aFunctions[] =
     SUPEXP_STK_BACK(    2,  SUPR0ContFree),
     SUPEXP_STK_BACK(    2,  SUPR0ChangeCR4),
     SUPEXP_STK_BACK(    1,  SUPR0EnableHwvirt),
+    SUPEXP_STK_BACK(    2,  SUPR0EnableHwvirtForVm),    /* not-arch-arm64 */
     SUPEXP_STK_OKAY(    1,  SUPR0FpuBegin),
     SUPEXP_STK_OKAY(    1,  SUPR0FpuEnsureCurrent),     /* not-arch-arm64 */
     SUPEXP_STK_OKAY(    1,  SUPR0FpuLock),              /* not-arch-arm64 */
@@ -4265,6 +4266,27 @@ SUPR0DECL(int) SUPR0EnableHwvirt(bool fEnable)
 #endif
 }
 SUPR0_EXPORT_SYMBOL(SUPR0EnableHwvirt);
+
+
+/**
+ * Per-VM followup to SUPR0EnableHwvirt.
+ *
+ * This is required by linux.
+ *
+ * @returns VBox status code.
+ * @param   fEnable         Whether to enable or disable.
+ * @param   ppvState        Pointer to a state variable (NULL initialized).
+ */
+SUPR0DECL(int) SUPR0EnableHwvirtForVm(bool fEnable, void **ppvState)
+{
+# if defined(RT_OS_LINUX) && (defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86))
+    return supdrvOSEnableHwvirtForVm(fEnable, ppvState);
+# else
+    RT_NOREF1(fEnable, ppvState);
+    return VINF_SUCCESS;
+# endif
+}
+SUPR0_EXPORT_SYMBOL(SUPR0EnableHwvirtForVm);
 
 
 SUPR0DECL(int) SUPR0GetCurrentGdtRw(RTHCUINTPTR *pGdtRw)

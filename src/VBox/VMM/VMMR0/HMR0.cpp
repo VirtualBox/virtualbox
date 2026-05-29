@@ -1,4 +1,4 @@
-/* $Id: HMR0.cpp 113525 2026-03-24 07:33:15Z ramshankar.venkataraman@oracle.com $ */
+/* $Id: HMR0.cpp 114222 2026-05-29 20:59:06Z knut.osmundsen@oracle.com $ */
 /** @file
  * Hardware Assisted Virtualization Manager (HM) - Host Context Ring-0.
  */
@@ -1042,7 +1042,10 @@ VMMR0_INT_DECL(int) HMR0EnableAllCpus(PVMCC pVM)
     if (ASMAtomicReadBool(&g_fHmSuspended))
         return VERR_HM_SUSPEND_PENDING;
 
-    return RTOnce(&g_HmEnableAllCpusOnce, hmR0EnableAllCpuOnce, pVM);
+    int rc = RTOnce(&g_HmEnableAllCpusOnce, hmR0EnableAllCpuOnce, pVM);
+    if (RT_SUCCESS(rc) && g_fHmUsingHostEnableApi)
+        rc = SUPR0EnableHwvirtForVm(true /*fEnable*/, &pVM->hmr0.s.pvSupR0EnableState);
+    return rc;
 }
 
 
@@ -1401,7 +1404,15 @@ VMMR0_INT_DECL(int) HMR0TermVM(PVMCC pVM)
      * Note! We might be preparing for a suspend, so the pfnTermVM() functions should probably not
      * mess with VT-x/AMD-V features on the CPU, currently all they do is free memory so this is safe.
      */
-    return g_HmR0Ops.pfnTermVM(pVM);
+    int rc = g_HmR0Ops.pfnTermVM(pVM);
+
+    /*
+     * Do common cleanup.
+     */
+    if (g_fHmUsingHostEnableApi)
+        SUPR0EnableHwvirtForVm(false /*fEnable*/, &pVM->hmr0.s.pvSupR0EnableState);
+
+    return rc;
 }
 
 
