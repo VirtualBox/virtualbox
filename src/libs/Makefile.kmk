@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 113883 2026-04-15 10:50:13Z alexander.rudnev@oracle.com $
+# $Id: Makefile.kmk 114246 2026-06-02 17:16:45Z andreas.loeffler@oracle.com $
 ## @file
 # Top-level makefile for the external libraries.
 #
@@ -83,7 +83,7 @@ endif
 # libslirp for NAT
 if   !defined(VBOX_ONLY_BUILD) \
   && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SUPPORTED_HOST_ARCHS))" != ""
- include $(PATH_SUB_CURRENT)/libslirp-4.9.1/Makefile.kmk
+ include $(PATH_SUB_CURRENT)/libslirp-4.9.3/Makefile.kmk
 endif
 
 # libssh for cloud integration.
