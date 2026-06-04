@@ -174,7 +174,9 @@
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFdBaseAddress|0x00000000
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFirmwareFdSize|$(FD_SIZE)
 
+!ifndef $(VBOX)
   gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase|0x4007c000
+!endif
   gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize|0x4000
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVariableSize|0x2000
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxAuthVariableSize|0x2800

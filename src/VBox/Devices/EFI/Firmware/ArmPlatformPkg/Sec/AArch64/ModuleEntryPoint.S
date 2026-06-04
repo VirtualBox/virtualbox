@@ -30,14 +30,54 @@ ASM_FUNC(_ModuleEntryPoint)
   b     ASM_PFX(MainEntryPoint)
 
 ASM_PFX(MainEntryPoint):
+#ifndef VBOX
   // Get the top of the primary stacks (and the base of the secondary stacks)
   MOV64 (x1, FixedPcdGet64(PcdCPUCoresStackBase) + FixedPcdGet32(PcdCPUCorePrimaryStackSize))
+#else
+  //
+  // The VirtualBox platform has the following layout:
+  //
+  //    0        128MiB              128MiB + 1MiB 1GiB                                                                          
+  //    +----------+------------+-----------+--------+----------------+-----------+----------------------------+
+  //    |   UEFI   |    VBox    |  FDT/ACPI |        |                |           |                            |
+  //    | firmware | Descriptor |   table   | MMIO32 |      RAM ..... |  MMIO ... | Not assigned address space |
+  //    |  region  |   region   |   region  |        |                |           |                            |
+  //    +----------+------------+-----------+--------+----------------+-----------+----------------------------+
+  //
+  // In order to have as few as hardcoded addresses as possible in the firmware
+  // VirtualBox installs a descriptor right after the firmware region
+  // where all the other information is stored.
+  //
+  // First the start of the RAM region is determined by reading the descriptor.
+  // From there the memory and stack is set up and the C entry point is called.
+  //
+  // Note: Only the VBox descriptor and UEFI firmware region are at a fixed location.
+  //       Everything else can float around freely in theory to give us the most flexibility.
+  //
+
+  //
+  // Determine the start of the VBox descriptor region.
+  //
+  mov x1, #0xffff0000
+
+  //
+  // Get at the ram base and use the beginning as our temporary stack.
+  //
+  ldr x1, [x1, #16]
+
+  // Get the top of the primary stacks (and the base of the secondary stacks)
+  add x1, x1, FixedPcdGet32(PcdCPUCorePrimaryStackSize)
+#endif
 
   // Set up the stack pointer
   mov   sp, x1
 
   // Apply the init value to the entire stack
+#ifndef VBOX
   MOV64 (x8, FixedPcdGet64 (PcdCPUCoresStackBase))
+#else
+  sub   x8, x1, FixedPcdGet32(PcdCPUCorePrimaryStackSize)
+#endif
   MOV64 (x9, FixedPcdGet32 (PcdInitValueInTempStack) |\
              FixedPcdGet32 (PcdInitValueInTempStack) << 32)
 0:stp   x9, x9, [x8], #16

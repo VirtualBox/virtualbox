@@ -9,6 +9,10 @@
 
 #include "Sec.h"
 
+#ifdef VBOX
+# include <Library/VBoxArmPlatformLib.h>
+#endif
+
 /**
   This service of the EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI that migrates temporary
   RAM into permanent memory.
@@ -104,7 +108,11 @@ CreatePpiList (
   ArmPlatformGetPlatformPpiList (&PlatformPpiListSize, &PlatformPpiList);
 
   // Copy the Common and Platform PPis in Temporary Memory
+#ifndef VBOX
   ListBase = PcdGet64 (PcdCPUCoresStackBase);
+#else
+  ListBase = VBoxArmPlatformRamBaseStartGetPhysAddr();
+#endif
   CopyMem ((VOID *)ListBase, gCommonPpiTable, sizeof (gCommonPpiTable));
   CopyMem ((VOID *)(ListBase + sizeof (gCommonPpiTable)), PlatformPpiList, PlatformPpiListSize);
 
@@ -170,7 +178,11 @@ SecMain (
   // Adjust the Temporary Ram as the new Ppi List (Common + Platform Ppi Lists) is created at
   // the base of the primary core stack
   PpiListSize      = ALIGN_VALUE (PpiListSize, CPU_STACK_ALIGNMENT);
+#ifndef VBOX
   TemporaryRamBase = (UINTN)PcdGet64 (PcdCPUCoresStackBase) + PpiListSize;
+#else
+  TemporaryRamBase = (UINTN)VBoxArmPlatformRamBaseStartGetPhysAddr() + PpiListSize;
+#endif
   TemporaryRamSize = (UINTN)PcdGet32 (PcdCPUCorePrimaryStackSize) - PpiListSize;
 
   //
@@ -212,7 +224,11 @@ CEntryPoint (
     ArmEnableInstructionCache ();
 
     InvalidateDataCacheRange (
+#ifndef VBOX
       (VOID *)(UINTN)PcdGet64 (PcdCPUCoresStackBase),
+#else
+      (VOID *)(UINTN)VBoxArmPlatformRamBaseStartGetPhysAddr(),
+#endif
       PcdGet32 (PcdCPUCorePrimaryStackSize)
       );
   }
