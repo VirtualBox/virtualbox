@@ -73,7 +73,7 @@ Rules for adding a changelog entry to make them look more uniform:
                            So, we use chapter and xpointer="xpointer(/chapter/)" with xi:include. -->
   <sect1>
 
-    <title>Version X.Y.Z (date tbd)</title>
+    <title>Version 7.2.10 (date tbd)</title>
 
     <para>This is a maintenance release. The following items were fixed or
       added:</para>
@@ -81,7 +81,70 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
-        <para></para>
+        <para>VMM: Fixed issue when CentOS 10 VM was not booting due to the
+          message "Fatal glibc error: CPU does not support x86-64-v3" (github:gh-642)</para>
+      </listitem>
+
+      <listitem>
+        <para>Devices/EFI: Fixed booting issue when ARM VM had less than 1024 MiB of RAM assigned (github:gh-679)</para>
+      </listitem>
+
+      <listitem>
+        <para>USB: Fixed issue when it was not possible to attach USB device to
+          headless VM on Apple Silicon/macOS 26.4.1 (github:gh-631)</para>
+      </listitem>
+
+      <listitem>
+        <para>Storage: Fixed issue when VIRTIO-SCSI device was not recognized as
+          SSD device by guest system (github:gh-634)</para>
+      </listitem>
+
+      <listitem>
+        <para>Network: Fixed issue in E1000 emulation code which triggered debug
+          log creation (github:gh-645)</para>
+      </listitem>
+
+      <listitem>
+        <para>Network: Fixed issue in E1000 emulation code which prevented OS/2 guest
+          from booting (github:gh-683)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host: Fixed issue when VMs could not be started due to
+          kernel oops (github:gh-639)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host and Guest: Fixed issue when kernel modules were
+          failing to build with openSUSE 16.0 kernel</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host and Guest: Added initial support for kernel 7.1</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host and Guest: Added extra fixes for RHEL 9.8 kernel (github:gh-676)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host and Guest: Added possibility to build source code using NASM instead of YASM as
+          the assembler (github:gh-520)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Guest Additions: Added initial support for Extended Data Control Protocol
+          for clipboard sharing with Plasma on Wayland guests (github:gh-33)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Guest Additions: Added extra fixes for preventing vboxvideo kernel module
+          build for kernels 7.0 and newer (github:gh-655)</para>
+      </listitem>
+
+      <listitem>
+        <para>OS/2 Guest Additions: Fixed issue when Shared Folders automount and clipboard
+          sharing stopped working (github:gh-551)</para>
       </listitem>
 
     </itemizedlist>
