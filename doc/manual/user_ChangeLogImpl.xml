@@ -139,7 +139,7 @@ Rules for adding a changelog entry to make them look more uniform:
 
       <listitem>
         <para>Linux Guest Additions: Added extra fixes for preventing vboxvideo kernel module
-          build for kernels 7.0 and newer (github:gh-655)</para>
+          build with kernel version 7.0 and newer (github:gh-655)</para>
       </listitem>
 
       <listitem>
