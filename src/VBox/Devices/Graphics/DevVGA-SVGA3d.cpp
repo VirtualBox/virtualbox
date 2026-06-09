@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.cpp 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.cpp 114301 2026-06-09 15:11:14Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common core code.
  */
@@ -112,6 +112,8 @@ int vmsvga3dSurfaceDefine(PVGASTATECC pThisCC, uint32_t sid, SVGA3dSurfaceAllFla
     ASSERT_GUEST_RETURN(pMipLevel0Size->height > 0, VERR_INVALID_PARAMETER);
     ASSERT_GUEST_RETURN(pMipLevel0Size->depth > 0, VERR_INVALID_PARAMETER);
     ASSERT_GUEST_RETURN(arraySize <= SVGA3D_MAX_SURFACE_ARRAYSIZE, VERR_INVALID_PARAMETER);
+    if (arraySize && RT_BOOL(surfaceFlags & SVGA3D_SURFACE_CUBEMAP))
+        ASSERT_GUEST_RETURN(arraySize % 6 == 0, VERR_INVALID_PARAMETER); /* arraySize = 6 * numCubes */
 
     if (sid >= pState->cSurfaces)
     {
