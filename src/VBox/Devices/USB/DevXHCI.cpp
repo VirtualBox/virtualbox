@@ -1,4 +1,4 @@
-/* $Id: DevXHCI.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: DevXHCI.cpp 114291 2026-06-09 13:10:25Z michal.necasek@oracle.com $ */
 /** @file
  * DevXHCI - eXtensible Host Controller Interface for USB.
  */
@@ -1598,7 +1598,7 @@ typedef struct XHCI
     bool                            fDropIntrHw;
     bool                            fDropIntrIpe;
     bool                            fDropUrb;
-    uint8_t                         Alignment00[1];
+    bool                            fDropDb;
 #else
     uint32_t                        Alignment00;    /**< Force alignment. */
 #endif
@@ -5275,6 +5275,14 @@ static DECLCALLBACK(int) xhciR3WorkerLoop(PPDMDEVINS pDevIns, PPDMTHREAD pThread
 
                     Log2(("Stop ringing bell for slot %u, DCI %u\n", uSlotID, uDBVal));
                     ASMAtomicAndU32(&pThis->aBellsRung[ID_TO_IDX(uSlotID)], ~(1 << uDBVal));
+#ifdef XHCI_ERROR_INJECTION
+                    if (pThis->fDropDb)
+                    {
+                        LogFlowFunc(("Error injection, dropping doorbell for slit/DCI!\n", uSlotID, uDBVal));
+                        pThis->fDropDb = false;
+                        continue;
+                    }
+#endif
                     xhciR3ProcessDevCtx(pDevIns, pThis, pThisCC, uSlotID, uDBVal);
                 }
             }
@@ -7556,21 +7564,10 @@ static DECLCALLBACK(void) xhciR3Info(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, con
         return;
     }
 
-    if (pszArgs && strstr(pszArgs, "genintrhw"))
+    if (pszArgs && strstr(pszArgs, "dropdb"))
     {
-        pHlp->pfnPrintf(pHlp, "Generating hardware interrupt (external)...\n");
-        int iIntr = 0;
-        PXHCIINTRPTR pIntr = &pThis->aInterrupters[iIntr & XHCI_INTR_MASK];
-        xhciSetIntr(pDevIns, pThis, pIntr);
-        return;
-    }
-
-    if (pszArgs && strstr(pszArgs, "genintrint"))
-    {
-        pHlp->pfnPrintf(pHlp, "Generating hardware interrupt (internal)...\n");
-        int iIntr = 0;
-        PXHCIINTRPTR pIntr = &pThis->aInterrupters[iIntr & XHCI_INTR_MASK];
-        xhciR3SetIntrPending(pDevIns, pThis, pIntr);
+        pHlp->pfnPrintf(pHlp, "Dropping the next doorbell!\n");
+        pThis->fDropDb = true;
         return;
     }
 
@@ -7613,8 +7610,19 @@ static DECLCALLBACK(void) xhciR3Info(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, con
 
     if (pszArgs && strstr(pszArgs, "gendoorbell"))
     {
-        pHlp->pfnPrintf(pHlp, "Generating doorbell ring..\n");
+        pHlp->pfnPrintf(pHlp, "Generating doorbell ring...\n");
         xhciKickWorker(pDevIns, pThis, XHCI_JOB_DOORBELL, 0);
+        return;
+    }
+
+    if (pszArgs && strstr(pszArgs, "genhcerror"))
+    {
+        pHlp->pfnPrintf(pHlp, "Generating host controller error...\n");
+        /* Fake a Host Controller Error. */
+        ASMAtomicOrU32(&pThis->status, XHCI_STATUS_HCE);
+        ASMAtomicAndU32(&pThis->cmd, ~XHCI_CMD_RS);
+        /* Ensure that XHCI_STATUS_HCH gets set by the worker thread. */
+        xhciKickWorker(pDevIns, pThis, XHCI_JOB_PROCESS_CMDRING, 0);
         return;
     }
 #endif
