@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.cpp 114305 2026-06-09 15:24:18Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.cpp 114308 2026-06-09 15:33:26Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common core code.
  */
@@ -111,6 +111,27 @@ int vmsvga3dSurfaceDefine(PVGASTATECC pThisCC, uint32_t sid, SVGA3dSurfaceAllFla
     ASSERT_GUEST_RETURN(pMipLevel0Size->width > 0, VERR_INVALID_PARAMETER);
     ASSERT_GUEST_RETURN(pMipLevel0Size->height > 0, VERR_INVALID_PARAMETER);
     ASSERT_GUEST_RETURN(pMipLevel0Size->depth > 0, VERR_INVALID_PARAMETER);
+    if (format != SVGA3D_BUFFER)
+    {
+        if (surfaceFlags & SVGA3D_SURFACE_VOLUME)
+        {
+            ASSERT_GUEST_RETURN(pMipLevel0Size->width <= SVGA3D_MAX_VOLUME_TEXTURE_DIMENSION, VERR_INVALID_PARAMETER);
+            ASSERT_GUEST_RETURN(pMipLevel0Size->height <= SVGA3D_MAX_VOLUME_TEXTURE_DIMENSION, VERR_INVALID_PARAMETER);
+            ASSERT_GUEST_RETURN(pMipLevel0Size->depth <= SVGA3D_MAX_VOLUME_TEXTURE_DIMENSION, VERR_INVALID_PARAMETER);
+        }
+        else if (surfaceFlags & SVGA3D_SURFACE_1D)
+        {
+            ASSERT_GUEST_RETURN(pMipLevel0Size->width <= SVGA3D_MAX_TEXTURE_DIMENSION, VERR_INVALID_PARAMETER);
+            ASSERT_GUEST_RETURN(pMipLevel0Size->height == 1, VERR_INVALID_PARAMETER);
+            ASSERT_GUEST_RETURN(pMipLevel0Size->depth == 1, VERR_INVALID_PARAMETER);
+        }
+        else
+        {
+            ASSERT_GUEST_RETURN(pMipLevel0Size->width <= SVGA3D_MAX_TEXTURE_DIMENSION, VERR_INVALID_PARAMETER);
+            ASSERT_GUEST_RETURN(pMipLevel0Size->height <= SVGA3D_MAX_TEXTURE_DIMENSION, VERR_INVALID_PARAMETER);
+            ASSERT_GUEST_RETURN(pMipLevel0Size->depth == 1, VERR_INVALID_PARAMETER);
+        }
+    }
     ASSERT_GUEST_RETURN(arraySize <= SVGA3D_MAX_SURFACE_ARRAYSIZE, VERR_INVALID_PARAMETER);
     if (arraySize && RT_BOOL(surfaceFlags & SVGA3D_SURFACE_CUBEMAP))
         ASSERT_GUEST_RETURN(arraySize % 6 == 0, VERR_INVALID_PARAMETER); /* arraySize = 6 * numCubes */

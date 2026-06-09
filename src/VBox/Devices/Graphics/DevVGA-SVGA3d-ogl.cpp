@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-ogl.cpp 114289 2026-06-09 12:58:02Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-ogl.cpp 114308 2026-06-09 15:33:26Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -2083,6 +2083,10 @@ static DECLCALLBACK(int) vmsvga3dBackSurfaceCopy(PVGASTATECC pThisCC, SVGA3dSurf
     rc = vmsvga3dSurfaceFromSid(pState, dest.sid, &pSurfaceDst);
     AssertRCReturn(rc, rc);
 
+    /* Emulation of formats was implemented for a specific case of video playback which does not involve SurfaceCopy. */
+    if (pSurfaceSrc->fEmulated || pSurfaceDst->fEmulated)
+        return VERR_NOT_SUPPORTED;
+
     if (!VMSVGA3DSURFACE_HAS_HW_SURFACE(pSurfaceSrc))
     {
         /* The source surface is still in memory. */
@@ -2921,7 +2925,9 @@ static DECLCALLBACK(int) vmsvga3dBackSurfaceDMACopyBox(PVGASTATE pThis, PVGASTAT
         }
 
         /* The buffer must be large enough to hold entire texture in the OpenGL format. */
-        pDoubleBuffer = (uint8_t *)RTMemAlloc(pSurface->cbBlockGL * pMipLevel->cBlocks);
+        uint64_t const cbDoubleBuffer = (uint64_t)pSurface->cbBlockGL * (uint64_t)pMipLevel->cBlocks;
+        AssertReturn(cbDoubleBuffer <= SVGA3D_MAX_SURFACE_MEM_SIZE, VERR_NO_MEMORY);
+        pDoubleBuffer = (uint8_t *)RTMemAlloc((size_t)cbDoubleBuffer);
         AssertReturn(pDoubleBuffer, VERR_NO_MEMORY);
 
         if (transfer == SVGA3D_READ_HOST_VRAM)
