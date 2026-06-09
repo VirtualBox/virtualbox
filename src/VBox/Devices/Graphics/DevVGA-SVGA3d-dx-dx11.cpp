@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114293 2026-06-09 13:37:45Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -6505,7 +6505,7 @@ static void vboxDXMatchShaderInput(DXSHADER *pDXShader, DXSHADER *pDXShaderPrior
 }
 
 
-static void vboxDXMatchShaderSignatures(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, DXSHADER *pDXShader)
+static int vboxDXMatchShaderSignatures(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, DXSHADER *pDXShader)
 {
     SVGA3dShaderId const shaderIdVS = dxShaderId(pDXContext, pDXContext->svgaDXContext.shaderState[SVGA3D_SHADERTYPE_VS - SVGA3D_SHADERTYPE_MIN].shaderId);
     SVGA3dShaderId const shaderIdHS = dxShaderId(pDXContext, pDXContext->svgaDXContext.shaderState[SVGA3D_SHADERTYPE_HS - SVGA3D_SHADERTYPE_MIN].shaderId);
@@ -6619,7 +6619,7 @@ static void vboxDXMatchShaderSignatures(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT 
                 if (pDXStreamOutput->cDeclarationEntry == 0)
                 {
                     int rc = dxDefineStreamOutput(pThisCC, pDXContext, soid, pStreamOutputEntry, pDXShader);
-                    AssertRCReturnVoid(rc);
+                    AssertRCReturn(rc, rc);
 #ifdef LOG_ENABLED
                     Log6(("Stream output declaration:\n\n"));
                     Log6(("Stream SemanticName   SemanticIndex StartComponent ComponentCount OutputSlot\n"));
@@ -6665,6 +6665,7 @@ static void vboxDXMatchShaderSignatures(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT 
                || pDXShader->enmShaderType == SVGA3D_SHADERTYPE_PS
                || pDXShader->enmShaderType == SVGA3D_SHADERTYPE_CS)
            || (pDXShader->shaderInfo.cInputSignature && pDXShader->shaderInfo.cOutputSignature));
+    return VINF_SUCCESS;
 }
 
 
@@ -7760,9 +7761,11 @@ static void dxSetupPipeline(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
                     vboxDXUpdateVSInputSignature(pDXContext, pDXShader);
                 }
 
-                vboxDXMatchShaderSignatures(pThisCC, pDXContext, pDXShader);
+                rc = vboxDXMatchShaderSignatures(pThisCC, pDXContext, pDXShader);
 
-                rc = DXShaderCreateDXBC(&pDXShader->shaderInfo, &pDXShader->pvDXBC, &pDXShader->cbDXBC);
+                if (RT_SUCCESS(rc))
+                    rc = DXShaderCreateDXBC(&pDXShader->shaderInfo, &pDXShader->pvDXBC, &pDXShader->cbDXBC);
+
                 if (RT_SUCCESS(rc))
                 {
 #ifdef LOG_ENABLED
