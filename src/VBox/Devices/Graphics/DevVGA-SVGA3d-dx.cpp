@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx.cpp 114164 2026-05-21 11:20:44Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx.cpp 114294 2026-06-09 13:38:07Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common code for DX backend interface.
  */
@@ -2172,6 +2172,181 @@ int vmsvga3dDXSetStreamOutput(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dC
 }
 
 
+static int dxSanitizeRTViewEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXRTViewEntry *pEntry)
+{
+    RT_NOREF(pDXContext, pEntry);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeDSViewEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXDSViewEntry *pEntry)
+{
+    RT_NOREF(pDXContext, pEntry);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeSRViewEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXSRViewEntry *pEntry)
+{
+    RT_NOREF(pDXContext, pEntry);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeElementLayoutEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXElementLayoutEntry *pEntry)
+{
+    ASSERT_GUEST_RETURN(pEntry->elid < pDXContext->cot.cElementLayout, VERR_INVALID_PARAMETER);
+    pEntry->numDescs = RT_MIN(pEntry->numDescs, RT_ELEMENTS(pEntry->descs));
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeBlendStateEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXBlendStateEntry *pEntry)
+{
+    RT_NOREF(pDXContext, pEntry);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeDepthStencilEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXDepthStencilEntry *pEntry)
+{
+    RT_NOREF(pDXContext, pEntry);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeRasterizerStateEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXRasterizerStateEntry *pEntry)
+{
+    RT_NOREF(pDXContext, pEntry);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeSamplerEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXSamplerEntry *pEntry)
+{
+    RT_NOREF(pDXContext, pEntry);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeStreamOutputEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXStreamOutputEntry *pEntry)
+{
+    RT_NOREF(pDXContext);
+    ASSERT_GUEST_RETURN(pEntry->numOutputStreamEntries <= SVGA3D_MAX_STREAMOUT_DECLS, VERR_INVALID_PARAMETER);
+    if (pEntry->numOutputStreamEntries > SVGA3D_MAX_DX10_STREAMOUT_DECLS)
+        ASSERT_GUEST_RETURN(pEntry->usesMob == 1, VERR_INVALID_PARAMETER);
+    else
+        ASSERT_GUEST_RETURN(pEntry->usesMob == 1 || pEntry->usesMob == 0, VERR_INVALID_PARAMETER);
+    ASSERT_GUEST_RETURN(pEntry->numOutputStreamStrides <= SVGA3D_DX_MAX_SOTARGETS, VERR_INVALID_PARAMETER);
+    ASSERT_GUEST_RETURN(   pEntry->rasterizedStream < SVGA3D_DX_MAX_SOTARGETS
+                        || pEntry->rasterizedStream == SVGA3D_DX_SO_NO_RASTERIZED_STREAM, VERR_INVALID_PARAMETER);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeQueryEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXQueryEntry *pEntry)
+{
+    RT_NOREF(pDXContext);
+    ASSERT_GUEST_RETURN(pEntry->type >= SVGA3D_QUERYTYPE_MIN && pEntry->type < SVGA3D_QUERYTYPE_MAX, VERR_INVALID_PARAMETER);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeShaderEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXShaderEntry *pEntry)
+{
+    RT_NOREF(pDXContext);
+    ASSERT_GUEST_RETURN(pEntry->type >= SVGA3D_SHADERTYPE_MIN && pEntry->type < SVGA3D_SHADERTYPE_MAX, VERR_INVALID_PARAMETER);
+    ASSERT_GUEST_RETURN(pEntry->sizeInBytes >= 8, VERR_INVALID_PARAMETER); /* Version Token + Length Token. */
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeUAViewEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXUAViewEntry *pEntry)
+{
+    RT_NOREF(pDXContext, pEntry);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeVideoProcessorEntry(PVMSVGA3DDXCONTEXT pDXContext, VBSVGACOTableDXVideoProcessorEntry *pEntry)
+{
+    RT_NOREF(pDXContext, pEntry);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeVideoDecoderOutputViewEntry(PVMSVGA3DDXCONTEXT pDXContext, VBSVGACOTableDXVideoDecoderOutputViewEntry *pEntry)
+{
+    RT_NOREF(pDXContext, pEntry);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeVideoDecoderEntry(PVMSVGA3DDXCONTEXT pDXContext, VBSVGACOTableDXVideoDecoderEntry *pEntry)
+{
+    RT_NOREF(pDXContext, pEntry);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeVideoProcessorInputViewEntry(PVMSVGA3DDXCONTEXT pDXContext, VBSVGACOTableDXVideoProcessorInputViewEntry *pEntry)
+{
+    RT_NOREF(pDXContext, pEntry);
+    return VINF_SUCCESS;
+}
+
+
+static int dxSanitizeVideoProcessorOutputViewEntry(PVMSVGA3DDXCONTEXT pDXContext, VBSVGACOTableDXVideoProcessorOutputViewEntry *pEntry)
+{
+    RT_NOREF(pDXContext, pEntry);
+    return VINF_SUCCESS;
+}
+
+
+static void dxSanitizeCOTableEntries(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableType enmType, uint32_t cValidEntries)
+{
+    switch (enmType)
+    {
+#   define CASE_DX_COT(_COTName, _COTEntryType, _COTField) \
+        case _COTName: \
+        { \
+            for (uint32_t i = 0; i < cValidEntries; ++i) \
+            { \
+                _COTEntryType *pEntry = &pDXContext->cot.pa ## _COTField ## [i]; \
+                if (ASMMemFirstNonZero(pEntry, sizeof(*pEntry)) == NULL) \
+                    continue; \
+                if (RT_FAILURE(dxSanitize ## _COTField ## Entry(pDXContext, pEntry))) \
+                    RT_ZERO(*pEntry); \
+            } \
+            break; \
+        }
+        CASE_DX_COT(SVGA_COTABLE_RTVIEW,           SVGACOTableDXRTViewEntry,                     RTView)
+        CASE_DX_COT(SVGA_COTABLE_DSVIEW,           SVGACOTableDXDSViewEntry,                     DSView)
+        CASE_DX_COT(SVGA_COTABLE_SRVIEW,           SVGACOTableDXSRViewEntry,                     SRView)
+        CASE_DX_COT(SVGA_COTABLE_ELEMENTLAYOUT,    SVGACOTableDXElementLayoutEntry,              ElementLayout)
+        CASE_DX_COT(SVGA_COTABLE_BLENDSTATE,       SVGACOTableDXBlendStateEntry,                 BlendState)
+        CASE_DX_COT(SVGA_COTABLE_DEPTHSTENCIL,     SVGACOTableDXDepthStencilEntry,               DepthStencil)
+        CASE_DX_COT(SVGA_COTABLE_RASTERIZERSTATE,  SVGACOTableDXRasterizerStateEntry,            RasterizerState)
+        CASE_DX_COT(SVGA_COTABLE_SAMPLER,          SVGACOTableDXSamplerEntry,                    Sampler)
+        CASE_DX_COT(SVGA_COTABLE_STREAMOUTPUT,     SVGACOTableDXStreamOutputEntry,               StreamOutput)
+        CASE_DX_COT(SVGA_COTABLE_DXQUERY,          SVGACOTableDXQueryEntry,                      Query)
+        CASE_DX_COT(SVGA_COTABLE_DXSHADER,         SVGACOTableDXShaderEntry,                     Shader)
+        CASE_DX_COT(SVGA_COTABLE_UAVIEW,           SVGACOTableDXUAViewEntry,                     UAView)
+        CASE_DX_COT(VBSVGA_COTABLE_VIDEOPROCESSOR, VBSVGACOTableDXVideoProcessorEntry,           VideoProcessor)
+        CASE_DX_COT(VBSVGA_COTABLE_VDOV,           VBSVGACOTableDXVideoDecoderOutputViewEntry,   VideoDecoderOutputView)
+        CASE_DX_COT(VBSVGA_COTABLE_VIDEODECODER,   VBSVGACOTableDXVideoDecoderEntry,             VideoDecoder)
+        CASE_DX_COT(VBSVGA_COTABLE_VPIV,           VBSVGACOTableDXVideoProcessorInputViewEntry,  VideoProcessorInputView)
+        CASE_DX_COT(VBSVGA_COTABLE_VPOV,           VBSVGACOTableDXVideoProcessorOutputViewEntry, VideoProcessorOutputView)
+#   undef CASE_DX_COT
+        case SVGA_COTABLE_MAX: break; /* Compiler warning */
+        case VBSVGA_COTABLE_MAX: break; /* Compiler warning */
+#ifndef DEBUG_sunlover
+        default: break; /* Compiler warning. */
+#endif
+    }
+}
+
+
 static int dxSetOrGrowCOTable(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, PVMSVGAMOB pMob,
                               SVGACOTableType enmType, uint32_t validSizeInBytes, bool fGrow)
 {
@@ -2314,6 +2489,8 @@ static int dxSetOrGrowCOTable(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext
             AssertRC(rc2);
             if (RT_FAILURE(rc2))
                 memset(pvCOT, 0, validSizeInBytes);
+            else
+                dxSanitizeCOTableEntries(pDXContext, enmType, cValidEntries);
         }
     }
 
