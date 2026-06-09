@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx.cpp 114293 2026-06-09 13:37:45Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx.cpp 114298 2026-06-09 14:16:36Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common code for DX backend interface.
  */
@@ -2368,7 +2368,7 @@ static void dxSanitizeCOTableEntries(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableT
         { \
             for (uint32_t i = 0; i < cValidEntries; ++i) \
             { \
-                _COTEntryType *pEntry = &pDXContext->cot.pa ## _COTField ## [i]; \
+                _COTEntryType *pEntry = &pDXContext->cot.pa ## _COTField[i]; \
                 if (ASMMemFirstNonZero(pEntry, sizeof(*pEntry)) == NULL) \
                     continue; \
                 if (RT_FAILURE(dxSanitize ## _COTField ## Entry(pDXContext, pEntry))) \
