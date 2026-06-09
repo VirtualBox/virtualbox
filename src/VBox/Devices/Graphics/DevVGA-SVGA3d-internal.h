@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-internal.h 114163 2026-05-21 11:20:26Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-internal.h 114304 2026-06-09 15:24:06Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device - 3D part, internal header.
  */
@@ -1474,9 +1474,6 @@ void FormatConvReadTexture(PVMSVGA3DSTATE pState,
 
 int vmsvga3dShaderParse(SVGA3dShaderType type, uint32_t cbShaderData, uint32_t *pShaderData);
 void vmsvga3dShaderLogRel(char const *pszMsg, SVGA3dShaderType type, uint32_t cbShaderData, uint32_t const *pShaderData);
-
-int vmsvga3dSurfaceCopySysMem(PVMSVGA3DSTATE pState, SVGA3dSurfaceImageId dest, SVGA3dSurfaceImageId src,
-                               uint32_t cCopyBoxes, SVGA3dCopyBox *pBox);
 
 #endif /* !VBOX_INCLUDED_SRC_Graphics_DevVGA_SVGA3d_internal_h */
 

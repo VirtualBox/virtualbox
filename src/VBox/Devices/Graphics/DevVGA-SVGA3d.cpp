@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.cpp 114301 2026-06-09 15:11:14Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.cpp 114304 2026-06-09 15:24:06Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common core code.
  */
@@ -1470,10 +1470,9 @@ int vmsvga3dChangeMode(PVGASTATECC pThisCC)
     return pSvgaR3State->pFuncs3D->pfnChangeMode(pThisCC);
 }
 
-int vmsvga3dSurfaceCopySysMem(PVMSVGA3DSTATE pState, SVGA3dSurfaceImageId dest, SVGA3dSurfaceImageId src,
-                               uint32_t cCopyBoxes, SVGA3dCopyBox *pBox)
+static int vmsvga3dSurfaceCopySysMem(PVMSVGA3DSTATE pState, SVGA3dSurfaceImageId dest, SVGA3dSurfaceImageId src,
+                                     uint32_t cCopyBoxes, SVGA3dCopyBox *pBox)
 {
-    RT_NOREF(cCopyBoxes);
     AssertReturn(pBox, VERR_INVALID_PARAMETER);
 
     LogFunc(("src sid %d -> dst sid %d\n", src.sid, dest.sid));
@@ -1496,41 +1495,44 @@ int vmsvga3dSurfaceCopySysMem(PVMSVGA3DSTATE pState, SVGA3dSurfaceImageId dest, 
     rc = vmsvga3dMipmapLevel(pDstSurface, dest.face, dest.mipmap, &pDstMipLevel);
     ASSERT_GUEST_RETURN(RT_SUCCESS(rc), rc);
 
-    SVGA3dCopyBox clipBox = *pBox;
-    vmsvgaR3ClipCopyBox(&pSrcMipLevel->mipmapSize, &pDstMipLevel->mipmapSize, &clipBox);
-
     AssertReturn(pSrcSurface->format == pDstSurface->format, VERR_INVALID_PARAMETER);
     AssertReturn(pSrcSurface->cbBlock == pDstSurface->cbBlock, VERR_INVALID_PARAMETER);
     AssertReturn(pSrcMipLevel->pSurfaceData && pDstMipLevel->pSurfaceData, VERR_INVALID_STATE);
 
-    uint32_t const cxBlocks = (clipBox.w + pSrcSurface->cxBlock - 1) / pSrcSurface->cxBlock;
-    uint32_t const cyBlocks = (clipBox.h + pSrcSurface->cyBlock - 1) / pSrcSurface->cyBlock;
-    uint32_t const cbRow = cxBlocks * pSrcSurface->cbBlock;
-
-    uint8_t const *pu8Src = (uint8_t *)pSrcMipLevel->pSurfaceData
-            + (clipBox.srcx / pSrcSurface->cxBlock) * pSrcSurface->cbBlock
-            + (clipBox.srcy / pSrcSurface->cyBlock) * pSrcMipLevel->cbSurfacePitch
-            + clipBox.srcz * pSrcMipLevel->cbSurfacePlane;
-
-    uint8_t *pu8Dst = (uint8_t *)pDstMipLevel->pSurfaceData
-            + (clipBox.x / pDstSurface->cxBlock) * pDstSurface->cbBlock
-            + (clipBox.y / pDstSurface->cyBlock) * pDstMipLevel->cbSurfacePitch
-            + clipBox.z * pDstMipLevel->cbSurfacePlane;
-
-    for (uint32_t z = 0; z < clipBox.d; ++z)
+    for (uint32_t i = 0; i < cCopyBoxes; ++i)
     {
-        uint8_t const *pu8PlaneSrc = pu8Src;
-        uint8_t *pu8PlaneDst = pu8Dst;
+        SVGA3dCopyBox clipBox = pBox[i];
+        vmsvgaR3ClipCopyBox(&pSrcMipLevel->mipmapSize, &pDstMipLevel->mipmapSize, &clipBox);
 
-        for (uint32_t y = 0; y < cyBlocks; ++y)
+        uint32_t const cxBlocks = (clipBox.w + pSrcSurface->cxBlock - 1) / pSrcSurface->cxBlock;
+        uint32_t const cyBlocks = (clipBox.h + pSrcSurface->cyBlock - 1) / pSrcSurface->cyBlock;
+        uint32_t const cbRow = cxBlocks * pSrcSurface->cbBlock;
+
+        uint8_t const *pu8Src = (uint8_t *)pSrcMipLevel->pSurfaceData
+                + (clipBox.srcx / pSrcSurface->cxBlock) * pSrcSurface->cbBlock
+                + (clipBox.srcy / pSrcSurface->cyBlock) * pSrcMipLevel->cbSurfacePitch
+                + clipBox.srcz * pSrcMipLevel->cbSurfacePlane;
+
+        uint8_t *pu8Dst = (uint8_t *)pDstMipLevel->pSurfaceData
+                + (clipBox.x / pDstSurface->cxBlock) * pDstSurface->cbBlock
+                + (clipBox.y / pDstSurface->cyBlock) * pDstMipLevel->cbSurfacePitch
+                + clipBox.z * pDstMipLevel->cbSurfacePlane;
+
+        for (uint32_t z = 0; z < clipBox.d; ++z)
         {
-            memcpy(pu8PlaneDst, pu8PlaneSrc, cbRow);
-            pu8PlaneDst += pDstMipLevel->cbSurfacePitch;
-            pu8PlaneSrc += pSrcMipLevel->cbSurfacePitch;
-        }
+            uint8_t const *pu8PlaneSrc = pu8Src;
+            uint8_t *pu8PlaneDst = pu8Dst;
 
-        pu8Src += pSrcMipLevel->cbSurfacePlane;
-        pu8Dst += pDstMipLevel->cbSurfacePlane;
+            for (uint32_t y = 0; y < cyBlocks; ++y)
+            {
+                memcpy(pu8PlaneDst, pu8PlaneSrc, cbRow);
+                pu8PlaneDst += pDstMipLevel->cbSurfacePitch;
+                pu8PlaneSrc += pSrcMipLevel->cbSurfacePitch;
+            }
+
+            pu8Src += pSrcMipLevel->cbSurfacePlane;
+            pu8Dst += pDstMipLevel->cbSurfacePlane;
+        }
     }
 
     return VINF_SUCCESS;
