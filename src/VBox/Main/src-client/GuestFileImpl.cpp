@@ -1,4 +1,4 @@
-/* $Id: GuestFileImpl.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: GuestFileImpl.cpp 114280 2026-06-09 07:31:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Guest file handling.
  */
@@ -549,6 +549,10 @@ int GuestFile::i_onNotify(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCTRLHOSTCALL
                 break;
 
             const uint32_t cbRead = dataCb.u.read.cbData;
+            if (cbRead)
+            {
+                AssertPtrBreakStmt(dataCb.u.read.pvData, vrc = VERR_INVALID_POINTER);
+            }
             Log3ThisFunc(("cbRead=%RU32\n", cbRead));
 
             AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
@@ -559,7 +563,8 @@ int GuestFile::i_onNotify(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCTRLHOSTCALL
             {
                 com::SafeArray<BYTE> data((size_t)cbRead);
                 AssertBreakStmt(data.size() == cbRead, vrc = VERR_NO_MEMORY);
-                data.initFrom((BYTE *)dataCb.u.read.pvData, cbRead);
+                if (cbRead)
+                    data.initFrom((BYTE *)dataCb.u.read.pvData, cbRead);
                 ::FireGuestFileReadEvent(mEventSource, mSession, this, mData.mOffCurrent, cbRead, ComSafeArrayAsInParam(data));
             }
             catch (std::bad_alloc &)
@@ -581,6 +586,10 @@ int GuestFile::i_onNotify(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCTRLHOSTCALL
                                         vrc = VERR_WRONG_PARAMETER_TYPE);
             BYTE const * const pbData = (BYTE const *)pSvcCbData->mpaParms[idx].u.pointer.addr;
             uint32_t const     cbRead = pSvcCbData->mpaParms[idx].u.pointer.size;
+            if (cbRead)
+            {
+                AssertPtrBreakStmt(pbData, vrc = VERR_INVALID_POINTER);
+            }
             int64_t            offNew = (int64_t)pSvcCbData->mpaParms[idx + 1].u.uint64;
             Log3ThisFunc(("cbRead=%RU32 offNew=%RI64 (%#RX64)\n", cbRead, offNew, offNew));
 
@@ -594,7 +603,8 @@ int GuestFile::i_onNotify(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCTRLHOSTCALL
             {
                 com::SafeArray<BYTE> data((size_t)cbRead);
                 AssertBreakStmt(data.size() == cbRead, vrc = VERR_NO_MEMORY);
-                data.initFrom(pbData, cbRead);
+                if (cbRead)
+                    data.initFrom(pbData, cbRead);
                 ::FireGuestFileReadEvent(mEventSource, mSession, this, offNew, cbRead, ComSafeArrayAsInParam(data));
                 vrc = VINF_SUCCESS;
             }

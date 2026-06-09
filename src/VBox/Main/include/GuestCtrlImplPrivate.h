@@ -1,4 +1,4 @@
-/* $Id: GuestCtrlImplPrivate.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: GuestCtrlImplPrivate.h 114280 2026-06-09 07:31:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Internal helpers/structures for guest control functionality.
  */
@@ -38,6 +38,7 @@
 #include <iprt/asm.h>
 #include <iprt/env.h>
 #include <iprt/semaphore.h>
+#include <iprt/string.h>
 #include <iprt/cpp/utils.h>
 
 #include <VBox/com/com.h>
@@ -1286,6 +1287,9 @@ protected:
     {
         if (cbPayload > _64K) /* Paranoia. */
             return VERR_TOO_MUCH_DATA;
+        if (   cbPayload
+            && !RT_VALID_PTR(pvPayload))
+            return VERR_INVALID_POINTER;
 
         Clear();
 
@@ -1323,6 +1327,233 @@ protected:
     /** Pointer to actual payload data. */
     void    *pvData;
 };
+
+/**
+ * Gets and validates a typed guest wait event payload.
+ *
+ * @returns VBox status code.
+ * @retval  VERR_INVALID_PARAMETER if the payload type or size does not match.
+ * @retval  VERR_INVALID_POINTER if @a ppPayload or the payload pointer is invalid.
+ * @tparam  PayloadType         Expected callback payload structure type.
+ * @param   payload             Guest wait event payload to validate.
+ * @param   uType               Expected payload type.
+ * @param   ppPayload           Where to return the typed payload pointer on success.
+ *                              The returned pointer is owned by @a payload and must
+ *                              not be freed by the caller.
+ */
+template<typename PayloadType>
+DECLINLINE(int) guestCtrlEventPayloadGet(const GuestWaitEventPayload &payload, uint32_t uType, PayloadType **ppPayload)
+{
+    AssertPtrReturn(ppPayload, VERR_INVALID_POINTER);
+    *ppPayload = NULL;
+
+    AssertReturn(payload.Type() == uType, VERR_INVALID_PARAMETER);
+    AssertReturn(payload.Size() == sizeof(PayloadType), VERR_INVALID_PARAMETER);
+
+    PayloadType * const pPayload = (PayloadType *)payload.Raw();
+    AssertPtrReturn(pPayload, VERR_INVALID_POINTER);
+
+    *ppPayload = pPayload;
+    return VINF_SUCCESS;
+}
+
+/**
+ * Gets a guest supplied HGCM buffer and verifies its exact size.
+ *
+ * @returns VBox status code.
+ * @retval  VERR_INVALID_PARAMETER if the parameter is not a non-empty pointer
+ *          parameter, if @a cbExpected is zero, or if the size does not match.
+ * @retval  VERR_INVALID_POINTER if @a pParm or @a ppvBuf is invalid.
+ * @param   pParm               HGCM parameter to read.
+ * @param   ppvBuf              Where to return the buffer pointer on success.
+ *                              The returned pointer remains owned by the HGCM
+ *                              callback data and must not be stored or freed.
+ * @param   cbExpected          Exact expected buffer size, in bytes.
+ */
+DECLINLINE(int) guestCtrlHgcmGetBufExact(PVBOXHGCMSVCPARM pParm, const void **ppvBuf, uint32_t cbExpected)
+{
+    AssertPtrReturn(ppvBuf, VERR_INVALID_POINTER);
+    *ppvBuf = NULL;
+    AssertReturn(cbExpected, VERR_INVALID_PARAMETER);
+
+    void    *pvBuf = NULL;
+    uint32_t cbBuf = 0;
+    int vrc = HGCMSvcGetBuf(pParm, &pvBuf, &cbBuf);
+    if (RT_FAILURE(vrc))
+        return vrc;
+    if (cbBuf != cbExpected)
+        return VERR_INVALID_PARAMETER;
+
+    *ppvBuf = pvBuf;
+    return VINF_SUCCESS;
+}
+
+/**
+ * Gets a guest supplied HGCM string and duplicates it into host-owned memory.
+ *
+ * @returns VBox status code.
+ * @retval  VERR_INVALID_PARAMETER if the parameter is not a valid HGCM string.
+ * @retval  VERR_INVALID_POINTER if @a pParm, @a ppsz, or @a pcb is invalid.
+ * @retval  VERR_TOO_MUCH_DATA if the string exceeds @a cbMax.
+ * @retval  VERR_NO_MEMORY if duplicating the string fails.
+ * @param   pParm               HGCM parameter to read.
+ * @param   ppsz                Where to return the duplicated string on success.
+ *                              The caller owns this string and must free it with
+ *                              RTStrFree().
+ * @param   pcb                 Where to return the string size, in bytes.
+ * @param   cbMax               Maximum accepted string size, in bytes.
+ */
+DECLINLINE(int) guestCtrlHgcmGetStrDup(PVBOXHGCMSVCPARM pParm, char **ppsz, uint32_t *pcb, uint32_t cbMax)
+{
+    AssertPtrReturn(ppsz, VERR_INVALID_POINTER);
+    AssertPtrReturn(pcb, VERR_INVALID_POINTER);
+    *ppsz = NULL;
+    *pcb = 0;
+
+    char    *psz = NULL;
+    uint32_t cb  = 0;
+    int vrc = HGCMSvcGetStr(pParm, &psz, &cb);
+    if (RT_FAILURE(vrc))
+        return vrc;
+    if (cb > cbMax)
+        return VERR_TOO_MUCH_DATA;
+
+    vrc = RTStrValidateEncodingEx(psz, cb,
+                                    RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED
+                                  | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
+    if (RT_FAILURE(vrc))
+        return vrc;
+
+    char *pszDup = RTStrDup(psz);
+    if (!pszDup)
+        return VERR_NO_MEMORY;
+
+    *ppsz = pszDup;
+    *pcb = cb;
+    return VINF_SUCCESS;
+}
+
+/**
+ * Validates a required callback payload string.
+ *
+ * @returns VBox status code.
+ * @retval  VERR_INVALID_PARAMETER if @a cb is zero.
+ * @retval  VERR_INVALID_POINTER if @a psz is invalid.
+ * @retval  VERR_TOO_MUCH_DATA if @a cb exceeds @a cbMax.
+ * @param   psz                 String pointer to validate.
+ * @param   cb                  String size, in bytes, including terminator.
+ * @param   cbMax               Maximum accepted string size, in bytes.
+ */
+DECLINLINE(int) guestCtrlValidatePayloadString(const char *psz, uint32_t cb, uint32_t cbMax)
+{
+    AssertReturn(cb, VERR_INVALID_PARAMETER);
+    AssertReturn(cb <= cbMax, VERR_TOO_MUCH_DATA);
+    AssertPtrReturn(psz, VERR_INVALID_POINTER);
+
+    return RTStrValidateEncodingEx(psz, cb,
+                                    RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED
+                                  | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
+}
+
+/**
+ * Validates guest supplied filesystem object information.
+ *
+ * @returns VBox status code.
+ * @retval  VERR_INVALID_PARAMETER if the structure size is invalid.
+ * @retval  VERR_INVALID_POINTER if @a pFsObjInfo is invalid.
+ * @param   pFsObjInfo          Filesystem object information structure to validate.
+ * @param   cbFsObjInfo         Size of @a pFsObjInfo, in bytes.
+ */
+DECLINLINE(int) guestCtrlValidateFsObjInfo(PCGSTCTLFSOBJINFO pFsObjInfo, uint32_t cbFsObjInfo)
+{
+    AssertPtrReturn(pFsObjInfo, VERR_INVALID_POINTER);
+    AssertReturn(cbFsObjInfo == sizeof(GSTCTLFSOBJINFO), VERR_INVALID_PARAMETER);
+    AssertReturn(   pFsObjInfo->Attr.enmAdditional >= GSTCTLFSOBJATTRADD_NOTHING
+                 && pFsObjInfo->Attr.enmAdditional <= GSTCTLFSOBJATTRADD_LAST, VERR_INVALID_PARAMETER);
+
+    switch (pFsObjInfo->Attr.enmAdditional)
+    {
+        case GSTCTLFSOBJATTRADD_UNIX_OWNER:
+            return RTStrValidateEncodingEx(pFsObjInfo->Attr.u.UnixOwner.szName,
+                                           sizeof(pFsObjInfo->Attr.u.UnixOwner.szName),
+                                           RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED);
+
+        case GSTCTLFSOBJATTRADD_UNIX_GROUP:
+            return RTStrValidateEncodingEx(pFsObjInfo->Attr.u.UnixGroup.szName,
+                                           sizeof(pFsObjInfo->Attr.u.UnixGroup.szName),
+                                           RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED);
+
+        case GSTCTLFSOBJATTRADD_NOTHING:
+        case GSTCTLFSOBJATTRADD_UNIX:
+        case GSTCTLFSOBJATTRADD_EASIZE:
+            break;
+
+        default:
+            AssertFailedReturn(VERR_INVALID_PARAMETER);
+    }
+
+    return VINF_SUCCESS;
+}
+
+/**
+ * Validates guest supplied filesystem information.
+ *
+ * @returns VBox status code.
+ * @retval  VERR_INVALID_PARAMETER if the structure size, fixed strings,
+ *          mount point length, terminator, or UTF-8 encoding is invalid.
+ * @retval  VERR_INVALID_POINTER if @a pFsInfo is invalid.
+ * @param   pFsInfo             Filesystem information structure to validate.
+ * @param   cbFsInfo            Size of @a pFsInfo, in bytes.
+ */
+DECLINLINE(int) guestCtrlValidateFsInfo(PCGSTCTLFSINFO pFsInfo, uint32_t cbFsInfo)
+{
+    AssertPtrReturn(pFsInfo, VERR_INVALID_POINTER);
+    AssertReturn(cbFsInfo == sizeof(GSTCTLFSINFO), VERR_INVALID_PARAMETER);
+
+    int vrc = RTStrValidateEncodingEx(pFsInfo->szName, sizeof(pFsInfo->szName),
+                                      RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED);
+    if (RT_FAILURE(vrc))
+        return vrc;
+
+    vrc = RTStrValidateEncodingEx(pFsInfo->szLabel, sizeof(pFsInfo->szLabel),
+                                  RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED);
+    if (RT_FAILURE(vrc))
+        return vrc;
+
+    AssertReturn(pFsInfo->cbMountpoint <= sizeof(pFsInfo->szMountpoint), VERR_INVALID_PARAMETER);
+    if (pFsInfo->cbMountpoint)
+        return RTStrValidateEncodingEx(pFsInfo->szMountpoint, pFsInfo->cbMountpoint,
+                                         RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED
+                                       | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
+
+    return VINF_SUCCESS;
+}
+
+/**
+ * Validates a guest supplied directory entry structure.
+ *
+ * @returns VBox status code.
+ * @retval  VERR_INVALID_PARAMETER if the structure size, name length, short
+ *          name length, terminator, or UTF-8 encoding is invalid.
+ * @retval  VERR_INVALID_POINTER if @a pDirEntryEx is invalid.
+ * @param   pDirEntryEx         Directory entry structure to validate.
+ * @param   cbDirEntryEx        Size of @a pDirEntryEx, in bytes.
+ */
+DECLINLINE(int) guestCtrlValidateDirEntryEx(PCGSTCTLDIRENTRYEX pDirEntryEx, uint32_t cbDirEntryEx)
+{
+    AssertPtrReturn(pDirEntryEx, VERR_INVALID_POINTER);
+    AssertReturn(   cbDirEntryEx >= RT_UOFFSETOF(GSTCTLDIRENTRYEX, szName[2])
+                 && cbDirEntryEx <= GSTCTL_DIRENTRY_MAX_SIZE, VERR_INVALID_PARAMETER);
+    AssertReturn(pDirEntryEx->cwcShortName <= RT_ELEMENTS(pDirEntryEx->wszShortName), VERR_INVALID_PARAMETER);
+
+    size_t const offNameEnd = RT_UOFFSETOF(GSTCTLDIRENTRYEX, szName) + pDirEntryEx->cbName + 1;
+    AssertReturn(offNameEnd <= cbDirEntryEx, VERR_INVALID_PARAMETER);
+    AssertReturn(pDirEntryEx->szName[pDirEntryEx->cbName] == '\0', VERR_INVALID_PARAMETER);
+
+    return RTStrValidateEncodingEx(pDirEntryEx->szName, pDirEntryEx->cbName + 1,
+                                     RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED
+                                   | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
+}
 
 class GuestWaitEventBase
 {

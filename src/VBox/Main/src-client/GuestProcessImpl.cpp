@@ -1,4 +1,4 @@
-/* $Id: GuestProcessImpl.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: GuestProcessImpl.cpp 114280 2026-06-09 07:31:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Guest process handling.
  */
@@ -695,6 +695,7 @@ int GuestProcess::i_onProcessInputStatus(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGU
         return VERR_INVALID_PARAMETER;
 
     CALLBACKDATA_PROC_INPUT dataCb;
+    RT_ZERO(dataCb);
     /* pSvcCb->mpaParms[0] always contains the context ID. */
     int vrc = HGCMSvcGetU32(&pSvcCbData->mpaParms[1], &dataCb.uPID);
     AssertRCReturn(vrc, vrc);
@@ -784,6 +785,7 @@ int GuestProcess::i_onProcessStatusChange(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXG
         return VERR_INVALID_PARAMETER;
 
     CALLBACKDATA_PROC_STATUS dataCb;
+    RT_ZERO(dataCb);
     /* pSvcCb->mpaParms[0] always contains the context ID. */
     int vrc = HGCMSvcGetU32(&pSvcCbData->mpaParms[1], &dataCb.uPID);
     AssertRCReturn(vrc, vrc);
@@ -793,6 +795,8 @@ int GuestProcess::i_onProcessStatusChange(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXG
     AssertRCReturn(vrc, vrc);
     vrc = HGCMSvcGetPv(&pSvcCbData->mpaParms[4], &dataCb.pvData, &dataCb.cbData);
     AssertRCReturn(vrc, vrc);
+    if (dataCb.cbData)
+        AssertPtrReturn(dataCb.pvData, VERR_INVALID_POINTER);
 
     LogFlowThisFunc(("uPID=%RU32, uStatus=%RU32, uFlags=%RU32\n",
                      dataCb.uPID, dataCb.uStatus, dataCb.uFlags));
@@ -900,6 +904,7 @@ int GuestProcess::i_onProcessOutput(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCT
         return VERR_INVALID_PARAMETER;
 
     CALLBACKDATA_PROC_OUTPUT dataCb;
+    RT_ZERO(dataCb);
     /* pSvcCb->mpaParms[0] always contains the context ID. */
     int vrc = HGCMSvcGetU32(&pSvcCbData->mpaParms[1], &dataCb.uPID);
     AssertRCReturn(vrc, vrc);
@@ -909,6 +914,8 @@ int GuestProcess::i_onProcessOutput(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCT
     AssertRCReturn(vrc, vrc);
     vrc = HGCMSvcGetPv(&pSvcCbData->mpaParms[4], &dataCb.pvData, &dataCb.cbData);
     AssertRCReturn(vrc, vrc);
+    if (dataCb.cbData)
+        AssertPtrReturn(dataCb.pvData, VERR_INVALID_POINTER);
 
     LogFlowThisFunc(("uPID=%RU32, uHandle=%RU32, uFlags=%RI32, pvData=%p, cbData=%RU32\n",
                      dataCb.uPID, dataCb.uHandle, dataCb.uFlags, dataCb.pvData, dataCb.cbData));
@@ -918,7 +925,7 @@ int GuestProcess::i_onProcessOutput(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCT
     {
         com::SafeArray<BYTE> data((size_t)dataCb.cbData);
         if (dataCb.cbData)
-            data.initFrom((BYTE*)dataCb.pvData, dataCb.cbData);
+            data.initFrom((BYTE *)dataCb.pvData, dataCb.cbData);
 
         ::FireGuestProcessOutputEvent(mEventSource, mSession, this,
                                       mData.mPID, dataCb.uHandle, dataCb.cbData, ComSafeArrayAsInParam(data));

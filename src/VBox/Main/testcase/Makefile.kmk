@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 110361 2025-07-23 07:29:53Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 114280 2026-06-09 07:31:19Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the VBox API testcases.
 #
@@ -43,6 +43,7 @@ ifndef VBOX_ONLY_SDK
   	$(if $(VBOX_WITH_XPCOM),tstVBoxAPIXPCOM,tstVBoxAPIWin msiDarwinDescriptorDecoder) \
   	$(if $(VBOX_WITH_RESOURCE_USAGE_API),tstCollector,) \
   	$(if $(VBOX_WITH_GUEST_CONTROL),tstGuestCtrlContextID,) \
+  	$(if $(VBOX_WITH_GUEST_CONTROL),tstGuestCtrlHGCM,) \
   	$(if $(VBOX_WITH_GUEST_CONTROL),tstGuestCtrlParseBuffer,) \
   	$(if $(VBOX_WITH_GUEST_CONTROL),tstGuestCtrlPaths,) \
   	tstMediumLock \
@@ -220,6 +221,22 @@ tstGuestCtrlContextID_SOURCES  = \
 	tstGuestCtrlContextID.cpp \
 	../src-client/GuestCtrlPrivate.cpp
 tstGuestCtrlContextID_INCS     = ../include \
+	$(VBOX_MAIN_APIWRAPPER_INCS)
+
+
+#
+# tstGuestCtrlHGCM
+#
+# Note! See notes on tstCollector.
+#
+tstGuestCtrlHGCM_TEMPLATE = VBoxMainClientTstExe
+tstGuestCtrlHGCM_INTERMEDIATES = $(VBOX_MAIN_APIWRAPPER_GEN_HDRS)
+tstGuestCtrlHGCM_DEFS += VBOX_WITH_HGCM VBOX_WITH_GSTCTL_TOOLBOX_AS_CMDS VBOX_WITH_GUEST_CONTROL VBOX_GUESTCTRL_TEST_CASE
+tstGuestCtrlHGCM_CXXFLAGS.win += -wd4310 # Intentionally use integer constants outside signed char range.
+tstGuestCtrlHGCM_SOURCES = \
+	tstGuestCtrlHGCM.cpp \
+	../src-client/GuestCtrlPrivate.cpp
+tstGuestCtrlHGCM_INCS     = ../include \
 	$(VBOX_MAIN_APIWRAPPER_INCS)
 
 
