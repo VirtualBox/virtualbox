@@ -1,4 +1,4 @@
-/* $Id: VirtioCore.cpp 113838 2026-04-13 12:28:27Z alexander.eichner@oracle.com $ */
+/* $Id: VirtioCore.cpp 114283 2026-06-09 09:57:21Z michal.necasek@oracle.com $ */
 
 /** @file
  * VirtioCore - Virtio Core (PCI, feature & config mgt, queue mgt & proxy, notification mgt)
@@ -2786,10 +2786,9 @@ DECLHIDDEN(int) virtioCoreR3LegacyDeviceLoadExec(PVIRTIOCORE pVirtio, PCPDMDEVHL
         AssertRCReturn(rc, rc);
     }
 
-    AssertLogRelMsgReturn(cQueues <= VIRTQ_MAX_COUNT, ("%#x\n", cQueues), VERR_SSM_LOAD_CONFIG_MISMATCH);
-    AssertLogRelMsgReturn(pVirtio->uVirtqSelect < cQueues || (cQueues == 0 && pVirtio->uVirtqSelect),
-                          ("uVirtqSelect=%u cQueues=%u\n", pVirtio->uVirtqSelect, cQueues),
-                          VERR_SSM_LOAD_CONFIG_MISMATCH);
+    AssertLogRelMsgReturn(cQueues <= VIRTQ_MAX_COUNT, ("cQueues=%u!\n", cQueues), VERR_SSM_LOAD_CONFIG_MISMATCH);
+    AssertLogRelMsgReturn(pVirtio->uVirtqSelect < cQueues || (!cQueues && !pVirtio->uVirtqSelect),
+                          ("uVirtqSelect=%u cQueues=%u\n", pVirtio->uVirtqSelect, cQueues), VERR_SSM_LOAD_CONFIG_MISMATCH);
 
     Log(("\nRestoring %d  legacy-only virtio-net device queues from saved state:\n", cQueues));
     for (unsigned uVirtq = 0; uVirtq < cQueues; uVirtq++)
@@ -2853,7 +2852,7 @@ DECLHIDDEN(int) virtioCoreR3LegacyDeviceLoadExec(PVIRTIOCORE pVirtio, PCPDMDEVHL
 DECLHIDDEN(int) virtioCoreR3ModernDeviceLoadExec(PVIRTIOCORE pVirtio, PCPDMDEVHLPR3 pHlp, PSSMHANDLE pSSM,
                                                  uint32_t uVersion, uint32_t uTestVersion, uint32_t cQueues)
 {
-    RT_NOREF2(cQueues, uVersion);
+    RT_NOREF(uVersion);
     LogFunc(("\n"));
     /*
      * Check the marker and (embedded) version number.
@@ -2896,6 +2895,10 @@ DECLHIDDEN(int) virtioCoreR3ModernDeviceLoadExec(PVIRTIOCORE pVirtio, PCPDMDEVHL
     AssertRCReturn(rc, rc);
     rc = pHlp->pfnSSMGetU64(  pSSM, &pVirtio->uDriverFeatures);
     AssertRCReturn(rc, rc);
+
+    AssertLogRelMsgReturn(cQueues <= VIRTQ_MAX_COUNT, ("cQueues=%u!\n", cQueues), VERR_SSM_LOAD_CONFIG_MISMATCH);
+    AssertLogRelMsgReturn(pVirtio->uVirtqSelect < cQueues || (!cQueues && !pVirtio->uVirtqSelect),
+                          ("uVirtqSelect=%u cQueues=%u\n", pVirtio->uVirtqSelect, cQueues), VERR_SSM_LOAD_CONFIG_MISMATCH);
 
     /** @todo Adapt this loop use cQueues argument instead of static queue count (safely with SSM versioning) */
     for (uint32_t i = 0; i < VIRTQ_MAX_COUNT; i++)
