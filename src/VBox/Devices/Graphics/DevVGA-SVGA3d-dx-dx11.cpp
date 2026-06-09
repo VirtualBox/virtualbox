@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114294 2026-06-09 13:38:07Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114305 2026-06-09 15:24:18Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -4924,7 +4924,6 @@ static DECLCALLBACK(int) vmsvga3dBackChangeMode(PVGASTATECC pThisCC)
 static DECLCALLBACK(int) vmsvga3dBackSurfaceCopy(PVGASTATECC pThisCC, SVGA3dSurfaceImageId dest, SVGA3dSurfaceImageId src,
                                uint32_t cCopyBoxes, SVGA3dCopyBox *pBox)
 {
-    RT_NOREF(cCopyBoxes);
     AssertReturn(pBox, VERR_INVALID_PARAMETER);
 
     LogFunc(("src sid %d -> dst sid %d\n", src.sid, dest.sid));
@@ -4942,12 +4941,11 @@ static DECLCALLBACK(int) vmsvga3dBackSurfaceCopy(PVGASTATECC pThisCC, SVGA3dSurf
     rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, dest.sid, &pDstSurface);
     AssertRCReturn(rc, rc);
 
-/** @todo Implement a separate code paths for memory->texture, texture->memory */
+    /** @todo Implement a separate code paths for memory->texture, texture->memory */
     LogFunc(("src%s sid = %u -> dst%s sid = %u\n",
              pSrcSurface->pBackendSurface ? "" : " sysmem", pSrcSurface->id,
              pDstSurface->pBackendSurface ? "" : " sysmem", pDstSurface->id));
 
-    /* Clip the box. */
     PVMSVGA3DMIPMAPLEVEL pSrcMipLevel;
     rc = vmsvga3dMipmapLevel(pSrcSurface, src.face, src.mipmap, &pSrcMipLevel);
     ASSERT_GUEST_RETURN(RT_SUCCESS(rc), rc);
@@ -4956,48 +4954,55 @@ static DECLCALLBACK(int) vmsvga3dBackSurfaceCopy(PVGASTATECC pThisCC, SVGA3dSurf
     rc = vmsvga3dMipmapLevel(pDstSurface, dest.face, dest.mipmap, &pDstMipLevel);
     ASSERT_GUEST_RETURN(RT_SUCCESS(rc), rc);
 
-    SVGA3dCopyBox clipBox = *pBox;
-    vmsvgaR3ClipCopyBox(&pSrcMipLevel->mipmapSize, &pDstMipLevel->mipmapSize, &clipBox);
-    ASSERT_GUEST_RETURN(clipBox.w && clipBox.h && clipBox.d, VERR_INVALID_PARAMETER);
-
     if (pSrcSurface->pBackendSurface == NULL && pDstSurface->pBackendSurface == NULL)
     {
+        /* sysmem -> sysmem. */
         AssertReturn(pSrcSurface->format == pDstSurface->format, VERR_INVALID_PARAMETER);
         AssertReturn(pSrcSurface->cbBlock == pDstSurface->cbBlock, VERR_INVALID_PARAMETER);
         AssertReturn(pSrcMipLevel->pSurfaceData && pDstMipLevel->pSurfaceData, VERR_INVALID_STATE);
 
-        uint32_t const cxBlocks = (clipBox.w + pSrcSurface->cxBlock - 1) / pSrcSurface->cxBlock;
-        uint32_t const cyBlocks = (clipBox.h + pSrcSurface->cyBlock - 1) / pSrcSurface->cyBlock;
-        uint32_t const cbRow = cxBlocks * pSrcSurface->cbBlock;
-
-        uint8_t const *pu8Src = (uint8_t *)pSrcMipLevel->pSurfaceData
-                + (clipBox.srcx / pSrcSurface->cxBlock) * pSrcSurface->cbBlock
-                + (clipBox.srcy / pSrcSurface->cyBlock) * pSrcMipLevel->cbSurfacePitch
-                + clipBox.srcz * pSrcMipLevel->cbSurfacePlane;
-
-        uint8_t *pu8Dst = (uint8_t *)pDstMipLevel->pSurfaceData
-                + (clipBox.x / pDstSurface->cxBlock) * pDstSurface->cbBlock
-                + (clipBox.y / pDstSurface->cyBlock) * pDstMipLevel->cbSurfacePitch
-                + clipBox.z * pDstMipLevel->cbSurfacePlane;
-
-        for (uint32_t z = 0; z < clipBox.d; ++z)
+        for (uint32_t i = 0; i < cCopyBoxes; ++i)
         {
-            uint8_t const *pu8PlaneSrc = pu8Src;
-            uint8_t *pu8PlaneDst = pu8Dst;
+            /* Clip the box. */
+            SVGA3dCopyBox clipBox = pBox[i];
+            vmsvgaR3ClipCopyBox(&pSrcMipLevel->mipmapSize, &pDstMipLevel->mipmapSize, &clipBox);
+            ASSERT_GUEST_CONTINUE(clipBox.w && clipBox.h && clipBox.d);
 
-            for (uint32_t y = 0; y < cyBlocks; ++y)
+            uint32_t const cxBlocks = (clipBox.w + pSrcSurface->cxBlock - 1) / pSrcSurface->cxBlock;
+            uint32_t const cyBlocks = (clipBox.h + pSrcSurface->cyBlock - 1) / pSrcSurface->cyBlock;
+            uint32_t const cbRow = cxBlocks * pSrcSurface->cbBlock;
+
+            uint8_t const *pu8Src = (uint8_t *)pSrcMipLevel->pSurfaceData
+                    + (clipBox.srcx / pSrcSurface->cxBlock) * pSrcSurface->cbBlock
+                    + (clipBox.srcy / pSrcSurface->cyBlock) * pSrcMipLevel->cbSurfacePitch
+                    + clipBox.srcz * pSrcMipLevel->cbSurfacePlane;
+
+            uint8_t *pu8Dst = (uint8_t *)pDstMipLevel->pSurfaceData
+                    + (clipBox.x / pDstSurface->cxBlock) * pDstSurface->cbBlock
+                    + (clipBox.y / pDstSurface->cyBlock) * pDstMipLevel->cbSurfacePitch
+                    + clipBox.z * pDstMipLevel->cbSurfacePlane;
+
+            for (uint32_t z = 0; z < clipBox.d; ++z)
             {
-                memcpy(pu8PlaneDst, pu8PlaneSrc, cbRow);
-                pu8PlaneDst += pDstMipLevel->cbSurfacePitch;
-                pu8PlaneSrc += pSrcMipLevel->cbSurfacePitch;
-            }
+                uint8_t const *pu8PlaneSrc = pu8Src;
+                uint8_t *pu8PlaneDst = pu8Dst;
 
-            pu8Src += pSrcMipLevel->cbSurfacePlane;
-            pu8Dst += pDstMipLevel->cbSurfacePlane;
+                for (uint32_t y = 0; y < cyBlocks; ++y)
+                {
+                    memcpy(pu8PlaneDst, pu8PlaneSrc, cbRow);
+                    pu8PlaneDst += pDstMipLevel->cbSurfacePitch;
+                    pu8PlaneSrc += pSrcMipLevel->cbSurfacePitch;
+                }
+
+                pu8Src += pSrcMipLevel->cbSurfacePlane;
+                pu8Dst += pDstMipLevel->cbSurfacePlane;
+            }
         }
 
         return VINF_SUCCESS;
     }
+
+    /* A 3D resource for one the surfaces has been already created. */
 
     //DXDEVICE *pDevice = dxDeviceGet(pThisCC->svga.p3dState);
     //AssertReturn(pDevice->pDevice, VERR_INVALID_STATE);
@@ -5015,31 +5020,38 @@ static DECLCALLBACK(int) vmsvga3dBackSurfaceCopy(PVGASTATECC pThisCC, SVGA3dSurf
         AssertRCReturn(rc, rc);
     }
 
-    UINT DstSubresource = vmsvga3dCalcSubresource(dest.mipmap, dest.face, pDstSurface->cLevels);
-    UINT DstX = clipBox.x;
-    UINT DstY = clipBox.y;
-    UINT DstZ = clipBox.z;
-
-    UINT SrcSubresource = vmsvga3dCalcSubresource(src.mipmap, src.face, pSrcSurface->cLevels);
-    D3D11_BOX SrcBox;
-    SrcBox.left   = clipBox.srcx;
-    SrcBox.top    = clipBox.srcy;
-    SrcBox.front  = clipBox.srcz;
-    SrcBox.right  = clipBox.srcx + clipBox.w;
-    SrcBox.bottom = clipBox.srcy + clipBox.h;
-    SrcBox.back   = clipBox.srcz + clipBox.d;
-
-    Assert(cCopyBoxes == 1); /** @todo */
-
     ID3D11Resource *pDstResource;
     ID3D11Resource *pSrcResource;
     pDstResource = dxResource(pDstSurface);
     pSrcResource = dxResource(pSrcSurface);
 
-    pDXDevice->pImmediateContext->CopySubresourceRegion(pDstResource, DstSubresource, DstX, DstY, DstZ,
-                                                        pSrcResource, SrcSubresource, &SrcBox);
+    UINT DstSubresource = vmsvga3dCalcSubresource(dest.mipmap, dest.face, pDstSurface->cLevels);
+    UINT SrcSubresource = vmsvga3dCalcSubresource(src.mipmap, src.face, pSrcSurface->cLevels);
 
-    return rc;
+    for (uint32_t i = 0; i < cCopyBoxes; ++i)
+    {
+        /* Clip the box. */
+        SVGA3dCopyBox clipBox = pBox[i];
+        vmsvgaR3ClipCopyBox(&pSrcMipLevel->mipmapSize, &pDstMipLevel->mipmapSize, &clipBox);
+        ASSERT_GUEST_CONTINUE(clipBox.w && clipBox.h && clipBox.d);
+
+        UINT DstX = clipBox.x;
+        UINT DstY = clipBox.y;
+        UINT DstZ = clipBox.z;
+
+        D3D11_BOX SrcBox;
+        SrcBox.left   = clipBox.srcx;
+        SrcBox.top    = clipBox.srcy;
+        SrcBox.front  = clipBox.srcz;
+        SrcBox.right  = clipBox.srcx + clipBox.w;
+        SrcBox.bottom = clipBox.srcy + clipBox.h;
+        SrcBox.back   = clipBox.srcz + clipBox.d;
+
+        pDXDevice->pImmediateContext->CopySubresourceRegion(pDstResource, DstSubresource, DstX, DstY, DstZ,
+                                                            pSrcResource, SrcSubresource, &SrcBox);
+    }
+
+    return VINF_SUCCESS;
 }
 
 
