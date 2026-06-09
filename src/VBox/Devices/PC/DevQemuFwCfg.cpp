@@ -1,4 +1,4 @@
-/* $Id: DevQemuFwCfg.cpp 113889 2026-04-15 13:09:23Z klaus.espenlaub@oracle.com $ */
+/* $Id: DevQemuFwCfg.cpp 114281 2026-06-09 09:45:35Z alexander.eichner@oracle.com $ */
 /** @file
  * DevQemuFwCfg - QEMU firmware configuration compatible device.
  */
@@ -2022,6 +2022,18 @@ static DECLCALLBACK(void) qemuFwCfgR3RamfbPortReportHostCursorPosition(PPDMIDISP
 
 
 /**
+ * @interface_method_impl{PDMIDISPLAYPORT,pfnQueryDefaultOutputTargetToken}
+ */
+static DECLCALLBACK(int) qemuFwCfgR3RamfbPortQueryDefaultOutputTargetToken(PPDMIDISPLAYPORT pInterface,
+                                                                           uint32_t idScreen,
+                                                                           uint64_t *pu64OutputTargetToken)
+{
+    RT_NOREF(pInterface, idScreen, pu64OutputTargetToken);
+    return VERR_NOT_IMPLEMENTED;
+}
+
+
+/**
  * @callback_method_impl{FNTMTIMERDEV, VGA Refresh Timer}
  */
 static DECLCALLBACK(void) qemuFwCfgR3RamfbTimerRefresh(PPDMDEVINS pDevIns, TMTIMERHANDLE hTimer, void *pvUser)
@@ -2264,6 +2276,7 @@ static DECLCALLBACK(int) qemuFwCfgConstruct(PPDMDEVINS pDevIns, int iInstance, P
     pThis->IPortRamfb.pfnSendModeHint                   = qemuFwCfgR3RamfbPortSendModeHint;
     pThis->IPortRamfb.pfnReportHostCursorCapabilities   = qemuFwCfgR3RamfbPortReportHostCursorCapabilities;
     pThis->IPortRamfb.pfnReportHostCursorPosition       = qemuFwCfgR3RamfbPortReportHostCursorPosition;
+    pThis->IPortRamfb.pfnQueryDefaultOutputTargetToken  = qemuFwCfgR3RamfbPortQueryDefaultOutputTargetToken;
 
     RTGCPHYS GCPhysMmioBase = 0;
     rc = pHlp->pfnCFGMQueryU64(pCfg, "MmioBase", &GCPhysMmioBase);
