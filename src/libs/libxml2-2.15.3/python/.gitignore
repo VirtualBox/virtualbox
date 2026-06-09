@@ -1,0 +1,7 @@
+/gen_prog
+/libxml2-export.c
+/libxml2-py.c
+/libxml2-py.h
+/libxml2.py
+/setup.py
+/tests/tmp.xml

@@ -1,4 +1,4 @@
-/* $Id: xml.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: xml.cpp 114275 2026-06-09 07:04:22Z alexander.eichner@oracle.com $ */
 /** @file
  * IPRT - XML Manipulation API.
  *
@@ -2015,18 +2015,31 @@ int XmlStringWriter::write(const Document &rDoc, RTCString *pStrDst)
 
     GlobalLock lock;
 
+#if LIBXML_VERSION < 21400
     xmlIndentTreeOutput = 1;
     xmlTreeIndentString = "  ";
     xmlSaveNoEmptyTags  = 0;
+#endif
 
     /*
      * Do a pass to calculate the size.
      */
     size_t cbOutput = 1; /* zero term */
 
-    xmlSaveCtxtPtr pSaveCtx= xmlSaveToIO(WriteCallbackForSize, CloseCallback, &cbOutput, NULL /*pszEncoding*/, XML_SAVE_FORMAT);
+    xmlSaveCtxtPtr pSaveCtx= xmlSaveToIO(WriteCallbackForSize, CloseCallback, &cbOutput, NULL /*pszEncoding*/,
+                                           XML_SAVE_FORMAT
+#if LIBXML_VERSION >= 21400
+                                         | XML_SAVE_EMPTY
+                                         | XML_SAVE_INDENT
+#endif
+                                        );
     if (!pSaveCtx)
         return VERR_NO_MEMORY;
+
+#if LIBXML_VERSION >= 21400
+    int rcXml2 = xmlSaveSetIndentString(pSaveCtx, "  ");
+    Assert(rcXml2 == 0); RT_NOREF(rcXml2); /* This shouldn't fail, unless the indent string is invalid. */
+#endif
 
     long rcXml = xmlSaveDoc(pSaveCtx, rDoc.m->plibDocument);
     xmlSaveClose(pSaveCtx);
@@ -2279,17 +2292,29 @@ void XmlFileWriter::writeInternal(const char *pcszFilename, bool fSafe)
     GlobalLock lock;
 
     /* serialize to the stream */
+#if LIBXML_VERSION < 21400
     xmlIndentTreeOutput = 1;
     xmlTreeIndentString = "  ";
-    xmlSaveNoEmptyTags = 0;
+    xmlSaveNoEmptyTags  = 0;
+#endif
 
     xmlSaveCtxtPtr saveCtxt;
     if (!(saveCtxt = xmlSaveToIO(WriteCallback,
                                  CloseCallback,
                                  &context,
                                  NULL,
-                                 XML_SAVE_FORMAT)))
+                                 XML_SAVE_FORMAT
+#if LIBXML_VERSION >= 21400
+                               | XML_SAVE_EMPTY
+                               | XML_SAVE_INDENT
+#endif
+                                )))
         throw xml::LogicError(RT_SRC_POS);
+
+#if LIBXML_VERSION >= 21400
+    int rcXml2 = xmlSaveSetIndentString(saveCtxt, "  ");
+    Assert(rcXml2 == 0); RT_NOREF(rcXml2); /* This shouldn't fail, unless the indent string is invalid. */
+#endif
 
     long rc = xmlSaveDoc(saveCtxt, m->pDoc->m->plibDocument);
     if (rc == -1)
