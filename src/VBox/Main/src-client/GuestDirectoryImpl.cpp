@@ -1,4 +1,4 @@
-/* $Id: GuestDirectoryImpl.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: GuestDirectoryImpl.cpp 114279 2026-06-09 07:23:44Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Guest directory handling.
  */
@@ -529,31 +529,21 @@ int GuestDirectory::i_onDirNotify(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCTRL
                                         vrc = VERR_WRONG_PARAMETER_TYPE);
             PGSTCTLDIRENTRYEX pDirEntryEx;
             uint32_t          cbDirEntryEx;
-            vrc = HGCMSvcGetPv(&pSvcCbData->mpaParms[idx++], (void **)&pDirEntryEx, &cbDirEntryEx);
+            vrc = HGCMSvcGetBuf(&pSvcCbData->mpaParms[idx++], (void **)&pDirEntryEx, &cbDirEntryEx);
             AssertRCBreak(vrc);
-            AssertBreakStmt(   cbDirEntryEx >= RT_UOFFSETOF(GSTCTLDIRENTRYEX, szName[2])
-                            && cbDirEntryEx <= GSTCTL_DIRENTRY_MAX_SIZE, vrc = VERR_INVALID_PARAMETER);
+            vrc = guestCtrlValidateDirEntryEx(pDirEntryEx, cbDirEntryEx);
+            AssertRCBreak(vrc);
             dataCb.u.read.Entry.pDirEntryEx  = (PGSTCTLDIRENTRYEX)RTMemDup(pDirEntryEx, cbDirEntryEx);
             AssertPtrBreakStmt(dataCb.u.read.Entry.pDirEntryEx, vrc = VERR_NO_MEMORY);
             dataCb.u.read.Entry.cbDirEntryEx = cbDirEntryEx;
 
-            char    *pszUser;
-            uint32_t cbUser;
-            vrc = HGCMSvcGetStr(&pSvcCbData->mpaParms[idx++], &pszUser, &cbUser);
+            vrc = guestCtrlHgcmGetStrDup(&pSvcCbData->mpaParms[idx++], &dataCb.u.read.Entry.pszUser,
+                                         &dataCb.u.read.Entry.cbUser, GSTCTL_DIRENTRY_MAX_USER_NAME);
             AssertRCBreak(vrc);
-            AssertBreakStmt(cbUser <= GSTCTL_DIRENTRY_MAX_USER_NAME, vrc = VERR_TOO_MUCH_DATA);
-            dataCb.u.read.Entry.pszUser = RTStrDup(pszUser);
-            AssertPtrBreakStmt(dataCb.u.read.Entry.pszUser, vrc = VERR_NO_MEMORY);
-            dataCb.u.read.Entry.cbUser  = cbUser;
 
-            char    *pszGroups;
-            uint32_t cbGroups;
-            vrc = HGCMSvcGetStr(&pSvcCbData->mpaParms[idx++], &pszGroups, &cbGroups);
+            vrc = guestCtrlHgcmGetStrDup(&pSvcCbData->mpaParms[idx++], &dataCb.u.read.Entry.pszGroups,
+                                         &dataCb.u.read.Entry.cbGroups, GSTCTL_DIRENTRY_MAX_USER_GROUPS);
             AssertRCBreak(vrc);
-            AssertBreakStmt(cbGroups <= GSTCTL_DIRENTRY_MAX_USER_GROUPS, vrc = VERR_TOO_MUCH_DATA);
-            dataCb.u.read.Entry.pszGroups = RTStrDup(pszGroups);
-            AssertPtrBreakStmt(dataCb.u.read.Entry.pszGroups, vrc = VERR_NO_MEMORY);
-            dataCb.u.read.Entry.cbGroups  = cbGroups;
 
             /** @todo ACLs not implemented yet. */
 
@@ -604,7 +594,7 @@ int GuestDirectory::i_onDirNotify(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCTRL
                                         vrc = VERR_WRONG_PARAMETER_TYPE);
             void    *pvBuf;
             uint32_t cbBuf;
-            vrc = HGCMSvcGetPv(&pSvcCbData->mpaParms[idx], &pvBuf, &cbBuf);
+            vrc = HGCMSvcGetBuf(&pSvcCbData->mpaParms[idx], &pvBuf, &cbBuf);
             AssertRCBreak(vrc);
             dataCb.u.list.paEntries = (PCALLBACKDATA_DIR_ENTRY *)RTMemAllocZ(dataCb.u.list.cEntries * sizeof(PCALLBACKDATA_DIR_ENTRY));
             AssertPtrBreakStmt(dataCb.u.list.paEntries, vrc = VERR_NO_MEMORY);
@@ -615,11 +605,13 @@ int GuestDirectory::i_onDirNotify(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCTRL
             size_t offBuf = 0;
             for (uint32_t i = 0; i < dataCb.u.list.cEntries; i++)
             {
-                dataCb.u.list.paEntries[i] = (PCALLBACKDATA_DIR_ENTRY)RTMemAlloc(sizeof(CALLBACKDATA_DIR_ENTRY));
+                dataCb.u.list.paEntries[i] = (PCALLBACKDATA_DIR_ENTRY)RTMemAllocZ(sizeof(CALLBACKDATA_DIR_ENTRY));
                 AssertPtrBreakStmt(dataCb.u.list.paEntries[i], vrc = VERR_NO_MEMORY);
 
                 PCALLBACKDATA_DIR_ENTRY pEntry = dataCb.u.list.paEntries[i];
 
+                AssertBreakStmt(   offBuf <= cbBuf
+                                && cbBuf - offBuf >= sizeof(GSTCTLDIRENTRYLISTHDR), vrc = VERR_INVALID_PARAMETER);
                 PGSTCTLDIRENTRYLISTHDR  const pHdr   = (PGSTCTLDIRENTRYLISTHDR)((uint8_t *)pvBuf + offBuf);
                 AssertBreakStmt(pHdr->cbDirEntryEx <= GSTCTL_DIRENTRY_MAX_SIZE, vrc = VERR_TOO_MUCH_DATA);
                 AssertBreakStmt(pHdr->cbUser <= GSTCTL_DIRENTRY_MAX_USER_NAME, vrc = VERR_TOO_MUCH_DATA);
@@ -628,6 +620,10 @@ int GuestDirectory::i_onDirNotify(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCTRL
 
                 AssertBreakStmt(   pHdr->cbDirEntryEx >= RT_UOFFSETOF(GSTCTLDIRENTRYEX, szName[2])
                                 && pHdr->cbDirEntryEx <= GSTCTL_DIRENTRY_MAX_SIZE, vrc = VERR_INVALID_PARAMETER);
+                AssertBreakStmt(   offBuf <= cbBuf
+                                && cbBuf - offBuf >= pHdr->cbDirEntryEx, vrc = VERR_INVALID_PARAMETER);
+                vrc = guestCtrlValidateDirEntryEx((PCGSTCTLDIRENTRYEX)((uint8_t *)pvBuf + offBuf), pHdr->cbDirEntryEx);
+                AssertRCBreak(vrc);
                 pEntry->pDirEntryEx  = (PGSTCTLDIRENTRYEX)RTMemDup((uint8_t *)pvBuf + offBuf, pHdr->cbDirEntryEx);
                 AssertPtrBreakStmt(pEntry->pDirEntryEx, vrc = VERR_NO_MEMORY);
                 pEntry->cbDirEntryEx = pHdr->cbDirEntryEx;
@@ -635,36 +631,42 @@ int GuestDirectory::i_onDirNotify(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCTRL
 
                 if (pHdr->cbUser)
                 {
+                    AssertBreakStmt(   offBuf <= cbBuf
+                                    && cbBuf - offBuf >= pHdr->cbUser, vrc = VERR_INVALID_PARAMETER);
                     pEntry->pszUser = (char *)RTMemDup((uint8_t *)pvBuf + offBuf, pHdr->cbUser);
                     AssertPtrBreakStmt(pEntry->pszUser, vrc = VERR_NO_MEMORY);
                     pEntry->cbUser  = pHdr->cbUser;
+                    vrc = RTStrValidateEncodingEx(pEntry->pszUser, pEntry->cbUser,
+                                                    RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED
+                                                  | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
+                    AssertRCBreak(vrc);
                     offBuf += pHdr->cbUser;
                 }
 
                 if (pHdr->cbGroups)
                 {
+                    AssertBreakStmt(   offBuf <= cbBuf
+                                    && cbBuf - offBuf >= pHdr->cbGroups, vrc = VERR_INVALID_PARAMETER);
                     pEntry->pszGroups = (char *)RTMemDup((uint8_t *)pvBuf + offBuf, pHdr->cbGroups);
                     AssertPtrBreakStmt(pEntry->pszGroups, vrc = VERR_NO_MEMORY);
                     pEntry->cbGroups  = pHdr->cbGroups;
+                    vrc = RTStrValidateEncodingEx(pEntry->pszGroups, pEntry->cbGroups,
+                                                    RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED
+                                                  | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
+                    AssertRCBreak(vrc);
                     offBuf += pHdr->cbGroups;
                 }
 
 #ifdef DEBUG
                 GuestFsObjData obj;
                 AssertRC(obj.FromGuestFsObjInfo(&pEntry->pDirEntryEx->Info, pEntry->pszUser, pEntry->pszGroups));
-                AssertRC(RTStrValidateEncodingEx(pEntry->pszUser,   pHdr->cbUser,   RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED));
-                AssertRC(RTStrValidateEncodingEx(pEntry->pszGroups, pHdr->cbGroups, RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED));
 #endif
             }
 
             if (RT_SUCCESS(vrc))
-            {
-                Assert(offBuf == cbBuf);
-            }
-            else /* Roll back on error. */
-            {
-               GuestDirectory::i_dirNotifyDataDestroy(&dataCb);
-            }
+                AssertStmt(offBuf == cbBuf, vrc = VERR_INVALID_PARAMETER);
+            if (RT_FAILURE(vrc)) /* Roll back on error. */
+                GuestDirectory::i_dirNotifyDataDestroy(&dataCb);
             break;
         }
 
@@ -750,6 +752,9 @@ void GuestDirectory::i_dirNotifyDataDestroy(PCALLBACKDATA_DIR_NOTIFY pDirNotify)
     {
         case GUEST_DIR_NOTIFYTYPE_LIST:
         {
+            if (!pDirNotify->u.list.cEntries)
+                break;
+            AssertPtrBreak(pDirNotify->u.list.paEntries);
             for (uint32_t i = 0; i < pDirNotify->u.list.cEntries; i++)
             {
                 PCALLBACKDATA_DIR_ENTRY const pEntry = pDirNotify->u.list.paEntries[i];
@@ -923,13 +928,17 @@ int GuestDirectory::i_readInternal(GuestFsObjData &objData, int *pvrcGuest)
             vrc = pEvent->Wait(GSTCTL_DEFAULT_TIMEOUT_MS);
             if (RT_SUCCESS(vrc))
             {
-                PCALLBACKDATA_DIR_NOTIFY const pDirNotify = (PCALLBACKDATA_DIR_NOTIFY)pEvent->Payload().Raw();
-                AssertPtrReturn(pDirNotify, VERR_INVALID_POINTER);
+                PCALLBACKDATA_DIR_NOTIFY pDirNotify = NULL;
+                vrc = guestCtrlEventPayloadGet(pEvent->Payload(), GUEST_DIR_NOTIFYTYPE_READ, &pDirNotify);
+                AssertRCReturn(vrc, vrc);
                 int vrcGuest = (int)pDirNotify->rc;
                 if (RT_SUCCESS(vrcGuest))
                 {
                     AssertReturn(pDirNotify->uType == GUEST_DIR_NOTIFYTYPE_READ, VERR_INVALID_PARAMETER);
                     AssertPtrReturn(pDirNotify->u.read.Entry.pDirEntryEx, VERR_INVALID_POINTER);
+                    vrc = guestCtrlValidateDirEntryEx(pDirNotify->u.read.Entry.pDirEntryEx,
+                                                      pDirNotify->u.read.Entry.cbDirEntryEx);
+                    AssertRCReturn(vrc, vrc);
                     objData.Init(pDirNotify->u.read.Entry.pDirEntryEx->szName);
                     vrc = objData.FromGuestFsObjInfo(&pDirNotify->u.read.Entry.pDirEntryEx->Info,
                                                      pDirNotify->u.read.Entry.pszUser, pDirNotify->u.read.Entry.pszGroups);
@@ -1060,8 +1069,9 @@ int GuestDirectory::i_listInternal(uint32_t cMaxEntries, uint32_t fFlags, std::v
             vrc = pEvent->Wait(GSTCTL_DEFAULT_TIMEOUT_MS);
             if (RT_SUCCESS(vrc))
             {
-                PCALLBACKDATA_DIR_NOTIFY const pDirNotify = (PCALLBACKDATA_DIR_NOTIFY)pEvent->Payload().Raw();
-                AssertPtrReturn(pDirNotify, VERR_INVALID_POINTER);
+                PCALLBACKDATA_DIR_NOTIFY pDirNotify = NULL;
+                vrc = guestCtrlEventPayloadGet(pEvent->Payload(), GUEST_DIR_NOTIFYTYPE_LIST, &pDirNotify);
+                AssertRCReturn(vrc, vrc);
                 int vrcGuest = (int)pDirNotify->rc;
                 if (   RT_SUCCESS(vrcGuest)
                     /* Guest indicates that there are no more entries to read.
@@ -1069,6 +1079,8 @@ int GuestDirectory::i_listInternal(uint32_t cMaxEntries, uint32_t fFlags, std::v
                     || vrcGuest == VERR_NO_MORE_FILES)
                 {
                     AssertReturn(pDirNotify->uType == GUEST_DIR_NOTIFYTYPE_LIST, VERR_INVALID_PARAMETER);
+                    AssertReturn(   !pDirNotify->u.list.cEntries
+                                 || RT_VALID_PTR(pDirNotify->u.list.paEntries), VERR_INVALID_POINTER);
 
                     try
                     {
@@ -1084,9 +1096,11 @@ int GuestDirectory::i_listInternal(uint32_t cMaxEntries, uint32_t fFlags, std::v
                         for (size_t a = 0; a < pDirNotify->u.list.cEntries; a++)
                         {
                             PCALLBACKDATA_DIR_ENTRY const pEntry = pDirNotify->u.list.paEntries[a];
-                            AssertPtr(pEntry);
+                            AssertPtrReturn(pEntry, VERR_INVALID_POINTER);
 
-                            AssertPtr(pEntry->pDirEntryEx);
+                            AssertPtrReturn(pEntry->pDirEntryEx, VERR_INVALID_POINTER);
+                            vrc = guestCtrlValidateDirEntryEx(pEntry->pDirEntryEx, pEntry->cbDirEntryEx);
+                            AssertRCReturn(vrc, vrc);
                             vecObjData[a].Init(pEntry->pDirEntryEx->szName);
                             int vrc2 = vecObjData[a].FromGuestFsObjInfo(&pEntry->pDirEntryEx->Info, pEntry->pszUser, pEntry->pszGroups);
                             if (RT_SUCCESS(vrc))

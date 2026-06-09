@@ -1,4 +1,4 @@
-/* $Id: GuestSessionImpl.cpp 113992 2026-04-23 21:38:42Z knut.osmundsen@oracle.com $ */
+/* $Id: GuestSessionImpl.cpp 114279 2026-06-09 07:23:44Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Guest session handling.
  */
@@ -1409,13 +1409,16 @@ int GuestSession::i_fsCreateTemp(const Utf8Str &strTemplate, const Utf8Str &strP
             vrc = pEvent->Wait(GSTCTL_DEFAULT_TIMEOUT_MS);
             if (RT_SUCCESS(vrc))
             {
-                PCALLBACKDATA_FS_NOTIFY const pFsNotify = (PCALLBACKDATA_FS_NOTIFY)pEvent->Payload().Raw();
-                AssertPtrReturn(pFsNotify, VERR_INVALID_POINTER);
+                PCALLBACKDATA_FS_NOTIFY pFsNotify = NULL;
+                vrc = guestCtrlEventPayloadGet(pEvent->Payload(), GUEST_FS_NOTIFYTYPE_CREATE_TEMP, &pFsNotify);
+                AssertRCReturn(vrc, vrc);
                 int vrcGuest = (int)pFsNotify->rc;
                 if (RT_SUCCESS(vrcGuest))
                 {
                     AssertReturn(pFsNotify->uType == GUEST_FS_NOTIFYTYPE_CREATE_TEMP, VERR_INVALID_PARAMETER);
-                    AssertReturn(pFsNotify->u.CreateTemp.cbPath, VERR_INVALID_PARAMETER);
+                    vrc = guestCtrlValidatePayloadString(pFsNotify->u.CreateTemp.pszPath,
+                                                         pFsNotify->u.CreateTemp.cbPath, RTPATH_MAX);
+                    AssertRCReturn(vrc, vrc);
                     strName = pFsNotify->u.CreateTemp.pszPath;
                     RTStrFree(pFsNotify->u.CreateTemp.pszPath);
                 }
@@ -2162,12 +2165,15 @@ int GuestSession::i_fsQueryInfo(const Utf8Str &strPath, PGSTCTLFSINFO pFsInfo, i
             vrc = pEvent->Wait(GSTCTL_DEFAULT_TIMEOUT_MS);
             if (RT_SUCCESS(vrc))
             {
-                PCALLBACKDATA_FS_NOTIFY const pFsNotify = (PCALLBACKDATA_FS_NOTIFY)pEvent->Payload().Raw();
-                AssertPtrReturn(pFsNotify, VERR_INVALID_POINTER);
+                PCALLBACKDATA_FS_NOTIFY pFsNotify = NULL;
+                vrc = guestCtrlEventPayloadGet(pEvent->Payload(), GUEST_FS_NOTIFYTYPE_QUERY_INFO, &pFsNotify);
+                AssertRCReturn(vrc, vrc);
                 int vrcGuest = (int)pFsNotify->rc;
                 if (RT_SUCCESS(vrcGuest))
                 {
                     AssertReturn(pFsNotify->uType == GUEST_FS_NOTIFYTYPE_QUERY_INFO, VERR_INVALID_PARAMETER);
+                    vrc = guestCtrlValidateFsInfo(&pFsNotify->u.QueryInfo.fsInfo, sizeof(GSTCTLFSINFO));
+                    AssertRCReturn(vrc, vrc);
                     memcpy(pFsInfo, &pFsNotify->u.QueryInfo.fsInfo, sizeof(GSTCTLFSINFO));
                 }
                 else
@@ -2239,12 +2245,21 @@ int GuestSession::i_fsObjQueryInfo(const Utf8Str &strPath, bool fFollowSymlinks,
             vrc = pEvent->Wait(GSTCTL_DEFAULT_TIMEOUT_MS);
             if (RT_SUCCESS(vrc))
             {
-                PCALLBACKDATA_FS_NOTIFY const pFsNotify = (PCALLBACKDATA_FS_NOTIFY)pEvent->Payload().Raw();
-                AssertPtrReturn(pFsNotify, VERR_INVALID_POINTER);
+                PCALLBACKDATA_FS_NOTIFY pFsNotify = NULL;
+                vrc = guestCtrlEventPayloadGet(pEvent->Payload(), GUEST_FS_NOTIFYTYPE_QUERY_OBJ_INFO, &pFsNotify);
+                AssertRCReturn(vrc, vrc);
                 int vrcGuest = (int)pFsNotify->rc;
                 if (RT_SUCCESS(vrcGuest))
                 {
                     AssertReturn(pFsNotify->uType == GUEST_FS_NOTIFYTYPE_QUERY_OBJ_INFO, VERR_INVALID_PARAMETER);
+                    vrc = guestCtrlValidateFsObjInfo(&pFsNotify->u.QueryObjInfo.objInfo, sizeof(GSTCTLFSOBJINFO));
+                    AssertRCReturn(vrc, vrc);
+                    vrc = guestCtrlValidatePayloadString(pFsNotify->u.QueryObjInfo.pszUser,
+                                                         pFsNotify->u.QueryObjInfo.cbUser, GSTCTL_DIRENTRY_MAX_USER_NAME);
+                    AssertRCReturn(vrc, vrc);
+                    vrc = guestCtrlValidatePayloadString(pFsNotify->u.QueryObjInfo.pszGroups,
+                                                         pFsNotify->u.QueryObjInfo.cbGroups, GSTCTL_DIRENTRY_MAX_USER_GROUPS);
+                    AssertRCReturn(vrc, vrc);
                     objData.Init(strPath);
                     vrc = objData.FromGuestFsObjInfo(&pFsNotify->u.QueryObjInfo.objInfo);
                     RTStrFree(pFsNotify->u.QueryObjInfo.pszUser);
@@ -2506,53 +2521,41 @@ int GuestSession::i_onFsNotify(PVBOXGUESTCTRLHOSTCBCTX pCbCtx, PVBOXGUESTCTRLHOS
         {
             case GUEST_FS_NOTIFYTYPE_CREATE_TEMP:
             {
-                char    *pszPath;
-                uint32_t cbPath;
-                vrc = HGCMSvcGetStr(&pSvcCbData->mpaParms[3], &pszPath, &cbPath);
+                vrc = guestCtrlHgcmGetStrDup(&pSvcCbData->mpaParms[3], &dataCb.u.CreateTemp.pszPath,
+                                             &dataCb.u.CreateTemp.cbPath, RTPATH_MAX);
                 AssertRCBreak(vrc);
-                dataCb.u.CreateTemp.pszPath = RTStrDup(pszPath);
-                AssertPtrBreakStmt(dataCb.u.CreateTemp.pszPath, vrc = VERR_NO_MEMORY);
-                dataCb.u.CreateTemp.cbPath  = cbPath;
                 break;
             }
 
             case GUEST_FS_NOTIFYTYPE_QUERY_OBJ_INFO:
             {
                 AssertBreakStmt(pSvcCbData->mParms >= 6, vrc = VERR_INVALID_PARAMETER);
-                PGSTCTLFSOBJINFO pObjInfo;
-                uint32_t         cbObjInfo;
-                vrc = HGCMSvcGetPv(&pSvcCbData->mpaParms[3], (void **)&pObjInfo, &cbObjInfo);
+                const void *pvObjInfo = NULL;
+                vrc = guestCtrlHgcmGetBufExact(&pSvcCbData->mpaParms[3], &pvObjInfo, sizeof(GSTCTLFSOBJINFO));
                 AssertRCBreak(vrc);
-                AssertBreakStmt(cbObjInfo == sizeof(GSTCTLFSOBJINFO), vrc = VERR_INVALID_PARAMETER);
-                memcpy(&dataCb.u.QueryObjInfo.objInfo, pObjInfo, sizeof(GSTCTLFSOBJINFO));
+                vrc = guestCtrlValidateFsObjInfo((PCGSTCTLFSOBJINFO)pvObjInfo, sizeof(GSTCTLFSOBJINFO));
+                AssertRCBreak(vrc);
+                memcpy(&dataCb.u.QueryObjInfo.objInfo, pvObjInfo, sizeof(GSTCTLFSOBJINFO));
 
-                char    *pszUser;
-                uint32_t cbUser;
-                vrc = HGCMSvcGetStr(&pSvcCbData->mpaParms[4], &pszUser, &cbUser);
+                vrc = guestCtrlHgcmGetStrDup(&pSvcCbData->mpaParms[4], &dataCb.u.QueryObjInfo.pszUser,
+                                             &dataCb.u.QueryObjInfo.cbUser, GSTCTL_DIRENTRY_MAX_USER_NAME);
                 AssertRCBreak(vrc);
-                dataCb.u.QueryObjInfo.pszUser = RTStrDup(pszUser);
-                AssertPtrBreakStmt(dataCb.u.QueryObjInfo.pszUser, vrc = VERR_NO_MEMORY);
-                dataCb.u.QueryObjInfo.cbUser  = cbUser;
 
-                char    *pszGroups;
-                uint32_t cbGroups;
-                vrc = HGCMSvcGetStr(&pSvcCbData->mpaParms[5], &pszGroups, &cbGroups);
+                vrc = guestCtrlHgcmGetStrDup(&pSvcCbData->mpaParms[5], &dataCb.u.QueryObjInfo.pszGroups,
+                                             &dataCb.u.QueryObjInfo.cbGroups, GSTCTL_DIRENTRY_MAX_USER_GROUPS);
                 AssertRCBreak(vrc);
-                dataCb.u.QueryObjInfo.pszGroups = RTStrDup(pszGroups);
-                AssertPtrBreakStmt(dataCb.u.QueryObjInfo.pszGroups, vrc = VERR_NO_MEMORY);
-                dataCb.u.QueryObjInfo.cbGroups  = cbGroups;
                 break;
             }
 
             case GUEST_FS_NOTIFYTYPE_QUERY_INFO:
             {
-                AssertBreakStmt(pSvcCbData->mParms >= 2, vrc = VERR_INVALID_PARAMETER);
-                PGSTCTLFSINFO pFsInfo;
-                uint32_t      cbFsInfo;
-                vrc = HGCMSvcGetPv(&pSvcCbData->mpaParms[3], (void **)&pFsInfo, &cbFsInfo);
+                AssertBreakStmt(pSvcCbData->mParms >= 4, vrc = VERR_INVALID_PARAMETER);
+                const void *pvFsInfo = NULL;
+                vrc = guestCtrlHgcmGetBufExact(&pSvcCbData->mpaParms[3], &pvFsInfo, sizeof(GSTCTLFSINFO));
                 AssertRCBreak(vrc);
-                AssertBreakStmt(cbFsInfo == sizeof(GSTCTLFSINFO), vrc = VERR_INVALID_PARAMETER);
-                memcpy(&dataCb.u.QueryInfo.fsInfo, pFsInfo, sizeof(GSTCTLFSINFO));
+                vrc = guestCtrlValidateFsInfo((PCGSTCTLFSINFO)pvFsInfo, sizeof(GSTCTLFSINFO));
+                AssertRCBreak(vrc);
+                memcpy(&dataCb.u.QueryInfo.fsInfo, pvFsInfo, sizeof(GSTCTLFSINFO));
                 break;
             }
 
