@@ -1,4 +1,4 @@
-/* $Id: DevNVMe.cpp 114062 2026-05-04 08:56:49Z alexander.eichner@oracle.com $ */
+/* $Id: DevNVMe.cpp 114274 2026-06-09 06:56:00Z alexander.eichner@oracle.com $ */
 /** @file
  * DevNVMe - Non Volatile Memory express (previous name: NVMHCI)
  */
@@ -3811,6 +3811,8 @@ static bool nvmeR3PrpListWalk(PPDMDEVINS pDevIns, PNVME pThis, PNVMECC pThisCC, 
     LogFlowFunc(("pThis=%#p pfnCopyWorker=%#p PrpList=%#llx pSgBuf=%#p cbHost=%zu cbSkip=%zu\n",
                  pThis, pfnCopyWorker, PrpList, pSgBuf, cbHost, cbSkip));
 
+    ASSERT_GUEST_RETURN(cPrpsLeftInPage, false);
+
     do
     {
         NVMEPRP aPrps[32];
@@ -3829,6 +3831,7 @@ static bool nvmeR3PrpListWalk(PPDMDEVINS pDevIns, PNVME pThis, PNVMECC pThisCC, 
             cPrpsLeft -= cPrpsRead;
             GCPhysPrpList = NVME_PRP_TO_GCPHYS(aPrps[cPrpsRead], pThis->uMpsSet);
             cPrpsLeftInPage = RT_MIN(NVME_PRP_GET_SIZE(aPrps[cPrpsRead], pThis->uMpsSet) / sizeof(NVMEPRP), cPrpsLeft);
+            ASSERT_GUEST_RETURN(cPrpsLeftInPage, false);
         }
         else
         {
@@ -5198,6 +5201,11 @@ static int nvmeR3CmdNvmProcess(PPDMDEVINS pDevIns, PNVME pThis, PNVMECC pThisCC,
     LogFlow(("Wrk#%u: Processing NVM command %#x\n", pWrkThrd->uId, pCmdNvm->u.Field.Hdr.u16Cid));
 
     nvmeR3CmdNvmDump(pWrkThrd, pCmdNvm);
+
+    if (RT_UNLIKELY(!NVME_CMD_HDR_PSDT_IS_PRP(pCmdNvm->u.Field.Hdr.u2Psdt)))
+        return nvmeR3CmdCompleteWithStatus(pDevIns, pThis, pThisCC, pQueueSubm, pCmdNvm->u.Field.Hdr.u16Cid,
+                                           NVME_CQ_ENTRY_SCT_CMD_GENERIC, NVME_CQ_ENTRY_SC_GEN_INV_CMD_FIELD,
+                                           0, false /* fMore */, true /* fDnr */);
 
     /* Check that the namespace is valid and has something attached. */
     if (   uNsId == 0
