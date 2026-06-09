@@ -1,4 +1,4 @@
-/* $Id: ConsoleImpl.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: ConsoleImpl.h 114286 2026-06-09 12:49:23Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VBox Console COM Class definition
  */
@@ -636,11 +636,13 @@ public:
         SharedFolderData(const Utf8Str &aHostPath,
                          bool aWritable,
                          bool aAutoMount,
-                         const Utf8Str &aAutoMountPoint)
+                         const Utf8Str &aAutoMountPoint,
+                         SymlinkPolicy_T enmSymlinkPolicy)
             : m_strHostPath(aHostPath)
             , m_fWritable(aWritable)
             , m_fAutoMount(aAutoMount)
             , m_strAutoMountPoint(aAutoMountPoint)
+            , m_enmSymlinkPolicy(enmSymlinkPolicy)
         { }
 
         /** Copy constructor. */
@@ -649,6 +651,7 @@ public:
             , m_fWritable(aThat.m_fWritable)
             , m_fAutoMount(aThat.m_fAutoMount)
             , m_strAutoMountPoint(aThat.m_strAutoMountPoint)
+            , m_enmSymlinkPolicy(aThat.m_enmSymlinkPolicy)
         { }
 
         /** Copy assignment operator. */
@@ -658,6 +661,7 @@ public:
             m_fWritable         = a_rThat.m_fWritable;
             m_fAutoMount        = a_rThat.m_fAutoMount;
             m_strAutoMountPoint = a_rThat.m_strAutoMountPoint;
+            m_enmSymlinkPolicy  = a_rThat.m_enmSymlinkPolicy;
 
             return *this;
         }
@@ -666,6 +670,7 @@ public:
         bool m_fWritable;
         bool m_fAutoMount;
         Utf8Str m_strAutoMountPoint;
+        SymlinkPolicy_T m_enmSymlinkPolicy;
     };
 
     /**

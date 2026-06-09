@@ -1,4 +1,4 @@
-/* $Id: vbsf.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: vbsf.cpp 114286 2026-06-09 12:49:23Z vadim.galitsyn@oracle.com $ */
 /** @file
  * Shared Folders - VBox Shared Folders.
  */
@@ -1085,11 +1085,24 @@ int vbsfCreate(SHFLCLIENTDATA *pClient, SHFLROOT root, SHFLSTRING *pPath, uint32
             /* Query path information. */
             RTFSOBJINFO info;
 
-            rc = RTPathQueryInfoEx(pszFullPath, &info, RTFSOBJATTRADD_NOTHING, SHFL_RT_LINK(pClient));
+            /* Vet the pathname to prune out symlinks, pipes, character devices, and etc. */
+            rc = RTPathQueryInfoEx(pszFullPath, &info, RTFSOBJATTRADD_NOTHING, RTPATH_F_ON_LINK);
             LogFlow(("RTPathQueryInfoEx returned %Rrc\n", rc));
 
             if (RT_SUCCESS(rc))
             {
+                if (!RTFS_IS_FILE(info.Attr.fMode) && !RTFS_IS_DIRECTORY(info.Attr.fMode))
+                {
+                    vbsfFreeFullPath(pszFullPath);
+                    return VERR_NOT_SUPPORTED;
+                }
+
+                /* If symlinks are supported then get the object info of the linked to object. */
+                if (!(pClient->fu32Flags & SHFL_CF_SYMLINKS)) {
+                    rc = RTPathQueryInfoEx(pszFullPath, &info, RTFSOBJATTRADD_NOTHING, RTPATH_F_FOLLOW_LINK);
+                    LogFlow(("RTPathQueryInfoEx returned %Rrc\n", rc));
+                }
+
                 /* Mark it as a directory in case the caller didn't. */
                 /**
                   * @todo I left this in in order not to change the behaviour of the
