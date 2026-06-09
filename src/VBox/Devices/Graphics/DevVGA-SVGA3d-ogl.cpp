@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-ogl.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-ogl.cpp 114288 2026-06-09 12:57:49Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -5634,15 +5634,15 @@ static DECLCALLBACK(int) vmsvga3dBackSetTextureState(PVGASTATECC pThisCC, uint32
         LogFunc(("cid=%u stage=%d type=%s (%x) val=%x\n",
                  cid, pTextureState[i].stage, vmsvga3dTextureStateToString(pTextureState[i].name), pTextureState[i].name, pTextureState[i].value));
 
+        ASSERT_GUEST_CONTINUE(   pTextureState[i].stage < RT_ELEMENTS(pContext->state.aTextureStates)
+                              && (unsigned)pTextureState[i].name < RT_ELEMENTS(pContext->state.aTextureStates[0]));
+        AssertCompile(RT_ELEMENTS(pContext->state.aTextureStates) == RT_ELEMENTS(pContext->aSidActiveTextures));
+
         /* Record the texture state for vm state saving. */
-        if (    pTextureState[i].stage < RT_ELEMENTS(pContext->state.aTextureStates)
-            &&  (unsigned)pTextureState[i].name < RT_ELEMENTS(pContext->state.aTextureStates[0]))
-        {
-            pContext->state.aTextureStates[pTextureState[i].stage][pTextureState[i].name] = pTextureState[i];
-        }
+        pContext->state.aTextureStates[pTextureState[i].stage][pTextureState[i].name] = pTextureState[i];
 
         /* Activate the right texture unit for subsequent texture state changes. */
-        if (pTextureState[i].stage != currentStage || i == 0)
+        if (pTextureState[i].stage != currentStage)
         {
             /** @todo Is this the appropriate limit for all kinds of textures?  It is the
              * size of aSidActiveTextures and for binding/unbinding we cannot exceed it. */
