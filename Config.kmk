@@ -1,4 +1,4 @@
-# $Id: Config.kmk 114275 2026-06-09 07:04:22Z alexander.eichner@oracle.com $
+# $Id: Config.kmk 114334 2026-06-10 15:03:20Z alexander.rudnev@oracle.com $
 ## @file
 # The global build configuration file for VBox.
 #
@@ -5147,7 +5147,7 @@ endif
 
 # openssl
 SDK_VBoxOpenSslStatic                        := OpenSSL - Only for VBoxRT and/or statically linked programs.
-SDK_VBoxOpenSslStatic_VBOX_DEFAULT_INCS      := $(PATH_OUT)/obj/crypto-3.4.4-headers/include
+SDK_VBoxOpenSslStatic_VBOX_DEFAULT_INCS      := $(PATH_OUT)/obj/crypto-3.4.6-headers/include
 SDK_VBoxOpenSslStatic_INCS                   ?= $(SDK_VBoxOpenSslStatic_VBOX_DEFAULT_INCS)
 SDK_VBoxOpenSslStatic_ORDERDEPS              ?= $(crypto-headers_1_TARGET)
 if   !defined(VBOX_ONLY_SDK) \
@@ -5161,7 +5161,7 @@ SDK_VBoxOpenSslStatic_LIBS                   ?= \
 	$(PATH_STAGE_LIB)/VBox-libcrypto$(VBOX_SUFF_LIB)
 
 SDK_VBoxOpenSslStatic-x86                    := OpenSSL/x86 - Only for VBoxRT and/or statically linked programs.
-SDK_VBoxOpenSslStatic-x86_VBOX_DEFAULT_INCS  := $(PATH_OUT)/obj/crypto-3.4.4-headers/include
+SDK_VBoxOpenSslStatic-x86_VBOX_DEFAULT_INCS  := $(PATH_OUT)/obj/crypto-3.4.6-headers/include
 SDK_VBoxOpenSslStatic-x86_INCS               ?= $(SDK_VBoxOpenSslStatic_VBOX_DEFAULT_INCS)
 SDK_VBoxOpenSslStatic-x86_ORDERDEPS          ?= $(crypto-headers_1_TARGET)
 if ("$(SDK_VBoxOpenSslStatic_INCS)" == "$(SDK_VBoxOpenSslStatic_VBOX_DEFAULT_INCS)")
@@ -9531,7 +9531,7 @@ SVN                    ?= svn$(HOSTSUFF_EXE)
 GIT                    ?= git$(HOSTSUFF_EXE)
 VBOX_SVN_REV_KMK        = $(PATH_OUT)/revision.kmk
 ifndef VBOX_SVN_REV
- VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 114275 $  )
+ VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 114334 $  )
  VBOX_SVN_REV_FALLBACK := $(if-expr $(VBOX_SVN_REV_CONFIG_FALLBACK) > $(VBOX_SVN_REV_VERSION_FALLBACK),$(VBOX_SVN_REV_CONFIG_FALLBACK),$(VBOX_SVN_REV_VERSION_FALLBACK))
  VBOX_SVN_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.svn/wc.db $(abspath $(PATH_ROOT)/../.svn/wc.db) $(abspath $(PATH_ROOT)/../../.svn/wc.db) $(PATH_ROOT)/.svn/entries))
  VBOX_GIT_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.git/config $(abspath $(PATH_ROOT)/../.git/config) $(abspath $(PATH_ROOT)/../../.git/config)))
@@ -9545,7 +9545,7 @@ ifndef VBOX_SVN_REV
  ifneq ($(VBOX_GIT_DEP),)
   #
   # VBOX_SVN_REV_CONFIG_FALLBACK is not properly populated for a git checkout,
-  # as the $Rev: 114275 $ is not expanded, so we have to set it based on the information in the repo.
+  # as the $Rev: 114334 $ is not expanded, so we have to set it based on the information in the repo.
   #
   VBOX_SVN_REV_FALLBACK := $(shell $(GIT) log -1 $(PATH_ROOT)/Config.kmk | $(SED) -e 's/^[ \t]*//' -e '/svn:sync-xref-src-repo-rev\: r/!d' -e 's/svn:sync-xref-src-repo-rev\: r*//; t a; :a q')
  endif
