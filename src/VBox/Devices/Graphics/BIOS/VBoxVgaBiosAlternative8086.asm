@@ -1,4 +1,4 @@
-; $Id: VBoxVgaBiosAlternative8086.asm 113950 2026-04-18 09:57:45Z vadim.galitsyn@oracle.com $ 
+; $Id: VBoxVgaBiosAlternative8086.asm 114340 2026-06-11 12:29:04Z vadim.galitsyn@oracle.com $ 
 ;; @file
 ; Auto Generated source file. Do not edit.
 ;
@@ -1580,7 +1580,7 @@ init_bios_area:                              ; 0xc0a28 LB 0x3e
     mov word [es:bx+00087h], 0f960h           ; 26 c7 87 87 00 60 f9        ; 0xc0a45 vgabios.c:234
     mov byte [es:bx+00089h], 051h             ; 26 c6 87 89 00 51           ; 0xc0a4c vgabios.c:238
     mov byte [es:bx+065h], 009h               ; 26 c6 47 65 09              ; 0xc0a52 vgabios.c:240
-    mov word [es:bx+000a8h], 0554dh           ; 26 c7 87 a8 00 4d 55        ; 0xc0a57 vgabios.c:242
+    mov word [es:bx+000a8h], 0554eh           ; 26 c7 87 a8 00 4e 55        ; 0xc0a57 vgabios.c:242
     mov [es:bx+000aah], ds                    ; 26 8c 9f aa 00              ; 0xc0a5e
     pop bp                                    ; 5d                          ; 0xc0a63 vgabios.c:243
     pop bx                                    ; 5b                          ; 0xc0a64
@@ -2086,7 +2086,7 @@ vga_read_char_attr:                          ; 0xc0ddb LB 0x147
     xor bh, bh                                ; 30 ff                       ; 0xc0e4a
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc0e4c
     sal bx, CL                                ; d3 e3                       ; 0xc0e4e
-    cmp byte [bx+047ach], 000h                ; 80 bf ac 47 00              ; 0xc0e50
+    cmp byte [bx+047adh], 000h                ; 80 bf ad 47 00              ; 0xc0e50
     jne short 00e8dh                          ; 75 36                       ; 0xc0e55
     mov ax, di                                ; 89 f8                       ; 0xc0e57 vgabios.c:554
     mul dx                                    ; f7 e2                       ; 0xc0e59
@@ -2106,13 +2106,13 @@ vga_read_char_attr:                          ; 0xc0ddb LB 0x147
     sal ax, 1                                 ; d1 e0                       ; 0xc0e77
     mov di, word [bp-010h]                    ; 8b 7e f0                    ; 0xc0e79
     add di, ax                                ; 01 c7                       ; 0xc0e7c
-    mov es, [bx+047afh]                       ; 8e 87 af 47                 ; 0xc0e7e vgabios.c:55
+    mov es, [bx+047b0h]                       ; 8e 87 b0 47                 ; 0xc0e7e vgabios.c:55
     mov ax, word [es:di]                      ; 26 8b 05                    ; 0xc0e82
     push SS                                   ; 16                          ; 0xc0e85 vgabios.c:58
     pop ES                                    ; 07                          ; 0xc0e86
     mov word [es:si], ax                      ; 26 89 04                    ; 0xc0e87
     jmp near 00f19h                           ; e9 8c 00                    ; 0xc0e8a vgabios.c:556
-    mov bl, byte [bx+047adh]                  ; 8a 9f ad 47                 ; 0xc0e8d vgabios.c:557
+    mov bl, byte [bx+047aeh]                  ; 8a 9f ae 47                 ; 0xc0e8d vgabios.c:557
     cmp bl, 005h                              ; 80 fb 05                    ; 0xc0e91
     je short 00eech                           ; 74 56                       ; 0xc0e94
     cmp bl, 002h                              ; 80 fb 02                    ; 0xc0e96
@@ -2220,18 +2220,18 @@ vga_get_font_info:                           ; 0xc0f32 LB 0x83
     retn 00002h                               ; c2 02 00                    ; 0xc0f8b
     mov bx, 0010ch                            ; bb 0c 01                    ; 0xc0f8e vgabios.c:67
     jmp short 00f4ch                          ; eb b9                       ; 0xc0f91
-    mov dx, 05d69h                            ; ba 69 5d                    ; 0xc0f93 vgabios.c:596
+    mov dx, 05d6ah                            ; ba 6a 5d                    ; 0xc0f93 vgabios.c:596
     mov ax, ds                                ; 8c d8                       ; 0xc0f96
     jmp short 00f57h                          ; eb bd                       ; 0xc0f98 vgabios.c:597
-    mov dx, 05569h                            ; ba 69 55                    ; 0xc0f9a vgabios.c:599
+    mov dx, 0556ah                            ; ba 6a 55                    ; 0xc0f9a vgabios.c:599
     jmp short 00f96h                          ; eb f7                       ; 0xc0f9d
-    mov dx, 05969h                            ; ba 69 59                    ; 0xc0f9f vgabios.c:602
+    mov dx, 0596ah                            ; ba 6a 59                    ; 0xc0f9f vgabios.c:602
     jmp short 00f96h                          ; eb f2                       ; 0xc0fa2
-    mov dx, 07b69h                            ; ba 69 7b                    ; 0xc0fa4 vgabios.c:605
+    mov dx, 07b6ah                            ; ba 6a 7b                    ; 0xc0fa4 vgabios.c:605
     jmp short 00f96h                          ; eb ed                       ; 0xc0fa7
-    mov dx, 06b69h                            ; ba 69 6b                    ; 0xc0fa9 vgabios.c:608
+    mov dx, 06b6ah                            ; ba 6a 6b                    ; 0xc0fa9 vgabios.c:608
     jmp short 00f96h                          ; eb e8                       ; 0xc0fac
-    mov dx, 07c96h                            ; ba 96 7c                    ; 0xc0fae vgabios.c:611
+    mov dx, 07c97h                            ; ba 97 7c                    ; 0xc0fae vgabios.c:611
     jmp short 00f96h                          ; eb e3                       ; 0xc0fb1
     jmp short 00f88h                          ; eb d3                       ; 0xc0fb3 vgabios.c:617
   ; disGetNextSymbol 0xc0fb5 LB 0x35af -> off=0x0 cb=000000000000016d uValue=00000000000c0fb5 'vga_read_pixel'
@@ -2258,10 +2258,10 @@ vga_read_pixel:                              ; 0xc0fb5 LB 0x16d
     xor bh, bh                                ; 30 ff                       ; 0xc0fe1
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc0fe3
     sal bx, CL                                ; d3 e3                       ; 0xc0fe5
-    cmp byte [bx+047ach], 000h                ; 80 bf ac 47 00              ; 0xc0fe7
+    cmp byte [bx+047adh], 000h                ; 80 bf ad 47 00              ; 0xc0fe7
     jne short 00ff1h                          ; 75 03                       ; 0xc0fec
     jmp near 0111bh                           ; e9 2a 01                    ; 0xc0fee vgabios.c:641
-    mov ch, byte [bx+047adh]                  ; 8a af ad 47                 ; 0xc0ff1 vgabios.c:644
+    mov ch, byte [bx+047aeh]                  ; 8a af ae 47                 ; 0xc0ff1 vgabios.c:644
     cmp ch, cl                                ; 38 cd                       ; 0xc0ff5
     jc short 01008h                           ; 72 0f                       ; 0xc0ff7
     jbe short 01010h                          ; 76 15                       ; 0xc0ff9
@@ -2317,7 +2317,7 @@ vga_read_pixel:                              ; 0xc0fb5 LB 0x16d
     inc byte [bp-008h]                        ; fe 46 f8                    ; 0xc1075 vgabios.c:656
     jmp short 0104ch                          ; eb d2                       ; 0xc1078
     jmp near 01113h                           ; e9 96 00                    ; 0xc107a
-    mov al, byte [bx+047aeh]                  ; 8a 87 ae 47                 ; 0xc107d vgabios.c:659
+    mov al, byte [bx+047afh]                  ; 8a 87 af 47                 ; 0xc107d vgabios.c:659
     xor ah, ah                                ; 30 e4                       ; 0xc1081
     mov cx, strict word 00004h                ; b9 04 00                    ; 0xc1083
     sub cx, ax                                ; 29 c1                       ; 0xc1086
@@ -2340,7 +2340,7 @@ vga_read_pixel:                              ; 0xc0fb5 LB 0x16d
     xor bh, bh                                ; 30 ff                       ; 0xc10b0
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc10b2
     sal bx, CL                                ; d3 e3                       ; 0xc10b4
-    cmp byte [bx+047aeh], 002h                ; 80 bf ae 47 02              ; 0xc10b6
+    cmp byte [bx+047afh], 002h                ; 80 bf af 47 02              ; 0xc10b6
     jne short 010d8h                          ; 75 1b                       ; 0xc10bb
     mov cx, si                                ; 89 f1                       ; 0xc10bd vgabios.c:664
     xor ch, ch                                ; 30 ed                       ; 0xc10bf
@@ -2710,7 +2710,7 @@ biosfn_set_active_page:                      ; 0xc134a LB 0xd5
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc1387
     mov si, bx                                ; 89 de                       ; 0xc1389
     sal si, CL                                ; d3 e6                       ; 0xc138b
-    cmp byte [si+047ach], 000h                ; 80 bc ac 47 00              ; 0xc138d
+    cmp byte [si+047adh], 000h                ; 80 bc ad 47 00              ; 0xc138d
     jne short 013cfh                          ; 75 3b                       ; 0xc1392
     mov bx, strict word 0004ah                ; bb 4a 00                    ; 0xc1394 vgabios.c:57
     mov ax, strict word 00040h                ; b8 40 00                    ; 0xc1397
@@ -2737,12 +2737,12 @@ biosfn_set_active_page:                      ; 0xc134a LB 0xd5
     lea ax, [di+001h]                         ; 8d 45 01                    ; 0xc13c8
     mul bx                                    ; f7 e3                       ; 0xc13cb
     jmp short 013e0h                          ; eb 11                       ; 0xc13cd vgabios.c:855
-    mov bl, byte [bx+0482bh]                  ; 8a 9f 2b 48                 ; 0xc13cf vgabios.c:857
+    mov bl, byte [bx+0482ch]                  ; 8a 9f 2c 48                 ; 0xc13cf vgabios.c:857
     mov CL, strict byte 006h                  ; b1 06                       ; 0xc13d3
     sal bx, CL                                ; d3 e3                       ; 0xc13d5
     mov al, byte [bp-00ch]                    ; 8a 46 f4                    ; 0xc13d7
     xor ah, ah                                ; 30 e4                       ; 0xc13da
-    mul word [bx+04842h]                      ; f7 a7 42 48                 ; 0xc13dc
+    mul word [bx+04843h]                      ; f7 a7 43 48                 ; 0xc13dc
     mov cx, ax                                ; 89 c1                       ; 0xc13e0
     mov bx, strict word 00063h                ; bb 63 00                    ; 0xc13e2 vgabios.c:57
     mov ax, strict word 00040h                ; b8 40 00                    ; 0xc13e5
@@ -2787,7 +2787,7 @@ find_vpti:                                   ; 0xc141f LB 0x48
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc1429
     mov si, bx                                ; 89 de                       ; 0xc142b
     sal si, CL                                ; d3 e6                       ; 0xc142d
-    cmp byte [si+047ach], 000h                ; 80 bc ac 47 00              ; 0xc142f
+    cmp byte [si+047adh], 000h                ; 80 bc ad 47 00              ; 0xc142f
     jne short 0145ch                          ; 75 26                       ; 0xc1434
     mov si, 00089h                            ; be 89 00                    ; 0xc1436 vgabios.c:47
     mov ax, strict word 00040h                ; b8 40 00                    ; 0xc1439
@@ -2795,16 +2795,16 @@ find_vpti:                                   ; 0xc141f LB 0x48
     mov al, byte [es:si]                      ; 26 8a 04                    ; 0xc143e
     test AL, strict byte 010h                 ; a8 10                       ; 0xc1441 vgabios.c:918
     je short 0144bh                           ; 74 06                       ; 0xc1443
-    mov al, byte [bx+07df2h]                  ; 8a 87 f2 7d                 ; 0xc1445 vgabios.c:919
+    mov al, byte [bx+07df3h]                  ; 8a 87 f3 7d                 ; 0xc1445 vgabios.c:919
     jmp short 01459h                          ; eb 0e                       ; 0xc1449 vgabios.c:920
     test AL, strict byte 080h                 ; a8 80                       ; 0xc144b
     je short 01455h                           ; 74 06                       ; 0xc144d
-    mov al, byte [bx+07de2h]                  ; 8a 87 e2 7d                 ; 0xc144f vgabios.c:921
+    mov al, byte [bx+07de3h]                  ; 8a 87 e3 7d                 ; 0xc144f vgabios.c:921
     jmp short 01459h                          ; eb 04                       ; 0xc1453 vgabios.c:922
-    mov al, byte [bx+07deah]                  ; 8a 87 ea 7d                 ; 0xc1455 vgabios.c:923
+    mov al, byte [bx+07debh]                  ; 8a 87 eb 7d                 ; 0xc1455 vgabios.c:923
     cbw                                       ; 98                          ; 0xc1459
     jmp short 01462h                          ; eb 06                       ; 0xc145a vgabios.c:924
-    mov al, byte [bx+0482bh]                  ; 8a 87 2b 48                 ; 0xc145c vgabios.c:925
+    mov al, byte [bx+0482ch]                  ; 8a 87 2c 48                 ; 0xc145c vgabios.c:925
     xor ah, ah                                ; 30 e4                       ; 0xc1460
     pop bp                                    ; 5d                          ; 0xc1462 vgabios.c:928
     pop si                                    ; 5e                          ; 0xc1463
@@ -2870,13 +2870,13 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc14e7 vgabios.c:994
     mov bx, dx                                ; 89 d3                       ; 0xc14e9
     sal bx, CL                                ; d3 e3                       ; 0xc14eb
-    mov al, byte [bx+047b1h]                  ; 8a 87 b1 47                 ; 0xc14ed
+    mov al, byte [bx+047b2h]                  ; 8a 87 b2 47                 ; 0xc14ed
     mov dx, 003c6h                            ; ba c6 03                    ; 0xc14f1
     out DX, AL                                ; ee                          ; 0xc14f4
     xor al, al                                ; 30 c0                       ; 0xc14f5 vgabios.c:997
     mov dx, 003c8h                            ; ba c8 03                    ; 0xc14f7
     out DX, AL                                ; ee                          ; 0xc14fa
-    mov bl, byte [bx+047b2h]                  ; 8a 9f b2 47                 ; 0xc14fb vgabios.c:1000
+    mov bl, byte [bx+047b3h]                  ; 8a 9f b3 47                 ; 0xc14fb vgabios.c:1000
     cmp bl, 001h                              ; 80 fb 01                    ; 0xc14ff
     jc short 01511h                           ; 72 0d                       ; 0xc1502
     jbe short 0151ch                          ; 76 16                       ; 0xc1504
@@ -2887,24 +2887,24 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     jmp short 01532h                          ; eb 21                       ; 0xc150f
     test bl, bl                               ; 84 db                       ; 0xc1511
     jne short 01532h                          ; 75 1d                       ; 0xc1513
-    mov word [bp-01ch], 04fbfh                ; c7 46 e4 bf 4f              ; 0xc1515 vgabios.c:1002
+    mov word [bp-01ch], 04fc0h                ; c7 46 e4 c0 4f              ; 0xc1515 vgabios.c:1002
     jmp short 01532h                          ; eb 16                       ; 0xc151a vgabios.c:1003
-    mov word [bp-01ch], 0507fh                ; c7 46 e4 7f 50              ; 0xc151c vgabios.c:1005
+    mov word [bp-01ch], 05080h                ; c7 46 e4 80 50              ; 0xc151c vgabios.c:1005
     jmp short 01532h                          ; eb 0f                       ; 0xc1521 vgabios.c:1006
-    mov word [bp-01ch], 0513fh                ; c7 46 e4 3f 51              ; 0xc1523 vgabios.c:1008
+    mov word [bp-01ch], 05140h                ; c7 46 e4 40 51              ; 0xc1523 vgabios.c:1008
     jmp short 01532h                          ; eb 08                       ; 0xc1528 vgabios.c:1009
     jmp near 015a6h                           ; e9 79 00                    ; 0xc152a
-    mov word [bp-01ch], 051ffh                ; c7 46 e4 ff 51              ; 0xc152d vgabios.c:1011
+    mov word [bp-01ch], 05200h                ; c7 46 e4 00 52              ; 0xc152d vgabios.c:1011
     mov bl, byte [bp-010h]                    ; 8a 5e f0                    ; 0xc1532 vgabios.c:1015
     xor bh, bh                                ; 30 ff                       ; 0xc1535
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc1537
     sal bx, CL                                ; d3 e3                       ; 0xc1539
-    cmp byte [bx+047ach], 000h                ; 80 bf ac 47 00              ; 0xc153b
+    cmp byte [bx+047adh], 000h                ; 80 bf ad 47 00              ; 0xc153b
     jne short 01551h                          ; 75 0f                       ; 0xc1540
     mov es, [bp-012h]                         ; 8e 46 ee                    ; 0xc1542 vgabios.c:1017
     cmp byte [es:si+002h], 008h               ; 26 80 7c 02 08              ; 0xc1545
     jne short 01551h                          ; 75 05                       ; 0xc154a
-    mov word [bp-01ch], 0507fh                ; c7 46 e4 7f 50              ; 0xc154c vgabios.c:1018
+    mov word [bp-01ch], 05080h                ; c7 46 e4 80 50              ; 0xc154c vgabios.c:1018
     xor bx, bx                                ; 31 db                       ; 0xc1551 vgabios.c:1021
     jmp short 01564h                          ; eb 0f                       ; 0xc1553
     xor al, al                                ; 30 c0                       ; 0xc1555 vgabios.c:1028
@@ -2920,9 +2920,9 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc1569
     mov di, ax                                ; 89 c7                       ; 0xc156b
     sal di, CL                                ; d3 e7                       ; 0xc156d
-    mov al, byte [di+047b2h]                  ; 8a 85 b2 47                 ; 0xc156f
+    mov al, byte [di+047b3h]                  ; 8a 85 b3 47                 ; 0xc156f
     mov di, ax                                ; 89 c7                       ; 0xc1573
-    mov al, byte [di+0483bh]                  ; 8a 85 3b 48                 ; 0xc1575
+    mov al, byte [di+0483ch]                  ; 8a 85 3c 48                 ; 0xc1575
     cmp bx, ax                                ; 39 c3                       ; 0xc1579
     jnbe short 01555h                         ; 77 d8                       ; 0xc157b
     mov ax, bx                                ; 89 d8                       ; 0xc157d
@@ -3036,7 +3036,7 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     xor bh, bh                                ; 30 ff                       ; 0xc1674
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc1676
     sal bx, CL                                ; d3 e3                       ; 0xc1678
-    cmp byte [bx+047adh], 001h                ; 80 bf ad 47 01              ; 0xc167a
+    cmp byte [bx+047aeh], 001h                ; 80 bf ae 47 01              ; 0xc167a
     jne short 01686h                          ; 75 05                       ; 0xc167f
     mov bx, 003b4h                            ; bb b4 03                    ; 0xc1681
     jmp short 01689h                          ; eb 03                       ; 0xc1684
@@ -3078,9 +3078,9 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     xor bh, bh                                ; 30 ff                       ; 0xc16d4
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc16d6
     sal bx, CL                                ; d3 e3                       ; 0xc16d8
-    cmp byte [bx+047ach], 000h                ; 80 bf ac 47 00              ; 0xc16da
+    cmp byte [bx+047adh], 000h                ; 80 bf ad 47 00              ; 0xc16da
     jne short 016f3h                          ; 75 12                       ; 0xc16df
-    mov es, [bx+047afh]                       ; 8e 87 af 47                 ; 0xc16e1 vgabios.c:1097
+    mov es, [bx+047b0h]                       ; 8e 87 b0 47                 ; 0xc16e1 vgabios.c:1097
     mov cx, 04000h                            ; b9 00 40                    ; 0xc16e5
     mov ax, 00720h                            ; b8 20 07                    ; 0xc16e8
     xor di, di                                ; 31 ff                       ; 0xc16eb
@@ -3089,7 +3089,7 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     jmp short 0172fh                          ; eb 3c                       ; 0xc16f1 vgabios.c:1099
     cmp byte [bp-00ch], 00dh                  ; 80 7e f4 0d                 ; 0xc16f3 vgabios.c:1101
     jnc short 0170ah                          ; 73 11                       ; 0xc16f7
-    mov es, [bx+047afh]                       ; 8e 87 af 47                 ; 0xc16f9 vgabios.c:1103
+    mov es, [bx+047b0h]                       ; 8e 87 b0 47                 ; 0xc16f9 vgabios.c:1103
     mov cx, 04000h                            ; b9 00 40                    ; 0xc16fd
     xor ax, ax                                ; 31 c0                       ; 0xc1700
     xor di, di                                ; 31 ff                       ; 0xc1702
@@ -3106,7 +3106,7 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     mov word [bp-022h], ax                    ; 89 46 de                    ; 0xc1716
     mov AL, strict byte 00fh                  ; b0 0f                       ; 0xc1719 vgabios.c:1109
     out DX, AL                                ; ee                          ; 0xc171b
-    mov es, [bx+047afh]                       ; 8e 87 af 47                 ; 0xc171c vgabios.c:1110
+    mov es, [bx+047b0h]                       ; 8e 87 b0 47                 ; 0xc171c vgabios.c:1110
     mov cx, 08000h                            ; b9 00 80                    ; 0xc1720
     xor ax, ax                                ; 31 c0                       ; 0xc1723
     xor di, di                                ; 31 ff                       ; 0xc1725
@@ -3164,7 +3164,7 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     jnbe short 017e2h                         ; 77 27                       ; 0xc17b9
     mov bl, al                                ; 88 c3                       ; 0xc17bb vgabios.c:1132
     xor bh, bh                                ; 30 ff                       ; 0xc17bd
-    mov al, byte [bx+07ddah]                  ; 8a 87 da 7d                 ; 0xc17bf vgabios.c:50
+    mov al, byte [bx+07ddbh]                  ; 8a 87 db 7d                 ; 0xc17bf vgabios.c:50
     mov bx, strict word 00065h                ; bb 65 00                    ; 0xc17c3 vgabios.c:52
     mov byte [es:bx], al                      ; 26 88 07                    ; 0xc17c6
     cmp byte [bp-00ch], 006h                  ; 80 7e f4 06                 ; 0xc17c9 vgabios.c:1133
@@ -3192,7 +3192,7 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     xor bh, bh                                ; 30 ff                       ; 0xc17ff
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc1801
     sal bx, CL                                ; d3 e3                       ; 0xc1803
-    cmp byte [bx+047ach], 000h                ; 80 bf ac 47 00              ; 0xc1805
+    cmp byte [bx+047adh], 000h                ; 80 bf ad 47 00              ; 0xc1805
     jne short 01874h                          ; 75 68                       ; 0xc180a
     les bx, [bp-018h]                         ; c4 5e e8                    ; 0xc180c vgabios.c:1147
     mov bx, word [es:bx+008h]                 ; 26 8b 5f 08                 ; 0xc180f
@@ -3214,7 +3214,7 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     push ax                                   ; 50                          ; 0xc183b
     push ax                                   ; 50                          ; 0xc183c
     mov cx, 00100h                            ; b9 00 01                    ; 0xc183d
-    mov bx, 05569h                            ; bb 69 55                    ; 0xc1840
+    mov bx, 0556ah                            ; bb 6a 55                    ; 0xc1840
     mov dx, 0c000h                            ; ba 00 c0                    ; 0xc1843
     call 02e8ch                               ; e8 43 16                    ; 0xc1846
     jmp short 01898h                          ; eb 4d                       ; 0xc1849 vgabios.c:1152
@@ -3224,14 +3224,14 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     push ax                                   ; 50                          ; 0xc1850
     push ax                                   ; 50                          ; 0xc1851
     mov cx, 00100h                            ; b9 00 01                    ; 0xc1852
-    mov bx, 05d69h                            ; bb 69 5d                    ; 0xc1855
+    mov bx, 05d6ah                            ; bb 6a 5d                    ; 0xc1855
     mov dx, 0c000h                            ; ba 00 c0                    ; 0xc1858
     call 02e8ch                               ; e8 2e 16                    ; 0xc185b
     cmp byte [bp-00ch], 007h                  ; 80 7e f4 07                 ; 0xc185e vgabios.c:1155
     jne short 01898h                          ; 75 34                       ; 0xc1862
     mov cx, strict word 0000eh                ; b9 0e 00                    ; 0xc1864 vgabios.c:1156
     xor bx, bx                                ; 31 db                       ; 0xc1867
-    mov dx, 07b69h                            ; ba 69 7b                    ; 0xc1869
+    mov dx, 07b6ah                            ; ba 6a 7b                    ; 0xc1869
     mov ax, 0c000h                            ; b8 00 c0                    ; 0xc186c
     call 02e14h                               ; e8 a2 15                    ; 0xc186f
     jmp short 01898h                          ; eb 24                       ; 0xc1872 vgabios.c:1157
@@ -3242,12 +3242,12 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     push ax                                   ; 50                          ; 0xc187c
     push ax                                   ; 50                          ; 0xc187d
     mov cx, 00100h                            ; b9 00 01                    ; 0xc187e
-    mov bx, 06b69h                            ; bb 69 6b                    ; 0xc1881
+    mov bx, 06b6ah                            ; bb 6a 6b                    ; 0xc1881
     mov dx, 0c000h                            ; ba 00 c0                    ; 0xc1884
     call 02e8ch                               ; e8 02 16                    ; 0xc1887
     mov cx, strict word 00010h                ; b9 10 00                    ; 0xc188a vgabios.c:1160
     xor bx, bx                                ; 31 db                       ; 0xc188d
-    mov dx, 07c96h                            ; ba 96 7c                    ; 0xc188f
+    mov dx, 07c97h                            ; ba 97 7c                    ; 0xc188f
     mov ax, 0c000h                            ; b8 00 c0                    ; 0xc1892
     call 02e14h                               ; e8 7c 15                    ; 0xc1895
     cmp word [bp-014h], strict byte 00000h    ; 83 7e ec 00                 ; 0xc1898 vgabios.c:1162
@@ -3287,7 +3287,7 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     mov AL, strict byte 003h                  ; b0 03                       ; 0xc18f6
     mov AH, strict byte 011h                  ; b4 11                       ; 0xc18f8
     int 06dh                                  ; cd 6d                       ; 0xc18fa
-    mov bx, 05969h                            ; bb 69 59                    ; 0xc18fc vgabios.c:1189
+    mov bx, 0596ah                            ; bb 6a 59                    ; 0xc18fc vgabios.c:1189
     mov cx, ds                                ; 8c d9                       ; 0xc18ff
     mov ax, strict word 0001fh                ; b8 1f 00                    ; 0xc1901
     call 009f0h                               ; e8 e9 f0                    ; 0xc1904
@@ -3299,14 +3299,14 @@ biosfn_set_video_mode:                       ; 0xc1467 LB 0x4d4
     je short 01927h                           ; 74 11                       ; 0xc1914
     cmp AL, strict byte 008h                  ; 3c 08                       ; 0xc1916
     jne short 01931h                          ; 75 17                       ; 0xc1918
-    mov bx, 05569h                            ; bb 69 55                    ; 0xc191a vgabios.c:1193
+    mov bx, 0556ah                            ; bb 6a 55                    ; 0xc191a vgabios.c:1193
     mov cx, ds                                ; 8c d9                       ; 0xc191d
     mov ax, strict word 00043h                ; b8 43 00                    ; 0xc191f
     call 009f0h                               ; e8 cb f0                    ; 0xc1922
     jmp short 01931h                          ; eb 0a                       ; 0xc1925 vgabios.c:1194
-    mov bx, 05d69h                            ; bb 69 5d                    ; 0xc1927 vgabios.c:1196
+    mov bx, 05d6ah                            ; bb 6a 5d                    ; 0xc1927 vgabios.c:1196
     jmp short 0191dh                          ; eb f1                       ; 0xc192a
-    mov bx, 06b69h                            ; bb 69 6b                    ; 0xc192c vgabios.c:1199
+    mov bx, 06b6ah                            ; bb 6a 6b                    ; 0xc192c vgabios.c:1199
     jmp short 0191dh                          ; eb ec                       ; 0xc192f
     lea sp, [bp-00ah]                         ; 8d 66 f6                    ; 0xc1931 vgabios.c:1202
     pop di                                    ; 5f                          ; 0xc1934
@@ -3787,7 +3787,7 @@ biosfn_scroll:                               ; 0xc1c7d LB 0x6a3
     mov ax, word [bp-018h]                    ; 8b 46 e8                    ; 0xc1d36
     mul word [bp-024h]                        ; f7 66 dc                    ; 0xc1d39
     mov di, ax                                ; 89 c7                       ; 0xc1d3c
-    cmp byte [bx+047ach], 000h                ; 80 bf ac 47 00              ; 0xc1d3e
+    cmp byte [bx+047adh], 000h                ; 80 bf ad 47 00              ; 0xc1d3e
     jne short 01d8fh                          ; 75 4a                       ; 0xc1d43
     sal ax, 1                                 ; d1 e0                       ; 0xc1d45 vgabios.c:1335
     or AL, strict byte 0ffh                   ; 0c ff                       ; 0xc1d47
@@ -3812,7 +3812,7 @@ biosfn_scroll:                               ; 0xc1c7d LB 0x6a3
     mov ah, byte [bp-010h]                    ; 8a 66 f0                    ; 0xc1d77 vgabios.c:1342
     xor al, ch                                ; 30 e8                       ; 0xc1d7a
     add ax, strict word 00020h                ; 05 20 00                    ; 0xc1d7c
-    mov es, [bx+047afh]                       ; 8e 87 af 47                 ; 0xc1d7f
+    mov es, [bx+047b0h]                       ; 8e 87 b0 47                 ; 0xc1d7f
     mov cx, di                                ; 89 f9                       ; 0xc1d83
     mov di, word [bp-01ch]                    ; 8b 7e e4                    ; 0xc1d85
     jcxz 01d8ch                               ; e3 02                       ; 0xc1d88
@@ -3855,7 +3855,7 @@ biosfn_scroll:                               ; 0xc1c7d LB 0x6a3
     xor bh, bh                                ; 30 ff                       ; 0xc1de8
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc1dea
     sal bx, CL                                ; d3 e3                       ; 0xc1dec
-    mov es, [bx+047afh]                       ; 8e 87 af 47                 ; 0xc1dee
+    mov es, [bx+047b0h]                       ; 8e 87 b0 47                 ; 0xc1dee
     mov cx, word [bp-01ah]                    ; 8b 4e e6                    ; 0xc1df2
     mov ax, si                                ; 89 f0                       ; 0xc1df5
     jcxz 01dfbh                               ; e3 02                       ; 0xc1df7
@@ -3877,7 +3877,7 @@ biosfn_scroll:                               ; 0xc1c7d LB 0x6a3
     xor bh, bh                                ; 30 ff                       ; 0xc1e22
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc1e24
     sal bx, CL                                ; d3 e3                       ; 0xc1e26
-    mov bx, word [bx+047afh]                  ; 8b 9f af 47                 ; 0xc1e28
+    mov bx, word [bx+047b0h]                  ; 8b 9f b0 47                 ; 0xc1e28
     mov ax, word [bp-016h]                    ; 8b 46 ea                    ; 0xc1e2c
     mul word [bp-018h]                        ; f7 66 e8                    ; 0xc1e2f
     add ax, word [bp-01ah]                    ; 03 46 e6                    ; 0xc1e32
@@ -3929,7 +3929,7 @@ biosfn_scroll:                               ; 0xc1c7d LB 0x6a3
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc1ea1
     mov di, ax                                ; 89 c7                       ; 0xc1ea3
     sal di, CL                                ; d3 e7                       ; 0xc1ea5
-    mov es, [di+047afh]                       ; 8e 85 af 47                 ; 0xc1ea7
+    mov es, [di+047b0h]                       ; 8e 85 b0 47                 ; 0xc1ea7
     mov cx, bx                                ; 89 d9                       ; 0xc1eab
     mov ax, si                                ; 89 f0                       ; 0xc1ead
     mov di, dx                                ; 89 d7                       ; 0xc1eaf
@@ -3955,7 +3955,7 @@ biosfn_scroll:                               ; 0xc1c7d LB 0x6a3
     xor bh, bh                                ; 30 ff                       ; 0xc1ee3
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc1ee5
     sal bx, CL                                ; d3 e3                       ; 0xc1ee7
-    mov bx, word [bx+047afh]                  ; 8b 9f af 47                 ; 0xc1ee9
+    mov bx, word [bx+047b0h]                  ; 8b 9f b0 47                 ; 0xc1ee9
     mov ax, word [bp-016h]                    ; 8b 46 ea                    ; 0xc1eed
     mul word [bp-018h]                        ; f7 66 e8                    ; 0xc1ef0
     add ax, word [bp-014h]                    ; 03 46 ec                    ; 0xc1ef3
@@ -3977,14 +3977,14 @@ biosfn_scroll:                               ; 0xc1c7d LB 0x6a3
     dec word [bp-016h]                        ; ff 4e ea                    ; 0xc1f16 vgabios.c:1363
     jmp near 01e59h                           ; e9 3d ff                    ; 0xc1f19
     mov si, word [bp-01eh]                    ; 8b 76 e2                    ; 0xc1f1c vgabios.c:1369
-    mov al, byte [si+0482bh]                  ; 8a 84 2b 48                 ; 0xc1f1f
+    mov al, byte [si+0482ch]                  ; 8a 84 2c 48                 ; 0xc1f1f
     xor ah, ah                                ; 30 e4                       ; 0xc1f23
     mov CL, strict byte 006h                  ; b1 06                       ; 0xc1f25
     mov si, ax                                ; 89 c6                       ; 0xc1f27
     sal si, CL                                ; d3 e6                       ; 0xc1f29
-    mov al, byte [si+04841h]                  ; 8a 84 41 48                 ; 0xc1f2b
+    mov al, byte [si+04842h]                  ; 8a 84 42 48                 ; 0xc1f2b
     mov byte [bp-00eh], al                    ; 88 46 f2                    ; 0xc1f2f
-    mov al, byte [bx+047adh]                  ; 8a 87 ad 47                 ; 0xc1f32 vgabios.c:1370
+    mov al, byte [bx+047aeh]                  ; 8a 87 ae 47                 ; 0xc1f32 vgabios.c:1370
     cmp AL, strict byte 003h                  ; 3c 03                       ; 0xc1f36
     jc short 01f46h                           ; 72 0c                       ; 0xc1f38
     jbe short 01f4dh                          ; 76 11                       ; 0xc1f3a
@@ -4032,7 +4032,7 @@ biosfn_scroll:                               ; 0xc1c7d LB 0x6a3
     xor bh, bh                                ; 30 ff                       ; 0xc1f9e
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc1fa0
     sal bx, CL                                ; d3 e3                       ; 0xc1fa2
-    mov bx, word [bx+047afh]                  ; 8b 9f af 47                 ; 0xc1fa4
+    mov bx, word [bx+047b0h]                  ; 8b 9f b0 47                 ; 0xc1fa4
     mov cx, dx                                ; 89 d1                       ; 0xc1fa8
     xor di, di                                ; 31 ff                       ; 0xc1faa
     mov es, bx                                ; 8e c3                       ; 0xc1fac
@@ -4138,7 +4138,7 @@ biosfn_scroll:                               ; 0xc1c7d LB 0x6a3
     jc short 020f0h                           ; 72 4e                       ; 0xc20a0
     dec word [bp-016h]                        ; ff 4e ea                    ; 0xc20a2 vgabios.c:1399
     jmp short 02035h                          ; eb 8e                       ; 0xc20a5
-    mov cl, byte [bx+047aeh]                  ; 8a 8f ae 47                 ; 0xc20a7 vgabios.c:1404
+    mov cl, byte [bx+047afh]                  ; 8a 8f af 47                 ; 0xc20a7 vgabios.c:1404
     cmp byte [bp-006h], 000h                  ; 80 7e fa 00                 ; 0xc20ab vgabios.c:1405
     jne short 020f3h                          ; 75 42                       ; 0xc20af
     cmp byte [bp-00ch], 000h                  ; 80 7e f4 00                 ; 0xc20b1
@@ -4160,7 +4160,7 @@ biosfn_scroll:                               ; 0xc1c7d LB 0x6a3
     mul dx                                    ; f7 e2                       ; 0xc20d9
     mov dl, byte [bp-010h]                    ; 8a 56 f0                    ; 0xc20db
     xor dh, dh                                ; 30 f6                       ; 0xc20de
-    mov bx, word [bx+047afh]                  ; 8b 9f af 47                 ; 0xc20e0
+    mov bx, word [bx+047b0h]                  ; 8b 9f b0 47                 ; 0xc20e0
     mov cx, ax                                ; 89 c1                       ; 0xc20e4
     mov ax, dx                                ; 89 d0                       ; 0xc20e6
     xor di, di                                ; 31 ff                       ; 0xc20e8
@@ -4294,7 +4294,7 @@ biosfn_scroll:                               ; 0xc1c7d LB 0x6a3
     mov cx, ax                                ; 89 c1                       ; 0xc2229
     mov al, byte [bp-010h]                    ; 8a 46 f0                    ; 0xc222b
     xor ah, ah                                ; 30 e4                       ; 0xc222e
-    mov es, [bx+047afh]                       ; 8e 87 af 47                 ; 0xc2230
+    mov es, [bx+047b0h]                       ; 8e 87 b0 47                 ; 0xc2230
     xor di, di                                ; 31 ff                       ; 0xc2234
     jcxz 0223ah                               ; e3 02                       ; 0xc2236
     rep stosb                                 ; f3 aa                       ; 0xc2238
@@ -4519,7 +4519,7 @@ write_gfx_char_cga:                          ; 0xc2432 LB 0x112
     mov ch, al                                ; 88 c5                       ; 0xc243a
     mov byte [bp-002h], dl                    ; 88 56 fe                    ; 0xc243c
     mov al, bl                                ; 88 d8                       ; 0xc243f
-    mov si, 05569h                            ; be 69 55                    ; 0xc2441 vgabios.c:1531
+    mov si, 0556ah                            ; be 6a 55                    ; 0xc2441 vgabios.c:1531
     xor ah, ah                                ; 30 e4                       ; 0xc2444 vgabios.c:1532
     mov bl, byte [bp+00ah]                    ; 8a 5e 0a                    ; 0xc2446
     xor bh, bh                                ; 30 ff                       ; 0xc2449
@@ -4640,7 +4640,7 @@ write_gfx_char_lin:                          ; 0xc2544 LB 0xa1
     mov bh, al                                ; 88 c7                       ; 0xc254c
     mov ch, dl                                ; 88 d5                       ; 0xc254e
     mov al, cl                                ; 88 c8                       ; 0xc2550
-    mov di, 05569h                            ; bf 69 55                    ; 0xc2552 vgabios.c:1595
+    mov di, 0556ah                            ; bf 6a 55                    ; 0xc2552 vgabios.c:1595
     xor ah, ah                                ; 30 e4                       ; 0xc2555 vgabios.c:1596
     mov dl, byte [bp+008h]                    ; 8a 56 08                    ; 0xc2557
     xor dh, dh                                ; 30 f6                       ; 0xc255a
@@ -4760,7 +4760,7 @@ biosfn_write_char_attr:                      ; 0xc25e5 LB 0x172
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc2657
     mov di, bx                                ; 89 df                       ; 0xc2659
     sal di, CL                                ; d3 e7                       ; 0xc265b
-    cmp byte [di+047ach], 000h                ; 80 bd ac 47 00              ; 0xc265d
+    cmp byte [di+047adh], 000h                ; 80 bd ad 47 00              ; 0xc265d
     jne short 026a4h                          ; 75 40                       ; 0xc2662
     mul dx                                    ; f7 e2                       ; 0xc2664 vgabios.c:1638
     sal ax, 1                                 ; d1 e0                       ; 0xc2666
@@ -4783,18 +4783,18 @@ biosfn_write_char_attr:                      ; 0xc25e5 LB 0x172
     mov al, byte [bp-00ch]                    ; 8a 46 f4                    ; 0xc268c
     mov word [bp-01eh], ax                    ; 89 46 e2                    ; 0xc268f
     mov ax, word [bp-01eh]                    ; 8b 46 e2                    ; 0xc2692 vgabios.c:1641
-    mov es, [di+047afh]                       ; 8e 85 af 47                 ; 0xc2695
+    mov es, [di+047b0h]                       ; 8e 85 b0 47                 ; 0xc2695
     mov cx, si                                ; 89 f1                       ; 0xc2699
     mov di, bx                                ; 89 df                       ; 0xc269b
     jcxz 026a1h                               ; e3 02                       ; 0xc269d
     rep stosw                                 ; f3 ab                       ; 0xc269f
     jmp near 02750h                           ; e9 ac 00                    ; 0xc26a1 vgabios.c:1643
-    mov bl, byte [bx+0482bh]                  ; 8a 9f 2b 48                 ; 0xc26a4 vgabios.c:1646
+    mov bl, byte [bx+0482ch]                  ; 8a 9f 2c 48                 ; 0xc26a4 vgabios.c:1646
     mov CL, strict byte 006h                  ; b1 06                       ; 0xc26a8
     sal bx, CL                                ; d3 e3                       ; 0xc26aa
-    mov al, byte [bx+04841h]                  ; 8a 87 41 48                 ; 0xc26ac
+    mov al, byte [bx+04842h]                  ; 8a 87 42 48                 ; 0xc26ac
     mov byte [bp-010h], al                    ; 88 46 f0                    ; 0xc26b0
-    mov al, byte [di+047aeh]                  ; 8a 85 ae 47                 ; 0xc26b3 vgabios.c:1647
+    mov al, byte [di+047afh]                  ; 8a 85 af 47                 ; 0xc26b3 vgabios.c:1647
     mov byte [bp-012h], al                    ; 88 46 ee                    ; 0xc26b7
     dec si                                    ; 4e                          ; 0xc26ba vgabios.c:1648
     cmp si, strict byte 0ffffh                ; 83 fe ff                    ; 0xc26bb
@@ -4803,7 +4803,7 @@ biosfn_write_char_attr:                      ; 0xc25e5 LB 0x172
     xor bh, bh                                ; 30 ff                       ; 0xc26c3
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc26c5
     sal bx, CL                                ; d3 e3                       ; 0xc26c7
-    mov al, byte [bx+047adh]                  ; 8a 87 ad 47                 ; 0xc26c9
+    mov al, byte [bx+047aeh]                  ; 8a 87 ae 47                 ; 0xc26c9
     cmp al, cl                                ; 38 c8                       ; 0xc26cd
     jc short 026ddh                           ; 72 0c                       ; 0xc26cf
     jbe short 026e3h                          ; 76 10                       ; 0xc26d1
@@ -4914,7 +4914,7 @@ biosfn_write_char_only:                      ; 0xc2757 LB 0x183
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc27c4
     mov bx, ax                                ; 89 c3                       ; 0xc27c6
     sal bx, CL                                ; d3 e3                       ; 0xc27c8
-    cmp byte [bx+047ach], 000h                ; 80 bf ac 47 00              ; 0xc27ca
+    cmp byte [bx+047adh], 000h                ; 80 bf ad 47 00              ; 0xc27ca
     jne short 02816h                          ; 75 45                       ; 0xc27cf
     mov ax, di                                ; 89 f8                       ; 0xc27d1 vgabios.c:1696
     mul dx                                    ; f7 e2                       ; 0xc27d3
@@ -4942,20 +4942,20 @@ biosfn_write_char_only:                      ; 0xc2757 LB 0x183
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc2802
     mov di, ax                                ; 89 c7                       ; 0xc2804
     sal di, CL                                ; d3 e7                       ; 0xc2806
-    mov es, [di+047afh]                       ; 8e 85 af 47                 ; 0xc2808 vgabios.c:50
+    mov es, [di+047b0h]                       ; 8e 85 b0 47                 ; 0xc2808 vgabios.c:50
     mov al, byte [bp-00ah]                    ; 8a 46 f6                    ; 0xc280c vgabios.c:52
     mov byte [es:bx], al                      ; 26 88 07                    ; 0xc280f
     inc bx                                    ; 43                          ; 0xc2812 vgabios.c:1700
     inc bx                                    ; 43                          ; 0xc2813
     jmp short 027f7h                          ; eb e1                       ; 0xc2814 vgabios.c:1701
     mov di, ax                                ; 89 c7                       ; 0xc2816 vgabios.c:1706
-    mov al, byte [di+0482bh]                  ; 8a 85 2b 48                 ; 0xc2818
+    mov al, byte [di+0482ch]                  ; 8a 85 2c 48                 ; 0xc2818
     mov CL, strict byte 006h                  ; b1 06                       ; 0xc281c
     mov di, ax                                ; 89 c7                       ; 0xc281e
     sal di, CL                                ; d3 e7                       ; 0xc2820
-    mov al, byte [di+04841h]                  ; 8a 85 41 48                 ; 0xc2822
+    mov al, byte [di+04842h]                  ; 8a 85 42 48                 ; 0xc2822
     mov byte [bp-012h], al                    ; 88 46 ee                    ; 0xc2826
-    mov al, byte [bx+047aeh]                  ; 8a 87 ae 47                 ; 0xc2829 vgabios.c:1707
+    mov al, byte [bx+047afh]                  ; 8a 87 af 47                 ; 0xc2829 vgabios.c:1707
     mov byte [bp-014h], al                    ; 88 46 ec                    ; 0xc282d
     dec si                                    ; 4e                          ; 0xc2830 vgabios.c:1708
     cmp si, strict byte 0ffffh                ; 83 fe ff                    ; 0xc2831
@@ -4964,7 +4964,7 @@ biosfn_write_char_only:                      ; 0xc2757 LB 0x183
     xor bh, bh                                ; 30 ff                       ; 0xc2839
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc283b
     sal bx, CL                                ; d3 e3                       ; 0xc283d
-    mov bl, byte [bx+047adh]                  ; 8a 9f ad 47                 ; 0xc283f
+    mov bl, byte [bx+047aeh]                  ; 8a 9f ae 47                 ; 0xc283f
     cmp bl, cl                                ; 38 cb                       ; 0xc2843
     jc short 02856h                           ; 72 0f                       ; 0xc2845
     jbe short 0285dh                          ; 76 14                       ; 0xc2847
@@ -5052,9 +5052,9 @@ biosfn_write_pixel:                          ; 0xc28da LB 0x17a
     xor bh, bh                                ; 30 ff                       ; 0xc2905
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc2907
     sal bx, CL                                ; d3 e3                       ; 0xc2909
-    cmp byte [bx+047ach], 000h                ; 80 bf ac 47 00              ; 0xc290b
+    cmp byte [bx+047adh], 000h                ; 80 bf ad 47 00              ; 0xc290b
     je short 0292ah                           ; 74 18                       ; 0xc2910
-    mov al, byte [bx+047adh]                  ; 8a 87 ad 47                 ; 0xc2912 vgabios.c:1745
+    mov al, byte [bx+047aeh]                  ; 8a 87 ae 47                 ; 0xc2912 vgabios.c:1745
     cmp al, cl                                ; 38 c8                       ; 0xc2916
     jc short 02926h                           ; 72 0c                       ; 0xc2918
     jbe short 02930h                          ; 76 14                       ; 0xc291a
@@ -5118,7 +5118,7 @@ biosfn_write_pixel:                          ; 0xc28da LB 0x17a
     shr ax, 1                                 ; d1 e8                       ; 0xc29a5
     mov dx, strict word 00050h                ; ba 50 00                    ; 0xc29a7
     mul dx                                    ; f7 e2                       ; 0xc29aa
-    cmp byte [bx+047aeh], 002h                ; 80 bf ae 47 02              ; 0xc29ac
+    cmp byte [bx+047afh], 002h                ; 80 bf af 47 02              ; 0xc29ac
     jne short 029bch                          ; 75 09                       ; 0xc29b1
     mov bx, word [bp-008h]                    ; 8b 5e f8                    ; 0xc29b3 vgabios.c:1767
     shr bx, 1                                 ; d1 eb                       ; 0xc29b6
@@ -5138,7 +5138,7 @@ biosfn_write_pixel:                          ; 0xc28da LB 0x17a
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc29d8
     mov si, dx                                ; 89 d6                       ; 0xc29da
     sal si, CL                                ; d3 e6                       ; 0xc29dc
-    cmp byte [si+047aeh], 002h                ; 80 bc ae 47 02              ; 0xc29de
+    cmp byte [si+047afh], 002h                ; 80 bc af 47 02              ; 0xc29de
     jne short 029ffh                          ; 75 1a                       ; 0xc29e3
     mov ah, byte [bp-008h]                    ; 8a 66 f8                    ; 0xc29e5 vgabios.c:1777
     and ah, cl                                ; 20 cc                       ; 0xc29e8
@@ -5262,7 +5262,7 @@ biosfn_write_teletype:                       ; 0xc2a54 LB 0x263
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc2b03
     mov bx, ax                                ; 89 c3                       ; 0xc2b05
     sal bx, CL                                ; d3 e3                       ; 0xc2b07
-    cmp byte [bx+047ach], 000h                ; 80 bf ac 47 00              ; 0xc2b09
+    cmp byte [bx+047adh], 000h                ; 80 bf ad 47 00              ; 0xc2b09
     jne short 02b52h                          ; 75 42                       ; 0xc2b0e
     mov ax, word [bp-012h]                    ; 8b 46 ee                    ; 0xc2b10 vgabios.c:1855
     mul word [bp-014h]                        ; f7 66 ec                    ; 0xc2b13
@@ -5282,23 +5282,23 @@ biosfn_write_teletype:                       ; 0xc2a54 LB 0x263
     add ax, dx                                ; 01 d0                       ; 0xc2b33
     sal ax, 1                                 ; d1 e0                       ; 0xc2b35
     add si, ax                                ; 01 c6                       ; 0xc2b37
-    mov es, [bx+047afh]                       ; 8e 87 af 47                 ; 0xc2b39 vgabios.c:50
+    mov es, [bx+047b0h]                       ; 8e 87 b0 47                 ; 0xc2b39 vgabios.c:50
     mov byte [es:si], ch                      ; 26 88 2c                    ; 0xc2b3d vgabios.c:52
     cmp cl, byte [bp-004h]                    ; 3a 4e fc                    ; 0xc2b40 vgabios.c:1860
     jne short 02b82h                          ; 75 3d                       ; 0xc2b43
     inc si                                    ; 46                          ; 0xc2b45 vgabios.c:1861
-    mov es, [bx+047afh]                       ; 8e 87 af 47                 ; 0xc2b46 vgabios.c:50
+    mov es, [bx+047b0h]                       ; 8e 87 b0 47                 ; 0xc2b46 vgabios.c:50
     mov al, byte [bp-00ch]                    ; 8a 46 f4                    ; 0xc2b4a
     mov byte [es:si], al                      ; 26 88 04                    ; 0xc2b4d
     jmp short 02b82h                          ; eb 30                       ; 0xc2b50 vgabios.c:1863
     mov si, ax                                ; 89 c6                       ; 0xc2b52 vgabios.c:1866
-    mov al, byte [si+0482bh]                  ; 8a 84 2b 48                 ; 0xc2b54
+    mov al, byte [si+0482ch]                  ; 8a 84 2c 48                 ; 0xc2b54
     mov CL, strict byte 006h                  ; b1 06                       ; 0xc2b58
     mov si, ax                                ; 89 c6                       ; 0xc2b5a
     sal si, CL                                ; d3 e6                       ; 0xc2b5c
-    mov dl, byte [si+04841h]                  ; 8a 94 41 48                 ; 0xc2b5e
-    mov al, byte [bx+047aeh]                  ; 8a 87 ae 47                 ; 0xc2b62 vgabios.c:1867
-    mov bl, byte [bx+047adh]                  ; 8a 9f ad 47                 ; 0xc2b66 vgabios.c:1868
+    mov dl, byte [si+04842h]                  ; 8a 94 42 48                 ; 0xc2b5e
+    mov al, byte [bx+047afh]                  ; 8a 87 af 47                 ; 0xc2b62 vgabios.c:1867
+    mov bl, byte [bx+047aeh]                  ; 8a 9f ae 47                 ; 0xc2b66 vgabios.c:1868
     cmp bl, 003h                              ; 80 fb 03                    ; 0xc2b6a
     jc short 02b7dh                           ; 72 0e                       ; 0xc2b6d
     jbe short 02b84h                          ; 76 13                       ; 0xc2b6f
@@ -5376,7 +5376,7 @@ biosfn_write_teletype:                       ; 0xc2a54 LB 0x263
     mov ch, byte [bp-012h]                    ; 8a 6e ee                    ; 0xc2c1e
     db  0feh, 0cdh
     ; dec ch                                    ; fe cd                     ; 0xc2c21
-    cmp byte [bx+047ach], 000h                ; 80 bf ac 47 00              ; 0xc2c23
+    cmp byte [bx+047adh], 000h                ; 80 bf ad 47 00              ; 0xc2c23
     jne short 02c76h                          ; 75 4c                       ; 0xc2c28
     mov ax, word [bp-012h]                    ; 8b 46 ee                    ; 0xc2c2a vgabios.c:1900
     mul word [bp-014h]                        ; f7 66 ec                    ; 0xc2c2d
@@ -5398,7 +5398,7 @@ biosfn_write_teletype:                       ; 0xc2a54 LB 0x263
     sal ax, 1                                 ; d1 e0                       ; 0xc2c50
     add si, ax                                ; 01 c6                       ; 0xc2c52
     inc si                                    ; 46                          ; 0xc2c54 vgabios.c:1901
-    mov es, [bx+047afh]                       ; 8e 87 af 47                 ; 0xc2c55 vgabios.c:45
+    mov es, [bx+047b0h]                       ; 8e 87 b0 47                 ; 0xc2c55 vgabios.c:45
     mov dl, byte [es:si]                      ; 26 8a 14                    ; 0xc2c59 vgabios.c:47
     mov ax, strict word 00001h                ; b8 01 00                    ; 0xc2c5c vgabios.c:1902
     push ax                                   ; 50                          ; 0xc2c5f
@@ -5789,7 +5789,7 @@ set_gfx_font:                                ; 0xc2f26 LB 0x4d
     mov DL, strict byte 002h                  ; b2 02                       ; 0xc2f46 vgabios.c:2027
     mov bl, dl                                ; 88 d3                       ; 0xc2f48 vgabios.c:2028
     xor bh, bh                                ; 30 ff                       ; 0xc2f4a
-    mov al, byte [bx+07dfah]                  ; 8a 87 fa 7d                 ; 0xc2f4c
+    mov al, byte [bx+07dfbh]                  ; 8a 87 fb 7d                 ; 0xc2f4c
     mov byte [bp+004h], al                    ; 88 46 04                    ; 0xc2f50
     mov bx, 00085h                            ; bb 85 00                    ; 0xc2f53 vgabios.c:62
     mov ax, strict word 00040h                ; b8 40 00                    ; 0xc2f56
@@ -5835,7 +5835,7 @@ biosfn_load_gfx_8_14_chars:                  ; 0xc2f90 LB 0x22
     mov al, bl                                ; 88 d8                       ; 0xc2f9c
     mov cx, ax                                ; 89 c1                       ; 0xc2f9e
     mov bx, strict word 0000eh                ; bb 0e 00                    ; 0xc2fa0
-    mov ax, 05d69h                            ; b8 69 5d                    ; 0xc2fa3
+    mov ax, 05d6ah                            ; b8 6a 5d                    ; 0xc2fa3
     mov dx, ds                                ; 8c da                       ; 0xc2fa6
     call 02f26h                               ; e8 7b ff                    ; 0xc2fa8
     lea sp, [bp-004h]                         ; 8d 66 fc                    ; 0xc2fab vgabios.c:2048
@@ -5856,7 +5856,7 @@ biosfn_load_gfx_8_8_dd_chars:                ; 0xc2fb2 LB 0x22
     mov al, bl                                ; 88 d8                       ; 0xc2fbe
     mov cx, ax                                ; 89 c1                       ; 0xc2fc0
     mov bx, strict word 00008h                ; bb 08 00                    ; 0xc2fc2
-    mov ax, 05569h                            ; b8 69 55                    ; 0xc2fc5
+    mov ax, 0556ah                            ; b8 6a 55                    ; 0xc2fc5
     mov dx, ds                                ; 8c da                       ; 0xc2fc8
     call 02f26h                               ; e8 59 ff                    ; 0xc2fca
     lea sp, [bp-004h]                         ; 8d 66 fc                    ; 0xc2fcd vgabios.c:2052
@@ -5877,7 +5877,7 @@ biosfn_load_gfx_8_16_chars:                  ; 0xc2fd4 LB 0x22
     mov al, bl                                ; 88 d8                       ; 0xc2fe0
     mov cx, ax                                ; 89 c1                       ; 0xc2fe2
     mov bx, strict word 00010h                ; bb 10 00                    ; 0xc2fe4
-    mov ax, 06b69h                            ; b8 69 6b                    ; 0xc2fe7
+    mov ax, 06b6ah                            ; b8 6a 6b                    ; 0xc2fe7
     mov dx, ds                                ; 8c da                       ; 0xc2fea
     call 02f26h                               ; e8 37 ff                    ; 0xc2fec
     lea sp, [bp-004h]                         ; 8d 66 fc                    ; 0xc2fef vgabios.c:2056
@@ -6010,7 +6010,7 @@ biosfn_read_state_info:                      ; 0xc30c6 LB 0x1f2
     mov word [bp-00ah], ax                    ; 89 46 f6                    ; 0xc30e3 vgabios.c:58
     mov ax, ds                                ; 8c d8                       ; 0xc30e6 vgabios.c:2144
     mov es, dx                                ; 8e c2                       ; 0xc30e8 vgabios.c:72
-    mov word [es:bx], 054ffh                  ; 26 c7 07 ff 54              ; 0xc30ea
+    mov word [es:bx], 05500h                  ; 26 c7 07 00 55              ; 0xc30ea
     mov [es:bx+002h], ds                      ; 26 8c 5f 02                 ; 0xc30ef
     lea di, [bx+004h]                         ; 8d 7f 04                    ; 0xc30f3 vgabios.c:2149
     mov cx, strict word 0001eh                ; b9 1e 00                    ; 0xc30f6
@@ -6899,7 +6899,7 @@ find_vga_entry:                              ; 0xc3888 LB 0x2b
     xor bh, bh                                ; 30 ff                       ; 0xc389e
     mov CL, strict byte 003h                  ; b1 03                       ; 0xc38a0
     sal bx, CL                                ; d3 e3                       ; 0xc38a2
-    cmp dl, byte [bx+047abh]                  ; 3a 97 ab 47                 ; 0xc38a4
+    cmp dl, byte [bx+047ach]                  ; 3a 97 ac 47                 ; 0xc38a4
     jne short 03896h                          ; 75 ec                       ; 0xc38a8
     mov ah, al                                ; 88 c4                       ; 0xc38aa
     mov al, ah                                ; 88 e0                       ; 0xc38ac vgabios.c:2432
@@ -7125,7 +7125,7 @@ int10_func:                                  ; 0xc394b LB 0x456
     push ax                                   ; 50                          ; 0xc3b26
     mov al, byte [bp+012h]                    ; 8a 46 12                    ; 0xc3b27
     mov cx, 00100h                            ; b9 00 01                    ; 0xc3b2a
-    mov bx, 05d69h                            ; bb 69 5d                    ; 0xc3b2d
+    mov bx, 05d6ah                            ; bb 6a 5d                    ; 0xc3b2d
     mov dx, 0c000h                            ; ba 00 c0                    ; 0xc3b30
     call 02e8ch                               ; e8 56 f3                    ; 0xc3b33
     jmp short 03b58h                          ; eb 20                       ; 0xc3b36
@@ -7138,7 +7138,7 @@ int10_func:                                  ; 0xc394b LB 0x456
     push ax                                   ; 50                          ; 0xc3b44
     mov al, byte [bp+012h]                    ; 8a 46 12                    ; 0xc3b45
     mov cx, 00100h                            ; b9 00 01                    ; 0xc3b48
-    mov bx, 05569h                            ; bb 69 55                    ; 0xc3b4b
+    mov bx, 0556ah                            ; bb 6a 55                    ; 0xc3b4b
     jmp short 03b30h                          ; eb e0                       ; 0xc3b4e
     mov al, byte [bp+00ch]                    ; 8a 46 0c                    ; 0xc3b50 vgabios.c:2623
     xor ah, ah                                ; 30 e4                       ; 0xc3b53
@@ -7153,7 +7153,7 @@ int10_func:                                  ; 0xc394b LB 0x456
     push ax                                   ; 50                          ; 0xc3b67
     mov al, byte [bp+012h]                    ; 8a 46 12                    ; 0xc3b68
     mov cx, 00100h                            ; b9 00 01                    ; 0xc3b6b
-    mov bx, 06b69h                            ; bb 69 6b                    ; 0xc3b6e
+    mov bx, 06b6ah                            ; bb 6a 6b                    ; 0xc3b6e
     jmp short 03b30h                          ; eb bd                       ; 0xc3b71
     mov dx, word [bp+008h]                    ; 8b 56 08                    ; 0xc3b73 vgabios.c:2630
     mov ax, word [bp+016h]                    ; 8b 46 16                    ; 0xc3b76
@@ -7674,7 +7674,7 @@ vbe_biosfn_return_controller_information: ; 0xc3f6b LB 0x12b
     mov word [es:bx], 04556h                  ; 26 c7 07 56 45              ; 0xc3fd6
     mov word [es:bx+002h], 04153h             ; 26 c7 47 02 53 41           ; 0xc3fdb vbe.c:334
     mov word [es:bx+004h], 00200h             ; 26 c7 47 04 00 02           ; 0xc3fe1 vbe.c:338
-    mov word [es:bx+006h], 07dfeh             ; 26 c7 47 06 fe 7d           ; 0xc3fe7 vbe.c:341
+    mov word [es:bx+006h], 07e00h             ; 26 c7 47 06 00 7e           ; 0xc3fe7 vbe.c:341
     mov [es:bx+008h], ds                      ; 26 8c 5f 08                 ; 0xc3fed
     mov word [es:bx+00ah], strict word 00001h ; 26 c7 47 0a 01 00           ; 0xc3ff1 vbe.c:344
     mov word [es:bx+00ch], strict word 00000h ; 26 c7 47 0c 00 00           ; 0xc3ff7 vbe.c:346
@@ -7690,11 +7690,11 @@ vbe_biosfn_return_controller_information: ; 0xc3f6b LB 0x12b
     cmp word [bp-00eh], strict byte 00000h    ; 83 7e f2 00                 ; 0xc401b vbe.c:356
     je short 04045h                           ; 74 24                       ; 0xc401f
     mov word [es:bx+014h], strict word 00003h ; 26 c7 47 14 03 00           ; 0xc4021 vbe.c:359
-    mov word [es:bx+016h], 07e13h             ; 26 c7 47 16 13 7e           ; 0xc4027 vbe.c:360
+    mov word [es:bx+016h], 07e15h             ; 26 c7 47 16 15 7e           ; 0xc4027 vbe.c:360
     mov [es:bx+018h], ds                      ; 26 8c 5f 18                 ; 0xc402d
-    mov word [es:bx+01ah], 07e30h             ; 26 c7 47 1a 30 7e           ; 0xc4031 vbe.c:361
+    mov word [es:bx+01ah], 07e32h             ; 26 c7 47 1a 32 7e           ; 0xc4031 vbe.c:361
     mov [es:bx+01ch], ds                      ; 26 8c 5f 1c                 ; 0xc4037
-    mov word [es:bx+01eh], 07e4eh             ; 26 c7 47 1e 4e 7e           ; 0xc403b vbe.c:362
+    mov word [es:bx+01eh], 07e50h             ; 26 c7 47 1e 50 7e           ; 0xc403b vbe.c:362
     mov [es:bx+020h], ds                      ; 26 8c 5f 20                 ; 0xc4041
     mov dx, cx                                ; 89 ca                       ; 0xc4045 vbe.c:369
     add dx, strict byte 0001bh                ; 83 c2 1b                    ; 0xc4047
@@ -8436,12 +8436,12 @@ vesa_pm_end:                                 ; 0xc4754 LB 0x1
   ; Padding 0x2b bytes at 0xc4755
   times 43 db 0
 
-section _DATA progbits vstart=0x4780 align=1 ; size=0x3742 class=DATA group=DGROUP
-  ; disGetNextSymbol 0xc4780 LB 0x3742 -> off=0x0 cb=000000000000002b uValue=00000000000c0000 '_msg_vga_init'
-_msg_vga_init:                               ; 0xc4780 LB 0x2b
-    db  'Oracle VirtualBox Version 7.2.8 VGA BIOS', 00dh, 00ah, 000h
-  ; disGetNextSymbol 0xc47ab LB 0x3717 -> off=0x0 cb=0000000000000080 uValue=00000000000c002b 'vga_modes'
-vga_modes:                                   ; 0xc47ab LB 0x80
+section _DATA progbits vstart=0x4780 align=1 ; size=0x3745 class=DATA group=DGROUP
+  ; disGetNextSymbol 0xc4780 LB 0x3745 -> off=0x0 cb=000000000000002c uValue=00000000000c0000 '_msg_vga_init'
+_msg_vga_init:                               ; 0xc4780 LB 0x2c
+    db  'Oracle VirtualBox Version 7.2.10 VGA BIOS', 00dh, 00ah, 000h
+  ; disGetNextSymbol 0xc47ac LB 0x3719 -> off=0x0 cb=0000000000000080 uValue=00000000000c002c 'vga_modes'
+vga_modes:                                   ; 0xc47ac LB 0x80
     db  000h, 000h, 000h, 004h, 000h, 0b8h, 0ffh, 002h, 001h, 000h, 000h, 004h, 000h, 0b8h, 0ffh, 002h
     db  002h, 000h, 000h, 004h, 000h, 0b8h, 0ffh, 002h, 003h, 000h, 000h, 004h, 000h, 0b8h, 0ffh, 002h
     db  004h, 001h, 002h, 002h, 000h, 0b8h, 0ffh, 001h, 005h, 001h, 002h, 002h, 000h, 0b8h, 0ffh, 001h
@@ -8450,14 +8450,14 @@ vga_modes:                                   ; 0xc47ab LB 0x80
     db  00fh, 001h, 003h, 001h, 000h, 0a0h, 0ffh, 000h, 010h, 001h, 004h, 004h, 000h, 0a0h, 0ffh, 002h
     db  011h, 001h, 003h, 001h, 000h, 0a0h, 0ffh, 002h, 012h, 001h, 004h, 004h, 000h, 0a0h, 0ffh, 002h
     db  013h, 001h, 005h, 008h, 000h, 0a0h, 0ffh, 003h, 06ah, 001h, 004h, 004h, 000h, 0a0h, 0ffh, 002h
-  ; disGetNextSymbol 0xc482b LB 0x3697 -> off=0x0 cb=0000000000000010 uValue=00000000000c00ab 'line_to_vpti'
-line_to_vpti:                                ; 0xc482b LB 0x10
+  ; disGetNextSymbol 0xc482c LB 0x3699 -> off=0x0 cb=0000000000000010 uValue=00000000000c00ac 'line_to_vpti'
+line_to_vpti:                                ; 0xc482c LB 0x10
     db  017h, 017h, 018h, 018h, 004h, 005h, 006h, 007h, 00dh, 00eh, 011h, 012h, 01ah, 01bh, 01ch, 01dh
-  ; disGetNextSymbol 0xc483b LB 0x3687 -> off=0x0 cb=0000000000000004 uValue=00000000000c00bb 'dac_regs'
-dac_regs:                                    ; 0xc483b LB 0x4
+  ; disGetNextSymbol 0xc483c LB 0x3689 -> off=0x0 cb=0000000000000004 uValue=00000000000c00bc 'dac_regs'
+dac_regs:                                    ; 0xc483c LB 0x4
     dd  0ff3f3f3fh
-  ; disGetNextSymbol 0xc483f LB 0x3683 -> off=0x0 cb=0000000000000780 uValue=00000000000c00bf 'video_param_table'
-video_param_table:                           ; 0xc483f LB 0x780
+  ; disGetNextSymbol 0xc4840 LB 0x3685 -> off=0x0 cb=0000000000000780 uValue=00000000000c00c0 'video_param_table'
+video_param_table:                           ; 0xc4840 LB 0x780
     db  028h, 018h, 008h, 000h, 008h, 009h, 003h, 000h, 002h, 063h, 02dh, 027h, 028h, 090h, 02bh, 0a0h
     db  0bfh, 01fh, 000h, 0c7h, 006h, 007h, 000h, 000h, 000h, 000h, 09ch, 08eh, 08fh, 014h, 01fh, 096h
     db  0b9h, 0a3h, 0ffh, 000h, 001h, 002h, 003h, 004h, 005h, 006h, 007h, 010h, 011h, 012h, 013h, 014h
@@ -8578,8 +8578,8 @@ video_param_table:                           ; 0xc483f LB 0x780
     db  072h, 0f0h, 000h, 060h, 000h, 000h, 000h, 000h, 000h, 000h, 059h, 08dh, 057h, 032h, 000h, 057h
     db  073h, 0e3h, 0ffh, 000h, 001h, 002h, 003h, 004h, 005h, 014h, 007h, 038h, 039h, 03ah, 03bh, 03ch
     db  03dh, 03eh, 03fh, 001h, 000h, 00fh, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 005h, 00fh, 0ffh
-  ; disGetNextSymbol 0xc4fbf LB 0x2f03 -> off=0x0 cb=00000000000000c0 uValue=00000000000c083f 'palette0'
-palette0:                                    ; 0xc4fbf LB 0xc0
+  ; disGetNextSymbol 0xc4fc0 LB 0x2f05 -> off=0x0 cb=00000000000000c0 uValue=00000000000c0840 'palette0'
+palette0:                                    ; 0xc4fc0 LB 0xc0
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah
     db  02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah
@@ -8592,8 +8592,8 @@ palette0:                                    ; 0xc4fbf LB 0xc0
     db  02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah
     db  02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 02ah, 03fh, 03fh, 03fh, 03fh, 03fh, 03fh, 03fh, 03fh
     db  03fh, 03fh, 03fh, 03fh, 03fh, 03fh, 03fh, 03fh, 03fh, 03fh, 03fh, 03fh, 03fh, 03fh, 03fh, 03fh
-  ; disGetNextSymbol 0xc507f LB 0x2e43 -> off=0x0 cb=00000000000000c0 uValue=00000000000c08ff 'palette1'
-palette1:                                    ; 0xc507f LB 0xc0
+  ; disGetNextSymbol 0xc5080 LB 0x2e45 -> off=0x0 cb=00000000000000c0 uValue=00000000000c0900 'palette1'
+palette1:                                    ; 0xc5080 LB 0xc0
     db  000h, 000h, 000h, 000h, 000h, 02ah, 000h, 02ah, 000h, 000h, 02ah, 02ah, 02ah, 000h, 000h, 02ah
     db  000h, 02ah, 02ah, 015h, 000h, 02ah, 02ah, 02ah, 000h, 000h, 000h, 000h, 000h, 02ah, 000h, 02ah
     db  000h, 000h, 02ah, 02ah, 02ah, 000h, 000h, 02ah, 000h, 02ah, 02ah, 015h, 000h, 02ah, 02ah, 02ah
@@ -8606,8 +8606,8 @@ palette1:                                    ; 0xc507f LB 0xc0
     db  015h, 015h, 015h, 015h, 015h, 03fh, 015h, 03fh, 015h, 015h, 03fh, 03fh, 03fh, 015h, 015h, 03fh
     db  015h, 03fh, 03fh, 03fh, 015h, 03fh, 03fh, 03fh, 015h, 015h, 015h, 015h, 015h, 03fh, 015h, 03fh
     db  015h, 015h, 03fh, 03fh, 03fh, 015h, 015h, 03fh, 015h, 03fh, 03fh, 03fh, 015h, 03fh, 03fh, 03fh
-  ; disGetNextSymbol 0xc513f LB 0x2d83 -> off=0x0 cb=00000000000000c0 uValue=00000000000c09bf 'palette2'
-palette2:                                    ; 0xc513f LB 0xc0
+  ; disGetNextSymbol 0xc5140 LB 0x2d85 -> off=0x0 cb=00000000000000c0 uValue=00000000000c09c0 'palette2'
+palette2:                                    ; 0xc5140 LB 0xc0
     db  000h, 000h, 000h, 000h, 000h, 02ah, 000h, 02ah, 000h, 000h, 02ah, 02ah, 02ah, 000h, 000h, 02ah
     db  000h, 02ah, 02ah, 02ah, 000h, 02ah, 02ah, 02ah, 000h, 000h, 015h, 000h, 000h, 03fh, 000h, 02ah
     db  015h, 000h, 02ah, 03fh, 02ah, 000h, 015h, 02ah, 000h, 03fh, 02ah, 02ah, 015h, 02ah, 02ah, 03fh
@@ -8620,8 +8620,8 @@ palette2:                                    ; 0xc513f LB 0xc0
     db  015h, 015h, 000h, 015h, 015h, 02ah, 015h, 03fh, 000h, 015h, 03fh, 02ah, 03fh, 015h, 000h, 03fh
     db  015h, 02ah, 03fh, 03fh, 000h, 03fh, 03fh, 02ah, 015h, 015h, 015h, 015h, 015h, 03fh, 015h, 03fh
     db  015h, 015h, 03fh, 03fh, 03fh, 015h, 015h, 03fh, 015h, 03fh, 03fh, 03fh, 015h, 03fh, 03fh, 03fh
-  ; disGetNextSymbol 0xc51ff LB 0x2cc3 -> off=0x0 cb=0000000000000300 uValue=00000000000c0a7f 'palette3'
-palette3:                                    ; 0xc51ff LB 0x300
+  ; disGetNextSymbol 0xc5200 LB 0x2cc5 -> off=0x0 cb=0000000000000300 uValue=00000000000c0a80 'palette3'
+palette3:                                    ; 0xc5200 LB 0x300
     db  000h, 000h, 000h, 000h, 000h, 02ah, 000h, 02ah, 000h, 000h, 02ah, 02ah, 02ah, 000h, 000h, 02ah
     db  000h, 02ah, 02ah, 015h, 000h, 02ah, 02ah, 02ah, 015h, 015h, 015h, 015h, 015h, 03fh, 015h, 03fh
     db  015h, 015h, 03fh, 03fh, 03fh, 015h, 015h, 03fh, 015h, 03fh, 03fh, 03fh, 015h, 03fh, 03fh, 03fh
@@ -8670,24 +8670,24 @@ palette3:                                    ; 0xc51ff LB 0x300
     db  00bh, 010h, 00bh, 00bh, 010h, 00ch, 00bh, 010h, 00dh, 00bh, 010h, 00fh, 00bh, 010h, 010h, 00bh
     db  00fh, 010h, 00bh, 00dh, 010h, 00bh, 00ch, 010h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
-  ; disGetNextSymbol 0xc54ff LB 0x29c3 -> off=0x0 cb=0000000000000010 uValue=00000000000c0d7f 'static_functionality'
-static_functionality:                        ; 0xc54ff LB 0x10
+  ; disGetNextSymbol 0xc5500 LB 0x29c5 -> off=0x0 cb=0000000000000010 uValue=00000000000c0d80 'static_functionality'
+static_functionality:                        ; 0xc5500 LB 0x10
     db  0ffh, 0e0h, 00fh, 000h, 000h, 000h, 000h, 007h, 002h, 008h, 0e7h, 00ch, 000h, 000h, 000h, 000h
-  ; disGetNextSymbol 0xc550f LB 0x29b3 -> off=0x0 cb=0000000000000024 uValue=00000000000c0d8f '_dcc_table'
-_dcc_table:                                  ; 0xc550f LB 0x24
+  ; disGetNextSymbol 0xc5510 LB 0x29b5 -> off=0x0 cb=0000000000000024 uValue=00000000000c0d90 '_dcc_table'
+_dcc_table:                                  ; 0xc5510 LB 0x24
     db  010h, 001h, 007h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h
-  ; disGetNextSymbol 0xc5533 LB 0x298f -> off=0x0 cb=000000000000001a uValue=00000000000c0db3 '_secondary_save_area'
-_secondary_save_area:                        ; 0xc5533 LB 0x1a
-    db  01ah, 000h, 00fh, 055h, 000h, 0c0h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
+  ; disGetNextSymbol 0xc5534 LB 0x2991 -> off=0x0 cb=000000000000001a uValue=00000000000c0db4 '_secondary_save_area'
+_secondary_save_area:                        ; 0xc5534 LB 0x1a
+    db  01ah, 000h, 010h, 055h, 000h, 0c0h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
-  ; disGetNextSymbol 0xc554d LB 0x2975 -> off=0x0 cb=000000000000001c uValue=00000000000c0dcd '_video_save_pointer_table'
-_video_save_pointer_table:                   ; 0xc554d LB 0x1c
-    db  03fh, 048h, 000h, 0c0h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
-    db  033h, 055h, 000h, 0c0h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
-  ; disGetNextSymbol 0xc5569 LB 0x2959 -> off=0x0 cb=0000000000000800 uValue=00000000000c0de9 'vgafont8'
-vgafont8:                                    ; 0xc5569 LB 0x800
+  ; disGetNextSymbol 0xc554e LB 0x2977 -> off=0x0 cb=000000000000001c uValue=00000000000c0dce '_video_save_pointer_table'
+_video_save_pointer_table:                   ; 0xc554e LB 0x1c
+    db  040h, 048h, 000h, 0c0h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
+    db  034h, 055h, 000h, 0c0h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
+  ; disGetNextSymbol 0xc556a LB 0x295b -> off=0x0 cb=0000000000000800 uValue=00000000000c0dea 'vgafont8'
+vgafont8:                                    ; 0xc556a LB 0x800
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 07eh, 081h, 0a5h, 081h, 0bdh, 099h, 081h, 07eh
     db  07eh, 0ffh, 0dbh, 0ffh, 0c3h, 0e7h, 0ffh, 07eh, 06ch, 0feh, 0feh, 0feh, 07ch, 038h, 010h, 000h
     db  010h, 038h, 07ch, 0feh, 07ch, 038h, 010h, 000h, 038h, 07ch, 038h, 0feh, 0feh, 07ch, 038h, 07ch
@@ -8816,8 +8816,8 @@ vgafont8:                                    ; 0xc5569 LB 0x800
     db  000h, 000h, 000h, 000h, 018h, 000h, 000h, 000h, 00fh, 00ch, 00ch, 00ch, 0ech, 06ch, 03ch, 01ch
     db  078h, 06ch, 06ch, 06ch, 06ch, 000h, 000h, 000h, 070h, 018h, 030h, 060h, 078h, 000h, 000h, 000h
     db  000h, 000h, 03ch, 03ch, 03ch, 03ch, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
-  ; disGetNextSymbol 0xc5d69 LB 0x2159 -> off=0x0 cb=0000000000000e00 uValue=00000000000c15e9 'vgafont14'
-vgafont14:                                   ; 0xc5d69 LB 0xe00
+  ; disGetNextSymbol 0xc5d6a LB 0x215b -> off=0x0 cb=0000000000000e00 uValue=00000000000c15ea 'vgafont14'
+vgafont14:                                   ; 0xc5d6a LB 0xe00
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  07eh, 081h, 0a5h, 081h, 081h, 0bdh, 099h, 081h, 07eh, 000h, 000h, 000h, 000h, 000h, 07eh, 0ffh
     db  0dbh, 0ffh, 0ffh, 0c3h, 0e7h, 0ffh, 07eh, 000h, 000h, 000h, 000h, 000h, 000h, 06ch, 0feh, 0feh
@@ -9042,8 +9042,8 @@ vgafont14:                                   ; 0xc5d69 LB 0xe00
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 070h, 0d8h, 030h, 060h, 0c8h, 0f8h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 07ch, 07ch, 07ch, 07ch, 07ch, 07ch, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
-  ; disGetNextSymbol 0xc6b69 LB 0x1359 -> off=0x0 cb=0000000000001000 uValue=00000000000c23e9 'vgafont16'
-vgafont16:                                   ; 0xc6b69 LB 0x1000
+  ; disGetNextSymbol 0xc6b6a LB 0x135b -> off=0x0 cb=0000000000001000 uValue=00000000000c23ea 'vgafont16'
+vgafont16:                                   ; 0xc6b6a LB 0x1000
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 07eh, 081h, 0a5h, 081h, 081h, 0bdh, 099h, 081h, 081h, 07eh, 000h, 000h, 000h, 000h
     db  000h, 000h, 07eh, 0ffh, 0dbh, 0ffh, 0ffh, 0c3h, 0e7h, 0ffh, 0ffh, 07eh, 000h, 000h, 000h, 000h
@@ -9300,8 +9300,8 @@ vgafont16:                                   ; 0xc6b69 LB 0x1000
     db  000h, 070h, 0d8h, 030h, 060h, 0c8h, 0f8h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 07ch, 07ch, 07ch, 07ch, 07ch, 07ch, 07ch, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
-  ; disGetNextSymbol 0xc7b69 LB 0x359 -> off=0x0 cb=000000000000012d uValue=00000000000c33e9 'vgafont14alt'
-vgafont14alt:                                ; 0xc7b69 LB 0x12d
+  ; disGetNextSymbol 0xc7b6a LB 0x35b -> off=0x0 cb=000000000000012d uValue=00000000000c33ea 'vgafont14alt'
+vgafont14alt:                                ; 0xc7b6a LB 0x12d
     db  01dh, 000h, 000h, 000h, 000h, 024h, 066h, 0ffh, 066h, 024h, 000h, 000h, 000h, 000h, 000h, 022h
     db  000h, 063h, 063h, 063h, 022h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 02bh, 000h
     db  000h, 000h, 018h, 018h, 018h, 0ffh, 018h, 018h, 018h, 000h, 000h, 000h, 000h, 02dh, 000h, 000h
@@ -9321,8 +9321,8 @@ vgafont14alt:                                ; 0xc7b69 LB 0x12d
     db  000h, 0fch, 066h, 066h, 07ch, 062h, 066h, 06fh, 066h, 066h, 0f3h, 000h, 000h, 000h, 0f1h, 000h
     db  000h, 018h, 018h, 018h, 0ffh, 018h, 018h, 018h, 000h, 0ffh, 000h, 000h, 000h, 0f6h, 000h, 000h
     db  018h, 018h, 000h, 000h, 0ffh, 000h, 000h, 018h, 018h, 000h, 000h, 000h, 000h
-  ; disGetNextSymbol 0xc7c96 LB 0x22c -> off=0x0 cb=0000000000000144 uValue=00000000000c3516 'vgafont16alt'
-vgafont16alt:                                ; 0xc7c96 LB 0x144
+  ; disGetNextSymbol 0xc7c97 LB 0x22e -> off=0x0 cb=0000000000000144 uValue=00000000000c3517 'vgafont16alt'
+vgafont16alt:                                ; 0xc7c97 LB 0x144
     db  01dh, 000h, 000h, 000h, 000h, 000h, 024h, 066h, 0ffh, 066h, 024h, 000h, 000h, 000h, 000h, 000h
     db  000h, 030h, 000h, 000h, 03ch, 066h, 0c3h, 0c3h, 0dbh, 0dbh, 0c3h, 0c3h, 066h, 03ch, 000h, 000h
     db  000h, 000h, 04dh, 000h, 000h, 0c3h, 0e7h, 0ffh, 0ffh, 0dbh, 0c3h, 0c3h, 0c3h, 0c3h, 0c3h, 000h
@@ -9344,54 +9344,56 @@ vgafont16alt:                                ; 0xc7c96 LB 0x144
     db  000h, 0abh, 000h, 0c0h, 0c0h, 0c2h, 0c6h, 0cch, 018h, 030h, 060h, 0ceh, 09bh, 006h, 00ch, 01fh
     db  000h, 000h, 0ach, 000h, 0c0h, 0c0h, 0c2h, 0c6h, 0cch, 018h, 030h, 066h, 0ceh, 096h, 03eh, 006h
     db  006h, 000h, 000h, 000h
-  ; disGetNextSymbol 0xc7dda LB 0xe8 -> off=0x0 cb=0000000000000008 uValue=00000000000c365a '_cga_msr'
-_cga_msr:                                    ; 0xc7dda LB 0x8
+  ; disGetNextSymbol 0xc7ddb LB 0xea -> off=0x0 cb=0000000000000008 uValue=00000000000c365b '_cga_msr'
+_cga_msr:                                    ; 0xc7ddb LB 0x8
     db  02ch, 028h, 02dh, 029h, 02ah, 02eh, 01eh, 029h
-  ; disGetNextSymbol 0xc7de2 LB 0xe0 -> off=0x0 cb=0000000000000008 uValue=00000000000c3662 'line_to_vpti_200'
-line_to_vpti_200:                            ; 0xc7de2 LB 0x8
+  ; disGetNextSymbol 0xc7de3 LB 0xe2 -> off=0x0 cb=0000000000000008 uValue=00000000000c3663 'line_to_vpti_200'
+line_to_vpti_200:                            ; 0xc7de3 LB 0x8
     db  000h, 001h, 002h, 003h, 0ffh, 0ffh, 0ffh, 007h
-  ; disGetNextSymbol 0xc7dea LB 0xd8 -> off=0x0 cb=0000000000000008 uValue=00000000000c366a 'line_to_vpti_350'
-line_to_vpti_350:                            ; 0xc7dea LB 0x8
+  ; disGetNextSymbol 0xc7deb LB 0xda -> off=0x0 cb=0000000000000008 uValue=00000000000c366b 'line_to_vpti_350'
+line_to_vpti_350:                            ; 0xc7deb LB 0x8
     db  013h, 014h, 015h, 016h, 0ffh, 0ffh, 0ffh, 007h
-  ; disGetNextSymbol 0xc7df2 LB 0xd0 -> off=0x0 cb=0000000000000008 uValue=00000000000c3672 'line_to_vpti_400'
-line_to_vpti_400:                            ; 0xc7df2 LB 0x8
+  ; disGetNextSymbol 0xc7df3 LB 0xd2 -> off=0x0 cb=0000000000000008 uValue=00000000000c3673 'line_to_vpti_400'
+line_to_vpti_400:                            ; 0xc7df3 LB 0x8
     db  017h, 017h, 018h, 018h, 0ffh, 0ffh, 0ffh, 019h
-  ; disGetNextSymbol 0xc7dfa LB 0xc8 -> off=0x0 cb=0000000000000004 uValue=00000000000c367a 'row_tbl'
-row_tbl:                                     ; 0xc7dfa LB 0x4
-    dd  02b190e00h
-  ; disGetNextSymbol 0xc7dfe LB 0xc4 -> off=0x0 cb=0000000000000015 uValue=00000000000c367e '_vbebios_copyright'
-_vbebios_copyright:                          ; 0xc7dfe LB 0x15
+  ; disGetNextSymbol 0xc7dfb LB 0xca -> off=0x0 cb=0000000000000005 uValue=00000000000c367b 'row_tbl'
+row_tbl:                                     ; 0xc7dfb LB 0x5
+    db  000h, 00eh, 019h, 02bh, 000h
+  ; disGetNextSymbol 0xc7e00 LB 0xc5 -> off=0x0 cb=0000000000000015 uValue=00000000000c3680 '_vbebios_copyright'
+_vbebios_copyright:                          ; 0xc7e00 LB 0x15
     db  'VirtualBox VESA BIOS', 000h
-  ; disGetNextSymbol 0xc7e13 LB 0xaf -> off=0x0 cb=000000000000001d uValue=00000000000c3693 '_vbebios_vendor_name'
-_vbebios_vendor_name:                        ; 0xc7e13 LB 0x1d
+  ; disGetNextSymbol 0xc7e15 LB 0xb0 -> off=0x0 cb=000000000000001d uValue=00000000000c3695 '_vbebios_vendor_name'
+_vbebios_vendor_name:                        ; 0xc7e15 LB 0x1d
     db  'Oracle and/or its affiliates', 000h
-  ; disGetNextSymbol 0xc7e30 LB 0x92 -> off=0x0 cb=000000000000001e uValue=00000000000c36b0 '_vbebios_product_name'
-_vbebios_product_name:                       ; 0xc7e30 LB 0x1e
+  ; disGetNextSymbol 0xc7e32 LB 0x93 -> off=0x0 cb=000000000000001e uValue=00000000000c36b2 '_vbebios_product_name'
+_vbebios_product_name:                       ; 0xc7e32 LB 0x1e
     db  'Oracle VirtualBox VBE Adapter', 000h
-  ; disGetNextSymbol 0xc7e4e LB 0x74 -> off=0x0 cb=0000000000000020 uValue=00000000000c36ce '_vbebios_product_revision'
-_vbebios_product_revision:                   ; 0xc7e4e LB 0x20
-    db  'Oracle VirtualBox Version 7.2.8', 000h
-  ; disGetNextSymbol 0xc7e6e LB 0x54 -> off=0x0 cb=000000000000002b uValue=00000000000c36ee '_vbebios_info_string'
-_vbebios_info_string:                        ; 0xc7e6e LB 0x2b
+  ; disGetNextSymbol 0xc7e50 LB 0x75 -> off=0x0 cb=0000000000000021 uValue=00000000000c36d0 '_vbebios_product_revision'
+_vbebios_product_revision:                   ; 0xc7e50 LB 0x21
+    db  'Oracle VirtualBox Version 7.2.10', 000h
+  ; disGetNextSymbol 0xc7e71 LB 0x54 -> off=0x0 cb=000000000000002b uValue=00000000000c36f1 '_vbebios_info_string'
+_vbebios_info_string:                        ; 0xc7e71 LB 0x2b
     db  'VirtualBox VBE Display Adapter enabled', 00dh, 00ah, 00dh, 00ah, 000h
-  ; disGetNextSymbol 0xc7e99 LB 0x29 -> off=0x0 cb=0000000000000029 uValue=00000000000c3719 '_no_vbebios_info_string'
-_no_vbebios_info_string:                     ; 0xc7e99 LB 0x29
+  ; disGetNextSymbol 0xc7e9c LB 0x29 -> off=0x0 cb=0000000000000029 uValue=00000000000c371c '_no_vbebios_info_string'
+_no_vbebios_info_string:                     ; 0xc7e9c LB 0x29
     db  'No VirtualBox VBE support available!', 00dh, 00ah, 00dh, 00ah, 000h
 
-section CONST progbits vstart=0x7ec2 align=1 ; size=0x0 class=DATA group=DGROUP
+  ; Padding 0x1 bytes at 0xc7ec5
+    db  001h
 
-section CONST2 progbits vstart=0x7ec2 align=1 ; size=0x0 class=DATA group=DGROUP
+section CONST progbits vstart=0x7ec6 align=1 ; size=0x0 class=DATA group=DGROUP
 
-  ; Padding 0x13e bytes at 0xc7ec2
-    db  001h, 000h, 000h, 000h, 000h, 001h, 000h, 000h, 000h, 000h, 000h, 000h, 02fh, 06dh, 06eh, 074h
-    db  02fh, 068h, 064h, 064h, 05fh, 069h, 06eh, 074h, 02fh, 070h, 075h, 062h, 02fh, 063h, 06fh, 06dh
-    db  070h, 069h, 06ch, 065h, 02dh, 063h, 061h, 063h, 068h, 065h, 02fh, 076h, 062h, 06fh, 078h, 02fh
-    db  062h, 072h, 061h, 06eh, 063h, 068h, 065h, 073h, 02fh, 056h, 042h, 06fh, 078h, 02dh, 037h, 02eh
-    db  032h, 02fh, 06fh, 075h, 074h, 02fh, 06ch, 069h, 06eh, 075h, 078h, 02eh, 061h, 06dh, 064h, 036h
-    db  034h, 02fh, 072h, 065h, 06ch, 065h, 061h, 073h, 065h, 02fh, 06fh, 062h, 06ah, 02fh, 056h, 042h
-    db  06fh, 078h, 056h, 067h, 061h, 042h, 069h, 06fh, 073h, 038h, 030h, 038h, 036h, 02fh, 056h, 042h
-    db  06fh, 078h, 056h, 067h, 061h, 042h, 069h, 06fh, 073h, 038h, 030h, 038h, 036h, 02eh, 073h, 079h
-    db  06dh, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
+section CONST2 progbits vstart=0x7ec6 align=1 ; size=0x0 class=DATA group=DGROUP
+
+  ; Padding 0x13a bytes at 0xc7ec6
+    db  000h, 000h, 000h, 000h, 001h, 000h, 000h, 000h, 000h, 000h, 000h, 02fh, 06dh, 06eh, 074h, 02fh
+    db  068h, 064h, 064h, 05fh, 069h, 06eh, 074h, 02fh, 070h, 075h, 062h, 02fh, 063h, 06fh, 06dh, 070h
+    db  069h, 06ch, 065h, 02dh, 063h, 061h, 063h, 068h, 065h, 02fh, 076h, 062h, 06fh, 078h, 02fh, 062h
+    db  072h, 061h, 06eh, 063h, 068h, 065h, 073h, 02fh, 056h, 042h, 06fh, 078h, 02dh, 037h, 02eh, 032h
+    db  02fh, 06fh, 075h, 074h, 02fh, 06ch, 069h, 06eh, 075h, 078h, 02eh, 061h, 06dh, 064h, 036h, 034h
+    db  02fh, 072h, 065h, 06ch, 065h, 061h, 073h, 065h, 02fh, 06fh, 062h, 06ah, 02fh, 056h, 042h, 06fh
+    db  078h, 056h, 067h, 061h, 042h, 069h, 06fh, 073h, 038h, 030h, 038h, 036h, 02fh, 056h, 042h, 06fh
+    db  078h, 056h, 067h, 061h, 042h, 069h, 06fh, 073h, 038h, 030h, 038h, 036h, 02eh, 073h, 079h, 06dh
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
@@ -9402,4 +9404,5 @@ section CONST2 progbits vstart=0x7ec2 align=1 ; size=0x0 class=DATA group=DGROUP
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
-    db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 044h
+    db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
+    db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 083h
