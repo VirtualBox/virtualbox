@@ -1,4 +1,4 @@
-/* $Id: arm-psci.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: arm-psci.h 114339 2026-06-11 08:15:10Z alexander.eichner@oracle.com $ */
 /** @file
  * IPRT, ARM PSCI (Power State Coordination Interface) common definitions (this is actually a protocol and not a format).
  *
@@ -121,6 +121,11 @@
 
 
 #define ARM_PSCI_MIGRATE_INFO_TYPE_TOS_NOT_PRESENT  2
+
+#define ARM_PSCI_AFFINITY_INFO_CPU_ON               0
+#define ARM_PSCI_AFFINITY_INFO_CPU_OFF              1
+#define ARM_PSCI_AFFINITY_INFO_CPU_ON_PENDING       2
+
 
 /** Helper to define a PSCI function identifier conforming to SMC32/HVC32. */
 #define ARM_PSCI_FUNC_ID_CREATE_FAST_32(a_FunNum)  ARM_SMCCC_FUNC_ID_CREATE_FAST_32(ARM_SMCCC_FUNC_ID_ENTITY_STD_SEC_SERVICE, a_FunNum)

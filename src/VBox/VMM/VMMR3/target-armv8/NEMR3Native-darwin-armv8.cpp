@@ -1,4 +1,4 @@
-/* $Id: NEMR3Native-darwin-armv8.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: NEMR3Native-darwin-armv8.cpp 114339 2026-06-11 08:15:10Z alexander.eichner@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 macOS backend using Hypervisor.framework, ARMv8 variant.
  *
@@ -38,6 +38,7 @@
 #include <VBox/vmm/nem.h>
 #include <VBox/vmm/iem.h>
 #include <VBox/vmm/em.h>
+#include <VBox/vmm/hm.h>
 #include <VBox/vmm/pdmgic.h>
 #include <VBox/vmm/pdm.h>
 #include <VBox/vmm/dbgftrace.h>
@@ -191,6 +192,17 @@ typedef hv_return_t     FN_HV_GIC_SET_ICV_REG(hv_vcpu_t vcpu, hv_gic_icv_reg_t r
 typedef hv_return_t     FN_HV_GIC_SET_REDISTRIBUTOR_REG(hv_vcpu_t vcpu, hv_gic_redistributor_reg_t reg, uint64_t value);
 
 typedef hv_return_t     FN_HV_GIC_GET_INTID(hv_gic_intid_t interrupt, uint32_t *intid);
+
+
+/**
+ * ARM PSCI Affinity info arguments.
+ */
+typedef struct ARMPSCIAFFINITYINFOARGS
+{
+    PVMCPUCC pVCpuTgt;
+    bool     fCpuOff;
+} ARMPSCIAFFINITYINFOARGS;
+typedef ARMPSCIAFFINITYINFOARGS *PARMPSCIAFFINITYINFOARGS;
 
 
 /*********************************************************************************************************************************
@@ -2207,6 +2219,28 @@ nemR3DarwinHandleExitExceptionTrappedSysInsn(PVM pVM, PVMCPU pVCpu, uint32_t uIs
 
 
 /**
+ * EMT rendezvous worker for the PSCI AFFINITY_INFO call.
+ *
+ * @returns VBox status code.
+ *
+ * @param   pVM             The cross context VM structure.
+ * @param   pVCpu           The cross context virtual CPU structure of the calling EMT.
+ * @param   pvUser          The argument pointer.
+ */
+static DECLCALLBACK(VBOXSTRICTRC) nemR3DarwinPsciAffinityInfo(PVM pVM, PVMCPU pVCpu, void *pvUser)
+{
+    RT_NOREF(pVM);
+
+    PARMPSCIAFFINITYINFOARGS pArgs = (PARMPSCIAFFINITYINFOARGS)pvUser;
+
+    if (pVCpu == pArgs->pVCpuTgt)
+        pArgs->fCpuOff = EMGetState(pVCpu) == EMSTATE_WAIT_SIPI;
+
+    return VINF_SUCCESS;
+}
+
+
+/**
  * Works on the trapped HVC instruction exception.
  *
  * @returns VBox strict status code.
@@ -2274,6 +2308,51 @@ nemR3DarwinHandleExitExceptionTrappedHvcInsn(PVM pVM, PVMCPU pVCpu, uint32_t uIs
                     nemR3DarwinSetGReg(pVCpu, ARMV8_A64_REG_X0, true /*f64BitReg*/, false /*fSignExtend*/, ARM_PSCI_STS_SUCCESS);
                     break;
                 }
+                case ARM_PSCI_FUNC_ID_CPU_OFF:
+                {
+                    /* This doesn't return to the guest, replicate what is done in vmR3HotUnplugCpu(). */
+                    PGMR3ResetCpu(pVM, pVCpu);
+                    PDMR3ResetCpu(pVCpu);
+                    TRPMR3ResetCpu(pVCpu);
+                    CPUMR3ResetCpu(pVM, pVCpu);
+                    EMR3ResetCpu(pVCpu);
+                    HMR3ResetCpu(pVCpu);
+                    NEMR3ResetCpu(pVCpu, false /*fInitIpi*/);
+                    rcStrict = VINF_EM_WAIT_SIPI;
+                    break;
+                }
+                case ARM_PSCI_FUNC_ID_AFFINITY_INFO:
+                {
+                    uint64_t u64TgtAffinity       = nemR3DarwinGetGReg(pVCpu, ARMV8_A64_REG_X1);
+                    uint64_t u64LowestAffinityLvl = nemR3DarwinGetGReg(pVCpu, ARMV8_A64_REG_X2);
+                    if (u64LowestAffinityLvl == 0)
+                    {
+                        /* Gather all EMTs to avoid any races from concurrent PSCI calls. */
+                        VMCPUID idCpu = (VMCPUID)(u64TgtAffinity & 0xff);
+                        if (idCpu < pVM->cCpus)
+                        {
+                            ARMPSCIAFFINITYINFOARGS Args;
+                            Args.pVCpuTgt = pVM->apCpusR3[idCpu];
+                            Args.fCpuOff  = false;
+                            rcStrict = VMMR3EmtRendezvous(pVM, VMMEMTRENDEZVOUS_FLAGS_TYPE_DESCENDING | VMMEMTRENDEZVOUS_FLAGS_STOP_ON_ERROR,
+                                                          nemR3DarwinPsciAffinityInfo, &Args);
+                            if (RT_SUCCESS(rcStrict))
+                            {
+                                if (Args.fCpuOff)
+                                    nemR3DarwinSetGReg(pVCpu, ARMV8_A64_REG_X0, true /*f64BitReg*/, false /*fSignExtend*/, ARM_PSCI_AFFINITY_INFO_CPU_OFF);
+                                else
+                                    nemR3DarwinSetGReg(pVCpu, ARMV8_A64_REG_X0, true /*f64BitReg*/, false /*fSignExtend*/, ARM_PSCI_AFFINITY_INFO_CPU_ON);
+                            }
+                            else
+                                nemR3DarwinSetGReg(pVCpu, ARMV8_A64_REG_X0, true /*f64BitReg*/, false /*fSignExtend*/, ARM_PSCI_STS_INVALID_PARAMETERS);
+                        }
+                        else
+                            nemR3DarwinSetGReg(pVCpu, ARMV8_A64_REG_X0, true /*f64BitReg*/, false /*fSignExtend*/, ARM_PSCI_STS_INVALID_PARAMETERS);
+                    }
+                    else
+                        nemR3DarwinSetGReg(pVCpu, ARMV8_A64_REG_X0, true /*f64BitReg*/, false /*fSignExtend*/, ARM_PSCI_STS_INVALID_PARAMETERS);
+                    break;
+                }
                 case ARM_PSCI_FUNC_ID_PSCI_FEATURES:
                 {
                     uint32_t u32FunNum = (uint32_t)nemR3DarwinGetGReg(pVCpu, ARMV8_A64_REG_X1);
@@ -2284,6 +2363,8 @@ nemR3DarwinHandleExitExceptionTrappedHvcInsn(PVM pVM, PVMCPU pVCpu, uint32_t uIs
                         case ARM_PSCI_FUNC_ID_SYSTEM_RESET:
                         case ARM_PSCI_FUNC_ID_SYSTEM_RESET2:
                         case ARM_PSCI_FUNC_ID_CPU_ON:
+                        case ARM_PSCI_FUNC_ID_CPU_OFF:
+                        case ARM_PSCI_FUNC_ID_AFFINITY_INFO:
                         case ARM_PSCI_FUNC_ID_MIGRATE_INFO_TYPE:
                             nemR3DarwinSetGReg(pVCpu, ARMV8_A64_REG_X0,
                                                false /*f64BitReg*/, false /*fSignExtend*/,
