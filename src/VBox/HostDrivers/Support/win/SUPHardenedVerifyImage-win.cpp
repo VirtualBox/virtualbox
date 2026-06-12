@@ -1,4 +1,4 @@
-/* $Id: SUPHardenedVerifyImage-win.cpp 113920 2026-04-16 21:25:06Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPHardenedVerifyImage-win.cpp 114345 2026-06-12 06:54:37Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library/Driver - Hardened Image Verification, Windows.
  */
@@ -2580,6 +2580,7 @@ static int supR3HardNtViCallWinVerifyTrust(HANDLE hFile, PCRTUTF16 pwszName, uin
             case TRUST_E_CERT_SIGNATURE:          pszErrConst = "TRUST_E_CERT_SIGNATURE";       break;
             case TRUST_E_TIME_STAMP:              pszErrConst = "TRUST_E_TIME_STAMP";           break;
             case TRUST_E_BAD_DIGEST:              pszErrConst = "TRUST_E_BAD_DIGEST";           break;
+            case TRUST_E_MALFORMED_SIGNATURE:     pszErrConst = "TRUST_E_MALFORMED_SIGNATURE";  break; /* sign with /rmc? */
             case TRUST_E_BASIC_CONSTRAINTS:       pszErrConst = "TRUST_E_BASIC_CONSTRAINTS";    break;
             case TRUST_E_FINANCIAL_CRITERIA:      pszErrConst = "TRUST_E_FINANCIAL_CRITERIA";   break;
             case TRUST_E_PROVIDER_UNKNOWN:        pszErrConst = "TRUST_E_PROVIDER_UNKNOWN";     break;
