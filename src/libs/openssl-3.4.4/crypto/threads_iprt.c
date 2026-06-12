@@ -1,4 +1,4 @@
-/* $Id: threads_iprt.c 113189 2026-02-26 16:50:14Z alexander.rudnev@oracle.com $ */
+/* $Id: threads_iprt.c 114344 2026-06-12 06:54:09Z knut.osmundsen@oracle.com $ */
 /** @file
  * Crypto threading and atomic functions built upon IPRT.
  */
@@ -298,7 +298,7 @@ int CRYPTO_THREAD_cleanup_local(CRYPTO_THREAD_LOCAL *key)
 
 CRYPTO_THREAD_ID CRYPTO_THREAD_get_current_id(void)
 {
-    return RTThreadSelf();
+    return RTThreadNativeSelf();
 }
 
 int CRYPTO_THREAD_compare_id(CRYPTO_THREAD_ID a, CRYPTO_THREAD_ID b)
