@@ -536,7 +536,7 @@ typedef unsigned int CRYPTO_THREAD_ID;
 #  include <iprt/once.h>
 typedef RTONCE CRYPTO_ONCE;
 typedef RTTLS CRYPTO_THREAD_LOCAL;
-typedef RTTHREAD CRYPTO_THREAD_ID;
+typedef RTNATIVETHREAD CRYPTO_THREAD_ID;
 #  define CRYPTO_ONCE_STATIC_INIT RTONCE_INITIALIZER
 # endif /* VBOX */
 
