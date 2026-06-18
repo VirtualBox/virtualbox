@@ -1,4 +1,4 @@
-/* $Id: initterm-r0drv-linux.c 114150 2026-05-19 11:56:11Z knut.osmundsen@oracle.com $ */
+/* $Id: initterm-r0drv-linux.c 114441 2026-06-18 16:45:13Z alexander.eichner@oracle.com $ */
 /** @file
  * IPRT - Initialization & Termination, R0 Driver, Linux.
  */
@@ -143,6 +143,7 @@ DECLHIDDEN(int) rtR0InitNative(void)
      */
     g_fLnxIsCetSupported = false;
     g_fLnxIsCetEnabled   = false;
+#if defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64)
     {
         uint32_t uLeaves = ASMCpuId_EAX(0);
         if (   uLeaves >= 7
@@ -154,6 +155,7 @@ DECLHIDDEN(int) rtR0InitNative(void)
             g_fLnxIsCetEnabled   = RT_BOOL(fSupCet & MSR_IA32_CET_ENDBR_EN);
         }
     }
+#endif
 
     /*
      * There are some unexported symbols we want, try get them:
