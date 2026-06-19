@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.cpp 114307 2026-06-09 15:33:14Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.cpp 114456 2026-06-19 11:49:08Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common core code.
  */
@@ -48,6 +48,57 @@
 #define VMSVGA3D_INCL_STRUCTURE_DESCRIPTORS
 #include "DevVGA-SVGA3d-internal.h"
 #include "DevVGA-SVGA-internal.h"
+
+
+static void vmsvgaSurfaceStatsLog(PVGASTATECC pThisCC)
+{
+    uint32_t cBuffers = 0;
+    uint32_t cTextures = 0;
+
+    uint64_t cbBuffers = 0;
+    uint64_t cbTextures = 0;
+
+    PVMSVGA3DSTATE p3dState = pThisCC->svga.p3dState;
+    for (uint32_t sid = 0; sid < p3dState->cSurfaces; ++sid)
+    {
+        PVMSVGA3DSURFACE pSurface = p3dState->papSurfaces[sid];
+        if (pSurface->id == SVGA3D_INVALID_ID)
+            continue;
+
+        if (pSurface->format == SVGA3D_BUFFER)
+        {
+            ++cBuffers;
+            cbBuffers += pSurface->paMipmapLevels[0].cbSurface;
+        }
+        else
+        {
+            ++cTextures;
+            uint32_t cbSurface = 0;
+            for (uint32_t i = 0; i < pSurface->cLevels * pSurface->surfaceDesc.numArrayElements; ++i)
+                cbSurface += pSurface->paMipmapLevels[i].cbSurface;
+            cbTextures += cbSurface;
+        }
+    }
+
+    LogRel6(("VMSVGA: surface stats begin\n"));
+
+    LogRel6(("Total buffers %RU32 size = %RU64 %RU64MB\n", cBuffers, cbBuffers, cbBuffers / _1M));
+    LogRel6(("Total textures %RU32 size = %RU64 %RU64MB\n", cTextures, cbTextures, cbTextures / _1M));
+
+    LogRel6(("VMSVGA: surface stats end\n"));
+}
+
+
+static void vmsvgaSurfaceStats(PVGASTATECC pThisCC)
+{
+    PVMSVGA3DSTATE p3dState = pThisCC->svga.p3dState;
+    uint64_t const u64NsNow = RTTimeNanoTS();
+    if ((u64NsNow - p3dState->stats.u64TsNsLastStatsDump) / RT_NS_1MS_64 > 10000)
+    {
+        vmsvgaSurfaceStatsLog(pThisCC);
+        p3dState->stats.u64TsNsLastStatsDump = u64NsNow;
+    }
+}
 
 
 static int vmsvga3dSurfaceAllocMipLevels(PVMSVGA3DSURFACE pSurface)
@@ -1321,6 +1372,9 @@ void vmsvga3dProcessPendingTasks(PVGASTATE pThis, PVGASTATECC pThisCC)
 
     if (pSvgaR3State->pFuncs3D && pSvgaR3State->pFuncs3D->pfnProcessPendingTasks)
         pSvgaR3State->pFuncs3D->pfnProcessPendingTasks(pThis, pThisCC);
+
+    if (LogRelIs6Enabled())
+        vmsvgaSurfaceStats(pThisCC);
 }
 
 
