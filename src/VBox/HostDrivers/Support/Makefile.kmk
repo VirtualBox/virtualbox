@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 113916 2026-04-16 21:00:28Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114484 2026-06-22 13:52:30Z klaus.espenlaub@oracle.com $
 ## @file
 # Sub-Makefile for the support library and the drivers/modules/kexts it uses.
 #
@@ -263,11 +263,13 @@ SUPR3HardenedStatic_SOURCES.win = \
 	win/SUPHardenedVerifyProcess-win.cpp \
 	win/SUPHardenedVerifyImage-win.cpp \
 	$(VBOX_SUP_WIN_CERTS_FILE)
+SUPR3HardenedStatic_SOURCES.win.x86 += \
+	win/SUPR3HardenedMainA-win.asm
+SUPR3HardenedStatic_SOURCES.win.amd64 += \
+	win/SUPR3HardenedMainA-win.asm
 SUPR3HardenedStatic_SOURCES.x86 += \
-	win/SUPR3HardenedMainA-win.asm \
 	$(VBOX_PATH_RUNTIME_SRC)/common/asm/ASMMemFirstMismatchingU8.asm
 SUPR3HardenedStatic_SOURCES.amd64 += \
-	win/SUPR3HardenedMainA-win.asm \
 	$(VBOX_PATH_RUNTIME_SRC)/common/asm/ASMMemFirstMismatchingU8.asm
 
 
