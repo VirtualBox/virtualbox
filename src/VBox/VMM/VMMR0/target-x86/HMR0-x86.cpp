@@ -1,4 +1,4 @@
-/* $Id: HMR0-x86.cpp 114221 2026-05-29 20:53:08Z knut.osmundsen@oracle.com $ */
+/* $Id: HMR0-x86.cpp 114492 2026-06-22 17:33:54Z knut.osmundsen@oracle.com $ */
 /** @file
  * Hardware Assisted Virtualization Manager (HM) - Host Context Ring-0.
  */
@@ -165,7 +165,7 @@ static int32_t          g_rcHmInit;
 static HMPHYSCPU        g_aHmCpuInfo[RTCPUSET_MAX_CPUS];
 
 /** Whether we've already initialized all CPUs.
- * @remarks We could check the EnableAllCpusOnce state, but this is
+ * @remarks We could check the EnablesOnce state, but this is
  *          simpler and hopefully easier to understand. */
 static bool             g_fHmEnabled;
 /** Serialize initialization in HMR0EnableAllCpus. */
@@ -945,9 +945,19 @@ static DECLCALLBACK(int32_t) hmR0EnableAllCpuOnce(void *pvUser)
         rc = SUPR0EnableHwvirt(true /* fEnable */);
         if (RT_SUCCESS(rc))
         {
-            g_fHmCalledSUPR0Hwvirt = true;
-            /* If the host provides a VT-x init API, then we'll rely on that for global init. */
-            g_fHmGlobalInit = pVM->hm.s.fGlobalInit = true;
+            rc = SUPR0EnableHwvirtForVm(true /*fEnable*/, &pVM->hmr0.s.pvSupR0EnableState);
+            if (RT_SUCCESS(rc))
+            {
+                pVM->hmr0.s.fSupR0EnableForVmCalled     = true;
+                g_fHmCalledSUPR0Hwvirt                  = true;
+                /* If the host provides a VT-x init API, then we'll rely on that for global init. */
+                g_fHmGlobalInit = pVM->hm.s.fGlobalInit = true;
+            }
+            else
+            {
+                SUPR0Printf("hmR0EnableAllCpuOnce: SUPR0EnableHwvirtForVm failed: %Rrc\n", rc);
+                SUPR0EnableHwvirt(false /*fEnable*/);
+            }
         }
         else
             AssertMsgFailed(("hmR0EnableAllCpuOnce/SUPR0EnableHwvirt: rc=%Rrc\n", rc));
@@ -1043,8 +1053,11 @@ VMMR0_INT_DECL(int) HMR0EnableAllCpus(PVMCC pVM)
         return VERR_HM_SUSPEND_PENDING;
 
     int rc = RTOnce(&g_HmEnableAllCpusOnce, hmR0EnableAllCpuOnce, pVM);
-    if (RT_SUCCESS(rc) && g_fHmUsingHostEnableApi)
+    if (RT_SUCCESS(rc) && g_fHmUsingHostEnableApi && !pVM->hmr0.s.fSupR0EnableForVmCalled)
+    {
         rc = SUPR0EnableHwvirtForVm(true /*fEnable*/, &pVM->hmr0.s.pvSupR0EnableState);
+        pVM->hmr0.s.fSupR0EnableForVmCalled = RT_SUCCESS(rc);
+    }
     return rc;
 }
 
