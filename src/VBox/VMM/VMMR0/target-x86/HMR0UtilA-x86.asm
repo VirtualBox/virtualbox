@@ -1,4 +1,4 @@
-; $Id: HMR0UtilA-x86.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
+; $Id: HMR0UtilA-x86.asm 114486 2026-06-22 14:14:19Z klaus.espenlaub@oracle.com $
 ;; @file
 ; HM - Ring-0 VMX & SVM Helpers.
 ;
@@ -267,9 +267,9 @@ BEGINPROC VMXGetCurrentVmcs
     ret
 %else
  %ifdef ASM_CALL64_GCC
-    vmptrst qword [rdi]
+    vmptrst [rdi]
  %else
-    vmptrst qword [rcx]
+    vmptrst [rcx]
  %endif
     xor     eax, eax
 .the_end:
