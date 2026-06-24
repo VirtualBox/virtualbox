@@ -1,4 +1,4 @@
-/* $Id: VBoxDX.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxDX.h 114512 2026-06-24 15:38:12Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBoxVideo Display D3D User mode dll
  */
@@ -138,10 +138,11 @@ typedef struct VBOXDXELEMENTLAYOUT
 typedef struct VBOXDXKMRESOURCE
 {
     RTLISTNODE                     nodeResource;            /* VBOXDX_DEVICE::listResources, listDestroyedResources. */
+    HANDLE                         hResource;
     D3DKMT_HANDLE                  hAllocation;
     struct
     {
-        uint32_t                   fOpened : 1;
+        uint32_t                   fShared : 1;
         uint32_t                   fReserved : 31;
     } flags;
     VBOXDXALLOCATIONDESC           AllocationDesc;
