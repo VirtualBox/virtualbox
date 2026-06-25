@@ -1,4 +1,4 @@
-/* $Id: VBoxMPIf.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxMPIf.h 114524 2026-06-25 10:25:18Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox WDDM Miniport driver.
  *
@@ -135,10 +135,6 @@ typedef struct VBOXDXALLOCATIONDESC
         UINT                    DecoderBufferType;          /* D3D11_1DDI_VIDEO_DECODER_BUFFER_TYPE */
     } resourceInfo;
 } VBOXDXALLOCATIONDESC, *PVBOXDXALLOCATIONDESC;
-
-/// @todo Development define, remove. Support for requests to rename an allocation.
-#define DX_RENAME_ALLOCATION
-#define DX_RENAME_ALLOCATION_UNLIMITED
 
 /* D3DDDI_PATCHLOCATIONLIST::DriverId */
 #define VBOXDXPATCHID_NULL        0

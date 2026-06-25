@@ -1,4 +1,4 @@
-/* $Id: VBoxDX.cpp 114520 2026-06-25 08:35:12Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxDX.cpp 114524 2026-06-25 10:25:18Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox D3D user mode driver.
  */
@@ -3260,11 +3260,7 @@ void vboxDXResourceMap(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE pResource, UINT 
     /** @todo Need to take into account various variants Dynamic/Staging/ Discard/NoOverwrite, etc. */
     Assert(pResource->uMap == 0); /* Must not be already mapped */
 
-#ifndef DX_RENAME_ALLOCATION
-    if (dxIsAllocationInUse(pDevice, hAllocation))
-#else
     if (dxIsAllocationInUse(pDevice, hAllocation) && DDIMap != D3D10_DDI_MAP_WRITE_NOOVERWRITE)
-#endif
     {
         vboxDXFlush(pDevice, true);
 
@@ -3294,16 +3290,12 @@ void vboxDXResourceMap(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE pResource, UINT 
                                 || DDIMap == D3D10_DDI_MAP_WRITE_DISCARD
                                 || DDIMap == D3D10_DDI_MAP_WRITE_NOOVERWRITE;
         ddiLock.Flags.DonotWait = RT_BOOL(Flags & D3D10_DDI_MAP_FLAG_DONOTWAIT);
-#ifndef DX_RENAME_ALLOCATION
-        /// @todo ddiLock.Flags.Discard = DDIMap == D3D10_DDI_MAP_WRITE_DISCARD;
-#else
         if (DDIMap == D3D10_DDI_MAP_WRITE_NOOVERWRITE)
         {
             ddiLock.Flags.IgnoreSync = 1;
             ddiLock.Flags.DonotWait = 1;
         }
         ddiLock.Flags.Discard = DDIMap == D3D10_DDI_MAP_WRITE_DISCARD;
-#endif
         /** @todo Other flags? */
 
         hr = pDevice->pRTCallbacks->pfnLockCb(pDevice->hRTDevice.handle, &ddiLock);
@@ -3324,17 +3316,12 @@ void vboxDXResourceMap(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE pResource, UINT 
         /* "If the Discard bit-field flag is set in the Flags member, the video memory manager creates
          * a new instance of the allocation and returns a new handle that represents the new instance."
          */
-#ifndef DX_RENAME_ALLOCATION
-        if (DDIMap == D3D10_DDI_MAP_WRITE_DISCARD)
-            pResource->pKMResource->hAllocation = ddiLock.hAllocation;
-#else
         if (   DDIMap == D3D10_DDI_MAP_WRITE_DISCARD
             && pResource->pKMResource->hAllocation != ddiLock.hAllocation)
         {
             pResource->pKMResource->hAllocation = ddiLock.hAllocation;
             vgpu10BindGBSurface(pDevice, vboxDXGetKMResource(pResource));
         }
-#endif
 
         VBOXDXALLOCATIONDESC const *pAllocationDesc = vboxDXGetAllocationDesc(pResource);
 

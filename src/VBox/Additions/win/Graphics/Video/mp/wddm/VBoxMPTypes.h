@@ -1,4 +1,4 @@
-/* $Id: VBoxMPTypes.h 113109 2026-02-20 17:03:12Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPTypes.h 114524 2026-06-25 10:25:18Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox WDDM Miniport driver
  */
@@ -167,10 +167,9 @@ typedef struct VBOXWDDM_TARGET
 } VBOXWDDM_TARGET, *PVBOXWDDM_TARGET;
 
 #ifdef VBOX_WITH_VMSVGA3D_DX
-# ifdef DX_RENAME_ALLOCATION
 /* 0 means that "memory manager can increase the size of the renaming list to whatever size is necessary
  * to improve performance", which, in practice, is 63 on Windows 10. */
-#  define DX_MAX_RENAMING_LIST_LENGTH 0
+#define DX_MAX_RENAMING_LIST_LENGTH 0
 
 struct DX_ALLOCATION_INSTANCE
 {
@@ -179,7 +178,6 @@ struct DX_ALLOCATION_INSTANCE
     struct VMSVGAGBO   *pGbo;                       /* Guest memory for this allocation. */
     uint32_t            mobid;                      /* For surfaces and shaders. */
 };
-# endif /* DX_RENAME_ALLOCATION */
 #endif /* VBOX_WITH_VMSVGA3D_DX */
 
 /* allocation */
@@ -217,14 +215,8 @@ typedef struct VBOXWDDM_ALLOCATION
     {
         VBOXDXALLOCATIONDESC    desc;
         uint32_t                sid;                        /* For surfaces. */
-#ifndef DX_RENAME_ALLOCATION
-        uint32_t                mobid;                      /* For surfaces and shaders. */
-        uint32_t                SegmentId;                  /* Segment of the allocation. */
-        struct VMSVGAGBO       *pGbo;                       /* Guest memory for this allocation. */
-#else
         uint32_t                SegmentId;                  /* Segment of the allocation. */
         AVLU32TREE              treeInstances;              /* DX_ALLOCATION_INSTANCE */
-#endif
     } dx;
 #endif /* VBOX_WITH_VMSVGA3D_DX */
 } VBOXWDDM_ALLOCATION, *PVBOXWDDM_ALLOCATION;
