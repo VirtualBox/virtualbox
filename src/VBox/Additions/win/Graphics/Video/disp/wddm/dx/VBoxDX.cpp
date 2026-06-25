@@ -1,4 +1,4 @@
-/* $Id: VBoxDX.cpp 114512 2026-06-24 15:38:12Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxDX.cpp 114520 2026-06-25 08:35:12Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox D3D user mode driver.
  */
@@ -546,7 +546,8 @@ static void dxTransientHeapOnFlush(VBOXDXTRANSIENTHEAP *pHeap)
 
 static HRESULT vboxDXDeviceRender(PVBOXDX_DEVICE pDevice)
 {
-    LogFlowFunc(("pDevice %p, cbCommandBuffer %d\n", pDevice, pDevice->cbCommandBuffer));
+    LogFlowFunc(("pDevice %p, cbCommandBuffer %u, cAllocations %u, cPatchLocations %u\n",
+        pDevice, pDevice->cbCommandBuffer, pDevice->cAllocations, pDevice->cPatchLocations));
 
     D3DDDICB_RENDER ddiRender;
     RT_ZERO(ddiRender);
@@ -1362,15 +1363,17 @@ bool vboxDXOpenResource(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE pResource,
 }
 
 
-/* Destroy a resource created by the system (via DDI). Primary resources are freed immediately.
+/* Destroy a resource created by the system (via DDI). Shared resources are freed immediately.
  * Other resources are moved to the deferred destruction queue (pDevice->listDestroyedResources).
  * The 'pResource' structure will be deleted by D3D runtime in any case.
  */
 void vboxDXDestroyResource(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE pResource)
 {
     /* "the driver must process its deferred-destruction queue during calls to its Flush(D3D10) function"
-     * "Primary destruction cannot be deferred by the Direct3D runtime, and the driver must call
-     * the pfnDeallocateCb function appropriately within a call to the driver's DestroyResource(D3D10) function."
+     * Shared resources, which have to use  'D3DDDICB_DEALLOCATE::hResource', must be deleted immediately,
+     * because D3D runtime will make 'hRTResource' invalid after this function returns.
+     * Other resources, which can be deallocated using 'D3DDDICB_DEALLOCATE::HandleList', must be
+     * added to the deferred destruction queue.
      */
 
     Assert(RTListIsEmpty(&pResource->listSRV));
@@ -1384,7 +1387,7 @@ void vboxDXDestroyResource(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE pResource)
     /* Remove from the list of active resources. */
     RTListNodeRemove(&pResource->pKMResource->nodeResource);
 
-    if (pResource->pKMResource->AllocationDesc.fPrimary || pResource->pKMResource->flags.fShared)
+    if (pResource->pKMResource->flags.fShared)
     {
         /* Delete immediately. */
         vboxDXDeallocateKMResource(pDevice, pResource->pKMResource);
