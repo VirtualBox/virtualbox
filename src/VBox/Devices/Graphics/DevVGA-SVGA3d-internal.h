@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-internal.h 114456 2026-06-19 11:49:08Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-internal.h 114523 2026-06-25 10:15:20Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device - 3D part, internal header.
  */
@@ -980,6 +980,58 @@ static SSMFIELD const g_aVMSVGA3DCONTEXTFields[] =
 
 
 #ifdef VMSVGA3D_DX
+
+/** @todo Temporary development define. */
+#define DX_STATE_TRACKER
+
+/* VMSVGA3DDXCONTEXT::u64ContextFlags */
+#define DX_CTX_F_STATE_RENDERTARGET      0x00000001
+#define DX_CTX_F_STATE_CSTARGET          0x00000002
+//#define DX_CTX_F_STATE_SOTARGET          0x00000004
+#define DX_CTX_F_STATE_SHADERRESOURCE    0x00000008
+#define DX_CTX_F_STATE_INPUTLAYOUT       0x00000010
+#define DX_CTX_F_STATE_TOPOLOGY          0x00000020
+#define DX_CTX_F_STATE_BLENDSTATE        0x00000080
+#define DX_CTX_F_STATE_DEPTHSTENCILSTATE 0x00000100
+#define DX_CTX_F_STATE_VIEWPORT          0x00000400
+#define DX_CTX_F_STATE_SCISSORRECT       0x00000800
+#define DX_CTX_F_STATE_RASTERIZERSTATE   0x00001000
+#define DX_CTX_F_STATE_SAMPLER_VS        0x00010000 /* Sampler bits must be in this order without gaps for '<<'. */
+#define DX_CTX_F_STATE_SAMPLER_PS        0x00020000
+#define DX_CTX_F_STATE_SAMPLER_GS        0x00040000
+#define DX_CTX_F_STATE_SAMPLER_HS        0x00080000
+#define DX_CTX_F_STATE_SAMPLER_DS        0x00100000
+#define DX_CTX_F_STATE_SAMPLER_CS        0x00200000
+#define DX_CTX_F_STATE_SRV_VS            0x01000000 /* Shader resource view bits must be in this order without gaps for '<<'. */
+#define DX_CTX_F_STATE_SRV_PS            0x02000000
+#define DX_CTX_F_STATE_SRV_GS            0x04000000
+#define DX_CTX_F_STATE_SRV_HS            0x08000000
+#define DX_CTX_F_STATE_SRV_DS            0x10000000
+#define DX_CTX_F_STATE_SRV_CS            0x20000000
+
+#define DX_CTX_F_STATE_ALL ( DX_CTX_F_STATE_INPUTLAYOUT \
+                           | DX_CTX_F_STATE_TOPOLOGY \
+                           | DX_CTX_F_STATE_RENDERTARGET \
+                           | DX_CTX_F_STATE_CSTARGET \
+                           | DX_CTX_F_STATE_BLENDSTATE \
+                           | DX_CTX_F_STATE_DEPTHSTENCILSTATE \
+                           | DX_CTX_F_STATE_VIEWPORT \
+                           | DX_CTX_F_STATE_SCISSORRECT \
+                           | DX_CTX_F_STATE_RASTERIZERSTATE \
+                           | DX_CTX_F_STATE_SAMPLER_VS \
+                           | DX_CTX_F_STATE_SAMPLER_PS \
+                           | DX_CTX_F_STATE_SAMPLER_GS \
+                           | DX_CTX_F_STATE_SAMPLER_HS \
+                           | DX_CTX_F_STATE_SAMPLER_DS \
+                           | DX_CTX_F_STATE_SAMPLER_CS \
+                           | DX_CTX_F_STATE_SRV_VS \
+                           | DX_CTX_F_STATE_SRV_PS \
+                           | DX_CTX_F_STATE_SRV_GS \
+                           | DX_CTX_F_STATE_SRV_HS \
+                           | DX_CTX_F_STATE_SRV_DS \
+                           | DX_CTX_F_STATE_SRV_CS \
+                           )
+
 /* The 3D backend DX context. The actual structure is 3D API specific. */
 typedef struct VMSVGA3DBACKENDDXCONTEXT *PVMSVGA3DBACKENDDXCONTEXT;
 
@@ -991,9 +1043,9 @@ typedef struct VMSVGA3DDXCONTEXT
     /** The DX context id. */
     uint32_t                  cid;
     /** . */
-    uint32_t                  u32Reserved;
-    /** . */
     uint32_t                  cRenderTargets;
+    /** Which state has been modified and needs updating, etc. DX_CTX_F_* */
+    uint64_t                  u64ContextFlags;
     /** Backend specific data. */
     PVMSVGA3DBACKENDDXCONTEXT pBackendDXContext;
     /** Copy of the guest memory for this context. The guest will be updated on unbind. */
@@ -1038,6 +1090,26 @@ typedef struct VMSVGA3DDXCONTEXT
         uint32_t                           cVideoProcessorInputView;
         uint32_t                           cVideoProcessorOutputView;
     } cot;
+    struct
+    {
+        struct
+        {
+            struct
+            {
+                uint32_t cMaxBound;
+                uint64_t au64Modified[(SVGA3D_DX_MAX_SRVIEWS + 63) / 64];
+            } shaderResources;
+        } shader[SVGA3D_NUM_SHADERTYPE];
+        struct
+        {
+            uint32_t cMaxBound;
+        } uav;
+        struct
+        {
+            uint32_t cMaxBound;
+            uint64_t au64Modified[(SVGA3D_DX11_1_MAX_UAVIEWS + 63) / 64];
+        } csuav;
+    } state;
 } VMSVGA3DDXCONTEXT;
 /** Pointer to a VMSVGA3D DX context. */
 typedef VMSVGA3DDXCONTEXT *PVMSVGA3DDXCONTEXT;

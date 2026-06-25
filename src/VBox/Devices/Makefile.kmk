@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114260 2026-06-05 10:42:08Z alexander.eichner@oracle.com $
+# $Id: Makefile.kmk 114523 2026-06-25 10:15:20Z vitali.pelenjow@oracle.com $
 ## @file
 # Top-level sub-makefile for the devices, drivers and services.
 #
@@ -367,7 +367,8 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
     VBoxDD_DEFS         += VMSVGA3D_DX_BACKEND
     VBoxDD_SOURCES      += \
     	Graphics/DevVGA-SVGA3d-dx-dx11.cpp \
-    	Graphics/DevVGA-SVGA3d-dx-dx11-output.cpp
+    	Graphics/DevVGA-SVGA3d-dx-dx11-output.cpp \
+    	Graphics/DevVGA-SVGA3d-dx-dx11-utils.cpp
     ifdef VBOX_WITH_DXVK
      # @todo This is probably not the nicest way to do this...
      VBoxDD_POST_CMDS.darwin  += \
@@ -377,6 +378,7 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
     # mac2 clang is too old to know the -Wclass-conversion switch in the ignore pragma it seems.
     Graphics/DevVGA-SVGA3d-dx-dx11.cpp_CXXFLAGS.darwin += -Wno-error
     Graphics/DevVGA-SVGA3d-dx-dx11-output.cpp_CXXFLAGS.darwin += -Wno-error
+    Graphics/DevVGA-SVGA3d-dx-dx11-utils.cpp_CXXFLAGS.darwin += -Wno-error
    endif
   endif
   VBoxDD_SOURCES       += \

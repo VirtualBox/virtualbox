@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.h 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.h 114523 2026-06-25 10:15:20Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA - Internal DX11 backend utilities.
  */
@@ -58,5 +58,44 @@ int dxHwOutputTargetConvert(VMSVGAOUTPUTTARGET *pOutputTarget,
 int dxHwOutputTargetReadback(VMSVGAOUTPUTTARGET *pOutputTarget,
                              ID3D11DeviceContext1 *pDeviceContext,
                              SVGASignedRect const &updateRect);
+
+/* A buffer which accumulates data. If the buffer is full (offFree == cbBuffer),
+ * then a query is issued. The buffer can be reused when the query finishes.
+ */
+typedef struct DXUPLOADBUFFER
+{
+    RTLISTNODE    nodeUploadBuffer;
+    ID3D11Buffer *pUploadBuffer;
+    uint32_t      offFree;
+    uint32_t      cbBuffer;
+    ID3D11Query  *pUploadQuery;
+} DXUPLOADBUFFER;
+
+int dxUploadBufferCreate(ID3D11Device1 *pDevice, UINT cbBuffer, UINT BindFlags, DXUPLOADBUFFER **ppUploadBuffer);
+void dxUploadBufferDestroy(DXUPLOADBUFFER *pUploadBuffer);
+void dxUploadBufferEndQuery(DXUPLOADBUFFER *pUploadBuffer, ID3D11DeviceContext1 *pImmediateContext);
+bool dxUploadBufferIsFinished(DXUPLOADBUFFER *pUploadBuffer, ID3D11DeviceContext1 *pImmediateContext);
+
+typedef struct DXUPLOADBUFFERMANAGER
+{
+    /* DXUPLOADBUFFER */
+    RTLISTANCHOR  listUploadBuffers;
+    RTLISTANCHOR  listFullUploadBuffers;
+    RTLISTANCHOR  listInFlightUploadBuffers;
+
+    UINT          cbMaxData;
+    UINT          cbBuffer;
+    UINT          BindFlags;
+
+#ifdef DEBUG
+    uint32_t cUploadBuffers;
+#endif
+} DXUPLOADBUFFERMANAGER;
+
+DXUPLOADBUFFER *dxUploadBufferManagerGetBuffer(DXUPLOADBUFFERMANAGER *pMgr, ID3D11Device1 *pDevice,
+                                               ID3D11DeviceContext1 *pImmediateContext, uint32_t cbData);
+void dxUploadBufferManagerProcessFull(DXUPLOADBUFFERMANAGER *pMgr, ID3D11DeviceContext1 *pImmediateContext);
+void dxUploadBufferManagerInit(DXUPLOADBUFFERMANAGER *pMgr, UINT cbMaxData, UINT cbBuffer, UINT BindFlags);
+void dxUploadBufferManagerUninit(DXUPLOADBUFFERMANAGER *pMgr);
 
 #endif /* !VBOX_INCLUDED_SRC_Graphics_DevVGA_SVGA3d_dx_dx11_h */
