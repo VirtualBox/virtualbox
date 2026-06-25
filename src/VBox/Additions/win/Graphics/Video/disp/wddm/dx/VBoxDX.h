@@ -1,4 +1,4 @@
-/* $Id: VBoxDX.h 114512 2026-06-24 15:38:12Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxDX.h 114537 2026-06-25 12:46:12Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBoxVideo Display D3D User mode dll
  */
@@ -143,7 +143,9 @@ typedef struct VBOXDXKMRESOURCE
     struct
     {
         uint32_t                   fShared : 1;
-        uint32_t                   fReserved : 31;
+        uint32_t                   fOffered : 1;
+        uint32_t                   fPendingOffered : 1;
+        uint32_t                   fReserved : 29;
     } flags;
     VBOXDXALLOCATIONDESC           AllocationDesc;
     union
@@ -152,6 +154,8 @@ typedef struct VBOXDXKMRESOURCE
         {
             struct VBOXDX_RESOURCE *pResource;              /* The structure allocated by D3D runtime. */
             RTLISTNODE             nodeStaging;             /* VBOXDX_DEVICE::listStagingResources if this resource is a staging buffer. */
+            RTLISTNODE             nodeOffered;             /* VBOXDX_DEVICE::listOfferedResources if this resource was offered when it was in use. */
+            D3DDDI_OFFER_PRIORITY  OfferPriority;           /* If fPendingOffered == 1. */
         } resource;
         struct /* Context object allocation */
         {
@@ -165,6 +169,8 @@ typedef struct VBOXDXKMRESOURCE
             RTLISTNODE             nodeAllocationsChain;    /* Shaders allocations are chained (VBOXDX_DEVICE::listShadersAllocations). */
         } shaders;
     };
+
+    UINT64                         LastReferencedFenceValue; /* ContextMonitoring fence of the last command buffer which has used the resource. */
 } VBOXDXKMRESOURCE, *PVBOXDXKMRESOURCE;
 
 typedef struct VBOXDXSHADER
@@ -678,6 +684,14 @@ typedef struct VBOXDX_DEVICE
 
     uint32_t                  RenderCbSequence;              /* Increases with each RenderCb call. */
 
+    /* Tracks completion of submitted buffers. */
+    struct
+    {
+        VBOXDXQUERY           queryContextMonitoring;        /* A placeholder query for a MOB_FENCE after each command buffer. */
+        UINT64 volatile      *pLastCompletedFenceValue;      /* Fence of the last completed buffer. Updated by the virtual GPU. */
+        UINT64                CurrentFenceValue;             /* Fence for the next buffer to be submitted. */
+    } ContextMonitoring;
+
     /* Handle tables for various objects. */
     RTHANDLETABLE hHTBlendState;
     RTHANDLETABLE hHTDepthStencilState;
@@ -701,6 +715,7 @@ typedef struct VBOXDX_DEVICE
     RTLISTANCHOR                listResources;              /* All resources of this device, for cleanup. */
     RTLISTANCHOR                listDestroyedResources;     /* DestroyResource adds to this list. Flush actually deleted them. */
     RTLISTANCHOR                listStagingResources;       /* List of staging resources for uploads. */
+    RTLISTANCHOR                listOfferedResources;       /* Resources to be offered when they will becode idle. */
 
     /* Shaders */
     RTLISTANCHOR                listShaders;                /* All shaders of this device. */

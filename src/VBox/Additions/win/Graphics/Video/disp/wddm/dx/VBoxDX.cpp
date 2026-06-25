@@ -1,4 +1,4 @@
-/* $Id: VBoxDX.cpp 114524 2026-06-25 10:25:18Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxDX.cpp 114537 2026-06-25 12:46:12Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox D3D user mode driver.
  */
@@ -45,6 +45,7 @@
 #pragma pack()
 
 static HRESULT vboxdxQueryGetDataInternal(PVBOXDX_DEVICE pDevice, PVBOXDXQUERY pQuery, VOID* pData, UINT DataSize);
+static void dxProcessPendingOffers(PVBOXDX_DEVICE pDevice);
 
 static uint32_t vboxDXGetSubresourceOffset(VBOXDXALLOCATIONDESC const *pAllocationDesc, UINT Subresource)
 {
@@ -544,10 +545,52 @@ static void dxTransientHeapOnFlush(VBOXDXTRANSIENTHEAP *pHeap)
 }
 
 
+/* Commands which are appended at the end of each command buffer. */
+#pragma pack(1)
+typedef struct VBOXDXCMDBUFSUFFIX
+{
+    struct
+    {
+        SVGA3dCmdHeader header;
+        SVGA3dCmdDXMobFence64 cmd;
+    } mobFence;
+} VBOXDXCMDBUFSUFFIX;
+#pragma pack()
+
+#define VBOXDX_CMD_BUF_SUFFIX_ALLOCATION_COUNT 1
+#define VBOXDX_CMD_BUF_SUFFIX_PATCH_COUNT 1
+
+
+static void vboxdxCommandBufferFinalize(PVBOXDX_DEVICE pDevice)
+{
+    LogFlowFunc(("CONTEXTMONITORING: pDevice %p, with fence %RX64\n", pDevice, pDevice->ContextMonitoring.CurrentFenceValue));
+
+    /* Append a MOB_FENCE command at the end of the command buffer. */
+    VBOXDXCMDBUFSUFFIX *s = (VBOXDXCMDBUFSUFFIX *)((uint8_t *)pDevice->pCommandBuffer + pDevice->cbCommandBuffer);
+    s->mobFence.header.id     = SVGA_3D_CMD_DX_MOB_FENCE_64;
+    s->mobFence.header.size   = sizeof(SVGA3dCmdDXMobFence64);
+    s->mobFence.cmd.value     = pDevice->ContextMonitoring.CurrentFenceValue;
+    s->mobFence.cmd.mobId     = SVGA3D_INVALID_ID;
+    s->mobFence.cmd.mobOffset = pDevice->ContextMonitoring.queryContextMonitoring.offQuery;
+
+    vboxDXStorePatchLocation(pDevice, &s->mobFence.cmd.mobId,
+                             pDevice->ContextMonitoring.queryContextMonitoring.pCOAllocation,
+                             s->mobFence.cmd.mobOffset, true);
+
+    Assert(pDevice->cbCommandReserved == 0);
+    pDevice->cbCommandBuffer += sizeof(*s);
+    pDevice->cbCommandReserved = 0;
+
+    ++pDevice->ContextMonitoring.CurrentFenceValue;
+}
+
+
 static HRESULT vboxDXDeviceRender(PVBOXDX_DEVICE pDevice)
 {
     LogFlowFunc(("pDevice %p, cbCommandBuffer %u, cAllocations %u, cPatchLocations %u\n",
         pDevice, pDevice->cbCommandBuffer, pDevice->cAllocations, pDevice->cPatchLocations));
+
+    vboxdxCommandBufferFinalize(pDevice);
 
     D3DDDICB_RENDER ddiRender;
     RT_ZERO(ddiRender);
@@ -562,11 +605,11 @@ static HRESULT vboxDXDeviceRender(PVBOXDX_DEVICE pDevice)
     AssertReturn(SUCCEEDED(hr), hr);
 
     pDevice->pCommandBuffer        = ddiRender.pNewCommandBuffer;
-    pDevice->CommandBufferSize     = ddiRender.NewCommandBufferSize;
+    pDevice->CommandBufferSize     = ddiRender.NewCommandBufferSize - sizeof(VBOXDXCMDBUFSUFFIX);
     pDevice->pAllocationList       = ddiRender.pNewAllocationList;
-    pDevice->AllocationListSize    = ddiRender.NewAllocationListSize;
+    pDevice->AllocationListSize    = ddiRender.NewAllocationListSize - VBOXDX_CMD_BUF_SUFFIX_ALLOCATION_COUNT;
     pDevice->pPatchLocationList    = ddiRender.pNewPatchLocationList;
-    pDevice->PatchLocationListSize = ddiRender.NewPatchLocationListSize;
+    pDevice->PatchLocationListSize = ddiRender.NewPatchLocationListSize - VBOXDX_CMD_BUF_SUFFIX_PATCH_COUNT;
 
     Assert(pDevice->cbCommandReserved == 0);
     pDevice->cbCommandBuffer = 0;
@@ -647,6 +690,9 @@ void vboxDXStorePatchLocation(PVBOXDX_DEVICE pDevice, void *pvPatch, PVBOXDXKMRE
         pAllocationEntry->hAllocation = hAllocation;
         pAllocationEntry->Value = 0;
         pAllocationEntry->WriteOperation = fWriteOperation;
+
+        /* Remember the fence value for resources used in this submission to track resource use. */
+        pKMResource->LastReferencedFenceValue = pDevice->ContextMonitoring.CurrentFenceValue;
     }
 
     D3DDDI_PATCHLOCATIONLIST *pPatchLocation = &pDevice->pPatchLocationList[pDevice->cPatchLocations];
@@ -666,24 +712,10 @@ void vboxDXStorePatchLocation(PVBOXDX_DEVICE pDevice, void *pvPatch, PVBOXDXKMRE
 }
 
 
-static bool dxIsAllocationInUse(PVBOXDX_DEVICE pDevice, D3DKMT_HANDLE hAllocation)
+DECLINLINE(bool) dxIsResourceInUse(PVBOXDX_DEVICE pDevice, PVBOXDXKMRESOURCE pKMResource)
 {
-    if (!hAllocation)
-        return false;
-
-    /* Find the same hAllocation */
-    int idxAllocation = -1;
-    for (unsigned i = 0; i < pDevice->cAllocations; ++i)
-    {
-         D3DDDI_ALLOCATIONLIST *p = &pDevice->pAllocationList[i];
-         if (p->hAllocation == hAllocation)
-         {
-             idxAllocation = i;
-             break;
-         }
-    }
-
-    return idxAllocation >= 0;
+    uint64_t const u64LastCompletedFenceValue = ASMAtomicReadU64(pDevice->ContextMonitoring.pLastCompletedFenceValue);
+    return pKMResource->LastReferencedFenceValue > u64LastCompletedFenceValue;
 }
 
 
@@ -2522,10 +2554,10 @@ static bool isBeginDisabled(D3D10DDI_QUERY q)
 #endif
 
 
-void vboxDXCreateQuery(PVBOXDX_DEVICE pDevice, PVBOXDXQUERY pQuery, D3D10DDI_QUERY Query, UINT MiscFlags)
+static HRESULT vboxdxCreateQueryInternal(PVBOXDX_DEVICE pDevice, PVBOXDXQUERY pQuery, D3D10DDI_QUERY Query, UINT MiscFlags)
 {
     VMSVGAQUERYINFO const *pQueryInfo = getQueryInfo(Query);
-    AssertReturnVoidStmt(pQueryInfo, vboxDXDeviceSetError(pDevice, E_INVALIDARG));
+    AssertReturn(pQueryInfo, E_INVALIDARG);
 
     pQuery->Query = Query;
     pQuery->svga.queryType = pQueryInfo->queryTypeSvga;
@@ -2537,7 +2569,7 @@ void vboxDXCreateQuery(PVBOXDX_DEVICE pDevice, PVBOXDXQUERY pQuery, D3D10DDI_QUE
     pQuery->EndRenderCbSequence = 0;
 
     int rc = RTHandleTableAlloc(pDevice->hHTQuery, pQuery, &pQuery->uQueryId);
-    AssertRCReturnVoidStmt(rc, vboxDXDeviceSetError(pDevice, E_OUTOFMEMORY));
+    AssertRCReturn(rc, E_OUTOFMEMORY);
 
     /* Allocate mob space for this query. */
     pQuery->pCOAllocation = NULL;
@@ -2556,12 +2588,10 @@ void vboxDXCreateQuery(PVBOXDX_DEVICE pDevice, PVBOXDXQUERY pQuery, D3D10DDI_QUE
     {
         /* Create a new allocation.  */
         if (!vboxDXCreateCOAllocation(pDevice, &pDevice->listCOAQuery, &pQuery->pCOAllocation, 4 * _1K, /*fMap=*/ true))
-            AssertFailedReturnVoidStmt(RTHandleTableFree(pDevice->hHTQuery, pQuery->uQueryId);
-                                       vboxDXDeviceSetError(pDevice, E_OUTOFMEMORY));
+            AssertFailedReturnStmt(RTHandleTableFree(pDevice->hHTQuery, pQuery->uQueryId), E_OUTOFMEMORY);
 
         if (!vboxDXCOABlockAlloc(pQuery->pCOAllocation, cbAlloc, &pQuery->offQuery))
-            AssertFailedReturnVoidStmt(RTHandleTableFree(pDevice->hHTQuery, pQuery->uQueryId);
-                                       vboxDXDeviceSetError(pDevice, E_OUTOFMEMORY));
+            AssertFailedReturnStmt(RTHandleTableFree(pDevice->hHTQuery, pQuery->uQueryId), E_OUTOFMEMORY);
     }
 
     RTListAppend(&pDevice->listQueries, &pQuery->nodeQuery);
@@ -2580,6 +2610,16 @@ void vboxDXCreateQuery(PVBOXDX_DEVICE pDevice, PVBOXDXQUERY pQuery, D3D10DDI_QUE
         uint64_t *pu64Value = (uint64_t *)(pQuery->pCOAllocation->co.pu8COMapped + pQuery->offQuery);
         *pu64Value = 0;
     }
+
+    return S_OK;
+}
+
+
+void vboxDXCreateQuery(PVBOXDX_DEVICE pDevice, PVBOXDXQUERY pQuery, D3D10DDI_QUERY Query, UINT MiscFlags)
+{
+    HRESULT hr = vboxdxCreateQueryInternal(pDevice, pQuery, Query, MiscFlags);
+    if (hr != S_OK)
+        vboxDXDeviceSetError(pDevice, hr);
 }
 
 
@@ -3016,39 +3056,6 @@ static PVBOXDX_RESOURCE vboxDXCreateStagingBuffer(PVBOXDX_DEVICE pDevice, UINT c
 }
 
 
-static HRESULT dxReclaimStagingAllocation(PVBOXDX_DEVICE pDevice, PVBOXDXKMRESOURCE pStagingKMResource)
-{
-    BOOL fDiscarded = FALSE;
-    D3DDDICB_RECLAIMALLOCATIONS ddiReclaimAllocations;
-    RT_ZERO(ddiReclaimAllocations);
-    ddiReclaimAllocations.pResources = NULL;
-    ddiReclaimAllocations.HandleList = &pStagingKMResource->hAllocation;
-    ddiReclaimAllocations.pDiscarded = &fDiscarded;
-    ddiReclaimAllocations.NumAllocations = 1;
-
-    HRESULT hr = pDevice->pRTCallbacks->pfnReclaimAllocationsCb(pDevice->hRTDevice.handle, &ddiReclaimAllocations);
-    LogFlowFunc(("pfnReclaimAllocationsCb returned %d, fDiscarded %d", hr, fDiscarded));
-    Assert(SUCCEEDED(hr));
-    return hr;
-}
-
-
-static HRESULT dxOfferStagingAllocation(PVBOXDX_DEVICE pDevice, PVBOXDXKMRESOURCE pStagingKMResource)
-{
-    D3DDDICB_OFFERALLOCATIONS ddiOfferAllocations;
-    RT_ZERO(ddiOfferAllocations);
-    ddiOfferAllocations.pResources = NULL;
-    ddiOfferAllocations.HandleList = &pStagingKMResource->hAllocation;
-    ddiOfferAllocations.NumAllocations = 1;
-    ddiOfferAllocations.Priority = D3DDDI_OFFER_PRIORITY_LOW;
-
-    HRESULT hr = pDevice->pRTCallbacks->pfnOfferAllocationsCb(pDevice->hRTDevice.handle, &ddiOfferAllocations);
-    LogFlowFunc(("pfnOfferAllocationsCb returned %d", hr));
-    Assert(SUCCEEDED(hr));
-    return hr;
-}
-
-
 static bool dxUploadViaBuffer(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE pDstResource,
                               UINT DstSubresource, const SVGA3dBox &destBox,
                               const VOID *pSysMemUP, UINT RowPitch, UINT DepthPitch, UINT CopyFlags)
@@ -3260,7 +3267,7 @@ void vboxDXResourceMap(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE pResource, UINT 
     /** @todo Need to take into account various variants Dynamic/Staging/ Discard/NoOverwrite, etc. */
     Assert(pResource->uMap == 0); /* Must not be already mapped */
 
-    if (dxIsAllocationInUse(pDevice, hAllocation) && DDIMap != D3D10_DDI_MAP_WRITE_NOOVERWRITE)
+    if (dxIsResourceInUse(pDevice, pResource->pKMResource) && DDIMap != D3D10_DDI_MAP_WRITE_NOOVERWRITE)
     {
         vboxDXFlush(pDevice, true);
 
@@ -4134,10 +4141,10 @@ HRESULT vboxDXRotateResourceIdentities(PVBOXDX_DEVICE pDevice, UINT cResources, 
     }
 
     /* Rotate allocation handles. The function would be that simple if resources would not have views. */
-    D3DKMT_HANDLE const hAllocation = papResources[0]->pKMResource->hAllocation;
+    PVBOXDXKMRESOURCE pKMResource = papResources[0]->pKMResource;
     for (unsigned i = 0; i < cResources - 1; ++i)
-        papResources[i]->pKMResource->hAllocation = papResources[i + 1]->pKMResource->hAllocation;
-    papResources[cResources - 1]->pKMResource->hAllocation = hAllocation;
+        papResources[i]->pKMResource = papResources[i + 1]->pKMResource;
+    papResources[cResources - 1]->pKMResource = pKMResource;
 
     /* Recreate views for the new hAllocations. */
     for (unsigned i = 0; i < cResources; ++i)
@@ -4167,77 +4174,145 @@ HRESULT vboxDXRotateResourceIdentities(PVBOXDX_DEVICE pDevice, UINT cResources, 
 }
 
 
+static void dxProcessPendingOffers(PVBOXDX_DEVICE pDevice)
+{
+    PVBOXDXKMRESOURCE pKMResource, pNext;
+    RTListForEachSafe(&pDevice->listOfferedResources, pKMResource, pNext, VBOXDXKMRESOURCE, resource.nodeOffered)
+    {
+        Assert(pKMResource->flags.fPendingOffered);
+        Assert(!pKMResource->flags.fOffered);
+
+        if (dxIsResourceInUse(pDevice, pKMResource))
+            continue;
+
+        RTListNodeRemove(&pKMResource->resource.nodeOffered);
+        pKMResource->flags.fPendingOffered = 0;
+        pKMResource->flags.fOffered = 1;
+
+        D3DDDICB_OFFERALLOCATIONS ddiOfferAllocations;
+        RT_ZERO(ddiOfferAllocations);
+        //ddiOfferAllocations.pResources   = NULL; /* If the driver uses HandleList, it must set pResources to NULL. */
+        ddiOfferAllocations.HandleList     = &pKMResource->hAllocation;
+        ddiOfferAllocations.NumAllocations = 1;
+        ddiOfferAllocations.Priority       = pKMResource->resource.OfferPriority;
+
+        HRESULT hr = pDevice->pRTCallbacks->pfnOfferAllocationsCb(pDevice->hRTDevice.handle, &ddiOfferAllocations);
+        LogFlowFunc(("pfnOfferAllocationsCb returned %x", hr));
+        Assert(SUCCEEDED(hr)); RT_NOREF(hr);
+    }
+}
+
+
 HRESULT vboxDXOfferResources(PVBOXDX_DEVICE pDevice, UINT cResources, PVBOXDX_RESOURCE *papResources, D3DDDI_OFFER_PRIORITY Priority)
 {
-#if 1
-    /** @todo Later. */
-    RT_NOREF(pDevice, cResources, papResources, Priority);
-#else
-    uint32_t const cbAlloc = cResources * (sizeof(HANDLE) + sizeof(D3DKMT_HANDLE));
-    uint8_t *pu8 = (uint8_t *)RTMemAlloc(cbAlloc);
-    AssertReturn(pu8, E_OUTOFMEMORY);
+    AssertReturn(cResources <= SVGA3D_MAX_SURFACE_IDS, E_INVALIDARG);
 
-    HANDLE *pahResources = (HANDLE *)pu8;
-    D3DKMT_HANDLE *pahAllocations = (D3DKMT_HANDLE *)(pu8 + cResources * sizeof(HANDLE));
-    for (unsigned i = 0; i < cResources; ++i)
+    /* Allocate an array of allocation handles for pfnOfferAllocationsCb. */
+    size_t const cbAlloc = cResources * sizeof(D3DKMT_HANDLE);
+    D3DKMT_HANDLE *pahAllocations = (D3DKMT_HANDLE *)RTMemTmpAlloc(cbAlloc);
+    AssertReturn(pahAllocations, E_OUTOFMEMORY);
+
+    /* Translate resources to allocation handles and immediately offer idle allocations. */
+    UINT cOffered = 0;
+    for (UINT i = 0; i < cResources; ++i)
     {
         PVBOXDX_RESOURCE pResource = papResources[i];
-        pahResources[i] = pResource->hRTResource.handle;
-        pahAllocations[i] = vboxDXGetAllocation(pResource);
+        if (!pResource || !pResource->pKMResource)
+            continue;
+
+        PVBOXDXKMRESOURCE pKMResource = pResource->pKMResource;
+
+        Assert(!pKMResource->flags.fPendingOffered);
+        Assert(!pKMResource->flags.fOffered);
+
+        if (!dxIsResourceInUse(pDevice, pKMResource))
+        {
+            pKMResource->flags.fOffered = 1;
+            pahAllocations[cOffered++] = vboxDXGetAllocation(pKMResource);
+        }
+        else
+        {
+            pKMResource->flags.fPendingOffered = 1;
+            pKMResource->resource.OfferPriority = Priority;
+            RTListAppend(&pDevice->listOfferedResources, &pKMResource->resource.nodeOffered);
+        }
     }
 
-    D3DDDICB_OFFERALLOCATIONS ddiOfferAllocations;
-    RT_ZERO(ddiOfferAllocations);
-    ddiOfferAllocations.pResources = pahResources;
-    ddiOfferAllocations.HandleList = pahAllocations;
-    ddiOfferAllocations.NumAllocations = cResources;
-    ddiOfferAllocations.Priority = Priority;
+    HRESULT hr = S_OK;
+    if (cOffered)
+    {
+        D3DDDICB_OFFERALLOCATIONS ddiOfferAllocations;
+        RT_ZERO(ddiOfferAllocations);
+        //ddiOfferAllocations.pResources   = NULL; /* If the driver uses HandleList, it must set pResources to NULL. */
+        ddiOfferAllocations.HandleList     = pahAllocations;
+        ddiOfferAllocations.NumAllocations = cOffered;
+        ddiOfferAllocations.Priority       = Priority;
 
-    HRESULT hr = pDevice->pRTCallbacks->pfnOfferAllocationsCb(pDevice->hRTDevice.handle, &ddiOfferAllocations);
-    LogFlowFunc(("pfnOfferAllocationsCb returned %d", hr));
+        hr = pDevice->pRTCallbacks->pfnOfferAllocationsCb(pDevice->hRTDevice.handle, &ddiOfferAllocations);
+        LogFlowFunc(("pfnOfferAllocationsCb returned %x", hr));
+        Assert(SUCCEEDED(hr));
+    }
 
-    RTMemFree(pu8);
-
-    AssertReturnStmt(SUCCEEDED(hr), vboxDXDeviceSetError(pDevice, hr), hr);
-#endif
-    return S_OK;
+    RTMemTmpFree(pahAllocations);
+    return hr;
 }
 
 
 HRESULT vboxDXReclaimResources(PVBOXDX_DEVICE pDevice, UINT cResources, PVBOXDX_RESOURCE *papResources, BOOL *paDiscarded)
 {
-#if 1
-    /** @todo Later. */
-    RT_NOREF(pDevice, cResources, papResources, paDiscarded);
-#else
-    uint32_t const cbAlloc = cResources * (sizeof(HANDLE) + sizeof(D3DKMT_HANDLE));
-    uint8_t *pu8 = (uint8_t *)RTMemAlloc(cbAlloc);
-    AssertReturn(pu8, E_OUTOFMEMORY);
+    AssertReturn(cResources <= SVGA3D_MAX_SURFACE_IDS, E_INVALIDARG);
 
-    HANDLE *pahResources = (HANDLE *)pu8;
-    D3DKMT_HANDLE *pahAllocations = (D3DKMT_HANDLE *)(pu8 + cResources * sizeof(HANDLE));
+    HRESULT hr = S_OK;
+
     for (unsigned i = 0; i < cResources; ++i)
     {
         PVBOXDX_RESOURCE pResource = papResources[i];
-        pahResources[i] = pResource->hRTResource.handle;
-        pahAllocations[i] = vboxDXGetAllocation(pResource);
+        if (!pResource || !pResource->pKMResource)
+        {
+            if (paDiscarded)
+                paDiscarded[i] = TRUE;
+            continue;
+        }
+
+        PVBOXDXKMRESOURCE pKMResource = pResource->pKMResource;
+
+        /* Not offered resources are not discarded. */
+        if (pKMResource->flags.fPendingOffered)
+        {
+            /* The resource was not yet offered. Cancel the offer request. */
+            Assert(!pKMResource->flags.fOffered);
+            pKMResource->flags.fPendingOffered = 0;
+            RTListNodeRemove(&pKMResource->resource.nodeOffered);
+            if (paDiscarded)
+                paDiscarded[i] = FALSE;
+            continue;
+        }
+
+        if (!pKMResource->flags.fOffered)
+        {
+            /* The resoource was never offered. */
+            if (paDiscarded)
+                paDiscarded[i] = FALSE;
+            continue;
+        }
+
+        pKMResource->flags.fOffered = 0;
+        /* paDiscarded[i] is updated by pfnReclaimAllocationsCb */
+
+        D3DKMT_HANDLE hAllocation = vboxDXGetAllocation(pKMResource);
+        D3DDDICB_RECLAIMALLOCATIONS ddiReclaimAllocations;
+        RT_ZERO(ddiReclaimAllocations);
+        //ddiReclaimAllocations.pResources   = NULL; /* If the driver uses HandleList, it must set pResources to NULL. */
+        ddiReclaimAllocations.HandleList     = &hAllocation;
+        ddiReclaimAllocations.pDiscarded     = paDiscarded ? &paDiscarded[i] : NULL;
+        ddiReclaimAllocations.NumAllocations = 1;
+
+        hr = pDevice->pRTCallbacks->pfnReclaimAllocationsCb(pDevice->hRTDevice.handle, &ddiReclaimAllocations);
+        LogFlowFunc(("pfnReclaimAllocationsCb returned %x", hr));
+        AssertBreak(SUCCEEDED(hr));
     }
 
-    D3DDDICB_RECLAIMALLOCATIONS ddiReclaimAllocations;
-    RT_ZERO(ddiReclaimAllocations);
-    ddiReclaimAllocations.pResources = pahResources;
-    ddiReclaimAllocations.HandleList = pahAllocations;
-    ddiReclaimAllocations.pDiscarded = paDiscarded;
-    ddiReclaimAllocations.NumAllocations = cResources;
-
-    HRESULT hr = pDevice->pRTCallbacks->pfnReclaimAllocationsCb(pDevice->hRTDevice.handle, &ddiReclaimAllocations);
-    LogFlowFunc(("pfnReclaimAllocationsCb returned %d", hr));
-
-    RTMemFree(pu8);
-
-    AssertReturnStmt(SUCCEEDED(hr), vboxDXDeviceSetError(pDevice, hr), hr);
-#endif
-    return S_OK;
+    return hr;
 }
 
 
@@ -4480,6 +4555,9 @@ HRESULT vboxDXFlush(PVBOXDX_DEVICE pDevice, bool fForce)
     /* Process deferred-destruction queue. */
     dxDestroyDeferredResources(pDevice);
 
+    /* Offer resources which were offered when they were idle. */
+    dxProcessPendingOffers(pDevice);
+
     return S_OK;
 }
 
@@ -4513,11 +4591,11 @@ static HRESULT vboxDXCreateKernelContextForDevice(PVBOXDX_DEVICE pDevice)
     {
         pDevice->hContext              = ddiCreateContext.hContext;
         pDevice->pCommandBuffer        = ddiCreateContext.pCommandBuffer;
-        pDevice->CommandBufferSize     = ddiCreateContext.CommandBufferSize;
+        pDevice->CommandBufferSize     = ddiCreateContext.CommandBufferSize - sizeof(VBOXDXCMDBUFSUFFIX);
         pDevice->pAllocationList       = ddiCreateContext.pAllocationList;
-        pDevice->AllocationListSize    = ddiCreateContext.AllocationListSize;
+        pDevice->AllocationListSize    = ddiCreateContext.AllocationListSize - VBOXDX_CMD_BUF_SUFFIX_ALLOCATION_COUNT;
         pDevice->pPatchLocationList    = ddiCreateContext.pPatchLocationList;
-        pDevice->PatchLocationListSize = ddiCreateContext.PatchLocationListSize;
+        pDevice->PatchLocationListSize = ddiCreateContext.PatchLocationListSize - VBOXDX_CMD_BUF_SUFFIX_PATCH_COUNT;
 
         pDevice->cbCommandBuffer   = 0;
         pDevice->cbCommandReserved = 0;
@@ -4702,6 +4780,7 @@ static int vboxDXDeviceCreateObjects(PVBOXDX_DEVICE pDevice)
     RTListInit(&pDevice->listResources);
     RTListInit(&pDevice->listDestroyedResources);
     RTListInit(&pDevice->listStagingResources);
+    RTListInit(&pDevice->listOfferedResources);
     RTListInit(&pDevice->listShaders);
     RTListInit(&pDevice->listShadersAllocations);
     RTListInit(&pDevice->listQueries);
@@ -4734,6 +4813,15 @@ static int vboxDXDeviceCreateObjects(PVBOXDX_DEVICE pDevice)
 
     rc = dxTransientHeapInit(pDevice, &pDevice->transientHeap);
     AssertRCReturn(rc, rc);
+
+    /* Fence for context monitoring. */
+    hr = vboxdxCreateQueryInternal(pDevice, &pDevice->ContextMonitoring.queryContextMonitoring, D3D10DDI_QUERY_EVENT, 0);
+    AssertReturn(SUCCEEDED(hr), VERR_NO_MEMORY);
+    pDevice->ContextMonitoring.pLastCompletedFenceValue =
+        (uint64_t *)(  pDevice->ContextMonitoring.queryContextMonitoring.pCOAllocation->co.pu8COMapped
+                     + pDevice->ContextMonitoring.queryContextMonitoring.offQuery);
+    *pDevice->ContextMonitoring.pLastCompletedFenceValue = 0;
+    pDevice->ContextMonitoring.CurrentFenceValue = 1;
 
     return VINF_SUCCESS;
 }
@@ -4908,6 +4996,15 @@ void vboxDXDestroyDevice(PVBOXDX_DEVICE pDevice)
     }
 
     dxDestroyDeferredResources(pDevice);
+
+    if (!RTListIsEmpty(&pDevice->listOfferedResources))
+    {
+        /// @todo This should not happen. Wait for the last query.
+        DEBUG_BREAKPOINT_TEST();
+    }
+
+    if (pDevice->ContextMonitoring.queryContextMonitoring.pCOAllocation)
+        vboxDXDestroyQuery(pDevice, &pDevice->ContextMonitoring.queryContextMonitoring);
 
     PVBOXDXSHADER pShader, pNextShader;
     RTListForEachSafe(&pDevice->listShaders, pShader, pNextShader, VBOXDXSHADER, node)
