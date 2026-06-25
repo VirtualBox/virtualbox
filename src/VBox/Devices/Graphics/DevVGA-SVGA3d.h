@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.h 114523 2026-06-25 10:15:20Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.h 114528 2026-06-25 10:42:59Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device - 3D part.
  */
@@ -47,14 +47,14 @@
 #define SVGA3D_MAX_SAMPLERS            (SVGA3D_MAX_SAMPLERS_PS + SVGA3D_MAX_SAMPLERS_DMAP + SVGA3D_MAX_SAMPLERS_VS)
 /** Arbitrary upper limit; seen 8 so far. */
 #define SVGA3D_MAX_LIGHTS                       32
-/** Arbitrary upper limit; 2GB enough for 32768x16384*4. */
-#define SVGA3D_MAX_SURFACE_MEM_SIZE             0x80000000
 /** Arbitrary upper limit. [0,15] is enough for 2^15=32768x32768. */
 #define SVGA3D_MAX_MIP_LEVELS                   16
 /** Maximum dimension of 1D, 2D and cubemap textures (D3D limit). */
 #define SVGA3D_MAX_TEXTURE_DIMENSION            16384
 /** Maximum dimension of 3D textures (D3D limit). */
 #define SVGA3D_MAX_VOLUME_TEXTURE_DIMENSION     2048
+/** Arbitrary upper limit; enough for maximum 2D texture dimension at 4 bytes per pixel. */
+#define SVGA3D_MAX_SURFACE_MEM_SIZE             (SVGA3D_MAX_TEXTURE_DIMENSION * SVGA3D_MAX_TEXTURE_DIMENSION * 4)
 
 
 /* A surface description provided by the guest. Mostly mirrors SVGA3dCmdDefineGBSurface_v4 */

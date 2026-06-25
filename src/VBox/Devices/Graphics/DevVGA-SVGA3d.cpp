@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.cpp 114456 2026-06-19 11:49:08Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.cpp 114528 2026-06-25 10:42:59Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common core code.
  */
@@ -322,7 +322,6 @@ int vmsvga3dSurfaceDefine(PVGASTATECC pThisCC, uint32_t sid, SVGA3dSurfaceAllFla
     pSurface->cbBlock = vmsvga3dSurfaceFormatSize(format, &pSurface->cxBlock, &pSurface->cyBlock, &pSurface->cbPitchBlock);
     AssertReturn(pSurface->cbBlock, VERR_INVALID_PARAMETER);
 
-    /** @todo cbMemRemaining = value of SVGA_REG_MOB_MAX_SIZE */
     uint32_t cbMemRemaining = SVGA3D_MAX_SURFACE_MEM_SIZE; /* Do not allow more than this for a surface. */
     SVGA3dSize mipmapSize = *pMipLevel0Size;
     int rc = VINF_SUCCESS;

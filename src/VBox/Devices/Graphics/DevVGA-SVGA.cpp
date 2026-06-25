@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 114523 2026-06-25 10:15:20Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 114528 2026-06-25 10:42:59Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -1473,9 +1473,9 @@ static int vmsvgaReadPort(PPDMDEVINS pDevIns, PVGASTATE pThis, uint32_t idxReg, 
             break;
 
         case SVGA_REG_SUGGESTED_GBOBJECT_MEM_SIZE_KB:
-            /* Suggested limit on mob mem (i.e. size of the guest mapped VRAM in KB) */
+            /* "Legacy version of SVGA_REG_GBOBJECT_MEM_SIZE_KB" */
             STAM_REL_COUNTER_INC(&pThis->svga.StatRegGBMemSizeRd);
-            *pu32 = pThis->vram_size / 1024;
+            *pu32 = _1G / _1K; /* Arbitrary value which avoids 32 bit overflow when multiplying by 1024. */
             break;
 
         case SVGA_REG_DEV_CAP:
@@ -1513,7 +1513,11 @@ static int vmsvgaReadPort(PPDMDEVINS pDevIns, PVGASTATE pThis, uint32_t idxReg, 
         case SVGA_REG_MOB_MAX_SIZE:
             /* Essentially the max texture size */
             STAM_REL_COUNTER_INC(&pThis->svga.StatRegMobMaxSizeRd);
-            *pu32 = _128M; /** @todo Some actual value. Probably the mapped VRAM size. */
+#ifdef VBOX_WITH_VMSVGA3D
+            *pu32 = SVGA3D_MAX_SURFACE_MEM_SIZE;
+#else
+            *pu32 = _256M; /* Arbitrary value. */
+#endif
             break;
 
         case SVGA_REG_BLANK_SCREEN_TARGETS:
@@ -1600,8 +1604,7 @@ static int vmsvgaReadPort(PPDMDEVINS pDevIns, PVGASTATE pThis, uint32_t idxReg, 
             break;
 
         case SVGA_REG_GBOBJECT_MEM_SIZE_KB:
-            /** @todo "The maximum amount of guest-backed objects that the device can have resident at a time" */
-            *pu32 = _1G / _1K;
+            *pu32 = (uint32_t)(VMSVGA_GBOBJECT_MEM_SIZE / _1K);
             break;
 
         case SVGA_REG_IRQ_STATUS:
