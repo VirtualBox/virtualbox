@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA-cmd.cpp 114528 2026-06-25 10:42:59Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA-cmd.cpp 114531 2026-06-25 10:50:37Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device - implementation of VMSVGA commands.
  */
@@ -772,7 +772,29 @@ static void vmsvgaR3GboDestroy(PVMSVGAR3STATE pSvgaR3State, PVMSVGAGBO pGbo)
     }
 }
 
-/** @todo static void vmsvgaR3GboWriteProtect(PVMSVGAR3STATE pSvgaR3State, PVMSVGAGBO pGbo, bool fWriteProtect) */
+
+DECLINLINE(void) vmsvgaR3GboMemCpy(void *pvDst, void const *pvSrc, size_t cb)
+{
+    /* This is a wrapper for memcpy which transfers data between guest and host memory.
+     * 32 and 64 bit transfers are done in unsplit chunks because they are used for
+     * fence value and query status updates.
+     */
+    if (cb == 8)
+    {
+        uint64_t volatile *pu64Dst = (uint64_t volatile *)pvDst;
+        uint64_t volatile const *pu64Src = (uint64_t volatile *)pvSrc;
+        *pu64Dst = *pu64Src;
+    }
+    else if (cb == 4)
+    {
+        uint32_t volatile *pu32Dst = (uint32_t volatile *)pvDst;
+        uint32_t volatile const *pu32Src = (uint32_t volatile *)pvSrc;
+        *pu32Dst = *pu32Src;
+    }
+    else
+        memcpy(pvDst, pvSrc, cb);
+}
+
 
 typedef enum VMSVGAGboTransferDirection
 {
@@ -932,9 +954,9 @@ static int vmsvgaR3GboTransfer(PVMSVGAR3STATE pSvgaR3State, PVMSVGAGBO pGbo,
             Log5Func(("%s pv=%p\n", (enmDirection == VMSVGAGboTransferDirection_Read) ? "READ" : "WRITE", pbGuest));
 
             if (enmDirection == VMSVGAGboTransferDirection_Read)
-                memcpy(pu8CurrentHost, pbGuest, cbToCopy);
+                vmsvgaR3GboMemCpy(pu8CurrentHost, pbGuest, cbToCopy);
             else
-                memcpy(pbGuest, pu8CurrentHost, cbToCopy);
+                vmsvgaR3GboMemCpy(pbGuest, pu8CurrentHost, cbToCopy);
 
             cbData         -= cbToCopy;
             pu8CurrentHost += cbToCopy;
