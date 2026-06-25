@@ -1,4 +1,4 @@
-/* $Id: VBoxMPWddm.cpp 113109 2026-02-20 17:03:12Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPWddm.cpp 114529 2026-06-25 10:46:16Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox WDDM Miniport driver
  */
@@ -1743,7 +1743,7 @@ typedef struct VBOXDXSEGMENTDESCRIPTOR
 
 #define VBOXDX_SEGMENTS_COUNT 3
 
-static void vmsvgaDXGetSegmentDescription(PVBOXMP_DEVEXT pDevExt, int idxSegment, VBOXDXSEGMENTDESCRIPTOR *pDesc)
+static void vmsvgaDXGetSegmentDescription(PVBOXMP_DEVEXT pDevExt, VBOXDXSEGMENTDESCRIPTOR *paDesc, uint32_t cDesc)
 {
     /** @todo 2 segments for pDevExt->fLegacy flag. */
     /* 3 segments:
@@ -1751,22 +1751,31 @@ static void vmsvgaDXGetSegmentDescription(PVBOXMP_DEVEXT pDevExt, int idxSegment
      * 2: Aperture segment for guest backed objects;
      * 3: Host resources, CPU invisible.
      */
-    RT_ZERO(*pDesc);
-    if (idxSegment == 0)
+    uint64_t const cbGraphicsMemory = SvgaGetGraphicsMemorySize(pDevExt);
+    uint64_t const cbGuestVRAM = pDevExt->cbVRAMCpuVisible & X86_PAGE_4K_BASE_MASK;
+
+    memset(paDesc, 0, sizeof(*paDesc) * cDesc);
+
+    if (cDesc > 0)
     {
-        pDesc->CpuTranslatedAddress = VBoxCommonFromDeviceExt(pDevExt)->phVRAM;
-        pDesc->Size                 = pDevExt->cbVRAMCpuVisible & X86_PAGE_4K_BASE_MASK;
-        pDesc->Flags.CpuVisible     = 1;
+        paDesc[0].CpuTranslatedAddress = VBoxCommonFromDeviceExt(pDevExt)->phVRAM;
+        /* Graphics memory which is visible to the guest directly. */
+        paDesc[0].Size                 = cbGuestVRAM;
+        paDesc[0].Flags.CpuVisible     = 1;
     }
-    else if (idxSegment == 1)
+
+    if (cDesc > 1)
     {
-        pDesc->Size                 = _2G; /** @todo */
-        pDesc->Flags.CpuVisible     = 1;
-        pDesc->Flags.Aperture       = 1;
+        /* All graphics memory which the host can provide to the guest. */
+        paDesc[1].Size                 = cbGraphicsMemory;
+        paDesc[1].Flags.CpuVisible     = 1;
+        paDesc[1].Flags.Aperture       = 1;
     }
-    else if (idxSegment == 2)
+
+    if (cDesc > 2)
     {
-        pDesc->Size                 = _2G; /** @todo */
+        /* Graphics memory which is not visible to the guest. */
+        paDesc[2].Size                 = cbGraphicsMemory >= cbGuestVRAM ? cbGraphicsMemory - cbGuestVRAM : 0;
     }
 }
 #endif
@@ -1875,15 +1884,16 @@ NTSTATUS APIENTRY DxgkDdiQueryAdapterInfo(
                         pOut->NbSegment = VBOXDX_SEGMENTS_COUNT; /* Return the number of segments. */
                     else if (pOut->NbSegment == VBOXDX_SEGMENTS_COUNT)
                     {
+                        VBOXDXSEGMENTDESCRIPTOR aDesc[VBOXDX_SEGMENTS_COUNT];
+                        vmsvgaDXGetSegmentDescription(pDevExt, &aDesc[0], VBOXDX_SEGMENTS_COUNT);
+
                         DXGK_SEGMENTDESCRIPTOR *paDesc = pOut->pSegmentDescriptor;
                         for (unsigned i = 0; i < VBOXDX_SEGMENTS_COUNT; ++i)
                         {
-                            VBOXDXSEGMENTDESCRIPTOR desc;
-                            vmsvgaDXGetSegmentDescription(pDevExt, i, &desc);
-                            paDesc[i].CpuTranslatedAddress = desc.CpuTranslatedAddress;
-                            paDesc[i].Size                 = desc.Size;
-                            paDesc[i].CommitLimit          = desc.Size;
-                            paDesc[i].Flags                = desc.Flags;
+                            paDesc[i].CpuTranslatedAddress = aDesc[i].CpuTranslatedAddress;
+                            paDesc[i].Size                 = aDesc[i].Size;
+                            paDesc[i].CommitLimit          = aDesc[i].Size;
+                            paDesc[i].Flags                = aDesc[i].Flags;
                         }
 
                         pOut->PagingBufferSegmentId       = 0;
@@ -2008,15 +2018,16 @@ NTSTATUS APIENTRY DxgkDdiQueryAdapterInfo(
                     pOut->NbSegment = VBOXDX_SEGMENTS_COUNT; /* Return the number of segments. */
                 else if (pOut->NbSegment == VBOXDX_SEGMENTS_COUNT)
                 {
+                    VBOXDXSEGMENTDESCRIPTOR aDesc[VBOXDX_SEGMENTS_COUNT];
+                    vmsvgaDXGetSegmentDescription(pDevExt, &aDesc[0], VBOXDX_SEGMENTS_COUNT);
+
                     DXGK_SEGMENTDESCRIPTOR3 *paDesc = pOut->pSegmentDescriptor;
                     for (unsigned i = 0; i < VBOXDX_SEGMENTS_COUNT; ++i)
                     {
-                        VBOXDXSEGMENTDESCRIPTOR desc;
-                        vmsvgaDXGetSegmentDescription(pDevExt, i, &desc);
-                        paDesc[i].Flags                = desc.Flags;
-                        paDesc[i].CpuTranslatedAddress = desc.CpuTranslatedAddress;
-                        paDesc[i].Size                 = desc.Size;
-                        paDesc[i].CommitLimit          = desc.Size;
+                        paDesc[i].Flags                = aDesc[i].Flags;
+                        paDesc[i].CpuTranslatedAddress = aDesc[i].CpuTranslatedAddress;
+                        paDesc[i].Size                 = aDesc[i].Size;
+                        paDesc[i].CommitLimit          = aDesc[i].Size;
                     }
 
                     pOut->PagingBufferSegmentId       = 0;

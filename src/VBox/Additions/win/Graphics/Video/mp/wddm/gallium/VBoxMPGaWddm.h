@@ -1,4 +1,4 @@
-/* $Id: VBoxMPGaWddm.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxMPGaWddm.h 114529 2026-06-25 10:46:16Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Gallium driver interface for WDDM kernel mode driver.
  */
@@ -126,6 +126,7 @@ NTSTATUS GaVidPnSourceCheckPos(PVBOXMP_DEVEXT pDevExt, UINT iSource);
 bool SvgaIsDXSupported(PVBOXMP_DEVEXT pDevExt);
 void SvgaCursorSetVisibility(PVBOXMP_DEVEXT pDevExt, bool fVisible);
 void SvgaCursorUpdatePosition(PVBOXMP_DEVEXT pDevExt, int xPos, int yPos);
+uint64_t SvgaGetGraphicsMemorySize(PVBOXMP_DEVEXT pDevExt);
 NTSTATUS APIENTRY DxgkDdiDXCreateAllocation(CONST HANDLE hAdapter, DXGKARG_CREATEALLOCATION *pCreateAllocation);
 NTSTATUS APIENTRY DxgkDdiDXDestroyAllocation(CONST HANDLE hAdapter, CONST DXGKARG_DESTROYALLOCATION *pDestroyAllocation);
 NTSTATUS APIENTRY DxgkDdiDXDescribeAllocation(CONST HANDLE hAdapter, DXGKARG_DESCRIBEALLOCATION *pDescribeAllocation);

@@ -1,4 +1,4 @@
-/* $Id: Svga.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: Svga.cpp 114529 2026-06-25 10:46:16Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - VMSVGA.
  */
@@ -254,6 +254,7 @@ static NTSTATUS svgaHwStart(VBOXWDDM_EXT_VMSVGA *pSvga)
     if (pSvga->u32Caps & SVGA_CAP_GBOBJECTS)
     {
         pSvga->u32MaxMobSize  = SVGARegRead(pSvga, SVGA_REG_MOB_MAX_SIZE);
+        pSvga->u64GBObjectMemSize = (uint64_t)SVGARegRead(pSvga, SVGA_REG_GBOBJECT_MEM_SIZE_KB) * UINT64_C(1024);
     }
 
     if (pSvga->u32Caps & SVGA_CAP_GMR2)
