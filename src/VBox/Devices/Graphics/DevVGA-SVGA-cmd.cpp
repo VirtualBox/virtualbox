@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA-cmd.cpp 114199 2026-05-28 22:18:15Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA-cmd.cpp 114525 2026-06-25 10:28:43Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device - implementation of VMSVGA commands.
  */
@@ -4079,24 +4079,27 @@ static int vmsvga3dCmdDXTransferFromBuffer(PVGASTATECC pThisCC, SVGA3dCmdDXTrans
 
                     uint8_t *pu8Surface = (uint8_t *)mapSurface.pvData;
 
-                    uint32_t const cbRowCopy = RT_MIN(pCmd->srcPitch, mapSurface.cbRow);
+                    /* For planar formats the guest sets srcPitch and srcSlicePitch to 0.
+                     * This means that the buffer content maps exactly to the entire planar surface.
+                     */
+                    uint32_t srcPitch = pCmd->srcPitch ? pCmd->srcPitch : mapSurface.cbRow;
+                    uint32_t const cbRowCopy = RT_MIN(srcPitch, mapSurface.cbRow);
                     for (uint32_t z = 0; z < mapSurface.box.d && RT_SUCCESS(rc); ++z)
                     {
                         uint8_t const *pu8BufferRow = pu8Buffer;
                         uint8_t *pu8SurfaceRow = pu8Surface;
                         for (uint32_t iRow = 0; iRow < mapSurface.cRows; ++iRow)
                         {
-                            ASSERT_GUEST_STMT_BREAK(   (uintptr_t)pu8BufferRow >= (uintptr_t)pu8BufferBegin
-                                                    && (uintptr_t)pu8BufferRow < (uintptr_t)pu8BufferEnd
-                                                    && (uintptr_t)pu8BufferRow < (uintptr_t)(pu8BufferRow + cbRowCopy)
-                                                    && (uintptr_t)(pu8BufferRow + cbRowCopy) > (uintptr_t)pu8BufferBegin
-                                                    && (uintptr_t)(pu8BufferRow + cbRowCopy) <= (uintptr_t)pu8BufferEnd,
-                                                    rc = VERR_INVALID_PARAMETER);
+                            ASSERT_GUEST_STMT_BREAK((uintptr_t)pu8BufferRow >= (uintptr_t)pu8BufferBegin, rc = VERR_INVALID_PARAMETER);
+                            ASSERT_GUEST_STMT_BREAK((uintptr_t)pu8BufferRow < (uintptr_t)pu8BufferEnd, rc = VERR_INVALID_PARAMETER);
+                            ASSERT_GUEST_STMT_BREAK((uintptr_t)pu8BufferRow < (uintptr_t)(pu8BufferRow + cbRowCopy), rc = VERR_INVALID_PARAMETER);
+                            ASSERT_GUEST_STMT_BREAK((uintptr_t)(pu8BufferRow + cbRowCopy) > (uintptr_t)pu8BufferBegin, rc = VERR_INVALID_PARAMETER);
+                            ASSERT_GUEST_STMT_BREAK((uintptr_t)(pu8BufferRow + cbRowCopy) <= (uintptr_t)pu8BufferEnd, rc = VERR_INVALID_PARAMETER);
 
                             memcpy(pu8SurfaceRow, pu8BufferRow, cbRowCopy);
 
                             pu8SurfaceRow += mapSurface.cbRowPitch;
-                            pu8BufferRow += pCmd->srcPitch;
+                            pu8BufferRow += srcPitch;
                         }
 
                         pu8Buffer += pCmd->srcSlicePitch;
