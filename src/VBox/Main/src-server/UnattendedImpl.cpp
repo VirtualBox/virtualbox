@@ -1,4 +1,4 @@
-/* $Id: UnattendedImpl.cpp 113680 2026-03-30 13:41:29Z knut.osmundsen@oracle.com $ */
+/* $Id: UnattendedImpl.cpp 114538 2026-06-25 12:54:01Z serkan.bayraktar@oracle.com $ */
 /** @file
  * Unattended class implementation
  */
@@ -2001,7 +2001,10 @@ HRESULT Unattended::i_innerDetectIsoOSLinux(RTVFS hVfsIso, DETECTBUFFER *pBuf)
                     if (psz)
                         *psz++ = '\0';
                     else
+                    {
                         pszEol = strchr(pszValue, '\0');
+                        psz = pszEol;
+                    }
                     while (pszEol > pszValue && RT_C_IS_SPACE(pszEol[-1]))
                         *--pszEol = '\0';
 
