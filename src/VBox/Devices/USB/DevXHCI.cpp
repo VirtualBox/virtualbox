@@ -1,4 +1,4 @@
-/* $Id: DevXHCI.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: DevXHCI.cpp 114539 2026-06-25 18:10:50Z klaus.espenlaub@oracle.com $ */
 /** @file
  * DevXHCI - eXtensible Host Controller Interface for USB.
  */
@@ -1598,24 +1598,13 @@ typedef struct XHCI
     bool                            fDropIntrHw;
     bool                            fDropIntrIpe;
     bool                            fDropUrb;
-    uint8_t                         Alignment00[1];
+    bool                            fDropDb;
 #else
     uint32_t                        Alignment00;    /**< Force alignment. */
 #endif
 
     /** Flag indicating a pending worker thread notification. */
     volatile bool                   fNotificationSent;
-    volatile bool                   afPadding[3];
-
-    /** The event semaphore the worker thread waits on. */
-    SUPSEMEVENT                     hEvtProcess;
-
-    /** Bitmap for finished tasks (R3 -> Guest). */
-    volatile uint32_t               u32TasksFinished;
-    /** Bitmap for finished queued tasks (R3 -> Guest). */
-    volatile uint32_t               u32QueuedTasksFinished;
-    /** Bitmap for new queued tasks (Guest -> R3). */
-    volatile uint32_t               u32TasksNew;
 
     /** Copy of XHCIR3::RootHub2::cPortsImpl. */
     uint8_t                         cUsb2Ports;
@@ -1623,8 +1612,9 @@ typedef struct XHCI
     uint8_t                         cUsb3Ports;
     /** Sum of cUsb2Ports and cUsb3Ports. */
     uint8_t                         cTotalPorts;
-    /** Explicit padding. */
-    uint8_t                         bPadding;
+
+    /** The event semaphore the worker thread waits on. */
+    SUPSEMEVENT                     hEvtProcess;
 
     /** Start of current frame. */
     uint64_t                        SofTime;
@@ -2709,7 +2699,6 @@ xhciR3WalkDataTRBsProbe(PPDMDEVINS pDevIns, PXHCI pThis, const XHCI_XFER_TRB *pX
     case XHCI_TRB_ISOCH:
     case XHCI_TRB_SETUP_STG:
     case XHCI_TRB_DATA_STG:
-    case XHCI_TRB_STATUS_STG:
         pCtx->uXferLen += pXferTRB->norm.xfr_len;
         if (RT_UNLIKELY(pCtx->uXferLen > XHCI_MAX_TD_SIZE))
         {
@@ -2725,7 +2714,8 @@ xhciR3WalkDataTRBsProbe(PPDMDEVINS pDevIns, PXHCI pThis, const XHCI_XFER_TRB *pX
         pCtx->cTRBLastED    = pCtx->cTRB;
         pCtx->uXfrLenLastED = pCtx->uXferLen;
         break;
-    default:    /* Could be a link TRB, too. */
+    case XHCI_TRB_STATUS_STG:   /* xfr_len must be zero, assume that it is. */
+    default:                    /* Could be a link TRB, too. */
         break;
     }
 
@@ -2752,7 +2742,6 @@ xhciR3WalkDataTRBsSubmit(PPDMDEVINS pDevIns, PXHCI pThis, const XHCI_XFER_TRB *p
     case XHCI_TRB_ISOCH:
     case XHCI_TRB_SETUP_STG:
     case XHCI_TRB_DATA_STG:
-    case XHCI_TRB_STATUS_STG:
         /* NB: Transfer length may be zero! */
         /// @todo explain/verify abuse of various TRB types here (data stage mapped to normal etc.).
         if (uXferLen)
@@ -2761,7 +2750,7 @@ xhciR3WalkDataTRBsSubmit(PPDMDEVINS pDevIns, PXHCI pThis, const XHCI_XFER_TRB *p
             if (pCtx->uXferPos + uXferLen <= pCtx->pUrb->cbData)
             {
                 /* Data might be immediate or elsewhere in memory. */
-                if (pXferTRB->norm.idt)
+                if (RT_UNLIKELY(pXferTRB->norm.idt))
                 {
                     /* If an immediate data TRB claims there's more than 8 bytes, we have a problem. */
                     if (uXferLen > 8)
@@ -2789,7 +2778,8 @@ xhciR3WalkDataTRBsSubmit(PPDMDEVINS pDevIns, PXHCI pThis, const XHCI_XFER_TRB *p
 
         }
         break;
-    default:    /* Could be an event or status stage TRB, too. */
+    case XHCI_TRB_STATUS_STG:   /* xfr_len must be zero, assume that it is. */
+    default:                    /* Could be an event or status stage TRB, too. */
         break;
     }
     pCtx->cTRB++;
@@ -2822,11 +2812,19 @@ xhciR3WalkDataTRBsComplete(PPDMDEVINS pDevIns, PXHCI pThis, const XHCI_XFER_TRB 
 
     switch (pXferTRB->gen.type)
     {
+    case XHCI_TRB_STATUS_STG:
+        /* A valid status stage TRB must have zero transfer length. */
+        if (pXferTRB->norm.xfr_len)
+        {
+            LogRelMax(10, ("xHCI: Status stage TRB with non-zero length, ignoring!\n"));
+            cc = XHCI_TCC_TRB_ERR;
+            break;
+        }
+        RT_FALL_THRU();
     case XHCI_TRB_NORMAL:
     case XHCI_TRB_ISOCH:
     case XHCI_TRB_SETUP_STG:
     case XHCI_TRB_DATA_STG:   /// @todo document abuse; esp. check BEI bit
-    case XHCI_TRB_STATUS_STG:
         /* Assume successful transfer. */
         uXferLen = pXferTRB->norm.xfr_len;
         cc       = XHCI_TCC_SUCCESS;
@@ -3185,10 +3183,13 @@ static DECLCALLBACK(void) xhciR3RhXferCompletion(PVUSBIROOTHUBPORT pInterface, P
         XHCI_CTX_XFER_COMPLETE  ctxComplete;
         uint64_t                uTRDP;
         unsigned                iPkt;
+        uint32_t                cbDataLeft;
 
         ctxComplete.pUrb      = pUrb;
         ctxComplete.uSlotID   = uSlotID;
         ctxComplete.uEpDCI    = uEpDCI;
+
+        cbDataLeft            = pUrb->cbData;
 
         for (iPkt = 0; iPkt < pUrb->cIsocPkts; ++iPkt) {
             ctxComplete.uXferPos  = pUrb->aIsocPkts[iPkt].off;
@@ -3197,11 +3198,24 @@ static DECLCALLBACK(void) xhciR3RhXferCompletion(PVUSBIROOTHUBPORT pInterface, P
             ctxComplete.uEDTLA    = 0;  // Zero at TD start.
             ctxComplete.uLastCC   = cc;
             ctxComplete.fMaxCount = false;
-            if (pUrb->aIsocPkts[iPkt].enmStatus != VUSBSTATUS_OK)
+            if (RT_UNLIKELY(pUrb->aIsocPkts[iPkt].enmStatus != VUSBSTATUS_OK))
                 STAM_COUNTER_INC(&pThis->StatErrorIsocPkts);
+
+            if (ctxComplete.uXferLeft)
+            {
+                if (RT_UNLIKELY(ctxComplete.uXferLeft > cbDataLeft))
+                {
+                    Assert(0);  /* Not supposed to happen. */
+                    ctxComplete.uXferLeft = cbDataLeft;
+                }
+            }
+            else
+                ;   /* Packet size may be zero. That is valid and not a problem. */
+
             xhciR3WalkXferTrbChain(pDevIns, pThis, ep_ctx.trdp, xhciR3WalkDataTRBsComplete, &ctxComplete, &uTRDP);
             ep_ctx.last_cc = ctxComplete.uLastCC;
             ep_ctx.trdp    = uTRDP;
+            cbDataLeft   -= ctxComplete.uXferLeft;
             xhciR3ConsumeNonXferTRBs(pDevIns, pThis, uSlotID, uEpDCI, &ep_ctx, &xfer, &GCPhysXfrTRB);
         }
         ep_ctx.ifc--;   /* TD done, decrement in-flight counter. */
@@ -3494,6 +3508,7 @@ static int xhciR3QueueIsochTD(PPDMDEVINS pDevIns, PXHCI pThis, PXHCICC pThisCC, 
     PVUSBURB                pUrb;
     unsigned                cIsoPackets;
     uint32_t                cbPktMax;
+    uint32_t                cbPkt;
 
     /* Discover how big this TD is. */
     RT_ZERO(ctxProbe);
@@ -3611,7 +3626,8 @@ static int xhciR3QueueIsochTD(PPDMDEVINS pDevIns, PXHCI pThis, PXHCICC pThisCC, 
     }
 
     /* Set up the packet corresponding to this TD. */
-    pUrb->aIsocPkts[pCtxIso->iPkt].cb        = RT_MIN(ctxProbe.uXferLen, cbPktMax);
+    cbPkt = RT_MIN(ctxProbe.uXferLen, cbPktMax);
+    pUrb->aIsocPkts[pCtxIso->iPkt].cb        = cbPkt;
     pUrb->aIsocPkts[pCtxIso->iPkt].off       = pCtxIso->offCur;
     pUrb->aIsocPkts[pCtxIso->iPkt].enmStatus = VUSBSTATUS_NOT_ACCESSED;
 
@@ -3628,8 +3644,13 @@ static int xhciR3QueueIsochTD(PPDMDEVINS pDevIns, PXHCI pThis, PXHCICC pThisCC, 
     /* Done preparing this packet. */
     Assert(pCtxIso->iPkt < 8);
     pCtxIso->iPkt++;
-    pCtxIso->offCur += ctxProbe.uXferLen;
-    Assert(pCtxIso->offCur <= pUrb->cbData);
+    pCtxIso->offCur += cbPkt;
+
+    if (pCtxIso->offCur > pUrb->cbData)
+    {
+        Assert(0);  /* This really should not happen. */
+        return VERR_BUFFER_OVERFLOW;
+    }
 
     /* Increment the in-flight counter before queuing more. */
     if (pCtxIso->iPkt == pUrb->cIsocPkts)
@@ -3712,7 +3733,7 @@ static int xhciR3QueueControlTD(PPDMDEVINS pDevIns, PXHCI pThis, PXHCICC pThisCC
     case XHCI_TRB_SETUP_STG:
         enmDir = VUSBDIRECTION_SETUP;
         /* For setup TRBs, there is always 8 bytes of immediate data. */
-        Assert(sizeof(VUSBSETUP) == 8);
+        AssertCompile(sizeof(VUSBSETUP) == 8);
         Assert(ctxProbe.uXferLen == 8);
         Log2(("bmRequestType:%02X bRequest:%02X wValue:%04X wIndex:%04X wLength:%04X\n", pTrb->setup.bmRequestType,
               pTrb->setup.bRequest, pTrb->setup.wValue, pTrb->setup.wIndex, pTrb->setup.wLength));
@@ -5287,6 +5308,14 @@ static DECLCALLBACK(int) xhciR3WorkerLoop(PPDMDEVINS pDevIns, PPDMTHREAD pThread
 
                     Log2(("Stop ringing bell for slot %u, DCI %u\n", uSlotID, uDBVal));
                     ASMAtomicAndU32(&pThis->aBellsRung[ID_TO_IDX(uSlotID)], ~(1 << uDBVal));
+#ifdef XHCI_ERROR_INJECTION
+                    if (pThis->fDropDb)
+                    {
+                        LogFlowFunc(("Error injection, dropping doorbell for slot/DCI!\n", uSlotID, uDBVal));
+                        pThis->fDropDb = false;
+                        continue;
+                    }
+#endif
                     xhciR3ProcessDevCtx(pDevIns, pThis, pThisCC, uSlotID, uDBVal);
                 }
             }
@@ -7559,21 +7588,10 @@ static DECLCALLBACK(void) xhciR3Info(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, con
         return;
     }
 
-    if (pszArgs && strstr(pszArgs, "genintrhw"))
+    if (pszArgs && strstr(pszArgs, "dropdb"))
     {
-        pHlp->pfnPrintf(pHlp, "Generating hardware interrupt (external)...\n");
-        int iIntr = 0;
-        PXHCIINTRPTR pIntr = &pThis->aInterrupters[iIntr & XHCI_INTR_MASK];
-        xhciSetIntr(pDevIns, pThis, pIntr);
-        return;
-    }
-
-    if (pszArgs && strstr(pszArgs, "genintrint"))
-    {
-        pHlp->pfnPrintf(pHlp, "Generating hardware interrupt (internal)...\n");
-        int iIntr = 0;
-        PXHCIINTRPTR pIntr = &pThis->aInterrupters[iIntr & XHCI_INTR_MASK];
-        xhciR3SetIntrPending(pDevIns, pThis, pIntr);
+        pHlp->pfnPrintf(pHlp, "Dropping the next doorbell!\n");
+        pThis->fDropDb = true;
         return;
     }
 
@@ -7616,8 +7634,19 @@ static DECLCALLBACK(void) xhciR3Info(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, con
 
     if (pszArgs && strstr(pszArgs, "gendoorbell"))
     {
-        pHlp->pfnPrintf(pHlp, "Generating doorbell ring..\n");
+        pHlp->pfnPrintf(pHlp, "Generating doorbell ring...\n");
         xhciKickWorker(pDevIns, pThis, XHCI_JOB_DOORBELL, 0);
+        return;
+    }
+
+    if (pszArgs && strstr(pszArgs, "genhcerror"))
+    {
+        pHlp->pfnPrintf(pHlp, "Generating host controller error...\n");
+        /* Fake a Host Controller Error. */
+        ASMAtomicOrU32(&pThis->status, XHCI_STATUS_HCE);
+        ASMAtomicAndU32(&pThis->cmd, ~XHCI_CMD_RS);
+        /* Ensure that XHCI_STATUS_HCH gets set by the worker thread. */
+        xhciKickWorker(pDevIns, pThis, XHCI_JOB_PROCESS_CMDRING, 0);
         return;
     }
 #endif
