@@ -1,4 +1,4 @@
-/* $Id: VBoxDX.cpp 114537 2026-06-25 12:46:12Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxDX.cpp 114555 2026-06-26 12:32:02Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox D3D user mode driver.
  */
@@ -592,6 +592,15 @@ static HRESULT vboxDXDeviceRender(PVBOXDX_DEVICE pDevice)
 
     vboxdxCommandBufferFinalize(pDevice);
 
+#ifdef LOG_ENABLED
+    for (uint32_t i = 0; i < pDevice->cAllocations; ++i)
+    {
+        D3DDDI_ALLOCATIONLIST *p = &pDevice->pAllocationList[i];
+        LogFlowFunc(("[%u] 0x%08x\n", i, p->hAllocation));
+        RT_NOREF(p);
+    }
+#endif
+
     D3DDDICB_RENDER ddiRender;
     RT_ZERO(ddiRender);
     ddiRender.CommandLength     = pDevice->cbCommandBuffer;
@@ -1059,7 +1068,7 @@ PVBOXDXKMRESOURCE vboxDXAllocateKMResource(PVBOXDX_DEVICE pDevice, HANDLE hResou
     ddiAllocate.pAllocationInfo2 = &ddiAllocationInfo;
 
     HRESULT hr = pDevice->pRTCallbacks->pfnAllocateCb(pDevice->hRTDevice.handle, &ddiAllocate);
-    LogFlowFunc(("pfnAllocateCb returned 0x%x, hKMResource 0x%X, hAllocation 0x%X", hr, ddiAllocate.hKMResource, ddiAllocationInfo.hAllocation));
+    LogFlowFunc(("pfnAllocateCb returned 0x%x, hKMResource 0x%X, hAllocation 0x%X, primary %RTbool\n", hr, ddiAllocate.hKMResource, ddiAllocationInfo.hAllocation, pKMResource->AllocationDesc.fPrimary));
     AssertReturnStmt(SUCCEEDED(hr),
                      vboxDXDeallocateKMResource(pDevice, pKMResource); vboxDXDeviceSetError(pDevice, hr),
                      false);
@@ -1422,6 +1431,9 @@ void vboxDXDestroyResource(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE pResource)
     if (pResource->pKMResource->flags.fShared)
     {
         /* Delete immediately. */
+        if (dxIsResourceInUse(pDevice, pResource->pKMResource))
+            vboxDXDeviceFlushCommands(pDevice);
+
         vboxDXDeallocateKMResource(pDevice, pResource->pKMResource);
         pResource->pKMResource = 0;
     }
