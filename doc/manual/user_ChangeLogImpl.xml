@@ -73,14 +73,14 @@ Rules for adding a changelog entry to make them look more uniform:
                            So, we use chapter and xpointer="xpointer(/chapter/)" with xi:include. -->
   <sect1>
 
-    <title>Version 7.2.12 (date tbd)</title>
+    <title>Version 7.2.12 (2026-06-30)</title>
 
     <para>This is a maintenance release. The following items were fixed or
       added:</para>
 
     <itemizedlist>
 
-       <listitem>
+      <listitem>
         <para>Windows Guest: Added DX11 performance improvements and fixes</para>
       </listitem>
 
