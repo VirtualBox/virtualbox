@@ -1,4 +1,4 @@
-# $Id: Config.kmk 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+# $Id: Config.kmk 114592 2026-07-01 19:38:05Z klaus.espenlaub@oracle.com $
 ## @file
 # kBuild configuration for the VBox EFI firmware.
 #
@@ -51,10 +51,6 @@ VBOX_PATH_EFI_FIRMWARE = $(PATH_ROOT)/src/VBox/Devices/EFI/Firmware
 VBOX_PATH_STAGE_EFI_BLDPROGS = $(PATH_STAGE)/EfiBldProgs
 VBOX_EFI_BUILD_TARGET  = $(if-expr $(intersects release profile, $(KBUILD_TYPE)),RELEASE,DEBUG)
 VBOX_EFI_OUTPUT_SUBDIR = $(VBOX_EFI_BUILD_TARGET)_$(VBOX_EFI_TOOL_CHAIN.$1)
-
-# VBox Yasm command
-## @todo r=andy Is this still needed? Or can we just use TOOL_YASM_AS?
-VBOX_YASMCMD   ?= $(firstword $(wildcard $(KBUILD_DEVTOOLS_HST)/bin/yasm$(HOSTSUFF_EXE)) yasm$(HOSTSUFF_EXE))
 
 # VBox nasm command (we share this with ValKit/bootsector/Config.kmk, thus the TOOL-style variable name).
 include $(KBUILD_PATH)/tools/NASM.kmk

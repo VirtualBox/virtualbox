@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 114592 2026-07-01 19:38:05Z klaus.espenlaub@oracle.com $
 ## @file
 # Toplevel sub-makefile for the EFI firmwares.
 #
@@ -353,7 +353,6 @@ $(VBoxEfiFirmware_0_OUTDIR)/arm64/Conf/tools_def.txt: \
 	$(RM) -f -- "$@"
 	$(SED) \
 		-e 's,@VBOX_IASLCMD@,$(VBOX_RTIASL),' \
-		-e 's,@VBOX_YASMCMD@,$(VBOX_YASMCMD),' \
 		-e 's,@VBOX_NASMCMD@,$(VBOX_NASMCMD),' \
 		-e 's,@KMK@,$(MAKE),' \
                \
