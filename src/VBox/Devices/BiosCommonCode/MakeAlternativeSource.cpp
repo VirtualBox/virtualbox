@@ -1,4 +1,4 @@
-/* $Id: MakeAlternativeSource.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: MakeAlternativeSource.cpp 114591 2026-07-01 18:58:14Z knut.osmundsen@oracle.com $ */
 /** @file
  * MakeAlternative - Generate an Alternative BIOS Source that requires less tools.
  */
@@ -208,7 +208,7 @@ static bool disError(const char *pszFormat, ...)
 static bool disFileHeader(void)
 {
     bool fRc;
-    fRc = outputPrintf("; $Id: MakeAlternativeSource.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ \n"
+    fRc = outputPrintf("; $Id: MakeAlternativeSource.cpp 114591 2026-07-01 18:58:14Z knut.osmundsen@oracle.com $ \n"
                        ";; @file\n"
                        "; Auto Generated source file. Do not edit.\n"
                        ";\n"
@@ -921,9 +921,10 @@ static bool disAccessesMemory(PCDISSTATE pDis)
 
 
 /**
- * Deals with instructions that YASM will assemble differently than WASM/WCC.
+ * Deals with instructions that YASM/NASM will assemble differently than
+ * WASM/WCC or different from one another.
  */
-static size_t disHandleYasmDifferences(PDISSTATE pDis, uint32_t uFlatAddr, uint32_t cbInstr,
+static size_t disHandleYasmNasmDifferences(PDISSTATE pDis, uint32_t uFlatAddr, uint32_t cbInstr,
                                        char *pszBuf, size_t cbBuf, size_t cchUsed)
 {
     bool fDifferent = DISFormatYasmIsOddEncoding(pDis);
@@ -958,6 +959,14 @@ static size_t disHandleYasmDifferences(PDISSTATE pDis, uint32_t uFlatAddr, uint3
      */
     else if (   pb[0] == 0x66
              && pb[1] == 0xcb)
+        fDifferent = true;
+
+    /*
+     * NASM gets xchg register-only ordering wrong (e.g. xchg Gv,Ev instead
+     * of xchg Ev,Gv as in the AMD and Intel docs).
+     */
+    else if (   pDis->pCurInstr->uOpcode == OP_XCHG
+             && OP_PARM_VTYPE(pDis->pCurInstr->fParam1) == OP_PARM_E)
         fDifferent = true;
 
     /*
@@ -1154,7 +1163,7 @@ static bool disCode(uint32_t uFlatAddr, uint32_t cb, bool fIs16Bit)
                                              DIS_FMT_FLAGS_STRICT
                                              | DIS_FMT_FLAGS_BYTES_RIGHT | DIS_FMT_FLAGS_BYTES_COMMENT | DIS_FMT_FLAGS_BYTES_SPACED,
                                              NULL, NULL);
-                cch = disHandleYasmDifferences(&Dis, uFlatAddr, cbInstr, szTmp, sizeof(szTmp), cch);
+                cch = disHandleYasmNasmDifferences(&Dis, uFlatAddr, cbInstr, szTmp, sizeof(szTmp), cch);
                 Assert(cch < sizeof(szTmp));
 
                 if (g_cVerbose > 1)
@@ -2158,7 +2167,7 @@ int main(int argc, char **argv)
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                char szRev[] = "$Revision: 111747 $";
+                char szRev[] = "$Revision: 114591 $";
                 char *psz = szRev;
                 while (*psz && !RT_C_IS_DIGIT(*psz))
                     psz++;

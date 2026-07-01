@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 114591 2026-07-01 18:58:14Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for the New BIOS ROM.
 #
@@ -144,7 +144,9 @@ ifdef VBOX_WITH_OPEN_WATCOM
        	--bios-sym $$(basename $$<).sym \
        	--bios-type system \
        	--output $$(VBoxPcBios$(1)_0_OUTDIR)/VBoxBiosAlternative$(1).asm
-	$$(QUIET)$$(TOOL_YASM_AS) -f bin -o $$(VBoxPcBios$(1)_0_OUTDIR)/VBoxBiosAlternative$(1).bin $$(VBoxPcBios$(1)_0_OUTDIR)/VBoxBiosAlternative$(1).asm
+	$$(QUIET)"$$($(if-expr defined(DONT_USE_YASM),TOOL_NASM_AS,TOOL_YASM_AS))" -f bin \
+		-o $$(VBoxPcBios$(1)_0_OUTDIR)/VBoxBiosAlternative$(1).bin \
+		$$(VBoxPcBios$(1)_0_OUTDIR)/VBoxBiosAlternative$(1).asm
 	$$(VBOX_VBOXCMP) $$< $$(VBoxPcBios$(1)_0_OUTDIR)/VBoxBiosAlternative$(1).bin
 	$$(CP) --changed -- $$(VBoxPcBios$(1)_0_OUTDIR)/VBoxBiosAlternative$(1).asm $$(PATH_ROOT)/src/VBox/Devices/PC/BIOS/VBoxBiosAlternative$(1).asm
 	$$(REDIRECT) -C $$(dir $$(VBoxPcBios$(1)_1_TARGET)) -- \
@@ -193,17 +195,17 @@ define def_VBoxPcBiosBin
   		$$(PATH_SUB_CURRENT)/VBoxBiosAlternative$(1).md5sum \
   		$$(VBOX_BIN2C) | $$$$(dir $$$$@)
 	$$(call MSG_TOOL,bin2c,PcBiosBin,$$<,$$@)
-	$$(QUIET)$$(TOOL_YASM_AS) -f bin -o $$(PcBiosBin_0_OUTDIR)/VBoxPcBios$(1).rom $$<
+	$$(QUIET)"$$($(if-expr defined(DONT_USE_YASM),TOOL_NASM_AS,TOOL_YASM_AS))" \
+		-f bin -o $$(PcBiosBin_0_OUTDIR)/VBoxPcBios$(1).rom $$<
 	$$(QUIET)$$(REDIRECT) -C $$(PcBiosBin_0_OUTDIR) -- \
 		$$(MD5SUM_EXT) -c $$(basename $$<).md5sum
-	$$(QUIET)$$(VBOX_BIN2C) -min 64 -max 256 -mask 0xffff -ascii -export PcBiosBinary$(1) $$(PcBiosBin_0_OUTDIR)/VBoxPcBios$(1).rom $$@
-	$$(QUIET)$$(RM) -f -- $$$$(PcBiosBin_0_OUTDIR)/VBoxPcBios$(1).rom
+	$$(QUIET)$$(VBOX_BIN2C) -min 64 -max 256 -mask 0xffff -ascii -export PcBiosBinary$(1) \
+		$$(PcBiosBin_0_OUTDIR)/VBoxPcBios$(1).rom $$@
  endif
 endef
 $(evalcall2 def_VBoxPcBiosBin,386)
 $(evalcall2 def_VBoxPcBiosBin,286)
 $(evalcall2 def_VBoxPcBiosBin,8086)
-
 
 
 ifdef VBOX_WITH_OPEN_WATCOM
