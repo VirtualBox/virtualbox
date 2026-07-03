@@ -81,6 +81,11 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
+        <para>Windows installer: Added support for detecting the Visual C++ runtime via
+          the servicing infrastructure (github:gh-723)</para>
+      </listitem>
+
+      <listitem>
         <para></para>
       </listitem>
 
