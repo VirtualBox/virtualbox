@@ -87,6 +87,7 @@ private:
     HRESULT getEventSource(ComPtr<IEventSource> &aEventSource) RT_OVERRIDE;
     HRESULT getEnabled(BOOL *aEnabled) RT_OVERRIDE;
     HRESULT setEnabled(BOOL aEnabled) RT_OVERRIDE;
+    HRESULT getRunning(BOOL *aRunning) RT_OVERRIDE;
     HRESULT getIPAddress(com::Utf8Str &aIPAddress) RT_OVERRIDE;
     HRESULT getNetworkMask(com::Utf8Str &aNetworkMask) RT_OVERRIDE;
     HRESULT getNetworkName(com::Utf8Str &aName) RT_OVERRIDE;

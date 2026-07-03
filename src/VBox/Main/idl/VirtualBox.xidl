@@ -2539,6 +2539,12 @@
       </desc>
     </attribute>
 
+    <attribute name="running" type="boolean" readonly="yes">
+      <desc>
+        specifies if the DHCP server is running
+      </desc>
+    </attribute>
+
     <attribute name="IPAddress" type="wstring" readonly="yes">
       <desc>
         specifies server IP
