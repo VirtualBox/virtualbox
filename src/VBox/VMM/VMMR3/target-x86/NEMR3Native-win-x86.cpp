@@ -1,4 +1,4 @@
-/* $Id: NEMR3Native-win-x86.cpp 114007 2026-04-24 07:18:28Z alexander.eichner@oracle.com $ */
+/* $Id: NEMR3Native-win-x86.cpp 114617 2026-07-03 17:54:57Z alexander.eichner@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 Windows backend.
  *
@@ -2597,9 +2597,6 @@ static int nemHCWinCopyStateToHyperV(PVMCC pVM, PVMCPUCC pVCpu)
     if (fWhat & CPUMCTX_EXTRN_DR7)
         ADD_REG64(WHvX64RegisterDr7, pVCpu->cpum.GstCtx.dr[7]); // CPUMGetHyperDR7(pVCpu));
 
-    if (fWhat & CPUMCTX_EXTRN_XCRx)
-        ADD_REG64(WHvX64RegisterXCr0, pVCpu->cpum.GstCtx.aXcr[0]);
-
     if (!pVM->nem.s.fXsaveSupported)
     {
         /* Floating point state. */
@@ -2655,6 +2652,8 @@ static int nemHCWinCopyStateToHyperV(PVMCC pVM, PVMCPUCC pVCpu)
             ADD_REG128(WHvX64RegisterXmm15, pVCpu->cpum.GstCtx.XState.x87.aXMM[15].uXmm.s.Lo, pVCpu->cpum.GstCtx.XState.x87.aXMM[15].uXmm.s.Hi);
         }
     }
+    else if (fWhat & CPUMCTX_EXTRN_XCRx)
+        ADD_REG64(WHvX64RegisterXCr0, pVCpu->cpum.GstCtx.aXcr[0]);
 
     /* MSRs */
     // WHvX64RegisterTsc - don't touch
@@ -2964,9 +2963,6 @@ static int nemHCWinCopyStateFromHyperV(PVMCC pVM, PVMCPUCC pVCpu, uint64_t fWhat
     if (fWhat & CPUMCTX_EXTRN_DR6)
         aenmNames[iReg++] = WHvX64RegisterDr6;
 
-    if (fWhat & CPUMCTX_EXTRN_XCRx)
-        aenmNames[iReg++] = WHvX64RegisterXCr0;
-
     if (!pVM->nem.s.fXsaveSupported)
     {
         /* Floating point state. */
@@ -3006,6 +3002,8 @@ static int nemHCWinCopyStateFromHyperV(PVMCC pVM, PVMCPUCC pVCpu, uint64_t fWhat
             aenmNames[iReg++] = WHvX64RegisterXmm15;
         }
     }
+    else if (fWhat & CPUMCTX_EXTRN_XCRx)
+        aenmNames[iReg++] = WHvX64RegisterXCr0;
 
     /* MSRs */
     // WHvX64RegisterTsc - don't touch
@@ -3291,17 +3289,6 @@ static int nemHCWinCopyStateFromHyperV(PVMCC pVM, PVMCPUCC pVCpu, uint64_t fWhat
 
     bool fUpdateXcr0 = false;
     uint64_t u64Xcr0 = 0;
-    if (fWhat & CPUMCTX_EXTRN_XCRx)
-    {
-        Assert(aenmNames[iReg] == WHvX64RegisterXCr0);
-        if (pVCpu->cpum.GstCtx.aXcr[0] != aValues[iReg].Reg64)
-        {
-            u64Xcr0 = aValues[iReg].Reg64;
-            fUpdateXcr0 = true;
-        }
-        iReg++;
-    }
-
     if (!pVM->nem.s.fXsaveSupported)
     {
         /* Floating point state. */
@@ -3365,6 +3352,17 @@ static int nemHCWinCopyStateFromHyperV(PVMCC pVM, PVMCPUCC pVCpu, uint64_t fWhat
     }
     else
     {
+        if (fWhat & CPUMCTX_EXTRN_XCRx)
+        {
+            Assert(aenmNames[iReg] == WHvX64RegisterXCr0);
+            if (pVCpu->cpum.GstCtx.aXcr[0] != aValues[iReg].Reg64)
+            {
+                u64Xcr0 = aValues[iReg].Reg64;
+                fUpdateXcr0 = true;
+            }
+            iReg++;
+        }
+
         if (fWhat & (CPUMCTX_EXTRN_X87 | CPUMCTX_EXTRN_SSE_AVX | CPUMCTX_EXTRN_OTHER_XSAVE))
         {
             if (WHvGetVirtualProcessorState)
