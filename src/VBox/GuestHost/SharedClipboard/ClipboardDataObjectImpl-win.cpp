@@ -1,4 +1,4 @@
-/* $Id: ClipboardDataObjectImpl-win.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: ClipboardDataObjectImpl-win.cpp 114600 2026-07-03 10:23:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * ClipboardDataObjectImpl-win.cpp - Shared Clipboard IDataObject implementation.
  */
@@ -56,10 +56,6 @@
  int g_cDbgStreamObj;
  int g_cDbgEnumFmtObj;
 #endif
-
-/** @todo Also handle Unicode entries.
- *        !!! WARNING: Buggy, doesn't work yet (some memory corruption / garbage in the file name descriptions) !!! */
-//#define VBOX_CLIPBOARD_WITH_UNICODE_SUPPORT 1
 
 ShClWinDataObject::ShClWinDataObject(void)
     : m_pCtx(NULL)
@@ -129,10 +125,7 @@ int ShClWinDataObject::Init(PSHCLCONTEXT pCtx, ShClWinDataObject::PCALLBACKS pCa
     /*
      * Set up / register handled formats.
      */
-    ULONG cFixedFormats = 3; /* CFSTR_FILEDESCRIPTORA + CFSTR_FILECONTENTS + CFSTR_PERFORMEDDROPEFFECT */
-#ifdef VBOX_CLIPBOARD_WITH_UNICODE_SUPPORT
-    cFixedFormats++; /* CFSTR_FILEDESCRIPTORW */
-#endif
+    const ULONG cFixedFormats = 4; /* CFSTR_FILEDESCRIPTORA + CFSTR_FILEDESCRIPTORW + CFSTR_FILECONTENTS + CFSTR_PERFORMEDDROPEFFECT */
     const ULONG cAllFormats   = cFormats + cFixedFormats;
 
     m_pFormatEtc = new FORMATETC[cAllFormats];
@@ -152,11 +145,9 @@ int ShClWinDataObject::Init(PSHCLCONTEXT pCtx, ShClWinDataObject::PCALLBACKS pCa
     LogFlowFunc(("Registering CFSTR_FILEDESCRIPTORA ...\n"));
     m_cfFileDescriptorA = RegisterClipboardFormat(CFSTR_FILEDESCRIPTORA);
     registerFormat(&m_pFormatEtc[uIdx++], m_cfFileDescriptorA);
-#ifdef VBOX_CLIPBOARD_WITH_UNICODE_SUPPORT
     LogFlowFunc(("Registering CFSTR_FILEDESCRIPTORW ...\n"));
     m_cfFileDescriptorW = RegisterClipboardFormat(CFSTR_FILEDESCRIPTORW);
     registerFormat(&m_pFormatEtc[uIdx++], m_cfFileDescriptorW);
-#endif
 
     /* IStream interface, implemented in ClipboardStreamImpl-win.cpp. */
     LogFlowFunc(("Registering CFSTR_FILECONTENTS ...\n"));
@@ -638,124 +629,157 @@ DECLCALLBACK(int) ShClWinDataObject::readThread(PSHCLTRANSFER pTransfer, void *p
 }
 
 /**
- * Creates a FILEGROUPDESCRIPTOR object from a given Shared Clipboard transfer and stores the result into an HGLOBAL object.
+ * Creates a FILEGROUPDESCRIPTOR[A|W] object from a given Shared Clipboard transfer and stores the result into an HGLOBAL object.
  *
  * @returns VBox status code.
  * @param   pTransfer           Shared Clipboard transfer to create file grou desciprtor for.
  * @param   fUnicode            Whether the FILEGROUPDESCRIPTOR object shall contain Unicode data or not.
  * @param   phGlobal            Where to store the allocated HGLOBAL object on success.
  */
-int ShClWinDataObject::createFileGroupDescriptorFromTransfer(PSHCLTRANSFER pTransfer,
-                                                                        bool fUnicode, HGLOBAL *phGlobal)
+int ShClWinDataObject::createFileGroupDescriptorFromTransfer(PSHCLTRANSFER pTransfer, bool fUnicode, HGLOBAL *phGlobal)
 {
     AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
     AssertPtrReturn(phGlobal,  VERR_INVALID_POINTER);
 
     LogFlowFuncEnter();
 
-    const size_t cbFileGroupDescriptor = fUnicode ? sizeof(FILEGROUPDESCRIPTORW) : sizeof(FILEGROUPDESCRIPTORA);
-    const size_t cbFileDescriptor = fUnicode ? sizeof(FILEDESCRIPTORW) : sizeof(FILEDESCRIPTORA);
-
-    const UINT   cItems = (UINT)m_lstEntries.size(); /** UINT vs. size_t. */
+    const UINT cItems = (UINT)m_lstEntries.size();
     if (!cItems)
         return VERR_NOT_FOUND;
 
-    UINT         curIdx = 0; /* Current index of the handled file group descriptor (FGD). */
-
-    const size_t cbFGD  = cbFileGroupDescriptor + (cbFileDescriptor * (cItems - 1));
-
-    LogFunc(("fUnicode=%RTbool, cItems=%u, cbFileDescriptor=%zu\n", fUnicode, cItems, cbFileDescriptor));
-
-    /* FILEGROUPDESCRIPTORA / FILEGROUPDESCRIPTOR matches except the cFileName member (TCHAR vs. WCHAR). */
-    FILEGROUPDESCRIPTOR *pFGD = (FILEGROUPDESCRIPTOR *)RTMemAllocZ(cbFGD);
-    if (!pFGD)
-        return VERR_NO_MEMORY;
-
     int rc = VINF_SUCCESS;
 
-    pFGD->cItems = cItems;
-
-    char *pszFileSpec = NULL;
-
-    FsObjEntryList::const_iterator itRoot = m_lstEntries.cbegin();
-    while (itRoot != m_lstEntries.end())
+    if (fUnicode)
     {
-        FILEDESCRIPTOR *pFD = &pFGD->fgd[curIdx];
-        RT_BZERO(pFD, cbFileDescriptor);
+        const size_t cbFGD = sizeof(FILEGROUPDESCRIPTORW)
+                           + sizeof(FILEDESCRIPTORW) * (cItems - 1);
 
-        const char *pszFile = itRoot->pszPath;
-        AssertPtr(pszFile);
+        FILEGROUPDESCRIPTORW *pFGD = (FILEGROUPDESCRIPTORW *)RTMemAllocZ(cbFGD);
+        if (!pFGD)
+            return VERR_NO_MEMORY;
 
-        pszFileSpec = RTStrDup(pszFile);
-        AssertBreakStmt(pszFileSpec != NULL, rc = VERR_NO_MEMORY);
+        pFGD->cItems = cItems;
 
-        if (fUnicode)
+        UINT curIdx = 0;
+        FsObjEntryList::const_iterator itRoot = m_lstEntries.cbegin();
+        while (itRoot != m_lstEntries.end())
         {
-            PRTUTF16 pwszFileSpec;
-            rc = RTStrToUtf16(pszFileSpec, &pwszFileSpec);
-            if (RT_SUCCESS(rc))
-            {
-                rc = RTUtf16CopyEx((PRTUTF16 )pFD->cFileName, sizeof(pFD->cFileName) / sizeof(WCHAR),
-                                   pwszFileSpec, RTUtf16Len(pwszFileSpec));
-                RTUtf16Free(pwszFileSpec);
+            FILEDESCRIPTORW *pFD = &pFGD->fgd[curIdx];
+            RT_BZERO(pFD, sizeof(*pFD));
 
-                LogFlowFunc(("pFD->cFileNameW=%ls\n", pFD->cFileName));
-            }
-        }
-        else
-        {
-            rc = RTStrCopy(pFD->cFileName, sizeof(pFD->cFileName), pszFileSpec);
-            LogFlowFunc(("pFD->cFileNameA=%s\n", pFD->cFileName));
-        }
+            const char *pszFile = itRoot->pszPath;
+            AssertPtrBreakStmt(pszFile, rc = VERR_INVALID_POINTER);
 
-        RTStrFree(pszFileSpec);
-        pszFileSpec = NULL;
+            PRTUTF16 pwszFileSpec = NULL;
+            rc = RTStrToUtf16(pszFile, &pwszFileSpec);
+            if (RT_FAILURE(rc))
+                break;
 
-        if (RT_FAILURE(rc))
-            break;
+            rc = RTUtf16CopyEx((PRTUTF16)pFD->cFileName,
+                                RT_ELEMENTS(pFD->cFileName),
+                                pwszFileSpec,
+                                RTUtf16Len(pwszFileSpec));
 
-        pFD->dwFlags          = FD_PROGRESSUI | FD_ATTRIBUTES;
-        if (fUnicode) /** @todo Only >= Vista. */
-            pFD->dwFlags     |= FD_UNICODE;
-        pFD->dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
+            RTUtf16Free(pwszFileSpec);
 
-        const SHCLFSOBJINFO *pObjInfo = &itRoot->objInfo;
+            if (RT_FAILURE(rc))
+                break;
 
-        if (RTFS_IS_DIRECTORY(pObjInfo->Attr.fMode))
-        {
-            pFD->dwFileAttributes |= FILE_ATTRIBUTE_DIRECTORY;
-        }
-        else if (RTFS_IS_FILE(pObjInfo->Attr.fMode))
-        {
-            pFD->dwFlags |= FD_FILESIZE;
+            LogFlowFunc(("pFD->cFileNameW=%ls\n", pFD->cFileName));
 
-            const uint64_t cbObjSize = pObjInfo->cbObject;
+            pFD->dwFlags          = FD_PROGRESSUI | FD_ATTRIBUTES;
+            pFD->dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
 
-            pFD->nFileSizeHigh = RT_HI_U32(cbObjSize);
-            pFD->nFileSizeLow  = RT_LO_U32(cbObjSize);
-        }
-        else if (RTFS_IS_SYMLINK(pObjInfo->Attr.fMode))
-        {
-            /** @todo Implement. */
-        }
-#if 0 /** @todo Implement this. */
-        pFD->dwFlags = FD_ATTRIBUTES | FD_CREATETIME | FD_ACCESSTIME | FD_WRITESTIME | FD_FILESIZE;
-        pFD->dwFileAttributes =
-        pFD->ftCreationTime   =
-        pFD->ftLastAccessTime =
-        pFD->ftLastWriteTime  =
+#ifdef FD_UNICODE
+            pFD->dwFlags |= FD_UNICODE;
 #endif
-        ++curIdx;
-        ++itRoot;
+            const SHCLFSOBJINFO *pObjInfo = &itRoot->objInfo;
+
+            if (RTFS_IS_DIRECTORY(pObjInfo->Attr.fMode))
+                pFD->dwFileAttributes |= FILE_ATTRIBUTE_DIRECTORY;
+            else if (RTFS_IS_FILE(pObjInfo->Attr.fMode))
+            {
+                pFD->dwFlags |= FD_FILESIZE;
+
+                const uint64_t cbObjSize = pObjInfo->cbObject;
+                pFD->nFileSizeHigh = RT_HI_U32(cbObjSize);
+                pFD->nFileSizeLow  = RT_LO_U32(cbObjSize);
+            }
+            else if (RTFS_IS_SYMLINK(pObjInfo->Attr.fMode))
+            {
+                /** @todo Implement symlink support. */
+            }
+
+            ++curIdx;
+            ++itRoot;
+        }
+
+        if (RT_SUCCESS(rc))
+            rc = copyToHGlobal(pFGD, cbFGD, GMEM_MOVEABLE, phGlobal);
+
+        RTMemFree(pFGD);
     }
+    else
+    {
+        const size_t cbFGD = sizeof(FILEGROUPDESCRIPTORA)
+                           + sizeof(FILEDESCRIPTORA) * (cItems - 1);
 
-    if (pszFileSpec)
-        RTStrFree(pszFileSpec);
+        FILEGROUPDESCRIPTORA *pFGD = (FILEGROUPDESCRIPTORA *)RTMemAllocZ(cbFGD);
+        if (!pFGD)
+            return VERR_NO_MEMORY;
 
-    if (RT_SUCCESS(rc))
-        rc = copyToHGlobal(pFGD, cbFGD, GMEM_MOVEABLE, phGlobal);
+        pFGD->cItems = cItems;
 
-    RTMemFree(pFGD);
+        UINT curIdx = 0;
+        FsObjEntryList::const_iterator itRoot = m_lstEntries.cbegin();
+        while (itRoot != m_lstEntries.end())
+        {
+            FILEDESCRIPTORA *pFD = &pFGD->fgd[curIdx];
+            RT_BZERO(pFD, sizeof(*pFD));
+
+            const char *pszFile = itRoot->pszPath;
+            AssertPtrBreakStmt(pszFile, rc = VERR_INVALID_POINTER);
+
+            /*
+             * A fallback path only.  This preserves current behavior by copying
+             * the internal UTF-8 bytes into the A descriptor.  Unicode filename
+             * correctness belongs to FILEDESCRIPTORW.
+             */
+            rc = RTStrCopy(pFD->cFileName, sizeof(pFD->cFileName), pszFile);
+            if (RT_FAILURE(rc))
+                break;
+
+            LogFlowFunc(("pFD->cFileNameA=%s\n", pFD->cFileName));
+
+            pFD->dwFlags          = FD_PROGRESSUI | FD_ATTRIBUTES;
+            pFD->dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
+
+            const SHCLFSOBJINFO *pObjInfo = &itRoot->objInfo;
+
+            if (RTFS_IS_DIRECTORY(pObjInfo->Attr.fMode))
+                pFD->dwFileAttributes |= FILE_ATTRIBUTE_DIRECTORY;
+            else if (RTFS_IS_FILE(pObjInfo->Attr.fMode))
+            {
+                pFD->dwFlags |= FD_FILESIZE;
+
+                const uint64_t cbObjSize = pObjInfo->cbObject;
+                pFD->nFileSizeHigh = RT_HI_U32(cbObjSize);
+                pFD->nFileSizeLow  = RT_LO_U32(cbObjSize);
+            }
+            else if (RTFS_IS_SYMLINK(pObjInfo->Attr.fMode))
+            {
+                /** @todo Implement symlink support. */
+            }
+
+            ++curIdx;
+            ++itRoot;
+        }
+
+        if (RT_SUCCESS(rc))
+            rc = copyToHGlobal(pFGD, cbFGD, GMEM_MOVEABLE, phGlobal);
+
+        RTMemFree(pFGD);
+    }
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -798,9 +822,7 @@ STDMETHODIMP ShClWinDataObject::GetData(LPFORMATETC pFormatEtc, LPSTGMEDIUM pMed
 
     if (    RT_SUCCESS(rc)
         && (   pFormatEtc->cfFormat == m_cfFileDescriptorA
-#ifdef VBOX_CLIPBOARD_WITH_UNICODE_SUPPORT
             || pFormatEtc->cfFormat == m_cfFileDescriptorW
-#endif
            )
        )
     {
