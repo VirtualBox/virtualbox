@@ -1,4 +1,4 @@
-# $Id: Config.kmk 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $
+# $Id: Config.kmk 114606 2026-07-03 12:49:07Z alexander.eichner@oracle.com $
 ## @file
 # kBuild configuration for the VBox EFI firmware.
 #
@@ -134,6 +134,7 @@ if "$(VBOX_VCC_TOOL_STEM)" >= "VCC140"
 endif
 
 TEMPLATE_VBoxEfiBldProg_CFLAGS.linux  = $(TEMPLATE_VBoxBldProg_CFLAGS.linux)
+TEMPLATE_VBoxEfiBldProg_CFLAGS.linux += -std=gnu11
 TEMPLATE_VBoxEfiBldProg_CFLAGS.linux += -Wno-misleading-indentation
 TEMPLATE_VBoxEfiBldProg_CFLAGS.linux += -Wno-error=stringop-truncation # VfrCompile/Pccts/antlr/mrhoist.c:2216:5: error: 'strncpy' specified bound 50 equals destination size
 

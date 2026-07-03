@@ -310,6 +310,13 @@ RuntimeFreeMem (
   return;
 }
 
+#ifdef VBOX
+extern void OPENSSL_cleanup(void);
+extern void ossl_prov_deinit(void);
+extern void oss_prov_bio_cleanup(void);
+extern int ossl_init_thread_deregister_all(void);
+#endif
+
 /**
   Notification function of EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE.
 
@@ -327,6 +334,13 @@ RuntimeCryptLibAddressChangeEvent (
   IN  VOID       *Context
   )
 {
+#ifdef VBOX
+  ossl_init_thread_deregister_all();
+  OPENSSL_cleanup();
+  ossl_prov_deinit();
+  oss_prov_bio_cleanup();
+#endif
+
   //
   // Converts a pointer for runtime memory management to a new virtual address.
   //
