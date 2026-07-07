@@ -1,4 +1,4 @@
-/* $Id: DevVGA.cpp 114182 2026-05-22 16:32:53Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA.cpp 114639 2026-07-07 17:29:27Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVGA - VBox VGA/VESA device.
  */
@@ -6676,6 +6676,7 @@ static DECLCALLBACK(int)   vgaR3Construct(PPDMDEVINS pDevIns, int iInstance, PCF
                                             "|VMSVGA3dOverlayEnabled"
                                             "|VMSVGA3dMSAA"
                                             "|VMSVGA2dGBO"
+                                            "|VMSVGA3dGraphicsMemSizeGB"
 # endif
                                             "|SuppressNewYearSplash"
                                             "|3DEnabled";
@@ -6757,6 +6758,11 @@ static DECLCALLBACK(int)   vgaR3Construct(PPDMDEVINS pDevIns, int iInstance, PCF
     if (pThis->svga.f3DEnabled || pThis->fVMSVGAPciId == 0) /* The fVMSVGA2dGBO is for 2D mode of vmwgfx.ko only*/
         pThis->svga.fVMSVGA2dGBO = false;
     Log(("VMSVGA: fVMSVGA2dGBO = %d\n", pThis->svga.fVMSVGA2dGBO));
+
+    uint64_t u64VMSVGA3dGraphicsMemSizeGB = 0;
+    rc = pHlp->pfnCFGMQueryU64Def(pCfg, "VMSVGA3dGraphicsMemSizeGB", &u64VMSVGA3dGraphicsMemSizeGB, 4);
+    AssertLogRelRCReturn(rc, rc);
+    pThis->svga.cbGBObjectMemSize = RT_MIN(u64VMSVGA3dGraphicsMemSizeGB, 32) * _1G;
 # endif
 
 # ifdef VBOX_WITH_VMSVGA
