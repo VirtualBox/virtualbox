@@ -128,6 +128,20 @@ static const RTRECTSIZE g_VBoxBuiltinResolutions[] =
     { 1920, 1440 },
 };
 
+static const struct
+{
+    uint16_t u16Numerator;
+    uint16_t u16Denominator;
+} g_VBoxTargetScaleFactors[] =
+{
+    { 1, 3 },
+    { 4, 9 },
+    { 1, 2 },
+    { 5, 9 },
+    { 2, 3 },
+    { 8, 9 },
+};
+
 DECLINLINE(bool) vboxVModesRMatch(const RTRECTSIZE *pResolution1, const RTRECTSIZE *pResolution2)
 {
     return !memcmp(pResolution1, pResolution2, sizeof (*pResolution1));
@@ -311,6 +325,39 @@ int vboxWddmVModesAdd(PVBOXMP_DEVEXT pExt, VBOXWDDM_VMODES *pModes, uint32_t u32
     return rc;
 }
 
+static void vboxWddmVModesAddScaledTargetModes(PVBOXMP_DEVEXT pExt, VBOXWDDM_VMODES *pModes, uint32_t u32Target,
+                                               const RTRECTSIZE *pBaseResolution)
+{
+    if (!pBaseResolution->cx || !pBaseResolution->cy)
+        return;
+
+    /*
+     * Preserve the current target aspect ratio when advertising HiDPI Retina
+     * intermediates.  This makes a 5760x3240 host target expose practical
+     * modes like 5120x2880, 3840x2160, 3200x1800, 2880x1620, 2560x1440 and
+     * 1920x1080 instead of jumping directly from the native mode to legacy 4:3
+     * modes.
+     */
+    for (uint32_t i = 0; i < RT_ELEMENTS(g_VBoxTargetScaleFactors); ++i)
+    {
+        RTRECTSIZE Resolution =
+        {
+            (pBaseResolution->cx * g_VBoxTargetScaleFactors[i].u16Numerator)
+            / g_VBoxTargetScaleFactors[i].u16Denominator,
+            (pBaseResolution->cy * g_VBoxTargetScaleFactors[i].u16Numerator)
+            / g_VBoxTargetScaleFactors[i].u16Denominator
+        };
+
+        if (!VBoxCommonFromDeviceExt(pExt)->fAnyX)
+            Resolution.cx &= 0xFFF8;
+
+        if (Resolution.cx < 800 || Resolution.cy < 600)
+            continue;
+
+        vboxWddmVModesAdd(pExt, pModes, u32Target, &Resolution, FALSE);
+    }
+}
+
 #ifndef VBOXWDDM_NEW_VIDPN
 #define VBOXWDDM_PROPNAME_PREFIX "/VirtualBox/VMInfo/Video/"
 
@@ -383,6 +430,7 @@ int vboxWddmVModesInitForTarget(PVBOXMP_DEVEXT pExt, VBOXWDDM_VMODES *pModes, ui
 
     if (pExt->aTargets[u32Target].Size.cx)
     {
+        vboxWddmVModesAddScaledTargetModes(pExt, pModes, u32Target, &pExt->aTargets[u32Target].Size);
         vboxWddmVModesAdd(pExt, pModes, u32Target, &pExt->aTargets[u32Target].Size, TRUE);
     }
 
@@ -556,6 +604,9 @@ int VBoxWddmVModesInit(PVBOXMP_DEVEXT pExt)
 
     for (int i = 0; i < VBoxCommonFromDeviceExt(pExt)->cDisplays; ++i)
     {
+        if (pExt->aTargets[i].Size.cx)
+            vboxWddmVModesAddScaledTargetModes(pExt, pModes, (uint32_t)i, &pExt->aTargets[i].Size);
+
 #ifndef VBOXWDDM_NEW_VIDPN
         if (CrSaGetSize(&pModes->Modes.aTargets[i]))
             continue;
@@ -639,7 +690,15 @@ int VBoxWddmVModesAdd(PVBOXMP_DEVEXT pExt, uint32_t u32Target, const RTRECTSIZE 
 #else
     RT_NOREF(fPreferred);
 #endif
-    return vboxWddmVModesAdd(pExt, &g_VBoxWddmVModes, u32Target, pResolution, fTrancient);
+
+    int rc = vboxWddmVModesAdd(pExt, &g_VBoxWddmVModes, u32Target, pResolution, fTrancient);
+
+#ifdef VBOXWDDM_NEW_VIDPN
+    if (fPreferred)
+        vboxWddmVModesAddScaledTargetModes(pExt, &g_VBoxWddmVModes, u32Target, pResolution);
+#endif
+
+    return rc;
 }
 
 
