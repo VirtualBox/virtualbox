@@ -128,6 +128,7 @@ CC64=""
 CXX="g++"
 CXX32=""
 CXX64=""
+NASM="nasm"
 YASM="yasm"
 XSLTPROC="xsltproc"
 INCCRYPTO=""
@@ -223,7 +224,7 @@ cleanup()
 
 fail()
 {
-  if [ -z "$nofatal" -o "x$1" != "x" ]; then
+  if [ -z "$nofatal" -a "x$1" = "x" ]; then
     cleanup
     rm -f $ENV
     echo "Check $LOG for details"
@@ -645,13 +646,34 @@ check_open_watcom()
 
 
 #
-# Check for yasm, needed to compile assembler files
+# Check for nasm or yasm, nasm preferred. Needed to compile assembler files.
 #
-check_yasm()
+check_nasm_or_yasm()
 {
+  test_header nasm
+  if check_avail "$NASM" NASM nofatal; then
+    nasm_ver=`$NASM --version|grep '^NASM'|sed 's+^NASM version \([^ ]*\).*$+\1+'`
+    if [ $? -ne 0 ]; then
+      log_success "nasm not found, trying yasm"
+    else
+      nasm_maj=`echo $nasm_ver|cut -d. -f1`
+      nasm_min=`echo $nasm_ver|cut -d. -f2`
+      nasm_rev=`echo $nasm_ver|cut -d. -f3`
+      nasm_ver_mul=`expr $nasm_maj \* 10000 + $nasm_min \* 100 + $nasm_rev`
+      if [ $nasm_ver_mul -lt 21600 ]; then
+        log_failure "found version $nasm_ver, expected at least 2.16.0"
+        fail
+      else
+        [ "$NASM" != "nasm" ] && cnf_append "PATH_TOOL_NASM" "`dirname $NASM`"
+        cnf_append "DONT_USE_YASM" "1"
+        log_success "found version $nasm_ver"
+        return
+      fi
+    fi
+  fi
   test_header yasm
   if check_avail "$YASM" YASM; then
-    yasm_ver=`$YASM --version|grep "^yasm"|sed 's+^yasm \(.*\)+\1+'`
+    yasm_ver=`$YASM --version|grep '^yasm'|sed 's+^yasm \(.*\)+\1+'`
     if [ $? -ne 0 ]; then
       log_failure "yasm not found"
       fail
@@ -1985,7 +2007,7 @@ check_kchmviewer()
 {
   test_header kchmviewer
   if check_avail "$KCHMVIEWER" KCHMVIEWER; then
-    kchmviewer_ver=`$KCHMVIEWER --version|grep "^KchmViewer:"|sed 's+^KchmViewer: \(.*\)+\1+'`
+    kchmviewer_ver=`$KCHMVIEWER --version|grep '^KchmViewer:'|sed 's+^KchmViewer: \(.*\)+\1+'`
     if [ $? -ne 0 ]; then
       log_failure "kchmviewer not working"
       fail
@@ -2519,7 +2541,8 @@ Paths:
   --with-gcc=PATH          location of the gcc compiler [$CC]
   --with-g++=PATH          location of the g++ compiler [$CXX]
   --with-kbuild=DIR        kbuild directory [$KBUILDDIR]
-  --with-yasm=PATH         location of the yasm compiler [$YASM]
+  --with-nasm=PATH         location of the nasm assembler (preferred) [$NASM]
+  --with-yasm=PATH         location of the yasm assembler [$YASM]
   --with-makeself=PATH     location of makeself [$MAKESELF]
 EOF
 [ "$OS"   = "darwin" ] && echo "  --with-xcode-dir=DIR     custom path to Xcode root directory; it is assumed that Xcode"
@@ -2651,6 +2674,9 @@ for option in "$@"; do
       ;;
     --with-gsoap-import=*)
       GSOAP_IMPORT=`echo $option | cut -d'=' -f2`
+      ;;
+    --with-nasm=*)
+      NASM=`echo $option | cut -d'=' -f2`
       ;;
     --with-yasm=*)
       YASM=`echo $option | cut -d'=' -f2`
@@ -2962,7 +2988,7 @@ fi
 [ "$OS" = "darwin"  ] && check_xcode
 if [ $ONLY_ADDITIONS -eq 0 ]; then
   check_open_watcom
-  [ $OSE -ge 1 ] && check_yasm
+  [ $OSE -ge 1 ] && check_nasm_or_yasm
   [ "$OS" != "darwin"  ] && check_xsltproc
 fi
 
