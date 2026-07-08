@@ -1,4 +1,4 @@
-/* $Id: VBoxNetAdp-linux.c 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxNetAdp-linux.c 114654 2026-07-08 10:33:59Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VBoxNetAdp - Virtual Network Adapter Driver (Host), Linux Specific Code.
  */
@@ -342,7 +342,7 @@ int vboxNetAdpOsCreate(PVBOXNETADP pThis, PCRTMAC pMACAddress)
             err = register_netdev(pNetDev);
             if (!err)
             {
-                strncpy(pThis->szName, pNetDev->name, sizeof(pThis->szName));
+                vboxNetAdpStrncpy(pThis->szName, pNetDev->name, sizeof(pThis->szName));
                 pThis->szName[sizeof(pThis->szName) - 1] = '\0';
                 pThis->u.s.pNetDev = pNetDev;
                 Log2(("vboxNetAdpOsCreate: pThis=%p pThis->szName = %p\n", pThis, pThis->szName));
@@ -465,7 +465,7 @@ static long VBoxNetAdpLinuxIOCtlUnlocked(struct file *pFilp,
             }
 
             Assert(strlen(pAdp->szName) < sizeof(Req.szName));
-            strncpy(Req.szName, pAdp->szName, sizeof(Req.szName) - 1);
+            vboxNetAdpStrncpy(Req.szName, pAdp->szName, sizeof(Req.szName) - 1);
             Req.szName[sizeof(Req.szName) - 1] = '\0';
 
             if (RT_UNLIKELY(copy_to_user((void *)ulArg, &Req, sizeof(Req))))

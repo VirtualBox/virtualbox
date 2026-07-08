@@ -1,4 +1,4 @@
-/* $Id: VBoxNetAdpInternal.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxNetAdpInternal.h 114654 2026-07-08 10:33:59Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VBoxNetAdp - Network Filter Driver (Host), Internal Header.
  */
@@ -161,6 +161,16 @@ DECLHIDDEN(int) vboxNetAdpCreate(PVBOXNETADP *ppNew, const char *pcszName);
 DECLHIDDEN(int) vboxNetAdpDestroy(PVBOXNETADP pThis);
 DECLHIDDEN(PVBOXNETADP) vboxNetAdpFindByName(const char *pszName);
 DECLHIDDEN(void) vboxNetAdpComposeMACAddress(PVBOXNETADP pThis, PRTMAC pMac);
+
+# if defined(RT_OS_LINUX)
+#  if RTLNX_VER_MIN(7,2,0)
+#   define vboxNetAdpStrncpy strscpy
+#  else  /* 7.2.0 */
+#   define vboxNetAdpStrncpy strncpy
+#  endif /* < 7.2.0 */
+# else /* !RT_OS_LINUX */
+#  define vboxNetAdpStrncpy strncpy
+# endif
 
 
 /**
