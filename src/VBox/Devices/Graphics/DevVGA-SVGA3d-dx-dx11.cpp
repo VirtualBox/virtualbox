@@ -3241,9 +3241,14 @@ static int vmsvga3dBackSurfaceCreateResource(PVGASTATECC pThisCC, PVMSVGA3DSURFA
          * On NVidia the host driver does not allow initial data for large textures with D3D11_BIND_DECODER flag.
          */
         D3D11_SUBRESOURCE_DATA *paInitialData = NULL;
+        /* Depth/stencil resources are initialized by subsequent rendering commands
+         * such as clears.  Do not upload the optional host-side backing buffer here:
+         * it may be stale after hardware realization and DXMT's Metal path validates
+         * the source bytes during texture creation.
+         */
         if (   pSurface->paMipmapLevels[0].pSurfaceData
             && pSurface->surfaceDesc.multisampleCount <= 1
-            && (BindFlags & D3D11_BIND_DECODER) == 0
+            && (BindFlags & (D3D11_BIND_DECODER | D3D11_BIND_DEPTH_STENCIL)) == 0
            )
         {
             /* Can happen for a non GBO surface or if GBO texture was updated prior to creation of the hardware resource. */
