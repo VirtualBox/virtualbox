@@ -77,6 +77,10 @@ bool UIMachineViewFullscreen::eventFilter(QObject *pWatched, QEvent *pEvent)
 
                 /* Recalculate maximum guest size: */
                 setMaximumGuestSize();
+#ifdef VBOX_WS_MAC
+                if (m_fGuestAutoresizeEnabled && uimachine()->isGuestSupportsGraphics())
+                    sltPerformGuestResize(pResizeEvent->size());
+#endif
 
                 break;
             }
