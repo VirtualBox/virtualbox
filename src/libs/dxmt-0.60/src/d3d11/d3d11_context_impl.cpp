@@ -573,7 +573,7 @@ struct DXMT_DRAW_INDEXED_ARGUMENTS {
   uint32_t IndexCount;
   uint32_t InstanceCount;
   uint32_t StartIndex;
-  uint32_t BaseVertex;
+  int32_t BaseVertex;
   uint32_t StartInstance;
 };
 
