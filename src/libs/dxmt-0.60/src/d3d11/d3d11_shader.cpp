@@ -11,7 +11,7 @@ public:
   GeneralShaderCompileTask(MTLD3D11Device *pDevice, ManagedShader shader,
                            Proc &&proc)
       : CompiledShader(), proc(std::forward<Proc>(proc)), device_(pDevice),
-        shader_(shader) {}
+        shader_(shader), ready_(false) {}
 
   ~GeneralShaderCompileTask() {}
 

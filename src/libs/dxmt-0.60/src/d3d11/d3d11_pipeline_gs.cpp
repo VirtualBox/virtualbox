@@ -15,7 +15,7 @@ public:
       : ComObject<IMTLCompiledGeometryPipeline>(),
         num_rtvs(pDesc->NumColorAttachments),
         depth_stencil_format(pDesc->DepthStencilFormat), device_(pDevice),
-        pBlendState(pDesc->BlendState),
+        ready_(false), pBlendState(pDesc->BlendState),
         RasterizationEnabled(pDesc->RasterizationEnabled),
         SampleCount(pDesc->SampleCount) {
     uint32_t unorm_output_reg_mask = 0;
