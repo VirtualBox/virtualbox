@@ -3209,6 +3209,14 @@ class EnvFileWriter(EnvMgrWriter):
         super().__init__(asFilename, enmBuildTarget, oEnvMgr, cchKeyAlign);
         self.sKeyword = 'set' if enmBuildTarget == BuildTarget.WINDOWS else 'export';
 
+    def formatValue(self, sVal):
+        """
+        Formats an environment variable value for the target shell.
+        """
+        if self.enmBuildTarget == BuildTarget.WINDOWS:
+            return sVal;
+        return shlex.quote(str(sVal));
+
     def write(self, sKey, oVal = None):
         """
         Writes an environment variable appropriate for the platform.
@@ -3220,12 +3228,12 @@ class EnvFileWriter(EnvMgrWriter):
                 sValStr = ' '.join(map(str, oVal));
             else:
                 sValStr = str(oVal);
-            super().write_raw(f"{self.sKeyword} {sKey}={sValStr}");
+            super().write_raw(f"{self.sKeyword} {sKey}={self.formatValue(sValStr)}");
             return;
 
         if  sKey in self.oEnvMgr.env \
         and sKey is not None:
-            super().write_raw(f"{self.sKeyword} {sKey}={oVal if oVal else self.oEnvMgr[sKey]}");
+            super().write_raw(f"{self.sKeyword} {sKey}={self.formatValue(oVal if oVal else self.oEnvMgr[sKey])}");
 
     def write_all(self, asPrefixInclude = None, asPrefixExclude = None):
         """
