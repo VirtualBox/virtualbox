@@ -7,6 +7,7 @@
 #include "d3d12tokenizedprogramformat.hpp"
 #include <cassert>
 #include <cstring>
+#include <cstdlib>
 #include "minwindef.h"
 
 typedef UINT CShaderToken;
