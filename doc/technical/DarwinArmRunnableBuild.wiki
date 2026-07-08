@@ -39,6 +39,7 @@ build selected host-side targets by making those paths explicit.
 {{{
 SDK="$(xcrun --sdk macosx --show-sdk-path)"
 XCBIN="$(dirname "$(xcrun --find clang)")"
+QTBIN=/opt/homebrew/share/qt/libexec
 
 KMK_DARWIN_ARM_LOCAL="
 PATH_SDK_MACOSX110=$SDK
@@ -46,8 +47,14 @@ PATH_SDK_MACOSX145=$SDK
 PATH_TOOL_VBoxXClangMacho=$XCBIN
 TOOL_VBoxXClangMacho_AR=$XCBIN/ar
 TOOL_VBoxXClangMacho_STRIP=$XCBIN/strip
+PATH_TOOL_QT6_BIN=$QTBIN
 "
 }}}
+
+Some Homebrew Qt installations expose `moc`, `rcc` and `uic` through
+`/opt/homebrew/share/qt/libexec` rather than `/opt/homebrew/bin`.  If `kmk`
+fails while generating Qt resources with `/opt/homebrew/bin/rcc: Command not
+found`, keep `PATH_TOOL_QT6_BIN` pointed at the libexec directory above.
 
 == Build a target ==
 
