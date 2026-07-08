@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c 114222 2026-05-29 20:59:06Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPDrv-linux.c 114653 2026-07-08 10:33:06Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -1716,8 +1716,25 @@ void VBOXCALL   supdrvOSLdrReleaseWrapperModule(PSUPDRVDEVEXT pDevExt, PSUPDRVLD
 int VBOXCALL    supdrvOSMsrProberRead(uint32_t uMsr, RTCPUID idCpu, uint64_t *puValue)
 {
 # ifdef SUPDRV_LINUX_HAS_SAFE_MSR_API
-    uint32_t u32Low, u32High;
     int rc;
+#  if RTLNX_VER_MIN(7,2,0)
+    u64 val;
+
+    IPRT_LINUX_SAVE_EFL_AC();
+    if (idCpu == NIL_RTCPUID)
+        rc = rdmsrq_safe(uMsr, &val);
+    else if (RTMpIsCpuOnline(idCpu))
+        rc = rdmsrq_safe_on_cpu(idCpu, uMsr, &val);
+    else
+        return VERR_CPU_OFFLINE;
+    IPRT_LINUX_RESTORE_EFL_AC();
+    if (rc == 0)
+    {
+        *puValue = val;
+        return VINF_SUCCESS;
+    }
+#  else
+    uint32_t u32Low, u32High;
 
     IPRT_LINUX_SAVE_EFL_AC();
     if (idCpu == NIL_RTCPUID)
@@ -1732,6 +1749,7 @@ int VBOXCALL    supdrvOSMsrProberRead(uint32_t uMsr, RTCPUID idCpu, uint64_t *pu
         *puValue = RT_MAKE_U64(u32Low, u32High);
         return VINF_SUCCESS;
     }
+#  endif /* < 7.2.0 */
     return VERR_ACCESS_DENIED;
 # else
     return VERR_NOT_SUPPORTED;
@@ -1745,10 +1763,17 @@ int VBOXCALL    supdrvOSMsrProberWrite(uint32_t uMsr, RTCPUID idCpu, uint64_t uV
     int rc;
 
     IPRT_LINUX_SAVE_EFL_AC();
+#  if RTLNX_VER_MIN(7,2,0)
+    if (idCpu == NIL_RTCPUID)
+        rc = wrmsrq_safe(uMsr, uValue);
+    else if (RTMpIsCpuOnline(idCpu))
+        rc = wrmsrq_safe_on_cpu(idCpu, uMsr, uValue);
+#  else
     if (idCpu == NIL_RTCPUID)
         rc = wrmsr_safe(uMsr, RT_LODWORD(uValue), RT_HIDWORD(uValue));
     else if (RTMpIsCpuOnline(idCpu))
         rc = wrmsr_safe_on_cpu(idCpu, uMsr, RT_LODWORD(uValue), RT_HIDWORD(uValue));
+#  endif /* < 7.2.0 */
     else
         return VERR_CPU_OFFLINE;
     IPRT_LINUX_RESTORE_EFL_AC();
