@@ -1,4 +1,4 @@
-/* $Id: fileio-r0drv-linux.c 113561 2026-03-25 01:28:09Z knut.osmundsen@oracle.com $ */
+/* $Id: fileio-r0drv-linux.c 114656 2026-07-08 10:35:40Z vadim.galitsyn@oracle.com $ */
 /** @file
  * IPRT - File I/O, R0 Driver, Linux.
  */
@@ -156,7 +156,7 @@ RTDECL(int) RTFileOpen(PRTFILE phFile, const char *pszFilename, uint64_t fOpen)
          */
 # if RTLNX_VER_MIN(6,10,0)
         struct file *pFile = kernel_file_open(&Path, fOpenMode, current_cred());
-# elif RTLNX_VER_MIN(6,5,0)
+# elif RTLNX_VER_MIN(6,5,0) || RTLNX_RHEL_RANGE(9,9, 9,99)
         struct file *pFile = kernel_file_open(&Path, fOpenMode, d_inode(Path.dentry), current_cred());
 # elif RTLNX_VER_MIN(4,19,0)
         struct file *pFile = open_with_fake_path(&Path, fOpenMode, d_inode(Path.dentry), current_cred());
