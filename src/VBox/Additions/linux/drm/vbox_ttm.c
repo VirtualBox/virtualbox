@@ -1,4 +1,4 @@
-/* $Id: vbox_ttm.c 114659 2026-07-08 10:38:01Z vadim.galitsyn@oracle.com $ */
+/* $Id: vbox_ttm.c 114664 2026-07-08 14:13:22Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VirtualBox Additions Linux kernel video driver
  */
@@ -454,7 +454,7 @@ int vbox_mm_init(struct vbox_private *vbox)
 #elif RTLNX_VER_MAX(5,2,0) && !RTLNX_RHEL_MAJ_PREREQ(8,2)
 				 DRM_FILE_PAGE_OFFSET,
 #endif
-#if RTLNX_VER_RANGE(5,11,0, 6,19,0) && !RTLNX_RHEL_RANGE(8,5, 9,99)
+#if (RTLNX_VER_RANGE(5,11,0, 6,19,0) && !RTLNX_RHEL_RANGE(9,9, 9,99)) || RTLNX_RHEL_RANGE(8,5, 8,99) || RTLNX_RHEL_RANGE(9,8, 9,9)
 				 false,
 #endif
 #if RTLNX_VER_MIN(6,19,0) || RTLNX_RHEL_RANGE(9,9, 9,99)
