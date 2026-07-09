@@ -215,7 +215,7 @@ always obvious:
    and regain control by setting up the CMOS shutdown status byte
 
 
- 
+
  Notes on BIOS implementation
  ----------------------------
 
@@ -269,6 +269,6 @@ data defined in C is not included, neither are assembly modules.
  -3 -zu -s -oas -ecc     5C1E
  -0 -zu -s -oas          578A
  -3 -zu -s -oas          5452
- 
+
  Both generating 386 code and using register-based calling convention for
 internal functions brings significant size savings (15% when combined).
