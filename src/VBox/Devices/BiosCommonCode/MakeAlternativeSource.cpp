@@ -1,4 +1,4 @@
-/* $Id: MakeAlternativeSource.cpp 114591 2026-07-01 18:58:14Z knut.osmundsen@oracle.com $ */
+/* $Id: MakeAlternativeSource.cpp 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $ */
 /** @file
  * MakeAlternative - Generate an Alternative BIOS Source that requires less tools.
  */
@@ -208,7 +208,7 @@ static bool disError(const char *pszFormat, ...)
 static bool disFileHeader(void)
 {
     bool fRc;
-    fRc = outputPrintf("; $Id: MakeAlternativeSource.cpp 114591 2026-07-01 18:58:14Z knut.osmundsen@oracle.com $ \n"
+    fRc = outputPrintf("; $Id: MakeAlternativeSource.cpp 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $\n"
                        ";; @file\n"
                        "; Auto Generated source file. Do not edit.\n"
                        ";\n"
@@ -280,7 +280,7 @@ static bool disFileHeader(void)
                 if (strstr(psz, "LGPL"))
                     fNeedLgplDisclaimer = true;
 
-                fRc = outputPrintf(";  %s\n", psz) && fRc;
+                fRc = outputPrintf(*psz ? ";  %s\n": ";\n", psz) && fRc;
             }
 
             RTStrmClose(hStrm);
@@ -949,6 +949,9 @@ static size_t disHandleYasmNasmDifferences(PDISSTATE pDis, uint32_t uFlatAddr, u
              && pb[1] == 0x66
              && pb[2] == 0x6d)
         fDifferent = true; /* rep insd      - prefix switched. */
+    else if (   pb[0] == 0x67
+             && pb[1] == 0x66)
+        fDifferent = true; /* 0x67 0x66     - prefix switched. */
     else if (   pb[0] == 0xc6
              && pb[1] == 0xc5
              && pb[2] == 0xba)
@@ -2167,7 +2170,7 @@ int main(int argc, char **argv)
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                char szRev[] = "$Revision: 114591 $";
+                char szRev[] = "$Revision: 114668 $";
                 char *psz = szRev;
                 while (*psz && !RT_C_IS_DIGIT(*psz))
                     psz++;

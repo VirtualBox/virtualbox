@@ -1,4 +1,4 @@
-/* $Id: DisasmFormatYasm.cpp 112478 2026-01-13 13:01:52Z knut.osmundsen@oracle.com $ */
+/* $Id: DisasmFormatYasm.cpp 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Disassembler - Yasm(/Nasm) Style Formatter.
  */
@@ -701,6 +701,7 @@ DISDECL(size_t) DISFormatYasmEx(PCDISSTATE pDis, char *pszBuf, size_t cchBuf, ui
 #define PUT_FAR() \
             do { \
                 if (    OP_PARM_VSUBTYPE(pParam->x86.fParam) == OP_PARM_p \
+                    &&  (pParam->fUse & (DISUSE_IMMEDIATE_ADDR_16_16 | DISUSE_IMMEDIATE_ADDR_16_32)) == 0 \
                     &&  pOp->uOpcode != OP_LDS /* table bugs? */ \
                     &&  pOp->uOpcode != OP_LES \
                     &&  pOp->uOpcode != OP_LFS \

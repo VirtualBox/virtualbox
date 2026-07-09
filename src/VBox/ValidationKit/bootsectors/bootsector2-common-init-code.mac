@@ -1,4 +1,4 @@
-; $Id: bootsector2-common-init-code.mac 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
+; $Id: bootsector2-common-init-code.mac 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;; @file
 ; Common bootsector code init.
 ;
@@ -815,7 +815,7 @@ bs2DummyIdt32bit:
         dw 0, 0, 0, 0
         dw 0, 0, 0, 0
         dw 0, 0, 0, 0
-bs2DummyIdt32bitEnd
+bs2DummyIdt32bitEnd:
  %endif
 %endif
 
@@ -1053,7 +1053,7 @@ BEGINPROC Bs2EnterMode_rm_pe16
         or      eax, X86_CR0_PE
         and     eax, 0ffffffffh - X86_CR0_PG
         mov     cr0, eax
-        jmp far BS2_SEL_CS16:bs2ProtModeCode16Start_p16
+        jmp     BS2_SEL_CS16:bs2ProtModeCode16Start_p16
 ENDPROC   Bs2EnterMode_rm_pe16
 %endif ; BS2_INC_PE16
 
@@ -1094,7 +1094,7 @@ BEGINPROC Bs2EnterMode_rm_pe32
         or      eax, X86_CR0_PE
         and     eax, 0ffffffffh - X86_CR0_PG
         mov     cr0, eax
-        jmp far BS2_SEL_CS32:bs2ProtModeCode32Start_p32
+        jmp     BS2_SEL_CS32:bs2ProtModeCode32Start_p32
 ENDPROC   Bs2EnterMode_rm_pe32
 %endif ; BS2_INC_PE32
 
@@ -1147,7 +1147,7 @@ BEGINPROC Bs2EnterMode_rm_pp16
         mov     eax, cr0
         or      eax, X86_CR0_PE | X86_CR0_PG | X86_CR0_WP
         mov     cr0, eax
-        jmp far BS2_SEL_CS16:bs2ProtModeCode16Start_p16
+        jmp     BS2_SEL_CS16:bs2ProtModeCode16Start_p16
 ENDPROC   Bs2EnterMode_rm_pp16
 %endif ; BS2_INC_PP16
 
@@ -1198,7 +1198,7 @@ BEGINPROC Bs2EnterMode_rm_pp32
         mov     eax, cr0
         or      eax, X86_CR0_PE | X86_CR0_PG | X86_CR0_WP
         mov     cr0, eax
-        jmp far BS2_SEL_CS32:bs2ProtModeCode32Start_p32
+        jmp     BS2_SEL_CS32:bs2ProtModeCode32Start_p32
 ENDPROC   Bs2EnterMode_rm_pp32
 %endif ; BS2_INC_PP16
 
@@ -1250,7 +1250,7 @@ BEGINPROC Bs2EnterMode_rm_pae16
         mov     eax, cr0
         or      eax, X86_CR0_PE | X86_CR0_PG | X86_CR0_WP
         mov     cr0, eax
-        jmp far BS2_SEL_CS16:bs2ProtModeCode16Start_p16
+        jmp     BS2_SEL_CS16:bs2ProtModeCode16Start_p16
 ENDPROC   Bs2EnterMode_rm_pae16
 %endif ; BS2_INC_PAE16
 
@@ -1300,7 +1300,7 @@ BEGINPROC Bs2EnterMode_rm_pae32
         mov     eax, cr0
         or      eax, X86_CR0_PE | X86_CR0_PG | X86_CR0_WP
         mov     cr0, eax
-        jmp far BS2_SEL_CS32:bs2ProtModeCode32Start_p32
+        jmp     BS2_SEL_CS32:bs2ProtModeCode32Start_p32
 ENDPROC   Bs2EnterMode_rm_pae32
 %endif ; BS2_INC_PAE32
 
@@ -1414,7 +1414,7 @@ BEGINPROC Bs2EnterMode_rm_lm64
         mov     eax, cr0
         or      eax, X86_CR0_PE | X86_CR0_PG | X86_CR0_WP
         mov     cr0, eax
-        jmp far BS2_SEL_CS64:.code64_start
+        jmp     BS2_SEL_CS64:.code64_start
 
 BITS 64
 .code64_start:
@@ -1731,14 +1731,14 @@ BEGINPROC bs2ExitMode_p16
         ; Make sure we've got the right SS and CS values (paranoia).
         mov     ax, BS2_SEL_SS16
         mov     ss, ax
-        jmp far BS2_SEL_CS16:.code16_start
+        jmp     BS2_SEL_CS16:.code16_start
 
 .code16_start:
         ; Turn off paging and protected mode.
         mov     eax, cr0
         and     eax, 0ffffffffh - X86_CR0_PE - X86_CR0_PG
         mov     cr0, eax
-        jmp far 0000:.real_mode_start
+        jmp     0000:.real_mode_start
 
 .real_mode_start:
         ; Load the correct real mode segment registers.
@@ -1869,7 +1869,7 @@ BEGINPROC Bs2Thunk_p32_p16
         pushf
         cli
         mov     ax, BS2_SEL_SS16
-        jmp far BS2_SEL_CS16:.code16_start
+        jmp     BS2_SEL_CS16:.code16_start
 BITS 16
 .code16_start:
         mov     ss, ax
@@ -1909,7 +1909,7 @@ BEGINPROC Bs2Thunk_p16_p32
         push    eax
         pushfd
         cli
-        jmp far BS2_SEL_CS32:.code32_start
+        jmp     BS2_SEL_CS32:.code32_start
 BITS 32
 .code32_start:
         mov     eax, BS2_SEL_SS32
@@ -1995,7 +1995,7 @@ BEGINPROC Bs2Thunk_lm16_lm64
         pushfd
         cli
         mov     eax, BS2_SEL_SS64
-        jmp far BS2_SEL_CS64:.code64_start
+        jmp     BS2_SEL_CS64:.code64_start
 BITS 64
 .code64_start:
         mov     ss, ax
@@ -2080,7 +2080,7 @@ BEGINPROC Bs2Thunk_lm32_lm64
         pushfd
         cli
         mov     eax, BS2_SEL_SS64
-        jmp far BS2_SEL_CS64:.code64_start
+        jmp     BS2_SEL_CS64:.code64_start
 BITS 64
 .code64_start:
         mov     ss, ax

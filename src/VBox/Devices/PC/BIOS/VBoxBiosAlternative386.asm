@@ -1,4 +1,4 @@
-; $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $ 
+; $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;; @file
 ; Auto Generated source file. Do not edit.
 ;
@@ -6,1319 +6,1319 @@
 ;
 ; Source file: post.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  BIOS POST routines. Used only during initialization.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2004-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 ;
 ; Source file: bios.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: print.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: ata.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ATA disk support.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: floppy.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: floppyt.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  Floppy drive tables.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2011-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 ;
 ; Source file: eltorito.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: boot.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: keyboard.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: disk.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: serial.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: system.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: invop.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  Real mode invalid opcode handler.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2013-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 ;
 ; Source file: timepci.c
 ;
-;  
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: ps2mouse.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: parallel.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  PC BIOS - ???
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: logo.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  Stuff for drawing the BIOS logo.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2004-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 ;
 ; Source file: apm.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  APM BIOS support. Implements APM version 1.2.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2004-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 ;
 ; Source file: __U4M.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  Compiler support routines.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2012-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
-;  
+;
 
 ;
 ; Source file: __U4D.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  Compiler support routines.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2012-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
-;  
+;
 
 ;
 ; Source file: __U8RS.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  Compiler support routines.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2012-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
-;  
+;
 
 ;
 ; Source file: __U8LS.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  Compiler support routines.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2012-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
-;  
+;
 
 ;
 ; Source file: fmemset.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  Compiler support routines.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2012-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
-;  
+;
 
 ;
 ; Source file: fmemcpy.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  Compiler support routines.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2012-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
-;  
+;
 
 ;
 ; Source file: orgs.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  ???
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
-;  
+;
 ;  This code is based on:
-;  
+;
 ;   ROM BIOS for use with Bochs/Plex86/QEMU emulation environment
-;  
+;
 ;   Copyright (C) 2002  MandrakeSoft S.A.
-;  
+;
 ;     MandrakeSoft S.A.
 ;     43, rue d'Aboukir
 ;     75002 Paris - France
 ;     http://www.linux-mandrake.com/
 ;     http://www.mandrakesoft.com/
-;  
+;
 ;   This library is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU Lesser General Public
 ;   License as published by the Free Software Foundation; either
 ;   version 2 of the License, or (at your option) any later version.
-;  
+;
 ;   This library is distributed in the hope that it will be useful,
 ;   but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;   Lesser General Public License for more details.
-;  
+;
 ;   You should have received a copy of the GNU Lesser General Public
 ;   License along with this library; if not, write to the Free Software
 ;   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-;  
+;
 
 ;
 ; Source file: pcibios.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  PCI BIOS support.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2004-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 ;
 ; Source file: pciutil.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  Utility routines for calling the PCI BIOS.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2011-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 ;
 ; Source file: ahci.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  AHCI host adapter driver to boot from SATA disks.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2011-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 ;
 ; Source file: scsi.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  SCSI host adapter driver to boot from SCSI disks
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2004-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 ;
 ; Source file: buslogic.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  BusLogic SCSI host adapter driver to boot from disks.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2021-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 ;
 ; Source file: lsilogic.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  LsiLogic SCSI host adapter driver to boot from disks.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2021-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 ;
 ; Source file: virtio.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  VirtIO-SCSI host adapter driver to boot from disks.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2019-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 ;
 ; Source file: vds.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  Utility routines for calling the Virtual DMA Services.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2011-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 ;
@@ -1326,85 +1326,85 @@
 ;
 ;  $Id:
 ;  Protected-mode APM implementation.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
-;  
+;
 
 ;
 ; Source file: pcibio32.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  BIOS32 service directory and 32-bit PCI BIOS entry point
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2006-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 ;  --------------------------------------------------------------------
 
 ;
 ; Source file: pci32.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114552 2026-06-26 12:07:18Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;  32-bit PCI BIOS wrapper.
-;  
-;  
-;  
+;
+;
+;
 ;  Copyright (C) 2004-2025 Oracle and/or its affiliates.
-;  
+;
 ;  This file is part of VirtualBox base platform packages, as
 ;  available from https://www.virtualbox.org.
-;  
+;
 ;  This program is free software; you can redistribute it and/or
 ;  modify it under the terms of the GNU General Public License
 ;  as published by the Free Software Foundation, in version 3 of the
 ;  License.
-;  
+;
 ;  This program is distributed in the hope that it will be useful, but
 ;  WITHOUT ANY WARRANTY; without even the implied warranty of
 ;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;  General Public License for more details.
-;  
+;
 ;  You should have received a copy of the GNU General Public License
 ;  along with this program; if not, see <https://www.gnu.org/licenses>.
-;  
+;
 ;  SPDX-License-Identifier: GPL-3.0-only
 
 
@@ -1565,7 +1565,7 @@ section CONST progbits vstart=0xf0 align=1 ; size=0xcdc class=DATA group=DGROUP
 section CONST2 progbits vstart=0xdcc align=1 ; size=0x40e class=DATA group=DGROUP
   ; disGetNextSymbol 0xf0dcc LB 0x40e -> off=0x0 cb=0000000000000012 uValue=00000000000f0dcc 'bios_cvs_version_string'
 bios_cvs_version_string:                     ; 0xf0dcc LB 0x12
-    db  'VirtualBox 7.2.12', 000h
+    db  'VirtualBox 7.2.13', 000h
   ; disGetNextSymbol 0xf0dde LB 0x3fc -> off=0x0 cb=0000000000000008 uValue=00000000000f0dde '_bios_prefix_string'
 _bios_prefix_string:                         ; 0xf0dde LB 0x8
     db  'BIOS: ', 000h, 000h
@@ -1800,7 +1800,8 @@ apic_setup:                                  ; 0xf16a6 LB 0xc4
     db  08bh, 0cah
     ; mov cx, dx                                ; 8b ca                     ; 0xf1731
     shr edx, 010h                             ; 66 c1 ea 10                 ; 0xf1733
-    xchg dx, cx                               ; 87 ca                       ; 0xf1737
+    db  087h, 0cah
+    ; xchg dx, cx                               ; 87 ca                     ; 0xf1737
     mov word [bp-006h], si                    ; 89 76 fa                    ; 0xf1739 post.c:212
     not word [bp-006h]                        ; f7 56 fa                    ; 0xf173c
     and dx, word [bp-006h]                    ; 23 56 fa                    ; 0xf173f
@@ -1810,7 +1811,8 @@ apic_setup:                                  ; 0xf16a6 LB 0xc4
     sal eax, 010h                             ; 66 c1 e0 10                 ; 0xf1749
     db  08bh, 0c3h
     ; mov ax, bx                                ; 8b c3                     ; 0xf174d
-    xchg dx, cx                               ; 87 ca                       ; 0xf174f
+    db  087h, 0cah
+    ; xchg dx, cx                               ; 87 ca                     ; 0xf174f
     sal edx, 010h                             ; 66 c1 e2 10                 ; 0xf1751
     db  08bh, 0d1h
     ; mov dx, cx                                ; 8b d1                     ; 0xf1755
@@ -6227,13 +6229,16 @@ cdrom_read:                                  ; 0xf4065 LB 0x7f
     mov bx, strict word 0005eh                ; bb 5e 00                    ; 0xf4080 eltorito.c:310
     mov word [bp-010h], strict word 00028h    ; c7 46 f0 28 00              ; 0xf4083 eltorito.c:312
     mov dx, si                                ; 89 f2                       ; 0xf4088 eltorito.c:313
-    xchg ah, al                               ; 86 c4                       ; 0xf408a
-    xchg dh, dl                               ; 86 d6                       ; 0xf408c
+    db  086h, 0c4h
+    ; xchg ah, al                               ; 86 c4                     ; 0xf408a
+    db  086h, 0d6h
+    ; xchg dh, dl                               ; 86 d6                     ; 0xf408c
     xchg dx, ax                               ; 92                          ; 0xf408e
     mov word [bp-00eh], ax                    ; 89 46 f2                    ; 0xf408f
     mov word [bp-00ch], dx                    ; 89 56 f4                    ; 0xf4092
     mov ax, cx                                ; 89 c8                       ; 0xf4095 eltorito.c:314
-    xchg ah, al                               ; 86 c4                       ; 0xf4097
+    db  086h, 0c4h
+    ; xchg ah, al                               ; 86 c4                     ; 0xf4097
     mov word [bp-009h], ax                    ; 89 46 f7                    ; 0xf4099
     mov word [es:bx+00eh], cx                 ; 26 89 4f 0e                 ; 0xf409c eltorito.c:316
     mov word [es:bx+010h], 00800h             ; 26 c7 47 10 00 08           ; 0xf40a0 eltorito.c:317
@@ -8280,7 +8285,7 @@ int09_function:                              ; 0xf534b LB 0x407
     mov cx, 01234h                            ; b9 34 12                    ; 0xf55a2
     mov es, ax                                ; 8e c0                       ; 0xf55a5 keyboard.c:63
     mov word [es:si], cx                      ; 26 89 0c                    ; 0xf55a7
-    jmp far 0f000h:0e05bh                     ; ea 5b e0 00 f0              ; 0xf55aa keyboard.c:580
+    jmp 0f000h:0e05bh                         ; ea 5b e0 00 f0              ; 0xf55aa keyboard.c:580
     test dl, 008h                             ; f6 c2 08                    ; 0xf55af keyboard.c:586
     je short 055c5h                           ; 74 11                       ; 0xf55b2
     and dl, 0f7h                              ; 80 e2 f7                    ; 0xf55b4 keyboard.c:588
@@ -11696,7 +11701,8 @@ _wait_:                                      ; 0xf78e0 LB 0xb8
     db  033h, 0c0h
     ; xor ax, ax                                ; 33 c0                     ; 0xf7959 logo.c:216
     int 016h                                  ; cd 16                       ; 0xf795b
-    xchg ah, al                               ; 86 c4                       ; 0xf795d
+    db  086h, 0c4h
+    ; xchg ah, al                               ; 86 c4                     ; 0xf795d
     mov bl, al                                ; 88 c3                       ; 0xf795f
     mov byte [bp-00ch], al                    ; 88 46 f4                    ; 0xf7961
     movzx ax, bl                              ; 0f b6 c3                    ; 0xf7964 logo.c:217
@@ -12411,9 +12417,11 @@ _fmemset_:                                   ; 0xf7fb0 LB 0x10
     mov es, dx                                ; 8e c2                       ; 0xf7fb1 fmemset.asm:54
     db  08bh, 0f8h
     ; mov di, ax                                ; 8b f8                     ; 0xf7fb3 fmemset.asm:55
-    xchg al, bl                               ; 86 d8                       ; 0xf7fb5 fmemset.asm:56
+    db  086h, 0d8h
+    ; xchg al, bl                               ; 86 d8                     ; 0xf7fb5 fmemset.asm:56
     rep stosb                                 ; f3 aa                       ; 0xf7fb7 fmemset.asm:57
-    xchg al, bl                               ; 86 d8                       ; 0xf7fb9 fmemset.asm:58
+    db  086h, 0d8h
+    ; xchg al, bl                               ; 86 d8                     ; 0xf7fb9 fmemset.asm:58
     pop di                                    ; 5f                          ; 0xf7fbb fmemset.asm:60
     retn                                      ; c3                          ; 0xf7fbc fmemset.asm:61
     times 0x3 db 0
@@ -14642,12 +14650,17 @@ scsi_read_sectors:                           ; 0xf94da LB 0x114
     mov bx, word [es:si+004h]                 ; 26 8b 5c 04                 ; 0xf9525
     mov cx, word [es:si+002h]                 ; 26 8b 4c 02                 ; 0xf9529
     mov dx, word [es:si]                      ; 26 8b 14                    ; 0xf952d
-    xchg ah, al                               ; 86 c4                       ; 0xf9530
-    xchg bh, bl                               ; 86 df                       ; 0xf9532
-    xchg ch, cl                               ; 86 cd                       ; 0xf9534
-    xchg dh, dl                               ; 86 d6                       ; 0xf9536
+    db  086h, 0c4h
+    ; xchg ah, al                               ; 86 c4                     ; 0xf9530
+    db  086h, 0dfh
+    ; xchg bh, bl                               ; 86 df                     ; 0xf9532
+    db  086h, 0cdh
+    ; xchg ch, cl                               ; 86 cd                     ; 0xf9534
+    db  086h, 0d6h
+    ; xchg dh, dl                               ; 86 d6                     ; 0xf9536
     xchg dx, ax                               ; 92                          ; 0xf9538
-    xchg bx, cx                               ; 87 cb                       ; 0xf9539
+    db  087h, 0cbh
+    ; xchg bx, cx                               ; 87 cb                     ; 0xf9539
     mov word [bp-018h], ax                    ; 89 46 e8                    ; 0xf953b
     mov word [bp-01ah], bx                    ; 89 5e e6                    ; 0xf953e
     mov word [bp-01ch], cx                    ; 89 4e e4                    ; 0xf9541
@@ -14655,8 +14668,10 @@ scsi_read_sectors:                           ; 0xf94da LB 0x114
     mov byte [bp-012h], 000h                  ; c6 46 ee 00                 ; 0xf9547 scsi.c:134
     mov ax, word [bp-00ah]                    ; 8b 46 f6                    ; 0xf954b scsi.c:135
     xor dx, dx                                ; 31 d2                       ; 0xf954e
-    xchg ah, al                               ; 86 c4                       ; 0xf9550
-    xchg dh, dl                               ; 86 d6                       ; 0xf9552
+    db  086h, 0c4h
+    ; xchg ah, al                               ; 86 c4                     ; 0xf9550
+    db  086h, 0d6h
+    ; xchg dh, dl                               ; 86 d6                     ; 0xf9552
     xchg dx, ax                               ; 92                          ; 0xf9554
     mov word [bp-016h], ax                    ; 89 46 ea                    ; 0xf9555
     mov word [bp-014h], dx                    ; 89 56 ec                    ; 0xf9558
@@ -14743,12 +14758,17 @@ scsi_write_sectors:                          ; 0xf95ee LB 0x114
     mov bx, word [es:si+004h]                 ; 26 8b 5c 04                 ; 0xf9639
     mov cx, word [es:si+002h]                 ; 26 8b 4c 02                 ; 0xf963d
     mov dx, word [es:si]                      ; 26 8b 14                    ; 0xf9641
-    xchg ah, al                               ; 86 c4                       ; 0xf9644
-    xchg bh, bl                               ; 86 df                       ; 0xf9646
-    xchg ch, cl                               ; 86 cd                       ; 0xf9648
-    xchg dh, dl                               ; 86 d6                       ; 0xf964a
+    db  086h, 0c4h
+    ; xchg ah, al                               ; 86 c4                     ; 0xf9644
+    db  086h, 0dfh
+    ; xchg bh, bl                               ; 86 df                     ; 0xf9646
+    db  086h, 0cdh
+    ; xchg ch, cl                               ; 86 cd                     ; 0xf9648
+    db  086h, 0d6h
+    ; xchg dh, dl                               ; 86 d6                     ; 0xf964a
     xchg dx, ax                               ; 92                          ; 0xf964c
-    xchg bx, cx                               ; 87 cb                       ; 0xf964d
+    db  087h, 0cbh
+    ; xchg bx, cx                               ; 87 cb                     ; 0xf964d
     mov word [bp-018h], ax                    ; 89 46 e8                    ; 0xf964f
     mov word [bp-01ah], bx                    ; 89 5e e6                    ; 0xf9652
     mov word [bp-01ch], cx                    ; 89 4e e4                    ; 0xf9655
@@ -14756,8 +14776,10 @@ scsi_write_sectors:                          ; 0xf95ee LB 0x114
     mov byte [bp-012h], 000h                  ; c6 46 ee 00                 ; 0xf965b scsi.c:188
     mov ax, word [bp-00ah]                    ; 8b 46 f6                    ; 0xf965f scsi.c:189
     xor dx, dx                                ; 31 d2                       ; 0xf9662
-    xchg ah, al                               ; 86 c4                       ; 0xf9664
-    xchg dh, dl                               ; 86 d6                       ; 0xf9666
+    db  086h, 0c4h
+    ; xchg ah, al                               ; 86 c4                     ; 0xf9664
+    db  086h, 0d6h
+    ; xchg dh, dl                               ; 86 d6                     ; 0xf9666
     xchg dx, ax                               ; 92                          ; 0xf9668
     mov word [bp-016h], ax                    ; 89 46 ea                    ; 0xf9669
     mov word [bp-014h], dx                    ; 89 56 ec                    ; 0xf966c
@@ -14970,12 +14992,17 @@ scsi_enumerate_attached_devices:             ; 0xf9816 LB 0x48a
     mov bx, word [bp-00240h]                  ; 8b 9e c0 fd                 ; 0xf98b5
     mov cx, word [bp-00242h]                  ; 8b 8e be fd                 ; 0xf98b9
     mov dx, word [bp-00244h]                  ; 8b 96 bc fd                 ; 0xf98bd
-    xchg ah, al                               ; 86 c4                       ; 0xf98c1
-    xchg bh, bl                               ; 86 df                       ; 0xf98c3
-    xchg ch, cl                               ; 86 cd                       ; 0xf98c5
-    xchg dh, dl                               ; 86 d6                       ; 0xf98c7
+    db  086h, 0c4h
+    ; xchg ah, al                               ; 86 c4                     ; 0xf98c1
+    db  086h, 0dfh
+    ; xchg bh, bl                               ; 86 df                     ; 0xf98c3
+    db  086h, 0cdh
+    ; xchg ch, cl                               ; 86 cd                     ; 0xf98c5
+    db  086h, 0d6h
+    ; xchg dh, dl                               ; 86 d6                     ; 0xf98c7
     xchg dx, ax                               ; 92                          ; 0xf98c9
-    xchg bx, cx                               ; 87 cb                       ; 0xf98ca
+    db  087h, 0cbh
+    ; xchg bx, cx                               ; 87 cb                     ; 0xf98ca
     add dx, strict byte 00001h                ; 83 c2 01                    ; 0xf98cc
     mov word [bp-018h], dx                    ; 89 56 e8                    ; 0xf98cf
     adc cx, strict byte 00000h                ; 83 d1 00                    ; 0xf98d2
@@ -17969,7 +17996,8 @@ post:                                        ; 0xfe05b LB 0x6e
     mov AL, strict byte 00fh                  ; b0 0f                       ; 0xfe06a orgs.asm:313
     out strict byte 070h, AL                  ; e6 70                       ; 0xfe06c orgs.asm:314
     in AL, strict byte 071h                   ; e4 71                       ; 0xfe06e orgs.asm:315
-    xchg ah, al                               ; 86 c4                       ; 0xfe070 orgs.asm:318
+    db  086h, 0c4h
+    ; xchg ah, al                               ; 86 c4                     ; 0xfe070 orgs.asm:318
     in AL, strict byte 064h                   ; e4 64                       ; 0xfe072 orgs.asm:322
     test AL, strict byte 004h                 ; a8 04                       ; 0xfe074 orgs.asm:323
     je short 0e08bh                           ; 74 13                       ; 0xfe076 orgs.asm:324
@@ -18506,7 +18534,7 @@ pmode_enter:                                 ; 0xfe86b LB 0x1b
     mov eax, cr0                              ; 0f 20 c0                    ; 0xfe873 orgs.asm:44
     or AL, strict byte 001h                   ; 0c 01                       ; 0xfe876 orgs.asm:45
     mov cr0, eax                              ; 0f 22 c0                    ; 0xfe878 orgs.asm:46
-    jmp far 00020h:0e880h                     ; ea 80 e8 20 00              ; 0xfe87b
+    jmp 00020h:0e880h                         ; ea 80 e8 20 00              ; 0xfe87b
     mov ax, strict word 00018h                ; b8 18 00                    ; 0xfe880 orgs.asm:52
     mov ds, ax                                ; 8e d8                       ; 0xfe883 orgs.asm:53
     retn                                      ; c3                          ; 0xfe885 orgs.asm:54
@@ -18517,7 +18545,7 @@ pmode_exit:                                  ; 0xfe886 LB 0x13
     mov eax, cr0                              ; 0f 20 c0                    ; 0xfe88b orgs.asm:64
     and AL, strict byte 0feh                  ; 24 fe                       ; 0xfe88e orgs.asm:65
     mov cr0, eax                              ; 0f 22 c0                    ; 0xfe890 orgs.asm:66
-    jmp far 0f000h:0e898h                     ; ea 98 e8 00 f0              ; 0xfe893 orgs.asm:68
+    jmp 0f000h:0e898h                         ; ea 98 e8 00 f0              ; 0xfe893 orgs.asm:68
     retn                                      ; c3                          ; 0xfe898 orgs.asm:70
   ; disGetNextSymbol 0xfe899 LB 0x1767 -> off=0x0 cb=0000000000000006 uValue=00000000000f0899 'pmbios_gdt_desc'
 pmbios_gdt_desc:                             ; 0xfe899 LB 0x6
@@ -18541,17 +18569,22 @@ pmode_setup:                                 ; 0xfe8e7 LB 0x5c
     mov cr0, eax                              ; 0f 22 c0                    ; 0xfe8f9 orgs.asm:49
     mov esi, strict dword 0fee000f0h          ; 66 be f0 00 e0 fe           ; 0xfe8fc orgs.asm:51
     mov eax, strict dword 00000010fh          ; 66 b8 0f 01 00 00           ; 0xfe902 orgs.asm:52
-    mov dword [esi], eax                      ; 67 66 89 06                 ; 0xfe908 orgs.asm:53
+    db  067h, 066h, 089h, 006h
+    ; mov dword [esi], eax                      ; 67 66 89 06               ; 0xfe908 orgs.asm:53
     mov esi, strict dword 0fee00350h          ; 66 be 50 03 e0 fe           ; 0xfe90c orgs.asm:55
-    mov eax, dword [esi]                      ; 67 66 8b 06                 ; 0xfe912 orgs.asm:56
+    db  067h, 066h, 08bh, 006h
+    ; mov eax, dword [esi]                      ; 67 66 8b 06               ; 0xfe912 orgs.asm:56
     and eax, strict dword 0fffe00ffh          ; 66 25 ff 00 fe ff           ; 0xfe916 orgs.asm:57
     or ah, 007h                               ; 80 cc 07                    ; 0xfe91c orgs.asm:58
-    mov dword [esi], eax                      ; 67 66 89 06                 ; 0xfe91f orgs.asm:59
+    db  067h, 066h, 089h, 006h
+    ; mov dword [esi], eax                      ; 67 66 89 06               ; 0xfe91f orgs.asm:59
     mov esi, strict dword 0fee00360h          ; 66 be 60 03 e0 fe           ; 0xfe923 orgs.asm:61
-    mov eax, dword [esi]                      ; 67 66 8b 06                 ; 0xfe929 orgs.asm:62
+    db  067h, 066h, 08bh, 006h
+    ; mov eax, dword [esi]                      ; 67 66 8b 06               ; 0xfe929 orgs.asm:62
     and eax, strict dword 0fffe00ffh          ; 66 25 ff 00 fe ff           ; 0xfe92d orgs.asm:63
     or ah, 004h                               ; 80 cc 04                    ; 0xfe933 orgs.asm:64
-    mov dword [esi], eax                      ; 67 66 89 06                 ; 0xfe936 orgs.asm:65
+    db  067h, 066h, 089h, 006h
+    ; mov dword [esi], eax                      ; 67 66 89 06               ; 0xfe936 orgs.asm:65
     call 0e886h                               ; e8 49 ff                    ; 0xfe93a orgs.asm:67
     popfw                                     ; 9d                          ; 0xfe93d orgs.asm:68
     pop esi                                   ; 66 5e                       ; 0xfe93e orgs.asm:69
@@ -19102,7 +19135,8 @@ pcibios_init_irqs:                           ; 0xff151 LB 0x2f
     add byte [bp+si], al                      ; 00 02                       ; 0xff166
     add byte [bx+si], cl                      ; 00 08                       ; 0xff168
     add byte [bx+si], al                      ; 00 00                       ; 0xff16a
-    xchg byte [bx+si+07000h], al              ; 86 80 00 70                 ; 0xff16c
+    db  086h, 080h, 000h, 070h
+    ; xchg byte [bx+si+07000h], al              ; 86 80 00 70               ; 0xff16c
     times 0xf db 0
     db  031h
   ; disGetNextSymbol 0xff180 LB 0xe80 -> off=0x0 cb=00000000000001e0 uValue=00000000000f1180 '_pci_routing_table'
@@ -19483,6 +19517,6 @@ biosorg_check_before_or_at_0FFEEh:           ; 0xfff80 LB 0x70
     db  'XM'
   ; disGetNextSymbol 0xffff0 LB 0x10 -> off=0x0 cb=0000000000000010 uValue=00000000000f1ff0 'cpu_reset'
 cpu_reset:                                   ; 0xffff0 LB 0x10
-    jmp far 0f000h:0e05bh                     ; ea 5b e0 00 f0              ; 0xffff0 orgs.asm:2117
+    jmp 0f000h:0e05bh                         ; ea 5b e0 00 f0              ; 0xffff0 orgs.asm:2117
   ; disGetNextSymbol 0xffff5 LB 0xb -> off=0xb cb=0000000000000000 uValue=0000000000100000 '_dummy_addr_0x100000'
-    db  030h, 036h, 02fh, 032h, 033h, 02fh, 039h, 039h, 000h, 0fch, 0b5h
+    db  030h, 036h, 02fh, 032h, 033h, 02fh, 039h, 039h, 000h, 0fch, 0b4h

@@ -1,4 +1,4 @@
-; $Id: bootsector-pae.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bootsector-pae.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
 ;; @file
 ; Bootsector that switches the CPU info PAE mode.
 ;
@@ -99,7 +99,7 @@ pd_loop:
     mov     eax, cr0
     or      eax, X86_CR0_PE | X86_CR0_PG
     mov     cr0, eax
-    jmp far 0x0008:((code32_start - start) + BS_ADDR) ; 8=32-bit CS
+    jmp     0x0008:((code32_start - start) + BS_ADDR) ; 8=32-bit CS
 
 BITS 32
 code32_start:
