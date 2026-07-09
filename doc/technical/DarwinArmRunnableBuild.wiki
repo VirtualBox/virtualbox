@@ -8,8 +8,7 @@ distribution packaging recipe.  The official packaging and release signing path
 remains in `src/VBox/Installer/darwin/Makefile.kmk`.
 
 The workflow below is intended for non-hardened OSE developer builds using
-Xcode command line tools, Homebrew packages and ad-hoc or local Developer ID
-signing.
+Xcode command line tools, Homebrew packages and ad-hoc or local code signing.
 
 == Configure ==
 
@@ -87,7 +86,12 @@ APP="$RUNROOT/VirtualBox.app"
 rm -rf "$RUNROOT"
 mkdir -p "$RUNROOT"
 ditto out/darwin.arm64/release/dist/VirtualBox.app "$APP"
+rm -rf "$APP/Contents/MacOS/testcase"
 }}}
+
+The testcase payload is not needed for a copied GUI VM run.  Removing it keeps
+the local app-signing step focused on runnable product binaries and avoids
+recursive signing failures on non-code testcase directories.
 
 For a fast single-library refresh into an already copied app, replace only the
 rebuilt image:
@@ -141,16 +145,21 @@ EOF
 }}}
 
 Do not add `com.apple.vm.device-access` or `com.apple.vm.networking` to ad-hoc
-or local Developer ID test entitlements.  They are release-signing entitlements
+or ordinary local test entitlements.  They are release-signing entitlements
 reserved for specifically provisioned vendors and can make local builds fail
 with code signing errors.
 
 Sign changed Mach-O images first, then nested VM bundles, then the outer app
-bundle.  Use `-` for ad-hoc signing, or set `IDENTITY` to a local Developer ID
-identity when that is useful for testing.
+bundle.  Prefer a stable local code-signing identity for repeated local runs.
+Identity-aware network filters such as Little Snitch track ad-hoc-signed
+programs by code hash, so every rebuilt `VirtualBoxVM` can otherwise look like
+a modified program and trigger a network identity warning.  If no local signing
+identity is available, the snippet falls back to ad-hoc signing.
 
 {{{
-IDENTITY="${IDENTITY:--}"
+IDENTITY="${IDENTITY:-$(security find-identity -v -p codesigning | \
+    sed -n 's/.*"\([^"]*\)".*/\1/p' | head -n 1)}"
+: "${IDENTITY:=-}"
 VM_ENT=/tmp/vbox-local-vm.entitlements.plist
 APP_ENT=out/darwin.arm64/release/Entitlements.plist
 
