@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 114671 2026-07-12 21:07:21Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 114672 2026-07-12 23:43:47Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -3296,6 +3296,7 @@ static void vmsvgaR3CmdBufRaiseIRQ(PPDMDEVINS pDevIns, PVGASTATE pThis, uint32_t
 /** Allocate a command buffer structure.
  *
  * @param pCmdBufCtx  The command buffer context which must allocate the buffer.
+ * @param enmCBType   Type of command buffer to allocate.
  * @return Pointer to the allocated command buffer structure.
  */
 static PVMSVGACMDBUF vmsvgaR3CmdBufAlloc(PVMSVGACMDBUFCTX pCmdBufCtx, VMSVGACMDBUFTYPE enmCBType)
