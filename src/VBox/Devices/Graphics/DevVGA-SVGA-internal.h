@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA-internal.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: DevVGA-SVGA-internal.h 114671 2026-07-12 21:07:21Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMWare SVGA device - internal header for DevVGA-SVGA* source files.
  */
@@ -66,19 +66,47 @@ typedef struct
 typedef struct VMSVGACMDBUF *PVMSVGACMDBUF;
 typedef struct VMSVGACMDBUFCTX *PVMSVGACMDBUFCTX;
 
+typedef enum VMSVGACMDBUFTYPE
+{
+    VMSVGACMDBUFTYPE_GUEST, /* A guest command buffer submitted via SVGA_REG_COMMAND_LOW. */
+    VMSVGACMDBUFTYPE_HOST, /* A host command to be processed synchronously by FIFO thread. */
+    VMSVGACMDBUFTYPE_32BIT_HACK = 0x7fffffff
+} VMSVGACMDBUFTYPE;
+
 /* Command buffer. */
+#include "vmsvga_headers_begin.h" /* GCC complains that 'ISO C++ prohibits anonymous structs' when "-Wpedantic" is enabled. */
 typedef struct VMSVGACMDBUF
 {
     RTLISTNODE nodeBuffer;
     /* Context of the buffer. */
     PVMSVGACMDBUFCTX pCmdBufCtx;
-    /* PA of the buffer. */
-    RTGCPHYS GCPhysCB;
-    /* A copy of the buffer header. */
-    SVGACBHeader hdr;
-    /* A copy of the commands. Size of the memory buffer is hdr.length */
-    void *pvCommands;
+    VMSVGACMDBUFTYPE enmCBType;
+    union
+    {
+        /* VMSVGACMDBUFTYPE_GUEST */
+        struct
+        {
+            /* PA of the buffer. */
+            RTGCPHYS GCPhysCB;
+            /* A copy of the buffer header. */
+            SVGACBHeader hdr;
+            /* A copy of the commands. Size of the memory buffer is hdr.length */
+            void *pvCommands;
+        };
+        /* VMSVGACMDBUFTYPE_HOST */
+        struct
+        {
+            uint32_t idHostCommand;
+            uint32_t cbHostCommandData;
+            union
+            {
+                void *pvHostCommandData;         /* Allocated buffer (cbCommandData != 0) */
+                uint32_t au32HostCommandData[2]; /* Command specific data (cbCommandData == 0) */
+            };
+        };
+    };
 } VMSVGACMDBUF;
+#include "vmsvga_headers_end.h"
 
 /* Command buffer context. */
 typedef struct VMSVGACMDBUFCTX

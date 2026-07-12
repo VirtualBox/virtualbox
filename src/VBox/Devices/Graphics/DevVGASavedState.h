@@ -1,4 +1,4 @@
-/* $Id: DevVGASavedState.h 112581 2026-01-14 20:10:07Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGASavedState.h 114671 2026-07-12 21:07:21Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVGA - Saved state versions.
  *
@@ -56,7 +56,8 @@
         } \
     } while (0)
 
-#define VGA_SAVEDSTATE_VERSION                   30
+#define VGA_SAVEDSTATE_VERSION                   31
+#define VGA_SAVEDSTATE_VERSION_VMSVGA_HOST_CMDS  31 /* Host commands. See @bugref{11042}. */
 #define VGA_SAVEDSTATE_VERSION_VMSVGA_COTABLES   30 /* COTable content. See @bugref{11021}. */
 #define VGA_SAVEDSTATE_VERSION_VMSVGA_VIDEO      29 /* Video decoding and processing (new COTables). */
 #define VGA_SAVEDSTATE_VERSION_VMSVGA_SVGA3      28 /* SVGA 3 interface. */

@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 114314 2026-06-09 15:48:12Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 114671 2026-07-12 21:07:21Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -444,6 +444,8 @@ static void vmsvgaR3SetTraces(PPDMDEVINS pDevIns, PVGASTATE pThis, bool fTraces)
 static int vmsvgaR3LoadExecFifo(PCPDMDEVHLPR3 pHlp, PVGASTATE pThis, PVGASTATECC pThisCC, PSSMHANDLE pSSM,
                                 uint32_t uVersion, uint32_t uPass);
 static int vmsvgaR3SaveExecFifo(PCPDMDEVHLPR3 pHlp, PVGASTATECC pThisCC, PSSMHANDLE pSSM);
+static PVMSVGACMDBUF vmsvgaR3CmdBufAlloc(PVMSVGACMDBUFCTX pCmdBufCtx, VMSVGACMDBUFTYPE enmCBType);
+static void vmsvgaR3CmdBufSubmitHostCommand(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATECC pThisCC, PVMSVGACMDBUF pCmdBuf);
 static void vmsvgaR3CmdBufSubmit(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATECC pThisCC, RTGCPHYS GCPhysCB, SVGACBContext CBCtx);
 static void vmsvgaR3PowerOnDevice(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATECC pThisCC, bool fLoadState);
 #endif /* IN_RING3 */
@@ -3296,7 +3298,7 @@ static void vmsvgaR3CmdBufRaiseIRQ(PPDMDEVINS pDevIns, PVGASTATE pThis, uint32_t
  * @param pCmdBufCtx  The command buffer context which must allocate the buffer.
  * @return Pointer to the allocated command buffer structure.
  */
-static PVMSVGACMDBUF vmsvgaR3CmdBufAlloc(PVMSVGACMDBUFCTX pCmdBufCtx)
+static PVMSVGACMDBUF vmsvgaR3CmdBufAlloc(PVMSVGACMDBUFCTX pCmdBufCtx, VMSVGACMDBUFTYPE enmCBType)
 {
     if (!pCmdBufCtx)
         return NULL;
@@ -3306,9 +3308,14 @@ static PVMSVGACMDBUF vmsvgaR3CmdBufAlloc(PVMSVGACMDBUFCTX pCmdBufCtx)
     {
         // RT_ZERO(pCmdBuf->nodeBuffer);
         pCmdBuf->pCmdBufCtx = pCmdBufCtx;
+        pCmdBuf->enmCBType = enmCBType;
         // pCmdBuf->GCPhysCB = 0;
         // RT_ZERO(pCmdBuf->hdr);
         // pCmdBuf->pvCommands = NULL;
+        // pCmdBuf->idHostCommand = 0;
+        // pCmdBuf->cbHostCommandData = 0;
+        // pCmdBuf->pvHostCommandData = NULL;
+        // RT_ZERO(pCmdBuf->au32HostCommandData);
     }
 
     return pCmdBuf;
@@ -3322,7 +3329,15 @@ static PVMSVGACMDBUF vmsvgaR3CmdBufAlloc(PVMSVGACMDBUFCTX pCmdBufCtx)
 static void vmsvgaR3CmdBufFree(PVMSVGACMDBUF pCmdBuf)
 {
     if (pCmdBuf)
-        RTMemFree(pCmdBuf->pvCommands);
+    {
+        if (pCmdBuf->enmCBType == VMSVGACMDBUFTYPE_GUEST)
+            RTMemFree(pCmdBuf->pvCommands);
+        else if (pCmdBuf->enmCBType == VMSVGACMDBUFTYPE_HOST)
+        {
+            if (pCmdBuf->cbHostCommandData)
+                RTMemFree(pCmdBuf->pvHostCommandData);
+        }
+    }
     RTMemFree(pCmdBuf);
 }
 
@@ -3354,7 +3369,8 @@ static void vmsvgaR3CmdBufCtxTerm(PVMSVGACMDBUFCTX pCmdBufCtx)
         RTListForEachSafe(&pCmdBufCtx->listSubmitted, pIter, pNext, VMSVGACMDBUF, nodeBuffer)
         {
             RTListNodeRemove(&pIter->nodeBuffer);
-            --pCmdBufCtx->cSubmitted;
+            if (pIter->enmCBType == VMSVGACMDBUFTYPE_GUEST)
+                --pCmdBufCtx->cSubmitted;
             vmsvgaR3CmdBufFree(pIter);
         }
     }
@@ -3421,31 +3437,28 @@ static SVGACBStatus vmsvgaR3CmdBufDCPreempt(PPDMDEVINS pDevIns, PVMSVGAR3STATE p
 
     int rc = RTCritSectEnter(&pSvgaR3State->CritSectCmdBuf);
     AssertRC(rc);
-    if (pCmd->ignoreIDZero)
-    {
-        RTListInit(&listPreempted);
 
-        PVMSVGACMDBUF pIter, pNext;
-        RTListForEachSafe(&pCmdBufCtx->listSubmitted, pIter, pNext, VMSVGACMDBUF, nodeBuffer)
-        {
-            if (pIter->hdr.id == 0)
-                continue;
-
-            RTListNodeRemove(&pIter->nodeBuffer);
-            --pCmdBufCtx->cSubmitted;
-            RTListAppend(&listPreempted, &pIter->nodeBuffer);
-        }
-    }
-    else
-    {
-        RTListMove(&listPreempted, &pCmdBufCtx->listSubmitted);
-        pCmdBufCtx->cSubmitted = 0;
-    }
-    RTCritSectLeave(&pSvgaR3State->CritSectCmdBuf);
+    RTListInit(&listPreempted);
 
     PVMSVGACMDBUF pIter, pNext;
+    RTListForEachSafe(&pCmdBufCtx->listSubmitted, pIter, pNext, VMSVGACMDBUF, nodeBuffer)
+    {
+        if (pIter->enmCBType != VMSVGACMDBUFTYPE_GUEST)
+            continue;
+
+        if (pCmd->ignoreIDZero && pIter->hdr.id == 0)
+            continue;
+
+        RTListNodeRemove(&pIter->nodeBuffer);
+        --pCmdBufCtx->cSubmitted;
+        RTListAppend(&listPreempted, &pIter->nodeBuffer);
+    }
+
+    RTCritSectLeave(&pSvgaR3State->CritSectCmdBuf);
+
     RTListForEachSafe(&listPreempted, pIter, pNext, VMSVGACMDBUF, nodeBuffer)
     {
+        Assert(pIter->enmCBType == VMSVGACMDBUFTYPE_GUEST);
         RTListNodeRemove(&pIter->nodeBuffer);
         vmsvgaR3CmdBufWriteStatus(pDevIns, pIter->GCPhysCB, SVGA_CB_STATUS_PREEMPTED, 0);
         LogFunc(("Preempted %RX64\n", pIter->GCPhysCB));
@@ -3561,6 +3574,7 @@ static SVGACBStatus vmsvgaR3CmdBufSubmitDC(PPDMDEVINS pDevIns, PVGASTATECC pThis
     return vmsvgaR3CmdBufProcessDC(pDevIns, pSvgaR3State, (*ppCmdBuf)->pvCommands, (*ppCmdBuf)->hdr.length, poffNextCmd);
 }
 
+
 /** Submits a command buffer for asynchronous processing by the FIFO thread.
  *
  * @param pDevIns      The device instance.
@@ -3580,6 +3594,8 @@ static SVGACBStatus vmsvgaR3CmdBufSubmitCtx(PPDMDEVINS pDevIns, PVGASTATE pThis,
 
     PVMSVGACMDBUF const pCmdBuf = *ppCmdBuf;
     PVMSVGACMDBUFCTX const pCmdBufCtx = pCmdBuf->pCmdBufCtx;
+
+    Assert(pCmdBuf->enmCBType == VMSVGACMDBUFTYPE_GUEST);
 
     int rc = RTCritSectEnter(&pSvgaR3State->CritSectCmdBuf);
     AssertRC(rc);
@@ -3601,6 +3617,36 @@ static SVGACBStatus vmsvgaR3CmdBufSubmitCtx(PPDMDEVINS pDevIns, PVGASTATE pThis,
         PDMDevHlpSUPSemEventSignal(pDevIns, pThis->svga.hFIFORequestSem);
 
     return CBstatus;
+}
+
+
+/** Submits a host command, which is normally a result of a SVGA_REG_* write,
+ *  for synchronous processing by the FIFO thread.
+ *
+ * @param pDevIns      The device instance.
+ * @param pThis        The shared VGA/VMSVGA state.
+ * @param pThisCC      The VGA/VMSVGA state for the current context.
+ * @param pCmdBuf      Pointer to the command buffer to submit.
+ * @thread EMT
+ */
+static void vmsvgaR3CmdBufSubmitHostCommand(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATECC pThisCC, PVMSVGACMDBUF pCmdBuf)
+{
+    PVMSVGAR3STATE const pSvgaR3State = pThisCC->svga.pSvgaR3State;
+
+    Assert(pCmdBuf->enmCBType != VMSVGACMDBUFTYPE_GUEST);
+
+    PVMSVGACMDBUFCTX const pCmdBufCtx = pCmdBuf->pCmdBufCtx;
+
+    int rc = RTCritSectEnter(&pSvgaR3State->CritSectCmdBuf);
+    AssertRC(rc);
+
+    RTListAppend(&pCmdBufCtx->listSubmitted, &pCmdBuf->nodeBuffer);
+    ASMAtomicWriteU32(&pThisCC->svga.pSvgaR3State->fCmdBuf, 1);
+
+    RTCritSectLeave(&pSvgaR3State->CritSectCmdBuf);
+
+    /* Inform the FIFO thread. */
+    PDMDevHlpSUPSemEventSignal(pDevIns, pThis->svga.hFIFORequestSem);
 }
 
 
@@ -3634,7 +3680,7 @@ static void vmsvgaR3CmdBufSubmit(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATEC
     }
 
     /* Allocate a new command buffer. */
-    PVMSVGACMDBUF pCmdBuf = vmsvgaR3CmdBufAlloc(pCmdBufCtx);
+    PVMSVGACMDBUF pCmdBuf = vmsvgaR3CmdBufAlloc(pCmdBufCtx, VMSVGACMDBUFTYPE_GUEST);
     if (RT_LIKELY(pCmdBuf))
     {
         pCmdBuf->GCPhysCB = GCPhysCB;
@@ -4223,8 +4269,12 @@ static void vmsvgaR3CmdBufProcessBuffers(PPDMDEVINS pDevIns, PVGASTATE pThis, PV
                 pCmdBuf = RTListRemoveFirst(&pCmdBufCtx->listSubmitted, VMSVGACMDBUF, nodeBuffer);
                 if (pCmdBuf)
                 {
-                    Assert(pCmdBufCtx->cSubmitted > 0);
-                    --pCmdBufCtx->cSubmitted;
+                    if (pCmdBuf->enmCBType == VMSVGACMDBUFTYPE_GUEST)
+                    {
+                        Assert(pCmdBufCtx->cSubmitted > 0);
+                        --pCmdBufCtx->cSubmitted;
+                    }
+
                     break;
                 }
             }
@@ -4238,6 +4288,13 @@ static void vmsvgaR3CmdBufProcessBuffers(PPDMDEVINS pDevIns, PVGASTATE pThis, PV
         }
 
         RTCritSectLeave(&pSvgaR3State->CritSectCmdBuf);
+
+        if (pCmdBuf->enmCBType == VMSVGACMDBUFTYPE_HOST)
+        {
+            AssertFailed(); /* Not used yet */
+            vmsvgaR3CmdBufFree(pCmdBuf);
+            continue;
+        }
 
         SVGACBStatus CBstatus = SVGA_CB_STATUS_NONE;
         uint32_t offNextCmd = 0;
@@ -5944,18 +6001,55 @@ static DECLCALLBACK(void) vmsvgaR3Info(PPDMDEVINS pDevIns, PCDBGFINFOHLP pHlp, c
 
 }
 
-static int vmsvgaR3LoadBufCtx(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATECC pThisCC, PSSMHANDLE pSSM, PVMSVGACMDBUFCTX pBufCtx, SVGACBContext CBCtx)
+static int vmsvgaR3LoadBufCtx(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATECC pThisCC, PSSMHANDLE pSSM, uint32_t uVersion, PVMSVGACMDBUFCTX pBufCtx, SVGACBContext CBCtx)
 {
     PCPDMDEVHLPR3 pHlp = pDevIns->pHlpR3;
     PVMSVGAR3STATE pSvgaR3State = pThisCC->svga.pSvgaR3State;
 
-    uint32_t cSubmitted;
-    int rc = pHlp->pfnSSMGetU32(pSSM, &cSubmitted);
+    uint32_t cEntries;
+    int rc = pHlp->pfnSSMGetU32(pSSM, &cEntries);
     AssertLogRelRCReturn(rc, rc);
 
-    for (uint32_t i = 0; i < cSubmitted; ++i)
+    for (uint32_t i = 0; i < cEntries; ++i)
     {
-        PVMSVGACMDBUF pCmdBuf = vmsvgaR3CmdBufAlloc(pBufCtx);
+        uint32_t u32CBType = VMSVGACMDBUFTYPE_GUEST;
+        if (uVersion >= VGA_SAVEDSTATE_VERSION_VMSVGA_HOST_CMDS)
+        {
+            rc = pHlp->pfnSSMGetU32(pSSM, &u32CBType);
+            AssertRCReturn(rc, rc);
+
+            if ((VMSVGACMDBUFTYPE)u32CBType == VMSVGACMDBUFTYPE_HOST)
+            {
+                PVMSVGACMDBUF pCmdBuf = vmsvgaR3CmdBufAlloc(pBufCtx, (VMSVGACMDBUFTYPE)u32CBType);
+                AssertPtrReturn(pCmdBuf, VERR_NO_MEMORY);
+
+                pHlp->pfnSSMGetU32(pSSM, &pCmdBuf->idHostCommand);
+                pHlp->pfnSSMGetU32(pSSM, &pCmdBuf->cbHostCommandData);
+                if (pCmdBuf->cbHostCommandData)
+                {
+                    pCmdBuf->pvHostCommandData = RTMemAlloc(pCmdBuf->cbHostCommandData);
+                    AssertPtrReturn(pCmdBuf->pvHostCommandData, VERR_NO_MEMORY);
+
+                    rc = pHlp->pfnSSMGetMem(pSSM, pCmdBuf->pvHostCommandData, pCmdBuf->cbHostCommandData);
+                    AssertRCReturn(rc, rc);
+                }
+                else
+                {
+                    pHlp->pfnSSMGetU32(pSSM, &pCmdBuf->au32HostCommandData[0]);
+                    rc = pHlp->pfnSSMGetU32(pSSM, &pCmdBuf->au32HostCommandData[1]);
+                }
+                AssertLogRelRCReturn(rc, rc);
+
+                vmsvgaR3CmdBufSubmitHostCommand(pDevIns, pThis, pThisCC, pCmdBuf);
+                continue;
+            }
+        }
+
+        AssertLogRelMsgReturn((VMSVGACMDBUFTYPE)u32CBType == VMSVGACMDBUFTYPE_GUEST,
+                              ("u32CBType=%#x\n", u32CBType),
+                              VERR_SSM_DATA_UNIT_FORMAT_CHANGED);
+
+        PVMSVGACMDBUF pCmdBuf = vmsvgaR3CmdBufAlloc(pBufCtx, VMSVGACMDBUFTYPE_GUEST);
         AssertPtrReturn(pCmdBuf, VERR_NO_MEMORY);
 
         pHlp->pfnSSMGetGCPhys(pSSM, &pCmdBuf->GCPhysCB);
@@ -5995,7 +6089,7 @@ static int vmsvgaR3LoadBufCtx(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATECC p
     return rc;
 }
 
-static int vmsvgaR3LoadCommandBuffers(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATECC pThisCC, PSSMHANDLE pSSM)
+static int vmsvgaR3LoadCommandBuffers(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATECC pThisCC, PSSMHANDLE pSSM, uint32_t uVersion)
 {
     PCPDMDEVHLPR3 pHlp = pDevIns->pHlpR3;
     PVMSVGAR3STATE pSvgaR3State = pThisCC->svga.pSvgaR3State;
@@ -6004,7 +6098,7 @@ static int vmsvgaR3LoadCommandBuffers(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGAS
     uint32_t u32;
 
     /* Device context command buffers. */
-    int rc = vmsvgaR3LoadBufCtx(pDevIns, pThis, pThisCC, pSSM, &pSvgaR3State->CmdBufCtxDC, SVGA_CB_CONTEXT_MAX);
+    int rc = vmsvgaR3LoadBufCtx(pDevIns, pThis, pThisCC, pSSM,uVersion, &pSvgaR3State->CmdBufCtxDC, SVGA_CB_CONTEXT_MAX);
     AssertLogRelRCReturn(rc, rc);
 
     /* DX contexts command buffers. */
@@ -6022,7 +6116,7 @@ static int vmsvgaR3LoadCommandBuffers(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGAS
             AssertPtrReturn(pSvgaR3State->apCmdBufCtxs[j], VERR_NO_MEMORY);
             vmsvgaR3CmdBufCtxInit(pSvgaR3State->apCmdBufCtxs[j]);
 
-            rc = vmsvgaR3LoadBufCtx(pDevIns, pThis, pThisCC, pSSM, pSvgaR3State->apCmdBufCtxs[j], (SVGACBContext)j);
+            rc = vmsvgaR3LoadBufCtx(pDevIns, pThis, pThisCC, pSSM, uVersion, pSvgaR3State->apCmdBufCtxs[j], (SVGACBContext)j);
             AssertLogRelRCReturn(rc, rc);
         }
     }
@@ -6270,7 +6364,7 @@ int vmsvgaR3LoadExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, uint32_t uVersion, uin
             AssertLogRelRCReturn(rc, rc);
             if (f)
             {
-                rc = vmsvgaR3LoadCommandBuffers(pDevIns, pThis, pThisCC, pSSM);
+                rc = vmsvgaR3LoadCommandBuffers(pDevIns, pThis, pThisCC, pSSM, uVersion);
                 AssertLogRelRCReturn(rc, rc);
             }
         }
@@ -6283,7 +6377,7 @@ int vmsvgaR3LoadExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, uint32_t uVersion, uin
         {
             if (uVersion < VGA_SAVEDSTATE_VERSION_VMSVGA_DX_CMDBUF)
             {
-                rc = vmsvgaR3LoadCommandBuffers(pDevIns, pThis, pThisCC, pSSM);
+                rc = vmsvgaR3LoadCommandBuffers(pDevIns, pThis, pThisCC, pSSM, uVersion);
                 AssertLogRelRCReturn(rc, rc);
             }
 
@@ -6402,14 +6496,44 @@ int vmsvgaR3LoadDone(PPDMDEVINS pDevIns)
 static int vmsvgaR3SaveBufCtx(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, PVMSVGACMDBUFCTX pBufCtx)
 {
     PCPDMDEVHLPR3 pHlp = pDevIns->pHlpR3;
+    PVMSVGACMDBUF pIter;
 
-    int rc = pHlp->pfnSSMPutU32(pSSM, pBufCtx->cSubmitted);
-    AssertLogRelRCReturn(rc, rc);
-    if (pBufCtx->cSubmitted)
+    uint32_t cEntries = 0;
+    RTListForEach(&pBufCtx->listSubmitted, pIter, VMSVGACMDBUF, nodeBuffer)
     {
-        PVMSVGACMDBUF pIter;
+        ++cEntries;
+    }
+
+    int rc = pHlp->pfnSSMPutU32(pSSM, cEntries);
+    AssertLogRelRCReturn(rc, rc);
+    if (cEntries)
+    {
         RTListForEach(&pBufCtx->listSubmitted, pIter, VMSVGACMDBUF, nodeBuffer)
         {
+            /*
+             * VGA_SAVEDSTATE_VERSION_VMSVGA_HOST_CMDS begin
+             */
+            pHlp->pfnSSMPutU32(pSSM, pIter->enmCBType);
+            if (pIter->enmCBType == VMSVGACMDBUFTYPE_HOST)
+            {
+                pHlp->pfnSSMPutU32(pSSM, pIter->idHostCommand);
+                pHlp->pfnSSMPutU32(pSSM, pIter->cbHostCommandData);
+                if (pIter->cbHostCommandData)
+                    rc = pHlp->pfnSSMPutMem(pSSM, pIter->pvHostCommandData, pIter->cbHostCommandData);
+                else
+                {
+                    pHlp->pfnSSMPutU32(pSSM, pIter->au32HostCommandData[0]);
+                    rc = pHlp->pfnSSMPutU32(pSSM, pIter->au32HostCommandData[1]);
+                }
+                AssertLogRelRCReturn(rc, rc);
+                continue;
+            }
+
+            AssertContinue(pIter->enmCBType == VMSVGACMDBUFTYPE_GUEST);
+            /*
+             * VGA_SAVEDSTATE_VERSION_VMSVGA_HOST_CMDS end
+             */
+
             pHlp->pfnSSMPutGCPhys(pSSM, pIter->GCPhysCB);
             pHlp->pfnSSMPutU32(pSSM, sizeof(SVGACBHeader));
             pHlp->pfnSSMPutMem(pSSM, &pIter->hdr, sizeof(SVGACBHeader));
