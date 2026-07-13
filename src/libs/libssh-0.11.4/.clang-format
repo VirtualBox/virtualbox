@@ -1,0 +1,28 @@
+---
+# https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+BasedOnStyle: LLVM
+IndentWidth: 4
+UseTab: Never
+AllowShortIfStatementsOnASingleLine: false
+BreakBeforeBraces: Custom
+BraceWrapping:
+    AfterEnum: false
+    AfterFunction: true
+    AfterStruct: false
+    AfterUnion: false
+    AfterExternBlock: false
+    BeforeElse: false
+    BeforeWhile: false
+IndentCaseLabels: false
+IndentCaseBlocks: false
+ColumnLimit: 80
+AlignAfterOpenBracket: Align
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackArguments: false
+BinPackParameters: false
+AllowAllArgumentsOnNextLine: false
+AllowShortFunctionsOnASingleLine: Empty
+BreakAfterReturnType: ExceptShortType
+AlwaysBreakAfterReturnType: AllDefinitions
+AlignEscapedNewlines: Left
+ForEachMacros: ['ssh_callbacks_iterate']

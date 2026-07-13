@@ -1,0 +1,86 @@
+/**
+@page libssh_tutor_pkcs11 Chapter 9: Authentication using PKCS #11 URIs
+@section how_to How to use PKCS #11 URIs in libssh?
+
+PKCS #11 is a Cryptographic Token Interface Standard that provides an API
+to devices like smart cards that store cryptographic private information.
+Such cryptographic devices are referenced as tokens. A mechanism through which
+objects stored on the tokens can be uniquely identified is called PKCS #11 URI
+(Uniform Resource Identifier) and is defined in RFC 7512
+(https://tools.ietf.org/html/rfc7512).
+
+# Pre-requisites (OpenSSL < 3.0):
+
+OpenSSL 1.x defines an abstract layer called the "engine" to achieve
+cryptographic acceleration. The engine_pkcs11 module acts like an interface
+between the PKCS #11 modules and the OpenSSL application.
+
+To build and use libssh with PKCS #11 support:
+1. Enable the cmake option: $ cmake -DWITH_PKCS11_URI=ON
+2. Build with OpenSSL.
+3. Install and configure engine_pkcs11 (https://github.com/OpenSC/libp11).
+4. Plug in a working smart card or configure softhsm (https://www.opendnssec.org/softhsm).
+
+@warning The support for Engines was deprecated in OpenSSL 3.0 so this approach
+is deprecated in libssh 0.11.x.
+
+# Pre-requisites (OpenSSL 3.0.8+)
+
+The OpenSSL 3.0 is deprecating usage of low-level engines in favor of high-level
+"providers" to provide alternative implementation of cryptographic operations
+or acceleration.
+
+To build and use libssh with PKCS #11 support using OpenSSL providers:
+1. Install and configure pkcs11 provider (https://github.com/latchset/pkcs11-provider).
+2. Enable the cmake options: $ cmake -DWITH_PKCS11_URI=ON -DWITH_PKCS11_PROVIDER=ON
+3. Build with OpenSSL.
+4. Plug in a working smart card or configure softhsm (https://www.opendnssec.org/softhsm).
+
+# New API functions
+
+The functions  ssh_pki_import_pubkey_file() and ssh_pki_import_privkey_file() that
+import the public and private keys from files respectively are now modified to support
+PKCS #11 URIs. These functions automatically detect if the provided filename is a file path
+or a PKCS #11 URI (when it begins with "pkcs11:"). If a PKCS #11 URI is detected,
+the engine is loaded and initialized. Through the engine, the private/public key
+corresponding to the PKCS #11 URI are loaded from the PKCS #11 device.
+
+If you wish to authenticate using public keys on your own, follow the steps mentioned under
+"Authentication with public keys" in Chapter 2 - A deeper insight into authentication.
+
+The function pki_uri_import() is used to populate the public/private ssh_key from the
+engine with PKCS #11 URIs as the look up.
+
+Here is a minimalistic example of public key authentication using PKCS #11 URIs:
+
+@code
+int authenticate_pkcs11_URI(ssh_session session)
+{
+  int rc;
+  char priv_uri[1042] = "pkcs11:token=my-token;object=my-object;type=private?pin-value=1234";
+
+  rc = ssh_options_set(session, SSH_OPTIONS_IDENTITY, priv_uri);
+  assert_int_equal(rc, SSH_OK)
+
+  rc = ssh_userauth_publickey_auto(session, NULL, NULL);
+
+  if (rc == SSH_AUTH_ERROR)
+  {
+     fprintf(stderr, "Authentication with PKCS #11 URIs failed: %s\n",
+       ssh_get_error(session));
+     return SSH_AUTH_ERROR;
+  }
+
+  return rc;
+}
+@endcode
+
+@subsection Caveats
+
+We recommend the users to provide a specific PKCS #11 URI so that it matches only a single slot in the engine.
+If the engine discovers multiple slots that could potentially contain the private keys referenced
+by the provided PKCS #11 URI, the engine will not try to authenticate.
+
+For testing, the SoftHSM PKCS#11 library is used.
+
+*/

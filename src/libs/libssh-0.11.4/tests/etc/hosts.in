@@ -1,0 +1,7 @@
+127.0.0.10  server.libssh.site
+127.0.0.21  client.libssh.site
+
+127.0.0.11  kdc.libssh.site
+
+123.0.0.11 testing
+fd00::5357:5f0a testing
