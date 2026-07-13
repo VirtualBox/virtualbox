@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.cpp 114528 2026-06-25 10:42:59Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.cpp 114677 2026-07-13 17:32:27Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common core code.
  */
@@ -92,6 +92,9 @@ static void vmsvgaSurfaceStatsLog(PVGASTATECC pThisCC)
 static void vmsvgaSurfaceStats(PVGASTATECC pThisCC)
 {
     PVMSVGA3DSTATE p3dState = pThisCC->svga.p3dState;
+    if (!p3dState)
+        return; /* No surfaces in 2D mode. */
+
     uint64_t const u64NsNow = RTTimeNanoTS();
     if ((u64NsNow - p3dState->stats.u64TsNsLastStatsDump) / RT_NS_1MS_64 > 10000)
     {
