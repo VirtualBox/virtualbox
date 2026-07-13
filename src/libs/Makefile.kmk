@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114334 2026-06-10 15:03:20Z alexander.rudnev@oracle.com $
+# $Id: Makefile.kmk 114679 2026-07-13 18:21:26Z aleksey.ilyushin@oracle.com $
 ## @file
 # Top-level makefile for the external libraries.
 #
@@ -90,7 +90,7 @@ endif
 if   defined(VBOX_WITH_LIBSSH) \
   && !defined(VBOX_ONLY_BUILD) \
   && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SUPPORTED_HOST_ARCHS))" != ""
- include $(PATH_SUB_CURRENT)/libssh-0.11.2/Makefile.kmk
+ include $(PATH_SUB_CURRENT)/libssh-0.11.4/Makefile.kmk
 endif
 
 
