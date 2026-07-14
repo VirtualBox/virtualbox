@@ -1,4 +1,4 @@
-/* $Id: VBoxMPVidPn.cpp 114670 2026-07-12 13:57:14Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPVidPn.cpp 114711 2026-07-14 21:53:01Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox WDDM Miniport driver
  */
@@ -240,7 +240,6 @@ void VBoxVidPnStTargetCleanup(PVBOXWDDM_SOURCE paSources, uint32_t cScreens, PVB
         return;
     Assert(pSource->cTargets);
     Assert(ASMBitTest(pSource->aTargetMap, pTarget->u32Id));
-    LogRel3(("TargetCleanup: VidPnSourceId %u, u32Id %u, cTargets %u\n", pTarget->VidPnSourceId, pTarget->u32Id, pSource->cTargets));
     ASMBitClear(pSource->aTargetMap, pTarget->u32Id);
     pSource->cTargets--;
     pTarget->VidPnSourceId = D3DDDI_ID_UNINITIALIZED;
@@ -263,7 +262,6 @@ void VBoxVidPnStSourceTargetAdd(PVBOXWDDM_SOURCE paSources, uint32_t cScreens, P
     pTarget->fBlankedByPowerOff = RT_BOOL(pSource->bBlankedByPowerOff);
     LOG(("src %d and tgt %d are now blank %d",
         pSource->AllocData.SurfDesc.VidPnSourceId, pTarget->u32Id, pTarget->fBlankedByPowerOff));
-    LogRel3(("TargetAdd: VidPnSourceId %u, u32Id %u, cTargets %u, BlankedByPowerOff %u\n", pTarget->VidPnSourceId, pTarget->u32Id, pSource->cTargets, pTarget->fBlankedByPowerOff));
 
     pTarget->u8SyncState &= ~VBOXWDDM_HGSYNC_F_SYNCED_TOPOLOGY;
     pSource->u8SyncState &= ~VBOXWDDM_HGSYNC_F_SYNCED_TOPOLOGY;
@@ -299,7 +297,6 @@ void VBoxVidPnStSourceCleanup(PVBOXWDDM_SOURCE paSources, D3DDDI_VIDEO_PRESENT_S
     PVBOXWDDM_SOURCE pSource = &paSources[VidPnSourceId];
     VBOXWDDM_TARGET_ITER Iter;
     VBoxVidPnStTIterInit(pSource, paTargets, cTargets, &Iter);
-    LogRel3(("SourceCleanup: VidPnSourceId %u, source %u\n", VidPnSourceId, pSource->AllocData.SurfDesc.VidPnSourceId));
     for (PVBOXWDDM_TARGET pTarget = VBoxVidPnStTIterNext(&Iter);
             pTarget;
             pTarget = VBoxVidPnStTIterNext(&Iter))
@@ -313,7 +310,6 @@ void VBoxVidPnStSourceCleanup(PVBOXWDDM_SOURCE paSources, D3DDDI_VIDEO_PRESENT_S
 
 void VBoxVidPnStCleanup(PVBOXWDDM_SOURCE paSources, PVBOXWDDM_TARGET paTargets, uint32_t cScreens)
 {
-    LogRel3(("Cleanup\n"));
     for (UINT i = 0; i < cScreens; ++i)
     {
         PVBOXWDDM_TARGET pTarget = &paTargets[i];
@@ -2417,7 +2413,6 @@ DECLCALLBACK(BOOLEAN) vboxVidPnCommitTargetModeEnum(PVBOXMP_DEVEXT pDevExt, D3DK
             pTarget->Size.cx = pPinnedVidPnTargetModeInfo->VideoSignalInfo.ActiveSize.cx;
             pTarget->Size.cy = pPinnedVidPnTargetModeInfo->VideoSignalInfo.TotalSize.cy;
 
-            LogRel3(("VidPnCommitTargetModeEnum: VidPnSourceId %u, VidPnTargetId %u -> %ux%u\n", VidPnSourceId, VidPnTargetId, pTarget->Size.cx, pTarget->Size.cy));
             VBoxVidPnStSourceTargetAdd(pInfo->paSources, VBoxCommonFromDeviceExt(pDevExt)->cDisplays, pSource, pTarget);
 
             pTarget->u8SyncState &= ~VBOXWDDM_HGSYNC_F_SYNCED_DIMENSIONS;
@@ -2453,7 +2448,7 @@ NTSTATUS VBoxVidPnCommitSourceModeForSrcId(PVBOXMP_DEVEXT pDevExt, const D3DKMDT
 
     if (fCommitVidPN.PathPowerTransition)
     {
-        LogRel3(("VidPnCommitSourceModeForSrcId: Path power transition: srcId %d %s\n", VidPnSourceId, bHasPinnedMode ? "wakeup" : "sleep"));
+        LogRel2(("Path power transition: srcId %d %s\n", VidPnSourceId, bHasPinnedMode ? "wakeup" : "sleep"));
 
         pSource->bBlankedByPowerOff = !bHasPinnedMode;
 
@@ -2473,7 +2468,6 @@ NTSTATUS VBoxVidPnCommitSourceModeForSrcId(PVBOXMP_DEVEXT pDevExt, const D3DKMDT
         }
     }
 
-    LogRel3(("VidPnCommitSourceModeForSrcId: srcId %u\n", VidPnSourceId));
     VBoxVidPnStSourceCleanup(paSources, VidPnSourceId, paTargets, (uint32_t)VBoxCommonFromDeviceExt(pDevExt)->cDisplays);
 
     Status = pVidPnInterface->pfnAcquireSourceModeSet(hDesiredVidPn,
@@ -2577,7 +2571,6 @@ NTSTATUS VBoxVidPnCommitAll(PVBOXMP_DEVEXT pDevExt, const D3DKMDT_HVIDPN hDesire
         pSource->u8SyncState &= ~VBOXWDDM_HGSYNC_F_SYNCED_ALL;
     }
 
-    LogRel3(("VidPnCommitAll\n"));
     VBoxVidPnStCleanup(paSources, paTargets, VBoxCommonFromDeviceExt(pDevExt)->cDisplays);
 
     VBOXVIDPN_PATH_ITER PathIter;

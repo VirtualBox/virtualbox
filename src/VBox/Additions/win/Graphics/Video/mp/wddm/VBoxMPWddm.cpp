@@ -1,4 +1,4 @@
-/* $Id: VBoxMPWddm.cpp 114670 2026-07-12 13:57:14Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPWddm.cpp 114711 2026-07-14 21:53:01Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox WDDM Miniport driver
  */
@@ -4061,7 +4061,6 @@ DxgkDdiSetVidPnSourceVisibility(
     LOGF(("ENTER, context(0x%x)", hAdapter));
 
     PVBOXMP_DEVEXT pDevExt = (PVBOXMP_DEVEXT)hAdapter;
-    LogRel3(("SetVidPnSourceVisibility: VidPnSourceId %u, Visible %u\n", pSetVidPnSourceVisibility->VidPnSourceId, pSetVidPnSourceVisibility->Visible));
 
     if ((UINT)VBoxCommonFromDeviceExt(pDevExt)->cDisplays <= pSetVidPnSourceVisibility->VidPnSourceId)
     {
@@ -4076,7 +4075,6 @@ DxgkDdiSetVidPnSourceVisibility(
 
     NTSTATUS Status = STATUS_SUCCESS;
     PVBOXWDDM_SOURCE pSource = &pDevExt->aSources[pSetVidPnSourceVisibility->VidPnSourceId];
-    LogRel3(("SetVidPnSourceVisibility: pSource->bVisible %u\n", pSource->bVisible));
     PVBOXWDDM_ALLOCATION pAllocation = pSource->pPrimaryAllocation;
     if (pAllocation)
     {
@@ -4194,7 +4192,7 @@ DxgkDdiCommitVidPn(
             {
                 VBOXWDDM_SOURCE *pSource = &pDevExt->aSources[i];
 
-                LogRel3(("CommitVidPn: Source [%d]: visible %d, blanked %d\n", i, pSource->bVisible, pSource->bBlankedByPowerOff));
+                LogRel2(("Source [%d]: visible %d, blanked %d\n", i, pSource->bVisible, pSource->bBlankedByPowerOff));
 
                 /* Update positions of all screens. */
                 vboxWddmDisplaySettingsQueryPos(pDevExt, i, &pSource->VScreenPos);
