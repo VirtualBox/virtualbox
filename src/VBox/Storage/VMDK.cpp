@@ -1,4 +1,4 @@
-/* $Id: VMDK.cpp 114686 2026-07-14 10:12:04Z klaus.espenlaub@oracle.com $ */
+/* $Id: VMDK.cpp 114689 2026-07-14 10:18:05Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VMDK disk image, core code.
  */
@@ -854,7 +854,7 @@ DECLINLINE(int) vmdkFileInflateSync(PVMDKIMAGE pImage, PVMDKEXTENT pExtent,
     /* Sanity check - the expansion ratio should be much less than 2. */
     Assert(cbCompSize < 2 * cbToRead);
     if (   cbCompSize >= 2 * cbToRead
-        || RT_ALIGN_Z(cbCompSize + RT_UOFFSETOF(VMDKMARKER, uType), 512) > cbCompGrain)
+        || RT_ALIGN_Z(cbCompSize + RT_UOFFSETOF(VMDKMARKER, uType), 512) > pExtent->cbCompGrain)
         return VERR_VD_VMDK_INVALID_FORMAT;
 
     /* Compressed grain marker. Data follows immediately. */
