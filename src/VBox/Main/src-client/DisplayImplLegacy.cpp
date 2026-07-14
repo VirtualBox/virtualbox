@@ -1,4 +1,4 @@
-/* $Id: DisplayImplLegacy.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: DisplayImplLegacy.cpp 114708 2026-07-14 13:43:30Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox IDisplay implementation, helpers for legacy GAs.
  *
@@ -35,6 +35,7 @@
 #include "ConsoleImpl.h"
 #include "ConsoleVRDPServer.h"
 #include "VMMDev.h"
+#include <VBox/AssertGuest.h>
 #include <VBox/VMMDev.h>
 
 /* generated header */
@@ -198,7 +199,7 @@ static void vbvaRgnUpdateFramebuffer(VBVADIRTYREGION *prgn, unsigned uScreenId)
     }
 }
 
-void i_vbvaSetMemoryFlags(VBVAMEMORY *pVbvaMemory,
+void i_vbvaSetMemoryFlags(VBVAMEMORY RT_UNTRUSTED_VOLATILE_GUEST *pVbvaMemory,
                           bool fVideoAccelEnabled,
                           bool fVideoAccelVRDP,
                           uint32_t fu32SupportedOrders,
@@ -237,7 +238,7 @@ void i_vbvaSetMemoryFlags(VBVAMEMORY *pVbvaMemory,
 
 bool Display::i_VideoAccelAllowed(void)
 {
-    return true;
+    return mGraphicsController == GraphicsControllerType_VBoxVGA;
 }
 
 int videoAccelEnterVGA(VIDEOACCEL *pVideoAccel)
@@ -263,7 +264,7 @@ void videoAccelLeaveVMMDev(VIDEOACCEL *pVideoAccel)
 /**
  * @thread EMT
  */
-int Display::i_VideoAccelEnable(bool fEnable, VBVAMEMORY *pVbvaMemory, PPDMIDISPLAYPORT pUpPort)
+int Display::i_VideoAccelEnable(bool fEnable, VBVAMEMORY RT_UNTRUSTED_VOLATILE_GUEST *pVbvaMemory, PPDMIDISPLAYPORT pUpPort)
 {
     LogRelFlowFunc(("fEnable = %d\n", fEnable));
 
@@ -273,7 +274,7 @@ int Display::i_VideoAccelEnable(bool fEnable, VBVAMEMORY *pVbvaMemory, PPDMIDISP
     return vrc;
 }
 
-int Display::i_videoAccelEnable(bool fEnable, VBVAMEMORY *pVbvaMemory, PPDMIDISPLAYPORT pUpPort)
+int Display::i_videoAccelEnable(bool fEnable, VBVAMEMORY RT_UNTRUSTED_VOLATILE_GUEST *pVbvaMemory, PPDMIDISPLAYPORT pUpPort)
 {
     VIDEOACCEL *pVideoAccel = &mVideoAccelLegacy;
 
@@ -326,7 +327,7 @@ int Display::i_videoAccelEnable(bool fEnable, VBVAMEMORY *pVbvaMemory, PPDMIDISP
         pVbvaMemory->off32Data = 0;
         pVbvaMemory->off32Free = 0;
 
-        memset(pVbvaMemory->aRecords, 0, sizeof(pVbvaMemory->aRecords));
+        memset((void *)&pVbvaMemory->aRecords[0], 0, sizeof(pVbvaMemory->aRecords));
         pVbvaMemory->indexRecordFirst = 0;
         pVbvaMemory->indexRecordFree = 0;
 
@@ -365,44 +366,31 @@ int Display::i_videoAccelEnable(bool fEnable, VBVAMEMORY *pVbvaMemory, PPDMIDISP
     return VINF_SUCCESS;
 }
 
-static bool i_vbvaVerifyRingBuffer(VBVAMEMORY *pVbvaMemory)
+static bool i_vbvaFetchBytes(uint8_t RT_UNTRUSTED_VOLATILE_GUEST const *pu8RingBuffer, uint32_t off32Data,
+                             uint8_t *pu8Dst, uint32_t cbDst)
 {
-    RT_NOREF(pVbvaMemory);
-    return true;
-}
+    AssertReturn(cbDst < VMMDEV_VBVA_RING_BUFFER_SIZE, false);
 
-static void i_vbvaFetchBytes(VBVAMEMORY *pVbvaMemory, uint8_t *pu8Dst, uint32_t cbDst)
-{
-    if (cbDst >= VBVA_RING_BUFFER_SIZE)
-    {
-        AssertMsgFailed(("cbDst = 0x%08X, ring buffer size 0x%08X\n", cbDst, VBVA_RING_BUFFER_SIZE));
-        return;
-    }
+    uint32_t const u32BytesTillBoundary = VMMDEV_VBVA_RING_BUFFER_SIZE - off32Data;
 
-    uint32_t u32BytesTillBoundary = VBVA_RING_BUFFER_SIZE - pVbvaMemory->off32Data;
-    uint8_t  *src                 = &pVbvaMemory->au8RingBuffer[pVbvaMemory->off32Data];
-    int32_t i32Diff               = cbDst - u32BytesTillBoundary;
-
-    if (i32Diff <= 0)
+    if (cbDst <= u32BytesTillBoundary)
     {
         /* Chunk will not cross buffer boundary. */
-        memcpy (pu8Dst, src, cbDst);
+        RT_BCOPY_VOLATILE(pu8Dst, &pu8RingBuffer[off32Data], cbDst);
     }
     else
     {
         /* Chunk crosses buffer boundary. */
-        memcpy(pu8Dst, src, u32BytesTillBoundary);
-        memcpy(pu8Dst + u32BytesTillBoundary, &pVbvaMemory->au8RingBuffer[0], i32Diff);
+        RT_BCOPY_VOLATILE(pu8Dst, &pu8RingBuffer[off32Data], u32BytesTillBoundary);
+        RT_BCOPY_VOLATILE(pu8Dst + u32BytesTillBoundary, pu8RingBuffer, cbDst - u32BytesTillBoundary);
     }
 
-    /* Advance data offset. */
-    pVbvaMemory->off32Data = (pVbvaMemory->off32Data + cbDst) % VBVA_RING_BUFFER_SIZE;
-
-    return;
+    return true;
 }
 
 
-static bool i_vbvaPartialRead(uint8_t **ppu8, uint32_t *pcb, uint32_t cbRecord, VBVAMEMORY *pVbvaMemory)
+static bool i_vbvaPartialRead(uint8_t **ppu8, uint32_t *pcb, uint32_t cbRecord,
+                              uint8_t RT_UNTRUSTED_VOLATILE_GUEST const *pu8RingBuffer, uint32_t off32Data)
 {
     uint8_t *pu8New;
 
@@ -438,7 +426,15 @@ static bool i_vbvaPartialRead(uint8_t **ppu8, uint32_t *pcb, uint32_t cbRecord, 
     }
 
     /* Fetch data from the ring buffer. */
-    i_vbvaFetchBytes(pVbvaMemory, pu8New + *pcb, cbRecord - *pcb);
+    if (!i_vbvaFetchBytes(pu8RingBuffer, off32Data, pu8New + *pcb, cbRecord - *pcb))
+    {
+        RTMemFree(pu8New);
+
+        *ppu8 = NULL;
+        *pcb = 0;
+
+        return false;
+    }
 
     *ppu8 = pu8New;
     *pcb = cbRecord;
@@ -446,25 +442,26 @@ static bool i_vbvaPartialRead(uint8_t **ppu8, uint32_t *pcb, uint32_t cbRecord, 
     return true;
 }
 
-/* For contiguous chunks just return the address in the buffer.
- * For crossing boundary - allocate a buffer from heap.
+/* Always allocate a bounce buffer from heap.
  */
 static bool i_vbvaFetchCmd(VIDEOACCEL *pVideoAccel, VBVACMDHDR **ppHdr, uint32_t *pcbCmd)
 {
-    VBVAMEMORY *pVbvaMemory = pVideoAccel->pVbvaMemory;
+    VBVAMEMORY RT_UNTRUSTED_VOLATILE_GUEST *pVbvaMemory = pVideoAccel->pVbvaMemory;
 
-    uint32_t indexRecordFirst = pVbvaMemory->indexRecordFirst;
-    uint32_t indexRecordFree = pVbvaMemory->indexRecordFree;
+    uint32_t const indexRecordFirst = pVbvaMemory->indexRecordFirst;
+    uint32_t const indexRecordFree = pVbvaMemory->indexRecordFree;
+    ASSERT_GUEST_RETURN(   indexRecordFirst < VMMDEV_VBVA_MAX_RECORDS
+                        && indexRecordFree < VMMDEV_VBVA_MAX_RECORDS, false);
+
+    uint32_t const off32Data = pVbvaMemory->off32Data;
+    uint32_t const off32Free = pVbvaMemory->off32Free;
+    ASSERT_GUEST_RETURN(   off32Data < VMMDEV_VBVA_RING_BUFFER_SIZE
+                        && off32Free < VMMDEV_VBVA_RING_BUFFER_SIZE, false);
 
 #ifdef DEBUG_sunlover
     LogFlowFunc(("first = %d, free = %d\n",
                  indexRecordFirst, indexRecordFree));
 #endif /* DEBUG_sunlover */
-
-    if (!i_vbvaVerifyRingBuffer(pVbvaMemory))
-    {
-        return false;
-    }
 
     if (indexRecordFirst == indexRecordFree)
     {
@@ -479,6 +476,7 @@ static bool i_vbvaFetchCmd(VIDEOACCEL *pVideoAccel, VBVACMDHDR **ppHdr, uint32_t
 #endif /* DEBUG_sunlover */
 
     uint32_t cbRecord = cbRecordCurrent & ~VBVA_F_RECORD_PARTIAL;
+    ASSERT_GUEST_RETURN(cbRecord <= VBVA_MAX_RECORD_SIZE, false);
 
     if (pVideoAccel->cbVbvaPartial)
     {
@@ -492,7 +490,7 @@ static bool i_vbvaFetchCmd(VIDEOACCEL *pVideoAccel, VBVACMDHDR **ppHdr, uint32_t
         if (cbRecord > pVideoAccel->cbVbvaPartial)
         {
             /* New data has been added to the record. */
-            if (!i_vbvaPartialRead(&pVideoAccel->pu8VbvaPartial, &pVideoAccel->cbVbvaPartial, cbRecord, pVbvaMemory))
+            if (!i_vbvaPartialRead(&pVideoAccel->pu8VbvaPartial, &pVideoAccel->cbVbvaPartial, cbRecord, &pVbvaMemory->au8RingBuffer[0], off32Data))
             {
                 return false;
             }
@@ -512,7 +510,7 @@ static bool i_vbvaFetchCmd(VIDEOACCEL *pVideoAccel, VBVACMDHDR **ppHdr, uint32_t
 
 #ifdef DEBUG_sunlover
             LogFlowFunc(("partial done ok, data = %d, free = %d\n",
-                         pVbvaMemory->off32Data, pVbvaMemory->off32Free));
+                         off32Data, off32Free));
 #endif /* DEBUG_sunlover */
         }
 
@@ -523,10 +521,10 @@ static bool i_vbvaFetchCmd(VIDEOACCEL *pVideoAccel, VBVACMDHDR **ppHdr, uint32_t
     if (cbRecordCurrent & VBVA_F_RECORD_PARTIAL)
     {
         /* Current record is being written by guest. '=' is important here. */
-        if (cbRecord >= VBVA_RING_BUFFER_SIZE - VBVA_RING_BUFFER_THRESHOLD)
+        if (cbRecord >= VMMDEV_VBVA_RING_BUFFER_SIZE - VMMDEV_VBVA_RING_BUFFER_THRESHOLD)
         {
             /* Partial read must be started. */
-            if (!i_vbvaPartialRead(&pVideoAccel->pu8VbvaPartial, &pVideoAccel->cbVbvaPartial, cbRecord, pVbvaMemory))
+            if (!i_vbvaPartialRead(&pVideoAccel->pu8VbvaPartial, &pVideoAccel->cbVbvaPartial, cbRecord, &pVbvaMemory->au8RingBuffer[0], off32Data))
             {
                 return false;
             }
@@ -541,54 +539,33 @@ static bool i_vbvaFetchCmd(VIDEOACCEL *pVideoAccel, VBVACMDHDR **ppHdr, uint32_t
     /* Current record is complete. If it is not empty, process it. */
     if (cbRecord)
     {
-        /* The size of largest contiguous chunk in the ring biffer. */
-        uint32_t u32BytesTillBoundary = VBVA_RING_BUFFER_SIZE - pVbvaMemory->off32Data;
-
-        /* The ring buffer pointer. */
-        uint8_t *au8RingBuffer = &pVbvaMemory->au8RingBuffer[0];
-
-        /* The pointer to data in the ring buffer. */
-        uint8_t *src = &au8RingBuffer[pVbvaMemory->off32Data];
-
-        /* Fetch or point the data. */
-        if (u32BytesTillBoundary >= cbRecord)
+        /* Fetch the data. */
+        uint8_t *dst = (uint8_t *)RTMemAlloc(cbRecord);
+        if (!dst)
         {
-            /* The command does not cross buffer boundary. Return address in the buffer. */
-            *ppHdr = (VBVACMDHDR *)src;
-
-            /* Advance data offset. */
-            pVbvaMemory->off32Data = (pVbvaMemory->off32Data + cbRecord) % VBVA_RING_BUFFER_SIZE;
+            LogRelFlowFunc(("could not allocate %u bytes from heap!!!\n", cbRecord));
+            return false;
         }
-        else
+
+        if (!i_vbvaFetchBytes(&pVbvaMemory->au8RingBuffer[0], off32Data, dst, cbRecord))
         {
-            /* The command crosses buffer boundary. Rare case, so not optimized. */
-            uint8_t *dst = (uint8_t *)RTMemAlloc(cbRecord);
-
-            if (!dst)
-            {
-                LogRelFlowFunc(("could not allocate %d bytes from heap!!!\n", cbRecord));
-                pVbvaMemory->off32Data = (pVbvaMemory->off32Data + cbRecord) % VBVA_RING_BUFFER_SIZE;
-                return false;
-            }
-
-            i_vbvaFetchBytes(pVbvaMemory, dst, cbRecord);
-
-            *ppHdr = (VBVACMDHDR *)dst;
-
-#ifdef DEBUG_sunlover
-            LogFlowFunc(("Allocated from heap %p\n", dst));
-#endif /* DEBUG_sunlover */
+            return false;
         }
+
+        *ppHdr = (VBVACMDHDR *)dst;
+
+        /* Advance data offset. */
+        pVbvaMemory->off32Data = (off32Data + cbRecord) % VMMDEV_VBVA_RING_BUFFER_SIZE;
     }
 
     *pcbCmd = cbRecord;
 
     /* Advance the record index. */
-    pVbvaMemory->indexRecordFirst = (indexRecordFirst + 1) % VBVA_MAX_RECORDS;
+    pVbvaMemory->indexRecordFirst = (indexRecordFirst + 1) % VMMDEV_VBVA_MAX_RECORDS;
 
 #ifdef DEBUG_sunlover
     LogFlowFunc(("done ok, data = %d, free = %d\n",
-                 pVbvaMemory->off32Data, pVbvaMemory->off32Free));
+                 off32Data, off32Free));
 #endif /* DEBUG_sunlover */
 
     return true;
@@ -597,38 +574,22 @@ static bool i_vbvaFetchCmd(VIDEOACCEL *pVideoAccel, VBVACMDHDR **ppHdr, uint32_t
 static void i_vbvaReleaseCmd(VIDEOACCEL *pVideoAccel, VBVACMDHDR *pHdr, int32_t cbCmd)
 {
     RT_NOREF(cbCmd);
-    uint8_t *au8RingBuffer = pVideoAccel->pVbvaMemory->au8RingBuffer;
 
-    if (   (uint8_t *)pHdr >= au8RingBuffer
-        && (uint8_t *)pHdr < &au8RingBuffer[VBVA_RING_BUFFER_SIZE])
+#ifdef DEBUG_sunlover
+    LogFlowFunc(("Free heap %p\n", pHdr));
+#endif /* DEBUG_sunlover */
+
+    if ((uint8_t *)pHdr == pVideoAccel->pu8VbvaPartial)
     {
-        /* The pointer is inside ring buffer. Must be continuous chunk. */
-        Assert(VBVA_RING_BUFFER_SIZE - ((uint8_t *)pHdr - au8RingBuffer) >= cbCmd);
-
-        /* Do nothing. */
-
-        Assert(!pVideoAccel->pu8VbvaPartial && pVideoAccel->cbVbvaPartial == 0);
+        pVideoAccel->pu8VbvaPartial = NULL;
+        pVideoAccel->cbVbvaPartial = 0;
     }
     else
     {
-        /* The pointer is outside. It is then an allocated copy. */
-
-#ifdef DEBUG_sunlover
-        LogFlowFunc(("Free heap %p\n", pHdr));
-#endif /* DEBUG_sunlover */
-
-        if ((uint8_t *)pHdr == pVideoAccel->pu8VbvaPartial)
-        {
-            pVideoAccel->pu8VbvaPartial = NULL;
-            pVideoAccel->cbVbvaPartial = 0;
-        }
-        else
-        {
-            Assert(!pVideoAccel->pu8VbvaPartial && pVideoAccel->cbVbvaPartial == 0);
-        }
-
-        RTMemFree(pHdr);
+        Assert(!pVideoAccel->pu8VbvaPartial && pVideoAccel->cbVbvaPartial == 0);
     }
+
+    RTMemFree(pHdr);
 
     return;
 }
@@ -653,7 +614,7 @@ void Display::i_VideoAccelFlush(PPDMIDISPLAYPORT pUpPort)
 int Display::i_videoAccelFlush(PPDMIDISPLAYPORT pUpPort)
 {
     VIDEOACCEL *pVideoAccel = &mVideoAccelLegacy;
-    VBVAMEMORY *pVbvaMemory = pVideoAccel->pVbvaMemory;
+    VBVAMEMORY RT_UNTRUSTED_VOLATILE_GUEST *pVbvaMemory = pVideoAccel->pVbvaMemory;
 
 #ifdef DEBUG_sunlover_2
     LogFlowFunc(("fVideoAccelEnabled = %d\n", pVideoAccel->fVideoAccelEnabled));
@@ -666,19 +627,7 @@ int Display::i_videoAccelFlush(PPDMIDISPLAYPORT pUpPort)
     }
 
     /* Here VBVA is enabled and we have the accelerator memory pointer. */
-    Assert(pVbvaMemory);
-
-#ifdef DEBUG_sunlover_2
-    LogFlowFunc(("indexRecordFirst = %d, indexRecordFree = %d, off32Data = %d, off32Free = %d\n",
-                  pVbvaMemory->indexRecordFirst, pVbvaMemory->indexRecordFree,
-                  pVbvaMemory->off32Data, pVbvaMemory->off32Free));
-#endif /* DEBUG_sunlover_2 */
-
-    /* Quick check for "nothing to update" case. */
-    if (pVbvaMemory->indexRecordFirst == pVbvaMemory->indexRecordFree)
-    {
-        return VINF_SUCCESS;
-    }
+    AssertReturn(pVbvaMemory, VERR_INVALID_STATE);
 
     /* Process the ring buffer */
     unsigned uScreenId;
@@ -695,12 +644,11 @@ int Display::i_videoAccelFlush(PPDMIDISPLAYPORT pUpPort)
         /* Fetch the command data. */
         if (!i_vbvaFetchCmd(pVideoAccel, &phdr, &cbCmd))
         {
-            Log(("Display::VideoAccelFlush: unable to fetch command. off32Data = %d, off32Free = %d. Disabling VBVA!!!\n",
-                  pVbvaMemory->off32Data, pVbvaMemory->off32Free));
+            Log(("Display::VideoAccelFlush: unable to fetch command. Disabling VBVA!!!\n"));
             return VERR_INVALID_STATE;
         }
 
-        if (cbCmd == uint32_t(~0))
+        if (cbCmd == UINT32_MAX)
         {
             /* No more commands yet in the queue. */
 #ifdef DEBUG_sunlover
@@ -709,7 +657,14 @@ int Display::i_videoAccelFlush(PPDMIDISPLAYPORT pUpPort)
             break;
         }
 
-        if (cbCmd != 0)
+        if (cbCmd < sizeof(VBVACMDHDR) || cbCmd > VBVA_MAX_RECORD_SIZE)
+        {
+            /* Invalid size of command data. */
+            Log(("Display::VideoAccelFlush: invalid command size %u. Disabling VBVA!!!\n", cbCmd));
+            i_vbvaReleaseCmd(pVideoAccel, phdr, cbCmd);
+            return VERR_INVALID_STATE;
+        }
+
         {
 #ifdef DEBUG_sunlover
             LogFlowFunc(("hdr: cbCmd = %d, x=%d, y=%d, w=%d, h=%d\n",
