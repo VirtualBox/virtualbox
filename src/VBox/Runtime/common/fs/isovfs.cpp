@@ -1,4 +1,4 @@
-/* $Id: isovfs.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: isovfs.cpp 114691 2026-07-14 10:42:26Z alexander.eichner@oracle.com $ */
 /** @file
  * IPRT - ISO 9660 and UDF Virtual Filesystem (read only).
  */
@@ -1945,12 +1945,12 @@ static void rtFsIsoDirShrd_ParseRockRidgeData(PRTFSISOVOL pVol, PRTFSISOROCKINFO
 
                     size_t         offDst    = pParseInfo->cchLinkTarget;
                     uint8_t const *pbSrc     = &pUnion->SL.abComponents[0];
-                    uint8_t        cbSrcLeft = pUnion->SL.Hdr.cbEntry - RT_UOFFSETOF(ISO9660RRIPSL, abComponents);
+                    uint32_t       cbSrcLeft = pUnion->SL.Hdr.cbEntry - RT_UOFFSETOF(ISO9660RRIPSL, abComponents);
                     while (cbSrcLeft >= 2)
                     {
-                        uint8_t const fFlags  = pbSrc[0];
-                        uint8_t       cchCopy = pbSrc[1];
-                        uint8_t const cbSkip  = cchCopy + 2;
+                        uint8_t const  fFlags  = pbSrc[0];
+                        uint8_t        cchCopy = pbSrc[1];
+                        uint32_t const cbSkip  = cchCopy + 2;
                         if (cbSkip > cbSrcLeft)
                         {
                             Log4(("rtFsIsoDir_ParseRockRidgeData: Malformed 'SL' component: component flags=%#x, component length+2=%#x vs %#x left\n",
