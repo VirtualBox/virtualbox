@@ -1,4 +1,4 @@
-/* $Id: Settings.cpp 113679 2026-03-30 13:39:59Z knut.osmundsen@oracle.com $ */
+/* $Id: Settings.cpp 114697 2026-07-14 11:53:05Z serkan.bayraktar@oracle.com $ */
 /** @file
  * Settings File Manipulation API.
  *
@@ -9649,6 +9649,21 @@ bool MachineConfigFile::isAudioDriverAllowedOnThisHost(AudioDriverType_T enmDrvT
     }
 
     return false;
+}
+
+void MachineConfigFile::sanitizeImportedSerialPorts()
+{
+    for (SerialPortsList::iterator it = hardwareMachine.llSerialPorts.begin();
+            it != hardwareMachine.llSerialPorts.end();
+            ++it)
+    {
+        SerialPort &port = *it;
+        if (port.portMode == PortMode_RawFile)
+        {
+            port.portMode = PortMode_Disconnected;
+            port.strPath.setNull();
+        }
+    }
 }
 
 /**
