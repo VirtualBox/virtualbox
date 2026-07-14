@@ -1,4 +1,4 @@
-/* $Id: DisplayImpl.h 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: DisplayImpl.h 114709 2026-07-14 13:46:53Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -108,7 +108,7 @@ typedef struct _DISPLAYFBINFO
  */
 typedef struct VIDEOACCEL
 {
-    VBVAMEMORY *pVbvaMemory;
+    VBVAMEMORY RT_UNTRUSTED_VOLATILE_GUEST *pVbvaMemory;
     bool        fVideoAccelEnabled;
 
     uint8_t    *pu8VbvaPartial;
@@ -384,6 +384,8 @@ private:
     bool mfSourceBitmapEnabled;
     bool volatile fVGAResizing;
 
+    GraphicsControllerType_T mGraphicsController;
+
     /** Are we in seamless mode?  Not saved, as we exit seamless on saving. */
     bool        mfSeamlessEnabled;
     /** Last set seamless visible region, number of rectangles. */
@@ -399,12 +401,12 @@ private:
     /* The legacy VBVA data and methods. */
     VIDEOACCEL mVideoAccelLegacy;
 
-    int  i_VideoAccelEnable(bool fEnable, VBVAMEMORY *pVbvaMemory, PPDMIDISPLAYPORT pUpPort);
+    int  i_VideoAccelEnable(bool fEnable, VBVAMEMORY RT_UNTRUSTED_VOLATILE_GUEST *pVbvaMemory, PPDMIDISPLAYPORT pUpPort);
     void i_VideoAccelFlush(PPDMIDISPLAYPORT pUpPort);
     bool i_VideoAccelAllowed(void);
 
     int  i_videoAccelRefreshProcess(PPDMIDISPLAYPORT pUpPort);
-    int  i_videoAccelEnable(bool fEnable, VBVAMEMORY *pVbvaMemory, PPDMIDISPLAYPORT pUpPort);
+    int  i_videoAccelEnable(bool fEnable, VBVAMEMORY RT_UNTRUSTED_VOLATILE_GUEST *pVbvaMemory, PPDMIDISPLAYPORT pUpPort);
     int  i_videoAccelFlush(PPDMIDISPLAYPORT pUpPort);
 
     /* Legacy pre-HGSMI handlers. */
@@ -475,7 +477,7 @@ private:
 /* The legacy VBVA helpers. */
 int videoAccelConstruct(VIDEOACCEL *pVideoAccel);
 void videoAccelDestroy(VIDEOACCEL *pVideoAccel);
-void i_vbvaSetMemoryFlags(VBVAMEMORY *pVbvaMemory,
+void i_vbvaSetMemoryFlags(VBVAMEMORY RT_UNTRUSTED_VOLATILE_GUEST *pVbvaMemory,
                           bool fVideoAccelEnabled,
                           bool fVideoAccelVRDP,
                           uint32_t fu32SupportedOrders,
