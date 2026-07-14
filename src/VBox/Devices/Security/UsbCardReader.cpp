@@ -1,4 +1,4 @@
-/* $Id: UsbCardReader.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: UsbCardReader.cpp 114702 2026-07-14 13:12:26Z vitali.pelenjow@oracle.com $ */
 /** @file
  * UsbCardReader - Usb Smart Card Reader implementation.
  */
@@ -26,6 +26,7 @@
  */
 
 #define LOG_GROUP LOG_GROUP_USB_CARDREADER
+#include <VBox/AssertGuest.h>
 #include <VBox/param.h>
 #include <VBox/vmm/pdmusb.h>
 #include <VBox/log.h>
@@ -933,9 +934,10 @@ static int uscrResponseOK(PUSBCARDREADER pThis,
 }
 
 
-static uint32_t uscrResponseRead(PUSBCARDREADER pThis,
-                                 uint8_t *pu8Data,
-                                 uint32_t cbData)
+static int uscrResponseRead(PUSBCARDREADER pThis,
+                            uint8_t *pu8Data,
+                            uint32_t cbData,
+                            uint32_t *pcbOut)
 {
     USCRRSP *pRsp = pThis->pRspCurrent;
 
@@ -945,7 +947,7 @@ static uint32_t uscrResponseRead(PUSBCARDREADER pThis,
 
         if (!pRsp)
         {
-            return 0;
+            return VERR_NO_DATA;
         }
 
         RTListNodeRemove(&pRsp->nodeRsp);
@@ -983,7 +985,8 @@ static uint32_t uscrResponseRead(PUSBCARDREADER pThis,
     /* Save the current response pointer for next invocation. */
     pThis->pRspCurrent = pRsp;
 
-    return cbToCopy;
+    *pcbOut = cbToCopy;
+    return VINF_SUCCESS;
 }
 
 static void uscrResponseCleanup(PUSBCARDREADER pThis)
@@ -1013,21 +1016,29 @@ static void uscrResponseCleanup(PUSBCARDREADER pThis)
 }
 
 
-typedef uint32_t FNREADDATA(PUSBCARDREADER pThis, uint8_t *pu8Data, uint32_t cbData);
+/* Callback to read data into a bulk-in or interrupt URB. Returns VERR_NO_DATA if data is currently not available. */
+typedef int FNREADDATA(PUSBCARDREADER pThis, uint8_t *pu8Data, uint32_t cbData, uint32_t *pcbOut);
 typedef FNREADDATA *PFNREADDATA;
 
-static void urbQueueComplete(PUSBCARDREADER pThis, URBQUEUE *pQueue, PFNREADDATA pfnReadData, bool fDataOnly)
+static void urbQueueComplete(PUSBCARDREADER pThis, URBQUEUE *pQueue, PFNREADDATA pfnReadData)
 {
     PVUSBURB pUrb = pQueue->pUrbHead;
     while (pUrb)
     {
-        uint32_t cbDataReturned = pfnReadData?
-                                      pfnReadData(pThis, &pUrb->pbData[0], pUrb->cbData):
-                                      0;
+        uint32_t cbDataReturned = 0;
 
-        if (fDataOnly && cbDataReturned == 0)
+        /* 'pfnReadData == NULL' means that all queued URBs must be completed with no data. */
+        if (pfnReadData)
         {
-            break;
+            int rc = pfnReadData(pThis, &pUrb->pbData[0], pUrb->cbData, &cbDataReturned);
+            if (rc == VERR_NO_DATA)
+            {
+                /* If the caller wants data and data is not available, then keep the URB in the queue for future data. */
+                break;
+            }
+
+            if (RT_FAILURE(rc))
+                cbDataReturned = 0; /* Complete URB with zero data size. */
         }
 
         bool fRemoved = urbQueueRemove(pQueue, pUrb);
@@ -2388,17 +2399,17 @@ static int usbCardReaderBulkInPipe(PUSBCARDREADER pThis, PUSBCARDREADEREP pEp, P
      * Add the URB to the BulkIn queue and complete URBs from the queue.
      */
     urbQueueAddTail(&pThis->urbQueues.BulkIn, pUrb);
-    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead, true /* fDataOnly */);
+    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead);
 
     return VINF_SUCCESS;
 }
 
 
-static uint32_t uscrEventRead(PUSBCARDREADER pThis, uint8_t *pu8Data, uint32_t cbData)
+static int uscrEventRead(PUSBCARDREADER pThis, uint8_t *pu8Data, uint32_t cbData, uint32_t *pcbOut)
 {
-    RT_NOREF1(cbData);
-    uint32_t cbReturned = 0;
+    ASSERT_GUEST_RETURN(cbData >= sizeof(VUSBCARDREADERNOTIFYSLOTCHANGE), VERR_BUFFER_OVERFLOW);
 
+    int rc = VINF_SUCCESS;
     if (pThis->fICCStateChanged)
     {
         pThis->fICCStateChanged = false;
@@ -2413,12 +2424,14 @@ static uint32_t uscrEventRead(PUSBCARDREADER pThis, uint8_t *pu8Data, uint32_t c
             pNotify->bmSlotICCState |= 0x01; /* ICC present */
         }
 
-        cbReturned = sizeof(VUSBCARDREADERNOTIFYSLOTCHANGE);
+        *pcbOut = sizeof(VUSBCARDREADERNOTIFYSLOTCHANGE);
 
-        UCRLOG(("Reporting a slot change\n%.*Rhxs\n", cbReturned, pu8Data));
+        UCRLOG(("Reporting a slot change\n%.*Rhxs\n", *pcbOut, pu8Data));
     }
+    else
+        rc = VERR_NO_DATA;
 
-    return cbReturned;
+    return rc;
 }
 
 
@@ -2433,13 +2446,13 @@ static int usbCardReaderIntPipe(PUSBCARDREADER pThis, PUSBCARDREADEREP pEp, PVUS
 
     /* If there is a pending URB, complete it without data. It is most likely cancelled.
      *
-     * The webcam does not complete URB if there is no data. Therefore if a new intr-in URB is submitted,
+     * The card reader does not complete URB if there is no data. Therefore if a new intr-in URB is submitted,
      * it means that the old URB is not ok anymore and returned data in it may be lost.
      */
-    urbQueueComplete(pThis, &pThis->urbQueues.IntrIn, NULL /* no data */, false /* fDataOnly */);
+    urbQueueComplete(pThis, &pThis->urbQueues.IntrIn, NULL /* no data */);
 
     urbQueueAddTail(&pThis->urbQueues.IntrIn, pUrb);
-    urbQueueComplete(pThis, &pThis->urbQueues.IntrIn, uscrEventRead, true /* fDataOnly */);
+    urbQueueComplete(pThis, &pThis->urbQueues.IntrIn, uscrEventRead);
 
     return VINF_SUCCESS;
 }
@@ -2593,8 +2606,14 @@ static void uscrStatusMonitorProcess(PUSBCARDREADER pThis)
              * because exclusive access is used. The disconnect request is sent if
              * the card is connected: usbCardReaderSendDisconnect checks this condition.
              */
-            usbCardReaderSendDisconnect(pThis, pSlot, DISCONNECT_ONSTATUSCHANGE);
-            pThis->enmICCConnState = ICCNOCONNECTION;
+            if ((pThis->u32EventStateBackend & VBOX_SCARD_STATE_EMPTY) != 0)
+            {
+                /* Some clients send status change notifications even if PRESENT/EMPTY has not chnaged.
+                 * Try to reconnect only if there is no card.
+                 */
+                usbCardReaderSendDisconnect(pThis, pSlot, DISCONNECT_ONSTATUSCHANGE);
+                pThis->enmICCConnState = ICCNOCONNECTION;
+            }
 
             bool fForceChanged = (pThis->u32EventStateBackend & VBOX_SCARD_STATE_CHANGED) != 0;
 
@@ -2661,7 +2680,7 @@ static DECLCALLBACK(int) uscrStatusMonitor(PPDMUSBINS pUsbIns, PPDMTHREAD pThrea
         {
             uscrStatusMonitorProcess(pThis);
 
-            urbQueueComplete(pThis, &pThis->urbQueues.IntrIn, uscrEventRead, true /* fDataOnly */);
+            urbQueueComplete(pThis, &pThis->urbQueues.IntrIn, uscrEventRead);
             uscrUnlock(pThis);
         }
 
@@ -2819,7 +2838,7 @@ static DECLCALLBACK(int) usbSCardReaderConnect(PPDMICARDREADERUP pInterface,
     pThis->fu8Cmd &= ~VUSBCARDREADER_F_CMD_BUSY;
 
     /* Process possibly pending bulk-in URBs. */
-    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead, true /* fDataOnly */);
+    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead);
 
     uscrUnlock(pThis);
 
@@ -2905,7 +2924,7 @@ static DECLCALLBACK(int) usbSCardReaderDisconnect(PPDMICARDREADERUP pInterface,
     pThis->enmDisconnectReason = DISCONNECT_VOID;
 
     /* Process possibly pending bulk-in URBs. */
-    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead, true /* fDataOnly */);
+    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead);
 
     uscrUnlock(pThis);
 
@@ -3102,7 +3121,7 @@ static DECLCALLBACK(int) usbSCardReaderTransmit(PPDMICARDREADERUP pInterface,
     }
 
     /* Process possibly pending bulk-in URBs. */
-    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead, true /* fDataOnly */);
+    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead);
 
     uscrUnlock(pThis);
 
@@ -3258,7 +3277,7 @@ static DECLCALLBACK(int) usbSCardReaderConstruct(PPDMUSBINS pUsbIns, int iInstan
     pThis->hEvtDoneQueue = NIL_RTSEMEVENT;
     rc = RTSemEventCreate(&pThis->hEvtDoneQueue);
     if (RT_FAILURE(rc))
-        return PDMUsbHlpVMSetError(pUsbIns, rc, RT_SRC_POS, N_("USBWEBCAM: Failed to create event semaphore"));
+        return PDMUsbHlpVMSetError(pUsbIns, rc, RT_SRC_POS, N_("USBSCARDREADER: Failed to create event semaphore"));
 
     rc = PDMUsbHlpThreadCreate(pUsbIns, &pThis->pStatusMonitorThread, pThis,
                                uscrStatusMonitor, uscrStatusMonitorWakeUp,
