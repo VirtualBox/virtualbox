@@ -1,4 +1,4 @@
-/* $Id: ApplianceImplImport.cpp 114697 2026-07-14 11:53:05Z serkan.bayraktar@oracle.com $ */
+/* $Id: ApplianceImplImport.cpp 114706 2026-07-14 13:36:10Z alexander.eichner@oracle.com $ */
 /** @file
  * IAppliance and IVirtualSystem COM class implementations.
  */
@@ -1999,7 +1999,7 @@ HRESULT Appliance::i_importCloudImpl(TaskCloud *pTask)
                             if (RT_FAILURE(vrc))
                                 throw  setErrorVrc(vrc, tr("Could not read the file '%s' (%Rrc)"), strAbsSrcPath.c_str(), vrc);
 
-                            Utf8StrFmt strAbsDstPath("%s%s%s", strMachineFolder.c_str(), RTPATH_SLASH_STR, pszName);
+                            Utf8StrFmt strAbsDstPath("%s%s%s", strMachineFolder.c_str(), RTPATH_SLASH_STR, RTPathFilename(pszName));
 
                             /* Simple logic - just try to get dir info, in case of absent try to create one.
                                No deep errors analysis */
