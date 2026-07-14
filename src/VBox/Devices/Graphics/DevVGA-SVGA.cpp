@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 114672 2026-07-12 23:43:47Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 114710 2026-07-14 14:01:36Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -1947,6 +1947,42 @@ static void vmsvgaR3RegUpdateCursor(PVGASTATECC pThisCC, PVGASTATE pThis, uint32
     pThisCC->pDrv->pfnVBVAReportCursorPosition(pThisCC->pDrv, fFlags, idScreen, x, y);
 }
 
+
+/** Defines or frees a GMR.
+ *
+ * @param pThis       The shared VGA/VMSVGA instance data.
+ * @param pThisCC     The VGA/VMSVGA state for the current context.
+ * @param pGMRInfo    The GMR description.
+ * @thread FIFO
+ */
+static void vmsvgaR3GMRDescriptor(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGAGMRINFO const *pGMRInfo)
+{
+    PVMSVGAR3STATE pSVGAState = pThisCC->svga.pSvgaR3State;
+
+    uint32_t const idGMR = pGMRInfo->u32GMRId;
+    AssertReturnVoid(idGMR < pThis->svga.cGMR);
+    RT_UNTRUSTED_VALIDATED_FENCE();
+
+    /* Free the old GMR if present. */
+    vmsvgaR3GmrFree(pThisCC, idGMR);
+
+    if (pGMRInfo->cDescriptors != 0)
+    {
+        /* Commit the GMR. */
+        size_t const cbAlloc = pGMRInfo->cDescriptors * sizeof(VMSVGAGMRDESCRIPTOR);
+        pSVGAState->paGMR[idGMR].paDesc         = (PVMSVGAGMRDESCRIPTOR)RTMemAlloc(cbAlloc);
+        AssertReturnVoid(pSVGAState->paGMR[idGMR].paDesc);
+        memcpy(pSVGAState->paGMR[idGMR].paDesc, pGMRInfo->paDescs, cbAlloc);
+
+        pSVGAState->paGMR[idGMR].numDescriptors = pGMRInfo->cDescriptors;
+        pSVGAState->paGMR[idGMR].cMaxPages      = pGMRInfo->cPagesTotal;
+        pSVGAState->paGMR[idGMR].cbTotal        = pGMRInfo->cPagesTotal * GUEST_PAGE_SIZE;
+        Assert((pSVGAState->paGMR[idGMR].cbTotal >> GUEST_PAGE_SHIFT) == pGMRInfo->cPagesTotal);
+        Log(("Defined new gmrid = %u: numDescriptors=%u cbTotal=%#x (%#x pages)\n",
+             idGMR, pGMRInfo->cDescriptors, pSVGAState->paGMR[idGMR].cbTotal, pGMRInfo->cPagesTotal));
+    }
+}
+
 #endif /* IN_RING3 */
 
 
@@ -2285,77 +2321,97 @@ static VBOXSTRICTRC vmsvgaWritePort(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTA
             AssertBreak(idGMR < pThis->svga.cGMR);
             RT_UNTRUSTED_VALIDATED_FENCE();
 
-            /* Free the old GMR if present. */
-            vmsvgaR3GmrFree(pThisCC, idGMR);
+            /* GMRs must be modified from FIFO thread. Fetch the data and forward it to the FIFO thread. */
+            VMSVGAGMRINFO *pGMRInfo = (VMSVGAGMRINFO *)RTMemAlloc(RT_UOFFSETOF(VMSVGAGMRINFO, paDescs));
+            if (!pGMRInfo)
+            {
+                STAM_REL_COUNTER_INC(&pSVGAState->StatR3RegGmrDescriptorWrErrors);
+                break;
+            }
 
-            /* Just undefine the GMR? */
+            pGMRInfo->u32GMRId = idGMR;
+            pGMRInfo->cDescriptors = 0;
+            pGMRInfo->cPagesTotal = 0;
+            pGMRInfo->u32Reserved = 0;
+
+            int rc2 = VINF_SUCCESS;
+
             RTGCPHYS GCPhys = (RTGCPHYS)u32 << GUEST_PAGE_SHIFT;
             if (GCPhys == 0)
             {
                 STAM_REL_COUNTER_INC(&pSVGAState->StatR3RegGmrDescriptorWrFree);
-                break;
-            }
-
-
-            /* Never cross a page boundary automatically. */
-            const uint32_t          cMaxPages   = RT_MIN(VMSVGA_MAX_GMR_PAGES, UINT32_MAX / X86_PAGE_SIZE);
-            uint32_t                cPagesTotal = 0;
-            uint32_t                iDesc       = 0;
-            PVMSVGAGMRDESCRIPTOR    paDescs     = NULL;
-            uint32_t                cLoops      = 0;
-            RTGCPHYS                GCPhysBase  = GCPhys;
-            while ((GCPhys >> GUEST_PAGE_SHIFT) == (GCPhysBase >> GUEST_PAGE_SHIFT))
-            {
-                /* Read descriptor. */
-                SVGAGuestMemDescriptor desc;
-                rc = PDMDevHlpPCIPhysRead(pDevIns, GCPhys, &desc, sizeof(desc));
-                AssertRCBreak(VBOXSTRICTRC_VAL(rc));
-
-                if (desc.numPages != 0)
-                {
-                    AssertBreakStmt(desc.numPages <= cMaxPages, rc = VERR_OUT_OF_RANGE);
-                    cPagesTotal += desc.numPages;
-                    AssertBreakStmt(cPagesTotal   <= cMaxPages, rc = VERR_OUT_OF_RANGE);
-
-                    if ((iDesc & 15) == 0)
-                    {
-                        void *pvNew = RTMemRealloc(paDescs, (iDesc + 16) * sizeof(VMSVGAGMRDESCRIPTOR));
-                        AssertBreakStmt(pvNew, rc = VERR_NO_MEMORY);
-                        paDescs = (PVMSVGAGMRDESCRIPTOR)pvNew;
-                    }
-
-                    paDescs[iDesc].GCPhys     = (RTGCPHYS)desc.ppn << GUEST_PAGE_SHIFT;
-                    paDescs[iDesc++].numPages = desc.numPages;
-
-                    /* Continue with the next descriptor. */
-                    GCPhys += sizeof(desc);
-                }
-                else if (desc.ppn == 0)
-                    break;  /* terminator */
-                else /* Pointer to the next physical page of descriptors. */
-                    GCPhys = GCPhysBase = (RTGCPHYS)desc.ppn << GUEST_PAGE_SHIFT;
-
-                cLoops++;
-                AssertBreakStmt(cLoops < VMSVGA_MAX_GMR_DESC_LOOP_COUNT, rc = VERR_OUT_OF_RANGE);
-            }
-
-            AssertStmt(iDesc > 0 || RT_FAILURE_NP(rc), rc = VERR_OUT_OF_RANGE);
-            if (RT_SUCCESS(rc))
-            {
-                /* Commit the GMR. */
-                pSVGAState->paGMR[idGMR].paDesc         = paDescs;
-                pSVGAState->paGMR[idGMR].numDescriptors = iDesc;
-                pSVGAState->paGMR[idGMR].cMaxPages      = cPagesTotal;
-                pSVGAState->paGMR[idGMR].cbTotal        = cPagesTotal * GUEST_PAGE_SIZE;
-                Assert((pSVGAState->paGMR[idGMR].cbTotal >> GUEST_PAGE_SHIFT) == cPagesTotal);
-                Log(("Defined new gmr %x numDescriptors=%d cbTotal=%x (%#x pages)\n",
-                     idGMR, iDesc, pSVGAState->paGMR[idGMR].cbTotal, cPagesTotal));
             }
             else
             {
-                RTMemFree(paDescs);
+                /* Never cross a page boundary automatically. */
+                const uint32_t cMaxPages   = RT_MIN(VMSVGA_MAX_GMR_PAGES, UINT32_MAX / X86_PAGE_SIZE);
+                uint32_t       cLoops      = 0;
+                RTGCPHYS       GCPhysBase  = GCPhys;
+                while ((GCPhys >> GUEST_PAGE_SHIFT) == (GCPhysBase >> GUEST_PAGE_SHIFT))
+                {
+                    /* Read descriptor. */
+                    SVGAGuestMemDescriptor desc;
+                    rc2 = PDMDevHlpPCIPhysRead(pDevIns, GCPhys, &desc, sizeof(desc));
+                    AssertRCBreak(rc2);
+
+                    if (desc.numPages != 0)
+                    {
+                        AssertBreakStmt(desc.numPages         <= cMaxPages, rc2 = VERR_OUT_OF_RANGE);
+                        pGMRInfo->cPagesTotal += desc.numPages;
+                        AssertBreakStmt(pGMRInfo->cPagesTotal <= cMaxPages, rc2 = VERR_OUT_OF_RANGE);
+
+                        if ((pGMRInfo->cDescriptors & 15) == 0)
+                        {
+                            size_t const cbAlloc = RT_UOFFSETOF(VMSVGAGMRINFO, paDescs)
+                                                 + (pGMRInfo->cDescriptors + 16) * sizeof(VMSVGAGMRDESCRIPTOR);
+                            void *pvNew = RTMemRealloc(pGMRInfo, cbAlloc);
+                            AssertBreakStmt(pvNew, rc2 = VERR_NO_MEMORY);
+                            pGMRInfo = (VMSVGAGMRINFO *)pvNew;
+                        }
+
+                        pGMRInfo->paDescs[pGMRInfo->cDescriptors].GCPhys     = (RTGCPHYS)desc.ppn << GUEST_PAGE_SHIFT;
+                        pGMRInfo->paDescs[pGMRInfo->cDescriptors++].numPages = desc.numPages;
+
+                        /* Continue with the next descriptor. */
+                        GCPhys += sizeof(desc);
+                    }
+                    else if (desc.ppn == 0)
+                        break;  /* terminator */
+                    else /* Pointer to the next physical page of descriptors. */
+                        GCPhys = GCPhysBase = (RTGCPHYS)desc.ppn << GUEST_PAGE_SHIFT;
+
+                    cLoops++;
+                    AssertBreakStmt(cLoops < VMSVGA_MAX_GMR_DESC_LOOP_COUNT, rc2 = VERR_OUT_OF_RANGE);
+                }
+
+                AssertStmt(pGMRInfo->cDescriptors > 0 || RT_FAILURE_NP(rc2), rc2 = VERR_OUT_OF_RANGE);
+            }
+
+            if (RT_SUCCESS(rc2))
+            {
+                /* Forward to the FIFO thread. */
+                PVMSVGACMDBUFCTX pCmdBufCtx = pThisCC->svga.pSvgaR3State->apCmdBufCtxs[0];
+                PVMSVGACMDBUF pCmdBuf = vmsvgaR3CmdBufAlloc(pCmdBufCtx, VMSVGACMDBUFTYPE_HOST);
+                if (RT_LIKELY(pCmdBuf))
+                {
+                    pCmdBuf->idHostCommand = VMSVGACMDBUF_HOSTCOMMAND_GMR_DESCRIPTOR;
+                    pCmdBuf->cbHostCommandData = RT_UOFFSETOF(VMSVGAGMRINFO, paDescs)
+                                               + pGMRInfo->cDescriptors * sizeof(VMSVGAGMRDESCRIPTOR);
+                    pCmdBuf->pvHostCommandData = pGMRInfo;
+                    vmsvgaR3CmdBufSubmitHostCommand(pDevIns, pThis, pThisCC, pCmdBuf);
+                    Log(("Defining gmrid = %u: numDescriptors=%u, %#x pages\n",
+                         idGMR, pGMRInfo->cDescriptors, pGMRInfo->cPagesTotal));
+                }
+                else
+                    rc2 = VERR_NO_MEMORY;
+            }
+
+            if (RT_FAILURE(rc2))
+            {
+                RTMemFree(pGMRInfo);
                 STAM_REL_COUNTER_INC(&pSVGAState->StatR3RegGmrDescriptorWrErrors);
             }
+
             break;
         }
 # endif /* IN_RING3 */
@@ -4292,7 +4348,10 @@ static void vmsvgaR3CmdBufProcessBuffers(PPDMDEVINS pDevIns, PVGASTATE pThis, PV
 
         if (pCmdBuf->enmCBType == VMSVGACMDBUFTYPE_HOST)
         {
-            AssertFailed(); /* Not used yet */
+            if (pCmdBuf->idHostCommand == VMSVGACMDBUF_HOSTCOMMAND_GMR_DESCRIPTOR)
+                vmsvgaR3GMRDescriptor(pThis, pThisCC, (VMSVGAGMRINFO *)pCmdBuf->pvHostCommandData);
+            else
+                AssertFailed();
             vmsvgaR3CmdBufFree(pCmdBuf);
             continue;
         }

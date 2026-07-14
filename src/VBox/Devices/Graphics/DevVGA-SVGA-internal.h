@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA-internal.h 114671 2026-07-12 21:07:21Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA-internal.h 114710 2026-07-14 14:01:36Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMWare SVGA device - internal header for DevVGA-SVGA* source files.
  */
@@ -62,6 +62,16 @@ typedef struct
     PVMSVGAGMRDESCRIPTOR    paDesc;
 } GMR, *PGMR;
 
+typedef struct _VMSVGAGMRINFO
+{
+    uint32_t            u32GMRId;                   /* GMR identifier. Index in pSVGAState->paGMR. */
+    uint32_t            cDescriptors;               /* Elements in paDesc array. 0 if GMR must be freed. */
+    uint32_t            cPagesTotal;                /* Total number of pages in descriptors. */
+    uint32_t            u32Reserved;
+    RT_FLEXIBLE_ARRAY_EXTENSION
+    VMSVGAGMRDESCRIPTOR paDescs[RT_FLEXIBLE_ARRAY]; /* GMR pages. */
+} VMSVGAGMRINFO;
+
 
 typedef struct VMSVGACMDBUF *PVMSVGACMDBUF;
 typedef struct VMSVGACMDBUFCTX *PVMSVGACMDBUFCTX;
@@ -72,6 +82,8 @@ typedef enum VMSVGACMDBUFTYPE
     VMSVGACMDBUFTYPE_HOST, /* A host command to be processed synchronously by FIFO thread. */
     VMSVGACMDBUFTYPE_32BIT_HACK = 0x7fffffff
 } VMSVGACMDBUFTYPE;
+
+#define VMSVGACMDBUF_HOSTCOMMAND_GMR_DESCRIPTOR 2
 
 /* Command buffer. */
 #include "vmsvga_headers_begin.h" /* GCC complains that 'ISO C++ prohibits anonymous structs' when "-Wpedantic" is enabled. */
