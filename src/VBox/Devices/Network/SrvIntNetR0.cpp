@@ -1,4 +1,4 @@
-/* $Id: SrvIntNetR0.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: SrvIntNetR0.cpp 114718 2026-07-15 19:13:37Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * Internal networking - The ring 0 service.
  *
@@ -3098,7 +3098,7 @@ static void intnetR0TrunkSharedMacEditIPv6FromIntNet(PINTNETTRUNKIF pThis, PINTN
     {
         uint8_t opt = ((uint8_t *)pOpt)[0];
         uint32_t optlen = (uint32_t)((uint8_t *)pOpt)[1] * 8;
-        if (RT_UNLIKELY(cb < optlen))
+        if (RT_UNLIKELY(cb < optlen || optlen == 0))
             return;
 
         if (opt == llaopt)
