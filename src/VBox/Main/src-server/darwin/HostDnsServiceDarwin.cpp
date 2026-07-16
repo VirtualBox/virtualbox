@@ -241,6 +241,7 @@ int HostDnsServiceDarwin::updateInfo(void)
         {
             CFStringRef const serverAddressRef = (CFStringRef)CFArrayGetValueAtIndex(serverArrayRef, i);
             if (serverAddressRef)
+            {
                 if (!queryCFStringAsUtf8Str(serverAddressRef, strTmp, _16K))
                 {
                     LogRel(("HostDnsServiceDarwin: idx: %u: Failed to convert address.\n", i));
@@ -273,6 +274,7 @@ int HostDnsServiceDarwin::updateInfo(void)
                 }
                 else
                     LogRel(("HostDnsServiceDarwin: line %u: bad nameserver address %s\n", i, strTmp.c_str()));
+            }
         }
     }
 
@@ -313,4 +315,3 @@ void HostDnsServiceDarwin::Data::performShutdownCallback(void *pInfo)
     AssertPtrReturnVoid(pThis->m);
     ASMAtomicXchgBool(&pThis->m->m_fStop, true);
 }
-
