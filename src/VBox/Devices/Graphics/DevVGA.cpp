@@ -1,4 +1,4 @@
-/* $Id: DevVGA.cpp 114639 2026-07-07 17:29:27Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA.cpp 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * DevVGA - VBox VGA/VESA device.
  */
@@ -6677,6 +6677,7 @@ static DECLCALLBACK(int)   vgaR3Construct(PPDMDEVINS pDevIns, int iInstance, PCF
                                             "|VMSVGA3dMSAA"
                                             "|VMSVGA2dGBO"
                                             "|VMSVGA3dGraphicsMemSizeGB"
+                                            "|VMSVGA3dVideoAcceleration"
 # endif
                                             "|SuppressNewYearSplash"
                                             "|3DEnabled";
@@ -6763,6 +6764,10 @@ static DECLCALLBACK(int)   vgaR3Construct(PPDMDEVINS pDevIns, int iInstance, PCF
     rc = pHlp->pfnCFGMQueryU64Def(pCfg, "VMSVGA3dGraphicsMemSizeGB", &u64VMSVGA3dGraphicsMemSizeGB, 4);
     AssertLogRelRCReturn(rc, rc);
     pThis->svga.cbGBObjectMemSize = RT_MIN(u64VMSVGA3dGraphicsMemSizeGB, 32) * _1G;
+
+    rc = pHlp->pfnCFGMQueryBoolDef(pCfg, "VMSVGA3dVideoAcceleration", &pThis->svga.fVMSVGA3dVideoAcceleration, true);
+    AssertLogRelRCReturn(rc, rc);
+    Log(("VMSVGA: VMSVGA3dVideoAcceleration = %d\n", pThis->svga.fVMSVGA3dVideoAcceleration));
 # endif
 
 # ifdef VBOX_WITH_VMSVGA

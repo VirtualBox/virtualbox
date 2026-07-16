@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114525 2026-06-25 10:28:43Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -439,6 +439,10 @@ typedef struct VMSVGA3DBACKEND
          * resources just in case. It works on AMD and Intel graphics without the workaround.
          */
         bool fAlwaysSetShaderResourceViewsForCompute : 1;
+
+        /* Do not create ID3D11VideoDevice.
+         */
+        bool fDisableVideoAcceleration : 1;
     } workarounds;
 } VMSVGA3DBACKEND;
 
@@ -1514,10 +1518,16 @@ static int dxDeviceCreate(PVMSVGA3DBACKEND pBackend, DXDEVICE *pDXDevice)
         }
 
         /* Failure to query VideoDevice should be ignored. */
-        hr2 = pDXDevice->pDevice->QueryInterface(__uuidof(ID3D11VideoDevice), (void**)&pDXDevice->pVideoDevice);
+        if (!pBackend->workarounds.fDisableVideoAcceleration)
+        {
+            hr2 = pDXDevice->pDevice->QueryInterface(__uuidof(ID3D11VideoDevice), (void**)&pDXDevice->pVideoDevice);
 #ifndef VBOX_WITH_DXMT /* DXMT has no video support, so failing is expected here. */
-        Assert(SUCCEEDED(hr2));
+            Assert(SUCCEEDED(hr2));
 #endif
+        }
+        else
+            hr2 = E_NOTIMPL;
+
         if (SUCCEEDED(hr2))
         {
             hr2 = pDXDevice->pImmediateContext->QueryInterface(__uuidof(ID3D11VideoContext), (void**)&pDXDevice->pVideoContext);
@@ -3406,6 +3416,8 @@ static DECLCALLBACK(int) vmsvga3dBackPowerOn(PPDMDEVINS pDevIns, PVGASTATE pThis
 
     PVMSVGA3DBACKEND pBackend = pState->pBackend;
     AssertReturn(pBackend, VERR_INVALID_STATE);
+
+    pBackend->workarounds.fDisableVideoAcceleration = !pThis->svga.fVMSVGA3dVideoAcceleration;
 
     int rc = dxDeviceCreate(pBackend, &pBackend->dxDevice);
     if (RT_SUCCESS(rc))

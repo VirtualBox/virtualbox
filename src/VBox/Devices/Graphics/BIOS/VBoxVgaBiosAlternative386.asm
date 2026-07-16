@@ -1,4 +1,4 @@
-; $Id: VBoxVgaBiosAlternative386.asm 114668 2026-07-09 10:43:50Z klaus.espenlaub@oracle.com $
+; $Id: VBoxVgaBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
 ;; @file
 ; Auto Generated source file. Do not edit.
 ;
@@ -7742,7 +7742,7 @@ vesa_pm_end:                                 ; 0xc4754 LB 0x1
 section _DATA progbits vstart=0x4780 align=1 ; size=0x3745 class=DATA group=DGROUP
   ; disGetNextSymbol 0xc4780 LB 0x3745 -> off=0x0 cb=000000000000002c uValue=00000000000c0000 '_msg_vga_init'
 _msg_vga_init:                               ; 0xc4780 LB 0x2c
-    db  'Oracle VirtualBox Version 7.2.13 VGA BIOS', 00dh, 00ah, 000h
+    db  'Oracle VirtualBox Version 7.2.14 VGA BIOS', 00dh, 00ah, 000h
   ; disGetNextSymbol 0xc47ac LB 0x3719 -> off=0x0 cb=0000000000000080 uValue=00000000000c002c 'vga_modes'
 vga_modes:                                   ; 0xc47ac LB 0x80
     db  000h, 000h, 000h, 004h, 000h, 0b8h, 0ffh, 002h, 001h, 000h, 000h, 004h, 000h, 0b8h, 0ffh, 002h
@@ -8673,7 +8673,7 @@ _vbebios_product_name:                       ; 0xc7e32 LB 0x1e
     db  'Oracle VirtualBox VBE Adapter', 000h
   ; disGetNextSymbol 0xc7e50 LB 0x75 -> off=0x0 cb=0000000000000021 uValue=00000000000c36d0 '_vbebios_product_revision'
 _vbebios_product_revision:                   ; 0xc7e50 LB 0x21
-    db  'Oracle VirtualBox Version 7.2.13', 000h
+    db  'Oracle VirtualBox Version 7.2.14', 000h
   ; disGetNextSymbol 0xc7e71 LB 0x54 -> off=0x0 cb=000000000000002b uValue=00000000000c36f1 '_vbebios_info_string'
 _vbebios_info_string:                        ; 0xc7e71 LB 0x2b
     db  'VirtualBox VBE Display Adapter enabled', 00dh, 00ah, 00dh, 00ah, 000h
@@ -8690,13 +8690,13 @@ section CONST2 progbits vstart=0x7ec6 align=1 ; size=0x0 class=DATA group=DGROUP
 
   ; Padding 0x13a bytes at 0xc7ec6
     db  000h, 000h, 000h, 000h, 001h, 000h, 000h, 000h, 000h, 000h, 000h, 02fh, 068h, 06fh, 06dh, 065h
-    db  02fh, 06bh, 06ch, 061h, 075h, 073h, 02fh, 070h, 072h, 06fh, 06ah, 065h, 063h, 074h, 073h, 02fh
-    db  076h, 062h, 06fh, 078h, 02fh, 062h, 072h, 061h, 06eh, 063h, 068h, 065h, 073h, 02fh, 056h, 042h
-    db  06fh, 078h, 02dh, 037h, 02eh, 032h, 02fh, 06fh, 075h, 074h, 02fh, 06ch, 069h, 06eh, 075h, 078h
-    db  02eh, 061h, 06dh, 064h, 036h, 034h, 02fh, 072h, 065h, 06ch, 065h, 061h, 073h, 065h, 02fh, 06fh
-    db  062h, 06ah, 02fh, 056h, 042h, 06fh, 078h, 056h, 067h, 061h, 042h, 069h, 06fh, 073h, 033h, 038h
-    db  036h, 02fh, 056h, 042h, 06fh, 078h, 056h, 067h, 061h, 042h, 069h, 06fh, 073h, 033h, 038h, 036h
-    db  02eh, 073h, 079h, 06dh, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
+    db  02fh, 061h, 06ch, 065h, 06bh, 073h, 065h, 079h, 02fh, 077h, 06fh, 072h, 06bh, 02fh, 076h, 062h
+    db  06fh, 078h, 02fh, 062h, 072h, 061h, 06eh, 063h, 068h, 065h, 073h, 02fh, 056h, 042h, 06fh, 078h
+    db  02dh, 037h, 02eh, 032h, 02fh, 06fh, 075h, 074h, 02fh, 06ch, 069h, 06eh, 075h, 078h, 02eh, 061h
+    db  06dh, 064h, 036h, 034h, 02fh, 072h, 065h, 06ch, 065h, 061h, 073h, 065h, 02fh, 06fh, 062h, 06ah
+    db  02fh, 056h, 042h, 06fh, 078h, 056h, 067h, 061h, 042h, 069h, 06fh, 073h, 033h, 038h, 036h, 02fh
+    db  056h, 042h, 06fh, 078h, 056h, 067h, 061h, 042h, 069h, 06fh, 073h, 033h, 038h, 036h, 02eh, 073h
+    db  079h, 06dh, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
@@ -8708,4 +8708,4 @@ section CONST2 progbits vstart=0x7ec6 align=1 ; size=0x0 class=DATA group=DGROUP
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
-    db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 071h
+    db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 048h

@@ -73,7 +73,7 @@ Rules for adding a changelog entry to make them look more uniform:
                            So, we use chapter and xpointer="xpointer(/chapter/)" with xi:include. -->
   <sect1>
 
-    <title>Version X.Y.Z (date tbd)</title>
+    <title>Version 7.2.14 (2026-07-21)</title>
 
     <para>This is a maintenance release. The following items were fixed or
       added:</para>
@@ -81,12 +81,36 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
+        <para>VMM: Avoided querying/setting xcr0 for CPUs without xsave feature
+          when using Windows Hyper-V as the virtualization engine</para>
+      </listitem>
+
+      <listitem>
         <para>Windows installer: Added support for detecting the Visual C++ runtime via
           the servicing infrastructure (github:gh-723)</para>
       </listitem>
 
       <listitem>
-        <para></para>
+        <para>Windows Host: Fixed clipboard handling of Unicode formats
+          (github:gh-677)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host: Added initial support for kernel 7.2</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Guest: Fixed support for updated RHEL 9.8 and 9.9 kernels</para>
+      </listitem>
+
+      <listitem>
+        <para>UEFI: Fixed possible bug check and reboot of Windows 11 when
+          updating Secure Boot DBX entries</para>
+      </listitem>
+
+      <listitem>
+        <para>BIOS: Simplified build prerequisites, NASM 2.16 or later is now
+          usable for everything (github:gh-520)</para>
       </listitem>
 
     </itemizedlist>
