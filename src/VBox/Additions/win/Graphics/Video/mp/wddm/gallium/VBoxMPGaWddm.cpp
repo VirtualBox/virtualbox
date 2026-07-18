@@ -1,4 +1,4 @@
-/* $Id: VBoxMPGaWddm.cpp 114711 2026-07-14 21:53:01Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPGaWddm.cpp 114729 2026-07-18 14:44:50Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Gallium driver interface for WDDM kernel mode driver.
  */
@@ -2131,10 +2131,12 @@ static NTSTATUS gaSourceBlitToScreen(PVBOXMP_DEVEXT pDevExt, VBOXWDDM_SOURCE *pS
 
     VBOXWDDM_TARGET_ITER Iter;
     VBoxVidPnStTIterInit(pSource, pDevExt->aTargets, VBoxCommonFromDeviceExt(pDevExt)->cDisplays, &Iter);
+    LogRel3(("PresentDisplayOnly: targets 0x%x\n", pSource->aTargetMap[0]));
     for (PVBOXWDDM_TARGET pTarget = VBoxVidPnStTIterNext(&Iter);
          pTarget;
          pTarget = VBoxVidPnStTIterNext(&Iter))
     {
+        LogRel3(("PresentDisplayOnly: target[%u]\n", pTarget->u32Id));
         Status = SvgaBlitGMRFBToScreen(pSvga,
                                        pTarget->u32Id,
                                        pRect->left,

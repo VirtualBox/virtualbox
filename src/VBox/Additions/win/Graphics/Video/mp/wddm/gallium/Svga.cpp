@@ -1,4 +1,4 @@
-/* $Id: Svga.cpp 111825 2025-11-20 15:08:34Z knut.osmundsen@oracle.com $ */
+/* $Id: Svga.cpp 114729 2026-07-18 14:44:50Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - VMSVGA.
  */
@@ -1426,6 +1426,8 @@ NTSTATUS SvgaBlitGMRFBToScreen(PVBOXWDDM_EXT_VMSVGA pSvga,
     uint32_t cbSubmit = 0;
     void *pvCmd = NULL;
 
+    if (!pSvga->pCBState)
+        LogRel3(("PresentDisplayOnly: pSvga->pCBState is NULL\n"));
     SvgaGenBlitGMRFBToScreen(pSvga, idDstScreen, xSrc, ySrc, pDstRect,
                              NULL, 0, &cbSubmit);
 

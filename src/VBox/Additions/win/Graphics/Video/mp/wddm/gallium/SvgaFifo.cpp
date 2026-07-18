@@ -1,4 +1,4 @@
-/* $Id: SvgaFifo.cpp 111825 2025-11-20 15:08:34Z knut.osmundsen@oracle.com $ */
+/* $Id: SvgaFifo.cpp 114729 2026-07-18 14:44:50Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - VMSVGA FIFO.
  */
@@ -318,10 +318,14 @@ static NTSTATUS svgaCBFreePage(PVMSVGACBPAGE pPage)
 static NTSTATUS svgaCBAllocPage(PVMSVGACBPAGE pPage, uint32_t cb)
 {
     int rc = RTR0MemObjAllocPhysTag(&pPage->hMemObjPages, cb, NIL_RTHCPHYS, "VMSVGACB");
+    if (!RT_SUCCESS(rc))
+        LogRel3(("svgaCB: page alloc rc = %Rrc\n", rc));
     AssertReturn(RT_SUCCESS(rc), STATUS_INSUFFICIENT_RESOURCES);
 
     rc = RTR0MemObjMapKernelTag(&pPage->hMemObjMapping, pPage->hMemObjPages, (void *)-1,
                                 PAGE_SIZE, RTMEM_PROT_READ | RTMEM_PROT_WRITE, "VMSVGACB");
+    if (!RT_SUCCESS(rc))
+        LogRel3(("svgaCB: page map rc = %Rrc\n", rc));
     AssertReturnStmt(RT_SUCCESS(rc), svgaCBFreePage(pPage), STATUS_INSUFFICIENT_RESOURCES);
 
     pPage->pvR0     = RTR0MemObjAddress(pPage->hMemObjMapping);
@@ -385,6 +389,8 @@ static NTSTATUS svgaCBHeaderPoolAlloc(PVMSVGACBHEADERPOOL pHeaderPool,
     Status = GaIdAlloc(pHeaderPool->au32HeaderBits, sizeof(pHeaderPool->au32HeaderBits),
                        VMSVGA_CB_HEADER_POOL_NUM_HANDLES, &id);
     KeReleaseSpinLock(&pHeaderPool->SpinLock, OldIrql);
+    if (!NT_SUCCESS(Status))
+        LogRel3(("svgaCB: header id alloc status = 0x%x\n", Status));
     AssertReturn(NT_SUCCESS(Status), Status);
 
     int const idxPage = id / VMSVGA_CB_HEADER_POOL_HANDLES_PER_PAGE;
@@ -426,6 +432,8 @@ static NTSTATUS svgaCBAlloc(PVMSVGACBSTATE pCBState, VMSVGACBTYPE enmType, uint3
     RT_NOREF(pCBState);
 
     PVMSVGACB pCB = (PVMSVGACB)GaMemAllocZero(sizeof(VMSVGACB));
+    if (!pCB)
+        LogRel3(("svgaCB: command buffer alloc failed\n"));
     AssertReturn(pCB, STATUS_INSUFFICIENT_RESOURCES);
     GALOG(("CB: %p\n", pCB));
 
@@ -528,6 +536,7 @@ static NTSTATUS svgaCBSubmit(PVBOXWDDM_EXT_VMSVGA pSvga, PVMSVGACB pCB)
             RTListAppend(&pCBCtx->QueuePending, &pCB->nodeQueue);
 
             KeReleaseSpinLock(&pCBState->SpinLock, OldIrql);
+            LogRel3(("svgaCB: can't submit the buffer, cSubmitted = %u\n", pCBCtx->cSubmitted));
             return STATUS_SUCCESS;
         }
 
@@ -627,7 +636,17 @@ static void *svgaCBReserve(PVBOXWDDM_EXT_VMSVGA pSvga, uint32_t u32CmdId, uint32
         Status = svgaCBAlloc(pCBState, VMSVGACB_MINIPORT, idDXContext, cbRequired, &pCBState->pCBCurrent);
         AssertReturnStmt(NT_SUCCESS(Status), ExReleaseFastMutex(&pCBState->CBCurrentMutex), NULL);
         pCB = pCBState->pCBCurrent;
+#if 0
         AssertReturnStmt(pCB->cbBuffer - pCB->cbCommand >= cbRequired, ExReleaseFastMutex(&pCBState->CBCurrentMutex), NULL);
+#else
+        if (pCB->cbBuffer - pCB->cbCommand < cbRequired)
+        {
+            ExReleaseFastMutex(&pCBState->CBCurrentMutex);
+            LogRel3(("svgaCB: no space: buffer %u, commands %u, diff %u, required %u bytes\n",
+                     pCB->cbBuffer, pCB->cbCommand, pCB->cbBuffer - pCB->cbCommand, cbRequired));
+            return NULL;
+        }
+#endif
     }
 
     /* Remember the size and id of the command. */
@@ -635,6 +654,7 @@ static void *svgaCBReserve(PVBOXWDDM_EXT_VMSVGA pSvga, uint32_t u32CmdId, uint32
     pCB->cbReservedCmd = cbReserveCmd;
     pCB->u32ReservedCmd = u32CmdId;
 
+    LogRel3(("svgaCB: reserved %u bytes\n", cbRequired));
     /* Return pointer to the command data. */
     return (uint8_t *)pCB->commands.page.pvR0 + pCB->cbCommand + cbReserveHeader;
 }
@@ -762,6 +782,7 @@ void SvgaCmdBufFlush(PVBOXWDDM_EXT_VMSVGA pSvga)
 
     PVMSVGACB pCB = pCBState->pCBCurrent;
     GALOG(("CB: %p\n", pCB));
+    LogRel3(("svgaCB: flush%s %u bytes\n", pCB ? "" : " NULL", pCB ? pCB->cbCommand : 0));
     if (pCB && pCB->cbCommand)
     {
         NTSTATUS Status = svgaCBSubmit(pSvga, pCB);
