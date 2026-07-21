@@ -699,11 +699,11 @@ Premeu ESC per a cancel·lar</translation>
     </message>
     <message>
         <source>SSL/TLS support not present</source>
-        <translation type="unfinished"></translation>
+        <translation>El suport per a SSL/TLS no està present</translation>
     </message>
     <message>
         <source>Invalid TLS association record</source>
-        <translation type="unfinished"></translation>
+        <translation>El registre d&apos;associació TLS no és vàlid</translation>
     </message>
 </context>
 <context>
@@ -1742,11 +1742,11 @@ El voleu suprimir igualment?</translation>
     </message>
     <message>
         <source>Could not subscribe to event notifications for %1.</source>
-        <translation type="unfinished"></translation>
+        <translation>No s&apos;ha pogut subscriure a les notificacions d&apos;esdeveniments per a %1.</translation>
     </message>
     <message>
         <source>Could not unsubscribe from event notifications for %1.</source>
-        <translation type="unfinished"></translation>
+        <translation>No s&apos;ha pogut cancel·lar la subscripció a les notificacions d&apos;esdeveniments per a %1.</translation>
     </message>
 </context>
 <context>
@@ -1821,15 +1821,15 @@ El voleu suprimir igualment?</translation>
     </message>
     <message>
         <source>Array size mismatch. Field name: %3, expected size: %1. Supplied size: %2</source>
-        <translation type="unfinished"></translation>
+        <translation>La mida de la matriu no coincideix. Nom del camp: %3, mida esperada: %1. Mida proporcionada: %2</translation>
     </message>
     <message>
         <source>Array dimensions mismatch. Field name: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Les dimensions de la matriu no coincideixen. Nom del camp: %1</translation>
     </message>
     <message>
         <source>Array size mismatch: size of %1 is %2, size of provided list is %3</source>
-        <translation type="unfinished"></translation>
+        <translation>La mida de la matriu no coincideix: la mida de %1 és %2, la mida de la llista proporcionada és %3</translation>
     </message>
 </context>
 <context>
@@ -2191,7 +2191,7 @@ El voleu suprimir igualment?</translation>
     </message>
     <message>
         <source>Could not resolve &apos;qt_plugin_instance&apos; function</source>
-        <translation type="unfinished"></translation>
+        <translation>No s&apos;ha pogut resoldre la funció «qt_plugin_instance»</translation>
     </message>
 </context>
 <context>
@@ -2488,7 +2488,7 @@ El voleu suprimir igualment?</translation>
     <message>
         <source>&lt;p&gt;Qt is a C++ toolkit for cross-platform application development.&lt;/p&gt;&lt;p&gt;Qt provides single-source portability across all major desktop operating systems. It is also available for embedded Linux and other embedded and mobile operating systems.&lt;/p&gt;&lt;p&gt;Qt is available under multiple licensing options designed to accommodate the needs of our various users.&lt;/p&gt;&lt;p&gt;Qt licensed under our commercial license agreement is appropriate for development of proprietary/commercial software where you do not want to share any source code with third parties or otherwise cannot comply with the terms of GNU (L)GPL.&lt;/p&gt;&lt;p&gt;Qt licensed under GNU (L)GPL is appropriate for the development of Qt&amp;nbsp;applications provided you can comply with the terms and conditions of the respective licenses.&lt;/p&gt;&lt;p&gt;Please see &lt;a href=&quot;https://%2/&quot;&gt;%2&lt;/a&gt; for an overview of Qt licensing.&lt;/p&gt;&lt;p&gt;Copyright (C) The Qt Company Ltd. and other contributors.&lt;/p&gt;&lt;p&gt;Qt and the Qt logo are trademarks of The Qt Company Ltd.&lt;/p&gt;&lt;p&gt;Qt is The Qt Company Ltd. product developed as an open source project. See &lt;a href=&quot;https://%3/&quot;&gt;%3&lt;/a&gt; for more information.&lt;/p&gt;</source>
         <extracomment>Leave this text untranslated or include a verbatim copy of it below and note that it is the authoritative version in case of doubt.</extracomment>
-        <translation type="unfinished"></translation>
+        <translation>&lt;p&gt;Les Qt són un joc d&apos;eines en C++ per al desenvolupament d&apos;aplicacions multiplataforma.&lt;/p&gt;&lt;p&gt;Les Qt proporcionen la portabilitat des d&apos;un únic codi font a través de tots els principals sistemes operatius d&apos;escriptori. També estan disponibles per al Linux incrustat i altres sistemes operatius incrustats i mòbils.&lt;/p&gt;&lt;p&gt;Les Qt estan disponibles sota múltiples opcions de llicència dissenyades per a acomodar les necessitats dels nostres diversos usuaris.&lt;/p&gt;&lt;p&gt;Les Qt amb llicència sota el nostre acord de llicència comercial són apropiades per al desenvolupament de programari propietari/comercial en el qual no vulgueu compartir cap codi font amb terceres parts o que no pugueu complir amb els termes de la GNU (L)GPL.&lt;/p&gt;&lt;p&gt;Les Qt amb llicència sota la GNU (L)GPL són apropiades per al desenvolupament d&apos;aplicacions Qt&amp;nbsp;sempre que pugueu complir amb els termes i les condicions de les respectives llicències.&lt;/p&gt;&lt;p&gt;Vegeu &lt;a href=&quot;https://%2/&quot;&gt;%2&lt;/a&gt; per a una visió general de les llicències de les Qt.&lt;/p&gt;&lt;p&gt;Copyright (C) The Qt Company Ltd. i altres col·laboradors.&lt;/p&gt;&lt;p&gt;Les Qt i el logotip de les Qt són marques comercials de The Qt Company Ltd.&lt;/p&gt;&lt;p&gt;Les Qt són un producte de The Qt Company Ltd. desenvolupat com a projecte de codi obert. Per a més informació, vegeu &lt;a href=&quot;https://%3/&quot;&gt;%3&lt;/a&gt;.&lt;/p&gt;</translation>
     </message>
 </context>
 <context>
@@ -2821,7 +2821,7 @@ El voleu suprimir igualment?</translation>
     </message>
     <message>
         <source>QODBCResult::reset: Unable to set &apos;SQL_ATTR_CURSOR_TYPE&apos; as statement attribute. Please check your ODBC driver configuration</source>
-        <translation type="unfinished"></translation>
+        <translation>QODBCResult::reset: No s&apos;ha pogut establir «SQL_ATTR_CURSOR_TYPE» com a atribut de la sentència. Comproveu la configuració del controlador ODBC</translation>
     </message>
 </context>
 <context>
@@ -4719,7 +4719,7 @@ Desactiveu una de les dues opcions.</translation>
     </message>
     <message>
         <source>INTERNAL ERROR: invalid substring offset</source>
-        <translation type="unfinished"></translation>
+        <translation>ERROR INTERN: el desplaçament de la subcadena no és vàlid</translation>
     </message>
 </context>
 <context>
@@ -7573,23 +7573,23 @@ La versió mínima requerida del Direct2D és %1. La versió del Direct2D en aqu
     <name>Assets::Downloader::AssetDownloader</name>
     <message>
         <source>Downloading JSON file...</source>
-        <translation type="unfinished"></translation>
+        <translation>S&apos;està baixant el fitxer JSON...</translation>
     </message>
     <message>
         <source>Downloading zip file...</source>
-        <translation type="unfinished"></translation>
+        <translation>S&apos;està baixant el fitxer zip...</translation>
     </message>
     <message>
         <source>Unzipping...</source>
-        <translation type="unfinished"></translation>
+        <translation>S&apos;està descomprimint...</translation>
     </message>
     <message>
         <source>Downloading assets...</source>
-        <translation type="unfinished"></translation>
+        <translation>S&apos;estan baixant els recursos...</translation>
     </message>
     <message>
         <source>Copying assets...</source>
-        <translation type="unfinished"></translation>
+        <translation>S&apos;estan copiant els recursos...</translation>
     </message>
 </context>
 </TS>

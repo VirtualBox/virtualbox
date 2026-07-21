@@ -1,4 +1,4 @@
-# $Id: ApprovedLanguages.kmk 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+# $Id: ApprovedLanguages.kmk 114739 2026-07-21 13:48:02Z serkan.bayraktar@oracle.com $
 ## @file
 # ApprovedLanguages.kmk - List of approved VBoxManage translations.
 #
@@ -26,7 +26,7 @@
 #
 
 # The list of approved VBoxManage languages.
-VBOX_APPROVED_VBOXMANAGE_LANGUAGES := ru
+VBOX_APPROVED_VBOXMANAGE_LANGUAGES := ru ca
 
 # The list of approved VBoxManage language codes for built-in docbook
 # help. Order matters for codes in the case of a language used in

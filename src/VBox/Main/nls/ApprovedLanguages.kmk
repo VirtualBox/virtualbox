@@ -1,4 +1,4 @@
-# $Id: ApprovedLanguages.kmk 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+# $Id: ApprovedLanguages.kmk 114739 2026-07-21 13:48:02Z serkan.bayraktar@oracle.com $
 ## @file
 # ApprovedLanguages.kmk - List of approved Main API translations.
 #
@@ -28,5 +28,6 @@
 # The list of approved Main API languages.
 VBOX_APPROVED_MAIN_LANGUAGES := \
 	ru \
-	tr
+	tr \
+	ca
 
