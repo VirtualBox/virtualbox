@@ -1,4 +1,4 @@
-/* $Id: UIApplianceImportEditorWidget.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: UIApplianceImportEditorWidget.h 114761 2026-07-23 16:27:11Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIApplianceImportEditorWidget class declaration.
  */
@@ -41,7 +41,9 @@
 class UIApplianceImportEditorWidget: public UIApplianceEditorWidget
 {
     Q_OBJECT;
-
+signals:
+    /* Emitted if import API passes us warnng which we use in a separate pane. */
+    void importWarningsShown();
 public:
 
     /** Constructs widget passing @a pParent to the base-class. */
