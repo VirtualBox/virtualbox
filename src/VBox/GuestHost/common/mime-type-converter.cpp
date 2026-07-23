@@ -1,4 +1,4 @@
-/* $Id: mime-type-converter.cpp 114758 2026-07-23 12:22:27Z knut.osmundsen@oracle.com $ */
+/* $Id: mime-type-converter.cpp 114760 2026-07-23 13:37:13Z knut.osmundsen@oracle.com $ */
 /** @file
  * Common code for mime-type data conversion.
  *
@@ -29,14 +29,23 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
+
+/*********************************************************************************************************************************
+*   Header Files                                                                                                                 *
+*********************************************************************************************************************************/
+#include <VBox/GuestHost/mime-type-converter.h>
+#include <VBox/GuestHost/clipboard-helper.h>
+
 #include <iprt/string.h>
+#include <iprt/err.h>
 #include <iprt/utf16.h>
 #include <iprt/mem.h>
 #include <iprt/log.h>
 
-#include <VBox/GuestHost/clipboard-helper.h>
-#include <VBox/GuestHost/mime-type-converter.h>
 
+/*********************************************************************************************************************************
+*   Defined Constants And Macros                                                                                                 *
+*********************************************************************************************************************************/
 /** @todo r=bird: Only used with RTStrNCmp, where it is completely
  *        unnecessary and just a potential bug source.  The reason being that we
  *        we control one of the two strings, which limits the comparison to the
@@ -47,6 +56,10 @@
  *        better.  It wouldn't be all, that good though. */
 #define VBOX_WAYLAND_MIME_TYPE_NAME_MAX     (32)
 
+
+/*********************************************************************************************************************************
+*   Structures and Typedefs                                                                                                      *
+*********************************************************************************************************************************/
 /**
  * Generic data converter function.
  *
@@ -60,6 +73,8 @@
 typedef DECLCALLBACKTYPE(int, FNVBFMTCONVERTOR, (void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut));
 /** Pointer to a generic data converter function. */
 typedef FNVBFMTCONVERTOR *PFNVBFMTCONVERTOR;
+
+
 
 /**
  * @callback_method_impl{FNVBFMTCONVERTOR,
@@ -159,20 +174,95 @@ static DECLCALLBACK(int) vbConvertLatin1ToVBox(void const *pvBufIn, int cbBufIn,
  *
  * @note The returned data size excludes the string terminator.
  */
-static DECLCALLBACK(int) vbConvertLatin1FromVBox(void const*pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbConvertLatin1FromVBox(void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
-    /* Make RTUtf16ToLatin1ExTag() to allocate output buffer. */
-    *ppvBufOut = NULL;
-    *pcbBufOut = 0;
-
     PCRTUTF16 const pwszBufIn = (PCRTUTF16)pvBufIn;
     size_t const    cwcBufIn  = cbBufIn / sizeof(RTUTF16);
     int rc = RTUtf16ValidateEncodingEx(pwszBufIn, cwcBufIn,
                                        RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
     if (RT_SUCCESS(rc))
-        rc = RTUtf16ToLatin1ExTag(pwszBufIn, cwcBufIn, (char **)ppvBufOut, cbBufIn, pcbBufOut, RTSTR_TAG);
-    /** @todo r=bird: Does not convert CRLF to LF like vbConvertUtf8FromVBox
-     *        does. */
+    {
+        /*
+         * Manual conversion to latin-1, with stuff that cannot be encoded escaped '\uxxxxx' style.
+         */
+        /* 1. calculate the output size. */
+        size_t cchLatin1 = 0;
+        RTUNICP   uc;
+        PCRTUTF16 pwsz = pwszBufIn;
+        while ((uc = RTUtf16GetCp(pwsz)) != 0)
+            if (uc < 0x100)
+            {
+                cchLatin1++;
+                pwsz++;
+                if (uc == '\r' && *pwsz == '\n')
+                    pwsz++;
+            }
+            else
+            {
+                AssertReturn(uc != RTUNICP_INVALID, VERR_INVALID_UTF16_ENCODING);
+                cchLatin1 += sizeof("\\uxxxx") - 1;
+                if (uc > 0xffff)
+                {
+                    cchLatin1 += 1;
+                    if (uc > 0xfffff)
+                    {
+                        cchLatin1 += 1;
+                        Assert(uc <= 0x10ffff);
+                    }
+                }
+                pwsz = RTUtf16NextCp(pwsz);
+            }
+
+        /* 2. allocate the output buffer. */
+        char * const pszDst = (char *)RTMemAllocZ(cchLatin1 + 1);
+        AssertReturn(pszDst, VERR_NO_MEMORY);
+
+        /* 3. do the actual conversion. */
+        rc = VINF_SUCCESS;
+        pwsz = pwszBufIn;
+        size_t offDst = 0;
+        while ((uc = RTUtf16GetCp(pwsz)) != 0)
+            if (uc < 0x100)
+            {
+                AssertBreakStmt(offDst < cchLatin1, rc = VINF_BUFFER_OVERFLOW);
+                if (uc != '\r' || pwsz[1] != '\n')
+                {
+                    pszDst[offDst++] = (char)uc;
+                    pwsz++;
+                }
+                else
+                {
+                    pszDst[offDst++] = '\n';
+                    pwsz += 2;
+                }
+            }
+            else
+            {
+                AssertReturnStmt(uc != RTUNICP_INVALID, RTMemFree(pszDst), VERR_INVALID_UTF16_ENCODING);
+                Assert(uc <= 0x10ffff);
+                AssertBreakStmt(offDst + (uc <= 0xffff ? 6 : uc <= 0xfffff ? 6+1 : 6+2) <= cchLatin1, VERR_BUFFER_OVERFLOW);
+
+                pszDst[offDst++] = '\\';
+                pszDst[offDst++] = 'u';
+                static char const s_szDigits[] = "0123456789abcdef";
+                if ((uc >> 20) & 0xf)
+                    pszDst[offDst++] = s_szDigits[(uc >> 20) & 0xf];
+                if ((uc >> 16) & 0xff)
+                    pszDst[offDst++] = s_szDigits[(uc >> 16) & 0xf];
+                pszDst[offDst++] = s_szDigits[(uc >> 12) & 0xf];
+                pszDst[offDst++] = s_szDigits[(uc >>  8) & 0xf];
+                pszDst[offDst++] = s_szDigits[(uc >>  4) & 0xf];
+                pszDst[offDst++] = s_szDigits[ uc        & 0xf];
+
+                pwsz = RTUtf16NextCp(pwsz);
+                rc = VWRN_NO_TRANSLATION;
+            }
+        pszDst[offDst] = '\0';
+
+        /* 4. set the return values. */
+        *ppvBufOut = pszDst;
+        *pcbBufOut = offDst;
+    }
 
     return rc;
 }

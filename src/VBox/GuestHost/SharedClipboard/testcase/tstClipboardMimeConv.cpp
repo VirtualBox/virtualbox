@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMimeConv.cpp 114759 2026-07-23 12:24:56Z knut.osmundsen@oracle.com $ */
+/* $Id: tstClipboardMimeConv.cpp 114760 2026-07-23 13:37:13Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard MIME converter testcase.
  */
@@ -32,7 +32,7 @@
 #include <VBox/GuestHost/SharedClipboard.h>
 #include <VBox/GuestHost/mime-type-converter.h>
 
-#include <iprt/errcore.h>
+#include <iprt/err.h>
 #include <iprt/string.h>
 #include <iprt/test.h>
 #include <iprt/utf16.h>
@@ -145,6 +145,8 @@ static void testText(RTTEST hTest)
         size_t      cchNativeSrc;   /**< Length of the native source text. */
         const char *pszNativeOut;   /**< The native output text, optional. */
         size_t      cchNativeOut;   /**< Length of the native output text, optional. */
+        int         rcToVBox;
+        int         rcFromVBox;
     } const s_aTexts[] =
     {
         /* utf-8 */
@@ -154,13 +156,15 @@ static void testText(RTTEST hTest)
         { "text/plain;charset=utf-8",   0, "1\r\n2",                    RT_STR_TUPLE("1\n2") },
         { "text/plain;charset=utf-8",   0, "1\r\n2\r\n",                RT_STR_TUPLE("1\n2\n") },
 
-#if 0 /* busted */
+#if 1 /* busted */
         /* latin-1 */
         { "text/plain",                 0, "",                          },
         { "text/plain",                 0, "VirtualBox",                },
         { "text/plain",                 0, "\r\n",                      RT_STR_TUPLE("\n") },
         { "text/plain",                 0, "1\r\n2",                    RT_STR_TUPLE("1\n2") },
         { "text/plain",                 0, "1\r\n2\r\n",                RT_STR_TUPLE("1\n2\n") },
+        { "text/plain",                 0, "1,\r\n\xE4\xBA\x8C,\r\n3",  RT_STR_TUPLE("1,\n\\u4e8c,\n3"),
+          NULL, 0, VINF_SUCCESS, VWRN_NO_TRANSLATION, },
 #endif
 #if 0 /* busted */
         /* html */
@@ -187,6 +191,8 @@ static void testText(RTTEST hTest)
         const char * const  pszNativeOut     = s_aTexts[i].pszNativeOut ? s_aTexts[i].pszNativeOut : pszNativeSrc;
         size_t const        cchNativeOut     = s_aTexts[i].pszNativeOut ? s_aTexts[i].cchNativeOut : cchNativeSrc;
         size_t const        cchNativeOutZero = 1;
+        int const           rcToVBox         = s_aTexts[i].rcToVBox;
+        int const           rcFromVBox       = s_aTexts[i].rcFromVBox;
 
         /* Produce the VBox string. This is UTF-8 for html and URI-lists. */
         size_t const        cbVBox   = s_aTexts[i].fVBoxUtf8
@@ -210,15 +216,52 @@ static void testText(RTTEST hTest)
         }
 
         /* Translate To VBox and check the output. */
-        pvOut = NULL;
-        cbOut = 0;
-        rc = VbghMimeConvToVBox(pszMimeType, pszNativeSrc, (int)cchNativeSrc, &pvOut, &cbOut);
-        if (RT_FAILURE(rc))
-            RTTestIFailed("string #%u(%s): VbghMimeConvToVBox failed: %Rrc", i, pszMimeType, rc);
-        else if (cbOut != cbVBox || memcmp(pvOut, pvVBox, cbVBox))
-            RTTestIFailed("string #%u(%s): Wrong VbghMimeConvToVBox output: %#zx bytes, expected %#zx\n'%.*Rhxs', expected\n'%.*Rhxs'",
-                          i, pszMimeType, cbOut, cbVBox, cbOut, pvOut, cbVBox, pvVBox);
-        VbghMimeConvFreeBuf(pvOut, cbOut);
+        if (rcFromVBox != VWRN_NO_TRANSLATION)
+        {
+            pvOut = NULL;
+            cbOut = 0;
+            rc = VbghMimeConvToVBox(pszMimeType, pszNativeSrc, (int)cchNativeSrc, &pvOut, &cbOut);
+            if (RT_FAILURE(rc))
+                RTTestIFailed("string #%u(%s): VbghMimeConvToVBox failed: %Rrc", i, pszMimeType, rc);
+            else if (cbOut != cbVBox || memcmp(pvOut, pvVBox, cbVBox))
+                RTTestIFailed("string #%u(%s): Wrong VbghMimeConvToVBox output: %#zx bytes, expected %#zx\n'%.*Rhxs', expected\n'%.*Rhxs'",
+                              i, pszMimeType, cbOut, cbVBox, cbOut, pvOut, cbVBox, pvVBox);
+            else if (rc != rcToVBox)
+                RTTestIFailed("string #%u(%s): VbghMimeConvToVBox returned %Rrc instead of %Rrc", i, pszMimeType, rc, rcToVBox);
+            VbghMimeConvFreeBuf(pvOut, cbOut);
+
+            /* Translate To VBox, but supply buffer including the zero terminator in the count. */
+            pvOut = NULL;
+            cbOut = 0;
+            rc = VbghMimeConvToVBox(pszMimeType, pszNativeSrc, (int)(cchNativeSrc + 1), &pvOut, &cbOut);
+            if (RT_FAILURE(rc))
+                RTTestIFailed("string #%u(%s): VbghMimeConvToVBox w/zero failed: %Rrc", i, pszMimeType, rc);
+            else if (cbOut != cbVBox || memcmp(pvOut, pvVBox, cbVBox))
+                RTTestIFailed("string #%u(%s): Wrong VbghMimeConvToVBox w/zero output: %#zx bytes, expected %#zx\n'%.*Rhxs', expected\n'%.*Rhxs'",
+                              i, pszMimeType, cbOut, cbVBox, cbOut, pvOut, cbVBox, pvVBox);
+            else if (rc != rcToVBox)
+                RTTestIFailed("string #%u(%s): VbghMimeConvToVBox w/zero returned %Rrc instead of %Rrc", i, pszMimeType, rc, rcToVBox);
+            VbghMimeConvFreeBuf(pvOut, cbOut);
+
+            /* Translate to VBox, but supply an untermianted input string with an electric tail guard. */
+            char * const pachGuardedIn = (char *)RTTestGuardedAllocTail(hTest, cchNativeSrc);
+            if (pachGuardedIn)
+            {
+                memcpy(pachGuardedIn, pszNativeSrc, cchNativeSrc);
+                pvOut = NULL;
+                cbOut = 0;
+                rc = VbghMimeConvToVBox(pszMimeType, pszNativeSrc, (int)cchNativeSrc, &pvOut, &cbOut);
+                if (RT_FAILURE(rc))
+                    RTTestIFailed("string #%u(%s): VbghMimeConvToVBox w/o zero failed: %Rrc", i, pszMimeType, rc);
+                else if (cbOut != cbVBox || memcmp(pvOut, pvVBox, cbVBox))
+                    RTTestIFailed("string #%u(%s): Wrong VbghMimeConvToVBox w/o zero output: %#zx bytes, expected %#zx\n'%.*Rhxs', expected\n'%.*Rhxs'",
+                                  i, pszMimeType, cbOut, cbVBox, cbOut, pvOut, cbVBox, pvVBox);
+                else if (rc != rcToVBox)
+                    RTTestIFailed("string #%u(%s): VbghMimeConvToVBox w/o zero returned %Rrc instead of %Rrc", i, pszMimeType, rc, rcToVBox);
+                VbghMimeConvFreeBuf(pvOut, cbOut);
+                RTTestGuardedFree(hTest, pachGuardedIn);
+            }
+        }
 
         /* Translate the other way. */
         pvOut = NULL;
@@ -232,35 +275,9 @@ static void testText(RTTEST hTest)
         else if (memcmp((char *)pvOut + cbOut, g_abRTZero4K, cchNativeOutZero))
             RTTestIFailed("string #%u(%s): Incorrectly terminated VbghMimeConvToVBox output: %.*Rhxs",
                           i, pszMimeType, cchNativeOutZero, (char *)pvOut + cbOut);
+        else if (rc != rcFromVBox)
+            RTTestIFailed("string #%u(%s): VbghMimeConvFromVBox returned %Rrc instead of %Rrc", i, pszMimeType, rc, rcFromVBox);
         VbghMimeConvFreeBuf(pvOut, cbOut);
-
-        /* Translate To VBox, but supply buffer including the zero terminator in the count. */
-        pvOut = NULL;
-        cbOut = 0;
-        rc = VbghMimeConvToVBox(pszMimeType, pszNativeSrc, (int)(cchNativeSrc + 1), &pvOut, &cbOut);
-        if (RT_FAILURE(rc))
-            RTTestIFailed("string #%u(%s): VbghMimeConvToVBox w/zero failed: %Rrc", i, pszMimeType, rc);
-        else if (cbOut != cbVBox || memcmp(pvOut, pvVBox, cbVBox))
-            RTTestIFailed("string #%u(%s): Wrong VbghMimeConvToVBox w/zero output: %#zx bytes, expected %#zx\n'%.*Rhxs', expected\n'%.*Rhxs'",
-                          i, pszMimeType, cbOut, cbVBox, cbOut, pvOut, cbVBox, pvVBox);
-        VbghMimeConvFreeBuf(pvOut, cbOut);
-
-        /* Translate to VBox, but supply an untermianted input string with an electric tail guard. */
-        char * const pachGuardedIn = (char *)RTTestGuardedAllocTail(hTest, cchNativeSrc);
-        if (pachGuardedIn)
-        {
-            memcpy(pachGuardedIn, pszNativeSrc, cchNativeSrc);
-            pvOut = NULL;
-            cbOut = 0;
-            rc = VbghMimeConvToVBox(pszMimeType, pszNativeSrc, (int)cchNativeSrc, &pvOut, &cbOut);
-            if (RT_FAILURE(rc))
-                RTTestIFailed("string #%u(%s): VbghMimeConvToVBox w/o zero failed: %Rrc", i, pszMimeType, rc);
-            else if (cbOut != cbVBox || memcmp(pvOut, pvVBox, cbVBox))
-                RTTestIFailed("string #%u(%s): Wrong VbghMimeConvToVBox w/o zero output: %#zx bytes, expected %#zx\n'%.*Rhxs', expected\n'%.*Rhxs'",
-                              i, pszMimeType, cbOut, cbVBox, cbOut, pvOut, cbVBox, pvVBox);
-            VbghMimeConvFreeBuf(pvOut, cbOut);
-            RTTestGuardedFree(hTest, pachGuardedIn);
-        }
 
         /* Cleanup VBox buffer. */
         RTTestGuardedFree(hTest, pvVBox);
