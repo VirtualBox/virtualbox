@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.cpp 114767 2026-07-24 22:06:05Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-helper.cpp 114768 2026-07-24 22:25:45Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard: Helper functions.
  */
@@ -74,13 +74,14 @@ int ShClHlpConvUtf16CRLFToUtf8LF(PCRTUTF16 pcwszSrc, size_t cwcSrc, char *pszBuf
     {
         cchTmp++; /* Add space for terminator. */
 
+        /** @todo r=bird: cchTmp is the entirely wrong temporary buffer length! */
         PRTUTF16 pwszTmp = (PRTUTF16)RTMemTmpAllocZ(cchTmp * sizeof(RTUTF16));
         if (pwszTmp)
         {
             rc = ShClHlpConvUtf16CRLFToLF(pcwszSrc, cwcSrc, pwszTmp, cchTmp);
             if (RT_SUCCESS(rc))
             {
-                /* Step 2: */
+                /* Step 2: (we must skip the BOM in the temporary string here) */
                 size_t cbLenSansTerm = 0;
                 rc = RTUtf16ToUtf8Ex(pwszTmp + 1, cchTmp - 1, &pszBuf, cbBuf, &cbLenSansTerm);
                 if (RT_SUCCESS(rc))
@@ -484,12 +485,12 @@ int ShClHlpConvUtf16CRLFToLF(PCRTUTF16 pcwszSrc, size_t cwcSrc, PRTUTF16 pwszDst
     return VINF_SUCCESS;
 }
 
-int ShClHlpDibToBmp(const void *pvSrc, size_t cbSrc, void **ppvDest, size_t *pcbDest)
+int ShClHlpDibToBmp(const void *pvSrc, size_t cbSrc, void **ppvDst, size_t *pcbDst)
 {
-    AssertPtrReturn(pvSrc,   VERR_INVALID_POINTER);
-    AssertReturn(cbSrc,      VERR_INVALID_PARAMETER);
-    AssertPtrReturn(ppvDest, VERR_INVALID_POINTER);
-    AssertPtrReturn(pcbDest, VERR_INVALID_POINTER);
+    AssertPtrReturn(pvSrc,  VERR_INVALID_POINTER);
+    AssertReturn(cbSrc,     VERR_INVALID_PARAMETER);
+    AssertPtrReturn(ppvDst, VERR_INVALID_POINTER);
+    AssertPtrReturn(pcbDst, VERR_INVALID_POINTER);
 
     PBMPWIN3XINFOHDR coreHdr = (PBMPWIN3XINFOHDR)pvSrc;
     /** @todo Support all the many versions of the DIB headers. */
@@ -508,11 +509,11 @@ int ShClHlpDibToBmp(const void *pvSrc, size_t cbSrc, void **ppvDest, size_t *pcb
 
     size_t cbDst = sizeof(BMPFILEHDR) + cbSrc;
 
-    void *pvDest = RTMemAllocZ(cbDst);
-    if (!pvDest)
+    void *pvDst = RTMemAllocZ(cbDst);
+    if (!pvDst)
         return VERR_NO_MEMORY;
 
-    PBMPFILEHDR fileHdr = (PBMPFILEHDR)pvDest;
+    PBMPFILEHDR fileHdr = (PBMPFILEHDR)pvDst;
 
     fileHdr->uType       = BMP_HDR_MAGIC;
     fileHdr->cbFileSize  = (uint32_t)RT_H2LE_U32(cbDst);
@@ -520,20 +521,20 @@ int ShClHlpDibToBmp(const void *pvSrc, size_t cbSrc, void **ppvDest, size_t *pcb
     fileHdr->Reserved2   = 0;
     fileHdr->offBits     = (uint32_t)RT_H2LE_U32(offPixel);
 
-    memcpy((uint8_t *)pvDest + sizeof(BMPFILEHDR), pvSrc, cbSrc);
+    memcpy((uint8_t *)pvDst + sizeof(BMPFILEHDR), pvSrc, cbSrc);
 
-    *ppvDest = pvDest;
-    *pcbDest = cbDst;
+    *ppvDst = pvDst;
+    *pcbDst = cbDst;
 
     return VINF_SUCCESS;
 }
 
-int ShClHlpBmpGetDib(const void *pvSrc, size_t cbSrc, const void **ppvDest, size_t *pcbDest)
+int ShClHlpBmpGetDib(const void *pvSrc, size_t cbSrc, const void **ppvDst, size_t *pcbDst)
 {
-    AssertPtrReturn(pvSrc,   VERR_INVALID_POINTER);
-    AssertReturn(cbSrc,      VERR_INVALID_PARAMETER);
-    AssertPtrReturn(ppvDest, VERR_INVALID_POINTER);
-    AssertPtrReturn(pcbDest, VERR_INVALID_POINTER);
+    AssertPtrReturn(pvSrc,  VERR_INVALID_POINTER);
+    AssertReturn(cbSrc,     VERR_INVALID_PARAMETER);
+    AssertPtrReturn(ppvDst, VERR_INVALID_POINTER);
+    AssertPtrReturn(pcbDst, VERR_INVALID_POINTER);
 
     PBMPFILEHDR pBmpHdr = (PBMPFILEHDR)pvSrc;
     if (   cbSrc < sizeof(BMPFILEHDR)
@@ -543,8 +544,8 @@ int ShClHlpBmpGetDib(const void *pvSrc, size_t cbSrc, const void **ppvDest, size
         return VERR_INVALID_PARAMETER;
     }
 
-    *ppvDest = ((uint8_t *)pvSrc) + sizeof(BMPFILEHDR);
-    *pcbDest = cbSrc - sizeof(BMPFILEHDR);
+    *ppvDst = ((uint8_t *)pvSrc) + sizeof(BMPFILEHDR);
+    *pcbDst = cbSrc - sizeof(BMPFILEHDR);
 
     return VINF_SUCCESS;
 }

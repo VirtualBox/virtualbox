@@ -1,4 +1,4 @@
-/* $Id: mime-type-converter.cpp 114767 2026-07-24 22:06:05Z knut.osmundsen@oracle.com $ */
+/* $Id: mime-type-converter.cpp 114768 2026-07-24 22:25:45Z knut.osmundsen@oracle.com $ */
 /** @file
  * Common code for mime-type data conversion.
  *
@@ -166,9 +166,9 @@ static DECLCALLBACK(int) vbghMimeCvtLatin1FromVBox(void const *pvBufIn, size_t c
          * Manual conversion to latin-1, with stuff that cannot be encoded escaped '\uxxxxx' style.
          */
         /* 1. calculate the output size. */
-        size_t cchLatin1 = 0;
+        size_t    cchLatin1 = 0;
+        PCRTUTF16 pwsz      = pwszBufIn;
         RTUNICP   uc;
-        PCRTUTF16 pwsz = pwszBufIn;
         while ((uc = RTUtf16GetCp(pwsz)) != 0)
             if (uc < 0x100)
             {
@@ -248,61 +248,6 @@ static DECLCALLBACK(int) vbghMimeCvtLatin1FromVBox(void const *pvBufIn, size_t c
 
     return rc;
 }
-
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-# if 0 /** @todo r=bird: see details in the list below */
-/**
- * A helper function that validates and copies a UTF-8 URI list unchanged.
- *
- * @returns IPRT status code.
- * @param   pvBufIn         Input buffer containing URI-list data.
- * @param   cbBufIn         Size of input buffer in bytes.
- * @param   ppvBufOut       Newly allocated output buffer which will contain URI-list data (must be freed by caller).
- * @param   pcbBufOut       Size of output buffer.
- */
-static DECLCALLBACK(int) vbghMimeCvtUriListCopy(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
-{
-    AssertPtrReturn(ppvBufOut, VERR_INVALID_POINTER);
-    AssertPtrReturn(pcbBufOut, VERR_INVALID_POINTER);
-    AssertReturn(pvBufIn || cbBufIn == 0, VERR_INVALID_POINTER);
-
-    *ppvBufOut = NULL;
-    *pcbBufOut = 0;
-
-    /** @todo r=bird: The issue of whether the zero terminator is part of
-     * cbBufIn/pcbBufOut or not is not mentioned anywhere... Iff
-     * VBOX_SHCL_FMT_URI_LIST follows the same rules as VBOX_SHCL_FMT_UNICODETEXT,
-     * then we can assume that VBox will include it.  The native clipboard
-     * text/uri-list data, though, should probably not include it.
-     *
-     * The code in ShClTransferRootsSetFromStringListEx indicates that VBox expects
-     * the zero terminator to be included in the output length.
-     *
-     * The GNOME file manager uses CRLF in it's text/uri-list, so we probably don't
-     * need to pay too much attention CRLF vs LF here. No zero terminator, though.
-     * Same for KDE in kubuntu 26.04.
-     */
-    int rc = cbBufIn ? RTStrValidateEncodingEx((char *)pvBufIn, cbBufIn, 0) : VINF_SUCCESS;
-    if (RT_SUCCESS(rc))
-    {
-        char *pszDst = (char *)RTMemAllocZ(cbBufIn + 1);
-        if (pszDst)
-        {
-            if (cbBufIn)
-                memcpy(pszDst, pvBufIn, cbBufIn);
-            *ppvBufOut = pszDst;
-            *pcbBufOut = cbBufIn;
-        }
-        else
-            rc = VERR_NO_MEMORY;
-    }
-    else
-        LogRel(("Data Converter: unable to validate URI-list data, rc=%Rrc\n", rc));
-
-    return rc;
-}
-# endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
-#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 /**
  * @callback_method_impl{FNVBFMTCONVERTOR,
@@ -456,52 +401,97 @@ static DECLCALLBACK(int) vbghMimeCvtHtmlFromVBox(void const *pvBufIn, size_t cbB
 }
 
 /**
- * A helper function that converts BMP image data into internal VBox representation.
- *
- * @returns IPRT status code.
- * @param   pvBufIn         Input buffer which contains BMP image data.
- * @param   cbBufIn         Size of input buffer in bytes.
- * @param   ppvBufOut       Newly allocated output buffer which will contain image data (must be freed by caller).
- * @param   pcbBufOut       Size of output buffer.
+ * @callback_method_impl{FNVBFMTCONVERTOR,
+ *  A helper function that converts X11/Wayland BMP image data to what VBox desires (DIB). }
  */
 static DECLCALLBACK(int) vbghMimeCvtBmpToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
-    int rc;
     const void *pvBufOutTmp = NULL;
-    size_t cbBufOutTmp = 0;
-
-    rc = ShClHlpBmpGetDib(pvBufIn, cbBufIn, &pvBufOutTmp, &cbBufOutTmp);
+    size_t      cbBufOutTmp = 0;
+    int rc = ShClHlpBmpGetDib(pvBufIn, cbBufIn, &pvBufOutTmp, &cbBufOutTmp);
     if (RT_SUCCESS(rc))
     {
-        void *pvBuf = RTMemAllocZ(cbBufOutTmp);
+        void * const pvBuf = RTMemDup(pvBufOutTmp, cbBufOutTmp);
         if (pvBuf)
         {
-            memcpy(pvBuf, pvBufOutTmp, cbBufOutTmp);
             *ppvBufOut = pvBuf;
             *pcbBufOut = cbBufOutTmp;
         }
         else
+        {
+            LogRel(("%s: Failed to allocate %#zx bytes!\n", __func__, cbBufOutTmp));
             rc = VERR_NO_MEMORY;
+        }
     }
     else
-        LogRel(("Data Converter: unable to convert image data (%u bytes) into BMP format, rc=%Rrc\n", cbBufIn, rc));
-
+        LogRel(("%s: vbghMimeCvtBmpToVBox (cbBufIn=%#zx) failed: %Rrc\n", __func__, cbBufIn, rc));
     return rc;
 }
 
 /**
- * A helper function that converts image data from internal VBox representation into BMP.
- *
- * @returns IPRT status code.
- * @param   pvBufIn         Input buffer which contains image data in VBox format.
- * @param   cbBufIn         Size of input buffer in bytes.
- * @param   ppvBufOut       Newly allocated output buffer which will contain BMP image data (must be freed by caller).
- * @param   pcbBufOut       Size of output buffer.
+ * @callback_method_impl{FNVBFMTCONVERTOR,
+ *  A helper function that converts VBox image date (DIB) to X11/Wayland BMP. }
  */
 static DECLCALLBACK(int) vbghMimeCvtBmpFromVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     return ShClHlpDibToBmp(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
 }
+
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+# if 0 /** @todo r=bird: see details in the list below */
+/**
+ * A helper function that validates and copies a UTF-8 URI list unchanged.
+ *
+ * @returns IPRT status code.
+ * @param   pvBufIn         Input buffer containing URI-list data.
+ * @param   cbBufIn         Size of input buffer in bytes.
+ * @param   ppvBufOut       Newly allocated output buffer which will contain URI-list data (must be freed by caller).
+ * @param   pcbBufOut       Size of output buffer.
+ */
+static DECLCALLBACK(int) vbghMimeCvtUriListCopy(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+{
+    AssertPtrReturn(ppvBufOut, VERR_INVALID_POINTER);
+    AssertPtrReturn(pcbBufOut, VERR_INVALID_POINTER);
+    AssertReturn(pvBufIn || cbBufIn == 0, VERR_INVALID_POINTER);
+
+    *ppvBufOut = NULL;
+    *pcbBufOut = 0;
+
+    /** @todo r=bird: The issue of whether the zero terminator is part of
+     * cbBufIn/pcbBufOut or not is not mentioned anywhere... Iff
+     * VBOX_SHCL_FMT_URI_LIST follows the same rules as VBOX_SHCL_FMT_UNICODETEXT,
+     * then we can assume that VBox will include it.  The native clipboard
+     * text/uri-list data, though, should probably not include it.
+     *
+     * The code in ShClTransferRootsSetFromStringListEx indicates that VBox expects
+     * the zero terminator to be included in the output length.
+     *
+     * The GNOME file manager uses CRLF in it's text/uri-list, so we probably don't
+     * need to pay too much attention CRLF vs LF here. No zero terminator, though.
+     * Same for KDE in kubuntu 26.04.
+     */
+    int rc = cbBufIn ? RTStrValidateEncodingEx((char *)pvBufIn, cbBufIn, 0) : VINF_SUCCESS;
+    if (RT_SUCCESS(rc))
+    {
+        char *pszDst = (char *)RTMemAllocZ(cbBufIn + 1);
+        if (pszDst)
+        {
+            if (cbBufIn)
+                memcpy(pszDst, pvBufIn, cbBufIn);
+            *ppvBufOut = pszDst;
+            *pcbBufOut = cbBufIn;
+        }
+        else
+            rc = VERR_NO_MEMORY;
+    }
+    else
+        LogRel(("Data Converter: unable to validate URI-list data, rc=%Rrc\n", rc));
+
+    return rc;
+}
+# endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
+#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 /**
  * @callback_method_impl{FNVBFMTCONVERTOR, Dummy converter.}
@@ -538,8 +528,9 @@ static struct VBCONVERTERFMTTABLE
     uint32_t                fFlagsAndPriority;
 } const g_aConverterFormats[] =
 {
-    /** @todo r=bird: What is the purpose of this one??! */
 #define T(a_sz)  RT_STR_TUPLE(a_sz)
+    /** @todo r=bird: What is the purpose of this one??! Who puts INVALID on the
+     *        clipboard and why do we care enough to have it here? */
     { T("INVALID"),                  VBOX_SHCL_FMT_NONE,        vbghMimeCvtInvalid,        vbghMimeCvtInvalid,        0 | VBGH_MIME_CONV_F_X11 },
 
     { T("UTF8_STRING"),              VBOX_SHCL_FMT_UNICODETEXT, vbghMimeCvtUtf8ToVBox,     vbghMimeCvtUtf8FromVBox,  14 | VBGH_MIME_CONV_F_X11 },
