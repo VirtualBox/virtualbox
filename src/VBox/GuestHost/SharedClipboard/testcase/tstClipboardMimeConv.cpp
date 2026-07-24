@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMimeConv.cpp 114762 2026-07-24 00:25:38Z knut.osmundsen@oracle.com $ */
+/* $Id: tstClipboardMimeConv.cpp 114763 2026-07-24 00:32:22Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard MIME converter testcase.
  */
@@ -42,6 +42,8 @@
 /*********************************************************************************************************************************
 *   Structures and Typedefs                                                                                                      *
 *********************************************************************************************************************************/
+#if 0 /** @todo r=bird: file transfers require a very different approach... */
+
 /** MIME enumeration test state. */
 typedef struct TSTMIMECONVENUMCTX
 {
@@ -132,6 +134,8 @@ static void testUriListMapping(void)
     RTTESTI_CHECK_MSG(RT_FAILURE(rc), ("invalid UTF-8 URI-list accepted by FromVBox: rc=%Rrc\n", rc));
     VbghMimeConvFreeBuf(pvOut, cbOut);
 }
+
+#endif
 
 static void testText(RTTEST hTest)
 {
@@ -328,7 +332,9 @@ int main(int argc, char **argv)
 
     RTTestBanner(hTest);
     testText(hTest);
+#if 0 /** @todo r=bird: file transfers require a very different approach... */
     testUriListMapping();
+#endif
 
     return RTTestSummaryAndDestroy(hTest);
 }

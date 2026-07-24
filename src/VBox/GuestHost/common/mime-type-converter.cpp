@@ -1,4 +1,4 @@
-/* $Id: mime-type-converter.cpp 114762 2026-07-24 00:25:38Z knut.osmundsen@oracle.com $ */
+/* $Id: mime-type-converter.cpp 114763 2026-07-24 00:32:22Z knut.osmundsen@oracle.com $ */
 /** @file
  * Common code for mime-type data conversion.
  *
@@ -270,6 +270,7 @@ static DECLCALLBACK(int) vbConvertLatin1FromVBox(void const *pvBufIn, size_t cbB
 }
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+# if 0 /** @todo r=bird: see details in the list below */
 /**
  * A helper function that validates and copies a UTF-8 URI list unchanged.
  *
@@ -320,6 +321,7 @@ static DECLCALLBACK(int) vbConvertUriListCopy(void const *pvBufIn, size_t cbBufI
 
     return rc;
 }
+# endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 /**
@@ -565,7 +567,11 @@ static struct VBCONVERTERFMTTABLE
     { "application/x-moz-nativehtml", VBOX_SHCL_FMT_HTML,         VBGH_MIME_CONV_F_RO | 4, vbConvertHtmlToVBox,     vbConvertHtmlFromVBox   }, /** @todo what's the format here actually? */
 #endif
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+# if 0 /** @todo r=bird: text/uri-list is pointless, unless it's all references
+        * to shared networked locations using protocols supported by the other
+        * side.  These types needs entirely different handling, most likely.  */
     { "text/uri-list",                VBOX_SHCL_FMT_URI_LIST,                          10, vbConvertUriListCopy,    vbConvertUriListCopy    },
+# endif
 #endif
 
     { "image/bmp",                    VBOX_SHCL_FMT_BITMAP,                             1, vbConvertBmpToVBox,      vbConvertBmpFromVBox    },
