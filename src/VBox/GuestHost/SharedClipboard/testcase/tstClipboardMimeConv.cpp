@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMimeConv.cpp 114760 2026-07-23 13:37:13Z knut.osmundsen@oracle.com $ */
+/* $Id: tstClipboardMimeConv.cpp 114762 2026-07-24 00:25:38Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard MIME converter testcase.
  */
@@ -99,7 +99,7 @@ static void testUriListMapping(void)
     char szUriList[] = "file:///tmp/vbox-shcl-a\r\nfile:///tmp/vbox-shcl-b\r\n";
     void *pvOut = NULL;
     size_t cbOut = 0;
-    int rc = VbghMimeConvToVBox("text/uri-list", szUriList, (int)strlen(szUriList), &pvOut, &cbOut);
+    int rc = VbghMimeConvToVBox("text/uri-list", szUriList, strlen(szUriList), &pvOut, &cbOut);
     RTTESTI_CHECK_RC_OK(rc);
     if (RT_SUCCESS(rc))
     {
@@ -110,7 +110,7 @@ static void testUriListMapping(void)
 
     pvOut = NULL;
     cbOut = 0;
-    rc = VbghMimeConvFromVBox("text/uri-list", szUriList, (int)strlen(szUriList), &pvOut, &cbOut);
+    rc = VbghMimeConvFromVBox("text/uri-list", szUriList, strlen(szUriList), &pvOut, &cbOut);
     RTTESTI_CHECK_RC_OK(rc);
     if (RT_SUCCESS(rc))
     {
@@ -136,10 +136,30 @@ static void testUriListMapping(void)
 static void testText(RTTEST hTest)
 {
     RTTestISub("text");
+    static const char s_szHtml1[]  = "<h1>It works!</h1>\n";
+    static const char s_wszHtml1LE[] =
+        "\xFF\xFE\x3C\x00\x68\x00\x31\x00\x3E\x00\x49\x00\x74\x00\x20\x00"  // ..<.h.1.>.I.t. .
+        "\x77\x00\x6F\x00\x72\x00\x6B\x00\x73\x00\x21\x00\x3C\x00\x2F\x00"  // w.o.r.k.s.!.<./.
+        "\x68\x00\x31\x00\x3E\x00\x0A\x00\x00";                             // h.1.>..  + '\0\0'
+    AssertCompile((sizeof(s_wszHtml1LE) & 1) == 0);
+    static const char s_wszHtml1BE[] =
+        "\xFE\xFF\x00\x3C\x00\x68\x00\x31\x00\x3E\x00\x49\x00\x74\x00\x20"
+        "\x00\x77\x00\x6F\x00\x72\x00\x6B\x00\x73\x00\x21\x00\x3C\x00\x2F"
+        "\x00\x68\x00\x31\x00\x3E\x00\x0A\x00";
+    AssertCompile((sizeof(s_wszHtml1BE) & 1) == 0);
+
+    static const char s_szHtml2[]  = "<h1>\xE6\x9C\x89\xE7\x94\xA8!</h1>\n";
+    static const char s_wszHtml2[] =
+        "\xFF\xFE\x3C\x00\x68\x00\x31\x00\x3E\x00"                          // ..<.h.1.>
+        "\x09\x67\x28\x75"                                                  // chinese for "It works"
+        "\x21\x00\x3C\x00\x2F\x00\x68\x00\x31\x00\x3E\x00\x0A\x00\x00";     // !.<./.h.1.>..  + '\0\0'
+    AssertCompile((sizeof(s_wszHtml2) & 1) == 0);
+#define F_VB_UTF8   1
+#define F_NV_UTF16  2
     static struct
     {
         const char *pszMimeType;    /**< The MIME type */
-        bool        fVBoxUtf8;      /**< Whether the VBox string is UTF-8 (true) or UTF-16 (false). */
+        unsigned    fFlags;         /**< 0, F_VB_UTF8*/
         const char *pszVBox;        /**< The UTF-8 version of the VBox output. */
         const char *pszNativeSrc;   /**< The native source text. */
         size_t      cchNativeSrc;   /**< Length of the native source text. */
@@ -156,7 +176,6 @@ static void testText(RTTEST hTest)
         { "text/plain;charset=utf-8",   0, "1\r\n2",                    RT_STR_TUPLE("1\n2") },
         { "text/plain;charset=utf-8",   0, "1\r\n2\r\n",                RT_STR_TUPLE("1\n2\n") },
 
-#if 1 /* busted */
         /* latin-1 */
         { "text/plain",                 0, "",                          },
         { "text/plain",                 0, "VirtualBox",                },
@@ -165,13 +184,22 @@ static void testText(RTTEST hTest)
         { "text/plain",                 0, "1\r\n2\r\n",                RT_STR_TUPLE("1\n2\n") },
         { "text/plain",                 0, "1,\r\n\xE4\xBA\x8C,\r\n3",  RT_STR_TUPLE("1,\n\\u4e8c,\n3"),
           NULL, 0, VINF_SUCCESS, VWRN_NO_TRANSLATION, },
-#endif
-#if 0 /* busted */
-        /* html */
-        { "text/html",                  1, "<!DOCTYPE html><html><head><title>hello</title></head></html>", },
-        { "text/html",                  1, "<!DOCTYPE html>\n<html>\n\t<head><title>hello</title></head>\n</html>", },
-        { "text/html",                  1, "<!DOCTYPE html>\r\n<html>\r\n\t<head><title>hello</title></head>\r\n</html>\r\n", },
-#endif
+
+        /* html (w/o charset spec) */
+        { "text/html",               F_VB_UTF8, "", },
+        { "text/html",               F_VB_UTF8, "<!DOCTYPE html><html><head><title>hello</title></head></html>", },
+        { "text/html",               F_VB_UTF8, "<!DOCTYPE html>\n<html>\n\t<head><title>hello</title></head>\n</html>", },
+        { "text/html",               F_VB_UTF8, "<!DOCTYPE html>\r\n<html>\r\n\t<head><title>hello</title></head>\r\n</html>\r\n", },
+        { "text/html",  F_NV_UTF16 | F_VB_UTF8, s_szHtml1, s_wszHtml1LE, sizeof(s_wszHtml1LE) - 2, RT_STR_TUPLE(s_szHtml1) },
+        { "text/html",  F_NV_UTF16 | F_VB_UTF8, s_szHtml1, s_wszHtml1BE, sizeof(s_wszHtml1BE) - 2, RT_STR_TUPLE(s_szHtml1) },
+        { "text/html",  F_NV_UTF16 | F_VB_UTF8, s_szHtml2, s_wszHtml2,   sizeof(s_wszHtml2) - 2,   RT_STR_TUPLE(s_szHtml2) },
+
+        /* html charset=utf-8*/
+        { "text/html;charset=utf-8", F_VB_UTF8, "", },
+        { "text/html;charset=utf-8", F_VB_UTF8, "<!DOCTYPE html><html><head><title>hello</title></head></html>", },
+        { "text/html;charset=utf-8", F_VB_UTF8, "<!DOCTYPE html>\n<html>\n\t<head><title>hello</title></head>\n</html>", },
+        { "text/html;charset=utf-8", F_VB_UTF8, "<!DOCTYPE html>\r\n<html>\r\n\t<head><title>hello</title></head>\r\n</html>\r\n", },
+
 #if 0 /* busted (probably useless) */
         /* uri-list */
         { "text/uri-list",              1, "file:///tmp\r\n",           },
@@ -188,6 +216,7 @@ static void testText(RTTEST hTest)
         const char * const  pszMimeType      = s_aTexts[i].pszMimeType;
         const char * const  pszNativeSrc     = s_aTexts[i].pszNativeSrc ? s_aTexts[i].pszNativeSrc : s_aTexts[i].pszVBox;
         size_t const        cchNativeSrc     = s_aTexts[i].pszNativeSrc ? s_aTexts[i].cchNativeSrc : strlen(s_aTexts[i].pszVBox);
+        size_t const        cchNativeInZero  = s_aTexts[i].fFlags & F_NV_UTF16 ? 2 : 1;
         const char * const  pszNativeOut     = s_aTexts[i].pszNativeOut ? s_aTexts[i].pszNativeOut : pszNativeSrc;
         size_t const        cchNativeOut     = s_aTexts[i].pszNativeOut ? s_aTexts[i].cchNativeOut : cchNativeSrc;
         size_t const        cchNativeOutZero = 1;
@@ -195,11 +224,11 @@ static void testText(RTTEST hTest)
         int const           rcFromVBox       = s_aTexts[i].rcFromVBox;
 
         /* Produce the VBox string. This is UTF-8 for html and URI-lists. */
-        size_t const        cbVBox   = s_aTexts[i].fVBoxUtf8
+        size_t const        cbVBox   = s_aTexts[i].fFlags & F_VB_UTF8
                                      ? strlen(s_aTexts[i].pszVBox) + 1
                                      : (RTStrCalcUtf16Len(s_aTexts[i].pszVBox) + 1) * sizeof(RTUTF16);
         void * const        pvVBox   = RTTestGuardedAllocTail(hTest, cbVBox);
-        if (s_aTexts[i].fVBoxUtf8)
+        if (s_aTexts[i].fFlags & F_VB_UTF8)
             memcpy(pvVBox, s_aTexts[i].pszVBox, cbVBox);
         else
         {
@@ -220,7 +249,7 @@ static void testText(RTTEST hTest)
         {
             pvOut = NULL;
             cbOut = 0;
-            rc = VbghMimeConvToVBox(pszMimeType, pszNativeSrc, (int)cchNativeSrc, &pvOut, &cbOut);
+            rc = VbghMimeConvToVBox(pszMimeType, pszNativeSrc, cchNativeSrc, &pvOut, &cbOut);
             if (RT_FAILURE(rc))
                 RTTestIFailed("string #%u(%s): VbghMimeConvToVBox failed: %Rrc", i, pszMimeType, rc);
             else if (cbOut != cbVBox || memcmp(pvOut, pvVBox, cbVBox))
@@ -233,7 +262,7 @@ static void testText(RTTEST hTest)
             /* Translate To VBox, but supply buffer including the zero terminator in the count. */
             pvOut = NULL;
             cbOut = 0;
-            rc = VbghMimeConvToVBox(pszMimeType, pszNativeSrc, (int)(cchNativeSrc + 1), &pvOut, &cbOut);
+            rc = VbghMimeConvToVBox(pszMimeType, pszNativeSrc, cchNativeSrc + cchNativeInZero, &pvOut, &cbOut);
             if (RT_FAILURE(rc))
                 RTTestIFailed("string #%u(%s): VbghMimeConvToVBox w/zero failed: %Rrc", i, pszMimeType, rc);
             else if (cbOut != cbVBox || memcmp(pvOut, pvVBox, cbVBox))
@@ -250,7 +279,7 @@ static void testText(RTTEST hTest)
                 memcpy(pachGuardedIn, pszNativeSrc, cchNativeSrc);
                 pvOut = NULL;
                 cbOut = 0;
-                rc = VbghMimeConvToVBox(pszMimeType, pszNativeSrc, (int)cchNativeSrc, &pvOut, &cbOut);
+                rc = VbghMimeConvToVBox(pszMimeType, pszNativeSrc, cchNativeSrc, &pvOut, &cbOut);
                 if (RT_FAILURE(rc))
                     RTTestIFailed("string #%u(%s): VbghMimeConvToVBox w/o zero failed: %Rrc", i, pszMimeType, rc);
                 else if (cbOut != cbVBox || memcmp(pvOut, pvVBox, cbVBox))
@@ -266,7 +295,7 @@ static void testText(RTTEST hTest)
         /* Translate the other way. */
         pvOut = NULL;
         cbOut = 0;
-        rc = VbghMimeConvFromVBox(pszMimeType, pvVBox, (int)cbVBox, &pvOut, &cbOut);
+        rc = VbghMimeConvFromVBox(pszMimeType, pvVBox, cbVBox, &pvOut, &cbOut);
         if (RT_FAILURE(rc))
             RTTestIFailed("string #%u(%s): VbghMimeConvFromVBox failed: %Rrc", i, pszMimeType, rc);
         else if (cbOut != cchNativeOut || memcmp(pvOut, pszNativeOut, cchNativeOut))

@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.cpp 114758 2026-07-23 12:22:27Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-helper.cpp 114762 2026-07-24 00:25:38Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard: Helper functions.
  */
@@ -213,6 +213,10 @@ int ShClHlpConvUtf16ToUtf8HTML(PCRTUTF16 pcwszSrc, size_t cwcSrc, char **ppszDst
     AssertPtrReturn(ppszDst,  VERR_INVALID_POINTER);
     AssertPtrReturn(pcbDst,   VERR_INVALID_POINTER);
 
+/** @todo r=bird: This has no useful documentation or testcase,
+ * so it's anyone's guess what input it is doing all that empty string
+ * skipping for.  Yes, older firefox will put UTF-16 formatted text/html on
+ * the X11 clipboard, but it seems to do that without any embedded zeros... */
     int rc = VINF_SUCCESS;
 
     size_t    cwTmp = cwcSrc;
@@ -225,13 +229,18 @@ int ShClHlpConvUtf16ToUtf8HTML(PCRTUTF16 pcwszSrc, size_t cwcSrc, char **ppszDst
     while (i < cwTmp)
     {
         /* Find  zero symbol (end of string). */
+/** @todo Use RTUtf16NLen? */
         for (; i < cwTmp && pcwszSrc[i] != 0; i++)
             ;
 
         /* Convert found string. */
         char  *psz = NULL;
         size_t cch = 0;
-        /** @todo r=bird: What on earth is going on with the output buffer size calculation here?!? */
+/** @todo r=bird: What on earth is going on with the output buffer size calculation here?!?
+ * It ends up as zero for the first loop, but it will the UTF-16 units
+ * preceeding the current string for the following loops... Doubt this ever
+ * worked, though, I cannot understand who would put anything with multiple
+ * strings onto clipboard in the first place... */
         rc = RTUtf16ToUtf8Ex(pwTmp, cwTmp, &psz, pwTmp - pcwszSrc, &cch);
         if (RT_FAILURE(rc))
             break;
@@ -262,6 +271,8 @@ int ShClHlpConvUtf16ToUtf8HTML(PCRTUTF16 pcwszSrc, size_t cwcSrc, char **ppszDst
 
     if (RT_SUCCESS(rc))
     {
+/** @todo r=bird: pchDst may be NULL here if if the input is one or more empty
+ * strings. */
         *ppszDst = pchDst;
         *pcbDst  = cbDst;
 

@@ -840,8 +840,26 @@ RTDECL(int) RTStrValidateEncoding(const char *psz);
  * @param   cch         The max string length (/ size).  Use RTSTR_MAX to
  *                      process the entire string.
  * @param   fFlags      Combination of RTSTR_VALIDATE_ENCODING_XXX flags.
+ * @sa      RTStrLenAndValidateEncoding
  */
 RTDECL(int) RTStrValidateEncodingEx(const char *psz, size_t cch, uint32_t fFlags);
+
+/**
+ * Validates the UTF-8 encoding of the string and optionally returns the
+ * lengths.
+ *
+ * @returns iprt status code.
+ * @param   psz         The string.
+ * @param   cch         The max string length (/ size).  Use RTSTR_MAX to
+ *                      process the entire string.
+ * @param   fFlags      Combination of RTSTR_VALIDATE_ENCODING_XXX flags.
+ * @param   pcuc        Where to store the length in unicode code points.
+ *                      Optional.
+ * @param   pcchActual  Where to store the actual size of the UTF-8 string
+ *                      on success (cch = cb again). Optional.
+ * @sa      RTStrValidateEncodingEx
+ */
+RTDECL(int) RTStrLenAndValidateEncoding(const char *psz, size_t cch, uint32_t fFlags, size_t *pcuc, size_t *pcchActual);
 
 /**
  * Checks if the UTF-8 encoding is valid.

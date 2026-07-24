@@ -1,4 +1,4 @@
-/* $Id: utf-16.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: utf-16.cpp 114762 2026-07-24 00:25:38Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - UTF-16.
  */
@@ -307,6 +307,49 @@ RTDECL(bool) RTUtf16IsValidEncoding(PCRTUTF16 pwsz)
     return RT_SUCCESS(rc);
 }
 RT_EXPORT_SYMBOL(RTUtf16IsValidEncoding);
+
+
+RTDECL(int) RTUtf16LenAndValidateEncoding(PCRTUTF16 pwsz, size_t cwc, uint32_t fFlags, size_t *pcuc, size_t *pcwcActual)
+{
+    AssertReturn(!(fFlags & ~(RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH)),
+                 VERR_INVALID_PARAMETER);
+    AssertPtr(pwsz);
+
+    /*
+     * Use rtUtf16Length for the job.
+     */
+    size_t cwcActual = 0; /* Shut up cc1plus. */
+    size_t cCps      = 0;
+    int rc = rtUtf16Length(pwsz, cwc, &cCps, &cwcActual);
+    if (RT_SUCCESS(rc))
+    {
+        if (fFlags & RTSTR_VALIDATE_ENCODING_EXACT_LENGTH)
+        {
+            if (fFlags & RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED)
+                cwcActual++;
+            if (cwcActual == cwc)
+                rc = VINF_SUCCESS;
+            else if (cwcActual < cwc)
+                rc = VERR_BUFFER_UNDERFLOW;
+            else
+                rc = VERR_BUFFER_OVERFLOW;
+        }
+        else if (    (fFlags & RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED)
+                 &&  cwcActual >= cwc)
+            rc = VERR_BUFFER_OVERFLOW;
+    }
+    else
+    {
+        cwcActual = 0;
+        cCps      = 0;
+    }
+    if (pcwcActual)
+        *pcwcActual = cwcActual;
+    if (pcuc)
+        *pcuc = cCps;
+    return rc;
+}
+RT_EXPORT_SYMBOL(RTUtf16LenAndValidateEncoding);
 
 
 /**

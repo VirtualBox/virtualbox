@@ -1,4 +1,4 @@
-/* $Id: utf-8.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: utf-8.cpp 114762 2026-07-24 00:25:38Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - UTF-8 Decoding.
  */
@@ -350,6 +350,50 @@ RTDECL(int) RTStrValidateEncodingEx(const char *psz, size_t cch, uint32_t fFlags
     return rc;
 }
 RT_EXPORT_SYMBOL(RTStrValidateEncodingEx);
+
+
+RTDECL(int) RTStrLenAndValidateEncoding(const char *psz, size_t cch, uint32_t fFlags, size_t *pcuc, size_t *pcchActual)
+{
+    AssertReturn(!(fFlags & ~(RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH)),
+                 VERR_INVALID_PARAMETER);
+    AssertPtr(psz);
+
+    /*
+     * Use rtUtf8Length for the job.
+     */
+    size_t cchActual = 0;
+    size_t cCps      = 0;
+    int rc = rtUtf8Length(psz, cch, &cCps, &cchActual);
+    if (RT_SUCCESS(rc))
+    {
+        if (fFlags & RTSTR_VALIDATE_ENCODING_EXACT_LENGTH)
+        {
+            if (fFlags & RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED)
+                cchActual++;
+            if (cchActual == cch)
+                rc = VINF_SUCCESS;
+            else if (cchActual < cch)
+                rc = VERR_BUFFER_UNDERFLOW;
+            else
+                rc = VERR_BUFFER_OVERFLOW;
+        }
+        else if (   (fFlags & RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED)
+                 && cchActual >= cch)
+            rc = VERR_BUFFER_OVERFLOW;
+    }
+    else
+    {
+        cchActual = 0;
+        cCps      = 0;
+    }
+
+    if (pcchActual)
+        *pcchActual = cchActual;
+    if (pcuc)
+        *pcuc = cCps;
+    return rc;
+}
+RT_EXPORT_SYMBOL(RTStrLenAndValidateEncoding);
 
 
 RTDECL(bool) RTStrIsValidEncoding(const char *psz)

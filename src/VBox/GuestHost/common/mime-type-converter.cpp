@@ -1,4 +1,4 @@
-/* $Id: mime-type-converter.cpp 114760 2026-07-23 13:37:13Z knut.osmundsen@oracle.com $ */
+/* $Id: mime-type-converter.cpp 114762 2026-07-24 00:25:38Z knut.osmundsen@oracle.com $ */
 /** @file
  * Common code for mime-type data conversion.
  *
@@ -70,7 +70,7 @@
  *                      success.  This must be freed by the caller.
  * @param   pcbBufOut   Where to return the size of the converted data on success.
  */
-typedef DECLCALLBACKTYPE(int, FNVBFMTCONVERTOR, (void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut));
+typedef DECLCALLBACKTYPE(int, FNVBFMTCONVERTOR, (void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut));
 /** Pointer to a generic data converter function. */
 typedef FNVBFMTCONVERTOR *PFNVBFMTCONVERTOR;
 
@@ -82,7 +82,7 @@ typedef FNVBFMTCONVERTOR *PFNVBFMTCONVERTOR;
  *
  * @note    Blindly ASSUMES input is using LF as EOL, not CRLF (like the output).
  */
-static DECLCALLBACK(int) vbConvertUtf8ToVBox(void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbConvertUtf8ToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     int rc = RTStrValidateEncodingEx((char const *)pvBufIn, cbBufIn, 0);
     if (RT_SUCCESS(rc))
@@ -96,10 +96,10 @@ static DECLCALLBACK(int) vbConvertUtf8ToVBox(void const *pvBufIn, int cbBufIn, v
             *pcbBufOut = (cwcDst + 1) * sizeof(RTUTF16); /* (The terminator is included for VBox string data.) */
         }
         else
-            LogRel(("Data Converter: unable to convert input UTF8 string into VBox format, rc=%Rrc\n", rc));
+            LogRel(("vbConvertUtf8ToVBox: ShClHlpConvUtf8LFToUtf16CRLF failed: %Rrc\n", rc));
     }
     else
-        LogRel(("Data Converter: unable to validate input UTF8 string, rc=%Rrc\n", rc));
+        LogRel(("vbConvertUtf8ToVBox: RTStrValidateEncodingEx failed: %Rrc\n", rc));
 
     return rc;
 }
@@ -110,7 +110,7 @@ static DECLCALLBACK(int) vbConvertUtf8ToVBox(void const *pvBufIn, int cbBufIn, v
  *
  * @note The returned data size excludes the string terminator.
  */
-static DECLCALLBACK(int) vbConvertUtf8FromVBox(void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbConvertUtf8FromVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     PCRTUTF16 const pwszBufIn = (PCRTUTF16)pvBufIn;
     size_t const    cwcBufIn  = cbBufIn / sizeof(RTUTF16);
@@ -137,7 +137,7 @@ static DECLCALLBACK(int) vbConvertUtf8FromVBox(void const *pvBufIn, int cbBufIn,
             }
             else
             {
-                LogRel(("Data Converter: unable to allocate memory for UTF16 string conversion, rc=%Rrc\n", rc));
+                LogRel(("vbConvertUtf8FromVBox: failed to allocate %#zx bytes!\n", cbDst));
                 rc = VERR_NO_MEMORY;
             }
         }
@@ -152,7 +152,7 @@ static DECLCALLBACK(int) vbConvertUtf8FromVBox(void const *pvBufIn, int cbBufIn,
  *
  * @note    Blindly ASSUMES input is using LF as EOL, not CRLF (like the output).
  */
-static DECLCALLBACK(int) vbConvertLatin1ToVBox(void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbConvertLatin1ToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     size_t   cwcDst  = 0;
     PRTUTF16 pswzDst = NULL;
@@ -163,7 +163,7 @@ static DECLCALLBACK(int) vbConvertLatin1ToVBox(void const *pvBufIn, int cbBufIn,
         *pcbBufOut = (cwcDst + 1) * sizeof(RTUTF16);  /* (The terminator is included for VBox string data.) */
     }
     else
-        LogRel(("vbConvertLatin1ToVBox: ShClHlpConvLatin1LFToUtf16CRLF failed with rc=%Rrc\n", rc));
+        LogRel(("vbConvertLatin1ToVBox: ShClHlpConvLatin1LFToUtf16CRLF failed: %Rrc\n", rc));
 
     return rc;
 }
@@ -174,7 +174,7 @@ static DECLCALLBACK(int) vbConvertLatin1ToVBox(void const *pvBufIn, int cbBufIn,
  *
  * @note The returned data size excludes the string terminator.
  */
-static DECLCALLBACK(int) vbConvertLatin1FromVBox(void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbConvertLatin1FromVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     PCRTUTF16 const pwszBufIn = (PCRTUTF16)pvBufIn;
     size_t const    cwcBufIn  = cbBufIn / sizeof(RTUTF16);
@@ -215,7 +215,7 @@ static DECLCALLBACK(int) vbConvertLatin1FromVBox(void const *pvBufIn, int cbBufI
 
         /* 2. allocate the output buffer. */
         char * const pszDst = (char *)RTMemAllocZ(cchLatin1 + 1);
-        AssertReturn(pszDst, VERR_NO_MEMORY);
+        AssertLogRelReturn(pszDst, VERR_NO_MEMORY);
 
         /* 3. do the actual conversion. */
         rc = VINF_SUCCESS;
@@ -263,6 +263,8 @@ static DECLCALLBACK(int) vbConvertLatin1FromVBox(void const *pvBufIn, int cbBufI
         *ppvBufOut = pszDst;
         *pcbBufOut = offDst;
     }
+    else
+        LogRel(("vbConvertLatin1FromVBox: RTUtf16ValidateEncodingEx failed: %Rrc\n", rc));
 
     return rc;
 }
@@ -277,11 +279,10 @@ static DECLCALLBACK(int) vbConvertLatin1FromVBox(void const *pvBufIn, int cbBufI
  * @param   ppvBufOut       Newly allocated output buffer which will contain URI-list data (must be freed by caller).
  * @param   pcbBufOut       Size of output buffer.
  */
-static DECLCALLBACK(int) vbConvertUriListCopy(void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbConvertUriListCopy(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     AssertPtrReturn(ppvBufOut, VERR_INVALID_POINTER);
     AssertPtrReturn(pcbBufOut, VERR_INVALID_POINTER);
-    AssertReturn(cbBufIn >= 0, VERR_INVALID_PARAMETER);
     AssertReturn(pvBufIn || cbBufIn == 0, VERR_INVALID_POINTER);
 
     *ppvBufOut = NULL;
@@ -303,13 +304,13 @@ static DECLCALLBACK(int) vbConvertUriListCopy(void const *pvBufIn, int cbBufIn, 
     int rc = cbBufIn ? RTStrValidateEncodingEx((char *)pvBufIn, cbBufIn, 0) : VINF_SUCCESS;
     if (RT_SUCCESS(rc))
     {
-        char *pszDst = (char *)RTMemAllocZ((size_t)cbBufIn + 1);
+        char *pszDst = (char *)RTMemAllocZ(cbBufIn + 1);
         if (pszDst)
         {
             if (cbBufIn)
                 memcpy(pszDst, pvBufIn, cbBufIn);
             *ppvBufOut = pszDst;
-            *pcbBufOut = (size_t)cbBufIn;
+            *pcbBufOut = cbBufIn;
         }
         else
             rc = VERR_NO_MEMORY;
@@ -322,117 +323,153 @@ static DECLCALLBACK(int) vbConvertUriListCopy(void const *pvBufIn, int cbBufIn, 
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 /**
- * A helper function that converts HTML data into internal VBox representation (UTF-8).
- *
- * @returns IPRT status code.
- * @param   pvBufIn         Input buffer which contains HTML data.
- * @param   cbBufIn         Size of input buffer in bytes.
- * @param   ppvBufOut       Newly allocated output buffer which will contain UTF-8 data (must be freed by caller).
- * @param   pcbBufOut       Size of output buffer.
+ * @callback_method_impl{FNVBFMTCONVERTOR,
+ *  A helper function that converts  X11/Wayland HTML to VBox HTML (both UTF-8).}
  */
-static DECLCALLBACK(int) vbConvertHtmlToVBox(void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbConvertUtf8HtmlToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
-    /** @todo r=bird: What's with the C coding? This is C++, so declare variables
-     *        where they are used.  Unnecessary initialization of 'rc' is just
-     *        confusing (value is never used). */
-    int rc = VERR_PARSE_ERROR;
-    void *pvDst = NULL;
-    size_t cbDst = 0;
-
-    /* From X11 counterpart: */
-
     /*
-     * The common VBox HTML encoding will be - UTF-8
-     * because it more general for HTML formats than UTF-16
-     * X11 clipboard returns UTF-16, so before sending it we should
-     * convert it to UTF-8.
-     *
-     * Some applications sends data in UTF-16, some in UTF-8,
-     * without indication it in MIME.
-     *
-     * In case of UTF-16, at least [Open|Libre] Office adds an byte order mark (0xfeff)
-     * at the start of the clipboard data.
+     * Expecting UTF-8 input here.  Validate that this is the case and do a simple
+     * passthru to VBox, including the terminator in the output length.
      */
-
-    if (   cbBufIn >= (int)sizeof(RTUTF16)
-        && *(PRTUTF16)pvBufIn == VBOX_SHCL_UTF16LEMARKER)
+    char const * const pszSrc = (char const *)pvBufIn;
+    size_t             cchSrc = 0;
+    int rc = RTStrLenAndValidateEncoding(pszSrc, cbBufIn, 0, NULL, &cchSrc);
+    if (RT_SUCCESS(rc))
     {
-        /* Input buffer is expected to be UTF-16 encoded. */
-        LogRel(("Data Converter: unable to convert UTF-16 encoded HTML data into VBox format\n"));
-
-        rc = RTUtf16ValidateEncodingEx((PCRTUTF16)pvBufIn, cbBufIn / sizeof(RTUTF16),
-                                       RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
-        if (RT_SUCCESS(rc))
+        char * const pszDst = (char *)RTMemAlloc(cchSrc + 1 /* '\0' */);
+        if (pszDst)
         {
-            rc = ShClHlpConvUtf16ToUtf8HTML((PRTUTF16)pvBufIn, cbBufIn / sizeof(RTUTF16), (char**)&pvDst, &cbDst);
-            if (RT_SUCCESS(rc))
-            {
-                *ppvBufOut = pvDst;
-                *pcbBufOut = cbDst;
-            }
-            else
-                LogRel(("Data Converter: unable to convert input UTF16 string into VBox format, rc=%Rrc\n", rc));
+            memcpy(pszDst, pvBufIn, cchSrc);
+            pszDst[cchSrc] = '\0';
+
+            *ppvBufOut = pszDst;
+            *pcbBufOut = cchSrc + 1 /* '\0' */;
         }
         else
-            LogRel(("Data Converter: unable to validate input UTF8 string, rc=%Rrc\n", rc));
+        {
+            LogRel(("%s: Failed to allocate %#zx bytes!\n", __func__, cchSrc + 1));
+            rc = VERR_NO_MEMORY;
+        }
+    }
+    else
+        LogRel(("%s: RTStrValidateEncodingEx failed: %Rrc\n", __func__, rc));
+    return rc;
+}
+
+/**
+ * @callback_method_impl{FNVBFMTCONVERTOR,
+ *  A helper function that converts X11/Wayland HTML to VBox HTML (UTF-8).}
+ *
+ * @note This is a generic version where the exact input charset isn't
+ *       necessarily fixed.
+ */
+static DECLCALLBACK(int) vbConvertHtmlToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+{
+    /*
+     * Older Firefox geared towards the X11 clipboard (like version 61.0.2) will
+     * put UTF-16LE with a BOM on the clipboard as 'text/html' instead of UTF-8.
+     *
+     * Apparently, according to the X11 code, OpenOffice/LibreOffset might have
+     * been doing the same. This has not verified.
+     */
+    int rc;
+    const uint8_t *pabSrc = (const uint8_t *)pvBufIn;
+    if (   cbBufIn >= sizeof(RTUTF16)
+        && (   (pabSrc[0] == 0xff && pabSrc[1] == 0xfe) /* little endian BOM */
+            || (pabSrc[0] == 0xfe && pabSrc[1] == 0xff) /* big endian BOM */))
+    {
+        bool const fLittleEndian = pabSrc[0] == 0xff;
+        LogRel2(("%s: converting UTF-16%cE encoded HTML data into VBox format...\n", __func__, fLittleEndian ? 'L': 'B'));
+        PCRTUTF16 const pwszSrc = (PCRTUTF16)pvBufIn + 1;
+        size_t    const cwcSrc  = RTUtf16NLen(pwszSrc, cbBufIn / sizeof(RTUTF16) - 1);
+
+        size_t cchDst = 0;
+        rc = fLittleEndian
+           ? RTUtf16LittleCalcUtf8LenEx(pwszSrc, cwcSrc, &cchDst)
+           : RTUtf16BigCalcUtf8LenEx(pwszSrc, cwcSrc, &cchDst);  /* (validates the UTF-16 encoding) */
+        if (RT_SUCCESS(rc))
+        {
+            char *pszDst = (char *)RTMemAllocZ(cchDst + 1);
+            if (pszDst)
+            {
+                rc = fLittleEndian
+                   ? RTUtf16LittleToUtf8Ex(pwszSrc, cwcSrc, &pszDst, cchDst + 1, &cchDst)
+                   : RTUtf16BigToUtf8Ex(pwszSrc, cwcSrc, &pszDst, cchDst + 1, &cchDst);
+                if (RT_SUCCESS(rc))
+                {
+                    *ppvBufOut = pszDst;
+                    *pcbBufOut = cchDst + 1;
+                }
+                else
+                {
+                    LogRel(("%s: RTUtf16%sToUtf8Ex failed: %Rrc!\n", __func__, fLittleEndian ? "Little" : "Big", rc));
+                    RTMemFree(pszDst);
+                }
+            }
+            else
+            {
+                LogRel(("%s: Failed to allocate %#zx bytes!\n", __func__, cchDst + 1));
+                rc = VERR_NO_MEMORY;
+            }
+        }
+        else
+            LogRel(("%s: RTUtf16%sCalcUtf8LenEx failed: %Rrc\n", __func__, fLittleEndian ? "Little" : "Big", rc));
     }
     else
     {
-        LogRel(("Data Converter: converting UTF-8 encoded HTML data into VBox format\n"));
-
-        /* Input buffer is expected to be UTF-8 encoded. */
-        rc = RTStrValidateEncodingEx((char *)pvBufIn, cbBufIn, 0);
-        if (RT_SUCCESS(rc))
-        {
-            /** @todo r=bird: This adds a terminating zero bytes even if one is already
-             *        there... */
-            pvDst = RTMemAllocZ(cbBufIn + 1 /* '\0' */);
-            if (pvDst)
-            {
-                memcpy(pvDst, pvBufIn, cbBufIn);
-                *ppvBufOut = pvDst;
-                *pcbBufOut = cbBufIn + 1 /* '\0' */;
-            }
-            else
-                rc = VERR_NO_MEMORY;
-        }
+        LogRel2(("%s: converting UTF-8 encoded HTML data into VBox format...\n", __func__));
+        rc = vbConvertUtf8HtmlToVBox(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
     }
 
     return rc;
 }
 
 /**
- * A helper function that validates HTML data in UTF-8 format and passes out a duplicated buffer.
+ * @callback_method_impl{FNVBFMTCONVERTOR,
+ *  A helper function that converts VBox a HTML string to X11/Wayland (both UTF-8).}
  *
- * This function supposed to convert HTML data from internal VBox representation (UTF-8)
- * into what will be accepted by X11/Wayland clients. However, since we paste HTML content
- * in UTF-8 representation, there is nothing to do with conversion. We only validate buffer here.
- *
- * @returns IPRT status code.
- * @param   pvBufIn         Input buffer which contains HTML data.
- * @param   cbBufIn         Size of input buffer in bytes.
- * @param   ppvBufOut       Newly allocated output buffer which will contain UTF-8 data (must be freed by caller).
- * @param   pcbBufOut       Size of output buffer.
+ * @note The only difference is that the returned data size excludes the
+ *       string terminator.  We are with the input in that regard.
  */
-static DECLCALLBACK(int) vbConvertHtmlFromVBox(void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbConvertHtmlFromVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
-    int rc = RTStrValidateEncodingEx((char *)pvBufIn, cbBufIn, 0);
+    /*
+     * This is basically a passthru, just making sure to not include the
+     * terminator in the output data size and that the input size is the
+     * length of the string (though we don't require it to be terminated).
+     */
+    const char * const pszSrc = (const char *)pvBufIn;
+    size_t             cchSrc = 0;
+    int rc = RTStrLenAndValidateEncoding(pszSrc, cbBufIn, 0 /*fFlags*/, NULL, &cchSrc);
     if (RT_SUCCESS(rc))
     {
-        void *pvBuf = RTMemAllocZ(cbBufIn);
-        if (pvBuf)
+        if (   cchSrc + 1 == cbBufIn
+            || cchSrc     == cbBufIn)
         {
-            /** @todo r=bird: cbBufIn typically includes the teminating string zero,
-             *        whereas wayland clipboard protocols does not (normally) include it in
-             *        the transfers... So, exclude it from *pcbBufOut? */
-            memcpy(pvBuf, pvBufIn, cbBufIn);
-            *ppvBufOut = pvBuf;
-            *pcbBufOut = cbBufIn;
+            char * const pszDst = (char *)RTMemAlloc(cchSrc + 1);
+            if (pszDst)
+            {
+                memcpy(pszDst, pszSrc, cchSrc);
+                pszDst[cchSrc] = '\0';
+
+                *ppvBufOut = pszDst;
+                *pcbBufOut = cchSrc;
+            }
+            else
+            {
+                LogRel(("%s: Failed to allocate %#zx bytes!\n", __func__, cchSrc + 1));
+                rc = VERR_NO_MEMORY;
+            }
         }
         else
-            rc = VERR_NO_MEMORY;
+        {
+            LogRel(("%s: VBox string is too short! cbBufIn=%#zx, but cchSrc=%#zx\n", __func__, cbBufIn, cchSrc));
+            rc = VERR_BUFFER_UNDERFLOW;
+        }
     }
-
+    else
+        LogRel(("%s: RTStrLenAndValidateEncoding failed: %Rrc\n", __func__, rc));
     return rc;
 }
 
@@ -445,7 +482,7 @@ static DECLCALLBACK(int) vbConvertHtmlFromVBox(void const *pvBufIn, int cbBufIn,
  * @param   ppvBufOut       Newly allocated output buffer which will contain image data (must be freed by caller).
  * @param   pcbBufOut       Size of output buffer.
  */
-static DECLCALLBACK(int) vbConvertBmpToVBox(void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbConvertBmpToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     int rc;
     const void *pvBufOutTmp = NULL;
@@ -479,7 +516,7 @@ static DECLCALLBACK(int) vbConvertBmpToVBox(void const *pvBufIn, int cbBufIn, vo
  * @param   ppvBufOut       Newly allocated output buffer which will contain BMP image data (must be freed by caller).
  * @param   pcbBufOut       Size of output buffer.
  */
-static DECLCALLBACK(int) vbConvertBmpFromVBox(void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbConvertBmpFromVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     return ShClHlpDibToBmp(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
 }
@@ -512,18 +549,21 @@ static struct VBCONVERTERFMTTABLE
     { "UTF8_STRING",                  VBOX_SHCL_FMT_UNICODETEXT,                       14, vbConvertUtf8ToVBox,     vbConvertUtf8FromVBox   },
     { "text/plain;charset=utf-8",     VBOX_SHCL_FMT_UNICODETEXT,                       12, vbConvertUtf8ToVBox,     vbConvertUtf8FromVBox   },
     { "text/plain;charset=UTF-8",     VBOX_SHCL_FMT_UNICODETEXT, VBGH_MIME_CONV_F_RO | 11, vbConvertUtf8ToVBox,     vbConvertUtf8FromVBox   },
+    /** @todo add text/plain;charset=utf-16 for input (LibreOffice 25.2 produces it)? */
     { "STRING",                       VBOX_SHCL_FMT_UNICODETEXT,                        3, vbConvertLatin1ToVBox,   vbConvertLatin1FromVBox },
     { "TEXT",                         VBOX_SHCL_FMT_UNICODETEXT,                        2, vbConvertLatin1ToVBox,   vbConvertLatin1FromVBox },
     { "text/plain",                   VBOX_SHCL_FMT_UNICODETEXT,                        1, vbConvertLatin1ToVBox,   vbConvertLatin1FromVBox },
 
-    { "text/html;charset=utf-8",      VBOX_SHCL_FMT_HTML,                              14, vbConvertHtmlToVBox,     vbConvertHtmlFromVBox   },
+    { "text/html;charset=utf-8",      VBOX_SHCL_FMT_HTML,                              14, vbConvertUtf8HtmlToVBox, vbConvertHtmlFromVBox   },
     { "text/html",                    VBOX_SHCL_FMT_HTML,                              12, vbConvertHtmlToVBox,     vbConvertHtmlFromVBox   },
+#if 0 /** @todo nobody seems to produce this. */
     /** @todo r=bird: application/x-moz-nativehtml (kNativeHTMLMime) is Windows
      * CF_HTML, see ShClWinConvertCFHTMLToMIME() and ShClWinConvertMIMEToCFHTML for
      * how to properly convert it. For reference:
      * https://github.com/mozilla-firefox/firefox/blob/2dad02d1765ec525589c574612ecad90a714a5bb/editor/libeditor/HTMLEditorDataTransfer.cpp#L2175
      */
     { "application/x-moz-nativehtml", VBOX_SHCL_FMT_HTML,         VBGH_MIME_CONV_F_RO | 4, vbConvertHtmlToVBox,     vbConvertHtmlFromVBox   }, /** @todo what's the format here actually? */
+#endif
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     { "text/uri-list",                VBOX_SHCL_FMT_URI_LIST,                          10, vbConvertUriListCopy,    vbConvertUriListCopy    },
 #endif
@@ -592,7 +632,7 @@ VBGH_DECL(SHCLFORMAT) VbghMimeConvGetVBoxFormatByMime(const char *pcszMimeType, 
  *                          in specified MIME type format (must be freed by caller).
  * @param   pcbBufOut       Size of output buffer.
  */
-VBGH_DECL(int) VbghMimeConvFromVBox(const char *pcszMimeType, void const *pvBufIn, int cbBufIn,
+VBGH_DECL(int) VbghMimeConvFromVBox(const char *pcszMimeType, void const *pvBufIn, size_t cbBufIn,
                                     void **ppvBufOut, size_t *pcbBufOut)
 {
     for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
@@ -613,7 +653,7 @@ VBGH_DECL(int) VbghMimeConvFromVBox(const char *pcszMimeType, void const *pvBufI
  *                          in VBox internal representation format (must be freed by caller).
  * @param   pcbBufOut       Size of output buffer.
  */
-VBGH_DECL(int) VbghMimeConvToVBox(const char *pcszMimeType, void const *pvBufIn, int cbBufIn,
+VBGH_DECL(int) VbghMimeConvToVBox(const char *pcszMimeType, void const *pvBufIn, size_t cbBufIn,
                                   void **ppvBufOut, size_t *pcbBufOut)
 {
     for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)

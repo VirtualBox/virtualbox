@@ -1,4 +1,4 @@
-/* $Id: mime-type-converter.h 114758 2026-07-23 12:22:27Z knut.osmundsen@oracle.com $ */
+/* $Id: mime-type-converter.h 114762 2026-07-24 00:25:38Z knut.osmundsen@oracle.com $ */
 /** @file
  * MIME type converter for Shared Clipboard and Drag-and-Drop code.
  */
@@ -77,8 +77,10 @@ typedef FNVBGHMIMECONVENUM *PFNVBGHMIMECONVENUM;
 VBGH_DECL(void) VbghMimeConvEnumerateByVBoxFormats(SHCLFORMATS fVBoxFmts, PFNVBGHMIMECONVENUM pfnCallback, void *pvUser);
 VBGH_DECL(SHCLFORMAT) VbghMimeConvGetVBoxFormatByMime(const char *pcszMimeType, uint32_t *pfFlagsAndPriority,
                                                       char const **ppszPersistentMimeType);
-VBGH_DECL(int)  VbghMimeConvFromVBox(const char *pcszMimeType, void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut);
-VBGH_DECL(int)  VbghMimeConvToVBox(const char *pcszMimeType, void const *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut);
+VBGH_DECL(int)  VbghMimeConvFromVBox(const char *pcszMimeType, void const *pvBufIn, size_t cbBufIn,
+                                     void **ppvBufOut, size_t *pcbBufOut);
+VBGH_DECL(int)  VbghMimeConvToVBox(const char *pcszMimeType, void const *pvBufIn, size_t cbBufIn,
+                                   void **ppvBufOut, size_t *pcbBufOut);
 VBGH_DECL(void) VbghMimeConvFreeBuf(void *pvBuf, size_t cbBuf);
 
 
