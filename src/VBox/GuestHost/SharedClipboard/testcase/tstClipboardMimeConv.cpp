@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMimeConv.cpp 114763 2026-07-24 00:32:22Z knut.osmundsen@oracle.com $ */
+/* $Id: tstClipboardMimeConv.cpp 114766 2026-07-24 18:01:54Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard MIME converter testcase.
  */
@@ -179,20 +179,24 @@ static void testText(RTTEST hTest)
         { "text/plain;charset=utf-8",   0, "\r\n",                      RT_STR_TUPLE("\n") },
         { "text/plain;charset=utf-8",   0, "1\r\n2",                    RT_STR_TUPLE("1\n2") },
         { "text/plain;charset=utf-8",   0, "1\r\n2\r\n",                RT_STR_TUPLE("1\n2\n") },
+        { "teXt/plAin;chaRseT=utF-8",   0, "1\r\n2\r\n",                RT_STR_TUPLE("1\n2\n") },
+        { "TEXT/PLAIN;CHARSET=UTF-8",   0, "1\r\n2\r\n3\r\n",           RT_STR_TUPLE("1\r\n2\n3\r\n"), RT_STR_TUPLE("1\n2\n3\n")},
 
         /* latin-1 */
         { "text/plain",                 0, "",                          },
         { "text/plain",                 0, "VirtualBox",                },
-        { "text/plain",                 0, "\r\n",                      RT_STR_TUPLE("\n") },
-        { "text/plain",                 0, "1\r\n2",                    RT_STR_TUPLE("1\n2") },
-        { "text/plain",                 0, "1\r\n2\r\n",                RT_STR_TUPLE("1\n2\n") },
+        { "teXT/PLain",                 0, "\r\n",                      RT_STR_TUPLE("\n") },
+        { "TEXT/plain",                 0, "1\r\n2",                    RT_STR_TUPLE("1\n2") },
+        { "text/PLAIN",                 0, "1\r\n2\r\n",                RT_STR_TUPLE("1\n2\n") },
         { "text/plain",                 0, "1,\r\n\xE4\xBA\x8C,\r\n3",  RT_STR_TUPLE("1,\n\\u4e8c,\n3"),
           NULL, 0, VINF_SUCCESS, VWRN_NO_TRANSLATION, },
+        /// @todo fix EOL normalization for latin-1.
+        //{ "TEXT/PLAIN",                 0, "1\r\n2\r\n3\r\n",           RT_STR_TUPLE("1\r\n2\n3\r\n"), RT_STR_TUPLE("1\n2\n3\n")},
 
         /* html (w/o charset spec) */
         { "text/html",               F_VB_UTF8, "", },
         { "text/html",               F_VB_UTF8, "<!DOCTYPE html><html><head><title>hello</title></head></html>", },
-        { "text/html",               F_VB_UTF8, "<!DOCTYPE html>\n<html>\n\t<head><title>hello</title></head>\n</html>", },
+        { "TexT/hTml",               F_VB_UTF8, "<!DOCTYPE html>\n<html>\n\t<head><title>hello</title></head>\n</html>", },
         { "text/html",               F_VB_UTF8, "<!DOCTYPE html>\r\n<html>\r\n\t<head><title>hello</title></head>\r\n</html>\r\n", },
         { "text/html",  F_NV_UTF16 | F_VB_UTF8, s_szHtml1, s_wszHtml1LE, sizeof(s_wszHtml1LE) - 2, RT_STR_TUPLE(s_szHtml1) },
         { "text/html",  F_NV_UTF16 | F_VB_UTF8, s_szHtml1, s_wszHtml1BE, sizeof(s_wszHtml1BE) - 2, RT_STR_TUPLE(s_szHtml1) },
@@ -201,8 +205,9 @@ static void testText(RTTEST hTest)
         /* html charset=utf-8*/
         { "text/html;charset=utf-8", F_VB_UTF8, "", },
         { "text/html;charset=utf-8", F_VB_UTF8, "<!DOCTYPE html><html><head><title>hello</title></head></html>", },
-        { "text/html;charset=utf-8", F_VB_UTF8, "<!DOCTYPE html>\n<html>\n\t<head><title>hello</title></head>\n</html>", },
+        { "text/htmL;chaRset=utf-8", F_VB_UTF8, "<!DOCTYPE html>\n<html>\n\t<head><title>hello</title></head>\n</html>", },
         { "text/html;charset=utf-8", F_VB_UTF8, "<!DOCTYPE html>\r\n<html>\r\n\t<head><title>hello</title></head>\r\n</html>\r\n", },
+        { "tExT/HTml;cHarseT=uTf-8", F_VB_UTF8, "<!DOCTYPE html>\r\n<html>\r\n\t<head><title>hello</title></head>\r\n</html>\r\n", },
 
 #if 0 /* busted (probably useless) */
         /* uri-list */

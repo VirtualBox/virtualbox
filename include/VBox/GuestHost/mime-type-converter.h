@@ -1,4 +1,4 @@
-/* $Id: mime-type-converter.h 114762 2026-07-24 00:25:38Z knut.osmundsen@oracle.com $ */
+/* $Id: mime-type-converter.h 114766 2026-07-24 18:01:54Z knut.osmundsen@oracle.com $ */
 /** @file
  * MIME type converter for Shared Clipboard and Drag-and-Drop code.
  */
@@ -57,6 +57,8 @@
 #define VBGH_MIME_CONV_F_PRIORITY_MASK      UINT32_C(0x0000000f)
 /** Readonly type, skip this when exporting. */
 #define VBGH_MIME_CONV_F_RO                 UINT32_C(0x00001000)
+/** An old X11 type string that doesn't follow RTC-2045 section 5.1. */
+#define VBGH_MIME_CONV_F_X11                UINT32_C(0x00002000)
 /** @} */
 
 /**

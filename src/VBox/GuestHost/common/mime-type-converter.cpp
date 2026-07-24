@@ -1,4 +1,4 @@
-/* $Id: mime-type-converter.cpp 114763 2026-07-24 00:32:22Z knut.osmundsen@oracle.com $ */
+/* $Id: mime-type-converter.cpp 114766 2026-07-24 18:01:54Z knut.osmundsen@oracle.com $ */
 /** @file
  * Common code for mime-type data conversion.
  *
@@ -44,20 +44,6 @@
 
 
 /*********************************************************************************************************************************
-*   Defined Constants And Macros                                                                                                 *
-*********************************************************************************************************************************/
-/** @todo r=bird: Only used with RTStrNCmp, where it is completely
- *        unnecessary and just a potential bug source.  The reason being that we
- *        we control one of the two strings, which limits the comparison to the
- *        length of it.
- *
- *        However, if you mean to do something like RTStrStartsWith,
- *        then RT_MIN(strlen(), VBOX_WAYLAND_MIME_TYPE_NAME_MAX) would be
- *        better.  It wouldn't be all, that good though. */
-#define VBOX_WAYLAND_MIME_TYPE_NAME_MAX     (32)
-
-
-/*********************************************************************************************************************************
 *   Structures and Typedefs                                                                                                      *
 *********************************************************************************************************************************/
 /**
@@ -82,7 +68,7 @@ typedef FNVBFMTCONVERTOR *PFNVBFMTCONVERTOR;
  *
  * @note    Blindly ASSUMES input is using LF as EOL, not CRLF (like the output).
  */
-static DECLCALLBACK(int) vbConvertUtf8ToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbghMimeCvtUtf8ToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     int rc = RTStrValidateEncodingEx((char const *)pvBufIn, cbBufIn, 0);
     if (RT_SUCCESS(rc))
@@ -96,10 +82,10 @@ static DECLCALLBACK(int) vbConvertUtf8ToVBox(void const *pvBufIn, size_t cbBufIn
             *pcbBufOut = (cwcDst + 1) * sizeof(RTUTF16); /* (The terminator is included for VBox string data.) */
         }
         else
-            LogRel(("vbConvertUtf8ToVBox: ShClHlpConvUtf8LFToUtf16CRLF failed: %Rrc\n", rc));
+            LogRel(("%s: ShClHlpConvUtf8LFToUtf16CRLF failed: %Rrc\n", __func__, rc));
     }
     else
-        LogRel(("vbConvertUtf8ToVBox: RTStrValidateEncodingEx failed: %Rrc\n", rc));
+        LogRel(("%s: RTStrValidateEncodingEx failed: %Rrc\n", __func__, rc));
 
     return rc;
 }
@@ -110,7 +96,7 @@ static DECLCALLBACK(int) vbConvertUtf8ToVBox(void const *pvBufIn, size_t cbBufIn
  *
  * @note The returned data size excludes the string terminator.
  */
-static DECLCALLBACK(int) vbConvertUtf8FromVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbghMimeCvtUtf8FromVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     PCRTUTF16 const pwszBufIn = (PCRTUTF16)pvBufIn;
     size_t const    cwcBufIn  = cbBufIn / sizeof(RTUTF16);
@@ -137,7 +123,7 @@ static DECLCALLBACK(int) vbConvertUtf8FromVBox(void const *pvBufIn, size_t cbBuf
             }
             else
             {
-                LogRel(("vbConvertUtf8FromVBox: failed to allocate %#zx bytes!\n", cbDst));
+                LogRel(("%s: failed to allocate %#zx bytes!\n", __func__, cbDst));
                 rc = VERR_NO_MEMORY;
             }
         }
@@ -152,7 +138,7 @@ static DECLCALLBACK(int) vbConvertUtf8FromVBox(void const *pvBufIn, size_t cbBuf
  *
  * @note    Blindly ASSUMES input is using LF as EOL, not CRLF (like the output).
  */
-static DECLCALLBACK(int) vbConvertLatin1ToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbghMimeCvtLatin1ToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     size_t   cwcDst  = 0;
     PRTUTF16 pswzDst = NULL;
@@ -163,7 +149,7 @@ static DECLCALLBACK(int) vbConvertLatin1ToVBox(void const *pvBufIn, size_t cbBuf
         *pcbBufOut = (cwcDst + 1) * sizeof(RTUTF16);  /* (The terminator is included for VBox string data.) */
     }
     else
-        LogRel(("vbConvertLatin1ToVBox: ShClHlpConvLatin1LFToUtf16CRLF failed: %Rrc\n", rc));
+        LogRel(("%s: ShClHlpConvLatin1LFToUtf16CRLF failed: %Rrc\n", __func__, rc));
 
     return rc;
 }
@@ -174,7 +160,7 @@ static DECLCALLBACK(int) vbConvertLatin1ToVBox(void const *pvBufIn, size_t cbBuf
  *
  * @note The returned data size excludes the string terminator.
  */
-static DECLCALLBACK(int) vbConvertLatin1FromVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbghMimeCvtLatin1FromVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     PCRTUTF16 const pwszBufIn = (PCRTUTF16)pvBufIn;
     size_t const    cwcBufIn  = cbBufIn / sizeof(RTUTF16);
@@ -264,7 +250,7 @@ static DECLCALLBACK(int) vbConvertLatin1FromVBox(void const *pvBufIn, size_t cbB
         *pcbBufOut = offDst;
     }
     else
-        LogRel(("vbConvertLatin1FromVBox: RTUtf16ValidateEncodingEx failed: %Rrc\n", rc));
+        LogRel(("%s: RTUtf16ValidateEncodingEx failed: %Rrc\n", __func__, rc));
 
     return rc;
 }
@@ -280,7 +266,7 @@ static DECLCALLBACK(int) vbConvertLatin1FromVBox(void const *pvBufIn, size_t cbB
  * @param   ppvBufOut       Newly allocated output buffer which will contain URI-list data (must be freed by caller).
  * @param   pcbBufOut       Size of output buffer.
  */
-static DECLCALLBACK(int) vbConvertUriListCopy(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbghMimeCvtUriListCopy(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     AssertPtrReturn(ppvBufOut, VERR_INVALID_POINTER);
     AssertPtrReturn(pcbBufOut, VERR_INVALID_POINTER);
@@ -328,7 +314,7 @@ static DECLCALLBACK(int) vbConvertUriListCopy(void const *pvBufIn, size_t cbBufI
  * @callback_method_impl{FNVBFMTCONVERTOR,
  *  A helper function that converts  X11/Wayland HTML to VBox HTML (both UTF-8).}
  */
-static DECLCALLBACK(int) vbConvertUtf8HtmlToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbghMimeCvtUtf8HtmlToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     /*
      * Expecting UTF-8 input here.  Validate that this is the case and do a simple
@@ -366,7 +352,7 @@ static DECLCALLBACK(int) vbConvertUtf8HtmlToVBox(void const *pvBufIn, size_t cbB
  * @note This is a generic version where the exact input charset isn't
  *       necessarily fixed.
  */
-static DECLCALLBACK(int) vbConvertHtmlToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbghMimeCvtHtmlToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     /*
      * Older Firefox geared towards the X11 clipboard (like version 61.0.2) will
@@ -421,7 +407,7 @@ static DECLCALLBACK(int) vbConvertHtmlToVBox(void const *pvBufIn, size_t cbBufIn
     else
     {
         LogRel2(("%s: converting UTF-8 encoded HTML data into VBox format...\n", __func__));
-        rc = vbConvertUtf8HtmlToVBox(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
+        rc = vbghMimeCvtUtf8HtmlToVBox(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
     }
 
     return rc;
@@ -434,7 +420,7 @@ static DECLCALLBACK(int) vbConvertHtmlToVBox(void const *pvBufIn, size_t cbBufIn
  * @note The only difference is that the returned data size excludes the
  *       string terminator.  We are with the input in that regard.
  */
-static DECLCALLBACK(int) vbConvertHtmlFromVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbghMimeCvtHtmlFromVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     /*
      * This is basically a passthru, just making sure to not include the
@@ -484,7 +470,7 @@ static DECLCALLBACK(int) vbConvertHtmlFromVBox(void const *pvBufIn, size_t cbBuf
  * @param   ppvBufOut       Newly allocated output buffer which will contain image data (must be freed by caller).
  * @param   pcbBufOut       Size of output buffer.
  */
-static DECLCALLBACK(int) vbConvertBmpToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbghMimeCvtBmpToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     int rc;
     const void *pvBufOutTmp = NULL;
@@ -518,10 +504,20 @@ static DECLCALLBACK(int) vbConvertBmpToVBox(void const *pvBufIn, size_t cbBufIn,
  * @param   ppvBufOut       Newly allocated output buffer which will contain BMP image data (must be freed by caller).
  * @param   pcbBufOut       Size of output buffer.
  */
-static DECLCALLBACK(int) vbConvertBmpFromVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+static DECLCALLBACK(int) vbghMimeCvtBmpFromVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     return ShClHlpDibToBmp(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
 }
+
+/**
+ * @callback_method_impl{FNVBFMTCONVERTOR, Dummy converter.}
+ */
+static DECLCALLBACK(int) vbghMimeCvtInvalid(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+{
+    RT_NOREF(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
+    return VERR_NO_TRANSLATION;
+}
+
 
 /**
  * This table represents MIME types cache and contains its
@@ -529,10 +525,16 @@ static DECLCALLBACK(int) vbConvertBmpFromVBox(void const *pvBufIn, size_t cbBufI
  */
 static struct VBCONVERTERFMTTABLE
 {
-    /** Content mime-type as reported by X11/Wayland. */
-    const char             *pcszMimeType;
+    /** Content MIME type / X11 type as reported by X11/Wayland. */
+    const char             *pszMimeType;
+    /** The length of pszMimeType. */
+    unsigned                cchMimeType;
     /** VBox content type representation. */
     SHCLFORMAT              uFmtVBox;
+    /** Function converting from X11/Wayland to VirtualBox clipboard data format. */
+    PFNVBFMTCONVERTOR       pfnConvertToVBox;
+    /** Function converting from VirtualBox to X11/Wayland clipboard data format. */
+    PFNVBFMTCONVERTOR       pfnConvertFromVBox;
     /** The priority of MIME types mapping to the same SHCLFORMAT and flags.
      * Higher value means higher priority. Range is range 0 thru 15.
      * @note This assumes that we can use one common priority for all
@@ -540,44 +542,100 @@ static struct VBCONVERTERFMTTABLE
      *       preferences, we'd have to partition it.
      * @todo We would also use part of this for flags... */
     uint32_t                fFlagsAndPriority;
-    /** Function converting from X11/Wayland to VirtualBox clipboard data format. */
-    PFNVBFMTCONVERTOR       pfnConvertToVBox;
-    /** Function converting from VirtualBox to X11/Wayland clipboard data format. */
-    PFNVBFMTCONVERTOR       pfnConvertFromVBox;
 } const g_aConverterFormats[] =
 {
-    { "INVALID",                      VBOX_SHCL_FMT_NONE,                               0, NULL,                    NULL                    },
+    /** @todo r=bird: What is the purpose of this one??! */
+#define T(a_sz)  RT_STR_TUPLE(a_sz)
+    { T("INVALID"),                  VBOX_SHCL_FMT_NONE,        vbghMimeCvtInvalid,        vbghMimeCvtInvalid,        0 | VBGH_MIME_CONV_F_X11 },
 
-    { "UTF8_STRING",                  VBOX_SHCL_FMT_UNICODETEXT,                       14, vbConvertUtf8ToVBox,     vbConvertUtf8FromVBox   },
-    { "text/plain;charset=utf-8",     VBOX_SHCL_FMT_UNICODETEXT,                       12, vbConvertUtf8ToVBox,     vbConvertUtf8FromVBox   },
-    { "text/plain;charset=UTF-8",     VBOX_SHCL_FMT_UNICODETEXT, VBGH_MIME_CONV_F_RO | 11, vbConvertUtf8ToVBox,     vbConvertUtf8FromVBox   },
+    { T("UTF8_STRING"),              VBOX_SHCL_FMT_UNICODETEXT, vbghMimeCvtUtf8ToVBox,     vbghMimeCvtUtf8FromVBox,  14 | VBGH_MIME_CONV_F_X11 },
+    { T("text/plain;charset=utf-8"), VBOX_SHCL_FMT_UNICODETEXT, vbghMimeCvtUtf8ToVBox,     vbghMimeCvtUtf8FromVBox,  12                        },
+    { T("STRING"),                   VBOX_SHCL_FMT_UNICODETEXT, vbghMimeCvtLatin1ToVBox,   vbghMimeCvtLatin1FromVBox, 3 | VBGH_MIME_CONV_F_X11 },
+    { T("TEXT"),                     VBOX_SHCL_FMT_UNICODETEXT, vbghMimeCvtLatin1ToVBox,   vbghMimeCvtLatin1FromVBox, 2 | VBGH_MIME_CONV_F_X11 },
+    { T("text/plain"),               VBOX_SHCL_FMT_UNICODETEXT, vbghMimeCvtLatin1ToVBox,   vbghMimeCvtLatin1FromVBox, 1                        },
     /** @todo add text/plain;charset=utf-16 for input (LibreOffice 25.2 produces it)? */
-    { "STRING",                       VBOX_SHCL_FMT_UNICODETEXT,                        3, vbConvertLatin1ToVBox,   vbConvertLatin1FromVBox },
-    { "TEXT",                         VBOX_SHCL_FMT_UNICODETEXT,                        2, vbConvertLatin1ToVBox,   vbConvertLatin1FromVBox },
-    { "text/plain",                   VBOX_SHCL_FMT_UNICODETEXT,                        1, vbConvertLatin1ToVBox,   vbConvertLatin1FromVBox },
 
-    { "text/html;charset=utf-8",      VBOX_SHCL_FMT_HTML,                              14, vbConvertUtf8HtmlToVBox, vbConvertHtmlFromVBox   },
-    { "text/html",                    VBOX_SHCL_FMT_HTML,                              12, vbConvertHtmlToVBox,     vbConvertHtmlFromVBox   },
+    { T("text/html;charset=utf-8"),  VBOX_SHCL_FMT_HTML,        vbghMimeCvtUtf8HtmlToVBox, vbghMimeCvtHtmlFromVBox,  14},
+    { T("text/html"),                VBOX_SHCL_FMT_HTML,        vbghMimeCvtHtmlToVBox,     vbghMimeCvtHtmlFromVBox,  12},
 #if 0 /** @todo nobody seems to produce this. */
     /** @todo r=bird: application/x-moz-nativehtml (kNativeHTMLMime) is Windows
      * CF_HTML, see ShClWinConvertCFHTMLToMIME() and ShClWinConvertMIMEToCFHTML for
      * how to properly convert it. For reference:
      * https://github.com/mozilla-firefox/firefox/blob/2dad02d1765ec525589c574612ecad90a714a5bb/editor/libeditor/HTMLEditorDataTransfer.cpp#L2175
      */
-    { "application/x-moz-nativehtml", VBOX_SHCL_FMT_HTML,         VBGH_MIME_CONV_F_RO | 4, vbConvertHtmlToVBox,     vbConvertHtmlFromVBox   }, /** @todo what's the format here actually? */
+    { RT_STR_TUPLE("application/x-moz-nativehtml"), VBOX_SHCL_FMT_HTML,    vbghMimeCvtHtmlToVBox,     vbghMimeCvtHtmlFromVBox,  4 | VBGH_MIME_CONV_F_RO  },
 #endif
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 # if 0 /** @todo r=bird: text/uri-list is pointless, unless it's all references
         * to shared networked locations using protocols supported by the other
         * side.  These types needs entirely different handling, most likely.  */
-    { "text/uri-list",                VBOX_SHCL_FMT_URI_LIST,                          10, vbConvertUriListCopy,    vbConvertUriListCopy    },
+    { T("text/uri-list"),            VBOX_SHCL_FMT_URI_LIST,    vbghMimeCvtUriListCopy,    vbghMimeCvtUriListCopy,    1 },
 # endif
 #endif
-
-    { "image/bmp",                    VBOX_SHCL_FMT_BITMAP,                             1, vbConvertBmpToVBox,      vbConvertBmpFromVBox    },
-    { "image/x-bmp",                  VBOX_SHCL_FMT_BITMAP,                             1, vbConvertBmpToVBox,      vbConvertBmpFromVBox    },
-    { "image/x-MS-bmp",               VBOX_SHCL_FMT_BITMAP,                             1, vbConvertBmpToVBox,      vbConvertBmpFromVBox    },
+    /** @todo prioritize these.   */
+    { T("image/bmp"),                VBOX_SHCL_FMT_BITMAP,      vbghMimeCvtBmpToVBox,      vbghMimeCvtBmpFromVBox,    1 },
+    { T("image/x-bmp"),              VBOX_SHCL_FMT_BITMAP,      vbghMimeCvtBmpToVBox,      vbghMimeCvtBmpFromVBox,    1 },
+    { T("image/x-MS-bmp"),           VBOX_SHCL_FMT_BITMAP,      vbghMimeCvtBmpToVBox,      vbghMimeCvtBmpFromVBox,    1 },
 };
+
+
+/**
+ * Compares two MIME types.
+ *
+ * @retval  true if they match.
+ * @retval  false if they do not match.
+ * @param   pszOurType      Our MIME type string, i.e. from g_aConverterFormats,
+ *                          so completely under our control.
+ * @param   cchOurType      The length of our MIME type.
+ * @param   pszOtherType    The extern MIME type.
+ * @param   cchOtherType    The length of the external MIME type.
+ * @param   fFlags          VBGH_MIME_CONV_F_XXXX
+ */
+static bool vbghMimeIsMatching(const char *pszOurType, size_t cchOurType,
+                               const char *pszOtherType, size_t cchOtherType, uint32_t fFlags)
+{
+    /*
+     * The length has to match, regardless of the flavor.
+     */
+    if (cchOurType == cchOtherType)
+    {
+        /*
+         * Legacy X11 types are considered case sensitive and requires no special handling.
+         */
+        if (fFlags & VBGH_MIME_CONV_F_X11)
+            return strcmp(pszOurType, pszOtherType) == 0;
+
+        /*
+         * Everything except most parameter values are treated as case insensitive.
+         * The parameter value of 'charset' is considered case insensitive as well.
+         *
+         * So, we start by doing a complete case insensitive compare of the two
+         * strings and then perform case sensitive compares of any parameter values
+         * if the two strings match.
+         */
+        if (RTStrICmp(pszOurType, pszOtherType) == 0)
+        {
+            /* ASSUMES that '=' only occures in the parameter part, at least for our MIME types.*/
+            const char *pszEqual = strchr(pszOurType, '=');
+            while (pszEqual)
+            {
+                size_t offStart = pszEqual - pszOurType + 1;
+                size_t offEnd   = RTStrOffNextCharOrTerm(pszOurType, ';', offStart);
+#define IS_PRECEEDED_BY_ICASE(a_psz, a_off, a_sz) \
+                ((a_off) >= sizeof(a_sz) && RTStrNICmp(&(a_psz)[(a_off) - sizeof(a_sz) + 1], a_sz, sizeof(a_sz) - 1) == 0)
+                if (   memcmp(&pszOurType[offStart], &pszOtherType[offStart], offEnd - offStart) != 0
+                    && !IS_PRECEEDED_BY_ICASE(pszOurType, offStart, ";charset="))
+                    return false;
+#undef IS_PRECEEDED_BY_ICASE
+
+                /* next */
+                pszEqual = strchr(&pszOurType[offEnd], '=');
+            }
+            return true;
+        }
+    }
+    return false;
+}
 
 /**
  * Enumerate list of MIME types by ID mask.
@@ -593,7 +651,7 @@ VBGH_DECL(void) VbghMimeConvEnumerateByVBoxFormats(SHCLFORMATS fVBoxFmts, PFNVBG
 {
     for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
         if (g_aConverterFormats[i].uFmtVBox & fVBoxFmts)
-            pfnCallback(g_aConverterFormats[i].pcszMimeType, g_aConverterFormats[i].fFlagsAndPriority, pvUser);
+            pfnCallback(g_aConverterFormats[i].pszMimeType, g_aConverterFormats[i].fFlagsAndPriority, pvUser);
 }
 
 /**
@@ -604,19 +662,22 @@ VBGH_DECL(void) VbghMimeConvEnumerateByVBoxFormats(SHCLFORMATS fVBoxFmts, PFNVBG
  * @param   pfFlagsAndPriority      The priority and flags (VBGH_MIME_CONV_F_XXX).
  *                                  Optional.
  * @param   ppszPersistentMimeType  Where to return a persisten, readonly, MIME
- *                                  type string upon a successful mapping.
- *                                  Optional.
+ *                                  type string upon a successful mapping.  This
+ *                                  does not necessarily match @a pcszMimeType
+ *                                  exactly. Optional.
  */
 VBGH_DECL(SHCLFORMAT) VbghMimeConvGetVBoxFormatByMime(const char *pcszMimeType, uint32_t *pfFlagsAndPriority,
                                                       const char **ppszPersistentMimeType)
 {
+    size_t const cchMimeType = pcszMimeType ? strlen(pcszMimeType) : 0;
     for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
-        if (RTStrNCmp(g_aConverterFormats[i].pcszMimeType, pcszMimeType, VBOX_WAYLAND_MIME_TYPE_NAME_MAX) == 0)
+        if (vbghMimeIsMatching(g_aConverterFormats[i].pszMimeType, g_aConverterFormats[i].cchMimeType,
+                               pcszMimeType, cchMimeType, g_aConverterFormats[i].fFlagsAndPriority))
         {
             if (pfFlagsAndPriority)
                 *pfFlagsAndPriority = g_aConverterFormats[i].fFlagsAndPriority;
             if (ppszPersistentMimeType)
-                *ppszPersistentMimeType = g_aConverterFormats[i].pcszMimeType; /* Kind of ASSUMES exact match! */
+                *ppszPersistentMimeType = g_aConverterFormats[i].pszMimeType; /* Kind of ASSUMES exact match! */
             return g_aConverterFormats[i].uFmtVBox;
         }
 
@@ -641,8 +702,10 @@ VBGH_DECL(SHCLFORMAT) VbghMimeConvGetVBoxFormatByMime(const char *pcszMimeType, 
 VBGH_DECL(int) VbghMimeConvFromVBox(const char *pcszMimeType, void const *pvBufIn, size_t cbBufIn,
                                     void **ppvBufOut, size_t *pcbBufOut)
 {
+    size_t const cchMimeType = pcszMimeType ? strlen(pcszMimeType) : 0;
     for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
-        if (RTStrNCmp(g_aConverterFormats[i].pcszMimeType, pcszMimeType, VBOX_WAYLAND_MIME_TYPE_NAME_MAX) == 0)
+        if (vbghMimeIsMatching(g_aConverterFormats[i].pszMimeType, g_aConverterFormats[i].cchMimeType,
+                               pcszMimeType, cchMimeType, g_aConverterFormats[i].fFlagsAndPriority))
             return g_aConverterFormats[i].pfnConvertFromVBox(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
 
     return VERR_NOT_FOUND;
@@ -662,8 +725,10 @@ VBGH_DECL(int) VbghMimeConvFromVBox(const char *pcszMimeType, void const *pvBufI
 VBGH_DECL(int) VbghMimeConvToVBox(const char *pcszMimeType, void const *pvBufIn, size_t cbBufIn,
                                   void **ppvBufOut, size_t *pcbBufOut)
 {
+    size_t const cchMimeType = pcszMimeType ? strlen(pcszMimeType) : 0;
     for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
-        if (RTStrNCmp(g_aConverterFormats[i].pcszMimeType, pcszMimeType, VBOX_WAYLAND_MIME_TYPE_NAME_MAX) == 0)
+        if (vbghMimeIsMatching(g_aConverterFormats[i].pszMimeType, g_aConverterFormats[i].cchMimeType,
+                               pcszMimeType, cchMimeType, g_aConverterFormats[i].fFlagsAndPriority))
             return g_aConverterFormats[i].pfnConvertToVBox(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
 
     return VERR_NOT_FOUND;

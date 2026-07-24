@@ -2820,6 +2820,74 @@ DECLINLINE(size_t) RTStrOffCharOrTerm(const char *pszHaystack, char chNeedle)
 }
 
 /**
+ * Finds the offset at which a simple character next occurs in a string.
+ *
+ * @returns The offset of the next occurence or the terminator offset.
+ * @param   pszHaystack The string to search.
+ * @param   chNeedle    The character to search for.
+ * @param   offPrev     The previous occurence.
+ */
+DECLINLINE(size_t) RTStrOffNextCharOrTerm(const char *pszHaystack, char chNeedle, size_t offPrev)
+{
+    const char *psz = &pszHaystack[offPrev];
+    if (*psz != '\0')
+    {
+        char ch;
+        psz++;
+        while (   (ch = *psz) != chNeedle
+               && ch != '\0')
+            psz++;
+    }
+    return (size_t)(psz - pszHaystack);
+}
+
+/**
+ * Finds the offset at which a simple character first occurs in a string.
+ *
+ * @returns The offset of the first occurence, ~(size_t)0 if not found.
+ * @param   pszHaystack The string to search.
+ * @param   chNeedle    The character to search for.
+ */
+DECLINLINE(size_t) RTStrOffChar(const char *pszHaystack, int chNeedle)
+{
+#if 0
+    const char *pszHit = strchr(pszHaystack, chNeedle);
+    return pszHit ? (size_t)(pszHit - pszHaystack) : ~(size_t)0;
+#else
+    const char *psz = pszHaystack;
+    char        ch;
+    while ((ch = *psz) != '\0')
+    {
+        if (ch == chNeedle)
+            return (size_t)(psz - pszHaystack);
+        psz++;
+    }
+    return  ~(size_t)0;
+#endif
+}
+
+/**
+ * Finds the offset at which a simple character first occurs in a length limited string.
+ *
+ * @returns The offset of the first occurence, ~(size_t)0 if not found.
+ * @param   pszHaystack The string to search.
+ * @param   cchHaystack The maximum length to search.
+ * @param   chNeedle    The character to search for.
+ */
+DECLINLINE(size_t) RTStrNOffChar(const char *pszHaystack, size_t cchHaystack, int chNeedle)
+{
+    size_t off;
+    char   ch;
+    while (off < cchHaystack && (ch = pszHaystack[off]) != '\0')
+    {
+        if (ch == chNeedle)
+            return off;
+        off++;
+    }
+    return  ~(size_t)0;
+}
+
+/**
  * Matches a simple string pattern.
  *
  * @returns true if the string matches the pattern, otherwise false.
