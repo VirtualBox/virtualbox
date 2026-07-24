@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.cpp 114762 2026-07-24 00:25:38Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-helper.cpp 114767 2026-07-24 22:06:05Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard: Helper functions.
  */
@@ -97,7 +97,7 @@ int ShClHlpConvUtf16CRLFToUtf8LF(PCRTUTF16 pcwszSrc, size_t cwcSrc, char *pszBuf
 }
 
 int ShClHlpConvUtf16LFToCRLFA(PCRTUTF16 pcwszSrc, size_t cwcSrc,
-                               PRTUTF16 *ppwszDst, size_t *pcwDst)
+                              PRTUTF16 *ppwszDst, size_t *pcwDst)
 {
     AssertPtrReturn(pcwszSrc, VERR_INVALID_POINTER);
     AssertPtrReturn(ppwszDst, VERR_INVALID_POINTER);
@@ -150,22 +150,33 @@ int ShClHlpConvUtf8LFToUtf16CRLF(const char *pcszSrc, size_t cbSrc,
     return rc;
 }
 
-int ShClHlpConvLatin1LFToUtf16CRLF(const char *pcszSrc, size_t cbSrc,
+int ShClHlpConvLatin1LFToUtf16CRLF(const char *pszSrc, size_t cbSrc,
                                     PRTUTF16 *ppwszDst, size_t *pcwcDst)
 {
-    AssertPtrReturn(pcszSrc,  VERR_INVALID_POINTER);
+    AssertPtrReturn(pszSrc,   VERR_INVALID_POINTER);
     AssertPtrReturn(ppwszDst, VERR_INVALID_POINTER);
     AssertPtrReturn(pcwcDst,  VERR_INVALID_POINTER);
 
-    /* Count the LF codepoints that will double in size when prefixed by CR. */
-    size_t cLinefeeds = 0;
+    /*
+     * Count the LF (& CR) codepoints that will be converted to CRLF.
+     * We follow same logic as ShClHlpUtf16CalcNormalizedEolToCRLFLength.
+     */
+    size_t cToExpand = 0;
     for (size_t iSrc = 0; iSrc < cbSrc; ++iSrc)
     {
-        char const ch = pcszSrc[iSrc];
+        char const ch = pszSrc[iSrc];
         if (ch != '\0')
         {
-            if (ch == VBOX_SHCL_LINEFEED)
-                cLinefeeds += 1;
+            /* Check for a single line feed: */
+            if (   ch == VBOX_SHCL_LINEFEED
+                && (iSrc == 0 || pszSrc[iSrc - 1] != VBOX_SHCL_CARRIAGERETURN))
+                cToExpand += 1;
+#ifdef RT_OS_DARWIN
+            /* Check for a single carriage return (MacOS): */
+            else if (   ch == VBOX_SHCL_CARRIAGERETURN
+                     && (iSrc + 1 >= cbSrc || pszSrc[iSrc + 1] != VBOX_SHCL_LINEFEED))
+                cToExpand += 1;
+#endif
         }
         else
         {
@@ -175,31 +186,41 @@ int ShClHlpConvLatin1LFToUtf16CRLF(const char *pcszSrc, size_t cbSrc,
     }
 
     /* Allocate output buffer. */
-    size_t const   cwcDst  = cbSrc + cLinefeeds;
+    size_t const   cwcDst  = cbSrc + cToExpand;
     PRTUTF16 const pwszDst = (PRTUTF16)RTMemAllocZ((cwcDst + 1 /* Leave space for the terminator */) * sizeof(RTUTF16));
     AssertPtrReturn(pwszDst, VERR_NO_MEMORY);
 
-    /* Do the conversion, bearing in mind that Latin-1 expands "naturally" to UTF-16. */
+    /*
+     * Do the conversion, bearing in mind that Latin-1 expands "naturally" to UTF-16.
+     */
     size_t iDst = 0;
     for (size_t iSrc = 0; iSrc < cbSrc; ++iSrc)
     {
         Assert(iDst < cwcDst);
-        if (pcszSrc[iSrc] != VBOX_SHCL_LINEFEED)
-            pwszDst[iDst++] = pcszSrc[iSrc];
-        else
+        unsigned char const uch = (unsigned char)pszSrc[iSrc];
+        if (!(    (    uch == VBOX_SHCL_LINEFEED
+                   && (iSrc == 0 || pszSrc[iSrc - 1] != VBOX_SHCL_CARRIAGERETURN))
+#ifdef RT_OS_DARWIN
+              ||  (    uch == VBOX_SHCL_CARRIAGERETURN
+                   && (iSrc + 1 >= cbSrc || pszSrc[iSrc + 1] != VBOX_SHCL_LINEFEED))
+#endif
+             ))
+            pwszDst[iDst++] = uch;
+        else if (RT_LIKELY(iDst - iSrc < cToExpand))
         {
-            if (iDst - iSrc < cLinefeeds)
-                pwszDst[iDst++] = VBOX_SHCL_CARRIAGERETURN;
-            else
-                AssertMsgFailed(("line feed count increased! iSrc=%#zx iDst=%#zx cLinefeeds=%#zx cbSrc=%#zx\n",
-                                 iSrc, iDst, cLinefeeds, cbSrc));
+            pwszDst[iDst++] = VBOX_SHCL_CARRIAGERETURN;
             pwszDst[iDst++] = VBOX_SHCL_LINEFEED;
         }
+        else
+        {
+            AssertMsgFailed(("EOL conversion count increased! iSrc=%#zx iDst=%#zx cToExpand=%#zx cbSrc=%#zx\n",
+                             iSrc, iDst, cToExpand, cbSrc));
+            pwszDst[iDst++] = uch;
+        }
     }
-    AssertMsg(iDst == cwcDst, ("line feed count decreased! iDst=%#zx cwcDst=%#zx cbSrc=%#zx cLinefeeds=%#zx\n",
-                               iDst, cwcDst, cbSrc, cLinefeeds));
-    Assert(iDst <= cwcDst);  /* impossible ...  */
-    pwszDst[cwcDst] = '\0';  /* ... but make sure we are zero-terminated. */
+    AssertMsg(iDst == cwcDst, ("EOL conversion count decreased! iDst=%#zx cwcDst=%#zx cbSrc=%#zx cToExpand=%#zx\n",
+                               iDst, cwcDst, cbSrc, cToExpand));
+    AssertStmt(iDst <= cwcDst, pwszDst[iDst = cwcDst] = '\0');  /* impossible, but be paranoid about it... */
 
     *ppwszDst = pwszDst;
     *pcwcDst  = iDst;
@@ -289,13 +310,13 @@ int ShClHlpUtf16CalcNormalizedEolToCRLFLength(PCRTUTF16 pcwszSrc, size_t cwSrc, 
     AssertPtrReturn(pcwszSrc, VERR_INVALID_POINTER);
     AssertPtrReturn(pchLen, VERR_INVALID_POINTER);
 
-    AssertMsgReturn(pcwszSrc[0] != VBOX_SHCL_UTF16BEMARKER,
-                    ("Big endian UTF-16 not supported yet\n"), VERR_NOT_SUPPORTED);
+    AssertMsgReturn(pcwszSrc[0] != VBOX_SHCL_UTF16_BOM_INVERSE,
+                    ("Other endian UTF-16 not supported yet\n"), VERR_NOT_SUPPORTED);
 
     size_t cLen = 0;
 
     /* Don't copy the endian marker. */
-    size_t i = pcwszSrc[0] == VBOX_SHCL_UTF16LEMARKER ? 1 : 0;
+    size_t i = pcwszSrc[0] == VBOX_SHCL_UTF16_BOM ? 1 : 0;
 
     /* Calculate the size of the destination text string. */
     /* Is this Utf16 or Utf16-LE? */
@@ -333,14 +354,14 @@ int ShClHlpUtf16CRLFLenUtf8(PCRTUTF16 pcwszSrc, size_t cwSrc, size_t *pchLen)
     AssertReturn(cwSrc, VERR_INVALID_PARAMETER);
     AssertPtrReturn(pchLen, VERR_INVALID_POINTER);
 
-    AssertMsgReturn(pcwszSrc[0] != VBOX_SHCL_UTF16BEMARKER,
-                    ("Big endian UTF-16 not supported yet\n"), VERR_NOT_SUPPORTED);
+    AssertMsgReturn(pcwszSrc[0] != VBOX_SHCL_UTF16_BOM_INVERSE,
+                    ("Other endian UTF-16 not supported yet\n"), VERR_NOT_SUPPORTED);
 
     size_t cLen = 0;
 
     /* Calculate the size of the destination text string. */
     /* Is this Utf16 or Utf16-LE? */
-    if (pcwszSrc[0] == VBOX_SHCL_UTF16LEMARKER)
+    if (pcwszSrc[0] == VBOX_SHCL_UTF16_BOM)
         cLen = 0;
     else
         cLen = 1;
@@ -368,12 +389,12 @@ int ShClHlpConvUtf16LFToCRLF(PCRTUTF16 pcwszSrc, size_t cwcSrc, PRTUTF16 pu16Dst
     AssertPtrReturn(pu16Dst, VERR_INVALID_POINTER);
     AssertReturn(cwcDst, VERR_INVALID_PARAMETER);
 
-    AssertMsgReturn(pcwszSrc[0] != VBOX_SHCL_UTF16BEMARKER,
-                    ("Big endian UTF-16 not supported yet\n"), VERR_NOT_SUPPORTED);
+    AssertMsgReturn(pcwszSrc[0] != VBOX_SHCL_UTF16_BOM_INVERSE,
+                    ("Other endian UTF-16 not supported yet\n"), VERR_NOT_SUPPORTED);
 
     /* Don't copy the endian marker. */
     size_t      offDst = 0;
-    for (size_t offSrc = pcwszSrc[0] == VBOX_SHCL_UTF16LEMARKER ? 1 : 0; offSrc < cwcSrc; ++offSrc, ++offDst)
+    for (size_t offSrc = pcwszSrc[0] == VBOX_SHCL_UTF16_BOM ? 1 : 0; offSrc < cwcSrc; ++offSrc, ++offDst)
     {
         /* Ensure more output space: */
         if (offDst < cwcDst) { /* likely */ }
@@ -427,16 +448,16 @@ int ShClHlpConvUtf16CRLFToLF(PCRTUTF16 pcwszSrc, size_t cwcSrc, PRTUTF16 pwszDst
     AssertPtrReturn(pwszDst,  VERR_INVALID_POINTER);
     AssertReturn(cwcDst,      VERR_INVALID_PARAMETER);
 
-    AssertMsgReturn(pcwszSrc[0] != VBOX_SHCL_UTF16BEMARKER,
-                    ("Big endian UTF-16 not supported yet\n"), VERR_NOT_SUPPORTED);
+    AssertMsgReturn(pcwszSrc[0] != VBOX_SHCL_UTF16_BOM_INVERSE,
+                    ("Other endian UTF-16 not supported yet\n"), VERR_NOT_SUPPORTED);
 
     /* Prepend the Utf16 byte order marker if it is missing. */
     size_t offDst;
-    if (pcwszSrc[0] == VBOX_SHCL_UTF16LEMARKER)
+    if (pcwszSrc[0] == VBOX_SHCL_UTF16_BOM)
         offDst = 0;
     else
     {
-        pwszDst[0] = VBOX_SHCL_UTF16LEMARKER;
+        pwszDst[0] = VBOX_SHCL_UTF16_BOM;
         offDst = 1;
     }
 

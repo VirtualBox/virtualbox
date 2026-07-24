@@ -2472,7 +2472,7 @@ SHCL_X11_DECL(void) clipConvertDataFromX11Worker(void *pClient, void *pvSrc, uns
                  * at the start of the clipboard data.
                  */
                 if (   cbSrc >= sizeof(RTUTF16)
-                    && *(PRTUTF16)pvSrc == VBOX_SHCL_UTF16LEMARKER)
+                    && *(PRTUTF16)pvSrc == VBOX_SHCL_UTF16_BOM)
                 {
                     rc = ShClHlpConvUtf16ToUtf8HTML((PRTUTF16)pvSrc, cbSrc / sizeof(RTUTF16), (char**)&pvDst, &cbDst);
                     if (RT_SUCCESS(rc))

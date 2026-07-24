@@ -1,4 +1,4 @@
-/* $Id: mime-type-converter.cpp 114766 2026-07-24 18:01:54Z knut.osmundsen@oracle.com $ */
+/* $Id: mime-type-converter.cpp 114767 2026-07-24 22:06:05Z knut.osmundsen@oracle.com $ */
 /** @file
  * Common code for mime-type data conversion.
  *
@@ -70,23 +70,17 @@ typedef FNVBFMTCONVERTOR *PFNVBFMTCONVERTOR;
  */
 static DECLCALLBACK(int) vbghMimeCvtUtf8ToVBox(void const *pvBufIn, size_t cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
-    int rc = RTStrValidateEncodingEx((char const *)pvBufIn, cbBufIn, 0);
+    const char * const pszSrc  = (const char *)pvBufIn;
+    size_t             cwcDst  = 0;
+    PRTUTF16           pwszDst = NULL;
+    int rc = ShClHlpConvUtf8LFToUtf16CRLF(pszSrc, cbBufIn, &pwszDst, &cwcDst);
     if (RT_SUCCESS(rc))
     {
-        size_t   cwcDst  = 0;
-        PRTUTF16 pwszDst = NULL;
-        rc = ShClHlpConvUtf8LFToUtf16CRLF((const char *)pvBufIn, cbBufIn, &pwszDst, &cwcDst);
-        if (RT_SUCCESS(rc))
-        {
-            *ppvBufOut = pwszDst;
-            *pcbBufOut = (cwcDst + 1) * sizeof(RTUTF16); /* (The terminator is included for VBox string data.) */
-        }
-        else
-            LogRel(("%s: ShClHlpConvUtf8LFToUtf16CRLF failed: %Rrc\n", __func__, rc));
+        *ppvBufOut = pwszDst;
+        *pcbBufOut = (cwcDst + 1) * sizeof(RTUTF16); /* (The terminator is included for VBox string data.) */
     }
     else
-        LogRel(("%s: RTStrValidateEncodingEx failed: %Rrc\n", __func__, rc));
-
+        LogRel(("%s: ShClHlpConvUtf8LFToUtf16CRLF failed: %Rrc\n", __func__, rc));
     return rc;
 }
 
@@ -582,6 +576,11 @@ static struct VBCONVERTERFMTTABLE
 /**
  * Compares two MIME types.
  *
+ * This ASSUMES relatively standard MIME types in the @a pszOtherType string,
+ * that is: no blanks, unnecessary semicolons, unnecessary quotations,
+ * or other weird crap. (If this isn't the case, take a look at
+ * https://mimesniff.spec.whatwg.org/#parsing-a-mime-type for details.)
+ *
  * @retval  true if they match.
  * @retval  false if they do not match.
  * @param   pszOurType      Our MIME type string, i.e. from g_aConverterFormats,
@@ -595,7 +594,7 @@ static bool vbghMimeIsMatching(const char *pszOurType, size_t cchOurType,
                                const char *pszOtherType, size_t cchOtherType, uint32_t fFlags)
 {
     /*
-     * The length has to match, regardless of the flavor.
+     * The length has to match with our ASSUMPTIONS, regardless of the flavor.
      */
     if (cchOurType == cchOtherType)
     {

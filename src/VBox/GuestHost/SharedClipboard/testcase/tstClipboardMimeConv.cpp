@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMimeConv.cpp 114766 2026-07-24 18:01:54Z knut.osmundsen@oracle.com $ */
+/* $Id: tstClipboardMimeConv.cpp 114767 2026-07-24 22:06:05Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard MIME converter testcase.
  */
@@ -188,10 +188,10 @@ static void testText(RTTEST hTest)
         { "teXT/PLain",                 0, "\r\n",                      RT_STR_TUPLE("\n") },
         { "TEXT/plain",                 0, "1\r\n2",                    RT_STR_TUPLE("1\n2") },
         { "text/PLAIN",                 0, "1\r\n2\r\n",                RT_STR_TUPLE("1\n2\n") },
+        { "text/plain",                 0, "aa=\xC3\xA5",               RT_STR_TUPLE("aa=\xE5") },
         { "text/plain",                 0, "1,\r\n\xE4\xBA\x8C,\r\n3",  RT_STR_TUPLE("1,\n\\u4e8c,\n3"),
           NULL, 0, VINF_SUCCESS, VWRN_NO_TRANSLATION, },
-        /// @todo fix EOL normalization for latin-1.
-        //{ "TEXT/PLAIN",                 0, "1\r\n2\r\n3\r\n",           RT_STR_TUPLE("1\r\n2\n3\r\n"), RT_STR_TUPLE("1\n2\n3\n")},
+        { "TEXT/PLAIN",                 0, "1\r\n2\r\n3\r\n",           RT_STR_TUPLE("1\r\n2\n3\r\n"), RT_STR_TUPLE("1\n2\n3\n")},
 
         /* html (w/o charset spec) */
         { "text/html",               F_VB_UTF8, "", },

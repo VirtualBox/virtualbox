@@ -1,4 +1,4 @@
-/* $Id: tstClipboardGH-X11.cpp 114650 2026-07-08 09:14:39Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardGH-X11.cpp 114767 2026-07-24 22:06:05Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard guest/host X11 code test cases.
  */
@@ -503,12 +503,9 @@ static bool tstClipURIListFormatConversion(PSHCLX11CTX pCtx)
 static void tstStringFromX11(RTTEST hTest, PSHCLX11CTX pCtx,
                              const char *pcszExp, int rcExp)
 {
-    bool fRc = true;
     tstClipSendTargetUpdate(pCtx);
     if (tstClipQueryFormats() != VBOX_SHCL_FMT_UNICODETEXT)
-    {
         RTTestFailed(hTest, "Wrong targets reported: %02X\n", tstClipQueryFormats());
-    }
     else
     {
         uint32_t cbActual = 0;
@@ -517,44 +514,33 @@ static void tstStringFromX11(RTTEST hTest, PSHCLX11CTX pCtx,
         if (rc != rcExp)
             RTTestFailed(hTest, "Wrong return code, expected %Rrc, got %Rrc\n", rcExp, rc);
         else if (RT_FAILURE(rcExp))
-            fRc = true;
+            return;
         else
         {
-            RTUTF16 wcExp[TESTCASE_MAX_BUF_SIZE / 2];
-            RTUTF16 *pwcExp = wcExp;
-            size_t cwc = 0;
-            rc = RTStrToUtf16Ex(pcszExp, RTSTR_MAX, &pwcExp, RT_ELEMENTS(wcExp), &cwc);
-            AssertRC(rc);
-            size_t cbExp = cwc * 2 + 2;
+            RTUTF16  wszExp[TESTCASE_MAX_BUF_SIZE / 2];
+            RTUTF16 *pwszExp = wszExp;
+            size_t cwcExp = 0;
+            rc = RTStrToUtf16Ex(pcszExp, RTSTR_MAX, &pwszExp, RT_ELEMENTS(wszExp), &cwcExp);
             if (RT_SUCCESS(rc))
             {
-                if (cbActual != cbExp)
-                {
-                    RTTestFailed(hTest, "Returned string is the wrong size: got size %u, expected %u\n", cbActual, cbExp);
-                }
-                else
-                {
-                    if (memcmp(abBuf, wcExp, cbExp) == 0)
-                        fRc = true;
-                    else
-                        RTTestFailed(hTest, "Returned string \"%.*ls\" does not match expected string \"%s\"\n",
-                                     TESTCASE_MAX_BUF_SIZE, abBuf, pcszExp);
-                }
+                size_t const cbExp = (cwcExp + 1) * sizeof(RTUTF16);
+                if (cbActual == cbExp && memcmp(abBuf, wszExp, cbExp) == 0)
+                    return;
+                RTTestFailed(hTest, "Returned string differs: %#zx bytes, expected %#zx\n%.*Rhxs, expected:\n%.*Rhxs\n",
+                             cbActual, cbExp, cbActual, abBuf, cbExp, wszExp);
             }
+            else
+                RTTestFailed(hTest, "RTStrToUtf16Ex failed on expected string: %Rrc\n", rc);
         }
     }
-    if (!fRc)
-        RTTestFailureDetails(hTest, "Expected: string \"%s\", rc=%Rrc\n", pcszExp, rcExp);
+    RTTestFailureDetails(hTest, "Expected: string \"%s\", rc %Rrc\n", pcszExp, rcExp);
 }
 
-static void tstLatin1FromX11(RTTEST hTest, PSHCLX11CTX pCtx,
-                             const char *pcszExp, int rcExp)
+static void tstLatin1FromX11(RTTEST hTest, PSHCLX11CTX pCtx, const char *pszExpLatin1, int rcExp)
 {
-    bool retval = false;
     tstClipSendTargetUpdate(pCtx);
     if (tstClipQueryFormats() != VBOX_SHCL_FMT_UNICODETEXT)
-        RTTestFailed(hTest, "Wrong targets reported: %02X\n",
-                     tstClipQueryFormats());
+        RTTestFailed(hTest, "Wrong targets reported: %02X\n", tstClipQueryFormats());
     else
     {
         uint32_t cbActual = 0;
@@ -563,34 +549,23 @@ static void tstLatin1FromX11(RTTEST hTest, PSHCLX11CTX pCtx,
         if (rc != rcExp)
             RTTestFailed(hTest, "Wrong return code, expected %Rrc, got %Rrc\n", rcExp, rc);
         else if (RT_FAILURE(rcExp))
-            retval = true;
+            return;
         else
         {
-            RTUTF16 wcExp[TESTCASE_MAX_BUF_SIZE / 2];
-            //RTUTF16 *pwcExp = wcExp; - unused
-            size_t cwc;
-            for (cwc = 0; cwc == 0 || pcszExp[cwc - 1] != '\0'; ++cwc)
-                wcExp[cwc] = pcszExp[cwc];
-            size_t cbExp = cwc * 2;
-            if (cbActual != cbExp)
-            {
-                RTTestFailed(hTest, "Returned string is the wrong size, string \"%.*ls\", size %u, expected \"%s\", size %u\n",
-                             RT_MIN(TESTCASE_MAX_BUF_SIZE, cbActual), abBuf, cbActual,
-                             pcszExp, cbExp);
-            }
-            else
-            {
-                if (memcmp(abBuf, wcExp, cbExp) == 0)
-                    retval = true;
-                else
-                    RTTestFailed(hTest, "Returned string \"%.*ls\" does not match expected string \"%s\"\n",
-                                 TESTCASE_MAX_BUF_SIZE, abBuf, pcszExp);
-            }
+            RTUTF16 wszExp[TESTCASE_MAX_BUF_SIZE / 2];
+            size_t  cwcExp;
+            for (cwcExp = 0; pszExpLatin1[cwcExp] != '\0'; ++cwcExp)
+                wszExp[cwcExp] = (unsigned char)pszExpLatin1[cwcExp];
+            wszExp[cwcExp] = '\0';
+            size_t const cbExp = (cwcExp + 1) * sizeof(RTUTF16);
+
+            if (cbActual == cbExp && memcmp(abBuf, wszExp, cbExp) == 0)
+                return;
+            RTTestFailed(hTest, "Returned string differs: %#zx bytes, expected %#zx\n%.*Rhxs, expected:\n%.*Rhxs\n",
+                         cbActual, cbExp, cbActual, abBuf, cbExp, wszExp);
         }
     }
-    if (!retval)
-        RTTestFailureDetails(hTest, "Expected: string \"%s\", rc %Rrc\n",
-                             pcszExp, rcExp);
+    //RTTestFailureDetails(hTest, "Expected: string \"%s\", rc %Rrc\n", pszExpLatin1, rcExp); - latin1 is wrong for '%s'!
 }
 
 static void tstStringFromVBox(RTTEST hTest, PSHCLX11CTX pCtx, const char *pcszTarget, Atom typeExp,  const char *valueExp)
@@ -778,7 +753,7 @@ int main()
     /* With an embedded CRLF */
     tstClipSetSelectionValues("TEXT", XA_STRING, "Georges\r\nDupr\xEA",
                               sizeof("Georges\r\nDupr\xEA"), 8);
-    tstLatin1FromX11(hTest, &X11Ctx, "Georges\r\r\nDupr\xEA", VINF_SUCCESS);
+    tstLatin1FromX11(hTest, &X11Ctx, "Georges\r\nDupr\xEA", VINF_SUCCESS);
     /* With an embedded LFCR */
     tstClipSetSelectionValues("TEXT", XA_STRING, "Georges\n\rDupr\xEA",
                               sizeof("Georges\n\rDupr\xEA"), 8);

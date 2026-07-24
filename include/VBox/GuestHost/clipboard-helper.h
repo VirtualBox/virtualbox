@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.h 114758 2026-07-23 12:22:27Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-helper.h 114767 2026-07-24 22:06:05Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard - Helper functions.
  */
@@ -55,10 +55,10 @@ enum
     VBOX_SHCL_LINEFEED = 0xa,
     /** In Windows, lines end with a carriage return and a linefeed character. */
     VBOX_SHCL_CARRIAGERETURN = 0xd,
-    /** Little endian "real" UTF-16 strings start with this marker. */
-    VBOX_SHCL_UTF16LEMARKER = 0xfeff,
-    /** Big endian "real" UTF-16 strings start with this marker. */
-    VBOX_SHCL_UTF16BEMARKER = 0xfffe
+    /** Byte order mark (BOM). */
+    VBOX_SHCL_UTF16_BOM = 0xfeff,
+    /** Inverse byte order mark - what . */
+    VBOX_SHCL_UTF16_BOM_INVERSE = 0xfffe
 };
 
 /**
@@ -174,7 +174,7 @@ int ShClHlpConvUtf8LFToUtf16CRLF(const char *pcszSrc, size_t cbSrc, PRTUTF16 *pp
  * Converts a Latin-1 string with LF line endings into an UTF-16 string with CRLF endings.
  *
  * @returns VBox status code.
- * @param   pcszSrc     Latin-1 string to convert.
+ * @param   pszSrc      Latin-1 string to convert.
  * @param   cbSrc       Size of string (in bytes), not counting the terminating zero.
  * @param   ppwszDst    Where to return the allocated buffer on success.
  * @param   pcwcDst     Where to return the size (in RTUTF16 units) of the
@@ -183,7 +183,7 @@ int ShClHlpConvUtf8LFToUtf16CRLF(const char *pcszSrc, size_t cbSrc, PRTUTF16 *pp
  *
  * @note    Only converts the source until the string terminator is found (or length limit is hit).
  */
-int ShClHlpConvLatin1LFToUtf16CRLF(const char *pcszSrc, size_t cbSrc, PRTUTF16 *ppwszDst, size_t *pcwcDst);
+int ShClHlpConvLatin1LFToUtf16CRLF(const char *pszSrc, size_t cbSrc, PRTUTF16 *ppwszDst, size_t *pcwcDst);
 
 /**
  * Convert CF_DIB data to full BMP data by prepending the BM header.
