@@ -307,8 +307,12 @@ VBGH_DECL(void)             ShClCacheTerm(PSHCLCACHE pCache);
 VBGH_DECL(void)             ShClCacheInvalidate(PSHCLCACHE pCache);
 VBGH_DECL(void)             ShClCacheInvalidateEntry(PSHCLCACHE pCache, SHCLFORMAT uFmt);
 VBGH_DECL(PSHCLCACHEENTRY)  ShClCacheGet(PSHCLCACHE pCache, SHCLFORMAT uFmt);
+VBGH_DECL(int)              ShClCachePrep(PSHCLCACHE pCache, SHCLFORMAT uFmt, size_t cbData, void **ppvData);
 VBGH_DECL(int)              ShClCacheSet(PSHCLCACHE pCache, SHCLFORMAT uFmt, const void *pvData, size_t cbData);
 VBGH_DECL(int)              ShClCacheSetMultiple(PSHCLCACHE pCache, SHCLFORMATS uFmts, const void *pvData, size_t cbData);
+VBGH_DECL(bool)             ShClCacheEquals(SHCLCACHE const *pCache, SHCLCACHE const *pCacheOther);
+VBGH_DECL(int)              ShClCacheTransferAll(PSHCLCACHE pCache, PSHCLCACHE pOtherCache);
+
 /** @} */
 
 /** Opaque data structure for the X11/VBox frontend/glue code.
@@ -345,13 +349,12 @@ typedef struct SHCLCALLBACKS
      * @param   pCtx            Opaque context pointer for the glue code.
      * @param   fFormats        The formats available.
      * @param   pvUser          Implementation-dependent pointer to data for fullfilling the request.
-     *                          Optional and can be NULL.
+     *                          Optional.
      */
     DECLCALLBACKMEMBER(int, pfnReportFormats, (PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, void *pvUser));
 
     /**
-     * Callback for reading data from the clipboard.
-     * Optional and can be NULL.
+     * Optional callback for reading data from the clipboard.
      *
      * @note Used for testing X11 clipboard code.
      *
@@ -363,13 +366,12 @@ typedef struct SHCLCALLBACKS
      *                          Needs to be free'd with RTMemFree() by the caller.
      * @param   pcb             Returns the amount of data read (in bytes) on success.
      * @param   pvUser          Implementation-dependent pointer to data for fullfilling the request.
-     *                          Optional and can be NULL.
+     *                          Optional.
      */
     DECLCALLBACKMEMBER(int, pfnOnClipboardRead, (PSHCLCONTEXT pCtx, SHCLFORMAT uFmt, void **ppv, size_t *pcb, void *pvUser));
 
     /**
-     * Callback for writing data to the clipboard.
-     * Optional and can be NULL.
+     * Optional callback for writing data to the clipboard.
      *
      * @note Used for testing X11 clipboard code.
      *
@@ -380,7 +382,7 @@ typedef struct SHCLCALLBACKS
      * @param   pv              The clipboard data to write.
      * @param   cb              The size of the data in @a pv.
      * @param   pvUser          Implementation-dependent pointer to data for fullfilling the request.
-     *                          Optional and can be NULL.
+     *                          Optional.
      */
     DECLCALLBACKMEMBER(int, pfnOnClipboardWrite, (PSHCLCONTEXT pCtx, SHCLFORMAT uFmt, void *pv, size_t cb, void *pvUser));
 
@@ -400,7 +402,7 @@ typedef struct SHCLCALLBACKS
      *                          Needs to be free'd with RTMemFree() by the caller.
      * @param   pcb             Returns the amount of data read (in bytes) on success.
      * @param   pvUser          Implementation-dependent pointer to data for fullfilling the request.
-     *                          Optional and can be NULL.
+     *                          Optional.
      *                          On X11: Of type PSHCLX11READDATAREQ; We RTMemFree() this in this function.
      */
     DECLCALLBACKMEMBER(int, pfnOnRequestDataFromSource, (PSHCLCONTEXT pCtx, SHCLFORMAT uFmt, void **ppv, uint32_t *pcb, void *pvUser));
@@ -413,7 +415,7 @@ typedef struct SHCLCALLBACKS
      * @param   pv              The clipboard data returned if the request succeeded.
      * @param   cb              The size of the data in @a pv.
      * @param   pvUser          Implementation-dependent pointer to data for fullfilling the request.
-     *                          Optional and can be NUL
+     *                          Optional.
      *                          On X11: Of type PSHCLX11READDATAREQ.
      */
     DECLCALLBACKMEMBER(int, pfnOnSendDataToDest, (PSHCLCONTEXT pCtx, void *pv, uint32_t cb, void *pvUser));

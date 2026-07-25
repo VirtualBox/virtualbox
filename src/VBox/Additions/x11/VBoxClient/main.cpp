@@ -1,4 +1,4 @@
-/* $Id: main.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
+/* $Id: main.cpp 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Guest Additions - X11 Client.
  */
@@ -58,6 +58,8 @@
 #define VBOXCLIENT_OPT_SESSION_TYPE         (VBOXCLIENT_OPT_SERVICES - 1)
 #define VBOXCLIENT_OPT_SESSION_DETECT       (VBOXCLIENT_OPT_SERVICES - 2)
 #define VBOXCLIENT_OPT_SESSION_DETECT2      (VBOXCLIENT_OPT_SERVICES - 3)
+#define VBOXCLIENT_OPT_CLIPBOARD_GET        (VBOXCLIENT_OPT_SERVICES - 4)
+#define VBOXCLIENT_OPT_CLIPBOARD_SET        (VBOXCLIENT_OPT_SERVICES - 5)
 
 #define VBOXCLIENT_OPT_SERVICES             980
 #define VBOXCLIENT_OPT_CHECK_HOST_VERSION   (VBOXCLIENT_OPT_SERVICES + 0)
@@ -181,6 +183,72 @@ VBGHDISPLAYSERVERTYPE VBClGetDisplayServerType(void)
 }
 
 /**
+ * Returns the current display server type (needed by commands).
+ *
+ * @returns The display server type.
+ */
+VBGHDISPLAYSERVERTYPE VBClGetDisplayServerTypeResolveAuto(void)
+{
+    if (g_enmDisplayServerType == VBGHDISPLAYSERVERTYPE_AUTO)
+        return g_enmDisplayServerType = VBGHDisplayServerTypeDetect();
+    return g_enmDisplayServerType;
+}
+
+/**
+ * Load the libraries for the display server type.
+ *
+ * @returns The display server type.
+ * @param   enmType                 The display server type. @c AUTO is resolved.
+ * @param   fXWaylandAsPureWayland  Treat @c PURE_XWAYLAND as wayland if true,
+ *                                  as @c X11 if false.
+ */
+int VBClExplicitLoadClientLibrariesForDisplayServer(VBGHDISPLAYSERVERTYPE enmType, bool fXWaylandAsPureWayland)
+{
+    /*
+     * Deal with auto detection.
+     */
+    if (enmType == VBGHDISPLAYSERVERTYPE_AUTO)
+    {
+        enmType = g_enmDisplayServerType;
+        if (enmType == VBGHDISPLAYSERVERTYPE_AUTO)
+            g_enmDisplayServerType = enmType = VBGHDisplayServerTypeDetect();
+    }
+
+    /*
+     * Adjust for fXWaylandAsPureWayland.
+     */
+    if (fXWaylandAsPureWayland && enmType == VBGHDISPLAYSERVERTYPE_XWAYLAND)
+        enmType = VBGHDISPLAYSERVERTYPE_PURE_WAYLAND;
+
+    /*
+     * Do the loading.
+     */
+#ifdef VBOX_WITH_WAYLAND_ADDITIONS
+    RTERRINFOSTATIC ErrInfo;
+#endif
+    int             rc = VINF_SUCCESS;
+    switch (enmType)
+    {
+        case VBGHDISPLAYSERVERTYPE_X11:
+        case VBGHDISPLAYSERVERTYPE_XWAYLAND:
+            break;
+
+        case VBGHDISPLAYSERVERTYPE_PURE_WAYLAND:
+#ifdef VBOX_WITH_WAYLAND_ADDITIONS
+            rc = ExplicitlyLoadlibwayland_client(true /*fResolveAllImports*/, RTErrInfoInitStatic(&ErrInfo));
+            if (RT_FAILURE(rc))
+                VBClLogError("ExplicitlyLoadlibwayland_client failed: %Rrc%#RTeim\n", rc, &ErrInfo.Core);
+#endif
+            break;
+
+        case VBGHDISPLAYSERVERTYPE_AUTO:
+        case VBGHDISPLAYSERVERTYPE_NONE:
+            break;
+    }
+    return rc;
+}
+
+/**
  * Xlib error handler for certain errors that we can't avoid.
  */
 static int vboxClientXLibErrorHandler(Display *pDisplay, XErrorEvent *pError)
@@ -294,20 +362,10 @@ static int vboxClientSignalHandlerUninstall(void)
  */
 static DECLCALLBACK(RTEXITCODE) vbclCmdSessionDetect(void)
 {
-    int rc = VBClLogCreateEx("" /* No file logging */, false /* No header */);
-    if (RT_SUCCESS(rc))
-    {
-        /* Make sure that we increase the verbosity (if needed), to gain some more insights
-         * when detecting the display server. */
-        rc = VBClLogModify("stdout", g_cVerbosity);
-        if (RT_SUCCESS(rc))
-        {
-            VBGHDISPLAYSERVERTYPE const enmType = VBGHDisplayServerTypeDetect();
-            VBClLogInfo("Detected session: %s\n", VBGHDisplayServerTypeToStr(enmType));
-            return enmType != VBGHDISPLAYSERVERTYPE_NONE ? RTEXITCODE_SUCCESS : RTEXITCODE_FAILURE;
-        }
-    }
-    return RTEXITCODE_FAILURE;
+    VBClLogCreateNoStdOut();
+    VBGHDISPLAYSERVERTYPE const enmType = VBGHDisplayServerTypeDetect();
+    VBClLogInfo("Detected session: %s\n", VBGHDisplayServerTypeToStr(enmType));
+    return enmType != VBGHDISPLAYSERVERTYPE_NONE ? RTEXITCODE_SUCCESS : RTEXITCODE_FAILURE;
 }
 
 /** --session-detect */
@@ -315,6 +373,7 @@ static VBCLCOMMAND const g_CmdSessionDetect =
 {
     /* .pszName = */        "--session-detect",
     /* .pszDesc = */        "",
+    /* .pszLogPrefix = */   NULL,
     /* .pszOptions = */     NULL,
     /* .pfnOption = */      NULL,
     /* .pfnExecute = */     vbclCmdSessionDetect,
@@ -352,6 +411,7 @@ static VBCLCOMMAND const g_CmdSessionDetect2 =
 {
     /* .pszName = */        "--session-detect2",
     /* .pszDesc = */        "",
+    /* .pszLogPrefix = */   NULL,
     /* .pszOptions = */     NULL,
     /* .pfnOption = */      NULL,
     /* .pfnExecute = */     vbclCmdSessionDetect2,
@@ -615,6 +675,7 @@ int main(int argc, char *argv[])
         { "--foreground",                   'f',                                RTGETOPT_REQ_NOTHING },
         { "--logfile",                      'l',                                RTGETOPT_REQ_STRING  },
         { "--verbose",                      'v',                                RTGETOPT_REQ_NOTHING },
+        { "--verbosity",                    'y',                                RTGETOPT_REQ_UINT32  },
         { "--session-type",                 VBOXCLIENT_OPT_SESSION_TYPE,        RTGETOPT_REQ_STRING  },
 
         /* Services */
@@ -644,6 +705,10 @@ int main(int argc, char *argv[])
         { "--version",                      'V',                                RTGETOPT_REQ_NOTHING },
         { "--session-detect",               VBOXCLIENT_OPT_SESSION_DETECT,      RTGETOPT_REQ_NOTHING },
         { "--session-detect2",              VBOXCLIENT_OPT_SESSION_DETECT2,     RTGETOPT_REQ_NOTHING },
+#ifdef VBOX_WITH_WAYLAND_ADDITIONS
+        { "--clipboard-get",                VBOXCLIENT_OPT_CLIPBOARD_GET,       RTGETOPT_REQ_NOTHING },
+        //{ "--clipboard-set",                VBOXCLIENT_OPT_CLIPBOARD_SET,       RTGETOPT_REQ_NOTHING },
+#endif
     };
 
     int                     ch;
@@ -686,6 +751,10 @@ int main(int argc, char *argv[])
 
             case 'v':
                 g_cVerbosity++;
+                break;
+
+            case 'y':
+                g_cVerbosity = RT_MIN(ValueUnion.u32, 16);
                 break;
 
             case VBOXCLIENT_OPT_SESSION_TYPE:
@@ -761,6 +830,9 @@ int main(int argc, char *argv[])
                 break
             VBOXCLIENT_OPT_CASE_COMMAND(VBOXCLIENT_OPT_SESSION_DETECT,      g_CmdSessionDetect);
             VBOXCLIENT_OPT_CASE_COMMAND(VBOXCLIENT_OPT_SESSION_DETECT2,     g_CmdSessionDetect2);
+#ifdef VBOX_WITH_WAYLAND_ADDITIONS
+            VBOXCLIENT_OPT_CASE_COMMAND(VBOXCLIENT_OPT_CLIPBOARD_GET,       g_CmdClipboardGet);
+#endif
 #undef VBOXCLIENT_OPT_CASE_COMMAND
             /*
              * Service specific options (currently unused) and syntax errors.
@@ -793,7 +865,11 @@ int main(int argc, char *argv[])
      * Command? Execute it and quit. No Vbgl init.
      */
     if (g_Service.pCommand)
+    {
+        if (g_Service.pCommand->pszLogPrefix)
+            VBClLogSetLogPrefix(g_Service.pCommand->pszLogPrefix);
         return g_Service.pCommand->pfnExecute();
+    }
 
     /*
      * Service.

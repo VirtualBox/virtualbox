@@ -1,4 +1,4 @@
-/* $Id: wayland-helper-gtk.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland-helper-gtk.cpp 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Gtk helper for Wayland.
  *
@@ -32,8 +32,11 @@
 #include <iprt/localipc.h>
 #include <iprt/path.h>
 #include <iprt/process.h>
+#include <iprt/pipe.h>
 #include <iprt/rand.h>
 #include <iprt/semaphore.h>
+#include <iprt/string.h>
+#include <iprt/ctype.h>
 
 #include <VBox/GuestHost/DisplayServerType.h>
 #include <VBox/GuestHost/clipboard-helper.h>
@@ -449,27 +452,271 @@ static DECLCALLBACK(void) vbcl_wayland_hlp_gtk_clip_set_ctx(PSHCLCONTEXT pCtx)
 }
 
 /**
- * @callback_method_impl{FNVBCLWAYLANDSESSIONJOIN,
- *      Session callback: Announce clipboard to the host.}
- *
- * This callback (1) waits for the guest to report its clipboard content
- * via IPC connection from vboxwl tool, and (2) reports these formats
- * to the host.
+ * Helper for vbclWaylandHlpGtkClipReadIntoCache.
  */
-static DECLCALLBACK(int) vbcl_wayland_hlp_gtk_clip_popup_join_cb(void *pvUser)
+static bool vbclWaylandHlpGtkClipReadIntoCacheCheckCrc(void const *pvData, size_t cbData,
+                                                       uint64_t u64CrcExpected, uint32_t fFormat)
 {
-    VBCL_LOG_CALLBACK;
+    uint64_t const u64CrcActual = RTCrc64(pvData, cbData);
+    if (u64CrcActual == u64CrcExpected)
+        return true;
+    VBClLogError("CRC mismatch for %#x (%#zx bytes): %#RX64, exepcted %#RX64\n", fFormat, cbData, u64CrcActual, u64CrcExpected);
+    return false;
+}
 
-    vbox_wl_gtk_ctx_t *pCtx = (vbox_wl_gtk_ctx_t *)pvUser;
-    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+/**
+ * Reads --clipboard-get data of the given format into the specified cache.
+ *
+ * The @a pszLine and @a pcbLine will be adjust (typcially contains the start or
+ * all of the data).
+ */
+static bool vbclWaylandHlpGtkClipReadIntoCache(RTPIPE hPipeRead, char *pszLine, size_t *pcbLine, PSHCLCACHE pTmpCache,
+                                               uint32_t fFormat, uint32_t cbData, uint64_t u64CrcExpected,
+                                               uint64_t msStart, uint32_t cMsMax)
+{
+    /*
+     * Allocate a cache buffer.
+     */
+    uint8_t *pbData;
+    int rc = ShClCachePrep(pTmpCache, fFormat, cbData, (void **)&pbData);
+    if (RT_FAILURE(rc))
+    {
+        VBClLogError("ShClCachePrep failed for %#x: %Rrc\n", fFormat, rc);
+        return false;
+    }
 
-    int rc;
-    SHCLFORMATS fFmts = pCtx->Session.oDataIpc->m_fFmts.wait();
-    if (fFmts != pCtx->Session.oDataIpc->m_fFmts.defaults())
-        rc = VbglR3ClipboardReportFormats(pCtx->pShClCtx->CmdCtx.idClient, fFmts);
-    else
-        rc = VERR_TIMEOUT;
-    return rc;
+    /*
+     * Copy data from pszLine into the buffer.
+     */
+    size_t offData = 0;
+    if (*pcbLine > 0 && cbData > 0)
+    {
+        size_t cbToCopy = RT_MIN(cbData, *pcbLine);
+        memcpy(pbData, pszLine, cbToCopy);
+        if (cbToCopy >= *pcbLine)
+        {
+            *pcbLine = 0;
+            *pszLine = '\0';
+        }
+        else
+        {
+            memmove(pszLine, &pszLine[cbToCopy], *pcbLine - cbToCopy);
+            *pcbLine -= cbToCopy;
+            pszLine[*pcbLine] = '\0';
+        }
+        offData += cbToCopy;
+        if (offData >= cbData)
+            return vbclWaylandHlpGtkClipReadIntoCacheCheckCrc(pbData, cbData, u64CrcExpected, fFormat);
+    }
+
+    /*
+     * Read more data from the pipe.
+     */
+    for (;;)
+    {
+        size_t cbRead = 0;
+        rc = RTPipeRead(hPipeRead, &pbData[offData], cbData - offData, &cbRead);
+        if (RT_FAILURE(rc))
+        {
+            VBClLogError("RTPipeRead failed for %#x at %#zx of %#zx: %Rrc\n", fFormat, offData, cbData, rc);
+            return false;
+        }
+        offData += cbRead;
+        if (offData >= cbRead)
+            return vbclWaylandHlpGtkClipReadIntoCacheCheckCrc(pbData, cbData, u64CrcExpected, fFormat);
+
+        /* Wait for more data to become available. */
+        uint64_t const cMsElapsed = RTTimeMilliTS() - msStart;
+        rc = RTPipeSelectOne(hPipeRead, cMsElapsed < cMsMax ? cMsMax - cMsElapsed : RT_MS_1SEC);
+        if (RT_FAILURE(rc))
+        {
+            VBClLogError("%s: RTPipeSelectOne failed after %RX64 ms for %#x at %#zx of %#zx: %Rrc\n",
+                         __func__, RTTimeMilliTS() - msStart, fFormat, offData, cbData, rc);
+            return false;
+        }
+    }
+}
+
+/**
+ * Parses and validates a --clipboard-get data header line.
+ */
+static bool vbclWaylandHlpGtkClipParseOtherLine(const char *pszLine, uint32_t fFormats, uint32_t fCachedFmts,
+                                                uint32_t *pfFormat, uint32_t *pcbExpected, uint64_t *pu64CrcExpected)
+{
+    /* Data header (/ 2nd) line: 'Format=%#x cbData=%#x crc64=%#RX64' */
+    static char const s_szItem1[] = "Format=0x";
+    if (memcmp(pszLine, s_szItem1, sizeof(s_szItem1) - 1) != 0)
+    {
+        LogRel5(("%s: fail #1\n", __func__));
+        return false;
+    }
+    pszLine += sizeof(s_szItem1) - 1;
+
+    *pfFormat = 0;
+    char *pszNext = NULL;
+    int rc = RTStrToUInt32Ex(pszLine, &pszNext, 16, pfFormat);
+    if (rc != VWRN_TRAILING_SPACES && rc != VWRN_TRAILING_CHARS)
+    {
+        LogRel5(("%s: fail #2 - rc=%Rrc\n", __func__, rc));
+        return false;
+    }
+
+    pszLine = pszNext;
+    while (RT_C_IS_BLANK(*pszLine))
+        pszLine++;
+
+    static char const s_szItem2[] = "cbData=0x";
+    if (memcmp(pszLine, s_szItem2, sizeof(s_szItem2) - 1) != 0)
+    {
+        LogRel5(("%s: fail #3\n", __func__));
+        return false;
+    }
+    pszLine += sizeof(s_szItem2) - 1;
+    rc = RTStrToUInt32Ex(pszLine, &pszNext, 16, pcbExpected);
+    if (rc != VWRN_TRAILING_SPACES && rc != VWRN_TRAILING_CHARS)
+    {
+        LogRel5(("%s: fail #4 - %Rrc\n", __func__, rc));
+        return false;
+    }
+
+    pszLine = pszNext;
+    while (RT_C_IS_BLANK(*pszLine))
+        pszLine++;
+
+    static char const s_szItem3[] = "crc64=0x";
+    if (memcmp(pszLine, s_szItem3, sizeof(s_szItem3) - 1) != 0)
+    {
+        LogRel5(("%s: fail #5\n", __func__));
+        return false;
+    }
+    pszLine += sizeof(s_szItem3) - 1;
+    rc = RTStrToUInt64Full(pszLine, 16, pu64CrcExpected);
+    if (RT_FAILURE(rc))
+    {
+        LogRel5(("%s: fail #6 - %Rrc\n", __func__, rc));
+        return false;
+    }
+
+    /*
+     * Additional checks.
+     */
+    RTEXITCODE rcExit = RTEXITCODE_SUCCESS;
+
+    if (   *pfFormat == 0
+        || !RT_IS_POWER_OF_TWO(*pfFormat))
+        rcExit = VBClLogError("fFormat=%#x, expected non-zero power of two value\n", *pfFormat);
+    else if (!(*pfFormat & fFormats))
+        rcExit = VBClLogError("fFormat=%#x is not in advertised formats (%#x)\n", *pfFormat, fFormats);
+    else if (*pfFormat & fCachedFmts)
+        rcExit = VBClLogError("Already read fFormat=%#x\n", *pfFormat);
+
+#if RT_ARCH_BITS == 32
+    static size_t const s_cbMax = _64M;
+#else
+    static size_t const s_cbMax = _512M;
+#endif
+    if (*pcbExpected > s_cbMax)
+        rcExit = VBClLogError("cbData=%#x, max is %#zx\n", *pcbExpected, s_cbMax);
+
+    return rcExit == RTEXITCODE_SUCCESS;
+}
+
+/**
+ * Parses and validates the initial --clipboard-get line.
+ */
+static bool vbclWaylandHlpGtkClipParseFirstLine(const char *pszLine, uint32_t *pfFormats)
+{
+    /* 1st line: 'Formats=%#x' */
+    static char const s_szFirstLinePrefix[] = "Formats=0x";
+    if (memcmp(pszLine, s_szFirstLinePrefix, sizeof(s_szFirstLinePrefix) - 1) != 0)
+    {
+        LogRel5(("%s: fail #1\n", __func__));
+        return false;
+    }
+
+    int rc = RTStrToUInt32Full(&pszLine[sizeof(s_szFirstLinePrefix) - 1], 16, pfFormats);
+    if (RT_FAILURE(rc))
+    {
+        LogRel5(("%s: fail #2 - %Rrc\n", __func__, rc));
+        return false;
+    }
+
+    if (*pfFormats & ~VBOX_SHCL_FMT_VALID_MASK)
+    {
+        VBClLogError("fFormats=%#x is not valid (valid mask %#x)\n", *pfFormats, VBOX_SHCL_FMT_VALID_MASK);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Helper that reads & parses the output from a --clipboard-get child.
+ */
+static RTEXITCODE vbclWaylandHlpGtkClipReadDataFromChild(RTPIPE hPipeRead, PSHCLCACHE pCache, uint32_t *pfFormats)
+{
+    *pfFormats = UINT32_MAX;
+
+    char                    szLine[128];
+    size_t                  offLine         = 0;
+    uint32_t                fCachedFmts     = 0;
+    uint64_t const          msStart         = RTTimeMilliTS();
+    static uint32_t const   s_cMsMax        = RT_MS_30SEC;
+    for (;;)
+    {
+        size_t cbRead = 0;
+        int rc = RTPipeRead(hPipeRead, &szLine[offLine], sizeof(szLine) - offLine - 1, &cbRead);
+        if (RT_FAILURE(rc))
+        {
+            if (rc == VERR_BROKEN_PIPE && offLine == 0)
+                return RTEXITCODE_SUCCESS;
+            return VBClLogError("%s: RTPipeRead failed: %Rrc (offLine=%#x)\n", __func__, rc, offLine);
+        }
+
+        offLine += cbRead; /* (cbRead can be zero with rc == VINF_TRY_AGAIN) */
+        szLine[offLine] = '\0';
+
+        /* Parse it if we've got full line. */
+        char * const pszNewline = strchr(szLine, '\n');
+        if (pszNewline)
+        {
+            *pszNewline = '\0';
+
+            uint32_t   fFormat    = 0;
+            uint32_t   cbData     = 0;
+            uint64_t   u64Crc     = 0;
+            bool const fFirstLine = *pfFormats == UINT32_MAX;
+            bool const fRcParse   = fFirstLine
+                                  ? vbclWaylandHlpGtkClipParseFirstLine(szLine, pfFormats)
+                                  : vbclWaylandHlpGtkClipParseOtherLine(szLine, *pfFormats, fCachedFmts,
+                                                                        &fFormat, &cbData, &u64Crc);
+            if (!fRcParse)
+                return VBClLogError("%s: bogus %s:\n%.*Rhxd\n", __func__, fFirstLine ? "1st line" : "data hdr", offLine, szLine);
+
+            /* Shift the any content left in the line buffer to the start. */
+            size_t const cbLine = &pszNewline[1] - szLine;
+            memmove(szLine, &pszNewline[1], offLine - cbLine);
+            offLine -= cbLine;
+            szLine[offLine] = '\0';
+
+            /* If data header, read the data info the cache. */
+            if (   !fFirstLine
+                && !vbclWaylandHlpGtkClipReadIntoCache(hPipeRead, szLine, &offLine, pCache,
+                                                       fFormat, cbData, u64Crc, msStart, s_cMsMax))
+                return RTEXITCODE_FAILURE;
+        }
+        /* Overflow check. */
+        else if (offLine + 1 >= sizeof(szLine))
+            return VBClLogError("%s: bogus output:\n%.*Rhxd\n", __func__, offLine, szLine);
+        else
+        {
+            /* Wait for more data to become available. */
+            uint64_t const cMsElapsed = RTTimeMilliTS() - msStart;
+            rc = RTPipeSelectOne(hPipeRead, cMsElapsed < s_cMsMax ? s_cMsMax - cMsElapsed : RT_MS_1SEC);
+            if (RT_FAILURE(rc))
+                return VBClLogError("%s: RTPipeSelectOne failed after %RX64 ms: %Rrc\n", __func__, RTTimeMilliTS() - msStart, rc);
+        }
+    }
 }
 
 /**
@@ -477,20 +724,141 @@ static DECLCALLBACK(int) vbcl_wayland_hlp_gtk_clip_popup_join_cb(void *pvUser)
  */
 static DECLCALLBACK(int) vbcl_wayland_hlp_gtk_clip_popup(void)
 {
-    int rc;
-    vbox_wl_gtk_ctx_t *pCtx = &g_GtkClipCtx;
+    PSHCLCONTEXT const pShClCtx = &g_Ctx;
+    LogRel3(("%s:\n", __func__));
 
-    VBCL_LOG_CALLBACK;
+    /*
+     * Take down the revision number before we start, so we won't can detect
+     * host clipboard updates racing us.
+     */
+    RTCritSectEnter(&pShClCtx->Wl.CritSect);
+    uint64_t const uRevision = pShClCtx->Wl.uRevision;
+    RTCritSectLeave(&pShClCtx->Wl.CritSect);
 
-    rc = vbcl_wayland_session_start(&pCtx->Session.Base,
-                                    VBCL_WL_CLIPBOARD_SESSION_TYPE_ANNOUNCE_TO_HOST,
-                                    &vbcl_wayland_hlp_gtk_session_start_generic_cb,
-                                    pCtx);
+    /*
+     * Read the clipboard content.
+     */
+    /* Create pipe for reading content. */
+    RTPIPE   hPipeRead  = NIL_RTPIPE;
+    RTHANDLE hStdOut    = { RTHANDLETYPE_PIPE };
+    int rc = RTPipeCreate(&hPipeRead, &hStdOut.u.hPipe, RTPIPE_C_INHERIT_WRITE);
     if (RT_SUCCESS(rc))
-        rc = VBClWaylandSessionJoin(&pCtx->Session.Base, VBCL_WL_CLIPBOARD_SESSION_TYPE_ANNOUNCE_TO_HOST,
-                                    vbcl_wayland_hlp_gtk_clip_popup_join_cb, pCtx);
+    {
+        /* Pass on the log verbosity level. */
+        char szSetVerbosity[sizeof(VBOXWL_OPT_VERBOSITY) + 64];
+        RTStrPrintf(szSetVerbosity, sizeof(szSetVerbosity), VBOXWL_OPT_VERBOSITY "=%u", g_cVerbosity);
+        const char *apszArgs[] =
+        {
+            RTProcExecutablePath(),
+            "--clipboard-get",
+            szSetVerbosity,
+            NULL
+        };
 
-    return rc;
+        /* Create the process. */
+        RTPROCESS hProcess = NIL_RTPROCESS;
+        rc = RTProcCreateEx(apszArgs[0], apszArgs, RTENV_DEFAULT, 0 /*fFlags*/,
+                            NULL, &hStdOut, NULL, NULL, NULL, NULL, &hProcess);
+        RTPipeClose(hStdOut.u.hPipe);
+        if (RT_SUCCESS(rc))
+        {
+            /*
+             * Read and process the output.
+             */
+            uint32_t    fFormats = UINT32_MAX;
+            SHCLCACHE   Cache;
+            ShClCacheInit(&Cache);
+            bool const fDataOkay = vbclWaylandHlpGtkClipReadDataFromChild(hPipeRead, &Cache, &fFormats) == RTEXITCODE_SUCCESS
+                                && fFormats != UINT32_MAX;
+            rc = RTPipeClose(hPipeRead);
+            AssertLogRelRC(rc);
+
+            /*
+             * Make sure it terminates.
+             */
+            RTPROCSTATUS ProcStatus = { -1, RTPROCEXITREASON_ABEND };
+            uint64_t const msProcWait = RTTimeMilliTS();
+            for (;;)
+            {
+                rc = RTProcWait(hProcess, RTPROCWAIT_FLAGS_NOBLOCK, &ProcStatus);
+                if (   (rc != VERR_PROCESS_RUNNING && rc != VERR_INTERRUPTED)
+                    || RTTimeMilliTS() - msProcWait > RT_MS_1SEC)
+                    break;
+                RTThreadSleep(8 /*ms*/);
+            }
+            if (rc == VERR_PROCESS_RUNNING || rc == VERR_INTERRUPTED)
+            {
+                rc = RTProcTerminate(hProcess);
+                rc = RTProcWait(hProcess, RT_SUCCESS(rc) ? RTPROCWAIT_FLAGS_BLOCK : RTPROCWAIT_FLAGS_NOBLOCK, &ProcStatus);
+            }
+            if (   RT_SUCCESS(rc)
+                && ProcStatus.enmReason == RTPROCEXITREASON_NORMAL)
+            {
+                /*
+                 * RTEXITCODE_SUCCESS: We've got data. Report it to the host.
+                 */
+                if (ProcStatus.iStatus == RTEXITCODE_SUCCESS && fDataOkay)
+                {
+                    RTCritSectEnter(&pShClCtx->Wl.CritSect);
+                    if (pShClCtx->Wl.uRevision == uRevision)
+                    {
+                        if (   SHCLWLCTX_REV_IS_OTHER(pShClCtx->Wl.uRevision)
+                            || pShClCtx->Wl.fOurFormats != fFormats
+                            || !ShClCacheEquals(&pShClCtx->Wl.OurCache, &Cache))
+                        {
+                            LogRel2(("%s: --clipboard-get exit code: 0 - sending formats %#x and data to the host\n",
+                                     __func__, fFormats));
+
+                            VbghWaylandClipboardResetOurState(&pShClCtx->Wl, __func__, NULL);
+
+                            pShClCtx->Wl.fOurFormats = fFormats;
+                            rc = ShClCacheTransferAll(&pShClCtx->Wl.OurCache, &Cache);
+                            AssertRC(rc);
+
+                            rc = RTSemEventMultiSignal(pShClCtx->Wl.hOurCacheFilledEvent);
+                            AssertRC(rc);
+
+                            /* Do the reporting to the host. */
+                            rc = VbglR3ClipboardReportFormats(pShClCtx->CmdCtx.idClient, fFormats);
+                            AssertLogRelRC(rc);
+                        }
+                        else
+                            LogRel2(("%s: --clipboard-get: skipping. data is unchanged\n", __func__));
+                    }
+                    else
+                        LogRel2(("%s: --clipboard-get: Revision changed while getting guest clipboard data (%#RX64 -> %#RX64)\n",
+                                 __func__, uRevision, pShClCtx->Wl.uRevision));
+                    RTCritSectLeave(&pShClCtx->Wl.CritSect);
+                }
+                /*
+                 * RTEXITCODE_SKIPPED: Clipboard contains host data or no data at all.
+                 */
+                else if (ProcStatus.iStatus == RTEXITCODE_SKIPPED && fDataOkay && fFormats == 0)
+                    LogRel2(("%s: --clipboard-get exit code: skipped\n", __func__));
+                /*
+                 * Anything else is bad.
+                 */
+                else
+                    VBClLogError("%s: --clipboard-get exit code: %d, fDataOkay=%d fFormats=%#x\n",
+                                 __func__, ProcStatus.iStatus, fDataOkay, fFormats);
+            }
+            else if (RT_SUCCESS(rc) && ProcStatus.enmReason == RTPROCEXITREASON_SIGNAL)
+                VBClLogError("%s: --clipboard-get terminated by signal: %d\n", __func__, ProcStatus.iStatus);
+            else if (RT_SUCCESS(rc))
+                VBClLogError("%s: --clipboard-get abend'ed (%d)\n", __func__, ProcStatus.iStatus);
+            else
+                VBClLogError("%s: RTProcWait failed on --clipboard-get: %Rrc\n", __func__, rc);
+            ShClCacheTerm(&Cache);
+        }
+        else
+        {
+            VBClLogError("RTProcCreateEx failed: %Rrc\n", rc);
+            RTPipeClose(hPipeRead);
+        }
+    }
+    else
+        VBClLogError("RTPipeCreate failed: %Rrc\n", rc);
+    return VINF_SUCCESS;
 }
 
 /**
@@ -570,107 +938,6 @@ static DECLCALLBACK(int) vbcl_wayland_hlp_gtk_clip_hg_report(PSHCLCONTEXT pCtx, 
     return rc;
 }
 
-/**
- * Session callback: Copy clipboard to the host.
- *
- * This callback sets clipboard format to the session as requested
- * by host, waits for guest clipboard data in requested format and
- * sends data to the host.
- *
- * This callback should not return until clipboard data is sent to
- * the host or error occurred. It must block host events loop until
- * current host event is fully processed.
- *
- * @returns IPRT status code.
- * @param   enmSessionType      Session type, must be verified as
- *                              a consistency check.
- * @param   pvUser              User data (requested format).
- */
-static DECLCALLBACK(int) vbcl_wayland_hlp_gtk_clip_gh_read_join_cb(vbcl_wl_session_type_t enmSessionType, void *pvUser)
-{
-    struct vbcl_wayland_hlp_gtk_clip_gh_read_priv *pPriv =
-        (struct vbcl_wayland_hlp_gtk_clip_gh_read_priv *)pvUser;
-    AssertPtrReturn(pPriv, VERR_INVALID_POINTER);
-
-    VBCL_LOG_CALLBACK;
-
-    int rc;
-    if (   enmSessionType == VBCL_WL_CLIPBOARD_SESSION_TYPE_COPY_TO_HOST
-        || enmSessionType == VBCL_WL_CLIPBOARD_SESSION_TYPE_ANNOUNCE_TO_HOST)
-    {
-        void *pvData;
-        uint32_t cbData;
-
-        /* Store requested clipboard format to the session. */
-        pPriv->pCtx->Session.oDataIpc->m_uFmt.set(pPriv->uFormat);
-
-        /* Wait for data in requested format. */
-        pvData = (void *)pPriv->pCtx->Session.oDataIpc->m_pvDataBuf.wait();
-        cbData = pPriv->pCtx->Session.oDataIpc->m_cbDataBuf.wait();
-        if (   cbData != pPriv->pCtx->Session.oDataIpc->m_cbDataBuf.defaults()
-            && pvData != (void *)pPriv->pCtx->Session.oDataIpc->m_pvDataBuf.defaults())
-        {
-            /* Send clipboard data to the host. */
-            rc = VbglR3ClipboardWriteDataEx(&pPriv->pCtx->pShClCtx->CmdCtx, pPriv->uFormat, pvData, cbData);
-        }
-        else
-            rc = VERR_TIMEOUT;
-    }
-    else
-        rc = VERR_WRONG_ORDER;
-    return rc;
-}
-
-/**
- * @interface_method_impl{VBCLWAYLANDHELPER_CLIPBOARD,pfnGHClipRead}
- */
-static DECLCALLBACK(int) vbcl_wayland_hlp_gtk_clip_gh_read(PSHCLCONTEXT pCtx, SHCLFORMAT uFmt)
-{
-    RT_NOREF(pCtx);
-    int rc = VINF_SUCCESS;
-
-    VBCL_LOG_CALLBACK;
-
-    if (uFmt != VBOX_SHCL_FMT_NONE)
-    {
-        VBClLogVerbose(2, "host wants fmt 0x%x\n", uFmt);
-
-        /* This callback can be called in two cases:
-         *
-         * 1. Guest has just announced a list of its clipboard
-         *    formats to the host, and vboxwl tool is still running,
-         *    IPC session is still active as well. In this case the
-         *    host can immediately ask for content in specified format.
-         *
-         * 2. Guest has already announced list of its clipboard
-         *    formats to the host some time ago, vboxwl tool is no
-         *    longer running and IPC session is not active. In this
-         *    case some app on the host side might want to read
-         *    clipboard in specific format.
-         *
-         * In case (2), we need to start new IPC session and restart
-         * vboxwl tool again
-         */
-        if (!vbcl_wayland_session_is_started(&g_GtkClipCtx.Session.Base))
-        {
-            rc = vbcl_wayland_session_start(&g_GtkClipCtx.Session.Base,
-                                            VBCL_WL_CLIPBOARD_SESSION_TYPE_COPY_TO_HOST,
-                                            &vbcl_wayland_hlp_gtk_session_start_generic_cb,
-                                            &g_GtkClipCtx);
-        }
-
-        if (RT_SUCCESS(rc))
-        {
-            struct vbcl_wayland_hlp_gtk_clip_gh_read_priv Args = { &g_GtkClipCtx, uFmt };
-            rc = VBClWaylandSessionJoinAnyType(&g_GtkClipCtx.Session.Base, vbcl_wayland_hlp_gtk_clip_gh_read_join_cb, &Args);
-        }
-    }
-
-    VBClLogVerbose(2, "vbcl_wayland_hlp_gtk_clip_gh_read ended rc=%Rrc\n", rc);
-
-    return rc;
-}
-
 
 /***********************************************************************
  * DnD.
@@ -709,7 +976,7 @@ const VBCLWAYLANDHELPER g_WaylandHelperGtk =
         /* .pfnSetClipboardCtx = */ vbcl_wayland_hlp_gtk_clip_set_ctx,
         /* .pfnPopup           = */ vbcl_wayland_hlp_gtk_clip_popup,
         /* .pfnHGClipReport    = */ vbcl_wayland_hlp_gtk_clip_hg_report,
-        /* .pfnGHClipRead      = */ vbcl_wayland_hlp_gtk_clip_gh_read,
+        /* .pfnGHClipRead      = */ NULL,
     },
     /* .dnd      = */
     {

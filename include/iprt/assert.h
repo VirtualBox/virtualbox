@@ -2884,7 +2884,7 @@ RT_C_DECLS_END
  * @param   stmt    Statement to execute before returninig in case of a failed
  *                  assertion.
  */
-#define AssertPtrReturnVoidStmt(pv, stmt) AssertMsgReturnVoid(RT_VALID_PTR(pv), ("%p\n", (pv)), stmt)
+#define AssertPtrReturnVoidStmt(pv, stmt) AssertMsgReturnVoidStmt(RT_VALID_PTR(pv), ("%p\n", (pv)), stmt)
 
 /** @def AssertPtrBreak
  * Asserts that a pointer is valid.

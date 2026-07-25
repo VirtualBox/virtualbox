@@ -1,4 +1,4 @@
-/* $Id: wayland.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland.cpp 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Wayland Desktop Environment assistant.
  */
@@ -191,77 +191,6 @@ uint64_t VBClWaylandClipboardResetOurState(PSHCLCONTEXT pCtx, const char *pszCal
 }
 
 /**
- * Adds a MIME type prior to reporting a potential new clipboard offer.
- *
- * This will try map the MIME type to a VBox format type and add it to the
- * reverse mapping table, iff it has higher priority than the current type for
- * the format.
- *
- * @returns VBox status code (can be ignored).
- * @param   pOfferSlot      The offset slot to update.
- * @param   pszMimeType     The MIME type being offered.
- * @param   pszCaller       Caller name for logging.
- */
-int VBClWaylandClipboardOfferAddMimeType(SHCLWLOFFERSLOT *pOfferSlot, const char *pszMimeType, const char *pszCaller)
-{
-    VBClLogVerbose(5, "Wayland announces MIME type: %s\n", pszMimeType);
-    AssertPtrReturn(pOfferSlot, VERR_INVALID_POINTER);
-    PSHCLCONTEXT const pCtx = pOfferSlot->pCtx;
-    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
-
-    int rc = VINF_SUCCESS;
-    RTCritSectEnter(&pCtx->Wl.CritSect);
-
-    if (pCtx->Wl.uRevision == pOfferSlot->uRevision)
-    {
-        /* Map the MIME type to a VBox format. */
-        uint32_t    fFlagsAndPriority = 0;
-        const char *pszPersistentMimeType = NULL;
-        SHCLFORMAT uFmt = VbghMimeConvGetVBoxFormatByMime(pszMimeType, &fFlagsAndPriority, &pszPersistentMimeType);
-        if (uFmt != VBOX_SHCL_FMT_NONE)
-        {
-            AssertPtr(pszPersistentMimeType);
-            int const idxFmt = ShClFormatToBitNo(uFmt);
-            if ((unsigned)idxFmt < RT_ELEMENTS(pOfferSlot->aMimeTypes))
-            {
-                /* Does it have higher priority than any existing mapping? */
-                if (  (fFlagsAndPriority & VBGH_MIME_CONV_F_PRIORITY_MASK)
-                    > (pOfferSlot->aMimeTypes[idxFmt].fFlagsAndPriority & VBGH_MIME_CONV_F_PRIORITY_MASK))
-                {
-                    /* Okay, use this MIME type for the VBox format then. */
-                    pOfferSlot->aMimeTypes[idxFmt].pszMimeType       = pszPersistentMimeType;
-                    pOfferSlot->aMimeTypes[idxFmt].fFlagsAndPriority = fFlagsAndPriority;
-                    pOfferSlot->fFormats |= uFmt;
-                    VBClLogVerbose(4, "%s: %s -> VBoxFmt %#x/%u prio %#x\n", pszCaller, pszMimeType, uFmt, idxFmt, fFlagsAndPriority);
-                    rc = VINF_SUCCESS;
-                }
-                else
-                {
-                    VBClLogVerbose(6, "%s: %s -> VBoxFmt %#x/%u prio %#x - have better (%#x)\n", pszCaller, pszMimeType,
-                                   uFmt, idxFmt, fFlagsAndPriority, pOfferSlot->aMimeTypes[idxFmt].fFlagsAndPriority);
-                    rc = VINF_SUCCESS;
-                }
-            }
-            else
-                AssertFailedStmt(rc = VERR_INTERNAL_ERROR_2);
-        }
-        else
-        {
-            VBClLogVerbose(6, "%s: %s - no VBox format mapping\n", pszCaller, pszMimeType);
-            rc = VERR_NO_DATA;
-        }
-    }
-    else
-    {
-        VBClLogVerbose(2, "%s: outdated callback (%#RX64 vs %#RX64)\n", pOfferSlot->uRevision, pCtx->Wl.uRevision);
-        rc = VERR_VERSION_MISMATCH;
-    }
-
-    RTCritSectLeave(&pCtx->Wl.CritSect);
-    return rc;
-}
-
-/**
  * @callback_method_impl{FNHOSTCLIPREPORTFMTS}
  */
 static DECLCALLBACK(int) vbclWaylandClipboardHgReportCommon(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats)
@@ -331,62 +260,11 @@ static DECLCALLBACK(int) vbclWaylandClipboardGhReadCommon(PSHCLCONTEXT pCtx, SHC
     }
     RTCritSectLeave(&pCtx->Wl.CritSect);
 
-    /* Gtk hack: */
-    /** @todo Fix Gtk */
-    if (g_pWaylandHelperClipboard->clip.pfnGHClipRead)
-        return g_pWaylandHelperClipboard->clip.pfnGHClipRead(pCtx, uFmt);
-
     /*
      * No matching data.
      */
     VBClLogVerbose(2, "vbclWaylandClipboardGhReadCommon: No data for %#x!\n", uFmt);
     return VbglR3ClipboardWriteDataEx(&pCtx->CmdCtx, uFmt, NULL, 0);
-}
-
-/**
- * Initializes the VBoxClient clipboard context for Wayland use.
- */
-static int vbclWaylandClipboardContextInit(PSHCLCONTEXT pCtx)
-{
-    RT_ZERO(*pCtx);
-    pCtx->Wl.hOurCacheFilledEvent = NIL_RTSEMEVENTMULTI;
-
-    /* common */
-    int rc = RTCritSectInit(&pCtx->Wl.CritSect);
-    AssertRCReturn(rc, rc);
-
-    /* Other side: */
-    ShClCacheInit(&pCtx->Wl.OtherCache);
-    pCtx->Wl.fOtherFormats = VBOX_SHCL_FMT_NONE;
-
-    /* Our side: */
-    rc = RTSemEventMultiCreate(&pCtx->Wl.hOurCacheFilledEvent);
-    if (RT_SUCCESS(rc))
-    {
-        RTSemEventMultiSignal(pCtx->Wl.hOurCacheFilledEvent);
-        ShClCacheInit(&pCtx->Wl.OurCache);
-        pCtx->Wl.fOurFormats = VBOX_SHCL_FMT_NONE;
-        return VINF_SUCCESS;
-    }
-
-    /* bail */
-    pCtx->Wl.hOurCacheFilledEvent = NIL_RTSEMEVENTMULTI;
-    ShClCacheTerm(&pCtx->Wl.OtherCache);
-    RTCritSectDelete(&pCtx->Wl.CritSect);
-    return rc;
-}
-
-/**
- * Cleans up the VBoxClient clipboard context after Wayland use.
- */
-static void vbclWaylandClipboardContextTerm(PSHCLCONTEXT pCtx)
-{
-    ShClCacheTerm(&pCtx->Wl.OurCache);
-    RTSemEventMultiDestroy(pCtx->Wl.hOurCacheFilledEvent);
-    pCtx->Wl.hOurCacheFilledEvent = NIL_RTSEMEVENTMULTI;
-
-    RTCritSectDelete(&pCtx->Wl.CritSect);
-    ShClCacheTerm(&pCtx->Wl.OtherCache);
 }
 
 /**
@@ -401,7 +279,8 @@ static DECLCALLBACK(int) vbclWaylandClipboardWorker(RTTHREAD ThreadSelf, void *p
      * Initialize the clipboard context structure (defined in clipboard.cpp, shared with X11).
      */
     PSHCLCONTEXT const pCtx = &g_Ctx;
-    int rc = vbclWaylandClipboardContextInit(pCtx);
+    RT_ZERO(*pCtx);
+    int rc = VbghWaylandClipboardPartialInit(&pCtx->Wl);
     if (RT_SUCCESS(rc))
     {
         /*
@@ -439,7 +318,7 @@ static DECLCALLBACK(int) vbclWaylandClipboardWorker(RTTHREAD ThreadSelf, void *p
         else
             VBClLogError("VbglR3ClipboardConnectEx failed: %Rrc\n", rc);
 
-        vbclWaylandClipboardContextTerm(pCtx);
+        VbghWaylandClipboardPartialTerm(&pCtx->Wl);
     }
     else
         VBClLogError("RTCritSectInit failed: %Rrc\n", rc);
@@ -750,7 +629,7 @@ static DECLCALLBACK(int) vbclWaylandTerm(void)
     return rc;
 }
 
-VBCLSERVICE g_SvcWayland =
+VBCLSERVICE const g_SvcWayland =
 {
     "wayland",              /* szName */
     "Wayland assistant",    /* pszDescription */

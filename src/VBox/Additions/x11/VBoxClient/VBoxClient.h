@@ -1,4 +1,4 @@
-/* $Id: VBoxClient.h 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxClient.h 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
 /** @file
  *
  * VirtualBox additions user session daemon.
@@ -50,13 +50,14 @@
 
 int VBClShowNotify(const char *pszHeader, const char *pszBody);
 
+RTEXITCODE VBClLogError(const char *pszFormat, ...);
+RTEXITCODE VBClLogFatalError(const char *pszFormat, ...);
 void VBClLogInfo(const char *pszFormat, ...);
-void VBClLogError(const char *pszFormat, ...);
-void VBClLogFatalError(const char *pszFormat, ...);
 void VBClLogVerbose(unsigned iLevel, const char *pszFormat, ...);
 
 int VBClLogCreate(const char *pszLogFile);
-int VBClLogCreateEx(const char *pszLogFile, bool fPrintHeader);
+int VBClLogCreateEx(const char *pszLogFile, bool fPrintHeader, bool fNoStdOut);
+int VBClLogCreateNoStdOut(void);
 int VBClLogModify(const char *pszDest, unsigned uVerbosity);
 void VBClLogSetLogPrefix(const char *pszPrefix);
 void VBClLogDestroy(void);
@@ -65,6 +66,8 @@ void VBClLogDestroy(void);
 extern void VBClShutdown(bool fExit = true);
 
 extern VBGHDISPLAYSERVERTYPE VBClGetDisplayServerType(void);
+extern VBGHDISPLAYSERVERTYPE VBClGetDisplayServerTypeResolveAuto(void);
+extern int VBClExplicitLoadClientLibrariesForDisplayServer(VBGHDISPLAYSERVERTYPE enmType, bool fXWaylandAsPureWayland);
 
 /**
  * Tries to parse the given command line option.
@@ -153,7 +156,7 @@ extern VBCLSERVICE g_SvcDragAndDrop;
 extern VBCLSERVICE g_SvcHostVersion;
 extern VBCLSERVICE g_SvcSeamless;
 # ifdef VBOX_WITH_WAYLAND_ADDITIONS
-extern VBCLSERVICE g_SvcWayland;
+extern VBCLSERVICE const g_SvcWayland;
 # endif
 
 /**
@@ -165,6 +168,8 @@ typedef struct
     const char *pszName;
     /** The option description. */
     const char *pszDesc;
+    /** The log prefix to use.   */
+    const char *pszLogPrefix;
 
     /** The option descriptions for the --help screen. */
     const char *pszOptions;
@@ -180,10 +185,16 @@ typedef struct
 /** Pointer to a const VBCLCOMMAND. */
 typedef VBCLCOMMAND const *PCVBCLCOMMAND;
 
+#ifdef VBOX_WITH_WAYLAND_ADDITIONS
+extern VBCLCOMMAND const        g_CmdClipboardGet;
+extern VBCLCOMMAND const        g_CmdClipboardSet;
+#endif
 
+extern unsigned                 g_cVerbosity;
+extern bool                     g_fDaemonized;
 
-extern unsigned    g_cVerbosity;
-extern bool        g_fDaemonized;
+DECLASM(int) ExplicitlyLoadlibwayland_client(bool fResolveAllImports, PRTERRINFO pErrInfo);
+
 RT_C_DECLS_END
 
 #endif /* !GA_INCLUDED_SRC_x11_VBoxClient_VBoxClient_h */

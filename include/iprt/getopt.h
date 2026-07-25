@@ -405,6 +405,22 @@ int main(int argc, char **argv)
 RTDECL(int) RTGetOpt(PRTGETOPTSTATE pState, PRTGETOPTUNION pValueUnion);
 
 /**
+ * Variant of RTGetOpt that allows extra option arrays to be specified.
+ *
+ * @returns See RTGetOpt.
+ * @param   pState          The state previously initialized with RTGetOptInit.
+ * @param   pValueUnion     Union with value; in the event of an error, psz
+ *                          member points to erroneous parameter; otherwise, for
+ *                          options that require an argument, this contains the
+ *                          value of that argument, depending on the type that
+ *                          is required.
+ * @param   paExtraOptions  Pointer to the array of extra options. Optional.
+ * @param   cExtraOptions   Number of options in @a paExtraOptions. Must be zero
+ *                          if @a paExtraOptions is NULL.
+ */
+RTDECL(int) RTGetOptEx(PRTGETOPTSTATE pState, PRTGETOPTUNION pValueUnion, PCRTGETOPTDEF paExtraOptions, size_t cExtraOptions);
+
+/**
  * Fetch a value.
  *
  * Used to retrive a value argument in a manner similar to what RTGetOpt does

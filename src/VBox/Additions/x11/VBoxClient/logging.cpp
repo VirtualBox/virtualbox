@@ -1,4 +1,4 @@
-/* $Id: logging.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: logging.cpp 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Guest Additions - X11 Client.
  */
@@ -239,28 +239,32 @@ static void vbclLogV(const char *pszPrefix, const char *pszFormat, va_list va)
  * Logs a fatal error, notifies the desktop environment via a message and
  * exits the application immediately.
  *
+ * @returns RTEXITCODE_FAILURE (for convenience)
  * @param   pszFormat           Format string to log.
  * @param   ...                 Variable arguments for format string. Optional.
  */
-void VBClLogFatalError(const char *pszFormat, ...)
+RTEXITCODE VBClLogFatalError(const char *pszFormat, ...)
 {
     va_list va;
     va_start(va, pszFormat);
     vbclLogV("Fatal Error: ", pszFormat, va);
     va_end(va);
+    return RTEXITCODE_FAILURE;
 }
 
 /**
  * Logs an error message to the (release) logging instance.
  *
+ * @returns RTEXITCODE_FAILURE (for convenience)
  * @param   pszFormat               Format string to log.
  */
-void VBClLogError(const char *pszFormat, ...)
+RTEXITCODE VBClLogError(const char *pszFormat, ...)
 {
     va_list va;
     va_start(va, pszFormat);
     vbclLogV("Error: ", pszFormat, va);
     va_end(va);
+    return RTEXITCODE_FAILURE;
 }
 
 /**
@@ -385,38 +389,64 @@ static DECLCALLBACK(size_t) vbClLogPrefixCb(PRTLOGGER pLogger, char *pchBuf, siz
  * @return  IPRT status code.
  * @param   pszLogFile      Filename for log output. Empty filename allowed.
  * @param   fPrintHeader    Whether to print the VBoxClient logging header or not.
+ * @param   fNoStdOut       Not stdout output, use stderr instead.
  */
-int VBClLogCreateEx(const char *pszLogFile, bool fPrintHeader)
+int VBClLogCreateEx(const char *pszLogFile, bool fPrintHeader, bool fNoStdOut)
 {
     if (!pszLogFile)
         return VINF_SUCCESS;
 
-    /* Create release logger (stdout + file). */
+    /* Translate g_cVerbosity to stuff. */
+    char szGroupSettings[256];
+    char *psz = szGroupSettings;
+    if (g_cVerbosity > 0)
+    {
+        *psz++ = 'a';
+        *psz++ = 'l';
+        *psz++ = 'l';
+        *psz++ = '.';
+        *psz++ = 'e'; /* enabled level 1 */
+        for (unsigned i = RT_MIN(g_cVerbosity, 12); i > 1; i--)
+        {
+            *psz++ = '.';
+            *psz++ = 'l';
+            if (i >= 10)
+                *psz++ = '1';
+            *psz++ = '0' + (i % 10);
+        }
+    }
+    *psz = '\0';
+
+    /* Create release logger (stdout/err + file). */
     static const char * const s_apszGroups[] = VBOX_LOGGROUP_NAMES;
     RTUINT fFlags = RTLOGFLAGS_PREFIX_THREAD | RTLOGFLAGS_PREFIX_TIME | RTLOGFLAGS_PREFIX_CUSTOM;
 #if defined(RT_OS_WINDOWS) || defined(RT_OS_OS2)
     fFlags |= RTLOGFLAGS_USECRLF;
 #endif
-    int rc = RTLogCreateEx(&g_pLoggerRelease, "VBOXCLIENT_RELEASE_LOG", fFlags, "all",
+    int rc = RTLogCreateEx(&g_pLoggerRelease, "VBOXCLIENT_RELEASE_LOG", fFlags, szGroupSettings,
                            RT_ELEMENTS(s_apszGroups), s_apszGroups, UINT32_MAX /*cMaxEntriesPerGroup*/,
-                           0 /*cBufDescs*/, NULL /*paBufDescs*/, RTLOGDEST_STDOUT | RTLOGDEST_USER,
+                           0 /*cBufDescs*/, NULL /*paBufDescs*/,
+                           (fNoStdOut ? RTLOGDEST_STDERR : RTLOGDEST_STDOUT) | RTLOGDEST_USER,
                            fPrintHeader ? vbClLogHeaderFooter : NULL, g_cHistory, g_uHistoryFileSize, g_uHistoryFileTime,
                            NULL /*pOutputIf*/, NULL /*pvOutputIfUser*/,
                            NULL /*pErrInfo*/, "%s", pszLogFile ? pszLogFile : "");
     if (RT_SUCCESS(rc))
     {
-        /* register this logger as the release logger */
-        RTLogRelSetDefaultInstance(g_pLoggerRelease);
+        if (fNoStdOut && (RTLogGetDestinations(g_pLoggerRelease) & RTLOGDEST_STDOUT))
+            RTLogChangeDestinations(g_pLoggerRelease, RTLOGDEST_STDERR, RTLOGDEST_STDOUT);
 
         rc = RTLogSetCustomPrefixCallback(g_pLoggerRelease, vbClLogPrefixCb, NULL);
         if (RT_FAILURE(rc))
             RTMsgError("unable to register custom log prefix callback\n");
 
+        /* register this logger as the release logger */
+        RTLogRelSetDefaultInstance(g_pLoggerRelease);
+
         /* Explicitly flush the log in case of VBOXSERVICE_RELEASE_LOG=buffered. */
         RTLogFlush(g_pLoggerRelease);
     }
     else
-        RTMsgError("Failed to create release log '%s', rc=%Rrc\n", pszLogFile, rc);
+        RTMsgError("Failed to create release log '%s': %Rrc\n", pszLogFile, rc);
 
     return rc;
 }
@@ -429,8 +459,21 @@ int VBClLogCreateEx(const char *pszLogFile, bool fPrintHeader)
  */
 int VBClLogCreate(const char *pszLogFile)
 {
-    return VBClLogCreateEx(pszLogFile, true /* fPrintHeader */);
+    return VBClLogCreateEx(pszLogFile, true /*fPrintHeader*/, false /*fNoStdOut*/);
 }
+
+/**
+ * Creates the default release logger outputting to STDERR, no header.
+ *
+ * This will never output to STDOUT.
+ *
+ * @return  IPRT status code.
+ */
+int VBClLogCreateNoStdOut(void)
+{
+    return VBClLogCreateEx("", false /*fPrintHeader*/, true /*fNoStdOut*/);
+}
+
 
 /**
  * Destroys the currently active logging instance.
@@ -457,6 +500,7 @@ int VBClLogModify(const char *pszDest, unsigned uVerbosity)
     int rc = RTLogDestinations(g_pLoggerRelease, pszDest);
     if (RT_SUCCESS(rc))
     {
+/** @todo r=bird: This is incomplete and now pointless, see VBClLogCreateEx. */
 #define LOG_GROUP_SET_BREAK(a_Val) \
         rc = RTLogGroupSettings(g_pLoggerRelease, "all.e" a_Val); break;
 

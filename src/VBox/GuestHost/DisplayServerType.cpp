@@ -1,4 +1,4 @@
-/* $Id: DisplayServerType.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
+/* $Id: DisplayServerType.cpp 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest / Host common code - Session type detection + handling.
  */
@@ -37,6 +37,10 @@
 
 #include <VBox/GuestHost/DisplayServerType.h>
 
+
+/*********************************************************************************************************************************
+*   Defined Constants And Macros                                                                                                 *
+*********************************************************************************************************************************/
 #ifdef RT_OS_SOLARIS
 /*
  * For some unknown reason there is no libX11.so.6 on Solaris but
@@ -47,10 +51,15 @@
 # define X11_LIBRARY_NAME "libX11.so.6"
 #endif
 
+#define GET_SYMBOL(a_hMod, a_szName, a_pfn) do { \
+        if (RT_SUCCESS(rc)) \
+        { \
+            rc = RTLdrGetSymbol(a_hMod, a_szName, (void **)&(a_pfn)); \
+            if (RT_FAILURE(rc)) \
+                LogRel2(("Unable to resolve symbol '%s' (%Rrc)\n", a_szName, rc)); \
+        } \
+    } while (0)
 
-/*********************************************************************************************************************************
-*   Implementation                                                                                                               *
-*********************************************************************************************************************************/
 
 /**
  * Returns the VBGHDISPLAYSERVERTYPE as a string.
@@ -70,16 +79,6 @@ const char *VBGHDisplayServerTypeToStr(VBGHDISPLAYSERVERTYPE enmType)
     }
     AssertFailedReturn("<invalid>");
 }
-
-
-#define GET_SYMBOL(a_hMod, a_szName, a_pfn) do { \
-        if (RT_SUCCESS(rc)) \
-        { \
-            rc = RTLdrGetSymbol(a_hMod, a_szName, (void **)&(a_pfn)); \
-            if (RT_FAILURE(rc)) \
-                LogRel2(("Unable to resolve symbol '%s' (%Rrc)\n", a_szName, rc)); \
-        } \
-    } while (0)
 
 /**
  * Tries to detect the desktop display server type the process is running in.

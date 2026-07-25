@@ -1,4 +1,4 @@
-/* $Id: wayland-helper-edcp.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland-helper-edcp.cpp 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Ext Data Control Protocol (EDCP) helper for Wayland.
  *
@@ -167,7 +167,7 @@ static void vbcl_wayland_hlp_edcp_data_control_offer_offer(void *pvUser, struct 
     VBClLogVerbose(3, "%s: %s\n", __func__, pcszMimeType);
     SHCLWLOFFERSLOT * const pOfferSlot = (SHCLWLOFFERSLOT *)pvUser;
     AssertPtrReturnVoid(pOfferSlot);
-    VBClWaylandClipboardOfferAddMimeType(pOfferSlot, pcszMimeType, __func__);
+    VbghWaylandClipboardOfferAddMimeType(pOfferSlot, pcszMimeType, __func__);
     RT_NOREF(pOffer);
 }
 
@@ -242,7 +242,7 @@ static void vbclWaylandHlpEdcpDataDeviceListener_DataOffer(void *pvUser, struct 
         pOfferSlot->fFormats               = VBOX_SHCL_FMT_NONE;
         pOfferSlot->fHasRevisionNoMimeType = false;
         pOfferSlot->uRevision              = pShClCtx->Wl.uRevision;
-        pOfferSlot->pCtx                   = pShClCtx;
+        pOfferSlot->pCtx                   = &pShClCtx->Wl;
         pOfferSlot->pvOffer                = pOffer;
 
         RTCritSectLeave(&pShClCtx->Wl.CritSect);

@@ -1,4 +1,4 @@
-/* $Id: VBoxDef2LazyLoad.cpp 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxDef2LazyLoad.cpp 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxDef2LazyLoad - Lazy Library Loader Generator.
  *
@@ -36,6 +36,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <iprt/types.h>
+#include <iprt/ctype.h>
 #include <iprt/ldr.h> /* For RTLDRARCH. */
 
 
@@ -346,6 +347,37 @@ static RTEXITCODE  parseInputs(void)
         }
     }
     return rcExit;
+}
+
+
+/**
+ * Helper for converting the library name into a C-identifier.
+ *
+ * @returns true/false success indicator.
+ * @param   pszDst              Output buffer.
+ * @param   cbDst               Size of output buffer.
+ * @param   pszLibrary          The library name to convert.
+ */
+static bool sanitizeLibNameForUseAsCName(char *pszDst, size_t cbDst, const char *pszLibrary)
+{
+    size_t cchLibBaseName = strchr(pszLibrary, '.') ? strchr(pszLibrary, '.') - pszLibrary : strlen(pszLibrary);
+    if (cchLibBaseName < cbDst)
+    {
+        if (RT_C_IS_ALPHA(*pszLibrary) || *pszLibrary == '_')
+        {
+            memcpy(pszDst, pszLibrary, cchLibBaseName);
+            pszDst[cchLibBaseName] = '\0';
+
+            for (size_t off = 1; off < cchLibBaseName; off++)
+                if (!RT_C_IS_ALNUM(pszDst[off]) && pszDst[off] != '_')
+                    pszDst[off] = '_';
+            return true;
+        }
+        fprintf(stderr, "error: Invalid first charater in library name: %s\n", pszLibrary);
+    }
+    else
+        fprintf(stderr, "error: Too long Library name: %s\n", pszLibrary);
+    return false;
 }
 
 
@@ -867,10 +899,12 @@ static RTEXITCODE generateOutputInnerX86AndAMD64(FILE *pOutput)
      */
     if (g_fWithExplictLoadFunction)
     {
-        int cchLibBaseName = (int)(strchr(g_pszLibrary, '.') ? strchr(g_pszLibrary, '.') - g_pszLibrary : strlen(g_pszLibrary));
+        char szSanitizedLibName[256];
+        if (!sanitizeLibNameForUseAsCName(szSanitizedLibName, sizeof(szSanitizedLibName), g_pszLibrary))
+            return RTEXITCODE_FAILURE;
         fprintf(pOutput,
                 ";;\n"
-                "; ExplicitlyLoad%.*s(bool fResolveAllImports, pErrInfo);\n"
+                "; ExplicitlyLoad%s(bool fResolveAllImports, pErrInfo);\n"
                 ";\n"
                 "%%ifdef IN_RT_R3\n"
                 "extern NAME(RTErrInfoSet)\n"
@@ -878,7 +912,7 @@ static RTEXITCODE generateOutputInnerX86AndAMD64(FILE *pOutput)
                 "EXTERN_IMP2 RTErrInfoSet\n"
                 "%%endif\n"
                 "BEGINCODE\n"
-                "BEGINPROC ExplicitlyLoad%.*s\n"
+                "BEGINPROC ExplicitlyLoad%s\n"
                 "    push    xBP\n"
                 "    mov     xBP, xSP\n"
                 "    push    xBX\n"
@@ -912,8 +946,8 @@ static RTEXITCODE generateOutputInnerX86AndAMD64(FILE *pOutput)
                 "    ; Load the module.\n"
                 "    ;\n"
                 ,
-                cchLibBaseName, g_pszLibrary,
-                cchLibBaseName, g_pszLibrary);
+                szSanitizedLibName,
+                szSanitizedLibName);
         if (!g_fSystemLibrary)
             fprintf(pOutput,
                     "%%ifdef ASM_CALL64_GCC\n"
@@ -1081,11 +1115,11 @@ static RTEXITCODE generateOutputInnerX86AndAMD64(FILE *pOutput)
                 "    mov    xBX,       [xBP - xCB * 1]\n"
                 "    leave\n"
                 "    ret\n"
-                "ENDPROC   ExplicitlyLoad%.*s\n"
+                "ENDPROC   ExplicitlyLoad%s\n"
                 "\n"
                 "\n"
                 ,
-                cchLibBaseName, g_pszLibrary);
+                szSanitizedLibName);
     }
 
 
@@ -1542,15 +1576,17 @@ static RTEXITCODE generateOutputInnerArm64(FILE *pOutput)
      */
     if (g_fWithExplictLoadFunction)
     {
-        int cchLibBaseName = (int)(strchr(g_pszLibrary, '.') ? strchr(g_pszLibrary, '.') - g_pszLibrary : strlen(g_pszLibrary));
+        char szSanitizedLibName[256];
+        if (!sanitizeLibNameForUseAsCName(szSanitizedLibName, sizeof(szSanitizedLibName), g_pszLibrary))
+            return RTEXITCODE_FAILURE;
         fprintf(pOutput,
                 "/**\n"
-                " * ExplicitlyLoad%.*s(bool fResolveAllImports, pErrInfo);\n"
+                " * ExplicitlyLoad%s(bool fResolveAllImports, pErrInfo);\n"
                 " */\n"
                 "BEGINCODE\n"
                 ".p2align 3\n"
-                ".globl NAME(ExplicitlyLoad%.*s)\n"
-                "NAME(ExplicitlyLoad%.*s):\n"
+                ".globl NAME(ExplicitlyLoad%s)\n"
+                "NAME(ExplicitlyLoad%s):\n"
                 "    .cfi_startproc\n"
                 "    /* Create frame. */\n"
                 "    sub     sp, sp, #(16 + 96)\n"
@@ -1585,9 +1621,9 @@ static RTEXITCODE generateOutputInnerArm64(FILE *pOutput)
                 "    b.ne    Lexplicit_loaded_module\n"
                 "\n"
                 ,
-                cchLibBaseName, g_pszLibrary,
-                cchLibBaseName, g_pszLibrary,
-                cchLibBaseName, g_pszLibrary);
+                szSanitizedLibName,
+                szSanitizedLibName,
+                szSanitizedLibName);
         fprintf(pOutput,
                 "Lexplicit_load_module:\n");
         if (!g_fSystemLibrary)
@@ -1885,7 +1921,7 @@ int main(int argc, char **argv)
             else if (   !strcmp(psz, "--version")
                      || !strcmp(psz, "-V"))
             {
-                printf("$Revision: 114226 $\n");
+                printf("$Revision: 114774 $\n");
                 return RTEXITCODE_SUCCESS;
             }
             else

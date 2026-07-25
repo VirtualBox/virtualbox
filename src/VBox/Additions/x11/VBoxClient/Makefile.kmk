@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for the VirtualBox Guest Addition X11 Client.
 #
@@ -45,7 +45,7 @@ VBOX_WITH_SEAMLESS := 1
 #
 PROGRAMS += VBoxClient
 VBoxClient_TEMPLATE = VBoxGuestR3Exe
-VBoxClient_DEFS += VBOX_X11_CLIPBOARD VBOX_WITH_HGCM
+VBoxClient_DEFS += VBOX_IN_VBOXCLIENT VBOX_X11_CLIPBOARD VBOX_WITH_HGCM
 ifdef VBOX_WITH_AUTOMATIC_DEFS_QUOTING
  VBoxClient_DEFS += VBOX_BUILD_TARGET="$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH)"
 else
@@ -175,6 +175,7 @@ ifdef VBOX_WITH_SHARED_CLIPBOARD
   VBoxClient_DEFS.linux += VBOX_WITH_WAYLAND_ADDITIONS
   VBoxClient_INCS.linux += . ../wlInclude/
   VBoxClient_SOURCES.linux += \
+  	clipboard-cmds.cpp \
   	wayland-helper-xdcp-common.cpp \
   	$(VBoxClient_0_OUTDIR)/wayland-helper-dcp.cpp \
   	wayland-helper-edcp.cpp \
@@ -183,9 +184,15 @@ ifdef VBOX_WITH_SHARED_CLIPBOARD
   	wayland.cpp \
   	wayland-helper-ipc.cpp \
   	$(PATH_ROOT)/src/VBox/GuestHost/common/mime-type-converter.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/common/VbghWayland.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/common/VbghWaylandPopup.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/VbghWaylandClipboard.cpp \
   	../wlInclude/wayland-protocol.c \
   	../wlInclude/wlr-data-control-unstable-v1.c \
-  	../wlInclude/ext-data-control-v1.c
+  	../wlInclude/ext-data-control-v1.c \
+  	../wlInclude/xdg-shell.c \
+  	../wlInclude/xdg-activation-v1.c \
+  	../wlInclude/gtk-shell.c
 
   VBoxClient_CLEAN.linux += $(VBoxClient_0_OUTDIR)/wayland-helper-dcp.cpp
   $$(VBoxClient_0_OUTDIR)/wayland-helper-dcp.cpp: \
@@ -214,7 +221,9 @@ ifdef VBOX_WITH_VBOXCLIENT_LAZY_LOAD
   $$$$(VBoxClient_0_OUTDIR)/$(2)LazyLoad.asm: $$(PATH_ROOT)/src/VBox/GuestHost/$(2).def $(VBOX_DEF_2_LAZY_LOAD) | $$$$(dir $$@)
 	$$(call MSG_TOOL,VBoxDef2LazyLoad,$$(PATH_ROOT)/src/VBox/GuestHost/$(2).def,$$@)
 	$$(QUIET)$$(RM) -f -- "$$@"
-	$$(VBOX_DEF_2_LAZY_LOAD) --system --library $(2)$$(SUFF_DLL)$$(if $(3),.$(3),) --output "$$@" $$(PATH_ROOT)/src/VBox/GuestHost/$(2).def
+	$$(VBOX_DEF_2_LAZY_LOAD) --system --library $(2)$$(SUFF_DLL)$$(if $(3),.$(3),) --explicit-load-function \
+		--output "$$@" \
+		"$$(PATH_ROOT)/src/VBox/GuestHost/$(2).def"
  endef # VBOXCLIENT_LAZYLOAD_GEN_ASM_FN
 
  VBoxClient_DEFS    += VBOX_WITH_VBOXCLIENT_LAZY_LOAD

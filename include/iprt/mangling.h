@@ -1282,6 +1282,7 @@
 # define RTFuzzTgtStateReset                            RT_MANGLER(RTFuzzTgtStateReset)
 # define RTFuzzTgtStateRetain                           RT_MANGLER(RTFuzzTgtStateRetain)
 # define RTGetOpt                                       RT_MANGLER(RTGetOpt)
+# define RTGetOptEx                                     RT_MANGLER(RTGetOptEx)
 # define RTGetOptArgvFree                               RT_MANGLER(RTGetOptArgvFree)
 # define RTGetOptArgvFreeEx                             RT_MANGLER(RTGetOptArgvFreeEx)
 # define RTGetOptArgvFromString                         RT_MANGLER(RTGetOptArgvFromString)

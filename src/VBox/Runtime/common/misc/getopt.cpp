@@ -1,4 +1,4 @@
-/* $Id: getopt.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: getopt.cpp 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Command Line Parsing
  */
@@ -691,6 +691,17 @@ static void rtGetOptMoveArgvEntries(char **papszTo, char **papszFrom)
 
 RTDECL(int) RTGetOpt(PRTGETOPTSTATE pState, PRTGETOPTUNION pValueUnion)
 {
+    return RTGetOptEx(pState, pValueUnion, NULL, 0);
+}
+
+
+RTDECL(int) RTGetOptEx(PRTGETOPTSTATE pState, PRTGETOPTUNION pValueUnion, PCRTGETOPTDEF paExtraOptions, size_t cExtraOptions)
+{
+    if (!cExtraOptions)
+        Assert(paExtraOptions == NULL);
+    else
+        AssertPtr(paExtraOptions);
+
     /*
      * Reset the variables kept in state.
      */
@@ -711,14 +722,17 @@ RTDECL(int) RTGetOpt(PRTGETOPTSTATE pState, PRTGETOPTUNION pValueUnion)
     int             iThis;
     const char     *pszArgThis;
     size_t          cchMatch;
-    PCRTGETOPTDEF   pOpt;
+    PCRTGETOPTDEF   pOpt = NULL;
 
     if (pState->pszNextShort)
     {
         /*
          * We've got short options left over from the previous call.
          */
-        pOpt = rtGetOptSearchShort(*pState->pszNextShort, pState->paOptions, pState->cOptions, pState->fFlags);
+        if (cExtraOptions)
+            pOpt = rtGetOptSearchShort(*pState->pszNextShort, paExtraOptions, cExtraOptions, pState->fFlags);
+        if (!cExtraOptions || !pOpt)
+            pOpt = rtGetOptSearchShort(*pState->pszNextShort, pState->paOptions, pState->cOptions, pState->fFlags);
         if (!pOpt)
         {
             pValueUnion->psz = pState->pszNextShort;
@@ -763,7 +777,11 @@ RTDECL(int) RTGetOpt(PRTGETOPTSTATE pState, PRTGETOPTUNION pValueUnion)
              * This way we can make sure single dash long options doesn't
              * get mixed up with short ones.
              */
-            pOpt = rtGetOptSearchLong(pszArgThis, pState->paOptions, pState->cOptions, pState->fFlags, &cchMatch);
+            cchMatch = 0;
+            if (cExtraOptions)
+                pOpt = rtGetOptSearchLong(pszArgThis, paExtraOptions, cExtraOptions, pState->fFlags, &cchMatch);
+            if (!cExtraOptions || !pOpt)
+                pOpt = rtGetOptSearchLong(pszArgThis, pState->paOptions, pState->cOptions, pState->fFlags, &cchMatch);
             fShort = false;
             if (!pOpt)
             {
@@ -777,7 +795,10 @@ RTDECL(int) RTGetOpt(PRTGETOPTSTATE pState, PRTGETOPTUNION pValueUnion)
                     && chNext != '\0'
                     && !((unsigned char)chNext & 0x80))
                 {
-                    pOpt = rtGetOptSearchShort(chNext, pState->paOptions, pState->cOptions, pState->fFlags);
+                    if (cExtraOptions)
+                        pOpt = rtGetOptSearchShort(chNext, paExtraOptions, cExtraOptions, pState->fFlags);
+                    if (!cExtraOptions || !pOpt)
+                        pOpt = rtGetOptSearchShort(chNext, pState->paOptions, pState->cOptions, pState->fFlags);
                     if (pOpt)
                     {
                         cchMatch = (size_t)(&pszNext[1] - pszArgThis);

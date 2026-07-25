@@ -1201,10 +1201,10 @@ void ShClX11SetCallbacks(PSHCLX11CTX pCtx, PSHCLCALLBACKS pCallbacks)
  * Initializes a X11 context of the Shared Clipboard.
  *
  * @returns VBox status code.
- * @param   pCtx                The clipboard context to initialize.
- * @param   pCallbacks          Callback table to use.
- * @param   pParent             Parent context to use.
- * @param   fHeadless           Whether the code runs in a headless environment or not.
+ * @param   pCtx        The clipboard context to initialize.
+ * @param   pCallbacks  Callbacks to use (copied, not used directly). Optional.
+ * @param   pParent     Parent context to use.
+ * @param   fHeadless   Whether the code runs in a headless environment or not.
  */
 int ShClX11Init(PSHCLX11CTX pCtx, PSHCLCALLBACKS pCallbacks, PSHCLCONTEXT pParent, bool fHeadless)
 {
