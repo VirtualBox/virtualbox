@@ -428,11 +428,11 @@ static int clipThreadScheduleCall(PSHCLX11CTX pCtx,
  */
 static void clipReportFormatsToVBox(PSHCLX11CTX pCtx)
 {
-    SHCLFORMATS vboxFmt  = clipVBoxFormatForX11Format(pCtx->idxFmtText);
-                vboxFmt |= clipVBoxFormatForX11Format(pCtx->idxFmtBmp);
-                vboxFmt |= clipVBoxFormatForX11Format(pCtx->idxFmtHTML);
+    SHCLFORMATS vboxFmt = clipVBoxFormatForX11Format(pCtx->idxFmtText);
+    vboxFmt            |= clipVBoxFormatForX11Format(pCtx->idxFmtBmp);
+    vboxFmt            |= clipVBoxFormatForX11Format(pCtx->idxFmtHTML);
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-                vboxFmt |= clipVBoxFormatForX11Format(pCtx->idxFmtURI);
+    vboxFmt            |= clipVBoxFormatForX11Format(pCtx->idxFmtURI);
 #endif
 
     LogFlowFunc(("idxFmtText=%u ('%s'), idxFmtBmp=%u ('%s'), idxFmtHTML=%u ('%s')",
@@ -444,12 +444,12 @@ static void clipReportFormatsToVBox(PSHCLX11CTX pCtx)
 #endif
     Log((" -> vboxFmt=%#x\n", vboxFmt));
 
-#ifdef LOG_ENABLED
-    char *pszFmts = ShClFormatsToStrA(vboxFmt);
-    AssertPtrReturnVoid(pszFmts);
-    LogRel2(("Shared Clipboard: X11 reported available VBox formats '%s'\n", pszFmts));
-    RTStrFree(pszFmts);
-#endif
+    if (LogRelIs2Enabled())
+    {
+        char *pszFmts = ShClFormatsToStrA(vboxFmt);
+        LogRel2(("Shared Clipboard: X11 reported available VBox formats %#x / '%s'\n", vboxFmt, pszFmts ? pszFmts : "<alloc failed>"));
+        RTStrFree(pszFmts);
+    }
 
     if (pCtx->Callbacks.pfnReportFormats)
         pCtx->Callbacks.pfnReportFormats(pCtx->pFrontend, vboxFmt, NULL /* pvUser */);
@@ -1511,12 +1511,13 @@ static int shClX11RequestDataForX11CallbackHelper(PSHCLX11CTX pCtx, SHCLFORMAT u
     AssertPtrReturn(ppv,  VERR_INVALID_POINTER);
     AssertPtrReturn(pcb,  VERR_INVALID_POINTER);
 
-#ifdef LOG_ENABLED
-    char *pszFmts = ShClFormatsToStrA(uFmt);
-    AssertPtrReturn(pszFmts, VERR_NO_MEMORY);
-    LogRel2(("Shared Clipboard: Requesting data for X11 from source as '%s'\n", pszFmts));
-    RTStrFree(pszFmts);
-#endif
+    if (LogRelIs2Enabled())
+    {
+        char *pszFmts = ShClFormatsToStrA(uFmt);
+        LogRel2(("Shared Clipboard: Requesting data for X11 from source as %#x/'%s'\n",
+                 uFmt, pszFmts ? pszFmts : "<alloc failed>"));
+        RTStrFree(pszFmts);
+    }
 
     int rc = VINF_SUCCESS;
 
@@ -1757,11 +1758,13 @@ static int clipConvertToX11Data(PSHCLX11CTX pCtx, Atom *atomTarget,
     LogFlowFunc(("vboxFormats=0x%x, idxFmtX11=%u ('%s'), fmtX11=%u\n",
                  pCtx->vboxFormats, idxFmtX11, g_aFormats[idxFmtX11].pcszAtom, fmtX11));
 
-    char *pszFmts = ShClFormatsToStrA(pCtx->vboxFormats);
-    AssertPtrReturn(pszFmts, VERR_NO_MEMORY);
-    LogRel2(("Shared Clipboard: Converting VBox formats '%s' to '%s' for X11\n",
-             pszFmts, fmtX11 == SHCLX11FMT_INVALID ? "<invalid>" : g_aFormats[idxFmtX11].pcszAtom));
-    RTStrFree(pszFmts);
+    if (LogRelIs2Enabled())
+    {
+        char *pszFmts = ShClFormatsToStrA(pCtx->vboxFormats);
+        LogRel2(("Shared Clipboard: Converting VBox formats %#x/'%s' to '%s' for X11\n", pCtx->vboxFormats,
+                 pszFmts ? pszFmts : "<alloc failed>", fmtX11 == SHCLX11FMT_INVALID ? "<invalid>" : g_aFormats[idxFmtX11].pcszAtom));
+        RTStrFree(pszFmts);
+    }
 
     void    *pv = NULL;
     uint32_t cb = 0;
@@ -1870,16 +1873,14 @@ static int clipConvertToX11Data(PSHCLX11CTX pCtx, Atom *atomTarget,
     }
 
     if (   RT_FAILURE(rc)
-        && rc != VERR_SHCLPB_NO_DATA)
+        && rc != VERR_SHCLPB_NO_DATA
+        && LogRelIsEnabled())
     {
         char *pszFmts2 = ShClFormatsToStrA(pCtx->vboxFormats);
         char *pszAtomName = XGetAtomName(XtDisplay(pCtx->pWidget), *atomTarget);
-
         LogRel(("Shared Clipboard: Converting VBox formats '%s' to '%s' for X11 (idxFmtX11=%u, fmtX11=%u, atomTarget='%s') failed, rc=%Rrc\n",
-                pszFmts2 ? pszFmts2 : "unknown", g_aFormats[idxFmtX11].pcszAtom, idxFmtX11, fmtX11, pszAtomName ? pszAtomName : "unknown", rc));
-
-        if (pszFmts2)
-            RTStrFree(pszFmts2);
+                pszFmts2 ? pszFmts2 : "<alloc error>", g_aFormats[idxFmtX11].pcszAtom, idxFmtX11, fmtX11, pszAtomName ? pszAtomName : "unknown", rc));
+        RTStrFree(pszFmts2);
         if (pszAtomName)
             XFree(pszAtomName);
     }
@@ -2005,12 +2006,13 @@ static void shClX11ReportFormatsToX11Worker(void *pvUserData, void * /* interval
 
     RTMemFree(pReq);
 
-#ifdef LOG_ENABLED
-    char *pszFmts = ShClFormatsToStrA(fFormats);
-    AssertPtrReturnVoid(pszFmts);
-    LogRel2(("Shared Clipboard: Reported available VBox formats %s to X11\n", pszFmts));
-    RTStrFree(pszFmts);
-#endif
+    if (LogRelIs2Enabled())
+    {
+        char *pszFmts = ShClFormatsToStrA(fFormats);
+        LogRel2(("Shared Clipboard: Reported available VBox formats %#x/'%s' to X11\n",
+                 fFormats, pszFmts ? pszFmts : "<alloc failed>"));
+        RTStrFree(pszFmts);
+    }
 
     clipInvalidateClipboardCache(pCtx);
     clipGrabX11Clipboard(pCtx, fFormats);
@@ -2486,11 +2488,14 @@ SHCL_X11_DECL(void) clipConvertDataFromX11(Widget widget, XtPointer pClient,
         if (pReq) /* Give some more clues, if available. */
         {
             AssertReturnVoid(pReq->enmType == SHCLX11EVENTTYPE_READ);
-            char *pszFmts = ShClFormatsToStrA(pReq->Read.uFmtVBox);
-            AssertPtrReturnVoid(pszFmts);
             AssertReturnVoid(pReq->Read.idxFmtX11 < SHCL_MAX_X11_FORMATS); /* Paranoia, should be checked already by the caller. */
-            LogRel2(("Shared Clipboard: Converting X11 format '%s' -> VBox format(s) '%s'\n", g_aFormats[pReq->Read.idxFmtX11].pcszAtom, pszFmts));
-            RTStrFree(pszFmts);
+            if (LogRelIs2Enabled())
+            {
+                char *pszFmts = ShClFormatsToStrA(pReq->Read.uFmtVBox);
+                LogRel2(("Shared Clipboard: Converting X11 format '%s' -> VBox format %#x/'%s'\n",
+                         g_aFormats[pReq->Read.idxFmtX11].pcszAtom, pReq->Read.uFmtVBox, pszFmts ? pszFmts : "<alloc failed>"));
+                RTStrFree(pszFmts);
+            }
 
             if (pReq->pCtx->Callbacks.pfnOnClipboardRead) /* Usually only used for testcases. */
             {

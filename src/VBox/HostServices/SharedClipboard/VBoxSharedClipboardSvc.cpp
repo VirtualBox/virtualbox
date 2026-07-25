@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc.cpp 114772 2026-07-25 21:30:10Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Host service entry points.
  */
@@ -1834,12 +1834,13 @@ static int shClSvcClientMsgDataRead(PSHCLCLIENT pClient, uint32_t cParms, VBOXHG
             pClient->State.POD.uFormat = uFormat;
     }
 
-#ifdef LOG_ENABLED
-    char *pszFmt = ShClFormatsToStrA(uFormat);
-    AssertPtrReturn(pszFmt, VERR_NO_MEMORY);
-    LogRel2(("Shared Clipboard: Guest wants to read %RU32 bytes host clipboard data in format '%s'\n", cbData, pszFmt));
-    RTStrFree(pszFmt);
-#endif
+    if (LogRelIs2Enabled())
+    {
+        char *pszFmt = ShClFormatsToStrA(uFormat);
+        LogRel2(("Shared Clipboard: Guest wants to read %RU32 bytes host clipboard data in format %#x/'%s'\n",
+                 cbData, uFormat, pszFmt ? pszFmt : "<alloc failed>"));
+        RTStrFree(pszFmt);
+    }
 
     /*
      * Do the reading.
@@ -2036,14 +2037,13 @@ static int shClSvcClientMsgDataWrite(PSHCLCLIENT pClient, uint32_t cParms, VBOXH
             pClient->State.POD.uFormat = uFormat;
     }
 
-#ifdef LOG_ENABLED
-    char *pszFmt = ShClFormatsToStrA(uFormat);
-    if (pszFmt)
+    if (LogRelIs2Enabled())
     {
-        LogRel2(("Shared Clipboard: Guest writes %RU32 bytes clipboard data in format '%s' to host\n", cbData, pszFmt));
+        char *pszFmt = ShClFormatsToStrA(uFormat);
+        LogRel2(("Shared Clipboard: Guest writes %RU32 bytes clipboard data in format %#x/'%s' to host\n",
+                 cbData, uFormat, pszFmt ? pszFmt : "<alloc failed>"));
         RTStrFree(pszFmt);
     }
-#endif
 
     /*
      * Write the data to the active host side clipboard.

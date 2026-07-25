@@ -1,4 +1,4 @@
-/* $Id: VBoxClipboard.cpp 111943 2025-11-28 17:46:00Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxClipboard.cpp 114772 2026-07-25 21:30:10Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxClipboard - Shared clipboard, Windows Guest Implementation.
  */
@@ -497,8 +497,8 @@ static LRESULT vbtrShClWndProcWorker(PSHCLCONTEXT pCtx, HWND hwnd, UINT msg, WPA
             LogFunc(("WM_RENDERFORMAT: uFmtWin=%u -> uFmtVBox=0x%x\n", uFmtWin, uFmtVBox));
 
             char *pszFmts = ShClFormatsToStrA(uFmtVBox);
-            AssertPtrReturn(pszFmts, 0);
-            VBoxTrayVerbose(1, "Shared Clipboard: Rendering Windows format %#x as VBox format '%s'\n", uFmtWin, pszFmts);
+            VBoxTrayVerbose(1, "Shared Clipboard: Rendering Windows format %#x as VBox format %#x/'%s'\n",
+                            uFmtWin, uFmtVBox, pszFmts ? pszFmts : "<alloc failed>");
             RTStrFree(pszFmts);
 
             if (uFmtVBox == VBOX_SHCL_FMT_NONE)
@@ -606,8 +606,8 @@ static LRESULT vbtrShClWndProcWorker(PSHCLCONTEXT pCtx, HWND hwnd, UINT msg, WPA
             const SHCLFORMATS fFormats = pEvent->u.fReportedFormats;
 
             char *pszFmts = ShClFormatsToStrA(fFormats);
-            AssertPtrReturn(pszFmts, 0);
-            VBoxTrayVerbose(1, "Shared Clipboard: Host reported formats '%s'\n", pszFmts);
+            VBoxTrayVerbose(1, "Shared Clipboard: Host reported formats %#x/'%s'\n",
+                            fFormats, pszFmts ? pszFmts : "<alloc failed>");
             RTStrFree(pszFmts);
 
             if (fFormats != VBOX_SHCL_FMT_NONE) /* Could arrive with some older GA versions. */
@@ -648,8 +648,8 @@ static LRESULT vbtrShClWndProcWorker(PSHCLCONTEXT pCtx, HWND hwnd, UINT msg, WPA
             LogFlowFunc(("SHCL_WIN_WM_READ_DATA: fFormat=%#x\n", fFormat));
 
             char *pszFmts = ShClFormatsToStrA(fFormat);
-            AssertPtrReturn(pszFmts, 0);
-            VBoxTrayVerbose(1, "Shared Clipboard: Sending data to host as '%s'\n", pszFmts);
+            VBoxTrayVerbose(1, "Shared Clipboard: Sending data to host as %#x/'%s'\n",
+                            fFormat, pszFmts ? pszFmts : "<alloc failed>");
             RTStrFree(pszFmts);
 
             int rc = ShClWinOpen(hwnd);
