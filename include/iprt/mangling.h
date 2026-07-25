@@ -2493,6 +2493,7 @@
 # define RTStrPurgeEncoding                             RT_MANGLER(RTStrPurgeEncoding)
 # define RTStrPurgeComplementSet                        RT_MANGLER(RTStrPurgeComplementSet)
 # define RTStrPutCpInternal                             RT_MANGLER(RTStrPutCpInternal)
+# define RTStrPutCpRetLenInternal                       RT_MANGLER(RTStrPutCpRetLenInternal)
 # define RTStrReallocTag                                RT_MANGLER(RTStrReallocTag)
 # define RTStrSimplePatternMatch                        RT_MANGLER(RTStrSimplePatternMatch)
 # define RTStrSimplePatternMultiMatch                   RT_MANGLER(RTStrSimplePatternMultiMatch)

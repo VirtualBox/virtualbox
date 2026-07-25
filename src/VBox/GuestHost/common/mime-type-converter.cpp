@@ -1,4 +1,4 @@
-/* $Id: mime-type-converter.cpp 114768 2026-07-24 22:25:45Z knut.osmundsen@oracle.com $ */
+/* $Id: mime-type-converter.cpp 114770 2026-07-25 11:53:54Z knut.osmundsen@oracle.com $ */
 /** @file
  * Common code for mime-type data conversion.
  *
@@ -98,6 +98,7 @@ static DECLCALLBACK(int) vbghMimeCvtUtf8FromVBox(void const *pvBufIn, size_t cbB
                                        RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
     if (RT_SUCCESS(rc))
     {
+#if 0
         size_t cbDst = 0;
         rc = ShClHlpUtf16LenUtf8(pwszBufIn, cwcBufIn, &cbDst);
         if (RT_SUCCESS(rc))
@@ -121,8 +122,17 @@ static DECLCALLBACK(int) vbghMimeCvtUtf8FromVBox(void const *pvBufIn, size_t cbB
                 rc = VERR_NO_MEMORY;
             }
         }
+#else
+        char  *pszDst           = NULL;
+        size_t cbActualSansTerm = 0;
+        rc = ShClHlpConvUtf16CRLFToUtf8LFA(pwszBufIn, cwcBufIn, &pszDst, &cbActualSansTerm);
+        if (RT_SUCCESS(rc))
+        {
+            *pcbBufOut = cbActualSansTerm;
+            *ppvBufOut = pszDst;
+        }
+#endif
     }
-
     return rc;
 }
 

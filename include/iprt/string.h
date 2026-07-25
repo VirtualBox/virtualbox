@@ -1323,6 +1323,29 @@ RTDECL(int) RTStrGetCpNExInternal(const char **ppsz, size_t *pcch, PRTUNICP pCp)
 RTDECL(char *) RTStrPutCpInternal(char *psz, RTUNICP CodePoint);
 
 /**
+ * Put the unicode code point at the given string position
+ * and return the encoded length.
+ *
+ * This function will not consider anything at or following the
+ * buffer area pointed to by psz. It is therefore not suitable for
+ * inserting code points into a string, only appending/overwriting.
+ *
+ * @returns pointer to the char following the written code point.
+ * @param   psz         The destination string.
+ * @param   CodePoint   The code point to write.
+ *                      This should not be RTUNICP_INVALID or any other
+ *                      character out of the UTF-8 range.
+ *
+ * @remark  This is a worker function for RTStrPutCpRetLen().
+ *
+ * @note    The function may write up to 6 chars (bytes) at @a psz and is not
+ *          able to check for overflows. The caller is therefore expected to
+ *          ensure sufficient buffer space.
+ *
+ */
+RTDECL(size_t) RTStrPutCpRetLenInternal(char *psz, RTUNICP CodePoint);
+
+/**
  * Get the unicode code point at the given string position.
  *
  * @returns unicode code point.
@@ -1455,7 +1478,6 @@ DECLINLINE(size_t) RTStrCpSize(RTUNICP CodePoint)
  * @note    The function may write up to 6 chars (bytes) at @a psz and is not
  *          able to check for overflows. The caller is therefore expected to
  *          ensure sufficient buffer space.
- *
  */
 DECLINLINE(char *) RTStrPutCp(char *psz, RTUNICP CodePoint)
 {
@@ -1465,6 +1487,38 @@ DECLINLINE(char *) RTStrPutCp(char *psz, RTUNICP CodePoint)
         return psz;
     }
     return RTStrPutCpInternal(psz, CodePoint);
+}
+
+/**
+ * Put the unicode code point at the given string position
+ * and return the encoded length.
+ *
+ * This function will not consider anything at or following the
+ * buffer area pointed to by psz. It is therefore not suitable for
+ * inserting code points into a string, only appending/overwriting.
+ *
+ * @returns pointer to the char following the written code point.
+ * @param   psz         The destination string.
+ * @param   CodePoint   The code point to write.
+ *                      This should not be RTUNICP_INVALID or any other
+ *                      character out of the UTF-8 range.
+ *
+ * @remark  We optimize this operation by using an inline function for
+ *          the most frequent and simplest sequence, the rest is
+ *          handled by RTStrPutCpRetLenInternal().
+ *
+ * @note    The function may write up to 6 chars (bytes) at @a psz and is not
+ *          able to check for overflows. The caller is therefore expected to
+ *          ensure sufficient buffer space.
+ */
+DECLINLINE(size_t) RTStrPutCpRetLen(char *psz, RTUNICP CodePoint)
+{
+    if (CodePoint < 0x80)
+    {
+        *psz = (char)CodePoint;
+        return 1;
+    }
+    return RTStrPutCpRetLenInternal(psz, CodePoint);
 }
 
 /**

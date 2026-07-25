@@ -1676,6 +1676,8 @@ static int clipConvertUtf16ToX11Data(Display *pDisplay, PRTUTF16 pwszSrc,
                 *pcLenReturn    = cbActual + 1 /* Include terminator */;
                 *piFormatReturn = 8;
             }
+            else
+                XtFree(pszDst);
         }
         else
             rc = VERR_NO_MEMORY;
