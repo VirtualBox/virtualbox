@@ -1,4 +1,4 @@
-/* $Id: DisplayServerType.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: DisplayServerType.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest / Host common code - Session type detection + handling.
  */
@@ -67,18 +67,19 @@ const char *VBGHDisplayServerTypeToStr(VBGHDISPLAYSERVERTYPE enmType)
         RT_CASE_RET_STR(VBGHDISPLAYSERVERTYPE_X11);
         RT_CASE_RET_STR(VBGHDISPLAYSERVERTYPE_PURE_WAYLAND);
         RT_CASE_RET_STR(VBGHDISPLAYSERVERTYPE_XWAYLAND);
-        default: break;
     }
-
     AssertFailedReturn("<invalid>");
 }
 
 
-#define GET_SYMBOL(a_Mod, a_Name, a_Fn) \
-    if (RT_SUCCESS(rc)) \
-        rc = RTLdrGetSymbol(a_Mod, a_Name, (void **)&a_Fn); \
-    if (RT_FAILURE(rc)) \
-        LogRel2(("Symbol '%s' unable to load, rc=%Rrc\n", a_Name, rc));
+#define GET_SYMBOL(a_hMod, a_szName, a_pfn) do { \
+        if (RT_SUCCESS(rc)) \
+        { \
+            rc = RTLdrGetSymbol(a_hMod, a_szName, (void **)&(a_pfn)); \
+            if (RT_FAILURE(rc)) \
+                LogRel2(("Unable to resolve symbol '%s' (%Rrc)\n", a_szName, rc)); \
+        } \
+    } while (0)
 
 /**
  * Tries to detect the desktop display server type the process is running in.
@@ -100,23 +101,22 @@ VBGHDISPLAYSERVERTYPE VBGHDisplayServerTypeDetect(void)
     /* Try to connect to the wayland display, assuming it succeeds only when a wayland compositor is active: */
     bool     fHasWayland    = false;
     RTLDRMOD hWaylandClient = NIL_RTLDRMOD;
-
     int rc = RTLdrLoadSystem("libwayland-client.so.0", true /*fNoUnload*/, &hWaylandClient);
     if (RT_SUCCESS(rc))
     {
-        void * (*pWaylandDisplayConnect)(const char *) = NULL;
-        GET_SYMBOL(hWaylandClient, "wl_display_connect", pWaylandDisplayConnect);
-        void (*pWaylandDisplayDisconnect)(void *) = NULL;
-        GET_SYMBOL(hWaylandClient, "wl_display_disconnect", pWaylandDisplayDisconnect);
-        if (RT_SUCCESS(rc))
+        void * (*pfnWaylandDisplayConnect)(const char *) = NULL;
+        GET_SYMBOL(hWaylandClient, "wl_display_connect", pfnWaylandDisplayConnect);
+        void (*pfnWaylandDisplayDisconnect)(void *) = NULL;
+        GET_SYMBOL(hWaylandClient, "wl_display_disconnect", pfnWaylandDisplayDisconnect);
+        if (   RT_SUCCESS(rc)
+            && RT_VALID_PTR(pfnWaylandDisplayConnect)
+            && RT_VALID_PTR(pfnWaylandDisplayDisconnect))
         {
-            AssertPtrReturn(pWaylandDisplayConnect, VBGHDISPLAYSERVERTYPE_NONE);
-            AssertPtrReturn(pWaylandDisplayDisconnect, VBGHDISPLAYSERVERTYPE_NONE);
-            void *pDisplay = pWaylandDisplayConnect(NULL);
-            if (pDisplay)
+            void *pvDisplay = pfnWaylandDisplayConnect(NULL);
+            if (pvDisplay)
             {
                 fHasWayland = true;
-                pWaylandDisplayDisconnect(pDisplay);
+                pfnWaylandDisplayDisconnect(pvDisplay);
             }
             else
                 LogRel2(("Connecting to Wayland display failed\n"));
@@ -134,15 +134,15 @@ VBGHDISPLAYSERVERTYPE VBGHDisplayServerTypeDetect(void)
         GET_SYMBOL(hX11, "XOpenDisplay", pfnOpenDisplay);
         int (*pfnCloseDisplay)(void *) = NULL;
         GET_SYMBOL(hX11, "XCloseDisplay", pfnCloseDisplay);
-        if (RT_SUCCESS(rc))
+        if (   RT_SUCCESS(rc)
+            && RT_VALID_PTR(pfnOpenDisplay)
+            && RT_VALID_PTR(pfnCloseDisplay))
         {
-            AssertPtrReturn(pfnOpenDisplay, VBGHDISPLAYSERVERTYPE_NONE);
-            AssertPtrReturn(pfnCloseDisplay, VBGHDISPLAYSERVERTYPE_NONE);
-            void *pDisplay = pfnOpenDisplay(NULL);
-            if (pDisplay)
+            void *pvDisplay = pfnOpenDisplay(NULL);
+            if (pvDisplay)
             {
                 fHasX = true;
-                pfnCloseDisplay(pDisplay);
+                pfnCloseDisplay(pvDisplay);
             }
             else
                 LogRel2(("Opening X display failed\n"));
@@ -152,17 +152,16 @@ VBGHDISPLAYSERVERTYPE VBGHDisplayServerTypeDetect(void)
     }
 
     /* If both wayland and X11 display can be connected then we should have XWayland: */
-    VBGHDISPLAYSERVERTYPE retSessionType = VBGHDISPLAYSERVERTYPE_NONE;
+    VBGHDISPLAYSERVERTYPE enmRetSessionType = VBGHDISPLAYSERVERTYPE_NONE;
     if (fHasWayland && fHasX)
-        retSessionType = VBGHDISPLAYSERVERTYPE_XWAYLAND;
+        enmRetSessionType = VBGHDISPLAYSERVERTYPE_XWAYLAND;
     else if (fHasWayland)
-        retSessionType = VBGHDISPLAYSERVERTYPE_PURE_WAYLAND;
+        enmRetSessionType = VBGHDISPLAYSERVERTYPE_PURE_WAYLAND;
     else if (fHasX)
-        retSessionType = VBGHDISPLAYSERVERTYPE_X11;
+        enmRetSessionType = VBGHDISPLAYSERVERTYPE_X11;
 
-    LogRel2(("Detected via connection: %s\n", VBGHDisplayServerTypeToStr(retSessionType)));
-
-    return retSessionType;
+    LogRel2(("Detected via connection: %s\n", VBGHDisplayServerTypeToStr(enmRetSessionType)));
+    return enmRetSessionType;
 }
 
 /**

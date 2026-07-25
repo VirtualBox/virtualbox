@@ -1,4 +1,4 @@
-/* $Id: wayland-helper-xdcp-common.h 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland-helper-xdcp-common.h 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Definitions for Data Control protocols family helpers.
  */
@@ -52,36 +52,32 @@
 #define VBCL_WAYLAND_SEAT_VERSION_MIN                       (5)
 #define VBCL_WAYLAND_ZWLR_DATA_CONTROL_MANAGER_VERSION_MIN  (1)
 
-/* A helper for matching interface and bind to it in registry callback.*/
-#define VBCL_WAYLAND_REGISTRY_ADD_MATCH(_pRegistry, _sIfaceName, _uIface, _iface_to_bind_to, _ctx_member, _ctx_member_type, _uVersion) \
-    if (RTStrNCmp(_sIfaceName, _iface_to_bind_to.name, VBCL_WAYLAND_INTERFACE_NAME_MAX) == 0) \
-    { \
-        if (! _ctx_member) \
-        { \
-            _ctx_member = \
-                (_ctx_member_type)wl_registry_bind(_pRegistry, _uIface, &_iface_to_bind_to, _uVersion); \
-            VBClLogVerbose(4, "binding to Wayland interface '%s' (%u) v%u\n", _iface_to_bind_to.name, _uIface, wl_proxy_get_version((struct wl_proxy *) _ctx_member)); \
-        } \
-        AssertPtrReturnVoid(_ctx_member); \
-    }
-
 /**
- * MIME type list entry.
+ * A helper for the registry callback for binding and returning if the current
+ * entry matches.
  */
-typedef struct
-{
-    /** IPRT list node. */
-    RTLISTNODE  Node;
-    /** Data MIME type in string representation. */
-    RT_FLEXIBLE_ARRAY_EXTENSION
-    char        szMimeType[RT_FLEXIBLE_ARRAY];
-} vbox_wl_dcp_mime_t;
+#define VBCL_WAYLAND_REGISTRY_MATCH_AND_BIND_AND_RET(a_pRegistry, a_pszIfaceName, a_uIfaceName, a_IfaceToBindTo, \
+                                                     a_CtxMember, a_CtxMemberType, a_uVersion) do { \
+        if (RTStrNCmp(a_pszIfaceName, a_IfaceToBindTo.name, VBCL_WAYLAND_INTERFACE_NAME_MAX) == 0) \
+        { \
+            if (!(a_CtxMember)) \
+            { \
+                a_CtxMember = (a_CtxMemberType)wl_registry_bind(a_pRegistry, a_uIfaceName, &a_IfaceToBindTo, a_uVersion); \
+                VBClLogVerbose(4, "binding to Wayland interface '%s' (%u) v%u -> %p\n", a_IfaceToBindTo.name, a_uIfaceName, \
+                               wl_proxy_get_version((struct wl_proxy *)(a_CtxMember)), (a_CtxMember)); \
+            } \
+            AssertPtr(a_CtxMember); \
+            return; \
+        } \
+    } while (0)
+
 
 /**
  * DCP session data.
  *
  * A structure which accumulates all the necessary data required to
- * maintain session between host and Wayland for clipboard sharing. */
+ * maintain session between host and Wayland for clipboard sharing.
+ */
 typedef struct
 {
     /** Generic VBoxClient Wayland session data (synchronization point). */
@@ -104,22 +100,13 @@ typedef struct
          *  are being advertised either by host or guest depending
          *  on session type. */
         vbcl::Waitable<volatile SHCLFORMATS>    fFmts;
-
-        /** Clipboard format which either host or guest wants to
-         *  obtain depending on session type. */
-        vbcl::Waitable<volatile SHCLFORMAT>     uFmt;
-
-        /** Clipboard buffer which contains requested data. */
-        vbcl::Waitable<volatile uint64_t>       pvDataBuf;
-
-        /** Size of clipboard buffer. */
-        vbcl::Waitable<volatile uint32_t>       cbDataBuf;
     } clip;
 } vbox_wl_dcp_session_t;
 
 /**
- * A set of objects required to handle clipboard sharing over
- * Data Control Protocol. */
+ * A set of objects required to handle clipboard sharing over Ext or Legacy Data
+ * Control Protocol.
+ */
 typedef struct
 {
     /** Wayland event loop thread. */
@@ -131,13 +118,12 @@ typedef struct
     /** Communication session between host event loop and Wayland. */
     vbox_wl_dcp_session_t                       Session;
 
-    /** MIME types data cache. */
-    VBGHMIMECONVCACHE                           hCache;
-
-    /** When set, incoming clipboard announcements will
-     *  be ignored. This flag is used in order to prevent a feedback
-     *  loop when host advertises clipboard data to Wayland. In this case,
-     *  Wayland will send the same advertisements back to us.  */
+    /** When set, incoming clipboard announcements will be ignored.
+     *
+     * This flag is used in order to prevent a feedback loop when host advertises
+     * clipboard data to Wayland. In this case, Wayland will send the same
+     * advertisements back
+     * to us. */
     bool                                        fIngnoreWlClipIn;
 
     /** A flag which indicates that host has announced new clipboard content
@@ -145,8 +131,9 @@ typedef struct
     *   other Wayland clients. */
     vbcl::Waitable<volatile bool>               fSendToGuest;
 
-    /** Connection handle to the host clipboard service. */
-    PVBGLR3SHCLCMDCTX                           pClipboardCtx;
+    /** Pointer to the shared clipboard context (where this crap actually should've
+     *  been living in the first place).  */
+    PSHCLCONTEXT                                pShClCtx;
 
     /** Wayland compositor connection object. */
     struct wl_display                           *pDisplay;
@@ -198,67 +185,58 @@ RTDECL(int) vbcl_wayland_xdcp_next_event(vbox_wl_xdcp_base_ctx_t *pCtx);
 RTDECL(void) vbcl_wayland_xdcp_session_prepare(vbox_wl_xdcp_base_ctx_t *pCtx);
 
 /**
- * Collect clipboard format advertised by Wayland.
+ * Initializes the common context.
  *
- * This callback adds MIME type just advertised by Wayland into a list
- * of MIME types which in turn later will be advertised to the host.
- *
- * @returns IPRT status code.
- * @param   pEnmCtx             Format enumeration conext data.
+ * @returns VBox status code.
+ * @param   pCtx                Pointer to the uninitialized context.
  */
-RTDECL(int) vbcl_wayland_xdcp_add_fmt(struct vbcl_wl_dcp_enumerate_ctx *pEnmCtx);
+int VBClWaylandXdcpCtxInit(vbox_wl_xdcp_base_ctx_t *pCtx);
 
 /**
- * Reset context.
+ * Re-Initializes the common context.
  *
- * @param   pCtx                Context data.
- * @param   fShutdown           A flag to indicate if session resources
- *                              need to be deallocated.
+ * @param   pCtx                Pointer to the context to re-initialize.
  */
-RTDECL(void) vbcl_wayland_xdcp_reset_ctx(vbox_wl_xdcp_base_ctx_t *pCtx, bool fShutdown);
+void VBClWaylandXdcpCtxReInit(vbox_wl_xdcp_base_ctx_t *pCtx);
 
 /**
- * Read clipboard data from Wayland and cache it.
+ * Terminates (uninitalizes) the common context.
  *
- * Clipboard data is cached in internal VBox representation format.
- *
- * @returns IPRT status code.
- * @param   fd                  File descriptor provided by Wayland to read data from.
- * @param   pCtx                Context data.
- * @param   pcszMimeType        Clipboard data format in string representation.
+ * @param   pCtx                Pointer to the context to terminate.
  */
-RTDECL(int) vbcl_wayland_xdcp_get_guest_clipboard(int fd, vbox_wl_xdcp_base_ctx_t *pCtx, const char *pcszMimeType);
+void VBClWaylandXdcpCtxTerm(vbox_wl_xdcp_base_ctx_t *pCtx);
+
+int VBClWaylandXdcpSetGuestClipboard(int fd, vbox_wl_xdcp_base_ctx_t *pCtx, const char *pcszMimeType);
+
+/** Parameters for vbclWaylandHlpEdcpGhClipFillCacheAndReport.   */
+typedef struct VBCLWLHLP_XDCP_FILL_OUR_CACHE_FROM_OFFER_AND_REPORT_ARGS_T
+{
+    /** The VBoxClient shared clipboard context. */
+    PSHCLCONTEXT                        pShClCtx;
+    /** The revision this report is for.   */
+    uint64_t                            uRevision;
+    /** For some wl_display_flush call. */
+    struct wl_display                  *pDisplay;
+    /** struct zwlr_data_control_offer_v1 or ext_data_control_offer_v1 pointer
+     *  used by pfnOfferReceive. */
+    void                               *pvOffer;
+    /** zwlr_data_control_offer_v1_receive / ext_data_control_offer_v1_receive
+     *  wrapper. */
+    DECLCALLBACKMEMBER(void, pfnOfferReceive,(struct VBCLWLHLP_XDCP_FILL_OUR_CACHE_FROM_OFFER_AND_REPORT_ARGS_T *pArgs,
+                                              const char *pszMimeType, int fdWrite));
+} VBCLWLHLP_XDCP_FILL_OUR_CACHE_FROM_OFFER_AND_REPORT_ARGS_T;
+DECLCALLBACK(int) VBClWaylandXdcpFillOurCacheFromOfferAndReport(void *pvUser);
+
 
 /**
- * Write clipboard data to Wayland.
- *
- * @returns IPRT status code.
- * @param   fd                  File descriptor provided by Wayland to write data to.
- * @param   pCtx                Context data.
- * @param   pcszMimeType        Clipboard data format in string representation.
- */
-RTDECL(int) vbcl_wayland_xdcp_set_guest_clipboard(int fd, vbox_wl_xdcp_base_ctx_t *pCtx, const char *pcszMimeType);
-
-/**
- * Read clipboard data from host and cache it.
- *
- * Clipboard data is cached in internal VBox representation format.
+ * Reports the host clipboard data to the guest.
  *
  * @returns IPRT status code.
  * @param   pCtx                Context data.
  * @param   fFmts               List of formats for Wayland to choose from in bitmask representation.
  */
-RTDECL(int) vbcl_wayland_xdcp_get_host_clipboard(vbox_wl_xdcp_base_ctx_t *pCtx, SHCLFORMATS fFmts);
+int VBClWaylandXdcpReportHostClipboardFormats(vbox_wl_xdcp_base_ctx_t *pCtx, SHCLFORMATS fFmts);
 
-/**
- * Write clipboard data to host.
- *
- * @returns IPRT status code.
- * @param   pCtx                Context data.
- * @param   uFmt                Clipboard data format.
- */
-
-RTDECL(int) vbcl_wayland_xdcp_set_host_clipboard(vbox_wl_xdcp_base_ctx_t *pCtx, SHCLFORMAT uFmt);
 
 #endif /* !GA_INCLUDED_SRC_x11_VBoxClient_wayland_helper_xdcp_common_h */
 

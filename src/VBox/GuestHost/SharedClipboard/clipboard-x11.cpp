@@ -1519,8 +1519,7 @@ static int shClX11RequestDataForX11CallbackHelper(PSHCLX11CTX pCtx, SHCLFORMAT u
         RTStrFree(pszFmts);
     }
 
-    int rc = VINF_SUCCESS;
-
+    int      rc;
     void    *pv = NULL;
     uint32_t cb = 0;
 
@@ -1531,42 +1530,39 @@ static int shClX11RequestDataForX11CallbackHelper(PSHCLX11CTX pCtx, SHCLFORMAT u
         rc = pCtx->Callbacks.pfnOnRequestDataFromSource(pCtx->pFrontend, uFmt, &pv, &cb,
                                                         NULL /* pvUser */);
         if (RT_SUCCESS(rc))
+        {
             rc = ShClCacheSet(&pCtx->Cache, uFmt, pv, cb);
+            /** @todo r=bird: Leaks pv/cb on ShClCacheSet error? */
+        }
     }
     else /* Cache hit */
     {
-        void   *pvCache = NULL;
-        size_t  cbCache = 0;
-        ShClCacheEntryGet(pCacheEntry, &pvCache, &cbCache);
-        if (   pvCache
-            && cbCache)
+        Assert(pCacheEntry->pvData && pCacheEntry->cbData /* (ShClCacheGet already checks this) */);
+        cb = pCacheEntry->cbData;
+        pv = RTMemDup(pCacheEntry->pvData, cb);
+        if (pv)
+            rc = VINF_SUCCESS;
+        else
         {
-            pv = RTMemDup(pvCache, cbCache);
-            if (pv)
-            {
-                cb = cbCache;
-            }
-            else
-               rc = VERR_NO_MEMORY;
+            cb = 0;
+            rc = VERR_NO_MEMORY;
         }
     }
 
     LogFlowFunc(("pCtx=%p, uFmt=%#x -> Cache %s\n", pCtx, uFmt, pCacheEntry ? "HIT" : "MISS"));
 
-    /* Safey net in case the stuff above misbehaves
-     * (must return VERR_SHCLPB_NO_DATA if no data available). */
-    if (   RT_SUCCESS(rc)
-        && (pv == NULL || cb == 0))
-        rc = VERR_SHCLPB_NO_DATA;
-
     if (RT_SUCCESS(rc))
     {
-        *ppv = pv;
-        *pcb = cb;
+       /* Safey net in case the stuff above misbehaves (must return VERR_SHCLPB_NO_DATA if no data available). */
+        if (pv != NULL && cb > 0)
+        {
+            *ppv = pv;
+            *pcb = cb;
+        }
+        else
+            rc = VERR_SHCLPB_NO_DATA;
     }
-
-    if (   RT_FAILURE(rc)
-        && rc != VERR_SHCLPB_NO_DATA)
+    else
         LogRel(("Shared Clipboard: Requesting data for X11 from source failed with %Rrc\n", rc));
 
     LogFlowFunc(("Returning pv=%p, cb=%RU32, rc=%Rrc\n", pv, cb, rc));
@@ -1962,7 +1958,7 @@ static void clipGrabX11Clipboard(PSHCLX11CTX pCtx, SHCLFORMATS uFormats)
 {
     LogFlowFuncEnter();
 
-    /** @ŧodo r=andy The docs say: "the value CurrentTime is not acceptable" here!? */
+    /** @todo r=andy The docs say: "the value CurrentTime is not acceptable" here!? */
     if (XtOwnSelection(pCtx->pWidget, clipGetAtom(pCtx, "CLIPBOARD"),
                        CurrentTime,
                        clipXtConvertSelectionProc, clipXtConvertSelectionProcLose, clipXtConvertSelectionProcDone))

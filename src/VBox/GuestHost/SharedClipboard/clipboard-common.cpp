@@ -1,4 +1,4 @@
-/* $Id: clipboard-common.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-common.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard: Some helper function for converting between the various eol.
  */
@@ -1300,20 +1300,19 @@ char *ShClFormatsToStrA(SHCLFORMATS fFormats)
 *********************************************************************************************************************************/
 
 /**
- * Returns (mutable) data of a cache entry.
+ * Return the log2 of @a uFmt.
  *
- * @param   pCacheEntry         Cache entry to return data for.
- * @param   pvData              Where to return the (mutable) data pointer.
- * @param   pcbData             Where to return the data size.
+ * @returns Bit number (0-based) corresponding to @a uFmt.  Will assert if
+ *          multiple formats present (first is returned) or if zero (-1 is
+ *          returned).
+ * @param   uFmt                Single VBox format.
  */
-void ShClCacheEntryGet(PSHCLCACHEENTRY pCacheEntry, void **pvData, size_t *pcbData)
+VBGH_DECL(int) ShClFormatToBitNo(SHCLFORMAT uFmt)
 {
-    AssertPtrReturnVoid(pCacheEntry);
-    AssertPtrReturnVoid(pvData);
-    AssertReturnVoid(pcbData);
-
-    *pvData  = pCacheEntry->pvData;
-    *pcbData = pCacheEntry->cbData;
+    AssertReturn(uFmt, -1);
+    AssertMsg(RT_IS_POWER_OF_TWO(uFmt), ("%#x\n", uFmt));
+    AssertCompile(sizeof(uint32_t) == sizeof(uFmt));
+    return (int)ASMBitFirstSetU32(uFmt) - 1;
 }
 
 /**
@@ -1328,7 +1327,8 @@ static int shClCacheEntryInit(PSHCLCACHEENTRY pCacheEntry, const void *pvData, s
 {
     AssertReturn(RT_VALID_PTR(pvData) || cbData == 0, VERR_INVALID_PARAMETER);
 
-    RT_BZERO(pCacheEntry, sizeof(SHCLCACHEENTRY));
+    pCacheEntry->cbData = 0;
+    pCacheEntry->pvData = NULL;
 
     if (pvData)
     {
@@ -1352,11 +1352,11 @@ DECLINLINE(bool) shClCacheEntryIsValid(PSHCLCACHEENTRY pCacheEntry)
 }
 
 /**
- * Destroys a cache entry.
+ * Re-initializes a cache entry, freeing any data kept there.
  *
- * @param   pCacheEntry         Cache entry to destroy.
+ * @param   pCacheEntry         Cache entry to re-init.
  */
-DECLINLINE(void) shClCacheEntryDestroy(PSHCLCACHEENTRY pCacheEntry)
+DECLINLINE(void) shClCacheEntryReInit(PSHCLCACHEENTRY pCacheEntry)
 {
     if (pCacheEntry->pvData)
     {
@@ -1372,14 +1372,12 @@ DECLINLINE(void) shClCacheEntryDestroy(PSHCLCACHEENTRY pCacheEntry)
  *
  * @param   pCache              Cache to init.
  */
-void ShClCacheInit(PSHCLCACHE pCache)
+VBGH_DECL(void) ShClCacheInit(PSHCLCACHE pCache)
 {
     AssertPtrReturnVoid(pCache);
 
-    RT_BZERO(pCache, sizeof(SHCLCACHE));
-
-    for (size_t i = 0; i < RT_ELEMENTS(pCache->aEntries); i++)
-        shClCacheEntryInit(&pCache->aEntries[i], NULL, 0);
+    RT_ZERO(*pCache);
+    pCache->u32Magic = SHCLCACHE_MAGIC;
 }
 
 /**
@@ -1387,10 +1385,10 @@ void ShClCacheInit(PSHCLCACHE pCache)
  *
  * @param   pCache              Cache to destroy entries for.
  */
-DECLINLINE(void) shClCacheDestroyEntries(PSHCLCACHE pCache)
+DECLINLINE(void) shClCacheReInitAllEntries(PSHCLCACHE pCache)
 {
     for (size_t i = 0; i < RT_ELEMENTS(pCache->aEntries); i++)
-        shClCacheEntryDestroy(&pCache->aEntries[i]);
+        shClCacheEntryReInit(&pCache->aEntries[i]);
 }
 
 /**
@@ -1398,13 +1396,13 @@ DECLINLINE(void) shClCacheDestroyEntries(PSHCLCACHE pCache)
  *
  * @param   pCache              Cache to destroy.
  */
-void ShClCacheTerm(PSHCLCACHE pCache)
+VBGH_DECL(void) ShClCacheTerm(PSHCLCACHE pCache)
 {
     AssertPtrReturnVoid(pCache);
+    AssertMsgReturnVoid(pCache->u32Magic == SHCLCACHE_MAGIC, ("%#x\n", pCache->u32Magic));
+    pCache->u32Magic = ~SHCLCACHE_MAGIC;
 
-    shClCacheDestroyEntries(pCache);
-
-    RT_BZERO(pCache, sizeof(SHCLCACHE));
+    shClCacheReInitAllEntries(pCache);
 }
 
 /**
@@ -1412,11 +1410,12 @@ void ShClCacheTerm(PSHCLCACHE pCache)
  *
  * @param   pCache              Cache to invalidate.
  */
-void ShClCacheInvalidate(PSHCLCACHE pCache)
+VBGH_DECL(void) ShClCacheInvalidate(PSHCLCACHE pCache)
 {
     AssertPtrReturnVoid(pCache);
+    AssertMsgReturnVoid(pCache->u32Magic == SHCLCACHE_MAGIC, ("%#x\n", pCache->u32Magic));
 
-    shClCacheDestroyEntries(pCache);
+    shClCacheReInitAllEntries(pCache);
 }
 
 /**
@@ -1425,11 +1424,14 @@ void ShClCacheInvalidate(PSHCLCACHE pCache)
  * @param   pCache              Cache to invalidate.
  * @param   uFmt                Format to invalidate entry for.
  */
-void ShClCacheInvalidateEntry(PSHCLCACHE pCache, SHCLFORMAT uFmt)
+VBGH_DECL(void) ShClCacheInvalidateEntry(PSHCLCACHE pCache, SHCLFORMAT uFmt)
 {
     AssertPtrReturnVoid(pCache);
-    AssertReturnVoid(uFmt < VBOX_SHCL_FMT_MAX);
-    shClCacheEntryDestroy(&pCache->aEntries[uFmt]);
+    AssertMsgReturnVoid(pCache->u32Magic == SHCLCACHE_MAGIC, ("%#x\n", pCache->u32Magic));
+    int const idxFmt = ShClFormatToBitNo(uFmt);
+    AssertMsgReturnVoid((unsigned)idxFmt < RT_ELEMENTS(pCache->aEntries), ("%#x/%d\n", uFmt, idxFmt));
+
+    shClCacheEntryReInit(&pCache->aEntries[idxFmt]);
 }
 
 /**
@@ -1439,16 +1441,21 @@ void ShClCacheInvalidateEntry(PSHCLCACHE pCache, SHCLFORMAT uFmt)
  * @param   pCache              Cache to get entry for.
  * @param   uFmt                Format to get entry for.
  */
-PSHCLCACHEENTRY ShClCacheGet(PSHCLCACHE pCache, SHCLFORMAT uFmt)
+VBGH_DECL(PSHCLCACHEENTRY) ShClCacheGet(PSHCLCACHE pCache, SHCLFORMAT uFmt)
 {
-    AssertReturn(uFmt < VBOX_SHCL_FMT_MAX, NULL);
-    return shClCacheEntryIsValid(&pCache->aEntries[uFmt]) ? &pCache->aEntries[uFmt] : NULL;
+    AssertPtrReturn(pCache, NULL);
+    AssertMsgReturn(pCache->u32Magic == SHCLCACHE_MAGIC, ("%#x\n", pCache->u32Magic), NULL);
+    int const idxFmt = ShClFormatToBitNo(uFmt);
+    AssertMsgReturn((unsigned)idxFmt < RT_ELEMENTS(pCache->aEntries), ("%#x/%d\n", uFmt, idxFmt), NULL);
+
+    return shClCacheEntryIsValid(&pCache->aEntries[idxFmt]) ? &pCache->aEntries[idxFmt] : NULL;
 }
 
 /**
  * Sets data to cache for a specific clipboard format, internal version.
  *
  * @returns VBox status code.
+ * @retval  VERR_ALREADY_EXISTS if the cache entry is not empty.
  * @param   pCache              Cache to set data for.
  * @param   uFmt                Clipboard format to set data for.
  * @param   pvData              Data to set.
@@ -1456,28 +1463,33 @@ PSHCLCACHEENTRY ShClCacheGet(PSHCLCACHE pCache, SHCLFORMAT uFmt)
  */
 DECLINLINE(int) shClCacheSet(PSHCLCACHE pCache, SHCLFORMAT uFmt, const void *pvData, size_t cbData)
 {
-    AssertReturn(uFmt < VBOX_SHCL_FMT_MAX, VERR_INVALID_PARAMETER);
-    AssertReturn(shClCacheEntryIsValid(&pCache->aEntries[uFmt]) == false, VERR_ALREADY_EXISTS);
+    AssertPtr(pCache);
+    int const idxFmt = ShClFormatToBitNo(uFmt);
+    AssertMsgReturn((unsigned)idxFmt < RT_ELEMENTS(pCache->aEntries), ("%#x/%d\n", uFmt, idxFmt), VERR_INVALID_PARAMETER);
 
-    return shClCacheEntryInit(&pCache->aEntries[uFmt], pvData, cbData);
+    /* must be empty */
+    AssertReturn(!shClCacheEntryIsValid(&pCache->aEntries[idxFmt]), VERR_ALREADY_EXISTS);
+
+    return shClCacheEntryInit(&pCache->aEntries[idxFmt], pvData, cbData);
 }
 
 /**
  * Sets data to cache for a specific clipboard format.
  *
  * @returns VBox status code.
+ * @retval  VERR_ALREADY_EXISTS if the cache entry is not empty.
  * @param   pCache              Cache to set data for.
  * @param   uFmt                Clipboard format to set data for.
  * @param   pvData              Data to set.
  * @param   cbData              Size (in bytes) of data to set.
  */
-int ShClCacheSet(PSHCLCACHE pCache, SHCLFORMAT uFmt, const void *pvData, size_t cbData)
+VBGH_DECL(int) ShClCacheSet(PSHCLCACHE pCache, SHCLFORMAT uFmt, const void *pvData, size_t cbData)
 {
     AssertPtrReturn(pCache, VERR_INVALID_POINTER);
-
+    AssertMsgReturn(pCache->u32Magic == SHCLCACHE_MAGIC, ("%#x\n", pCache->u32Magic), VERR_INVALID_MAGIC);
     if (!pvData) /* Nothing to cache? */
         return VINF_SUCCESS;
-
+    AssertPtrReturn(pvData, VERR_INVALID_POINTER);
     AssertReturn(cbData, VERR_INVALID_PARAMETER);
 
     return shClCacheSet(pCache, uFmt, pvData, cbData);
@@ -1494,27 +1506,31 @@ int ShClCacheSet(PSHCLCACHE pCache, SHCLFORMAT uFmt, const void *pvData, size_t 
  * @param   pvData              Data to set.
  * @param   cbData              Size (in bytes) of data to set.
  */
-int ShClCacheSetMultiple(PSHCLCACHE pCache, SHCLFORMATS uFmts, const void *pvData, size_t cbData)
+VBGH_DECL(int) ShClCacheSetMultiple(PSHCLCACHE pCache, SHCLFORMATS uFmts, const void *pvData, size_t cbData)
 {
     AssertPtrReturn(pCache, VERR_INVALID_POINTER);
-
+    AssertMsgReturn(pCache->u32Magic == SHCLCACHE_MAGIC, ("%#x\n", pCache->u32Magic), VERR_INVALID_MAGIC);
     if (!pvData) /* Nothing to cache? */
         return VINF_SUCCESS;
-
+    AssertPtrReturn(pvData, VERR_INVALID_POINTER);
     AssertReturn(cbData, VERR_INVALID_PARAMETER);
 
     int rc = VINF_SUCCESS;
-
     SHCLFORMATS uFmtsLeft = uFmts;
     while (uFmtsLeft)
     {
-        SHCLFORMAT  uFmt        = VBOX_SHCL_FMT_NONE;
-         void *pvConv = NULL;
-        size_t cbConv = 0;
+        void       *pvConv = NULL;
+        size_t      cbConv = 0;
+        SHCLFORMAT  uFmt;
         if (uFmtsLeft & VBOX_SHCL_FMT_UNICODETEXT)
         {
             uFmt = VBOX_SHCL_FMT_UNICODETEXT;
 
+            /** @todo r=bird: This is a terrible way of detecting UTF-8.  The little endian
+             * UTF-16 rending of any 7-bit unicode point is a valid UTF-8 with length 1!
+             * This nonsense probably just happens to work because all the input is UTF-8 or
+             * ASCII. */
+            AssertMsgFailed(("See @todo!\n"));
             rc = RTStrValidateEncoding((const char *)pvData);
             if (RT_SUCCESS(rc))
             {

@@ -1,4 +1,4 @@
-/* $Id: wayland-helper.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland-helper.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Common code for Wayland Desktop Environment helpers.
  */
@@ -39,23 +39,24 @@ static const char *g_pcszSessionDescClipardCopyToGuest      = "Copy clipboard to
 static const char *g_pcszSessionDescClipardAnnounceToHost   = "Announce and copy clipboard to the host";
 static const char *g_pcszSessionDescClipardCopyToHost       = "Copy clipboard to the host";
 
-/**
+/** @page pg_VBoxClient_Wayland  VBoxClient & Wayland.
+ *
  * Interaction between VBoxClient and Wayland environment implies
  * a sequential data exchange between both parties. In order to
  * temporary store and protect this data, we put it into a Session.
-
+ *
  * Session can be started, joined or ended.
-
+ *
  * Each time when either host (via VBoxClient) or Wayland client
  * initiates a new data transfer (such as clipboard sharing or drag-n-drop
  * operation) a new session should be started. Due to current implementation,
  * no more than one session can run in the same time. Therefore, before
  * starting new session, previous one needs to be ended.
-
+ *
  * When either VBoxClient or Wayland thread needs to access session data,
  * it need to join session at first. Multiple threads can join the same
  * session in parallel.
-
+ *
  * When sequence of operations which were required to transfer data to
  * either side is complete, session should be ended.
  *

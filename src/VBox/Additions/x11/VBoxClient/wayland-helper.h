@@ -1,4 +1,4 @@
-/* $Id: wayland-helper.h 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland-helper.h 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Definitions for Wayland helpers.
  */
@@ -157,11 +157,11 @@ typedef struct
     DECLCALLBACKMEMBER(int, pfnTerm, (void));
 
     /**
-     * Callback to set host clipboard connection handle.
+     * Callback to set shared clipboard context structure.
      *
-     * @param   pCtx    Host service connection context.
+     * @param   pCtx    The shared clipboard context being used.
      */
-    DECLCALLBACKMEMBER(void, pfnSetClipboardCtx, (PVBGLR3SHCLCMDCTX pCtx));
+    DECLCALLBACKMEMBER(void, pfnSetClipboardCtx, (PSHCLCONTEXT pCtx));
 
     /**
      * Callback to force guest to announce its clipboard content.
@@ -170,10 +170,10 @@ typedef struct
      */
     DECLCALLBACKMEMBER(int, pfnPopup, (void));
 
-    /** A callback to notify guest about new content in host clipboard. */
+    /** Called upon receiving a new clipboard format report from the host. */
     PFNHOSTCLIPREPORTFMTS pfnHGClipReport;
-
-    /** Callback to notify guest that host wants to read clipboard data in specified format. */
+    /** Called upon receiving a read clipboard query from the host.
+     * @deprecated Only used by Gtk now. */
     PFNHOSTCLIPREAD pfnGHClipRead;
 
 } VBCLWAYLANDHELPER_CLIPBOARD;
@@ -428,7 +428,7 @@ int VBClWaylandSessionJoinEx(vbcl_wl_session_t *pSession, vbcl_wl_session_type_t
  *                      for logging)
  */
 int VBClWaylandSessionJoinAnyTypeEx(vbcl_wl_session_t *pSession, PFNVBCLWLSESSIONCB pfnCallback,
-                                    void *pvUser, const char *pcszCaller);
+                                    void *pvUser, const char *pszCaller);
 
 /**
  * Join any type of session.

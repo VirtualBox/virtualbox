@@ -1,4 +1,4 @@
-/* $Id: display-ipc.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
+/* $Id: display-ipc.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - DRM IPC communication core functions.
  */
@@ -111,16 +111,14 @@ RTDECL(int) vbDrmIpcClientInit(PVBOX_DRMIPC_CLIENT pClient, RTTHREAD hThread, RT
  */
 RTDECL(int) vbDrmIpcClientReleaseResources(PVBOX_DRMIPC_CLIENT pClient)
 {
-    PVBOX_DRMIPC_TX_LIST_ENTRY pEntry, pNextEntry;
-    int rc;
+    pClient->hClientSession = NIL_RTLOCALIPCSESSION;
 
-    pClient->hClientSession = 0;
-
-    rc = RTCritSectEnter(&pClient->CritSect);
+    int rc = RTCritSectEnter(&pClient->CritSect);
     if (RT_SUCCESS(rc))
     {
         if (!RTListIsEmpty(&pClient->TxList.Node))
         {
+            PVBOX_DRMIPC_TX_LIST_ENTRY pEntry, pNextEntry;
             RTListForEachSafe(&pClient->TxList.Node, pEntry, pNextEntry, VBOX_DRMIPC_TX_LIST_ENTRY, Node)
             {
                 RTListNodeRemove(&pEntry->Node);
@@ -128,6 +126,7 @@ RTDECL(int) vbDrmIpcClientReleaseResources(PVBOX_DRMIPC_CLIENT pClient)
                 ASMAtomicDecU32(&pClient->cTxListSize);
             }
         }
+        Assert(pClient->cTxListSize == 0);
 
         rc = RTCritSectLeave(&pClient->CritSect);
         if (RT_SUCCESS(rc))
@@ -218,29 +217,26 @@ static PVBOX_DRMIPC_TX_LIST_ENTRY vbDrmIpcSessionPickupTxMessage(PVBOX_DRMIPC_CL
 
 RTDECL(int) vbDrmIpcAuth(RTLOCALIPCSESSION hClientSession)
 {
-    int rc = VERR_ACCESS_DENIED;
-    RTUID uUid;
-    struct group *pAllowedGroup;
-
-    AssertReturn(hClientSession, VERR_INVALID_PARAMETER);
+    AssertReturn(hClientSession != NIL_RTLOCALIPCSESSION, VERR_INVALID_PARAMETER);
 
     /* Get DRM IPC user group entry from system database. */
-    pAllowedGroup = getgrnam(VBOX_DRMIPC_USER_GROUP);
+    struct group * const pAllowedGroup = getgrnam(VBOX_DRMIPC_USER_GROUP);
     if (!pAllowedGroup)
         return RTErrConvertFromErrno(errno);
 
     /* Get remote user ID and check if it is in allowed user group. */
-    rc = RTLocalIpcSessionQueryUserId(hClientSession, &uUid);
+    RTUID uUid = NIL_RTUID;
+    int rc = RTLocalIpcSessionQueryUserId(hClientSession, &uUid);
     if (RT_SUCCESS(rc))
     {
         /* Get user record from system database and look for it in group's members list. */
-        struct passwd *UserRecord = getpwuid(uUid);
+        struct passwd *pUserRecord = getpwuid(uUid);
 
-        if (UserRecord && UserRecord->pw_name)
+        if (pUserRecord && pUserRecord->pw_name)
         {
             while (*pAllowedGroup->gr_mem)
             {
-                if (RTStrNCmp(*pAllowedGroup->gr_mem, UserRecord->pw_name, LOGIN_NAME_MAX) == 0)
+                if (RTStrNCmp(*pAllowedGroup->gr_mem, pUserRecord->pw_name, LOGIN_NAME_MAX) == 0)
                     return VINF_SUCCESS;
 
                 pAllowedGroup->gr_mem++;

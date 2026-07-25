@@ -1,4 +1,4 @@
-/** $Id: clipboard-common.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
+/** $Id: clipboard-common.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Shared Clipboard common code.
  */
@@ -42,8 +42,19 @@
 #include "clipboard.h"
 
 
-RTDECL(int) VBClClipboardReadHostEvent(PSHCLCONTEXT pCtx, const PFNHOSTCLIPREPORTFMTS pfnHGClipReport,
-                                       const PFNHOSTCLIPREAD pfnGHClipRead)
+/**
+ * Read and process one event from the host clipboard service.
+ *
+ * @returns VBox status code.
+ * @retval  VINF_CALLBACK_RETURN if a VBOX_SHCL_HOST_MSG_QUIT was received
+ *          because the HGCM connection is being terminated.
+ * @param   pCtx                Host Shared Clipboard service connection context.
+ * @param   pfnHGClipReport     A callback to notify guest about new content in
+ *                              host clipboard.
+ * @param   pfnGHClipRead       A callback to notify guest when host requests
+ *                              guest clipboard content.
+ */
+int VBClClipboardReadHostEvent(PSHCLCONTEXT pCtx, PFNHOSTCLIPREPORTFMTS pfnHGClipReport, PFNHOSTCLIPREAD pfnGHClipRead)
 {
     AssertPtr(pCtx);
     AssertPtr(pfnHGClipReport);
@@ -65,13 +76,19 @@ RTDECL(int) VBClClipboardReadHostEvent(PSHCLCONTEXT pCtx, const PFNHOSTCLIPREPOR
                 /* Host reports new clipboard data is now available. */
                 case VBGLR3CLIPBOARDEVENTTYPE_REPORT_FORMATS:
                     VBClLogVerbose(3, "VBGLR3CLIPBOARDEVENTTYPE_REPORT_FORMATS: %#x\n", pEvent->u.fReportedFormats);
-                    rc = pfnHGClipReport(pEvent->u.fReportedFormats);
+                    /* Call backend worker. */
+                    rc = pfnHGClipReport(pCtx, pEvent->u.fReportedFormats);
                     break;
 
                 /* Host wants to read data from guest clipboard. */
                 case VBGLR3CLIPBOARDEVENTTYPE_READ_DATA:
                     VBClLogVerbose(3, "VBGLR3CLIPBOARDEVENTTYPE_READ_DATA: %#x\n", pEvent->u.fReadData);
-                    rc = pfnGHClipRead(pEvent->u.fReadData);
+                    rc = pfnGHClipRead(pCtx, pEvent->u.fReadData);
+                    break;
+
+                case VBGLR3CLIPBOARDEVENTTYPE_QUIT:
+                    VBClLogVerbose(2, "VBGLR3CLIPBOARDEVENTTYPE_QUIT\n");
+                    rc = VINF_CALLBACK_RETURN;
                     break;
 
                 default:
@@ -88,9 +105,20 @@ RTDECL(int) VBClClipboardReadHostEvent(PSHCLCONTEXT pCtx, const PFNHOSTCLIPREPOR
     return rc;
 }
 
-RTDECL(int) VBClClipboardReadHostClipboard(PVBGLR3SHCLCMDCTX pCtx,
-                                           SHCLFORMAT uFmt, void **ppvData, uint32_t *pcbData)
+/**
+ * Read entire host clipboard buffer in given format.
+ *
+ * This function will allocate clipboard buffer of necessary size and
+ * place host clipboard content into it. Buffer needs to be freed by caller.
+ *
+ * @returns VBox status code.
+ * @param   pCtx            The VBoxClient shared clipboard context.
+ * @param   uFmt            Format in which data should be read.
+ * @param   ppvData         Newly allocated output buffer (should be freed by caller).
+ * @param   pcbData         Output buffer size.
+ */
+int VBClClipboardReadHostClipboard(PSHCLCONTEXT pCtx, SHCLFORMAT uFmt, void **ppvData, uint32_t *pcbData)
 {
-    return VbglR3ClipboardReadDataEx(pCtx, uFmt, ppvData, pcbData);
+    return VbglR3ClipboardReadDataEx(&pCtx->CmdCtx, uFmt, ppvData, pcbData);
 }
 

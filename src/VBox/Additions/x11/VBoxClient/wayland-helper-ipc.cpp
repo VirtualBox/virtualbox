@@ -1,4 +1,4 @@
-/* $Id: wayland-helper-ipc.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland-helper-ipc.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - IPC between VBoxClient and vboxwl tool.
  */
@@ -168,10 +168,10 @@ int vbcl::ipc::packet_read(uint32_t uSessionId, RTLOCALIPCSESSION hSession, uint
         if (RT_SUCCESS(rc))
         {
             bool fCheck = true;
-#define MY_CHECK(a_cond, a_msg, a_arg) \
-                if (a_cond) \
+#define MY_CHECK(a_MustBeTrueExpr, a_szMsgFmt, a_MsgArg) \
+                if (!(a_MustBeTrueExpr)) \
                 { \
-                    VBClLogVerbose(3, a_msg "\n", a_arg); \
+                    VBClLogVerbose(3, a_szMsgFmt "\n", a_MsgArg); \
                     fCheck = false; \
                 } else do {} while (0)
             MY_CHECK(Packet.u64Crc != 0,                "bad crc: 0x%x", Packet.u64Crc);
@@ -248,12 +248,11 @@ int vbcl::ipc::packet_write(RTLOCALIPCSESSION hSession, vbcl::ipc::packet_t *pPa
 
 int vbcl::ipc::data::DataIpc::send_formats(uint32_t uSessionId, RTLOCALIPCSESSION hIpcSession)
 {
-    vbcl::ipc::data::formats_packet_t Packet;
     SHCLFORMATS fFormats;
     int rc = VINF_SUCCESS;
 
+    vbcl::ipc::data::formats_packet_t Packet;
     RT_ZERO(Packet);
-
     Packet.Hdr.u64Crc = 0;
     Packet.Hdr.uSessionId = uSessionId;
     Packet.Hdr.idCmd = VBOX_FORMATS;

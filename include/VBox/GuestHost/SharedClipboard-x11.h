@@ -149,7 +149,7 @@ typedef struct SHCLX11CTX
 #endif
     /** What kind of formats does VBox have to offer? */
     SHCLFORMATS      vboxFormats;
-    /** Internval cache of VBox clipboard formats. */
+    /** Internal cache of VBox clipboard formats. */
     SHCLCACHE        Cache;
     /** When we wish the clipboard to exit, we have to wake up the event
      * loop.  We do this by writing into a pipe.  This end of the pipe is

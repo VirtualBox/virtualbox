@@ -1,4 +1,4 @@
-/* $Id: VBoxClient.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxClient.h 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  *
  * VirtualBox additions user session daemon.
@@ -67,6 +67,23 @@ extern void VBClShutdown(bool fExit = true);
 extern VBGHDISPLAYSERVERTYPE VBClGetDisplayServerType(void);
 
 /**
+ * Tries to parse the given command line option.
+ *
+ * This is for a service or command.
+ *
+ * @returns 0 if we parsed, -1 if it didn't and anything else means exit.
+ * @param   ppszShort   If not NULL it points to the short option iterator. a short argument.
+ *                      If NULL examine argv[*pi].
+ * @param   argc        The argument count.
+ * @param   argv        The argument vector.
+ * @param   pi          The argument vector index. Update if any value(s) are eaten.
+ */
+typedef DECLCALLBACKTYPE(int, FNVBCLOPTPARSE,(const char **ppszShort, int argc, char **argv, int *pi));
+/** Pointer to FNVBCLOPTPARSE. */
+typedef FNVBCLOPTPARSE *PFNVBCLOPTPARSE;
+
+
+/**
  * A service descriptor.
  */
 typedef struct
@@ -79,22 +96,15 @@ typedef struct
     /** @todo Should this also have a component relative to the X server number?
      */
     const char *pszPidFilePathTemplate;
+
     /** The usage options stuff for the --help screen. */
     const char *pszUsage;
     /** The option descriptions for the --help screen. */
     const char *pszOptions;
-
     /**
-     * Tries to parse the given command line option.
-     *
-     * @returns 0 if we parsed, -1 if it didn't and anything else means exit.
-     * @param   ppszShort   If not NULL it points to the short option iterator. a short argument.
-     *                      If NULL examine argv[*pi].
-     * @param   argc        The argument count.
-     * @param   argv        The argument vector.
-     * @param   pi          The argument vector index. Update if any value(s) are eaten.
+     * Try parse extra service options. Optional.
      */
-    DECLCALLBACKMEMBER(int, pfnOption,(const char **ppszShort, int argc, char **argv, int *pi));
+    PFNVBCLOPTPARSE pfnOption;
 
     /**
      * Called before parsing arguments.
@@ -145,6 +155,32 @@ extern VBCLSERVICE g_SvcSeamless;
 # ifdef VBOX_WITH_WAYLAND_ADDITIONS
 extern VBCLSERVICE g_SvcWayland;
 # endif
+
+/**
+ * A command descriptor.
+ */
+typedef struct
+{
+    /** The long option name. */
+    const char *pszName;
+    /** The option description. */
+    const char *pszDesc;
+
+    /** The option descriptions for the --help screen. */
+    const char *pszOptions;
+    /** Try parse extra command options. Optional. */
+    PFNVBCLOPTPARSE pfnOption;
+
+    /**
+     * Executes the command.
+     * @returns Application exit code.
+     */
+    DECLCALLBACKMEMBER(RTEXITCODE, pfnExecute,(void));
+} VBCLCOMMAND;
+/** Pointer to a const VBCLCOMMAND. */
+typedef VBCLCOMMAND const *PCVBCLCOMMAND;
+
+
 
 extern unsigned    g_cVerbosity;
 extern bool        g_fDaemonized;

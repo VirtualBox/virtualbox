@@ -39,6 +39,7 @@
 # pragma once
 #endif
 
+#include <VBox/cdefs.h>
 #include <iprt/critsect.h>
 #include <iprt/types.h>
 #include <iprt/list.h>
@@ -74,6 +75,8 @@
 /** Maximum number of Shared Clipboard formats.
  *  This currently ASSUMES that there are no gaps in the bit mask. */
 #define VBOX_SHCL_FMT_MAX           VBOX_SHCL_FMT_VALID_MASK
+/** The last bit (0-based) in VBOX_SHCL_FMT_VALID_MASK */
+#define VBOX_SHCL_FMT_LAST_BIT      3
 /** @}  */
 
 
@@ -81,6 +84,8 @@
 typedef uint32_t SHCLFORMAT;
 /** Pointer to a single Shared Clipboard format (VBOX_SHCL_FMT_XXX). */
 typedef SHCLFORMAT *PSHCLFORMAT;
+
+VBGH_DECL(int) ShClFormatToBitNo(SHCLFORMAT uFmt);
 
 /** Bit map (flags) of Shared Clipboard formats (VBOX_SHCL_FMT_XXX). */
 typedef uint32_t SHCLFORMATS;
@@ -283,23 +288,28 @@ typedef SHCLCACHEENTRY *PSHCLCACHEENTRY;
  */
 typedef struct SHCLCACHE
 {
+    /** Magic value (SHCLCACHE_MAGIC). */
+    uint32_t        u32Magic;
+    /** Explicit alignment padding. */
+    uint32_t        uReserved;
     /** Entries for all formats.
      *  Right now this is static to keep it simple. */
-    SHCLCACHEENTRY aEntries[VBOX_SHCL_FMT_MAX];
+    SHCLCACHEENTRY  aEntries[VBOX_SHCL_FMT_LAST_BIT + 1];
 } SHCLCACHE;
 /** Pointer to a Shared Clipboard cache. */
 typedef SHCLCACHE *PSHCLCACHE;
 
-void ShClCacheEntryGet(PSHCLCACHEENTRY pCacheEntry, void **pvData, size_t *pcbData);
+/** Magic value for SHCLCACHE::u32Magic (Jasper Fforde). */
+#define SHCLCACHE_MAGIC     UINT32_C(0x19610111)
 
-void ShClCacheInit(PSHCLCACHE pCache);
-void ShClCacheTerm(PSHCLCACHE pCache);
-void ShClCacheInvalidate(PSHCLCACHE pCache);
-void ShClCacheInvalidateEntry(PSHCLCACHE pCache, SHCLFORMAT uFmt);
-PSHCLCACHEENTRY ShClCacheGet(PSHCLCACHE pCache, SHCLFORMAT uFmt);
-int ShClCacheSet(PSHCLCACHE pCache, SHCLFORMAT uFmt, const void *pvData, size_t cbData);
-int ShClCacheSetMultiple(PSHCLCACHE pCache, SHCLFORMATS uFmts, const void *pvData, size_t cbData);
-/** @}  */
+VBGH_DECL(void)             ShClCacheInit(PSHCLCACHE pCache);
+VBGH_DECL(void)             ShClCacheTerm(PSHCLCACHE pCache);
+VBGH_DECL(void)             ShClCacheInvalidate(PSHCLCACHE pCache);
+VBGH_DECL(void)             ShClCacheInvalidateEntry(PSHCLCACHE pCache, SHCLFORMAT uFmt);
+VBGH_DECL(PSHCLCACHEENTRY)  ShClCacheGet(PSHCLCACHE pCache, SHCLFORMAT uFmt);
+VBGH_DECL(int)              ShClCacheSet(PSHCLCACHE pCache, SHCLFORMAT uFmt, const void *pvData, size_t cbData);
+VBGH_DECL(int)              ShClCacheSetMultiple(PSHCLCACHE pCache, SHCLFORMATS uFmts, const void *pvData, size_t cbData);
+/** @} */
 
 /** Opaque data structure for the X11/VBox frontend/glue code.
  * @{ */

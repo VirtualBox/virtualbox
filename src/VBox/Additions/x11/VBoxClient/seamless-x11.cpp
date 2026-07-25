@@ -1,4 +1,4 @@
-/* $Id: seamless-x11.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: seamless-x11.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * X11 Seamless mode.
  */
@@ -649,17 +649,12 @@ int VBClX11SeamlessSvc::worker(bool volatile *pfShutdown)
     RTThreadUserSignal(RTThreadSelf());
 
     /* This will only exit if something goes wrong. */
-    for (;;)
+    while (!ASMAtomicReadBool(pfShutdown))
     {
-        if (ASMAtomicReadBool(pfShutdown))
-            break;
-
         rc = nextStateChangeEvent();
-
         if (rc == VERR_TRY_AGAIN)
             rc = VINF_SUCCESS;
-
-        if (RT_FAILURE(rc))
+        else if (RT_FAILURE(rc))
             break;
 
         if (ASMAtomicReadBool(pfShutdown))

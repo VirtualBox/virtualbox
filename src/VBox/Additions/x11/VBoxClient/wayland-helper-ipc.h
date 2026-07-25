@@ -1,4 +1,4 @@
-/* $Id: wayland-helper-ipc.h 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland-helper-ipc.h 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Definitions for IPC between VBoxClient and vboxwl tool.
  */
@@ -90,10 +90,10 @@ namespace vbcl
         {
             /** Initializer. */
             CMD_UNKNOWN = 0,
-            /** Send or receive list of clipboard formats which
+            /** Send or receive mask of clipboard formats which
              *  host or guest announces. */
             VBOX_FORMATS,
-            /** Send or receive a clipboard format which host
+            /** Send or receive a signle clipboard format which host
              *  or guest requests. */
             VBOX_FORMAT,
             /** Send or receive clipboard data in given format. */
@@ -192,7 +192,7 @@ namespace vbcl
                 uint64_t cbData;
             } data_packet_t;
 
-            /**
+            /** @name IPC command tables.
              * IPC commands flow is described as a table. Each entry of
              * such table contains command ID and flow direction. Both
              * sides, VBoxClient and vboxwl, go through exactly the same
@@ -202,6 +202,7 @@ namespace vbcl
              * (simultaneously) it means that IPC session is completed.
              * If error occurs on either side in the middle of the flow,
              * IPC session is aborted.
+             * @{
              */
 
             /** IPC flow description (clipboard): Copy clipboard from host to guest. */
@@ -254,6 +255,8 @@ namespace vbcl
                 { VBOX_DATA,    FLOW_DIRECTION_CLIENT },
                 { CMD_MAX,      false }
             };
+
+            /** @} */
 
             class DataIpc
             {

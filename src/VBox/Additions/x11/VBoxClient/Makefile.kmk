@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for the VirtualBox Guest Addition X11 Client.
 #
@@ -27,6 +27,8 @@
 
 SUB_DEPTH = ../../../../..
 include $(KBUILD_PATH)/subheader.kmk
+
+VBOX_PATH_X11_VBOXCLIENT := $(PATH_SUB_CURRENT)
 
 # Use header files from our tree for randr and xinerama. and don't link but rather dlopen libXrand
 # This is mostly because the GA build boxes can have a very old xrandr lib, so instead of linking we dlopen.
@@ -171,10 +173,10 @@ ifdef VBOX_WITH_SHARED_CLIPBOARD
 
  ifdef VBOX_WITH_WAYLAND_ADDITIONS
   VBoxClient_DEFS.linux += VBOX_WITH_WAYLAND_ADDITIONS
-  VBoxClient_INCS.linux += ../wlInclude/
+  VBoxClient_INCS.linux += . ../wlInclude/
   VBoxClient_SOURCES.linux += \
   	wayland-helper-xdcp-common.cpp \
-  	wayland-helper-dcp.cpp \
+  	$(VBoxClient_0_OUTDIR)/wayland-helper-dcp.cpp \
   	wayland-helper-edcp.cpp \
   	wayland-helper-gtk.cpp \
   	wayland-helper.cpp \
@@ -184,6 +186,17 @@ ifdef VBOX_WITH_SHARED_CLIPBOARD
   	../wlInclude/wayland-protocol.c \
   	../wlInclude/wlr-data-control-unstable-v1.c \
   	../wlInclude/ext-data-control-v1.c
+
+  VBoxClient_CLEAN.linux += $(VBoxClient_0_OUTDIR)/wayland-helper-dcp.cpp
+  $$(VBoxClient_0_OUTDIR)/wayland-helper-dcp.cpp: \
+  		$(VBOX_PATH_X11_VBOXCLIENT)/wayland-helper-dcp-from-edcp.sed \
+  		$(VBOX_PATH_X11_VBOXCLIENT)/wayland-helper-edcp.cpp
+	$(call MSG_GENERATE,wayland-helper-dcp-from-edcp.sed,$<,$@)
+	$(QUIET)$(RM) -f -- "$(@)"
+	$(QUIET)$(SED) \
+		-f "$(VBOX_PATH_X11_VBOXCLIENT)/wayland-helper-dcp-from-edcp.sed" \
+		--output "$(@)" \
+		"$(VBOX_PATH_X11_VBOXCLIENT)/wayland-helper-edcp.cpp"
  endif
 endif
 

@@ -1,4 +1,4 @@
-/* $Id: vboxwl.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
+/* $Id: vboxwl.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Wayland helper for grabbing input focus, drag-n-drop and clipboard sharing.
  */
@@ -164,7 +164,8 @@ static SHCLFORMATS vbwlGtkMapTargetsToVBoxFormats(GdkAtom *paTargets, gint cTarg
         gchar *pszTargetName = gdk_atom_name(paTargets[i]);
         if (RT_VALID_PTR(pszTargetName))
         {
-            SHCLFORMATS const fCvtFmt = VbghMimeConvGetVBoxFormatByMime(pszTargetName, NULL /*pfFlagsAndPriority*/);
+            SHCLFORMATS const fCvtFmt = VbghMimeConvGetVBoxFormatByMime(pszTargetName, NULL /*pfFlagsAndPriority*/,
+                                                                        NULL /* ppszPresistentMimeType*/);
             VBClLogVerbose(5, "session %u: %#zx/%s -> %#x\n", g_idSession, (size_t)paTargets[i], pszTargetName, fCvtFmt);
             fFmts |= fCvtFmt;
             g_free(pszTargetName);
@@ -194,7 +195,7 @@ static GdkAtom vbwlGtkClipboardMapFromVBoxFormat(GdkAtom *paTargets, gint cTarge
         if (RT_VALID_PTR(pszTargetName))
         {
             uint32_t fFlagsAndPriority = 0;
-            if (uFmt == VbghMimeConvGetVBoxFormatByMime(pszTargetName, &fFlagsAndPriority))
+            if (uFmt == VbghMimeConvGetVBoxFormatByMime(pszTargetName, &fFlagsAndPriority, NULL /*ppszPresistentMimeType*/))
             {
                 if ((fFlagsAndPriority & VBGH_MIME_CONV_F_PRIORITY_MASK) > uMatchPriority)
                 {
@@ -281,7 +282,7 @@ static void vboxwl_gtk_clipboard_write(GtkClipboard *pClipboard,
 {
     GdkAtom target = gtk_selection_data_get_target(pSelectionData);
     gchar *sTargetName = gdk_atom_name(target);
-    SHCLFORMAT uFmt = VbghMimeConvGetVBoxFormatByMime(sTargetName, NULL /*pfFlagsAndPriority*/);
+    SHCLFORMAT uFmt = VbghMimeConvGetVBoxFormatByMime(sTargetName, NULL /*pfFlagsAndPriority*/, NULL /*ppszPresistentMimeType*/);
     int rc;
 
     RT_NOREF(info, pvUser);

@@ -1,4 +1,4 @@
-/* $Id: display-svga-session.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: display-svga-session.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - VMSVGA Desktop Environment user session assistant.
  *
@@ -71,7 +71,7 @@
 VBOX_DRMIPC_CLIENT g_hClient = VBOX_DRMIPC_CLIENT_INITIALIZER;
 
 /** IPC client handle critical section. */
-static RTCRITSECT g_hClientCritSect;
+static RTCRITSECT g_ClientCritSect;
 
 /** List of available Desktop Environment specific display helpers. */
 static const VBCLDISPLAYHELPER *g_apDisplayHelpers[] =
@@ -85,7 +85,7 @@ static const VBCLDISPLAYHELPER *g_apDisplayHelpers[] =
 static const VBCLDISPLAYHELPER *g_pDisplayHelper = NULL;
 
 /** IPC connection session handle. */
-static RTLOCALIPCSESSION g_hSession = 0;
+static RTLOCALIPCSESSION g_hSession = NIL_RTLOCALIPCSESSION;
 
 /**
  * Callback for display offsets change events provided by Desktop Environment specific display helper.
@@ -96,12 +96,12 @@ static RTLOCALIPCSESSION g_hSession = 0;
  */
 static DECLCALLBACK(int) vbclSVGASessionDisplayOffsetChanged(uint32_t cDisplays, struct VBOX_DRMIPC_VMWRECT *aDisplays)
 {
-    int rc = RTCritSectEnter(&g_hClientCritSect);
+    int rc = RTCritSectEnter(&g_ClientCritSect);
 
     if (RT_SUCCESS(rc))
     {
         rc = vbDrmIpcReportDisplayOffsets(&g_hClient, cDisplays, aDisplays);
-        int rc2 = RTCritSectLeave(&g_hClientCritSect);
+        int rc2 = RTCritSectLeave(&g_ClientCritSect);
         if (RT_FAILURE(rc2))
             VBClLogError("vbclSVGASessionDisplayOffsetChanged: unable to leave critical session, rc=%Rrc\n", rc2);
     }
@@ -125,7 +125,7 @@ static DECLCALLBACK(int) vbclSVGASessionInit(void)
 
     VBClLogSetLogPrefix(pszLogPrefix);
 
-    rc = RTCritSectInit(&g_hClientCritSect);
+    rc = RTCritSectInit(&g_ClientCritSect);
     if (RT_FAILURE(rc))
     {
         VBClLogError("unable to init locking, rc=%Rrc\n", rc);
@@ -276,7 +276,7 @@ static int vbclSVGASessionReconnect(void)
 {
     int rc = VERR_GENERAL_FAILURE;
 
-    rc = RTCritSectEnter(&g_hClientCritSect);
+    rc = RTCritSectEnter(&g_ClientCritSect);
     if (RT_FAILURE(rc))
     {
         VBClLogError("unable to enter critical section on reconnect, rc=%Rrc\n", rc);
@@ -305,7 +305,7 @@ static int vbclSVGASessionReconnect(void)
     else
         VBClLogError("unable to reconnect to IPC server, rc=%Rrc\n", rc);
 
-    int rc2 = RTCritSectLeave(&g_hClientCritSect);
+    int rc2 = RTCritSectLeave(&g_ClientCritSect);
     if (RT_FAILURE(rc2))
         VBClLogError("unable to leave critical section on reconnect, rc=%Rrc\n", rc);
 
@@ -317,32 +317,28 @@ static int vbclSVGASessionReconnect(void)
  */
 static DECLCALLBACK(int) vbclSVGASessionWorker(bool volatile *pfShutdown)
 {
-    int             rc = VINF_SUCCESS;
-
-    /* Notify parent thread that we started successfully. */
-    rc = RTThreadUserSignal(RTThreadSelf());
-    if (RT_FAILURE(rc))
-        VBClLogError("unable to notify parent thread about successful start\n");
-
-    rc = RTCritSectEnter(&g_hClientCritSect);
-
-    if (RT_FAILURE(rc))
-    {
-        VBClLogError("unable to enter critical section on worker start, rc=%Rrc\n", rc);
-        return rc;
-    }
+    /*
+     * Setup.
+     */
+    int rc = RTCritSectEnter(&g_ClientCritSect);
+    AssertRCReturnStmt(rc, VBClLogError("unable to enter critical section on worker start, rc=%Rrc\n", rc), rc);
 
     rc = vbDrmIpcClientInit(&g_hClient, RTThreadSelf(), g_hSession, VBOX_DRMIPC_TX_QUEUE_SIZE, vbclSVGASessionRxCallBack);
-    int rc2 = RTCritSectLeave(&g_hClientCritSect);
-    if (RT_FAILURE(rc2))
-        VBClLogError("unable to leave critical section on worker start, rc=%Rrc\n", rc);
 
+    RTCritSectLeave(&g_ClientCritSect);
     if (RT_FAILURE(rc))
     {
         VBClLogError("cannot initialize IPC session, rc=%Rrc\n", rc);
         return rc;
     }
 
+    /* Notify parent thread that we're up and running. */
+    rc = RTThreadUserSignal(RTThreadSelf());
+    AssertRC(rc);
+
+    /*
+     * Main loop.
+     */
     for (;;)
     {
         rc = vbDrmIpcConnectionHandler(&g_hClient);
@@ -356,10 +352,8 @@ static DECLCALLBACK(int) vbclSVGASessionWorker(bool volatile *pfShutdown)
 
         /* Normal case, there was no incoming messages for a while. */
         if (rc == VERR_TIMEOUT)
-        {
             continue;
-        }
-        else if (RT_FAILURE(rc))
+        if (RT_FAILURE(rc))
         {
             VBClLogError("unable to handle IPC connection, rc=%Rrc\n", rc);
 
@@ -371,16 +365,16 @@ static DECLCALLBACK(int) vbclSVGASessionWorker(bool volatile *pfShutdown)
     }
 
     /* Check if session was not closed before. */
-    if (RT_VALID_PTR(g_hSession))
+    if (g_hSession != NIL_RTLOCALIPCSESSION)
     {
-        rc2 = RTCritSectEnter(&g_hClientCritSect);
+        int rc2 = RTCritSectEnter(&g_ClientCritSect);
         if (RT_SUCCESS(rc2))
         {
             rc2 = vbDrmIpcClientReleaseResources(&g_hClient);
             if (RT_FAILURE(rc2))
                 VBClLogError("cannot release IPC session resources, rc=%Rrc\n", rc2);
 
-            rc2 = RTCritSectLeave(&g_hClientCritSect);
+            rc2 = RTCritSectLeave(&g_ClientCritSect);
             if (RT_FAILURE(rc2))
                 VBClLogError("unable to leave critical section on worker end, rc=%Rrc\n", rc);
         }

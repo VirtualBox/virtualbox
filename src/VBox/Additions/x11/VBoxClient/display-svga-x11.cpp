@@ -1,4 +1,4 @@
-/* $Id: display-svga-x11.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: display-svga-x11.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * X11 guest client - VMSVGA emulation resize event pass-through to X.Org
  * guest driver.
@@ -438,12 +438,11 @@ static void queryMonitorPositions()
 #endif
 }
 
-static void monitorRandREvents()
+static void monitorRandREvents(void)
 {
-    XEvent event;
-
     if (XPending(x11Context.pDisplayRandRMonitoring) > 0)
     {
+        XEvent event;
         XNextEvent(x11Context.pDisplayRandRMonitoring, &event);
         int eventTypeOffset = event.type - x11Context.hRandREventBase;
         VBClLogInfo("received X11 event (%d)\n", event.type);
@@ -456,10 +455,9 @@ static void monitorRandREvents()
             default:
                 break;
         }
-    } else
-    {
-        RTThreadSleep(VBOX_SVGA_X11_RELAX_TIME_MS);
     }
+    else
+        RTThreadSleep(VBOX_SVGA_X11_RELAX_TIME_MS);
 }
 
 /**
@@ -474,7 +472,6 @@ static DECLCALLBACK(int) x11MonitorThreadFunction(RTTHREAD ThreadSelf, void *pvU
     }
 
     VBClLogInfo("X11 thread gracefully terminated\n");
-
     return 0;
 }
 
@@ -625,9 +622,7 @@ static DECLCALLBACK(int) vbclSVGAInit(void)
  */
 static DECLCALLBACK(void) vbclSVGAStop(void)
 {
-    int rc;
-
-    rc = stopX11MonitorThread();
+    int rc = stopX11MonitorThread();
     if (RT_FAILURE(rc))
     {
         VBClLogError("cannot stop X11 monitor thread (%Rrc)\n", rc);
@@ -1316,10 +1311,10 @@ static DECLCALLBACK(int) vbclSVGAWorker(bool volatile *pfShutdown)
 
     for (;;)
     {
-        struct VMMDevDisplayDef aDisplays[VMW_MAX_HEADS];
-        uint32_t cDisplaysOut;
         /* Query the first size without waiting.  This lets us e.g. pick up
          * the last event before a guest reboot when we start again after. */
+        struct VMMDevDisplayDef aDisplays[VMW_MAX_HEADS];
+        uint32_t cDisplaysOut = 0;
         rc = VbglR3GetDisplayChangeRequestMulti(VMW_MAX_HEADS, &cDisplaysOut, aDisplays, fAck);
         fAck = true;
         if (RT_FAILURE(rc))
@@ -1340,7 +1335,9 @@ static DECLCALLBACK(int) vbclSVGAWorker(bool volatile *pfShutdown)
                     {
                         aMonitors[idDisplay].xOrigin = aDisplays[i].xOrigin;
                         aMonitors[idDisplay].yOrigin = aDisplays[i].yOrigin;
-                    } else {
+                    }
+                    else
+                    {
                         aMonitors[idDisplay].xOrigin = aMonitors[idDisplay - 1].xOrigin + aMonitors[idDisplay - 1].cx;
                         aMonitors[idDisplay].yOrigin = aMonitors[idDisplay - 1].yOrigin;
                     }
@@ -1348,6 +1345,7 @@ static DECLCALLBACK(int) vbclSVGAWorker(bool volatile *pfShutdown)
                     aMonitors[idDisplay].cy = aDisplays[i].cy;
                 }
             }
+
             /* Create a whole topology and send it to xrandr. */
             struct RANDROUTPUT aOutputs[VMW_MAX_HEADS];
             int iRunningX = 0;
@@ -1362,14 +1360,16 @@ static DECLCALLBACK(int) vbclSVGAWorker(bool volatile *pfShutdown)
                 if (aOutputs[j].fEnabled)
                     iRunningX += aOutputs[j].width;
             }
+
+#if ARCH_BITS == 32
             /* In 32-bit guests GAs build on our release machines causes an xserver lock during vmware_ctrl extention
                if we do the call withing XGrab. We make the call the said extension only once (to connect the outputs)
                rather than at each resize iteration. */
-#if ARCH_BITS == 32
             if (fFirstRun)
                 callVMWCTRL(aOutputs);
 #endif
             setXrandrTopology(aOutputs);
+
             /* Wait for some seconds and set toplogy again after the boot. In some desktop environments (cinnamon) where
                DE get into our resizing our first resize is reverted by the DE. Sleeping for some secs. helps. Setting
                topology a 2nd time resolves the black screen I get after resizing.*/
@@ -1380,6 +1380,12 @@ static DECLCALLBACK(int) vbclSVGAWorker(bool volatile *pfShutdown)
                 fFirstRun = false;
             }
         }
+
+        /*
+         * Wait for display change requests.
+         */
+        /** @todo r=bird: Why are we waiting in 500ms chunks here. Can't we just use
+         *        VbglR3InterruptEventWaits() to unblock it from vbclSVGAStop? */
         uint32_t events;
         do
         {
@@ -1391,12 +1397,9 @@ static DECLCALLBACK(int) vbclSVGAWorker(bool volatile *pfShutdown)
             /* Shutdown requested. */
             break;
         }
-        else if (RT_FAILURE(rc))
-        {
+        if (RT_FAILURE(rc))
             VBClLogFatalError("Failure waiting for event, rc=%Rrc\n", rc);
-        }
-
-    };
+    }
 
     return VINF_SUCCESS;
 }
