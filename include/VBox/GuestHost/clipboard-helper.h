@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.h 114767 2026-07-24 22:06:05Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-helper.h 114769 2026-07-25 00:18:55Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard - Helper functions.
  */
@@ -78,6 +78,9 @@ int ShClHlpUtf16CalcNormalizedEolToCRLFLength(PCRTUTF16 pcwszSrc, size_t cwcSrc,
 
 /**
  * Returns the length (in UTF-8 characters) of an UTF-16 string with CRLF EOL.
+ *
+ * @todo r=bird: This does not have anything whatsoever to do with UTF-8 length,
+ *       it count unicode points, for whatever that is worth to anyone.
  *
  * @returns VBox status code.
  * @param   pcwszSrc            UTF-16 string to return size for.
