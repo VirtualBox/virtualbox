@@ -1,4 +1,4 @@
-/* $Id: wayland-helper-xdcp-common.cpp 114084 2026-05-06 09:28:40Z vadim.galitsyn@oracle.com $ */
+/* $Id: wayland-helper-xdcp-common.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Common code for Data Control Protocol (DCP) family helper for Wayland.
  */
@@ -232,57 +232,56 @@ static int vbcl_wayland_hlp_dcp_read_wl_fd(int fd, void **ppvBuf, size_t *pcbBuf
  */
 static int vbcl_wayland_hlp_dcp_write_wl_fd(int fd, void *pvBuf, size_t cbBuf)
 {
-    int rc = VINF_SUCCESS;
-
-    struct timeval tv;
-    fd_set wfds;
-    size_t cbWritten = 0;
-
     AssertPtrReturn(pvBuf, VERR_INVALID_PARAMETER);
     AssertReturn(cbBuf > 0, VERR_INVALID_PARAMETER);
 
-    while (1)
+    int rc = VINF_SUCCESS;
+    size_t cbWritten = 0;
+    for (;;)
     {
+        /* Wait until data is available. */
+        struct timeval tv;
         tv.tv_sec  = 0;
         tv.tv_usec = VBCL_WAYLAND_IO_TIMEOUT_MS * 1000;
 
+        fd_set wfds;
         FD_ZERO(&wfds);
         FD_SET(fd, &wfds);
 
-        /* Wait until data is available. */
+        /** @todo r=bird: why not use poll? */
         if (select(fd + 1, NULL, &wfds, NULL, &tv) > 0)
         {
             if (FD_ISSET(fd, &wfds))
             {
-                ssize_t cbTmp = write(fd, (void *)((uint8_t *)pvBuf + cbWritten), cbBuf - (size_t)cbWritten);
-                if (cbTmp < 0)
+                /** @todo r=bird: There is no explanation why we're selecting/polling the fd
+                 *        before writing. Iff fd is blocking, we may easily block here writing
+                 *        large blocks of data that exceeds the pipe buffer size. */
+                ssize_t const cbTmp = write(fd, (void *)((uint8_t *)pvBuf + cbWritten), cbBuf - (size_t)cbWritten);
+                if (cbTmp > 0)
                 {
-                    rc = RTErrConvertFromErrno(errno);
-                    break;
-                }
-                else if (cbTmp > 0)
-                {
-                    VBClLogVerbose(6, "Wayland: wrote chunk of %d bytes to Wayland\n", cbTmp);
                     cbWritten += (size_t)cbTmp;
-
-                    /* Are we complete? */
-                    if (cbWritten == cbBuf)
+                    if (cbWritten >= cbBuf)
                     {
-                        VBClLogVerbose(5, "Wayland: wrote %u bytes to Wayland\n", cbWritten);
+                        VBClLogVerbose(5, "Wayland: wrote %zu bytes to Wayland\n", cbWritten);
                         break;
                     }
+                    VBClLogVerbose(6, "Wayland: wrote chunk of %zd bytes to Wayland\n", cbTmp);
                 }
                 else
                 {
-                    if (cbWritten != cbBuf)
+                    if (cbTmp < 0)
+                        rc = RTErrConvertFromErrno(errno);
+                    else /*if (cbWritten != cbBuf) */
                     {
+                        /** @todo r=bird: cbTmp == 0 here, which is unlikely in the extreme given the
+                         *        select, even for a non-blocking 'fd'. Treating anything here as error
+                         *        is one way to go, but it doesn't seem quite correct... */
                         VBClLogVerbose(5, "Wayland: wrote %u bytes (out of %u) to Wayland (partial write)\n",
                                        cbWritten, cbBuf);
                         rc = VERR_WRITE_ERROR;
                     }
-                    else
-                        VBClLogVerbose(5, "Wayland: zero write detected\n");
-
+                    /*else
+                        VBClLogVerbose(5, "Wayland: zero write detected\n"); - bird: impossible */
                     break;
                 }
             }
@@ -370,20 +369,15 @@ static void vbcl_wayland_xdcp_session_release(vbox_wl_xdcp_base_ctx_t *pCtx)
 
     vbox_wl_dcp_session_t *pSession = &pCtx->Session;
 
-    rc = VBoxMimeConvClearCache(&pCtx->Cache);
+    rc = VbghMimeConvCacheClear(pCtx->hCache);
     if (RT_FAILURE(rc))
         VBClLogVerbose(5, "unable to clear clipboard cache, rc=%Rrc", rc);
 
-    if (!RTListIsEmpty(&pSession->clip.mimeTypesList.Node))
+    vbox_wl_dcp_mime_t *pEntry, *pNextEntry;
+    RTListForEachSafe(&pSession->clip.mimeTypesList, pEntry, pNextEntry, vbox_wl_dcp_mime_t, Node)
     {
-        vbox_wl_dcp_mime_t *pEntry, *pNextEntry;
-
-        RTListForEachSafe(&pSession->clip.mimeTypesList.Node, pEntry, pNextEntry, vbox_wl_dcp_mime_t, Node)
-        {
-            RTListNodeRemove(&pEntry->Node);
-            RTStrFree(pEntry->pszMimeType);
-            RTMemFree(pEntry);
-        }
+        RTListNodeRemove(&pEntry->Node);
+        RTMemFree(pEntry);
     }
 
     pvData = (void *)pSession->clip.pvDataBuf.reset();
@@ -400,7 +394,7 @@ static void vbcl_wayland_xdcp_session_init(vbox_wl_dcp_session_t *pSession)
 {
     AssertPtrReturnVoid(pSession);
 
-    RTListInit(&pSession->clip.mimeTypesList.Node);
+    RTListInit(&pSession->clip.mimeTypesList);
 
     pSession->clip.fFmts.init(VBOX_SHCL_FMT_NONE, VBCL_WAYLAND_VALUE_WAIT_TIMEOUT_MS);
     pSession->clip.uFmt.init(VBOX_SHCL_FMT_NONE, VBCL_WAYLAND_VALUE_WAIT_TIMEOUT_MS);
@@ -418,36 +412,39 @@ RTDECL(void) vbcl_wayland_xdcp_session_prepare(vbox_wl_xdcp_base_ctx_t *pCtx)
 
 RTDECL(int) vbcl_wayland_xdcp_add_fmt(struct vbcl_wl_dcp_enumerate_ctx *pEnmCtx)
 {
+    /*
+     * Validate input.
+     */
     AssertPtrReturn(pEnmCtx, VERR_INVALID_PARAMETER);
 
-    const char *sMimeType = pEnmCtx->sMimeType;
-    vbox_wl_dcp_session_t *pSession = pEnmCtx->pSession;
-
-    AssertPtrReturn(sMimeType, VERR_INVALID_PARAMETER);
+    vbox_wl_dcp_session_t * const pSession = pEnmCtx->pSession;
     AssertPtrReturn(pSession, VERR_INVALID_PARAMETER);
 
-    SHCLFORMAT uFmt = VBoxMimeConvGetIdByMime(sMimeType);
+    const char * const pcszMimeType = pEnmCtx->pcszMimeType;
+    AssertPtrReturn(pcszMimeType, VERR_INVALID_PARAMETER);
+    size_t const cchMimeType = strlen(pcszMimeType);
 
-    int rc = VINF_SUCCESS;;
-
+    /*
+     * Allocate, initialize and add a new node to the MIME type list.
+     */
+    int rc;
+    SHCLFORMAT uFmt = VbghMimeConvGetVBoxFormatByMime(pcszMimeType, NULL /*pfFlagsAndPriority*/);
     if (uFmt != VBOX_SHCL_FMT_NONE)
     {
-        vbox_wl_dcp_mime_t *pNode = (vbox_wl_dcp_mime_t *)RTMemAllocZ(sizeof(vbox_wl_dcp_mime_t));
-        if (RT_VALID_PTR(pNode))
+        vbox_wl_dcp_mime_t * const pNode = (vbox_wl_dcp_mime_t *)RTMemAllocZVar(RT_UOFFSETOF_DYN(vbox_wl_dcp_mime_t,
+                                                                                                 szMimeType[cchMimeType + 1]));
+        if (pNode)
         {
-            VBClLogVerbose(5, "Wayland announces mime-type: %s\n", sMimeType);
-            pNode->pszMimeType = RTStrDup((char *)sMimeType);
-            if (RT_VALID_PTR(pNode->pszMimeType))
-                RTListAppend(&pSession->clip.mimeTypesList.Node, &pNode->Node);
-            else
-                RTMemFree(pNode);
-        }
+            memcpy(pNode->szMimeType, pcszMimeType, cchMimeType);
+            pNode->szMimeType[cchMimeType] = '\0';
 
-        if (   !RT_VALID_PTR(pNode)
-            || !RT_VALID_PTR(pNode->pszMimeType))
-        {
-            rc = VERR_NO_MEMORY;
+            RTListAppend(&pSession->clip.mimeTypesList, &pNode->Node);
+            VBClLogVerbose(5, "Wayland announces MIME type: %s\n", pNode->szMimeType);
+
+            rc = VINF_SUCCESS;
         }
+        else
+            rc = VERR_NO_MEMORY;
     }
     else
         rc = VERR_NO_DATA;
@@ -472,17 +469,21 @@ RTDECL(void) vbcl_wayland_xdcp_reset_ctx(vbox_wl_xdcp_base_ctx_t *pCtx, bool fSh
 
     if (!fShutdown)
     {
-        rc = VBoxMimeConvInitCache(&pCtx->Cache);
+        rc = VbghMimeConvCacheCreate(&pCtx->hCache);
         if (RT_FAILURE(rc))
-            VBClLogVerbose(1, "Unable to init cache, rc=%Rrc\n", rc);
+        {
+            VBClLogVerbose(1, "Unable to create MIME cache, rc=%Rrc\n", rc);
+            pCtx->hCache = NIL_VBGHMIMECONVCACHE;
+        }
     }
     else
     {
         vbcl_wayland_xdcp_session_release(pCtx);
 
-        rc = VBoxMimeConvDestroyCache(&pCtx->Cache);
+        rc = VbghMimeConvCacheDestroy(pCtx->hCache);
         if (RT_FAILURE(rc))
-            VBClLogVerbose(1, "Unable to destroy cache, rc=%Rrc\n", rc);
+            VBClLogVerbose(1, "VbghMimeConvCacheDelete failed: %Rrc\n", rc);
+        pCtx->hCache = NIL_VBGHMIMECONVCACHE;
     }
 
     vbcl_wayland_xdcp_session_init(&pCtx->Session);
@@ -506,14 +507,14 @@ RTDECL(int) vbcl_wayland_xdcp_get_guest_clipboard(int fd, vbox_wl_xdcp_base_ctx_
         void *pvBufOut = NULL;
         size_t cbBufOut = 0;
 
-        rc = VBoxMimeConvNativeToVBox(pszMimeType, pvBuf, cbBuf, &pvBufOut, &cbBufOut);
+        rc = VbghMimeConvToVBox(pszMimeType, pvBuf, cbBuf, &pvBufOut, &cbBufOut);
         if (RT_SUCCESS(rc))
         {
             pCtx->Session.clip.pvDataBuf.set((uint64_t)pvBufOut);
             pCtx->Session.clip.cbDataBuf.set((uint64_t)cbBufOut);
 
-            rc = VBoxMimeConvSetCacheByMime(&pCtx->Cache, pszMimeType, pvBufOut, cbBufOut);
-            VBClLogVerbose(5, "Put %u bytes into cache for mime-type: %s\n", cbBufOut, pszMimeType);
+            rc = VbghMimeConvCacheSetByMime(pCtx->hCache, pszMimeType, pvBufOut, cbBufOut);
+            VBClLogVerbose(5, "Put %u bytes into cache for MIME type: %s\n", cbBufOut, pszMimeType);
         }
 
         RTMemFree(pvBuf);
@@ -522,42 +523,47 @@ RTDECL(int) vbcl_wayland_xdcp_get_guest_clipboard(int fd, vbox_wl_xdcp_base_ctx_
     return rc;
 }
 
-RTDECL(int) vbcl_wayland_xdcp_set_guest_clipboard(int fd, vbox_wl_xdcp_base_ctx_t *pCtx, const char *sMimeType)
+RTDECL(int) vbcl_wayland_xdcp_set_guest_clipboard(int fd, vbox_wl_xdcp_base_ctx_t *pCtx, const char *pcszMimeType)
 {
     int rc;
 
-    void *pvBuf;
-    uint32_t cbBuf;
-
     AssertPtrReturn(pCtx, VERR_INVALID_PARAMETER);
-    AssertPtrReturn(sMimeType, VERR_INVALID_PARAMETER);
+    AssertPtrReturn(pcszMimeType, VERR_INVALID_PARAMETER);
 
     if (RT_VALID_PTR(pCtx->pClipboardCtx))
     {
-        /* Set requested format to the session. */
-        pCtx->Session.clip.uFmt.set(VBoxMimeConvGetIdByMime(sMimeType));
+        /* Set requested format  the session. */
+        SHCLFORMAT const uVBoxFmt = VbghMimeConvGetVBoxFormatByMime(pcszMimeType, NULL /*pfFlagsAndPriority*/);
+        VBClLogVerbose(5, "vbcl_wayland_xdcp_set_guest_clipboard: %s -> %#x\n", pcszMimeType, uVBoxFmt);
+        pCtx->Session.clip.uFmt.set(uVBoxFmt);
 
         /* Wait for data in requested format. */
-        pvBuf = (void *)pCtx->Session.clip.pvDataBuf.wait();
-        cbBuf = pCtx->Session.clip.cbDataBuf.wait();
+        void * const   pvBuf = (void *)pCtx->Session.clip.pvDataBuf.wait(); /** @todo not 32-bit clean! */
+        uint32_t const cbBuf = pCtx->Session.clip.cbDataBuf.wait();
         if (   cbBuf != pCtx->Session.clip.cbDataBuf.defaults()
             && pvBuf != (void *)pCtx->Session.clip.pvDataBuf.defaults())
         {
-            void *pvBufOut;
-            size_t cbOut;
-
             /* Convert clipboard data from VBox representation into guest format. */
-            rc = VBoxMimeConvVBoxToNative(sMimeType, pvBuf, cbBuf, &pvBufOut, &cbOut);
+            void *pvBufOut = NULL;
+            size_t cbOut = 0;
+            rc = VbghMimeConvFromVBox(pcszMimeType, pvBuf, cbBuf, &pvBufOut, &cbOut);
             if (RT_SUCCESS(rc))
             {
                 rc = vbcl_wayland_hlp_dcp_write_wl_fd(fd, pvBufOut, cbOut);
                 RTMemFree(pvBufOut);
             }
             else
-                VBClLogError("cannot convert '%s' to native format, rc=%Rrc\n", sMimeType, rc);
+            {
+                VBClLogError("Failed to convert uVBoxFmt=%#x to '%s': %Rrc\n", uVBoxFmt, pcszMimeType, rc);
+                VBClLogVerbose(6, "Bogus input data uVBoxFmt=%#x cbBuf=%#x\n%.*Rhxd\n", uVBoxFmt, cbBuf, cbBuf, pvBuf);
+            }
         }
         else
+        {
+            VBClLogVerbose(4, "vbcl_wayland_xdcp_set_guest_clipboard: timed out waiting for host data (%#x/%s)\n",
+                           uVBoxFmt, pcszMimeType);
             rc = VERR_TIMEOUT;
+        }
     }
     else
     {
@@ -570,12 +576,6 @@ RTDECL(int) vbcl_wayland_xdcp_set_guest_clipboard(int fd, vbox_wl_xdcp_base_ctx_
 
 RTDECL(int) vbcl_wayland_xdcp_get_host_clipboard(vbox_wl_xdcp_base_ctx_t *pCtx, SHCLFORMATS fFmts)
 {
-    int rc;
-
-    SHCLFORMAT uFmt;
-    void *pvData;
-    uint32_t cbData;
-
     AssertPtrReturn(pCtx, VERR_INVALID_PARAMETER);
 
     /* Set list of host clipboard formats to the session. */
@@ -585,18 +585,29 @@ RTDECL(int) vbcl_wayland_xdcp_get_host_clipboard(vbox_wl_xdcp_base_ctx_t *pCtx, 
     pCtx->fSendToGuest.set(true);
     RTThreadPoke(pCtx->Thread);
 
+    int rc;
+
     /* Wait for the guest to request certain clipboard format. */
-    uFmt = pCtx->Session.clip.uFmt.wait();
+    /** @todo r=bird: The following makes no sense as there is no guarantee that
+     *        the clipboard will be read... */
+    SHCLFORMAT const uFmt = pCtx->Session.clip.uFmt.wait();
     if (uFmt != pCtx->Session.clip.uFmt.defaults())
     {
         /* Read host clipboard in specified format. */
+        void    *pvData = NULL;
+        uint32_t cbData = 0;
         rc = VBClClipboardReadHostClipboard(pCtx->pClipboardCtx, uFmt, &pvData, &cbData);
         if (RT_SUCCESS(rc))
         {
             /* Set clipboard data to the session. */
+            VBClLogVerbose(5, "vbcl_wayland_xdcp_get_host_clipboard: Setting pvDataBuf=%p cbDataBuf=%#x (uFmt=%#x)...\n",
+                           pvData, cbData, uFmt);
             pCtx->Session.clip.pvDataBuf.set((uint64_t)pvData);
             pCtx->Session.clip.cbDataBuf.set((uint64_t)cbData);
         }
+        else
+            VBClLogError("VBClClipboardReadHostClipboard failed in vbcl_wayland_xdcp_get_host_clipboard getting %#x: %Rrc\n",
+                         uFmt, rc);
     }
     else
         rc = VERR_TIMEOUT;
@@ -614,7 +625,7 @@ RTDECL(int) vbcl_wayland_xdcp_set_host_clipboard(vbox_wl_xdcp_base_ctx_t *pCtx, 
     AssertPtrReturn(pCtx, VERR_INVALID_PARAMETER);
 
     /* Take data from cache. */
-    rc = VBoxMimeConvGetCacheById(&pCtx->Cache, uFmt, &pvData, &cbData);
+    rc = VbghMimeConvCacheGetByVBoxFormat(pCtx->hCache, uFmt, &pvData, &cbData);
     if (RT_SUCCESS(rc))
     {
         /* Send clipboard data to the host. */

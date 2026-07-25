@@ -1,4 +1,4 @@
-/* $Id: thread.cpp 111973 2025-12-02 13:05:42Z alexander.eichner@oracle.com $ */
+/* $Id: thread.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Threads, common routines.
  */
@@ -690,6 +690,9 @@ DECLHIDDEN(void) rtThreadTerminate(PRTTHREADINT pThread, int rc)
     ASMAtomicOrU32(&pThread->fIntFlags, RTTHREADINT_FLAGS_TERMINATED);
     if (pThread->EventTerminated != NIL_RTSEMEVENTMULTI)
         RTSemEventMultiSignal(pThread->EventTerminated);
+    if (   (pThread->fFlags & RTTHREADFLAGS_USER_SIGNAL_ON_TERM)
+        && pThread->EventUser != NIL_RTSEMEVENTMULTI)
+        RTSemEventMultiSignal(pThread->EventUser);
 
     /*
      * Remove the thread from the tree so that there will be no

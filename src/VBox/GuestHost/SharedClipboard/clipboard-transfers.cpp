@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 111866 2025-11-25 13:35:04Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -1117,7 +1117,7 @@ int ShClTransferCreateEx(SHCLTRANSFERDIR enmDir, SHCLSOURCE enmSource, PSHCLTRAN
     rc = RTSemEventCreate(&pTransfer->StatusChangeEvent);
     AssertRCReturn(rc, rc);
 
-    rc = ShClEventSourceCreate(&pTransfer->Events, 0 /* uID */);
+    rc = ShClEventSourceInit(&pTransfer->Events, 0 /* uID */);
     if (RT_SUCCESS(rc))
     {
         if (pTransfer->Callbacks.pfnOnCreated)
@@ -1194,7 +1194,7 @@ int ShClTransferDestroy(PSHCLTRANSFER pTransfer)
     AssertRCReturn(rc, rc);
     pTransfer->StatusChangeEvent = NIL_RTSEMEVENT;
 
-    ShClEventSourceDestroy(&pTransfer->Events);
+    ShClEventSourceTerm(&pTransfer->Events);
 
     RTMemFree(pTransfer);
     pTransfer = NULL;

@@ -1,4 +1,4 @@
-/** $Id: clipboard.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/** $Id: clipboard.h 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard - Main header.
  */
@@ -39,20 +39,21 @@
  * Callback to notify guest that host has new clipboard data in the specified formats.
  *
  * @returns VBox status code.
- * @param   fFormats        The formats available.
- *                          Optional and can be NULL.
+ * @param   fFormats        The formats available (VBOX_SHCL_FMT_XXX).
  */
 typedef DECLCALLBACKTYPE(int, FNHOSTCLIPREPORTFMTS, (SHCLFORMATS fFormats));
+/** Pointer to FNHOSTCLIPREPORTFMTS. */
 typedef FNHOSTCLIPREPORTFMTS *PFNHOSTCLIPREPORTFMTS;
 
 /**
  * Callback to notify guest that host wants to read clipboard data in specified format.
  *
  * @returns VBox status code.
- * @param   uFmt            The format in which the data should be read
- *                          (VBOX_SHCL_FMT_XXX).
+ * @param   uFmt            The format in which the data should be read (a
+ *                          single VBOX_SHCL_FMT_XXX).
  */
 typedef DECLCALLBACKTYPE(int, FNHOSTCLIPREAD, (SHCLFORMAT uFmt));
+/** Pointer to FNHOSTCLIPREAD. */
 typedef FNHOSTCLIPREAD *PFNHOSTCLIPREAD;
 
 

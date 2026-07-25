@@ -215,16 +215,16 @@ typedef struct SHCLEVENTSOURCE
 /** @name Shared Clipboard data payload functions.
  *  @{
  */
-int ShClPayloadInit(uint32_t uID, void *pvData, uint32_t cbData, PSHCLEVENTPAYLOAD *ppPayload);
-int ShClPayloadAlloc(uint32_t uID, const void *pvData, uint32_t cbData, PSHCLEVENTPAYLOAD *ppPayload);
-void ShClPayloadFree(PSHCLEVENTPAYLOAD pPayload);
+int ShClPayloadCreate(uint32_t uID, void *pvData, uint32_t cbData, PSHCLEVENTPAYLOAD *ppPayload);
+int ShClPayloadCreateDupData(uint32_t uID, const void *pvData, uint32_t cbData, PSHCLEVENTPAYLOAD *ppPayload);
+void ShClPayloadDestroy(PSHCLEVENTPAYLOAD pPayload);
 /** @} */
 
 /** @name Shared Clipboard event source functions.
  *  @{
  */
-int ShClEventSourceCreate(PSHCLEVENTSOURCE pSource, SHCLEVENTSOURCEID idEvtSrc);
-int ShClEventSourceDestroy(PSHCLEVENTSOURCE pSource);
+int ShClEventSourceInit(PSHCLEVENTSOURCE pSource, SHCLEVENTSOURCEID idEvtSrc);
+int ShClEventSourceTerm(PSHCLEVENTSOURCE pSource);
 void ShClEventSourceReset(PSHCLEVENTSOURCE pSource);
 int ShClEventSourceGenerateAndRegisterEvent(PSHCLEVENTSOURCE pSource, PSHCLEVENT *ppEvent);
 PSHCLEVENT ShClEventSourceGetFromId(PSHCLEVENTSOURCE pSource, SHCLEVENTID idEvent);
@@ -293,7 +293,7 @@ typedef SHCLCACHE *PSHCLCACHE;
 void ShClCacheEntryGet(PSHCLCACHEENTRY pCacheEntry, void **pvData, size_t *pcbData);
 
 void ShClCacheInit(PSHCLCACHE pCache);
-void ShClCacheDestroy(PSHCLCACHE pCache);
+void ShClCacheTerm(PSHCLCACHE pCache);
 void ShClCacheInvalidate(PSHCLCACHE pCache);
 void ShClCacheInvalidateEntry(PSHCLCACHE pCache, SHCLFORMAT uFmt);
 PSHCLCACHEENTRY ShClCacheGet(PSHCLCACHE pCache, SHCLFORMAT uFmt);

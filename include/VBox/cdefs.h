@@ -343,6 +343,14 @@
 
 
 
+/** @def VBGH_DECL
+ * GuestHost function declaration (currently always hidden).
+ * @param   type    The return type of the function declaration.
+ */
+#define VBGH_DECL(type)     DECL_HIDDEN_NOTHROW(type) VBOXCALL
+
+
+
 /** @def IN_VMM_STATIC
  * Used to indicate that the virtual machine monitor is built or used as a
  * static library.

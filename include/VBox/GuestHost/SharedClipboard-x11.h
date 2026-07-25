@@ -64,7 +64,7 @@
 /**
  * Enumeration for all clipboard formats which we support on X11.
  */
-typedef enum _SHCLX11FMT
+typedef enum SHCLX11FMT
 {
     SHCLX11FMT_INVALID = 0,
     SHCLX11FMT_TARGETS,
@@ -103,13 +103,13 @@ typedef struct SHCLX11FMTTABLE
 
 #define NIL_CLIPX11FORMAT   0
 
-/** Defines an index of the X11 clipboad format table. */
+/** Defines an index of the X11 clipboard format table. */
 typedef unsigned SHCLX11FMTIDX;
 
 /**
  * Structure for maintaining a Shared Clipboard context on X11 platforms.
  */
-typedef struct _SHCLX11CTX
+typedef struct SHCLX11CTX
 {
     /** Opaque data structure describing the front-end. */
     PSHCLCONTEXT     pFrontend;
@@ -175,7 +175,7 @@ typedef struct _SHCLX11CTX
 /**
  * Enumeration for an X11 event type.
  */
-typedef enum _SHCLX11EVENTTYPE
+typedef enum SHCLX11EVENTTYPE
 {
     /** Invalid event type. */
     SHCLX11EVENTTYPE_INVALID = 0,
@@ -192,7 +192,7 @@ typedef SHCLX11EVENTTYPE *PSHCLX11EVENTTYPE;
 /**
  * Structure describing an X11 clipboard request.
  */
-typedef struct _SHCLX11REQUEST
+typedef struct SHCLX11REQUEST
 {
     /** The clipboard context this request is associated with. */
     SHCLX11CTX      *pCtx;
@@ -238,7 +238,7 @@ typedef SHCLX11REQUEST *PSHCLX11REQUEST;
 /**
  * Structure describing an X11 clipboard response to an X11 clipboard request.
  */
-typedef struct _SHCLX11RESPONSE
+typedef struct SHCLX11RESPONSE
 {
     /** Response type for the union below. */
     SHCLX11EVENTTYPE enmType;
@@ -265,7 +265,7 @@ typedef SHCLX11RESPONSE *PSHCLX11RESPONSE;
  * @{
  */
 int ShClX11Init(PSHCLX11CTX pCtx, PSHCLCALLBACKS pCallbacks, PSHCLCONTEXT pParent, bool fHeadless);
-int ShClX11Destroy(PSHCLX11CTX pCtx);
+int ShClX11Term(PSHCLX11CTX pCtx);
 int ShClX11ThreadStart(PSHCLX11CTX pCtx, bool grab);
 int ShClX11ThreadStartEx(PSHCLX11CTX pCtx, const char *pszName, bool fGrab);
 int ShClX11ThreadStop(PSHCLX11CTX pCtx);

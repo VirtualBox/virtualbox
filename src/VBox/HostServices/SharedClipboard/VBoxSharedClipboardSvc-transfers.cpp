@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -171,7 +171,7 @@ int ShClSvcTransferGHRootListReadHdr(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfe
 
             LogFlowFunc(("cRoots=%RU32, fFeatures=0x%x\n", pHdr->cEntries, pHdr->fFeatures));
 
-            ShClPayloadFree(pPayload);
+            ShClPayloadDestroy(pPayload);
         }
         else
             rc = rcEvent;
@@ -356,7 +356,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHListOpen(PSHCLTXPROVIDERCTX pCtx,
 
                         *phList = pReply->u.ListOpen.uHandle;
 
-                        ShClPayloadFree(pPayload);
+                        ShClPayloadDestroy(pPayload);
                     }
                     else
                         rc = rcEvent;
@@ -416,7 +416,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHListClose(PSHCLTXPROVIDERCTX pCtx, SHCLL
                     rc = ShClEventWaitEx(pEvent, pCtx->pTransfer->uTimeoutMs, &rcEvent, &pPayload);
                     if (RT_SUCCESS(rc))
                     {
-                        ShClPayloadFree(pPayload);
+                        ShClPayloadDestroy(pPayload);
                     }
                     else
                         rc = rcEvent;
@@ -480,7 +480,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHListHdrRead(PSHCLTXPROVIDERCTX pCtx,
 
                     *pListHdr = *(PSHCLLISTHDR)pPayload->pvData;
 
-                    ShClPayloadFree(pPayload);
+                    ShClPayloadDestroy(pPayload);
                 }
                 else
                     rc = rcEvent;
@@ -543,7 +543,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHListEntryRead(PSHCLTXPROVIDERCTX pCtx,
 
                     rc = ShClTransferListEntryCopy(pListEntry, (PSHCLLISTENTRY)pPayload->pvData);
 
-                    ShClPayloadFree(pPayload);
+                    ShClPayloadDestroy(pPayload);
                 }
                 else
                     rc = rcEvent;
@@ -620,7 +620,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHObjOpen(PSHCLTXPROVIDERCTX pCtx, PSHCLOB
 
                         *phObj = pReply->u.ObjOpen.uHandle;
 
-                        ShClPayloadFree(pPayload);
+                        ShClPayloadDestroy(pPayload);
                     }
                     else
                         rc = rcEvent;
@@ -687,7 +687,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHObjClose(PSHCLTXPROVIDERCTX pCtx, SHCLOB
 
                     LogFlowFunc(("hObj=%RU64\n", pReply->u.ObjClose.uHandle));
 #endif
-                    ShClPayloadFree(pPayload);
+                    ShClPayloadDestroy(pPayload);
                 }
                 else
                     rc = rcEvent;
@@ -759,7 +759,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHObjRead(PSHCLTXPROVIDERCTX pCtx, SHCLOBJ
                     if (pcbRead)
                         *pcbRead = cbRead;
 
-                    ShClPayloadFree(pPayload);
+                    ShClPayloadDestroy(pPayload);
                 }
                 else
                     rc = rcEvent;
@@ -1662,12 +1662,12 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
                 if (pEvent)
                 {
                     PSHCLEVENTPAYLOAD pPayload;
-                    rc = ShClPayloadAlloc(pEvent->idEvent, pvData, cbData, &pPayload);
+                    rc = ShClPayloadCreateDupData(pEvent->idEvent, pvData, cbData, &pPayload);
                     if (RT_SUCCESS(rc))
                     {
                         rc = ShClEventSignal(pEvent, pPayload);
                         if (RT_FAILURE(rc))
-                            ShClPayloadFree(pPayload);
+                            ShClPayloadDestroy(pPayload);
                     }
                 }
                 else
@@ -1732,12 +1732,12 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
                 if (pEvent)
                 {
                     PSHCLEVENTPAYLOAD pPayload;
-                    rc = ShClPayloadAlloc(pEvent->idEvent, pvData, cbData, &pPayload);
+                    rc = ShClPayloadCreateDupData(pEvent->idEvent, pvData, cbData, &pPayload);
                     if (RT_SUCCESS(rc))
                     {
                         rc = ShClEventSignal(pEvent, pPayload);
                         if (RT_FAILURE(rc))
-                            ShClPayloadFree(pPayload);
+                            ShClPayloadDestroy(pPayload);
                     }
                 }
                 else
@@ -1814,12 +1814,12 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
                     if (pEvent)
                     {
                         PSHCLEVENTPAYLOAD pPayload;
-                        rc = ShClPayloadAlloc(pEvent->idEvent, pvData, cbData, &pPayload);
+                        rc = ShClPayloadCreateDupData(pEvent->idEvent, pvData, cbData, &pPayload);
                         if (RT_SUCCESS(rc))
                         {
                             rc = ShClEventSignal(pEvent, pPayload);
                             if (RT_FAILURE(rc))
-                                ShClPayloadFree(pPayload);
+                                ShClPayloadDestroy(pPayload);
                         }
                     }
                     else
@@ -1867,12 +1867,12 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
                     if (pEvent)
                     {
                         PSHCLEVENTPAYLOAD pPayload;
-                        rc = ShClPayloadAlloc(pEvent->idEvent, pvData, cbData, &pPayload);
+                        rc = ShClPayloadCreateDupData(pEvent->idEvent, pvData, cbData, &pPayload);
                         if (RT_SUCCESS(rc))
                         {
                             rc = ShClEventSignal(pEvent, pPayload);
                             if (RT_FAILURE(rc))
-                                ShClPayloadFree(pPayload);
+                                ShClPayloadDestroy(pPayload);
                         }
                     }
                     else
@@ -1984,12 +1984,12 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
                 if (pEvent)
                 {
                     PSHCLEVENTPAYLOAD pPayload;
-                    rc = ShClPayloadAlloc(pEvent->idEvent, pvData, cbData, &pPayload);
+                    rc = ShClPayloadCreateDupData(pEvent->idEvent, pvData, cbData, &pPayload);
                     if (RT_SUCCESS(rc))
                     {
                         rc = ShClEventSignal(pEvent, pPayload);
                         if (RT_FAILURE(rc))
-                            ShClPayloadFree(pPayload);
+                            ShClPayloadDestroy(pPayload);
                     }
                 }
                 else

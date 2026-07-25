@@ -1,4 +1,4 @@
-/* $Id: tstClipboardGH-X11Smoke.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: tstClipboardGH-X11Smoke.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard guest/host X11 code smoke tests.
  */
@@ -96,7 +96,7 @@ int main()
     RTThreadSleep(500);
 
     RTTEST_CHECK_RC_OK(hTest, ShClX11ThreadStop(&X11Ctx));
-    RTTEST_CHECK_RC_OK(hTest, ShClX11Destroy(&X11Ctx));
+    RTTEST_CHECK_RC_OK(hTest, ShClX11Term(&X11Ctx));
 
     return RTTestSummaryAndDestroy(hTest);
 }

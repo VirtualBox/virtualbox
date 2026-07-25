@@ -1,4 +1,4 @@
-/* $Id: tstClipboardHttpServer.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: tstClipboardHttpServer.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard HTTP server test case.
  */
@@ -153,7 +153,7 @@ static void tstManual(RTTEST hTest, PSHCLTRANSFERCTX pTransferCtx, PSHCLHTTPSERV
         RT_ZERO(Callbacks);
         RTTEST_CHECK_RC_OK(hTest, ShClX11Init(&X11Ctx, &Callbacks, NULL /* pParent */, false /* fHeadless */));
         RTTEST_CHECK_RC_OK(hTest, ShClX11ThreadStart(&X11Ctx, false /* fGrab */));
-        RTTEST_CHECK_RC_OK(hTest, ShClEventSourceCreate(&EventSource, 0));
+        RTTEST_CHECK_RC_OK(hTest, ShClEventSourceInit(&EventSource, 0));
         RTTEST_CHECK_RC_OK(hTest, ShClX11WriteDataToX11(&X11Ctx, &EventSource, RT_MS_30SEC,
                                                         VBOX_SHCL_FMT_UNICODETEXT | VBOX_SHCL_FMT_URI_LIST,
                                                         pszUrls, RTStrNLen(pszUrls, RTSTR_MAX), NULL /* pcbWritten */));
@@ -165,9 +165,9 @@ static void tstManual(RTTEST hTest, PSHCLTRANSFERCTX pTransferCtx, PSHCLHTTPSERV
 #ifdef TESTCASE_WITH_X11
     if (g_fX11)
     {
-        RTTEST_CHECK_RC_OK(hTest, ShClEventSourceDestroy(&EventSource));
+        RTTEST_CHECK_RC_OK(hTest, ShClEventSourceTerm(&EventSource));
         ShClX11ThreadStop(&X11Ctx);
-        ShClX11Destroy(&X11Ctx);
+        ShClX11Term(&X11Ctx);
     }
 #endif
 

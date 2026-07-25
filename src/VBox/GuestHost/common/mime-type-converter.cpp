@@ -35,6 +35,14 @@
 
 #include <VBox/GuestHost/mime-type-converter.h>
 
+/** @todo r=bird: Only used with RTStrNCmp, where it is completely
+ *        unnecessary and just a potential bug source.  The reason being that we
+ *        we control one of the two strings, which limits the comparison to the
+ *        length of it.
+ *
+ *        However, if you mean to do something like RTStrStartsWith,
+ *        then RT_MIN(strlen(), VBOX_WAYLAND_MIME_TYPE_NAME_MAX) would be
+ *        better.  It wouldn't be all, that good though. */
 #define VBOX_WAYLAND_MIME_TYPE_NAME_MAX     (32)
 
 /* Declaration of mime-type conversion helper function. */
@@ -59,6 +67,8 @@ static DECLCALLBACK(int) vbConvertUtf8ToUtf16(void *pvBufIn, int cbBufIn, void *
     rc = RTStrValidateEncodingEx((char *)pvBufIn, cbBufIn, 0);
     if (RT_SUCCESS(rc))
     {
+        /** @todo r=bird: Wrong buffer pointer type. Just because you return void
+         *        pointers, doesn't mean you should use that internally. */
         rc = ShClConvUtf8LFToUtf16CRLF((const char *)pvBufIn, cbBufIn, (PRTUTF16 *)&pvDst, &cwDst);
         if (RT_SUCCESS(rc))
         {
@@ -135,6 +145,8 @@ static DECLCALLBACK(int) vbConvertLatin1ToUtf16(void *pvBufIn, int cbBufIn, void
     size_t cwDst;
     void *pvDst = NULL;
 
+    /** @todo r=bird: Wrong buffer pointer type. Just because you return void
+     *        pointers, doesn't mean you should use that internally. */
     rc = ShClConvLatin1LFToUtf16CRLF((char *)pvBufIn, cbBufIn, (PRTUTF16 *)&pvDst, &cwDst);
     if (RT_SUCCESS(rc))
     {
@@ -166,6 +178,7 @@ static DECLCALLBACK(int) vbConvertUtf16ToLatin1(void *pvBufIn, int cbBufIn, void
     rc = RTUtf16ValidateEncodingEx((PCRTUTF16)pvBufIn, cbBufIn / sizeof(RTUTF16),
                                    RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
     if (RT_SUCCESS(rc))
+        /** @todo r=bird: Inconsistent handing indent (the one above is preferred). */
         rc = RTUtf16ToLatin1ExTag(
             (PCRTUTF16)pvBufIn, cbBufIn / sizeof(RTUTF16), (char **)ppvBufOut, cbBufIn, pcbBufOut, RTSTR_TAG);
 
@@ -183,6 +196,9 @@ static DECLCALLBACK(int) vbConvertUtf16ToLatin1(void *pvBufIn, int cbBufIn, void
  */
 static DECLCALLBACK(int) vbConvertHtmlToVBox(void *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
+    /** @todo r=bird: What's with the C coding? This is C++, so declare variables
+     *        where they are used.  Unnecessary initialization of 'rc' is just
+     *        confusing (value is never used). */
     int rc = VERR_PARSE_ERROR;
     void *pvDst = NULL;
     size_t cbDst = 0;
@@ -329,284 +345,289 @@ static DECLCALLBACK(int) vbConvertVBoxToBmp(void *pvBufIn, int cbBufIn, void **p
     return ShClDibToBmp(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
 }
 
-/* This table represents mime-types cache and contains its
- * content converted into VirtualBox internal representation. */
+/**
+ * This table represents MIME types cache and contains its
+ * content converted into VirtualBox internal representation.
+ */
 static struct VBCONVERTERFMTTABLE
 {
     /** Content mime-type as reported by X11/Wayland. */
-    const char *                    pcszMimeType;
+    const char             *pcszMimeType;
     /** VBox content type representation. */
-    const SHCLFORMAT                uFmtVBox;
-    /** Pointer to a function which converts data into internal
-     *  VirtualBox representation. */
-    const PFNVBFMTCONVERTOR         pfnConvertToVbox;
-    /** Pointer to a function which converts data from internal
-     *  VirtualBox representation into X11/Wayland format. */
-    const PFNVBFMTCONVERTOR         pfnConvertToNative;
-    /** A buffer which contains mime-type data cache in VirtualBox
-     *  internal representation. */
-    void *                          pvBuf;
-    /** Size of cached data. */
-    size_t                          cbBuf;
-} g_aConverterFormats[] =
+    SHCLFORMAT              uFmtVBox;
+    /** The priority of MIME types mapping to the same SHCLFORMAT and flags.
+     * Higher value means higher priority. Range is range 0 thru 15.
+     * @note This assumes that we can use one common priority for all
+     *       clipboard/toolkit implementations. Should we end up with different
+     *       preferences, we'd have to partition it.
+     * @todo We would also use part of this for flags... */
+    uint32_t                fFlagsAndPriority;
+    /** Function converting from X11/Wayland to VirtualBox clipboard data format. */
+    PFNVBFMTCONVERTOR       pfnConvertToVBox;
+    /** Function converting from VirtualBox to X11/Wayland clipboard data format. */
+    PFNVBFMTCONVERTOR       pfnConvertFromVBox;
+} const g_aConverterFormats[] =
 {
-    { "INVALID",                        VBOX_SHCL_FMT_NONE,         NULL,                       NULL,                 NULL, 0, },
+    { "INVALID",                      VBOX_SHCL_FMT_NONE,          0, NULL,                   NULL                   },
 
-    { "UTF8_STRING",                    VBOX_SHCL_FMT_UNICODETEXT,  vbConvertUtf8ToUtf16,     vbConvertUtf16ToUtf8,   NULL, 0, },
-    { "text/plain;charset=UTF-8",       VBOX_SHCL_FMT_UNICODETEXT,  vbConvertUtf8ToUtf16,     vbConvertUtf16ToUtf8,   NULL, 0, },
-    { "text/plain;charset=utf-8",       VBOX_SHCL_FMT_UNICODETEXT,  vbConvertUtf8ToUtf16,     vbConvertUtf16ToUtf8,   NULL, 0, },
-    { "STRING",                         VBOX_SHCL_FMT_UNICODETEXT,  vbConvertLatin1ToUtf16,   vbConvertUtf16ToLatin1, NULL, 0, },
-    { "TEXT",                           VBOX_SHCL_FMT_UNICODETEXT,  vbConvertLatin1ToUtf16,   vbConvertUtf16ToLatin1, NULL, 0, },
-    { "text/plain",                     VBOX_SHCL_FMT_UNICODETEXT,  vbConvertLatin1ToUtf16,   vbConvertUtf16ToLatin1, NULL, 0, },
+    { "UTF8_STRING",                  VBOX_SHCL_FMT_UNICODETEXT,  14, vbConvertUtf8ToUtf16,   vbConvertUtf16ToUtf8   },
+    { "text/plain;charset=utf-8",     VBOX_SHCL_FMT_UNICODETEXT,  12, vbConvertUtf8ToUtf16,   vbConvertUtf16ToUtf8   }, /** @todo r=bird: do case insensitive matching? */
+    { "text/plain;charset=UTF-8",     VBOX_SHCL_FMT_UNICODETEXT,  11, vbConvertUtf8ToUtf16,   vbConvertUtf16ToUtf8   },
+    { "STRING",                       VBOX_SHCL_FMT_UNICODETEXT,   3, vbConvertLatin1ToUtf16, vbConvertUtf16ToLatin1 },
+    { "TEXT",                         VBOX_SHCL_FMT_UNICODETEXT,   2, vbConvertLatin1ToUtf16, vbConvertUtf16ToLatin1 },
+    { "text/plain",                   VBOX_SHCL_FMT_UNICODETEXT,   1, vbConvertLatin1ToUtf16, vbConvertUtf16ToLatin1 },
 
-    { "text/html",                      VBOX_SHCL_FMT_HTML,         vbConvertHtmlToVBox,      vbConvertVBoxToHtml,    NULL, 0, },
-    { "text/html;charset=utf-8",        VBOX_SHCL_FMT_HTML,         vbConvertHtmlToVBox,      vbConvertVBoxToHtml,    NULL, 0, },
-    { "application/x-moz-nativehtml",   VBOX_SHCL_FMT_HTML,         vbConvertHtmlToVBox,      vbConvertVBoxToHtml,    NULL, 0, },
+    { "text/html;charset=utf-8",      VBOX_SHCL_FMT_HTML,         14, vbConvertHtmlToVBox,    vbConvertVBoxToHtml    },
+    { "application/x-moz-nativehtml", VBOX_SHCL_FMT_HTML,         12, vbConvertHtmlToVBox,    vbConvertVBoxToHtml    }, /** @todo priority and what is this format anyway? */
+    { "text/html",                    VBOX_SHCL_FMT_HTML,         10, vbConvertHtmlToVBox,    vbConvertVBoxToHtml    },
 
-    { "image/bmp",                      VBOX_SHCL_FMT_BITMAP,       vbConvertBmpToVBox,       vbConvertVBoxToBmp,     NULL, 0, },
-    { "image/x-bmp",                    VBOX_SHCL_FMT_BITMAP,       vbConvertBmpToVBox,       vbConvertVBoxToBmp,     NULL, 0, },
-    { "image/x-MS-bmp",                 VBOX_SHCL_FMT_BITMAP,       vbConvertBmpToVBox,       vbConvertVBoxToBmp,     NULL, 0, },
+    { "image/bmp",                    VBOX_SHCL_FMT_BITMAP,        1, vbConvertBmpToVBox,     vbConvertVBoxToBmp     },
+    { "image/x-bmp",                  VBOX_SHCL_FMT_BITMAP,        1, vbConvertBmpToVBox,     vbConvertVBoxToBmp     },
+    { "image/x-MS-bmp",               VBOX_SHCL_FMT_BITMAP,        1, vbConvertBmpToVBox,     vbConvertVBoxToBmp     },
 };
 
-RTDECL(void) VBoxMimeConvEnumerateMimeById(const SHCLFORMAT uFmtVBox, PFNVBFMTCONVMIMEBYID pfnCb, void *pvData)
+VBGH_DECL(void) VbghMimeConvEnumerateByVBoxFormats(SHCLFORMATS fVBoxFmts, PFNVBGHMIMECONVENUM pfnCallback, void *pvUser)
 {
     for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
-        if (uFmtVBox & g_aConverterFormats[i].uFmtVBox)
-            pfnCb(g_aConverterFormats[i].pcszMimeType, pvData);
+        if (g_aConverterFormats[i].uFmtVBox & fVBoxFmts)
+            pfnCallback(g_aConverterFormats[i].pcszMimeType, g_aConverterFormats[i].fFlagsAndPriority, pvUser);
 }
 
-RTDECL(const char *) VBoxMimeConvGetMimeById(const SHCLFORMAT uFmtVBox)
-{
-    for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
-        if (uFmtVBox & g_aConverterFormats[i].uFmtVBox)
-            return g_aConverterFormats[i].pcszMimeType;
-
-    return NULL;
-}
-
-RTDECL(SHCLFORMAT) VBoxMimeConvGetIdByMime(const char *pcszMimeType)
+VBGH_DECL(SHCLFORMAT) VbghMimeConvGetVBoxFormatByMime(const char *pcszMimeType, uint32_t *pfFlagsAndPriority)
 {
     for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
         if (RTStrNCmp(g_aConverterFormats[i].pcszMimeType, pcszMimeType, VBOX_WAYLAND_MIME_TYPE_NAME_MAX) == 0)
+        {
+            if (pfFlagsAndPriority)
+                *pfFlagsAndPriority = g_aConverterFormats[i].fFlagsAndPriority;
             return g_aConverterFormats[i].uFmtVBox;
+        }
 
+    if (pfFlagsAndPriority)
+        *pfFlagsAndPriority = 0;
     return VBOX_SHCL_FMT_NONE;
 }
 
-RTDECL(int) VBoxMimeConvVBoxToNative(const char *pcszMimeType, void *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+VBGH_DECL(int) VbghMimeConvFromVBox(const char *pcszMimeType, void *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
         if (RTStrNCmp(g_aConverterFormats[i].pcszMimeType, pcszMimeType, VBOX_WAYLAND_MIME_TYPE_NAME_MAX) == 0)
-            return g_aConverterFormats[i].pfnConvertToNative(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
+            return g_aConverterFormats[i].pfnConvertFromVBox(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
 
     return VERR_NOT_FOUND;
 }
 
-RTDECL(int) VBoxMimeConvNativeToVBox(const char *pcszMimeType, void *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+VBGH_DECL(int) VbghMimeConvToVBox(const char *pcszMimeType, void *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
         if (RTStrNCmp(g_aConverterFormats[i].pcszMimeType, pcszMimeType, VBOX_WAYLAND_MIME_TYPE_NAME_MAX) == 0)
-            return g_aConverterFormats[i].pfnConvertToVbox(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
+            return g_aConverterFormats[i].pfnConvertToVBox(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
 
     return VERR_NOT_FOUND;
 }
 
-RTDECL(int) VBoxMimeConvInitCache(vbox_mime_conv_cache_t *pCache)
+
+/*********************************************************************************************************************************
+*   Cached Conversion                                                                                                            *
+*********************************************************************************************************************************/
+
+/** Mime-type cache instance. */
+typedef struct VBGHMIMECONVCACHEINT
 {
-    int rc;
+    /** Cache lock (serves as magic). */
+    RTCRITSECT  CritSect;
 
-    AssertPtrReturn(pCache, VERR_INVALID_PARAMETER);
-    AssertReturn(!RTCritSectIsInitialized(&pCache->CritSect), VERR_ACCESS_DENIED);
-
-    rc = RTCritSectInit(&pCache->CritSect);
-    if (RT_SUCCESS(rc))
+    /** Cache entries running parallel to g_aConverterFormats. */
+    RT_FLEXIBLE_ARRAY_EXTENSION
+    struct
     {
-        const size_t cbCache = sizeof(struct VBCONVERTERFMTTABLE) * RT_ELEMENTS(g_aConverterFormats);
-        pCache->pvCache = RTMemAllocZ(cbCache);
-        if (RT_VALID_PTR(pCache->pvCache))
-        {
-            memcpy(pCache->pvCache, &g_aConverterFormats, cbCache);
-            pCache->iCacheElements = RT_ELEMENTS(g_aConverterFormats);
-        }
-        else
-            rc = VERR_NO_MEMORY;
-    }
+        /** A buffer which contains mime-type data cache in VirtualBox
+         *  internal representation. */
+        void   *pvBuf;
+        /** Size of cached data. */
+        size_t  cbBuf;
+    } aEntries[RT_ELEMENTS(g_aConverterFormats)];
+} VBGHMIMECONVCACHEINT;
 
+VBGH_DECL(int) VbghMimeConvCacheCreate(PVBGHMIMECONVCACHE phCache)
+{
+    AssertPtrReturn(phCache, VERR_INVALID_PARAMETER);
+
+    int rc;
+    VBGHMIMECONVCACHEINT *pThis = (VBGHMIMECONVCACHEINT *)RTMemAllocZ(sizeof(*pThis));
+    if (pThis)
+        rc = RTCritSectInit(&pThis->CritSect);
+    else
+        rc = VERR_NO_MEMORY;
+    *phCache = RT_SUCCESS(rc) ? pThis : NIL_VBGHMIMECONVCACHE;
     return rc;
 }
 
-RTDECL(int) VBoxMimeConvDestroyCache(vbox_mime_conv_cache_t *pCache)
-{
-    int rc;
-
-    AssertPtrReturn(pCache, VERR_INVALID_PARAMETER);
-    AssertReturn(RTCritSectIsInitialized(&pCache->CritSect), VERR_ACCESS_DENIED);
-
-    rc = RTCritSectEnter(&pCache->CritSect);
-    if (RT_SUCCESS(rc))
-    {
-        AssertPtr(pCache->pvCache);
-
-        RTMemFree(pCache->pvCache);
-        pCache->pvCache = NULL;
-        pCache->iCacheElements = 0;
-
-        RTCritSectLeave(&pCache->CritSect);
-    }
-
-    return rc;
-}
+/** Helper for validating a cache handle.   */
+#define VBGH_MIME_CONV_CACHE_VALIDATE_RETURN(a_hCache) do { \
+        AssertPtrReturn(a_hCache, VERR_INVALID_HANDLE); \
+        AssertReturn(RTCritSectIsInitialized(&(a_hCache)->CritSect), VERR_INVALID_HANDLE); \
+    } while (0)
 
 /**
- * A helper function that validates if mime-type cache handle was initialized..
- *
- * @returns IPRT status code.
- * @param   pCache      Cache handle.
+ * Helper for clearing the cache.
  */
-static int vboxMimeConvValidateCache(vbox_mime_conv_cache_t *pCache)
+static void vbghMimeConvCacheClearLocked(VBGHMIMECONVCACHEINT *pThis)
 {
-    AssertPtrReturn(pCache, VERR_INVALID_PARAMETER);
-    AssertReturn(RTCritSectIsInitialized(&pCache->CritSect), VERR_ACCESS_DENIED);
-    AssertPtrReturn(pCache->pvCache, VERR_INVALID_PARAMETER);
-    AssertReturn(pCache->iCacheElements == RT_ELEMENTS(g_aConverterFormats), VERR_INVALID_PARAMETER);
+    for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
+    {
+        pThis->aEntries[i].pvBuf = NULL;
+        pThis->aEntries[i].cbBuf = 0;
+    }
+}
+
+VBGH_DECL(int) VbghMimeConvCacheDestroy(VBGHMIMECONVCACHE hCache)
+{
+    if (hCache == NIL_VBGHMIMECONVCACHE)
+        return VINF_SUCCESS;
+
+    VBGHMIMECONVCACHEINT * const pThis = hCache;
+    VBGH_MIME_CONV_CACHE_VALIDATE_RETURN(pThis);
+
+    int rc = RTCritSectDelete(&pThis->CritSect);
+    AssertRCReturn(rc, rc);
+    vbghMimeConvCacheClearLocked(pThis);
+    RTMemFree(pThis);
 
     return VINF_SUCCESS;
 }
 
-RTDECL(int) VBoxMimeConvClearCache(vbox_mime_conv_cache_t *pCache)
+VBGH_DECL(int) VbghMimeConvCacheClear(VBGHMIMECONVCACHE hCache)
 {
-    int rc;
+    VBGHMIMECONVCACHEINT * const pThis = hCache;
+    VBGH_MIME_CONV_CACHE_VALIDATE_RETURN(pThis);
 
-    rc = vboxMimeConvValidateCache(pCache);
-
-    if (RT_SUCCESS(rc))
-        rc = RTCritSectEnter(&pCache->CritSect);
-
+    int rc = RTCritSectEnter(&pThis->CritSect);
     if (RT_SUCCESS(rc))
     {
-        struct VBCONVERTERFMTTABLE *pLocalCache = (struct VBCONVERTERFMTTABLE *)pCache->pvCache;
-        for (unsigned i = 0; i < pCache->iCacheElements; i++)
-        {
-            pLocalCache[i].pvBuf = NULL;
-            pLocalCache[i].cbBuf = 0;
-        }
-
-        RTCritSectLeave(&pCache->CritSect);
+        vbghMimeConvCacheClearLocked(pThis);
+        RTCritSectLeave(&pThis->CritSect);
     }
-
     return rc;
 }
 
-RTDECL(int) VBoxMimeConvSetCacheByMime(vbox_mime_conv_cache_t *pCache, const char *pcszMimeType, void *pvBuf, int cbBuf)
+/**
+ * Helper for looking up the index of a MIME type.
+ */
+static unsigned vbghMimeConvLookupType(const char *pcszMimeType)
 {
-    int rc;
+    for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
+        if (RTStrNCmp(g_aConverterFormats[i].pcszMimeType, pcszMimeType, VBOX_WAYLAND_MIME_TYPE_NAME_MAX) == 0)
+            return i;
+    return ~0U;
+}
 
-    AssertPtrReturn(pcszMimeType, VERR_INVALID_PARAMETER);
+VBGH_DECL(int) VbghMimeConvCacheSetByMime(VBGHMIMECONVCACHE hCache, const char *pcszMimeType, void *pvBuf, int cbBuf)
+{
+    /*
+     * Validate input.
+     */
+    VBGHMIMECONVCACHEINT * const pThis = hCache;
+    VBGH_MIME_CONV_CACHE_VALIDATE_RETURN(pThis);
+    AssertPtr(pcszMimeType);
     AssertPtrReturn(pvBuf, VERR_INVALID_PARAMETER);
     AssertReturn(cbBuf > 0, VERR_INVALID_PARAMETER);
 
-    rc = vboxMimeConvValidateCache(pCache);
-
-    if (RT_SUCCESS(rc))
-        rc = RTCritSectEnter(&pCache->CritSect);
-
-    if (RT_SUCCESS(rc))
+    /*
+     * Lookup, lock and set.
+     */
+    int rc;
+    unsigned const idx = vbghMimeConvLookupType(pcszMimeType);
+    if (idx < RT_ELEMENTS(g_aConverterFormats))
     {
-        struct VBCONVERTERFMTTABLE *pLocalCache = (struct VBCONVERTERFMTTABLE *)pCache->pvCache;
-        bool fFound = false;
-
-        for (unsigned i = 0; i < pCache->iCacheElements; i++)
+        rc = RTCritSectEnter(&pThis->CritSect);
+        if (RT_SUCCESS(rc))
         {
-            if (RTStrNCmp(pLocalCache[i].pcszMimeType, pcszMimeType, VBOX_WAYLAND_MIME_TYPE_NAME_MAX) == 0)
-            {
-                pLocalCache[i].pvBuf = pvBuf;
-                pLocalCache[i].cbBuf = cbBuf;
-                fFound = true;
-            }
+            pThis->aEntries[idx].pvBuf = pvBuf;
+            pThis->aEntries[idx].cbBuf = cbBuf;
+            RTCritSectLeave(&pThis->CritSect);
+            rc = VINF_SUCCESS; /* paranoia */
         }
-
-        rc = fFound ? VINF_SUCCESS : VERR_NOT_FOUND;
-
-        RTCritSectLeave(&pCache->CritSect);
     }
-
+    else
+        rc = VERR_NOT_FOUND;
     return rc;
 }
 
-RTDECL(int) VBoxMimeConvGetCacheByMime(vbox_mime_conv_cache_t *pCache, const char *pcszMimeType, void **ppvBufOut, size_t *pcbBufOut)
+VBGH_DECL(int) VbghMimeConvCacheGetByMime(VBGHMIMECONVCACHE hCache, const char *pcszMimeType, void **ppvBufOut, size_t *pcbBufOut)
 {
+    /*
+     * Validate input.
+     */
+    VBGHMIMECONVCACHEINT * const pThis = hCache;
+    VBGH_MIME_CONV_CACHE_VALIDATE_RETURN(pThis);
+    AssertPtr(pcszMimeType);
+    AssertPtr(ppvBufOut);
+    AssertPtr(pcbBufOut);
+    *ppvBufOut = NULL;
+    *pcbBufOut = 0;
+
+    /*
+     * Lookup, lock and set.
+     */
     int rc;
-
-    AssertPtrReturn(pcszMimeType, VERR_INVALID_PARAMETER);
-    AssertPtrReturn(ppvBufOut, VERR_INVALID_PARAMETER);
-    AssertPtrReturn(pcbBufOut, VERR_INVALID_PARAMETER);
-
-    rc = vboxMimeConvValidateCache(pCache);
-
-    if (RT_SUCCESS(rc))
-        rc = RTCritSectEnter(&pCache->CritSect);
-
-    if (RT_SUCCESS(rc))
+    unsigned const idx = vbghMimeConvLookupType(pcszMimeType);
+    if (idx < RT_ELEMENTS(g_aConverterFormats))
     {
-        struct VBCONVERTERFMTTABLE *pLocalCache = (struct VBCONVERTERFMTTABLE *)pCache->pvCache;
-        bool fFound = false;
-
-        for (unsigned i = 0; i < pCache->iCacheElements; i++)
+        rc = RTCritSectEnter(&pThis->CritSect);
+        if (RT_SUCCESS(rc))
         {
-            if (   RTStrNCmp(pLocalCache[i].pcszMimeType, pcszMimeType, VBOX_WAYLAND_MIME_TYPE_NAME_MAX) == 0
-                && RT_VALID_PTR(pLocalCache[i].pvBuf)
-                && pLocalCache[i].cbBuf > 0)
+            if (   pThis->aEntries[idx].pvBuf != NULL
+                && pThis->aEntries[idx].cbBuf > 0)
             {
-                *ppvBufOut = pLocalCache[i].pvBuf;
-                *pcbBufOut = pLocalCache[i].cbBuf;
-                fFound = true;
-
-                break;
+                *ppvBufOut = pThis->aEntries[idx].pvBuf;
+                *pcbBufOut = pThis->aEntries[idx].cbBuf;
+                rc = VINF_SUCCESS; /* paranoia */
             }
+            else
+                rc = VERR_NOT_FOUND;
+            RTCritSectLeave(&pThis->CritSect);
         }
-
-        rc = fFound ? VINF_SUCCESS : VERR_NOT_FOUND;
-
-        RTCritSectLeave(&pCache->CritSect);
     }
-
+    else
+        rc = VERR_NOT_FOUND;
     return rc;
 }
 
-RTDECL(int) VBoxMimeConvGetCacheById(vbox_mime_conv_cache_t *pCache, const SHCLFORMAT uFmtVBox, void **ppvBufOut, size_t *pcbBufOut)
+VBGH_DECL(int) VbghMimeConvCacheGetByVBoxFormat(VBGHMIMECONVCACHE hCache, const SHCLFORMAT uFmtVBox,
+                                                void **ppvBufOut, size_t *pcbBufOut)
 {
-    int rc;
+    /*
+     * Validate input.
+     */
+    VBGHMIMECONVCACHEINT * const pThis = hCache;
+    VBGH_MIME_CONV_CACHE_VALIDATE_RETURN(pThis);
+    AssertPtr(ppvBufOut);
+    AssertPtr(pcbBufOut);
+    *ppvBufOut = NULL;
+    *pcbBufOut = 0;
 
-    AssertPtrReturn(ppvBufOut, VERR_INVALID_PARAMETER);
-    AssertPtrReturn(pcbBufOut, VERR_INVALID_PARAMETER);
-
-    rc = vboxMimeConvValidateCache(pCache);
-
-    if (RT_SUCCESS(rc))
-        rc = RTCritSectEnter(&pCache->CritSect);
-
+    /*
+     * Lock the cache and pick the highest priority MIME type with data in cache.
+     */
+    int rc = RTCritSectEnter(&pThis->CritSect);
     if (RT_SUCCESS(rc))
     {
-        struct VBCONVERTERFMTTABLE *pLocalCache = (struct VBCONVERTERFMTTABLE *)pCache->pvCache;
-        bool fFound = false;
+        uint32_t uBestMatch = 0;
+        rc = VERR_NOT_FOUND;
 
-        for (unsigned i = 0; i < pCache->iCacheElements; i++)
-        {
-            if (   uFmtVBox == pLocalCache[i].uFmtVBox
-                && RT_VALID_PTR(pLocalCache[i].pvBuf)
-                && pLocalCache[i].cbBuf > 0)
-            {
-                *ppvBufOut = pLocalCache[i].pvBuf;
-                *pcbBufOut = pLocalCache[i].cbBuf;
-                fFound = true;
+        for (unsigned idx = 0; idx < RT_ELEMENTS(g_aConverterFormats); idx++)
+            if (g_aConverterFormats[idx].uFmtVBox == uFmtVBox)
+                if ((g_aConverterFormats[idx].fFlagsAndPriority & VBGH_MIME_CONV_F_PRIORITY_MASK) > uBestMatch)
+                    if (   pThis->aEntries[idx].pvBuf != NULL
+                        && pThis->aEntries[idx].cbBuf > 0)
+                    {
+                        *ppvBufOut = pThis->aEntries[idx].pvBuf;
+                        *pcbBufOut = pThis->aEntries[idx].cbBuf;
+                        rc = VINF_SUCCESS;
+                    }
 
-                break;
-            }
-        }
-
-        rc = fFound ? VINF_SUCCESS : VERR_NOT_FOUND;
-
-        RTCritSectLeave(&pCache->CritSect);
+        RTCritSectLeave(&pThis->CritSect);
     }
 
     return rc;

@@ -1,4 +1,4 @@
-/** $Id: clipboard-x11.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/** $Id: clipboard-x11.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard implementation.
  */
@@ -308,7 +308,7 @@ static DECLCALLBACK(int) vbclX11ReportFormatsCallback(PSHCLCONTEXT pCtx, uint32_
 }
 
 /**
- * Initializes the X11-specifc Shared Clipboard code.
+ * Initializes the X11-specific Shared Clipboard code.
  *
  * @returns VBox status code.
  */
@@ -316,7 +316,7 @@ int VBClX11ClipboardInit(void)
 {
     LogFlowFuncEnter();
 
-    int rc = ShClEventSourceCreate(&g_Ctx.EventSrc, 0 /* uID */);
+    int rc = ShClEventSourceInit(&g_Ctx.EventSrc, 0 /* uID */);
     AssertRCReturn(rc, rc);
 
     SHCLCALLBACKS Callbacks;
@@ -341,7 +341,7 @@ int VBClX11ClipboardInit(void)
     if (RT_FAILURE(rc))
     {
         VbglR3ClipboardDisconnectEx(&g_Ctx.CmdCtx);
-        ShClX11Destroy(&g_Ctx.X11);
+        ShClX11Term(&g_Ctx.X11);
     }
 
     LogFlowFuncLeaveRC(rc);
@@ -349,17 +349,17 @@ int VBClX11ClipboardInit(void)
 }
 
 /**
- * Destroys the X11-specifc Shared Clipboard code.
+ * Destroys the X11-specific Shared Clipboard code.
  *
  * @returns VBox status code.
  */
 int VBClX11ClipboardDestroy(void)
 {
-    return ShClEventSourceDestroy(&g_Ctx.EventSrc);
+    return ShClEventSourceTerm(&g_Ctx.EventSrc);
 }
 
 /**
- * The main loop of the X11-specifc Shared Clipboard code.
+ * The main loop of the X11-specific Shared Clipboard code.
  *
  * @returns VBox status code.
  *

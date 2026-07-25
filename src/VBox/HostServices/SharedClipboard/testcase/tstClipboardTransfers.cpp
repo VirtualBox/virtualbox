@@ -1,4 +1,4 @@
-/* $Id: tstClipboardTransfers.cpp 111866 2025-11-25 13:35:04Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardTransfers.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard transfers test case.
  */
@@ -301,31 +301,31 @@ static void testEvents(void)
     RTTestISub("Testing events");
 
     SHCLEVENTSOURCE Source;
-    RTTESTI_CHECK_RC_OK(ShClEventSourceCreate(&Source, 0));
+    RTTESTI_CHECK_RC_OK(ShClEventSourceInit(&Source, 0));
     RTTESTI_CHECK(ShClEventSourceGetLast(&Source) == NULL); /* Should be empty. */
-    RTTESTI_CHECK_RC_OK(ShClEventSourceDestroy(&Source));
-    RTTESTI_CHECK_RC_OK(ShClEventSourceDestroy(&Source)); /* Destroying a second time, intentional. */
+    RTTESTI_CHECK_RC_OK(ShClEventSourceTerm(&Source));
+    RTTESTI_CHECK_RC_OK(ShClEventSourceTerm(&Source)); /* Destroying a second time, intentional. */
 
-    RTTESTI_CHECK_RC_OK(ShClEventSourceCreate(&Source, 42));
+    RTTESTI_CHECK_RC_OK(ShClEventSourceInit(&Source, 42));
     PSHCLEVENT pEvent;
     RTTESTI_CHECK_RC_OK(ShClEventSourceGenerateAndRegisterEvent(&Source, &pEvent));
     ShClEventSourceReset(&Source);
     RTTESTI_CHECK(ShClEventSourceGetLast(&Source) == NULL); /* Event still valid, but removed from the source. */
     RTTESTI_CHECK(ShClEventRelease(pEvent) == 0); /* Free'd event, as ref count is 0. */
     RTTESTI_CHECK(ShClEventSourceGetLast(&Source) == NULL); /* Now it should be empty. */
-    RTTESTI_CHECK_RC_OK(ShClEventSourceDestroy(&Source));
+    RTTESTI_CHECK_RC_OK(ShClEventSourceTerm(&Source));
 
     /* Test delayed destruction of the event by retaining it. */
-    RTTESTI_CHECK_RC_OK(ShClEventSourceCreate(&Source, 42));
+    RTTESTI_CHECK_RC_OK(ShClEventSourceInit(&Source, 42));
     RTTESTI_CHECK_RC_OK(ShClEventSourceGenerateAndRegisterEvent(&Source, &pEvent));
     RTTESTI_CHECK_RC_OK(ShClEventRetain(pEvent));
     RTTESTI_CHECK(ShClEventGetRefs(pEvent) == 2);
-    RTTESTI_CHECK_RC_OK(ShClEventSourceDestroy(&Source));
-    RTTESTI_CHECK(ShClEventGetRefs(pEvent) == 2); /* Make sure the ref count didn't drop due to ShClEventSourceDestroy(). */
+    RTTESTI_CHECK_RC_OK(ShClEventSourceTerm(&Source));
+    RTTESTI_CHECK(ShClEventGetRefs(pEvent) == 2); /* Make sure the ref count didn't drop due to ShClEventSourceTerm(). */
     RTTESTI_CHECK(ShClEventRelease(pEvent) == 1);
     RTTESTI_CHECK(ShClEventGetRefs(pEvent) == 1);
     RTTESTI_CHECK(ShClEventRelease(pEvent) == 0); /* Free'd event, as ref count is 0. */
-    RTTESTI_CHECK_RC_OK(ShClEventSourceDestroy(&Source)); /* Try to destruct again. */
+    RTTESTI_CHECK_RC_OK(ShClEventSourceTerm(&Source)); /* Try to destruct again. */
 }
 
 static void testTransferBasics(void)

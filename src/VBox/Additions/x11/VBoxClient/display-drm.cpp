@@ -1,4 +1,4 @@
-/* $Id: display-drm.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: display-drm.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - VMSVGA guest screen resize service.
  *
@@ -1366,6 +1366,8 @@ int main(int argc, char *argv[])
     rc = RTGetOptInit(&GetState, argc, argv, s_aOptions, RT_ELEMENTS(s_aOptions), 0, 0 /* fFlags */);
     if (RT_FAILURE(rc))
         VBClLogFatalError("VBoxDRMClient: unable to process command line options, rc=%Rrc\n", rc);
+/** @todo r=bird: This is not something you can ignore. AND you shouldn't
+ *        start with arg[0]! */
     while ((ch = RTGetOpt(&GetState, &ValueUnion)) != 0)
     {
         switch (ch)

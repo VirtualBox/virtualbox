@@ -673,6 +673,7 @@ PREDEFINED += \
     DECLR0VBGL(type)=type \
     DECLSPEC_HIDDEN= \
     DECLVBGL(type)=type \
+    VBGH_DECL(type)=type \
     DISDECL(type)=type \
     GMMR0DECL(type)=type \
     GMMR3DECL(type)=type \

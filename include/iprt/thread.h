@@ -276,8 +276,11 @@ typedef enum RTTHREADFLAGS
      *       this flag. */
     RTTHREADFLAGS_NO_SIGNALS = RT_BIT(3),
 
+    /** Signal the user semaphore when the thread terminates (exits). */
+    RTTHREADFLAGS_USER_SIGNAL_ON_TERM = RT_BIT(4),
+
     /** Mask of valid flags, use for validation. */
-    RTTHREADFLAGS_MASK = UINT32_C(0xf)
+    RTTHREADFLAGS_MASK = UINT32_C(0x1f)
 } RTTHREADFLAGS;
 
 /** Max thread name length (including zero terminator). */

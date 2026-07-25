@@ -1257,20 +1257,20 @@ int ShClX11Init(PSHCLX11CTX pCtx, PSHCLCALLBACKS pCallbacks, PSHCLCONTEXT pParen
 }
 
 /**
- * Destroys a Shared Clipboard X11 context.
+ * Terminates (uninitializes) a Shared Clipboard X11 context.
  *
  * @returns VBox status code.
  * @param   pCtx                The X11 clipboard context to destroy.
  */
-int ShClX11Destroy(PSHCLX11CTX pCtx)
+int ShClX11Term(PSHCLX11CTX pCtx)
 {
     if (!pCtx)
         return VINF_SUCCESS;
 
     LogFlowFunc(("pCtx=%p\n", pCtx));
 
-    /* Destroy clipboard cache. */
-    ShClCacheDestroy(&pCtx->Cache);
+    /* Delete the clipboard cache. */
+    ShClCacheTerm(&pCtx->Cache);
 
     int rc = VINF_SUCCESS;
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
@@ -2433,7 +2433,7 @@ SHCL_X11_DECL(void) clipConvertDataFromX11Worker(void *pClient, void *pvSrc, uns
 
             pvDst = NULL; /* The response owns the data now. */
 
-            rc = ShClPayloadInit(0 /* ID, unused */, pResp, cbResp, &pPayload);
+            rc = ShClPayloadCreate(0 /* ID, unused */, pResp, cbResp, &pPayload);
         }
         else
             rc = VERR_NO_MEMORY;
@@ -2449,7 +2449,7 @@ SHCL_X11_DECL(void) clipConvertDataFromX11Worker(void *pClient, void *pvSrc, uns
 
     if (pPayload) /* Free payload on error. */
     {
-        ShClPayloadFree(pPayload);
+        ShClPayloadDestroy(pPayload);
         pPayload = NULL;
     }
 
@@ -2746,7 +2746,7 @@ static int shClX11ReadDataFromX11Internal(PSHCLX11CTX pCtx, PSHCLEVENTSOURCE pEv
                             pPayload->pvData = NULL; /* pvData (pResp) is owned by ppResp now. */
                             pPayload->cbData = 0;
 
-                            ShClPayloadFree(pPayload);
+                            ShClPayloadDestroy(pPayload);
 
                             *ppResp = pResp;
                         }
