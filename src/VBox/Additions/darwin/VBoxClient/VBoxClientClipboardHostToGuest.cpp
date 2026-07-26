@@ -1,4 +1,4 @@
-/** $Id: VBoxClientClipboardHostToGuest.cpp 114775 2026-07-26 00:14:04Z knut.osmundsen@oracle.com $ */
+/** $Id: VBoxClientClipboardHostToGuest.cpp 114779 2026-07-26 01:05:00Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxClient - Shared Clipboard Host -> Guest copying, Darwin.
  */
@@ -176,7 +176,7 @@ static int vbclClipboardGuestPasteText(PasteboardRef pPasteboard, void *pData, u
 
     /* Convert END-OF-LINE */
     size_t cwcDst;
-    int rc = ShClHlpUtf16CRLFLenUtf8((RTUTF16 *)pData, cbDataSize / sizeof(RTUTF16), &cwcDst);
+    int rc = ShClHlpUtf16CRLFToLFLen((RTUTF16 *)pData, cbDataSize / sizeof(RTUTF16), &cwcDst);
     AssertRCReturn(rc, rc);
 
     cwcDst++; /* Add space for terminator. */
@@ -192,8 +192,9 @@ static int vbclClipboardGuestPasteText(PasteboardRef pPasteboard, void *pData, u
         if (RT_SUCCESS(rc))
         {
             /* Paste UTF8 */
+            /** @todo r=bird: pwszDst has a BOM... */
             char *pszDst;
-            rc = RTUtf16ToUtf8((PRTUTF16)pwszDst, &pszDst);
+            rc = RTUtf16ToUtf8(pwszDst, &pszDst);
             if (RT_SUCCESS(rc))
             {
                 rc = vbclClipboardGuestPasteData(pPasteboard, (UInt8 *)pszDst, strlen(pszDst), kUTTypeUTF8PlainText, false);

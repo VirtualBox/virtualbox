@@ -1,4 +1,4 @@
-/** $Id: SharedClipboard-Wayland.h 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
+/** $Id: SharedClipboard-Wayland.h 114779 2026-07-26 01:05:00Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard - Common Wayland code.
  */
@@ -148,6 +148,9 @@ typedef struct SHCLWAYLANDCTX
     uint32_t            idxOurOfferSlots;
     /** HACK: Circular callback context slots. */
     SHCLWLOFFERSLOT     aOurOfferSlots[8];
+
+    /** String cache used for MIME type strings. */
+    RTSTRCACHE          hStrCache;
 
     /** Core guest-host Wayland data. */
     VBGHWAYLANDCORE     GhCore;

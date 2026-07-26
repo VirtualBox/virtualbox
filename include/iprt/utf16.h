@@ -668,6 +668,22 @@ RTDECL(int) RTUtf16ValidateEncoding(PCRTUTF16 pwsz);
 RTDECL(int) RTUtf16ValidateEncodingEx(PCRTUTF16 pwsz, size_t cwc, uint32_t fFlags);
 
 /**
+ * Validates the UTF-16 encoding of the string.
+ *
+ * @returns iprt status code.
+ * @param   pwsz        The string.
+ * @param   cwc         The max string length (/ size) in UTF-16 units. Use
+ *                      RTSTR_MAX to process the entire string.
+ * @param   fFlags      Combination of RTSTR_VALIDATE_ENCODING_XXX flags.
+ * @param   pcuc        Where to store the length in unicode code points.
+ *                      Optional.
+ * @param   pcwcActual  Where to store the actual size of the UTF-16 string on
+ *                      success.  Optional.
+ * @sa      RTUtf16ValidateEncodingEx, RTStrLenAndValidateEncoding
+ */
+RTDECL(int) RTUtf16LenAndValidateEncoding(PCRTUTF16 pwsz, size_t cwc, uint32_t fFlags, size_t *pcuc, size_t *pcwcActual);
+
+/**
  * Checks if the UTF-16 encoding is valid.
  *
  * @returns true / false.

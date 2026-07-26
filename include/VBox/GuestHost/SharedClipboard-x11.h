@@ -71,7 +71,7 @@ typedef enum SHCLX11FMT
     SHCLX11FMT_TEXT,  /* Treat this as UTF-8, but it may really be ascii */
     SHCLX11FMT_UTF8,
     SHCLX11FMT_BMP,
-    SHCLX11FMT_HTML
+     SHCLX11FMT_HTML
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     /** URI list as (UTF-8) text. */
     , SHCLX11FMT_URI_LIST

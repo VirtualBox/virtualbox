@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 114779 2026-07-26 01:05:00Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -2026,6 +2026,7 @@ int ShClTransferRootsSetFromStringListUnicode(PSHCLTRANSFER pTransfer, PRTUTF16 
     size_t cwcRoots = cbRoots / sizeof(RTUTF16);
 
     /* This may slightly overestimate the space needed. */
+#if 0
     size_t cbDst = 0;
     int rc = ShClHlpUtf16LenUtf8(pwszRoots, cwcRoots, &cbDst);
     if (RT_SUCCESS(rc))
@@ -2045,6 +2046,16 @@ int ShClTransferRootsSetFromStringListUnicode(PSHCLTRANSFER pTransfer, PRTUTF16 
         else
             rc = VERR_NO_MEMORY;
     }
+#else
+    char  *pszTmp = NULL;
+    size_t cbLenSansTerm = 0;
+    int rc = ShClHlpConvUtf16CRLFToUtf8LFA(pwszRoots, cwcRoots, &pszTmp, &cbLenSansTerm);
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferRootsSetFromStringList(pTransfer, pszTmp, cbLenSansTerm + 1 /* Include terminator */);
+        RTMemFree(pszTmp);
+    }
+#endif
 
     return rc;
 }
