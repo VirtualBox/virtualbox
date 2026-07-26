@@ -1,6 +1,8 @@
-/* $Id: vboxwl.cpp 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
+/* $Id: vboxwl.cpp 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Wayland helper for grabbing input focus, drag-n-drop and clipboard sharing.
+ *
+ * @note Obsolete, not compiled.
  */
 
 /*
@@ -94,6 +96,53 @@ static GtkWidget *g_pWindow;
 
 /** Clipboard IPC flow object. */
 vbcl::ipc::data::DataIpc *g_oDataIpc;
+
+
+/*********************************************************************************************************************************
+*   Temporary Hacks                                                                                                              *
+*********************************************************************************************************************************/
+
+/**
+ * Duplicated, just to make this obsolete util keep building for a while longer.
+ */
+int VBClStartThread(PRTTHREAD phThread, PFNRTTHREAD pfnThread, const char *pszName, void *pvUser)
+{
+    RTTHREAD hThread = NIL_RTTHREAD;
+    int rc = RTThreadCreate(&hThread, pfnThread, pvUser, 0, RTTHREADTYPE_IO,
+                            RTTHREADFLAGS_WAITABLE | RTTHREADFLAGS_USER_SIGNAL_ON_TERM, pszName);
+    if (RT_SUCCESS(rc))
+    {
+        *phThread = hThread;
+        rc = RTThreadUserWait(hThread, RT_MS_30SEC /* msTimeout */);
+        if (RT_SUCCESS(rc))
+        {
+            int rcThread = VINF_SUCCESS;
+            rc = RTThreadWait(hThread, 0, &rcThread);
+            if (rc == VERR_TIMEOUT)
+            {
+                VBClLogVerbose(1, "started %s thread\n", pszName);
+                return VINF_SUCCESS;
+            }
+
+            if (RT_SUCCESS(rc))
+            {
+                /* Note! If we end up with VINF_SUCCESS here, it could in theorybe some
+                         kind of race with a regular exit.  Though, it shouldn't since
+                         we shouldn't be using that shortlived threads... */
+                VBClLogError("thread '%s' failed to initialize: %Rrc\n", pszName, rcThread);
+                rc = !RT_SUCCESS_NP(rcThread) ? rcThread : VERR_INTERNAL_ERROR_2;
+            }
+            else
+                VBClLogError("Failed checking thread '%s' after initialization: %Rrc\n", pszName, rc);
+        }
+        else
+            VBClLogError("Failed waiting (30s) for thread '%s' to initialize: %Rrc\n", pszName, rc);
+    }
+    else
+        VBClLogError("Failed to start thread '%s': %Rrc\n", pszName, rc);
+    *phThread = NIL_RTTHREAD;
+    return rc;
+}
 
 
 /************************************************************************************************
@@ -607,7 +656,7 @@ static int vboxwl_connect_ipc(PRTLOCALIPCSESSION phIpcSession)
  */
 static int vboxwl_run_command(void)
 {
-    int rc = vbcl_wayland_thread_start(&g_AppThread, vbwlGtkWorkerThreadProc, "gtk-app", NULL); /* (IPRT wrapper function) */
+    int rc = VBClStartThread(&g_AppThread, vbwlGtkWorkerThreadProc, "gtk-app", NULL); /* (IPRT wrapper function) */
     if (RT_SUCCESS(rc))
     {
         RTLOCALIPCSESSION hIpcSession = NIL_RTLOCALIPCSESSION;

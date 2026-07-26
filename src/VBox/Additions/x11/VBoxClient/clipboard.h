@@ -1,4 +1,4 @@
-/** $Id: clipboard.h 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard.h 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard - Main header.
  */
@@ -94,6 +94,8 @@ struct SHCLCONTEXT
  *  Only one context is supported at a time for now. */
 extern SHCLCONTEXT g_Ctx;
 
+bool VBClClipboardShouldUseWayland(VBGHDISPLAYSERVERTYPE enmType);
+
 int VBClClipboardReadHostEvent(PSHCLCONTEXT pCtx, PFNHOSTCLIPREPORTFMTS pfnHGClipReport, PFNHOSTCLIPREAD pfnGHClipRead);
 int VBClClipboardReadHostClipboard(PSHCLCONTEXT pCtx, SHCLFORMAT uFmt, void **ppvData, uint32_t *pcbData);
 
@@ -105,5 +107,21 @@ int     VBClClipboardSerializeCache(SHCLCACHE const *pCache, SHCLFORMATS fFormat
                                     RTMSINTERVAL cMsTimeout);
 int     VBClClipboardDeserializeCache(struct RTHANDLE const *pHandleSrc, PSHCLCACHE pCache, SHCLFORMATS *pfFormats,
                                       RTMSINTERVAL cMsTimeout);
+
+/* clipboard-x11.cpp */
+int  VBClX11ClipboardInit(void);
+int  VBClX11ClipboardDestroy(void);
+int  VBClX11ClipboardMain(void);
+
+/* clipboard-wayland.cpp */
+int  VBClClipboardWaylandInit(SHCLCONTEXT *pCtx);
+int  VBClClipboardWaylandMain(SHCLCONTEXT *pCtx, bool volatile *pfShutdown);
+void VBClClipboardWaylandStop(SHCLCONTEXT *pCtx);
+void VBClClipboardWaylandTerm(SHCLCONTEXT *pCtx);
+
+/* clipboard-wayland-popup.cpp */
+int  VBClClipboardWaylandPopupGetAll(SHCLCONTEXT *pCtx);
+int  VBClClipboardWaylandPopupSetAll(SHCLCONTEXT *pCtx, SHCLFORMATS fFormats);
+
 
 #endif /* !GA_INCLUDED_SRC_x11_VBoxClient_clipboard_h */

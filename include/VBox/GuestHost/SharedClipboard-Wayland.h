@@ -1,4 +1,4 @@
-/** $Id: SharedClipboard-Wayland.h 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
+/** $Id: SharedClipboard-Wayland.h 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard - Common Wayland code.
  */
@@ -236,7 +236,7 @@ typedef struct SHCLWAYLANDCTX
      * @param   cbData          Size returned by pfnQueryRemoteData.
      * @note    May be called both inside and outside the critical section.
      */
-    DECLCALLBACKMEMBER(int, pfnQueryRemoteDataFree, (struct SHCLWAYLANDCTX *pWlCtx, void *pvData, size_t cbData));
+    DECLCALLBACKMEMBER(void, pfnQueryRemoteDataFree, (struct SHCLWAYLANDCTX *pWlCtx, void *pvData, size_t cbData));
 
     /** The popup for use with the wl_data_device_manager protocol. */
     VBGHWAYLANDPOPUP                        Popup;
@@ -265,8 +265,8 @@ VBGH_DECL(void)     VbghWaylandClipboardPartialTerm(PSHCLWAYLANDCTX pThis);
 VBGH_DECL(int)      VbghWaylandClipboardOfferAddMimeType(SHCLWLOFFERSLOT *pOfferSlot, const char *pszMimeType,
                                                          const char *pszCaller);
 
-VBGH_DECL(int)      VbghlWaylandClipboardQueryRemoteData(PSHCLWAYLANDCTX pThis, const char *pszMimeType,
-                                                         void **ppvOutData, size_t *pcbOutData);
+VBGH_DECL(int)      VbghWaylandClipboardQueryRemoteData(PSHCLWAYLANDCTX pThis, const char *pszMimeType,
+                                                        void **ppvOutData, size_t *pcbOutData);
 VBGH_DECL(int)      VbghWaylandClipboardMakeDataOffering(PSHCLWAYLANDCTX pThis, const char *pszPopupTitle,
                                                          const char *pszPopupClass, PRTERRINFO pErrInfo);
 

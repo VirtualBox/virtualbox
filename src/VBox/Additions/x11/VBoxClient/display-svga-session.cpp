@@ -1,4 +1,4 @@
-/* $Id: display-svga-session.cpp 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
+/* $Id: display-svga-session.cpp 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - VMSVGA Desktop Environment user session assistant.
  *
@@ -439,7 +439,7 @@ static DECLCALLBACK(int) vbclSVGASessionTerm(void)
     return VINF_SUCCESS;
 }
 
-VBCLSERVICE g_SvcDisplaySVGASession =
+VBCLSERVICE const g_SvcDisplaySVGASession =
 {
     "vmsvga-session",                   /* szName */
     "VMSVGA display assistant",         /* pszDescription */

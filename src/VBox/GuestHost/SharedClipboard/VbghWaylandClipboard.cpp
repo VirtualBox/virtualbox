@@ -1,4 +1,4 @@
-/* $Id: VbghWaylandClipboard.cpp 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
+/* $Id: VbghWaylandClipboard.cpp 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest / Host common code - Wayland Clipboard.
  */
@@ -37,6 +37,7 @@
 #include <iprt/assert.h>
 #include <iprt/err.h>
 #include <iprt/mem.h>
+#include <iprt/pipe.h>
 #include <iprt/semaphore.h>
 #include <iprt/string.h>
 
@@ -226,6 +227,18 @@ VBGH_DECL(void) VbghWaylandClipboardPartialTerm(PSHCLWAYLANDCTX pThis)
 
     RTCritSectDelete(&pThis->CritSect);
     ShClCacheTerm(&pThis->OtherCache);
+
+    if (pThis->hPipeClipboardSet != NIL_RTPIPE)
+    {
+        RTPipeClose(pThis->hPipeClipboardSet);
+        pThis->hPipeClipboardSet = NIL_RTPIPE;
+    }
+
+    if (pThis->hProcClipboardSet != NIL_RTPROCESS)
+    {
+        VbghWaylandPopupTerminateAndWaitForChild(pThis->hProcClipboardSet, "--clipboard-set", RT_MS_1SEC, RT_MS_5SEC, 3, NULL);
+        pThis->hProcClipboardSet = NIL_RTPROCESS;
+    }
 }
 
 
@@ -1011,8 +1024,8 @@ VBGH_DECL(int) VbghWaylandClipboardSetupOffer(PSHCLWAYLANDCTX pThis, PRTERRINFO 
  *                              VbghMimeConvFromVBox, free accordingly.
  * @param   pcbOutData          Where to return the data size.
  */
-VBGH_DECL(int) VbghlWaylandClipboardQueryRemoteData(PSHCLWAYLANDCTX pThis, const char *pszMimeType,
-                                                    void **ppvOutData, size_t *pcbOutData)
+VBGH_DECL(int) VbghWaylandClipboardQueryRemoteData(PSHCLWAYLANDCTX pThis, const char *pszMimeType,
+                                                   void **ppvOutData, size_t *pcbOutData)
 {
     *ppvOutData = NULL;
     *pcbOutData = 0;
@@ -1133,7 +1146,7 @@ static void vbghCommonDataControlSourceListener_Send(PSHCLWAYLANDCTX pThis, cons
     {
         void  *pvWaylandData = NULL;
         size_t cbWaylandData = 0;
-        rc = VbghlWaylandClipboardQueryRemoteData(pThis, pszMimeType, &pvWaylandData, &cbWaylandData);
+        rc = VbghWaylandClipboardQueryRemoteData(pThis, pszMimeType, &pvWaylandData, &cbWaylandData);
         if (RT_SUCCESS(rc))
         {
             rc = VbghWaylandWriteBufferToFd(pvWaylandData, cbWaylandData, fdDst, RT_MS_30SEC);

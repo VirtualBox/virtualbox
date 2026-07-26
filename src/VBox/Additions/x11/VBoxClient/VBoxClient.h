@@ -1,4 +1,4 @@
-/* $Id: VBoxClient.h 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxClient.h 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
 /** @file
  *
  * VirtualBox additions user session daemon.
@@ -68,6 +68,57 @@ extern void VBClShutdown(bool fExit = true);
 extern VBGHDISPLAYSERVERTYPE VBClGetDisplayServerType(void);
 extern VBGHDISPLAYSERVERTYPE VBClGetDisplayServerTypeResolveAuto(void);
 extern int VBClExplicitLoadClientLibrariesForDisplayServer(VBGHDISPLAYSERVERTYPE enmType, bool fXWaylandAsPureWayland);
+
+#if defined(IPRT_INCLUDED_thread_h) || defined(DOXYGEN_RUNNING)
+extern int VBClStartThread(PRTTHREAD phThread, PFNRTTHREAD pfnThread, const char *pszName, void *pvUser);
+#endif
+
+#if defined(VBOX_INCLUDED_VBoxGuestLibGuestProp_h) || defined(DOXYGEN_RUNNING)
+/** Host input focus monitor state. */
+typedef struct VBCLHOSTINPUTFOCUSSTATE
+{
+    /** @name User Settable Properties.
+     * @{  */
+    /**
+     * Called when the host VM process receives input focus.
+     *
+     * @return Quit indicator - true to quit, false to keep going.
+     * @param  pThis    Pointer to this structure.
+     */
+    DECLCALLBACKMEMBER(bool, pfnFocusEnter,(struct VBCLHOSTINPUTFOCUSSTATE *pThis));
+    /**
+     * Called when the host VM process loses input focus.
+     *
+     * @return Quit indicator - true to quit, false to keep going.
+     * @param  pThis    Pointer to this structure.
+     */
+    DECLCALLBACKMEMBER(bool, pfnFocusExit,(struct VBCLHOSTINPUTFOCUSSTATE *pThis));
+    /** Pointer to the shutdown indicator (will be set to fShutdownInternal if NULL). */
+    bool volatile      *pfShutdown;
+    /** Where to store user data. */
+    void               *pvUser;
+    /** @} */
+
+    /** @name Internal
+     *  @{ */
+    /** Handle of the monitoring thread (don't touch). */
+    RTTHREAD            hThread;
+    /** Guest property client handle (don't touch). */
+    VBGLGSTPROPCLIENT   GuestPropClient;
+    /** Internal shutdown indicator (don't touch). */
+    bool volatile       fShutdownInternal;
+    /** @} */
+} VBCLHOSTINPUTFOCUSSTATE;
+#else
+struct VBCLHOSTINPUTFOCUSSTATE;
+#endif
+/** Pointer to host input focus monitor state. */
+typedef struct VBCLHOSTINPUTFOCUSSTATE *PVBCLHOSTINPUTFOCUSSTATE;
+
+void VBClHostInputFocusMonitorInit(PVBCLHOSTINPUTFOCUSSTATE pState);
+int  VBClHostInputFocusMonitorStart(PVBCLHOSTINPUTFOCUSSTATE pState, const char *pszThreadName);
+void VBClHostInputFocusMonitorStop(PVBCLHOSTINPUTFOCUSSTATE pState);
+int  VBClHostInputFocusMonitorTerm(PVBCLHOSTINPUTFOCUSSTATE pState);
 
 struct RTGETOPTSTATE;
 
@@ -144,17 +195,16 @@ typedef VBCLSERVICE *PVBCLSERVICE;
 typedef VBCLSERVICE const *PCVBCLSERVICE;
 
 RT_C_DECLS_BEGIN
-extern VBCLSERVICE g_SvcClipboard;
-extern VBCLSERVICE g_SvcDisplayDRM;
-extern VBCLSERVICE g_SvcDisplaySVGA;
-extern VBCLSERVICE g_SvcDisplayLegacy;
+extern VBCLSERVICE const g_SvcClipboard;
+extern VBCLSERVICE const g_SvcDisplaySVGA;
+extern VBCLSERVICE const g_SvcDisplayLegacy;
 # ifdef RT_OS_LINUX
-extern VBCLSERVICE g_SvcDisplaySVGASession;
+extern VBCLSERVICE const g_SvcDisplaySVGASession;
 # endif
-extern VBCLSERVICE g_SvcDragAndDrop;
-extern VBCLSERVICE g_SvcHostVersion;
-extern VBCLSERVICE g_SvcSeamless;
-# ifdef VBOX_WITH_WAYLAND_ADDITIONS
+extern VBCLSERVICE const g_SvcDragAndDrop;
+extern VBCLSERVICE const g_SvcHostVersion;
+extern VBCLSERVICE const g_SvcSeamless;
+# ifdef VBOX_WITH_WAYLAND_ADDITIONS_LEGACY
 extern VBCLSERVICE const g_SvcWayland;
 # endif
 

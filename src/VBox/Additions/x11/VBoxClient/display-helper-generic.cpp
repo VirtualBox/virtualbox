@@ -1,4 +1,4 @@
-/* $Id: display-helper-generic.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: display-helper-generic.cpp 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Generic Desktop Environment helper.
  *
@@ -371,7 +371,7 @@ static DECLCALLBACK(int) vbcl_hlp_generic_probe(void)
     return VINF_SUCCESS;
 }
 
-RTDECL(int) vbcl_hlp_generic_init(void)
+DECLCALLBACK(int) vbcl_hlp_generic_init(void)
 {
     ASMAtomicWriteBool(&g_fShutdown, false);
 
@@ -382,7 +382,7 @@ RTDECL(int) vbcl_hlp_generic_init(void)
     return VINF_SUCCESS;
 }
 
-RTDECL(int) vbcl_hlp_generic_term(void)
+DECLCALLBACK(int) vbcl_hlp_generic_term(void)
 {
     int rc = VINF_SUCCESS;
 
@@ -398,12 +398,12 @@ RTDECL(int) vbcl_hlp_generic_term(void)
     return rc;
 }
 
-RTDECL(void) vbcl_hlp_generic_subscribe_display_offset_changed(FNDISPLAYOFFSETCHANGE *pfnCb)
+DECLCALLBACK(void) vbcl_hlp_generic_subscribe_display_offset_changed(FNDISPLAYOFFSETCHANGE *pfnCb)
 {
     g_pfnDisplayOffsetChangeCb = pfnCb;
 }
 
-RTDECL(void) vbcl_hlp_generic_unsubscribe_display_offset_changed(void)
+DECLCALLBACK(void) vbcl_hlp_generic_unsubscribe_display_offset_changed(void)
 {
     g_pfnDisplayOffsetChangeCb = NULL;
 }

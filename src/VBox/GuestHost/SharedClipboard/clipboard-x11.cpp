@@ -1637,17 +1637,17 @@ static int clipConvertUtf16ToX11Data(Display *pDisplay, PRTUTF16 pwszSrc,
         return VERR_SHCLPB_NO_DATA;
 
     /* This may slightly overestimate the space needed. */
-    size_t chDst = 0;
-    int rc = ShClHlpUtf16LenUtf8(pwszSrc, cwcSrc, &chDst);
+    size_t cbDst = 0;
+    int rc = ShClHlpUtf16LenUtf8(pwszSrc, cwcSrc, &cbDst);
     if (RT_SUCCESS(rc))
     {
-        chDst++; /* Add space for terminator. */
+        cbDst++; /* Add space for terminator. */
 
-        char *pszDst = (char *)XtMalloc(chDst);
+        char *pszDst = (char *)XtMalloc(cbDst);
         if (pszDst)
         {
             size_t cbActual = 0;
-            rc = ShClHlpConvUtf16CRLFToUtf8LF(pwszSrc, cwcSrc, pszDst, chDst, &cbActual);
+            rc = ShClHlpConvUtf16CRLFToUtf8LF(pwszSrc, cwcSrc, pszDst, cbDst, &cbActual);
             if (RT_SUCCESS(rc))
             {
                 *atomTypeReturn = *atomTarget;

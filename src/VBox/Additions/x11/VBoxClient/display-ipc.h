@@ -1,4 +1,4 @@
-/* $Id: display-ipc.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: display-ipc.h 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - DRM IPC communication core function definitions.
  *
@@ -191,8 +191,8 @@ typedef VBOX_DRMIPC_CLIENT *PVBOX_DRMIPC_CLIENT;
  * @param   cTxListCapacity     Maximum number of messages which can be queued for TX for this IPC session.
  * @param   pfnRxCb             IPC RX callback function pointer.
  */
-RTDECL(int) vbDrmIpcClientInit(PVBOX_DRMIPC_CLIENT pClient, RTTHREAD hThread, RTLOCALIPCSESSION hClientSession,
-                               uint32_t cTxListCapacity, PFNDRMIPCRXCB pfnRxCb);
+int vbDrmIpcClientInit(PVBOX_DRMIPC_CLIENT pClient, RTTHREAD hThread, RTLOCALIPCSESSION hClientSession,
+                       uint32_t cTxListCapacity, PFNDRMIPCRXCB pfnRxCb);
 
 /**
  * Releases IPC client private data resources.
@@ -200,7 +200,7 @@ RTDECL(int) vbDrmIpcClientInit(PVBOX_DRMIPC_CLIENT pClient, RTTHREAD hThread, RT
  * @return  IPRT status code.
  * @param   pClient     IPC session private data to be initialized.
  */
-RTDECL(int) vbDrmIpcClientReleaseResources(PVBOX_DRMIPC_CLIENT pClient);
+int vbDrmIpcClientReleaseResources(PVBOX_DRMIPC_CLIENT pClient);
 
 /**
  * Verify if remote IPC peer corresponds to a process which is running
@@ -209,7 +209,7 @@ RTDECL(int) vbDrmIpcClientReleaseResources(PVBOX_DRMIPC_CLIENT pClient);
  * @return  IPRT status code.
  * @param   hClientSession    IPC session handle.
  */
-RTDECL(int) vbDrmIpcAuth(RTLOCALIPCSESSION hClientSession);
+int vbDrmIpcAuth(RTLOCALIPCSESSION hClientSession);
 
 /**
  * Common function for both IPC server and client which is responsible
@@ -218,7 +218,7 @@ RTDECL(int) vbDrmIpcAuth(RTLOCALIPCSESSION hClientSession);
  * @return  IPRT status code.
  * @param   pClient     IPC connection private data.
  */
-RTDECL(int) vbDrmIpcConnectionHandler(PVBOX_DRMIPC_CLIENT pClient);
+int vbDrmIpcConnectionHandler(PVBOX_DRMIPC_CLIENT pClient);
 
 /**
  * Request remote IPC peer to set primary display.
@@ -227,7 +227,7 @@ RTDECL(int) vbDrmIpcConnectionHandler(PVBOX_DRMIPC_CLIENT pClient);
  * @param   pClient     IPC session private data.
  * @param   idDisplay       ID of display to be set as primary.
  */
-RTDECL(int) vbDrmIpcSetPrimaryDisplay(PVBOX_DRMIPC_CLIENT pClient, uint32_t idDisplay);
+int vbDrmIpcSetPrimaryDisplay(PVBOX_DRMIPC_CLIENT pClient, uint32_t idDisplay);
 
 /**
  * Report to IPC server that display layout offsets have been changed (called by IPC client).
@@ -237,6 +237,6 @@ RTDECL(int) vbDrmIpcSetPrimaryDisplay(PVBOX_DRMIPC_CLIENT pClient, uint32_t idDi
  * @param   cDisplays   Number of monitors which have offsets changed.
  * @param   aDisplays   Offsets data.
  */
-RTDECL(int) vbDrmIpcReportDisplayOffsets(PVBOX_DRMIPC_CLIENT pClient, uint32_t cDisplays, struct VBOX_DRMIPC_VMWRECT *aDisplays);
+int vbDrmIpcReportDisplayOffsets(PVBOX_DRMIPC_CLIENT pClient, uint32_t cDisplays, struct VBOX_DRMIPC_VMWRECT *aDisplays);
 
 #endif /* !GA_INCLUDED_SRC_x11_VBoxClient_display_ipc_h */

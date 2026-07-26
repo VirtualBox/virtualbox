@@ -1,4 +1,4 @@
-/* $Id: seamless.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: seamless.cpp 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Common seamless mode wrapper service.
  */
@@ -137,7 +137,7 @@ static DECLCALLBACK(int) vbclSeamlessTerm(void)
     return rc;
 }
 
-VBCLSERVICE g_SvcSeamless =
+VBCLSERVICE const g_SvcSeamless =
 {
     "seamless",                 /* szName */
     "Seamless Mode Support",    /* pszDescription */

@@ -1,4 +1,4 @@
-/* $Id: wayland-helper-ipc.h 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland-helper-ipc.h 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Definitions for IPC between VBoxClient and vboxwl tool.
  */
@@ -461,7 +461,7 @@ namespace vbcl
  * @param   pszBuf          Where to store generated name string.
  * @param   cbBuf           Size of the buffer.
  */
-RTDECL(int) vbcl_wayland_hlp_gtk_ipc_srv_name(const char *pszNamePrefix, char *pszBuf, size_t cbBuf);
+int vbcl_wayland_hlp_gtk_ipc_srv_name(const char *pszNamePrefix, char *pszBuf, size_t cbBuf);
 
 #endif /* !GA_INCLUDED_SRC_x11_VBoxClient_wayland_helper_ipc_h */
 

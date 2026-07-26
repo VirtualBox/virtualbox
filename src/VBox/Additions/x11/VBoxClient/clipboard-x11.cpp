@@ -1,4 +1,4 @@
-/** $Id: clipboard-x11.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-x11.cpp 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard implementation.
  */

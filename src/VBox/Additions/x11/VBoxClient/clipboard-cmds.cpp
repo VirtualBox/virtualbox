@@ -1,4 +1,4 @@
-/** $Id: clipboard-cmds.cpp 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-cmds.cpp 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Clipboard commands.
  */
@@ -627,7 +627,7 @@ static DECLCALLBACK(RTEXITCODE) vbclCmdClipboardGet(void)
                         VBClLogError("VbghWaylandPopupShow failed: %Rrc%#RTeim\n", rc, &ErrInfo.Core);
                 }
 
-                VbghWaylandRunloopForDisplay(State.Wl.GhCore.pDisplay, State.hPipeRead, NIL_RTPIPE,
+                VbghWaylandRunloopForDisplay(State.Wl.GhCore.pDisplay, State.hPipeRead, NULL, NULL, NIL_RTPIPE,
                                              RT_SUCCESS(rc) ? RT_MS_5SEC : RT_MS_1SEC, &State.fShutdown);
 
                 VBClLogVerbose(2, "done (rcExit=%d).\n", State.rcExit);
@@ -760,7 +760,7 @@ static DECLCALLBACK(RTEXITCODE) vbclCmdClipboardSet(void)
                                                                   RTErrInfoInitStatic(&ErrInfo));
                         if (RT_SUCCESS(rc))
                         {
-                            VbghWaylandRunloopForDisplay(State.Wl.GhCore.pDisplay, State.hPipeRead, g_hPipeTerm,
+                            VbghWaylandRunloopForDisplay(State.Wl.GhCore.pDisplay, State.hPipeRead, NULL, NULL, g_hPipeTerm,
                                                          RT_SUCCESS(rc) ? RT_MS_5SEC : RT_MS_1SEC, &State.fShutdown);
 
                             VBClLogVerbose(2, "done (rcExit=%d).\n", State.rcExit);
