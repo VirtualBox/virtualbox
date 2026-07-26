@@ -1,4 +1,4 @@
-/* $Id: VbghWaylandPopup.cpp 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
+/* $Id: VbghWaylandPopup.cpp 114780 2026-07-26 01:19:53Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest / Host common code - Wayland Popup Surface.
  */
@@ -52,14 +52,18 @@
 #ifdef RT_OS_LINUX /* Since 3.17 */
 # include <sys/mman.h>
 # include <fcntl.h>
-# if defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64)
-#  include <sys/syscall.h>
-#  ifndef SYS_memfd_create
-#   if defined(RT_ARCH_X86)
-#    define SYS_memfd_create 356
-#   else
-#    define SYS_memfd_create 319
-#   endif
+# include <sys/syscall.h>
+# ifndef SYS_memfd_create
+#  if defined(RT_ARCH_X86)
+#   define SYS_memfd_create 356
+#  elif defined(RT_ARCH_AMD64)
+#   define SYS_memfd_create 319
+#  elif defined(RT_ARCH_ARM32)
+#   define SYS_memfd_create 385
+#  elif defined(RT_ARCH_ARM64)
+#   define SYS_memfd_create 279
+#  else
+#   error "Missing SYS_memfd_create for your architecture"
 #  endif
 # endif
 #endif
@@ -161,8 +165,8 @@ static int vbghWaylandPopupCreateAndAttachBuffer(PVBGHWAYLANDPOPUP pThis, PRTERR
      * Create an anonymous file with s_cbBuffer of zeros (transparent when ARGB).
      */
     int fd;
-#ifdef RT_OS_LINUX /* Since 3.17 */
-# if defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64)
+#ifdef RT_OS_LINUX
+# ifndef MFD_CLOEXEC /* Since 3.17 & glibc 2.27 (way too new for typical addition build targets) */
     fd = syscall(SYS_memfd_create, __func__, 0 /*fFlags*/);
 # else
     fd = memfd_create(__func__, 0 /*fFlags*/);
