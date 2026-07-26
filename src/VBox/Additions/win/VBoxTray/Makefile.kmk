@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 114775 2026-07-26 00:14:04Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for VBoxTray.
 #
@@ -68,7 +68,8 @@ ifdef VBOX_WITH_SHARED_CLIPBOARD
  VBoxTray_SOURCES  += \
  	VBoxClipboard.cpp \
  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-win.cpp \
- 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-common.cpp
+ 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-common.cpp \
+ 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-helper.cpp
  ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
   VBoxTray_DEFS     += VBOX_WITH_SHARED_CLIPBOARD_GUEST
   VBoxTray_SOURCES  += \

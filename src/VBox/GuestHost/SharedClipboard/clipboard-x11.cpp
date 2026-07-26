@@ -1638,7 +1638,7 @@ static int clipConvertUtf16ToX11Data(Display *pDisplay, PRTUTF16 pwszSrc,
 
     /* This may slightly overestimate the space needed. */
     size_t chDst = 0;
-    int rc = ShClUtf16LenUtf8(pwszSrc, cwcSrc, &chDst);
+    int rc = ShClHlpUtf16LenUtf8(pwszSrc, cwcSrc, &chDst);
     if (RT_SUCCESS(rc))
     {
         chDst++; /* Add space for terminator. */
@@ -1647,7 +1647,7 @@ static int clipConvertUtf16ToX11Data(Display *pDisplay, PRTUTF16 pwszSrc,
         if (pszDst)
         {
             size_t cbActual = 0;
-            rc = ShClConvUtf16CRLFToUtf8LF(pwszSrc, cwcSrc, pszDst, chDst, &cbActual);
+            rc = ShClHlpConvUtf16CRLFToUtf8LF(pwszSrc, cwcSrc, pszDst, chDst, &cbActual);
             if (RT_SUCCESS(rc))
             {
                 *atomTypeReturn = *atomTarget;
@@ -1793,8 +1793,8 @@ static int clipConvertToX11Data(PSHCLX11CTX pCtx, Atom *atomTarget,
         if (RT_SUCCESS(rc))
         {
             /* Create a full BMP from it. */
-            rc = ShClDibToBmp(pv, cb, (void **)pValReturn,
-                              (size_t *)pcLenReturn);
+            rc = ShClHlpDibToBmp(pv, cb, (void **)pValReturn,
+                                  (size_t *)pcLenReturn);
         }
 
         if (RT_SUCCESS(rc))
@@ -2263,11 +2263,11 @@ SHCL_X11_DECL(void) clipConvertDataFromX11Worker(void *pClient, void *pvSrc, uns
                 size_t cwDst;
                 /* If we are given broken UTF-8, we treat it as Latin1. */ /** @todo BUGBUG Is this acceptable? */
                 if (RT_SUCCESS(RTStrValidateEncodingEx((char *)pvSrc, cbSrc, 0)))
-                    rc = ShClConvUtf8LFToUtf16CRLF((const char *)pvSrc, cbSrc,
-                                                   (PRTUTF16 *)&pvDst, &cwDst);
+                    rc = ShClHlpConvUtf8LFToUtf16CRLF((const char *)pvSrc, cbSrc,
+                                                       (PRTUTF16 *)&pvDst, &cwDst);
                 else
-                    rc = ShClConvLatin1LFToUtf16CRLF((char *)pvSrc, cbSrc,
-                                                     (PRTUTF16 *)&pvDst, &cwDst);
+                    rc = ShClHlpConvLatin1LFToUtf16CRLF((char *)pvSrc, cbSrc,
+                                                         (PRTUTF16 *)&pvDst, &cwDst);
                 if (RT_SUCCESS(rc))
                 {
                     cwDst += 1                        /* Include terminator */;
@@ -2294,8 +2294,8 @@ SHCL_X11_DECL(void) clipConvertDataFromX11Worker(void *pClient, void *pvSrc, uns
             {
                 const void *pDib;
                 size_t cbDibSize;
-                rc = ShClBmpGetDib((const void *)pvSrc, cbSrc,
-                                   &pDib, &cbDibSize);
+                rc = ShClHlpBmpGetDib((const void *)pvSrc, cbSrc,
+                                       &pDib, &cbDibSize);
                 if (RT_SUCCESS(rc))
                 {
                     pvDst = RTMemAlloc(cbDibSize);
@@ -2343,7 +2343,7 @@ SHCL_X11_DECL(void) clipConvertDataFromX11Worker(void *pClient, void *pvSrc, uns
                 if (   cbSrc >= sizeof(RTUTF16)
                     && *(PRTUTF16)pvSrc == VBOX_SHCL_UTF16LEMARKER)
                 {
-                    rc = ShClConvUtf16ToUtf8HTML((PRTUTF16)pvSrc, cbSrc / sizeof(RTUTF16), (char**)&pvDst, &cbDst);
+                    rc = ShClHlpConvUtf16ToUtf8HTML((PRTUTF16)pvSrc, cbSrc / sizeof(RTUTF16), (char**)&pvDst, &cbDst);
                     if (RT_SUCCESS(rc))
                     {
                         LogFlowFunc(("UTF-16 Unicode source (%u bytes):\n%ls\n\n", cbSrc, pvSrc));

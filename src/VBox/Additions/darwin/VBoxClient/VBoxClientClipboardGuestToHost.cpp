@@ -1,4 +1,4 @@
-/** $Id: VBoxClientClipboardGuestToHost.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/** $Id: VBoxClientClipboardGuestToHost.cpp 114775 2026-07-26 00:14:04Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxClient - Shared Clipboard Guest -> Host copying, Darwin.
  */
@@ -233,7 +233,7 @@ static int vbclClipboardHostPasteText(uint32_t u32ClientId, PRTUTF16 pwszData, u
     AssertPtrReturn(pwszData, VERR_INVALID_POINTER);
 
     size_t cwcTmp; /* (includes a schwarzenegger character) */
-    int rc = ShClUtf16CalcNormalizedEolToCRLFLength(pwszData, cbData / sizeof(RTUTF16), &cwcTmp);
+    int rc = ShClHlpUtf16CalcNormalizedEolToCRLFLength(pwszData, cbData / sizeof(RTUTF16), &cwcTmp);
     AssertRCReturn(rc, rc);
 
     cwcTmp++; /* Add space for terminator. */
@@ -241,7 +241,7 @@ static int vbclClipboardHostPasteText(uint32_t u32ClientId, PRTUTF16 pwszData, u
     PRTUTF16 pwszTmp = (PRTUTF16)RTMemAlloc(cwcTmp * sizeof(RTUTF16));
     AssertReturn(pwszTmp, VERR_NO_MEMORY);
 
-    rc = ShClConvUtf16LFToCRLF(pwszData, cbData / sizeof(RTUTF16), pwszTmp, cwcTmp);
+    rc = ShClHlpConvUtf16LFToCRLF(pwszData, cbData / sizeof(RTUTF16), pwszTmp, cwcTmp);
     if (RT_SUCCESS(rc))
         rc = vbclClipboardHostPasteData(u32ClientId, VBOX_SHCL_FMT_UNICODETEXT,
                                         pwszTmp, cwcTmp * sizeof(RTUTF16));
@@ -263,7 +263,7 @@ static int vbclClipboardHostPasteBitmap(uint32_t u32ClientId, void *pvData, uint
 {
     const void   *pvDib;
     size_t        cbDib;
-    int rc = ShClBmpGetDib(pvData, cbData, &pvDib, &cbDib);
+    int rc = ShClHlpBmpGetDib(pvData, cbData, &pvDib, &cbDib);
     AssertRCReturn(rc, rc);
 
     rc = vbclClipboardHostPasteData(u32ClientId, VBOX_SHCL_FMT_BITMAP, pvDib, cbDib);

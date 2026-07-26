@@ -69,7 +69,7 @@ static DECLCALLBACK(int) vbConvertUtf8ToUtf16(void *pvBufIn, int cbBufIn, void *
     {
         /** @todo r=bird: Wrong buffer pointer type. Just because you return void
          *        pointers, doesn't mean you should use that internally. */
-        rc = ShClConvUtf8LFToUtf16CRLF((const char *)pvBufIn, cbBufIn, (PRTUTF16 *)&pvDst, &cwDst);
+        rc = ShClHlpConvUtf8LFToUtf16CRLF((const char *)pvBufIn, cbBufIn, (PRTUTF16 *)&pvDst, &cwDst);
         if (RT_SUCCESS(rc))
         {
             *ppvBufOut = pvDst;
@@ -102,7 +102,7 @@ static DECLCALLBACK(int) vbConvertUtf16ToUtf8(void *pvBufIn, int cbBufIn, void *
     if (RT_SUCCESS(rc))
     {
         size_t chDst = 0;
-        rc = ShClUtf16LenUtf8((PCRTUTF16)pvBufIn, cbBufIn / sizeof(RTUTF16), &chDst);
+        rc = ShClHlpUtf16LenUtf8((PCRTUTF16)pvBufIn, cbBufIn / sizeof(RTUTF16), &chDst);
         if (RT_SUCCESS(rc))
         {
             /* Add space for '\0'. */
@@ -112,7 +112,7 @@ static DECLCALLBACK(int) vbConvertUtf16ToUtf8(void *pvBufIn, int cbBufIn, void *
             if (pszDst)
             {
                 size_t cbActual = 0;
-                rc = ShClConvUtf16CRLFToUtf8LF((PCRTUTF16)pvBufIn, cbBufIn / sizeof(RTUTF16), pszDst, chDst, &cbActual);
+                rc = ShClHlpConvUtf16CRLFToUtf8LF((PCRTUTF16)pvBufIn, cbBufIn / sizeof(RTUTF16), pszDst, chDst, &cbActual);
                 if (RT_SUCCESS(rc))
                 {
                     *pcbBufOut = cbActual;
@@ -147,7 +147,7 @@ static DECLCALLBACK(int) vbConvertLatin1ToUtf16(void *pvBufIn, int cbBufIn, void
 
     /** @todo r=bird: Wrong buffer pointer type. Just because you return void
      *        pointers, doesn't mean you should use that internally. */
-    rc = ShClConvLatin1LFToUtf16CRLF((char *)pvBufIn, cbBufIn, (PRTUTF16 *)&pvDst, &cwDst);
+    rc = ShClHlpConvLatin1LFToUtf16CRLF((char *)pvBufIn, cbBufIn, (PRTUTF16 *)&pvDst, &cwDst);
     if (RT_SUCCESS(rc))
     {
         *ppvBufOut = pvDst;
@@ -228,7 +228,7 @@ static DECLCALLBACK(int) vbConvertHtmlToVBox(void *pvBufIn, int cbBufIn, void **
                                        RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
         if (RT_SUCCESS(rc))
         {
-            rc = ShClConvUtf16ToUtf8HTML((PRTUTF16)pvBufIn, cbBufIn / sizeof(RTUTF16), (char**)&pvDst, &cbDst);
+            rc = ShClHlpConvUtf16ToUtf8HTML((PRTUTF16)pvBufIn, cbBufIn / sizeof(RTUTF16), (char**)&pvDst, &cbDst);
             if (RT_SUCCESS(rc))
             {
                 *ppvBufOut = pvDst;
@@ -312,7 +312,7 @@ static DECLCALLBACK(int) vbConvertBmpToVBox(void *pvBufIn, int cbBufIn, void **p
     const void *pvBufOutTmp = NULL;
     size_t cbBufOutTmp = 0;
 
-    rc = ShClBmpGetDib(pvBufIn, cbBufIn, &pvBufOutTmp, &cbBufOutTmp);
+    rc = ShClHlpBmpGetDib(pvBufIn, cbBufIn, &pvBufOutTmp, &cbBufOutTmp);
     if (RT_SUCCESS(rc))
     {
         void *pvBuf = RTMemAllocZ(cbBufOutTmp);
@@ -342,7 +342,7 @@ static DECLCALLBACK(int) vbConvertBmpToVBox(void *pvBufIn, int cbBufIn, void **p
  */
 static DECLCALLBACK(int) vbConvertVBoxToBmp(void *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
-    return ShClDibToBmp(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
+    return ShClHlpDibToBmp(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
 }
 
 /**

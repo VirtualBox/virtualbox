@@ -1,4 +1,4 @@
-/* $Id: VBoxClipboard.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxClipboard.cpp 114775 2026-07-26 00:14:04Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxClipboard; Haiku Guest Additions, implementation.
  */
@@ -206,7 +206,7 @@ void VBoxShClService::MessageReceived(BMessage *message)
                 {
                     void  *pBmp  = NULL;
                     size_t cbBmp = 0;
-                    rc = ShClDibToBmp(pv, cb, &pBmp, &cbBmp);
+                    rc = ShClHlpDibToBmp(pv, cb, &pBmp, &cbBmp);
                     if (RT_SUCCESS(rc))
                     {
                         BMemoryIO mio(pBmp, cbBmp);
@@ -304,7 +304,7 @@ void VBoxShClService::MessageReceived(BMessage *message)
                                 const void *pDib;
                                 size_t cbDibSize;
                                 /* Strip out the BM header */
-                                rc = ShClBmpGetDib(bmpStream.Buffer(), bmpStream.BufferLength(), &pDib, &cbDibSize);
+                                rc = ShClHlpBmpGetDib(bmpStream.Buffer(), bmpStream.BufferLength(), &pDib, &cbDibSize);
                                 if (RT_SUCCESS(rc))
                                 {
                                     rc = VbglR3ClipboardWriteData(fClientId, VBOX_SHCL_FMT_BITMAP, (void *)pDib,
