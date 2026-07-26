@@ -2930,7 +2930,7 @@ DECLINLINE(size_t) RTStrOffChar(const char *pszHaystack, int chNeedle)
  */
 DECLINLINE(size_t) RTStrNOffChar(const char *pszHaystack, size_t cchHaystack, int chNeedle)
 {
-    size_t off;
+    size_t off = 0;
     char   ch;
     while (off < cchHaystack && (ch = pszHaystack[off]) != '\0')
     {
