@@ -1,4 +1,4 @@
-/* $Id: main.cpp 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
+/* $Id: main.cpp 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Guest Additions - X11 Client.
  */
@@ -707,7 +707,7 @@ int main(int argc, char *argv[])
         { "--session-detect2",              VBOXCLIENT_OPT_SESSION_DETECT2,     RTGETOPT_REQ_NOTHING },
 #ifdef VBOX_WITH_WAYLAND_ADDITIONS
         { "--clipboard-get",                VBOXCLIENT_OPT_CLIPBOARD_GET,       RTGETOPT_REQ_NOTHING },
-        //{ "--clipboard-set",                VBOXCLIENT_OPT_CLIPBOARD_SET,       RTGETOPT_REQ_NOTHING },
+        { "--clipboard-set",                VBOXCLIENT_OPT_CLIPBOARD_SET,       RTGETOPT_REQ_NOTHING },
 #endif
     };
 
@@ -723,8 +723,13 @@ int main(int argc, char *argv[])
     bool fDaemonise = true;
     bool fRespawn   = true;
 
-    while ((ch = RTGetOpt(&GetState, &ValueUnion)) != 0)
+    for (;;)
     {
+
+        RTGETOPTSTATE SavedGetState = GetState; /* for restoring before calilng pfnOption */
+        ch = RTGetOpt(&GetState, &ValueUnion);
+        if (!ch)
+            break;
         switch (ch)
         {
             /*
@@ -832,20 +837,24 @@ int main(int argc, char *argv[])
             VBOXCLIENT_OPT_CASE_COMMAND(VBOXCLIENT_OPT_SESSION_DETECT2,     g_CmdSessionDetect2);
 #ifdef VBOX_WITH_WAYLAND_ADDITIONS
             VBOXCLIENT_OPT_CASE_COMMAND(VBOXCLIENT_OPT_CLIPBOARD_GET,       g_CmdClipboardGet);
+            VBOXCLIENT_OPT_CASE_COMMAND(VBOXCLIENT_OPT_CLIPBOARD_SET,       g_CmdClipboardSet);
 #endif
 #undef VBOXCLIENT_OPT_CASE_COMMAND
             /*
              * Service specific options (currently unused) and syntax errors.
              */
             case VERR_GETOPT_UNKNOWN_OPTION:
-                if (   g_Service.pDesc
-                    && g_Service.pDesc->pfnOption)
+                if (   (g_Service.pDesc    && g_Service.pDesc->pfnOption)
+                    || (g_Service.pCommand && g_Service.pCommand->pfnOption))
                 {
-                    if (GetState.pszNextShort && *GetState.pszNextShort != '\0')
-                        return RTGetOptPrintError(rc, &ValueUnion);
-                    rc = g_Service.pDesc->pfnOption(NULL, argc, argv, &GetState.iNext);
+                    GetState = SavedGetState; /* (Rewind the state so RTGetOptEx works, safe.) */
+                    rc = g_Service.pCommand
+                       ? g_Service.pCommand->pfnOption(&GetState)
+                       : g_Service.pDesc->pfnOption(&GetState);
                     if (RT_SUCCESS(rc))
                         break;
+                    if (rc == VERR_GENERAL_FAILURE)
+                        return RTEXITCODE_FAILURE;
                     RTMsgSyntax("Unrecognized option '%s'", ValueUnion.psz);
                     RTMsgInfo("Try '%s --help' for more information", RTProcShortName());
                     return RTEXITCODE_SYNTAX;

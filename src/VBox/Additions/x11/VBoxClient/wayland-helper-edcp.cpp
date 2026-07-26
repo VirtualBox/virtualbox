@@ -1,4 +1,4 @@
-/* $Id: wayland-helper-edcp.cpp 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland-helper-edcp.cpp 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Ext Data Control Protocol (EDCP) helper for Wayland.
  *
@@ -276,13 +276,38 @@ static void vbclWaylandHlpEdcpDataDeviceListener_Selection(void *pvUser, struct 
     AssertPtrReturnVoid(pCtx);
     PSHCLCONTEXT const pShClCtx = pCtx->BaseCtx.pShClCtx;
     RT_NOREF(pDevice);
-    AssertPtrReturnVoid(pOffer);
 
     /*
      * Skip this if too early.
      */
     if (!pShClCtx)
         VBClLogVerbose(5, "ignoring Wayland clipboard selection - no shared clipboard context (pShClCtx)!\n");
+    else if (pOffer == NULL)
+    {
+        LogRel4(("%s: Clipboard emptied (pOffer is NULL).\n", __func__));
+
+        int rc = vbcl_wayland_session_end(&pCtx->BaseCtx.Session.Base, NULL, NULL);
+        if (RT_SUCCESS(rc))
+        {
+            rc = vbcl_wayland_session_start(&pCtx->BaseCtx.Session.Base,
+                                            VBCL_WL_CLIPBOARD_SESSION_TYPE_COPY_TO_HOST,
+                                            &vbcl_wayland_hlp_edcp_session_start_generic_cb,
+                                            &pCtx->BaseCtx.Session);
+            if (RT_SUCCESS(rc))
+            {
+                RTCritSectEnter(&pShClCtx->Wl.CritSect);
+
+                VbghWaylandClipboardResetOurState(&pShClCtx->Wl, __func__, NULL);
+                rc = RTSemEventMultiSignal(pShClCtx->Wl.hOurCacheFilledEvent);
+                if (RT_FAILURE(rc))
+                    LogRel(("error: %s: RTSemEventMultiSignal failed: %Rrc\n", __func__, rc));
+
+                VbglR3ClipboardReportFormats(pShClCtx->CmdCtx.idClient, VBOX_SHCL_FMT_NONE);
+
+                RTCritSectLeave(&pShClCtx->Wl.CritSect);
+            }
+        }
+    }
     else
     {
         /*
@@ -299,7 +324,7 @@ static void vbclWaylandHlpEdcpDataDeviceListener_Selection(void *pvUser, struct 
             VBClLogVerbose(4, "vbclWaylandHlpEdcpDataDeviceListener_Selection: Ignore - uRevision %RX64 -> %#RX64!\n",
                            pOfferSlot->uRevision, pShClCtx->Wl.uRevision);
         else if (pOfferSlot->fHasRevisionNoMimeType)
-            VBClLogVerbose(4, "vbclWaylandHlpEdcpDataDeviceListener_Selection: Ingore our own offer.\n");
+            VBClLogVerbose(4, "vbclWaylandHlpEdcpDataDeviceListener_Selection: Ignore our own offer.\n");
         else
         {
             RTCritSectLeave(&pShClCtx->Wl.CritSect);

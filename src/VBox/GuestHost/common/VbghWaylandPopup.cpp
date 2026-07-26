@@ -1,4 +1,4 @@
-/* $Id: VbghWaylandPopup.cpp 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
+/* $Id: VbghWaylandPopup.cpp 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest / Host common code - Wayland Popup Surface.
  */
@@ -267,7 +267,7 @@ static struct xdg_surface_listener const g_vbghWlPopupXdgSurfaceListener =
 };
 
 
-/** Suggest a change to the surface.   */
+/** Suggest a change to the surface. */
 static void g_vbghWlPopupXdgToplevelListener_Configure(void *pvUser, struct xdg_toplevel *pToplevel, int32_t cx, int32_t cy,
                                                        struct wl_array *pStates)
 {
@@ -314,6 +314,7 @@ static int vbghWaylandPopupCreateSurface(PVBGHWAYLANDPOPUP pThis, const char *ps
 
     if (pThis->pWlShell)
     {
+        LogRel3(("%s: Using wl-shell\n", __func__));
         struct wl_shell_surface *pShellSurface = wl_shell_get_shell_surface(pThis->pWlShell, pThis->pSurface);
         AssertPtrReturn(pShellSurface, RTERRINFO_LOG_REL_SET(pErrInfo, VERR_GENERAL_FAILURE, "wl_shell_get_shell_surface failed"));
         pThis->pWlShellSurface = pShellSurface;
@@ -326,6 +327,7 @@ static int vbghWaylandPopupCreateSurface(PVBGHWAYLANDPOPUP pThis, const char *ps
     }
     else
     {
+        LogRel3(("%s: Using xdg-wm-base\n", __func__));
         xdg_wm_base_add_listener(pThis->pXdgWmBase, &g_vbghWlPopupXdgWmBaseListener, pThis);
         struct xdg_surface * const pXdgSurface = xdg_wm_base_get_xdg_surface(pThis->pXdgWmBase, pThis->pSurface);
         AssertPtrReturn(pXdgSurface, RTERRINFO_LOG_REL_SET(pErrInfo, VERR_GENERAL_FAILURE, "xdg_wm_base_get_xdg_surface failed"));
@@ -340,7 +342,7 @@ static int vbghWaylandPopupCreateSurface(PVBGHWAYLANDPOPUP pThis, const char *ps
 
         rc = xdg_toplevel_add_listener(pXdgToplevel, &g_vbghWlPopupXdgToplevelListener, pThis);
         AssertLogRel(!rc);
-        xdg_toplevel_set_app_id(pXdgToplevel, pszClassOrId);
+        xdg_toplevel_set_app_id(pXdgToplevel, pszTitle); /* shows up in alt-tab, so same as title for now. */
         xdg_toplevel_set_title(pXdgToplevel, pszTitle);
     }
 
@@ -364,18 +366,20 @@ static void vbghWlPopupKeyboardListener_Keymap(void *pvUser, struct wl_keyboard 
 
 /** Keyboard enter (focus) notification callback. */
 static void vbghWlPopupKeyboardListener_Enter(void *pvUser, struct wl_keyboard *pKeyboard, uint32_t uSerial,
-                                       struct wl_surface *pSurface, struct wl_array *pKeys)
+                                              struct wl_surface *pSurface, struct wl_array *pKeys)
 {
     PVBGHWAYLANDPOPUP const pThis = (PVBGHWAYLANDPOPUP)pvUser;
-    RT_NOREF(pThis);
-    /** @todo */
-    RT_NOREF(pKeyboard, uSerial, pSurface, pKeys);
+    LogRel3(("%s: uSerial=%#x\n", __func__, uSerial));
+    if (pThis->pfnOnFocus)
+        pThis->pfnOnFocus(pThis, uSerial, pThis->u64OnFocusUser);
+    RT_NOREF(pKeyboard, pSurface, pKeys);
 }
 
 /** Keyboard leave (focus) notification callback. */
 static void vbghWlPopupKeyboardListener_Leave(void *pvUser, struct wl_keyboard *pKeyboard, uint32_t uSerial,
-                                       struct wl_surface *pSurface)
+                                              struct wl_surface *pSurface)
 {
+    LogRel3(("%s: uSerial=%#x\n", __func__, uSerial));
     RT_NOREF(pvUser, pKeyboard, uSerial, pSurface);
 }
 
@@ -383,6 +387,7 @@ static void vbghWlPopupKeyboardListener_Leave(void *pvUser, struct wl_keyboard *
 static void vbghWlPopupKeyboardListener_Key(void *pvUser, struct wl_keyboard *pKeyboard, uint32_t uSerial,
                                             uint32_t msTime, uint32_t uKey, uint32_t uKeyState)
 {
+    LogRel3(("%s: uSerial=%#x msTime=%u uKey=%#x uKeyState=%#x\n", __func__, uSerial, msTime, uKey, uKeyState));
     RT_NOREF(pvUser, pKeyboard, uSerial, msTime, uKey, uKeyState);
 }
 
@@ -391,6 +396,8 @@ static void vbghWlPopupKeyboardListener_Modifiers(void *pvUser, struct wl_keyboa
                                                   uint32_t fModsDepressed, uint32_t fModsLatched, uint32_t fModsLocked,
                                                   uint32_t uGroup)
 {
+    LogRel3(("%s: uSerial=%#x fModsDepressed=%#x fModsLatched=%#x fModsLocked=%#x uGroup=%#x\n",
+             __func__, uSerial, fModsDepressed, fModsLatched, fModsLocked, uGroup));
     RT_NOREF(pvUser, pKeyboard, uSerial, fModsDepressed, fModsLatched, fModsLocked, uGroup);
 }
 
@@ -416,7 +423,8 @@ static struct wl_keyboard_listener const g_vbghWlPopupKeyboardListener =
  * Creates and shows the invisible popup, doing the focus grabbing.
  */
 VBGH_DECL(int) VbghWaylandPopupShow(PVBGHWAYLANDPOPUP pThis, PVBGHWAYLANDSEAT pSeatEntry,
-                                    const char *pszTitle, const char *pszClassOrId, PRTERRINFO pErrInfo)
+                                    const char *pszTitle, const char *pszClassOrId,
+                                    PFNVBGHWAYLANDPOPUPONFOCUS pfnOnFocus, uint64_t u64OnFocusUser, PRTERRINFO pErrInfo)
 {
     /*
      * Check requirements before we start...
@@ -429,24 +437,29 @@ VBGH_DECL(int) VbghWaylandPopupShow(PVBGHWAYLANDPOPUP pThis, PVBGHWAYLANDSEAT pS
                  RTERRINFO_LOG_REL_SET(pErrInfo, VERR_INVALID_FLAGS, "Missing WL_SEAT_CAPABILITY_KEYBOARD on seat"));
     AssertReturn(RT_VALID_PTR(pThis->pWlShell) || RT_VALID_PTR(pThis->pXdgWmBase),
                  RTERRINFO_LOG_REL_SET(pErrInfo, VERR_NOT_FOUND, "No wl_shell or xdg_wm_base found!"));
+    AssertPtrNullReturn(pfnOnFocus, RTERRINFO_LOG_REL_SET_F(pErrInfo, VERR_INVALID_POINTER, "pfnOnFoucs=%p", pfnOnFocus));
 
     /*
      * First get the keyboard associated with the seat and register a focus
      * listener for it.
      */
-    /** @todo only for copying? */
-    pThis->pKeyboard = wl_seat_get_keyboard(pSeatEntry->pSeat);
-    AssertPtrReturn(pThis->pKeyboard, RTERRINFO_LOG_REL_SET(pErrInfo, VERR_NOT_FOUND, "wl_seat_get_keyboard failed"));
+    pThis->u64OnFocusUser = u64OnFocusUser;
+    pThis->pfnOnFocus     = pfnOnFocus;
+    if (pfnOnFocus)
+    {
+        pThis->pKeyboard = wl_seat_get_keyboard(pSeatEntry->pSeat);
+        AssertPtrReturn(pThis->pKeyboard, RTERRINFO_LOG_REL_SET(pErrInfo, VERR_NOT_FOUND, "wl_seat_get_keyboard failed"));
 
-    int rc = wl_keyboard_add_listener(pThis->pKeyboard, &g_vbghWlPopupKeyboardListener, pThis);
-    AssertReturn(!rc, RTERRINFO_LOG_REL_SET_F(pErrInfo, VERR_GENERAL_FAILURE, "wl_keyboard_add_listener failed: %d", rc));
+        int rc = wl_keyboard_add_listener(pThis->pKeyboard, &g_vbghWlPopupKeyboardListener, pThis);
+        AssertReturn(!rc, RTERRINFO_LOG_REL_SET_F(pErrInfo, VERR_GENERAL_FAILURE, "wl_keyboard_add_listener failed: %d", rc));
 
-    wl_display_dispatch(pThis->pGhCore->pDisplay);
+        wl_display_dispatch(pThis->pGhCore->pDisplay);
+    }
 
     /*
      * Create a surface associated with the shell.
      */
-    rc = vbghWaylandPopupCreateSurface(pThis, pszTitle, pszClassOrId, pErrInfo);
+    int rc = vbghWaylandPopupCreateSurface(pThis, pszTitle, pszClassOrId, pErrInfo);
     if (RT_SUCCESS(rc))
     {
         /*

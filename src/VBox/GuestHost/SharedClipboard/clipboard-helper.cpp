@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.cpp 114775 2026-07-26 00:14:04Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-helper.cpp 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard: Helper functions.
  */
@@ -527,5 +527,19 @@ int ShClHlpBmpGetDib(const void *pvSrc, size_t cbSrc, const void **ppvDest, size
     *pcbDest = cbSrc - sizeof(BMPFILEHDR);
 
     return VINF_SUCCESS;
+}
+
+/**
+ * Frees a buffer retrned by a ShClHlpConvXxxx or ShClHlpDibToBmp function.
+ *
+ * @returns VBox status code.
+ * @param   pvBuf The buffer to free. Must have been returned by some
+ *                ShClhlpConvXxxx function.
+ * @param   cbBuf The buffer size returned by the ShClhlpConvXxxx function.
+ */
+VBGH_DECL(void) ShClHlpFreeBuf(void *pvBuf, size_t cbBuf)
+{
+    RTMemFree(pvBuf);
+    RT_NOREF(cbBuf);
 }
 

@@ -1,4 +1,4 @@
-/** $Id: SharedClipboard-Wayland.h 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
+/** $Id: SharedClipboard-Wayland.h 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard - Common Wayland code.
  */
@@ -51,6 +51,9 @@ struct wl_data_device_manager;
 struct ext_data_control_device_v1;
 struct zwlr_data_control_device_v1;
 struct wl_data_device;
+struct ext_data_control_source_v1;
+struct zwlr_data_control_source_v1;
+struct wl_data_source;
 
 
 /** MIME type to VBOX_SHCL_FMT_XXX mapping table entry. */
@@ -82,6 +85,17 @@ typedef struct SHCLWLOFFERSLOT
 } SHCLWLOFFERSLOT;
 /** Poitner to a Wayland data offer collection slot. */
 typedef SHCLWLOFFERSLOT *PSHCLWLOFFERSLOT;
+
+/** Reason why for a SHCLWAYLANDCTX::pfnDataOfferComplete callback. */
+typedef enum SHCLWLOFFERCOMPLETE
+{
+    SHCLWLOFFERCOMPLETE_INVALID = 0,
+    SHCLWLOFFERCOMPLETE_NEW_OFFER_IN_PROGRESS,
+    SHCLWLOFFERCOMPLETE_REVISION_CHANGED,
+    SHCLWLOFFERCOMPLETE_OUR_OWN,
+    SHCLWLOFFERCOMPLETE_REPORTED,
+    SHCLWLOFFERCOMPLETE_32BIT_HACK = 0x7fffffff
+} SHCLWLOFFERCOMPLETE;
 
 /** Indicates which Wayland Clipboard protocol is being used. */
 typedef enum SHCLWAYLANDPROTO
@@ -158,6 +172,23 @@ typedef struct SHCLWAYLANDCTX
     /** Pointer to the wayland data control device if we're using that protocol. */
     struct wl_data_device                  *pWlDataDevice;
 
+    /** Pointer to the extended data control source of our offering of remote
+     *  data, if we're using that protocol. */
+    struct ext_data_control_source_v1      *pExtDataSource;
+    /** Pointer to the experimental data control source of our offering of remote
+     *  data, if we're using that protocol. */
+    struct zwlr_data_control_source_v1     *pZwlrDataSource;
+    /** Pointer to the wayland data source of our offering of remote data,
+     *  if we're using that protocol. */
+    struct wl_data_source                  *pWlDataSource;
+
+    /** Process setting clipboard content for the wl-data-device-manager protocol. */
+    RTPROCESS                               hProcClipboardSet;
+    /** Pipe use to trigger gentle termination of hProcClipboardSet.
+     * The other (read) end of the pipe is passed down to the child which will poll
+     * it for HUP/ERR, which triggers when the parent closes the this pipe end. */
+    RTPIPE                                  hPipeClipboardSet;
+
     /**
      * Optional callback for reporting our formats to the other side.
      *
@@ -170,7 +201,42 @@ typedef struct SHCLWAYLANDCTX
      *
      * @note Called from inside the critical section.
      */
-    DECLCALLBACKMEMBER(void, pfnDataOfferComplete,(struct SHCLWAYLANDCTX *pWlCtx));
+    DECLCALLBACKMEMBER(void, pfnDataOfferComplete,(struct SHCLWAYLANDCTX *pWlCtx, SHCLWLOFFERCOMPLETE enmReason));
+
+    /**
+     * Optional callback notification that our offering has been cancelled.
+     *
+     * This typically means that the local clipboard data has been replaced and our
+     * clipboard entry is no longer needed and can be destroyed.
+     *
+     * @note Called from outside the critical section.
+     */
+    DECLCALLBACKMEMBER(void, pfnDataSourceCancelled,(struct SHCLWAYLANDCTX *pWlCtx));
+
+    /**
+     * Callback for requesting remote data.
+     *
+     * @returns VBox status code.
+     * @retval  VERR_NO_DATA if no data available.
+     * @param   pWlCtx          Pointer to this structure.
+     * @param   uFmt            One VBOX_SHCL_FMT_XXX value indicate what to get.
+     * @param   ppvData         Where to return the pointer to data buffer. Call
+     *                          pfnQueryRemoteDataFree to free it.
+     * @param   pcbData         Returns the amout of data returned on success.
+     * @note Called from outside the critical section.
+     */
+    DECLCALLBACKMEMBER(int, pfnQueryRemoteData, (struct SHCLWAYLANDCTX *pWlCtx, SHCLFORMAT uFmt,
+                                                 void **ppvData, uint32_t *pcbData));
+
+    /**
+     * Callback for freeing data returned by pfnQueryRemoteData.
+     *
+     * @param   pWlCtx          Pointer to this structure.
+     * @param   pvData          Buffer returned by pfnQueryRemoteData.
+     * @param   cbData          Size returned by pfnQueryRemoteData.
+     * @note    May be called both inside and outside the critical section.
+     */
+    DECLCALLBACKMEMBER(int, pfnQueryRemoteDataFree, (struct SHCLWAYLANDCTX *pWlCtx, void *pvData, size_t cbData));
 
     /** The popup for use with the wl_data_device_manager protocol. */
     VBGHWAYLANDPOPUP                        Popup;
@@ -192,11 +258,17 @@ VBGH_DECL(int)      VbghWaylandClipboardInit(PSHCLWAYLANDCTX pThis, PRTERRINFO p
 VBGH_DECL(void)     VbghWaylandClipboardTerm(PSHCLWAYLANDCTX pThis);
 VBGH_DECL(uint64_t) VbghWaylandClipboardResetOurState(PSHCLWAYLANDCTX pThis, const char *pszCaller, SHCLWLOFFERSLOT *pOfferSlot);
 VBGH_DECL(int)      VbghWaylandClipboardSetupListening(PSHCLWAYLANDCTX pThis, PRTERRINFO pErrInfo);
+VBGH_DECL(int)      VbghWaylandClipboardSetupOffer(PSHCLWAYLANDCTX pThis, PRTERRINFO pErrInfo);
 
 VBGH_DECL(int)      VbghWaylandClipboardPartialInit(PSHCLWAYLANDCTX pThis);
 VBGH_DECL(void)     VbghWaylandClipboardPartialTerm(PSHCLWAYLANDCTX pThis);
 VBGH_DECL(int)      VbghWaylandClipboardOfferAddMimeType(SHCLWLOFFERSLOT *pOfferSlot, const char *pszMimeType,
                                                          const char *pszCaller);
+
+VBGH_DECL(int)      VbghlWaylandClipboardQueryRemoteData(PSHCLWAYLANDCTX pThis, const char *pszMimeType,
+                                                         void **ppvOutData, size_t *pcbOutData);
+VBGH_DECL(int)      VbghWaylandClipboardMakeDataOffering(PSHCLWAYLANDCTX pThis, const char *pszPopupTitle,
+                                                         const char *pszPopupClass, PRTERRINFO pErrInfo);
 
 RT_C_DECLS_END
 

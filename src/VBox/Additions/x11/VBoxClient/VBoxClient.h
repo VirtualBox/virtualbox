@@ -1,4 +1,4 @@
-/* $Id: VBoxClient.h 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxClient.h 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
 /** @file
  *
  * VirtualBox additions user session daemon.
@@ -69,19 +69,18 @@ extern VBGHDISPLAYSERVERTYPE VBClGetDisplayServerType(void);
 extern VBGHDISPLAYSERVERTYPE VBClGetDisplayServerTypeResolveAuto(void);
 extern int VBClExplicitLoadClientLibrariesForDisplayServer(VBGHDISPLAYSERVERTYPE enmType, bool fXWaylandAsPureWayland);
 
+struct RTGETOPTSTATE;
+
 /**
  * Tries to parse the given command line option.
  *
  * This is for a service or command.
  *
- * @returns 0 if we parsed, -1 if it didn't and anything else means exit.
- * @param   ppszShort   If not NULL it points to the short option iterator. a short argument.
- *                      If NULL examine argv[*pi].
- * @param   argc        The argument count.
- * @param   argv        The argument vector.
- * @param   pi          The argument vector index. Update if any value(s) are eaten.
+ * @returns IPRT status code (RTGetOpt style).
+ * @retval  VERR_GENERAL_FAILURE to return RTEXITCODE_FAILURE.
+ * @param   pGetOptState    For use with RTGetOptEx.
  */
-typedef DECLCALLBACKTYPE(int, FNVBCLOPTPARSE,(const char **ppszShort, int argc, char **argv, int *pi));
+typedef DECLCALLBACKTYPE(int, FNVBCLOPTPARSE,(struct RTGETOPTSTATE *pGetOptState));
 /** Pointer to FNVBCLOPTPARSE. */
 typedef FNVBCLOPTPARSE *PFNVBCLOPTPARSE;
 

@@ -1,4 +1,4 @@
-/* $Id: VbghWayland.cpp 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
+/* $Id: VbghWayland.cpp 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest / Host common code - Wayland Core.
  */
@@ -319,7 +319,7 @@ VBGH_DECL(int) VbghWaylandReadFdToBuffer(int fd, RTMSINTERVAL cMsTimeout, void *
         aPollFds[0].fd      = fd;
         aPollFds[0].events  = POLLIN | POLLHUP | POLLERR;
         aPollFds[0].revents = 0;
-        rc = poll(aPollFds, 1, cMsTimeout < (RTMSINTERVAL)INT_MAX ? (int)cMsTimeout : INT_MAX);
+        rc = poll(aPollFds, 1, cMsTimeout < (RTMSINTERVAL)INT_MAX ? (int)cMsTimeout : -1);
         if (rc > 0)
         {
             if (aPollFds[0].revents & (POLLIN | POLLHUP))
@@ -408,19 +408,97 @@ VBGH_DECL(void) VbghWaylandReadFdToBufferFree(void *pvBuf)
 
 
 /**
+ * Writes a buffer to @a fd with a completion timeout.
+ *
+ * @returns VBox status code.
+ * @param   pvBuf       Pointer to buffer containing the data to write.
+ * @param   cbBuf       Number of byte to write.
+ * @param   fdDst       The file descriptor to write the data to.
+ * @param   cMsTimeout  Approximate timeout in milliseconds.
+ */
+VBGH_DECL(int) VbghWaylandWriteBufferToFd(void const *pvBuf, size_t cbBuf, int fdDst, RTMSINTERVAL cMsTimeout)
+{
+    /*
+     * Validate input.
+     */
+    if (cbBuf == 0) /* Ignore zero length buffers. */
+        return VINF_SUCCESS;
+    AssertPtrReturn(pvBuf, VERR_INVALID_POINTER);
+
+    /*
+     * Write loop.
+     */
+    size_t offBuf = 0;
+    for (;;)
+    {
+        struct pollfd aPollFds[1];
+        aPollFds[0].fd      = fdDst;
+        aPollFds[0].events  = POLLOUT | POLLHUP | POLLERR;
+        aPollFds[0].revents = 0;
+        int rc = poll(aPollFds, 1, cMsTimeout < (RTMSINTERVAL)INT_MAX ? (int)cMsTimeout : -1);
+        if (rc > 0)
+        {
+            if (aPollFds[0].revents & (POLLOUT | POLLHUP))
+            {
+                ssize_t const cbWritten = write(fdDst, &((uint8_t const *)pvBuf)[offBuf], cbBuf - offBuf);
+                if (cbWritten > 0)
+                {
+                    offBuf += (size_t)cbWritten;
+                    if (offBuf >= cbBuf)
+                    {
+                        Assert(offBuf == cbBuf);
+                        LogRel5(("%s: returning VINF_SUCCESS (wrote %zu bytes)\n", __func__, offBuf));
+                        return VINF_SUCCESS;
+                    }
+                }
+                else
+                {
+                    rc = RTErrConvertFromErrno(errno);
+                    LogRel(("error: %s: write -> %Rrc (errno=%d%s)\n", __func__, rc, errno, cbWritten == 0 ? ", ret zero" : ""));
+                    return RT_FAILURE_NP(rc) ? rc : VERR_WRITE_ERROR;
+                }
+            }
+            else
+            {
+                LogRel2(("error: %s: revents=%#x -> VERR_WRITE_ERROR\n", __func__, aPollFds[0].revents));
+                return VERR_WRITE_ERROR;
+            }
+        }
+        else if (rc == 0)
+        {
+            LogRel2(("error: %s: poll -> timeout\n", __func__));
+            return VERR_TIMEOUT;
+        }
+        else if (errno == EINTR)
+            LogRel2(("error: %s: poll -> EINTR\n", __func__));
+        else
+        {
+            rc = RTErrConvertFromErrno(errno);
+            LogRel(("error: %s: poll -> %Rrc (errno=%d)\n", __func__, rc, errno));
+            return rc;
+        }
+    }
+}
+
+
+/**
  * Runloop function for servicing a display, with optional wakeup pipe and
  * return indicator.
  *
  * @returns VBox status code.
  * @param   pDisplay        The display to dispatch events for.
  * @param   hPipeWakeup     The wakeup pipe. Optional.
+ * @param   hPipeMonClose   Pipe to monitor for closing. Optional.
  * @param   cMsPollInterval The polling interval for checking pfReturn.
  * @param   pfReturn        Pointer to return indicator.  Will return
  *                          VINF_SUCCESS when it is set to true.  Optional.
  */
-VBGH_DECL(int) VbghWaylandRunloopForDisplay(struct wl_display *pDisplay, RTPIPE hPipeWakeup,
+VBGH_DECL(int) VbghWaylandRunloopForDisplay(struct wl_display *pDisplay, RTPIPE hPipeWakeup, RTPIPE hPipeMonClose,
                                             RTMSINTERVAL cMsPollInterval, bool volatile *pfReturn)
 {
+    int const fdPipeWakeup   = hPipeWakeup   != NIL_RTPIPE ? (int)RTPipeToNative(hPipeWakeup)   : -1;
+    int const fdPipeMonClose = hPipeMonClose != NIL_RTPIPE ? (int)RTPipeToNative(hPipeMonClose) : -1;
+
     for (;;)
     {
         /*
@@ -432,12 +510,20 @@ VBGH_DECL(int) VbghWaylandRunloopForDisplay(struct wl_display *pDisplay, RTPIPE 
         aPollFds[0].revents = 0;
         int cFds = 1;
 
-        if (hPipeWakeup != NIL_RTPIPE)
+        if (fdPipeWakeup >= 0)
         {
-            aPollFds[cFds].fd      = (int)RTPipeToNative(hPipeWakeup);
+            aPollFds[cFds].fd      = fdPipeWakeup;
             aPollFds[cFds].events  = POLLIN | POLLHUP | POLLERR;
             aPollFds[cFds].revents = 0;
-            cFds += aPollFds[cFds].fd >= 0;
+            cFds += 1;
+        }
+
+        if (fdPipeMonClose >= 0)
+        {
+            aPollFds[cFds].fd      = fdPipeMonClose;
+            aPollFds[cFds].events  = POLLHUP | POLLERR;
+            aPollFds[cFds].revents = 0;
+            cFds += 1;
         }
 
         /*
@@ -463,7 +549,7 @@ VBGH_DECL(int) VbghWaylandRunloopForDisplay(struct wl_display *pDisplay, RTPIPE 
          */
         int rcPoll = 0;
         if (!pfReturn || !*pfReturn)
-            rcPoll = poll(aPollFds, cFds, cMsPollInterval < (RTMSINTERVAL)INT_MAX ? (int)cMsPollInterval : INT_MAX);
+            rcPoll = poll(aPollFds, cFds, cMsPollInterval < (RTMSINTERVAL)INT_MAX ? (int)cMsPollInterval : -1);
         if (pfReturn && *pfReturn)
         {
             LogRel4(("%s: returns (post)\n", __func__));
@@ -476,7 +562,7 @@ VBGH_DECL(int) VbghWaylandRunloopForDisplay(struct wl_display *pDisplay, RTPIPE 
         /*
          * Drain the notification pipe before doing anything else.
          */
-        if (rcPoll > 0 && cFds > 1 && (aPollFds[1].revents & (POLLIN | POLLHUP)))
+        if (rcPoll > 0 && cFds > 1 && fdPipeWakeup >= 0 && (aPollFds[1].revents & (POLLIN | POLLHUP)))
         {
             char szTmp[64];
             size_t cbIgnore;
@@ -501,6 +587,15 @@ VBGH_DECL(int) VbghWaylandRunloopForDisplay(struct wl_display *pDisplay, RTPIPE 
         }
         else
             wl_display_cancel_read(pDisplay);
+
+        /*
+         * Quit if the monitor close pipe closed.
+         */
+        if (rcPoll > 0 && cFds > 1 && fdPipeMonClose >= 0 && (aPollFds[cFds - 1].revents & (POLLERR | POLLHUP)))
+        {
+            LogRel2(("%s: returns VERR_BROKEN_PIPE (revents=%#x)\n", __func__, aPollFds[cFds - 1].revents));
+            return VERR_BROKEN_PIPE;
+        }
     }
 }
 

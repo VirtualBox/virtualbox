@@ -1,4 +1,4 @@
-/* $Id: WaylandPopup.h 114774 2026-07-25 23:32:01Z knut.osmundsen@oracle.com $ */
+/* $Id: WaylandPopup.h 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest / Host common code - Wayland Popup (for focus grabbing).
  */
@@ -62,7 +62,21 @@ struct gtk_surface1;
 /* Forward declaration of our own structures: */
 struct VBGHWAYLANDCORE;
 struct VBGHWAYLANDSEAT;
+struct VBGHWAYLANDPOPUP;
 
+
+/**
+ * Notification callback for when the application get input focus.
+ *
+ * @param   pWlPopup    Pointer to the VBGHWAYLANDPOPUP structure.
+ *                      Use RT_FROM_MEMBER to find your structure from it.
+ * @param   uSerial     The focus event's serial number. Used as a password in
+ *                      actions requiring focus.
+ * @param   u64User     64-bit user value.
+ */
+typedef DECLCALLBACKTYPE(void, FNVBGHWAYLANDPOPUPONFOCUS,(struct VBGHWAYLANDPOPUP *pWlPopup, uint32_t uSerial, uint64_t u64User));
+/** Pointer to a FNVBGHWAYLANDPOPUPONFOCUS function. */
+typedef FNVBGHWAYLANDPOPUPONFOCUS *PFNVBGHWAYLANDPOPUPONFOCUS;
 
 /**
  * Wayland popup surface state data.
@@ -112,6 +126,10 @@ typedef struct VBGHWAYLANDPOPUP
     /** The buffer for the surface. */
     struct wl_buffer               *pBuffer;
 
+    /** On focus callback. */
+    PFNVBGHWAYLANDPOPUPONFOCUS      pfnOnFocus;
+    /** The 64-bit number associated with pfnOnFocus. */
+    uint64_t                        u64OnFocusUser;
 
 } VBGHWAYLANDPOPUP;
 /** Pointer to a Wayland popup surface state. */
@@ -120,12 +138,14 @@ typedef VBGHWAYLANDPOPUP *PVBGHWAYLANDPOPUP;
 
 RT_C_DECLS_BEGIN
 
+
 VBGH_DECL(void) VbghWaylandPopupInit(PVBGHWAYLANDPOPUP pThis, struct VBGHWAYLANDCORE *pGhCore);
 VBGH_DECL(void) VbghWaylandPopupTerm(PVBGHWAYLANDPOPUP pThis);
 VBGH_DECL(void) VbghWaylandPopupRegEnum(PVBGHWAYLANDPOPUP pThis, struct wl_registry *pRegistry, uint32_t uObjName,
                                         const char *pszIfaceName, uint32_t uIfaceVersion);
 VBGH_DECL(int)  VbghWaylandPopupShow(PVBGHWAYLANDPOPUP pThis, struct VBGHWAYLANDSEAT *pSeatEntry,
-                                     const char *pszTitle, const char *pszClassOrId, PRTERRINFO pErrInfo);
+                                     const char *pszTitle, const char *pszClassOrId,
+                                     PFNVBGHWAYLANDPOPUPONFOCUS pfnOnFocus, uint64_t u64OnFocusUser, PRTERRINFO pErrInfo);
 
 RT_C_DECLS_END
 

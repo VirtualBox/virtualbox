@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.h 114775 2026-07-26 00:14:04Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-helper.h 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard - Helper functions.
  */
@@ -206,6 +206,8 @@ int ShClHlpDibToBmp(const void *pvSrc, size_t cbSrc, void **ppvDst, size_t *pcbD
  * @param   pcbDst        Pointer to the size of the destination data in bytes
  */
 int ShClHlpBmpGetDib(const void *pvSrc, size_t cbSrc, const void **ppvDst, size_t *pcbDst);
+
+VBGH_DECL(void) ShClHlpFreeBuf(void *pvBuf, size_t cbBuf);
 
 #ifdef LOG_ENABLED
 /**

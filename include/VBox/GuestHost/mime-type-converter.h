@@ -1,4 +1,4 @@
-/* $Id: mime-type-converter.h 114773 2026-07-25 21:40:47Z knut.osmundsen@oracle.com $ */
+/* $Id: mime-type-converter.h 114776 2026-07-26 00:19:33Z knut.osmundsen@oracle.com $ */
 /** @file
  * MIME type converter for Shared Clipboard and Drag-and-Drop code.
  */
@@ -74,57 +74,12 @@ typedef DECLCALLBACKTYPE(void, FNVBGHMIMECONVENUM, (const char *pcszMimeType, ui
 /** Pointer to a FNVBGHMIMECONVENUM. */
 typedef FNVBGHMIMECONVENUM *PFNVBGHMIMECONVENUM;
 
-/**
- * Enumerate list of MIME types by ID mask.
- *
- * This function goes through the list of supported MIME types and
- * triggers given callback function for each of them.
- *
- * @param   fVBoxFmts       One or more VBOX_SHCL_FMT_XXX values ORed together.
- * @param   pfnCallback     Callback function.
- * @param   pvUser          User data.
- */
 VBGH_DECL(void) VbghMimeConvEnumerateByVBoxFormats(SHCLFORMATS fVBoxFmts, PFNVBGHMIMECONVENUM pfnCallback, void *pvUser);
-
-/**
- * Find VBox format for the given MIME type.
- *
- * @returns VBox format. VBOX_SHCL_FMT_NONE if no translation found.
- * @param   pcszMimeType            MIME type to convert.
- * @param   pfFlagsAndPriority      The priority and flags (VBGH_MIME_CONV_F_XXX).
- *                                  Optional.
- * @param   ppszPersistentMimeType  Where to return a persisten, readonly, MIME
- *                                  type string upon a successful mapping.
- *                                  Optional.
- */
 VBGH_DECL(SHCLFORMAT) VbghMimeConvGetVBoxFormatByMime(const char *pcszMimeType, uint32_t *pfFlagsAndPriority,
                                                       char const **ppszPersistentMimeType);
-
-/**
- * Converts from VirtualBox to X11/Wayland clipboard data format.
- *
- * @returns IPRT status code.
- * @param   pcszMimeType    Target MIME type.
- * @param   pvBufIn         Input buffer which contains data in VBox format.
- * @param   cbBufIn         Size of input buffer in bytes.
- * @param   ppvBufOut       Newly allocated output buffer which will contain data
- *                          in specified MIME type format (must be freed by caller).
- * @param   pcbBufOut       Size of output buffer.
- */
-VBGH_DECL(int) VbghMimeConvFromVBox(const char *pcszMimeType, void *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut);
-
-/**
- * Converts data from native format into VBox internal representation.
- *
- * @returns IPRT status code.
- * @param   pcszMimeType    Source MIME type.
- * @param   pvBufIn         Input buffer which contains data in specified MIME type format.
- * @param   cbBufIn         Size of input buffer in bytes.
- * @param   ppvBufOut       Newly allocated output buffer which will contain image data
- *                          in VBox internal representation format (must be freed by caller).
- * @param   pcbBufOut       Size of output buffer.
- */
-VBGH_DECL(int) VbghMimeConvToVBox(const char *pcszMimeType, void *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut);
+VBGH_DECL(int)  VbghMimeConvFromVBox(const char *pcszMimeType, void *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut);
+VBGH_DECL(int)  VbghMimeConvToVBox(const char *pcszMimeType, void *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut);
+VBGH_DECL(void) VbghMimeConvFreeBuf(void *pvBuf, size_t cbBuf);
 
 
 #if 0 /* unused */

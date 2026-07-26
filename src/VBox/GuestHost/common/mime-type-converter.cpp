@@ -391,6 +391,16 @@ static struct VBCONVERTERFMTTABLE
     { "image/x-MS-bmp",               VBOX_SHCL_FMT_BITMAP,                             1, vbConvertBmpToVBox,     vbConvertVBoxToBmp     },
 };
 
+/**
+ * Enumerate list of MIME types by ID mask.
+ *
+ * This function goes through the list of supported MIME types and
+ * triggers given callback function for each of them.
+ *
+ * @param   fVBoxFmts       One or more VBOX_SHCL_FMT_XXX values ORed together.
+ * @param   pfnCallback     Callback function.
+ * @param   pvUser          User data.
+ */
 VBGH_DECL(void) VbghMimeConvEnumerateByVBoxFormats(SHCLFORMATS fVBoxFmts, PFNVBGHMIMECONVENUM pfnCallback, void *pvUser)
 {
     for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
@@ -398,6 +408,17 @@ VBGH_DECL(void) VbghMimeConvEnumerateByVBoxFormats(SHCLFORMATS fVBoxFmts, PFNVBG
             pfnCallback(g_aConverterFormats[i].pcszMimeType, g_aConverterFormats[i].fFlagsAndPriority, pvUser);
 }
 
+/**
+ * Find VBox format for the given MIME type.
+ *
+ * @returns VBox format. VBOX_SHCL_FMT_NONE if no translation found.
+ * @param   pcszMimeType            MIME type to convert.
+ * @param   pfFlagsAndPriority      The priority and flags (VBGH_MIME_CONV_F_XXX).
+ *                                  Optional.
+ * @param   ppszPersistentMimeType  Where to return a persisten, readonly, MIME
+ *                                  type string upon a successful mapping.
+ *                                  Optional.
+ */
 VBGH_DECL(SHCLFORMAT) VbghMimeConvGetVBoxFormatByMime(const char *pcszMimeType, uint32_t *pfFlagsAndPriority,
                                                       const char **ppszPersistentMimeType)
 {
@@ -418,6 +439,17 @@ VBGH_DECL(SHCLFORMAT) VbghMimeConvGetVBoxFormatByMime(const char *pcszMimeType, 
     return VBOX_SHCL_FMT_NONE;
 }
 
+/**
+ * Converts from VirtualBox to X11/Wayland clipboard data format.
+ *
+ * @returns IPRT status code.
+ * @param   pcszMimeType    Target MIME type.
+ * @param   pvBufIn         Input buffer which contains data in VBox format.
+ * @param   cbBufIn         Size of input buffer in bytes.
+ * @param   ppvBufOut       Newly allocated output buffer which will contain data
+ *                          in specified MIME type format (must be freed by caller).
+ * @param   pcbBufOut       Size of output buffer.
+ */
 VBGH_DECL(int) VbghMimeConvFromVBox(const char *pcszMimeType, void *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
@@ -427,6 +459,17 @@ VBGH_DECL(int) VbghMimeConvFromVBox(const char *pcszMimeType, void *pvBufIn, int
     return VERR_NOT_FOUND;
 }
 
+/**
+ * Converts data from native format into VBox internal representation.
+ *
+ * @returns IPRT status code.
+ * @param   pcszMimeType    Source MIME type.
+ * @param   pvBufIn         Input buffer which contains data in specified MIME type format.
+ * @param   cbBufIn         Size of input buffer in bytes.
+ * @param   ppvBufOut       Newly allocated output buffer which will contain image data
+ *                          in VBox internal representation format (must be freed by caller).
+ * @param   pcbBufOut       Size of output buffer.
+ */
 VBGH_DECL(int) VbghMimeConvToVBox(const char *pcszMimeType, void *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
 {
     for (unsigned i = 0; i < RT_ELEMENTS(g_aConverterFormats); i++)
@@ -434,6 +477,15 @@ VBGH_DECL(int) VbghMimeConvToVBox(const char *pcszMimeType, void *pvBufIn, int c
             return g_aConverterFormats[i].pfnConvertToVBox(pvBufIn, cbBufIn, ppvBufOut, pcbBufOut);
 
     return VERR_NOT_FOUND;
+}
+
+
+/**
+ * Frees a buffer returned by VbghMimeConvFromVBox or VbghMimeConvToVBox.
+ */
+VBGH_DECL(void) VbghMimeConvFreeBuf(void *pvBuf, size_t cbBuf)
+{
+    ShClHlpFreeBuf(pvBuf, cbBuf);
 }
 
 
