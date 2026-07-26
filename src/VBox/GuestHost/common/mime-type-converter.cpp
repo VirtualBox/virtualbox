@@ -33,6 +33,7 @@
 #include <iprt/mem.h>
 #include <iprt/log.h>
 
+#include <VBox/GuestHost/clipboard-helper.h>
 #include <VBox/GuestHost/mime-type-converter.h>
 
 /** @todo r=bird: Only used with RTStrNCmp, where it is completely
@@ -184,6 +185,47 @@ static DECLCALLBACK(int) vbConvertUtf16ToLatin1(void *pvBufIn, int cbBufIn, void
 
     return rc;
 }
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/**
+ * A helper function that validates and copies a UTF-8 URI list unchanged.
+ *
+ * @returns IPRT status code.
+ * @param   pvBufIn         Input buffer containing URI-list data.
+ * @param   cbBufIn         Size of input buffer in bytes.
+ * @param   ppvBufOut       Newly allocated output buffer which will contain URI-list data (must be freed by caller).
+ * @param   pcbBufOut       Size of output buffer.
+ */
+static DECLCALLBACK(int) vbConvertUriListCopy(void *pvBufIn, int cbBufIn, void **ppvBufOut, size_t *pcbBufOut)
+{
+    AssertPtrReturn(ppvBufOut, VERR_INVALID_POINTER);
+    AssertPtrReturn(pcbBufOut, VERR_INVALID_POINTER);
+    AssertReturn(cbBufIn >= 0, VERR_INVALID_PARAMETER);
+    AssertReturn(pvBufIn || cbBufIn == 0, VERR_INVALID_POINTER);
+
+    *ppvBufOut = NULL;
+    *pcbBufOut = 0;
+
+    int rc = cbBufIn ? RTStrValidateEncodingEx((char *)pvBufIn, cbBufIn, 0) : VINF_SUCCESS;
+    if (RT_SUCCESS(rc))
+    {
+        char *pszDst = (char *)RTMemAllocZ((size_t)cbBufIn + 1);
+        if (pszDst)
+        {
+            if (cbBufIn)
+                memcpy(pszDst, pvBufIn, cbBufIn);
+            *ppvBufOut = pszDst;
+            *pcbBufOut = (size_t)cbBufIn;
+        }
+        else
+            rc = VERR_NO_MEMORY;
+    }
+    else
+        LogRel(("Data Converter: unable to validate URI-list data, rc=%Rrc\n", rc));
+
+    return rc;
+}
+#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 /**
  * A helper function that converts HTML data into internal VBox representation (UTF-8).
@@ -385,6 +427,9 @@ static struct VBCONVERTERFMTTABLE
      * https://github.com/mozilla-firefox/firefox/blob/2dad02d1765ec525589c574612ecad90a714a5bb/editor/libeditor/HTMLEditorDataTransfer.cpp#L2175
      */
     { "application/x-moz-nativehtml", VBOX_SHCL_FMT_HTML,         VBGH_MIME_CONV_F_RO | 4, vbConvertHtmlToVBox,    vbConvertVBoxToHtml    }, /** @todo what's the format here actually? */
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    { "text/uri-list",                VBOX_SHCL_FMT_URI_LIST,                          10, vbConvertUriListCopy,   vbConvertUriListCopy   },
+#endif
 
     { "image/bmp",                    VBOX_SHCL_FMT_BITMAP,                             1, vbConvertBmpToVBox,     vbConvertVBoxToBmp     },
     { "image/x-bmp",                  VBOX_SHCL_FMT_BITMAP,                             1, vbConvertBmpToVBox,     vbConvertVBoxToBmp     },
@@ -482,6 +527,9 @@ VBGH_DECL(int) VbghMimeConvToVBox(const char *pcszMimeType, void *pvBufIn, int c
 
 /**
  * Frees a buffer returned by VbghMimeConvFromVBox or VbghMimeConvToVBox.
+ *
+ * @param   pvBuf           Buffer to free. Optional.
+ * @param   cbBuf           Size of the buffer in bytes.
  */
 VBGH_DECL(void) VbghMimeConvFreeBuf(void *pvBuf, size_t cbBuf)
 {

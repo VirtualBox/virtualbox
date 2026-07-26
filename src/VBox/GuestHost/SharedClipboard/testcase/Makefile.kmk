@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114775 2026-07-26 00:14:04Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114778 2026-07-26 00:59:02Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for the Shared Clipboard Guest/Host testcases.
 #
@@ -73,6 +73,22 @@ if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_ADDITIONS) && !defined(VBO
  endif
 
  ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+  PROGRAMS += tstClipboardMimeConv
+  TESTING  += \
+  	$(tstClipboardMimeConv_0_OUTDIR)/tstClipboardMimeConv.run
+
+  tstClipboardMimeConv_TEMPLATE = VBoxR3TstExe
+  tstClipboardMimeConv_DEFS     = VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+  tstClipboardMimeConv_SOURCES  = \
+  	tstClipboardMimeConv.cpp \
+  	../clipboard-helper.cpp \
+  	../../common/mime-type-converter.cpp
+  tstClipboardMimeConv_CLEAN    = $(tstClipboardMimeConv_0_OUTDIR)/tstClipboardMimeConv.run
+
+  $$(tstClipboardMimeConv_0_OUTDIR)/tstClipboardMimeConv.run: $$(tstClipboardMimeConv_1_STAGE_TARGET)
+	$(tstClipboardMimeConv_1_STAGE_TARGET) quiet
+	$(QUIET)$(APPEND) -t "$@" "done"
+
   if defined(VBOX_WITH_LIBCURL) && defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP)
    PROGRAMS += tstClipboardHttpServer
    tstClipboardHttpServer_TEMPLATE = VBoxR3TstExe
