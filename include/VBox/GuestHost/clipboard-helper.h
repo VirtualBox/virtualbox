@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.h 114770 2026-07-25 11:53:54Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-helper.h 114783 2026-07-26 06:20:34Z alexander.eichner@oracle.com $ */
 /** @file
  * Shared Clipboard - Helper functions.
  */
@@ -145,7 +145,7 @@ int ShClHlpConvUtf16CRLFToLF(PCRTUTF16 pcwszSrc, size_t cwcSrc, PRTUTF16 pwszDst
  * @param  cwcSrc               Length of @a pwszSrc in RTUTF16 units.
  * @param  pszBuf               Where to write the converted string.
  * @param  cbBuf                The size of the buffer pointed to by @a pszBuf.
- * @param  pcbLen               Where to store the size (in bytes) of the converted string.
+ * @param  pcbLenSansTerm       Where to store the size (in bytes) of the converted string.
  *                              Does not include terminator.
  */
 int ShClHlpConvUtf16CRLFToUtf8LF(PCRTUTF16 pwszSrc, size_t cwcSrc, char *pszBuf, size_t cbBuf, size_t *pcbLenSansTerm);
