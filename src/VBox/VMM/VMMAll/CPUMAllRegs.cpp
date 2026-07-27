@@ -1,4 +1,4 @@
-/* $Id: CPUMAllRegs.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMAllRegs.cpp 114791 2026-07-27 13:47:35Z andreas.loeffler@oracle.com $ */
 /** @file
  * CPUM - CPU Monitor(/Manager) - Getters and Setters.
  */
@@ -542,10 +542,15 @@ VMMDECL(uint64_t)   CPUMGetGuestFlatSP(PVMCPU pVCpu)
 {
     CPUM_INT_ASSERT_NOT_EXTRN(pVCpu, CPUMCTX_EXTRN_RSP | CPUMCTX_EXTRN_SS | CPUMCTX_EXTRN_CS | CPUMCTX_EXTRN_EFER);
     CPUMSELREG_LAZY_LOAD_HIDDEN_PARTS(pVCpu, &pVCpu->cpum.s.Guest.ss);
-    if (   !CPUMIsGuestInLongMode(pVCpu)
-        || !pVCpu->cpum.s.Guest.cs.Attr.n.u1Long)
-        return pVCpu->cpum.s.Guest.eip + (uint32_t)pVCpu->cpum.s.Guest.ss.u64Base;
-    return pVCpu->cpum.s.Guest.rip + pVCpu->cpum.s.Guest.ss.u64Base;
+    if (   CPUMIsGuestInLongMode(pVCpu)
+        && pVCpu->cpum.s.Guest.cs.Attr.n.u1Long)
+        return pVCpu->cpum.s.Guest.rsp + pVCpu->cpum.s.Guest.ss.u64Base;
+
+    uint32_t const uFlatSp = (uint32_t)pVCpu->cpum.s.Guest.ss.u64Base
+                           + (pVCpu->cpum.s.Guest.ss.Attr.n.u1DefBig
+                              ? pVCpu->cpum.s.Guest.esp
+                              : pVCpu->cpum.s.Guest.sp);
+    return uFlatSp;
 }
 
 
