@@ -1,4 +1,4 @@
-/* $Id: CPUMAllRegs.cpp 114791 2026-07-27 13:47:35Z andreas.loeffler@oracle.com $ */
+/* $Id: CPUMAllRegs.cpp 114801 2026-07-27 18:51:36Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU Monitor(/Manager) - Getters and Setters.
  */
@@ -530,27 +530,34 @@ VMMDECL(RTSEL) CPUMGetGuestSS(PCVMCPU pVCpu)
 VMMDECL(uint64_t)   CPUMGetGuestFlatPC(PVMCPU pVCpu)
 {
     CPUM_INT_ASSERT_NOT_EXTRN(pVCpu, CPUMCTX_EXTRN_RIP | CPUMCTX_EXTRN_CS | CPUMCTX_EXTRN_EFER);
+    /* (Manual inlining of 'if (CPUMIsGuestIn64BitCodeEx)'.) */
     CPUMSELREG_LAZY_LOAD_HIDDEN_PARTS(pVCpu, &pVCpu->cpum.s.Guest.cs);
-    if (   !CPUMIsGuestInLongMode(pVCpu)
-        || !pVCpu->cpum.s.Guest.cs.Attr.n.u1Long)
-        return pVCpu->cpum.s.Guest.eip + (uint32_t)pVCpu->cpum.s.Guest.cs.u64Base;
-    return pVCpu->cpum.s.Guest.rip + pVCpu->cpum.s.Guest.cs.u64Base;
+    if (   (pVCpu->cpum.s.Guest.msrEFER & MSR_K6_EFER_LMA) == MSR_K6_EFER_LMA
+        && pVCpu->cpum.s.Guest.cs.Attr.n.u1Long)
+    {
+        Assert(pVCpu->cpum.s.Guest.cs.u64Base == 0);
+        return pVCpu->cpum.s.Guest.rip;
+    }
+    return pVCpu->cpum.s.Guest.eip + (uint32_t)pVCpu->cpum.s.Guest.cs.u64Base;
 }
 
 
 VMMDECL(uint64_t)   CPUMGetGuestFlatSP(PVMCPU pVCpu)
 {
     CPUM_INT_ASSERT_NOT_EXTRN(pVCpu, CPUMCTX_EXTRN_RSP | CPUMCTX_EXTRN_SS | CPUMCTX_EXTRN_CS | CPUMCTX_EXTRN_EFER);
+    /* (Manual inlining of 'if (CPUMIsGuestIn64BitCodeEx)'.) */
     CPUMSELREG_LAZY_LOAD_HIDDEN_PARTS(pVCpu, &pVCpu->cpum.s.Guest.ss);
-    if (   CPUMIsGuestInLongMode(pVCpu)
-        && pVCpu->cpum.s.Guest.cs.Attr.n.u1Long)
-        return pVCpu->cpum.s.Guest.rsp + pVCpu->cpum.s.Guest.ss.u64Base;
-
-    uint32_t const uFlatSp = (uint32_t)pVCpu->cpum.s.Guest.ss.u64Base
-                           + (pVCpu->cpum.s.Guest.ss.Attr.n.u1DefBig
-                              ? pVCpu->cpum.s.Guest.esp
-                              : pVCpu->cpum.s.Guest.sp);
-    return uFlatSp;
+    if ((pVCpu->cpum.s.Guest.msrEFER & MSR_K6_EFER_LMA) == MSR_K6_EFER_LMA)
+    {
+        CPUMSELREG_LAZY_LOAD_HIDDEN_PARTS(pVCpu, &pVCpu->cpum.s.Guest.cs);
+        if (pVCpu->cpum.s.Guest.cs.Attr.n.u1Long)
+        {
+            Assert(pVCpu->cpum.s.Guest.ss.u64Base == 0); /* bird: Must this be zero in 64-bit code or is it just ignored? */
+            return pVCpu->cpum.s.Guest.rsp;
+        }
+    }
+    return (pVCpu->cpum.s.Guest.ss.Attr.n.u1DefBig ? pVCpu->cpum.s.Guest.esp : (uint32_t)pVCpu->cpum.s.Guest.sp)
+         + (uint32_t)pVCpu->cpum.s.Guest.ss.u64Base;
 }
 
 
