@@ -1,4 +1,4 @@
-/* $Id: DBGFR3.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: DBGFR3.cpp 114792 2026-07-27 14:30:18Z andreas.loeffler@oracle.com $ */
 /** @file
  * DBGF - Debugger Facility.
  */
@@ -493,6 +493,7 @@ static int dbgfR3SendEventWorker(PVM pVM, PVMCPU pVCpu, DBGFEVENTTYPE enmType, D
     pEvent->enmCtx    = enmCtx;
     pEvent->idCpu     = pVCpu->idCpu;
     pEvent->uReserved = 0;
+    RT_ZERO(pEvent->u);
     if (cbPayload)
         memcpy(&pEvent->u, pvPayload, cbPayload);
 
@@ -750,6 +751,7 @@ VMMR3DECL(int) DBGFR3EventSrcV(PVM pVM, DBGFEVENTTYPE enmEvent, const char *pszF
      * Send the event and process the reply communication.
      */
     DBGFEVENT DbgEvent;  /** @todo split up DBGFEVENT so we can skip the dead wait on the stack? */
+    RT_ZERO(DbgEvent.u);
     DbgEvent.u.Src.pszFile      = pszFile;
     DbgEvent.u.Src.uLine        = uLine;
     DbgEvent.u.Src.pszFunction  = pszFunction;
@@ -2402,4 +2404,3 @@ VMMR3DECL(int) DBGFR3InjectNMI(PUVM pUVM, VMCPUID idCpu)
     VMCPU_FF_SET(pVM->apCpusR3[idCpu], VMCPU_FF_INTERRUPT_NMI);
     return VINF_SUCCESS;
 }
-
