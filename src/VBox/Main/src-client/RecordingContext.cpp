@@ -1,4 +1,4 @@
-/* $Id: RecordingContext.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: RecordingContext.cpp 114787 2026-07-27 12:22:11Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording context code.
  *
@@ -596,11 +596,9 @@ DECLCALLBACK(int) RecordingContextImpl::threadMain(RTTHREAD hThreadSelf, void *p
     {
         int vrcWait = RTSemEventWait(pThis->m_WaitEvent, RT_MS_1SEC);
 
-        if (ASMAtomicReadBool(&pThis->m_fShutdown))
-        {
+        bool const fShutdown = ASMAtomicReadBool(&pThis->m_fShutdown);
+        if (fShutdown)
             LogRel2(("Recording: Thread is shutting down ...\n"));
-            break;
-        }
 
         Log2Func(("Processing %zu streams (wait = %Rrc)\n", pThis->m_vecStreams.size(), vrcWait));
 
@@ -642,6 +640,9 @@ DECLCALLBACK(int) RecordingContextImpl::threadMain(RTTHREAD hThreadSelf, void *p
 
         if (RT_FAILURE(vrc))
             LogRel(("Recording: Encoding thread failed (%Rrc)\n", vrc));
+
+        if (fShutdown)
+            break;
 
         /* Keep going in case of errors. */
 
@@ -1169,13 +1170,17 @@ int RecordingContextImpl::stopInternal(void)
     lock();
 
     int vrc = VINF_SUCCESS;
+    uint32_t const msShutdownTimeout = RT_MS_30SEC;
+    uint32_t const msShutdownGrace   = RT_MS_5SEC;
+    /* Leave enough time to discard pending blocks, run housekeeping and exit the worker thread. */
+    uint32_t const msProcessingTimeout = msShutdownTimeout - msShutdownGrace;
 
     RecordingStreams::const_iterator itStream = m_vecStreams.begin();
     while (itStream != m_vecStreams.end())
     {
         unlock();
 
-        int vrc2 = (*itStream)->Stop();
+        int vrc2 = (*itStream)->Stop(msProcessingTimeout);
         if (RT_FAILURE(vrc2))
         {
             LogRel(("Recording: Failed to stop stream #%RU32 (%Rrc)\n", (*itStream)->GetID(), vrc2));
@@ -1200,7 +1205,7 @@ int RecordingContextImpl::stopInternal(void)
     /* Signal the thread and wait for it to shut down. */
     vrc = threadNotify();
     if (RT_SUCCESS(vrc))
-        vrc = RTThreadWait(m_Thread, RT_MS_30SEC /* 30s timeout */, NULL);
+        vrc = RTThreadWait(m_Thread, msShutdownTimeout, NULL);
 
     lock();
 
@@ -1907,4 +1912,3 @@ int RecordingContext::OnLimitReached(uint32_t uScreen, int vrc)
 {
     return m->onLimitReached(uScreen, vrc);
 }
-

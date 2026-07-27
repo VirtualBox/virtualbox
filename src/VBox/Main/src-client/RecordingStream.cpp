@@ -1,4 +1,4 @@
-/* $Id: RecordingStream.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: RecordingStream.cpp 114787 2026-07-27 12:22:11Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording stream code.
  */
@@ -327,6 +327,16 @@ int RecordingStream::process(RecordingBlockSet &streamBlockSet, RecordingBlockMa
                 continue;
             }
 
+            if (   m_enmState == RECORDINGSTREAMSTATE_STOPPING
+                && RTTimeMilliTS() - m_tsStopMs >= m_msStopTimeout)
+            {
+                (*itBlockInList)->Release();
+                STAM_COUNTER_DEC(&m_STAM.cVideoFramesToEncode);
+                STAM_COUNTER_INC(&m_STAM.cVideoFramesHousekeeping);
+                ++itBlockInList;
+                continue;
+            }
+
             PRECORDINGFRAME pFrame = (PRECORDINGFRAME)(*itBlockInList)->pvData;
             AssertPtrBreakStmt(pFrame, vrc = VERR_INVALID_POINTER);
             Assert(pFrame->msTimestamp == msTimestamp);
@@ -404,11 +414,16 @@ int RecordingStream::process(RecordingBlockSet &streamBlockSet, RecordingBlockMa
                 Assert(pFrame->enmType == RECORDINGFRAME_TYPE_AUDIO);
                 PRECORDINGAUDIOFRAME pAudioFrame = &pFrame->u.Audio;
 
-                int vrc2 = this->File.m_pWEBM->WriteBlock(m_uTrackAudio, pAudioFrame->pvBuf, pAudioFrame->cbBuf, pBlock->msTimestamp, pBlock->uFlags);
-                if (RT_SUCCESS(vrc))
-                    vrc = vrc2;
+                if (   m_enmState != RECORDINGSTREAMSTATE_STOPPING
+                    || RTTimeMilliTS() - m_tsStopMs < m_msStopTimeout)
+                {
+                    int const vrc2 = this->File.m_pWEBM->WriteBlock(m_uTrackAudio, pAudioFrame->pvBuf, pAudioFrame->cbBuf,
+                                                                   pBlock->msTimestamp, pBlock->uFlags);
+                    if (RT_SUCCESS(vrc))
+                        vrc = vrc2;
 
-                Log3Func(("RECORDINGFRAME_TYPE_AUDIO: %zu bytes -> %Rrc\n", pAudioFrame->cbBuf, vrc2));
+                    Log3Func(("RECORDINGFRAME_TYPE_AUDIO: %zu bytes -> %Rrc\n", pAudioFrame->cbBuf, vrc2));
+                }
 
                 if (pBlock->Release() == 0)
                 {
@@ -568,7 +583,12 @@ int RecordingStream::ThreadMain(int rcWait, uint64_t msTimestamp, RecordingBlock
     if (   rcWait == VERR_TIMEOUT
         && IsFeatureEnabled(RecordingFeature_Video))
     {
-        return recordingCodecEncodeCurrent(&m_CodecVideo, msTimestamp);
+        lock();
+        bool const fStopping = m_enmState == RECORDINGSTREAMSTATE_STOPPING;
+        unlock();
+
+        if (!fStopping)
+            return recordingCodecEncodeCurrent(&m_CodecVideo, msTimestamp);
     }
 
     int vrc = process(m_BlockSet, commonBlocks);
@@ -943,10 +963,12 @@ int RecordingStream::Start(void)
  * Stops an started or paused recording stream.
  *
  * @returns VBox status code.
+ * @param   msTimeout           Timeout for processing pending data before discarding it.
+ *                              Specifying 0 discards all pending frames.
  *
  * @thread  EMT
  */
-int RecordingStream::Stop(void)
+int RecordingStream::Stop(uint32_t msTimeout)
 {
     lock();
 
@@ -956,7 +978,9 @@ int RecordingStream::Stop(void)
     int vrc = 0;
 
     LogRel(("Recording: Stopping to record stream #%RU32\n", m_uScreenID));
-    m_enmState = RECORDINGSTREAMSTATE_STOPPING;
+    m_tsStopMs      = RTTimeMilliTS();
+    m_msStopTimeout = msTimeout;
+    m_enmState      = RECORDINGSTREAMSTATE_STOPPING;
 
     unlock();
 
@@ -1000,13 +1024,15 @@ int RecordingStream::initInternal(RecordingContext *pCtx, uint32_t uScreen,
 
     unconst(m_pConsole) = pCtx->GetConsole();
 
-    m_pCtx           = pCtx;
-    m_uTrackAudio    = UINT8_MAX;
-    m_uTrackVideo    = UINT8_MAX;
-    m_tsStartMs      = 0;
-    m_uScreenID      = uScreen;
+    m_pCtx            = pCtx;
+    m_uTrackAudio     = UINT8_MAX;
+    m_uTrackVideo     = UINT8_MAX;
+    m_tsStartMs       = 0;
+    m_tsStopMs        = 0;
+    m_msStopTimeout   = 0;
+    m_uScreenID       = uScreen;
 #ifdef VBOX_WITH_AUDIO_RECORDING
-    m_pCodecAudio    = pCodecAudio;
+    m_pCodecAudio      = pCodecAudio;
 #else
     RT_NOREF(pCodecAudio);
 #endif

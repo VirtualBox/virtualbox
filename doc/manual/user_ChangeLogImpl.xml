@@ -81,7 +81,8 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
-        <para></para>
+        <para>Video Recording: Fixed a hang when stopping recording after a
+          large number of display updates</para>
       </listitem>
 
     </itemizedlist>

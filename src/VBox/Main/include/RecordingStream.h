@@ -1,4 +1,4 @@
-/* $Id: RecordingStream.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: RecordingStream.h 114787 2026-07-27 12:22:11Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording stream code header.
  */
@@ -236,7 +236,7 @@ public:
     int SendScreenChange(PRECORDINGSURFACEINFO pInfo, uint64_t msTimestamp, bool fForce = false);
 
     int Start(void);
-    int Stop(void);
+    int Stop(uint32_t msTimeout);
 
     const ComPtr<IRecordingScreenSettings> &GetSettings(void) const;
     uint16_t GetID(void) const { return this->m_uScreenID; };
@@ -325,6 +325,10 @@ protected:
     RTCRITSECT          m_CritSect;
     /** Timestamp (in ms) of when recording has been started. */
     uint64_t            m_tsStartMs;
+    /** Timestamp (in ms) of when stopping has been started. */
+    uint64_t            m_tsStopMs;
+    /** Timeout (in ms) for processing pending recording data while stopping. */
+    uint32_t            m_msStopTimeout;
 #ifdef VBOX_WITH_AUDIO_RECORDING
     /** Pointer to audio codec instance data to use.
      *
@@ -391,4 +395,3 @@ protected:
 typedef std::vector <RecordingStream *> RecordingStreams;
 
 #endif /* !MAIN_INCLUDED_RecordingStream_h */
-
