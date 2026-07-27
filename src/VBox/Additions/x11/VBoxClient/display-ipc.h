@@ -1,4 +1,4 @@
-/* $Id: display-ipc.h 114745 2026-07-21 18:40:35Z knut.osmundsen@oracle.com $ */
+/* $Id: display-ipc.h 114802 2026-07-27 19:09:39Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - DRM IPC communication core function definitions.
  *
@@ -165,8 +165,8 @@ typedef struct VBOX_DRMIPC_CLIENT
     RTLOCALIPCSESSION hClientSession;
     /** TX message queue mutex. */
     RTCRITSECT CritSect;
-    /** TX message queue (accessed under critsect). */
-    VBOX_DRMIPC_TX_LIST_ENTRY TxList;
+    /** TX message queue (VBOX_DRMIPC_TX_LIST_ENTRY) - accessed under critsect. */
+    RTLISTANCHOR TxList;
     /** Maximum number of messages which can be queued to TX message queue. */
     uint32_t cTxListCapacity;
     /** Actual number of messages currently queued to TX message queue (accessed under critsect). */
@@ -179,7 +179,7 @@ typedef struct VBOX_DRMIPC_CLIENT
 typedef VBOX_DRMIPC_CLIENT *PVBOX_DRMIPC_CLIENT;
 
 /** Static initializer for VBOX_DRMIPC_CLIENT. */
-#define VBOX_DRMIPC_CLIENT_INITIALIZER  { NIL_RTTHREAD, 0, { 0 }, { { NULL, NULL },  {0, 0, 0} }, 0, 0, NULL }
+#define VBOX_DRMIPC_CLIENT_INITIALIZER  { NIL_RTTHREAD, 0, { 0 }, { NULL, NULL }, 0, 0, NULL }
 
 /**
  * Initialize IPC client private data.

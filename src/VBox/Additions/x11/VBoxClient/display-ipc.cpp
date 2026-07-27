@@ -1,4 +1,4 @@
-/* $Id: display-ipc.cpp 114750 2026-07-22 10:41:07Z knut.osmundsen@oracle.com $ */
+/* $Id: display-ipc.cpp 114802 2026-07-27 19:09:39Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - DRM IPC communication core functions.
  */
@@ -92,8 +92,7 @@ int vbDrmIpcClientInit(PVBOX_DRMIPC_CLIENT pClient, RTTHREAD hThread, RTLOCALIPC
     pClient->hThread                = hThread;
     pClient->hClientSession         = hClientSession;
 
-    RT_ZERO(pClient->TxList);
-    RTListInit(&pClient->TxList.Node);
+    RTListInit(&pClient->TxList);
 
     pClient->cTxListCapacity = cTxListCapacity;
     ASMAtomicWriteU32(&pClient->cTxListSize, 0);
@@ -116,10 +115,10 @@ int vbDrmIpcClientReleaseResources(PVBOX_DRMIPC_CLIENT pClient)
     int rc = RTCritSectEnter(&pClient->CritSect);
     if (RT_SUCCESS(rc))
     {
-        if (!RTListIsEmpty(&pClient->TxList.Node))
+        if (!RTListIsEmpty(&pClient->TxList))
         {
             PVBOX_DRMIPC_TX_LIST_ENTRY pEntry, pNextEntry;
-            RTListForEachSafe(&pClient->TxList.Node, pEntry, pNextEntry, VBOX_DRMIPC_TX_LIST_ENTRY, Node)
+            RTListForEachSafe(&pClient->TxList, pEntry, pNextEntry, VBOX_DRMIPC_TX_LIST_ENTRY, Node)
             {
                 RTListNodeRemove(&pEntry->Node);
                 RTMemFree(pEntry);
@@ -167,7 +166,7 @@ static int vbDrmIpcSessionScheduleTx(PVBOX_DRMIPC_CLIENT pClient, PVBOX_DRMIPC_T
     {
         if (pClient->cTxListSize < pClient->cTxListCapacity)
         {
-            RTListAppend(&pClient->TxList.Node, &pEntry->Node);
+            RTListAppend(&pClient->TxList, &pEntry->Node);
             pClient->cTxListSize++;
         }
         else
@@ -198,9 +197,9 @@ static PVBOX_DRMIPC_TX_LIST_ENTRY vbDrmIpcSessionPickupTxMessage(PVBOX_DRMIPC_CL
     rc = RTCritSectEnter(&pClient->CritSect);
     if (RT_SUCCESS(rc))
     {
-        if (!RTListIsEmpty(&pClient->TxList.Node))
+        if (!RTListIsEmpty(&pClient->TxList))
         {
-            pEntry = (PVBOX_DRMIPC_TX_LIST_ENTRY)RTListRemoveFirst(&pClient->TxList.Node, VBOX_DRMIPC_TX_LIST_ENTRY, Node);
+            pEntry = (PVBOX_DRMIPC_TX_LIST_ENTRY)RTListRemoveFirst(&pClient->TxList, VBOX_DRMIPC_TX_LIST_ENTRY, Node);
             pClient->cTxListSize--;
             Assert(pEntry);
         }

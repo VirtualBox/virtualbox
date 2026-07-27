@@ -1,4 +1,4 @@
-/* $Id: display-drm.cpp 114750 2026-07-22 10:41:07Z knut.osmundsen@oracle.com $ */
+/* $Id: display-drm.cpp 114802 2026-07-27 19:09:39Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - VMSVGA guest screen resize service.
  *
@@ -216,9 +216,8 @@ static volatile bool g_fDrmIpcRestricted;
 static RTFILE g_hDevice = NIL_RTFILE;
 
 /** IPC client connections list (VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE).
- * This is used by vbDrmIpcBroadcastPrimaryDisplay() only.
- * @todo r=bird: use RTLISTANCHOR  */
-static VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE g_ipcClientConnectionsList;
+ * This is used by vbDrmIpcBroadcastPrimaryDisplay() only.  */
+static RTLISTANCHOR g_ipcClientConnectionsList;
 
 /** IPC client connections list critical section. */
 static RTCRITSECT g_ipcClientConnectionsListCritSect;
@@ -850,7 +849,7 @@ static int vbDrmIpcBroadcastPrimaryDisplay(uint32_t u32PrimaryDisplay)
     if (RT_SUCCESS(rc))
     {
         PVBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE pEntry;
-        RTListForEach(&g_ipcClientConnectionsList.Node, pEntry, VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE, Node)
+        RTListForEach(&g_ipcClientConnectionsList, pEntry, VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE, Node)
         {
             AssertReturn(pEntry, VERR_INVALID_PARAMETER);
             AssertReturn(pEntry->pClient, VERR_INVALID_PARAMETER);
@@ -924,7 +923,7 @@ static int vbDrmIpcClientsListAdd(PVBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE pClie
     int rc = RTCritSectEnter(&g_ipcClientConnectionsListCritSect);
     if (RT_SUCCESS(rc))
     {
-        RTListAppend(&g_ipcClientConnectionsList.Node, &pClientNode->Node);
+        RTListAppend(&g_ipcClientConnectionsList, &pClientNode->Node);
 
         int rc2 = RTCritSectLeave(&g_ipcClientConnectionsListCritSect);
         if (RT_FAILURE(rc2))
@@ -1426,7 +1425,7 @@ int main(int argc, char *argv[])
     }
 
     /* Init IPC client connection list. */
-    RTListInit(&g_ipcClientConnectionsList.Node);
+    RTListInit(&g_ipcClientConnectionsList);
     rc = RTCritSectInit(&g_ipcClientConnectionsListCritSect);
     if (RT_FAILURE(rc))
     {
