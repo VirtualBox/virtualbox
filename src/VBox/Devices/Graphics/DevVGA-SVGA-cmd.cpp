@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA-cmd.cpp 114725 2026-07-17 12:32:53Z alexander.eichner@oracle.com $ */
+/* $Id: DevVGA-SVGA-cmd.cpp 114797 2026-07-27 16:38:59Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device - implementation of VMSVGA commands.
  */
@@ -8614,7 +8614,6 @@ void vmsvgaR3CmdRemapGMR2(PVGASTATE pThis, PVGASTATECC pThisCC, SVGAFifoCmdRemap
     if (paNewPage64)
         RTMemFree(paNewPage64);
 }
-#endif /* VBOX_WITH_VMSVGA3D */
 
 
 /**
@@ -8646,6 +8645,7 @@ void vmsvgaR3GmrFree(PVGASTATECC pThisCC, uint32_t idGMR)
     Assert(!pGMR->cMaxPages);
     Assert(!pGMR->cbTotal);
 }
+#endif /* VBOX_WITH_VMSVGA3D */
 
 
 /**

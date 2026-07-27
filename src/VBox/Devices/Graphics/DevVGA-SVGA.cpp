@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 114700 2026-07-14 12:59:09Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 114797 2026-07-27 16:38:59Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -2034,7 +2034,6 @@ static void vmsvgaR3CursorMobId(PVGASTATE pThis, PVGASTATECC pThisCC)
         LogRelMax(16, ("VMSVGA: CURSOR_MOBID: Invalid mobid = %u (%#x). Ignoring request.\n", mobid, mobid));
     }
 }
-# endif /* VBOX_WITH_VMSVGA3D */
 
 
 /** Defines or frees a GMR.
@@ -2071,6 +2070,7 @@ static void vmsvgaR3GMRDescriptor(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGAGM
              idGMR, pGMRInfo->cDescriptors, pSVGAState->paGMR[idGMR].cbTotal, pGMRInfo->cPagesTotal));
     }
 }
+# endif /* VBOX_WITH_VMSVGA3D */
 
 #endif /* IN_RING3 */
 
@@ -4653,7 +4653,11 @@ static void vmsvgaR3CmdBufProcessBuffers(PPDMDEVINS pDevIns, PVGASTATE pThis, PV
                 ; /* Nothing. */
 #endif
             else if (pCmdBuf->idHostCommand == VMSVGACMDBUF_HOSTCOMMAND_GMR_DESCRIPTOR)
+#ifdef VBOX_WITH_VMSVGA3D
                 vmsvgaR3GMRDescriptor(pThis, pThisCC, (VMSVGAGMRINFO *)pCmdBuf->pvHostCommandData);
+#else
+                ; /* Nothing. */
+#endif
             else
                 AssertFailed();
             vmsvgaR3CmdBufFree(pCmdBuf);
