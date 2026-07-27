@@ -1,4 +1,4 @@
-/* $Id: RecordingCodec.cpp 113780 2026-04-09 09:08:27Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingCodec.cpp 114788 2026-07-27 13:04:53Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording codec wrapper.
  */
@@ -234,6 +234,40 @@ static DECLCALLBACK(int) recordingCodecVPXFinalize(PRECORDINGCODEC pCodec)
     recordingCodecUnlock(pCodec);
 
     return vrc;
+}
+
+/**
+ * Sets the libvpx encoding deadline.
+ *
+ * @returns VBox status code.
+ * @param   pCodec              Codec instance to configure.
+ * @param   enmDeadline         Recording deadline setting to apply.
+ */
+static int recordingCodecVPXSetDeadline(PRECORDINGCODEC pCodec, RecordingCodecDeadline_T enmDeadline)
+{
+    PRECORDINGCODECVPX pVPX = &pCodec->Video.VPX;
+
+    switch (enmDeadline)
+    {
+        case RecordingCodecDeadline_Default:
+        case RecordingCodecDeadline_Realtime:
+            pVPX->uEncoderDeadline = VPX_DL_REALTIME;
+            break;
+
+        case RecordingCodecDeadline_Good:
+            AssertStmt(pCodec->Parms.u.Video.uFPS, pCodec->Parms.u.Video.uFPS = 25);
+            pVPX->uEncoderDeadline = 1000000 / pCodec->Parms.u.Video.uFPS;
+            break;
+
+        case RecordingCodecDeadline_Best:
+            pVPX->uEncoderDeadline = VPX_DL_BEST_QUALITY;
+            break;
+
+        default:
+            AssertMsgFailedReturn(("Invalid recording codec deadline %d\n", enmDeadline), VERR_INVALID_PARAMETER);
+    }
+
+    return VINF_SUCCESS;
 }
 
 /** @copydoc RECORDINGCODECOPS::pfnParseOptions */
@@ -708,6 +742,9 @@ static int recordingCodecInitVideo(const PRECORDINGCODEC pCodec, const PRECORDIN
     ULONG uHeight;
     hrc = ScreenSettings->COMGETTER(VideoHeight)(&uHeight);
     AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    RecordingCodecDeadline_T enmDeadline;
+    hrc = ScreenSettings->COMGETTER(VideoDeadline)(&enmDeadline);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
 
     pCodec->Parms.uBitrate         = uRate;
     pCodec->Parms.u.Video.uFPS     = uFPS;
@@ -727,7 +764,15 @@ static int recordingCodecInitVideo(const PRECORDINGCODEC pCodec, const PRECORDIN
 
     int vrc = VINF_SUCCESS;
 
-    if (pCodec->Ops.pfnParseOptions)
+#ifdef VBOX_WITH_LIBVPX
+    if (pCodec->Parms.Common.u.enmVideoCodec == RecordingVideoCodec_VP8)
+        vrc = recordingCodecVPXSetDeadline(pCodec, enmDeadline);
+#else
+    RT_NOREF(enmDeadline);
+#endif
+
+    if (   RT_SUCCESS(vrc)
+        && pCodec->Ops.pfnParseOptions)
     {
         com::Bstr bstrOptions;
         hrc = ScreenSettings->COMGETTER(Options)(bstrOptions.asOutParam());
