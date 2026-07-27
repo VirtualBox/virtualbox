@@ -1,4 +1,4 @@
-/* $Id: RecordingStream.cpp 114045 2026-04-29 10:10:51Z vitali.pelenjow@oracle.com $ */
+/* $Id: RecordingStream.cpp 114800 2026-07-27 16:53:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording stream code.
  */
@@ -168,6 +168,7 @@ RecordingStream::RecordingStream(RecordingContext *a_pCtx, uint32_t uScreen,
     , m_fShutdown(false)
 {
     RT_ZERO(m_Renderer);
+    RT_ZERO(m_CodecVideo);
     RT_ZERO(m_CodecInputFrame);
 
     int vrc2 = initCommon(a_pCtx, uScreen, ScreenSettings, paPoolsCommonEnc);

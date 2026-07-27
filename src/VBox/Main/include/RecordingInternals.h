@@ -1,4 +1,4 @@
-/* $Id: RecordingInternals.h 113741 2026-04-07 09:08:17Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingInternals.h 114800 2026-07-27 16:53:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording internals header.
  */
@@ -315,7 +315,10 @@ typedef struct RECORDINGCODECPARMS
         struct
         {
             /** Frames per second. */
-            uint8_t              uFPS;
+            uint32_t             uFPS;
+            /** Rate control mode. */
+            RecordingRateControlMode_T
+                                 enmRateCtlMode;
             /** Target width (in pixels) of encoded video image. */
             uint32_t             uWidth;
             /** Target height (in pixels) of encoded video image. */

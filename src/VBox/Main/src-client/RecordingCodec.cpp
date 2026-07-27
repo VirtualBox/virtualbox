@@ -1,4 +1,4 @@
-/* $Id: RecordingCodec.cpp 114788 2026-07-27 13:04:53Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingCodec.cpp 114800 2026-07-27 16:53:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording codec wrapper.
  */
@@ -177,6 +177,16 @@ static DECLCALLBACK(int) recordingCodecVPXInit(PRECORDINGCODEC pCodec)
 
     /* Target bitrate in kilobits per second. */
     pVPX->Cfg.rc_target_bitrate = pCodec->Parms.uBitrate;
+    switch (pCodec->Parms.u.Video.enmRateCtlMode)
+    {
+        case RecordingRateControlMode_VBR:
+            pVPX->Cfg.rc_end_usage = VPX_VBR;
+            break;
+
+        default:
+            AssertMsgFailedReturn(("Unsupported VPX recording rate control mode %d\n",
+                                   pCodec->Parms.u.Video.enmRateCtlMode), VERR_INVALID_PARAMETER);
+    }
     /* Frame width. */
     pVPX->Cfg.g_w = pCodec->Parms.u.Video.uWidth;
     /* Frame height. */
@@ -742,12 +752,21 @@ static int recordingCodecInitVideo(const PRECORDINGCODEC pCodec, const PRECORDIN
     ULONG uHeight;
     hrc = ScreenSettings->COMGETTER(VideoHeight)(&uHeight);
     AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    RecordingRateControlMode_T enmRateCtlMode;
+    hrc = ScreenSettings->COMGETTER(VideoRateControlMode)(&enmRateCtlMode);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
     RecordingCodecDeadline_T enmDeadline;
     hrc = ScreenSettings->COMGETTER(VideoDeadline)(&enmDeadline);
     AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
 
+    AssertReturn(uRate > 0 && uRate <= 1000000, VERR_INVALID_PARAMETER);
+    AssertReturn(uFPS > 0 && uFPS <= RT_MS_1SEC, VERR_INVALID_PARAMETER);
+    AssertReturn(uWidth >= 2 && uWidth <= VBOX_RECORDING_VIDEO_MAX_WIDTH && !(uWidth & 1), VERR_INVALID_PARAMETER);
+    AssertReturn(uHeight >= 2 && uHeight <= VBOX_RECORDING_VIDEO_MAX_HEIGHT && !(uHeight & 1), VERR_INVALID_PARAMETER);
+
     pCodec->Parms.uBitrate         = uRate;
     pCodec->Parms.u.Video.uFPS     = uFPS;
+    pCodec->Parms.u.Video.enmRateCtlMode = enmRateCtlMode;
     pCodec->Parms.u.Video.uWidth   = uWidth;
     pCodec->Parms.u.Video.uHeight  = uHeight;
     pCodec->Parms.u.Video.uDelayMs = RT_MS_1SEC / pCodec->Parms.u.Video.uFPS;
@@ -755,11 +774,6 @@ static int recordingCodecInitVideo(const PRECORDINGCODEC pCodec, const PRECORDIN
     if (pCallbacks)
         memcpy(&pCodec->Callbacks, pCallbacks, sizeof(RECORDINGCODECCALLBACKS));
 
-    AssertReturn(pCodec->Parms.uBitrate, VERR_INVALID_PARAMETER);        /* Bitrate must be set. */
-    AssertStmt(pCodec->Parms.u.Video.uFPS, pCodec->Parms.u.Video.uFPS = 25); /* Prevent division by zero. */
-
-    AssertReturn(pCodec->Parms.u.Video.uHeight, VERR_INVALID_PARAMETER);
-    AssertReturn(pCodec->Parms.u.Video.uWidth, VERR_INVALID_PARAMETER);
     AssertReturn(pCodec->Parms.u.Video.uDelayMs, VERR_INVALID_PARAMETER);
 
     int vrc = VINF_SUCCESS;

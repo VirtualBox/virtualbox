@@ -6772,14 +6772,16 @@
     <attribute name="videoWidth" type="unsigned long" default="1024">
       <desc>
         Determines the horizontal resolution of the recorded video data. This
-        setting cannot be changed while recording is enabled.
+        value must be an even number between 2 and 8192 pixels. This setting
+        cannot be changed while recording is enabled.
       </desc>
     </attribute>
 
     <attribute name="videoHeight" type="unsigned long" default="768">
       <desc>
         Determines the vertical resolution of the recorded video data. This
-        setting cannot be changed while recording is enabled.
+        value must be an even number between 2 and 4320 pixels. This setting
+        cannot be changed while recording is enabled.
       </desc>
     </attribute>
 
@@ -6795,6 +6797,10 @@
       <desc>
         Determines the video rate control mode. This setting cannot be changed
         while recording is enabled.
+
+        <note>
+          Only the VBR mode is supported currently.
+        </note>
       </desc>
     </attribute>
 
@@ -6803,7 +6809,8 @@
         Determines the maximum number of frames per second (FPS). Frames with
         a higher frequency will be skipped. Reducing this value increases the
         number of skipped frames and reduces the file size or transfer rate.
-        This setting cannot be changed while recording is enabled.
+        Valid values range from 1 through 1000. This setting cannot be changed
+        while recording is enabled.
       </desc>
     </attribute>
 

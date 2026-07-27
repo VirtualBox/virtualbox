@@ -1,4 +1,4 @@
-/* $Id: RecordingContext.h 113683 2026-03-30 13:57:36Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingContext.h 114800 2026-07-27 16:53:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording code header. Used by VBoxSVC + VBoxC.
  *
@@ -50,6 +50,11 @@ class RecordingStream;
 
 struct RECORDINGCODEC;
 typedef RECORDINGCODEC *PRECORDINGCODEC;
+
+/** Maximum recording video width (X), corresponding to DCI 8K. */
+#define VBOX_RECORDING_VIDEO_MAX_WIDTH  UINT32_C(8192)
+/** Maximum recording video height (Y), corresponding to DCI 8K. */
+#define VBOX_RECORDING_VIDEO_MAX_HEIGHT UINT32_C(4320)
 
 /** List for keeping a recording feature list. */
 typedef std::map<RecordingFeature_T, bool> RecordingFeatureMap;
@@ -179,4 +184,3 @@ protected:
     RecordingContextImpl *m;
 };
 #endif /* !MAIN_INCLUDED_RecordingContext_h */
-

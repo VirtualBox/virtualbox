@@ -1,4 +1,4 @@
-/* $Id: RecordingScreenSettingsImpl.cpp 113694 2026-03-31 09:27:50Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingScreenSettingsImpl.cpp 114800 2026-07-27 16:53:06Z andreas.loeffler@oracle.com $ */
 /** @file
  *
  * VirtualBox COM class implementation - Recording settings of one virtual screen.
@@ -843,6 +843,12 @@ HRESULT RecordingScreenSettings::setVideoDeadline(RecordingCodecDeadline_T aDead
     if (!m->pParent->i_canChangeSettings())
         return setError(E_INVALIDARG, tr("Cannot change video deadline while recording is enabled"));
 
+    if (   aDeadline != RecordingCodecDeadline_Default
+        && aDeadline != RecordingCodecDeadline_Realtime
+        && aDeadline != RecordingCodecDeadline_Good
+        && aDeadline != RecordingCodecDeadline_Best)
+        return setError(E_INVALIDARG, tr("Invalid video deadline"));
+
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
 
     if (m->bd->Video.enmDeadline != aDeadline)
@@ -877,6 +883,10 @@ HRESULT RecordingScreenSettings::setVideoWidth(ULONG aVideoWidth)
 
     if (!m->pParent->i_canChangeSettings())
         return setError(E_INVALIDARG, tr("Cannot change video width while recording is enabled"));
+
+    if (aVideoWidth < 2 || aVideoWidth > VBOX_RECORDING_VIDEO_MAX_WIDTH || (aVideoWidth & 1))
+        return setError(E_INVALIDARG, tr("Invalid video width %RU32; width must be an even number between 2 and %RU32"),
+                        aVideoWidth, VBOX_RECORDING_VIDEO_MAX_WIDTH);
 
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
 
@@ -913,6 +923,10 @@ HRESULT RecordingScreenSettings::setVideoHeight(ULONG aVideoHeight)
     if (!m->pParent->i_canChangeSettings())
         return setError(E_INVALIDARG, tr("Cannot change video height while recording is enabled"));
 
+    if (aVideoHeight < 2 || aVideoHeight > VBOX_RECORDING_VIDEO_MAX_HEIGHT || (aVideoHeight & 1))
+        return setError(E_INVALIDARG, tr("Invalid video height %RU32; height must be an even number between 2 and %RU32"),
+                        aVideoHeight, VBOX_RECORDING_VIDEO_MAX_HEIGHT);
+
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
 
     if (m->bd->Video.ulHeight != aVideoHeight)
@@ -948,6 +962,10 @@ HRESULT RecordingScreenSettings::setVideoRate(ULONG aVideoRate)
     if (!m->pParent->i_canChangeSettings())
         return setError(E_INVALIDARG, tr("Cannot change video rate while recording is enabled"));
 
+    if (aVideoRate == 0 || aVideoRate > 1000000)
+        return setError(E_INVALIDARG, tr("Invalid video bitrate %RU32; bitrate must be between 1 and 1000000 kbps"),
+                        aVideoRate);
+
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
 
     if (m->bd->Video.ulRate != aVideoRate)
@@ -970,7 +988,7 @@ HRESULT RecordingScreenSettings::getVideoRateControlMode(RecordingRateControlMod
 
     AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
 
-    *aMode = RecordingRateControlMode_VBR; /** @todo Implement CBR. */
+    *aMode = m->bd->Video.enmRateCtlMode;
 
     return S_OK;
 }
@@ -985,10 +1003,17 @@ HRESULT RecordingScreenSettings::setVideoRateControlMode(RecordingRateControlMod
 
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
 
-    /** @todo Implement this. */
-    RT_NOREF(aMode);
+    if (m->bd->Video.enmRateCtlMode != aMode)
+    {
+        m->bd.backup();
+        m->bd->Video.enmRateCtlMode = aMode;
 
-    return E_NOTIMPL;
+        alock.release();
+
+        m->pParent->i_onSettingsChanged();
+    }
+
+    return S_OK;
 }
 
 HRESULT RecordingScreenSettings::getVideoFPS(ULONG *aVideoFPS)
@@ -1010,6 +1035,9 @@ HRESULT RecordingScreenSettings::setVideoFPS(ULONG aVideoFPS)
 
     if (!m->pParent->i_canChangeSettings())
         return setError(E_INVALIDARG, tr("Cannot change video FPS while recording is enabled"));
+
+    if (aVideoFPS == 0 || aVideoFPS > 1000)
+        return setError(E_INVALIDARG, tr("Invalid video FPS %RU32; FPS must be between 1 and 1000"), aVideoFPS);
 
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
 
@@ -1045,6 +1073,12 @@ HRESULT RecordingScreenSettings::setVideoScalingMode(RecordingVideoScalingMode_T
 
     if (!m->pParent->i_canChangeSettings())
         return setError(E_INVALIDARG, tr("Cannot change video scaling mode while recording is enabled"));
+
+    if (   aMode != RecordingVideoScalingMode_None
+        && aMode != RecordingVideoScalingMode_NearestNeighbor
+        && aMode != RecordingVideoScalingMode_Bilinear
+        && aMode != RecordingVideoScalingMode_Bicubic)
+        return setError(E_INVALIDARG, tr("Invalid video scaling mode"));
 
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
 
