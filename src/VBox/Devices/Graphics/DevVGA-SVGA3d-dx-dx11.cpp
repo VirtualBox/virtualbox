@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114719 2026-07-16 15:46:04Z aleksey.ilyushin@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114799 2026-07-27 16:44:21Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -5414,17 +5414,15 @@ static DECLCALLBACK(int) vmsvga3dBackSurfaceCopy(PVGASTATECC pThisCC, SVGA3dSurf
 
     LogFunc(("src sid %d -> dst sid %d\n", src.sid, dest.sid));
 
-    PVMSVGA3DSTATE pState = pThisCC->svga.p3dState;
-    AssertReturn(pState, VERR_INVALID_STATE);
-
-    PVMSVGA3DBACKEND pBackend = pState->pBackend;
+    PVMSVGA3DSTATE p3dState = pThisCC->svga.p3dState;
+    AssertReturn(p3dState, VERR_INVALID_STATE);
 
     PVMSVGA3DSURFACE pSrcSurface;
-    int rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, src.sid, &pSrcSurface);
+    int rc = vmsvga3dSurfaceFromSid(p3dState, src.sid, &pSrcSurface);
     AssertRCReturn(rc, rc);
 
     PVMSVGA3DSURFACE pDstSurface;
-    rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, dest.sid, &pDstSurface);
+    rc = vmsvga3dSurfaceFromSid(p3dState, dest.sid, &pDstSurface);
     AssertRCReturn(rc, rc);
 
     /** @todo Implement a separate code paths for memory->texture, texture->memory */
@@ -5490,26 +5488,16 @@ static DECLCALLBACK(int) vmsvga3dBackSurfaceCopy(PVGASTATECC pThisCC, SVGA3dSurf
 
     /* A 3D resource for one the surfaces has been already created. */
 
-    //DXDEVICE *pDevice = dxDeviceGet(pThisCC->svga.p3dState);
-    //AssertReturn(pDevice->pDevice, VERR_INVALID_STATE);
-    DXDEVICE *pDXDevice = &pBackend->dxDevice;
+    DXDEVICE *pDXDevice = dxDeviceGet(pThisCC->svga.p3dState);
+    AssertReturn(pDXDevice->pDevice, VERR_INVALID_STATE);
 
-    if (pSrcSurface->pBackendSurface == NULL)
-    {
-        rc = vmsvga3dBackSurfaceCreateResource(pThisCC, pSrcSurface);
-        AssertRCReturn(rc, rc);
-    }
-
-    if (pDstSurface->pBackendSurface == NULL)
-    {
-        rc = vmsvga3dBackSurfaceCreateResource(pThisCC, pDstSurface);
-        AssertRCReturn(rc, rc);
-    }
+    ID3D11Resource *pSrcResource;
+    rc = dxEnsureResource(pThisCC, src.sid, &pSrcSurface, &pSrcResource);
+    AssertRCReturn(rc, rc);
 
     ID3D11Resource *pDstResource;
-    ID3D11Resource *pSrcResource;
-    pDstResource = dxResource(pDstSurface);
-    pSrcResource = dxResource(pSrcSurface);
+    rc = dxEnsureResource(pThisCC, dest.sid, &pDstSurface, &pDstResource);
+    AssertRCReturn(rc, rc);
 
     UINT DstSubresource = vmsvga3dCalcSubresource(dest.mipmap, dest.face, pDstSurface->cLevels);
     UINT SrcSubresource = vmsvga3dCalcSubresource(src.mipmap, src.face, pSrcSurface->cLevels);
@@ -10216,26 +10204,14 @@ static DECLCALLBACK(int) vmsvga3dBackDXPredCopyRegion(PVGASTATECC pThisCC, PVMSV
     AssertReturn(pDevice->pDevice, VERR_INVALID_STATE);
 
     PVMSVGA3DSURFACE pSrcSurface;
-    int rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, srcSid, &pSrcSurface);
+    ID3D11Resource *pSrcResource;
+    int rc = dxEnsureResource(pThisCC, srcSid, &pSrcSurface, &pSrcResource);
     AssertRCReturn(rc, rc);
 
     PVMSVGA3DSURFACE pDstSurface;
-    rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, dstSid, &pDstSurface);
+    ID3D11Resource *pDstResource;
+    rc = dxEnsureResource(pThisCC, dstSid, &pDstSurface, &pDstResource);
     AssertRCReturn(rc, rc);
-
-    if (pSrcSurface->pBackendSurface == NULL)
-    {
-        /* Create the resource. */
-        rc = vmsvga3dBackSurfaceCreateResource(pThisCC, pSrcSurface);
-        AssertRCReturn(rc, rc);
-    }
-
-    if (pDstSurface->pBackendSurface == NULL)
-    {
-        /* Create the resource. */
-        rc = vmsvga3dBackSurfaceCreateResource(pThisCC, pDstSurface);
-        AssertRCReturn(rc, rc);
-    }
 
     LogFunc(("src%s sid = %u -> dst%s sid = %u\n",
              (pSrcSurface->f.surfaceFlags & SVGA3D_SURFACE_SCREENTARGET) ? " st" : "", pSrcSurface->id,
@@ -10277,12 +10253,6 @@ static DECLCALLBACK(int) vmsvga3dBackDXPredCopyRegion(PVGASTATECC pThisCC, PVMSV
     SrcBox.bottom = clipBox.srcy + clipBox.h;
     SrcBox.back   = clipBox.srcz + clipBox.d;
 
-    ID3D11Resource *pDstResource;
-    ID3D11Resource *pSrcResource;
-
-    pDstResource = dxResource(pDstSurface);
-    pSrcResource = dxResource(pSrcSurface);
-
     pDevice->pImmediateContext->CopySubresourceRegion(pDstResource, DstSubresource, DstX, DstY, DstZ,
                                                       pSrcResource, SrcSubresource, &SrcBox);
 
@@ -10315,33 +10285,18 @@ static DECLCALLBACK(int) vmsvga3dBackDXPredCopy(PVGASTATECC pThisCC, PVMSVGA3DDX
     AssertReturn(pDevice->pDevice, VERR_INVALID_STATE);
 
     PVMSVGA3DSURFACE pSrcSurface;
-    int rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, srcSid, &pSrcSurface);
+    ID3D11Resource *pSrcResource;
+    int rc = dxEnsureResource(pThisCC, srcSid, &pSrcSurface, &pSrcResource);
     AssertRCReturn(rc, rc);
 
     PVMSVGA3DSURFACE pDstSurface;
-    rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, dstSid, &pDstSurface);
+    ID3D11Resource *pDstResource;
+    rc = dxEnsureResource(pThisCC, dstSid, &pDstSurface, &pDstResource);
     AssertRCReturn(rc, rc);
-
-    if (pSrcSurface->pBackendSurface == NULL)
-    {
-        /* Create the resource. */
-        rc = vmsvga3dBackSurfaceCreateResource(pThisCC, pSrcSurface);
-        AssertRCReturn(rc, rc);
-    }
-
-    if (pDstSurface->pBackendSurface == NULL)
-    {
-        /* Create the resource. */
-        rc = vmsvga3dBackSurfaceCreateResource(pThisCC, pDstSurface);
-        AssertRCReturn(rc, rc);
-    }
 
     LogFunc(("src%s sid = %u -> dst%s sid = %u\n",
              (pSrcSurface->f.surfaceFlags & SVGA3D_SURFACE_SCREENTARGET) ? " st" : "", pSrcSurface->id,
              (pDstSurface->f.surfaceFlags & SVGA3D_SURFACE_SCREENTARGET) ? " st" : "", pDstSurface->id));
-
-    ID3D11Resource *pDstResource = dxResource(pDstSurface);
-    ID3D11Resource *pSrcResource = dxResource(pSrcSurface);
 
     pDevice->pImmediateContext->CopyResource(pDstResource, pSrcResource);
 
