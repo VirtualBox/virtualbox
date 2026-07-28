@@ -1,4 +1,4 @@
-/* $Id: VMMR3GuruMeditation.cpp 113650 2026-03-30 10:47:35Z knut.osmundsen@oracle.com $ */
+/* $Id: VMMR3GuruMeditation.cpp 114807 2026-07-28 11:04:53Z andreas.loeffler@oracle.com $ */
 /** @file
  * VMM - The Virtual Machine Monitor, Guru Meditation Code.
  */
@@ -172,7 +172,7 @@ static DECLCALLBACK(void) vmmR3FatalDumpInfoHlp_pfnPrintfV(PCDBGFINFOHLP pHlp, c
     {
         va_list args2;
         va_copy(args2, args);
-        RTLogLoggerV(pMyHlp->pLogger, pszFormat, args);
+        RTLogLoggerV(pMyHlp->pLogger, pszFormat, args2);
         va_end(args2);
     }
     if (pMyHlp->fStdErr)
@@ -190,7 +190,7 @@ static DECLCALLBACK(void) vmmR3FatalDumpInfoHlp_pfnPrintfV(PCDBGFINFOHLP pHlp, c
         {
             va_list args2;
             va_copy(args2, args);
-            size_t cch = RTStrPrintfV(&pMyHlp->szSummary[pMyHlp->offSummary], cchLeft, pszFormat, args);
+            size_t cch = RTStrPrintfV(&pMyHlp->szSummary[pMyHlp->offSummary], cchLeft, pszFormat, args2);
             va_end(args2);
             Assert(cch <= cchLeft);
             pMyHlp->offSummary += cch;
