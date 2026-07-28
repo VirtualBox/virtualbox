@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA-cmd.cpp 114796 2026-07-27 16:22:58Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA-cmd.cpp 114811 2026-07-28 14:08:48Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device - implementation of VMSVGA commands.
  */
@@ -883,9 +883,9 @@ static int vmsvgaR3GboTransfer(PVMSVGAR3STATE pSvgaR3State, PVMSVGAGBO pGbo,
         AssertPtr(pv);
 
         if (enmDirection == VMSVGAGboTransferDirection_Read)
-            memcpy(pvData, pv, cbData);
+            vmsvgaR3GboMemCpy(pvData, pv, cbData);
         else
-            memcpy(pv, pvData, cbData);
+            vmsvgaR3GboMemCpy(pv, pvData, cbData);
     }
     else
     {
