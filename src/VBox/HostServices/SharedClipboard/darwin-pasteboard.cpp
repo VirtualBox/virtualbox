@@ -1,4 +1,4 @@
-/* $Id: darwin-pasteboard.cpp 114786 2026-07-27 09:41:37Z knut.osmundsen@oracle.com $ */
+/* $Id: darwin-pasteboard.cpp 114808 2026-07-28 12:08:06Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host implementation.
  */
@@ -569,8 +569,8 @@ DECLHIDDEN(int) writeToPasteboard(PasteboardRef hPasteboard, uint64_t idOwnershi
 
         /* How long will the converted text be? */
         size_t cwcDst = 0;
-        rc = ShClHlpUtf16CRLFLenUtf8(pwszSrc, cwcSrc, &cwcDst);
-        AssertMsgRCReturn(rc, ("ShClHlpUtf16CRLFLenUtf8 failed: %Rrc\n", rc), rc);
+        rc = ShClHlpUtf16CRLFToLFLen(pwszSrc, cwcSrc, &cwcDst);
+        AssertMsgRCReturn(rc, ("ShClHlpUtf16CRLFToLFLen failed: %Rrc\n", rc), rc);
 
         /* Ignore empty strings? */ /** @todo r=andy Really? Why? */
         if (cwcDst == 0)
