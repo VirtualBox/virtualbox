@@ -1,4 +1,4 @@
-/* $Id: DBGFR3.cpp 114792 2026-07-27 14:30:18Z andreas.loeffler@oracle.com $ */
+/* $Id: DBGFR3.cpp 114804 2026-07-28 10:55:56Z andreas.loeffler@oracle.com $ */
 /** @file
  * DBGF - Debugger Facility.
  */
@@ -1244,6 +1244,13 @@ static DECLCALLBACK(VBOXSTRICTRC) dbgfR3Attach(PVM pVM, PVMCPU pVCpu, void *pvUs
     }
     else
         rc = VERR_NO_MEMORY;
+
+    if (pUVM->dbgf.s.paDbgEvts)
+    {
+        MMR3HeapFree(pUVM->dbgf.s.paDbgEvts);
+        pUVM->dbgf.s.paDbgEvts = NULL;
+    }
+    pUVM->dbgf.s.cDbgEvtMax = 0;
 
     *prcAttach = rc;
     return VINF_SUCCESS;
