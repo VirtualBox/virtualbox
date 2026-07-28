@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114813 2026-07-28 14:34:11Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114814 2026-07-28 15:06:29Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -6606,18 +6606,6 @@ static DECLCALLBACK(int) vmsvga3dBackDXSetSingleConstantBuffer(PVGASTATECC pThis
 
         pUploadBuffer->offFree += cbConstantAligned;
 
-#ifdef LOG_ENABLED
-        if (LogIs8Enabled())
-        {
-            float *pValuesF = (float *)pu8Src;
-            for (unsigned i = 0; i < sizeInBytes / sizeof(float) / 4; ++i)
-            {
-                Log8(("ConstF /*%d*/ " FLOAT_FMT_STR ", " FLOAT_FMT_STR ", " FLOAT_FMT_STR ", " FLOAT_FMT_STR ",\n",
-                      i, FLOAT_FMT_ARGS(pValuesF[i*4 + 0]), FLOAT_FMT_ARGS(pValuesF[i*4 + 1]), FLOAT_FMT_ARGS(pValuesF[i*4 + 2]), FLOAT_FMT_ARGS(pValuesF[i*4 + 3])));
-            }
-        }
-#endif
-
         LogFunc(("constant buffer: [%u][%u]: sid = %u, %u, %u\n",
                  idxShaderState, slot, sid, offsetInBytes, sizeInBytes));
     }
@@ -7063,14 +7051,38 @@ static void dxSetConstantBuffers(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXCont
         UINT const           *pFirstConstant    = &pCb->aFirstConstant[StartSlot];
         UINT const           *pNumConstants     = &pCb->aNumConstants[StartSlot];
 #ifdef LOG_ENABLED
+        LogFunc(("constant buffers: [%u]: %u %u\n",
+                 idxShaderState, StartSlot, NumBuffers));
         for (UINT i = 0; i < NumBuffers; ++i)
         {
             uint32_t const idxSlot = StartSlot + i;
-            if (pNumConstants[idxSlot] == 0)
+            if (pNumConstants[i] == 0)
                 continue;
 
-            LogFunc(("constant buffer: [%u][%u]: %p @%u %u\n",
-                     idxShaderState, idxSlot, papConstantBuffer[idxSlot], pFirstConstant[idxSlot], pNumConstants[idxSlot]));
+            LogFunc(("constant buffer:  [%u][%u]: %p @%u %u\n",
+                     idxShaderState, idxSlot, papConstantBuffer[i], pFirstConstant[i], pNumConstants[i]));
+
+            if (LogIs8Enabled())
+            {
+                void *pvBuffer;
+                uint32_t cbBuffer;
+                int rc = dxReadBuffer(pDXDevice, papConstantBuffer[i],
+                                      pFirstConstant[i] * 16, pNumConstants[i] * 16,
+                                      &pvBuffer, &cbBuffer);
+                AssertRC(rc);
+                if (RT_SUCCESS(rc))
+                {
+                    float *pValuesF = (float *)pvBuffer;
+                    for (uint32_t iConst = 0; iConst < cbBuffer / sizeof(float) / 4; ++iConst)
+                    {
+                        Log8(("ConstF /*%d*/ " FLOAT_FMT_STR ", " FLOAT_FMT_STR ", " FLOAT_FMT_STR ", " FLOAT_FMT_STR ",\n",
+                              iConst, FLOAT_FMT_ARGS(pValuesF[iConst*4 + 0]), FLOAT_FMT_ARGS(pValuesF[iConst*4 + 1]),
+                                      FLOAT_FMT_ARGS(pValuesF[iConst*4 + 2]), FLOAT_FMT_ARGS(pValuesF[iConst*4 + 3])));
+                    }
+
+                    RTMemFree(pvBuffer);
+                }
+            }
         }
 #endif
         /* Make sure that the range does not exceed API limit. */
@@ -9111,6 +9123,8 @@ static int dxReadBuffer(DXDEVICE *pDevice, ID3D11Buffer *pBuffer, UINT Offset, U
     D3D11_BUFFER_DESC desc;
     RT_ZERO(desc);
     pBuffer->GetDesc(&desc);
+
+    Bytes = RT_MIN(desc.ByteWidth, Bytes);
 
     AssertReturn(   Offset < desc.ByteWidth
                  && Bytes <= desc.ByteWidth - Offset, VERR_INVALID_STATE);
