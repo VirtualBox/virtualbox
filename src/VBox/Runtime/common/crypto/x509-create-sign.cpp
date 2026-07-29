@@ -156,7 +156,8 @@ RTDECL(int) RTCrX509Certificate_GenerateSelfSignedRsa(RTDIGESTTYPE enmDigestType
         /** @todo check what the subject name is...  Offer way to specify it? */
 
         /* Make it self signed: */
-        X509_NAME *pX509Name = X509_get_subject_name(pNewCert);
+        X509_NAME *pX509Name = X509_NAME_new();
+        X509_set_subject_name(pNewCert, pX509Name);
         rcOssl = X509_NAME_add_entry_by_txt(pX509Name, "CN", MBSTRING_ASC, (unsigned char *) pvSubject, -1, -1, 0);
         AssertStmt(rcOssl > 0, rc = RTErrInfoSet(pErrInfo, VERR_GENERAL_FAILURE, "X509_NAME_add_entry_by_txt failed"));
         rcOssl = X509_set_issuer_name(pNewCert, pX509Name);
@@ -211,6 +212,7 @@ RTDECL(int) RTCrX509Certificate_GenerateSelfSignedRsa(RTDIGESTTYPE enmDigestType
                 rc = RTErrInfoSet(pErrInfo, VERR_CR_KEY_GEN_FAILED_RSA, "X509_sign failed");
         }
 
+        X509_NAME_free(pX509Name);
         X509_free(pNewCert);
     }
     else
