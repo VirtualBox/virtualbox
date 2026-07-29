@@ -1,4 +1,4 @@
-/* $Id: DBGFR3.cpp 114804 2026-07-28 10:55:56Z andreas.loeffler@oracle.com $ */
+/* $Id: DBGFR3.cpp 114815 2026-07-29 06:56:55Z andreas.loeffler@oracle.com $ */
 /** @file
  * DBGF - Debugger Facility.
  */
@@ -1618,7 +1618,7 @@ static DBGFSTEPINSTRTYPE dbgfStepGetCurInstrType(PVM pVM, PVMCPU pVCpu)
             || (u32Insn & UINT32_C(0xfffffc1f)) == UINT32_C(0xd63f0c1f) /* BLRABZ */
             || (u32Insn & UINT32_C(0xfffffc00)) == UINT32_C(0xd73f0800) /* BLRAA */
             || (u32Insn & UINT32_C(0xfffffc00)) == UINT32_C(0xd73f0c00) /* BLRAB */
-            || (u32Insn & UINT32_C(0xfc000000)) == UINT32_C(0x14000000) /* BL */
+            || (u32Insn & UINT32_C(0xfc000000)) == UINT32_C(0x94000000) /* BL */
             || (u32Insn & UINT32_C(0xffe0001f)) == UINT32_C(0xd4000001) /* SVC */
             || (u32Insn & UINT32_C(0xffe0001f)) == UINT32_C(0xd4000002) /* HVC */
             || (u32Insn & UINT32_C(0xffe0001f)) == UINT32_C(0xd4000003) /* SMC */
