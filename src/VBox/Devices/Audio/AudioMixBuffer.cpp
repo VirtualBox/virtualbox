@@ -1,4 +1,4 @@
-/* $Id: AudioMixBuffer.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: AudioMixBuffer.cpp 114821 2026-07-30 17:50:57Z andreas.loeffler@oracle.com $ */
 /** @file
  * Audio mixing buffer for converting reading/writing audio data.
  */
@@ -654,7 +654,7 @@ static void audioMixBufRateResetAlways(PAUDIOSTREAMRATE pRate)
     pRate->offDst = 0;
     pRate->offSrc = 0;
     for (uintptr_t i = 0; i < RT_ELEMENTS(pRate->SrcLast.ai32Samples); i++)
-        pRate->SrcLast.ai32Samples[0] = 0;
+        pRate->SrcLast.ai32Samples[i] = 0;
 }
 
 
