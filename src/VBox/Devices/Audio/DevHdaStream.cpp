@@ -1,4 +1,4 @@
-/* $Id: DevHdaStream.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: DevHdaStream.cpp 114820 2026-07-30 17:43:31Z andreas.loeffler@oracle.com $ */
 /** @file
  * Intel HD Audio Controller Emulation - Streams.
  */
@@ -2073,7 +2073,7 @@ static void hdaR3StreamPushToMixer(PHDASTREAM pStreamShared, PHDASTREAMR3 pStrea
 /**
  * Deals with a DMA buffer overrun.
  *
- * Makes sure we return with @a cbNeeded bytes of free space in pCircBuf.
+ * Tries to return with @a cbNeeded bytes of free space in pCircBuf.
  *
  * @returns Number of bytes free in the internal DMA buffer.
  * @param   pStreamShared   The shared data for the HDA stream.
@@ -2094,19 +2094,22 @@ static uint32_t hdaR3StreamHandleDmaBufferOverrun(PHDASTREAM pStreamShared, PHDA
     RT_NOREF(pszCaller, cbStreamFree);
 
     int rc = AudioMixerSinkTryLock(pSink);
-    if (RT_SUCCESS(rc))
+    if (RT_FAILURE(rc))
     {
-        hdaR3StreamPushToMixer(pStreamShared, pStreamR3, pSink, nsNow);
-        AudioMixerSinkUpdate(pSink, 0, 0);
-        AudioMixerSinkUnlock(pSink);
-    }
-    else
         RTThreadYield();
+        return hdaR3StreamGetFree(pStreamR3);
+    }
 
-    uint32_t const cbRet = hdaR3StreamGetFree(pStreamR3);
+    hdaR3StreamPushToMixer(pStreamShared, pStreamR3, pSink, nsNow);
+    AudioMixerSinkUpdate(pSink, 0, 0);
+
+    uint32_t cbRet = hdaR3StreamGetFree(pStreamR3);
     Log(("%s: Gained %u bytes.\n", pszCaller, cbRet - cbStreamFree));
     if (cbRet >= cbNeeded)
+    {
+        AudioMixerSinkUnlock(pSink);
         return cbRet;
+    }
 
     /*
      * Unable to make sufficient space.  Drop the whole buffer content.
@@ -2120,18 +2123,13 @@ static uint32_t hdaR3StreamHandleDmaBufferOverrun(PHDASTREAM pStreamShared, PHDA
 # ifdef HDA_STRICT
     AssertMsgFailed(("Hit stream #%RU8 overflow -- timing bug?\n", pStreamShared->u8SD));
 # endif
-/**
- *
- * @todo r=bird: I don't think RTCircBufReset is entirely safe w/o
- * owning the AIO lock.  See the note in the documentation about it not being
- * multi-threading aware (safe).   Wish I'd verified this code much earlier.
- * Sigh^3!
- *
- */
     RTCircBufReset(pStreamR3->State.pCircBuf);
     pStreamShared->State.offWrite = 0;
     pStreamShared->State.offRead  = 0;
-    return hdaR3StreamGetFree(pStreamR3);
+    cbRet = hdaR3StreamGetFree(pStreamR3);
+
+    AudioMixerSinkUnlock(pSink);
+    return cbRet;
 }
 
 
