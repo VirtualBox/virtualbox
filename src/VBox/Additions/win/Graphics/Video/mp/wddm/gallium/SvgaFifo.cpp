@@ -1,4 +1,4 @@
-/* $Id: SvgaFifo.cpp 114795 2026-07-27 15:25:08Z vitali.pelenjow@oracle.com $ */
+/* $Id: SvgaFifo.cpp 114827 2026-07-31 03:39:42Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - VMSVGA FIFO.
  */
@@ -487,13 +487,14 @@ static NTSTATUS svgaCBAlloc(PVMSVGACBSTATE pCBState, VMSVGACBTYPE enmType, uint3
             }
         }
     }
-    KeReleaseSpinLock(&pCBState->SpinLock, OldIrql);
 
     if (pCB)
     {
         Assert(pList->cEntries > 0);
         --pList->cEntries;
         svgaCBLookasideListMissRateUpdate(pList, 0);
+
+        KeReleaseSpinLock(&pCBState->SpinLock, OldIrql);
 
         GALOG(("CB: %p reuse\n", pCB));
         svgaCBReset(pCB, idDXContext);
@@ -506,6 +507,8 @@ static NTSTATUS svgaCBAlloc(PVMSVGACBSTATE pCBState, VMSVGACBTYPE enmType, uint3
     /* If the miss rate is too high, increase the allowed number of entries */
     if (pList->u32MissRate > CB_EMA_RATE_HIGH)
         ++pList->cMaxEntries;
+
+    KeReleaseSpinLock(&pCBState->SpinLock, OldIrql);
 
     pCB = (PVMSVGACB)GaMemAllocZero(sizeof(VMSVGACB));
     AssertReturn(pCB, STATUS_INSUFFICIENT_RESOURCES);
