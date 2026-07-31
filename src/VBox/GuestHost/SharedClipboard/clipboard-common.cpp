@@ -1,4 +1,4 @@
-/* $Id: clipboard-common.cpp 114661 2026-07-08 10:39:13Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-common.cpp 114830 2026-07-31 10:02:47Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common helper objects.
  */
@@ -1109,56 +1109,57 @@ VBGH_DECL(int) ShClCacheSetMultiple(PSHCLCACHE pCache, SHCLFORMATS uFmts, const 
 {
     AssertPtrReturn(pCache, VERR_INVALID_POINTER);
     AssertMsgReturn(pCache->u32Magic == SHCLCACHE_MAGIC, ("%#x\n", pCache->u32Magic), VERR_INVALID_MAGIC);
-    if (!pvData) /* Nothing to cache? */
-        return VINF_SUCCESS;
     AssertPtrReturn(pvData, VERR_INVALID_POINTER);
     AssertReturn(cbData, VERR_INVALID_PARAMETER);
+    AssertReturn(uFmts != VBOX_SHCL_FMT_NONE, VERR_INVALID_PARAMETER);
+    AssertReturn(!(uFmts & ~VBOX_SHCL_FMT_VALID_MASK), VERR_INVALID_FLAGS);
 
     int rc = VINF_SUCCESS;
     SHCLFORMATS uFmtsLeft = uFmts;
     while (uFmtsLeft)
     {
-        void       *pvConv = NULL;
-        size_t      cbConv = 0;
         SHCLFORMAT  uFmt;
         if (uFmtsLeft & VBOX_SHCL_FMT_UNICODETEXT)
         {
             uFmt = VBOX_SHCL_FMT_UNICODETEXT;
-
-            /** @todo r=bird: This is a terrible way of detecting UTF-8.  The little endian
-             * UTF-16 rending of any 7-bit unicode point is a valid UTF-8 with length 1!
-             * This nonsense probably just happens to work because all the input is UTF-8 or
-             * ASCII. */
-            AssertMsgFailed(("See @todo!\n"));
-            rc = RTStrValidateEncoding((const char *)pvData);
-            if (RT_SUCCESS(rc))
-            {
-                rc = RTStrToUtf16((const char *)pvData, (PRTUTF16 *)&pvConv);
-                if (RT_SUCCESS(rc))
-                    cbConv = (RTUtf16Len((const PRTUTF16)pvConv) + 1) * sizeof(RTUTF16);
-            }
-            else if (!RTUtf16ValidateEncoding((const PRTUTF16)pvData))
-            {
-                AssertFailedBreakStmt(rc = VERR_INVALID_PARAMETER);
-            }
+            if (cbData & (sizeof(RTUTF16) - 1))
+                rc = VERR_INVALID_PARAMETER;
+            else
+                rc = RTUtf16ValidateEncodingEx((PCRTUTF16)pvData, cbData / sizeof(RTUTF16),
+                                                RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED
+                                              | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
         }
         else if (uFmtsLeft & VBOX_SHCL_FMT_BITMAP)
+        {
             uFmt = VBOX_SHCL_FMT_BITMAP;
+            void  *pvBmp = NULL;
+            size_t cbBmp = 0;
+            rc = ShClHlpDibToBmp(pvData, cbData, &pvBmp, &cbBmp);
+            ShClHlpFreeBuf(pvBmp, cbBmp);
+        }
         else if (uFmtsLeft & VBOX_SHCL_FMT_HTML)
+        {
             uFmt = VBOX_SHCL_FMT_HTML;
+            uint32_t fFlags = RTSTR_VALIDATE_ENCODING_EXACT_LENGTH;
+            if (((const char *)pvData)[cbData - 1] == '\0')
+                fFlags |= RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED;
+            rc = RTStrValidateEncodingEx((const char *)pvData, cbData, fFlags);
+        }
         else if (uFmtsLeft & VBOX_SHCL_FMT_URI_LIST)
+        {
             uFmt = VBOX_SHCL_FMT_URI_LIST;
+            uint32_t fFlags = RTSTR_VALIDATE_ENCODING_EXACT_LENGTH;
+            if (((const char *)pvData)[cbData - 1] == '\0')
+                fFlags |= RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED;
+            rc = RTStrValidateEncodingEx((const char *)pvData, cbData, fFlags);
+        }
         else
             AssertFailedBreakStmt(rc = VERR_NOT_SUPPORTED);
 
         uFmtsLeft &= ~uFmt; /* Remove from list. */
-        Assert(RT_VALID_PTR(pvConv) || cbConv == 0); /* Sanity. */
 
         if (RT_SUCCESS(rc))
-            rc = shClCacheSet(pCache, uFmt,
-                              pvConv ? pvConv : pvData,
-                              cbConv ? cbConv : cbData);
-        RTMemFree(pvConv);
+            rc = shClCacheSet(pCache, uFmt, pvData, cbData);
         AssertRCBreak(rc);
     }
 
@@ -1204,10 +1205,10 @@ VBGH_DECL(bool) ShClCacheEquals(SHCLCACHE const *pCache, SHCLCACHE const *pOther
  */
 VBGH_DECL(int) ShClCacheTransferAll(PSHCLCACHE pCache, PSHCLCACHE pOtherCache)
 {
-    AssertPtrReturn(pCache, false);
-    AssertMsgReturn(pCache->u32Magic == SHCLCACHE_MAGIC, ("%#x\n", pCache->u32Magic), false);
-    AssertPtrReturn(pOtherCache, false);
-    AssertMsgReturn(pOtherCache->u32Magic == SHCLCACHE_MAGIC, ("%#x\n", pOtherCache->u32Magic), false);
+    AssertPtrReturn(pCache, VERR_INVALID_POINTER);
+    AssertMsgReturn(pCache->u32Magic == SHCLCACHE_MAGIC, ("%#x\n", pCache->u32Magic), VERR_INVALID_MAGIC);
+    AssertPtrReturn(pOtherCache, VERR_INVALID_POINTER);
+    AssertMsgReturn(pOtherCache->u32Magic == SHCLCACHE_MAGIC, ("%#x\n", pOtherCache->u32Magic), VERR_INVALID_MAGIC);
 
     for (unsigned i = 0; i < RT_ELEMENTS(pCache->aEntries); i++)
     {
@@ -1247,18 +1248,20 @@ SHCLFORMATS shClSvcHandleFormats(bool fHostToGuest, PSHCLCLIENT pClient, SHCLFOR
     bool fSkipTransfers = false;
     if (fFormats & VBOX_SHCL_FMT_URI_LIST)
     {
-        if (!(pClient->State.Transfers.uTransferMode & VBOX_SHCL_TRANSFER_MODE_F_ENABLED))
+        uint32_t const fTransferMode = ShClSvcClientGetTransferMode(pClient);
+        if (!(fTransferMode & VBOX_SHCL_TRANSFER_MODE_F_ENABLED))
         {
             LogRelMax(16, ("Shared Clipboard: File transfer format %#x was reported by %s, but file transfers are disabled (mode=%#x), masking it\n",
-                           VBOX_SHCL_FMT_URI_LIST, fHostToGuest ? "host" : "guest", pClient->State.Transfers.uTransferMode));
+                           VBOX_SHCL_FMT_URI_LIST, fHostToGuest ? "host" : "guest", fTransferMode));
             fSkipTransfers = true;
         }
 
-        uint64_t const fRequired = VBOX_SHCL_GF_0_CONTEXT_ID | VBOX_SHCL_GF_0_TRANSFERS;
-        if ((pClient->State.fGuestFeatures0 & fRequired) != fRequired)
+        uint64_t const fRequired       = VBOX_SHCL_GF_0_CONTEXT_ID | VBOX_SHCL_GF_0_TRANSFERS;
+        uint64_t const fGuestFeatures0 = ShClSvcClientGetGuestFeatures0(pClient);
+        if ((fGuestFeatures0 & fRequired) != fRequired)
         {
             LogRelMax(16, ("Shared Clipboard: File transfer format %#x was reported by %s, but Guest Additions did not negotiate required features (features0=%#RX64, required=%#RX64), masking it\n",
-                           VBOX_SHCL_FMT_URI_LIST, fHostToGuest ? "host" : "guest", pClient->State.fGuestFeatures0, fRequired));
+                           VBOX_SHCL_FMT_URI_LIST, fHostToGuest ? "host" : "guest", fGuestFeatures0, fRequired));
             fSkipTransfers = true;
         }
 
@@ -1492,7 +1495,19 @@ int shClSvcClientMsgAddAndWakeupClient(PSHCLCLIENT pClient, PSHCLCLIENTMSG pMsg)
     LogFlowFunc(("idMsg=%s (%u) cParms=%u\n", ShClHostMsgToStr(pMsg->idMsg), pMsg->idMsg, pMsg->cParms));
 
     RTListAppend(&pClient->MsgQueue, &pMsg->ListEntry);
-    return ShClSvcClientWakeup(pClient); /** @todo r=andy Remove message if waking up failed? */
+    int const rc = ShClSvcClientWakeup(pClient);
+    if (RT_FAILURE(rc))
+    {
+        PSHCLCLIENTMSG pQueued;
+        RTListForEach(&pClient->MsgQueue, pQueued, SHCLCLIENTMSG, ListEntry)
+            if (pQueued == pMsg)
+            {
+                RTListNodeRemove(&pQueued->ListEntry);
+                ShClSvcClientMsgFree(pClient, pQueued);
+                break;
+            }
+    }
+    return rc;
 }
 
 /**

@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.cpp 114770 2026-07-25 11:53:54Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-helper.cpp 114830 2026-07-31 10:02:47Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Helper functions.
  */
@@ -29,7 +29,7 @@
 
 #include <iprt/alloc.h>
 #include <iprt/assert.h>
-#include <iprt/errcore.h>
+#include <iprt/err.h>
 #include <iprt/stream.h>
 #include <iprt/string.h>
 #include <iprt/utf16.h>
@@ -53,6 +53,54 @@ int ShClHlpUtf16LenUtf8(PCRTUTF16 pcwszSrc, size_t cwcSrc, size_t *pcbLenSansTer
     int rc = RTUtf16CalcUtf8LenEx(pcwszSrc, cwcSrc, &cbLenSansTerm);
     if (RT_SUCCESS(rc))
         *pcbLenSansTerm = cbLenSansTerm;
+    return rc;
+}
+
+int ShClHlpUtf8ValidateExact(const char *pchSrc, size_t cbSrc, size_t *pcchText)
+{
+    AssertPtrReturn(pchSrc, VERR_INVALID_POINTER);
+    AssertPtrReturn(pcchText, VERR_INVALID_POINTER);
+    *pcchText = 0;
+
+    bool const fTerminated = cbSrc > 0 && pchSrc[cbSrc - 1] == '\0';
+    uint32_t fFlags = RTSTR_VALIDATE_ENCODING_EXACT_LENGTH;
+    if (fTerminated)
+        fFlags |= RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED;
+
+    int const rc = RTStrValidateEncodingEx(pchSrc, cbSrc, fFlags);
+    if (RT_SUCCESS(rc))
+        *pcchText = cbSrc - (fTerminated ? 1 : 0);
+    return rc;
+}
+
+int ShClHlpUtf16DupExact(PCRTUTF16 pwszSrc, size_t cwcSrc, PRTUTF16 *ppwszDst)
+{
+    AssertPtrReturn(pwszSrc, VERR_INVALID_POINTER);
+    AssertPtrReturn(ppwszDst, VERR_INVALID_POINTER);
+    *ppwszDst = NULL;
+    AssertReturn(cwcSrc, VERR_INVALID_PARAMETER);
+
+    bool const fTerminated = pwszSrc[cwcSrc - 1] == '\0';
+    uint32_t fFlags = RTSTR_VALIDATE_ENCODING_EXACT_LENGTH;
+    if (fTerminated)
+        fFlags |= RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED;
+
+    int rc = RTUtf16ValidateEncodingEx(pwszSrc, cwcSrc, fFlags);
+    if (RT_SUCCESS(rc))
+    {
+        size_t const cwcText = cwcSrc - (fTerminated ? 1 : 0);
+        AssertReturn(cwcText < SIZE_MAX / sizeof(RTUTF16), VERR_TOO_MUCH_DATA);
+
+        PRTUTF16 pwszDst = RTUtf16Alloc((cwcText + 1) * sizeof(RTUTF16));
+        if (pwszDst)
+        {
+            memcpy(pwszDst, pwszSrc, cwcText * sizeof(RTUTF16));
+            pwszDst[cwcText] = '\0';
+            *ppwszDst = pwszDst;
+        }
+        else
+            rc = VERR_NO_UTF16_MEMORY;
+    }
     return rc;
 }
 
@@ -596,27 +644,96 @@ int ShClHlpConvUtf16CRLFToLF(PCRTUTF16 pcwszSrc, size_t cwcSrc, PRTUTF16 pwszDst
 
 int ShClHlpDibToBmp(const void *pvSrc, size_t cbSrc, void **ppvDst, size_t *pcbDst)
 {
-    AssertPtrReturn(pvSrc,  VERR_INVALID_POINTER);
-    AssertReturn(cbSrc,     VERR_INVALID_PARAMETER);
     AssertPtrReturn(ppvDst, VERR_INVALID_POINTER);
     AssertPtrReturn(pcbDst, VERR_INVALID_POINTER);
+
+    *ppvDst = NULL;
+    *pcbDst = 0;
+
+    AssertPtrReturn(pvSrc,  VERR_INVALID_POINTER);
+    AssertReturn(cbSrc,     VERR_INVALID_PARAMETER);
 
     PBMPWIN3XINFOHDR coreHdr = (PBMPWIN3XINFOHDR)pvSrc;
     /** @todo Support all the many versions of the DIB headers. */
     if (   cbSrc < sizeof(BMPWIN3XINFOHDR)
         || RT_LE2H_U32(coreHdr->cbSize) < sizeof(BMPWIN3XINFOHDR)
         || RT_LE2H_U32(coreHdr->cbSize) != sizeof(BMPWIN3XINFOHDR))
-    {
         return VERR_INVALID_PARAMETER;
+
+    uint32_t const cx            = RT_LE2H_U32(coreHdr->uWidth);
+    uint32_t const uHeight      = RT_LE2H_U32(coreHdr->uHeight);
+    uint16_t const cPlanes      = RT_LE2H_U16(coreHdr->cPlanes);
+    uint16_t const cBits        = RT_LE2H_U16(coreHdr->cBits);
+    uint32_t const uCompression = RT_LE2H_U32(coreHdr->enmCompression);
+    uint32_t const cbSizeImage  = RT_LE2H_U32(coreHdr->cbSizeImage);
+    uint32_t const cClrUsed     = RT_LE2H_U32(coreHdr->cClrUsed);
+
+    if (   !cx
+        || cx & RT_BIT_32(31)
+        || !uHeight
+        || uHeight == RT_BIT_32(31)
+        || cPlanes != 1)
+        return VERR_INVALID_PARAMETER;
+
+    uint32_t const cy = uHeight & RT_BIT_32(31) ? (~uHeight) + 1 : uHeight;
+    uint32_t cMasks;
+    switch (uCompression)
+    {
+        case BMP_COMPRESSION_TYPE_NONE:
+            if (   cBits != 1
+                && cBits != 4
+                && cBits != 8
+                && cBits != 16
+                && cBits != 24
+                && cBits != 32)
+                return VERR_INVALID_PARAMETER;
+            cMasks = 0;
+            break;
+
+        case BMP_COMPRESSION_TYPE_BITFIELDS:
+            if (cBits != 16 && cBits != 32)
+                return VERR_INVALID_PARAMETER;
+            cMasks = 3;
+            break;
+
+        case BMP_COMPRESSION_TYPE_ALPHABITFIELDS:
+            if (cBits != 16 && cBits != 32)
+                return VERR_INVALID_PARAMETER;
+            cMasks = 4;
+            break;
+
+        default:
+            /* Compressed DIBs require format-specific validation before exposing them to clipboard consumers. */
+            return VERR_NOT_SUPPORTED;
     }
 
-    size_t offPixel = sizeof(BMPFILEHDR)
-                    + RT_LE2H_U32(coreHdr->cbSize)
-                    + RT_LE2H_U32(coreHdr->cClrUsed) * sizeof(uint32_t);
-    if (cbSrc < offPixel)
+    uint32_t cColors = cClrUsed;
+    if (cBits <= 8)
+    {
+        uint32_t const cMaxColors = RT_BIT_32(cBits);
+        if (!cColors)
+            cColors = cMaxColors;
+        else if (cColors > cMaxColors)
+            return VERR_INVALID_PARAMETER;
+    }
+
+    uint64_t const offPixelDib = (uint64_t)sizeof(BMPWIN3XINFOHDR)
+                               + (uint64_t)cMasks  * sizeof(uint32_t)
+                               + (uint64_t)cColors * sizeof(uint32_t);
+    if (offPixelDib > cbSrc)
         return VERR_INVALID_PARAMETER;
 
-    size_t cbDst = sizeof(BMPFILEHDR) + cbSrc;
+    uint64_t const cbRow = (((uint64_t)cx * cBits + 31) / 32) * 4;
+    if (cy > UINT64_MAX / cbRow)
+        return VERR_TOO_MUCH_DATA;
+    uint64_t const cbPixels = cbRow * cy;
+    if (   cbPixels > cbSrc - (size_t)offPixelDib
+        || (cbSizeImage && cbSizeImage != cbPixels))
+        return VERR_INVALID_PARAMETER;
+
+    if (cbSrc > UINT32_MAX - sizeof(BMPFILEHDR))
+        return VERR_TOO_MUCH_DATA;
+    size_t const cbDst = sizeof(BMPFILEHDR) + cbSrc;
 
     void *pvDst = RTMemAllocZ(cbDst);
     if (!pvDst)
@@ -628,7 +745,7 @@ int ShClHlpDibToBmp(const void *pvSrc, size_t cbSrc, void **ppvDst, size_t *pcbD
     fileHdr->cbFileSize  = (uint32_t)RT_H2LE_U32(cbDst);
     fileHdr->Reserved1   = 0;
     fileHdr->Reserved2   = 0;
-    fileHdr->offBits     = (uint32_t)RT_H2LE_U32(offPixel);
+    fileHdr->offBits     = (uint32_t)RT_H2LE_U32(sizeof(BMPFILEHDR) + offPixelDib);
 
     memcpy((uint8_t *)pvDst + sizeof(BMPFILEHDR), pvSrc, cbSrc);
 

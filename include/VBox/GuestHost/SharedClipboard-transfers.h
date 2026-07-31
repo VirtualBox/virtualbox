@@ -1,4 +1,4 @@
-/* $Id: SharedClipboard-transfers.h 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: SharedClipboard-transfers.h 114830 2026-07-31 10:02:47Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Shared transfer functions between host and guest.
  */
@@ -1291,6 +1291,11 @@ int ShClTransferHttpServerWaitForStatusChange(PSHCLHTTPSERVER pSrv, SHCLHTTPSERV
  */
 int ShClPathSanitizeFilename(char *pszPath, size_t cbPath);
 int ShClPathSanitize(char *pszPath, size_t cbPath);
+bool ShClPathIsSymlink(const char *pszPath);
+bool ShClPathIsDirectory(const char *pszPath);
+int ShClDirectoryCreate(const char *pszPath);
+int ShClHlpTransferPathToHostPath(const char *pszDestination, const char *pszTransferPath,
+                                  char *pszHostPath, size_t cbHostPath);
 const char *ShClTransferStatusToStr(SHCLTRANSFERSTATUS enmStatus);
 int ShClTransferTransformPath(char *pszPath, size_t cbPath);
 int ShClTransferValidatePath(const char *pcszPath, bool fMustExist);
