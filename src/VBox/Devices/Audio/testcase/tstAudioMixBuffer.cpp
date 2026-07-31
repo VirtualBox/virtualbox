@@ -1,4 +1,4 @@
-/* $Id: tstAudioMixBuffer.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: tstAudioMixBuffer.cpp 114835 2026-07-31 12:08:07Z andreas.loeffler@oracle.com $ */
 /** @file
  * Audio testcase - Mixing buffer.
  */
@@ -41,6 +41,7 @@
 #include <VBox/vmm/pdm.h>
 #include <VBox/vmm/pdmaudioinline.h>
 
+#include "../AudioMixer.h"
 #include "../AudioMixBuffer.h"
 #include "../AudioHlp.h"
 
@@ -58,6 +59,7 @@ bool const g_fLittleEndian = false;
 #endif
 
 
+/** Tests PCM-property validation, size/time conversions, alignment, and signed/unsigned silence initialization. */
 static void tstBasics(RTTEST hTest)
 {
     RTTestSub(hTest, "Basics");
@@ -208,6 +210,7 @@ static void tstBasics(RTTEST hTest)
 }
 
 
+/** Tests basic mix-buffer setup, capacity accounting, writes, peeks, advances, and ring-buffer wrapping. */
 static void tstSimple(RTTEST hTest)
 {
     RTTestSub(hTest, "Simple");
@@ -429,6 +432,7 @@ static uint32_t tstFillBuf(PCPDMAUDIOPCMPROPS pCfg, void const *pvTestSamples, u
 }
 
 
+/** Tests randomized writes, blends, and peeks across supported sample formats and channel counts. */
 static void tstConversion(RTTEST hTest, uint8_t cSrcBits, bool fSrcSigned, uint8_t cSrcChs,
                           uint8_t cDstBits, bool fDstSigned, uint8_t cDstChs)
 {
@@ -557,6 +561,7 @@ static void tstConversion(RTTEST hTest, uint8_t cSrcBits, bool fSrcSigned, uint8
 
 
 #if 0 /** @todo rewrite to non-parent/child setup */
+/** Tests legacy parent/child downsampling and its source-to-destination frame accounting. */
 static void tstDownsampling(RTTEST hTest, uint32_t uFromHz, uint32_t uToHz)
 {
     RTTestSubF(hTest, "Downsampling %u to %u Hz (S16)", uFromHz, uToHz);
@@ -658,6 +663,247 @@ static void tstDownsampling(RTTEST hTest, uint32_t uFromHz, uint32_t uToHz)
 #endif
 
 
+/**
+ * Tests the phase-aware source-frame limit for resampled writes.
+ *
+ * Converts mono S16 input between the given rates in repeated twelve-frame
+ * destination windows.  For each retained resampler phase, the test asks
+ * AudioMixBufCalcMaxSrcFrames() for a phase-aware source window.  It writes
+ * that source window with a twelve-frame destination limit and verifies that
+ * the reported output stays within the limit.  A sentinel at destination frame
+ * index 12 detects any write beyond the logical destination window.
+ *
+ * @param   hTest       Test handle.
+ * @param   uSrcHz      Source frame rate in Hz.
+ * @param   uDstHz      Destination frame rate in Hz.
+ */
+static void tstWriteFrameLimit(RTTEST hTest, uint32_t uSrcHz, uint32_t uDstHz)
+{
+    RTTestSubF(hTest, "Resampling write frame limit %u to %u Hz", uSrcHz, uDstHz);
+
+    PDMAUDIOPCMPROPS const PropsDst = PDMAUDIOPCMPROPS_INITIALIZER(2, true, 1, uDstHz, false);
+    PDMAUDIOPCMPROPS const PropsSrc = PDMAUDIOPCMPROPS_INITIALIZER(2, true, 1, uSrcHz, false);
+
+    AUDIOMIXBUF MixBuf;
+    RTTESTI_CHECK_RC_OK_RETV(AudioMixBufInit(&MixBuf, "WriteFrameLimit", &PropsDst, 13));
+
+    AUDIOMIXBUFWRITESTATE WriteState;
+    RTTESTI_CHECK_RC_OK_RETV(AudioMixBufInitWriteState(&MixBuf, &WriteState, &PropsSrc));
+
+    int16_t ai16Src[32];
+    for (uintptr_t i = 0; i < RT_ELEMENTS(ai16Src); i++)
+        ai16Src[i] = (int16_t)(i * 37);
+
+    for (uint32_t i = 0; i < 32; i++)
+    {
+        uint32_t const cSrcFrames = AudioMixBufCalcMaxSrcFrames(&WriteState, 12);
+        bool const fValidSrcFrames = cSrcFrames > 0 && cSrcFrames <= RT_ELEMENTS(ai16Src);
+        RTTESTI_CHECK_MSG(fValidSrcFrames, ("iteration %u: cSrcFrames=%u\n", i, cSrcFrames));
+        if (!fValidSrcFrames)
+            break;
+
+        int32_t const i32Sentinel = INT32_C(0x12345678);
+        MixBuf.pi32Samples[12] = i32Sentinel;
+
+        uint32_t cDstFrames = UINT32_MAX;
+        AudioMixBufWrite(&MixBuf, &WriteState, ai16Src, cSrcFrames * sizeof(ai16Src[0]),
+                         0 /*offDstFrame*/, 12 /*cDstMaxFrames*/, &cDstFrames);
+        int32_t const i32SentinelActual = MixBuf.pi32Samples[12];
+        bool const fOkay = cDstFrames <= 12 && i32SentinelActual == i32Sentinel;
+        if (!fOkay)
+        {
+            RTTestFailed(hTest,
+                         "iteration %u:\n"
+                         "  actual: cSrcFrames=%u cDstFrames=%u sentinel=%#RX32\n"
+                         "expected: cDstFrames<=12 sentinel=%#RX32\n",
+                         i, cSrcFrames, cDstFrames, (uint32_t)i32SentinelActual, (uint32_t)i32Sentinel);
+            break;
+        }
+
+        if (cDstFrames < 12)
+            AudioMixBufSilence(&MixBuf, &WriteState, cDstFrames, 12 - cDstFrames);
+    }
+
+    AudioMixBufTerm(&MixBuf);
+}
+
+
+enum
+{
+    TST_MIXER_INPUT_DST_FRAMES       = 12,
+    TST_MIXER_INPUT_SRC_AVAIL_FRAMES = 13,
+    TST_MIXER_INPUT_BUF_FRAMES       = TST_MIXER_INPUT_DST_FRAMES + 1
+};
+
+
+/** Mock input stream used to exercise the AudioMixer input update path. */
+typedef struct TSTAUDIOMIXERINPUT
+{
+    /** Connector interface consumed by AudioMixer. */
+    PDMIAUDIOCONNECTOR   Connector;
+    /** Backend stream associated with the connector. */
+    PDMAUDIOSTREAM       Stream;
+    /** Input sink being updated. */
+    AUDMIXSINK           Sink;
+    /** Mixer stream connecting the backend stream to the sink. */
+    AUDMIXSTREAM         MixStream;
+    /** Number of bytes captured by the current update. */
+    uint32_t             cbCaptured;
+    /** Source sample sequence number. */
+    uint32_t             iSrcSample;
+} TSTAUDIOMIXERINPUT;
+/** Pointer to a mock mixer input stream. */
+typedef TSTAUDIOMIXERINPUT *PTSTAUDIOMIXERINPUT;
+
+
+/** @callback_method_impl{PDMIAUDIOCONNECTOR,pfnStreamIterate} */
+static DECLCALLBACK(int) tstMixerInputStreamIterate(PPDMIAUDIOCONNECTOR pInterface, PPDMAUDIOSTREAM pStream)
+{
+    RT_NOREF(pInterface, pStream);
+    return VINF_SUCCESS;
+}
+
+
+/** @callback_method_impl{PDMIAUDIOCONNECTOR,pfnStreamGetState} */
+static DECLCALLBACK(PDMAUDIOSTREAMSTATE)
+tstMixerInputStreamGetState(PPDMIAUDIOCONNECTOR pInterface, PPDMAUDIOSTREAM pStream)
+{
+    PTSTAUDIOMIXERINPUT const pThis = RT_FROM_MEMBER(pInterface, TSTAUDIOMIXERINPUT, Connector);
+    AssertReturn(pStream == &pThis->Stream, PDMAUDIOSTREAMSTATE_INVALID);
+    return PDMAUDIOSTREAMSTATE_ENABLED_READABLE;
+}
+
+
+/** @callback_method_impl{PDMIAUDIOCONNECTOR,pfnStreamGetReadable} */
+static DECLCALLBACK(uint32_t)
+tstMixerInputStreamGetReadable(PPDMIAUDIOCONNECTOR pInterface, PPDMAUDIOSTREAM pStream)
+{
+    PTSTAUDIOMIXERINPUT const pThis = RT_FROM_MEMBER(pInterface, TSTAUDIOMIXERINPUT, Connector);
+    AssertReturn(pStream == &pThis->Stream, 0);
+    return PDMAudioPropsFramesToBytes(&pStream->Cfg.Props, TST_MIXER_INPUT_SRC_AVAIL_FRAMES);
+}
+
+
+/** @callback_method_impl{PDMIAUDIOCONNECTOR,pfnStreamCapture} */
+static DECLCALLBACK(int) tstMixerInputStreamCapture(PPDMIAUDIOCONNECTOR pInterface, PPDMAUDIOSTREAM pStream,
+                                                    void *pvBuf, uint32_t cbBuf, uint32_t *pcbRead)
+{
+    PTSTAUDIOMIXERINPUT const pThis = RT_FROM_MEMBER(pInterface, TSTAUDIOMIXERINPUT, Connector);
+    AssertReturn(pStream == &pThis->Stream, VERR_INVALID_POINTER);
+    AssertReturn(!(cbBuf % sizeof(int16_t)), VERR_INVALID_PARAMETER);
+
+    int16_t * const pi16Dst = (int16_t *)pvBuf;
+    uint32_t const cSamples = cbBuf / sizeof(int16_t);
+    for (uint32_t i = 0; i < cSamples; i++)
+        pi16Dst[i] = (int16_t)(1000 + pThis->iSrcSample++);
+
+    pThis->cbCaptured += cbBuf;
+    if (pcbRead)
+        *pcbRead = cbBuf;
+    return VINF_SUCCESS;
+}
+
+
+/** Tests that mixer input resampling requests a phase-safe source window without overrunning its destination. */
+static void tstMixerInputResampling(RTTEST hTest)
+{
+    RTTestSub(hTest, "Mixer input resampling frame demand");
+
+    PDMAUDIOPCMPROPS const PropsDst = PDMAUDIOPCMPROPS_INITIALIZER(2, true, 1, 48000, false);
+    PDMAUDIOPCMPROPS const PropsSrc = PDMAUDIOPCMPROPS_INITIALIZER(2, true, 1, 44100, false);
+
+    TSTAUDIOMIXERINPUT This;
+    RT_ZERO(This);
+
+    This.Connector.pfnStreamIterate     = tstMixerInputStreamIterate;
+    This.Connector.pfnStreamGetState    = tstMixerInputStreamGetState;
+    This.Connector.pfnStreamGetReadable = tstMixerInputStreamGetReadable;
+    This.Connector.pfnStreamCapture     = tstMixerInputStreamCapture;
+
+    This.Stream.Cfg.Props  = PropsSrc;
+    This.Stream.Cfg.enmDir = PDMAUDIODIR_IN;
+    This.Stream.uMagic     = PDMAUDIOSTREAM_MAGIC;
+
+    This.Sink.uMagic   = AUDMIXSINK_MAGIC;
+    This.Sink.enmDir   = PDMAUDIODIR_IN;
+    This.Sink.pszName  = "tstMixerInputResampling";
+    This.Sink.PCMProps = PropsDst;
+    This.Sink.fStatus  = AUDMIXSINK_STS_RUNNING;
+    RTListInit(&This.Sink.lstStreams);
+
+    int rc = RTCritSectInit(&This.Sink.CritSect);
+    RTTESTI_CHECK_RC_OK_RETV(rc);
+
+    rc = AudioMixBufInit(&This.Sink.MixBuf, This.Sink.pszName, &PropsDst, TST_MIXER_INPUT_BUF_FRAMES);
+    if (RT_FAILURE(rc))
+    {
+        RTTESTI_CHECK_RC_OK(rc);
+        RTCritSectDelete(&This.Sink.CritSect);
+        return;
+    }
+
+    static char s_szStreamName[] = "tstMixerInputStream";
+    This.MixStream.uMagic  = AUDMIXSTREAM_MAGIC;
+    This.MixStream.pszName = s_szStreamName;
+    This.MixStream.pSink   = &This.Sink;
+    This.MixStream.pConn   = &This.Connector;
+    This.MixStream.pStream = &This.Stream;
+
+    rc = AudioMixBufInitWriteState(&This.Sink.MixBuf, &This.MixStream.WriteState, &PropsSrc);
+    if (RT_SUCCESS(rc))
+    {
+        RTListAppend(&This.Sink.lstStreams, &This.MixStream.Node);
+        This.Sink.cStreams = 1;
+
+        /*
+         * Thirteen readable 44.1 kHz frames let the mixer request twelve
+         * 48 kHz destination frames.  Keep advancing the resampler phase and
+         * verify that the input update asks for exactly the safe source window.
+         */
+        for (uint32_t i = 0; i < 32; i++)
+        {
+            uint32_t const cSrcFramesExpected = RT_MIN(AudioMixBufCalcMaxSrcFrames(&This.MixStream.WriteState,
+                                                                                  TST_MIXER_INPUT_DST_FRAMES),
+                                                       TST_MIXER_INPUT_SRC_AVAIL_FRAMES);
+            uint32_t const cbCapturedExpected = PDMAudioPropsFramesToBytes(&PropsSrc, cSrcFramesExpected);
+            int32_t const  i32Sentinel        = INT32_C(0x12345678);
+
+            This.cbCaptured = 0;
+            This.Sink.MixBuf.pi32Samples[TST_MIXER_INPUT_DST_FRAMES] = i32Sentinel;
+
+            rc = AudioMixerSinkUpdate(&This.Sink, 0 /*cbDmaUsed*/, 0 /*cbDmaPeriod*/);
+            RTTESTI_CHECK_RC_OK(rc);
+            uint32_t const cUsedActual        = AudioMixBufUsed(&This.Sink.MixBuf);
+            int32_t const  i32LastActual      = This.Sink.MixBuf.pi32Samples[TST_MIXER_INPUT_DST_FRAMES - 1];
+            int32_t const  i32SentinelActual  = This.Sink.MixBuf.pi32Samples[TST_MIXER_INPUT_DST_FRAMES];
+            bool const fOkay =    RT_SUCCESS(rc)
+                               && This.cbCaptured == cbCapturedExpected
+                               && cUsedActual == TST_MIXER_INPUT_DST_FRAMES
+                               && i32LastActual != 0
+                               && i32SentinelActual == i32Sentinel;
+            if (!fOkay)
+            {
+                RTTestFailed(hTest,
+                             "iteration %u:\n"
+                             "  actual: rc=%Rrc captured=%u used=%u last=%#RX32 sentinel=%#RX32\n"
+                             "expected: rc=%Rrc captured=%u used=%u last!=0 sentinel=%#RX32\n",
+                             i, rc, This.cbCaptured, cUsedActual, (uint32_t)i32LastActual, (uint32_t)i32SentinelActual,
+                             VINF_SUCCESS, cbCapturedExpected, TST_MIXER_INPUT_DST_FRAMES, (uint32_t)i32Sentinel);
+                AudioMixBufDrop(&This.Sink.MixBuf);
+                break;
+            }
+            AudioMixBufDrop(&This.Sink.MixBuf);
+        }
+    }
+    else
+        RTTESTI_CHECK_RC_OK(rc);
+
+    AudioMixBufTerm(&This.Sink.MixBuf);
+    RTCritSectDelete(&This.Sink.CritSect);
+}
+
+
+/** Tests peek-based sample-rate conversion and source/destination frame accounting for selected rate pairs. */
 static void tstNewPeek(RTTEST hTest, uint32_t uFromHz, uint32_t uToHz)
 {
     RTTestSubF(hTest, "New peek %u to %u Hz (S16)", uFromHz, uToHz);
@@ -768,7 +1014,7 @@ static void tstNewPeek(RTTEST hTest, uint32_t uFromHz, uint32_t uToHz)
     AudioMixBufTerm(&MixBuf);
 }
 
-/* Test volume control. */
+/** Tests that full volume preserves samples and that 6 dB attenuation halves signed sample values. */
 static void tstVolume(RTTEST hTest)
 {
     RTTestSub(hTest, "Volume control (44.1kHz S16 2ch)");
@@ -901,6 +1147,10 @@ int main(int argc, char **argv)
     tstDownsampling(hTest, 48000, 22050);
     tstDownsampling(hTest, 48000, 11000);
 #endif
+    tstWriteFrameLimit(hTest, 44100, 48000);
+    tstWriteFrameLimit(hTest, 22050, 44100);
+    tstWriteFrameLimit(hTest,  8000, 22050);
+    tstMixerInputResampling(hTest);
     tstNewPeek(hTest, 48000, 48000);
     tstNewPeek(hTest, 48000, 11000);
     tstNewPeek(hTest, 48000, 44100);

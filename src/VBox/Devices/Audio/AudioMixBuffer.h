@@ -1,4 +1,4 @@
-/* $Id: AudioMixBuffer.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: AudioMixBuffer.h 114835 2026-07-31 12:08:07Z andreas.loeffler@oracle.com $ */
 /** @file
  * Audio Mixing bufer convert audio samples to/from different rates / formats.
  */
@@ -238,6 +238,7 @@ void        AudioMixBufAdvance(PAUDIOMIXBUF pMixBuf, uint32_t cFrames);
 /** @name Mixer buffer writing
  * @{ */
 int         AudioMixBufInitWriteState(PCAUDIOMIXBUF pMixBuf, PAUDIOMIXBUFWRITESTATE pState, PCPDMAUDIOPCMPROPS pSrcProps);
+uint32_t    AudioMixBufCalcMaxSrcFrames(PAUDIOMIXBUFWRITESTATE pState, uint32_t cDstMaxFrames);
 void        AudioMixBufWrite(PAUDIOMIXBUF pMixBuf, PAUDIOMIXBUFWRITESTATE pState, const void *pvSrcBuf, uint32_t cbSrcBuf,
                              uint32_t offDstFrame, uint32_t cMaxDstFrames, uint32_t *pcDstFramesWritten);
 void        AudioMixBufSilence(PAUDIOMIXBUF pMixBuf, PAUDIOMIXBUFWRITESTATE pState, uint32_t offFrame, uint32_t cFrames);

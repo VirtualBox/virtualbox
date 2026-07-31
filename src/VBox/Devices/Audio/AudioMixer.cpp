@@ -1,4 +1,4 @@
-/* $Id: AudioMixer.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: AudioMixer.cpp 114835 2026-07-31 12:08:07Z andreas.loeffler@oracle.com $ */
 /** @file
  * Audio mixing routines for multiplexing audio sources in device emulations.
  */
@@ -1315,16 +1315,17 @@ static int audioMixerSinkUpdateInput(PAUDMIXSINK pSink, uint32_t cbDmaBuf, uint3
 
                     /* Calculate how many bytes we should read from this stream. */
                     bool const     fResampleSrc = PDMAudioPropsHz(&pStream->Cfg.Props) != PDMAudioPropsHz(&pSink->MixBuf.Props);
-                    uint32_t const cbSrcToXfer  = !fResampleSrc
-                                                ? PDMAudioPropsFramesToBytes(&pStream->Cfg.Props, cFramesToXfer)
-                                                : PDMAudioPropsFramesToBytes(&pStream->Cfg.Props, /** @todo check rounding errors here... */
-                                                                             cFramesToXfer * PDMAudioPropsHz(&pSink->MixBuf.Props)
-                                                                             / PDMAudioPropsHz(&pStream->Cfg.Props));
+                    uint32_t const cSrcFramesToXfer = !fResampleSrc
+                                                    ? cFramesToXfer
+                                                    : RT_MIN(AudioMixBufCalcMaxSrcFrames(&pMixStream->WriteState, cFramesToXfer),
+                                                             pMixStream->cFramesLastAvail);
+                    uint32_t const cbSrcToXfer = PDMAudioPropsFramesToBytes(&pStream->Cfg.Props, cSrcFramesToXfer);
 
                     /* Do the reading. */
                     uint32_t offSrc      = 0;
                     uint32_t offDstFrame = 0;
-                    do
+                    while (   offDstFrame < cFramesToXfer
+                           && offSrc < cbSrcToXfer)
                     {
                         /*
                          * Read a chunk from the backend.
@@ -1356,8 +1357,6 @@ static int audioMixerSinkUpdateInput(PAUDMIXSINK pSink, uint32_t cbDmaBuf, uint3
                             }
                             offSrc += cbSrcRead;
                         }
-                        else
-                            Assert(fResampleSrc); /** @todo test this case */
 
                         /*
                          * Assign or blend it into the mixer buffer.
@@ -1386,7 +1385,7 @@ static int audioMixerSinkUpdateInput(PAUDMIXSINK pSink, uint32_t cbDmaBuf, uint3
 
                         /* Advance. */
                         offDstFrame += cFramesDstTransferred;
-                    } while (offDstFrame < cFramesToXfer);
+                    }
 
                     /*
                      * In case the first stream is misbehaving, make sure we written the entire area.

@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114835 2026-07-31 12:08:07Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the audio testcases.
 #
@@ -38,6 +38,7 @@ if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_ADDITIONS) && !defined(VBO
  tstAudioMixBuffer_DEFS.debug  = VBOX_WITH_EF_WRAPS
  tstAudioMixBuffer_SOURCES = \
  	tstAudioMixBuffer.cpp \
+ 	../AudioMixer.cpp \
  	../AudioMixBuffer.cpp \
  	../AudioHlp.cpp
  tstAudioMixBuffer_LIBS = $(LIB_RUNTIME)
