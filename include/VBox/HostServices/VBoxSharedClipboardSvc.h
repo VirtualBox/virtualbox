@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc.h 114526 2026-06-25 10:37:10Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc.h 114831 2026-07-31 10:10:53Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - header file for shared clipboard data transfer
  * interfaces and platform-dependent backend functionality.
@@ -45,6 +45,7 @@
 #include <list>
 #include <map>
 
+#include <iprt/asm.h>
 #include <iprt/cpp/list.h> /* For RTCList. */
 #include <iprt/list.h>
 #include <iprt/semaphore.h>
@@ -250,6 +251,56 @@ typedef struct _SHCLCLIENT
         PVBOXHGCMSVCPARM        paParms;
     } Pending;
 } SHCLCLIENT, *PSHCLCLIENT;
+
+/**
+ * Returns a client's cached Shared Clipboard mode atomically.
+ *
+ * @returns Clipboard mode, or @c VBOX_SHCL_MODE_OFF for an invalid client.
+ * @param   pClient             Client to query.
+ */
+DECLINLINE(uint32_t) ShClSvcClientGetMode(PSHCLCLIENT pClient)
+{
+    AssertPtrReturn(pClient, VBOX_SHCL_MODE_OFF);
+    return ASMAtomicReadU32(&pClient->State.uMode);
+}
+
+/**
+ * Returns a client's first negotiated guest-feature word atomically.
+ *
+ * @returns Guest feature word, or zero for an invalid client.
+ * @param   pClient             Client to query.
+ */
+DECLINLINE(uint64_t) ShClSvcClientGetGuestFeatures0(PSHCLCLIENT pClient)
+{
+    AssertPtrReturn(pClient, VBOX_SHCL_GF_NONE);
+    return ASMAtomicReadU64(&pClient->State.fGuestFeatures0);
+}
+
+/**
+ * Returns a client's second negotiated guest-feature word atomically.
+ *
+ * @returns Guest feature word, or zero for an invalid client.
+ * @param   pClient             Client to query.
+ */
+DECLINLINE(uint64_t) ShClSvcClientGetGuestFeatures1(PSHCLCLIENT pClient)
+{
+    AssertPtrReturn(pClient, VBOX_SHCL_GF_NONE);
+    return ASMAtomicReadU64(&pClient->State.fGuestFeatures1);
+}
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/**
+ * Returns a client's cached Shared Clipboard file-transfer mode atomically.
+ *
+ * @returns File-transfer mode, or disabled for an invalid client.
+ * @param   pClient             Client to query.
+ */
+DECLINLINE(uint32_t) ShClSvcClientGetTransferMode(PSHCLCLIENT pClient)
+{
+    AssertPtrReturn(pClient, VBOX_SHCL_TRANSFER_MODE_F_NONE);
+    return ASMAtomicReadU32(&pClient->State.Transfers.uTransferMode);
+}
+#endif
 
 /**
  * Structure for keeping a single event source map entry.
@@ -519,4 +570,3 @@ uint32_t TestClipSvcGetMode(void);
 #endif
 
 #endif /* !VBOX_INCLUDED_HostServices_VBoxSharedClipboardSvc_h */
-
