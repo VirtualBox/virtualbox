@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c 114829 2026-07-31 09:28:44Z alexander.eichner@oracle.com $ */
+/* $Id: SUPDrv-linux.c 114832 2026-07-31 10:33:15Z alexander.eichner@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -2499,7 +2499,7 @@ SUPR0DECL(void) SUPR0DispatchHostNmi(void)
     }
     else
 #endif
-        __asm__ __volatile__ ("int $2\n\t" :::);
+        __asm__ __volatile__ ("int $2\n\t" ::: "memory");
 }
 
 #endif /* RT_ARCH_AMD64 || RT_ARCH_X86 */
