@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.cpp 114830 2026-07-31 10:02:47Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-helper.cpp 114834 2026-07-31 11:53:00Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Helper functions.
  */
@@ -80,28 +80,22 @@ int ShClHlpUtf16DupExact(PCRTUTF16 pwszSrc, size_t cwcSrc, PRTUTF16 *ppwszDst)
     *ppwszDst = NULL;
     AssertReturn(cwcSrc, VERR_INVALID_PARAMETER);
 
-    bool const fTerminated = pwszSrc[cwcSrc - 1] == '\0';
-    uint32_t fFlags = RTSTR_VALIDATE_ENCODING_EXACT_LENGTH;
-    if (fTerminated)
-        fFlags |= RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED;
+    size_t cwcText = 0;
+    int rc = RTUtf16LenAndValidateEncoding(pwszSrc, cwcSrc, 0 /* fFlags */, NULL /* pcuc */, &cwcText);
+    if (RT_FAILURE(rc))
+        return rc;
+    if (cwcText < cwcSrc - 1)
+        return VERR_BUFFER_UNDERFLOW;
+    if (cwcText >= RTSTR_MAX / sizeof(RTUTF16))
+        return VERR_TOO_MUCH_DATA;
 
-    int rc = RTUtf16ValidateEncodingEx(pwszSrc, cwcSrc, fFlags);
-    if (RT_SUCCESS(rc))
-    {
-        size_t const cwcText = cwcSrc - (fTerminated ? 1 : 0);
-        AssertReturn(cwcText < SIZE_MAX / sizeof(RTUTF16), VERR_TOO_MUCH_DATA);
-
-        PRTUTF16 pwszDst = RTUtf16Alloc((cwcText + 1) * sizeof(RTUTF16));
-        if (pwszDst)
-        {
-            memcpy(pwszDst, pwszSrc, cwcText * sizeof(RTUTF16));
-            pwszDst[cwcText] = '\0';
-            *ppwszDst = pwszDst;
-        }
-        else
-            rc = VERR_NO_UTF16_MEMORY;
-    }
-    return rc;
+    PRTUTF16 pwszDst = RTUtf16Alloc((cwcText + 1) * sizeof(RTUTF16));
+    if (!pwszDst)
+        return VERR_NO_UTF16_MEMORY;
+    memcpy(pwszDst, pwszSrc, cwcText * sizeof(RTUTF16));
+    pwszDst[cwcText] = '\0';
+    *ppwszDst = pwszDst;
+    return VINF_SUCCESS;
 }
 
 int ShClHlpConvUtf16CRLFToUtf8LF(PCRTUTF16 pwszSrc, size_t cwcSrc, char *pszBuf, size_t cbBuf, size_t *pcbLen)
