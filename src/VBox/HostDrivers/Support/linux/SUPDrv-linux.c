@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c 114832 2026-07-31 10:33:15Z alexander.eichner@oracle.com $ */
+/* $Id: SUPDrv-linux.c 114833 2026-07-31 11:22:26Z alexander.eichner@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -114,8 +114,12 @@
 # include <linux/pseudo_fs.h>
 #endif
 
-#if defined(CONFIG_X86_FRED) && IS_ENABLED(CONFIG_KVM_INTEL)
-# include <asm/entry-common.h>
+#if defined(CONFIG_X86_FRED)
+# if RTLNX_VER_MIN(7,1,0) && IS_ENABLED(CONFIG_KVM_INTEL)
+#  include <asm/entry-common.h>
+# else
+#  include <asm/fred.h>
+# endif
 #endif
 
 
@@ -257,8 +261,15 @@ static __typeof__(cr4_read_shadow)              *g_pfnCr4ReadShadow;
 #if defined(CONFIG_X86_FRED)
 /** Flag whether the system is running with FRED enabled. */
 static bool                                      g_fFredActive = false;
+# if RTLNX_VER_MIN(7,1,0)
 /** Function pointer to x86_entry_from_kvm(). */
-static __typeof__(x86_entry_from_kvm)           *g_pfnX86EntryFromKvm;
+static __typeof__(x86_entry_from_kvm)           *g_pfnX86EntryFromKvm = NULL;
+#  define MY_FRED_ENTRY_FROM_KVM                "x86_entry_from_kvm"
+# else
+/** Function pointer to asm_fred_entry_from_kvm(). */
+static __typeof__(asm_fred_entry_from_kvm)      *g_pfnX86EntryFromKvm = NULL;
+#  define MY_FRED_ENTRY_FROM_KVM                "asm_fred_entry_from_kvm"
+# endif
 #endif
 
 /** Module parameter.
@@ -541,7 +552,7 @@ static int __init VBoxDrvLinuxInit(void)
 # endif
 # if defined(CONFIG_X86_FRED) && IS_ENABLED(CONFIG_KVM_INTEL)
                         if (g_fFredActive)
-                            supdrvLinuxFunction(NULL, "x86_entry_from_kvm", (PFNRT *)&g_pfnX86EntryFromKvm,  &hKrnlInfo);
+                            supdrvLinuxFunction(NULL, MY_FRED_ENTRY_FROM_KVM, (PFNRT *)&g_pfnX86EntryFromKvm,  &hKrnlInfo);
 # endif
                         if (hKrnlInfo != NIL_RTDBGKRNLINFO)
                             RTR0DbgKrnlInfoRelease(hKrnlInfo);
@@ -550,7 +561,8 @@ static int __init VBoxDrvLinuxInit(void)
 #if defined(CONFIG_X86_FRED) && IS_ENABLED(CONFIG_KVM_INTEL)
                         if (g_fFredActive && !g_pfnX86EntryFromKvm)
                         {
-                            printk(KERN_ERR "vboxdrv: FRED is active and couldn't resolve x86_entry_from_kvm, this is currently unsupported!\n");
+                            printk(KERN_ERR "vboxdrv: FRED is active and couldn't resolve %s, this is currently unsupported!\n",
+                                   MY_FRED_ENTRY_FROM_KVM);
                             rc = -ENOTSUPP;
                         }
 #endif
@@ -2491,7 +2503,19 @@ SUPR0DECL(void) SUPR0DispatchHostNmi(void)
     {
 # if IS_ENABLED(CONFIG_KVM_INTEL)
         Assert(g_pfnX86EntryFromKvm); /* This should be valid, module should fail to load. */
+#  if RTLNX_VER_MIN(7,1,0)
         g_pfnX86EntryFromKvm(EVENT_TYPE_NMI, NMI_VECTOR);
+#  else
+        struct fred_ss FredSs =
+        {
+            .ss     = __KERNEL_DS,
+            .type   = EVENT_TYPE_NMI,
+            .vector = NMI_VECTOR,
+            .nmi    = 1,
+            .l      = 1
+        };
+        g_pfnX86EntryFromKvm(FredSs);
+#  endif
 # else
         /* We better not end up here (kernel module shouldn't load). */
         AssertMsgFailed(("This shouldn't be called on systems without FRED enabled!\n"));
