@@ -1,4 +1,4 @@
-/* $Id: tstAudioMixBuffer.cpp 114835 2026-07-31 12:08:07Z andreas.loeffler@oracle.com $ */
+/* $Id: tstAudioMixBuffer.cpp 114837 2026-07-31 12:22:34Z andreas.loeffler@oracle.com $ */
 /** @file
  * Audio testcase - Mixing buffer.
  */
@@ -864,7 +864,7 @@ static void tstMixerInputResampling(RTTEST hTest)
         {
             uint32_t const cSrcFramesExpected = RT_MIN(AudioMixBufCalcMaxSrcFrames(&This.MixStream.WriteState,
                                                                                   TST_MIXER_INPUT_DST_FRAMES),
-                                                       TST_MIXER_INPUT_SRC_AVAIL_FRAMES);
+                                                       (uint32_t)TST_MIXER_INPUT_SRC_AVAIL_FRAMES);
             uint32_t const cbCapturedExpected = PDMAudioPropsFramesToBytes(&PropsSrc, cSrcFramesExpected);
             int32_t const  i32Sentinel        = INT32_C(0x12345678);
 

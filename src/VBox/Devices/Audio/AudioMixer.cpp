@@ -1,4 +1,4 @@
-/* $Id: AudioMixer.cpp 114835 2026-07-31 12:08:07Z andreas.loeffler@oracle.com $ */
+/* $Id: AudioMixer.cpp 114837 2026-07-31 12:22:34Z andreas.loeffler@oracle.com $ */
 /** @file
  * Audio mixing routines for multiplexing audio sources in device emulations.
  */
@@ -98,7 +98,7 @@
 #include <iprt/string.h>
 #include <iprt/thread.h>
 
-#ifdef VBOX_WITH_DTRACE
+#if defined(VBOX_WITH_DTRACE) && !defined(TESTCASE)
 # include "dtrace/VBoxDD.h"
 #endif
 
@@ -2056,7 +2056,7 @@ uint64_t AudioMixerSinkTransferFromCircBuf(PAUDMIXSINK pSink, PRTCIRCBUF pCircBu
         Assert(cbWritten <= cbSrcBuf);
 
         Log2Func(("idStream=%u: %#RX32/%#zx bytes read @%#RX64\n", idStream, cbWritten, cbSrcBuf, offStream));
-#ifdef VBOX_WITH_DTRACE
+#if defined(VBOX_WITH_DTRACE) && !defined(TESTCASE)
         VBOXDD_AUDIO_MIXER_SINK_AIO_OUT(idStream, cbWritten, offStream);
 #endif
         offStream += cbWritten;
@@ -2175,7 +2175,7 @@ uint64_t AudioMixerSinkTransferToCircBuf(PAUDMIXSINK pSink, PRTCIRCBUF pCircBuf,
 
             memcpy(pvDstBuf, &abBuf[off], cbDstBuf);
 
-#ifdef VBOX_WITH_DTRACE
+#if defined(VBOX_WITH_DTRACE) && !defined(TESTCASE)
             VBOXDD_AUDIO_MIXER_SINK_AIO_IN(idStream, (uint32_t)cbDstBuf, offStream);
 #endif
             offStream += cbDstBuf;
