@@ -1,4 +1,4 @@
-/* $Id: SUPDrvIOC.h 114221 2026-05-29 20:53:08Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPDrvIOC.h 114838 2026-07-31 12:54:40Z alexander.eichner@oracle.com $ */
 /** @file
  * VirtualBox Support Driver - IOCtl definitions.
  */
@@ -232,7 +232,7 @@ typedef SUPREQHDR *PSUPREQHDR;
  * @todo Pending work on next major version change:
  *          - nothing
  */
-#define SUPDRV_IOC_VERSION                              0x00390001
+#define SUPDRV_IOC_VERSION                              0x00390002
 
 /** SUP_IOCTL_COOKIE. */
 typedef struct SUPCOOKIE

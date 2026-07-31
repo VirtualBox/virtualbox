@@ -1,4 +1,4 @@
-; $Id: HMR0A-x86.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
+; $Id: HMR0A-x86.asm 114838 2026-07-31 12:54:40Z alexander.eichner@oracle.com $
 ;; @file
 ; HM - Ring-0 VMX, SVM world-switch and helper routines.
 ;
@@ -495,18 +495,6 @@ BEGINPROC hmR0MdsClear
         add     xSP, xCB
         ret
 ENDPROC   hmR0MdsClear
-
-
-;;
-; Dispatches an NMI to the host.
-;
-ALIGNCODE(16)
-BEGINPROC VMXDispatchHostNmi
-        ; NMI is always vector 2. The IDT[2] IRQ handler cannot be anything else. See Intel spec. 6.3.1 "External Interrupts".
-        SEH64_END_PROLOGUE
-        int 2
-        ret
-ENDPROC VMXDispatchHostNmi
 
 
 ;;

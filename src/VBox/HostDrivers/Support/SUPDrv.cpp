@@ -1,4 +1,4 @@
-/* $Id: SUPDrv.cpp 114223 2026-05-29 21:06:57Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPDrv.cpp 114838 2026-07-31 12:54:40Z alexander.eichner@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Common code.
  */
@@ -366,6 +366,7 @@ static SUPFUNC g_aFunctions[] =
     SUPEXP_STK_BACK(    1,  SUPR0GetSvmUsability),      /* not-arch-arm64 */
     SUPEXP_STK_BACK(    1,  SUPR0GetVTSupport),         /* not-arch-arm64 */
     SUPEXP_STK_BACK(    1,  SUPR0GetVmxUsability),      /* not-arch-arm64 */
+    SUPEXP_STK_BACK(    0,  SUPR0DispatchHostNmi),      /* not-arch-arm64 */
 #endif
     SUPEXP_STK_BACK(    2,  SUPR0LdrIsLockOwnerByMod),
     SUPEXP_STK_BACK(    1,  SUPR0LdrLock),

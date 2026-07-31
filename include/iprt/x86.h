@@ -1181,6 +1181,9 @@ typedef const X86CPUIDFEATEDX *PCX86CPUIDFEATEDX;
 /** Bit 23 - CET - Control-flow Enhancement Technology enabled. */
 #define X86_CR4_CET                         RT_BIT_32(23)
 #define X86_CR4_CET_BIT                     23
+/** Bit 32 - FRED - Flexible Return and Event Delivery enabled. */
+#define X86_CR4_FRED                        RT_BIT_64(32)
+#define X86_CR4_FRED_BIT                    32
 /** @} */
 
 

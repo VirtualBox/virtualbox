@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114484 2026-06-22 13:52:30Z klaus.espenlaub@oracle.com $
+# $Id: Makefile.kmk 114838 2026-07-31 12:54:40Z alexander.eichner@oracle.com $
 ## @file
 # Sub-Makefile for the support library and the drivers/modules/kexts it uses.
 #
@@ -843,9 +843,11 @@ if   !defined(VBOX_ONLY_DOCS) \
   endif
   ifn1of ($(KBUILD_TARGET), linux freebsd)
    VBoxDrv_SOURCES.x86   += \
-   	SUPDrvTracerA.asm
+   	SUPDrvTracerA.asm \
+   	SUPDrvA.asm
    VBoxDrv_SOURCES.amd64 += \
-   	SUPDrvTracerA.asm
+   	SUPDrvTracerA.asm \
+   	SUPDrvA.asm
    VBoxDrv_SOURCES.arm64 += \
    	SUPDrvTracerA-arm64.S
   endif
