@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c 114828 2026-07-31 09:19:37Z alexander.eichner@oracle.com $ */
+/* $Id: SUPDrv-linux.c 114829 2026-07-31 09:28:44Z alexander.eichner@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -2486,17 +2486,19 @@ SUPR0_EXPORT_SYMBOL(SUPR0FpuEnd);
 
 SUPR0DECL(void) SUPR0DispatchHostNmi(void)
 {
+#if defined(CONFIG_X86_FRED)
     if (g_fFredActive)
     {
-#if defined(CONFIG_X86_FRED) && IS_ENABLED(CONFIG_KVM_INTEL)
+# if IS_ENABLED(CONFIG_KVM_INTEL)
         Assert(g_pfnX86EntryFromKvm); /* This should be valid, module should fail to load. */
         g_pfnX86EntryFromKvm(EVENT_TYPE_NMI, NMI_VECTOR);
-#else
+# else
         /* We better not end up here (kernel module shouldn't load). */
         AssertMsgFailed(("This shouldn't be called on systems without FRED enabled!\n"));
-#endif
+# endif
     }
     else
+#endif
         __asm__ __volatile__ ("int $2\n\t" :::);
 }
 
