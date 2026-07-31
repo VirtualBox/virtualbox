@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c 114833 2026-07-31 11:22:26Z alexander.eichner@oracle.com $ */
+/* $Id: SUPDrv-linux.c 114836 2026-07-31 12:20:17Z alexander.eichner@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -2512,7 +2512,11 @@ SUPR0DECL(void) SUPR0DispatchHostNmi(void)
             .type   = EVENT_TYPE_NMI,
             .vector = NMI_VECTOR,
             .nmi    = 1,
+#   if RTLNX_VER_MIN(6, 19, 0)
             .l      = 1
+#   else
+            .lm     = 1
+#   endif
         };
         g_pfnX86EntryFromKvm(FredSs);
 #  endif
