@@ -1,4 +1,4 @@
-/* $Id: SvgaFifo.cpp 114825 2026-07-31 03:34:38Z vitali.pelenjow@oracle.com $ */
+/* $Id: SvgaFifo.cpp 114840 2026-07-31 22:12:25Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - VMSVGA FIFO.
  */
@@ -345,6 +345,7 @@ static void svgaCBReset(PVMSVGACB pCB, uint32_t idDXContext)
     pCB->cbReservedCmd       = 0;
     pCB->u32ReservedCmd      = 0;
     pCB->pCBHeader           = NULL;
+    pCB->status              = SVGA_CB_STATUS_NONE;
     if (pCB->enmType == VMSVGACB_UMD)
     {
         pCB->cbBuffer = 0;
@@ -926,12 +927,17 @@ void SvgaCmdBufProcess(PVBOXWDDM_EXT_VMSVGA pSvga)
             /* Buffers are processed sequentially, so if this one has not been processed,
              * then the consequent buffers are too.
              */
-            if (pIter->pCBHeader->status == SVGA_CB_STATUS_NONE)
+            SVGACBStatus const status = pIter->pCBHeader->status;
+            if (status == SVGA_CB_STATUS_NONE)
                 break;
 
             /* Remove the command buffer from the submitted queue and add to the local queue. */
             RTListNodeRemove(&pIter->nodeQueue);
             RTListAppend(&listCompleted, &pIter->nodeQueue);
+
+            /* Disassociate from CB header which can be used for another CB after spinlock is released. */
+            pIter->pCBHeader = NULL;
+            pIter->status = status;
 
             ++pCBCtx->cHeaders;
             Assert(pCBCtx->cHeaders <= RT_ELEMENTS(cbStateHeaders(pCBState)->aContext0CBHeaders));
@@ -955,7 +961,7 @@ void SvgaCmdBufProcess(PVBOXWDDM_EXT_VMSVGA pSvga)
     /* Process the completed buffers without the spinlock. */
     RTListForEachSafe(&listCompleted, pIter, pNext, VMSVGACB, nodeQueue)
     {
-        switch (pIter->pCBHeader->status)
+        switch (pIter->status)
         {
             case SVGA_CB_STATUS_COMPLETED:
                 /* Just delete the buffer. */

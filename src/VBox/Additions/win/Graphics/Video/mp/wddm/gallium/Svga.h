@@ -1,4 +1,4 @@
-/* $Id: Svga.h 114790 2026-07-27 13:33:16Z vitali.pelenjow@oracle.com $ */
+/* $Id: Svga.h 114840 2026-07-31 22:12:25Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Gallium driver VMSVGA.
  */
@@ -113,7 +113,8 @@ typedef struct VMSVGACB
     uint32_t             cbReservedCmdHeader;      /* Reserved for the command header. */
     uint32_t             cbReservedCmd;            /* Reserved for the current command without the header. */
     uint32_t             u32ReservedCmd;           /* The current command. */
-    SVGACBHeader        *pCBHeader;                /* Pointer to the header. */
+    SVGACBHeader        *pCBHeader;                /* Pointer to the header associated with this buffer. */
+    SVGACBStatus         status;                   /* Copy of pCBHeader->status after the buffer completion. */
     union                                          /* Command data. */
     {
         VMSVGACBPAGE     page;                     /* VMSVGACB_MINIPORT */
