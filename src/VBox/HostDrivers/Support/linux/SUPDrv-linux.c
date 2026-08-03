@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c 114836 2026-07-31 12:20:17Z alexander.eichner@oracle.com $ */
+/* $Id: SUPDrv-linux.c 114845 2026-08-03 12:55:03Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -2498,37 +2498,38 @@ SUPR0_EXPORT_SYMBOL(SUPR0FpuEnd);
 
 SUPR0DECL(void) SUPR0DispatchHostNmi(void)
 {
-#if defined(CONFIG_X86_FRED)
+# if defined(CONFIG_X86_FRED)
     if (g_fFredActive)
     {
-# if IS_ENABLED(CONFIG_KVM_INTEL)
+#  if IS_ENABLED(CONFIG_KVM_INTEL)
         Assert(g_pfnX86EntryFromKvm); /* This should be valid, module should fail to load. */
-#  if RTLNX_VER_MIN(7,1,0)
+#   if RTLNX_VER_MIN(7,1,0)
         g_pfnX86EntryFromKvm(EVENT_TYPE_NMI, NMI_VECTOR);
-#  else
+#   else
         struct fred_ss FredSs =
         {
             .ss     = __KERNEL_DS,
             .type   = EVENT_TYPE_NMI,
             .vector = NMI_VECTOR,
             .nmi    = 1,
-#   if RTLNX_VER_MIN(6, 19, 0)
+#    if RTLNX_VER_MIN(6, 19, 0)
             .l      = 1
-#   else
+#    else
             .lm     = 1
-#   endif
+#    endif
         };
         g_pfnX86EntryFromKvm(FredSs);
-#  endif
-# else
+#   endif
+#  else
         /* We better not end up here (kernel module shouldn't load). */
         AssertMsgFailed(("This shouldn't be called on systems without FRED enabled!\n"));
-# endif
+#  endif
     }
     else
-#endif
+# endif
         __asm__ __volatile__ ("int $2\n\t" ::: "memory");
 }
+SUPR0_EXPORT_SYMBOL(SUPR0DispatchHostNmi);
 
 #endif /* RT_ARCH_AMD64 || RT_ARCH_X86 */
 
