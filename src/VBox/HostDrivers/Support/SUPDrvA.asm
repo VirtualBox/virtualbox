@@ -1,4 +1,4 @@
-; $Id: SUPDrvA.asm 114838 2026-07-31 12:54:40Z alexander.eichner@oracle.com $
+; $Id: SUPDrvA.asm 114844 2026-08-03 12:19:20Z knut.osmundsen@oracle.com $
 ;; @file
 ; VirtualBox Support Driver - Assembly bits.
 ;
@@ -46,7 +46,7 @@ BEGINCODE
 ;;
 ; Dispatches an NMI to the host.
 ;
-BEGINPROC SUPR0DispatchHostNmi
+BEGINPROC_EXPORTED SUPR0DispatchHostNmi
         ; NMI is always vector 2. The IDT[2] IRQ handler cannot be anything else. See Intel spec. 6.3.1 "External Interrupts".
         SEH64_END_PROLOGUE
         int 2
