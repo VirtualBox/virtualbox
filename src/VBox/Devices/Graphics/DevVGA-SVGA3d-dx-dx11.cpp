@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114814 2026-07-28 15:06:29Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114853 2026-08-04 16:33:04Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -7851,12 +7851,15 @@ static void dxEnsureViews(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
         AssertRC(rc);
 
 #ifdef LOG_ENABLED
-        SVGACOTableDXDSViewEntry const *pDSViewEntry = &pDXContext->cot.paDSView[viewId];
-        PVMSVGA3DSURFACE pSurface = NULL;
-        vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, pDXView->sid, &pSurface);
-        LogFunc(("dsv sid = %u, dsvid = %u, format = %s(%d), %dx%d\n",
-                 pDXView->sid, viewId, vmsvgaLookupEnum((int)pDSViewEntry->format, &g_SVGA3dSurfaceFormat2String), pDSViewEntry->format,
-                 pSurface->paMipmapLevels[0].cBlocksX * pSurface->cxBlock, pSurface->paMipmapLevels[0].cBlocksY * pSurface->cyBlock));
+        if (RT_SUCCESS(rc))
+        {
+            SVGACOTableDXDSViewEntry const *pDSViewEntry = &pDXContext->cot.paDSView[viewId];
+            PVMSVGA3DSURFACE pSurface = NULL;
+            vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, pDXView->sid, &pSurface);
+            LogFunc(("dsv sid = %u, dsvid = %u, format = %s(%d), %dx%d\n",
+                     pDXView->sid, viewId, vmsvgaLookupEnum((int)pDSViewEntry->format, &g_SVGA3dSurfaceFormat2String), pDSViewEntry->format,
+                     pSurface->paMipmapLevels[0].cBlocksX * pSurface->cxBlock, pSurface->paMipmapLevels[0].cBlocksY * pSurface->cyBlock));
+        }
 #endif
     }
 
