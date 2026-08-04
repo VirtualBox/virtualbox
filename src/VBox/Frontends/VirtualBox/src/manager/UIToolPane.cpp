@@ -1,4 +1,4 @@
-/* $Id: UIToolPane.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: UIToolPane.cpp 114848 2026-08-04 09:49:02Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIToolPane class implementation.
  */
@@ -526,8 +526,12 @@ void UIToolPane::setErrorDetails(const QString &strDetails)
 
 void UIToolPane::setItems(const QList<UIVirtualMachineItem*> &items)
 {
-    /* Cache passed value: */
-    m_items = items;
+    /* Cache accessible items only.  Inaccessible machines expose limited
+     * information and are handled by the Error pane. */
+    m_items.clear();
+    foreach (UIVirtualMachineItem *pItem, items)
+        if (pItem && pItem->accessible())
+            m_items << pItem;
 
     /* Update details pane if it is open: */
     if (isToolOpened(UIToolType_Details))
