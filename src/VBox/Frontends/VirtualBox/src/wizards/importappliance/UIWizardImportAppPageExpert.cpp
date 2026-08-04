@@ -1,4 +1,4 @@
-/* $Id: UIWizardImportAppPageExpert.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIWizardImportAppPageExpert.cpp 114847 2026-08-04 09:37:31Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardImportAppPageExpert class implementation.
  */
@@ -247,7 +247,7 @@ UIWizardImportAppPageExpert::UIWizardImportAppPageExpert(bool fImportFromOCIByDe
                 }
 
                 /* Add into tool-box: */
-                m_pToolBox->insertPage(0, pWidgetSourceWrapper, QString());
+                m_pToolBox->insertPage(ToolBoxPage_Source, pWidgetSourceWrapper, QString());
             }
 
             /* Prepare settings widget 2: */
@@ -270,6 +270,7 @@ UIWizardImportAppPageExpert::UIWizardImportAppPageExpert(bool fImportFromOCIByDe
                         {
                             m_pApplianceWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
                             pLayoutAppliance->addWidget(m_pApplianceWidget, 0, 0, 1, 3);
+                            connect(m_pApplianceWidget, &UIApplianceImportEditorWidget::importWarningsShown, this, &UIWizardImportAppPageExpert::sltImportWarningShown);
                         }
 
                         /* Prepare import path label: */
@@ -346,7 +347,7 @@ UIWizardImportAppPageExpert::UIWizardImportAppPageExpert(bool fImportFromOCIByDe
                 }
 
                 /* Add into tool-box: */
-                m_pToolBox->insertPage(1, m_pSettingsWidget2, QString());
+                m_pToolBox->insertPage(ToolBoxPage_Settings, m_pSettingsWidget2, QString());
             }
 
             /* Add into layout: */
@@ -718,4 +719,11 @@ void UIWizardImportAppPageExpert::sltHandleImportHDsAsVDICheckBoxChange()
 {
     /* Update wizard fields: */
     wizard()->setImportHDsAsVDI(isImportHDsAsVDI(m_pCheckboxImportHDsAsVDI));
+}
+
+void UIWizardImportAppPageExpert::sltImportWarningShown()
+{
+    if (!m_pToolBox)
+        return;
+    m_pToolBox->setCurrentPage(ToolBoxPage_Settings);
 }

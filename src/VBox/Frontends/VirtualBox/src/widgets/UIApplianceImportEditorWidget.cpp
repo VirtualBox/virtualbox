@@ -1,4 +1,4 @@
-/* $Id: UIApplianceImportEditorWidget.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIApplianceImportEditorWidget.cpp 114847 2026-08-04 09:37:31Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIApplianceImportEditorWidget class implementation.
  */
@@ -97,6 +97,8 @@ void UIApplianceImportEditorWidget::setAppliance(const CAppliance &comAppliance)
     foreach (const QString &strText, warnings)
         m_pTextEditWarning->append("- " + strText);
     m_pPaneWarning->setVisible(fWarningsEnabled);
+    if (fWarningsEnabled)
+        emit importWarningsShown();
 }
 
 void UIApplianceImportEditorWidget::prepareImport()

@@ -1,4 +1,4 @@
-/* $Id: UIWizardImportAppPageExpert.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIWizardImportAppPageExpert.h 114847 2026-08-04 09:37:31Z serkan.bayraktar@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardImportAppPageExpert class declaration.
  */
@@ -101,8 +101,14 @@ private slots:
     void sltHandleImportHDsAsVDICheckBoxChange();
     /** Handles translation event. */
     virtual void sltRetranslateUI() RT_OVERRIDE RT_FINAL;
+    void sltImportWarningShown();
 
 private:
+    enum ToolBoxPage
+    {
+        ToolBoxPage_Source = 0,
+        ToolBoxPage_Settings
+    };
 
     /** Holds whether default source should be Import from OCI. */
     bool     m_fImportFromOCIByDefault;
