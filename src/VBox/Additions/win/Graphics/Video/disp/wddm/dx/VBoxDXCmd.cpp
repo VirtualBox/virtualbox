@@ -1,4 +1,4 @@
-/* $Id: VBoxDXCmd.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxDXCmd.cpp 114855 2026-08-04 19:16:41Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox D3D user mode driver utilities.
  */
@@ -859,15 +859,18 @@ int vgpu10DefineShaderResourceView(PVBOXDX_DEVICE pDevice,
 
 
 int vgpu10GenMips(PVBOXDX_DEVICE pDevice,
-                  SVGA3dShaderResourceViewId shaderResourceViewId)
+                  SVGA3dShaderResourceViewId shaderResourceViewId,
+                  PVBOXDXKMRESOURCE pViewKMResource)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_GENMIPS,
-                                             sizeof(SVGA3dCmdDXGenMips));
+                                             sizeof(SVGA3dCmdDXGenMips), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
     SVGA3dCmdDXGenMips *cmd = (SVGA3dCmdDXGenMips *)pvCmd;
     SET_CMD_FIELD(shaderResourceViewId);
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -875,15 +878,18 @@ int vgpu10GenMips(PVBOXDX_DEVICE pDevice,
 
 
 int vgpu10DestroyShaderResourceView(PVBOXDX_DEVICE pDevice,
-                                    SVGA3dShaderResourceViewId shaderResourceViewId)
+                                    SVGA3dShaderResourceViewId shaderResourceViewId,
+                                    PVBOXDXKMRESOURCE pViewKMResource)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_DESTROY_SHADERRESOURCE_VIEW,
-                                             sizeof(SVGA3dCmdDXDestroyShaderResourceView));
+                                             sizeof(SVGA3dCmdDXDestroyShaderResourceView), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
     SVGA3dCmdDXDestroyShaderResourceView *cmd = (SVGA3dCmdDXDestroyShaderResourceView *)pvCmd;
     SET_CMD_FIELD(shaderResourceViewId);
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -918,10 +924,11 @@ int vgpu10DefineRenderTargetView(PVBOXDX_DEVICE pDevice,
 
 int vgpu10ClearRenderTargetView(PVBOXDX_DEVICE pDevice,
                                 SVGA3dRenderTargetViewId renderTargetViewId,
+                                PVBOXDXKMRESOURCE pViewKMResource,
                                 const float rgba[4])
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_CLEAR_RENDERTARGET_VIEW,
-                                             sizeof(SVGA3dCmdDXClearRenderTargetView));
+                                             sizeof(SVGA3dCmdDXClearRenderTargetView), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
@@ -931,6 +938,8 @@ int vgpu10ClearRenderTargetView(PVBOXDX_DEVICE pDevice,
     cmd->rgba.value[1] = rgba[1];
     cmd->rgba.value[2] = rgba[2];
     cmd->rgba.value[3] = rgba[3];
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -939,12 +948,13 @@ int vgpu10ClearRenderTargetView(PVBOXDX_DEVICE pDevice,
 
 int vgpu10ClearRenderTargetViewRegion(PVBOXDX_DEVICE pDevice,
                                       SVGA3dRenderTargetViewId viewId,
+                                      PVBOXDXKMRESOURCE pViewKMResource,
                                       const float color[4],
                                       const D3D10_DDI_RECT *paRects,
                                       uint32_t cRects)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_VB_DX_CLEAR_RENDERTARGET_VIEW_REGION,
-                                             sizeof(SVGA3dCmdVBDXClearRenderTargetViewRegion) + cRects * sizeof(SVGASignedRect));
+                                             sizeof(SVGA3dCmdVBDXClearRenderTargetViewRegion) + cRects * sizeof(SVGASignedRect), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
@@ -966,6 +976,8 @@ int vgpu10ClearRenderTargetViewRegion(PVBOXDX_DEVICE pDevice,
         d->right  = s->right;
         d->bottom = s->bottom;
     }
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -975,12 +987,13 @@ int vgpu10ClearRenderTargetViewRegion(PVBOXDX_DEVICE pDevice,
 int vgpu10ClearView(PVBOXDX_DEVICE pDevice,
                     SVGAFifo3dCmdId cmdId,
                     uint32_t viewId,
+                    PVBOXDXKMRESOURCE pViewKMResource,
                     const float color[4],
                     const D3D10_DDI_RECT *paRects,
                     uint32_t cRects)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, cmdId,
-                                             sizeof(VBSVGA3dCmdDXClearView) + cRects * sizeof(SVGASignedRect));
+                                             sizeof(VBSVGA3dCmdDXClearView) + cRects * sizeof(SVGASignedRect), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
@@ -1001,6 +1014,8 @@ int vgpu10ClearView(PVBOXDX_DEVICE pDevice,
         d->right  = s->right;
         d->bottom = s->bottom;
     }
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -1008,15 +1023,18 @@ int vgpu10ClearView(PVBOXDX_DEVICE pDevice,
 
 
 int vgpu10DestroyRenderTargetView(PVBOXDX_DEVICE pDevice,
-                                  SVGA3dRenderTargetViewId renderTargetViewId)
+                                  SVGA3dRenderTargetViewId renderTargetViewId,
+                                  PVBOXDXKMRESOURCE pViewKMResource)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_DESTROY_RENDERTARGET_VIEW,
-                                             sizeof(SVGA3dCmdDXDestroyRenderTargetView));
+                                             sizeof(SVGA3dCmdDXDestroyRenderTargetView), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
     SVGA3dCmdDXDestroyRenderTargetView *cmd = (SVGA3dCmdDXDestroyRenderTargetView *)pvCmd;
     SET_CMD_FIELD(renderTargetViewId);
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -1059,10 +1077,11 @@ int vgpu10ClearDepthStencilView(PVBOXDX_DEVICE pDevice,
                                 uint16 flags,
                                 uint16 stencil,
                                 SVGA3dDepthStencilViewId depthStencilViewId,
+                                PVBOXDXKMRESOURCE pViewKMResource,
                                 float depth)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_CLEAR_DEPTHSTENCIL_VIEW,
-                                             sizeof(SVGA3dCmdDXClearDepthStencilView));
+                                             sizeof(SVGA3dCmdDXClearDepthStencilView), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
@@ -1071,6 +1090,8 @@ int vgpu10ClearDepthStencilView(PVBOXDX_DEVICE pDevice,
     SET_CMD_FIELD(stencil);
     SET_CMD_FIELD(depthStencilViewId);
     SET_CMD_FIELD(depth);
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -1078,15 +1099,18 @@ int vgpu10ClearDepthStencilView(PVBOXDX_DEVICE pDevice,
 
 
 int vgpu10DestroyDepthStencilView(PVBOXDX_DEVICE pDevice,
-                                  SVGA3dDepthStencilViewId depthStencilViewId)
+                                  SVGA3dDepthStencilViewId depthStencilViewId,
+                                  PVBOXDXKMRESOURCE pViewKMResource)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_DESTROY_DEPTHSTENCIL_VIEW,
-                                             sizeof(SVGA3dCmdDXDestroyDepthStencilView));
+                                             sizeof(SVGA3dCmdDXDestroyDepthStencilView), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
     SVGA3dCmdDXDestroyDepthStencilView *cmd = (SVGA3dCmdDXDestroyDepthStencilView *)pvCmd;
     SET_CMD_FIELD(depthStencilViewId);
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -1095,13 +1119,15 @@ int vgpu10DestroyDepthStencilView(PVBOXDX_DEVICE pDevice,
 
 int vgpu10SetRenderTargets(PVBOXDX_DEVICE pDevice,
                            SVGA3dDepthStencilViewId depthStencilViewId,
+                           PVBOXDXKMRESOURCE pViewKMResource,
                            uint32_t numRTVs,
                            uint32_t numClearSlots,
-                           uint32_t *paRenderTargetViewIds)
+                           uint32_t *paRenderTargetViewIds,
+                           PVBOXDXKMRESOURCE *papViewKMResources)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_SET_RENDERTARGETS,
                                              sizeof(SVGA3dCmdDXSetRenderTargets)
-                                             + (numRTVs + numClearSlots) * sizeof(SVGA3dRenderTargetViewId));
+                                             + (numRTVs + numClearSlots) * sizeof(SVGA3dRenderTargetViewId), 1 + numRTVs);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
@@ -1115,6 +1141,16 @@ int vgpu10SetRenderTargets(PVBOXDX_DEVICE pDevice,
     for (unsigned i = 0; i < numClearSlots; ++i)
         *dst++ = SVGA3D_INVALID_ID;
 
+    if (depthStencilViewId != SVGA3D_INVALID_ID)
+        vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                                 0, false);
+    for (uint32_t i = 0; i < numRTVs; ++i)
+    {
+        if (paRenderTargetViewIds[i] != SVGA3D_INVALID_ID)
+            vboxDXStorePatchLocation(pDevice, NULL, papViewKMResources[i],
+                                     0, false);
+    }
+
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
 }
@@ -1124,11 +1160,12 @@ int vgpu10SetShaderResources(PVBOXDX_DEVICE pDevice,
                              SVGA3dShaderType type,
                              uint32 startView,
                              uint32_t numViews,
-                             uint32_t *paViewIds)
+                             uint32_t *paViewIds,
+                             PVBOXDXKMRESOURCE *papViewKMResources)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_SET_SHADER_RESOURCES,
                                              sizeof(SVGA3dCmdDXSetShaderResources)
-                                             + numViews * sizeof(SVGA3dShaderResourceViewId));
+                                             + numViews * sizeof(SVGA3dShaderResourceViewId), numViews);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
@@ -1136,6 +1173,13 @@ int vgpu10SetShaderResources(PVBOXDX_DEVICE pDevice,
     SET_CMD_FIELD(startView);
     SET_CMD_FIELD(type);
     memcpy(&cmd[1], paViewIds, numViews * sizeof(SVGA3dShaderResourceViewId));
+
+    for (uint32_t i = 0; i < numViews; ++i)
+    {
+        if (paViewIds[i] != SVGA3D_INVALID_ID)
+            vboxDXStorePatchLocation(pDevice, NULL, papViewKMResources[i],
+                                     0, false);
+    }
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -1529,15 +1573,18 @@ int vgpu10DefineUAView(PVBOXDX_DEVICE pDevice,
 
 
 int vgpu10DestroyUAView(PVBOXDX_DEVICE pDevice,
-                        SVGA3dUAViewId uaViewId)
+                        SVGA3dUAViewId uaViewId,
+                        PVBOXDXKMRESOURCE pViewKMResource)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_DESTROY_UA_VIEW,
-                                             sizeof(SVGA3dCmdDXDestroyUAView), 0);
+                                             sizeof(SVGA3dCmdDXDestroyUAView), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
     SVGA3dCmdDXDestroyUAView *cmd = (SVGA3dCmdDXDestroyUAView *)pvCmd;
     SET_CMD_FIELD(uaViewId);
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -1546,10 +1593,11 @@ int vgpu10DestroyUAView(PVBOXDX_DEVICE pDevice,
 
 int vgpu10ClearUAViewUint(PVBOXDX_DEVICE pDevice,
                           SVGA3dUAViewId uaViewId,
+                          PVBOXDXKMRESOURCE pViewKMResource,
                           const uint32 value[4])
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_CLEAR_UA_VIEW_UINT,
-                                             sizeof(SVGA3dCmdDXClearUAViewUint), 0);
+                                             sizeof(SVGA3dCmdDXClearUAViewUint), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
@@ -1559,6 +1607,8 @@ int vgpu10ClearUAViewUint(PVBOXDX_DEVICE pDevice,
     cmd->value.value[1] = value[1];
     cmd->value.value[2] = value[2];
     cmd->value.value[3] = value[3];
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -1567,10 +1617,11 @@ int vgpu10ClearUAViewUint(PVBOXDX_DEVICE pDevice,
 
 int vgpu10ClearUAViewFloat(PVBOXDX_DEVICE pDevice,
                            SVGA3dUAViewId uaViewId,
+                           PVBOXDXKMRESOURCE pViewKMResource,
                            const float value[4])
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_CLEAR_UA_VIEW_FLOAT,
-                                             sizeof(SVGA3dCmdDXClearUAViewFloat), 0);
+                                             sizeof(SVGA3dCmdDXClearUAViewFloat), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
@@ -1580,6 +1631,8 @@ int vgpu10ClearUAViewFloat(PVBOXDX_DEVICE pDevice,
     cmd->value.value[1] = value[1];
     cmd->value.value[2] = value[2];
     cmd->value.value[3] = value[3];
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -1589,17 +1642,25 @@ int vgpu10ClearUAViewFloat(PVBOXDX_DEVICE pDevice,
 int vgpu10SetCSUAViews(PVBOXDX_DEVICE pDevice,
                        uint32 startIndex,
                        uint32 numViews,
-                       const SVGA3dUAViewId *paViewIds)
+                       const SVGA3dUAViewId *paViewIds,
+                       PVBOXDXKMRESOURCE *papViewKMResources)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_SET_CS_UA_VIEWS,
                                              sizeof(SVGA3dCmdDXSetCSUAViews)
-                                             + numViews * sizeof(SVGA3dUAViewId));
+                                             + numViews * sizeof(SVGA3dUAViewId), numViews);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
     SVGA3dCmdDXSetCSUAViews *cmd = (SVGA3dCmdDXSetCSUAViews *)pvCmd;
     SET_CMD_FIELD(startIndex);
     memcpy(&cmd[1], paViewIds, numViews * sizeof(SVGA3dUAViewId));
+
+    for (uint32 i = 0; i < numViews; ++ i)
+    {
+        if (paViewIds[i] != SVGA3D_INVALID_ID)
+            vboxDXStorePatchLocation(pDevice, NULL, papViewKMResources[i],
+                                     0, false);
+    }
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -1609,17 +1670,25 @@ int vgpu10SetCSUAViews(PVBOXDX_DEVICE pDevice,
 int vgpu10SetUAViews(PVBOXDX_DEVICE pDevice,
                      uint32 uavSpliceIndex,
                      uint32 numViews,
-                     const SVGA3dUAViewId *paViewIds)
+                     const SVGA3dUAViewId *paViewIds,
+                     PVBOXDXKMRESOURCE *papViewKMResources)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_SET_UA_VIEWS,
                                              sizeof(SVGA3dCmdDXSetUAViews)
-                                             + numViews * sizeof(SVGA3dUAViewId));
+                                             + numViews * sizeof(SVGA3dUAViewId), numViews);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
     SVGA3dCmdDXSetUAViews *cmd = (SVGA3dCmdDXSetUAViews *)pvCmd;
     SET_CMD_FIELD(uavSpliceIndex);
     memcpy(&cmd[1], paViewIds, numViews * sizeof(SVGA3dUAViewId));
+
+    for (uint32 i = 0; i < numViews; ++ i)
+    {
+        if (paViewIds[i] != SVGA3D_INVALID_ID)
+            vboxDXStorePatchLocation(pDevice, NULL, papViewKMResources[i],
+                                     0, false);
+    }
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -1628,16 +1697,19 @@ int vgpu10SetUAViews(PVBOXDX_DEVICE pDevice,
 
 int vgpu10SetStructureCount(PVBOXDX_DEVICE pDevice,
                             SVGA3dUAViewId uaViewId,
+                            PVBOXDXKMRESOURCE pViewKMResource,
                             uint32 structureCount)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_SET_STRUCTURE_COUNT,
-                                             sizeof(SVGA3dCmdDXSetStructureCount), 0);
+                                             sizeof(SVGA3dCmdDXSetStructureCount), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
     SVGA3dCmdDXSetStructureCount *cmd = (SVGA3dCmdDXSetStructureCount *)pvCmd;
     SET_CMD_FIELD(uaViewId);
     SET_CMD_FIELD(structureCount);
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -1729,11 +1801,12 @@ int vgpu10DrawInstancedIndirect(PVBOXDX_DEVICE pDevice,
 
 int vgpu10CopyStructureCount(PVBOXDX_DEVICE pDevice,
                              SVGA3dUAViewId srcUAViewId,
+                             PVBOXDXKMRESOURCE pViewKMResource,
                              PVBOXDXKMRESOURCE pDstKMResource,
                              uint32 destByteOffset)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, SVGA_3D_CMD_DX_COPY_STRUCTURE_COUNT,
-                                             sizeof(SVGA3dCmdDXCopyStructureCount), 1);
+                                             sizeof(SVGA3dCmdDXCopyStructureCount), 2);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
@@ -1742,6 +1815,8 @@ int vgpu10CopyStructureCount(PVBOXDX_DEVICE pDevice,
     cmd->destSid = SVGA3D_INVALID_ID;
     SET_CMD_FIELD(destByteOffset);
 
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
     vboxDXStorePatchLocation(pDevice, &cmd->destSid, pDstKMResource,
                              0, true);
 
@@ -1845,16 +1920,19 @@ int vgpu10DefineVideoDecoder(PVBOXDX_DEVICE pDevice,
 
 int vgpu10VideoDecoderBeginFrame(PVBOXDX_DEVICE pDevice,
                                  VBSVGA3dVideoDecoderId videoDecoderId,
-                                 VBSVGA3dVideoDecoderOutputViewId videoDecoderOutputViewId)
+                                 VBSVGA3dVideoDecoderOutputViewId videoDecoderOutputViewId,
+                                 PVBOXDXKMRESOURCE pViewKMResource)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, VBSVGA_3D_CMD_DX_VIDEO_DECODER_BEGIN_FRAME,
-                                             sizeof(VBSVGA3dCmdDXVideoDecoderBeginFrame), 0);
+                                             sizeof(VBSVGA3dCmdDXVideoDecoderBeginFrame), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
     VBSVGA3dCmdDXVideoDecoderBeginFrame *cmd = (VBSVGA3dCmdDXVideoDecoderBeginFrame *)pvCmd;
     SET_CMD_FIELD(videoDecoderId);
     SET_CMD_FIELD(videoDecoderOutputViewId);
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -1957,13 +2035,16 @@ int vgpu10DefineVideoProcessorOutputView(PVBOXDX_DEVICE pDevice,
 int vgpu10VideoProcessorBlt(PVBOXDX_DEVICE pDevice,
                             VBSVGA3dVideoProcessorId videoProcessorId,
                             VBSVGA3dVideoProcessorOutputViewId videoProcessorOutputViewId,
+                            PVBOXDXKMRESOURCE pViewKMResource,
                             uint32 outputFrame,
                             uint32 streamCount,
                             uint32 cbVideoProcessorStreams,
-                            VBSVGA3dVideoProcessorStream *pVideoProcessorStreams)
+                            VBSVGA3dVideoProcessorStream *pVideoProcessorStreams,
+                            uint32_t cVPIViewKMResource,
+                            PVBOXDXKMRESOURCE *papVPIViewKMResource)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, VBSVGA_3D_CMD_DX_VIDEO_PROCESSOR_BLT,
-                                             sizeof(VBSVGA3dCmdDXVideoProcessorBlt) + cbVideoProcessorStreams, 0);
+                                             sizeof(VBSVGA3dCmdDXVideoProcessorBlt) + cbVideoProcessorStreams, 1 + cVPIViewKMResource);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
@@ -1973,6 +2054,13 @@ int vgpu10VideoProcessorBlt(PVBOXDX_DEVICE pDevice,
     SET_CMD_FIELD(outputFrame);
     SET_CMD_FIELD(streamCount);
     memcpy(&cmd[1], pVideoProcessorStreams, cbVideoProcessorStreams);
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
+    for (uint32_t i = 0; i < cVPIViewKMResource; ++i)
+    {
+        vboxDXStorePatchLocation(pDevice, NULL, papVPIViewKMResource[i],
+                                 0, false);
+    }
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -1996,15 +2084,18 @@ int vgpu10DestroyVideoDecoder(PVBOXDX_DEVICE pDevice,
 
 
 int vgpu10DestroyVideoDecoderOutputView(PVBOXDX_DEVICE pDevice,
-                                        VBSVGA3dVideoDecoderOutputViewId videoDecoderOutputViewId)
+                                        VBSVGA3dVideoDecoderOutputViewId videoDecoderOutputViewId,
+                                        PVBOXDXKMRESOURCE pViewKMResource)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, VBSVGA_3D_CMD_DX_DESTROY_VIDEO_DECODER_OUTPUT_VIEW,
-                                             sizeof(VBSVGA3dCmdDXDestroyVideoDecoderOutputView), 0);
+                                             sizeof(VBSVGA3dCmdDXDestroyVideoDecoderOutputView), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
     VBSVGA3dCmdDXDestroyVideoDecoderOutputView *cmd = (VBSVGA3dCmdDXDestroyVideoDecoderOutputView *)pvCmd;
     SET_CMD_FIELD(videoDecoderOutputViewId);
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -2028,15 +2119,18 @@ int vgpu10DestroyVideoProcessor(PVBOXDX_DEVICE pDevice,
 
 
 int vgpu10DestroyVideoProcessorInputView(PVBOXDX_DEVICE pDevice,
-                                         VBSVGA3dVideoProcessorInputViewId videoProcessorInputViewId)
+                                         VBSVGA3dVideoProcessorInputViewId videoProcessorInputViewId,
+                                         PVBOXDXKMRESOURCE pViewKMResource)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, VBSVGA_3D_CMD_DX_DESTROY_VIDEO_PROCESSOR_INPUT_VIEW,
-                                             sizeof(VBSVGA3dCmdDXDestroyVideoProcessorInputView), 0);
+                                             sizeof(VBSVGA3dCmdDXDestroyVideoProcessorInputView), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
     VBSVGA3dCmdDXDestroyVideoProcessorInputView *cmd = (VBSVGA3dCmdDXDestroyVideoProcessorInputView *)pvCmd;
     SET_CMD_FIELD(videoProcessorInputViewId);
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;
@@ -2044,15 +2138,18 @@ int vgpu10DestroyVideoProcessorInputView(PVBOXDX_DEVICE pDevice,
 
 
 int vgpu10DestroyVideoProcessorOutputView(PVBOXDX_DEVICE pDevice,
-                                          VBSVGA3dVideoProcessorOutputViewId videoProcessorOutputViewId)
+                                          VBSVGA3dVideoProcessorOutputViewId videoProcessorOutputViewId,
+                                          PVBOXDXKMRESOURCE pViewKMResource)
 {
     void *pvCmd = vboxDXCommandBufferReserve(pDevice, VBSVGA_3D_CMD_DX_DESTROY_VIDEO_PROCESSOR_OUTPUT_VIEW,
-                                             sizeof(VBSVGA3dCmdDXDestroyVideoProcessorOutputView), 0);
+                                             sizeof(VBSVGA3dCmdDXDestroyVideoProcessorOutputView), 1);
     if (!pvCmd)
         return VERR_NO_MEMORY;
 
     VBSVGA3dCmdDXDestroyVideoProcessorOutputView *cmd = (VBSVGA3dCmdDXDestroyVideoProcessorOutputView *)pvCmd;
     SET_CMD_FIELD(videoProcessorOutputViewId);
+    vboxDXStorePatchLocation(pDevice, NULL, pViewKMResource,
+                             0, false);
 
     vboxDXCommandBufferCommit(pDevice);
     return VINF_SUCCESS;

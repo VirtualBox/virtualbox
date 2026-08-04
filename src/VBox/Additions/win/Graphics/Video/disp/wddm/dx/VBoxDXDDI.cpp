@@ -1,4 +1,4 @@
-/* $Id: VBoxDXDDI.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxDXDDI.cpp 114855 2026-08-04 19:16:41Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox D3D11 user mode DDI interface.
  */
@@ -894,10 +894,6 @@ static void APIENTRY ddi11SetRenderTargets(
     PVBOXDXDEPTHSTENCILVIEW pDepthStencilView = (PVBOXDXDEPTHSTENCILVIEW)hDepthStencilView.pDrvPrivate;
 
     vboxDXSetRenderTargets(pDevice, pDepthStencilView, NumRTVs, ClearSlots, (PVBOXDXRENDERTARGETVIEW *)phRenderTargetView);
-
-    AssertReturnVoidStmt(   NumUAVs <= D3D11_1_UAV_SLOT_COUNT
-                         && UAVStartSlot <= SVGA3D_MAX_SIMULTANEOUS_RENDER_TARGETS,
-                         vboxDXDeviceSetError(pDevice, E_INVALIDARG));
 
     vboxDXSetUnorderedAccessViews(pDevice, UAVStartSlot, NumUAVs, (PVBOXDXUNORDEREDACCESSVIEW *)phUnorderedAccessView, pUAVInitialCounts);
 
@@ -3870,20 +3866,8 @@ static void APIENTRY ddi11CsSetUnorderedAccessViews(
     PVBOXDX_DEVICE pDevice = (PVBOXDX_DEVICE)hDevice.pDrvPrivate;
     LogFlowFunc(("pDevice = %p, StartSlot = %u, NumViews = %u\n", pDevice, StartSlot, NumViews));
 
-    AssertReturnVoidStmt(   NumViews <= SVGA3D_DX11_1_MAX_UAVIEWS
-                         && StartSlot < SVGA3D_DX11_1_MAX_UAVIEWS
-                         && NumViews + StartSlot <= SVGA3D_DX11_1_MAX_UAVIEWS,
-                         vboxDXDeviceSetError(pDevice, E_INVALIDARG));
-
-    /* Fetch View ids. */
-    uint32_t aViewIds[SVGA3D_DX11_1_MAX_UAVIEWS];
-    for (unsigned i = 0; i < NumViews; ++i)
-    {
-        VBOXDXUNORDEREDACCESSVIEW *pView = (PVBOXDXUNORDEREDACCESSVIEW)phUnorderedAccessView[i].pDrvPrivate;
-        aViewIds[i] = pView ? pView->uUnorderedAccessViewId : SVGA3D_INVALID_ID;
-    }
-
-    vboxDXCsSetUnorderedAccessViews(pDevice, StartSlot, NumViews, aViewIds, pUAVInitialCounts);
+    vboxDXCsSetUnorderedAccessViews(pDevice, StartSlot, NumViews,
+                                    (PVBOXDXUNORDEREDACCESSVIEW *)phUnorderedAccessView, pUAVInitialCounts);
 }
 
 static void APIENTRY ddi11Dispatch(
@@ -4031,53 +4015,7 @@ static void APIENTRY ddi11_1ClearView(
 
     if (pDevice->pAdapter->fVBoxCaps & VBSVGA3D_CAP_VIDEO)
     {
-        uint32_t ViewId = SVGA3D_INVALID_ID;
-
-        /* "Possible types are the following.
-         * D3D10DDI_HT_RENDERTARGETVIEW
-         * D3D11DDI_HT_UNORDEREDACCESSVIEW
-         * Any D3D11_1DDI_HT_VIDEOXXX type"
-         */
-        switch (ViewType)
-        {
-            case D3D10DDI_HT_RENDERTARGETVIEW:
-            {
-                PVBOXDXRENDERTARGETVIEW pRenderTargetView = (PVBOXDXRENDERTARGETVIEW)hView;
-                ViewId = pRenderTargetView->uRenderTargetViewId;
-                break;
-            }
-            case D3D11DDI_HT_UNORDEREDACCESSVIEW:
-            {
-                PVBOXDXUNORDEREDACCESSVIEW pUnorderedAccessView = (PVBOXDXUNORDEREDACCESSVIEW)hView;
-                ViewId = pUnorderedAccessView->uUnorderedAccessViewId;
-                break;
-            }
-            case D3D11_1DDI_HT_VIDEODECODEROUTPUTVIEW:
-            {
-                PVBOXDXVIDEODECODEROUTPUTVIEW pVideoDecoderOutputView = (PVBOXDXVIDEODECODEROUTPUTVIEW)hView;
-                ViewId = pVideoDecoderOutputView->uVideoDecoderOutputViewId;
-                break;
-            }
-            case D3D11_1DDI_HT_VIDEOPROCESSORINPUTVIEW:
-            {
-                PVBOXDXVIDEOPROCESSORINPUTVIEW pVideoProcessorInputView = (PVBOXDXVIDEOPROCESSORINPUTVIEW)hView;
-                ViewId = pVideoProcessorInputView->uVideoProcessorInputViewId;
-                break;
-            }
-            case D3D11_1DDI_HT_VIDEOPROCESSOROUTPUTVIEW:
-            {
-                PVBOXDXVIDEOPROCESSOROUTPUTVIEW pVideoProcessorOutputView = (PVBOXDXVIDEOPROCESSOROUTPUTVIEW)hView;
-                ViewId = pVideoProcessorOutputView->uVideoProcessorOutputViewId;
-                break;
-            }
-            default:
-            {
-                DEBUG_BREAKPOINT_TEST();
-                break;
-            }
-        }
-        if (ViewId != SVGA3D_INVALID_ID)
-            vboxDXClearView(pDevice, ViewType, ViewId, Color, pRect, NumRects);
+        vboxDXClearView(pDevice, ViewType, hView, Color, pRect, NumRects);
         return;
     }
 

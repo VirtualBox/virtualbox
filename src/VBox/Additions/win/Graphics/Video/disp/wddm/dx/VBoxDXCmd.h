@@ -1,4 +1,4 @@
-/* $Id: VBoxDXCmd.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxDXCmd.h 114855 2026-08-04 19:16:41Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBoxVideo Display D3D User mode dll
  */
@@ -206,9 +206,11 @@ int vgpu10DefineShaderResourceView(PVBOXDX_DEVICE pDevice,
                                    SVGA3dResourceType resourceDimension,
                                    SVGA3dShaderResourceViewDesc const *pDesc);
 int vgpu10GenMips(PVBOXDX_DEVICE pDevice,
-                  SVGA3dShaderResourceViewId shaderResourceViewId);
+                  SVGA3dShaderResourceViewId shaderResourceViewId,
+                  PVBOXDXKMRESOURCE pViewKMResource);
 int vgpu10DestroyShaderResourceView(PVBOXDX_DEVICE pDevice,
-                                    SVGA3dShaderResourceViewId shaderResourceViewId);
+                                    SVGA3dShaderResourceViewId shaderResourceViewId,
+                                    PVBOXDXKMRESOURCE pViewKMResource);
 int vgpu10DefineRenderTargetView(PVBOXDX_DEVICE pDevice,
                                  SVGA3dRenderTargetViewId renderTargetViewId,
                                  PVBOXDXKMRESOURCE pKMResource,
@@ -217,9 +219,11 @@ int vgpu10DefineRenderTargetView(PVBOXDX_DEVICE pDevice,
                                  SVGA3dRenderTargetViewDesc const *pDesc);
 int vgpu10ClearRenderTargetView(PVBOXDX_DEVICE pDevice,
                                 SVGA3dRenderTargetViewId renderTargetViewId,
+                                PVBOXDXKMRESOURCE pViewKMResource,
                                 const float rgba[4]);
 int vgpu10DestroyRenderTargetView(PVBOXDX_DEVICE pDevice,
-                                  SVGA3dRenderTargetViewId renderTargetViewId);
+                                  SVGA3dRenderTargetViewId renderTargetViewId,
+                                  PVBOXDXKMRESOURCE pViewKMResource);
 int vgpu10DefineDepthStencilView(PVBOXDX_DEVICE pDevice,
                                  SVGA3dDepthStencilViewId depthStencilViewId,
                                  PVBOXDXKMRESOURCE pKMResource,
@@ -233,19 +237,24 @@ int vgpu10ClearDepthStencilView(PVBOXDX_DEVICE pDevice,
                                 uint16 flags,
                                 uint16 stencil,
                                 SVGA3dDepthStencilViewId depthStencilViewId,
+                                PVBOXDXKMRESOURCE pViewKMResource,
                                 float depth);
 int vgpu10DestroyDepthStencilView(PVBOXDX_DEVICE pDevice,
-                                  SVGA3dDepthStencilViewId depthStencilViewId);
+                                  SVGA3dDepthStencilViewId depthStencilViewId,
+                                  PVBOXDXKMRESOURCE pViewKMResource);
 int vgpu10SetRenderTargets(PVBOXDX_DEVICE pDevice,
                            SVGA3dDepthStencilViewId depthStencilViewId,
+                           PVBOXDXKMRESOURCE pViewKMResource,
                            uint32_t numRTVs,
                            uint32_t numClearSlots,
-                           uint32_t *paRenderTargetViewIds);
+                           uint32_t *paRenderTargetViewIds,
+                           PVBOXDXKMRESOURCE *papViewKMResources);
 int vgpu10SetShaderResources(PVBOXDX_DEVICE pDevice,
                              SVGA3dShaderType type,
                              uint32 startView,
                              uint32_t numViews,
-                             uint32_t *paViewIds);
+                             uint32_t *paViewIds,
+                             PVBOXDXKMRESOURCE *papViewKMResources);
 int vgpu10SetSingleConstantBuffer(PVBOXDX_DEVICE pDevice,
                                   uint32 slot,
                                   SVGA3dShaderType type,
@@ -317,23 +326,29 @@ int vgpu10DefineUAView(PVBOXDX_DEVICE pDevice,
                        SVGA3dResourceType resourceDimension,
                        const SVGA3dUAViewDesc &desc);
 int vgpu10DestroyUAView(PVBOXDX_DEVICE pDevice,
-                        SVGA3dUAViewId uaViewId);
+                        SVGA3dUAViewId uaViewId,
+                        PVBOXDXKMRESOURCE pViewKMResource);
 int vgpu10ClearUAViewUint(PVBOXDX_DEVICE pDevice,
                           SVGA3dUAViewId uaViewId,
+                          PVBOXDXKMRESOURCE pViewKMResource,
                           const uint32 value[4]);
 int vgpu10ClearUAViewFloat(PVBOXDX_DEVICE pDevice,
                            SVGA3dUAViewId uaViewId,
+                           PVBOXDXKMRESOURCE pViewKMResource,
                            const float value[4]);
 int vgpu10SetCSUAViews(PVBOXDX_DEVICE pDevice,
                        uint32 startIndex,
                        uint32 numViews,
-                       const SVGA3dUAViewId *paViewIds);
+                       const SVGA3dUAViewId *paViewIds,
+                       PVBOXDXKMRESOURCE *papViewKMResources);
 int vgpu10SetUAViews(PVBOXDX_DEVICE pDevice,
                      uint32 uavSpliceIndex,
                      uint32 numViews,
-                     const SVGA3dUAViewId *paViewIds);
+                     const SVGA3dUAViewId *paViewIds,
+                     PVBOXDXKMRESOURCE *papViewKMResources);
 int vgpu10SetStructureCount(PVBOXDX_DEVICE pDevice,
                             SVGA3dUAViewId uaViewId,
+                            PVBOXDXKMRESOURCE pViewKMResource,
                             uint32 structureCount);
 int vgpu10Dispatch(PVBOXDX_DEVICE pDevice,
                    uint32 threadGroupCountX,
@@ -350,10 +365,12 @@ int vgpu10DrawInstancedIndirect(PVBOXDX_DEVICE pDevice,
                                 uint32 byteOffsetForArgs);
 int vgpu10CopyStructureCount(PVBOXDX_DEVICE pDevice,
                              SVGA3dUAViewId srcUAViewId,
+                             PVBOXDXKMRESOURCE pViewKMResource,
                              PVBOXDXKMRESOURCE pDstKMResource,
                              uint32 destByteOffset);
 int vgpu10ClearRenderTargetViewRegion(PVBOXDX_DEVICE pDevice,
                                       SVGA3dRenderTargetViewId viewId,
+                                      PVBOXDXKMRESOURCE pViewKMResource,
                                       const float color[4],
                                       const D3D10_DDI_RECT *paRects,
                                       uint32_t cRects);
@@ -379,7 +396,8 @@ int vgpu10DefineVideoDecoder(PVBOXDX_DEVICE pDevice,
                              VBSVGA3dVideoDecoderConfig const &config);
 int vgpu10VideoDecoderBeginFrame(PVBOXDX_DEVICE pDevice,
                                  VBSVGA3dVideoDecoderId videoDecoderId,
-                                 VBSVGA3dVideoDecoderOutputViewId videoDecoderOutputViewId);
+                                 VBSVGA3dVideoDecoderOutputViewId videoDecoderOutputViewId,
+                                 PVBOXDXKMRESOURCE pViewKMResource);
 int vgpu10VideoDecoderSubmitBuffers(PVBOXDX_DEVICE pDevice,
                                     VBSVGA3dVideoDecoderId videoDecoderId,
                                     uint32 bufferCount,
@@ -400,20 +418,26 @@ int vgpu10DefineVideoProcessorOutputView(PVBOXDX_DEVICE pDevice,
 int vgpu10VideoProcessorBlt(PVBOXDX_DEVICE pDevice,
                             VBSVGA3dVideoProcessorId videoProcessorId,
                             VBSVGA3dVideoProcessorOutputViewId videoProcessorOutputViewId,
-                            uint32 OutputFrame,
-                            uint32 StreamCount,
+                            PVBOXDXKMRESOURCE pViewKMResource,
+                            uint32 outputFrame,
+                            uint32 streamCount,
                             uint32 cbVideoProcessorStreams,
-                            VBSVGA3dVideoProcessorStream *paVideoProcessorStreams);
+                            VBSVGA3dVideoProcessorStream *pVideoProcessorStreams,
+                            uint32_t cVPIViewKMResource,
+                            PVBOXDXKMRESOURCE *papVPIViewKMResource);
 int vgpu10DestroyVideoDecoder(PVBOXDX_DEVICE pDevice,
                               VBSVGA3dVideoDecoderId videoDecoderId);
 int vgpu10DestroyVideoDecoderOutputView(PVBOXDX_DEVICE pDevice,
-                                        VBSVGA3dVideoDecoderOutputViewId videoDecoderOutputViewId);
+                                        VBSVGA3dVideoDecoderOutputViewId videoDecoderOutputViewId,
+                                        PVBOXDXKMRESOURCE pViewKMResource);
 int vgpu10DestroyVideoProcessor(PVBOXDX_DEVICE pDevice,
                                 VBSVGA3dVideoProcessorId videoProcessorId);
 int vgpu10DestroyVideoProcessorInputView(PVBOXDX_DEVICE pDevice,
-                                         VBSVGA3dVideoProcessorInputViewId videoProcessorInputViewId);
+                                         VBSVGA3dVideoProcessorInputViewId videoProcessorInputViewId,
+                                         PVBOXDXKMRESOURCE pViewKMResource);
 int vgpu10DestroyVideoProcessorOutputView(PVBOXDX_DEVICE pDevice,
-                                          VBSVGA3dVideoProcessorOutputViewId videoProcessorOutputViewId);
+                                          VBSVGA3dVideoProcessorOutputViewId videoProcessorOutputViewId,
+                                          PVBOXDXKMRESOURCE pViewKMResource);
 int vgpu10VideoProcessorSetOutputTargetRect(PVBOXDX_DEVICE pDevice,
                                             VBSVGA3dVideoProcessorId videoProcessorId,
                                             BOOL enable,
@@ -515,6 +539,7 @@ int vgpu10GetVideoCapability(PVBOXDX_DEVICE pDevice,
 int vgpu10ClearView(PVBOXDX_DEVICE pDevice,
                     SVGAFifo3dCmdId cmdId,
                     uint32_t viewId,
+                    PVBOXDXKMRESOURCE pViewKMResource,
                     const float color[4],
                     const D3D10_DDI_RECT *paRects,
                     uint32_t cRects);
