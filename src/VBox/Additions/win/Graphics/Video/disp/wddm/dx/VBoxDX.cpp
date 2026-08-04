@@ -1,4 +1,4 @@
-/* $Id: VBoxDX.cpp 114634 2026-07-07 15:34:54Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxDX.cpp 114855 2026-08-04 19:16:41Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox D3D user mode driver.
  */
@@ -704,16 +704,20 @@ void vboxDXStorePatchLocation(PVBOXDX_DEVICE pDevice, void *pvPatch, PVBOXDXKMRE
         pKMResource->LastReferencedFenceValue = pDevice->ContextMonitoring.CurrentFenceValue;
     }
 
-    D3DDDI_PATCHLOCATIONLIST *pPatchLocation = &pDevice->pPatchLocationList[pDevice->cPatchLocations];
-    pPatchLocation->AllocationIndex = idxAllocation;
-    pPatchLocation->Value = 0;
-    pPatchLocation->DriverId = DriverId == 0
-                             ? pKMResource->AllocationDesc.enmAllocationType
-                             : DriverId;
-    pPatchLocation->AllocationOffset = offAllocation;
-    pPatchLocation->PatchOffset = (uintptr_t)pvPatch - (uintptr_t)pDevice->pCommandBuffer;
-    pPatchLocation->SplitOffset = pDevice->cbCommandBuffer;
-    ++pDevice->cPatchLocations;
+    /* Add an optional patch location. */
+    if (pvPatch)
+    {
+        D3DDDI_PATCHLOCATIONLIST *pPatchLocation = &pDevice->pPatchLocationList[pDevice->cPatchLocations];
+        pPatchLocation->AllocationIndex = idxAllocation;
+        pPatchLocation->Value = 0;
+        pPatchLocation->DriverId = DriverId == 0
+                                 ? pKMResource->AllocationDesc.enmAllocationType
+                                 : DriverId;
+        pPatchLocation->AllocationOffset = offAllocation;
+        pPatchLocation->PatchOffset = (uintptr_t)pvPatch - (uintptr_t)pDevice->pCommandBuffer;
+        pPatchLocation->SplitOffset = pDevice->cbCommandBuffer;
+        ++pDevice->cPatchLocations;
+    }
 
     /* Move the KM resource to the head of the resource list. */
     RTListNodeRemove(&pKMResource->nodeResource);
@@ -3538,7 +3542,8 @@ void vboxDXCreateShaderResourceView(PVBOXDX_DEVICE pDevice, PVBOXDXSHADERRESOURC
 
 void vboxDXGenMips(PVBOXDX_DEVICE pDevice, PVBOXDXSHADERRESOURCEVIEW pShaderResourceView)
 {
-    vgpu10GenMips(pDevice, pShaderResourceView->uShaderResourceViewId);
+    vgpu10GenMips(pDevice, pShaderResourceView->uShaderResourceViewId,
+                  vboxDXGetKMResource(pShaderResourceView->pResource));
 }
 
 
@@ -3546,7 +3551,8 @@ void vboxDXDestroyShaderResourceView(PVBOXDX_DEVICE pDevice, PVBOXDXSHADERRESOUR
 {
     RTListNodeRemove(&pShaderResourceView->nodeView);
 
-    vgpu10DestroyShaderResourceView(pDevice, pShaderResourceView->uShaderResourceViewId);
+    vgpu10DestroyShaderResourceView(pDevice, pShaderResourceView->uShaderResourceViewId,
+                                    vboxDXGetKMResource(pShaderResourceView->pResource));
     RTHandleTableFree(pDevice->hHTShaderResourceView, pShaderResourceView->uShaderResourceViewId);
 }
 
@@ -3603,13 +3609,15 @@ void vboxDXCreateRenderTargetView(PVBOXDX_DEVICE pDevice, PVBOXDXRENDERTARGETVIE
 
 void vboxDXClearRenderTargetView(PVBOXDX_DEVICE pDevice, PVBOXDXRENDERTARGETVIEW pRenderTargetView, const FLOAT ColorRGBA[4])
 {
-    vgpu10ClearRenderTargetView(pDevice, pRenderTargetView->uRenderTargetViewId, ColorRGBA);
+    vgpu10ClearRenderTargetView(pDevice, pRenderTargetView->uRenderTargetViewId,
+                                vboxDXGetKMResource(pRenderTargetView->pResource), ColorRGBA);
 }
 
 
 void vboxDXClearRenderTargetViewRegion(PVBOXDX_DEVICE pDevice, PVBOXDXRENDERTARGETVIEW pRenderTargetView, const FLOAT Color[4], const D3D10_DDI_RECT *pRect, UINT NumRects)
 {
-    vgpu10ClearRenderTargetViewRegion(pDevice, pRenderTargetView->uRenderTargetViewId, Color, pRect, NumRects);
+    vgpu10ClearRenderTargetViewRegion(pDevice, pRenderTargetView->uRenderTargetViewId,
+                                      vboxDXGetKMResource(pRenderTargetView->pResource), Color, pRect, NumRects);
 }
 
 
@@ -3625,7 +3633,8 @@ void vboxDXDestroyRenderTargetView(PVBOXDX_DEVICE pDevice, PVBOXDXRENDERTARGETVI
 
     RTListNodeRemove(&pRenderTargetView->nodeView);
 
-    vgpu10DestroyRenderTargetView(pDevice, pRenderTargetView->uRenderTargetViewId);
+    vgpu10DestroyRenderTargetView(pDevice, pRenderTargetView->uRenderTargetViewId,
+                                  vboxDXGetKMResource(pRenderTargetView->pResource));
     RTHandleTableFree(pDevice->hHTRenderTargetView, pRenderTargetView->uRenderTargetViewId);
 }
 
@@ -3679,7 +3688,8 @@ void vboxDXClearDepthStencilView(PVBOXDX_DEVICE pDevice, PVBOXDXDEPTHSTENCILVIEW
         svgaFlags |= SVGA3D_CLEAR_DEPTH;
     if (Flags & D3D10_DDI_CLEAR_STENCIL)
         svgaFlags |= SVGA3D_CLEAR_STENCIL;
-    vgpu10ClearDepthStencilView(pDevice, svgaFlags, Stencil, pDepthStencilView->uDepthStencilViewId, Depth);
+    vgpu10ClearDepthStencilView(pDevice, svgaFlags, Stencil, pDepthStencilView->uDepthStencilViewId,
+                                vboxDXGetKMResource(pDepthStencilView->pResource), Depth);
 }
 
 
@@ -3692,7 +3702,8 @@ void vboxDXDestroyDepthStencilView(PVBOXDX_DEVICE pDevice, PVBOXDXDEPTHSTENCILVI
 
     RTListNodeRemove(&pDepthStencilView->nodeView);
 
-    vgpu10DestroyDepthStencilView(pDevice, pDepthStencilView->uDepthStencilViewId);
+    vgpu10DestroyDepthStencilView(pDevice, pDepthStencilView->uDepthStencilViewId,
+                                  vboxDXGetKMResource(pDepthStencilView->pResource));
     RTHandleTableFree(pDevice->hHTDepthStencilView, pDepthStencilView->uDepthStencilViewId);
 }
 
@@ -3724,17 +3735,21 @@ void vboxDXSetRenderTargets(PVBOXDX_DEVICE pDevice, PVBOXDXDEPTHSTENCILVIEW pDep
 
     pDevice->pipeline.pDepthStencilView = pDepthStencilView;
 
-    /* Fetch view ids.*/
+    /* Fetch view ids and kernel mode resources. */
     uint32_t aRenderTargetViewIds[SVGA3D_MAX_SIMULTANEOUS_RENDER_TARGETS];
+    PVBOXDXKMRESOURCE aViewKMResources[SVGA3D_MAX_SIMULTANEOUS_RENDER_TARGETS];
     for (unsigned i = 0; i < NumRTVs; ++i)
     {
         PVBOXDXRENDERTARGETVIEW pRenderTargetView = papRenderTargetViews[i];
         aRenderTargetViewIds[i] = pRenderTargetView ? pRenderTargetView->uRenderTargetViewId : SVGA3D_INVALID_ID;
+        aViewKMResources[i] = pRenderTargetView ? vboxDXGetKMResource(pRenderTargetView->pResource) : NULL;
     }
 
     uint32_t DepthStencilViewId = pDepthStencilView ? pDepthStencilView->uDepthStencilViewId : SVGA3D_INVALID_ID;
 
-    vgpu10SetRenderTargets(pDevice, DepthStencilViewId, NumRTVs, ClearSlots, aRenderTargetViewIds);
+    vgpu10SetRenderTargets(pDevice, DepthStencilViewId, pDepthStencilView ? vboxDXGetKMResource(pDepthStencilView->pResource) : NULL,
+                           NumRTVs, ClearSlots, aRenderTargetViewIds,
+                           aViewKMResources);
 }
 
 
@@ -3759,15 +3774,17 @@ void vboxDXSetShaderResourceViews(PVBOXDX_DEVICE pDevice, SVGA3dShaderType enmSh
     }
     pSRVS->cShaderResourceView = cSRV;
 
-    /* Fetch View ids. */
+    /* Fetch View ids and kernel mode resources. */
     uint32_t aViewIds[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+    PVBOXDXKMRESOURCE aViewKMResources[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
     for (unsigned i = 0; i < NumViews; ++i)
     {
         VBOXDXSHADERRESOURCEVIEW *pView = papViews[i];
         aViewIds[i] = pView ? pView->uShaderResourceViewId : SVGA3D_INVALID_ID;
+        aViewKMResources[i] = pView ? vboxDXGetKMResource(pView->pResource) : NULL;
     }
 
-    vgpu10SetShaderResources(pDevice, enmShaderType, StartSlot, NumViews, aViewIds);
+    vgpu10SetShaderResources(pDevice, enmShaderType, StartSlot, NumViews, aViewIds, aViewKMResources);
 }
 
 
@@ -3878,7 +3895,8 @@ static void vboxDXUndefineResourceViews(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE
     {
         if (pShaderResourceView->fDefined)
         {
-            vgpu10DestroyShaderResourceView(pDevice, pShaderResourceView->uShaderResourceViewId);
+            vgpu10DestroyShaderResourceView(pDevice, pShaderResourceView->uShaderResourceViewId,
+                                            vboxDXGetKMResource(pShaderResourceView->pResource));
             pShaderResourceView->fDefined = false;
         }
     }
@@ -3888,7 +3906,8 @@ static void vboxDXUndefineResourceViews(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE
     {
         if (pRenderTargetView->fDefined)
         {
-            vgpu10DestroyRenderTargetView(pDevice, pRenderTargetView->uRenderTargetViewId);
+            vgpu10DestroyRenderTargetView(pDevice, pRenderTargetView->uRenderTargetViewId,
+                                          vboxDXGetKMResource(pRenderTargetView->pResource));
             pRenderTargetView->fDefined = false;
         }
     }
@@ -3898,7 +3917,8 @@ static void vboxDXUndefineResourceViews(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE
     {
         if (pDepthStencilView->fDefined)
         {
-            vgpu10DestroyDepthStencilView(pDevice, pDepthStencilView->uDepthStencilViewId);
+            vgpu10DestroyDepthStencilView(pDevice, pDepthStencilView->uDepthStencilViewId,
+                                          vboxDXGetKMResource(pDepthStencilView->pResource));
             pDepthStencilView->fDefined = false;
         }
     }
@@ -3908,7 +3928,8 @@ static void vboxDXUndefineResourceViews(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE
     {
         if (pUnorderedAccessView->fDefined)
         {
-            vgpu10DestroyUAView(pDevice, pUnorderedAccessView->uUnorderedAccessViewId);
+            vgpu10DestroyUAView(pDevice, pUnorderedAccessView->uUnorderedAccessViewId,
+                                vboxDXGetKMResource(pUnorderedAccessView->pResource));
             pUnorderedAccessView->fDefined = false;
         }
     }
@@ -3918,7 +3939,8 @@ static void vboxDXUndefineResourceViews(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE
     {
         if (pVDOV->fDefined)
         {
-            vgpu10DestroyVideoDecoderOutputView(pDevice, pVDOV->uVideoDecoderOutputViewId);
+            vgpu10DestroyVideoDecoderOutputView(pDevice, pVDOV->uVideoDecoderOutputViewId,
+                                                vboxDXGetKMResource(pVDOV->pResource));
             pVDOV->fDefined = false;
         }
     }
@@ -3928,7 +3950,8 @@ static void vboxDXUndefineResourceViews(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE
     {
         if (pVPIV->fDefined)
         {
-            vgpu10DestroyVideoProcessorInputView(pDevice, pVPIV->uVideoProcessorInputViewId);
+            vgpu10DestroyVideoProcessorInputView(pDevice, pVPIV->uVideoProcessorInputViewId,
+                                                 vboxDXGetKMResource(pVPIV->pResource));
             pVPIV->fDefined = false;
         }
     }
@@ -3939,7 +3962,8 @@ static void vboxDXUndefineResourceViews(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE
     {
         if (pVPOV->fDefined)
         {
-            vgpu10DestroyVideoProcessorOutputView(pDevice, pVPOV->uVideoProcessorOutputViewId);
+            vgpu10DestroyVideoProcessorOutputView(pDevice, pVPOV->uVideoProcessorOutputViewId,
+                                                  vboxDXGetKMResource(pVPOV->pResource));
             pVPOV->fDefined = false;
         }
     }
@@ -4051,7 +4075,7 @@ static void vboxdxUnbindResourceViews(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE p
                 if (pSRVS->apShaderResourceView[i] == pShaderResourceView)
                 {
                     uint32_t id = SVGA3D_INVALID_ID;
-                    vgpu10SetShaderResources(pDevice, enmShaderType, i, 1, &id);
+                    vgpu10SetShaderResources(pDevice, enmShaderType, i, 1, &id, NULL);
                 }
             }
         }
@@ -4146,7 +4170,7 @@ HRESULT vboxDXRotateResourceIdentities(PVBOXDX_DEVICE pDevice, UINT cResources, 
 
         if (fBound)
         {
-            vgpu10SetRenderTargets(pDevice, SVGA3D_INVALID_ID, 0, SVGA3D_MAX_SIMULTANEOUS_RENDER_TARGETS, NULL);
+            vgpu10SetRenderTargets(pDevice, SVGA3D_INVALID_ID, NULL, 0, SVGA3D_MAX_SIMULTANEOUS_RENDER_TARGETS, NULL, NULL);
             break;
         }
     }
@@ -4385,44 +4409,68 @@ void vboxDXDestroyUnorderedAccessView(PVBOXDX_DEVICE pDevice, PVBOXDXUNORDEREDAC
 {
     RTListNodeRemove(&pUnorderedAccessView->nodeView);
 
-    vgpu10DestroyUAView(pDevice, pUnorderedAccessView->uUnorderedAccessViewId);
+    vgpu10DestroyUAView(pDevice, pUnorderedAccessView->uUnorderedAccessViewId,
+                        vboxDXGetKMResource(pUnorderedAccessView->pResource));
     RTHandleTableFree(pDevice->hHTUnorderedAccessView, pUnorderedAccessView->uUnorderedAccessViewId);
 }
 
 
 void vboxDXClearUnorderedAccessViewUint(PVBOXDX_DEVICE pDevice, PVBOXDXUNORDEREDACCESSVIEW pUnorderedAccessView, const UINT Values[4])
 {
-    vgpu10ClearUAViewUint(pDevice, pUnorderedAccessView->uUnorderedAccessViewId, Values);
+    vgpu10ClearUAViewUint(pDevice, pUnorderedAccessView->uUnorderedAccessViewId,
+                          vboxDXGetKMResource(pUnorderedAccessView->pResource), Values);
 }
 
 
 void vboxDXClearUnorderedAccessViewFloat(PVBOXDX_DEVICE pDevice, PVBOXDXUNORDEREDACCESSVIEW pUnorderedAccessView, const FLOAT Values[4])
 {
-    vgpu10ClearUAViewFloat(pDevice, pUnorderedAccessView->uUnorderedAccessViewId, Values);
+    vgpu10ClearUAViewFloat(pDevice, pUnorderedAccessView->uUnorderedAccessViewId,
+                           vboxDXGetKMResource(pUnorderedAccessView->pResource), Values);
 }
 
 
-void vboxDXCsSetUnorderedAccessViews(PVBOXDX_DEVICE pDevice, UINT StartSlot, UINT NumViews, const uint32_t *paViewIds, const UINT* pUAVInitialCounts)
+void vboxDXCsSetUnorderedAccessViews(PVBOXDX_DEVICE pDevice, UINT StartSlot, UINT NumViews, const PVBOXDXUNORDEREDACCESSVIEW *papViews, const UINT* pUAVInitialCounts)
 {
-    for (unsigned i = 0; i < NumViews; ++i)
+    AssertReturnVoidStmt(   NumViews <= SVGA3D_DX11_1_MAX_UAVIEWS
+                         && StartSlot < SVGA3D_DX11_1_MAX_UAVIEWS
+                         && NumViews + StartSlot <= SVGA3D_DX11_1_MAX_UAVIEWS,
+                         vboxDXDeviceSetError(pDevice, E_INVALIDARG));
+
+    /* Fetch View ids and kernel mode resources. */
+    uint32_t aViewIds[SVGA3D_DX11_1_MAX_UAVIEWS];
+    PVBOXDXKMRESOURCE aViewKMResources[SVGA3D_DX11_1_MAX_UAVIEWS];
+    for (UINT i = 0; i < NumViews; ++i)
     {
-        if (paViewIds[i] != SVGA3D_INVALID_ID)
-            vgpu10SetStructureCount(pDevice, paViewIds[i], pUAVInitialCounts[i]);
+        VBOXDXUNORDEREDACCESSVIEW *pView = papViews[i];
+        aViewIds[i] = pView ? pView->uUnorderedAccessViewId : SVGA3D_INVALID_ID;
+        aViewKMResources[i] = pView ? vboxDXGetKMResource(pView->pResource) : NULL;
     }
 
-    vgpu10SetCSUAViews(pDevice, StartSlot, NumViews, paViewIds);
+    for (UINT i = 0; i < NumViews; ++i)
+    {
+        if (aViewIds[i] != SVGA3D_INVALID_ID)
+            vgpu10SetStructureCount(pDevice, aViewIds[i], aViewKMResources[i], pUAVInitialCounts[i]);
+    }
+
+    vgpu10SetCSUAViews(pDevice, StartSlot, NumViews, aViewIds, aViewKMResources);
 }
 
 
 void vboxDXSetUnorderedAccessViews(PVBOXDX_DEVICE pDevice, UINT StartSlot, UINT NumViews, const PVBOXDXUNORDEREDACCESSVIEW *papViews,
                                    const UINT *pUAVInitialCounts)
 {
-    /* Fetch view ids.*/
+    AssertReturnVoidStmt(   NumViews <= D3D11_1_UAV_SLOT_COUNT
+                         && StartSlot <= SVGA3D_MAX_SIMULTANEOUS_RENDER_TARGETS,
+                         vboxDXDeviceSetError(pDevice, E_INVALIDARG));
+
+    /* Fetch View ids and kernel mode resources. */
     uint32_t aViewIds[D3D11_1_UAV_SLOT_COUNT];
-    for (unsigned i = 0; i < NumViews; ++i)
+    PVBOXDXKMRESOURCE aViewKMResources[SVGA3D_DX11_1_MAX_UAVIEWS];
+    for (UINT i = 0; i < NumViews; ++i)
     {
-        PVBOXDXUNORDEREDACCESSVIEW pUnorderedAccessView = papViews[i];
-        aViewIds[i] = pUnorderedAccessView ? pUnorderedAccessView->uUnorderedAccessViewId : SVGA3D_INVALID_ID;
+        PVBOXDXUNORDEREDACCESSVIEW pView = papViews[i];
+        aViewIds[i] = pView ? pView->uUnorderedAccessViewId : SVGA3D_INVALID_ID;
+        aViewKMResources[i] = pView ? vboxDXGetKMResource(pView->pResource) : NULL;
     }
 
     UINT NumViewsToSet;
@@ -4439,13 +4487,13 @@ void vboxDXSetUnorderedAccessViews(PVBOXDX_DEVICE pDevice, UINT StartSlot, UINT 
 
     pDevice->pipeline.cUnorderedAccessViews = NumViews;
 
-    for (unsigned i = 0; i < NumViews; ++i)
+    for (UINT i = 0; i < NumViews; ++i)
     {
         if (aViewIds[i] != SVGA3D_INVALID_ID)
-            vgpu10SetStructureCount(pDevice, aViewIds[i], pUAVInitialCounts[i]);
+            vgpu10SetStructureCount(pDevice, aViewIds[i], aViewKMResources[i], pUAVInitialCounts[i]);
     }
 
-    vgpu10SetUAViews(pDevice, StartSlot, NumViewsToSet, aViewIds);
+    vgpu10SetUAViews(pDevice, StartSlot, NumViewsToSet, aViewIds, aViewKMResources);
 }
 
 
@@ -4465,7 +4513,8 @@ void vboxDXDispatchIndirect(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE pResource, 
 
 void vboxDXCopyStructureCount(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE pDstBuffer, UINT DstAlignedByteOffset, PVBOXDXUNORDEREDACCESSVIEW pSrcView)
 {
-    vgpu10CopyStructureCount(pDevice, pSrcView->uUnorderedAccessViewId, vboxDXGetKMResource(pDstBuffer), DstAlignedByteOffset);
+    vgpu10CopyStructureCount(pDevice, pSrcView->uUnorderedAccessViewId, vboxDXGetKMResource(pSrcView->pResource),
+                            vboxDXGetKMResource(pDstBuffer), DstAlignedByteOffset);
 }
 
 
@@ -4496,30 +4545,65 @@ HRESULT vboxDXBlt(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE pDstResource, UINT Ds
 }
 
 
-void vboxDXClearView(PVBOXDX_DEVICE pDevice, D3D11DDI_HANDLETYPE ViewType, uint32_t ViewId, FLOAT const Color[4], D3D10_DDI_RECT const *pRect, UINT NumRects)
+void vboxDXClearView(PVBOXDX_DEVICE pDevice, D3D11DDI_HANDLETYPE ViewType, void *pView, FLOAT const Color[4], D3D10_DDI_RECT const *pRect, UINT NumRects)
 {
-    SVGAFifo3dCmdId enmCmdId = VBSVGA_3D_CMD_DX_CLEAR_RTV;
+    SVGAFifo3dCmdId enmCmdId;
+    uint32_t ViewId;
+    PVBOXDXKMRESOURCE pViewKMResource;
+
+    /* "Possible types are the following.
+     * D3D10DDI_HT_RENDERTARGETVIEW
+     * D3D11DDI_HT_UNORDEREDACCESSVIEW
+     * Any D3D11_1DDI_HT_VIDEOXXX type"
+     */
+
     switch (ViewType)
     {
         case D3D10DDI_HT_RENDERTARGETVIEW:
+        {
+            PVBOXDXRENDERTARGETVIEW pRenderTargetView = (PVBOXDXRENDERTARGETVIEW)pView;
+            enmCmdId = VBSVGA_3D_CMD_DX_CLEAR_RTV;
+            ViewId = pRenderTargetView->uRenderTargetViewId;
+            pViewKMResource = vboxDXGetKMResource(pRenderTargetView->pResource);
             break;
+        }
         case D3D11DDI_HT_UNORDEREDACCESSVIEW:
+        {
+            PVBOXDXUNORDEREDACCESSVIEW pUnorderedAccessView = (PVBOXDXUNORDEREDACCESSVIEW)pView;
             enmCmdId = VBSVGA_3D_CMD_DX_CLEAR_UAV;
+            ViewId = pUnorderedAccessView->uUnorderedAccessViewId;
+            pViewKMResource = vboxDXGetKMResource(pUnorderedAccessView->pResource);
             break;
+        }
         case D3D11_1DDI_HT_VIDEODECODEROUTPUTVIEW:
+        {
+            PVBOXDXVIDEODECODEROUTPUTVIEW pVideoDecoderOutputView = (PVBOXDXVIDEODECODEROUTPUTVIEW)pView;
             enmCmdId = VBSVGA_3D_CMD_DX_CLEAR_VDOV;
+            ViewId = pVideoDecoderOutputView->uVideoDecoderOutputViewId;
+            pViewKMResource = vboxDXGetKMResource(pVideoDecoderOutputView->pResource);
             break;
+        }
         case D3D11_1DDI_HT_VIDEOPROCESSORINPUTVIEW:
+        {
+            PVBOXDXVIDEOPROCESSORINPUTVIEW pVideoProcessorInputView = (PVBOXDXVIDEOPROCESSORINPUTVIEW)pView;
             enmCmdId = VBSVGA_3D_CMD_DX_CLEAR_VPIV;
+            ViewId = pVideoProcessorInputView->uVideoProcessorInputViewId;
+            pViewKMResource = vboxDXGetKMResource(pVideoProcessorInputView->pResource);
             break;
+        }
         case D3D11_1DDI_HT_VIDEOPROCESSOROUTPUTVIEW:
+        {
+            PVBOXDXVIDEOPROCESSOROUTPUTVIEW pVideoProcessorOutputView = (PVBOXDXVIDEOPROCESSOROUTPUTVIEW)pView;
             enmCmdId = VBSVGA_3D_CMD_DX_CLEAR_VPOV;
+            ViewId = pVideoProcessorOutputView->uVideoProcessorOutputViewId;
+            pViewKMResource = vboxDXGetKMResource(pVideoProcessorOutputView->pResource);
             break;
+        }
         default:
             AssertFailedReturnVoid();
     }
 
-    vgpu10ClearView(pDevice, enmCmdId, ViewId, Color, pRect, NumRects);
+    vgpu10ClearView(pDevice, enmCmdId, ViewId, pViewKMResource, Color, pRect, NumRects);
 }
 
 
