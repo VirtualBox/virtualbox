@@ -2073,7 +2073,7 @@ static int hmR3InitFinalizeR0Amd(PVM pVM)
     if (pVM->hm.s.fPostedIntrs)
         LogRel(("HM:   Enabled posted-interrupt processing support\n"));
 
-    if (pVM->hm.s.svm.fAvic)
+    if (pVM->apCpusR3[0]->hm.s.svm.fUseAvic)
         LogRel(("HM:   Enabled AVIC support\n"));
 
     hmR3DisableRawMode(pVM);
@@ -2958,6 +2958,26 @@ VMMR3DECL(bool) HMR3IsPostedIntrsEnabled(PUVM pUVM)
     PVM pVM = pUVM->pVM;
     VM_ASSERT_VALID_EXT_RETURN(pVM, false);
     return pVM->hm.s.fPostedIntrs;
+}
+
+
+/**
+ * Checks if the SVM AVIC feature is enabled.
+ *
+ * This returns whether the APIC should only deliver PIC-style interrupts
+ * to the guest while all other interrupts are updated to the APIC page
+ * using the posted-interrupt bitmap.
+ *
+ * @returns @c true if SVM AVIC feature is enabled, @c false otherwise.
+ * @param   pUVM        The user mode VM handle.
+ */
+VMMR3DECL(bool) HMR3IsAvicEnabled(PUVM pUVM)
+{
+    UVM_ASSERT_VALID_EXT_RETURN(pUVM, false);
+    PVM pVM = pUVM->pVM;
+    VM_ASSERT_VALID_EXT_RETURN(pVM, false);
+    PCVMCPU pVCpu0 = pVM->apCpusR3[0];
+    return pVCpu0->hm.s.svm.fUseAvic;
 }
 
 

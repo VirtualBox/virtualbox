@@ -195,6 +195,8 @@ typedef struct APIC
     bool                        fVirtApicRegsEnabled;
     /** Whether posted-interrupt processing is enabled. */
     bool                        fPostedIntrsEnabled;
+    /** Whether the SVM AVIC feature is enabled. */
+    bool                        fAvicEnabled;
     /** Whether TSC-deadline timer mode is supported for the guest. */
     bool                        fSupportsTscDeadline;
     /** Whether this VM has an IO-APIC. */
@@ -211,6 +213,8 @@ typedef struct APIC
      * kernel load area and macOS kernel selector value (8), as we must not ever
      * apply this to the EFI code. */
     bool                        fMacOSWorkaround;
+    /** Alignment padding. */
+    bool                        afPadding[3];
     /** The max supported APIC mode from CFGM.  */
     PDMAPICMODE                 enmMaxMode;
     /** @} */

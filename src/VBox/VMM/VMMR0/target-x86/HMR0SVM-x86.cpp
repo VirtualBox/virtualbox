@@ -3820,8 +3820,15 @@ static VBOXSTRICTRC hmR0SvmEvaluatePendingEvent(PVMCPUCC pVCpu, PCSVMTRANSIENT p
             }
 #endif
             /* With the AVIC, we still need to deliver PIC style interrupts ourselves. */
-            if (   !pVCpu->hm.s.svm.fUseAvic
-                || VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_PIC))
+            bool fGetInterrupt = true;
+            if (pVCpu->hm.s.svm.fUseAvic)
+            {
+                if (!VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_PIC))
+                    fGetInterrupt = false;
+                if (VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_APIC))
+                    VMCPU_FF_CLEAR(pVCpu, VMCPU_FF_INTERRUPT_APIC);
+            }
+            if (fGetInterrupt)
             {
                 uint8_t u8Interrupt;
                 int rc = PDMGetInterrupt(pVCpu, &u8Interrupt);
@@ -4645,8 +4652,12 @@ static void hmR0SvmPostRunGuest(PVMCPUCC pVCpu, PSVMTRANSIENT pSvmTransient, VBO
         && PDMHasApic(pVM)) /** @todo Check where we can merge the PDMHasApic() call into fUseAvic. */
     {
         ASMAtomicUoWriteU64(&pVM->hmr0.s.svm.paAvicPhysIdTbl[pVCpu->idCpu], pVCpu->hmr0.s.svm.u64PhysIdEntry); /* Clear IsRunning bit. */
-        if (VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_APIC))
-            VMCPU_FF_CLEAR(pVCpu, VMCPU_FF_INTERRUPT_APIC);
+        /*
+         * It's possible VMCPU_FF_INTERRUPT_APIC might be pending here if interrupts were seen as disabled
+         * (or interrupt shadow was active) in hmR0SvmEvaluatePendingEvent. There is no easy way to detect
+         * if the interrupt was delivered by the AVIC hardware. Leaving the force-flag pending here should
+         * be fine (an extra check the next time around, mostly harmless).
+         */
     }
 
     /* If VMRUN failed, we can bail out early. This does -not- cover SVM_EXIT_INVALID. */
@@ -9335,7 +9346,7 @@ HMSVM_EXIT_DECL hmR0SvmExitAvicNoAccel(PVMCPUCC pVCpu, PSVMTRANSIENT pSvmTransie
     STAM_REL_COUNTER_INC(&pVCpu->hm.s.StatSvmExitAvicNoAccel);
 
     uint16_t const offApicReg = pSvmTransient->pVmcb->ctrl.u64ExitInfo1 & 0xfff;
-    bool const fWr = RT_BOOL(pSvmTransient->pVmcb->ctrl.u64ExitInfo1 % RT_BIT_64(32));
+    bool const fWr = RT_BOOL(pSvmTransient->pVmcb->ctrl.u64ExitInfo1 & RT_BIT_64(32));
 
     /*
      * Determine whether the access is fault or trap like.

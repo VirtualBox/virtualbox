@@ -2427,6 +2427,20 @@ static DECLCALLBACK(int) apicGetInterrupt(PVMCPUCC pVCpu, uint8_t *pu8Vector, ui
 
     LogFlow(("APIC%u: apicGetInterrupt:\n", pVCpu->idCpu));
 
+    /*
+     * When SVM AVIC is in use, we only deliver PIC-style interrupts here.
+     * Other interrupts are updated in the APIC page by the usual mechanism
+     * and picked up by the hardware without explicit event injection.
+     */
+    PVMCC  pVM   = pVCpu->CTX_SUFF(pVM);
+    PCAPIC pApic = VM_TO_APIC(pVM);
+    if (pApic->fAvicEnabled)
+    {
+        *pu8Vector = 0;
+        *puSrcTag  = 0;
+        return VERR_NO_DATA;
+    }
+
     PXAPICPAGE pXApicPage = VMCPU_TO_XAPICPAGE(pVCpu);
     bool const fApicHwEnabled = apicIsEnabled(pVCpu);
     if (   fApicHwEnabled
