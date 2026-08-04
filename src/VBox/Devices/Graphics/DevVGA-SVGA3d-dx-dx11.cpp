@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114853 2026-08-04 16:33:04Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114854 2026-08-04 18:26:47Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -2518,6 +2518,13 @@ static HRESULT dxDepthStencilViewCreate(PVGASTATECC pThisCC, SVGACOTableDXDSView
                 desc.Texture2DArray.FirstArraySlice = pEntry->firstArraySlice;
                 desc.Texture2DArray.ArraySize = pEntry->arraySize;
             }
+            break;
+        case SVGA3D_RESOURCE_TEXTURECUBE:
+            /* Cube is a 6 elements array. */
+            desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+            desc.Texture2DArray.MipSlice = pEntry->mipSlice;
+            desc.Texture2DArray.FirstArraySlice = pEntry->firstArraySlice;
+            desc.Texture2DArray.ArraySize = pEntry->arraySize;
             break;
         default:
             ASSERT_GUEST_FAILED_RETURN(E_INVALIDARG);
