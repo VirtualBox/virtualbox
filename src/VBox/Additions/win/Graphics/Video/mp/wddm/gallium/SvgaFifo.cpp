@@ -1,4 +1,4 @@
-/* $Id: SvgaFifo.cpp 114842 2026-07-31 22:15:02Z vitali.pelenjow@oracle.com $ */
+/* $Id: SvgaFifo.cpp 114852 2026-08-04 16:30:42Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - VMSVGA FIFO.
  */
@@ -543,17 +543,17 @@ static NTSTATUS svgaCBSubmitLocked(PVBOXWDDM_EXT_VMSVGA pSvga, PVMSVGACB pCB, PV
     PVMSVGACBSTATE pCBState = pSvga->pCBState;
     PVMSVGACBHEADERS pCBHeaders = cbStateHeaders(pCBState);
 
+    /* Allocate a header for the buffer. */
+    Assert(pCBCtx->cHeaders <= RT_ELEMENTS(pCBHeaders->aContext0CBHeaders));
+    if (pCBCtx->cHeaders == 0)
+        return STATUS_PENDING;
+
 #ifdef DEBUG
     Assert(!pCB->fSubmitted);
     if (pCB->fSubmitted)
         GALOG(("CB: %p already submitted\n", pCB));
     pCB->fSubmitted = true;
 #endif
-
-    /* Allocate a header for the buffer. */
-    Assert(pCBCtx->cHeaders <= RT_ELEMENTS(pCBHeaders->aContext0CBHeaders));
-    if (pCBCtx->cHeaders == 0)
-        return STATUS_PENDING;
 
     SVGACBHeader *pCBHeader = &pCBHeaders->aContext0CBHeaders[pCBCtx->idxNextHeader];
     pCBCtx->idxNextHeader = (pCBCtx->idxNextHeader + 1) % RT_ELEMENTS(pCBHeaders->aContext0CBHeaders);
