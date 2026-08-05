@@ -1,4 +1,4 @@
-/* $Id: ClipboardImpl.h 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardImpl.h 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Console clipboard API.
  */
@@ -102,9 +102,22 @@ public:
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     HRESULT i_transferCancel(ULONG aTransferId);
     HRESULT i_transferCancel(SHCLSESSIONID aServiceSessionId, SHCLTRANSFERID aTransferId, SHCLTRANSFERGEN aGeneration);
+    /**
+     * Handles a Shared Clipboard transfer lifecycle status delivered by the host service.
+     *
+     * @returns COM status code.
+     * @param   aServiceSessionId   Shared Clipboard service session identifier.
+     * @param   aTransferId         Shared Clipboard transfer identifier.
+     * @param   aGeneration         Host-private transfer generation.
+     * @param   aTransfer           Borrowed service transfer backing the data plane.
+     * @param   enmShClSource       Data source recorded by the backing transfer.
+     * @param   enmStatus           Transfer lifecycle status.
+     * @param   vrcTransfer         Transfer status result code.
+     */
     HRESULT i_handleTransferStatus(SHCLSESSIONID aServiceSessionId,
                                    SHCLTRANSFERID aTransferId,
                                    SHCLTRANSFERGEN aGeneration,
+                                   PSHCLTRANSFER aTransfer,
                                    SHCLSOURCE enmShClSource,
                                    SHCLTRANSFERSTATUS enmStatus,
                                    int vrcTransfer);
@@ -201,6 +214,23 @@ private:
      * @{ */
     HRESULT requestData(const com::Utf8Str &aMimeType,
                         ULONG *aRequestId);
+    /**
+     * Sets a Shared Clipboard transfer status for Main testcase coverage.
+     *
+     * @returns COM status code.
+     * @param   aServiceSessionId   Shared Clipboard service session identifier.
+     * @param   aTransferId         Shared Clipboard transfer identifier.
+     * @param   aGeneration         Host-private transfer generation.
+     * @param   aSource             Data source associated with the status.
+     * @param   aStatus             Internal Shared Clipboard transfer status value.
+     * @param   aResult             IPRT result associated with the status.
+     */
+    HRESULT setTransferStatus(ULONG aServiceSessionId,
+                              ULONG aTransferId,
+                              LONG64 aGeneration,
+                              ClipboardSource_T aSource,
+                              ULONG aStatus,
+                              LONG aResult);
     /** @} */
 
     HRESULT i_createFormat(const com::Utf8Str &aMimeType, ComPtr<IClipboardFormat> &aFormat);
@@ -233,7 +263,8 @@ private:
     ULONG i_fireDataRequested(VBOXSHCLMAINCLIENTID aClientId,
                               ClipboardAction_T aAction,
                               ClipboardSource_T aSource,
-                              uint32_t uFormat);
+                              uint32_t uFormat,
+                              const std::vector<BYTE> *pResolvedBuffer = NULL);
     bool i_isClientIdRegisteredLocked(VBOXSHCLMAINCLIENTID aClientId) const;
     bool i_isClientFormatOwnerLocked(VBOXSHCLMAINCLIENTID aClientId, uint32_t fFormats, ClipboardSource_T aSource) const;
     VBOXSHCLMAINCLIENTID i_allocateClientId();

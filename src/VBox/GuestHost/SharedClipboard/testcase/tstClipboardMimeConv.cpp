@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMimeConv.cpp 114767 2026-07-24 22:06:05Z knut.osmundsen@oracle.com $ */
+/* $Id: tstClipboardMimeConv.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard MIME converter testcase.
  */
@@ -30,9 +30,13 @@
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
 #include <VBox/GuestHost/SharedClipboard.h>
+#include <VBox/GuestHost/clipboard-helper.h>
 #include <VBox/GuestHost/mime-type-converter.h>
 
 #include <iprt/err.h>
+#include <iprt/file.h>
+#include <iprt/path.h>
+#include <iprt/stream.h>
 #include <iprt/string.h>
 #include <iprt/test.h>
 #include <iprt/utf16.h>
@@ -136,6 +140,74 @@ static void testUriListMapping(void)
 }
 
 #endif
+
+
+/**
+ * Tests escaped output containing multibyte UTF-8 on a text-mode stream.
+ */
+static void testEscapedString(void)
+{
+    RTTestISub("escaped UTF-8 output");
+
+    static const char s_szInput[] =
+        "A\"\\\n\t"
+        "\xc3\xa9\xe2\x82\xac\xf0\x9f\x98\x80";
+    static const char s_szExpected[] =
+        "A\\\"\\\\\\n\\t"
+        "\xc3\xa9\xe2\x82\xac\xf0\x9f\x98\x80";
+
+    char szFilename[RTPATH_MAX];
+    RTFILE hFile = NIL_RTFILE;
+    int rc = RTFileOpenTemp(&hFile, szFilename, sizeof(szFilename),
+                            RTFILE_O_CREATE | RTFILE_O_READWRITE | RTFILE_O_DENY_NONE);
+    if (RT_FAILURE(rc))
+    {
+        RTTestIFailed("RTFileOpenTemp failed: %Rrc", rc);
+        return;
+    }
+    rc = RTFileClose(hFile);
+    if (RT_FAILURE(rc))
+    {
+        RTTestIFailed("RTFileClose failed: %Rrc", rc);
+        RTFileDelete(szFilename);
+        return;
+    }
+
+    PRTSTREAM pStrm = NULL;
+    rc = RTStrmOpen(szFilename, "w", &pStrm);
+    if (RT_SUCCESS(rc))
+        rc = RTStrmSetMode(pStrm, false /* fBinary */, true /* fCurrentCodeSet */);
+    if (RT_SUCCESS(rc))
+    {
+        ShClHlpPrintEscapedString(pStrm, s_szInput, sizeof(s_szInput) - 1);
+        rc = RTStrmError(pStrm);
+    }
+    if (RT_FAILURE(rc))
+        RTTestIFailed("Writing escaped UTF-8 failed: %Rrc", rc);
+    int const rcClose = RTStrmClose(pStrm);
+    if (RT_FAILURE(rcClose))
+        RTTestIFailed("RTStrmClose failed: %Rrc", rcClose);
+
+    void *pvOutput = NULL;
+    size_t cbOutput = 0;
+    rc = RTFileReadAll(szFilename, &pvOutput, &cbOutput);
+    if (RT_FAILURE(rc))
+        RTTestIFailed("RTFileReadAll failed: %Rrc", rc);
+    else
+    {
+        RTTESTI_CHECK_MSG(cbOutput == sizeof(s_szExpected) - 1,
+                          ("cbOutput=%zu expected=%zu\n", cbOutput, sizeof(s_szExpected) - 1));
+        if (cbOutput == sizeof(s_szExpected) - 1)
+            RTTESTI_CHECK_MSG(memcmp(pvOutput, s_szExpected, cbOutput) == 0,
+                              ("output='%.*Rhxs' expected='%.*Rhxs'\n",
+                               cbOutput, pvOutput, sizeof(s_szExpected) - 1, s_szExpected));
+        RTFileReadAllFree(pvOutput, cbOutput);
+    }
+
+    rc = RTFileDelete(szFilename);
+    RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+}
+
 
 static void testText(RTTEST hTest)
 {
@@ -336,6 +408,7 @@ int main(int argc, char **argv)
         return rcExit;
 
     RTTestBanner(hTest);
+    testEscapedString();
     testText(hTest);
 #if 0 /** @todo r=bird: file transfers require a very different approach... */
     testUriListMapping();

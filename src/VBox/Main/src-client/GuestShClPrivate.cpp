@@ -1,4 +1,4 @@
-/* $Id: GuestShClPrivate.cpp 114632 2026-07-07 15:27:30Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClPrivate.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Private Shared Clipboard code.
  */
@@ -501,18 +501,17 @@ int GuestShCl::ReadDataFromHost(SHCLFORMAT uFormat, void *pvData, uint32_t cbDat
     SHCLCLIENTCMDCTX cmdCtx;
     RT_ZERO(cmdCtx);
 
-    int vrc = lock();
+    PSHCLCLIENT pClient = NULL;
+    int vrc = i_beginGuestRead(&pClient);
     if (RT_FAILURE(vrc))
         return vrc;
 
-    PSHCLCLIENT pClient = m_pClient;
-    if (   pClient
-        && pClient->pBackend)
+    if (pClient->pBackend)
         vrc = ShClBackendReadData(pClient->pBackend, pClient, &cmdCtx, uFormat, pvData, cbData, pcbActual);
     else
         vrc = VERR_SHCLPB_NO_DATA;
 
-    unlock();
+    i_endGuestRead();
     return vrc;
 }
 
@@ -529,10 +528,14 @@ int GuestShCl::ReportFormatsToHost(SHCLFORMATS fFormats)
         return vrc;
 
     ++m_uGuestDataSeq;
+    unlock();
 
-    PSHCLCLIENT pClient = m_pClient;
-    if (   pClient
-        && pClient->pBackend)
+    PSHCLCLIENT pClient = NULL;
+    vrc = i_beginGuestRead(&pClient);
+    if (RT_FAILURE(vrc))
+        return vrc == VERR_SHCLPB_NO_DATA ? VINF_SUCCESS : vrc;
+
+    if (pClient->pBackend)
     {
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
         fFormats = shClSvcHandleFormats(false /* fHostToGuest */, pClient, fFormats);
@@ -542,7 +545,7 @@ int GuestShCl::ReportFormatsToHost(SHCLFORMATS fFormats)
     else
         vrc = VINF_SUCCESS;
 
-    unlock();
+    i_endGuestRead();
     return vrc;
 }
 
@@ -563,18 +566,17 @@ int GuestShCl::WriteDataToHost(SHCLFORMAT uFormat, void *pvData, uint32_t cbData
     SHCLCLIENTCMDCTX cmdCtx;
     RT_ZERO(cmdCtx);
 
-    int vrc = lock();
+    PSHCLCLIENT pClient = NULL;
+    int vrc = i_beginGuestRead(&pClient);
     if (RT_FAILURE(vrc))
-        return vrc;
+        return vrc == VERR_SHCLPB_NO_DATA ? VINF_SUCCESS : vrc;
 
-    PSHCLCLIENT pClient = m_pClient;
-    if (   pClient
-        && pClient->pBackend)
+    if (pClient->pBackend)
         vrc = ShClBackendWriteData(pClient->pBackend, pClient, &cmdCtx, uFormat, pvData, cbData);
     else
         vrc = VINF_SUCCESS;
 
-    unlock();
+    i_endGuestRead();
     return vrc;
 }
 
@@ -625,12 +627,10 @@ int GuestShCl::ReportFormatsToGuest(PSHCLCLIENT pClient, SHCLFORMATS fFormats, S
     switch (enmSource)
     {
         case SHCLSOURCE_LOCAL:
-            i_incHostDataSeq();
             enmClipboardSource = ClipboardSource_Host;
             break;
 
         case SHCLSOURCE_REMOTE:
-            i_incGuestDataSeq();
             enmClipboardSource = ClipboardSource_Guest;
             break;
 
@@ -638,15 +638,34 @@ int GuestShCl::ReportFormatsToGuest(PSHCLCLIENT pClient, SHCLFORMATS fFormats, S
             AssertFailedReturn(VERR_INVALID_PARAMETER);
     }
 
+    /* Reuse the guest-read lifetime guard to keep the weak service client valid
+     * while the platform backend reports the formats. */
+    PSHCLCLIENT pActiveClient = NULL;
+    int vrc = i_beginGuestRead(&pActiveClient);
+    if (RT_FAILURE(vrc))
+        return vrc;
+    if (pClient != pActiveClient)
+    {
+        i_endGuestRead();
+        return VERR_SHCLPB_NO_DATA;
+    }
+
+    if (enmSource == SHCLSOURCE_LOCAL)
+        i_incHostDataSeq();
+    else
+        i_incGuestDataSeq();
+
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     fFormats = shClSvcHandleFormats(true /* fHostToGuest */, pClient, fFormats);
 #endif
 
-    int vrc;
     if (pClient->pBackend)
         vrc = ShClBackendReportFormatsToGuest(pClient->pBackend, pClient, fFormats);
     else
         vrc = VINF_SUCCESS;
+
+    i_endGuestRead();
+
     if (RT_SUCCESS(vrc))
     {
         AssertPtr(m_pConsole->i_getClipboard());

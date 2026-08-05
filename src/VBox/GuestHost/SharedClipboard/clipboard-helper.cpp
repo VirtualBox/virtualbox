@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.cpp 114834 2026-07-31 11:53:00Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-helper.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Helper functions.
  */
@@ -992,22 +992,37 @@ void ShClHlpPrintEscapedString(PRTSTREAM pStrm, const char *pszText, size_t cchT
         return;
     AssertPtrReturnVoid(pszText);
 
+    size_t offPending = 0;
     for (size_t i = 0; i < cchText; i++)
     {
         unsigned char const ch = (unsigned char)pszText[i];
+        const char *pszEscape = NULL;
+        size_t cchEscape = 0;
         switch (ch)
         {
-            case '\n': RTStrmWrite(pStrm, RT_STR_TUPLE("\\n")); break;
-            case '\r': RTStrmWrite(pStrm, RT_STR_TUPLE("\\r")); break;
-            case '\t': RTStrmWrite(pStrm, RT_STR_TUPLE("\\t")); break;
-            case '\\': RTStrmWrite(pStrm, RT_STR_TUPLE("\\\\")); break;
-            case '"':  RTStrmWrite(pStrm, RT_STR_TUPLE("\\\"")); break;
+            case '\n': pszEscape = "\\n";  cchEscape = 2; break;
+            case '\r': pszEscape = "\\r";  cchEscape = 2; break;
+            case '\t': pszEscape = "\\t";  cchEscape = 2; break;
+            case '\\': pszEscape = "\\\\"; cchEscape = 2; break;
+            case '"':  pszEscape = "\\\""; cchEscape = 2; break;
             default:
-                if (ch >= 0x20)
-                    RTStrmPutCh(pStrm, ch);
-                else
+                if (ch < 0x20)
+                {
+                    if (i > offPending)
+                        RTStrmWrite(pStrm, &pszText[offPending], i - offPending);
                     RTStrmPrintf(pStrm, "\\x%02x", ch);
+                    offPending = i + 1;
+                }
                 break;
         }
+        if (pszEscape)
+        {
+            if (i > offPending)
+                RTStrmWrite(pStrm, &pszText[offPending], i - offPending);
+            RTStrmWrite(pStrm, pszEscape, cchEscape);
+            offPending = i + 1;
+        }
     }
+    if (offPending < cchText)
+        RTStrmWrite(pStrm, &pszText[offPending], cchText - offPending);
 }

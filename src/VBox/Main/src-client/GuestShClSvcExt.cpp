@@ -1,4 +1,4 @@
-/* $Id: GuestShClSvcExt.cpp 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClSvcExt.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard service extension handling for Main.
  */
@@ -31,6 +31,7 @@
 #include "ConsoleImpl.h"
 #include "ClipboardImpl.h"
 #include "GuestShClPrivate.h"
+#include "Global.h"
 
 #include <VBox/GuestHost/SharedClipboard.h>
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
@@ -48,34 +49,6 @@ static size_t const s_cchShClSvcExtStringMax = _64K;
 
 
 /**
- * Checks whether a Shared Clipboard format mask contains only known format bits.
- *
- * @returns true if \a fFormats only contains VBOX_SHCL_FMT_XXX bits, false otherwise.
- * @param   fFormats            Format mask to validate.
- * @param   fAllowNone          Whether VBOX_SHCL_FMT_NONE is accepted.
- */
-static bool shClSvcExtIsValidFormats(SHCLFORMATS fFormats, bool fAllowNone)
-{
-    if (fFormats == VBOX_SHCL_FMT_NONE)
-        return fAllowNone;
-    return (fFormats & ~VBOX_SHCL_FMT_VALID_MASK) == 0;
-}
-
-/**
- * Checks whether a value names exactly one Shared Clipboard format.
- *
- * @returns true if \a uFormat is a single valid VBOX_SHCL_FMT_XXX bit, false otherwise.
- * @param   uFormat             Format value to validate.
- */
-static bool shClSvcExtIsValidFormat(SHCLFORMAT uFormat)
-{
-    return    uFormat != VBOX_SHCL_FMT_NONE
-           && (uFormat & ~VBOX_SHCL_FMT_VALID_MASK) == 0
-           && (uFormat & (uFormat - 1)) == 0;
-}
-
-
-/**
  * Validates a single Shared Clipboard format from service-extension parameters.
  *
  * @returns VBox status code.
@@ -86,52 +59,12 @@ static bool shClSvcExtIsValidFormat(SHCLFORMAT uFormat)
  */
 static int shClSvcExtValidateFormat(SHCLFORMAT uFormat, uint32_t u32Function)
 {
-    if (shClSvcExtIsValidFormat(uFormat))
+    if (ShClFormatIsValid(uFormat))
         return VINF_SUCCESS;
     LogRelMax2(16, ("Shared Clipboard: Rejecting service-extension function %RU32 with invalid format %#x\n",
                     u32Function, uFormat));
     return VERR_INVALID_PARAMETER;
 }
-
-/**
- * Checks whether a Shared Clipboard source value is valid for Main callbacks.
- *
- * @returns true if \a enmSource is a valid non-invalid SHCLSOURCE value, false otherwise.
- * @param   enmSource           Source value to validate.
- */
-static bool shClSvcExtIsValidSource(SHCLSOURCE enmSource)
-{
-    return    enmSource == SHCLSOURCE_LOCAL
-           || enmSource == SHCLSOURCE_REMOTE;
-}
-
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-/**
- * Checks whether a Shared Clipboard transfer status value is valid for a transfer status reply.
- *
- * @returns true if \a uStatus is a known SHCLTRANSFERSTATUS value accepted from the guest,
- *          false otherwise.
- * @param   uStatus             Transfer status value to validate.
- */
-static bool shClSvcExtIsValidTransferStatus(SHCLTRANSFERSTATUS uStatus)
-{
-    switch (uStatus)
-    {
-        case SHCLTRANSFERSTATUS_REQUESTED:
-        case SHCLTRANSFERSTATUS_INITIALIZED:
-        case SHCLTRANSFERSTATUS_UNINITIALIZED:
-        case SHCLTRANSFERSTATUS_STARTED:
-        case SHCLTRANSFERSTATUS_COMPLETED:
-        case SHCLTRANSFERSTATUS_CANCELED:
-        case SHCLTRANSFERSTATUS_KILLED:
-        case SHCLTRANSFERSTATUS_ERROR:
-            return true;
-
-        default:
-            return false;
-    }
-}
-#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 /**
  * Validates a string coming from the HGCM dispatcher.
@@ -259,7 +192,7 @@ int GuestShCl::i_validateSvcExtParms(uint32_t u32Function, void *pvParms, uint32
             return VINF_SUCCESS;
 
         case VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_HOST:
-            AssertReturn(shClSvcExtIsValidFormats(pParms->u.ReportFormats.uFormats, true /* fAllowNone */),
+            AssertReturn(ShClFormatsAreValid(pParms->u.ReportFormats.uFormats),
                          VERR_INVALID_PARAMETER);
             AssertPtrReturn(pActiveClient, VERR_INVALID_POINTER);
             AssertReturn(pParms->u.ReportFormats.pClient == pActiveClient, VERR_INVALID_PARAMETER);
@@ -268,12 +201,12 @@ int GuestShCl::i_validateSvcExtParms(uint32_t u32Function, void *pvParms, uint32
             return VINF_SUCCESS;
 
         case VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_GUEST:
-            AssertReturn(shClSvcExtIsValidFormats(pParms->u.ReportFormats.uFormats, true /* fAllowNone */),
+            AssertReturn(ShClFormatsAreValid(pParms->u.ReportFormats.uFormats),
                          VERR_INVALID_PARAMETER);
             AssertPtrReturn(pActiveClient, VERR_INVALID_POINTER);
             AssertReturn(pParms->u.ReportFormats.pClient == pActiveClient, VERR_INVALID_PARAMETER);
             AssertPtrReturn(pParms->u.ReportFormats.pClient->pBackend, VERR_INVALID_POINTER);
-            AssertReturn(shClSvcExtIsValidSource(pParms->u.ReportFormats.enmSource), VERR_INVALID_PARAMETER);
+            AssertReturn(ShClSourceIsValid(pParms->u.ReportFormats.enmSource), VERR_INVALID_PARAMETER);
             return VINF_SUCCESS;
 
         case VBOX_CLIPBOARD_EXT_FN_DATA_READ:
@@ -351,22 +284,23 @@ int GuestShCl::i_validateSvcExtParms(uint32_t u32Function, void *pvParms, uint32
             PSHCLTRANSFER const pTransfer = pParms->u.FileTransferData.pTransfer;
             AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
             AssertPtrReturn(pParms->u.FileTransferData.pReply, VERR_INVALID_POINTER);
-            AssertReturn(pParms->u.FileTransferData.enmShClSource == SHCLSOURCE_REMOTE, VERR_INVALID_PARAMETER);
-            AssertReturn(ShClTransferCtxGetTransferByKey(&pClient->Transfers.Ctx,
-                                                         ShClTransferGetSessionId(pTransfer),
-                                                         ShClTransferGetID(pTransfer),
-                                                         ShClTransferGetGeneration(pTransfer)) == pTransfer,
-                         VERR_INVALID_CONTEXT);
+            AssertReturn(ShClSourceIsValid(pParms->u.FileTransferData.enmShClSource), VERR_INVALID_PARAMETER);
+            PSHCLTRANSFER const pRegisteredTransfer
+                = ShClTransferCtxGetTransferByKey(&pClient->Transfers.Ctx,
+                                                  ShClTransferGetSessionId(pTransfer),
+                                                  ShClTransferGetID(pTransfer),
+                                                  ShClTransferGetGeneration(pTransfer));
+            if (pRegisteredTransfer != pTransfer)
+                return VERR_INVALID_CONTEXT;
 
             PSHCLREPLY const pReply = pParms->u.FileTransferData.pReply;
             AssertReturn(pReply->uType == VBOX_SHCL_TX_REPLYMSGTYPE_TRANSFER_STATUS, VERR_INVALID_PARAMETER);
             AssertReturn(pReply->pvPayload == NULL, VERR_INVALID_PARAMETER);
             AssertReturn(pReply->cbPayload == 0, VERR_INVALID_PARAMETER);
-            AssertReturn(shClSvcExtIsValidTransferStatus(pReply->u.TransferStatus.uStatus), VERR_INVALID_PARAMETER);
-            AssertReturn(   pReply->u.TransferStatus.uStatus == SHCLTRANSFERSTATUS_ERROR
-                         || RT_SUCCESS((int)pReply->rc), VERR_INVALID_PARAMETER);
-            AssertReturn(   pReply->u.TransferStatus.uStatus != SHCLTRANSFERSTATUS_ERROR
-                         || RT_FAILURE((int)pReply->rc), VERR_INVALID_PARAMETER);
+            SHCLTRANSFERSTATUS const enmStatus = pReply->u.TransferStatus.uStatus;
+            AssertReturn(   enmStatus != SHCLTRANSFERSTATUS_NONE
+                         && ShClTransferStatusResultIsValid(enmStatus, (int)pReply->rc),
+                         VERR_INVALID_PARAMETER);
             return VINF_SUCCESS;
         }
 #endif
@@ -659,8 +593,9 @@ int GuestShCl::i_handleSvcExtBackendDisconnect(PSHCLEXTPARMS pParms, void *pvPar
 
         i_waitForGuestReads();
 
-        lock();
         vrc = ShClBackendDisconnect(pClient->pBackend, pClient);
+
+        lock();
         if (m_pClient == pClient)
         {
             m_pClient = NULL;
@@ -739,13 +674,27 @@ int GuestShCl::i_handleSvcExtFileTransfer(PSHCLEXTPARMS pParms, void *pvParms, u
         vrc = ShClBackendTransferHandleStatusReply(pClient->pBackend, pClient, pTransfer, enmShClSource,
                                                    pReply->u.TransferStatus.uStatus, (int)pReply->rc);
 
-    Clipboard *pClipboard = m_pConsole->i_getClipboard();
-    if (pClipboard)
+    if (RT_SUCCESS(vrc))
     {
-        HRESULT hrc = pClipboard->i_handleTransferStatus(idSession, idTransfer, uGeneration,
-                                                         enmShClSource, enmStatus, vrcTransfer);
-        if (FAILED(hrc))
-            LogFunc(("Main transfer status handling failed: hrc=%Rhrc\n", hrc));
+        Clipboard *pClipboard = m_pConsole->i_getClipboard();
+        if (pClipboard)
+        {
+            /*
+             * enmShClSource identifies the endpoint which issued this reply
+             * and is therefore the right value for the platform backend.
+             * Main's persistent transfer object records the data source
+             * instead, which is an invariant of the backing transfer even
+             * when the opposite endpoint reports a lifecycle transition.
+             */
+            SHCLSOURCE const enmTransferSource = ShClTransferGetSource(pTransfer);
+            HRESULT const hrc = pClipboard->i_handleTransferStatus(idSession, idTransfer, uGeneration, pTransfer,
+                                                                   enmTransferSource, enmStatus, vrcTransfer);
+            if (FAILED(hrc))
+            {
+                LogFunc(("Main transfer status handling failed: hrc=%Rhrc\n", hrc));
+                vrc = Global::vboxStatusCodeFromCOM(hrc);
+            }
+        }
     }
 
     return vrc;

@@ -1,4 +1,4 @@
-/* $Id: clipboard-common.cpp 114830 2026-07-31 10:02:47Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-common.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common helper objects.
  */
@@ -862,6 +862,62 @@ char *ShClFormatsToStrA(SHCLFORMATS fFormats)
 
 
 /*********************************************************************************************************************************
+*   Shared Clipboard validation                                                                                                  *
+*********************************************************************************************************************************/
+
+/**
+ * Checks whether a value names exactly one Shared Clipboard format.
+ *
+ * @returns true if @a uFmt is a single valid VBOX_SHCL_FMT_XXX bit, false otherwise.
+ * @param   uFmt                Format value to validate.
+ */
+VBGH_DECL(bool) ShClFormatIsValid(SHCLFORMAT uFmt)
+{
+    return    uFmt != VBOX_SHCL_FMT_NONE
+           && (uFmt & ~VBOX_SHCL_FMT_VALID_MASK) == 0
+           && (uFmt & (uFmt - 1)) == 0;
+}
+
+
+/**
+ * Checks whether a Shared Clipboard format mask contains only known format bits.
+ *
+ * @returns true if @a fFormats only contains VBOX_SHCL_FMT_XXX bits, false otherwise.
+ * @param   fFormats            Format mask to validate. VBOX_SHCL_FMT_NONE is valid.
+ */
+VBGH_DECL(bool) ShClFormatsAreValid(SHCLFORMATS fFormats)
+{
+    return (fFormats & ~VBOX_SHCL_FMT_VALID_MASK) == 0;
+}
+
+
+/**
+ * Checks whether a Shared Clipboard transfer direction is valid.
+ *
+ * @returns true if @a enmDir is valid, false otherwise.
+ * @param   enmDir              Transfer direction to validate.
+ */
+VBGH_DECL(bool) ShClTransferDirIsValid(SHCLTRANSFERDIR enmDir)
+{
+    return    enmDir == SHCLTRANSFERDIR_FROM_REMOTE
+           || enmDir == SHCLTRANSFERDIR_TO_REMOTE;
+}
+
+
+/**
+ * Checks whether a Shared Clipboard source is valid.
+ *
+ * @returns true if @a enmSource is valid, false otherwise.
+ * @param   enmSource           Source to validate.
+ */
+VBGH_DECL(bool) ShClSourceIsValid(SHCLSOURCE enmSource)
+{
+    return    enmSource == SHCLSOURCE_LOCAL
+           || enmSource == SHCLSOURCE_REMOTE;
+}
+
+
+/*********************************************************************************************************************************
 *   Shared Clipboard Cache                                                                                                       *
 *********************************************************************************************************************************/
 
@@ -1112,7 +1168,7 @@ VBGH_DECL(int) ShClCacheSetMultiple(PSHCLCACHE pCache, SHCLFORMATS uFmts, const 
     AssertPtrReturn(pvData, VERR_INVALID_POINTER);
     AssertReturn(cbData, VERR_INVALID_PARAMETER);
     AssertReturn(uFmts != VBOX_SHCL_FMT_NONE, VERR_INVALID_PARAMETER);
-    AssertReturn(!(uFmts & ~VBOX_SHCL_FMT_VALID_MASK), VERR_INVALID_FLAGS);
+    AssertReturn(ShClFormatsAreValid(uFmts), VERR_INVALID_FLAGS);
 
     int rc = VINF_SUCCESS;
     SHCLFORMATS uFmtsLeft = uFmts;
