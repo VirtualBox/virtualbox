@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferManagerImpl.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferManagerImpl.cpp 114859 2026-08-05 15:28:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer manager object.
  */
@@ -407,8 +407,7 @@ HRESULT ClipboardTransferManager::create(ClipboardTransferDirection_T aDirection
     }
 
     aTransfer = ptrTransfer;
-    ClipboardTransfer *pTransfer = ptrTransferObj;
-    Log2Func(("Firing transfer added event: transfer=%p\n", (void *)pTransfer));
+    Log2Func(("Firing transfer added event: transfer=%p\n", (void *)(ClipboardTransfer *)ptrTransferObj));
     i_fireTransferEvent(ptrTransferObj, ClipboardTransferState_Added, ClipboardTransferInteraction_None,
                         com::Utf8Str(), com::Utf8Str(), ClipboardError_None);
     return S_OK;
@@ -466,12 +465,11 @@ HRESULT ClipboardTransferManager::remove(const ComPtr<IClipboardTransfer> &aTran
     if (!fRemoved)
         return setError(VBOX_E_OBJECT_NOT_FOUND, tr("Clipboard transfer is no longer owned by this manager"));
 
-    ClipboardTransfer *pTransfer = ptrTransfer;
     ptrTransfer->i_setState(ClipboardTransferState_Removed, com::Utf8Str(), ClipboardError_None);
     clipboardTransferManagerCompleteProgress(ptrProgressControl, SHCLTRANSFERSTATUS_UNINITIALIZED, VERR_CANCELLED);
     if (fFireEvent)
     {
-        Log2Func(("Firing transfer removed event: transfer=%p\n", (void *)pTransfer));
+        Log2Func(("Firing transfer removed event: transfer=%p\n", (void *)(ClipboardTransfer *)ptrTransfer));
         i_fireTransferEvent(ptrTransfer, ClipboardTransferState_Removed, ClipboardTransferInteraction_None,
                             com::Utf8Str(), com::Utf8Str(), ClipboardError_None);
     }
@@ -787,11 +785,11 @@ HRESULT ClipboardTransferManager::reset()
     for (std::vector<Data::TransferRecord>::const_iterator it = DetachedTransfers.begin();
          it != DetachedTransfers.end(); ++it)
     {
-        ClipboardTransfer *pTransfer = it->mTransfer;
         it->mTransfer->i_setState(ClipboardTransferState_Removed, com::Utf8Str(), ClipboardError_None);
         clipboardTransferManagerCompleteProgress(it->mProgressControl,
                                                  SHCLTRANSFERSTATUS_UNINITIALIZED, VERR_CANCELLED);
-        Log2Func(("Firing transfer removed event during public reset: transfer=%p\n", (void *)pTransfer));
+        Log2Func(("Firing transfer removed event during public reset: transfer=%p\n",
+                  (void *)(ClipboardTransfer *)it->mTransfer));
         i_fireTransferEvent(it->mTransfer, ClipboardTransferState_Removed, ClipboardTransferInteraction_None,
                             com::Utf8Str(), com::Utf8Str(), ClipboardError_None);
     }
@@ -827,8 +825,8 @@ void ClipboardTransferManager::i_reset()
     for (std::vector<Data::TransferRecord>::const_iterator it = DetachedTransfers.begin();
          it != DetachedTransfers.end(); ++it)
     {
-        ClipboardTransfer *pTransfer = it->mTransfer;
-        Log2Func(("Firing transfer removed event during reset: transfer=%p\n", (void *)pTransfer));
+        Log2Func(("Firing transfer removed event during reset: transfer=%p\n",
+                  (void *)(ClipboardTransfer *)it->mTransfer));
         i_fireTransferEvent(it->mTransfer, ClipboardTransferState_Removed, ClipboardTransferInteraction_None,
                             com::Utf8Str(), com::Utf8Str(), ClipboardError_None);
     }
