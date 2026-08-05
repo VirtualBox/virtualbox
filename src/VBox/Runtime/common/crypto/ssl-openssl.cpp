@@ -422,7 +422,7 @@ RTDECL(int) RTCrSslSessionGetCertIssuerNameAsString(RTCRSSLSESSION hSslSession, 
     X509 *pCert = SSL_get_certificate(pThis->pSsl);
     if (pCert)
     {
-        X509_NAME *pIssuer = X509_get_issuer_name(pCert);
+        const X509_NAME *pIssuer = X509_get_issuer_name(pCert);
         if (pIssuer)
         {
             char *pszSrc = X509_NAME_oneline(pIssuer, NULL, 0);
