@@ -1,4 +1,4 @@
-/* $Id: x509-create-sign.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: x509-create-sign.cpp 114860 2026-08-05 15:59:20Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - Crypto - X.509, Certificate Creation.
  */
@@ -156,8 +156,8 @@ RTDECL(int) RTCrX509Certificate_GenerateSelfSignedRsa(RTDIGESTTYPE enmDigestType
         /** @todo check what the subject name is...  Offer way to specify it? */
 
         /* Make it self signed: */
-        X509_NAME *pX509Name = X509_get_subject_name(pNewCert);
-        rcOssl = X509_NAME_add_entry_by_txt(pX509Name, "CN", MBSTRING_ASC, (unsigned char *) pvSubject, -1, -1, 0);
+        X509_NAME *pX509Name = (X509_NAME *)X509_get_subject_name(pNewCert);
+        rcOssl = X509_NAME_add_entry_by_txt(pX509Name, "CN", MBSTRING_ASC, (const unsigned char *)pvSubject, -1, -1, 0);
         AssertStmt(rcOssl > 0, rc = RTErrInfoSet(pErrInfo, VERR_GENERAL_FAILURE, "X509_NAME_add_entry_by_txt failed"));
         rcOssl = X509_set_issuer_name(pNewCert, pX509Name);
         AssertStmt(rcOssl > 0, rc = RTErrInfoSet(pErrInfo, VERR_GENERAL_FAILURE, "X509_set_issuer_name failed"));
