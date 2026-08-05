@@ -1,4 +1,4 @@
-/* $Id: DevVirtioSCSI.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: DevVirtioSCSI.cpp 114856 2026-08-05 09:09:50Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox storage devices - Virtio SCSI Driver
  *
@@ -2106,7 +2106,8 @@ static DECLCALLBACK(int) virtioScsiR3LoadExec(PPDMDEVINS pDevIns, PSSMHANDLE pSS
      */
     for (int uVirtqNbr = VIRTQ_REQ_BASE; uVirtqNbr < VIRTIOSCSI_VIRTQ_CNT; uVirtqNbr++)
     {
-        if (pThis->afVirtqAttached[uVirtqNbr])
+        if (   pThis->afVirtqAttached[uVirtqNbr]
+            && virtioCoreIsVirtqEnabled(&pThis->Virtio, uVirtqNbr))
         {
             LogFunc(("Waking %s worker.\n", VIRTQNAME(uVirtqNbr)));
             int rc2 = PDMDevHlpSUPSemEventSignal(pDevIns, pThis->aWorkers[uVirtqNbr].hEvtProcess);
