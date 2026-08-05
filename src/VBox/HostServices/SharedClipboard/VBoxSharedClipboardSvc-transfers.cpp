@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 114661 2026-07-08 10:39:13Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -71,11 +71,7 @@ static int shClSvcTransferFindByKey(SHCLSESSIONID idSession, SHCLTRANSFERID idTr
 {
     AssertPtrReturn(ppClient, VERR_INVALID_POINTER);
     AssertPtrReturn(ppTransfer, VERR_INVALID_POINTER);
-    AssertReturn(idSession != 0 && idSession != NIL_SHCLSESSIONID, VERR_INVALID_CONTEXT);
-    AssertReturn(   idTransfer != NIL_SHCLTRANSFERID
-                 && idTransfer > 0
-                 && idTransfer < VBOX_SHCL_MAX_TRANSFERS - 1, VERR_INVALID_CONTEXT);
-    AssertReturn(uGeneration != 0 && uGeneration != NIL_SHCLTRANSFERGEN, VERR_INVALID_CONTEXT);
+    AssertReturn(ShClTransferKeyIsValid(idSession, idTransfer, uGeneration), VERR_INVALID_CONTEXT);
 
     *ppClient   = NULL;
     *ppTransfer = NULL;

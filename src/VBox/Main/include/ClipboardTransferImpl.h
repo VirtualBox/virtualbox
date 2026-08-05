@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferImpl.h 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferImpl.h 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer object.
  */
@@ -66,8 +66,32 @@ public:
     void uninit();
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    /** Returns the backing Shared Clipboard transfer. */
+    /** Returns the parent-owned backing Shared Clipboard transfer. */
     PSHCLTRANSFER i_getTransfer() const;
+    /**
+     * Lists nodes from one parent-owned backing transfer.
+     *
+     * @returns COM status code.
+     * @param   pTransfer       Retained backing transfer.
+     * @param   aPath           Transfer-relative directory path, or empty for roots.
+     * @param   aFlags          ClipboardTransferListFlag mask.
+     * @param   aNodes          Where to return listed nodes.
+     */
+    HRESULT i_list(PSHCLTRANSFER pTransfer,
+                   const com::Utf8Str &aPath,
+                   ULONG aFlags,
+                   std::vector<ComPtr<IClipboardTransferFsObjInfo> > &aNodes);
+    /**
+     * Queries one node from one parent-owned backing transfer.
+     *
+     * @returns COM status code.
+     * @param   pTransfer       Retained backing transfer.
+     * @param   aPath           Transfer-relative path.
+     * @param   aNode           Where to return the node information.
+     */
+    HRESULT i_query(PSHCLTRANSFER pTransfer,
+                    const com::Utf8Str &aPath,
+                    ComPtr<IClipboardTransferFsObjInfo> &aNode);
 #endif
     /** Updates the public transfer state. */
     void i_setState(ClipboardTransferState_T aState,
@@ -108,6 +132,18 @@ private:
     HRESULT createDirectory(const com::Utf8Str &aPath);
     /** @} */
 
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    /**
+     * Returns root nodes from one parent-owned backing transfer.
+     *
+     * @returns COM status code.
+     * @param   pTransfer       Retained backing transfer.
+     * @param   aNodes          Where to return the root nodes.
+     */
+    HRESULT i_roots(PSHCLTRANSFER pTransfer,
+                    std::vector<ComPtr<IClipboardTransferFsObjInfo> > &aNodes);
+#endif
+
     struct Data
     {
         /** Unique transfer identifier. */
@@ -131,9 +167,12 @@ private:
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
         /** Source-side local paths explicitly configured for this transfer. */
         std::vector<com::Utf8Str> mSourcePaths;
-        /** Shared Clipboard transfer backing data-plane operations. Optional. */
+        /** Parent-owned Shared Clipboard transfer backing data-plane operations. Optional. */
         PSHCLTRANSFER mTransfer;
-        /** Whether this object owns and destroys mTransfer. */
+        /**
+         * Whether this object owns and destroys mTransfer.  Otherwise the
+         * object keeps its parent alive while using this borrowed transfer.
+         */
         bool mfOwnTransfer;
 #endif
     } mData;

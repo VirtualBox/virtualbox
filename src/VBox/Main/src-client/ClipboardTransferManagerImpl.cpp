@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferManagerImpl.cpp 114632 2026-07-07 15:27:30Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferManagerImpl.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer manager object.
  */
@@ -35,6 +35,7 @@
 #include "ClipboardTransferManagerImpl.h"
 #include "GuestShClHelpers.h"
 #include "ProgressImpl.h"
+#include "VirtualBoxErrorInfoImpl.h"
 #include "VBoxEvents.h"
 
 #include <VBox/com/ErrorInfo.h>
@@ -43,6 +44,8 @@
 
 #include <iprt/errcore.h>
 #include <iprt/string.h>
+
+#include <new>
 
 
 // constructor / destructor
@@ -73,41 +76,6 @@ void ClipboardTransferManager::FinalRelease()
 
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-/**
- * Checks whether a transfer key is usable for Main-side lifecycle tracking.
- *
- * @returns true if the key identifies a non-nil service transfer, false otherwise.
- * @param   idSession       Service session ID.
- * @param   idTransfer      Service transfer ID.
- * @param   uGeneration     Service transfer generation.
- */
-static bool clipboardTransferManagerKeyIsValid(SHCLSESSIONID idSession, ULONG idTransfer, SHCLTRANSFERGEN uGeneration)
-{
-    return    idSession != 0
-           && idSession != NIL_SHCLSESSIONID
-           && idTransfer > 0
-           && idTransfer < VBOX_SHCL_MAX_TRANSFERS - 1
-           && uGeneration != 0
-           && uGeneration != NIL_SHCLTRANSFERGEN;
-}
-
-
-/**
- * Checks whether a transfer status ends the Main transfer record lifecycle.
- *
- * @returns true if the status is terminal, false otherwise.
- * @param   enmStatus       Transfer status to classify.
- */
-static bool clipboardTransferManagerStatusIsTerminal(SHCLTRANSFERSTATUS enmStatus)
-{
-    return    enmStatus == SHCLTRANSFERSTATUS_COMPLETED
-           || enmStatus == SHCLTRANSFERSTATUS_CANCELED
-           || enmStatus == SHCLTRANSFERSTATUS_KILLED
-           || enmStatus == SHCLTRANSFERSTATUS_ERROR
-           || enmStatus == SHCLTRANSFERSTATUS_UNINITIALIZED;
-}
-
-
 /**
  * Converts a transfer status to the corresponding public Main transfer state.
  *
@@ -199,46 +167,41 @@ static void clipboardTransferManagerCompleteProgress(const ComPtr<IInternalProgr
     if (ptrProgressControl.isNull())
         return;
 
-    HRESULT hrc = ptrProgressControl->NotifyComplete((LONG)clipboardTransferManagerStatusToProgressHrc(enmStatus, vrcTransfer),
-                                                     NULL /* aErrorInfo */);
+    HRESULT const hrcProgress = clipboardTransferManagerStatusToProgressHrc(enmStatus, vrcTransfer);
+    ComPtr<IVirtualBoxErrorInfo> ptrErrorInfo;
+    if (FAILED(hrcProgress))
+    {
+        ComObjPtr<VirtualBoxErrorInfo> ptrErrorInfoImpl;
+        HRESULT hrc = ptrErrorInfoImpl.createObject();
+        if (SUCCEEDED(hrc))
+        {
+            const char *pszText;
+            if (enmStatus == SHCLTRANSFERSTATUS_CANCELED)
+                pszText = ClipboardTransferManager::tr("Shared Clipboard transfer was canceled");
+            else if (enmStatus == SHCLTRANSFERSTATUS_UNINITIALIZED)
+                pszText = ClipboardTransferManager::tr("Shared Clipboard transfer was removed before completion");
+            else
+                pszText = ClipboardTransferManager::tr("Shared Clipboard transfer failed");
+            try
+            {
+                hrc = ptrErrorInfoImpl->initEx(hrcProgress, (LONG)vrcTransfer, COM_IIDOF(IClipboardTransferManager),
+                                              "ClipboardTransferManager", com::Utf8Str(pszText));
+            }
+            catch (std::bad_alloc &)
+            {
+                hrc = E_OUTOFMEMORY;
+            }
+            if (SUCCEEDED(hrc))
+                ptrErrorInfo = ptrErrorInfoImpl;
+        }
+        if (FAILED(hrc))
+            AssertComRC(hrc);
+    }
+
+    HRESULT hrc = ptrProgressControl->NotifyComplete((LONG)hrcProgress, ptrErrorInfo);
     AssertComRC(hrc);
 }
 
-
-/**
- * Validates an optional transfer-relative interaction path.
- *
- * @returns COM status code.
- * @param   aPath           Path to validate.
- * @param   fAllowEmpty     Whether the empty path is accepted.
- */
-static HRESULT clipboardTransferManagerValidatePath(const com::Utf8Str &aPath, bool fAllowEmpty)
-{
-    if (aPath.isEmpty())
-        return fAllowEmpty ? S_OK : E_INVALIDARG;
-
-    const char *pszPath = aPath.c_str();
-    if (   pszPath[0] == '/'
-        || pszPath[0] == '\\'
-        || strchr(pszPath, '\\')
-        || strchr(pszPath, ':'))
-        return E_INVALIDARG;
-
-    const char *psz = pszPath;
-    while (*psz)
-    {
-        const char *pszSlash = strchr(psz, '/');
-        size_t const cchComponent = pszSlash ? (size_t)(pszSlash - psz) : strlen(psz);
-        if (   cchComponent == 0
-            || (cchComponent == 1 && psz[0] == '.')
-            || (cchComponent == 2 && psz[0] == '.' && psz[1] == '.'))
-            return E_INVALIDARG;
-        if (!pszSlash)
-            break;
-        psz = pszSlash + 1;
-    }
-    return S_OK;
-}
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 
@@ -279,109 +242,19 @@ void ClipboardTransferManager::uninit()
     if (autoUninitSpan.uninitDone())
         return;
 
-    AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
-    mData.mTransfers.clear();
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    mData.mNextTransferId = 1;
-#endif
-    mData.mEventSource.setNull();
-    mData.mParent = NULL;
-}
-
-
-/**
- * Resets the internally tracked transfer list.
- */
-void ClipboardTransferManager::i_reset()
-{
-    LogFunc(("Resetting transfer manager\n"));
+    std::vector<Data::TransferRecord> DetachedTransfers;
     ComPtr<IEventSource> ptrEventSource;
-    std::vector<ComPtr<IClipboardTransfer> > aTransfers;
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    std::vector<ComPtr<IInternalProgressControl> > aProgressControls;
-#endif
     {
         AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+        DetachedTransfers.swap(mData.mTransfers);
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+        mData.mNextTransferId = 1;
+#endif
         ptrEventSource = mData.mEventSource;
-        for (std::vector<Data::TransferRecord>::const_iterator it = mData.mTransfers.begin();
-             it != mData.mTransfers.end(); ++it)
-        {
-            aTransfers.push_back(it->mTransfer);
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-            if (it->mProgressControl.isNotNull())
-                aProgressControls.push_back(it->mProgressControl);
-#endif
-        }
-        mData.mTransfers.clear();
-        Log2Func(("Detached %zu transfers during reset\n", aTransfers.size()));
+        mData.mEventSource.setNull();
+        mData.mParent = NULL;
     }
-
     RT_NOREF(ptrEventSource);
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    for (std::vector<ComPtr<IInternalProgressControl> >::const_iterator it = aProgressControls.begin();
-         it != aProgressControls.end(); ++it)
-        clipboardTransferManagerCompleteProgress(*it, SHCLTRANSFERSTATUS_UNINITIALIZED, VERR_CANCELLED);
-#endif
-    for (std::vector<ComPtr<IClipboardTransfer> >::const_iterator it = aTransfers.begin();
-         it != aTransfers.end(); ++it)
-    {
-        Log2Func(("Firing transfer removed event during reset: transfer=%p\n", (void *)*it));
-        i_fireTransferEvent(*it, ClipboardTransferState_Removed, ClipboardTransferInteraction_None,
-                            com::Utf8Str(), com::Utf8Str(), ClipboardError_None);
-    }
-}
-
-
-/**
- * Fires a clipboard transfer event through the parent clipboard object when available.
- * If there is no parent clipboard object, emits an anonymous event directly on
- * the stored event source.
- *
- * @param   aTransfer       Transfer associated with the event.
- * @param   aState          Transfer state.
- * @param   aInteraction    Transfer interaction type.
- * @param   aPath           Transfer-relative path associated with the event, if any.
- * @param   aMessage        Optional event message.
- * @param   aError          Clipboard transfer error code.
- */
-void ClipboardTransferManager::i_fireTransferEvent(IClipboardTransfer *aTransfer,
-                                                   ClipboardTransferState_T aState,
-                                                   ClipboardTransferInteraction_T aInteraction,
-                                                   const com::Utf8Str &aPath,
-                                                   const com::Utf8Str &aMessage,
-                                                   ClipboardError_T aError)
-{
-    Clipboard *pParent = NULL;
-    ComPtr<IEventSource> ptrEventSource;
-    AutoCaller autoCaller;
-    {
-        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
-        pParent = mData.mParent;
-        if (pParent)
-            autoCaller.attach(pParent);
-        else
-            ptrEventSource = mData.mEventSource;
-    }
-
-    if (pParent)
-    {
-        if (SUCCEEDED(autoCaller.hrc()))
-            pParent->i_fireClipboardTransferEvent(VBOX_SHCL_MAIN_CLIENT_NONE, aTransfer, aState, aInteraction,
-                                                  aPath, aMessage, aError);
-        else
-            LogFunc(("Cannot fire clipboard transfer event through parent: hrc=%#x\n", autoCaller.hrc()));
-        return;
-    }
-
-    if (ptrEventSource.isNotNull())
-    {
-        /*
-         * No parent Clipboard is available to supply a live revision or session
-         * fan-out context. Keep this legacy event anonymous.
-         */
-        ::FireClipboardTransferEvent(ptrEventSource, 0 /* anonymous revision */, VBOX_SHCL_MAIN_CLIENT_NONE,
-                                     aTransfer, aState, aInteraction, Bstr(aPath).raw(), aMessage, aError);
-    }
 }
 
 
@@ -409,24 +282,35 @@ HRESULT ClipboardTransferManager::getTransfers(ClipboardTransferDirection_T aDir
         && aDirection != ClipboardTransferDirection_ToHost)
         return setError(E_INVALIDARG, tr("Invalid clipboard transfer direction %RU32"), (uint32_t)aDirection);
 
-    AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
-    aTransfers.clear();
-    for (std::vector<Data::TransferRecord>::const_iterator it = mData.mTransfers.begin();
-         it != mData.mTransfers.end(); ++it)
+    std::vector<ComPtr<IClipboardTransfer> > Transfers;
     {
-        if (!it->mfPublished)
-            continue;
-        if (aDirection != ClipboardTransferDirection_Any)
+        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+        try
         {
-            ClipboardTransferDirection_T enmDirection = ClipboardTransferDirection_Any;
-            HRESULT hrc = it->mTransfer->COMGETTER(Direction)(&enmDirection);
-            if (FAILED(hrc))
-                return setError(hrc, tr("Querying clipboard transfer direction failed"));
-            if (enmDirection != aDirection)
-                continue;
+            Transfers.reserve(mData.mTransfers.size());
+            for (std::vector<Data::TransferRecord>::const_iterator it = mData.mTransfers.begin();
+                 it != mData.mTransfers.end(); ++it)
+            {
+                if (aDirection != ClipboardTransferDirection_Any)
+                {
+                    ClipboardTransferDirection_T const enmDirection
+                        = it->mDirection == SHCLTRANSFERDIR_FROM_REMOTE
+                        ? ClipboardTransferDirection_ToHost : ClipboardTransferDirection_ToGuest;
+                    if (enmDirection != aDirection)
+                        continue;
+                }
+                ComPtr<IClipboardTransfer> ptrTransfer;
+                HRESULT const hrc = it->mTransfer.queryInterfaceTo(ptrTransfer.asOutParam());
+                AssertComRCReturn(hrc, hrc);
+                Transfers.push_back(ptrTransfer);
+            }
         }
-        aTransfers.push_back(it->mTransfer);
+        catch (std::bad_alloc &)
+        {
+            return setError(E_OUTOFMEMORY, tr("Allocating the clipboard transfer result list failed"));
+        }
     }
+    aTransfers.swap(Transfers);
     Log3Func(("cTransfers=%zu\n", aTransfers.size()));
     return S_OK;
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
@@ -434,7 +318,13 @@ HRESULT ClipboardTransferManager::getTransfers(ClipboardTransferDirection_T aDir
 
 
 /**
- * Creates an unpublished Main-owned clipboard transfer.
+ * Creates and tracks a Main-owned clipboard transfer.
+ *
+ * @todo Defer the owner bridge until the producer has configured the transfer
+ *       source.  Then register the backing transfer with the active Shared
+ *       Clipboard service context and platform backend, record its assigned
+ *       session/transfer/generation key, and define rollback, cancellation,
+ *       unregistration and lifetime handling.
  *
  * @returns COM status code.
  * @param   aDirection      Transfer direction.
@@ -442,10 +332,10 @@ HRESULT ClipboardTransferManager::getTransfers(ClipboardTransferDirection_T aDir
  * @param   aAction         Clipboard transfer action.
  * @param   aTransfer       Where to return the transfer object.
  */
-HRESULT ClipboardTransferManager::createTransfer(ClipboardTransferDirection_T aDirection,
-                                                 ClipboardSource_T aSource,
-                                                 ClipboardAction_T aAction,
-                                                 ComPtr<IClipboardTransfer> &aTransfer)
+HRESULT ClipboardTransferManager::create(ClipboardTransferDirection_T aDirection,
+                                         ClipboardSource_T aSource,
+                                         ClipboardAction_T aAction,
+                                         ComPtr<IClipboardTransfer> &aTransfer)
 {
 #ifndef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     RT_NOREF(aDirection, aSource, aAction, aTransfer);
@@ -500,76 +390,27 @@ HRESULT ClipboardTransferManager::createTransfer(ClipboardTransferDirection_T aD
         AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
         Data::TransferRecord Record;
         Record.mTransferId = idTransfer;
-        Record.mTransfer = ptrTransfer;
-        Record.mfPublished = false;
-        mData.mTransfers.push_back(Record);
+        Record.mDirection = aDirection == ClipboardTransferDirection_ToHost
+                          ? SHCLTRANSFERDIR_FROM_REMOTE : SHCLTRANSFERDIR_TO_REMOTE;
+        Record.mSource = aSource == ClipboardSource_Host
+                       ? SHCLSOURCE_LOCAL
+                       : aSource == ClipboardSource_Guest ? SHCLSOURCE_REMOTE : SHCLSOURCE_INVALID;
+        Record.mTransfer = ptrTransferObj;
+        try
+        {
+            mData.mTransfers.push_back(Record);
+        }
+        catch (std::bad_alloc &)
+        {
+            return E_OUTOFMEMORY;
+        }
     }
 
     aTransfer = ptrTransfer;
-    return S_OK;
-#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
-}
-
-
-/**
- * Adds a clipboard transfer.
- *
- * @returns COM status code.
- * @param   aTransfer       Transfer to add.
- */
-HRESULT ClipboardTransferManager::add(const ComPtr<IClipboardTransfer> &aTransfer)
-{
-#ifndef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    RT_NOREF(aTransfer);
-    ReturnComNotImplemented();
-#else /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
-
-    Log2Func(("aTransfer=%p\n", (void *)aTransfer));
-    if (aTransfer.isNull())
-    {
-        LogFunc(("Rejecting NULL transfer add\n"));
-        return setError(E_INVALIDARG, tr("Clipboard transfer to add must not be NULL"));
-    }
-
-    ULONG idTransfer = 0;
-    HRESULT hrc = aTransfer->COMGETTER(Id)(&idTransfer);
-    if (FAILED(hrc))
-        return setError(hrc, tr("Querying clipboard transfer ID failed"));
-
-    bool fFireEvent = false;
-    {
-        AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
-        bool fKnown = false;
-        for (std::vector<Data::TransferRecord>::iterator it = mData.mTransfers.begin();
-             it != mData.mTransfers.end(); ++it)
-            if (it->mTransfer == aTransfer)
-            {
-                if (it->mfPublished)
-                    return S_OK;
-                it->mfPublished = true;
-                fKnown = true;
-                Log2Func(("Published existing transfer: cTransfers=%zu\n", mData.mTransfers.size()));
-                break;
-            }
-
-        if (!fKnown)
-        {
-            Data::TransferRecord Record;
-            Record.mTransferId = idTransfer;
-            Record.mTransfer = aTransfer;
-            Record.mfPublished = true;
-            mData.mTransfers.push_back(Record);
-            Log2Func(("Added transfer: cTransfers=%zu\n", mData.mTransfers.size()));
-        }
-        fFireEvent = mData.mParent != NULL || mData.mEventSource.isNotNull();
-    }
-
-    if (fFireEvent)
-    {
-        Log2Func(("Firing transfer added event: transfer=%p\n", (void *)aTransfer));
-        i_fireTransferEvent(aTransfer, ClipboardTransferState_Added, ClipboardTransferInteraction_None,
-                            com::Utf8Str(), com::Utf8Str(), ClipboardError_None);
-    }
+    ClipboardTransfer *pTransfer = ptrTransferObj;
+    Log2Func(("Firing transfer added event: transfer=%p\n", (void *)pTransfer));
+    i_fireTransferEvent(ptrTransferObj, ClipboardTransferState_Added, ClipboardTransferInteraction_None,
+                        com::Utf8Str(), com::Utf8Str(), ClipboardError_None);
     return S_OK;
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 }
@@ -583,11 +424,6 @@ HRESULT ClipboardTransferManager::add(const ComPtr<IClipboardTransfer> &aTransfe
  */
 HRESULT ClipboardTransferManager::remove(const ComPtr<IClipboardTransfer> &aTransfer)
 {
-#ifndef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    RT_NOREF(aTransfer);
-    ReturnComNotImplemented();
-#else /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
-
     Log2Func(("aTransfer=%p\n", (void *)aTransfer));
     if (aTransfer.isNull())
     {
@@ -595,34 +431,50 @@ HRESULT ClipboardTransferManager::remove(const ComPtr<IClipboardTransfer> &aTran
         return setError(E_INVALIDARG, tr("Clipboard transfer to remove must not be NULL"));
     }
 
+#ifndef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    RT_NOREF(aTransfer);
+    ReturnComNotImplemented();
+#else /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
+
+    ComObjPtr<ClipboardTransfer> ptrTransfer;
     bool fRemoved = false;
     bool fFireEvent = false;
+    bool fServiceTransfer = false;
     ComPtr<IInternalProgressControl> ptrProgressControl;
     {
         AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
-        for (std::vector<Data::TransferRecord>::iterator it = mData.mTransfers.begin();
-             it != mData.mTransfers.end(); ++it)
-            if (it->mTransfer == aTransfer)
+        Data::TransferRecords::iterator it = mData.findTransferRecord(aTransfer);
+        if (it != mData.mTransfers.end())
+        {
+            ptrTransfer = it->mTransfer;
+            if (ShClTransferKeyIsValid(it->mServiceSessionId, it->mTransferId, it->mGeneration))
+                fServiceTransfer = true;
+            else
             {
                 ptrProgressControl = it->mProgressControl;
                 mData.mTransfers.erase(it);
                 Log2Func(("Removed transfer: cTransfers=%zu\n", mData.mTransfers.size()));
                 fFireEvent = mData.mParent != NULL || mData.mEventSource.isNotNull();
                 fRemoved = true;
-                break;
             }
+        }
     }
 
-    if (fRemoved)
-        clipboardTransferManagerCompleteProgress(ptrProgressControl, SHCLTRANSFERSTATUS_UNINITIALIZED, VERR_CANCELLED);
-    if (fRemoved && fFireEvent)
+    if (fServiceTransfer)
+        return setError(VBOX_E_OBJECT_IN_USE,
+                        tr("Cannot remove an active service transfer; cancel it first"));
+    if (!fRemoved)
+        return setError(VBOX_E_OBJECT_NOT_FOUND, tr("Clipboard transfer is no longer owned by this manager"));
+
+    ClipboardTransfer *pTransfer = ptrTransfer;
+    ptrTransfer->i_setState(ClipboardTransferState_Removed, com::Utf8Str(), ClipboardError_None);
+    clipboardTransferManagerCompleteProgress(ptrProgressControl, SHCLTRANSFERSTATUS_UNINITIALIZED, VERR_CANCELLED);
+    if (fFireEvent)
     {
-        Log2Func(("Firing transfer removed event: transfer=%p\n", (void *)aTransfer));
-        i_fireTransferEvent(aTransfer, ClipboardTransferState_Removed, ClipboardTransferInteraction_None,
+        Log2Func(("Firing transfer removed event: transfer=%p\n", (void *)pTransfer));
+        i_fireTransferEvent(ptrTransfer, ClipboardTransferState_Removed, ClipboardTransferInteraction_None,
                             com::Utf8Str(), com::Utf8Str(), ClipboardError_None);
     }
-    else if (!fRemoved)
-        Log2Func(("Transfer not found for remove: transfer=%p\n", (void *)aTransfer));
     return S_OK;
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 }
@@ -636,11 +488,6 @@ HRESULT ClipboardTransferManager::remove(const ComPtr<IClipboardTransfer> &aTran
  */
 HRESULT ClipboardTransferManager::cancel(const ComPtr<IClipboardTransfer> &aTransfer)
 {
-#ifndef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    RT_NOREF(aTransfer);
-    ReturnComNotImplemented();
-#else /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
-
     Log2Func(("aTransfer=%p\n", (void *)aTransfer));
     if (aTransfer.isNull())
     {
@@ -648,37 +495,54 @@ HRESULT ClipboardTransferManager::cancel(const ComPtr<IClipboardTransfer> &aTran
         return setError(E_INVALIDARG, tr("Clipboard transfer to cancel must not be NULL"));
     }
 
+#ifndef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    RT_NOREF(aTransfer);
+    ReturnComNotImplemented();
+#else /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
+
+    ComObjPtr<ClipboardTransfer> ptrTransfer;
     bool fCanceled = false;
     bool fFireEvent = false;
     bool fNeedsHostCancel = false;
+    bool fCancelAlreadyRequested = false;
     SHCLSESSIONID idSession = NIL_SHCLSESSIONID;
     ULONG idTransfer = 0;
     SHCLTRANSFERGEN uGeneration = NIL_SHCLTRANSFERGEN;
     ComPtr<IInternalProgressControl> ptrProgressControl;
     {
         AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
-        for (std::vector<Data::TransferRecord>::iterator it = mData.mTransfers.begin();
-             it != mData.mTransfers.end(); ++it)
-            if (it->mTransfer == aTransfer)
+        Data::TransferRecords::iterator it = mData.findTransferRecord(aTransfer);
+        if (it != mData.mTransfers.end())
+        {
+            ptrTransfer = it->mTransfer;
+            idSession = it->mServiceSessionId;
+            idTransfer = it->mTransferId;
+            uGeneration = it->mGeneration;
+            fNeedsHostCancel = ShClTransferKeyIsValid(idSession, idTransfer, uGeneration);
+            if (!fNeedsHostCancel)
             {
-                idSession = it->mServiceSessionId;
-                idTransfer = it->mTransferId;
-                uGeneration = it->mGeneration;
-                fNeedsHostCancel = clipboardTransferManagerKeyIsValid(idSession, idTransfer, uGeneration);
-                if (!fNeedsHostCancel)
-                {
-                    ptrProgressControl = it->mProgressControl;
-                    mData.mTransfers.erase(it);
-                    Log2Func(("Canceled transfer: cTransfers=%zu\n", mData.mTransfers.size()));
-                    fFireEvent = mData.mParent != NULL || mData.mEventSource.isNotNull();
-                    fCanceled = true;
-                }
+                ptrProgressControl = it->mProgressControl;
+                mData.mTransfers.erase(it);
+                Log2Func(("Canceled transfer: cTransfers=%zu\n", mData.mTransfers.size()));
+                fFireEvent = mData.mParent != NULL || mData.mEventSource.isNotNull();
+                fCanceled = true;
+            }
+            else
+            {
+                if (it->mfCancelRequested)
+                    fCancelAlreadyRequested = true;
                 else
                     it->mfCancelRequested = true;
-                break;
             }
+        }
     }
 
+    if (fCancelAlreadyRequested)
+        return setError(VBOX_E_OBJECT_IN_USE, tr("Clipboard transfer cancellation is already in progress"));
+    if (!fCanceled && !fNeedsHostCancel)
+        return setError(VBOX_E_OBJECT_NOT_FOUND, tr("Clipboard transfer is no longer owned by this manager"));
+
+    ClipboardTransfer *pTransfer = ptrTransfer;
     if (fNeedsHostCancel)
     {
         Clipboard *pParent = NULL;
@@ -690,40 +554,63 @@ HRESULT ClipboardTransferManager::cancel(const ComPtr<IClipboardTransfer> &aTran
                 autoCaller.attach(pParent);
         }
         if (!pParent)
+        {
+            AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+            Data::TransferRecords::iterator it = mData.findTransferRecord(pTransfer, idSession,
+                                                                          idTransfer, uGeneration);
+            if (it != mData.mTransfers.end())
+                it->mfCancelRequested = false;
             return setError(E_FAIL, tr("Clipboard transfer cannot be canceled because no clipboard backend is available"));
+        }
         if (FAILED(autoCaller.hrc()))
+        {
+            AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+            Data::TransferRecords::iterator it = mData.findTransferRecord(pTransfer, idSession,
+                                                                          idTransfer, uGeneration);
+            if (it != mData.mTransfers.end())
+                it->mfCancelRequested = false;
             return setError(autoCaller.hrc(), tr("Clipboard backend is not ready for canceling clipboard transfers"));
+        }
 
-        HRESULT hrc = pParent->i_transferCancel(idSession, (SHCLTRANSFERID)idTransfer, uGeneration);
+        HRESULT const hrc = pParent->i_transferCancel(idSession, (SHCLTRANSFERID)idTransfer, uGeneration);
         if (FAILED(hrc))
+        {
+            AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+            Data::TransferRecords::iterator it = mData.findTransferRecord(pTransfer, idSession,
+                                                                          idTransfer, uGeneration);
+            if (it != mData.mTransfers.end())
+                it->mfCancelRequested = false;
             return setError(hrc, tr("Canceling clipboard transfer through the backend failed"));
+        }
 
         {
             AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
-            for (std::vector<Data::TransferRecord>::iterator it = mData.mTransfers.begin();
-                 it != mData.mTransfers.end(); ++it)
-                if (it->mTransfer == aTransfer)
-                {
-                    ptrProgressControl = it->mProgressControl;
-                    mData.mTransfers.erase(it);
-                    Log2Func(("Canceled transfer after host request: cTransfers=%zu\n", mData.mTransfers.size()));
-                    fFireEvent = mData.mParent != NULL || mData.mEventSource.isNotNull();
-                    fCanceled = true;
-                    break;
-                }
+            Data::TransferRecords::iterator it = mData.findTransferRecord(pTransfer, idSession,
+                                                                          idTransfer, uGeneration);
+            if (it != mData.mTransfers.end())
+            {
+                ptrProgressControl = it->mProgressControl;
+                mData.mTransfers.erase(it);
+                Log2Func(("Canceled transfer after host request: cTransfers=%zu\n", mData.mTransfers.size()));
+                fFireEvent = mData.mParent != NULL || mData.mEventSource.isNotNull();
+                fCanceled = true;
+            }
         }
     }
 
     if (fCanceled)
+    {
+        ptrTransfer->i_setState(ClipboardTransferState_Canceled, com::Utf8Str(), ClipboardError_None);
         clipboardTransferManagerCompleteProgress(ptrProgressControl, SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
+    }
     if (fCanceled && fFireEvent)
     {
-        Log2Func(("Firing transfer canceled event: transfer=%p\n", (void *)aTransfer));
-        i_fireTransferEvent(aTransfer, ClipboardTransferState_Canceled, ClipboardTransferInteraction_None,
+        Log2Func(("Firing transfer canceled event: transfer=%p\n", (void *)pTransfer));
+        i_fireTransferEvent(ptrTransfer, ClipboardTransferState_Canceled, ClipboardTransferInteraction_None,
                             com::Utf8Str(), com::Utf8Str(), ClipboardError_None);
     }
     else if (!fCanceled)
-        Log2Func(("Transfer not found for cancel: transfer=%p\n", (void *)aTransfer));
+        return setError(VBOX_E_OBJECT_NOT_FOUND, tr("Clipboard transfer is no longer owned by this manager"));
     return S_OK;
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 }
@@ -738,15 +625,19 @@ HRESULT ClipboardTransferManager::cancel(const ComPtr<IClipboardTransfer> &aTran
  */
 HRESULT ClipboardTransferManager::approve(const ComPtr<IClipboardTransfer> &aTransfer, ULONG aFlags)
 {
-#ifndef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    RT_NOREF(aTransfer, aFlags);
-    ReturnComNotImplemented();
-#else
-    if (aFlags != 0)
-        return setError(E_INVALIDARG, tr("Invalid clipboard transfer approval flags %RU32"), aFlags);
-    return respond(aTransfer, ClipboardTransferInteraction_Approval, com::Utf8Str(), ClipboardTransferResponse_Accept,
-                   com::Utf8Str(), 0);
+    if (aTransfer.isNull())
+        return setError(E_INVALIDARG, tr("Clipboard transfer to approve must not be NULL"));
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    bool fOwned;
+    {
+        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+        fOwned = mData.findTransferRecord(aTransfer) != mData.mTransfers.end();
+    }
+    if (!fOwned)
+        return setError(VBOX_E_OBJECT_NOT_FOUND, tr("Clipboard transfer is not owned by this manager"));
 #endif
+    RT_NOREF(aFlags);
+    ReturnComNotImplemented();
 }
 
 
@@ -759,17 +650,19 @@ HRESULT ClipboardTransferManager::approve(const ComPtr<IClipboardTransfer> &aTra
  */
 HRESULT ClipboardTransferManager::deny(const ComPtr<IClipboardTransfer> &aTransfer, const com::Utf8Str &aReason)
 {
-#ifndef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    RT_NOREF(aTransfer, aReason);
-    ReturnComNotImplemented();
-#else
-    HRESULT hrc = respond(aTransfer, ClipboardTransferInteraction_Approval, com::Utf8Str(), ClipboardTransferResponse_Reject,
-                          com::Utf8Str(), 0);
-    if (SUCCEEDED(hrc) && aReason.isNotEmpty())
-        i_fireTransferEvent(aTransfer, ClipboardTransferState_Canceled, ClipboardTransferInteraction_Approval,
-                            com::Utf8Str(), aReason, ClipboardError_AccessDenied);
-    return hrc;
+    if (aTransfer.isNull())
+        return setError(E_INVALIDARG, tr("Clipboard transfer to deny must not be NULL"));
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    bool fOwned;
+    {
+        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+        fOwned = mData.findTransferRecord(aTransfer) != mData.mTransfers.end();
+    }
+    if (!fOwned)
+        return setError(VBOX_E_OBJECT_NOT_FOUND, tr("Clipboard transfer is not owned by this manager"));
 #endif
+    RT_NOREF(aReason);
+    ReturnComNotImplemented();
 }
 
 
@@ -791,51 +684,19 @@ HRESULT ClipboardTransferManager::respond(const ComPtr<IClipboardTransfer> &aTra
                                           const com::Utf8Str &aResponsePath,
                                           ULONG aFlags)
 {
-#ifndef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    RT_NOREF(aTransfer, aInteraction, aPath, aResponse, aResponsePath, aFlags);
-    ReturnComNotImplemented();
-#else
     if (aTransfer.isNull())
-        return setError(E_INVALIDARG, tr("Clipboard transfer response requires a transfer object"));
-    if (aInteraction == ClipboardTransferInteraction_None)
-        return setError(E_INVALIDARG, tr("Invalid clipboard transfer interaction %RU32"), (uint32_t)aInteraction);
-    if (aResponse == ClipboardTransferResponse_None)
-        return setError(E_INVALIDARG, tr("Invalid clipboard transfer response %RU32"), (uint32_t)aResponse);
-    if (aFlags != 0)
-        return setError(E_INVALIDARG, tr("Invalid clipboard transfer response flags %RU32"), aFlags);
-    if (   aResponsePath.isNotEmpty()
-        && aInteraction != ClipboardTransferInteraction_Destination
-        && aInteraction != ClipboardTransferInteraction_Rename)
-        return setError(E_INVALIDARG, tr("Clipboard transfer response path is only valid for destination or rename interactions"));
-    HRESULT hrc = clipboardTransferManagerValidatePath(aPath, true /* fAllowEmpty */);
-    if (FAILED(hrc))
-        return setError(hrc, tr("Invalid clipboard transfer interaction path"));
-    hrc = clipboardTransferManagerValidatePath(aResponsePath, true /* fAllowEmpty */);
-    if (FAILED(hrc))
-        return setError(hrc, tr("Invalid clipboard transfer response path"));
-
-    bool fKnown = false;
+        return setError(E_INVALIDARG, tr("Clipboard transfer awaiting a response must not be NULL"));
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    bool fOwned;
     {
         AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
-        for (std::vector<Data::TransferRecord>::const_iterator it = mData.mTransfers.begin();
-             it != mData.mTransfers.end(); ++it)
-            if (it->mTransfer == aTransfer)
-            {
-                fKnown = true;
-                break;
-            }
+        fOwned = mData.findTransferRecord(aTransfer) != mData.mTransfers.end();
     }
-    if (!fKnown)
-        return setError(VBOX_E_OBJECT_NOT_FOUND, tr("Clipboard transfer object is not known to this manager"));
-
-    ClipboardTransferState_T const enmState = aResponse == ClipboardTransferResponse_Reject
-                                            || aResponse == ClipboardTransferResponse_Cancel
-                                          ? ClipboardTransferState_Canceled : ClipboardTransferState_InProgress;
-    ClipboardError_T const enmError = enmState == ClipboardTransferState_Canceled
-                                    ? ClipboardError_AccessDenied : ClipboardError_None;
-    i_fireTransferEvent(aTransfer, enmState, aInteraction, aPath, com::Utf8Str(), enmError);
-    return S_OK;
+    if (!fOwned)
+        return setError(VBOX_E_OBJECT_NOT_FOUND, tr("Clipboard transfer is not owned by this manager"));
 #endif
+    RT_NOREF(aInteraction, aPath, aResponse, aResponsePath, aFlags);
+    ReturnComNotImplemented();
 }
 
 
@@ -847,7 +708,17 @@ HRESULT ClipboardTransferManager::respond(const ComPtr<IClipboardTransfer> &aTra
  */
 HRESULT ClipboardTransferManager::pause(const ComPtr<IClipboardTransfer> &aTransfer)
 {
-    RT_NOREF(aTransfer);
+    if (aTransfer.isNull())
+        return setError(E_INVALIDARG, tr("Clipboard transfer to pause must not be NULL"));
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    bool fOwned;
+    {
+        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+        fOwned = mData.findTransferRecord(aTransfer) != mData.mTransfers.end();
+    }
+    if (!fOwned)
+        return setError(VBOX_E_OBJECT_NOT_FOUND, tr("Clipboard transfer is not owned by this manager"));
+#endif
     ReturnComNotImplemented();
 }
 
@@ -860,7 +731,17 @@ HRESULT ClipboardTransferManager::pause(const ComPtr<IClipboardTransfer> &aTrans
  */
 HRESULT ClipboardTransferManager::resume(const ComPtr<IClipboardTransfer> &aTransfer)
 {
-    RT_NOREF(aTransfer);
+    if (aTransfer.isNull())
+        return setError(E_INVALIDARG, tr("Clipboard transfer to resume must not be NULL"));
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    bool fOwned;
+    {
+        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+        fOwned = mData.findTransferRecord(aTransfer) != mData.mTransfers.end();
+    }
+    if (!fOwned)
+        return setError(VBOX_E_OBJECT_NOT_FOUND, tr("Clipboard transfer is not owned by this manager"));
+#endif
     ReturnComNotImplemented();
 }
 
@@ -878,31 +759,40 @@ HRESULT ClipboardTransferManager::reset()
 
     LogFunc(("Resetting transfer manager via public API\n"));
     ComPtr<IEventSource> ptrEventSource;
-    std::vector<ComPtr<IClipboardTransfer> > aTransfers;
-    std::vector<ComPtr<IInternalProgressControl> > aProgressControls;
+    std::vector<Data::TransferRecord> DetachedTransfers;
+    bool fHasServiceTransfers = false;
     {
         AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
-        ptrEventSource = mData.mEventSource;
         for (std::vector<Data::TransferRecord>::const_iterator it = mData.mTransfers.begin();
              it != mData.mTransfers.end(); ++it)
+            if (ShClTransferKeyIsValid(it->mServiceSessionId, it->mTransferId, it->mGeneration))
+            {
+                fHasServiceTransfers = true;
+                break;
+            }
+
+        if (!fHasServiceTransfers)
         {
-            aTransfers.push_back(it->mTransfer);
-            if (it->mProgressControl.isNotNull())
-                aProgressControls.push_back(it->mProgressControl);
+            ptrEventSource = mData.mEventSource;
+            DetachedTransfers.swap(mData.mTransfers);
+            Log2Func(("Detached %zu transfers during public reset\n", DetachedTransfers.size()));
         }
-        mData.mTransfers.clear();
-        Log2Func(("Detached %zu transfers during public reset\n", aTransfers.size()));
     }
 
+    if (fHasServiceTransfers)
+        return setError(VBOX_E_OBJECT_IN_USE,
+                        tr("Cannot reset clipboard transfers while a service transfer is active; cancel it first"));
+
     RT_NOREF(ptrEventSource);
-    for (std::vector<ComPtr<IInternalProgressControl> >::const_iterator it = aProgressControls.begin();
-         it != aProgressControls.end(); ++it)
-        clipboardTransferManagerCompleteProgress(*it, SHCLTRANSFERSTATUS_UNINITIALIZED, VERR_CANCELLED);
-    for (std::vector<ComPtr<IClipboardTransfer> >::const_iterator it = aTransfers.begin();
-         it != aTransfers.end(); ++it)
+    for (std::vector<Data::TransferRecord>::const_iterator it = DetachedTransfers.begin();
+         it != DetachedTransfers.end(); ++it)
     {
-        Log2Func(("Firing transfer removed event during public reset: transfer=%p\n", (void *)*it));
-        i_fireTransferEvent(*it, ClipboardTransferState_Removed, ClipboardTransferInteraction_None,
+        ClipboardTransfer *pTransfer = it->mTransfer;
+        it->mTransfer->i_setState(ClipboardTransferState_Removed, com::Utf8Str(), ClipboardError_None);
+        clipboardTransferManagerCompleteProgress(it->mProgressControl,
+                                                 SHCLTRANSFERSTATUS_UNINITIALIZED, VERR_CANCELLED);
+        Log2Func(("Firing transfer removed event during public reset: transfer=%p\n", (void *)pTransfer));
+        i_fireTransferEvent(it->mTransfer, ClipboardTransferState_Removed, ClipboardTransferInteraction_None,
                             com::Utf8Str(), com::Utf8Str(), ClipboardError_None);
     }
     return S_OK;
@@ -912,19 +802,116 @@ HRESULT ClipboardTransferManager::reset()
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 /**
+ * Resets the internally tracked transfer list.
+ */
+void ClipboardTransferManager::i_reset()
+{
+    LogFunc(("Resetting transfer manager\n"));
+    ComPtr<IEventSource> ptrEventSource;
+    std::vector<Data::TransferRecord> DetachedTransfers;
+    {
+        AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+        ptrEventSource = mData.mEventSource;
+        DetachedTransfers.swap(mData.mTransfers);
+        Log2Func(("Detached %zu transfers during reset\n", DetachedTransfers.size()));
+    }
+
+    RT_NOREF(ptrEventSource);
+    for (std::vector<Data::TransferRecord>::const_iterator it = DetachedTransfers.begin();
+         it != DetachedTransfers.end(); ++it)
+    {
+        it->mTransfer->i_setState(ClipboardTransferState_Removed, com::Utf8Str(), ClipboardError_None);
+        clipboardTransferManagerCompleteProgress(it->mProgressControl,
+                                                 SHCLTRANSFERSTATUS_UNINITIALIZED, VERR_CANCELLED);
+    }
+    for (std::vector<Data::TransferRecord>::const_iterator it = DetachedTransfers.begin();
+         it != DetachedTransfers.end(); ++it)
+    {
+        ClipboardTransfer *pTransfer = it->mTransfer;
+        Log2Func(("Firing transfer removed event during reset: transfer=%p\n", (void *)pTransfer));
+        i_fireTransferEvent(it->mTransfer, ClipboardTransferState_Removed, ClipboardTransferInteraction_None,
+                            com::Utf8Str(), com::Utf8Str(), ClipboardError_None);
+    }
+}
+
+
+/**
+ * Fires a clipboard transfer event through the parent clipboard object when available.
+ * If there is no parent clipboard object, emits an anonymous event directly on
+ * the stored event source.
+ *
+ * @param   aTransfer       Transfer associated with the event.
+ * @param   aState          Transfer state.
+ * @param   aInteraction    Transfer interaction type.
+ * @param   aPath           Transfer-relative path associated with the event, if any.
+ * @param   aMessage        Optional event message.
+ * @param   aError          Clipboard transfer error code.
+ */
+void ClipboardTransferManager::i_fireTransferEvent(const ComObjPtr<ClipboardTransfer> &aTransfer,
+                                                   ClipboardTransferState_T aState,
+                                                   ClipboardTransferInteraction_T aInteraction,
+                                                   const com::Utf8Str &aPath,
+                                                   const com::Utf8Str &aMessage,
+                                                   ClipboardError_T aError)
+{
+    ComPtr<IClipboardTransfer> ptrTransfer;
+    HRESULT const hrc = aTransfer.queryInterfaceTo(ptrTransfer.asOutParam());
+    if (FAILED(hrc))
+    {
+        AssertComRC(hrc);
+        return;
+    }
+
+    Clipboard *pParent = NULL;
+    ComPtr<IEventSource> ptrEventSource;
+    AutoCaller autoCaller;
+    {
+        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+        pParent = mData.mParent;
+        if (pParent)
+            autoCaller.attach(pParent);
+        else
+            ptrEventSource = mData.mEventSource;
+    }
+
+    if (pParent)
+    {
+        if (SUCCEEDED(autoCaller.hrc()))
+            pParent->i_fireClipboardTransferEvent(VBOX_SHCL_MAIN_CLIENT_NONE, ptrTransfer, aState, aInteraction,
+                                                  aPath, aMessage, aError);
+        else
+            LogFunc(("Cannot fire clipboard transfer event through parent: hrc=%#x\n", autoCaller.hrc()));
+        return;
+    }
+
+    if (ptrEventSource.isNotNull())
+    {
+        /*
+         * No parent Clipboard is available to supply a live revision or session
+         * fan-out context. Keep this legacy event anonymous.
+         */
+        ::FireClipboardTransferEvent(ptrEventSource, 0 /* anonymous revision */, VBOX_SHCL_MAIN_CLIENT_NONE,
+                                     ptrTransfer, aState, aInteraction, Bstr(aPath).raw(), aMessage, aError);
+    }
+}
+
+
+/**
  * Handles a Shared Clipboard transfer status from the host service.
  *
  * @returns COM status code.
  * @param   aServiceSessionId   Service session that owns the transfer.
  * @param   aTransferId         Shared Clipboard transfer ID.
  * @param   aGeneration         Host-private transfer generation.
- * @param   enmShClSource       Shared Clipboard status source.
+ * @param   aTransfer           Borrowed service transfer used to validate status metadata.
+ * @param   enmShClSource       Data source recorded by the backing transfer.
  * @param   enmStatus           Transfer lifecycle status.
  * @param   vrcTransfer         Transfer result code associated with the status.
  */
 HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceSessionId,
                                                          SHCLTRANSFERID aTransferId,
                                                          SHCLTRANSFERGEN aGeneration,
+                                                         PSHCLTRANSFER aTransfer,
                                                          SHCLSOURCE enmShClSource,
                                                          SHCLTRANSFERSTATUS enmStatus,
                                                          int vrcTransfer)
@@ -932,16 +919,48 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceS
     SHCLSESSIONID const idSession = aServiceSessionId;
     SHCLTRANSFERID const idTransfer = aTransferId;
     SHCLTRANSFERGEN const uGeneration = aGeneration;
-    if (!clipboardTransferManagerKeyIsValid(idSession, idTransfer, uGeneration))
+    if (!ShClTransferKeyIsValid(idSession, idTransfer, uGeneration))
+        return E_INVALIDARG;
+    if (   enmShClSource != SHCLSOURCE_LOCAL
+        && enmShClSource != SHCLSOURCE_REMOTE)
+        return E_INVALIDARG;
+    if (!ShClTransferStatusIsValid(enmStatus))
+        return E_INVALIDARG;
+    if (!ShClTransferStatusResultIsValid(enmStatus, vrcTransfer))
+        return E_INVALIDARG;
+
+    SHCLTRANSFERDIR enmTransferDirection;
+    SHCLSOURCE      enmTransferSource;
+    if (aTransfer)
+    {
+        if (ShClTransferGetSource(aTransfer) != enmShClSource)
+            return E_INVALIDARG;
+        enmTransferDirection = ShClTransferGetDir(aTransfer);
+        enmTransferSource    = ShClTransferGetSource(aTransfer);
+    }
+    else
+    {
+        enmTransferDirection = enmShClSource == SHCLSOURCE_REMOTE
+                             ? SHCLTRANSFERDIR_FROM_REMOTE : SHCLTRANSFERDIR_TO_REMOTE;
+        enmTransferSource    = enmShClSource;
+    }
+    if (   (   enmTransferDirection != SHCLTRANSFERDIR_FROM_REMOTE
+            && enmTransferDirection != SHCLTRANSFERDIR_TO_REMOTE)
+        || (   enmTransferSource != SHCLSOURCE_LOCAL
+            && enmTransferSource != SHCLSOURCE_REMOTE)
+        || (   enmTransferSource == SHCLSOURCE_LOCAL
+            && enmTransferDirection != SHCLTRANSFERDIR_TO_REMOTE)
+        || (   enmTransferSource == SHCLSOURCE_REMOTE
+            && enmTransferDirection != SHCLTRANSFERDIR_FROM_REMOTE))
         return E_INVALIDARG;
     if (enmStatus == SHCLTRANSFERSTATUS_NONE)
         return S_OK;
 
     ClipboardTransferState_T const enmState = clipboardTransferManagerStatusToState(enmStatus);
     ClipboardError_T const enmError = clipboardTransferManagerStatusToError(enmStatus, vrcTransfer);
-    bool const fTerminal = clipboardTransferManagerStatusIsTerminal(enmStatus);
+    bool const fTerminal = ShClTransferStatusIsTerminal(enmStatus);
 
-    ComPtr<IClipboardTransfer> ptrTransfer;
+    ComObjPtr<ClipboardTransfer> ptrTransfer;
     ComPtr<IProgress> ptrProgress;
     ComPtr<IInternalProgressControl> ptrProgressControl;
     bool fFireAdded = false;
@@ -952,9 +971,7 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceS
 
         size_t idxRecord = mData.mTransfers.size();
         for (size_t i = 0; i < mData.mTransfers.size(); ++i)
-            if (   mData.mTransfers[i].mServiceSessionId == idSession
-                && mData.mTransfers[i].mTransferId == idTransfer
-                && mData.mTransfers[i].mGeneration == uGeneration)
+            if (mData.mTransfers[i].matches(idSession, idTransfer, uGeneration))
             {
                 idxRecord = i;
                 break;
@@ -968,13 +985,19 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceS
                           idSession, idTransfer, uGeneration, (uint32_t)enmStatus));
                 return S_OK;
             }
+            if (   enmStatus != SHCLTRANSFERSTATUS_REQUESTED
+                && enmStatus != SHCLTRANSFERSTATUS_INITIALIZED)
+                return E_INVALIDARG;
 
             ComObjPtr<Progress> ptrNewProgress;
             HRESULT hrc = ptrNewProgress.createObject();
             if (FAILED(hrc))
                 return hrc;
-            hrc = ptrNewProgress->init(FALSE /* aCancelable */, 1 /* aOperationCount */,
-                                       com::Utf8Str("Shared Clipboard transfer"));
+            ComPtr<IEventSource> ptrProgressInitiator = mData.mEventSource;
+            if (ptrProgressInitiator.isNull())
+                return E_FAIL;
+            hrc = ptrNewProgress->init(ptrProgressInitiator,
+                                       com::Utf8Str("Shared Clipboard transfer"), FALSE /* aCancelable */);
             if (FAILED(hrc))
                 return hrc;
 
@@ -992,19 +1015,15 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceS
             if (FAILED(hrc))
                 return hrc;
 
-            ClipboardTransferDirection_T const enmDirection = enmShClSource == SHCLSOURCE_REMOTE
+            ClipboardTransferDirection_T const enmDirection = enmTransferDirection == SHCLTRANSFERDIR_FROM_REMOTE
                                                             ? ClipboardTransferDirection_ToHost
                                                             : ClipboardTransferDirection_ToGuest;
-            ClipboardSource_T const enmSource = enmShClSource == SHCLSOURCE_REMOTE
+            ClipboardSource_T const enmSource = enmTransferSource == SHCLSOURCE_REMOTE
                                               ? ClipboardSource_Guest
                                               : ClipboardSource_Host;
             ComPtr<IClipboardItem> ptrItem;
-            hrc = ptrNewTransfer->init(idTransfer, enmDirection, enmSource, ClipboardAction_Copy, ptrItem, ptrIProgress);
-            if (FAILED(hrc))
-                return hrc;
-
-            ComPtr<IClipboardTransfer> ptrITransfer;
-            hrc = ptrNewTransfer.queryInterfaceTo(ptrITransfer.asOutParam());
+            hrc = ptrNewTransfer->init(idTransfer, enmDirection, enmSource, ClipboardAction_Copy, ptrItem, ptrIProgress,
+                                       NULL /* aTransfer */, false /* fOwnTransfer */);
             if (FAILED(hrc))
                 return hrc;
 
@@ -1012,18 +1031,31 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceS
             Record.mServiceSessionId = idSession;
             Record.mTransferId = idTransfer;
             Record.mGeneration = uGeneration;
+            Record.mDirection = enmTransferDirection;
+            Record.mSource = enmTransferSource;
             Record.mStatus = enmStatus;
             Record.mState = ClipboardTransferState_Added;
-            Record.mTransfer = ptrITransfer;
-            Record.mfPublished = true;
+            Record.mTransfer = ptrNewTransfer;
             Record.mProgress = ptrIProgress;
             Record.mProgressControl = ptrIProgressControl;
-            mData.mTransfers.push_back(Record);
+            try
+            {
+                mData.mTransfers.push_back(Record);
+            }
+            catch (std::bad_alloc &)
+            {
+                return E_OUTOFMEMORY;
+            }
             idxRecord = mData.mTransfers.size() - 1;
             fFireAdded = true;
         }
 
         Data::TransferRecord &Record = mData.mTransfers[idxRecord];
+        if (   Record.mDirection != enmTransferDirection
+            || Record.mSource != enmTransferSource
+            || !ShClTransferStatusTransitionIsValid(Record.mStatus, enmStatus))
+            return E_INVALIDARG;
+
         ptrTransfer = Record.mTransfer;
         ptrProgress = Record.mProgress;
         ptrProgressControl = Record.mProgressControl;
@@ -1047,15 +1079,20 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceS
 
     RT_NOREF(ptrProgress);
 
-    if (fTerminal)
-        clipboardTransferManagerCompleteProgress(ptrProgressControl, enmStatus, vrcTransfer);
-
     if (fFireAdded)
+    {
+        ptrTransfer->i_setState(ClipboardTransferState_Added, com::Utf8Str(), ClipboardError_None);
         i_fireTransferEvent(ptrTransfer, ClipboardTransferState_Added, ClipboardTransferInteraction_None,
                             com::Utf8Str(), com::Utf8Str(), ClipboardError_None);
+    }
     if (fFireState)
+    {
+        ptrTransfer->i_setState(enmState, com::Utf8Str(), enmError);
+        if (fTerminal)
+            clipboardTransferManagerCompleteProgress(ptrProgressControl, enmStatus, vrcTransfer);
         i_fireTransferEvent(ptrTransfer, enmState, ClipboardTransferInteraction_None,
                             com::Utf8Str(), com::Utf8Str(), enmError);
+    }
 
     return S_OK;
 }
@@ -1069,7 +1106,7 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceS
  */
 HRESULT ClipboardTransferManager::i_cancelTransferById(ULONG aTransferId)
 {
-    ComPtr<IClipboardTransfer> ptrTransfer;
+    ComObjPtr<ClipboardTransfer> ptrTransfer;
     {
         AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
         for (std::vector<Data::TransferRecord>::const_iterator it = mData.mTransfers.begin();
@@ -1085,6 +1122,9 @@ HRESULT ClipboardTransferManager::i_cancelTransferById(ULONG aTransferId)
     if (ptrTransfer.isNull())
         return E_INVALIDARG;
 
-    return cancel(ptrTransfer);
+    ComPtr<IClipboardTransfer> ptrITransfer;
+    HRESULT const hrc = ptrTransfer.queryInterfaceTo(ptrITransfer.asOutParam());
+    AssertComRCReturn(hrc, hrc);
+    return cancel(ptrITransfer);
 }
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */

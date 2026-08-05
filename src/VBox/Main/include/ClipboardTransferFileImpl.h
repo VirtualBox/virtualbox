@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferFileImpl.h 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferFileImpl.h 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer file handle.
  */
@@ -114,7 +114,9 @@ private:
             , mCreationMode(0)
         { RT_ZERO(mInfo); }
 
+        /** Parent transfer object. */
         ComPtr<IClipboardTransfer> mParent;
+        /** Retained Shared Clipboard transfer owning mHandle. */
         PSHCLTRANSFER              mTransfer;
         SHCLOBJHANDLE              mHandle;
         com::Utf8Str               mPath;

@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferDataImpl.cpp 114632 2026-07-07 15:27:30Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferDataImpl.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer data plane object.
  */
@@ -64,6 +64,9 @@ static HRESULT clipboardTransferDataRcToHrc(int vrc)
     if (   vrc == VERR_INVALID_PARAMETER
         || vrc == VERR_INVALID_POINTER
         || vrc == VERR_INVALID_HANDLE
+        || vrc == VERR_INVALID_NAME
+        || vrc == VERR_INVALID_UTF8_ENCODING
+        || vrc == VERR_PATH_IS_NOT_RELATIVE
         || vrc == VERR_WRONG_ORDER
         || vrc == VERR_BUFFER_OVERFLOW
         || vrc == VERR_TOO_MUCH_DATA)
@@ -71,43 +74,6 @@ static HRESULT clipboardTransferDataRcToHrc(int vrc)
     if (vrc == VERR_NO_DATA || vrc == VERR_NO_MORE_FILES || vrc == VERR_NOT_FOUND)
         return VBOX_E_SHCL_NO_DATA;
     return VBOX_E_SHCL_ERROR;
-}
-
-
-/**
- * Validates a transfer-relative path supplied through the low-level data API.
- *
- * @returns COM status code.
- * @param   aPath           Path to validate.
- * @param   fAllowEmpty     Whether the empty path is accepted.
- */
-static HRESULT clipboardTransferDataValidatePath(const com::Utf8Str &aPath, bool fAllowEmpty)
-{
-    if (aPath.isEmpty())
-        return fAllowEmpty ? S_OK : E_INVALIDARG;
-
-    const char *pszPath = aPath.c_str();
-    if (   pszPath[0] == '/'
-        || pszPath[0] == '\\'
-        || strchr(pszPath, '\\')
-        || strchr(pszPath, ':'))
-        return E_INVALIDARG;
-
-    const char *pszCur = pszPath;
-    while (*pszCur)
-    {
-        const char *pszNext = strchr(pszCur, '/');
-        size_t const cch = pszNext ? (size_t)(pszNext - pszCur) : strlen(pszCur);
-        if (   cch == 0
-            || (cch == 1 && pszCur[0] == '.')
-            || (cch == 2 && pszCur[0] == '.' && pszCur[1] == '.'))
-            return E_INVALIDARG;
-        if (!pszNext)
-            break;
-        pszCur = pszNext + 1;
-    }
-
-    return S_OK;
 }
 
 
@@ -127,22 +93,26 @@ static HRESULT clipboardTransferDataListEntryToMain(PCSHCLLISTENTRY pEntry,
 {
     AssertPtrReturn(pEntry, E_POINTER);
     AssertPtrReturn(aInfoFlags, E_POINTER);
+    if (!ShClTransferListEntryIsValid((PSHCLLISTENTRY)pEntry))
+        return E_INVALIDARG;
 
-    aName = pEntry->pszName ? pEntry->pszName : "";
-    *aInfoFlags = pEntry->fInfo;
+    com::Utf8Str Name;
+    std::vector<BYTE> Info;
     try
     {
-        aInfo.resize(pEntry->cbInfo);
+        Name = pEntry->pszName;
+        Info.resize(pEntry->cbInfo);
         if (pEntry->cbInfo)
-        {
-            AssertPtrReturn(pEntry->pvInfo, E_POINTER);
-            memcpy(&aInfo[0], pEntry->pvInfo, pEntry->cbInfo);
-        }
+            memcpy(&Info[0], pEntry->pvInfo, pEntry->cbInfo);
     }
     catch (std::bad_alloc &)
     {
         return E_OUTOFMEMORY;
     }
+
+    aName.swap(Name);
+    aInfo.swap(Info);
+    *aInfoFlags = pEntry->fInfo;
     return S_OK;
 }
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
@@ -174,7 +144,7 @@ void ClipboardTransferData::FinalRelease()
  * Initializes a clipboard transfer data plane object.
  *
  * @returns COM status code.
- * @param   aParent         Parent transfer object used to keep the backing transfer alive.
+ * @param   aParent         Parent transfer object.
  * @param   aTransfer       Backing Shared Clipboard transfer.
  */
 HRESULT ClipboardTransferData::init(const ComPtr<IClipboardTransfer> &aParent, PSHCLTRANSFER aTransfer)
@@ -234,11 +204,8 @@ HRESULT ClipboardTransferData::open(ClipboardTransferDataType_T aType,
         return setError(E_POINTER, tr("The clipboard transfer data handle output argument must not be NULL"));
     *aHandle = 0;
 
-    PSHCLTRANSFER pTransfer;
-    {
-        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
-        pTransfer = mData.mTransfer;
-    }
+    AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+    PSHCLTRANSFER const pTransfer = mData.mTransfer;
     if (!pTransfer)
         return setError(E_NOTIMPL, tr("Clipboard transfer has no data-plane backend"));
 
@@ -256,9 +223,12 @@ HRESULT ClipboardTransferData::open(ClipboardTransferDataType_T aType,
 
         case ClipboardTransferDataType_List:
         {
-            HRESULT hrc = clipboardTransferDataValidatePath(aPath, true /* fAllowEmpty */);
-            if (FAILED(hrc))
-                return setError(hrc, tr("Invalid clipboard transfer list path"));
+            vrc = ShClTransferValidatePath(aPath.c_str(), false /* fMustExist */);
+            if (RT_FAILURE(vrc))
+            {
+                HRESULT const hrc = clipboardTransferDataRcToHrc(vrc);
+                return setErrorBoth(hrc, vrc, tr("Invalid clipboard transfer list path: %Rrc"), vrc);
+            }
 
             SHCLLISTOPENPARMS OpenParms;
             vrc = ShClTransferListOpenParmsInit(&OpenParms);
@@ -284,9 +254,14 @@ HRESULT ClipboardTransferData::open(ClipboardTransferDataType_T aType,
 
         case ClipboardTransferDataType_Object:
         {
-            HRESULT hrc = clipboardTransferDataValidatePath(aPath, false /* fAllowEmpty */);
-            if (FAILED(hrc))
-                return setError(hrc, tr("Invalid clipboard transfer object path"));
+            if (aPath.isEmpty())
+                return setError(E_INVALIDARG, tr("Clipboard transfer object paths must not be empty"));
+            vrc = ShClTransferValidatePath(aPath.c_str(), false /* fMustExist */);
+            if (RT_FAILURE(vrc))
+            {
+                HRESULT const hrc = clipboardTransferDataRcToHrc(vrc);
+                return setErrorBoth(hrc, vrc, tr("Invalid clipboard transfer object path: %Rrc"), vrc);
+            }
 
             SHCLOBJOPENCREATEPARMS OpenParms;
             vrc = ShClTransferObjOpenParmsInit(&OpenParms);
@@ -332,11 +307,8 @@ HRESULT ClipboardTransferData::close(ClipboardTransferDataType_T aType, LONG64 a
     ReturnComNotImplemented();
 #else /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
-    PSHCLTRANSFER pTransfer;
-    {
-        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
-        pTransfer = mData.mTransfer;
-    }
+    AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+    PSHCLTRANSFER const pTransfer = mData.mTransfer;
     if (!pTransfer)
         return setError(E_NOTIMPL, tr("Clipboard transfer has no data-plane backend"));
     if (aHandle < 0)
@@ -401,11 +373,8 @@ HRESULT ClipboardTransferData::read(ClipboardTransferDataType_T aType,
     if (aHandle < 0)
         return setError(E_INVALIDARG, tr("Clipboard transfer data handle must not be negative"));
 
-    PSHCLTRANSFER pTransfer;
-    {
-        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
-        pTransfer = mData.mTransfer;
-    }
+    AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+    PSHCLTRANSFER const pTransfer = mData.mTransfer;
     if (!pTransfer)
         return setError(E_NOTIMPL, tr("Clipboard transfer has no data-plane backend"));
 
@@ -416,9 +385,12 @@ HRESULT ClipboardTransferData::read(ClipboardTransferDataType_T aType,
         {
             if (aSize != 0 || aFlags != 0)
                 return setError(E_INVALIDARG, tr("Root-list clipboard transfer reads require size 0 and flags 0"));
-            PCSHCLLISTENTRY pEntry = ShClTransferRootsEntryGet(pTransfer, (uint64_t)aHandle);
+
+            PCSHCLLISTENTRY const pEntry = ShClTransferRootsEntryGet(pTransfer, (uint64_t)aHandle);
             if (!pEntry)
-                return setError(VBOX_E_SHCL_NO_DATA, tr("No clipboard transfer root entry exists at index %RI64"), aHandle);
+                return setErrorBoth(clipboardTransferDataRcToHrc(VERR_NOT_FOUND), VERR_NOT_FOUND,
+                                    tr("No clipboard transfer root entry exists at index %RI64"), aHandle);
+
             HRESULT hrc = clipboardTransferDataListEntryToMain(pEntry, aName, aInfoFlags, aInfo);
             if (FAILED(hrc))
                 return setError(hrc, tr("Copying clipboard transfer root entry metadata failed"));
@@ -435,8 +407,14 @@ HRESULT ClipboardTransferData::read(ClipboardTransferDataType_T aType,
             {
                 vrc = ShClTransferListRead(pTransfer, (SHCLLISTHANDLE)aHandle, &Entry);
                 if (RT_SUCCESS(vrc))
-                    vrc = SUCCEEDED(clipboardTransferDataListEntryToMain(&Entry, aName, aInfoFlags, aInfo))
-                        ? VINF_SUCCESS : VERR_NO_MEMORY;
+                {
+                    HRESULT const hrc = clipboardTransferDataListEntryToMain(&Entry, aName, aInfoFlags, aInfo);
+                    if (FAILED(hrc))
+                    {
+                        ShClTransferListEntryDestroy(&Entry);
+                        return setError(hrc, tr("Copying clipboard transfer list entry metadata failed"));
+                    }
+                }
                 ShClTransferListEntryDestroy(&Entry);
             }
             break;
@@ -446,6 +424,8 @@ HRESULT ClipboardTransferData::read(ClipboardTransferDataType_T aType,
         {
             if (!aSize || aFlags != 0)
                 return setError(E_INVALIDARG, tr("Clipboard transfer object reads require a non-zero size and flags 0"));
+            if (aSize > pTransfer->cbMaxChunkSize)
+                return setError(E_INVALIDARG, tr("Clipboard transfer object read size exceeds the backend chunk limit"));
             try
             {
                 aData.resize(aSize);
@@ -457,9 +437,15 @@ HRESULT ClipboardTransferData::read(ClipboardTransferDataType_T aType,
             uint32_t cbRead = 0;
             vrc = ShClTransferObjRead(pTransfer, (SHCLOBJHANDLE)aHandle, aData.empty() ? NULL : &aData[0], aSize,
                                       aFlags, &cbRead);
-            if (RT_SUCCESS(vrc))
+            if (   RT_SUCCESS(vrc)
+                && cbRead <= aSize)
                 aData.resize(cbRead);
-            else
+            else if (RT_SUCCESS(vrc))
+            {
+                aData.clear();
+                return setError(E_INVALIDARG, tr("Clipboard transfer provider returned an invalid read size"));
+            }
+            if (RT_FAILURE(vrc))
                 aData.clear();
             break;
         }
@@ -509,11 +495,8 @@ HRESULT ClipboardTransferData::write(ClipboardTransferDataType_T aType,
     if (aHandle < 0)
         return setError(E_INVALIDARG, tr("Clipboard transfer data handle must not be negative"));
 
-    PSHCLTRANSFER pTransfer;
-    {
-        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
-        pTransfer = mData.mTransfer;
-    }
+    AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+    PSHCLTRANSFER const pTransfer = mData.mTransfer;
     if (!pTransfer)
         return setError(E_NOTIMPL, tr("Clipboard transfer has no data-plane backend"));
 
@@ -524,6 +507,14 @@ HRESULT ClipboardTransferData::write(ClipboardTransferDataType_T aType,
         {
             if (aFlags != 0 || aName.isEmpty())
                 return setError(E_INVALIDARG, tr("Clipboard transfer list writes require flags 0 and a non-empty entry name"));
+            if (   aInfo.size() > UINT32_MAX
+                || (   aInfoFlags == VBOX_SHCL_INFO_F_NONE
+                    && !aInfo.empty())
+                || (   aInfoFlags == VBOX_SHCL_INFO_F_FSOBJINFO
+                    && aInfo.size() != sizeof(SHCLFSOBJINFO))
+                || (   aInfoFlags != VBOX_SHCL_INFO_F_NONE
+                    && aInfoFlags != VBOX_SHCL_INFO_F_FSOBJINFO))
+                return setError(E_INVALIDARG, tr("Clipboard transfer list information flags and payload do not match"));
             void *pvInfo = NULL;
             if (!aInfo.empty())
             {
@@ -540,7 +531,10 @@ HRESULT ClipboardTransferData::write(ClipboardTransferDataType_T aType,
             if (RT_SUCCESS(vrc))
             {
                 pvInfo = NULL; /* Ownership transferred to Entry. */
-                vrc = ShClTransferListWrite(pTransfer, (SHCLLISTHANDLE)aHandle, &Entry);
+                if (!ShClTransferListEntryIsValid(&Entry))
+                    vrc = VERR_INVALID_PARAMETER;
+                else
+                    vrc = ShClTransferListWrite(pTransfer, (SHCLLISTHANDLE)aHandle, &Entry);
                 ShClTransferListEntryDestroy(&Entry);
             }
             if (pvInfo)
@@ -557,8 +551,11 @@ HRESULT ClipboardTransferData::write(ClipboardTransferDataType_T aType,
             uint32_t cbWritten = 0;
             vrc = ShClTransferObjWrite(pTransfer, (SHCLOBJHANDLE)aHandle, (void *)&aData[0], (uint32_t)aData.size(),
                                        aFlags, &cbWritten);
-            if (RT_SUCCESS(vrc))
+            if (   RT_SUCCESS(vrc)
+                && cbWritten <= aData.size())
                 *aWritten = cbWritten;
+            else if (RT_SUCCESS(vrc))
+                return setError(E_INVALIDARG, tr("Clipboard transfer provider returned an invalid write size"));
             break;
         }
 

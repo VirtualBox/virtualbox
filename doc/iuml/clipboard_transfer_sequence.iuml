@@ -1,4 +1,4 @@
-' $Id: clipboard_transfer_sequence.iuml 114611 2026-07-03 15:34:02Z andreas.loeffler@oracle.com $
+' $Id: clipboard_transfer_sequence.iuml 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $
 '' @file
 ' UML definition for PlantUML - VirtualBox Clipboard Transfer Sequence - Draft
 '
@@ -53,6 +53,8 @@ end box
 
 legend right
   IClipboardTransfer is the high-level filesystem-like transfer tree API.
+  Clients obtain manager-owned transfers through create() or getTransfers().
+  Manager controls reject foreign transfer objects.
   sourcePaths configure local producer-side filesystem objects.
   roots() returns receiver-visible transfer-relative nodes.
   Roots, query, list, openDirectory and openFile are preferred for normal clients.
@@ -62,10 +64,14 @@ endlegend
 
 == Configure a local host-to-guest transfer ==
 
-Client -> Manager: createTransfer(ToGuest, Host, Copy)
-Manager -> VBoxC: create unpublished transfer wrapper
+Client -> Manager: create(ToGuest, Host, Copy)
+Manager -> VBoxC: create and track manager-owned transfer wrapper
 VBoxC --> Manager: transfer
 Manager --> Client: transfer
+note over Manager, VBoxC
+  Main ownership and tracking do not publish
+  the transfer to the service or platform backend.
+end note
 
 Client -> Transfer: setSourcePaths(["/home/user/report.txt", "/home/user/photos"])
 note right of Client
@@ -82,15 +88,10 @@ Core --> VBoxC: initialized transfer tree
 VBoxC --> Transfer: success
 Transfer --> Client: success
 
-Client -> Manager: add(transfer)
-Manager -> VBoxC: publish configured transfer
-VBoxC -> Core: make transfer available
-Core -> Provider: advertise roots report.txt and photos
-
 == Discover and approve a transfer ==
 
 Client -> Manager: getTransfers(direction, 0)
-Manager -> VBoxC: find matching live transfers
+Manager -> VBoxC: find matching tracked transfers
 VBoxC --> Manager: matching transfers
 Manager --> Client: transfer[]
 

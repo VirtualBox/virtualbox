@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendDarwin.cpp 114632 2026-07-07 15:27:30Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendDarwin.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host.
  */
@@ -61,6 +61,8 @@ typedef struct SHCLCONTEXT
     PasteboardRef           hPasteboard;
     /** Shared clipboard client. */
     PSHCLCLIENT             pClient;
+    /** Whether @a pClient may be used by the pasteboard poller. */
+    bool                    fClientReady;
     /** Random 64-bit number embedded into szGuestOwnershipFlavor. */
     uint64_t                idGuestOwnership;
     /** Ownership flavor CFStringRef returned by takePasteboardOwnership().
@@ -94,30 +96,32 @@ static int shClBackendReportFormatsToGuestAndMain(PSHCLCLIENT pClient, SHCLFORMA
  * @returns IPRT status code (ignored).
  * @param   pCtx    The context.
  *
- * @note    Call must own lock.
  */
 static int vboxClipboardChanged(SHCLCONTEXT *pCtx)
 {
-    if (pCtx->pClient == NULL)
-        return VINF_SUCCESS;
-
-    /* Retrieve the formats currently in the clipboard and supported by vbox */
+    int      vrc      = VINF_SUCCESS;
     uint32_t fFormats = 0;
-    bool     fChanged = false;
-    int vrc = queryNewPasteboardFormats(pCtx->hPasteboard, pCtx->idGuestOwnership, pCtx->hStrOwnershipFlavor,
-                                        &fFormats, &fChanged);
-    if (   RT_SUCCESS(vrc)
-        && fChanged)
+
+    RTCritSectEnter(&pCtx->CritSect);
+
+    if (   pCtx->pClient
+        && pCtx->fClientReady)
     {
-        uint32_t uMode = pCtx->pClient->State.uMode;
-        if (   uMode == VBOX_SHCL_MODE_BIDIRECTIONAL
-            || uMode == VBOX_SHCL_MODE_HOST_TO_GUEST)
+        /* Retrieve the formats currently in the clipboard and supported by VBox. */
+        bool     fChanged = false;
+        vrc = queryNewPasteboardFormats(pCtx->hPasteboard, pCtx->idGuestOwnership, pCtx->hStrOwnershipFlavor,
+                                        &fFormats, &fChanged);
+        if (   RT_SUCCESS(vrc)
+            && fChanged)
         {
-            vrc = shClBackendReportFormatsToGuestAndMain(pCtx->pClient, fFormats);
+            uint32_t const uMode = pCtx->pClient->State.uMode;
+            if (   uMode == VBOX_SHCL_MODE_BIDIRECTIONAL
+                || uMode == VBOX_SHCL_MODE_HOST_TO_GUEST)
+                vrc = shClBackendReportFormatsToGuestAndMain(pCtx->pClient, fFormats);
         }
-        else
-            vrc = VINF_SUCCESS;
     }
+
+    RTCritSectLeave(&pCtx->CritSect);
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;
@@ -137,11 +141,7 @@ static DECLCALLBACK(int) vboxClipboardThread(RTTHREAD ThreadSelf, void *pvUser)
 
     while (!ASMAtomicReadBool(&pCtx->fTerminate))
     {
-        /* call this behind the lock because we don't know if the api is
-           thread safe and in any case we're calling several methods. */
-        RTCritSectEnter(&g_ctx.CritSect);
         vboxClipboardChanged(pCtx);
-        RTCritSectLeave(&g_ctx.CritSect);
 
         /* Sleep for 200 msecs before next poll */
         vrc = RTThreadUserWait(ThreadSelf, 200);
@@ -157,6 +157,7 @@ static DECLCALLBACK(int) vboxClipboardThread(RTTHREAD ThreadSelf, void *pvUser)
 int ShClBackendInit(PSHCLBACKEND pBackend, VBOXHGCMSVCFNTABLE *pTable)
 {
     g_ctx.fTerminate = false;
+    g_ctx.fClientReady = false;
 
     int vrc;
 
@@ -206,6 +207,7 @@ void ShClBackendDestroy(PSHCLBACKEND pBackend)
      */
     destroyPasteboard(&g_ctx.hPasteboard);
     g_ctx.pClient = NULL;
+    g_ctx.fClientReady = false;
 
     if (RTCritSectIsInitialized(&g_ctx.CritSect))
         RTCritSectDelete(&g_ctx.CritSect);
@@ -215,31 +217,41 @@ int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, bool fHeadles
 {
     RT_NOREF(pBackend, fHeadless);
 
-    if (g_ctx.pClient != NULL)
-    {
-        /* One client only. */
-        return VERR_NOT_SUPPORTED;
-    }
-
     RTCritSectEnter(&g_ctx.CritSect);
 
-    pClient->State.pCtx = &g_ctx;
-    pClient->State.pCtx->pClient = pClient;
+    int vrc;
+    if (g_ctx.pClient == NULL)
+    {
+        pClient->State.pCtx = &g_ctx;
+        g_ctx.pClient = pClient;
+        g_ctx.fClientReady = false;
+        vrc = VINF_SUCCESS;
+    }
+    else
+        vrc = VERR_NOT_SUPPORTED; /* One client only. */
 
     RTCritSectLeave(&g_ctx.CritSect);
 
-    return VINF_SUCCESS;
+    return vrc;
 }
 
 int ShClBackendSync(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
 {
     RT_NOREF(pBackend);
 
+    /* GuestShCl records the active client after ShClBackendConnect returns.  Do
+     * not expose it to the poller before that lifetime guard is in place. */
     RTCritSectEnter(&g_ctx.CritSect);
-    /* Sync the host clipboard content with the client. */
-    int vrc = vboxClipboardChanged(pClient->State.pCtx);
+    int vrc = VINF_SUCCESS;
+    if (pClient->State.pCtx->pClient == pClient)
+        pClient->State.pCtx->fClientReady = true;
+    else
+        vrc = VERR_NOT_SUPPORTED;
     RTCritSectLeave(&g_ctx.CritSect);
 
+    /* Sync the host clipboard content with the client. */
+    if (RT_SUCCESS(vrc))
+        vrc = vboxClipboardChanged(pClient->State.pCtx);
     return vrc;
 }
 
@@ -249,7 +261,11 @@ int ShClBackendDisconnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
 
     RTCritSectEnter(&g_ctx.CritSect);
 
-    pClient->State.pCtx->pClient = NULL;
+    if (pClient->State.pCtx->pClient == pClient)
+    {
+        pClient->State.pCtx->fClientReady = false;
+        pClient->State.pCtx->pClient = NULL;
+    }
 
     RTCritSectLeave(&g_ctx.CritSect);
 
@@ -376,12 +392,16 @@ int ShClBackendWriteData(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, PSHCLCLIENT
 
     RTCritSectEnter(&g_ctx.CritSect);
 
-    writeToPasteboard(pClient->State.pCtx->hPasteboard, pClient->State.pCtx->idGuestOwnership, pvData, cbData, fFormat);
+    int vrc = writeToPasteboard(pClient->State.pCtx->hPasteboard, pClient->State.pCtx->idGuestOwnership,
+                                pvData, cbData, fFormat);
 
     RTCritSectLeave(&g_ctx.CritSect);
 
-    LogFlowFuncLeaveRC(VINF_SUCCESS);
-    return VINF_SUCCESS;
+    if (RT_FAILURE(vrc))
+        LogRel(("Shared Clipboard: Writing guest data to the macOS pasteboard failed, vrc=%Rrc\n", vrc));
+
+    LogFlowFuncLeaveRC(vrc);
+    return vrc;
 }
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
@@ -406,4 +426,3 @@ int ShClBackendTransferHandleStatusReply(PSHCLBACKEND pBackend, PSHCLCLIENT pCli
 }
 # endif /* !UNIT_TEST */
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
-

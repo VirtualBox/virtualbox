@@ -1,4 +1,4 @@
-/* $Id: tstClipboardTransfers.cpp 114632 2026-07-07 15:27:30Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardTransfers.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard transfers test case.
  */
@@ -35,6 +35,26 @@
 #include <iprt/string.h>
 #include <iprt/symlink.h>
 #include <iprt/test.h>
+#include <iprt/thread.h>
+
+
+/** @name TST_SHCL_TRANSFER_STATUS_F_XXX - Testcase transfer status flags.
+ *
+ * Each flag uses the numeric SHCLTRANSFERSTATUS value as its bit position.
+ * This lets expected transition masks name statuses directly and keeps them
+ * independent of the order of the status array used to exercise the masks.
+ * @{ */
+#define TST_SHCL_TRANSFER_STATUS_F(a_enmStatus)      RT_BIT_32(a_enmStatus)
+#define TST_SHCL_TRANSFER_STATUS_F_NONE              TST_SHCL_TRANSFER_STATUS_F(SHCLTRANSFERSTATUS_NONE)
+#define TST_SHCL_TRANSFER_STATUS_F_REQUESTED         TST_SHCL_TRANSFER_STATUS_F(SHCLTRANSFERSTATUS_REQUESTED)
+#define TST_SHCL_TRANSFER_STATUS_F_INITIALIZED       TST_SHCL_TRANSFER_STATUS_F(SHCLTRANSFERSTATUS_INITIALIZED)
+#define TST_SHCL_TRANSFER_STATUS_F_UNINITIALIZED     TST_SHCL_TRANSFER_STATUS_F(SHCLTRANSFERSTATUS_UNINITIALIZED)
+#define TST_SHCL_TRANSFER_STATUS_F_STARTED           TST_SHCL_TRANSFER_STATUS_F(SHCLTRANSFERSTATUS_STARTED)
+#define TST_SHCL_TRANSFER_STATUS_F_COMPLETED         TST_SHCL_TRANSFER_STATUS_F(SHCLTRANSFERSTATUS_COMPLETED)
+#define TST_SHCL_TRANSFER_STATUS_F_CANCELED          TST_SHCL_TRANSFER_STATUS_F(SHCLTRANSFERSTATUS_CANCELED)
+#define TST_SHCL_TRANSFER_STATUS_F_KILLED            TST_SHCL_TRANSFER_STATUS_F(SHCLTRANSFERSTATUS_KILLED)
+#define TST_SHCL_TRANSFER_STATUS_F_ERROR             TST_SHCL_TRANSFER_STATUS_F(SHCLTRANSFERSTATUS_ERROR)
+/** @} */
 
 
 static int testCreateTempDir(RTTEST hTest, const char *pszTestcase, char *pszTempDir, size_t cbTempDir)
@@ -57,7 +77,11 @@ static int testCreateTempDir(RTTEST hTest, const char *pszTestcase, char *pszTem
     rc = RTDirCreateTemp(szTempDir, 0700);
     RTTESTI_CHECK_RC_RET(rc, VINF_SUCCESS, rc);
 
-    rc = RTPathJoin(pszTempDir, cbTempDir, szTempDir, pszTestcase);
+    char szTempDirReal[RTPATH_MAX];
+    rc = RTPathReal(szTempDir, szTempDirReal, sizeof(szTempDirReal));
+    RTTESTI_CHECK_RC_RET(rc, VINF_SUCCESS, rc);
+
+    rc = RTPathJoin(pszTempDir, cbTempDir, szTempDirReal, pszTestcase);
     RTTESTI_CHECK_RC_RET(rc, VINF_SUCCESS, rc);
 
     RTTestPrintf(hTest, RTTESTLVL_DEBUG, "Created temporary directory: %s\n", pszTempDir);
@@ -390,6 +414,105 @@ static void testTransferBasics(void)
 
     rc = ShClTransferDestroy(pTransfer);
     RTTESTI_CHECK_RC_OK(rc);
+}
+
+/**
+ * Tests common Shared Clipboard and transfer validation.
+ */
+static void testTransferValidation(void)
+{
+    RTTestISub("Testing Shared Clipboard validation");
+
+    RTTESTI_CHECK(ShClFormatIsValid(VBOX_SHCL_FMT_UNICODETEXT));
+    RTTESTI_CHECK(ShClFormatIsValid(VBOX_SHCL_FMT_BITMAP));
+    RTTESTI_CHECK(ShClFormatIsValid(VBOX_SHCL_FMT_HTML));
+    RTTESTI_CHECK(ShClFormatIsValid(VBOX_SHCL_FMT_URI_LIST));
+    RTTESTI_CHECK(!ShClFormatIsValid(VBOX_SHCL_FMT_NONE));
+    RTTESTI_CHECK(!ShClFormatIsValid(VBOX_SHCL_FMT_UNICODETEXT | VBOX_SHCL_FMT_BITMAP));
+    RTTESTI_CHECK(!ShClFormatIsValid(VBOX_SHCL_FMT_VALID_MASK + 1));
+
+    RTTESTI_CHECK(ShClFormatsAreValid(VBOX_SHCL_FMT_NONE));
+    RTTESTI_CHECK(ShClFormatsAreValid(VBOX_SHCL_FMT_VALID_MASK));
+    RTTESTI_CHECK(!ShClFormatsAreValid(VBOX_SHCL_FMT_VALID_MASK + 1));
+
+    RTTESTI_CHECK(ShClTransferDirIsValid(SHCLTRANSFERDIR_FROM_REMOTE));
+    RTTESTI_CHECK(ShClTransferDirIsValid(SHCLTRANSFERDIR_TO_REMOTE));
+    RTTESTI_CHECK(!ShClTransferDirIsValid(SHCLTRANSFERDIR_UNKNOWN));
+    RTTESTI_CHECK(!ShClTransferDirIsValid(SHCLTRANSFERDIR_32BIT_HACK));
+
+    RTTESTI_CHECK(ShClSourceIsValid(SHCLSOURCE_LOCAL));
+    RTTESTI_CHECK(ShClSourceIsValid(SHCLSOURCE_REMOTE));
+    RTTESTI_CHECK(!ShClSourceIsValid(SHCLSOURCE_INVALID));
+    RTTESTI_CHECK(!ShClSourceIsValid(SHCLSOURCE_32BIT_HACK));
+
+    RTTESTI_CHECK(ShClTransferIdIsValid(1));
+    RTTESTI_CHECK(ShClTransferIdIsValid(VBOX_SHCL_MAX_TRANSFERS - 2));
+    RTTESTI_CHECK(!ShClTransferIdIsValid(0));
+    RTTESTI_CHECK(!ShClTransferIdIsValid(VBOX_SHCL_MAX_TRANSFERS - 1));
+    RTTESTI_CHECK(!ShClTransferIdIsValid(NIL_SHCLTRANSFERID));
+    RTTESTI_CHECK(!ShClTransferIdIsValid(UINT32_MAX));
+
+    RTTESTI_CHECK(ShClTransferKeyIsValid(1, 1, 1));
+    RTTESTI_CHECK(ShClTransferKeyIsValid(1, VBOX_SHCL_MAX_TRANSFERS - 2, 1));
+    RTTESTI_CHECK(!ShClTransferKeyIsValid(0, 1, 1));
+    RTTESTI_CHECK(!ShClTransferKeyIsValid(NIL_SHCLSESSIONID, 1, 1));
+    RTTESTI_CHECK(!ShClTransferKeyIsValid(1, 0, 1));
+    RTTESTI_CHECK(!ShClTransferKeyIsValid(1, VBOX_SHCL_MAX_TRANSFERS - 1, 1));
+    RTTESTI_CHECK(!ShClTransferKeyIsValid(1, NIL_SHCLTRANSFERID, 1));
+    RTTESTI_CHECK(!ShClTransferKeyIsValid(1, UINT32_MAX, 1));
+    RTTESTI_CHECK(!ShClTransferKeyIsValid(1, 1, 0));
+    RTTESTI_CHECK(!ShClTransferKeyIsValid(1, 1, NIL_SHCLTRANSFERGEN));
+
+    /** Expected classification and transitions for each transfer status. */
+    static struct
+    {
+        /** Transfer status under test. */
+        SHCLTRANSFERSTATUS enmStatus;
+        /** Whether the status is terminal. */
+        bool               fTerminal;
+        /** Flags identifying statuses to which the status may transition. */
+        uint32_t           fTransitions;
+    } const s_aStatusTests[] =
+    {
+        { SHCLTRANSFERSTATUS_NONE,          false, TST_SHCL_TRANSFER_STATUS_F_NONE },
+        { SHCLTRANSFERSTATUS_REQUESTED,     false, TST_SHCL_TRANSFER_STATUS_F_REQUESTED | TST_SHCL_TRANSFER_STATUS_F_INITIALIZED | TST_SHCL_TRANSFER_STATUS_F_UNINITIALIZED | TST_SHCL_TRANSFER_STATUS_F_CANCELED | TST_SHCL_TRANSFER_STATUS_F_KILLED | TST_SHCL_TRANSFER_STATUS_F_ERROR },
+        { SHCLTRANSFERSTATUS_INITIALIZED,   false, TST_SHCL_TRANSFER_STATUS_F_INITIALIZED | TST_SHCL_TRANSFER_STATUS_F_UNINITIALIZED | TST_SHCL_TRANSFER_STATUS_F_STARTED | TST_SHCL_TRANSFER_STATUS_F_COMPLETED | TST_SHCL_TRANSFER_STATUS_F_CANCELED | TST_SHCL_TRANSFER_STATUS_F_KILLED | TST_SHCL_TRANSFER_STATUS_F_ERROR },
+        { SHCLTRANSFERSTATUS_UNINITIALIZED, true,  TST_SHCL_TRANSFER_STATUS_F_UNINITIALIZED },
+        { SHCLTRANSFERSTATUS_STARTED,       false, TST_SHCL_TRANSFER_STATUS_F_UNINITIALIZED | TST_SHCL_TRANSFER_STATUS_F_STARTED | TST_SHCL_TRANSFER_STATUS_F_COMPLETED | TST_SHCL_TRANSFER_STATUS_F_CANCELED | TST_SHCL_TRANSFER_STATUS_F_KILLED | TST_SHCL_TRANSFER_STATUS_F_ERROR },
+        { SHCLTRANSFERSTATUS_COMPLETED,     true,  TST_SHCL_TRANSFER_STATUS_F_COMPLETED },
+        { SHCLTRANSFERSTATUS_CANCELED,      true,  TST_SHCL_TRANSFER_STATUS_F_CANCELED },
+        { SHCLTRANSFERSTATUS_KILLED,        true,  TST_SHCL_TRANSFER_STATUS_F_KILLED },
+        { SHCLTRANSFERSTATUS_ERROR,         true,  TST_SHCL_TRANSFER_STATUS_F_ERROR }
+    };
+
+    for (size_t i = 0; i < RT_ELEMENTS(s_aStatusTests); ++i)
+    {
+        SHCLTRANSFERSTATUS const enmStatus = s_aStatusTests[i].enmStatus;
+        RTTESTI_CHECK(ShClTransferStatusIsValid(enmStatus));
+        RTTESTI_CHECK(ShClTransferStatusIsTerminal(enmStatus) == s_aStatusTests[i].fTerminal);
+
+        bool const fFailureStatus =    enmStatus == SHCLTRANSFERSTATUS_KILLED
+                                   || enmStatus == SHCLTRANSFERSTATUS_ERROR;
+        RTTESTI_CHECK(ShClTransferStatusResultIsValid(enmStatus, VINF_SUCCESS)
+                      == (   !fFailureStatus
+                          && enmStatus != SHCLTRANSFERSTATUS_CANCELED));
+        RTTESTI_CHECK(ShClTransferStatusResultIsValid(enmStatus, VERR_GENERAL_FAILURE) == fFailureStatus);
+        RTTESTI_CHECK(ShClTransferStatusResultIsValid(enmStatus, VERR_CANCELLED)
+                      == (fFailureStatus || enmStatus == SHCLTRANSFERSTATUS_CANCELED));
+
+        for (size_t j = 0; j < RT_ELEMENTS(s_aStatusTests); ++j)
+            RTTESTI_CHECK(ShClTransferStatusTransitionIsValid(enmStatus, s_aStatusTests[j].enmStatus)
+                          == RT_BOOL(s_aStatusTests[i].fTransitions
+                                     & TST_SHCL_TRANSFER_STATUS_F(s_aStatusTests[j].enmStatus)));
+    }
+
+    SHCLTRANSFERSTATUS const enmInvalid = UINT32_C(0xfeed);
+    RTTESTI_CHECK(!ShClTransferStatusIsValid(SHCLTRANSFERSTATUS_32BIT_SIZE_HACK));
+    RTTESTI_CHECK(!ShClTransferStatusIsValid(enmInvalid));
+    RTTESTI_CHECK(!ShClTransferStatusIsTerminal(enmInvalid));
+    RTTESTI_CHECK(!ShClTransferStatusResultIsValid(enmInvalid, VINF_SUCCESS));
+    RTTESTI_CHECK(!ShClTransferStatusTransitionIsValid(enmInvalid, enmInvalid));
+    RTTESTI_CHECK(!ShClTransferStatusTransitionIsValid(SHCLTRANSFERSTATUS_REQUESTED, enmInvalid));
 }
 
 /**
@@ -1013,6 +1136,7 @@ int main(int argc, char *argv[])
     testPathSanitize();
     testEvents();
     testTransferBasics();
+    testTransferValidation();
     testTransferObjDataChunkDupZeroLength();
     testTransferContextIdentity();
     testTransferResetClosesObjectHandles(hTest);

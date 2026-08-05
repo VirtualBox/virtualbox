@@ -30,7 +30,7 @@
 ]>
 <refentry id="vboxmanage-clipboard" lang="en">
   <refentryinfo>
-    <pubdate>$Date: 2026-07-03 17:22:37 +0200 (Fri, 03 Jul 2026) $</pubdate>
+    <pubdate>$Date: 2026-08-05 17:08:05 +0200 (Wed, 05 Aug 2026) $</pubdate>
     <title>VBoxManage clipboard</title>
   </refentryinfo>
 
@@ -576,19 +576,27 @@ $ VBoxManage clipboard "Ubuntu VM" serve -vv --timeout=30000</screen>
       <remark role="help-copy-synopsis"/>
       <para>
         The <command>VBoxManage clipboard listen</command> command listens for
-        live clipboard events from the virtual machine console. It prints event
-        metadata by default, including <literal>revision</literal> and
-        <literal>clientId</literal> fields when they are supplied by the clipboard
-        API. The revision is a monotonic event revision for the live console
-        clipboard. A <literal>clientId</literal> value of <literal>0</literal>
-        means no <literal>IClipboardSession</literal> originated the event; a
-        non-zero value identifies the originating clipboard API session. The
-        command is observational by default; use <command>VBoxManage clipboard
-        copy</command> to publish host clipboard data to the guest. With repeated
-        <option>-v</option> or <option>--verbose</option> options, the command may
-        read guest data for diagnostic output. Waitable clipboard events are
-        acknowledged automatically before event output is written. Pressing
+        live clipboard events from the virtual machine console. Human output
+        uses compact logfmt-style fields in the order <literal>rev</literal>,
+        <literal>src</literal> when available, <literal>event</literal>, and
+        <literal>action</literal> when available, without a command-name prefix.
+        The revision is a monotonic event revision for the live console clipboard.
+        With verbose output, <literal>cid</literal> is inserted between
+        <literal>src</literal> and <literal>event</literal>. A client ID value of
+        <literal>0</literal> means no <literal>IClipboardSession</literal>
+        originated the event; a non-zero value identifies the originating
+        clipboard API session. The command is observational by default; use
+        <command>VBoxManage clipboard copy</command> to publish host clipboard
+        data to the guest. Waitable clipboard events are acknowledged
+        automatically before event output is written. Pressing
         <literal>Ctrl+C</literal> stops the command.
+      </para>
+      <para>
+        If Shared Clipboard is disabled when listening starts, the first output
+        record is a warning with <literal>event=warning</literal> and
+        <literal>mode=disabled</literal>. This startup record is emitted
+        regardless of <option>--events</option> and does not count toward
+        <option>--count</option>.
       </para>
       <variablelist>
         <varlistentry>
@@ -610,13 +618,14 @@ $ VBoxManage clipboard "Ubuntu VM" serve -vv --timeout=30000</screen>
           <term><option>--format=human|json|machinereadable</option></term>
           <listitem><para>
               Specifies the event output format. JSON output is written as one
-              JSON object per line. When event identity metadata is available,
-              human output includes <literal>revision=&lt;n&gt;</literal> and
-              <literal>clientId=&lt;id&gt;</literal>, machine-readable output
-              includes <literal>revision="&lt;n&gt;"</literal> and
-              <literal>clientId="&lt;id&gt;"</literal>, and JSON output includes
-              numeric <literal>revision</literal> and <literal>clientId</literal>
-              members.
+              JSON object per line. Human output labels the revision, source,
+              and client ID fields <literal>rev</literal>, <literal>src</literal>,
+              and <literal>cid</literal>, and quotes and escapes MIME values.
+              Machine-readable and JSON output retain the full field names <literal>revision</literal>,
+              <literal>source</literal>, and <literal>clientId</literal>;
+              machine-readable values are quoted, while JSON revision and client
+              ID values are numeric. The client ID field is included only with
+              verbose output.
             </para></listitem>
         </varlistentry>
         <varlistentry>
@@ -642,9 +651,12 @@ $ VBoxManage clipboard "Ubuntu VM" serve -vv --timeout=30000</screen>
           <term><option>-v</option></term>
           <term><option>--verbose</option></term>
           <listitem><para>
-              Increases verbosity. Repeating this option includes payload data
-              in data-change output where available and may read guest data for
-              diagnostics. Payload data is bounded and escaped where possible.
+              Increases verbosity. The first occurrence includes the
+              client ID field. Repeating this option includes
+              available payload data in data-change output, available host text
+              in host <literal>data-requested</literal> output, and may read
+              guest data for format-change diagnostics. Payload data is bounded
+              and escaped. Clipboard payloads can contain sensitive data.
             </para></listitem>
         </varlistentry>
       </variablelist>

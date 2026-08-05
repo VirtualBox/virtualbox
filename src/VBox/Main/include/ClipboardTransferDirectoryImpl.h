@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferDirectoryImpl.h 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferDirectoryImpl.h 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer directory handle.
  */
@@ -35,6 +35,8 @@
 
 #include <VBox/GuestHost/SharedClipboard-transfers.h>
 
+class ClipboardTransfer;
+
 /**
  * Clipboard transfer directory handle.
  */
@@ -49,7 +51,7 @@ public:
     void FinalRelease();
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    HRESULT init(const ComPtr<IClipboardTransfer> &aParent,
+    HRESULT init(const ComObjPtr<ClipboardTransfer> &aParent,
                  PSHCLTRANSFER aTransfer,
                  const com::Utf8Str &aPath,
                  SHCLLISTHANDLE aHandle);
@@ -81,11 +83,13 @@ private:
             , mStatus(DirectoryStatus_Undefined)
         { }
 
-        ComPtr<IClipboardTransfer> mParent;
-        PSHCLTRANSFER              mTransfer;
-        SHCLLISTHANDLE             mHandle;
-        com::Utf8Str               mPath;
-        DirectoryStatus_T          mStatus;
+        /** Concrete parent transfer object keeping the borrowed transfer alive. */
+        ComObjPtr<ClipboardTransfer> mParent;
+        /** Parent-owned Shared Clipboard transfer owning mHandle. */
+        PSHCLTRANSFER                mTransfer;
+        SHCLLISTHANDLE               mHandle;
+        com::Utf8Str                 mPath;
+        DirectoryStatus_T            mStatus;
     } mData;
 };
 

@@ -1,4 +1,4 @@
-/* $Id: darwin-pasteboard.cpp 114770 2026-07-25 11:53:54Z knut.osmundsen@oracle.com $ */
+/* $Id: darwin-pasteboard.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host implementation.
  */
@@ -637,8 +637,9 @@ DECLHIDDEN(int) writeToPasteboard(PasteboardRef hPasteboard, uint64_t idOwnershi
             /*
              * Now for the UTF-8 version.
              */
+            PCRTUTF16 const pwszUtf8 = pwszDst[0] == VBOX_SHCL_UTF16_BOM ? pwszDst + 1 : pwszDst;
             char *pszDst;
-            int vrc2 = RTUtf16ToUtf8(pwszDst, &pszDst);
+            int vrc2 = RTUtf16ToUtf8(pwszUtf8, &pszDst);
             if (RT_SUCCESS(vrc2))
             {
                 hData = CFDataCreate(kCFAllocatorDefault, (const UInt8 *)pszDst, strlen(pszDst));

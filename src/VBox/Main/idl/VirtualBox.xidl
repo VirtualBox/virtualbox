@@ -1763,7 +1763,10 @@
       </desc>
     </const>
     <const name="IncludePayload" value="8">
-      <desc>Include clipboard payload items in session data-change events when payload data is available.</desc>
+      <desc>
+        Include clipboard payload items in session data-change and data-requested
+        events when payload data is available.
+      </desc>
     </const>
   </enum>
 
@@ -15853,14 +15856,14 @@
 
     <attribute name="id" type="unsigned long">
       <desc>
-        Unique identifier used to distinguish clipboard transfers.
+        Unique identifier used to distinguish clipboard items.
       </desc>
     </attribute>
 
     <attribute name="source" type="ClipboardSource">
       <desc>
-        Source clipboard identifier. For X11 based clipboards, values can be used to distinguish PRIMARY,
-        SECONDARY and CLIPBOARD selections.
+        Clipboard source which owns or supplied the item, such as the host,
+        guest, a remote clipboard source, or a custom source.
       </desc>
     </attribute>
 
@@ -16261,13 +16264,16 @@
 
         Examples:
         <ul>
-          <li>Calling <tt>setSourcePaths(["/home/user/report.txt"])</tt> publishes
-          the local file as a transfer root such as <tt>report.txt</tt>.</li>
-          <li>Calling <tt>setSourcePaths(["/home/user/photos"])</tt> publishes the
-          local directory as a root such as <tt>photos</tt>; directory contents are
-          then addressed as transfer-relative paths below that root.</li>
-          <li>Calling <tt>setSourcePaths(["/tmp/a.txt", "/tmp/b.txt"])</tt> creates
-          one transfer with two roots, not two independent transfers.</li>
+          <li>Calling <tt>setSourcePaths(["/home/user/report.txt"])</tt> configures
+          the local file as a root such as <tt>report.txt</tt> in this
+          manager-owned transfer tree.</li>
+          <li>Calling <tt>setSourcePaths(["/home/user/photos"])</tt> configures the
+          local directory as a root such as <tt>photos</tt> in this manager-owned
+          transfer tree; directory contents are then addressed as
+          transfer-relative paths below that root.</li>
+          <li>Calling <tt>setSourcePaths(["/tmp/a.txt", "/tmp/b.txt"])</tt>
+          configures one transfer with two roots, not two independent
+          transfers.</li>
         </ul>
 
         Empty path entries, entries containing transfer-list separators, and unsupported
@@ -16286,7 +16292,7 @@
         The returned values are the same kind of local paths accepted by
         <link to="IClipboardTransfer::setSourcePaths"/>. They are useful for a local
         producer or management UI that wants to show or verify what local objects
-        were offered. They are not the portable transfer names used by the receiver;
+        were configured. They are not the portable transfer names used by the receiver;
         use <link to="IClipboardTransfer::roots"/> to discover those names.
 
         For example, a local host-to-guest transfer may return
@@ -16304,12 +16310,19 @@
 
   <interface
     name="IClipboardTransferManager" extends="$unknown"
-    uuid="9a02f603-2d55-4c20-aed0-d70f4af2c55b"
+    uuid="845f882a-48d9-4b3c-b6e9-ebfc12738c98"
     wsmap="managed"
     reservedMethods="8" reservedAttributes="4"
     >
     <desc>
       Clipboard transfer manager.
+      <note>
+        API clients obtain clipboard transfers from
+        <link to="IClipboardTransferManager::create"/> or
+        <link to="IClipboardTransferManager::getTransfers"/>. The manager's
+        control methods accept only transfers owned by that manager;
+        IClipboardTransfer is not a caller-implemented extension point.
+      </note>
     </desc>
 
     <method name="getTransfers">
@@ -16329,48 +16342,97 @@
       </param>
     </method>
 
-    <method name="add">
+    <method name="create">
       <desc>
-        Adds a clipboard transfer to the manager.
+        Creates a Main-owned clipboard transfer and immediately tracks it in
+        this manager. The returned transfer can be configured, for example by
+        calling <link to="IClipboardTransfer::setSourcePaths"/>, and is visible
+        through <link to="IClipboardTransferManager::getTransfers"/>.
+        <note>
+          Manager ownership and tracking do not publish the transfer to the
+          active Shared Clipboard service client or platform backend. This
+          method does not currently offer a Main-created transfer to the guest.
+        </note>
       </desc>
-      <param name="transfer" type="IClipboardTransfer" dir="in">
-        <desc>Clipboard transfer to add.</desc>
+      <param name="direction" type="ClipboardTransferDirection" dir="in">
+        <desc>Transfer direction. Use ToGuest for host-local source paths.</desc>
+      </param>
+      <param name="source" type="ClipboardSource" dir="in">
+        <desc>Clipboard source owning the new transfer.</desc>
+      </param>
+      <param name="action" type="ClipboardAction" dir="in">
+        <desc>Clipboard action associated with the new transfer.</desc>
+      </param>
+      <param name="transfer" type="IClipboardTransfer" dir="return">
+        <desc>Created manager-owned transfer.</desc>
       </param>
     </method>
 
     <method name="remove">
       <desc>
         Removes a clipboard transfer from the manager.
+        <result name="VBOX_E_OBJECT_NOT_FOUND">
+          The transfer is not owned by this manager or is no longer tracked.
+        </result>
+        <result name="VBOX_E_OBJECT_IN_USE">
+          The transfer is backed by an active Shared Clipboard service
+          operation. Cancel it before removing it.
+        </result>
       </desc>
       <param name="transfer" type="IClipboardTransfer" dir="in">
-        <desc>Clipboard transfer to remove.</desc>
+        <desc>Manager-owned clipboard transfer to remove.</desc>
       </param>
     </method>
 
     <method name="cancel">
       <desc>
         Cancels a clipboard transfer.
+        <result name="VBOX_E_OBJECT_NOT_FOUND">
+          The transfer is not owned by this manager or is no longer tracked.
+        </result>
       </desc>
       <param name="transfer" type="IClipboardTransfer" dir="in">
-        <desc>Clipboard transfer to cancel.</desc>
+        <desc>Manager-owned clipboard transfer to cancel.</desc>
       </param>
     </method>
 
     <method name="approve">
       <desc>
-        Approves a transfer waiting for client approval.
+        Reserved for approving a transfer waiting for client approval.
+        <note>
+          Currently not implemented. No production interaction-response
+          transport exists. For a transfer owned by this manager, this method
+          returns E_NOTIMPL.
+        </note>
+        <result name="E_NOTIMPL">
+          Responding to transfer interactions is not implemented.
+        </result>
+        <result name="VBOX_E_OBJECT_NOT_FOUND">
+          The transfer is not owned by this manager or is no longer tracked.
+        </result>
       </desc>
       <param name="transfer" type="IClipboardTransfer" dir="in">
         <desc>Clipboard transfer to approve.</desc>
       </param>
       <param name="flags" type="unsigned long" dir="in">
-        <desc>Reserved approval flags. Must currently be zero.</desc>
+        <desc>Reserved approval flags for a future implementation.</desc>
       </param>
     </method>
 
     <method name="deny">
       <desc>
-        Denies a transfer waiting for client approval.
+        Reserved for denying a transfer waiting for client approval.
+        <note>
+          Currently not implemented. No production interaction-response
+          transport exists. For a transfer owned by this manager, this method
+          returns E_NOTIMPL.
+        </note>
+        <result name="E_NOTIMPL">
+          Responding to transfer interactions is not implemented.
+        </result>
+        <result name="VBOX_E_OBJECT_NOT_FOUND">
+          The transfer is not owned by this manager or is no longer tracked.
+        </result>
       </desc>
       <param name="transfer" type="IClipboardTransfer" dir="in">
         <desc>Clipboard transfer to deny.</desc>
@@ -16382,7 +16444,18 @@
 
     <method name="respond">
       <desc>
-        Supplies a response to a transfer interaction request.
+        Reserved for supplying a response to a transfer interaction request.
+        <note>
+          Currently not implemented. No production interaction-response
+          transport exists. For a transfer owned by this manager, this method
+          returns E_NOTIMPL.
+        </note>
+        <result name="E_NOTIMPL">
+          Responding to transfer interactions is not implemented.
+        </result>
+        <result name="VBOX_E_OBJECT_NOT_FOUND">
+          The transfer is not owned by this manager or is no longer tracked.
+        </result>
       </desc>
       <param name="transfer" type="IClipboardTransfer" dir="in">
         <desc>Clipboard transfer waiting for interaction.</desc>
@@ -16404,7 +16477,7 @@
         </desc>
       </param>
       <param name="flags" type="unsigned long" dir="in">
-        <desc>Reserved response flags. Must currently be zero.</desc>
+        <desc>Reserved response flags for a future implementation.</desc>
       </param>
     </method>
 
@@ -16416,6 +16489,9 @@
         </note>
         <result name="E_NOTIMPL">
           The method is not implemented yet.
+        </result>
+        <result name="VBOX_E_OBJECT_NOT_FOUND">
+          The transfer is not owned by this manager or is no longer tracked.
         </result>
       </desc>
       <param name="transfer" type="IClipboardTransfer" dir="in">
@@ -16432,6 +16508,9 @@
         <result name="E_NOTIMPL">
           The method is not implemented yet.
         </result>
+        <result name="VBOX_E_OBJECT_NOT_FOUND">
+          The transfer is not owned by this manager or is no longer tracked.
+        </result>
       </desc>
       <param name="transfer" type="IClipboardTransfer" dir="in">
         <desc>Clipboard transfer to resume.</desc>
@@ -16440,32 +16519,19 @@
 
     <method name="reset">
       <desc>
-        Resets all clipboard transfers tracked by the manager.
+        Resets all Main-created clipboard transfers tracked by the manager only
+        when no service transfer is active. If a service transfer is active,
+        this method returns <tt>VBOX_E_OBJECT_IN_USE</tt> without modifying the
+        manager because removing Main records without first canceling the
+        host-service transfer would desynchronize the public and service
+        lifecycles.
+        <result name="VBOX_E_OBJECT_IN_USE">
+          A service transfer is active. Cancel that transfer before resetting
+          the manager.
+        </result>
       </desc>
     </method>
 
-    <method name="createTransfer">
-      <desc>
-        Creates an unpublished clipboard transfer owned by Main. The returned
-        transfer can be configured, for example by calling
-        <link to="IClipboardTransfer::setSourcePaths"/>, and then published with
-        <link to="IClipboardTransferManager::add"/>. The transfer is not visible
-        through <link to="IClipboardTransferManager::getTransfers"/> until it is
-        added.
-      </desc>
-      <param name="direction" type="ClipboardTransferDirection" dir="in">
-        <desc>Transfer direction. Use ToGuest for host-local source paths.</desc>
-      </param>
-      <param name="source" type="ClipboardSource" dir="in">
-        <desc>Clipboard source owning the new transfer.</desc>
-      </param>
-      <param name="action" type="ClipboardAction" dir="in">
-        <desc>Clipboard action associated with the new transfer.</desc>
-      </param>
-      <param name="transfer" type="IClipboardTransfer" dir="return">
-        <desc>Created unpublished transfer.</desc>
-      </param>
-    </method>
   </interface>
 
   <interface
@@ -16480,6 +16546,13 @@
       See <link to="IClipboard"/> for the Main clipboard API overview and the role of this endpoint.
       When returned by <link to="IClipboardSession::hostClipboard"/>, operations are associated with that
       session's client identifier.
+
+      Calls to <link to="IHostClipboard::reportFormats"/>,
+      <link to="IHostClipboard::setData"/>, and
+      <link to="IHostClipboard::clear"/> are best-effort when the Shared
+      Clipboard service exists but no active native clipboard client or backend
+      is connected. In that state, they can return success without changing the
+      visible operating-system clipboard.
     </desc>
 
     <method name="reportFormats">
@@ -16487,8 +16560,10 @@
         Reports clipboard formats from the specified source to the native host clipboard.
         This also makes those formats the current generic VM clipboard offer for
         the supplied source, so a later native host data request can be matched
-        with <link to="IClipboardDataRequestedEvent"/> and completed through
-        <link to="IHostClipboard::provideData"/>.
+        with <link to="IClipboardDataRequestedEvent"/> and correlated with
+        <link to="IHostClipboard::provideData"/>. Because the request event is
+        non-waitable, a response dispatched later by a passive listener is not
+        guaranteed to satisfy the original native host read.
       </desc>
       <param name="action" type="ClipboardAction" dir="in">
         <desc>Clipboard action associated with the reported formats.</desc>
@@ -16513,6 +16588,9 @@
         request; for a session endpoint, the session client identifier must
         match as well. The supplied action, source and MIME type must match the
         request and the currently advertised native host clipboard formats.
+        Because the matching data-request event is non-waitable, a response
+        dispatched later by a passive listener is not guaranteed to satisfy the
+        original native host read.
       </desc>
       <param name="requestId" type="unsigned long" dir="in">
         <desc>Identifier from the corresponding clipboard data request event.</desc>
@@ -16760,9 +16838,11 @@
           <link to="IHostClipboard::reportFormats"/>, which also updates the
           generic VM clipboard offer for the guest source. When a native host
           application later requests one of those formats, Main emits an
-          <link to="IClipboardDataRequestedEvent"/> and the client completes
-          the request with <link to="IHostClipboard::provideData"/>. For eager
-          publication, a client that already has the payload can call
+          <link to="IClipboardDataRequestedEvent"/> whose request identifier can
+          be correlated with <link to="IHostClipboard::provideData"/>. The event
+          is non-waitable, so a later passive response is not guaranteed to
+          satisfy the original read. For eager publication, a client that
+          already has the payload can call
           <link to="IHostClipboard::setData"/> directly.</li>
       </ul>
 
@@ -17012,7 +17092,7 @@
 
   <interface
     name="IInternalClipboardControl" extends="$unknown"
-    uuid="fb30539c-b1ba-4cbb-9972-c9447f01428e"
+    uuid="69b2186a-e261-4e8f-b91d-f3e54eff027d"
     internal="yes"
     wsmap="suppress"
     reservedMethods="8" reservedAttributes="8"
@@ -17033,6 +17113,35 @@
       </param>
       <param name="requestId" type="unsigned long" dir="return">
         <desc>Identifier of the pending clipboard data request.</desc>
+      </param>
+    </method>
+
+    <method name="setTransferStatus">
+      <desc>
+        Sets a Shared Clipboard service transfer status on the live console
+        clipboard. This is an internal testcase seam only.
+      </desc>
+      <param name="serviceSessionId" type="unsigned long" dir="in">
+        <desc>Shared Clipboard service session identifier.</desc>
+      </param>
+      <param name="transferId" type="unsigned long" dir="in">
+        <desc>Shared Clipboard transfer identifier.</desc>
+      </param>
+      <param name="generation" type="long long" dir="in">
+        <desc>Host-private transfer generation.</desc>
+      </param>
+      <param name="source" type="ClipboardSource" dir="in">
+        <desc>
+          Data source associated with the status. A backing transfer, when
+          present, must record the same source and remains authoritative for the
+          transfer direction.
+        </desc>
+      </param>
+      <param name="status" type="unsigned long" dir="in">
+        <desc>Internal Shared Clipboard transfer status value.</desc>
+      </param>
+      <param name="result" type="long" dir="in">
+        <desc>IPRT result associated with the status.</desc>
       </param>
     </method>
   </interface>
@@ -30653,8 +30762,9 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
     <attribute name="item" type="IClipboardItem" readonly="yes">
       <desc>
         Clipboard item associated with the event, or NULL when no payload item is
-        included. Session data-change events include this item only when the
-        session was created with IncludePayload.
+        included. Session data-change and data-requested events include this item
+        only when the session was created with IncludePayload. Data-requested
+        events on the main clipboard event source do not include a payload item.
       </desc>
     </attribute>
     <attribute name="veto" type="boolean" readonly="yes">
@@ -30725,13 +30835,28 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
       by the native host clipboard backend. An API client may use this event to
       decide whether and how to supply the requested clipboard data.
 
-      The inherited item attribute may be NULL or may contain implementation
-      specific request context. The request details are provided by the
-      attributes below.
+      This event is non-waitable. The requesting backend does not wait for
+      <link to="IEventSource::eventProcessed"/>, and a response dispatched later
+      by a passive listener is not guaranteed to satisfy the original read.
+      Native host requests use a one-shot request identifier that can be
+      correlated with <link to="IHostClipboard::provideData"/>.
+
+      For a host-text request delivered on a session event source created with
+      IncludePayload, the inherited item attribute contains complete host text
+      data available to Main when the session event is generated. This can be a
+      native host snapshot or the current Main clipboard item. It is NULL when
+      no complete data is available, on the main clipboard event source, and on
+      session event sources without IncludePayload. An event handler can still
+      supply replacement data, so this item does not necessarily contain the
+      bytes ultimately returned to the guest. The request details are provided
+      by the attributes below.
     </desc>
     <attribute name="requestId" type="unsigned long" readonly="yes">
       <desc>
-        Unique identifier for this clipboard data request.
+        Unique identifier for this clipboard data request. For a native host
+        request, this is a non-zero, one-shot identifier. Supply it through the
+        host clipboard endpoint that owns the request; it cannot be reused after
+        the matching request is completed or becomes stale.
       </desc>
     </attribute>
     <attribute name="action" type="ClipboardAction" readonly="yes">

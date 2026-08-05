@@ -1,4 +1,4 @@
-/* $Id: ClipboardImpl.cpp 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardImpl.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Console clipboard API.
  */
@@ -1688,8 +1688,10 @@ HRESULT Clipboard::reset()
         i_clearPendingDataRequestsLocked();
         ptrTransfers = mData->mTransfers;
     }
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     if (!ptrTransfers.isNull())
         ptrTransfers->i_reset();
+#endif
     return S_OK;
 #endif /* VBOX_WITH_SHARED_CLIPBOARD */
 }
@@ -3223,13 +3225,15 @@ HRESULT Clipboard::i_transferCancel(SHCLSESSIONID aServiceSessionId, SHCLTRANSFE
  * @param   aServiceSessionId   Service session that owns the transfer.
  * @param   aTransferId         Transfer ID that produced the status.
  * @param   aGeneration         Host-private transfer generation.
- * @param   enmShClSource       Shared Clipboard status source.
+ * @param   aTransfer           Borrowed service transfer backing the data plane.
+ * @param   enmShClSource       Data source recorded by the backing transfer.
  * @param   enmStatus           Transfer lifecycle status.
  * @param   vrcTransfer         Transfer status result code.
  */
 HRESULT Clipboard::i_handleTransferStatus(SHCLSESSIONID aServiceSessionId,
                                           SHCLTRANSFERID aTransferId,
                                           SHCLTRANSFERGEN aGeneration,
+                                          PSHCLTRANSFER aTransfer,
                                           SHCLSOURCE enmShClSource,
                                           SHCLTRANSFERSTATUS enmStatus,
                                           int vrcTransfer)
@@ -3245,7 +3249,7 @@ HRESULT Clipboard::i_handleTransferStatus(SHCLSESSIONID aServiceSessionId,
     if (ptrTransfers.isNull())
         return E_FAIL;
 
-    return ptrTransfers->i_handleTransferStatus(aServiceSessionId, aTransferId, aGeneration,
+    return ptrTransfers->i_handleTransferStatus(aServiceSessionId, aTransferId, aGeneration, aTransfer,
                                                 enmShClSource, enmStatus, vrcTransfer);
 }
 # endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
@@ -3282,6 +3286,10 @@ HRESULT Clipboard::i_readDataForGuest(uint32_t uFormat, void *pvData, uint32_t c
     VBOXSHCLMAINCLIENTID idRequestClient;
     uint32_t fCurrentFormats;
     uint64_t uLastItemSerial;
+#ifdef RT_OS_DARWIN
+    bool fHadMatchingHostData;
+    bool fWantRequestPayload;
+#endif
     {
         AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
         AssertPtrReturn(mData, E_FAIL);
@@ -3289,6 +3297,21 @@ HRESULT Clipboard::i_readDataForGuest(uint32_t uFormat, void *pvData, uint32_t c
         idRequestClient = mData->mCurrentClientId;
         fCurrentFormats = m_fFormats;
         uLastItemSerial = mData->mLastItemSerial;
+#ifdef RT_OS_DARWIN
+        fHadMatchingHostData =    enmRequestSource == ClipboardSource_Host
+                               && mData->mfHaveLastItem
+                               && mData->mLastItemSource == enmRequestSource
+                               && mData->mLastItemAction == enmRequestAction
+                               && consoleClipboardMimeTypeToFormat(mData->mLastItemMimeType) == uFormat;
+        fWantRequestPayload = false;
+        for (std::vector<Data::SessionRecord>::const_iterator it = mData->mSessions.begin();
+             it != mData->mSessions.end(); ++it)
+            if (it->mEventSource.isNotNull() && (it->mfFlags & IClipboardSessionFlag_IncludePayload))
+            {
+                fWantRequestPayload = true;
+                break;
+            }
+#endif
     }
     if (   enmRequestSource != ClipboardSource_Host
         && enmRequestSource != ClipboardSource_Guest)
@@ -3303,7 +3326,43 @@ HRESULT Clipboard::i_readDataForGuest(uint32_t uFormat, void *pvData, uint32_t c
                   uFormat, fCurrentFormats));
         return E_FAIL;
     }
-    ULONG const idRequest = i_fireDataRequested(idRequestClient, enmRequestAction, enmRequestSource, uFormat);
+    GuestShCl *pShCl = NULL;
+    bool fHostReadAttempted = false;
+    int vrcHostRead = VERR_NO_DATA;
+    const std::vector<BYTE> *pResolvedHostData = NULL;
+#ifdef RT_OS_DARWIN
+    std::vector<BYTE> abResolvedHostData;
+    /* Keep the established provider-first order unless a macOS session explicitly requested the payload. */
+    if (   enmRequestSource == ClipboardSource_Host
+        && uFormat == VBOX_SHCL_FMT_UNICODETEXT
+        && !fHadMatchingHostData
+        && fWantRequestPayload
+        && cbData)
+    {
+        pShCl = GuestShCl::TryGetInst();
+        if (pShCl)
+        {
+            fHostReadAttempted = true;
+            vrcHostRead = pShCl->ReadDataFromHost((SHCLFORMAT)uFormat, pvData, cbData, pcbActual);
+            if (   RT_SUCCESS(vrcHostRead)
+                && *pcbActual > 0
+                && *pcbActual <= cbData
+                && *pcbActual <= s_cbClipboardReadMax)
+            {
+                int const vrc2 = clipboardProtocolToMainData((SHCLFORMAT)uFormat, pvData, *pcbActual,
+                                                             abResolvedHostData);
+                if (RT_SUCCESS(vrc2) && abResolvedHostData.size() <= s_cbClipboardReadMax)
+                    pResolvedHostData = &abResolvedHostData;
+                else
+                    Log2Func(("Not attaching native host text to request event: format=%#x, cbActual=%RU32, vrc=%Rrc\n",
+                              uFormat, *pcbActual, vrc2));
+            }
+        }
+    }
+#endif
+
+    ULONG const idRequest = i_fireDataRequested(idRequestClient, enmRequestAction, enmRequestSource, uFormat,
+                                                pResolvedHostData);
     if (idRequest == 0)
         Log2Func(("No pending data request was registered for service request: format=%#x\n", uFormat));
 
@@ -3348,7 +3407,8 @@ HRESULT Clipboard::i_readDataForGuest(uint32_t uFormat, void *pvData, uint32_t c
             return E_FAIL;
         }
 
-        GuestShCl *pShCl = GuestShCl::TryGetInst();
+        if (!pShCl)
+            pShCl = GuestShCl::TryGetInst();
         if (!pShCl)
         {
             LogFunc(("Cannot read native host data for guest request without Shared Clipboard service: format=%#x\n",
@@ -3356,10 +3416,15 @@ HRESULT Clipboard::i_readDataForGuest(uint32_t uFormat, void *pvData, uint32_t c
             i_removePendingDataRequest(idRequest);
             return E_FAIL;
         }
-        int vrc = pShCl->ReadDataFromHost((SHCLFORMAT)uFormat, pvData, cbData, pcbActual);
-        if (RT_FAILURE(vrc))
+        if (!fHostReadAttempted)
         {
-            Log2Func(("Reading native host data for guest request failed: format=%#x, vrc=%Rrc\n", uFormat, vrc));
+            fHostReadAttempted = true;
+            vrcHostRead = pShCl->ReadDataFromHost((SHCLFORMAT)uFormat, pvData, cbData, pcbActual);
+        }
+        if (RT_FAILURE(vrcHostRead))
+        {
+            Log2Func(("Reading native host data for guest request failed: format=%#x, vrc=%Rrc\n",
+                      uFormat, vrcHostRead));
             i_removePendingDataRequest(idRequest);
             return E_FAIL;
         }
@@ -3412,6 +3477,60 @@ HRESULT Clipboard::i_readDataForGuest(uint32_t uFormat, void *pvData, uint32_t c
 HRESULT Clipboard::requestData(const com::Utf8Str &aMimeType, ULONG *aRequestId)
 {
     return i_requestData(aMimeType, aRequestId);
+}
+
+
+/**
+ * Sets a Shared Clipboard transfer status for Main testcase coverage.
+ *
+ * @returns COM status code.
+ * @param   aServiceSessionId   Shared Clipboard service session identifier.
+ * @param   aTransferId         Shared Clipboard transfer identifier.
+ * @param   aGeneration         Host-private transfer generation.
+ * @param   aSource             Data source associated with the status.
+ * @param   aStatus             Internal Shared Clipboard transfer status value.
+ * @param   aResult             IPRT result associated with the status.
+ */
+HRESULT Clipboard::setTransferStatus(ULONG aServiceSessionId,
+                                     ULONG aTransferId,
+                                     LONG64 aGeneration,
+                                     ClipboardSource_T aSource,
+                                     ULONG aStatus,
+                                     LONG aResult)
+{
+#ifndef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    RT_NOREF(aServiceSessionId, aTransferId, aGeneration, aSource, aStatus, aResult);
+    ReturnComNotImplemented();
+#else
+    if (   aServiceSessionId == 0
+        || aServiceSessionId >= NIL_SHCLSESSIONID
+        || aTransferId == 0
+        || aTransferId >= NIL_SHCLTRANSFERID
+        || aGeneration <= 0)
+        return E_INVALIDARG;
+
+    SHCLSOURCE enmShClSource;
+    switch (aSource)
+    {
+        case ClipboardSource_Host:
+            enmShClSource = SHCLSOURCE_LOCAL;
+            break;
+        case ClipboardSource_Guest:
+            enmShClSource = SHCLSOURCE_REMOTE;
+            break;
+        default:
+            return E_INVALIDARG;
+    }
+
+    HRESULT const hrc = i_handleTransferStatus((SHCLSESSIONID)aServiceSessionId,
+                                               (SHCLTRANSFERID)aTransferId,
+                                               (SHCLTRANSFERGEN)aGeneration,
+                                               NULL /* pTransfer */,
+                                               enmShClSource,
+                                               (SHCLTRANSFERSTATUS)aStatus,
+                                               (int)aResult);
+    return hrc;
+#endif
 }
 
 
@@ -3760,11 +3879,13 @@ void Clipboard::i_fireDataChanged(VBOXSHCLMAINCLIENTID aClientId,
  * @param   aAction         Clipboard action associated with the request.
  * @param   aSource         Clipboard source from which data is requested.
  * @param   uFormat         Shared Clipboard format requested.
+ * @param   pResolvedBuffer Optional canonical Main payload already read for the request.
  */
 ULONG Clipboard::i_fireDataRequested(VBOXSHCLMAINCLIENTID aClientId,
                                      ClipboardAction_T aAction,
                                      ClipboardSource_T aSource,
-                                     uint32_t uFormat)
+                                     uint32_t uFormat,
+                                     const std::vector<BYTE> *pResolvedBuffer)
 {
     const char *pszMimeType = consoleClipboardFormatToMimeType((SHCLFORMAT)uFormat);
     if (!pszMimeType)
@@ -3836,10 +3957,9 @@ ULONG Clipboard::i_fireDataRequested(VBOXSHCLMAINCLIENTID aClientId,
     LONG64 const i64Revision = i_nextEventRevision();
     Log2Func(("Firing data requested event: requestId=%RU32, action=%RU32, source=%RU32, mime=%s, revision=%RI64, clientId=%RU32\n",
               (uint32_t)idRequest, (uint32_t)aAction, (uint32_t)aSource, strMimeType.c_str(), i64Revision, aClientId));
-    ComPtr<IClipboardItem> ptrItem;
     ComPtr<IEvent> ptrEvent;
     hrc = ::CreateClipboardDataRequestedEvent(ptrEvent.asOutParam(), ptrEventSource, i64Revision, aClientId,
-                                              com::Utf8Str(), ptrItem, FALSE /* aVeto */,
+                                              com::Utf8Str(), NULL /* aItem */, FALSE /* aVeto */,
                                               idRequest, aAction, aSource, ptrFormat);
     if (FAILED(hrc))
     {
@@ -3862,9 +3982,69 @@ ULONG Clipboard::i_fireDataRequested(VBOXSHCLMAINCLIENTID aClientId,
     std::vector<SessionEventTarget> vecTargets;
     i_getSessionEventTargets(vecTargets, aClientId, false /* fPassive */, false /* fCheckReflection */,
                              VBOX_SHCL_FMT_NONE, aSource);
+    bool fIncludePayload = false;
     for (std::vector<SessionEventTarget>::const_iterator it = vecTargets.begin(); it != vecTargets.end(); ++it)
-        ::FireClipboardDataRequestedEvent(it->mEventSource, i64Revision, aClientId, com::Utf8Str(), ptrItem,
+        if (it->mfFlags & IClipboardSessionFlag_IncludePayload)
+        {
+            fIncludePayload = true;
+            break;
+        }
+
+    std::vector<BYTE> abRequestBuffer;
+    const std::vector<BYTE> *pRequestBuffer = NULL;
+    if (fIncludePayload)
+    {
+        if (pResolvedBuffer)
+            pRequestBuffer = pResolvedBuffer;
+        else if (   aSource == ClipboardSource_Host
+                 && uFormat == VBOX_SHCL_FMT_UNICODETEXT)
+        {
+            AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+            if (   mData
+                && mData->mfHaveLastItem
+                && mData->mLastItemSource == aSource
+                && mData->mLastItemAction == aAction
+                && consoleClipboardMimeTypeToFormat(mData->mLastItemMimeType) == uFormat)
+            {
+                try
+                {
+                    abRequestBuffer = mData->mLastItemBuffer;
+                    pRequestBuffer = &abRequestBuffer;
+                }
+                catch (std::bad_alloc &)
+                {
+                    LogFunc(("Out of memory copying cached data-requested payload\n"));
+                }
+            }
+        }
+    }
+
+    ComPtr<IClipboardItem> ptrItem;
+    if (pRequestBuffer)
+    {
+        try
+        {
+            hrc = i_createItem(aSource, strMimeType, *pRequestBuffer, ptrItem);
+        }
+        catch (std::bad_alloc &)
+        {
+            hrc = E_OUTOFMEMORY;
+        }
+        if (FAILED(hrc))
+        {
+            LogFunc(("Creating data-requested item failed: requestId=%RU32, source=%RU32, mime=%s, cb=%zu, hrc=%#x\n",
+                     (uint32_t)idRequest, (uint32_t)aSource, strMimeType.c_str(), pRequestBuffer->size(), hrc));
+            ptrItem.setNull();
+        }
+    }
+    for (std::vector<SessionEventTarget>::const_iterator it = vecTargets.begin(); it != vecTargets.end(); ++it)
+    {
+        ComPtr<IClipboardItem> ptrSessionItem;
+        if (it->mfFlags & IClipboardSessionFlag_IncludePayload)
+            ptrSessionItem = ptrItem;
+        ::FireClipboardDataRequestedEvent(it->mEventSource, i64Revision, aClientId, com::Utf8Str(), ptrSessionItem,
                                           FALSE /* aVeto */, idRequest, aAction, aSource, ptrFormat);
+    }
 
     return idRequest;
 }

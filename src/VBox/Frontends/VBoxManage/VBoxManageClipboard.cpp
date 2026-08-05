@@ -1,4 +1,4 @@
-/* $Id: VBoxManageClipboard.cpp 114646 2026-07-08 08:18:59Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxManageClipboard.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxManage - Implementation of the clipboard command.
  */
@@ -149,6 +149,20 @@ typedef struct SHCLCLIPBOARDEVENTINFO
 } SHCLCLIPBOARDEVENTINFO;
 
 
+typedef struct SHCLHANDLELISTENSTATE
+{
+    SHCLHANDLELISTENSTATE()
+        : fHaveSource(false)
+        , enmSource(ClipboardSource_Custom)
+    { }
+
+    /** Whether enmSource contains the last source reported by an event. */
+    bool                 fHaveSource;
+    /** Last clipboard source reported by an event. */
+    ClipboardSource_T    enmSource;
+} SHCLHANDLELISTENSTATE;
+
+
 /** Current verbosity level for clipboard command diagnostics. */
 static unsigned g_uVerbosity = 0;
 
@@ -281,51 +295,100 @@ static bool shclGetClipboardEventInfo(const ComPtr<IEvent> &ptrEvent, SHCLCLIPBO
 }
 
 
-/**
- * Prints optional clipboard event identity fields in JSON output.
- *
- * @param   pInfo               Event identity fields, optional.
- */
-static void shclPrintEventInfoJson(const SHCLCLIPBOARDEVENTINFO *pInfo)
-{
-    if (!pInfo)
-        return;
-    if (pInfo->fHaveRevision)
-        RTStrmPrintf(g_pStdOut, ",\"revision\":%RI64", (int64_t)pInfo->iRevision);
-    if (pInfo->fHaveClientId)
-        RTStrmPrintf(g_pStdOut, ",\"clientId\":%RU32", (uint32_t)pInfo->uClientId);
-}
+static void shclHandleListenJsonString(const char *pszValue);
 
 
 /**
- * Prints optional clipboard event identity fields in machine-readable output.
+ * Starts a uniformly ordered clipboard-listen event record.
  *
- * @param   pInfo               Event identity fields, optional.
- */
-static void shclPrintEventInfoMachineReadable(const SHCLCLIPBOARDEVENTINFO *pInfo)
-{
-    if (!pInfo)
-        return;
-    if (pInfo->fHaveRevision)
-        RTPrintf(" revision=\"%RI64\"", (int64_t)pInfo->iRevision);
-    if (pInfo->fHaveClientId)
-        RTPrintf(" clientId=\"%RU32\"", (uint32_t)pInfo->uClientId);
-}
-
-
-/**
- * Prints optional clipboard event identity fields in human-readable output.
+ * The caller appends event-specific fields and terminates the record.
  *
+ * @param   enmFormat           Output format.
  * @param   pInfo               Event identity fields, optional.
+ * @param   pszSource           Clipboard source, optional.
+ * @param   pszEvent            Event name.
+ * @param   pszAction           Clipboard action, optional.
  */
-static void shclPrintEventInfoHuman(const SHCLCLIPBOARDEVENTINFO *pInfo)
+static void shclHandleListenPrintPrefix(CLIPBOARDLISTENFMT enmFormat,
+                                        const SHCLCLIPBOARDEVENTINFO *pInfo,
+                                        const char *pszSource,
+                                        const char *pszEvent,
+                                        const char *pszAction)
 {
-    if (!pInfo)
-        return;
-    if (pInfo->fHaveRevision)
-        RTPrintf(" revision=%RI64", (int64_t)pInfo->iRevision);
-    if (pInfo->fHaveClientId)
-        RTPrintf(" clientId=%RU32", (uint32_t)pInfo->uClientId);
+    AssertPtrReturnVoid(pszEvent);
+
+    if (enmFormat == CLIPBOARDLISTENFMT_JSON)
+    {
+        const char *pszSeparator = "";
+        RTStrmPutCh(g_pStdOut, '{');
+        if (pInfo && pInfo->fHaveRevision)
+        {
+            RTStrmPrintf(g_pStdOut, "\"revision\":%RI64", (int64_t)pInfo->iRevision);
+            pszSeparator = ",";
+        }
+        if (pszSource)
+        {
+            RTStrmPrintf(g_pStdOut, "%s\"source\":", pszSeparator);
+            shclHandleListenJsonString(pszSource);
+            pszSeparator = ",";
+        }
+        if (g_uVerbosity && pInfo && pInfo->fHaveClientId)
+        {
+            RTStrmPrintf(g_pStdOut, "%s\"clientId\":%RU32", pszSeparator, (uint32_t)pInfo->uClientId);
+            pszSeparator = ",";
+        }
+        RTStrmPrintf(g_pStdOut, "%s\"event\":", pszSeparator);
+        shclHandleListenJsonString(pszEvent);
+        if (pszAction)
+        {
+            RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"action\":"));
+            shclHandleListenJsonString(pszAction);
+        }
+    }
+    else if (enmFormat == CLIPBOARDLISTENFMT_MACHINE_READABLE)
+    {
+        const char *pszSeparator = "";
+        if (pInfo && pInfo->fHaveRevision)
+        {
+            RTPrintf("revision=\"%RI64\"", (int64_t)pInfo->iRevision);
+            pszSeparator = " ";
+        }
+        if (pszSource)
+        {
+            RTPrintf("%ssource=\"%s\"", pszSeparator, pszSource);
+            pszSeparator = " ";
+        }
+        if (g_uVerbosity && pInfo && pInfo->fHaveClientId)
+        {
+            RTPrintf("%sclientId=\"%RU32\"", pszSeparator, (uint32_t)pInfo->uClientId);
+            pszSeparator = " ";
+        }
+        RTPrintf("%sevent=\"%s\"", pszSeparator, pszEvent);
+        if (pszAction)
+            RTPrintf(" action=\"%s\"", pszAction);
+    }
+    else
+    {
+        const char *pszSeparator = "";
+        if (pInfo && pInfo->fHaveRevision)
+        {
+            RTPrintf("rev=%RI64", (int64_t)pInfo->iRevision);
+            pszSeparator = " ";
+        }
+        if (pszSource)
+        {
+            RTPrintf("%ssrc=%s", pszSeparator, pszSource);
+            pszSeparator = " ";
+        }
+        if (g_uVerbosity && pInfo && pInfo->fHaveClientId)
+        {
+            RTPrintf("%scid=%RU32", pszSeparator, (uint32_t)pInfo->uClientId);
+            pszSeparator = " ";
+        }
+        RTPrintf("%sevent=%s", pszSeparator, pszEvent);
+        if (pszAction)
+            RTPrintf(" action=%s", pszAction);
+    }
 }
 
 
@@ -503,6 +566,36 @@ static HRESULT shclGet(HandlerArg *pArg, const char *pszMachine, ComPtr<IClipboa
         return E_FAIL;
     }
     return hrc;
+}
+
+
+/**
+ * Gets the Shared Clipboard mode from the machine locked by the current session.
+ *
+ * @returns COM status code.
+ * @param   pArg            Command handler arguments.
+ * @param   penmMode        Where to return the Shared Clipboard mode.
+ */
+static HRESULT shclGetMode(HandlerArg *pArg, ClipboardMode_T *penmMode)
+{
+    AssertPtrReturn(pArg, E_POINTER);
+    AssertPtrReturn(penmMode, E_POINTER);
+
+    ComPtr<IMachine> ptrMachine;
+    HRESULT hrc = pArg->session->COMGETTER(Machine)(ptrMachine.asOutParam());
+    if (FAILED(hrc))
+        return hrc;
+    if (ptrMachine.isNull())
+        return E_FAIL;
+
+    ComPtr<IClipboardSettings> ptrClipboardSettings;
+    hrc = ptrMachine->COMGETTER(Clipboard)(ptrClipboardSettings.asOutParam());
+    if (FAILED(hrc))
+        return hrc;
+    if (ptrClipboardSettings.isNull())
+        return E_FAIL;
+
+    return ptrClipboardSettings->COMGETTER(Mode)(penmMode);
 }
 
 
@@ -935,24 +1028,39 @@ static void shclHandleListenJsonStringN(const char *pszValue, size_t cchValue)
     RTStrmPutCh(g_pStdOut, '"');
     if (pszValue)
     {
+        size_t offPending = 0;
         for (size_t i = 0; i < cchValue; i++)
         {
             unsigned char const ch = (unsigned char)pszValue[i];
+            const char *pszEscape = NULL;
+            size_t cchEscape = 0;
             switch (ch)
             {
-                case '\\': RTStrmWrite(g_pStdOut, RT_STR_TUPLE("\\\\")); break;
-                case '"':  RTStrmWrite(g_pStdOut, RT_STR_TUPLE("\\\"")); break;
-                case '\n': RTStrmWrite(g_pStdOut, RT_STR_TUPLE("\\n")); break;
-                case '\r': RTStrmWrite(g_pStdOut, RT_STR_TUPLE("\\r")); break;
-                case '\t': RTStrmWrite(g_pStdOut, RT_STR_TUPLE("\\t")); break;
+                case '\\': pszEscape = "\\\\"; cchEscape = 2; break;
+                case '"':  pszEscape = "\\\""; cchEscape = 2; break;
+                case '\n': pszEscape = "\\n";  cchEscape = 2; break;
+                case '\r': pszEscape = "\\r";  cchEscape = 2; break;
+                case '\t': pszEscape = "\\t";  cchEscape = 2; break;
                 default:
-                    if (ch >= 0x20)
-                        RTStrmPutCh(g_pStdOut, ch);
-                    else
+                    if (ch < 0x20)
+                    {
+                        if (i > offPending)
+                            RTStrmWrite(g_pStdOut, &pszValue[offPending], i - offPending);
                         RTStrmPrintf(g_pStdOut, "\\u%04x", ch);
+                        offPending = i + 1;
+                    }
                     break;
             }
+            if (pszEscape)
+            {
+                if (i > offPending)
+                    RTStrmWrite(g_pStdOut, &pszValue[offPending], i - offPending);
+                RTStrmWrite(g_pStdOut, pszEscape, cchEscape);
+                offPending = i + 1;
+            }
         }
+        if (offPending < cchValue)
+            RTStrmWrite(g_pStdOut, &pszValue[offPending], cchValue - offPending);
     }
     RTStrmPutCh(g_pStdOut, '"');
 }
@@ -980,6 +1088,38 @@ static void shclHandleListenQuotedString(const char *pszValue)
     if (pszValue)
         ShClHlpPrintEscapedString(g_pStdOut, pszValue, strlen(pszValue));
     RTStrmPutCh(g_pStdOut, '"');
+}
+
+
+/**
+ * Prints the startup warning used when Shared Clipboard is disabled.
+ *
+ * @param   enmFormat       Output format.
+ */
+static void shclHandleListenPrintDisabledWarning(CLIPBOARDLISTENFMT enmFormat)
+{
+    const char *pszMessage = Clipboard::tr("Shared Clipboard is disabled for this VM.");
+
+    shclHandleListenPrintPrefix(enmFormat, NULL /* pInfo */, NULL /* pszSource */,
+                                "warning", NULL /* pszAction */);
+    if (enmFormat == CLIPBOARDLISTENFMT_JSON)
+    {
+        RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"mode\":\"disabled\",\"message\":"));
+        shclHandleListenJsonString(pszMessage);
+        RTStrmWrite(g_pStdOut, RT_STR_TUPLE("}\n"));
+    }
+    else if (enmFormat == CLIPBOARDLISTENFMT_MACHINE_READABLE)
+    {
+        RTStrmWrite(g_pStdOut, RT_STR_TUPLE(" mode=\"disabled\" message="));
+        shclHandleListenQuotedString(pszMessage);
+        RTStrmPutCh(g_pStdOut, '\n');
+    }
+    else
+    {
+        RTStrmWrite(g_pStdOut, RT_STR_TUPLE(" mode=disabled message="));
+        shclHandleListenQuotedString(pszMessage);
+        RTStrmPutCh(g_pStdOut, '\n');
+    }
 }
 
 
@@ -1130,104 +1270,38 @@ static void shclVerbosePayloadData(const char *pszCommand, const char *pszOperat
 
 
 /**
- * Reads and logs current guest data for extra-verbose format-only diagnostics.
+ * Reads current guest data for an extra-verbose format event.
  *
- * @returns true if data was read and logged, false otherwise.
- * @param   pszCommand      Clipboard subcommand name.
- * @param   pszOperation    Copying operation being logged.
- * @param   ptrSession      Clipboard session to read from.
- * @param   strExpectedMimeType Expected MIME type selected from the format event.
- * @param   fLogFailures    Whether read misses/errors should be logged.
+ * @returns true if matching non-empty guest data was returned.
+ * @param   ptrSession          Clipboard session to read from.
+ * @param   strExpectedMimeType MIME type selected from the format event.
+ * @param   strReadMimeType     Where to return the MIME type read.
+ * @param   aBuffer             Where to return the payload read.
  */
-static bool shclVerboseReadGuestData(const char *pszCommand, const char *pszOperation,
-                                     const ComPtr<IClipboardSession> &ptrSession, const Utf8Str &strExpectedMimeType,
-                                     bool fLogFailures)
+static bool shclHandleListenReadGuestData(const ComPtr<IClipboardSession> &ptrSession,
+                                          const Utf8Str &strExpectedMimeType,
+                                          Utf8Str &strReadMimeType,
+                                          SafeArray<BYTE> &aBuffer)
 {
-    if (g_uVerbosity < 2)
+    if (g_uVerbosity < 2 || ptrSession.isNull())
         return false;
 
     ClipboardSource_T enmReadSource = ClipboardSource_Custom;
     Bstr bstrRequestedMimeType("");
     Bstr bstrReadMimeType;
-    SafeArray<BYTE> aBuffer;
     HRESULT hrc = ptrSession->ReadDataRaw(ClipboardAction_Copy, bstrRequestedMimeType.raw(), &enmReadSource,
                                           bstrReadMimeType.asOutParam(), ComSafeArrayAsOutParam(aBuffer));
     if (FAILED(hrc))
-    {
-        if (fLogFailures)
-            shclVerbose("%s: data read failed for format=%s: %Rhrc", pszCommand,
-                        strExpectedMimeType.c_str(), hrc);
         return false;
-    }
 
-    Utf8Str strReadMimeType(bstrReadMimeType);
+    strReadMimeType = bstrReadMimeType;
     if (enmReadSource != ClipboardSource_Guest)
-    {
-        if (fLogFailures)
-            shclVerbose("%s: data read ignored non-guest source=%s format=%s size=%zu", pszCommand,
-                        ShClHlpSourceToString(enmReadSource), strReadMimeType.c_str(), aBuffer.size());
         return false;
-    }
     if (!shclMimeEquivalent(strExpectedMimeType, strReadMimeType))
-    {
-        if (fLogFailures)
-            shclVerbose("%s: data read ignored mismatched format=%s expected=%s size=%zu", pszCommand,
-                        strReadMimeType.c_str(), strExpectedMimeType.c_str(), aBuffer.size());
         return false;
-    }
     if (!aBuffer.size())
-    {
-        if (fLogFailures)
-            shclVerbose("%s: data read ignored empty guest data format=%s", pszCommand,
-                        strReadMimeType.c_str());
         return false;
-    }
-
-    shclVerbosePayloadData(pszCommand, pszOperation, strReadMimeType, aBuffer.raw(), aBuffer.size());
     return true;
-}
-
-
-/**
- * Reads and logs guest data selected by a format-changed event for extra-verbose diagnostics.
- *
- * @param   pszCommand      Clipboard subcommand name.
- * @param   ptrSession      Clipboard session to read from.
- * @param   ptrFormatEvent  Format-changed event to inspect.
- */
-static void shclHandleListenVerboseReadFormatEventGuestData(const char *pszCommand,
-                                                            const ComPtr<IClipboardSession> &ptrSession,
-                                                            const ComPtr<IClipboardFormatChangedEvent> &ptrFormatEvent)
-{
-    if (g_uVerbosity < 2 || ptrFormatEvent.isNull())
-        return;
-
-    ClipboardSource_T enmSource = ClipboardSource_Custom;
-    SafeIfaceArray<IClipboardFormat> aFormats;
-    HRESULT hrc = ptrFormatEvent->COMGETTER(ClipboardSource)(&enmSource);
-    if (SUCCEEDED(hrc))
-        hrc = ptrFormatEvent->COMGETTER(Formats)(ComSafeArrayAsOutParam(aFormats));
-    if (FAILED(hrc))
-    {
-        shclVerbose("%s: format-event inspection failed: %Rhrc", pszCommand, hrc);
-        return;
-    }
-    if (enmSource != ClipboardSource_Guest)
-        return;
-
-    ComPtr<IClipboardFormat> ptrPreferredFormat;
-    Utf8Str strMimeType;
-    hrc = shclSelectPreferredFormat(aFormats, ptrPreferredFormat, strMimeType);
-    if (hrc == VBOX_E_SHCL_FORMAT_NOT_SUPPORTED)
-        return;
-    if (FAILED(hrc))
-    {
-        shclVerbose("%s: format selection failed: %Rhrc", pszCommand, hrc);
-        return;
-    }
-
-    shclVerboseReadGuestData(pszCommand, "read guest data after format event", ptrSession, strMimeType,
-                                  true /* fLogFailures */);
 }
 
 
@@ -1353,17 +1427,31 @@ static const char *shclEventTypeToString(VBoxEventType_T enmType)
  * @param   enmFormat       Output format.
  * @param   pszEvent        Event name.
  * @param   ptrItem         Clipboard item associated with the event.
+ * @param   pszAction       Clipboard action associated with the event, optional.
  * @param   fVerboseData    Whether to include payload data.
  * @param   pEventInfo      Optional event identity fields.
+ * @param   pListenState    Listen state to update and use as a source fallback.
  */
 static void shclHandleListenPrintEventItem(CLIPBOARDLISTENFMT enmFormat, const char *pszEvent,
-                                           const ComPtr<IClipboardItem> &ptrItem, bool fVerboseData,
-                                           const SHCLCLIPBOARDEVENTINFO *pEventInfo)
+                                           const ComPtr<IClipboardItem> &ptrItem, const char *pszAction,
+                                           bool fVerboseData, const SHCLCLIPBOARDEVENTINFO *pEventInfo,
+                                           SHCLHANDLELISTENSTATE *pListenState)
 {
     Utf8Str strMimeType;
     ClipboardSource_T enmSource = ClipboardSource_Host;
     SafeArray<BYTE> aBuffer;
     HRESULT hrc = ptrItem.isNotNull() ? shclGetItemData(ptrItem, strMimeType, &enmSource, aBuffer) : E_FAIL;
+    if (SUCCEEDED(hrc) && pListenState)
+    {
+        pListenState->fHaveSource = true;
+        pListenState->enmSource = enmSource;
+    }
+
+    const char *pszSource = NULL;
+    if (SUCCEEDED(hrc))
+        pszSource = ShClHlpSourceToString(enmSource);
+    else if (pListenState && pListenState->fHaveSource)
+        pszSource = ShClHlpSourceToString(pListenState->enmSource);
 
     char *pszVerboseText = NULL;
     size_t cchVerboseText = 0;
@@ -1375,13 +1463,9 @@ static void shclHandleListenPrintEventItem(CLIPBOARDLISTENFMT enmFormat, const c
 
     if (enmFormat == CLIPBOARDLISTENFMT_JSON)
     {
-        RTStrmWrite(g_pStdOut, RT_STR_TUPLE("{\"event\":"));
-        shclHandleListenJsonString(pszEvent);
-        shclPrintEventInfoJson(pEventInfo);
+        shclHandleListenPrintPrefix(enmFormat, pEventInfo, pszSource, pszEvent, pszAction);
         if (SUCCEEDED(hrc))
         {
-            RTStrmPrintf(g_pStdOut, ",\"source\":");
-            shclHandleListenJsonString(ShClHlpSourceToString(enmSource));
             RTStrmPrintf(g_pStdOut, ",\"format\":");
             shclHandleListenJsonString(strMimeType.c_str());
             RTStrmPrintf(g_pStdOut, ",\"size\":%zu", aBuffer.size());
@@ -1400,12 +1484,10 @@ static void shclHandleListenPrintEventItem(CLIPBOARDLISTENFMT enmFormat, const c
     }
     else if (enmFormat == CLIPBOARDLISTENFMT_MACHINE_READABLE)
     {
-        RTPrintf("event=\"%s\"", pszEvent);
-        shclPrintEventInfoMachineReadable(pEventInfo);
+        shclHandleListenPrintPrefix(enmFormat, pEventInfo, pszSource, pszEvent, pszAction);
         if (SUCCEEDED(hrc))
         {
-            RTPrintf(" source=\"%s\" format=\"%s\" size=\"%zu\"",
-                     ShClHlpSourceToString(enmSource), strMimeType.c_str(), aBuffer.size());
+            RTPrintf(" format=\"%s\" size=\"%zu\"", strMimeType.c_str(), aBuffer.size());
             if (fHaveVerboseData)
             {
                 RTStrmWrite(g_pStdOut, RT_STR_TUPLE(" data=\""));
@@ -1422,11 +1504,12 @@ static void shclHandleListenPrintEventItem(CLIPBOARDLISTENFMT enmFormat, const c
     }
     else
     {
-        RTPrintf("clipboard: %s", pszEvent);
-        shclPrintEventInfoHuman(pEventInfo);
+        shclHandleListenPrintPrefix(enmFormat, pEventInfo, pszSource, pszEvent, pszAction);
         if (SUCCEEDED(hrc))
         {
-            RTPrintf(" source=%s format=%s size=%zu", ShClHlpSourceToString(enmSource), strMimeType.c_str(), aBuffer.size());
+            RTStrmWrite(g_pStdOut, RT_STR_TUPLE(" format="));
+            shclHandleListenQuotedString(strMimeType.c_str());
+            RTPrintf(" size=%zu", aBuffer.size());
             if (fHaveVerboseData)
             {
                 RTStrmWrite(g_pStdOut, RT_STR_TUPLE(" data=\""));
@@ -1451,14 +1534,24 @@ static void shclHandleListenPrintEventItem(CLIPBOARDLISTENFMT enmFormat, const c
  *
  * @param   enmFormat       Output format.
  * @param   ptrFormatEvent  Format-changed event object to print.
+ * @param   ptrSession      Clipboard session for extra-verbose guest reads.
  * @param   pEventInfo      Optional event identity fields.
+ * @param   pListenState    Listen state to update.
  */
 static void shclHandleListenPrintFormatChangedEvent(CLIPBOARDLISTENFMT enmFormat,
                                                     const ComPtr<IClipboardFormatChangedEvent> &ptrFormatEvent,
-                                                    const SHCLCLIPBOARDEVENTINFO *pEventInfo)
+                                                    const ComPtr<IClipboardSession> &ptrSession,
+                                                    const SHCLCLIPBOARDEVENTINFO *pEventInfo,
+                                                    SHCLHANDLELISTENSTATE *pListenState)
 {
     ClipboardSource_T enmSource = ClipboardSource_Host;
     HRESULT hrc = ptrFormatEvent->COMGETTER(ClipboardSource)(&enmSource);
+    bool const fHaveSource = SUCCEEDED(hrc);
+    if (SUCCEEDED(hrc) && pListenState)
+    {
+        pListenState->fHaveSource = true;
+        pListenState->enmSource = enmSource;
+    }
 
     SafeIfaceArray<IClipboardFormat> aFormats;
     if (SUCCEEDED(hrc))
@@ -1477,14 +1570,33 @@ static void shclHandleListenPrintFormatChangedEvent(CLIPBOARDLISTENFMT enmFormat
         }
     }
 
+    Utf8Str strDataMimeType;
+    SafeArray<BYTE> aDataBuffer;
+    bool fHaveData = false;
+    if (SUCCEEDED(hrc) && enmSource == ClipboardSource_Guest && g_uVerbosity > 1)
+    {
+        ComPtr<IClipboardFormat> ptrPreferredFormat;
+        Utf8Str strPreferredMimeType;
+        HRESULT const hrcSelect = shclSelectPreferredFormat(aFormats, ptrPreferredFormat, strPreferredMimeType);
+        if (SUCCEEDED(hrcSelect))
+            fHaveData = shclHandleListenReadGuestData(ptrSession, strPreferredMimeType,
+                                                      strDataMimeType, aDataBuffer);
+    }
+
+    char *pszData = NULL;
+    size_t cchData = 0;
+    bool fDataTruncated = false;
+    bool const fHaveText =    fHaveData
+                           && shclGetVerboseText(strDataMimeType, aDataBuffer.raw(), aDataBuffer.size(),
+                                                &pszData, &cchData, &fDataTruncated);
+
     if (enmFormat == CLIPBOARDLISTENFMT_JSON)
     {
-        RTStrmWrite(g_pStdOut, RT_STR_TUPLE("{\"event\":\"format-changed\""));
-        shclPrintEventInfoJson(pEventInfo);
+        shclHandleListenPrintPrefix(enmFormat, pEventInfo,
+                                    fHaveSource ? ShClHlpSourceToString(enmSource) : NULL,
+                                    "format-changed", NULL /* pszAction */);
         if (SUCCEEDED(hrc))
         {
-            RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"source\":"));
-            shclHandleListenJsonString(ShClHlpSourceToString(enmSource));
             RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"formats\":["));
             for (size_t i = 0; i < vecMimeTypes.size(); ++i)
             {
@@ -1493,37 +1605,77 @@ static void shclHandleListenPrintFormatChangedEvent(CLIPBOARDLISTENFMT enmFormat
                 shclHandleListenJsonString(vecMimeTypes[i].c_str());
             }
             RTStrmPutCh(g_pStdOut, ']');
+            if (fHaveData)
+            {
+                RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"data-format\":"));
+                shclHandleListenJsonString(strDataMimeType.c_str());
+                RTStrmPrintf(g_pStdOut, ",\"size\":%zu,\"data\":", aDataBuffer.size());
+                if (fHaveText)
+                    shclHandleListenJsonStringN(pszData, cchData);
+                else
+                    shclHandleListenJsonString("<binary>");
+                if (fHaveText && fDataTruncated)
+                    RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"data-truncated\":true"));
+            }
         }
         RTStrmWrite(g_pStdOut, RT_STR_TUPLE("}\n"));
     }
     else if (enmFormat == CLIPBOARDLISTENFMT_MACHINE_READABLE)
     {
-        RTPrintf("event=\"format-changed\"");
-        shclPrintEventInfoMachineReadable(pEventInfo);
+        shclHandleListenPrintPrefix(enmFormat, pEventInfo,
+                                    fHaveSource ? ShClHlpSourceToString(enmSource) : NULL,
+                                    "format-changed", NULL /* pszAction */);
         if (SUCCEEDED(hrc))
         {
-            RTPrintf(" source=\"%s\"", ShClHlpSourceToString(enmSource));
             for (size_t i = 0; i < vecMimeTypes.size(); ++i)
                 RTPrintf(" format=\"%s\"", vecMimeTypes[i].c_str());
+            if (fHaveData)
+            {
+                RTPrintf(" data-format=\"%s\" size=\"%zu\" data=\"", strDataMimeType.c_str(), aDataBuffer.size());
+                if (fHaveText)
+                    ShClHlpPrintEscapedString(g_pStdOut, pszData, cchData);
+                else
+                    RTStrmWrite(g_pStdOut, RT_STR_TUPLE("<binary>"));
+                RTStrmPutCh(g_pStdOut, '"');
+                if (fHaveText && fDataTruncated)
+                    RTStrmWrite(g_pStdOut, RT_STR_TUPLE(" data-truncated=\"true\""));
+            }
         }
         RTPrintf("\n");
     }
     else
     {
-        RTPrintf("clipboard: format-changed");
-        shclPrintEventInfoHuman(pEventInfo);
+        shclHandleListenPrintPrefix(enmFormat, pEventInfo,
+                                    fHaveSource ? ShClHlpSourceToString(enmSource) : NULL,
+                                    "format-changed", NULL /* pszAction */);
         if (SUCCEEDED(hrc))
         {
-            RTPrintf(" source=%s formats=", ShClHlpSourceToString(enmSource));
+            RTStrmWrite(g_pStdOut, RT_STR_TUPLE(" formats=\""));
             for (size_t i = 0; i < vecMimeTypes.size(); ++i)
             {
                 if (i)
-                    RTPrintf(",");
-                RTPrintf("%s", vecMimeTypes[i].c_str());
+                    RTStrmPutCh(g_pStdOut, ',');
+                ShClHlpPrintEscapedString(g_pStdOut, vecMimeTypes[i].c_str(), vecMimeTypes[i].length());
+            }
+            RTStrmPutCh(g_pStdOut, '"');
+            if (fHaveData)
+            {
+                RTStrmWrite(g_pStdOut, RT_STR_TUPLE(" data-format="));
+                shclHandleListenQuotedString(strDataMimeType.c_str());
+                RTPrintf(" size=%zu data=\"", aDataBuffer.size());
+                if (fHaveText)
+                    ShClHlpPrintEscapedString(g_pStdOut, pszData, cchData);
+                else
+                    RTStrmWrite(g_pStdOut, RT_STR_TUPLE("<binary>"));
+                RTStrmPutCh(g_pStdOut, '"');
+                if (fHaveText && fDataTruncated)
+                    RTStrmWrite(g_pStdOut, RT_STR_TUPLE(" data-truncated=true"));
             }
         }
         RTPrintf("\n");
     }
+
+    RTStrFree(pszData);
 }
 
 
@@ -1533,10 +1685,12 @@ static void shclHandleListenPrintFormatChangedEvent(CLIPBOARDLISTENFMT enmFormat
  * @param   enmFormat       Output format.
  * @param   ptrRequestEvent Data-requested event object to print.
  * @param   pEventInfo      Optional event identity fields.
+ * @param   pListenState    Listen state to update.
  */
 static void shclHandleListenPrintDataRequestedEvent(CLIPBOARDLISTENFMT enmFormat,
                                                     const ComPtr<IClipboardDataRequestedEvent> &ptrRequestEvent,
-                                                    const SHCLCLIPBOARDEVENTINFO *pEventInfo)
+                                                    const SHCLCLIPBOARDEVENTINFO *pEventInfo,
+                                                    SHCLHANDLELISTENSTATE *pListenState)
 {
     ULONG uRequestId = 0;
     ClipboardAction_T enmAction = ClipboardAction_Copy;
@@ -1548,6 +1702,12 @@ static void shclHandleListenPrintDataRequestedEvent(CLIPBOARDLISTENFMT enmFormat
         hrc = ptrRequestEvent->COMGETTER(Action)(&enmAction);
     if (SUCCEEDED(hrc))
         hrc = ptrRequestEvent->COMGETTER(ClipboardSource)(&enmSource);
+    bool const fHaveSource = SUCCEEDED(hrc);
+    if (fHaveSource && pListenState)
+    {
+        pListenState->fHaveSource = true;
+        pListenState->enmSource = enmSource;
+    }
     if (SUCCEEDED(hrc))
         hrc = ptrRequestEvent->COMGETTER(Format)(ptrFormat.asOutParam());
 
@@ -1555,41 +1715,83 @@ static void shclHandleListenPrintDataRequestedEvent(CLIPBOARDLISTENFMT enmFormat
     if (SUCCEEDED(hrc))
         hrc = shclGetFormatMimeType(ptrFormat, strMimeType);
 
+    ComPtr<IClipboardItem> ptrItem;
+    HRESULT hrcItem = ptrRequestEvent->COMGETTER(Item)(ptrItem.asOutParam());
+    Utf8Str strItemMimeType;
+    ClipboardSource_T enmItemSource = ClipboardSource_Custom;
+    SafeArray<BYTE> aItemBuffer;
+    if (SUCCEEDED(hrcItem) && ptrItem.isNotNull())
+        hrcItem = shclGetItemData(ptrItem, strItemMimeType, &enmItemSource, aItemBuffer);
+    else
+        hrcItem = E_FAIL;
+
+    char *pszText = NULL;
+    size_t cchText = 0;
+    bool fTextTruncated = false;
+    bool const fHaveText =    g_uVerbosity > 1
+                           && SUCCEEDED(hrc)
+                           && enmSource == ClipboardSource_Host
+                           && SUCCEEDED(hrcItem)
+                           && enmItemSource == ClipboardSource_Host
+                           && shclMimeEquivalent(strMimeType, strItemMimeType)
+                           && shclGetVerboseText(strItemMimeType, aItemBuffer.raw(), aItemBuffer.size(),
+                                                &pszText, &cchText, &fTextTruncated);
+
+    const char *pszSource = fHaveSource ? ShClHlpSourceToString(enmSource) : NULL;
+    const char *pszAction = SUCCEEDED(hrc) ? shclActionToString(enmAction) : NULL;
+
     if (enmFormat == CLIPBOARDLISTENFMT_JSON)
     {
-        RTStrmWrite(g_pStdOut, RT_STR_TUPLE("{\"event\":\"data-requested\""));
-        shclPrintEventInfoJson(pEventInfo);
+        shclHandleListenPrintPrefix(enmFormat, pEventInfo, pszSource, "data-requested", pszAction);
         if (SUCCEEDED(hrc))
         {
-            RTStrmPrintf(g_pStdOut, ",\"request-id\":%RU32,\"action\":", (uint32_t)uRequestId);
-            shclHandleListenJsonString(shclActionToString(enmAction));
-            RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"source\":"));
-            shclHandleListenJsonString(ShClHlpSourceToString(enmSource));
-            RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"format\":"));
+            RTStrmPrintf(g_pStdOut, ",\"request-id\":%RU32,\"format\":", (uint32_t)uRequestId);
             shclHandleListenJsonString(strMimeType.c_str());
+        }
+        if (fHaveText)
+        {
+            RTStrmPrintf(g_pStdOut, ",\"size\":%zu,\"data\":", aItemBuffer.size());
+            shclHandleListenJsonStringN(pszText, cchText);
+            if (fTextTruncated)
+                RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"data-truncated\":true"));
         }
         RTStrmWrite(g_pStdOut, RT_STR_TUPLE("}\n"));
     }
     else if (enmFormat == CLIPBOARDLISTENFMT_MACHINE_READABLE)
     {
-        RTPrintf("event=\"data-requested\"");
-        shclPrintEventInfoMachineReadable(pEventInfo);
+        shclHandleListenPrintPrefix(enmFormat, pEventInfo, pszSource, "data-requested", pszAction);
         if (SUCCEEDED(hrc))
-            RTPrintf(" request-id=\"%RU32\" action=\"%s\" source=\"%s\" format=\"%s\"",
-                     (uint32_t)uRequestId, shclActionToString(enmAction),
-                     ShClHlpSourceToString(enmSource), strMimeType.c_str());
+            RTPrintf(" request-id=\"%RU32\" format=\"%s\"", (uint32_t)uRequestId, strMimeType.c_str());
+        if (fHaveText)
+        {
+            RTPrintf(" size=\"%zu\" data=\"", aItemBuffer.size());
+            ShClHlpPrintEscapedString(g_pStdOut, pszText, cchText);
+            RTStrmPutCh(g_pStdOut, '"');
+            if (fTextTruncated)
+                RTStrmWrite(g_pStdOut, RT_STR_TUPLE(" data-truncated=\"true\""));
+        }
         RTPrintf("\n");
     }
     else
     {
-        RTPrintf("clipboard: data-requested");
-        shclPrintEventInfoHuman(pEventInfo);
+        shclHandleListenPrintPrefix(enmFormat, pEventInfo, pszSource, "data-requested", pszAction);
         if (SUCCEEDED(hrc))
-            RTPrintf(" request-id=%RU32 action=%s source=%s format=%s",
-                     (uint32_t)uRequestId, shclActionToString(enmAction),
-                     ShClHlpSourceToString(enmSource), strMimeType.c_str());
+        {
+            RTPrintf(" request-id=%RU32 format=", (uint32_t)uRequestId);
+            shclHandleListenQuotedString(strMimeType.c_str());
+        }
+        if (fHaveText)
+        {
+            RTPrintf(" size=%zu data=\"", aItemBuffer.size());
+            ShClHlpPrintEscapedString(g_pStdOut, pszText, cchText);
+            RTStrmPutCh(g_pStdOut, '"');
+            if (fTextTruncated)
+                RTStrmWrite(g_pStdOut, RT_STR_TUPLE(" data-truncated=true"));
+        }
         RTPrintf("\n");
     }
+
+    RTStrFree(pszText);
 }
 
 
@@ -1632,16 +1834,13 @@ static void shclHandleListenPrintTransferEvent(CLIPBOARDLISTENFMT enmFormat,
 
     if (enmFormat == CLIPBOARDLISTENFMT_JSON)
     {
-        RTStrmWrite(g_pStdOut, RT_STR_TUPLE("{\"event\":\"transfer\""));
-        shclPrintEventInfoJson(pEventInfo);
+        shclHandleListenPrintPrefix(enmFormat, pEventInfo,
+                                    SUCCEEDED(hrcTransfer) ? ShClHlpSourceToString(enmSource) : NULL,
+                                    "transfer", SUCCEEDED(hrcTransfer) ? shclActionToString(enmAction) : NULL);
         if (SUCCEEDED(hrcTransfer))
         {
             RTStrmPrintf(g_pStdOut, ",\"id\":%RU32,\"direction\":", (uint32_t)idTransfer);
             shclHandleListenJsonString(shclTransferDirectionToString(enmDirection));
-            RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"source\":"));
-            shclHandleListenJsonString(ShClHlpSourceToString(enmSource));
-            RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"action\":"));
-            shclHandleListenJsonString(shclActionToString(enmAction));
         }
         if (SUCCEEDED(hrcEvent))
         {
@@ -1660,12 +1859,12 @@ static void shclHandleListenPrintTransferEvent(CLIPBOARDLISTENFMT enmFormat,
     }
     else if (enmFormat == CLIPBOARDLISTENFMT_MACHINE_READABLE)
     {
-        RTPrintf("event=\"transfer\"");
-        shclPrintEventInfoMachineReadable(pEventInfo);
+        shclHandleListenPrintPrefix(enmFormat, pEventInfo,
+                                    SUCCEEDED(hrcTransfer) ? ShClHlpSourceToString(enmSource) : NULL,
+                                    "transfer", SUCCEEDED(hrcTransfer) ? shclActionToString(enmAction) : NULL);
         if (SUCCEEDED(hrcTransfer))
-            RTPrintf(" id=\"%RU32\" direction=\"%s\" source=\"%s\" action=\"%s\"",
-                     (uint32_t)idTransfer, shclTransferDirectionToString(enmDirection),
-                     ShClHlpSourceToString(enmSource), shclActionToString(enmAction));
+            RTPrintf(" id=\"%RU32\" direction=\"%s\"",
+                     (uint32_t)idTransfer, shclTransferDirectionToString(enmDirection));
         if (SUCCEEDED(hrcEvent))
         {
             RTPrintf(" state=\"%s\" interaction=\"%s\" path=",
@@ -1678,12 +1877,11 @@ static void shclHandleListenPrintTransferEvent(CLIPBOARDLISTENFMT enmFormat,
     }
     else
     {
-        RTPrintf("clipboard: transfer");
-        shclPrintEventInfoHuman(pEventInfo);
+        shclHandleListenPrintPrefix(enmFormat, pEventInfo,
+                                    SUCCEEDED(hrcTransfer) ? ShClHlpSourceToString(enmSource) : NULL,
+                                    "transfer", SUCCEEDED(hrcTransfer) ? shclActionToString(enmAction) : NULL);
         if (SUCCEEDED(hrcTransfer))
-            RTPrintf(" id=%RU32 direction=%s source=%s action=%s",
-                     (uint32_t)idTransfer, shclTransferDirectionToString(enmDirection),
-                     ShClHlpSourceToString(enmSource), shclActionToString(enmAction));
+            RTPrintf(" id=%RU32 direction=%s", (uint32_t)idTransfer, shclTransferDirectionToString(enmDirection));
         if (SUCCEEDED(hrcEvent))
         {
             RTPrintf(" state=%s interaction=%s path=",
@@ -1703,29 +1901,19 @@ static void shclHandleListenPrintTransferEvent(CLIPBOARDLISTENFMT enmFormat,
  * @param   enmFormat       Output format.
  * @param   pszEvent        Event name.
  * @param   pEventInfo      Optional event identity fields.
+ * @param   pListenState    Listen state providing the current source, optional.
  */
 static void shclHandleListenPrintSimpleEvent(CLIPBOARDLISTENFMT enmFormat, const char *pszEvent,
-                                             const SHCLCLIPBOARDEVENTINFO *pEventInfo)
+                                             const SHCLCLIPBOARDEVENTINFO *pEventInfo,
+                                             const SHCLHANDLELISTENSTATE *pListenState)
 {
+    const char *pszSource = pListenState && pListenState->fHaveSource
+                          ? ShClHlpSourceToString(pListenState->enmSource) : NULL;
+    shclHandleListenPrintPrefix(enmFormat, pEventInfo, pszSource, pszEvent, NULL /* pszAction */);
     if (enmFormat == CLIPBOARDLISTENFMT_JSON)
-    {
-        RTStrmWrite(g_pStdOut, RT_STR_TUPLE("{\"event\":"));
-        shclHandleListenJsonString(pszEvent);
-        shclPrintEventInfoJson(pEventInfo);
         RTStrmWrite(g_pStdOut, RT_STR_TUPLE("}\n"));
-    }
-    else if (enmFormat == CLIPBOARDLISTENFMT_MACHINE_READABLE)
-    {
-        RTPrintf("event=\"%s\"", pszEvent);
-        shclPrintEventInfoMachineReadable(pEventInfo);
-        RTPrintf("\n");
-    }
     else
-    {
-        RTPrintf("clipboard: %s", pszEvent);
-        shclPrintEventInfoHuman(pEventInfo);
         RTPrintf("\n");
-    }
 }
 
 
@@ -1735,9 +1923,11 @@ static void shclHandleListenPrintSimpleEvent(CLIPBOARDLISTENFMT enmFormat, const
  * @param   enmFormat       Output format.
  * @param   ptrEvent        Event object to print.
  * @param   ptrSession      Clipboard session for extra-verbose diagnostic reads.
+ * @param   pListenState    Listen state to update.
  */
 static void shclHandleListenPrintEvent(CLIPBOARDLISTENFMT enmFormat, const ComPtr<IEvent> &ptrEvent,
-                                       const ComPtr<IClipboardSession> &ptrSession)
+                                       const ComPtr<IClipboardSession> &ptrSession,
+                                       SHCLHANDLELISTENSTATE *pListenState)
 {
     VBoxEventType_T enmType;
     HRESULT hrc = ptrEvent->COMGETTER(Type)(&enmType);
@@ -1753,34 +1943,24 @@ static void shclHandleListenPrintEvent(CLIPBOARDLISTENFMT enmFormat, const ComPt
         {
             ComPtr<IClipboardSourceChangedEvent> ptrSourceEvent = ptrEvent;
             ClipboardSource_T enmSource = ClipboardSource_Host;
-            ptrSourceEvent->COMGETTER(ClipboardSource)(&enmSource);
+            HRESULT const hrcSource = ptrSourceEvent->COMGETTER(ClipboardSource)(&enmSource);
+            if (SUCCEEDED(hrcSource) && pListenState)
+            {
+                pListenState->fHaveSource = true;
+                pListenState->enmSource = enmSource;
+            }
+            const char *pszSource = SUCCEEDED(hrcSource) ? ShClHlpSourceToString(enmSource) : NULL;
+            shclHandleListenPrintPrefix(enmFormat, &EventInfo, pszSource, "source-changed", NULL /* pszAction */);
             if (enmFormat == CLIPBOARDLISTENFMT_JSON)
-            {
-                RTStrmWrite(g_pStdOut, RT_STR_TUPLE("{\"event\":\"source-changed\""));
-                shclPrintEventInfoJson(&EventInfo);
-                RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"source\":"));
-                shclHandleListenJsonString(ShClHlpSourceToString(enmSource));
                 RTStrmWrite(g_pStdOut, RT_STR_TUPLE("}\n"));
-            }
-            else if (enmFormat == CLIPBOARDLISTENFMT_MACHINE_READABLE)
-            {
-                RTPrintf("event=\"source-changed\"");
-                shclPrintEventInfoMachineReadable(&EventInfo);
-                RTPrintf(" source=\"%s\"\n", ShClHlpSourceToString(enmSource));
-            }
             else
-            {
-                RTPrintf("clipboard: source-changed");
-                shclPrintEventInfoHuman(&EventInfo);
-                RTPrintf(" source=%s\n", ShClHlpSourceToString(enmSource));
-            }
+                RTPrintf("\n");
             break;
         }
         case VBoxEventType_OnClipboardFormatChanged:
         {
             ComPtr<IClipboardFormatChangedEvent> ptrFormatEvent = ptrEvent;
-            shclHandleListenPrintFormatChangedEvent(enmFormat, ptrFormatEvent, &EventInfo);
-            shclHandleListenVerboseReadFormatEventGuestData("listen", ptrSession, ptrFormatEvent);
+            shclHandleListenPrintFormatChangedEvent(enmFormat, ptrFormatEvent, ptrSession, &EventInfo, pListenState);
             break;
         }
         case VBoxEventType_OnClipboardDataChanged:
@@ -1788,13 +1968,17 @@ static void shclHandleListenPrintEvent(CLIPBOARDLISTENFMT enmFormat, const ComPt
             ComPtr<IClipboardDataChangedEvent> ptrDataEvent = ptrEvent;
             ComPtr<IClipboardItem> ptrItem;
             ptrDataEvent->COMGETTER(Item)(ptrItem.asOutParam());
-            shclHandleListenPrintEventItem(enmFormat, "data-changed", ptrItem, g_uVerbosity > 1, &EventInfo);
+            ClipboardAction_T enmAction = ClipboardAction_Copy;
+            HRESULT const hrcAction = ptrDataEvent->COMGETTER(Action)(&enmAction);
+            shclHandleListenPrintEventItem(enmFormat, "data-changed", ptrItem,
+                                           SUCCEEDED(hrcAction) ? shclActionToString(enmAction) : NULL,
+                                           g_uVerbosity > 1, &EventInfo, pListenState);
             break;
         }
         case VBoxEventType_OnClipboardDataRequested:
         {
             ComPtr<IClipboardDataRequestedEvent> ptrRequestEvent = ptrEvent;
-            shclHandleListenPrintDataRequestedEvent(enmFormat, ptrRequestEvent, &EventInfo);
+            shclHandleListenPrintDataRequestedEvent(enmFormat, ptrRequestEvent, &EventInfo, pListenState);
             break;
         }
         case VBoxEventType_OnClipboardTransfer:
@@ -1811,25 +1995,26 @@ static void shclHandleListenPrintEvent(CLIPBOARDLISTENFMT enmFormat, const ComPt
             ptrErrorEvent->COMGETTER(Msg)(bstrMsg.asOutParam());
             ptrErrorEvent->COMGETTER(RcError)(&rcError);
             Utf8Str strMsg(bstrMsg);
+            const char *pszSource = pListenState && pListenState->fHaveSource
+                                  ? ShClHlpSourceToString(pListenState->enmSource) : NULL;
+            shclHandleListenPrintPrefix(enmFormat, &EventInfo, pszSource, "error", NULL /* pszAction */);
             if (enmFormat == CLIPBOARDLISTENFMT_JSON)
             {
-                RTStrmWrite(g_pStdOut, RT_STR_TUPLE("{\"event\":\"error\""));
-                shclPrintEventInfoJson(&EventInfo);
-                RTStrmPrintf(g_pStdOut, ",\"rc\":%ld,\"message\":", rcError);
+                RTStrmPrintf(g_pStdOut, ",\"rc\":%RI32,\"message\":", (int32_t)rcError);
                 shclHandleListenJsonString(strMsg.c_str());
                 RTStrmWrite(g_pStdOut, RT_STR_TUPLE("}\n"));
             }
             else if (enmFormat == CLIPBOARDLISTENFMT_MACHINE_READABLE)
             {
-                RTPrintf("event=\"error\"");
-                shclPrintEventInfoMachineReadable(&EventInfo);
-                RTPrintf(" rc=\"%ld\" message=\"%s\"\n", rcError, strMsg.c_str());
+                RTPrintf(" rc=\"%RI32\" message=", (int32_t)rcError);
+                shclHandleListenQuotedString(strMsg.c_str());
+                RTPrintf("\n");
             }
             else
             {
-                RTPrintf("clipboard: error");
-                shclPrintEventInfoHuman(&EventInfo);
-                RTPrintf(" rc=%ld message=%s\n", rcError, strMsg.c_str());
+                RTPrintf(" rc=%RI32 message=", (int32_t)rcError);
+                shclHandleListenQuotedString(strMsg.c_str());
+                RTPrintf("\n");
             }
             break;
         }
@@ -1839,26 +2024,19 @@ static void shclHandleListenPrintEvent(CLIPBOARDLISTENFMT enmFormat, const ComPt
             ClipboardMode_T enmMode = ClipboardMode_Disabled;
             ptrModeEvent->COMGETTER(ClipboardMode)(&enmMode);
             const char *pszMode = ShClHlpModeToString(enmMode);
+            const char *pszSource = pListenState && pListenState->fHaveSource
+                                  ? ShClHlpSourceToString(pListenState->enmSource) : NULL;
+            shclHandleListenPrintPrefix(enmFormat, &EventInfo, pszSource, "mode-changed", NULL /* pszAction */);
             if (enmFormat == CLIPBOARDLISTENFMT_JSON)
             {
-                RTStrmWrite(g_pStdOut, RT_STR_TUPLE("{\"event\":\"mode-changed\""));
-                shclPrintEventInfoJson(&EventInfo);
                 RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"mode\":"));
                 shclHandleListenJsonString(pszMode);
                 RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"active\":true}\n"));
             }
             else if (enmFormat == CLIPBOARDLISTENFMT_MACHINE_READABLE)
-            {
-                RTPrintf("event=\"mode-changed\"");
-                shclPrintEventInfoMachineReadable(&EventInfo);
                 RTPrintf(" mode=\"%s\" active=\"true\"\n", pszMode);
-            }
             else
-            {
-                RTPrintf("clipboard: mode-changed");
-                shclPrintEventInfoHuman(&EventInfo);
-                RTPrintf(" mode=%s now-active\n", pszMode);
-            }
+                RTPrintf(" mode=%s active=true\n", pszMode);
             break;
         }
         case VBoxEventType_OnClipboardFileTransferModeChanged:
@@ -1866,10 +2044,12 @@ static void shclHandleListenPrintEvent(CLIPBOARDLISTENFMT enmFormat, const ComPt
             ComPtr<IClipboardFileTransferModeChangedEvent> ptrModeEvent = ptrEvent;
             BOOL fEnabled = FALSE;
             ptrModeEvent->COMGETTER(Enabled)(&fEnabled);
+            const char *pszSource = pListenState && pListenState->fHaveSource
+                                  ? ShClHlpSourceToString(pListenState->enmSource) : NULL;
+            shclHandleListenPrintPrefix(enmFormat, &EventInfo, pszSource,
+                                        "file-transfer-mode-changed", NULL /* pszAction */);
             if (enmFormat == CLIPBOARDLISTENFMT_JSON)
             {
-                RTStrmWrite(g_pStdOut, RT_STR_TUPLE("{\"event\":\"file-transfer-mode-changed\""));
-                shclPrintEventInfoJson(&EventInfo);
                 RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"enabled\":"));
                 if (fEnabled)
                     RTStrmWrite(g_pStdOut, RT_STR_TUPLE("true"));
@@ -1878,21 +2058,13 @@ static void shclHandleListenPrintEvent(CLIPBOARDLISTENFMT enmFormat, const ComPt
                 RTStrmWrite(g_pStdOut, RT_STR_TUPLE(",\"active\":true}\n"));
             }
             else if (enmFormat == CLIPBOARDLISTENFMT_MACHINE_READABLE)
-            {
-                RTPrintf("event=\"file-transfer-mode-changed\"");
-                shclPrintEventInfoMachineReadable(&EventInfo);
                 RTPrintf(" enabled=\"%s\" active=\"true\"\n", fEnabled ? "true" : "false");
-            }
             else
-            {
-                RTPrintf("clipboard: file-transfer-mode-changed");
-                shclPrintEventInfoHuman(&EventInfo);
-                RTPrintf(" enabled=%s now-active\n", fEnabled ? "true" : "false");
-            }
+                RTPrintf(" enabled=%s active=true\n", fEnabled ? "true" : "false");
             break;
         }
         default:
-            shclHandleListenPrintSimpleEvent(enmFormat, "unknown", &EventInfo);
+            shclHandleListenPrintSimpleEvent(enmFormat, "unknown", &EventInfo, pListenState);
             break;
     }
 }
@@ -3185,8 +3357,8 @@ static RTEXITCODE shclHandleTransferOffer(HandlerArg *pArg, int argc, char **arg
     }
 
     ComPtr<IClipboardTransfer> ptrTransfer;
-    hrc = ptrManager->CreateTransfer(ClipboardTransferDirection_ToGuest, ClipboardSource_Host,
-                                     ClipboardAction_Copy, ptrTransfer.asOutParam());
+    hrc = ptrManager->Create(ClipboardTransferDirection_ToGuest, ClipboardSource_Host,
+                             ClipboardAction_Copy, ptrTransfer.asOutParam());
     if (FAILED(hrc) || ptrTransfer.isNull())
     {
         pArg->session->UnlockMachine();
@@ -3199,22 +3371,19 @@ static RTEXITCODE shclHandleTransferOffer(HandlerArg *pArg, int argc, char **arg
     hrc = ptrTransfer->SetSourcePaths(ComSafeArrayAsInParam(aSourcePaths));
     if (FAILED(hrc))
     {
+        HRESULT const hrcRemove = ptrManager->Remove(ptrTransfer);
+        if (FAILED(hrcRemove))
+            shclVerbose("transfer offer: removing the unconfigured manager transfer failed: %Rhrc", hrcRemove);
         pArg->session->UnlockMachine();
         return RTMsgErrorExit(RTEXITCODE_FAILURE,
                               Clipboard::tr("Configuring clipboard file transfer source paths failed: %Rhrc"), hrc);
     }
 
-    hrc = ptrManager->Add(ptrTransfer);
-    if (FAILED(hrc))
-    {
-        pArg->session->UnlockMachine();
-        return RTMsgErrorExit(RTEXITCODE_FAILURE, Clipboard::tr("Publishing clipboard file transfer failed: %Rhrc"), hrc);
-    }
-
     ULONG idTransfer = shclGetTransferId(ptrTransfer);
     if (idTransfer)
-        shclVerbose("transfer offer: published transfer id=%RU32", (uint32_t)idTransfer);
-    shclInfo(Clipboard::tr("Published %zu host path(s) as clipboard file transfer."), vecAbsSources.size());
+        shclVerbose("transfer offer: configured manager transfer id=%RU32", (uint32_t)idTransfer);
+    shclInfo(Clipboard::tr("Configured %zu host path(s) on a manager-tracked clipboard file transfer."),
+             vecAbsSources.size());
 
     RTEXITCODE rcExit = shclWaitForTransferCompletion(ptrClipboardSession, ptrManager,
                                                       ClipboardTransferDirection_ToGuest, idTransfer, cMsTimeout);
@@ -5113,11 +5282,22 @@ static RTEXITCODE shclHandleListen(HandlerArg *pArg, int argc, char **argv)
     if (rcExit != RTEXITCODE_SUCCESS)
         return rcExit;
 
+    ClipboardMode_T enmMode = ClipboardMode_Disabled;
+    hrc = shclGetMode(pArg, &enmMode);
+    if (SUCCEEDED(hrc) && enmMode == ClipboardMode_Disabled)
+    {
+        shclHandleListenPrintDisabledWarning(enmOutputFormat);
+        RTStrmFlush(g_pStdOut);
+    }
+    else if (FAILED(hrc))
+        shclVerbose("getting the Shared Clipboard mode failed: %Rhrc", hrc);
+
     shclSignalHandlerInstall();
 
     uint64_t const msStart = RTTimeMilliTS();
     uint32_t cEvents = 0;
     bool fTimedOut = false;
+    SHCLHANDLELISTENSTATE ListenState;
     while (cEvents < cEventsMax)
     {
         if (shclSignalWasCaught())
@@ -5148,7 +5328,7 @@ static RTEXITCODE shclHandleListen(HandlerArg *pArg, int argc, char **argv)
             continue;
 
         shclMarkEventProcessed(ptrEventSource, ptrListener, ptrEvent);
-        shclHandleListenPrintEvent(enmOutputFormat, ptrEvent, ptrClipboardSession);
+        shclHandleListenPrintEvent(enmOutputFormat, ptrEvent, ptrClipboardSession, &ListenState);
         RTStrmFlush(g_pStdOut);
         cEvents++;
     }
@@ -5156,9 +5336,9 @@ static RTEXITCODE shclHandleListen(HandlerArg *pArg, int argc, char **argv)
     bool const fInterrupted = shclSignalWasCaught();
     shclCleanupListener(ptrEventSource, ptrListener, true /* fSignalHandlerInstalled */);
     if (fInterrupted)
-        shclVerbose("listen: interrupted; shutting down");
+        shclVerbose("interrupted; shutting down");
     else if (fTimedOut)
-        shclVerbose("listen: timed out after %RU32 ms", cMsTimeout);
+        shclVerbose("timed out after %RU32 ms", cMsTimeout);
     return RTEXITCODE_SUCCESS;
 }
 
@@ -5196,6 +5376,11 @@ RTEXITCODE handleClipboard(HandlerArg *pArg)
                              | HELP_SCOPE_CLIPBOARD_TRANSFER_CANCEL);
         return shclHandleTransfer(pArg, pArg->argc, pArg->argv);
     }
+#else
+    if (   !strcmp(pszSubcommand, "set-filetransfers")
+        || !strcmp(pszSubcommand, "transfer"))
+        return RTMsgErrorExit(RTEXITCODE_FAILURE,
+                              Clipboard::tr("Clipboard transfer commands are not implemented on this platform."));
 #endif
     if (!strcmp(pszSubcommand, "copy"))
     {
