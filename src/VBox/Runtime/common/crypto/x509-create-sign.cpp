@@ -1,4 +1,4 @@
-/* $Id: x509-create-sign.cpp 114860 2026-08-05 15:59:20Z klaus.espenlaub@oracle.com $ */
+/* $Id: x509-create-sign.cpp 114861 2026-08-05 16:23:07Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - Crypto - X.509, Certificate Creation.
  */
@@ -61,7 +61,7 @@
 
 
 RTDECL(int) RTCrX509Certificate_GenerateSelfSignedRsa(RTDIGESTTYPE enmDigestType, uint32_t cBits, uint32_t cSecsValidFor,
-                                                      uint32_t fKeyUsage, uint64_t fExtKeyUsage, const char *pvSubject,
+                                                      uint32_t fKeyUsage, uint64_t fExtKeyUsage, const char *pszSubject,
                                                       const char *pszCertFile, const char *pszPrivateKeyFile, PRTERRINFO pErrInfo)
 {
     AssertReturn(cSecsValidFor <= (uint32_t)INT32_MAX, VERR_OUT_OF_RANGE); /* larger values are not portable (win) */
@@ -152,12 +152,9 @@ RTDECL(int) RTCrX509Certificate_GenerateSelfSignedRsa(RTDIGESTTYPE enmDigestType
 # endif
         /** @todo set other certificate attributes? */
 
-
-        /** @todo check what the subject name is...  Offer way to specify it? */
-
         /* Make it self signed: */
         X509_NAME *pX509Name = (X509_NAME *)X509_get_subject_name(pNewCert);
-        rcOssl = X509_NAME_add_entry_by_txt(pX509Name, "CN", MBSTRING_ASC, (const unsigned char *)pvSubject, -1, -1, 0);
+        rcOssl = X509_NAME_add_entry_by_txt(pX509Name, "CN", MBSTRING_ASC, (const unsigned char *)pszSubject, -1, -1, 0);
         AssertStmt(rcOssl > 0, rc = RTErrInfoSet(pErrInfo, VERR_GENERAL_FAILURE, "X509_NAME_add_entry_by_txt failed"));
         rcOssl = X509_set_issuer_name(pNewCert, pX509Name);
         AssertStmt(rcOssl > 0, rc = RTErrInfoSet(pErrInfo, VERR_GENERAL_FAILURE, "X509_set_issuer_name failed"));

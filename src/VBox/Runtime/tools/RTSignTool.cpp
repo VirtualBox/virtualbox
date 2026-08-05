@@ -1,4 +1,4 @@
-/* $Id: RTSignTool.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: RTSignTool.cpp 114861 2026-08-05 16:23:07Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - Signing Tool.
  */
@@ -6440,7 +6440,7 @@ static RTEXITCODE HelpCreateSelfSignedRsaCert(PRTSTREAM pStrm, RTSIGNTOOLHELP en
 {
     RT_NOREF_PV(enmLevel);
     RTStrmWrappedPrintf(pStrm, RTSTRMWRAPPED_F_HANGING_INDENT,
-                        "create-self-signed-rsa-cert [--verbose|--quiet] [--key-bits <count>] [--digest <hash>] [--out-cert=]<certificate-file.pem> [--out-pkey=]<private-key-file.pem>\n");
+                        "create-self-signed-rsa-cert --subject=<name> [--key-bits=<count>] [--days=<num> | --secs=<num>] [--digest=<hash>] [--out-cert=]<certificate-file.pem> [--out-pkey=]<private-key-file.pem>\n");
     return RTEXITCODE_SUCCESS;
 }
 
@@ -6482,15 +6482,16 @@ static RTEXITCODE HandleCreateSelfSignedRsaCert(int cArgs, char **papszArgs)
      */
     static const RTGETOPTDEF s_aOptions[] =
     {
+        { "--subject",          'S', RTGETOPT_REQ_STRING },
         { "--digest",           'd', RTGETOPT_REQ_STRING },
         { "--bits",             'b', RTGETOPT_REQ_UINT32 },
         { "--key-bits",         'b', RTGETOPT_REQ_UINT32 },
         { "--days",             'D', RTGETOPT_REQ_UINT32 },
         { "--days",             'D', RTGETOPT_REQ_UINT32 },
-        { "--out-cert",         'c', RTGETOPT_REQ_UINT32 },
-        { "--out-certificate",  'c', RTGETOPT_REQ_UINT32 },
-        { "--out-pkey",         'p', RTGETOPT_REQ_UINT32 },
-        { "--out-private-key",  'p', RTGETOPT_REQ_UINT32 },
+        { "--out-cert",         'c', RTGETOPT_REQ_STRING },
+        { "--out-certificate",  'c', RTGETOPT_REQ_STRING },
+        { "--out-pkey",         'p', RTGETOPT_REQ_STRING },
+        { "--out-private-key",  'p', RTGETOPT_REQ_STRING },
         { "--secs",             's', RTGETOPT_REQ_UINT32 },
         { "--seconds",          's', RTGETOPT_REQ_UINT32 },
     };
@@ -6500,6 +6501,7 @@ static RTEXITCODE HandleCreateSelfSignedRsaCert(int cArgs, char **papszArgs)
     uint32_t        cSecsValidFor   = 365 * RT_SEC_1DAY;
     uint32_t        fKeyUsage       = 0;
     uint32_t        fExtKeyUsage    = 0;
+    const char     *pszSubject      = NULL;
     const char     *pszOutCert      = NULL;
     const char     *pszOutPrivKey   = NULL;
 
@@ -6544,6 +6546,14 @@ static RTEXITCODE HandleCreateSelfSignedRsaCert(int cArgs, char **papszArgs)
                 cSecsValidFor = ValueUnion.u32;
                 break;
 
+            case 'S':
+                if (pszSubject)
+                    return RTMsgErrorExit(RTEXITCODE_FAILURE, "The --subject option can only be used once.");
+                if (!ValueUnion.psz || !*ValueUnion.psz)
+                    return RTMsgErrorExit(RTEXITCODE_FAILURE, "The --subject option must be non-empty.");
+                pszSubject = ValueUnion.psz;
+                break;
+
             case VINF_GETOPT_NOT_OPTION:
                 if (!pszOutCert)
                     pszOutCert = ValueUnion.psz;
@@ -6558,6 +6568,8 @@ static RTEXITCODE HandleCreateSelfSignedRsaCert(int cArgs, char **papszArgs)
             default:  return RTGetOptPrintError(ch, &ValueUnion);
         }
     }
+    if (!pszSubject)
+        return RTMsgErrorExit(RTEXITCODE_FAILURE, "No subject name specified.");
     if (!pszOutCert)
         return RTMsgErrorExit(RTEXITCODE_FAILURE, "No output certificate file name specified.");
     if (!pszOutPrivKey)
@@ -6568,7 +6580,7 @@ static RTEXITCODE HandleCreateSelfSignedRsaCert(int cArgs, char **papszArgs)
      */
     RTERRINFOSTATIC StaticErrInfo;
     rc = RTCrX509Certificate_GenerateSelfSignedRsa(enmDigestType, cKeyBits, cSecsValidFor,
-                                                   fKeyUsage, fExtKeyUsage, NULL /*pvSubjectTodo*/,
+                                                   fKeyUsage, fExtKeyUsage, pszSubject,
                                                    pszOutCert, pszOutPrivKey, RTErrInfoInitStatic(&StaticErrInfo));
     if (RT_SUCCESS(rc))
     {

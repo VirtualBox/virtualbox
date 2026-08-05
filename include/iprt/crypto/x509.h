@@ -1223,7 +1223,7 @@ RTDECL(PCRTCRX509CERTIFICATE) RTCrX509CertPathsGetPathNodeCert(RTCRX509CERTPATHS
  *                              valid for (starting now).
  * @param   fKeyUsage           Key usage mask: RTCRX509CERT_KEY_USAGE_F_XXX.
  * @param   fExtKeyUsage        Extended key usage mask: RTCRX509CERT_EKU_F_XXX.
- * @param   pvSubject           Subject name.
+ * @param   pszSubject          Subject name.
  * @param   pszCertFile         Where to store the certificate (PEM formatting).
  * @param   pszPrivateKeyFile   Where to store the unencrypted private key (PEM
  *                              formatting).
@@ -1231,7 +1231,7 @@ RTDECL(PCRTCRX509CERTIFICATE) RTCrX509CertPathsGetPathNodeCert(RTCRX509CERTPATHS
  *                              Optional.
  */
 RTDECL(int) RTCrX509Certificate_GenerateSelfSignedRsa(RTDIGESTTYPE enmDigestType, uint32_t cBits, uint32_t cSecsValidFor,
-                                                      uint32_t fKeyUsage, uint64_t fExtKeyUsage, const char *pvSubject,
+                                                      uint32_t fKeyUsage, uint64_t fExtKeyUsage, const char *pszSubject,
                                                       const char *pszCertFile, const char *pszPrivateKeyFile, PRTERRINFO pErrInfo);
 
 RT_C_DECLS_END
