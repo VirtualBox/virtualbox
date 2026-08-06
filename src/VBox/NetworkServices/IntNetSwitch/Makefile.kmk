@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114877 2026-08-06 21:53:20Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-makefile for the Ring-3 based network switch process.
 #
@@ -31,7 +31,9 @@ include $(KBUILD_PATH)/subheader.kmk
 #
 # The internal network switch module.
 #
-PROGRAMS += VBoxIntNetSwitch
+if defined(VBOX_WITH_INTNET_SERVICE_IN_R3) && ("$(KBUILD_TARGET)" == "darwin" || defined(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC))
+ PROGRAMS += VBoxIntNetSwitch
+endif
 VBoxIntNetSwitch_TEMPLATE := VBoxR3Exe
 
 ifdef VBOX_WITH_AUTOMATIC_DEFS_QUOTING
@@ -39,7 +41,9 @@ ifdef VBOX_WITH_AUTOMATIC_DEFS_QUOTING
 else
  VBoxIntNetSwitch_DEFS     = KBUILD_TYPE=\"$(KBUILD_TYPE)\"
 endif
-VBoxIntNetSwitch_DEFS     += VBOX_WITH_INTNET_SERVICE_IN_R3
+VBoxIntNetSwitch_DEFS     += \
+	VBOX_WITH_INTNET_SERVICE_IN_R3 \
+	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC),VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC,)
 VBoxIntNetSwitch_INST.darwin = $(VBoxIntNetSwitch.xpc_INST)/MacOS/
 VBoxIntNetSwitch_SOURCES = \
 	VBoxIntNetSwitch.cpp \
