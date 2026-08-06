@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114503 2026-06-23 15:44:22Z aleksey.ilyushin@oracle.com $
+# $Id: Makefile.kmk 114879 2026-08-06 22:04:52Z andreas.loeffler@oracle.com $
 ## @file
 # Top-level sub-makefile for the devices, drivers and services.
 #
@@ -175,7 +175,8 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
  	VBOX_WITH_DMI_OEMSTRINGS \
  	$(if $(VBOX_WITH_IOMMU_AMD),VBOX_WITH_IOMMU_AMD,) \
  	$(if $(VBOX_WITH_IOMMU_INTEL),VBOX_WITH_IOMMU_INTEL,) \
- 	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3),VBOX_WITH_INTNET_SERVICE_IN_R3,)
+ 	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3),VBOX_WITH_INTNET_SERVICE_IN_R3,) \
+ 	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC),VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC,)
  ifeq ($(KBUILD_TARGET_ARCH),x86)
   VBoxDD_DEFS.darwin     = VBOX_WITH_2X_4GB_ADDR_SPACE
  endif
@@ -226,6 +227,7 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
  	Input/DrvKeyboardQueue.cpp \
  	Input/DrvMouseQueue.cpp \
  	Network/DrvIntNet.cpp \
+ 	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3),../NetworkServices/NetLib/IntNetIf.cpp,) \
  	Network/DrvDedicatedNic.cpp \
  	PC/DrvACPI.cpp \
  	PC/DrvAcpiCpu.cpp \
