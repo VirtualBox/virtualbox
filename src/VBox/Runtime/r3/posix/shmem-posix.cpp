@@ -1,4 +1,4 @@
-/* $Id: shmem-posix.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: shmem-posix.cpp 114873 2026-08-06 20:59:25Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT - Named shared memory object, POSIX Implementation.
  */
@@ -177,7 +177,7 @@ RTDECL(int) RTShMemOpen(PRTSHMEM phShMem, const char *pszName, uint32_t fFlags, 
         if (fFlags & RTSHMEM_O_F_TRUNCATE)
             fShmFlags |= O_TRUNC;
         pThis->iFdShm = shm_open(pThis->pszName, fShmFlags , 0600);
-        if (pThis->iFdShm > 0)
+        if (pThis->iFdShm >= 0)
         {
             if (cbMax)
                 rc = RTShMemSetSize(pThis, cbMax);
@@ -187,6 +187,8 @@ RTDECL(int) RTShMemOpen(PRTSHMEM phShMem, const char *pszName, uint32_t fFlags, 
                 return VINF_SUCCESS;
             }
 
+            if (fShmFlags & O_EXCL)
+                shm_unlink(pThis->pszName);
             close(pThis->iFdShm);
         }
         else
@@ -398,7 +400,7 @@ RTDECL(int) RTShMemUnmapRegion(RTSHMEM hShMem, void *pv)
     AssertPtrReturn(pMappingDesc, VERR_INVALID_PARAMETER);
 
     int rc = VINF_SUCCESS;
-    size_t cbRegion = pMappingDesc->cMappings;
+    size_t const cbRegion = pMappingDesc->cbRegion;
     if (!ASMAtomicDecU32(&pMappingDesc->cMappings))
     {
         /* Last mapping of this region was unmapped, so do the real unmapping now. */
@@ -416,4 +418,3 @@ RTDECL(int) RTShMemUnmapRegion(RTSHMEM hShMem, void *pv)
 
     return rc;
 }
-
