@@ -1,4 +1,4 @@
-/* $Id: DisplayImplLegacy.cpp 114707 2026-07-14 13:40:18Z vitali.pelenjow@oracle.com $ */
+/* $Id: DisplayImplLegacy.cpp 114870 2026-08-06 18:20:51Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox IDisplay implementation, helpers for legacy GAs.
  *
@@ -390,7 +390,8 @@ static bool i_vbvaFetchBytes(uint8_t RT_UNTRUSTED_VOLATILE_GUEST const *pu8RingB
 
 
 static bool i_vbvaPartialRead(uint8_t **ppu8, uint32_t *pcb, uint32_t cbRecord,
-                              uint8_t RT_UNTRUSTED_VOLATILE_GUEST const *pu8RingBuffer, uint32_t off32Data)
+                              uint8_t RT_UNTRUSTED_VOLATILE_GUEST const *pu8RingBuffer, uint32_t off32Data,
+                              uint32_t RT_UNTRUSTED_VOLATILE_GUEST *poff32Data)
 {
     uint8_t *pu8New;
 
@@ -426,7 +427,8 @@ static bool i_vbvaPartialRead(uint8_t **ppu8, uint32_t *pcb, uint32_t cbRecord,
     }
 
     /* Fetch data from the ring buffer. */
-    if (!i_vbvaFetchBytes(pu8RingBuffer, off32Data, pu8New + *pcb, cbRecord - *pcb))
+    uint32_t const cbFetch = cbRecord - *pcb;
+    if (!i_vbvaFetchBytes(pu8RingBuffer, off32Data, pu8New + *pcb, cbFetch))
     {
         RTMemFree(pu8New);
 
@@ -435,6 +437,9 @@ static bool i_vbvaPartialRead(uint8_t **ppu8, uint32_t *pcb, uint32_t cbRecord,
 
         return false;
     }
+
+    /* Advance data offset. */
+    *poff32Data = (off32Data + cbFetch) % VMMDEV_VBVA_RING_BUFFER_SIZE;
 
     *ppu8 = pu8New;
     *pcb = cbRecord;
@@ -490,7 +495,8 @@ static bool i_vbvaFetchCmd(VIDEOACCEL *pVideoAccel, VBVACMDHDR **ppHdr, uint32_t
         if (cbRecord > pVideoAccel->cbVbvaPartial)
         {
             /* New data has been added to the record. */
-            if (!i_vbvaPartialRead(&pVideoAccel->pu8VbvaPartial, &pVideoAccel->cbVbvaPartial, cbRecord, &pVbvaMemory->au8RingBuffer[0], off32Data))
+            if (!i_vbvaPartialRead(&pVideoAccel->pu8VbvaPartial, &pVideoAccel->cbVbvaPartial, cbRecord,
+                                   &pVbvaMemory->au8RingBuffer[0], off32Data, &pVbvaMemory->off32Data))
             {
                 return false;
             }
@@ -524,7 +530,8 @@ static bool i_vbvaFetchCmd(VIDEOACCEL *pVideoAccel, VBVACMDHDR **ppHdr, uint32_t
         if (cbRecord >= VMMDEV_VBVA_RING_BUFFER_SIZE - VMMDEV_VBVA_RING_BUFFER_THRESHOLD)
         {
             /* Partial read must be started. */
-            if (!i_vbvaPartialRead(&pVideoAccel->pu8VbvaPartial, &pVideoAccel->cbVbvaPartial, cbRecord, &pVbvaMemory->au8RingBuffer[0], off32Data))
+            if (!i_vbvaPartialRead(&pVideoAccel->pu8VbvaPartial, &pVideoAccel->cbVbvaPartial, cbRecord,
+                                   &pVbvaMemory->au8RingBuffer[0], off32Data, &pVbvaMemory->off32Data))
             {
                 return false;
             }
