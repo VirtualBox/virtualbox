@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers-http.cpp 114632 2026-07-07 15:27:30Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers-http.cpp 114865 2026-08-06 10:27:20Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: HTTP server implementation for Shared Clipboard transfers on UNIX-y guests / hosts.
  */
@@ -1325,7 +1325,8 @@ char *ShClTransferHttpServerGetUrlA(PSHCLHTTPSERVER pSrv, SHCLTRANSFERID idTrans
         if (pEntry)
         {
             AssertReturn(RTStrNLen(pSrvTx->szPathVirtual, RTPATH_MAX), NULL);
-            pszUrl = RTStrAPrintf2("%s:%RU16%s/%s", shClTransferHttpServerGetHost(pSrv), pSrv->uPort, pSrvTx->szPathVirtual, pEntry->pszName);
+            pszUrl = RTStrAPrintf2("%s:%RU16%s/%RMpp", shClTransferHttpServerGetHost(pSrv), pSrv->uPort,
+                                   pSrvTx->szPathVirtual, pEntry->pszName);
         }
     }
     else /* Only return the base. */

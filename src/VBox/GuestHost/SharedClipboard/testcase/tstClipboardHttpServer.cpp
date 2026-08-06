@@ -1,4 +1,4 @@
-/* $Id: tstClipboardHttpServer.cpp 114632 2026-07-07 15:27:30Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardHttpServer.cpp 114865 2026-08-06 10:27:20Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard HTTP server test case.
  */
@@ -69,7 +69,7 @@ static struct
     RTFMODE     fMode;
     /** Local path to serve via HTTP server. */
     const char *pszPath;
-    /** URL to use for downloading the file via RTHttp APIs. Has to be fully escaped. */
+    /** Expected URL path component. Has to be fully percent-encoded. */
     const char *pszUrl;
     /** File allocation size.
      *  Specify UINT64_MAX for random size. */
@@ -84,6 +84,7 @@ static struct
     { RTFS_TYPE_FILE, "file1.txt",                          "file1.txt",                  _64K,       VINF_SUCCESS },
     /* Note: For RTHttpGetFile() the URL needs to be percent-encoded. */
     { RTFS_TYPE_FILE, "file2 with spaces.txt",              "file2%20with%20spaces.txt",  _64K,       VINF_SUCCESS },
+    { RTFS_TYPE_FILE, "file #%20?.txt",                     "file%20%23%2520%3F.txt",     42,         VINF_SUCCESS },
     { RTFS_TYPE_FILE, "bigfile.bin",                        "bigfile.bin",                _512M,      VINF_SUCCESS },
     { RTFS_TYPE_FILE, "zerobytes",                          "zerobytes",                  0,          VINF_SUCCESS },
     { RTFS_TYPE_FILE, "file\\with\\slashes",                "file%5Cwith%5Cslashes",      42,         VINF_SUCCESS },
@@ -616,7 +617,7 @@ int main(int argc, char *argv[])
                 RTTEST_CHECK_RC_OK(hTest, RTHttpSetProxy(hClient, NULL /*pszProxyUrl*/, 0 /*uPort*/,
                                                          NULL /*pszProxyUser*/, NULL /*pszProxyPwd*/));
 
-                char szURL[RTPATH_MAX];
+                char szExpectedUrl[RTPATH_MAX];
                 if (ShClTransferCtxGetTotalTransfers(&TxCtx) > 0)
                 {
                     PSHCLTRANSFER pTx = ShClTransferCtxGetTransferByIndex(&TxCtx, 0);
@@ -631,7 +632,19 @@ int main(int argc, char *argv[])
                 {
                     PSHCLTRANSFER pTx = ShClTransferCtxGetTransferByIndex(&TxCtx, i);
                     char *pszUrlBase  = ShClTransferHttpServerGetUrlA(&HttpSrv, ShClTransferGetID(pTx), UINT64_MAX);
-                    RTTEST_CHECK(hTest, RTStrPrintf2(szURL, sizeof(szURL), "%s/%s", pszUrlBase, g_aTests[i].pszUrl));
+                    char *pszUrl      = ShClTransferHttpServerGetUrlA(&HttpSrv, ShClTransferGetID(pTx), 0 /* idxEntry */);
+                    RTTEST_CHECK(hTest, pszUrlBase != NULL);
+                    RTTEST_CHECK(hTest, pszUrl != NULL);
+                    if (!pszUrlBase || !pszUrl)
+                    {
+                        RTStrFree(pszUrlBase);
+                        RTStrFree(pszUrl);
+                        continue;
+                    }
+                    RTTEST_CHECK(hTest, RTStrPrintf2(szExpectedUrl, sizeof(szExpectedUrl), "%s/%s",
+                                                    pszUrlBase, g_aTests[i].pszUrl));
+                    RTTEST_CHECK_MSG(hTest, RTStrCmp(pszUrl, szExpectedUrl) == 0,
+                                     (hTest, "Expected URL '%s', got '%s'\n", szExpectedUrl, pszUrl));
                     RTStrFree(pszUrlBase);
 
                     switch (g_aTests[i].fMode & RTFS_TYPE_MASK)
@@ -643,8 +656,8 @@ int main(int argc, char *argv[])
                             RTTEST_CHECK_RC_OK(hTest, RTPathTemp(szDstFile, sizeof(szDstFile)));
                             RTTEST_CHECK_RC_OK(hTest, RTPathAppend(szDstFile, sizeof(szDstFile), "tstClipboardHttpServer-XXXXXX"));
                             RTTEST_CHECK_RC_OK(hTest, RTFileCreateTemp(szDstFile, 0600));
-                            RTTestPrintf(hTest, RTTESTLVL_ALWAYS, "Downloading file '%s' -> '%s'\n", szURL, szDstFile);
-                            RTTEST_CHECK_RC_OK(hTest, RTHttpGetFile(hClient, szURL, szDstFile));
+                            RTTestPrintf(hTest, RTTESTLVL_ALWAYS, "Downloading file '%s' -> '%s'\n", pszUrl, szDstFile);
+                            RTTEST_CHECK_RC_OK(hTest, RTHttpGetFile(hClient, pszUrl, szDstFile));
 
                             /* Compare files. */
                             char szSrcFile[RTPATH_MAX];
@@ -665,7 +678,7 @@ int main(int argc, char *argv[])
                             RTTEST_CHECK_RC_OK(hTest, RTPathTemp(szDstFile, sizeof(szDstFile)));
                             RTTEST_CHECK_RC_OK(hTest, RTPathAppend(szDstFile, sizeof(szDstFile), "tstClipboardHttpServer-XXXXXX"));
                             RTTEST_CHECK_RC_OK(hTest, RTFileCreateTemp(szDstFile, 0600));
-                            RTTEST_CHECK_RC   (hTest, RTHttpGetFile(hClient, szURL, szDstFile), g_aTests[i].rc);
+                            RTTEST_CHECK_RC   (hTest, RTHttpGetFile(hClient, pszUrl, szDstFile), g_aTests[i].rc);
                             RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szDstFile));
                             break;
                         }
@@ -673,6 +686,7 @@ int main(int argc, char *argv[])
                         default:
                             break;
                     }
+                    RTStrFree(pszUrl);
                 }
 
                 RTTEST_CHECK_RC_OK(hTest, RTHttpDestroy(hClient));
