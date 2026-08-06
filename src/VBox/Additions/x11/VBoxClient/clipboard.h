@@ -1,4 +1,4 @@
-/* $Id: clipboard.h 114748 2026-07-21 20:16:49Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard.h 114867 2026-08-06 15:19:51Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard - Main header.
  */
@@ -72,6 +72,10 @@ struct SHCLCONTEXT
 #endif
     /** Event source for waiting for X11 request responses in the VbglR3 clipboard event loop. */
     SHCLEVENTSOURCE      EventSrc;
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+    /** Guest-side asynchronous X11 HTTP file-transfer state. */
+    SHCLX11TRANSFERSTATE X11TransferState;
+#endif
     union
     {
         /** X11 clipboard context. */

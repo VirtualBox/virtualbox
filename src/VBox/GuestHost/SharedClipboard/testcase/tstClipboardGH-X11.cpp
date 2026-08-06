@@ -1,4 +1,4 @@
-/* $Id: tstClipboardGH-X11.cpp 114866 2026-08-06 11:24:19Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardGH-X11.cpp 114867 2026-08-06 15:19:51Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard guest/host X11 code test cases.
  */
@@ -97,6 +97,7 @@ void tstThreadScheduleCall(void (*proc)(void *, void *), void *client_data)
 static int g_tst_rcDataVBox = VINF_SUCCESS;
 static void *g_tst_pvDataVBox = NULL;
 static uint32_t g_tst_cbDataVBox = 0;
+static uint32_t g_tst_cDataRequests = 0;
 static SHCLEVENTSOURCE g_EventSource;
 
 /* Set empty data in the simulated VBox clipboard. */
@@ -401,6 +402,7 @@ static DECLCALLBACK(int) tstShClReportFormatsCallback(PSHCLCONTEXT pCtx, uint32_
 static DECLCALLBACK(int) tstShClOnRequestDataFromSourceCallback(PSHCLCONTEXT pCtx, SHCLFORMAT uFmt, void **ppv, uint32_t *pcb, void *pvUser)
 {
     RT_NOREF(pCtx, uFmt, pvUser);
+    g_tst_cDataRequests++;
     *pcb = g_tst_cbDataVBox;
     if (g_tst_pvDataVBox != NULL)
     {
@@ -909,6 +911,20 @@ int main()
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     RTTEST_CHECK_MSG(hTest, tstClipURIListFormatConversion(&X11Ctx),
                      (hTest, "failed to select the right X11 URI-list formats\n"));
+
+    RTTestSub(hTest, "cache-only X11 URI-list offer");
+    static const char s_szUriList[] = "http://localhost/a\r\nhttp://localhost/b\r\n";
+    uint32_t const cDataRequestsBefore = g_tst_cDataRequests;
+    RTTEST_CHECK_RC_OK(hTest, ShClX11ReportFormatsToX11AsyncEx(&X11Ctx, VBOX_SHCL_FMT_URI_LIST,
+                                                               VBOX_SHCL_FMT_URI_LIST, s_szUriList,
+                                                               sizeof(s_szUriList)));
+    tstStringFromVBox(hTest, &X11Ctx, "text/uri-list", clipGetAtom(&X11Ctx, "text/uri-list"), s_szUriList);
+    RTTEST_CHECK_MSG(hTest, g_tst_cDataRequests == cDataRequestsBefore,
+                     (hTest, "Cached URI-list conversion unexpectedly requested source data\n"));
+    ShClCacheInvalidate(&X11Ctx.Cache);
+    tstStringFromVBoxFailed(hTest, &X11Ctx, "text/uri-list");
+    RTTEST_CHECK_MSG(hTest, g_tst_cDataRequests == cDataRequestsBefore,
+                     (hTest, "Cache-only URI-list miss unexpectedly requested source data\n"));
 #endif
     /*
      * UTF-8 from VBox

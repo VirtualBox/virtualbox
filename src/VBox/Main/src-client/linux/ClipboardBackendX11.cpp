@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendX11.cpp 114661 2026-07-08 10:39:13Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendX11.cpp 114867 2026-08-06 15:19:51Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - X11 backend.
  */
@@ -37,6 +37,7 @@
 #include <iprt/semaphore.h>
 #include <iprt/string.h>
 #include <iprt/asm.h>
+#include <iprt/thread.h>
 
 #include <VBox/GuestHost/SharedClipboard.h>
 #include <VBox/GuestHost/SharedClipboard-x11.h>
@@ -81,6 +82,14 @@ struct SHCLCONTEXT
     /** We set this when we start shutting down as a hint not to post any new
      * requests. */
     bool                 fShuttingDown;
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+    /** Host-side asynchronous X11 HTTP file-transfer state. */
+    SHCLX11TRANSFERSTATE X11TransferState;
+    /** Event notifying the preparation worker about a new clipboard offer. */
+    RTSEMEVENT           hX11TransferPreparationEvent;
+    /** Persistent worker which prepares guest file-transfer URI-list data. */
+    RTTHREAD             hX11TransferPreparationThread;
+#endif
 };
 
 
@@ -97,7 +106,161 @@ static DECLCALLBACK(void) shClSvcX11TransferOnDestroyCallback(PSHCLTRANSFERCALLB
 static DECLCALLBACK(void) shClSvcX11TransferOnUnregisteredCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx, PSHCLTRANSFERCTX pTransferCtx);
 
 static DECLCALLBACK(int) shClSvcX11TransferIfaceHGRootListRead(PSHCLTXPROVIDERCTX pCtx);
+# ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+static DECLCALLBACK(int) shClSvcX11TransferPreparationThread(RTTHREAD hThreadSelf, void *pvUser);
+# endif
 #endif
+
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+/** Resets the exact transfer key bound to an in-progress preparation. */
+static void shClSvcX11TransferPreparationResetKey(PSHCLX11TRANSFERSTATE pX11TransferState)
+{
+    pX11TransferState->idTransfer          = NIL_SHCLTRANSFERID;
+    pX11TransferState->uTransferGeneration = NIL_SHCLTRANSFERGEN;
+}
+
+/** Resets the exact transfer key backing the advertised URI-list data. */
+static void shClSvcX11TransferPublishedResetKey(PSHCLX11TRANSFERSTATE pX11TransferState)
+{
+    pX11TransferState->idPublishedTransfer          = NIL_SHCLTRANSFERID;
+    pX11TransferState->uPublishedTransferGeneration = NIL_SHCLTRANSFERGEN;
+}
+
+/** Checks an exact transfer ID and generation against a transfer. */
+static bool shClSvcX11TransferKeyMatches(SHCLTRANSFERID idTransfer, SHCLTRANSFERGEN uGeneration,
+                                         PSHCLTRANSFER pTransfer)
+{
+    return    idTransfer  != NIL_SHCLTRANSFERID
+           && uGeneration != NIL_SHCLTRANSFERGEN
+           && idTransfer  == ShClTransferGetID(pTransfer)
+           && uGeneration == ShClTransferGetGeneration(pTransfer);
+}
+
+/** Checks whether a worker result still belongs to the current URI offer. */
+static bool shClSvcX11TransferOfferIsCurrent(PSHCLCONTEXT pCtx, uint64_t uOfferGeneration)
+{
+    int vrc = RTCritSectEnter(&pCtx->CritSect);
+    AssertRCReturn(vrc, false);
+
+    bool const fCurrent =    !pCtx->fShuttingDown
+                          && pCtx->X11TransferState.uOfferGeneration == uOfferGeneration
+                          && (pCtx->X11TransferState.fFormats & VBOX_SHCL_FMT_URI_LIST);
+
+    vrc = RTCritSectLeave(&pCtx->CritSect);
+    AssertRC(vrc);
+    return fCurrent;
+}
+
+/**
+ * Discards the unused transfer backing a URI-list offer hidden by a newer offer.
+ *
+ * A transfer which has already started serving an HTTP request must remain
+ * alive until that request finishes.  Otherwise it is safe to destroy the
+ * transfer after the URI targets have been removed from X11.
+ *
+ * @thread X11 transfer preparation worker.
+ */
+static void shClSvcX11TransferPublishedCancel(PSHCLCONTEXT pCtx)
+{
+    SHCLTRANSFERID  idTransfer;
+    SHCLTRANSFERGEN uGeneration;
+
+    int vrc = RTCritSectEnter(&pCtx->CritSect);
+    AssertRCReturnVoid(vrc);
+
+    idTransfer  = pCtx->X11TransferState.idPublishedTransfer;
+    uGeneration = pCtx->X11TransferState.uPublishedTransferGeneration;
+    shClSvcX11TransferPublishedResetKey(&pCtx->X11TransferState);
+
+    vrc = RTCritSectLeave(&pCtx->CritSect);
+    AssertRC(vrc);
+
+    if (idTransfer == NIL_SHCLTRANSFERID)
+        return;
+
+    PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(&pCtx->pClient->Transfers.Ctx, idTransfer);
+    if (   pTransfer
+        && shClSvcX11TransferKeyMatches(idTransfer, uGeneration, pTransfer))
+    {
+        SHCLTRANSFERSTATUS const enmStatus = ShClTransferGetStatus(pTransfer);
+        if (enmStatus != SHCLTRANSFERSTATUS_STARTED)
+            ShClSvcTransferDestroy(pCtx->pClient, pTransfer);
+        else
+            LogRel2(("Shared Clipboard: Keeping superseded X11 transfer %RU16/%RU64 alive while it is in use\n",
+                     idTransfer, uGeneration));
+    }
+    else
+        LogRel2(("Shared Clipboard: Published X11 transfer %RU16/%RU64 was already gone or replaced\n",
+                 idTransfer, uGeneration));
+}
+
+/** Starts the persistent host-side X11 transfer preparation worker. */
+static int shClSvcX11TransferPreparationStart(PSHCLCONTEXT pCtx)
+{
+    RT_ZERO(pCtx->X11TransferState);
+    shClSvcX11TransferPreparationResetKey(&pCtx->X11TransferState);
+    shClSvcX11TransferPublishedResetKey(&pCtx->X11TransferState);
+    pCtx->hX11TransferPreparationEvent  = NIL_RTSEMEVENT;
+    pCtx->hX11TransferPreparationThread = NIL_RTTHREAD;
+
+    int vrc = RTSemEventCreate(&pCtx->hX11TransferPreparationEvent);
+    if (RT_SUCCESS(vrc))
+    {
+        vrc = RTThreadCreate(&pCtx->hX11TransferPreparationThread, shClSvcX11TransferPreparationThread,
+                             pCtx, 0 /* cbStack */, RTTHREADTYPE_IO, RTTHREADFLAGS_WAITABLE, "ShClX11Tx");
+        if (RT_SUCCESS(vrc))
+        {
+            vrc = RTThreadUserWait(pCtx->hX11TransferPreparationThread, RT_MS_30SEC);
+            if (RT_SUCCESS(vrc))
+                return VINF_SUCCESS;
+
+            pCtx->fShuttingDown = true;
+            RTSemEventSignal(pCtx->hX11TransferPreparationEvent);
+            RTThreadWait(pCtx->hX11TransferPreparationThread, RT_INDEFINITE_WAIT, NULL);
+            pCtx->hX11TransferPreparationThread = NIL_RTTHREAD;
+        }
+
+        RTSemEventDestroy(pCtx->hX11TransferPreparationEvent);
+        pCtx->hX11TransferPreparationEvent = NIL_RTSEMEVENT;
+    }
+
+    return vrc;
+}
+
+/** Stops the transfer preparation worker before its X11 and client contexts are released. */
+static int shClSvcX11TransferPreparationStop(PSHCLCONTEXT pCtx)
+{
+    if (pCtx->hX11TransferPreparationThread == NIL_RTTHREAD)
+    {
+        pCtx->fShuttingDown = true;
+        return VINF_SUCCESS;
+    }
+
+    int vrc = RTCritSectEnter(&pCtx->CritSect);
+    AssertRCReturn(vrc, vrc);
+    pCtx->fShuttingDown = true;
+    pCtx->X11TransferState.uOfferGeneration++;
+    vrc = RTCritSectLeave(&pCtx->CritSect);
+    AssertRCReturn(vrc, vrc);
+
+    int vrc2 = RTSemEventSignal(pCtx->hX11TransferPreparationEvent);
+    if (RT_SUCCESS(vrc))
+        vrc = vrc2;
+
+    vrc2 = RTThreadWait(pCtx->hX11TransferPreparationThread, RT_INDEFINITE_WAIT, NULL);
+    if (RT_FAILURE(vrc2))
+        return vrc2;
+    pCtx->hX11TransferPreparationThread = NIL_RTTHREAD;
+
+    vrc2 = RTSemEventDestroy(pCtx->hX11TransferPreparationEvent);
+    if (RT_SUCCESS(vrc))
+        vrc = vrc2;
+    pCtx->hX11TransferPreparationEvent = NIL_RTSEMEVENT;
+
+    return vrc;
+}
+#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP */
 
 
 /*********************************************************************************************************************************
@@ -191,9 +354,19 @@ int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, bool fHeadles
                 pClient->Transfers.Callbacks.pfnOnUnregistered = shClSvcX11TransferOnUnregisteredCallback;
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
-                vrc = ShClX11ThreadStart(&pCtx->X11, true /* grab shared clipboard */);
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+                if (!fHeadless)
+                    vrc = shClSvcX11TransferPreparationStart(pCtx);
+#endif
+                if (RT_SUCCESS(vrc))
+                    vrc = ShClX11ThreadStart(&pCtx->X11, true /* grab shared clipboard */);
                 if (RT_FAILURE(vrc))
+                {
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+                    shClSvcX11TransferPreparationStop(pCtx);
+#endif
                     ShClX11Term(&pCtx->X11);
+                }
             }
 
             if (RT_FAILURE(vrc))
@@ -254,17 +427,35 @@ int ShClBackendDisconnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
     PSHCLCONTEXT pCtx = pClient->State.pCtx;
     AssertPtr(pCtx);
 
-    /* Drop the reference to the client, in case it is still there.  This
-     * will cause any outstanding clipboard data requests from X11 to fail
-     * immediately. */
+    /* Stop transfer preparation before releasing either the client or X11
+     * context it uses.  This also makes later X11 data requests fail. */
+    int vrc;
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+    vrc = shClSvcX11TransferPreparationStop(pCtx);
+    if (pCtx->hX11TransferPreparationThread != NIL_RTTHREAD)
+    {
+        LogRel(("Shared Clipboard: Host X11 transfer preparation worker did not terminate: %Rrc\n", vrc));
+        return vrc;
+    }
+#else
     pCtx->fShuttingDown = true;
+    vrc = VINF_SUCCESS;
+#endif
 
-    int vrc = ShClX11ThreadStop(&pCtx->X11);
+    int vrc2 = ShClX11ThreadStop(&pCtx->X11);
+    if (RT_SUCCESS(vrc))
+        vrc = vrc2;
     /** @todo handle this slightly more reasonably, or be really sure
      *        it won't go wrong. */
-    AssertRC(vrc);
+    AssertRC(vrc2);
 
     ShClX11Term(&pCtx->X11);
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    /* Transfer callback tables retain pCtx as their user argument.  Destroy
+     * all transfers before deleting that context; the service-side client
+     * teardown which follows treats an already empty context as a no-op. */
+    shClSvcTransferDestroyAll(pClient);
+#endif
     RTCritSectDelete(&pCtx->CritSect);
 
     RTMemFree(pCtx);
@@ -292,7 +483,42 @@ int ShClBackendReportFormats(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFOR
     }
 #endif
 
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+    PSHCLCONTEXT pCtx = pClient->State.pCtx;
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+
+    if (pCtx->X11.fHeadless)
+        return ShClX11ReportFormatsToX11Async(&pCtx->X11, fFormats);
+
+    int vrc = RTCritSectEnter(&pCtx->CritSect);
+    if (RT_SUCCESS(vrc))
+    {
+        if (!pCtx->fShuttingDown)
+        {
+            PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
+            pX11TransferState->fFormats = fFormats;
+            pX11TransferState->uOfferGeneration++;
+            if (!pX11TransferState->uOfferGeneration)
+                pX11TransferState->uOfferGeneration = 1;
+
+            /* Remove an old URI target immediately.  The worker adds it back
+             * only after the new URI-list data has been prepared and cached. */
+            vrc = ShClX11ReportFormatsToX11Async(&pCtx->X11, fFormats & ~VBOX_SHCL_FMT_URI_LIST);
+
+            int vrc2 = RTSemEventSignal(pCtx->hX11TransferPreparationEvent);
+            if (RT_SUCCESS(vrc))
+                vrc = vrc2;
+        }
+        else
+            vrc = VERR_WRONG_ORDER;
+
+        int const vrc2 = RTCritSectLeave(&pCtx->CritSect);
+        if (RT_SUCCESS(vrc))
+            vrc = vrc2;
+    }
+#else
     int vrc = ShClX11ReportFormatsToX11Async(&pClient->State.pCtx->X11, fFormats);
+#endif
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;
@@ -422,11 +648,222 @@ static DECLCALLBACK(int) shClSvcX11ReportFormatsCallback(PSHCLCONTEXT pCtx, uint
     return vrc;
 }
 
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+/**
+ * Prepares and publishes one exact guest-to-host HTTP-backed URI-list offer.
+ *
+ * All guest communication and transfer waits happen on the preparation
+ * worker.  The X11 event thread only observes the final cache-seeding format
+ * report and therefore never waits on the guest.
+ *
+ * @thread X11 transfer preparation worker.
+ */
+static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, uint64_t uOfferGeneration)
+{
+    AssertReturn(fFormats & VBOX_SHCL_FMT_URI_LIST, VERR_INVALID_PARAMETER);
+
+    PSHCLCLIENT const pClient = pCtx->pClient;
+    AssertPtrReturn(pClient, VERR_INVALID_POINTER);
+
+    /* Preserve the established protocol sequence by consuming the URI-list
+     * data reply before creating and initializing the file transfer. */
+    void    *pvData = NULL;
+    uint32_t cbData = 0;
+    int vrc = ShClSvcReadDataFromGuest(pClient, VBOX_SHCL_FMT_URI_LIST, &pvData, &cbData);
+    RTMemFree(pvData);
+    if (   RT_SUCCESS(vrc)
+        && !shClSvcX11TransferOfferIsCurrent(pCtx, uOfferGeneration))
+        vrc = VERR_CANCELLED;
+
+    PSHCLTRANSFER pTransfer = NULL;
+    if (RT_SUCCESS(vrc))
+        vrc = ShClSvcTransferCreate(pClient, SHCLTRANSFERDIR_FROM_REMOTE, SHCLSOURCE_REMOTE,
+                                    NIL_SHCLTRANSFERID, &pTransfer);
+
+    SHCLTRANSFERID  idTransfer  = NIL_SHCLTRANSFERID;
+    SHCLTRANSFERGEN uGeneration = NIL_SHCLTRANSFERGEN;
+    if (RT_SUCCESS(vrc))
+    {
+        idTransfer  = ShClTransferGetID(pTransfer);
+        uGeneration = ShClTransferGetGeneration(pTransfer);
+
+        int vrc2 = RTCritSectEnter(&pCtx->CritSect);
+        if (RT_SUCCESS(vrc2))
+        {
+            PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
+            if (   pX11TransferState->fPreparing
+                && pX11TransferState->uPreparingOfferGeneration == uOfferGeneration)
+            {
+                pX11TransferState->idTransfer          = idTransfer;
+                pX11TransferState->uTransferGeneration = uGeneration;
+            }
+            vrc2 = RTCritSectLeave(&pCtx->CritSect);
+        }
+        if (RT_FAILURE(vrc2))
+            vrc = vrc2;
+    }
+
+    if (RT_SUCCESS(vrc))
+        vrc = ShClSvcTransferInit(pClient, pTransfer);
+    if (RT_SUCCESS(vrc))
+    {
+        /* Wait on this transfer object, never on global HTTP-server state. */
+        vrc = ShClTransferWaitForStatus(pTransfer, SHCL_TIMEOUT_DEFAULT_MS,
+                                        SHCLTRANSFERSTATUS_INITIALIZED);
+    }
+    if (   RT_SUCCESS(vrc)
+        && !shClSvcX11TransferOfferIsCurrent(pCtx, uOfferGeneration))
+        vrc = VERR_CANCELLED;
+    if (RT_SUCCESS(vrc))
+        vrc = ShClTransferRootListRead(pTransfer);
+    if (   RT_SUCCESS(vrc)
+        && !ShClTransferRootsCount(pTransfer))
+        vrc = VERR_SHCLPB_NO_DATA;
+    if (RT_SUCCESS(vrc))
+        vrc = ShClTransferHttpServerRegisterTransfer(&pCtx->X11.HttpCtx.HttpServer, pTransfer);
+
+    char  *pszUriList = NULL;
+    size_t cbUriList  = 0;
+    if (RT_SUCCESS(vrc))
+        vrc = ShClTransferHttpConvertToStringList(&pCtx->X11.HttpCtx.HttpServer, pTransfer,
+                                                  &pszUriList, &cbUriList);
+    if (RT_SUCCESS(vrc))
+    {
+        if (!pszUriList || !cbUriList)
+            vrc = VERR_SHCLPB_NO_DATA;
+        else if (cbUriList > UINT32_MAX)
+            vrc = VERR_BUFFER_OVERFLOW;
+    }
+
+    bool fPublished = false;
+    int vrc2 = RTCritSectEnter(&pCtx->CritSect);
+    if (RT_SUCCESS(vrc2))
+    {
+        PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
+        bool const fBoundTransfer =    pTransfer
+                                    && pX11TransferState->fPreparing
+                                    && pX11TransferState->uPreparingOfferGeneration == uOfferGeneration
+                                    && shClSvcX11TransferKeyMatches(pX11TransferState->idTransfer,
+                                                                   pX11TransferState->uTransferGeneration,
+                                                                   pTransfer);
+        bool const fCurrentOffer =    !pCtx->fShuttingDown
+                                   && pX11TransferState->uOfferGeneration == uOfferGeneration
+                                   && (pX11TransferState->fFormats & VBOX_SHCL_FMT_URI_LIST);
+
+        if (   RT_SUCCESS(vrc)
+            && fBoundTransfer
+            && fCurrentOffer)
+        {
+            vrc = ShClX11ReportFormatsToX11AsyncEx(&pCtx->X11, pX11TransferState->fFormats,
+                                                    VBOX_SHCL_FMT_URI_LIST, pszUriList,
+                                                    (uint32_t)cbUriList);
+            if (RT_SUCCESS(vrc))
+            {
+                pX11TransferState->idPublishedTransfer          = idTransfer;
+                pX11TransferState->uPublishedTransferGeneration = uGeneration;
+                fPublished = true;
+            }
+        }
+        else if (RT_SUCCESS(vrc))
+            vrc = VERR_CANCELLED;
+
+        pX11TransferState->fPreparing = false;
+        shClSvcX11TransferPreparationResetKey(pX11TransferState);
+
+        vrc2 = RTCritSectLeave(&pCtx->CritSect);
+    }
+    if (RT_SUCCESS(vrc))
+        vrc = vrc2;
+
+    RTStrFree(pszUriList);
+
+    if (!fPublished && pTransfer)
+        ShClSvcTransferDestroy(pClient, pTransfer);
+
+    if (fPublished)
+        LogRel2(("Shared Clipboard: Advertised cached host X11 URI list for transfer %RU16/%RU64, offer generation %RU64\n",
+                 idTransfer, uGeneration, uOfferGeneration));
+    else if (vrc != VERR_CANCELLED)
+        LogRel(("Shared Clipboard: Preparing host X11 URI list for offer generation %RU64 failed with %Rrc\n",
+                uOfferGeneration, vrc));
+
+    return vrc;
+}
+
+/**
+ * Persistent worker which serializes transfer preparation by clipboard offer
+ * generation.  Multiple reports are coalesced and stale results are discarded.
+ */
+static DECLCALLBACK(int) shClSvcX11TransferPreparationThread(RTTHREAD hThreadSelf, void *pvUser)
+{
+    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pvUser;
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+
+    int vrc = RTThreadUserSignal(hThreadSelf);
+    AssertRCReturn(vrc, vrc);
+
+    uint64_t uProcessedOfferGeneration = 0;
+    for (;;)
+    {
+        vrc = RTSemEventWait(pCtx->hX11TransferPreparationEvent, RT_INDEFINITE_WAIT);
+        if (RT_FAILURE(vrc))
+            break;
+
+        for (;;)
+        {
+            SHCLFORMATS fFormats;
+            uint64_t    uOfferGeneration;
+
+            vrc = RTCritSectEnter(&pCtx->CritSect);
+            if (RT_FAILURE(vrc))
+                break;
+
+            if (pCtx->fShuttingDown)
+            {
+                RTCritSectLeave(&pCtx->CritSect);
+                shClSvcX11TransferPublishedCancel(pCtx);
+                return VINF_SUCCESS;
+            }
+
+            PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
+            uOfferGeneration = pX11TransferState->uOfferGeneration;
+            if (uOfferGeneration == uProcessedOfferGeneration)
+            {
+                RTCritSectLeave(&pCtx->CritSect);
+                break;
+            }
+
+            uProcessedOfferGeneration = uOfferGeneration;
+            fFormats = pX11TransferState->fFormats;
+            pX11TransferState->fPreparing = RT_BOOL(fFormats & VBOX_SHCL_FMT_URI_LIST);
+            pX11TransferState->uPreparingOfferGeneration = uOfferGeneration;
+            shClSvcX11TransferPreparationResetKey(pX11TransferState);
+
+            vrc = RTCritSectLeave(&pCtx->CritSect);
+            if (RT_FAILURE(vrc))
+                break;
+
+            shClSvcX11TransferPublishedCancel(pCtx);
+
+            if (fFormats & VBOX_SHCL_FMT_URI_LIST)
+                shClSvcX11TransferPrepare(pCtx, fFormats, uOfferGeneration);
+        }
+
+        if (RT_FAILURE(vrc))
+            break;
+    }
+
+    shClSvcX11TransferPublishedCancel(pCtx);
+    LogRel(("Shared Clipboard: Host X11 transfer preparation worker failed with %Rrc\n", vrc));
+    return vrc;
+}
+#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP */
+
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 /**
  * @copydoc SHCLTRANSFERCALLBACKS::pfnOnCreated
  *
- * @thread Service main thread.
+ * @thread Shared Clipboard service thread or X11 preparation worker.
  */
 static DECLCALLBACK(void) shClSvcX11TransferOnCreatedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
 {
@@ -493,7 +930,7 @@ static DECLCALLBACK(void) shClSvcX11TransferOnCreatedCallback(PSHCLTRANSFERCALLB
  * For G->H: Starts the HTTP server if not done yet and registers the transfer with it.
  * For H->G: Called on transfer intialization to populate the transfer's root list.
  *
- * @thread  Service main thread.
+ * @thread  Shared Clipboard service thread or X11 preparation worker.
  */
 static DECLCALLBACK(int) shClSvcX11TransferOnInitCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
 {
@@ -540,7 +977,7 @@ static DECLCALLBACK(int) shClSvcX11TransferOnInitCallback(PSHCLTRANSFERCALLBACKC
  *
  * This stops the HTTP server if not done yet.
  *
- * @thread Service main thread.
+ * @thread Shared Clipboard service thread or X11 preparation worker.
  */
 static DECLCALLBACK(void) shClSvcX11TransferOnDestroyCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
 {
@@ -570,7 +1007,7 @@ static DECLCALLBACK(void) shClSvcX11TransferOnDestroyCallback(PSHCLTRANSFERCALLB
  * @param   pCtx                Shared clipboard context to unregister transfer for.
  * @param   pTransfer           Transfer to unregister.
  *
- * @thread Clipboard main thread.
+ * @thread Shared Clipboard service thread or X11 preparation worker.
  */
 static void shClSvcX11HttpTransferUnregister(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransfer)
 {
@@ -595,12 +1032,30 @@ static void shClSvcX11HttpTransferUnregister(PSHCLCONTEXT pCtx, PSHCLTRANSFER pT
  *
  * Unregisters a (now) unregistered transfer from the HTTP server.
  *
- * @thread Clipboard main thread.
+ * @thread Shared Clipboard service thread or X11 preparation worker.
  */
 static DECLCALLBACK(void) shClSvcX11TransferOnUnregisteredCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx, PSHCLTRANSFERCTX pTransferCtx)
 {
     RT_NOREF(pTransferCtx);
-    shClSvcX11HttpTransferUnregister((PSHCLCONTEXT)pCbCtx->pvUser, pCbCtx->pTransfer);
+
+    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pCbCtx->pvUser;
+# ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+    int vrc = RTCritSectEnter(&pCtx->CritSect);
+    if (RT_SUCCESS(vrc))
+    {
+        PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
+        if (shClSvcX11TransferKeyMatches(pX11TransferState->idTransfer,
+                                         pX11TransferState->uTransferGeneration, pCbCtx->pTransfer))
+            shClSvcX11TransferPreparationResetKey(pX11TransferState);
+        if (shClSvcX11TransferKeyMatches(pX11TransferState->idPublishedTransfer,
+                                         pX11TransferState->uPublishedTransferGeneration, pCbCtx->pTransfer))
+            shClSvcX11TransferPublishedResetKey(pX11TransferState);
+
+        vrc = RTCritSectLeave(&pCtx->CritSect);
+        AssertRC(vrc);
+    }
+# endif
+    shClSvcX11HttpTransferUnregister(pCtx, pCbCtx->pTransfer);
 }
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
@@ -628,83 +1083,21 @@ static DECLCALLBACK(int) shClSvcX11RequestDataFromSourceCallback(PSHCLCONTEXT pC
         return VERR_WRONG_ORDER;
     }
 
-#if defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS) && !defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP)
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
     if (uFmt == VBOX_SHCL_FMT_URI_LIST)
     {
-        *ppv = NULL;
-        *pcb = 0;
-        return VERR_NOT_SUPPORTED;
+        /* URI targets are advertised cache-only after the worker prepared the
+         * exact transfer.  Never fall back to guest I/O on the X11 thread. */
+        LogRel2(("Shared Clipboard: Host X11 URI-list conversion missed its prepared URI-list data cache\n"));
+        return VERR_SHCLPB_NO_DATA;
     }
+#elif defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS)
+    if (uFmt == VBOX_SHCL_FMT_URI_LIST)
+        return VERR_NOT_SUPPORTED;
 #endif
 
     PSHCLCLIENT const pClient = pCtx->pClient;
     int vrc = ShClSvcReadDataFromGuest(pClient, uFmt, ppv, pcb);
-    if (RT_FAILURE(vrc))
-        return vrc;
-
-    /*
-     * Note: We always return a generic URI list (as HTTP links) here.
-     *       As we don't know which Atom target format was requested by the caller, the X11 clipboard codes needs
-     *       to decide & transform the list into the actual clipboard Atom target format the caller wanted.
-     */
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    if (uFmt == VBOX_SHCL_FMT_URI_LIST)
-    {
-        PSHCLTRANSFER pTransfer = NULL;
-        vrc = ShClSvcTransferCreate(pClient, SHCLTRANSFERDIR_FROM_REMOTE, SHCLSOURCE_REMOTE,
-                                    NIL_SHCLTRANSFERID /* Creates a new transfer ID */, &pTransfer);
-        if (RT_SUCCESS(vrc))
-        {
-            /* Initialize the transfer on the host side. */
-            vrc = ShClSvcTransferInit(pClient, pTransfer);
-        }
-
-        if (RT_SUCCESS(vrc))
-        {
-            /* We have to wait for the guest reporting the transfer as being initialized.
-             * Only then we can start reading stuff. */
-            vrc = ShClTransferWaitForStatus(pTransfer, SHCL_TIMEOUT_DEFAULT_MS, SHCLTRANSFERSTATUS_INITIALIZED);
-            if (RT_SUCCESS(vrc))
-            {
-                vrc = ShClTransferRootListRead(pTransfer);
-                if (RT_SUCCESS(vrc))
-                {
-# ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
-                    /* As soon as we register the transfer with the HTTP server, the transfer needs to have its roots set. */
-                    PSHCLHTTPSERVER const pHttpSrv = &pCtx->X11.HttpCtx.HttpServer;
-                    vrc = ShClTransferHttpServerRegisterTransfer(pHttpSrv, pTransfer);
-                    if (RT_SUCCESS(vrc))
-                    {
-                        char  *pszData;
-                        size_t cbData;
-                        vrc = ShClTransferHttpConvertToStringList(pHttpSrv, pTransfer, &pszData, &cbData);
-                        if (RT_SUCCESS(vrc))
-                        {
-                            RTMemFree(*ppv);
-                            *ppv = pszData;
-                            *pcb = cbData;
-                            /* ppv has ownership of pszData now. */
-                        }
-                    }
-# else
-                    vrc = VERR_NOT_SUPPORTED;
-# endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP */
-                }
-            }
-        }
-
-        if (   RT_FAILURE(vrc)
-            && pTransfer)
-            ShClSvcTransferDestroy(pClient, pTransfer);
-
-        if (RT_FAILURE(vrc))
-        {
-            RTMemFree(*ppv);
-            *ppv = NULL;
-            *pcb = 0;
-        }
-    }
-#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
     if (RT_FAILURE(vrc))
         LogRel(("Shared Clipboard: Requesting X11 data in format %#x from guest failed with %Rrc\n", uFmt, vrc));
@@ -792,4 +1185,3 @@ static DECLCALLBACK(int) shClSvcX11TransferIfaceHGRootListRead(PSHCLTXPROVIDERCT
     return vrc;
 }
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
-

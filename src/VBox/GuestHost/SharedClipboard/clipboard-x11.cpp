@@ -1646,13 +1646,18 @@ static int shClX11RequestDataForX11CallbackHelper(PSHCLX11CTX pCtx, SHCLFORMAT u
     PSHCLCACHEENTRY pCacheEntry = ShClCacheGet(&pCtx->Cache, uFmt);
     if (!pCacheEntry) /* Cache miss */
     {
-        AssertPtrReturn(pCtx->Callbacks.pfnOnRequestDataFromSource, VERR_INVALID_POINTER);
-        rc = pCtx->Callbacks.pfnOnRequestDataFromSource(pCtx->pFrontend, uFmt, &pv, &cb,
-                                                        NULL /* pvUser */);
-        if (RT_SUCCESS(rc))
+        if (pCtx->fCacheOnlyFormats & uFmt)
+            rc = VERR_SHCLPB_NO_DATA;
+        else
         {
-            rc = ShClCacheSet(&pCtx->Cache, uFmt, pv, cb);
-            /** @todo r=bird: Leaks pv/cb on ShClCacheSet error? */
+            AssertPtrReturn(pCtx->Callbacks.pfnOnRequestDataFromSource, VERR_INVALID_POINTER);
+            rc = pCtx->Callbacks.pfnOnRequestDataFromSource(pCtx->pFrontend, uFmt, &pv, &cb,
+                                                            NULL /* pvUser */);
+            if (RT_SUCCESS(rc))
+            {
+                rc = ShClCacheSet(&pCtx->Cache, uFmt, pv, cb);
+                /** @todo r=bird: Leaks pv/cb on ShClCacheSet error? */
+            }
         }
     }
     else /* Cache hit */
@@ -2114,10 +2119,11 @@ static void shClX11ReportFormatsToX11Worker(void *pvUserData, void * /* interval
     PSHCLX11REQUEST pReq = (PSHCLX11REQUEST)pvUserData;
     AssertReturnVoid(pReq->enmType == SHCLX11EVENTTYPE_REPORT_FORMATS);
 
-    PSHCLX11CTX pCtx     = pReq->pCtx;
-    SHCLFORMATS fFormats = pReq->Formats.fFormats;
-
-    RTMemFree(pReq);
+    PSHCLX11CTX pCtx      = pReq->pCtx;
+    SHCLFORMATS fFormats  = pReq->Formats.fFormats;
+    SHCLFORMAT  uFmtCache = pReq->Formats.uFmtCache;
+    void       *pvCache   = pReq->Formats.pvCache;
+    uint32_t    cbCache   = pReq->Formats.cbCache;
 
     if (LogRelIs2Enabled())
     {
@@ -2128,6 +2134,23 @@ static void shClX11ReportFormatsToX11Worker(void *pvUserData, void * /* interval
     }
 
     clipInvalidateClipboardCache(pCtx);
+    pCtx->fCacheOnlyFormats = uFmtCache;
+
+    if (uFmtCache != VBOX_SHCL_FMT_NONE)
+    {
+        int rc = ShClCacheSet(&pCtx->Cache, uFmtCache, pvCache, cbCache);
+        if (RT_FAILURE(rc))
+        {
+            LogRel(("Shared Clipboard: Caching format %#x before advertising it to X11 failed with %Rrc; "
+                    "suppressing the format\n", uFmtCache, rc));
+            fFormats &= ~uFmtCache;
+        }
+    }
+
+    RTMemFree(pvCache);
+    pReq->Formats.pvCache = NULL;
+    RTMemFree(pReq);
+
     clipGrabX11Clipboard(pCtx, fFormats);
     clipResetX11Formats(pCtx);
 
@@ -2139,13 +2162,48 @@ static void shClX11ReportFormatsToX11Worker(void *pvUserData, void * /* interval
  *
  * @returns VBox status code.
  * @param   pCtx                Context data for the clipboard backend.
- * @param   uFormats            Clipboard formats offered.
+ * @param   fFormats            Clipboard formats offered.
  *
  * @note    When calling this function, data for the clipboard already has to be available,
  *          as we grab the clipboard, which in turn then calls the X11 data conversion callback.
  */
-int ShClX11ReportFormatsToX11Async(PSHCLX11CTX pCtx, SHCLFORMATS uFormats)
+int ShClX11ReportFormatsToX11Async(PSHCLX11CTX pCtx, SHCLFORMATS fFormats)
 {
+    return ShClX11ReportFormatsToX11AsyncEx(pCtx, fFormats, VBOX_SHCL_FMT_NONE, NULL, 0);
+}
+
+/**
+ * Announces new clipboard formats and atomically seeds one cache entry on the
+ * X11 event thread before taking ownership of the selections.
+ *
+ * This is used for data which must be prepared asynchronously.  Once the
+ * formats become visible to X11 clients, conversion of @a uFmtCache is
+ * guaranteed to be a cache hit and cannot block on the data source.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                Context data for the clipboard backend.
+ * @param   fFormats            Clipboard formats offered.
+ * @param   uFmtCache           Format of @a pvCache, or VBOX_SHCL_FMT_NONE.
+ * @param   pvCache             Data to cache before advertising @a fFormats.
+ * @param   cbCache             Size of @a pvCache in bytes.
+ *
+ * @thread  Any thread.  Cache installation and selection ownership happen on
+ *          the X11 event thread.
+ */
+int ShClX11ReportFormatsToX11AsyncEx(PSHCLX11CTX pCtx, SHCLFORMATS fFormats, SHCLFORMAT uFmtCache,
+                                     const void *pvCache, uint32_t cbCache)
+{
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+    if (uFmtCache != VBOX_SHCL_FMT_NONE)
+    {
+        AssertReturn(ShClFormatIsValid(uFmtCache), VERR_INVALID_PARAMETER);
+        AssertReturn((fFormats & uFmtCache) == uFmtCache, VERR_INVALID_PARAMETER);
+        AssertPtrReturn(pvCache, VERR_INVALID_POINTER);
+        AssertReturn(cbCache, VERR_INVALID_PARAMETER);
+    }
+    else
+        AssertReturn(!pvCache && !cbCache, VERR_INVALID_PARAMETER);
+
     if (shClX11HeadlessIsEnabled(pCtx))
         return VINF_SUCCESS;
 
@@ -2154,13 +2212,28 @@ int ShClX11ReportFormatsToX11Async(PSHCLX11CTX pCtx, SHCLFORMATS uFormats)
     PSHCLX11REQUEST pReq = (PSHCLX11REQUEST)RTMemAllocZ(sizeof(SHCLX11REQUEST));
     if (pReq)
     {
-        pReq->enmType          = SHCLX11EVENTTYPE_REPORT_FORMATS;
-        pReq->pCtx             = pCtx;
-        pReq->Formats.fFormats = uFormats;
+        pReq->enmType           = SHCLX11EVENTTYPE_REPORT_FORMATS;
+        pReq->pCtx              = pCtx;
+        pReq->Formats.fFormats  = fFormats;
+        pReq->Formats.uFmtCache = uFmtCache;
+
+        if (uFmtCache != VBOX_SHCL_FMT_NONE)
+        {
+            pReq->Formats.pvCache = RTMemDup(pvCache, cbCache);
+            if (!pReq->Formats.pvCache)
+            {
+                RTMemFree(pReq);
+                return VERR_NO_MEMORY;
+            }
+            pReq->Formats.cbCache = cbCache;
+        }
 
         rc = clipThreadScheduleCall(pCtx, shClX11ReportFormatsToX11Worker, (XtPointer)pReq);
         if (RT_FAILURE(rc))
+        {
+            RTMemFree(pReq->Formats.pvCache);
             RTMemFree(pReq);
+        }
     }
     else
         rc = VERR_NO_MEMORY;
