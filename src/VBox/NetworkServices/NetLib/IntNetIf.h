@@ -1,4 +1,4 @@
-/* $Id: IntNetIf.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: IntNetIf.h 114878 2026-08-06 21:59:49Z andreas.loeffler@oracle.com $ */
 /** @file
  * IntNetIf - Convenience class implementing an IntNet connection.
  */
@@ -34,6 +34,7 @@
 #include <iprt/cdefs.h>
 
 #include <iprt/initterm.h>
+#include <iprt/semaphore.h>
 #include <iprt/cpp/ministring.h>
 
 #include <VBox/sup.h>
@@ -43,7 +44,7 @@
 
 
 /**
- * Low-level internal network access helpers to hide away the different variants (R0 SUP or R3 XPC on macOS).
+ * Low-level internal network access helpers hiding the R0 SUP and R3 service transports.
  */
 /** Internal networking interface context handle. */
 typedef struct INTNETIFCTXINT *INTNETIFCTX;
@@ -96,10 +97,16 @@ typedef const INTNETFRAME *PCINTNETFRAME;
 DECLHIDDEN(int) IntNetR3IfCreate(PINTNETIFCTX phIfCtx, const char *pszNetwork);
 DECLHIDDEN(int) IntNetR3IfCreateEx(PINTNETIFCTX phIfCtx, const char *pszNetwork, INTNETTRUNKTYPE enmTrunkType,
                                    const char *pszTrunk, uint32_t cbSend, uint32_t cbRecv, uint32_t fFlags);
+DECLHIDDEN(int) IntNetR3IfCreateExWithRecvEvent(PINTNETIFCTX phIfCtx, const char *pszNetwork,
+                                                INTNETTRUNKTYPE enmTrunkType, const char *pszTrunk,
+                                                uint32_t cbSend, uint32_t cbRecv, uint32_t fFlags,
+                                                RTSEMEVENT hEvtRecv);
 DECLHIDDEN(int) IntNetR3IfDestroy(INTNETIFCTX hIfCtx);
+DECLHIDDEN(int) IntNetR3IfQueryHandle(INTNETIFCTX hIfCtx, PINTNETIFHANDLE phIf);
 DECLHIDDEN(int) IntNetR3IfQueryBufferPtr(INTNETIFCTX hIfCtx, PINTNETBUF *ppIfBuf);
 DECLHIDDEN(int) IntNetR3IfSetActive(INTNETIFCTX hIfCtx, bool fActive);
 DECLHIDDEN(int) IntNetR3IfSetPromiscuous(INTNETIFCTX hIfCtx, bool fPromiscuous);
+DECLHIDDEN(int) IntNetR3IfSetMacAddress(INTNETIFCTX hIfCtx, PCRTMAC pMac);
 DECLHIDDEN(int) IntNetR3IfSend(INTNETIFCTX hIfCtx);
 DECLHIDDEN(int) IntNetR3IfWait(INTNETIFCTX hIfCtx, uint32_t cMillies);
 DECLHIDDEN(int) IntNetR3IfWaitAbort(INTNETIFCTX hIfCtx);
