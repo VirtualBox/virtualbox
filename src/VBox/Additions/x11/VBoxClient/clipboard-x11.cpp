@@ -1,4 +1,4 @@
-/* $Id: clipboard-x11.cpp 114744 2026-07-21 18:37:21Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-x11.cpp 114864 2026-08-06 10:23:36Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard implementation.
  */
@@ -84,8 +84,7 @@ static DECLCALLBACK(int) vbclX11OnTransferInitializeCallback(PSHCLTRANSFERCALLBA
                                           &pvData, &cbData);
             if (RT_SUCCESS(rc))
             {
-                rc = ShClTransferRootsSetFromStringListEx(pTransfer, (const char *)pvData, cbData,
-                                                          "\n" /* X11-based Desktop environments separate entries with "\n" */);
+                rc = ShClTransferRootsSetFromStringList(pTransfer, (const char *)pvData, cbData);
                 RTMemFree(pvData);
             }
             break;
