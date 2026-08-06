@@ -142,12 +142,59 @@ SHCL_X11_DECL(SHCLX11FMTTABLE) g_aFormats[] =
     { "x-special/gnome-copied-files",       SHCLX11FMT_URI_LIST_GNOME_COPIED_FILES, VBOX_SHCL_FMT_URI_LIST },
     { "x-special/mate-copied-files",        SHCLX11FMT_URI_LIST_MATE_COPIED_FILES,  VBOX_SHCL_FMT_URI_LIST },
     { "x-special/nautilus-clipboard",       SHCLX11FMT_URI_LIST_NAUTILUS_CLIPBOARD, VBOX_SHCL_FMT_URI_LIST },
-    /* KDE uses this as cut/copy metadata; the actual file list is in text/uri-list. */
-    { "application/x-kde-cutselection",     SHCLX11FMT_URI_LIST_KDE_CUTSELECTION,   VBOX_SHCL_FMT_NONE },
+    /* Associate KDE cut-selection with the VBox URI format so that we advertise
+     * it when exporting files.  It is metadata only, so s_aTransferTargets
+     * explicitly prevents selecting or parsing it in the other direction. */
+    { "application/x-kde-cutselection",     SHCLX11FMT_URI_LIST_KDE_CUTSELECTION,   VBOX_SHCL_FMT_URI_LIST },
     /** @todo Anything else we need to add here? */
     /** @todo Add Wayland / Weston support. */
 #endif
 };
+
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/** X11 transfer target can be read from the X11 clipboard. */
+# define SHCLX11TRANSFERDIR_F_FROM_X11          RT_BIT_32(0)
+/** X11 transfer target can be offered to the X11 clipboard. */
+# define SHCLX11TRANSFERDIR_F_TO_X11            RT_BIT_32(1)
+/** X11 transfer target supports both directions. */
+# define SHCLX11TRANSFERDIR_F_BIDIRECTIONAL      (SHCLX11TRANSFERDIR_F_FROM_X11 | SHCLX11TRANSFERDIR_F_TO_X11)
+
+/**
+ * Direction and selection policy for an X11 file-transfer target.
+ *
+ * The X11 format enum identifies the representation; it does not define
+ * preference or whether the representation actually contains file names.
+ */
+typedef struct SHCLX11TRANSFERTARGET
+{
+    /** The X11 transfer format. */
+    SHCLX11FMT enmFmt;
+    /** SHCLX11TRANSFERDIR_F_XXX direction flags. */
+    uint32_t   fDirections;
+    /** Incoming selection priority; higher values have higher priority, while
+     *  zero means the target cannot be read as a file list. */
+    uint8_t    uPriorityFromX11;
+} SHCLX11TRANSFERTARGET;
+
+/**
+ * Transfer target capabilities and incoming selection order.
+ *
+ * Keeping this policy separate from SHCLX11FMT makes adding or reordering enum
+ * values harmless.  Prefer the standard URI-list target when several file-list
+ * representations are offered, followed by the file-manager-specific formats.
+ * KDE cut-selection carries only cut/copy state, not file names, and therefore
+ * is offered when exporting but never accepted as an incoming file list.
+ */
+static const SHCLX11TRANSFERTARGET s_aTransferTargets[] =
+{
+    { SHCLX11FMT_URI_LIST,                     SHCLX11TRANSFERDIR_F_BIDIRECTIONAL, 100 },
+    { SHCLX11FMT_URI_LIST_GNOME_COPIED_FILES,  SHCLX11TRANSFERDIR_F_BIDIRECTIONAL,  90 },
+    { SHCLX11FMT_URI_LIST_MATE_COPIED_FILES,   SHCLX11TRANSFERDIR_F_BIDIRECTIONAL,  80 },
+    { SHCLX11FMT_URI_LIST_NAUTILUS_CLIPBOARD,  SHCLX11TRANSFERDIR_F_BIDIRECTIONAL,  70 },
+    { SHCLX11FMT_URI_LIST_KDE_CUTSELECTION,    SHCLX11TRANSFERDIR_F_TO_X11,          0 }
+};
+#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 
 #ifdef TESTCASE
@@ -243,6 +290,39 @@ static SHCLFORMAT clipVBoxFormatForX11Format(SHCLX11FMTIDX uFmtIdx)
     return g_aFormats[uFmtIdx].uFmtVBox;
 }
 
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/**
+ * Looks up the direction and priority policy of an X11 transfer target.
+ *
+ * @returns Transfer target capabilities, or NULL if the format is not a transfer target.
+ * @param   enmFmt              X11 format to look up.
+ */
+static const SHCLX11TRANSFERTARGET *shClX11TransferTargetLookup(SHCLX11FMT enmFmt)
+{
+    for (size_t i = 0; i < RT_ELEMENTS(s_aTransferTargets); i++)
+        if (s_aTransferTargets[i].enmFmt == enmFmt)
+            return &s_aTransferTargets[i];
+    return NULL;
+}
+
+
+/**
+ * Checks whether an X11 transfer target supports a direction.
+ *
+ * Unknown transfer targets are deliberately rejected so they cannot silently
+ * become importable or exportable merely by being added to g_aFormats.
+ *
+ * @returns true if supported, false if not.
+ * @param   enmFmt              X11 format to check.
+ * @param   fDirection          SHCLX11TRANSFERDIR_F_XXX direction to check.
+ */
+static bool shClX11TransferTargetSupportsDirection(SHCLX11FMT enmFmt, uint32_t fDirection)
+{
+    const SHCLX11TRANSFERTARGET *pTarget = shClX11TransferTargetLookup(enmFmt);
+    return pTarget && (pTarget->fDirections & fDirection) != 0;
+}
+#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
+
 /**
  * Looks up the X11 format matching a given X11 atom.
  *
@@ -274,8 +354,19 @@ static SHCLX11FMTIDX clipEnumX11Formats(SHCLFORMATS uFormatsVBox,
 {
     for (unsigned i = lastFmtIdx + 1; i < RT_ELEMENTS(g_aFormats); ++i)
     {
-        if (uFormatsVBox & clipVBoxFormatForX11Format(i))
-            return i;
+        SHCLFORMAT const uFmtVBox = clipVBoxFormatForX11Format(i);
+        if (uFormatsVBox & uFmtVBox)
+        {
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+            /* URI targets are filtered by the explicit export policy.  This
+             * includes KDE metadata, while excluding any future import-only
+             * representations. */
+            if (   uFmtVBox != VBOX_SHCL_FMT_URI_LIST
+                || shClX11TransferTargetSupportsDirection(clipRealFormatForX11Format(i),
+                                                           SHCLX11TRANSFERDIR_F_TO_X11))
+#endif
+                return i;
+        }
     }
 
     return NIL_CLIPX11FORMAT;
@@ -594,8 +685,13 @@ static SHCLX11FMTIDX clipGetHtmlFormatFromTargets(PSHCLX11CTX pCtx,
 
 # ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 /**
- * Goes through an array of X11 clipboard targets to see if they contain an URI list
- * format we can support, and if so choose the ones we prefer.
+ * Goes through an array of X11 clipboard targets to find the preferred file-list
+ * representation that is safe to import.
+ *
+ * Selection uses s_aTransferTargets rather than SHCLX11FMT enum values or the
+ * order in which the clipboard owner returned its targets.  Targets which only
+ * carry transfer metadata are ignored even when they map to VBOX_SHCL_FMT_URI_LIST
+ * for export purposes.
  *
  * @return Supported X clipboard format.
  * @param  pCtx                 The X11 clipboard context to use.
@@ -610,27 +706,29 @@ SHCL_X11_DECL(SHCLX11FMTIDX) clipGetURIListFormatFromTargets(PSHCLX11CTX pCtx,
     AssertReturn(RT_VALID_PTR(paIdxFmtTargets) || cTargets == 0, NIL_CLIPX11FORMAT);
 
     SHCLX11FMTIDX idxFmtURI = NIL_CLIPX11FORMAT;
-    SHCLX11FMT    fmtURIX11 = SHCLX11FMT_INVALID;
+    uint8_t       uPriority = 0;
     bool          fSawUnsupportedTransferMetadata = false;
     for (unsigned i = 0; i < cTargets; ++i)
     {
         SHCLX11FMTIDX idxFmt = paIdxFmtTargets[i];
         if (idxFmt != NIL_CLIPX11FORMAT)
         {
-            SHCLX11FMT const fmtReal = clipRealFormatForX11Format(idxFmt);
-            if (   fmtReal == SHCLX11FMT_URI_LIST_KDE_CUTSELECTION
-                && clipVBoxFormatForX11Format(idxFmt) != VBOX_SHCL_FMT_URI_LIST)
+            SHCLX11FMT const enmFmtX11 = clipRealFormatForX11Format(idxFmt);
+            const SHCLX11TRANSFERTARGET *pTarget = shClX11TransferTargetLookup(enmFmtX11);
+            if (   pTarget
+                && !(pTarget->fDirections & SHCLX11TRANSFERDIR_F_FROM_X11))
             {
                 fSawUnsupportedTransferMetadata = true;
-                LogRelMax2(16, ("Shared Clipboard: Ignoring X11 clipboard target '%s'; it only describes cut/copy state, not file names\n",
+                LogRelMax2(16, ("Shared Clipboard: Ignoring X11 clipboard target '%s'; it only describes cut/copy "
+                                "state, not file names\n",
                                g_aFormats[idxFmt].pcszAtom));
             }
-
-            if (   (clipVBoxFormatForX11Format(idxFmt) == VBOX_SHCL_FMT_URI_LIST)
-                && fmtURIX11 < fmtReal)
+            else if (   pTarget
+                     && clipVBoxFormatForX11Format(idxFmt) == VBOX_SHCL_FMT_URI_LIST
+                     && uPriority < pTarget->uPriorityFromX11)
             {
-                fmtURIX11 = fmtReal;
-                idxFmtURI = idxFmt;
+                uPriority  = pTarget->uPriorityFromX11;
+                idxFmtURI  = idxFmt;
             }
         }
     }
@@ -639,7 +737,8 @@ SHCL_X11_DECL(SHCLX11FMTIDX) clipGetURIListFormatFromTargets(PSHCLX11CTX pCtx,
         LogRelMax2(16, ("Shared Clipboard: Selected X11 URI-list target '%s' for host file transfer\n",
                        g_aFormats[idxFmtURI].pcszAtom));
     else if (fSawUnsupportedTransferMetadata)
-        LogRelMax2(16, ("Shared Clipboard: X11 clipboard had file-transfer metadata but no supported file list target (for example text/uri-list); host file transfer will not be announced\n"));
+        LogRelMax2(16, ("Shared Clipboard: X11 clipboard had file-transfer metadata but no supported file list target "
+                        "(for example text/uri-list); host file transfer will not be announced\n"));
 
     return idxFmtURI;
 }
@@ -1853,12 +1952,7 @@ static int clipConvertToX11Data(PSHCLX11CTX pCtx, Atom *atomTarget,
         }
     }
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    else if (   fmtX11 == SHCLX11FMT_URI_LIST
-             || fmtX11 == SHCLX11FMT_URI_LIST_GNOME_COPIED_FILES
-            /** @todo BUGBUG Not sure about the following ones; test those. */
-             || fmtX11 == SHCLX11FMT_URI_LIST_MATE_COPIED_FILES
-             || fmtX11 == SHCLX11FMT_URI_LIST_NAUTILUS_CLIPBOARD
-             || fmtX11 == SHCLX11FMT_URI_LIST_KDE_CUTSELECTION)
+    else if (shClX11TransferTargetSupportsDirection(fmtX11, SHCLX11TRANSFERDIR_F_TO_X11))
     {
         if (pCtx->vboxFormats & VBOX_SHCL_FMT_URI_LIST)
         {
@@ -2103,13 +2197,22 @@ int ShClX11TransferConvertToX11(const char *pszSrc, size_t cbSrc,  SHCLX11FMT en
 
     switch (enmFmtX11)
     {
+        case SHCLX11FMT_URI_LIST_KDE_CUTSELECTION:
+        {
+            /* KDE stores only cut/copy state in this target: "0" means copy
+             * and "1" means cut.  Shared Clipboard exports copies, while the
+             * file names themselves are provided through text/uri-list. */
+            pszDst = RTStrDup("0"); /* Copy. */
+            if (!pszDst)
+                rc = VERR_NO_MEMORY;
+            break;
+        }
+
         case SHCLX11FMT_URI_LIST_GNOME_COPIED_FILES:
             RT_FALL_THROUGH();
         case SHCLX11FMT_URI_LIST_MATE_COPIED_FILES:
             RT_FALL_THROUGH();
         case SHCLX11FMT_URI_LIST_NAUTILUS_CLIPBOARD:
-            RT_FALL_THROUGH();
-        case SHCLX11FMT_URI_LIST_KDE_CUTSELECTION:
         {
             const char chSep = '\n'; /* Currently (?) all entries need to be separated by '\n'. */
 
@@ -2515,28 +2618,20 @@ SHCL_X11_DECL(void) clipConvertDataFromX11Worker(void *pClient, void *pvSrc, uns
 # ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     else if (pReq->Read.uFmtVBox == VBOX_SHCL_FMT_URI_LIST)
     {
-        /* In which format is the clipboard data? */
-        switch (clipRealFormatForX11Format(pReq->Read.idxFmtX11))
+        SHCLX11FMT const enmFmtX11 = clipRealFormatForX11Format(pReq->Read.idxFmtX11);
+        /* Recheck the direction at the conversion boundary.  Normally target
+         * selection already guarantees this, but the check also protects
+         * forced, stale or otherwise inconsistent format indices from feeding
+         * metadata such as KDE's "0"/"1" value to the URI-list parser. */
+        if (shClX11TransferTargetSupportsDirection(enmFmtX11, SHCLX11TRANSFERDIR_F_FROM_X11))
+            rc = ShClX11TransferConvertFromX11((const char *)pvSrc, cbSrc, (char **)&pvDst, &cbDst);
+        else
         {
-            case SHCLX11FMT_URI_LIST:
-                RT_FALL_THROUGH();
-            case SHCLX11FMT_URI_LIST_GNOME_COPIED_FILES:
-                RT_FALL_THROUGH();
-            case SHCLX11FMT_URI_LIST_MATE_COPIED_FILES:
-                RT_FALL_THROUGH();
-            case SHCLX11FMT_URI_LIST_NAUTILUS_CLIPBOARD:
-                RT_FALL_THROUGH();
-            case SHCLX11FMT_URI_LIST_KDE_CUTSELECTION:
-            {
-                rc = ShClX11TransferConvertFromX11((const char *)pvSrc, cbSrc, (char **)&pvDst, &cbDst);
-                break;
-            }
-
-            default:
-            {
-                AssertFailedStmt(rc = VERR_NOT_SUPPORTED); /* Missing code? */
-                break;
-            }
+            const char *pszTarget = pReq->Read.idxFmtX11 < RT_ELEMENTS(g_aFormats)
+                                  ? g_aFormats[pReq->Read.idxFmtX11].pcszAtom : "<invalid>";
+            LogRelMax2(16, ("Shared Clipboard: Refusing to parse X11 clipboard target '%s' as a file list\n",
+                           pszTarget));
+            rc = VERR_NOT_SUPPORTED;
         }
     }
 # endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */

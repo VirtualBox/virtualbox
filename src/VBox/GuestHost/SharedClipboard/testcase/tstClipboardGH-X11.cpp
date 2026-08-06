@@ -1,4 +1,4 @@
-/* $Id: tstClipboardGH-X11.cpp 114767 2026-07-24 22:06:05Z knut.osmundsen@oracle.com $ */
+/* $Id: tstClipboardGH-X11.cpp 114866 2026-08-06 11:24:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard guest/host X11 code test cases.
  */
@@ -485,16 +485,89 @@ static bool tstClipURIListFormatConversion(PSHCLX11CTX pCtx)
     SHCLX11FMTIDX aTargets[2];
     SHCLX11FMTIDX idxFmtX11;
 
-    aTargets[0] = tstClipFindX11FormatByAtomText("application/x-kde-cutselection");
+    /* Prefer the standard target over a higher-valued format enum. */
+    aTargets[0] = tstClipFindX11FormatByAtomText("x-special/gnome-copied-files");
     aTargets[1] = tstClipFindX11FormatByAtomText("text/uri-list");
     idxFmtX11 = clipGetURIListFormatFromTargets(pCtx, aTargets, 2);
     if (clipRealFormatForX11Format(idxFmtX11) != SHCLX11FMT_URI_LIST)
+        fSuccess = false;
+
+    /* Target enumeration order must not affect the result. */
+    aTargets[0] = tstClipFindX11FormatByAtomText("text/uri-list");
+    aTargets[1] = tstClipFindX11FormatByAtomText("x-special/gnome-copied-files");
+    idxFmtX11 = clipGetURIListFormatFromTargets(pCtx, aTargets, 2);
+    if (clipRealFormatForX11Format(idxFmtX11) != SHCLX11FMT_URI_LIST)
+        fSuccess = false;
+
+    /* KDE cut-selection is metadata, but another target can provide the file list. */
+    aTargets[0] = tstClipFindX11FormatByAtomText("application/x-kde-cutselection");
+    aTargets[1] = tstClipFindX11FormatByAtomText("x-special/gnome-copied-files");
+    idxFmtX11 = clipGetURIListFormatFromTargets(pCtx, aTargets, 2);
+    if (clipRealFormatForX11Format(idxFmtX11) != SHCLX11FMT_URI_LIST_GNOME_COPIED_FILES)
         fSuccess = false;
 
     aTargets[0] = tstClipFindX11FormatByAtomText("application/x-kde-cutselection");
     idxFmtX11 = clipGetURIListFormatFromTargets(pCtx, aTargets, 1);
     if (idxFmtX11 != NIL_CLIPX11FORMAT)
         fSuccess = false;
+
+    /* Even a forced read must not treat KDE cut/copy metadata as a file list. */
+    static const char s_szKdeCopy[] = "0";
+    tstClipSetSelectionValues("application/x-kde-cutselection", XA_STRING,
+                              s_szKdeCopy, sizeof(s_szKdeCopy) - 1, 8);
+    pCtx->idxFmtURI = aTargets[0];
+    uint8_t  abBuf[TESTCASE_MAX_BUF_SIZE];
+    uint32_t cbRead = 0;
+    int rc = ShClX11ReadDataFromX11(pCtx, &g_EventSource, g_msTimeout, VBOX_SHCL_FMT_URI_LIST,
+                                    abBuf, sizeof(abBuf), &cbRead);
+    if (rc != VERR_SHCLPB_NO_DATA)
+        fSuccess = false;
+    pCtx->idxFmtURI = NIL_CLIPX11FORMAT;
+
+    /* When exporting files, KDE receives copy metadata separately from text/uri-list. */
+    static const char s_szURI[] = "file:///tmp/a";
+    void  *pvKde = NULL;
+    size_t cbKde = 0;
+    rc = ShClX11TransferConvertToX11(s_szURI, sizeof(s_szURI) - 1, SHCLX11FMT_URI_LIST_KDE_CUTSELECTION,
+                                     &pvKde, &cbKde);
+    if (   RT_FAILURE(rc)
+        || cbKde != sizeof(s_szKdeCopy) - 1
+        || memcmp(pvKde, s_szKdeCopy, sizeof(s_szKdeCopy) - 1))
+        fSuccess = false;
+    XtFree((char *)pvKde);
+
+    /* KDE metadata and the standard URI list must both be offered to X11 consumers. */
+    rc = ShClX11ReportFormatsToX11Async(pCtx, VBOX_SHCL_FMT_URI_LIST);
+    if (RT_FAILURE(rc))
+        fSuccess = false;
+    else
+    {
+        Atom          atomType;
+        XtPointer     pvTargets = NULL;
+        unsigned long cTargets;
+        int           iFormat;
+        if (!tstClipConvertSelection("TARGETS", &atomType, &pvTargets, &cTargets, &iFormat))
+            fSuccess = false;
+        else
+        {
+            bool fFoundURI = false;
+            bool fFoundKDE = false;
+            Atom const *paTargets = (Atom const *)pvTargets;
+            for (size_t i = 0; i < cTargets; i++)
+            {
+                if (paTargets[i] == XInternAtom(NULL, "text/uri-list", 0))
+                    fFoundURI = true;
+                else if (paTargets[i] == XInternAtom(NULL, "application/x-kde-cutselection", 0))
+                    fFoundKDE = true;
+            }
+            if (   atomType != XA_ATOM
+                || iFormat != 32
+                || !fFoundURI
+                || !fFoundKDE)
+                fSuccess = false;
+        }
+        XtFree((char *)pvTargets);
+    }
 
     return fSuccess;
 }
@@ -969,4 +1042,3 @@ int main()
 
     return RTTestSummaryAndDestroy(hTest);
 }
-
