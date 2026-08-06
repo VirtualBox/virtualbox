@@ -1,4 +1,4 @@
-/* $Id: darwin-pasteboard.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: darwin-pasteboard.cpp 114863 2026-08-06 10:19:52Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host implementation.
  */
@@ -35,14 +35,22 @@
 #include <Carbon/Carbon.h>
 
 #include <iprt/assert.h>
-#include <iprt/mem.h>
 #include <iprt/errcore.h>
+#include <iprt/mem.h>
+#include <iprt/string.h>
 #include <iprt/utf16.h>
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+# include <iprt/path.h>
+# include <iprt/uri.h>
+#endif
 
 #include <VBox/log.h>
 #include <VBox/HostServices/VBoxClipboardSvc.h>
 #include <VBox/GuestHost/SharedClipboard.h>
 #include <VBox/GuestHost/clipboard-helper.h>
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+# include <VBox/GuestHost/SharedClipboard-transfers.h>
+#endif
 
 #include "darwin-pasteboard.h"
 
@@ -112,14 +120,15 @@ DECLHIDDEN(void) destroyPasteboard(PasteboardRef *pPasteboardRef)
 DECLHIDDEN(int) queryNewPasteboardFormats(PasteboardRef hPasteboard, uint64_t idOwnership, void *hStrOwnershipFlavor,
                                           uint32_t *pfFormats, bool *pfChanged)
 {
-    OSStatus orc;
+    AssertPtrReturn(hPasteboard, VERR_INVALID_POINTER);
+    AssertPtrReturn(pfFormats,   VERR_INVALID_POINTER);
+    AssertPtrReturn(pfChanged,   VERR_INVALID_POINTER);
 
     *pfFormats = 0;
     *pfChanged = true;
 
-    PasteboardSyncFlags syncFlags;
     /* Make sure all is in sync */
-    syncFlags = PasteboardSynchronize(hPasteboard);
+    PasteboardSyncFlags const syncFlags = PasteboardSynchronize(hPasteboard);
     /* If nothing changed return */
     if (!(syncFlags & kPasteboardModified))
     {
@@ -130,89 +139,316 @@ DECLHIDDEN(int) queryNewPasteboardFormats(PasteboardRef hPasteboard, uint64_t id
 
     /* Are some items in the pasteboard? */
     ItemCount cItems = 0;
-    orc = PasteboardGetItemCount(hPasteboard, &cItems);
-    if (orc == 0)
+    OSStatus const orcItems = PasteboardGetItemCount(hPasteboard, &cItems);
+    if (orcItems == noErr)
     {
         if (cItems < 1)
             Log(("queryNewPasteboardFormats: changed: No items on the pasteboard\n"));
         else
         {
-            /* The id of the first element in the pasteboard */
-            PasteboardItemID idItem = 0;
-            orc = PasteboardGetItemIdentifier(hPasteboard, 1, &idItem);
-            if (orc == 0)
+            bool fOwnClipboard = false;
+            for (ItemCount idxItem = 0; idxItem < cItems; idxItem++)
             {
-                /*
-                 * Retrieve all flavors on the pasteboard, maybe there
-                 * is something we can use.  Or maybe we're the owner.
-                 */
-                CFArrayRef hFlavors = 0;
-                orc = PasteboardCopyItemFlavors(hPasteboard, idItem, &hFlavors);
-                if (orc == 0)
+                PasteboardItemID idItem = 0;
+                OSStatus const orcItem = PasteboardGetItemIdentifier(hPasteboard, idxItem + 1, &idItem);
+                if (orcItem == noErr)
                 {
-                    CFIndex cFlavors = CFArrayGetCount(hFlavors);
-                    for (CFIndex idxFlavor = 0; idxFlavor < cFlavors; idxFlavor++)
+                    /*
+                     * Retrieve all flavors on the pasteboard, maybe there
+                     * is something we can use.  Or maybe we're the owner.
+                     */
+                    CFArrayRef hFlavors = NULL;
+                    OSStatus const orcFlavors = PasteboardCopyItemFlavors(hPasteboard, idItem, &hFlavors);
+                    if (   orcFlavors == noErr
+                        && hFlavors)
                     {
-                        CFStringRef hStrFlavor = (CFStringRef)CFArrayGetValueAtIndex(hFlavors, idxFlavor);
-                        if (   idItem == (PasteboardItemID)idOwnership
-                            && hStrOwnershipFlavor
-                            && CFStringCompare(hStrFlavor, (CFStringRef)hStrOwnershipFlavor, 0) == kCFCompareEqualTo)
+                        CFIndex const cFlavors = CFArrayGetCount(hFlavors);
+                        for (CFIndex idxFlavor = 0; idxFlavor < cFlavors; idxFlavor++)
                         {
-                            /* We made the changes ourselves. */
-                            Log2(("queryNewPasteboardFormats: no-changed: our clipboard!\n"));
-                            *pfChanged = false;
-                            *pfFormats = 0;
-                            break;
-                        }
+                            CFStringRef hStrFlavor = (CFStringRef)CFArrayGetValueAtIndex(hFlavors, idxFlavor);
+                            if (   idItem == (PasteboardItemID)idOwnership
+                                && hStrOwnershipFlavor
+                                && CFStringCompare(hStrFlavor, (CFStringRef)hStrOwnershipFlavor, 0) == kCFCompareEqualTo)
+                            {
+                                /* We made the changes ourselves. */
+                                Log2(("queryNewPasteboardFormats: no-changed: our clipboard!\n"));
+                                fOwnClipboard = true;
+                                break;
+                            }
 
-                        if (UTTypeConformsTo(hStrFlavor, kUTTypeBMP))
-                        {
-                            Log(("queryNewPasteboardFormats: BMP flavor detected.\n"));
-                            *pfFormats |= VBOX_SHCL_FMT_BITMAP;
-                        }
-                        else if (   UTTypeConformsTo(hStrFlavor, kUTTypeUTF8PlainText)
-                                 || UTTypeConformsTo(hStrFlavor, kUTTypeUTF16PlainText))
-                        {
-                            Log(("queryNewPasteboardFormats: Unicode flavor detected.\n"));
-                            *pfFormats |= VBOX_SHCL_FMT_UNICODETEXT;
-                        }
+                            if (UTTypeConformsTo(hStrFlavor, kUTTypeBMP))
+                            {
+                                Log(("queryNewPasteboardFormats: BMP flavor detected.\n"));
+                                *pfFormats |= VBOX_SHCL_FMT_BITMAP;
+                            }
+                            else if (   UTTypeConformsTo(hStrFlavor, kUTTypeUTF8PlainText)
+                                     || UTTypeConformsTo(hStrFlavor, kUTTypeUTF16PlainText))
+                            {
+                                Log(("queryNewPasteboardFormats: Unicode flavor detected.\n"));
+                                *pfFormats |= VBOX_SHCL_FMT_UNICODETEXT;
+                            }
 #ifdef WITH_HTML_H2G
-                        else if (UTTypeConformsTo(hStrFlavor, kUTTypeHTML))
-                        {
-                            Log(("queryNewPasteboardFormats: HTML flavor detected.\n"));
-                            *pfFormats |= VBOX_SHCL_FMT_HTML;
-                        }
+                            else if (UTTypeConformsTo(hStrFlavor, kUTTypeHTML))
+                            {
+                                Log(("queryNewPasteboardFormats: HTML flavor detected.\n"));
+                                *pfFormats |= VBOX_SHCL_FMT_HTML;
+                            }
+#endif
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+                            else if (UTTypeConformsTo(hStrFlavor, kUTTypeFileURL))
+                            {
+                                Log(("queryNewPasteboardFormats: File URL flavor detected.\n"));
+                                *pfFormats |= VBOX_SHCL_FMT_URI_LIST;
+                            }
 #endif
 #ifdef LOG_ENABLED
-                        else if (LogIs2Enabled())
-                        {
-                            if (CFStringGetCharactersPtr(hStrFlavor))
-                                Log2(("queryNewPasteboardFormats: Unknown flavor: %ls.\n", CFStringGetCharactersPtr(hStrFlavor)));
-                            else if (CFStringGetCStringPtr(hStrFlavor, kCFStringEncodingUTF8))
-                                Log2(("queryNewPasteboardFormats: Unknown flavor: %s.\n",
-                                      CFStringGetCStringPtr(hStrFlavor, kCFStringEncodingUTF8)));
-                            else
-                                Log2(("queryNewPasteboardFormats: Unknown flavor: ???\n"));
-                        }
+                            else if (LogIs2Enabled())
+                            {
+                                if (CFStringGetCharactersPtr(hStrFlavor))
+                                    Log2(("queryNewPasteboardFormats: Unknown flavor: %ls.\n",
+                                          CFStringGetCharactersPtr(hStrFlavor)));
+                                else if (CFStringGetCStringPtr(hStrFlavor, kCFStringEncodingUTF8))
+                                    Log2(("queryNewPasteboardFormats: Unknown flavor: %s.\n",
+                                          CFStringGetCStringPtr(hStrFlavor, kCFStringEncodingUTF8)));
+                                else
+                                    Log2(("queryNewPasteboardFormats: Unknown flavor: ???\n"));
+                            }
 #endif
+                        }
                     }
-
-                    CFRelease(hFlavors);
+                    else
+                        Log(("queryNewPasteboardFormats: PasteboardCopyItemFlavors failed - %d (%#x)\n",
+                             orcFlavors, orcFlavors));
+                    if (hFlavors)
+                        CFRelease(hFlavors);
+                    if (fOwnClipboard)
+                        break;
                 }
                 else
-                    Log(("queryNewPasteboardFormats: PasteboardCopyItemFlavors failed - %d (%#x)\n", orc, orc));
+                    Log(("queryNewPasteboardFormats: PasteboardGetItemIdentifier failed - %d (%#x)\n", orcItem, orcItem));
+            }
+
+            if (fOwnClipboard)
+            {
+                *pfChanged = false;
+                *pfFormats = 0;
             }
             else
-                Log(("queryNewPasteboardFormats: PasteboardGetItemIdentifier failed - %d (%#x)\n", orc, orc));
-
-            if (*pfChanged)
                 Log(("queryNewPasteboardFormats: changed: *pfFormats=%#x\n", *pfFormats));
         }
     }
     else
-        Log(("queryNewPasteboardFormats: PasteboardGetItemCount failed - %d (%#x)\n", orc, orc));
+        Log(("queryNewPasteboardFormats: PasteboardGetItemCount failed - %d (%#x)\n", orcItems, orcItems));
     return VINF_SUCCESS;
 }
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/**
+ * Converts one macOS file URL pasteboard value to a canonical file URI.
+ *
+ * @returns VBox status code.
+ * @param   hData               File URL pasteboard data.
+ * @param   ppszURI             Where to return the allocated URI.  Must be
+ *                              freed with RTStrFree().
+ * @param   pcchURI             Where to return the URI length without the
+ *                              terminator.
+ */
+static int darwinPasteboardFileURLToURI(CFDataRef hData, char **ppszURI, size_t *pcchURI)
+{
+    AssertPtrReturn(hData,   VERR_INVALID_POINTER);
+    AssertPtrReturn(ppszURI, VERR_INVALID_POINTER);
+    AssertPtrReturn(pcchURI, VERR_INVALID_POINTER);
+
+    *ppszURI = NULL;
+    *pcchURI = 0;
+
+    CFIndex const cbData = CFDataGetLength(hData);
+    if (cbData <= 0)
+        return VERR_INVALID_PARAMETER;
+    if ((uint64_t)cbData > (uint64_t)RTPATH_MAX * 3 + 32)
+        return VERR_TOO_MUCH_DATA;
+
+    const UInt8 *pbData = CFDataGetBytePtr(hData);
+    AssertPtrReturn(pbData, VERR_INVALID_POINTER);
+
+    size_t cchData = 0;
+    int vrc = ShClHlpUtf8ValidateExact((const char *)pbData, (size_t)cbData, &cchData);
+    if (RT_FAILURE(vrc))
+        return vrc;
+    if (!cchData)
+        return VERR_INVALID_PARAMETER;
+    for (size_t off = 0; off + 2 < cchData; off++)
+        if (   pbData[off] == '%'
+            && pbData[off + 1] == '0'
+            && pbData[off + 2] == '0')
+            return VERR_INVALID_PARAMETER;
+
+    CFURLRef hURL = CFURLCreateWithBytes(kCFAllocatorDefault, pbData, (CFIndex)cchData,
+                                         kCFStringEncodingUTF8, NULL /* baseURL */);
+    if (!hURL)
+        return VERR_INVALID_PARAMETER;
+
+    CFStringRef hScheme   = CFURLCopyScheme(hURL);
+    CFStringRef hLocation = CFURLCopyNetLocation(hURL);
+    CFStringRef hQuery    = CFURLCopyQueryString(hURL, NULL /* charactersToLeaveEscaped */);
+    CFStringRef hFragment = CFURLCopyFragment(hURL, NULL /* charactersToLeaveEscaped */);
+    if (   !hScheme
+        || CFStringCompare(hScheme, CFSTR("file"), kCFCompareCaseInsensitive) != kCFCompareEqualTo
+        || (   hLocation
+            && CFStringGetLength(hLocation)
+            && CFStringCompare(hLocation, CFSTR("localhost"), kCFCompareCaseInsensitive) != kCFCompareEqualTo)
+        || hQuery
+        || hFragment)
+        vrc = VERR_INVALID_PARAMETER;
+
+    char szPath[RTPATH_MAX];
+    if (RT_SUCCESS(vrc))
+    {
+        if (!CFURLGetFileSystemRepresentation(hURL, true /* resolveAgainstBase */, (UInt8 *)szPath, sizeof(szPath)))
+            vrc = VERR_INVALID_PARAMETER;
+        else if (!RTPathStartsWithRoot(szPath))
+            vrc = VERR_PATH_IS_RELATIVE;
+        else
+            vrc = RTStrValidateEncoding(szPath);
+    }
+
+    if (RT_SUCCESS(vrc))
+    {
+        vrc = RTUriFileCreateEx(szPath, RTPATH_STR_F_STYLE_UNIX, ppszURI, 0 /* cbUri */, NULL /* pcchUri */);
+        if (RT_SUCCESS(vrc))
+            *pcchURI = strlen(*ppszURI);
+    }
+
+    if (hFragment)
+        CFRelease(hFragment);
+    if (hQuery)
+        CFRelease(hQuery);
+    if (hLocation)
+        CFRelease(hLocation);
+    if (hScheme)
+        CFRelease(hScheme);
+    CFRelease(hURL);
+    return vrc;
+}
+
+
+/**
+ * Reads local file URLs from the macOS pasteboard as a transfer root list.
+ *
+ * @returns VBox status code.
+ * @param   hPasteboard         Reference to the pasteboard to read.
+ * @param   ppszRoots           Where to return the allocated CRLF-separated
+ *                              file URI list.  Must be freed with RTStrFree().
+ * @param   pcbRoots            Where to return the list size, including the
+ *                              terminator.
+ */
+DECLHIDDEN(int) readFileURLsFromPasteboard(PasteboardRef hPasteboard, char **ppszRoots, size_t *pcbRoots)
+{
+    AssertPtrReturn(hPasteboard, VERR_INVALID_POINTER);
+    AssertPtrReturn(ppszRoots,   VERR_INVALID_POINTER);
+    AssertPtrReturn(pcbRoots,    VERR_INVALID_POINTER);
+
+    *ppszRoots = NULL;
+    *pcbRoots = 0;
+
+    PasteboardSynchronize(hPasteboard);
+
+    ItemCount cItems = 0;
+    OSStatus const orcItems = PasteboardGetItemCount(hPasteboard, &cItems);
+    if (orcItems != noErr)
+        return VERR_GENERAL_FAILURE;
+
+    char  *pszRoots = NULL;
+    size_t cbRoots = 0;
+    size_t cRoots = 0;
+    int vrc = VINF_SUCCESS;
+    for (ItemCount idxItem = 0; idxItem < cItems; idxItem++)
+    {
+        PasteboardItemID idItem = 0;
+        OSStatus const orcItem = PasteboardGetItemIdentifier(hPasteboard, idxItem + 1, &idItem);
+        if (orcItem != noErr)
+        {
+            vrc = VERR_GENERAL_FAILURE;
+            break;
+        }
+
+        CFArrayRef hFlavors = NULL;
+        OSStatus const orcFlavors = PasteboardCopyItemFlavors(hPasteboard, idItem, &hFlavors);
+        if (   orcFlavors != noErr
+            || !hFlavors)
+        {
+            if (hFlavors)
+                CFRelease(hFlavors);
+            vrc = VERR_GENERAL_FAILURE;
+            break;
+        }
+
+        CFStringRef hFileURLFlavor = NULL;
+        CFIndex const cFlavors = CFArrayGetCount(hFlavors);
+        for (CFIndex idxFlavor = 0; idxFlavor < cFlavors; idxFlavor++)
+        {
+            CFStringRef hFlavor = (CFStringRef)CFArrayGetValueAtIndex(hFlavors, idxFlavor);
+            if (UTTypeConformsTo(hFlavor, kUTTypeFileURL))
+            {
+                hFileURLFlavor = hFlavor;
+                break;
+            }
+        }
+
+        if (hFileURLFlavor)
+        {
+            CFDataRef hData = NULL;
+            OSStatus const orcData = PasteboardCopyItemFlavorData(hPasteboard, idItem, hFileURLFlavor, &hData);
+            if (   orcData == noErr
+                && hData)
+            {
+                char *pszURI = NULL;
+                size_t cchURI = 0;
+                vrc = darwinPasteboardFileURLToURI(hData, &pszURI, &cchURI);
+                if (RT_SUCCESS(vrc))
+                {
+                    size_t const cchSep = sizeof(SHCL_TRANSFER_URI_LIST_SEP_STR) - 1;
+                    if (   cbRoots > ~(size_t)0 - cchSep - 1
+                        || cchURI > ~(size_t)0 - cbRoots - cchSep - 1)
+                        vrc = VERR_TOO_MUCH_DATA;
+                    else
+                    {
+                        vrc = RTStrAAppendExN(&pszRoots, 2 /* cPairs */, pszURI, cchURI,
+                                             SHCL_TRANSFER_URI_LIST_SEP_STR, cchSep);
+                        if (RT_SUCCESS(vrc))
+                        {
+                            cbRoots += cchURI + cchSep;
+                            cRoots++;
+                        }
+                    }
+                }
+                RTStrFree(pszURI);
+            }
+            else
+                vrc = VERR_GENERAL_FAILURE;
+            if (hData)
+                CFRelease(hData);
+        }
+
+        CFRelease(hFlavors);
+        if (RT_FAILURE(vrc))
+            break;
+    }
+
+    if (   RT_SUCCESS(vrc)
+        && !cRoots)
+        vrc = VERR_NOT_FOUND;
+    if (RT_SUCCESS(vrc))
+    {
+        *ppszRoots = pszRoots;
+        *pcbRoots = cbRoots + 1;
+        LogRel2(("Shared Clipboard: macOS reported %zu root entries for transfer to guest\n", cRoots));
+    }
+    else
+        RTStrFree(pszRoots);
+    return vrc;
+}
+#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 /**
  * Read content from the host clipboard and write it to the internal clipboard

@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendDarwin.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendDarwin.cpp 114863 2026-08-06 10:19:52Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host.
  */
@@ -71,6 +71,8 @@ typedef struct SHCLCONTEXT
     /** The guest ownership flavor (type) string. */
     char                    szGuestOwnershipFlavor[64];
     /** Serialize access to the current pasteboard. */
+    RTCRITSECT              CritSectPasteboard;
+    /** Serialize the client pointer and its readiness state. */
     RTCRITSECT              CritSect;
 } SHCLCONTEXT;
 
@@ -80,6 +82,75 @@ typedef struct SHCLCONTEXT
 *********************************************************************************************************************************/
 /** Only one client is supported. There seems to be no need for more clients. */
 static SHCLCONTEXT g_ctx;
+
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/** @copydoc SHCLTXPROVIDERIFACE::pfnRootListRead */
+static DECLCALLBACK(int) shClSvcDarwinTransferIfaceHGRootListRead(PSHCLTXPROVIDERCTX pProviderCtx)
+{
+    PSHCLCLIENT pClient = (PSHCLCLIENT)pProviderCtx->pvUser;
+    AssertPtrReturn(pClient, VERR_INVALID_POINTER);
+
+    SHCLCONTEXT *pCtx = pClient->State.pCtx;
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+
+    char  *pszRoots = NULL;
+    size_t cbRoots = 0;
+    int vrc = RTCritSectEnter(&pCtx->CritSectPasteboard);
+    if (RT_SUCCESS(vrc))
+    {
+        vrc = readFileURLsFromPasteboard(pCtx->hPasteboard, &pszRoots, &cbRoots);
+
+        int const vrc2 = RTCritSectLeave(&pCtx->CritSectPasteboard);
+        AssertRC(vrc2);
+        if (RT_SUCCESS(vrc))
+            vrc = vrc2;
+    }
+
+    if (RT_SUCCESS(vrc))
+        vrc = ShClTransferRootsSetFromStringList(pProviderCtx->pTransfer, pszRoots, cbRoots);
+    RTStrFree(pszRoots);
+    return vrc;
+}
+
+
+/** @copydoc SHCLTRANSFERCALLBACKS::pfnOnCreated */
+static DECLCALLBACK(void) shClSvcDarwinTransferOnCreatedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
+{
+    PSHCLCLIENT pClient = (PSHCLCLIENT)pCbCtx->pvUser;
+    AssertPtrReturnVoid(pClient);
+
+    PSHCLTRANSFER pTransfer = pCbCtx->pTransfer;
+    AssertPtrReturnVoid(pTransfer);
+
+    RT_ZERO(pClient->Transfers.Provider);
+    if (   ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_TO_REMOTE
+        && ShClTransferGetSource(pTransfer) == SHCLSOURCE_LOCAL)
+    {
+        ShClTransferProviderLocalQueryInterface(&pClient->Transfers.Provider);
+        pClient->Transfers.Provider.Interface.pfnRootListRead = shClSvcDarwinTransferIfaceHGRootListRead;
+        pClient->Transfers.Provider.enmSource = SHCLSOURCE_LOCAL;
+        pClient->Transfers.Provider.pvUser    = pClient;
+        pClient->Transfers.Provider.cbUser    = sizeof(*pClient);
+
+        int const vrc = ShClTransferSetProvider(pTransfer, &pClient->Transfers.Provider);
+        AssertRC(vrc);
+    }
+}
+
+
+/** @copydoc SHCLTRANSFERCALLBACKS::pfnOnInitialize */
+static DECLCALLBACK(int) shClSvcDarwinTransferOnInitializeCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
+{
+    PSHCLTRANSFER pTransfer = pCbCtx->pTransfer;
+    AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
+
+    if (   ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_TO_REMOTE
+        && ShClTransferGetSource(pTransfer) == SHCLSOURCE_LOCAL)
+        return ShClTransferRootListRead(pTransfer);
+    return VERR_NOT_SUPPORTED;
+}
+#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 
 static int shClBackendReportFormatsToGuestAndMain(PSHCLCLIENT pClient, SHCLFORMATS fFormats)
@@ -108,9 +179,18 @@ static int vboxClipboardChanged(SHCLCONTEXT *pCtx)
         && pCtx->fClientReady)
     {
         /* Retrieve the formats currently in the clipboard and supported by VBox. */
-        bool     fChanged = false;
-        vrc = queryNewPasteboardFormats(pCtx->hPasteboard, pCtx->idGuestOwnership, pCtx->hStrOwnershipFlavor,
-                                        &fFormats, &fChanged);
+        bool fChanged = false;
+        vrc = RTCritSectEnter(&pCtx->CritSectPasteboard);
+        if (RT_SUCCESS(vrc))
+        {
+            vrc = queryNewPasteboardFormats(pCtx->hPasteboard, pCtx->idGuestOwnership, pCtx->hStrOwnershipFlavor,
+                                            &fFormats, &fChanged);
+
+            int const vrc2 = RTCritSectLeave(&pCtx->CritSectPasteboard);
+            AssertRC(vrc2);
+            if (RT_SUCCESS(vrc))
+                vrc = vrc2;
+        }
         if (   RT_SUCCESS(vrc)
             && fChanged)
         {
@@ -164,9 +244,17 @@ int ShClBackendInit(PSHCLBACKEND pBackend, VBOXHGCMSVCFNTABLE *pTable)
     vrc = RTCritSectInit(&g_ctx.CritSect);
     AssertRCReturn(vrc, vrc);
 
+    vrc = RTCritSectInit(&g_ctx.CritSectPasteboard);
+    if (RT_FAILURE(vrc))
+    {
+        RTCritSectDelete(&g_ctx.CritSect);
+        return vrc;
+    }
+
     vrc = initPasteboard(&g_ctx.hPasteboard);
     if (RT_FAILURE(vrc))
     {
+        RTCritSectDelete(&g_ctx.CritSectPasteboard);
         RTCritSectDelete(&g_ctx.CritSect);
         return vrc;
     }
@@ -179,6 +267,7 @@ int ShClBackendInit(PSHCLBACKEND pBackend, VBOXHGCMSVCFNTABLE *pTable)
     {
         g_ctx.hThread = NIL_RTTHREAD;
         destroyPasteboard(&g_ctx.hPasteboard);
+        RTCritSectDelete(&g_ctx.CritSectPasteboard);
         RTCritSectDelete(&g_ctx.CritSect);
     }
 
@@ -209,6 +298,8 @@ void ShClBackendDestroy(PSHCLBACKEND pBackend)
     g_ctx.pClient = NULL;
     g_ctx.fClientReady = false;
 
+    if (RTCritSectIsInitialized(&g_ctx.CritSectPasteboard))
+        RTCritSectDelete(&g_ctx.CritSectPasteboard);
     if (RTCritSectIsInitialized(&g_ctx.CritSect))
         RTCritSectDelete(&g_ctx.CritSect);
 }
@@ -225,6 +316,13 @@ int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, bool fHeadles
         pClient->State.pCtx = &g_ctx;
         g_ctx.pClient = pClient;
         g_ctx.fClientReady = false;
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+        RT_ZERO(pClient->Transfers.Callbacks);
+        pClient->Transfers.Callbacks.pvUser          = pClient;
+        pClient->Transfers.Callbacks.cbUser          = sizeof(*pClient);
+        pClient->Transfers.Callbacks.pfnOnCreated    = shClSvcDarwinTransferOnCreatedCallback;
+        pClient->Transfers.Callbacks.pfnOnInitialize = shClSvcDarwinTransferOnInitializeCallback;
+#endif
         vrc = VINF_SUCCESS;
     }
     else
@@ -281,30 +379,30 @@ int ShClBackendReportFormats(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFOR
     if (fFormats == VBOX_SHCL_FMT_NONE)
     {
         SHCLCONTEXT *pCtx = pClient->State.pCtx;
-        RTCritSectEnter(&g_ctx.CritSect);
+        RTCritSectEnter(&pCtx->CritSectPasteboard);
         int vrcClear = clearPasteboard(pCtx->hPasteboard, &pCtx->hStrOwnershipFlavor);
-        RTCritSectLeave(&g_ctx.CritSect);
+        RTCritSectLeave(&pCtx->CritSectPasteboard);
         return vrcClear;
     }
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     if (fFormats & VBOX_SHCL_FMT_URI_LIST)
     {
-        LogRel2(("Shared Clipboard: Darwin backend does not support file-transfer clipboard offers yet\n"));
+        LogRel2(("Shared Clipboard: Darwin backend does not support guest-to-host file-transfer offers yet\n"));
         fFormats &= ~VBOX_SHCL_FMT_URI_LIST;
         if (fFormats == VBOX_SHCL_FMT_NONE)
         {
             SHCLCONTEXT *pCtx = pClient->State.pCtx;
-            RTCritSectEnter(&g_ctx.CritSect);
+            RTCritSectEnter(&pCtx->CritSectPasteboard);
             int vrcClear = clearPasteboard(pCtx->hPasteboard, &pCtx->hStrOwnershipFlavor);
-            RTCritSectLeave(&g_ctx.CritSect);
+            RTCritSectLeave(&pCtx->CritSectPasteboard);
             return vrcClear;
         }
     }
 #endif
 
     SHCLCONTEXT *pCtx = pClient->State.pCtx;
-    RTCritSectEnter(&g_ctx.CritSect);
+    RTCritSectEnter(&pCtx->CritSectPasteboard);
 
     /*
      * Generate a unique flavor string for this format announcement.
@@ -324,7 +422,7 @@ int ShClBackendReportFormats(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFOR
     takePasteboardOwnership(pCtx->hPasteboard, pCtx->idGuestOwnership, pCtx->szGuestOwnershipFlavor, szValue,
                             &pCtx->hStrOwnershipFlavor);
 
-    RTCritSectLeave(&g_ctx.CritSect);
+    RTCritSectLeave(&pCtx->CritSectPasteboard);
 
     /*
      * Now, request the data from the guest.
@@ -370,7 +468,7 @@ int ShClBackendReadData(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, PSHCLCLIENTC
 
     RT_NOREF(pBackend, pCmdCtx);
 
-    RTCritSectEnter(&g_ctx.CritSect);
+    RTCritSectEnter(&pClient->State.pCtx->CritSectPasteboard);
 
     /* Default to no data available. */
     *pcbActual = 0;
@@ -379,7 +477,7 @@ int ShClBackendReadData(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, PSHCLCLIENTC
     if (RT_FAILURE(vrc))
         LogRel(("Shared Clipboard: Error reading host clipboard data from macOS, vrc=%Rrc\n", vrc));
 
-    RTCritSectLeave(&g_ctx.CritSect);
+    RTCritSectLeave(&pClient->State.pCtx->CritSectPasteboard);
 
     return vrc;
 }
@@ -390,12 +488,12 @@ int ShClBackendWriteData(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, PSHCLCLIENT
 
     LogFlowFuncEnter();
 
-    RTCritSectEnter(&g_ctx.CritSect);
+    RTCritSectEnter(&pClient->State.pCtx->CritSectPasteboard);
 
     int vrc = writeToPasteboard(pClient->State.pCtx->hPasteboard, pClient->State.pCtx->idGuestOwnership,
                                 pvData, cbData, fFormat);
 
-    RTCritSectLeave(&g_ctx.CritSect);
+    RTCritSectLeave(&pClient->State.pCtx->CritSectPasteboard);
 
     if (RT_FAILURE(vrc))
         LogRel(("Shared Clipboard: Writing guest data to the macOS pasteboard failed, vrc=%Rrc\n", vrc));
