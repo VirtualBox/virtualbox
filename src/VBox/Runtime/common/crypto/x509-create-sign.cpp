@@ -1,4 +1,4 @@
-/* $Id: x509-create-sign.cpp 114861 2026-08-05 16:23:07Z klaus.espenlaub@oracle.com $ */
+/* $Id: x509-create-sign.cpp 114868 2026-08-06 15:53:09Z klaus.espenlaub@oracle.com $ */
 /** @file
  * IPRT - Crypto - X.509, Certificate Creation.
  */
@@ -153,9 +153,11 @@ RTDECL(int) RTCrX509Certificate_GenerateSelfSignedRsa(RTDIGESTTYPE enmDigestType
         /** @todo set other certificate attributes? */
 
         /* Make it self signed: */
-        X509_NAME *pX509Name = (X509_NAME *)X509_get_subject_name(pNewCert);
+        X509_NAME *pX509Name = X509_NAME_new();
         rcOssl = X509_NAME_add_entry_by_txt(pX509Name, "CN", MBSTRING_ASC, (const unsigned char *)pszSubject, -1, -1, 0);
         AssertStmt(rcOssl > 0, rc = RTErrInfoSet(pErrInfo, VERR_GENERAL_FAILURE, "X509_NAME_add_entry_by_txt failed"));
+        rcOssl = X509_set_subject_name(pNewCert, pX509Name);
+        AssertStmt(rcOssl > 0, rc = RTErrInfoSet(pErrInfo, VERR_GENERAL_FAILURE, "X509_set_subject_name failed"));
         rcOssl = X509_set_issuer_name(pNewCert, pX509Name);
         AssertStmt(rcOssl > 0, rc = RTErrInfoSet(pErrInfo, VERR_GENERAL_FAILURE, "X509_set_issuer_name failed"));
 
@@ -208,6 +210,7 @@ RTDECL(int) RTCrX509Certificate_GenerateSelfSignedRsa(RTDIGESTTYPE enmDigestType
                 rc = RTErrInfoSet(pErrInfo, VERR_CR_KEY_GEN_FAILED_RSA, "X509_sign failed");
         }
 
+        X509_NAME_free(pX509Name);
         X509_free(pNewCert);
     }
     else
