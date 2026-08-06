@@ -1,4 +1,4 @@
-/* $Id: tstRTShMem.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: tstRTShMem.cpp 114873 2026-08-06 20:59:25Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT Testcase - RTShMem.
  */
@@ -84,6 +84,14 @@ static void tstRTShMem1(void)
 
     RTTESTI_CHECK_RETV(g_hShMem != NIL_RTSHMEM);
 
+    /* Creating the same named object exclusively must fail. */
+    RTSHMEM hShMemDuplicate = NIL_RTSHMEM;
+    RTTESTI_CHECK_RC(RTShMemOpen(&hShMemDuplicate, "tstRTShMem-Share",
+                                 RTSHMEM_O_F_CREATE_EXCL | RTSHMEM_O_F_READWRITE | RTSHMEM_O_F_MAYBE_EXEC, _512K, 0),
+                     VERR_ALREADY_EXISTS);
+    if (hShMemDuplicate != NIL_RTSHMEM)
+        RTTESTI_CHECK_RC(RTShMemClose(hShMemDuplicate), VINF_SUCCESS);
+
     /* Query the size. */
     size_t cbShMem = 0;
     RTTESTI_CHECK_RC(RTShMemQuerySize(g_hShMem, &cbShMem), VINF_SUCCESS);
@@ -155,4 +163,3 @@ int main()
      */
     return RTTestSummaryAndDestroy(hTest);
 }
-
