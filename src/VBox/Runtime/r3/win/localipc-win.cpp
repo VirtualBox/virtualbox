@@ -1,4 +1,4 @@
-/* $Id: localipc-win.cpp 114874 2026-08-06 21:28:04Z andreas.loeffler@oracle.com $ */
+/* $Id: localipc-win.cpp 114875 2026-08-06 21:35:39Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT - Local IPC, Windows Implementation Using Named Pipes.
  *
@@ -43,7 +43,6 @@
 *********************************************************************************************************************************/
 #define LOG_GROUP RTLOGGROUP_LOCALIPC
 #include <iprt/nt/nt-and-windows.h> /* Need NtCancelIoFile and a few Rtl functions. */
-#include <aclapi.h>
 
 #include "internal/iprt.h"
 #include <iprt/localipc.h>
@@ -461,14 +460,34 @@ static int rtLocalIpcWinVerifyPipeOwnerUser(HANDLE hPipe)
 {
     AssertReturn(hPipe != NULL && hPipe != INVALID_HANDLE_VALUE, VERR_INVALID_HANDLE);
 
-    PSECURITY_DESCRIPTOR pSecDesc = NULL;
-    PSID pOwner = NULL;
-    DWORD const dwErr = GetSecurityInfo(hPipe, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION,
-                                        &pOwner, NULL, NULL, NULL, &pSecDesc);
-    int const rc = dwErr == ERROR_SUCCESS ? rtLocalIpcWinVerifyUserSid(pOwner)
-                                         : RTErrConvertFromWin32(dwErr);
-    if (pSecDesc)
-        LocalFree(pSecDesc);
+    /* GetSecurityInfo is unavailable on the NT 3.1 import baseline. */
+    DWORD cbSecDesc = 0;
+    if (GetKernelObjectSecurity(hPipe, OWNER_SECURITY_INFORMATION, NULL, 0, &cbSecDesc))
+        return VERR_INTERNAL_ERROR;
+    DWORD const dwErr = GetLastError();
+    if (dwErr != ERROR_INSUFFICIENT_BUFFER)
+        return RTErrConvertFromWin32(dwErr);
+
+    PSECURITY_DESCRIPTOR pSecDesc = (PSECURITY_DESCRIPTOR)RTMemTmpAlloc(cbSecDesc);
+    if (!pSecDesc)
+        return VERR_NO_TMP_MEMORY;
+
+    int rc;
+    if (GetKernelObjectSecurity(hPipe, OWNER_SECURITY_INFORMATION, pSecDesc, cbSecDesc, &cbSecDesc))
+    {
+        PSID pOwner = NULL;
+        BOOL fOwnerDefaulted = FALSE;
+        if (GetSecurityDescriptorOwner(pSecDesc, &pOwner, &fOwnerDefaulted))
+        {
+            RT_NOREF(fOwnerDefaulted);
+            rc = rtLocalIpcWinVerifyUserSid(pOwner);
+        }
+        else
+            rc = RTErrConvertFromWin32(GetLastError());
+    }
+    else
+        rc = RTErrConvertFromWin32(GetLastError());
+    RTMemTmpFree(pSecDesc);
     return rc;
 }
 
