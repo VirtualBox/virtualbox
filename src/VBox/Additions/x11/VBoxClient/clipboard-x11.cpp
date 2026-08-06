@@ -1,4 +1,4 @@
-/* $Id: clipboard-x11.cpp 114864 2026-08-06 10:23:36Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-x11.cpp 114867 2026-08-06 15:19:51Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard implementation.
  */
@@ -55,6 +55,220 @@
 
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+static void vbclX11TransferUnregister(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransfer);
+
+/** Resets the transfer key bound to the current asynchronous preparation. */
+static void vbclX11TransferStateResetKey(PSHCLX11TRANSFERSTATE pX11TransferState)
+{
+    pX11TransferState->idTransfer          = NIL_SHCLTRANSFERID;
+    pX11TransferState->uTransferGeneration = NIL_SHCLTRANSFERGEN;
+}
+
+/** Resets the key of the transfer backing the advertised URI-list data. */
+static void vbclX11TransferPublishedResetKey(PSHCLX11TRANSFERSTATE pX11TransferState)
+{
+    pX11TransferState->idPublishedTransfer          = NIL_SHCLTRANSFERID;
+    pX11TransferState->uPublishedTransferGeneration = NIL_SHCLTRANSFERGEN;
+}
+
+/**
+ * Checks whether a transfer is the exact transfer bound to the current
+ * asynchronous preparation.
+ */
+static bool vbclX11TransferStateMatches(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransfer)
+{
+    PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
+    return    pX11TransferState->fPreparing
+           && pX11TransferState->idTransfer          != NIL_SHCLTRANSFERID
+           && pX11TransferState->uTransferGeneration != NIL_SHCLTRANSFERGEN
+           && pX11TransferState->idTransfer          == ShClTransferGetID(pTransfer)
+           && pX11TransferState->uTransferGeneration == ShClTransferGetGeneration(pTransfer);
+}
+
+/** Checks whether a transfer backs the currently advertised URI-list data. */
+static bool vbclX11TransferPublishedMatches(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransfer)
+{
+    PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
+    return    pX11TransferState->idPublishedTransfer          != NIL_SHCLTRANSFERID
+           && pX11TransferState->uPublishedTransferGeneration != NIL_SHCLTRANSFERGEN
+           && pX11TransferState->idPublishedTransfer          == ShClTransferGetID(pTransfer)
+           && pX11TransferState->uPublishedTransferGeneration == ShClTransferGetGeneration(pTransfer);
+}
+
+/** Cancels the transfer backing URI-list data superseded by a new clipboard offer. */
+static void vbclX11TransferPublishedCancel(PSHCLCONTEXT pCtx)
+{
+    PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
+    if (pX11TransferState->idPublishedTransfer == NIL_SHCLTRANSFERID)
+        return;
+
+    PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(&pCtx->TransferCtx,
+                                                             pX11TransferState->idPublishedTransfer);
+    if (   pTransfer
+        && vbclX11TransferPublishedMatches(pCtx, pTransfer))
+    {
+        vbclX11TransferUnregister(pCtx, pTransfer);
+        if (ShClTransferGetStatus(pTransfer) == SHCLTRANSFERSTATUS_INITIALIZED)
+        {
+            int rc = VbglR3ClipboardTransferSendStatus(&pCtx->CmdCtx, pTransfer,
+                                                       SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
+            if (RT_FAILURE(rc))
+                LogRel(("Shared Clipboard: Canceling superseded transfer %RU16/%RU64 failed with %Rrc\n",
+                        ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rc));
+        }
+    }
+    else
+        LogRel2(("Shared Clipboard: Published transfer %RU16/%RU64 was already gone or replaced\n",
+                 pX11TransferState->idPublishedTransfer, pX11TransferState->uPublishedTransferGeneration));
+
+    vbclX11TransferPublishedResetKey(pX11TransferState);
+}
+
+/**
+ * Starts preparing HTTP-backed URI-list data for the current host clipboard offer.
+ *
+ * The request is issued by the clipboard service worker.  Its transfer is
+ * created and initialized later while that worker processes transfer-status
+ * messages, so the X11 event thread never waits for this operation.
+ */
+static int vbclX11TransferStateStart(PSHCLCONTEXT pCtx)
+{
+    PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
+    AssertReturn(!pX11TransferState->fPreparing, VERR_WRONG_ORDER);
+    AssertReturn(pX11TransferState->fFormats & VBOX_SHCL_FMT_URI_LIST, VERR_INVALID_PARAMETER);
+
+    pX11TransferState->fPreparing                = true;
+    pX11TransferState->uPreparingOfferGeneration = pX11TransferState->uOfferGeneration;
+    vbclX11TransferStateResetKey(pX11TransferState);
+
+    /* Preserve the existing protocol sequence: consume the URI-list clipboard
+     * data response before requesting the HTTP transfer.  The actual X11 data
+     * will be the URI list of HTTP URLs produced after transfer initialization. */
+    void    *pvData = NULL;
+    uint32_t cbData = 0;
+    int rc = VbglR3ClipboardReadDataEx(&pCtx->CmdCtx, VBOX_SHCL_FMT_URI_LIST, &pvData, &cbData);
+    RTMemFree(pvData);
+    if (RT_SUCCESS(rc))
+        rc = VbglR3ClipboardTransferRequest(&pCtx->CmdCtx);
+
+    if (RT_FAILURE(rc))
+    {
+        pX11TransferState->fPreparing = false;
+        vbclX11TransferStateResetKey(pX11TransferState);
+        LogRel(("Shared Clipboard: Starting asynchronous X11 transfer preparation failed with %Rrc\n", rc));
+    }
+    else
+        LogRel2(("Shared Clipboard: Preparing X11 URI list for clipboard offer generation %RU64\n",
+                 pX11TransferState->uPreparingOfferGeneration));
+
+    return rc;
+}
+
+/**
+ * Completes asynchronous preparation for an exact transfer ID and generation.
+ *
+ * A result which no longer matches the current clipboard offer is discarded.
+ * If the host clipboard changed while a transfer was being initialized, a new
+ * serialized request is started for the latest offer after the old transfer
+ * has been canceled.
+ */
+static void vbclX11TransferStateComplete(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransfer,
+                                               const char *pszUriList, size_t cbUriList, int rcPreparation)
+{
+    PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
+    if (!vbclX11TransferStateMatches(pCtx, pTransfer))
+    {
+        LogRel2(("Shared Clipboard: Ignoring URI-list preparation completion for unbound transfer %RU16/%RU64\n",
+                 ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer)));
+        return;
+    }
+
+    uint64_t const uPreparingOfferGeneration = pX11TransferState->uPreparingOfferGeneration;
+    bool const fCurrentOffer =    uPreparingOfferGeneration == pX11TransferState->uOfferGeneration
+                               && (pX11TransferState->fFormats & VBOX_SHCL_FMT_URI_LIST);
+
+    pX11TransferState->fPreparing = false;
+    vbclX11TransferStateResetKey(pX11TransferState);
+
+    bool fPublished = false;
+    if (RT_SUCCESS(rcPreparation) && fCurrentOffer)
+    {
+        if (!pszUriList || !cbUriList)
+            rcPreparation = VERR_SHCLPB_NO_DATA;
+        else if (cbUriList > UINT32_MAX)
+            rcPreparation = VERR_BUFFER_OVERFLOW;
+        else
+        {
+            rcPreparation = ShClX11ReportFormatsToX11AsyncEx(&pCtx->X11, pX11TransferState->fFormats,
+                                                              VBOX_SHCL_FMT_URI_LIST, pszUriList,
+                                                              (uint32_t)cbUriList);
+            if (RT_SUCCESS(rcPreparation))
+            {
+                fPublished = true;
+                pX11TransferState->idPublishedTransfer          = ShClTransferGetID(pTransfer);
+                pX11TransferState->uPublishedTransferGeneration = ShClTransferGetGeneration(pTransfer);
+                LogRel2(("Shared Clipboard: Advertised cached X11 URI list for transfer %RU16/%RU64, "
+                         "clipboard offer generation %RU64\n", ShClTransferGetID(pTransfer),
+                         ShClTransferGetGeneration(pTransfer), uPreparingOfferGeneration));
+            }
+        }
+    }
+
+    if (!fPublished)
+    {
+        if (RT_FAILURE(rcPreparation))
+            LogRel(("Shared Clipboard: Preparing X11 URI list for transfer %RU16/%RU64 failed with %Rrc\n",
+                    ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rcPreparation));
+        else
+            LogRel2(("Shared Clipboard: Discarding stale X11 URI list for transfer %RU16/%RU64\n",
+                     ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer)));
+
+        vbclX11TransferUnregister(pCtx, pTransfer);
+        if (ShClTransferGetStatus(pTransfer) == SHCLTRANSFERSTATUS_INITIALIZED)
+        {
+            int rc2 = VbglR3ClipboardTransferSendStatus(&pCtx->CmdCtx, pTransfer,
+                                                        SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
+            if (RT_FAILURE(rc2))
+                LogRel(("Shared Clipboard: Canceling unused transfer %RU16/%RU64 failed with %Rrc\n",
+                        ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rc2));
+        }
+    }
+
+    if (   uPreparingOfferGeneration != pX11TransferState->uOfferGeneration
+        && (pX11TransferState->fFormats & VBOX_SHCL_FMT_URI_LIST))
+    {
+        int rc2 = vbclX11TransferStateStart(pCtx);
+        if (RT_FAILURE(rc2))
+            LogRel(("Shared Clipboard: Restarting X11 transfer preparation failed with %Rrc\n", rc2));
+    }
+}
+
+/**
+ * Handles a new host clipboard offer without exposing an unprepared URI target.
+ */
+static int vbclX11ReportHostFormats(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats)
+{
+    PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
+    vbclX11TransferPublishedCancel(pCtx);
+    pX11TransferState->fFormats = fFormats;
+    pX11TransferState->uOfferGeneration++;
+    if (!pX11TransferState->uOfferGeneration)
+        pX11TransferState->uOfferGeneration = 1;
+
+    /* Non-transfer formats can be advertised immediately.  The URI-list bit is
+     * added by the completion callback together with its pre-seeded cache. */
+    int rc = ShClX11ReportFormatsToX11Async(&pCtx->X11, fFormats & ~VBOX_SHCL_FMT_URI_LIST);
+    if (   (fFormats & VBOX_SHCL_FMT_URI_LIST)
+        && !pX11TransferState->fPreparing)
+    {
+        int rc2 = vbclX11TransferStateStart(pCtx);
+        if (RT_SUCCESS(rc))
+            rc = rc2;
+    }
+
+    return rc;
+}
+
 /**
  * @copydoc SHCLTRANSFERCALLBACKS::pfnOnInitialize
  *
@@ -110,14 +324,50 @@ static DECLCALLBACK(int) vbclX11OnTransferInitializeCallback(PSHCLTRANSFERCALLBA
             break;
     }
 
+    if (   RT_FAILURE(rc)
+        && ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE
+        && vbclX11TransferStateMatches(pCtx, pTransfer))
+        vbclX11TransferStateComplete(pCtx, pTransfer, NULL, 0, rc);
+
     LogFlowFuncLeaveRC(rc);
     return rc;
 }
 
 /**
+ * @copydoc SHCLTRANSFERCALLBACKS::pfnOnInitialized
+ *
+ * Builds and publishes URI-list data only for the transfer ID and generation
+ * captured when the current asynchronous request was registered.
+ *
+ * @thread Clipboard main thread.
+ */
+static DECLCALLBACK(void) vbclX11OnTransferInitializedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
+{
+    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pCbCtx->pvUser;
+    AssertPtr(pCtx);
+
+    PSHCLTRANSFER pTransfer = pCbCtx->pTransfer;
+    AssertPtr(pTransfer);
+
+    if (   ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE
+        && vbclX11TransferStateMatches(pCtx, pTransfer))
+    {
+        char  *pszUriList = NULL;
+        size_t cbUriList  = 0;
+        int rc = ShClTransferHttpConvertToStringList(&pCtx->X11.HttpCtx.HttpServer, pTransfer,
+                                                     &pszUriList, &cbUriList);
+        vbclX11TransferStateComplete(pCtx, pTransfer, pszUriList, cbUriList, rc);
+        RTStrFree(pszUriList);
+    }
+}
+
+/**
  * @copydoc SHCLTRANSFERCALLBACKS::pfnOnRegistered
  *
- * This starts the HTTP server if not done yet and registers the transfer with it.
+ * This binds pending transfer preparation to the newly registered transfer's
+ * exact ID and generation, and starts the HTTP server if necessary.  The
+ * transfer itself is added to the HTTP server after its roots have been read by
+ * the initialization callback.
  *
  * @thread Clipboard main thread.
  */
@@ -136,6 +386,25 @@ static DECLCALLBACK(void) vbclX11OnTransferRegisteredCallback(PSHCLTRANSFERCALLB
     /* We only need to start the HTTP server when we actually receive data from the remote (host). */
     if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE) /* H->G */
     {
+        PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
+        /* H->G requests are serialized by fPreparing.  The first H->G
+         * registration is therefore the protocol response to the outstanding
+         * request.  Capture its immutable key once; later registration
+         * callbacks must not redirect this preparation to another transfer. */
+        if (   pX11TransferState->fPreparing
+            && pX11TransferState->idTransfer == NIL_SHCLTRANSFERID)
+        {
+            pX11TransferState->idTransfer          = ShClTransferGetID(pTransfer);
+            pX11TransferState->uTransferGeneration = ShClTransferGetGeneration(pTransfer);
+            LogRel2(("Shared Clipboard: Bound X11 transfer preparation to transfer %RU16/%RU64\n",
+                     pX11TransferState->idTransfer, pX11TransferState->uTransferGeneration));
+        }
+        else if (pX11TransferState->fPreparing)
+            LogRel2(("Shared Clipboard: Keeping X11 transfer preparation bound to transfer %RU16/%RU64; "
+                     "ignoring registration of %RU16/%RU64\n", pX11TransferState->idTransfer,
+                     pX11TransferState->uTransferGeneration, ShClTransferGetID(pTransfer),
+                     ShClTransferGetGeneration(pTransfer)));
+
         int rc2 = ShClTransferHttpServerMaybeStart(&pCtx->X11.HttpCtx);
         if (RT_FAILURE(rc2))
             LogRel(("Shared Clipboard: Registering HTTP transfer failed: %Rrc\n", rc2));
@@ -176,7 +445,13 @@ static void vbclX11TransferUnregister(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransfer
 static DECLCALLBACK(void) vbclX11OnTransferUnregisteredCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx, PSHCLTRANSFERCTX pTransferCtx)
 {
     RT_NOREF(pTransferCtx);
-    vbclX11TransferUnregister((PSHCLCONTEXT)pCbCtx->pvUser, pCbCtx->pTransfer);
+
+    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pCbCtx->pvUser;
+    if (vbclX11TransferStateMatches(pCtx, pCbCtx->pTransfer))
+        vbclX11TransferStateComplete(pCtx, pCbCtx->pTransfer, NULL, 0, VERR_CANCELLED);
+    if (vbclX11TransferPublishedMatches(pCtx, pCbCtx->pTransfer))
+        vbclX11TransferPublishedResetKey(&pCtx->X11TransferState);
+    vbclX11TransferUnregister(pCtx, pCbCtx->pTransfer);
 }
 
 /**
@@ -188,8 +463,13 @@ static DECLCALLBACK(void) vbclX11OnTransferUnregisteredCallback(PSHCLTRANSFERCAL
  */
 static DECLCALLBACK(void) vbclX11OnTransferCompletedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx, int rc)
 {
-    RT_NOREF(rc);
-    vbclX11TransferUnregister((PSHCLCONTEXT)pCbCtx->pvUser, pCbCtx->pTransfer);
+    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pCbCtx->pvUser;
+    if (vbclX11TransferStateMatches(pCtx, pCbCtx->pTransfer))
+        vbclX11TransferStateComplete(pCtx, pCbCtx->pTransfer, NULL, 0,
+                                           RT_SUCCESS(rc) ? VERR_SHCLPB_NO_DATA : rc);
+    if (vbclX11TransferPublishedMatches(pCtx, pCbCtx->pTransfer))
+        vbclX11TransferPublishedResetKey(&pCtx->X11TransferState);
+    vbclX11TransferUnregister(pCtx, pCbCtx->pTransfer);
 }
 
 /** @copydoc SHCLTRANSFERCALLBACKS::pfnOnError
@@ -244,48 +524,12 @@ static DECLCALLBACK(int) vbclX11OnRequestDataFromSourceCallback(PSHCLCONTEXT pCt
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
     if (uFmt == VBOX_SHCL_FMT_URI_LIST)
     {
-        rc = vbclX11ReadDataWorker(pCtx, uFmt, ppv, pcb, pvUser);
-        if (RT_SUCCESS(rc))
-        {
-            /* Request a new H->G transfer from the host.
-             * This is needed in order to get a transfer ID from the host we can initialize our own local transfer with.
-             * Transfer creation and set up will be done in VbglR3. */
-            rc = VbglR3ClipboardTransferRequest(&pCtx->CmdCtx);
-            if (RT_SUCCESS(rc))
-            {
-                PSHCLHTTPSERVER pSrv = &pCtx->X11.HttpCtx.HttpServer;
-
-                /* Wait until the HTTP server got the transfer registered, so that we have something to work with. */
-                rc = ShClTransferHttpServerWaitForStatusChange(pSrv, SHCLHTTPSERVERSTATUS_TRANSFER_REGISTERED, SHCL_TIMEOUT_DEFAULT_MS);
-                if (RT_SUCCESS(rc))
-                {
-                    PSHCLTRANSFER pTransfer = ShClTransferHttpServerGetTransferLast(pSrv);
-                    if (pTransfer)
-                    {
-                        rc = ShClTransferWaitForStatus(pTransfer, SHCL_TIMEOUT_DEFAULT_MS, SHCLTRANSFERSTATUS_INITIALIZED);
-                        if (RT_SUCCESS(rc))
-                        {
-                            char  *pszData;
-                            size_t cbData;
-                            rc = ShClTransferHttpConvertToStringList(pSrv, pTransfer, &pszData, &cbData);
-                            if (RT_SUCCESS(rc))
-                            {
-                                *ppv = pszData;
-                                *pcb = cbData;
-                                /* ppv has ownership of pszData now. */
-                            }
-                        }
-                    }
-                    else
-                    {
-                        AssertMsgFailed(("No registered transfer found for HTTP server\n"));
-                        rc = VERR_SHCLPB_TRANSFER_ID_NOT_FOUND;
-                    }
-                }
-                else
-                    LogRel(("Shared Clipboard: Could not start transfer, as no new HTTP transfer was registered in time\n"));
-            }
-        }
+        /* URI targets are marked cache-only when advertised, so the common
+         * X11 code normally handles a miss without invoking this callback.
+         * Refuse it here as well: never start or wait for a transfer from the
+         * X11 event thread. */
+        LogRel2(("Shared Clipboard: X11 URI-list conversion missed its prepared URI-list data cache\n"));
+        rc = VERR_SHCLPB_NO_DATA;
     }
     else /* Anything else */
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP */
@@ -335,6 +579,12 @@ static DECLCALLBACK(int) vbclX11ReportFormatsCallback(PSHCLCONTEXT pCtx, uint32_
 int VBClX11ClipboardInit(void)
 {
     LogFlowFuncEnter();
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+    RT_ZERO(g_Ctx.X11TransferState);
+    vbclX11TransferStateResetKey(&g_Ctx.X11TransferState);
+    vbclX11TransferPublishedResetKey(&g_Ctx.X11TransferState);
+#endif
 
     int rc = ShClEventSourceInit(&g_Ctx.EventSrc, 0 /* uID */);
     AssertRCReturn(rc, rc);
@@ -405,6 +655,7 @@ int VBClX11ClipboardMain(void)
     pCtx->CmdCtx.Transfers.Callbacks.cbUser = sizeof(SHCLCONTEXT);
 
     pCtx->CmdCtx.Transfers.Callbacks.pfnOnInitialize   = vbclX11OnTransferInitializeCallback;
+    pCtx->CmdCtx.Transfers.Callbacks.pfnOnInitialized  = vbclX11OnTransferInitializedCallback;
     pCtx->CmdCtx.Transfers.Callbacks.pfnOnRegistered   = vbclX11OnTransferRegisteredCallback;
     pCtx->CmdCtx.Transfers.Callbacks.pfnOnUnregistered = vbclX11OnTransferUnregisteredCallback;
     pCtx->CmdCtx.Transfers.Callbacks.pfnOnCompleted    = vbclX11OnTransferCompletedCallback;
@@ -458,7 +709,11 @@ int VBClX11ClipboardMain(void)
             {
                 case VBGLR3CLIPBOARDEVENTTYPE_REPORT_FORMATS:
                 {
-                    ShClX11ReportFormatsToX11Async(&g_Ctx.X11, pEvent->u.fReportedFormats);
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+                    rc = vbclX11ReportHostFormats(pCtx, pEvent->u.fReportedFormats);
+#else
+                    rc = ShClX11ReportFormatsToX11Async(&g_Ctx.X11, pEvent->u.fReportedFormats);
+#endif
                     break;
                 }
 

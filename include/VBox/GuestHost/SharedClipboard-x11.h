@@ -106,6 +106,39 @@ typedef struct SHCLX11FMTTABLE
 /** Defines an index of the X11 clipboard format table. */
 typedef unsigned SHCLX11FMTIDX;
 
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+/**
+ * Backend-neutral state for asynchronously preparing and publishing an X11
+ * HTTP-backed file-transfer offer.
+ *
+ * The backend which embeds this structure supplies the synchronization.  The
+ * offer generation rejects work completed for an old clipboard offer, while
+ * the transfer ID and generation identify the exact transfer associated with
+ * the preparation or currently advertised URI-list data.
+ */
+typedef struct SHCLX11TRANSFERSTATE
+{
+    /** Most recently reported source formats. */
+    SHCLFORMATS       fFormats;
+    /** Generation of the most recently reported source clipboard offer. */
+    uint64_t          uOfferGeneration;
+    /** Offer generation for which a transfer is currently being prepared. */
+    uint64_t          uPreparingOfferGeneration;
+    /** ID of the transfer bound to the current preparation request. */
+    SHCLTRANSFERID    idTransfer;
+    /** Generation of the transfer bound to the current request. */
+    SHCLTRANSFERGEN   uTransferGeneration;
+    /** ID of the transfer backing the currently advertised URI-list data. */
+    SHCLTRANSFERID    idPublishedTransfer;
+    /** Generation of the transfer backing the advertised URI-list data. */
+    SHCLTRANSFERGEN   uPublishedTransferGeneration;
+    /** Whether a transfer preparation request is outstanding. */
+    bool              fPreparing;
+} SHCLX11TRANSFERSTATE;
+/** Pointer to X11 transfer state. */
+typedef SHCLX11TRANSFERSTATE *PSHCLX11TRANSFERSTATE;
+#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP */
+
 /**
  * Structure for maintaining a Shared Clipboard context on X11 platforms.
  */
@@ -149,6 +182,8 @@ typedef struct SHCLX11CTX
 #endif
     /** What kind of formats does VBox have to offer? */
     SHCLFORMATS      vboxFormats;
+    /** Formats which must be served exclusively from the cache. */
+    SHCLFORMATS      fCacheOnlyFormats;
     /** Internal cache of VBox clipboard formats. */
     SHCLCACHE        Cache;
     /** When we wish the clipboard to exit, we have to wake up the event
@@ -207,6 +242,13 @@ typedef struct SHCLX11REQUEST
         {
             /** VBox formats to announce. */
             SHCLFORMATS      fFormats;
+            /** Optional format whose data should be cached before announcing
+             *  the formats.  VBOX_SHCL_FMT_NONE if no data was supplied. */
+            SHCLFORMAT       uFmtCache;
+            /** Optional cache data owned by the request. */
+            void            *pvCache;
+            /** Size of the optional cache data in bytes. */
+            uint32_t         cbCache;
         } Formats;
         /** Read request. */
         struct
@@ -269,7 +311,10 @@ int ShClX11Term(PSHCLX11CTX pCtx);
 int ShClX11ThreadStart(PSHCLX11CTX pCtx, bool grab);
 int ShClX11ThreadStartEx(PSHCLX11CTX pCtx, const char *pszName, bool fGrab);
 int ShClX11ThreadStop(PSHCLX11CTX pCtx);
-int ShClX11ReportFormatsToX11Async(PSHCLX11CTX pCtx, SHCLFORMATS vboxFormats);
+int ShClX11ReportFormatsToX11Async(PSHCLX11CTX pCtx, SHCLFORMATS fFormats);
+/** Reports formats after atomically seeding one X11 clipboard cache entry. */
+int ShClX11ReportFormatsToX11AsyncEx(PSHCLX11CTX pCtx, SHCLFORMATS fFormats, SHCLFORMAT uFmtCache,
+                                     const void *pvCache, uint32_t cbCache);
 int ShClX11ReadDataFromX11Async(PSHCLX11CTX pCtx, SHCLFORMAT uFmt, uint32_t cbMax, PSHCLEVENT pEvent);
 int ShClX11ReadDataFromX11Ex(PSHCLX11CTX pCtx, PSHCLEVENTSOURCE pEventSource, RTMSINTERVAL msTimeout, SHCLFORMAT uFmt, void **ppvBuf, uint32_t *pcbBuf);
 int ShClX11ReadDataFromX11(PSHCLX11CTX pCtx, PSHCLEVENTSOURCE pEventSource, RTMSINTERVAL msTimeout, SHCLFORMAT uFmt, void *pvBuf, uint32_t cbBuf, uint32_t *pcbBuf);
@@ -283,4 +328,3 @@ int ShClX11TransferConvertFromX11(const char *pvData, size_t cbData, char **ppsz
 /** @} */
 
 #endif /* !VBOX_INCLUDED_GuestHost_SharedClipboard_x11_h */
-
