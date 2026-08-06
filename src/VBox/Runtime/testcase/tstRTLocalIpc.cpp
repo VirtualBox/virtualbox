@@ -1,4 +1,4 @@
-/* $Id: tstRTLocalIpc.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: tstRTLocalIpc.cpp 114874 2026-08-06 21:28:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT Testcase - RTLocalIpc API.
  */
@@ -41,8 +41,10 @@
 #include <iprt/localipc.h>
 
 #include <iprt/asm.h>
+#include <iprt/dir.h>
 #include <iprt/env.h>
 #include <iprt/err.h>
+#include <iprt/fs.h>
 #include <iprt/initterm.h>
 #include <iprt/mem.h>
 #include <iprt/message.h>
@@ -53,6 +55,13 @@
 #include <iprt/test.h>
 #include <iprt/thread.h>
 #include <iprt/time.h>
+#include <iprt/utf16.h>
+
+#ifdef RT_OS_WINDOWS
+# include <iprt/win/windows.h>
+#else
+# include <unistd.h>
+#endif
 
 
 /*********************************************************************************************************************************
@@ -98,6 +107,9 @@ static void testBasics(void)
 
     RTTESTI_CHECK_RC(RTLocalIpcSessionCancel(NULL), VERR_INVALID_HANDLE);
     RTTESTI_CHECK_RC(RTLocalIpcSessionClose(NULL), VINF_SUCCESS);
+    RTPROCESS Process = NIL_RTPROCESS;
+    RTTESTI_CHECK_RC(RTLocalIpcSessionQueryProcess(NULL, &Process), VERR_INVALID_HANDLE);
+    RTTESTI_CHECK_RC(RTLocalIpcSessionVerifySameUser(NULL), VERR_INVALID_HANDLE);
 
     /* Basic client creation / destruction. */
     RTTESTI_CHECK_RC_RETV(rc = RTLocalIpcSessionConnect(&hIpcSession, "BasicTest", 0), VERR_FILE_NOT_FOUND);
@@ -107,6 +119,262 @@ static void testBasics(void)
 }
 
 
+#ifndef RT_OS_WINDOWS
+static void testRestrictedNamespaceProperties(void)
+{
+    RTTestISub("Restricted namespace properties");
+
+    char szUserDir[] = "/tmp/tstRTLocalIpc-XXXXXX";
+    int rc = RTDirCreateTemp(szUserDir, 0700);
+    RTTESTI_CHECK_RC_RETV(rc, VINF_SUCCESS);
+
+    char *pszSavedRuntimeDir = RTEnvDupEx(RTENV_DEFAULT, "XDG_RUNTIME_DIR");
+    rc = RTEnvSet("XDG_RUNTIME_DIR", szUserDir);
+    RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+
+    RTLOCALIPCSERVER hIpcServer = NIL_RTLOCALIPCSERVER;
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTLocalIpcServerCreate(&hIpcServer, "tstRTLocalIpcNamespace",
+                                    RTLOCALIPC_FLAGS_RESTRICT_TO_USER);
+        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+    }
+
+    char szSocket[RTPATH_MAX];
+    int rcPath = RTStrCopy(szSocket, sizeof(szSocket), szUserDir);
+    if (RT_SUCCESS(rcPath))
+        rcPath = RTPathAppend(szSocket, sizeof(szSocket), ".iprt-tstRTLocalIpcNamespace");
+    RTTESTI_CHECK_RC(rcPath, VINF_SUCCESS);
+    if (RT_SUCCESS(rc) && RT_SUCCESS(rcPath))
+    {
+        RTFSOBJINFO ObjInfo;
+        RTTESTI_CHECK_RC(rcPath = RTPathQueryInfoEx(szSocket, &ObjInfo, RTFSOBJATTRADD_UNIX, RTPATH_F_ON_LINK),
+                         VINF_SUCCESS);
+        if (RT_SUCCESS(rcPath))
+        {
+            RTTESTI_CHECK(RTFS_IS_SOCKET(ObjInfo.Attr.fMode));
+            RTTESTI_CHECK((ObjInfo.Attr.fMode & RTFS_UNIX_ALL_ACCESS_PERMS) == (RTFS_UNIX_IRUSR | RTFS_UNIX_IWUSR));
+            RTTESTI_CHECK(ObjInfo.Attr.u.Unix.uid == (RTUID)geteuid());
+        }
+    }
+
+    if (hIpcServer != NIL_RTLOCALIPCSERVER)
+        RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hIpcServer), VINF_OBJECT_DESTROYED);
+    if (RT_SUCCESS(rcPath))
+    {
+        RTFSOBJINFO ObjInfo;
+        rcPath = RTPathQueryInfoEx(szSocket, &ObjInfo, RTFSOBJATTRADD_NOTHING, RTPATH_F_ON_LINK);
+        RTTESTI_CHECK(rcPath == VERR_FILE_NOT_FOUND || rcPath == VERR_PATH_NOT_FOUND);
+    }
+
+    /* An unsafe runtime directory must be ignored in favor of a protected
+       fallback namespace. */
+    char szFallbackHome[] = "/tmp/tstRTLocalIpc-home-XXXXXX";
+    RTTESTI_CHECK_RC(rc = RTDirCreateTemp(szFallbackHome, 0700), VINF_SUCCESS);
+    char *pszSavedHome = RTEnvDupEx(RTENV_DEFAULT, "HOME");
+    if (RT_SUCCESS(rc))
+        RTTESTI_CHECK_RC(rc = RTEnvSet("HOME", szFallbackHome), VINF_SUCCESS);
+    RTTESTI_CHECK_RC(rc = RTPathSetMode(szUserDir, RTFS_UNIX_IRWXU | RTFS_UNIX_IRWXG | RTFS_UNIX_IRWXO),
+                     VINF_SUCCESS);
+    if (RT_SUCCESS(rc))
+        RTTESTI_CHECK_RC(rc = RTEnvSet("XDG_RUNTIME_DIR", szUserDir), VINF_SUCCESS);
+    hIpcServer = NIL_RTLOCALIPCSERVER;
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTLocalIpcServerCreate(&hIpcServer, "tstRTLocalIpcUnsafeNamespace",
+                                    RTLOCALIPC_FLAGS_RESTRICT_TO_USER);
+        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+    }
+
+    char szUnsafeSocket[RTPATH_MAX];
+    int rcUnsafe = RTStrCopy(szUnsafeSocket, sizeof(szUnsafeSocket), szUserDir);
+    if (RT_SUCCESS(rcUnsafe))
+        rcUnsafe = RTPathAppend(szUnsafeSocket, sizeof(szUnsafeSocket), ".iprt-tstRTLocalIpcUnsafeNamespace");
+    RTTESTI_CHECK_RC(rcUnsafe, VINF_SUCCESS);
+    if (RT_SUCCESS(rcUnsafe))
+    {
+        RTFSOBJINFO ObjInfo;
+        rcUnsafe = RTPathQueryInfoEx(szUnsafeSocket, &ObjInfo, RTFSOBJATTRADD_NOTHING, RTPATH_F_ON_LINK);
+        RTTESTI_CHECK(rcUnsafe == VERR_FILE_NOT_FOUND || rcUnsafe == VERR_PATH_NOT_FOUND);
+    }
+    if (hIpcServer != NIL_RTLOCALIPCSERVER)
+        RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hIpcServer), VINF_OBJECT_DESTROYED);
+    RTTESTI_CHECK_RC(RTPathSetMode(szUserDir, RTFS_UNIX_IRWXU), VINF_SUCCESS);
+    if (pszSavedHome)
+        RTTESTI_CHECK_RC(RTEnvSet("HOME", pszSavedHome), VINF_SUCCESS);
+    else
+        RTTESTI_CHECK_RC(RTEnvUnset("HOME"), VINF_SUCCESS);
+    RTStrFree(pszSavedHome);
+    char szFallbackNamespace[RTPATH_MAX];
+    RTTESTI_CHECK_RC(rcUnsafe = RTStrCopy(szFallbackNamespace, sizeof(szFallbackNamespace), szFallbackHome), VINF_SUCCESS);
+    if (RT_SUCCESS(rcUnsafe))
+        RTTESTI_CHECK_RC(rcUnsafe = RTPathAppend(szFallbackNamespace, sizeof(szFallbackNamespace), ".iprt-localipc"),
+                         VINF_SUCCESS);
+    if (RT_SUCCESS(rcUnsafe))
+        RTTESTI_CHECK_RC(RTDirRemove(szFallbackNamespace), VINF_SUCCESS);
+    RTTESTI_CHECK_RC(RTDirRemove(szFallbackHome), VINF_SUCCESS);
+
+    if (pszSavedRuntimeDir)
+        RTTESTI_CHECK_RC(RTEnvSet("XDG_RUNTIME_DIR", pszSavedRuntimeDir), VINF_SUCCESS);
+    else
+        RTTESTI_CHECK_RC(RTEnvUnset("XDG_RUNTIME_DIR"), VINF_SUCCESS);
+    RTStrFree(pszSavedRuntimeDir);
+    RTTESTI_CHECK_RC(RTDirRemove(szUserDir), VINF_SUCCESS);
+}
+#endif /* !RT_OS_WINDOWS */
+
+
+#ifdef RT_OS_WINDOWS
+static void testRestrictedNamespaceProperties(void)
+{
+    RTTestISub("Restricted namespace properties");
+
+    HANDLE hToken = NULL;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
+    {
+        RTTestIFailed("OpenProcessToken failed: %u", GetLastError());
+        return;
+    }
+
+    DWORD idSession = 0;
+    DWORD cbTokenInfo = 0;
+    if (!GetTokenInformation(hToken, TokenSessionId, &idSession, sizeof(idSession), &cbTokenInfo))
+    {
+        DWORD const dwErr = GetLastError();
+        CloseHandle(hToken);
+        RTTestIFailed("Querying TokenSessionId failed: %u", dwErr);
+        return;
+    }
+
+    TOKEN_STATISTICS TokenStats;
+    cbTokenInfo = 0;
+    if (!GetTokenInformation(hToken, TokenStatistics, &TokenStats, sizeof(TokenStats), &cbTokenInfo))
+    {
+        DWORD const dwErr = GetLastError();
+        CloseHandle(hToken);
+        RTTestIFailed("Querying TokenStatistics failed: %u", dwErr);
+        return;
+    }
+    CloseHandle(hToken);
+    uint32_t const idLogonHigh = (uint32_t)TokenStats.AuthenticationId.HighPart;
+    uint32_t const idLogonLow  = TokenStats.AuthenticationId.LowPart;
+
+    char szName[128];
+    ssize_t cch = RTStrPrintf2(szName, sizeof(szName), "tstRTLocalIpcNamespace-%RU32", (uint32_t)RTProcSelf());
+    RTTESTI_CHECK_RETV(cch > 0 && (size_t)cch < sizeof(szName));
+
+    char szOldName[RTPATH_MAX];
+    cch = RTStrPrintf2(szOldName, sizeof(szOldName), "\\\\.\\pipe\\LOCAL\\IPRT-%s", szName);
+    RTTESTI_CHECK_RETV(cch > 0 && (size_t)cch < sizeof(szOldName));
+
+    char szOtherSessionName[RTPATH_MAX];
+    cch = RTStrPrintf2(szOtherSessionName, sizeof(szOtherSessionName),
+                      "\\\\.\\pipe\\LOCAL\\IPRT-%08RX32-%08RX32%08RX32-%s",
+                      (uint32_t)idSession ^ RT_BIT_32(31), idLogonHigh, idLogonLow, szName);
+    RTTESTI_CHECK_RETV(cch > 0 && (size_t)cch < sizeof(szOtherSessionName));
+
+    char szOtherLogonName[RTPATH_MAX];
+    cch = RTStrPrintf2(szOtherLogonName, sizeof(szOtherLogonName),
+                      "\\\\.\\pipe\\LOCAL\\IPRT-%08RX32-%08RX32%08RX32-%s",
+                      (uint32_t)idSession, idLogonHigh ^ RT_BIT_32(31), idLogonLow, szName);
+    RTTESTI_CHECK_RETV(cch > 0 && (size_t)cch < sizeof(szOtherLogonName));
+
+    char szExpectedName[RTPATH_MAX];
+    cch = RTStrPrintf2(szExpectedName, sizeof(szExpectedName),
+                      "\\\\.\\pipe\\LOCAL\\IPRT-%08RX32-%08RX32%08RX32-%s",
+                      (uint32_t)idSession, idLogonHigh, idLogonLow, szName);
+    RTTESTI_CHECK_RETV(cch > 0 && (size_t)cch < sizeof(szExpectedName));
+
+    RTLOCALIPCSERVER hOldName = NIL_RTLOCALIPCSERVER;
+    int rc = RTLocalIpcServerCreate(&hOldName, szOldName, RTLOCALIPC_FLAGS_NATIVE_NAME);
+    RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+
+    RTLOCALIPCSERVER hOtherSession = NIL_RTLOCALIPCSERVER;
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTLocalIpcServerCreate(&hOtherSession, szOtherSessionName, RTLOCALIPC_FLAGS_NATIVE_NAME);
+        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+    }
+
+    RTLOCALIPCSERVER hOtherLogon = NIL_RTLOCALIPCSERVER;
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTLocalIpcServerCreate(&hOtherLogon, szOtherLogonName, RTLOCALIPC_FLAGS_NATIVE_NAME);
+        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+    }
+
+    RTLOCALIPCSERVER hRestricted = NIL_RTLOCALIPCSERVER;
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTLocalIpcServerCreate(&hRestricted, szName, RTLOCALIPC_FLAGS_RESTRICT_TO_USER);
+        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+    }
+
+    RTLOCALIPCSERVER hExpectedCollision = NIL_RTLOCALIPCSERVER;
+    if (RT_SUCCESS(rc))
+    {
+        int const rcCollision = RTLocalIpcServerCreate(&hExpectedCollision, szExpectedName,
+                                                       RTLOCALIPC_FLAGS_NATIVE_NAME);
+        RTTESTI_CHECK_RC(rcCollision, VERR_ACCESS_DENIED);
+    }
+
+    if (hRestricted != NIL_RTLOCALIPCSERVER)
+    {
+        PRTUTF16 pwszExpectedName = NULL;
+        int rcRaw = RTStrToUtf16(szExpectedName, &pwszExpectedName);
+        RTTESTI_CHECK_RC(rcRaw, VINF_SUCCESS);
+        if (RT_SUCCESS(rcRaw))
+        {
+            HANDLE hVanishedClient = CreateFileW((LPCWSTR)pwszExpectedName,
+                                                 GENERIC_READ | GENERIC_WRITE,
+                                                 0 /*dwShareMode*/, NULL /*pSecurityAttributes*/, OPEN_EXISTING,
+                                                 FILE_FLAG_OVERLAPPED | SECURITY_SQOS_PRESENT | SECURITY_IDENTIFICATION,
+                                                 NULL /*hTemplateFile*/);
+            if (hVanishedClient == INVALID_HANDLE_VALUE)
+                RTTestIFailed("Opening the raw restricted pipe failed: %u", GetLastError());
+            else
+            {
+                RTTESTI_CHECK(CloseHandle(hVanishedClient));
+
+                RTLOCALIPCSESSION hGoneSession = NIL_RTLOCALIPCSESSION;
+                int const rcGone = RTLocalIpcServerListen(hRestricted, &hGoneSession);
+                RTTESTI_CHECK(rcGone == VERR_TRY_AGAIN || rcGone == VINF_SUCCESS);
+                if (hGoneSession != NIL_RTLOCALIPCSESSION)
+                    RTTESTI_CHECK_RC(RTLocalIpcSessionClose(hGoneSession), VINF_OBJECT_DESTROYED);
+
+                RTLOCALIPCSESSION hClientSession = NIL_RTLOCALIPCSESSION;
+                int const rcClient = RTLocalIpcSessionConnect(&hClientSession, szName,
+                                                               RTLOCALIPC_C_FLAGS_ALLOW_IDENTIFICATION
+                                                             | RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER);
+                RTTESTI_CHECK_RC(rcClient, VINF_SUCCESS);
+                if (RT_SUCCESS(rcClient))
+                {
+                    RTLOCALIPCSESSION hServerSession = NIL_RTLOCALIPCSESSION;
+                    int const rcServer = RTLocalIpcServerListen(hRestricted, &hServerSession);
+                    RTTESTI_CHECK_RC(rcServer, VINF_SUCCESS);
+                    if (hServerSession != NIL_RTLOCALIPCSESSION)
+                        RTTESTI_CHECK_RC(RTLocalIpcSessionClose(hServerSession), VINF_OBJECT_DESTROYED);
+                    RTTESTI_CHECK_RC(RTLocalIpcSessionClose(hClientSession), VINF_OBJECT_DESTROYED);
+                }
+            }
+        }
+        RTUtf16Free(pwszExpectedName);
+    }
+
+    if (hExpectedCollision != NIL_RTLOCALIPCSERVER)
+        RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hExpectedCollision), VINF_OBJECT_DESTROYED);
+    if (hRestricted != NIL_RTLOCALIPCSERVER)
+        RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hRestricted), VINF_OBJECT_DESTROYED);
+    if (hOtherLogon != NIL_RTLOCALIPCSERVER)
+        RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hOtherLogon), VINF_OBJECT_DESTROYED);
+    if (hOtherSession != NIL_RTLOCALIPCSERVER)
+        RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hOtherSession), VINF_OBJECT_DESTROYED);
+    if (hOldName != NIL_RTLOCALIPCSERVER)
+        RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hOldName), VINF_OBJECT_DESTROYED);
+}
+#endif /* RT_OS_WINDOWS */
+
+
 
 /*********************************************************************************************************************************
 *                                                                                                                                *
@@ -114,9 +382,25 @@ static void testBasics(void)
 *                                                                                                                                *
 *********************************************************************************************************************************/
 
+typedef struct TESTSERVERLISTENARGS
+{
+    /** The server handle. */
+    RTLOCALIPCSERVER hIpcServer;
+    /** Whether the client is expected to be a different process. */
+    bool             fExpectOtherProcess;
+} TESTSERVERLISTENARGS;
+/** Pointer to server listener thread arguments. */
+typedef TESTSERVERLISTENARGS *PTESTSERVERLISTENARGS;
+
+/** The connection worker runs in a different process. */
+#define TEST_CONNECTION_F_OTHER_PROCESS  RT_BIT_32(0)
+/** The connection worker must use the protected user namespace. */
+#define TEST_CONNECTION_F_RESTRICTED     RT_BIT_32(1)
+
+
 static DECLCALLBACK(int) testServerListenThread(RTTHREAD hSelf, void *pvUser)
 {
-    RTLOCALIPCSERVER hIpcServer = (RTLOCALIPCSERVER)pvUser;
+    PTESTSERVERLISTENARGS pArgs = (PTESTSERVERLISTENARGS)pvUser;
     RTTEST_CHECK_RC_OK_RET(g_hTest, RTTestSetDefault(g_hTest, NULL), rcCheck);
 
     RTTESTI_CHECK_RC_OK(RTThreadUserSignal(hSelf));
@@ -125,11 +409,38 @@ static DECLCALLBACK(int) testServerListenThread(RTTHREAD hSelf, void *pvUser)
     for (;;)
     {
         RTLOCALIPCSESSION hIpcSession;
-        rc = RTLocalIpcServerListen(hIpcServer, &hIpcSession);
+        rc = RTLocalIpcServerListen(pArgs->hIpcServer, &hIpcSession);
         if (RT_SUCCESS(rc))
         {
             RTThreadSleep(8); /* windows output fudge (purely esthetical) */
             RTTestIPrintf(RTTESTLVL_INFO, "testServerListenThread: Got new client connection.\n");
+            uint8_t bIdentity = 0;
+            RTTESTI_CHECK_RC(rc = RTLocalIpcSessionRead(hIpcSession, &bIdentity, sizeof(bIdentity), NULL), VINF_SUCCESS);
+            if (RT_SUCCESS(rc))
+            {
+                RTTESTI_CHECK(bIdentity == UINT8_C(0x42));
+#if   defined(RT_OS_WINDOWS) || defined(RT_OS_LINUX)  || defined(RT_OS_DARWIN) \
+   || defined(RT_OS_FREEBSD) || defined(RT_OS_NETBSD) || defined(RT_OS_OPENBSD) || defined(RT_OS_SOLARIS)
+                RTTESTI_CHECK_RC(RTLocalIpcSessionVerifySameUser(hIpcSession), VINF_SUCCESS);
+#else
+                RTTESTI_CHECK_RC(RTLocalIpcSessionVerifySameUser(hIpcSession), VERR_NOT_SUPPORTED);
+#endif
+            }
+#ifdef RT_OS_WINDOWS
+            RTPROCESS Process = NIL_RTPROCESS;
+            RTTESTI_CHECK_RC(rc = RTLocalIpcSessionQueryProcess(hIpcSession, &Process), VINF_SUCCESS);
+            if (RT_SUCCESS(rc))
+            {
+                if (pArgs->fExpectOtherProcess)
+                    RTTESTI_CHECK(Process != NIL_RTPROCESS && Process != RTProcSelf());
+                else
+                    RTTESTI_CHECK(Process == RTProcSelf());
+
+                RTPROCESS ProcessAgain = NIL_RTPROCESS;
+                RTTESTI_CHECK_RC(RTLocalIpcSessionQueryProcess(hIpcSession, &ProcessAgain), VINF_SUCCESS);
+                RTTESTI_CHECK(ProcessAgain == Process);
+            }
+#endif
             RTTESTI_CHECK_RC(RTLocalIpcSessionClose(hIpcSession), VINF_OBJECT_DESTROYED);
         }
         else
@@ -148,12 +459,46 @@ static DECLCALLBACK(int) testServerListenThread(RTTHREAD hSelf, void *pvUser)
 static DECLCALLBACK(int) tstRTLocalIpcSessionConnectionChild(RTTHREAD hSelf, void *pvUser)
 {
     RTLOCALIPCSESSION hClientSession;
-    RT_NOREF_PV(hSelf); RT_NOREF_PV(pvUser);
+    RT_NOREF_PV(hSelf);
+
+    uintptr_t const fWorker = (uintptr_t)pvUser;
+    uint32_t fConnect = RTLOCALIPC_C_FLAGS_ALLOW_IDENTIFICATION;
+    if (fWorker & TEST_CONNECTION_F_RESTRICTED)
+        fConnect |= RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER;
 
     RTTEST_CHECK_RC_OK_RET(g_hTest, RTTestSetDefault(g_hTest, NULL), rcCheck);
 
-    RTTEST_CHECK_RC_RET(g_hTest, RTLocalIpcSessionConnect(&hClientSession, "tstRTLocalIpcSessionConnection",0 /* Flags */),
+    RTTEST_CHECK_RC_RET(g_hTest, RTLocalIpcSessionConnect(&hClientSession, "tstRTLocalIpcSessionConnection",
+                                                         fConnect),
                         VINF_SUCCESS, rcCheck);
+    uint8_t const bIdentity = UINT8_C(0x42);
+    RTTEST_CHECK_RC_OK_RET(g_hTest, RTLocalIpcSessionWrite(hClientSession, &bIdentity, sizeof(bIdentity)), rcCheck);
+    RTTEST_CHECK_RC_OK_RET(g_hTest, RTLocalIpcSessionFlush(hClientSession), rcCheck);
+#if   defined(RT_OS_WINDOWS) || defined(RT_OS_LINUX)  || defined(RT_OS_DARWIN) \
+   || defined(RT_OS_FREEBSD) || defined(RT_OS_NETBSD) || defined(RT_OS_OPENBSD) || defined(RT_OS_SOLARIS)
+    RTTEST_CHECK_RC_RET(g_hTest, RTLocalIpcSessionVerifySameUser(hClientSession), VINF_SUCCESS, rcCheck);
+#else
+    RTTEST_CHECK_RC_RET(g_hTest, RTLocalIpcSessionVerifySameUser(hClientSession), VERR_NOT_SUPPORTED, rcCheck);
+#endif
+#ifdef RT_OS_WINDOWS
+    RTPROCESS ProcessExpected = RTProcSelf();
+    if (fWorker & TEST_CONNECTION_F_OTHER_PROCESS)
+        RTTEST_CHECK_RC_OK_RET(g_hTest, RTProcQueryParent(RTProcSelf(), &ProcessExpected), rcCheck);
+
+    RTPROCESS Process = NIL_RTPROCESS;
+    RTTEST_CHECK_RC_RET(g_hTest, RTLocalIpcSessionQueryProcess(hClientSession, &Process), VINF_SUCCESS, rcCheck);
+    RTTEST_CHECK_RET(g_hTest, Process == ProcessExpected, VERR_GENERAL_FAILURE);
+    RTPROCESS ProcessAgain = NIL_RTPROCESS;
+    RTTEST_CHECK_RC_RET(g_hTest, RTLocalIpcSessionQueryProcess(hClientSession, &ProcessAgain), VINF_SUCCESS, rcCheck);
+    RTTEST_CHECK_RET(g_hTest, ProcessAgain == Process, VERR_GENERAL_FAILURE);
+#else
+    RT_NOREF_PV(pvUser);
+#endif
+#if   defined(RT_OS_WINDOWS) || defined(RT_OS_LINUX)  || defined(RT_OS_DARWIN) \
+   || defined(RT_OS_FREEBSD) || defined(RT_OS_NETBSD) || defined(RT_OS_OPENBSD) || defined(RT_OS_SOLARIS)
+    RTTEST_CHECK_RC_RET(g_hTest, RTLocalIpcSessionCancel(hClientSession), VINF_SUCCESS, rcCheck);
+    RTTEST_CHECK_RC_RET(g_hTest, RTLocalIpcSessionVerifySameUser(hClientSession), VERR_CANCELLED, rcCheck);
+#endif
     RTTEST_CHECK_RC_RET(g_hTest, RTLocalIpcSessionClose(hClientSession),
                         VINF_OBJECT_DESTROYED, rcCheck);
 
@@ -161,23 +506,93 @@ static DECLCALLBACK(int) tstRTLocalIpcSessionConnectionChild(RTTHREAD hSelf, voi
 }
 
 
-static void testSessionConnection(const char *pszExecPath)
+static void testSessionConnection(const char *pszExecPath, uint32_t fServerFlags)
 {
-    RTTestISub(!pszExecPath ? "Connect from thread" : "Connect from child");
+    if (fServerFlags & RTLOCALIPC_FLAGS_RESTRICT_TO_USER)
+        RTTestISub(!pszExecPath ? "Restricted connect from thread" : "Restricted connect from child");
+    else
+        RTTestISub(!pszExecPath ? "Connect from thread" : "Connect from child");
+
+    /* Occupy the legacy global endpoint while testing the protected namespace. */
+    bool const fRestricted = RT_BOOL(fServerFlags & RTLOCALIPC_FLAGS_RESTRICT_TO_USER);
+    int rc;
+#ifdef RT_OS_WINDOWS
+    RTLOCALIPCSERVER hSquatter = NIL_RTLOCALIPCSERVER;
+    if (fRestricted)
+        RTTESTI_CHECK_RC_RETV(RTLocalIpcServerCreate(&hSquatter, "tstRTLocalIpcSessionConnection", 0 /*fFlags*/),
+                              VINF_SUCCESS);
+#else
+    char szSquatter[RTPATH_MAX];
+    szSquatter[0] = '\0';
+    if (fRestricted)
+    {
+        RTTESTI_CHECK(RTStrPrintf(szSquatter, sizeof(szSquatter), "/tmp/.iprt-localipc-%s",
+                                 "tstRTLocalIpcSessionConnection") > 0);
+        int const rcUnlink = RTPathUnlink(szSquatter, 0 /*fUnlink*/);
+        RTTESTI_CHECK(rcUnlink == VINF_SUCCESS || rcUnlink == VERR_FILE_NOT_FOUND || rcUnlink == VERR_PATH_NOT_FOUND);
+        RTTESTI_CHECK_RC_RETV(RTDirCreate(szSquatter, 0700, 0 /*fCreate*/), VINF_SUCCESS);
+    }
+#endif
+
+#ifndef RT_OS_WINDOWS
+    char szRestrictedDir[] = "/tmp/tstRTLocalIpc-restricted-XXXXXX";
+    char *pszSavedRuntimeDir = NULL;
+    if (fRestricted)
+    {
+        rc = RTDirCreateTemp(szRestrictedDir, 0700);
+        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+        if (RT_FAILURE(rc))
+        {
+            RTDirRemove(szSquatter);
+            return;
+        }
+        pszSavedRuntimeDir = RTEnvDupEx(RTENV_DEFAULT, "XDG_RUNTIME_DIR");
+        rc = RTEnvSet("XDG_RUNTIME_DIR", szRestrictedDir);
+        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+        if (RT_FAILURE(rc))
+        {
+            RTStrFree(pszSavedRuntimeDir);
+            RTDirRemove(szRestrictedDir);
+            RTDirRemove(szSquatter);
+            return;
+        }
+    }
+#endif
 
     /*
      * Create the test server.
      */
-    RTLOCALIPCSERVER hIpcServer;
-    RTTESTI_CHECK_RC_RETV(RTLocalIpcServerCreate(&hIpcServer, "tstRTLocalIpcSessionConnection", 0), VINF_SUCCESS);
+    RTLOCALIPCSERVER hIpcServer = NIL_RTLOCALIPCSERVER;
+    rc = RTLocalIpcServerCreate(&hIpcServer, "tstRTLocalIpcSessionConnection", fServerFlags);
+    RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+    if (RT_FAILURE(rc))
+    {
+#ifdef RT_OS_WINDOWS
+        RTLocalIpcServerDestroy(hSquatter);
+#else
+        if (fRestricted)
+        {
+            if (pszSavedRuntimeDir)
+                RTEnvSet("XDG_RUNTIME_DIR", pszSavedRuntimeDir);
+            else
+                RTEnvUnset("XDG_RUNTIME_DIR");
+            RTStrFree(pszSavedRuntimeDir);
+            RTDirRemove(szRestrictedDir);
+            RTDirRemove(szSquatter);
+        }
+#endif
+        return;
+    }
 
     /*
      * Create worker thread that listens and closes incoming connections until
      * cancelled.
      */
-    int rc;
     RTTHREAD hListenThread;
-    RTTESTI_CHECK_RC_OK(rc = RTThreadCreate(&hListenThread, testServerListenThread, hIpcServer, 0 /* Stack */,
+    TESTSERVERLISTENARGS Args;
+    Args.hIpcServer          = hIpcServer;
+    Args.fExpectOtherProcess = pszExecPath != NULL;
+    RTTESTI_CHECK_RC_OK(rc = RTThreadCreate(&hListenThread, testServerListenThread, &Args, 0 /* Stack */,
                                             RTTHREADTYPE_DEFAULT, RTTHREADFLAGS_WAITABLE, "listen-1"));
     if (RT_SUCCESS(rc))
     {
@@ -189,7 +604,14 @@ static void testSessionConnection(const char *pszExecPath)
         if (pszExecPath)
         {
             RTPROCESS hClientProc;
-            const char *apszArgs[4] = { pszExecPath, "child", "tstRTLocalIpcSessionConnectionChild", NULL };
+            const char *apszArgs[5] =
+            {
+                pszExecPath,
+                "child",
+                "tstRTLocalIpcSessionConnectionChild",
+                fRestricted ? "restricted" : NULL,
+                NULL
+            };
             RTTESTI_CHECK_RC_OK(rc = RTProcCreate(pszExecPath, apszArgs, RTENV_DEFAULT, 0 /* fFlags*/, &hClientProc));
             if (RT_SUCCESS(rc))
             {
@@ -202,7 +624,8 @@ static void testSessionConnection(const char *pszExecPath)
         else
         {
             RTTHREAD hClientThread;
-            RTTESTI_CHECK_RC_OK(rc = RTThreadCreate(&hClientThread, tstRTLocalIpcSessionConnectionChild, NULL,
+            void *pvWorker = (void *)(uintptr_t)(fRestricted ? TEST_CONNECTION_F_RESTRICTED : 0);
+            RTTESTI_CHECK_RC_OK(rc = RTThreadCreate(&hClientThread, tstRTLocalIpcSessionConnectionChild, pvWorker,
                                                     0 /* Stack */, RTTHREADTYPE_DEFAULT, RTTHREADFLAGS_WAITABLE, "client-1"));
             if (RT_SUCCESS(rc))
             {
@@ -226,7 +649,87 @@ static void testSessionConnection(const char *pszExecPath)
     }
 
     RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hIpcServer), VINF_OBJECT_DESTROYED);
+#ifdef RT_OS_WINDOWS
+    RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hSquatter), fRestricted ? VINF_OBJECT_DESTROYED : VINF_SUCCESS);
+#else
+    if (fRestricted)
+    {
+        if (pszSavedRuntimeDir)
+            RTTESTI_CHECK_RC(RTEnvSet("XDG_RUNTIME_DIR", pszSavedRuntimeDir), VINF_SUCCESS);
+        else
+            RTTESTI_CHECK_RC(RTEnvUnset("XDG_RUNTIME_DIR"), VINF_SUCCESS);
+        RTStrFree(pszSavedRuntimeDir);
+        RTTESTI_CHECK_RC(RTDirRemove(szRestrictedDir), VINF_SUCCESS);
+        RTTESTI_CHECK_RC(RTDirRemove(szSquatter), VINF_SUCCESS);
+    }
+#endif
 }
+
+
+#ifdef RT_OS_WINDOWS
+static DECLCALLBACK(int) testServerListenAnonymousThread(RTTHREAD hSelf, void *pvUser)
+{
+    RTLOCALIPCSERVER hIpcServer = (RTLOCALIPCSERVER)pvUser;
+    RTTEST_CHECK_RC_OK_RET(g_hTest, RTTestSetDefault(g_hTest, NULL), rcCheck);
+
+    RTTEST_CHECK_RC_OK_RET(g_hTest, RTThreadUserSignal(hSelf), rcCheck);
+
+    RTLOCALIPCSESSION hIpcSession;
+    RTTEST_CHECK_RC_OK_RET(g_hTest, RTLocalIpcServerListen(hIpcServer, &hIpcSession), rcCheck);
+    uint8_t bIdentity = 0;
+    RTTEST_CHECK_RC_OK_RET(g_hTest, RTLocalIpcSessionRead(hIpcSession, &bIdentity, sizeof(bIdentity), NULL), rcCheck);
+    RTTEST_CHECK_RET(g_hTest, bIdentity == UINT8_C(0x24), VERR_GENERAL_FAILURE);
+    RTTESTI_CHECK_RC(RTLocalIpcSessionVerifySameUser(hIpcSession), VERR_ACCESS_DENIED);
+    RTTESTI_CHECK_RC(RTLocalIpcSessionClose(hIpcSession), VINF_OBJECT_DESTROYED);
+    return VINF_SUCCESS;
+}
+
+
+static void testSessionAnonymousClient(void)
+{
+    RTTestISub("Anonymous client identification");
+
+    RTLOCALIPCSERVER hIpcServer;
+    RTTESTI_CHECK_RC_RETV(RTLocalIpcServerCreate(&hIpcServer, "tstRTLocalIpcSessionAnonymous", 0), VINF_SUCCESS);
+
+    RTTHREAD hListenThread;
+    int rc;
+    RTTESTI_CHECK_RC_OK(rc = RTThreadCreate(&hListenThread, testServerListenAnonymousThread, hIpcServer, 0 /*cbStack*/,
+                                            RTTHREADTYPE_DEFAULT, RTTHREADFLAGS_WAITABLE, "listen-anon"));
+    if (RT_SUCCESS(rc))
+    {
+        RTTESTI_CHECK_RC_OK(RTThreadUserWait(hListenThread, RT_MS_1MIN / 2));
+
+        RTLOCALIPCSESSION hClientSession = NIL_RTLOCALIPCSESSION;
+        RTTESTI_CHECK_RC_OK(rc = RTLocalIpcSessionConnect(&hClientSession, "tstRTLocalIpcSessionAnonymous", 0 /*fFlags*/));
+        if (RT_SUCCESS(rc))
+        {
+            uint8_t const bIdentity = UINT8_C(0x24);
+            RTTESTI_CHECK_RC_OK(rc = RTLocalIpcSessionWrite(hClientSession, &bIdentity, sizeof(bIdentity)));
+            if (RT_SUCCESS(rc))
+                RTTESTI_CHECK_RC_OK(rc = RTLocalIpcSessionFlush(hClientSession));
+            if (RT_FAILURE(rc))
+            {
+                RTLocalIpcSessionClose(hClientSession);
+                hClientSession = NIL_RTLOCALIPCSESSION;
+            }
+            int rcThread;
+            RTTESTI_CHECK_RC_OK(rc = RTThreadWait(hListenThread, RT_MS_1MIN / 2, &rcThread));
+            if (RT_SUCCESS(rc))
+                RTTESTI_CHECK_RC(rcThread, VINF_SUCCESS);
+            if (hClientSession != NIL_RTLOCALIPCSESSION)
+                RTTESTI_CHECK_RC(RTLocalIpcSessionClose(hClientSession), VINF_OBJECT_DESTROYED);
+        }
+        else
+        {
+            RTTESTI_CHECK_RC(RTLocalIpcServerCancel(hIpcServer), VINF_SUCCESS);
+            RTTESTI_CHECK_RC_OK(RTThreadWait(hListenThread, RT_MS_1MIN / 2, NULL));
+        }
+    }
+
+    RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hIpcServer), VINF_OBJECT_DESTROYED);
+}
+#endif /* RT_OS_WINDOWS */
 
 
 
@@ -909,13 +1412,24 @@ int main(int argc, char **argv)
         RTAssertSetQuiet(fQuiet);
 
         /* Do real tests if the basics are fine. */
+        if (RTTestErrorCount(g_hTest) == 0)
+            testRestrictedNamespaceProperties();
         char szExecPath[RTPATH_MAX];
         if (RTProcGetExecutablePath(szExecPath, sizeof(szExecPath)))
         {
             if (RTTestErrorCount(g_hTest) == 0)
-                testSessionConnection(NULL);
+                testSessionConnection(NULL, 0 /*fServerFlags*/);
             if (RTTestErrorCount(g_hTest) == 0)
-                testSessionConnection(szExecPath);
+                testSessionConnection(szExecPath, 0 /*fServerFlags*/);
+            if (RTTestErrorCount(g_hTest) == 0)
+                testSessionConnection(NULL, RTLOCALIPC_FLAGS_RESTRICT_TO_USER);
+            if (RTTestErrorCount(g_hTest) == 0)
+                testSessionConnection(szExecPath, RTLOCALIPC_FLAGS_RESTRICT_TO_USER);
+
+#ifdef RT_OS_WINDOWS
+            if (RTTestErrorCount(g_hTest) == 0)
+                testSessionAnonymousClient();
+#endif
 
             if (RTTestErrorCount(g_hTest) == 0)
                 testSessionWait(NULL);
@@ -938,7 +1452,7 @@ int main(int argc, char **argv)
     /*
      * Child process.
      */
-    else if (   argc == 3
+    else if (   (argc == 3 || argc == 4)
              && !strcmp(argv[1], "child"))
     {
         rc = RTTestCreateChild(argv[2], &g_hTest);
@@ -946,7 +1460,12 @@ int main(int argc, char **argv)
             return RTEXITCODE_FAILURE;
 
         if (!strcmp(argv[2], "tstRTLocalIpcSessionConnectionChild"))
-            tstRTLocalIpcSessionConnectionChild(RTThreadSelf(), g_hTest);
+        {
+            uintptr_t fWorker = TEST_CONNECTION_F_OTHER_PROCESS;
+            if (argc == 4 && !strcmp(argv[3], "restricted"))
+                fWorker |= TEST_CONNECTION_F_RESTRICTED;
+            tstRTLocalIpcSessionConnectionChild(RTThreadSelf(), (void *)fWorker);
+        }
         else if (!strcmp(argv[2], "tstRTLocalIpcSessionWaitChild"))
             tstRTLocalIpcSessionWaitChild(RTThreadSelf(), g_hTest);
         else if (!strcmp(argv[2], "tstRTLocalIpcSessionDataChild"))
@@ -967,4 +1486,3 @@ int main(int argc, char **argv)
      */
     return RTTestSummaryAndDestroy(g_hTest);
 }
-
