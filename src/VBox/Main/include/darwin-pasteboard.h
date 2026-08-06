@@ -1,4 +1,4 @@
-/* $Id: darwin-pasteboard.h 114509 2026-06-24 14:35:45Z andreas.loeffler@oracle.com $ */
+/* $Id: darwin-pasteboard.h 114863 2026-08-06 10:19:52Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host implementation.
  */
@@ -40,6 +40,9 @@ DECLHIDDEN(void) destroyPasteboard(PasteboardRef *pPasteboardRef);
 
 DECLHIDDEN(int) queryNewPasteboardFormats(PasteboardRef hPasteboard, uint64_t idOwnership, void *hStrOwnershipFlavor,
                                           uint32_t *pfFormats, bool *pfChanged);
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+DECLHIDDEN(int) readFileURLsFromPasteboard(PasteboardRef hPasteboard, char **ppszRoots, size_t *pcbRoots);
+#endif
 DECLHIDDEN(int) readFromPasteboard(PasteboardRef pPasteboard, uint32_t fFormat, void *pv, uint32_t cb, uint32_t *pcbActual);
 DECLHIDDEN(int) takePasteboardOwnership(PasteboardRef pPasteboard, uint64_t idOwnership, const char *pszOwnershipFlavor,
                                         const char *pszOwnershipValue, void **phStrOwnershipFlavor);
