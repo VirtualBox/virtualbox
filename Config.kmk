@@ -1,4 +1,4 @@
-# $Id: Config.kmk 114863 2026-08-06 10:19:52Z andreas.loeffler@oracle.com $
+# $Id: Config.kmk 114889 2026-08-07 08:43:33Z andreas.loeffler@oracle.com $
 ## @file
 # The global build configuration file for VBox.
 #
@@ -573,6 +573,13 @@ if1of ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH), darwin.amd64 darwin.arm64)
  VBOX_WITH_DRIVERLESS_FORCED = 1
  if1of ($(KBUILD_TARGET), darwin)
   VBOX_WITH_INTNET_SERVICE_IN_R3 = 1
+ endif
+endif
+# The local IPC implementation of the R3 IntNet service is
+# experimental and intentionally disabled by default for now, see @bugref{11149}
+if1of ($(KBUILD_TARGET), win linux)
+ ifdef VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC
+  VBOX_WITH_INTNET_SERVICE_IN_R3 := 1
  endif
 endif
 # Enables the new breakpoint handling code, see @bugref{8650}
@@ -9591,7 +9598,7 @@ SVN                    ?= svn$(HOSTSUFF_EXE)
 GIT                    ?= git$(HOSTSUFF_EXE)
 VBOX_SVN_REV_KMK        = $(PATH_OUT)/revision.kmk
 ifndef VBOX_SVN_REV
- VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 114863 $  )
+ VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 114889 $  )
  VBOX_SVN_REV_FALLBACK := $(if-expr $(VBOX_SVN_REV_CONFIG_FALLBACK) > $(VBOX_SVN_REV_VERSION_FALLBACK),$(VBOX_SVN_REV_CONFIG_FALLBACK),$(VBOX_SVN_REV_VERSION_FALLBACK))
  VBOX_SVN_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.svn/wc.db $(abspath $(PATH_ROOT)/../.svn/wc.db) $(abspath $(PATH_ROOT)/../../.svn/wc.db) $(PATH_ROOT)/.svn/entries))
  VBOX_GIT_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.git/config $(abspath $(PATH_ROOT)/../.git/config) $(abspath $(PATH_ROOT)/../../.git/config)))
@@ -9605,7 +9612,7 @@ ifndef VBOX_SVN_REV
  ifneq ($(VBOX_GIT_DEP),)
   #
   # VBOX_SVN_REV_CONFIG_FALLBACK is not properly populated for a git checkout,
-  # as the $Rev: 114863 $ is not expanded, so we have to set it based on the information in the repo.
+  # as the $Rev: 114889 $ is not expanded, so we have to set it based on the information in the repo.
   #
   VBOX_SVN_REV_FALLBACK := $(shell $(GIT) log -1 $(PATH_ROOT)/Config.kmk | $(SED) -e 's/^[ \t]*//' -e '/svn:sync-xref-src-repo-rev\: r/!d' -e 's/svn:sync-xref-src-repo-rev\: r*//; t a; :a q')
  endif
