@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 114890 2026-08-07 09:54:48Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -5163,6 +5163,28 @@ void ShClSvcTransferDestroy(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer)
     LogFlowFuncLeave();
 }
 
+
+/**
+ * Destroys all transfers of a Shared Clipboard client.
+ *
+ * @param   pClient             Client to destroy transfers for.
+ */
+void shClSvcTransferDestroyAll(PSHCLCLIENT pClient)
+{
+    if (!pClient)
+        return;
+
+    LogFlowFuncEnter();
+
+    /* Unregister and destroy all transfers.
+     * Also make sure to let the backend know that all transfers are getting destroyed.
+     *
+     * Note: The index always will be 0, as the transfer gets unregistered. */
+    PSHCLTRANSFER pTransfer;
+    while ((pTransfer = ShClTransferCtxGetTransferByIndex(&pClient->Transfers.Ctx, 0 /* Index */)))
+        ShClSvcTransferDestroy(pClient, pTransfer);
+}
+
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_HOST */
 
 /**
@@ -5263,7 +5285,7 @@ int ShClSvcTransferInit(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer)
                                              ? SHCLTRANSFERSTATUS_INITIALIZED : SHCLTRANSFERSTATUS_ERROR, rc,
                                              NULL /* ppEvent */);
     if (RT_SUCCESS(rc))
-        rc2 = rc;
+        rc = rc2;
 
     if (RT_FAILURE(rc))
         LogRel(("Shared Clipboard: Initializing transfer failed with %Rrc\n", rc));
