@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114880 2026-08-07 06:47:30Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-makefile for the VBoxIntnetPcap
 #
@@ -31,7 +31,8 @@ include $(KBUILD_PATH)/subheader.kmk
 PROGRAMS += VBoxIntnetPcap
 VBoxIntnetPcap_TEMPLATE := VBoxR3Exe
 VBoxIntnetPcap_DEFS     := \
-	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3),VBOX_WITH_INTNET_SERVICE_IN_R3,)
+	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3),VBOX_WITH_INTNET_SERVICE_IN_R3,) \
+	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC),VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC,)
 VBoxIntnetPcap_INCS     := \
 	../../NetworkServices/NetLib \
 	../../Devices/Network
