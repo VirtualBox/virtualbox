@@ -11,7 +11,7 @@
 # pylint: disable=invalid-name
 # pylint: disable=multiple-statements
 # pylint: disable=line-too-long
-# $Id: configure.py 114640 2026-07-07 17:56:17Z klaus.espenlaub@oracle.com $
+# $Id: configure.py 114892 2026-08-07 15:59:20Z klaus.espenlaub@oracle.com $
 #
 # The following checks for the right (i.e. most recent) Python binary available
 # and re-starts the script using that binary (like a shell wrapper).
@@ -90,7 +90,7 @@ SPDX-License-Identifier: GPL-3.0-only
 # External Python modules or other dependencies are not allowed!
 #
 
-__revision__ = "$Revision: 114640 $"
+__revision__ = ''.join(c for c in "$Revision: 114892 $" if c.isdigit())
 
 import argparse
 import collections;
@@ -1287,6 +1287,23 @@ class LibraryCheck(CheckBase):
             self.sVer = sStdOut;
         return fRc, sStdOut, sStdErr;
 
+    def getSdkLibs(self):
+        """
+        Returns the library references in the form expected by kBuild SDKs.
+        """
+        asSdkLibs = [];
+        for sLib in self.asLibFiles:
+            if self.enmBuildTarget == BuildTarget.WINDOWS:
+                asSdkLibs.append(withLibSuff(sLib));
+            elif os.path.dirname(sLib):
+                asSdkLibs.append(sLib);
+            else:
+                sLibName = os.path.basename(sLib);
+                if sLibName.startswith('lib'):
+                    sLibName = sLibName[3:];
+                asSdkLibs.append(sLibName);
+        return asSdkLibs;
+
     def setArgs(self, args):
         """
         Applies argparse options for disabling and custom paths.
@@ -1297,6 +1314,8 @@ class LibraryCheck(CheckBase):
             self.fUseInTree = fUseInTree; # Only set if explicitly specified on command line -- otherwise take the lib's default.
         self.fDisabled = getattr(args, f'config_libs_disable_{sAttr}', False);
         self.sRootPath = getattr(args, f'config_libs_path_{sAttr}', None);
+        if self.sRootPath:
+            self.fUseInTree = False; # An explicitly specified root path overrides using in-tree library.
 
         return True;
 
@@ -1534,7 +1553,8 @@ class LibraryCheck(CheckBase):
         self.printVerbose(1, 'Found header files:');
         for sHdr, sPath in setHdrFound.items():
             self.printVerbose(1, f'\t{os.path.join(sPath, sHdr)}');
-            asIncPaths.extend([ sPath ]);
+            if sPath != '/usr/include':
+                asIncPaths.extend([ sPath ]);
 
         for sHdr in asHdrToSearch:
             if sHdr not in setHdrFound:
@@ -1605,31 +1625,6 @@ class LibraryCheck(CheckBase):
 
         return False, None, None;
 
-    def checkPackage(self, sPackageName):
-        """"
-        Checks a given package.
-        """
-        if not self.sSdkName: # No SDK (our term for package in our dev tools)? Bail out.
-            return True;
-
-        self.printVerbose(1, f"Package Information for {sPackageName}:");
-        fRc, sBinDir = getPackageVar(sPackageName, PkgMgrVar.BINDIR);
-        self.printVerbose(1, f'    BINDIR: {sBinDir if fRc else "<None>"}');
-        fRc, sLibDir = getPackageVar(sPackageName, PkgMgrVar.LIBDIR);
-        self.printVerbose(1, f'    LIBDIR: {sLibDir if fRc else "<None>"}');
-        fRc, sCFlags = getPackageVar(sPackageName, PkgMgrVar.CFLAGS);
-        self.printVerbose(1, f'    CFLAGS: {sCFlags if fRc else "<None>"}');
-
-        #if self.sRootPath:
-        #    g_oEnv.set(f'PATH_SDK_{self.sSdkName}', self.sRootPath);
-        #    sPathLibExec = os.path.join(sPathBase, 'libexec');
-#
-        #if self.asIncPaths:
-        #    g_oEnv.set(f'PATH_SDK_{self.sSdkName}_LIB', self.asLibPaths[0]);
-        #if self.asLibPaths:
-        #    g_oEnv.set(f'PATH_SDK_{self.sSdkName}_INC', self.asIncPaths[0]);
-        return True;
-
     def performCheck(self):
         """
         Run library detection.
@@ -1676,6 +1671,10 @@ class LibraryCheck(CheckBase):
 
                 if self.fUseInTree and not self.fIsInTree:
                     self.printWarn('Library needs to be used from in-tree sources but was not detected there -- might lead to build errors');
+
+        if self.fHave and self.sSdkName and not self.fIsInTree:
+            g_oEnv.set(f'SDK_{self.sSdkName}_INCS', ' '.join(self.asIncPaths));
+            g_oEnv.set(f'SDK_{self.sSdkName}_LIBS', ' '.join(self.getSdkLibs()));
 
         if not fRc:
             if self.dictArgsToSetIfFailed: # Implies being optional.
@@ -3463,8 +3462,9 @@ g_aoLibs = [
                  sSdkName = "VBoxLibCurl"),
     LibraryCheck("libdevmapper", [ "libdevmapper.h" ], [ "libdevmapper" ], aeTargets = [ BuildTarget.LINUX ],
                  sCode = '#include <libdevmapper.h>\nint main() { char v[64]; dm_get_library_version(v, sizeof(v)); printf("%s", v); return 0; }\n'),
-    LibraryCheck("libjpeg-turbo", [ "turbojpeg.h" ], [ "libturbojpeg" ], aeTargets = [ BuildTarget.ANY ], fUseInTree = True,
-                 sCode = '#include <turbojpeg.h>\nint main() { tjInitCompress(); printf("<found>"); return 0; }\n'),
+    LibraryCheck("libjpeg-turbo", [ "jpeglib.h" ], [ "libjpeg" ], aeTargets = [ BuildTarget.ANY ], fUseInTree = True,
+                 sCode = '#include <jpeglib.h>\n#ifndef LIBJPEG_TURBO_VERSION\n#error "libjpeg-turbo required"\n#endif\n#define VBOX_JPEG_STRINGIFY_INNER(a) #a\n#define VBOX_JPEG_STRINGIFY(a) VBOX_JPEG_STRINGIFY_INNER(a)\nint main() { struct jpeg_error_mgr error; jpeg_std_error(&error); printf("%s", VBOX_JPEG_STRINGIFY(LIBJPEG_TURBO_VERSION)); return 0; }\n',
+                 sSdkName = "VBoxLibJpeg"),
     LibraryCheck("liblzf", [ "lzf.h" ], [ "liblzf" ], aeTargets = [ BuildTarget.ANY ], fUseInTree = True,
                  sCode = '#include <liblzf/lzf.h>\nint main() { printf("%d.%d", LZF_VERSION >> 8, LZF_VERSION & 0xff);\n#if LZF_VERSION >= 0x0105\nreturn 0;\n#else\nreturn 1;\n#endif\n }\n'),
     LibraryCheck("liblzma", [ "lzma.h" ], [ "liblzma" ], aeTargets = [ BuildTarget.ANY ], fUseInTree = True,
@@ -3816,13 +3816,14 @@ def main():
     oParser.add_argument('-v', '--verbose', help="Enables verbose output", action='count', default=0, dest='config_verbose');
     oParser.add_argument('-V', '--version', help="Prints the version of this script", action='store_true');
     for oLibCur in g_aoLibs:
-        oParser.add_argument(f'--build-{oLibCur.sName}', help=f'Explicitly build {oLibCur.sName} from in-tree sources', action='store_true', default=None, dest=f'config_libs_build_{oLibCur.sName}');
-        oParser.add_argument(f'--disable-{oLibCur.sName}', f'--without-{oLibCur.sName}', help=f'Disables using {oLibCur.sName}', action='store_true', default=None, dest=f'config_libs_disable_{oLibCur.sName}');
-        oParser.add_argument(f'--with-{oLibCur.sName}-path', help=f'Sets the (root) path for {oLibCur.sName}', dest=f'config_libs_path_{oLibCur.sName}');
+        sLibName = oLibCur.name2Attr(); # So that we can use variables directly w/o getattr.
+        oParser.add_argument(f'--build-{oLibCur.sName}', help=f'Explicitly build {oLibCur.sName} from in-tree sources', action='store_true', default=None, dest=f'config_libs_build_{sLibName}');
+        oParser.add_argument(f'--disable-{oLibCur.sName}', f'--without-{oLibCur.sName}', help=f'Disables using {oLibCur.sName}', action='store_true', default=None, dest=f'config_libs_disable_{sLibName}');
+        oParser.add_argument(f'--with-{oLibCur.sName}-path', help=f'Sets the (root) path for {oLibCur.sName}', dest=f'config_libs_path_{sLibName}');
         # For debugging / development only. We don't expose this in the syntax help.
-        oParser.add_argument(f'--only-{oLibCur.sName}', help=argparse.SUPPRESS, action='store_true', default=None, dest=f'config_libs_only_{oLibCur.sName}');
+        oParser.add_argument(f'--only-{oLibCur.sName}', help=argparse.SUPPRESS, action='store_true', default=None, dest=f'config_libs_only_{sLibName}');
     for oToolCur in g_aoTools:
-        sToolName = oToolCur.sName.replace("-", "_"); # So that we can use variables directly w/o getattr.
+        sToolName = oToolCur.name2Attr(); # So that we can use variables directly w/o getattr.
         oParser.add_argument(f'--disable-{oToolCur.sName}', f'--without-{oToolCur.sName}', help=f'Disables using {oToolCur.sName}', action='store_true', default=None, dest=f'config_tools_disable_{sToolName}');
         oParser.add_argument(f'--with-{oToolCur.sName}-path', help=f'Sets the (root) path for {oToolCur.sName}', dest=f'config_tools_path_{sToolName}');
         # For debugging / development only. We don't expose this in the syntax help.
@@ -4023,8 +4024,8 @@ def main():
 
     # Filter libs and tools based on --only-XXX flags.
     # Replace '-' with '_' so that we can use variables directly w/o getattr lateron.
-    aoOnlyLibs = [lib for lib in g_aoLibs if getattr(g_oArgs, f'config_libs_only_{lib.sName.replace("-", "_")}', False)];
-    aoOnlyTools = [tool for tool in g_aoTools if getattr(g_oArgs, f'config_tools_only_{tool.sName.replace("-", "_")}', False)];
+    aoOnlyLibs = [lib for lib in g_aoLibs if getattr(g_oArgs, f'config_libs_only_{lib.name2Attr()}', False)];
+    aoOnlyTools = [tool for tool in g_aoTools if getattr(g_oArgs, f'config_tools_only_{tool.name2Attr()}', False)];
     aoLibsToCheck = aoOnlyLibs if aoOnlyLibs else g_aoLibs;
     aoToolsToCheck = aoOnlyTools if aoOnlyTools else g_aoTools;
     # Filter libs and tools based on build target.

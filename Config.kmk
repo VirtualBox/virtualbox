@@ -1,4 +1,4 @@
-# $Id: Config.kmk 114891 2026-08-07 11:59:56Z aleksey.ilyushin@oracle.com $
+# $Id: Config.kmk 114892 2026-08-07 15:59:20Z klaus.espenlaub@oracle.com $
 ## @file
 # The global build configuration file for VBox.
 #
@@ -3207,9 +3207,6 @@ VBOX_PATH_X11_ROOT      = $(PATH_ROOT)/src/VBox/Additions/x11/x11include
 # Miscellaneous includes
 #
 VBOX_GRAPHICS_INCS = $(PATH_ROOT)/include/VBox/Graphics
-VBOX_JPEG_INCS     = \
-	$(PATH_ROOT)/src/libs/libjpeg-turbo-3.1.0/src \
-	$(PATH_ROOT)/src/libs/libjpeg-turbo-3.1.0
 
 
 # The icons to use.
@@ -5328,6 +5325,15 @@ SDK_VBoxLibXml2_DEFS          ?= _REENTRANT LIBXML_STATIC LIBXML_STATIC_FOR_DLL
 SDK_VBoxLibXml2_DEFS.win      ?= WIN32 _WINDOWS _MBCS HAVE_WIN32_THREADS HAVE_COMPILER_TLS
 # Note: no linking to LIB here, we do that explicitly in src/VBox/Runtime/Makefile.kmk to link
 #       libxml against VBoxRT
+
+# libjpeg
+SDK_VBoxLibJpeg              := libjpeg for dll linking.
+SDK_VBoxLibJpeg_DEFAULT_INCS ?= $(PATH_ROOT)/src/libs/libjpeg-turbo-3.1.0/src \
+        $(PATH_ROOT)/src/libs/libjpeg-turbo-3.1.0
+SDK_VBoxLibJpeg_INCS         ?= $(SDK_VBoxLibJpeg_DEFAULT_INCS)
+SDK_VBoxLibJpeg_LIBS         ?=  $(PATH_STAGE_LIB)/VBox-libjpeg$(VBOX_SUFF_LIB) \
+        $(PATH_STAGE_LIB)/VBox-libjpeg12$(VBOX_SUFF_LIB) \
+        $(PATH_STAGE_LIB)/VBox-libjpeg16$(VBOX_SUFF_LIB)
 
 # zlib
 SDK_VBoxZlib                  := zlib for dll linking.
@@ -9598,7 +9604,7 @@ SVN                    ?= svn$(HOSTSUFF_EXE)
 GIT                    ?= git$(HOSTSUFF_EXE)
 VBOX_SVN_REV_KMK        = $(PATH_OUT)/revision.kmk
 ifndef VBOX_SVN_REV
- VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 114891 $  )
+ VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 114892 $  )
  VBOX_SVN_REV_FALLBACK := $(if-expr $(VBOX_SVN_REV_CONFIG_FALLBACK) > $(VBOX_SVN_REV_VERSION_FALLBACK),$(VBOX_SVN_REV_CONFIG_FALLBACK),$(VBOX_SVN_REV_VERSION_FALLBACK))
  VBOX_SVN_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.svn/wc.db $(abspath $(PATH_ROOT)/../.svn/wc.db) $(abspath $(PATH_ROOT)/../../.svn/wc.db) $(PATH_ROOT)/.svn/entries))
  VBOX_GIT_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.git/config $(abspath $(PATH_ROOT)/../.git/config) $(abspath $(PATH_ROOT)/../../.git/config)))
@@ -9612,7 +9618,7 @@ ifndef VBOX_SVN_REV
  ifneq ($(VBOX_GIT_DEP),)
   #
   # VBOX_SVN_REV_CONFIG_FALLBACK is not properly populated for a git checkout,
-  # as the $Rev: 114891 $ is not expanded, so we have to set it based on the information in the repo.
+  # as the $Rev: 114892 $ is not expanded, so we have to set it based on the information in the repo.
   #
   VBOX_SVN_REV_FALLBACK := $(shell $(GIT) log -1 $(PATH_ROOT)/Config.kmk | $(SED) -e 's/^[ \t]*//' -e '/svn:sync-xref-src-repo-rev\: r/!d' -e 's/svn:sync-xref-src-repo-rev\: r*//; t a; :a q')
  endif

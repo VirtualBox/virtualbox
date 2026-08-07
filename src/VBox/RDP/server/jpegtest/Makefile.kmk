@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114892 2026-08-07 15:59:20Z klaus.espenlaub@oracle.com $
 ## @file
 # Makefile for jpegtest - not for general consumption, see OTHERS.
 #
@@ -38,11 +38,8 @@ ifdef TJ
  jpegtest_INCS     += $(PATH_ROOT)/src/libs/libjpeg-turbo-1.0.0/win
  jpegtest_LIBS     += $(PATH_STAGE_LIB)/VBox-libjpeg-t$(VBOX_SUFF_LIB)
 else
- jpegtest_INCS     += $(VBOX_JPEG_INCS) $(VBOX_GRAPHICS_INCS)
- jpegtest_LIBS     += \
- 	$(PATH_STAGE_LIB)/VBox-libjpeg$(VBOX_SUFF_LIB) \
- 	$(PATH_STAGE_LIB)/VBox-libjpeg12$(VBOX_SUFF_LIB) \
- 	$(PATH_STAGE_LIB)/VBox-libjpeg16$(VBOX_SUFF_LIB)
+ jpegtest_INCS     += $(SDK_VBoxLibJpeg_INCS) $(VBOX_GRAPHICS_INCS)
+ jpegtest_LIBS     += $(SDK_VBoxLibJpeg_LIBS)
 endif
 ifneq ($(KBUILD_TARGET),win)
  jpegtest_CXXFLAGS += -Wno-unused-function -Wno-multichar

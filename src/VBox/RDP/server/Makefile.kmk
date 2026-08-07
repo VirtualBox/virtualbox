@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114892 2026-08-07 15:59:20Z klaus.espenlaub@oracle.com $
 ## @file
 # Sub-Makefile for the VBox RDP server.
 #
@@ -40,11 +40,8 @@ VBoxVRDP_LIBS = $(LIB_RUNTIME)
 VBoxVRDP_SDKS = VBoxOpenSsl
 VBoxVRDP_DEFS = IN_VRDP
 VBoxVRDP_DEFS += NOVOL
-VBoxVRDP_INCS += $(VBOX_JPEG_INCS) $(VBOX_GRAPHICS_INCS)
-VBoxVRDP_LIBS += \
-	$(PATH_STAGE_LIB)/VBox-libjpeg$(VBOX_SUFF_LIB) \
-	$(PATH_STAGE_LIB)/VBox-libjpeg12$(VBOX_SUFF_LIB) \
-	$(PATH_STAGE_LIB)/VBox-libjpeg16$(VBOX_SUFF_LIB)
+VBoxVRDP_INCS += $(SDK_VBoxLibJpeg_INCS) $(VBOX_GRAPHICS_INCS)
+VBoxVRDP_LIBS += $(SDK_VBoxLibJpeg_LIBS)
 
 ifdef VBOX_WITH_VRDP_ENABLE_LOGREL
  VBoxVRDP_DEFS += VRDP_ENABLE_LOGREL
