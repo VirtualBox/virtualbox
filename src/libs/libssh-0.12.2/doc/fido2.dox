@@ -1,0 +1,601 @@
+/**
+
+@page libssh_tutor_fido2 Chapter 11: FIDO2/U2F Keys Support
+
+@section fido2_intro Introduction
+
+The traditional SSH public key model stores the private key on disk
+and anyone who obtains that file (and possibly its passphrase) can impersonate
+the user. FIDO2 authenticators, such as USB security keys, are hardware tokens
+that generate or securely store private key material within a secure element
+and may require explicit user interaction such as a touch, PIN, or biometric
+verification for use. Hence, security keys are far safer from theft or
+exfiltration than traditional file-based SSH keys. libssh provides support
+for FIDO2/U2F security keys as hardware-backed SSH authentication credentials.
+
+This chapter explains the concepts, build prerequisites, the API, and
+usage patterns for enrolling (creating) and using security key-backed SSH
+keys, including resident (discoverable) credentials.
+
+@subsection fido2_resident_keys Resident Keys
+
+Two credential storage modes exist for security keys:
+
+ - Non-resident (default): A credential ID (key handle) and metadata are
+	 stored on the client-side in a key file. This key handle must be
+	 presented to the FIDO2/U2F device while signing. This is somewhat
+	 similar to traditional SSH keys, except that the key handle is not the
+	 private key itself, but used in combination with the device's master key
+	 to derive the actual private key.
+
+ - Resident (discoverable): The credential (and metadata like user id) is
+	 stored on the device. No local file is needed; the device can enumerate or
+	 locate the credential internally when queried.
+
+Advantages of resident keys include portability (using the same device
+across hosts) and resilience (no loss if the local machine is destroyed).
+Although, they may be limited by the storage of the authenticator.
+
+@subsection fido2_presence_verification User Presence vs. User Verification
+
+FIDO2 distinguishes between:
+
+ - User Presence (UP): A simple physical interaction (touch) to confirm a
+	 human is present.
+
+ - User Verification (UV): Verification of the user’s identity through
+     biometric authentication or a PIN.
+
+Requiring UV provides additional protection if the device is stolen
+and used without the PIN/biometric.
+
+libssh exposes flags controlling these requirements (see below).
+
+@subsection fido2_callbacks The Callback Abstraction
+
+Different environments may need to access security keys through different
+transport layers (e.g., USB-HID, NFC, Bluetooth, etc.). To accommodate
+this variability, libssh does not hard-code a single implementation.
+
+Instead, it defines a small callback interface (`ssh_sk_callbacks`) used for all
+security key operations. Any implementation of this callback interface can be used
+by higher-level PKI functions to perform enroll/sign/load_resident_keys
+operations without needing to know the transport specifics. Hence, users can
+define their own implementations for these callbacks to support different
+transport protocols or custom hardware. Refer @ref fido2_custom_callbacks
+for additional details.
+
+The callback interface is defined in `libssh/callbacks.h` and the behaviour
+and return values are specified by `libssh/sk_api.h`, which is the same
+interface defined by OpenSSH for its security key support. This means that
+any callback implementations (also called "middleware" in OpenSSH terminology)
+developed for OpenSSH can be adapted to libssh with minimal changes.
+
+The following operations are abstracted by the callback interface:
+
+ - api_version(): Report the version of the SK API that the callback implementation
+   is based on, so that libssh can check whether this implementation would be
+   compatible with the SK API version that it supports.
+   Refer @ref fido2_custom_callbacks_version for additional details.
+ - enroll(): Create (enroll) a new credential, returning public key, key
+	 handle, attestation data.
+ - sign(): Produce a signature for supplied inputs using an existing key
+	 handle.
+ - load_resident_keys(): Enumerate resident (discoverable) credentials stored
+	 on the authenticator.
+
+libssh provides a default implementation of the `ssh_sk_callbacks` using
+the libfido2 library for the USB-HID transport protocol. Hence, by default,
+libssh can interact with any FIDO2/U2F device that supports USB-HID and is
+compatible with libfido2, without requiring any additional modifications.
+
+@subsection fido2_build Building with FIDO2 Support
+
+To enable FIDO2/U2F support, libssh must be built with the WITH_FIDO2
+build option as follows:
+
+@verbatim
+	cmake -DWITH_FIDO2=ON <other options> ..
+@endverbatim
+
+libssh will also build the default USB-HID `ssh_sk_callbacks`, if the
+libfido2 library and headers are installed on your system.
+
+@warning If built without libfido2, support for interacting with FIDO2/U2F
+devices over USB-HID will not be available.
+
+@subsection fido2_api_overview API Overview
+
+Security key operations are configured through the `ssh_pki_ctx`
+which allows to specify both general PKI options and FIDO2-specific
+options such as the sk_callbacks, challenge data, application string, flags, etc.
+
+The following sections describe the options that can be configured and how
+the `ssh_pki_ctx` is used in conjunction with `ssh_key` to perform
+enrollment, signing, and resident key loading operations.
+
+@subsection fido2_key_objects Security Key Objects & Metadata
+
+Security keys are surfaced as `ssh_key` objects of type
+`SSH_KEYTYPE_SK_ECDSA` and `SSH_KEYTYPE_SK_ED25519` (corresponding to the
+OpenSSH public key algorithm names `sk-ecdsa-sha2-nistp256@openssh.com` and
+`sk-ssh-ed25519@openssh.com`). In addition to standard key handling, libssh
+exposes the following helper functions to retrieve embedded SK metadata:
+
+ - ssh_key_get_sk_application(): Returns the relying party / application
+	 (RP ID) string. The Relying Party ID (RP ID) is a string
+	 that identifies the application or service requesting key enrollment. It
+	 ensures that a credential is bound to a specific origin, preventing
+	 phishing across sites. During registration, the authenticator associates
+	 the credential with this RP ID so that it can later only be used for
+	 authentication requests from the same relying party. For SSH keys, the
+	 common format is "ssh:user@host".
+
+ - ssh_key_get_sk_user_id(): Returns a copy of the user ID associated with a key
+	 which represents a unique identifier for the user within the relying
+	 party (application) context. It is typically a string (such as an
+	 email, or a random identifier) that helps distinguish credentials
+	 belonging to different users for the same application.
+
+   Though the user ID can be binary data according to the FIDO2 spec, libssh only
+   supports NUL-terminated strings for enrolling new keys in order to remain compatible
+   with the OpenSSH's sk-api interface.
+
+   However, libssh does support loading existing resident keys with user IDs containing
+   arbitrary binary data. It does so by using an `ssh_string` to store the loaded key's
+   user_id, and an `ssh_string` can contain arbitrary binary data that can not be stored
+   in a traditional NUL-terminated string (like null bytes).
+
+   @note The user_id is NOT stored in the key file for non-resident keys. It is only
+   available for resident (discoverable) keys loaded from the authenticator via
+   ssh_sk_resident_keys_load(). For keys imported from files, this function returns
+   NULL.
+
+ - ssh_key_get_sk_flags(): Returns the flags associated with the key. The
+	 following are the supported flags and they can be combined using
+	 bitwise OR:
+     - SSH_SK_USER_PRESENCE_REQD : Require user presence (touch).
+     - SSH_SK_USER_VERIFICATION_REQD : Require user verification
+	   (PIN/biometric).
+     - SSH_SK_RESIDENT_KEY : Request a resident discoverable credential.
+     - SSH_SK_FORCE_OPERATION : Force resident (discoverable) credential
+	   creation even if one with same application and user_id already
+	   exists.
+
+These functions perform no additional communication with the
+authenticator, this metadata is captured during enrollment/loading and
+cached in the `ssh_key`.
+
+@subsection fido2_options Setting Security Key Context Options
+
+Options are set via ssh_pki_ctx_options_set().
+
+Representative security key options:
+ - SSH_PKI_OPTION_SK_APPLICATION (const char *): Required relying party ID
+   If not set, a default value of "ssh:" is used.
+ - SSH_PKI_OPTION_SK_FLAGS (uint8_t *): Flags described above. If not set,
+   defaults to SSH_SK_USER_PRESENCE_REQD. This is because OpenSSH `sshd`
+   requires user presence for security key authentication by default.
+ - SSH_PKI_OPTION_SK_USER_ID (const char *): Represents a unique identifier
+   for the user within the relying party (application) context.
+   It is typically a string (such as an email, or a random identifier) that
+   helps distinguish credentials belonging to different users for the same
+   application. If not set, defaults to 64 zeros.
+ - SSH_PKI_OPTION_SK_CHALLENGE (ssh_buffer): Custom challenge; if omitted a
+   random 32-byte challenge is generated.
+ - SSH_PKI_OPTION_SK_CALLBACKS (ssh_sk_callbacks): Replace the default
+   callbacks with custom callbacks.
+
+PIN callback: Use ssh_pki_ctx_set_sk_pin_callback() to register a function
+matching `ssh_auth_callback` to prompt for and supply a PIN. The callback may
+be called multiple times to ask for the pin depending on the authenticator policy.
+
+Callback options: Callback implementations may accept additional configuration
+name/value options such as the path to the fido device. These options can be provided via
+`ssh_pki_ctx_sk_callbacks_option_set()`. Refer @ref fido2_custom_callbacks_options
+for additional details.
+
+The built-in callback implementation provided by libssh supports additional options,
+with their names defined in `libssh.h` prefixed with `SSH_SK_OPTION_NAME_*`, such as:
+
+SSH_SK_OPTION_NAME_DEVICE_PATH: Used for specifying a device path.
+If the device path is not specified and multiple devices are connected, then
+depending upon the operation and the flags set, the callback implementation may
+automatically select a suitable device, or the user may be prompted to touch the
+device they want to use.
+
+SSH_SK_OPTION_NAME_USER_ID: Used for setting the user ID.
+Note that the user ID can also be set using the ssh_pki_ctx_options_set() API.
+
+@subsection fido2_enrollment Enrollment Example
+
+An enrollment operation creates a new credential on the authenticator and
+returns an ssh_key object representing it. The application and user_id
+fields are required for creating the credential. The other options are
+optional. A successful enrollment returns the public key, key handle, and
+metadata which are stored in the ssh_key object, and may optionally return
+attestation data which is used for verifying the authenticator model and
+firmware version.
+
+Below is a simple example enrolling an Ed25519 security key (non-resident)
+requiring user presence only:
+
+@code
+#include <libssh/libssh.h>
+#include <string.h>
+
+static int pin_cb(const char *prompt,
+                  char *buf,
+                  size_t len,
+                  int echo,
+                  int verify,
+                  void *userdata)
+{
+    (void)prompt;
+    (void)echo;
+    (void)verify;
+    (void)userdata;
+
+    /* In a real application, the user would be prompted to enter the PIN */
+    const char *pin = "4242";
+    size_t l = strlen(pin);
+    if (l + 1 > len) {
+        return SSH_ERROR;
+    }
+
+    memcpy(buf, pin, l + 1);
+    return SSH_OK;
+}
+
+int enroll_sk_key()
+{
+    const char *app = "ssh:user@host";
+    const char *user_id = "alice";
+    uint8_t flags = SSH_SK_USER_PRESENCE_REQD | SSH_SK_USER_VERIFICATION_REQD;
+    const char *device_path = "/dev/hidraw6"; /* Optional device path */
+
+    ssh_pki_ctx pki_ctx = ssh_pki_ctx_new();
+    ssh_pki_ctx_options_set(pki_ctx, SSH_PKI_OPTION_SK_APPLICATION, app);
+    ssh_pki_ctx_options_set(pki_ctx, SSH_PKI_OPTION_SK_USER_ID, user_id);
+    ssh_pki_ctx_options_set(pki_ctx, SSH_PKI_OPTION_SK_FLAGS, &flags);
+
+    ssh_pki_ctx_set_sk_pin_callback(pki_ctx, pin_cb, NULL);
+
+    ssh_pki_ctx_sk_callbacks_option_set(pki_ctx,
+                                        SSH_SK_OPTION_NAME_DEVICE_PATH,
+                                        device_path,
+                                        true);
+
+    ssh_key enrolled = NULL;
+    int rc = ssh_pki_generate_key(SSH_KEYTYPE_SK_ED25519,
+                                  pki_ctx,
+                                  &enrolled); /* produces sk-ed25519 key */
+
+    /* Save enrolled key using ssh_pki_export_privkey_file, retrieve attestation
+     * buffer etc. */
+
+    /* Free context and key when done */
+}
+@endcode
+
+After a successful enrollment, you can retrieve the attestation buffer
+(if provided by the authenticator) from the PKI context:
+
+@code
+ssh_buffer att_buf = NULL;
+rc = ssh_pki_ctx_get_sk_attestation_buffer(pki_ctx, &att_buf);
+if (rc == SSH_OK && att_buf != NULL) {
+    /* att_buf now contains the serialized attestation
+     * ("ssh-sk-attest-v01"). You can inspect, save, or
+     * parse the buffer as needed
+     */
+    ssh_buffer_free(att_buf);
+}
+@endcode
+
+Notes:
+- The attestation buffer is only populated if the enrollment operation
+  succeeds and the authenticator provides attestation data.
+- `ssh_pki_ctx_get_sk_attestation_buffer()` returns a copy of the attestation
+  buffer; the caller must free it with `ssh_buffer_free()`.
+
+@subsection fido2_signing Authenticating with a Stored Security Key Public Key
+
+To authenticate using a security key, the application typically loads the
+previously enrolled sk-* private key, establishes an SSH connection, and
+calls `ssh_userauth_publickey()`. libssh automatically recognizes security
+key types and transparently handles the required hardware-backed
+authentication steps such as prompting for a touch or PIN using the
+configured security key callbacks.
+
+Example:
+@code
+#include <libssh/libssh.h>
+#include <stdio.h>
+
+int auth_with_sk_file(const char *host,
+                      const char *user,
+                      const char *privkey_path)
+{
+    ssh_session session = NULL;
+    ssh_key privkey = NULL;
+    int rc = SSH_ERROR;
+
+    session = ssh_new();
+    ssh_options_set(session, SSH_OPTIONS_HOST, host);
+    ssh_options_set(session, SSH_OPTIONS_USER, user);
+    ssh_connect(session);
+
+    ssh_pki_import_privkey_file(privkey_path, NULL, NULL, NULL, &privkey);
+
+    ssh_pki_ctx pki_ctx = ssh_pki_ctx_new();
+    /* Optionally set PIN callback, device path, etc. */
+    /* ssh_pki_ctx_set_sk_pin_callback(pki_ctx, pin_cb, NULL); */
+
+    ssh_options_set(session, SSH_OPTIONS_PKI_CONTEXT, pki_ctx);
+
+    rc = ssh_userauth_publickey(session, user, privkey);
+    if (rc == SSH_AUTH_SUCCESS) {
+        printf("Authenticated with security key.\n");
+        rc = SSH_OK;
+    } else {
+        fprintf(stderr,
+                "Authentication failed rc=%d err=%s\n",
+                rc,
+                ssh_get_error(session));
+        rc = SSH_ERROR;
+    }
+
+    /* Free resources */
+}
+@endcode
+
+@subsection fido2_resident Resident Key Enumeration
+
+Resident keys stored on the device can be discovered and loaded with
+ssh_sk_resident_keys_load() which takes a PKI context (configured with
+a PIN callback) and returns each key as an ssh_key and the number of keys loaded.
+
+Example:
+
+@code
+#include <libssh/libssh.h>
+#include <stdio.h>
+#include <string.h>
+
+static int pin_cb(const char *prompt,
+                  char *buf,
+                  size_t len,
+                  int echo,
+                  int verify,
+                  void *userdata)
+{
+    (void)prompt;
+    (void)echo;
+    (void)verify;
+    (void)userdata;
+    const char *pin = "4242";
+    size_t l = strlen(pin);
+
+    if (l + 1 > len) {
+        return SSH_ERROR;
+    }
+
+    memcpy(buf, pin, l + 1);
+    return SSH_OK;
+}
+
+int auth_with_resident(const char *host,
+                       const char *user,
+                       const char *application,
+                       const char *user_id)
+{
+    ssh_pki_ctx pki_ctx = NULL;
+    size_t num_found = 0;
+    ssh_key *keys = NULL;
+    ssh_key final_key = NULL;
+    int rc = SSH_ERROR;
+
+    ssh_string cur_application = NULL;
+    ssh_string cur_user_id = NULL;
+    ssh_string expected_application = NULL;
+    ssh_string expected_user_id = NULL;
+
+    pki_ctx = ssh_pki_ctx_new();
+    ssh_pki_ctx_set_sk_pin_callback(pki_ctx, pin_cb, NULL);
+
+    expected_application = ssh_string_from_char(application);
+    expected_user_id = ssh_string_from_char(user_id);
+
+    rc = ssh_sk_resident_keys_load(pki_ctx, &keys, &num_found);
+    for (size_t i = 0; i < num_found; i++) {
+        cur_application = ssh_key_get_sk_application(keys[i]);
+        cur_user_id = ssh_key_get_sk_user_id(keys[i]);
+
+        if (ssh_string_cmp(cur_application, expected_application) == 0 &&
+            ssh_string_cmp(cur_user_id, expected_user_id) == 0) {
+            SSH_STRING_FREE(cur_application);
+            SSH_STRING_FREE(cur_user_id);
+            final_key = keys[i];
+            break;
+        }
+
+        SSH_STRING_FREE(cur_application);
+        SSH_STRING_FREE(cur_user_id);
+    }
+
+    SSH_STRING_FREE(expected_application);
+    SSH_STRING_FREE(expected_user_id);
+
+    /* Continue with authentication using the ssh_key with
+     * ssh_userauth_publickey as usual, and free resources when done. */
+}
+@endcode
+
+@subsection fido2_sshsig Signing using the sshsig API
+
+Security keys can also be used for general-purpose signing of arbitrary data
+(without SSH authentication) using the existing `sshsig_sign()` and `sshsig_verify()`
+functions. These functions work seamlessly with security key types
+(`SSH_KEYTYPE_SK_ECDSA` and `SSH_KEYTYPE_SK_ED25519`) and will automatically
+invoke the configured security key callbacks to perform hardware-backed signing
+operations.
+
+@subsection fido2_custom_callbacks Implementing Custom Callback Implementations
+
+Users may need to implement custom callback implementations to support
+different transport protocols (e.g., NFC, Bluetooth) beyond the default USB-HID
+support. This section describes how to implement and integrate custom callback
+implementations.
+
+To implement custom callbacks, you must include the following headers:
+
+@code
+#include <libssh/callbacks.h>  /* For ssh_sk_callbacks_struct */
+#include <libssh/sk_api.h>     /* For SK API constants and data structures */
+@endcode
+
+The `libssh/sk_api.h` header provides the complete interface specification including
+request/response structures, flags, and version macros.
+
+@subsubsection fido2_custom_callbacks_version API Version Compatibility
+
+libssh validates callback implementations by checking the API version returned by
+the `api_version()` callback. To ensure compatibility, libssh compares the major
+version (upper 16 bits) of the returned value with `LIBSSH_SK_API_VERSION_MAJOR`.
+If they don't match, libssh will reject the callback implementation.
+This ensures that the callbacks' SK API matches the major version expected by libssh,
+while allowing minor version differences.
+
+@subsubsection fido2_custom_callbacks_implementation Implementation Example
+
+Here's a minimal example of defining and using custom callbacks:
+
+@code
+#include <libssh/libssh.h>
+#include <libssh/callbacks.h>
+#include <libssh/sk_api.h>
+
+/* Your custom API version callback */
+static uint32_t my_sk_api_version(void)
+{
+    /* Match the major version, set your own minor version */
+    return SSH_SK_VERSION_MAJOR | 0x0001;
+}
+
+/* Your custom enroll callback */
+static int my_sk_enroll(uint32_t alg,
+                        const uint8_t *challenge,
+                        size_t challenge_len,
+                        const char *application,
+                        uint8_t flags,
+                        const char *pin,
+                        struct sk_option **options,
+                        struct sk_enroll_response **enroll_response)
+{
+    /* Parse options array to extract custom parameters */
+    if (options != NULL) {
+        for (size_t i = 0; options[i] != NULL; i++) {
+            if (strcmp(options[i]->name, "my_custom_option") == 0) {
+                /* Use options[i]->value */
+            }
+        }
+    }
+
+    /* Implement your enroll logic here */
+    /* ... */
+
+    return SSH_SK_ERR_GENERAL; /* Return appropriate error code */
+}
+
+/* Implement other required callbacks: sign, load_resident_keys */
+/* ... */
+
+/* Define your callback structure */
+static struct ssh_sk_callbacks_struct my_sk_callbacks = {
+    .size = sizeof(struct ssh_sk_callbacks_struct),
+    .api_version = my_sk_api_version,
+    .enroll = my_sk_enroll,
+    .sign = my_sk_sign,              /* Your implementation */
+    .load_resident_keys = my_sk_load_resident_keys,  /* Your implementation */
+};
+
+/* Usage example */
+void use_custom_callbacks(void)
+{
+    ssh_pki_ctx pki_ctx = ssh_pki_ctx_new();
+
+    /* Set your custom callbacks */
+    ssh_pki_ctx_options_set(pki_ctx,
+                            SSH_PKI_OPTION_SK_CALLBACKS,
+                            &my_sk_callbacks);
+
+    /* Pass custom options to your callbacks */
+    ssh_pki_ctx_sk_callbacks_option_set(pki_ctx,
+                                        "my_custom_option",
+                                        "my_custom_value",
+                                        false);
+
+    /* Use the context for enrollment, signing, etc. */
+}
+@endcode
+
+@subsubsection fido2_custom_callbacks_options Passing Custom Options
+
+The `ssh_pki_ctx_sk_callbacks_option_set()` function allows you to pass
+implementation-specific options as name/value string pairs:
+
+@code
+ssh_pki_ctx_sk_callbacks_option_set(pki_ctx,
+                                    "option_name",
+                                    "option_value",
+                                    required);
+@endcode
+
+Parameters:
+- `option_name`: The name of the option (e.g., "device_path", "my_custom_param")
+- `option_value`: The string value for this option
+- `required`: If true, this option must be processed by the callback implementation
+  and cannot be ignored. If false, the option is advisory and can be skipped if the
+  callback implementation does not support it.
+
+These options are passed to your callbacks in the `struct sk_option **options`
+parameter as a NULL-terminated array. Each `sk_option` has the following fields:
+- `name`: The option name (char *)
+- `value`: The option value (char *)
+- `required`: Whether the option must be processed (uint8_t, non-zero = required)
+
+@subsubsection fido2_custom_callbacks_openssh OpenSSH Middleware Compatibility
+
+Since libssh uses the same SK API as OpenSSH, middleware implementations developed
+for OpenSSH can be adapted with minimal changes.
+To adapt an OpenSSH middleware for libssh, create a wrapper that populates
+`ssh_sk_callbacks_struct` with pointers to the middleware's functions.
+
+@subsection fido2_testing Testing and Environment Variables
+
+Unit tests covering USB-HID enroll/sign/load_resident_keys operations can be found
+in the `tests/unittests/torture_sk_usbhid.c` file. To run these tests you
+must have libfido2 installed and the WITH_FIDO2=ON build option set.
+Additionally, you must ensure the following:
+
+ - An actual FIDO2 device must be connected to the test machine.
+ - The TORTURE_SK_USBHID environment variable must be set.
+ - The environment variable TORTURE_SK_PIN=<device PIN> must be set.
+
+If these are not set, the tests are skipped.
+
+The higher level PKI integration tests can be found in
+`tests/unittests/torture_pki_sk.c` and the tests related to the sshsig API
+can be found in `tests/unittests/torture_pki_sshsig.c`.
+These use the callback implementation provided by OpenSSH's sk-dummy.so,
+which simulates an authenticator without requiring any hardware. Hence, these tests
+can be run in the CI environment.
+However, these tests can also be configured to use the default USB-HID callbacks
+by setting the same environment variables as described above.
+
+The following devices were tested during development:
+
+- Yubico Security Key NFC - USB-A
+
+*/

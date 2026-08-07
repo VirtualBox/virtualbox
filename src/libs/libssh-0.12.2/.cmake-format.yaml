@@ -1,0 +1,6 @@
+---
+line_width: 80
+tab_size: 4
+use_tabchars: false
+separate_ctrl_name_with_space: true
+separate_fn_name_with_space: false

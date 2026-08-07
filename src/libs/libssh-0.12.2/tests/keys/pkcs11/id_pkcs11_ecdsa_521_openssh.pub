@@ -1,0 +1,2 @@
+#ecdsa public key in openssh format for authorized_keys
+ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBADI9DFD5j3ibs7pr0NRqf4AzMwq4J+OlvBl60fWGiNVvCsC4EQL99TAGcx8VryXybJZ9fmGC0obHdEYXaRddOpOQgGLzYGTYFzQmF91PLNHIUb1K2IGUN8V8Ehr9qYMGcF/2HFNVJ/7Iievz67wKcaVJiAoJ7zNpKpFE1fEUHqQSc9vdA== sprasad@linux.fritz.box

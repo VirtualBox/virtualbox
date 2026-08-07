@@ -1,0 +1,705 @@
+/**
+
+@page libssh_tutor_sftp_aio Chapter 10: The SFTP asynchronous I/O
+
+@section sftp_aio_api The SFTP asynchronous I/O
+
+NOTE : Please read @ref libssh_tutor_sftp before reading this page. The
+synchronous sftp_read() and sftp_write() have been described there.
+
+SFTP AIO stands for "SFTP Asynchronous Input/Output". This API contains
+functions which perform async read/write operations on remote files.
+
+File transfers performed using the asynchronous sftp aio API can be
+significantly faster than the file transfers performed using the synchronous
+sftp read/write API (see sftp_read() and sftp_write()).
+
+The sftp aio API functions are divided into two categories :
+  - sftp_aio_begin_*() [see sftp_aio_begin_read(), sftp_aio_begin_write()]:
+    These functions send a request for an i/o operation to the server and
+    provide the caller an sftp aio handle corresponding to the sent request.
+
+  - sftp_aio_wait_*() [see sftp_aio_wait_read(), sftp_aio_wait_write()]:
+    These functions wait for the server response corresponding to a previously
+    issued request. Which request ? the request corresponding to the sftp aio
+    handle supplied by the caller to these functions.
+
+Conceptually, you can think of the sftp aio handle as a request identifier.
+
+Technically, the sftp_aio_begin_*() functions dynamically allocate memory to
+store information about the i/o request they send and provide the caller a
+handle to this memory, we call this handle an sftp aio handle.
+
+sftp_aio_wait_*() functions use the information stored in that memory (handled
+by the caller supplied sftp aio handle) to identify a request, and then they
+wait for that request's response. These functions also release the memory
+handled by the caller supplied sftp aio handle (except when they return
+SSH_AGAIN).
+
+sftp_aio_free() can also be used to release the memory handled by an sftp aio
+handle but unlike the sftp_aio_wait_*() functions, it doesn't wait for a
+response. This should be used to release the memory corresponding to an sftp
+aio handle when some failure occurs. An example has been provided at the
+end of this page to show the usage of sftp_aio_free().
+
+To begin with, this tutorial will provide basic examples that describe the
+usage of sftp aio API to perform a single read/write operation.
+
+The later sections describe the usage of the sftp aio API to obtain faster file
+transfers as compared to the transfers performed using the synchronous sftp
+read/write API.
+
+On encountering an error, the sftp aio API functions set the sftp and ssh
+errors just like any other libssh sftp API function. These errors can be
+obtained using sftp_get_error(), ssh_get_error() and ssh_get_error_code().
+The code examples provided on this page ignore error handling for the sake of
+brevity.
+
+@subsection sftp_aio_read Using the sftp aio API for reading (a basic example)
+
+For performing an async read operation on a sftp file (see sftp_open()),
+the first step is to call sftp_aio_begin_read() to send a read request to the
+server. The caller is provided an sftp aio handle corresponding to the sent
+read request.
+
+The second step is to pass a pointer to this aio handle to
+sftp_aio_wait_read(), this function waits for the server response which
+indicates the success/failure of the read request. On success, the response
+indicates EOF or contains the data read from the sftp file.
+
+The following code example shows how a read operation can be performed
+on an sftp file using the sftp aio API.
+
+@code
+ssize_t read_chunk(sftp_file file, void *buf, size_t to_read)
+{
+    ssize_t bytes_requested, bytes_read;
+
+    // Variable to store an sftp aio handle
+    sftp_aio aio = NULL;
+
+    // Send a read request to the sftp server
+    bytes_requested = sftp_aio_begin_read(file, to_read, &aio);
+    if (bytes_requested == SSH_ERROR) {
+        // handle error
+    }
+
+    // Here its possible that (bytes_requested < to_read) as specified in
+    // the function documentation of sftp_aio_begin_read()
+
+    // Wait for the response of the read request corresponding to the
+    // sftp aio handle stored in the aio variable.
+    bytes_read = sftp_aio_wait_read(&aio, buf, to_read);
+    if (bytes_read == SSH_ERROR) {
+        // handle error
+    }
+
+    return bytes_read;
+}
+@endcode
+
+@subsection sftp_aio_write Using the sftp aio API for writing (a basic example)
+
+For performing an async write operation on a sftp file (see sftp_open()),
+the first step is to call sftp_aio_begin_write() to send a write request to
+the server. The caller is provided an sftp aio handle corresponding to the
+sent write request.
+
+The second step is to pass a pointer to this aio handle to
+sftp_aio_wait_write(), this function waits for the server response which
+indicates the success/failure of the write request.
+
+The following code example shows how a write operation can be performed on an
+sftp file using the sftp aio API.
+
+@code
+ssize_t write_chunk(sftp_file file, void *buf, size_t to_write)
+{
+    ssize_t bytes_requested, bytes_written;
+
+    // Variable to store an sftp aio handle
+    sftp_aio aio = NULL;
+
+    // Send a write request to the sftp server
+    bytes_requested = sftp_aio_begin_write(file, buf, to_write, &aio);
+    if (bytes_requested == SSH_ERROR) {
+        // handle error
+    }
+
+    // Here its possible that (bytes_requested < to_write) as specified in
+    // the function documentation of sftp_aio_begin_write()
+
+    // Wait for the response of the write request corresponding to
+    // the sftp aio handle stored in the aio variable.
+    bytes_written = sftp_aio_wait_write(&aio);
+    if (bytes_written == SSH_ERROR) {
+        // handle error
+    }
+
+    return bytes_written;
+}
+@endcode
+
+@subsection sftp_aio_actual_use Using the sftp aio API to speed up a transfer
+
+The above examples were provided to introduce the sftp aio API.
+This is not how the sftp aio API is intended to be used, because the
+above usage offers no advantage over the synchronous sftp read/write API
+which does the same thing i.e issue a request and then immediately wait for
+its response.
+
+The facility that the sftp aio API provides is that the user can do
+anything between issuing a request and getting the corresponding response.
+Any number of operations can be performed after calling sftp_aio_begin_*()
+[which issues a request] and before calling sftp_aio_wait_*() [which waits
+for a response]
+
+The code can leverage this feature by calling sftp_aio_begin_*() multiple times
+to issue multiple requests before calling sftp_aio_wait_*() to wait for the
+response of an earlier issued request. This approach will keep a certain number
+of requests outstanding at the client side.
+
+After issuing those requests, while the client code does something else (for
+example waiting for an outstanding request's response, processing an obtained
+response, issuing another request or any other operation the client wants
+to perform), at the same time :
+
+  - Some of those outstanding requests may be travelling over the
+    network towards the server.
+
+  - Some of the outstanding requests may have reached the server and may
+    be queued for processing at the server side.
+
+  - Some of the outstanding requests may have been processed and the
+    corresponding responses may be travelling over the network towards the
+    client.
+
+  - Some of the responses corresponding to the outstanding requests may
+    have already reached the client side.
+
+Clearly in this case, operations that the client performs and operations
+involved in transfer/processing of a outstanding request can occur in
+parallel. Also, operations involved in transfer/processing of two or more
+outstanding requests may also occur in parallel (for example when one request
+travels to the server, another request's response may be incoming towards the
+client). Such kind of parallelism makes the overall transfer faster as compared
+to a transfer performed using the synchronous sftp read/write API.
+
+When the synchronous sftp read/write API is used to perform a transfer,
+a strict sequence is followed:
+
+  - The client issues a single read/write request.
+  - Then waits for its response.
+  - On obtaining the response, the client processes it.
+  - After the processing ends, the client issues the next read/write request.
+
+A file transfer performed in this manner would be slower than the case where
+multiple read/write requests are kept outstanding at the client side. Because
+here at any given time, operations related to transfer/processing of only one
+request/response pair occurs. This is in contrast to the multiple outstanding
+requests scenario where operations related to transfer/processing of multiple
+request/response pairs may occur at the same time.
+
+Although it's true that keeping multiple requests outstanding can speed up a
+transfer, those outstanding requests come at a cost of increased memory
+consumption both at the client side and the server side. Hence care must be
+taken to use a reasonable limit for the number of requests kept outstanding.
+
+The further sections provide code examples to show how uploads/downloads
+can be performed using the sftp aio API and the concept of outstanding requests
+discussed in this section. In those code examples, error handling has been
+ignored and at some places pseudo code has been used for the sake of brevity.
+
+The complete code for performing uploads/downloads using the sftp aio API,
+can be found at https://gitlab.com/libssh/libssh-mirror/-/tree/master.
+
+  - libssh benchmarks for uploads performed using the sftp aio API [See
+    tests/benchmarks/bench_sftp.c]
+  - libssh benchmarks for downloads performed using the sftp aio API. [See
+    tests/benchmarks/bench_sftp.c]
+  - libssh sftp ft API code for performing a local to remote transfer (upload).
+    [See src/sftp_ft.c]
+  - libssh sftp ft API code for performing a remote to local transfer
+    (download). [See src/sftp_ft.c]
+
+@subsection sftp_aio_cap Capping applied by the sftp aio API
+
+Before the code examples for uploads and downloads, its important
+to know about the capping applied by the sftp aio API.
+
+sftp_aio_begin_read() caps the number of bytes the caller can request
+to read from the remote file. That cap is the value of the max_read_length
+field of the sftp_limits_t returned by sftp_limits(). Say that cap is LIM
+and the caller passes x as the number of bytes to read to
+sftp_aio_begin_read(), then (assuming no error occurs) :
+
+  - if x <= LIM, then sftp_aio_begin_read() will request the server
+    to read x bytes from the remote file, and will return x.
+
+  - if x > LIM, then sftp_aio_begin_read() will request the server
+    to read LIM bytes from the remote file and will return LIM.
+
+Hence to request server to read x bytes (> LIM), the caller would have
+to call sftp_aio_begin_read() multiple times, typically in a loop and
+break out of the loop when the summation of return values of the multiple
+sftp_aio_begin_read() calls becomes equal to x.
+
+For the sake of simplicity, the code example for download in the upcoming
+section would always ask sftp_aio_begin_read() to read x <= LIM bytes,
+so that its return value is guaranteed to be x, unless an error occurs.
+
+Similarly, sftp_aio_begin_write() caps the number of bytes the caller
+can request to write to the remote file. That cap is the value of
+max_write_length field of the sftp_limits_t returned by sftp_limits().
+Say that cap is LIM and the caller passes x as the number of bytes to
+write to sftp_aio_begin_write(), then (assuming no error occurs) :
+
+  - if x <= LIM, then sftp_aio_begin_write() will request the server
+    to write x bytes to the remote file, and will return x.
+
+  - if x > LIM, then sftp_aio_begin_write() will request the server
+    to write LIM bytes to the remote file and will return LIM.
+
+Hence to request server to write x bytes (> LIM), the caller would have
+to call sftp_aio_begin_write() multiple times, typically in a loop and
+break out of the loop when the summation of return values of the multiple
+sftp_aio_begin_write() calls becomes equal to x.
+
+For the sake of simplicity, the code example for upload in the upcoming
+section would always ask sftp_aio_begin_write() to write x <= LIM bytes,
+so that its return value is guaranteed to be x, unless an error occurs.
+
+@subsection sftp_aio_download_example Performing a download using the sftp aio API
+
+Terminologies used in the following code snippets :
+
+  - sftp : The sftp_session opened using sftp_new() and initialised using
+    sftp_init()
+
+  - file : The sftp file handle of the remote file to download data
+    from. (See sftp_open())
+
+  - file_size : the size of the sftp file to download. This size can be obtained
+    by statting the remote file to download (e.g by using sftp_stat())
+
+  - We will need to maintain a queue which will be used to store the sftp aio
+    handles corresponding to the outstanding requests.
+
+First, we issue the read requests while ensuring that their count
+doesn't exceed a particular limit decided by us, and the number of bytes
+requested don't exceed the size of the file to download.
+
+@code
+sftp_aio aio = NULL;
+
+// Chunk size to use for the transfer
+size_t chunk_size;
+
+// For the limits structure that would be used
+// by the code to set the chunk size
+sftp_limits_t lim = NULL;
+
+// Max number of requests to keep outstanding at a time
+size_t in_flight_requests = 5;
+
+// Number of bytes for which requests have been sent
+size_t total_bytes_requested = 0;
+
+// Number of bytes which have been downloaded
+size_t bytes_downloaded = 0;
+
+// Buffer to use for the download
+char *buffer = NULL;
+
+// Helper variables
+size_t to_read;
+ssize_t bytes_requested;
+
+// Get the sftp limits
+lim = sftp_limits(sftp);
+if (lim == NULL) {
+    // handle error
+}
+
+// Set the chunk size for download = the max limit for reading
+// The reason for this has been given in the "Capping applied by
+// the sftp aio API" section (Its to make the code simpler)
+//
+// Assigning a size_t type variable a uint64_t type value here,
+// theoretically could cause an overflow, but practically
+// max_read_length would never exceed SIZE_MAX so its okay.
+chunk_size = lim->max_read_length;
+
+buffer = malloc(chunk_size);
+if (buffer == NULL) {
+    // handle error
+}
+
+... // Code to open the remote file (to download) using sftp_open().
+... // Code to stat the remote file's file size.
+... // Code to open the local file in which downloaded data is to be stored.
+... // Code to initialize the queue which will be used to store sftp aio
+    // handles.
+
+for (i = 0;
+     i < in_flight_requests && total_bytes_requested < file_size;
+     ++i) {
+    to_read = file_size - total_bytes_requested;
+    if (to_read > chunk_size) {
+        to_read = chunk_size;
+    }
+
+    // Issue a read request
+    bytes_requested = sftp_aio_begin_read(file, to_read, &aio);
+    if (bytes_requested == SSH_ERROR) {
+        // handle error
+    }
+
+    if ((size_t)bytes_requested < to_read) {
+        // Should not happen for this code, as the to_read is <=
+        // max limit for reading (chunk size), so there is no reason
+        // for sftp_aio_begin_read() to return a lesser value.
+    }
+
+    total_bytes_requested += (size_t)bytes_requested;
+
+    // Pseudo code
+    ENQUEUE aio in the queue;
+}
+
+@endcode
+
+At this point, at max in_flight_requests number of requests may be
+outstanding. Now we wait for the response corresponding to the earliest
+issued outstanding request.
+
+On getting that response, we issue another read request if there are
+still some bytes in the sftp file (to download) for which we haven't sent the
+read request. (This happens when total_bytes_requested < file_size)
+
+This issuing of another read request (under a condition) is done to
+keep the number of outstanding requests equal to the value of the
+in_flight_requests variable.
+
+This process has to be repeated for every remaining outstanding request.
+
+@code
+while (the queue is not empty) {
+    // Pseudo code
+    aio = DEQUEUE an sftp aio handle from the queue of sftp aio handles;
+
+    // Wait for the response of the request corresponding to the aio
+    bytes_read = sftp_aio_wait_read(&aio, buffer, chunk_size);
+    if (bytes_read == SSH_ERROR) {
+        //handle error
+    }
+
+    bytes_downloaded += bytes_read;
+    if (bytes_read != chunk_size && bytes_downloaded != file_size) {
+        // A short read encountered on the remote file before reaching EOF,
+        // short read before reaching EOF should never happen for the sftp aio
+        // API which respects the max limit for reading. This probably
+        // indicates a bad server.
+    }
+
+    // Pseudo code
+    WRITE bytes_read bytes from the buffer into the local file
+    in which downloaded data is to be stored ;
+
+    if (total_bytes_requested == file_size) {
+        // no need to issue more read requests
+        continue;
+    }
+
+    // else issue a read request
+    to_read = file_size - total_bytes_requested;
+    if (to_read > chunk_size) {
+        to_read = chunk_size;
+    }
+
+    bytes_requested = sftp_aio_begin_read(file, to_read, &aio);
+    if (bytes_requested == SSH_ERROR) {
+        // handle error
+    }
+
+    if ((size_t)bytes_requested < to_read) {
+        // Should not happen for this code, as the to_read is <=
+        // max limit for reading (chunk size), so there is no reason
+        // for sftp_aio_begin_read() to return a lesser value.
+    }
+
+    total_bytes_requested += bytes_requested;
+
+    // Pseudo code
+    ENQUEUE aio in the queue;
+}
+
+free(buffer);
+sftp_limits_free(lim);
+
+... // Code to destroy the queue which was used to store the sftp aio
+    // handles.
+@endcode
+
+After exiting the while (the queue is not empty) loop, the download
+would've been complete (assuming no error occurs).
+
+@subsection sftp_aio_upload_example Performing an upload using the sftp aio API
+
+Terminologies used in the following code snippets :
+
+  - sftp : The sftp_session opened using sftp_new() and initialised using
+    sftp_init()
+
+  - file : The sftp file handle of the remote file in which uploaded data
+    is to be stored. (See sftp_open())
+
+  - file_size : The size of the local file to upload. This size can be
+    obtained by statting the local file to upload (e.g by using stat())
+
+  - We will need maintain a queue which will be used to store the sftp aio
+    handles corresponding to the outstanding requests.
+
+First, we issue the write requests while ensuring that their count
+doesn't exceed a particular limit decided by us, and the number of bytes
+requested to write don't exceed the size of the file to upload.
+
+@code
+sftp_aio aio = NULL;
+
+// The chunk size to use for the transfer
+size_t chunk_size;
+
+// For the limits structure that would be used by
+// the code to set the chunk size
+sftp_limits_t lim = NULL;
+
+// Max number of requests to keep outstanding at a time
+size_t in_flight_requests = 5;
+
+// Total number of bytes for which write requests have been sent
+size_t total_bytes_requested = 0;
+
+// Buffer to use for the upload
+char *buffer = NULL;
+
+// Helper variables
+size_t to_write;
+ssize_t bytes_requested;
+
+// Get the sftp limits
+lim = sftp_limits(sftp);
+if (lim == NULL) {
+    // handle error
+}
+
+// Set the chunk size for upload = the max limit for writing.
+// The reason for this has been given in the "Capping applied by
+// the sftp aio API" section (Its to make the code simpler)
+//
+// Assigning a size_t type variable a uint64_t type value here,
+// theoretically could cause an overflow, but practically
+// max_write_length would never exceed SIZE_MAX so its okay.
+chunk_size = lim->max_write_length;
+
+buffer = malloc(chunk_size);
+if (buffer == NULL) {
+    // handle error
+}
+
+... // Code to open the local file (to upload) [e.g using open(), fopen()].
+... // Code to stat the local file's file size [e.g using stat()].
+... // Code to open the remote file in which uploaded data will be stored [see
+    // sftp_open()].
+... // Code to initialize the queue which will be used to store sftp aio
+    // handles.
+
+for (i = 0;
+     i < in_flight_requests && total_bytes_requested < file_size;
+     ++i) {
+    to_write = file_size - total_bytes_requested;
+    if (to_write > chunk_size) {
+        to_write = chunk_size;
+    }
+
+    // Pseudo code
+    READ to_write bytes from the local file (to upload) into the buffer;
+
+    bytes_requested = sftp_aio_begin_write(file, buffer, to_write, &aio);
+    if (bytes_requested == SSH_ERROR) {
+        // handle error
+    }
+
+    if ((size_t)bytes_requested < to_write) {
+        // Should not happen for this code, as the to_write is <=
+        // max limit for writing (chunk size), so there is no reason
+        // for sftp_aio_begin_write() to return a lesser value.
+    }
+
+    total_bytes_requested += (size_t)bytes_requested;
+
+    // Pseudo code
+    ENQUEUE aio in the queue;
+}
+
+@endcode
+
+At this point, at max in_flight_requests number of requests may be
+outstanding. Now we wait for the response corresponding to the earliest
+issued outstanding request.
+
+On getting that response, we issue another write request if there are
+still some bytes in the local file (to upload) for which we haven't sent
+the write request. (This happens when total_bytes_requested < file_size)
+
+This issuing of another write request (under a condition) is done to
+keep the number of outstanding requests equal to the value of the
+in_flight_requests variable.
+
+This process has to be repeated for every remaining outstanding request.
+
+@code
+while (the queue is not empty) {
+    // Pseudo code
+    aio = DEQUEUE an sftp aio handle from the queue of sftp aio handles;
+
+    // Wait for the response of the request corresponding to the aio
+    bytes_written = sftp_aio_wait_write(&aio);
+    if (bytes_written == SSH_ERROR) {
+        // handle error
+    }
+
+    // sftp_aio_wait_write() won't report a short write, so no need
+    // to check for a short write here.
+
+    if (total_bytes_requested == file_size) {
+        // no need to issue more write requests
+        continue;
+    }
+
+    // else issue a write request
+    to_write = file_size - total_bytes_requested;
+    if (to_write > chunk_size) {
+        to_write = chunk_size;
+    }
+
+    // Pseudo code
+    READ to_write bytes from the local file (to upload) into a buffer;
+
+    bytes_requested = sftp_aio_begin_write(file, buffer, to_write, &aio);
+    if (bytes_requested == SSH_ERROR) {
+        // handle error
+    }
+
+    if ((size_t)bytes_requested < to_write) {
+        // Should not happen for this code, as the to_write is <=
+        // max limit for writing (chunk size), so there is no reason
+        // for sftp_aio_begin_write() to return a lesser value.
+    }
+
+    total_bytes_requested += (size_t)bytes_requested;
+
+    // Pseudo code
+    ENQUEUE aio in the queue;
+}
+
+free(buffer);
+
+... // Code to destroy the queue which was used to store the sftp aio
+    // handles.
+@endcode
+
+After exiting the while (the queue is not empty) loop, the upload
+would've been complete (assuming no error occurs).
+
+@subsection sftp_aio_free Example showing the usage of sftp_aio_free()
+
+The purpose of sftp_aio_free() was discussed at the beginning of this page,
+the following code example shows how it can be used during cleanup.
+
+@code
+void print_sftp_error(sftp_session sftp)
+{
+    if (sftp == NULL) {
+        return;
+    }
+
+    fprintf(stderr, "sftp error : %d\n", sftp_get_error(sftp));
+    fprintf(stderr, "ssh error : %s\n", ssh_get_error(sftp->session));
+}
+
+// Returns 0 on success, -1 on error
+int write_strings(sftp_file file)
+{
+    const char * strings[] = {
+        "This is the first string",
+        "This is the second string",
+        "This is the third string",
+        "This is the fourth string"
+    };
+
+    size_t string_count = sizeof(strings) / sizeof(strings[0]);
+    size_t i;
+
+    sftp_session sftp = NULL;
+    sftp_aio aio = NULL;
+
+    int rc;
+
+    if (file == NULL) {
+        return -1;
+    }
+
+    ... // Code to initialize the queue which will be used to store sftp aio
+        // handles
+
+    sftp = file->sftp;
+    for (i = 0; i < string_count; ++i) {
+        rc = sftp_aio_begin_write(file,
+                                  strings[i],
+                                  strlen(strings[i]),
+                                  &aio);
+        if (rc == SSH_ERROR) {
+            print_sftp_error(sftp);
+            goto err;
+        }
+
+        // Pseudo code
+        ENQUEUE aio in the queue of sftp aio handles
+    }
+
+    for (i = 0; i < string_count; ++i) {
+        // Pseudo code
+        aio = DEQUEUE an sftp aio handle from the queue of sftp aio handles;
+
+        rc = sftp_aio_wait_write(&aio);
+        if (rc == SSH_ERROR) {
+            print_sftp_error(sftp);
+            goto err;
+        }
+    }
+
+
+    ... // Code to destroy the queue in which sftp aio handles were
+        // stored
+
+    return 0;
+
+err:
+
+    while (queue is not empty) {
+        // Pseudo code
+        aio = DEQUEUE an sftp aio handle from the queue of sftp aio handles;
+
+        sftp_aio_free(aio);
+    }
+
+    ... // Code to destroy the queue in which sftp aio handles were
+        // stored.
+
+    return -1;
+}
+
+@endcode
+
+*/

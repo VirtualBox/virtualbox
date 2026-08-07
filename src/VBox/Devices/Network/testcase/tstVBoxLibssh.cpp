@@ -1,4 +1,4 @@
-/* $Id: tstVBoxLibssh.cpp 114489 2026-06-22 16:31:04Z aleksey.ilyushin@oracle.com $ */
+/* $Id: tstVBoxLibssh.cpp 114891 2026-08-07 11:59:56Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * tstVBoxLibssh - Testcase for the libssh. Requires sshd with keys configured on some host.
  */
@@ -73,6 +73,7 @@ static int runSessionAndExec(void)
 
     do
     {
+        RTTestIPrintf(RTTESTLVL_ALWAYS, "Testing with libssh-" SSH_STRINGIFY(LIBSSH_VERSION) "\n");
         RTTestIPrintf(RTTESTLVL_ALWAYS,
                       "Connecting to host=%s user=%s key=%s\n",
                       g_szHost, g_szUser, g_szKeyFile);

@@ -1,4 +1,4 @@
-; $Id: VBoxRT-openssl-3.0.def 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: VBoxRT-openssl-3.0.def 114891 2026-08-07 11:59:56Z aleksey.ilyushin@oracle.com $
 ;; @file
 ; IPRT - Windows OpenSSL exports we use outside VBoxRT (keep them few!).
 ;
@@ -373,6 +373,8 @@
     EVP_MD_CTX_free
     EVP_MD_CTX_new
     EVP_MD_CTX_reset
+    EVP_MD_fetch
+    EVP_MD_free
     EVP_md5
     EVP_PKEY_CTX_new
     EVP_PKEY_CTX_new_id

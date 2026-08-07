@@ -1,0 +1,515 @@
+### GLIBC
+{
+   glibc_regcomp
+   Memcheck:Leak
+   fun:*alloc
+   ...
+   fun:regcomp
+}
+{
+   glibc_getaddrinfo_leak
+   Memcheck:Leak
+   fun:malloc
+   fun:make_request
+   fun:__check_pf
+   fun:getaddrinfo
+   fun:getai
+   fun:ssh_connect_host_nonblocking
+}
+
+{
+   glibc_dlopen_getdelim_selinux
+   Memcheck:Leak
+   fun:malloc
+   fun:getdelim
+   obj:/lib64/libselinux.so.1
+   fun:call_init
+   fun:_dl_init
+   obj:/lib64/ld-2.15.so
+}
+
+{
+   glibc_dlopen_alloc
+   Memcheck:Leak
+   fun:calloc
+   fun:_dlerror_run
+   fun:dlopen@@GLIBC_2.2.5
+}
+
+### VALGRIND
+{
+    valgrind_exit_free_bug
+    Memcheck:Free
+    fun:free
+    fun:__libc_freeres
+    fun:_vgnU_freeres
+    fun:__run_exit_handlers
+    fun:exit
+}
+
+
+### OPENSSL
+{
+   openssl_crypto_value8
+   Memcheck:Value8
+   fun:*
+   obj:/lib*/libcrypto.so*
+}
+
+{
+   openssl_crypto_value4
+   Memcheck:Value4
+   fun:*
+   obj:/lib*/libcrypto.so*
+}
+
+{
+   openssl_crypto_cond
+   Memcheck:Cond
+   fun:*
+   obj:/lib*/libcrypto.so*
+}
+
+{
+   openssl_BN_cond
+   Memcheck:Cond
+   fun:BN_*
+}
+
+{
+   openssl_bn_value8
+   Memcheck:Value8
+   fun:bn_*
+}
+
+{
+   openssl_bn_value4
+   Memcheck:Value4
+   fun:bn_*
+}
+
+{
+   openssl_AES_cond
+   Memcheck:Cond
+   fun:AES_*
+}
+
+{
+   openssl_DES_cond
+   Memcheck:Cond
+   fun:DES_*
+}
+
+{
+   openssl_DES_value8
+   Memcheck:Value8
+   fun:DES_*
+}
+
+{
+   openssl_DES_value4
+   Memcheck:Value4
+   fun:DES_*
+}
+
+{
+   openssl_BF_cond
+   Memcheck:Cond
+   fun:BF_*
+}
+
+{
+   openssl_SHA1_cond
+   Memcheck:Cond
+   fun:SHA1_*
+}
+{
+   openssl_CRYPTO_leak
+   Memcheck:Cond
+   fun:OPENSSL_cleanse
+}
+{
+   openssl_FIPS_dlopen_leak
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:calloc
+   fun:_dlerror_run
+   fun:dlopen*
+   obj:/lib64/libcrypto.so*
+   fun:FIPS_module_mode_set
+   fun:FIPS_mode_set
+   fun:OPENSSL_init_library
+}
+{
+   Threads + Failed PEM decoder do not play well openssl/openssl#29077
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:CRYPTO_malloc
+   fun:CRYPTO_zalloc
+   fun:ossl_rcu_read_lock
+   fun:module_find
+   fun:module_run
+   fun:CONF_modules_load
+   fun:CONF_modules_load_file_ex
+   fun:ossl_config_int
+   fun:ossl_config_int
+   fun:ossl_init_config
+   fun:ossl_init_config_ossl_
+   fun:__pthread_once_slow.isra.0
+   fun:pthread_once@@GLIBC_2.34
+   fun:CRYPTO_THREAD_run_once
+   fun:OPENSSL_init_crypto
+   fun:ossl_provider_doall_activated
+   fun:ossl_algorithm_do_all
+   fun:ossl_method_construct.constprop.0
+   fun:inner_evp_generic_fetch.constprop.0
+   fun:evp_generic_do_all
+   fun:EVP_KEYMGMT_do_all_provided
+   fun:ossl_decoder_ctx_setup_for_pkey
+   fun:OSSL_DECODER_CTX_new_for_pkey
+   fun:pem_read_bio_key_decoder
+   fun:pem_read_bio_key
+   fun:PEM_read_bio_PrivateKey_ex
+   fun:pki_private_key_from_base64
+   ...
+}
+# Cmocka
+{
+   This looks like leak from cmocka when the forked server is not properly terminated
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:calloc
+   ...
+   fun:_cmocka_run_group_tests
+   fun:torture_run_tests
+   fun:main
+}
+
+## libgcrypt
+{
+   Reachable allocations from libgcrypt
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:gcry_check_version
+   fun:ssh_crypto_init
+   fun:_ssh_init
+   fun:libssh_constructor
+   ...
+}
+{
+   randomize in libgcrypt keeps some memory around
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:ssh_get_random
+   ...
+}
+{
+   EC key operation allocs some reachable memory
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:gcry_pk_sign
+   ...
+}
+{
+   EC key operation allocs some reachable memory
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:gcry_pk_verify
+   ...
+}
+{
+   EC key generation allocs some reachable memory
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:gcry_pk_genkey
+   ...
+}
+# NSS
+{
+   Reachable memory from getaddrinfo
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:__nss_module_get_function
+   ...
+   fun:getaddrinfo
+   ...
+   fun:torture_*
+   ...
+   fun:_cmocka_run_group_tests
+   fun:torture_run_tests
+   fun:main
+}
+## libkrb5
+# krb5_mcc_generate_new allocates a hashtab on a static global variable
+# It doesn't get freed.
+{
+   Reachable memory from getaddrinfo
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:malloc
+   fun:strdup
+   fun:_dl_load_cache_lookup
+   fun:_dl_map_object
+   fun:dl_open_worker_begin
+   fun:_dl_catch_exception
+   fun:dl_open_worker
+   fun:_dl_catch_exception
+   fun:_dl_open
+   fun:do_dlopen
+   fun:_dl_catch_exception
+   fun:_dl_catch_error
+   fun:dlerror_run
+   ...
+   fun:getaddrinfo
+   ...
+   fun:gss_init_sec_context
+   fun:ssh_gssapi_init_ctx
+   ...
+   fun:ssh_userauth_gssapi
+   fun:torture_gssapi_auth_server_identity
+   ...
+   fun:_cmocka_run_group_tests
+   fun:torture_run_tests
+   fun:main
+}
+
+{
+   Reachable memory from getaddrinfo
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:UnknownInlinedFun
+   fun:_dl_new_object
+   fun:_dl_map_object_from_fd
+   fun:_dl_map_object
+   fun:dl_open_worker_begin
+   fun:_dl_catch_exception
+   fun:dl_open_worker
+   fun:_dl_catch_exception
+   fun:_dl_open
+   fun:do_dlopen
+   fun:_dl_catch_exception
+   fun:_dl_catch_error
+   fun:dlerror_run
+   ...
+   fun:getaddrinfo
+   ...
+   fun:gss_init_sec_context
+   fun:ssh_gssapi_init_ctx
+   ...
+   fun:ssh_userauth_gssapi
+   fun:torture_gssapi_auth_server_identity
+   ...
+   fun:_cmocka_run_group_tests
+   fun:torture_run_tests
+   fun:main
+}
+
+{
+   Reachable memory from libkrb5
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:k5_hashtab_create
+   ...
+   fun:krb5_mcc_generate_new*
+}
+{
+   Error string from acquire creds in krb5
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:krb5_gss_save_error_string
+   ...
+   fun:acquire_cred_context.isra.0
+   fun:acquire_cred_from.isra.0
+   fun:gss_add_cred_from
+   fun:gss_acquire_cred_from
+}
+{
+   error string from gss init sec context
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:krb5_gss_save_error_string
+   ...
+   fun:krb5_gss_init_sec_context_ext
+   fun:krb5_gss_init_sec_context
+   fun:gss_init_sec_context
+}
+
+
+## sk-dummy.so
+# The sk-dummy.so enroll function allocates 1-byte memory for the signature, but marks the signature length as 0.
+# Since, we use burn_free to free the signature, it skips the freeing because the size is 0, which results in a memory leak.
+{
+   sk-dummy.so memory leak in sk_enroll
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   fun:sk_enroll
+   fun:pki_sk_enroll_key
+   ...
+}
+
+
+{
+   malloc inside expand_hostname
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:expand_hostname
+   fun:canonicalize_princ
+   fun:krb5_sname_to_principal
+   fun:krb5_gss_import_name
+   fun:gssint_import_internal_name
+   fun:gss_init_sec_context
+   fun:ssh_gssapi_init_ctx
+}
+{
+   malloc in krb5_build_principal
+   Memcheck:Leak
+   match-leak-kinds: indirect
+   fun:malloc
+   ...
+   fun:krb5_build_principal_alloc_va
+   fun:krb5_build_principal
+   ...
+   fun:gss_add_cred_from
+   fun:gss_acquire_cred_from
+   fun:gss_acquire_cred
+}
+{
+   malloc in krb5_build_principal
+   Memcheck:Leak
+   match-leak-kinds: indirect,definite
+   fun:malloc
+   fun:krb5_build_principal_alloc_va
+   fun:krb5_build_principal
+   ...
+   fun:gss_add_cred_from
+   fun:gss_acquire_cred_from
+   fun:gss_acquire_cred
+}
+{
+   calloc in krb5_build_principal
+   Memcheck:Leak
+   match-leak-kinds: indirect
+   fun:calloc
+   ...
+   fun:krb5_build_principal_alloc_va
+   fun:krb5_build_principal
+   ...
+   fun:gss_add_cred_from
+   fun:gss_acquire_cred_from
+   fun:gss_acquire_cred
+}
+
+# Function mecherror_copy called in various
+# functions of the krb5 library copies entries
+# to the global error mapping table (mecherrmap m).
+{
+   Global error mapping table in krb5
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:mecherror_copy
+}
+
+# Function add_error_table called in various
+# functions of the krb5 library adds entries
+# to a global list of error tables et_list.
+{
+   Global list of error tables in krb5
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:add_error_table
+}
+
+# Function build_mechSet builds the global
+# gss_OID_set_desc g_mechSet which is only
+# free'd when initialized again.
+{
+   Global OID set in krb5
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:build_mechSet
+}
+
+# Function gssint_register_mechinfo()
+# called from gssint_mechglue_init() adds
+# entries to a global linked list g_mechList.
+{
+   Global list of gss_mech_info in krb5
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:gssint_register_mechinfo*
+   ...
+   fun:gssint_mechglue_init
+}
+
+# Function addConfigEntry() called during
+# updateMechList() adds entries to
+# a global linked list g_mechList.
+{
+   Global list of gss_mech_info in krb5
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:addConfigEntry
+   ...
+   fun:updateMechList
+}
+
+# Function loadInterMech() called during
+# updateMechList() loops through the global
+# linked list g_mechList and updates its entries
+# with heap-alloced  "interposer fields".
+{
+   Global list of gss_mech_info in krb5
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:loadInterMech
+   ...
+   fun:updateMechList
+}
+
+# Multiple krb5 functions call krb5int_open_plugin
+# which opens shared libraries using dlopen.
+# The plugin handle then seems to be stored in the
+# main krb5 context.
+{
+   Plugin handles stored in the krb5 context
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:dlopen*
+   ...
+   fun:krb5int_open_plugin
+}

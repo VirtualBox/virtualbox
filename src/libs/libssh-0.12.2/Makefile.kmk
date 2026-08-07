@@ -1,0 +1,130 @@
+# $Id: Makefile.kmk 114891 2026-08-07 11:59:56Z aleksey.ilyushin@oracle.com $
+## @file
+# Sub-Makefile for libssh.
+#
+
+#
+# Copyright (C) 2020-2026 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH = ../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+DLLS += VBoxLibSsh
+VBoxLibSsh_TEMPLATE = VBoxR3DllNonPedantic
+VBoxLibSsh_DEFS = LIBSSH_EXPORTS
+VBoxLibSsh_SDKS = VBoxZlib VBoxOpenSsl
+VBoxLibSsh_LIBS += $(LIB_RUNTIME)
+# -wd4146: fe25519.c(90): warning C4146: unary minus operator applied to unsigned type, result still unsigned
+# -wd4206: agent.c(595): warning C4206: nonstandard extension used: translation unit is empty
+# -wd4701: pki_container_openssh.c(475) : warning C4701: potentially uninitialized local variable 'cipher' used
+# -wd4204: pki_crypto.c(802): warning C4204: nonstandard extension used: non-constant aggregate initializer
+VBoxLibSsh_CFLAGS.win += -wd4146 -wd4206 -wd4701 -wd4204
+VBoxLibSsh_LDFLAGS.darwin += \
+	-install_name $(VBOX_DYLD_EXECUTABLE_PATH)/VBoxLibSsh.dylib
+VBoxLibSsh_INCS = \
+	include \
+	src
+VBoxLibSsh_SOURCES = \
+	src/agent.c \
+	src/auth.c \
+	src/base64.c \
+	src/bignum.c \
+	src/buffer.c \
+	src/callbacks.c \
+	src/channels.c \
+	src/client.c \
+	src/config.c \
+	src/connect.c \
+	src/connector.c \
+	src/crypto_common.c \
+	src/curve25519.c \
+	src/curve25519_crypto.c \
+	src/dh.c \
+	src/ecdh.c \
+	src/error.c \
+	src/getpass.c \
+	src/getrandom_crypto.c \
+	src/hybrid_mlkem.c \
+	src/init.c \
+	src/kdf.c \
+	src/kex.c \
+	src/known_hosts.c \
+	src/knownhosts.c \
+	src/legacy.c \
+	src/log.c \
+	src/match.c \
+	src/messages.c \
+	src/md_crypto.c \
+	src/misc.c \
+	src/mlkem.c \
+	src/mlkem_native.c \
+	src/options.c \
+	src/packet.c \
+	src/packet_cb.c \
+	src/packet_crypt.c \
+	src/pcap.c \
+	src/pki.c \
+	src/pki_container_openssh.c \
+	src/pki_context.c \
+	src/poll.c \
+	src/session.c \
+	src/sntrup761.c \
+	src/socket.c \
+	src/string.c \
+	src/threads.c \
+	src/wrapper.c \
+	src/external/bcrypt_pbkdf.c \
+	src/external/blowfish.c \
+	src/external/chacha.c \
+	src/external/libcrux_mlkem768_sha3.c \
+	src/external/poly1305.c \
+	src/external/sntrup761.c \
+	src/chachapoly.c \
+	src/config_parser.c \
+	src/token.c \
+	src/ttyopts.c \
+	src/pki_ed25519_common.c
+
+VBoxLibSsh_SOURCES += \
+	src/gzip.c
+
+# OpenSSL
+VBoxLibSsh_SOURCES += \
+	src/threads/libcrypto.c \
+	src/pki_crypto.c \
+	src/ecdh_crypto.c \
+	src/libcrypto.c \
+	src/dh_crypto.c
+
+# TODO: threads?
+if1of ($(KBUILD_TARGET), win)
+ VBoxLibSsh_SOURCES += \
+ 	src/threads/noop.c \
+ 	src/threads/winlocks.c
+else
+ VBoxLibSsh_SOURCES += \
+ 	src/threads/noop.c \
+ 	src/threads/pthread.c
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)
+
