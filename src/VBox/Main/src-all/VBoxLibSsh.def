@@ -1,4 +1,4 @@
-; $Id: VBoxLibSsh.def 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: VBoxLibSsh.def 114891 2026-08-07 11:59:56Z aleksey.ilyushin@oracle.com $
 ;; @file
 ; VBoxLibSsh - Definition file for lazy import generation for VBoxC.
 ;
@@ -28,7 +28,10 @@
 LIBRARY VBoxLibSsh
 EXPORTS
     ssh_key_free
-    ssh_pki_generate
+    ssh_pki_ctx_free
+    ssh_pki_ctx_new
+    ssh_pki_ctx_options_set
+    ssh_pki_generate_key
     ssh_pki_export_privkey_base64
     ssh_pki_export_privkey_file
     ssh_pki_export_pubkey_base64

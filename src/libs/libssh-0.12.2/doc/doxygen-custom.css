@@ -1,0 +1,127 @@
+/**
+ * Custom color scheme for libssh documentation
+ * Based on libssh.org color palette
+ */
+
+html {
+    /* Primary colors - using libssh.org orange accent */
+    --primary-color: #F78C40;
+    --primary-dark-color: #f57900;
+    --primary-light-color: #fab889;
+
+    /* Accent color - neutral gray */
+    --primary-lighter-color: #5A5A5A;
+
+    /* Page colors - clean white background */
+    --page-background-color: #ffffff;
+    --page-foreground-color: #333333;
+    --page-secondary-foreground-color: #666666;
+
+    /* Links - use the warm orange color */
+    --link-color: #F78C40;
+    --link-hover-color: #f0690a;
+
+    /* Code blocks and fragments - very light background */
+    --code-background: #f9f9f9;
+    --fragment-background: #f9f9f9;
+
+    /* Borders - subtle light grey */
+    --separator-color: #e0e0e0;
+    --border-light-color: #f0f0f0;
+
+    /* Side navigation - pure white */
+    --side-nav-background: #ffffff;
+
+    /* Menu colors - warm orange accent */
+    --menu-selected-background: #F78C40;
+
+    /* Tables and boxes - lighter */
+    --tablehead-background: #fbc7a2;
+    --tablehead-foreground: #333333;
+}
+
+/* Header styling with libssh brand colors */
+#titlearea {
+    background-color: #5A5A5A;
+    background-image: linear-gradient(to right, #5A5A5A, #6a6a6a);
+    border-bottom: 3px solid #F78C40;
+}
+
+#projectname {
+    color: #ffffff !important;
+}
+
+#projectbrief {
+    color: #fab889 !important;
+}
+
+/* Top navigation tabs */
+#top {
+    background: linear-gradient(to bottom, #5A5A5A 0%, #6a6a6a 100%);
+}
+
+.tabs, .tabs2, .tabs3 {
+    background-image: none;
+    background-color: transparent;
+}
+
+.tablist li {
+    background: rgba(255, 255, 255, 0.1);
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tablist li:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.tablist li.current {
+    background: #F78C40;
+    border-bottom: 3px solid #f57900;
+}
+
+/* Tab text colors - comprehensive selectors */
+#nav-path ul li a,
+.tabs a,
+.tabs2 a,
+.tabs3 a,
+.tablist a,
+.tablist a:link,
+.tablist a:visited,
+.tablist li a,
+#main-nav a,
+.sm > li > a,
+.sm > li > a .sub-arrow {
+    color: #ffffff !important;
+    text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Active/current tab text */
+#nav-path ul li.current a,
+.tabs .current a,
+.tabs2 .current a,
+.tabs3 .current a,
+.tablist .current a,
+.tablist .current a:link,
+.tablist .current a:visited,
+.tablist li.current a,
+#main-nav .current a,
+.sm .current a {
+    color: #333333 !important;
+    text-shadow: none;
+}
+
+/* Dropdown arrow - white color for top menu */
+.sm-dox a span.sub-arrow {
+    border-right-color: #ffffff !important;
+    border-bottom-color: #ffffff !important;
+}
+
+/* Dropdown menu text - must be dark on white background */
+/* Make this as specific as possible to override white color */
+.sm-dox > li > ul > li > a,
+.sm-dox li ul li a,
+.sm-dox ul li a,
+#main-menu ul li a {
+    color: #333333 !important;
+    text-shadow: none !important;
+}
