@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114885 2026-08-07 08:19:17Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 114886 2026-08-07 08:28:10Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-makefile for the DHCP server.
 #
@@ -27,6 +27,11 @@
 
 SUB_DEPTH := ../../../..
 include $(KBUILD_PATH)/subheader.kmk
+
+# Include testcases.
+if defined(VBOX_WITH_TESTCASES) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC)
+ include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
+endif
 
 #
 # Hardended stub executable.
@@ -97,3 +102,4 @@ else
 endif
 
 include $(FILE_KBUILD_SUB_FOOTER)
+
