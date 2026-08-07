@@ -1,4 +1,4 @@
-/* $Id: VBoxNetDhcpd.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxNetDhcpd.cpp 114885 2026-08-07 08:19:17Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxNetDhcpd - DHCP server for host-only and NAT networks.
  */
@@ -515,7 +515,11 @@ extern "C" DECLEXPORT(int) TrustedMain(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+#ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
+    int rc = RTR3InitExe(argc, &argv, 0 /* fFlags */);
+#else
     int rc = RTR3InitExe(argc, &argv, RTR3INIT_FLAGS_SUPLIB);
+#endif
     if (RT_SUCCESS(rc))
         return TrustedMain(argc, argv);
     return RTMsgInitFailure(rc);

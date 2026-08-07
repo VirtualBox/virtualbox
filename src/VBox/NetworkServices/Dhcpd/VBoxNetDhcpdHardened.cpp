@@ -1,4 +1,4 @@
-/* $Id: VBoxNetDhcpdHardened.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxNetDhcpdHardened.cpp 114885 2026-08-07 08:19:17Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxNetDhcpd - Hardened main().
  */
@@ -30,6 +30,10 @@
 
 int main(int argc, char **argv, char **envp)
 {
+#ifdef VBOX_WITH_DRIVERLESS_NEM_FALLBACK
+    return SUPR3HardenedMain("VBoxNetDHCP", SUPSECMAIN_FLAGS_DRIVERLESS_NEM_FALLBACK, argc, argv, envp);
+#else
     return SUPR3HardenedMain("VBoxNetDHCP", 0 /* fFlags */, argc, argv, envp);
+#endif
 }
 
