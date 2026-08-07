@@ -1356,10 +1356,9 @@ DECLHIDDEN(int) SUPR3HardenedMain(const char *pszProgName, uint32_t fFlags, int 
  * the VBox support driver is unavailable. */
 #define SUPSECMAIN_FLAGS_DRIVERLESS_IEM_ALLOWED     RT_BIT_32(9)
 #ifdef VBOX_WITH_DRIVERLESS_NEM_FALLBACK
-/** Driverless NEM is a fallback posibility, so don't fail fatally just
+/** Driverless NEM is a fallback possibility, so don't fail fatally just
  * because the VBox support driver is unavailable.
- * This may imply checking NEM requirements, depending on the host.
- * @note Not supported on Windows. */
+ * This may imply checking NEM requirements, depending on the host. */
 # define SUPSECMAIN_FLAGS_DRIVERLESS_NEM_FALLBACK   RT_BIT_32(10)
 #endif
 
@@ -3012,4 +3011,3 @@ extern const unsigned               g_cbSUPBuildCert;
 RT_C_DECLS_END
 
 #endif /* !VBOX_INCLUDED_sup_h */
-
