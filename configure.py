@@ -11,7 +11,7 @@
 # pylint: disable=invalid-name
 # pylint: disable=multiple-statements
 # pylint: disable=line-too-long
-# $Id: configure.py 114892 2026-08-07 15:59:20Z klaus.espenlaub@oracle.com $
+# $Id: configure.py 114902 2026-08-07 21:57:38Z klaus.espenlaub@oracle.com $
 #
 # The following checks for the right (i.e. most recent) Python binary available
 # and re-starts the script using that binary (like a shell wrapper).
@@ -90,7 +90,7 @@ SPDX-License-Identifier: GPL-3.0-only
 # External Python modules or other dependencies are not allowed!
 #
 
-__revision__ = ''.join(c for c in "$Revision: 114892 $" if c.isdigit())
+__revision__ = ''.join(c for c in "$Revision: 114902 $" if c.isdigit())
 
 import argparse
 import collections;
@@ -1672,7 +1672,8 @@ class LibraryCheck(CheckBase):
                 if self.fUseInTree and not self.fIsInTree:
                     self.printWarn('Library needs to be used from in-tree sources but was not detected there -- might lead to build errors');
 
-        if self.fHave and self.sSdkName and not self.fIsInTree:
+        ## @todo r=klaus the hack with skipping this for QT6 is fixing the build (the include paths appear wrong) but needs a proper solution.
+        if self.fHave and self.sSdkName and self.sSdkName != 'QT6' and not self.fIsInTree:
             g_oEnv.set(f'SDK_{self.sSdkName}_INCS', ' '.join(self.asIncPaths));
             g_oEnv.set(f'SDK_{self.sSdkName}_LIBS', ' '.join(self.getSdkLibs()));
 
