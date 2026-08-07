@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 112878 2026-02-09 09:27:34Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114885 2026-08-07 08:19:17Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-makefile for the DHCP server.
 #
@@ -35,6 +35,7 @@ ifdef VBOX_WITH_HARDENING
  PROGRAMS += VBoxNetDHCPHardened
  VBoxNetDHCPHardened_TEMPLATE = VBoxR3HardenedExe
  VBoxNetDHCPHardened_NAME    = VBoxNetDHCP
+ VBoxNetDHCPHardened_DEFS   += $(if $(and $(VBOX_WITH_DRIVERLESS_NEM_FALLBACK),$(VBOX_WITH_INTNET_SERVICE_IN_R3)),VBOX_WITH_DRIVERLESS_NEM_FALLBACK,)
  VBoxNetDHCPHardened_SOURCES = VBoxNetDhcpdHardened.cpp
  VBoxNetDHCPHardened_LDFLAGS.win = /SUBSYSTEM:windows
  $(call VBOX_SET_VER_INFO_DLL,VBoxNetDHCPHardened,VirtualBox DHCP Server,$(VBOX_WINDOWS_ICON_FILE)) # Version info / description.
@@ -58,7 +59,8 @@ else
  VBoxNetDHCP_DEFS     = KBUILD_TYPE=\"$(KBUILD_TYPE)\"
 endif
 VBoxNetDHCP_DEFS       += \
-	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3),VBOX_WITH_INTNET_SERVICE_IN_R3,)
+	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3),VBOX_WITH_INTNET_SERVICE_IN_R3,) \
+	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC),VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC,)
 
 #VBoxNetDHCP_DEFS     += IPv6
 #VBoxNetDHCP_DEFS.linux = WITH_VALGRIND
@@ -95,4 +97,3 @@ else
 endif
 
 include $(FILE_KBUILD_SUB_FOOTER)
-
