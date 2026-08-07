@@ -1,4 +1,4 @@
-/* $Id: VBoxNetDhcpd.cpp 114885 2026-08-07 08:19:17Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxNetDhcpd.cpp 114886 2026-08-07 08:28:10Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxNetDhcpd - DHCP server for host-only and NAT networks.
  */
@@ -48,6 +48,10 @@
 #endif
 
 #include "DhcpdInternal.h"
+#ifdef VBOXNETDHCPD_INPROC_TESTING
+# include <iprt/asm.h>
+# include <iprt/semaphore.h>
+#endif
 #include <iprt/param.h>
 #include <iprt/errcore.h>
 
@@ -107,6 +111,14 @@ public:
 
     int main(int argc, char **argv);
 
+#ifdef VBOXNETDHCPD_INPROC_TESTING
+    void testSetStartupEvent(RTSEMEVENT hEvtStartup);
+    int  testStop();
+    int  testQueryStartupStatus();
+    bool testIsRunning();
+    Config *testTakeConfig();
+#endif
+
 private:
     /** The logger instance. */
     PRTLOGGER       m_pStderrReleaseLogger;
@@ -120,6 +132,23 @@ private:
     struct udp_pcb  *m_Dhcp4Pcb;
     /** DHCP server instance. */
     DHCPD           m_server;
+
+#ifdef VBOXNETDHCPD_INPROC_TESTING
+    /** Event signalled after in-process startup succeeds or fails. */
+    RTSEMEVENT       m_hTestStartup;
+    /** In-process startup status. */
+    int32_t volatile m_rcTestStartup;
+    /** Whether the in-process daemon is pumping IntNet packets. */
+    bool volatile    m_fTestRunning;
+    /** Whether the lwIP core was initialized by the in-process daemon. */
+    bool             m_fTestLwipInitialized;
+    /** Whether the in-process daemon added its lwIP network interface. */
+    bool             m_fTestNetIfAdded;
+
+    void testSignalStartup(int rc);
+    static DECLCALLBACK(void) testLwipFiniCB(void *pvUser);
+    void testLwipFini();
+#endif
 
     int logInitStderr();
 
@@ -157,6 +186,13 @@ VBoxNetDhcpd::VBoxNetDhcpd()
     m_LwipNetif(),
     m_Config(NULL),
     m_Dhcp4Pcb(NULL)
+#ifdef VBOXNETDHCPD_INPROC_TESTING
+  , m_hTestStartup(NIL_RTSEMEVENT),
+    m_rcTestStartup(VERR_WRONG_ORDER),
+    m_fTestRunning(false),
+    m_fTestLwipInitialized(false),
+    m_fTestNetIfAdded(false)
+#endif
 {
     logInitStderr();
 }
@@ -171,6 +207,115 @@ VBoxNetDhcpd::~VBoxNetDhcpd()
         m_hIf = NULL;
     }
 }
+
+
+#ifdef VBOXNETDHCPD_INPROC_TESTING
+/**
+ * Configures the event used to report in-process daemon startup.
+ *
+ * @param   hEvtStartup     Event to signal after startup succeeds or fails.
+ */
+void VBoxNetDhcpd::testSetStartupEvent(RTSEMEVENT hEvtStartup)
+{
+    m_hTestStartup = hEvtStartup;
+}
+
+
+/**
+ * Interrupts the in-process daemon's IntNet receive wait.
+ *
+ * @returns VBox status code.
+ */
+int VBoxNetDhcpd::testStop()
+{
+    if (m_hIf != NULL)
+        return IntNetR3IfWaitAbort(m_hIf);
+    return VINF_SUCCESS;
+}
+
+
+/**
+ * Queries the in-process daemon startup result.
+ *
+ * @returns VBox status code reported by startup.
+ */
+int VBoxNetDhcpd::testQueryStartupStatus()
+{
+    return ASMAtomicReadS32(&m_rcTestStartup);
+}
+
+
+/**
+ * Checks whether the in-process daemon is pumping IntNet packets.
+ *
+ * @returns true if the daemon is running, false otherwise.
+ */
+bool VBoxNetDhcpd::testIsRunning()
+{
+    return ASMAtomicReadBool(&m_fTestRunning);
+}
+
+
+/**
+ * Detaches the configuration so the testcase can delete it after this object.
+ *
+ * @returns Detached configuration, or NULL if no configuration was created.
+ */
+Config *VBoxNetDhcpd::testTakeConfig()
+{
+    Config *pConfig = m_Config;
+    m_Config = NULL;
+    return pConfig;
+}
+
+
+/**
+ * Reports completion of in-process daemon startup.
+ *
+ * @param   rc              Startup status.
+ */
+void VBoxNetDhcpd::testSignalStartup(int rc)
+{
+    ASMAtomicWriteS32(&m_rcTestStartup, rc);
+    ASMAtomicWriteBool(&m_fTestRunning, RT_SUCCESS(rc));
+    if (m_hTestStartup != NIL_RTSEMEVENT)
+        RTSemEventSignal(m_hTestStartup);
+}
+
+
+/**
+ * Removes the in-process daemon's lwIP objects on the lwIP thread.
+ *
+ * @param   pvUser          VBoxNetDhcpd instance.
+ */
+/* static */ DECLCALLBACK(void) VBoxNetDhcpd::testLwipFiniCB(void *pvUser)
+{
+    VBoxNetDhcpd *pThis = static_cast<VBoxNetDhcpd *>(pvUser);
+    AssertPtrReturnVoid(pThis);
+    pThis->testLwipFini();
+}
+
+
+/**
+ * Removes the in-process daemon's lwIP protocol and interface state.
+ */
+void VBoxNetDhcpd::testLwipFini()
+{
+    if (m_Dhcp4Pcb != NULL)
+    {
+        udp_remove(m_Dhcp4Pcb);
+        m_Dhcp4Pcb = NULL;
+    }
+
+    if (m_fTestNetIfAdded)
+    {
+        netif_set_link_down(&m_LwipNetif);
+        netif_set_down(&m_LwipNetif);
+        netif_remove(&m_LwipNetif);
+        m_fTestNetIfAdded = false;
+    }
+}
+#endif /* VBOXNETDHCPD_INPROC_TESTING */
 
 
 /*
@@ -342,6 +487,10 @@ err_t VBoxNetDhcpd::netifLinkOutput(pbuf *pPBuf)
 
 int VBoxNetDhcpd::main(int argc, char **argv)
 {
+#ifdef VBOXNETDHCPD_INPROC_TESTING
+    bool fTestStartupSignalled = false;
+#endif
+
     /*
      * Register string format types.
      */
@@ -353,7 +502,12 @@ int VBoxNetDhcpd::main(int argc, char **argv)
      */
     m_Config = Config::create(argc, argv);
     if (m_Config == NULL)
+    {
+#ifdef VBOXNETDHCPD_INPROC_TESTING
+        testSignalStartup(VERR_GENERAL_FAILURE);
+#endif
         return VERR_GENERAL_FAILURE;
+    }
 
     /*
      * Initialize the server.
@@ -369,11 +523,24 @@ int VBoxNetDhcpd::main(int argc, char **argv)
             rc = vboxLwipCoreInitialize(lwipInitCB, this);
             if (RT_SUCCESS(rc))
             {
+#ifdef VBOXNETDHCPD_INPROC_TESTING
+                m_fTestLwipInitialized = true;
+                if (   !m_fTestNetIfAdded
+                    || m_Dhcp4Pcb == NULL)
+                    rc = VERR_NET_INIT_FAILED;
+                else
+                {
+                    testSignalStartup(VINF_SUCCESS);
+                    fTestStartupSignalled = true;
+                }
+#endif
+
                 /*
                  * Pump packets more or less for ever.
                  */
-                rc = IntNetR3IfPumpPkts(m_hIf, ifInput, this,
-                                        NULL /*pfnInputGso*/, NULL /*pvUserGso*/);
+                if (RT_SUCCESS(rc))
+                    rc = IntNetR3IfPumpPkts(m_hIf, ifInput, this,
+                                            NULL /*pfnInputGso*/, NULL /*pvUserGso*/);
             }
             else
                 DHCP_LOG_MSG_ERROR(("Terminating - vboxLwipCoreInitialize failed: %Rrc\n", rc));
@@ -383,6 +550,17 @@ int VBoxNetDhcpd::main(int argc, char **argv)
     }
     else
         DHCP_LOG_MSG_ERROR(("Terminating - Dhcpd::init failed: %Rrc\n", rc));
+
+#ifdef VBOXNETDHCPD_INPROC_TESTING
+    ASMAtomicWriteBool(&m_fTestRunning, false);
+    if (!fTestStartupSignalled)
+        testSignalStartup(rc);
+    if (m_fTestLwipInitialized)
+    {
+        vboxLwipCoreFinalize(testLwipFiniCB, this);
+        m_fTestLwipInitialized = false;
+    }
+#endif
     return rc;
 }
 
@@ -406,6 +584,9 @@ void VBoxNetDhcpd::lwipInit()
     if (pNetif == NULL)
         return;
 
+#ifdef VBOXNETDHCPD_INPROC_TESTING
+    m_fTestNetIfAdded = true;
+#endif
     netif_set_up(pNetif);
     netif_set_link_up(pNetif);
 
@@ -503,6 +684,7 @@ void VBoxNetDhcpd::dhcp4Recv(struct udp_pcb *pcb, struct pbuf *p,
 /*
  * Entry point.
  */
+#ifndef VBOXNETDHCPD_INPROC_TESTING
 extern "C" DECLEXPORT(int) TrustedMain(int argc, char **argv)
 {
     VBoxNetDhcpd Dhcpd;
@@ -511,22 +693,22 @@ extern "C" DECLEXPORT(int) TrustedMain(int argc, char **argv)
 }
 
 
-#ifndef VBOX_WITH_HARDENING
+# ifndef VBOX_WITH_HARDENING
 
 int main(int argc, char **argv)
 {
-#ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
+#  ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
     int rc = RTR3InitExe(argc, &argv, 0 /* fFlags */);
-#else
+#  else
     int rc = RTR3InitExe(argc, &argv, RTR3INIT_FLAGS_SUPLIB);
-#endif
+#  endif
     if (RT_SUCCESS(rc))
         return TrustedMain(argc, argv);
     return RTMsgInitFailure(rc);
 }
 
 
-# ifdef RT_OS_WINDOWS
+#  ifdef RT_OS_WINDOWS
 /** (We don't want a console usually.) */
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -534,6 +716,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     return main(__argc, __argv);
 }
-# endif /* RT_OS_WINDOWS */
+#  endif /* RT_OS_WINDOWS */
 
-#endif /* !VBOX_WITH_HARDENING */
+# endif /* !VBOX_WITH_HARDENING */
+#endif /* !VBOXNETDHCPD_INPROC_TESTING */
