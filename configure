@@ -116,6 +116,7 @@ BUILD_LIBCURL=
 BUILD_LIBSSL=
 BUILD_LIBVPX=
 BUILD_LIBTPMS=
+BUILD_LIBJPEG=
 if [ "$OS" = "darwin" ]; then # Do not use the /opt/local version of this! We end up using the wrong iconv.h then.
     BUILD_LIBLZMA=1
 else
@@ -1933,6 +1934,46 @@ EOF
   fi
 }
 
+#
+# Check for libjpeg
+#
+check_libjpeg()
+{
+  if [ -z "$BUILD_LIBJPEG" ]; then
+    test_header libjpeg
+    if which_wrapper pkg-config > /dev/null; then
+      libjpeg_ver=`pkg-config libjpeg --modversion 2>> $LOG`
+      if [ $? -eq 0 ]; then
+        FLGJPEG=`pkg-config libjpeg --cflags`
+        INCJPEG=`strip_I "$FLGJPEG"`
+        LIBJPEG=`pkg-config libjpeg --libs`
+      fi
+      cat > $ODIR.tmp_src.cc << EOF
+#include <cstddef>
+#include <cstdio>
+#include <jpeglib.h>
+extern "C" int main(void)
+{
+#ifndef JPEG_LIB_VERSION
+#error JPEG_LIB_VERSION not defined
+#endif
+  printf("found, OK.\n");
+  return 0;
+}
+EOF
+      [ -n "$INCJPEG" ] && I_INCJPEG=`prefix_I "$INCJPEG"`
+      if test_compile "$LIBJPEG $I_INCJPEG" libjpeg libjpeg nofatal; then
+        if test_execute; then
+          cnf_append "SDK_VBoxLibJpeg_INCS" "$INCJPEG"
+          cnf_append "SDK_VBoxLibJpeg_LIBS" "`strip_l "$LIBJPEG"`"
+        fi
+      else
+        echo "not found -- building libjpeg from in-tree code."
+      fi
+    fi
+  fi
+}
+
 
 #
 # Check whether static libstdc++ is installed. This library is required
@@ -2499,26 +2540,26 @@ Configuration:
   -h, --help               display this help and exit
   --nofatal                don't abort on errors
 EOF
-[ $WITH_XPCOM   -eq 1 ] && echo "  --disable-xpcom          disable XPCOM and related stuff"
-[ $WITH_PYTHON  -eq 1 ] && echo "  --disable-python         disable python bindings"
-[ $WITH_JAVA    -eq 1 ] && echo "  --disable-java           disable java bindings"
-[ $WITH_SDL_TTF -eq 1 ] && echo "  --disable-sdl-ttf        disable SDL_ttf detection"
-[ $WITH_QT6     -eq 1 ] && echo "  --disable-qt             disable Qt detection"
-[ $WITH_ALSA    -eq 1 ] && echo "  --disable-alsa           disable the ALSA sound backend"
-[ $WITH_PULSE   -eq 1 ] && echo "  --disable-pulse          disable the PulseAudio backend"
-[ $WITH_DBUS    -eq 1 ] && echo "  --disable-dbus           don't use DBus and hal for hardware detection"
-[ $WITH_DXVK    -eq 1 ] && echo "  --disable-dxvk           don't use DXVK"
-[ $WITH_KMODS   -eq 1 ] && echo "  --disable-kmods          don't build Linux kernel modules (host and guest)"
-[ $WITH_OPENGL  -eq 1 ] && echo "  --disable-opengl         disable OpenGL support (2D & 3D)"
-[ $WITH_QT6     -eq 0 ] && echo "  --enable-qt6             enable Qt6 detection"
-[ $OSE          -eq 1 ] && echo "  --enable-vnc             enable the VNC server"
-[ $OSE          -eq 0 ] && echo "  --disable-extpack        don't build the extpack"
-[ $WITH_DOCS    -eq 1 ] && echo "  --disable-docs           don't build the documentation"
-[ $WITH_LIBVPX  -eq 1 ] && echo "  --disable-libvpx         don't use libvpx for video capturing"
+[ $WITH_XPCOM     -eq 1 ] && echo "  --disable-xpcom          disable XPCOM and related stuff"
+[ $WITH_PYTHON    -eq 1 ] && echo "  --disable-python         disable python bindings"
+[ $WITH_JAVA      -eq 1 ] && echo "  --disable-java           disable java bindings"
+[ $WITH_SDL_TTF   -eq 1 ] && echo "  --disable-sdl-ttf        disable SDL_ttf detection"
+[ $WITH_QT6       -eq 1 ] && echo "  --disable-qt             disable Qt detection"
+[ $WITH_ALSA      -eq 1 ] && echo "  --disable-alsa           disable the ALSA sound backend"
+[ $WITH_PULSE     -eq 1 ] && echo "  --disable-pulse          disable the PulseAudio backend"
+[ $WITH_DBUS      -eq 1 ] && echo "  --disable-dbus           don't use DBus and hal for hardware detection"
+[ $WITH_DXVK      -eq 1 ] && echo "  --disable-dxvk           don't use DXVK"
+[ $WITH_KMODS     -eq 1 ] && echo "  --disable-kmods          don't build Linux kernel modules (host and guest)"
+[ $WITH_OPENGL    -eq 1 ] && echo "  --disable-opengl         disable OpenGL support (2D & 3D)"
+[ $WITH_QT6       -eq 0 ] && echo "  --enable-qt6             enable Qt6 detection"
+[ $OSE            -eq 1 ] && echo "  --enable-vnc             enable the VNC server"
+[ $OSE            -eq 0 ] && echo "  --disable-extpack        don't build the extpack"
+[ $WITH_DOCS      -eq 1 ] && echo "  --disable-docs           don't build the documentation"
+[ $WITH_LIBVPX    -eq 1 ] && echo "  --disable-libvpx         don't use libvpx for video capturing"
 [ $WITH_LIBVORBIS -eq 0 ] && echo "  --enable-libvorbis       enable system libvorbis"
-[ $WITH_LIBOGG -eq 0 ]  && echo "  --enable-libogg          enable system libogg"
-[ $WITH_LIBTPMS -eq 1 ] && echo "  --disable-libtpms        don't use libtpms for TPM emulation"
-[ $WITH_LIBLZMA -eq 1 ] && echo "  --disable-liblzma        don't use liblzma"
+[ $WITH_LIBOGG    -eq 0 ] && echo "  --enable-libogg          enable system libogg"
+[ $WITH_LIBTPMS   -eq 1 ] && echo "  --disable-libtpms        don't use libtpms for TPM emulation"
+[ $WITH_LIBLZMA   -eq 1 ] && echo "  --disable-liblzma        don't use liblzma"
 [ "$OS" = "linux" -o "$OS" = "freebsd" ] && echo "  --enable-vde             enable VDE networking"
 cat << EOF
   --disable-udptunnel      disable UDP tunnel networking
@@ -2527,6 +2568,7 @@ cat << EOF
   --build-libxml2          build libxml2 from sources
   --build-libssl           build openssl from sources
   --build-libtpms          build libtpms from sources
+  --build-libjpeg          build libjpeg from sources
   --build-liblzma          build liblzma from sources
 EOF
 [ $OSE -eq 0 ] && cat << EOF
@@ -2596,6 +2638,7 @@ if [ "$OS" = "darwin" ]; then
   [ $OSE -eq 1 ] && WITH_LIBVPX=0
   [ $OSE -eq 1 ] && WITH_LIBOGG=0
   [ $OSE -eq 1 ] && WITH_LIBVORBIS=0
+  [ $OSE -eq 1 ] || BUILD_LIBJPEG=1
   WITH_XCODE_DIR=""
 elif [ "$OS" = "haiku" ]; then
   #WITH_SDL=0
@@ -2802,6 +2845,9 @@ for option in "$@"; do
     --build-libtpms)
       BUILD_LIBTPMS=1
       ;;
+    --build-libjpeg)
+      BUILD_LIBJPEG=1
+      ;;
     --build-liblzma)
       BUILD_LIBLZMA=1
       ;;
@@ -3004,6 +3050,7 @@ if [ $ONLY_ADDITIONS -eq 0 ]; then
   [ $WITH_LIBOGG -eq 1 ] && check_libogg
   [ $WITH_LIBVORBIS -eq 1 ] && check_libvorbis
   [ $WITH_LIBTPMS -eq 1 ] && check_libtpms
+  check_libjpeg
   [ $WITH_LIBLZMA -eq 1 ] && check_liblzma
   [ "$OS" != "darwin"  ] && check_png
   [ $OSE -eq 0 -a "$OS" = "linux" ] && check_pam
