@@ -1,4 +1,4 @@
-/* $Id: DevVGA_VBVA.cpp 113822 2026-04-12 21:10:19Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA_VBVA.cpp 114893 2026-08-07 16:18:28Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Video Acceleration (VBVA).
  */
@@ -138,9 +138,8 @@ static bool vbvaFetchBytes(VBVADATA *pVBVAData, uint8_t *pbDst, uint32_t cb)
 
     const uint8_t RT_UNTRUSTED_VOLATILE_GUEST *pbSrc = &pVBVAData->guest.pu8Data[pVBVAData->off32Data];
     const uint32_t u32BytesTillBoundary = pVBVAData->cbData - pVBVAData->off32Data;
-    const int32_t  i32Diff              = cb - u32BytesTillBoundary;
 
-    if (i32Diff <= 0)
+    if (cb <= u32BytesTillBoundary)
     {
         /* Chunk will not cross buffer boundary. */
         RT_BCOPY_VOLATILE(pbDst, pbSrc, cb);
@@ -149,7 +148,7 @@ static bool vbvaFetchBytes(VBVADATA *pVBVAData, uint8_t *pbDst, uint32_t cb)
     {
         /* Chunk crosses buffer boundary. */
         RT_BCOPY_VOLATILE(pbDst, pbSrc, u32BytesTillBoundary);
-        RT_BCOPY_VOLATILE(pbDst + u32BytesTillBoundary, &pVBVAData->guest.pu8Data[0], i32Diff);
+        RT_BCOPY_VOLATILE(pbDst + u32BytesTillBoundary, &pVBVAData->guest.pu8Data[0], cb - u32BytesTillBoundary);
     }
 
     /* Advance data offset and sync with guest. */
@@ -192,12 +191,18 @@ static bool vbvaPartialRead(uint32_t cbRecord, VBVADATA *pVBVAData)
         Log(("vbvaPartialRead: failed to (re)alocate memory for partial record!!! cbRecord 0x%08X\n",
              cbRecord));
 
+        RTMemFree(pPartialRecord->pu8);
+        pPartialRecord->pu8 = NULL;
+        pPartialRecord->cb = 0;
         return false;
     }
 
     /* Fetch data from the ring buffer. */
     if (!vbvaFetchBytes(pVBVAData, pu8New + pPartialRecord->cb, cbChunk))
     {
+        RTMemFree(pu8New);
+        pPartialRecord->pu8 = NULL;
+        pPartialRecord->cb = 0;
         return false;
     }
 
@@ -208,8 +213,7 @@ static bool vbvaPartialRead(uint32_t cbRecord, VBVADATA *pVBVAData)
 }
 
 /**
- * For contiguous chunks just return the address in the buffer. For crossing
- * boundary - allocate a buffer from heap.
+ * Always allocate a bounce buffer from heap.
  */
 static bool vbvaFetchCmd(VBVADATA *pVBVAData, VBVACMDHDR RT_UNTRUSTED_VOLATILE_GUEST **ppHdr, uint32_t *pcbCmd)
 {
@@ -310,36 +314,18 @@ static bool vbvaFetchCmd(VBVADATA *pVBVAData, VBVACMDHDR RT_UNTRUSTED_VOLATILE_G
 
     if (cbRecord)
     {
-        /* The size of largest contiguous chunk in the ring buffer. */
-        uint32_t u32BytesTillBoundary = pVBVAData->cbData - pVBVAData->off32Data;
-
-        /* The pointer to data in the ring buffer. */
-        uint8_t RT_UNTRUSTED_VOLATILE_GUEST *pbSrc = &pVBVAData->guest.pu8Data[pVBVAData->off32Data];
-
-        /* Fetch or point the data. */
-        if (u32BytesTillBoundary >= cbRecord)
+        /* Make a copy of the data. */
+        uint8_t *pbDst = (uint8_t *)RTMemAlloc(cbRecord);
+        if (!pbDst)
         {
-            /* The command does not cross buffer boundary. Return address in the buffer. */
-            *ppHdr = (VBVACMDHDR RT_UNTRUSTED_VOLATILE_GUEST *)pbSrc;
-
-            /* The data offset will be updated in vbvaReleaseCmd. */
+            LogFlowFunc (("could not allocate %d bytes from heap!!!\n", cbRecord));
+            return false;
         }
-        else
-        {
-            /* The command crosses buffer boundary. Rare case, so not optimized. */
-            uint8_t *pbDst = (uint8_t *)RTMemAlloc(cbRecord);
-            if (!pbDst)
-            {
-                LogFlowFunc (("could not allocate %d bytes from heap!!!\n", cbRecord));
-                return false;
-            }
 
-            vbvaFetchBytes(pVBVAData, pbDst, cbRecord);
+        if (!vbvaFetchBytes(pVBVAData, pbDst, cbRecord))
+            return false;
 
-            *ppHdr = (VBVACMDHDR *)pbDst;
-
-            LOGVBVABUFFER(("Allocated from heap %p\n", pbDst));
-        }
+        *ppHdr = (VBVACMDHDR *)pbDst;
     }
 
     *pcbCmd = cbRecord;
@@ -356,38 +342,11 @@ static bool vbvaFetchCmd(VBVADATA *pVBVAData, VBVACMDHDR RT_UNTRUSTED_VOLATILE_G
 
 static void vbvaReleaseCmd(VBVADATA *pVBVAData, VBVACMDHDR RT_UNTRUSTED_VOLATILE_GUEST *pHdr, uint32_t cbCmd)
 {
-    VBVAPARTIALRECORD                          *pPartialRecord = &pVBVAData->partialRecord;
-    const uint8_t RT_UNTRUSTED_VOLATILE_GUEST  *pbRingBuffer   = pVBVAData->guest.pu8Data;
+    RT_NOREF(pVBVAData, cbCmd);
 
-    if (   (uintptr_t)pHdr >= (uintptr_t)pbRingBuffer
-        && (uintptr_t)pHdr < (uintptr_t)&pbRingBuffer[pVBVAData->cbData])
-    {
-        /* The pointer is inside ring buffer. Must be continuous chunk. */
-        Assert(pVBVAData->cbData - (uint32_t)((uint8_t *)pHdr - pbRingBuffer) >= cbCmd);
+    LOGVBVABUFFER(("Free heap %p\n", pHdr));
 
-        /* Advance data offset and sync with guest. */
-        pVBVAData->off32Data = (pVBVAData->off32Data + cbCmd) % pVBVAData->cbData;
-        pVBVAData->guest.pVBVA->off32Data = pVBVAData->off32Data;
-
-        Assert(!pPartialRecord->pu8 && pPartialRecord->cb == 0);
-    }
-    else
-    {
-        /* The pointer is outside. It is then an allocated copy. */
-        LOGVBVABUFFER(("Free heap %p\n", pHdr));
-
-        if ((uint8_t *)pHdr == pPartialRecord->pu8)
-        {
-            pPartialRecord->pu8 = NULL;
-            pPartialRecord->cb = 0;
-        }
-        else
-        {
-            Assert(!pPartialRecord->pu8 && pPartialRecord->cb == 0);
-        }
-
-        RTMemFree((void *)pHdr);
-    }
+    RTMemFree((void *)pHdr);
 }
 
 static int vbvaFlushProcess(PVGASTATECC pThisCC, VBVADATA *pVBVAData, unsigned uScreenId)
@@ -428,9 +387,10 @@ static int vbvaFlushProcess(PVGASTATECC pThisCC, VBVADATA *pVBVAData, unsigned u
 
         if (cbCmd < sizeof(VBVACMDHDR))
         {
-            LogFunc(("short command. off32Data = %d, off32Free = %d, cbCmd %d!!!\n",
+            LogFunc(("command length: off32Data = %d, off32Free = %d, cbCmd %d!!!\n",
                   pVBVAData->off32Data, pVBVAData->guest.pVBVA->off32Free, cbCmd));
 
+            vbvaReleaseCmd(pVBVAData, pHdr, cbCmd);
             return VERR_NOT_SUPPORTED;
         }
 
