@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114881 2026-08-07 06:50:28Z andreas.loeffler@oracle.com $
 ## @file
 # Top-level makefile for the VBox Network Services.
 #
@@ -41,6 +41,10 @@ endif
 # Internal network switch
 if defined(VBOX_WITH_INTNET_SERVICE_IN_R3)
  include $(PATH_SUB_CURRENT)/IntNetSwitch/Makefile.kmk
+endif
+
+if defined(VBOX_WITH_TESTCASES) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC)
+ include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
 endif
 
 include $(FILE_KBUILD_SUB_FOOTER)
