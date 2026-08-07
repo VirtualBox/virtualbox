@@ -1,4 +1,4 @@
-/* $Id: VBoxNetSlirpNAT.cpp 114457 2026-06-19 11:55:32Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxNetSlirpNAT.cpp 114883 2026-08-07 07:12:24Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxNetNAT - NAT Service for connecting to IntNet.
  */
@@ -3090,7 +3090,11 @@ extern "C" DECLEXPORT(int) TrustedMain(int argc, char **argv, char **envp)
 #ifndef VBOX_WITH_HARDENING
 int main(int argc, char **argv, char **envp)
 {
+#ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
+    int rc = RTR3InitExe(argc, &argv, 0 /* fFlags */);
+#else
     int rc = RTR3InitExe(argc, &argv, RTR3INIT_FLAGS_SUPLIB);
+#endif
     if (RT_SUCCESS(rc))
         return TrustedMain(argc, argv, envp);
     return RTMsgInitFailure(rc);
