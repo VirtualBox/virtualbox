@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114879 2026-08-06 22:04:52Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 114892 2026-08-07 15:59:20Z klaus.espenlaub@oracle.com $
 ## @file
 # Top-level sub-makefile for the devices, drivers and services.
 #
@@ -514,7 +514,7 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
   if defined(VBOX_WITH_USB_VIDEO_IMPL)
    VBoxDD_DEFS          += VBOX_WITH_USB_VIDEO_IMPL
    VBoxDD_INCS += \
-   	$(VBOX_JPEG_INCS)
+   	$(SDK_VBoxLibJpeg_INCS)
    VBoxDD_SOURCES       += \
    	Video/UsbWebcam.cpp \
    	Video/UsbWebcamDesc.cpp \
@@ -529,10 +529,7 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
    	Video/HostWebcam-v4l2.cpp
    VBoxDD_SOURCES.win += \
    	Video/HostWebcam-win.cpp
-   VBoxDD_LIBS += \
-   	$(PATH_STAGE_LIB)/VBox-libjpeg$(VBOX_SUFF_LIB) \
-   	$(PATH_STAGE_LIB)/VBox-libjpeg12$(VBOX_SUFF_LIB) \
-   	$(PATH_STAGE_LIB)/VBox-libjpeg16$(VBOX_SUFF_LIB)
+   VBoxDD_LIBS += $(SDK_VBoxLibJpeg_LIBS)
    VBoxDD_LIBS.win += \
    	strmiids.lib
    VBoxDD_LDFLAGS.darwin += \
