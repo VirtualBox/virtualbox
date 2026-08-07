@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114516 2026-06-25 07:04:32Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 114883 2026-08-07 07:12:24Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-makefile for NAT Networking
 #
@@ -45,6 +45,7 @@ ifdef VBOX_WITH_HARDENING
  else
   VBoxNetNATHardened_DEFS  = SERVICE_NAME=\"VBoxNetNAT\"
  endif
+ VBoxNetNATHardened_DEFS  += $(if $(and $(VBOX_WITH_DRIVERLESS_NEM_FALLBACK),$(VBOX_WITH_INTNET_SERVICE_IN_R3)),VBOX_WITH_DRIVERLESS_NEM_FALLBACK,)
  VBoxNetNATHardened_SOURCES = VBoxNetNATHardened.cpp
  VBoxNetNATHardened_LDFLAGS.win = /SUBSYSTEM:windows
  $(call VBOX_SET_VER_INFO_EXE,VBoxNetNATHardened,VirtualBox NAT Engine,$(VBOX_WINDOWS_ICON_FILE)) # Version info / description.
@@ -63,7 +64,8 @@ VBoxNetNAT_TEMPLATE := $(if-expr defined(VBOX_WITH_HARDENING),VBoxMainDll,VBoxMa
 VBoxNetNAT_NAME    := VBoxNetNAT
 VBoxNetNAT_DEFS     = \
 	IPv6 \
-	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3),VBOX_WITH_INTNET_SERVICE_IN_R3,)
+	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3),VBOX_WITH_INTNET_SERVICE_IN_R3,) \
+	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC),VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC,)
 VBoxNetNAT_DEFS.win = VBOX_COM_OUTOFPROC_MODULE
 VBoxNetNAT_INCS += \
 	$(PATH_ROOT)/src/libs/libslirp-4.9.3/include
