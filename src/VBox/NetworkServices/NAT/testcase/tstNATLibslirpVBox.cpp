@@ -1,4 +1,4 @@
-/* $Id: tstNATLibslirpVBox.cpp 114518 2026-06-25 08:29:23Z andreas.loeffler@oracle.com $ */
+/* $Id: tstNATLibslirpVBox.cpp 114884 2026-08-07 07:22:52Z andreas.loeffler@oracle.com $ */
 /** @file
  * NAT libslirp VBox testcase.
  */
@@ -37,6 +37,7 @@
 
 #include <slirp/libslirp.h>
 
+#include <iprt/asm.h>
 #include <iprt/cdefs.h>
 #include <iprt/errcore.h>
 #include <iprt/mem.h>
@@ -47,11 +48,28 @@
 #include <string.h>
 
 
+/** Captured frame emitted by libslirp toward the guest. */
+typedef struct TSTNATOUTPUT
+{
+    uint8_t  abFrame[2048];
+    size_t   cbFrame;
+    uint32_t cFrames;
+} TSTNATOUTPUT;
+/** Pointer to a captured libslirp output frame. */
+typedef TSTNATOUTPUT *PTSTNATOUTPUT;
+
+
 
 
 static DECLCALLBACK(slirp_ssize_t) tstSendPacket(const void *pvBuf, ssize_t cbBuf, void *pvOpaque)
 {
-    RT_NOREF(pvBuf, pvOpaque);
+    PTSTNATOUTPUT pOutput = (PTSTNATOUTPUT)pvOpaque;
+    if (pOutput != NULL && cbBuf > 0)
+    {
+        pOutput->cbFrame = RT_MIN((size_t)cbBuf, sizeof(pOutput->abFrame));
+        memcpy(pOutput->abFrame, pvBuf, pOutput->cbFrame);
+        pOutput->cFrames++;
+    }
     return cbBuf;
 }
 
@@ -185,7 +203,9 @@ static void tstVBoxAbi(void)
     Cb.timer_free   = tstTimerFree;
     Cb.timer_mod    = tstTimerMod;
 
-    Slirp *pSlirp = slirp_new(&Cfg, &Cb, NULL);
+    TSTNATOUTPUT Output;
+    RT_ZERO(Output);
+    Slirp *pSlirp = slirp_new(&Cfg, &Cb, &Output);
     if (!pSlirp)
     {
         RTTestIFailed("slirp_new failed");
@@ -230,6 +250,47 @@ static void tstVBoxAbi(void)
     }
 
     RTTESTI_CHECK(slirp_version_string() != NULL);
+
+    RTTestISub("Data path: IPv4 gateway ARP");
+
+    uint8_t abRequest[sizeof(RTNETETHERHDR) + sizeof(RTNETARPIPV4)];
+    RT_ZERO(abRequest);
+    PRTNETETHERHDR pEth = (PRTNETETHERHDR)&abRequest[0];
+    memset(&pEth->DstMac, 0xff, sizeof(pEth->DstMac));
+    pEth->SrcMac.au8[0] = 0x08;
+    pEth->SrcMac.au8[1] = 0x00;
+    pEth->SrcMac.au8[2] = 0x27;
+    pEth->SrcMac.au8[3] = 0x12;
+    pEth->SrcMac.au8[4] = 0x34;
+    pEth->SrcMac.au8[5] = 0x56;
+    pEth->EtherType = RT_H2N_U16(RTNET_ETHERTYPE_ARP);
+
+    PRTNETARPIPV4 pArp = (PRTNETARPIPV4)&abRequest[sizeof(*pEth)];
+    pArp->Hdr.ar_htype = RT_H2N_U16(RTNET_ARP_ETHER);
+    pArp->Hdr.ar_ptype = RT_H2N_U16(RTNET_ETHERTYPE_IPV4);
+    pArp->Hdr.ar_hlen  = sizeof(RTMAC);
+    pArp->Hdr.ar_plen  = sizeof(RTNETADDRIPV4);
+    pArp->Hdr.ar_oper  = RT_H2N_U16(RTNET_ARPOP_REQUEST);
+    pArp->ar_sha       = pEth->SrcMac;
+    pArp->ar_spa.u     = tstParseIPv4("10.0.2.15").s_addr;
+    pArp->ar_tpa.u     = Cfg.vhost.s_addr;
+
+    RT_ZERO(Output);
+    slirp_input(pSlirp, abRequest, sizeof(abRequest));
+    RTTESTI_CHECK_MSG(Output.cFrames > 0, ("No frame returned for gateway ARP request"));
+    RTTESTI_CHECK_MSG(Output.cbFrame >= sizeof(RTNETETHERHDR) + sizeof(RTNETARPIPV4),
+                      ("ARP reply is too small: %zu", Output.cbFrame));
+    if (Output.cbFrame >= sizeof(RTNETETHERHDR) + sizeof(RTNETARPIPV4))
+    {
+        PCRTNETETHERHDR pReplyEth = (PCRTNETETHERHDR)&Output.abFrame[0];
+        PCRTNETARPIPV4 pReplyArp = (PCRTNETARPIPV4)&Output.abFrame[sizeof(*pReplyEth)];
+        RTTESTI_CHECK(RT_N2H_U16(pReplyEth->EtherType) == RTNET_ETHERTYPE_ARP);
+        RTTESTI_CHECK(RT_N2H_U16(pReplyArp->Hdr.ar_oper) == RTNET_ARPOP_REPLY);
+        RTTESTI_CHECK(pReplyArp->ar_spa.u == Cfg.vhost.s_addr);
+        RTTESTI_CHECK(pReplyArp->ar_tpa.u == pArp->ar_spa.u);
+        RTTESTI_CHECK(memcmp(&pReplyArp->ar_tha, &pEth->SrcMac, sizeof(RTMAC)) == 0);
+    }
+
     slirp_cleanup(pSlirp);
 }
 

@@ -1,0 +1,124 @@
+# $Id: Makefile.kmk 114884 2026-08-07 07:22:52Z andreas.loeffler@oracle.com $
+## @file
+# Network Services testcases.
+#
+
+#
+# Copyright (C) 2026 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+if defined(VBOX_WITH_TESTCASES) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC)
+
+ if   !defined(VBOX_ONLY_BUILD) \
+   && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SUPPORTED_HOST_ARCHS))" != ""
+  PROGRAMS += tstVBoxNatGuestSide
+  ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),$(KBUILD_HOST).$(KBUILD_HOST_ARCH))
+   TESTING += $(tstVBoxNatGuestSide_0_OUTDIR)/tstVBoxNatGuestSide.run
+  endif
+  tstVBoxNatGuestSide_TEMPLATE = VBoxR3TstExe
+  tstVBoxNatGuestSide_DEFS = \
+  	VBOX_WITH_TESTCASES \
+  	VBOX_WITH_INTNET_SERVICE_IN_R3 \
+  	VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC \
+  	VBOX_INTNET_TESTCASE_FORCE_R3 \
+  	VBOX_INTNET_TESTCASE_LOCALIPC
+  tstVBoxNatGuestSide_INCS = \
+  	$(PATH_SUB_CURRENT) \
+  	$(PATH_SUB_CURRENT)/../NetLib \
+  	$(PATH_SUB_CURRENT)/../IntNetSwitch \
+  	$(PATH_ROOT)/src/libs/libslirp-4.9.3/include
+  tstVBoxNatGuestSide_SOURCES = \
+  	tstVBoxNatGuestSide.cpp \
+  	VBoxNetSlirpNATTest.cpp \
+  	../NetLib/IntNetIf.cpp
+  tstVBoxNatGuestSide_LIBS = \
+  	$(PATH_STAGE_LIB)/VBox-libslirp$(VBOX_SUFF_LIB) \
+  	$(LIB_RUNTIME)
+  tstVBoxNatGuestSide_LIBS.solaris += socket nsl
+  tstVBoxNatGuestSide_LIBS.darwin += resolv
+  tstVBoxNatGuestSide_ORDERDEPS = \
+  	$(PATH_STAGE_BIN)/testcase/VBoxIntNetR3SwitchTestHelper$(SUFF_EXE)
+  tstVBoxNatGuestSide_CLEAN = \
+  	$(tstVBoxNatGuestSide_0_OUTDIR)/tstVBoxNatGuestSide.run
+
+  $$(tstVBoxNatGuestSide_0_OUTDIR)/tstVBoxNatGuestSide.run: \
+  		$$(tstVBoxNatGuestSide_1_STAGE_TARGET) \
+  		$$(VBoxIntNetR3SwitchTestHelper_1_STAGE_TARGET) \
+  		| $$(dir $$@) $$(VBOX_RUN_TARGET_ORDER_DEPS)
+	export VBOX_LOG_DEST=nofile; $(tstVBoxNatGuestSide_1_STAGE_TARGET) quiet
+	$(QUIET)$(APPEND) -t "$@" "done"
+ endif
+
+ # IntNet R3 Switch cross-process communication testcase and service helper.
+ PROGRAMS += \
+ 	tstVBoxIntNetR3Switch \
+ 	VBoxIntNetR3SwitchTestHelper
+ tstVBoxIntNetR3Switch_TEMPLATE = VBoxR3TstExe
+ tstVBoxIntNetR3Switch_DEFS += \
+ 	VBOX_WITH_INTNET_SERVICE_IN_R3 \
+ 	VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC \
+ 	VBOX_INTNET_TESTCASE_FORCE_R3 \
+ 	VBOX_INTNET_TESTCASE_LOCALIPC
+ tstVBoxIntNetR3Switch_INCS = \
+ 	$(PATH_SUB_CURRENT) \
+ 	$(PATH_SUB_CURRENT)/../NetLib \
+ 	$(PATH_SUB_CURRENT)/../IntNetSwitch
+ tstVBoxIntNetR3Switch_SOURCES = \
+ 	tstVBoxIntNetR3Switch.cpp \
+ 	../NetLib/IntNetIf.cpp
+ tstVBoxIntNetR3Switch_LIBS = \
+ 	$(LIB_RUNTIME)
+ tstVBoxIntNetR3Switch_ORDERDEPS = \
+ 	$(PATH_STAGE_BIN)/testcase/VBoxIntNetR3SwitchTestHelper$(SUFF_EXE)
+ tstVBoxIntNetR3Switch_CLEAN = \
+ 	$(tstVBoxIntNetR3Switch_0_OUTDIR)/tstVBoxIntNetR3Switch.run
+
+ ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),$(KBUILD_HOST).$(KBUILD_HOST_ARCH))
+  TESTING += $(tstVBoxIntNetR3Switch_0_OUTDIR)/tstVBoxIntNetR3Switch.run
+
+  $$(tstVBoxIntNetR3Switch_0_OUTDIR)/tstVBoxIntNetR3Switch.run: \
+  		$$(tstVBoxIntNetR3Switch_1_STAGE_TARGET) \
+  		$$(VBoxIntNetR3SwitchTestHelper_1_STAGE_TARGET) \
+  		| $$(dir $$@) $$(VBOX_RUN_TARGET_ORDER_DEPS)
+	export VBOX_LOG_DEST=nofile; $(tstVBoxIntNetR3Switch_1_STAGE_TARGET) quiet
+	$(QUIET)$(APPEND) -t "$@" "done"
+ endif
+
+ VBoxIntNetR3SwitchTestHelper_TEMPLATE = VBoxR3TstExe
+ VBoxIntNetR3SwitchTestHelper_DEFS += \
+ 	VBOX_WITH_INTNET_SERVICE_IN_R3 \
+ 	VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC \
+ 	VBOX_INTNET_TESTCASE_LOCALIPC \
+ 	VBOX_INTNET_TESTCASE_ONESHOT_SWITCH
+ VBoxIntNetR3SwitchTestHelper_INCS = \
+ 	$(PATH_SUB_CURRENT)/../IntNetSwitch
+ VBoxIntNetR3SwitchTestHelper_SOURCES = \
+ 	../IntNetSwitch/VBoxIntNetSwitch.cpp \
+ 	../IntNetSwitch/SrvIntNetWrapper.cpp
+ VBoxIntNetR3SwitchTestHelper_LIBS = \
+ 	$(LIB_RUNTIME)
+
+endif # VBOX_WITH_TESTCASES && VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC
+
+include $(FILE_KBUILD_SUB_FOOTER)
