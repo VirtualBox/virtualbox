@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114575 2026-06-30 15:58:06Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 114974 2026-08-10 17:47:03Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the Shared Clipboard Host Service.
 #
@@ -73,15 +73,6 @@ endif
 
 VBoxSharedClipboard_LIBS = \
 	$(LIB_RUNTIME)
-if1of ($(KBUILD_TARGET), linux solaris freebsd)
- ifndef VBOX_HEADLESS
-  VBoxSharedClipboard_LIBPATH = \
-  	$(VBOX_LIBPATH_X11)
-  VBoxSharedClipboard_LIBS += \
-  	Xt \
-  	X11
- endif
-endif
 
 VBoxSharedClipboard_LDFLAGS.darwin = \
 	-framework ApplicationServices -install_name $(VBOX_DYLD_EXECUTABLE_PATH)/VBoxSharedClipboard.dylib

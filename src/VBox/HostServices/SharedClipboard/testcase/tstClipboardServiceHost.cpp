@@ -1,4 +1,4 @@
-/* $Id: tstClipboardServiceHost.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardServiceHost.cpp 114974 2026-08-10 17:47:03Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard host service test case.
  */
@@ -297,12 +297,12 @@ static void testSetMode(void)
     RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
 }
 
-/** Tests that the removed legacy headless host function remains reserved. */
+/** Tests that the legacy headless host function ID remains reserved and unimplemented. */
 static void testReservedHostFunction(void)
 {
     VBOXHGCMSVCFNTABLE table;
 
-    RTTestISub("Testing removed VBOX_SHCL_HOST_FN_SET_HEADLESS");
+    RTTestISub("Testing unimplemented VBOX_SHCL_HOST_FN_SET_HEADLESS");
     int rc = setupTable(&table);
     RTTESTI_CHECK_MSG_RETV(RT_SUCCESS(rc), ("rc=%Rrc\n", rc));
 

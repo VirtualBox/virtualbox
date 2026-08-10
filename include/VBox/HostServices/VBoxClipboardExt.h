@@ -101,8 +101,8 @@ typedef struct _SHCLEXTPARMS
             PSHCLBACKEND            pBackend;
             VBOXHGCMSVCFNTABLE     *pTable;
             PSHCLCLIENTCMDCTX       pCmdCtx;
-            /** Whether the backend connection should avoid the host clipboard.
-             * Legacy field retained for binary compatibility. Must be set to false. */
+            /** Legacy flag indicating that the backend was to avoid host clipboard access.
+             * @deprecated Ignored; retained for binary compatibility. Must be false. */
             bool                    fHeadless;
         } ReadWriteData;
         /** Sets a read / write callback. */
