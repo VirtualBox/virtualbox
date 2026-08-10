@@ -1,4 +1,4 @@
-/* $Id: tstClipboardServiceHost.cpp 114650 2026-07-08 09:14:39Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardServiceHost.cpp 114967 2026-08-10 16:15:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard host service test case.
  */
@@ -66,7 +66,23 @@ static int tstShClBackendDisconnect(PSHCLBACKEND, PSHCLCLIENT) { return VINF_SUC
 static int tstShClBackendSync(PSHCLBACKEND, PSHCLCLIENT) { return VINF_SUCCESS; }
 static int tstShClBackendReportFormats(PSHCLBACKEND, PSHCLCLIENT, SHCLFORMATS) { AssertFailed(); return VINF_SUCCESS; }
 static int tstShClBackendReportFormatsToGuest(PSHCLBACKEND, PSHCLCLIENT, uint32_t) { AssertFailed(); return VINF_SUCCESS; }
-static int tstShClBackendReadData(PSHCLBACKEND, PSHCLCLIENT, PSHCLCLIENTCMDCTX, SHCLFORMAT, void *, uint32_t, unsigned int *) { AssertFailed(); return VERR_WRONG_ORDER; }
+static const void *g_pvBackendReadData = NULL;
+static uint32_t g_cbBackendReadData = 0;
+static SHCLFORMAT g_uBackendReadFormat = VBOX_SHCL_FMT_NONE;
+static uint32_t g_cBackendReadDataCalls = 0;
+static int tstShClBackendReadData(PSHCLBACKEND, PSHCLCLIENT, PSHCLCLIENTCMDCTX, SHCLFORMAT uFormat,
+                                  void *pvData, uint32_t cbData, uint32_t *pcbActual)
+{
+    g_cBackendReadDataCalls++;
+    AssertPtrReturn(g_pvBackendReadData, VERR_WRONG_ORDER);
+    AssertReturn(uFormat == g_uBackendReadFormat, VERR_INVALID_PARAMETER);
+    AssertPtrReturn(pcbActual, VERR_INVALID_POINTER);
+
+    *pcbActual = g_cbBackendReadData;
+    if (g_cbBackendReadData <= cbData)
+        memcpy(pvData, g_pvBackendReadData, g_cbBackendReadData);
+    return VINF_SUCCESS;
+}
 static int tstShClBackendWriteData(PSHCLBACKEND, PSHCLCLIENT, PSHCLCLIENTCMDCTX, SHCLFORMAT, void *, uint32_t) { AssertFailed(); return VINF_SUCCESS; }
 
 static SHCLCLIENT g_Client;
@@ -218,6 +234,26 @@ static int setupTable(VBOXHGCMSVCFNTABLE *pTable)
     return pTable->pfnRegisterExtension(pTable->pvService, tstHgcmMockSvcDispatcher, NULL);
 }
 
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/** Issues a host clipboard data read as a guest. */
+static int testHostDataReadCall(VBOXHGCMSVCFNTABLE *pTable, SHCLFORMAT uFormat,
+                                void *pvData, uint32_t cbData, uint32_t *pcbActual)
+{
+    VBOXHGCMSVCPARM aParms[VBOX_SHCL_CPARMS_DATA_READ];
+    HGCMSvcSetU32(&aParms[0], uFormat);
+    HGCMSvcSetPv(&aParms[1], pvData, cbData);
+    HGCMSvcSetU32(&aParms[2], 0);
+
+    VBOXHGCMCALLHANDLE_TYPEDEF Call;
+    Call.rc = VERR_IPE_UNINITIALIZED_STATUS;
+    pTable->pfnCall(NULL, &Call, 1 /* clientId */, &g_Client,
+                    VBOX_SHCL_GUEST_FN_DATA_READ, RT_ELEMENTS(aParms), aParms, 0);
+    if (pcbActual)
+        *pcbActual = aParms[2].u.uint32;
+    return Call.rc;
+}
+#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
+
 static void testSetMode(void)
 {
     struct VBOXHGCMSVCPARM parms[2];
@@ -340,6 +376,163 @@ static void testSetTransferKeyParms(VBOXHGCMSVCPARM aParms[], SHCLSESSIONID idSe
 {
     HGCMSvcSetU64(&aParms[0], VBOX_SHCL_CONTEXTID_MAKE(idSession, idTransfer, 0));
     HGCMSvcSetU64(&aParms[1], uGeneration);
+}
+
+/** Tests short and exactly-sized host clipboard data reads. */
+static void testHostDataReadBufferSizing(void)
+{
+    VBOXHGCMSVCFNTABLE table;
+    VBOXHGCMSVCPARM parms[1];
+    VBOXHGCMSVCPARM aReadParms[VBOX_SHCL_CPARMS_DATA_READ];
+    VBOXHGCMCALLHANDLE_TYPEDEF call;
+    static uint8_t s_abData[_4K + 17];
+    uint8_t abShort[_4K];
+    uint8_t abExact[sizeof(s_abData)];
+
+    RTTestISub("Testing host data read buffer sizing");
+    int rc = setupTable(&table);
+    RTTESTI_CHECK_MSG_RETV(RT_SUCCESS(rc), ("rc=%Rrc\n", rc));
+
+    HGCMSvcSetU32(&parms[0], VBOX_SHCL_MODE_BIDIRECTIONAL);
+    rc = table.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_SET_MODE, RT_ELEMENTS(parms), parms);
+    RTTESTI_CHECK_RC_OK(rc);
+
+    RT_ZERO(g_Client);
+    rc = table.pfnConnect(NULL, 1 /* clientId */, &g_Client, 0, 0);
+    RTTESTI_CHECK_MSG_RETV(RT_SUCCESS(rc), ("rc=%Rrc\n", rc));
+
+    for (uint32_t off = 0; off < sizeof(s_abData); off++)
+        s_abData[off] = (uint8_t)off;
+    g_pvBackendReadData = s_abData;
+    g_cbBackendReadData = sizeof(s_abData);
+    g_uBackendReadFormat = VBOX_SHCL_FMT_UNICODETEXT;
+    g_cBackendReadDataCalls = 0;
+
+    HGCMSvcSetU32(&aReadParms[0], g_uBackendReadFormat);
+    HGCMSvcSetPv(&aReadParms[1], abShort, sizeof(abShort));
+    HGCMSvcSetU32(&aReadParms[2], 0);
+    call.rc = VERR_IPE_UNINITIALIZED_STATUS;
+    table.pfnCall(NULL, &call, 1 /* clientId */, &g_Client,
+                  VBOX_SHCL_GUEST_FN_DATA_READ, RT_ELEMENTS(aReadParms), aReadParms, 0);
+    RTTESTI_CHECK_RC(call.rc, VINF_BUFFER_OVERFLOW);
+    RTTESTI_CHECK(aReadParms[2].u.uint32 == sizeof(s_abData));
+
+    HGCMSvcSetPv(&aReadParms[1], abExact, sizeof(abExact));
+    HGCMSvcSetU32(&aReadParms[2], 0);
+    call.rc = VERR_IPE_UNINITIALIZED_STATUS;
+    table.pfnCall(NULL, &call, 1 /* clientId */, &g_Client,
+                  VBOX_SHCL_GUEST_FN_DATA_READ, RT_ELEMENTS(aReadParms), aReadParms, 0);
+    RTTESTI_CHECK_RC_OK(call.rc);
+    RTTESTI_CHECK(aReadParms[2].u.uint32 == sizeof(s_abData));
+    RTTESTI_CHECK(memcmp(abExact, s_abData, sizeof(s_abData)) == 0);
+    RTTESTI_CHECK(g_cBackendReadDataCalls == 2);
+
+    g_pvBackendReadData = NULL;
+    g_cbBackendReadData = 0;
+    g_uBackendReadFormat = VBOX_SHCL_FMT_NONE;
+    g_cBackendReadDataCalls = 0;
+
+    rc = table.pfnDisconnect(NULL, 1 /* clientId */, &g_Client);
+    RTTESTI_CHECK_RC_OK(rc);
+    rc = table.pfnUnload(NULL);
+    RTTESTI_CHECK_RC_OK(rc);
+}
+
+/** Tests validation and feature gating for host clipboard data reads. */
+static void testHostDataReadValidation(void)
+{
+    VBOXHGCMSVCFNTABLE table;
+    VBOXHGCMSVCPARM Parm;
+    static const char s_szUriList[] = "file:///private/host-file.txt\r\n";
+    char szData[sizeof(s_szUriList)];
+
+    RTTestISub("Testing host data read validation");
+    int rc = setupTable(&table);
+    RTTESTI_CHECK_MSG_RETV(RT_SUCCESS(rc), ("rc=%Rrc\n", rc));
+
+    HGCMSvcSetU32(&Parm, VBOX_SHCL_MODE_BIDIRECTIONAL);
+    rc = table.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_SET_MODE, 1, &Parm);
+    RTTESTI_CHECK_RC_OK(rc);
+
+    HGCMSvcSetU32(&Parm, VBOX_SHCL_TRANSFER_MODE_F_NONE);
+    rc = table.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_SET_TRANSFER_MODE, 1, &Parm);
+    RTTESTI_CHECK_RC_OK(rc);
+
+    RT_ZERO(g_Client);
+    rc = table.pfnConnect(NULL, 1 /* clientId */, &g_Client, 0, 0);
+    RTTESTI_CHECK_MSG_RETV(RT_SUCCESS(rc), ("rc=%Rrc\n", rc));
+
+    g_pvBackendReadData = s_szUriList;
+    g_cbBackendReadData = sizeof(s_szUriList);
+    g_uBackendReadFormat = VBOX_SHCL_FMT_UNICODETEXT;
+    g_cBackendReadDataCalls = 0;
+
+    g_Client.State.fGuestFeatures0 = VBOX_SHCL_GF_NONE;
+    uint32_t cbActual = 0;
+    rc = testHostDataReadCall(&table, VBOX_SHCL_FMT_UNICODETEXT, szData, sizeof(szData), &cbActual);
+    RTTESTI_CHECK_RC_OK(rc);
+    RTTESTI_CHECK(cbActual == sizeof(s_szUriList));
+    RTTESTI_CHECK(memcmp(szData, s_szUriList, sizeof(s_szUriList)) == 0);
+    RTTESTI_CHECK(g_cBackendReadDataCalls == 1);
+
+    g_uBackendReadFormat = VBOX_SHCL_FMT_URI_LIST;
+    g_cBackendReadDataCalls = 0;
+    g_Client.State.fGuestFeatures0 = VBOX_SHCL_GF_0_CONTEXT_ID | VBOX_SHCL_GF_0_TRANSFERS;
+    rc = testHostDataReadCall(&table, VBOX_SHCL_FMT_URI_LIST, szData, sizeof(szData), &cbActual);
+    RTTESTI_CHECK_RC(rc, VERR_ACCESS_DENIED);
+    RTTESTI_CHECK(g_cBackendReadDataCalls == 0);
+
+    HGCMSvcSetU32(&Parm, VBOX_SHCL_TRANSFER_MODE_F_ENABLED);
+    rc = table.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_SET_TRANSFER_MODE, 1, &Parm);
+    RTTESTI_CHECK_RC_OK(rc);
+
+    static const uint64_t s_afMissingFeatures[] =
+    {
+        VBOX_SHCL_GF_NONE,
+        VBOX_SHCL_GF_0_CONTEXT_ID,
+        VBOX_SHCL_GF_0_TRANSFERS
+    };
+    for (size_t i = 0; i < RT_ELEMENTS(s_afMissingFeatures); i++)
+    {
+        g_Client.State.fGuestFeatures0 = s_afMissingFeatures[i];
+        rc = testHostDataReadCall(&table, VBOX_SHCL_FMT_URI_LIST, szData, sizeof(szData), &cbActual);
+        RTTESTI_CHECK_RC(rc, VERR_ACCESS_DENIED);
+        RTTESTI_CHECK(g_cBackendReadDataCalls == 0);
+    }
+
+    g_Client.State.fGuestFeatures0 = VBOX_SHCL_GF_0_CONTEXT_ID | VBOX_SHCL_GF_0_TRANSFERS;
+    rc = testHostDataReadCall(&table, VBOX_SHCL_FMT_URI_LIST, szData, sizeof(szData), &cbActual);
+    RTTESTI_CHECK_RC_OK(rc);
+    RTTESTI_CHECK(cbActual == sizeof(s_szUriList));
+    RTTESTI_CHECK(memcmp(szData, s_szUriList, sizeof(s_szUriList)) == 0);
+    RTTESTI_CHECK(g_cBackendReadDataCalls == 1);
+
+    rc = testHostDataReadCall(&table, VBOX_SHCL_FMT_URI_LIST | VBOX_SHCL_FMT_UNICODETEXT,
+                              szData, sizeof(szData), &cbActual);
+    RTTESTI_CHECK_RC(rc, VERR_INVALID_PARAMETER);
+    RTTESTI_CHECK(g_cBackendReadDataCalls == 1);
+
+    rc = testHostDataReadCall(&table, VBOX_SHCL_FMT_NONE, szData, sizeof(szData), &cbActual);
+    RTTESTI_CHECK_RC(rc, VERR_INVALID_PARAMETER);
+    RTTESTI_CHECK(g_cBackendReadDataCalls == 1);
+
+    rc = testHostDataReadCall(&table, VBOX_SHCL_FMT_VALID_MASK + 1, szData, sizeof(szData), &cbActual);
+    RTTESTI_CHECK_RC(rc, VERR_INVALID_PARAMETER);
+    RTTESTI_CHECK(g_cBackendReadDataCalls == 1);
+
+    HGCMSvcSetU32(&Parm, VBOX_SHCL_TRANSFER_MODE_F_NONE);
+    rc = table.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_SET_TRANSFER_MODE, 1, &Parm);
+    RTTESTI_CHECK_RC_OK(rc);
+
+    g_pvBackendReadData = NULL;
+    g_cbBackendReadData = 0;
+    g_uBackendReadFormat = VBOX_SHCL_FMT_NONE;
+    g_cBackendReadDataCalls = 0;
+
+    rc = table.pfnDisconnect(NULL, 1 /* clientId */, &g_Client);
+    RTTESTI_CHECK_RC_OK(rc);
+    rc = table.pfnUnload(NULL);
+    RTTESTI_CHECK_RC_OK(rc);
 }
 
 /**
@@ -1013,6 +1206,8 @@ static void testHostCall(void)
     testTransferFormatFiltering();
     testTransferGuestFeatures();
     testTransferHostCancelError();
+    testHostDataReadBufferSizing();
+    testHostDataReadValidation();
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
     testSetHeadless();
     testHeadlessBackendConnect();

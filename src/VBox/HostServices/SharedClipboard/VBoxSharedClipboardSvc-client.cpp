@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-client.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-client.cpp 114967 2026-08-10 16:15:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Client/session and message queue handling.
  */
@@ -970,6 +970,9 @@ int shClSvcClientMsgReportFormats(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCM
  *
  * @returns VBox status code.
  * @retval  VINF_BUFFER_OVERFLOW if the guest supplied a smaller buffer than needed in order to read the host clipboard data.
+ * @retval  VERR_INVALID_PARAMETER if the requested format is invalid.
+ * @retval  VERR_ACCESS_DENIED if the guest requests file transfer data without
+ *          having file transfers enabled and negotiated.
  * @param   pClient             Client that wants to read host clipboard data.
  * @param   cParms              Number of HGCM parameters supplied in \a paParms.
  * @param   paParms             Array of HGCM parameters.
@@ -1041,6 +1044,23 @@ int shClSvcClientMsgDataRead(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCMSVCPA
     }
     Assert(iParm == cParms);
 
+    if (!ShClFormatIsValid(uFormat))
+    {
+        LogRelMax2(16, ("Shared Clipboard: Rejecting host clipboard data request with invalid format %#x\n", uFormat));
+        return VERR_INVALID_PARAMETER;
+    }
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    if (   uFormat == VBOX_SHCL_FMT_URI_LIST
+        && shClSvcHandleFormats(true /* fHostToGuest */, pClient, uFormat) != uFormat)
+#else
+    if (uFormat == VBOX_SHCL_FMT_URI_LIST)
+#endif
+    {
+        LogRelMax2(16, ("Shared Clipboard: Rejecting guest file transfer data request without enabled and negotiated transfers\n"));
+        return VERR_ACCESS_DENIED;
+    }
+
     /*
      * For some reason we need to do this (makes absolutely no sense to bird).
      */
@@ -1099,7 +1119,7 @@ int shClSvcClientMsgDataRead(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCMSVCPA
             HGCMSvcSetU32(&paParms[3], cbActual);
 
         /* If the data to return exceeds the buffer the guest supplies, tell it (and let it try again). */
-        if (cbActual >= cbData)
+        if (cbActual > cbData)
             rc = VINF_BUFFER_OVERFLOW;
     }
 
