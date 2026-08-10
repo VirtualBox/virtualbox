@@ -1,4 +1,4 @@
-/* $Id: tstClipboardHttpServer.cpp 114865 2026-08-06 10:27:20Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardHttpServer.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard HTTP server test case.
  */
@@ -314,7 +314,7 @@ static void tstManual(RTTEST hTest, PSHCLTRANSFERCTX pTransferCtx, PSHCLHTTPSERV
 
         SHCLCALLBACKS Callbacks;
         RT_ZERO(Callbacks);
-        RTTEST_CHECK_RC_OK(hTest, ShClX11Init(&X11Ctx, &Callbacks, NULL /* pParent */, false /* fHeadless */));
+        RTTEST_CHECK_RC_OK(hTest, ShClX11Init(&X11Ctx, &Callbacks, NULL /* pParent */));
         RTTEST_CHECK_RC_OK(hTest, ShClX11ThreadStart(&X11Ctx, false /* fGrab */));
         RTTEST_CHECK_RC_OK(hTest, ShClEventSourceInit(&EventSource, 0));
         RTTEST_CHECK_RC_OK(hTest, ShClX11WriteDataToX11(&X11Ctx, &EventSource, RT_MS_30SEC,

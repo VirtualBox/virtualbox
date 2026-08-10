@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendX11.cpp 114867 2026-08-06 15:19:51Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendX11.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - X11 backend.
  */
@@ -312,7 +312,7 @@ void ShClBackendSetCallbacks(PSHCLBACKEND pBackend, PSHCLCALLBACKS pCallbacks)
  * @note  On the host, we assume that some other application already owns
  *        the clipboard and leave ownership to X11.
  */
-int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, bool fHeadless)
+int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
 {
     int vrc;
 
@@ -330,7 +330,7 @@ int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, bool fHeadles
         vrc = RTCritSectInit(&pCtx->CritSect);
         if (RT_SUCCESS(vrc))
         {
-            vrc = ShClX11Init(&pCtx->X11, &pBackend->Callbacks, pCtx, fHeadless);
+            vrc = ShClX11Init(&pCtx->X11, &pBackend->Callbacks, pCtx);
             if (RT_SUCCESS(vrc))
             {
                 pClient->State.pCtx = pCtx;
@@ -355,8 +355,7 @@ int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, bool fHeadles
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
-                if (!fHeadless)
-                    vrc = shClSvcX11TransferPreparationStart(pCtx);
+                vrc = shClSvcX11TransferPreparationStart(pCtx);
 #endif
                 if (RT_SUCCESS(vrc))
                     vrc = ShClX11ThreadStart(&pCtx->X11, true /* grab shared clipboard */);
@@ -486,9 +485,6 @@ int ShClBackendReportFormats(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFOR
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
     PSHCLCONTEXT pCtx = pClient->State.pCtx;
     AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
-
-    if (pCtx->X11.fHeadless)
-        return ShClX11ReportFormatsToX11Async(&pCtx->X11, fFormats);
 
     int vrc = RTCritSectEnter(&pCtx->CritSect);
     if (RT_SUCCESS(vrc))

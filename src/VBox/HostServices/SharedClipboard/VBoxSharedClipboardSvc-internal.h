@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-internal.h 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-internal.h 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal service instance state.
  */
@@ -57,8 +57,6 @@ typedef struct SHCLSERVICE
     /** Next non-zero service session ID to assign to a client. */
     SHCLSESSIONID           idNextSession;
 #endif
-    /** Whether the service runs in headless mode. */
-    bool                    fHeadless;
     /** Service extension state. */
     SHCLEXTSTATE            ExtState;
     /** Connected HGCM clients keyed by client ID. */
@@ -76,7 +74,6 @@ typedef struct SHCLSERVICE
         , fTransferMode(VBOX_SHCL_TRANSFER_MODE_F_NONE)
         , idNextSession(1)
 #endif
-        , fHeadless(false)
         , fHostFeatures0(VBOX_SHCL_HF_0_CONTEXT_ID
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
                          | VBOX_SHCL_HF_0_TRANSFERS
@@ -105,7 +102,6 @@ extern SHCLSERVICE g_ShClSvc;
 # define g_fTransferMode       (g_ShClSvc.fTransferMode)
 # define g_idNextSession       (g_ShClSvc.idNextSession)
 #endif
-#define g_fHeadless            (g_ShClSvc.fHeadless)
 #define g_ExtState             (g_ShClSvc.ExtState)
 #define g_mapClients           (g_ShClSvc.mapClients)
 #define g_listClientsDeferred  (g_ShClSvc.listClientsDeferred)

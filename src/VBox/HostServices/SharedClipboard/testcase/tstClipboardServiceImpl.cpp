@@ -1,4 +1,4 @@
-/* $Id: tstClipboardServiceImpl.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: tstClipboardServiceImpl.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard host service implementation (backend) test case.
  */
@@ -66,7 +66,7 @@ static int setupTable(VBOXHGCMSVCFNTABLE *pTable)
 int ShClBackendInit(PSHCLBACKEND, VBOXHGCMSVCFNTABLE *) { return VINF_SUCCESS; }
 void ShClBackendDestroy(PSHCLBACKEND) { }
 int ShClBackendDisconnect(PSHCLBACKEND, PSHCLCLIENT) { return VINF_SUCCESS; }
-int ShClBackendConnect(PSHCLBACKEND, PSHCLCLIENT, bool) { return VINF_SUCCESS; }
+int ShClBackendConnect(PSHCLBACKEND, PSHCLCLIENT) { return VINF_SUCCESS; }
 int ShClBackendReportFormats(PSHCLBACKEND, PSHCLCLIENT, SHCLFORMATS) { AssertFailed(); return VINF_SUCCESS; }
 int ShClBackendReadData(PSHCLBACKEND, PSHCLCLIENT, PSHCLCLIENTCMDCTX, SHCLFORMAT, void *, uint32_t, unsigned int *) { AssertFailed(); return VERR_WRONG_ORDER; }
 int ShClBackendWriteData(PSHCLBACKEND, PSHCLCLIENT, PSHCLCLIENTCMDCTX, SHCLFORMAT, void *, uint32_t) { AssertFailed(); return VINF_SUCCESS; }
@@ -201,4 +201,3 @@ int main(int argc, char *argv[])
      */
     return RTTestSummaryAndDestroy(hTest);
 }
-

@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc.h 114831 2026-07-31 10:10:53Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc.h 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - header file for shared clipboard data transfer
  * interfaces and platform-dependent backend functionality.
@@ -385,7 +385,6 @@ int ShClSvcGuestDataSignal(PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX pCmdCtx, SHCLF
 int ShClSvcReportFormats(PSHCLCLIENT pClient, SHCLFORMATS fFormats);
 PSHCLBACKEND ShClSvcGetBackend(void);
 uint32_t ShClSvcGetMode(void);
-bool ShClSvcGetHeadless(void);
 bool ShClSvcLock(void);
 void ShClSvcUnlock(void);
 /** @} */
@@ -440,9 +439,8 @@ void ShClBackendSetCallbacks(PSHCLBACKEND pBackend, PSHCLCALLBACKS pCallbacks);
  * @returns VBox status code.
  * @param   pBackend            Shared Clipboard backend to connect to.
  * @param   pClient             Shared Clipboard client context.
- * @param   fHeadless           Whether this is a headless connection or not.
  */
-int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, bool fHeadless);
+int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient);
 
 /**
  * Called when a HGCM client disconnects.

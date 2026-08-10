@@ -1,4 +1,4 @@
-/* $Id: clipboard-x11.cpp 114970 2026-08-10 16:20:56Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-x11.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard implementation.
  */
@@ -601,7 +601,7 @@ int VBClX11ClipboardInit(void)
     Callbacks.pfnReportFormats           = vbclX11ReportFormatsCallback;
     Callbacks.pfnOnRequestDataFromSource = vbclX11OnRequestDataFromSourceCallback;
 
-    rc = ShClX11Init(&g_Ctx.X11, &Callbacks, &g_Ctx, false /* fHeadless */);
+    rc = ShClX11Init(&g_Ctx.X11, &Callbacks, &g_Ctx);
     if (RT_SUCCESS(rc))
     {
         rc = ShClX11ThreadStart(&g_Ctx.X11, false /* grab */);

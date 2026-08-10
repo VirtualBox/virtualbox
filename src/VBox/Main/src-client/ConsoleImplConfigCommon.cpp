@@ -1,4 +1,4 @@
-/* $Id: ConsoleImplConfigCommon.cpp 114532 2026-06-25 11:46:49Z andreas.loeffler@oracle.com $ */
+/* $Id: ConsoleImplConfigCommon.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console COM Class implementation - VM Configuration Bits.
  *
@@ -4000,17 +4000,6 @@ int Console::i_configVmmDev(ComPtr<IMachine> pMachine, BusAssignmentManager *pBu
         if (RT_SUCCESS(vrc))
         {
             LogRel(("Shared Clipboard: Service loaded\n"));
-
-            /* Let the service avoid touching the host clipboard/X11 for headless frontends.
-             * This is legacy behavior and needs to be removed. See @bugref{4697}. */
-            Bstr bstrSessionName;
-            hrc = pMachine->COMGETTER(SessionName)(bstrSessionName.asOutParam()); H();
-            const bool fHeadless = bstrSessionName.compare(Bstr("headless").raw()) == 0;
-            VBOXHGCMSVCPARM parmHeadless;
-            HGCMSvcSetU32(&parmHeadless, fHeadless);
-            vrc = pVMMDev->hgcmHostCall("VBoxSharedClipboard", VBOX_SHCL_HOST_FN_SET_HEADLESS, 1, &parmHeadless);
-            AssertLogRelMsg(RT_SUCCESS(vrc), ("Shared Clipboard: Failed to set headless mode (%RTbool): vrc=%Rrc\n",
-                                             fHeadless, vrc));
 
             /* Set initial clipboard mode. */
             AssertPtrReturn(i_getClipboard(), VERR_INVALID_POINTER);

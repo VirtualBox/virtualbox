@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendDarwin.cpp 114863 2026-08-06 10:19:52Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendDarwin.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host.
  */
@@ -304,9 +304,9 @@ void ShClBackendDestroy(PSHCLBACKEND pBackend)
         RTCritSectDelete(&g_ctx.CritSect);
 }
 
-int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, bool fHeadless)
+int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
 {
-    RT_NOREF(pBackend, fHeadless);
+    RT_NOREF(pBackend);
 
     RTCritSectEnter(&g_ctx.CritSect);
 

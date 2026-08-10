@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-host.cpp 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-host.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Host-controlled service handling.
  */
@@ -137,21 +137,8 @@ DECLCALLBACK(int) shClSvcHostCall(void *, uint32_t u32Function, uint32_t cParms,
         }
 
         case VBOX_SHCL_HOST_FN_SET_HEADLESS:
-        {
-            if (cParms != 1)
-                rc = VERR_INVALID_PARAMETER;
-            else
-            {
-                uint32_t uHeadless;
-                rc = HGCMSvcGetU32(&paParms[0], &uHeadless);
-                if (RT_SUCCESS(rc))
-                {
-                    g_fHeadless = RT_BOOL(uHeadless);
-                    LogRel(("Shared Clipboard: Service running in %s mode\n", g_fHeadless ? "headless" : "normal"));
-                }
-            }
+            rc = VERR_NOT_IMPLEMENTED;
             break;
-        }
 
         case VBOX_SHCL_HOST_FN_CANCEL:
         {

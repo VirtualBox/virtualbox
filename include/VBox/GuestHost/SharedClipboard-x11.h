@@ -148,14 +148,6 @@ typedef struct SHCLX11CTX
     PSHCLCONTEXT     pFrontend;
     /** Our callback table to use. */
     SHCLCALLBACKS    Callbacks;
-    /**
-     * Are we running in headless mode?
-     *
-     * This is a special situation for running on UNIX-y environments, where an
-     * X server could not be available when running on a server without any
-     * desktop environment available, for example.
-     */
-    bool             fHeadless;
     /** The X Toolkit application context structure. */
     XtAppContext     pAppContext;
     /** We have a separate thread to wait for window and clipboard events. */
@@ -188,9 +180,9 @@ typedef struct SHCLX11CTX
     SHCLCACHE        Cache;
     /** When we wish the clipboard to exit, we have to wake up the event
      * loop.  We do this by writing into a pipe.  This end of the pipe is
-     * the end that another thread can write to. */
+     * the end that another thread can write to.  -1 if not created. */
     int              wakeupPipeWrite;
-    /** The reader end of the pipe. */
+    /** The reader end of the pipe.  -1 if not created. */
     int              wakeupPipeRead;
     /** A pointer to the XFixesSelectSelectionInput function. */
     void (*fixesSelectInput)(Display *, Window, Atom, unsigned long);
@@ -306,7 +298,7 @@ typedef SHCLX11RESPONSE *PSHCLX11RESPONSE;
 /** @name Shared Clipboard APIs for X11.
  * @{
  */
-int ShClX11Init(PSHCLX11CTX pCtx, PSHCLCALLBACKS pCallbacks, PSHCLCONTEXT pParent, bool fHeadless);
+int ShClX11Init(PSHCLX11CTX pCtx, PSHCLCALLBACKS pCallbacks, PSHCLCONTEXT pParent);
 int ShClX11Term(PSHCLX11CTX pCtx);
 int ShClX11ThreadStart(PSHCLX11CTX pCtx, bool grab);
 int ShClX11ThreadStartEx(PSHCLX11CTX pCtx, const char *pszName, bool fGrab);
