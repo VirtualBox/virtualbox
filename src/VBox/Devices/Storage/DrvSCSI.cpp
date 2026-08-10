@@ -1,4 +1,4 @@
-/* $Id: DrvSCSI.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: DrvSCSI.cpp 114952 2026-08-10 13:40:47Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBox storage drivers: Generic SCSI command parser and execution driver
  */
@@ -943,7 +943,7 @@ static DECLCALLBACK(int) drvscsiIoReqSendScsiCmd(PPDMIMEDIAEX pInterface, PDMMED
     /* Allocate and sync buffers if a data transfer is indicated. */
     if (cbBuf)
     {
-        pReq->pvBuf = RTMemAlloc(cbBuf);
+        pReq->pvBuf = RTMemAllocZ(cbBuf);
         if (RT_UNLIKELY(!pReq->pvBuf))
             rc = VERR_NO_MEMORY;
     }
