@@ -1,4 +1,4 @@
-/* $Id: DisplayImplLegacy.cpp 114870 2026-08-06 18:20:51Z vitali.pelenjow@oracle.com $ */
+/* $Id: DisplayImplLegacy.cpp 114912 2026-08-10 12:03:20Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox IDisplay implementation, helpers for legacy GAs.
  *
@@ -678,19 +678,18 @@ int Display::i_videoAccelFlush(PPDMIDISPLAYPORT pUpPort)
                          cbCmd, phdr->x, phdr->y, phdr->w, phdr->h));
 #endif /* DEBUG_sunlover */
 
-            VBVACMDHDR hdrSaved = *phdr;
-
-            int x = phdr->x;
-            int y = phdr->y;
-            int w = phdr->w;
-            int h = phdr->h;
+            VBVACMDHDR hdr = *phdr;
+            int x = hdr.x;
+            int y = hdr.y;
+            int w = hdr.w;
+            int h = hdr.h;
 
             uScreenId = mapCoordsToScreen(maFramebuffers, mcMonitors, &x, &y, &w, &h);
 
-            phdr->x = (int16_t)x;
-            phdr->y = (int16_t)y;
-            phdr->w = (uint16_t)w;
-            phdr->h = (uint16_t)h;
+            hdr.x = (int16_t)x;
+            hdr.y = (int16_t)y;
+            hdr.w = (uint16_t)w;
+            hdr.h = (uint16_t)h;
 
             /* Handle the command.
              *
@@ -705,12 +704,10 @@ int Display::i_videoAccelFlush(PPDMIDISPLAYPORT pUpPort)
              */
 
             /* Accumulate the update. */
-            vbvaRgnDirtyRect(&rgn, uScreenId, phdr);
+            vbvaRgnDirtyRect(&rgn, uScreenId, &hdr);
 
-            /* Forward the command to VRDP server. */
-            mParent->i_consoleVRDPServer()->SendUpdate(uScreenId, phdr, cbCmd);
-
-            *phdr = hdrSaved;
+            /* Forward the command to VRDP server as a bitmap update. */
+            mParent->i_consoleVRDPServer()->SendUpdate(uScreenId, &hdr, sizeof(hdr));
         }
 
         i_vbvaReleaseCmd(pVideoAccel, phdr, cbCmd);
