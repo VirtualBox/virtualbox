@@ -1569,6 +1569,7 @@ public:
      */
     void sanitizeImportedSerialPorts();
     void sanitizeSharedFolderSettings();
+    void sanitizeImportedNvramSettings();
     static bool isAudioDriverAllowedOnThisHost(AudioDriverType_T enmDrvType);
     static AudioDriverType_T getHostDefaultAudioDriver();
 
