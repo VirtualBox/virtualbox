@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 114924 2026-08-10 12:18:33Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 114939 2026-08-10 12:54:06Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -3613,12 +3613,14 @@ static SVGACBStatus vmsvgaR3CmdBufDCPreempt(PPDMDEVINS pDevIns, PVMSVGAR3STATE p
     RT_UNTRUSTED_VALIDATED_FENCE();
 
     PVMSVGACMDBUFCTX const pCmdBufCtx = pSvgaR3State->apCmdBufCtxs[pCmd->context];
+    if (!pCmdBufCtx)
+        return SVGA_CB_STATUS_COMMAND_ERROR;
+
     RTLISTANCHOR listPreempted;
+    RTListInit(&listPreempted);
 
     int rc = RTCritSectEnter(&pSvgaR3State->CritSectCmdBuf);
     AssertRC(rc);
-
-    RTListInit(&listPreempted);
 
     PVMSVGACMDBUF pIter, pNext;
     RTListForEachSafe(&pCmdBufCtx->listSubmitted, pIter, pNext, VMSVGACMDBUF, nodeBuffer)
