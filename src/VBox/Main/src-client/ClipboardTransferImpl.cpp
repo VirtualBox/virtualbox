@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferImpl.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferImpl.cpp 114975 2026-08-10 18:04:13Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer object.
  */
@@ -454,11 +454,6 @@ void ClipboardTransfer::FinalRelease()
  * @param   aAction         Clipboard transfer action.
  * @param   aItem           Clipboard item being transferred.
  * @param   aProgress       Progress object for the transfer.
- * @param   aTransfer       Optional Shared Clipboard transfer backing the data
- *                          plane.  If @a fOwnTransfer is false, this method
- *                          borrows the transfer for the lifetime of this object.
- * @param   fOwnTransfer    Whether to take ownership of @a aTransfer and
- *                          destroy it during uninitialization.
  */
 HRESULT ClipboardTransfer::init(ULONG aId,
                                 ClipboardTransferDirection_T aDirection,
