@@ -1,4 +1,4 @@
-/* $Id: videostream.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: videostream.h 114915 2026-08-10 12:06:36Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Remote Desktop Protocol.
  */
@@ -47,6 +47,7 @@ typedef struct VIDEOSTREAMCALLBACKS
 {
     DECLR3CALLBACKMEMBER(bool, pfnVideoSourceStreamStart, (void *pvCallback, uint32_t u32SourceStreamId, const RGNRECT *prect, int64_t timeStart));
     DECLR3CALLBACKMEMBER(void, pfnVideoSourceStreamStop, (void *pvCallback, uint32_t u32SourceStreamId, const RGNRECT *prect));
+    DECLR3CALLBACKMEMBER(bool, pfnIsValidRect, (void *pvCallback, const RGNRECT *prect));
 } VIDEOSTREAMCALLBACKS;
 
 typedef struct VDCONTEXT VDCONTEXT;

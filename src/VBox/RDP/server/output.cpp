@@ -1,4 +1,4 @@
-/* $Id: output.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: output.cpp 114915 2026-08-10 12:06:36Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Remote Desktop Protocol.
  */
@@ -608,6 +608,11 @@ int VRDPServer::OutputThread (RTTHREAD self, VRDPServerThreadStartCtx *pCtx)
                         SERVERLOG(("OutputThread: VRDE_ORDER_MEMBLT %d,%d %dx%d from %d,%d rop 0x%02X\n",
                                    pOrder->x, pOrder->y, pOrder->w, pOrder->h, pOrder->xSrc, pOrder->ySrc, pOrder->rop));
 
+                        if (!shadowBufferAreOrderCoordsValid(action.uScreenId, pOrder->x, pOrder->y, pOrder->w, pOrder->h))
+                        {
+                            break;
+                        }
+
                         /* Locate the bitmap in the cache. */
                         PBMPCACHEENTRY pbce = BCFindBitmap (m_pbc, &pOrder->hash);
 
@@ -852,7 +857,7 @@ int VRDPServer::OutputThread (RTTHREAD self, VRDPServerThreadStartCtx *pCtx)
                          */
                         TCFONTTEXT2 *pFontText2 = NULL;
 
-                        bool fSuccess = TCCacheGlyphs (m_ptc, pOrder, &pFontText2);
+                        bool fSuccess = TCCacheGlyphs (m_ptc, pOrder, action.u.order.cbOrder, &pFontText2);
 
                         if (!fSuccess)
                         {

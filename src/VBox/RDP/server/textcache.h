@@ -1,4 +1,4 @@
-/* $Id: textcache.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: textcache.h 114915 2026-08-10 12:06:36Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Remote Desktop Protocol.
  */
@@ -171,7 +171,7 @@ typedef struct _TCFONTTEXT2
 PTEXTCACHE TCCreate (void);
 void TCDelete (PTEXTCACHE ptc);
 
-bool TCCacheGlyphs (PTEXTCACHE ptc, const VRDEORDERTEXT *pOrder, TCFONTTEXT2 **ppFontText2);
+bool TCCacheGlyphs (PTEXTCACHE ptc, const VRDEORDERTEXT *pOrder, uint32_t cbOrder, TCFONTTEXT2 **ppFontText2);
 void TCFreeFontText2 (TCFONTTEXT2 *pFontText2);
 
 #endif /* !VRDP_INCLUDED_SRC_textcache_h */
