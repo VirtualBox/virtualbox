@@ -1,4 +1,4 @@
-/* $Id: ApplianceImplImport.cpp 114936 2026-08-10 12:48:12Z serkan.bayraktar@oracle.com $ */
+/* $Id: ApplianceImplImport.cpp 114949 2026-08-10 13:32:24Z serkan.bayraktar@oracle.com $ */
 /** @file
  * IAppliance and IVirtualSystem COM class implementations.
  */
@@ -398,11 +398,16 @@ HRESULT Appliance::interpret()
                     }
                 }
                 /* Check if shared folders are configured. */
-
                 if (!pNewDesc->m->pConfig->hardwareMachine.llSharedFolders.empty())
                 {
                     i_addWarning(tr("Virtual appliance \"%s\" was configured with machine shared folder(s) "
                                      "This setting will not be imported."), vsysThis.strName.c_str());
+                }
+                  /* Check if a custom NVRAM file path is configured. */
+                if (pNewDesc->m->pConfig->hardwareMachine.nvramSettings.strNvramPath.isNotEmpty())
+                {
+                    i_addWarning(tr("Virtual appliance \"%s\" was configured with a custom NVRAM file path. "
+                                    "This setting will not be imported."), vsysThis.strName.c_str());
                 }
             }
             /* Audio */
@@ -6141,6 +6146,7 @@ l_skipped:
     if (FAILED(hrc)) throw hrc;
     config.sanitizeImportedSerialPorts();
     config.sanitizeSharedFolderSettings();
+    config.sanitizeImportedNvramSettings();
 
     // this magic constructor fills the new machine object with the MachineConfig
     // instance that we created from the vbox:Machine
