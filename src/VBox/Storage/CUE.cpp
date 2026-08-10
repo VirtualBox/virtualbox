@@ -1,4 +1,4 @@
-/* $Id: CUE.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: CUE.cpp 114913 2026-08-10 12:05:06Z alexander.eichner@oracle.com $ */
 /** @file
  * CUE - CUE/BIN Disk image, Core Code.
  */
@@ -954,7 +954,8 @@ static int cueParseTrack(PCUEIMAGE pThis, PCUETOKENIZER pTokenizer)
     if (cueTokenizerGetTokenType(pTokenizer) == CUETOKENTYPE_INTEGER_UNSIGNED)
     {
         uint64_t u64Track = cueTokenizerConsumeInteger(pTokenizer);
-        if (u64Track <= 99)
+        if (   u64Track >= 1
+            && u64Track <= 99)
         {
             /* Parse the data mode. */
             if (cueTokenizerGetTokenType(pTokenizer) == CUETOKENTYPE_KEYWORD)
