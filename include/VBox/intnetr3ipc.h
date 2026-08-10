@@ -1,4 +1,4 @@
-/* $Id: intnetr3ipc.h 114876 2026-08-06 21:41:36Z andreas.loeffler@oracle.com $ */
+/* $Id: intnetr3ipc.h 114959 2026-08-10 14:41:23Z andreas.loeffler@oracle.com $ */
 /** @file
  * Internal networking Ring-3 service IPC protocol.
  */
@@ -48,7 +48,7 @@ RT_C_DECLS_BEGIN
 #ifndef INTNET_R3_SVC_NAME
 # define INTNET_R3_SVC_NAME                "org.virtualbox.intnet"
 #endif
-/** Maximum generated per-user Local IPC service name length, including the terminator. */
+/** Maximum generated per-user local IPC service name length, including the terminator. */
 #define INTNET_R3_IPC_MAX_SERVICE_NAME      64
 /** Protocol version. */
 #define INTNET_R3_IPC_VERSION               UINT16_C(1)
@@ -56,7 +56,7 @@ RT_C_DECLS_BEGIN
 #define INTNET_R3_IPC_MAX_REQ               UINT32_C(65536)
 /** Maximum shared-memory object name length, including the terminator. */
 #define INTNET_R3_IPC_MAX_SHMEM_NAME        256
-/** Maximum time allowed to complete a started Local IPC frame. */
+/** Maximum time allowed to complete a started local IPC frame. */
 #define INTNET_R3_IPC_FRAME_TIMEOUT_MS      UINT32_C(30000)
 
 /** Local IPC request header magic. */
