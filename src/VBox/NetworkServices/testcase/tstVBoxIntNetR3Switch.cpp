@@ -1,4 +1,4 @@
-/* $Id: tstVBoxIntNetR3Switch.cpp 114959 2026-08-10 14:41:23Z andreas.loeffler@oracle.com $ */
+/* $Id: tstVBoxIntNetR3Switch.cpp 114962 2026-08-10 15:04:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * tstVBoxIntNetR3Switch - Self-contained testcase for R3 IntNet/IntNetSwitch communication.
  *
@@ -383,6 +383,7 @@ static void svcStop(TSTSWITCHSVC *pSvc)
     if (pSvc->hProcess != NIL_RTPROCESS)
     {
         RTPROCSTATUS Status;
+        RT_ZERO(Status);
         int rc = VERR_PROCESS_RUNNING;
         uint64_t const msStart = RTTimeMilliTS();
         while (   rc == VERR_PROCESS_RUNNING
@@ -1152,6 +1153,7 @@ static void tstServerPreOpenIdleTimeout(TSTSWITCHSVC *pSvc)
         rc = RTLocalIpcSessionFlush(hSession);
 
     INTNETR3IPCREPLYHDR ReplyHdr;
+    RT_ZERO(ReplyHdr);
     if (RT_SUCCESS(rc))
         rc = RTLocalIpcSessionRead(hSession, &ReplyHdr, sizeof(ReplyHdr), NULL /*pcbRead*/);
     if (RT_SUCCESS(rc))
