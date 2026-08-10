@@ -1,4 +1,4 @@
-/* $Id: rdpdr.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: rdpdr.cpp 114937 2026-08-10 12:50:01Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Remote Desktop Protocol - "RDPDR" static virtual channel: File System Virtual Channel Extension.
  */
@@ -692,6 +692,45 @@ int VRDPChannelRDPDR::fetchIO(uint32_t u32CompletionId,
     return rc;
 }
 
+/** @thread INPUT */
+void VRDPChannelRDPDR::cancelIOForDevice(uint32_t u32DeviceId)
+{
+    RTLISTANCHOR ListPendingIO;
+    RTListInit(&ListPendingIO);
+
+    RDPDRIOCompletion *pIter;
+    RDPDRIOCompletion *pNext;
+
+    bool fLocked = RT_SUCCESS(VRDPLock::Lock(m_pLock));
+
+    RTListForEachSafe(&m_IOCompletion.ListUsed, pIter, pNext, RDPDRIOCompletion, NodeIOCompletion)
+    {
+        if (pIter->u32DeviceId == u32DeviceId)
+        {
+            RTListNodeRemove(&pIter->NodeIOCompletion);
+            RTListAppend(&ListPendingIO, &pIter->NodeIOCompletion);
+        }
+    }
+
+    if (fLocked)
+    {
+        VRDPLock::Unlock(m_pLock);
+    }
+
+    RTListForEachSafe(&ListPendingIO, pIter, pNext, RDPDRIOCompletion, NodeIOCompletion)
+    {
+        RDPDRIOCTL *pIO = (RDPDRIOCTL *)pIter->pPktHdr;
+
+        RDPDRLOG(("cancelIOForDevice: pending IO %p [%d,%d]\n",
+                  pIO, m_pvrdptp->Client()->Id(), u32DeviceId));
+
+        rdpdrDispatchIOCompletion(pIO, u32DeviceId, RDPDR_STATUS_UNSUCCESSFUL);
+        RDPDRPktRelease(&pIO->hdr);
+
+        VRDPMemFree(pIter);
+    }
+}
+
 /** @thread OUTPUT */
 int VRDPChannelRDPDR::ProcessOutput (const void *pvData, uint32_t cbData)
 {
@@ -1192,6 +1231,12 @@ int VRDPChannelRDPDR::rdpdrOnDeviceAdd(const DEVICE_ANNOUNCE *pDevHdr,
 #ifdef DEBUG_sunlover
             Assert(!m_smartcard.fEnabled);
 #endif
+            if (m_smartcard.fEnabled)
+            {
+                /* Cancel pending IOCTLs for the existing device */
+                cancelIOForDevice(m_smartcard.u32DeviceId);
+            }
+
             m_smartcard.fEnabled = true;
             m_smartcard.u32DeviceId = pDevHdr->u32DeviceId;
             m_pvrdptp->Client()->Server()->SCard()->SCardAttach(m_pvrdptp->Client()->Id(), m_smartcard.u32DeviceId);
