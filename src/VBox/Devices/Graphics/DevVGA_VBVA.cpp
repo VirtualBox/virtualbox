@@ -1,4 +1,4 @@
-/* $Id: DevVGA_VBVA.cpp 114893 2026-08-07 16:18:28Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA_VBVA.cpp 114932 2026-08-10 12:38:24Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Video Acceleration (VBVA).
  */
@@ -1550,6 +1550,22 @@ static DECLCALLBACK(int) vbvaChannelHandler(void *pvHandler, uint16_t u16Channel
     PVGASTATECC     pThisCC = PDMDEVINS_2_DATA_CC(pDevIns, PVGASTATECC);
     PHGSMIINSTANCE  pIns    = pThisCC->pHGSMI;
     VBVACONTEXT    *pCtx    = (VBVACONTEXT *)HGSMIContext(pIns);
+
+    if (pThis->fVMSVGAEnabled)
+    {
+        if (   u16ChannelInfo == VBVA_QUERY_CONF32
+            || u16ChannelInfo == VBVA_INFO_HEAP
+            || u16ChannelInfo == VBVA_MOUSE_POINTER_SHAPE
+            || u16ChannelInfo == VBVA_INFO_CAPS
+            || u16ChannelInfo == VBVA_CURSOR_POSITION
+           )
+        { /* allowed */ }
+        else
+        {
+           /* NOPs for VMSVGA mode. */
+           return VINF_SUCCESS;
+        }
+    }
 
     switch (u16ChannelInfo)
     {
