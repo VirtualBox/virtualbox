@@ -1,4 +1,4 @@
-/* $Id: VBoxNetSlirpNATTest.cpp 114884 2026-08-07 07:22:52Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxNetSlirpNATTest.cpp 114965 2026-08-10 15:39:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxNetSlirpNAT - Wrapper for guest-side tests.
  */
@@ -189,7 +189,7 @@ vboxNetSlirpNATTestTimerNew(SlirpTimerCb pfnCallback, void *pvCallback, void *pv
 {
     PVBOXNETSLIRPNATTEST pThis = (PVBOXNETSLIRPNATTEST)pvUser;
     AssertPtrReturn(pThis, NULL);
-    AssertPtrReturn(pfnCallback, NULL);
+    AssertReturn(pfnCallback != NULL, NULL);
 
     PVBOXNETSLIRPNATTESTTIMER pTimer = (PVBOXNETSLIRPNATTESTTIMER)RTMemAllocZ(sizeof(*pTimer));
     if (pTimer)
