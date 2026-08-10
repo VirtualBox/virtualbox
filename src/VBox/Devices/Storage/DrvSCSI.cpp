@@ -1,4 +1,4 @@
-/* $Id: DrvSCSI.cpp 114952 2026-08-10 13:40:47Z aleksey.ilyushin@oracle.com $ */
+/* $Id: DrvSCSI.cpp 114955 2026-08-10 13:52:40Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBox storage drivers: Generic SCSI command parser and execution driver
  */
@@ -146,6 +146,8 @@ typedef struct DRVSCSI
     /** Indicates whether PDMDrvHlpAsyncNotificationCompleted should be called by
      * any of the dummy functions. */
     bool volatile           fDummySignal;
+    /** Flag whether an eject operation is pending. */
+    bool volatile           fEjectPending;
     /** Current I/O depth. */
     volatile uint32_t       StatIoDepth;
     /** Errors printed in the release log. */
@@ -317,28 +319,36 @@ static DECLCALLBACK(int) drvscsiEject(VSCSILUN hVScsiLun, void *pvScsiLunUser)
     RT_NOREF(hVScsiLun);
     PDRVSCSI pThis = (PDRVSCSI)pvScsiLunUser;
     int rc = VINF_SUCCESS;
-    RTSEMEVENT hSemEvt = NIL_RTSEMEVENT;
 
-    /* This must be done from EMT. */
-    rc = RTSemEventCreate(&hSemEvt);
-    if (RT_SUCCESS(rc))
+    if (!ASMAtomicXchgBool(&pThis->fEjectPending, true))
     {
-        PDRVSCSIEJECTSTATE pEjectState = (PDRVSCSIEJECTSTATE)PDMDrvHlpQueueAlloc(pThis->pDrvIns, pThis->hQueue);
-        if (pEjectState)
+        RTSEMEVENT hSemEvt = NIL_RTSEMEVENT;
+
+        /* This must be done from EMT. */
+        rc = RTSemEventCreate(&hSemEvt);
+        if (RT_SUCCESS(rc))
         {
-            pEjectState->hSemEvt = hSemEvt;
-            PDMDrvHlpQueueInsert(pThis->pDrvIns, pThis->hQueue, &pEjectState->Core);
+            PDRVSCSIEJECTSTATE pEjectState = (PDRVSCSIEJECTSTATE)PDMDrvHlpQueueAlloc(pThis->pDrvIns, pThis->hQueue);
+            if (pEjectState)
+            {
+                pEjectState->hSemEvt = hSemEvt;
+                PDMDrvHlpQueueInsert(pThis->pDrvIns, pThis->hQueue, &pEjectState->Core);
 
-            /* Wait for completion. */
-            rc = RTSemEventWait(pEjectState->hSemEvt, RT_INDEFINITE_WAIT);
-            if (RT_SUCCESS(rc))
-                rc = pEjectState->rcReq;
+                /* Wait for completion. */
+                rc = RTSemEventWait(pEjectState->hSemEvt, RT_INDEFINITE_WAIT);
+                if (RT_SUCCESS(rc))
+                    rc = pEjectState->rcReq;
+            }
+            else
+                rc = VERR_NO_MEMORY;
+
+            RTSemEventDestroy(hSemEvt);
         }
-        else
-            rc = VERR_NO_MEMORY;
 
-        RTSemEventDestroy(pEjectState->hSemEvt);
+        ASMAtomicXchgBool(&pThis->fEjectPending, false);
     }
+    else
+        rc = VERR_ALREADY_EXISTS;
 
     return rc;
 }
