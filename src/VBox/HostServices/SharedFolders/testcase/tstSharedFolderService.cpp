@@ -1,4 +1,4 @@
-/* $Id: tstSharedFolderService.cpp 114418 2026-06-18 06:56:36Z andreas.loeffler@oracle.com $ */
+/* $Id: tstSharedFolderService.cpp 114904 2026-08-10 08:28:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * Testcase for the shared folder service vbsf API.
  *
@@ -630,7 +630,72 @@ void testMapFolderTwice(RTTEST hTest) { RT_NOREF1(hTest); }
 void testMapFolderDelimiter(RTTEST hTest) { RT_NOREF1(hTest); }
 void testMapFolderCaseSensitive(RTTEST hTest) { RT_NOREF1(hTest); }
 void testMapFolderCaseInsensitive(RTTEST hTest) { RT_NOREF1(hTest); }
-void testMapFolderBadParameters(RTTEST hTest) { RT_NOREF1(hTest); }
+void testMapFolderBadParameters(RTTEST hTest)
+{
+    RTTestSub(hTest, "Map folder string validation");
+
+    VBOXHGCMSVCFNTABLE SvcTable;
+    VBOXHGCMSVCHELPERS SvcHelpers;
+    RT_ZERO(SvcTable);
+    RT_ZERO(SvcHelpers);
+    initTable(&SvcTable, &SvcHelpers);
+    int rc = VBoxHGCMSvcLoad(&SvcTable);
+    RTTEST_CHECK_RC_RETV(hTest, rc, VINF_SUCCESS);
+
+    AssertRelease(SvcTable.pvService = RTTestGuardedAllocTail(hTest, SvcTable.cbClient));
+    RT_BZERO(SvcTable.pvService, SvcTable.cbClient);
+
+    /* Place the supplied six-byte buffer directly before a guard page.  A length of four
+       used to make the compatibility workaround read the first two bytes beyond it. */
+    PSHFLSTRING pMalformed = (PSHFLSTRING)RTTestGuardedAllocTail(hTest, sizeof(*pMalformed));
+    AssertRelease(pMalformed);
+    pMalformed->u16Size          = sizeof(RTUTF16);
+    pMalformed->u16Length        = sizeof(RTUTF16) * 2;
+    pMalformed->String.utf16[0]  = 0;
+
+    VBOXHGCMSVCPARM aParms[SHFL_CPARMS_MAP_FOLDER];
+    HGCMSvcSetPv(&aParms[0], pMalformed, sizeof(*pMalformed));
+    HGCMSvcSetU32(&aParms[1], 0);  /* root */
+    HGCMSvcSetU32(&aParms[2], '/'); /* delimiter */
+    HGCMSvcSetU32(&aParms[3], true); /* fCaseSensitive */
+
+    VBOXHGCMCALLHANDLE_TYPEDEF CallHandle = { VERR_INTERNAL_ERROR };
+    SvcTable.pfnCall(SvcTable.pvService, &CallHandle, 0, SvcTable.pvService, SHFL_FN_MAP_FOLDER,
+                     SHFL_CPARMS_MAP_FOLDER, aParms, 0);
+    RTTEST_CHECK_RC(hTest, CallHandle.rc, VERR_INVALID_PARAMETER);
+    RTTEST_CHECK(hTest, pMalformed->u16Length == sizeof(RTUTF16) * 2);
+
+    /* Also cover the largest even length accepted by the wire format. */
+    pMalformed->u16Length = UINT16_MAX - 1;
+    CallHandle.rc = VERR_INTERNAL_ERROR;
+    SvcTable.pfnCall(SvcTable.pvService, &CallHandle, 0, SvcTable.pvService, SHFL_FN_MAP_FOLDER,
+                     SHFL_CPARMS_MAP_FOLDER, aParms, 0);
+    RTTEST_CHECK_RC(hTest, CallHandle.rc, VERR_INVALID_PARAMETER);
+    RTTEST_CHECK(hTest, pMalformed->u16Length == UINT16_MAX - 1);
+
+    /* Preserve the legacy case: old Windows clients included the terminator in u16Length. */
+    PSHFLSTRING pLegacy = (PSHFLSTRING)RTTestGuardedAllocTail(hTest,
+                                                              SHFLSTRING_HEADER_SIZE + sizeof(RTUTF16) * 2);
+    AssertRelease(pLegacy);
+    pLegacy->u16Size          = sizeof(RTUTF16) * 2;
+    pLegacy->u16Length        = sizeof(RTUTF16) * 2;
+    pLegacy->String.utf16[0]  = 'x';
+    pLegacy->String.utf16[1]  = 0;
+    HGCMSvcSetPv(&aParms[0], pLegacy, SHFLSTRING_HEADER_SIZE + pLegacy->u16Size);
+    CallHandle.rc = VERR_INTERNAL_ERROR;
+    SvcTable.pfnCall(SvcTable.pvService, &CallHandle, 0, SvcTable.pvService, SHFL_FN_MAP_FOLDER,
+                     SHFL_CPARMS_MAP_FOLDER, aParms, 0);
+    RTTEST_CHECK_RC(hTest, CallHandle.rc, VERR_FILE_NOT_FOUND);
+    RTTEST_CHECK(hTest, pLegacy->u16Length == sizeof(RTUTF16));
+
+    rc = SvcTable.pfnDisconnect(NULL, 0, SvcTable.pvService);
+    RTTEST_CHECK_RC(hTest, rc, VINF_SUCCESS);
+    rc = SvcTable.pfnUnload(NULL);
+    RTTEST_CHECK_RC(hTest, rc, VINF_SUCCESS);
+    RTTEST_CHECK_RC(hTest, RTTestGuardedFree(hTest, pLegacy), VINF_SUCCESS);
+    RTTEST_CHECK_RC(hTest, RTTestGuardedFree(hTest, pMalformed), VINF_SUCCESS);
+    RTTEST_CHECK_RC(hTest, RTTestGuardedFree(hTest, SvcTable.pvService), VINF_SUCCESS);
+}
 
 /* Sub-tests for testUnmapFolder(). */
 void testUnmapFolderValid(RTTEST hTest) { RT_NOREF1(hTest); }
