@@ -1,4 +1,4 @@
-/* $Id: DevNVMe.cpp 114273 2026-06-09 06:54:50Z alexander.eichner@oracle.com $ */
+/* $Id: DevNVMe.cpp 114921 2026-08-10 12:13:36Z alexander.eichner@oracle.com $ */
 /** @file
  * DevNVMe - Non Volatile Memory express (previous name: NVMHCI)
  */
@@ -4345,7 +4345,21 @@ static int nvmeR3CmdAdminProcessCqDelete(PPDMDEVINS pDevIns, PNVME pThis, PNVMEC
 
     uintptr_t idxIoQueueComp = pIoQueueComp - &pThis->aQueuesComp[0];
     Assert(idxIoQueueComp < RT_ELEMENTS(pThis->aQueuesComp));
-    int rc = RTSemFastMutexDestroy(pThisCC->aQueuesComp[idxIoQueueComp].hMtx);
+
+    PNVMEQUEUECOMPR3 pNvmeQueueR3 = &pThisCC->aQueuesComp[idxIoQueueComp];
+    RTSemFastMutexRequest(pNvmeQueueR3->hMtx);
+    /* Destroy all waiters. */
+    PNVMECOMPQUEUEWAITER pWaiter;
+    PNVMECOMPQUEUEWAITER pWaiterNext;
+    RTListForEachSafe(&pNvmeQueueR3->LstCompletionsWaiting, pWaiter, pWaiterNext, NVMECOMPQUEUEWAITER, NdLstQueue)
+    {
+        RTListNodeRemove(&pWaiter->NdLstQueue);
+        RTMemFree(pWaiter);
+    }
+    Assert(RTListIsEmpty(&pNvmeQueueR3->LstCompletionsWaiting));
+    RTSemFastMutexRelease(pNvmeQueueR3->hMtx);
+
+    int rc = RTSemFastMutexDestroy(pNvmeQueueR3->hMtx);
     AssertRC(rc);
 
     pIoQueueComp->Hdr.u16Id            = 0;
@@ -5106,6 +5120,15 @@ static void nvmeR3IoReqComplete(PPDMDEVINS pDevIns, PNVME pThis, PNVMECC pThisCC
     {
         uint32_t cActivities = ASMAtomicDecU32(&pThis->cActivities);
         ASMAtomicDecU32(&pQueueSubm->cReqsActive);
+
+        /* Deallocate queue if it was deferred previously. */
+        if (   ASMAtomicReadU32(&pQueueSubm->cReqsActive) == 0
+            && ASMAtomicUoReadU32((volatile uint32_t *)&pQueueSubm->Hdr.enmState) == NVMEQUEUESTATE_DEALLOCATING)
+        {
+            /* The original submission queue for the deallocation request must be the admin queue. */
+            PNVMEQUEUESUBM pAdmQueueSubm = &pThis->aQueuesSubm[NVME_ADM_QUEUE_ID];
+            nvmeR3QueueSubmDeallocateDeferred(pDevIns, pThis, pThisCC, pAdmQueueSubm, pQueueSubm);
+        }
 
         if (RT_SUCCESS(rcReq))
             rc = nvmeR3CmdCompleteWithSuccess(pDevIns, pThis, pThisCC, pQueueSubm, u16Cid, 0);
@@ -6859,7 +6882,8 @@ static void nvmeR3SuspendOrPowerOff(PPDMDEVINS pDevIns)
      * 0 so skip the decrement to avoid any hangs.
      */
     if (   (   pThis->enmState == NVMESTATE_READY
-            || pThis->enmState == NVMESTATE_PAUSED)
+            || pThis->enmState == NVMESTATE_PAUSED
+            || pThis->enmState == NVMESTATE_FAULT)
         && ASMAtomicReadU32(&pThis->cActivities) > 0)
         ASMAtomicDecU32(&pThis->cActivities);
 
@@ -7023,7 +7047,8 @@ static DECLCALLBACK(void) nvmeR3Reset(PPDMDEVINS pDevIns)
     LogFlow(("nvmeR3Reset:\n"));
 
     if (   (   pThis->enmState == NVMESTATE_READY
-            || pThis->enmState == NVMESTATE_PAUSED))
+            || pThis->enmState == NVMESTATE_PAUSED
+            || pThis->enmState == NVMESTATE_FAULT))
         ASMAtomicDecU32(&pThis->cActivities);
 
     ASMAtomicWriteBool(&pThisCC->fSignalIdle, true);
