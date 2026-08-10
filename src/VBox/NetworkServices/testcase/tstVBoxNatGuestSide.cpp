@@ -1,4 +1,4 @@
-/* $Id: tstVBoxNatGuestSide.cpp 114884 2026-08-07 07:22:52Z andreas.loeffler@oracle.com $ */
+/* $Id: tstVBoxNatGuestSide.cpp 114959 2026-08-10 14:41:23Z andreas.loeffler@oracle.com $ */
 /** @file
  * tstVBoxNatGuestSide - Guest-side NAT over Ring-3 IntNet testcase.
  */
@@ -129,7 +129,7 @@ typedef struct TSTSWITCHSERVICE
     bool      fProcessReaped;
     /** Whether the temporary directory was created. */
     bool      fTempDirCreated;
-    /** Unique Local IPC service name. */
+    /** Unique local IPC service name. */
     char      szService[INTNET_R3_IPC_MAX_SERVICE_NAME];
     /** Absolute helper executable path. */
     char      szExec[RTPATH_MAX];
@@ -748,7 +748,7 @@ static int tstMakeUuidName(const char *pszPrefix, char *pszName, size_t cbName)
 }
 
 
-/** Returns whether a Local IPC connection failure means no server is present. */
+/** Returns whether a local IPC connection failure means no server is present. */
 static bool tstServiceIsAbsent(int rc)
 {
     return    rc == VERR_FILE_NOT_FOUND
@@ -867,7 +867,7 @@ static int tstServiceStart(PTSTSWITCHSERVICE pService)
 }
 
 
-/** Removes a stale POSIX Local IPC filesystem node after the helper exits. */
+/** Removes a stale POSIX local IPC filesystem node after the helper exits. */
 static void tstServiceCleanupEndpoint(PTSTSWITCHSERVICE pService)
 {
     if (!pService->szService[0])
@@ -1083,7 +1083,7 @@ static int tstIntNetSend(INTNETIFCTX hIf, PCTSTFRAME pFrame)
 }
 
 
-/** Verifies an ARP request/reply through the external Local IPC R3 switch. */
+/** Verifies an ARP request/reply through the external local IPC R3 switch. */
 static void tstR3IntNetNatArp(void)
 {
     RTTestSub(g_hTest, "R3 IntNet switch -> restricted NAT -> R3 IntNet");

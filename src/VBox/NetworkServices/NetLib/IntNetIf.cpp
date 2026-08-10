@@ -1,4 +1,4 @@
-/* $Id: IntNetIf.cpp 114878 2026-08-06 21:59:49Z andreas.loeffler@oracle.com $ */
+/* $Id: IntNetIf.cpp 114959 2026-08-10 14:41:23Z andreas.loeffler@oracle.com $ */
 /** @file
  * IntNetIfCtx - Abstract API implementing an IntNet connection using the R0 support driver or some R3 IPC variant.
  */
@@ -107,9 +107,9 @@ typedef struct INTNETIFCTXINT
 # elif defined(INTNETIF_WITH_R3_SVC_LOCALIPC)
     /** Local IPC session to the R3 internal network switch service. */
     RTLOCALIPCSESSION               hIpcSession;
-    /** Thread receiving and demultiplexing Local IPC replies and notifications. */
+    /** Thread receiving and demultiplexing local IPC replies and notifications. */
     RTTHREAD                        hIpcRecvThread;
-    /** Serializes Local IPC request/reply calls. */
+    /** Serializes local IPC request/reply calls. */
     RTSEMMUTEX                      hIpcCallMtx;
     /** Serializes short socket read and write operations; data waits happen outside it. */
     RTSEMMUTEX                      hIpcIoMtx;
@@ -309,7 +309,7 @@ static int intnetR3IfLocalIpcStartService(void)
 # endif
 
 
-/** Returns the absolute frame-read timeout, shortened only by Local IPC testcases. */
+/** Returns the absolute frame-read timeout, shortened only by local IPC testcases. */
 static uint32_t intnetR3IfLocalIpcGetFrameTimeout(void)
 {
 # ifdef VBOX_INTNET_TESTCASE_LOCALIPC
@@ -326,7 +326,7 @@ static uint32_t intnetR3IfLocalIpcGetFrameTimeout(void)
 }
 
 
-/** Returns the synchronous reply wait timeout, overridden independently only by Local IPC testcases. */
+/** Returns the synchronous reply wait timeout, overridden independently only by local IPC testcases. */
 static uint32_t intnetR3IfLocalIpcGetReplyTimeout(void)
 {
 # ifdef VBOX_INTNET_TESTCASE_LOCALIPC
@@ -472,7 +472,7 @@ static DECLCALLBACK(int) intnetR3IfLocalIpcRecvThread(RTTHREAD hThread, void *pv
 }
 
 
-/** Stops the receiver and closes a failed or no-longer-needed Local IPC transport. */
+/** Stops the receiver and closes a failed or no-longer-needed local IPC transport. */
 static void intnetR3IfLocalIpcRetireSession(PINTNETIFCTXINT pThis)
 {
     if (   pThis->hIpcSession != NIL_RTLOCALIPCSESSION
@@ -609,7 +609,7 @@ static int intnetR3IfLocalIpcReadPoke(PINTNETIFCTXINT pThis, uint32_t cMillies)
 }
 
 
-/** Executes a synchronous Local IPC call while the caller owns hIpcCallMtx. */
+/** Executes a synchronous local IPC call while the caller owns hIpcCallMtx. */
 static int intnetR3IfLocalIpcCallLocked(PINTNETIFCTXINT pThis, uint32_t uOperation, PSUPVMMR0REQHDR pReqHdr)
 {
     size_t const cbReq = pReqHdr->cbReq;

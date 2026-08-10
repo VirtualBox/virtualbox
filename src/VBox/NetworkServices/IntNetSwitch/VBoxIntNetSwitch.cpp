@@ -1,4 +1,4 @@
-/* $Id: VBoxIntNetSwitch.cpp 114877 2026-08-06 21:53:20Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxIntNetSwitch.cpp 114959 2026-08-10 14:41:23Z andreas.loeffler@oracle.com $ */
 /** @file
  * Internal networking - Wrapper for the R0 network service.
  *
@@ -36,7 +36,7 @@
 #define IN_INTNET_R3
 #if !defined(RT_OS_DARWIN) || defined(VBOX_INTNET_TESTCASE_LOCALIPC)
 # if !defined(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC)
-#  error "The Local IPC R3 IntNet service implementation is not enabled!"
+#  error "The local IPC R3 IntNet service implementation is not enabled!"
 # endif
 #endif
 #include "IntNetSwitchInternal.h"
@@ -92,9 +92,9 @@ static int intnetR3LocalIpcSendPoke(struct SUPDRVSESSION *pSession);
 #define INTNETR3_MAX_BUFFER_SIZE                 UINT64_C(134217728)
 /** Maximum number of active transport connections. */
 #define INTNETR3_MAX_CONNECTIONS                 UINT32_C(128)
-/** Maximum number of Local IPC request and notification worker threads. */
+/** Maximum number of local IPC request and notification worker threads. */
 #define INTNETR3_MAX_THREADS                     UINT32_C(256)
-/** Number of worker threads reserved by each Local IPC session. */
+/** Number of worker threads reserved by each local IPC session. */
 #define INTNETR3_THREADS_PER_LOCALIPC_SESSION    UINT32_C(2)
 /** Maximum aggregate shared memory allocated by the service. */
 #define INTNETR3_MAX_AGGREGATE_SHMEM_SIZE        UINT64_C(1073741824)
@@ -147,13 +147,13 @@ typedef struct SUPDRVDEVEXT
 {
     /** Number of active transport connections. */
     uint32_t volatile               cRefs;
-    /** Number of active Local IPC worker threads. */
+    /** Number of active local IPC worker threads. */
     uint32_t volatile               cThreads;
     /** Aggregate size of all shared-memory allocations. */
     uint64_t                        cbShMem;
     /** Maximum number of active transport connections. */
     uint32_t                        cMaxConnections;
-    /** Maximum number of active Local IPC worker threads. */
+    /** Maximum number of active local IPC worker threads. */
     uint32_t                        cMaxThreads;
     /** Maximum aggregate size of all shared-memory allocations. */
     uint64_t                        cbMaxShMem;
@@ -383,7 +383,7 @@ static int intnetR3ValidateOpenBufferSizes(uint32_t cbSend, uint32_t cbRecv)
 
 
 /**
- * Transport-agnostic IntNet request processor used by both XPC (Darwin) and Local IPC (non-Darwin).
+ * Transport-agnostic IntNet request processor used by both XPC (Darwin) and local IPC (non-Darwin).
  *
  * This helper validates the header, dispatches the request to the existing IntNetR3/R0 handlers,
  * updates the in/out request buffer, and indicates whether a reply should be sent and/or a
@@ -1232,7 +1232,7 @@ static int intnetR3LocalIpcGetServiceName(char *pszService, size_t cbService)
 # endif
 
 
-/** Verifies that a Local IPC client belongs to the user running the switch. */
+/** Verifies that a local IPC client belongs to the user running the switch. */
 static int intnetR3LocalIpcVerifyPeer(RTLOCALIPCSESSION hSession)
 {
     int rc = RTLocalIpcSessionVerifySameUser(hSession);
