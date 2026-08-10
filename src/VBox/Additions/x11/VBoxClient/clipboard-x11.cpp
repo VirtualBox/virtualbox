@@ -1,4 +1,4 @@
-/* $Id: clipboard-x11.cpp 114867 2026-08-06 15:19:51Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-x11.cpp 114958 2026-08-10 14:15:56Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard implementation.
  */
@@ -305,29 +305,11 @@ static DECLCALLBACK(int) vbclX11OnTransferInitializeCallback(PSHCLTRANSFERCALLBA
         }
 
         case SHCLTRANSFERDIR_FROM_REMOTE: /* H->G */
-        {
-            /* Retrieve the root entries as a first action, so that the transfer is ready to go
-             * once it gets registered to HTTP server. */
-            rc = ShClTransferRootListRead(pTransfer);
-            if (RT_SUCCESS(rc))
-            {
-                if (ShClTransferRootsCount(pTransfer))
-                    /* As soon as we register the transfer with the HTTP server, the transfer needs to have its roots set. */
-                    rc = ShClTransferHttpServerRegisterTransfer(&pCtx->X11.HttpCtx.HttpServer, pTransfer);
-                else
-                    rc = VERR_SHCLPB_NO_DATA;
-            }
             break;
-        }
 
         default:
             break;
     }
-
-    if (   RT_FAILURE(rc)
-        && ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE
-        && vbclX11TransferStateMatches(pCtx, pTransfer))
-        vbclX11TransferStateComplete(pCtx, pTransfer, NULL, 0, rc);
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -336,8 +318,9 @@ static DECLCALLBACK(int) vbclX11OnTransferInitializeCallback(PSHCLTRANSFERCALLBA
 /**
  * @copydoc SHCLTRANSFERCALLBACKS::pfnOnInitialized
  *
- * Builds and publishes URI-list data only for the transfer ID and generation
- * captured when the current asynchronous request was registered.
+ * Reads the root list, then builds and publishes URI-list data only for the
+ * transfer ID and generation captured when the current asynchronous request
+ * was registered.
  *
  * @thread Clipboard main thread.
  */
@@ -352,10 +335,25 @@ static DECLCALLBACK(void) vbclX11OnTransferInitializedCallback(PSHCLTRANSFERCALL
     if (   ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE
         && vbclX11TransferStateMatches(pCtx, pTransfer))
     {
+        /* The remote provider rejects root-list reads until ShClTransferInit()
+         * has changed the transfer state to INITIALIZED.  Registering the HTTP
+         * transfer from pfnOnInitialize therefore races ahead of that state
+         * transition and leaves URI-list conversion waiting forever. */
+        int rc = ShClTransferRootListRead(pTransfer);
+        if (RT_SUCCESS(rc))
+        {
+            if (ShClTransferRootsCount(pTransfer))
+                rc = ShClTransferHttpServerRegisterTransfer(&pCtx->X11.HttpCtx.HttpServer, pTransfer);
+            else
+                rc = VERR_SHCLPB_NO_DATA;
+        }
+
         char  *pszUriList = NULL;
         size_t cbUriList  = 0;
-        int rc = ShClTransferHttpConvertToStringList(&pCtx->X11.HttpCtx.HttpServer, pTransfer,
+        if (RT_SUCCESS(rc))
+            rc = ShClTransferHttpConvertToStringList(&pCtx->X11.HttpCtx.HttpServer, pTransfer,
                                                      &pszUriList, &cbUriList);
+
         vbclX11TransferStateComplete(pCtx, pTransfer, pszUriList, cbUriList, rc);
         RTStrFree(pszUriList);
     }
@@ -367,7 +365,7 @@ static DECLCALLBACK(void) vbclX11OnTransferInitializedCallback(PSHCLTRANSFERCALL
  * This binds pending transfer preparation to the newly registered transfer's
  * exact ID and generation, and starts the HTTP server if necessary.  The
  * transfer itself is added to the HTTP server after its roots have been read by
- * the initialization callback.
+ * the initialized callback.
  *
  * @thread Clipboard main thread.
  */
