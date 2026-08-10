@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferManagerImpl.cpp 114975 2026-08-10 18:04:13Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferManagerImpl.cpp 114977 2026-08-10 19:27:36Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer manager object.
  */
@@ -317,12 +317,6 @@ HRESULT ClipboardTransferManager::getTransfers(ClipboardTransferDirection_T aDir
 }
 
 
-/* TODO: Defer the owner bridge until the producer has configured the transfer
- *       source.  Then register the backing transfer with the active Shared
- *       Clipboard service context and platform backend, record its assigned
- *       session/transfer/generation key, and define rollback, cancellation,
- *       unregistration and lifetime handling.
- */
 HRESULT ClipboardTransferManager::create(ClipboardTransferDirection_T aDirection,
                                          ClipboardSource_T aSource,
                                          ClipboardAction_T aAction,
