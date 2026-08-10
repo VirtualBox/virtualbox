@@ -1,4 +1,4 @@
-/* $Id: DrvIntNet.cpp 114205 2026-05-29 13:56:57Z andreas.loeffler@oracle.com $ */
+/* $Id: DrvIntNet.cpp 114879 2026-08-06 22:04:52Z andreas.loeffler@oracle.com $ */
 /** @file
  * DrvIntNet - Internal network transport driver.
  */
@@ -30,9 +30,6 @@
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
 #define LOG_GROUP LOG_GROUP_DRV_INTNET
-#if defined(RT_OS_DARWIN) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3)
-# include <xpc/xpc.h> /* This needs to be here because it drags PVM in and cdefs.h needs to undefine it... */
-#endif
 #include <iprt/cdefs.h>
 
 #include <VBox/vmm/pdmdrv.h>
@@ -62,6 +59,9 @@
 #endif
 
 #include "VBoxDD.h"
+#ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
+# include "../../NetworkServices/NetLib/IntNetIf.h"
+#endif
 
 
 /*********************************************************************************************************************************
@@ -199,13 +199,11 @@ typedef struct DRVINTNET
     /** The nano ts of the last receive. */
     uint64_t                        u64LastReceiveTS;
 #endif
-#if defined(RT_OS_DARWIN) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3)
-    /** XPC connection handle to the R3 internal network switch service. */
-    xpc_connection_t                hXpcCon;
+#ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
+    /** Context for the R3 internal network switch service. */
+    INTNETIFCTX                     hIfCtx;
     /** Flag whether the R3 internal network service is being used. */
     bool                            fIntNetR3Svc;
-    /** Size of the communication buffer in bytes. */
-    size_t                          cbBuf;
 #endif
 } DRVINTNET;
 AssertCompileMemberAlignment(DRVINTNET, XmitLock, 8);
@@ -241,61 +239,43 @@ typedef DRVINTNETFLAG const *PCDRVINTNETFLAG;
  */
 static int drvR3IntNetCallSvc(PDRVINTNET pThis, uint32_t uOperation, void *pvArg, unsigned cbArg)
 {
-#if defined(RT_OS_DARWIN) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3)
+#ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
     if (pThis->fIntNetR3Svc)
     {
-        xpc_object_t hObj = xpc_dictionary_create(NULL, NULL, 0);
-        xpc_dictionary_set_uint64(hObj, "req-id", uOperation);
-        xpc_dictionary_set_data(hObj, "req", pvArg, cbArg);
-        xpc_object_t hObjReply = xpc_connection_send_message_with_reply_sync(pThis->hXpcCon, hObj);
-        xpc_release(hObj);
-
-        uint64_t u64Rc = xpc_dictionary_get_uint64(hObjReply, "rc");
-        if (INTNET_R3_SVC_IS_VALID_RC(u64Rc))
+        switch (uOperation)
         {
-            size_t cbReply = 0;
-            const void *pvData = xpc_dictionary_get_data(hObjReply, "reply", &cbReply);
-            AssertRelease(cbReply == cbArg);
-            memcpy(pvArg, pvData, cbArg);
-            xpc_release(hObjReply);
+            case VMMR0_DO_INTNET_IF_SET_MAC_ADDRESS:
+            {
+                AssertReturn(cbArg == sizeof(INTNETIFSETMACADDRESSREQ), VERR_INVALID_PARAMETER);
+                PINTNETIFSETMACADDRESSREQ pReq = (PINTNETIFSETMACADDRESSREQ)pvArg;
+                return IntNetR3IfSetMacAddress(pThis->hIfCtx, &pReq->Mac);
+            }
 
-            return INTNET_R3_SVC_GET_RC(u64Rc);
+            case VMMR0_DO_INTNET_IF_SET_ACTIVE:
+            {
+                AssertReturn(cbArg == sizeof(INTNETIFSETACTIVEREQ), VERR_INVALID_PARAMETER);
+                PINTNETIFSETACTIVEREQ pReq = (PINTNETIFSETACTIVEREQ)pvArg;
+                return IntNetR3IfSetActive(pThis->hIfCtx, pReq->fActive);
+            }
+
+            case VMMR0_DO_INTNET_IF_SET_PROMISCUOUS_MODE:
+            {
+                AssertReturn(cbArg == sizeof(INTNETIFSETPROMISCUOUSMODEREQ), VERR_INVALID_PARAMETER);
+                PINTNETIFSETPROMISCUOUSMODEREQ pReq = (PINTNETIFSETPROMISCUOUSMODEREQ)pvArg;
+                return IntNetR3IfSetPromiscuous(pThis->hIfCtx, pReq->fPromiscuous);
+            }
+
+            case VMMR0_DO_INTNET_IF_SEND:
+                AssertReturn(cbArg == sizeof(INTNETIFSENDREQ), VERR_INVALID_PARAMETER);
+                return IntNetR3IfSend(pThis->hIfCtx);
+
+            default:
+                AssertFailedReturn(VERR_NOT_SUPPORTED);
         }
-
-        xpc_release(hObjReply);
-        return VERR_INVALID_STATE;
     }
-    else
 #endif
-        return PDMDrvHlpSUPCallVMMR0Ex(pThis->pDrvInsR3, uOperation, pvArg, cbArg);
+    return PDMDrvHlpSUPCallVMMR0Ex(pThis->pDrvInsR3, uOperation, pvArg, cbArg);
 }
-
-
-#if defined(RT_OS_DARWIN) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3)
-/**
- * Calls the internal networking switch service living in either R0 or in another R3 process.
- *
- * @returns VBox status code.
- * @param   pThis           The internal network driver instance data.
- * @param   uOperation      The operation to execute.
- * @param   pvArg           Pointer to the argument data.
- * @param   cbArg           Size of the argument data in bytes.
- */
-static int drvR3IntNetCallSvcAsync(PDRVINTNET pThis, uint32_t uOperation, void *pvArg, unsigned cbArg)
-{
-    if (pThis->fIntNetR3Svc)
-    {
-        xpc_object_t hObj = xpc_dictionary_create(NULL, NULL, 0);
-        xpc_dictionary_set_uint64(hObj, "req-id", uOperation);
-        xpc_dictionary_set_data(hObj, "req", pvArg, cbArg);
-        xpc_connection_send_message(pThis->hXpcCon, hObj);
-        xpc_release(hObj);
-        return VINF_SUCCESS;
-    }
-    else
-        return PDMDrvHlpSUPCallVMMR0Ex(pThis->pDrvInsR3, uOperation, pvArg, cbArg);
-}
-#endif
 
 
 /**
@@ -306,7 +286,10 @@ static int drvR3IntNetCallSvcAsync(PDRVINTNET pThis, uint32_t uOperation, void *
  */
 static int drvR3IntNetMapBufferPointers(PDRVINTNET pThis)
 {
-    int rc = VINF_SUCCESS;
+#ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
+    if (pThis->fIntNetR3Svc)
+        return IntNetR3IfQueryBufferPtr(pThis->hIfCtx, &pThis->pBufR3);
+#endif
 
     INTNETIFGETBUFFERPTRSREQ GetBufferPtrsReq;
     GetBufferPtrsReq.Hdr.u32Magic = SUPVMMR0REQHDR_MAGIC;
@@ -316,46 +299,15 @@ static int drvR3IntNetMapBufferPointers(PDRVINTNET pThis)
     GetBufferPtrsReq.pRing3Buf = NULL;
     GetBufferPtrsReq.pRing0Buf = NIL_RTR0PTR;
 
-#if defined(RT_OS_DARWIN) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3)
-    if (pThis->fIntNetR3Svc)
+    int rc = PDMDrvHlpSUPCallVMMR0Ex(pThis->pDrvInsR3, VMMR0_DO_INTNET_IF_GET_BUFFER_PTRS,
+                                     &GetBufferPtrsReq, sizeof(GetBufferPtrsReq));
+    if (RT_SUCCESS(rc))
     {
-        xpc_object_t hObj = xpc_dictionary_create(NULL, NULL, 0);
-        xpc_dictionary_set_uint64(hObj, "req-id", VMMR0_DO_INTNET_IF_GET_BUFFER_PTRS);
-        xpc_dictionary_set_data(hObj, "req", &GetBufferPtrsReq, sizeof(GetBufferPtrsReq));
-        xpc_object_t hObjReply = xpc_connection_send_message_with_reply_sync(pThis->hXpcCon, hObj);
-        xpc_release(hObj);
-
-        uint64_t u64Rc = xpc_dictionary_get_uint64(hObjReply, "rc");
-        if (INTNET_R3_SVC_IS_VALID_RC(u64Rc))
-            rc = INTNET_R3_SVC_GET_RC(u64Rc);
-        else
-            rc = VERR_INVALID_STATE;
-
-        if (RT_SUCCESS(rc))
-        {
-            /* Get the shared memory object. */
-            xpc_object_t hObjShMem = xpc_dictionary_get_value(hObjReply, "buf-ptr");
-            size_t cbMem = xpc_shmem_map(hObjShMem, (void **)&pThis->pBufR3);
-            if (!cbMem)
-                rc = VERR_NO_MEMORY;
-            else
-                pThis->cbBuf = cbMem;
-        }
-
-        xpc_release(hObjReply);
-    }
-    else
-#endif
-    {
-        rc = PDMDrvHlpSUPCallVMMR0Ex(pThis->pDrvInsR3, VMMR0_DO_INTNET_IF_GET_BUFFER_PTRS, &GetBufferPtrsReq, sizeof(GetBufferPtrsReq));
-        if (RT_SUCCESS(rc))
-        {
-            AssertRelease(RT_VALID_PTR(GetBufferPtrsReq.pRing3Buf));
-            pThis->pBufR3 = GetBufferPtrsReq.pRing3Buf;
+        AssertRelease(RT_VALID_PTR(GetBufferPtrsReq.pRing3Buf));
+        pThis->pBufR3 = GetBufferPtrsReq.pRing3Buf;
 #ifdef VBOX_WITH_DRVINTNET_IN_R0
-            pThis->pBufR0 = GetBufferPtrsReq.pRing0Buf;
+        pThis->pBufR0 = GetBufferPtrsReq.pRing0Buf;
 #endif
-        }
     }
 
     return rc;
@@ -1005,35 +957,30 @@ static int drvR3IntNetRecvRun(PDRVINTNET pThis)
             LogFlow(("drvR3IntNetRecvRun: returns VINF_SUCCESS (state changed - #1)\n"));
             return VERR_STATE_CHANGED;
         }
-        INTNETIFWAITREQ WaitReq;
-        WaitReq.Hdr.u32Magic = SUPVMMR0REQHDR_MAGIC;
-        WaitReq.Hdr.cbReq    = sizeof(WaitReq);
-        WaitReq.pSession     = NIL_RTR0PTR;
-        WaitReq.hIf          = pThis->hIf;
-        WaitReq.cMillies     = 30000; /* 30s - don't wait forever, timeout now and then. */
         STAM_PROFILE_ADV_STOP(&pThis->StatReceive, a);
 
-#if defined(RT_OS_DARWIN) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3)
+#ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
         if (pThis->fIntNetR3Svc)
         {
-            /* Send an asynchronous message. */
-            int rc = drvR3IntNetCallSvcAsync(pThis, VMMR0_DO_INTNET_IF_WAIT, &WaitReq, sizeof(WaitReq));
-            if (RT_SUCCESS(rc))
+            int rc = IntNetR3IfWait(pThis->hIfCtx, 30 * RT_MS_1SEC);
+            if (    RT_FAILURE(rc)
+                &&  rc != VERR_TIMEOUT
+                &&  rc != VERR_INTERRUPTED
+                &&  rc != VERR_SEM_DESTROYED)
             {
-                /* Wait on the receive semaphore. */
-                rc = RTSemEventWait(pThis->hRecvEvt, 30 * RT_MS_1SEC);
-                if (    RT_FAILURE(rc)
-                    &&  rc != VERR_TIMEOUT
-                    &&  rc != VERR_INTERRUPTED)
-                {
-                    LogFlow(("drvR3IntNetRecvRun: returns %Rrc\n", rc));
-                    return rc;
-                }
+                LogFlow(("drvR3IntNetRecvRun: returns %Rrc\n", rc));
+                return rc;
             }
         }
         else
 #endif
         {
+            INTNETIFWAITREQ WaitReq;
+            WaitReq.Hdr.u32Magic = SUPVMMR0REQHDR_MAGIC;
+            WaitReq.Hdr.cbReq    = sizeof(WaitReq);
+            WaitReq.pSession     = NIL_RTR0PTR;
+            WaitReq.hIf          = pThis->hIf;
+            WaitReq.cMillies     = 30000; /* 30s - don't wait forever, timeout now and then. */
             int rc = PDMDrvHlpSUPCallVMMR0Ex(pThis->pDrvInsR3, VMMR0_DO_INTNET_IF_WAIT, &WaitReq, sizeof(WaitReq));
             if (    RT_FAILURE(rc)
                 &&  rc != VERR_TIMEOUT
@@ -1367,8 +1314,13 @@ static DECLCALLBACK(void) drvR3IntNetDestruct(PPDMDRVINS pDrvIns)
 
     if (pThis->hIf != INTNET_HANDLE_INVALID)
     {
-#if defined(RT_OS_DARWIN) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3)
-        if (!pThis->fIntNetR3Svc) /* The R3 service case is handled b the hRecEvt event semaphore. */
+#ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
+        if (pThis->fIntNetR3Svc)
+        {
+            int rc = IntNetR3IfWaitAbort(pThis->hIfCtx);
+            AssertMsg(RT_SUCCESS(rc) || rc == VERR_SEM_DESTROYED, ("%Rrc\n", rc)); RT_NOREF_PV(rc);
+        }
+        else
 #endif
         {
             INTNETIFABORTWAITREQ AbortWaitReq;
@@ -1434,6 +1386,18 @@ static DECLCALLBACK(void) drvR3IntNetDestruct(PPDMDRVINS pDrvIns)
     /*
      * Close the interface
      */
+#ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
+    if (pThis->fIntNetR3Svc)
+    {
+        pThis->hIf          = INTNET_HANDLE_INVALID;
+        pThis->pBufR3       = NULL;
+        int rc = IntNetR3IfDestroy(pThis->hIfCtx);
+        AssertRC(rc);
+        pThis->hIfCtx       = NULL;
+        pThis->fIntNetR3Svc = false;
+    }
+    else
+#endif
     if (pThis->hIf != INTNET_HANDLE_INVALID)
     {
         INTNETIFCLOSEREQ CloseReq;
@@ -1445,17 +1409,6 @@ static DECLCALLBACK(void) drvR3IntNetDestruct(PPDMDRVINS pDrvIns)
         int rc = drvR3IntNetCallSvc(pThis, VMMR0_DO_INTNET_IF_CLOSE, &CloseReq, sizeof(CloseReq));
         AssertRC(rc);
     }
-
-#if defined(RT_OS_DARWIN) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3)
-    if (pThis->fIntNetR3Svc)
-    {
-        /* Unmap the shared buffer. */
-        munmap(pThis->pBufR3, pThis->cbBuf);
-        xpc_connection_cancel(pThis->hXpcCon);
-        pThis->fIntNetR3Svc = false;
-        pThis->hXpcCon      = NULL;
-    }
-#endif
 
     /*
      * Destroy the semaphores, S/G cache and xmit lock.
@@ -1575,6 +1528,10 @@ static DECLCALLBACK(int) drvR3IntNetConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg
     pThis->hSgCache                                 = NIL_RTMEMCACHE;
     pThis->enmRecvState                             = RECVSTATE_SUSPENDED;
     pThis->fActivateEarlyDeactivateLate             = false;
+#ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
+    pThis->hIfCtx                                   = NULL;
+    pThis->fIntNetR3Svc                             = false;
+#endif
     /* IBase* */
     pDrvIns->IBase.pfnQueryInterface                = drvR3IntNetIBase_QueryInterface;
 #ifdef VBOX_WITH_DRVINTNET_IN_R0
@@ -1947,33 +1904,29 @@ static DECLCALLBACK(int) drvR3IntNetConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg
     /*
      * Create the interface.
      */
+    OpenReq.hIf = INTNET_HANDLE_INVALID;
+#ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
     if (SUPR3IsDriverless())
     {
-#if defined(RT_OS_DARWIN) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3)
-        xpc_connection_t hXpcCon = xpc_connection_create(INTNET_R3_SVC_NAME, NULL);
-        xpc_connection_set_event_handler(hXpcCon, ^(xpc_object_t hObj) {
-            if (xpc_get_type(hObj) == XPC_TYPE_ERROR)
-            {
-                /** @todo Error handling - reconnecting. */
-            }
-            else
-            {
-                /* Out of band messages should only come when there is something to receive. */
-                RTSemEventSignal(pThis->hRecvEvt);
-            }
-        });
-
-        xpc_connection_resume(hXpcCon);
-        pThis->hXpcCon      = hXpcCon;
-        pThis->fIntNetR3Svc = true;
-#else
-        /** @todo This is probably not good enough for doing fuzz testing, but later... */
-        return PDMDrvHlpVMSetError(pDrvIns, VERR_SUP_DRIVERLESS, RT_SRC_POS,
-                                   N_("Cannot attach to '%s' in driverless mode"), pThis->szNetwork);
-#endif
+        rc = IntNetR3IfCreateExWithRecvEvent(&pThis->hIfCtx, OpenReq.szNetwork, OpenReq.enmTrunkType,
+                                             OpenReq.szTrunk, OpenReq.cbSend, OpenReq.cbRecv, OpenReq.fFlags,
+                                             pThis->hRecvEvt);
+        if (RT_SUCCESS(rc))
+        {
+            pThis->fIntNetR3Svc = true;
+            rc = IntNetR3IfQueryHandle(pThis->hIfCtx, &pThis->hIf);
+        }
     }
-    OpenReq.hIf = INTNET_HANDLE_INVALID;
-    rc = drvR3IntNetCallSvc(pThis, VMMR0_DO_INTNET_OPEN, &OpenReq, sizeof(OpenReq));
+    else
+#endif
+    {
+#ifndef VBOX_WITH_INTNET_SERVICE_IN_R3
+        if (SUPR3IsDriverless())
+            return PDMDrvHlpVMSetError(pDrvIns, VERR_SUP_DRIVERLESS, RT_SRC_POS,
+                                       N_("Cannot attach to '%s' in driverless mode"), pThis->szNetwork);
+#endif
+        rc = drvR3IntNetCallSvc(pThis, VMMR0_DO_INTNET_OPEN, &OpenReq, sizeof(OpenReq));
+    }
     if (RT_FAILURE(rc))
     {
         if (fIgnoreConnectFailure)
@@ -1995,8 +1948,14 @@ static DECLCALLBACK(int) drvR3IntNetConstruct(PPDMDRVINS pDrvIns, PCFGMNODE pCfg
                                    N_("Failed to open/create the internal network '%s'"), pThis->szNetwork);
     }
 
-    AssertRelease(OpenReq.hIf != INTNET_HANDLE_INVALID);
-    pThis->hIf = OpenReq.hIf;
+#ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
+    if (!pThis->fIntNetR3Svc)
+#endif
+    {
+        AssertRelease(OpenReq.hIf != INTNET_HANDLE_INVALID);
+        pThis->hIf = OpenReq.hIf;
+    }
+    AssertRelease(pThis->hIf != INTNET_HANDLE_INVALID);
     Log(("IntNet%d: hIf=%RX32 '%s'\n", pDrvIns->iInstance, pThis->hIf, pThis->szNetwork));
 
     /*
@@ -2138,4 +2097,3 @@ const PDMDRVREG g_DrvIntNet =
 };
 
 #endif /* IN_RING3 */
-

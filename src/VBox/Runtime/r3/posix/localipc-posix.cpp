@@ -1,4 +1,4 @@
-/* $Id: localipc-posix.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: localipc-posix.cpp 114874 2026-08-06 21:28:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT - Local IPC Server & Client, Posix.
  */
@@ -39,6 +39,10 @@
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
 #define LOG_GROUP RTLOGGROUP_LOCALIPC
+#include <iprt/cdefs.h>
+#if defined(RT_OS_LINUX) && !defined(_GNU_SOURCE)
+# define _GNU_SOURCE
+#endif
 #include "internal/iprt.h"
 #include <iprt/localipc.h>
 
@@ -46,7 +50,10 @@
 #include <iprt/assert.h>
 #include <iprt/ctype.h>
 #include <iprt/critsect.h>
+#include <iprt/dir.h>
+#include <iprt/env.h>
 #include <iprt/err.h>
+#include <iprt/fs.h>
 #include <iprt/mem.h>
 #include <iprt/log.h>
 #include <iprt/poll.h>
@@ -58,6 +65,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#ifdef RT_OS_SOLARIS
+# include <ucred.h>
+#endif
 #ifndef RT_OS_OS2
 # include <sys/poll.h>
 #endif
@@ -131,7 +141,109 @@ typedef RTLOCALIPCSESSIONINT *PRTLOCALIPCSESSIONINT;
 
 
 /** Local IPC name prefix for portable names. */
-#define RTLOCALIPC_POSIX_NAME_PREFIX    "/tmp/.iprt-localipc-"
+#define RTLOCALIPC_POSIX_NAME_PREFIX         "/tmp/.iprt-localipc-"
+/** Local IPC name prefix inside a protected user namespace. */
+#define RTLOCALIPC_POSIX_USER_NAME_PREFIX    ".iprt-"
+
+
+/**
+ * Validates a candidate protected user namespace directory.
+ *
+ * @returns IPRT status code.
+ * @param   pszPath             The directory to validate.
+ * @param   fNamespace          Whether this is the endpoint namespace itself,
+ *                              for which no group or other access is allowed.
+ */
+static int rtLocalIpcPosixValidateUserDir(const char *pszPath, bool fNamespace)
+{
+    AssertPtrReturn(pszPath, VERR_INVALID_POINTER);
+    AssertReturn(RTPathStartsWithRoot(pszPath), VERR_INVALID_NAME);
+
+    RTFSOBJINFO ObjInfo;
+    int rc = RTPathQueryInfoEx(pszPath, &ObjInfo, RTFSOBJATTRADD_UNIX, RTPATH_F_ON_LINK);
+    if (RT_SUCCESS(rc))
+    {
+        if (!RTFS_IS_DIRECTORY(ObjInfo.Attr.fMode))
+            rc = VERR_NOT_A_DIRECTORY;
+        else if (   ObjInfo.Attr.u.Unix.uid == NIL_RTUID
+                 || ObjInfo.Attr.u.Unix.uid != (RTUID)geteuid()
+                 || (ObjInfo.Attr.fMode & (RTFS_UNIX_IWUSR | RTFS_UNIX_IXUSR))
+                    != (RTFS_UNIX_IWUSR | RTFS_UNIX_IXUSR)
+                 || (fNamespace
+                     ? RT_BOOL(ObjInfo.Attr.fMode & (RTFS_UNIX_IRWXG | RTFS_UNIX_IRWXO))
+                     : RT_BOOL(ObjInfo.Attr.fMode & (RTFS_UNIX_IWGRP | RTFS_UNIX_IWOTH))))
+            rc = VERR_ACCESS_DENIED;
+    }
+    return rc;
+}
+
+
+/** Returns whether a restricted portable name fits in a Unix socket path. */
+static bool rtLocalIpcPosixUserNameFits(const char *pszPath, const char *pszName)
+{
+    size_t const cchPath = strlen(pszPath);
+    return    cchPath > 0
+           && cchPath + (RTPATH_IS_SLASH(pszPath[cchPath - 1]) ? 0 : 1)
+              + sizeof(RTLOCALIPC_POSIX_USER_NAME_PREFIX) - 1 + strlen(pszName) + 1
+              <= sizeof(((struct sockaddr_un *)0)->sun_path);
+}
+
+
+/**
+ * Locates or creates the protected namespace used for restricted portable
+ * names.
+ *
+ * @returns IPRT status code.
+ * @param   pszPath             Where to return the directory.
+ * @param   cbPath              Size of the output buffer.
+ * @param   pszName             The restricted portable endpoint name.
+ */
+static int rtLocalIpcPosixGetUserDir(char *pszPath, size_t cbPath, const char *pszName)
+{
+    const char *pszCandidate = RTEnvGet("XDG_RUNTIME_DIR");
+    if (pszCandidate && *pszCandidate && RTPathStartsWithRoot(pszCandidate))
+    {
+        int rc = RTStrCopy(pszPath, cbPath, pszCandidate);
+        if (RT_SUCCESS(rc))
+            rc = rtLocalIpcPosixValidateUserDir(pszPath, true /*fNamespace*/);
+        if (RT_SUCCESS(rc) && rtLocalIpcPosixUserNameFits(pszPath, pszName))
+            return VINF_SUCCESS;
+    }
+
+#ifdef RT_OS_LINUX
+    ssize_t const cchRunUser = RTStrPrintf2(pszPath, cbPath, "/run/user/%RTuid", (RTUID)geteuid());
+    if (cchRunUser > 0 && (size_t)cchRunUser < cbPath)
+    {
+        int const rc = rtLocalIpcPosixValidateUserDir(pszPath, true /*fNamespace*/);
+        if (RT_SUCCESS(rc) && rtLocalIpcPosixUserNameFits(pszPath, pszName))
+            return VINF_SUCCESS;
+    }
+#endif
+
+    char szHome[RTPATH_MAX];
+    int rc = RTPathUserHome(szHome, sizeof(szHome));
+    if (RT_SUCCESS(rc) && !RTPathStartsWithRoot(szHome))
+        rc = VERR_INVALID_NAME;
+    if (RT_SUCCESS(rc))
+        rc = RTPathReal(szHome, pszPath, cbPath);
+    if (RT_SUCCESS(rc))
+        rc = rtLocalIpcPosixValidateUserDir(pszPath, false /*fNamespace*/);
+    if (RT_SUCCESS(rc))
+        rc = RTPathAppend(pszPath, cbPath, ".iprt-localipc");
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTDirCreate(pszPath, RTFS_UNIX_IRWXU, 0 /*fCreate*/);
+        if (rc == VERR_ALREADY_EXISTS)
+            rc = VINF_SUCCESS;
+        else if (RT_SUCCESS(rc))
+            rc = RTPathSetMode(pszPath, RTFS_UNIX_IRWXU);
+    }
+    if (RT_SUCCESS(rc))
+        rc = rtLocalIpcPosixValidateUserDir(pszPath, true /*fNamespace*/);
+    if (RT_SUCCESS(rc) && !rtLocalIpcPosixUserNameFits(pszPath, pszName))
+        rc = VERR_FILENAME_TOO_LONG;
+    return rc;
+}
 
 
 /**
@@ -177,9 +289,28 @@ static int rtLocalIpcPosixValidateName(const char *pszName, bool fNative)
  * @param   pcbAddr             Where to return the address size.
  * @param   pszName             The user specified name (valid).
  * @param   fNative             Whether it's a native name or a portable name.
+ * @param   fRestrictToUser     Whether portable names use the protected user
+ *                              namespace.
  */
-static int rtLocalIpcPosixConstructName(struct sockaddr_un *pAddr, uint8_t *pcbAddr, const char *pszName, bool fNative)
+static int rtLocalIpcPosixConstructName(struct sockaddr_un *pAddr, uint8_t *pcbAddr, const char *pszName,
+                                       bool fNative, bool fRestrictToUser)
 {
+    char szUserName[RTPATH_MAX];
+    if (!fNative && fRestrictToUser)
+    {
+        int rc = rtLocalIpcPosixGetUserDir(szUserName, sizeof(szUserName), pszName);
+        if (RT_FAILURE(rc))
+            return rc;
+        rc = RTPathAppend(szUserName, sizeof(szUserName), RTLOCALIPC_POSIX_USER_NAME_PREFIX);
+        if (RT_FAILURE(rc))
+            return rc;
+        rc = RTStrCat(szUserName, sizeof(szUserName), pszName);
+        if (RT_FAILURE(rc))
+            return rc;
+        pszName = szUserName;
+        fNative = true;
+    }
+
     const char *pszNativeName;
     int rc = rtPathToNative(&pszNativeName, pszName, NULL /*pszBasePath not support*/);
     if (RT_SUCCESS(rc))
@@ -251,7 +382,8 @@ RTDECL(int) RTLocalIpcServerCreate(PRTLOCALIPCSERVER phServer, const char *pszNa
 
                     uint8_t cbAddr;
                     rc = rtLocalIpcPosixConstructName(&pThis->Name, &cbAddr, pszName,
-                                                      RT_BOOL(fFlags & RTLOCALIPC_FLAGS_NATIVE_NAME));
+                                                      RT_BOOL(fFlags & RTLOCALIPC_FLAGS_NATIVE_NAME),
+                                                      RT_BOOL(fFlags & RTLOCALIPC_FLAGS_RESTRICT_TO_USER));
                     if (RT_SUCCESS(rc))
                     {
                         rc = rtSocketBindRawAddr(pThis->hSocket, &pThis->Name, cbAddr);
@@ -262,7 +394,11 @@ RTDECL(int) RTLocalIpcServerCreate(PRTLOCALIPCSERVER phServer, const char *pszNa
                         }
                         if (RT_SUCCESS(rc))
                         {
-                            rc = rtSocketListen(pThis->hSocket, 16);
+                            if (   !(fFlags & RTLOCALIPC_FLAGS_RESTRICT_TO_USER)
+                                || chmod(pThis->Name.sun_path, S_IRUSR | S_IWUSR) == 0)
+                                rc = rtSocketListen(pThis->hSocket, 16);
+                            else
+                                rc = RTErrConvertFromErrno(errno);
                             if (RT_SUCCESS(rc))
                             {
                                 LogFlow(("RTLocalIpcServerCreate: Created %p (%s)\n", pThis, pThis->Name.sun_path));
@@ -572,7 +708,9 @@ RTDECL(int) RTLocalIpcSessionConnect(PRTLOCALIPCSESSION phSession, const char *p
 
                     struct sockaddr_un  Addr;
                     uint8_t             cbAddr;
-                    rc = rtLocalIpcPosixConstructName(&Addr, &cbAddr, pszName, RT_BOOL(fFlags & RTLOCALIPC_C_FLAGS_NATIVE_NAME));
+                    rc = rtLocalIpcPosixConstructName(&Addr, &cbAddr, pszName,
+                                                      RT_BOOL(fFlags & RTLOCALIPC_C_FLAGS_NATIVE_NAME),
+                                                      RT_BOOL(fFlags & RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER));
                     if (RT_SUCCESS(rc))
                     {
                         rc = rtSocketConnectRaw(pThis->hSocket, &Addr, cbAddr);
@@ -1118,27 +1256,77 @@ static int rtLocalIpcSessionQueryUcred(RTLOCALIPCSESSION hSession, PRTPROCESS pP
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTLOCALIPCSESSION_MAGIC, VERR_INVALID_HANDLE);
 
-#if defined(RT_OS_LINUX)
-    struct ucred PeerCred   = { (pid_t)NIL_RTPROCESS, (uid_t)NIL_RTUID, (gid_t)NIL_RTGID };
-    socklen_t    cbPeerCred = sizeof(PeerCred);
-
     rtLocalIpcSessionRetain(pThis);
 
-    int rc = RTCritSectEnter(&pThis->CritSect);;
+    int rc = RTCritSectEnter(&pThis->CritSect);
     if (RT_SUCCESS(rc))
     {
-        if (getsockopt(RTSocketToNative(pThis->hSocket), SOL_SOCKET, SO_PEERCRED, &PeerCred, &cbPeerCred) >= 0)
-        {
-            if (pProcess)
-                *pProcess = PeerCred.pid;
-            if (pUid)
-                *pUid = PeerCred.uid;
-            if (pGid)
-                *pGid = PeerCred.gid;
-            rc = VINF_SUCCESS;
-        }
+        if (pThis->fCancelled)
+            rc = VERR_CANCELLED;
         else
-            rc = RTErrConvertFromErrno(errno);
+        {
+#if defined(RT_OS_LINUX)
+            struct ucred PeerCred   = { (pid_t)NIL_RTPROCESS, (uid_t)NIL_RTUID, (gid_t)NIL_RTGID };
+            socklen_t    cbPeerCred = sizeof(PeerCred);
+            if (getsockopt(RTSocketToNative(pThis->hSocket), SOL_SOCKET, SO_PEERCRED, &PeerCred, &cbPeerCred) >= 0)
+            {
+                if (pProcess)
+                    *pProcess = PeerCred.pid;
+                if (pUid)
+                    *pUid = PeerCred.uid;
+                if (pGid)
+                    *pGid = PeerCred.gid;
+                rc = VINF_SUCCESS;
+            }
+            else
+                rc = RTErrConvertFromErrno(errno);
+#elif   defined(RT_OS_DARWIN)  || defined(RT_OS_FREEBSD) \
+     || defined(RT_OS_NETBSD)  || defined(RT_OS_OPENBSD)
+            if (!pProcess)
+            {
+                uid_t uidPeer = (uid_t)NIL_RTUID;
+                gid_t gidPeer = (gid_t)NIL_RTGID;
+                if (getpeereid(RTSocketToNative(pThis->hSocket), &uidPeer, &gidPeer) == 0)
+                {
+                    if (pUid)
+                        *pUid = uidPeer;
+                    if (pGid)
+                        *pGid = gidPeer;
+                    rc = VINF_SUCCESS;
+                }
+                else
+                    rc = RTErrConvertFromErrno(errno);
+            }
+            else
+            {
+                *pProcess = NIL_RTPROCESS;
+                rc = VERR_NOT_SUPPORTED;
+            }
+#elif defined(RT_OS_SOLARIS)
+            ucred_t *pCred = NULL;
+            if (getpeerucred(RTSocketToNative(pThis->hSocket), &pCred) == 0)
+            {
+                if (pProcess)
+                    *pProcess = ucred_getpid(pCred);
+                if (pUid)
+                    *pUid = ucred_geteuid(pCred);
+                if (pGid)
+                    *pGid = ucred_getegid(pCred);
+                ucred_free(pCred);
+                rc = VINF_SUCCESS;
+            }
+            else
+                rc = RTErrConvertFromErrno(errno);
+#else
+            if (pProcess)
+                *pProcess = NIL_RTPROCESS;
+            if (pUid)
+                *pUid = NIL_RTUID;
+            if (pGid)
+                *pGid = NIL_RTGID;
+            rc = VERR_NOT_SUPPORTED;
+#endif
+        }
 
         int rc2 = RTCritSectLeave(&pThis->CritSect);
         AssertStmt(RT_SUCCESS(rc2), rc = RT_SUCCESS(rc) ? rc2 : rc);
@@ -1147,19 +1335,22 @@ static int rtLocalIpcSessionQueryUcred(RTLOCALIPCSESSION hSession, PRTPROCESS pP
     rtLocalIpcSessionRelease(pThis);
 
     return rc;
-
-#else
-    /** @todo Implement on other platforms too (mostly platform specific this).
-     *        Solaris: getpeerucred?  Darwin: LOCALPEERCRED or getpeereid? */
-    RT_NOREF(pProcess, pUid, pGid);
-    return VERR_NOT_SUPPORTED;
-#endif
 }
 
 
 RTDECL(int) RTLocalIpcSessionQueryProcess(RTLOCALIPCSESSION hSession, PRTPROCESS pProcess)
 {
     return rtLocalIpcSessionQueryUcred(hSession, pProcess, NULL, NULL);
+}
+
+
+RTDECL(int) RTLocalIpcSessionVerifySameUser(RTLOCALIPCSESSION hSession)
+{
+    RTUID uidPeer = NIL_RTUID;
+    int rc = rtLocalIpcSessionQueryUcred(hSession, NULL, &uidPeer, NULL);
+    if (RT_SUCCESS(rc) && uidPeer != (RTUID)geteuid())
+        rc = VERR_ACCESS_DENIED;
+    return rc;
 }
 
 
@@ -1172,4 +1363,3 @@ RTDECL(int) RTLocalIpcSessionQueryGroupId(RTLOCALIPCSESSION hSession, PRTGID pGi
 {
     return rtLocalIpcSessionQueryUcred(hSession, NULL, NULL, pGid);
 }
-

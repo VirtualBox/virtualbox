@@ -840,8 +840,26 @@ RTDECL(int) RTStrValidateEncoding(const char *psz);
  * @param   cch         The max string length (/ size).  Use RTSTR_MAX to
  *                      process the entire string.
  * @param   fFlags      Combination of RTSTR_VALIDATE_ENCODING_XXX flags.
+ * @sa      RTStrLenAndValidateEncoding
  */
 RTDECL(int) RTStrValidateEncodingEx(const char *psz, size_t cch, uint32_t fFlags);
+
+/**
+ * Validates the UTF-8 encoding of the string and optionally returns the
+ * lengths.
+ *
+ * @returns iprt status code.
+ * @param   psz         The string.
+ * @param   cch         The max string length (/ size).  Use RTSTR_MAX to
+ *                      process the entire string.
+ * @param   fFlags      Combination of RTSTR_VALIDATE_ENCODING_XXX flags.
+ * @param   pcuc        Where to store the length in unicode code points.
+ *                      Optional.
+ * @param   pcchActual  Where to store the actual size of the UTF-8 string
+ *                      on success (cch = cb again). Optional.
+ * @sa      RTStrValidateEncodingEx
+ */
+RTDECL(int) RTStrLenAndValidateEncoding(const char *psz, size_t cch, uint32_t fFlags, size_t *pcuc, size_t *pcchActual);
 
 /**
  * Checks if the UTF-8 encoding is valid.
@@ -1305,6 +1323,29 @@ RTDECL(int) RTStrGetCpNExInternal(const char **ppsz, size_t *pcch, PRTUNICP pCp)
 RTDECL(char *) RTStrPutCpInternal(char *psz, RTUNICP CodePoint);
 
 /**
+ * Put the unicode code point at the given string position
+ * and return the encoded length.
+ *
+ * This function will not consider anything at or following the
+ * buffer area pointed to by psz. It is therefore not suitable for
+ * inserting code points into a string, only appending/overwriting.
+ *
+ * @returns pointer to the char following the written code point.
+ * @param   psz         The destination string.
+ * @param   CodePoint   The code point to write.
+ *                      This should not be RTUNICP_INVALID or any other
+ *                      character out of the UTF-8 range.
+ *
+ * @remark  This is a worker function for RTStrPutCpRetLen().
+ *
+ * @note    The function may write up to 6 chars (bytes) at @a psz and is not
+ *          able to check for overflows. The caller is therefore expected to
+ *          ensure sufficient buffer space.
+ *
+ */
+RTDECL(size_t) RTStrPutCpRetLenInternal(char *psz, RTUNICP CodePoint);
+
+/**
  * Get the unicode code point at the given string position.
  *
  * @returns unicode code point.
@@ -1437,7 +1478,6 @@ DECLINLINE(size_t) RTStrCpSize(RTUNICP CodePoint)
  * @note    The function may write up to 6 chars (bytes) at @a psz and is not
  *          able to check for overflows. The caller is therefore expected to
  *          ensure sufficient buffer space.
- *
  */
 DECLINLINE(char *) RTStrPutCp(char *psz, RTUNICP CodePoint)
 {
@@ -1447,6 +1487,38 @@ DECLINLINE(char *) RTStrPutCp(char *psz, RTUNICP CodePoint)
         return psz;
     }
     return RTStrPutCpInternal(psz, CodePoint);
+}
+
+/**
+ * Put the unicode code point at the given string position
+ * and return the encoded length.
+ *
+ * This function will not consider anything at or following the
+ * buffer area pointed to by psz. It is therefore not suitable for
+ * inserting code points into a string, only appending/overwriting.
+ *
+ * @returns pointer to the char following the written code point.
+ * @param   psz         The destination string.
+ * @param   CodePoint   The code point to write.
+ *                      This should not be RTUNICP_INVALID or any other
+ *                      character out of the UTF-8 range.
+ *
+ * @remark  We optimize this operation by using an inline function for
+ *          the most frequent and simplest sequence, the rest is
+ *          handled by RTStrPutCpRetLenInternal().
+ *
+ * @note    The function may write up to 6 chars (bytes) at @a psz and is not
+ *          able to check for overflows. The caller is therefore expected to
+ *          ensure sufficient buffer space.
+ */
+DECLINLINE(size_t) RTStrPutCpRetLen(char *psz, RTUNICP CodePoint)
+{
+    if (CodePoint < 0x80)
+    {
+        *psz = (char)CodePoint;
+        return 1;
+    }
+    return RTStrPutCpRetLenInternal(psz, CodePoint);
 }
 
 /**
@@ -2799,6 +2871,74 @@ DECLINLINE(size_t) RTStrOffCharOrTerm(const char *pszHaystack, char chNeedle)
            && ch != '\0')
         psz++;
     return (size_t)(psz - pszHaystack);
+}
+
+/**
+ * Finds the offset at which a simple character next occurs in a string.
+ *
+ * @returns The offset of the next occurence or the terminator offset.
+ * @param   pszHaystack The string to search.
+ * @param   chNeedle    The character to search for.
+ * @param   offPrev     The previous occurence.
+ */
+DECLINLINE(size_t) RTStrOffNextCharOrTerm(const char *pszHaystack, char chNeedle, size_t offPrev)
+{
+    const char *psz = &pszHaystack[offPrev];
+    if (*psz != '\0')
+    {
+        char ch;
+        psz++;
+        while (   (ch = *psz) != chNeedle
+               && ch != '\0')
+            psz++;
+    }
+    return (size_t)(psz - pszHaystack);
+}
+
+/**
+ * Finds the offset at which a simple character first occurs in a string.
+ *
+ * @returns The offset of the first occurence, ~(size_t)0 if not found.
+ * @param   pszHaystack The string to search.
+ * @param   chNeedle    The character to search for.
+ */
+DECLINLINE(size_t) RTStrOffChar(const char *pszHaystack, int chNeedle)
+{
+#if 0
+    const char *pszHit = strchr(pszHaystack, chNeedle);
+    return pszHit ? (size_t)(pszHit - pszHaystack) : ~(size_t)0;
+#else
+    const char *psz = pszHaystack;
+    char        ch;
+    while ((ch = *psz) != '\0')
+    {
+        if (ch == chNeedle)
+            return (size_t)(psz - pszHaystack);
+        psz++;
+    }
+    return  ~(size_t)0;
+#endif
+}
+
+/**
+ * Finds the offset at which a simple character first occurs in a length limited string.
+ *
+ * @returns The offset of the first occurence, ~(size_t)0 if not found.
+ * @param   pszHaystack The string to search.
+ * @param   cchHaystack The maximum length to search.
+ * @param   chNeedle    The character to search for.
+ */
+DECLINLINE(size_t) RTStrNOffChar(const char *pszHaystack, size_t cchHaystack, int chNeedle)
+{
+    size_t off = 0;
+    char   ch;
+    while (off < cchHaystack && (ch = pszHaystack[off]) != '\0')
+    {
+        if (ch == chNeedle)
+            return off;
+        off++;
+    }
+    return  ~(size_t)0;
 }
 
 /**

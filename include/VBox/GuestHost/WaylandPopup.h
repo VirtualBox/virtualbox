@@ -1,4 +1,4 @@
-/* $Id: WaylandPopup.h 114622 2026-07-04 00:18:59Z knut.osmundsen@oracle.com $ */
+/* $Id: WaylandPopup.h 114738 2026-07-21 13:40:26Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest / Host common code - Wayland Popup (for focus grabbing).
  */
@@ -146,6 +146,11 @@ VBGH_DECL(void) VbghWaylandPopupRegEnum(PVBGHWAYLANDPOPUP pThis, struct wl_regis
 VBGH_DECL(int)  VbghWaylandPopupShow(PVBGHWAYLANDPOPUP pThis, struct VBGHWAYLANDSEAT *pSeatEntry,
                                      const char *pszTitle, const char *pszClassOrId,
                                      PFNVBGHWAYLANDPOPUPONFOCUS pfnOnFocus, uint64_t u64OnFocusUser, PRTERRINFO pErrInfo);
+
+struct RTPROCSTATUS;
+VBGH_DECL(int)  VbghWaylandPopupTerminateAndWaitForChild(RTPROCESS hProcess, const char *pszProcName,
+                                                         RTMSINTERVAL cMsWaitBeforeKill, RTMSINTERVAL cMsWaitBetweenKills,
+                                                         unsigned cKills, struct RTPROCSTATUS *pProcStatus);
 
 RT_C_DECLS_END
 

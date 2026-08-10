@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferManagerImpl.h 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferManagerImpl.h 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer manager object.
  */
@@ -32,6 +32,7 @@
 #endif
 
 #include "ClipboardTransferManagerWrap.h"
+#include "ClipboardTransferImpl.h"
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 # include <VBox/GuestHost/SharedClipboard-transfers.h>
@@ -57,12 +58,25 @@ public:
     HRESULT init(IEventSource *aEventSource = NULL, Clipboard *aParent = NULL);
     void uninit();
 
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     /** Resets the internally tracked transfer list. */
     void i_reset();
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    /**
+     * Handles a Shared Clipboard transfer lifecycle status delivered by the host service.
+     *
+     * @returns COM status code.
+     * @param   aServiceSessionId   Service session that owns the transfer.
+     * @param   aTransferId         Shared Clipboard transfer identifier.
+     * @param   aGeneration         Host-private transfer generation.
+     * @param   aTransfer           Borrowed service transfer used to validate status metadata.
+     * @param   enmShClSource       Data source recorded by the backing transfer.
+     * @param   enmStatus           Transfer lifecycle status.
+     * @param   vrcTransfer         Transfer result code associated with the status.
+     */
     HRESULT i_handleTransferStatus(SHCLSESSIONID aServiceSessionId,
                                    SHCLTRANSFERID aTransferId,
                                    SHCLTRANSFERGEN aGeneration,
+                                   PSHCLTRANSFER aTransfer,
                                    SHCLSOURCE enmShClSource,
                                    SHCLTRANSFERSTATUS enmStatus,
                                    int vrcTransfer);
@@ -71,23 +85,33 @@ public:
 
 private:
 
-    void i_fireTransferEvent(IClipboardTransfer *aTransfer,
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    void i_fireTransferEvent(const ComObjPtr<ClipboardTransfer> &aTransfer,
                              ClipboardTransferState_T aState,
                              ClipboardTransferInteraction_T aInteraction,
                              const com::Utf8Str &aPath,
                              const com::Utf8Str &aMessage,
                              ClipboardError_T aError);
+#endif
 
     /** @name Wrapped IClipboardTransferManager properties and methods
      * @{ */
     HRESULT getTransfers(ClipboardTransferDirection_T aDirection,
                           ULONG aFlags,
                           std::vector<ComPtr<IClipboardTransfer> > &aTransfers);
-    HRESULT createTransfer(ClipboardTransferDirection_T aDirection,
-                           ClipboardSource_T aSource,
-                           ClipboardAction_T aAction,
-                           ComPtr<IClipboardTransfer> &aTransfer);
-    HRESULT add(const ComPtr<IClipboardTransfer> &aTransfer);
+    /**
+     * Creates and tracks a Main-owned clipboard transfer.
+     *
+     * @returns COM status code.
+     * @param   aDirection      Transfer direction.
+     * @param   aSource         Clipboard source owning the transfer.
+     * @param   aAction         Clipboard transfer action.
+     * @param   aTransfer       Where to return the transfer object.
+     */
+    HRESULT create(ClipboardTransferDirection_T aDirection,
+                   ClipboardSource_T aSource,
+                   ClipboardAction_T aAction,
+                   ComPtr<IClipboardTransfer> &aTransfer);
     HRESULT remove(const ComPtr<IClipboardTransfer> &aTransfer);
     HRESULT cancel(const ComPtr<IClipboardTransfer> &aTransfer);
     HRESULT approve(const ComPtr<IClipboardTransfer> &aTransfer,
@@ -121,11 +145,12 @@ private:
                 : mServiceSessionId(NIL_SHCLSESSIONID)
                 , mTransferId(0)
                 , mGeneration(NIL_SHCLTRANSFERGEN)
+                , mDirection(SHCLTRANSFERDIR_UNKNOWN)
+                , mSource(SHCLSOURCE_INVALID)
                 , mStatus(SHCLTRANSFERSTATUS_NONE)
                 , mState(ClipboardTransferState_Added)
                 , mfTerminal(false)
                 , mfCancelRequested(false)
-                , mfPublished(false)
 #endif
             { }
 
@@ -133,27 +158,85 @@ private:
             SHCLSESSIONID                    mServiceSessionId;
             ULONG                            mTransferId;
             SHCLTRANSFERGEN                  mGeneration;
+            /** Shared Clipboard data-plane direction. */
+            SHCLTRANSFERDIR                  mDirection;
+            /** Shared Clipboard data source recorded by the backing transfer. */
+            SHCLSOURCE                       mSource;
             SHCLTRANSFERSTATUS               mStatus;
             ClipboardTransferState_T         mState;
             bool                             mfTerminal;
             bool                             mfCancelRequested;
 #endif
-            ComPtr<IClipboardTransfer>       mTransfer;
+            /** Concrete transfer owned by this manager. */
+            ComObjPtr<ClipboardTransfer>     mTransfer;
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-            /** Whether the transfer is visible through getTransfers(). */
-            bool                             mfPublished;
             ComPtr<IProgress>                mProgress;
             ComPtr<IInternalProgressControl> mProgressControl;
+
+            /** Returns whether the public Main interface matches this record. */
+            bool matches(IClipboardTransfer *aTransfer) const
+            {
+                ClipboardTransfer *pTransfer = mTransfer;
+                return static_cast<IClipboardTransfer *>(pTransfer) == aTransfer;
+            }
+
+            /** Returns whether the service identity matches this record. */
+            bool matches(SHCLSESSIONID aServiceSessionId, ULONG aTransferId,
+                         SHCLTRANSFERGEN aGeneration) const
+            {
+                return    mServiceSessionId == aServiceSessionId
+                       && mTransferId == aTransferId
+                       && mGeneration == aGeneration;
+            }
+
+            /** Returns whether the concrete Main object matches this record. */
+            bool matches(ClipboardTransfer *aTransfer) const
+            {
+                ClipboardTransfer *pTransfer = mTransfer;
+                return pTransfer == aTransfer;
+            }
+
+            /** Returns whether both the Main object and service identity match this record. */
+            bool matches(ClipboardTransfer *aTransfer,
+                         SHCLSESSIONID aServiceSessionId, ULONG aTransferId,
+                         SHCLTRANSFERGEN aGeneration) const
+            {
+                return    matches(aTransfer)
+                       && matches(aServiceSessionId, aTransferId, aGeneration);
+            }
 #endif
         };
+
+        /** Transfer record container type. */
+        typedef std::vector<TransferRecord> TransferRecords;
 
         /** Parent clipboard object. */
         Clipboard *mParent;
         /** Clipboard event source. */
         ComPtr<IEventSource> mEventSource;
         /** Current clipboard transfer records. */
-        std::vector<TransferRecord> mTransfers;
+        TransferRecords mTransfers;
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+        /** Finds a record by public Main interface while the caller owns the manager lock. */
+        TransferRecords::iterator findTransferRecord(IClipboardTransfer *aTransfer)
+        {
+            for (TransferRecords::iterator it = mTransfers.begin(); it != mTransfers.end(); ++it)
+                if (it->matches(aTransfer))
+                    return it;
+            return mTransfers.end();
+        }
+
+        /** Finds an exact transfer record while the caller owns the manager lock. */
+        TransferRecords::iterator findTransferRecord(ClipboardTransfer *aTransfer,
+                                                     SHCLSESSIONID aServiceSessionId, ULONG aTransferId,
+                                                     SHCLTRANSFERGEN aGeneration)
+        {
+            for (TransferRecords::iterator it = mTransfers.begin(); it != mTransfers.end(); ++it)
+                if (it->matches(aTransfer, aServiceSessionId, aTransferId, aGeneration))
+                    return it;
+            return mTransfers.end();
+        }
+
         /** Next Main-created transfer identifier. */
         ULONG mNextTransferId;
 #endif

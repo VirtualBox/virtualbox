@@ -1,4 +1,4 @@
-/* $Id: DBGFR3.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: DBGFR3.cpp 114815 2026-07-29 06:56:55Z andreas.loeffler@oracle.com $ */
 /** @file
  * DBGF - Debugger Facility.
  */
@@ -493,6 +493,7 @@ static int dbgfR3SendEventWorker(PVM pVM, PVMCPU pVCpu, DBGFEVENTTYPE enmType, D
     pEvent->enmCtx    = enmCtx;
     pEvent->idCpu     = pVCpu->idCpu;
     pEvent->uReserved = 0;
+    RT_ZERO(pEvent->u);
     if (cbPayload)
         memcpy(&pEvent->u, pvPayload, cbPayload);
 
@@ -750,6 +751,7 @@ VMMR3DECL(int) DBGFR3EventSrcV(PVM pVM, DBGFEVENTTYPE enmEvent, const char *pszF
      * Send the event and process the reply communication.
      */
     DBGFEVENT DbgEvent;  /** @todo split up DBGFEVENT so we can skip the dead wait on the stack? */
+    RT_ZERO(DbgEvent.u);
     DbgEvent.u.Src.pszFile      = pszFile;
     DbgEvent.u.Src.uLine        = uLine;
     DbgEvent.u.Src.pszFunction  = pszFunction;
@@ -1243,6 +1245,13 @@ static DECLCALLBACK(VBOXSTRICTRC) dbgfR3Attach(PVM pVM, PVMCPU pVCpu, void *pvUs
     else
         rc = VERR_NO_MEMORY;
 
+    if (pUVM->dbgf.s.paDbgEvts)
+    {
+        MMR3HeapFree(pUVM->dbgf.s.paDbgEvts);
+        pUVM->dbgf.s.paDbgEvts = NULL;
+    }
+    pUVM->dbgf.s.cDbgEvtMax = 0;
+
     *prcAttach = rc;
     return VINF_SUCCESS;
 }
@@ -1609,7 +1618,7 @@ static DBGFSTEPINSTRTYPE dbgfStepGetCurInstrType(PVM pVM, PVMCPU pVCpu)
             || (u32Insn & UINT32_C(0xfffffc1f)) == UINT32_C(0xd63f0c1f) /* BLRABZ */
             || (u32Insn & UINT32_C(0xfffffc00)) == UINT32_C(0xd73f0800) /* BLRAA */
             || (u32Insn & UINT32_C(0xfffffc00)) == UINT32_C(0xd73f0c00) /* BLRAB */
-            || (u32Insn & UINT32_C(0xfc000000)) == UINT32_C(0x14000000) /* BL */
+            || (u32Insn & UINT32_C(0xfc000000)) == UINT32_C(0x94000000) /* BL */
             || (u32Insn & UINT32_C(0xffe0001f)) == UINT32_C(0xd4000001) /* SVC */
             || (u32Insn & UINT32_C(0xffe0001f)) == UINT32_C(0xd4000002) /* HVC */
             || (u32Insn & UINT32_C(0xffe0001f)) == UINT32_C(0xd4000003) /* SMC */
@@ -2402,4 +2411,3 @@ VMMR3DECL(int) DBGFR3InjectNMI(PUVM pUVM, VMCPUID idCpu)
     VMCPU_FF_SET(pVM->apCpusR3[idCpu], VMCPU_FF_INTERRUPT_NMI);
     return VINF_SUCCESS;
 }
-

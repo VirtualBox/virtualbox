@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114503 2026-06-23 15:44:22Z aleksey.ilyushin@oracle.com $
+# $Id: Makefile.kmk 114892 2026-08-07 15:59:20Z klaus.espenlaub@oracle.com $
 ## @file
 # Top-level sub-makefile for the devices, drivers and services.
 #
@@ -175,7 +175,8 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
  	VBOX_WITH_DMI_OEMSTRINGS \
  	$(if $(VBOX_WITH_IOMMU_AMD),VBOX_WITH_IOMMU_AMD,) \
  	$(if $(VBOX_WITH_IOMMU_INTEL),VBOX_WITH_IOMMU_INTEL,) \
- 	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3),VBOX_WITH_INTNET_SERVICE_IN_R3,)
+ 	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3),VBOX_WITH_INTNET_SERVICE_IN_R3,) \
+ 	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC),VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC,)
  ifeq ($(KBUILD_TARGET_ARCH),x86)
   VBoxDD_DEFS.darwin     = VBOX_WITH_2X_4GB_ADDR_SPACE
  endif
@@ -226,6 +227,7 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
  	Input/DrvKeyboardQueue.cpp \
  	Input/DrvMouseQueue.cpp \
  	Network/DrvIntNet.cpp \
+ 	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3),../NetworkServices/NetLib/IntNetIf.cpp,) \
  	Network/DrvDedicatedNic.cpp \
  	PC/DrvACPI.cpp \
  	PC/DrvAcpiCpu.cpp \
@@ -512,7 +514,7 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
   if defined(VBOX_WITH_USB_VIDEO_IMPL)
    VBoxDD_DEFS          += VBOX_WITH_USB_VIDEO_IMPL
    VBoxDD_INCS += \
-   	$(VBOX_JPEG_INCS)
+   	$(SDK_VBoxLibJpeg_INCS)
    VBoxDD_SOURCES       += \
    	Video/UsbWebcam.cpp \
    	Video/UsbWebcamDesc.cpp \
@@ -527,10 +529,7 @@ if !defined(VBOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SU
    	Video/HostWebcam-v4l2.cpp
    VBoxDD_SOURCES.win += \
    	Video/HostWebcam-win.cpp
-   VBoxDD_LIBS += \
-   	$(PATH_STAGE_LIB)/VBox-libjpeg$(VBOX_SUFF_LIB) \
-   	$(PATH_STAGE_LIB)/VBox-libjpeg12$(VBOX_SUFF_LIB) \
-   	$(PATH_STAGE_LIB)/VBox-libjpeg16$(VBOX_SUFF_LIB)
+   VBoxDD_LIBS += $(SDK_VBoxLibJpeg_LIBS)
    VBoxDD_LIBS.win += \
    	strmiids.lib
    VBoxDD_LDFLAGS.darwin += \

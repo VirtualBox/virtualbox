@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-utils.cpp 114526 2026-06-25 10:37:10Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-utils.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Host service utility functions.
  */
@@ -60,9 +60,7 @@ int ShClSvcGuestDataRetainValidatedEvent(PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX 
     AssertPtrReturn(ppEvent, VERR_INVALID_POINTER);
     *ppEvent = NULL;
 
-    if (   uFormat == VBOX_SHCL_FMT_NONE
-        || (uFormat & ~VBOX_SHCL_FMT_VALID_MASK)
-        || (uFormat & (uFormat - 1)) != 0)
+    if (!ShClFormatIsValid(uFormat))
     {
         LogRelMax2(16, ("Shared Clipboard: Rejecting guest clipboard data with invalid format %#x\n", uFormat));
         return VERR_INVALID_PARAMETER;
@@ -412,4 +410,3 @@ int ShClSvcReadDataFromGuest(PSHCLCLIENT pClient, SHCLFORMAT fFormats, void **pp
         LogRel(("Shared Clipboard: Reading data from guest failed with %Rrc\n", vrc));
     return vrc;
 }
-

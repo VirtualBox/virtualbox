@@ -1,4 +1,4 @@
-/* $Id: bs3-memalloc-1.c64 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: bs3-memalloc-1.c64 114764 2026-07-24 07:42:08Z alexander.eichner@oracle.com $ */
 /** @file
  * BS3Kit - bs3-timers-1, 64-bit C code.
  */
@@ -259,7 +259,7 @@ BS3_DECL(void) Main_lm64()
                 {
                     uint64_t const  nsStart       = Bs3TestNow();
                     uint64_t const  uTscStart     = ASMReadTSC();
-                    /* Unused: uint64_t const  cErrors       = CheckTouchedMemory(); */
+                    uint64_t const  cErrors       = CheckTouchedMemory();
                     uint64_t const  cTicksElapsed = ASMReadTSC() - uTscStart;
                     uint64_t const  cNsElapsed    = Bs3TestNow() - nsStart;
                     uint64_t uThruput;

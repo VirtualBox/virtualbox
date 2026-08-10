@@ -1,4 +1,4 @@
-/* $Id: APICAll-x86.cpp 112682 2026-01-25 17:10:52Z alexander.eichner@oracle.com $ */
+/* $Id: APICAll-x86.cpp 114733 2026-07-21 06:02:36Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller - All Contexts.
  */
@@ -702,7 +702,7 @@ DECLINLINE(VBOXSTRICTRC) apicSendIpi(PVMCPUCC pVCpu, int rcRZ)
             break;
         }
 
-        case XAPIDDESTSHORTHAND_ALL_INCL_SELF:
+        case XAPICDESTSHORTHAND_ALL_INCL_SELF:
         {
             VMCPUSET_FILL(&DestCpuSet);
             break;

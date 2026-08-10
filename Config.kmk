@@ -1,4 +1,4 @@
-# $Id: Config.kmk 114504 2026-06-23 16:56:50Z aleksey.ilyushin@oracle.com $
+# $Id: Config.kmk 114903 2026-08-10 07:19:06Z alexander.eichner@oracle.com $
 ## @file
 # The global build configuration file for VBox.
 #
@@ -575,6 +575,13 @@ if1of ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH), darwin.amd64 darwin.arm64)
   VBOX_WITH_INTNET_SERVICE_IN_R3 = 1
  endif
 endif
+# The local IPC implementation of the R3 IntNet service is
+# experimental and intentionally disabled by default for now, see @bugref{11149}
+if1of ($(KBUILD_TARGET), win linux)
+ ifdef VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC
+  VBOX_WITH_INTNET_SERVICE_IN_R3 := 1
+ endif
+endif
 # Enables the new breakpoint handling code, see @bugref{8650}
 VBOX_WITH_DBGF_FLOW_TRACING = 1
 # Enables ARMv8 API support and if possible virtualization, see @bugref{10383}
@@ -966,7 +973,7 @@ VBOX_WITH_SHARED_FOLDERS = 1
 # Enable shared clipboard
 VBOX_WITH_SHARED_CLIPBOARD = 1
 # Enable shared clipboard (file) transfers
-if1of ($(KBUILD_TARGET), win linux)
+if1of ($(KBUILD_TARGET), win linux darwin)
  VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS = 1
  if1of ($(KBUILD_TARGET), linux)
   VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP = 1
@@ -2054,7 +2061,8 @@ ASTOOL := $(VBOX_ASTOOL)
 #
 INCS += $(PATH_ROOT)/include $(PATH_OUT)
 DEFS += VBOX
-DEFS.debug      := DEBUG DEBUG_$(subst $(subst _, ,_),_,$(USERNAME)) DEBUG_USERNAME=$(subst $(subst _, ,_),_,$(USERNAME))
+USERNAME_FIXUP  := $(subst -,_,$(subst $(subst _, ,_),_,$(USERNAME)))
+DEFS.debug      := DEBUG DEBUG_$(USERNAME_FIXUP) DEBUG_USERNAME=$(USERNAME_FIXUP)
 DEFS.dbgopt      = $(DEFS.debug)
 DEFS.profile     = VBOX_WITH_STATISTICS
 DEFS.strict      = RT_STRICT VBOX_STRICT
@@ -3200,9 +3208,6 @@ VBOX_PATH_X11_ROOT      = $(PATH_ROOT)/src/VBox/Additions/x11/x11include
 # Miscellaneous includes
 #
 VBOX_GRAPHICS_INCS = $(PATH_ROOT)/include/VBox/Graphics
-VBOX_JPEG_INCS     = \
-	$(PATH_ROOT)/src/libs/libjpeg-turbo-3.1.0/src \
-	$(PATH_ROOT)/src/libs/libjpeg-turbo-3.1.0
 
 
 # The icons to use.
@@ -5271,7 +5276,7 @@ SDK_VBoxSoftFloatGuestR3Shared_LIBS.$(KBUILD_TARGET_ARCH) = \
 
 ifdef VBOX_WITH_LIBSSH
  SDK_VBoxLibSsh                := libssh for dynamic dll loading with assembly stubs.
- SDK_VBoxLibSsh_INCS           ?= $(PATH_ROOT)/src/libs/libssh-0.11.4/include
+ SDK_VBoxLibSsh_INCS           ?= $(PATH_ROOT)/src/libs/libssh-0.12.2/include
  # SDK_VBoxLibSsh_LIBS is not defined, as VBoxLibSsh dll is not linked, but loaded explicitly
  # by auto-generated stub code (lazy loading)
 endif
@@ -5321,6 +5326,15 @@ SDK_VBoxLibXml2_DEFS          ?= _REENTRANT LIBXML_STATIC LIBXML_STATIC_FOR_DLL
 SDK_VBoxLibXml2_DEFS.win      ?= WIN32 _WINDOWS _MBCS HAVE_WIN32_THREADS HAVE_COMPILER_TLS
 # Note: no linking to LIB here, we do that explicitly in src/VBox/Runtime/Makefile.kmk to link
 #       libxml against VBoxRT
+
+# libjpeg
+SDK_VBoxLibJpeg              := libjpeg for dll linking.
+SDK_VBoxLibJpeg_DEFAULT_INCS ?= $(PATH_ROOT)/src/libs/libjpeg-turbo-3.1.0/src \
+	$(PATH_ROOT)/src/libs/libjpeg-turbo-3.1.0
+SDK_VBoxLibJpeg_INCS         ?= $(SDK_VBoxLibJpeg_DEFAULT_INCS)
+SDK_VBoxLibJpeg_LIBS         ?= $(PATH_STAGE_LIB)/VBox-libjpeg$(VBOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/VBox-libjpeg12$(VBOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/VBox-libjpeg16$(VBOX_SUFF_LIB)
 
 # zlib
 SDK_VBoxZlib                  := zlib for dll linking.
@@ -9591,7 +9605,7 @@ SVN                    ?= svn$(HOSTSUFF_EXE)
 GIT                    ?= git$(HOSTSUFF_EXE)
 VBOX_SVN_REV_KMK        = $(PATH_OUT)/revision.kmk
 ifndef VBOX_SVN_REV
- VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 114504 $  )
+ VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 114903 $  )
  VBOX_SVN_REV_FALLBACK := $(if-expr $(VBOX_SVN_REV_CONFIG_FALLBACK) > $(VBOX_SVN_REV_VERSION_FALLBACK),$(VBOX_SVN_REV_CONFIG_FALLBACK),$(VBOX_SVN_REV_VERSION_FALLBACK))
  VBOX_SVN_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.svn/wc.db $(abspath $(PATH_ROOT)/../.svn/wc.db) $(abspath $(PATH_ROOT)/../../.svn/wc.db) $(PATH_ROOT)/.svn/entries))
  VBOX_GIT_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.git/config $(abspath $(PATH_ROOT)/../.git/config) $(abspath $(PATH_ROOT)/../../.git/config)))
@@ -9605,7 +9619,7 @@ ifndef VBOX_SVN_REV
  ifneq ($(VBOX_GIT_DEP),)
   #
   # VBOX_SVN_REV_CONFIG_FALLBACK is not properly populated for a git checkout,
-  # as the $Rev: 114504 $ is not expanded, so we have to set it based on the information in the repo.
+  # as the $Rev: 114903 $ is not expanded, so we have to set it based on the information in the repo.
   #
   VBOX_SVN_REV_FALLBACK := $(shell $(GIT) log -1 $(PATH_ROOT)/Config.kmk | $(SED) -e 's/^[ \t]*//' -e '/svn:sync-xref-src-repo-rev\: r/!d' -e 's/svn:sync-xref-src-repo-rev\: r*//; t a; :a q')
  endif

@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c 114627 2026-07-06 13:23:08Z vadim.galitsyn@oracle.com $ */
+/* $Id: SUPDrv-linux.c 114845 2026-08-03 12:55:03Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -112,6 +112,14 @@
 # include <linux/fdtable.h>
 # include <linux/kvm_host.h>
 # include <linux/pseudo_fs.h>
+#endif
+
+#if defined(CONFIG_X86_FRED)
+# if RTLNX_VER_MIN(7,1,0) && IS_ENABLED(CONFIG_KVM_INTEL)
+#  include <asm/entry-common.h>
+# else
+#  include <asm/fred.h>
+# endif
 #endif
 
 
@@ -248,6 +256,20 @@ static __typeof__(switch_fpu_return)           *g_pfnSwitchFpuReturn;
 static __typeof__(cr4_update_irqsoff)           *g_pfnCr4UpdateIrqsoff;
 /** Function pointer to cr4_read_shadow(). */
 static __typeof__(cr4_read_shadow)              *g_pfnCr4ReadShadow;
+#endif
+
+#if defined(CONFIG_X86_FRED)
+/** Flag whether the system is running with FRED enabled. */
+static bool                                      g_fFredActive = false;
+# if RTLNX_VER_MIN(7,1,0)
+/** Function pointer to x86_entry_from_kvm(). */
+static __typeof__(x86_entry_from_kvm)           *g_pfnX86EntryFromKvm = NULL;
+#  define MY_FRED_ENTRY_FROM_KVM                "x86_entry_from_kvm"
+# else
+/** Function pointer to asm_fred_entry_from_kvm(). */
+static __typeof__(asm_fred_entry_from_kvm)      *g_pfnX86EntryFromKvm = NULL;
+#  define MY_FRED_ENTRY_FROM_KVM                "asm_fred_entry_from_kvm"
+# endif
 #endif
 
 /** Module parameter.
@@ -463,6 +485,17 @@ static int __init VBoxDrvLinuxInit(void)
     RTListInit(&g_supdrvLinuxWrapperModuleList);
 #endif
 
+#ifdef CONFIG_X86_FRED
+    g_fFredActive = RT_BOOL(ASMGetCR4() & X86_CR4_FRED);
+# if !IS_ENABLED(CONFIG_KVM_INTEL)
+    if (g_fFredActive)
+    {
+        printk(KERN_ERR "vboxdrv: FRED is active without KVM being enabled for this kernel, this is currently unsupported!\n");
+        return -ENOTSUPP;
+    }
+# endif
+#endif
+
     /*
      * Check for synchronous/asynchronous TSC mode.
      */
@@ -517,26 +550,42 @@ static int __init VBoxDrvLinuxInit(void)
                         supdrvLinuxFunction(NULL, "cr4_update_irqsoff", (PFNRT *)&g_pfnCr4UpdateIrqsoff, &hKrnlInfo);
                         supdrvLinuxFunction(NULL, "cr4_read_shadow",    (PFNRT *)&g_pfnCr4ReadShadow,    &hKrnlInfo);
 # endif
+# if defined(CONFIG_X86_FRED) && IS_ENABLED(CONFIG_KVM_INTEL)
+                        if (g_fFredActive)
+                            supdrvLinuxFunction(NULL, MY_FRED_ENTRY_FROM_KVM, (PFNRT *)&g_pfnX86EntryFromKvm,  &hKrnlInfo);
+# endif
                         if (hKrnlInfo != NIL_RTDBGKRNLINFO)
                             RTR0DbgKrnlInfoRelease(hKrnlInfo);
 #endif
 
-#if RTLNX_VER_MIN(5,0,0)
-                        /*
-                         * Register the module notifier.
-                         */
-                        int rc3 = register_module_notifier(&g_supdrvLinuxModuleNotifierBlock);
-                        if (rc3)
-                            printk(KERN_WARNING "vboxdrv: failed to register module notifier! rc3=%d\n", rc3);
+#if defined(CONFIG_X86_FRED) && IS_ENABLED(CONFIG_KVM_INTEL)
+                        if (g_fFredActive && !g_pfnX86EntryFromKvm)
+                        {
+                            printk(KERN_ERR "vboxdrv: FRED is active and couldn't resolve %s, this is currently unsupported!\n",
+                                   MY_FRED_ENTRY_FROM_KVM);
+                            rc = -ENOTSUPP;
+                        }
 #endif
-                        printk(KERN_INFO "vboxdrv: TSC mode is %s, tentative frequency %llu Hz\n",
-                               SUPGetGIPModeName(g_DevExt.pGip), g_DevExt.pGip->u64CpuHz);
-                        LogFlow(("VBoxDrv::ModuleInit returning %#x\n", rc));
-                        printk(KERN_DEBUG "vboxdrv: Successfully loaded version "
-                                VBOX_VERSION_STRING " r" RT_XSTR(VBOX_SVN_REV)
-                                VBOX_EXTRA_VERSION_STRING
-                                " (interface " RT_XSTR(SUPDRV_IOC_VERSION) ")\n");
-                        return rc;
+
+                        if (rc == 0)
+                        {
+#if RTLNX_VER_MIN(5,0,0)
+                            /*
+                             * Register the module notifier.
+                             */
+                            int rc3 = register_module_notifier(&g_supdrvLinuxModuleNotifierBlock);
+                            if (rc3)
+                                printk(KERN_WARNING "vboxdrv: failed to register module notifier! rc3=%d\n", rc3);
+#endif
+                            printk(KERN_INFO "vboxdrv: TSC mode is %s, tentative frequency %llu Hz\n",
+                                   SUPGetGIPModeName(g_DevExt.pGip), g_DevExt.pGip->u64CpuHz);
+                            LogFlow(("VBoxDrv::ModuleInit returning %#x\n", rc));
+                            printk(KERN_DEBUG "vboxdrv: Successfully loaded version "
+                                    VBOX_VERSION_STRING " r" RT_XSTR(VBOX_SVN_REV)
+                                    VBOX_EXTRA_VERSION_STRING
+                                    " (interface " RT_XSTR(SUPDRV_IOC_VERSION) ")\n");
+                            return rc;
+                        }
                     }
 
 #ifdef VBOX_WITH_SUSPEND_NOTIFICATION
@@ -587,6 +636,9 @@ static void __exit VBoxDrvLinuxUnload(void)
     /*
      * Release symbol references.
      */
+#if defined(CONFIG_X86_FRED) && IS_ENABLED(CONFIG_KVM_INTEL)
+    g_pfnX86EntryFromKvm  = NULL;
+#endif
 #ifdef SUPDRV_LINUX_DYNAMIC_CR4_FUNCTIONS
     /* We don't need to put these, they should be in core_kernel_text(). */
     g_pfnCr4UpdateIrqsoff = NULL;
@@ -2442,6 +2494,42 @@ SUPR0DECL(void) SUPR0FpuEnd(uint32_t fBegin)
 # endif
 }
 SUPR0_EXPORT_SYMBOL(SUPR0FpuEnd);
+
+
+SUPR0DECL(void) SUPR0DispatchHostNmi(void)
+{
+# if defined(CONFIG_X86_FRED)
+    if (g_fFredActive)
+    {
+#  if IS_ENABLED(CONFIG_KVM_INTEL)
+        Assert(g_pfnX86EntryFromKvm); /* This should be valid, module should fail to load. */
+#   if RTLNX_VER_MIN(7,1,0)
+        g_pfnX86EntryFromKvm(EVENT_TYPE_NMI, NMI_VECTOR);
+#   else
+        struct fred_ss FredSs =
+        {
+            .ss     = __KERNEL_DS,
+            .type   = EVENT_TYPE_NMI,
+            .vector = NMI_VECTOR,
+            .nmi    = 1,
+#    if RTLNX_VER_MIN(6, 19, 0)
+            .l      = 1
+#    else
+            .lm     = 1
+#    endif
+        };
+        g_pfnX86EntryFromKvm(FredSs);
+#   endif
+#  else
+        /* We better not end up here (kernel module shouldn't load). */
+        AssertMsgFailed(("This shouldn't be called on systems without FRED enabled!\n"));
+#  endif
+    }
+    else
+# endif
+        __asm__ __volatile__ ("int $2\n\t" ::: "memory");
+}
+SUPR0_EXPORT_SYMBOL(SUPR0DispatchHostNmi);
 
 #endif /* RT_ARCH_AMD64 || RT_ARCH_X86 */
 

@@ -1,4 +1,4 @@
-/* $Id: tstClipboard.cpp 114632 2026-07-07 15:27:30Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboard.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main API Testcase - Clipboard.
  */
@@ -409,6 +409,139 @@ static bool tstClipboardCheckEventMetadata(const ComPtr<EventT> &ptrEvent, const
 {
     return tstClipboardCheckEventMetadata((EventT *)ptrEvent, pszWhat, idExpectedClient, pi64Revision);
 }
+
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/**
+ * Verifies a service-originated clipboard transfer event.
+ */
+static bool tstClipboardCheckTransferEvent(IEvent *pEvent, const char *pszWhat,
+                                           ClipboardTransferState_T enmExpectedState,
+                                           ClipboardTransferDirection_T enmExpectedDirection,
+                                           ClipboardSource_T enmExpectedSource,
+                                           ULONG idExpectedTransfer,
+                                           ComPtr<IClipboardTransfer> &ptrTransfer,
+                                           ClipboardError_T enmExpectedError = ClipboardError_None)
+{
+    AssertPtrReturn(pEvent, false);
+    AssertPtrReturn(pszWhat, false);
+
+    ptrTransfer.setNull();
+    ComPtr<IClipboardTransferEvent> ptrTransferEvent(pEvent);
+    if (ptrTransferEvent.isNull())
+    {
+        RTTestIFailed("%s: event does not implement IClipboardTransferEvent\n", pszWhat);
+        return false;
+    }
+
+    bool fRc = tstClipboardCheckEventMetadata(ptrTransferEvent, pszWhat, VBOX_SHCL_MAIN_CLIENT_NONE);
+
+    ClipboardTransferState_T enmState = ClipboardTransferState_Removed;
+    HRESULT hrc = ptrTransferEvent->COMGETTER(State)(&enmState);
+    if (FAILED(hrc))
+    {
+        RTTestIFailed("%s: COMGETTER(State) failed, hrc=%Rhrc\n", pszWhat, hrc);
+        fRc = false;
+    }
+    else if (enmState != enmExpectedState)
+    {
+        RTTestIFailed("%s: state %d, expected %d\n", pszWhat, enmState, enmExpectedState);
+        fRc = false;
+    }
+
+    ClipboardError_T enmError = ClipboardError_OperationFailed;
+    hrc = ptrTransferEvent->COMGETTER(Error)(&enmError);
+    if (FAILED(hrc))
+    {
+        RTTestIFailed("%s: COMGETTER(Error) failed, hrc=%Rhrc\n", pszWhat, hrc);
+        fRc = false;
+    }
+    else if (enmError != enmExpectedError)
+    {
+        RTTestIFailed("%s: error %d, expected %d\n", pszWhat, enmError, enmExpectedError);
+        fRc = false;
+    }
+
+    hrc = ptrTransferEvent->COMGETTER(Transfer)(ptrTransfer.asOutParam());
+    if (FAILED(hrc))
+    {
+        RTTestIFailed("%s: COMGETTER(Transfer) failed, hrc=%Rhrc\n", pszWhat, hrc);
+        return false;
+    }
+    if (ptrTransfer.isNull())
+    {
+        RTTestIFailed("%s: transfer event has no transfer\n", pszWhat);
+        return false;
+    }
+
+    ULONG idTransfer = 0;
+    hrc = ptrTransfer->COMGETTER(Id)(&idTransfer);
+    if (FAILED(hrc))
+    {
+        RTTestIFailed("%s: IClipboardTransfer::COMGETTER(Id) failed, hrc=%Rhrc\n", pszWhat, hrc);
+        fRc = false;
+    }
+    else if (idTransfer != idExpectedTransfer)
+    {
+        RTTestIFailed("%s: transfer ID %RU32, expected %RU32\n", pszWhat, idTransfer, idExpectedTransfer);
+        fRc = false;
+    }
+
+    ClipboardTransferDirection_T enmDirection = ClipboardTransferDirection_Any;
+    hrc = ptrTransfer->COMGETTER(Direction)(&enmDirection);
+    if (FAILED(hrc))
+    {
+        RTTestIFailed("%s: IClipboardTransfer::COMGETTER(Direction) failed, hrc=%Rhrc\n", pszWhat, hrc);
+        fRc = false;
+    }
+    else if (enmDirection != enmExpectedDirection)
+    {
+        RTTestIFailed("%s: transfer direction %d, expected %d\n", pszWhat, enmDirection, enmExpectedDirection);
+        fRc = false;
+    }
+
+    ClipboardSource_T enmSource = ClipboardSource_Custom;
+    hrc = ptrTransfer->COMGETTER(Source)(&enmSource);
+    if (FAILED(hrc))
+    {
+        RTTestIFailed("%s: IClipboardTransfer::COMGETTER(Source) failed, hrc=%Rhrc\n", pszWhat, hrc);
+        fRc = false;
+    }
+    else if (enmSource != enmExpectedSource)
+    {
+        RTTestIFailed("%s: transfer source %d, expected %d\n", pszWhat, enmSource, enmExpectedSource);
+        fRc = false;
+    }
+
+    ClipboardTransferState_T enmTransferState = ClipboardTransferState_Removed;
+    hrc = ptrTransfer->COMGETTER(State)(&enmTransferState);
+    if (FAILED(hrc))
+    {
+        RTTestIFailed("%s: IClipboardTransfer::COMGETTER(State) failed, hrc=%Rhrc\n", pszWhat, hrc);
+        fRc = false;
+    }
+    else if (enmTransferState != enmExpectedState)
+    {
+        RTTestIFailed("%s: transfer state %d, expected %d\n", pszWhat, enmTransferState, enmExpectedState);
+        fRc = false;
+    }
+
+    ClipboardError_T enmTransferError = ClipboardError_OperationFailed;
+    hrc = ptrTransfer->COMGETTER(Error)(&enmTransferError);
+    if (FAILED(hrc))
+    {
+        RTTestIFailed("%s: IClipboardTransfer::COMGETTER(Error) failed, hrc=%Rhrc\n", pszWhat, hrc);
+        fRc = false;
+    }
+    else if (enmTransferError != enmExpectedError)
+    {
+        RTTestIFailed("%s: transfer error %d, expected %d\n", pszWhat, enmTransferError, enmExpectedError);
+        fRc = false;
+    }
+
+    return fRc;
+}
+#endif
 
 
 /**
@@ -1114,8 +1247,9 @@ static void tstHostClipboard(RTTEST hTest, IClipboard *pClipboard, IClipboardSet
             std::vector<BYTE> abSetData = tstBytesFromString(s_aHostClipboardSetData[i].pszData);
             char szWhat[128];
             RTStrPrintf(szWhat, sizeof(szWhat), "IHostClipboard SetData %s", s_aHostClipboardSetData[i].pszWhat);
-            if (tstHostClipboardSetDataAndKeepReadBack(pClipboard, ptrHostClipboard, s_aHostClipboardSetData[i].pszMimeType,
-                                                       abSetData, ClipboardSource_Host, strHostStateMimeType.c_str(),
+            if (tstHostClipboardSetDataAndKeepReadBack(pClipboard, ptrHostClipboard,
+                                                       s_aHostClipboardSetData[i].pszMimeType, abSetData,
+                                                       ClipboardSource_Host, strHostStateMimeType.c_str(),
                                                        abHostStateData, 3 /* cReads */, szWhat))
             {
                 fHaveLastHostClipboardSetData = true;
@@ -1507,18 +1641,21 @@ static void tstClipboardPublicSessionApi(RTTEST hTest, IClipboard *pClipboard, I
             RTTESTI_CHECK(tstByteArrayEquals(aWrittenBuffer, abSessionRawData));
 
             LONG64 i64DataRevision = 0;
-            ComPtr<IEvent> ptrDataEvent;
-            VBoxEventType_T enmDataEventType = VBoxEventType_Invalid;
-            fRc = tstClipboardWaitForAnyEvent(ptrObserverEventSource, ptrObserverListener, s_aBasicEventTypes,
-                                              RT_ELEMENTS(s_aBasicEventTypes), 1000 /* cMsTimeout */,
-                                              "session observer data", ptrDataEvent, &enmDataEventType);
-            RTTESTI_CHECK(fRc);
-            if (fRc)
             {
-                RTTESTI_CHECK(enmDataEventType == VBoxEventType_OnClipboardDataChanged);
-                if (enmDataEventType == VBoxEventType_OnClipboardDataChanged)
-                    RTTESTI_CHECK(tstClipboardCheckDataChangedEvent(ptrDataEvent, "session observer data event", idSessionA,
-                                                                    ClipboardAction_Copy, NULL /* pptrItem */, &i64DataRevision));
+                ComPtr<IEvent> ptrDataEvent;
+                VBoxEventType_T enmDataEventType = VBoxEventType_Invalid;
+                fRc = tstClipboardWaitForAnyEvent(ptrObserverEventSource, ptrObserverListener, s_aBasicEventTypes,
+                                                  RT_ELEMENTS(s_aBasicEventTypes), 1000 /* cMsTimeout */,
+                                                  "session observer data", ptrDataEvent, &enmDataEventType);
+                RTTESTI_CHECK(fRc);
+                if (fRc)
+                {
+                    RTTESTI_CHECK(enmDataEventType == VBoxEventType_OnClipboardDataChanged);
+                    if (enmDataEventType == VBoxEventType_OnClipboardDataChanged)
+                        RTTESTI_CHECK(tstClipboardCheckDataChangedEvent(ptrDataEvent, "session observer data event",
+                                                                        idSessionA, ClipboardAction_Copy,
+                                                                        NULL /* pptrItem */, &i64DataRevision));
+                }
             }
             if (i64FormatRevision > 0 && i64DataRevision > 0)
                 RTTESTI_CHECK_MSG(i64DataRevision > i64FormatRevision,
@@ -1824,16 +1961,23 @@ static void tstClipboardPublicSessionApi(RTTEST hTest, IClipboard *pClipboard, I
                                             ComSafeArrayAsInParam(aSessionAData), &enmWrittenSource,
                                             bstrWrittenMimeType.asOutParam(), ComSafeArrayAsOutParam(aWrittenBuffer));
             RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc), ("Session A WriteDataRaw failed, hrc=%Rhrc\n", hrc));
+            RTTESTI_CHECK(tstReadSessionDataRawEquals(ptrSessionA, "ExcludeOwnChanges committed state",
+                                                      ClipboardSource_Host, "text/plain;charset=utf-8", abSessionAData));
 
             ComPtr<IEvent> ptrObservedEvent;
             VBoxEventType_T enmObservedEventType = VBoxEventType_Invalid;
-            bool fRc = tstClipboardWaitForAnyEvent(ptrEventSourceB, ptrListenerB, s_aDataEventTypes,
-                                                   RT_ELEMENTS(s_aDataEventTypes), 1000 /* cMsTimeout */,
-                                                   "ExcludeOwnChanges observer", ptrObservedEvent, &enmObservedEventType);
+            bool const fRc = tstClipboardWaitForAnyEvent(ptrEventSourceB, ptrListenerB, s_aDataEventTypes,
+                                                         RT_ELEMENTS(s_aDataEventTypes), 1000 /* cMsTimeout */,
+                                                         "ExcludeOwnChanges observer", ptrObservedEvent,
+                                                         &enmObservedEventType);
             RTTESTI_CHECK(fRc);
             if (fRc)
-                RTTESTI_CHECK(tstClipboardCheckDataChangedEvent(ptrObservedEvent, "ExcludeOwnChanges observer data event",
-                                                                idSessionA, ClipboardAction_Copy, NULL /* pptrItem */));
+            {
+                RTTESTI_CHECK(tstClipboardCheckDataChangedEvent(ptrObservedEvent,
+                                                                "ExcludeOwnChanges observer data event",
+                                                                idSessionA, ClipboardAction_Copy,
+                                                                NULL /* pptrItem */));
+            }
             RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSourceA, ptrListenerA, 250 /* cMsTimeout */,
                                                     "ExcludeOwnChanges writer"));
         } while (0);
@@ -1885,15 +2029,18 @@ static void tstClipboardPublicSessionApi(RTTEST hTest, IClipboard *pClipboard, I
             hrc = ptrNoPayloadSession->COMGETTER(EventSource)(ptrNoPayloadEventSource.asOutParam());
             RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc), ("COMGETTER(EventSource)(no payload) failed, hrc=%Rhrc\n", hrc));
 
-            static VBoxEventType_T const s_aDataEventTypes[] =
+            static VBoxEventType_T const s_aPayloadEventTypes[] =
             {
-                VBoxEventType_OnClipboardDataChanged
+                VBoxEventType_OnClipboardDataChanged,
+                VBoxEventType_OnClipboardDataRequested
             };
-            hrc = tstRegisterClipboardListener(ptrPayloadEventSource, s_aDataEventTypes, RT_ELEMENTS(s_aDataEventTypes),
+            hrc = tstRegisterClipboardListener(ptrPayloadEventSource, s_aPayloadEventTypes,
+                                               RT_ELEMENTS(s_aPayloadEventTypes),
                                                ptrPayloadListener);
             RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc), ("RegisterListener(IncludePayload) failed, hrc=%Rhrc\n", hrc));
             fPayloadListenerRegistered = true;
-            hrc = tstRegisterClipboardListener(ptrNoPayloadEventSource, s_aDataEventTypes, RT_ELEMENTS(s_aDataEventTypes),
+            hrc = tstRegisterClipboardListener(ptrNoPayloadEventSource, s_aPayloadEventTypes,
+                                               RT_ELEMENTS(s_aPayloadEventTypes),
                                                ptrNoPayloadListener);
             RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc), ("RegisterListener(no payload) failed, hrc=%Rhrc\n", hrc));
             fNoPayloadListenerRegistered = true;
@@ -1912,37 +2059,98 @@ static void tstClipboardPublicSessionApi(RTTEST hTest, IClipboard *pClipboard, I
                                                  ComSafeArrayAsInParam(aPayloadData), &enmWrittenSource,
                                                  bstrWrittenMimeType.asOutParam(), ComSafeArrayAsOutParam(aWrittenBuffer));
             RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc), ("Payload writer WriteDataRaw failed, hrc=%Rhrc\n", hrc));
+            RTTESTI_CHECK(tstReadSessionDataRawEquals(ptrWriterSession, "IncludePayload committed state",
+                                                      ClipboardSource_Host, "text/plain;charset=utf-8", abPayloadData));
 
             ComPtr<IEvent> ptrPayloadEvent;
             VBoxEventType_T enmPayloadEventType = VBoxEventType_Invalid;
-            bool fRc = tstClipboardWaitForAnyEvent(ptrPayloadEventSource, ptrPayloadListener, s_aDataEventTypes,
-                                                   RT_ELEMENTS(s_aDataEventTypes), 1000 /* cMsTimeout */,
+            bool fRc = tstClipboardWaitForAnyEvent(ptrPayloadEventSource, ptrPayloadListener, s_aPayloadEventTypes,
+                                                   RT_ELEMENTS(s_aPayloadEventTypes), 1000 /* cMsTimeout */,
                                                    "IncludePayload listener", ptrPayloadEvent, &enmPayloadEventType);
             RTTESTI_CHECK(fRc);
             if (fRc)
             {
                 ComPtr<IClipboardItem> ptrPayloadItem;
-                RTTESTI_CHECK(tstClipboardCheckDataChangedEvent(ptrPayloadEvent, "IncludePayload data event", idWriterSession,
-                                                                ClipboardAction_Copy, &ptrPayloadItem));
+                RTTESTI_CHECK(tstClipboardCheckDataChangedEvent(ptrPayloadEvent, "IncludePayload data event",
+                                                                idWriterSession, ClipboardAction_Copy,
+                                                                &ptrPayloadItem));
                 RTTESTI_CHECK_MSG(!ptrPayloadItem.isNull(), ("IncludePayload data event did not include an item\n"));
                 if (ptrPayloadItem.isNotNull())
                     RTTESTI_CHECK(tstClipboardCheckItemPayload(ptrPayloadItem, "IncludePayload event item",
-                                                               ClipboardSource_Host, "text/plain;charset=utf-8", abPayloadData));
+                                                               ClipboardSource_Host, "text/plain;charset=utf-8",
+                                                               abPayloadData));
             }
 
             ComPtr<IEvent> ptrNoPayloadEvent;
             VBoxEventType_T enmNoPayloadEventType = VBoxEventType_Invalid;
-            fRc = tstClipboardWaitForAnyEvent(ptrNoPayloadEventSource, ptrNoPayloadListener, s_aDataEventTypes,
-                                              RT_ELEMENTS(s_aDataEventTypes), 1000 /* cMsTimeout */,
-                                              "No IncludePayload listener", ptrNoPayloadEvent, &enmNoPayloadEventType);
+            fRc = tstClipboardWaitForAnyEvent(ptrNoPayloadEventSource, ptrNoPayloadListener, s_aPayloadEventTypes,
+                                              RT_ELEMENTS(s_aPayloadEventTypes), 1000 /* cMsTimeout */,
+                                              "No IncludePayload listener", ptrNoPayloadEvent,
+                                              &enmNoPayloadEventType);
             RTTESTI_CHECK(fRc);
             if (fRc)
             {
                 ComPtr<IClipboardItem> ptrNoPayloadItem;
-                RTTESTI_CHECK(tstClipboardCheckDataChangedEvent(ptrNoPayloadEvent, "No IncludePayload data event",
-                                                                idWriterSession, ClipboardAction_Copy, &ptrNoPayloadItem));
+                RTTESTI_CHECK(tstClipboardCheckDataChangedEvent(ptrNoPayloadEvent,
+                                                                "No IncludePayload data event",
+                                                                idWriterSession, ClipboardAction_Copy,
+                                                                &ptrNoPayloadItem));
                 RTTESTI_CHECK_MSG(ptrNoPayloadItem.isNull(),
                                   ("No IncludePayload data event unexpectedly included an item\n"));
+            }
+
+            ComPtr<IInternalClipboardControl> ptrInternalClipboardControl(pClipboard);
+            RTTESTI_CHECK_MSG_BREAK(!ptrInternalClipboardControl.isNull(),
+                                    ("Query IInternalClipboardControl(IncludePayload) returned NULL\n"));
+            ULONG idRequest = 0;
+            hrc = ptrInternalClipboardControl->RequestData(Bstr("text/plain;charset=utf-8").raw(), &idRequest);
+            RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc),
+                                    ("IInternalClipboardControl::RequestData(IncludePayload) failed, hrc=%Rhrc\n", hrc));
+            RTTESTI_CHECK_MSG(idRequest != 0, ("IncludePayload request returned zero request ID\n"));
+
+            ComPtr<IEvent> ptrPayloadRequestEvent;
+            fRc = tstClipboardWaitForAnyEvent(ptrPayloadEventSource, ptrPayloadListener, s_aPayloadEventTypes,
+                                              RT_ELEMENTS(s_aPayloadEventTypes), 1000 /* cMsTimeout */,
+                                              "IncludePayload request listener", ptrPayloadRequestEvent,
+                                              &enmPayloadEventType);
+            RTTESTI_CHECK(fRc);
+            RTTESTI_CHECK(enmPayloadEventType == VBoxEventType_OnClipboardDataRequested);
+            if (fRc && enmPayloadEventType == VBoxEventType_OnClipboardDataRequested)
+            {
+                ComPtr<IClipboardDataRequestedEvent> ptrPayloadRequest = ptrPayloadRequestEvent;
+                RTTESTI_CHECK(!ptrPayloadRequest.isNull());
+                ComPtr<IClipboardItem> ptrPayloadRequestItem;
+                if (ptrPayloadRequest.isNotNull())
+                    hrc = ptrPayloadRequest->COMGETTER(Item)(ptrPayloadRequestItem.asOutParam());
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                  ("COMGETTER(Item)(IncludePayload request) failed, hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK_MSG(!ptrPayloadRequestItem.isNull(),
+                                  ("IncludePayload request event did not include an item\n"));
+                if (ptrPayloadRequestItem.isNotNull())
+                    RTTESTI_CHECK(tstClipboardCheckItemPayload(ptrPayloadRequestItem,
+                                                               "IncludePayload request item",
+                                                               ClipboardSource_Host,
+                                                               "text/plain;charset=utf-8", abPayloadData));
+            }
+
+            ComPtr<IEvent> ptrNoPayloadRequestEvent;
+            fRc = tstClipboardWaitForAnyEvent(ptrNoPayloadEventSource, ptrNoPayloadListener, s_aPayloadEventTypes,
+                                              RT_ELEMENTS(s_aPayloadEventTypes), 1000 /* cMsTimeout */,
+                                              "No IncludePayload request listener", ptrNoPayloadRequestEvent,
+                                              &enmNoPayloadEventType);
+            RTTESTI_CHECK(fRc);
+            RTTESTI_CHECK(enmNoPayloadEventType == VBoxEventType_OnClipboardDataRequested);
+            if (fRc && enmNoPayloadEventType == VBoxEventType_OnClipboardDataRequested)
+            {
+                ComPtr<IClipboardDataRequestedEvent> ptrNoPayloadRequest = ptrNoPayloadRequestEvent;
+                RTTESTI_CHECK(!ptrNoPayloadRequest.isNull());
+                ComPtr<IClipboardItem> ptrNoPayloadRequestItem;
+                if (ptrNoPayloadRequest.isNotNull())
+                    hrc = ptrNoPayloadRequest->COMGETTER(Item)(ptrNoPayloadRequestItem.asOutParam());
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                  ("COMGETTER(Item)(no payload request) failed, hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK_MSG(ptrNoPayloadRequestItem.isNull(),
+                                  ("No IncludePayload request event unexpectedly included an item\n"));
             }
         } while (0);
 
@@ -2083,6 +2291,7 @@ static void tstClipboardPublicApi(RTTEST hTest)
     HRESULT hrc = S_OK;
     bool fMachineRegistered = false;
     bool fMachineLocked = false;
+    bool fMachinePoweredOn = false;
     bool fListenerRegistered = false;
     ComPtr<IVirtualBoxClient> ptrVirtualBoxClient;
     ComPtr<IVirtualBox> ptrVirtualBox;
@@ -2094,6 +2303,14 @@ static void tstClipboardPublicApi(RTTEST hTest)
     ComPtr<IEventListener> ptrListener;
     ComPtr<IClipboardSession> ptrSurvivingSession;
     ULONG idSurvivingSession = VBOX_SHCL_MAIN_CLIENT_NONE;
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    char szFile1[RTPATH_MAX] = "";
+    char szDir1[RTPATH_MAX] = "";
+    char szDirFile1[RTPATH_MAX] = "";
+    bool fFile1Created = false;
+    bool fDir1Created = false;
+    bool fDirFile1Created = false;
+#endif
 
     do
     {
@@ -2181,6 +2398,7 @@ static void tstClipboardPublicApi(RTTEST hTest)
             break;
         }
         fMachineLocked = true;
+        fMachinePoweredOn = true;
 
         /* Resolve the live console and clipboard objects under test. */
         hrc = ptrSession->COMGETTER(Console)(ptrConsole.asOutParam());
@@ -2204,8 +2422,8 @@ static void tstClipboardPublicApi(RTTEST hTest)
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
         ComPtr<IClipboardTransferManager> ptrTransfers;
         hrc = ptrClipboard->COMGETTER(Transfers)(ptrTransfers.asOutParam());
-        RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("COMGETTER(Transfers) failed, hrc=%Rhrc\n", hrc));
-        RTTESTI_CHECK(!ptrTransfers.isNull());
+        RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc), ("COMGETTER(Transfers) failed, hrc=%Rhrc\n", hrc));
+        RTTESTI_CHECK_MSG_BREAK(!ptrTransfers.isNull(), ("COMGETTER(Transfers) returned NULL\n"));
 
         SafeIfaceArray<IClipboardTransfer> aTransfers;
         hrc = ptrTransfers->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
@@ -2216,25 +2434,81 @@ static void tstClipboardPublicApi(RTTEST hTest)
         RTTESTI_CHECK_MSG(hrc == E_INVALIDARG, ("GetTransfers(invalid direction) returned hrc=%Rhrc, expected E_INVALIDARG\n", hrc));
 
         char szTmpDir[RTPATH_MAX];
-        char szFile1[RTPATH_MAX];
         vrc = RTPathTemp(szTmpDir, sizeof(szTmpDir));
         RTTESTI_CHECK_MSG_BREAK(RT_SUCCESS(vrc), ("RTPathTemp failed, vrc=%Rrc\n", vrc));
-        RTStrPrintf(szFile1, sizeof(szFile1), "%s/tstClipboard-%RU64-1.txt", szTmpDir, RTTimeNanoTS());
+        char szTmpName[64];
+        RTStrPrintf(szTmpName, sizeof(szTmpName), "tstClipboard-%RU64-1.txt", RTTimeNanoTS());
+        vrc = RTPathJoin(szFile1, sizeof(szFile1), szTmpDir, szTmpName);
+        RTTESTI_CHECK_MSG_BREAK(RT_SUCCESS(vrc), ("RTPathJoin(%s, %s) failed, vrc=%Rrc\n", szTmpDir, szTmpName, vrc));
 
         static const char s_szFile1Data[] = "clipboard transfer data one";
         RTFILE hFile = NIL_RTFILE;
         vrc = RTFileOpen(&hFile, szFile1, RTFILE_O_CREATE_REPLACE | RTFILE_O_WRITE | RTFILE_O_DENY_NONE);
         RTTESTI_CHECK_MSG_BREAK(RT_SUCCESS(vrc), ("RTFileOpen(%s) failed, vrc=%Rrc\n", szFile1, vrc));
+        fFile1Created = true;
         vrc = RTFileWrite(hFile, s_szFile1Data, sizeof(s_szFile1Data) - 1, NULL /* pcbWritten */);
         RTTESTI_CHECK_MSG(RT_SUCCESS(vrc), ("RTFileWrite(%s) failed, vrc=%Rrc\n", szFile1, vrc));
         RTFileClose(hFile);
 
+        ComPtr<IEventSource> ptrMainTransferEventSource;
+        hrc = ptrClipboard->COMGETTER(EventSource)(ptrMainTransferEventSource.asOutParam());
+        RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc) && !ptrMainTransferEventSource.isNull(),
+                                ("COMGETTER(EventSource for Create) failed, hrc=%Rhrc\n", hrc));
+        ComPtr<IEventListener> ptrMainTransferListener;
+        static VBoxEventType_T const s_aMainTransferEventTypes[] =
+        {
+            VBoxEventType_OnClipboardTransfer
+        };
+        hrc = tstRegisterClipboardListener(ptrMainTransferEventSource, s_aMainTransferEventTypes,
+                                           RT_ELEMENTS(s_aMainTransferEventTypes), ptrMainTransferListener);
+        RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc) && !ptrMainTransferListener.isNull(),
+                                ("RegisterListener(Create) failed, hrc=%Rhrc\n", hrc));
 
         ComPtr<IClipboardTransfer> ptrTransfer;
-        hrc = ptrTransfers->CreateTransfer(ClipboardTransferDirection_ToGuest, ClipboardSource_Host,
-                                           ClipboardAction_Copy, ptrTransfer.asOutParam());
-        RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc), ("CreateTransfer(ToGuest, Host, Copy) failed, hrc=%Rhrc\n", hrc));
-        RTTESTI_CHECK_MSG_BREAK(!ptrTransfer.isNull(), ("CreateTransfer(ToGuest, Host, Copy) returned NULL transfer\n"));
+        hrc = ptrTransfers->Create(ClipboardTransferDirection_ToGuest, ClipboardSource_Host,
+                                   ClipboardAction_Copy, ptrTransfer.asOutParam());
+        RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc), ("Create(ToGuest, Host, Copy) failed, hrc=%Rhrc\n", hrc));
+        RTTESTI_CHECK_MSG_BREAK(!ptrTransfer.isNull(), ("Create(ToGuest, Host, Copy) returned NULL transfer\n"));
+
+        ULONG idMainTransfer = 0;
+        hrc = ptrTransfer->COMGETTER(Id)(&idMainTransfer);
+        RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc), ("COMGETTER(Id Main-created transfer) failed, hrc=%Rhrc\n", hrc));
+
+        ComPtr<IEvent> ptrMainAddedEvent;
+        VBoxEventType_T enmMainAddedEventType = VBoxEventType_Invalid;
+        bool fMainTransferEvent = tstClipboardWaitForAnyEvent(ptrMainTransferEventSource, ptrMainTransferListener,
+                                                              s_aMainTransferEventTypes,
+                                                              RT_ELEMENTS(s_aMainTransferEventTypes),
+                                                              1000 /* cMsTimeout */, "Main-created transfer added",
+                                                              ptrMainAddedEvent, &enmMainAddedEventType);
+        RTTESTI_CHECK(fMainTransferEvent);
+        if (fMainTransferEvent)
+        {
+            ComPtr<IClipboardTransfer> ptrAddedTransfer;
+            RTTESTI_CHECK(tstClipboardCheckTransferEvent(ptrMainAddedEvent, "Main-created transfer added",
+                                                         ClipboardTransferState_Added,
+                                                         ClipboardTransferDirection_ToGuest,
+                                                         ClipboardSource_Host, idMainTransfer, ptrAddedTransfer));
+            RTTESTI_CHECK(ptrAddedTransfer == ptrTransfer);
+        }
+
+        aTransfers.setNull();
+        hrc = ptrTransfers->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+        RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetTransfers(Any after Create) failed, hrc=%Rhrc\n", hrc));
+        RTTESTI_CHECK(aTransfers.size() == 1);
+        if (aTransfers.size() == 1)
+            RTTESTI_CHECK(aTransfers[0] == ptrTransfer);
+        SafeIfaceArray<IClipboardTransfer> aGuestTransfers;
+        hrc = ptrTransfers->GetTransfers(ClipboardTransferDirection_ToGuest, 0,
+                                         ComSafeArrayAsOutParam(aGuestTransfers));
+        RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetTransfers(ToGuest after Create) failed, hrc=%Rhrc\n", hrc));
+        RTTESTI_CHECK(aGuestTransfers.size() == 1);
+        SafeIfaceArray<IClipboardTransfer> aHostTransfers;
+        hrc = ptrTransfers->GetTransfers(ClipboardTransferDirection_ToHost, 0,
+                                         ComSafeArrayAsOutParam(aHostTransfers));
+        RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetTransfers(ToHost after Create) failed, hrc=%Rhrc\n", hrc));
+        RTTESTI_CHECK(aHostTransfers.size() == 0);
+
         SafeArray<BSTR> aSourcePaths;
         hrc = ptrTransfer->GetSourcePaths(ComSafeArrayAsOutParam(aSourcePaths));
         RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetSourcePaths initial failed, hrc=%Rhrc\n", hrc));
@@ -2243,7 +2517,7 @@ static void tstClipboardPublicApi(RTTEST hTest)
         SafeArray<IN_BSTR> aNewSourcePaths;
         RTTESTI_CHECK(aNewSourcePaths.push_back(Bstr(szFile1).raw()));
         hrc = ptrTransfer->SetSourcePaths(ComSafeArrayAsInParam(aNewSourcePaths));
-        RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("SetSourcePaths failed, hrc=%Rhrc\n", hrc));
+        RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc), ("SetSourcePaths failed, hrc=%Rhrc\n", hrc));
         aSourcePaths.setNull();
         hrc = ptrTransfer->GetSourcePaths(ComSafeArrayAsOutParam(aSourcePaths));
         RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetSourcePaths after set failed, hrc=%Rhrc\n", hrc));
@@ -2251,30 +2525,38 @@ static void tstClipboardPublicApi(RTTEST hTest)
         if (aSourcePaths.size() == 1)
             RTTESTI_CHECK(!RTUtf16Cmp(aSourcePaths[0], Bstr(szFile1).raw()));
 
-        hrc = ptrTransfers->Add(ptrTransfer);
-        RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransferManager::Add(source-path transfer) failed, hrc=%Rhrc\n", hrc));
-
         hrc = ptrTransfers->Pause(ptrTransfer);
         RTTESTI_CHECK_MSG(hrc == E_NOTIMPL, ("IClipboardTransferManager::Pause returned hrc=%Rhrc, expected E_NOTIMPL\n", hrc));
         hrc = ptrTransfers->Resume(ptrTransfer);
         RTTESTI_CHECK_MSG(hrc == E_NOTIMPL, ("IClipboardTransferManager::Resume returned hrc=%Rhrc, expected E_NOTIMPL\n", hrc));
+        hrc = ptrTransfers->Approve(ptrTransfer, 0 /* aFlags */);
+        RTTESTI_CHECK_MSG(hrc == E_NOTIMPL, ("IClipboardTransferManager::Approve returned hrc=%Rhrc, expected E_NOTIMPL\n", hrc));
+        hrc = ptrTransfers->Deny(ptrTransfer, Bstr("").raw());
+        RTTESTI_CHECK_MSG(hrc == E_NOTIMPL, ("IClipboardTransferManager::Deny returned hrc=%Rhrc, expected E_NOTIMPL\n", hrc));
+        hrc = ptrTransfers->Respond(ptrTransfer, ClipboardTransferInteraction_Approval, Bstr("").raw(),
+                                    ClipboardTransferResponse_Accept, Bstr("").raw(), 0 /* aFlags */);
+        RTTESTI_CHECK_MSG(hrc == E_NOTIMPL, ("IClipboardTransferManager::Respond returned hrc=%Rhrc, expected E_NOTIMPL\n", hrc));
 
         aTransfers.setNull();
         hrc = ptrTransfers->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
         RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetTransfers(Any after SourcePaths) failed, hrc=%Rhrc\n", hrc));
         RTTESTI_CHECK(aTransfers.size() == 1);
-        SafeIfaceArray<IClipboardTransfer> aGuestTransfers;
+        if (aTransfers.size() == 1)
+            RTTESTI_CHECK(aTransfers[0] == ptrTransfer);
+        aGuestTransfers.setNull();
         hrc = ptrTransfers->GetTransfers(ClipboardTransferDirection_ToGuest, 0, ComSafeArrayAsOutParam(aGuestTransfers));
         RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetTransfers(ToGuest after SourcePaths) failed, hrc=%Rhrc\n", hrc));
         RTTESTI_CHECK(aGuestTransfers.size() == 1);
-        SafeIfaceArray<IClipboardTransfer> aHostTransfers;
+        aHostTransfers.setNull();
         hrc = ptrTransfers->GetTransfers(ClipboardTransferDirection_ToHost, 0, ComSafeArrayAsOutParam(aHostTransfers));
         RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetTransfers(ToHost after SourcePaths) failed, hrc=%Rhrc\n", hrc));
         RTTESTI_CHECK(aHostTransfers.size() == 0);
-        if (aTransfers.size() == 1)
+        RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrMainTransferEventSource, ptrMainTransferListener,
+                                                100 /* cMsTimeout */, "Main-created transfer source-path update"));
+        if (ptrTransfer.isNotNull())
         {
             SafeIfaceArray<IClipboardTransferFsObjInfo> aRootNodes;
-            hrc = aTransfers[0]->Roots(ComSafeArrayAsOutParam(aRootNodes));
+            hrc = ptrTransfer->Roots(ComSafeArrayAsOutParam(aRootNodes));
             RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransfer::Roots failed, hrc=%Rhrc\n", hrc));
             RTTESTI_CHECK(aRootNodes.size() == 1);
             if (aRootNodes.size() == 1)
@@ -2286,26 +2568,29 @@ static void tstClipboardPublicApi(RTTEST hTest)
             }
 
             ComPtr<IClipboardTransferFsObjInfo> ptrInvalidNode;
-            hrc = aTransfers[0]->Query(Bstr("../host-file").raw(), ptrInvalidNode.asOutParam());
+            hrc = ptrTransfer->Query(Bstr("../host-file").raw(), ptrInvalidNode.asOutParam());
             RTTESTI_CHECK_MSG(FAILED(hrc), ("IClipboardTransfer::Query('../host-file') unexpectedly succeeded\n"));
+            hrc = ptrTransfer->Query(Bstr("host-file/").raw(), ptrInvalidNode.asOutParam());
+            RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                              ("IClipboardTransfer::Query('host-file/') returned hrc=%Rhrc\n", hrc));
             SafeIfaceArray<IClipboardTransferFsObjInfo> aInvalidNodes;
-            hrc = aTransfers[0]->List(Bstr("/absolute").raw(), ClipboardTransferListFlag_None, ComSafeArrayAsOutParam(aInvalidNodes));
+            hrc = ptrTransfer->List(Bstr("/absolute").raw(), ClipboardTransferListFlag_None, ComSafeArrayAsOutParam(aInvalidNodes));
             RTTESTI_CHECK_MSG(FAILED(hrc), ("IClipboardTransfer::List('/absolute') unexpectedly succeeded\n"));
 
             ComPtr<IClipboardTransferFile> ptrUnsupportedFile;
-            hrc = aTransfers[0]->OpenFile(Bstr(RTPathFilename(szFile1)).raw(), FileAccessMode_ReadWrite,
-                                          FileOpenAction_OpenExisting, FileSharingMode_Read, 0 /* creationMode */,
-                                          ptrUnsupportedFile.asOutParam());
+            hrc = ptrTransfer->OpenFile(Bstr(RTPathFilename(szFile1)).raw(), FileAccessMode_ReadWrite,
+                                        FileOpenAction_OpenExisting, FileSharingMode_Read, 0 /* creationMode */,
+                                        ptrUnsupportedFile.asOutParam());
             RTTESTI_CHECK_MSG(FAILED(hrc), ("IClipboardTransfer::OpenFile(ReadWrite) unexpectedly succeeded\n"));
-            hrc = aTransfers[0]->OpenFile(Bstr(RTPathFilename(szFile1)).raw(), FileAccessMode_ReadOnly,
-                                          FileOpenAction_CreateOrReplace, FileSharingMode_Read, 0 /* creationMode */,
-                                          ptrUnsupportedFile.asOutParam());
+            hrc = ptrTransfer->OpenFile(Bstr(RTPathFilename(szFile1)).raw(), FileAccessMode_ReadOnly,
+                                        FileOpenAction_CreateOrReplace, FileSharingMode_Read, 0 /* creationMode */,
+                                        ptrUnsupportedFile.asOutParam());
             RTTESTI_CHECK_MSG(FAILED(hrc), ("IClipboardTransfer::OpenFile(CreateOrReplace) unexpectedly succeeded\n"));
 
             ComPtr<IClipboardTransferFile> ptrFile;
-            hrc = aTransfers[0]->OpenFile(Bstr(RTPathFilename(szFile1)).raw(), FileAccessMode_ReadOnly,
-                                          FileOpenAction_OpenExisting, FileSharingMode_Read, 0 /* creationMode */,
-                                          ptrFile.asOutParam());
+            hrc = ptrTransfer->OpenFile(Bstr(RTPathFilename(szFile1)).raw(), FileAccessMode_ReadOnly,
+                                        FileOpenAction_OpenExisting, FileSharingMode_Read, 0 /* creationMode */,
+                                        ptrFile.asOutParam());
             RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransfer::OpenFile failed, hrc=%Rhrc\n", hrc));
             if (SUCCEEDED(hrc) && ptrFile.isNotNull())
             {
@@ -2327,20 +2612,32 @@ static void tstClipboardPublicApi(RTTEST hTest)
                 hrc = ptrFile->Write(ComSafeArrayAsInParam(aWriteData), 0 /* timeoutMS */, &cbWritten);
                 RTTESTI_CHECK_MSG(FAILED(hrc), ("IClipboardTransferFile::Write unexpectedly succeeded\n"));
 
+                SafeArray<BYTE> aOversizedFileData;
+                hrc = ptrFile->Read(SHCL_TRANSFER_DEFAULT_MAX_CHUNK_SIZE + 1, 0 /* timeoutMS */,
+                                    ComSafeArrayAsOutParam(aOversizedFileData));
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("IClipboardTransferFile::Read(oversized) returned hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(aOversizedFileData.size() == 0);
+
                 SafeArray<BYTE> aFileData;
                 hrc = ptrFile->Read(sizeof(s_szFile1Data) - 1, 0 /* timeoutMS */, ComSafeArrayAsOutParam(aFileData));
                 RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransferFile::Read failed, hrc=%Rhrc\n", hrc));
                 RTTESTI_CHECK(aFileData.size() == sizeof(s_szFile1Data) - 1);
                 if (aFileData.size() == sizeof(s_szFile1Data) - 1)
                     RTTESTI_CHECK(!memcmp(aFileData.raw(), s_szFile1Data, sizeof(s_szFile1Data) - 1));
+                LONG64 offNew = -1;
+                hrc = ptrFile->Seek(INT64_MAX, FileSeekOrigin_Current, &offNew);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("IClipboardTransferFile::Seek(overflow) returned hrc=%Rhrc\n", hrc));
                 hrc = ptrFile->Close();
                 RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransferFile::Close failed, hrc=%Rhrc\n", hrc));
             }
 
             ComPtr<IClipboardTransferData> ptrTransferData;
-            hrc = aTransfers[0]->COMGETTER(Data)(ptrTransferData.asOutParam());
-            RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransfer::COMGETTER(Data) failed, hrc=%Rhrc\n", hrc));
-            RTTESTI_CHECK(!ptrTransferData.isNull());
+            hrc = ptrTransfer->COMGETTER(Data)(ptrTransferData.asOutParam());
+            RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc), ("IClipboardTransfer::COMGETTER(Data) failed, hrc=%Rhrc\n", hrc));
+            RTTESTI_CHECK_MSG_BREAK(!ptrTransferData.isNull(),
+                                    ("IClipboardTransfer::COMGETTER(Data) returned NULL\n"));
 
             LONG64 cRoots = 0;
             hrc = ptrTransferData->Open(ClipboardTransferDataType_RootList, Bstr("").raw(), Bstr("").raw(),
@@ -2368,15 +2665,27 @@ static void tstClipboardPublicApi(RTTEST hTest)
             RTTESTI_CHECK_MSG(hrc == E_INVALIDARG, ("IClipboardTransferData::Open(List '/absolute') returned hrc=%Rhrc\n", hrc));
             hrc = ptrTransferData->Open(ClipboardTransferDataType_Object, Bstr("dir\\file").raw(), Bstr("").raw(),
                                         SHCL_OBJ_CF_ACCESS_READ | SHCL_OBJ_CF_ACCESS_DENYWRITE, &hInvalid);
-            RTTESTI_CHECK_MSG(hrc == E_INVALIDARG, ("IClipboardTransferData::Open(Object 'dir\\file') returned hrc=%Rhrc\n", hrc));
+            RTTESTI_CHECK_MSG(FAILED(hrc), ("IClipboardTransferData::Open(Object 'dir\\file') unexpectedly succeeded\n"));
             hrc = ptrTransferData->Open(ClipboardTransferDataType_Object, Bstr("C:file").raw(), Bstr("").raw(),
                                         SHCL_OBJ_CF_ACCESS_READ | SHCL_OBJ_CF_ACCESS_DENYWRITE, &hInvalid);
-            RTTESTI_CHECK_MSG(hrc == E_INVALIDARG, ("IClipboardTransferData::Open(Object 'C:file') returned hrc=%Rhrc\n", hrc));
+            RTTESTI_CHECK_MSG(FAILED(hrc), ("IClipboardTransferData::Open(Object 'C:file') unexpectedly succeeded\n"));
 
             LONG64 hObj = 0;
             hrc = ptrTransferData->Open(ClipboardTransferDataType_Object, bstrRootName.raw(), Bstr("").raw(),
                                         SHCL_OBJ_CF_ACCESS_READ | SHCL_OBJ_CF_ACCESS_DENYWRITE, &hObj);
             RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransferData::Open(Object) failed, hrc=%Rhrc\n", hrc));
+            SafeArray<BYTE> aOversizedObjData;
+            Bstr bstrOversizedObjName;
+            ULONG fOversizedObjInfo = 0;
+            SafeArray<BYTE> aOversizedObjInfo;
+            hrc = ptrTransferData->Read(ClipboardTransferDataType_Object, hObj,
+                                        SHCL_TRANSFER_DEFAULT_MAX_CHUNK_SIZE + 1, 0 /* aFlags */,
+                                        bstrOversizedObjName.asOutParam(), &fOversizedObjInfo,
+                                        ComSafeArrayAsOutParam(aOversizedObjInfo),
+                                        ComSafeArrayAsOutParam(aOversizedObjData));
+            RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                              ("IClipboardTransferData::Read(Object oversized) returned hrc=%Rhrc\n", hrc));
+            RTTESTI_CHECK(aOversizedObjData.size() == 0);
             SafeArray<BYTE> aObjData;
             Bstr bstrObjName;
             ULONG fObjInfo = 0;
@@ -2398,15 +2707,19 @@ static void tstClipboardPublicApi(RTTEST hTest)
             RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransferData::Close(Object) failed, hrc=%Rhrc\n", hrc));
         }
 
-        char szDir1[RTPATH_MAX];
-        char szDirFile1[RTPATH_MAX];
-        RTStrPrintf(szDir1, sizeof(szDir1), "%s/tstClipboard-%RU64-dir", szTmpDir, RTTimeNanoTS());
+        RTStrPrintf(szTmpName, sizeof(szTmpName), "tstClipboard-%RU64-dir", RTTimeNanoTS());
+        vrc = RTPathJoin(szDir1, sizeof(szDir1), szTmpDir, szTmpName);
+        RTTESTI_CHECK_MSG_BREAK(RT_SUCCESS(vrc), ("RTPathJoin(%s, %s) failed, vrc=%Rrc\n", szTmpDir, szTmpName, vrc));
         vrc = RTDirCreate(szDir1, 0700 /* fMode */, 0 /* fCreate */);
         RTTESTI_CHECK_MSG_BREAK(RT_SUCCESS(vrc), ("RTDirCreate(%s) failed, vrc=%Rrc\n", szDir1, vrc));
-        RTStrPrintf(szDirFile1, sizeof(szDirFile1), "%s/tstClipboard-list-entry.txt", szDir1);
+        fDir1Created = true;
+        vrc = RTPathJoin(szDirFile1, sizeof(szDirFile1), szDir1, "tstClipboard-list-entry.txt");
+        RTTESTI_CHECK_MSG_BREAK(RT_SUCCESS(vrc), ("RTPathJoin(%s, tstClipboard-list-entry.txt) failed, vrc=%Rrc\n",
+                                                 szDir1, vrc));
         hFile = NIL_RTFILE;
         vrc = RTFileOpen(&hFile, szDirFile1, RTFILE_O_CREATE_REPLACE | RTFILE_O_WRITE | RTFILE_O_DENY_NONE);
         RTTESTI_CHECK_MSG_BREAK(RT_SUCCESS(vrc), ("RTFileOpen(%s) failed, vrc=%Rrc\n", szDirFile1, vrc));
+        fDirFile1Created = true;
         static const char s_szDirFile1Data[] = "clipboard transfer list data";
         vrc = RTFileWrite(hFile, s_szDirFile1Data, sizeof(s_szDirFile1Data) - 1, NULL /* pcbWritten */);
         RTTESTI_CHECK_MSG(RT_SUCCESS(vrc), ("RTFileWrite(%s) failed, vrc=%Rrc\n", szDirFile1, vrc));
@@ -2415,7 +2728,7 @@ static void tstClipboardPublicApi(RTTEST hTest)
         SafeArray<IN_BSTR> aDirSourcePaths;
         RTTESTI_CHECK(aDirSourcePaths.push_back(Bstr(szDir1).raw()));
         hrc = ptrTransfer->SetSourcePaths(ComSafeArrayAsInParam(aDirSourcePaths));
-        RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("SetSourcePaths directory failed, hrc=%Rhrc\n", hrc));
+        RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc), ("SetSourcePaths directory failed, hrc=%Rhrc\n", hrc));
         aSourcePaths.setNull();
         hrc = ptrTransfer->GetSourcePaths(ComSafeArrayAsOutParam(aSourcePaths));
         RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetSourcePaths directory failed, hrc=%Rhrc\n", hrc));
@@ -2427,24 +2740,28 @@ static void tstClipboardPublicApi(RTTEST hTest)
         RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetTransfers(Any after directory SourcePaths) failed, hrc=%Rhrc\n", hrc));
         RTTESTI_CHECK(aTransfers.size() == 1);
         if (aTransfers.size() == 1)
+            RTTESTI_CHECK(aTransfers[0] == ptrTransfer);
+        RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrMainTransferEventSource, ptrMainTransferListener,
+                                                100 /* cMsTimeout */, "Main-created transfer directory update"));
+        if (ptrTransfer.isNotNull())
         {
             SafeIfaceArray<IClipboardTransferFsObjInfo> aDirNodes;
-            hrc = aTransfers[0]->List(Bstr("").raw(), ClipboardTransferListFlag_None, ComSafeArrayAsOutParam(aDirNodes));
+            hrc = ptrTransfer->List(Bstr("").raw(), ClipboardTransferListFlag_None, ComSafeArrayAsOutParam(aDirNodes));
             RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransfer::List(recursive) failed, hrc=%Rhrc\n", hrc));
             RTTESTI_CHECK(aDirNodes.size() == 2);
             SafeIfaceArray<IClipboardTransferFsObjInfo> aDirRootOnly;
-            hrc = aTransfers[0]->List(Bstr("").raw(), ClipboardTransferListFlag_NoRecursion, ComSafeArrayAsOutParam(aDirRootOnly));
+            hrc = ptrTransfer->List(Bstr("").raw(), ClipboardTransferListFlag_NoRecursion, ComSafeArrayAsOutParam(aDirRootOnly));
             RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransfer::List(NoRecursion) failed, hrc=%Rhrc\n", hrc));
             RTTESTI_CHECK(aDirRootOnly.size() == 1);
 
             ComPtr<IClipboardTransferDirectory> ptrInvalidDirectory;
-            hrc = aTransfers[0]->OpenDirectory(Bstr("").raw(), ClipboardTransferListFlag_NoRecursion,
-                                               ptrInvalidDirectory.asOutParam());
+            hrc = ptrTransfer->OpenDirectory(Bstr("").raw(), ClipboardTransferListFlag_NoRecursion,
+                                             ptrInvalidDirectory.asOutParam());
             RTTESTI_CHECK_MSG(FAILED(hrc), ("IClipboardTransfer::OpenDirectory(empty path) unexpectedly succeeded\n"));
 
             ComPtr<IClipboardTransferDirectory> ptrDirectory;
-            hrc = aTransfers[0]->OpenDirectory(Bstr(RTPathFilename(szDir1)).raw(), ClipboardTransferListFlag_NoRecursion,
-                                               ptrDirectory.asOutParam());
+            hrc = ptrTransfer->OpenDirectory(Bstr(RTPathFilename(szDir1)).raw(), ClipboardTransferListFlag_NoRecursion,
+                                             ptrDirectory.asOutParam());
             RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransfer::OpenDirectory failed, hrc=%Rhrc\n", hrc));
             if (SUCCEEDED(hrc) && ptrDirectory.isNotNull())
             {
@@ -2454,6 +2771,18 @@ static void tstClipboardPublicApi(RTTEST hTest)
                 RTTESTI_CHECK(aChildren.size() == 1);
                 hrc = ptrDirectory->Rewind();
                 RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransferDirectory::Rewind failed, hrc=%Rhrc\n", hrc));
+                SafeIfaceArray<IClipboardTransferFsObjInfo> aRootAndChildren;
+                hrc = ptrDirectory->ListEx(16,
+                                           ClipboardTransferListFlag_NoRecursion
+                                         | ClipboardTransferListFlag_IncludeRoot,
+                                           ComSafeArrayAsOutParam(aRootAndChildren));
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                  ("IClipboardTransferDirectory::ListEx(IncludeRoot, NoRecursion) failed, hrc=%Rhrc\n",
+                                   hrc));
+                RTTESTI_CHECK(aRootAndChildren.size() == 2);
+                hrc = ptrDirectory->Rewind();
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                  ("IClipboardTransferDirectory::Rewind after IncludeRoot failed, hrc=%Rhrc\n", hrc));
                 ComPtr<IFsObjInfo> ptrChild;
                 hrc = ptrDirectory->Read(ptrChild.asOutParam());
                 RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransferDirectory::Read after rewind failed, hrc=%Rhrc\n", hrc));
@@ -2463,9 +2792,11 @@ static void tstClipboardPublicApi(RTTEST hTest)
             }
 
             ComPtr<IClipboardTransferData> ptrTransferData;
-            hrc = aTransfers[0]->COMGETTER(Data)(ptrTransferData.asOutParam());
-            RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransfer::COMGETTER(Data directory) failed, hrc=%Rhrc\n", hrc));
-            RTTESTI_CHECK(!ptrTransferData.isNull());
+            hrc = ptrTransfer->COMGETTER(Data)(ptrTransferData.asOutParam());
+            RTTESTI_CHECK_MSG_BREAK(SUCCEEDED(hrc),
+                                    ("IClipboardTransfer::COMGETTER(Data directory) failed, hrc=%Rhrc\n", hrc));
+            RTTESTI_CHECK_MSG_BREAK(!ptrTransferData.isNull(),
+                                    ("IClipboardTransfer::COMGETTER(Data directory) returned NULL\n"));
 
             LONG64 cRoots = 0;
             hrc = ptrTransferData->Open(ClipboardTransferDataType_RootList, Bstr("").raw(), Bstr("").raw(),
@@ -2502,6 +2833,17 @@ static void tstClipboardPublicApi(RTTEST hTest)
             RTTESTI_CHECK(aListInfo.size() == sizeof(SHCLFSOBJINFO));
 
             ULONG cbListWritten = 0;
+            hrc = ptrTransferData->Write(ClipboardTransferDataType_List, hList, Bstr("invalid-none").raw(),
+                                         VBOX_SHCL_INFO_F_NONE, ComSafeArrayAsInParam(aListInfo),
+                                         ComSafeArrayAsInParam(aListData), 0 /* aFlags */, &cbListWritten);
+            RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                              ("IClipboardTransferData::Write(List mismatched NONE info) returned hrc=%Rhrc\n", hrc));
+            SafeArray<BYTE> aEmptyListInfo;
+            hrc = ptrTransferData->Write(ClipboardTransferDataType_List, hList, Bstr("invalid-fs-info").raw(),
+                                         VBOX_SHCL_INFO_F_FSOBJINFO, ComSafeArrayAsInParam(aEmptyListInfo),
+                                         ComSafeArrayAsInParam(aListData), 0 /* aFlags */, &cbListWritten);
+            RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                              ("IClipboardTransferData::Write(List missing FS info) returned hrc=%Rhrc\n", hrc));
             hrc = ptrTransferData->Write(ClipboardTransferDataType_List, hList, Bstr("new-entry").raw(),
                                          VBOX_SHCL_INFO_F_FSOBJINFO, ComSafeArrayAsInParam(aListInfo),
                                          ComSafeArrayAsInParam(aListData), 0 /* aFlags */, &cbListWritten);
@@ -2514,23 +2856,539 @@ static void tstClipboardPublicApi(RTTEST hTest)
 
         hrc = ptrTransfers->Remove(ptrTransfer);
         RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IClipboardTransferManager::Remove(source-path transfer) failed, hrc=%Rhrc\n", hrc));
+        ComPtr<IEvent> ptrMainRemovedEvent;
+        VBoxEventType_T enmMainRemovedEventType = VBoxEventType_Invalid;
+        fMainTransferEvent = tstClipboardWaitForAnyEvent(ptrMainTransferEventSource, ptrMainTransferListener,
+                                                         s_aMainTransferEventTypes,
+                                                         RT_ELEMENTS(s_aMainTransferEventTypes),
+                                                         1000 /* cMsTimeout */, "Main-created transfer removed",
+                                                         ptrMainRemovedEvent, &enmMainRemovedEventType);
+        RTTESTI_CHECK(fMainTransferEvent);
+        if (fMainTransferEvent)
+        {
+            ComPtr<IClipboardTransfer> ptrRemovedTransfer;
+            RTTESTI_CHECK(tstClipboardCheckTransferEvent(ptrMainRemovedEvent, "Main-created transfer removed",
+                                                         ClipboardTransferState_Removed,
+                                                         ClipboardTransferDirection_ToGuest,
+                                                         ClipboardSource_Host, idMainTransfer, ptrRemovedTransfer));
+            RTTESTI_CHECK(ptrRemovedTransfer == ptrTransfer);
+        }
         aTransfers.setNull();
         hrc = ptrTransfers->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
         RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetTransfers(Any after source-path transfer remove) failed, hrc=%Rhrc\n", hrc));
         RTTESTI_CHECK(aTransfers.size() == 0);
-        RTFileDelete(szDirFile1);
-        RTDirRemove(szDir1);
-        RTFileDelete(szFile1);
-#else
-        ComPtr<IClipboardTransferManager> ptrTransfers;
-        hrc = ptrClipboard->COMGETTER(Transfers)(ptrTransfers.asOutParam());
-        RTTESTI_CHECK_MSG(FAILED(hrc), ("COMGETTER(Transfers) unexpectedly succeeded without transfer support\n"));
-        RTTESTI_CHECK(ptrTransfers.isNull());
+        hrc = ptrTransfers->Remove(ptrTransfer);
+        RTTESTI_CHECK_MSG(hrc == VBOX_E_OBJECT_NOT_FOUND,
+                          ("Repeated IClipboardTransferManager::Remove returned hrc=%Rhrc\n", hrc));
+        RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrMainTransferEventSource, ptrMainTransferListener,
+                                                100 /* cMsTimeout */, "stale Main-created transfer remove"));
+        hrc = ptrMainTransferEventSource->UnregisterListener(ptrMainTransferListener);
+        RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("UnregisterListener(Main transfer) failed, hrc=%Rhrc\n", hrc));
 #endif
 
         hrc = ptrClipboard->COMGETTER(EventSource)(ptrEventSource.asOutParam());
         RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("COMGETTER(EventSource) failed, hrc=%Rhrc\n", hrc));
         RTTESTI_CHECK(!ptrEventSource.isNull());
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+        RTTestSub(hTest, "Clipboard service transfer lifecycle");
+        ComPtr<IEventListener> ptrTransferListener;
+        static VBoxEventType_T const s_aTransferEventTypes[] =
+        {
+            VBoxEventType_OnClipboardTransfer
+        };
+        hrc = tstRegisterClipboardListener(ptrEventSource, s_aTransferEventTypes, RT_ELEMENTS(s_aTransferEventTypes),
+                                           ptrTransferListener);
+        RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("RegisterListener(service transfer) failed, hrc=%Rhrc\n", hrc));
+        if (SUCCEEDED(hrc))
+        {
+            ComPtr<IInternalClipboardControl> ptrInternalClipboardControl(ptrClipboard);
+            RTTESTI_CHECK_MSG(!ptrInternalClipboardControl.isNull(),
+                              ("Query IInternalClipboardControl(service transfer) returned NULL\n"));
+            if (ptrInternalClipboardControl.isNotNull())
+            {
+                hrc = ptrInternalClipboardControl->SetTransferStatus(0 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("SetTransferStatus accepted a zero service session, hrc=%Rhrc\n", hrc));
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     0xfeed /* aStatus */, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("SetTransferStatus accepted an invalid status, hrc=%Rhrc\n", hrc));
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 76 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_INITIALIZED, VERR_ACCESS_DENIED);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("SetTransferStatus accepted a non-error status with a failing result, hrc=%Rhrc\n",
+                                   hrc));
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 76 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_ERROR, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("SetTransferStatus accepted ERROR with a successful result, hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "status/result-inconsistent service transfer"));
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 76 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("SetTransferStatus(REQUESTED) failed, hrc=%Rhrc\n", hrc));
+                ComPtr<IEvent> ptrRequestedEvent;
+                VBoxEventType_T enmRequestedEventType = VBoxEventType_Invalid;
+                bool fRequestedRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                                RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                                "requested service transfer", ptrRequestedEvent,
+                                                                &enmRequestedEventType);
+                RTTESTI_CHECK(fRequestedRc);
+                if (fRequestedRc)
+                {
+                    ComPtr<IClipboardTransfer> ptrRequestedTransfer;
+                    RTTESTI_CHECK(tstClipboardCheckTransferEvent(ptrRequestedEvent, "requested service transfer",
+                                                                 ClipboardTransferState_Added,
+                                                                 ClipboardTransferDirection_ToHost,
+                                                                 ClipboardSource_Guest, 76, ptrRequestedTransfer));
+                }
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 76 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("SetTransferStatus accepted REQUESTED to COMPLETED, hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "requested-to-completed service transfer"));
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 76 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_ERROR, VERR_ACCESS_DENIED);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("SetTransferStatus(requested ERROR) failed, hrc=%Rhrc\n", hrc));
+                ComPtr<IEvent> ptrRequestedErrorEvent;
+                VBoxEventType_T enmRequestedErrorEventType = VBoxEventType_Invalid;
+                fRequestedRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                           RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                           "requested service transfer error", ptrRequestedErrorEvent,
+                                                           &enmRequestedErrorEventType);
+                RTTESTI_CHECK(fRequestedRc);
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("SetTransferStatus(INITIALIZED) failed, hrc=%Rhrc\n", hrc));
+
+                ComPtr<IEvent> ptrAddedEvent;
+                VBoxEventType_T enmAddedEventType = VBoxEventType_Invalid;
+                bool fRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                       RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                       "service transfer added", ptrAddedEvent, &enmAddedEventType);
+                RTTESTI_CHECK(fRc);
+                ComPtr<IClipboardTransfer> ptrStatusTransfer;
+                if (fRc)
+                    RTTESTI_CHECK(tstClipboardCheckTransferEvent(ptrAddedEvent, "service transfer added",
+                                                                 ClipboardTransferState_Added,
+                                                                 ClipboardTransferDirection_ToHost,
+                                                                 ClipboardSource_Guest, 77, ptrStatusTransfer));
+
+                ComPtr<IProgress> ptrStatusProgress;
+                if (ptrStatusTransfer.isNotNull())
+                {
+                    hrc = ptrStatusTransfer->COMGETTER(Progress)(ptrStatusProgress.asOutParam());
+                    RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                      ("IClipboardTransfer::COMGETTER(Progress) failed, hrc=%Rhrc\n", hrc));
+                    RTTESTI_CHECK(!ptrStatusProgress.isNull());
+                }
+                if (ptrStatusProgress.isNotNull())
+                {
+                    BOOL fCompleted = TRUE;
+                    hrc = ptrStatusProgress->COMGETTER(Completed)(&fCompleted);
+                    RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("IProgress::COMGETTER(Completed) failed, hrc=%Rhrc\n", hrc));
+                    RTTESTI_CHECK(!fCompleted);
+                }
+
+                SafeIfaceArray<IClipboardTransfer> aStatusTransfers;
+                hrc = ptrTransfers->GetTransfers(ClipboardTransferDirection_ToHost, 0,
+                                                 ComSafeArrayAsOutParam(aStatusTransfers));
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetTransfers(ToHost service) failed, hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(aStatusTransfers.size() == 1);
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("SetTransferStatus(backward REQUESTED) returned hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "backward service transfer status"));
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Host,
+                                                                     SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("SetTransferStatus(source-mismatched STARTED) returned hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "source-mismatched service transfer status"));
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("SetTransferStatus(STARTED) failed, hrc=%Rhrc\n", hrc));
+                ComPtr<IEvent> ptrStartedEvent;
+                VBoxEventType_T enmStartedEventType = VBoxEventType_Invalid;
+                fRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                  RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                  "service transfer started", ptrStartedEvent, &enmStartedEventType);
+                RTTESTI_CHECK(fRc);
+                ComPtr<IClipboardTransfer> ptrStartedTransfer;
+                if (fRc)
+                    RTTESTI_CHECK(tstClipboardCheckTransferEvent(ptrStartedEvent, "service transfer started",
+                                                                 ClipboardTransferState_InProgress,
+                                                                 ClipboardTransferDirection_ToHost,
+                                                                 ClipboardSource_Guest, 77, ptrStartedTransfer));
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("SetTransferStatus(backward INITIALIZED) returned hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "backward initialized service transfer status"));
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("SetTransferStatus(duplicate STARTED) failed, hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "duplicate service transfer status"));
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("SetTransferStatus(COMPLETED) failed, hrc=%Rhrc\n", hrc));
+                ComPtr<IEvent> ptrCompletedEvent;
+                VBoxEventType_T enmCompletedEventType = VBoxEventType_Invalid;
+                fRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                  RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                  "service transfer completed", ptrCompletedEvent, &enmCompletedEventType);
+                RTTESTI_CHECK(fRc);
+                ComPtr<IClipboardTransfer> ptrCompletedTransfer;
+                if (fRc)
+                    RTTESTI_CHECK(tstClipboardCheckTransferEvent(ptrCompletedEvent, "service transfer completed",
+                                                                 ClipboardTransferState_Completed,
+                                                                 ClipboardTransferDirection_ToHost,
+                                                                 ClipboardSource_Guest, 77, ptrCompletedTransfer));
+                if (ptrStatusProgress.isNotNull())
+                {
+                    BOOL fCompleted = FALSE;
+                    hrc = ptrStatusProgress->COMGETTER(Completed)(&fCompleted);
+                    RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                      ("IProgress::COMGETTER(Completed after completion) failed, hrc=%Rhrc\n", hrc));
+                    RTTESTI_CHECK(fCompleted);
+                    LONG hrcResult = E_FAIL;
+                    hrc = ptrStatusProgress->COMGETTER(ResultCode)(&hrcResult);
+                    RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                      ("IProgress::COMGETTER(ResultCode after completion) failed, hrc=%Rhrc\n", hrc));
+                    RTTESTI_CHECK(hrcResult == S_OK);
+                }
+                aStatusTransfers.setNull();
+                hrc = ptrTransfers->GetTransfers(ClipboardTransferDirection_Any, 0,
+                                                 ComSafeArrayAsOutParam(aStatusTransfers));
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetTransfers after service completion failed, hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(aStatusTransfers.size() == 0);
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     1 /* stale generation */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("SetTransferStatus(stale STARTED) returned hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "stale service transfer generation"));
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     2 /* aGeneration */, ClipboardSource_Host,
+                                                                     SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                  ("SetTransferStatus(second INITIALIZED) failed, hrc=%Rhrc\n", hrc));
+                ComPtr<IEvent> ptrSecondAddedEvent;
+                VBoxEventType_T enmSecondAddedEventType = VBoxEventType_Invalid;
+                fRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                  RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                  "second service transfer added", ptrSecondAddedEvent,
+                                                  &enmSecondAddedEventType);
+                RTTESTI_CHECK(fRc);
+                ComPtr<IClipboardTransfer> ptrFailedTransfer;
+                if (fRc)
+                    RTTESTI_CHECK(tstClipboardCheckTransferEvent(ptrSecondAddedEvent, "second service transfer added",
+                                                                 ClipboardTransferState_Added,
+                                                                 ClipboardTransferDirection_ToGuest,
+                                                                 ClipboardSource_Host, 77, ptrFailedTransfer));
+                ComPtr<IProgress> ptrFailedProgress;
+                if (ptrFailedTransfer.isNotNull())
+                {
+                    hrc = ptrFailedTransfer->COMGETTER(Progress)(ptrFailedProgress.asOutParam());
+                    RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                      ("IClipboardTransfer::COMGETTER(Progress failed transfer) failed, hrc=%Rhrc\n", hrc));
+                }
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     2 /* aGeneration */, ClipboardSource_Host,
+                                                                     SHCLTRANSFERSTATUS_ERROR, VERR_ACCESS_DENIED);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("SetTransferStatus(ERROR) failed, hrc=%Rhrc\n", hrc));
+                ComPtr<IEvent> ptrFailedEvent;
+                VBoxEventType_T enmFailedEventType = VBoxEventType_Invalid;
+                fRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                  RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                  "service transfer failed", ptrFailedEvent, &enmFailedEventType);
+                RTTESTI_CHECK(fRc);
+                ComPtr<IClipboardTransfer> ptrFailedEventTransfer;
+                if (fRc)
+                    RTTESTI_CHECK(tstClipboardCheckTransferEvent(ptrFailedEvent, "service transfer failed",
+                                                                 ClipboardTransferState_Failed,
+                                                                 ClipboardTransferDirection_ToGuest,
+                                                                 ClipboardSource_Host, 77, ptrFailedEventTransfer,
+                                                                 ClipboardError_AccessDenied));
+                if (ptrFailedProgress.isNotNull())
+                {
+                    BOOL fCompleted = FALSE;
+                    hrc = ptrFailedProgress->COMGETTER(Completed)(&fCompleted);
+                    RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                      ("IProgress::COMGETTER(Completed after failure) failed, hrc=%Rhrc\n", hrc));
+                    RTTESTI_CHECK(fCompleted);
+                    LONG hrcResult = S_OK;
+                    hrc = ptrFailedProgress->COMGETTER(ResultCode)(&hrcResult);
+                    RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                      ("IProgress::COMGETTER(ResultCode after failure) failed, hrc=%Rhrc\n", hrc));
+                    RTTESTI_CHECK(hrcResult == (LONG)VBOX_E_SHCL_ACCESS_DENIED);
+                    ComPtr<IVirtualBoxErrorInfo> ptrProgressErrorInfo;
+                    hrc = ptrFailedProgress->COMGETTER(ErrorInfo)(ptrProgressErrorInfo.asOutParam());
+                    RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                      ("IProgress::COMGETTER(ErrorInfo after failure) failed, hrc=%Rhrc\n", hrc));
+                    RTTESTI_CHECK(!ptrProgressErrorInfo.isNull());
+                    if (ptrProgressErrorInfo.isNotNull())
+                    {
+                        LONG hrcErrorInfo = S_OK;
+                        hrc = ptrProgressErrorInfo->COMGETTER(ResultCode)(&hrcErrorInfo);
+                        RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                          ("IVirtualBoxErrorInfo::COMGETTER(ResultCode) failed, hrc=%Rhrc\n", hrc));
+                        RTTESTI_CHECK(hrcErrorInfo == (LONG)VBOX_E_SHCL_ACCESS_DENIED);
+                        LONG vrcErrorInfo = VINF_SUCCESS;
+                        hrc = ptrProgressErrorInfo->COMGETTER(ResultDetail)(&vrcErrorInfo);
+                        RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                          ("IVirtualBoxErrorInfo::COMGETTER(ResultDetail) failed, hrc=%Rhrc\n", hrc));
+                        RTTESTI_CHECK(vrcErrorInfo == VERR_ACCESS_DENIED);
+                    }
+                }
+
+                /* A replacement service client owns a new, independently numbered generation sequence. */
+                hrc = ptrInternalClipboardControl->SetTransferStatus(10 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Host,
+                                                                     SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                  ("SetTransferStatus(new-session INITIALIZED) failed, hrc=%Rhrc\n", hrc));
+                ComPtr<IEvent> ptrNewSessionAddedEvent;
+                VBoxEventType_T enmNewSessionAddedEventType = VBoxEventType_Invalid;
+                fRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                  RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                  "new-session service transfer added", ptrNewSessionAddedEvent,
+                                                  &enmNewSessionAddedEventType);
+                RTTESTI_CHECK(fRc);
+                if (fRc)
+                {
+                    ComPtr<IClipboardTransfer> ptrNewSessionTransfer;
+                    RTTESTI_CHECK(tstClipboardCheckTransferEvent(ptrNewSessionAddedEvent,
+                                                                 "new-session service transfer added",
+                                                                 ClipboardTransferState_Added,
+                                                                 ClipboardTransferDirection_ToGuest,
+                                                                 ClipboardSource_Host, 77, ptrNewSessionTransfer));
+                }
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(10 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Host,
+                                                                     SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                  ("SetTransferStatus(new-session COMPLETED) failed, hrc=%Rhrc\n", hrc));
+                ComPtr<IEvent> ptrNewSessionCompletedEvent;
+                VBoxEventType_T enmNewSessionCompletedEventType = VBoxEventType_Invalid;
+                fRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                  RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                  "new-session service transfer completed",
+                                                  ptrNewSessionCompletedEvent, &enmNewSessionCompletedEventType);
+                RTTESTI_CHECK(fRc);
+                if (fRc)
+                {
+                    ComPtr<IClipboardTransfer> ptrNewSessionCompletedTransfer;
+                    RTTESTI_CHECK(tstClipboardCheckTransferEvent(ptrNewSessionCompletedEvent,
+                                                                 "new-session service transfer completed",
+                                                                 ClipboardTransferState_Completed,
+                                                                 ClipboardTransferDirection_ToGuest,
+                                                                 ClipboardSource_Host, 77,
+                                                                 ptrNewSessionCompletedTransfer));
+                }
+                hrc = ptrInternalClipboardControl->SetTransferStatus(10 /* aServiceSessionId */, 77 /* aTransferId */,
+                                                                     1 /* stale generation */, ClipboardSource_Host,
+                                                                     SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("SetTransferStatus(new-session stale STARTED) returned hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "new-session stale transfer generation"));
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 78 /* aTransferId */,
+                                                                     1 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                  ("SetTransferStatus(unknown COMPLETED) failed, hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "unknown terminal service transfer"));
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 78 /* aTransferId */,
+                                                                     1 /* stale generation */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("SetTransferStatus(STARTED after unknown terminal) returned hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "status after unknown terminal generation"));
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 78 /* aTransferId */,
+                                                                     2 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                  ("SetTransferStatus(pre-reset INITIALIZED) failed, hrc=%Rhrc\n", hrc));
+                ComPtr<IEvent> ptrPreResetEvent;
+                VBoxEventType_T enmPreResetEventType = VBoxEventType_Invalid;
+                fRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                  RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                  "pre-reset service transfer added", ptrPreResetEvent,
+                                                  &enmPreResetEventType);
+                RTTESTI_CHECK(fRc);
+                ComPtr<IClipboardTransfer> ptrPreResetTransfer;
+                if (fRc)
+                    RTTESTI_CHECK(tstClipboardCheckTransferEvent(ptrPreResetEvent, "pre-reset service transfer added",
+                                                                 ClipboardTransferState_Added,
+                                                                 ClipboardTransferDirection_ToHost,
+                                                                 ClipboardSource_Guest, 78, ptrPreResetTransfer));
+
+                hrc = ptrTransfers->Reset();
+                RTTESTI_CHECK_MSG(hrc == VBOX_E_OBJECT_IN_USE,
+                                  ("IClipboardTransferManager::Reset with an active service transfer returned hrc=%Rhrc\n",
+                                   hrc));
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "rejected service transfer reset"));
+                aStatusTransfers.setNull();
+                hrc = ptrTransfers->GetTransfers(ClipboardTransferDirection_Any, 0,
+                                                 ComSafeArrayAsOutParam(aStatusTransfers));
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetTransfers after rejected reset failed, hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(aStatusTransfers.size() == 1);
+
+                if (ptrPreResetTransfer.isNotNull())
+                {
+                    hrc = ptrTransfers->Remove(ptrPreResetTransfer);
+                    RTTESTI_CHECK_MSG(hrc == VBOX_E_OBJECT_IN_USE,
+                                      ("IClipboardTransferManager::Remove(active service transfer) returned hrc=%Rhrc\n", hrc));
+                }
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "rejected service transfer remove"));
+                aStatusTransfers.setNull();
+                hrc = ptrTransfers->GetTransfers(ClipboardTransferDirection_Any, 0,
+                                                 ComSafeArrayAsOutParam(aStatusTransfers));
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("GetTransfers after rejected remove failed, hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(aStatusTransfers.size() == 1);
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 78 /* aTransferId */,
+                                                                     2 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_CANCELED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("SetTransferStatus accepted CANCELED with a successful result, hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "status/result-inconsistent cancellation"));
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 78 /* aTransferId */,
+                                                                     2 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                  ("SetTransferStatus(pre-reset CANCELED) failed, hrc=%Rhrc\n", hrc));
+                ComPtr<IEvent> ptrResetEvent;
+                VBoxEventType_T enmResetEventType = VBoxEventType_Invalid;
+                fRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                  RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                  "service transfer canceled", ptrResetEvent, &enmResetEventType);
+                RTTESTI_CHECK(fRc);
+                if (fRc)
+                {
+                    ComPtr<IClipboardTransfer> ptrResetTransfer;
+                    RTTESTI_CHECK(tstClipboardCheckTransferEvent(ptrResetEvent, "service transfer canceled",
+                                                                 ClipboardTransferState_Canceled,
+                                                                 ClipboardTransferDirection_ToHost,
+                                                                 ClipboardSource_Guest, 78, ptrResetTransfer));
+                }
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 78 /* aTransferId */,
+                                                                     2 /* reset generation */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(hrc == E_INVALIDARG,
+                                  ("SetTransferStatus(STARTED after terminal status) returned hrc=%Rhrc\n", hrc));
+                RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                        "status after terminal service transfer"));
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 78 /* aTransferId */,
+                                                                     3 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                  ("SetTransferStatus(next-generation INITIALIZED) failed, hrc=%Rhrc\n", hrc));
+                ComPtr<IEvent> ptrPostResetEvent;
+                VBoxEventType_T enmPostResetEventType = VBoxEventType_Invalid;
+                fRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                  RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                  "next-generation service transfer added", ptrPostResetEvent,
+                                                  &enmPostResetEventType);
+                RTTESTI_CHECK(fRc);
+                ComPtr<IClipboardTransfer> ptrPostResetTransfer;
+                if (fRc)
+                    RTTESTI_CHECK(tstClipboardCheckTransferEvent(ptrPostResetEvent, "next-generation service transfer added",
+                                                                 ClipboardTransferState_Added,
+                                                                 ClipboardTransferDirection_ToHost,
+                                                                 ClipboardSource_Guest, 78, ptrPostResetTransfer));
+
+                if (ptrPostResetTransfer.isNotNull())
+                {
+                    hrc = ptrTransfers->Cancel(ptrPostResetTransfer);
+                    RTTESTI_CHECK_MSG(FAILED(hrc),
+                                      ("IClipboardTransferManager::Cancel(synthetic service transfer) unexpectedly succeeded\n"));
+                    RTTESTI_CHECK(tstClipboardExpectNoEvent(ptrEventSource, ptrTransferListener, 100 /* cMsTimeout */,
+                                                            "failed service transfer cancel"));
+                    aStatusTransfers.setNull();
+                    hrc = ptrTransfers->GetTransfers(ClipboardTransferDirection_Any, 0,
+                                                     ComSafeArrayAsOutParam(aStatusTransfers));
+                    RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                      ("GetTransfers after service cancel failed, hrc=%Rhrc\n", hrc));
+                    RTTESTI_CHECK(aStatusTransfers.size() == 1);
+                }
+
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 78 /* aTransferId */,
+                                                                     3 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                  ("SetTransferStatus(STARTED after failed service cancel) failed, hrc=%Rhrc\n", hrc));
+                ComPtr<IEvent> ptrPostResetStartedEvent;
+                VBoxEventType_T enmPostResetStartedEventType = VBoxEventType_Invalid;
+                fRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                  RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                  "service transfer started after failed cancel",
+                                                  ptrPostResetStartedEvent, &enmPostResetStartedEventType);
+                RTTESTI_CHECK(fRc);
+                hrc = ptrInternalClipboardControl->SetTransferStatus(9 /* aServiceSessionId */, 78 /* aTransferId */,
+                                                                     3 /* aGeneration */, ClipboardSource_Guest,
+                                                                     SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
+                RTTESTI_CHECK_MSG(SUCCEEDED(hrc),
+                                  ("SetTransferStatus(next-generation CANCELED) failed, hrc=%Rhrc\n", hrc));
+                ComPtr<IEvent> ptrPostResetCanceledEvent;
+                VBoxEventType_T enmPostResetCanceledEventType = VBoxEventType_Invalid;
+                fRc = tstClipboardWaitForAnyEvent(ptrEventSource, ptrTransferListener, s_aTransferEventTypes,
+                                                  RT_ELEMENTS(s_aTransferEventTypes), 1000 /* cMsTimeout */,
+                                                  "next-generation service transfer canceled",
+                                                  ptrPostResetCanceledEvent, &enmPostResetCanceledEventType);
+                RTTESTI_CHECK(fRc);
+            }
+
+            hrc = ptrEventSource->UnregisterListener(ptrTransferListener);
+            RTTESTI_CHECK_MSG(SUCCEEDED(hrc), ("UnregisterListener(service transfer) failed, hrc=%Rhrc\n", hrc));
+        }
+#endif
 
         tstClipboardPublicSessionApi(hTest, ptrClipboard, ptrClipboardSettings, ptrEventSource);
         RTTestSub(hTest, "Clipboard public API operations");
@@ -2699,7 +3557,6 @@ static void tstClipboardPublicApi(RTTEST hTest)
                                                                 VBOX_SHCL_MAIN_CLIENT_NONE, ClipboardAction_Copy,
                                                                 NULL /* pptrItem */));
         }
-
         ComPtr<IEvent> ptrUnexpectedAfterWrite;
         hrc = ptrEventSource->GetEvent(ptrListener, 0 /* aTimeout */, ptrUnexpectedAfterWrite.asOutParam());
         RTTESTI_CHECK_MSG(   hrc == VBOX_E_OBJECT_NOT_FOUND
@@ -2901,13 +3758,21 @@ static void tstClipboardPublicApi(RTTEST hTest)
     } while (0);
 
     /* Clean up listeners and VM state regardless of which subtest exited early. */
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    if (fDirFile1Created)
+        RTFileDelete(szDirFile1);
+    if (fDir1Created)
+        RTDirRemove(szDir1);
+    if (fFile1Created)
+        RTFileDelete(szFile1);
+#endif
     if (fListenerRegistered && ptrEventSource.isNotNull() && ptrListener.isNotNull())
         ptrEventSource->UnregisterListener(ptrListener);
     ptrListener.setNull();
     ptrEventSource.setNull();
     ptrClipboard.setNull();
 
-    if (fMachineLocked && !ptrConsole.isNull())
+    if (fMachinePoweredOn && !ptrConsole.isNull())
     {
         ComPtr<IProgress> ptrPowerDownProgress;
         HRESULT hrcPowerDown = ptrConsole->PowerDown(ptrPowerDownProgress.asOutParam());
@@ -2983,6 +3848,11 @@ int main()
     tstInitLogging();
 
     RTTestBanner(hTest);
+
+#ifndef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    RTTestSkipped(hTest, "Shared Clipboard transfers are not available on this platform");
+    return RTTestSummaryAndDestroy(hTest);
+#endif
 
     HRESULT hrc = Initialize();
     if (FAILED(hrc))

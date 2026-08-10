@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferFsObjInfoImpl.cpp 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferFsObjInfoImpl.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer file system object information.
  */
@@ -33,6 +33,8 @@
 #include "ClipboardTransferFsObjInfoImpl.h"
 
 #include <iprt/fs.h>
+
+#include <new>
 
 
 DEFINE_EMPTY_CTOR_DTOR(ClipboardTransferFsObjInfo)
@@ -125,13 +127,26 @@ HRESULT ClipboardTransferFsObjInfo::init(const com::Utf8Str &aPath,
                                          PCSHCLFSOBJINFO aInfo)
 {
     AssertPtrReturn(aInfo, E_POINTER);
+    if (   aInfo->cbObject < 0
+        || aInfo->cbAllocated < 0
+        || aInfo->Attr.enmAdditional < SHCLFSOBJATTRADD_NOTHING
+        || aInfo->Attr.enmAdditional > SHCLFSOBJATTRADD_LAST)
+        return E_INVALIDARG;
+
     AutoInitSpan autoInitSpan(this);
     AssertReturn(autoInitSpan.isOk(), E_FAIL);
 
-    mData.mPath             = aPath;
-    mData.mName             = aName;
+    try
+    {
+        mData.mPath           = aPath;
+        mData.mName           = aName;
+        mData.mFileAttributes = clipboardTransferFsObjInfoModeToAttrs(aInfo->Attr.fMode);
+    }
+    catch (std::bad_alloc &)
+    {
+        return E_OUTOFMEMORY;
+    }
     mData.mType             = clipboardTransferFsObjInfoModeToType(aInfo->Attr.fMode);
-    mData.mFileAttributes   = clipboardTransferFsObjInfoModeToAttrs(aInfo->Attr.fMode);
     mData.mObjectSize       = aInfo->cbObject;
     mData.mAllocatedSize    = aInfo->cbAllocated;
     mData.mAccessTime       = aInfo->AccessTime.i64NanosecondsRelativeToUnixEpoch;

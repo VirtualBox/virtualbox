@@ -1,4 +1,4 @@
-/* $Id: HMR0VMX-x86.cpp 113526 2026-03-24 08:45:34Z knut.osmundsen@oracle.com $ */
+/* $Id: HMR0VMX-x86.cpp 114828 2026-07-31 09:19:37Z alexander.eichner@oracle.com $ */
 /** @file
  * HM VMX (Intel VT-x) - Host Context Ring-0.
  */
@@ -5441,7 +5441,7 @@ static int hmR0VmxMapHCApicAccessPage(PVMCPUCC pVCpu, RTGCPHYS GCPhysApicBase)
 static DECLCALLBACK(void) hmR0DispatchHostNmi(RTCPUID idCpu, void *pvUser1, void *pvUser2)
 {
     RT_NOREF3(idCpu, pvUser1, pvUser2);
-    VMXDispatchHostNmi();
+    SUPR0DispatchHostNmi();
 }
 
 
@@ -5480,7 +5480,7 @@ static int hmR0VmxExitHostNmi(PVMCPUCC pVCpu, PCVMXVMCSINFO pVmcsInfo)
     RTCCUINTREG const fEFlags = ASMIntDisableFlags();
     if (idCpu == RTMpCpuId())
     {
-        VMXDispatchHostNmi();
+        SUPR0DispatchHostNmi();
         fDispatched = true;
     }
     ASMSetFlags(fEFlags);

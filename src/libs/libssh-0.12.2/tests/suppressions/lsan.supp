@@ -1,0 +1,6 @@
+leak:libcrypto.so
+
+## sk-dummy.so
+# The sk-dummy.so enroll function allocates 1-byte memory for the signature, but marks the signature length as 0.
+# Since, we use burn_free to free the signature, it skips the freeing because the size is 0, which results in a memory leak.
+leak:sk-dummy.so

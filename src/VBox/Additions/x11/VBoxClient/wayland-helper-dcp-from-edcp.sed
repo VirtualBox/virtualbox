@@ -1,8 +1,10 @@
-#  $Id: wayland-helper-dcp-from-edcp.sed 114479 2026-06-22 12:02:16Z knut.osmundsen@oracle.com $ */
+#  $Id: wayland-helper-dcp-from-edcp.sed 114743 2026-07-21 18:31:58Z knut.osmundsen@oracle.com $ */
 ## @file
 # Guest Additions - Generate DCP code from EDCP.
 #
 # The two differs only in interface names.
+#
+# @note Obsolete. Only used with 'kmk VBOX_WITH_WAYLAND_ADDITIONS_LEGACY=1'.
 #
 
 #

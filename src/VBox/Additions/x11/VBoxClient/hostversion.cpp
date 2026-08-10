@@ -1,4 +1,4 @@
-/* $Id: hostversion.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: hostversion.cpp 114744 2026-07-21 18:37:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * X11 guest client - Host version check.
  */
@@ -116,7 +116,7 @@ static DECLCALLBACK(int) vbclHostVerWorker(bool volatile *pfShutdown)
     return rc;
 }
 
-VBCLSERVICE g_SvcHostVersion =
+VBCLSERVICE const g_SvcHostVersion =
 {
     "hostversion",                   /* szName */
     "VirtualBox host version check", /* pszDescription */

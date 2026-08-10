@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestR3LibClipboard.cpp 114377 2026-06-15 21:11:38Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxGuestR3LibClipboard.cpp 114839 2026-07-31 13:09:02Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxGuestR3Lib - Ring-3 Support Library for VirtualBox guest additions, Shared Clipboard.
  */
@@ -783,6 +783,8 @@ static int vbglR3ClipboardTransferRootListHdrRead(PVBGLR3SHCLCMDCTX pCtx, PSHCLL
 
             pRootListHdr->cbTotalSize = 0; /* Unused for the root list header. */
         }
+        if (RT_SUCCESS(rc) && !ShClTransferListHdrIsValid(pRootListHdr))
+            rc = VERR_INVALID_PARAMETER;
     }
     else
         LogRel(("Shared Clipboard: Reading root list header failed: %Rrc\n", rc));
@@ -1068,6 +1070,8 @@ VBGLR3DECL(int) VbglR3ClipboardTransferRootListHdrReadReq(PVBGLR3SHCLCMDCTX pCtx
         {
             rc = Msg.ReqParms.fRoots.GetUInt32(pfRoots);
             AssertRC(rc);
+            if (RT_SUCCESS(rc) && (*pfRoots & ~VBOX_SHCL_LISTHDR_F_VALID_MASK))
+                rc = VERR_INVALID_FLAGS;
         }
     }
 
@@ -1086,6 +1090,8 @@ VBGLR3DECL(int) VbglR3ClipboardTransferRootListHdrReadReply(PVBGLR3SHCLCMDCTX pC
 {
     AssertPtrReturn(pCtx,         VERR_INVALID_POINTER);
     AssertPtrReturn(pRootListHdr, VERR_INVALID_POINTER);
+    AssertReturn(ShClTransferListHdrIsValid(pRootListHdr), VERR_INVALID_PARAMETER);
+    AssertReturn(pRootListHdr->fFeatures == SHCL_TRANSFER_LIST_FEATURE_F_NONE, VERR_NOT_SUPPORTED);
 
     VBoxShClRootListHdrMsg Msg;
     VBGL_HGCM_HDR_INIT(&Msg.hdr, pCtx->idClient,
@@ -1132,6 +1138,8 @@ VBGLR3DECL(int) VbglR3ClipboardTransferRootListEntryReadReq(PVBGLR3SHCLCMDCTX pC
         {
             rc = Msg.Parms.fInfo.GetUInt32(pfInfo);
             AssertRC(rc);
+            if (RT_SUCCESS(rc) && (*pfInfo & ~VBOX_SHCL_INFO_F_VALID_MASK))
+                rc = VERR_INVALID_FLAGS;
         }
         if (RT_SUCCESS(rc))
         {
@@ -1377,6 +1385,7 @@ VBGLR3DECL(int) VbglR3ClipboardTransferListHdrRead(PVBGLR3SHCLCMDCTX pCtx, SHCLL
 {
     AssertPtrReturn(pCtx,     VERR_INVALID_POINTER);
     AssertPtrReturn(pListHdr, VERR_INVALID_POINTER);
+    AssertReturn(!(fFlags & ~VBOX_SHCL_LISTHDR_F_VALID_MASK), VERR_INVALID_FLAGS);
 
     VBoxShClListHdrMsg Msg;
     VBGL_HGCM_HDR_INIT(&Msg.hdr, pCtx->idClient,
@@ -1399,6 +1408,10 @@ VBGLR3DECL(int) VbglR3ClipboardTransferListHdrRead(PVBGLR3SHCLCMDCTX pCtx, SHCLL
             rc = Msg.cTotalObjects.GetUInt64(&pListHdr->cEntries);
         if (RT_SUCCESS(rc))
             rc = Msg.cbTotalSize.GetUInt64(&pListHdr->cbTotalSize);
+        if (RT_SUCCESS(rc) && !ShClTransferListHdrIsValid(pListHdr))
+            rc = VERR_INVALID_PARAMETER;
+        if (RT_SUCCESS(rc) && pListHdr->fFeatures != SHCL_TRANSFER_LIST_FEATURE_F_NONE)
+            rc = VERR_NOT_SUPPORTED;
     }
 
     LogFlowFuncLeaveRC(rc);
@@ -1435,6 +1448,8 @@ VBGLR3DECL(int) VbglR3ClipboardTransferListHdrReadRecvReq(PVBGLR3SHCLCMDCTX pCtx
             rc = Msg.ReqParms.uHandle.GetUInt64(phList);
         if (RT_SUCCESS(rc))
             rc = Msg.ReqParms.fFlags.GetUInt32(pfFlags);
+        if (RT_SUCCESS(rc) && (*pfFlags & ~VBOX_SHCL_LISTHDR_F_VALID_MASK))
+            rc = VERR_INVALID_FLAGS;
     }
 
     LogFlowFuncLeaveRC(rc);
@@ -1454,6 +1469,8 @@ VBGLR3DECL(int) VbglR3ClipboardTransferListHdrWrite(PVBGLR3SHCLCMDCTX pCtx, SHCL
 {
     AssertPtrReturn(pCtx,     VERR_INVALID_POINTER);
     AssertPtrReturn(pListHdr, VERR_INVALID_POINTER);
+    AssertReturn(ShClTransferListHdrIsValid(pListHdr), VERR_INVALID_PARAMETER);
+    AssertReturn(pListHdr->fFeatures == SHCL_TRANSFER_LIST_FEATURE_F_NONE, VERR_NOT_SUPPORTED);
 
     VBoxShClListHdrMsg Msg;
     VBGL_HGCM_HDR_INIT(&Msg.hdr, pCtx->idClient,
@@ -1463,8 +1480,7 @@ VBGLR3DECL(int) VbglR3ClipboardTransferListHdrWrite(PVBGLR3SHCLCMDCTX pCtx, SHCL
     Msg.ReqParms.uHandle.SetUInt64(hList);
     Msg.ReqParms.fFlags.SetUInt32(0);
 
-    Msg.fFeatures.SetUInt32(0);
-    Msg.cbTotalSize.SetUInt32(pListHdr->fFeatures);
+    Msg.fFeatures.SetUInt32(pListHdr->fFeatures);
     Msg.cTotalObjects.SetUInt64(pListHdr->cEntries);
     Msg.cbTotalSize.SetUInt64(pListHdr->cbTotalSize);
 
@@ -1582,6 +1598,8 @@ VBGLR3DECL(int) VbglR3ClipboardTransferListEntryReadRecvReq(PVBGLR3SHCLCMDCTX pC
         {
             rc = Msg.ReqParms.fInfo.GetUInt32(pfInfo);
             AssertRC(rc);
+            if (RT_SUCCESS(rc) && (*pfInfo & ~VBOX_SHCL_INFO_F_VALID_MASK))
+                rc = VERR_INVALID_FLAGS;
         }
     }
 
@@ -2307,7 +2325,7 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                              *
                              * Actual initialization will be done as soon as the host sends use the INITIALIZED status for it.
                              */
-                            PSHCLTRANSFER pTransfer;
+                            PSHCLTRANSFER pTransfer = NULL;
                             rc = vbglR3ClipboardTransferCreate(pCmdCtx, pTransferCtx, enmDir, enmSource, idTransfer, &pTransfer);
 
                             /* As soon as we've created our transfer locally, report back INITIALIZED to the host.
@@ -2362,7 +2380,7 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                             {
                                 /* The host reported the INITIALIZED status together with the transfer ID.
                                  * So create a local transfer here with that ID. */
-                                PSHCLTRANSFER pTransfer;
+                                PSHCLTRANSFER pTransfer = NULL;
                                 rc = vbglR3ClipboardTransferCreate(pCmdCtx, pTransferCtx, enmDir, enmSource, idTransfer, &pTransfer);
                                 if (RT_SUCCESS(rc))
                                     rc = vbglR3ClipboardTransferInit(pCmdCtx, pTransfer);
@@ -2982,4 +3000,3 @@ VBGLR3DECL(int) VbglR3ClipboardWriteError(HGCMCLIENTID idClient, int rcErr)
     LogFlowFuncLeaveRC(rc);
     return rc;
 }
-

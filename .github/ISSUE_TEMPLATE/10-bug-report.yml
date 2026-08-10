@@ -45,6 +45,7 @@ body:
       label: Version
       options:
         - trunk/main
+        - 7.2.14
         - 7.2.12
         - 7.2.10
         - 7.2.8

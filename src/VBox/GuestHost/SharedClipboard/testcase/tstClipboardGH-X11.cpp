@@ -1,4 +1,4 @@
-/* $Id: tstClipboardGH-X11.cpp 114650 2026-07-08 09:14:39Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardGH-X11.cpp 114867 2026-08-06 15:19:51Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard guest/host X11 code test cases.
  */
@@ -97,6 +97,7 @@ void tstThreadScheduleCall(void (*proc)(void *, void *), void *client_data)
 static int g_tst_rcDataVBox = VINF_SUCCESS;
 static void *g_tst_pvDataVBox = NULL;
 static uint32_t g_tst_cbDataVBox = 0;
+static uint32_t g_tst_cDataRequests = 0;
 static SHCLEVENTSOURCE g_EventSource;
 
 /* Set empty data in the simulated VBox clipboard. */
@@ -401,6 +402,7 @@ static DECLCALLBACK(int) tstShClReportFormatsCallback(PSHCLCONTEXT pCtx, uint32_
 static DECLCALLBACK(int) tstShClOnRequestDataFromSourceCallback(PSHCLCONTEXT pCtx, SHCLFORMAT uFmt, void **ppv, uint32_t *pcb, void *pvUser)
 {
     RT_NOREF(pCtx, uFmt, pvUser);
+    g_tst_cDataRequests++;
     *pcb = g_tst_cbDataVBox;
     if (g_tst_pvDataVBox != NULL)
     {
@@ -485,16 +487,89 @@ static bool tstClipURIListFormatConversion(PSHCLX11CTX pCtx)
     SHCLX11FMTIDX aTargets[2];
     SHCLX11FMTIDX idxFmtX11;
 
-    aTargets[0] = tstClipFindX11FormatByAtomText("application/x-kde-cutselection");
+    /* Prefer the standard target over a higher-valued format enum. */
+    aTargets[0] = tstClipFindX11FormatByAtomText("x-special/gnome-copied-files");
     aTargets[1] = tstClipFindX11FormatByAtomText("text/uri-list");
     idxFmtX11 = clipGetURIListFormatFromTargets(pCtx, aTargets, 2);
     if (clipRealFormatForX11Format(idxFmtX11) != SHCLX11FMT_URI_LIST)
+        fSuccess = false;
+
+    /* Target enumeration order must not affect the result. */
+    aTargets[0] = tstClipFindX11FormatByAtomText("text/uri-list");
+    aTargets[1] = tstClipFindX11FormatByAtomText("x-special/gnome-copied-files");
+    idxFmtX11 = clipGetURIListFormatFromTargets(pCtx, aTargets, 2);
+    if (clipRealFormatForX11Format(idxFmtX11) != SHCLX11FMT_URI_LIST)
+        fSuccess = false;
+
+    /* KDE cut-selection is metadata, but another target can provide the file list. */
+    aTargets[0] = tstClipFindX11FormatByAtomText("application/x-kde-cutselection");
+    aTargets[1] = tstClipFindX11FormatByAtomText("x-special/gnome-copied-files");
+    idxFmtX11 = clipGetURIListFormatFromTargets(pCtx, aTargets, 2);
+    if (clipRealFormatForX11Format(idxFmtX11) != SHCLX11FMT_URI_LIST_GNOME_COPIED_FILES)
         fSuccess = false;
 
     aTargets[0] = tstClipFindX11FormatByAtomText("application/x-kde-cutselection");
     idxFmtX11 = clipGetURIListFormatFromTargets(pCtx, aTargets, 1);
     if (idxFmtX11 != NIL_CLIPX11FORMAT)
         fSuccess = false;
+
+    /* Even a forced read must not treat KDE cut/copy metadata as a file list. */
+    static const char s_szKdeCopy[] = "0";
+    tstClipSetSelectionValues("application/x-kde-cutselection", XA_STRING,
+                              s_szKdeCopy, sizeof(s_szKdeCopy) - 1, 8);
+    pCtx->idxFmtURI = aTargets[0];
+    uint8_t  abBuf[TESTCASE_MAX_BUF_SIZE];
+    uint32_t cbRead = 0;
+    int rc = ShClX11ReadDataFromX11(pCtx, &g_EventSource, g_msTimeout, VBOX_SHCL_FMT_URI_LIST,
+                                    abBuf, sizeof(abBuf), &cbRead);
+    if (rc != VERR_SHCLPB_NO_DATA)
+        fSuccess = false;
+    pCtx->idxFmtURI = NIL_CLIPX11FORMAT;
+
+    /* When exporting files, KDE receives copy metadata separately from text/uri-list. */
+    static const char s_szURI[] = "file:///tmp/a";
+    void  *pvKde = NULL;
+    size_t cbKde = 0;
+    rc = ShClX11TransferConvertToX11(s_szURI, sizeof(s_szURI) - 1, SHCLX11FMT_URI_LIST_KDE_CUTSELECTION,
+                                     &pvKde, &cbKde);
+    if (   RT_FAILURE(rc)
+        || cbKde != sizeof(s_szKdeCopy) - 1
+        || memcmp(pvKde, s_szKdeCopy, sizeof(s_szKdeCopy) - 1))
+        fSuccess = false;
+    XtFree((char *)pvKde);
+
+    /* KDE metadata and the standard URI list must both be offered to X11 consumers. */
+    rc = ShClX11ReportFormatsToX11Async(pCtx, VBOX_SHCL_FMT_URI_LIST);
+    if (RT_FAILURE(rc))
+        fSuccess = false;
+    else
+    {
+        Atom          atomType;
+        XtPointer     pvTargets = NULL;
+        unsigned long cTargets;
+        int           iFormat;
+        if (!tstClipConvertSelection("TARGETS", &atomType, &pvTargets, &cTargets, &iFormat))
+            fSuccess = false;
+        else
+        {
+            bool fFoundURI = false;
+            bool fFoundKDE = false;
+            Atom const *paTargets = (Atom const *)pvTargets;
+            for (size_t i = 0; i < cTargets; i++)
+            {
+                if (paTargets[i] == XInternAtom(NULL, "text/uri-list", 0))
+                    fFoundURI = true;
+                else if (paTargets[i] == XInternAtom(NULL, "application/x-kde-cutselection", 0))
+                    fFoundKDE = true;
+            }
+            if (   atomType != XA_ATOM
+                || iFormat != 32
+                || !fFoundURI
+                || !fFoundKDE)
+                fSuccess = false;
+        }
+        XtFree((char *)pvTargets);
+    }
 
     return fSuccess;
 }
@@ -503,12 +578,9 @@ static bool tstClipURIListFormatConversion(PSHCLX11CTX pCtx)
 static void tstStringFromX11(RTTEST hTest, PSHCLX11CTX pCtx,
                              const char *pcszExp, int rcExp)
 {
-    bool fRc = true;
     tstClipSendTargetUpdate(pCtx);
     if (tstClipQueryFormats() != VBOX_SHCL_FMT_UNICODETEXT)
-    {
         RTTestFailed(hTest, "Wrong targets reported: %02X\n", tstClipQueryFormats());
-    }
     else
     {
         uint32_t cbActual = 0;
@@ -517,44 +589,33 @@ static void tstStringFromX11(RTTEST hTest, PSHCLX11CTX pCtx,
         if (rc != rcExp)
             RTTestFailed(hTest, "Wrong return code, expected %Rrc, got %Rrc\n", rcExp, rc);
         else if (RT_FAILURE(rcExp))
-            fRc = true;
+            return;
         else
         {
-            RTUTF16 wcExp[TESTCASE_MAX_BUF_SIZE / 2];
-            RTUTF16 *pwcExp = wcExp;
-            size_t cwc = 0;
-            rc = RTStrToUtf16Ex(pcszExp, RTSTR_MAX, &pwcExp, RT_ELEMENTS(wcExp), &cwc);
-            AssertRC(rc);
-            size_t cbExp = cwc * 2 + 2;
+            RTUTF16  wszExp[TESTCASE_MAX_BUF_SIZE / 2];
+            RTUTF16 *pwszExp = wszExp;
+            size_t cwcExp = 0;
+            rc = RTStrToUtf16Ex(pcszExp, RTSTR_MAX, &pwszExp, RT_ELEMENTS(wszExp), &cwcExp);
             if (RT_SUCCESS(rc))
             {
-                if (cbActual != cbExp)
-                {
-                    RTTestFailed(hTest, "Returned string is the wrong size: got size %u, expected %u\n", cbActual, cbExp);
-                }
-                else
-                {
-                    if (memcmp(abBuf, wcExp, cbExp) == 0)
-                        fRc = true;
-                    else
-                        RTTestFailed(hTest, "Returned string \"%.*ls\" does not match expected string \"%s\"\n",
-                                     TESTCASE_MAX_BUF_SIZE, abBuf, pcszExp);
-                }
+                size_t const cbExp = (cwcExp + 1) * sizeof(RTUTF16);
+                if (cbActual == cbExp && memcmp(abBuf, wszExp, cbExp) == 0)
+                    return;
+                RTTestFailed(hTest, "Returned string differs: %#zx bytes, expected %#zx\n%.*Rhxs, expected:\n%.*Rhxs\n",
+                             cbActual, cbExp, cbActual, abBuf, cbExp, wszExp);
             }
+            else
+                RTTestFailed(hTest, "RTStrToUtf16Ex failed on expected string: %Rrc\n", rc);
         }
     }
-    if (!fRc)
-        RTTestFailureDetails(hTest, "Expected: string \"%s\", rc=%Rrc\n", pcszExp, rcExp);
+    RTTestFailureDetails(hTest, "Expected: string \"%s\", rc %Rrc\n", pcszExp, rcExp);
 }
 
-static void tstLatin1FromX11(RTTEST hTest, PSHCLX11CTX pCtx,
-                             const char *pcszExp, int rcExp)
+static void tstLatin1FromX11(RTTEST hTest, PSHCLX11CTX pCtx, const char *pszExpLatin1, int rcExp)
 {
-    bool retval = false;
     tstClipSendTargetUpdate(pCtx);
     if (tstClipQueryFormats() != VBOX_SHCL_FMT_UNICODETEXT)
-        RTTestFailed(hTest, "Wrong targets reported: %02X\n",
-                     tstClipQueryFormats());
+        RTTestFailed(hTest, "Wrong targets reported: %02X\n", tstClipQueryFormats());
     else
     {
         uint32_t cbActual = 0;
@@ -563,34 +624,23 @@ static void tstLatin1FromX11(RTTEST hTest, PSHCLX11CTX pCtx,
         if (rc != rcExp)
             RTTestFailed(hTest, "Wrong return code, expected %Rrc, got %Rrc\n", rcExp, rc);
         else if (RT_FAILURE(rcExp))
-            retval = true;
+            return;
         else
         {
-            RTUTF16 wcExp[TESTCASE_MAX_BUF_SIZE / 2];
-            //RTUTF16 *pwcExp = wcExp; - unused
-            size_t cwc;
-            for (cwc = 0; cwc == 0 || pcszExp[cwc - 1] != '\0'; ++cwc)
-                wcExp[cwc] = pcszExp[cwc];
-            size_t cbExp = cwc * 2;
-            if (cbActual != cbExp)
-            {
-                RTTestFailed(hTest, "Returned string is the wrong size, string \"%.*ls\", size %u, expected \"%s\", size %u\n",
-                             RT_MIN(TESTCASE_MAX_BUF_SIZE, cbActual), abBuf, cbActual,
-                             pcszExp, cbExp);
-            }
-            else
-            {
-                if (memcmp(abBuf, wcExp, cbExp) == 0)
-                    retval = true;
-                else
-                    RTTestFailed(hTest, "Returned string \"%.*ls\" does not match expected string \"%s\"\n",
-                                 TESTCASE_MAX_BUF_SIZE, abBuf, pcszExp);
-            }
+            RTUTF16 wszExp[TESTCASE_MAX_BUF_SIZE / 2];
+            size_t  cwcExp;
+            for (cwcExp = 0; pszExpLatin1[cwcExp] != '\0'; ++cwcExp)
+                wszExp[cwcExp] = (unsigned char)pszExpLatin1[cwcExp];
+            wszExp[cwcExp] = '\0';
+            size_t const cbExp = (cwcExp + 1) * sizeof(RTUTF16);
+
+            if (cbActual == cbExp && memcmp(abBuf, wszExp, cbExp) == 0)
+                return;
+            RTTestFailed(hTest, "Returned string differs: %#zx bytes, expected %#zx\n%.*Rhxs, expected:\n%.*Rhxs\n",
+                         cbActual, cbExp, cbActual, abBuf, cbExp, wszExp);
         }
     }
-    if (!retval)
-        RTTestFailureDetails(hTest, "Expected: string \"%s\", rc %Rrc\n",
-                             pcszExp, rcExp);
+    //RTTestFailureDetails(hTest, "Expected: string \"%s\", rc %Rrc\n", pszExpLatin1, rcExp); - latin1 is wrong for '%s'!
 }
 
 static void tstStringFromVBox(RTTEST hTest, PSHCLX11CTX pCtx, const char *pcszTarget, Atom typeExp,  const char *valueExp)
@@ -778,7 +828,7 @@ int main()
     /* With an embedded CRLF */
     tstClipSetSelectionValues("TEXT", XA_STRING, "Georges\r\nDupr\xEA",
                               sizeof("Georges\r\nDupr\xEA"), 8);
-    tstLatin1FromX11(hTest, &X11Ctx, "Georges\r\r\nDupr\xEA", VINF_SUCCESS);
+    tstLatin1FromX11(hTest, &X11Ctx, "Georges\r\nDupr\xEA", VINF_SUCCESS);
     /* With an embedded LFCR */
     tstClipSetSelectionValues("TEXT", XA_STRING, "Georges\n\rDupr\xEA",
                               sizeof("Georges\n\rDupr\xEA"), 8);
@@ -861,6 +911,20 @@ int main()
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     RTTEST_CHECK_MSG(hTest, tstClipURIListFormatConversion(&X11Ctx),
                      (hTest, "failed to select the right X11 URI-list formats\n"));
+
+    RTTestSub(hTest, "cache-only X11 URI-list offer");
+    static const char s_szUriList[] = "http://localhost/a\r\nhttp://localhost/b\r\n";
+    uint32_t const cDataRequestsBefore = g_tst_cDataRequests;
+    RTTEST_CHECK_RC_OK(hTest, ShClX11ReportFormatsToX11AsyncEx(&X11Ctx, VBOX_SHCL_FMT_URI_LIST,
+                                                               VBOX_SHCL_FMT_URI_LIST, s_szUriList,
+                                                               sizeof(s_szUriList)));
+    tstStringFromVBox(hTest, &X11Ctx, "text/uri-list", clipGetAtom(&X11Ctx, "text/uri-list"), s_szUriList);
+    RTTEST_CHECK_MSG(hTest, g_tst_cDataRequests == cDataRequestsBefore,
+                     (hTest, "Cached URI-list conversion unexpectedly requested source data\n"));
+    ShClCacheInvalidate(&X11Ctx.Cache);
+    tstStringFromVBoxFailed(hTest, &X11Ctx, "text/uri-list");
+    RTTEST_CHECK_MSG(hTest, g_tst_cDataRequests == cDataRequestsBefore,
+                     (hTest, "Cache-only URI-list miss unexpectedly requested source data\n"));
 #endif
     /*
      * UTF-8 from VBox
@@ -994,4 +1058,3 @@ int main()
 
     return RTTestSummaryAndDestroy(hTest);
 }
-

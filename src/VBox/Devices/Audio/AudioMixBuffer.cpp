@@ -1,4 +1,4 @@
-/* $Id: AudioMixBuffer.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: AudioMixBuffer.cpp 114835 2026-07-31 12:08:07Z andreas.loeffler@oracle.com $ */
 /** @file
  * Audio mixing buffer for converting reading/writing audio data.
  */
@@ -654,7 +654,7 @@ static void audioMixBufRateResetAlways(PAUDIOSTREAMRATE pRate)
     pRate->offDst = 0;
     pRate->offSrc = 0;
     for (uintptr_t i = 0; i < RT_ELEMENTS(pRate->SrcLast.ai32Samples); i++)
-        pRate->SrcLast.ai32Samples[0] = 0;
+        pRate->SrcLast.ai32Samples[i] = 0;
 }
 
 
@@ -1457,6 +1457,39 @@ int AudioMixBufInitWriteState(PCAUDIOMIXBUF pMixBuf, PAUDIOMIXBUFWRITESTATE pSta
     AUDMIXBUF_LOG(("%s: %RU32 Hz to %RU32 Hz => uDstInc=0x%'RX64\n", pMixBuf->pszName, PDMAudioPropsHz(pProps),
                    PDMAudioPropsHz(&pMixBuf->Props), pState->Rate.uDstInc));
     return rc;
+}
+
+
+/**
+ * Calculates how many source frames to pass to a resampled write for a given
+ * destination-frame limit.
+ *
+ * Returns the largest source window that cannot produce more than the
+ * destination limit, accounting for the fractional phase retained by the
+ * resampler.
+ *
+ * @returns Number of source frames to pass to the write operation.
+ * @param   pState              The write state.
+ * @param   cDstMaxFrames       Maximum number of destination frames.
+ */
+uint32_t AudioMixBufCalcMaxSrcFrames(PAUDIOMIXBUFWRITESTATE pState, uint32_t cDstMaxFrames)
+{
+    AssertPtrReturn(pState, 0);
+    AssertReturn(cDstMaxFrames > 0, 0);
+
+    AUDIOSTREAMRATE const * const pRate = &pState->Rate;
+    if (pRate->fNoConversionNeeded)
+        return cDstMaxFrames;
+
+    /*
+     * Locate the first output frame that must not be produced.  The resampler
+     * needs the selected source frame plus two lookahead frames before it can
+     * produce that output, so one fewer source frame is the safe input limit.
+     */
+    uint32_t const offSrcAtFirstExcludedDst = RT_HI_U32(  pRate->offDst
+                                                        + (uint64_t)cDstMaxFrames * pRate->uDstInc);
+    int32_t const cSrcDelta = (int32_t)(offSrcAtFirstExcludedDst - pRate->offSrc);
+    return cSrcDelta >= 0 ? (uint32_t)cSrcDelta + 2U : 0U;
 }
 
 

@@ -1,4 +1,4 @@
-/** $Id: clipboard-common.cpp 114458 2026-06-19 12:01:21Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-common.cpp 114744 2026-07-21 18:37:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Shared Clipboard common code.
  */

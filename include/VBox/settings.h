@@ -1585,7 +1585,7 @@ public:
     void buildMachineXML(xml::ElementNode &elmMachine,
                          uint32_t fl,
                          std::list<xml::ElementNode*> *pllElementsWithUuidAttributes);
-
+    void sanitizeImportedSerialPorts();
     static bool isAudioDriverAllowedOnThisHost(AudioDriverType_T enmDrvType);
     static AudioDriverType_T getHostDefaultAudioDriver();
 

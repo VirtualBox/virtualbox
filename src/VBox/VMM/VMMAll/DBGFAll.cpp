@@ -1,4 +1,4 @@
-/* $Id: DBGFAll.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: DBGFAll.cpp 114792 2026-07-27 14:30:18Z andreas.loeffler@oracle.com $ */
 /** @file
  * DBGF - Debugger Facility, All Context Code.
  */
@@ -746,6 +746,7 @@ VMM_INT_DECL(VBOXSTRICTRC) DBGFEventGenericWithArgs(PVM pVM, PVMCPU pVCpu, DBGFE
         pVCpu->dbgf.s.aEvents[i].rip                    = rip;
         pVCpu->dbgf.s.aEvents[i].Event.enmType          = enmEvent;
         pVCpu->dbgf.s.aEvents[i].Event.enmCtx           = enmCtx;
+        RT_ZERO(pVCpu->dbgf.s.aEvents[i].Event.u);
         pVCpu->dbgf.s.aEvents[i].Event.u.Generic.cArgs  = cArgs;
         pVCpu->dbgf.s.aEvents[i].Event.u.Generic.auArgs[0] = uEventArg0;
         if (cArgs > 1)
@@ -765,4 +766,3 @@ VMM_INT_DECL(VBOXSTRICTRC) DBGFEventGenericWithArgs(PVM pVM, PVMCPU pVCpu, DBGFE
     va_end(va);
     return VINF_SUCCESS;
 }
-

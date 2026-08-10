@@ -1,4 +1,4 @@
-/* $Id: draganddrop-x11.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: draganddrop-x11.cpp 114749 2026-07-22 08:56:08Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - VBoxClient X11 drag'n drop implementation.
  */
@@ -70,7 +70,7 @@
 # undef VBOX_WITH_DRAG_AND_DROP_PROMISES
 #endif
 
-/**
+/** @page pg_vboxclient_x11_dnd     VBoxClient - X11 Drag & Drop
  * For X11 guest Xdnd is used. See http://www.acc.umu.se/~vatten/XDND.html for
  * a walk trough.
  *

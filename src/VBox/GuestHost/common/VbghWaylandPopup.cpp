@@ -1,4 +1,4 @@
-/* $Id: VbghWaylandPopup.cpp 114620 2026-07-04 00:00:20Z knut.osmundsen@oracle.com $ */
+/* $Id: VbghWaylandPopup.cpp 114738 2026-07-21 13:40:26Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest / Host common code - Wayland Popup Surface.
  */
@@ -35,8 +35,12 @@
 #include <VBox/log.h>
 #include <iprt/file.h>
 #include <iprt/env.h>
+#include <iprt/err.h>
 #include <iprt/path.h>
+#include <iprt/process.h>
 #include <iprt/string.h>
+#include <iprt/thread.h>
+#include <iprt/time.h>
 
 #include <wayland-client-protocol.h>
 #include <gtk-shell.h>
@@ -507,6 +511,54 @@ VBGH_DECL(int) VbghWaylandPopupShow(PVBGHWAYLANDPOPUP pThis, PVBGHWAYLANDSEAT pS
         }
     }
 
+    return rc;
+}
+
+
+/**
+ * Utility function for zombie management of popup helper child processes.
+ *
+ * If the child process doesn't quit reasonably (@a cMsWaitBeforeKill) fast on
+ * its own, `kill -9` will be issued and some further waiting ensues (@a
+ * cMsWaitBetweenKills).  The killing is repeated @a cKills times.
+ */
+VBGH_DECL(int) VbghWaylandPopupTerminateAndWaitForChild(RTPROCESS hProcess, const char *pszProcName,
+                                                        RTMSINTERVAL cMsWaitBeforeKill, RTMSINTERVAL cMsWaitBetweenKills,
+                                                        unsigned cKills, PRTPROCSTATUS pProcStatus)
+{
+    AssertStmt(cKills < ~(unsigned)0, cKills -= 1);
+    RTPROCSTATUS ProcStatusTmp;
+    if (!pProcStatus)
+        pProcStatus = &ProcStatusTmp;
+
+    /*
+     * Since we cannot wait on children with a generic timeout, we first poll
+     * for 1 second, then do kill -9 and poll for another 5 seconds, and repeat
+     * that once again before giving up.  A total of ~11 seconds.
+     */
+    pProcStatus->enmReason = RTPROCEXITREASON_ABEND;
+    pProcStatus->iStatus   = -1;
+    int rc = RTProcWait(hProcess, RTPROCWAIT_FLAGS_NOBLOCK, pProcStatus);
+    unsigned iLoop;
+    for (iLoop = 0; rc == VERR_PROCESS_RUNNING && iLoop <= cKills; iLoop++)
+    {
+        uint64_t const msStart = RTTimeMilliTS();
+        do
+        {
+            RTThreadSleep(32);
+            pProcStatus->enmReason = RTPROCEXITREASON_ABEND;
+            pProcStatus->iStatus   = -1;
+            rc = RTProcWait(hProcess, RTPROCWAIT_FLAGS_NOBLOCK, pProcStatus);
+        } while (   rc == VERR_PROCESS_RUNNING
+                 && RTTimeMilliTS() - msStart < (!iLoop ? cMsWaitBeforeKill : cMsWaitBetweenKills));
+        if (rc == VERR_PROCESS_RUNNING)
+            RTProcTerminate(hProcess);
+    }
+    if (RT_SUCCESS(rc))
+        LogRel2(("%s process %u (%#x) exited: iStatus=%d enmReason=%d (rc=%Rrc iLoop=%u)\n",
+                 pszProcName, hProcess, hProcess, pProcStatus->iStatus, pProcStatus->enmReason, rc, iLoop));
+    else
+        LogRel(("error: Failed to terminate %s process %u (%#x): %Rrc (iLoop=%u)\n", pszProcName, hProcess, hProcess, rc, iLoop));
     return rc;
 }
 

@@ -1,4 +1,4 @@
-/* $Id: VBoxUsbRt.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxUsbRt.cpp 114682 2026-07-14 08:43:59Z michal.necasek@oracle.com $ */
 /** @file
  * VBox USB R0 runtime
  */
@@ -1273,7 +1273,7 @@ static NTSTATUS vboxUsbRtUrbSend(PVBOXUSBDEV_EXT pDevExt, PIRP pIrp, PUSBSUP_URB
 
         __try
         {
-            MmProbeAndLockPages(pMdlBuf, KernelMode, IoModifyAccess);
+            MmProbeAndLockPages(pMdlBuf, UserMode, IoModifyAccess);
         }
         __except(EXCEPTION_EXECUTE_HANDLER)
         {

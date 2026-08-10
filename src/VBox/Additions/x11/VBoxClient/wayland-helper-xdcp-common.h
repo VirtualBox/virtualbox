@@ -1,4 +1,4 @@
-/* $Id: wayland-helper-xdcp-common.h 114480 2026-06-22 12:04:59Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland-helper-xdcp-common.h 114745 2026-07-21 18:40:35Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Definitions for Data Control protocols family helpers.
  */
@@ -175,14 +175,14 @@ struct vbcl_wl_dcp_enumerate_ctx
  * @returns IPRT status code.
  * @param   pCtx                Context data.
  */
-RTDECL(int) vbcl_wayland_xdcp_next_event(vbox_wl_xdcp_base_ctx_t *pCtx);
+int vbcl_wayland_xdcp_next_event(vbox_wl_xdcp_base_ctx_t *pCtx);
 
 /**
  * Reset previously initialized session.
  *
  * @param   pCtx                Context data.
  */
-RTDECL(void) vbcl_wayland_xdcp_session_prepare(vbox_wl_xdcp_base_ctx_t *pCtx);
+void vbcl_wayland_xdcp_session_prepare(vbox_wl_xdcp_base_ctx_t *pCtx);
 
 /**
  * Initializes the common context.

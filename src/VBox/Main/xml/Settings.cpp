@@ -1,4 +1,4 @@
-/* $Id: Settings.cpp 114362 2026-06-15 18:31:38Z andreas.loeffler@oracle.com $ */
+/* $Id: Settings.cpp 114800 2026-07-27 16:53:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Settings File Manipulation API.
  *
@@ -3275,8 +3275,8 @@ bool RecordingScreen::areDefaultSettings(void) const
            && Audio.cBits                                     == 16
            && Audio.cChannels                                 == 2
            && Audio.uHz                                       == 22050
-           && featureMap.find(RecordingFeature_Video)->second == true
-           && featureMap.find(RecordingFeature_Audio)->second == false;
+           && isFeatureEnabled(RecordingFeature_Video)
+           && !isFeatureEnabled(RecordingFeature_Audio);
 }
 
 /**
@@ -3321,8 +3321,7 @@ bool RecordingScreen::operator==(const RecordingScreen &d) const
            && Audio.enmRateCtlMode == d.Audio.enmRateCtlMode
            && Audio.cBits          == d.Audio.cBits
            && Audio.cChannels      == d.Audio.cChannels
-           && Audio.uHz            == d.Audio.uHz
-           && featureMap           == d.featureMap;
+           && Audio.uHz            == d.Audio.uHz;
 }
 
 /**
@@ -9195,7 +9194,7 @@ void MachineConfigFile::buildRecordingXML(xml::ElementNode &elmParent, const Rec
                 }
                 if (itScreen->second.Video.ulRate != 512)
                     pelmScreen->setAttribute("rateKbps",        itScreen->second.Video.ulRate);
-                if (itScreen->second.Video.ulFPS)
+                if (itScreen->second.Video.ulFPS != 25)
                     pelmScreen->setAttribute("fps",             itScreen->second.Video.ulFPS);
                 if (itScreen->second.Audio.enmCodec != RecordingAudioCodec_OggVorbis)
                     pelmScreen->setAttribute("audioCodec",
@@ -9260,7 +9259,7 @@ void MachineConfigFile::buildRecordingXML(xml::ElementNode &elmParent, const Rec
         }
         if (itScreen0Settings->second.Video.ulRate != 512)
             pelmVideoCapture->setAttribute("rate",         itScreen0Settings->second.Video.ulRate);
-        if (itScreen0Settings->second.Video.ulFPS)
+        if (itScreen0Settings->second.Video.ulFPS != 25)
             pelmVideoCapture->setAttribute("fps",          itScreen0Settings->second.Video.ulFPS);
     }
 }
@@ -9694,6 +9693,21 @@ bool MachineConfigFile::isAudioDriverAllowedOnThisHost(AudioDriverType_T enmDrvT
     }
 
     return false;
+}
+
+void MachineConfigFile::sanitizeImportedSerialPorts()
+{
+    for (SerialPortsList::iterator it = hardwareMachine.llSerialPorts.begin();
+            it != hardwareMachine.llSerialPorts.end();
+            ++it)
+    {
+        SerialPort &port = *it;
+        if (port.portMode == PortMode_RawFile)
+        {
+            port.portMode = PortMode_Disconnected;
+            port.strPath.setNull();
+        }
+    }
 }
 
 /**

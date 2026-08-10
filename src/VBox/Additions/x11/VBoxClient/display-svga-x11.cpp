@@ -1,4 +1,4 @@
-/* $Id: display-svga-x11.cpp 114416 2026-06-17 23:01:21Z knut.osmundsen@oracle.com $ */
+/* $Id: display-svga-x11.cpp 114744 2026-07-21 18:37:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * X11 guest client - VMSVGA emulation resize event pass-through to X.Org
  * guest driver.
@@ -1404,7 +1404,7 @@ static DECLCALLBACK(int) vbclSVGAWorker(bool volatile *pfShutdown)
     return VINF_SUCCESS;
 }
 
-VBCLSERVICE g_SvcDisplaySVGA =
+VBCLSERVICE const g_SvcDisplaySVGA =
 {
     "dp-svga-x11",                      /* szName */
     "SVGA X11 display",                 /* pszDescription */

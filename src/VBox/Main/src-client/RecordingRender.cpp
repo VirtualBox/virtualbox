@@ -1,4 +1,4 @@
-/* $Id: RecordingRender.cpp 113876 2026-04-15 09:30:47Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingRender.cpp 114800 2026-07-27 16:53:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording rendering implementation.
  *
@@ -3485,6 +3485,8 @@ static DECLCALLBACK(int) recRenderSDLResize(PRECORDINGRENDERER pRenderer,
     switch (pResizeParms->enmMode)
     {
         case RecordingVideoScalingMode_NearestNeighbor:
+        case RecordingVideoScalingMode_Bilinear:
+        case RecordingVideoScalingMode_Bicubic:
             dw = (int32_t)pRenderer->Parms.Info.uWidth;
             dh = (int32_t)pRenderer->Parms.Info.uHeight;
             break;
@@ -4566,4 +4568,3 @@ int RecordingRenderSetParms(PRECORDINGRENDERER pRenderer, PRECORDINGRENDERPARMS 
 
     return vrc;
 }
-

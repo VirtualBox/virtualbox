@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-client.cpp 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-client.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Client/session and message queue handling.
  */
@@ -59,19 +59,6 @@ using namespace HGCM;
 static int  shClSvcClientStateInit(PSHCLCLIENTSTATE pState, uint32_t uClientID);
 static int  shClSvcClientStateTerm(PSHCLCLIENTSTATE pState);
 static void shClSvcClientStateReset(PSHCLCLIENTSTATE pState);
-
-/**
- * Checks whether a value names exactly one Shared Clipboard format.
- *
- * @returns true if \a uFormat is a single valid VBOX_SHCL_FMT_XXX bit, false otherwise.
- * @param   uFormat             Format value to validate.
- */
-static bool shClSvcClientIsValidFormat(SHCLFORMAT uFormat)
-{
-    return    uFormat != VBOX_SHCL_FMT_NONE
-           && (uFormat & ~VBOX_SHCL_FMT_VALID_MASK) == 0
-           && (uFormat & (uFormat - 1)) == 0;
-}
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 static SHCLSESSIONID shClSvcClientAllocSessionId(void)
@@ -1189,7 +1176,7 @@ int shClSvcClientMsgDataWrite(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCMSVCP
     ASSERT_GUEST_RETURN(paParms[iParm].type == VBOX_HGCM_SVC_PARM_32BIT, VERR_WRONG_PARAMETER_TYPE); /* Format bit. */
     uFormat = paParms[iParm].u.uint32;
     iParm++;
-    if (!shClSvcClientIsValidFormat(uFormat))
+    if (!ShClFormatIsValid(uFormat))
     {
         LogRelMax2(16, ("Shared Clipboard: Rejecting guest clipboard data with invalid format %#x\n", uFormat));
         return VERR_INVALID_PARAMETER;
@@ -1368,4 +1355,3 @@ static void shClSvcClientStateReset(PSHCLCLIENTSTATE pState)
     pState->Transfers.enmTransferDir = SHCLTRANSFERDIR_UNKNOWN;
 #endif
 }
-

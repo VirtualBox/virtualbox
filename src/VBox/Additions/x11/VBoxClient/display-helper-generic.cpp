@@ -1,4 +1,4 @@
-/* $Id: display-helper-generic.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: display-helper-generic.cpp 114802 2026-07-27 19:09:39Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Generic Desktop Environment helper.
  *
@@ -104,67 +104,48 @@ static bool vbcl_hlp_generic_order_names(char *pszName1, char *pszName2)
  *
  * @return  IPRT status code.
  * @param   pDisplay        X11 display handle to fetch monitor name string from.
- * @param   pListHead       Head of monitors info list.
+ * @param   pListHead       Head of monitors info list (vbcl_hlp_generic_monitor_list_t).
  * @param   pMonitorInfo    Monitor info ti be inserted into the list.
  */
 static int vbcl_hlp_generic_monitor_list_insert_sorted(
-    Display *pDisplay, vbcl_hlp_generic_monitor_list_t *pListHead, XRRMonitorInfo *pMonitorInfo)
+    Display *pDisplay, RTLISTANCHOR *pListHead, XRRMonitorInfo *pMonitorInfo)
 {
     vbcl_hlp_generic_monitor_list_t *pNode = (vbcl_hlp_generic_monitor_list_t *)RTMemAllocZ(sizeof(vbcl_hlp_generic_monitor_list_t));
-    vbcl_hlp_generic_monitor_list_t *pNodeIter;
-    char                            *pszMonitorName;
-
     AssertReturn(pNode, VERR_NO_MEMORY);
-
     pNode->pMonitorInfo = pMonitorInfo;
 
-    if (RTListIsEmpty(&pListHead->Node))
+    if (RTListIsEmpty(pListHead))
     {
-        RTListNodeInsertAfter(&pListHead->Node, &pNode->Node);
+        RTListNodeInsertAfter(pListHead, &pNode->Node);
         return VINF_SUCCESS;
     }
 
-    pszMonitorName = XGetAtomName(pDisplay, pMonitorInfo->name);
-    AssertReturn(pszMonitorName, VERR_NO_MEMORY);
+    char *pszMonitorName = XGetAtomName(pDisplay, pMonitorInfo->name);
+    AssertReturnStmt(pszMonitorName, RTMemFree(pNode), VERR_NO_MEMORY);
 
-    RTListForEach(&pListHead->Node, pNodeIter, vbcl_hlp_generic_monitor_list_t, Node)
+    vbcl_hlp_generic_monitor_list_t *pNodeIter;
+    RTListForEach(pListHead, pNodeIter, vbcl_hlp_generic_monitor_list_t, Node)
     {
         char *pszIterMonitorName = XGetAtomName(pDisplay, pNodeIter->pMonitorInfo->name);
 
         if (vbcl_hlp_generic_order_names(pszMonitorName, pszIterMonitorName))
         {
             RTListNodeInsertBefore(&pNodeIter->Node, &pNode->Node);
-            XFree((void *)pszIterMonitorName);
-            XFree((void *)pszMonitorName);
+            XFree(pszIterMonitorName);
+            XFree(pszMonitorName);
             return VINF_SUCCESS;
         }
 
-        XFree((void *)pszIterMonitorName);
+        XFree(pszIterMonitorName);
     }
 
-    XFree((void *)pszMonitorName);
+    XFree(pszMonitorName);
 
     /* If we reached the end of the list, it means that monitor
      * should be placed in the end (according to alphabetical sorting). */
-    RTListNodeInsertBefore(&pNodeIter->Node, &pNode->Node);
+    RTListAppend(pListHead, &pNode->Node);
 
     return VINF_SUCCESS;
-}
-
-/**
- * Release monitors info list resources.
- *
- * @param   pListHead   List head.
- */
-static void vbcl_hlp_generic_free_monitor_list(vbcl_hlp_generic_monitor_list_t *pListHead)
-{
-    vbcl_hlp_generic_monitor_list_t *pEntry, *pNextEntry;
-
-    RTListForEachSafe(&pListHead->Node, pEntry, pNextEntry, vbcl_hlp_generic_monitor_list_t, Node)
-    {
-            RTListNodeRemove(&pEntry->Node);
-            RTMemFree(pEntry);
-    }
 }
 
 /**
@@ -180,15 +161,15 @@ static void vbcl_hlp_generic_process_display_change_event(Display *pDisplay)
     if (pMonitorsInfo && iCount > 0 && iCount < VBOX_DRMIPC_MONITORS_MAX)
     {
         int rc;
-        vbcl_hlp_generic_monitor_list_t pMonitorsInfoList, *pIter;
         struct VBOX_DRMIPC_VMWRECT aDisplays[VBOX_DRMIPC_MONITORS_MAX];
 
-        RTListInit(&pMonitorsInfoList.Node);
+        RTLISTANCHOR MonitorsInfoList;
+        RTListInit(&MonitorsInfoList);
 
         /* Put monitors info into sorted (by monitor name) list. */
         for (int i = 0; i < iCount; i++)
         {
-            rc = vbcl_hlp_generic_monitor_list_insert_sorted(pDisplay, &pMonitorsInfoList, &pMonitorsInfo[i]);
+            rc = vbcl_hlp_generic_monitor_list_insert_sorted(pDisplay, &MonitorsInfoList, &pMonitorsInfo[i]);
             if (RT_FAILURE(rc))
             {
                 VBClLogError("unable to fill monitors info list, rc=%Rrc\n", rc);
@@ -197,12 +178,13 @@ static void vbcl_hlp_generic_process_display_change_event(Display *pDisplay)
         }
 
         /* Now iterate over sorted list of monitor configurations. */
-        RTListForEach(&pMonitorsInfoList.Node, pIter, vbcl_hlp_generic_monitor_list_t, Node)
+        vbcl_hlp_generic_monitor_list_t *pIter;
+        RTListForEach(&MonitorsInfoList, pIter, vbcl_hlp_generic_monitor_list_t, Node)
         {
             char *pszMonitorName = XGetAtomName(pDisplay, pIter->pMonitorInfo->name);
 
             VBClLogVerbose(1, "reporting monitor %s offset: (%d, %d)\n",
-                        pszMonitorName, pIter->pMonitorInfo->x, pIter->pMonitorInfo->y);
+                           pszMonitorName, pIter->pMonitorInfo->x, pIter->pMonitorInfo->y);
 
             XFree((void *)pszMonitorName);
 
@@ -214,10 +196,17 @@ static void vbcl_hlp_generic_process_display_change_event(Display *pDisplay)
             idxDisplay++;
         }
 
-        vbcl_hlp_generic_free_monitor_list(&pMonitorsInfoList);
+        /* Cleanup list and monitor info. */
+        vbcl_hlp_generic_monitor_list_t *pIterNext;
+        RTListForEachSafe(&MonitorsInfoList, pIter, pIterNext, vbcl_hlp_generic_monitor_list_t, Node)
+        {
+            RTListNodeRemove(&pIter->Node);
+            RTMemFree(pIter);
+        }
 
         XRRFreeMonitors(pMonitorsInfo);
 
+        /* Do callback. */
         if (g_pfnDisplayOffsetChangeCb)
         {
             rc = g_pfnDisplayOffsetChangeCb(idxDisplay, aDisplays);
@@ -371,7 +360,7 @@ static DECLCALLBACK(int) vbcl_hlp_generic_probe(void)
     return VINF_SUCCESS;
 }
 
-RTDECL(int) vbcl_hlp_generic_init(void)
+DECLCALLBACK(int) vbcl_hlp_generic_init(void)
 {
     ASMAtomicWriteBool(&g_fShutdown, false);
 
@@ -382,7 +371,7 @@ RTDECL(int) vbcl_hlp_generic_init(void)
     return VINF_SUCCESS;
 }
 
-RTDECL(int) vbcl_hlp_generic_term(void)
+DECLCALLBACK(int) vbcl_hlp_generic_term(void)
 {
     int rc = VINF_SUCCESS;
 
@@ -398,12 +387,12 @@ RTDECL(int) vbcl_hlp_generic_term(void)
     return rc;
 }
 
-RTDECL(void) vbcl_hlp_generic_subscribe_display_offset_changed(FNDISPLAYOFFSETCHANGE *pfnCb)
+DECLCALLBACK(void) vbcl_hlp_generic_subscribe_display_offset_changed(FNDISPLAYOFFSETCHANGE *pfnCb)
 {
     g_pfnDisplayOffsetChangeCb = pfnCb;
 }
 
-RTDECL(void) vbcl_hlp_generic_unsubscribe_display_offset_changed(void)
+DECLCALLBACK(void) vbcl_hlp_generic_unsubscribe_display_offset_changed(void)
 {
     g_pfnDisplayOffsetChangeCb = NULL;
 }

@@ -1,4 +1,4 @@
-/* $Id: bs3-apic-1-32.c32 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: bs3-apic-1-32.c32 114765 2026-07-24 08:34:04Z alexander.eichner@oracle.com $ */
 /** @file
  * BS3Kit - bs3-apic-1, 32-bit C code.
  */
@@ -39,9 +39,589 @@
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
 #include <bs3kit.h>
+#include <iprt/asm.h>
 #include <iprt/asm-amd64-x86.h>
 #include <iprt/x86.h>
 #include <VBox/apic.h>
+#include <VBox/VMMDevTesting.h>
+
+#define CPUS_MAX        32
+#define CPU_STACK_SIZE _4K
+
+#define APIC_VECTOR        0x70
+#define APIC_X2APIC_VECTOR 0x71
+
+/**
+ * The wait method.
+ */
+typedef enum APICCPUWAITMETHOD
+{
+    /** Invalid wait method. */
+    kApicCpuWaitMethod_Invalid = 0,
+    /** Waits using hlt with interrupts enabled, requiring an interrupt to get further. */
+    kApicCpuWaitMethod_StiHltCli,
+    /** Waits using a busy loop with interrupts enabled, requiring an interrupt to get further. */
+    kApicCpuWaitMethod_StiBusyWaitCli,
+    /** 32-bit hack. */
+    kApicCpuWaitMethod_32Bit_Hack = 0x7fffffff
+} APICCPUWAITMETHOD;
+
+
+/**
+ * The request to execute after being woken up.
+ */
+typedef enum APICCPUREQ
+{
+    /** Invalid request. */
+    kApicCpuReq_Invalid = 0,
+    /** No operation. */
+    kApicCpuReq_Nop,
+    /** A simple pong to a ping. */
+    kApicCpuReq_Pong,
+    /** A simple pong to a ping but don't clear the request. */
+    kApicCpuReq_PongNoClear,
+    /** 32-bit hack. */
+    kApicCpuReq_32Bit_Hack = 0x7fffffff
+} APICCPUREQ;
+
+
+/**
+ * The per CPU state.
+ */
+typedef struct APICCPU
+{
+    /** The stack for this CPU. */
+    uint8_t                     abStack[CPU_STACK_SIZE];
+    /** The MMIO base for the APIC when in xAPIC mode. */
+    uint32_t BS3_FAR volatile * pau32Apic;
+    /** The assigned CPU ID, equals APIC ID. */
+    uint32_t                    idCpu;
+    /** The wait method for the runloop. */
+    volatile APICCPUWAITMETHOD  enmWaitMethod;
+    /** The request for the runloop. */
+    volatile APICCPUREQ         enmRunloopReq;
+    /** The request for the interrupt handler. */
+    volatile APICCPUREQ         enmIntrReq;
+    /** Flag whether the APIC is in x2Apic mode. */
+    bool                        fX2Apic;
+    /** Padding. */
+    bool                        afAlignment[11];
+} APICCPU;
+typedef APICCPU *PAPICCPU;
+AssertCompileSizeAlignment(APICCPU, 16);
+
+BS3_DECL_CALLBACK(void) bs3ApicApTrampoline(void);
+BS3_DECL_CALLBACK(void) bs3ApicApTrampoline_EndProc(void);
+
+/** The AP lock protecting against concurrent access to some APIs and the startup code (lives in the DATA16 segment). */
+#define g_fApLock BS3_DATA_NM(g_fApLock)
+extern volatile bool     g_fApLock;
+/** The AP init stack (lives in the DATA16 segment). */
+#define g_AddrApInitStack BS3_DATA_NM(g_AddrApInitStack)
+extern volatile uint32_t g_AddrApInitStack;
+
+static PAPICCPU  g_paCpus;
+static volatile uint32_t g_cCpus = 1;
+static volatile uint32_t g_cCpusResponded = 0;
+static volatile uint64_t g_bmCpusValid = 0;
+static volatile uint64_t g_bmCpusResponded = 0;
+
+
+static void bs3ApicBusyWait(uint64_t u64Usec)
+{
+    uint64_t cNsElapsed = Bs3TestNow();
+    while (Bs3TestNow() < cNsElapsed + u64Usec * 1000)
+        ASMNopPause();
+}
+
+
+DECLINLINE(void) bs3ApicTestReset(void)
+{
+    ASMAtomicWriteU32(&g_cCpusResponded, 0);
+    ASMAtomicWriteU64(&g_bmCpusResponded, 0);
+}
+
+
+DECLINLINE(void) bs3ApicTestFinish(uint32_t idCpu)
+{
+    ASMAtomicBitSet(&g_bmCpusResponded, idCpu);
+    ASMAtomicIncU32(&g_cCpusResponded);
+}
+
+
+DECLINLINE(bool) bs3ApicTestWaitForCpus(uint32_t cCpus, uint64_t u64TimeoutMs)
+{
+    uint64_t u64DeadlineNs = Bs3TestNow() + u64TimeoutMs * RT_NS_1MS_64;
+    for (;;)
+    {
+        if (ASMAtomicReadU32(&g_cCpusResponded) == cCpus)
+            return true;
+
+        if (Bs3TestNow() >= u64DeadlineNs)
+            return false;
+
+        ASMNopPause();
+    }
+}
+
+
+DECLINLINE(void) bs3ApicTestSetIntrHandlerReq(PAPICCPU pApicCpu, APICCPUREQ enmIntrReq)
+{
+    ASMAtomicWriteU32((volatile uint32_t RT_FAR *)&pApicCpu->enmIntrReq, enmIntrReq);
+}
+
+
+DECLINLINE(void) bs3ApicTestSetIntrHandlerReqOnCpus(uint64_t bmCpus, APICCPUREQ enmIntrReq)
+{
+    uint32_t i;
+
+    for (i = 0; i < g_cCpus; i++)
+    {
+        if (bmCpus & RT_BIT_64(i))
+            bs3ApicTestSetIntrHandlerReq(&g_paCpus[i], enmIntrReq);
+    }
+}
+
+
+static void bs3ApicLock(void)
+{
+    for (;;)
+    {
+        if (ASMAtomicCmpXchgBool(&g_fApLock, true, false))
+            break;
+    }
+}
+
+
+static void bs3ApicUnlock(void)
+{
+    ASMAtomicXchgBool(&g_fApLock, false);
+}
+
+
+static void bs3ApicTestPrintf(const char BS3_FAR *pszFormat, ...)
+{
+    va_list va;
+    va_start(va, pszFormat);
+    bs3ApicLock();
+    Bs3TestPrintfV(pszFormat, va);
+    bs3ApicUnlock();
+    va_end(va);
+}
+
+
+static void bs3ApicTestFailedF(const char BS3_FAR *pszFormat, ...)
+{
+    va_list va;
+    va_start(va, pszFormat);
+    bs3ApicLock();
+    Bs3TestFailedV(pszFormat, va);
+    bs3ApicUnlock();
+    va_end(va);
+}
+
+
+static PAPICCPU bs3ApicGetCpu(void)
+{
+    uint64_t uApicBase;
+
+    uApicBase = ASMRdMsr(MSR_IA32_APICBASE);
+    if (uApicBase & MSR_IA32_APICBASE_EN)
+    {
+        uint32_t idApic = UINT32_MAX;
+        if (uApicBase & MSR_IA32_APICBASE_EXTD)
+            idApic = (uint32_t)ASMRdMsr(MSR_IA32_X2APIC_ID);
+        else
+        {
+            uint8_t  BS3_FAR volatile * const  pabApic   = (uint8_t  BS3_FAR volatile *)((uintptr_t)uApicBase & X86_PAGE_4K_BASE_MASK);
+            uint32_t BS3_FAR volatile * const  pau32Apic = (uint32_t BS3_FAR volatile *)pabApic;
+            idApic = pau32Apic[XAPIC_OFF_ID / sizeof(uint32_t)] >> 24;
+        }
+
+        return &g_paCpus[idApic];
+    }
+
+    return NULL;
+}
+
+
+BS3_DECL_NEAR_CALLBACK(void) BS3_CMN_NM(bs3ApicIpiHandler)(PBS3TRAPFRAME pTrapFrame)
+{
+    PAPICCPU pApicCpu = bs3ApicGetCpu();
+    if (pApicCpu)
+    {
+        APICCPUREQ const enmIntrReq = (APICCPUREQ)ASMAtomicReadU32((volatile uint32_t RT_FAR *)&pApicCpu->enmIntrReq);
+        if (enmIntrReq != kApicCpuReq_PongNoClear)
+            ASMAtomicWriteU32((volatile uint32_t RT_FAR *)&pApicCpu->enmIntrReq, kApicCpuReq_Nop);
+
+        if (pApicCpu->fX2Apic)
+            ASMWrMsr(MSR_IA32_X2APIC_EOI, 0);
+        else
+            pApicCpu->pau32Apic[XAPIC_OFF_EOI / sizeof(uint32_t)] = 0;
+
+        switch (enmIntrReq)
+        {
+            case kApicCpuReq_Nop:
+                break;
+            case kApicCpuReq_PongNoClear:
+            case kApicCpuReq_Pong:
+                bs3ApicTestFinish(pApicCpu->idCpu);
+                break;
+            default:
+                /* Invalid but can't print anything here. */
+                break;
+        }
+    }
+    else
+        bs3ApicTestFailedF("APIC not enabled!");
+
+    RT_NOREF(pTrapFrame);
+}
+
+
+BS3_DECL_NEAR_CALLBACK(void) BS3_CMN_NM(bs3ApicX2ApicSwitch)(PBS3TRAPFRAME pTrapFrame)
+{
+    PAPICCPU pApicCpu = bs3ApicGetCpu();
+    if (pApicCpu)
+    {
+        uint64_t uApicBase = ASMRdMsr(MSR_IA32_APICBASE);
+        ASMWrMsr(MSR_IA32_APICBASE, uApicBase | MSR_IA32_APICBASE_EXTD);
+        pApicCpu->fX2Apic = true;
+        ASMWrMsr(MSR_IA32_X2APIC_SVR, XAPIC_SVR_SOFTWARE_ENABLE);
+        ASMWrMsr(MSR_IA32_X2APIC_EOI, 0);
+        bs3ApicTestFinish(pApicCpu->idCpu);
+    }
+    else
+        bs3ApicTestFailedF("APIC not enabled!");
+
+    RT_NOREF(pTrapFrame);
+}
+
+
+BS3_DECL(void) bs3ApicApRunloop_pe32(void)
+{
+    PAPICCPU pApicCpu = bs3ApicGetCpu();
+
+    for (;;)
+    {
+        APICCPUWAITMETHOD const enmWaitMethod = (APICCPUWAITMETHOD)ASMAtomicReadU32((volatile uint32_t RT_FAR *)&pApicCpu->enmWaitMethod);
+        APICCPUREQ enmRunloopReq;
+
+        switch (enmWaitMethod)
+        {
+            case kApicCpuWaitMethod_StiHltCli:
+                ASMIntEnable();
+                ASMHalt();
+                ASMIntDisable();
+                break;
+            case kApicCpuWaitMethod_StiBusyWaitCli:
+                ASMIntEnable();
+                while ((APICCPUWAITMETHOD)ASMAtomicReadU32((volatile uint32_t RT_FAR *)&pApicCpu->enmWaitMethod) == kApicCpuWaitMethod_StiBusyWaitCli)
+                    ASMNopPause();
+                ASMIntDisable();
+                break;
+            default:
+                /* Invalid but can't print anything here. */
+                break;
+        }
+
+        enmRunloopReq = (APICCPUREQ)ASMAtomicReadU32((volatile uint32_t RT_FAR *)&pApicCpu->enmRunloopReq);
+        ASMAtomicWriteU32((volatile uint32_t RT_FAR *)&pApicCpu->enmRunloopReq, kApicCpuReq_Nop);
+        switch (enmRunloopReq)
+        {
+            case kApicCpuReq_Nop:
+                break;
+            default:
+                /* Invalid but can't print anything here. */
+                break;
+        }
+    }
+}
+
+
+BS3_DECL(uint32_t) bs3ApicApStartup_pe32(void)
+{
+    uint64_t uApicBase2, uApicBase;
+
+    /* Enabling the APIC: */
+    uApicBase = ASMRdMsr(MSR_IA32_APICBASE);
+    ASMWrMsr(MSR_IA32_APICBASE, uApicBase | MSR_IA32_APICBASE_EN);
+    uApicBase2 = ASMRdMsr(MSR_IA32_APICBASE);
+    if (uApicBase2 == (uApicBase | MSR_IA32_APICBASE_EN))
+    {
+        uint8_t  BS3_FAR volatile * const  pabApic   = (uint8_t  BS3_FAR volatile *)((uintptr_t)uApicBase & X86_PAGE_4K_BASE_MASK);
+        uint32_t BS3_FAR volatile * const  pau32Apic = (uint32_t BS3_FAR volatile *)pabApic;
+        uint32_t const idApic = pau32Apic[XAPIC_OFF_ID / sizeof(uint32_t)] >> 24;
+        PAPICCPU pApicCpu = &g_paCpus[idApic];
+
+        pApicCpu->idCpu         = idApic;
+        pApicCpu->pau32Apic     = pau32Apic;
+        pApicCpu->enmWaitMethod = kApicCpuWaitMethod_StiHltCli;
+        pApicCpu->enmRunloopReq = kApicCpuReq_Nop;
+
+        pau32Apic[XAPIC_OFF_SVR / sizeof(uint32_t)] = XAPIC_SVR_SOFTWARE_ENABLE;
+        ASMAtomicIncU32(&g_cCpus);
+        return (uint32_t)&g_paCpus[idApic].abStack[CPU_STACK_SIZE];
+    }
+    else
+        Bs3TestFailedF("Enabling the APIC did not work (%#RX64)", uApicBase2);
+
+    return 0;
+}
+
+
+DECLINLINE(void) apicWriteIcr(PAPICCPU pApicCpu, uint8_t bDestination,
+                              XAPICDESTSHORTHAND enmShorthand, XAPICDELIVERYMODE enmDeliveryMode,
+                              XAPICDESTMODE enmMode, XAPICTRIGGERMODE enmTriggerMode,
+                              XAPICLEVEL enmLevel, uint8_t bVector)
+{
+    if (pApicCpu->fX2Apic)
+    {
+        uint64_t const uWr =   ((uint64_t)bDestination) << 32
+                             | ((uint64_t)enmShorthand << 18)
+                             | ((uint64_t)enmMode == XAPICDESTMODE_LOGICAL ? RT_BIT_64(11) : 0)
+                             | ((uint64_t)enmDeliveryMode << 8)
+                             | (enmTriggerMode == XAPICTRIGGERMODE_LEVEL ? RT_BIT_64(15) : 0)
+                             | (enmLevel == XAPICINITLEVEL_ASSERT ? RT_BIT_64(14) : 0)
+                             | bVector;
+        ASMWrMsr(MSR_IA32_X2APIC_ICR, uWr);
+    }
+    else
+    {
+        uint32_t BS3_FAR volatile * const  pau32Apic = pApicCpu->pau32Apic;
+
+        pau32Apic[XAPIC_OFF_ICR_HI / sizeof(uint32_t)] =   (uint32_t)bDestination << 24;
+        pau32Apic[XAPIC_OFF_ICR_LO / sizeof(uint32_t)] =   ((uint32_t)enmShorthand << 18)
+                                                         | ((uint32_t)enmMode == XAPICDESTMODE_LOGICAL ? RT_BIT_32(11) : 0)
+                                                         | ((uint32_t)enmDeliveryMode << 8)
+                                                         | (enmTriggerMode == XAPICTRIGGERMODE_LEVEL ? RT_BIT_32(15) : 0)
+                                                         | (enmLevel == XAPICINITLEVEL_ASSERT ? RT_BIT_32(14) : 0)
+                                                         | bVector;
+    }
+}
+
+
+DECLINLINE(void) apicSelfIpi(PAPICCPU pApicCpu, uint8_t bVector)
+{
+    if (pApicCpu->fX2Apic)
+        ASMWrMsr(MSR_IA32_X2APIC_SELF_IPI, bVector);
+    else
+        apicWriteIcr(pApicCpu, 0, XAPICDESTSHORTHAND_SELF, XAPICDELIVERYMODE_FIXED,
+                     XAPICDESTMODE_PHYSICAL, XAPICTRIGGERMODE_EDGE, XAPICINITLEVEL_ASSERT, bVector);
+}
+
+
+static bool bs3ApicStartAllAps(uint32_t BS3_FAR volatile * const  pau32Apic)
+{
+    g_paCpus = (PAPICCPU)Bs3MemAllocZ(BS3MEMKIND_FLAT32, CPUS_MAX * sizeof(*g_paCpus));
+    if (g_paCpus)
+    {
+        /* Allocate a single 4K page and make sure it is aligned on a page boundary and the physical address fits into the 8-bit vector. */
+        PAPICCPU pApicCpu = &g_paCpus[0];
+        void BS3_FAR *pv = Bs3MemAllocZ(BS3MEMKIND_REAL, _4K);
+        uintptr_t const uPtr = (uintptr_t)pv;
+
+        pApicCpu->idCpu     = 0;
+        pApicCpu->fX2Apic   = false;
+        pApicCpu->pau32Apic = pau32Apic;
+
+        if (   !(uPtr & X86_PAGE_OFFSET_MASK)
+            && (uPtr >> X86_PAGE_SHIFT) < UINT8_MAX)
+        {
+            uint8_t bVector = (uint8_t)(uPtr >> X86_PAGE_SHIFT);
+            Bs3TestPrintf("AP Trampoline code area %#RX32 -> vector %#RX8\n", uPtr, bVector);
+            Bs3MemCpy(pv, bs3ApicApTrampoline, (uintptr_t)bs3ApicApTrampoline_EndProc - (uintptr_t)bs3ApicApTrampoline);
+            g_AddrApInitStack = uPtr + _4K; /* Use the unused top of the trampoline code for the initial stack. */
+
+            Bs3TrapSetHandler(APIC_VECTOR,        bs3ApicIpiHandler_c32);
+            Bs3TrapSetHandler(APIC_X2APIC_VECTOR, bs3ApicX2ApicSwitch_c32);
+
+            /* Enable xAPIC. */
+            pau32Apic[XAPIC_OFF_SVR / sizeof(uint32_t)] = XAPIC_SVR_SOFTWARE_ENABLE;
+
+            /* Send INIT to all APs. */
+            apicWriteIcr(pApicCpu, 0, XAPICDESTSHORTHAND_ALL_EXCL_SELF, XAPICDELIVERYMODE_INIT,
+                         XAPICDESTMODE_PHYSICAL, XAPICTRIGGERMODE_EDGE, XAPICINITLEVEL_ASSERT, 0);
+            bs3ApicBusyWait(10 * 1000);
+
+            /* Send INIT de-assert to all APs. */
+            apicWriteIcr(pApicCpu, 0, XAPICDESTSHORTHAND_ALL_EXCL_SELF, XAPICDELIVERYMODE_INIT,
+                         XAPICDESTMODE_PHYSICAL, XAPICTRIGGERMODE_EDGE, XAPICINITLEVEL_DEASSERT, 0);
+            bs3ApicBusyWait(10 * 1000);
+
+            /* Send SIPI to APs. */
+            apicWriteIcr(pApicCpu, 0, XAPICDESTSHORTHAND_ALL_EXCL_SELF, XAPICDELIVERYMODE_STARTUP,
+                         XAPICDESTMODE_PHYSICAL, XAPICTRIGGERMODE_EDGE, XAPICINITLEVEL_ASSERT, bVector);
+            bs3ApicBusyWait(200);
+
+            /* Send SIPI to APs. */
+            apicWriteIcr(pApicCpu, 0, XAPICDESTSHORTHAND_ALL_EXCL_SELF, XAPICDELIVERYMODE_STARTUP,
+                         XAPICDESTMODE_PHYSICAL, XAPICTRIGGERMODE_EDGE, XAPICINITLEVEL_ASSERT, bVector);
+             /** @todo This assumes that the CPUs start in that time frame,
+              *        which might not be the case for IEM and heavy instruction logging enabled.
+              *        At some point we might want to look for the MP table and verify the number of CPUs
+              *        given there actually started.
+              */
+            bs3ApicBusyWait(10 * 1000);
+
+            bs3ApicTestPrintf("%u CPUs started\n", g_cCpus);
+            bs3ApicTestReset();
+            return true;
+        }
+        else
+            Bs3TestFailedF("Returned AP trampoline memory is invalid (%#RX32)", uPtr);
+    }
+    else
+        Bs3TestFailedF("Out of memory trying to allocate %#x bytes for the per-CPU data", CPUS_MAX * sizeof(*g_paCpus));
+
+    return false;
+}
+
+
+static void bs3ApicTestWaitForResponses(uint32_t cCpusToRespond, uint64_t bmCpusToRespond)
+{
+    if (bs3ApicTestWaitForCpus(cCpusToRespond, RT_MS_1SEC))
+    {
+        if (g_bmCpusResponded ^ bmCpusToRespond)
+            Bs3TestFailedF("Wrong CPU responded (%#RX64 responded vs %#RX64 expected to respond)",
+                           g_bmCpusResponded, bmCpusToRespond);
+    }
+    else
+        Bs3TestFailedF("Timeout waiting for CPUs to respond (%#RX64 responded vs %#RX64 expected to respond)",
+                       g_bmCpusResponded, bmCpusToRespond);
+    bs3ApicTestReset();
+}
+
+
+static void bs3ApicTestSelfIpi(PAPICCPU pApicCpu)
+{
+    bs3ApicTestSetIntrHandlerReq(pApicCpu, kApicCpuReq_Pong);
+
+    ASMIntEnable();
+    apicSelfIpi(pApicCpu, APIC_VECTOR);
+    bs3ApicTestWaitForResponses(1, RT_BIT_64(pApicCpu->idCpu));
+    ASMIntDisable();
+}
+
+
+static void bs3ApicTestIpiStress(PAPICCPU pApicCpu)
+{
+    /* Hammer the APIC with pings to all CPUs. */
+#define IPI_STRESS_ITERATION_COUNT 1000000
+    uint64_t tsStart;
+    uint64_t cNsElapsed;
+    uint32_t cResponsesLeft = IPI_STRESS_ITERATION_COUNT * (g_cCpus - 1);
+    uint32_t acCpusResponded[CPUS_MAX];
+
+    Bs3TestSubSub("IPI Stress");
+    bs3ApicTestReset();
+    Bs3MemZero(&acCpusResponded[0], sizeof(acCpusResponded));
+
+    /* Kick everything off with a ping to all APs. */
+    tsStart = Bs3TestNow();
+    bs3ApicTestSetIntrHandlerReqOnCpus(g_bmCpusValid & ~RT_BIT_64(pApicCpu->idCpu), kApicCpuReq_PongNoClear);
+    apicWriteIcr(pApicCpu, 0, XAPICDESTSHORTHAND_ALL_EXCL_SELF, XAPICDELIVERYMODE_FIXED,
+                 XAPICDESTMODE_PHYSICAL, XAPICTRIGGERMODE_EDGE, XAPICINITLEVEL_ASSERT, APIC_VECTOR);
+    while (cResponsesLeft)
+    {
+        uint32_t idx = 0;
+        uint64_t bmResponses = ASMAtomicReadU64(&g_bmCpusResponded);
+
+        while (bmResponses)
+        {
+            if (bmResponses & 0x1)
+            {
+                ASMAtomicDecU32(&g_cCpusResponded);
+                ASMAtomicBitClear(&g_bmCpusResponded, idx);
+                acCpusResponded[idx]++;
+                if (acCpusResponded[idx] < IPI_STRESS_ITERATION_COUNT)
+                {
+                    bs3ApicTestSetIntrHandlerReq(&g_paCpus[idx], kApicCpuReq_PongNoClear);
+                    apicWriteIcr(pApicCpu, idx, XAPICDESTSHORTHAND_NONE, XAPICDELIVERYMODE_FIXED,
+                                 XAPICDESTMODE_PHYSICAL, XAPICTRIGGERMODE_EDGE, XAPICINITLEVEL_ASSERT, APIC_VECTOR);
+                }
+                else if (acCpusResponded[idx] > IPI_STRESS_ITERATION_COUNT)
+                    Bs3TestFailedF("Spurious response on CPU %u", idx);
+
+                cResponsesLeft--;
+            }
+
+            idx++;
+            bmResponses >>= 1;
+        }
+    }
+
+    cNsElapsed = Bs3TestNow() - tsStart;
+
+    /* Wait for a bit to catch any spurious interrupts. */
+    bs3ApicBusyWait(RT_US_100MS);
+    if (   ASMAtomicReadU32(&g_cCpusResponded) > 0
+        || ASMAtomicReadU64(&g_bmCpusResponded) != 0)
+        Bs3TestFailedF("Spurious responses from APs after finishing the test (g_bmCpusResponded=%#RX64 g_cCpusResponded=%u)",
+                       g_bmCpusResponded, g_cCpusResponded);
+
+    Bs3TestValue("Elapsed", cNsElapsed, VMMDEV_TESTING_UNIT_NS);
+#undef IPI_STRESS_ITERATION_COUNT
+}
+
+
+static void bs3ApicRunTests(PAPICCPU pApicCpu)
+{
+    Bs3TestSubSub("Self IPI");
+    bs3ApicTestSelfIpi(pApicCpu);
+
+    if (g_cCpus > 1)
+    {
+        Bs3TestSubSub("Pinging all APs");
+        bs3ApicTestSetIntrHandlerReqOnCpus(g_bmCpusValid & ~RT_BIT_64(pApicCpu->idCpu), kApicCpuReq_Pong);
+        apicWriteIcr(pApicCpu, 0, XAPICDESTSHORTHAND_ALL_EXCL_SELF, XAPICDELIVERYMODE_FIXED,
+                     XAPICDESTMODE_PHYSICAL, XAPICTRIGGERMODE_EDGE, XAPICINITLEVEL_ASSERT, APIC_VECTOR);
+        bs3ApicTestWaitForResponses(g_cCpus - 1, g_bmCpusValid & ~RT_BIT_64(pApicCpu->idCpu));
+
+        bs3ApicTestIpiStress(pApicCpu);
+    }
+}
+
+static void ProtModeApicTestsAp(uint32_t BS3_FAR volatile * const  pau32Apic)
+{
+    Bs3TestSub("Starting APs");
+    if (bs3ApicStartAllAps(pau32Apic))
+    {
+        PAPICCPU pApicCpu = &g_paCpus[0];
+
+        g_bmCpusValid = RT_BIT_64(g_cCpus) - 1;
+
+        Bs3TestSub("xAPIC mode");
+        bs3ApicRunTests(pApicCpu);
+
+        /* Check for x2APIC. */
+        if (g_uBs3CpuDetected & BS3CPU_F_CPUID)
+        {
+            uint32_t const uEcx = ASMCpuId_ECX(1 /*uOperator*/);
+            if (uEcx & X86_CPUID_FEATURE_ECX_X2APIC)
+            {
+                uint64_t uApicBase = ASMRdMsr(MSR_IA32_APICBASE);
+
+                /* Switch all APs to x2APIC mode before doing it. */
+                Bs3TestSub("Switching to x2APIC mode");
+
+                bs3ApicTestReset();
+                apicWriteIcr(pApicCpu, 0, XAPICDESTSHORTHAND_ALL_EXCL_SELF, XAPICDELIVERYMODE_FIXED,
+                             XAPICDESTMODE_PHYSICAL, XAPICTRIGGERMODE_EDGE, XAPICINITLEVEL_ASSERT, APIC_X2APIC_VECTOR);
+
+                ASMWrMsr(MSR_IA32_APICBASE, uApicBase | MSR_IA32_APICBASE_EXTD);
+                ASMWrMsr(MSR_IA32_X2APIC_SVR, XAPIC_SVR_SOFTWARE_ENABLE);
+                pApicCpu->fX2Apic = true;
+                bs3ApicTestWaitForResponses(g_cCpus - 1, g_bmCpusValid & ~RT_BIT_64(pApicCpu->idCpu));
+
+                Bs3TestSub("x2APIC mode");
+                bs3ApicRunTests(pApicCpu);
+            }
+            else
+                bs3ApicTestPrintf("Skipping x2APIC tests as CPU doesn't support it\n");
+        }
+    }
+}
 
 
 static void printBitmap(const char BS3_FAR *pszName, uint32_t BS3_FAR volatile *pau32Bitmap)
@@ -112,6 +692,8 @@ BS3_DECL(void) ProtModeApicTests(void)
         printBitmap("ISR", &pau32Apic[XAPIC_OFF_ISR0 / sizeof(uint32_t)]);
         printBitmap("TMR", &pau32Apic[XAPIC_OFF_TMR0 / sizeof(uint32_t)]);
         printBitmap("IRR", &pau32Apic[XAPIC_OFF_IRR0 / sizeof(uint32_t)]);
+
+        ProtModeApicTestsAp((uint32_t BS3_FAR volatile *)pabApic);
     }
     else
         Bs3TestFailedF("Enabling the APIC did not work (%#RX64)", uApicBase2);

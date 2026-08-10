@@ -1,4 +1,4 @@
-/* $Id: Wayland.h 114620 2026-07-04 00:00:20Z knut.osmundsen@oracle.com $ */
+/* $Id: Wayland.h 114738 2026-07-21 13:40:26Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest / Host common code - Wayland.
  */
@@ -155,8 +155,23 @@ VBGH_DECL(int)              VbghWaylandReadFdToBuffer(int fd, RTMSINTERVAL cMsTi
 VBGH_DECL(void)             VbghWaylandReadFdToBufferFree(void *pvBuf);
 VBGH_DECL(int)              VbghWaylandWriteBufferToFd(void const *pvBuf, size_t cbBuf, int fdDst, RTMSINTERVAL cMsTimeout);
 
-VBGH_DECL(int)              VbghWaylandRunloopForDisplay(struct wl_display *pDisplay, RTPIPE hPipeWakeup, RTPIPE hPipeMonClose,
-                                                         RTMSINTERVAL cMsPollInterval, bool volatile *pfReturn);
+/**
+ * Callback for servicing the VbghWaylandRunloopForDisplay wakeup pipe.
+ *
+ * @returns VBox status code.  Any failure status leads to the pipe being
+ *          excluded from the poll.
+ * @param   hPipe       The wakeup pipe (read).
+ * @param   pfReturn    The return indicator, if given.
+ * @param   pvUser      User argument.
+ */
+typedef DECLCALLBACKTYPE(int, FNVBGHWAYLANDRLWAKEUPPIPE,(RTPIPE hPipe, bool volatile *pfReturn, void *pvUser));
+/** Pointer to a FNVBGHWAYLANDRLWAKEUPPIPE function. */
+typedef FNVBGHWAYLANDRLWAKEUPPIPE *PFNVBGHWAYLANDRLWAKEUPPIPE;
+
+VBGH_DECL(int)              VbghWaylandRunloopForDisplay(struct wl_display *pDisplay, RTPIPE hPipeWakeup,
+                                                         PFNVBGHWAYLANDRLWAKEUPPIPE pfnWakeup, void *pvWakeupUser,
+                                                         RTPIPE hPipeMonClose, RTMSINTERVAL cMsPollInterval,
+                                                         bool volatile *pfReturn);
 
 RT_C_DECLS_END
 

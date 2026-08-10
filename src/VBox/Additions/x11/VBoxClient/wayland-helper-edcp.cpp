@@ -1,9 +1,11 @@
-/* $Id: wayland-helper-edcp.cpp 114620 2026-07-04 00:00:20Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland-helper-edcp.cpp 114743 2026-07-21 18:31:58Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Ext Data Control Protocol (EDCP) helper for Wayland.
  *
  * This module implements Shared Clipboard support for Wayland guests
  * using Data Control Protocol interface.
+ *
+ * @note Obsolete. Compiled with 'kmk VBOX_WITH_WAYLAND_ADDITIONS_LEGACY=1'.
  */
 
 /*
@@ -792,7 +794,7 @@ static DECLCALLBACK(int) vbcl_wayland_hlp_edcp_clip_init(void)
     int rc = vbClWaylandHlpEdcpCtxInit(&g_EdcpCtx);
     if (RT_SUCCESS(rc))
     {
-        rc = vbcl_wayland_thread_start(&g_EdcpCtx.BaseCtx.Thread, vbcl_wayland_hlp_edcp_event_loop, "wl-edcp", &g_EdcpCtx);
+        rc = VBClStartThread(&g_EdcpCtx.BaseCtx.Thread, vbcl_wayland_hlp_edcp_event_loop, "wl-edcp", &g_EdcpCtx);
         if (RT_FAILURE(rc))
             vbClWaylandHlpEdcpCtxTerm(&g_EdcpCtx);
     }
@@ -829,14 +831,6 @@ static DECLCALLBACK(int) vbcl_wayland_hlp_edcp_clip_term(void)
 static DECLCALLBACK(void) vbcl_wayland_hlp_edcp_clip_set_ctx(PSHCLCONTEXT pCtx)
 {
     g_EdcpCtx.BaseCtx.pShClCtx = pCtx;
-}
-
-/**
- * @interface_method_impl{VBCLWAYLANDHELPER_CLIPBOARD,pfnPopup}
- */
-static DECLCALLBACK(int) vbcl_wayland_hlp_edcp_clip_popup(void)
-{
-    return VINF_SUCCESS;
 }
 
 /**
@@ -902,7 +896,7 @@ const VBCLWAYLANDHELPER g_WaylandHelperEdcp =
         /* .pfnInit            = */ vbcl_wayland_hlp_edcp_clip_init,
         /* .pfnTerm            = */ vbcl_wayland_hlp_edcp_clip_term,
         /* .pfnSetClipboardCtx = */ vbcl_wayland_hlp_edcp_clip_set_ctx,
-        /* .pfnPopup           = */ vbcl_wayland_hlp_edcp_clip_popup,
+        /* .pfnPopup           = */ NULL,
         /* .pfnHGClipReport    = */ vbcl_wayland_hlp_edcp_clip_hg_report,
         /* .pfnGHClipRead      = */ NULL,
     },

@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx.cpp 114297 2026-06-09 14:06:22Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx.cpp 114712 2026-07-15 17:24:33Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common code for DX backend interface.
  */
@@ -2884,11 +2884,13 @@ static int dxSetOrGrowCOTable(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext
 
     /* Set the new host buffer and remember the old host buffer. */
     void *pvOldCOT = NULL;
+    uint32_t cbOldCOT = 0;
     switch (enmType)
     {
 #   define CASE_DX_COT(_COTName, _COTEntryType, _COTField) \
         case _COTName: \
             pvOldCOT                        = pDXContext->cot.pa ## _COTField; \
+            cbOldCOT                        = pDXContext->cot.c ## _COTField * sizeof(_COTEntryType); \
             pDXContext->cot.pa ## _COTField = (_COTEntryType *)pvCOT; \
             pDXContext->cot.c ## _COTField  = cEntries; \
             break;
@@ -2926,7 +2928,7 @@ static int dxSetOrGrowCOTable(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext
              */
             Assert(pvOldCOT && pvCOT);
             if (pvOldCOT)
-                memcpy(pvCOT, pvOldCOT, validSizeInBytes);
+                memcpy(pvCOT, pvOldCOT, RT_MIN(validSizeInBytes, cbOldCOT));
         }
         else
         {

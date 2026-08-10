@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114145 2026-05-16 11:03:28Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114735 2026-07-21 07:31:36Z alexander.eichner@oracle.com $
 ## @file
 # VirtualBox Validation Kit - Bootsector Tests for Test Drivers or standalone testing.
 #
@@ -261,6 +261,7 @@ ifdef VBOX_WITH_BS3KIT
  bs3-apic-1_TEMPLATE = VBoxBS3KitImg
  bs3-apic-1_SOURCES = \
  	bs3kit/bs3-first-rm.asm \
+ 	bs3-apic-1-asm.asm \
  	bs3-apic-1.c \
  	bs3-apic-1-32.c32
 

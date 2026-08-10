@@ -92,6 +92,22 @@ typedef uint32_t SHCLFORMATS;
 /** Pointer to a bit map of Shared Clipboard formats (VBOX_SHCL_FMT_XXX). */
 typedef SHCLFORMATS *PSHCLFORMATS;
 
+/**
+ * Checks whether a value names exactly one Shared Clipboard format.
+ *
+ * @returns true if @a uFmt is a single valid VBOX_SHCL_FMT_XXX bit, false otherwise.
+ * @param   uFmt                Format value to validate.
+ */
+VBGH_DECL(bool) ShClFormatIsValid(SHCLFORMAT uFmt);
+
+/**
+ * Checks whether a Shared Clipboard format mask contains only known format bits.
+ *
+ * @returns true if @a fFormats only contains VBOX_SHCL_FMT_XXX bits, false otherwise.
+ * @param   fFormats            Format mask to validate. VBOX_SHCL_FMT_NONE is valid.
+ */
+VBGH_DECL(bool) ShClFormatsAreValid(SHCLFORMATS fFormats);
+
 /** Main API Shared Clipboard client/session identifier. */
 typedef uint32_t SHCLMAINCLIENTID;
 /** Pointer to a Main API Shared Clipboard client/session identifier. */
@@ -162,6 +178,13 @@ typedef enum SHCLTRANSFERDIR
 /** Pointer to a shared clipboard transfer direction. */
 typedef SHCLTRANSFERDIR *PSHCLTRANSFERDIR;
 
+/**
+ * Checks whether a Shared Clipboard transfer direction is valid.
+ *
+ * @returns true if @a enmDir is valid, false otherwise.
+ * @param   enmDir              Transfer direction to validate.
+ */
+VBGH_DECL(bool) ShClTransferDirIsValid(SHCLTRANSFERDIR enmDir);
 
 /**
  * Shared Clipboard data read request.
@@ -313,6 +336,14 @@ typedef enum SHCLSOURCE
     /** The usual 32-bit hack. */
     SHCLSOURCE_32BIT_HACK = 0x7fffffff
 } SHCLSOURCE;
+
+/**
+ * Checks whether a Shared Clipboard source is valid.
+ *
+ * @returns true if @a enmSource is valid, false otherwise.
+ * @param   enmSource           Source to validate.
+ */
+VBGH_DECL(bool) ShClSourceIsValid(SHCLSOURCE enmSource);
 
 /** @name Shared Clipboard caching.
  *  @{

@@ -1,4 +1,4 @@
-' $Id: clipboard_api.iuml 114611 2026-07-03 15:34:02Z andreas.loeffler@oracle.com $
+' $Id: clipboard_api.iuml 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $
 '' @file
 ' UML definition for PlantUML - VirtualBox Clipboard API - Draft
 '
@@ -289,8 +289,7 @@ package "Clipboard control" {
   abstract class IClipboardTransferManager
   {
       +getTransfers(direction, flags) : SafeArray<IClipboardTransfer>
-      +createTransfer(direction, source, action) : IClipboardTransfer
-      +add(transfer) : HRESULT
+      +create(direction, source, action) : IClipboardTransfer
       +remove(transfer) : HRESULT
       +cancel(transfer) : HRESULT
       +approve(transfer, flags) : HRESULT
@@ -300,6 +299,10 @@ package "Clipboard control" {
       +resume(transfer) : HRESULT
       +reset() : HRESULT
   }
+  note right of IClipboardTransferManager
+    Clients obtain manager-owned transfers through
+    create() or getTransfers(); controls reject foreign objects.
+  end note
 
   abstract class IClipboardSettings
   {

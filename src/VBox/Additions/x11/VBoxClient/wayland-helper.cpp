@@ -1,6 +1,8 @@
-/* $Id: wayland-helper.cpp 114464 2026-06-21 01:25:02Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland-helper.cpp 114745 2026-07-21 18:40:35Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Common code for Wayland Desktop Environment helpers.
+ *
+ * @note Obsolete. Compiled with 'kmk VBOX_WITH_WAYLAND_ADDITIONS_LEGACY=1'.
  */
 
 /*
@@ -163,7 +165,7 @@ static int vbclWaylandSessionWaitForState(vbcl_wl_session_state_t volatile *penm
 
 
 
-RTDECL(void) vbcl_wayland_session_init(vbcl_wl_session_t *pSession)
+void vbcl_wayland_session_init(vbcl_wl_session_t *pSession)
 {
     AssertPtrReturnVoid(pSession);
 
@@ -177,10 +179,8 @@ RTDECL(void) vbcl_wayland_session_init(vbcl_wl_session_t *pSession)
     ASMAtomicWriteU32(&pSession->cUsers, 0);
 }
 
-RTDECL(int) vbcl_wayland_session_start(vbcl_wl_session_t *pSession,
-                                       vbcl_wl_session_type_t enmType,
-                                       PFNVBCLWLSESSIONCB pfnStart,
-                                       void *pvUser)
+int vbcl_wayland_session_start(vbcl_wl_session_t *pSession, vbcl_wl_session_type_t enmType,
+                               PFNVBCLWLSESSIONCB pfnStart, void *pvUser)
 {
     int rc;
     const char *pcszDesc;
@@ -320,8 +320,7 @@ int VBClWaylandSessionJoinAnyTypeEx(vbcl_wl_session_t *pSession, PFNVBCLWLSESSIO
     return rc;
 }
 
-RTDECL(int) vbcl_wayland_session_end(vbcl_wl_session_t *pSession,
-                                     PFNVBCLWLSESSIONCB pfnEnd, void *pvUser)
+int vbcl_wayland_session_end(vbcl_wl_session_t *pSession, PFNVBCLWLSESSIONCB pfnEnd, void *pvUser)
 {
     int rc;
 
@@ -380,7 +379,7 @@ RTDECL(int) vbcl_wayland_session_end(vbcl_wl_session_t *pSession,
     return rc;
 }
 
-RTDECL(bool) vbcl_wayland_session_is_started(vbcl_wl_session_t *pSession)
+bool vbcl_wayland_session_is_started(vbcl_wl_session_t *pSession)
 {
     /* Make sure mandatory parameters were provided. */
     AssertPtrReturn(pSession, false);
@@ -389,44 +388,5 @@ RTDECL(bool) vbcl_wayland_session_is_started(vbcl_wl_session_t *pSession)
     AssertReturn(ASMAtomicReadU32(&pSession->u32Magic) == VBCL_WAYLAND_SESSION_MAGIC, false);
 
     return ASMAtomicReadU8((volatile uint8_t *)&pSession->enmState) == VBCL_WL_SESSION_STATE_STARTED;
-}
-
-RTDECL(int) vbcl_wayland_thread_start(PRTTHREAD phThread, PFNRTTHREAD pfnThread, const char *pszName, void *pvUser)
-{
-    RTTHREAD hThread = NIL_RTTHREAD;
-    int rc = RTThreadCreate(&hThread, pfnThread, pvUser, 0, RTTHREADTYPE_IO,
-                            RTTHREADFLAGS_WAITABLE | RTTHREADFLAGS_USER_SIGNAL_ON_TERM, pszName);
-    if (RT_SUCCESS(rc))
-    {
-        *phThread = hThread;
-        rc = RTThreadUserWait(hThread, RT_MS_30SEC /* msTimeout */);
-        if (RT_SUCCESS(rc))
-        {
-            int rcThread = VINF_SUCCESS;
-            rc = RTThreadWait(hThread, 0, &rcThread);
-            if (rc == VERR_TIMEOUT)
-            {
-                VBClLogVerbose(1, "started %s thread\n", pszName);
-                return VINF_SUCCESS;
-            }
-
-            if (RT_SUCCESS(rc))
-            {
-                /* Note! If we end up with VINF_SUCCESS here, it could in theorybe some
-                         kind of race with a regular exit.  Though, it shouldn't since
-                         we shouldn't be using that shortlived threads... */
-                VBClLogError("thread '%s' failed to initialize: %Rrc\n", pszName, rcThread);
-                rc = !RT_SUCCESS_NP(rcThread) ? rcThread : VERR_INTERNAL_ERROR_2;
-            }
-            else
-                VBClLogError("Failed checking thread '%s' after initialization: %Rrc\n", pszName, rc);
-        }
-        else
-            VBClLogError("Failed waiting (30s) for thread '%s' to initialize: %Rrc\n", pszName, rc);
-    }
-    else
-        VBClLogError("Failed to start thread '%s': %Rrc\n", pszName, rc);
-    *phThread = NIL_RTTHREAD;
-    return rc;
 }
 

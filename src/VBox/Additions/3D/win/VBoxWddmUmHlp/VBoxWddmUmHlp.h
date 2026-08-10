@@ -1,4 +1,4 @@
-/* $Id: VBoxWddmUmHlp.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxWddmUmHlp.h 114817 2026-07-30 16:48:15Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox WDDM User Mode Driver Helpers
  */
@@ -64,6 +64,13 @@
 #ifndef STATUS_NOT_SUPPORTED
 #define STATUS_NOT_SUPPORTED ((NTSTATUS)0xC00000BBL)
 #endif
+#ifndef STATUS_GRAPHICS_PRESENT_OCCLUDED
+#define STATUS_GRAPHICS_PRESENT_OCCLUDED ((NTSTATUS)0xC01E0006L)
+#endif
+#ifndef STATUS_GRAPHICS_PRESENT_DENIED
+#define STATUS_GRAPHICS_PRESENT_DENIED   ((NTSTATUS)0xC01E0007L)
+#endif
+
 
 RT_C_DECLS_BEGIN
 

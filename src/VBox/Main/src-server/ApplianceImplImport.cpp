@@ -1,4 +1,4 @@
-/* $Id: ApplianceImplImport.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: ApplianceImplImport.cpp 114705 2026-07-14 13:35:15Z alexander.eichner@oracle.com $ */
 /** @file
  * IAppliance and IVirtualSystem COM class implementations.
  */
@@ -381,7 +381,23 @@ HRESULT Appliance::interpret()
             /* The NVRAM file does not have a <vbox:Machine> entry so we only need to check the OVF details. */
             if (vsysThis.strNvramPath.isNotEmpty())
                 pNewDesc->i_addEntry(VirtualSystemDescriptionType_NVRAM, "", vsysThis.strNvramPath, vsysThis.strNvramPath);
-
+            /* Check if any of the serial ports is configured with mode raw file. */
+            if (vsysThis.pelmVBoxMachine)
+            {
+                settings::SerialPortsList const &llSerialPorts =
+                pNewDesc->m->pConfig->hardwareMachine.llSerialPorts;
+                for (settings::SerialPortsList::const_iterator port_it = llSerialPorts.begin();
+                        port_it != llSerialPorts.end();
+                    ++port_it)
+                {
+                    if (port_it->portMode == PortMode_RawFile)
+                    {
+                        i_addWarning(tr("Virtual appliance \"%s\" was configured with serial port(s) "
+                                        "with \"raw file\" mode. This setting will not be imported."), vsysThis.strName.c_str());
+                        break;
+                    }
+                }
+            }
             /* Audio */
             Utf8Str strSoundCard;
             Utf8Str strSoundCardOrig;
@@ -1983,7 +1999,7 @@ HRESULT Appliance::i_importCloudImpl(TaskCloud *pTask)
                             if (RT_FAILURE(vrc))
                                 throw  setErrorVrc(vrc, tr("Could not read the file '%s' (%Rrc)"), strAbsSrcPath.c_str(), vrc);
 
-                            Utf8StrFmt strAbsDstPath("%s%s%s", strMachineFolder.c_str(), RTPATH_SLASH_STR, pszName);
+                            Utf8StrFmt strAbsDstPath("%s%s%s", strMachineFolder.c_str(), RTPATH_SLASH_STR, RTPathFilename(pszName));
 
                             /* Simple logic - just try to get dir info, in case of absent try to create one.
                                No deep errors analysis */
@@ -6117,6 +6133,7 @@ l_skipped:
     ComObjPtr<Machine> pNewMachine;
     hrc = pNewMachine.createObject();
     if (FAILED(hrc)) throw hrc;
+    config.sanitizeImportedSerialPorts();
 
     // this magic constructor fills the new machine object with the MachineConfig
     // instance that we created from the vbox:Machine

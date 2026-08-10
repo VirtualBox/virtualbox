@@ -1,4 +1,4 @@
-/* $Id: VBoxDXVideo.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxDXVideo.cpp 114855 2026-08-04 19:16:41Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox D3D user mode driver.
  */
@@ -513,7 +513,8 @@ HRESULT vboxDXVideoDecoderBeginFrame(PVBOXDX_DEVICE pDevice, PVBOXDXVIDEODECODER
     RT_NOREF(pContentKey, ContentKeySize); /** @todo vgpu10VideoDecoderBeginFrame2 */
 
     vgpu10VideoDecoderBeginFrame(pDevice, pVideoDecoder->uVideoDecoderId,
-                                 pVideoDecoderOutputView->uVideoDecoderOutputViewId);
+                                 pVideoDecoderOutputView->uVideoDecoderOutputViewId,
+                                 vboxDXGetKMResource(pVideoDecoderOutputView->pResource));
     return S_OK;
 }
 
@@ -648,25 +649,31 @@ HRESULT vboxDXCreateVideoProcessorOutputView(PVBOXDX_DEVICE pDevice, PVBOXDXVIDE
 HRESULT vboxDXVideoProcessorBlt(PVBOXDX_DEVICE pDevice, PVBOXDXVIDEOPROCESSOR pVideoProcessor, PVBOXDXVIDEOPROCESSOROUTPUTVIEW pVideoProcessorOutputView,
                                 UINT OutputFrame, UINT StreamCount, D3D11_1DDI_VIDEO_PROCESSOR_STREAM const *paStream)
 {
+    uint32_t cVPIVIds = 0;
     uint32_t cbVideoProcessorStreams = StreamCount * sizeof(VBSVGA3dVideoProcessorStream);
     for (UINT i = 0; i < StreamCount; ++i)
     {
         D3D11_1DDI_VIDEO_PROCESSOR_STREAM const *s = &paStream[i];
-        uint32_t cbIds = (s->PastFrames + 1 + s->FutureFrames) * sizeof(VBSVGA3dVideoProcessorInputViewId);
+        uint32_t cIds = s->PastFrames + 1 + s->FutureFrames;
         if (pVideoProcessor->aStreams[i].FrameFormat == D3D11_1DDI_VIDEO_PROCESSOR_STEREO_FORMAT_SEPARATE)
-            cbIds *= 2;
-        cbVideoProcessorStreams += cbIds;
+            cIds *= 2;
+        cVPIVIds += cIds;
+        cbVideoProcessorStreams += cIds * sizeof(VBSVGA3dVideoProcessorInputViewId);
     }
 
-    void *pvTmpBuffer = RTMemTmpAlloc(cbVideoProcessorStreams);
+    size_t const cbAlloc = cbVideoProcessorStreams + cVPIVIds * sizeof(PVBOXDXKMRESOURCE);
+    void *pvTmpBuffer = RTMemTmpAlloc(cbAlloc);
     if (!pvTmpBuffer)
         return E_OUTOFMEMORY;
 
+    PVBOXDXKMRESOURCE *papVPIViewKMResource = (PVBOXDXKMRESOURCE *)((uint8_t *)pvTmpBuffer + cbVideoProcessorStreams);
+    uint32_t idxVPIViewKMResource = 0;
+
     VBSVGA3dVideoProcessorStream *paVideoProcessorStreams = (VBSVGA3dVideoProcessorStream *)pvTmpBuffer;
+    VBSVGA3dVideoProcessorStream *d = &paVideoProcessorStreams[0];
     for (UINT i = 0; i < StreamCount; ++i)
     {
         D3D11_1DDI_VIDEO_PROCESSOR_STREAM const *s = &paStream[i];
-        VBSVGA3dVideoProcessorStream *d = &paVideoProcessorStreams[i];
 
         d->Enable                      = s->Enable;
         d->StereoFormatSeparate        = pVideoProcessor->aStreams[i].StereoFormat.Format == D3D11_1DDI_VIDEO_PROCESSOR_STEREO_FORMAT_SEPARATE;
@@ -683,15 +690,18 @@ HRESULT vboxDXVideoProcessorBlt(PVBOXDX_DEVICE pDevice, PVBOXDXVIDEOPROCESSOR pV
         {
             pVideoProcessorInputView = (PVBOXDXVIDEOPROCESSORINPUTVIEW)s->pPastSurfaces[j].pDrvPrivate;
             *pVPIVId++ = pVideoProcessorInputView->uVideoProcessorInputViewId;
+            papVPIViewKMResource[idxVPIViewKMResource++] = vboxDXGetKMResource(pVideoProcessorInputView->pResource);
         }
 
         pVideoProcessorInputView = (PVBOXDXVIDEOPROCESSORINPUTVIEW)s->hInputSurface.pDrvPrivate;
         *pVPIVId++ = pVideoProcessorInputView->uVideoProcessorInputViewId;
+        papVPIViewKMResource[idxVPIViewKMResource++] = vboxDXGetKMResource(pVideoProcessorInputView->pResource);
 
         for (UINT j = 0; j < s->FutureFrames; ++j)
         {
             pVideoProcessorInputView = (PVBOXDXVIDEOPROCESSORINPUTVIEW)s->pFutureSurfaces[j].pDrvPrivate;
             *pVPIVId++ = pVideoProcessorInputView->uVideoProcessorInputViewId;
+            papVPIViewKMResource[idxVPIViewKMResource++] = vboxDXGetKMResource(pVideoProcessorInputView->pResource);
         }
 
         if (d->StereoFormatSeparate)
@@ -700,21 +710,31 @@ HRESULT vboxDXVideoProcessorBlt(PVBOXDX_DEVICE pDevice, PVBOXDXVIDEOPROCESSOR pV
             {
                 pVideoProcessorInputView = (PVBOXDXVIDEOPROCESSORINPUTVIEW)s->pPastSurfacesRight[j].pDrvPrivate;
                 *pVPIVId++ = pVideoProcessorInputView->uVideoProcessorInputViewId;
+                papVPIViewKMResource[idxVPIViewKMResource++] = vboxDXGetKMResource(pVideoProcessorInputView->pResource);
             }
 
             pVideoProcessorInputView = (PVBOXDXVIDEOPROCESSORINPUTVIEW)s->hInputSurfaceRight.pDrvPrivate;
             *pVPIVId++ = pVideoProcessorInputView->uVideoProcessorInputViewId;
+            papVPIViewKMResource[idxVPIViewKMResource++] = vboxDXGetKMResource(pVideoProcessorInputView->pResource);
 
             for (UINT j = 0; j < s->FutureFrames; ++j)
             {
                 pVideoProcessorInputView = (PVBOXDXVIDEOPROCESSORINPUTVIEW)s->pFutureSurfacesRight[j].pDrvPrivate;
                 *pVPIVId++ = pVideoProcessorInputView->uVideoProcessorInputViewId;
+                papVPIViewKMResource[idxVPIViewKMResource++] = vboxDXGetKMResource(pVideoProcessorInputView->pResource);
             }
         }
+
+        d = (VBSVGA3dVideoProcessorStream *)pVPIVId;
     }
 
-    vgpu10VideoProcessorBlt(pDevice, pVideoProcessor->uVideoProcessorId, pVideoProcessorOutputView->uVideoProcessorOutputViewId,
-                            OutputFrame, StreamCount, cbVideoProcessorStreams, paVideoProcessorStreams);
+    Assert(idxVPIViewKMResource == cVPIVIds);
+
+    vgpu10VideoProcessorBlt(pDevice, pVideoProcessor->uVideoProcessorId,
+                            pVideoProcessorOutputView->uVideoProcessorOutputViewId,
+                            vboxDXGetKMResource(pVideoProcessorOutputView->pResource),
+                            OutputFrame, StreamCount, cbVideoProcessorStreams, paVideoProcessorStreams,
+                            idxVPIViewKMResource, papVPIViewKMResource);
     RTMemTmpFree(pvTmpBuffer);
     return S_OK;
 }
@@ -731,7 +751,8 @@ void vboxDXDestroyVideoDecoderOutputView(PVBOXDX_DEVICE pDevice, PVBOXDXVIDEODEC
 {
     RTListNodeRemove(&pVideoDecoderOutputView->nodeView);
 
-    vgpu10DestroyVideoDecoderOutputView(pDevice, pVideoDecoderOutputView->uVideoDecoderOutputViewId);
+    vgpu10DestroyVideoDecoderOutputView(pDevice, pVideoDecoderOutputView->uVideoDecoderOutputViewId,
+                                        vboxDXGetKMResource(pVideoDecoderOutputView->pResource));
     RTHandleTableFree(pDevice->hHTVideoDecoderOutputView, pVideoDecoderOutputView->uVideoDecoderOutputViewId);
 }
 
@@ -747,7 +768,8 @@ void vboxDXDestroyVideoProcessorInputView(PVBOXDX_DEVICE pDevice, PVBOXDXVIDEOPR
 {
     RTListNodeRemove(&pVideoProcessorInputView->nodeView);
 
-    vgpu10DestroyVideoProcessorInputView(pDevice, pVideoProcessorInputView->uVideoProcessorInputViewId);
+    vgpu10DestroyVideoProcessorInputView(pDevice, pVideoProcessorInputView->uVideoProcessorInputViewId,
+                                         vboxDXGetKMResource(pVideoProcessorInputView->pResource));
     RTHandleTableFree(pDevice->hHTVideoProcessorInputView, pVideoProcessorInputView->uVideoProcessorInputViewId);
 }
 
@@ -756,7 +778,8 @@ void vboxDXDestroyVideoProcessorOutputView(PVBOXDX_DEVICE pDevice, PVBOXDXVIDEOP
 {
     RTListNodeRemove(&pVideoProcessorOutputView->nodeView);
 
-    vgpu10DestroyVideoProcessorOutputView(pDevice, pVideoProcessorOutputView->uVideoProcessorOutputViewId);
+    vgpu10DestroyVideoProcessorOutputView(pDevice, pVideoProcessorOutputView->uVideoProcessorOutputViewId,
+                                          vboxDXGetKMResource(pVideoProcessorOutputView->pResource));
     RTHandleTableFree(pDevice->hHTVideoProcessorOutputView, pVideoProcessorOutputView->uVideoProcessorOutputViewId);
 }
 

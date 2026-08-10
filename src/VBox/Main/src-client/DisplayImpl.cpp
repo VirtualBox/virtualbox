@@ -1,4 +1,4 @@
-/* $Id: DisplayImpl.cpp 114198 2026-05-28 22:15:11Z vitali.pelenjow@oracle.com $ */
+/* $Id: DisplayImpl.cpp 114707 2026-07-14 13:40:18Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -81,6 +81,8 @@ HRESULT Display::FinalConstruct()
     mfVideoAccelVRDP = false;
     mfu32SupportedOrders = 0;
     mcVRDPRefs = 0;
+
+    mGraphicsController = GraphicsControllerType_Null;
 
     mfSeamlessEnabled = false;
     mpRectVisibleRegion = NULL;
@@ -465,6 +467,9 @@ HRESULT Display::init(Console *aParent)
     HRESULT hrc = mParent->i_machine()->COMGETTER(GraphicsAdapter)(pGraphicsAdapter.asOutParam());
     AssertComRCReturnRC(hrc);
     AssertReturn(!pGraphicsAdapter.isNull(), E_FAIL);
+
+    hrc = pGraphicsAdapter->COMGETTER(GraphicsControllerType)(&mGraphicsController);
+    AssertComRCReturnRC(hrc);
 
     ULONG ul;
     pGraphicsAdapter->COMGETTER(MonitorCount)(&ul);

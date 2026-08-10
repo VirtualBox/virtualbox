@@ -1,4 +1,4 @@
-/* $Id: display-drm.cpp 114399 2026-06-17 07:56:34Z knut.osmundsen@oracle.com $ */
+/* $Id: display-drm.cpp 114802 2026-07-27 19:09:39Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - VMSVGA guest screen resize service.
  *
@@ -29,7 +29,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
-/** @page pg_vboxdrmcliet    VBoxDRMClient - The VMSVGA Guest Screen Resize Service
+/** @page pg_vboxdrmclient   VBoxDRMClient - The VMSVGA Guest Screen Resize Service
  *
  * The VMSVGA Guest Screen Resize Service is a service which communicates with a
  * guest VMSVGA driver and triggers it to perform screen resize on a guest side.
@@ -94,6 +94,10 @@
  *      DrmResizeThread and IpcCLT-%u.
  */
 
+
+/*********************************************************************************************************************************
+*   Header Files                                                                                                                 *
+*********************************************************************************************************************************/
 #include "VBoxClient.h"
 #include "display-ipc.h"
 
@@ -146,26 +150,17 @@
 
 /** Name of DRM IPC server thread. */
 #define DRM_IPC_SERVER_THREAD_NAME      "DrmIpcSRV"
-/** Maximum length of thread name. */
-#define DRM_IPC_THREAD_NAME_MAX         (16)
-/** Name pattern of DRM IPC client thread. */
-#define DRM_IPC_CLIENT_THREAD_NAME_PTR  "IpcCLT-%u"
+/** Format string of DRM IPC client thread names. */
+#define DRM_IPC_CLIENT_THREAD_NAME_FMT  "IpcCLT-%u"
 /** Maximum number of simultaneous IPC client connections. */
 #define DRM_IPC_SERVER_CONNECTIONS_MAX  (16)
 /** Interval between attempts to send resize events to DRM stack. */
 #define DRM_RESIZE_INTERVAL_MS          (250)
 
-/** IPC client connections counter. */
-static volatile uint32_t g_cDrmIpcConnections = 0;
-/* A flag which indicates whether access to IPC socket should be restricted.
- * This flag caches '/VirtualBox/GuestAdd/DRMIpcRestricted' guest property
- * in order to prevent its retrieving from the host side each time a new IPC
- * client connects to server. This flag is updated each time when property is
- * changed on the host side. */
-static volatile bool g_fDrmIpcRestricted;
 
-/** Global handle to vmwgfx file descriptor (protected by #g_monitorPositionsCritSect). */
-static RTFILE g_hDevice = NIL_RTFILE;
+/*********************************************************************************************************************************
+*   Structures and Typedefs                                                                                                      *
+*********************************************************************************************************************************/
 
 /** DRM version structure. */
 struct DRMVERSION
@@ -204,8 +199,25 @@ typedef struct VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE
 /* Pointer to VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE. */
 typedef VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE *PVBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE;
 
-/** IPC client connections list.  */
-static VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE g_ipcClientConnectionsList;
+
+/*********************************************************************************************************************************
+*   Global Variables                                                                                                             *
+*********************************************************************************************************************************/
+/** IPC client connections counter. */
+static volatile uint32_t g_cDrmIpcConnections = 0;
+/* A flag which indicates whether access to IPC socket should be restricted.
+ * This flag caches '/VirtualBox/GuestAdd/DRMIpcRestricted' guest property
+ * in order to prevent its retrieving from the host side each time a new IPC
+ * client connects to server. This flag is updated each time when property is
+ * changed on the host side. */
+static volatile bool g_fDrmIpcRestricted;
+
+/** Global handle to vmwgfx file descriptor (protected by #g_monitorPositionsCritSect). */
+static RTFILE g_hDevice = NIL_RTFILE;
+
+/** IPC client connections list (VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE).
+ * This is used by vbDrmIpcBroadcastPrimaryDisplay() only.  */
+static RTLISTANCHOR g_ipcClientConnectionsList;
 
 /** IPC client connections list critical section. */
 static RTCRITSECT g_ipcClientConnectionsListCritSect;
@@ -251,14 +263,12 @@ static const char *g_pszPidFile = VBGLR3DRMPIDFILE;
 /** Global flag which is triggered when service requested to shutdown. */
 static bool volatile g_fShutdown;
 
-/**
- * Go over all existing IPC client connection and put set-primary-screen request
- * data into TX queue of each of them .
- *
- * @return  IPRT status code.
- * @param   u32PrimaryDisplay   Primary display ID.
- */
+
+/*********************************************************************************************************************************
+*   Internal Functions                                                                                                           *
+*********************************************************************************************************************************/
 static int vbDrmIpcBroadcastPrimaryDisplay(uint32_t u32PrimaryDisplay);
+
 
 /**
  * Attempts to open DRM device by given path and check if it is
@@ -557,7 +567,7 @@ static int vbDrmSendHints(RTFILE hDevice, struct VBOX_DRMIPC_VMWRECT *paRects, u
  */
 static int drmSendMonitorPositions(uint32_t cDisplays, struct VBOX_DRMIPC_VMWRECT *pDisplays)
 {
-    static RTPOINT aPositions[VBOX_DRMIPC_MONITORS_MAX];
+    static RTPOINT s_aPositions[VBOX_DRMIPC_MONITORS_MAX]; /** @todo r=bird: explain why this is static! */
 
     if (!pDisplays || !cDisplays || cDisplays > VBOX_DRMIPC_MONITORS_MAX)
     {
@@ -567,11 +577,11 @@ static int drmSendMonitorPositions(uint32_t cDisplays, struct VBOX_DRMIPC_VMWREC
     /* Prepare monitor offsets list to be sent to the host. */
     for (uint32_t i = 0; i < cDisplays; i++)
     {
-        aPositions[i].x = pDisplays[i].x;
-        aPositions[i].y = pDisplays[i].y;
+        s_aPositions[i].x = pDisplays[i].x;
+        s_aPositions[i].y = pDisplays[i].y;
     }
 
-    return VbglR3SeamlessSendMonitorPositions(cDisplays, aPositions);
+    return VbglR3SeamlessSendMonitorPositions(cDisplays, s_aPositions);
 }
 
 /**
@@ -601,7 +611,7 @@ static int vbDrmPushScreenLayout(VMMDevDisplayDef *aDisplaysIn, uint32_t cDispla
         return rc;
     }
 
-    static uint32_t u32PrimaryDisplayLast = VBOX_DRMIPC_MONITORS_MAX;
+    static uint32_t s_u32PrimaryDisplayLast = VBOX_DRMIPC_MONITORS_MAX;
 
     RT_ZERO(aDisplaysOut);
 
@@ -626,12 +636,12 @@ static int vbDrmPushScreenLayout(VMMDevDisplayDef *aDisplaysIn, uint32_t cDispla
 
             /* If information about primary display is present in display layout, send it to DE over IPC. */
             if (u32PrimaryDisplay != VBOX_DRMIPC_MONITORS_MAX
-                && u32PrimaryDisplayLast != u32PrimaryDisplay)
+                && s_u32PrimaryDisplayLast != u32PrimaryDisplay)
             {
                 rc = vbDrmIpcBroadcastPrimaryDisplay(u32PrimaryDisplay);
 
                 /* Cache last value in order to avoid sending duplicate data over IPC. */
-                u32PrimaryDisplayLast = u32PrimaryDisplay;
+                s_u32PrimaryDisplayLast = u32PrimaryDisplay;
 
                 VBClLogVerbose(2, "DE was notified that display %u is now primary, rc=%Rrc\n", u32PrimaryDisplay, rc);
             }
@@ -772,8 +782,10 @@ static int vbDrmSuppressionDestroy(struct VBOX_DRM_SUPPRESSION *pSuppression)
     return rc;
 }
 
-/** Worker thread for resize task. */
-static DECLCALLBACK(int) vbDrmResizeWorker(RTTHREAD ThreadSelf, void *pvUser)
+/**
+ * @callback_method_impl{FNRTTHREAD, Worker thread for resize task.}
+ */
+static DECLCALLBACK(int) vbDrmResizeThread(RTTHREAD ThreadSelf, void *pvUser)
 {
     int rc = VERR_GENERAL_FAILURE;
 
@@ -784,9 +796,7 @@ static DECLCALLBACK(int) vbDrmResizeWorker(RTTHREAD ThreadSelf, void *pvUser)
     {
         /* Do not acknowledge the first event we query for to pick up old events,
          * e.g. from before a guest reboot. */
-        bool fAck = false;
-
-        uint32_t events;
+        bool fAck = false; /** @todo r=bird: Logic bug: see further down. Keep in mind VERR_TIMEOUT if moving this out of the loop. */
 
         VMMDevDisplayDef aDisplaysIn[VBOX_DRMIPC_MONITORS_MAX];
         uint32_t cDisplaysIn = 0;
@@ -796,7 +806,7 @@ static DECLCALLBACK(int) vbDrmResizeWorker(RTTHREAD ThreadSelf, void *pvUser)
         /* Query the first size without waiting.  This lets us e.g. pick up
          * the last event before a guest reboot when we start again after. */
         rc = VbglR3GetDisplayChangeRequestMulti(VBOX_DRMIPC_MONITORS_MAX, &cDisplaysIn, aDisplaysIn, fAck);
-        fAck = true;
+        fAck = true; /** @todo r=bird: Logic bug: fAck will always be false, as it is reset for each iteration. */
         if (RT_SUCCESS(rc))
         {
             rc = vbDrmResizeSuppress(aDisplaysIn, cDisplaysIn);
@@ -806,9 +816,10 @@ static DECLCALLBACK(int) vbDrmResizeWorker(RTTHREAD ThreadSelf, void *pvUser)
         else
             VBClLogError("Failed to get display change request, rc=%Rrc\n", rc);
 
+        uint32_t fEventsIgnored;
         do
         {
-            rc = VbglR3WaitEvent(VMMDEV_EVENT_DISPLAY_CHANGE_REQUEST, VBOX_DRMIPC_RX_TIMEOUT_MS, &events);
+            rc = VbglR3WaitEvent(VMMDEV_EVENT_DISPLAY_CHANGE_REQUEST, VBOX_DRMIPC_RX_TIMEOUT_MS, &fEventsIgnored);
         } while ((rc == VERR_TIMEOUT || rc == VERR_INTERRUPTED) && !ASMAtomicReadBool(&g_fShutdown));
 
         if (ASMAtomicReadBool(&g_fShutdown))
@@ -818,7 +829,7 @@ static DECLCALLBACK(int) vbDrmResizeWorker(RTTHREAD ThreadSelf, void *pvUser)
             rc = (rc == VERR_TIMEOUT) ? VINF_SUCCESS : rc;
             break;
         }
-        else if (RT_FAILURE(rc))
+        if (RT_FAILURE(rc))
             VBClLogFatalError("VBoxDRMClient: resize thread: failure waiting for event, rc=%Rrc\n", rc);
     }
 
@@ -834,25 +845,20 @@ static DECLCALLBACK(int) vbDrmResizeWorker(RTTHREAD ThreadSelf, void *pvUser)
  */
 static int vbDrmIpcBroadcastPrimaryDisplay(uint32_t u32PrimaryDisplay)
 {
-    int rc;
-
-    rc = RTCritSectEnter(&g_ipcClientConnectionsListCritSect);
+    int rc = RTCritSectEnter(&g_ipcClientConnectionsListCritSect);
     if (RT_SUCCESS(rc))
     {
-        if (!RTListIsEmpty(&g_ipcClientConnectionsList.Node))
+        PVBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE pEntry;
+        RTListForEach(&g_ipcClientConnectionsList, pEntry, VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE, Node)
         {
-            PVBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE pEntry;
-            RTListForEach(&g_ipcClientConnectionsList.Node, pEntry, VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE, Node)
-            {
-                AssertReturn(pEntry, VERR_INVALID_PARAMETER);
-                AssertReturn(pEntry->pClient, VERR_INVALID_PARAMETER);
-                AssertReturn(pEntry->pClient->hThread, VERR_INVALID_PARAMETER);
+            AssertReturn(pEntry, VERR_INVALID_PARAMETER);
+            AssertReturn(pEntry->pClient, VERR_INVALID_PARAMETER);
+            AssertReturn(pEntry->pClient->hThread, VERR_INVALID_PARAMETER);
 
-                rc = vbDrmIpcSetPrimaryDisplay(pEntry->pClient, u32PrimaryDisplay);
+            rc = vbDrmIpcSetPrimaryDisplay(pEntry->pClient, u32PrimaryDisplay);
 
-                VBClLogInfo("thread %s notified IPC Client that display %u is now primary, rc=%Rrc\n",
-                                RTThreadGetName(pEntry->pClient->hThread), u32PrimaryDisplay, rc);
-            }
+            VBClLogInfo("thread %s notified IPC Client that display %u is now primary, rc=%Rrc\n",
+                        RTThreadGetName(pEntry->pClient->hThread), u32PrimaryDisplay, rc);
         }
 
         int rc2 = RTCritSectLeave(&g_ipcClientConnectionsListCritSect);
@@ -888,10 +894,8 @@ static int vbDrmIpcConnectionProc(PVBOX_DRMIPC_CLIENT pClient)
 
         /* Normal case. No data received within short interval. */
         if (rc == VERR_TIMEOUT)
-        {
             continue;
-        }
-        else if (RT_FAILURE(rc))
+        if (RT_FAILURE(rc))
         {
             /* Terminate connection handling in case of error. */
             VBClLogError("unable to handle IPC session, rc=%Rrc\n", rc);
@@ -914,21 +918,23 @@ static int vbDrmIpcConnectionProc(PVBOX_DRMIPC_CLIENT pClient)
  */
 static int vbDrmIpcClientsListAdd(PVBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE pClientNode)
 {
-    int rc;
+    AssertPtrReturn(pClientNode, VERR_INVALID_PARAMETER);
 
-    AssertReturn(pClientNode, VERR_INVALID_PARAMETER);
-
-    rc = RTCritSectEnter(&g_ipcClientConnectionsListCritSect);
+    int rc = RTCritSectEnter(&g_ipcClientConnectionsListCritSect);
     if (RT_SUCCESS(rc))
     {
-        RTListAppend(&g_ipcClientConnectionsList.Node, &pClientNode->Node);
+        RTListAppend(&g_ipcClientConnectionsList, &pClientNode->Node);
 
         int rc2 = RTCritSectLeave(&g_ipcClientConnectionsListCritSect);
         if (RT_FAILURE(rc2))
             VBClLogError("add client connection: unable to leave critical section, rc=%Rrc\n", rc2);
     }
     else
+    {
         VBClLogError("add client connection: unable to enter critical section, rc=%Rrc\n", rc);
+        pClientNode->Node.pNext = NULL;
+        pClientNode->Node.pPrev = NULL;
+    }
 
     return rc;
 }
@@ -939,31 +945,22 @@ static int vbDrmIpcClientsListAdd(PVBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE pClie
  * This function should only be invoked from client thread context
  * (from vbDrmIpcClientWorker() in particular).
  *
- * @return  IPRT status code.
  * @param   pClientNode     Client connection information to remove from the list.
  */
-static int vbDrmIpcClientsListRemove(PVBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE pClientNode)
+static void vbDrmIpcClientsListRemove(PVBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE pClientNode)
 {
-    AssertReturn(pClientNode, VERR_INVALID_PARAMETER);
+    AssertPtrReturnVoid(pClientNode);
 
-    PVBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE pFound = NULL; /** @todo just work rc directly in the loop. */
     int rc = RTCritSectEnter(&g_ipcClientConnectionsListCritSect);
     if (RT_SUCCESS(rc))
     {
-
-        if (!RTListIsEmpty(&g_ipcClientConnectionsList.Node))
-        {
-            PVBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE pEntry, pNextEntry;
-            RTListForEachSafe(&g_ipcClientConnectionsList.Node, pEntry, pNextEntry, VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE, Node)
-            {
-                /** @todo r=bird: Why doesn't this code break out of here after a match?  The
-                 *        entry can't be linked in more than once.  */
-                if (pEntry == pClientNode)
-                    pFound = (PVBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE)RTListNodeRemoveRet(&pEntry->Node);
-            }
-        }
+        /* some paranoia before calling RTListNodeRemove */
+        AssertPtr(pClientNode->Node.pNext);
+        AssertPtr(pClientNode->Node.pPrev);
+        if (pClientNode->Node.pNext && pClientNode->Node.pPrev)
+            RTListNodeRemove(&pClientNode->Node);
         else
-            VBClLogError("remove client connection: connections list empty, node %p not there\n", pClientNode);
+            VBClLogError("remove client connection: node not found\n");
 
         int rc2 = RTCritSectLeave(&g_ipcClientConnectionsListCritSect);
         if (RT_FAILURE(rc2))
@@ -971,11 +968,6 @@ static int vbDrmIpcClientsListRemove(PVBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE pC
     }
     else
         VBClLogError("remove client connection: unable to enter critical section, rc=%Rrc\n", rc);
-
-    if (!pFound)
-        VBClLogError("remove client connection: node not found\n");
-
-    return !rc && pFound ? VINF_SUCCESS : VERR_INVALID_PARAMETER;
 }
 
 /**
@@ -1062,20 +1054,22 @@ static DECLCALLBACK(int) vbDrmIpcClientRxCallBack(uint8_t idCmd, void *pvData, u
 /** Worker thread for IPC client task. */
 static DECLCALLBACK(int) vbDrmIpcClientWorker(RTTHREAD ThreadSelf, void *pvUser)
 {
-    VBOX_DRMIPC_CLIENT  hClient  = VBOX_DRMIPC_CLIENT_INITIALIZER;
-    RTLOCALIPCSESSION   hSession = (RTLOCALIPCSESSION)pvUser;
-    int                 rc;
-
-    AssertReturn(RT_VALID_PTR(hSession), VERR_INVALID_PARAMETER);
+    RTLOCALIPCSESSION const hSession = (RTLOCALIPCSESSION)pvUser;
+    AssertReturn(hSession != NIL_RTLOCALIPCSESSION, VERR_INVALID_HANDLE);
 
     /* Initialize client session resources. */
-    rc = vbDrmIpcClientInit(&hClient, ThreadSelf, hSession, VBOX_DRMIPC_TX_QUEUE_SIZE, vbDrmIpcClientRxCallBack);
+/** @todo r=bird: We'd be a lot better off with Client and ClientNode off the stack and on the heap.
+ * In case of critsect failure or other kind of bug, we'd just leave the stuff on the heap and not
+ * leaving pointers to freed stack on the client's list. */
+    VBOX_DRMIPC_CLIENT Client = VBOX_DRMIPC_CLIENT_INITIALIZER;
+    int rc = vbDrmIpcClientInit(&Client, ThreadSelf, hSession, VBOX_DRMIPC_TX_QUEUE_SIZE, vbDrmIpcClientRxCallBack);
     if (RT_SUCCESS(rc))
     {
         /* Add IPC client connection data into clients list. */
-        VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE hClientNode = { { 0, 0 } , &hClient };
+/** @todo r=bird: Combine VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE with VBOX_DRMIPC_CLIENT. Duh.  */
+        VBOX_DRMIPC_CLIENT_CONNECTION_LIST_NODE ClientNode = { { 0, 0 } , &Client };
 
-        rc = vbDrmIpcClientsListAdd(&hClientNode);
+        rc = vbDrmIpcClientsListAdd(&ClientNode);
         if (RT_SUCCESS(rc))
         {
             rc = RTThreadUserSignal(ThreadSelf);
@@ -1083,39 +1077,43 @@ static DECLCALLBACK(int) vbDrmIpcClientWorker(RTTHREAD ThreadSelf, void *pvUser)
             {
                 /* Start spinning the connection. */
                 VBClLogInfo("IPC client connection started\n", rc);
-                rc = vbDrmIpcConnectionProc(&hClient);
+                rc = vbDrmIpcConnectionProc(&Client);
                 VBClLogInfo("IPC client connection ended, rc=%Rrc\n", rc);
             }
             else
                 VBClLogError("unable to report IPC client connection handler start, rc=%Rrc\n", rc);
 
             /* Remove IPC client connection data from clients list. */
-            rc = vbDrmIpcClientsListRemove(&hClientNode);
-            if (RT_FAILURE(rc))
-                VBClLogError("unable to remove IPC client session from list of connections, rc=%Rrc\n", rc);
+            vbDrmIpcClientsListRemove(&ClientNode);
         }
         else
             VBClLogError("unable to add IPC client connection to the list, rc=%Rrc\n");
 
-        /* Disconnect remote peer if still connected. */
-        if (RT_VALID_PTR(hSession))
-        {
-            rc = RTLocalIpcSessionClose(hSession);
-            VBClLogInfo("IPC session closed, rc=%Rrc\n", rc);
-        }
+        /* Disconnect the client. */
+        rc = RTLocalIpcSessionClose(hSession);
+        if (RT_SUCCESS(rc))
+            VBClLogError("RTLocalIpcSessionClose in error path failed: %Rrc\n", rc);
+        else
+            VBClLogInfo("IPC session closed (rc=%Rrc)\n", rc);
+        ASMAtomicDecU32(&g_cDrmIpcConnections);
 
         /* Connection handler loop has ended, release session resources. */
-        rc = vbDrmIpcClientReleaseResources(&hClient);
+        rc = vbDrmIpcClientReleaseResources(&Client);
         if (RT_FAILURE(rc))
             VBClLogError("unable to release IPC client session, rc=%Rrc\n", rc);
 
-        ASMAtomicDecU32(&g_cDrmIpcConnections);
+        /** @todo r=bird: The return rc is probably always VINF_SUCCESS... */
     }
     else
-        VBClLogError("unable to initialize IPC client session, rc=%Rrc\n", rc);
+    {
+        VBClLogError("failed to initialize IPC client session: %Rrc\n", rc);
+        int rc2 = RTLocalIpcSessionClose(hSession);
+        if (RT_FAILURE(rc2))
+            VBClLogError("RTLocalIpcSessionClose in error path failed: %Rrc\n", rc);
+        ASMAtomicDecU32(&g_cDrmIpcConnections);
+    }
 
-    VBClLogInfo("closing IPC client session, rc=%Rrc\n", rc);
-
+    VBClLogInfo("IPC client session worker returning %Rrc\n", rc);
     return rc;
 }
 
@@ -1123,36 +1121,37 @@ static DECLCALLBACK(int) vbDrmIpcClientWorker(RTTHREAD ThreadSelf, void *pvUser)
  * Start processing thread for IPC client requests handling.
  *
  * @returns IPRT status code.
- * @param   hSession    IPC client connection handle.
+ * @param   hSession    IPC client connection handle.  Consumed on success.
  */
 static int vbDrmIpcClientStart(RTLOCALIPCSESSION hSession)
 {
     int         rc;
-    RTTHREAD    hThread = 0;
-    RTPROCESS   hProcess = 0;
+    RTPROCESS   hProcess = NIL_RTPROCESS;
 
     rc = RTLocalIpcSessionQueryProcess(hSession, &hProcess);
     if (RT_SUCCESS(rc))
     {
-        char pszThreadName[DRM_IPC_THREAD_NAME_MAX];
-        RT_ZERO(pszThreadName);
-
-        RTStrPrintf2(pszThreadName, DRM_IPC_THREAD_NAME_MAX, DRM_IPC_CLIENT_THREAD_NAME_PTR, hProcess);
-
-        /* Attempt to start IPC client connection handler task. */
-        rc = RTThreadCreate(&hThread, vbDrmIpcClientWorker, (void *)hSession, 0,
-                            RTTHREADTYPE_DEFAULT, RTTHREADFLAGS_WAITABLE, pszThreadName);
+        /* Attempt to start IPC client connection handler task.
+           bird 2026-07-22: Don't mark it as waitable, or we'll leak thread handles. */
+        RTTHREAD hThread = NIL_RTTHREAD;
+        rc = RTThreadCreateF(&hThread, vbDrmIpcClientWorker, (void *)hSession, 0,
+                             RTTHREADTYPE_DEFAULT, 0 /*RTTHREADFLAGS_WAITABLE*/,
+                             DRM_IPC_CLIENT_THREAD_NAME_FMT, hProcess);
         if (RT_SUCCESS(rc))
         {
-            rc = RTThreadUserWait(hThread, RT_MS_5SEC);
+            /* bird 2026-07-22: If this fails the session will be closed twice
+               and g_cDrmIpcConnections will get out of wack.
+            rc =*/ RTThreadUserWait(hThread, RT_MS_5SEC);
         }
     }
 
     return rc;
 }
 
-/** Worker thread for IPC server task. */
-static DECLCALLBACK(int) vbDrmIpcServerWorker(RTTHREAD ThreadSelf, void *pvUser)
+/**
+ * @callback_method_impl{FNRTTHREAD, Worker thread for IPC server task.}
+ */
+static DECLCALLBACK(int) vbDrmIpcServerThread(RTTHREAD ThreadSelf, void *pvUser)
 {
     int rc = VERR_GENERAL_FAILURE;
     RTLOCALIPCSERVER hIpcServer = (RTLOCALIPCSERVER)pvUser;
@@ -1188,13 +1187,14 @@ static DECLCALLBACK(int) vbDrmIpcServerWorker(RTTHREAD ThreadSelf, void *pvUser)
                     VBClLogError("IPC authentication failed, rc=%Rrc\n", rc);
             }
             else
+            {
+                VBClLogError("maximum amount of IPC client connections reached, dropping connection\n");
                 rc = VERR_RESOURCE_BUSY;
+            }
 
             /* Release resources in case of error. */
             if (RT_FAILURE(rc))
             {
-                VBClLogError("maximum amount of IPC client connections reached, dropping connection\n");
-
                 int rc2 = RTLocalIpcSessionClose(hClientSession);
                 if (RT_FAILURE(rc2))
                     VBClLogError("unable to close IPC session, rc=%Rrc\n", rc2);
@@ -1221,7 +1221,7 @@ static DECLCALLBACK(int) vbDrmIpcServerWorker(RTTHREAD ThreadSelf, void *pvUser)
 }
 
 /** A signal handler. */
-static void vbDrmRequestShutdown(int sig)
+static void vbDrmRequestShutdownSignal(int sig)
 {
     RT_NOREF(sig);
     ASMAtomicWriteBool(&g_fShutdown, true);
@@ -1245,8 +1245,7 @@ static void vbDrmSetIpcServerAccessPermissions(RTLOCALIPCSERVER hIpcServer, bool
 
     if (fRestrict)
     {
-        struct group *pGrp;
-        pGrp = getgrnam(VBOX_DRMIPC_USER_GROUP);
+        struct group *pGrp = getgrnam(VBOX_DRMIPC_USER_GROUP);
         if (pGrp)
         {
             rc = RTLocalIpcServerGrantGroupAccess(hIpcServer, pGrp->gr_gid);
@@ -1291,14 +1290,15 @@ static void vbDrmPollIpcServerAccessMode(RTLOCALIPCSERVER hIpcServer)
         do
         {
             /* Buffer should be big enough to fit guest property data layout: Name\0Value\0Flags\0fWasDeleted\0. */
-            static char achBuf[GUEST_PROP_MAX_NAME_LEN];
+            static char s_achBuf[GUEST_PROP_MAX_NAME_LEN + GUEST_PROP_MAX_VALUE_LEN + GUEST_PROP_MAX_FLAGS_LEN];
             char *pszName = NULL;
             char *pszValue = NULL;
             char *pszFlags = NULL;
             bool fWasDeleted = false;
             uint64_t u64Timestamp = 0;
 
-            rc = VbglGuestPropWait(&Client, VBGLR3DRMPROPPTR, achBuf, sizeof(achBuf), u64Timestamp,
+/** @todo r=bird: The horrible 0.5 sec timeout approach to termination again. */
+            rc = VbglGuestPropWait(&Client, VBGLR3DRMPROPPTR, s_achBuf, sizeof(s_achBuf), u64Timestamp,
                                    VBOX_DRMIPC_RX_TIMEOUT_MS, &pszName, &pszValue, &u64Timestamp,
                                    &pszFlags, NULL, &fWasDeleted);
             if (RT_SUCCESS(rc))
@@ -1339,57 +1339,45 @@ int main(int argc, char *argv[])
     /** Custom log prefix to be used for logger instance of this process. */
     static const char *pszLogPrefix = "VBoxDRMClient:";
 
-    static const RTGETOPTDEF s_aOptions[] = { { "--verbose", 'v', RTGETOPT_REQ_NOTHING }, };
-    RTGETOPTUNION ValueUnion;
-    RTGETOPTSTATE GetState;
-    int ch;
 
     RTFILE hPidFile;
 
-    RTLOCALIPCSERVER hIpcServer;
-    RTTHREAD vbDrmIpcThread;
-    int rcDrmIpcThread = 0;
-
-    RTTHREAD drmResizeThread;
-    int rcDrmResizeThread = 0;
-    int rc, rc2 = 0;
-
-    rc = RTR3InitExe(argc, &argv, 0);
+    int rc = RTR3InitExe(argc, &argv, 0);
     if (RT_FAILURE(rc))
         return RTMsgInitFailure(rc);
 
     rc = VbglR3InitUser();
     if (RT_FAILURE(rc))
-        VBClLogFatalError("VBoxDRMClient: VbglR3InitUser failed: %Rrc", rc);
+        RTMsgError("VbglR3InitUser failed: %Rrc", rc);
 
-    /* Process command line options. */
-    rc = RTGetOptInit(&GetState, argc, argv, s_aOptions, RT_ELEMENTS(s_aOptions), 0, 0 /* fFlags */);
+    /*
+     * Process command line options.
+     */
+    static const RTGETOPTDEF s_aOptions[] = { { "--verbose", 'v', RTGETOPT_REQ_NOTHING }, };
+    RTGETOPTSTATE GetState;
+    rc = RTGetOptInit(&GetState, argc, argv, s_aOptions, RT_ELEMENTS(s_aOptions), 1, 0 /* fFlags */);
     if (RT_FAILURE(rc))
-        VBClLogFatalError("VBoxDRMClient: unable to process command line options, rc=%Rrc\n", rc);
-/** @todo r=bird: This is not something you can ignore. AND you shouldn't
- *        start with arg[0]! */
+        return RTMsgErrorExitFailure("RTGetOptInit failed: %Rrc", rc);
+
+    RTGETOPTUNION ValueUnion;
+    int ch;
     while ((ch = RTGetOpt(&GetState, &ValueUnion)) != 0)
     {
         switch (ch)
         {
             case 'v':
-            {
                 g_cVerbosity++;
                 break;
-            }
-
-            case VERR_GETOPT_UNKNOWN_OPTION:
-            {
-                VBClLogFatalError("unknown command line option '%s'\n", ValueUnion.psz);
-                return RTEXITCODE_SYNTAX;
-
-            }
 
             default:
-                break;
+                return RTGetOptPrintError(ch, &ValueUnion);
         }
     }
 
+    /*
+     * Setup logging.
+     * Note! Any VBClLogXxxx call prior to this will not really output anything.
+     */
     rc = VBClLogCreate("");
     if (RT_FAILURE(rc))
         VBClLogFatalError("VBoxDRMClient: failed to setup logging, rc=%Rrc\n", rc);
@@ -1408,6 +1396,9 @@ int main(int argc, char *argv[])
         return RTEXITCODE_FAILURE;
     }
 
+    /*
+     * ...
+     */
     g_hDevice = vbDrmOpenVmwgfx();
     if (g_hDevice == NIL_RTFILE)
         return RTEXITCODE_FAILURE;
@@ -1426,15 +1417,15 @@ int main(int argc, char *argv[])
     }
 
     /* Setup signals: gracefully terminate on SIGINT, SIGTERM. */
-    if (   signal(SIGINT, vbDrmRequestShutdown) == SIG_ERR
-        || signal(SIGTERM, vbDrmRequestShutdown) == SIG_ERR)
+    if (   signal(SIGINT, vbDrmRequestShutdownSignal) == SIG_ERR
+        || signal(SIGTERM, vbDrmRequestShutdownSignal) == SIG_ERR)
     {
         VBClLogError("unable to setup signals\n");
         return RTEXITCODE_FAILURE;
     }
 
     /* Init IPC client connection list. */
-    RTListInit(&g_ipcClientConnectionsList.Node);
+    RTListInit(&g_ipcClientConnectionsList);
     rc = RTCritSectInit(&g_ipcClientConnectionsListCritSect);
     if (RT_FAILURE(rc))
     {
@@ -1455,6 +1446,7 @@ int main(int argc, char *argv[])
         return RTEXITCODE_FAILURE;
 
     /* Instantiate IPC server for VBoxClient service communication. */
+    RTLOCALIPCSERVER hIpcServer = NIL_RTLOCALIPCSERVER;
     rc = RTLocalIpcServerCreate(&hIpcServer, VBOX_DRMIPC_SERVER_NAME, 0);
     if (RT_FAILURE(rc))
     {
@@ -1466,12 +1458,14 @@ int main(int argc, char *argv[])
     vbDrmSetIpcServerAccessPermissions(hIpcServer, VbglR3DrmRestrictedIpcAccessIsNeeded());
 
     /* Attempt to start DRM resize task. */
-    rc = RTThreadCreate(&drmResizeThread, vbDrmResizeWorker, NULL, 0,
+    RTTHREAD hDrmResizeThread = NIL_RTTHREAD;
+    rc = RTThreadCreate(&hDrmResizeThread, vbDrmResizeThread, NULL, 0,
                         RTTHREADTYPE_DEFAULT, RTTHREADFLAGS_WAITABLE, DRM_RESIZE_THREAD_NAME);
     if (RT_SUCCESS(rc))
     {
         /* Attempt to start IPC task. */
-        rc = RTThreadCreate(&vbDrmIpcThread, vbDrmIpcServerWorker, (void *)hIpcServer, 0,
+        RTTHREAD hIpcThread = NIL_RTTHREAD;
+        rc = RTThreadCreate(&hIpcThread, vbDrmIpcServerThread, (void *)hIpcServer, 0,
                             RTTHREADTYPE_DEFAULT, RTTHREADFLAGS_WAITABLE, DRM_IPC_SERVER_THREAD_NAME);
         if (RT_SUCCESS(rc))
         {
@@ -1479,25 +1473,26 @@ int main(int argc, char *argv[])
             vbDrmPollIpcServerAccessMode(hIpcServer);
 
             /* HACK ALERT!
-             * The sequence of RTThreadWait(drmResizeThread) -> RTLocalIpcServerDestroy() -> RTThreadWait(vbDrmIpcThread)
-             * is intentional! Once process received a signal, it will pull g_fShutdown flag, which in turn will cause
-             * drmResizeThread to quit. The vbDrmIpcThread might hang on accept() call, so we terminate IPC server to
+             * The sequence of RTThreadWait(hDrmResizeThread) -> RTLocalIpcServerDestroy() -> RTThreadWait(hIpcThread)
+             * is intentional! Once process received a signal, it will set g_fShutdown to true, which in turn will cause
+             * hDrmResizeThread to quit. The hIpcThread might hang on accept() call, so we terminate IPC server to
              * release it and then wait for its termination. */
 
-            rc = RTThreadWait(drmResizeThread, RT_INDEFINITE_WAIT, &rcDrmResizeThread);
-            VBClLogInfo("%s thread exited with status, rc=%Rrc\n", DRM_RESIZE_THREAD_NAME, rcDrmResizeThread);
+            int rcDrmResizeThread = VINF_SUCCESS;
+            rc = RTThreadWait(hDrmResizeThread, RT_INDEFINITE_WAIT, &rcDrmResizeThread);
+            VBClLogInfo("%s thread exited with status, rc=%Rrc/%Rrc\n", DRM_RESIZE_THREAD_NAME, rc, rcDrmResizeThread);
 
             rc = RTLocalIpcServerCancel(hIpcServer);
             if (RT_FAILURE(rc))
                 VBClLogError("unable to notify IPC server about shutdown, rc=%Rrc\n", rc);
 
             /* Wait for threads to terminate gracefully. */
-            rc = RTThreadWait(vbDrmIpcThread, RT_INDEFINITE_WAIT, &rcDrmIpcThread);
-            VBClLogInfo("%s thread exited with status, rc=%Rrc\n", DRM_IPC_SERVER_THREAD_NAME, rcDrmResizeThread);
-
+            int rcDrmIpcThread = VINF_SUCCESS;
+            rc = RTThreadWait(hIpcThread, RT_INDEFINITE_WAIT, &rcDrmIpcThread);
+            VBClLogInfo("%s thread exited with status, rc=%Rrc/%Rrc\n", DRM_IPC_SERVER_THREAD_NAME, rc, rcDrmIpcThread);
         }
         else
-            VBClLogError("unable to start IPC thread, rc=%Rrc\n", rc);
+            VBClLogError("unable to start IPC thread, rc=%Rrc\n", rc); /* leaks */
     }
     else
         VBClLogError("unable to start resize thread, rc=%Rrc\n", rc);
@@ -1506,7 +1501,7 @@ int main(int argc, char *argv[])
     if (RT_FAILURE(rc))
         VBClLogError("unable to stop IPC server,  rc=%Rrc\n", rc);
 
-    rc2 = vbDrmSuppressionDestroy(&g_vboxDrmSuppression);
+    int rc2 = vbDrmSuppressionDestroy(&g_vboxDrmSuppression);
     if (RT_FAILURE(rc2))
         VBClLogError("unable to destroy suppression data, rc=%Rrc\n", rc2);
 

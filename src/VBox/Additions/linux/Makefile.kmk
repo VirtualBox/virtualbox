@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 113593 2026-03-26 13:28:15Z vadim.galitsyn@oracle.com $
+# $Id: Makefile.kmk 114742 2026-07-21 18:04:56Z knut.osmundsen@oracle.com $
 ## @file
 # Makefile for the linux guest additions base directory.
 #
@@ -130,10 +130,6 @@ VBOX_LNX_ADD_STRIP_BIN += \
 ifdef VBOX_WITH_ADDITIONS_SHIPPING_AUDIO_TEST
  VBOX_LNX_ADD_STRIP_BIN += \
  	VBoxAudioTest
-endif
-ifdef VBOX_WITH_WAYLAND_ADDITIONS
- VBOX_LNX_ADD_STRIP_BIN += \
- 	vboxwl
 endif
 
 VBOX_LNX_ADD_STRIP_SBIN += \

@@ -1,4 +1,4 @@
-/** $Id: clipboard.h 114620 2026-07-04 00:00:20Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard.h 114867 2026-08-06 15:19:51Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard - Main header.
  */
@@ -72,6 +72,10 @@ struct SHCLCONTEXT
 #endif
     /** Event source for waiting for X11 request responses in the VbglR3 clipboard event loop. */
     SHCLEVENTSOURCE      EventSrc;
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+    /** Guest-side asynchronous X11 HTTP file-transfer state. */
+    SHCLX11TRANSFERSTATE X11TransferState;
+#endif
     union
     {
         /** X11 clipboard context. */
@@ -94,6 +98,8 @@ struct SHCLCONTEXT
  *  Only one context is supported at a time for now. */
 extern SHCLCONTEXT g_Ctx;
 
+bool VBClClipboardShouldUseWayland(VBGHDISPLAYSERVERTYPE enmType);
+
 int VBClClipboardReadHostEvent(PSHCLCONTEXT pCtx, PFNHOSTCLIPREPORTFMTS pfnHGClipReport, PFNHOSTCLIPREAD pfnGHClipRead);
 int VBClClipboardReadHostClipboard(PSHCLCONTEXT pCtx, SHCLFORMAT uFmt, void **ppvData, uint32_t *pcbData);
 
@@ -105,5 +111,21 @@ int     VBClClipboardSerializeCache(SHCLCACHE const *pCache, SHCLFORMATS fFormat
                                     RTMSINTERVAL cMsTimeout);
 int     VBClClipboardDeserializeCache(struct RTHANDLE const *pHandleSrc, PSHCLCACHE pCache, SHCLFORMATS *pfFormats,
                                       RTMSINTERVAL cMsTimeout);
+
+/* clipboard-x11.cpp */
+int  VBClX11ClipboardInit(void);
+int  VBClX11ClipboardDestroy(void);
+int  VBClX11ClipboardMain(void);
+
+/* clipboard-wayland.cpp */
+int  VBClClipboardWaylandInit(SHCLCONTEXT *pCtx);
+int  VBClClipboardWaylandMain(SHCLCONTEXT *pCtx, bool volatile *pfShutdown);
+void VBClClipboardWaylandStop(SHCLCONTEXT *pCtx);
+void VBClClipboardWaylandTerm(SHCLCONTEXT *pCtx);
+
+/* clipboard-wayland-popup.cpp */
+int  VBClClipboardWaylandPopupGetAll(SHCLCONTEXT *pCtx);
+int  VBClClipboardWaylandPopupSetAll(SHCLCONTEXT *pCtx, SHCLFORMATS fFormats);
+
 
 #endif /* !GA_INCLUDED_SRC_x11_VBoxClient_clipboard_h */

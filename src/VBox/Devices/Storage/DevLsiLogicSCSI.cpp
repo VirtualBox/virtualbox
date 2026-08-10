@@ -1,4 +1,4 @@
-/* $Id: DevLsiLogicSCSI.cpp 113804 2026-04-10 09:44:38Z michal.necasek@oracle.com $ */
+/* $Id: DevLsiLogicSCSI.cpp 114731 2026-07-20 09:16:25Z michal.necasek@oracle.com $ */
 /** @file
  * DevLsiLogicSCSI - LsiLogic LSI53c1030 SCSI controller.
  */
@@ -2015,7 +2015,7 @@ static size_t lsilogicSgBufWalker(PPDMDEVINS pDevIns, PLSILOGICREQ pLsiReq,
 {
     bool     fEndOfList = false;
     RTGCPHYS GCPhysSgEntryNext = pLsiReq->GCPhysSgStart;
-    RTGCPHYS GCPhysSegmentStart = pLsiReq->GCPhysSgStart;
+    RTGCPHYS GCPhysSegmentStart = pLsiReq->GCPhysMessageFrameAddr;
     uint32_t cChainOffsetNext = pLsiReq->cChainOffset;
     size_t cbCopied = 0;
 
@@ -2312,7 +2312,7 @@ static int lsilogicR3ProcessSCSIIORequest(PPDMDEVINS pDevIns, PLSILOGICSCSI pThi
                 pLsiReq->GCPhysSgStart          = GCPhysMessageFrameAddr + sizeof(MptSCSIIORequest);
                 pLsiReq->cChainOffset           = pGuestReq->SCSIIO.u8ChainOffset;
                 if (pLsiReq->cChainOffset)
-                    pLsiReq->cChainOffset = pLsiReq->cChainOffset * sizeof(uint32_t) - sizeof(MptSCSIIORequest);
+                    pLsiReq->cChainOffset = pLsiReq->cChainOffset * sizeof(uint32_t);
                 memcpy(&pLsiReq->GuestRequest, pGuestReq, sizeof(MptRequestUnion));
                 RT_BZERO(&pLsiReq->abSenseBuffer[0], sizeof(pLsiReq->abSenseBuffer));
 

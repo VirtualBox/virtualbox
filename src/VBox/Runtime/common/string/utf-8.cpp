@@ -1,4 +1,4 @@
-/* $Id: utf-8.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: utf-8.cpp 114770 2026-07-25 11:53:54Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - UTF-8 Decoding.
  */
@@ -350,6 +350,50 @@ RTDECL(int) RTStrValidateEncodingEx(const char *psz, size_t cch, uint32_t fFlags
     return rc;
 }
 RT_EXPORT_SYMBOL(RTStrValidateEncodingEx);
+
+
+RTDECL(int) RTStrLenAndValidateEncoding(const char *psz, size_t cch, uint32_t fFlags, size_t *pcuc, size_t *pcchActual)
+{
+    AssertReturn(!(fFlags & ~(RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH)),
+                 VERR_INVALID_PARAMETER);
+    AssertPtr(psz);
+
+    /*
+     * Use rtUtf8Length for the job.
+     */
+    size_t cchActual = 0;
+    size_t cCps      = 0;
+    int rc = rtUtf8Length(psz, cch, &cCps, &cchActual);
+    if (RT_SUCCESS(rc))
+    {
+        if (fFlags & RTSTR_VALIDATE_ENCODING_EXACT_LENGTH)
+        {
+            if (fFlags & RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED)
+                cchActual++;
+            if (cchActual == cch)
+                rc = VINF_SUCCESS;
+            else if (cchActual < cch)
+                rc = VERR_BUFFER_UNDERFLOW;
+            else
+                rc = VERR_BUFFER_OVERFLOW;
+        }
+        else if (   (fFlags & RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED)
+                 && cchActual >= cch)
+            rc = VERR_BUFFER_OVERFLOW;
+    }
+    else
+    {
+        cchActual = 0;
+        cCps      = 0;
+    }
+
+    if (pcchActual)
+        *pcchActual = cchActual;
+    if (pcuc)
+        *pcuc = cCps;
+    return rc;
+}
+RT_EXPORT_SYMBOL(RTStrLenAndValidateEncoding);
 
 
 RTDECL(bool) RTStrIsValidEncoding(const char *psz)
@@ -2007,6 +2051,71 @@ RTDECL(char *) RTStrPutCpInternal(char *psz, RTUNICP uc)
     return (char *)puch;
 }
 RT_EXPORT_SYMBOL(RTStrPutCpInternal);
+
+
+RTDECL(size_t) RTStrPutCpRetLenInternal(char *psz, RTUNICP uc)
+{
+    unsigned char *puch = (unsigned char *)psz;
+    if (uc < 0x80)
+    {
+        puch[0] = (unsigned char )uc;
+        return 1;
+    }
+    if (uc < 0x00000800)
+    {
+        puch[0] = 0xc0 | (uc >> 6);
+        puch[1] = 0x80 | (uc & 0x3f);
+        return 2;
+    }
+    if (uc < 0x00010000)
+    {
+/** @todo RT_USE_RTC_3629 */
+        if (   uc < 0x0000d8000
+             || (   uc > 0x0000dfff
+                 && uc < 0x0000fffe))
+        {
+            puch[0] = 0xe0 | (uc >> 12);
+            puch[1] = 0x80 | ((uc >> 6) & 0x3f);
+            puch[2] = 0x80 | (uc & 0x3f);
+            return 3;
+        }
+        AssertMsgFailed(("Invalid code point U+%05x!\n", uc));
+        puch[0] = 0x7f;
+        return 1;
+    }
+/** @todo RT_USE_RTC_3629 */
+    if (uc < 0x00200000)
+    {
+        puch[0] = 0xf0 | (uc >> 18);
+        puch[1] = 0x80 | ((uc >> 12) & 0x3f);
+        puch[2] = 0x80 | ((uc >> 6) & 0x3f);
+        puch[3] = 0x80 | (uc & 0x3f);
+        return 4;
+    }
+    if (uc < 0x04000000)
+    {
+        puch[0] = 0xf8 | (uc >> 24);
+        puch[1] = 0x80 | ((uc >> 18) & 0x3f);
+        puch[2] = 0x80 | ((uc >> 12) & 0x3f);
+        puch[3] = 0x80 | ((uc >> 6) & 0x3f);
+        puch[4] = 0x80 | (uc & 0x3f);
+        return 5;
+    }
+    if (uc <= 0x7fffffff)
+    {
+        puch[0] = 0xfc | (uc >> 30);
+        puch[1] = 0x80 | ((uc >> 24) & 0x3f);
+        puch[2] = 0x80 | ((uc >> 18) & 0x3f);
+        puch[3] = 0x80 | ((uc >> 12) & 0x3f);
+        puch[4] = 0x80 | ((uc >> 6) & 0x3f);
+        puch[5] = 0x80 | (uc & 0x3f);
+        return 6;
+    }
+    AssertMsgFailed(("Invalid code point U+%08x!\n", uc));
+    puch[0] = 0x7f;
+    return 1;
+}
+RT_EXPORT_SYMBOL(RTStrPutCpRetLenInternal);
 
 
 RTDECL(char *) RTStrPrevCp(const char *pszStart, const char *psz)

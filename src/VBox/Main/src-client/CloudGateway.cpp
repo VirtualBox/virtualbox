@@ -1,4 +1,4 @@
-/* $Id: CloudGateway.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: CloudGateway.cpp 114891 2026-08-07 11:59:56Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * Implementation of local and cloud gateway management.
  */
@@ -252,8 +252,17 @@ HRESULT generateKeys(GatewayInfo& gateway)
     RT_NOREF(gateway);
     return E_NOTIMPL;
 #else /* VBOX_WITH_LIBSSH */
+    int     iKeySize = 2048;
     ssh_key single_use_key;
-    int iRcSsh = ssh_pki_generate(SSH_KEYTYPE_RSA, 2048, &single_use_key);
+    ssh_pki_ctx ctx = ssh_pki_ctx_new();
+    if (ctx == NULL)
+    {
+        LogRel(("Failed to allocate a PKI context.\n"));
+        return E_FAIL;
+    }
+    int iRcSsh = ssh_pki_ctx_options_set(ctx, SSH_PKI_OPTION_RSA_KEY_SIZE, &iKeySize);
+    iRcSsh = ssh_pki_generate_key(SSH_KEYTYPE_RSA, ctx, &single_use_key);
+    ssh_pki_ctx_free(ctx);
     if (iRcSsh != SSH_OK)
     {
         LogRel(("Failed to generate a key pair. iRcSsh = %d\n", iRcSsh));

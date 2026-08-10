@@ -1,4 +1,4 @@
-/* $Id: shmem-win.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: shmem-win.cpp 114873 2026-08-06 20:59:25Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT - Named shared memory object, Windows Implementation.
  */
@@ -189,6 +189,7 @@ RTDECL(int) RTShMemOpen(PRTSHMEM phShMem, const char *pszName, uint32_t fFlags, 
             rc = RTStrToUtf16Ex(&szName[0], RTSTR_MAX, &pwszName, 0, NULL);
             if (RT_SUCCESS(rc))
             {
+                DWORD dwErr;
                 if (fFlags & RTSHMEM_O_F_CREATE)
                 {
 #if HC_ARCH_BITS == 64
@@ -215,8 +216,17 @@ RTDECL(int) RTShMemOpen(PRTSHMEM phShMem, const char *pszName, uint32_t fFlags, 
                         else
                             fProt |= PAGE_READWRITE;
                     }
+                    SetLastError(ERROR_SUCCESS);
                     pThis->hShmObj = CreateFileMappingW(INVALID_HANDLE_VALUE, NULL, fProt,
                                                         dwSzMaxHigh, dwSzMaxLow, pwszName);
+                    dwErr = GetLastError();
+                    if (   pThis->hShmObj != NULL
+                        && (fFlags & RTSHMEM_O_F_CREATE_EXCL) == RTSHMEM_O_F_CREATE_EXCL
+                        && dwErr == ERROR_ALREADY_EXISTS)
+                    {
+                        CloseHandle(pThis->hShmObj);
+                        pThis->hShmObj = NULL;
+                    }
                 }
                 else
                 {
@@ -229,6 +239,7 @@ RTDECL(int) RTShMemOpen(PRTSHMEM phShMem, const char *pszName, uint32_t fFlags, 
                         fProt |= FILE_MAP_WRITE;
 
                     pThis->hShmObj = OpenFileMappingW(fProt, FALSE, pwszName);
+                    dwErr = GetLastError();
                 }
                 RTUtf16Free(pwszName);
                 if (pThis->hShmObj != NULL)
@@ -237,7 +248,7 @@ RTDECL(int) RTShMemOpen(PRTSHMEM phShMem, const char *pszName, uint32_t fFlags, 
                     return VINF_SUCCESS;
                 }
                 else
-                    rc = RTErrConvertFromWin32(GetLastError());
+                    rc = RTErrConvertFromWin32(dwErr);
             }
         }
         else
@@ -470,4 +481,3 @@ RTDECL(int) RTShMemUnmapRegion(RTSHMEM hShMem, void *pv)
 
     return rc;
 }
-

@@ -30,7 +30,7 @@
 ]>
 <refentry id="vboxmanage-modifyvm" lang="en">
   <refentryinfo>
-    <pubdate>$Date: 2026-06-15 20:31:38 +0200 (Mon, 15 Jun 2026) $</pubdate>
+    <pubdate>$Date: 2026-07-27 18:53:06 +0200 (Mon, 27 Jul 2026) $</pubdate>
     <title>VBoxManage modifyvm</title>
   </refentryinfo>
 
@@ -524,6 +524,8 @@ time on documenting it. -->
       <arg>--recording-video-scaling-mode=<group choice="plain">
           <arg choice="plain">none</arg>
           <arg choice="plain">nearestneighbor</arg>
+          <arg choice="plain">bilinear</arg>
+          <arg choice="plain">bicubic</arg>
       </group></arg>
     </cmdsynopsis>
 
@@ -2152,11 +2154,12 @@ it unless this changes. -->
           <term><option>--recording-video-res=<replaceable>width</replaceable>x<replaceable>height</replaceable></option></term>
           <listitem><para>
               Specifies the video resolution (width and height) of the
-              recorded video in pixels.
+              recorded video in pixels. The width and height must be even
+              numbers. The maximum resolution is DCI 8K: 8192 by 4320 pixels.
             </para></listitem>
         </varlistentry>
         <varlistentry>
-          <term><option>--recording-video-scaling-mode=none | nearestneighbor</option></term>
+          <term><option>--recording-video-scaling-mode=none | nearestneighbor | bilinear | bicubic</option></term>
           <listitem><para>
               Specifies the video scaling mode.
             </para></listitem>

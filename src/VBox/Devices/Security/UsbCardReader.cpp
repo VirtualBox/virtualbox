@@ -1,4 +1,4 @@
-/* $Id: UsbCardReader.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: UsbCardReader.cpp 114703 2026-07-14 13:23:44Z vitali.pelenjow@oracle.com $ */
 /** @file
  * UsbCardReader - Usb Smart Card Reader implementation.
  */
@@ -26,6 +26,7 @@
  */
 
 #define LOG_GROUP LOG_GROUP_USB_CARDREADER
+#include <VBox/AssertGuest.h>
 #include <VBox/param.h>
 #include <VBox/vmm/pdmusb.h>
 #include <VBox/log.h>
@@ -933,9 +934,10 @@ static int uscrResponseOK(PUSBCARDREADER pThis,
 }
 
 
-static uint32_t uscrResponseRead(PUSBCARDREADER pThis,
-                                 uint8_t *pu8Data,
-                                 uint32_t cbData)
+static int uscrResponseRead(PUSBCARDREADER pThis,
+                            uint8_t *pu8Data,
+                            uint32_t cbData,
+                            uint32_t *pcbOut)
 {
     USCRRSP *pRsp = pThis->pRspCurrent;
 
@@ -945,7 +947,7 @@ static uint32_t uscrResponseRead(PUSBCARDREADER pThis,
 
         if (!pRsp)
         {
-            return 0;
+            return VERR_NO_DATA;
         }
 
         RTListNodeRemove(&pRsp->nodeRsp);
@@ -983,7 +985,8 @@ static uint32_t uscrResponseRead(PUSBCARDREADER pThis,
     /* Save the current response pointer for next invocation. */
     pThis->pRspCurrent = pRsp;
 
-    return cbToCopy;
+    *pcbOut = cbToCopy;
+    return VINF_SUCCESS;
 }
 
 static void uscrResponseCleanup(PUSBCARDREADER pThis)
@@ -1013,21 +1016,29 @@ static void uscrResponseCleanup(PUSBCARDREADER pThis)
 }
 
 
-typedef uint32_t FNREADDATA(PUSBCARDREADER pThis, uint8_t *pu8Data, uint32_t cbData);
+/* Callback to read data into a bulk-in or interrupt URB. Returns VERR_NO_DATA if data is currently not available. */
+typedef int FNREADDATA(PUSBCARDREADER pThis, uint8_t *pu8Data, uint32_t cbData, uint32_t *pcbOut);
 typedef FNREADDATA *PFNREADDATA;
 
-static void urbQueueComplete(PUSBCARDREADER pThis, URBQUEUE *pQueue, PFNREADDATA pfnReadData, bool fDataOnly)
+static void urbQueueComplete(PUSBCARDREADER pThis, URBQUEUE *pQueue, PFNREADDATA pfnReadData)
 {
     PVUSBURB pUrb = pQueue->pUrbHead;
     while (pUrb)
     {
-        uint32_t cbDataReturned = pfnReadData?
-                                      pfnReadData(pThis, &pUrb->pbData[0], pUrb->cbData):
-                                      0;
+        uint32_t cbDataReturned = 0;
 
-        if (fDataOnly && cbDataReturned == 0)
+        /* 'pfnReadData == NULL' means that all queued URBs must be completed with no data. */
+        if (pfnReadData)
         {
-            break;
+            int rc = pfnReadData(pThis, &pUrb->pbData[0], pUrb->cbData, &cbDataReturned);
+            if (rc == VERR_NO_DATA)
+            {
+                /* If the caller wants data and data is not available, then keep the URB in the queue for future data. */
+                break;
+            }
+
+            if (RT_FAILURE(rc))
+                cbDataReturned = 0; /* Complete URB with zero data size. */
         }
 
         bool fRemoved = urbQueueRemove(pQueue, pUrb);
@@ -1450,44 +1461,58 @@ static int usbCardReaderICCSetParameters(PUSBCARDREADER pThis,
             /* The CCID claims automatic parameters negotiation and allows to change only bmFindexDindex. */
             if (pHdr->u.PC_to_RDR.u.SetParameters.bProtocolNum == 0)
             {
-                VUSBCARDREADERPARMST0 *pT0 = (VUSBCARDREADERPARMST0 *)&pHdr[1];
+                if (pCmd->dwLength >= sizeof(VUSBCARDREADERPARMST0))
+                {
+                    VUSBCARDREADERPARMST0 *pT0 = (VUSBCARDREADERPARMST0 *)&pHdr[1];
 
-                UCRLOG(("T0: bmFindexDindex 0x%02X, bmTCCKST0 0x%02X, bGuardTimeT0 0x%02X,"
-                        " bWaitingIntegerT0 0x%02X, bClockStop 0x%02X\n",
-                        pT0->bmFindexDindex, pT0->bmTCCKST0, pT0->bGuardTimeT0,
-                        pT0->bWaitingIntegerT0, pT0->bClockStop));
+                    UCRLOG(("T0: bmFindexDindex 0x%02X, bmTCCKST0 0x%02X, bGuardTimeT0 0x%02X,"
+                            " bWaitingIntegerT0 0x%02X, bClockStop 0x%02X\n",
+                            pT0->bmFindexDindex, pT0->bmTCCKST0, pT0->bGuardTimeT0,
+                            pT0->bWaitingIntegerT0, pT0->bClockStop));
 
-                pSlot->ParmsT0.bmFindexDindex = pT0->bmFindexDindex;
+                    pSlot->ParmsT0.bmFindexDindex = pT0->bmFindexDindex;
+                }
+                else
+                {
+                    u8UnsupportedOffset = (uint8_t)RT_UOFFSETOF(VUSBCARDREADERBULKHDR, u.PC_to_RDR.u.SetParameters.bProtocolNum);
+                }
             }
             else if (pHdr->u.PC_to_RDR.u.SetParameters.bProtocolNum == 1)
             {
-                VUSBCARDREADERPARMST1 *pT1 = (VUSBCARDREADERPARMST1 *)&pHdr[1];
-
-                UCRLOG(("T1: bmFindexDindex 0x%02X, bmTCCKST1 0x%02X, bGuardTimeT1 0x%02X,"
-                        " bmWaitingIntegersT1 0x%02X, bClockStop 0x%02X, bIFSC 0x%02X, bNadValue 0x%02X\n",
-                        pT1->bmFindexDindex, pT1->bmTCCKST1, pT1->bGuardTimeT1,
-                        pT1->bmWaitingIntegersT1, pT1->bClockStop, pT1->bIFSC, pT1->bNadValue));
-
-                /* Check paramaters. */
-                if (pT1->bIFSC > 254)
+                if (pCmd->dwLength >= sizeof(VUSBCARDREADERPARMST1))
                 {
-                    u8UnsupportedOffset = (uint8_t)(RT_UOFFSETOF(VUSBCARDREADERPARMST1, bmTCCKST1) + sizeof(VUSBCARDREADERBULKHDR));
+                    VUSBCARDREADERPARMST1 *pT1 = (VUSBCARDREADERPARMST1 *)&pHdr[1];
+
+                    UCRLOG(("T1: bmFindexDindex 0x%02X, bmTCCKST1 0x%02X, bGuardTimeT1 0x%02X,"
+                            " bmWaitingIntegersT1 0x%02X, bClockStop 0x%02X, bIFSC 0x%02X, bNadValue 0x%02X\n",
+                            pT1->bmFindexDindex, pT1->bmTCCKST1, pT1->bGuardTimeT1,
+                            pT1->bmWaitingIntegersT1, pT1->bClockStop, pT1->bIFSC, pT1->bNadValue));
+
+                    /* Check paramaters. */
+                    if (pT1->bIFSC > 254)
+                    {
+                        u8UnsupportedOffset = (uint8_t)(RT_UOFFSETOF(VUSBCARDREADERPARMST1, bmTCCKST1) + sizeof(VUSBCARDREADERBULKHDR));
+                    }
+
+                    if (u8UnsupportedOffset == 0)
+                    {
+                        /* Change parameters only if there is no error. */
+                        pSlot->ParmsT1.bmFindexDindex = pT1->bmFindexDindex;
+
+                        #define UPDATEPARM(parm) if (pT1->parm != 0) pSlot->ParmsT1.parm = pT1->parm
+                        UPDATEPARM(bmFindexDindex);
+                        UPDATEPARM(bmTCCKST1);
+                        UPDATEPARM(bGuardTimeT1);
+                        UPDATEPARM(bmWaitingIntegersT1);
+                        UPDATEPARM(bClockStop);
+                        UPDATEPARM(bIFSC);
+                        UPDATEPARM(bNadValue);
+                        #undef UPDATEPARM
+                    }
                 }
-
-                if (u8UnsupportedOffset == 0)
+                else
                 {
-                    /* Change parameters only if there is no error. */
-                    pSlot->ParmsT1.bmFindexDindex = pT1->bmFindexDindex;
-
-                    #define UPDATEPARM(parm) if (pT1->parm != 0) pSlot->ParmsT1.parm = pT1->parm
-                    UPDATEPARM(bmFindexDindex);
-                    UPDATEPARM(bmTCCKST1);
-                    UPDATEPARM(bGuardTimeT1);
-                    UPDATEPARM(bmWaitingIntegersT1);
-                    UPDATEPARM(bClockStop);
-                    UPDATEPARM(bIFSC);
-                    UPDATEPARM(bNadValue);
-                    #undef UPDATEPARM
+                    u8UnsupportedOffset = (uint8_t)RT_UOFFSETOF(VUSBCARDREADERBULKHDR, u.PC_to_RDR.u.SetParameters.bProtocolNum);
                 }
             }
             else
@@ -1623,6 +1648,8 @@ static bool usbCardReaderT1ValidateChkSum(PCARDREADERSLOT pSlot, const uint8_t *
 
     uint8_t au8Sum[2];
     uint8_t cbSum = usbCardReaderIsCrc16ChkSum(pSlot) ? 2 : 1;
+    if (cbBlock < cbSum)
+        return false;
 
     int rc = usbCardReaderT1ChkSum(pSlot, au8Sum, pbBlock, cbBlock - cbSum);
 
@@ -1650,14 +1677,13 @@ static int usbCardReaderT1CreateBlock(PCARDREADERSLOT pSlot,
 
     int rc = VINF_SUCCESS;
 
-    uint32_t cbChkSum = usbCardReaderIsCrc16ChkSum(pSlot) ? 2 : 1;
+    uint32_t const cbChkSum = usbCardReaderIsCrc16ChkSum(pSlot) ? 2 : 1;
 
-    PT1BLKHEADER pT1Blk = NULL;
-    uint32_t cbT1Blk =   cbT1BodyBlock
-                       + sizeof(T1BLKHEADER)
-                       + cbChkSum;
+    uint32_t const cbT1Blk =   sizeof(T1BLKHEADER)
+                             + cbT1BodyBlock
+                             + cbChkSum;
 
-    pT1Blk = (PT1BLKHEADER)RTMemAllocZ(cbT1Blk);
+    PT1BLKHEADER pT1Blk = (PT1BLKHEADER)RTMemAllocZ(cbT1Blk);
     AssertReturn(pT1Blk, VERR_NO_MEMORY);
 
     pT1Blk->u8Nad = u8Nad;
@@ -1694,7 +1720,7 @@ static int usbCardReaderT1BlkSProcess(PUSBCARDREADER pThis, PCARDREADERSLOT pSlo
     UCRLOG(("ENTER: pThis:%p, pSlot:%p, pT1BlkHeader:%.*Rhxs\n",
             pThis,
             pSlot,
-            pT1BlkHeader->u8Len + sizeof(PT1BLKHEADER) + (usbCardReaderIsCrc16ChkSum(pSlot) ? 2 : 1),
+            sizeof(T1BLKHEADER) + pT1BlkHeader->u8Len + (usbCardReaderIsCrc16ChkSum(pSlot) ? 2 : 1),
             pT1BlkHeader));
 
     int rc = VINF_SUCCESS;
@@ -1778,7 +1804,7 @@ static int usbCardReaderT1BlkRProcess(PUSBCARDREADER pThis, PCARDREADERSLOT pSlo
 {
     UCRLOG(("ENTER: pThis:%p, pSlot:%p, pT1BlkHeader:%.*Rhxs\n",
             pThis, pSlot,
-            pT1BlkHeader->u8Len + sizeof(PT1BLKHEADER) + (usbCardReaderIsCrc16ChkSum(pSlot) ? 2 : 1),
+            sizeof(T1BLKHEADER) + pT1BlkHeader->u8Len + (usbCardReaderIsCrc16ChkSum(pSlot) ? 2 : 1),
             pT1BlkHeader));
 
     int rc = VINF_SUCCESS;
@@ -1856,6 +1882,38 @@ static int usbCardReaderT1BlkRProcess(PUSBCARDREADER pThis, PCARDREADERSLOT pSlo
     return rc;
 }
 
+static uint8_t usbCardReaderT1ValidateBlock(PCARDREADERSLOT pSlot,
+                                            const VUSBCARDREADERBULKHDR *pCmd)
+{
+    uint8_t enmMsgStatus = VUSBCARDREADER_MSG_STATUS_ERR_NON;
+
+    /* T1 block is T1BLKHEADER + data[T1BLKHEADER::u8Len] + checksum. */
+    uint32_t cbT1Block = sizeof(T1BLKHEADER) + (usbCardReaderIsCrc16ChkSum(pSlot) ? 2 : 1);
+    if (pCmd->dwLength < cbT1Block)
+    {
+        enmMsgStatus = VUSBCARDREADER_MSG_STATUS_ERR_XFR_OVERRUN;
+    }
+    else
+    {
+        PT1BLKHEADER pT1Hdr = (PT1BLKHEADER)&pCmd[1];
+        cbT1Block += pT1Hdr->u8Len;
+        if (pCmd->dwLength < cbT1Block)
+        {
+            enmMsgStatus = VUSBCARDREADER_MSG_STATUS_ERR_XFR_OVERRUN;
+        }
+        else
+        {
+            bool const fT1ChkSumValid = usbCardReaderT1ValidateChkSum(pSlot, (uint8_t *)&pCmd[1], pCmd->dwLength);
+            if (RT_UNLIKELY(!fT1ChkSumValid))
+            {
+                enmMsgStatus = VUSBCARDREADER_MSG_STATUS_ERR_XFR_PARITY_ERROR;
+            }
+        }
+    }
+
+    return enmMsgStatus;
+}
+
 /*
  * This function process PC_to_RDR_XfrBlock (6.1.4) in T1 protocol specific way.
  */
@@ -1870,11 +1928,11 @@ static int usbCardReaderXfrBlockT1(PUSBCARDREADER pThis,
 
     Assert(pSlot->u8ProtocolSelector == 1);
 
-    bool fT1ChkSumValid = usbCardReaderT1ValidateChkSum(pSlot, (uint8_t *)&pCmd[1], pCmd->dwLength);
+    uint8_t const enmMsgStatus = usbCardReaderT1ValidateBlock(pSlot, pCmd);
 
-    if (RT_UNLIKELY(!fT1ChkSumValid))
+    if (RT_UNLIKELY(enmMsgStatus != VUSBCARDREADER_MSG_STATUS_ERR_NON))
     {
-        rc = uscrResponseSlotError(pThis, pSlot, VUSBCARDREADER_MSG_STATUS_ERR_XFR_PARITY_ERROR);
+        rc = uscrResponseSlotError(pThis, pSlot, enmMsgStatus);
     }
     else
     {
@@ -1882,8 +1940,6 @@ static int usbCardReaderXfrBlockT1(PUSBCARDREADER pThis,
 
         UCRLOG(("pT1Hdr->u8Len %d, pCmd->dwLength %d, pT1Hdr->u8Pcb 0x%02X\n",
                 pT1Hdr->u8Len, pCmd->dwLength, pT1Hdr->u8Pcb));
-
-        /** @todo validate, for example pT1Hdr->u8Len < pCmd->dwLength */
 
         switch (pT1Hdr->u8Pcb & ISO7816_T1_BLK_TYPE_MASK)
         {
@@ -2181,84 +2237,92 @@ static int usbCardReaderDefaultPipe(PUSBCARDREADER pThis, PUSBCARDREADEREP pEp, 
 
     int rc = VINF_SUCCESS;
 
-    PVUSBSETUP pSetup = (PVUSBSETUP)pUrb->pbData;
-
-    switch (pSetup->bmRequestType & VUSB_REQ_MASK)
+    if (RT_UNLIKELY(pUrb->cbData < sizeof(VUSBSETUP)))
     {
-        case VUSB_REQ_STANDARD:
-            if ((pSetup->bmRequestType & VUSB_DIR_MASK) == VUSB_DIR_TO_HOST)
-            {
-                switch (pSetup->bmRequestType & VUSB_RECIP_MASK)
+        UCRLOG(("pUrb->cbData %d\n", pUrb->cbData));
+        AssertFailedStmt(rc = VERR_NOT_SUPPORTED);
+    }
+    else
+    {
+        PVUSBSETUP pSetup = (PVUSBSETUP)pUrb->pbData;
+
+        switch (pSetup->bmRequestType & VUSB_REQ_MASK)
+        {
+            case VUSB_REQ_STANDARD:
+                if ((pSetup->bmRequestType & VUSB_DIR_MASK) == VUSB_DIR_TO_HOST)
                 {
-                    case VUSB_TO_DEVICE:
-                        rc = usbCardReaderSRToHostTodevice(pThis, pEp, pUrb, pSetup);
-                        break;
-                    case VUSB_TO_ENDPOINT:
-                    case VUSB_TO_INTERFACE:
-                    case VUSB_TO_OTHER:
-                    default:
-                        rc = usbCardReaderCompleteSetupUnsupported(pThis, pUrb);
-                }
-            }
-            else
-            {
-                switch (pSetup->bmRequestType & VUSB_RECIP_MASK)
-                {
-                    case VUSB_TO_ENDPOINT:
+                    switch (pSetup->bmRequestType & VUSB_RECIP_MASK)
                     {
-                        if (pSetup->bRequest == VUSB_REQ_CLEAR_FEATURE)
-                        {
-                            UCRLOG(("endpoint:CLEAR_FEATURE: wValue %d, wIndex 0x%02X\n",
-                                     pSetup->wValue, pSetup->wIndex));
-                            /** @todo */
-                            unsigned i;
-                            for (i = 0; i < RT_ELEMENTS(pThis->aEps); i++)
-                            {
-                                pThis->aEps[i].fHalted = false;
-                            }
-
-                            uscrResponseCleanup(pThis);
-
-                            rc = usbCardReaderCompleteOk(pThis, pUrb, pUrb->cbData);
-                        }
-                        else
-                        {
+                        case VUSB_TO_DEVICE:
+                            rc = usbCardReaderSRToHostTodevice(pThis, pEp, pUrb, pSetup);
+                            break;
+                        case VUSB_TO_ENDPOINT:
+                        case VUSB_TO_INTERFACE:
+                        case VUSB_TO_OTHER:
+                        default:
                             rc = usbCardReaderCompleteSetupUnsupported(pThis, pUrb);
-                        }
-                    } break;
-
-                    case VUSB_TO_DEVICE:
-                    case VUSB_TO_INTERFACE:
-                    case VUSB_TO_OTHER:
-                    default:
-                        rc = usbCardReaderCompleteSetupUnsupported(pThis, pUrb);
+                    }
                 }
-            }
-            break;
-        case VUSB_REQ_CLASS:
-            if ((pSetup->bmRequestType & VUSB_DIR_MASK) == VUSB_DIR_TO_HOST)
-            {
-                switch (pSetup->bmRequestType & VUSB_RECIP_MASK)
+                else
                 {
-                    /* Linux and Windows guest make different requests? */
-                    case VUSB_TO_DEVICE:
-                    case VUSB_TO_INTERFACE:
-                        rc = usbCardReaderCSToHost(pThis, pEp, pUrb, pSetup);
-                        break;
-                    case VUSB_TO_ENDPOINT:
-                    case VUSB_TO_OTHER:
-                    default:
-                        rc = usbCardReaderCompleteSetupUnsupported(pThis, pUrb);
+                    switch (pSetup->bmRequestType & VUSB_RECIP_MASK)
+                    {
+                        case VUSB_TO_ENDPOINT:
+                        {
+                            if (pSetup->bRequest == VUSB_REQ_CLEAR_FEATURE)
+                            {
+                                UCRLOG(("endpoint:CLEAR_FEATURE: wValue %d, wIndex 0x%02X\n",
+                                         pSetup->wValue, pSetup->wIndex));
+                                /** @todo */
+                                unsigned i;
+                                for (i = 0; i < RT_ELEMENTS(pThis->aEps); i++)
+                                {
+                                    pThis->aEps[i].fHalted = false;
+                                }
+
+                                uscrResponseCleanup(pThis);
+
+                                rc = usbCardReaderCompleteOk(pThis, pUrb, pUrb->cbData);
+                            }
+                            else
+                            {
+                                rc = usbCardReaderCompleteSetupUnsupported(pThis, pUrb);
+                            }
+                        } break;
+
+                        case VUSB_TO_DEVICE:
+                        case VUSB_TO_INTERFACE:
+                        case VUSB_TO_OTHER:
+                        default:
+                            rc = usbCardReaderCompleteSetupUnsupported(pThis, pUrb);
+                    }
                 }
-            }
-            else
-            {
-               rc = usbCardReaderCompleteSetupUnsupported(pThis, pUrb);
-            }
-            break;
-        case VUSB_REQ_VENDOR:
-        default:
-            rc = usbCardReaderCompleteSetupUnsupported(pThis, pUrb);
+                break;
+            case VUSB_REQ_CLASS:
+                if ((pSetup->bmRequestType & VUSB_DIR_MASK) == VUSB_DIR_TO_HOST)
+                {
+                    switch (pSetup->bmRequestType & VUSB_RECIP_MASK)
+                    {
+                        /* Linux and Windows guest make different requests? */
+                        case VUSB_TO_DEVICE:
+                        case VUSB_TO_INTERFACE:
+                            rc = usbCardReaderCSToHost(pThis, pEp, pUrb, pSetup);
+                            break;
+                        case VUSB_TO_ENDPOINT:
+                        case VUSB_TO_OTHER:
+                        default:
+                            rc = usbCardReaderCompleteSetupUnsupported(pThis, pUrb);
+                    }
+                }
+                else
+                {
+                   rc = usbCardReaderCompleteSetupUnsupported(pThis, pUrb);
+                }
+                break;
+            case VUSB_REQ_VENDOR:
+            default:
+                rc = usbCardReaderCompleteSetupUnsupported(pThis, pUrb);
+        }
     }
 
     UCRLOGF(("LEAVE: rc:%Rrc\n", rc));
@@ -2388,17 +2452,17 @@ static int usbCardReaderBulkInPipe(PUSBCARDREADER pThis, PUSBCARDREADEREP pEp, P
      * Add the URB to the BulkIn queue and complete URBs from the queue.
      */
     urbQueueAddTail(&pThis->urbQueues.BulkIn, pUrb);
-    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead, true /* fDataOnly */);
+    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead);
 
     return VINF_SUCCESS;
 }
 
 
-static uint32_t uscrEventRead(PUSBCARDREADER pThis, uint8_t *pu8Data, uint32_t cbData)
+static int uscrEventRead(PUSBCARDREADER pThis, uint8_t *pu8Data, uint32_t cbData, uint32_t *pcbOut)
 {
-    RT_NOREF1(cbData);
-    uint32_t cbReturned = 0;
+    ASSERT_GUEST_RETURN(cbData >= sizeof(VUSBCARDREADERNOTIFYSLOTCHANGE), VERR_BUFFER_OVERFLOW);
 
+    int rc = VINF_SUCCESS;
     if (pThis->fICCStateChanged)
     {
         pThis->fICCStateChanged = false;
@@ -2413,12 +2477,14 @@ static uint32_t uscrEventRead(PUSBCARDREADER pThis, uint8_t *pu8Data, uint32_t c
             pNotify->bmSlotICCState |= 0x01; /* ICC present */
         }
 
-        cbReturned = sizeof(VUSBCARDREADERNOTIFYSLOTCHANGE);
+        *pcbOut = sizeof(VUSBCARDREADERNOTIFYSLOTCHANGE);
 
-        UCRLOG(("Reporting a slot change\n%.*Rhxs\n", cbReturned, pu8Data));
+        UCRLOG(("Reporting a slot change\n%.*Rhxs\n", *pcbOut, pu8Data));
     }
+    else
+        rc = VERR_NO_DATA;
 
-    return cbReturned;
+    return rc;
 }
 
 
@@ -2433,13 +2499,13 @@ static int usbCardReaderIntPipe(PUSBCARDREADER pThis, PUSBCARDREADEREP pEp, PVUS
 
     /* If there is a pending URB, complete it without data. It is most likely cancelled.
      *
-     * The webcam does not complete URB if there is no data. Therefore if a new intr-in URB is submitted,
+     * The card reader does not complete URB if there is no data. Therefore if a new intr-in URB is submitted,
      * it means that the old URB is not ok anymore and returned data in it may be lost.
      */
-    urbQueueComplete(pThis, &pThis->urbQueues.IntrIn, NULL /* no data */, false /* fDataOnly */);
+    urbQueueComplete(pThis, &pThis->urbQueues.IntrIn, NULL /* no data */);
 
     urbQueueAddTail(&pThis->urbQueues.IntrIn, pUrb);
-    urbQueueComplete(pThis, &pThis->urbQueues.IntrIn, uscrEventRead, true /* fDataOnly */);
+    urbQueueComplete(pThis, &pThis->urbQueues.IntrIn, uscrEventRead);
 
     return VINF_SUCCESS;
 }
@@ -2593,8 +2659,14 @@ static void uscrStatusMonitorProcess(PUSBCARDREADER pThis)
              * because exclusive access is used. The disconnect request is sent if
              * the card is connected: usbCardReaderSendDisconnect checks this condition.
              */
-            usbCardReaderSendDisconnect(pThis, pSlot, DISCONNECT_ONSTATUSCHANGE);
-            pThis->enmICCConnState = ICCNOCONNECTION;
+            if ((pThis->u32EventStateBackend & VBOX_SCARD_STATE_EMPTY) != 0)
+            {
+                /* Some clients send status change notifications even if PRESENT/EMPTY has not chnaged.
+                 * Try to reconnect only if there is no card.
+                 */
+                usbCardReaderSendDisconnect(pThis, pSlot, DISCONNECT_ONSTATUSCHANGE);
+                pThis->enmICCConnState = ICCNOCONNECTION;
+            }
 
             bool fForceChanged = (pThis->u32EventStateBackend & VBOX_SCARD_STATE_CHANGED) != 0;
 
@@ -2661,7 +2733,7 @@ static DECLCALLBACK(int) uscrStatusMonitor(PPDMUSBINS pUsbIns, PPDMTHREAD pThrea
         {
             uscrStatusMonitorProcess(pThis);
 
-            urbQueueComplete(pThis, &pThis->urbQueues.IntrIn, uscrEventRead, true /* fDataOnly */);
+            urbQueueComplete(pThis, &pThis->urbQueues.IntrIn, uscrEventRead);
             uscrUnlock(pThis);
         }
 
@@ -2819,7 +2891,7 @@ static DECLCALLBACK(int) usbSCardReaderConnect(PPDMICARDREADERUP pInterface,
     pThis->fu8Cmd &= ~VUSBCARDREADER_F_CMD_BUSY;
 
     /* Process possibly pending bulk-in URBs. */
-    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead, true /* fDataOnly */);
+    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead);
 
     uscrUnlock(pThis);
 
@@ -2905,7 +2977,7 @@ static DECLCALLBACK(int) usbSCardReaderDisconnect(PPDMICARDREADERUP pInterface,
     pThis->enmDisconnectReason = DISCONNECT_VOID;
 
     /* Process possibly pending bulk-in URBs. */
-    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead, true /* fDataOnly */);
+    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead);
 
     uscrUnlock(pThis);
 
@@ -3102,7 +3174,7 @@ static DECLCALLBACK(int) usbSCardReaderTransmit(PPDMICARDREADERUP pInterface,
     }
 
     /* Process possibly pending bulk-in URBs. */
-    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead, true /* fDataOnly */);
+    urbQueueComplete(pThis, &pThis->urbQueues.BulkIn, uscrResponseRead);
 
     uscrUnlock(pThis);
 
@@ -3258,7 +3330,7 @@ static DECLCALLBACK(int) usbSCardReaderConstruct(PPDMUSBINS pUsbIns, int iInstan
     pThis->hEvtDoneQueue = NIL_RTSEMEVENT;
     rc = RTSemEventCreate(&pThis->hEvtDoneQueue);
     if (RT_FAILURE(rc))
-        return PDMUsbHlpVMSetError(pUsbIns, rc, RT_SRC_POS, N_("USBWEBCAM: Failed to create event semaphore"));
+        return PDMUsbHlpVMSetError(pUsbIns, rc, RT_SRC_POS, N_("USBSCARDREADER: Failed to create event semaphore"));
 
     rc = PDMUsbHlpThreadCreate(pUsbIns, &pThis->pStatusMonitorThread, pThis,
                                uscrStatusMonitor, uscrStatusMonitorWakeUp,

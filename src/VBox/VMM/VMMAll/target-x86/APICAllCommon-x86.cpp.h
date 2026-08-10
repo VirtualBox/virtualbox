@@ -1,4 +1,4 @@
-/* $Id: APICAllCommon-x86.cpp.h 112683 2026-01-25 17:23:05Z alexander.eichner@oracle.com $ */
+/* $Id: APICAllCommon-x86.cpp.h 114733 2026-07-21 06:02:36Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller - All-context and R3-context common code.
  */
@@ -568,7 +568,7 @@ static const char *apicR3CommonGetDestShorthandName(XAPICDESTSHORTHAND enmDestSh
     {
         case XAPICDESTSHORTHAND_NONE:           return "None";
         case XAPICDESTSHORTHAND_SELF:           return "Self";
-        case XAPIDDESTSHORTHAND_ALL_INCL_SELF:  return "All including self";
+        case XAPICDESTSHORTHAND_ALL_INCL_SELF:  return "All including self";
         case XAPICDESTSHORTHAND_ALL_EXCL_SELF:  return "All excluding self";
         default:                                break;
     }

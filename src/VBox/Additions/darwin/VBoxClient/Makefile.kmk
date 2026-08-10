@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114381 2026-06-16 06:43:15Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the VirtualBox Guest Addition Darwin Client.
 #
@@ -49,6 +49,12 @@ ifdef VBOX_WITH_SHARED_CLIPBOARD
  	VBoxClientClipboardGuestToHost.cpp \
  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-common.cpp \
  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-helper.cpp
+ ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+  VBoxClient_DEFS    += VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS VBOX_WITH_SHARED_CLIPBOARD_GUEST
+  VBoxClient_SOURCES += \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-path.cpp
+ endif
 endif
 
 VBoxClient_LDFLAGS  = -framework IOKit -framework ApplicationServices

@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferDataImpl.h 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferDataImpl.h 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer data plane object.
  */
@@ -95,10 +95,10 @@ private:
 #endif
         { }
 
-        /** Parent transfer object used to keep the backing transfer alive. */
+        /** Parent transfer object used to preserve the public object relationship. */
         ComPtr<IClipboardTransfer> mParent;
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-        /** Shared Clipboard transfer backing data-plane operations. */
+        /** Parent-owned Shared Clipboard transfer backing data-plane operations. */
         PSHCLTRANSFER              mTransfer;
 #endif
     } mData;

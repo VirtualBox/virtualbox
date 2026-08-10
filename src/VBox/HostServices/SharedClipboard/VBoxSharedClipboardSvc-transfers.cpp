@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 114661 2026-07-08 10:39:13Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 114890 2026-08-07 09:54:48Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -71,11 +71,7 @@ static int shClSvcTransferFindByKey(SHCLSESSIONID idSession, SHCLTRANSFERID idTr
 {
     AssertPtrReturn(ppClient, VERR_INVALID_POINTER);
     AssertPtrReturn(ppTransfer, VERR_INVALID_POINTER);
-    AssertReturn(idSession != 0 && idSession != NIL_SHCLSESSIONID, VERR_INVALID_CONTEXT);
-    AssertReturn(   idTransfer != NIL_SHCLTRANSFERID
-                 && idTransfer > 0
-                 && idTransfer < VBOX_SHCL_MAX_TRANSFERS - 1, VERR_INVALID_CONTEXT);
-    AssertReturn(uGeneration != 0 && uGeneration != NIL_SHCLTRANSFERGEN, VERR_INVALID_CONTEXT);
+    AssertReturn(ShClTransferKeyIsValid(idSession, idTransfer, uGeneration), VERR_INVALID_CONTEXT);
 
     *ppClient   = NULL;
     *ppTransfer = NULL;
@@ -182,29 +178,6 @@ static int shClSvcTransferAbortByHostKey(uint64_t uContextId, SHCLTRANSFERGEN uG
 
     return rc;
 }
-
-
-/**
- * Destroys all transfers of a Shared Clipboard client.
- *
- * @param   pClient             Client to destroy transfers for.
- */
-void shClSvcTransferDestroyAll(PSHCLCLIENT pClient)
-{
-    if (!pClient)
-        return;
-
-    LogFlowFuncEnter();
-
-    /* Unregister and destroy all transfers.
-     * Also make sure to let the backend know that all transfers are getting destroyed.
-     *
-     * Note: The index always will be 0, as the transfer gets unregistered. */
-    PSHCLTRANSFER pTransfer;
-    while ((pTransfer = ShClTransferCtxGetTransferByIndex(&pClient->Transfers.Ctx, 0 /* Index */)))
-        ShClSvcTransferDestroy(pClient, pTransfer);
-}
-
 
 
 /*********************************************************************************************************************************

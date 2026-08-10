@@ -1,4 +1,4 @@
-/* $Id: RecordingCodec.cpp 113780 2026-04-09 09:08:27Z andreas.loeffler@oracle.com $ */
+/* $Id: RecordingCodec.cpp 114800 2026-07-27 16:53:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Recording codec wrapper.
  */
@@ -177,6 +177,16 @@ static DECLCALLBACK(int) recordingCodecVPXInit(PRECORDINGCODEC pCodec)
 
     /* Target bitrate in kilobits per second. */
     pVPX->Cfg.rc_target_bitrate = pCodec->Parms.uBitrate;
+    switch (pCodec->Parms.u.Video.enmRateCtlMode)
+    {
+        case RecordingRateControlMode_VBR:
+            pVPX->Cfg.rc_end_usage = VPX_VBR;
+            break;
+
+        default:
+            AssertMsgFailedReturn(("Unsupported VPX recording rate control mode %d\n",
+                                   pCodec->Parms.u.Video.enmRateCtlMode), VERR_INVALID_PARAMETER);
+    }
     /* Frame width. */
     pVPX->Cfg.g_w = pCodec->Parms.u.Video.uWidth;
     /* Frame height. */
@@ -234,6 +244,40 @@ static DECLCALLBACK(int) recordingCodecVPXFinalize(PRECORDINGCODEC pCodec)
     recordingCodecUnlock(pCodec);
 
     return vrc;
+}
+
+/**
+ * Sets the libvpx encoding deadline.
+ *
+ * @returns VBox status code.
+ * @param   pCodec              Codec instance to configure.
+ * @param   enmDeadline         Recording deadline setting to apply.
+ */
+static int recordingCodecVPXSetDeadline(PRECORDINGCODEC pCodec, RecordingCodecDeadline_T enmDeadline)
+{
+    PRECORDINGCODECVPX pVPX = &pCodec->Video.VPX;
+
+    switch (enmDeadline)
+    {
+        case RecordingCodecDeadline_Default:
+        case RecordingCodecDeadline_Realtime:
+            pVPX->uEncoderDeadline = VPX_DL_REALTIME;
+            break;
+
+        case RecordingCodecDeadline_Good:
+            AssertStmt(pCodec->Parms.u.Video.uFPS, pCodec->Parms.u.Video.uFPS = 25);
+            pVPX->uEncoderDeadline = 1000000 / pCodec->Parms.u.Video.uFPS;
+            break;
+
+        case RecordingCodecDeadline_Best:
+            pVPX->uEncoderDeadline = VPX_DL_BEST_QUALITY;
+            break;
+
+        default:
+            AssertMsgFailedReturn(("Invalid recording codec deadline %d\n", enmDeadline), VERR_INVALID_PARAMETER);
+    }
+
+    return VINF_SUCCESS;
 }
 
 /** @copydoc RECORDINGCODECOPS::pfnParseOptions */
@@ -708,9 +752,21 @@ static int recordingCodecInitVideo(const PRECORDINGCODEC pCodec, const PRECORDIN
     ULONG uHeight;
     hrc = ScreenSettings->COMGETTER(VideoHeight)(&uHeight);
     AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    RecordingRateControlMode_T enmRateCtlMode;
+    hrc = ScreenSettings->COMGETTER(VideoRateControlMode)(&enmRateCtlMode);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+    RecordingCodecDeadline_T enmDeadline;
+    hrc = ScreenSettings->COMGETTER(VideoDeadline)(&enmDeadline);
+    AssertComRCReturn(hrc, VERR_RECORDING_INIT_FAILED);
+
+    AssertReturn(uRate > 0 && uRate <= 1000000, VERR_INVALID_PARAMETER);
+    AssertReturn(uFPS > 0 && uFPS <= RT_MS_1SEC, VERR_INVALID_PARAMETER);
+    AssertReturn(uWidth >= 2 && uWidth <= VBOX_RECORDING_VIDEO_MAX_WIDTH && !(uWidth & 1), VERR_INVALID_PARAMETER);
+    AssertReturn(uHeight >= 2 && uHeight <= VBOX_RECORDING_VIDEO_MAX_HEIGHT && !(uHeight & 1), VERR_INVALID_PARAMETER);
 
     pCodec->Parms.uBitrate         = uRate;
     pCodec->Parms.u.Video.uFPS     = uFPS;
+    pCodec->Parms.u.Video.enmRateCtlMode = enmRateCtlMode;
     pCodec->Parms.u.Video.uWidth   = uWidth;
     pCodec->Parms.u.Video.uHeight  = uHeight;
     pCodec->Parms.u.Video.uDelayMs = RT_MS_1SEC / pCodec->Parms.u.Video.uFPS;
@@ -718,16 +774,19 @@ static int recordingCodecInitVideo(const PRECORDINGCODEC pCodec, const PRECORDIN
     if (pCallbacks)
         memcpy(&pCodec->Callbacks, pCallbacks, sizeof(RECORDINGCODECCALLBACKS));
 
-    AssertReturn(pCodec->Parms.uBitrate, VERR_INVALID_PARAMETER);        /* Bitrate must be set. */
-    AssertStmt(pCodec->Parms.u.Video.uFPS, pCodec->Parms.u.Video.uFPS = 25); /* Prevent division by zero. */
-
-    AssertReturn(pCodec->Parms.u.Video.uHeight, VERR_INVALID_PARAMETER);
-    AssertReturn(pCodec->Parms.u.Video.uWidth, VERR_INVALID_PARAMETER);
     AssertReturn(pCodec->Parms.u.Video.uDelayMs, VERR_INVALID_PARAMETER);
 
     int vrc = VINF_SUCCESS;
 
-    if (pCodec->Ops.pfnParseOptions)
+#ifdef VBOX_WITH_LIBVPX
+    if (pCodec->Parms.Common.u.enmVideoCodec == RecordingVideoCodec_VP8)
+        vrc = recordingCodecVPXSetDeadline(pCodec, enmDeadline);
+#else
+    RT_NOREF(enmDeadline);
+#endif
+
+    if (   RT_SUCCESS(vrc)
+        && pCodec->Ops.pfnParseOptions)
     {
         com::Bstr bstrOptions;
         hrc = ScreenSettings->COMGETTER(Options)(bstrOptions.asOutParam());

@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.h 114638 2026-07-07 17:03:05Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA.h 114719 2026-07-16 15:46:04Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VMware SVGA device
  */
@@ -468,7 +468,7 @@ typedef struct VMSVGAState
     /** Whether MSAA support is enabled. */
     bool                        fVMSVGA3dMSAA;
     bool                        fVMSVGA2dGBO;
-    bool                        afPadding[1];
+    bool                        fVMSVGA3dVideoAcceleration;
     uint32_t                    uWidth;
     uint32_t                    uHeight;
     uint32_t                    uBpp;

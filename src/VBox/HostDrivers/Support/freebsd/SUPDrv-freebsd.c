@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-freebsd.c 113496 2026-03-22 22:23:27Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPDrv-freebsd.c 114828 2026-07-31 09:19:37Z alexander.eichner@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - FreeBSD specifics.
  */
@@ -698,5 +698,12 @@ SUPR0DECL(void) SUPR0FpuEnd(uint32_t fBegin)
 {
     RT_NOREF(fBegin);
     Assert(fBegin == 0);
+}
+
+
+SUPR0DECL(void) SUPR0DispatchHostNmi(void)
+{
+    /** @todo FRED support when FreeBSD starts using it. */
+    __asm__ __volatile__ ("int $2\n\t" :::);
 }
 

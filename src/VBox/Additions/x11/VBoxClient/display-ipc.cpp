@@ -1,4 +1,4 @@
-/* $Id: display-ipc.cpp 114416 2026-06-17 23:01:21Z knut.osmundsen@oracle.com $ */
+/* $Id: display-ipc.cpp 114802 2026-07-27 19:09:39Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - DRM IPC communication core functions.
  */
@@ -80,8 +80,8 @@
  * @param   cTxListCapacity     Maximum number of messages which can be queued for TX for this IPC session.
  * @param   pfnRxCb             IPC RX callback function pointer.
  */
-RTDECL(int) vbDrmIpcClientInit(PVBOX_DRMIPC_CLIENT pClient, RTTHREAD hThread, RTLOCALIPCSESSION hClientSession,
-                               uint32_t cTxListCapacity, PFNDRMIPCRXCB pfnRxCb)
+int vbDrmIpcClientInit(PVBOX_DRMIPC_CLIENT pClient, RTTHREAD hThread, RTLOCALIPCSESSION hClientSession,
+                       uint32_t cTxListCapacity, PFNDRMIPCRXCB pfnRxCb)
 {
     AssertReturn(pClient,           VERR_INVALID_PARAMETER);
     AssertReturn(hThread,           VERR_INVALID_PARAMETER);
@@ -92,8 +92,7 @@ RTDECL(int) vbDrmIpcClientInit(PVBOX_DRMIPC_CLIENT pClient, RTTHREAD hThread, RT
     pClient->hThread                = hThread;
     pClient->hClientSession         = hClientSession;
 
-    RT_ZERO(pClient->TxList);
-    RTListInit(&pClient->TxList.Node);
+    RTListInit(&pClient->TxList);
 
     pClient->cTxListCapacity = cTxListCapacity;
     ASMAtomicWriteU32(&pClient->cTxListSize, 0);
@@ -109,17 +108,17 @@ RTDECL(int) vbDrmIpcClientInit(PVBOX_DRMIPC_CLIENT pClient, RTTHREAD hThread, RT
  * @return  IPRT status code.
  * @param   pClient     IPC session private data to be initialized.
  */
-RTDECL(int) vbDrmIpcClientReleaseResources(PVBOX_DRMIPC_CLIENT pClient)
+int vbDrmIpcClientReleaseResources(PVBOX_DRMIPC_CLIENT pClient)
 {
     pClient->hClientSession = NIL_RTLOCALIPCSESSION;
 
     int rc = RTCritSectEnter(&pClient->CritSect);
     if (RT_SUCCESS(rc))
     {
-        if (!RTListIsEmpty(&pClient->TxList.Node))
+        if (!RTListIsEmpty(&pClient->TxList))
         {
             PVBOX_DRMIPC_TX_LIST_ENTRY pEntry, pNextEntry;
-            RTListForEachSafe(&pClient->TxList.Node, pEntry, pNextEntry, VBOX_DRMIPC_TX_LIST_ENTRY, Node)
+            RTListForEachSafe(&pClient->TxList, pEntry, pNextEntry, VBOX_DRMIPC_TX_LIST_ENTRY, Node)
             {
                 RTListNodeRemove(&pEntry->Node);
                 RTMemFree(pEntry);
@@ -167,7 +166,7 @@ static int vbDrmIpcSessionScheduleTx(PVBOX_DRMIPC_CLIENT pClient, PVBOX_DRMIPC_T
     {
         if (pClient->cTxListSize < pClient->cTxListCapacity)
         {
-            RTListAppend(&pClient->TxList.Node, &pEntry->Node);
+            RTListAppend(&pClient->TxList, &pEntry->Node);
             pClient->cTxListSize++;
         }
         else
@@ -198,9 +197,9 @@ static PVBOX_DRMIPC_TX_LIST_ENTRY vbDrmIpcSessionPickupTxMessage(PVBOX_DRMIPC_CL
     rc = RTCritSectEnter(&pClient->CritSect);
     if (RT_SUCCESS(rc))
     {
-        if (!RTListIsEmpty(&pClient->TxList.Node))
+        if (!RTListIsEmpty(&pClient->TxList))
         {
-            pEntry = (PVBOX_DRMIPC_TX_LIST_ENTRY)RTListRemoveFirst(&pClient->TxList.Node, VBOX_DRMIPC_TX_LIST_ENTRY, Node);
+            pEntry = (PVBOX_DRMIPC_TX_LIST_ENTRY)RTListRemoveFirst(&pClient->TxList, VBOX_DRMIPC_TX_LIST_ENTRY, Node);
             pClient->cTxListSize--;
             Assert(pEntry);
         }
@@ -215,7 +214,7 @@ static PVBOX_DRMIPC_TX_LIST_ENTRY vbDrmIpcSessionPickupTxMessage(PVBOX_DRMIPC_CL
     return pEntry;
 }
 
-RTDECL(int) vbDrmIpcAuth(RTLOCALIPCSESSION hClientSession)
+int vbDrmIpcAuth(RTLOCALIPCSESSION hClientSession)
 {
     AssertReturn(hClientSession != NIL_RTLOCALIPCSESSION, VERR_INVALID_PARAMETER);
 
@@ -234,20 +233,16 @@ RTDECL(int) vbDrmIpcAuth(RTLOCALIPCSESSION hClientSession)
 
         if (pUserRecord && pUserRecord->pw_name)
         {
-            while (*pAllowedGroup->gr_mem)
-            {
-                if (RTStrNCmp(*pAllowedGroup->gr_mem, pUserRecord->pw_name, LOGIN_NAME_MAX) == 0)
+            for (unsigned iGrp = 0; pAllowedGroup->gr_mem[iGrp] != NULL; iGrp++)
+                if (RTStrCmp(pAllowedGroup->gr_mem[iGrp], pUserRecord->pw_name) == 0)
                     return VINF_SUCCESS;
-
-                pAllowedGroup->gr_mem++;
-            }
         }
     }
 
     return rc;
 }
 
-RTDECL(int) vbDrmIpcSetPrimaryDisplay(PVBOX_DRMIPC_CLIENT pClient, uint32_t idDisplay)
+int vbDrmIpcSetPrimaryDisplay(PVBOX_DRMIPC_CLIENT pClient, uint32_t idDisplay)
 {
     int rc = VERR_GENERAL_FAILURE;
 
@@ -293,7 +288,7 @@ RTDECL(int) vbDrmIpcSetPrimaryDisplay(PVBOX_DRMIPC_CLIENT pClient, uint32_t idDi
  * @param   cDisplays   Number of monitors which have offsets changed.
  * @param   aDisplays   Offsets data.
  */
-RTDECL(int) vbDrmIpcReportDisplayOffsets(PVBOX_DRMIPC_CLIENT pClient, uint32_t cDisplays, struct VBOX_DRMIPC_VMWRECT *aDisplays)
+int vbDrmIpcReportDisplayOffsets(PVBOX_DRMIPC_CLIENT pClient, uint32_t cDisplays, struct VBOX_DRMIPC_VMWRECT *aDisplays)
 {
     int rc = VERR_GENERAL_FAILURE;
 
@@ -340,7 +335,7 @@ RTDECL(int) vbDrmIpcReportDisplayOffsets(PVBOX_DRMIPC_CLIENT pClient, uint32_t c
  * @return  IPRT status code.
  * @param   pClient     IPC connection private data.
  */
-RTDECL(int) vbDrmIpcConnectionHandler(PVBOX_DRMIPC_CLIENT pClient)
+int vbDrmIpcConnectionHandler(PVBOX_DRMIPC_CLIENT pClient)
 {
     int                 rc;
     static uint8_t      aInputBuf[VBOX_DRMIPC_RX_BUFFER_SIZE];

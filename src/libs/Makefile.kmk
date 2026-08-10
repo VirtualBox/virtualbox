@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114504 2026-06-23 16:56:50Z aleksey.ilyushin@oracle.com $
+# $Id: Makefile.kmk 114896 2026-08-07 16:50:21Z klaus.espenlaub@oracle.com $
 ## @file
 # Top-level makefile for the external libraries.
 #
@@ -69,7 +69,8 @@ endif
 if   (defined(VBOX_WITH_VRDP) || defined(VBOX_WITH_USB_VIDEO_IMPL)) \
   && !defined(VBOX_ONLY_ADDITIONS) \
   && !defined(VBOX_ONLY_SDK) \
-  && !defined(VBOX_ONLY_VALIDATIONKIT)
+  && !defined(VBOX_ONLY_VALIDATIONKIT) \
+  && "$(SDK_VBoxLibJpeg_INCS)" == "$(SDK_VBoxLibJpeg_DEFAULT_INCS)"
  include $(PATH_SUB_CURRENT)/libjpeg-turbo-3.1.0/Makefile.kmk
 endif
 
@@ -90,7 +91,7 @@ endif
 if   defined(VBOX_WITH_LIBSSH) \
   && !defined(VBOX_ONLY_BUILD) \
   && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SUPPORTED_HOST_ARCHS))" != ""
- include $(PATH_SUB_CURRENT)/libssh-0.11.4/Makefile.kmk
+ include $(PATH_SUB_CURRENT)/libssh-0.12.2/Makefile.kmk
 endif
 
 

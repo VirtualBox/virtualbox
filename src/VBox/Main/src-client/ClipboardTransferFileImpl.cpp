@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferFileImpl.cpp 114632 2026-07-07 15:27:30Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferFileImpl.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer file handle.
  */
@@ -112,15 +112,21 @@ static int clipboardTransferFileOpenObject(PSHCLTRANSFER pTransfer,
  */
 static int clipboardTransferFileSkip(PSHCLTRANSFER pTransfer, SHCLOBJHANDLE hObj, uint64_t cbSkip)
 {
+    uint32_t const cbMaxChunk = pTransfer->cbMaxChunkSize;
+    if (!cbMaxChunk)
+        return VERR_INVALID_STATE;
+
     uint8_t abBuf[_64K];
     while (cbSkip > 0)
     {
-        uint32_t const cbToRead = (uint32_t)RT_MIN(cbSkip, (uint64_t)sizeof(abBuf));
+        uint32_t const cbToRead = (uint32_t)RT_MIN(cbSkip, (uint64_t)RT_MIN(sizeof(abBuf), (size_t)cbMaxChunk));
         uint32_t cbRead = 0;
         int vrc = ShClTransferObjRead(pTransfer, hObj, abBuf, cbToRead, 0, &cbRead);
         if (RT_FAILURE(vrc))
             return vrc;
-        if (!cbRead)
+        if (   !cbRead
+            || cbRead > cbToRead
+            || cbRead > cbSkip)
             return VERR_EOF;
         cbSkip -= cbRead;
     }
@@ -157,7 +163,7 @@ void ClipboardTransferFile::FinalRelease()
  * Initializes a clipboard transfer file handle.
  *
  * @returns COM status code.
- * @param   aParent             Parent transfer object used to keep the backing transfer alive.
+ * @param   aParent             Parent transfer object.
  * @param   aTransfer           Backing Shared Clipboard transfer.
  * @param   aHandle             Open Shared Clipboard object handle.
  * @param   aPath               Transfer-relative file path.
@@ -178,13 +184,21 @@ HRESULT ClipboardTransferFile::init(const ComPtr<IClipboardTransfer> &aParent,
                                     ULONG aCreationMode)
 {
     AssertPtrReturn(aTransfer, E_POINTER);
+    if (aInfo.cbObject < 0)
+        return E_INVALIDARG;
     AutoInitSpan autoInitSpan(this);
     AssertReturn(autoInitSpan.isOk(), E_FAIL);
 
+    try
+    {
+        mData.mPath = aPath;
+    }
+    catch (std::bad_alloc &)
+    {
+        return E_OUTOFMEMORY;
+    }
     mData.mParent = aParent;
-    mData.mTransfer = aTransfer;
     mData.mHandle = aHandle;
-    mData.mPath = aPath;
     mData.mInfo = aInfo;
     mData.mOffset = 0;
     mData.mStatus = FileStatus_Open;
@@ -192,6 +206,7 @@ HRESULT ClipboardTransferFile::init(const ComPtr<IClipboardTransfer> &aParent,
     mData.mOpenAction = aOpenAction;
     mData.mSharingMode = aSharingMode;
     mData.mCreationMode = aCreationMode;
+    mData.mTransfer = aTransfer;
 
     autoInitSpan.setSucceeded();
     return S_OK;
@@ -209,10 +224,12 @@ void ClipboardTransferFile::uninit()
         return;
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    ComPtr<IClipboardTransfer> ptrParent;
     PSHCLTRANSFER pTransfer = NULL;
     SHCLOBJHANDLE hObj = NIL_SHCLOBJHANDLE;
     {
         AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+        ptrParent = mData.mParent;
         pTransfer = mData.mTransfer;
         hObj = mData.mHandle;
         mData.mTransfer = NULL;
@@ -305,19 +322,22 @@ HRESULT ClipboardTransferFile::close()
 #ifndef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     ReturnComNotImplemented();
 #else
+    ComPtr<IClipboardTransfer> ptrParent;
     PSHCLTRANSFER pTransfer = NULL;
     SHCLOBJHANDLE hObj = NIL_SHCLOBJHANDLE;
     {
         AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+        ptrParent = mData.mParent;
         pTransfer = mData.mTransfer;
         hObj = mData.mHandle;
         mData.mTransfer = NULL;
         mData.mHandle = NIL_SHCLOBJHANDLE;
         mData.mStatus = FileStatus_Closed;
+        mData.mParent.setNull();
     }
-    if (!pTransfer || hObj == NIL_SHCLOBJHANDLE)
+    if (!pTransfer)
         return S_OK;
-    int vrc = ShClTransferObjClose(pTransfer, hObj);
+    int const vrc = hObj == NIL_SHCLOBJHANDLE ? VINF_SUCCESS : ShClTransferObjClose(pTransfer, hObj);
     HRESULT hrc = clipboardTransferFileRcToHrc(vrc);
     if (FAILED(hrc))
         return setErrorBoth(hrc, vrc, tr("Closing clipboard transfer file failed with %Rrc"), vrc);
@@ -373,15 +393,13 @@ HRESULT ClipboardTransferFile::read(ULONG aToRead, ULONG aTimeoutMS, std::vector
     if (!aToRead)
         return setError(E_INVALIDARG, tr("Clipboard transfer file read size must be non-zero"));
 
-    PSHCLTRANSFER pTransfer = NULL;
-    SHCLOBJHANDLE hObj = NIL_SHCLOBJHANDLE;
-    {
-        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
-        pTransfer = mData.mTransfer;
-        hObj = mData.mHandle;
-    }
+    AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+    PSHCLTRANSFER const pTransfer = mData.mTransfer;
+    SHCLOBJHANDLE const hObj = mData.mHandle;
     if (!pTransfer || hObj == NIL_SHCLOBJHANDLE)
         return setError(VBOX_E_OBJECT_NOT_FOUND, tr("Clipboard transfer file is closed"));
+    if (aToRead > pTransfer->cbMaxChunkSize)
+        return setError(E_INVALIDARG, tr("Clipboard transfer file read size exceeds the backend chunk limit"));
 
     try
     {
@@ -399,11 +417,14 @@ HRESULT ClipboardTransferFile::read(ULONG aToRead, ULONG aTimeoutMS, std::vector
         HRESULT hrc = clipboardTransferFileRcToHrc(vrc);
         return setErrorBoth(hrc, vrc, tr("Reading clipboard transfer file failed with %Rrc"), vrc);
     }
-    aData.resize(cbRead);
+    if (   cbRead > aToRead
+        || mData.mOffset > INT64_MAX - cbRead)
     {
-        AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
-        mData.mOffset += cbRead;
+        aData.clear();
+        return setError(E_INVALIDARG, tr("Clipboard transfer provider returned an invalid read size"));
     }
+    aData.resize(cbRead);
+    mData.mOffset += cbRead;
     return S_OK;
 #endif
 }
@@ -447,6 +468,10 @@ HRESULT ClipboardTransferFile::seek(LONG64 aOffset, FileSeekOrigin_T aWhence, LO
             return setError(E_INVALIDARG, tr("Invalid clipboard transfer file seek origin %RU32"), (uint32_t)aWhence);
     }
 
+    if (   (aOffset > 0 && offBase > INT64_MAX - aOffset)
+        || (aOffset < 0 && offBase < INT64_MIN - aOffset))
+        return setError(E_INVALIDARG, tr("Clipboard transfer file seek offset is out of range"));
+
     LONG64 const offNew = offBase + aOffset;
     if (offNew < 0)
         return setError(E_INVALIDARG, tr("Clipboard transfer file seek would move before the start of the file"));
@@ -468,15 +493,10 @@ HRESULT ClipboardTransferFile::seek(LONG64 aOffset, FileSeekOrigin_T aWhence, LO
  */
 HRESULT ClipboardTransferFile::i_reopenAt(uint64_t offNew)
 {
-    PSHCLTRANSFER pTransfer = NULL;
-    SHCLOBJHANDLE hOld = NIL_SHCLOBJHANDLE;
-    com::Utf8Str strPath;
-    {
-        AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
-        pTransfer = mData.mTransfer;
-        hOld = mData.mHandle;
-        strPath = mData.mPath;
-    }
+    AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+    PSHCLTRANSFER const pTransfer = mData.mTransfer;
+    SHCLOBJHANDLE const hOld = mData.mHandle;
+    com::Utf8Str const strPath = mData.mPath;
     if (!pTransfer)
         return setError(VBOX_E_OBJECT_NOT_FOUND, tr("Clipboard transfer file is closed"));
 
@@ -484,6 +504,9 @@ HRESULT ClipboardTransferFile::i_reopenAt(uint64_t offNew)
     SHCLFSOBJINFO Info;
     RT_ZERO(Info);
     int vrc = clipboardTransferFileOpenObject(pTransfer, strPath, &hNew, &Info);
+    if (   RT_SUCCESS(vrc)
+        && Info.cbObject < 0)
+        vrc = VERR_OUT_OF_RANGE;
     if (RT_SUCCESS(vrc))
         vrc = clipboardTransferFileSkip(pTransfer, hNew, offNew);
     if (RT_FAILURE(vrc))
@@ -494,15 +517,11 @@ HRESULT ClipboardTransferFile::i_reopenAt(uint64_t offNew)
         return setErrorBoth(hrc, vrc, tr("Seeking clipboard transfer file failed with %Rrc"), vrc);
     }
 
+    mData.mHandle = hNew;
+    mData.mInfo = Info;
+    mData.mOffset = (LONG64)offNew;
     if (hOld != NIL_SHCLOBJHANDLE)
         ShClTransferObjClose(pTransfer, hOld);
-
-    {
-        AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
-        mData.mHandle = hNew;
-        mData.mInfo = Info;
-        mData.mOffset = (LONG64)offNew;
-    }
     return S_OK;
 }
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
@@ -535,19 +554,17 @@ HRESULT ClipboardTransferFile::write(const std::vector<BYTE> &aData, ULONG aTime
     if (aData.empty())
         return setError(E_INVALIDARG, tr("Clipboard transfer file write data must not be empty"));
 
-    PSHCLTRANSFER pTransfer = NULL;
-    SHCLOBJHANDLE hObj = NIL_SHCLOBJHANDLE;
-    FileAccessMode_T enmAccessMode = FileAccessMode_ReadOnly;
-    {
-        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
-        pTransfer = mData.mTransfer;
-        hObj = mData.mHandle;
-        enmAccessMode = mData.mAccessMode;
-    }
+    AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+    PSHCLTRANSFER const pTransfer = mData.mTransfer;
+    SHCLOBJHANDLE const hObj = mData.mHandle;
+    FileAccessMode_T const enmAccessMode = mData.mAccessMode;
     if (enmAccessMode == FileAccessMode_ReadOnly)
         return setError(E_NOTIMPL, tr("Writing to read-only clipboard transfer files is not implemented"));
     if (!pTransfer || hObj == NIL_SHCLOBJHANDLE)
         return setError(VBOX_E_OBJECT_NOT_FOUND, tr("Clipboard transfer file is closed"));
+    if (   aData.size() > UINT32_MAX
+        || aData.size() > pTransfer->cbMaxChunkSize)
+        return setError(E_INVALIDARG, tr("Clipboard transfer file write size exceeds the backend chunk limit"));
 
     uint32_t cbWritten = 0;
     int vrc = ShClTransferObjWrite(pTransfer, hObj, (void *)&aData[0], (uint32_t)aData.size(), 0, &cbWritten);
@@ -556,10 +573,10 @@ HRESULT ClipboardTransferFile::write(const std::vector<BYTE> &aData, ULONG aTime
         HRESULT hrc = clipboardTransferFileRcToHrc(vrc);
         return setErrorBoth(hrc, vrc, tr("Writing clipboard transfer file failed with %Rrc"), vrc);
     }
-    {
-        AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
-        mData.mOffset += cbWritten;
-    }
+    if (   cbWritten > aData.size()
+        || mData.mOffset > INT64_MAX - cbWritten)
+        return setError(E_INVALIDARG, tr("Clipboard transfer provider returned an invalid write size"));
+    mData.mOffset += cbWritten;
     *aWritten = cbWritten;
     return S_OK;
 #endif
@@ -590,4 +607,3 @@ HRESULT ClipboardTransferFile::getPath(com::Utf8Str &aPath)
     aPath = mData.mPath;
     return S_OK;
 }
-

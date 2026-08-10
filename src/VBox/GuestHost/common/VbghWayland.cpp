@@ -1,4 +1,4 @@
-/* $Id: VbghWayland.cpp 114620 2026-07-04 00:00:20Z knut.osmundsen@oracle.com $ */
+/* $Id: VbghWayland.cpp 114738 2026-07-21 13:40:26Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest / Host common code - Wayland Core.
  */
@@ -481,6 +481,23 @@ VBGH_DECL(int) VbghWaylandWriteBufferToFd(void const *pvBuf, size_t cbBuf, int f
 }
 
 
+/** @callback_method_impl{FNVBGHWAYLANDRLWAKEUPPIPE} */
+static DECLCALLBACK(int) vbghWaylandRunloopWakeupPipeDefault(RTPIPE hPipe, bool volatile *pfReturn, void *pvUser)
+{
+    RT_NOREF(pfReturn, pvUser);
+
+    char    szTmp[64];
+    size_t  cbIgnore;
+    int const rc = RTPipeRead(hPipe, szTmp, sizeof(szTmp), &cbIgnore);
+    if (rc == VERR_BROKEN_PIPE)
+    {
+        LogRel(("%s: VERR_BROKEN_PIPE!\n", __func__));
+        return rc;
+    }
+    return VINF_SUCCESS;
+}
+
+
 /**
  * Runloop function for servicing a display, with optional wakeup pipe and
  * return indicator.
@@ -488,16 +505,22 @@ VBGH_DECL(int) VbghWaylandWriteBufferToFd(void const *pvBuf, size_t cbBuf, int f
  * @returns VBox status code.
  * @param   pDisplay        The display to dispatch events for.
  * @param   hPipeWakeup     The wakeup pipe. Optional.
+ * @param   pfnWakeup       Callback for servicing the wakekup pipe.  If NULL,
+ *                          the pipe buffer is just drained.
+ * @param   pvWakeupUser    User argument for the wakeup pipe callback.
  * @param   hPipeMonClose   Pipe to monitor for closing. Optional.
  * @param   cMsPollInterval The polling interval for checking pfReturn.
  * @param   pfReturn        Pointer to return indicator.  Will return
  *                          VINF_SUCCESS when it is set to true.  Optional.
  */
-VBGH_DECL(int) VbghWaylandRunloopForDisplay(struct wl_display *pDisplay, RTPIPE hPipeWakeup, RTPIPE hPipeMonClose,
-                                            RTMSINTERVAL cMsPollInterval, bool volatile *pfReturn)
+VBGH_DECL(int) VbghWaylandRunloopForDisplay(struct wl_display *pDisplay,
+                                            RTPIPE hPipeWakeup, PFNVBGHWAYLANDRLWAKEUPPIPE pfnWakeup, void *pvWakeupUser,
+                                            RTPIPE hPipeMonClose, RTMSINTERVAL cMsPollInterval, bool volatile *pfReturn)
 {
     int const fdPipeWakeup   = hPipeWakeup   != NIL_RTPIPE ? (int)RTPipeToNative(hPipeWakeup)   : -1;
     int const fdPipeMonClose = hPipeMonClose != NIL_RTPIPE ? (int)RTPipeToNative(hPipeMonClose) : -1;
+    if (!pfnWakeup)
+        pfnWakeup = vbghWaylandRunloopWakeupPipeDefault;
 
     for (;;)
     {
@@ -564,14 +587,9 @@ VBGH_DECL(int) VbghWaylandRunloopForDisplay(struct wl_display *pDisplay, RTPIPE 
          */
         if (rcPoll > 0 && cFds > 1 && fdPipeWakeup >= 0 && (aPollFds[1].revents & (POLLIN | POLLHUP)))
         {
-            char szTmp[64];
-            size_t cbIgnore;
-            int rc = RTPipeRead(hPipeWakeup, szTmp, sizeof(szTmp), &cbIgnore);
-            if (rc == VERR_BROKEN_PIPE)
-            {
-                LogRel(("%s: VERR_BROKEN_PIPE!\n", __func__));
+            int rc = pfnWakeup(hPipeWakeup, pfReturn, pvWakeupUser);
+            if (RT_FAILURE(rc))
                 hPipeWakeup = NIL_RTPIPE;
-            }
         }
 
         /*

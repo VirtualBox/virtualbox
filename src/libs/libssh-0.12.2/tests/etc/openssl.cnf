@@ -1,0 +1,11 @@
+openssl_conf = openssl_init
+[openssl_init]
+providers = provider_sect
+[provider_sect]
+default = default_sect
+pkcs11 = pkcs11_sect
+[default_sect]
+activate = 1
+[pkcs11_sect]
+activate = 1
+pkcs11-module-assume-fips = true

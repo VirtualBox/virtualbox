@@ -603,10 +603,10 @@ AssertCompile(PGM_PTATTRS_EPT_X_USER_SHIFT     - PGM_PTATTRS_EPT_SHIFT == EPT_E_
 #define PGM_PTATTRS_NSE_MASK                        RT_BIT_64(PGM_PTATTRS_NSE_SHIFT)
 /** Page/block level: nD - Not dirty. */
 #define PGM_PTATTRS_ND_SHIFT                        7
-#define PGM_PTATTRS_ND_MASK                         RT_BIT_64(PGM_PTATTRS_AF_SHIFT)
+#define PGM_PTATTRS_ND_MASK                         RT_BIT_64(PGM_PTATTRS_ND_SHIFT)
 /** Stage 2, page/block: nT, FEAT_BBM. Only supported with 64KB page size. */
 #define PGM_PTATTRS_S2_NT_SHIFT                     9
-#define PGM_PTATTRS_S2_NT_MASK                      RT_BIT_64(PGM_PTATTRS_NT_SHIFT)
+#define PGM_PTATTRS_S2_NT_MASK                      RT_BIT_64(PGM_PTATTRS_S2_NT_SHIFT)
 /** Combined: AF - Access flag.
  * @note The table and page/block AF attributes ANDed together. */
 #define PGM_PTATTRS_AF_SHIFT                        10
@@ -620,19 +620,19 @@ AssertCompile(PGM_PTATTRS_EPT_X_USER_SHIFT     - PGM_PTATTRS_EPT_SHIFT == EPT_E_
 
 /** Stage 2: Read access. */
 #define PGM_PTATTRS_S2_R_SHIFT                      24
-#define PGM_PTATTRS_S2_R_MASK                       RT_BIT_64(PGM_PTATTRS_S2_UX_SHIFT)
+#define PGM_PTATTRS_S2_R_MASK                       RT_BIT_64(PGM_PTATTRS_S2_R_SHIFT)
 /** Stage 2: Full write access. */
 #define PGM_PTATTRS_S2_W_SHIFT                      25
-#define PGM_PTATTRS_S2_W_MASK                       RT_BIT_64(PGM_PTATTRS_S2_UX_SHIFT)
+#define PGM_PTATTRS_S2_W_MASK                       RT_BIT_64(PGM_PTATTRS_S2_W_SHIFT)
 /** Stage 2: Privileged execution access. */
 #define PGM_PTATTRS_S2_PX_SHIFT                     26
-#define PGM_PTATTRS_S2_PX_MASK                      RT_BIT_64(PGM_PTATTRS_S2_UX_SHIFT)
+#define PGM_PTATTRS_S2_PX_MASK                      RT_BIT_64(PGM_PTATTRS_S2_PX_SHIFT)
 /** Stage 2: Unprivileged execution access. */
 #define PGM_PTATTRS_S2_UX_SHIFT                     27
 #define PGM_PTATTRS_S2_UX_MASK                      RT_BIT_64(PGM_PTATTRS_S2_UX_SHIFT)
 /** Stage 2: Limited write access - only MMU and RCW. */
 #define PGM_PTATTRS_S2_W_LIM_SHIFT                  28
-#define PGM_PTATTRS_S2_W_LIM_MASK                   RT_BIT_64(PGM_PTATTRS_S2_UX_SHIFT)
+#define PGM_PTATTRS_S2_W_LIM_MASK                   RT_BIT_64(PGM_PTATTRS_S2_W_LIM_SHIFT)
 /** Stage 2: TopLevel0 - only used with PGM_PTATTRS_S2_W_LIM_MASK. */
 #define PGM_PTATTRS_S2_TL0_SHIFT                    29
 #define PGM_PTATTRS_S2_TL0_MASK                     RT_BIT_64(PGM_PTATTRS_S2_TL0_SHIFT)
@@ -684,7 +684,7 @@ AssertCompile(PGM_PTATTRS_EPT_X_USER_SHIFT     - PGM_PTATTRS_EPT_SHIFT == EPT_E_
 #define PGM_PTATTRS_GP_MASK                         RT_BIT_64(PGM_PTATTRS_GP_SHIFT)
 /** Stage 2, page/block: AssuredOnly. (shifted down 7 bits) */
 #define PGM_PTATTRS_S2_AO_SHIFT                     51
-#define PGM_PTATTRS_S2_AO_MASK                      RT_BIT_64(PGM_PTATTRS_S2_TL1_SHIFT)
+#define PGM_PTATTRS_S2_AO_MASK                      RT_BIT_64(PGM_PTATTRS_S2_AO_SHIFT)
 /** Stage 2, page/block: Alternate MECID (encryption related). (shifted down
  *  7 bits) */
 #define PGM_PTATTRS_S2_AMEC_SHIFT                   56
@@ -692,6 +692,14 @@ AssertCompile(PGM_PTATTRS_EPT_X_USER_SHIFT     - PGM_PTATTRS_EPT_SHIFT == EPT_E_
 /** Page/block level: Alternate MECID (encryption related). */
 #define PGM_PTATTRS_AMEC_SHIFT                      63
 #define PGM_PTATTRS_AMEC_MASK                       RT_BIT_64(PGM_PTATTRS_AMEC_SHIFT)
+
+AssertCompile(PGM_PTATTRS_ND_MASK       == RT_BIT_64(PGM_PTATTRS_ND_SHIFT));
+AssertCompile(PGM_PTATTRS_S2_NT_MASK    == RT_BIT_64(PGM_PTATTRS_S2_NT_SHIFT));
+AssertCompile(PGM_PTATTRS_S2_R_MASK     == RT_BIT_64(PGM_PTATTRS_S2_R_SHIFT));
+AssertCompile(PGM_PTATTRS_S2_W_MASK     == RT_BIT_64(PGM_PTATTRS_S2_W_SHIFT));
+AssertCompile(PGM_PTATTRS_S2_PX_MASK    == RT_BIT_64(PGM_PTATTRS_S2_PX_SHIFT));
+AssertCompile(PGM_PTATTRS_S2_W_LIM_MASK == RT_BIT_64(PGM_PTATTRS_S2_W_LIM_SHIFT));
+AssertCompile(PGM_PTATTRS_S2_AO_MASK    == RT_BIT_64(PGM_PTATTRS_S2_AO_SHIFT));
 
 /** Stage 1 page/block level bits that are copied raw. */
 #define PGM_PTATTRS_S1_LEAF_MASK                    (  PGM_PTATTRS_NS_MASK \

@@ -1,4 +1,4 @@
-/* $Id: DevSB16.cpp 113795 2026-04-10 08:30:16Z andreas.loeffler@oracle.com $ */
+/* $Id: DevSB16.cpp 114823 2026-07-30 18:02:09Z andreas.loeffler@oracle.com $ */
 /** @file
  * DevSB16 - VBox SB16 Audio Controller.
  */
@@ -1646,10 +1646,12 @@ static DECLCALLBACK(uint32_t) sb16DMARead(PPDMDEVINS pDevIns, void *pvUser, unsi
 static DECLCALLBACK(void) sb16TimerIRQ(PPDMDEVINS pDevIns, TMTIMERHANDLE hTimer, void *pvUser)
 {
     PSB16STATE pThis = PDMDEVINS_2_DATA(pDevIns, PSB16STATE);
-    RT_NOREF(hTimer, pThis);
+    Assert(hTimer == pThis->hTimerIRQ);
+    RT_NOREF(hTimer);
 
     PSB16STREAM pStream = (PSB16STREAM)pvUser;
     AssertPtrReturnVoid(pStream);
+    AssertReturnVoid(pStream == &pThis->aStreams[SB16_IDX_OUT]);
 
     LogFlowFuncEnter();
 
@@ -3076,7 +3078,7 @@ static DECLCALLBACK(int) sb16Construct(PPDMDEVINS pDevIns, int iInstance, PCFGMN
     /*
      * Create timers.
      */
-    rc = PDMDevHlpTimerCreate(pDevIns, TMCLOCK_VIRTUAL, sb16TimerIRQ, pThis,
+    rc = PDMDevHlpTimerCreate(pDevIns, TMCLOCK_VIRTUAL, sb16TimerIRQ, pStreamOut,
                               TMTIMER_FLAGS_DEFAULT_CRIT_SECT | TMTIMER_FLAGS_NO_RING0, "SB16 IRQ", &pThis->hTimerIRQ);
     AssertRCReturn(rc, rc);
 

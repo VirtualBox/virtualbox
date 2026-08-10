@@ -1,4 +1,4 @@
-/* $Id: display.cpp 114416 2026-06-17 23:01:21Z knut.osmundsen@oracle.com $ */
+/* $Id: display.cpp 114744 2026-07-21 18:37:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * X11 guest client - display management.
  */
@@ -306,7 +306,7 @@ static DECLCALLBACK(void) stop(void)
      * main thread can set pfShutdown=true on process termination. */
 }
 
-VBCLSERVICE g_SvcDisplayLegacy =
+VBCLSERVICE const g_SvcDisplayLegacy =
 {
     "dp-legacy-x11",                    /* szName */
     "Legacy display assistant",         /* pszDescription */

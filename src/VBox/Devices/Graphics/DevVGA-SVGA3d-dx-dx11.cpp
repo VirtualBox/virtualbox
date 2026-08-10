@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114361 2026-06-15 14:47:34Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114854 2026-08-04 18:26:47Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -439,6 +439,10 @@ typedef struct VMSVGA3DBACKEND
          * resources just in case. It works on AMD and Intel graphics without the workaround.
          */
         bool fAlwaysSetShaderResourceViewsForCompute : 1;
+
+        /* Do not create ID3D11VideoDevice.
+         */
+        bool fDisableVideoAcceleration : 1;
     } workarounds;
 } VMSVGA3DBACKEND;
 
@@ -1514,10 +1518,16 @@ static int dxDeviceCreate(PVMSVGA3DBACKEND pBackend, DXDEVICE *pDXDevice)
         }
 
         /* Failure to query VideoDevice should be ignored. */
-        hr2 = pDXDevice->pDevice->QueryInterface(__uuidof(ID3D11VideoDevice), (void**)&pDXDevice->pVideoDevice);
+        if (!pBackend->workarounds.fDisableVideoAcceleration)
+        {
+            hr2 = pDXDevice->pDevice->QueryInterface(__uuidof(ID3D11VideoDevice), (void**)&pDXDevice->pVideoDevice);
 #ifndef VBOX_WITH_DXMT /* DXMT has no video support, so failing is expected here. */
-        Assert(SUCCEEDED(hr2));
+            Assert(SUCCEEDED(hr2));
 #endif
+        }
+        else
+            hr2 = E_NOTIMPL;
+
         if (SUCCEEDED(hr2))
         {
             hr2 = pDXDevice->pImmediateContext->QueryInterface(__uuidof(ID3D11VideoContext), (void**)&pDXDevice->pVideoContext);
@@ -2509,6 +2519,13 @@ static HRESULT dxDepthStencilViewCreate(PVGASTATECC pThisCC, SVGACOTableDXDSView
                 desc.Texture2DArray.ArraySize = pEntry->arraySize;
             }
             break;
+        case SVGA3D_RESOURCE_TEXTURECUBE:
+            /* Cube is a 6 elements array. */
+            desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+            desc.Texture2DArray.MipSlice = pEntry->mipSlice;
+            desc.Texture2DArray.FirstArraySlice = pEntry->firstArraySlice;
+            desc.Texture2DArray.ArraySize = pEntry->arraySize;
+            break;
         default:
             ASSERT_GUEST_FAILED_RETURN(E_INVALIDARG);
     }
@@ -3406,6 +3423,8 @@ static DECLCALLBACK(int) vmsvga3dBackPowerOn(PPDMDEVINS pDevIns, PVGASTATE pThis
 
     PVMSVGA3DBACKEND pBackend = pState->pBackend;
     AssertReturn(pBackend, VERR_INVALID_STATE);
+
+    pBackend->workarounds.fDisableVideoAcceleration = !pThis->svga.fVMSVGA3dVideoAcceleration;
 
     int rc = dxDeviceCreate(pBackend, &pBackend->dxDevice);
     if (RT_SUCCESS(rc))
@@ -5402,17 +5421,15 @@ static DECLCALLBACK(int) vmsvga3dBackSurfaceCopy(PVGASTATECC pThisCC, SVGA3dSurf
 
     LogFunc(("src sid %d -> dst sid %d\n", src.sid, dest.sid));
 
-    PVMSVGA3DSTATE pState = pThisCC->svga.p3dState;
-    AssertReturn(pState, VERR_INVALID_STATE);
-
-    PVMSVGA3DBACKEND pBackend = pState->pBackend;
+    PVMSVGA3DSTATE p3dState = pThisCC->svga.p3dState;
+    AssertReturn(p3dState, VERR_INVALID_STATE);
 
     PVMSVGA3DSURFACE pSrcSurface;
-    int rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, src.sid, &pSrcSurface);
+    int rc = vmsvga3dSurfaceFromSid(p3dState, src.sid, &pSrcSurface);
     AssertRCReturn(rc, rc);
 
     PVMSVGA3DSURFACE pDstSurface;
-    rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, dest.sid, &pDstSurface);
+    rc = vmsvga3dSurfaceFromSid(p3dState, dest.sid, &pDstSurface);
     AssertRCReturn(rc, rc);
 
     /** @todo Implement a separate code paths for memory->texture, texture->memory */
@@ -5478,26 +5495,16 @@ static DECLCALLBACK(int) vmsvga3dBackSurfaceCopy(PVGASTATECC pThisCC, SVGA3dSurf
 
     /* A 3D resource for one the surfaces has been already created. */
 
-    //DXDEVICE *pDevice = dxDeviceGet(pThisCC->svga.p3dState);
-    //AssertReturn(pDevice->pDevice, VERR_INVALID_STATE);
-    DXDEVICE *pDXDevice = &pBackend->dxDevice;
+    DXDEVICE *pDXDevice = dxDeviceGet(pThisCC->svga.p3dState);
+    AssertReturn(pDXDevice->pDevice, VERR_INVALID_STATE);
 
-    if (pSrcSurface->pBackendSurface == NULL)
-    {
-        rc = vmsvga3dBackSurfaceCreateResource(pThisCC, pSrcSurface);
-        AssertRCReturn(rc, rc);
-    }
-
-    if (pDstSurface->pBackendSurface == NULL)
-    {
-        rc = vmsvga3dBackSurfaceCreateResource(pThisCC, pDstSurface);
-        AssertRCReturn(rc, rc);
-    }
+    ID3D11Resource *pSrcResource;
+    rc = dxEnsureResource(pThisCC, src.sid, &pSrcSurface, &pSrcResource);
+    AssertRCReturn(rc, rc);
 
     ID3D11Resource *pDstResource;
-    ID3D11Resource *pSrcResource;
-    pDstResource = dxResource(pDstSurface);
-    pSrcResource = dxResource(pSrcSurface);
+    rc = dxEnsureResource(pThisCC, dest.sid, &pDstSurface, &pDstResource);
+    AssertRCReturn(rc, rc);
 
     UINT DstSubresource = vmsvga3dCalcSubresource(dest.mipmap, dest.face, pDstSurface->cLevels);
     UINT SrcSubresource = vmsvga3dCalcSubresource(src.mipmap, src.face, pSrcSurface->cLevels);
@@ -6606,18 +6613,6 @@ static DECLCALLBACK(int) vmsvga3dBackDXSetSingleConstantBuffer(PVGASTATECC pThis
 
         pUploadBuffer->offFree += cbConstantAligned;
 
-#ifdef LOG_ENABLED
-        if (LogIs8Enabled())
-        {
-            float *pValuesF = (float *)pu8Src;
-            for (unsigned i = 0; i < sizeInBytes / sizeof(float) / 4; ++i)
-            {
-                Log8(("ConstF /*%d*/ " FLOAT_FMT_STR ", " FLOAT_FMT_STR ", " FLOAT_FMT_STR ", " FLOAT_FMT_STR ",\n",
-                      i, FLOAT_FMT_ARGS(pValuesF[i*4 + 0]), FLOAT_FMT_ARGS(pValuesF[i*4 + 1]), FLOAT_FMT_ARGS(pValuesF[i*4 + 2]), FLOAT_FMT_ARGS(pValuesF[i*4 + 3])));
-            }
-        }
-#endif
-
         LogFunc(("constant buffer: [%u][%u]: sid = %u, %u, %u\n",
                  idxShaderState, slot, sid, offsetInBytes, sizeInBytes));
     }
@@ -7063,14 +7058,38 @@ static void dxSetConstantBuffers(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXCont
         UINT const           *pFirstConstant    = &pCb->aFirstConstant[StartSlot];
         UINT const           *pNumConstants     = &pCb->aNumConstants[StartSlot];
 #ifdef LOG_ENABLED
+        LogFunc(("constant buffers: [%u]: %u %u\n",
+                 idxShaderState, StartSlot, NumBuffers));
         for (UINT i = 0; i < NumBuffers; ++i)
         {
             uint32_t const idxSlot = StartSlot + i;
-            if (pNumConstants[idxSlot] == 0)
+            if (pNumConstants[i] == 0)
                 continue;
 
-            LogFunc(("constant buffer: [%u][%u]: %p @%u %u\n",
-                     idxShaderState, idxSlot, papConstantBuffer[idxSlot], pFirstConstant[idxSlot], pNumConstants[idxSlot]));
+            LogFunc(("constant buffer:  [%u][%u]: %p @%u %u\n",
+                     idxShaderState, idxSlot, papConstantBuffer[i], pFirstConstant[i], pNumConstants[i]));
+
+            if (LogIs8Enabled())
+            {
+                void *pvBuffer;
+                uint32_t cbBuffer;
+                int rc = dxReadBuffer(pDXDevice, papConstantBuffer[i],
+                                      pFirstConstant[i] * 16, pNumConstants[i] * 16,
+                                      &pvBuffer, &cbBuffer);
+                AssertRC(rc);
+                if (RT_SUCCESS(rc))
+                {
+                    float *pValuesF = (float *)pvBuffer;
+                    for (uint32_t iConst = 0; iConst < cbBuffer / sizeof(float) / 4; ++iConst)
+                    {
+                        Log8(("ConstF /*%d*/ " FLOAT_FMT_STR ", " FLOAT_FMT_STR ", " FLOAT_FMT_STR ", " FLOAT_FMT_STR ",\n",
+                              iConst, FLOAT_FMT_ARGS(pValuesF[iConst*4 + 0]), FLOAT_FMT_ARGS(pValuesF[iConst*4 + 1]),
+                                      FLOAT_FMT_ARGS(pValuesF[iConst*4 + 2]), FLOAT_FMT_ARGS(pValuesF[iConst*4 + 3])));
+                    }
+
+                    RTMemFree(pvBuffer);
+                }
+            }
         }
 #endif
         /* Make sure that the range does not exceed API limit. */
@@ -7693,68 +7712,35 @@ static void dxDbgDumpVertices_DrawIndexedInstanced(PVGASTATECC pThisCC, PVMSVGA3
 #endif
 
 
-static int dxCreateRenderTargetView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, SVGA3dRenderTargetViewId renderTargetViewId, SVGACOTableDXRTViewEntry const *pEntry)
-{
-    PVMSVGA3DSURFACE pSurface;
-    ID3D11Resource *pResource;
-    int rc = dxEnsureResource(pThisCC, pEntry->sid, &pSurface, &pResource);
-    AssertRCReturn(rc, rc);
-
-    renderTargetViewId = dxRenderTargetViewId(pDXContext, renderTargetViewId);
-    if (renderTargetViewId == SVGA3D_INVALID_ID)
-        return VERR_INVALID_PARAMETER;
-
-    DXVIEW *pView = &pDXContext->pBackendDXContext->paRenderTargetView[renderTargetViewId];
-    Assert(pView->u.pView == NULL);
-
-    ID3D11RenderTargetView *pRenderTargetView;
-    HRESULT hr = dxRenderTargetViewCreate(pThisCC, pEntry, pSurface, &pRenderTargetView);
-    AssertReturn(SUCCEEDED(hr), VERR_INVALID_STATE);
-
-    return dxViewInit(pView, pSurface, pDXContext, renderTargetViewId, VMSVGA3D_VIEWTYPE_RENDERTARGET, pRenderTargetView);
-}
-
-
 static int dxEnsureRenderTargetView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, SVGA3dRenderTargetViewId viewId, DXVIEW **ppResult)
 {
-    ASSERT_GUEST_RETURN(viewId < pDXContext->cot.cRTView, VERR_INVALID_PARAMETER);
-
     viewId = dxRenderTargetViewId(pDXContext, viewId);
     viewId = svgaRenderTargetViewId(pDXContext, viewId);
     if (viewId == SVGA3D_INVALID_ID)
         return VERR_INVALID_PARAMETER;
 
+    SVGACOTableDXRTViewEntry const *pEntry = &pDXContext->cot.paRTView[viewId];
     DXVIEW *pDXView = &pDXContext->pBackendDXContext->paRenderTargetView[viewId];
-    if (!pDXView->u.pView)
-    {
-        SVGACOTableDXRTViewEntry const *pEntry = &pDXContext->cot.paRTView[viewId];
-        int rc = dxCreateRenderTargetView(pThisCC, pDXContext, viewId, pEntry);
-        AssertRCReturn(rc, rc);
-    }
-    *ppResult = pDXView;
-    return VINF_SUCCESS;
-}
 
-
-static int dxCreateDepthStencilView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, SVGA3dDepthStencilViewId depthStencilViewId, SVGACOTableDXDSViewEntry const *pEntry)
-{
+    /* dxEnsureResource must be always called because it makes sure that resource is up to date. */
     PVMSVGA3DSURFACE pSurface;
     ID3D11Resource *pResource;
     int rc = dxEnsureResource(pThisCC, pEntry->sid, &pSurface, &pResource);
     AssertRCReturn(rc, rc);
 
-    depthStencilViewId = dxDepthStencilViewId(pDXContext, depthStencilViewId);
-    if (depthStencilViewId == SVGA3D_INVALID_ID)
-        return VERR_INVALID_PARAMETER;
+    if (!pDXView->u.pView)
+    {
+        ID3D11RenderTargetView *pRenderTargetView;
+        HRESULT hr = dxRenderTargetViewCreate(pThisCC, pEntry, pSurface, &pRenderTargetView);
+        if (SUCCEEDED(hr))
+            rc = dxViewInit(pDXView, pSurface, pDXContext, viewId, VMSVGA3D_VIEWTYPE_RENDERTARGET, pRenderTargetView);
+        else
+            rc = VERR_INVALID_STATE;
+        AssertRCReturn(rc, rc);
+    }
 
-    DXVIEW *pView = &pDXContext->pBackendDXContext->paDepthStencilView[depthStencilViewId];
-    Assert(pView->u.pView == NULL);
-
-    ID3D11DepthStencilView *pDepthStencilView;
-    HRESULT hr = dxDepthStencilViewCreate(pThisCC, pEntry, pSurface, &pDepthStencilView);
-    AssertReturn(SUCCEEDED(hr), VERR_INVALID_STATE);
-
-    return dxViewInit(pView, pSurface, pDXContext, depthStencilViewId, VMSVGA3D_VIEWTYPE_DEPTHSTENCIL, pDepthStencilView);
+    *ppResult = pDXView;
+    return VINF_SUCCESS;
 }
 
 
@@ -7765,37 +7751,28 @@ static int dxEnsureDepthStencilView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXC
     if (viewId == SVGA3D_INVALID_ID)
         return VERR_INVALID_PARAMETER;
 
+    SVGACOTableDXDSViewEntry const *pEntry = &pDXContext->cot.paDSView[viewId];
     DXVIEW *pDXView = &pDXContext->pBackendDXContext->paDepthStencilView[viewId];
-    if (!pDXView->u.pView)
-    {
-        SVGACOTableDXDSViewEntry const *pEntry = &pDXContext->cot.paDSView[viewId];
-        int rc = dxCreateDepthStencilView(pThisCC, pDXContext, viewId, pEntry);
-        AssertRCReturn(rc, rc);
-    }
-    *ppResult = pDXView;
-    return VINF_SUCCESS;
-}
 
-
-static int dxCreateShaderResourceView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, SVGA3dShaderResourceViewId shaderResourceViewId, SVGACOTableDXSRViewEntry const *pEntry)
-{
+    /* dxEnsureResource must be always called because it makes sure that resource is up to date. */
     PVMSVGA3DSURFACE pSurface;
     ID3D11Resource *pResource;
     int rc = dxEnsureResource(pThisCC, pEntry->sid, &pSurface, &pResource);
     AssertRCReturn(rc, rc);
 
-    shaderResourceViewId = dxShaderResourceViewId(pDXContext, shaderResourceViewId);
-    if (shaderResourceViewId == SVGA3D_INVALID_ID)
-        return VERR_INVALID_PARAMETER;
+    if (!pDXView->u.pView)
+    {
+        ID3D11DepthStencilView *pDepthStencilView;
+        HRESULT hr = dxDepthStencilViewCreate(pThisCC, pEntry, pSurface, &pDepthStencilView);
+        if (SUCCEEDED(hr))
+            rc = dxViewInit(pDXView, pSurface, pDXContext, viewId, VMSVGA3D_VIEWTYPE_DEPTHSTENCIL, pDepthStencilView);
+        else
+            rc = VERR_INVALID_STATE;
+        AssertRCReturn(rc, rc);
+    }
 
-    DXVIEW *pView = &pDXContext->pBackendDXContext->paShaderResourceView[shaderResourceViewId];
-    Assert(pView->u.pView == NULL);
-
-    ID3D11ShaderResourceView *pShaderResourceView;
-    HRESULT hr = dxShaderResourceViewCreate(pThisCC, pEntry, pSurface, &pShaderResourceView);
-    AssertReturn(SUCCEEDED(hr), VERR_INVALID_STATE);
-
-    return dxViewInit(pView, pSurface, pDXContext, shaderResourceViewId, VMSVGA3D_VIEWTYPE_SHADERRESOURCE, pShaderResourceView);
+    *ppResult = pDXView;
+    return VINF_SUCCESS;
 }
 
 
@@ -7806,37 +7783,29 @@ static int dxEnsureShaderResourceView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pD
     if (viewId == SVGA3D_INVALID_ID)
         return VERR_INVALID_PARAMETER;
 
+    SVGACOTableDXSRViewEntry const *pEntry = &pDXContext->cot.paSRView[viewId];
     DXVIEW *pDXView = &pDXContext->pBackendDXContext->paShaderResourceView[viewId];
-    if (!pDXView->u.pView)
-    {
-        SVGACOTableDXSRViewEntry const *pEntry = &pDXContext->cot.paSRView[viewId];
-        int rc = dxCreateShaderResourceView(pThisCC, pDXContext, viewId, pEntry);
-        AssertRCReturn(rc, rc);
-    }
-    *ppResult = pDXView;
-    return VINF_SUCCESS;
-}
 
-
-static int dxCreateUnorderedAccessView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, SVGA3dUAViewId uaViewId, SVGACOTableDXUAViewEntry const *pEntry)
-{
+    /* dxEnsureResource must be always called because it makes sure that resource is up to date. */
     PVMSVGA3DSURFACE pSurface;
     ID3D11Resource *pResource;
     int rc = dxEnsureResource(pThisCC, pEntry->sid, &pSurface, &pResource);
     AssertRCReturn(rc, rc);
 
-    uaViewId = dxUAViewId(pDXContext, uaViewId);
-    if (uaViewId == SVGA3D_INVALID_ID)
-        return VERR_INVALID_PARAMETER;
+    if (!pDXView->u.pView)
+    {
+        ID3D11ShaderResourceView *pShaderResourceView;
+        HRESULT hr = dxShaderResourceViewCreate(pThisCC, pEntry, pSurface, &pShaderResourceView);
+        if (SUCCEEDED(hr))
+            rc = dxViewInit(pDXView, pSurface, pDXContext, viewId, VMSVGA3D_VIEWTYPE_SHADERRESOURCE, pShaderResourceView);
+        else
+            rc = VERR_INVALID_STATE;
+        AssertRCReturn(rc, rc);
+    }
 
-    DXVIEW *pView = &pDXContext->pBackendDXContext->paUnorderedAccessView[uaViewId];
-    Assert(pView->u.pView == NULL);
+    *ppResult = pDXView;
+    return VINF_SUCCESS;
 
-    ID3D11UnorderedAccessView *pUnorderedAccessView;
-    HRESULT hr = dxUnorderedAccessViewCreate(pThisCC, pEntry, pSurface, &pUnorderedAccessView);
-    AssertReturn(SUCCEEDED(hr), VERR_INVALID_STATE);
-
-    return dxViewInit(pView, pSurface, pDXContext, uaViewId, VMSVGA3D_VIEWTYPE_UNORDEREDACCESS, pUnorderedAccessView);
 }
 
 
@@ -7847,11 +7816,23 @@ static int dxEnsureUnorderedAccessView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT p
     if (viewId == SVGA3D_INVALID_ID)
         return VERR_INVALID_PARAMETER;
 
+    SVGACOTableDXUAViewEntry const *pEntry = &pDXContext->cot.paUAView[viewId];
     DXVIEW *pDXView = &pDXContext->pBackendDXContext->paUnorderedAccessView[viewId];
+
+    /* dxEnsureResource must be always called because it makes sure that resource is up to date. */
+    PVMSVGA3DSURFACE pSurface;
+    ID3D11Resource *pResource;
+    int rc = dxEnsureResource(pThisCC, pEntry->sid, &pSurface, &pResource);
+    AssertRCReturn(rc, rc);
+
     if (!pDXView->u.pView)
     {
-        SVGACOTableDXUAViewEntry const *pEntry = &pDXContext->cot.paUAView[viewId];
-        int rc = dxCreateUnorderedAccessView(pThisCC, pDXContext, viewId, pEntry);
+        ID3D11UnorderedAccessView *pUnorderedAccessView;
+        HRESULT hr = dxUnorderedAccessViewCreate(pThisCC, pEntry, pSurface, &pUnorderedAccessView);
+        if (SUCCEEDED(hr))
+            rc = dxViewInit(pDXView, pSurface, pDXContext, viewId, VMSVGA3D_VIEWTYPE_UNORDEREDACCESS, pUnorderedAccessView);
+        else
+            rc = VERR_INVALID_STATE;
         AssertRCReturn(rc, rc);
     }
     *ppResult = pDXView;
@@ -7877,9 +7858,15 @@ static void dxEnsureViews(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
         AssertRC(rc);
 
 #ifdef LOG_ENABLED
-        SVGACOTableDXDSViewEntry const *pDSViewEntry = &pDXContext->cot.paDSView[viewId];
-        LogFunc(("dsv sid = %u, dsvid = %u, format = %s(%d)\n",
-                 pDXView->sid, viewId, vmsvgaLookupEnum((int)pDSViewEntry->format, &g_SVGA3dSurfaceFormat2String), pDSViewEntry->format));
+        if (RT_SUCCESS(rc))
+        {
+            SVGACOTableDXDSViewEntry const *pDSViewEntry = &pDXContext->cot.paDSView[viewId];
+            PVMSVGA3DSURFACE pSurface = NULL;
+            vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, pDXView->sid, &pSurface);
+            LogFunc(("dsv sid = %u, dsvid = %u, format = %s(%d), %dx%d\n",
+                     pDXView->sid, viewId, vmsvgaLookupEnum((int)pDSViewEntry->format, &g_SVGA3dSurfaceFormat2String), pDSViewEntry->format,
+                     pSurface->paMipmapLevels[0].cBlocksX * pSurface->cxBlock, pSurface->paMipmapLevels[0].cBlocksY * pSurface->cyBlock));
+        }
 #endif
     }
 
@@ -7896,8 +7883,11 @@ static void dxEnsureViews(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
 
 #ifdef LOG_ENABLED
             SVGACOTableDXRTViewEntry const *pRTViewEntry = &pDXContext->cot.paRTView[viewId];
-            LogFunc(("rtv sid = %u, rtvid = %u, format = %s(%d)\n",
-                     pDXView->sid, viewId, vmsvgaLookupEnum((int)pRTViewEntry->format, &g_SVGA3dSurfaceFormat2String), pRTViewEntry->format));
+            PVMSVGA3DSURFACE pSurface = NULL;
+            vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, pDXView->sid, &pSurface);
+            LogFunc(("rtv sid = %u, rtvid = %u, format = %s(%d), %dx%d\n",
+                     pDXView->sid, viewId, vmsvgaLookupEnum((int)pRTViewEntry->format, &g_SVGA3dSurfaceFormat2String), pRTViewEntry->format,
+                     pSurface->paMipmapLevels[0].cBlocksX * pSurface->cxBlock, pSurface->paMipmapLevels[0].cBlocksY * pSurface->cyBlock));
 #endif
         }
     }
@@ -9144,6 +9134,8 @@ static int dxReadBuffer(DXDEVICE *pDevice, ID3D11Buffer *pBuffer, UINT Offset, U
     RT_ZERO(desc);
     pBuffer->GetDesc(&desc);
 
+    Bytes = RT_MIN(desc.ByteWidth, Bytes);
+
     AssertReturn(   Offset < desc.ByteWidth
                  && Bytes <= desc.ByteWidth - Offset, VERR_INVALID_STATE);
 
@@ -10204,26 +10196,14 @@ static DECLCALLBACK(int) vmsvga3dBackDXPredCopyRegion(PVGASTATECC pThisCC, PVMSV
     AssertReturn(pDevice->pDevice, VERR_INVALID_STATE);
 
     PVMSVGA3DSURFACE pSrcSurface;
-    int rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, srcSid, &pSrcSurface);
+    ID3D11Resource *pSrcResource;
+    int rc = dxEnsureResource(pThisCC, srcSid, &pSrcSurface, &pSrcResource);
     AssertRCReturn(rc, rc);
 
     PVMSVGA3DSURFACE pDstSurface;
-    rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, dstSid, &pDstSurface);
+    ID3D11Resource *pDstResource;
+    rc = dxEnsureResource(pThisCC, dstSid, &pDstSurface, &pDstResource);
     AssertRCReturn(rc, rc);
-
-    if (pSrcSurface->pBackendSurface == NULL)
-    {
-        /* Create the resource. */
-        rc = vmsvga3dBackSurfaceCreateResource(pThisCC, pSrcSurface);
-        AssertRCReturn(rc, rc);
-    }
-
-    if (pDstSurface->pBackendSurface == NULL)
-    {
-        /* Create the resource. */
-        rc = vmsvga3dBackSurfaceCreateResource(pThisCC, pDstSurface);
-        AssertRCReturn(rc, rc);
-    }
 
     LogFunc(("src%s sid = %u -> dst%s sid = %u\n",
              (pSrcSurface->f.surfaceFlags & SVGA3D_SURFACE_SCREENTARGET) ? " st" : "", pSrcSurface->id,
@@ -10265,12 +10245,6 @@ static DECLCALLBACK(int) vmsvga3dBackDXPredCopyRegion(PVGASTATECC pThisCC, PVMSV
     SrcBox.bottom = clipBox.srcy + clipBox.h;
     SrcBox.back   = clipBox.srcz + clipBox.d;
 
-    ID3D11Resource *pDstResource;
-    ID3D11Resource *pSrcResource;
-
-    pDstResource = dxResource(pDstSurface);
-    pSrcResource = dxResource(pSrcSurface);
-
     pDevice->pImmediateContext->CopySubresourceRegion(pDstResource, DstSubresource, DstX, DstY, DstZ,
                                                       pSrcResource, SrcSubresource, &SrcBox);
 
@@ -10303,33 +10277,18 @@ static DECLCALLBACK(int) vmsvga3dBackDXPredCopy(PVGASTATECC pThisCC, PVMSVGA3DDX
     AssertReturn(pDevice->pDevice, VERR_INVALID_STATE);
 
     PVMSVGA3DSURFACE pSrcSurface;
-    int rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, srcSid, &pSrcSurface);
+    ID3D11Resource *pSrcResource;
+    int rc = dxEnsureResource(pThisCC, srcSid, &pSrcSurface, &pSrcResource);
     AssertRCReturn(rc, rc);
 
     PVMSVGA3DSURFACE pDstSurface;
-    rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, dstSid, &pDstSurface);
+    ID3D11Resource *pDstResource;
+    rc = dxEnsureResource(pThisCC, dstSid, &pDstSurface, &pDstResource);
     AssertRCReturn(rc, rc);
-
-    if (pSrcSurface->pBackendSurface == NULL)
-    {
-        /* Create the resource. */
-        rc = vmsvga3dBackSurfaceCreateResource(pThisCC, pSrcSurface);
-        AssertRCReturn(rc, rc);
-    }
-
-    if (pDstSurface->pBackendSurface == NULL)
-    {
-        /* Create the resource. */
-        rc = vmsvga3dBackSurfaceCreateResource(pThisCC, pDstSurface);
-        AssertRCReturn(rc, rc);
-    }
 
     LogFunc(("src%s sid = %u -> dst%s sid = %u\n",
              (pSrcSurface->f.surfaceFlags & SVGA3D_SURFACE_SCREENTARGET) ? " st" : "", pSrcSurface->id,
              (pDstSurface->f.surfaceFlags & SVGA3D_SURFACE_SCREENTARGET) ? " st" : "", pDstSurface->id));
-
-    ID3D11Resource *pDstResource = dxResource(pDstSurface);
-    ID3D11Resource *pSrcResource = dxResource(pSrcSurface);
 
     pDevice->pImmediateContext->CopyResource(pDstResource, pSrcResource);
 

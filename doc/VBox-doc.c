@@ -1,4 +1,4 @@
-/* $Id: VBox-doc.c 113059 2026-02-17 10:55:34Z alexander.eichner@oracle.com $ */
+/* $Id: VBox-doc.c 114755 2026-07-23 07:11:03Z alexander.eichner@oracle.com $ */
 /** @file
  * VirtualBox Top Level Documentation File.
  */
@@ -152,7 +152,7 @@
  *          - @ref pg_vgsvc_clipboard
  *      - VBoxControl.
  *      - Linux, Solaris and FreeBSD specific guest services and drivers.
- *          - @ref pg_vboxdrmcliet (Linux only).
+ *          - @ref pg_vboxdrmclient (Linux only).
  *          - VBoxClient.
  *          - VBoxVideo.
  *      - Windows Guests.

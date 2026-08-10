@@ -1,4 +1,4 @@
-/* $Id: bs3-apic-1.c 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: bs3-apic-1.c 114735 2026-07-21 07:31:36Z alexander.eichner@oracle.com $ */
 /** @file
  * BS3Kit - bs3-apic-1, 16-bit C code.
  */
@@ -48,6 +48,8 @@
 *********************************************************************************************************************************/
 BS3_DECL_CALLBACK(void)     ProtModeApicTests(void);
 
+bool     g_fApLock         = false;
+uint32_t g_AddrApInitStack = 0;
 
 BS3_DECL(void) Main_rm()
 {

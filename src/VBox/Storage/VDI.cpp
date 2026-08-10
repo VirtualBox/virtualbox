@@ -1,4 +1,4 @@
-/* $Id: VDI.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VDI.cpp 114721 2026-07-17 10:29:34Z alexander.eichner@oracle.com $ */
 /** @file
  * Virtual Disk Image (VDI), Core Code.
  */
@@ -573,6 +573,12 @@ static int vdiSetupImageState(PVDIIMAGEDESC pImage, unsigned uImageFlags, const 
 {
     int rc = VINF_SUCCESS;
 
+    if (   cbAllocationBlock < VDI_IMAGE_DEFAULT_BLOCK_SIZE / 2
+        || cbAllocationBlock > VDI_IMAGE_DEFAULT_BLOCK_SIZE * 8
+        || !RT_IS_POWER_OF_TWO(cbAllocationBlock))
+        return vdIfError(pImage->pIfError, VERR_VD_VDI_COMMENT_TOO_LONG, RT_SRC_POS,
+                         N_("VDI: Image with invalid allocation block size in '%s'"), pImage->pszFilename);
+
     vdiInitPreHeader(&pImage->PreHeader);
     vdiInitHeader(&pImage->Header, uImageFlags, pszComment, cbSize, cbAllocationBlock, 0,
                   cbDataAlign);
@@ -986,6 +992,14 @@ static int vdiOpenImage(PVDIIMAGEDESC pImage, unsigned uOpenFlags)
         rc = vdiImageReadHeader(pImage);
         if (RT_SUCCESS(rc))
         {
+            /* Intentionally be much more forgiving than when creating new images. */
+            if (   getImageBlockSize(&pImage->Header) < VDI_IMAGE_DEFAULT_BLOCK_SIZE / 8
+                || getImageBlockSize(&pImage->Header) > VDI_IMAGE_DEFAULT_BLOCK_SIZE * 128)
+                rc = vdIfError(pImage->pIfError, VERR_VD_VDI_COMMENT_TOO_LONG, RT_SRC_POS,
+                               N_("VDI: Image with invalid allocation block size in '%s'"), pImage->pszFilename);
+        }
+        if (RT_SUCCESS(rc))
+        {
             /* Allocate memory for blocks array. */
             pImage->paBlocks = (PVDIIMAGEBLOCKPOINTER)RTMemAlloc(sizeof(VDIIMAGEBLOCKPOINTER) * getImageBlocks(&pImage->Header));
             if (RT_LIKELY(pImage->paBlocks))
@@ -1005,7 +1019,7 @@ static int vdiOpenImage(PVDIIMAGEDESC pImage, unsigned uOpenFlags)
             }
             else
                 rc = vdIfError(pImage->pIfError, VERR_NO_MEMORY, RT_SRC_POS,
-                               N_("VDI: Error allocating memory for the block table in '%s'"), pImage->pszFilename);;
+                               N_("VDI: Error allocating memory for the block table in '%s'"), pImage->pszFilename);
         }
     }
     /* else: Do NOT signal an appropriate error here, as the VD layer has the

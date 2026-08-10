@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.cpp 114676 2026-07-13 17:30:19Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.cpp 114812 2026-07-28 14:10:11Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common core code.
  */
@@ -50,13 +50,59 @@
 #include "DevVGA-SVGA-internal.h"
 
 
+struct VMSVGASURFACESTATSSAMPLE
+{
+    uint32_t cMem;
+    uint32_t cHw;
+
+    uint64_t cbMem;
+    uint64_t cbMemWithHostShadow;
+    uint64_t cbHw;
+    uint64_t cbHwWithHostShadow;
+};
+
+DECLINLINE(void) vmsvgaSurfaceStatsSampleLog(const char *pszType, struct VMSVGASURFACESTATSSAMPLE const *p)
+{
+    uint64_t const cbTotal = p->cbMem + p->cbMemWithHostShadow + p->cbHw + p->cbHwWithHostShadow;
+    LogRel6(("Total %s %RU32 (mem %RU32, hw %RU32) size %RU64 (%RU64MB) (mem: %RU64 (%RU64MB) shadow %RU64 (%RU64MB), hw: %RU64 (%RU64MB) shadow %RU64 (%RU64MB))\n",
+        pszType, p->cMem + p->cHw, p->cMem, p->cHw,
+        cbTotal, cbTotal / _1M,
+        p->cbMem, p->cbMem / _1M,
+        p->cbMemWithHostShadow, p->cbMemWithHostShadow / _1M,
+        p->cbHw, p->cbHw / _1M,
+        p->cbHwWithHostShadow, p->cbHwWithHostShadow / _1M));
+}
+
+DECLINLINE(void) vmsvgaSurfaceStatsSampleUpdate(struct VMSVGASURFACESTATSSAMPLE *p, PVMSVGA3DSURFACE pSurface)
+{
+    uint32_t cbSurface = 0;
+    for (uint32_t i = 0; i < pSurface->cLevels * pSurface->surfaceDesc.numArrayElements; ++i)
+        cbSurface += pSurface->paMipmapLevels[i].cbSurface;
+
+    if (VMSVGA3DSURFACE_HAS_HW_SURFACE(pSurface))
+    {
+        ++p->cHw;
+        if (pSurface->paMipmapLevels[0].pSurfaceData)
+            p->cbHwWithHostShadow += cbSurface;
+        else
+            p->cbHw += cbSurface;
+    }
+    else
+    {
+        ++p->cMem;
+        if (pSurface->paMipmapLevels[0].pSurfaceData)
+            p->cbMemWithHostShadow += cbSurface;
+        else
+            p->cbMem += cbSurface;
+    }
+}
+
 static void vmsvgaSurfaceStatsLog(PVGASTATECC pThisCC)
 {
-    uint32_t cBuffers = 0;
-    uint32_t cTextures = 0;
-
-    uint64_t cbBuffers = 0;
-    uint64_t cbTextures = 0;
+    struct VMSVGASURFACESTATSSAMPLE buffers;
+    RT_ZERO(buffers);
+    struct VMSVGASURFACESTATSSAMPLE textures;
+    RT_ZERO(textures);
 
     PVMSVGA3DSTATE p3dState = pThisCC->svga.p3dState;
     for (uint32_t sid = 0; sid < p3dState->cSurfaces; ++sid)
@@ -65,26 +111,16 @@ static void vmsvgaSurfaceStatsLog(PVGASTATECC pThisCC)
         if (pSurface->id == SVGA3D_INVALID_ID)
             continue;
 
+
         if (pSurface->format == SVGA3D_BUFFER)
-        {
-            ++cBuffers;
-            cbBuffers += pSurface->paMipmapLevels[0].cbSurface;
-        }
+            vmsvgaSurfaceStatsSampleUpdate(&buffers, pSurface);
         else
-        {
-            ++cTextures;
-            uint32_t cbSurface = 0;
-            for (uint32_t i = 0; i < pSurface->cLevels * pSurface->surfaceDesc.numArrayElements; ++i)
-                cbSurface += pSurface->paMipmapLevels[i].cbSurface;
-            cbTextures += cbSurface;
-        }
+            vmsvgaSurfaceStatsSampleUpdate(&textures, pSurface);
     }
 
     LogRel6(("VMSVGA: surface stats begin\n"));
-
-    LogRel6(("Total buffers %RU32 size = %RU64 %RU64MB\n", cBuffers, cbBuffers, cbBuffers / _1M));
-    LogRel6(("Total textures %RU32 size = %RU64 %RU64MB\n", cTextures, cbTextures, cbTextures / _1M));
-
+    vmsvgaSurfaceStatsSampleLog("buffers", &buffers);
+    vmsvgaSurfaceStatsSampleLog("textures", &textures);
     LogRel6(("VMSVGA: surface stats end\n"));
 }
 

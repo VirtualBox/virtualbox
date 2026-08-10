@@ -1,4 +1,4 @@
-/* $Id: NvramStoreImpl.cpp 113218 2026-03-03 12:00:07Z alexander.eichner@oracle.com $ */
+/* $Id: NvramStoreImpl.cpp 114693 2026-07-14 10:59:31Z alexander.eichner@oracle.com $ */
 /** @file
  * VirtualBox COM NVRAM store class implementation
  */
@@ -46,6 +46,7 @@
 #include <VBox/err.h>
 
 #include <iprt/cpp/utils.h>
+#include <iprt/ctype.h>
 #include <iprt/efi.h>
 #include <iprt/file.h>
 #include <iprt/path.h>
@@ -577,6 +578,37 @@ int NvramStore::i_loadStoreFromTar(RTVFSFSSTREAM hVfsFssTar)
             if (vrc == VERR_EOF)
                 vrc = VINF_SUCCESS;
             break;
+        }
+
+        /*
+         * The name must follow the namespace/identifier scheme,
+         * everything else is rejected as invalid. Namespaces
+         * and identifiers are alpha numeric.
+         */
+        const char *pszNameCur = pszName;
+        while (*pszNameCur != '/')
+        {
+            if (!RT_C_IS_ALNUM(*pszNameCur))
+            {
+                LogRel(("NvramStore: '%s' contains an invalid namespace\n", pszName));
+                return VERR_INVALID_NAME;
+            }
+            pszNameCur++;
+        }
+
+        /* Slash must follow */
+        Assert(*pszNameCur == '/');
+        pszNameCur++;
+
+        /* Check the identifier. */
+        while (*pszNameCur != '\0')
+        {
+            if (!RT_C_IS_ALNUM(*pszNameCur))
+            {
+                LogRel(("NvramStore: '%s' contains an invalid identifier\n", pszName));
+                return VERR_INVALID_NAME;
+            }
+            pszNameCur++;
         }
 
         RTFSOBJINFO UnixInfo;

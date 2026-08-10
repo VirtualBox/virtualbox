@@ -1,4 +1,4 @@
-/* $Id: wayland-helper.h 114464 2026-06-21 01:25:02Z knut.osmundsen@oracle.com $ */
+/* $Id: wayland-helper.h 114745 2026-07-21 18:40:35Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Definitions for Wayland helpers.
  */
@@ -167,6 +167,7 @@ typedef struct
      * Callback to force guest to announce its clipboard content.
      *
      * @returns IPRT status code.
+     * @note Optional. Only needed by plain Wayland/Gtk.
      */
     DECLCALLBACKMEMBER(int, pfnPopup, (void));
 
@@ -339,7 +340,7 @@ namespace vbcl
  *
  * @param   pSession    A pointer to session data.
  */
-RTDECL(void) vbcl_wayland_session_init(vbcl_wl_session_t *pSession);
+void vbcl_wayland_session_init(vbcl_wl_session_t *pSession);
 
 /**
  * Start new session.
@@ -355,10 +356,8 @@ RTDECL(void) vbcl_wayland_session_init(vbcl_wl_session_t *pSession);
  * @param   pfnStart    Initialization callback.
  * @param   pvUser      User data to pass to initialization callback.
  */
-RTDECL(int) vbcl_wayland_session_start(vbcl_wl_session_t *pSession,
-                                       vbcl_wl_session_type_t enmType,
-                                       PFNVBCLWLSESSIONCB pfnStart,
-                                       void *pvUser);
+int vbcl_wayland_session_start(vbcl_wl_session_t *pSession, vbcl_wl_session_type_t enmType,
+                               PFNVBCLWLSESSIONCB pfnStart, void *pvUser);
 
 /**
  * Session join callback.
@@ -457,8 +456,7 @@ int VBClWaylandSessionJoinAnyTypeEx(vbcl_wl_session_t *pSession, PFNVBCLWLSESSIO
  * @param   pfnEnd      Termination callback.
  * @param   pvUser      User data to pass to termination callback.
  */
-RTDECL(int) vbcl_wayland_session_end(vbcl_wl_session_t *pSession,
-                                     PFNVBCLWLSESSIONCB pfnEnd, void *pvUser);
+int vbcl_wayland_session_end(vbcl_wl_session_t *pSession, PFNVBCLWLSESSIONCB pfnEnd, void *pvUser);
 
 /**
  * Check if session was started.
@@ -466,18 +464,7 @@ RTDECL(int) vbcl_wayland_session_end(vbcl_wl_session_t *pSession,
  * @returns True if session is started, False otherwise.
  * @param   pSession    Session object.
  */
-RTDECL(bool) vbcl_wayland_session_is_started(vbcl_wl_session_t *pSession);
-
-/**
- * Create thread and wait until it started.
- *
- * @returns IPRT status code.
- * @param   phThread    Pointer to thread data.
- * @param   pfnThread   Pointer to thread main loop function.
- * @param   pszName     Thread name.
- * @param   pvUser      User data.
- */
-RTDECL(int) vbcl_wayland_thread_start(PRTTHREAD phThread, PFNRTTHREAD pfnThread, const char *pszName, void *pvUser);
+bool vbcl_wayland_session_is_started(vbcl_wl_session_t *pSession);
 
 /** Wayland helper which uses GTK library. */
 extern const VBCLWAYLANDHELPER g_WaylandHelperGtk;

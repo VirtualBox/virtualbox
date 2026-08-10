@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114575 2026-06-30 15:58:06Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 114743 2026-07-21 18:31:58Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for the VirtualBox Guest Addition X11 Client.
 #
@@ -144,8 +144,6 @@ ifdef VBOX_WITH_VMSVGA
  	display-ipc.cpp \
  	display-helper-gnome3.cpp \
  	display-helper-generic.cpp
-
- ### include $(PATH_SUB_CURRENT)/helpers/Makefile.kmk
 endif
 
 ifdef VBOX_WITH_SHARED_CLIPBOARD
@@ -177,13 +175,9 @@ ifdef VBOX_WITH_SHARED_CLIPBOARD
   VBoxClient_INCS.linux += . ../wlInclude/
   VBoxClient_SOURCES.linux += \
   	clipboard-cmds.cpp \
-  	wayland-helper-xdcp-common.cpp \
-  	$(VBoxClient_0_OUTDIR)/wayland-helper-dcp.cpp \
-  	wayland-helper-edcp.cpp \
-  	wayland-helper-gtk.cpp \
-  	wayland-helper.cpp \
-  	wayland.cpp \
-  	wayland-helper-ipc.cpp \
+  	clipboard-wayland.cpp \
+  	clipboard-wayland-popup.cpp \
+  	host-input-focus.cpp \
   	$(PATH_ROOT)/src/VBox/GuestHost/common/mime-type-converter.cpp \
   	$(PATH_ROOT)/src/VBox/GuestHost/common/VbghWayland.cpp \
   	$(PATH_ROOT)/src/VBox/GuestHost/common/VbghWaylandPopup.cpp \
@@ -194,7 +188,18 @@ ifdef VBOX_WITH_SHARED_CLIPBOARD
   	../wlInclude/xdg-shell.c \
   	../wlInclude/xdg-activation-v1.c \
   	../wlInclude/gtk-shell.c
+ endif
 
+ ifdef VBOX_WITH_WAYLAND_ADDITIONS_LEGACY # Old code.
+  VBoxClient_DEFS.linux += VBOX_WITH_WAYLAND_ADDITIONS_LEGACY
+  VBoxClient_SOURCES.linux += \
+  	wayland-helper-xdcp-common.cpp \
+  	$(VBoxClient_0_OUTDIR)/wayland-helper-dcp.cpp \
+  	wayland-helper-edcp.cpp \
+  	wayland-helper-gtk.cpp \
+  	wayland-helper.cpp \
+  	wayland.cpp \
+  	wayland-helper-ipc.cpp
   VBoxClient_CLEAN.linux += $(VBoxClient_0_OUTDIR)/wayland-helper-dcp.cpp
   $$(VBoxClient_0_OUTDIR)/wayland-helper-dcp.cpp: \
   		$(VBOX_PATH_X11_VBOXCLIENT)/wayland-helper-dcp-from-edcp.sed \
@@ -206,7 +211,7 @@ ifdef VBOX_WITH_SHARED_CLIPBOARD
 		--output "$(@)" \
 		"$(VBOX_PATH_X11_VBOXCLIENT)/wayland-helper-edcp.cpp"
  endif
-endif
+endif # VBOX_WITH_SHARED_CLIPBOARD
 
 ifdef VBOX_WITH_SHARED_CLIPBOARD_X11_LAZY_LOAD
  # Macro for generating the lazy loading assembly stub loader for a specific .def file.
@@ -250,10 +255,11 @@ ifdef VBOX_WITH_SHARED_CLIPBOARD_X11_LAZY_LOAD
  $(evalcall2 VBOXCLIENT_LAZYLOAD_GEN_ASM_FN,$(PATH_ROOT)/src/VBox/GuestHost/libwayland-client.def,libwayland-client,$(VBOX_VBOXCLIENT_LIBWAYLANDCLIENT_VER))
 endif
 
-ifdef VBOX_WITH_WAYLAND_ADDITIONS
+
+if 0 #def VBOX_WITH_WAYLAND_ADDITIONS - not needed any more.
  #
  # vboxwl - GTK Wayland helper for VBoxClient.
- ## @todo merge into VBoxClient.
+ ## @todo merge into VBoxClient - done, except for DnD which isn't in the repo.
  #
  PROGRAMS.linux += vboxwl
  define VBOXCLIENT_LAZYLOAD_GEN_ASM_FN2

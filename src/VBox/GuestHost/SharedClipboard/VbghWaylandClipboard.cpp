@@ -1,4 +1,4 @@
-/* $Id: VbghWaylandClipboard.cpp 114620 2026-07-04 00:00:20Z knut.osmundsen@oracle.com $ */
+/* $Id: VbghWaylandClipboard.cpp 114766 2026-07-24 18:01:54Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest / Host common code - Wayland Clipboard.
  */
@@ -37,7 +37,9 @@
 #include <iprt/assert.h>
 #include <iprt/err.h>
 #include <iprt/mem.h>
+#include <iprt/pipe.h>
 #include <iprt/semaphore.h>
+#include <iprt/strcache.h>
 #include <iprt/string.h>
 
 #include <wayland-client-protocol.h>
@@ -117,6 +119,7 @@ VBGH_DECL(int) VbghWaylandClipboardPartialInit(PSHCLWAYLANDCTX pThis)
     pThis->hOurCacheFilledEvent = NIL_RTSEMEVENTMULTI;
     pThis->hProcClipboardSet    = NIL_RTPROCESS;
     pThis->hPipeClipboardSet    = NIL_RTPIPE;
+    pThis->hStrCache            = NIL_RTSTRCACHE;
 
     /* common */
     int rc = RTCritSectInit(&pThis->CritSect);
@@ -133,10 +136,18 @@ VBGH_DECL(int) VbghWaylandClipboardPartialInit(PSHCLWAYLANDCTX pThis)
         RTSemEventMultiSignal(pThis->hOurCacheFilledEvent);
         ShClCacheInit(&pThis->OurCache);
         pThis->fOurFormats = VBOX_SHCL_FMT_NONE;
-        return VINF_SUCCESS;
+
+        /* String cache: */
+        rc = RTStrCacheCreate(&pThis->hStrCache, "clipboard");
+        if (RT_SUCCESS(rc))
+            return VINF_SUCCESS;
+
+        /* Failed - revert all. */
+        ShClCacheTerm(&pThis->OurCache);
+        RTSemEventMultiDestroy(pThis->hOurCacheFilledEvent);
+        pThis->hOurCacheFilledEvent = NIL_RTSEMEVENTMULTI;
     }
 
-    /* bail */
     pThis->hOurCacheFilledEvent = NIL_RTSEMEVENTMULTI;
     ShClCacheTerm(&pThis->OtherCache);
     RTCritSectDelete(&pThis->CritSect);
@@ -226,6 +237,21 @@ VBGH_DECL(void) VbghWaylandClipboardPartialTerm(PSHCLWAYLANDCTX pThis)
 
     RTCritSectDelete(&pThis->CritSect);
     ShClCacheTerm(&pThis->OtherCache);
+
+    if (pThis->hPipeClipboardSet != NIL_RTPIPE)
+    {
+        RTPipeClose(pThis->hPipeClipboardSet);
+        pThis->hPipeClipboardSet = NIL_RTPIPE;
+    }
+
+    if (pThis->hProcClipboardSet != NIL_RTPROCESS)
+    {
+        VbghWaylandPopupTerminateAndWaitForChild(pThis->hProcClipboardSet, "--clipboard-set", RT_MS_1SEC, RT_MS_5SEC, 3, NULL);
+        pThis->hProcClipboardSet = NIL_RTPROCESS;
+    }
+
+    RTStrCacheDestroy(pThis->hStrCache);
+    pThis->hStrCache = NIL_RTSTRCACHE;
 }
 
 
@@ -898,6 +924,39 @@ VBGH_DECL(int) VbghWaylandClipboardSetupListening(PSHCLWAYLANDCTX pThis, PRTERRI
 
 
 /**
+ * Returns a persistent string matching @a pszVolatile.
+ *
+ * This uses the string cache associtated with the context.  In case of failure,
+ * pszPersistent will be returned.
+ */
+static const char *vbghWaylandClipboardMakePersistantString(PSHCLWAYLANDCTX pThis, const char *pszVolatile,
+                                                            const char *pszPersistent)
+{
+    if (pszVolatile == NULL)
+        return NULL;
+    size_t const cchVolatile = strlen(pszVolatile);
+    if (!cchVolatile)
+        return "";
+
+#if 1 /* disable to test the caching. */
+    if (pszPersistent)
+    {
+        size_t cchPersistent = strlen(pszPersistent);
+        if (cchPersistent == cchVolatile && memcmp(pszPersistent, pszVolatile, cchPersistent) == 0)
+            return pszPersistent;
+    }
+#endif
+
+    const char *pszRet = RTStrCacheEnterN(pThis->hStrCache, pszVolatile, cchVolatile);
+    if (pszRet)
+        return pszRet;
+
+    LogRel(("%s: RTStrCacheEnterN failed!\n", __func__));
+    return pszPersistent;
+}
+
+
+/**
  * Adds a MIME type to an incoming new clipboard offer (our side), prior to
  * reporting anything to the remote (other) side.
  *
@@ -937,7 +996,8 @@ VBGH_DECL(int) VbghWaylandClipboardOfferAddMimeType(SHCLWLOFFERSLOT *pOfferSlot,
                     > (pOfferSlot->aMimeTypes[idxFmt].fFlagsAndPriority & VBGH_MIME_CONV_F_PRIORITY_MASK))
                 {
                     /* Okay, use this MIME type for the VBox format then. */
-                    pOfferSlot->aMimeTypes[idxFmt].pszMimeType       = pszPersistentMimeType;
+                    pOfferSlot->aMimeTypes[idxFmt].pszMimeType = vbghWaylandClipboardMakePersistantString(pThis, pszMimeType,
+                                                                                                          pszPersistentMimeType);
                     pOfferSlot->aMimeTypes[idxFmt].fFlagsAndPriority = fFlagsAndPriority;
                     pOfferSlot->fFormats |= uFmt;
                     LogRel4(("%s: %s -> VBoxFmt %#x/%u prio %#x\n", pszCaller, pszMimeType, uFmt, idxFmt, fFlagsAndPriority));
@@ -1011,8 +1071,8 @@ VBGH_DECL(int) VbghWaylandClipboardSetupOffer(PSHCLWAYLANDCTX pThis, PRTERRINFO 
  *                              VbghMimeConvFromVBox, free accordingly.
  * @param   pcbOutData          Where to return the data size.
  */
-VBGH_DECL(int) VbghlWaylandClipboardQueryRemoteData(PSHCLWAYLANDCTX pThis, const char *pszMimeType,
-                                                    void **ppvOutData, size_t *pcbOutData)
+VBGH_DECL(int) VbghWaylandClipboardQueryRemoteData(PSHCLWAYLANDCTX pThis, const char *pszMimeType,
+                                                   void **ppvOutData, size_t *pcbOutData)
 {
     *ppvOutData = NULL;
     *pcbOutData = 0;
@@ -1133,7 +1193,7 @@ static void vbghCommonDataControlSourceListener_Send(PSHCLWAYLANDCTX pThis, cons
     {
         void  *pvWaylandData = NULL;
         size_t cbWaylandData = 0;
-        rc = VbghlWaylandClipboardQueryRemoteData(pThis, pszMimeType, &pvWaylandData, &cbWaylandData);
+        rc = VbghWaylandClipboardQueryRemoteData(pThis, pszMimeType, &pvWaylandData, &cbWaylandData);
         if (RT_SUCCESS(rc))
         {
             rc = VbghWaylandWriteBufferToFd(pvWaylandData, cbWaylandData, fdDst, RT_MS_30SEC);

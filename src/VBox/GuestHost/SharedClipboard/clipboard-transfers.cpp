@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 114661 2026-07-08 10:39:13Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 114890 2026-08-07 09:54:48Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -65,29 +65,43 @@ static PSHCLTRANSFER shClTransferCtxGetTransferByIndexInternal(PSHCLTRANSFERCTX 
 
 
 /**
- * Returns whether a transfer direction value is valid.
+ * Checks whether a transfer ID is in the assignable context-local range.
+ *
+ * @returns true if the ID can be used by a transfer context, false otherwise.
+ * @param   idTransfer          Transfer ID to check before narrowing to SHCLTRANSFERID.
  */
-static bool shClTransferDirIsValid(SHCLTRANSFERDIR enmDir)
+bool ShClTransferIdIsValid(uint32_t idTransfer)
 {
-    return    enmDir == SHCLTRANSFERDIR_FROM_REMOTE
-           || enmDir == SHCLTRANSFERDIR_TO_REMOTE;
+    return    idTransfer > 0
+           && idTransfer < VBOX_SHCL_MAX_TRANSFERS - 1;
 }
 
 
 /**
- * Returns whether a transfer source value is valid.
+ * Checks whether a transfer key is usable for lifecycle tracking.
+ *
+ * @returns true if the key identifies a non-nil service transfer, false otherwise.
+ * @param   idSession       Service session ID.
+ * @param   idTransfer      Service transfer ID, before narrowing to SHCLTRANSFERID.
+ * @param   uGeneration     Service transfer generation.
  */
-static bool shClTransferSourceIsValid(SHCLSOURCE enmSource)
+bool ShClTransferKeyIsValid(SHCLSESSIONID idSession, uint32_t idTransfer, SHCLTRANSFERGEN uGeneration)
 {
-    return    enmSource == SHCLSOURCE_LOCAL
-           || enmSource == SHCLSOURCE_REMOTE;
+    return    idSession != 0
+           && idSession != NIL_SHCLSESSIONID
+           && ShClTransferIdIsValid(idTransfer)
+           && uGeneration != 0
+           && uGeneration != NIL_SHCLTRANSFERGEN;
 }
 
 
 /**
- * Returns whether a transfer status value is valid.
+ * Checks whether a transfer status is part of the Shared Clipboard protocol.
+ *
+ * @returns true if the status is valid, false otherwise.
+ * @param   enmStatus       Transfer status to validate.
  */
-static bool shClTransferStatusIsValid(SHCLTRANSFERSTATUS enmStatus)
+bool ShClTransferStatusIsValid(SHCLTRANSFERSTATUS enmStatus)
 {
     switch (enmStatus)
     {
@@ -101,6 +115,87 @@ static bool shClTransferStatusIsValid(SHCLTRANSFERSTATUS enmStatus)
         case SHCLTRANSFERSTATUS_KILLED:
         case SHCLTRANSFERSTATUS_ERROR:
             return true;
+
+        default:
+            return false;
+    }
+}
+
+
+/**
+ * Checks whether a transfer status ends the transfer lifecycle.
+ *
+ * @returns true if the status is terminal, false otherwise.
+ * @param   enmStatus       Transfer status to classify.
+ */
+bool ShClTransferStatusIsTerminal(SHCLTRANSFERSTATUS enmStatus)
+{
+    return    enmStatus == SHCLTRANSFERSTATUS_COMPLETED
+           || enmStatus == SHCLTRANSFERSTATUS_CANCELED
+           || enmStatus == SHCLTRANSFERSTATUS_KILLED
+           || enmStatus == SHCLTRANSFERSTATUS_ERROR
+           || enmStatus == SHCLTRANSFERSTATUS_UNINITIALIZED;
+}
+
+
+/**
+ * Checks whether a transfer status and result form a valid service reply.
+ *
+ * @returns true if the status is valid and the result matches it, false otherwise.
+ * @param   enmStatus       Transfer status to validate.
+ * @param   rcTransfer      Transfer result associated with the status.
+ */
+bool ShClTransferStatusResultIsValid(SHCLTRANSFERSTATUS enmStatus, int rcTransfer)
+{
+    if (!ShClTransferStatusIsValid(enmStatus))
+        return false;
+
+    switch (enmStatus)
+    {
+        case SHCLTRANSFERSTATUS_CANCELED:
+            return rcTransfer == VERR_CANCELLED;
+
+        case SHCLTRANSFERSTATUS_KILLED:
+        case SHCLTRANSFERSTATUS_ERROR:
+            return RT_FAILURE(rcTransfer);
+
+        default:
+            return RT_SUCCESS(rcTransfer);
+    }
+}
+
+
+/**
+ * Checks whether a service-reported transfer status may follow the previous
+ * service-reported status.  This describes lifecycle records, not the
+ * lower-level transfer state mutation sequence.
+ *
+ * @returns true if both statuses are valid and the transition is monotonic, false otherwise.
+ * @param   enmOldStatus    Current transfer status.
+ * @param   enmNewStatus    Incoming transfer status.
+ */
+bool ShClTransferStatusTransitionIsValid(SHCLTRANSFERSTATUS enmOldStatus, SHCLTRANSFERSTATUS enmNewStatus)
+{
+    if (   !ShClTransferStatusIsValid(enmOldStatus)
+        || !ShClTransferStatusIsValid(enmNewStatus))
+        return false;
+
+    if (enmOldStatus == enmNewStatus)
+        return true;
+
+    switch (enmOldStatus)
+    {
+        case SHCLTRANSFERSTATUS_REQUESTED:
+            return    enmNewStatus == SHCLTRANSFERSTATUS_INITIALIZED
+                   || (   ShClTransferStatusIsTerminal(enmNewStatus)
+                       && enmNewStatus != SHCLTRANSFERSTATUS_COMPLETED);
+
+        case SHCLTRANSFERSTATUS_INITIALIZED:
+            return    enmNewStatus == SHCLTRANSFERSTATUS_STARTED
+                   || ShClTransferStatusIsTerminal(enmNewStatus);
+
+        case SHCLTRANSFERSTATUS_STARTED:
+            return ShClTransferStatusIsTerminal(enmNewStatus);
 
         default:
             return false;
@@ -1318,8 +1413,8 @@ static int shClTransferCreateInternal(SHCLTRANSFERDIR enmDir, SHCLSOURCE enmSour
                                       PSHCLTRANSFER *ppTransfer)
 {
     AssertPtrReturn(ppTransfer, VERR_INVALID_POINTER);
-    AssertReturn(shClTransferDirIsValid(enmDir), VERR_INVALID_PARAMETER);
-    AssertReturn(shClTransferSourceIsValid(enmSource), VERR_INVALID_PARAMETER);
+    AssertReturn(ShClTransferDirIsValid(enmDir), VERR_INVALID_PARAMETER);
+    AssertReturn(ShClSourceIsValid(enmSource), VERR_INVALID_PARAMETER);
     AssertReturn(cbMaxChunkSize, VERR_INVALID_PARAMETER);
     AssertReturn(cMaxListHandles, VERR_INVALID_PARAMETER);
     AssertReturn(cMaxObjHandles, VERR_INVALID_PARAMETER);
@@ -1914,7 +2009,7 @@ int ShClTransferSetProvider(PSHCLTRANSFER pTransfer, PSHCLTXPROVIDER pProvider)
 static int shClTransferSetStatus(PSHCLTRANSFER pTransfer, SHCLTRANSFERSTATUS enmStatus)
 {
     Assert(RTCritSectIsOwner(&pTransfer->CritSect));
-    AssertReturn(shClTransferStatusIsValid(enmStatus), VERR_INVALID_PARAMETER);
+    AssertReturn(ShClTransferStatusIsValid(enmStatus), VERR_INVALID_PARAMETER);
 #if 0
     AssertMsgReturn(pTransfer->State.enmStatus != enmStatus,
                     ("Setting the same status twice in a row (%#x), please report this!\n", enmStatus), VERR_WRONG_ORDER);
@@ -2303,17 +2398,18 @@ int ShClTransferRootsSetFromStringListUnicode(PSHCLTRANSFER pTransfer, PRTUTF16 
     size_t cwcRoots = cbRoots / sizeof(RTUTF16);
 
     /* This may slightly overestimate the space needed. */
-    size_t chDst = 0;
-    int rc = ShClHlpUtf16LenUtf8(pwszRoots, cwcRoots, &chDst);
+#if 0
+    size_t cbDst = 0;
+    int rc = ShClHlpUtf16LenUtf8(pwszRoots, cwcRoots, &cbDst);
     if (RT_SUCCESS(rc))
     {
-        chDst++; /* Add space for terminator. */
+        cbDst++; /* Add space for terminator. */
 
-        char *pszDst = (char *)RTStrAlloc(chDst);
+        char *pszDst = (char *)RTStrAlloc(cbDst);
         if (pszDst)
         {
             size_t cbActual = 0;
-            rc = ShClHlpConvUtf16CRLFToUtf8LF(pwszRoots, cwcRoots, pszDst, chDst, &cbActual);
+            rc = ShClHlpConvUtf16CRLFToUtf8LF(pwszRoots, cwcRoots, pszDst, cbDst, &cbActual);
             if (RT_SUCCESS(rc))
                 rc = ShClTransferRootsSetFromStringList(pTransfer, pszDst, cbActual + 1 /* Include terminator */);
 
@@ -2322,6 +2418,16 @@ int ShClTransferRootsSetFromStringListUnicode(PSHCLTRANSFER pTransfer, PRTUTF16 
         else
             rc = VERR_NO_MEMORY;
     }
+#else
+    char  *pszTmp = NULL;
+    size_t cbLenSansTerm = 0;
+    int rc = ShClHlpConvUtf16CRLFToUtf8LFA(pwszRoots, cwcRoots, &pszTmp, &cbLenSansTerm);
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferRootsSetFromStringList(pTransfer, pszTmp, cbLenSansTerm + 1 /* Include terminator */);
+        RTMemFree(pszTmp);
+    }
+#endif
 
     return rc;
 }
@@ -3195,9 +3301,7 @@ PSHCLTRANSFER ShClTransferCtxGetTransferByKey(PSHCLTRANSFERCTX pTransferCtx, SHC
                                               SHCLTRANSFERID idTransfer, SHCLTRANSFERGEN uGeneration)
 {
     AssertPtrReturn(pTransferCtx, NULL);
-    AssertReturn(idSession != 0 && idSession != NIL_SHCLSESSIONID, NULL);
-    AssertReturn(idTransfer != NIL_SHCLTRANSFERID && idTransfer > 0 && idTransfer < VBOX_SHCL_MAX_TRANSFERS - 1, NULL);
-    AssertReturn(uGeneration != 0 && uGeneration != NIL_SHCLTRANSFERGEN, NULL);
+    AssertReturn(ShClTransferKeyIsValid(idSession, idTransfer, uGeneration), NULL);
 
     shClTransferCtxLock(pTransferCtx);
 
@@ -3297,20 +3401,6 @@ uint32_t ShClTransferCtxGetTotalTransfers(PSHCLTRANSFERCTX pTransferCtx)
 }
 
 /**
- * Checks whether a transfer ID is in the assignable context-local range.
- *
- * @returns true if the ID can be used by a transfer context, false otherwise.
- * @param   idTransfer          Transfer ID to check.
- */
-static bool shClTransferCtxIsValidTransferId(SHCLTRANSFERID idTransfer)
-{
-    return    idTransfer != NIL_SHCLTRANSFERID
-           && idTransfer > 0
-           && idTransfer < VBOX_SHCL_MAX_TRANSFERS - 1;
-}
-
-
-/**
  * Creates the next non-reserved transfer generation for a locked transfer context.
  *
  * @returns Transfer generation.
@@ -3368,7 +3458,7 @@ static int shClTransferCreateIDInternal(PSHCLTRANSFERCTX pTransferCtx, SHCLTRANS
         }
 
         idTransfer++;
-        if (!shClTransferCtxIsValidTransferId(idTransfer))
+        if (!ShClTransferIdIsValid(idTransfer))
             idTransfer = 1;
     }
 
@@ -3412,7 +3502,7 @@ static int shClTransferCtxTransferRegisterExInternal(PSHCLTRANSFERCTX pTransferC
     AssertPtrReturn(pTransferCtx, VERR_INVALID_POINTER);
     AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
     Assert(RTCritSectIsOwner(&pTransferCtx->CritSect));
-    Assert(shClTransferCtxIsValidTransferId(idTransfer));
+    Assert(ShClTransferIdIsValid(idTransfer));
 
     shClTransferLock(pTransfer);
     pTransfer->State.uID         = idTransfer;
@@ -3459,7 +3549,7 @@ int ShClTransferCtxRegister(PSHCLTRANSFERCTX pTransferCtx, PSHCLTRANSFER pTransf
     SHCLTRANSFERID idTransfer = NIL_SHCLTRANSFERID; /* Shut up MSVC. */
 
     int rc;
-    if (shClTransferCtxIsValidTransferId(pTransfer->State.uID))
+    if (ShClTransferIdIsValid(pTransfer->State.uID))
         rc = VERR_ALREADY_EXISTS;
     else
         rc = shClTransferCreateIDInternal(pTransferCtx, &idTransfer);
@@ -3489,12 +3579,12 @@ int ShClTransferCtxRegisterById(PSHCLTRANSFERCTX pTransferCtx, PSHCLTRANSFER pTr
 {
     AssertPtrReturn(pTransferCtx, VERR_INVALID_POINTER);
     AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
-    AssertReturn(shClTransferCtxIsValidTransferId(idTransfer), VERR_INVALID_PARAMETER);
+    AssertReturn(ShClTransferIdIsValid(idTransfer), VERR_INVALID_PARAMETER);
 
     shClTransferCtxLock(pTransferCtx);
 
     int rc;
-    if (shClTransferCtxIsValidTransferId(pTransfer->State.uID))
+    if (ShClTransferIdIsValid(pTransfer->State.uID))
         rc = VERR_ALREADY_EXISTS;
     else if (pTransferCtx->cTransfers < VBOX_SHCL_MAX_TRANSFERS - 2 /* First and last are not used */)
     {
@@ -3544,7 +3634,7 @@ static void shclTransferCtxTransferRemoveAndUnregister(PSHCLTRANSFERCTX pTransfe
     Assert(RTCritSectIsOwner(&pTransferCtx->CritSect));
 
     SHCLTRANSFERID const idTransfer = ShClTransferGetID(pTransfer);
-    if (shClTransferCtxIsValidTransferId(idTransfer))
+    if (ShClTransferIdIsValid(idTransfer))
         ASMBitClear(&pTransferCtx->bmTransferIds[0], idTransfer);
 
     RTListNodeRemove(&pTransfer->Node);
@@ -3575,7 +3665,7 @@ static void shclTransferCtxTransferRemoveAndUnregister(PSHCLTRANSFERCTX pTransfe
 int ShClTransferCtxUnregisterById(PSHCLTRANSFERCTX pTransferCtx, SHCLTRANSFERID idTransfer)
 {
     AssertPtrReturn(pTransferCtx, VERR_INVALID_POINTER);
-    AssertReturn(shClTransferCtxIsValidTransferId(idTransfer), VERR_INVALID_PARAMETER);
+    AssertReturn(ShClTransferIdIsValid(idTransfer), VERR_INVALID_PARAMETER);
 
     shClTransferCtxLock(pTransferCtx);
 
@@ -5073,6 +5163,28 @@ void ShClSvcTransferDestroy(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer)
     LogFlowFuncLeave();
 }
 
+
+/**
+ * Destroys all transfers of a Shared Clipboard client.
+ *
+ * @param   pClient             Client to destroy transfers for.
+ */
+void shClSvcTransferDestroyAll(PSHCLCLIENT pClient)
+{
+    if (!pClient)
+        return;
+
+    LogFlowFuncEnter();
+
+    /* Unregister and destroy all transfers.
+     * Also make sure to let the backend know that all transfers are getting destroyed.
+     *
+     * Note: The index always will be 0, as the transfer gets unregistered. */
+    PSHCLTRANSFER pTransfer;
+    while ((pTransfer = ShClTransferCtxGetTransferByIndex(&pClient->Transfers.Ctx, 0 /* Index */)))
+        ShClSvcTransferDestroy(pClient, pTransfer);
+}
+
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_HOST */
 
 /**
@@ -5173,7 +5285,7 @@ int ShClSvcTransferInit(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer)
                                              ? SHCLTRANSFERSTATUS_INITIALIZED : SHCLTRANSFERSTATUS_ERROR, rc,
                                              NULL /* ppEvent */);
     if (RT_SUCCESS(rc))
-        rc2 = rc;
+        rc = rc2;
 
     if (RT_FAILURE(rc))
         LogRel(("Shared Clipboard: Initializing transfer failed with %Rrc\n", rc));

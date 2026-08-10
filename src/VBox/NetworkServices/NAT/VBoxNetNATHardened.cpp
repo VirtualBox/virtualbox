@@ -1,4 +1,4 @@
-/* $Id: VBoxNetNATHardened.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxNetNATHardened.cpp 114883 2026-08-07 07:12:24Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxNetNAT - Hardened main().
  */
@@ -33,5 +33,9 @@
 
 int main(int argc, char **argv, char **envp)
 {
+#ifdef VBOX_WITH_DRIVERLESS_NEM_FALLBACK
+    return SUPR3HardenedMain(SERVICE_NAME, SUPSECMAIN_FLAGS_DRIVERLESS_NEM_FALLBACK, argc, argv, envp);
+#else
     return SUPR3HardenedMain(SERVICE_NAME, 0 /* fFlags */, argc, argv, envp);
+#endif
 }

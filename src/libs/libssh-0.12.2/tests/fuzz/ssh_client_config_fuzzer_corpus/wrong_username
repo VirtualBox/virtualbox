@@ -1,0 +1,7 @@
+Host jumpbox
+User oliverw
+Hostname jumpbox.example.org
+
+Host myserver.example.org
+Hostname 1.2.3.4
+ProxyJump jumpbox

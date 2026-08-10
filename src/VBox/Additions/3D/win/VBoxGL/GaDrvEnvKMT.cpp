@@ -1,4 +1,4 @@
-/* $Id: GaDrvEnvKMT.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: GaDrvEnvKMT.cpp 114817 2026-07-30 16:48:15Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Gallium driver interface to the WDDM miniport driver using Kernel Mode Thunks.
  */
@@ -956,9 +956,19 @@ vboxDdiRender(GaKmtCallbacks *pKmtCallbacks,
         RenderData.Flags.PresentRedirected = fPresentRedirected;
 
         NTSTATUS Status = pKmtCallbacks->d3dkmt->pfnD3DKMTRender(&RenderData);
-        Assert(Status == STATUS_SUCCESS);
-        if (Status != STATUS_SUCCESS)
+        if (   fPresentRedirected
+            && (   Status == STATUS_GRAPHICS_PRESENT_OCCLUDED
+                || Status == STATUS_GRAPHICS_PRESENT_DENIED)
+           )
         {
+            /* "Nothing to present due to desktop occlusion"
+             * "Not able to present due to denial of desktop access"
+             * Treat as a success. RenderData.[p]New* are valid.
+             */
+        }
+        else if (Status != STATUS_SUCCESS)
+        {
+            AssertFailed();
             return false;
         }
 

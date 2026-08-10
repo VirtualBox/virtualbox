@@ -1,4 +1,4 @@
-/** $Id: draganddrop.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: draganddrop.h 114749 2026-07-22 08:56:08Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - VBoxClient drag'n drop - Main header.
  */
@@ -148,5 +148,6 @@ private:
 
     friend class VBClX11DnDInst;
 };
+
 #endif /* !GA_INCLUDED_SRC_x11_VBoxClient_draganddrop_h */
 

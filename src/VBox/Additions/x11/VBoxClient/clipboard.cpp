@@ -1,4 +1,4 @@
-/** $Id: clipboard.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard.cpp 114748 2026-07-21 20:16:49Z knut.osmundsen@oracle.com $ */
 /** @file
  * Guest Additions - Common Shared Clipboard wrapper service.
  */
@@ -32,6 +32,7 @@
 #include <iprt/alloc.h>
 #include <iprt/asm.h>
 #include <iprt/assert.h>
+#include <iprt/env.h>
 #include <iprt/initterm.h>
 #include <iprt/mem.h>
 #include <iprt/string.h>
@@ -48,13 +49,39 @@
 #include "VBoxClient.h"
 
 #include "clipboard.h"
-#include "clipboard-x11.h"
 
 
 /** Shared Clipboard context.
  *  Only one context is supported at a time for now. */
 SHCLCONTEXT g_Ctx;
+/** Whether we're using wayland or not. */
+static bool g_fVBClWayland = false;
 
+
+/**
+ * Checks whether @a enmType and environment means we should use wayland for the
+ * clipboard or not.
+ *
+ * This is shared with the --session-detect2 command.
+ */
+bool VBClClipboardShouldUseWayland(VBGHDISPLAYSERVERTYPE enmType)
+{
+    /* This is mainly about deciding whether we should use X11 service mode
+       or wayland.  Pure wayland leaves no options, of course. */
+    bool fWayland = enmType == VBGHDISPLAYSERVERTYPE_PURE_WAYLAND;
+
+    /* In case of XWayland, X11 version of VBoxClient still can
+     * work, however with some DEs, such as Plasma on Wayland,
+     * this will no longer work. Detect such DEs here. */
+    if (enmType == VBGHDISPLAYSERVERTYPE_XWAYLAND)
+    {
+        const char *pszDesktopSession = RTEnvGet(VBGH_ENV_DESKTOP_SESSION);
+        fWayland = RT_VALID_PTR(pszDesktopSession)
+                && (   RTStrIStr(pszDesktopSession, "plasmawayland") != NULL
+                    || RTStrIStr(pszDesktopSession, "plasma")        != NULL);
+    }
+    return fWayland;
+}
 
 /**
  * @interface_method_impl{VBCLSERVICE,pfnInit}
@@ -80,24 +107,36 @@ static DECLCALLBACK(int) vbclShClWorker(bool volatile *pfShutdown)
 {
     RT_NOREF(pfShutdown);
 
-    int rc = VINF_SUCCESS;
-
-    if (   VBClGetDisplayServerType() == VBGHDISPLAYSERVERTYPE_X11
-        /* If Wayland w/ X fallback support is installed (also called XWayland), prefer using the X clipboard for now. */
-        || VBClGetDisplayServerType() == VBGHDISPLAYSERVERTYPE_XWAYLAND)
+    int rc;
+    g_fVBClWayland = false;
+    VBGHDISPLAYSERVERTYPE const enmDispType = VBClGetDisplayServerTypeResolveAuto();
+    if (VBClClipboardShouldUseWayland(enmDispType))
+    {
+        g_fVBClWayland = true;
+#ifdef VBOX_WITH_WAYLAND_ADDITIONS
+        rc = VBClClipboardWaylandInit(&g_Ctx);
+        if (RT_SUCCESS(rc))
+        {
+            RTThreadUserSignal(RTThreadSelf()); /* signal the main thread that we're ready */
+            rc = VBClClipboardWaylandMain(&g_Ctx, pfShutdown);
+        }
+#else
+        VBClLogError("Wayland integration is not enabled in this build!\n");
+#endif
+    }
+    else if (enmDispType == VBGHDISPLAYSERVERTYPE_X11 || enmDispType == VBGHDISPLAYSERVERTYPE_XWAYLAND)
     {
         rc = VBClX11ClipboardInit();
         if (RT_SUCCESS(rc))
         {
-            /* Let the main thread know that it can continue spawning services. */
-            RTThreadUserSignal(RTThreadSelf());
-
+            RTThreadUserSignal(RTThreadSelf()); /* signal the main thread that we're ready */
             rc = VBClX11ClipboardMain();
         }
     }
-    else if (VBClGetDisplayServerType() == VBGHDISPLAYSERVERTYPE_PURE_WAYLAND)
+    else
     {
-        VBClLogError("Shared Clipboard for Wayland not supported yet!\n");
+        VBClLogError("Unexpected VBGHDISPLAYSERVERTYPE value: %d\n", enmDispType);
+        return VINF_SUCCESS; /* prevent auto restart by daemon script */
     }
 
     if (RT_FAILURE(rc))
@@ -114,8 +153,17 @@ static DECLCALLBACK(int) vbclShClWorker(bool volatile *pfShutdown)
  */
 static DECLCALLBACK(void) vbclShClStop(void)
 {
-    /* Disconnect from the host service.
-     * This will also send a VBOX_SHCL_HOST_MSG_QUIT from the host so that we can break out from our message worker. */
+#ifdef VBOX_WITH_WAYLAND_ADDITIONS
+    if (g_fVBClWayland)
+        VBClClipboardWaylandStop(&g_Ctx);
+#endif
+
+    /*
+     * Disconnect from the host service.
+     *
+     * This will also send a VBOX_SHCL_HOST_MSG_QUIT from the host so that we
+     * can break out from our message worker.
+     */
     VbglR3ClipboardDisconnect(g_Ctx.CmdCtx.idClient);
     g_Ctx.CmdCtx.idClient = 0;
 }
@@ -128,12 +176,17 @@ static DECLCALLBACK(int) vbclShClTerm(void)
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     ShClTransferCtxDestroy(&g_Ctx.TransferCtx);
 #endif
-    VBClX11ClipboardDestroy();
+    if (!g_fVBClWayland)
+        VBClX11ClipboardDestroy();
+#ifdef VBOX_WITH_WAYLAND_ADDITIONS
+    else
+        VBClClipboardWaylandTerm(&g_Ctx);
+#endif
 
     return VINF_SUCCESS;
 }
 
-VBCLSERVICE g_SvcClipboard =
+VBCLSERVICE const g_SvcClipboard =
 {
     "shcl",                      /* szName */
     "Shared Clipboard",          /* pszDescription */

@@ -1,4 +1,4 @@
-/* $Id: clipboard-win.cpp 114632 2026-07-07 15:27:30Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-win.cpp 114754 2026-07-22 21:18:51Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard: Windows-specific functions for clipboard handling.
  */
@@ -1060,6 +1060,7 @@ int ShClWinDataWrite(UINT cfFormat, void *pvData, uint32_t cbData)
 }
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+
 /**
  * Creates an Shared Clipboard transfer by announcing transfer data (via IDataObject) to Windows.
  *
@@ -1367,15 +1368,17 @@ int ShClWinTransferGetRootsFromClipboard(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTra
 }
 
 /**
- * Converts a DROPFILES (HDROP) structure to a string list, separated by SHCL_TRANSFER_URI_LIST_SEP_STR.
+ * Converts a DROPFILES (HDROP) structure to text/uri-list - a string list,
+ * separated by CRLF (SHCL_TRANSFER_URI_LIST_SEP_STR).
+ *
  * Does not do any locking on the input data.
  *
  * @returns VBox status code.
- * @param   pDropFiles          Pointer to DROPFILES structure to convert.
- * @param   ppszList            Where to store the allocated string list on success.
- *                              Needs to be free'd with RTStrFree().
- * @param   pcbList             Where to store the size (in bytes) of the allocated string list.
- *                              Includes zero terminator.
+ * @param   pDropFiles  Pointer to DROPFILES structure to convert.
+ * @param   ppszList    Where to store the allocated string list on
+ *                      success. Needs to be free'd with RTStrFree().
+ * @param   pcbList     Where to store the size (in bytes) of the allocated
+ *                      string list. Includes zero terminator.
  */
 int ShClWinTransferDropFilesToStringList(DROPFILES *pDropFiles, char **ppszList, uint32_t *pcbList)
 {
@@ -1397,34 +1400,32 @@ int ShClWinTransferDropFilesToStringList(DROPFILES *pDropFiles, char **ppszList,
 
     /* First, get the file count. */
     /** @todo Does this work on Windows 2000 / NT4? */
-    char *pszFiles = NULL;
-    uint32_t cchFiles = 0;
-    UINT cFiles = DragQueryFile(hDrop, UINT32_MAX /* iFile */, NULL /* lpszFile */, 0 /* cchFile */);
+    char  *pszFiles = NULL;
+    size_t cchFiles = 0;
+    UINT   cFiles   = DragQueryFile(hDrop, UINT32_MAX /* iFile */, NULL /* lpszFile */, 0 /* cchFile */);
 
-    LogFlowFunc(("Got %RU16 file(s), fUnicode=%RTbool\n", cFiles, fUnicode));
+    LogFlowFunc(("Got %u file(s), fUnicode=%RTbool\n", cFiles, fUnicode));
 
-    for (UINT i = 0; i < cFiles; i++)
+    for (UINT idxFile = 0; idxFile < cFiles; idxFile++)
     {
-        UINT cchFile = DragQueryFile(hDrop, i /* File index */, NULL /* Query size first */, 0 /* cchFile */);
+        UINT cchFile = DragQueryFile(hDrop, idxFile, NULL /* Query size first */, 0 /* cchFile */);
         Assert(cchFile);
 
         if (RT_FAILURE(rc))
             break;
 
-        char *pszFileUtf8 = NULL; /* UTF-8 version. */
-        UINT cchFileUtf8 = 0;
+        char *pszFileUtf8 = NULL; /* UTF-8 version */
+        UINT  cchFileUtf8 = 0;
         if (fUnicode)
         {
             /* Allocate enough space (including terminator). */
-            WCHAR *pwszFile = (WCHAR *)RTMemAlloc((cchFile + 1) * sizeof(WCHAR));
+            WCHAR *pwszFile = (WCHAR *)RTMemTmpAlloc((cchFile + 1) * sizeof(WCHAR));
             if (pwszFile)
             {
-                const UINT cwcFileUtf16 = DragQueryFileW(hDrop, i /* File index */,
-                                                         pwszFile, cchFile + 1 /* Include terminator */);
+                const UINT cwcFile = DragQueryFileW(hDrop, idxFile, pwszFile, cchFile + 1 /* Include terminator */);
 
-                AssertMsg(cwcFileUtf16 == cchFile, ("cchFileUtf16 (%RU16) does not match cchFile (%RU16)\n",
-                                                    cwcFileUtf16, cchFile));
-                RT_NOREF(cwcFileUtf16);
+                AssertMsg(cwcFile == cchFile, ("cchFileUtf16 (%u) does not match cchFile (%u)\n", cwcFile, cchFile));
+                RT_NOREF(cwcFile);
 
                 rc = RTUtf16ToUtf8(pwszFile, &pszFileUtf8);
                 if (RT_SUCCESS(rc))
@@ -1433,7 +1434,7 @@ int ShClWinTransferDropFilesToStringList(DROPFILES *pDropFiles, char **ppszList,
                     Assert(cchFileUtf8);
                 }
 
-                RTMemFree(pwszFile);
+                RTMemTmpFree(pwszFile);
             }
             else
                 rc = VERR_NO_MEMORY;
@@ -1441,35 +1442,34 @@ int ShClWinTransferDropFilesToStringList(DROPFILES *pDropFiles, char **ppszList,
         else /* ANSI */
         {
             /* Allocate enough space (including terminator). */
-            char *pszFileANSI = (char *)RTMemAlloc((cchFile + 1) * sizeof(char));
+            char *pszFileANSI = (char *)RTMemTmpAlloc((cchFile + 1) * sizeof(char));
             UINT  cchFileANSI = 0;
             if (pszFileANSI)
             {
-                cchFileANSI = DragQueryFileA(hDrop, i /* File index */,
-                                             pszFileANSI, cchFile + 1 /* Include terminator */);
+                cchFileANSI = DragQueryFileA(hDrop, idxFile, pszFileANSI, cchFile + 1 /* Include terminator */);
 
-                AssertMsg(cchFileANSI == cchFile, ("cchFileANSI (%RU16) does not match cchFile (%RU16)\n",
-                                                   cchFileANSI, cchFile));
+                AssertMsg(cchFileANSI == cchFile, ("cchFileANSI (%u) does not match cchFile (%u)\n", cchFileANSI, cchFile));
+                RT_NOREF(cchFileANSI);
 
                 /* Convert the ANSI codepage to UTF-8. */
                 rc = RTStrCurrentCPToUtf8(&pszFileUtf8, pszFileANSI);
                 if (RT_SUCCESS(rc))
-                {
                     cchFileUtf8 = (UINT)strlen(pszFileUtf8);
-                }
+
+                RTMemTmpFree(pszFileANSI);
             }
             else
                 rc = VERR_NO_MEMORY;
         }
-
         if (RT_SUCCESS(rc))
         {
-            LogFlowFunc(("\tFile: %s (cchFile=%RU16)\n", pszFileUtf8, cchFileUtf8));
-
+            LogFlowFunc(("\tFile: %s (cchFile=%u)\n", pszFileUtf8, cchFileUtf8));
             LogRel2(("Shared Clipboard: Adding file '%s' to transfer\n", pszFileUtf8));
 
-            rc = RTStrAAppendExN(&pszFiles, 1 /* cPairs */, pszFileUtf8, strlen(pszFileUtf8));
-            cchFiles += (uint32_t)strlen(pszFileUtf8);
+            /* Always append a CRLF, even for the final list element. */
+            rc = RTStrAAppendExN(&pszFiles, 2 /* cPairs */, pszFileUtf8, (size_t)cchFileUtf8,
+                                 SHCL_TRANSFER_URI_LIST_SEP_STR, (size_t)2);
+            cchFiles += cchFileUtf8 + 2;
         }
 
         if (pszFileUtf8)
@@ -1477,36 +1477,32 @@ int ShClWinTransferDropFilesToStringList(DROPFILES *pDropFiles, char **ppszList,
 
         if (RT_FAILURE(rc))
         {
-            LogFunc(("Error handling file entry #%u, rc=%Rrc\n", i, rc));
+            LogFunc(("Error handling file entry #%u, rc=%Rrc\n", idxFile, rc));
             break;
         }
-
-        /* Add separation between filenames.
-         * Note: Also do this for the last element of the list. */
-        rc = RTStrAAppendExN(&pszFiles, 1 /* cPairs */, SHCL_TRANSFER_URI_LIST_SEP_STR, 2 /* Bytes */);
-        if (RT_SUCCESS(rc))
-            cchFiles += 2; /* Include SHCL_TRANSFER_URI_LIST_SEP_STR */
-    }
+    } /* for loop over the offered files */
 
     if (RT_SUCCESS(rc))
     {
         cchFiles += 1; /* Add string termination. */
-        uint32_t cbFiles = cchFiles * sizeof(char); /* UTF-8. */
-
-        LogFlowFunc(("cFiles=%u, cchFiles=%RU32, cbFiles=%RU32, pszFiles=0x%p\n",
-                     cFiles, cchFiles, cbFiles, pszFiles));
-
-        *ppszList = pszFiles;
-        *pcbList   = cbFiles;
+        LogFlowFunc(("cFiles=%u cchFiles=%#zx pszFiles=0x%p\n", cFiles, cchFiles, pszFiles));
+        if (cchFiles <= UINT32_MAX / 2)
+        {
+            *ppszList = pszFiles;
+            *pcbList  = (uint32_t)cchFiles;
+        }
+        else
+        {
+            RTStrFree(pszFiles);
+            rc = VERR_TOO_MUCH_DATA;
+        }
     }
     else
-    {
-        if (pszFiles)
-            RTStrFree(pszFiles);
-    }
+        RTStrFree(pszFiles);
 
     LogFlowFuncLeaveRC(rc);
     return rc;
 }
+
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 

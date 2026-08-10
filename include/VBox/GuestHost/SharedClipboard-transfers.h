@@ -1,4 +1,4 @@
-/* $Id: SharedClipboard-transfers.h 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $ */
+/* $Id: SharedClipboard-transfers.h 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Shared transfer functions between host and guest.
  */
@@ -1146,6 +1146,62 @@ void ShClTransferObjDataChunkFree(PSHCLOBJDATACHUNK pDataChunk);
 /** @name Shared Clipboard transfer API.
  *  @{
  */
+/**
+ * Checks whether a transfer ID is in the assignable context-local range.
+ *
+ * @returns true if the ID can be used by a transfer context, false otherwise.
+ * @param   idTransfer          Transfer ID to check before narrowing to SHCLTRANSFERID.
+ */
+bool ShClTransferIdIsValid(uint32_t idTransfer);
+
+/**
+ * Checks whether a transfer key is usable for lifecycle tracking.
+ *
+ * @returns true if the key identifies a non-nil service transfer, false otherwise.
+ * @param   idSession           Service session ID.
+ * @param   idTransfer          Service transfer ID, before narrowing to SHCLTRANSFERID.
+ * @param   uGeneration         Service transfer generation.
+ */
+bool ShClTransferKeyIsValid(SHCLSESSIONID idSession, uint32_t idTransfer, SHCLTRANSFERGEN uGeneration);
+
+/**
+ * Checks whether a transfer status is part of the Shared Clipboard protocol.
+ *
+ * @returns true if the status is valid, false otherwise.
+ * @param   enmStatus           Transfer status to validate.
+ */
+bool ShClTransferStatusIsValid(SHCLTRANSFERSTATUS enmStatus);
+
+/**
+ * Checks whether a transfer status ends the transfer lifecycle.
+ *
+ * @returns true if the status is terminal, false otherwise.
+ * @param   enmStatus           Transfer status to classify.
+ */
+bool ShClTransferStatusIsTerminal(SHCLTRANSFERSTATUS enmStatus);
+
+/**
+ * Checks whether a transfer status and result form a valid service reply.
+ *
+ * @returns true if the status is valid and the result matches it, false otherwise.
+ * @param   enmStatus           Transfer status to validate.
+ * @param   rcTransfer          Transfer result associated with the status.
+ */
+bool ShClTransferStatusResultIsValid(SHCLTRANSFERSTATUS enmStatus, int rcTransfer);
+
+/**
+ * Checks whether a service-reported transfer status may follow the previous
+ * service-reported status.
+ *
+ * This describes lifecycle records, not the lower-level transfer state
+ * mutation sequence.
+ *
+ * @returns true if both statuses are valid and the transition is monotonic, false otherwise.
+ * @param   enmOldStatus        Current transfer status.
+ * @param   enmNewStatus        Incoming transfer status.
+ */
+bool ShClTransferStatusTransitionIsValid(SHCLTRANSFERSTATUS enmOldStatus, SHCLTRANSFERSTATUS enmNewStatus);
+
 int ShClTransferCreateEx(SHCLTRANSFERDIR enmDir, SHCLSOURCE enmSource, uint32_t cbMaxChunkSize, uint32_t cMaxListHandles, uint32_t cMaxObjHandles, PSHCLTRANSFER *ppTransfer);
 int ShClTransferCreate(SHCLTRANSFERDIR enmDir, SHCLSOURCE enmSource, PSHCLTRANSFERCALLBACKS pCallbacks, PSHCLTRANSFER *ppTransfer);
 int ShClTransferInit(PSHCLTRANSFER pTransfer);
@@ -1291,6 +1347,11 @@ int ShClTransferHttpServerWaitForStatusChange(PSHCLHTTPSERVER pSrv, SHCLHTTPSERV
  */
 int ShClPathSanitizeFilename(char *pszPath, size_t cbPath);
 int ShClPathSanitize(char *pszPath, size_t cbPath);
+bool ShClPathIsSymlink(const char *pszPath);
+bool ShClPathIsDirectory(const char *pszPath);
+int ShClDirectoryCreate(const char *pszPath);
+int ShClHlpTransferPathToHostPath(const char *pszDestination, const char *pszTransferPath,
+                                  char *pszHostPath, size_t cbHostPath);
 const char *ShClTransferStatusToStr(SHCLTRANSFERSTATUS enmStatus);
 int ShClTransferTransformPath(char *pszPath, size_t cbPath);
 int ShClTransferValidatePath(const char *pcszPath, bool fMustExist);

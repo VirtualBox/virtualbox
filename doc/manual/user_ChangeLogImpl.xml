@@ -112,6 +112,12 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
+        <para>Shared Clipboard: Fixed plain-text copy and paste on macOS hosts and improved
+          VBoxManage clipboard listen event and payload output, including compact logfmt-style
+          human records and a startup warning when Shared Clipboard is disabled</para>
+      </listitem>
+
+      <listitem>
         <para>placeholder</para>
       </listitem>
 
