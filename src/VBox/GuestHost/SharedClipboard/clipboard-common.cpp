@@ -1,4 +1,4 @@
-/* $Id: clipboard-common.cpp 114775 2026-07-26 00:14:04Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-common.cpp 114908 2026-08-10 08:45:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common helper objects.
  */
@@ -209,13 +209,12 @@ static void shClEventSourceResetInternal(PSHCLEVENTSOURCE pSource)
         if (!fDealloc)
             Log3Func(("Event %RU32 has %RU32 references left, skipping de-allocation\n", pEvIt->idEvent, pEvIt->cRefs));
 
-        shClEventDestroy(pEvIt);
-
         int rc2 = shClEventSourceUnregisterEvent(pSource, pEvIt);
         AssertRC(rc2);
 
         if (fDealloc)
         {
+            shClEventDestroy(pEvIt);
             RTMemFree(pEvIt);
             pEvIt = NULL;
         }
@@ -274,6 +273,7 @@ int ShClEventSourceGenerateAndRegisterEvent(PSHCLEVENTSOURCE pSource, PSHCLEVENT
                 {
                     pEvent->pParent = pSource;
                     pEvent->idEvent = idEvent;
+                    pEvent->cRefs   = 1; /* Reference returned to the caller. */
                     RTListAppend(&pSource->lstEvents, &pEvent->Node);
 
                     rc = RTCritSectLeave(&pSource->CritSect);
@@ -281,7 +281,6 @@ int ShClEventSourceGenerateAndRegisterEvent(PSHCLEVENTSOURCE pSource, PSHCLEVENT
 
                     LogFlowFunc(("uSource=%RU16: New event: %#x\n", pSource->uID, idEvent));
 
-                    ShClEventRetain(pEvent);
                     *ppEvent = pEvent;
 
                     return VINF_SUCCESS;
@@ -530,27 +529,38 @@ uint32_t ShClEventRelease(PSHCLEVENT pEvent)
 
     AssertReturn(ASMAtomicReadU32(&pEvent->cRefs) > 0, UINT32_MAX);
 
-    uint32_t const cRefs = ASMAtomicDecU32(&pEvent->cRefs);
-    if (cRefs == 0)
+    /* Serialize the final release with a source reset, which can detach the event while we wait for the source lock. */
+    uint32_t cRefs;
+    int rc = VINF_SUCCESS;
+    PSHCLEVENTSOURCE pParent = pEvent->pParent;
+    if (   pParent
+        && RTCritSectIsInitialized(&pParent->CritSect))
     {
-        int rc;
-        PSHCLEVENTSOURCE pParent = pEvent->pParent;
-        if (   pParent
-            && RTCritSectIsInitialized(&pParent->CritSect))
+        rc = RTCritSectEnter(&pParent->CritSect);
+        if (RT_SUCCESS(rc))
         {
-            rc = RTCritSectEnter(&pParent->CritSect);
-            if (RT_SUCCESS(rc))
-            {
+            cRefs = ASMAtomicDecU32(&pEvent->cRefs);
+            if (   cRefs == 0
+                && pEvent->pParent == pParent)
                 rc = shClEventSourceUnregisterEvent(pParent, pEvent);
 
-                int rc2 = RTCritSectLeave(&pParent->CritSect);
-                if (RT_SUCCESS(rc))
-                    rc = rc2;
-            }
+            int rc2 = RTCritSectLeave(&pParent->CritSect);
+            if (RT_SUCCESS(rc))
+                rc = rc2;
+        }
+        else if (pEvent->pParent == NULL)
+        {
+            cRefs = ASMAtomicDecU32(&pEvent->cRefs);
+            rc = VINF_SUCCESS;
         }
         else
-            rc = VINF_SUCCESS;
+            return UINT32_MAX;
+    }
+    else
+        cRefs = ASMAtomicDecU32(&pEvent->cRefs);
 
+    if (cRefs == 0)
+    {
         if (RT_SUCCESS(rc))
         {
             shClEventDestroy(pEvent);
@@ -1166,4 +1176,3 @@ VBGH_DECL(int) ShClCacheTransferAll(PSHCLCACHE pCache, PSHCLCACHE pOtherCache)
     }
     return VINF_SUCCESS;
 }
-
