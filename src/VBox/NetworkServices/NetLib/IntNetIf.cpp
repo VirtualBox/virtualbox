@@ -1,4 +1,4 @@
-/* $Id: IntNetIf.cpp 114959 2026-08-10 14:41:23Z andreas.loeffler@oracle.com $ */
+/* $Id: IntNetIf.cpp 114964 2026-08-10 15:18:23Z andreas.loeffler@oracle.com $ */
 /** @file
  * IntNetIfCtx - Abstract API implementing an IntNet connection using the R0 support driver or some R3 IPC variant.
  */
@@ -979,6 +979,7 @@ static void intnetR3IfClose(PINTNETIFCTXINT pThis)
 #else
         AssertRC(rc);
 #endif
+        RT_NOREF(rc);
     }
 }
 
