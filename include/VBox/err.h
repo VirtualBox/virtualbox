@@ -3145,6 +3145,8 @@
 #define VERR_APIC_IPE_2                             (-6707)
 /** Update the APIC state in R3 after an unaccelerated write (AVIC/APICv). */
 #define VINF_APIC_R3_UPDATE_STATE                   6708
+/** Pending interrupt deferred for delivery by hardware (AVIC/APICv). */
+#define VERR_APIC_INTR_DEFER                        (-6709)
 /** @} */
 
 /** @name NEM Status Codes

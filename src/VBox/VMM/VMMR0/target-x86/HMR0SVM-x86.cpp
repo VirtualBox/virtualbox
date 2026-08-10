@@ -3825,6 +3825,11 @@ static VBOXSTRICTRC hmR0SvmEvaluatePendingEvent(PVMCPUCC pVCpu, PCSVMTRANSIENT p
             {
                 if (!VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_PIC))
                     fGetInterrupt = false;
+                /*
+                 * We clear the interrupt flag here because we are certain that all
+                 * conditions necessary for the AVIC hardware to deliver the interrupt
+                 * are met.
+                 */
                 if (VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_APIC))
                     VMCPU_FF_CLEAR(pVCpu, VMCPU_FF_INTERRUPT_APIC);
             }

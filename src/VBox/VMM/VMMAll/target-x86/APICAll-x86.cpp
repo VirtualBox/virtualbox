@@ -765,6 +765,7 @@ static VBOXSTRICTRC apicSetIcrLo(PVMCPUCC pVCpu, uint32_t uIcrLo, int rcRZ, bool
         STAM_COUNTER_INC(&pVCpu->apic.s.StatIcrLoWrite);
     RT_NOREF(fUpdateStat);
 
+    Assert(!(pXApicPage->icr_lo.all.u32IcrLo & XAPIC_LVT_DELIVERY_STATUS));
     return apicSendIpi(pVCpu, rcRZ);
 }
 
@@ -1467,7 +1468,7 @@ DECLINLINE(VBOXSTRICTRC) apicWriteRegister(PPDMDEVINS pDevIns, PVMCPUCC pVCpu, u
 {
     VMCPU_ASSERT_EMT(pVCpu);
     Assert(offReg <= XAPIC_OFF_MAX_VALID);
-    //Assert(!XAPIC_IN_X2APIC_MODE(pVCpu->apic.s.uApicBaseMsr));
+    Assert(!XAPIC_IN_X2APIC_MODE(pVCpu->apic.s.uApicBaseMsr));
 
     VBOXSTRICTRC rcStrict = VINF_SUCCESS;
     switch (offReg)
@@ -1593,7 +1594,7 @@ static DECLCALLBACK(VBOXSTRICTRC) apicReadMsr(PVMCPUCC pVCpu, uint32_t u32Reg, u
      * Validate.
      */
     VMCPU_ASSERT_EMT(pVCpu);
-    Assert(u32Reg >= MSR_IA32_X2APIC_ID && u32Reg <= MSR_IA32_X2APIC_SELF_IPI);
+    AssertMsg(u32Reg >= MSR_IA32_X2APIC_ID && u32Reg <= MSR_IA32_X2APIC_SELF_IPI, ("u32Reg=%#x\n", u32Reg));
     Assert(pu64Value);
 
     /*
@@ -2438,7 +2439,7 @@ static DECLCALLBACK(int) apicGetInterrupt(PVMCPUCC pVCpu, uint8_t *pu8Vector, ui
     {
         *pu8Vector = 0;
         *puSrcTag  = 0;
-        return VERR_NO_DATA;
+        return VERR_APIC_INTR_DEFER;
     }
 
     PXAPICPAGE pXApicPage = VMCPU_TO_XAPICPAGE(pVCpu);
@@ -2669,7 +2670,8 @@ DECLCALLBACK(bool) apicPostInterrupt(PVMCPUCC pVCpu, uint8_t uVector, XAPICTRIGG
                                      uint32_t uSrcTag)
 {
     Assert(pVCpu);
-    Assert(uVector > XAPIC_ILLEGAL_VECTOR_END);
+    AssertMsg(uVector > XAPIC_ILLEGAL_VECTOR_END, ("uVector=%#x, IcrLo=%#RX32 IcrHi=%#RX32\n", uVector,
+        VMCPU_TO_CX2APICPAGE(pVCpu)->icr_lo.all.u32IcrLo, VMCPU_TO_CX2APICPAGE(pVCpu)->icr_hi.u32IcrHi));
     RT_NOREF(fAutoEoi);
 
     PVMCC    pVM       = pVCpu->CTX_SUFF(pVM);
@@ -3011,22 +3013,43 @@ static DECLCALLBACK(VBOXSTRICTRC) apicVBoxUpdateStateAfterWrite(PVMCPUCC pVCpu, 
 
     Assert(PDMHasApic(pVCpu->CTX_SUFF(pVM)));
 
+    /*
+     * In SVM, vAPIC registers are 32-bits wide and currently the two 64-bit accesses
+     * (Self-IPI, and ICR) are both trap-like accesses meaning the the higher 32 bits
+     * are already updated.
+     */
     PPDMDEVINS pDevIns  = VMCPU_TO_DEVINS(pVCpu);
-    uint32_t u32Value = 0;
-
-    VBOXSTRICTRC rcStrict = apicReadRegister(pDevIns, pVCpu, offApicReg, &u32Value);
-    if (rcStrict == VINF_SUCCESS)
+    VBOXSTRICTRC rcStrict;
+    if (XAPIC_IN_X2APIC_MODE(pVCpu->apic.s.uApicBaseMsr))
     {
-        /* In SVM, vAPIC registers are 32-bits wide and currently the two 64-bit accesses
-           (Self-IPI, and ICR) are both trap-like accesses meaning the the higher 32 bits
-           are already updated. */
-        rcStrict = apicWriteRegister(pDevIns, pVCpu, offApicReg, u32Value);
+        /* This is the conversion documented by AMD in 16.11.1 "x2APIC Register Address Space". */
+        uint32_t const idMsr = MSR_IA32_X2APIC_START + (offApicReg >> 4);
+
+        /*
+         * We shouldn't be getting called with reading just the ICR_HI bits in x2APIC mode.
+         * If we do, we just forward the error to the guest, like normal x2APIC operation.
+         * The assert is thus debug only.
+         */
+        Assert(offApicReg != XAPIC_OFF_ICR_HI);
+
+        uint64_t u64Value = 0;
+        rcStrict = apicReadMsr(pVCpu, idMsr, &u64Value);
+        if (rcStrict == VINF_SUCCESS)
+            rcStrict = apicWriteMsr(pVCpu, idMsr, u64Value);
+        if (   rcStrict == VINF_CPUM_R3_MSR_READ
+            || rcStrict == VINF_CPUM_R3_MSR_WRITE)
+            rcStrict = VINF_APIC_R3_UPDATE_STATE;
     }
-
-    if (   rcStrict == VINF_IOM_R3_MMIO_READ
-        || rcStrict == VINF_IOM_R3_MMIO_WRITE)
-        rcStrict = VINF_APIC_R3_UPDATE_STATE;
-
+    else
+    {
+        uint32_t u32Value = 0;
+        rcStrict = apicReadRegister(pDevIns, pVCpu, offApicReg, &u32Value);
+        if (rcStrict == VINF_SUCCESS)
+            rcStrict = apicWriteRegister(pDevIns, pVCpu, offApicReg, u32Value);
+        if (   rcStrict == VINF_IOM_R3_MMIO_READ
+            || rcStrict == VINF_IOM_R3_MMIO_WRITE)
+            rcStrict = VINF_APIC_R3_UPDATE_STATE;
+    }
     return rcStrict;
 }
 

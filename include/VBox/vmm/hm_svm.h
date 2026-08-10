@@ -339,6 +339,20 @@
 #endif /* !IN_REM_R3*/
 
 
+/** @name SVMVMCB.u64ExitInfo2 for AVIC Incomplete IPI.
+ * @{
+ */
+#define SVM_EXIT2_INC_IPI_INDEX_MASK                UINT64_C(0xfff)
+#define SVM_EXIT2_INC_IPI_ID_SHIFT                  32
+#define SVM_EXIT2_INC_IPI_INDEX_INVALID_INTR_TYPE   0
+#define SVM_EXIT2_INC_IPI_INDEX_TARGET_NOT_RUNNING  1
+#define SVM_EXIT2_INC_IPI_INDEX_INVALID_TARGET      2
+#define SVM_EXIT2_INC_IPI_INDEX_INVALID_PTR         3
+#define SVM_EXIT2_INC_IPI_INDEX_INVALID_IPI_VECTOR  4
+#define SVM_EXIT2_INC_IPI_INDEX_UNACCEL_IPI         5
+/** @} */
+
+
 /** @name SVMVMCB.u64ExitInfo2 for task switches
  * @{
  */

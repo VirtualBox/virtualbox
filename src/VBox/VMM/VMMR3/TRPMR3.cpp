@@ -439,7 +439,8 @@ VMMR3DECL(int) TRPMR3InjectEvent(PVM pVM, PVMCPU pVCpu, TRPMEVENT enmEvent, bool
     else
     {
         /* Can happen if the interrupt is masked by TPR or APIC is disabled. */
-        AssertMsg(rc == VERR_APIC_INTR_MASKED_BY_TPR || rc == VERR_NO_DATA, ("PDMGetInterrupt failed. rc=%Rrc\n", rc));
+        AssertMsg(rc == VERR_APIC_INTR_MASKED_BY_TPR || rc == VERR_NO_DATA || rc == VERR_APIC_INTR_DEFER,
+            ("PDMGetInterrupt failed. rc=%Rrc\n", rc));
     }
 # if 0 /* HMR3IsActive is not reliable (esp. after restore), just return VINF_EM_RESCHEDULE. */
     return HMR3IsActive(pVCpu)    ? VINF_EM_RESCHEDULE_HM
