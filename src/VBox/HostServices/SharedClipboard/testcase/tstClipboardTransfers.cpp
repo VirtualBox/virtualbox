@@ -1,4 +1,4 @@
-/* $Id: tstClipboardTransfers.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardTransfers.cpp 114907 2026-08-10 08:44:49Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard transfers test case.
  */
@@ -351,6 +351,32 @@ static void testPathSanitize(void)
     RTTESTI_CHECK_RC(rc, VERR_BUFFER_OVERFLOW);
 }
 
+typedef struct TESTEVENTWAITCTX
+{
+    PSHCLEVENT        pEvent;
+    PSHCLEVENTPAYLOAD pPayload;
+    int               rcWait;
+} TESTEVENTWAITCTX;
+typedef TESTEVENTWAITCTX *PTESTEVENTWAITCTX;
+
+static DECLCALLBACK(int) testEventWaitThread(RTTHREAD hThread, void *pvUser)
+{
+    PTESTEVENTWAITCTX pCtx = (PTESTEVENTWAITCTX)pvUser;
+
+    int rc = RTThreadUserSignal(hThread);
+    if (RT_SUCCESS(rc))
+        pCtx->rcWait = rc = ShClEventWait(pCtx->pEvent, RT_MS_5SEC, &pCtx->pPayload);
+    return rc;
+}
+
+static DECLCALLBACK(int) testEventReleaseThread(RTTHREAD hThread, void *pvUser)
+{
+    int rc = RTThreadUserSignal(hThread);
+    if (RT_SUCCESS(rc))
+        rc = ShClEventRelease((PSHCLEVENT)pvUser) == 0 ? VINF_SUCCESS : VERR_INTERNAL_ERROR;
+    return rc;
+}
+
 static void testEvents(void)
 {
     RTTestISub("Testing events");
@@ -364,10 +390,103 @@ static void testEvents(void)
     RTTESTI_CHECK_RC_OK(ShClEventSourceInit(&Source, 42));
     PSHCLEVENT pEvent;
     RTTESTI_CHECK_RC_OK(ShClEventSourceGenerateAndRegisterEvent(&Source, &pEvent));
+
+    uint32_t const uPayloadData = UINT32_C(0x12345678);
+    PSHCLEVENTPAYLOAD pPayload = NULL;
+    RTTESTI_CHECK_RC_OK(ShClPayloadCreateDupData(42, &uPayloadData, sizeof(uPayloadData), &pPayload));
+    int rc = ShClEventSignal(pEvent, pPayload);
+    RTTESTI_CHECK_RC_OK(rc);
+    if (RT_FAILURE(rc))
+        ShClPayloadDestroy(pPayload);
+
+    /* Reset must not destroy resources owned by an event which is still referenced. */
     ShClEventSourceReset(&Source);
     RTTESTI_CHECK(ShClEventSourceGetLast(&Source) == NULL); /* Event still valid, but removed from the source. */
+
+    PSHCLEVENTPAYLOAD pPayloadResult = NULL;
+    RTTESTI_CHECK_RC_OK(ShClEventWait(pEvent, 0, &pPayloadResult));
+    RTTESTI_CHECK(pPayloadResult != NULL);
+    if (pPayloadResult)
+    {
+        RTTESTI_CHECK(pPayloadResult->uID == 42);
+        RTTESTI_CHECK(pPayloadResult->cbData == sizeof(uPayloadData));
+        RTTESTI_CHECK(pPayloadResult->pvData != NULL);
+        if (pPayloadResult->pvData)
+            RTTESTI_CHECK(*(uint32_t *)pPayloadResult->pvData == uPayloadData);
+        ShClPayloadDestroy(pPayloadResult);
+    }
+
     RTTESTI_CHECK(ShClEventRelease(pEvent) == 0); /* Free'd event, as ref count is 0. */
     RTTESTI_CHECK(ShClEventSourceGetLast(&Source) == NULL); /* Now it should be empty. */
+    RTTESTI_CHECK_RC_OK(ShClEventSourceTerm(&Source));
+
+    /* Reset an event source while another thread waits on one of its events. */
+    RTTESTI_CHECK_RC_OK(ShClEventSourceInit(&Source, 42));
+    RTTESTI_CHECK_RC_OK(ShClEventSourceGenerateAndRegisterEvent(&Source, &pEvent));
+
+    TESTEVENTWAITCTX WaitCtx;
+    RT_ZERO(WaitCtx);
+    WaitCtx.pEvent = pEvent;
+    WaitCtx.rcWait = VERR_IPE_UNINITIALIZED_STATUS;
+
+    RTTHREAD hThread;
+    rc = RTThreadCreate(&hThread, testEventWaitThread, &WaitCtx, 0, RTTHREADTYPE_DEFAULT,
+                        RTTHREADFLAGS_WAITABLE, "ShClEvtWait");
+    RTTESTI_CHECK_RC_OK(rc);
+    if (RT_SUCCESS(rc))
+    {
+        RTTESTI_CHECK_RC_OK(RTThreadUserWait(hThread, RT_MS_5SEC));
+        RTThreadSleep(10); /* Let the thread enter ShClEventWait(). */
+
+        ShClEventSourceReset(&Source);
+        RTTESTI_CHECK_RC_OK(ShClEventSignal(pEvent, NULL));
+
+        int rcThread;
+        int rcWait = RTThreadWait(hThread, RT_MS_5SEC, &rcThread);
+        RTTESTI_CHECK_RC_OK(rcWait);
+        if (RT_FAILURE(rcWait)) /* Do not release the event while the waiter might still be using it. */
+            rcWait = RTThreadWait(hThread, RT_INDEFINITE_WAIT, &rcThread);
+        if (RT_SUCCESS(rcWait))
+        {
+            RTTESTI_CHECK_RC_OK(rcThread);
+            RTTESTI_CHECK_RC_OK(WaitCtx.rcWait);
+            RTTESTI_CHECK(WaitCtx.pPayload == NULL);
+        }
+    }
+    RTTESTI_CHECK(ShClEventRelease(pEvent) == 0);
+    RTTESTI_CHECK_RC_OK(ShClEventSourceTerm(&Source));
+
+    /* A final release must take the source lock before publishing a zero reference count. */
+    RTTESTI_CHECK_RC_OK(ShClEventSourceInit(&Source, 42));
+    RTTESTI_CHECK_RC_OK(ShClEventSourceGenerateAndRegisterEvent(&Source, &pEvent));
+    RTTESTI_CHECK_RC_OK(RTCritSectEnter(&Source.CritSect));
+
+    rc = RTThreadCreate(&hThread, testEventReleaseThread, pEvent, 0, RTTHREADTYPE_DEFAULT,
+                        RTTHREADFLAGS_WAITABLE, "ShClEvtRel");
+    RTTESTI_CHECK_RC_OK(rc);
+    if (RT_SUCCESS(rc))
+    {
+        RTTESTI_CHECK_RC_OK(RTThreadUserWait(hThread, RT_MS_5SEC));
+        for (unsigned i = 0; i < 1000 && RTCritSectGetWaiters(&Source.CritSect) == 0; ++i)
+            RTThreadSleep(1);
+        RTTESTI_CHECK(RTCritSectGetWaiters(&Source.CritSect) > 0);
+        RTTESTI_CHECK(ShClEventGetRefs(pEvent) == 1);
+
+        ShClEventSourceReset(&Source);
+    }
+    RTTESTI_CHECK_RC_OK(RTCritSectLeave(&Source.CritSect));
+    if (RT_SUCCESS(rc))
+    {
+        int rcThread;
+        int rcWait = RTThreadWait(hThread, RT_MS_5SEC, &rcThread);
+        RTTESTI_CHECK_RC_OK(rcWait);
+        if (RT_FAILURE(rcWait)) /* Do not terminate the source while the releaser might still be using it. */
+            rcWait = RTThreadWait(hThread, RT_INDEFINITE_WAIT, &rcThread);
+        if (RT_SUCCESS(rcWait))
+            RTTESTI_CHECK_RC_OK(rcThread);
+    }
+    else
+        RTTESTI_CHECK(ShClEventRelease(pEvent) == 0);
     RTTESTI_CHECK_RC_OK(ShClEventSourceTerm(&Source));
 
     /* Test delayed destruction of the event by retaining it. */
