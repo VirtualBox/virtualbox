@@ -1,4 +1,4 @@
-/* $Id: ApplianceImplImport.cpp 114705 2026-07-14 13:35:15Z alexander.eichner@oracle.com $ */
+/* $Id: ApplianceImplImport.cpp 114936 2026-08-10 12:48:12Z serkan.bayraktar@oracle.com $ */
 /** @file
  * IAppliance and IVirtualSystem COM class implementations.
  */
@@ -381,9 +381,9 @@ HRESULT Appliance::interpret()
             /* The NVRAM file does not have a <vbox:Machine> entry so we only need to check the OVF details. */
             if (vsysThis.strNvramPath.isNotEmpty())
                 pNewDesc->i_addEntry(VirtualSystemDescriptionType_NVRAM, "", vsysThis.strNvramPath, vsysThis.strNvramPath);
-            /* Check if any of the serial ports is configured with mode raw file. */
             if (vsysThis.pelmVBoxMachine)
             {
+                /* Check if any of the serial ports is configured with mode raw file. */
                 settings::SerialPortsList const &llSerialPorts =
                 pNewDesc->m->pConfig->hardwareMachine.llSerialPorts;
                 for (settings::SerialPortsList::const_iterator port_it = llSerialPorts.begin();
@@ -396,6 +396,13 @@ HRESULT Appliance::interpret()
                                         "with \"raw file\" mode. This setting will not be imported."), vsysThis.strName.c_str());
                         break;
                     }
+                }
+                /* Check if shared folders are configured. */
+
+                if (!pNewDesc->m->pConfig->hardwareMachine.llSharedFolders.empty())
+                {
+                    i_addWarning(tr("Virtual appliance \"%s\" was configured with machine shared folder(s) "
+                                     "This setting will not be imported."), vsysThis.strName.c_str());
                 }
             }
             /* Audio */
@@ -5598,7 +5605,6 @@ void Appliance::i_importVBoxMachine(ComObjPtr<VirtualSystemDescription> &vsdescT
             strSrcFilePath.append(RTPATH_SLASH_STR);
             strSrcFilePath.append(stack.strNvramPath);
         }
-
         /* The basename of the destination filename needs to be the VM's name in
          * order to match the VM's INvramStore::nonVolatileStorageFile attribute so
          * that EFI can find it when booting the VM. */
@@ -6134,6 +6140,7 @@ l_skipped:
     hrc = pNewMachine.createObject();
     if (FAILED(hrc)) throw hrc;
     config.sanitizeImportedSerialPorts();
+    config.sanitizeSharedFolderSettings();
 
     // this magic constructor fills the new machine object with the MachineConfig
     // instance that we created from the vbox:Machine
