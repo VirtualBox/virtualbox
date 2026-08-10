@@ -1,4 +1,4 @@
-/* $Id: clipboard-x11.cpp 114958 2026-08-10 14:15:56Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-x11.cpp 114970 2026-08-10 16:20:56Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard implementation.
  */
@@ -332,14 +332,27 @@ static DECLCALLBACK(void) vbclX11OnTransferInitializedCallback(PSHCLTRANSFERCALL
     PSHCLTRANSFER pTransfer = pCbCtx->pTransfer;
     AssertPtr(pTransfer);
 
-    if (   ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE
-        && vbclX11TransferStateMatches(pCtx, pTransfer))
+    if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE)
     {
+        if (!vbclX11TransferStateMatches(pCtx, pTransfer))
+        {
+            LogRel2(("Shared Clipboard: Rejecting unbound initialized transfer %RU16/%RU64\n",
+                     ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer)));
+            int rc2 = VbglR3ClipboardTransferSendStatus(&pCtx->CmdCtx, pTransfer,
+                                                        SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
+            if (RT_FAILURE(rc2))
+                LogRel(("Shared Clipboard: Canceling unbound transfer %RU16/%RU64 failed with %Rrc\n",
+                        ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rc2));
+            return;
+        }
+
         /* The remote provider rejects root-list reads until ShClTransferInit()
          * has changed the transfer state to INITIALIZED.  Registering the HTTP
          * transfer from pfnOnInitialize therefore races ahead of that state
          * transition and leaves URI-list conversion waiting forever. */
-        int rc = ShClTransferRootListRead(pTransfer);
+        int rc = ShClTransferHttpServerMaybeStart(&pCtx->X11.HttpCtx);
+        if (RT_SUCCESS(rc))
+            rc = ShClTransferRootListRead(pTransfer);
         if (RT_SUCCESS(rc))
         {
             if (ShClTransferRootsCount(pTransfer))
@@ -363,9 +376,8 @@ static DECLCALLBACK(void) vbclX11OnTransferInitializedCallback(PSHCLTRANSFERCALL
  * @copydoc SHCLTRANSFERCALLBACKS::pfnOnRegistered
  *
  * This binds pending transfer preparation to the newly registered transfer's
- * exact ID and generation, and starts the HTTP server if necessary.  The
- * transfer itself is added to the HTTP server after its roots have been read by
- * the initialized callback.
+ * exact ID and generation.  The HTTP server is started and the transfer is
+ * added after its roots have been read by the initialized callback.
  *
  * @thread Clipboard main thread.
  */
@@ -403,9 +415,6 @@ static DECLCALLBACK(void) vbclX11OnTransferRegisteredCallback(PSHCLTRANSFERCALLB
                      pX11TransferState->uTransferGeneration, ShClTransferGetID(pTransfer),
                      ShClTransferGetGeneration(pTransfer)));
 
-        int rc2 = ShClTransferHttpServerMaybeStart(&pCtx->X11.HttpCtx);
-        if (RT_FAILURE(rc2))
-            LogRel(("Shared Clipboard: Registering HTTP transfer failed: %Rrc\n", rc2));
     }
 
     LogFlowFuncLeave();
