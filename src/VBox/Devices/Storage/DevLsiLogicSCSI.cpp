@@ -1,4 +1,4 @@
-/* $Id: DevLsiLogicSCSI.cpp 114731 2026-07-20 09:16:25Z michal.necasek@oracle.com $ */
+/* $Id: DevLsiLogicSCSI.cpp 114914 2026-08-10 12:06:34Z alexander.eichner@oracle.com $ */
 /** @file
  * DevLsiLogicSCSI - LsiLogic LSI53c1030 SCSI controller.
  */
@@ -1195,7 +1195,7 @@ static int lsilogicR3ProcessMessageRequest(PPDMDEVINS pDevIns, PLSILOGICSCSI pTh
             if (pRegion)
             {
                 uint32_t offImgHdr = (LSILOGIC_FWIMGHDR_LOAD_ADDRESS - pRegion->u32AddrStart);
-                if (pRegion->u32AddrEnd - offImgHdr + 1 >= sizeof(FwImageHdr)) /* End address is inclusive. */
+                if (pRegion->u32AddrEnd - LSILOGIC_FWIMGHDR_LOAD_ADDRESS + 1 >= sizeof(FwImageHdr)) /* End address is inclusive. */
                 {
                     PFwImageHdr pFwImgHdr = (PFwImageHdr)&pRegion->au32Data[offImgHdr / 4];
 
