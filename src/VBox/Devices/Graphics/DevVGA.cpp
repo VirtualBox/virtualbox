@@ -1,4 +1,4 @@
-/* $Id: DevVGA.cpp 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $ */
+/* $Id: DevVGA.cpp 114933 2026-08-10 12:39:58Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVGA - VBox VGA/VESA device.
  */
@@ -2697,6 +2697,13 @@ static int vgaR3DrawBlank(PVGASTATE pThis, PVGASTATER3 pThisCC, bool full_update
     d = pDrv->pbData;
     if (pThis->fRenderVRAM)
     {
+        /* If VRAM rendering is enabled, then check that the provided target memory buffer has a correct size. */
+        if (   pDrv->cx != pThis->last_scr_width
+            || pDrv->cy != pThis->last_scr_height)
+        {
+            return VINF_SUCCESS;
+        }
+
         for(i = 0; i < (int)pThis->last_scr_height; i++) {
             memset(d, val, w);
             d += cbScanline;
@@ -4919,10 +4926,13 @@ static DECLCALLBACK(int) vgaR3PortUpdateDisplay(PPDMIDISPLAYPORT pInterface)
 # ifndef VBOX_WITH_HGSMI
     /* This should be called only in non VBVA mode. */
 # else
-    if (VBVAUpdateDisplay(pThis, pThisCC) == VINF_SUCCESS)
+    if (!pThis->fVMSVGAEnabled)
     {
-        PDMDevHlpCritSectLeave(pDevIns, &pThis->CritSect);
-        return VINF_SUCCESS;
+        if (VBVAUpdateDisplay(pThis, pThisCC) == VINF_SUCCESS)
+        {
+            PDMDevHlpCritSectLeave(pDevIns, &pThis->CritSect);
+            return VINF_SUCCESS;
+        }
     }
 # endif /* VBOX_WITH_HGSMI */
 
