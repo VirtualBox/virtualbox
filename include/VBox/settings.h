@@ -1585,7 +1585,12 @@ public:
     void buildMachineXML(xml::ElementNode &elmMachine,
                          uint32_t fl,
                          std::list<xml::ElementNode*> *pllElementsWithUuidAttributes);
+    /**
+     * sanitizeXXXX functions are possibly called during apliance import to make sure
+     * security wise risky settings are cleaned up.
+     */
     void sanitizeImportedSerialPorts();
+    void sanitizeSharedFolderSettings();
     static bool isAudioDriverAllowedOnThisHost(AudioDriverType_T enmDrvType);
     static AudioDriverType_T getHostDefaultAudioDriver();
 
