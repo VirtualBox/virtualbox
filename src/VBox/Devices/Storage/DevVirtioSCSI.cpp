@@ -1,4 +1,4 @@
-/* $Id: DevVirtioSCSI.cpp 114856 2026-08-05 09:09:50Z andreas.loeffler@oracle.com $ */
+/* $Id: DevVirtioSCSI.cpp 114943 2026-08-10 12:59:13Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBox storage devices - Virtio SCSI Driver
  *
@@ -1110,7 +1110,7 @@ static DECLCALLBACK(int) virtioScsiR3IoReqCopyFromBuf(PPDMIMEDIAEXPORT pInterfac
     PVIRTIOSCSITARGET   pTarget   = RT_FROM_MEMBER(pInterface, VIRTIOSCSITARGET, IMediaExPort);
     PPDMDEVINS          pDevIns   = pTarget->pDevIns;
     PVIRTIOSCSIREQ      pReq      = (PVIRTIOSCSIREQ)pvIoReqAlloc;
-    RT_NOREF(hIoReq, cbCopy);
+    RT_NOREF(hIoReq);
 
     if (!pReq->cbDataIn)
         return VINF_SUCCESS;
@@ -1120,8 +1120,7 @@ static DECLCALLBACK(int) virtioScsiR3IoReqCopyFromBuf(PPDMIMEDIAEXPORT pInterfac
     PVIRTIOSGBUF pSgPhysReturn = pReq->pVirtqBuf->pSgPhysReturn;
     virtioCoreGCPhysChainAdvance(pSgPhysReturn, offDst);
 
-    size_t cbCopied = 0;
-    size_t cbRemain = pReq->cbDataIn;
+    size_t cbRemain = RT_MIN(cbCopy, pReq->cbDataIn);
 
     /* Skip past the REQ_RESP_HDR_T and sense code if we're at the start of the buffer. */
     if (!pSgPhysReturn->idxSeg && pSgPhysReturn->cbSegLeft == pSgPhysReturn->paSegs[0].cbSeg)
@@ -1129,12 +1128,17 @@ static DECLCALLBACK(int) virtioScsiR3IoReqCopyFromBuf(PPDMIMEDIAEXPORT pInterfac
 
     while (cbRemain)
     {
-        cbCopied = RT_MIN(pSgBuf->cbSegLeft,  pSgPhysReturn->cbSegLeft);
-        Assert(cbCopied > 0);
-        PDMDevHlpPCIPhysWriteUser(pDevIns, pSgPhysReturn->GCPhysCur, pSgBuf->pvSegCur, cbCopied);
-        RTSgBufAdvance(pSgBuf, cbCopied);
-        virtioCoreGCPhysChainAdvance(pSgPhysReturn, cbCopied);
-        cbRemain -= cbCopied;
+        size_t cbThisCopy = 0;
+        const void *pvSrc = RTSgBufGetCurrentSegment(pSgBuf, RT_MIN(cbRemain, pSgPhysReturn->cbSegLeft), &cbThisCopy);
+
+        Assert(cbThisCopy);
+        if (!cbThisCopy)
+            break;
+
+        PDMDevHlpPCIPhysWriteUser(pDevIns, pSgPhysReturn->GCPhysCur, pvSrc, cbThisCopy);
+        RTSgBufAdvance(pSgBuf, cbThisCopy);
+        virtioCoreGCPhysChainAdvance(pSgPhysReturn, cbThisCopy);
+        cbRemain -= cbThisCopy;
     }
     RT_UNTRUSTED_NONVOLATILE_COPY_FENCE(); /* needed? */
 
