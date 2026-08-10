@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMockHGCM.cpp 114968 2026-08-10 16:16:50Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardMockHGCM.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard host service test case.
  */
@@ -30,6 +30,7 @@
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
 #include <VBox/HostServices/VBoxClipboardSvc.h>
+#include <VBox/HostServices/VBoxClipboardExt.h>
 #include <VBox/HostServices/VBoxSharedClipboardSvc.h>
 #include <VBox/VBoxGuestLib.h>
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
@@ -50,6 +51,7 @@
 #include <VBox/HostServices/TstHGCMMockUtils.h>
 
 #include <iprt/assert.h>
+#include <iprt/env.h>
 #include <iprt/initterm.h>
 #include <iprt/mem.h>
 #include <iprt/rand.h>
@@ -63,6 +65,23 @@
 *   Global Variables                                                                                                             *
 *********************************************************************************************************************************/
 static RTTEST     g_hTest;
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+DECLCALLBACK(int) tstHgcmMockSvcDispatcher(void *pvExtension, uint32_t u32Function,
+                                           void *pvParms, uint32_t cbParms);
+
+/** Test dispatcher which keeps protocol-only transfer tests independent of a display server. */
+static DECLCALLBACK(int) tstClipboardTransferStatusContextDispatcher(void *pvExtension, uint32_t u32Function,
+                                                                      void *pvParms, uint32_t cbParms)
+{
+    if (   u32Function == VBOX_CLIPBOARD_EXT_FN_BACKEND_INIT
+        || u32Function == VBOX_CLIPBOARD_EXT_FN_BACKEND_CONNECT
+        || u32Function == VBOX_CLIPBOARD_EXT_FN_BACKEND_DISCONNECT
+        || u32Function == VBOX_CLIPBOARD_EXT_FN_BACKEND_SYNC)
+        return VINF_SUCCESS;
+    return tstHgcmMockSvcDispatcher(pvExtension, u32Function, pvParms, cbParms);
+}
+#endif
 
 
 /*********************************************************************************************************************************
@@ -272,6 +291,7 @@ static void testTransferStatusContextRouting(void)
     bool          fGuestRegistered        = false;
     bool          fStaleGuestCtxInit      = false;
     bool          fStaleGuestRegistered   = false;
+    bool          fTestDispatcher         = false;
     PSHCLCLIENT   pClient                 = NULL;
     PSHCLTRANSFER pGuestTransfer          = NULL;
     PSHCLTRANSFER pStaleGuestTransfer     = NULL;
@@ -281,13 +301,13 @@ static void testTransferStatusContextRouting(void)
 
     do
     {
-        /* Avoid requiring an X11 display just to exercise HGCM routing. */
         VBOXHGCMSVCPARM Parm;
-        HGCMSvcSetU32(&Parm, true);
-        rc = TstHgcmMockSvcHostCall(pSvc, NULL, VBOX_SHCL_HOST_FN_SET_HEADLESS, 1, &Parm);
+        rc = pSvc->fnTable.pfnRegisterExtension(pSvc->fnTable.pvService,
+                                                tstClipboardTransferStatusContextDispatcher, NULL);
         RTTESTI_CHECK_RC_OK(rc);
         if (RT_FAILURE(rc))
             break;
+        fTestDispatcher = true;
 
         rc = tstClipboardSetMode(pSvc, VBOX_SHCL_MODE_BIDIRECTIONAL);
         if (RT_FAILURE(rc))
@@ -516,14 +536,61 @@ static void testTransferStatusContextRouting(void)
         }
     }
 
+    if (fTestDispatcher)
+    {
+        int const rcRestore = pSvc->fnTable.pfnRegisterExtension(pSvc->fnTable.pvService,
+                                                                 tstHgcmMockSvcDispatcher, NULL);
+        RTTESTI_CHECK_RC_OK(rcRestore);
+    }
+
     VBOXHGCMSVCPARM Parm;
     HGCMSvcSetU32(&Parm, VBOX_SHCL_TRANSFER_MODE_F_NONE);
     RTTESTI_CHECK_RC_OK(TstHgcmMockSvcHostCall(pSvc, NULL, VBOX_SHCL_HOST_FN_SET_TRANSFER_MODE, 1, &Parm));
     RTTESTI_CHECK_RC_OK(tstClipboardSetMode(pSvc, VBOX_SHCL_MODE_OFF));
-    HGCMSvcSetU32(&Parm, false);
-    RTTESTI_CHECK_RC_OK(TstHgcmMockSvcHostCall(pSvc, NULL, VBOX_SHCL_HOST_FN_SET_HEADLESS, 1, &Parm));
 }
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
+
+#if defined(RT_OS_LINUX) || defined(RT_OS_SOLARIS)
+/** Verifies that the X11 backend fails cleanly when no display is available. */
+static void testX11UnavailableBackend(void)
+{
+    RTTestISub("Testing X11 backend without a display");
+
+    PTSTHGCMMOCKSVC const pSvc = TstHgcmMockSvcInst();
+    void *pvClient = RTMemAllocZ(pSvc->fnTable.cbClient);
+    RTTESTI_CHECK_MSG_RETV(pvClient, ("Failed to allocate a service client\n"));
+
+    const char *pszDisplay = RTEnvGet("DISPLAY");
+    char *pszDisplaySaved = pszDisplay ? RTStrDup(pszDisplay) : NULL;
+    if (pszDisplay && !pszDisplaySaved)
+    {
+        RTTESTI_CHECK_MSG(false, ("Failed to save DISPLAY before the test\n"));
+        RTMemFree(pvClient);
+        return;
+    }
+
+    int rc = RTEnvUnset("DISPLAY");
+    if (RT_FAILURE(rc))
+    {
+        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+        RTStrFree(pszDisplaySaved);
+        RTMemFree(pvClient);
+        return;
+    }
+
+    rc = pSvc->fnTable.pfnConnect(pSvc->fnTable.pvService, UINT32_C(100), pvClient,
+                                  VMMDEV_REQUESTOR_USR_NOT_GIVEN /* fRequestor */, false /* fRestoring */);
+
+    int const rcRestore = pszDisplaySaved ? RTEnvSet("DISPLAY", pszDisplaySaved) : VINF_SUCCESS;
+    RTStrFree(pszDisplaySaved);
+    RTTESTI_CHECK_RC(rcRestore, VINF_SUCCESS);
+
+    RTTESTI_CHECK_RC(rc, VERR_NOT_SUPPORTED);
+    if (RT_SUCCESS(rc))
+        RTTESTI_CHECK_RC_OK(pSvc->fnTable.pfnDisconnect(pSvc->fnTable.pvService, UINT32_C(100), pvClient));
+    RTMemFree(pvClient);
+}
+#endif
 
 static void testGuestSimple(void)
 {
@@ -648,44 +715,12 @@ static PRTUTF16 tstGenerateUtf16StringA(uint32_t uCch)
 }
 #endif /* RT_OS_WINDOWS) || RT_OS_OS2 */
 
-static void testSetHeadless(void)
-{
-    RTTestISub("Testing HOST_FN_SET_HEADLESS");
-
-    PTSTHGCMMOCKSVC pSvc = TstHgcmMockSvcInst();
-
-    VBOXHGCMSVCPARM parms[2];
-    HGCMSvcSetU32(&parms[0], false);
-    int rc = pSvc->fnTable.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_SET_HEADLESS, 1, parms);
-    RTTESTI_CHECK_RC_OK(rc);
-    bool fHeadless = ShClSvcGetHeadless();
-    RTTESTI_CHECK_MSG(fHeadless == false, ("fHeadless=%RTbool\n", fHeadless));
-    rc = pSvc->fnTable.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_SET_HEADLESS, 0, parms);
-    RTTESTI_CHECK_RC(rc, VERR_INVALID_PARAMETER);
-    rc = pSvc->fnTable.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_SET_HEADLESS, 2, parms);
-    RTTESTI_CHECK_RC(rc, VERR_INVALID_PARAMETER);
-    HGCMSvcSetU64(&parms[0], 99);
-    rc = pSvc->fnTable.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_SET_HEADLESS, 1, parms);
-    RTTESTI_CHECK_RC(rc, VERR_INVALID_PARAMETER);
-    HGCMSvcSetU32(&parms[0], true);
-    rc = pSvc->fnTable.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_SET_HEADLESS, 1, parms);
-    RTTESTI_CHECK_RC_OK(rc);
-    fHeadless = ShClSvcGetHeadless();
-    RTTESTI_CHECK_MSG(fHeadless == true, ("fHeadless=%RTbool\n", fHeadless));
-    HGCMSvcSetU32(&parms[0], 99);
-    rc = pSvc->fnTable.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_SET_HEADLESS, 1, parms);
-    RTTESTI_CHECK_RC_OK(rc);
-    fHeadless = ShClSvcGetHeadless();
-    RTTESTI_CHECK_MSG(fHeadless == true, ("fHeadless=%RTbool\n", fHeadless));
-}
-
 static void testHostCall(void)
 {
     tstOperationModes();
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     testSetTransferMode();
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
-    testSetHeadless();
 }
 
 
@@ -747,7 +782,7 @@ static void tstTestReadFromHost_MockInit(PTSTUSERMOCK pUsrMock, const char *pszN
     pUsrMock->pCtx = (PSHCLCONTEXT)RTMemAllocZ(sizeof(SHCLCONTEXT));
     AssertPtrReturnVoid(pUsrMock->pCtx);
 
-    ShClX11Init(&pUsrMock->X11Ctx, &Callbacks, pUsrMock->pCtx, false);
+    ShClX11Init(&pUsrMock->X11Ctx, &Callbacks, pUsrMock->pCtx);
     ShClX11ThreadStartEx(&pUsrMock->X11Ctx, pszName, false /* fGrab */);
     /* Give the clipboard time to synchronise. */
     RTThreadSleep(500);
@@ -1200,9 +1235,13 @@ int main()
     testTransferStatusContextRouting();
 #endif
 
+#if defined(RT_OS_LINUX) || defined(RT_OS_SOLARIS)
+    testX11UnavailableBackend();
+#endif
+
     /*
-     * Run the tests. The tstOne() and testGuestSimple() tests rely on an X11
-     * display on Unix systems so skip them if not applicable.
+     * Run the remaining guest/backend tests only when an X11 display is
+     * available on Unix systems.
      */
 #if defined (RT_OS_LINUX) || defined (RT_OS_SOLARIS)
     VBGHDISPLAYSERVERTYPE const enmDisplayType = VBGHDisplayServerTypeDetect();

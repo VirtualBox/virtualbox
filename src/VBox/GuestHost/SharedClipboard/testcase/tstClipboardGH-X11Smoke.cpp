@@ -1,4 +1,4 @@
-/* $Id: tstClipboardGH-X11Smoke.cpp 114412 2026-06-17 21:20:59Z knut.osmundsen@oracle.com $ */
+/* $Id: tstClipboardGH-X11Smoke.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard guest/host X11 code smoke tests.
  */
@@ -89,7 +89,7 @@ int main()
     Callbacks.pfnOnSendDataToDest        = tstShClOnSendDataToDest;
 
     SHCLX11CTX X11Ctx;
-    RTTEST_CHECK_RC_OK(hTest, ShClX11Init(&X11Ctx, &Callbacks, NULL /* pParent */, false /* fHeadless */));
+    RTTEST_CHECK_RC_OK(hTest, ShClX11Init(&X11Ctx, &Callbacks, NULL /* pParent */));
     RTTEST_CHECK_RC_OK(hTest, ShClX11ThreadStart(&X11Ctx, false /* fGrab */));
 
     /* Give the clipboard time to synchronise. */
@@ -100,4 +100,3 @@ int main()
 
     return RTTestSummaryAndDestroy(hTest);
 }
-

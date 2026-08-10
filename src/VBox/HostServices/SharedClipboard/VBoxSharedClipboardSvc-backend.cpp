@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-backend.cpp 114425 2026-06-18 08:30:00Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-backend.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Backend and extension bridge handling.
  */
@@ -63,17 +63,6 @@ PSHCLBACKEND ShClSvcGetBackend(void)
 }
 
 
-/**
- * Getter for headless setting. Also needed by testcase.
- *
- * @returns Whether service currently running in headless mode or not.
- */
-bool ShClSvcGetHeadless(void)
-{
-    return g_fHeadless;
-}
-
-
 static int shClSvcBackendHostCallback(uint32_t u32Function, PSHCLEXTPARMS pvParms, uint32_t cbParms)
 {
     LogFlowFunc(("u32Function=%RU32, pvParms=%p, cbParms=%RU32\n", u32Function, pvParms, cbParms));
@@ -109,9 +98,7 @@ int shClSvcBackendConnect(PSHCLCLIENT pClient)
 
     parms.u.ReadWriteData.pBackend = ShClSvcGetBackend();
     parms.u.ReadWriteData.pClient = pClient;
-    parms.u.ReadWriteData.fHeadless = ShClSvcGetHeadless();
-
-    /* The backend in Main calls: ShClBackendConnect(&g_ShClBackend, pClient, ShClSvcGetHeadless())); */
+    /* The backend in Main calls: ShClBackendConnect(&g_ShClBackend, pClient); */
     return shClSvcBackendHostCallback(VBOX_CLIPBOARD_EXT_FN_BACKEND_CONNECT, &parms, sizeof(parms));
 }
 

@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendWin.cpp 114632 2026-07-07 15:27:30Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendWin.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Win32 host.
  */
@@ -862,9 +862,9 @@ void ShClBackendDestroy(PSHCLBACKEND pBackend)
 #endif
 }
 
-int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, bool fHeadless)
+int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
 {
-    RT_NOREF(pBackend, fHeadless);
+    RT_NOREF(pBackend);
 
     LogFlowFuncEnter();
 

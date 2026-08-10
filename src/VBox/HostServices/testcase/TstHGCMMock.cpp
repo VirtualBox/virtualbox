@@ -1,4 +1,4 @@
-/* $Id: TstHGCMMock.cpp 114158 2026-05-20 15:21:01Z andreas.loeffler@oracle.com $ */
+/* $Id: TstHGCMMock.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * TstHGCMMock.cpp - Mocking framework for testing HGCM-based host services.
  *
@@ -290,9 +290,6 @@ static DECLCALLBACK(int) tstHgcmMockSvcCallComplete(VBOXHGCMCALLHANDLE callHandl
 }
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD
-//int tstShClBackendConnect(PSHCLBACKEND, PSHCLCLIENT, bool) { return VINF_SUCCESS; }
-//int tstShClBackendDisconnect(PSHCLBACKEND, PSHCLCLIENT) { return VINF_SUCCESS; }
-
 DECLCALLBACK(int) tstHgcmMockSvcDispatcher(void *pvExtension, uint32_t u32Function,
                                            void *pvParms, uint32_t cbParms)
 {
@@ -381,8 +378,7 @@ DECLCALLBACK(int) tstHgcmMockSvcDispatcher(void *pvExtension, uint32_t u32Functi
         {
             PSHCLBACKEND pBackend = pParms->u.ReadWriteData.pBackend;
             PSHCLCLIENT pClient = pParms->u.ReadWriteData.pClient;
-            bool fHeadless = pParms->u.ReadWriteData.fHeadless;
-            rc = ShClBackendConnect(pBackend, pClient, fHeadless);
+            rc = ShClBackendConnect(pBackend, pClient);
             break;
         }
 

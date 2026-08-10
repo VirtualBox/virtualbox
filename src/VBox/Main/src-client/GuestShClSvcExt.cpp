@@ -1,4 +1,4 @@
-/* $Id: GuestShClSvcExt.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClSvcExt.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard service extension handling for Main.
  */
@@ -555,8 +555,7 @@ int GuestShCl::i_handleSvcExtBackendConnect(PSHCLEXTPARMS pParms, void *pvParms,
     {
         PSHCLBACKEND pBackend = pParms->u.ReadWriteData.pBackend;
         PSHCLCLIENT pClient = pParms->u.ReadWriteData.pClient;
-        bool fHeadless = pParms->u.ReadWriteData.fHeadless;
-        vrc = ShClBackendConnect(pBackend, pClient, fHeadless);
+        vrc = ShClBackendConnect(pBackend, pClient);
         if (RT_SUCCESS(vrc))
         {
             lock();
