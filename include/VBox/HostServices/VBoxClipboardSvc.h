@@ -94,8 +94,11 @@
  *  Operates on the VBOX_SHCL_TRANSFERS_XXX defines.
  * @since   6.1  */
 #define VBOX_SHCL_HOST_FN_SET_TRANSFER_MODE  2
-/** Deprecated for > 7.2: Run headless on the host, i.e. do not touch the host clipboard.
- *  Kept for compatibility with older Guest Additions and legacy service clients. */
+/** Runs headless on the host, i.e. does not touch the host clipboard.
+ *
+ * @deprecated For versions after 7.2. Retained only for compatibility with
+ *             legacy host service clients; do not use in new code.
+ */
 #define VBOX_SHCL_HOST_FN_SET_HEADLESS       3
 
 /** Reports cancellation of the current operation to the guest.
@@ -1249,4 +1252,3 @@ typedef struct _VBoxShClParmNegotiateChunkSize
 #pragma pack()
 
 #endif /* !VBOX_INCLUDED_HostServices_VBoxClipboardSvc_h */
-
