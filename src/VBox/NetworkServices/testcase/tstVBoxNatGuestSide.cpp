@@ -1,4 +1,4 @@
-/* $Id: tstVBoxNatGuestSide.cpp 114959 2026-08-10 14:41:23Z andreas.loeffler@oracle.com $ */
+/* $Id: tstVBoxNatGuestSide.cpp 114964 2026-08-10 15:18:23Z andreas.loeffler@oracle.com $ */
 /** @file
  * tstVBoxNatGuestSide - Guest-side NAT over Ring-3 IntNet testcase.
  */
@@ -920,6 +920,7 @@ static void tstServiceStop(PTSTSWITCHSERVICE pService)
     if (pService->hProcess != NIL_RTPROCESS)
     {
         RTPROCSTATUS Status;
+        RT_ZERO(Status);
         int rc = VERR_PROCESS_RUNNING;
         uint64_t const msStart = RTTimeMilliTS();
         while (rc == VERR_PROCESS_RUNNING && RTTimeMilliTS() - msStart < RT_MS_5SEC)
