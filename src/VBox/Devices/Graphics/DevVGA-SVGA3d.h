@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.h 114460 2026-06-19 14:01:13Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.h 114924 2026-08-10 12:18:33Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device - 3D part.
  */
@@ -144,10 +144,10 @@ int vmsvga3dChangeMode(PVGASTATECC pThisCC);
 int vmsvga3dDefineScreen(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen);
 int vmsvga3dDestroyScreen(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen);
 
-int vmsvga3dScreenUpdateFromSurface(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pDstScreen, SVGASignedRect const &dstRect,
+int vmsvga3dScreenUpdateFromSurface(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pDstScreen, SVGASignedRect const &dstRect,
                                     SVGA3dSurfaceImageId const &srcImage, SVGASignedRect const &srcRect,
                                     uint32_t cDstClipRects, SVGASignedRect *paDstClipRect);
-int vmsvga3dScreenUpdateFromScreenTarget(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pDstScreen, SVGA3dRect const &rect,
+int vmsvga3dScreenUpdateFromScreenTarget(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pDstScreen, SVGA3dRect const &rect,
                                          SVGA3dSurfaceImageId const &srcImage);
 void vmsvga3dProcessPendingTasks(PVGASTATE pThis, PVGASTATECC pThisCC);
 

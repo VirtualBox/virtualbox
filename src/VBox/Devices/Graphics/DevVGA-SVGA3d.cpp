@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.cpp 114812 2026-07-28 14:10:11Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.cpp 114924 2026-08-10 12:18:33Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common core code.
  */
@@ -1073,7 +1073,7 @@ int vmsvga3dSurfaceBlitToScreen(PVGASTATE pThis, PVGASTATECC pThisCC, uint32_t i
     PVMSVGAR3STATE const pSvgaR3State = pThisCC->svga.pSvgaR3State;
 
     if (pSvgaR3State->pFuncsMap)
-        return vmsvga3dScreenUpdateFromSurface(pThisCC, pScreen, destRect, src, srcRect, cRects, pRect);
+        return vmsvga3dScreenUpdateFromSurface(pThis, pThisCC, pScreen, destRect, src, srcRect, cRects, pRect);
 
     /* Screens which are associated with screen targets should be handled by vmsvga3dScreenUpdateFromSurface
      * because the code below updates the guest VRAM and screen targets have a separate memory buffer for the
@@ -1152,7 +1152,7 @@ int vmsvga3dSurfaceBlitToScreen(PVGASTATE pThis, PVGASTATECC pThisCC, uint32_t i
 }
 
 
-static int vmsvga3dScreenUpdate(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen, SVGASignedRect const &dstRect,
+static int vmsvga3dScreenUpdate(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen, SVGASignedRect const &dstRect,
                                 SVGA3dSurfaceImageId const &srcImage, SVGASignedRect const &srcRect,
                                 uint32_t cDstClipRects, SVGASignedRect *paDstClipRect)
 {
@@ -1196,6 +1196,9 @@ static int vmsvga3dScreenUpdate(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen
     if (   dstRect.right <= dstRect.left
         || dstRect.bottom <= dstRect.top)
         return VINF_SUCCESS; /* Empty dst rect. */
+
+    if (pScreen->offVRAM != VMSVGA_VRAM_OFFSET_SCREEN_TARGET)
+        ASSERT_GUEST_RETURN(pScreen->offVRAM < pThis->vram_size, VERR_INVALID_PARAMETER); /* paranoia, ensured elsewhere. */
     RT_UNTRUSTED_VALIDATED_FENCE();
 
     ASSERT_GUEST_RETURN(   srcRect.right - srcRect.left == dstRect.right - dstRect.left
@@ -1257,12 +1260,19 @@ static int vmsvga3dScreenUpdate(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen
 
         uint8_t const *pu8Src = (uint8_t *)srcMap.pvData;
 
-        uint32_t const cbDst = pScreen->cHeight * pScreen->cbPitch;
+        uint32_t cbDst = pScreen->cHeight * pScreen->cbPitch;
         uint8_t *pu8Dst;
         if (pScreen->offVRAM == VMSVGA_VRAM_OFFSET_SCREEN_TARGET)
+        {
+            cbDst = RT_MIN(cbDst, pScreen->pScreenOutputTarget->desc.cbOutputBuffer);
             pu8Dst = (uint8_t *)pScreen->pScreenOutputTarget->desc.pvOutputBuffer;
+        }
         else
+        {
+            uint32_t const cbVRAM = pThis->vram_size - pScreen->offVRAM;
+            cbDst = RT_MIN(cbDst, cbVRAM); /* paranoia: pScreen->cHeight and pScreen->cbPitch has been verified. */
             pu8Dst = (uint8_t *)pThisCC->pbVRam + pScreen->offVRAM;
+        }
 
         SVGASignedRect dstClipRect;
         if (cDstClipRects == 0)
@@ -1348,7 +1358,7 @@ static int vmsvga3dScreenUpdate(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen
 }
 
 
-int vmsvga3dScreenUpdateFromScreenTarget(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen, SVGA3dRect const &rect,
+int vmsvga3dScreenUpdateFromScreenTarget(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen, SVGA3dRect const &rect,
                                          SVGA3dSurfaceImageId const &srcImage)
 {
     PVMSVGAR3STATE const pSvgaR3State = pThisCC->svga.pSvgaR3State;
@@ -1374,11 +1384,11 @@ int vmsvga3dScreenUpdateFromScreenTarget(PVGASTATECC pThisCC, VMSVGASCREENOBJECT
     r.right  = rect.x + rect.w;
     r.bottom = rect.y + rect.h;
 
-    return vmsvga3dScreenUpdate(pThisCC, pScreen, r, srcImage, r, 0, NULL);
+    return vmsvga3dScreenUpdate(pThis, pThisCC, pScreen, r, srcImage, r, 0, NULL);
 }
 
 
-int vmsvga3dScreenUpdateFromSurface(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen, SVGASignedRect const &dstRect,
+int vmsvga3dScreenUpdateFromSurface(PVGASTATE pThis, PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen, SVGASignedRect const &dstRect,
                                     SVGA3dSurfaceImageId const &srcImage, SVGASignedRect const &srcRect,
                                     uint32_t cDstClipRects, SVGASignedRect *paDstClipRect)
 {
@@ -1400,7 +1410,7 @@ int vmsvga3dScreenUpdateFromSurface(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pSc
         }
     }
 
-    return vmsvga3dScreenUpdate(pThisCC, pScreen, dstRect, srcImage, srcRect, cDstClipRects, paDstClipRect);
+    return vmsvga3dScreenUpdate(pThis, pThisCC, pScreen, dstRect, srcImage, srcRect, cDstClipRects, paDstClipRect);
 }
 
 
