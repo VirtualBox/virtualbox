@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.cpp 114308 2026-06-09 15:33:26Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.cpp 114931 2026-08-10 12:29:41Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common core code.
  */
@@ -996,7 +996,7 @@ int vmsvga3dSurfaceBlitToScreen(PVGASTATE pThis, PVGASTATECC pThisCC, uint32_t i
     }
 
     if (pSvgaR3State->pFuncsMap)
-        return vmsvga3dScreenUpdate(pThisCC, idDstScreen, destRect, src, srcRect, cRects, pRect);
+        return vmsvga3dScreenUpdate(pThis, pThisCC, idDstScreen, destRect, src, srcRect, cRects, pRect);
 
     /** @todo scaling */
     AssertReturn(destRect.right - destRect.left == srcRect.right - srcRect.left && destRect.bottom - destRect.top == srcRect.bottom - srcRect.top, VERR_INVALID_PARAMETER);
@@ -1069,7 +1069,7 @@ int vmsvga3dSurfaceBlitToScreen(PVGASTATE pThis, PVGASTATECC pThisCC, uint32_t i
     return VINF_SUCCESS;
 }
 
-int vmsvga3dScreenUpdate(PVGASTATECC pThisCC, uint32_t idDstScreen, SVGASignedRect const &dstRect,
+int vmsvga3dScreenUpdate(PVGASTATE pThis, PVGASTATECC pThisCC, uint32_t idDstScreen, SVGASignedRect const &dstRect,
                          SVGA3dSurfaceImageId const &srcImage, SVGASignedRect const &srcRect,
                          uint32_t cDstClipRects, SVGASignedRect *paDstClipRect)
 {
@@ -1111,6 +1111,9 @@ int vmsvga3dScreenUpdate(PVGASTATECC pThisCC, uint32_t idDstScreen, SVGASignedRe
     if (   dstRect.right <= dstRect.left
         || dstRect.bottom <= dstRect.top)
         return VINF_SUCCESS; /* Empty dst rect. */
+
+    if (pScreen->offVRAM != VMSVGA_VRAM_OFFSET_SCREEN_TARGET)
+        ASSERT_GUEST_RETURN(pScreen->offVRAM < pThis->vram_size, VERR_INVALID_PARAMETER); /* paranoia, ensured elsewhere. */
     RT_UNTRUSTED_VALIDATED_FENCE();
 
     ASSERT_GUEST_RETURN(   srcRect.right - srcRect.left == dstRect.right - dstRect.left
@@ -1172,16 +1175,27 @@ int vmsvga3dScreenUpdate(PVGASTATECC pThisCC, uint32_t idDstScreen, SVGASignedRe
 
         uint8_t const *pu8Src = (uint8_t *)srcMap.pvData;
 
-        uint32_t const cbDst = pScreen->cHeight * pScreen->cbPitch;
+        uint32_t cbDst = pScreen->cHeight * pScreen->cbPitch;
         uint8_t *pu8Dst;
 #ifndef PERMANENT_SCREEN_BITMAP
         if (pScreen->pvScreenBitmap)
 #else
         if (pScreen->offVRAM == VMSVGA_VRAM_OFFSET_SCREEN_TARGET)
 #endif
+        {
+#ifndef PERMANENT_SCREEN_BITMAP
+            /* pScreen->pvScreenBitmap buffer size is 'pScreen->cHeight * pScreen->cbPitch' */
+#else
+            cbDst = RT_MIN(cbDst, pThis->svga.u32MaxWidth * pThis->svga.u32MaxHeight * 4);
+#endif
             pu8Dst = (uint8_t *)pScreen->pvScreenBitmap;
+        }
         else
+        {
+            uint32_t const cbVRAM = pThis->vram_size - pScreen->offVRAM;
+            cbDst = RT_MIN(cbDst, cbVRAM); /* paranoia: pScreen->cHeight and pScreen->cbPitch have been verified. */
             pu8Dst = (uint8_t *)pThisCC->pbVRam + pScreen->offVRAM;
+        }
 
         SVGASignedRect dstClipRect;
         if (cDstClipRects == 0)

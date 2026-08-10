@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA-cmd.cpp 114798 2026-07-27 16:39:11Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA-cmd.cpp 114931 2026-08-10 12:29:41Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device - implementation of VMSVGA commands.
  */
@@ -2040,7 +2040,7 @@ static void vmsvga3dCmdBindGBScreenTarget(PVGASTATECC pThisCC, SVGA3dCmdBindGBSc
 
 
 /* SVGA_3D_CMD_UPDATE_GB_SCREENTARGET 1127 */
-static void vmsvga3dCmdUpdateGBScreenTarget(PVGASTATECC pThisCC, SVGA3dCmdUpdateGBScreenTarget const *pCmd)
+static void vmsvga3dCmdUpdateGBScreenTarget(PVGASTATE pThis, PVGASTATECC pThisCC, SVGA3dCmdUpdateGBScreenTarget const *pCmd)
 {
     //DEBUG_BREAKPOINT_TEST();
     PVMSVGAR3STATE const pSvgaR3State = pThisCC->svga.pSvgaR3State;
@@ -2084,7 +2084,7 @@ static void vmsvga3dCmdUpdateGBScreenTarget(PVGASTATECC pThisCC, SVGA3dCmdUpdate
                         r.top    = pCmd->rect.y;
                         r.right  = pCmd->rect.x + pCmd->rect.w;
                         r.bottom = pCmd->rect.y + pCmd->rect.h;
-                        vmsvga3dScreenUpdate(pThisCC, pCmd->stid, r, entryScreenTarget.image, r, 0, NULL);
+                        vmsvga3dScreenUpdate(pThis, pThisCC, pCmd->stid, r, entryScreenTarget.image, r, 0, NULL);
                     }
                 }
             }
@@ -5722,7 +5722,7 @@ int vmsvgaR3Process3dCmd(PVGASTATE pThis, PVGASTATECC pThisCC, uint32_t idDXCont
     {
         SVGA3dCmdUpdateGBScreenTarget *pCmd = (SVGA3dCmdUpdateGBScreenTarget *)pvCmd;
         VMSVGAFIFO_CHECK_3D_CMD_MIN_SIZE_BREAK(sizeof(*pCmd));
-        vmsvga3dCmdUpdateGBScreenTarget(pThisCC, pCmd);
+        vmsvga3dCmdUpdateGBScreenTarget(pThis, pThisCC, pCmd);
         break;
     }
 
