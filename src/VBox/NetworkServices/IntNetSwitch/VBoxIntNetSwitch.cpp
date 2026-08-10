@@ -1,4 +1,4 @@
-/* $Id: VBoxIntNetSwitch.cpp 114959 2026-08-10 14:41:23Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxIntNetSwitch.cpp 114962 2026-08-10 15:04:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Internal networking - Wrapper for the R0 network service.
  *
@@ -1431,7 +1431,7 @@ static DECLCALLBACK(int) intnetR3LocalIpcPokeThread(RTTHREAD hThread, void *pvUs
         rc = VINF_SUCCESS;
     uint32_t const cThreads = ASMAtomicDecU32(&pDevExt->cThreads);
     Assert(cThreads < cMaxThreads);
-    RT_NOREF(cThreads);
+    RT_NOREF(cThreads, cMaxThreads);
     return rc;
 }
 
@@ -1572,7 +1572,7 @@ static DECLCALLBACK(int) intnetR3LocalIpcSessionThread(RTTHREAD hThread, void *p
     intnetR3SessionDestroy(pSession);
     uint32_t const cThreads = ASMAtomicDecU32(&pDevExt->cThreads);
     Assert(cThreads < cMaxThreads);
-    RT_NOREF(cThreads);
+    RT_NOREF(cThreads, cMaxThreads);
     return VINF_SUCCESS;
 }
 
