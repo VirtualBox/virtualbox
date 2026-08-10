@@ -1,4 +1,4 @@
-/* $Id: darwin-pasteboard.cpp 114863 2026-08-06 10:19:52Z andreas.loeffler@oracle.com $ */
+/* $Id: darwin-pasteboard.cpp 114969 2026-08-10 16:19:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host implementation.
  */
@@ -465,6 +465,30 @@ DECLHIDDEN(int) readFileURLsFromPasteboard(PasteboardRef hPasteboard, char **pps
 DECLHIDDEN(int) readFromPasteboard(PasteboardRef pPasteboard, uint32_t fFormat, void *pv, uint32_t cb, uint32_t *pcbActual)
 {
     Log(("readFromPasteboard: fFormat = %02X\n", fFormat));
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    if (fFormat & VBOX_SHCL_FMT_URI_LIST)
+    {
+        char  *pszRoots = NULL;
+        size_t cbRoots = 0;
+        int vrc = readFileURLsFromPasteboard(pPasteboard, &pszRoots, &cbRoots);
+        if (RT_SUCCESS(vrc))
+        {
+            if (cbRoots > UINT32_MAX)
+                vrc = VERR_TOO_MUCH_DATA;
+            else
+            {
+                *pcbActual = (uint32_t)cbRoots;
+                if (cbRoots <= cb)
+                    memcpy(pv, pszRoots, cbRoots);
+                else
+                    vrc = VINF_BUFFER_OVERFLOW;
+            }
+        }
+        RTStrFree(pszRoots);
+        return vrc;
+    }
+#endif
 
     /* Make sure all is in sync */
     PasteboardSynchronize(pPasteboard);
