@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114884 2026-08-07 07:22:52Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 114960 2026-08-10 14:50:43Z andreas.loeffler@oracle.com $
 ## @file
 # Network Services testcases.
 #
@@ -28,7 +28,7 @@
 SUB_DEPTH = ../../../..
 include $(KBUILD_PATH)/subheader.kmk
 
-if defined(VBOX_WITH_TESTCASES) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC)
+if defined(VBOX_WITH_TESTCASES) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC_TESTCASES)
 
  if   !defined(VBOX_ONLY_BUILD) \
    && "$(intersects $(KBUILD_TARGET_ARCH),$(VBOX_SUPPORTED_HOST_ARCHS))" != ""
@@ -119,6 +119,6 @@ if defined(VBOX_WITH_TESTCASES) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALI
  VBoxIntNetR3SwitchTestHelper_LIBS = \
  	$(LIB_RUNTIME)
 
-endif # VBOX_WITH_TESTCASES && VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC
+endif # VBOX_WITH_TESTCASES && VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC_TESTCASES
 
 include $(FILE_KBUILD_SUB_FOOTER)

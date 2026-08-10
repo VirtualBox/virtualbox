@@ -1,0 +1,95 @@
+# $Id: Makefile.kmk 114960 2026-08-10 14:50:43Z andreas.loeffler@oracle.com $
+## @file
+# Sub-Makefile for VBoxNetDHCP testcases.
+
+#
+# Copyright (C) 2026 Oracle and/or its affiliates.
+#
+# This file is part of VirtualBox base platform packages, as
+# available from https://www.virtualbox.org.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, in version 3 of the
+# License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <https://www.gnu.org/licenses>.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+SUB_DEPTH := ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+if defined(VBOX_WITH_TESTCASES) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC_TESTCASES)
+
+ PROGRAMS += tstVBoxNetDhcpd
+
+ tstVBoxNetDhcpd_TEMPLATE = VBoxR3TstExe
+ ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),$(KBUILD_HOST).$(KBUILD_HOST_ARCH))
+  TESTING += $(tstVBoxNetDhcpd_0_OUTDIR)/tstVBoxNetDhcpd.run
+ endif
+ tstVBoxNetDhcpd_CLEAN = $(tstVBoxNetDhcpd_0_OUTDIR)/tstVBoxNetDhcpd.run
+
+ ifdef VBOX_WITH_AUTOMATIC_DEFS_QUOTING
+  tstVBoxNetDhcpd_DEFS = KBUILD_TYPE="$(KBUILD_TYPE)"
+ else
+  tstVBoxNetDhcpd_DEFS = KBUILD_TYPE=\"$(KBUILD_TYPE)\"
+ endif
+
+ tstVBoxNetDhcpd_DEFS += \
+ 	TESTCASE VBOXNETDHCPD_INPROC_TESTING VBOX_WITH_INTNET_SERVICE_IN_R3 VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC \
+ 	VBOX_INTNET_TESTCASE_EMBEDDED_SWITCH VBOX_INTNET_TESTCASE_LOCALIPC
+
+ ifneq ($(KBUILD_TARGET),win)
+  tstVBoxNetDhcpd_DEFS += VBOX_WITH_XPCOM
+  tstVBoxNetDhcpd_INCS += $(VBOX_XPCOM_INCS)
+ endif
+
+ tstVBoxNetDhcpd_SDKS += VBoxLwipDhcp
+
+ tstVBoxNetDhcpd_INCS += \
+ 	.. \
+ 	../../NetLib \
+ 	../../IntNetSwitch
+
+ # Do not list ../VBoxNetDhcpd.cpp directly here.  The wrapper below includes it
+ # after defining VBOXNETDHCPD_INPROC_TESTING, guaranteeing that the in-process
+ # testcase exports are compiled even on Windows/kBuild targets.
+ tstVBoxNetDhcpd_SOURCES = \
+ 	tstVBoxNetDhcpd.cpp \
+ 	VBoxNetDhcpdInProc.cpp \
+ 	VBoxIntNetSwitchInProc.cpp \
+ 	../ClientId.cpp \
+ 	../Config.cpp \
+ 	../DHCPD.cpp \
+ 	../Db.cpp \
+ 	../DhcpMessage.cpp \
+ 	../DhcpOptions.cpp \
+ 	../IPv4Pool.cpp \
+ 	../Timestamp.cpp \
+ 	../../IntNetSwitch/SrvIntNetWrapper.cpp \
+ 	../../NetLib/IntNetIf.cpp \
+ 	../../../Main/glue/VBoxLogRelCreate.cpp \
+ 	../../../Main/glue/GetVBoxUserHomeDirectory.cpp
+
+ tstVBoxNetDhcpd_LIBS = \
+ 	$(LIB_RUNTIME)
+
+ tstVBoxNetDhcpd_LIBS.solaris += socket nsl
+
+ $$(tstVBoxNetDhcpd_0_OUTDIR)/tstVBoxNetDhcpd.run: \
+ 		$$(tstVBoxNetDhcpd_1_STAGE_TARGET) \
+ 		| $$(dir $$@) $$(VBOX_RUN_TARGET_ORDER_DEPS)
+	export VBOX_LOG_DEST=nofile; $(tstVBoxNetDhcpd_1_STAGE_TARGET) quiet
+	$(QUIET)$(APPEND) -t "$@" "done"
+
+endif # VBOX_WITH_TESTCASES && VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALIPC_TESTCASES
+
+include $(FILE_KBUILD_SUB_FOOTER)
