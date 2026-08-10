@@ -1,4 +1,4 @@
-/* $Id: Settings.cpp 114936 2026-08-10 12:48:12Z serkan.bayraktar@oracle.com $ */
+/* $Id: Settings.cpp 114949 2026-08-10 13:32:24Z serkan.bayraktar@oracle.com $ */
 /** @file
  * Settings File Manipulation API.
  *
@@ -9713,6 +9713,11 @@ void MachineConfigFile::sanitizeImportedSerialPorts()
 void MachineConfigFile::sanitizeSharedFolderSettings()
 {
     hardwareMachine.llSharedFolders.clear();
+}
+
+void MachineConfigFile::sanitizeImportedNvramSettings()
+{
+    hardwareMachine.nvramSettings.strNvramPath.setNull();
 }
 
 /**
