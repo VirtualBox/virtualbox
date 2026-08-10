@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-internal.h 114455 2026-06-19 11:33:52Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-internal.h 114945 2026-08-10 13:06:53Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device - 3D part, internal header.
  */
@@ -438,6 +438,10 @@ typedef struct VMSVGA3DMIPMAPLEVEL
     /** Set if pvSurfaceData contains data not realized in hardware or pushed to the
      * hardware surface yet. */
     bool                    fDirty;
+    /* Whether the GB surface (VMSVGA3DSURFACE::fGB == true) has been updated by the guest. */
+    bool                    fUpdated : 1;
+    /* The updated region of the GB surface (if fUpdated is true). */
+    SVGA3dBox               boxUpdated;
 } VMSVGA3DMIPMAPLEVEL;
 /** Pointer to a mipmap level. */
 typedef VMSVGA3DMIPMAPLEVEL *PVMSVGA3DMIPMAPLEVEL;
@@ -570,6 +574,7 @@ typedef struct VMSVGA3DSURFACE
 
     /** @todo Only numArrayElements field is used currently. The code uses old fields cLevels, etc for anything else. */
     VMSVGA3D_SURFACE_DESC   surfaceDesc;
+    bool                    fGB : 1; /* Whether this is a guest backed surface. */
 
     union
     {
@@ -1509,6 +1514,9 @@ DECLINLINE(uint32_t) vmsvga3dClampedUMul32(uint32_t a, uint32_t b)
         return (uint32_t)u64Tmp;
     return UINT32_C(0xFFFFFFFF);
 }
+
+int vmsvga3dSurfaceAllocMipLevels(PVMSVGA3DSURFACE pSurface); /* For saved state. */
+void vmsvga3dSurfaceFreeMipLevels(PVMSVGA3DSURFACE pSurface); /* For backend. */
 
 #if defined(VMSVGA3D_DIRECT3D)
 HRESULT D3D9UpdateTexture(PVMSVGA3DCONTEXT pContext,

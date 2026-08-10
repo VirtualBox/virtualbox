@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114854 2026-08-04 18:26:47Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114945 2026-08-10 13:06:53Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -3360,6 +3360,8 @@ static int dxEnsureResource(PVGASTATECC pThisCC, uint32_t sid,
         rc = vmsvga3dBackSurfaceCreateResource(pThisCC, pSurface);
         AssertRCReturn(rc, rc);
         LogFunc(("Created for sid = %u\n", sid));
+
+        vmsvga3dSurfaceFreeMipLevels(pSurface);
     }
 
     ID3D11Resource *pResource = dxResource(pSurface);
@@ -4719,6 +4721,14 @@ static DECLCALLBACK(int) vmsvga3dBackSurfaceUnmap(PVGASTATECC pThisCC, SVGA3dSur
         AssertFailedReturn(VERR_NOT_IMPLEMENTED);
 
     return VINF_SUCCESS;
+}
+
+
+static DECLCALLBACK(int) vmsvga3dBackEnsureResource(PVGASTATECC pThisCC, uint32_t sid)
+{
+    PVMSVGA3DSURFACE pSurface;
+    ID3D11Resource *pResource;
+    return dxEnsureResource(pThisCC, sid, &pSurface, &pResource);
 }
 
 
@@ -14427,6 +14437,7 @@ static DECLCALLBACK(int) vmsvga3dBackQueryInterface(PVGASTATECC pThisCC, char co
                 VMSVGA3DBACKENDFUNCSMAP *p = (VMSVGA3DBACKENDFUNCSMAP *)pvInterfaceFuncs;
                 p->pfnSurfaceMap   = vmsvga3dBackSurfaceMap;
                 p->pfnSurfaceUnmap = vmsvga3dBackSurfaceUnmap;
+                p->pfnEnsureResource = vmsvga3dBackEnsureResource;
             }
         }
         else

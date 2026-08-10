@@ -1,4 +1,4 @@
-/* $Id: DevVGASavedState.h 112846 2026-02-05 17:22:12Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGASavedState.h 114945 2026-08-10 13:06:53Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVGA - Saved state versions.
  *
@@ -56,7 +56,8 @@
         } \
     } while (0)
 
-#define VGA_SAVEDSTATE_VERSION                   33
+#define VGA_SAVEDSTATE_VERSION                   34
+#define VGA_SAVEDSTATE_VERSION_VMSVGA_GB_SURF    34 /* Manage host shadow buffers for GB surfaces. @bugref{10934} */
 #define VGA_SAVEDSTATE_VERSION_VMSVGA_HOST_CMDS  33 /* Host commands. See @bugref{11042}. */
 #define VGA_SAVEDSTATE_VERSION_VMSVGA_CURSOR_MOB 32 /* Cursor MOB support. See @bugref{11042}. */
 #define VGA_SAVEDSTATE_VERSION_VMSVGA_COTABLES   31 /* COTable content. See @bugref{11021}. */
