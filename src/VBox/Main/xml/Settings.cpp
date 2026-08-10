@@ -1,4 +1,4 @@
-/* $Id: Settings.cpp 114697 2026-07-14 11:53:05Z serkan.bayraktar@oracle.com $ */
+/* $Id: Settings.cpp 114942 2026-08-10 12:56:22Z serkan.bayraktar@oracle.com $ */
 /** @file
  * Settings File Manipulation API.
  *
@@ -9664,6 +9664,11 @@ void MachineConfigFile::sanitizeImportedSerialPorts()
             port.strPath.setNull();
         }
     }
+}
+
+void MachineConfigFile::sanitizeSharedFolderSettings()
+{
+    hardwareMachine.llSharedFolders.clear();
 }
 
 /**
