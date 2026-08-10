@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.cpp 114924 2026-08-10 12:18:33Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.cpp 114945 2026-08-10 13:06:53Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common core code.
  */
@@ -140,7 +140,7 @@ static void vmsvgaSurfaceStats(PVGASTATECC pThisCC)
 }
 
 
-static int vmsvga3dSurfaceAllocMipLevels(PVMSVGA3DSURFACE pSurface)
+int vmsvga3dSurfaceAllocMipLevels(PVMSVGA3DSURFACE pSurface)
 {
     /* Allocate buffer to hold the surface data until we can move it into a D3D object */
     for (uint32_t i = 0; i < pSurface->cLevels * pSurface->surfaceDesc.numArrayElements; ++i)
@@ -154,7 +154,7 @@ static int vmsvga3dSurfaceAllocMipLevels(PVMSVGA3DSURFACE pSurface)
 }
 
 
-static void vmsvga3dSurfaceFreeMipLevels(PVMSVGA3DSURFACE pSurface)
+void vmsvga3dSurfaceFreeMipLevels(PVMSVGA3DSURFACE pSurface)
 {
     for (uint32_t i = 0; i < pSurface->cLevels * pSurface->surfaceDesc.numArrayElements; ++i)
     {
@@ -182,11 +182,11 @@ static void vmsvga3dSurfaceFreeMipLevels(PVMSVGA3DSURFACE pSurface)
  * @param   pMipLevel0Size      .
  * @param   arraySize           Number of elements in a texture array.
  * @param   bufferByteStride    .
- * @param   fAllocMipLevels     .
+ * @param   defineFlags         .
  */
 int vmsvga3dSurfaceDefine(PVGASTATECC pThisCC, uint32_t sid, SVGA3dSurfaceAllFlags surfaceFlags, SVGA3dSurfaceFormat format,
                           uint32_t multisampleCount, SVGA3dMSPattern multisamplePattern, SVGA3dMSQualityLevel qualityLevel, SVGA3dTextureFilter autogenFilter,
-                          uint32_t numMipLevels, SVGA3dSize const *pMipLevel0Size, uint32_t arraySize, uint32_t bufferByteStride, bool fAllocMipLevels)
+                          uint32_t numMipLevels, SVGA3dSize const *pMipLevel0Size, uint32_t arraySize, uint32_t bufferByteStride, uint32_t defineFlags)
 {
     PVMSVGA3DSURFACE pSurface;
     PVMSVGA3DSTATE   pState = pThisCC->svga.p3dState;
@@ -263,6 +263,8 @@ int vmsvga3dSurfaceDefine(PVGASTATECC pThisCC, uint32_t sid, SVGA3dSurfaceAllFla
     pSurface->surfaceDesc.multisamplePattern = RT_CLAMP(multisamplePattern, SVGA3D_MS_PATTERN_MIN, SVGA3D_MS_PATTERN_MAX);
     pSurface->surfaceDesc.qualityLevel = RT_CLAMP(qualityLevel, SVGA3D_MS_QUALITY_MIN, SVGA3D_MS_QUALITY_MAX);
     pSurface->surfaceDesc.bufferByteStride = bufferByteStride;
+
+    pSurface->fGB = RT_BOOL(defineFlags & VMSVGA3D_SURFACE_DEFINE_F_GB);
 
     /** @todo This 'switch' and the surfaceFlags tweaks should not be necessary.
      * The actual surface type will be figured out when the surface is actually used later.
@@ -498,7 +500,7 @@ int vmsvga3dSurfaceDefine(PVGASTATECC pThisCC, uint32_t sid, SVGA3dSurfaceAllFla
 
     Assert(!VMSVGA3DSURFACE_HAS_HW_SURFACE(pSurface));
 
-    if (fAllocMipLevels || pState->fVMSVGA2dGBO)
+    if (RT_BOOL(defineFlags & VMSVGA3D_SURFACE_DEFINE_F_ALLOC_MIP_LEVELS) || pState->fVMSVGA2dGBO)
     {
         rc = vmsvga3dSurfaceAllocMipLevels(pSurface);
         AssertRCReturn(rc, rc);
@@ -1553,6 +1555,8 @@ int vmsvga3dSurfaceInvalidate(PVGASTATECC pThisCC, uint32_t sid, uint32_t face, 
             PVMSVGA3DMIPMAPLEVEL pMipmapLevel = &pSurface->paMipmapLevels[i];
             pMipmapLevel->fDirty = true;
         }
+
+        vmsvga3dSurfaceFreeMipLevels(pSurface);
     }
     else
     {
@@ -1904,6 +1908,16 @@ int vmsvga3dSurfaceMap(PVGASTATECC pThisCC, SVGA3dSurfaceImageId const *pImage, 
     int rc = vmsvga3dSurfaceFromSid(pThisCC->svga.p3dState, pImage->sid, &pSurface);
     AssertRCReturn(rc, rc);
 
+    if (fMapFlags & VMSVGA3D_MAP_F_ENSURE_RESOURCE)
+    {
+        PVMSVGAR3STATE const pSvgaR3State = pThisCC->svga.pSvgaR3State;
+        AssertReturn(pSvgaR3State->pFuncsMap, VERR_NOT_IMPLEMENTED);
+
+        /* Ensure that the HW resource exists. */
+        rc = pSvgaR3State->pFuncsMap->pfnEnsureResource(pThisCC, pImage->sid);
+        AssertRCReturn(rc, rc);
+    }
+
     if (VMSVGA3DSURFACE_HAS_HW_SURFACE(pSurface))
     {
         PVMSVGAR3STATE const pSvgaR3State = pThisCC->svga.pSvgaR3State;
@@ -1974,6 +1988,19 @@ int vmsvga3dSurfaceUnmap(PVGASTATECC pThisCC, SVGA3dSurfaceImageId const *pImage
         pMipLevel->fDirty = true;
         pSurface->fDirty = true;
     }
+
+    return VINF_SUCCESS;
+}
+
+
+int vmsvga3dEnsureResource(PVGASTATECC pThisCC, SVGA3dSurfaceId sid)
+{
+    PVMSVGAR3STATE const pSvgaR3State = pThisCC->svga.pSvgaR3State;
+    AssertReturn(pSvgaR3State->pFuncsMap, VERR_NOT_IMPLEMENTED);
+
+    /* Ensure that the HW resource exists. */
+    int rc = pSvgaR3State->pFuncsMap->pfnEnsureResource(pThisCC, sid);
+    AssertRCReturn(rc, rc);
 
     return VINF_SUCCESS;
 }
@@ -2114,14 +2141,17 @@ int vmsvga3dGetBoxDimensions(PVGASTATECC pThisCC, SVGA3dSurfaceImageId const *pI
 
 
 /*
- * Whether a legacy 3D backend is used.
- * The new DX context can be built together with the legacy D3D9 or OpenGL backend.
+ * Whether a legacy VGPU9 3D backend is used.
+ * The new DX backend can be built together with the legacy D3D9 or OpenGL backend.
  * The actual backend is selected at the VM startup.
  */
 bool vmsvga3dIsLegacyBackend(PVGASTATECC pThisCC)
 {
     PVMSVGAR3STATE const pSvgaR3State = pThisCC->svga.pSvgaR3State;
-    return pSvgaR3State->pFuncsDX == NULL;
+    /* 'pFuncsGBO' is the essential, base interface of the VGPU10 capable backend.
+     * 'pFuncsGBO' is created and used for both 3D enabled and 'fVMSVGA2dGBO' modes.
+     */
+    return pSvgaR3State->pFuncsGBO == NULL;
 }
 
 
