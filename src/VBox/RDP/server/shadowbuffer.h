@@ -1,4 +1,4 @@
-/* $Id: shadowbuffer.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: shadowbuffer.h 114912 2026-08-10 12:03:20Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Remote Desktop Protocol.
  */
@@ -98,6 +98,7 @@ void shadowBufferOrder (unsigned uScreenId, void *pdata, uint32_t cbdata);
 
 void shadowBufferQueryRect (unsigned uScreenId, RGNRECT *prect);
 
+bool shadowBufferAreOrderCoordsValid(unsigned uScreenId, int32_t x, int32_t y, uint32_t w, uint32_t h);
 void shadowBufferTransformRect (unsigned uScreenId, RGNRECT *prect);
 void shadowBufferTransformRectGeneric (unsigned uScreenId, RGNRECT *prect, unsigned w, unsigned h);
 void shadowBufferTransformWidthHeight(unsigned uScreenId, unsigned *pw, unsigned *ph);

@@ -1,4 +1,4 @@
-/* $Id: videodetector.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: videodetector.cpp 114912 2026-08-10 12:03:20Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Remote Desktop Protocol.
  */
@@ -352,6 +352,11 @@ bool videoDetectorBitmapUpdate(VDCONTEXT *pCtx,
     }
 
     if (pCtx->u32Status != VD_STATUS_ENABLED)
+    {
+        return false;
+    }
+
+    if (!pCtx->pCallbacks->pfnIsValidRect(pCtx->pvCallback, prectUpdate))
     {
         return false;
     }

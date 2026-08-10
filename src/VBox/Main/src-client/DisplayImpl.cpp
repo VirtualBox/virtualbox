@@ -1,4 +1,4 @@
-/* $Id: DisplayImpl.cpp 114707 2026-07-14 13:40:18Z vitali.pelenjow@oracle.com $ */
+/* $Id: DisplayImpl.cpp 114912 2026-08-10 12:03:20Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -3576,8 +3576,10 @@ DECLCALLBACK(void) Display::i_displayVBVAUpdateProcess(PPDMIDISPLAYCONNECTOR pIn
                                                        struct VBVACMDHDR const RT_UNTRUSTED_VOLATILE_GUEST *pCmd, size_t cbCmd)
 {
     LogFlowFunc(("uScreenId %d pCmd %p cbCmd %d, @%d,%d %dx%d\n", uScreenId, pCmd, cbCmd, pCmd->x, pCmd->y, pCmd->w, pCmd->h));
-    VBVACMDHDR hdrSaved;
-    RT_COPY_VOLATILE(hdrSaved, *pCmd);
+    AssertReturnVoid(cbCmd >= sizeof(VBVACMDHDR));
+
+    VBVACMDHDR hdr;
+    RT_COPY_VOLATILE(hdr, *pCmd);
     RT_UNTRUSTED_NONVOLATILE_COPY_FENCE();
 
     PDRVMAINDISPLAY pDrv = PDMIDISPLAYCONNECTOR_2_MAINDISPLAY(pInterface);
@@ -3593,7 +3595,7 @@ DECLCALLBACK(void) Display::i_displayVBVAUpdateProcess(PPDMIDISPLAYCONNECTOR pIn
         if (   uScreenId == VBOX_VIDEO_PRIMARY_SCREEN
             && !pFBInfo->fDisabled)
         {
-            pDrv->pUpPort->pfnUpdateDisplayRect(pDrv->pUpPort, hdrSaved.x, hdrSaved.y, hdrSaved.w, hdrSaved.h);
+            pDrv->pUpPort->pfnUpdateDisplayRect(pDrv->pUpPort, hdr.x, hdr.y, hdr.w, hdr.h);
         }
         else if (   !pFBInfo->pSourceBitmap.isNull()
                  && !pFBInfo->fDisabled
@@ -3615,12 +3617,12 @@ DECLCALLBACK(void) Display::i_displayVBVAUpdateProcess(PPDMIDISPLAYCONNECTOR pIn
                                                                   &bitmapFormat);
             if (SUCCEEDED(hrc))
             {
-                uint32_t width              = hdrSaved.w;
-                uint32_t height             = hdrSaved.h;
+                uint32_t width              = hdr.w;
+                uint32_t height             = hdr.h;
 
                 const uint8_t *pu8Src       = pFBInfo->pu8FramebufferVRAM;
-                int32_t xSrc                = hdrSaved.x - pFBInfo->xOrigin;
-                int32_t ySrc                = hdrSaved.y - pFBInfo->yOrigin;
+                int32_t xSrc                = hdr.x - pFBInfo->xOrigin;
+                int32_t ySrc                = hdr.y - pFBInfo->yOrigin;
                 uint32_t u32SrcWidth        = pFBInfo->w;
                 uint32_t u32SrcHeight       = pFBInfo->h;
                 uint32_t u32SrcLineSize     = pFBInfo->u32LineSize;
@@ -3648,18 +3650,11 @@ DECLCALLBACK(void) Display::i_displayVBVAUpdateProcess(PPDMIDISPLAYCONNECTOR pIn
         }
     }
 
-    /*
-     * Here is your classic 'temporary' solution.
-     */
-    /** @todo New SendUpdate entry which can get a separate cmd header or coords. */
-    VBVACMDHDR *pHdrUnconst = (VBVACMDHDR *)pCmd;
+    /* Always send just a bitmap update to the VRDP server. */
+    hdr.x -= (int16_t)pFBInfo->xOrigin;
+    hdr.y -= (int16_t)pFBInfo->yOrigin;
 
-    pHdrUnconst->x -= (int16_t)pFBInfo->xOrigin;
-    pHdrUnconst->y -= (int16_t)pFBInfo->yOrigin;
-
-    pThis->mParent->i_consoleVRDPServer()->SendUpdate(uScreenId, pHdrUnconst, (uint32_t)cbCmd);
-
-    *pHdrUnconst = hdrSaved;
+    pThis->mParent->i_consoleVRDPServer()->SendUpdate(uScreenId, &hdr, sizeof(hdr));
 }
 
 DECLCALLBACK(void) Display::i_displayVBVAUpdateEnd(PPDMIDISPLAYCONNECTOR pInterface, unsigned uScreenId, int32_t x, int32_t y,

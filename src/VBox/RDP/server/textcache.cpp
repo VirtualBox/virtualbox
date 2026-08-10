@@ -1,4 +1,4 @@
-/* $Id: textcache.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: textcache.cpp 114912 2026-08-10 12:03:20Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Remote Desktop Protocol.
  */
@@ -122,9 +122,8 @@ static uint8_t *tcGlyphBitmap (const TCGLYPHFONT *pFont, int iGlyph)
     return NULL;
 }
 
-#ifdef RT_STRICT
 /* Return maximum size of a bitmap for this font. */
-static int tcGlyphBitmapMaxSize (const TCGLYPHFONT *pFont)
+static uint32_t tcGlyphBitmapMaxSize (const TCGLYPHFONT *pFont)
 {
     switch (pFont->iRDPFontHandle)
     {
@@ -140,7 +139,6 @@ static int tcGlyphBitmapMaxSize (const TCGLYPHFONT *pFont)
     AssertFailed ();
     return 0;
 }
-#endif
 
 /* Convert the server font array index to the RDP font handle. */
 static int tcRDPHandleFromServerIndex (int index)
@@ -222,18 +220,21 @@ static void tcClearFontCache (TCGLYPHFONT *pFont)
     pFont->cGlyphsCached = 0;
 }
 
-static TCCACHEDGLYPH *tcCacheGlyph (TCGLYPHFONT *pFont, const VRDEORDERGLYPH *pGlyph)
+static TCCACHEDGLYPH *tcCacheGlyph (TCGLYPHFONT *pFont, const VRDEORDERGLYPH *pGlyph, uint32_t cbGlyphBitmap)
 {
-    Assert (pFont->cGlyphsCached < pFont->cGlyphsMax);
-
-    /* Allocate place for the new glyph, remember its index. */
-    int iGlyph = pFont->cGlyphsCached++;
-
     if (pFont->cGlyphsCached >= pFont->cGlyphsMax)
     {
         /* No place for the new glyph. */
         return NULL;
     }
+
+    if (cbGlyphBitmap > tcGlyphBitmapMaxSize (pFont))
+    {
+        return NULL;
+    }
+
+    /* Allocate place for the new glyph, remember its index. */
+    int iGlyph = pFont->cGlyphsCached++;
 
     /* Convert the VRDEORDERGLYPH to the cache glyph format. */
     TCCACHEDGLYPH *pCachedGlyph = &pFont->aGlyphs[iGlyph];
@@ -250,13 +251,7 @@ static TCCACHEDGLYPH *tcCacheGlyph (TCGLYPHFONT *pFont, const VRDEORDERGLYPH *pG
 
     pCachedGlyph->pu8Bitmap = tcGlyphBitmap (pFont, iGlyph);
 
-    int cbBitmap = (pCachedGlyph->w + 7) / 8; /* Line size in bytes. */
-    cbBitmap *= pCachedGlyph->h;              /* Size of bitmap. */
-    cbBitmap = (cbBitmap + 3) & ~3;           /* 32 bit DWORD align. */
-
-    Assert (cbBitmap <= tcGlyphBitmapMaxSize (pFont));
-
-    memcpy (pCachedGlyph->pu8Bitmap, pGlyph->au8Bitmap, cbBitmap);
+    memcpy (pCachedGlyph->pu8Bitmap, pGlyph->au8Bitmap, cbGlyphBitmap);
 
     return pCachedGlyph;
 }
@@ -280,22 +275,51 @@ static TCCACHEDGLYPH *tcFindCachedGlyph (TCGLYPHFONT *pFont, const VRDEORDERGLYP
 }
 
 
-static int tcTryCacheGlyphs (const VRDEORDERTEXT *pOrder, TCGLYPHFONT *pFont, TCFONTTEXT2 *pFontText2)
+static int tcTryCacheGlyphs (const VRDEORDERTEXT *pOrder, uint32_t cbOrder, TCGLYPHFONT *pFont, TCFONTTEXT2 *pFontText2)
 {
     int rc = VINF_SUCCESS;
 
     /* Scan the string and check glyphs. */
     const VRDEORDERGLYPH *pGlyph = (VRDEORDERGLYPH *)(&pOrder[1]); /* Glyphs follow the order structure. */
+    uint32_t cbLeft = cbOrder;
 
     unsigned i;
     for (i = 0; i < pOrder->u8Glyphs; i++)
     {
+        if (cbLeft < RT_UOFFSETOF(VRDEORDERGLYPH, au8Bitmap))
+        {
+            rc = VERR_INVALID_PARAMETER;
+            break;
+        }
+
+        if (pGlyph->o32NextGlyph > cbLeft)
+        {
+            rc = VERR_INVALID_PARAMETER;
+            break;
+        }
+
+        uint32_t cbGlyphBitmap = (pGlyph->w + 7) / 8; /* Line size in bytes. */
+        cbGlyphBitmap *= pGlyph->h;                   /* Size of bitmap. */
+        cbGlyphBitmap = (cbGlyphBitmap + 3) & ~3;     /* 32 bit DWORD align. */
+
+        if (cbGlyphBitmap > cbLeft - RT_UOFFSETOF(VRDEORDERGLYPH, au8Bitmap))
+        {
+            rc = VERR_INVALID_PARAMETER;
+            break;
+        }
+
+        if (cbGlyphBitmap > pOrder->u16MaxGlyph)
+        {
+            rc = VERR_INVALID_PARAMETER;
+            break;
+        }
+
         /* Find the glyph in the cache. */
         TCCACHEDGLYPH *pCachedGlyph = tcFindCachedGlyph (pFont, pGlyph);
 
         if (!pCachedGlyph)
         {
-            pCachedGlyph = tcCacheGlyph (pFont, pGlyph);
+            pCachedGlyph = tcCacheGlyph (pFont, pGlyph, cbGlyphBitmap);
         }
 
         if (!pCachedGlyph)
@@ -322,6 +346,7 @@ static int tcTryCacheGlyphs (const VRDEORDERTEXT *pOrder, TCGLYPHFONT *pFont, TC
         pFontText2->cGlyphs++;
 
         pGlyph = (const VRDEORDERGLYPH *)((uint8_t *)pGlyph + pGlyph->o32NextGlyph);
+        cbLeft -= pGlyph->o32NextGlyph;
     }
 
     return rc;
@@ -363,7 +388,7 @@ static int tcSetupFontText2 (TCFONTTEXT2 *pFontText2, TCGLYPHFONT *pFont, const 
 }
 
 
-bool TCCacheGlyphs (PTEXTCACHE ptc, const VRDEORDERTEXT *pOrder, TCFONTTEXT2 **ppFontText2)
+bool TCCacheGlyphs (PTEXTCACHE ptc, const VRDEORDERTEXT *pOrder, uint32_t cbOrder, TCFONTTEXT2 **ppFontText2)
 {
     /* Check which glyphs are already cached. The original order is copied
      * to the TCFONTTEXT2 structure and the status of each glyph is determined.
@@ -377,6 +402,11 @@ bool TCCacheGlyphs (PTEXTCACHE ptc, const VRDEORDERTEXT *pOrder, TCFONTTEXT2 **p
      * are put to the fragment cache. The text2 order then adds 0xff ID CB
      * to the string: ID - the cache index. CB is the string length.
      */
+
+    if (cbOrder < sizeof(VRDEORDERTEXT))
+    {
+        return false;
+    }
 
     int iRDPFontHandle = tcSelectRDPHandle (ptc, pOrder);
 
@@ -394,7 +424,7 @@ bool TCCacheGlyphs (PTEXTCACHE ptc, const VRDEORDERTEXT *pOrder, TCFONTTEXT2 **p
 
     TCGLYPHFONT *pFont = &ptc->glyphs.fonts[ tcServerIndexFromRDPHandle (iRDPFontHandle) ];
 
-    int rc = tcTryCacheGlyphs (pOrder, pFont, pFontText2);
+    int rc = tcTryCacheGlyphs (pOrder, cbOrder, pFont, pFontText2);
 
     if (RT_FAILURE(rc))
     {
@@ -402,7 +432,7 @@ bool TCCacheGlyphs (PTEXTCACHE ptc, const VRDEORDERTEXT *pOrder, TCFONTTEXT2 **p
 
         memset (pFontText2, 0, sizeof (TCFONTTEXT2));
 
-        rc = tcTryCacheGlyphs (pOrder, pFont, pFontText2);
+        rc = tcTryCacheGlyphs (pOrder, cbOrder, pFont, pFontText2);
     }
 
     if (RT_SUCCESS (rc))

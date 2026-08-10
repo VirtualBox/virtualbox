@@ -1,4 +1,4 @@
-/* $Id: shadowbuffer.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: shadowbuffer.cpp 114912 2026-08-10 12:03:20Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Remote Desktop Protocol.
  */
@@ -360,11 +360,13 @@ typedef struct _VRDPSBSCREEN
 
 static DECLCALLBACK(bool) vscVideoSourceStreamStart(void *pvCallback, uint32_t u32SourceStreamId, const RGNRECT *prect, int64_t timeStart);
 static DECLCALLBACK(void) vscVideoSourceStreamStop(void *pvCallback, uint32_t u32SourceStreamId, const RGNRECT *prect);
+static DECLCALLBACK(bool) vscIsValidRect(void *pvCallback, const RGNRECT *prect);
 
 static VIDEOSTREAMCALLBACKS vsCallbacks =
 {
     vscVideoSourceStreamStart,
-    vscVideoSourceStreamStop
+    vscVideoSourceStreamStop,
+    vscIsValidRect,
 };
 
 #define VRDP_SB_TO_SCREEN(__psb) ((VRDPSBSCREEN *)((uint8_t *)(__psb) - RT_UOFFSETOF(VRDPSBSCREEN, sb)))
@@ -2385,6 +2387,12 @@ static DECLCALLBACK(void) vscVideoSourceStreamStop(void *pvCallback, uint32_t u3
     return;
 }
 
+static DECLCALLBACK(bool) vscIsValidRect(void *pvCallback, const RGNRECT *prect)
+{
+    VRDPSBSCREEN *pScreen = (VRDPSBSCREEN *)pvCallback;
+    AssertPtrReturn(pScreen, false);
+    return rgnIsRectWithin(&pScreen->sb.pixelBuffer.rect, prect);
+}
 
 void shadowBufferUpdateComplete(void)
 {
@@ -2998,6 +3006,40 @@ void shadowBufferQueryRect (unsigned uScreenId, RGNRECT *prect)
     }
 }
 
+bool shadowBufferAreOrderCoordsValid(unsigned uScreenId, int32_t x, int32_t y, uint32_t w, uint32_t h)
+{
+    SBLOG(("Enter: uScreenId = %d\n", uScreenId));
+
+    bool fValid = false;
+
+    if (sbLock (uScreenId))
+    {
+        VRDPSBSCREEN *pScreen = sbResolveScreenId (uScreenId);
+
+        if (pScreen != NULL)
+        {
+            RGNRECT rect;
+            rect.x = x;
+            rect.y = y;
+            rect.w = w;
+            rect.h = h;
+
+            RGNRECT rectFB;
+            rectFB.x = 0;
+            rectFB.y = 0;
+            rectFB.w = pScreen->sb.transform.cFBWidth;
+            rectFB.h = pScreen->sb.transform.cFBHeight;
+
+            fValid = rgnIsRectWithin(&rectFB, &rect);
+        }
+
+        sbUnlock ();
+    }
+
+    return fValid;
+}
+
+
 void shadowBufferTransformRect (unsigned uScreenId, RGNRECT *prect)
 {
     SBLOG(("Enter: uScreenId = %d\n", uScreenId));
@@ -3578,6 +3620,11 @@ void shadowBufferOrder (unsigned uScreenId, void *pdata, uint32_t cbdata)
                     rectAffected.y = hdr.y;
                     rectAffected.w = hdr.w;
                     rectAffected.h = hdr.h;
+                    if (!rgnIsRectWithin(&pScreen->sb.pixelBuffer.rect, &rectAffected))
+                    {
+                        sbUnlock ();
+                        return;
+                    }
 
                     pScreen->sb.transform.pfnTransformRect (&rectAffected, pScreen->sb.transform.cSBWidth, pScreen->sb.transform.cSBHeight);
 
@@ -3606,24 +3653,18 @@ void shadowBufferOrder (unsigned uScreenId, void *pdata, uint32_t cbdata)
                             pBitsHdr->cb, pBitsHdr->x, pBitsHdr->y, pBitsHdr->cWidth, pBitsHdr->cHeight, pBitsHdr->cbPixel,
                             *(uint32_t *)&pOrder->hash[0], *(uint32_t *)&pOrder->hash[4], *(uint32_t *)&pOrder->hash[8], *(uint32_t *)&pOrder->hash[12]));
 
-                    switch (pBitsHdr->cbPixel)
-                    {
-                        case 2:
-                        case 3:
-                        case 4: break;
-
-                        default:
-                            SBLOG(("Unsupported cbPixel (%d)!!!", pBitsHdr->cbPixel));
-                            sbUnlock ();
-                            return;
-                    }
-
                     /* Verify that the buffer is big enough for those bits. */
                     if (pBitsHdr->cb > cbSrcRemaining)
                     {
                         VRDPLOGRELLIMIT(16, ("Size of bits (%d) exceeds the size of buffer (%d)!!! %d,%d %dx%d %d.\n",
                                         pBitsHdr->cb, cbSrcRemaining,
                                         pBitsHdr->x, pBitsHdr->y, pBitsHdr->cWidth, pBitsHdr->cHeight, pBitsHdr->cbPixel));
+                        sbUnlock ();
+                        return;
+                    }
+
+                    if (!isValidBitsHdr(pBitsHdr))
+                    {
                         sbUnlock ();
                         return;
                     }
@@ -3693,6 +3734,12 @@ void shadowBufferOrder (unsigned uScreenId, void *pdata, uint32_t cbdata)
                         SBLOG(("VRDE_ORDER_SAVESCREEN: pBitsHdr cb = %d, x = %d, y = %d, cWidth = %d, cHeight = %d, cbPixel = %d\n",
                                 pBitsHdr->cb, pBitsHdr->x, pBitsHdr->y, pBitsHdr->cWidth, pBitsHdr->cHeight, pBitsHdr->cbPixel));
 
+                        if (!isValidBitsHdr(pBitsHdr))
+                        {
+                            sbUnlock ();
+                            return;
+                        }
+
                         /* Save bitmap in the bmpcache intermediate heap, if that fails, do a bitmap update. */
                         BCHEAPHANDLE hBmp;
                         int rc = BCStore(&hBmp, g_pCtx->pServer->BC(),
@@ -3752,24 +3799,18 @@ void shadowBufferOrder (unsigned uScreenId, void *pdata, uint32_t cbdata)
                     SBLOG(("VRDE_ORDER_DIRTY_RECT: cb %d, %d,%d %dx%d, cbPixel %d\n",
                            pBitsHdr->cb, pBitsHdr->x, pBitsHdr->y, pBitsHdr->cWidth, pBitsHdr->cHeight, pBitsHdr->cbPixel));
 
-                    switch (pBitsHdr->cbPixel)
-                    {
-                        case 2:
-                        case 3:
-                        case 4: break;
-
-                        default:
-                            SBLOG(("Unsupported cbPixel (%d)!!!", pBitsHdr->cbPixel));
-                            sbUnlock ();
-                            return;
-                    }
-
                     /* Verify that the buffer is big enough for those bits. */
                     if (pBitsHdr->cb > cbSrcRemaining)
                     {
                         VRDPLOGRELLIMIT(16, ("Size of bits (%d) exceeds the size of buffer (%d)!!! %d,%d %dx%d %d.\n",
                                         pBitsHdr->cb, cbSrcRemaining,
                                         pBitsHdr->x, pBitsHdr->y, pBitsHdr->cWidth, pBitsHdr->cHeight, pBitsHdr->cbPixel));
+                        sbUnlock ();
+                        return;
+                    }
+
+                    if (!isValidBitsHdr(pBitsHdr))
+                    {
                         sbUnlock ();
                         return;
                     }

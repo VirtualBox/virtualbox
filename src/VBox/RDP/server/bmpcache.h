@@ -1,4 +1,4 @@
-/* $Id: bmpcache.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: bmpcache.h 114912 2026-08-10 12:03:20Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Remote Desktop Protocol.
  */
@@ -87,5 +87,25 @@ int BCStore(BCHEAPHANDLE *pHandle, PBMPCACHE pbc, int32_t i32Op, const void *pvD
 void *BCBitmapHeapBlockQuery(PBMPCACHE pbc, const BCHEAPHANDLE *pHandle, int32_t i32Op, uint32_t *pcbBlock);
 void BCBitmapHeapBlockRelease(PBMPCACHE pbc, const BCHEAPHANDLE *pHandle);
 void BCBitmapHeapBlockFree(PBMPCACHE pbc, const BCHEAPHANDLE *pHandle);
+
+DECLINLINE(bool) isValidBitsHdr(VRDEDATABITS const *pBitsHdr)
+{
+    switch (pBitsHdr->cbPixel)
+    {
+        case 2:
+        case 3:
+        case 4: break;
+
+        default:
+            return false;
+    }
+
+    /* uint16_t * uint16_t * uint8_t */
+    uint64_t const u64BitmapSize = (uint64_t)pBitsHdr->cWidth * pBitsHdr->cHeight * pBitsHdr->cbPixel;
+    if (pBitsHdr->cb < u64BitmapSize)
+        return false;
+
+    return true;
+}
 
 #endif /* !VRDP_INCLUDED_SRC_bmpcache_h */

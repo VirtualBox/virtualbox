@@ -1,4 +1,4 @@
-/* $Id: vrdpapi.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: vrdpapi.cpp 114912 2026-08-10 12:03:20Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Remote Desktop Protocol - Public API functions.
  */
@@ -96,6 +96,7 @@ static DECLCALLBACK(void) VRDPUpdate (HVRDESERVER hServer,
 
     if (pServer)
     {
+#if 0 /* obsolete */
         if (cbUpdate > sizeof (VRDEORDERHDR))
         {
             /* The update includes VRDP order information. */
@@ -103,6 +104,8 @@ static DECLCALLBACK(void) VRDPUpdate (HVRDESERVER hServer,
             pServer->ProcessOutputUpdate (uScreenId, pvUpdate, cbUpdate);
         }
         else if (cbUpdate == sizeof (VRDEORDERHDR))
+#endif
+        if (cbUpdate == sizeof (VRDEORDERHDR))
         {
             /* This is just a bitmap update. */
             VRDPAPILOG(("%p, %d, %d (bitmap)\n", pServer, cbUpdate, sizeof (VRDEORDERHDR)));
