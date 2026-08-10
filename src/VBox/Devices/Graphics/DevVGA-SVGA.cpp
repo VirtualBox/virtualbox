@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 114796 2026-07-27 16:22:58Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 114924 2026-08-10 12:18:33Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -1689,9 +1689,9 @@ int vmsvgaR3ChangeMode(PVGASTATE pThis, PVGASTATECC pThisCC)
         VMSVGASCREENOBJECT *pScreen = &pSVGAState->aScreens[0];
         Assert(pScreen->idScreen == 0);
 
-        if (   pScreen->cWidth  == VMSVGA_VAL_UNINITIALIZED
-            || pScreen->cHeight == VMSVGA_VAL_UNINITIALIZED
-            || pScreen->cBpp    == VMSVGA_VAL_UNINITIALIZED)
+        if (   pThis->svga.uWidth  == VMSVGA_VAL_UNINITIALIZED
+            || pThis->svga.uHeight == VMSVGA_VAL_UNINITIALIZED
+            || pThis->svga.uBpp    == VMSVGA_VAL_UNINITIALIZED)
         {
             /* Do not apply the change if the guest has not finished updating registers.
              * This is necessary in order to make a full mode change.
@@ -1699,13 +1699,22 @@ int vmsvgaR3ChangeMode(PVGASTATE pThis, PVGASTATECC pThisCC)
             return VINF_SUCCESS;
         }
 
+        ASSERT_GUEST_RETURN(pThis->svga.uWidth > 0 && pThis->svga.uWidth <= pThis->svga.u32MaxWidth, VERR_INVALID_STATE);
+        ASSERT_GUEST_RETURN(pThis->svga.uHeight > 0 && pThis->svga.uHeight <= pThis->svga.u32MaxHeight, VERR_INVALID_STATE);
+
+        /* Height can't exceed the available VRAM. */
+        uint32_t const cbPitch = pThis->svga.cbScanline
+                               ? pThis->svga.cbScanline
+                               : (uint32_t)pThis->svga.uWidth * (RT_ALIGN(pThis->svga.uBpp, 8) / 8);
+        ASSERT_GUEST_RETURN(pThis->svga.uHeight <= pThis->vram_size / cbPitch, VERR_INVALID_STATE);
+
         pScreen->fDefined  = true;
         pScreen->fModified = true;
         pScreen->fuScreen  = SVGA_SCREEN_MUST_BE_SET | SVGA_SCREEN_IS_PRIMARY;
         pScreen->xOrigin   = 0;
         pScreen->yOrigin   = 0;
         pScreen->offVRAM   = 0;
-        pScreen->cbPitch   = pThis->svga.cbScanline;
+        pScreen->cbPitch   = cbPitch;
         pScreen->cWidth    = pThis->svga.uWidth;
         pScreen->cHeight   = pThis->svga.uHeight;
         pScreen->cBpp      = pThis->svga.uBpp;
@@ -7273,13 +7282,16 @@ static int vmsvgaR3LoadExecFifo(PCPDMDEVHLPR3 pHlp, PVGASTATE pThis, PVGASTATECC
         /* Try to setup at least the first screen. */
         VMSVGASCREENOBJECT *pScreen = &pSVGAState->aScreens[0];
         Assert(pScreen->idScreen == 0);
+        uint32_t const cbPitch = pThis->svga.cbScanline
+                               ? pThis->svga.cbScanline
+                               : (uint32_t)pThis->svga.uWidth * (RT_ALIGN(pThis->svga.uBpp, 8) / 8);
         pScreen->fDefined  = true;
         pScreen->fModified = true;
         pScreen->fuScreen  = SVGA_SCREEN_MUST_BE_SET | SVGA_SCREEN_IS_PRIMARY;
         pScreen->xOrigin   = 0;
         pScreen->yOrigin   = 0;
         pScreen->offVRAM   = pThis->svga.uScreenOffset;
-        pScreen->cbPitch   = pThis->svga.cbScanline;
+        pScreen->cbPitch   = cbPitch;
         pScreen->cWidth    = pThis->svga.uWidth;
         pScreen->cHeight   = pThis->svga.uHeight;
         pScreen->cBpp      = pThis->svga.uBpp;
