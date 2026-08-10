@@ -1,4 +1,4 @@
-/* $Id: UsbNet.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: UsbNet.cpp 114919 2026-08-10 12:09:50Z alexander.eichner@oracle.com $ */
 /** @file
  * UsbNet - USB NCM Ethernet Device Emulation.
  */
@@ -2081,6 +2081,7 @@ static DECLCALLBACK(int) usbNetUsbSetInterface(PPDMUSBINS pUsbIns, uint8_t bInte
     PUSBNET pThis = PDMINS_2_DATA(pUsbIns, PUSBNET);
     LogFlowFunc(("/#%u/ bInterfaceNumber=%u bAlternateSetting=%u\n", pUsbIns->iInstance, bInterfaceNumber, bAlternateSetting));
     Assert(bAlternateSetting == 0 || bAlternateSetting == 1);
+    RTCritSectEnter(&pThis->CritSect);
     if (pThis->bAlternateSetting != bAlternateSetting)
     {
         if (bAlternateSetting == 0)
@@ -2097,6 +2098,7 @@ static DECLCALLBACK(int) usbNetUsbSetInterface(PPDMUSBINS pUsbIns, uint8_t bInte
         }
         pThis->bAlternateSetting = bAlternateSetting;
     }
+    RTCritSectLeave(&pThis->CritSect);
     return VINF_SUCCESS;
 }
 
@@ -2224,8 +2226,10 @@ static DECLCALLBACK(void) usbNetVMReset(PPDMUSBINS pUsbIns)
     PUSBNET pThis = PDMINS_2_DATA(pUsbIns, PUSBNET);
 
     LogFlowFunc(("/#%u/\n", pUsbIns->iInstance));
+    RTCritSectEnter(&pThis->CritSect);
     int rc = usbNetResetWorker(pThis, NULL, false /*fSetConfig*/);
     AssertRC(rc);
+    RTCritSectLeave(&pThis->CritSect);
 }
 
 
