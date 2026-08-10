@@ -1,4 +1,4 @@
-/* $Id: vrdp.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: vrdp.h 114935 2026-08-10 12:46:46Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Remote Desktop Protocol.
  */
@@ -658,6 +658,7 @@ class VRDPChannelRDPDR: public VRDPChannel
 
         int createIO(uint32_t *pu32CompletionId, RDPDRPKTHDR *pHdr, uint32_t u32MajorFunction, uint32_t u32DeviceId);
         int fetchIO(uint32_t u32CompletionId, RDPDRPKTHDR **ppHdr, uint32_t *pu32MajorFunction, uint32_t *pu32DeviceId);
+        void cancelIOForDevice(uint32_t u32DeviceId);
 
         int rdpdrSendServerCoreCapability(void);
         int rdpdrSendServerClientIdConfirm(void);
