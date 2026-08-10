@@ -1,4 +1,4 @@
-/* $Id: UsbCardReader.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: UsbCardReader.cpp 114938 2026-08-10 12:50:20Z vitali.pelenjow@oracle.com $ */
 /** @file
  * UsbCardReader - Driver Interface to USB Smart Card Reader emulation.
  */
@@ -708,10 +708,14 @@ int UsbCardReader::VRDENotify(uint32_t u32Id, void *pvData, uint32_t cbData)
 
         case VRDE_SCARD_NOTIFY_DETACH:
         {
-            VRDESCARDNOTIFYDETACH *p = (VRDESCARDNOTIFYDETACH *)pvData; NOREF(p);
-            Assert(cbData == sizeof(VRDESCARDNOTIFYDETACH));
+            AssertBreakStmt(cbData == sizeof(VRDESCARDNOTIFYDETACH), vrc = VERR_INVALID_PARAMETER);
+            VRDESCARDNOTIFYDETACH *p = (VRDESCARDNOTIFYDETACH *)pvData;
 
-            /** @todo Just free. There should be no pending requests, because VRDP cancels them. */
+            AssertBreakStmt(m_pRemote, vrc = VERR_INVALID_STATE);
+            AssertBreakStmt(p->u32ClientId == m_pRemote->u32ClientId, vrc = VERR_INVALID_PARAMETER);
+            AssertBreakStmt(p->u32DeviceId == m_pRemote->u32DeviceId, vrc = VERR_INVALID_PARAMETER);
+
+            /* Just free. There are no pending requests, because VRDP cancels them. */
             RTMemFree(m_pRemote);
             m_pRemote = NULL;
         } break;
