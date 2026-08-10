@@ -1,4 +1,4 @@
-/* $Id: VUSBUrb.cpp 114698 2026-07-14 12:01:58Z michal.necasek@oracle.com $ */
+/* $Id: VUSBUrb.cpp 114929 2026-08-10 12:25:02Z alexander.eichner@oracle.com $ */
 /** @file
  * Virtual USB - URBs.
  */
@@ -930,7 +930,8 @@ static int vusbUrbSubmitCtrl(PVUSBURB pUrb)
                 break;
             }
 
-            /* vusbMsgSetup() may have reallocated pMsg */
+            /* vusbMsgSetup() may have reallocated just pMsg or the entire extra struct. */
+            pExtra = pPipe->pCtrl;
             pSetup = pExtra->pMsg;
 
             /* pre-buffer our output if it's device-to-host */
