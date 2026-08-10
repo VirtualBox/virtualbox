@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestR3LibClipboard.cpp 114839 2026-07-31 13:09:02Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxGuestR3LibClipboard.cpp 114968 2026-08-10 16:16:50Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxGuestR3Lib - Ring-3 Support Library for VirtualBox guest additions, Shared Clipboard.
  */
@@ -1027,7 +1027,9 @@ static int vbglR3ClipboardTransferSendStatusEx(PVBGLR3SHCLCMDCTX pCtx, uint64_t 
  *
  * @returns VBox status code.
  * @param   pCtx                Shared Clipboard command context to use for the connection.
- * @param   pTransfer           Transfer of report to reply to.
+ * @param   pTransfer           Transfer to report status for.  Optional when
+ *                              replying to a context for which no local
+ *                              transfer exists.
  * @param   uStatus             Tranfer status to reply.
  * @param   rcTransfer          Result code (rc) to reply.
  */
@@ -1035,9 +1037,21 @@ VBGLR3DECL(int) VbglR3ClipboardTransferSendStatus(PVBGLR3SHCLCMDCTX pCtx, PSHCLT
                                                   SHCLTRANSFERSTATUS uStatus, int rcTransfer)
 {
     AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
-    RT_NOREF(pTransfer); /* Currently not used (yet). */
 
-    int rc = vbglR3ClipboardTransferSendStatusEx(pCtx, pCtx->idContext, uStatus, rcTransfer);
+    uint64_t idContext = pCtx->idContext;
+    if (pTransfer)
+    {
+        SHCLTRANSFERID const idTransfer = ShClTransferGetID(pTransfer);
+        AssertReturn(ShClTransferIdIsValid(idTransfer), VERR_INVALID_PARAMETER);
+        SHCLSESSIONID const idSession = ShClTransferGetSessionId(pTransfer);
+        AssertReturn(idSession != 0 && idSession != NIL_SHCLSESSIONID, VERR_INVALID_PARAMETER);
+        SHCLEVENTID const idEvent =    VBOX_SHCL_CONTEXTID_GET_SESSION(idContext)  == idSession
+                                    && VBOX_SHCL_CONTEXTID_GET_TRANSFER(idContext) == idTransfer
+                                  ? VBOX_SHCL_CONTEXTID_GET_EVENT(idContext) : 0;
+        idContext = VBOX_SHCL_CONTEXTID_MAKE(idSession, idTransfer, idEvent);
+    }
+
+    int rc = vbglR3ClipboardTransferSendStatusEx(pCtx, idContext, uStatus, rcTransfer);
 
     LogFlowFuncLeaveRC(rc);
     return rc;

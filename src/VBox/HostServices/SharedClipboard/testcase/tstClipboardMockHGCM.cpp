@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMockHGCM.cpp 114425 2026-06-18 08:30:00Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardMockHGCM.cpp 114968 2026-08-10 16:16:50Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard host service test case.
  */
@@ -32,6 +32,10 @@
 #include <VBox/HostServices/VBoxClipboardSvc.h>
 #include <VBox/HostServices/VBoxSharedClipboardSvc.h>
 #include <VBox/VBoxGuestLib.h>
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+# include <VBox/GuestHost/SharedClipboard-transfers.h>
+# include "VBoxSharedClipboardSvc-transfers.h"
+#endif
 #if defined (RT_OS_LINUX) || defined (RT_OS_SOLARIS)
 # include <VBox/GuestHost/SharedClipboard-x11.h>
 # include <VBox/GuestHost/DisplayServerType.h>
@@ -239,6 +243,285 @@ static void testSetTransferMode(void)
     HGCMSvcSetU32(&parms[0], VBOX_SHCL_TRANSFER_MODE_F_NONE);
     rc = TstHgcmMockSvcHostCall(pSvc, NULL, VBOX_SHCL_HOST_FN_SET_TRANSFER_MODE, 1, parms);
     RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+}
+
+/**
+ * Verifies that transfer status replies use the transfer ID of the supplied
+ * transfer rather than a stale transfer ID in the command context.  Also
+ * verifies that callers without a local transfer can use the command context
+ * unchanged.
+ */
+static void testTransferStatusContextRouting(void)
+{
+    RTTestISub("Testing transfer status context routing");
+
+    PTSTHGCMMOCKSVC const pSvc = TstHgcmMockSvcInst();
+    SHCLTRANSFERID const idTargetTransfer  = 42;
+    SHCLTRANSFERID const idAmbientTransfer = 43;
+
+    VBGLR3SHCLCMDCTX CmdCtx;
+    RT_ZERO(CmdCtx);
+    SHCLTRANSFERCTX GuestTransferCtx;
+    RT_ZERO(GuestTransferCtx);
+    SHCLTRANSFERCTX StaleGuestTransferCtx;
+    RT_ZERO(StaleGuestTransferCtx);
+
+    HGCMCLIENTID const idNextClient       = pSvc->uNextClientId;
+    bool          fConnected              = false;
+    bool          fGuestCtxInit           = false;
+    bool          fGuestRegistered        = false;
+    bool          fStaleGuestCtxInit      = false;
+    bool          fStaleGuestRegistered   = false;
+    PSHCLCLIENT   pClient                 = NULL;
+    PSHCLTRANSFER pGuestTransfer          = NULL;
+    PSHCLTRANSFER pStaleGuestTransfer     = NULL;
+    PSHCLEVENT    pTargetEvent            = NULL;
+    PSHCLEVENT    pAmbientEvent           = NULL;
+    int           rc                      = VINF_SUCCESS;
+
+    do
+    {
+        /* Avoid requiring an X11 display just to exercise HGCM routing. */
+        VBOXHGCMSVCPARM Parm;
+        HGCMSvcSetU32(&Parm, true);
+        rc = TstHgcmMockSvcHostCall(pSvc, NULL, VBOX_SHCL_HOST_FN_SET_HEADLESS, 1, &Parm);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        rc = tstClipboardSetMode(pSvc, VBOX_SHCL_MODE_BIDIRECTIONAL);
+        if (RT_FAILURE(rc))
+            break;
+
+        HGCMSvcSetU32(&Parm, VBOX_SHCL_TRANSFER_MODE_F_ENABLED);
+        rc = TstHgcmMockSvcHostCall(pSvc, NULL, VBOX_SHCL_HOST_FN_SET_TRANSFER_MODE, 1, &Parm);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        rc = VbglR3ClipboardConnectEx(&CmdCtx, VBOX_SHCL_GF_0_CONTEXT_ID);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+        fConnected = true;
+
+        RTTESTI_CHECK_MSG_BREAK(CmdCtx.idClient < RT_ELEMENTS(pSvc->aHgcmClient),
+                                ("Client ID %RU32 is out of range\n", CmdCtx.idClient));
+        PTSTHGCMMOCKCLIENT const pMockClient = &pSvc->aHgcmClient[CmdCtx.idClient];
+        RTTESTI_CHECK_MSG_BREAK(TstHgcmMockSvcWaitForConnect(pSvc) == pMockClient,
+                                ("Unexpected mock client connected for ID %RU32\n", CmdCtx.idClient));
+        pClient = (PSHCLCLIENT)pMockClient->pvClient;
+        RTTESTI_CHECK_MSG_BREAK(pClient != NULL, ("Missing service client for ID %RU32\n", CmdCtx.idClient));
+
+        PSHCLTRANSFER pHostTarget = NULL;
+        rc = ShClTransferCreate(SHCLTRANSFERDIR_FROM_REMOTE, SHCLSOURCE_REMOTE, NULL, &pHostTarget);
+        if (RT_SUCCESS(rc))
+            rc = ShClTransferCtxRegisterById(&pClient->Transfers.Ctx, pHostTarget, idTargetTransfer);
+        if (RT_FAILURE(rc))
+            ShClTransferDestroy(pHostTarget);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        rc = ShClTransferInit(pHostTarget);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        PSHCLTRANSFER pHostAmbient = NULL;
+        rc = ShClTransferCreate(SHCLTRANSFERDIR_FROM_REMOTE, SHCLSOURCE_REMOTE, NULL, &pHostAmbient);
+        if (RT_SUCCESS(rc))
+            rc = ShClTransferCtxRegisterById(&pClient->Transfers.Ctx, pHostAmbient, idAmbientTransfer);
+        if (RT_FAILURE(rc))
+            ShClTransferDestroy(pHostAmbient);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        rc = ShClTransferInit(pHostAmbient);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        rc = ShClTransferCtxInit(&GuestTransferCtx);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+        fGuestCtxInit = true;
+
+        rc = ShClTransferCtxBeginSession(&GuestTransferCtx, pClient->State.uSessionID);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        rc = ShClTransferCreate(SHCLTRANSFERDIR_FROM_REMOTE, SHCLSOURCE_REMOTE, NULL, &pGuestTransfer);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        rc = ShClTransferCtxRegisterById(&GuestTransferCtx, pGuestTransfer, idTargetTransfer);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+        fGuestRegistered = true;
+
+        rc = ShClTransferCtxInit(&StaleGuestTransferCtx);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+        fStaleGuestCtxInit = true;
+
+        SHCLSESSIONID const idStaleSession = pClient->State.uSessionID != 1 ? 1 : 2;
+        rc = ShClTransferCtxBeginSession(&StaleGuestTransferCtx, idStaleSession);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        rc = ShClTransferCreate(SHCLTRANSFERDIR_FROM_REMOTE, SHCLSOURCE_REMOTE, NULL, &pStaleGuestTransfer);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        rc = ShClTransferCtxRegisterById(&StaleGuestTransferCtx, pStaleGuestTransfer, idTargetTransfer);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+        fStaleGuestRegistered = true;
+
+        /* Both transfers deliberately have the same valid event ID. */
+        pHostTarget->Events.idNextEvent = 1234;
+        pHostAmbient->Events.idNextEvent = pHostTarget->Events.idNextEvent;
+        rc = ShClEventSourceGenerateAndRegisterEvent(&pHostTarget->Events, &pTargetEvent);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+        rc = ShClEventSourceGenerateAndRegisterEvent(&pHostAmbient->Events, &pAmbientEvent);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+        RTTESTI_CHECK_MSG_BREAK(pTargetEvent->idEvent == pAmbientEvent->idEvent,
+                                ("Expected matching event IDs, got %RU32 and %RU32\n",
+                                 pTargetEvent->idEvent, pAmbientEvent->idEvent));
+
+        /*
+         * The command context deliberately refers to a different live
+         * transfer.  The supplied transfer must select the target transfer.
+         */
+        CmdCtx.idContext = VBOX_SHCL_CONTEXTID_MAKE(pClient->State.uSessionID,
+                                                    idAmbientTransfer, pAmbientEvent->idEvent);
+        rc = VbglR3ClipboardTransferSendStatus(&CmdCtx, pGuestTransfer,
+                                               SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        /* A mismatched ambient transfer also makes its event stale. */
+        int const rcTargetEvent  = ShClEventWait(pTargetEvent, 0 /* msTimeout */, NULL /* ppPayload */);
+        int const rcAmbientEvent = ShClEventWait(pAmbientEvent, 0 /* msTimeout */, NULL /* ppPayload */);
+        RTTESTI_CHECK_RC(rcTargetEvent,  VERR_TIMEOUT);
+        RTTESTI_CHECK_RC(rcAmbientEvent, VERR_TIMEOUT);
+        if (rcTargetEvent != VERR_TIMEOUT || rcAmbientEvent != VERR_TIMEOUT)
+            break;
+
+        /* A stale transfer's session must not be replaced by the ambient session. */
+        rc = VbglR3ClipboardTransferSendStatus(&CmdCtx, pStaleGuestTransfer,
+                                               SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
+        RTTESTI_CHECK_RC(rc, VERR_INVALID_CONTEXT);
+        if (rc != VERR_INVALID_CONTEXT)
+            break;
+        RTTESTI_CHECK(ShClTransferCtxGetTransferById(&pClient->Transfers.Ctx, idTargetTransfer) != NULL);
+        RTTESTI_CHECK(ShClTransferCtxGetTransferById(&pClient->Transfers.Ctx, idAmbientTransfer) != NULL);
+        RTTESTI_CHECK_RC(ShClEventWait(pTargetEvent, 0 /* msTimeout */, NULL /* ppPayload */), VERR_TIMEOUT);
+        RTTESTI_CHECK_RC(ShClEventWait(pAmbientEvent, 0 /* msTimeout */, NULL /* ppPayload */), VERR_TIMEOUT);
+
+        RTTESTI_CHECK(ShClEventRelease(pTargetEvent) == 0);
+        pTargetEvent = NULL;
+        RTTESTI_CHECK(ShClEventRelease(pAmbientEvent) == 0);
+        pAmbientEvent = NULL;
+
+        rc = VbglR3ClipboardTransferSendStatus(&CmdCtx, pGuestTransfer,
+                                               SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        PSHCLTRANSFER const pTargetAfter
+            = ShClTransferCtxGetTransferById(&pClient->Transfers.Ctx, idTargetTransfer);
+        PSHCLTRANSFER const pAmbientAfter
+            = ShClTransferCtxGetTransferById(&pClient->Transfers.Ctx, idAmbientTransfer);
+        RTTESTI_CHECK_MSG(pTargetAfter == NULL,
+                          ("Target transfer %RU16 was not canceled\n", idTargetTransfer));
+        RTTESTI_CHECK_MSG(pAmbientAfter != NULL,
+                          ("Ambient transfer %RU16 was canceled instead\n", idAmbientTransfer));
+        if (pTargetAfter != NULL || pAmbientAfter == NULL)
+            break;
+
+        /* No local transfer is available on some error paths: keep the context unchanged. */
+        rc = VbglR3ClipboardTransferSendStatus(&CmdCtx, NULL,
+                                               SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+        RTTESTI_CHECK_MSG(ShClTransferCtxGetTransferById(&pClient->Transfers.Ctx, idAmbientTransfer) == NULL,
+                          ("Context transfer %RU16 was not canceled\n", idAmbientTransfer));
+    } while (0);
+
+    if (pClient)
+    {
+        if (pTargetEvent)
+        {
+            RTTESTI_CHECK(ShClEventRelease(pTargetEvent) == 0);
+            pTargetEvent = NULL;
+        }
+        if (pAmbientEvent)
+        {
+            RTTESTI_CHECK(ShClEventRelease(pAmbientEvent) == 0);
+            pAmbientEvent = NULL;
+        }
+        PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(&pClient->Transfers.Ctx, idTargetTransfer);
+        if (pTransfer)
+            ShClSvcTransferDestroy(pClient, pTransfer);
+        pTransfer = ShClTransferCtxGetTransferById(&pClient->Transfers.Ctx, idAmbientTransfer);
+        if (pTransfer)
+            ShClSvcTransferDestroy(pClient, pTransfer);
+    }
+    if (fGuestCtxInit)
+    {
+        if (!fGuestRegistered && pGuestTransfer)
+            ShClTransferDestroy(pGuestTransfer);
+        ShClTransferCtxDestroy(&GuestTransferCtx);
+    }
+    else if (pGuestTransfer)
+        ShClTransferDestroy(pGuestTransfer);
+
+    if (fStaleGuestCtxInit)
+    {
+        if (!fStaleGuestRegistered && pStaleGuestTransfer)
+            ShClTransferDestroy(pStaleGuestTransfer);
+        ShClTransferCtxDestroy(&StaleGuestTransferCtx);
+    }
+    else if (pStaleGuestTransfer)
+        ShClTransferDestroy(pStaleGuestTransfer);
+
+    if (fConnected)
+    {
+        int const rcDisconnect = VbglR3ClipboardDisconnectEx(&CmdCtx);
+        RTTESTI_CHECK_RC_OK(rcDisconnect);
+        if (RT_SUCCESS(rcDisconnect))
+        {
+            /* This mock has four monotonically allocated client slots.  Reclaim
+               the fully disconnected slot so this test does not consume one. */
+            RTTESTI_CHECK(pSvc->uNextClientId == idNextClient + 1);
+            pSvc->uNextClientId = idNextClient;
+        }
+    }
+
+    VBOXHGCMSVCPARM Parm;
+    HGCMSvcSetU32(&Parm, VBOX_SHCL_TRANSFER_MODE_F_NONE);
+    RTTESTI_CHECK_RC_OK(TstHgcmMockSvcHostCall(pSvc, NULL, VBOX_SHCL_HOST_FN_SET_TRANSFER_MODE, 1, &Parm));
+    RTTESTI_CHECK_RC_OK(tstClipboardSetMode(pSvc, VBOX_SHCL_MODE_OFF));
+    HGCMSvcSetU32(&Parm, false);
+    RTTESTI_CHECK_RC_OK(TstHgcmMockSvcHostCall(pSvc, NULL, VBOX_SHCL_HOST_FN_SET_HEADLESS, 1, &Parm));
 }
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
@@ -913,6 +1196,10 @@ int main()
     TstHGCMUtilsTaskInit(pTask);
     pTask->pvUser = &g_TstCtx.Task;
 
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    testTransferStatusContextRouting();
+#endif
+
     /*
      * Run the tests. The tstOne() and testGuestSimple() tests rely on an X11
      * display on Unix systems so skip them if not applicable.
@@ -941,4 +1228,3 @@ int main()
      */
     return RTTestSummaryAndDestroy(g_hTest);
 }
-
