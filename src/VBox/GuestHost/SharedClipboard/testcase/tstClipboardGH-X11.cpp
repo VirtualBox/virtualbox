@@ -1,4 +1,4 @@
-/* $Id: tstClipboardGH-X11.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardGH-X11.cpp 114972 2026-08-10 17:34:02Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard guest/host X11 code test cases.
  */
@@ -688,12 +688,6 @@ static void tstStringFromVBoxFailed(RTTEST hTest, PSHCLX11CTX pCtx, const char *
                       pcszTarget, type, length, format, RT_MIN(length, 20),
                       value));
     XtFree((char *)value);
-}
-
-static void tstNoSelectionOwnership(PSHCLX11CTX pCtx, const char *pcszTestCtx)
-{
-    RT_NOREF(pCtx);
-    RTTESTI_CHECK_MSG(!g_tst_fOwnsSel, ("context: %s\n", pcszTestCtx));
 }
 
 static void tstBadFormatRequestFromHost(RTTEST hTest, PSHCLX11CTX pCtx)
