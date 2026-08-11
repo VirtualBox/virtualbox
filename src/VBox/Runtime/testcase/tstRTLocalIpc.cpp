@@ -1,4 +1,4 @@
-/* $Id: tstRTLocalIpc.cpp 114874 2026-08-06 21:28:04Z andreas.loeffler@oracle.com $ */
+/* $Id: tstRTLocalIpc.cpp 114978 2026-08-11 08:33:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT Testcase - RTLocalIpc API.
  */
@@ -210,7 +210,8 @@ static void testRestrictedNamespaceProperties(void)
     if (RT_SUCCESS(rcUnsafe))
         RTTESTI_CHECK_RC(rcUnsafe = RTPathAppend(szFallbackNamespace, sizeof(szFallbackNamespace), ".iprt-localipc"),
                          VINF_SUCCESS);
-    if (RT_SUCCESS(rcUnsafe))
+    /* Linux may select /run/user/<uid> before reaching the home directory fallback. */
+    if (RT_SUCCESS(rcUnsafe) && RTDirExists(szFallbackNamespace))
         RTTESTI_CHECK_RC(RTDirRemove(szFallbackNamespace), VINF_SUCCESS);
     RTTESTI_CHECK_RC(RTDirRemove(szFallbackHome), VINF_SUCCESS);
 
