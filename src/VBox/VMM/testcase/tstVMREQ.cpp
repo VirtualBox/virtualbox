@@ -1,4 +1,4 @@
-/* $Id: tstVMREQ.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: tstVMREQ.cpp 114980 2026-08-11 09:04:39Z andreas.loeffler@oracle.com $ */
 /** @file
  * VMM Testcase.
  */
@@ -36,6 +36,7 @@
 #include <VBox/log.h>
 #include <iprt/assert.h>
 #include <iprt/initterm.h>
+#include <iprt/message.h>
 #include <iprt/rand.h>
 #include <iprt/semaphore.h>
 #include <iprt/stream.h>
@@ -643,15 +644,27 @@ tstVMREQConfigConstructor(PUVM pUVM, PVM pVM, PCVMMR3VTABLE pVMM, void *pvUser)
 extern "C" DECLEXPORT(int) TrustedMain(int argc, char **argv, char **envp)
 {
     RT_NOREF1(envp);
-    RTR3InitExe(argc, &argv, RTR3INIT_FLAGS_TRY_SUPLIB);
-    RTTestCreate(TESTCASE, &g_hTest);
+#if defined(RT_OS_LINUX) || defined(RT_OS_DARWIN) || (defined(RT_OS_WINDOWS) && !defined(VBOX_WITH_HARDENING))
+    /* VMR3Create initializes SUPLib in driverless mode, so don't initialize it here first. */
+    uint32_t const fRtInit   = 0;
+    uint64_t const fVmCreate = VMCREATE_F_DRIVERLESS;
+#else
+    uint32_t const fRtInit   = RTR3INIT_FLAGS_TRY_SUPLIB;
+    uint64_t const fVmCreate = 0;
+#endif
+    int rc = RTR3InitExe(argc, &argv, fRtInit);
+    if (RT_FAILURE(rc))
+        return RTMsgInitFailure(rc);
+    rc = RTTestCreate(TESTCASE, &g_hTest);
+    if (RT_FAILURE(rc))
+        return RTMsgErrorExitFailure("RTTestCreate failed: %Rrc", rc);
     RTTestSub(g_hTest, "Setup...");
 
     /*
      * Create empty VM.
      */
     PUVM pUVM;
-    int rc = VMR3Create(1 /*cCpus*/, NULL, 0 /*fFlags*/, NULL, NULL, tstVMREQConfigConstructor, NULL, NULL, &pUVM);
+    rc = VMR3Create(1 /*cCpus*/, NULL, fVmCreate, NULL, NULL, tstVMREQConfigConstructor, NULL, NULL, &pUVM);
     if (RT_SUCCESS(rc))
     {
         /*
