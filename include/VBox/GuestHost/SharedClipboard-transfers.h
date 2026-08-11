@@ -1,4 +1,4 @@
-/* $Id: SharedClipboard-transfers.h 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: SharedClipboard-transfers.h 114989 2026-08-11 14:13:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Shared transfer functions between host and guest.
  */
@@ -1028,6 +1028,9 @@ typedef struct _SHCLHTTPSERVER
     bool                 fInitialized;
     /** Running indicator. */
     bool                 fRunning;
+    /** Stop operation in progress.  Prevents a new server from being started
+     *  while callbacks of the old server are being drained. */
+    bool                 fStopping;
     /** Current status. */
     SHCLHTTPSERVERSTATUS enmStatus;
     /** Handle of the HTTP server instance. */

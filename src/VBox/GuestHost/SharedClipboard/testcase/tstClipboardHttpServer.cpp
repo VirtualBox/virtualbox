@@ -1,4 +1,4 @@
-/* $Id: tstClipboardHttpServer.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardHttpServer.cpp 114989 2026-08-11 14:13:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard HTTP server test case.
  */
@@ -34,9 +34,11 @@
 #include <iprt/path.h>
 #include <iprt/process.h>
 #include <iprt/rand.h>
+#include <iprt/semaphore.h>
 #include <iprt/stream.h>
 #include <iprt/string.h>
 #include <iprt/test.h>
+#include <iprt/thread.h>
 #include <iprt/utf16.h>
 
 #ifdef TESTCASE_WITH_X11
@@ -262,6 +264,778 @@ static void tstDuplicateTransferRegistration(RTTEST hTest, PSHCLTRANSFERCTX pTra
         if (!fHttpRegistered && !fCtxRegistered && pTx)
             RTTEST_CHECK_RC_OK(hTest, ShClTransferDestroy(pTx));
     }
+}
+
+
+/** Provider wrapper state used for observing and pausing HTTP object access. */
+typedef struct TSTHTTPPROVIDERCTX
+{
+    /** The wrapped local provider interface. */
+    SHCLTXPROVIDERIFACE LocalIface;
+    /** Signalled whenever a read enters the provider. */
+    RTSEMEVENT          hReadEntered;
+    /** Releases all reads paused by the test. */
+    RTSEMEVENTMULTI     hReadContinue;
+    /** Number of successful object opens. */
+    volatile uint32_t   cObjOpens;
+    /** Number of successful object closes. */
+    volatile uint32_t   cObjCloses;
+    /** Number of object reads. */
+    volatile uint32_t   cObjReads;
+    /** Number of initial reads to pause. */
+    uint32_t            cReadsToPause;
+} TSTHTTPPROVIDERCTX;
+/** Pointer to an HTTP provider wrapper state. */
+typedef TSTHTTPPROVIDERCTX *PTSTHTTPPROVIDERCTX;
+
+/** @copydoc SHCLTXPROVIDERIFACE::pfnObjOpen */
+static DECLCALLBACK(int) tstHttpProviderObjOpen(PSHCLTXPROVIDERCTX pCtx, PSHCLOBJOPENCREATEPARMS pCreateParms,
+                                               PSHCLOBJHANDLE phObj)
+{
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+    AssertReturn(pCtx->cbUser == sizeof(TSTHTTPPROVIDERCTX), VERR_INVALID_PARAMETER);
+    PTSTHTTPPROVIDERCTX pThis = (PTSTHTTPPROVIDERCTX)pCtx->pvUser;
+    AssertPtrReturn(pThis, VERR_INVALID_POINTER);
+
+    int rc = pThis->LocalIface.pfnObjOpen(pCtx, pCreateParms, phObj);
+    if (RT_SUCCESS(rc))
+        ASMAtomicIncU32(&pThis->cObjOpens);
+    return rc;
+}
+
+/** @copydoc SHCLTXPROVIDERIFACE::pfnObjClose */
+static DECLCALLBACK(int) tstHttpProviderObjClose(PSHCLTXPROVIDERCTX pCtx, SHCLOBJHANDLE hObj)
+{
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+    AssertReturn(pCtx->cbUser == sizeof(TSTHTTPPROVIDERCTX), VERR_INVALID_PARAMETER);
+    PTSTHTTPPROVIDERCTX pThis = (PTSTHTTPPROVIDERCTX)pCtx->pvUser;
+    AssertPtrReturn(pThis, VERR_INVALID_POINTER);
+
+    int rc = pThis->LocalIface.pfnObjClose(pCtx, hObj);
+    if (RT_SUCCESS(rc))
+        ASMAtomicIncU32(&pThis->cObjCloses);
+    return rc;
+}
+
+/** @copydoc SHCLTXPROVIDERIFACE::pfnObjRead */
+static DECLCALLBACK(int) tstHttpProviderObjRead(PSHCLTXPROVIDERCTX pCtx, SHCLOBJHANDLE hObj, void *pvData,
+                                               uint32_t cbData, uint32_t fFlags, uint32_t *pcbRead)
+{
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+    AssertReturn(pCtx->cbUser == sizeof(TSTHTTPPROVIDERCTX), VERR_INVALID_PARAMETER);
+    PTSTHTTPPROVIDERCTX pThis = (PTSTHTTPPROVIDERCTX)pCtx->pvUser;
+    AssertPtrReturn(pThis, VERR_INVALID_POINTER);
+
+    uint32_t const iRead = ASMAtomicIncU32(&pThis->cObjReads);
+    if (iRead <= pThis->cReadsToPause)
+    {
+        int rc = RTSemEventSignal(pThis->hReadEntered);
+        if (RT_SUCCESS(rc))
+            rc = RTSemEventMultiWait(pThis->hReadContinue, RT_MS_30SEC);
+        if (RT_FAILURE(rc))
+            return rc;
+    }
+
+    return pThis->LocalIface.pfnObjRead(pCtx, hObj, pvData, cbData, fFlags, pcbRead);
+}
+
+/**
+ * Initializes an observable local provider.
+ *
+ * @returns VBox status code.
+ * @param   pThis           Provider wrapper state to initialize.
+ * @param   pProvider       Provider interface to initialize.
+ */
+static int tstHttpProviderInit(PTSTHTTPPROVIDERCTX pThis, PSHCLTXPROVIDER pProvider)
+{
+    RT_ZERO(*pThis);
+    RT_ZERO(*pProvider);
+
+    int rc = RTSemEventCreate(&pThis->hReadEntered);
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTSemEventMultiCreate(&pThis->hReadContinue);
+        if (RT_SUCCESS(rc))
+        {
+            AssertPtrReturn(ShClTransferProviderLocalQueryInterface(pProvider), VERR_INTERNAL_ERROR);
+            pThis->LocalIface = pProvider->Interface;
+
+            pProvider->Interface.pfnObjOpen  = tstHttpProviderObjOpen;
+            pProvider->Interface.pfnObjClose = tstHttpProviderObjClose;
+            pProvider->Interface.pfnObjRead  = tstHttpProviderObjRead;
+            pProvider->pvUser                = pThis;
+            pProvider->cbUser                = sizeof(*pThis);
+            return VINF_SUCCESS;
+        }
+
+        RTSemEventDestroy(pThis->hReadEntered);
+        pThis->hReadEntered = NIL_RTSEMEVENT;
+    }
+
+    return rc;
+}
+
+/**
+ * Terminates an observable local provider.
+ *
+ * @param   pThis           Provider wrapper state to terminate.
+ */
+static void tstHttpProviderTerm(PTSTHTTPPROVIDERCTX pThis)
+{
+    if (pThis->hReadContinue != NIL_RTSEMEVENTMULTI)
+    {
+        RTSemEventMultiSignal(pThis->hReadContinue);
+        RTSemEventMultiDestroy(pThis->hReadContinue);
+        pThis->hReadContinue = NIL_RTSEMEVENTMULTI;
+    }
+    if (pThis->hReadEntered != NIL_RTSEMEVENT)
+    {
+        RTSemEventDestroy(pThis->hReadEntered);
+        pThis->hReadEntered = NIL_RTSEMEVENT;
+    }
+}
+
+/**
+ * Creates a deterministic file for an HTTP lifetime test.
+ *
+ * @returns VBox status code.
+ * @param   pszPath         File path.
+ * @param   cbFile          File size in bytes.
+ */
+static int tstCreatePatternFile(const char *pszPath, size_t cbFile)
+{
+    RTFILE hFile;
+    int rc = RTFileOpen(&hFile, pszPath, RTFILE_O_WRITE | RTFILE_O_CREATE_REPLACE | RTFILE_O_DENY_NONE);
+    if (RT_SUCCESS(rc))
+    {
+        uint8_t abBuf[_64K];
+        for (size_t i = 0; i < sizeof(abBuf); i++)
+            abBuf[i] = (uint8_t)(i * 131U + 17U);
+
+        while (cbFile > 0 && RT_SUCCESS(rc))
+        {
+            size_t const cbToWrite = RT_MIN(cbFile, sizeof(abBuf));
+            rc = RTFileWrite(hFile, abBuf, cbToWrite, NULL);
+            cbFile -= cbToWrite;
+        }
+
+        int rc2 = RTFileClose(hFile);
+        if (RT_SUCCESS(rc))
+            rc = rc2;
+    }
+    return rc;
+}
+
+/**
+ * Creates and registers one transfer with both a transfer context and HTTP server.
+ *
+ * @returns VBox status code.
+ * @param   pTransferCtx    Transfer context to register with.
+ * @param   pSrv            HTTP server to register with.
+ * @param   pszPath         Local path to serve.
+ * @param   pProvider       Provider to use.
+ * @param   idTransfer      Transfer ID to request, or NIL_SHCLTRANSFERID for an automatically allocated ID.
+ * @param   ppTransfer      Where to return the transfer on success.
+ */
+static int tstCreateRegisteredTransfer(PSHCLTRANSFERCTX pTransferCtx, PSHCLHTTPSERVER pSrv, const char *pszPath,
+                                       PSHCLTXPROVIDER pProvider, SHCLTRANSFERID idTransfer, PSHCLTRANSFER *ppTransfer)
+{
+    PSHCLTRANSFER pTransfer = NULL;
+    bool fCtxRegistered = false;
+    bool fHttpRegistered = false;
+
+    int rc = ShClTransferCreate(SHCLTRANSFERDIR_TO_REMOTE, SHCLSOURCE_LOCAL, NULL /* Callbacks */, &pTransfer);
+    if (RT_SUCCESS(rc))
+        rc = ShClTransferSetProvider(pTransfer, pProvider);
+    if (RT_SUCCESS(rc))
+        rc = ShClTransferRootsSetFromPath(pTransfer, pszPath);
+    if (RT_SUCCESS(rc))
+        rc = ShClTransferInit(pTransfer);
+    if (RT_SUCCESS(rc))
+    {
+        if (idTransfer == NIL_SHCLTRANSFERID)
+            rc = ShClTransferCtxRegister(pTransferCtx, pTransfer, NULL);
+        else
+            rc = ShClTransferCtxRegisterById(pTransferCtx, pTransfer, idTransfer);
+        fCtxRegistered = RT_SUCCESS(rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferHttpServerRegisterTransfer(pSrv, pTransfer);
+        fHttpRegistered = RT_SUCCESS(rc);
+    }
+
+    if (RT_SUCCESS(rc))
+    {
+        *ppTransfer = pTransfer;
+        return VINF_SUCCESS;
+    }
+
+    if (fHttpRegistered)
+        ShClTransferHttpServerUnregisterTransfer(pSrv, pTransfer);
+    if (fCtxRegistered)
+        ShClTransferCtxUnregisterById(pTransferCtx, ShClTransferGetID(pTransfer));
+    if (pTransfer)
+        ShClTransferDestroy(pTransfer);
+    return rc;
+}
+
+/** HTTP GET worker context. */
+typedef struct TSTHTTPGETCTX
+{
+    /** URL to download. */
+    const char *pszUrl;
+    /** Destination file path. */
+    const char *pszDst;
+    /** Result of the HTTP operation. */
+    int         rc;
+} TSTHTTPGETCTX;
+/** Pointer to an HTTP GET worker context. */
+typedef TSTHTTPGETCTX *PTSTHTTPGETCTX;
+
+/** Performs an HTTP GET on a worker thread. */
+static DECLCALLBACK(int) tstHttpGetThread(RTTHREAD hThread, void *pvUser)
+{
+    PTSTHTTPGETCTX pCtx = (PTSTHTTPGETCTX)pvUser;
+
+    int rc = RTThreadUserSignal(hThread);
+    if (RT_SUCCESS(rc))
+    {
+        RTHTTP hClient;
+        rc = RTHttpCreate(&hClient);
+        if (RT_SUCCESS(rc))
+        {
+            rc = RTHttpSetProxy(hClient, NULL /* pszProxyUrl */, 0 /* uPort */,
+                                NULL /* pszProxyUser */, NULL /* pszProxyPwd */);
+            if (RT_SUCCESS(rc))
+                rc = RTHttpGetFile(hClient, pCtx->pszUrl, pCtx->pszDst);
+
+            int rc2 = RTHttpDestroy(hClient);
+            if (RT_SUCCESS(rc))
+                rc = rc2;
+        }
+    }
+
+    pCtx->rc = rc;
+    return rc;
+}
+
+/** HTTP transfer unregister worker context. */
+typedef struct TSTHTTPUNREGISTERCTX
+{
+    /** HTTP server to unregister from. */
+    PSHCLHTTPSERVER pSrv;
+    /** Transfer to unregister. */
+    PSHCLTRANSFER   pTransfer;
+    /** Result of the unregister operation. */
+    int             rc;
+} TSTHTTPUNREGISTERCTX;
+/** Pointer to an HTTP transfer unregister worker context. */
+typedef TSTHTTPUNREGISTERCTX *PTSTHTTPUNREGISTERCTX;
+
+/** Unregisters an HTTP transfer on a worker thread. */
+static DECLCALLBACK(int) tstHttpUnregisterThread(RTTHREAD hThread, void *pvUser)
+{
+    PTSTHTTPUNREGISTERCTX pCtx = (PTSTHTTPUNREGISTERCTX)pvUser;
+
+    int rc = RTThreadUserSignal(hThread);
+    if (RT_SUCCESS(rc))
+        rc = ShClTransferHttpServerUnregisterTransfer(pCtx->pSrv, pCtx->pTransfer);
+
+    pCtx->rc = rc;
+    return rc;
+}
+
+/**
+ * Checks that HEAD and sequential GET requests each own and close their object handle.
+ *
+ * @param   hTest           The test handle.
+ * @param   pszTempDir      Temporary directory for test files.
+ */
+static void tstRepeatedRequestHandles(RTTEST hTest, const char *pszTempDir)
+{
+    RTTestSub(hTest, "request-owned object handles");
+
+    char szSrcFile[RTPATH_MAX];
+    RTTEST_CHECK_RETV(hTest, RTStrPrintf2(szSrcFile, sizeof(szSrcFile), "%s", pszTempDir) > 0);
+    RTTEST_CHECK_RC_OK_RETV(hTest, RTPathAppend(szSrcFile, sizeof(szSrcFile), "request-handles.bin"));
+    RTTEST_CHECK_RC_OK_RETV(hTest, tstCreatePatternFile(szSrcFile, _128K));
+
+    TSTHTTPPROVIDERCTX ProviderCtx;
+    SHCLTXPROVIDER Provider;
+    bool fProviderInitialized = false;
+    bool fServerInitialized = false;
+    bool fCtxInitialized = false;
+    PSHCLTRANSFER pTransfer = NULL;
+    SHCLTRANSFERID idTransfer = NIL_SHCLTRANSFERID;
+    char *pszUrl = NULL;
+    RTHTTP hClient = NIL_RTHTTP;
+
+    SHCLHTTPSERVER HttpSrv;
+    SHCLTRANSFERCTX TransferCtx;
+    uint16_t uPort = 0;
+    int rc = tstHttpProviderInit(&ProviderCtx, &Provider);
+    RTTEST_CHECK_RC_OK(hTest, rc);
+    if (RT_SUCCESS(rc))
+    {
+        fProviderInitialized = true;
+        rc = ShClTransferHttpServerInit(&HttpSrv);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        fServerInitialized = true;
+        rc = ShClTransferHttpServerStart(&HttpSrv, 32 /* cMaxAttempts */, &uPort);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferCtxInit(&TransferCtx);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        fCtxInitialized = true;
+        rc = ShClTransferCtxBeginSession(&TransferCtx, 101);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = tstCreateRegisteredTransfer(&TransferCtx, &HttpSrv, szSrcFile, &Provider,
+                                         NIL_SHCLTRANSFERID, &pTransfer);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        idTransfer = ShClTransferGetID(pTransfer);
+        pszUrl = ShClTransferHttpServerGetUrlA(&HttpSrv, idTransfer, 0 /* idxEntry */);
+        RTTEST_CHECK(hTest, pszUrl != NULL);
+        if (!pszUrl)
+            rc = VERR_NO_MEMORY;
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTHttpCreate(&hClient);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTHttpSetProxy(hClient, NULL /* pszProxyUrl */, 0 /* uPort */,
+                            NULL /* pszProxyUser */, NULL /* pszProxyPwd */);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+
+    if (RT_SUCCESS(rc))
+    {
+        for (uint32_t i = 0; i < 3; i++)
+        {
+            void *pvResponse = NULL;
+            size_t cbResponse = 0;
+            rc = RTHttpGetHeaderBinary(hClient, pszUrl, &pvResponse, &cbResponse);
+            RTTEST_CHECK_RC_OK(hTest, rc);
+            RTHttpFreeResponse(pvResponse);
+            if (RT_FAILURE(rc))
+                break;
+
+            RTTEST_CHECK(hTest, ASMAtomicReadU32(&ProviderCtx.cObjOpens) == i + 1);
+            RTTEST_CHECK(hTest, ASMAtomicReadU32(&ProviderCtx.cObjCloses) == i + 1);
+        }
+    }
+
+    if (RT_SUCCESS(rc))
+    {
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            char szDstFile[RTPATH_MAX];
+            RTTEST_CHECK_BREAK(hTest, RTStrPrintf(szDstFile, sizeof(szDstFile), "%s/request-handles-%RU32.bin",
+                                                 pszTempDir, i) > 0);
+
+            rc = RTHttpGetFile(hClient, pszUrl, szDstFile);
+            RTTEST_CHECK_RC_OK(hTest, rc);
+            if (RT_SUCCESS(rc))
+                RTTEST_CHECK_RC_OK(hTest, RTFileCompare(szSrcFile, szDstFile));
+            RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szDstFile));
+            if (RT_FAILURE(rc))
+                break;
+
+            RTTEST_CHECK(hTest, ASMAtomicReadU32(&ProviderCtx.cObjOpens) == i + 4);
+            RTTEST_CHECK(hTest, ASMAtomicReadU32(&ProviderCtx.cObjCloses) == i + 4);
+        }
+    }
+
+    if (hClient != NIL_RTHTTP)
+        RTTEST_CHECK_RC_OK(hTest, RTHttpDestroy(hClient));
+    RTStrFree(pszUrl);
+
+    if (pTransfer)
+    {
+        if (fServerInitialized && ShClTransferHttpServerGetTransfer(&HttpSrv, idTransfer))
+            RTTEST_CHECK_RC_OK(hTest, ShClTransferHttpServerUnregisterTransfer(&HttpSrv, pTransfer));
+        if (fCtxInitialized && ShClTransferCtxGetTransferById(&TransferCtx, idTransfer) == pTransfer)
+            RTTEST_CHECK_RC_OK(hTest, ShClTransferCtxUnregisterById(&TransferCtx, idTransfer));
+        RTTEST_CHECK_RC_OK(hTest, ShClTransferDestroy(pTransfer));
+    }
+    if (fCtxInitialized)
+        ShClTransferCtxDestroy(&TransferCtx);
+    if (fServerInitialized)
+    {
+        RTTEST_CHECK_RC_OK(hTest, ShClTransferHttpServerDestroy(&HttpSrv));
+        RTTEST_CHECK_RC_OK(hTest, ShClTransferHttpServerDestroy(&HttpSrv));
+    }
+    if (fProviderInitialized)
+        tstHttpProviderTerm(&ProviderCtx);
+    RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szSrcFile));
+}
+
+/**
+ * Checks that a stale transfer key cannot unregister a newer transfer which reused its numeric ID.
+ *
+ * @param   hTest           The test handle.
+ * @param   pszTempDir      Temporary directory for test files.
+ */
+static void tstStaleKeyUnregister(RTTEST hTest, const char *pszTempDir)
+{
+    RTTestSub(hTest, "stale transfer key unregister");
+
+    char szSrcFile[RTPATH_MAX];
+    RTTEST_CHECK_RETV(hTest, RTStrPrintf2(szSrcFile, sizeof(szSrcFile), "%s", pszTempDir) > 0);
+    RTTEST_CHECK_RC_OK_RETV(hTest, RTPathAppend(szSrcFile, sizeof(szSrcFile), "stale-key.bin"));
+    RTTEST_CHECK_RC_OK_RETV(hTest, tstCreatePatternFile(szSrcFile, _4K));
+
+    SHCLTXPROVIDER Provider;
+    RT_ZERO(Provider);
+    RTTEST_CHECK_RETV(hTest, ShClTransferProviderLocalQueryInterface(&Provider) != NULL);
+
+    SHCLHTTPSERVER HttpSrv;
+    SHCLTRANSFERCTX OldTransferCtx;
+    SHCLTRANSFERCTX NewTransferCtx;
+    bool fServerInitialized = false;
+    bool fOldCtxInitialized = false;
+    bool fNewCtxInitialized = false;
+    PSHCLTRANSFER pOldTransfer = NULL;
+    PSHCLTRANSFER pNewTransfer = NULL;
+    char *pszOldUrl = NULL;
+    char *pszNewUrl = NULL;
+    size_t cbOldUrl = 0;
+    size_t cbNewUrl = 0;
+    uint16_t uPort = 0;
+
+    int rc = ShClTransferHttpServerInit(&HttpSrv);
+    RTTEST_CHECK_RC_OK(hTest, rc);
+    if (RT_SUCCESS(rc))
+    {
+        fServerInitialized = true;
+        rc = ShClTransferHttpServerStart(&HttpSrv, 32 /* cMaxAttempts */, &uPort);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferCtxInit(&OldTransferCtx);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        fOldCtxInitialized = true;
+        rc = ShClTransferCtxBeginSession(&OldTransferCtx, 201);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferCtxInit(&NewTransferCtx);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        fNewCtxInitialized = true;
+        rc = ShClTransferCtxBeginSession(&NewTransferCtx, 202);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = tstCreateRegisteredTransfer(&OldTransferCtx, &HttpSrv, szSrcFile, &Provider, 42, &pOldTransfer);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = tstCreateRegisteredTransfer(&NewTransferCtx, &HttpSrv, szSrcFile, &Provider, 42, &pNewTransfer);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        RTTEST_CHECK(hTest, ShClTransferKeyIsValid(ShClTransferGetSessionId(pOldTransfer), 42,
+                                                   ShClTransferGetGeneration(pOldTransfer)));
+        RTTEST_CHECK(hTest, ShClTransferKeyIsValid(ShClTransferGetSessionId(pNewTransfer), 42,
+                                                   ShClTransferGetGeneration(pNewTransfer)));
+        RTTEST_CHECK(hTest, ShClTransferGetSessionId(pOldTransfer) != ShClTransferGetSessionId(pNewTransfer));
+        RTTEST_CHECK(hTest, ShClTransferHttpServerGetTransferCount(&HttpSrv) == 2);
+
+        rc = ShClTransferHttpConvertToStringList(&HttpSrv, pOldTransfer, &pszOldUrl, &cbOldUrl);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferHttpConvertToStringList(&HttpSrv, pNewTransfer, &pszNewUrl, &cbNewUrl);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        RTTEST_CHECK(hTest, cbOldUrl == strlen(pszOldUrl) + 1);
+        RTTEST_CHECK(hTest, cbNewUrl == strlen(pszNewUrl) + 1);
+        RTTEST_CHECK(hTest, RTStrCmp(pszOldUrl, pszNewUrl) != 0);
+
+        rc = ShClTransferHttpServerUnregisterTransfer(&HttpSrv, pOldTransfer);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+        RTTEST_CHECK(hTest, ShClTransferHttpServerGetTransferCount(&HttpSrv) == 1);
+        RTTEST_CHECK(hTest, ShClTransferHttpServerGetTransfer(&HttpSrv, 42));
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferHttpServerUnregisterTransfer(&HttpSrv, pOldTransfer);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+        RTTEST_CHECK(hTest, ShClTransferHttpServerGetTransferCount(&HttpSrv) == 1);
+        RTTEST_CHECK(hTest, ShClTransferHttpServerGetTransfer(&HttpSrv, 42));
+    }
+    if (RT_SUCCESS(rc))
+    {
+        RTHTTP hClient;
+        rc = RTHttpCreate(&hClient);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+        if (RT_SUCCESS(rc))
+        {
+            rc = RTHttpSetProxy(hClient, NULL /* pszProxyUrl */, 0 /* uPort */,
+                                NULL /* pszProxyUser */, NULL /* pszProxyPwd */);
+            RTTEST_CHECK_RC_OK(hTest, rc);
+            if (RT_SUCCESS(rc))
+            {
+                tstMalformedGet(hTest, hClient, pszOldUrl, VERR_HTTP_NOT_FOUND);
+
+                char szDstFile[RTPATH_MAX];
+                RTTEST_CHECK(hTest, RTStrPrintf(szDstFile, sizeof(szDstFile), "%s/stale-key-copy.bin", pszTempDir) > 0);
+                rc = RTHttpGetFile(hClient, pszNewUrl, szDstFile);
+                RTTEST_CHECK_RC_OK(hTest, rc);
+                if (RT_SUCCESS(rc))
+                    RTTEST_CHECK_RC_OK(hTest, RTFileCompare(szSrcFile, szDstFile));
+                if (RTFileExists(szDstFile))
+                    RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szDstFile));
+            }
+
+            int rc2 = RTHttpDestroy(hClient);
+            RTTEST_CHECK_RC_OK(hTest, rc2);
+        }
+    }
+
+    RTStrFree(pszNewUrl);
+    RTStrFree(pszOldUrl);
+
+    if (pNewTransfer)
+    {
+        if (fServerInitialized)
+            RTTEST_CHECK_RC_OK(hTest, ShClTransferHttpServerUnregisterTransfer(&HttpSrv, pNewTransfer));
+        if (fNewCtxInitialized && ShClTransferCtxGetTransferById(&NewTransferCtx, 42) == pNewTransfer)
+            RTTEST_CHECK_RC_OK(hTest, ShClTransferCtxUnregisterById(&NewTransferCtx, 42));
+        RTTEST_CHECK_RC_OK(hTest, ShClTransferDestroy(pNewTransfer));
+    }
+    if (pOldTransfer)
+    {
+        if (fServerInitialized)
+            RTTEST_CHECK_RC_OK(hTest, ShClTransferHttpServerUnregisterTransfer(&HttpSrv, pOldTransfer));
+        if (fOldCtxInitialized && ShClTransferCtxGetTransferById(&OldTransferCtx, 42) == pOldTransfer)
+            RTTEST_CHECK_RC_OK(hTest, ShClTransferCtxUnregisterById(&OldTransferCtx, 42));
+        RTTEST_CHECK_RC_OK(hTest, ShClTransferDestroy(pOldTransfer));
+    }
+    if (fNewCtxInitialized)
+        ShClTransferCtxDestroy(&NewTransferCtx);
+    if (fOldCtxInitialized)
+        ShClTransferCtxDestroy(&OldTransferCtx);
+    if (fServerInitialized)
+        RTTEST_CHECK_RC_OK(hTest, ShClTransferHttpServerDestroy(&HttpSrv));
+    RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szSrcFile));
+}
+
+/**
+ * Checks that unregister waits for an active request while retaining its transfer until request end.
+ *
+ * @param   hTest           The test handle.
+ * @param   pszTempDir      Temporary directory for test files.
+ */
+static void tstUnregisterDuringRequest(RTTEST hTest, const char *pszTempDir)
+{
+    RTTestSub(hTest, "unregister during active request");
+
+    char szSrcFile[RTPATH_MAX];
+    char szDstFile[RTPATH_MAX];
+    RTTEST_CHECK_RETV(hTest, RTStrPrintf2(szSrcFile, sizeof(szSrcFile), "%s", pszTempDir) > 0);
+    RTTEST_CHECK_RC_OK_RETV(hTest, RTPathAppend(szSrcFile, sizeof(szSrcFile), "active-request.bin"));
+    RTTEST_CHECK_RETV(hTest, RTStrPrintf2(szDstFile, sizeof(szDstFile), "%s", pszTempDir) > 0);
+    RTTEST_CHECK_RC_OK_RETV(hTest, RTPathAppend(szDstFile, sizeof(szDstFile), "active-request-copy.bin"));
+    RTTEST_CHECK_RC_OK_RETV(hTest, tstCreatePatternFile(szSrcFile, _128K));
+
+    TSTHTTPPROVIDERCTX ProviderCtx;
+    SHCLTXPROVIDER Provider;
+    bool fProviderInitialized = false;
+    bool fServerInitialized = false;
+    bool fCtxInitialized = false;
+    PSHCLTRANSFER pTransfer = NULL;
+    SHCLTRANSFERID idTransfer = NIL_SHCLTRANSFERID;
+    char *pszUrl = NULL;
+    RTTHREAD hGetThread = NIL_RTTHREAD;
+    RTTHREAD hUnregisterThread = NIL_RTTHREAD;
+    bool fGetThreadStarted = false;
+    bool fUnregisterThreadStarted = false;
+    bool fUnregisterThreadJoined = false;
+
+    SHCLHTTPSERVER HttpSrv;
+    SHCLTRANSFERCTX TransferCtx;
+    uint16_t uPort = 0;
+    int rc = tstHttpProviderInit(&ProviderCtx, &Provider);
+    RTTEST_CHECK_RC_OK(hTest, rc);
+    if (RT_SUCCESS(rc))
+    {
+        fProviderInitialized = true;
+        ProviderCtx.cReadsToPause = 1;
+        rc = ShClTransferHttpServerInit(&HttpSrv);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        fServerInitialized = true;
+        rc = ShClTransferHttpServerStart(&HttpSrv, 32 /* cMaxAttempts */, &uPort);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferCtxInit(&TransferCtx);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        fCtxInitialized = true;
+        rc = ShClTransferCtxBeginSession(&TransferCtx, 301);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = tstCreateRegisteredTransfer(&TransferCtx, &HttpSrv, szSrcFile, &Provider,
+                                         NIL_SHCLTRANSFERID, &pTransfer);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        idTransfer = ShClTransferGetID(pTransfer);
+        pszUrl = ShClTransferHttpServerGetUrlA(&HttpSrv, idTransfer, 0 /* idxEntry */);
+        RTTEST_CHECK(hTest, pszUrl != NULL);
+        if (!pszUrl)
+            rc = VERR_NO_MEMORY;
+    }
+
+    TSTHTTPGETCTX GetCtx = { pszUrl, szDstFile, VERR_IPE_UNINITIALIZED_STATUS };
+    TSTHTTPUNREGISTERCTX UnregisterCtx = { &HttpSrv, pTransfer, VERR_IPE_UNINITIALIZED_STATUS };
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTThreadCreate(&hGetThread, tstHttpGetThread, &GetCtx, 0 /* cbStack */, RTTHREADTYPE_DEFAULT,
+                            RTTHREADFLAGS_WAITABLE, "ShClHttpGet");
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        fGetThreadStarted = true;
+        rc = RTThreadUserWait(hGetThread, RT_MS_5SEC);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTSemEventWait(ProviderCtx.hReadEntered, RT_MS_10SEC);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTThreadCreate(&hUnregisterThread, tstHttpUnregisterThread, &UnregisterCtx, 0 /* cbStack */,
+                            RTTHREADTYPE_DEFAULT, RTTHREADFLAGS_WAITABLE, "ShClHttpUnreg");
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        fUnregisterThreadStarted = true;
+        rc = RTThreadUserWait(hUnregisterThread, RT_MS_5SEC);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        /*
+         * Unregister removes the transfer from lookup before waiting for the
+         * active request.  Wait for that point so the thread timeout below
+         * proves the request drain, rather than merely a scheduling delay.
+         */
+        for (uint32_t i = 0; i < 1000 && ShClTransferHttpServerGetTransferCount(&HttpSrv) != 0; ++i)
+            RTThreadSleep(1);
+        RTTEST_CHECK(hTest, ShClTransferHttpServerGetTransferCount(&HttpSrv) == 0);
+
+        int rcUnregisterThread = VERR_IPE_UNINITIALIZED_STATUS;
+        int const rcWait = RTThreadWait(hUnregisterThread, 100 /* msTimeout */, &rcUnregisterThread);
+        RTTEST_CHECK_RC(hTest, rcWait, VERR_TIMEOUT);
+    }
+
+    if (fProviderInitialized)
+        RTTEST_CHECK_RC_OK(hTest, RTSemEventMultiSignal(ProviderCtx.hReadContinue));
+    if (fGetThreadStarted)
+    {
+        int rcThread = VERR_IPE_UNINITIALIZED_STATUS;
+        int rcWait = RTThreadWait(hGetThread, RT_MS_10SEC, &rcThread);
+        RTTEST_CHECK_RC_OK(hTest, rcWait);
+        if (RT_FAILURE(rcWait))
+            rcWait = RTThreadWait(hGetThread, RT_INDEFINITE_WAIT, &rcThread);
+        if (RT_SUCCESS(rcWait))
+        {
+            RTTEST_CHECK_RC_OK(hTest, rcThread);
+            RTTEST_CHECK_RC_OK(hTest, GetCtx.rc);
+            if (RT_SUCCESS(GetCtx.rc))
+                RTTEST_CHECK_RC_OK(hTest, RTFileCompare(szSrcFile, szDstFile));
+        }
+    }
+    if (fUnregisterThreadStarted)
+    {
+        int rcThread = VERR_IPE_UNINITIALIZED_STATUS;
+        int rcWait = RTThreadWait(hUnregisterThread, RT_MS_10SEC, &rcThread);
+        RTTEST_CHECK_RC_OK(hTest, rcWait);
+        if (RT_FAILURE(rcWait))
+            rcWait = RTThreadWait(hUnregisterThread, RT_INDEFINITE_WAIT, &rcThread);
+        if (RT_SUCCESS(rcWait))
+        {
+            fUnregisterThreadJoined = true;
+            RTTEST_CHECK_RC_OK(hTest, rcThread);
+            RTTEST_CHECK_RC_OK(hTest, UnregisterCtx.rc);
+            RTTEST_CHECK(hTest, ShClTransferHttpServerGetTransferCount(&HttpSrv) == 0);
+            RTTEST_CHECK(hTest, !ShClTransferHttpServerGetTransfer(&HttpSrv, idTransfer));
+        }
+    }
+
+    RTTEST_CHECK(hTest, ASMAtomicReadU32(&ProviderCtx.cObjOpens) == 1);
+    RTTEST_CHECK(hTest, ASMAtomicReadU32(&ProviderCtx.cObjCloses) == 1);
+
+    RTStrFree(pszUrl);
+    if (fUnregisterThreadStarted && !fUnregisterThreadJoined)
+    {
+        int rcThread;
+        RTTEST_CHECK_RC_OK(hTest, RTThreadWait(hUnregisterThread, RT_INDEFINITE_WAIT, &rcThread));
+    }
+    if (pTransfer)
+    {
+        if (fServerInitialized && ShClTransferHttpServerGetTransfer(&HttpSrv, idTransfer))
+            RTTEST_CHECK_RC_OK(hTest, ShClTransferHttpServerUnregisterTransfer(&HttpSrv, pTransfer));
+        if (fCtxInitialized && ShClTransferCtxGetTransferById(&TransferCtx, idTransfer) == pTransfer)
+            RTTEST_CHECK_RC_OK(hTest, ShClTransferCtxUnregisterById(&TransferCtx, idTransfer));
+        RTTEST_CHECK_RC_OK(hTest, ShClTransferDestroy(pTransfer));
+    }
+    if (fCtxInitialized)
+        ShClTransferCtxDestroy(&TransferCtx);
+    if (fServerInitialized)
+        RTTEST_CHECK_RC_OK(hTest, ShClTransferHttpServerDestroy(&HttpSrv));
+    if (fProviderInitialized)
+        tstHttpProviderTerm(&ProviderCtx);
+    if (RTFileExists(szDstFile))
+        RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szDstFile));
+    RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szSrcFile));
 }
 
 /**
@@ -504,9 +1278,11 @@ int main(int argc, char *argv[])
 
     SHCLTRANSFERCTX TxCtx;
     RTTEST_CHECK_RC_OK(hTest, ShClTransferCtxInit(&TxCtx));
+    RTTEST_CHECK_RC_OK(hTest, ShClTransferCtxBeginSession(&TxCtx, 1));
 
     /* Query the local transfer provider. */
     SHCLTXPROVIDER Provider;
+    RT_ZERO(Provider);
     RTTESTI_CHECK(ShClTransferProviderLocalQueryInterface(&Provider) != NULL);
 
     /* Parse options again, but this time we only fetch all files we want to serve.
@@ -533,6 +1309,13 @@ int main(int argc, char *argv[])
     RTTEST_CHECK_RC_OK(hTest, RTPathTemp(szTempDir, sizeof(szTempDir)));
     RTTEST_CHECK_RC_OK(hTest, RTPathAppend(szTempDir, sizeof(szTempDir), "tstClipboardHttpServer-XXXXXX"));
     RTTEST_CHECK_RC_OK(hTest, RTDirCreateTemp(szTempDir, 0700));
+
+    if (!g_fManual)
+    {
+        tstRepeatedRequestHandles(hTest, szTempDir);
+        tstStaleKeyUnregister(hTest, szTempDir);
+        tstUnregisterDuringRequest(hTest, szTempDir);
+    }
 
     tstDuplicateTransferRegistration(hTest, &TxCtx, &HttpSrv, szTempDir, &Provider);
 
