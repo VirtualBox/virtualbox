@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendDarwin.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendDarwin.cpp 114987 2026-08-11 13:50:56Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host.
  */
@@ -166,9 +166,11 @@ static int shClBackendReportFormatsToGuestAndMain(PSHCLCLIENT pClient, SHCLFORMA
  *
  * @returns IPRT status code (ignored).
  * @param   pCtx    The context.
+ * @param   fForce  Whether to report the current pasteboard content even if
+ *                  its change was already observed.
  *
  */
-static int vboxClipboardChanged(SHCLCONTEXT *pCtx)
+static int vboxClipboardChanged(SHCLCONTEXT *pCtx, bool fForce)
 {
     int      vrc      = VINF_SUCCESS;
     uint32_t fFormats = 0;
@@ -184,7 +186,7 @@ static int vboxClipboardChanged(SHCLCONTEXT *pCtx)
         if (RT_SUCCESS(vrc))
         {
             vrc = queryNewPasteboardFormats(pCtx->hPasteboard, pCtx->idGuestOwnership, pCtx->hStrOwnershipFlavor,
-                                            &fFormats, &fChanged);
+                                            fForce, &fFormats, &fChanged);
 
             int const vrc2 = RTCritSectLeave(&pCtx->CritSectPasteboard);
             AssertRC(vrc2);
@@ -221,7 +223,7 @@ static DECLCALLBACK(int) vboxClipboardThread(RTTHREAD ThreadSelf, void *pvUser)
 
     while (!ASMAtomicReadBool(&pCtx->fTerminate))
     {
-        vboxClipboardChanged(pCtx);
+        vboxClipboardChanged(pCtx, false /* fForce */);
 
         /* Sleep for 200 msecs before next poll */
         vrc = RTThreadUserWait(ThreadSelf, 200);
@@ -349,7 +351,7 @@ int ShClBackendSync(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
 
     /* Sync the host clipboard content with the client. */
     if (RT_SUCCESS(vrc))
-        vrc = vboxClipboardChanged(pClient->State.pCtx);
+        vrc = vboxClipboardChanged(pClient->State.pCtx, true /* fForce */);
     return vrc;
 }
 
