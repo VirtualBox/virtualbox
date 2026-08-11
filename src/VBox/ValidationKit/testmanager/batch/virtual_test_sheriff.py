@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# $Id: virtual_test_sheriff.py 113949 2026-04-17 23:48:48Z knut.osmundsen@oracle.com $
+# $Id: virtual_test_sheriff.py 114985 2026-08-11 09:55:45Z andreas.loeffler@oracle.com $
 # pylint: disable=line-too-long
 
 """
@@ -45,7 +45,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 113949 $"
+__version__ = "$Revision: 114985 $"
 
 
 # Standard python imports
@@ -353,7 +353,7 @@ class VirtualTestSheriff(object): # pylint: disable=too-few-public-methods
 
         if self.oConfig.sLogFile:
             self.oLogFile = open(self.oConfig.sLogFile, "a");   # pylint: disable=consider-using-with,unspecified-encoding
-            self.oLogFile.write('VirtualTestSheriff: $Revision: 113949 $ \n');
+            self.oLogFile.write('VirtualTestSheriff: $Revision: 114985 $ \n');
 
 
     def eprint(self, sText):
@@ -768,7 +768,7 @@ class VirtualTestSheriff(object): # pylint: disable=too-few-public-methods
         for idTestResult, tReason in dReasonForResultId.items():
             oFailureReason = self.getFailureReason(tReason);
             if oFailureReason is not None:
-                sComment = 'Set by $Revision: 113949 $' # Handy for reverting later.
+                sComment = 'Set by $Revision: 114985 $' # Handy for reverting later.
                 if idTestResult in dCommentForResultId:
                     sComment += ': ' + dCommentForResultId[idTestResult];
 
@@ -900,6 +900,7 @@ class VirtualTestSheriff(object): # pylint: disable=too-few-public-methods
         ],
         'win': [
             # ( Whether to stop on hit, reason tuple, needle text. )
+            ( True,  ktReason_Host_HostMemoryLow, 'Error = 0x000005AA' ),
             ( True,  ktReason_Host_InstallationWantReboot, 'ERROR_SUCCESS_REBOOT_REQUIRED' ),
             ( False, ktReason_Host_InstallationFailed, 'Installation error.' ),
             ( True,  ktReason_Host_InvalidPackage, 'Uninstaller failed, exit code: 1620' ),
