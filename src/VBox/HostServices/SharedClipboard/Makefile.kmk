@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114974 2026-08-10 17:47:03Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 114993 2026-08-11 14:46:01Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the Shared Clipboard Host Service.
 #
@@ -48,55 +48,21 @@ VBoxSharedClipboard_SOURCES = \
 	VBoxSharedClipboardSvc-backend.cpp \
 	VBoxSharedClipboardSvc-client.cpp \
 	VBoxSharedClipboardSvc-host.cpp \
-	$(PATH_ROOT)/src/VBox/HostServices/common/message.cpp \
 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-common.cpp \
 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-helper.cpp
 VBoxSharedClipboard_SOURCES.win = \
-	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-win.cpp \
 	VBoxSharedClipboardSvc.rc
 ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
- ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
-  VBoxSharedClipboard_DEFS    += VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
-  VBoxSharedClipboard_SOURCES += \
-  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers-http.cpp
- endif
  VBoxSharedClipboard_SOURCES += \
  	VBoxSharedClipboardSvc-transfers.cpp \
- 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers-provider-local.cpp \
  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-path.cpp \
  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers.cpp
- VBoxSharedClipboard_SOURCES.win += \
- 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/ClipboardDataObjectImpl-win.cpp \
- 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/ClipboardEnumFormatEtcImpl-win.cpp \
- 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/ClipboardStreamImpl-win.cpp
 endif
 
 VBoxSharedClipboard_LIBS = \
 	$(LIB_RUNTIME)
 
 VBoxSharedClipboard_LDFLAGS.darwin = \
-	-framework ApplicationServices -install_name $(VBOX_DYLD_EXECUTABLE_PATH)/VBoxSharedClipboard.dylib
-
-if 0 ## Disabled for now; needs to be adapted to the new protocol first.
- if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_ADDITIONS) && !defined(VBOX_ONLY_SDK)
-  if1of ($(KBUILD_TARGET), freebsd linux netbsd openbsd solaris)
-   #
-   # Set this in LocalConfig.kmk if you are working on the X11 clipboard service
-   # to automatically run the unit test at build time.
-   #       OTHERS += $(tstClipboardX11-2_0_OUTDIR)/tstClipboardX11-2.run
-   PROGRAMS += tstClipboardX11-2
-   TESTING += $(tstClipboardX11-2_0_OUTDIR)/tstClipboardX11-2.run
-   tstClipboardX11-2_TEMPLATE = VBoxR3TstExe
-   tstClipboardX11-2_DEFS   = VBOX_WITH_HGCM TESTCASE
-   tstClipboardX11-2_SOURCES = VBoxSharedClipboardSvc-x11.cpp
-   tstClipboardX11-2_LIBS   = $(LIB_RUNTIME)
-   tstClipboardX11-2_CLEAN  = $(tstClipboardX11-2_0_OUTDIR)/tstClipboardX11-2.run
-
-   $$(tstClipboardX11-2_0_OUTDIR)/tstClipboardX11-2.run: $$(tstClipboardX11-2_1_STAGE_TARGET)
-	export VBOX_LOG_DEST=nofile; $(tstClipboardX11-2_1_STAGE_TARGET) quiet
-	$(QUIET)$(APPEND) -t "$@" "done"
-  endif # 1of ($(KBUILD_TARGET),freebsd linux netbsd openbsd solaris)
- endif
-endif
+	-install_name $(VBOX_DYLD_EXECUTABLE_PATH)/VBoxSharedClipboard.dylib
 
 include $(FILE_KBUILD_SUB_FOOTER)
