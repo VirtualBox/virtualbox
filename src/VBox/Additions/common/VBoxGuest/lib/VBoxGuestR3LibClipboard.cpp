@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestR3LibClipboard.cpp 114968 2026-08-10 16:16:50Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxGuestR3LibClipboard.cpp 114988 2026-08-11 13:58:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxGuestR3Lib - Ring-3 Support Library for VirtualBox guest additions, Shared Clipboard.
  */
@@ -2097,6 +2097,82 @@ static DECLCALLBACK(int) vbglR3ClipboardTransferIfaceHGObjRead(PSHCLTXPROVIDERCT
     return rc;
 }
 
+/** Retires every transfer belonging to the current host service session. */
+static int vbglR3ClipboardTransferCtxRetireAll(PSHCLTRANSFERCTX pTransferCtx)
+{
+    for (;;)
+    {
+        PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferLast(pTransferCtx);
+        if (!pTransfer)
+            return VINF_SUCCESS;
+
+        SHCLTRANSFERID const idTransfer = ShClTransferGetID(pTransfer);
+        int rc = ShClTransferCtxUnregisterById(pTransferCtx, idTransfer);
+        if (RT_SUCCESS(rc))
+            rc = ShClTransferDestroy(pTransfer);
+        if (RT_FAILURE(rc))
+        {
+            LogRel(("Shared Clipboard: Retiring stale transfer %RU16 failed with %Rrc\n", idTransfer, rc));
+            return rc;
+        }
+    }
+}
+
+/**
+ * Binds a transfer context to the service session carried by an incoming
+ * transfer-status context ID.
+ *
+ * Note! The service session is not part of feature negotiation, so the first
+ * transfer-status message is the earliest authoritative source.  A changed
+ * session invalidates every transfer created by the previous host service
+ * incarnation (for example after restoring a VM).
+ */
+static int vbglR3ClipboardTransferCtxEnsureSession(PSHCLTRANSFERCTX pTransferCtx, uint64_t idContext)
+{
+    SHCLSESSIONID const idSession = VBOX_SHCL_CONTEXTID_GET_SESSION(idContext);
+    if (   idSession == 0
+        || idSession == NIL_SHCLSESSIONID)
+        return VERR_INVALID_CONTEXT;
+
+    if (pTransferCtx->idSession == idSession)
+        return VINF_SUCCESS;
+
+    SHCLSESSIONID const idOldSession = pTransferCtx->idSession;
+    int rc = VINF_SUCCESS;
+    uint32_t const cTransfers = ShClTransferCtxGetTotalTransfers(pTransferCtx);
+    if (cTransfers)
+    {
+        LogRel(("Shared Clipboard: Service session changed from %RU16 to %RU16; retiring %RU32 stale transfer(s)\n",
+                idOldSession, idSession, cTransfers));
+        rc = vbglR3ClipboardTransferCtxRetireAll(pTransferCtx);
+    }
+    else if (idOldSession != NIL_SHCLSESSIONID)
+        LogRel2(("Shared Clipboard: Service session changed from %RU16 to %RU16\n", idOldSession, idSession));
+
+    if (RT_SUCCESS(rc))
+        rc = ShClTransferCtxBeginSession(pTransferCtx, idSession);
+    if (RT_SUCCESS(rc))
+        LogRel2(("Shared Clipboard: Bound guest transfers to service session %RU16\n", idSession));
+
+    return rc;
+}
+
+/** Validates that an incoming transfer command belongs to the active service session. */
+static int vbglR3ClipboardTransferCtxCheckSession(PSHCLTRANSFERCTX pTransferCtx, uint64_t idContext)
+{
+    SHCLSESSIONID const idSession = VBOX_SHCL_CONTEXTID_GET_SESSION(idContext);
+    if (   idSession == 0
+        || idSession == NIL_SHCLSESSIONID
+        || pTransferCtx->idSession != idSession)
+    {
+        LogRel(("Shared Clipboard: Rejecting transfer command for stale service session %RU16 (active %RU16)\n",
+                idSession, pTransferCtx->idSession));
+        return VERR_INVALID_CONTEXT;
+    }
+
+    return VINF_SUCCESS;
+}
+
 /**
  * Creates (and registers) a transfer on the guest side.
  *
@@ -2319,11 +2395,14 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                 SHCLTRANSFERREPORT transferReport;
                 rc = VbglR3ClipboarTransferStatusRecv(pCmdCtx, &enmDir, &transferReport);
                 if (RT_SUCCESS(rc))
+                    rc = vbglR3ClipboardTransferCtxEnsureSession(pTransferCtx, pCmdCtx->idContext);
+                if (RT_SUCCESS(rc))
                 {
                     const SHCLTRANSFERID idTransfer = VBOX_SHCL_CONTEXTID_GET_TRANSFER(pCmdCtx->idContext);
 
-                    LogRel2(("Shared Clipboard: Received status %s (%Rrc) for transfer %RU16\n",
-                             ShClTransferStatusToStr(transferReport.uStatus), transferReport.rc, idTransfer));
+                    LogRel2(("Shared Clipboard: Received status %s (%Rrc) for transfer %RU16 in session %RU16\n",
+                             ShClTransferStatusToStr(transferReport.uStatus), transferReport.rc, idTransfer,
+                             VBOX_SHCL_CONTEXTID_GET_SESSION(pCmdCtx->idContext)));
 
                     SHCLSOURCE enmSource = SHCLSOURCE_INVALID;
 
@@ -2459,6 +2538,8 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                 /** @todo Validate / handle fRoots. */
 
                 if (RT_SUCCESS(rc))
+                    rc = vbglR3ClipboardTransferCtxCheckSession(pTransferCtx, pCmdCtx->idContext);
+                if (RT_SUCCESS(rc))
                 {
                     PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(pTransferCtx,
                                                                              VBOX_SHCL_CONTEXTID_GET_TRANSFER(pCmdCtx->idContext));
@@ -2481,6 +2562,8 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                 uint64_t uIndex;
                 uint32_t fInfo;
                 rc = VbglR3ClipboardTransferRootListEntryReadReq(pCmdCtx, &uIndex, &fInfo);
+                if (RT_SUCCESS(rc))
+                    rc = vbglR3ClipboardTransferCtxCheckSession(pTransferCtx, pCmdCtx->idContext);
                 if (RT_SUCCESS(rc))
                 {
                     PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(pTransferCtx,
@@ -2505,6 +2588,8 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                 if (RT_SUCCESS(rc))
                 {
                     rc = VbglR3ClipboardTransferListOpenRecv(pCmdCtx, &openParmsList);
+                    if (RT_SUCCESS(rc))
+                        rc = vbglR3ClipboardTransferCtxCheckSession(pTransferCtx, pCmdCtx->idContext);
                     if (RT_SUCCESS(rc))
                     {
                         PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(pTransferCtx,
@@ -2532,6 +2617,8 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                 SHCLLISTHANDLE hList;
                 rc = VbglR3ClipboardTransferListCloseRecv(pCmdCtx, &hList);
                 if (RT_SUCCESS(rc))
+                    rc = vbglR3ClipboardTransferCtxCheckSession(pTransferCtx, pCmdCtx->idContext);
+                if (RT_SUCCESS(rc))
                 {
                     PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(pTransferCtx,
                                                                              VBOX_SHCL_CONTEXTID_GET_TRANSFER(pCmdCtx->idContext));
@@ -2554,6 +2641,8 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                 SHCLLISTHANDLE hList  = NIL_SHCLLISTHANDLE;
                 uint32_t       fFlags = 0;
                 rc = VbglR3ClipboardTransferListHdrReadRecvReq(pCmdCtx, &hList, &fFlags);
+                if (RT_SUCCESS(rc))
+                    rc = vbglR3ClipboardTransferCtxCheckSession(pTransferCtx, pCmdCtx->idContext);
                 if (RT_SUCCESS(rc))
                 {
                     PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(pTransferCtx,
@@ -2580,6 +2669,8 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                 SHCLLISTHANDLE hList;
                 uint32_t       fInfo;
                 rc = VbglR3ClipboardTransferListEntryReadRecvReq(pCmdCtx, &hList, &fInfo);
+                if (RT_SUCCESS(rc))
+                    rc = vbglR3ClipboardTransferCtxCheckSession(pTransferCtx, pCmdCtx->idContext);
                 if (RT_SUCCESS(rc))
                 {
                     PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(pTransferCtx,
@@ -2618,6 +2709,8 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                 {
                     rc = VbglR3ClipboardTransferObjOpenRecv(pCmdCtx, &openParms);
                     if (RT_SUCCESS(rc))
+                        rc = vbglR3ClipboardTransferCtxCheckSession(pTransferCtx, pCmdCtx->idContext);
+                    if (RT_SUCCESS(rc))
                     {
                         PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(pTransferCtx,
                                                                                  VBOX_SHCL_CONTEXTID_GET_TRANSFER(pCmdCtx->idContext));
@@ -2642,6 +2735,8 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                 SHCLOBJHANDLE hObj;
                 rc = VbglR3ClipboardTransferObjCloseRecv(pCmdCtx, &hObj);
                 if (RT_SUCCESS(rc))
+                    rc = vbglR3ClipboardTransferCtxCheckSession(pTransferCtx, pCmdCtx->idContext);
+                if (RT_SUCCESS(rc))
                 {
                     PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(pTransferCtx,
                                                                              VBOX_SHCL_CONTEXTID_GET_TRANSFER(pCmdCtx->idContext));
@@ -2663,6 +2758,8 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                 uint32_t      cbBuf;
                 uint32_t      fFlags;
                 rc = VbglR3ClipboardTransferObjReadRecv(pCmdCtx, &hObj, &cbBuf, &fFlags);
+                if (RT_SUCCESS(rc))
+                    rc = vbglR3ClipboardTransferCtxCheckSession(pTransferCtx, pCmdCtx->idContext);
                 if (RT_SUCCESS(rc))
                 {
                     PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(pTransferCtx,
@@ -2702,8 +2799,11 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
             }
         }
 
+        /* A stale context must fail closed locally.  Echoing it in an error
+         * reply would address a transfer owned by another service session. */
         if (   !fErrorSent
-            && RT_FAILURE(rc))
+            && RT_FAILURE(rc)
+            && rc != VERR_INVALID_CONTEXT)
         {
             /* Report transfer-specific error back to the host. */
             int rc2 = vbglR3ClipboardTransferSendStatusEx(pCmdCtx, pCmdCtx->idContext, SHCLTRANSFERSTATUS_ERROR, rc);
