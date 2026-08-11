@@ -1,4 +1,4 @@
-/* $Id: VBoxMPTypes.h 114359 2026-06-15 14:38:33Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPTypes.h 114994 2026-08-11 15:32:50Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox WDDM Miniport driver
  */
@@ -217,6 +217,12 @@ typedef struct VBOXWDDM_ALLOCATION
         uint32_t                sid;                        /* For surfaces. */
         uint32_t                SegmentId;                  /* Segment of the allocation. */
         AVLU32TREE              treeInstances;              /* DX_ALLOCATION_INSTANCE */
+        struct
+        {
+            uint32_t            fReadbackCompleted : 1;
+            uint32_t            fReserved : 31;
+        } flags;
+        uint64_t                u64LastReferencedCommandFence;
     } dx;
 #endif /* VBOX_WITH_VMSVGA3D_DX */
 } VBOXWDDM_ALLOCATION, *PVBOXWDDM_ALLOCATION;
