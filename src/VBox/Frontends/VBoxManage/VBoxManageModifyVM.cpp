@@ -1,4 +1,4 @@
-/* $Id: VBoxManageModifyVM.cpp 114362 2026-06-15 18:31:38Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxManageModifyVM.cpp 114979 2026-08-11 08:57:17Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxManage - Implementation of modifyvm command.
  */
@@ -2285,7 +2285,8 @@ RTEXITCODE handleModifyVM(HandlerArg *a)
                 }
                 break;
             }
-            #undef ITERATE_TO_NEXT_TERM
+#undef ITERATE_TO_NEXT_TERM
+
             case MODIFYVM_NATALIASMODE:
             {
                 ComPtr<INetworkAdapter> nic;
@@ -2548,20 +2549,16 @@ RTEXITCODE handleModifyVM(HandlerArg *a)
             {
                 bool fEnableUsb = false;
                 if (!RTStrICmp(ValueUnion.psz, "ps2"))
-                {
                     CHECK_ERROR(sessionMachine, COMSETTER(KeyboardHIDType)(KeyboardHIDType_PS2Keyboard));
-                }
                 else if (!RTStrICmp(ValueUnion.psz, "usb"))
                 {
                     CHECK_ERROR(sessionMachine, COMSETTER(KeyboardHIDType)(KeyboardHIDType_USBKeyboard));
-                    if (SUCCEEDED(hrc))
-                        fEnableUsb = true;
+                    fEnableUsb = SUCCEEDED(hrc);
                 }
                 else if (!RTStrICmp(ValueUnion.psz, "none"))
                 {
                     CHECK_ERROR(sessionMachine, COMSETTER(KeyboardHIDType)(KeyboardHIDType_None));
-                    if (SUCCEEDED(hrc))
-                        fEnableUsb = true;
+                    fEnableUsb = SUCCEEDED(hrc);
                 }
                 else
                 {
@@ -2574,7 +2571,8 @@ RTEXITCODE handleModifyVM(HandlerArg *a)
                     ULONG cOhciCtrls = 0;
                     ULONG cXhciCtrls = 0;
                     hrc = sessionMachine->GetUSBControllerCountByType(USBControllerType_OHCI, &cOhciCtrls);
-                    if (SUCCEEDED(hrc)) {
+                    if (SUCCEEDED(hrc))
+                    {
                         hrc = sessionMachine->GetUSBControllerCountByType(USBControllerType_XHCI, &cXhciCtrls);
                         if (   SUCCEEDED(hrc)
                             && cOhciCtrls + cXhciCtrls == 0)
@@ -2597,9 +2595,7 @@ RTEXITCODE handleModifyVM(HandlerArg *a)
                 ASSERT(uart);
 
                 if (!RTStrICmp(ValueUnion.psz, "disconnected"))
-                {
                     CHECK_ERROR(uart, COMSETTER(HostMode)(PortMode_Disconnected));
-                }
                 else if (   !RTStrICmp(ValueUnion.psz, "server")
                          || !RTStrICmp(ValueUnion.psz, "client")
                          || !RTStrICmp(ValueUnion.psz, "tcpserver")
@@ -2656,20 +2652,14 @@ RTEXITCODE handleModifyVM(HandlerArg *a)
                 ASSERT(uart);
 
                 if (!RTStrICmp(ValueUnion.psz, "16450"))
-                {
                     CHECK_ERROR(uart, COMSETTER(UartType)(UartType_U16450));
-                }
                 else if (!RTStrICmp(ValueUnion.psz, "16550A"))
-                {
                     CHECK_ERROR(uart, COMSETTER(UartType)(UartType_U16550A));
-                }
                 else if (!RTStrICmp(ValueUnion.psz, "16750"))
-                {
                     CHECK_ERROR(uart, COMSETTER(UartType)(UartType_U16750));
-                }
                 else
-                    return errorSyntax(ModifyVM::tr("Invalid argument to '%s'"),
-                                       GetOptState.pDef->pszLong);
+                    return errorSyntax(ModifyVM::tr("Invalid argument to '%s': %s"),
+                                       GetOptState.pDef->pszLong, ValueUnion.psz);
                 break;
             }
 
