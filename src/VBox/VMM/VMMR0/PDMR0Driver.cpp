@@ -1,4 +1,4 @@
-/* $Id: PDMR0Driver.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: PDMR0Driver.cpp 114983 2026-08-11 09:06:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * PDM - Pluggable Device and Driver Manager, R0 Driver parts.
  */
@@ -227,6 +227,7 @@ VMMR0_INT_DECL(int) PDMR0DriverCallReqHandler(PGVM pGVM, PPDMDRIVERCALLREQHANDLE
         AssertPtrReturn(pReq, VERR_INVALID_POINTER);
         AssertMsgReturn(pReq->Hdr.cbReq == sizeof(*pReq), ("%#x != %#x\n", pReq->Hdr.cbReq, sizeof(*pReq)), VERR_INVALID_PARAMETER);
 
+#if 0  /** @todo ring-3/0 separation */
         PPDMDRVINS pDrvIns = pReq->pDrvInsR0;
         AssertPtrReturn(pDrvIns, VERR_INVALID_POINTER);
         AssertReturn(pDrvIns->Internal.s.pVMR0 == pGVM, VERR_INVALID_PARAMETER);
@@ -235,6 +236,9 @@ VMMR0_INT_DECL(int) PDMR0DriverCallReqHandler(PGVM pGVM, PPDMDRIVERCALLREQHANDLE
         AssertPtrReturn(pfnReqHandlerR0, VERR_INVALID_POINTER);
 
         rc = pfnReqHandlerR0(pDrvIns, pReq->uOperation, pReq->u64Arg);
+#else
+        rc = VERR_NOT_SUPPORTED;
+#endif
     }
     return rc;
 }
