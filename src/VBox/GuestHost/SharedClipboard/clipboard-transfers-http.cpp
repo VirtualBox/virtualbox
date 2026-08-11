@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers-http.cpp 114989 2026-08-11 14:13:05Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers-http.cpp 114990 2026-08-11 14:34:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: HTTP server implementation for Shared Clipboard transfers on UNIX-y guests / hosts.
  */
@@ -558,6 +558,7 @@ static DECLCALLBACK(int) shClTransferHttpBegin(PRTHTTPCALLBACKDATA pData, PRTHTT
 /** @copydoc RTHTTPSERVERCALLBACKS::pfnRequestEnd */
 static DECLCALLBACK(int) shClTransferHttpEnd(PRTHTTPCALLBACKDATA pData, PRTHTTPSERVERREQ pReq)
 {
+    RT_NOREF(pData);
     Assert(pData->cbUser == sizeof(SHCLHTTPSERVER));
 
     LogRel2(("Shared Clipboard: HTTP request end\n"));
