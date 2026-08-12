@@ -1,4 +1,4 @@
-; $Id: x86-alldvrm.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: x86-alldvrm.asm 115009 2026-08-12 23:36:02Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Visual C++ Compiler - signed 64-bit division support, x86.
 ;
@@ -74,6 +74,7 @@ BEGINPROC_RAW   __alldvrm
 
         ; Both positive, so same as unsigned division.
         jmp     __aulldvrm
+        int3
 
 
         ;
@@ -106,6 +107,7 @@ BEGINPROC_RAW   __alldvrm
 
         leave
         ret     10h
+        int3
 
 .negative_dividend:
         push    ebp
@@ -142,6 +144,7 @@ BEGINPROC_RAW   __alldvrm
 
         leave
         ret     10h
+        int3
 
 .negative_dividend_negative_divisor:
         ; negate both dividend (above) and divisor, do unsigned division, and negate the remainder.
@@ -158,3 +161,4 @@ BEGINPROC_RAW   __alldvrm
         jmp     .return_negated_remainder
 ENDPROC_RAW     __alldvrm
 
+MARK_OBJECT_RETPOLINE_SAFE

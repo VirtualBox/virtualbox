@@ -1,4 +1,4 @@
-; $Id: x86-aullrem.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: x86-aullrem.asm 115009 2026-08-12 23:36:02Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Visual C++ Compiler - unsigned 64-bit division support, x86.
 ;
@@ -43,3 +43,4 @@
 
 rtVccUnsignedDivision __aullrem, 2
 
+MARK_OBJECT_RETPOLINE_SAFE

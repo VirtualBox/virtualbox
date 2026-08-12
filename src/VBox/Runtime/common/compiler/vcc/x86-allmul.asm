@@ -1,4 +1,4 @@
-; $Id: x86-allmul.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: x86-allmul.asm 115009 2026-08-12 23:36:02Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Visual C++ Compiler - 64-bit multiplication support, x86.
 ;
@@ -64,6 +64,7 @@ BEGINPROC_RAW   __allmul
         mul     dword [esp + 0ch]
 
         ret     10h
+        int3
 
         ;
         ; Complicated.
@@ -88,3 +89,4 @@ BEGINPROC_RAW   __allmul
         ret     10h
 ENDPROC_RAW     __allmul
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: guard-vcc.asm 114133 2026-05-14 13:05:57Z knut.osmundsen@oracle.com $
+; $Id: guard-vcc.asm 115009 2026-08-12 23:36:02Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Control Flow Guard related Visual C++ support routines.
 ;
@@ -106,3 +106,4 @@ BEGINPROC __guard_xfg_dispatch_icall_nop
 ENDPROC   __guard_xfg_dispatch_icall_nop
 %endif
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: x86-aulldvrm-core.mac 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: x86-aulldvrm-core.mac 115009 2026-08-12 23:36:02Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Visual C++ Compiler - unsigned 64-bit division support, x86.
 ;
@@ -110,6 +110,7 @@ BEGINPROC_RAW   %1
  %endif
         leave
         ret     10h
+        int3
 
         ;
         ; The divisor is larger than 32 bits.
@@ -140,6 +141,7 @@ BEGINPROC_RAW   %1
         shrd    eax, edx, cl
         shr     edx, cl
         jmp     .shifted
+        int3
 
 .shift_32:  ; simplified version.
         mov     edi, ebx
@@ -185,6 +187,7 @@ BEGINPROC_RAW   %1
  %endif
         leave
         ret     10h
+        int3
 
 .quotient_is_one_above_and_calc_remainder:
  %if %2 != 1
@@ -200,6 +203,7 @@ BEGINPROC_RAW   %1
         dec     edi
  %endif
         jmp     .done
+        int3
 
 %else
         ;
