@@ -1,4 +1,4 @@
-/* $Id: tstRTNoCrt-2.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: tstRTNoCrt-2.cpp 114996 2026-08-12 10:42:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT Testcase - Testcase for the No-CRT math bits.
  */
@@ -2931,33 +2931,35 @@ void testFma()
 {
     RTTestSub(g_hTest, "fma[f]");
 
-    CHECK_DBL(RT_NOCRT(fma)(1.0, 1.0,  1.0), 2.0);
-    CHECK_DBL(RT_NOCRT(fma)(4.0, 2.0,  1.0), 9.0);
-    CHECK_DBL(RT_NOCRT(fma)(4.0, 2.0, -1.0), 7.0);
-    CHECK_DBL_SAME(fma, (0.0, 0.0, 0.0));
-    CHECK_DBL_SAME(fma, (999999.0,            33334.0,       29345.0));
-    CHECK_DBL_SAME(fma, (39560.32334,       9605.5546, -59079.345069));
-    CHECK_DBL_SAME(fma, (39560.32334,   -59079.345069,     9605.5546));
-    CHECK_DBL_SAME(fma, (-59079.345069,   39560.32334,     9605.5546));
-    CHECK_DBL_SAME(fma, (+INFINITY, +INFINITY, -INFINITY));
-    CHECK_DBL_SAME(fma, (4.0, +INFINITY, 2.0));
-    CHECK_DBL_SAME(fma, (4.0, 4.0, +INFINITY));
-    CHECK_DBL_SAME(fma, (-INFINITY, 4.0, 4.0));
-    CHECK_DBL_SAME(fma, (2.34960584706e100, 7.6050698459e-13, 9.99996777e77));
+    CHECK_DBL(                 RT_NOCRT(fma)(1.0, 1.0,  1.0), 2.0);
+    CHECK_DBL(                 RT_NOCRT(fma)(4.0, 2.0,  1.0), 9.0);
+    CHECK_DBL(                 RT_NOCRT(fma)(4.0, 2.0, -1.0), 7.0);
+    CHECK_DBL_SAME(            fma, (0.0, 0.0, 0.0));
+    CHECK_DBL_SAME(            fma, (999999.0,            33334.0,       29345.0));
+    CHECK_DBL_SAME(            fma, (39560.32334,       9605.5546, -59079.345069));
+    CHECK_DBL_SAME(            fma, (39560.32334,   -59079.345069,     9605.5546));
+    CHECK_DBL_SAME(            fma, (-59079.345069,   39560.32334,     9605.5546));
+    /* The NaN sign resulting from this invalid operation is not specified. */
+    CHECK_DBL_SAME_RELAXED_NAN(fma, (+INFINITY, +INFINITY, -INFINITY));
+    CHECK_DBL_SAME(            fma, (4.0, +INFINITY, 2.0));
+    CHECK_DBL_SAME(            fma, (4.0, 4.0, +INFINITY));
+    CHECK_DBL_SAME(            fma, (-INFINITY, 4.0, 4.0));
+    CHECK_DBL_SAME(            fma, (2.34960584706e100, 7.6050698459e-13, 9.99996777e77));
 
-    CHECK_FLT(RT_NOCRT(fmaf)(1.0f, 1.0f, 1.0), 2.0);
-    CHECK_FLT(RT_NOCRT(fmaf)(4.0f, 2.0f, 1.0), 9.0);
-    CHECK_FLT(RT_NOCRT(fmaf)(4.0f, 2.0f, -1.0), 7.0);
-    CHECK_FLT_SAME(fmaf, (0.0f, 0.0f, 0.0f));
-    CHECK_FLT_SAME(fmaf, (999999.0f,            33334.0f,       29345.0f));
-    CHECK_FLT_SAME(fmaf, (39560.32334f,       9605.5546f, -59079.345069f));
-    CHECK_FLT_SAME(fmaf, (39560.32334f,   -59079.345069f,     9605.5546f));
-    CHECK_FLT_SAME(fmaf, (-59079.345069f,   39560.32334f,     9605.5546f));
-    CHECK_FLT_SAME(fmaf, (+INFINITY, +INFINITY, -INFINITY));
-    CHECK_FLT_SAME(fmaf, (4.0f, +INFINITY, 2.0f));
-    CHECK_FLT_SAME(fmaf, (4.0f, 4.0f, +INFINITY));
-    CHECK_FLT_SAME(fmaf, (-INFINITY, 4.0f, 4.0f));
-    CHECK_FLT_SAME(fmaf, (2.34960584706e22f, 7.6050698459e-13f, 9.99996777e27f));
+    CHECK_FLT(                 RT_NOCRT(fmaf)(1.0f, 1.0f, 1.0), 2.0);
+    CHECK_FLT(                 RT_NOCRT(fmaf)(4.0f, 2.0f, 1.0), 9.0);
+    CHECK_FLT(                 RT_NOCRT(fmaf)(4.0f, 2.0f, -1.0), 7.0);
+    CHECK_FLT_SAME(            fmaf, (0.0f, 0.0f, 0.0f));
+    CHECK_FLT_SAME(            fmaf, (999999.0f,            33334.0f,       29345.0f));
+    CHECK_FLT_SAME(            fmaf, (39560.32334f,       9605.5546f, -59079.345069f));
+    CHECK_FLT_SAME(            fmaf, (39560.32334f,   -59079.345069f,     9605.5546f));
+    CHECK_FLT_SAME(            fmaf, (-59079.345069f,   39560.32334f,     9605.5546f));
+    /* The NaN sign resulting from this invalid operation is not specified. */
+    CHECK_FLT_SAME_RELAXED_NAN(fmaf, (+INFINITY, +INFINITY, -INFINITY));
+    CHECK_FLT_SAME(            fmaf, (4.0f, +INFINITY, 2.0f));
+    CHECK_FLT_SAME(            fmaf, (4.0f, 4.0f, +INFINITY));
+    CHECK_FLT_SAME(            fmaf, (-INFINITY, 4.0f, 4.0f));
+    CHECK_FLT_SAME(            fmaf, (2.34960584706e22f, 7.6050698459e-13f, 9.99996777e27f));
 }
 
 
@@ -3543,24 +3545,25 @@ void testCos()
     CHECK_DBL(      RT_NOCRT(cos)( RTStrNanDouble("123s", false)),  RTStrNanDouble("123s", false));
     CHECK_DBL(      RT_NOCRT(cos)( RTStrNanDouble("9991s", true)),  RTStrNanDouble("9991s", true));
 
-    CHECK_DBL_SAME(    cos,(              1.0));
-    CHECK_DBL_SAME(    cos,(              1.5));
-    CHECK_DBL_SAME(    cos,(             +0.0));
-    CHECK_DBL_SAME(    cos,(             +0.0));
-    CHECK_DBL_SAME(    cos,(             -0.0));
-    CHECK_DBL_SAME(    cos,(             -0.0));
-    CHECK_DBL_SAME(    cos,(      238.6634566));
-    CHECK_DBL_SAME(    cos,(      -49.4578999));
-    CHECK_DBL_SAME(    cos,(            +M_PI));
-    CHECK_DBL_SAME(    cos,(            -M_PI));
+    /* FCOS and the CRT may differ slightly in the last few bits. */
+    CHECK_DBL_APPROX_SAME(cos,(              1.0), 1);
+    CHECK_DBL_SAME(       cos,(              1.5));
+    CHECK_DBL_SAME(       cos,(             +0.0));
+    CHECK_DBL_SAME(       cos,(             +0.0));
+    CHECK_DBL_SAME(       cos,(             -0.0));
+    CHECK_DBL_SAME(       cos,(             -0.0));
+    CHECK_DBL_SAME(       cos,(      238.6634566));
+    CHECK_DBL_SAME(       cos,(      -49.4578999));
+    CHECK_DBL_SAME(       cos,(            +M_PI));
+    CHECK_DBL_SAME(       cos,(            -M_PI));
 #if 0  /* UCRT does not produce 0.0 here, but some 2**-54 value */
-    CHECK_DBL_SAME(    cos,(          +M_PI_2));
-    CHECK_DBL_SAME(    cos,(          -M_PI_2));
+    CHECK_DBL_SAME(       cos,(          +M_PI_2));
+    CHECK_DBL_SAME(       cos,(          -M_PI_2));
 #endif
-    CHECK_DBL_SAME(    cos,(        +INFINITY));
-    CHECK_DBL_SAME(    cos,(        -INFINITY));
-    CHECK_DBL_SAME(    cos,(RTStrNanDouble(NULL, false)));
-    CHECK_DBL_SAME(    cos,(RTStrNanDouble(NULL, true)));
+    CHECK_DBL_SAME(       cos,(        +INFINITY));
+    CHECK_DBL_SAME(       cos,(        -INFINITY));
+    CHECK_DBL_SAME(       cos,(RTStrNanDouble(NULL, false)));
+    CHECK_DBL_SAME(       cos,(RTStrNanDouble(NULL, true)));
 
 
     CHECK_FLT(      RT_NOCRT(cosf)(                          +0.0f),                          +1.0f);
@@ -3845,4 +3848,3 @@ int main()
 
     return RTTestSummaryAndDestroy(g_hTest);
 }
-
