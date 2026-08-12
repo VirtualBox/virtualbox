@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-internal.h 114945 2026-08-10 13:06:53Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-internal.h 114997 2026-08-12 15:54:46Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device - 3D part, internal header.
  */
@@ -1001,6 +1001,8 @@ static SSMFIELD const g_aVMSVGA3DCONTEXTFields[] =
 #define DX_CTX_F_STATE_VIEWPORT          0x00000400
 #define DX_CTX_F_STATE_SCISSORRECT       0x00000800
 #define DX_CTX_F_STATE_RASTERIZERSTATE   0x00001000
+#define DX_CTX_F_STATE_INDEXBUFFER       0x00002000
+#define DX_CTX_F_STATE_VERTEXBUFFER      0x00004000
 #define DX_CTX_F_STATE_SAMPLER_VS        0x00010000 /* Sampler bits must be in this order without gaps for '<<'. */
 #define DX_CTX_F_STATE_SAMPLER_PS        0x00020000
 #define DX_CTX_F_STATE_SAMPLER_GS        0x00040000
@@ -1023,6 +1025,8 @@ static SSMFIELD const g_aVMSVGA3DCONTEXTFields[] =
                            | DX_CTX_F_STATE_VIEWPORT \
                            | DX_CTX_F_STATE_SCISSORRECT \
                            | DX_CTX_F_STATE_RASTERIZERSTATE \
+                           | DX_CTX_F_STATE_INDEXBUFFER \
+                           | DX_CTX_F_STATE_VERTEXBUFFER \
                            | DX_CTX_F_STATE_SAMPLER_VS \
                            | DX_CTX_F_STATE_SAMPLER_PS \
                            | DX_CTX_F_STATE_SAMPLER_GS \
@@ -1097,6 +1101,15 @@ typedef struct VMSVGA3DDXCONTEXT
     } cot;
     struct
     {
+        struct
+        {
+            struct
+            {
+                uint32_t                       cMaxBound;
+                AssertCompile(SVGA3D_DX_MAX_VERTEXBUFFERS == 32);
+                uint32_t                       au32Modified[(SVGA3D_DX_MAX_VERTEXBUFFERS + 31) / 32];
+            } vb;
+        } ia;
         struct
         {
             struct
