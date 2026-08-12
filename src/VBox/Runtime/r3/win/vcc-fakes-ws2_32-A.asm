@@ -1,4 +1,4 @@
-; $Id: vcc-fakes-ws2_32-A.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: vcc-fakes-ws2_32-A.asm 115005 2026-08-12 23:33:52Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Wrappers for ws2_32 APIs misisng NT4.
 ;
@@ -56,3 +56,5 @@ GLOBALNAME vcc100_ws2_32_fakes_asm
 MAKE_IMPORT_ENTRY getaddrinfo, 16
 MAKE_IMPORT_ENTRY freeaddrinfo, 4
 
+
+MARK_OBJECT_RETPOLINE_SAFE
