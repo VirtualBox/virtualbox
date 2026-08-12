@@ -1,4 +1,4 @@
-; $Id: nocrt-mainCRTStartup-win.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: nocrt-mainCRTStartup-win.asm 115005 2026-08-12 23:33:52Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Alias mainCRTStartup to CustomMainEntrypoint in nocrt-startup-exe-win.cpp.
 ;
@@ -42,3 +42,5 @@ BEGINPROC mainCRTStartup
         jmp     NAME(CustomMainEntrypoint)
 ENDPROC   mainCRTStartup
 
+
+MARK_OBJECT_RETPOLINE_SAFE

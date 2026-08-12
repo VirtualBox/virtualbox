@@ -1,4 +1,4 @@
-; $Id: vcc-fakes-kernel32-A.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: vcc-fakes-kernel32-A.asm 115005 2026-08-12 23:33:52Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Wrappers for kernel32 APIs missing in NT4 and earlier.
 ;
@@ -56,3 +56,5 @@ GLOBALNAME vcc100_kernel32_fakes_asm
  %error "PORT ME!"
 %endif
 
+
+MARK_OBJECT_RETPOLINE_SAFE
