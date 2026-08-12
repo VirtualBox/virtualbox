@@ -1,4 +1,4 @@
-; $Id: x86-allshl.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: x86-allshl.asm 115009 2026-08-12 23:36:02Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Visual C++ Compiler - 64-bit left shift support, x86.
 ;
@@ -56,6 +56,7 @@ BEGINPROC_RAW   __allshl
         shld    edx, eax, cl
         shl     eax, cl
         ret
+        int3
 
 .shift_32_or_more:
         test    cl, ~63
@@ -67,9 +68,11 @@ BEGINPROC_RAW   __allshl
 .return_zero_eax:
         xor     eax, eax
         ret
+        int3
 
 .shift_64_or_more:
         xor     edx, edx
         jmp     .return_zero_eax
 ENDPROC_RAW     __allshl
 
+MARK_OBJECT_RETPOLINE_SAFE

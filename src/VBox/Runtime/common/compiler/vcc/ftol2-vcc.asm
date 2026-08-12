@@ -1,4 +1,4 @@
-; $Id: ftol2-vcc.asm 114135 2026-05-14 18:43:29Z knut.osmundsen@oracle.com $
+; $Id: ftol2-vcc.asm 115009 2026-08-12 23:36:02Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Floating Point to Integer related Visual C++ support routines.
 ;
@@ -121,6 +121,7 @@ BEGINPROC_RAW   __ftoui2
 .return:
         leave
         ret
+        int3
 
         ;
         ; Negative value.
@@ -136,6 +137,7 @@ BEGINPROC_RAW   __ftoui2
         fisttp  dword [esp]                 ; Raise exceptions as appropriate, pop ST0.
         xor     eax, eax
         jmp     .return
+        int3
 
         ; Return MAX after maybe raising an exception.
 .unordered:
@@ -183,6 +185,7 @@ BEGINPROC_RAW   __ftoul2
 .return:
         leave
         ret
+        int3
 
         ;
         ; We've got a value that so large that fisttp can't handle it, however
@@ -223,6 +226,7 @@ BEGINPROC_RAW   __ftoul2
         frndint                             ; Clear C1 & raising exceptions as appropriate.
         ffreep  st0
         jmp     .return
+        int3
 
         ;
         ; Negative value.
@@ -239,6 +243,7 @@ BEGINPROC_RAW   __ftoul2
         xor     edx, edx
         xor     eax, eax
         jmp     .return
+        int3
 
         ;
         ; Unordered or a value in the (-1.0, 0) range.
@@ -288,3 +293,4 @@ g_r32TwoToThePowerOf63:
 g_r32QNaN:
         dd      0xffc00000                  ; Quite negative NaN (RTFLOAT32U_INIT_QNAN)
 
+MARK_OBJECT_RETPOLINE_SAFE
