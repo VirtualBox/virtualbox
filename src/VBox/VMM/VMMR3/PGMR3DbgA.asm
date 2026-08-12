@@ -1,4 +1,4 @@
-; $Id: PGMR3DbgA.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: PGMR3DbgA.asm 115019 2026-08-12 23:42:04Z knut.osmundsen@oracle.com $
 ;; @file
 ; PGM - Page Manager and Monitor - Debugger & Debugging API Optimizations.
 ;
@@ -95,6 +95,7 @@ SEH64_END_PROLOGUE
         jne     .continue
         inc     r11d
         jmp     .needle_check
+        int3
 
 .return_edi:
         lea     xAX, [xDI - 8]
@@ -104,6 +105,7 @@ SEH64_END_PROLOGUE
         mov     rdi, r10
 %endif
         ret
+        int3
 
 .return_null:
         xor     eax, eax
@@ -154,6 +156,7 @@ SEH64_END_PROLOGUE
         jne     .continue
         inc     r11d
         jmp     .needle_check
+        int3
 
 .return_edi:
         lea     xAX, [xDI - 4]
@@ -162,6 +165,7 @@ SEH64_END_PROLOGUE
         mov     rdi, r10
 %endif
         ret
+        int3
 
 .return_null:
         xor     eax, eax
@@ -212,6 +216,7 @@ SEH64_END_PROLOGUE
         jne     .continue
         inc     r11d
         jmp     .needle_check
+        int3
 
 .return_edi:
         lea     xAX, [xDI - 2]
@@ -220,6 +225,7 @@ SEH64_END_PROLOGUE
         mov     rdi, r10
 %endif
         ret
+        int3
 
 .return_null:
         xor     eax, eax
@@ -267,6 +273,7 @@ SEH64_END_PROLOGUE
         jne     .continue
         inc     r11d
         jmp     .needle_check
+        int3
 
 .return_edi:
         lea     xAX, [xDI - 1]
@@ -275,6 +282,7 @@ SEH64_END_PROLOGUE
         mov     rdi, r10
 %endif
         ret
+        int3
 
 .return_null:
         xor     eax, eax
@@ -324,6 +332,7 @@ SEH64_END_PROLOGUE
         mov     rdi, r10
 %endif
         ret
+        int3
 
 .return_null:
         xor     eax, eax
@@ -367,6 +376,7 @@ SEH64_END_PROLOGUE
         cmp     rax, [xDI - 1]
         jne     .continue
         jmp     .return_edi
+        int3
 .check_smaller:
         cmp     ecx, 3
         jb      .return_null
@@ -380,6 +390,7 @@ SEH64_END_PROLOGUE
         mov     rdi, r10
 %endif
         ret
+        int3
 
 .return_null:
         xor     eax, eax
@@ -389,3 +400,4 @@ SEH64_END_PROLOGUE
         ret
 ENDPROC   pgmR3DbgFixedMemScan8Wide1Step
 
+MARK_OBJECT_RETPOLINE_SAFE
