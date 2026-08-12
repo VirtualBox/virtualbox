@@ -608,14 +608,19 @@ static VBOXSTRICTRC apicSendIntr(PVMCC pVM, PVMCPUCC pVCpu, uint8_t uVector, XAP
         && pVCpu)
     {
         /*
-         * Flag only errors when the delivery mode is fixed and not others.
+         * Flag only errors when the delivery mode is fixed and lowest-priority and not
+         * others. This applies to ICR and self-IPI in both xAPIC and x2APIC modes.
+         *  - Intel: Documented under "Error Status Register (ESR)" in the
+         *    Intel spec. "13.5.3 Error Handling".
+         *  - AMD: Documented under "APICx280 [Error Status] (ErrorStatus)" in the CPU
+         *    specific manual (e.g. "Processor Programming Reference (PPR) for
+         *    AMD Family 17h Model 01h, Revision B1 Processors".
          *
          * Ubuntu 10.04-3 amd64 live CD with 2 VCPUs gets upset as it sends an SIPI to the
          * 2nd VCPU with vector 6 and checks the ESR for no errors, see @bugref{8245#c86}.
          */
-        /** @todo The spec says this for LVT, but not explcitly for ICR-lo
-         *        but it probably is true. */
-        if (enmDeliveryMode == XAPICDELIVERYMODE_FIXED)
+        if (   enmDeliveryMode == XAPICDELIVERYMODE_FIXED
+            || enmDeliveryMode == XAPICDELIVERYMODE_LOWEST_PRIO)
         {
             if (RT_UNLIKELY(uVector <= XAPIC_ILLEGAL_VECTOR_END))
                 apicSetError(pVCpu, XAPIC_ESR_SEND_ILLEGAL_VECTOR);
