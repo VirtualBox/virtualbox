@@ -1,4 +1,4 @@
-; $Id: sinl.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: sinl.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT sinl - AMD64 & X86.
 ;
@@ -69,3 +69,4 @@ RT_NOCRT_BEGINPROC sinl
     ret
 ENDPROC   RT_NOCRT(sinl)
 
+MARK_OBJECT_RETPOLINE_SAFE

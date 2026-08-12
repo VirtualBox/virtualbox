@@ -1,4 +1,4 @@
-; $Id: ldexp.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ldexp.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT ldexp - AMD64 & X86.
 ;
@@ -87,3 +87,4 @@ RT_NOCRT_BEGINPROC ldexp
         ret
 ENDPROC   RT_NOCRT(ldexp)
 
+MARK_OBJECT_RETPOLINE_SAFE

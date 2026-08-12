@@ -1,4 +1,4 @@
-; $Id: exp.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: exp.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT exp - AMD64 & X86.
 ;
@@ -83,6 +83,7 @@ RT_NOCRT_BEGINPROC exp
         cmp     ax, X86_FSW_C0 | X86_FSW_C2 ; Infinity.
         je      .inf
         jmp     .nan
+        int3
 
 .finite:
         ;
@@ -119,6 +120,7 @@ RT_NOCRT_BEGINPROC exp
 .return:
         leave
         ret
+        int3
 
         ;
         ; +/-0.0: Return +1.0
@@ -127,6 +129,7 @@ RT_NOCRT_BEGINPROC exp
         ffreep  st0
         fld1
         jmp     .return_val
+        int3
 
         ;
         ; -Inf: Return +0.0.
@@ -138,6 +141,7 @@ RT_NOCRT_BEGINPROC exp
         ffreep  st0
         fldz
         jmp     .return_val
+        int3
 
         ;
         ; NaN: Return the input NaN value as is, if we can.
@@ -149,3 +153,4 @@ RT_NOCRT_BEGINPROC exp
         jmp     .return
 ENDPROC   RT_NOCRT(exp)
 
+MARK_OBJECT_RETPOLINE_SAFE

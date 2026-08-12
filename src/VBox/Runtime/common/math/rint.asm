@@ -1,4 +1,4 @@
-; $Id: rint.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: rint.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT rint - AMD64 & X86.
 ;
@@ -81,6 +81,7 @@ RT_NOCRT_BEGINPROC rint
         ffreep  st0                     ; return the xmm0 register value unchanged, as FLD changes SNaN to QNaN.
 %endif
         jmp     .return
+        int3
 .input_ok:
 
         ;
@@ -97,3 +98,4 @@ RT_NOCRT_BEGINPROC rint
         ret
 ENDPROC   RT_NOCRT(rint)
 
+MARK_OBJECT_RETPOLINE_SAFE

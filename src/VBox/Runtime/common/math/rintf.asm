@@ -1,4 +1,4 @@
-; $Id: rintf.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: rintf.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT rintf - AMD64 & X86.
 ;
@@ -81,6 +81,7 @@ RT_NOCRT_BEGINPROC rintf
         ffreep  st0                     ; return the xmm0 register value unchanged, as FLD changes SNaN to QNaN.
 %endif
         jmp     .return
+        int3
 .input_ok:
 
         ;
@@ -97,3 +98,4 @@ RT_NOCRT_BEGINPROC rintf
         ret
 ENDPROC   RT_NOCRT(rintf)
 
+MARK_OBJECT_RETPOLINE_SAFE

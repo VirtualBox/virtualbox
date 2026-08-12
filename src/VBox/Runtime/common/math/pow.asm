@@ -1,4 +1,4 @@
-; $Id: pow.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: pow.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT pow - AMD64 & X86.
 ;
@@ -103,6 +103,7 @@ RT_NOCRT_BEGINPROC pow
         pop     xBX
         leave
         ret
+        int3
 
         ;
         ; But sometimes, like if we have NaN or other special inputs, we should
@@ -119,9 +120,11 @@ RT_NOCRT_BEGINPROC pow
 %endif
 .return_base:
         jmp     .return
+        int3
 
 .return_exp:
         movsd   xmm0, xmm1
         jmp     .return
 ENDPROC   RT_NOCRT(pow)
 
+MARK_OBJECT_RETPOLINE_SAFE

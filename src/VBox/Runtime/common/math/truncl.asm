@@ -1,4 +1,4 @@
-; $Id: truncl.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: truncl.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT truncl - AMD64 & X86.
 ;
@@ -74,3 +74,4 @@ RT_NOCRT_BEGINPROC truncl
         ret
 ENDPROC   RT_NOCRT(truncl)
 
+MARK_OBJECT_RETPOLINE_SAFE

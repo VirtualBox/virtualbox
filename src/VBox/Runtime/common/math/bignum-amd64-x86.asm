@@ -1,4 +1,4 @@
-; $Id: bignum-amd64-x86.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: bignum-amd64-x86.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Big Integer Numbers, AMD64 and X86 Assembly Workers
 ;
@@ -137,12 +137,14 @@ SEH64_END_PROLOGUE
         jz      .done
         sahf                            ; Restore CF.
         jmp     .small_loop             ; Skip CF=1 (clc).
+        int3
  %else
         jnc     .no_carry
         and     cUsed, 7                ; Up to seven odd rounds.
         jz      .done
         stc
         jmp     .small_loop             ; Skip CF=1 (clc).
+        int3
 .no_carry:
         and     cUsed, 7                ; Up to seven odd rounds.
         jz      .done
@@ -218,6 +220,7 @@ SEH64_END_PROLOGUE
         jz      .done
         sahf                            ; Restore CF.
         jmp     .small_loop             ; Skip CF=1 (clc).
+        int3
 
 .small_job:
         clc
@@ -319,12 +322,14 @@ SEH64_END_PROLOGUE
         jz      .done
         sahf                            ; Restore CF.
         jmp     .small_loop             ; Skip CF=1 (clc).
+        int3
  %else
         jnc     .no_carry
         and     cUsed, 7                ; Up to seven odd rounds.
         jz      .done
         stc
         jmp     .small_loop             ; Skip CF=1 (clc).
+        int3
 .no_carry:
         and     cUsed, 7                ; Up to seven odd rounds.
         jz      .done
@@ -388,6 +393,7 @@ SEH64_END_PROLOGUE
         jz      .done
         sahf                            ; Restore CF.
         jmp     .small_loop             ; Skip CF=1 (clc).
+        int3
 
 .small_job:
         clc
@@ -460,6 +466,7 @@ SEH64_END_PROLOGUE
         test    cUsed, cUsed
         jz      .no_elements
         jmp     .small_loop_init
+        int3
 
         ; Big loop - 8 unrolled loop iterations.
 .big_loop_init:
@@ -506,9 +513,11 @@ SEH64_END_PROLOGUE
         jz      .restore_cf_and_return  ; Jump if we're good and done.
         popf                            ; Restore CF.
         jmp     .small_loop             ; Deal with the odd rounds.
+        int3
 .restore_cf_and_return:
         popf
         jmp     .carry_to_eax
+        int3
 
         ; Small loop - One round at the time.
 .small_loop_init:
@@ -534,6 +543,7 @@ SEH64_END_PROLOGUE
 .return:
         leave
         ret
+        int3
 
 .no_elements:
         mov     eax, uCarry
@@ -754,6 +764,7 @@ SEH64_END_PROLOGUE
         add     pauMultiplier, RTBIGNUM_ELEMENT_SIZE
         add     pauResult, RTBIGNUM_ELEMENT_SIZE
         jmp     .multiplier_loop
+        int3
 
 .done:
 
@@ -889,3 +900,4 @@ SEH64_END_PROLOGUE
         ret
 ENDPROC rtBigNumKnuthD4_MulSub
 
+MARK_OBJECT_RETPOLINE_SAFE
