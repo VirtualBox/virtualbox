@@ -1,4 +1,4 @@
-; $Id: SUPR3HardenedMainA-win.asm 114350 2026-06-12 17:02:31Z knut.osmundsen@oracle.com $
+; $Id: SUPR3HardenedMainA-win.asm 115013 2026-08-12 23:38:23Z knut.osmundsen@oracle.com $
 ;; @file
 ; VirtualBox Support Library - Hardened main(), Windows assembly bits.
 ;
@@ -386,6 +386,7 @@ BEGINPROC HardenedSyscallHashStack
         ; Cleanup the call and return.
         add     rsp, MY_STACK_FRAME
         ret
+        int3
 
 .alt_stack:
         ; Check up to the next page.
@@ -494,6 +495,7 @@ BEGINPROC HardenedSyscallHashStackPostCheck
         mov     r13, [rsp + 24 + 8]
         mov     r14, [rsp + 32 + 8]
         ret
+        int3
 
 .stack_check_failed:
         mov     rbp, 99h
@@ -535,6 +537,7 @@ BEGINCODE
 global SUPHNTIMP_STDCALL_NAME(%1, %2)
 SUPHNTIMP_STDCALL_NAME(%1, %2):
         jmp     RTCCPTR_PRE [RT_WRT_RIP(NAME(g_pfn %+ %1))]
+        int3
 
  %if %3
         ;
@@ -569,6 +572,7 @@ BEGINPROC %1 %+ _SyscallType2 ; Introduced with build 10525
         call    NAME(HardenedSyscallHashStackPostCheck)
    %endif
         ret
+        int3
 .int_alternative:
         int     2eh
    %if %5
@@ -632,3 +636,4 @@ section .rwxpg bss execute read write align=4096
 GLOBALNAME g_abSupHardReadWriteExecPage
         resb    4096
 
+MARK_OBJECT_RETPOLINE_SAFE  ;; @todo retpoline: There are of course indirect calls/jmps here.
