@@ -1,4 +1,4 @@
-; $Id: feraiseexcept.asm 114133 2026-05-14 13:05:57Z knut.osmundsen@oracle.com $
+; $Id: feraiseexcept.asm 115007 2026-08-12 23:35:12Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT feraiseexcept - AMD64 & X86.
 ;
@@ -186,3 +186,4 @@ g_r32Tiny:
         dd      1.0e-37
 %endif
 
+MARK_OBJECT_RETPOLINE_SAFE

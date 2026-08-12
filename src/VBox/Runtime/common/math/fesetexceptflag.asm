@@ -1,4 +1,4 @@
-; $Id: fesetexceptflag.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: fesetexceptflag.asm 115007 2026-08-12 23:35:12Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT fesetexceptflag - AMD64 & X86.
 ;
@@ -125,3 +125,4 @@ RT_NOCRT_BEGINPROC fesetexceptflag
         ret
 ENDPROC   RT_NOCRT(fesetexceptflag)
 
+MARK_OBJECT_RETPOLINE_SAFE

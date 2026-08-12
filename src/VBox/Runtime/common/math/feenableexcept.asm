@@ -1,4 +1,4 @@
-; $Id: feenableexcept.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: feenableexcept.asm 115007 2026-08-12 23:35:12Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT feenableexcept - AMD64 & X86.
 ;
@@ -74,6 +74,7 @@ RT_NOCRT_BEGINPROC feenableexcept
         jz      .input_ok
         int3
         jmp     .return
+        int3
 .input_ok:
 %endif
 
@@ -119,3 +120,4 @@ RT_NOCRT_BEGINPROC feenableexcept
         ret
 ENDPROC   RT_NOCRT(feenableexcept)
 
+MARK_OBJECT_RETPOLINE_SAFE

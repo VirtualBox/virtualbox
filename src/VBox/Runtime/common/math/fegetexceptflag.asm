@@ -1,4 +1,4 @@
-; $Id: fegetexceptflag.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: fegetexceptflag.asm 115007 2026-08-12 23:35:12Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT fegetexceptflag - AMD64 & X86.
 ;
@@ -80,6 +80,7 @@ RT_NOCRT_BEGINPROC fegetexceptflag
         jz      .input_ok
         int3
         jmp     .return
+        int3
 .input_ok:
  %endif
 %endif
@@ -115,3 +116,4 @@ RT_NOCRT_BEGINPROC fegetexceptflag
         ret
 ENDPROC   RT_NOCRT(fegetexceptflag)
 
+MARK_OBJECT_RETPOLINE_SAFE
