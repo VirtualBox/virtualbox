@@ -1,4 +1,4 @@
-; $Id: ASMBitFirstSetU16.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMBitFirstSetU16.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMBitFirstSetU16().
 ;
@@ -71,6 +71,7 @@ RT_BEGINPROC ASMBitFirstSetU16
         jc      .return
         inc     ax
         jmp     .next_bit
+        int3
 
 .return_zero:
         xor     ax, ax
@@ -95,9 +96,11 @@ RT_BEGINPROC ASMBitFirstSetU16
         inc     eax
 .return:
         ret
+        int3
 .return_zero:
         xor     eax, eax
         ret
 %endif
 ENDPROC ASMBitFirstSetU16
 
+MARK_OBJECT_RETPOLINE_SAFE

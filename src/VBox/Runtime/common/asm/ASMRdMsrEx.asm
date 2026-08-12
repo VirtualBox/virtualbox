@@ -1,4 +1,4 @@
-; $Id: ASMRdMsrEx.asm 114133 2026-05-14 13:05:57Z knut.osmundsen@oracle.com $
+; $Id: ASMRdMsrEx.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMRdMsrEx().
 ;
@@ -91,3 +91,4 @@ SEH64_END_PROLOGUE
 %endif
 ENDPROC ASMRdMsrEx
 
+MARK_OBJECT_RETPOLINE_SAFE

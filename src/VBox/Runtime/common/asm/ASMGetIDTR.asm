@@ -1,4 +1,4 @@
-; $Id: ASMGetIDTR.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMGetIDTR.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMGetIDTR().
 ;
@@ -60,3 +60,4 @@ RT_BEGINPROC ASMGetIDTR
         ret
 ENDPROC ASMGetIDTR
 
+MARK_OBJECT_RETPOLINE_SAFE

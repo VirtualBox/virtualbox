@@ -1,4 +1,4 @@
-; $Id: ASMGetFlags.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMGetFlags.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMGetFlags().
 ;
@@ -51,3 +51,4 @@ RT_BEGINPROC ASMGetFlags
         ret
 ENDPROC ASMGetFlags
 
+MARK_OBJECT_RETPOLINE_SAFE

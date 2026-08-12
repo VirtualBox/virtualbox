@@ -1,4 +1,4 @@
-; $Id: ASMSerializeInstruction-rdtscp.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMSerializeInstruction-rdtscp.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMSerializeInstruction() using rdtscp.
 ;
@@ -54,3 +54,4 @@ RT_BEGINPROC    ASMSerializeInstructionRdTscp
         ret
 ENDPROC         ASMSerializeInstructionRdTscp
 
+MARK_OBJECT_RETPOLINE_SAFE

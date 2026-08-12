@@ -1,4 +1,4 @@
-; $Id: ASMMultU64ByU32DivByU32.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMMultU64ByU32DivByU32.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Assembly Functions, ASMMultU64ByU32DivByU32.
 ;
@@ -139,3 +139,4 @@ RT_BEGINPROC ASMMultU64ByU32DivByU32
     ret
 ENDPROC ASMMultU64ByU32DivByU32
 
+MARK_OBJECT_RETPOLINE_SAFE

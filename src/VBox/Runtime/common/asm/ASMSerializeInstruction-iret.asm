@@ -1,4 +1,4 @@
-; $Id: ASMSerializeInstruction-iret.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMSerializeInstruction-iret.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMSerializeInstruction() using iret.
 ;
@@ -69,3 +69,4 @@ RT_BEGINPROC ASMSerializeInstructionIRet
 %endif
 ENDPROC            ASMSerializeInstructionIRet
 
+MARK_OBJECT_RETPOLINE_SAFE

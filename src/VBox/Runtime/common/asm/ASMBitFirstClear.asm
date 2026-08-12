@@ -1,4 +1,4 @@
-; $Id: ASMBitFirstClear.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMBitFirstClear.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMBitFirstClear().
 ;
@@ -118,6 +118,7 @@ RT_BEGINPROC ASMBitFirstClear
         leave
 %endif
         ret
+        int3
 
         ; failure
         ;}
@@ -135,3 +136,4 @@ RT_BEGINPROC ASMBitFirstClear
         ret
 ENDPROC ASMBitFirstClear
 
+MARK_OBJECT_RETPOLINE_SAFE
