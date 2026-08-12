@@ -1,4 +1,4 @@
-; $Id: dbgstackdumpself-amd64-x86.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: dbgstackdumpself-amd64-x86.asm 115012 2026-08-12 23:37:41Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - RTDbgStackDumpSelf assembly wrapper calling rtDbgStackDumpSelfWorker.
 ;
@@ -155,3 +155,4 @@ SEH64_END_PROLOGUE
         ret
 ENDPROC RTDbgStackDumpSelf
 
+MARK_OBJECT_RETPOLINE_SAFE

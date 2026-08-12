@@ -1,4 +1,4 @@
-; $Id: RTLogWriteVmm-amd64-x86.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: RTLogWriteVmm-amd64-x86.asm 115012 2026-08-12 23:37:41Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - RTLogWriteVmm - AMD64 & X86 for VBox.
 ;
@@ -95,3 +95,4 @@ RT_BEGINPROC RTLogWriteVmm
         ret
 ENDPROC RTLogWriteVmm
 
+MARK_OBJECT_RETPOLINE_SAFE
