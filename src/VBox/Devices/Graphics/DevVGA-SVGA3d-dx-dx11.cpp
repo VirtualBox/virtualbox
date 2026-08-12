@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114945 2026-08-10 13:06:53Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 114997 2026-08-12 15:54:46Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -313,15 +313,16 @@ typedef struct DXSTREAMOUTPUT
 typedef struct DXBOUNDVERTEXBUFFER
 {
     ID3D11Buffer *pBuffer;
-    uint32_t stride;
-    uint32_t offset;
+    PVMSVGA3DSURFACE pSurface;
+    //uint32_t stride;
+    //uint32_t offset;
 } DXBOUNDVERTEXBUFFER;
 
 typedef struct DXBOUNDINDEXBUFFER
 {
     ID3D11Buffer *pBuffer;
-    DXGI_FORMAT indexBufferFormat;
-    uint32_t indexBufferOffset;
+    //DXGI_FORMAT indexBufferFormat;
+    //uint32_t indexBufferOffset;
 } DXBOUNDINDEXBUFFER;
 
 /** @todo Temporary development define. */
@@ -352,6 +353,11 @@ typedef struct DXCONSTANTBUFFERSTATE
 
 typedef struct DXBOUNDRESOURCES /* Currently bound resources. Mirror SVGADXContextMobFormat structure. */
 {
+    struct
+    {
+        DXBOUNDVERTEXBUFFER vertexBuffers[SVGA3D_DX_MAX_VERTEXBUFFERS];
+        DXBOUNDINDEXBUFFER indexBuffer;
+    } inputAssembly;
     struct
     {
 #ifndef DX_CB
@@ -427,9 +433,11 @@ typedef struct VMSVGA3DBACKEND
     UINT                       VendorId;
     UINT                       DeviceId;
 
+#ifndef DX_STATE_TRACKER
     SVGADXContextMobFormat     svgaDXContext;          /* Current state of pipeline. */
 
     DXBOUNDRESOURCES           resources;              /* What is currently applied to the pipeline. */
+#endif
 
     struct
     {
@@ -3410,7 +3418,9 @@ static DECLCALLBACK(int) vmsvga3dBackInit(PPDMDEVINS pDevIns, PVGASTATE pThis, P
     }
 #endif
 
+#ifndef DX_STATE_TRACKER
     vmsvga3dDXInitContextMobData(&pBackend->svgaDXContext);
+#endif
 //DEBUG_BREAKPOINT_TEST();
     return rc;
 }
@@ -6440,6 +6450,13 @@ static DECLCALLBACK(int) vmsvga3dBackDXSwitchContext(PVGASTATECC pThisCC, PVMSVG
         pCb->StartSlot = 0;
         pCb->NumBuffers = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
     }
+
+    /* Reset vertex buffers. */
+    uint32_t const cBoundVB = pDXContextFrom
+                            ? pDXContextFrom->state.ia.vb.cMaxBound
+                            : SVGA3D_DX_MAX_VERTEXBUFFERS;
+    AssertCompile(SVGA3D_DX_MAX_VERTEXBUFFERS == 32);
+    pDXContext->state.ia.vb.au32Modified[0] = (UINT32_C(0xFFFFFFFF) >> (32 - cBoundVB));
 #endif
     return VINF_SUCCESS;
 }
@@ -7158,6 +7175,8 @@ static void dxSetConstantBuffers(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXCont
 #endif
 }
 
+
+#ifndef DX_STATE_TRACKER
 static void dxSetVertexBuffers(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
 {
     PVMSVGA3DBACKEND pBackend = pThisCC->svga.p3dState->pBackend;
@@ -7237,7 +7256,70 @@ static void dxSetVertexBuffers(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContex
         pDXDevice->pImmediateContext->IASetVertexBuffers(idxMinSlot, (idxMaxSlot - idxMinSlot) + 1,
                                                          &paResources[idxMinSlot], &paStride[idxMinSlot], &paOffset[idxMinSlot]);
 }
+#else
+static void dxSetVertexBuffers(DXDEVICE *pDXDevice, PVMSVGA3DDXCONTEXT pDXContext)
+{
+    ID3D11Buffer *paResources[SVGA3D_DX_MAX_VERTEXBUFFERS];
+    UINT paStride[SVGA3D_DX_MAX_VERTEXBUFFERS];
+    UINT paOffset[SVGA3D_DX_MAX_VERTEXBUFFERS];
 
+    UINT StartSlot = 0;
+    UINT NumBuffers = 0;
+    for (UINT i = 0; i < pDXContext->state.ia.vb.cMaxBound; ++i)
+    {
+        if (ASMBitTest(pDXContext->state.ia.vb.au32Modified, i))
+        {
+            SVGA3dBufferBinding const *pBufferBinding = &pDXContext->svgaDXContext.inputAssembly.vertexBuffers[i];
+            if (pBufferBinding->bufferId != SVGA3D_INVALID_ID)
+            {
+                DXBOUNDVERTEXBUFFER const *p = &pDXContext->pBackendDXContext->resources.inputAssembly.vertexBuffers[i];
+
+                /* pBuffer is created in ensureResourcesAndViews */
+                PVMSVGA3DSURFACE pSurface = p->pSurface;
+                paResources[i] = p->pBuffer;
+
+                /* DX11 supports stride up to 2048. Ignore large values (> 40000) that Ubuntu guest might send. */
+                paStride[i] = pBufferBinding->stride <= 2048 ? pBufferBinding->stride : 0;
+
+                if (   paStride[i] <= pSurface->paMipmapLevels[0].cbSurface
+                    && pBufferBinding->offset <= pSurface->paMipmapLevels[0].cbSurface - paStride[i])
+                    paOffset[i] = pBufferBinding->offset;
+                else
+                {
+                    paStride[i] = 0;
+                    paOffset[i] = 0;
+                }
+            }
+            else
+            {
+                paResources[i] = NULL;
+                paStride[i] = 0;
+                paOffset[i] = 0;
+            }
+
+            if (NumBuffers == 0)
+                StartSlot = i;
+            ++NumBuffers;
+        }
+        else if (NumBuffers > 0)
+        {
+            pDXDevice->pImmediateContext->IASetVertexBuffers(StartSlot, NumBuffers,
+                                                             &paResources[StartSlot],
+                                                             &paStride[StartSlot],
+                                                             &paOffset[StartSlot]);
+            NumBuffers = 0;
+        }
+    }
+
+    if (NumBuffers > 0)
+        pDXDevice->pImmediateContext->IASetVertexBuffers(StartSlot, NumBuffers,
+                                                         &paResources[StartSlot],
+                                                         &paStride[StartSlot],
+                                                         &paOffset[StartSlot]);
+}
+#endif
+
+#ifndef DX_STATE_TRACKER
 static void dxSetIndexBuffer(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
 {
     PVMSVGA3DBACKEND pBackend = pThisCC->svga.p3dState->pBackend;
@@ -7295,6 +7377,39 @@ static void dxSetIndexBuffer(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
     DXDEVICE *pDXDevice = dxDeviceGet(pThisCC->svga.p3dState);
     pDXDevice->pImmediateContext->IASetIndexBuffer(pBuffer, enmDxgiFormat, Offset);
 }
+#else
+static void dxSetIndexBuffer(DXDEVICE *pDXDevice, PVMSVGA3DDXCONTEXT pDXContext)
+{
+    ID3D11Buffer *pBuffer;
+    DXGI_FORMAT enmDxgiFormat;
+    UINT Offset;
+
+    if (pDXContext->svgaDXContext.inputAssembly.indexBufferSid != SVGA3D_INVALID_ID)
+    {
+        /* pBuffer is created in ensureResourcesAndViews */
+        enmDxgiFormat = vmsvgaDXSurfaceFormat2Dxgi((SVGA3dSurfaceFormat)pDXContext->svgaDXContext.inputAssembly.indexBufferFormat);
+        if (enmDxgiFormat == DXGI_FORMAT_R16_UINT || enmDxgiFormat == DXGI_FORMAT_R32_UINT)
+        {
+            pBuffer = pDXContext->pBackendDXContext->resources.inputAssembly.indexBuffer.pBuffer;
+            Offset = pDXContext->svgaDXContext.inputAssembly.indexBufferOffset;
+        }
+        else
+        {
+            pBuffer = NULL;
+            enmDxgiFormat = DXGI_FORMAT_UNKNOWN;
+            Offset = 0;
+        }
+    }
+    else
+    {
+        pBuffer = NULL;
+        enmDxgiFormat = DXGI_FORMAT_UNKNOWN;
+        Offset = 0;
+    }
+
+    pDXDevice->pImmediateContext->IASetIndexBuffer(pBuffer, enmDxgiFormat, Offset);
+}
+#endif
 
 #ifdef LOG_ENABLED
 static void dxDbgLogVertexElement(DXGI_FORMAT Format, void const *pvElementData)
@@ -7851,7 +7966,7 @@ static int dxEnsureUnorderedAccessView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT p
 
 
 #ifdef DX_STATE_TRACKER
-static void dxEnsureViews(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
+static void dxEnsureResourcesAndViews(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
 {
     /*
      * Ensure that all views exist.
@@ -7978,6 +8093,57 @@ static void dxEnsureViews(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
                     LogFunc(("Map failed %Rrc\n", rc));
 #endif
             }
+        }
+    }
+
+    /* Vertex buffers. */
+    for (uint32_t i = 0; i < pDXContext->state.ia.vb.cMaxBound; ++i)
+    {
+        if (pDXContext->svgaDXContext.inputAssembly.vertexBuffers[i].bufferId != SVGA3D_INVALID_ID)
+        {
+            PVMSVGA3DSURFACE pSurface;
+            ID3D11Resource *pResource;
+            rc = dxEnsureResource(pThisCC, pDXContext->svgaDXContext.inputAssembly.vertexBuffers[i].bufferId, &pSurface, &pResource);
+            AssertContinue(RT_SUCCESS(rc));
+
+            if (pSurface->pBackendSurface->enmResType == VMSVGA3D_RESTYPE_BUFFER)
+            {
+                pDXContext->pBackendDXContext->resources.inputAssembly.vertexBuffers[i].pBuffer = (ID3D11Buffer *)pResource;
+                pDXContext->pBackendDXContext->resources.inputAssembly.vertexBuffers[i].pSurface = pSurface;
+            }
+            else
+            {
+                pDXContext->pBackendDXContext->resources.inputAssembly.vertexBuffers[i].pBuffer = NULL;
+                pDXContext->pBackendDXContext->resources.inputAssembly.vertexBuffers[i].pSurface = NULL;
+            }
+
+            LogFunc(("vb[%u]: sid = %u, stride %u, offset %u%s\n", i,
+                     pDXContext->svgaDXContext.inputAssembly.vertexBuffers[i].bufferId,
+                     pDXContext->svgaDXContext.inputAssembly.vertexBuffers[i].stride,
+                     pDXContext->svgaDXContext.inputAssembly.vertexBuffers[i].offset,
+                     pDXContext->pBackendDXContext->resources.inputAssembly.vertexBuffers[i].pBuffer ? "" : " NULL"));
+        }
+    }
+
+    /* Index buffer. */
+    if (pDXContext->svgaDXContext.inputAssembly.indexBufferSid != SVGA3D_INVALID_ID)
+    {
+        PVMSVGA3DSURFACE pSurface;
+        ID3D11Resource *pResource;
+        rc = dxEnsureResource(pThisCC, pDXContext->svgaDXContext.inputAssembly.indexBufferSid, &pSurface, &pResource);
+        AssertRC(rc);
+        if (RT_SUCCESS(rc))
+        {
+            if (pSurface->pBackendSurface->enmResType == VMSVGA3D_RESTYPE_BUFFER)
+                pDXContext->pBackendDXContext->resources.inputAssembly.indexBuffer.pBuffer = (ID3D11Buffer *)pResource;
+            else
+                pDXContext->pBackendDXContext->resources.inputAssembly.indexBuffer.pBuffer = NULL;
+
+            LogFunc(("ib: sid = %u, offset %u, fmt %u%s\n",
+                     pDXContext->svgaDXContext.inputAssembly.indexBufferSid,
+                     pDXContext->svgaDXContext.inputAssembly.indexBufferOffset,
+                     pDXContext->svgaDXContext.inputAssembly.indexBufferFormat,
+                     pDXContext->pBackendDXContext->resources.inputAssembly.indexBuffer.pBuffer ? "" : " NULL"));
         }
     }
 }
@@ -8558,7 +8724,7 @@ static void dxSetupPipeline(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
     DXDEVICE *pDXDevice = dxDeviceGet(pThisCC->svga.p3dState);
     AssertReturnVoid(pDXDevice->pDevice);
 
-    dxEnsureViews(pThisCC, pDXContext);
+    dxEnsureResourcesAndViews(pThisCC, pDXContext);
 
     /*
      * State objects
@@ -8656,8 +8822,22 @@ static void dxSetupPipeline(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
 #endif
 
     dxSetConstantBuffers(pThisCC, pDXContext);
+#ifndef DX_STATE_TRACKER
     dxSetVertexBuffers(pThisCC, pDXContext);
     dxSetIndexBuffer(pThisCC, pDXContext);
+#else
+    if (pDXContext->u64ContextFlags & DX_CTX_F_STATE_VERTEXBUFFER)
+    {
+        pDXContext->u64ContextFlags &= ~DX_CTX_F_STATE_VERTEXBUFFER;
+        dxSetVertexBuffers(pDXDevice, pDXContext);
+    }
+
+    if (pDXContext->u64ContextFlags & DX_CTX_F_STATE_INDEXBUFFER)
+    {
+        pDXContext->u64ContextFlags &= ~DX_CTX_F_STATE_INDEXBUFFER;
+        dxSetIndexBuffer(pDXDevice, pDXContext);
+    }
+#endif
 
     /*
      * Shader resources

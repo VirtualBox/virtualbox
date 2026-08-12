@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx.cpp 114712 2026-07-15 17:24:33Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx.cpp 114997 2026-08-12 15:54:46Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common code for DX backend interface.
  */
@@ -136,6 +136,7 @@ void vmsvga3dDXInitContextMobData(SVGADXContextMobFormat *p)
 
 DECLINLINE(void) dxPostDraw(PVMSVGA3DDXCONTEXT pDXContext)
 {
+    RT_ZERO(pDXContext->state.ia.vb.au32Modified);
     RT_ZERO(pDXContext->state.shader[0].shaderResources.au64Modified);
     RT_ZERO(pDXContext->state.shader[1].shaderResources.au64Modified);
     RT_ZERO(pDXContext->state.shader[2].shaderResources.au64Modified);
@@ -871,6 +872,7 @@ int vmsvga3dDXSetVertexBuffers(PVGASTATECC pThisCC, uint32_t idDXContext, uint32
     ASSERT_GUEST_RETURN(cVertexBuffer <= SVGA3D_DX_MAX_VERTEXBUFFERS - startBuffer, VERR_INVALID_PARAMETER);
     RT_UNTRUSTED_VALIDATED_FENCE();
 
+#ifndef DX_STATE_TRACKER
     for (uint32_t i = 0; i < cVertexBuffer; ++i)
     {
         uint32_t const idxVertexBuffer = startBuffer + i;
@@ -879,6 +881,35 @@ int vmsvga3dDXSetVertexBuffers(PVGASTATECC pThisCC, uint32_t idDXContext, uint32
         pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].stride = paVertexBuffer[i].stride;
         pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].offset = paVertexBuffer[i].offset;
     }
+#else
+    bool fModified = false;
+    uint32_t cMaxBound = 0;
+    for (uint32_t i = 0; i < cVertexBuffer; ++i)
+    {
+        uint32_t const idxVertexBuffer = startBuffer + i;
+
+        if (   pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].bufferId != paVertexBuffer[i].sid
+            || pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].stride != paVertexBuffer[i].stride
+            || pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].offset != paVertexBuffer[i].offset)
+        {
+            pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].bufferId = paVertexBuffer[i].sid;
+            pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].stride = paVertexBuffer[i].stride;
+            pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].offset = paVertexBuffer[i].offset;
+            fModified = true;
+            ASMBitSet(pDXContext->state.ia.vb.au32Modified, idxVertexBuffer);
+        }
+
+        if (paVertexBuffer[i].sid != SVGA3D_INVALID_ID)
+            cMaxBound = idxVertexBuffer + 1;
+    }
+
+    if (fModified)
+        pDXContext->u64ContextFlags |= DX_CTX_F_STATE_VERTEXBUFFER;
+
+    /* Remember how many slots the context actually uses. */
+    if (pDXContext->state.ia.vb.cMaxBound < cMaxBound)
+        pDXContext->state.ia.vb.cMaxBound = cMaxBound;
+#endif
 
     rc = pSvgaR3State->pFuncsDX->pfnDXSetVertexBuffers(pThisCC, pDXContext, startBuffer, cVertexBuffer, paVertexBuffer);
     return rc;
@@ -897,9 +928,21 @@ int vmsvga3dDXSetIndexBuffer(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCm
     rc = vmsvga3dDXContextFromCid(p3dState, idDXContext, &pDXContext);
     AssertRCReturn(rc, rc);
 
+#ifndef DX_STATE_TRACKER
     pDXContext->svgaDXContext.inputAssembly.indexBufferSid = pCmd->sid;
     pDXContext->svgaDXContext.inputAssembly.indexBufferOffset = pCmd->offset;
     pDXContext->svgaDXContext.inputAssembly.indexBufferFormat = pCmd->format;
+#else
+    if (   pDXContext->svgaDXContext.inputAssembly.indexBufferSid != pCmd->sid
+        || pDXContext->svgaDXContext.inputAssembly.indexBufferOffset != pCmd->offset
+        || pDXContext->svgaDXContext.inputAssembly.indexBufferFormat != (uint32)pCmd->format)
+    {
+        pDXContext->svgaDXContext.inputAssembly.indexBufferSid = pCmd->sid;
+        pDXContext->svgaDXContext.inputAssembly.indexBufferOffset = pCmd->offset;
+        pDXContext->svgaDXContext.inputAssembly.indexBufferFormat = pCmd->format;
+        pDXContext->u64ContextFlags |= DX_CTX_F_STATE_INDEXBUFFER;
+    }
+#endif
 
     rc = pSvgaR3State->pFuncsDX->pfnDXSetIndexBuffer(pThisCC, pDXContext, pCmd->sid, pCmd->format, pCmd->offset);
     return rc;
