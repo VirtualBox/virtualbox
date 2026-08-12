@@ -1,4 +1,4 @@
-; $Id: alloca-x86-r0drv-nt.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: alloca-x86-r0drv-nt.asm 115003 2026-08-12 23:16:08Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Visual C++ __alloca__probe_16.
 ;
@@ -67,3 +67,4 @@ BEGINPROC _alloca_probe_16
         jmp     [eax]
 ENDPROC _alloca_probe_16
 
+MARK_OBJECT_RETPOLINE_SAFE  ;; @todo retpoline: _alloc_probe_16 is doing an indirect call...

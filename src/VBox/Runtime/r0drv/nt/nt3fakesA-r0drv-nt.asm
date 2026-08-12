@@ -1,4 +1,4 @@
-; $Id: nt3fakesA-r0drv-nt.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: nt3fakesA-r0drv-nt.asm 115003 2026-08-12 23:16:08Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Companion to nt3fakes-r0drv-nt.cpp that provides import stuff to satisfy the linker.
 ;
@@ -54,11 +54,15 @@ BEGINPROC _rtNt3InitSymbolsAssembly
 ; @param 1  The fastcall name.
 ; @param 2  Byte size of arguments.
 %macro DefineImportDataAndInitCode 3
+%ifdef __NASM__
+extern          %1 %+ Nt3Fb_ %+ %2 %+ @ %+ %3
+%else
 extern          $%1 %+ Nt3Fb_ %+ %2 %+ @ %+ %3
+%endif
 BEGINDATA
 extern          _g_pfnrt %+ %2
 GLOBALNAME __imp_ %+ %1 %+ %2 %+ @ %+ %3
-        dd      $%1 %+ Nt3Fb_ %+ %2 %+ @ %+ %3
+        dd      %1 %+ Nt3Fb_ %+ %2 %+ @ %+ %3
 BEGINCODE
         mov     eax, [_g_pfnrt %+ %2]
         test    eax, eax
@@ -93,7 +97,11 @@ ENDPROC _rtNt3InitSymbolsAssembly
 BEGINCODE
 extern _g_pfnrt %+ %1
 extern _g_pfnrt %+ %2
+%ifdef __NASM__
+BEGINPROC_EXPORTED @ %+ %1 %+ @ %+ %3
+%else
 BEGINPROC_EXPORTED $@ %+ %1 %+ @ %+ %3
+%endif
         mov     eax, [_g_pfnrt %+ %1]
         cmp     eax, 0
         jnz     .got_fast_call
@@ -116,15 +124,20 @@ BEGINPROC_EXPORTED $@ %+ %1 %+ @ %+ %3
 %endif
         leave
         ret
+        int3
 
 .got_fast_call:
         mov     [__imp_@ %+ %1 %+ @ %+ %3], eax
         jmp     eax
+%ifdef __NASM__
+ENDPROC @ %+ %1 %+ @ %+ %3
+%else
 ENDPROC $@ %+ %1 %+ @ %+ %3
+%endif
 
 BEGINDATA
 GLOBALNAME __imp_@ %+ %1 %+ @ %+ %3
-        dd       $@ %+ %1 %+ @ %+ %3
+        dd       @ %+ %1 %+ @ %+ %3
 %endmacro
 
 FastOrStdCallWrapper IofCompleteRequest,            IoCompleteRequest,              8, 0
@@ -140,14 +153,19 @@ FastOrStdCallWrapper KefReleaseSpinLockFromDpcLevel,KeReleaseSpinLockFromDpcLeve
 
 BEGINCODE
 ; LONG FASTCALL InterlockedExchange(LONG volatile *,LONG );
+%ifdef __NASM__
+BEGINPROC_EXPORTED @InterlockedExchange@8
+%else
 BEGINPROC_EXPORTED $@InterlockedExchange@8
+%endif
         mov     eax, edx
         xchg    [ecx], eax
         ret
+        int3
 
 BEGINDATA
 GLOBALNAME __imp_@InterlockedExchange@8
-        dd      $@InterlockedExchange@8
+        dd      @InterlockedExchange@8
 
 
 BEGINDATA
@@ -155,3 +173,5 @@ GLOBALNAME __imp__KeTickCount
 GLOBALNAME _KeTickCount
         dd      0
 
+
+MARK_OBJECT_RETPOLINE_SAFE ;; @todo retpoline: we're doing indirect calls here of course.
