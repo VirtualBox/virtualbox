@@ -1,4 +1,4 @@
-; $Id: memcmp.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: memcmp.asm 115006 2026-08-12 23:34:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT memcmp - AMD64 & X86.
 ;
@@ -121,6 +121,7 @@ RT_NOCRT_BEGINPROC memcmp
         pop     edi
 %endif
         ret
+        int3
 
 ;
 ; Mismatches.
@@ -136,6 +137,7 @@ RT_NOCRT_BEGINPROC memcmp
         movzx   ecx, byte [xSI-1]
         sub     eax, ecx
         jmp     .done
+        int3
 %endif
 
 .not_equal_dword:
@@ -145,12 +147,14 @@ RT_NOCRT_BEGINPROC memcmp
         repe cmpsb
 %ifdef RT_ARCH_AMD64
         jmp     .not_equal_byte
+        int3
 %else
 .not_equal_byte:
         mov     al, [xDI-1]
         movzx   ecx, byte [xSI-1]
         sub     eax, ecx
         jmp     .done
+        int3
 %endif
 
 .not_equal_word:
@@ -161,3 +165,4 @@ RT_NOCRT_BEGINPROC memcmp
         jmp     .not_equal_byte
 ENDPROC RT_NOCRT(memcmp)
 
+MARK_OBJECT_RETPOLINE_SAFE

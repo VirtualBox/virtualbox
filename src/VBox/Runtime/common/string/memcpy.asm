@@ -1,4 +1,4 @@
-; $Id: memcpy.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: memcpy.asm 115006 2026-08-12 23:34:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT memcpy - AMD64 & X86.
 ;
@@ -128,3 +128,4 @@ RT_NOCRT_BEGINPROC memcpy
         ret
 ENDPROC RT_NOCRT(memcpy)
 
+MARK_OBJECT_RETPOLINE_SAFE

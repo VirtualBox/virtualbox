@@ -1,4 +1,4 @@
-; $Id: memchr.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: memchr.asm 115006 2026-08-12 23:34:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT memchr - AMD64 & X86.
 ;
@@ -95,6 +95,7 @@ RT_NOCRT_BEGINPROC memchr
  %endif
 %endif
         ret
+        int3
 
 .not_found:
 %ifdef ASM_CALL64_MSC
@@ -116,3 +117,4 @@ RT_NOCRT_BEGINPROC memchr
         ret
 ENDPROC RT_NOCRT(memchr)
 
+MARK_OBJECT_RETPOLINE_SAFE

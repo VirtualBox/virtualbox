@@ -1,4 +1,4 @@
-; $Id: strncmp.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: strncmp.asm 115006 2026-08-12 23:34:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT strncmp - AMD64 & X86.
 ;
@@ -117,6 +117,7 @@ RT_NOCRT_BEGINPROC strncmp
         add     psz1, 4
         add     psz2, 4
         jmp     .next
+        int3
 
 .equal:
         xor     eax, eax
@@ -126,6 +127,7 @@ RT_NOCRT_BEGINPROC strncmp
  %endif
 %endif
         ret
+        int3
 
 .not_equal:
         movzx   ecx, ah
@@ -139,3 +141,4 @@ RT_NOCRT_BEGINPROC strncmp
         ret
 ENDPROC RT_NOCRT(strncmp)
 
+MARK_OBJECT_RETPOLINE_SAFE
