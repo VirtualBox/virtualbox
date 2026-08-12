@@ -1,4 +1,4 @@
-; $Id: ASMSetXcr0.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMSetXcr0.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMSetXcr0().
 ;
@@ -78,3 +78,4 @@ SEH64_END_PROLOGUE
         ret
 ENDPROC ASMSetXcr0
 
+MARK_OBJECT_RETPOLINE_SAFE

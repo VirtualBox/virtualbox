@@ -1,4 +1,4 @@
-; $Id: ASMFxSave.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMFxSave.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMFxSave().
 ;
@@ -72,3 +72,4 @@ SEH64_END_PROLOGUE
         ret
 ENDPROC ASMFxSave
 
+MARK_OBJECT_RETPOLINE_SAFE

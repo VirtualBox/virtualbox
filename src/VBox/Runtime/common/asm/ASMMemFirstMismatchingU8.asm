@@ -1,4 +1,4 @@
-; $Id: ASMMemFirstMismatchingU8.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMMemFirstMismatchingU8.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMMemFirstMismatchingU8().
 ;
@@ -204,6 +204,7 @@ SEH64_END_PROLOGUE
         leave
  %endif
         ret
+        int3
 
         ; Return after byte scan mismatch.
 .return_xDI:
@@ -215,6 +216,7 @@ SEH64_END_PROLOGUE
         leave
  %endif
         ret
+        int3
 
         ;
         ; Multibyte mismatch.  We rewind and do a byte scan of the remainder.
@@ -225,6 +227,7 @@ SEH64_END_PROLOGUE
         lea     xCX, [xCX * xCB + xCB]
         or      ecx, edx
         jmp     .byte_by_byte
+        int3
 
         ;
         ; Unaligned pointer.  If it's worth it, align the pointer, but if the
@@ -277,6 +280,7 @@ SEH64_END_PROLOGUE
         scasb
         jne     .return_xDI
         jmp     .aligned_pv
+        int3
 
 
 %else ; ARCH_BITS == 16
@@ -330,6 +334,7 @@ CPU 8086
         pop     di
         pop     bp
         ret
+        int3
 
 .word_mismatch:
         ; back up a word.
@@ -353,3 +358,4 @@ CPU 8086
 %endif  ; ARCH_BITS == 16
 ENDPROC ASMMemFirstMismatchingU8
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: ASMBitNextClear.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMBitNextClear.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMBitNextClear().
 ;
@@ -115,6 +115,7 @@ RT_BEGINPROC ASMBitNextClear
         leave
 %endif
         ret
+        int3
 
         ;
         ; Do dword scan.
@@ -175,9 +176,11 @@ RT_BEGINPROC ASMBitNextClear
         shl     edi, 3                  ; edi=bit offset of current dword.
         add     eax, edi
         jmp     .return
+        int3
 
 .return_failure:
         mov     eax, 0ffffffffh
         jmp     .return
 ENDPROC ASMBitNextClear
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: ASMCpuId_Idx_ECX.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMCpuId_Idx_ECX.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMCpuId_Idx_ECX().
 ;
@@ -124,3 +124,4 @@ RT_BEGINPROC ASMCpuId_Idx_ECX
 %endif
 ENDPROC ASMCpuId_Idx_ECX
 
+MARK_OBJECT_RETPOLINE_SAFE

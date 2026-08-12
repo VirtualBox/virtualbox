@@ -1,4 +1,4 @@
-; $Id: ASMCpuId.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMCpuId.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMCpuIdExSlow().
 ;
@@ -119,3 +119,4 @@ RT_BEGINPROC ASMCpuId
         ret
 ENDPROC ASMCpuId
 
+MARK_OBJECT_RETPOLINE_SAFE

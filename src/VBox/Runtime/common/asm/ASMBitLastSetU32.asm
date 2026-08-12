@@ -1,4 +1,4 @@
-; $Id: ASMBitLastSetU32.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMBitLastSetU32.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMBitLastSetU32().
 ;
@@ -76,6 +76,7 @@ RT_BEGINPROC ASMBitLastSetU32
         jc      .return
         dec     ax
         jmp     .next_bit
+        int3
 
 .return_zero:
         xor     ax, ax
@@ -99,9 +100,11 @@ RT_BEGINPROC ASMBitLastSetU32
         inc     eax
 .return:
         ret
+        int3
 .return_zero:
         xor     eax, eax
         ret
 %endif
 ENDPROC ASMBitLastSetU32
 
+MARK_OBJECT_RETPOLINE_SAFE

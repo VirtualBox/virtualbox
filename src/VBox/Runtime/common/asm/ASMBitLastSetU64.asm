@@ -1,4 +1,4 @@
-; $Id: ASMBitLastSetU64.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMBitLastSetU64.asm 115011 2026-08-12 23:37:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMBitLastSetU64().
 ;
@@ -86,12 +86,14 @@ RT_BEGINPROC ASMBitLastSetU64
         jc      .return
         dec     ax
         jmp     .next_bit
+        int3
 
 .return_zero:
         xor     ax, ax
 .return:
         pop     bp
         ret
+        int3
 
 %else
  %if    ARCH_BITS == 64
@@ -104,6 +106,7 @@ RT_BEGINPROC ASMBitLastSetU64
         inc     eax
 .return:
         ret
+        int3
 
  %elif ARCH_BITS == 32
         ; Check the 2nd dword then the first one.
@@ -111,12 +114,14 @@ RT_BEGINPROC ASMBitLastSetU64
         jz      .check_1st_dword
         add     eax, 32
         ret
+        int3
 
 .check_1st_dword:
         bsr     eax, dword [esp + 4 + 0]
         jz      .return_zero
         inc     eax
         ret
+        int3
 
  %else
   %error "Missing or invalid ARCH_BITS."
@@ -128,3 +133,4 @@ RT_BEGINPROC ASMBitLastSetU64
 %endif
 ENDPROC ASMBitLastSetU64
 
+MARK_OBJECT_RETPOLINE_SAFE
