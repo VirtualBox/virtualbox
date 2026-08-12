@@ -429,7 +429,7 @@ VMMR3_INT_DECL(int) HMR3Init(PVM pVM)
     /** @cfgm{/HM/SvmAvic, bool, false}
      * Whether to make use of the AVIC virtualization feature of the CPU if it's
      * available. */
-    rc = CFGMR3QueryBoolDef(pCfgHm, "SvmAvic", &pVM->hm.s.svm.fAvic, true);
+    rc = CFGMR3QueryBoolDef(pCfgHm, "SvmAvic", &pVM->hm.s.svm.fAvic, false);
     AssertRCReturn(rc, rc);
 
     /** @cfgm{/HM/Exclusive, bool}
