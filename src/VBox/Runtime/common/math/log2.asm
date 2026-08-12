@@ -1,4 +1,4 @@
-; $Id: log2.asm 114133 2026-05-14 13:05:57Z knut.osmundsen@oracle.com $
+; $Id: log2.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT log2 - AMD64 & X86.
 ;
@@ -83,6 +83,7 @@ RT_NOCRT_BEGINPROC log2
         cmp     ax, X86_FSW_C0 | X86_FSW_C2 ; Infinity.
         je      .inf
         jmp     .nan
+        int3
 
 .finite:
         ; Negative number?
@@ -118,6 +119,7 @@ RT_NOCRT_BEGINPROC log2
         fsub    st0, st1                    ; -> st0=input-1; st1=1.0
         fyl2xp1                             ; -> st0=1.0*log2(st0+1.0)
         jmp     .return_val
+        int3
 
 .cannot_use_fyl2xp1:
         fyl2x                               ; -> st0=1.0*log2(st0)
@@ -133,6 +135,7 @@ RT_NOCRT_BEGINPROC log2
 .return:
         leave
         ret
+        int3
 
 
         ;
@@ -142,6 +145,7 @@ RT_NOCRT_BEGINPROC log2
         ffreep  st0
         fldz
         jmp     .return_val
+        int3
 
         ;
         ; Negative numbers: Return NaN and raise invalid operation.
@@ -167,6 +171,7 @@ RT_NOCRT_BEGINPROC log2
         fld     qword [RT_WRT_RIP(.s_r64NaN)]
 %endif
         jmp     .return
+        int3
 
         ;
         ; +/-0.0: Return inf and raise divide by zero error.
@@ -193,6 +198,7 @@ RT_NOCRT_BEGINPROC log2
         fld     qword [RT_WRT_RIP(.s_r64MinusInf)]
 %endif
         jmp     .return
+        int3
 
         ;
         ; -Inf: Same as other negative numbers
@@ -210,6 +216,7 @@ RT_NOCRT_BEGINPROC log2
         ffreep  st0
 %endif
         jmp     .return
+        int3
 
 ALIGNCODE(8)
         ;; The fyl2xp1 instruction only works between +/-1(1-sqrt(0.5)).
@@ -227,3 +234,4 @@ ALIGNCODE(8)
         dq      RTFLOAT64U_QNAN_MINUS
 ENDPROC   RT_NOCRT(log2)
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: cosl.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: cosl.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT cosl - AMD64 & X86.
 ;
@@ -70,3 +70,4 @@ RT_NOCRT_BEGINPROC cosl
     ret
 ENDPROC   RT_NOCRT(cosl)
 
+MARK_OBJECT_RETPOLINE_SAFE

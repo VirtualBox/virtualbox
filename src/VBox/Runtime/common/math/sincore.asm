@@ -1,4 +1,4 @@
-; $Id: sincore.asm 114133 2026-05-14 13:05:57Z knut.osmundsen@oracle.com $
+; $Id: sincore.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT common sin & cos - AMD64 & X86.
 ;
@@ -143,6 +143,7 @@ BEGINPROC   rtNoCrtMathSinCore
         ; Ok, calculate sine.
         fsin
         jmp     .return
+        int3
 
         ;
         ; The value is in the range ]pi/2,pi[
@@ -176,6 +177,7 @@ BEGINPROC   rtNoCrtMathSinCore
         fsin
         fchs
         jmp     .return
+        int3
 
         ;
         ; input in the range ]pi,2pi[
@@ -218,6 +220,7 @@ BEGINPROC   rtNoCrtMathSinCore
         fsin
         fchs
         jmp     .return
+        int3
 
         ;
         ; The value is in the last pi/2 of the range: ]3pi/2,2pi[
@@ -249,6 +252,7 @@ BEGINPROC   rtNoCrtMathSinCore
         fsubp   st1, st0
         fsin
         jmp     .return
+        int3
 
         ;
         ; sin(0) = 0
@@ -263,6 +267,7 @@ BEGINPROC   rtNoCrtMathSinCore
         ffreep  st0
         fldz
         jmp     .return
+        int3
 
         ;
         ; sin(pi/2) = 1
@@ -272,6 +277,7 @@ BEGINPROC   rtNoCrtMathSinCore
         ffreep  st0
         fld1
         jmp     .return
+        int3
 
         ;
         ; sin(3*pi/2) = -1
@@ -282,6 +288,7 @@ BEGINPROC   rtNoCrtMathSinCore
         fld1
         fchs
         jmp     .return
+        int3
 
         ;
         ; Return.
@@ -289,6 +296,7 @@ BEGINPROC   rtNoCrtMathSinCore
 .return:
         leave
         ret
+        int3
 
         ;
         ; Reduce st0 by reminder division by PI*2.  The result should be positive here.
@@ -325,6 +333,7 @@ BEGINPROC   rtNoCrtMathSinCore
 .reduced_to_positive:
         fstp    st1                     ; Get rid of the 2pi value.
         jmp     .in_range
+        int3
 
 ALIGNCODE(8)
 .s_r64Max:
@@ -350,3 +359,4 @@ ALIGNCODE(8)
         dq  (-52 + 1023) << 52          ; long double / 80-bit / extended precision input
 ENDPROC     rtNoCrtMathSinCore
 
+MARK_OBJECT_RETPOLINE_SAFE

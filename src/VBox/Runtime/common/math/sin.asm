@@ -1,4 +1,4 @@
-; $Id: sin.asm 114133 2026-05-14 13:05:57Z knut.osmundsen@oracle.com $
+; $Id: sin.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT sin - AMD64 & X86.
 ;
@@ -98,6 +98,7 @@ RT_NOCRT_BEGINPROC sin
 .do_sin:
         fsin
         jmp     .return_val
+        int3
 
         ;
         ; Finite number.
@@ -142,6 +143,7 @@ RT_NOCRT_BEGINPROC sin
 .return:
         leave
         ret
+        int3
 
         ;
         ; As explained already, we can return tiny numbers directly too as the
@@ -167,6 +169,7 @@ RT_NOCRT_BEGINPROC sin
         ffreep  st0
 %endif
         jmp     .return
+        int3
 
 ALIGNCODE(8)
         ; Ca. 2**-17, absolute value. Inputs closer to zero than this can be
@@ -183,3 +186,4 @@ ALIGNCODE(8)
 
 ENDPROC   RT_NOCRT(sin)
 
+MARK_OBJECT_RETPOLINE_SAFE

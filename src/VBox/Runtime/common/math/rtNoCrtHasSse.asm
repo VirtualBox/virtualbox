@@ -1,4 +1,4 @@
-; $Id: rtNoCrtHasSse.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: rtNoCrtHasSse.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT rtNoCrtHasSse - X86.
 ;
@@ -55,6 +55,7 @@ BEGINPROC rtNoCrtHasSse
         test    al, 0x80
         jnz     .detect_sse
         ret
+        int3
 
 .detect_sse:
         push    ebx
@@ -76,3 +77,4 @@ BEGINPROC rtNoCrtHasSse
         ret
 ENDPROC   rtNoCrtHasSse
 
+MARK_OBJECT_RETPOLINE_SAFE

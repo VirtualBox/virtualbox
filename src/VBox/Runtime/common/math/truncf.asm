@@ -1,4 +1,4 @@
-; $Id: truncf.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: truncf.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT truncf - AMD64 & X86.
 ;
@@ -76,6 +76,7 @@ RT_NOCRT_BEGINPROC truncf
         ffreep  st0                     ; return the xmm0 register value unchanged, as FLD changes SNaN to QNaN.
 %endif
         jmp     .return_val
+        int3
 .input_ok:
 
         ;
@@ -106,3 +107,4 @@ RT_NOCRT_BEGINPROC truncf
         ret
 ENDPROC   RT_NOCRT(truncf)
 
+MARK_OBJECT_RETPOLINE_SAFE

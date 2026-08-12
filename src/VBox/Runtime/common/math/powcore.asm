@@ -1,4 +1,4 @@
-; $Id: powcore.asm 114133 2026-05-14 13:05:57Z knut.osmundsen@oracle.com $
+; $Id: powcore.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT common pow code - AMD64 & X86.
 ;
@@ -102,6 +102,7 @@ BEGINPROC rtNoCrtMathPowCore
         cmp     ax, X86_FSW_C0 | X86_FSW_C2 ; Infinity.
         je      .exp_inf
         jmp     .exp_nan
+        int3
 
 .exp_finite:
         ;
@@ -118,6 +119,7 @@ BEGINPROC rtNoCrtMathPowCore
         cmp     ax, X86_FSW_C0 | X86_FSW_C2 ; Infinity.
         je      .base_inf
         jmp     .base_nan
+        int3
 
 .base_finite:
         ;
@@ -209,10 +211,12 @@ BEGINPROC rtNoCrtMathPowCore
         ; Calculate the factor for the next bit.
         fmul    st0, st0
         jmp     .integer_exp_loop
+        int3
 
 .integer_exp_return:
         ffreep  st0                         ; drop the factor -> st0=result; no st1.
         jmp     .return_val
+        int3
 
 
         ;
@@ -258,6 +262,7 @@ BEGINPROC rtNoCrtMathPowCore
         fsub    st0, st1                    ; -> st0=base-1; st1=1.0; st2=exponent
         fyl2xp1                             ; -> st0=1.0*log2(base-1.0+1.0); st1=exponent
         jmp     .done_log2
+        int3
 
 .cannot_use_fyl2xp1:
         fyl2x                               ; -> st0=1.0*log2(base); st1=exponent
@@ -295,6 +300,7 @@ BEGINPROC rtNoCrtMathPowCore
 .return:
         leave
         ret
+        int3
 
 
         ;
@@ -323,6 +329,7 @@ BEGINPROC rtNoCrtMathPowCore
 .base_negative_non_integer_exp:
         CALL_feraiseexcept_WITH X86_FSW_IE
         jmp     .return_nan
+        int3
 
         ;
         ; 7. Exponent = +/-0.0, any base value including NaN: return +1.0
@@ -332,6 +339,7 @@ BEGINPROC rtNoCrtMathPowCore
 .return_plus_one:
         fld1
         jmp     .return_pop_pop_val
+        int3
 
         ;
         ;     6. Exponent = whatever and base = 1: Return 1.0
@@ -363,11 +371,13 @@ BEGINPROC rtNoCrtMathPowCore
         test    cx, X86_FSW_C1              ; cx=faxm(exponent); C1=sign
         jz      .return_plus_inf            ; Matches rule 14 (exponent is +Inf).
         jmp     .return_plus_zero           ; Matches rule 12 (exponent is -Inf).
+        int3
 
 .exp_inf_base_smaller_than_one:
         test    cx, X86_FSW_C1              ; cx=faxm(exponent); C1=sign
         jnz     .return_plus_inf            ; Matches rule 11 (exponent is -Inf).
         jmp     .return_plus_zero           ; Matches rule 13 (exponent is +Inf).
+        int3
 
         ;
         ; 6. Exponent = whatever and base = 1: Return 1.0
@@ -381,6 +391,7 @@ BEGINPROC rtNoCrtMathPowCore
         fcomip  st0, st2
         jne     .return_exp_nan
         jmp     .return_plus_one
+        int3
 
         ;
         ; 4a. base == +/-0.0 and exp < 0 and exp is odd integer:  Return +/-Inf, raise div/0.
@@ -407,14 +418,17 @@ BEGINPROC rtNoCrtMathPowCore
 .raise_de_and_return_minus_inf:
         CALL_feraiseexcept_WITH X86_FSW_DE
         jmp     .return_minus_inf
+        int3
 .raise_de_and_return_plus_inf:
         CALL_feraiseexcept_WITH X86_FSW_DE
         jmp     .return_plus_inf
+        int3
 
         ; Matching 4b.
 .base_zero_minus_exp_not_odd_int:
         CALL_feraiseexcept_WITH X86_FSW_DE
         jmp     .return_plus_inf
+        int3
 
 .base_zero_plus_exp:
         call    .is_exp_odd_integer
@@ -423,6 +437,7 @@ BEGINPROC rtNoCrtMathPowCore
 .return_plus_zero:                          ; Matching 9
         fldz
         jmp     .return_pop_pop_val
+        int3
 
         ;
         ;  15. base == -Inf and exp < 0 and exp is odd integer: Return -0
@@ -449,6 +464,7 @@ BEGINPROC rtNoCrtMathPowCore
         fldz
         fchs
         jmp     .return_pop_pop_val
+        int3
 
 .base_inf_plus_exp:
         test    dx, X86_FSW_C1
@@ -458,6 +474,7 @@ BEGINPROC rtNoCrtMathPowCore
         or      eax, eax
         jnz     .return_minus_inf           ; Matches 17 (exp is odd and > 0, base == +Inf)
         jmp     .return_plus_inf            ; Matches 18 (exp not odd and > 0, base == +Inf)
+        int3
 
         ;
         ; Return the exponent NaN (or whatever) value.
@@ -466,6 +483,7 @@ BEGINPROC rtNoCrtMathPowCore
         fld     st0
         mov     eax, 2                      ; return param 2
         jmp     .return_pop_pop_val_with_eax
+        int3
 
         ;
         ; Return the base NaN (or whatever) value.
@@ -476,6 +494,7 @@ BEGINPROC rtNoCrtMathPowCore
         fld     st1
         mov     eax, 1                      ; return param 1
         jmp     .return_pop_pop_val_with_eax
+        int3
 
         ;
         ; Pops the two values off the FPU stack and returns NaN.
@@ -483,6 +502,7 @@ BEGINPROC rtNoCrtMathPowCore
 .return_nan:
         fld     qword [RT_WRT_RIP(.s_r64QNan)]
         jmp     .return_pop_pop_val
+        int3
 
         ;
         ; Pops the two values off the FPU stack and returns +Inf.
@@ -490,6 +510,7 @@ BEGINPROC rtNoCrtMathPowCore
 .return_plus_inf:
         fld     qword [RT_WRT_RIP(.s_r64PlusInf)]
         jmp     .return_pop_pop_val
+        int3
 
         ;
         ; Pops the two values off the FPU stack and returns -Inf.
@@ -497,6 +518,7 @@ BEGINPROC rtNoCrtMathPowCore
 .return_minus_inf:
         fld     qword [RT_WRT_RIP(.s_r64MinusInf)]
         jmp     .return_pop_pop_val
+        int3
 
         ;
         ; Return st0, remove st1 and st2.
@@ -507,6 +529,7 @@ BEGINPROC rtNoCrtMathPowCore
         fstp    st2
         ffreep  st0
         jmp     .return
+        int3
 
 
 ALIGNCODE(8)
@@ -601,6 +624,7 @@ ALIGNCODE(8)
         jnz     .is_exp_odd_integer__high_dword_is_zero
         lea     eax, [edx + 20h]
         jmp     .is_exp_odd_integer__first_bit_in_eax
+        int3
 .is_exp_odd_integer__high_dword_is_zero:
         bsr     eax, eax
 .is_exp_odd_integer__first_bit_in_eax:
@@ -622,6 +646,7 @@ ALIGNCODE(8)
         ; Return.
 .is_exp_odd_integer__return_true:
         jmp     .is_exp_odd_integer__return
+        int3
 .is_exp_odd_integer__return_false:
         xor     eax, eax
 .is_exp_odd_integer__return:
@@ -631,3 +656,4 @@ ALIGNCODE(8)
 
 ENDPROC   rtNoCrtMathPowCore
 
+MARK_OBJECT_RETPOLINE_SAFE

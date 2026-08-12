@@ -1,4 +1,4 @@
-; $Id: cos.asm 114133 2026-05-14 13:05:57Z knut.osmundsen@oracle.com $
+; $Id: cos.asm 115008 2026-08-12 23:35:24Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT cos - AMD64 & X86.
 ;
@@ -106,6 +106,7 @@ RT_NOCRT_BEGINPROC cos
 .do_fcos:
         fcos
         jmp     .return_val
+        int3
 
         ;
         ; Finite number.
@@ -143,6 +144,7 @@ RT_NOCRT_BEGINPROC cos
         fsubp   st1, st0                    ; st0=3pi/2
         fchs                                ; st0=-3pi/2
         jmp     .make_sine_adjustment
+        int3
 
 .adjust_negative_to_sine:
         ; Calc +pi/2.
@@ -174,6 +176,7 @@ RT_NOCRT_BEGINPROC cos
 .return:
         leave
         ret
+        int3
 
         ;
         ; cos(+/-0) = +1.0
@@ -184,6 +187,7 @@ RT_NOCRT_BEGINPROC cos
         ffreep  st0
         fld1
         jmp     .return_val
+        int3
 
         ;
         ; Input is NaN, output it unmodified as far as we can (FLD changes SNaN
@@ -194,6 +198,7 @@ RT_NOCRT_BEGINPROC cos
         ffreep  st0
 %endif
         jmp     .return
+        int3
 
         ;
         ; Local constants.
@@ -211,3 +216,4 @@ ALIGNCODE(8)
         dq  2.0
 ENDPROC   RT_NOCRT(cos)
 
+MARK_OBJECT_RETPOLINE_SAFE
