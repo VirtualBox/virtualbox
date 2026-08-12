@@ -1,4 +1,4 @@
-; $Id: fabsl.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: fabsl.asm 115007 2026-08-12 23:35:12Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT fabsl - AMD64 & X86.
 ;
@@ -59,3 +59,4 @@ RT_NOCRT_BEGINPROC fabsl
         ret
 ENDPROC   RT_NOCRT(fabsl)
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: fegetenv.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: fegetenv.asm 115007 2026-08-12 23:35:12Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT fegetenv - AMD64 & X86.
 ;
@@ -88,3 +88,4 @@ RT_NOCRT_BEGINPROC fegetenv
         ret
 ENDPROC   RT_NOCRT(fegetenv)
 
+MARK_OBJECT_RETPOLINE_SAFE

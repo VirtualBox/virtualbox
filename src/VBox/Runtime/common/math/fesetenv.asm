@@ -1,4 +1,4 @@
-; $Id: fesetenv.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: fesetenv.asm 115007 2026-08-12 23:35:12Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT fesetenv - AMD64 & X86.
 ;
@@ -89,6 +89,7 @@ RT_NOCRT_BEGINPROC fesetenv
         int3
 %endif
         jmp     .return
+        int3
 
         ;
         ; Special x87 state. Clear all pending exceptions.
@@ -122,6 +123,7 @@ RT_NOCRT_BEGINPROC fesetenv
 .x87_special_done:
         mov     [xBP - 20h  + X86FSTENV32P.FCW], ax
         jmp     .x87_common
+        int3
 
         ;
         ; Merge input and current.
@@ -169,6 +171,7 @@ RT_NOCRT_BEGINPROC fesetenv
         jb      .sse_special_env
         ldmxcsr [xCX + 28]
         jmp     .return_okay
+        int3
 
 .sse_special_env:
         stmxcsr [xBP - 10h]
@@ -192,3 +195,4 @@ RT_NOCRT_BEGINPROC fesetenv
         ret
 ENDPROC   RT_NOCRT(fesetenv)
 
+MARK_OBJECT_RETPOLINE_SAFE

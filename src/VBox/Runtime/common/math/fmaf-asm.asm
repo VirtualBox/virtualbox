@@ -1,4 +1,4 @@
-; $Id: fmaf-asm.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: fmaf-asm.asm 115007 2026-08-12 23:35:12Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT fmaf alternatives - AMD64 & X86.
 ;
@@ -102,3 +102,4 @@ BEGINPROC rtNoCrtMathFma4f
         ret
 ENDPROC   rtNoCrtMathFma4f
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: fabsf.asm 114133 2026-05-14 13:05:57Z knut.osmundsen@oracle.com $
+; $Id: fabsf.asm 115007 2026-08-12 23:35:12Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT fabsf - AMD64 & X86.
 ;
@@ -70,3 +70,4 @@ g_r32ClearSignMask:
         dd      07fffffffh
         dd      07fffffffh
 
+MARK_OBJECT_RETPOLINE_SAFE

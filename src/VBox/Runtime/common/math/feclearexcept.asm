@@ -1,4 +1,4 @@
-; $Id: feclearexcept.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: feclearexcept.asm 115007 2026-08-12 23:35:12Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT feclearexcept - AMD64 & X86.
 ;
@@ -91,6 +91,7 @@ RT_NOCRT_BEGINPROC feclearexcept
         jne    .partial_mask
         fnclex
         jmp     .do_sse
+        int3
 
 .partial_mask:
         fnstenv [xBP - 20h]
@@ -119,3 +120,4 @@ RT_NOCRT_BEGINPROC feclearexcept
         ret
 ENDPROC   RT_NOCRT(feclearexcept)
 
+MARK_OBJECT_RETPOLINE_SAFE
