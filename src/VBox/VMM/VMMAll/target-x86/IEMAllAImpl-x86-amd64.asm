@@ -1,4 +1,4 @@
-; $Id: IEMAllAImpl-x86-amd64.asm 114135 2026-05-14 18:43:29Z knut.osmundsen@oracle.com $
+; $Id: IEMAllAImpl-x86-amd64.asm 115018 2026-08-12 23:41:47Z knut.osmundsen@oracle.com $
 ;; @file
 ; IEM - Instruction Implementation in Assembly, x86 target, amd64 host.
 ;
@@ -93,36 +93,44 @@ GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden, CALC_PROC_SIZE_RAW(NAME
  %endmacro
  %macro EPILOGUE_1_ARGS 0
         ret
+        int3
  %endmacro
  %macro EPILOGUE_1_ARGS_EX 0
         ret
+        int3
  %endmacro
 
  %macro PROLOGUE_2_ARGS 0
  %endmacro
  %macro EPILOGUE_2_ARGS 0
         ret
+        int3
  %endmacro
  %macro EPILOGUE_2_ARGS_EX 1
         ret
+        int3
  %endmacro
 
  %macro PROLOGUE_3_ARGS 0
  %endmacro
  %macro EPILOGUE_3_ARGS 0
         ret
+        int3
  %endmacro
  %macro EPILOGUE_3_ARGS_EX 1
         ret
+        int3
  %endmacro
 
  %macro PROLOGUE_4_ARGS 0
  %endmacro
  %macro EPILOGUE_4_ARGS 0
         ret
+        int3
  %endmacro
  %macro EPILOGUE_4_ARGS_EX 1
         ret
+        int3
  %endmacro
 
  %ifdef ASM_CALL64_GCC
@@ -201,10 +209,12 @@ GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden, CALC_PROC_SIZE_RAW(NAME
  %macro EPILOGUE_1_ARGS 0
         pop     edi
         ret     0
+        int3
  %endmacro
  %macro EPILOGUE_1_ARGS_EX 1
         pop     edi
         ret     %1
+        int3
  %endmacro
 
  %macro PROLOGUE_2_ARGS 0
@@ -213,10 +223,12 @@ GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden, CALC_PROC_SIZE_RAW(NAME
  %macro EPILOGUE_2_ARGS 0
         pop     edi
         ret     0
+        int3
  %endmacro
  %macro EPILOGUE_2_ARGS_EX 1
         pop     edi
         ret     %1
+        int3
  %endmacro
 
  %macro PROLOGUE_3_ARGS 0
@@ -231,6 +243,7 @@ GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden, CALC_PROC_SIZE_RAW(NAME
         pop     edi
         pop     ebx
         ret     %1
+        int3
  %endmacro
  %macro EPILOGUE_3_ARGS 0
         EPILOGUE_3_ARGS_EX 4
@@ -251,6 +264,7 @@ GLOBALNAME_RAW NAME_FASTCALL(%1,%2,@), function, hidden, CALC_PROC_SIZE_RAW(NAME
         pop     edi
         pop     ebx
         ret     %1
+        int3
  %endmacro
  %macro EPILOGUE_4_ARGS 0
         EPILOGUE_4_ARGS_EX 8
@@ -2198,6 +2212,7 @@ BEGINPROC_FASTCALL iemAImpl_cmpxchg_u64 %+ %2, 16
         pop     edi
         pop     esi
         ret     8
+        int3
 
 .cmpxchg8b_not_equal:
         cmp     [esi + 4], edx          ;; @todo FIXME - verify 64-bit compare implementation
@@ -2736,6 +2751,7 @@ BEGINPROC_FASTCALL iemAImpl_ %+ %1 %+ _u8 %+ %5, 12
         cmp     T0_8, A1_8
         jae     .div_overflow
         jmp     .div_no_overflow
+        int3
 
 .divisor_negative:
         neg     A1_8
@@ -2801,6 +2817,7 @@ BEGINPROC_FASTCALL iemAImpl_ %+ %1 %+ _u16 %+ %5, 16
         cmp     T0_16, T1_16
         jae     .div_overflow
         jmp     .div_no_overflow
+        int3
 
 .divisor_negative:
         neg     T1_16
@@ -2881,6 +2898,7 @@ BEGINPROC_FASTCALL iemAImpl_ %+ %1 %+ _u32 %+ %5, 16
         cmp     T0_32, A2_32
         jae     .div_overflow
         jmp     .div_no_overflow
+        int3
 
 .divisor_negative:
         neg     A2_32
@@ -2968,6 +2986,7 @@ BEGINPROC_FASTCALL iemAImpl_ %+ %1 %+ _u64 %+ %5, 20
         cmp     T0, A2
         jae     .div_overflow
         jmp     .div_no_overflow
+        int3
 
 .divisor_negative:
         neg     A2
@@ -7517,3 +7536,5 @@ IEMIMPL_ADX_64 adcx, X86_EFL_CF
 IEMIMPL_ADX_32 adox, X86_EFL_OF
 IEMIMPL_ADX_64 adox, X86_EFL_OF
 
+
+MARK_OBJECT_RETPOLINE_SAFE ;; @todo retpoline: lots of indirect jmps/calls here for instructions with behavrioual immediates. Buch of missing int3 after ret too.
