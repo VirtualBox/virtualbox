@@ -1,4 +1,4 @@
- ; $Id: CPUMRZA.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+ ; $Id: CPUMRZA.asm 115015 2026-08-12 23:40:14Z knut.osmundsen@oracle.com $
 ;; @file
 ; CPUM - Raw-mode and Ring-0 Context Assembly Routines.
 ;
@@ -348,3 +348,4 @@ SEH64_END_PROLOGUE
         ret
 ENDPROC   cpumRZSaveGuestAvxRegisters
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: VMMAllA.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: VMMAllA.asm 115015 2026-08-12 23:40:14Z knut.osmundsen@oracle.com $
 ;; @file
 ; VMM - All Contexts Assembly Routines.
 ;
@@ -91,3 +91,4 @@ BEGINPROC VMMTrashVolatileXMMRegs
         ret
 ENDPROC   VMMTrashVolatileXMMRegs
 
+MARK_OBJECT_RETPOLINE_SAFE

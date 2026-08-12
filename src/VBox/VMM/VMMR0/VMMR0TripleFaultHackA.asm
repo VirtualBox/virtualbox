@@ -1,4 +1,4 @@
-; $Id: VMMR0TripleFaultHackA.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: VMMR0TripleFaultHackA.asm 115015 2026-08-12 23:40:14Z knut.osmundsen@oracle.com $
 ;; @file
 ; VMM - Host Context Ring 0, Assembly Code for The Triple Fault Debugging Hack.
 ;
@@ -57,6 +57,7 @@ BEGINPROC vmmR0TripleFaultHack
 .forever:
     hlt
     jmp     .forever
+    int3
 
 .s_szHello:
     db      'Hello post-reset world', 0ah, 0dh, 0
@@ -188,6 +189,7 @@ BEGINPROC vmmR0TripleFaultHackKbdWait
 
         pop     xAX
         ret
+        int3
 
 .read_data_and_status:
         in      al, 60h
@@ -272,3 +274,4 @@ BEGINPROC vmmR0TripleFaultHackTripleFault
     ret
 ENDPROC   vmmR0TripleFaultHackTripleFault
 
+MARK_OBJECT_RETPOLINE_SAFE
