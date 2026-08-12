@@ -54,3 +54,4 @@ RT_BEGINPROC ASMAtomicBitTestAndToggle
         ret
 ENDPROC ASMAtomicBitTestAndToggle
 
+MARK_OBJECT_RETPOLINE_SAFE

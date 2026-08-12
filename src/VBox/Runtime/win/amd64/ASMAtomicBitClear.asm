@@ -52,3 +52,4 @@ RT_BEGINPROC ASMAtomicBitClear
         ret
 ENDPROC ASMAtomicBitClear
 
+MARK_OBJECT_RETPOLINE_SAFE
