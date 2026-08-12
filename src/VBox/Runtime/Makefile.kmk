@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114131 2026-05-14 12:27:45Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 114998 2026-08-12 23:06:36Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for the IPRT.
 #
@@ -2891,6 +2891,7 @@ RuntimeGuestR3_SOURCES                   = $(filter-out \
 ifndef VBOX_WITH_NOCRT_STATIC
  RuntimeGuestR3_DEFS.win.x86             = $(RuntimeR3_DEFS.win.x86) \
  	VCC_FAKES_TARGET_$(VBOX_VCC_TOOL_STEM) VCC_FAKES_TARGET=$(substr $(VBOX_VCC_TOOL_STEM),-3)
+ RuntimeGuestR3_ASINCS.win.x86           = $(RuntimeR3_ASINCS.win.x86) r3/win/ # NASM crap
  RuntimeGuestR3_SOURCES.win.x86          = $(RuntimeR3_SOURCES.win.x86) \
  	r3/win/vcc-fakes-kernel32.cpp \
  	r3/win/vcc-fakes-kernel32-A.asm \
@@ -3640,6 +3641,7 @@ if   ($(VBOX_SOLARIS_11_UPDATE_VERSION) > 2 \
 endif
 
 RuntimeR0Drv_INCS      := $(PATH_SUB_CURRENT) include
+RuntimeR0Drv_ASINCS.win.x86 = common/compiler/vcc/ # NASM crap
 RuntimeR0Drv_INCS.freebsd = \
 	$(PATH_STAGE)/gen-sys-hdrs
 RuntimeR0Drv_INCS.solaris = \
@@ -4637,6 +4639,7 @@ endif
 ifndef VBOX_WITH_NOCRT_STATIC
  RuntimeR3VccTricks_TEMPLATE = VBoxR3Static
  RuntimeR3VccTricks_DEFS     = VCC_FAKES_TARGET_$(VBOX_VCC_TOOL_STEM) VCC_FAKES_TARGET=$(substr $(VBOX_VCC_TOOL_STEM),-3)
+ RuntimeR3VccTricks_ASINCS   = r3/win/ # NASM crap
  RuntimeR3VccTricks_SOURCES  = \
  	r3/win/vcc-fakes-kernel32.cpp \
  	r3/win/vcc-fakes-kernel32-A.asm \
