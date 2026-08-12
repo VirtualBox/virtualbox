@@ -1,4 +1,4 @@
-; $Id: HMR0UtilA-x86.asm 114485 2026-06-22 14:00:21Z klaus.espenlaub@oracle.com $
+; $Id: HMR0UtilA-x86.asm 115016 2026-08-12 23:40:45Z knut.osmundsen@oracle.com $
 ;; @file
 ; HM - Ring-0 VMX & SVM Helpers.
 ;
@@ -59,6 +59,7 @@ BEGINPROC VMXWriteVmcs64
     jnc         .valid_vmcs
     mov         eax, VERR_VMX_INVALID_VMCS_PTR
     ret
+    int3
 .valid_vmcs:
     jnz         .the_end
     mov         eax, VERR_VMX_INVALID_VMCS_FIELD
@@ -90,6 +91,7 @@ BEGINPROC VMXReadVmcs64
     jnc         .valid_vmcs
     mov         eax, VERR_VMX_INVALID_VMCS_PTR
     ret
+    int3
 .valid_vmcs:
     jnz         .the_end
     mov         eax, VERR_VMX_INVALID_VMCS_FIELD
@@ -123,6 +125,7 @@ BEGINPROC VMXReadVmcs32
     jnc     .valid_vmcs
     mov     eax, VERR_VMX_INVALID_VMCS_PTR
     ret
+    int3
 .valid_vmcs:
     jnz     .the_end
     mov     eax, VERR_VMX_INVALID_VMCS_FIELD
@@ -156,6 +159,7 @@ BEGINPROC VMXWriteVmcs32
     jnc     .valid_vmcs
     mov     eax, VERR_VMX_INVALID_VMCS_PTR
     ret
+    int3
 .valid_vmcs:
     jnz     .the_end
     mov     eax, VERR_VMX_INVALID_VMCS_FIELD
@@ -183,6 +187,7 @@ BEGINPROC VMXEnable
     jnc     .good
     mov     eax, VERR_VMX_INVALID_VMXON_PTR
     jmp     .the_end
+    int3
 
 .good:
     jnz     .the_end
@@ -301,6 +306,7 @@ BEGINPROC VMXR0InvEPT
     jnc         .valid_vmcs
     mov         eax, VERR_VMX_INVALID_VMCS_PTR
     ret
+    int3
 .valid_vmcs:
     jnz         .the_end
     mov         eax, VERR_INVALID_PARAMETER
@@ -332,6 +338,7 @@ BEGINPROC VMXR0InvVPID
     jnc         .valid_vmcs
     mov         eax, VERR_VMX_INVALID_VMCS_PTR
     ret
+    int3
 .valid_vmcs:
     jnz         .the_end
     mov         eax, VERR_INVALID_PARAMETER
@@ -364,3 +371,4 @@ BEGINPROC SVMR0InvlpgA
     ret
 ENDPROC SVMR0InvlpgA
 
+MARK_OBJECT_RETPOLINE_SAFE
