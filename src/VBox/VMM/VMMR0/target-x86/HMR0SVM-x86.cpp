@@ -9299,45 +9299,54 @@ HMSVM_EXIT_DECL hmR0SvmExitAvicIncompleteIpi(PVMCPUCC pVCpu, PSVMTRANSIENT pSvmT
     HMSVM_VALIDATE_EXIT_HANDLER_PARAMS(pVCpu, pSvmTransient);
     STAM_REL_COUNTER_INC(&pVCpu->hm.s.StatSvmExitAvicIncompleteIpi);
 
-    uint32_t const u32ApicIcrL = (uint32_t)(pSvmTransient->pVmcb->ctrl.u64ExitInfo1 & UINT32_MAX);
-    uint32_t const u32ApicIcrH = (uint32_t)(pSvmTransient->pVmcb->ctrl.u64ExitInfo1 >> 32);
-    uint32_t const idApic      = (uint32_t)(pSvmTransient->pVmcb->ctrl.u64ExitInfo2 & 0xfff);
-    uint32_t const idFailure   = (uint32_t)(pSvmTransient->pVmcb->ctrl.u64ExitInfo2 >> 32);
+    uint64_t const u64ExitInfo1 = pSvmTransient->pVmcb->ctrl.u64ExitInfo1;
+    uint32_t const u32ApicIcrLo = RT_LO_U32(u64ExitInfo1);
+    uint32_t const u32ApicIcrHi = RT_HI_U32(u64ExitInfo1);
+
+    uint64_t const u64ExitInfo2 = pSvmTransient->pVmcb->ctrl.u64ExitInfo2;
+    uint32_t const idApic       = (uint32_t)(u64ExitInfo2 & SVM_EXIT2_INC_IPI_INDEX_MASK);
+    uint32_t const idFailure    = (uint32_t)(u64ExitInfo2 >> SVM_EXIT2_INC_IPI_ID_SHIFT);
 
     Log2Func(("\n"));
-    Log4(("AVICExitIncompleteIpi/%u: ICRL=%#x ICRH=%#x idApic=%#x idFailure=%#x\n",
-          pVCpu->idCpu, u32ApicIcrL, u32ApicIcrH, idApic, idFailure));
-    if (idFailure == 0)
+    Log4Func(("AVICExitIncompleteIpi/%u: ICRL=%#x ICRH=%#x idApic=%#x idFailure=%#x\n",
+          pVCpu->idCpu, u32ApicIcrLo, u32ApicIcrHi, idApic, idFailure));
+    if (   idFailure == SVM_EXIT2_INC_IPI_INDEX_INVALID_INTR_TYPE
+        || idFailure == SVM_EXIT2_INC_IPI_INDEX_INVALID_TARGET)
     {
         pVCpu->hm.s.offApicReg = XAPIC_OFF_ICR_LO;
         return PDMApicUpdateStateAfterWrite(pVCpu, XAPIC_OFF_ICR_LO);
     }
 
-    PVMCC    pVM      = pVCpu->CTX_SUFF(pVM);
-    PVMCPUCC pVCpuDst = pVM->CTX_SUFF(apCpus)[idApic];
-    VMCPUID idCpu = pVCpuDst->idCpu;
-    if (VMMGetCpuId(pVM) != idCpu)
+    if (idFailure == SVM_EXIT2_INC_IPI_INDEX_TARGET_NOT_RUNNING)
     {
-        switch (VMCPU_GET_STATE(pVCpuDst))
+        PVMCC    pVM      = pVCpu->CTX_SUFF(pVM);
+        PVMCPUCC pVCpuDst = pVM->CTX_SUFF(apCpus)[idApic];
+        VMCPUID  idCpu    = pVCpuDst->idCpu;
+        if (VMMGetCpuId(pVM) != idCpu)
         {
-            case VMCPUSTATE_STARTED_EXEC:
-                Log7Func(("idCpu=%u VMCPUSTATE_STARTED_EXEC\n", idCpu));
-                GVMMR0SchedPokeNoGVMNoLock(pVM, idCpu);
-                break;
+            switch (VMCPU_GET_STATE(pVCpuDst))
+            {
+                case VMCPUSTATE_STARTED_EXEC:
+                    Log7Func(("idCpu=%u VMCPUSTATE_STARTED_EXEC\n", idCpu));
+                    GVMMR0SchedPokeNoGVMNoLock(pVM, idCpu);
+                    break;
 
-            case VMCPUSTATE_STARTED_HALTED:
-                Log7Func(("idCpu=%u VMCPUSTATE_STARTED_HALTED\n", idCpu));
-                VMCPU_FF_SET(pVCpuDst, VMCPU_FF_UNHALT);
-                GVMMR0SchedWakeUpNoGVMNoLock(pVM, idCpu);
-                break;
+                case VMCPUSTATE_STARTED_HALTED:
+                    Log7Func(("idCpu=%u VMCPUSTATE_STARTED_HALTED\n", idCpu));
+                    VMCPU_FF_SET(pVCpuDst, VMCPU_FF_UNHALT);
+                    GVMMR0SchedWakeUpNoGVMNoLock(pVM, idCpu);
+                    break;
 
-            default:
-                Log7Func(("idCpu=%u enmState=%d\n", idCpu, pVCpu->enmState));
-                break; /* nothing to do in other states. */
+                default:
+                    Log7Func(("idCpu=%u enmState=%d\n", idCpu, pVCpu->enmState));
+                    break; /* nothing to do in other states. */
+            }
         }
+        return VINF_SUCCESS;
     }
 
-    return VINF_SUCCESS;
+    AssertMsgFailed(("hmR0SvmExitAvicIncompleteIpi: Unexpected failure type %#x\n", idFailure));
+    return VERR_SVM_IPE_4;
 }
 
 
