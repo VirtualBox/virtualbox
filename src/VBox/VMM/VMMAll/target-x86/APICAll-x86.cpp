@@ -608,7 +608,7 @@ static VBOXSTRICTRC apicSendIntr(PVMCC pVM, PVMCPUCC pVCpu, uint8_t uVector, XAP
         && pVCpu)
     {
         /*
-         * Flag only errors when the delivery mode is fixed and lowest-priority and not
+         * Flag only errors when the delivery mode is fixed or lowest-priority and not
          * others. This applies to ICR and self-IPI in both xAPIC and x2APIC modes.
          *  - Intel: Documented under "Error Status Register (ESR)" in the
          *    Intel spec. "13.5.3 Error Handling".
