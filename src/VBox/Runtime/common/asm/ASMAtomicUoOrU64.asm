@@ -1,4 +1,4 @@
-; $Id: ASMAtomicUoOrU64.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMAtomicUoOrU64.asm 115010 2026-08-12 23:36:50Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMAtomicUoOrU64().
 ;
@@ -75,6 +75,7 @@ RT_BEGINPROC ASMAtomicUoOrU64
         mov     ecx, edx
         or      ecx, [ebp + 0ch + 4]
         jmp     .try_again
+        int3
 
 .done:
         pop     edi
@@ -84,3 +85,4 @@ RT_BEGINPROC ASMAtomicUoOrU64
         ret
 ENDPROC ASMAtomicUoOrU64
 
+MARK_OBJECT_RETPOLINE_SAFE
