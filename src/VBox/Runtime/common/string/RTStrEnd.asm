@@ -1,4 +1,4 @@
-; $Id: RTStrEnd.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: RTStrEnd.asm 115006 2026-08-12 23:34:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - RTStrEnd - AMD64 & X86.
 ;
@@ -91,6 +91,7 @@ RT_BEGINPROC RTStrEnd
  %endif
 %endif
         ret
+        int3
 
 .not_found:
 %ifdef ASM_CALL64_MSC
@@ -112,3 +113,4 @@ RT_BEGINPROC RTStrEnd
         ret
 ENDPROC RTStrEnd
 
+MARK_OBJECT_RETPOLINE_SAFE

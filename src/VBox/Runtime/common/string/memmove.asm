@@ -1,4 +1,4 @@
-; $Id: memmove.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: memmove.asm 115006 2026-08-12 23:34:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT memmove - AMD64 & X86.
 ;
@@ -96,6 +96,7 @@ RT_NOCRT_BEGINPROC memmove
         cld
         rep movsb
         jmp .epilog
+        int3
 
 %else ; disabled - it seems to work, but play safe for now.
         ;sub     xAX, xSI
@@ -152,6 +153,7 @@ RT_NOCRT_BEGINPROC memmove
         pop     edi
 %endif
         ret
+        int3
 
         ;
         ; Slow/simple backward copy.
@@ -167,3 +169,4 @@ ALIGNCODE(16)
         jmp .epilog
 ENDPROC RT_NOCRT(memmove)
 
+MARK_OBJECT_RETPOLINE_SAFE

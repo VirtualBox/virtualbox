@@ -1,4 +1,4 @@
-; $Id: strncpy.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: strncpy.asm 115006 2026-08-12 23:34:22Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT strncpy - AMD64 & X86.
 ;
@@ -104,6 +104,7 @@ RT_NOCRT_BEGINPROC strncpy
         add     pszSrc, 4
         sub     cbMax,  4
         jmp     .next
+        int3
 
         ;
         ; Char by char.
@@ -124,6 +125,7 @@ RT_NOCRT_BEGINPROC strncpy
         inc     pszSrc
         inc     pszDst
         jmp     .simple_next
+        int3
 
 .done:
 %ifdef RT_ARCH_AMD64
@@ -137,3 +139,4 @@ RT_NOCRT_BEGINPROC strncpy
         ret
 ENDPROC RT_NOCRT(strncpy)
 
+MARK_OBJECT_RETPOLINE_SAFE
