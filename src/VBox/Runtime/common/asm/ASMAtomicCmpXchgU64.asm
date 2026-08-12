@@ -1,4 +1,4 @@
-; $Id: ASMAtomicCmpXchgU64.asm 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: ASMAtomicCmpXchgU64.asm 115010 2026-08-12 23:36:50Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMAtomicCmpXchgU64().
 ;
@@ -86,3 +86,4 @@ RT_BEGINPROC ASMAtomicCmpXchgU64
 %endif
 ENDPROC ASMAtomicCmpXchgU64
 
+MARK_OBJECT_RETPOLINE_SAFE
