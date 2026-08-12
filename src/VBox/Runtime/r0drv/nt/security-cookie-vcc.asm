@@ -1,4 +1,4 @@
-; $Id: security-cookie-vcc.asm 114133 2026-05-14 13:05:57Z knut.osmundsen@oracle.com $
+; $Id: security-cookie-vcc.asm 115003 2026-08-12 23:16:08Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Stack related Visual C++ support routines, ring-0.
 ;
@@ -138,3 +138,4 @@ BEGINPROC __security_init_cookie
         ret
 ENDPROC   __security_init_cookie
 
+MARK_OBJECT_RETPOLINE_SAFE
