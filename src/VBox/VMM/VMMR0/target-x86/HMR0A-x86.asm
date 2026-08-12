@@ -1,4 +1,4 @@
-; $Id: HMR0A-x86.asm 114828 2026-07-31 09:19:37Z alexander.eichner@oracle.com $
+; $Id: HMR0A-x86.asm 115017 2026-08-12 23:41:03Z knut.osmundsen@oracle.com $
 ;; @file
 ; HM - Ring-0 VMX, SVM world-switch and helper routines.
 ;
@@ -308,6 +308,7 @@ BEGINPROC hmR0VmxExportHostSegmentRegsAsmHlp
         mov     [pRestoreHost + VMXRESTOREHOST.uHostSelDS], ax
 
         ret
+        int3
 
 ALIGNCODE(16)
 .use_rdmsr_for_fs_and_gs_base:
@@ -435,6 +436,7 @@ BEGINPROC VMXRestoreHostState
         mov     rsi, r11
 %endif
         ret
+        int3
 
 ALIGNCODE(8)
 .gdt_readonly_or_need_writable:
@@ -450,6 +452,7 @@ ALIGNCODE(8)
         ltr     dx
         mov     cr0, r9
         jmp     .restore_fs
+        int3
 
 ALIGNCODE(8)
 .gdt_readonly_need_writable:
@@ -459,6 +462,7 @@ ALIGNCODE(8)
         ltr     dx
         lgdt    [rsi + VMXRESTOREHOST.HostGdtr]                 ; load the original GDT
         jmp     .restore_fs
+        int3
 
 ALIGNCODE(8)
 .restore_fs_using_wrmsr:
@@ -664,6 +668,7 @@ BEGINPROC RT_CONCAT(hmR0VmxStartVm,%1)
    %endif
         je      RT_CONCAT3(hmR0VmxStartVm,%1,_SseManual)
         jmp     RT_CONCAT3(hmR0VmxStartVm,%1,_SseXSave)
+        int3
 .save_xmm_no_need:
   %endif
  %endif
@@ -897,12 +902,14 @@ BEGINPROC RT_CONCAT(hmR0VmxStartVm,%1)
         jc      NAME(RT_CONCAT(hmR0VmxStartVmHostRIP,%1).vmxstart64_invalid_vmcs_ptr)
         jz      NAME(RT_CONCAT(hmR0VmxStartVmHostRIP,%1).vmxstart64_start_failed)
         jmp     NAME(RT_CONCAT(hmR0VmxStartVmHostRIP,%1)) ; here if vmresume detected a failure
+        int3
 
 .vmlaunch64_launch:
         vmlaunch
         jc      NAME(RT_CONCAT(hmR0VmxStartVmHostRIP,%1).vmxstart64_invalid_vmcs_ptr)
         jz      NAME(RT_CONCAT(hmR0VmxStartVmHostRIP,%1).vmxstart64_start_failed)
         jmp     NAME(RT_CONCAT(hmR0VmxStartVmHostRIP,%1)) ; here if vmlaunch detected a failure
+        int3
 
 
 ; Put these two outside the normal code path as they should rarely change.
@@ -918,6 +925,7 @@ ALIGNCODE(8)
         jna     NAME(RT_CONCAT(hmR0VmxStartVmHostRIP,%1).vmwrite_failed)
  %endif
         jmp     .wrote_host_rip
+        int3
 
 ALIGNCODE(8)
 .write_host_rsp:
@@ -931,6 +939,7 @@ ALIGNCODE(8)
         jna     NAME(RT_CONCAT(hmR0VmxStartVmHostRIP,%1).vmwrite_failed)
  %endif
         jmp     .wrote_host_rsp
+        int3
 
 ALIGNCODE(64)
 GLOBALNAME_EX RT_CONCAT(hmR0VmxStartVmHostRIP,%1), notype, hidden, (NAME(hmR0VmxStartVmHostRIP %+ %1) - NAME(hmR0VmxStartVm %+ %1 %+ _EndProc))
@@ -994,6 +1003,7 @@ GLOBALNAME_EX RT_CONCAT(hmR0VmxStartVmHostRIP,%1), notype, hidden, (NAME(hmR0Vmx
         popf
         leave
         ret
+        int3
 
         ;
         ; Error returns.
@@ -1004,16 +1014,19 @@ GLOBALNAME_EX RT_CONCAT(hmR0VmxStartVmHostRIP,%1), notype, hidden, (NAME(hmR0Vmx
         jz      .return_after_vmwrite_error
         mov     dword [rsp + cbFrame + frm_rcError], VERR_VMX_INVALID_VMCS_PTR
         jmp     .return_after_vmwrite_error
+        int3
  %endif
 .vmxstart64_invalid_vmcs_ptr:
         mov     dword [rsp + cbFrame + frm_rcError], VERR_VMX_INVALID_VMCS_PTR_TO_START_VM
         jmp     .vmstart64_error_return
+        int3
 .vmxstart64_start_failed:
         mov     dword [rsp + cbFrame + frm_rcError], VERR_VMX_UNABLE_TO_START_VM
 .vmstart64_error_return:
         RESTORE_STATE_VMX 1, %2, %3, %4
         mov     eax, [rbp + frm_rcError]
         jmp     .vmstart64_end
+        int3
 
  %ifdef VBOX_STRICT
         ; Precondition checks failed.
@@ -1023,6 +1036,7 @@ GLOBALNAME_EX RT_CONCAT(hmR0VmxStartVmHostRIP,%1), notype, hidden, (NAME(hmR0Vmx
    %error Bad frame size value: cbFrame, expected cbBaseFrame
   %endif
         jmp     .return_with_restored_preserved_registers
+        int3
  %endif
 
  %undef frm_fRFlags
@@ -1129,6 +1143,7 @@ BEGINPROC RT_CONCAT(hmR0SvmVmRun,%1)
    %endif
         je      RT_CONCAT3(hmR0SvmVmRun,%1,_SseManual)
         jmp     RT_CONCAT3(hmR0SvmVmRun,%1,_SseXSave)
+        int3
 .save_xmm_no_need:
   %endif
  %endif
@@ -1486,6 +1501,7 @@ BEGINPROC RT_CONCAT(hmR0SvmVmRun,%1)
         popf
         leave
         ret
+        int3
 
  %ifdef VBOX_STRICT
         ; Precondition checks failed.
@@ -1564,3 +1580,5 @@ hmR0SvmVmRunTemplate _WithXcr0_SansIbpbEntry_WithIbpbExit_WithSpecCtrl_SseXSave,
 hmR0SvmVmRunTemplate _SansXcr0_WithIbpbEntry_WithIbpbExit_WithSpecCtrl_SseXSave,  0, HM_WSF_SPEC_CTRL | HM_WSF_IBPB_ENTRY | HM_WSF_IBPB_EXIT, 2
 hmR0SvmVmRunTemplate _WithXcr0_WithIbpbEntry_WithIbpbExit_WithSpecCtrl_SseXSave,  1, HM_WSF_SPEC_CTRL | HM_WSF_IBPB_ENTRY | HM_WSF_IBPB_EXIT, 2
 %endif
+
+MARK_OBJECT_RETPOLINE_SAFE
