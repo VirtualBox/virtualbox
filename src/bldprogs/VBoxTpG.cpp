@@ -1,4 +1,4 @@
-/* $Id: VBoxTpG.cpp 114139 2026-05-14 22:38:18Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxTpG.cpp 115020 2026-08-12 23:43:12Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBox Build Tool - VBox Tracepoint Generator.
  */
@@ -454,7 +454,7 @@ static RTEXITCODE generateAssembly(PSCMSTREAM pStrm)
      * Write the file header.
      */
     ScmStreamPrintf(pStrm,
-                    "; $Id: VBoxTpG.cpp 114139 2026-05-14 22:38:18Z knut.osmundsen@oracle.com $ \n"
+                    "; $Id: VBoxTpG.cpp 115020 2026-08-12 23:43:12Z knut.osmundsen@oracle.com $ \n"
                     ";; @file\n"
                     "; Automatically generated from %s. Do NOT edit!\n"
                     ";\n"
@@ -909,12 +909,51 @@ static RTEXITCODE generateAssembly(PSCMSTREAM pStrm)
                                 , g_pszProbeFnName);
 
             ScmStreamPrintf(pStrm,
+                            "        int3\n"
                             ".return:\n"
                             "        ret                        ; The probe was disabled, return\n"
                             ".end_proc:\n"
+                            "        int3\n"
                             "\n");
         }
     }
+
+    /*
+     * Emit unwind info for the stubs.
+     */
+    if (fWin64)
+    {
+        ScmStreamPrintf(pStrm,
+                        "\n"
+                        "section .pdata rdata align=4\n");
+        RTListForEach(&g_ProviderHead, pProvider, VTGPROVIDER, ListEntry)
+        {
+            RTListForEach(&pProvider->ProbeHead, pProbe, VTGPROBE, ListEntry)
+            {
+                ScmStreamPrintf(pStrm,
+                                "dd      NAME(VTGProbeStub_%s_%s)          wrt ..imagebase\n"
+                                "dd      NAME(VTGProbeStub_%s_%s.end_proc) wrt ..imagebase\n"
+                                "dd      vtg_unwind_info                   wrt ..imagebase\n"
+                                , pProvider->pszName, pProbe->pszMangledName, pProvider->pszName, pProbe->pszMangledName);
+            }
+        }
+
+        ScmStreamPrintf(pStrm,
+                        "\n"
+                        "section .xdata rdata align=4\n"
+                        "align   4, db 0\n"
+                        "vtg_unwind_info:\n"
+                        "        db      1                       ; version 1 (3 bit), no flags (5 bits)\n"
+                        "        db      0                       ; prolog size (0)\n"
+                        "        db      0                       ; info array length (0)\n"
+                        "        db      0                       ; frame register and offset.\n"
+                        "\n"
+                        "@feat.00 equ 1\n");
+    }
+
+    ScmStreamPrintf(pStrm,
+                    "\n"
+                    "MARK_OBJECT_RETPOLINE_SAFE"); /** @todo retpoline: there are plenty indirect jmps above... */
 
     return RTEXITCODE_SUCCESS;
 }
@@ -1009,7 +1048,7 @@ static RTEXITCODE generateHeader(PSCMSTREAM pStrm)
     }
 
     ScmStreamPrintf(pStrm,
-                    "/* $Id: VBoxTpG.cpp 114139 2026-05-14 22:38:18Z knut.osmundsen@oracle.com $ */\n"
+                    "/* $Id: VBoxTpG.cpp 115020 2026-08-12 23:43:12Z knut.osmundsen@oracle.com $ */\n"
                     "/** @file\n"
                     " * Automatically generated from %s.  Do NOT edit!\n"
                     " */\n"
@@ -1215,7 +1254,7 @@ static RTEXITCODE generateWrapperHeader(PSCMSTREAM pStrm)
     }
 
     ScmStreamPrintf(pStrm,
-                    "/* $Id: VBoxTpG.cpp 114139 2026-05-14 22:38:18Z knut.osmundsen@oracle.com $ */\n"
+                    "/* $Id: VBoxTpG.cpp 115020 2026-08-12 23:43:12Z knut.osmundsen@oracle.com $ */\n"
                     "/** @file\n"
                     " * Automatically generated from %s.  Do NOT edit!\n"
                     " */\n"
@@ -2543,7 +2582,7 @@ static RTEXITCODE parseArguments(int argc,  char **argv)
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                static const char s_szRev[] = "$Revision: 114139 $";
+                static const char s_szRev[] = "$Revision: 115020 $";
                 const char *psz = RTStrStripL(strchr(s_szRev, ' '));
                 RTPrintf("r%.*s\n", strchr(psz, ' ') - psz, psz);
                 return RTEXITCODE_SUCCESS;
