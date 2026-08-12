@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 113299 2026-03-10 08:08:39Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 115021 2026-08-12 23:45:19Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for the VirtualBox Windows Guest Shared Folders FSD.
 #
@@ -97,7 +97,7 @@ endif
 # Hack: The rdbsslib.lib we're using wasn't compiled -guard:ehcont.  Unfortunately
 #       we cannot individually disable the -guard options, so we have to disable
 #       everything and re-enable all but ehcont.
-VBoxSF_LDFLAGS.win.amd64 = -Guard:No $(VBOX_VCC_LD_GUARD_CF)
+VBoxSF_LDFLAGS.win.amd64 = -Guard:No $(VBOX_VCC_LD_GUARD_RETPOLINE_WITH_IGNORE) $(VBOX_VCC_LD_GUARD_CF)
 
 VBoxSF_USES.win += vboximportchecker
 VBoxSF_VBOX_IMPORT_CHECKER.win.x86 = w8/r0

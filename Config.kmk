@@ -1,4 +1,4 @@
-# $Id: Config.kmk 114986 2026-08-11 13:26:17Z knut.osmundsen@oracle.com $
+# $Id: Config.kmk 115021 2026-08-12 23:45:19Z knut.osmundsen@oracle.com $
 ## @file
 # The global build configuration file for VBox.
 #
@@ -3871,6 +3871,9 @@ if1of (win, $(KBUILD_TARGET) $(KBUILD_HOST))
  VBOX_VCC_LD_GUARD_CF         :=
  VBOX_VCC_CC_GUARD_EHCONT     :=
  VBOX_VCC_LD_GUARD_EHCONT     :=
+ VBOX_VCC_LD_GUARD_RETPOLINE  :=
+ VBOX_VCC_LD_GUARD_RETPOLINE_IGNORE :=
+ VBOX_VCC_LD_GUARD_RETPOLINE_WITH_IGNORE :=
  VBOX_VCC_LD_HIGH_ENTRYOPY_VA :=
  VBOX_VCC_LD_CET_COMPAT       :=
 
@@ -3884,6 +3887,11 @@ if1of (win, $(KBUILD_TARGET) $(KBUILD_HOST))
    VBOX_VCC_LD_CET_COMPAT     := -CetCompat
    VBOX_VCC_CC_GUARD_EHCONT   := -guard:ehcont
    VBOX_VCC_LD_GUARD_EHCONT   := -Guard:ehcont
+  endif
+  if $(VBOX_VCC_TOOL_STEM) >= VCC142 # Since when? (Also present in older versions.)
+   VBOX_VCC_LD_GUARD_RETPOLINE             := -Guard:retpoline
+   VBOX_VCC_LD_GUARD_RETPOLINE_IGNORE      := -Ignore:4287
+   VBOX_VCC_LD_GUARD_RETPOLINE_WITH_IGNORE := -Guard:retpoline -Ignore:4287
   endif
  endif
 endif
@@ -5687,8 +5695,12 @@ ifeq ($(VBOX_LDR_FMT),pe)
  if "$(VBOX_VCC_TOOL_STEM)" >= "VCC142" # Don't waste space on x86/amd64-on-arm emulation optimizations.
   TEMPLATE_VBoxR0_CXXFLAGS         += /volatileMetadata-
  endif
- if "$(VBOX_VCC_TOOL_STEM)" >= "VCC142" # Prevent speculative execution past indirect jumps.
-  TEMPLATE_VBoxR0_CXXFLAGS         += -Qspectre-jmp
+ if "$(VBOX_VCC_TOOL_STEM)" >= "VCC142" # Speculative execution hardening.
+  TEMPLATE_VBoxR0_CXXFLAGS         += -Qspectre
+  if1of ($(KBUILD_TARGET_ARCH), amd64 x86)
+   TEMPLATE_VBoxR0_CXXFLAGS        += -Qspectre-jmp
+   #TEMPLATE_VBoxR0_CXXFLAGS        += -d2guardretpoline - requires RTLdr support or the VM fails to start due to mismatches.
+  endif
  endif
  ifdef VBOX_WITH_MSC_ANALYZE_THIS
   TEMPLATE_VBoxR0_CXXFLAGS         += /analyze
@@ -5715,6 +5727,9 @@ ifeq ($(VBOX_LDR_FMT),pe)
   TEMPLATE_VBoxR0_LDFLAGS.win.amd64 += -Include:__security_init_cookie -Export:ModuleInitSecurityCookie=__security_init_cookie
   TEMPLATE_VBoxR0_LDFLAGS.win.x86  += -Include:___security_init_cookie -Export:ModuleInitSecurityCookie=__security_init_cookie
   TEMPLATE_VBoxR0_LDFLAGS.win.arm64 += -Include:__security_init_cookie -Export:ModuleInitSecurityCookie=__security_init_cookie
+ endif
+ if "$(VBOX_VCC_TOOL_STEM)" >= "VCC142" # Speculative execution hardening.
+  #TEMPLATE_VBoxR0_LDFLAGS.win.amd64 += $(VBOX_VCC_LD_GUARD_RETPOLINE) - requires RTLdr support or the VM fails to start due to mismatches.
  endif
  TEMPLATE_VBoxR0_LATE_LIBS          = \
  	$(PATH_STAGE_LIB)/RuntimeR0Stub$(VBOX_SUFF_LIB)
@@ -5922,10 +5937,17 @@ ifeq ($(KBUILD_TARGET),win)
  if "$(VBOX_VCC_TOOL_STEM)" >= "VCC142" # Don't waste space on x86/amd64-on-arm emulation optimizations.
   TEMPLATE_VBoxR0Drv_CXXFLAGS         += /volatileMetadata-
  endif
+ if "$(VBOX_VCC_TOOL_STEM)" >= "VCC142" # Speculative execution hardening.
+  TEMPLATE_VBoxR0Drv_CXXFLAGS         += -Qspectre
+  TEMPLATE_VBoxR0Drv_CXXFLAGS.win.x86 += -Qspectre-jmp
+  TEMPLATE_VBoxR0Drv_CXXFLAGS.win.amd64 += -Qspectre-jmp -d2guardretpoline
+ endif
  ifdef VBOX_WITH_MSC_ANALYZE_THIS
   TEMPLATE_VBoxR0Drv_CXXFLAGS         += /analyze
  endif
  TEMPLATE_VBoxR0Drv_CFLAGS             = $(TEMPLATE_VBoxR0Drv_CXXFLAGS)
+ TEMPLATE_VBoxR0Drv_CFLAGS.win.x86     = $(TEMPLATE_VBoxR0Drv_CXXFLAGS.win.x86)
+ TEMPLATE_VBoxR0Drv_CFLAGS.win.amd64   = $(TEMPLATE_VBoxR0Drv_CXXFLAGS.win.amd64)
  TEMPLATE_VBoxR0Drv_LDFLAGS            = -WX -Ignore:4197 \
  	-Driver -Subsystem:NATIVE -Incremental:NO -Align:4096 -MapInfo:Exports -NoD -Release -Debug -Opt:Ref -Opt:Icf \
  	$(VBOX_VCC_LD_GUARD_CF) \
@@ -5943,6 +5965,9 @@ ifeq ($(KBUILD_TARGET),win)
  TEMPLATE_VBoxR0Drv_LDFLAGS.win.amd64  = $(VBOX_VCC_LD_HIGH_ENTRYOPY_VA) $(VBOX_VCC_LD_GUARD_EHCONT) $(VBOX_VCC_LD_CET_COMPAT)
  TEMPLATE_VBoxR0Drv_LDFLAGS.win.arm64  = $(VBOX_VCC_LD_HIGH_ENTRYOPY_VA) $(VBOX_VCC_LD_GUARD_EHCONT)
  TEMPLATE_VBoxR0Drv_LDFLAGS.win.x86    = $(VBOX_VCC_LD_CET_COMPAT)
+ if "$(VBOX_VCC_TOOL_STEM)" >= "VCC142" # Speculative execution hardening.
+  TEMPLATE_VBoxR0Drv_LDFLAGS.win.amd64 += $(VBOX_VCC_LD_GUARD_RETPOLINE)
+ endif
  TEMPLATE_VBoxR0Drv_ORDERDEPS          = $(VBOX_SIGN_DRIVER_ORDERDEPS)
  TEMPLATE_VBoxR0Drv_POST_CMDS          = $(VBOX_SIGN_DRIVER_CMDS)
 endif
@@ -9612,7 +9637,7 @@ SVN                    ?= svn$(HOSTSUFF_EXE)
 GIT                    ?= git$(HOSTSUFF_EXE)
 VBOX_SVN_REV_KMK        = $(PATH_OUT)/revision.kmk
 ifndef VBOX_SVN_REV
- VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 114986 $  )
+ VBOX_SVN_REV_CONFIG_FALLBACK := $(patsubst %:,,  $Rev: 115021 $  )
  VBOX_SVN_REV_FALLBACK := $(if-expr $(VBOX_SVN_REV_CONFIG_FALLBACK) > $(VBOX_SVN_REV_VERSION_FALLBACK),$(VBOX_SVN_REV_CONFIG_FALLBACK),$(VBOX_SVN_REV_VERSION_FALLBACK))
  VBOX_SVN_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.svn/wc.db $(abspath $(PATH_ROOT)/../.svn/wc.db) $(abspath $(PATH_ROOT)/../../.svn/wc.db) $(PATH_ROOT)/.svn/entries))
  VBOX_GIT_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.git/config $(abspath $(PATH_ROOT)/../.git/config) $(abspath $(PATH_ROOT)/../../.git/config)))
@@ -9626,7 +9651,7 @@ ifndef VBOX_SVN_REV
  ifneq ($(VBOX_GIT_DEP),)
   #
   # VBOX_SVN_REV_CONFIG_FALLBACK is not properly populated for a git checkout,
-  # as the $Rev: 114986 $ is not expanded, so we have to set it based on the information in the repo.
+  # as the $Rev: 115021 $ is not expanded, so we have to set it based on the information in the repo.
   #
   VBOX_SVN_REV_FALLBACK := $(shell $(GIT) log -1 $(PATH_ROOT)/Config.kmk | $(SED) -e 's/^[ \t]*//' -e '/svn:sync-xref-src-repo-rev\: r/!d' -e 's/svn:sync-xref-src-repo-rev\: r*//; t a; :a q')
  endif
