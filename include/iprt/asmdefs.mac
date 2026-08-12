@@ -1409,6 +1409,33 @@ BEGINPROC_EXPORTED RT_NOCRT(%1), 0
 %endmacro ; RT_NOCRT_BEGINPROC
 
 
+;; @def MARK_OBJECT_RETPOLINE_SAFE
+; Marks the object as retpoline safe for the Visual C++ linker.
+;
+; Repoline support in the Visual C++ toolchain is undocumented, but compiling
+; with /guardretpoline or /d2guardretpoline and linking /guard:retpoline will
+; add tables annotating the indirect jump and call sites.
+;
+; The .retplne section starts with a magic 'RetpolineV1\0' and is followed by
+; zero or more variable length markup tables for code sections containing
+; indirect jumps & calls.  The first two dword are the table length and section
+; number. This is then followed by dword pairs of type and offset.
+;   Type 9: Control-flow guarded indirect call. offset of the call instruction.
+;
+; For the time being we only emit and empty table, as getting the section
+; number is probably not supported by the assemblers yet.
+;
+%macro MARK_OBJECT_RETPOLINE_SAFE 0
+%ifdef RT_ARCH_AMD64
+ %ifdef ASM_FORMAT_PE
+  %ifdef IN_RING0
+section .retplne info align=1 ; flags=100200
+        db      'RetpolineV1', 0
+  %endif
+ %endif
+%endif
+%endmacro ; MARK_OBJECT_RETPOLINE_SAFE
+
 
 ;; @def xCB
 ; The stack unit size  / The register unit size.
