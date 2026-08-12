@@ -1,4 +1,4 @@
-; $Id: timesupA.mac 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+; $Id: timesupA.mac 115004 2026-08-12 23:33:28Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Time using SUPLib, the Assembly Code Template.
 ;
@@ -308,6 +308,7 @@ BEGINPROC rtTimeNanoTSInternalAsm
     inc     dword [esi + RTTIMENANOTSDATA.cExpired]
     mov     eax, u32UpdateIntervalTSC
     jmp     .ContinueCalcs
+    int3
 
 
     ;;
@@ -352,6 +353,7 @@ BEGINPROC rtTimeNanoTSInternalAsm
     add     eax, 1
     adc     edx, 0
     jmp     .Update
+    int3
 
 .DeltaPrevNotInRecentPast:
     ; else if (!u64PrevNanoTS) /* We're resuming (see TMVirtualResume). */
@@ -361,6 +363,7 @@ BEGINPROC rtTimeNanoTSInternalAsm
     cmp     dword u64PrevNanoTS_Hi, 0
     jne     .DeltaPrevNotZero
     jmp     .Update
+    int3
 
 .DeltaPrevNotZero:
     ; else
@@ -389,6 +392,7 @@ BEGINPROC rtTimeNanoTSInternalAsm
     mov     eax, u64RetNanoTS
     mov     edx, u64RetNanoTS_Hi
     jmp     .Update
+    int3
 
 
     ;;
@@ -422,6 +426,7 @@ BEGINPROC rtTimeNanoTSInternalAsm
     dec     edi
     jnz     .UpdateLoop
     jmp     .Updated
+    int3
 
 
     ;;
@@ -433,6 +438,7 @@ BEGINPROC rtTimeNanoTSInternalAsm
     call    [eax + RTTIMENANOTSDATA.pfnRediscover]
     add     esp, 4h
     jmp     .Done
+    int3
 
 
 %ifdef WITH_TSC_DELTA
@@ -443,6 +449,7 @@ BEGINPROC rtTimeNanoTSInternalAsm
     cmp     dword [edi + SUPGIPCPU.i64TSCDelta + 4], 0x7fffffff
     jne     .TscDeltaValid
     jmp     .TscDeltaNotValid
+    int3
 %endif
 
     ;
@@ -758,7 +765,7 @@ ALIGNCODE(16)
     inc     dword [pData + RTTIMENANOTSDATA.cExpired]
     mov     eax, u32UpdateIntervalTSC
     jmp     .ContinueCalcs
-
+    int3
 
     ;;
     ;; u64DeltaPrev >= 24h
@@ -789,6 +796,7 @@ ALIGNCODE(16)
     inc     dword [pData + RTTIMENANOTSDATA.c1nsSteps]
     lea     rax, [u64PrevNanoTS + 1]
     jmp     .Update
+    int3
 
     ; else if (!u64PrevNanoTS) /* We're resuming (see TMVirtualResume) / first call. */
     ;     /* do nothing */;
@@ -822,7 +830,7 @@ ALIGNCODE(16)
     mov     rax, TmpVar
     mov     pData, TmpVar2
     jmp     .Update
-
+    int3
 
     ;;
     ;; Attempt updating the previous value, provided we're still ahead of it.
@@ -851,7 +859,7 @@ ALIGNCODE(16)
     dec     edx
     jnz     .UpdateLoop
     jmp     .Updated
-
+    int3
 
     ;;
     ;; The GIP is seemingly invalid, redo the discovery.
@@ -864,6 +872,7 @@ ALIGNCODE(16)
 %endif
     call    [pData + RTTIMENANOTSDATA.pfnRediscover]
     jmp     .Done
+    int3
 
 
     ;
