@@ -1,4 +1,4 @@
-/* $Id: Db.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: Db.cpp 115034 2026-08-13 11:21:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * DHCP server - address database
  */
@@ -362,7 +362,8 @@ Db::Db()
 
 Db::~Db()
 {
-    /** @todo free bindings */
+    for (bindings_t::iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+        delete *it;
 }
 
 
