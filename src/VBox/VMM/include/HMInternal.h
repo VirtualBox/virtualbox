@@ -1,4 +1,4 @@
-/* $Id: HMInternal.h 114490 2026-06-22 17:29:00Z knut.osmundsen@oracle.com $ */
+/* $Id: HMInternal.h 115026 2026-08-13 02:15:03Z knut.osmundsen@oracle.com $ */
 /** @file
  * HM - Internal header file.
  */
@@ -1182,15 +1182,17 @@ AssertCompileMemberAlignment(HMR0PERVCPU, vmx.RestoreHost,   8);
 #define HM_WSF_IBPB_EXIT            RT_BIT_32(0)
 /** Touch IA32_PRED_CMD.IBPB on VM entry. */
 #define HM_WSF_IBPB_ENTRY           RT_BIT_32(1)
+/** AMD: IA32_PRED_CMD.IBPB require manual return target prediction clearing. */
+#define HM_WSF_IBPB_MAN_RET         RT_BIT_32(2)
 /** Touch IA32_FLUSH_CMD.L1D on VM entry. */
-#define HM_WSF_L1D_ENTRY            RT_BIT_32(2)
+#define HM_WSF_L1D_ENTRY            RT_BIT_32(3)
 /** Flush MDS buffers on VM entry. */
-#define HM_WSF_MDS_ENTRY            RT_BIT_32(3)
+#define HM_WSF_MDS_ENTRY            RT_BIT_32(4)
 /** MSR_IA32_SPEC_CTRL needs to be replaced upon entry and exit.
  * Save host value on entry, load guest value, run guest, save guest value on
  * exit and restore the host value.
  * @todo may not reliable for VT-x/Intel.  */
-#define HM_WSF_SPEC_CTRL            RT_BIT_32(4)
+#define HM_WSF_SPEC_CTRL            RT_BIT_32(5)
 
 /** Touch IA32_FLUSH_CMD.L1D on VM scheduling. */
 #define HM_WSF_L1D_SCHED            RT_BIT_32(16)
@@ -1223,6 +1225,7 @@ VMMR0_INT_DECL(void)        hmR0DumpDescriptor(PCX86DESCHC pDesc, RTSEL Sel, con
 # endif
 
 DECLASM(void)               hmR0MdsClear(void);
+DECLASM(bool)               hmR0IsShadowStackEnabled(void);
 #endif /* IN_RING0 */
 
 
@@ -1246,22 +1249,39 @@ VMM_INT_DECL(int)           hmEmulateSvmMovTpr(PVMCC pVM, PVMCPUCC pVCpu);
  *
  * @{
  */
-DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_SansIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_SansIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_SansIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_SansIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_WithIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_WithIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_WithIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_WithIbpbExit_SansSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_SansIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_SansIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_SansIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_SansIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_WithIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_WithIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_WithIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
-DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_WithIbpbExit_WithSpecCtrl(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_SansIbpbExit_SansSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_SansIbpbExit_SansSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_SansIbpbExit_SansSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_SansIbpbExit_SansSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_WithIbpbExit_SansSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_WithIbpbExit_SansSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_WithIbpbExit_SansSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_WithIbpbExit_SansSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_SansIbpbExit_WithSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_SansIbpbExit_WithSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_SansIbpbExit_WithSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_SansIbpbExit_WithSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_WithIbpbExit_WithSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_WithIbpbExit_WithSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_WithIbpbExit_WithSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_WithIbpbExit_WithSpecCtrl_SansManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+
+DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_SansIbpbExit_SansSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_SansIbpbExit_SansSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_SansIbpbExit_SansSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_SansIbpbExit_SansSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_WithIbpbExit_SansSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_WithIbpbExit_SansSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_WithIbpbExit_SansSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_WithIbpbExit_SansSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_SansIbpbExit_WithSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_SansIbpbExit_WithSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_SansIbpbExit_WithSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_SansIbpbExit_WithSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_SansIbpbEntry_WithIbpbExit_WithSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_SansIbpbEntry_WithIbpbExit_WithSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_SansXcr0_WithIbpbEntry_WithIbpbExit_WithSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
+DECLASM(int) hmR0SvmVmRun_WithXcr0_WithIbpbEntry_WithIbpbExit_WithSpecCtrl_WithManRet(PVMCC pVM, PVMCPUCC pVCpu, RTHCPHYS HCPhyspVMCB);
 /** @} */
 
 /** @} */

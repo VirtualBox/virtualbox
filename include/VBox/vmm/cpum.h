@@ -486,6 +486,8 @@ typedef struct CPUMFEATURESX86
     uint32_t        fClFlushOpt : 1;
     /** Supports IA32_PRED_CMD.IBPB. */
     uint32_t        fIbpb : 1;
+    /** IA32_PRED_CMD.IBPB doest not clear return target predictions. */
+    uint32_t        fIbpbNoRet : 1;
     /** Supports the IA32_SPEC_CTRL MSR (summary of the next). */
     uint32_t        fSpecCtrlMsr : 1;
     /** Supports IA32_SPEC_CTRL.IBRS. */
@@ -662,7 +664,7 @@ typedef struct CPUMFEATURESX86
     /** @} */
 
     /** Alignment padding / reserved for future use. */
-    uint32_t        fPadding0 : 17;
+    uint32_t        fPadding0 : 16;
     uint32_t        auPadding[3];
 
     /** @name SVM
