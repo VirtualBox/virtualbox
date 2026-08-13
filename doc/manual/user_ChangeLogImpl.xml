@@ -73,7 +73,7 @@ Rules for adding a changelog entry to make them look more uniform:
                            So, we use chapter and xpointer="xpointer(/chapter/)" with xi:include. -->
   <sect1>
 
-    <title>Version X.Y.Z (date tbd)</title>
+    <title>Version 7.2.16 (2026-08-18)</title>
 
     <para>This is a maintenance release. The following items were fixed or
       added:</para>
@@ -81,8 +81,40 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
+        <para>GUI: Updated Catalan translations</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Fixed OVF import warning visibility</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Added graceful handling of inaccessible VMs</para>
+      </listitem>
+
+      <listitem>
+        <para>Graphics: VMSVGA 3D performance improvements</para>
+      </listitem>
+
+      <listitem>
         <para>Video Recording: Fixed a hang when stopping recording after a
           large number of display updates</para>
+      </listitem>
+
+      <listitem>
+        <para>Host: OpenSSL 4.0 build fixes (github:gh-794)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host: Support for FRED (github:gh-784)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host and Guest: Improvements in shared clipboard handling in Wayland</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Guest: Fixed support for RHEL 9.8 kernels ​(github:gh-732, ​github:gh-771)</para>
       </listitem>
 
     </itemizedlist>

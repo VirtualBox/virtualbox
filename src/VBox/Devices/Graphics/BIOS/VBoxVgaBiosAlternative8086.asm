@@ -1,4 +1,4 @@
-; $Id: VBoxVgaBiosAlternative8086.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+; $Id: VBoxVgaBiosAlternative8086.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;; @file
 ; Auto Generated source file. Do not edit.
 ;
@@ -8444,7 +8444,7 @@ vesa_pm_end:                                 ; 0xc4754 LB 0x1
 section _DATA progbits vstart=0x4780 align=1 ; size=0x3745 class=DATA group=DGROUP
   ; disGetNextSymbol 0xc4780 LB 0x3745 -> off=0x0 cb=000000000000002c uValue=00000000000c0000 '_msg_vga_init'
 _msg_vga_init:                               ; 0xc4780 LB 0x2c
-    db  'Oracle VirtualBox Version 7.2.14 VGA BIOS', 00dh, 00ah, 000h
+    db  'Oracle VirtualBox Version 7.2.16 VGA BIOS', 00dh, 00ah, 000h
   ; disGetNextSymbol 0xc47ac LB 0x3719 -> off=0x0 cb=0000000000000080 uValue=00000000000c002c 'vga_modes'
 vga_modes:                                   ; 0xc47ac LB 0x80
     db  000h, 000h, 000h, 004h, 000h, 0b8h, 0ffh, 002h, 001h, 000h, 000h, 004h, 000h, 0b8h, 0ffh, 002h
@@ -9375,7 +9375,7 @@ _vbebios_product_name:                       ; 0xc7e32 LB 0x1e
     db  'Oracle VirtualBox VBE Adapter', 000h
   ; disGetNextSymbol 0xc7e50 LB 0x75 -> off=0x0 cb=0000000000000021 uValue=00000000000c36d0 '_vbebios_product_revision'
 _vbebios_product_revision:                   ; 0xc7e50 LB 0x21
-    db  'Oracle VirtualBox Version 7.2.14', 000h
+    db  'Oracle VirtualBox Version 7.2.16', 000h
   ; disGetNextSymbol 0xc7e71 LB 0x54 -> off=0x0 cb=000000000000002b uValue=00000000000c36f1 '_vbebios_info_string'
 _vbebios_info_string:                        ; 0xc7e71 LB 0x2b
     db  'VirtualBox VBE Display Adapter enabled', 00dh, 00ah, 00dh, 00ah, 000h
@@ -9410,4 +9410,4 @@ section CONST2 progbits vstart=0x7ec6 align=1 ; size=0x0 class=DATA group=DGROUP
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
     db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
-    db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 0cah
+    db  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h, 0c6h

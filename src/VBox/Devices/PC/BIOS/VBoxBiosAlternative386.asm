@@ -1,4 +1,4 @@
-; $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+; $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;; @file
 ; Auto Generated source file. Do not edit.
 ;
@@ -6,7 +6,7 @@
 ;
 ; Source file: post.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  BIOS POST routines. Used only during initialization.
 ;
 ;
@@ -34,7 +34,7 @@
 ;
 ; Source file: bios.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  PC BIOS - ???
 ;
 ;
@@ -90,7 +90,7 @@
 ;
 ; Source file: print.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  PC BIOS - ???
 ;
 ;
@@ -146,7 +146,7 @@
 ;
 ; Source file: ata.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  PC BIOS - ATA disk support.
 ;
 ;
@@ -202,7 +202,7 @@
 ;
 ; Source file: floppy.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  PC BIOS - ???
 ;
 ;
@@ -258,7 +258,7 @@
 ;
 ; Source file: floppyt.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  Floppy drive tables.
 ;
 ;
@@ -286,7 +286,7 @@
 ;
 ; Source file: eltorito.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  PC BIOS - ???
 ;
 ;
@@ -342,7 +342,7 @@
 ;
 ; Source file: boot.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  PC BIOS - ???
 ;
 ;
@@ -398,7 +398,7 @@
 ;
 ; Source file: keyboard.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  PC BIOS - ???
 ;
 ;
@@ -454,7 +454,7 @@
 ;
 ; Source file: disk.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  PC BIOS - ???
 ;
 ;
@@ -510,7 +510,7 @@
 ;
 ; Source file: serial.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  PC BIOS - ???
 ;
 ;
@@ -566,7 +566,7 @@
 ;
 ; Source file: system.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  PC BIOS - ???
 ;
 ;
@@ -622,7 +622,7 @@
 ;
 ; Source file: invop.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  Real mode invalid opcode handler.
 ;
 ;
@@ -702,7 +702,7 @@
 ;
 ; Source file: ps2mouse.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  PC BIOS - ???
 ;
 ;
@@ -758,7 +758,7 @@
 ;
 ; Source file: parallel.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  PC BIOS - ???
 ;
 ;
@@ -814,7 +814,7 @@
 ;
 ; Source file: logo.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  Stuff for drawing the BIOS logo.
 ;
 ;
@@ -842,7 +842,7 @@
 ;
 ; Source file: apm.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  APM BIOS support. Implements APM version 1.2.
 ;
 ;
@@ -870,7 +870,7 @@
 ;
 ; Source file: __U4M.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  Compiler support routines.
 ;
 ;
@@ -899,7 +899,7 @@
 ;
 ; Source file: __U4D.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  Compiler support routines.
 ;
 ;
@@ -928,7 +928,7 @@
 ;
 ; Source file: __U8RS.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  Compiler support routines.
 ;
 ;
@@ -957,7 +957,7 @@
 ;
 ; Source file: __U8LS.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  Compiler support routines.
 ;
 ;
@@ -986,7 +986,7 @@
 ;
 ; Source file: fmemset.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  Compiler support routines.
 ;
 ;
@@ -1015,7 +1015,7 @@
 ;
 ; Source file: fmemcpy.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  Compiler support routines.
 ;
 ;
@@ -1044,7 +1044,7 @@
 ;
 ; Source file: orgs.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  ???
 ;
 ;
@@ -1100,7 +1100,7 @@
 ;
 ; Source file: pcibios.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  PCI BIOS support.
 ;
 ;
@@ -1128,7 +1128,7 @@
 ;
 ; Source file: pciutil.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  Utility routines for calling the PCI BIOS.
 ;
 ;
@@ -1156,7 +1156,7 @@
 ;
 ; Source file: ahci.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  AHCI host adapter driver to boot from SATA disks.
 ;
 ;
@@ -1184,7 +1184,7 @@
 ;
 ; Source file: scsi.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  SCSI host adapter driver to boot from SCSI disks
 ;
 ;
@@ -1212,7 +1212,7 @@
 ;
 ; Source file: buslogic.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  BusLogic SCSI host adapter driver to boot from disks.
 ;
 ;
@@ -1240,7 +1240,7 @@
 ;
 ; Source file: lsilogic.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  LsiLogic SCSI host adapter driver to boot from disks.
 ;
 ;
@@ -1268,7 +1268,7 @@
 ;
 ; Source file: virtio.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  VirtIO-SCSI host adapter driver to boot from disks.
 ;
 ;
@@ -1296,7 +1296,7 @@
 ;
 ; Source file: vds.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  Utility routines for calling the Virtual DMA Services.
 ;
 ;
@@ -1353,7 +1353,7 @@
 ;
 ; Source file: pcibio32.asm
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  BIOS32 service directory and 32-bit PCI BIOS entry point
 ;
 ;
@@ -1382,7 +1382,7 @@
 ;
 ; Source file: pci32.c
 ;
-;  $Id: VBoxBiosAlternative386.asm 114720 2026-07-16 19:01:07Z aleksey.ilyushin@oracle.com $
+;  $Id: VBoxBiosAlternative386.asm 115036 2026-08-13 17:41:02Z aleksey.ilyushin@oracle.com $
 ;  32-bit PCI BIOS wrapper.
 ;
 ;
@@ -1565,7 +1565,7 @@ section CONST progbits vstart=0xf0 align=1 ; size=0xcdc class=DATA group=DGROUP
 section CONST2 progbits vstart=0xdcc align=1 ; size=0x40e class=DATA group=DGROUP
   ; disGetNextSymbol 0xf0dcc LB 0x40e -> off=0x0 cb=0000000000000012 uValue=00000000000f0dcc 'bios_cvs_version_string'
 bios_cvs_version_string:                     ; 0xf0dcc LB 0x12
-    db  'VirtualBox 7.2.14', 000h
+    db  'VirtualBox 7.2.16', 000h
   ; disGetNextSymbol 0xf0dde LB 0x3fc -> off=0x0 cb=0000000000000008 uValue=00000000000f0dde '_bios_prefix_string'
 _bios_prefix_string:                         ; 0xf0dde LB 0x8
     db  'BIOS: ', 000h, 000h
@@ -19519,4 +19519,4 @@ biosorg_check_before_or_at_0FFEEh:           ; 0xfff80 LB 0x70
 cpu_reset:                                   ; 0xffff0 LB 0x10
     jmp 0f000h:0e05bh                         ; ea 5b e0 00 f0              ; 0xffff0 orgs.asm:2117
   ; disGetNextSymbol 0xffff5 LB 0xb -> off=0xb cb=0000000000000000 uValue=0000000000100000 '_dummy_addr_0x100000'
-    db  030h, 036h, 02fh, 032h, 033h, 02fh, 039h, 039h, 000h, 0fch, 0b3h
+    db  030h, 036h, 02fh, 032h, 033h, 02fh, 039h, 039h, 000h, 0fch, 0b1h
