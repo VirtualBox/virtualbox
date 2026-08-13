@@ -1,4 +1,4 @@
-/* $Id: CPUMAllCpuId.cpp 112779 2026-02-01 19:19:54Z knut.osmundsen@oracle.com $ */
+/* $Id: CPUMAllCpuId.cpp 115026 2026-08-13 02:15:03Z knut.osmundsen@oracle.com $ */
 /** @file
  * CPUM - CPU ID part, common bits.
  */
@@ -1796,6 +1796,10 @@ VMMDECL(int) CPUMCpuIdExplodeFeaturesX86(PCCPUMCPUIDLEAF paLeaves, uint32_t cLea
             pFeatures->fArchCap             = RT_BOOL(pSxfLeaf0->uEdx & X86_CPUID_STEXT_FEATURE_EDX_ARCHCAP);
             pFeatures->fCoreCap             = RT_BOOL(pSxfLeaf0->uEdx & X86_CPUID_STEXT_FEATURE_EDX_CORECAP);
             pFeatures->fMdsClear            = RT_BOOL(pSxfLeaf0->uEdx & X86_CPUID_STEXT_FEATURE_EDX_MD_CLEAR);
+
+            pFeatures->fIbpbNoRet           = pFeatures->fIbpb
+                                           && (   pFeatures->enmCpuVendor == CPUMCPUVENDOR_AMD
+                                               || pFeatures->enmCpuVendor == CPUMCPUVENDOR_HYGON);
         }
         PCCPUMCPUIDLEAF const pSxfLeaf2 = cpumCpuIdFindLeafEx(paLeaves, cLeaves, 7, 2);
         if (pSxfLeaf2)
@@ -1863,6 +1867,7 @@ VMMDECL(int) CPUMCpuIdExplodeFeaturesX86(PCCPUMCPUIDLEAF paLeaves, uint32_t cLea
                 pFeatures->fStibp     |= RT_BOOL(pExtLeaf8->uEbx & X86_CPUID_AMD_EFEID_EBX_STIBP);
                 pFeatures->fSsbd      |= RT_BOOL(pExtLeaf8->uEbx & X86_CPUID_AMD_EFEID_EBX_SPEC_CTRL_SSBD);
                 pFeatures->fPsfd      |= RT_BOOL(pExtLeaf8->uEbx & X86_CPUID_AMD_EFEID_EBX_PSFD);
+                pFeatures->fIbpbNoRet  = pFeatures->fIbpb && !RT_BOOL(pExtLeaf8->uEbx & X86_CPUID_AMD_EFEID_EBX_IBPB_RET);
             }
 
             PCCPUMCPUIDLEAF pExtLeaf21 = cpumCpuIdFindLeaf(paLeaves, cLeaves, 0x80000021);
