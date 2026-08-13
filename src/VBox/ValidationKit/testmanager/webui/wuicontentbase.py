@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# $Id: wuicontentbase.py 113947 2026-04-17 23:13:52Z knut.osmundsen@oracle.com $
+# $Id: wuicontentbase.py 115032 2026-08-13 07:41:47Z knut.osmundsen@oracle.com $
 
 """
 Test Manager Web-UI - Content Base Classes.
@@ -36,7 +36,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 113947 $"
+__version__ = "$Revision: 115032 $"
 
 
 # Standard python imports.
@@ -85,7 +85,7 @@ class WuiLinkBase(WuiHtmlBase): # pylint: disable=too-few-public-methods
     For passing links from WuiListContentBase._formatListEntry.
     """
 
-    def __init__(self, sName, sUrlBase, dParams = None, # pylint: disable=too-many-arguments
+    def __init__(self, sName, sUrlBase, dParams = None, # pylint: disable=too-many-arguments,too-many-positional-arguments
                  sConfirm = None, sTitle = None, sFragmentId = None, fBracketed = True,
                  sExtraAttrs = '', sImgFile = None, sImgClass = 'icon'):
         WuiHtmlBase.__init__(self);
@@ -211,7 +211,7 @@ class WuiTmInfoLink(WuiTmLink): # pylint: disable=too-few-public-methods
 class WuiAdminLink(WuiTmLink): # pylint: disable=too-few-public-methods
     """ Local link to the test manager's admin portion. """
 
-    def __init__(self, sName, sAction, tsEffectiveDate = None, # pylint: disable=too-many-arguments
+    def __init__(self, sName, sAction, tsEffectiveDate = None, # pylint: disable=too-many-arguments,too-many-positional-arguments
                  dParams = None, sConfirm = None, sTitle = None, sFragmentId = None, fBracketed = True, sImgFile = None):
         from testmanager.webui.wuiadmin import WuiAdmin;
         if not dParams:
