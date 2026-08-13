@@ -1,4 +1,4 @@
-/* $Id: tstVBoxNetDhcpd.cpp 115033 2026-08-13 09:00:46Z andreas.loeffler@oracle.com $ */
+/* $Id: tstVBoxNetDhcpd.cpp 115037 2026-08-13 20:27:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxNetDHCP in-process testcase.
  */
@@ -936,7 +936,8 @@ static bool tstDhcp4Request(PTSTCLIENT pClient,
                             const TSTDHCP4REPLY *pOffer,
                             PTSTDHCP4REPLY pAck)
 {
-    uint32_t uXid = RTRandU32();
+    /* A DHCPREQUEST selecting an offer continues the DISCOVER transaction. */
+    uint32_t const uXid = pOffer->uXid;
     TSTPKT Dhcp;
     TSTPKT Frame;
 
