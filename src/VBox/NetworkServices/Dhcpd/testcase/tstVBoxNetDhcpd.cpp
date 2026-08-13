@@ -1,4 +1,4 @@
-/* $Id: tstVBoxNetDhcpd.cpp 114995 2026-08-12 09:59:45Z andreas.loeffler@oracle.com $ */
+/* $Id: tstVBoxNetDhcpd.cpp 115033 2026-08-13 09:00:46Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxNetDHCP in-process testcase.
  */
@@ -400,7 +400,7 @@ static int tstDhcp4AppendOptU32(PTSTPKT pPkt, uint8_t uOpt, uint32_t uValueBe)
 static int tstBuildDhcp4(PTSTPKT pDhcp,
                          uint8_t uMsgType,
                          uint32_t uXid,
-                         const uint8_t abMac[6],
+                         PCRTMAC pMac,
                          uint32_t uRequestedIpBe,
                          uint32_t uServerIdBe,
                          bool fBadCookie)
@@ -416,7 +416,7 @@ static int tstBuildDhcp4(PTSTPKT pDhcp,
     pHdr->uXid    = tstH2N32(uXid);
     pHdr->uFlags  = tstH2N16(0x8000);
     pHdr->uCookie = fBadCookie ? tstH2N32(0xdeadbeef) : tstH2N32(0x63825363);
-    memcpy(pHdr->abChAddr, abMac, 6);
+    memcpy(pHdr->abChAddr, pMac, sizeof(*pMac));
 
     uint8_t b = uMsgType;
     int rc = tstDhcp4AppendOpt(pDhcp, 53, &b, sizeof(b));
@@ -425,7 +425,7 @@ static int tstBuildDhcp4(PTSTPKT pDhcp,
 
     uint8_t abClientId[7];
     abClientId[0] = 1;
-    memcpy(&abClientId[1], abMac, 6);
+    memcpy(&abClientId[1], pMac, sizeof(*pMac));
     rc = tstDhcp4AppendOpt(pDhcp, 61, abClientId, sizeof(abClientId));
     if (RT_FAILURE(rc))
         return rc;
@@ -468,7 +468,7 @@ static int tstBuildDhcp4(PTSTPKT pDhcp,
 }
 
 static int tstBuildUdp4Frame(PTSTPKT pFrame,
-                             const uint8_t abSrcMac[6],
+                             PCRTMAC pSrcMac,
                              uint32_t uSrcIpBe,
                              uint32_t uDstIpBe,
                              uint16_t uSrcPort,
@@ -481,7 +481,7 @@ static int tstBuildUdp4Frame(PTSTPKT pFrame,
 
     TSTETHHDR Eth;
     memcpy(Eth.abDst, s_abBcast, sizeof(Eth.abDst));
-    memcpy(Eth.abSrc, abSrcMac, sizeof(Eth.abSrc));
+    memcpy(Eth.abSrc, pSrcMac, sizeof(Eth.abSrc));
     Eth.uType = tstH2N16(0x0800);
 
     int rc = tstPktAppend(pFrame, &Eth, sizeof(Eth));
@@ -517,7 +517,7 @@ static int tstBuildUdp4Frame(PTSTPKT pFrame,
     return tstPktAppend(pFrame, pPayload->ab, pPayload->cb);
 }
 
-static int tstBuildDhcp6SolicitFrame(PTSTPKT pFrame, const uint8_t abSrcMac[6])
+static int tstBuildDhcp6SolicitFrame(PTSTPKT pFrame, PCRTMAC pSrcMac)
 {
     static const uint8_t s_abDstMac[6] = { 0x33, 0x33, 0x00, 0x01, 0x00, 0x02 };
     static const uint8_t s_abSrcIp[16] = { 0xfe, 0x80, 0, 0, 0, 0, 0, 0,
@@ -529,7 +529,7 @@ static int tstBuildDhcp6SolicitFrame(PTSTPKT pFrame, const uint8_t abSrcMac[6])
 
     TSTETHHDR Eth;
     memcpy(Eth.abDst, s_abDstMac, sizeof(Eth.abDst));
-    memcpy(Eth.abSrc, abSrcMac, sizeof(Eth.abSrc));
+    memcpy(Eth.abSrc, pSrcMac, sizeof(Eth.abSrc));
     Eth.uType = tstH2N16(0x86dd);
 
     int rc = tstPktAppend(pFrame, &Eth, sizeof(Eth));
@@ -885,7 +885,7 @@ static bool tstClientWaitForDhcp6Reply(PTSTCLIENT pClient, uint32_t cMs)
 }
 
 static int tstDhcp4DiscoverOnce(PTSTCLIENT pClient,
-                                const uint8_t abMac[6],
+                                PCRTMAC pMac,
                                 uint32_t uXid,
                                 PTSTDHCP4REPLY pOffer,
                                 uint32_t cMs)
@@ -893,11 +893,11 @@ static int tstDhcp4DiscoverOnce(PTSTCLIENT pClient,
     TSTPKT Dhcp;
     TSTPKT Frame;
 
-    int rc = tstBuildDhcp4(&Dhcp, DHCP4_DISCOVER, uXid, abMac, 0, 0, false);
+    int rc = tstBuildDhcp4(&Dhcp, DHCP4_DISCOVER, uXid, pMac, 0, 0, false);
     if (RT_FAILURE(rc))
         return rc;
 
-    rc = tstBuildUdp4Frame(&Frame, abMac, tstIPv4(0,0,0,0), tstIPv4(255,255,255,255), 68, 67, &Dhcp);
+    rc = tstBuildUdp4Frame(&Frame, pMac, tstIPv4(0,0,0,0), tstIPv4(255,255,255,255), 68, 67, &Dhcp);
     if (RT_FAILURE(rc))
         return rc;
 
@@ -908,33 +908,31 @@ static int tstDhcp4DiscoverOnce(PTSTCLIENT pClient,
     return tstClientWaitForDhcp4(pClient, uXid, DHCP4_OFFER, pOffer, cMs) ? VINF_SUCCESS : VERR_TIMEOUT;
 }
 
-static bool tstDhcp4Discover(PTSTCLIENT pClient, const uint8_t abMac[6], PTSTDHCP4REPLY pOffer)
+static bool tstDhcp4Discover(PTSTCLIENT pClient, PCRTMAC pMac, PTSTDHCP4REPLY pOffer)
 {
     /* Retransmissions belong to one DHCP transaction, so delayed replies from
        an earlier attempt must remain acceptable on a loaded testbox. */
     uint32_t const uXid = RTRandU32();
     for (unsigned i = 0; i < 8; i++)
     {
-        int const rc = tstDhcp4DiscoverOnce(pClient, abMac, uXid, pOffer, 600);
+        int const rc = tstDhcp4DiscoverOnce(pClient, pMac, uXid, pOffer, 600);
         if (RT_SUCCESS(rc))
             return true;
         if (rc != VERR_TIMEOUT)
         {
-            RTTestFailed(g_hTest, "Sending DHCPDISCOVER for %02x:%02x:%02x:%02x:%02x:%02x (xid %#RX32) failed: %Rrc",
-                         abMac[0], abMac[1], abMac[2], abMac[3], abMac[4], abMac[5], uXid, rc);
+            RTTestFailed(g_hTest, "Sending DHCPDISCOVER for %RTmac (xid %#RX32) failed: %Rrc", pMac, uXid, rc);
             return false;
         }
         RTThreadSleep(100);
     }
-    RTTestFailed(g_hTest, "No DHCPOFFER for %02x:%02x:%02x:%02x:%02x:%02x (xid %#RX32) after 8 attempts",
-                 abMac[0], abMac[1], abMac[2], abMac[3], abMac[4], abMac[5], uXid);
+    RTTestFailed(g_hTest, "No DHCPOFFER for %RTmac (xid %#RX32) after 8 attempts", pMac, uXid);
     RTTestFailureDetails(g_hTest, "client receive status: %Rrc; queued frames: %RU32\n",
                          ASMAtomicReadS32(&pClient->rcThread), tstClientQueuedFrameCount(pClient));
     return false;
 }
 
 static bool tstDhcp4Request(PTSTCLIENT pClient,
-                            const uint8_t abMac[6],
+                            PCRTMAC pMac,
                             const TSTDHCP4REPLY *pOffer,
                             PTSTDHCP4REPLY pAck)
 {
@@ -945,38 +943,35 @@ static bool tstDhcp4Request(PTSTCLIENT pClient,
     int rc = tstBuildDhcp4(&Dhcp,
                            DHCP4_REQUEST,
                            uXid,
-                           abMac,
+                           pMac,
                            pOffer->uYiAddrBe,
                            pOffer->uServerIdBe,
                            false);
     if (RT_FAILURE(rc))
     {
-        RTTestFailed(g_hTest, "Building DHCPREQUEST for %02x:%02x:%02x:%02x:%02x:%02x failed: %Rrc",
-                     abMac[0], abMac[1], abMac[2], abMac[3], abMac[4], abMac[5], rc);
+        RTTestFailed(g_hTest, "Building DHCPREQUEST for %RTmac failed: %Rrc", pMac, rc);
         return false;
     }
 
-    rc = tstBuildUdp4Frame(&Frame, abMac, tstIPv4(0,0,0,0), tstIPv4(255,255,255,255), 68, 67, &Dhcp);
+    rc = tstBuildUdp4Frame(&Frame, pMac, tstIPv4(0,0,0,0), tstIPv4(255,255,255,255), 68, 67, &Dhcp);
     if (RT_FAILURE(rc))
     {
-        RTTestFailed(g_hTest, "Building DHCPREQUEST frame for %02x:%02x:%02x:%02x:%02x:%02x failed: %Rrc",
-                     abMac[0], abMac[1], abMac[2], abMac[3], abMac[4], abMac[5], rc);
+        RTTestFailed(g_hTest, "Building DHCPREQUEST frame for %RTmac failed: %Rrc", pMac, rc);
         return false;
     }
 
     rc = tstClientSendFrame(pClient, &Frame);
     if (RT_FAILURE(rc))
     {
-        RTTestFailed(g_hTest, "Sending DHCPREQUEST for %02x:%02x:%02x:%02x:%02x:%02x (xid %#RX32) failed: %Rrc",
-                     abMac[0], abMac[1], abMac[2], abMac[3], abMac[4], abMac[5], uXid, rc);
+        RTTestFailed(g_hTest, "Sending DHCPREQUEST for %RTmac (xid %#RX32) failed: %Rrc", pMac, uXid, rc);
         return false;
     }
 
     if (tstClientWaitForDhcp4(pClient, uXid, DHCP4_ACK, pAck, TST_DHCP_TIMEOUT_MS))
         return true;
 
-    RTTestFailed(g_hTest, "No DHCPACK for %02x:%02x:%02x:%02x:%02x:%02x (xid %#RX32, requested %RTnaipv4)",
-                 abMac[0], abMac[1], abMac[2], abMac[3], abMac[4], abMac[5], uXid, pOffer->uYiAddrBe);
+    RTTestFailed(g_hTest, "No DHCPACK for %RTmac (xid %#RX32, requested %RTnaipv4)",
+                 pMac, uXid, pOffer->uYiAddrBe);
     RTTestFailureDetails(g_hTest, "client receive status: %Rrc; queued frames: %RU32\n",
                          ASMAtomicReadS32(&pClient->rcThread), tstClientQueuedFrameCount(pClient));
     return false;
@@ -993,20 +988,20 @@ static bool tstIPv4InPool(uint32_t uIpBe, uint8_t uFirst, uint8_t uLast)
 
 static bool tstSendBadCookieNoReply(PTSTCLIENT pClient)
 {
-    static const uint8_t s_abMac[6] = { 0x08, 0x00, 0x27, 0xde, 0xad, 0x01 };
+    static const RTMAC s_Mac = { { 0x08, 0x00, 0x27, 0xde, 0xad, 0x01 } };
 
     uint32_t uXid = RTRandU32();
     TSTPKT Dhcp;
     TSTPKT Frame;
 
-    int rc = tstBuildDhcp4(&Dhcp, DHCP4_DISCOVER, uXid, s_abMac, 0, 0, true);
+    int rc = tstBuildDhcp4(&Dhcp, DHCP4_DISCOVER, uXid, &s_Mac, 0, 0, true);
     if (RT_FAILURE(rc))
     {
         RTTestFailed(g_hTest, "Building bad-cookie DHCPDISCOVER failed: %Rrc", rc);
         return false;
     }
 
-    rc = tstBuildUdp4Frame(&Frame, s_abMac, tstIPv4(0,0,0,0), tstIPv4(255,255,255,255), 68, 67, &Dhcp);
+    rc = tstBuildUdp4Frame(&Frame, &s_Mac, tstIPv4(0,0,0,0), tstIPv4(255,255,255,255), 68, 67, &Dhcp);
     if (RT_FAILURE(rc))
     {
         RTTestFailed(g_hTest, "Building bad-cookie DHCPDISCOVER frame failed: %Rrc", rc);
@@ -1037,10 +1032,10 @@ static bool tstSendBadCookieNoReply(PTSTCLIENT pClient)
 
 static bool tstSendDhcp6SolicitNoReply(PTSTCLIENT pClient)
 {
-    static const uint8_t s_abMac[6] = { 0x08, 0x00, 0x27, 0x66, 0x66, 0x66 };
+    static const RTMAC s_Mac = { { 0x08, 0x00, 0x27, 0x66, 0x66, 0x66 } };
 
     TSTPKT Frame;
-    int rc = tstBuildDhcp6SolicitFrame(&Frame, s_abMac);
+    int rc = tstBuildDhcp6SolicitFrame(&Frame, &s_Mac);
     if (RT_FAILURE(rc))
     {
         RTTestFailed(g_hTest, "Building DHCPv6 SOLICIT frame failed: %Rrc", rc);
@@ -1070,31 +1065,28 @@ static bool tstSendDhcp6SolicitNoReply(PTSTCLIENT pClient)
 }
 
 static bool tstLeaseClient(PTSTCLIENT pClient,
-                           const uint8_t abMac[6],
+                           PCRTMAC pMac,
                            PTSTDHCP4REPLY pAck)
 {
     TSTDHCP4REPLY Offer;
-    if (!tstDhcp4Discover(pClient, abMac, &Offer))
+    if (!tstDhcp4Discover(pClient, pMac, &Offer))
         return false;
     if (!tstIPv4InPool(Offer.uYiAddrBe, 10, 12))
     {
-        RTTestFailed(g_hTest, "DHCPOFFER for %02x:%02x:%02x:%02x:%02x:%02x contains out-of-pool address %RTnaipv4",
-                     abMac[0], abMac[1], abMac[2], abMac[3], abMac[4], abMac[5], Offer.uYiAddrBe);
+        RTTestFailed(g_hTest, "DHCPOFFER for %RTmac contains out-of-pool address %RTnaipv4", pMac, Offer.uYiAddrBe);
         return false;
     }
     if (Offer.uServerIdBe != tstIPv4(10,37,0,1))
     {
-        RTTestFailed(g_hTest, "DHCPOFFER for %02x:%02x:%02x:%02x:%02x:%02x has server ID %RTnaipv4, expected 10.37.0.1",
-                     abMac[0], abMac[1], abMac[2], abMac[3], abMac[4], abMac[5], Offer.uServerIdBe);
+        RTTestFailed(g_hTest, "DHCPOFFER for %RTmac has server ID %RTnaipv4, expected 10.37.0.1", pMac, Offer.uServerIdBe);
         return false;
     }
-    if (!tstDhcp4Request(pClient, abMac, &Offer, pAck))
+    if (!tstDhcp4Request(pClient, pMac, &Offer, pAck))
         return false;
     if (pAck->uYiAddrBe != Offer.uYiAddrBe)
     {
-        RTTestFailed(g_hTest, "DHCPACK for %02x:%02x:%02x:%02x:%02x:%02x assigns %RTnaipv4, offered %RTnaipv4",
-                     abMac[0], abMac[1], abMac[2], abMac[3], abMac[4], abMac[5],
-                     pAck->uYiAddrBe, Offer.uYiAddrBe);
+        RTTestFailed(g_hTest, "DHCPACK for %RTmac assigns %RTnaipv4, offered %RTnaipv4",
+                     pMac, pAck->uYiAddrBe, Offer.uYiAddrBe);
         return false;
     }
     return true;
@@ -1163,10 +1155,10 @@ static void tstWireDhcp(void)
     if (!VBoxNetDhcpdTestIsRunning(pvDhcpd))
         RTTestFailed(g_hTest, "VBoxNetDHCP stopped after reporting successful startup");
 
-    static const uint8_t s_abMac1[6] = { 0x08, 0x00, 0x27, 0x12, 0x34, 0x56 };
-    static const uint8_t s_abMac2[6] = { 0x08, 0x00, 0x27, 0x00, 0x00, 0x02 };
-    static const uint8_t s_abMac3[6] = { 0x08, 0x00, 0x27, 0x00, 0x00, 0x03 };
-    static const uint8_t s_abMac4[6] = { 0x08, 0x00, 0x27, 0x00, 0x00, 0x04 };
+    static const RTMAC s_Mac1 = { { 0x08, 0x00, 0x27, 0x12, 0x34, 0x56 } };
+    static const RTMAC s_Mac2 = { { 0x08, 0x00, 0x27, 0x00, 0x00, 0x02 } };
+    static const RTMAC s_Mac3 = { { 0x08, 0x00, 0x27, 0x00, 0x00, 0x03 } };
+    static const RTMAC s_Mac4 = { { 0x08, 0x00, 0x27, 0x00, 0x00, 0x04 } };
 
     TSTDHCP4REPLY Ack1;
     TSTDHCP4REPLY Ack1Again;
@@ -1181,13 +1173,13 @@ static void tstWireDhcp(void)
     RT_ZERO(Offer4);
 
     RTTestSub(g_hTest, "first client lease");
-    bool const fAck1 = tstLeaseClient(&Client, s_abMac1, &Ack1);
+    bool const fAck1 = tstLeaseClient(&Client, &s_Mac1, &Ack1);
 
     RTTestSub(g_hTest, "first client lease reuse");
     bool fAck1Again = false;
     if (fAck1)
     {
-        fAck1Again = tstLeaseClient(&Client, s_abMac1, &Ack1Again);
+        fAck1Again = tstLeaseClient(&Client, &s_Mac1, &Ack1Again);
         if (fAck1Again && Ack1Again.uYiAddrBe != Ack1.uYiAddrBe)
             RTTestFailed(g_hTest, "Repeated lease changed from %RTnaipv4 to %RTnaipv4",
                          Ack1.uYiAddrBe, Ack1Again.uYiAddrBe);
@@ -1202,10 +1194,10 @@ static void tstWireDhcp(void)
     tstSendDhcp6SolicitNoReply(&Client);
 
     RTTestSub(g_hTest, "second client lease");
-    bool const fAck2 = tstLeaseClient(&Client, s_abMac2, &Ack2);
+    bool const fAck2 = tstLeaseClient(&Client, &s_Mac2, &Ack2);
 
     RTTestSub(g_hTest, "third client lease");
-    bool const fAck3 = tstLeaseClient(&Client, s_abMac3, &Ack3);
+    bool const fAck3 = tstLeaseClient(&Client, &s_Mac3, &Ack3);
 
     RTTestSub(g_hTest, "unique client leases");
     if (fAck1 && fAck2 && fAck3)
@@ -1224,7 +1216,7 @@ static void tstWireDhcp(void)
     if (fAck1 && fAck2 && fAck3)
     {
         uint32_t const uXid = RTRandU32();
-        int const rc = tstDhcp4DiscoverOnce(&Client, s_abMac4, uXid, &Offer4, 1000);
+        int const rc = tstDhcp4DiscoverOnce(&Client, &s_Mac4, uXid, &Offer4, 1000);
         if (RT_SUCCESS(rc))
             RTTestFailed(g_hTest, "Exhausted pool offered %RTnaipv4 to fourth client (xid %#RX32)",
                          Offer4.uYiAddrBe, uXid);
