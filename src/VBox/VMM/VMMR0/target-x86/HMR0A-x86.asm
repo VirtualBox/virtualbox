@@ -1,4 +1,4 @@
-; $Id: HMR0A-x86.asm 115026 2026-08-13 02:15:03Z knut.osmundsen@oracle.com $
+; $Id: HMR0A-x86.asm 115028 2026-08-13 02:23:03Z knut.osmundsen@oracle.com $
 ;; @file
 ; HM - Ring-0 VMX, SVM world-switch and helper routines.
 ;
@@ -1397,7 +1397,7 @@ BEGINPROC RT_CONCAT(hmR0SvmVmRun,%1)
 
  %if (%3) & HM_WSF_IBPB_ENTRY
         ; Fight spectre (trashes rax, rdx and rcx).
-  %if (%3) & HM_WSF_IBPB_ENTRY
+  %if (%3) & HM_WSF_IBPB_MAN_RET
         call    NAME(hmR0StuffReturnTargetPredictionBuffers)
   %endif
         mov     ecx, MSR_IA32_PRED_CMD
@@ -1500,7 +1500,7 @@ BEGINPROC RT_CONCAT(hmR0SvmVmRun,%1)
         mov     eax, MSR_IA32_PRED_CMD_F_IBPB
         xor     edx, edx
         wrmsr
-  %if (%3) & HM_WSF_IBPB_ENTRY
+  %if (%3) & HM_WSF_IBPB_MAN_RET
    %if 0
         call    NAME(hmR0StuffReturnTargetPredictionBuffers)
    %else
