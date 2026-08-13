@@ -638,7 +638,8 @@ SAFE_LABEL NAME(%1)
 ; Global exported marker which is DECLASM() compatible.
 %macro EXPORTEDNAME 1
  %ifdef ASM_FORMAT_PE
-  export %1=NAME(%1)
+  ; HACK ALERT! export difference: nasm: passthru;  yasm: word after '=', ignore the rest. (was: export %1=NAME(%1))
+  export NAME(%1)
  %endif
  %ifdef __NASM__
   %ifdef ASM_FORMAT_OMF
@@ -739,7 +740,8 @@ GLOBALNAME_RAW NAME(%1), %2, %3, %4
 ;
 %macro EXPORTEDNAME_RAW 3-4
  %ifdef ASM_FORMAT_PE
-  export %2=%1
+  ; HACK ALERT! export difference: nasm: passthru;  yasm: word after '=', ignore the rest. (was: export %2=%1)
+  export %1
  %endif
  %ifdef __NASM__
   %ifdef ASM_FORMAT_OMF
@@ -812,7 +814,8 @@ BEGINPROC_RAW NAME(%1), %2, CALC_PROC_SIZE(%1)
  %endif
  %ifdef RT_ASM_WITH_SEH64
   %ifdef ASM_FORMAT_PE
-export  %2=%1
+   ; HACK ALERT! export difference: nasm: passthru;  yasm: word after '=', ignore the rest. (was: export %2=%1)
+export  %1
   %endif
 global     %1:function
 proc_frame %1
