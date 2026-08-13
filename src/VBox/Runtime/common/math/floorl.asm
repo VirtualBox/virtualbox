@@ -1,4 +1,4 @@
-; $Id: floorl.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: floorl.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT floorl - AMD64 & X86.
 ;
@@ -67,3 +67,4 @@ RT_NOCRT_BEGINPROC floorl
     ret
 ENDPROC   RT_NOCRT(floorl)
 
+MARK_OBJECT_RETPOLINE_SAFE

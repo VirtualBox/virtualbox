@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 113664 2026-03-30 11:49:16Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ## @file
 # Makefile for the Windows guest miniport driver.
 #
@@ -106,7 +106,7 @@ ifdef VBOX_WITH_WDDM
  	$(VBOX_GRAPHICS_INCS)
 
  VBoxWddm_LDFLAGS.x86     += /Entry:DriverEntry@8
- VBoxWddm_LDFLAGS.amd64   += /Entry:DriverEntry
+ VBoxWddm_LDFLAGS.amd64   += /Entry:DriverEntry $(VBOX_VCC_LD_GUARD_RETPOLINE_IGNORE)
  VBoxWddm_LDFLAGS.arm64   += /Entry:DriverEntry
 
  VBoxWddm_SOURCES          = \

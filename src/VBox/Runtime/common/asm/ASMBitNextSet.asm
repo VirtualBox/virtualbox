@@ -1,4 +1,4 @@
-; $Id: ASMBitNextSet.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: ASMBitNextSet.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMBitNextSet().
 ;
@@ -116,6 +116,7 @@ RT_BEGINPROC ASMBitNextSet
         leave
 %endif
         ret
+        int3
 
         ;
         ; Do dword scan.
@@ -175,9 +176,11 @@ RT_BEGINPROC ASMBitNextSet
         shl     edi, 3                  ; edi=bit offset of current dword.
         add     eax, edi
         jmp     .return
+        int3
 
 .return_failure:
         mov     eax, 0ffffffffh
         jmp     .return
 ENDPROC ASMBitNextSet
 
+MARK_OBJECT_RETPOLINE_SAFE

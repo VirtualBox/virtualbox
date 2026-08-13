@@ -1,4 +1,4 @@
-; $Id: logl.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
+; $Id: logl.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT logl - AMD64 & X86.
 ;
@@ -68,6 +68,7 @@ RT_NOCRT_BEGINPROC logl
         fstp    st0                         ; st1=log(2) st0=lrd
         fyl2x                               ; log(lrd)
         jmp     .done
+        int3
 
 .use_st1:
         fstp    st1                         ; st1=log(2) st0=lrd-1.0
@@ -82,3 +83,4 @@ ALIGNCODE(8)
 .limit: dq  0.29
 ENDPROC   RT_NOCRT(logl)
 
+MARK_OBJECT_RETPOLINE_SAFE

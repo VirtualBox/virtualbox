@@ -1,4 +1,4 @@
-; $Id: SUPDrvTracerA.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
+; $Id: SUPDrvTracerA.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; VirtualBox Support Driver - Tracer Interface, Assembly bits.
 ;
@@ -58,3 +58,4 @@ BEGINPROC_EXPORTED SUPR0TracerFireProbe
         jmp     xAX
 ENDPROC SUPR0TracerFireProbe
 
+MARK_OBJECT_RETPOLINE_SAFE ;; @todo retpoline: SUPR0TracerFireProbe makes an indirect call.

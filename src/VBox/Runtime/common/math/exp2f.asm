@@ -1,4 +1,4 @@
-; $Id: exp2f.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: exp2f.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT exp2f - AMD64 & X86.
 ;
@@ -86,6 +86,7 @@ RT_NOCRT_BEGINPROC exp2f
 %endif
         fldz                            ; Signed, so return zero as that's a good approximation for 2**-Inf.
         jmp     .return_val
+        int3
 .input_ok:
 
         ;
@@ -115,3 +116,4 @@ RT_NOCRT_BEGINPROC exp2f
         ret
 ENDPROC   RT_NOCRT(exp2f)
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: stack-vcc.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
+; $Id: stack-vcc.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Stack related Visual C++ support routines.
 ;
@@ -266,6 +266,7 @@ ALIGNCODE(16)
 BEGINPROC _RTC_CheckEsp
         jne     .unexpected_esp
         ret
+        int3
 
 .unexpected_esp:
         push    xBP
@@ -637,3 +638,4 @@ BEGINPROC rtVccCaptureContext
         ret
 ENDPROC   rtVccCaptureContext
 
+MARK_OBJECT_RETPOLINE_SAFE

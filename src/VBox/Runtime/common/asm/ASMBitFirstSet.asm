@@ -1,4 +1,4 @@
-; $Id: ASMBitFirstSet.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: ASMBitFirstSet.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMBitFirstSet().
 ;
@@ -118,6 +118,7 @@ RT_BEGINPROC ASMBitFirstSet
         leave
 %endif
         ret
+        int3
 
         ; failure
         ;}
@@ -135,3 +136,4 @@ RT_BEGINPROC ASMBitFirstSet
         ret
 ENDPROC ASMBitFirstSet
 
+MARK_OBJECT_RETPOLINE_SAFE

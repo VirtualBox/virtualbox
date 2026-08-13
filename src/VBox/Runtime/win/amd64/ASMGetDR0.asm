@@ -55,3 +55,5 @@ RT_BEGINPROC ASMSetDR0
         mov     dr0, rcx
         ret
 ENDPROC ASMSetDR0
+
+MARK_OBJECT_RETPOLINE_SAFE

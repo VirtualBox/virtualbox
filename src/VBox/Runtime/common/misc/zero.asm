@@ -1,4 +1,4 @@
-; $Id: zero.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
+; $Id: zero.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Zero Memory.
 ;
@@ -73,3 +73,4 @@ EXPORTEDNAME_EX g_abRTZero64K,  object, _64K
         times 0x10000/(16*4) dd 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0
 %endif
 
+MARK_OBJECT_RETPOLINE_SAFE

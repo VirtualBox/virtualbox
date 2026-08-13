@@ -1,4 +1,4 @@
-; $Id: vcc-fakes-shell32-A.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: vcc-fakes-shell32-A.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Wrappers for shell32 APIs missing in NT 4 and earlier.
 ;
@@ -57,3 +57,5 @@ GLOBALNAME vcc100_shell32_fakes_asm
 ; NT 3.1
 MAKE_IMPORT_ENTRY CommandLineToArgvW, 8
 
+
+MARK_OBJECT_RETPOLINE_SAFE

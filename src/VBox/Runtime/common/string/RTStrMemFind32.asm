@@ -1,4 +1,4 @@
-; $Id: RTStrMemFind32.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: RTStrMemFind32.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - RTStrMemFind32 - AMD64 & X86.
 ;
@@ -92,6 +92,7 @@ RT_BEGINPROC RTStrMemFind32
  %endif
 %endif
         ret
+        int3
 
 .not_found:
 %ifdef ASM_CALL64_MSC
@@ -109,3 +110,4 @@ RT_BEGINPROC RTStrMemFind32
         ret
 ENDPROC RTStrMemFind32
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: tan.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: tan.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT tan - AMD64 & X86.
 ;
@@ -117,3 +117,4 @@ RT_NOCRT_BEGINPROC tan
         ret
 ENDPROC   RT_NOCRT(tan)
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: SUPLibTracerA.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: SUPLibTracerA.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; VirtualBox Support Library - Tracer Interface, Assembly bits.
 ;
@@ -230,3 +230,4 @@ EXPORTEDNAME SUPTracerFireProbe
         ret
 ENDPROC SUPTracerFireProbe
 
+MARK_OBJECT_RETPOLINE_SAFE

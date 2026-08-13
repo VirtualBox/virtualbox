@@ -1,4 +1,4 @@
-; $Id: lrintf.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: lrintf.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT lrintf - AMD64 & X86.
 ;
@@ -72,3 +72,4 @@ RT_NOCRT_BEGINPROC lrintf
         ret
 ENDPROC   RT_NOCRT(lrintf)
 
+MARK_OBJECT_RETPOLINE_SAFE

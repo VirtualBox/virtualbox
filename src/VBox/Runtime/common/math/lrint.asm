@@ -1,4 +1,4 @@
-; $Id: lrint.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: lrint.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT lrint - AMD64 & X86.
 ;
@@ -73,3 +73,4 @@ RT_NOCRT_BEGINPROC lrint
         ret
 ENDPROC   RT_NOCRT(lrint)
 
+MARK_OBJECT_RETPOLINE_SAFE

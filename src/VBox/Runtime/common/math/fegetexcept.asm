@@ -1,4 +1,4 @@
-; $Id: fegetexcept.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: fegetexcept.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT fegetexcept - AMD64 & X86.
 ;
@@ -80,3 +80,4 @@ RT_NOCRT_BEGINPROC fegetexcept
         ret
 ENDPROC   RT_NOCRT(fegetexcept)
 
+MARK_OBJECT_RETPOLINE_SAFE

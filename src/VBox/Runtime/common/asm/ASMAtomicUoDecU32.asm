@@ -1,4 +1,4 @@
-; $Id: ASMAtomicUoDecU32.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: ASMAtomicUoDecU32.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMAtomicUoDecU32().
 ;
@@ -64,3 +64,4 @@ RT_BEGINPROC ASMAtomicUoDecU32
         ret
 ENDPROC ASMAtomicUoDecU32
 
+MARK_OBJECT_RETPOLINE_SAFE

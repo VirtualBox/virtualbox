@@ -1,4 +1,4 @@
-; $Id: SUPDrvA.asm 114844 2026-08-03 12:19:20Z knut.osmundsen@oracle.com $
+; $Id: SUPDrvA.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; VirtualBox Support Driver - Assembly bits.
 ;
@@ -53,3 +53,4 @@ BEGINPROC_EXPORTED SUPR0DispatchHostNmi
         ret
 ENDPROC SUPR0DispatchHostNmi
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: ASMAtomicUoReadU64.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: ASMAtomicUoReadU64.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMAtomicUoReadU64().
 ;
@@ -78,3 +78,4 @@ RT_BEGINPROC ASMAtomicUoReadU64
 %endif
 ENDPROC ASMAtomicUoReadU64
 
+MARK_OBJECT_RETPOLINE_SAFE

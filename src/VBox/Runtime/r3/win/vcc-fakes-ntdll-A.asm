@@ -1,4 +1,4 @@
-; $Id: vcc-fakes-ntdll-A.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: vcc-fakes-ntdll-A.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Wrappers for ntdll APIs misisng NT4.
 ;
@@ -55,3 +55,5 @@ GLOBALNAME vcc100_ntdll_fakes_asm
 
 MAKE_IMPORT_ENTRY RtlGetLastWin32Error, 0
 
+
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: ASMGetGSBase.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: ASMGetGSBase.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMGetGSBase().
 ;
@@ -52,3 +52,4 @@ RT_BEGINPROC ASMGetGSBase
         ret
 ENDPROC ASMGetGSBase
 
+MARK_OBJECT_RETPOLINE_SAFE

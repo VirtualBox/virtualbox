@@ -1,4 +1,4 @@
-; $Id: bzero.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: bzero.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT bzero - AMD64 & X86.
 ;
@@ -143,3 +143,4 @@ GLOBALNAME __bzero
         ret
 ENDPROC RT_NOCRT(bzero)
 
+MARK_OBJECT_RETPOLINE_SAFE

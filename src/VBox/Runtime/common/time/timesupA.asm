@@ -1,4 +1,4 @@
-; $Id: timesupA.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: timesupA.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Time using SUPLib, the Assembly Implementation.
 ;
@@ -34,9 +34,8 @@
 ; SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 ;
 
-%ifndef IN_GUEST
-
 %include "iprt/asmdefs.mac"
+%ifndef IN_GUEST ; rest of the file
 %include "VBox/sup.mac"
 
 ;
@@ -159,3 +158,5 @@ BEGINCODE
 
 
 %endif ; !IN_GUEST
+
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: fesetx87precision.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: fesetx87precision.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT fesetx87precision - AMD64 & X86.
 ;
@@ -86,3 +86,4 @@ RT_NOCRT_BEGINPROC fesetx87precision
         ret
 ENDPROC   RT_NOCRT(fesetx87precision)
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
- ; $Id: CPUMR0A.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
+ ; $Id: CPUMR0A.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; CPUM - Ring-0 Assembly Routines (supporting HM and IEM).
 ;
@@ -149,6 +149,7 @@ SEH64_END_PROLOGUE
 
 %ifdef VBOX_WITH_KERNEL_USING_XMM
         jmp     .load_guest
+        int3
 %endif
 .already_saved_host:
 %ifdef VBOX_WITH_KERNEL_USING_XMM
@@ -310,3 +311,4 @@ SEH64_END_PROLOGUE
 %undef pXState
 ENDPROC   cpumR0SaveGuestRestoreHostFPUState
 
+MARK_OBJECT_RETPOLINE_SAFE

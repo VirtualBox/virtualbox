@@ -1,4 +1,4 @@
-; $Id: VBoxDTraceR0A.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: VBoxDTraceR0A.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; VBoxDTraceR0 - Assembly Hacks.
 ;
@@ -30,3 +30,4 @@ extern NAME(dtrace_probe)
 GLOBALNAME dtrace_probe6
     jmp     NAME(dtrace_probe)
 
+MARK_OBJECT_RETPOLINE_SAFE

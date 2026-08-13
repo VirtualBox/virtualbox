@@ -1,4 +1,4 @@
-; $Id: VMMR0JmpA-amd64.asm 114226 2026-05-29 22:21:51Z knut.osmundsen@oracle.com $
+; $Id: VMMR0JmpA-amd64.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; VMM - R0 SetJmp / LongJmp routines for AMD64.
 ;
@@ -204,6 +204,7 @@ SEH64_END_PROLOGUE
     jbe     .do_stack_buffer_big_enough
     mov     ecx, ebx                    ; too much to copy, limit to ebx
     jmp     .do_stack_copying
+    int3
 .do_stack_buffer_big_enough:
     mov     ebx, ecx                    ; ecx is smaller, update ebx for cbStackValid
 
@@ -250,6 +251,7 @@ SEH64_END_PROLOGUE
 .unexpected_return_loop:
     int3
     jmp     .unexpected_return_loop
+    int3
 
     ;
     ; Failure
@@ -279,3 +281,4 @@ SEH64_END_PROLOGUE
     ret
 ENDPROC vmmR0CallRing3LongJmp
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: fetestexcept.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: fetestexcept.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT fetestexcept - AMD64 & X86.
 ;
@@ -105,3 +105,4 @@ RT_NOCRT_BEGINPROC fetestexcept
         ret
 ENDPROC   RT_NOCRT(fetestexcept)
 
+MARK_OBJECT_RETPOLINE_SAFE

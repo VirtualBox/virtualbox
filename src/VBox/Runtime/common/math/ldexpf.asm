@@ -1,4 +1,4 @@
-; $Id: ldexpf.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: ldexpf.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT ldexpf - AMD64 & X86.
 ;
@@ -87,3 +87,4 @@ RT_NOCRT_BEGINPROC ldexpf
         ret
 ENDPROC   RT_NOCRT(ldexpf)
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -1,4 +1,4 @@
-; $Id: IEMAllN8veHlpA.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: IEMAllN8veHlpA.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IEM - Native Recompiler Assembly Helpers.
 ;
@@ -303,3 +303,5 @@ SEH64_END_PROLOGUE
 
         ret
 ENDPROC     iemNativeFpCtrlRegRestore
+
+MARK_OBJECT_RETPOLINE_SAFE  ;; @todo retpoline: iemNativeTbEntry does an indirect jmp (probably not something we want to touch).

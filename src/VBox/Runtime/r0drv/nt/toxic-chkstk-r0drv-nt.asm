@@ -1,4 +1,4 @@
-; $Id: toxic-chkstk-r0drv-nt.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: toxic-chkstk-r0drv-nt.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Toxic _chkstk symbol.
 ;
@@ -50,3 +50,4 @@ BEGINPROC _chkstk
     jmp     MY_SYM
 ENDPROC _chkstk
 
+MARK_OBJECT_RETPOLINE_SAFE

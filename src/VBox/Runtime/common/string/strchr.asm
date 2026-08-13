@@ -1,4 +1,4 @@
-; $Id: strchr.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: strchr.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT strchr - AMD64 & X86.
 ;
@@ -98,6 +98,7 @@ RT_NOCRT_BEGINPROC strchr
         test    al, al
         jz      .not_found
         jmp .next
+        int3
 
 .found:
         lea     xAX, [xSI - 1]
@@ -112,6 +113,7 @@ RT_NOCRT_BEGINPROC strchr
  %endif
 %endif
         ret
+        int3
 
 .not_found:
 %ifdef ASM_CALL64_MSC
@@ -126,6 +128,7 @@ RT_NOCRT_BEGINPROC strchr
 %endif
         xor     eax, eax
         ret
+        int3
 
 ;
 ; Special case: strchr(str, '\0');
@@ -166,3 +169,4 @@ align 16
         ret
 ENDPROC RT_NOCRT(strchr)
 
+MARK_OBJECT_RETPOLINE_SAFE

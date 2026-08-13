@@ -1,4 +1,4 @@
-; $Id: nocrt-atexit-win.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: nocrt-atexit-win.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Alias atexit to rtnocrt_atexit in nocrt-startup-exe-win.cpp.
 ;
@@ -42,3 +42,4 @@ BEGINPROC atexit
         jmp     NAME(nocrt_atexit)
 ENDPROC   atexit
 
+MARK_OBJECT_RETPOLINE_SAFE

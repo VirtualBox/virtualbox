@@ -1,4 +1,4 @@
-; $Id: ceill.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: ceill.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT ceill - AMD64 & X86.
 ;
@@ -68,3 +68,4 @@ RT_NOCRT_BEGINPROC ceill
     ret
 ENDPROC   RT_NOCRT(ceill)
 
+MARK_OBJECT_RETPOLINE_SAFE

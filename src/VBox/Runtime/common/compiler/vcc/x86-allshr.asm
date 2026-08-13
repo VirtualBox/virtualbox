@@ -1,4 +1,4 @@
-; $Id: x86-allshr.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: x86-allshr.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - Visual C++ Compiler - signed 64-bit right shift support, x86.
 ;
@@ -56,6 +56,7 @@ BEGINPROC_RAW   __allshr
         shrd    eax, edx, cl
         sar     edx, cl
         ret
+        int3
 
 .shift_32_or_more:
         mov     eax, edx
@@ -67,9 +68,11 @@ BEGINPROC_RAW   __allshr
         and     cl, 31
         sar     eax, cl
         ret
+        int3
 
 .shift_64_or_more:
         mov     eax, edx
         ret
 ENDPROC_RAW     __allshr
 
+MARK_OBJECT_RETPOLINE_SAFE

@@ -51,3 +51,4 @@ RT_BEGINPROC ASMAtomicBitToggle
         ret
 ENDPROC ASMAtomicBitToggle
 
+MARK_OBJECT_RETPOLINE_SAFE

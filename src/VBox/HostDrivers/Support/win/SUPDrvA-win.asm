@@ -1,4 +1,4 @@
-; $Id: SUPDrvA-win.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: SUPDrvA-win.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; VirtualBox Support Driver - Windows NT specific assembly parts.
 ;
@@ -55,6 +55,7 @@ BEGINPROC supdrvNtQueryVirtualMemory_Xxx
   GLOBALNAME supdrvNtQueryVirtualMemory_ %+ %1
         mov     eax, %1
         jmp     supdrvNtQueryVirtualMemory_Jump
+        int3
   %endm
     NtQueryVirtualMemorySyscall 0xAF
     NtQueryVirtualMemorySyscall 0xB0
@@ -93,6 +94,7 @@ BEGINPROC supdrvNtQueryVirtualMemory_Xxx
   GLOBALNAME supdrvNtQueryVirtualMemory_ %+ %1
         mov     eax, %1
         jmp     supdrvNtQueryVirtualMemory_Jump
+        int3
   %endm
 
     NtQueryVirtualMemorySyscall 0x1F
@@ -117,3 +119,4 @@ ENDPROC   supdrvNtQueryVirtualMemory_Xxx
 
 %endif ; VBOX_WITH_HARDENING
 
+MARK_OBJECT_RETPOLINE_SAFE ;; @todo retpoline: there indirect calls here...

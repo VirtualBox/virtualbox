@@ -1,4 +1,4 @@
-; $Id: ASMGetSegAttr.asm 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: ASMGetSegAttr.asm 115023 2026-08-13 00:13:51Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - ASMGetSegAttr().
 ;
@@ -69,3 +69,4 @@ RT_BEGINPROC ASMGetSegAttr
     ret
 ENDPROC ASMGetSegAttr
 
+MARK_OBJECT_RETPOLINE_SAFE
