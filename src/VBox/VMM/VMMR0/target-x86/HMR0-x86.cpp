@@ -1,4 +1,4 @@
-/* $Id: HMR0-x86.cpp 115026 2026-08-13 02:15:03Z knut.osmundsen@oracle.com $ */
+/* $Id: HMR0-x86.cpp 115030 2026-08-13 02:46:39Z knut.osmundsen@oracle.com $ */
 /** @file
  * Hardware Assisted Virtualization Manager (HM) - Host Context Ring-0.
  */
@@ -1365,10 +1365,13 @@ VMMR0_INT_DECL(int) HMR0InitVM(PVMCC pVM)
             fWorldSwitcher |= HM_WSF_IBPB_ENTRY;
 
         /* If IBPB doesn't clear the RSBs, do so manually unless shadow stack is enabled.  */
-        if (   (fWorldSwitcher & (HM_WSF_IBPB_ENTRY | HM_WSF_IBPB_EXIT))
-            && g_CpumHostFeatures.s.fIbpbNoRet
-            && !hmR0IsShadowStackEnabled())
-            fWorldSwitcher |= HM_WSF_IBPB_MAN_RET;
+        if (fWorldSwitcher & (HM_WSF_IBPB_ENTRY | HM_WSF_IBPB_EXIT))
+        {
+            if (g_CpumHostFeatures.s.fIbpbNoRet    && !hmR0IsShadowStackEnabled())
+                fWorldSwitcher |= HM_WSF_IBPB_MAN_RET;
+            if (!g_CpumHostFeatures.s.fArchPbrsbNo && !hmR0IsShadowStackEnabled())
+                fWorldSwitcher |= HM_WSF_IBPB_PBRSB;
+        }
     }
     if (g_CpumHostFeatures.s.fFlushCmd)
     {
