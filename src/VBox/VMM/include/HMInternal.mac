@@ -1,4 +1,4 @@
-;$Id: HMInternal.mac 115027 2026-08-13 02:15:24Z knut.osmundsen@oracle.com $
+;$Id: HMInternal.mac 115031 2026-08-13 02:46:55Z knut.osmundsen@oracle.com $
 ;; @file
 ; HM - Internal header file.
 ;
@@ -274,7 +274,8 @@ endstruc
 %define HM_WSF_IBPB_EXIT            RT_BIT_32(0)
 %define HM_WSF_IBPB_ENTRY           RT_BIT_32(1)
 %define HM_WSF_IBPB_MAN_RET         RT_BIT_32(2)
-%define HM_WSF_L1D_ENTRY            RT_BIT_32(3)
-%define HM_WSF_MDS_ENTRY            RT_BIT_32(4)
-%define HM_WSF_SPEC_CTRL            RT_BIT_32(5)
+%define HM_WSF_IBPB_PBRSB           RT_BIT_32(3)
+%define HM_WSF_L1D_ENTRY            RT_BIT_32(4)
+%define HM_WSF_MDS_ENTRY            RT_BIT_32(5)
+%define HM_WSF_SPEC_CTRL            RT_BIT_32(6)
 
