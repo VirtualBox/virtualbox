@@ -1,4 +1,4 @@
-; $Id: setjmp.asm 115004 2026-08-12 23:33:28Z knut.osmundsen@oracle.com $
+; $Id: setjmp.asm 115024 2026-08-13 02:02:28Z knut.osmundsen@oracle.com $
 ;; @file
 ; IPRT - No-CRT setjmp & longjmp - AMD64 & X86.
 ;
@@ -478,7 +478,11 @@ RT_NOCRT_BEGINPROC longjmp
         cmp     qword [rcx + RTJMPBUF.uFrame], byte 0
         jnz     .nt_restore
 
-        db 0xfe, 0x48, 0x0f, 0x1e, 0xca         ; rdsspq rdx - a NOP unless CET is supported & enabled.
+  %ifdef __NASM__
+        rdsspq  rdx
+  %else
+        db 0xf3, 0x48, 0x0f, 0x1e, 0xca         ; rdsspq rdx - a NOP unless CET is supported & enabled.
+  %endif
         test    rdx, rdx
         jz      .regular_restore
   %ifdef RT_STRICT
