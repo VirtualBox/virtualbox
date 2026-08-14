@@ -1,4 +1,4 @@
-/* $Id: HostDnsServiceDarwin.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: HostDnsServiceDarwin.cpp 115039 2026-08-14 14:46:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Darwin specific DNS information fetching.
  */
@@ -241,6 +241,7 @@ int HostDnsServiceDarwin::updateInfo(void)
         {
             CFStringRef const serverAddressRef = (CFStringRef)CFArrayGetValueAtIndex(serverArrayRef, i);
             if (serverAddressRef)
+            {
                 if (!queryCFStringAsUtf8Str(serverAddressRef, strTmp, _16K))
                 {
                     LogRel(("HostDnsServiceDarwin: idx: %u: Failed to convert address.\n", i));
@@ -273,6 +274,7 @@ int HostDnsServiceDarwin::updateInfo(void)
                 }
                 else
                     LogRel(("HostDnsServiceDarwin: line %u: bad nameserver address %s\n", i, strTmp.c_str()));
+            }
         }
     }
 
@@ -313,4 +315,3 @@ void HostDnsServiceDarwin::Data::performShutdownCallback(void *pInfo)
     AssertPtrReturnVoid(pThis->m);
     ASMAtomicXchgBool(&pThis->m->m_fStop, true);
 }
-
