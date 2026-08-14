@@ -1,4 +1,4 @@
-/* $Id: tstVBoxIntNetR3Switch.cpp 114962 2026-08-10 15:04:45Z andreas.loeffler@oracle.com $ */
+/* $Id: tstVBoxIntNetR3Switch.cpp 115038 2026-08-14 12:14:02Z andreas.loeffler@oracle.com $ */
 /** @file
  * tstVBoxIntNetR3Switch - Self-contained testcase for R3 IntNet/IntNetSwitch communication.
  *
@@ -197,6 +197,7 @@ static bool svcIsDisconnected(int rc)
 {
     return    rc == VERR_BROKEN_PIPE
            || rc == VERR_PIPE_NOT_CONNECTED
+           || rc == VERR_NET_NOT_CONNECTED
            || rc == VERR_NET_CONNECTION_RESET
            || rc == VERR_NET_CONNECTION_RESET_BY_PEER
            || rc == VERR_NET_CONNECTION_REFUSED;
