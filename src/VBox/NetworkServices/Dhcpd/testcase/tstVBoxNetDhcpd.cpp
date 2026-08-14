@@ -1,4 +1,4 @@
-/* $Id: tstVBoxNetDhcpd.cpp 115037 2026-08-13 20:27:05Z andreas.loeffler@oracle.com $ */
+/* $Id: tstVBoxNetDhcpd.cpp 115040 2026-08-14 17:39:40Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxNetDHCP in-process testcase.
  */
@@ -47,6 +47,7 @@
 #include <VBox/intnet.h>
 
 #include "../Config.h"
+#include <iprt/log.h>
 #include "../../NetLib/IntNetIf.h"
 
 extern "C" int  VBoxNetDhcpdTestStart(int argc, char **argv, void **ppvHandle);
@@ -1261,6 +1262,9 @@ int main(int argc, char **argv)
     RTTestBanner(g_hTest);
 
     tstConfigValidation();
+    /* Config::create() installs a process-global release logger.  Destroy it before
+       the in-process daemon replaces it with its own logger. */
+    RTLogDestroy(RTLogRelSetDefaultInstance(NULL));
 
     void *pvSwitch = NULL;
     rc = VBoxIntNetSwitchTestStart(&pvSwitch);
@@ -1273,5 +1277,7 @@ int main(int argc, char **argv)
     else
         RTTestFailed(g_hTest, "Embedded IntNet switch startup failed: %Rrc", rc);
 
+    /* Destroy the release logger installed by the in-process daemon. */
+    RTLogDestroy(RTLogRelSetDefaultInstance(NULL));
     return RTTestSummaryAndDestroy(g_hTest);
 }
