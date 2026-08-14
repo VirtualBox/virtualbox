@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# $Id: webservergluecgi.py 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: webservergluecgi.py 115041 2026-08-14 21:54:05Z knut.osmundsen@oracle.com $
 
 """
 Test Manager Core - Web Server Abstraction Base Class.
@@ -36,12 +36,12 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 112403 $"
+__version__ = "$Revision: 115041 $"
 
 
 # Standard python imports.
-import cgi;     # pylint: disable=deprecated-module ## @todo these will be retired in python 3.13!
-import cgitb;   # pylint: disable=deprecated-module ## @todo these will be retired in python 3.13!
+import cgi;     # pylint: disable=deprecated-module     # Retired in python 3.13. Install (python3-)legacy-cgi.
+import cgitb;   # pylint: disable=deprecated-module     # Ditto.
 import os;
 import sys;
 
