@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-internal.h 114997 2026-08-12 15:54:46Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-internal.h 115042 2026-08-15 14:51:14Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device - 3D part, internal header.
  */
@@ -1117,6 +1117,10 @@ typedef struct VMSVGA3DDXCONTEXT
                 uint32_t cMaxBound;
                 uint64_t au64Modified[(SVGA3D_DX_MAX_SRVIEWS + 63) / 64];
             } shaderResources;
+            struct
+            {
+                uint32_t cMaxBound;
+            } constantBuffers;
         } shader[SVGA3D_NUM_SHADERTYPE];
         struct
         {

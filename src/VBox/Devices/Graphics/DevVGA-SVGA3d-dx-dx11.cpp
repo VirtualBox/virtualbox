@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 115035 2026-08-13 15:06:11Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 115042 2026-08-15 14:51:14Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -6355,6 +6355,13 @@ static DECLCALLBACK(int) vmsvga3dBackDXBindContext(PVGASTATECC pThisCC, PVMSVGA3
 
 static DECLCALLBACK(int) vmsvga3dBackDXSwitchContext(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContextFrom, PVMSVGA3DDXCONTEXT pDXContext)
 {
+    for (uint32_t idxShaderState = 0; idxShaderState < SVGA3D_NUM_SHADERTYPE; ++idxShaderState)
+    {
+        DXCONSTANTBUFFERSTATE *pCb = &pDXContext->pBackendDXContext->resources.shaderState[idxShaderState].constantBuffers;
+        pCb->StartSlot = 0;
+        pCb->NumBuffers = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
+    }
+
 #ifndef DX_STATE_TRACKER
     /* The new context state will be applied by the generic DX code. */
     RT_NOREF(pThisCC, pDXContextFrom, pDXContext);
@@ -6393,13 +6400,6 @@ static DECLCALLBACK(int) vmsvga3dBackDXSwitchContext(PVGASTATECC pThisCC, PVMSVG
     if (cBoundCSUAV)
         pDXDevice->pImmediateContext->CSSetUnorderedAccessViews(0, cBoundCSUAV, u.papUnorderedAccessView, NULL);
 
-    for (uint32_t idxShaderState = 0; idxShaderState < SVGA3D_NUM_SHADERTYPE; ++idxShaderState)
-    {
-        DXCONSTANTBUFFERSTATE *pCb = &pDXContext->pBackendDXContext->resources.shaderState[idxShaderState].constantBuffers;
-        pCb->StartSlot = 0;
-        pCb->NumBuffers = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
-    }
-
     /* Reset vertex buffers. */
     uint32_t const cBoundVB = pDXContextFrom
                             ? pDXContextFrom->state.ia.vb.cMaxBound
@@ -6436,7 +6436,7 @@ static DECLCALLBACK(int) vmsvga3dBackDXSetSingleConstantBuffer(PVGASTATECC pThis
 
     uint32_t const idxShaderState = type - SVGA3D_SHADERTYPE_MIN;
     DXCONSTANTBUFFERSTATE *pCb = &pDXContext->pBackendDXContext->resources.shaderState[idxShaderState].constantBuffers;
-
+    /* Fetch the data from the surface because it is valid only during processing of SET_SINGLE_CONSTANT_BUFFER. */
     if (sid == SVGA3D_INVALID_ID)
     {
         /* Clear the constant buffer slot. */
@@ -6896,9 +6896,8 @@ static void dxCreateInputLayout(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXConte
 }
 
 
-static void dxSetConstantBuffers(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
+static void dxSetConstantBuffers(DXDEVICE *pDXDevice, PVMSVGA3DDXCONTEXT pDXContext)
 {
-    DXDEVICE *pDXDevice = dxDeviceGet(pThisCC->svga.p3dState);
     for (uint32_t idxShaderState = 0; idxShaderState < SVGA3D_NUM_SHADERTYPE; ++idxShaderState)
     {
         DXCONSTANTBUFFERSTATE *pCb = &pDXContext->pBackendDXContext->resources.shaderState[idxShaderState].constantBuffers;
@@ -8327,7 +8326,12 @@ static void dxCheckState(DXDEVICE *pDXDevice, PVMSVGA3DDXCONTEXT pDXContext)
         {
             ID3D11ShaderResourceView   *paShaderResourceView[SVGA3D_DX_MAX_SRVIEWS];
         } sr;
-        //ID3D11Buffer               *pConstantBuffer;
+        struct
+        {
+            ID3D11Buffer               *apConstantBuffer[SVGA3D_DX_MAX_CONSTBUFFERS];
+            UINT                       aFirstConstant[SVGA3D_DX_MAX_CONSTBUFFERS];
+            UINT                       aNumConstants[SVGA3D_DX_MAX_CONSTBUFFERS];
+        } cb;
         //ID3D11VertexShader         *pVertexShader;
         //ID3D11HullShader           *pHullShader;
         //ID3D11DomainShader         *pDomainShader;
@@ -8496,8 +8500,64 @@ static void dxCheckState(DXDEVICE *pDXDevice, PVMSVGA3DDXCONTEXT pDXContext)
         D3D_RELEASE_ARRAY(SVGA3D_DX_MAX_SRVIEWS, p.sr.paShaderResourceView);
     }
 
-    //pImmediateContext->VSGetConstantBuffers(0, 1, &p.pConstantBuffer);
-    //D3D_RELEASE(p.pConstantBuffer);
+    /* Constant buffers */
+    RT_ZERO(p);
+    for (uint32_t idxShaderState = 0; idxShaderState < SVGA3D_NUM_SHADERTYPE; ++idxShaderState)
+    {
+        RT_ZERO(p.cb);
+
+        uint32_t const cMaxBound = pDXContext->state.shader[idxShaderState].constantBuffers.cMaxBound;
+        if (cMaxBound == 0)
+            continue;
+
+        AssertCompile(RT_ELEMENTS(p.cb.apConstantBuffer) == SVGA3D_DX_MAX_CONSTBUFFERS);
+        switch (idxShaderState)
+        {
+            case 0:
+                pImmediateContext->VSGetConstantBuffers1(0, cMaxBound,
+                                                         p.cb.apConstantBuffer, p.cb.aFirstConstant, p.cb.aNumConstants);
+                break;
+            case 1:
+                pImmediateContext->PSGetConstantBuffers1(0, cMaxBound,
+                                                         p.cb.apConstantBuffer, p.cb.aFirstConstant, p.cb.aNumConstants);
+                break;
+            case 2:
+                pImmediateContext->GSGetConstantBuffers1(0, cMaxBound,
+                                                         p.cb.apConstantBuffer, p.cb.aFirstConstant, p.cb.aNumConstants);
+                break;
+            case 3:
+                pImmediateContext->HSGetConstantBuffers1(0, cMaxBound,
+                                                         p.cb.apConstantBuffer, p.cb.aFirstConstant, p.cb.aNumConstants);
+                break;
+            case 4:
+                pImmediateContext->DSGetConstantBuffers1(0, cMaxBound,
+                                                         p.cb.apConstantBuffer, p.cb.aFirstConstant, p.cb.aNumConstants);
+                break;
+            case 5:
+                pImmediateContext->CSGetConstantBuffers1(0, cMaxBound,
+                                                         p.cb.apConstantBuffer, p.cb.aFirstConstant, p.cb.aNumConstants);
+                break;
+            default:
+                break;
+        }
+
+        DXCONSTANTBUFFERSTATE *pCb = &pDXContext->pBackendDXContext->resources.shaderState[idxShaderState].constantBuffers;
+        AssertCompile(RT_ELEMENTS(pCb->apConstantBuffer) == SVGA3D_DX_MAX_CONSTBUFFERS);
+
+        for (uint32_t i = 0; i < cMaxBound; ++i)
+        {
+            uint32_t sid = pDXContext->svgaDXContext.shaderState[idxShaderState].constantBuffers[i].sid;
+            if (sid != SVGA3D_INVALID_ID)
+            {
+                AssertRelease(pCb->apConstantBuffer[i] == p.cb.apConstantBuffer[i]);
+                AssertRelease(pCb->aFirstConstant[i] == p.cb.aFirstConstant[i]);
+                AssertRelease(pCb->aNumConstants[i] == p.cb.aNumConstants[i]);
+            }
+            else
+                AssertRelease(pCb->apConstantBuffer[i] == NULL);
+        }
+        D3D_RELEASE_ARRAY(cMaxBound, p.cb.apConstantBuffer);
+    }
 
     //pImmediateContext->VSGetShader(&p.pVertexShader, NULL, NULL);
     //D3D_RELEASE(p.pVertexShader);
@@ -8646,7 +8706,7 @@ static void dxSetupPipeline(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
     }
 #endif
 
-    dxSetConstantBuffers(pThisCC, pDXContext);
+    dxSetConstantBuffers(pDXDevice, pDXContext);
 #ifndef DX_STATE_TRACKER
     dxSetVertexBuffers(pThisCC, pDXContext);
     dxSetIndexBuffer(pThisCC, pDXContext);
