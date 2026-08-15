@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx.cpp 114997 2026-08-12 15:54:46Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx.cpp 115042 2026-08-15 14:51:14Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common code for DX backend interface.
  */
@@ -552,6 +552,12 @@ int vmsvga3dDXSetSingleConstantBuffer(PVGASTATECC pThisCC, uint32_t idDXContext,
     pCBB->sid           = pCmd->sid;
     pCBB->offsetInBytes = pCmd->offsetInBytes;
     pCBB->sizeInBytes   = pCmd->sizeInBytes;
+
+#ifdef DX_STATE_TRACKER
+    if (pCBB->sid != SVGA3D_INVALID_ID)
+        pDXContext->state.shader[idxShaderState].constantBuffers.cMaxBound =
+            RT_MAX(pCmd->slot + 1, pDXContext->state.shader[idxShaderState].constantBuffers.cMaxBound);
+#endif
 
     rc = pSvgaR3State->pFuncsDX->pfnDXSetSingleConstantBuffer(pThisCC, pDXContext, pCmd->slot, pCmd->type, pCmd->sid, pCmd->offsetInBytes, pCmd->sizeInBytes);
     return rc;
