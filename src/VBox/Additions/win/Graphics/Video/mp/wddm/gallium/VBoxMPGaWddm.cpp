@@ -1,4 +1,4 @@
-/* $Id: VBoxMPGaWddm.cpp 114730 2026-07-19 19:29:29Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPGaWddm.cpp 115043 2026-08-16 20:32:42Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Gallium driver interface for WDDM kernel mode driver.
  */
@@ -2105,6 +2105,7 @@ DECLINLINE(VBOXVIDEOOFFSET) vboxWddmAddrVRAMOffset(VBOXWDDM_ADDR const *pAddr)
                 VBOXVIDEOOFFSET_VOID;
 }
 
+#include <iprt/asm-mem.h>
 static void vboxWddmRectCopy(void *pvDst, uint32_t cbDstBytesPerPixel, uint32_t cbDstPitch,
                              void const *pvSrc, uint32_t cbSrcBytesPerPixel, uint32_t cbSrcPitch,
                              RECT const *pRect)
@@ -2115,13 +2116,26 @@ static void vboxWddmRectCopy(void *pvDst, uint32_t cbDstBytesPerPixel, uint32_t 
     uint8_t const *pu8Src = (uint8_t *)pvSrc;
     pu8Src += pRect->top * cbSrcPitch + pRect->left * cbSrcBytesPerPixel;
 
+    bool fZero = false;
     uint32_t const cbLine = (pRect->right - pRect->left) * cbDstBytesPerPixel;
     for (INT y = pRect->top; y < pRect->bottom; ++y)
     {
         memcpy(pu8Dst, pu8Src, cbLine);
+        bool fLineZero = ASMMemFirstMismatchingU32(pu8Src, cbLine & ~3, 0xff000000) == NULL
+                      || ASMMemFirstMismatchingU32(pu8Src, cbLine & ~3, 0x00000000) == NULL;
+        fZero = fZero || fLineZero;
         pu8Dst += cbDstPitch;
         pu8Src += cbSrcPitch;
     }
+    if (fZero)
+        LogRel3(("WDDM: artifact: dst: Bpp %d, pitch %d; src: Bpp %d, pitch %d; @%d,%d %dx%d; cbLine %d\n",
+                cbDstBytesPerPixel, cbDstPitch,
+                cbSrcBytesPerPixel, cbSrcPitch,
+                pRect->left, pRect->top,
+                pRect->right - pRect->left,
+                pRect->bottom - pRect->top,
+                cbLine
+              ));
 }
 
 static NTSTATUS gaSourceBlitToScreen(PVBOXMP_DEVEXT pDevExt, VBOXWDDM_SOURCE *pSource, RECT const *pRect)
@@ -2151,7 +2165,7 @@ NTSTATUS APIENTRY GaDxgkDdiPresentDisplayOnly(const HANDLE hAdapter,
 {
     PVBOXMP_DEVEXT pDevExt = (PVBOXMP_DEVEXT)hAdapter;
 
-    LOG(("VidPnSourceId %d, pSource %p, BytesPerPixel %d, Pitch %d, Flags 0x%x, NumMoves %d, NumDirtyRects %d, pfn %p\n",
+    LogRel3/*LOG*/(("VidPnSourceId %d, pSource %p, BytesPerPixel %d, Pitch %d, Flags 0x%x, NumMoves %d, NumDirtyRects %d, pfn %p\n",
          pPresentDisplayOnly->VidPnSourceId,
          pPresentDisplayOnly->pSource,
          pPresentDisplayOnly->BytesPerPixel,
