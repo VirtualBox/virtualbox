@@ -1,4 +1,4 @@
-/* $Id: ClipboardSessionImpl.cpp 114560 2026-06-29 08:32:23Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardSessionImpl.cpp 115056 2026-08-17 16:44:52Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard session API object.
  */
@@ -186,6 +186,37 @@ HRESULT ClipboardSession::init(VBOXSHCLMAINCLIENTID aClientId, uint32_t fFlags, 
     autoInitSpan.setSucceeded();
     return S_OK;
 }
+
+
+#ifdef UNIT_TEST
+/**
+ * Initializes a parentless clipboard session for unit testing.
+ *
+ * @returns COM status code.
+ * @param   aClientId       Main clipboard client ID this session represents.
+ * @param   fFlags          IClipboardSessionFlag mask.
+ */
+HRESULT ClipboardSession::initForTesting(VBOXSHCLMAINCLIENTID aClientId, uint32_t fFlags)
+{
+    AssertReturn(aClientId != VBOX_SHCL_MAIN_CLIENT_NONE, E_INVALIDARG);
+
+    AutoInitSpan autoInitSpan(this);
+    AssertReturn(autoInitSpan.isOk(), E_FAIL);
+
+    mData.mClientId = aClientId;
+    mData.mfFlags = fFlags;
+    mData.mParent = NULL;
+    mData.mfInitialStateDelivered = false;
+
+    HRESULT hrc = mData.mEventSource.createObject();
+    AssertComRCReturnRC(hrc);
+    hrc = mData.mEventSource->init();
+    AssertComRCReturnRC(hrc);
+
+    autoInitSpan.setSucceeded();
+    return S_OK;
+}
+#endif
 
 
 /**
@@ -509,4 +540,3 @@ HRESULT ClipboardSession::close()
         ptrEventSource->uninit();
     return S_OK;
 }
-

@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114609 2026-07-03 15:22:37Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 115056 2026-08-17 16:44:52Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the VBox API testcases.
 #
@@ -48,7 +48,9 @@ ifndef VBOX_ONLY_SDK
   	$(if $(VBOX_WITH_GUEST_CONTROL),tstGuestCtrlPaths,) \
   	tstMediumLock \
   	tstSafeArray \
-  	tstClipboard \
+  	tstClipboardAPI \
+  	tstClipboardMain \
+  	tstClipboardMain2HostSvc \
   	tstRecording \
   	tstSettings \
   	tstBstr \
@@ -327,17 +329,132 @@ tstSafeArray_SOURCES  = tstSafeArray.cpp
 
 
 #
-# tstClipboard
+# tstClipboardAPI
 #
-tstClipboard_TEMPLATE = VBoxMainClientTstExe
-tstClipboard_INCS     = \
+tstClipboardAPI_TEMPLATE = VBoxMainTstExe
+tstClipboardAPI_INCS     = \
 	../include \
-	$(PATH_OUT)/obj/VBoxAPIWrap \
-	$(PATH_OUT)/obj/Main
-tstClipboard_SOURCES  = \
-	tstClipboard.cpp
+	$(PATH_OUT)/obj/Main \
+	$(VBOX_MAIN_APIWRAPPER_INCS)
+tstClipboardAPI_DEFS     = UNIT_TEST VBOX_COM_INPROC VBOX_WITH_SHARED_CLIPBOARD
+tstClipboardAPI_SOURCES  = \
+	../src-all/AutoCaller.cpp \
+	../src-all/EventImpl.cpp \
+	../src-all/GlobalStatusConversion.cpp \
+	../src-all/ObjectsTracker.cpp \
+	../src-all/VirtualBoxBase.cpp \
+	../src-all/VirtualBoxErrorInfoImpl.cpp \
+	../src-client/ClipboardFormatImpl.cpp \
+	../src-client/ClipboardItemImpl.cpp \
+	../src-client/ClipboardSessionImpl.cpp \
+	../src-client/HostClipboardImpl.cpp \
+	$(PATH_OUT)/obj/Main/VBoxEvents.cpp \
+	tstClipboardAPI.cpp
+tstClipboardAPI_LIBS     = \
+	$(PATH_OUT)/lib/VBoxAPIWrap.a
 ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
- tstClipboard_DEFS    += VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+ tstClipboardAPI_DEFS    += VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+ tstClipboardAPI_SOURCES += \
+ 	../src-all/ProgressImpl.cpp \
+ 	../src-client/ClipboardTransferDataImpl.cpp \
+ 	../src-client/ClipboardTransferDirectoryImpl.cpp \
+ 	../src-client/ClipboardTransferFileImpl.cpp \
+ 	../src-client/ClipboardTransferFsObjInfoImpl.cpp \
+ 	../src-client/ClipboardTransferImpl.cpp \
+ 	../src-client/ClipboardTransferManagerImpl.cpp \
+ 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-common.cpp \
+ 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-helper.cpp \
+ 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-path.cpp \
+ 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers.cpp \
+ 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers-provider-local.cpp
+endif
+
+if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_SDK)
+ tstClipboardAPI_CLEAN = $(tstClipboardAPI_0_OUTDIR)/tstClipboardAPI.run
+
+ $$(tstClipboardAPI_0_OUTDIR)/tstClipboardAPI.run: $$(tstClipboardAPI_1_STAGE_TARGET) | $$(dir $$@) $$(VBOX_RUN_TARGET_ORDER_DEPS)
+	export VBOX_LOG_DEST=nofile; $(tstClipboardAPI_1_STAGE_TARGET) quiet
+	$(QUIET)$(APPEND) -t "$@" "done"
+
+ ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),$(KBUILD_HOST).$(KBUILD_HOST_ARCH))
+  TESTING += $(tstClipboardAPI_0_OUTDIR)/tstClipboardAPI.run
+ endif
+endif
+
+
+#
+# tstClipboardMain
+#
+tstClipboardMain_TEMPLATE = VBoxMainTstExe
+tstClipboardMain_INCS     = \
+	../include \
+	../src-client
+tstClipboardMain_DEFS     = VBOX_WITH_SHARED_CLIPBOARD
+tstClipboardMain_SOURCES  = \
+	../src-client/GuestShClBackend.cpp \
+	../src-client/GuestShClConn.cpp \
+	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-common.cpp \
+	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-helper.cpp \
+	tstClipboardMain.cpp
+ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+ tstClipboardMain_DEFS += VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+endif
+
+if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_SDK)
+ tstClipboardMain_CLEAN = $(tstClipboardMain_0_OUTDIR)/tstClipboardMain.run
+
+ $$(tstClipboardMain_0_OUTDIR)/tstClipboardMain.run: $$(tstClipboardMain_1_STAGE_TARGET) | $$(dir $$@) $$(VBOX_RUN_TARGET_ORDER_DEPS)
+	export VBOX_LOG_DEST=nofile; $(tstClipboardMain_1_STAGE_TARGET) quiet
+	$(QUIET)$(APPEND) -t "$@" "done"
+
+ ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),$(KBUILD_HOST).$(KBUILD_HOST_ARCH))
+  TESTING += $(tstClipboardMain_0_OUTDIR)/tstClipboardMain.run
+ endif
+endif
+
+
+#
+# tstClipboardMain2HostSvc
+#
+tstClipboardMain2HostSvc_TEMPLATE = VBoxMainTstExe
+tstClipboardMain2HostSvc_INCS     = \
+	../include \
+	../src-client \
+	$(PATH_ROOT)/src/VBox/HostServices/SharedClipboard
+tstClipboardMain2HostSvc_DEFS     = \
+	UNIT_TEST \
+	VBOX_WITH_HGCM \
+	VBOX_WITH_SHARED_CLIPBOARD \
+	VBOX_WITH_SHARED_CLIPBOARD_HOST
+tstClipboardMain2HostSvc_SOURCES  = \
+	../src-client/GuestShClBackend.cpp \
+	../src-client/GuestShClConn.cpp \
+	$(PATH_ROOT)/src/VBox/HostServices/SharedClipboard/VBoxSharedClipboardSvc.cpp \
+	$(PATH_ROOT)/src/VBox/HostServices/SharedClipboard/VBoxSharedClipboardSvc-ext.cpp \
+	$(PATH_ROOT)/src/VBox/HostServices/SharedClipboard/VBoxSharedClipboardSvc-client.cpp \
+	$(PATH_ROOT)/src/VBox/HostServices/SharedClipboard/VBoxSharedClipboardSvc-host.cpp \
+	$(PATH_ROOT)/src/VBox/HostServices/SharedClipboard/VBoxSharedClipboardSvc-transport.cpp \
+	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-common.cpp \
+	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-helper.cpp \
+	tstClipboardMain2HostSvc.cpp
+ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+ tstClipboardMain2HostSvc_DEFS    += VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+ tstClipboardMain2HostSvc_SOURCES += \
+ 	$(PATH_ROOT)/src/VBox/HostServices/SharedClipboard/VBoxSharedClipboardSvc-transfers.cpp \
+ 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-path.cpp \
+ 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers.cpp
+endif
+
+if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_SDK)
+ tstClipboardMain2HostSvc_CLEAN = $(tstClipboardMain2HostSvc_0_OUTDIR)/tstClipboardMain2HostSvc.run
+
+ $$(tstClipboardMain2HostSvc_0_OUTDIR)/tstClipboardMain2HostSvc.run: $$(tstClipboardMain2HostSvc_1_STAGE_TARGET) | $$(dir $$@) $$(VBOX_RUN_TARGET_ORDER_DEPS)
+	export VBOX_LOG_DEST=nofile; $(tstClipboardMain2HostSvc_1_STAGE_TARGET) quiet
+	$(QUIET)$(APPEND) -t "$@" "done"
+
+ ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),$(KBUILD_HOST).$(KBUILD_HOST_ARCH))
+  TESTING += $(tstClipboardMain2HostSvc_0_OUTDIR)/tstClipboardMain2HostSvc.run
+ endif
 endif
 
 
