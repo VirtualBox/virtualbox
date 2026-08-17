@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc.cpp 115052 2026-08-17 15:35:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Host service entry points.
  */
@@ -363,6 +363,7 @@ static DECLCALLBACK(int) shClSvcUnload(void *)
 static DECLCALLBACK(int) shClSvcDisconnect(void *, uint32_t u32ClientID, void *pvClient)
 {
     LogFunc(("u32ClientID=%RU32\n", u32ClientID));
+    RT_NOREF(u32ClientID);
 
     PSHCLCLIENT pClient = (PSHCLCLIENT)pvClient;
     AssertPtr(pClient);

@@ -510,7 +510,11 @@ static int clipThreadScheduleCall(PSHCLX11CTX pCtx,
     if (cbWritten < 0)
     {
         /* A full non-blocking pipe is already readable and will wake the worker. */
+# if EAGAIN == EWOULDBLOCK
+        if (errno != EAGAIN)
+# else
         if (errno != EAGAIN && errno != EWOULDBLOCK)
+# endif
         {
             int const rc = RTErrConvertFromErrno(errno);
             /* The Xt callback is already queued and cannot be cancelled without racing the worker. */
