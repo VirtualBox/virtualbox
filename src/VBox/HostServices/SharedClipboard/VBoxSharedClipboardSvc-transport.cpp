@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transport.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transport.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Opaque Main transport implementation.
  */
@@ -104,7 +104,7 @@ static DECLCALLBACK(int) shClSvcOpRetainGuestDataEvent(SHCLCLIENTHANDLE hClient,
 
     if (!ShClFormatIsValid(uFormat))
     {
-        LogRelMax2(16, ("Shared Clipboard: Rejecting guest clipboard data with invalid format %#x\n", uFormat));
+        LogRelMax(16, ("Shared Clipboard: Rejecting guest clipboard data with invalid format %#x\n", uFormat));
         return VERR_INVALID_PARAMETER;
     }
 
@@ -114,14 +114,14 @@ static DECLCALLBACK(int) shClSvcOpRetainGuestDataEvent(SHCLCLIENTHANDLE hClient,
     if (   idEvent == 0
         || idEvent == NIL_SHCLEVENTID)
     {
-        LogRelMax2(16, ("Shared Clipboard: Rejecting guest clipboard data with invalid event %#x in context ID %#RX64\n",
+        LogRelMax(16, ("Shared Clipboard: Rejecting guest clipboard data with invalid event %#x in context ID %#RX64\n",
                         idEvent, uContextId));
         return VERR_WRONG_ORDER;
     }
     if (   idSession != pClient->State.uSessionID
         || idEventSource != pClient->EventSrc.uID)
     {
-        LogRelMax2(16, ("Shared Clipboard: Rejecting guest clipboard data with mismatching context ID %#RX64"
+        LogRelMax(16, ("Shared Clipboard: Rejecting guest clipboard data with mismatching context ID %#RX64"
                         " (session %#x/%#x, event source %#x/%#x)\n",
                         uContextId, idSession, pClient->State.uSessionID,
                         idEventSource, pClient->EventSrc.uID));
@@ -131,12 +131,12 @@ static DECLCALLBACK(int) shClSvcOpRetainGuestDataEvent(SHCLCLIENTHANDLE hClient,
     PSHCLEVENT pEvent = ShClEventSourceRetainFromId(&pClient->EventSrc, idEvent);
     if (!RT_VALID_PTR(pEvent))
     {
-        LogRelMax2(16, ("Shared Clipboard: Ignoring late guest clipboard data for expired event %#x\n", idEvent));
+        LogRelMax(16, ("Shared Clipboard: Ignoring late guest clipboard data for expired event %#x\n", idEvent));
         return VINF_SUCCESS;
     }
     if (pEvent->uUser != uFormat)
     {
-        LogRelMax2(16, ("Shared Clipboard: Rejecting guest clipboard data format %#x for event %#x, expected %#x\n",
+        LogRelMax(16, ("Shared Clipboard: Rejecting guest clipboard data format %#x for event %#x, expected %#x\n",
                         uFormat, idEvent, pEvent->uUser));
         ShClEventRelease(pEvent);
         return VERR_INVALID_CONTEXT;
@@ -152,6 +152,7 @@ static DECLCALLBACK(int) shClSvcOpRetainGuestDataEvent(SHCLCLIENTHANDLE hClient,
  * Signals a retained guest-data event with clipboard data received from the guest.
  *
  * @returns VBox status code.
+ * @param   hClient             Opaque handle of the connected client.
  * @param   pEvent              Retained event to signal.
  * @param   idEvent             Event ID to use for the optional payload wrapper.
  * @param   pvData              Pointer to clipboard data received.  This can be
@@ -297,13 +298,13 @@ static DECLCALLBACK(int) shClSvcOpReadDataFromGuestAsync(SHCLCLIENTHANDLE hClien
     if (   fFormats == VBOX_SHCL_FMT_NONE
         || (fFormats & ~fSupportedFormats))
     {
-        LogRelMax2(16, ("Shared Clipboard: Rejecting unsupported guest clipboard data request formats %#x\n", fFormats));
+        LogRelMax(16, ("Shared Clipboard: Rejecting unsupported guest clipboard data request formats %#x\n", fFormats));
         return VERR_NOT_SUPPORTED;
     }
     if (   ppEvent
         && (fFormats & (fFormats - 1)) != 0)
     {
-        LogRelMax2(16, ("Shared Clipboard: Rejecting multi-format guest clipboard data request %#x with single event output\n",
+        LogRelMax(16, ("Shared Clipboard: Rejecting multi-format guest clipboard data request %#x with single event output\n",
                         fFormats));
         return VERR_INVALID_PARAMETER;
     }
@@ -311,7 +312,7 @@ static DECLCALLBACK(int) shClSvcOpReadDataFromGuestAsync(SHCLCLIENTHANDLE hClien
     if (   (fFormats & VBOX_SHCL_FMT_URI_LIST)
         && !shClSvcClientTransfersAreAllowed(pClient))
     {
-        LogRelMax2(16, ("Shared Clipboard: Rejecting host URI-list request without enabled and negotiated transfers\n"));
+        LogRelMax(16, ("Shared Clipboard: Rejecting host URI-list request without enabled and negotiated transfers\n"));
         return VERR_ACCESS_DENIED;
     }
 #endif

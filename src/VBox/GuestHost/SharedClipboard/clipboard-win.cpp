@@ -1,4 +1,4 @@
-/* $Id: clipboard-win.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-win.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Windows-specific functions for clipboard handling.
  */
@@ -152,7 +152,7 @@ int ShClWinClear(void)
         return VINF_SUCCESS;
 
     int const rc = RTErrConvertFromWin32(dwLastErr);
-    LogRel2(("Shared Clipboard: Clearing Windows clipboard failed with %Rrc (0x%x)\n", rc, dwLastErr));
+    LogRelMax(16, ("Shared Clipboard: Clearing Windows clipboard failed with %Rrc (0x%x)\n", rc, dwLastErr));
 
     return rc;
 }
@@ -488,7 +488,7 @@ SHCLFORMAT ShClWinClipboardFormatToVBox(UINT uFormat)
                              || (RTStrCmp(szFormatName, "FileGroupDescriptorW") == 0)
                              || (RTStrCmp(szFormatName, CFSTR_FILECONTENTS)    == 0))
 # endif
-                        LogRel2(("Shared Clipboard: Windows virtual-file clipboard format '%s' is not supported as a host file-transfer source yet\n",
+                        LogRelMax(16, ("Shared Clipboard: Windows virtual-file clipboard format '%s' is not supported as a host file-transfer source yet\n",
                                  szFormatName));
 #endif
                 }
@@ -690,7 +690,7 @@ int ShClWinConvertMIMEToCFHTML(const char *pszSource, size_t cb, char **ppszOutp
     { /* likely */ }
     else
     {
-        LogRel2(("Shared Clipboard: Error: Invalid source fragment.for HTML MIME data, rc=%Rrc\n", rc));
+        LogRelMax(16, ("Shared Clipboard: Invalid source fragment for HTML MIME data, rc=%Rrc\n", rc));
         return rc;
     }
     size_t const cchFragment = strlen(pszSource); /* Unfortunately the validator doesn't return the length. */

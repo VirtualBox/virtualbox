@@ -1,4 +1,4 @@
-/* $Id: VbghWaylandClipboard.cpp 114766 2026-07-24 18:01:54Z knut.osmundsen@oracle.com $ */
+/* $Id: VbghWaylandClipboard.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest / Host common code - Wayland Clipboard.
  */
@@ -386,14 +386,14 @@ static int vbghWaylandClipboardReadGuestDataIntoCache(PSHCLWAYLANDCTX pThis, int
                 if (RT_SUCCESS(rc))
                     LogRel5(("Put %zu bytes into cache for %#x (from %s)\n", cbVBoxData, fVBoxFmt, pszMimeType));
                 else
-                    LogRel2(("Failed to put %zu bytes into cache for %#x (from %s): %Rrc\n",
+                    LogRelMax(16, ("Shared Clipboard: Failed to put %zu bytes into Wayland cache for %#x (from %s): %Rrc\n",
                              cbVBoxData, fVBoxFmt, pszMimeType, rc));
             }
             else
             {
                 rc = VERR_VERSION_MISMATCH;
                 RTCritSectLeave(&pThis->CritSect);
-                LogRel2(("Failed to put %zu bytes into cache for %#x (from %s): version changed\n",
+                LogRelMax(16, ("Shared Clipboard: Failed to put %zu bytes into Wayland cache for %#x (from %s): version changed\n",
                          cbVBoxData, fVBoxFmt, pszMimeType));
             }
             RTMemFree(pvVBoxData);

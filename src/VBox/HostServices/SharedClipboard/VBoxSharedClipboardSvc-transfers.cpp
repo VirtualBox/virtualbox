@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -271,6 +271,8 @@ static int shClSvcTransferMsgGetReply(uint32_t cParms, VBOXHGCMSVCPARM aParms[],
                 {
                     if (cParms > idxParm)
                         rc = HGCMSvcGetU32(&aParms[idxParm], &pReply->u.TransferStatus.uStatus);
+                    else
+                        rc = VERR_INVALID_PARAMETER;
 
                     LogFlowFunc(("uTransferStatus=%RU32 (%s)\n",
                                  pReply->u.TransferStatus.uStatus, ShClTransferStatusToStr(pReply->u.TransferStatus.uStatus)));
@@ -281,6 +283,8 @@ static int shClSvcTransferMsgGetReply(uint32_t cParms, VBOXHGCMSVCPARM aParms[],
                 {
                     if (cParms > idxParm)
                         rc = HGCMSvcGetU64(&aParms[idxParm], &pReply->u.ListOpen.uHandle);
+                    else
+                        rc = VERR_INVALID_PARAMETER;
 
                     LogFlowFunc(("hListOpen=%RU64\n", pReply->u.ListOpen.uHandle));
                     break;
@@ -290,6 +294,8 @@ static int shClSvcTransferMsgGetReply(uint32_t cParms, VBOXHGCMSVCPARM aParms[],
                 {
                     if (cParms > idxParm)
                         rc = HGCMSvcGetU64(&aParms[idxParm], &pReply->u.ListClose.uHandle);
+                    else
+                        rc = VERR_INVALID_PARAMETER;
 
                     LogFlowFunc(("hListClose=%RU64\n", pReply->u.ListClose.uHandle));
                     break;
@@ -299,6 +305,8 @@ static int shClSvcTransferMsgGetReply(uint32_t cParms, VBOXHGCMSVCPARM aParms[],
                 {
                     if (cParms > idxParm)
                         rc = HGCMSvcGetU64(&aParms[idxParm], &pReply->u.ObjOpen.uHandle);
+                    else
+                        rc = VERR_INVALID_PARAMETER;
 
                     LogFlowFunc(("hObjOpen=%RU64\n", pReply->u.ObjOpen.uHandle));
                     break;
@@ -308,6 +316,8 @@ static int shClSvcTransferMsgGetReply(uint32_t cParms, VBOXHGCMSVCPARM aParms[],
                 {
                     if (cParms > idxParm)
                         rc = HGCMSvcGetU64(&aParms[idxParm], &pReply->u.ObjClose.uHandle);
+                    else
+                        rc = VERR_INVALID_PARAMETER;
 
                     LogFlowFunc(("hObjClose=%RU64\n", pReply->u.ObjClose.uHandle));
                     break;
@@ -641,11 +651,12 @@ static int shClSvcTransferGetObjDataChunk(uint32_t cParms, VBOXHGCMSVCPARM aParm
  * @param   pTransfer           Transfer to handle reply for.
  * @param   cParms              Number of function parameters supplied.
  * @param   aParms              Array function parameters supplied.
+ * @param   fZeroContext        Whether the guest supplied the special zero context ID.
  * @param   pfDestroyTransfer   Where to return whether the caller must destroy
  *                              the retained transfer after releasing it.
  */
 static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer, uint32_t cParms,
-                                         VBOXHGCMSVCPARM aParms[], bool *pfDestroyTransfer)
+                                         VBOXHGCMSVCPARM aParms[], bool fZeroContext, bool *pfDestroyTransfer)
 {
     AssertPtrReturn(pfDestroyTransfer, VERR_INVALID_POINTER);
     *pfDestroyTransfer = false;
@@ -656,7 +667,7 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
     bool fReleaseCreatedTransfer = false;
 
     uint32_t   cbReply = sizeof(SHCLREPLY);
-    PSHCLREPLY pReply  = (PSHCLREPLY)RTMemAlloc(cbReply);
+    PSHCLREPLY pReply  = (PSHCLREPLY)RTMemAllocZ(cbReply);
     if (pReply)
     {
         rc = shClSvcTransferMsgGetReply(cParms, aParms, pReply);
@@ -666,12 +677,14 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                 && pReply->u.TransferStatus.uStatus == SHCLTRANSFERSTATUS_REQUESTED)
             {
                 /* SHCLTRANSFERSTATUS_REQUESTED is special, as it doesn't provide a transfer. */
+                if (!fZeroContext)
+                    rc = VERR_INVALID_CONTEXT;
             }
             else /* Everything else needs a valid transfer ID. */
             {
                 if (!pTransfer)
                 {
-                    LogRelMax2(16, ("Shared Clipboard: Guest reply did not specify a valid transfer context (reply type=%RU32)\n",
+                    LogRelMax(16, ("Shared Clipboard: Guest reply did not specify a valid transfer context (reply type=%RU32)\n",
                                                         pReply->uType));
                     rc = VERR_SHCLPB_TRANSFER_ID_NOT_FOUND;
                 }
@@ -748,7 +761,7 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                                 }
                                 else
                                 {
-                                    LogRelMax2(16, ("Shared Clipboard: Guest requested host -> guest transfer, but clipboard mode %RU32 does not allow it\n",
+                                    LogRelMax(16, ("Shared Clipboard: Guest requested host -> guest transfer, but clipboard mode %RU32 does not allow it\n",
                                                     uMode));
                                     rc = VERR_INVALID_PARAMETER;
                                 }
@@ -965,7 +978,7 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
 
     if (!(fGuestFeatures0 & VBOX_SHCL_GF_0_TRANSFERS))
     {
-        LogRelMax2(16, ("Shared Clipboard: Guest attempted file transfer message %s without negotiated transfer support (features0=%#RX64)\n",
+        LogRelMax(16, ("Shared Clipboard: Guest attempted file transfer message %s without negotiated transfer support (features0=%#RX64)\n",
                         ShClSvcGuestMsgToStr(u32Function), fGuestFeatures0));
         return VERR_ACCESS_DENIED;
     }
@@ -973,7 +986,7 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
     uint32_t const fTransferMode = shClSvcTransferModeGet();
     if (!(fTransferMode & VBOX_SHCL_TRANSFER_MODE_F_ENABLED))
     {
-        LogRelMax2(16, ("Shared Clipboard: Guest attempted file transfer message %s, but file transfers are disabled for this VM (transfer mode=%#x)\n",
+        LogRelMax(16, ("Shared Clipboard: Guest attempted file transfer message %s, but file transfers are disabled for this VM (transfer mode=%#x)\n",
                         ShClSvcGuestMsgToStr(u32Function), fTransferMode));
         return VERR_ACCESS_DENIED;
     }
@@ -982,7 +995,7 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
     uint32_t const uMode = ShClSvcGetMode();
     if (!shClSvcTransferMsgIsAllowed(uMode, u32Function))
     {
-        LogRelMax2(16, ("Shared Clipboard: Guest file transfer message %s is not allowed in clipboard mode %RU32\n",
+        LogRelMax(16, ("Shared Clipboard: Guest file transfer message %s is not allowed in clipboard mode %RU32\n",
                         ShClSvcGuestMsgToStr(u32Function), uMode));
         return VERR_ACCESS_DENIED;
     }
@@ -1005,14 +1018,14 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
          * SHCLTRANSFERSTATUS_REQUESTED without an existing transfer context. */
         if (u32Function != VBOX_SHCL_GUEST_FN_REPLY)
         {
-            LogRelMax2(16, ("Shared Clipboard: Guest file transfer message %s used zero context ID; only transfer status replies may do this\n",
+            LogRelMax(16, ("Shared Clipboard: Guest file transfer message %s used zero context ID; only transfer status replies may do this\n",
                             ShClSvcGuestMsgToStr(u32Function)));
             return VERR_INVALID_CONTEXT;
         }
     }
     else if (VBOX_SHCL_CONTEXTID_GET_SESSION(uCID) != pClient->State.uSessionID)
     {
-        LogRelMax2(16, ("Shared Clipboard: Guest file transfer message %s used context %#RX64 for session %RU32, expected session %RU32\n",
+        LogRelMax(16, ("Shared Clipboard: Guest file transfer message %s used context %#RX64 for session %RU32, expected session %RU32\n",
                         ShClSvcGuestMsgToStr(u32Function), uCID, VBOX_SHCL_CONTEXTID_GET_SESSION(uCID), pClient->State.uSessionID));
         return VERR_INVALID_CONTEXT;
     }
@@ -1028,7 +1041,7 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
     if (   u32Function != VBOX_SHCL_GUEST_FN_REPLY
         && !pTransfer)
     {
-        LogRelMax2(16, ("Shared Clipboard: Guest file transfer message %s references unknown transfer %RU16 (context=%#RX64)\n",
+        LogRelMax(16, ("Shared Clipboard: Guest file transfer message %s references unknown transfer %RU16 (context=%#RX64)\n",
                         ShClSvcGuestMsgToStr(u32Function), idTransfer, uCID));
         return VERR_SHCLPB_TRANSFER_ID_NOT_FOUND;
     }
@@ -1040,7 +1053,7 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
     {
         case VBOX_SHCL_GUEST_FN_REPLY:
         {
-            rc = shClSvcTransferMsgHandleReply(pClient, pTransfer, cParms, aParms, &fDestroyTransfer);
+            rc = shClSvcTransferMsgHandleReply(pClient, pTransfer, cParms, aParms, fZeroContext, &fDestroyTransfer);
             break;
         }
 

@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -910,7 +910,7 @@ bool ShClTransferListEntryIsValid(PSHCLLISTENTRY pListEntry)
     {
         size_t const cbName  = RT_MIN((size_t)pListEntry->cbName, (size_t)SHCLLISTENTRY_MAX_NAME);
         size_t const cchName = pListEntry->pszName && cbName ? RTStrNLen(pListEntry->pszName, cbName) : 0;
-        LogRel2(("Shared Clipboard: List entry '%.*s' is invalid\n",
+        LogRelMax(16, ("Shared Clipboard: List entry '%.*s' is invalid\n",
                  (int)RT_MIN(cchName, (size_t)128), pListEntry->pszName ? pListEntry->pszName : ""));
     }
 
@@ -4747,8 +4747,12 @@ static int shClSvcTransferSendStatusExAsync(PSHCLCLIENT pClient, SHCLTRANSFERID 
         rc = ShClSvcClientWakeup(pClient);
         if (RT_SUCCESS(rc))
         {
-            LogRel2(("Shared Clipboard: Reported status %s (rc=%Rrc) of transfer %RU16 to guest\n",
-                     ShClTransferStatusToStr(enmSts), rcTransfer, idTransfer));
+            if (enmSts == SHCLTRANSFERSTATUS_ERROR)
+                LogRelMax(16, ("Shared Clipboard: Reported error status %Rrc for transfer %RU16 to guest\n",
+                               rcTransfer, idTransfer));
+            else
+                LogRel2(("Shared Clipboard: Reported status %s (rc=%Rrc) of transfer %RU16 to guest\n",
+                         ShClTransferStatusToStr(enmSts), rcTransfer, idTransfer));
 
             if (ppEvent)
             {

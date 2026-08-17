@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendDarwin.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendDarwin.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host.
  */
@@ -274,7 +274,9 @@ static void shClBackendDarwinDestroy(void)
     if (g_ctx.hThread != NIL_RTTHREAD)
     {
         int vrc = RTThreadUserSignal(g_ctx.hThread);
-        AssertRC(vrc);
+        if (RT_FAILURE(vrc))
+            LogRelMax(16, ("Shared Clipboard: Waking the Darwin clipboard poller during shutdown failed with %Rrc;"
+                           " waiting for its polling interval to expire\n", vrc));
         vrc = RTThreadWait(g_ctx.hThread, RT_INDEFINITE_WAIT, NULL);
         AssertFatalMsgRC(vrc, ("Reaping the Darwin clipboard poller failed with %Rrc\n", vrc));
         g_ctx.hThread = NIL_RTTHREAD;
@@ -429,7 +431,7 @@ static int shClBackendDarwinReportFormats(PSHCLCONTEXT pCtx, SHCLFORMATS fFormat
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     if (fFormats & VBOX_SHCL_FMT_URI_LIST)
     {
-        LogRel2(("Shared Clipboard: Darwin backend does not support guest-to-host file-transfer offers yet\n"));
+        LogRelMax(16, ("Shared Clipboard: Darwin backend does not support guest-to-host file-transfer offers yet\n"));
         fFormats &= ~VBOX_SHCL_FMT_URI_LIST;
         if (fFormats == VBOX_SHCL_FMT_NONE)
         {

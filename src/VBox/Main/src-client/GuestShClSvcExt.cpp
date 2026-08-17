@@ -1,4 +1,4 @@
-/* $Id: GuestShClSvcExt.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClSvcExt.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard service extension handling for Main.
  */
@@ -63,7 +63,7 @@ static int shClSvcExtValidateFormat(SHCLFORMAT uFormat, uint32_t u32Function)
 {
     if (ShClFormatIsValid(uFormat))
         return VINF_SUCCESS;
-    LogRelMax2(16, ("Shared Clipboard: Rejecting service-extension function %RU32 with invalid format %#x\n",
+    LogRelMax(16, ("Shared Clipboard: Rejecting service-extension function %RU32 with invalid format %#x\n",
                     u32Function, uFormat));
     return VERR_INVALID_PARAMETER;
 }
@@ -372,7 +372,7 @@ int GuestShCl::i_svcExtDataReadCallback(PSHCLEXTPARMS pParms)
         LogRel2(("Shared Clipboard: Read Main clipboard data (max %RU32 bytes), got %RU32 bytes\n", cbData,
                  pParms->u.ReadWriteData.cbActual));
     else
-        LogRel2(("Shared Clipboard: No Main clipboard data available, vrc=%Rrc\n", vrc));
+        LogRelMax(16, ("Shared Clipboard: No Main clipboard data available, vrc=%Rrc\n", vrc));
     return vrc;
 }
 
@@ -400,7 +400,7 @@ int GuestShCl::i_svcExtDataWriteCallback(PSHCLEXTPARMS pParms)
     {
         int const vrcVrde = pVrde->ClipboardWriteGuestData(fFormats, pvData, cbData);
         if (RT_FAILURE(vrcVrde) && vrcVrde != VERR_NOT_SUPPORTED)
-            LogRelMax2(16, ("Shared Clipboard: Mirroring guest clipboard data to VRDE failed with %Rrc\n", vrcVrde));
+            LogRelMax(16, ("Shared Clipboard: Mirroring guest clipboard data to VRDE failed with %Rrc\n", vrcVrde));
     }
 
     vrc = m_pConn->guestDataComplete(hToken, pvData, cbData);

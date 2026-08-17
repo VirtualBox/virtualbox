@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers-http.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers-http.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: HTTP server implementation for Shared Clipboard transfers on UNIX-y guests / hosts.
  */
@@ -452,7 +452,7 @@ DECLINLINE(PSHCLHTTPSERVERTRANSFER) shClTransferHttpGetTransferFromUrl(PSHCLHTTP
     }
 
     if (!pSrvTx)
-        LogRel2(("Shared Clipboard: HTTP URL '%s' not valid\n", pszUrl));
+        LogRelMax(16, ("Shared Clipboard: HTTP URL '%s' is not valid\n", pszUrl));
 
     LogFlowFunc(("pszUrl=%s, pSrvTx=%p\n", pszUrl, pSrvTx));
     return pSrvTx;
@@ -784,7 +784,7 @@ static DECLCALLBACK(int) shClTransferHttpQueryInfo(PRTHTTPCALLBACKDATA pData,
                                             rc = VERR_NOT_SUPPORTED;
                                     }
                                     else
-                                        LogRel2(("Shared Clipboard: Supplied entry information for '%s' not supported (fInfo=%#x, cbInfo=%RU32\n",
+                                        LogRelMax(16, ("Shared Clipboard: Supplied entry information for '%s' is not supported (fInfo=%#x, cbInfo=%RU32)\n",
                                                  pEntry->pszName, pEntry->fInfo, pEntry->cbInfo));
                                     /* Note: Directories / symlinks or other fancy stuff is not supported here (yet) -- would require using WebDAV. */
                                     if (   RT_FAILURE(rc)

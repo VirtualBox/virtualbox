@@ -1,4 +1,4 @@
-/* $Id: clipboard-common.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-common.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common helper objects.
  */
@@ -534,7 +534,7 @@ int ShClEventWaitEx(PSHCLEVENT pEvent, RTMSINTERVAL uTimeoutMs, int *pRc, PSHCLE
     }
 
     if (RT_FAILURE(rc))
-        LogRel2(("Shared Clipboard: Waiting for event %RU32 failed, rc=%Rrc\n", pEvent->idEvent, rc));
+        LogRelMax(16, ("Shared Clipboard: Waiting for event %RU32 failed, rc=%Rrc\n", pEvent->idEvent, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;

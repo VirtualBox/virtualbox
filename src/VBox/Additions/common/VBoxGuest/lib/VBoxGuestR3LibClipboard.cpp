@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestR3LibClipboard.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxGuestR3LibClipboard.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxGuestR3Lib - Ring-3 Support Library for VirtualBox guest additions, Shared Clipboard.
  */
@@ -1042,9 +1042,19 @@ VBGLR3DECL(int) VbglR3ClipboardTransferSendStatus(PVBGLR3SHCLCMDCTX pCtx, PSHCLT
     if (pTransfer)
     {
         SHCLTRANSFERID const idTransfer = ShClTransferGetID(pTransfer);
-        AssertReturn(ShClTransferIdIsValid(idTransfer), VERR_INVALID_PARAMETER);
+        if (!ShClTransferIdIsValid(idTransfer))
+        {
+            LogRelMax(16, ("Shared Clipboard: Cannot send status %s for invalid transfer ID %RU16\n",
+                           ShClTransferStatusToStr(uStatus), idTransfer));
+            return VERR_INVALID_PARAMETER;
+        }
         SHCLSESSIONID const idSession = ShClTransferGetSessionId(pTransfer);
-        AssertReturn(idSession != 0 && idSession != NIL_SHCLSESSIONID, VERR_INVALID_PARAMETER);
+        if (idSession == 0 || idSession == NIL_SHCLSESSIONID)
+        {
+            LogRelMax(16, ("Shared Clipboard: Cannot send status %s for transfer %RU16 without a valid service session\n",
+                           ShClTransferStatusToStr(uStatus), idTransfer));
+            return VERR_INVALID_PARAMETER;
+        }
         SHCLEVENTID const idEvent =    VBOX_SHCL_CONTEXTID_GET_SESSION(idContext)  == idSession
                                     && VBOX_SHCL_CONTEXTID_GET_TRANSFER(idContext) == idTransfer
                                   ? VBOX_SHCL_CONTEXTID_GET_EVENT(idContext) : 0;
@@ -2400,9 +2410,14 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                 {
                     const SHCLTRANSFERID idTransfer = VBOX_SHCL_CONTEXTID_GET_TRANSFER(pCmdCtx->idContext);
 
-                    LogRel2(("Shared Clipboard: Received status %s (%Rrc) for transfer %RU16 in session %RU16\n",
-                             ShClTransferStatusToStr(transferReport.uStatus), transferReport.rc, idTransfer,
-                             VBOX_SHCL_CONTEXTID_GET_SESSION(pCmdCtx->idContext)));
+                    if (transferReport.uStatus == SHCLTRANSFERSTATUS_ERROR)
+                        LogRelMax(16, ("Shared Clipboard: Received error status %Rrc for transfer %RU16 in session %RU16\n",
+                                       transferReport.rc, idTransfer,
+                                       VBOX_SHCL_CONTEXTID_GET_SESSION(pCmdCtx->idContext)));
+                    else
+                        LogRel2(("Shared Clipboard: Received status %s (%Rrc) for transfer %RU16 in session %RU16\n",
+                                 ShClTransferStatusToStr(transferReport.uStatus), transferReport.rc, idTransfer,
+                                 VBOX_SHCL_CONTEXTID_GET_SESSION(pCmdCtx->idContext)));
 
                     SHCLSOURCE enmSource = SHCLSOURCE_INVALID;
 
@@ -2805,6 +2820,9 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
             && RT_FAILURE(rc)
             && rc != VERR_INVALID_CONTEXT)
         {
+            LogRelMax(16, ("Shared Clipboard: Handling host message %s for context %#RX64 failed with %Rrc\n",
+                           ShClSvcHostMsgToStr(idMsg), pCmdCtx->idContext, rc));
+
             /* Report transfer-specific error back to the host. */
             int rc2 = vbglR3ClipboardTransferSendStatusEx(pCmdCtx, pCmdCtx->idContext, SHCLTRANSFERSTATUS_ERROR, rc);
             AssertRC(rc2);
