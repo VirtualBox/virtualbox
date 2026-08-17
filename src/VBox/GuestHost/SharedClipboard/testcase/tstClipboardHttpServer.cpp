@@ -1,4 +1,4 @@
-/* $Id: tstClipboardHttpServer.cpp 114989 2026-08-11 14:13:05Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardHttpServer.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard HTTP server test case.
  */
@@ -45,7 +45,7 @@
 #include <VBox/GuestHost/SharedClipboard-x11.h>
 #endif
 
-#include <VBox/GuestHost/SharedClipboard-transfers.h>
+#include <VBox/GuestHost/clipboard-transfers-http.h>
 
 
 /** The release logger. */

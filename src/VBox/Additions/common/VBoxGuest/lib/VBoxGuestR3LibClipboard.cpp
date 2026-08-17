@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestR3LibClipboard.cpp 114988 2026-08-11 13:58:58Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxGuestR3LibClipboard.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxGuestR3Lib - Ring-3 Support Library for VirtualBox guest additions, Shared Clipboard.
  */
@@ -2380,7 +2380,7 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
     AssertPtrReturn(pTransferCtx, VERR_INVALID_POINTER);
     AssertPtrReturn(pEvent,       VERR_INVALID_POINTER);
 
-    LogFunc(("Handling idMsg=%RU32 (%s), cParms=%RU32\n", idMsg, ShClHostMsgToStr(idMsg), cParms));
+    LogFunc(("Handling idMsg=%RU32 (%s), cParms=%RU32\n", idMsg, ShClSvcHostMsgToStr(idMsg), cParms));
 
     int rc;
     if (!pCmdCtx->fUseLegacyProtocol)
@@ -2856,7 +2856,7 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNext(uint32_t idMsg, uint32_t cParms, PVB
     int rc;
     if (!pCtx->fUseLegacyProtocol)
     {
-        LogFunc(("Handling idMsg=%RU32 (%s)\n", idMsg, ShClHostMsgToStr(idMsg)));
+        LogFunc(("Handling idMsg=%RU32 (%s)\n", idMsg, ShClSvcHostMsgToStr(idMsg)));
         switch (idMsg)
         {
             case VBOX_SHCL_HOST_MSG_FORMATS_REPORT:

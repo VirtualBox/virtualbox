@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers-http.cpp 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers-http.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: HTTP server implementation for Shared Clipboard transfers on UNIX-y guests / hosts.
  */
@@ -60,7 +60,7 @@
 #include <iprt/log.h>
 
 #include <VBox/HostServices/VBoxClipboardSvc.h>
-#include <VBox/GuestHost/SharedClipboard-transfers.h>
+#include <VBox/GuestHost/clipboard-transfers-http.h>
 
 
 /*********************************************************************************************************************************

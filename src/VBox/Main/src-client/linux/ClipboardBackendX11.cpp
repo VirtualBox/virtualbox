@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendX11.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendX11.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - X11 backend.
  */
@@ -52,7 +52,7 @@
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 # include <VBox/GuestHost/SharedClipboard-transfers.h>
 # ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
-#  include <VBox/GuestHost/SharedClipboard-transfers.h>
+#  include <VBox/GuestHost/clipboard-transfers-http.h>
 # endif
 #endif
 

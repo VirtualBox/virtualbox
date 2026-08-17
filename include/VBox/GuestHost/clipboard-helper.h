@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.h 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-helper.h 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Helper functions.
  */
@@ -341,29 +341,6 @@ int ShClDbgDumpHtml(const char *pszSrc, size_t cbSrc);
 void ShClDbgDumpData(const void *pv, size_t cb, SHCLFORMAT u32Format);
 #endif /* LOG_ENABLED */
 
-/**
- * Translates a Shared Clipboard host function number to a string.
- *
- * @returns Function ID string name.
- * @param   uFn                 The function to translate.
- */
-const char *ShClHostFunctionToStr(uint32_t uFn);
-
-/**
- * Translates a Shared Clipboard host message enum to a string.
- *
- * @returns Message ID string name.
- * @param   uMsg                The message to translate.
- */
-const char *ShClHostMsgToStr(uint32_t uMsg);
-
-/**
- * Translates a Shared Clipboard guest message enum to a string.
- *
- * @returns Message ID string name.
- * @param   uMsg                The message to translate.
- */
-const char *ShClGuestMsgToStr(uint32_t uMsg);
 
 char *ShClFormatsToStrA(SHCLFORMATS fFormats);
 

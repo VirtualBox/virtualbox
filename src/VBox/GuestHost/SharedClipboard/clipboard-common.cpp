@@ -1,4 +1,4 @@
-/* $Id: clipboard-common.cpp 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-common.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common helper objects.
  */
@@ -29,8 +29,10 @@
 
 #define LOG_GROUP LOG_GROUP_SHARED_CLIPBOARD
 
+#include <iprt/asm.h>
 #include <iprt/alloc.h>
 #include <iprt/assert.h>
+#include <iprt/err.h>
 #include <iprt/semaphore.h>
 #include <iprt/path.h>
 #include <iprt/rand.h>
@@ -38,9 +40,9 @@
 #include <iprt/utf16.h>
 
 #include <iprt/errcore.h>
+#include <VBox/err.h>
 #include <VBox/log.h>
 #include <VBox/GuestHost/clipboard-helper.h>
-#include <VBox/HostServices/VBoxClipboardSvc.h>
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_HOST
 # include <VBox/HostServices/VBoxSharedClipboardSvc.h>
 #endif
@@ -54,6 +56,9 @@ static int shClEventSourceUnregisterEvent(PSHCLEVENTSOURCE pSource, PSHCLEVENT p
 
 static void shClEventDestroy(PSHCLEVENT pEvent);
 DECLINLINE(PSHCLEVENT) shclEventGet(PSHCLEVENTSOURCE pSource, SHCLEVENTID idEvent);
+
+/** Exclusive upper bound for usable event IDs. */
+static uint32_t const g_idShClEventEnd = UINT32_MAX - 1;
 
 
 /*********************************************************************************************************************************
@@ -158,7 +163,7 @@ int ShClEventSourceInit(PSHCLEVENTSOURCE pSource, SHCLEVENTSOURCEID uID)
 
     pSource->uID          = uID;
     /* Choose a random event ID starting point. */
-    pSource->idNextEvent  = RTRandU32Ex(1, VBOX_SHCL_MAX_EVENTS - 1);
+    pSource->idNextEvent  = RTRandU32Ex(1, g_idShClEventEnd - 1);
 
     return VINF_SUCCESS;
 }
@@ -268,7 +273,7 @@ int ShClEventSourceGenerateAndRegisterEvent(PSHCLEVENTSOURCE pSource, PSHCLEVENT
             for (uint32_t cTries = 0;; cTries++)
             {
                 SHCLEVENTID idEvent = ++pSource->idNextEvent;
-                if (idEvent < VBOX_SHCL_MAX_EVENTS)
+                if (idEvent < g_idShClEventEnd)
                 { /* likely */ }
                 else
                     pSource->idNextEvent = idEvent = 1; /* zero == error, remember! */
@@ -719,103 +724,6 @@ void ShClDbgDumpData(const void *pv, size_t cb, SHCLFORMAT uFormat)
 }
 
 #endif /* LOG_ENABLED */
-
-/**
- * Translates a Shared Clipboard host function number to a string.
- *
- * @returns Function ID string name.
- * @param   uFn                 The function to translate.
- */
-const char *ShClHostFunctionToStr(uint32_t uFn)
-{
-    switch (uFn)
-    {
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_FN_SET_MODE);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_FN_SET_TRANSFER_MODE);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_FN_SET_HEADLESS);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_FN_CANCEL);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_FN_ERROR);
-    }
-    return "Unknown";
-}
-
-/**
- * Translates a Shared Clipboard host message enum to a string.
- *
- * @returns Message ID string name.
- * @param   uMsg                The message to translate.
- */
-const char *ShClHostMsgToStr(uint32_t uMsg)
-{
-    switch (uMsg)
-    {
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_QUIT);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_READ_DATA);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_FORMATS_REPORT);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_CANCELED);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_READ_DATA_CID);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_STATUS);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_ROOT_LIST_HDR_READ);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_ROOT_LIST_HDR_WRITE);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_ROOT_LIST_ENTRY_READ);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_ROOT_LIST_ENTRY_WRITE);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_LIST_OPEN);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_LIST_CLOSE);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_LIST_HDR_READ);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_LIST_HDR_WRITE);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_LIST_ENTRY_READ);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_LIST_ENTRY_WRITE);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_OBJ_OPEN);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_OBJ_CLOSE);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_OBJ_READ);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_OBJ_WRITE);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_CANCEL);
-        RT_CASE_RET_STR(VBOX_SHCL_HOST_MSG_TRANSFER_ERROR);
-    }
-    return "Unknown";
-}
-
-/**
- * Translates a Shared Clipboard guest message enum to a string.
- *
- * @returns Message ID string name.
- * @param   uMsg                The message to translate.
- */
-const char *ShClGuestMsgToStr(uint32_t uMsg)
-{
-    switch (uMsg)
-    {
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_MSG_OLD_GET_WAIT);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_REPORT_FORMATS);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_DATA_READ);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_DATA_WRITE);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_CONNECT);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_REPORT_FEATURES);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_QUERY_FEATURES);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_MSG_PEEK_NOWAIT);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_MSG_PEEK_WAIT);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_MSG_GET);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_MSG_CANCEL);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_REPLY);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_ROOT_LIST_HDR_READ);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_ROOT_LIST_HDR_WRITE);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_ROOT_LIST_ENTRY_READ);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_ROOT_LIST_ENTRY_WRITE);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_LIST_OPEN);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_LIST_CLOSE);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_LIST_HDR_READ);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_LIST_HDR_WRITE);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_LIST_ENTRY_READ);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_LIST_ENTRY_WRITE);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_OBJ_OPEN);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_OBJ_CLOSE);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_OBJ_READ);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_OBJ_WRITE);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_ERROR);
-        RT_CASE_RET_STR(VBOX_SHCL_GUEST_FN_NEGOTIATE_CHUNK_SIZE);
-    }
-    return "Unknown";
-}
 
 /**
  * Converts Shared Clipboard formats to a string.
@@ -1497,7 +1405,7 @@ int ShClSvcClientWakeup(PSHCLCLIENT pClient)
         AssertReturn(pFirstMsg, VERR_INTERNAL_ERROR);
 
         LogFunc(("[Client %RU32] Current host message is %s (%RU32), cParms=%RU32\n",
-                 pClient->State.uClientID, ShClHostMsgToStr(pFirstMsg->idMsg), pFirstMsg->idMsg, pFirstMsg->cParms));
+                 pClient->State.uClientID, ShClSvcHostMsgToStr(pFirstMsg->idMsg), pFirstMsg->idMsg, pFirstMsg->cParms));
 
         if (pClient->Pending.uType == VBOX_SHCL_GUEST_FN_MSG_PEEK_WAIT)
             shClSvcMsgSetPeekReturn(pFirstMsg, pClient->Pending.paParms, pClient->Pending.cParms);
@@ -1542,7 +1450,7 @@ int shClSvcClientMsgAddAndWakeupClient(PSHCLCLIENT pClient, PSHCLCLIENTMSG pMsg)
     Assert(RTCritSectIsOwner(&pClient->CritSect));
     AssertPtr(pMsg);
     AssertPtr(pClient);
-    LogFlowFunc(("idMsg=%s (%u) cParms=%u\n", ShClHostMsgToStr(pMsg->idMsg), pMsg->idMsg, pMsg->cParms));
+    LogFlowFunc(("idMsg=%s (%u) cParms=%u\n", ShClSvcHostMsgToStr(pMsg->idMsg), pMsg->idMsg, pMsg->cParms));
 
     RTListAppend(&pClient->MsgQueue, &pMsg->ListEntry);
     int const rc = ShClSvcClientWakeup(pClient);
@@ -1575,7 +1483,7 @@ void ShClSvcClientMsgAdd(PSHCLCLIENT pClient, PSHCLCLIENTMSG pMsg, bool fAppend)
     AssertPtr(pMsg);
 
     LogFlowFunc(("idMsg=%s (%RU32) cParms=%RU32 fAppend=%RTbool\n",
-                 ShClHostMsgToStr(pMsg->idMsg), pMsg->idMsg, pMsg->cParms, fAppend));
+                 ShClSvcHostMsgToStr(pMsg->idMsg), pMsg->idMsg, pMsg->cParms, fAppend));
 
     if (fAppend)
         RTListAppend(&pClient->MsgQueue, &pMsg->ListEntry);

@@ -1,4 +1,4 @@
-/* $Id: SharedClipboard-transfers.h 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
+/* $Id: SharedClipboard-transfers.h 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Shared transfer functions between host and guest.
  */
@@ -1256,37 +1256,6 @@ int ShClTransferCtxRegister(PSHCLTRANSFERCTX pTransferCtx, PSHCLTRANSFER pTransf
 int ShClTransferCtxRegisterById(PSHCLTRANSFERCTX pTransferCtx, PSHCLTRANSFER pTransfer, SHCLTRANSFERID idTransfer);
 int ShClTransferCtxUnregisterById(PSHCLTRANSFERCTX pTransferCtx, SHCLTRANSFERID idTransfer);
 /** @} */
-
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
-/** Namespace used as a prefix for HTTP(S) transfer URLs. */
-#define SHCL_HTTPT_URL_NAMESPACE "vbcl"
-
-/** @name Shared Clipboard HTTP context API.
- *  @{
- */
-int ShClTransferHttpServerMaybeStart(PSHCLHTTPCONTEXT pCtx);
-int ShClTransferHttpServerMaybeStop(PSHCLHTTPCONTEXT pCtx);
-/** @} */
-
-/** @name Shared Clipboard HTTP server API.
- *  @{
- */
-int ShClTransferHttpServerInit(PSHCLHTTPSERVER pSrv);
-int ShClTransferHttpServerDestroy(PSHCLHTTPSERVER pSrv);
-int ShClTransferHttpServerStart(PSHCLHTTPSERVER pSrv, unsigned cMaxAttempts, uint16_t *puPort);
-int ShClTransferHttpServerStartEx(PSHCLHTTPSERVER pSrv, uint16_t uPort);
-int ShClTransferHttpServerStop(PSHCLHTTPSERVER pSrv);
-int ShClTransferHttpServerRegisterTransfer(PSHCLHTTPSERVER pSrv, PSHCLTRANSFER pTransfer);
-int ShClTransferHttpServerUnregisterTransfer(PSHCLHTTPSERVER pSrv, PSHCLTRANSFER pTransfer);
-bool ShClTransferHttpServerGetTransfer(PSHCLHTTPSERVER pSrv, SHCLTRANSFERID idTransfer);
-uint32_t ShClTransferHttpServerGetTransferCount(PSHCLHTTPSERVER pSrv);
-char *ShClTransferHttpServerGetAddressA(PSHCLHTTPSERVER pSrv);
-char *ShClTransferHttpServerGetUrlA(PSHCLHTTPSERVER pSrv, SHCLTRANSFERID idTransfer, uint64_t idxEntry);
-int ShClTransferHttpConvertToStringList(PSHCLHTTPSERVER pSrv, PSHCLTRANSFER pTransfer, char **ppszData, size_t *pcbData);
-bool ShClTransferHttpServerIsInitialized(PSHCLHTTPSERVER pSrv);
-bool ShClTransferHttpServerIsRunning(PSHCLHTTPSERVER pSrv);
-/** @} */
-#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP */
 
 /** @name Shared Clipboard transfers utility functions.
  *  @{

@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-client.cpp 114967 2026-08-10 16:15:33Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-client.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Client/session and message queue handling.
  */
@@ -290,7 +290,7 @@ DECLCALLBACK(void) shClSvcClientCall(void *,
 
 #ifdef LOG_ENABLED
     Log2Func(("u32ClientID=%RU32, fn=%RU32 (%s), cParms=%RU32, paParms=%p\n",
-              u32ClientID, u32Function, ShClGuestMsgToStr(u32Function), cParms, paParms));
+              u32ClientID, u32Function, ShClSvcGuestMsgToStr(u32Function), cParms, paParms));
     for (uint32_t i = 0; i < cParms; i++)
     {
         switch (paParms[i].type)
@@ -598,7 +598,7 @@ int shClSvcClientMsgPeek(PSHCLCLIENT pClient, VBOXHGCMCALLHANDLE hCall, uint32_t
     {
         shClSvcMsgSetPeekReturn(pFirstMsg, paParms, cParms);
         LogFlowFunc(("[Client %RU32] VBOX_SHCL_GUEST_FN_MSG_PEEK_XXX -> VINF_SUCCESS (idMsg=%s (%u), cParms=%u)\n",
-                     pClient->State.uClientID, ShClHostMsgToStr(pFirstMsg->idMsg), pFirstMsg->idMsg, pFirstMsg->cParms));
+                     pClient->State.uClientID, ShClSvcHostMsgToStr(pFirstMsg->idMsg), pFirstMsg->idMsg, pFirstMsg->cParms));
         return VINF_SUCCESS;
     }
 
@@ -658,7 +658,7 @@ int shClSvcClientMsgOldGet(PSHCLCLIENT pClient, VBOXHGCMCALLHANDLE hCall, uint32
     if (pFirstMsg)
     {
         LogFlowFunc(("[Client %RU32] uMsg=%s (%RU32), cParms=%RU32\n", pClient->State.uClientID,
-                     ShClHostMsgToStr(pFirstMsg->idMsg), pFirstMsg->idMsg, pFirstMsg->cParms));
+                     ShClSvcHostMsgToStr(pFirstMsg->idMsg), pFirstMsg->idMsg, pFirstMsg->cParms));
 
         rc = shClSvcMsgSetOldWaitReturn(pFirstMsg, paParms, cParms);
         AssertPtr(g_pHelpers);
@@ -728,24 +728,24 @@ int shClSvcClientMsgGet(PSHCLCLIENT pClient, VBOXHGCMCALLHANDLE hCall, uint32_t 
     PSHCLCLIENTMSG pFirstMsg = RTListGetFirst(&pClient->MsgQueue, SHCLCLIENTMSG, ListEntry);
     if (pFirstMsg)
     {
-        LogFlowFunc(("First message is: %s (%u), cParms=%RU32\n", ShClHostMsgToStr(pFirstMsg->idMsg), pFirstMsg->idMsg, pFirstMsg->cParms));
+        LogFlowFunc(("First message is: %s (%u), cParms=%RU32\n", ShClSvcHostMsgToStr(pFirstMsg->idMsg), pFirstMsg->idMsg, pFirstMsg->cParms));
 
         ASSERT_GUEST_MSG_RETURN(pFirstMsg->idMsg == idMsgExpected || idMsgExpected == UINT32_MAX,
                                 ("idMsg=%u (%s) cParms=%u, caller expected %u (%s) and %u\n",
-                                 pFirstMsg->idMsg, ShClHostMsgToStr(pFirstMsg->idMsg), pFirstMsg->cParms,
-                                 idMsgExpected, ShClHostMsgToStr(idMsgExpected), cParms),
+                                 pFirstMsg->idMsg, ShClSvcHostMsgToStr(pFirstMsg->idMsg), pFirstMsg->cParms,
+                                 idMsgExpected, ShClSvcHostMsgToStr(idMsgExpected), cParms),
                                 VERR_MISMATCH);
         ASSERT_GUEST_MSG_RETURN(pFirstMsg->cParms == cParms,
                                 ("idMsg=%u (%s) cParms=%u, caller expected %u (%s) and %u\n",
-                                 pFirstMsg->idMsg, ShClHostMsgToStr(pFirstMsg->idMsg), pFirstMsg->cParms,
-                                 idMsgExpected, ShClHostMsgToStr(idMsgExpected), cParms),
+                                 pFirstMsg->idMsg, ShClSvcHostMsgToStr(pFirstMsg->idMsg), pFirstMsg->cParms,
+                                 idMsgExpected, ShClSvcHostMsgToStr(idMsgExpected), cParms),
                                 VERR_WRONG_PARAMETER_COUNT);
 
         /* Check the parameter types. */
         for (uint32_t i = 0; i < cParms; i++)
             ASSERT_GUEST_MSG_RETURN(pFirstMsg->aParms[i].type == paParms[i].type,
                                     ("param #%u: type %u, caller expected %u (idMsg=%u %s)\n", i, pFirstMsg->aParms[i].type,
-                                     paParms[i].type, pFirstMsg->idMsg, ShClHostMsgToStr(pFirstMsg->idMsg)),
+                                     paParms[i].type, pFirstMsg->idMsg, ShClSvcHostMsgToStr(pFirstMsg->idMsg)),
                                     VERR_WRONG_PARAMETER_TYPE);
         /*
          * Copy out the parameters.

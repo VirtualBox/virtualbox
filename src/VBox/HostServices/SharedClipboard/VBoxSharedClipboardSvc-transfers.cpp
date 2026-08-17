@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -261,7 +261,7 @@ static bool shClSvcTransferMsgIsAllowed(uint32_t uMode, uint32_t uMsg)
             break;
     }
 
-    LogFlowFunc(("uMsg=%RU32 (%s), uMode=%RU32 -> fAllowed=%RTbool\n", uMsg, ShClGuestMsgToStr(uMsg), uMode, fAllowed));
+    LogFlowFunc(("uMsg=%RU32 (%s), uMode=%RU32 -> fAllowed=%RTbool\n", uMsg, ShClSvcGuestMsgToStr(uMsg), uMode, fAllowed));
     return fAllowed;
 }
 
@@ -981,7 +981,7 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
     RT_NOREF(callHandle, aParms, tsArrival);
 
     LogFlowFunc(("uClient=%RU32, u32Function=%RU32 (%s), cParms=%RU32, g_ExtState.pfnExtension=%p\n",
-                 pClient->State.uClientID, u32Function, ShClGuestMsgToStr(u32Function), cParms, g_ExtState.pfnExtension));
+                 pClient->State.uClientID, u32Function, ShClSvcGuestMsgToStr(u32Function), cParms, g_ExtState.pfnExtension));
 
     if (   u32Function > VBOX_SHCL_GUEST_FN_LAST
         || !(pClient->State.fGuestFeatures0 & VBOX_SHCL_GF_0_CONTEXT_ID))
@@ -990,14 +990,14 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
     if (!(pClient->State.fGuestFeatures0 & VBOX_SHCL_GF_0_TRANSFERS))
     {
         LogRelMax2(16, ("Shared Clipboard: Guest attempted file transfer message %s without negotiated transfer support (features0=%#RX64)\n",
-                        ShClGuestMsgToStr(u32Function), pClient->State.fGuestFeatures0));
+                        ShClSvcGuestMsgToStr(u32Function), pClient->State.fGuestFeatures0));
         return VERR_ACCESS_DENIED;
     }
 
     if (!(g_fTransferMode & VBOX_SHCL_TRANSFER_MODE_F_ENABLED))
     {
         LogRelMax2(16, ("Shared Clipboard: Guest attempted file transfer message %s, but file transfers are disabled for this VM (transfer mode=%#x)\n",
-                        ShClGuestMsgToStr(u32Function), g_fTransferMode));
+                        ShClSvcGuestMsgToStr(u32Function), g_fTransferMode));
         return VERR_ACCESS_DENIED;
     }
 
@@ -1006,7 +1006,7 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
     if (!shClSvcTransferMsgIsAllowed(uMode, u32Function))
     {
         LogRelMax2(16, ("Shared Clipboard: Guest file transfer message %s is not allowed in clipboard mode %RU32\n",
-                        ShClGuestMsgToStr(u32Function), uMode));
+                        ShClSvcGuestMsgToStr(u32Function), uMode));
         return VERR_ACCESS_DENIED;
     }
 
@@ -1029,14 +1029,14 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
         if (u32Function != VBOX_SHCL_GUEST_FN_REPLY)
         {
             LogRelMax2(16, ("Shared Clipboard: Guest file transfer message %s used zero context ID; only transfer status replies may do this\n",
-                            ShClGuestMsgToStr(u32Function)));
+                            ShClSvcGuestMsgToStr(u32Function)));
             return VERR_INVALID_CONTEXT;
         }
     }
     else if (VBOX_SHCL_CONTEXTID_GET_SESSION(uCID) != pClient->State.uSessionID)
     {
         LogRelMax2(16, ("Shared Clipboard: Guest file transfer message %s used context %#RX64 for session %RU32, expected session %RU32\n",
-                        ShClGuestMsgToStr(u32Function), uCID, VBOX_SHCL_CONTEXTID_GET_SESSION(uCID), pClient->State.uSessionID));
+                        ShClSvcGuestMsgToStr(u32Function), uCID, VBOX_SHCL_CONTEXTID_GET_SESSION(uCID), pClient->State.uSessionID));
         return VERR_INVALID_CONTEXT;
     }
 
@@ -1050,7 +1050,7 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
         && !pTransfer)
     {
         LogRelMax2(16, ("Shared Clipboard: Guest file transfer message %s references unknown transfer %RU16 (context=%#RX64)\n",
-                        ShClGuestMsgToStr(u32Function), idTransfer, uCID));
+                        ShClSvcGuestMsgToStr(u32Function), idTransfer, uCID));
         return VERR_SHCLPB_TRANSFER_ID_NOT_FOUND;
     }
 

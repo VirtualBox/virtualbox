@@ -1,4 +1,4 @@
-/* $Id: clipboard-x11.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-x11.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard implementation.
  */
@@ -43,6 +43,9 @@
 #include <VBox/HostServices/VBoxClipboardSvc.h>
 #include <VBox/GuestHost/SharedClipboard.h>
 #include <VBox/GuestHost/SharedClipboard-x11.h>
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+# include <VBox/GuestHost/clipboard-transfers-http.h>
+#endif
 
 #include "VBoxClient.h"
 #include "clipboard.h"

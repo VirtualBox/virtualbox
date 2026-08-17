@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114158 2026-05-20 15:21:01Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $
 ## @file
 # Some hacks to allow syntax and prerequisite include checking of headers.
 # This makefile doesn't and shouldn't build successfully.
@@ -45,6 +45,7 @@ VBOX_HDRS_CPP_FEATURES := \
 	VBox/GuestHost/GuestControl.h \
 	VBox/GuestHost/DragAndDrop.h \
 	VBox/GuestHost/SharedClipboard-transfers.h \
+	VBox/GuestHost/clipboard-transfers-http.h \
 	VBox/dbus.h \
 	VBox/xrandr.h \
 	VBox/VBoxCrHgsmi.h \
@@ -90,6 +91,7 @@ VBOX_HDRS_R3_ONLY := \
 	VBox/vscsi.h \
 	VBox/ExtPack/% \
 	VBox/GuestHost/SharedClipboard-transfers.h \
+	VBox/GuestHost/clipboard-transfers-http.h \
 	VBox/GuestHost/SharedClipboard-win.h \
 	VBox/GuestHost/SharedClipboard-x11.h \
 	VBox/GuestHost/DragAndDrop.h \
