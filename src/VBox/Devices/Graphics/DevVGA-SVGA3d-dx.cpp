@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx.cpp 115042 2026-08-15 14:51:14Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx.cpp 115047 2026-08-17 15:05:08Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common code for DX backend interface.
  */
@@ -134,8 +134,41 @@ void vmsvga3dDXInitContextMobData(SVGADXContextMobFormat *p)
         p->csuaViewIds[i] = SVGA3D_INVALID_ID;
 }
 
+
+#ifdef DUMP_BITMAPS
+static void vmsvga3dDXDrawDumpRenderTargets(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, const char *pszPrefix = NULL)
+{
+    for (uint32_t i = 0; i < SVGA3D_MAX_SIMULTANEOUS_RENDER_TARGETS; ++i)
+    {
+        if (pDXContext->svgaDXContext.renderState.renderTargetViewIds[i] != SVGA3D_INVALID_ID)
+        {
+            SVGACOTableDXRTViewEntry *pRTViewEntry = &pDXContext->cot.paRTView[pDXContext->svgaDXContext.renderState.renderTargetViewIds[i]];
+            Log(("Dump RT[%u] sid = %u rtvid = %u\n", i, pRTViewEntry->sid, pDXContext->svgaDXContext.renderState.renderTargetViewIds[i]));
+
+            SVGA3dSurfaceImageId image;
+            image.sid = pRTViewEntry->sid;
+            image.face = 0;
+            image.mipmap = 0;
+            VMSVGA3D_MAPPED_SURFACE map;
+            int rc = vmsvga3dSurfaceMap(pThisCC, &image, NULL, VMSVGA3D_SURFACE_MAP_READ, VMSVGA3D_MAP_F_NONE, &map);
+            if (RT_SUCCESS(rc))
+            {
+                vmsvga3dMapWriteBmpFile(&map, pszPrefix ? pszPrefix : "rt-");
+                vmsvga3dSurfaceUnmap(pThisCC, &image, &map, /* fWritten =  */ false);
+            }
+            else
+                Log(("Map failed %Rrc\n", rc));
+        }
+    }
+}
+#endif
+
+
 DECLINLINE(void) dxPostDraw(PVMSVGA3DDXCONTEXT pDXContext)
 {
+#ifdef DUMP_BITMAPS
+    vmsvga3dDXDrawDumpRenderTargets(pThisCC, pDXContext);
+#endif
     RT_ZERO(pDXContext->state.ia.vb.au32Modified);
     RT_ZERO(pDXContext->state.shader[0].shaderResources.au64Modified);
     RT_ZERO(pDXContext->state.shader[1].shaderResources.au64Modified);
@@ -696,34 +729,6 @@ int vmsvga3dDXSetSamplers(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmdDX
 }
 
 
-#ifdef DUMP_BITMAPS
-static void vmsvga3dDXDrawDumpRenderTargets(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, const char *pszPrefix = NULL)
-{
-    for (uint32_t i = 0; i < SVGA3D_MAX_SIMULTANEOUS_RENDER_TARGETS; ++i)
-    {
-        if (pDXContext->svgaDXContext.renderState.renderTargetViewIds[i] != SVGA3D_INVALID_ID)
-        {
-            SVGACOTableDXRTViewEntry *pRTViewEntry = &pDXContext->cot.paRTView[pDXContext->svgaDXContext.renderState.renderTargetViewIds[i]];
-            Log(("Dump RT[%u] sid = %u rtvid = %u\n", i, pRTViewEntry->sid, pDXContext->svgaDXContext.renderState.renderTargetViewIds[i]));
-
-            SVGA3dSurfaceImageId image;
-            image.sid = pRTViewEntry->sid;
-            image.face = 0;
-            image.mipmap = 0;
-            VMSVGA3D_MAPPED_SURFACE map;
-            int rc = vmsvga3dSurfaceMap(pThisCC, &image, NULL, VMSVGA3D_SURFACE_MAP_READ, VMSVGA3D_MAP_F_NONE, &map);
-            if (RT_SUCCESS(rc))
-            {
-                vmsvga3dMapWriteBmpFile(&map, pszPrefix ? pszPrefix : "rt-");
-                vmsvga3dSurfaceUnmap(pThisCC, &image, &map, /* fWritten =  */ false);
-            }
-            else
-                Log(("Map failed %Rrc\n", rc));
-        }
-    }
-}
-#endif
-
 int vmsvga3dDXDraw(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmdDXDraw const *pCmd)
 {
     int rc;
@@ -738,9 +743,6 @@ int vmsvga3dDXDraw(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmdDXDraw co
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDraw(pThisCC, pDXContext, pCmd->vertexCount, pCmd->startVertexLocation);
     dxPostDraw(pDXContext);
-#ifdef DUMP_BITMAPS
-    vmsvga3dDXDrawDumpRenderTargets(pThisCC, pDXContext);
-#endif
     return rc;
 }
 
@@ -759,9 +761,6 @@ int vmsvga3dDXDrawIndexed(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmdDX
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawIndexed(pThisCC, pDXContext, pCmd->indexCount, pCmd->startIndexLocation, pCmd->baseVertexLocation);
     dxPostDraw(pDXContext);
-#ifdef DUMP_BITMAPS
-    vmsvga3dDXDrawDumpRenderTargets(pThisCC, pDXContext);
-#endif
     return rc;
 }
 
@@ -781,9 +780,6 @@ int vmsvga3dDXDrawInstanced(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmd
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawInstanced(pThisCC, pDXContext,
              pCmd->vertexCountPerInstance, pCmd->instanceCount, pCmd->startVertexLocation, pCmd->startInstanceLocation);
     dxPostDraw(pDXContext);
-#ifdef DUMP_BITMAPS
-    vmsvga3dDXDrawDumpRenderTargets(pThisCC, pDXContext);
-#endif
     return rc;
 }
 
@@ -803,9 +799,6 @@ int vmsvga3dDXDrawIndexedInstanced(PVGASTATECC pThisCC, uint32_t idDXContext, SV
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawIndexedInstanced(pThisCC, pDXContext,
              pCmd->indexCountPerInstance, pCmd->instanceCount, pCmd->startIndexLocation, pCmd->baseVertexLocation, pCmd->startInstanceLocation);
     dxPostDraw(pDXContext);
-#ifdef DUMP_BITMAPS
-    vmsvga3dDXDrawDumpRenderTargets(pThisCC, pDXContext);
-#endif
     return rc;
 }
 
@@ -824,9 +817,6 @@ int vmsvga3dDXDrawAuto(PVGASTATECC pThisCC, uint32_t idDXContext)
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawAuto(pThisCC, pDXContext);
     dxPostDraw(pDXContext);
-#ifdef DUMP_BITMAPS
-    vmsvga3dDXDrawDumpRenderTargets(pThisCC, pDXContext);
-#endif
     return rc;
 }
 
@@ -2750,6 +2740,14 @@ static int dxSanitizeQueryEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXQuer
 static int dxSanitizeShaderEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXShaderEntry *pEntry)
 {
     RT_NOREF(pDXContext);
+    if (pEntry->type == SVGA3D_SHADERTYPE_INVALID)
+    {
+        ASSERT_GUEST_RETURN(pEntry->sizeInBytes == 0, VERR_INVALID_PARAMETER);
+        ASSERT_GUEST_RETURN(pEntry->offsetInBytes == 0, VERR_INVALID_PARAMETER);
+        ASSERT_GUEST_RETURN(pEntry->mobid == SVGA3D_INVALID_ID, VERR_INVALID_PARAMETER);
+        return VINF_SUCCESS;
+    }
+
     ASSERT_GUEST_RETURN(pEntry->type >= SVGA3D_SHADERTYPE_MIN && pEntry->type < SVGA3D_SHADERTYPE_MAX, VERR_INVALID_PARAMETER);
     ASSERT_GUEST_RETURN(pEntry->sizeInBytes >= 8, VERR_INVALID_PARAMETER); /* Version Token + Length Token. */
     return VINF_SUCCESS;
