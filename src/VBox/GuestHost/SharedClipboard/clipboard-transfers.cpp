@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -4853,12 +4853,14 @@ static void shClSvcTransferCleanupAllUnused(PSHCLCLIENT pClient)
  * @param   pClient             Client that owns the transfer.
  * @param   enmDir              Transfer direction to create.
  * @param   enmSource           Transfer source to create.
+ * @param   pCallbacks          Callback table to copy into the transfer. Optional and can be NULL.
  * @param   idTransfer          Transfer ID to use for creation.
  *                              If set to NIL_SHCLTRANSFERID, a new transfer ID will be created.
  * @param   ppTransfer          Where to return the retained transfer on success. Optional and can be NULL.
  *                              The caller must release it with ShClTransferRelease().
  */
-int ShClSvcTransferCreate(PSHCLCLIENT pClient, SHCLTRANSFERDIR enmDir, SHCLSOURCE enmSource, SHCLTRANSFERID idTransfer, PSHCLTRANSFER *ppTransfer)
+int ShClSvcTransferCreate(PSHCLCLIENT pClient, SHCLTRANSFERDIR enmDir, SHCLSOURCE enmSource,
+                          PSHCLTRANSFERCALLBACKS pCallbacks, SHCLTRANSFERID idTransfer, PSHCLTRANSFER *ppTransfer)
 {
     AssertPtrReturn(pClient, VERR_INVALID_POINTER);
     if (ppTransfer)
@@ -4877,7 +4879,7 @@ int ShClSvcTransferCreate(PSHCLCLIENT pClient, SHCLTRANSFERDIR enmDir, SHCLSOURC
          * recheck policy after it reacquires the lock. */
         shClSvcTransferCleanupAllUnused(pClient);
         if (shClSvcClientTransfersAreAllowed(pClient))
-            rc = ShClTransferCreate(enmDir, enmSource, &pClient->Transfers.Callbacks, &pTransfer);
+            rc = ShClTransferCreate(enmDir, enmSource, pCallbacks, &pTransfer);
     }
     if (RT_SUCCESS(rc))
     {

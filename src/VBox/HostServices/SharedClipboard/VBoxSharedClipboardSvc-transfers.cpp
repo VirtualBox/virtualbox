@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -719,9 +719,18 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                                      * having a pending transfer around. Report back the new transfer ID to the guest then. */
                                     if (pTransfer == NULL) /* Must not exist yet. */
                                     {
-                                        rc = ShClSvcTransferCreate(pClient, SHCLTRANSFERDIR_TO_REMOTE, SHCLSOURCE_LOCAL,
-                                                                   NIL_SHCLTRANSFERID /* Creates a new transfer ID */,
-                                                                   &pTransfer);
+                                        SHCLTRANSFERCALLBACKS Callbacks;
+                                        rc = shClSvcExtQueryTransferCallbacks(pClient, &Callbacks);
+                                        if (rc == VERR_NOT_SUPPORTED)
+                                        {
+                                            RT_ZERO(Callbacks);
+                                            rc = VINF_SUCCESS;
+                                        }
+                                        if (RT_SUCCESS(rc))
+                                            rc = ShClSvcTransferCreate(pClient, SHCLTRANSFERDIR_TO_REMOTE, SHCLSOURCE_LOCAL,
+                                                                       &Callbacks,
+                                                                       NIL_SHCLTRANSFERID /* Creates a new transfer ID */,
+                                                                       &pTransfer);
                                         if (RT_SUCCESS(rc))
                                         {
                                             fReleaseCreatedTransfer = true;
@@ -819,21 +828,16 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                                 LogRelMax(16, ("Shared Clipboard: Guest reported error %Rrc for transfer %RU16\n",
                                                pReply->rc, pTransfer->State.uID));
 
-                                if (g_ShClSvc.ExtState.pfnExtension)
+                                if (shClSvcExtIsRegistered())
                                 {
-                                    SHCLEXTPARMS parms;
-                                    RT_ZERO(parms);
+                                    char *pszMsg = RTStrAPrintf2("Guest reported error %Rrc for transfer %RU16", /** @todo Make the error messages more fine-grained based on rc. */
+                                                                 pReply->rc, pTransfer->State.uID);
+                                    AssertPtrBreakStmt(pszMsg, rc = VERR_NO_MEMORY);
 
-                                    parms.u.Error.rc     = pReply->rc;
-                                    parms.u.Error.pszMsg = RTStrAPrintf2("Guest reported error %Rrc for transfer %RU16", /** @todo Make the error messages more fine-grained based on rc. */
-                                                                         pReply->rc, pTransfer->State.uID);
-                                    AssertPtrBreakStmt(parms.u.Error.pszMsg, rc = VERR_NO_MEMORY);
+                                    (void) shClSvcExtReportError(NULL, pszMsg, pReply->rc);
 
-                                    g_ShClSvc.ExtState.pfnExtension(g_ShClSvc.ExtState.pvExtension, VBOX_CLIPBOARD_EXT_FN_ERROR,
-                                                                   &parms, sizeof(parms));
-
-                                    RTStrFree(parms.u.Error.pszMsg);
-                                    parms.u.Error.pszMsg = NULL;
+                                    RTStrFree(pszMsg);
+                                    pszMsg = NULL;
                                 }
 
                                 rc = ShClTransferError(pTransfer, pReply->rc);
@@ -849,24 +853,10 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                             }
                         }
 
-                        /* Tell the backend. */
-                        if (g_ShClSvc.ExtState.pfnExtension)
+                        /* Notify the service extension. */
+                        if (shClSvcExtIsRegistered())
                         {
-                            SHCLEXTPARMS parms;
-                            RT_ZERO(parms);
-
-                            parms.u.FileTransferData.pClient = pClient;
-                            parms.u.FileTransferData.pTransfer = pTransfer;
-                            parms.u.FileTransferData.enmShClSource = SHCLSOURCE_REMOTE;
-                            parms.u.FileTransferData.pReply = pReply;
-
-                            /* The Main backend calls: ShClBackendTransferHandleStatusReply(pClient->pBackend, pClient,
-                             *                             pTransfer, SHCLSOURCE_REMOTE, pReply->u.TransferStatus.uStatus,
-                             *                             pReply->rc);
-                             */
-                            int rc2 = g_ShClSvc.ExtState.pfnExtension(g_ShClSvc.ExtState.pvExtension,
-                                                                     VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER,
-                                                                     &parms, sizeof(parms));
+                            int rc2 = shClSvcExtNotifyTransferStatus(pClient, pTransfer, SHCLSOURCE_REMOTE, pReply);
                             if (RT_SUCCESS(rc))
                                 rc = rc2;
                         }
@@ -964,9 +954,9 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
 {
     RT_NOREF(callHandle, aParms, tsArrival);
 
-    LogFlowFunc(("uClient=%RU32, u32Function=%RU32 (%s), cParms=%RU32, pfnExtension=%p\n",
+    LogFlowFunc(("uClient=%RU32, u32Function=%RU32 (%s), cParms=%RU32, fExtRegistered=%RTbool\n",
                  pClient->State.uClientID, u32Function, ShClSvcGuestMsgToStr(u32Function), cParms,
-                 g_ShClSvc.ExtState.pfnExtension));
+                 shClSvcExtIsRegistered()));
 
     uint64_t const fGuestFeatures0 = ShClSvcClientGetGuestFeatures0(pClient);
     if (   u32Function > VBOX_SHCL_GUEST_FN_LAST

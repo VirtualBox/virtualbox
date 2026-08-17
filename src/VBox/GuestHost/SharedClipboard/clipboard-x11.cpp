@@ -502,9 +502,24 @@ static int clipThreadScheduleCall(PSHCLX11CTX pCtx,
 
     XtAppAddTimeOut(pCtx->pAppContext, 0, (XtTimerCallbackProc)proc,
                     (XtPointer)client_data);
-    ssize_t cbWritten = write(pCtx->wakeupPipeWrite, WAKE_UP_STRING, WAKE_UP_STRING_LEN);
-    Assert(cbWritten == WAKE_UP_STRING_LEN);
-    RT_NOREF(cbWritten);
+
+    ssize_t cbWritten;
+    do
+        cbWritten = write(pCtx->wakeupPipeWrite, WAKE_UP_STRING, WAKE_UP_STRING_LEN);
+    while (cbWritten < 0 && errno == EINTR);
+    if (cbWritten < 0)
+    {
+        /* A full non-blocking pipe is already readable and will wake the worker. */
+        if (errno != EAGAIN && errno != EWOULDBLOCK)
+        {
+            int const rc = RTErrConvertFromErrno(errno);
+            /* The Xt callback is already queued and cannot be cancelled without racing the worker. */
+            AssertFatalMsgRC(rc, ("Waking the X11 event thread failed with %Rrc\n", rc));
+        }
+    }
+    else if (cbWritten != WAKE_UP_STRING_LEN)
+        AssertFatalMsgFailed(("Waking the X11 event thread wrote only %zd of %zu bytes\n",
+                              cbWritten, (size_t)WAKE_UP_STRING_LEN));
 #else
     RT_NOREF(pCtx);
     tstThreadScheduleCall(proc, client_data);
@@ -1413,6 +1428,8 @@ int ShClX11ThreadStartEx(PSHCLX11CTX pCtx, const char *pszName, bool fGrab)
 {
     AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
 
+    pCtx->Thread = NIL_RTTHREAD;
+    pCtx->fThreadStarted = false;
     pCtx->fGrabClipboardOnStart = fGrab;
 
     clipResetX11Formats(pCtx);
@@ -1429,7 +1446,8 @@ int ShClX11ThreadStartEx(PSHCLX11CTX pCtx, const char *pszName, bool fGrab)
         pCtx->wakeupPipeRead  = pipes[0];
         pCtx->wakeupPipeWrite = pipes[1];
 
-        if (!fcntl(pCtx->wakeupPipeRead, F_SETFL, O_NONBLOCK))
+        if (   !fcntl(pCtx->wakeupPipeRead,  F_SETFL, O_NONBLOCK)
+            && !fcntl(pCtx->wakeupPipeWrite, F_SETFL, O_NONBLOCK))
         {
             rc = VINF_SUCCESS;
         }
@@ -1452,6 +1470,7 @@ int ShClX11ThreadStartEx(PSHCLX11CTX pCtx, const char *pszName, bool fGrab)
         {
             /* The backend must not release pCtx while the worker initializes it. */
             rc = RTThreadUserWait(pCtx->Thread, RT_INDEFINITE_WAIT);
+            AssertFatalMsgRC(rc, ("Waiting for X11 event thread startup failed with %Rrc\n", rc));
         }
         else
             clipThreadCloseWakeupPipe(pCtx);
@@ -1468,10 +1487,9 @@ int ShClX11ThreadStartEx(PSHCLX11CTX pCtx, const char *pszName, bool fGrab)
                 /* The worker signalled its terminal startup failure; reap it before returning. */
                 int rcThread = VERR_IPE_UNINITIALIZED_STATUS;
                 int rc2 = RTThreadWait(pCtx->Thread, RT_INDEFINITE_WAIT, &rcThread);
-                if (RT_SUCCESS(rc2))
-                    rc = RT_FAILURE(rcThread) ? rcThread : VERR_GENERAL_FAILURE;
-                else
-                    rc = rc2;
+                AssertFatalMsgRC(rc2, ("Reaping X11 event thread after startup failure failed with %Rrc\n", rc2));
+                pCtx->Thread = NIL_RTTHREAD;
+                rc = RT_FAILURE(rcThread) ? rcThread : VERR_GENERAL_FAILURE;
 
                 clipThreadCloseWakeupPipe(pCtx);
                 LogRel(("Shared Clipboard: X11 event thread reported an error while starting: %Rrc\n", rc));
@@ -1510,31 +1528,43 @@ int ShClX11ThreadStart(PSHCLX11CTX pCtx, bool fGrab)
  */
 int ShClX11ThreadStop(PSHCLX11CTX pCtx)
 {
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+    AssertReturn(pCtx->Thread != NIL_RTTHREAD, VERR_INVALID_STATE);
+
+    int rcThread = VERR_IPE_UNINITIALIZED_STATUS;
+    int rcWait = RTThreadWait(pCtx->Thread, 0 /* cMillies */, &rcThread);
+    if (RT_SUCCESS(rcWait))
+    {
+        pCtx->Thread = NIL_RTTHREAD;
+        pCtx->fThreadStarted = false;
+        clipThreadCloseWakeupPipe(pCtx);
+        return rcThread;
+    }
+    AssertFatalMsg(rcWait == VERR_TIMEOUT, ("Probing X11 event thread failed with %Rrc\n", rcWait));
+
     LogRel2(("Shared Clipboard: Signalling the X11 event thread to stop\n"));
 
     /* Write to the "stop" pipe. */
-    int rc = clipThreadScheduleCall(pCtx, clipThreadSignalStop, (XtPointer)pCtx);
-    if (RT_FAILURE(rc))
-    {
-        LogRel(("Shared Clipboard: cannot notify X11 event thread on shutdown with %Rrc\n", rc));
-        return rc;
-    }
+    int const rcSignal = clipThreadScheduleCall(pCtx, clipThreadSignalStop, (XtPointer)pCtx);
+    AssertFatalMsgRC(rcSignal, ("Cannot notify X11 event thread on shutdown with %Rrc\n", rcSignal));
 
     LogRel2(("Shared Clipboard: Waiting for X11 event thread to stop ...\n"));
 
-    int rcThread;
-    rc = RTThreadWait(pCtx->Thread, RT_MS_30SEC /* msTimeout */, &rcThread);
-    if (RT_SUCCESS(rc))
-        rc = rcThread;
-    if (RT_SUCCESS(rc))
+    rcWait = RTThreadWait(pCtx->Thread, RT_MS_30SEC /* msTimeout */, &rcThread);
+    if (RT_FAILURE(rcWait))
     {
-        clipThreadCloseWakeupPipe(pCtx);
+        LogRel(("Shared Clipboard: X11 event thread did not stop promptly (%Rrc); waiting indefinitely\n", rcWait));
+        rcWait = RTThreadWait(pCtx->Thread, RT_INDEFINITE_WAIT, &rcThread);
     }
+    AssertFatalMsgRC(rcWait, ("Reaping X11 event thread failed with %Rrc\n", rcWait));
 
+    pCtx->Thread = NIL_RTTHREAD;
+    pCtx->fThreadStarted = false;
+    clipThreadCloseWakeupPipe(pCtx);
+
+    int const rc = rcThread;
     if (RT_SUCCESS(rc))
-    {
         LogRel2(("Shared Clipboard: X11 event thread stopped successfully\n"));
-    }
     else
         LogRel(("Shared Clipboard: Stopping X11 event thread failed with %Rrc\n", rc));
 

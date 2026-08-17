@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Host service entry points.
  */
@@ -33,9 +33,10 @@
  * and VBoxService depending on the OS, with code shared between host and guest
  * under src/VBox/GuestHost/SharedClipboard/.
  *
- * The service is split into a platform-independent core and platform-specific
- * backends. The backends also make use of the aforementioned shared guest/host
- * clipboard code, to avoid code duplication.
+ * The service implements the HGCM protocol and transport state. Host integration
+ * and the platform-specific backends live in Main (VBoxC) and are reached through
+ * the registered service extension. The backends also use the aforementioned
+ * shared guest/host clipboard code to avoid code duplication.
  *
  * @section sec_hostclip_guest_proto  The guest communication protocol
  *
@@ -68,8 +69,7 @@
  * used after the host has requested data from the guest.
  *
  *
- * @section sec_hostclip_backend_proto  The communication protocol with the
- *                                      platform-specific backend
+ * @section sec_hostclip_protocol_versions  Protocol versioning and context IDs
  *
  * The initial protocol implementation (called protocol v0) was very simple,
  * and could only handle simple data (like copied text and so on). It also
@@ -310,26 +310,35 @@ uint32_t ShClSvcGetMode(void)
 }
 
 
-static int shClSvcInit(VBOXHGCMSVCFNTABLE *pTable)
+/**
+ * Initializes the service-global Shared Clipboard state.
+ *
+ * @returns VBox status code.
+ */
+static int shClSvcInit(void)
 {
     int rc = RTCritSectInit(&g_ShClSvc.CritSect);
 
     if (RT_SUCCESS(rc))
     {
-        shClSvcHostModeSet(VBOX_SHCL_MODE_OFF);
-        g_ShClSvc.idNextSession = 1;
+        rc = RTSemEventMultiCreate(&g_ShClSvc.ExtState.hCallbacksDone);
+        if (RT_SUCCESS(rc))
+        {
+            rc = RTSemEventMultiSignal(g_ShClSvc.ExtState.hCallbacksDone);
+            if (RT_SUCCESS(rc))
+            {
+                shClSvcHostModeSet(VBOX_SHCL_MODE_OFF);
+                g_ShClSvc.idNextSession = 1;
+            }
+        }
 
-        /* Normally we would call ShClBackendInit() here but the service extension
-         * has not been loaded at this early stage of the Shared Clipboard service
-         * bringup so thus we save the HGCM service function table now so that we can
-         * pass it along to ShClBackendInit() later at shClSvcConnect() time. */
-        g_ShClSvc.pTable = pTable;
-
-        /* Clean up on failure, because 'shClSvcUnload' will not be called
-         * if 'shClSvcInit' returns an error.
-         */
         if (RT_FAILURE(rc))
         {
+            if (g_ShClSvc.ExtState.hCallbacksDone != NIL_RTSEMEVENTMULTI)
+            {
+                RTSemEventMultiDestroy(g_ShClSvc.ExtState.hCallbacksDone);
+                g_ShClSvc.ExtState.hCallbacksDone = NIL_RTSEMEVENTMULTI;
+            }
             RTCritSectDelete(&g_ShClSvc.CritSect);
         }
     }
@@ -341,11 +350,14 @@ static DECLCALLBACK(int) shClSvcUnload(void *)
 {
     LogFlowFuncEnter();
 
-    shClSvcBackendDestroy();
+    int const rc = shClSvcExtUnregisterAndDestroy();
+    AssertLogRelRC(rc);
 
+    RTSemEventMultiDestroy(g_ShClSvc.ExtState.hCallbacksDone);
+    g_ShClSvc.ExtState.hCallbacksDone = NIL_RTSEMEVENTMULTI;
     RTCritSectDelete(&g_ShClSvc.CritSect);
 
-    return VINF_SUCCESS;
+    return rc;
 }
 
 static DECLCALLBACK(int) shClSvcDisconnect(void *, uint32_t u32ClientID, void *pvClient)
@@ -359,9 +371,15 @@ static DECLCALLBACK(int) shClSvcDisconnect(void *, uint32_t u32ClientID, void *p
     Assert(g_ShClSvc.pActiveClient == pClient);
     if (g_ShClSvc.pActiveClient == pClient)
         g_ShClSvc.pActiveClient = NULL;
+    if (g_ShClSvc.ExtState.uClientID == u32ClientID)
+        g_ShClSvc.ExtState.uClientID = 0;
     shClSvcUnlock();
 
-    shClSvcBackendDisconnect(pClient);
+    int const rcWait = RTSemEventMultiWait(g_ShClSvc.ExtState.hCallbacksDone, RT_INDEFINITE_WAIT);
+    AssertFatalMsgRC(rcWait, ("Waiting for Shared Clipboard extension callbacks during disconnect failed with %Rrc\n",
+                              rcWait));
+
+    shClSvcExtBackendDisconnect(pClient);
 
     shClSvcClientDestroy(pClient);
 
@@ -374,8 +392,6 @@ static DECLCALLBACK(int) shClSvcConnect(void *, uint32_t u32ClientID, void *pvCl
 
     PSHCLCLIENT pClient = (PSHCLCLIENT)pvClient;
     AssertPtr(pvClient);
-    pClient->pBackend = &g_ShClSvc.Backend;
-
     int rc = ShClSvcClientInit(pClient, u32ClientID);
     if (RT_SUCCESS(rc))
     {
@@ -396,15 +412,17 @@ static DECLCALLBACK(int) shClSvcConnect(void *, uint32_t u32ClientID, void *pvCl
 #endif
         g_ShClSvc.pActiveClient = pClient;
 
-        rc = shClSvcBackendInit(g_ShClSvc.pTable);
+        rc = shClSvcExtBackendInit();
         if (RT_SUCCESS(rc))
         {
-            rc = shClSvcBackendConnect(pClient);
+            rc = shClSvcExtBackendConnect(pClient);
             if (RT_SUCCESS(rc))
             {
-                rc = shClSvcBackendSync(pClient);
+                rc = shClSvcExtBackendSync(pClient);
                 if (RT_SUCCESS(rc))
                 {
+                    if (g_ShClSvc.ExtState.uClientID == 0)
+                        g_ShClSvc.ExtState.uClientID = u32ClientID;
                     /* The sync could return VINF_NO_CHANGE if nothing has changed on the host, but
                        older Guest Additions didn't use RT_SUCCESS to but == VINF_SUCCESS to check for
                        success.  So just return VINF_SUCCESS here to not break older Guest Additions. */
@@ -412,12 +430,12 @@ static DECLCALLBACK(int) shClSvcConnect(void *, uint32_t u32ClientID, void *pvCl
                     shClSvcUnlock();
                     return VINF_SUCCESS;
                 }
-                LogFunc(("ShClBackendSync failed: %Rrc\n", rc));
-                shClSvcBackendDisconnect(pClient);
+                LogFunc(("Service extension BACKEND_SYNC failed: %Rrc\n", rc));
+                shClSvcExtBackendDisconnect(pClient);
             }
-            LogFunc(("ShClBackendConnect failed: %Rrc\n", rc));
+            LogFunc(("Service extension BACKEND_CONNECT failed: %Rrc\n", rc));
         }
-        LogFunc(("ShClBackendInit failed: %Rrc\n", rc));
+        LogFunc(("Service extension BACKEND_INIT failed: %Rrc\n", rc));
         Assert(g_ShClSvc.pActiveClient == pClient);
         g_ShClSvc.pActiveClient = NULL;
         shClSvcUnlock();
@@ -750,7 +768,7 @@ static DECLCALLBACK(int) shClSvcLoadState(void *, uint32_t u32ClientID, void *pv
     }
 
     /* Actual host data are to be reported to guest (SYNC). */
-    (void) shClSvcBackendSync(pClient);
+    (void) shClSvcExtBackendSync(pClient);
 
 #else  /* UNIT_TEST */
     RT_NOREF(u32ClientID, pvClient, pSSM, pVMM, uVersion);
@@ -808,7 +826,7 @@ extern "C" DECLCALLBACK(DECLEXPORT(int)) VBoxHGCMSvcLoad(VBOXHGCMSVCFNTABLE *pTa
             pTable->pvService            = NULL;
 
             /* Service specific initialization. */
-            rc = shClSvcInit(pTable);
+            rc = shClSvcInit();
         }
     }
 
