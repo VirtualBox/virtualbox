@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferImpl.cpp 114975 2026-08-10 18:04:13Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferImpl.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer object.
  */
@@ -101,9 +101,9 @@ static ClipboardTransferDirection_T clipboardTransferDirectionFromShCl(SHCLTRANS
 {
     switch (enmDir)
     {
-        case SHCLTRANSFERDIR_TO_REMOTE:   return ClipboardTransferDirection_ToGuest;
-        case SHCLTRANSFERDIR_FROM_REMOTE: return ClipboardTransferDirection_ToHost;
-        default:                          return ClipboardTransferDirection_Any;
+        case SHCLTRANSFERDIR_HOST_TO_GUEST: return ClipboardTransferDirection_ToGuest;
+        case SHCLTRANSFERDIR_GUEST_TO_HOST: return ClipboardTransferDirection_ToHost;
+        default:                            return ClipboardTransferDirection_Any;
     }
 }
 
@@ -229,7 +229,7 @@ static HRESULT clipboardTransferCreateLocalProviderBackend(const std::vector<com
     }
 
     PSHCLTRANSFER pTransfer = NULL;
-    int vrc = ShClTransferCreateEx(SHCLTRANSFERDIR_TO_REMOTE, SHCLSOURCE_LOCAL,
+    int vrc = ShClTransferCreateEx(SHCLTRANSFERDIR_HOST_TO_GUEST, SHCLSOURCE_LOCAL,
                                    SHCL_TRANSFER_DEFAULT_MAX_CHUNK_SIZE,
                                    SHCL_TRANSFER_DEFAULT_MAX_LIST_HANDLES,
                                    SHCL_TRANSFER_DEFAULT_MAX_OBJ_HANDLES,

@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferManagerImpl.cpp 114977 2026-08-10 19:27:36Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferManagerImpl.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer manager object.
  */
@@ -294,7 +294,7 @@ HRESULT ClipboardTransferManager::getTransfers(ClipboardTransferDirection_T aDir
                 if (aDirection != ClipboardTransferDirection_Any)
                 {
                     ClipboardTransferDirection_T const enmDirection
-                        = it->mDirection == SHCLTRANSFERDIR_FROM_REMOTE
+                        = it->mDirection == SHCLTRANSFERDIR_GUEST_TO_HOST
                         ? ClipboardTransferDirection_ToHost : ClipboardTransferDirection_ToGuest;
                     if (enmDirection != aDirection)
                         continue;
@@ -376,7 +376,7 @@ HRESULT ClipboardTransferManager::create(ClipboardTransferDirection_T aDirection
         Data::TransferRecord Record;
         Record.mTransferId = idTransfer;
         Record.mDirection = aDirection == ClipboardTransferDirection_ToHost
-                          ? SHCLTRANSFERDIR_FROM_REMOTE : SHCLTRANSFERDIR_TO_REMOTE;
+                          ? SHCLTRANSFERDIR_GUEST_TO_HOST : SHCLTRANSFERDIR_HOST_TO_GUEST;
         Record.mSource = aSource == ClipboardSource_Host
                        ? SHCLSOURCE_LOCAL
                        : aSource == ClipboardSource_Guest ? SHCLSOURCE_REMOTE : SHCLSOURCE_INVALID;
@@ -924,17 +924,17 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceS
     else
     {
         enmTransferDirection = enmShClSource == SHCLSOURCE_REMOTE
-                             ? SHCLTRANSFERDIR_FROM_REMOTE : SHCLTRANSFERDIR_TO_REMOTE;
+                             ? SHCLTRANSFERDIR_GUEST_TO_HOST : SHCLTRANSFERDIR_HOST_TO_GUEST;
         enmTransferSource    = enmShClSource;
     }
-    if (   (   enmTransferDirection != SHCLTRANSFERDIR_FROM_REMOTE
-            && enmTransferDirection != SHCLTRANSFERDIR_TO_REMOTE)
+    if (   (   enmTransferDirection != SHCLTRANSFERDIR_GUEST_TO_HOST
+            && enmTransferDirection != SHCLTRANSFERDIR_HOST_TO_GUEST)
         || (   enmTransferSource != SHCLSOURCE_LOCAL
             && enmTransferSource != SHCLSOURCE_REMOTE)
         || (   enmTransferSource == SHCLSOURCE_LOCAL
-            && enmTransferDirection != SHCLTRANSFERDIR_TO_REMOTE)
+            && enmTransferDirection != SHCLTRANSFERDIR_HOST_TO_GUEST)
         || (   enmTransferSource == SHCLSOURCE_REMOTE
-            && enmTransferDirection != SHCLTRANSFERDIR_FROM_REMOTE))
+            && enmTransferDirection != SHCLTRANSFERDIR_GUEST_TO_HOST))
         return E_INVALIDARG;
     if (enmStatus == SHCLTRANSFERSTATUS_NONE)
         return S_OK;
@@ -998,7 +998,7 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceS
             if (FAILED(hrc))
                 return hrc;
 
-            ClipboardTransferDirection_T const enmDirection = enmTransferDirection == SHCLTRANSFERDIR_FROM_REMOTE
+            ClipboardTransferDirection_T const enmDirection = enmTransferDirection == SHCLTRANSFERDIR_GUEST_TO_HOST
                                                             ? ClipboardTransferDirection_ToHost
                                                             : ClipboardTransferDirection_ToGuest;
             ClipboardSource_T const enmSource = enmTransferSource == SHCLSOURCE_REMOTE

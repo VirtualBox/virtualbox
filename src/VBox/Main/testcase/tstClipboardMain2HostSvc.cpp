@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMain2HostSvc.cpp 115057 2026-08-17 16:48:01Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardMain2HostSvc.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Host Service integration testcase.
  */
@@ -597,7 +597,7 @@ static void tstTransferInitializedResult(void *pvClient, GuestShClConn *pConn)
     Callbacks.cbUser           = sizeof(State);
 
     PSHCLTRANSFER pTransfer = NULL;
-    int vrc = pConn->transferCreate(SHCLTRANSFERDIR_FROM_REMOTE, SHCLSOURCE_REMOTE, &Callbacks,
+    int vrc = pConn->transferCreate(SHCLTRANSFERDIR_GUEST_TO_HOST, SHCLSOURCE_REMOTE, &Callbacks,
                                     NIL_SHCLTRANSFERID, &pTransfer);
     RTTESTI_CHECK_RC(vrc, VINF_SUCCESS);
     if (RT_FAILURE(vrc))
@@ -622,7 +622,7 @@ static void tstTransferInitializedResult(void *pvClient, GuestShClConn *pConn)
     RTTESTI_CHECK_RC(vrc, VINF_SUCCESS);
     RTTESTI_CHECK(VBOX_SHCL_CONTEXTID_GET_SESSION(aStatus[0].u.uint64) == idSession);
     RTTESTI_CHECK(VBOX_SHCL_CONTEXTID_GET_TRANSFER(aStatus[0].u.uint64) == idTransfer);
-    RTTESTI_CHECK(aStatus[1].u.uint32 == SHCLTRANSFERDIR_FROM_REMOTE);
+    RTTESTI_CHECK(aStatus[1].u.uint32 == SHCLTRANSFERDIR_GUEST_TO_HOST);
     RTTESTI_CHECK(aStatus[2].u.uint32 == SHCLTRANSFERSTATUS_ERROR);
     RTTESTI_CHECK((int32_t)aStatus[3].u.uint32 == State.vrcCallback);
 

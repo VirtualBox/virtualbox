@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 115057 2026-08-17 16:48:01Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -2198,10 +2198,10 @@ int ShClTransferRootsSetFromStringListEx(PSHCLTRANSFER pTransfer, const char *ps
                 PSHCLFSOBJINFO pFsObjInfo = (PSHCLFSOBJINFO)RTMemAllocZ(sizeof(SHCLFSOBJINFO));
                 if (pFsObjInfo)
                 {
-                    if (pTransfer->State.enmDir == SHCLTRANSFERDIR_TO_REMOTE)
+                    if (pTransfer->State.enmSource == SHCLSOURCE_LOCAL)
                         rc = ShClFsObjInfoQueryLocal(pszPathCur, pFsObjInfo);
                     if (   RT_SUCCESS(rc)
-                        && pTransfer->State.enmDir == SHCLTRANSFERDIR_TO_REMOTE)
+                        && pTransfer->State.enmSource == SHCLSOURCE_LOCAL)
                     {
                         if (   !RTFS_IS_DIRECTORY(pFsObjInfo->Attr.fMode)
                             && !RTFS_IS_FILE(pFsObjInfo->Attr.fMode))
@@ -5189,7 +5189,7 @@ int ShClTransferInit(PSHCLTRANSFER pTransfer)
     {
         /* Sanity: Make sure that the transfer we're gonna report as INITIALIZED
          *         actually has some root entries set, as the other side can query for those at any time then. */
-        if (pTransfer->State.enmDir == SHCLTRANSFERDIR_TO_REMOTE)
+        if (pTransfer->State.enmSource == SHCLSOURCE_LOCAL)
             AssertMsgStmt(ShClTransferRootsCount(pTransfer), ("Transfer has no root entries set (yet)\n"), rc = VERR_WRONG_ORDER);
 
         if (RT_SUCCESS(rc))
@@ -5240,7 +5240,7 @@ int ShClSvcTransferInit(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer)
             SHCLTRANSFERDIR const enmDir = ShClTransferGetDir(pTransfer);
 
             LogRel2(("Shared Clipboard: Initializing %s transfer ...\n",
-                     enmDir == SHCLTRANSFERDIR_FROM_REMOTE ? "guest -> host" : "host -> guest"));
+                     enmDir == SHCLTRANSFERDIR_GUEST_TO_HOST ? "guest -> host" : "host -> guest"));
 
             rc = ShClTransferInit(pTransfer);
         }

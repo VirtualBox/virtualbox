@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendX11.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendX11.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - X11 backend.
  */
@@ -713,7 +713,7 @@ static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, ui
     {
         SHCLTRANSFERCALLBACKS Callbacks;
         shClBackendX11TransferGetCallbacks(pCtx, &Callbacks);
-        vrc = pCtx->pConn->transferCreate(SHCLTRANSFERDIR_FROM_REMOTE, SHCLSOURCE_REMOTE, &Callbacks,
+        vrc = pCtx->pConn->transferCreate(SHCLTRANSFERDIR_GUEST_TO_HOST, SHCLSOURCE_REMOTE, &Callbacks,
                                           NIL_SHCLTRANSFERID, &pTransfer);
     }
 
@@ -935,13 +935,13 @@ static DECLCALLBACK(void) shClSvcX11TransferOnCreatedCallback(PSHCLTRANSFERCALLB
 
     switch (ShClTransferGetDir(pTransfer))
     {
-        case SHCLTRANSFERDIR_FROM_REMOTE: /* Guest -> Host. */
+        case SHCLTRANSFERDIR_GUEST_TO_HOST:
         {
             vrc = pCtx->pConn->transferProviderInitGuest(&Provider);
             break;
         }
 
-        case SHCLTRANSFERDIR_TO_REMOTE: /* Host -> Guest. */
+        case SHCLTRANSFERDIR_HOST_TO_GUEST:
         {
             ShClTransferProviderLocalQueryInterface(&Provider);
             Provider.Interface.pfnRootListRead = shClSvcX11TransferIfaceHGRootListRead;
@@ -986,7 +986,7 @@ static DECLCALLBACK(int) shClSvcX11TransferOnInitCallback(PSHCLTRANSFERCALLBACKC
 
     switch (ShClTransferGetDir(pTransfer))
     {
-        case SHCLTRANSFERDIR_FROM_REMOTE: /* G->H */
+        case SHCLTRANSFERDIR_GUEST_TO_HOST:
         {
 # ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
             /* We only need to start the HTTP server when we actually receive data from the remote (host). */
@@ -995,7 +995,7 @@ static DECLCALLBACK(int) shClSvcX11TransferOnInitCallback(PSHCLTRANSFERCALLBACKC
             break;
         }
 
-        case SHCLTRANSFERDIR_TO_REMOTE: /* H->G */
+        case SHCLTRANSFERDIR_HOST_TO_GUEST:
         {
             vrc = ShClTransferRootListRead(pTransfer); /* Calls shClSvcX11TransferIfaceHGRootListRead(). */
             break;
@@ -1028,7 +1028,7 @@ static DECLCALLBACK(void) shClSvcX11TransferOnDestroyCallback(PSHCLTRANSFERCALLB
     PSHCLTRANSFER pTransfer = pCbCtx->pTransfer;
     AssertPtr(pTransfer);
 
-    if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE)
+    if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_GUEST_TO_HOST)
         ShClTransferHttpServerMaybeStop(&pCtx->X11.HttpCtx);
 # else
     RT_NOREF(pCbCtx);
@@ -1049,7 +1049,7 @@ static DECLCALLBACK(void) shClSvcX11TransferOnDestroyCallback(PSHCLTRANSFERCALLB
  */
 static void shClSvcX11HttpTransferUnregister(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransfer)
 {
-    if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE)
+    if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_GUEST_TO_HOST)
     {
 # ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
         if (ShClTransferHttpServerIsInitialized(&pCtx->X11.HttpCtx.HttpServer))
@@ -1161,7 +1161,7 @@ static int shClBackendX11TransferHandleStatusReply(PSHCLCONTEXT pCtx, PSHCLTRANS
     AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
     RT_NOREF(enmSource, rcStatus);
 
-    if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE) /* Guest -> Host */
+    if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_GUEST_TO_HOST)
     {
         switch (enmStatus)
         {

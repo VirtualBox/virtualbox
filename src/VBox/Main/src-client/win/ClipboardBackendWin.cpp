@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendWin.cpp 115057 2026-08-17 16:48:01Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendWin.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Win32 host.
  */
@@ -247,13 +247,13 @@ static DECLCALLBACK(void) shClSvcWinTransferOnCreatedCallback(PSHCLTRANSFERCALLB
 
     switch (ShClTransferGetDir(pTransfer))
     {
-        case SHCLTRANSFERDIR_FROM_REMOTE: /* G->H */
+        case SHCLTRANSFERDIR_GUEST_TO_HOST:
         {
             vrc = pCtx->pConn->transferProviderInitGuest(&Provider);
             break;
         }
 
-        case SHCLTRANSFERDIR_TO_REMOTE: /* H->G */
+        case SHCLTRANSFERDIR_HOST_TO_GUEST:
         {
             ShClTransferProviderLocalQueryInterface(&Provider);
             Provider.Interface.pfnRootListRead = shClSvcWinTransferIfaceHGRootListRead;
@@ -300,13 +300,13 @@ static DECLCALLBACK(int) shClSvcWinTransferOnInitializeCallback(PSHCLTRANSFERCAL
 
     switch (ShClTransferGetDir(pTransfer))
     {
-        case SHCLTRANSFERDIR_FROM_REMOTE: /* G->H */
+        case SHCLTRANSFERDIR_GUEST_TO_HOST:
         {
             vrc = ShClWinTransferInitialize(&pCtx->Win, pTransfer);
             break;
         }
 
-        case SHCLTRANSFERDIR_TO_REMOTE: /* H->G */
+        case SHCLTRANSFERDIR_HOST_TO_GUEST:
         {
             vrc = ShClTransferRootListRead(pTransfer); /* Calls shClSvcWinTransferIfaceHGRootListRead(). */
             break;
@@ -325,8 +325,8 @@ static DECLCALLBACK(int) shClSvcWinTransferOnInitializeCallback(PSHCLTRANSFERCAL
  * @copydoc SHCLTRANSFERCALLBACKS::pfnOnInitialized
  *
  * Called by ShClTransferInit via VbglR3.
- * For H->G: Called on transfer intialization to start the data transfer for the "in-flight" IDataObject.
- * For G->H: Nothing to do here.
+ * For G->H: Starts the data transfer for the "in-flight" IDataObject.
+ * For H->G: Nothing to do here.
  *
  * @thread  Clipboard main thread.
  */
@@ -344,13 +344,13 @@ static DECLCALLBACK(int) shClSvcWinTransferOnInitializedCallback(PSHCLTRANSFERCA
 
     switch(ShClTransferGetDir(pTransfer))
     {
-        case SHCLTRANSFERDIR_FROM_REMOTE: /* H->G */
+        case SHCLTRANSFERDIR_GUEST_TO_HOST:
         {
             vrc = ShClWinTransferStart(&pCtx->Win, pTransfer);
             break;
         }
 
-        case SHCLTRANSFERDIR_TO_REMOTE: /* G->H */
+        case SHCLTRANSFERDIR_HOST_TO_GUEST:
             break;
 
         default:
@@ -417,7 +417,7 @@ static DECLCALLBACK(int) shClSvcWinDataObjectTransferBeginCallback(ShClWinDataOb
     shClBackendWinTransferGetCallbacks(pCtx, &Callbacks);
 
     PSHCLTRANSFER pTransfer;
-    int vrc = pCtx->pConn->transferCreate(SHCLTRANSFERDIR_FROM_REMOTE, SHCLSOURCE_REMOTE, &Callbacks,
+    int vrc = pCtx->pConn->transferCreate(SHCLTRANSFERDIR_GUEST_TO_HOST, SHCLSOURCE_REMOTE, &Callbacks,
                                           NIL_SHCLTRANSFERID /* Creates a new transfer ID */, &pTransfer);
     if (RT_SUCCESS(vrc))
     {

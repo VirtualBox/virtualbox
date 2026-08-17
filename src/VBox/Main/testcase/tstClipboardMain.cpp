@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMain.cpp 115056 2026-08-17 16:44:52Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardMain.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Connection and service-extension testcase.
  */
@@ -871,7 +871,7 @@ static void tstTransfers(void)
     RTTESTI_CHECK(Callbacks.pvUser == &g_State);
 
     pTransfer = NULL;
-    RTTESTI_CHECK_RC(Conn.transferCreate(SHCLTRANSFERDIR_TO_REMOTE, SHCLSOURCE_LOCAL, &Callbacks,
+    RTTESTI_CHECK_RC(Conn.transferCreate(SHCLTRANSFERDIR_HOST_TO_GUEST, SHCLSOURCE_LOCAL, &Callbacks,
                                         TST_SHCL_TRANSFER_ID, &pTransfer), VINF_SUCCESS);
     RTTESTI_CHECK(pTransfer == &g_State.Transfer);
     if (pTransfer)

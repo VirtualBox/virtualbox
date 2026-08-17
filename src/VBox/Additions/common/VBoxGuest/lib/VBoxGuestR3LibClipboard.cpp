@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestR3LibClipboard.cpp 115057 2026-08-17 16:48:01Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxGuestR3LibClipboard.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxGuestR3Lib - Ring-3 Support Library for VirtualBox guest additions, Shared Clipboard.
  */
@@ -2240,9 +2240,8 @@ static int vbglR3ClipboardTransferInit(PVBGLR3SHCLCMDCTX pCmdCtx, PSHCLTRANSFER 
     /* Assign local provider first and overwrite interface methods below if needed. */
     ShClTransferProviderLocalQueryInterface(&Provider);
 
-    /* If this is a read transfer (reading data from host), set the interface to use
-     * our VbglR3 routines here. */
-    if (enmDir == SHCLTRANSFERDIR_FROM_REMOTE) /* Host -> Guest */
+    /* Host-to-guest transfers use the remote HGCM provider. */
+    if (enmDir == SHCLTRANSFERDIR_HOST_TO_GUEST)
     {
         Provider.Interface.pfnRootListRead  = vbglR3ClipboardTransferIfaceHGRootListRead;
 
@@ -2255,7 +2254,7 @@ static int vbglR3ClipboardTransferInit(PVBGLR3SHCLCMDCTX pCmdCtx, PSHCLTRANSFER 
         Provider.Interface.pfnObjClose      = vbglR3ClipboardTransferIfaceHGObjClose;
         Provider.Interface.pfnObjRead       = vbglR3ClipboardTransferIfaceHGObjRead;
     }
-    else if (enmDir == SHCLTRANSFERDIR_TO_REMOTE) /* Guest -> Host */
+    else if (enmDir == SHCLTRANSFERDIR_GUEST_TO_HOST)
     {
         /* Uses the local provider assigned above. */
     }
@@ -2275,7 +2274,7 @@ static int vbglR3ClipboardTransferInit(PVBGLR3SHCLCMDCTX pCmdCtx, PSHCLTRANSFER 
     if (RT_SUCCESS(rc))
     {
         LogRel2(("Shared Clipboard: Transfer %RU32 (%s) successfully initialized\n",
-                 idTransfer, enmDir == SHCLTRANSFERDIR_FROM_REMOTE ? "host -> guest" : "guest -> host"));
+                 idTransfer, enmDir == SHCLTRANSFERDIR_HOST_TO_GUEST ? "host -> guest" : "guest -> host"));
     }
     else
         LogRel(("Shared Clipboard: Unable to initialize transfer %RU16, rc=%Rrc\n", idTransfer, rc));
@@ -2425,7 +2424,7 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                     {
                         case SHCLTRANSFERSTATUS_REQUESTED: /* Only used for H->G transfers. */
                         {
-                            enmDir    = SHCLTRANSFERDIR_FROM_REMOTE;
+                            enmDir    = SHCLTRANSFERDIR_HOST_TO_GUEST;
                             enmSource = SHCLSOURCE_REMOTE;
 
                             /* The host acknowledged our request to create a new transfer.
@@ -2449,21 +2448,15 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
 
                         case SHCLTRANSFERSTATUS_INITIALIZED:
                         {
-                            /* The host announces the transfer direction from its point of view, so inverse the direction here. */
-                            if (enmDir == SHCLTRANSFERDIR_TO_REMOTE) /* H -> G */
-                            {
-                                enmDir    = SHCLTRANSFERDIR_FROM_REMOTE;
+                            /* Directions are absolute on the wire; only the source is endpoint-relative. */
+                            if (enmDir == SHCLTRANSFERDIR_HOST_TO_GUEST)
                                 enmSource = SHCLSOURCE_REMOTE;
-                            }
-                            else if (enmDir == SHCLTRANSFERDIR_FROM_REMOTE) /* G -> H */
-                            {
-                                enmDir    = SHCLTRANSFERDIR_TO_REMOTE;
+                            else if (enmDir == SHCLTRANSFERDIR_GUEST_TO_HOST)
                                 enmSource = SHCLSOURCE_LOCAL;
-                            }
                             else
                                 AssertFailedBreakStmt(rc = VERR_INVALID_PARAMETER);
 
-                            if (enmDir == SHCLTRANSFERDIR_FROM_REMOTE) /* H->G */
+                            if (enmDir == SHCLTRANSFERDIR_HOST_TO_GUEST)
                             {
                                 /* The host reported INITIALIZED for the transfer.
                                  * So init our local transfer as well now. */
@@ -2486,7 +2479,7 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                                 else
                                     rc = VERR_SHCLPB_TRANSFER_ID_NOT_FOUND;
                             }
-                            else if (enmDir == SHCLTRANSFERDIR_TO_REMOTE) /* G->H */
+                            else if (enmDir == SHCLTRANSFERDIR_GUEST_TO_HOST)
                             {
                                 /* The host reported the INITIALIZED status together with the transfer ID.
                                  * So create a local transfer here with that ID. */

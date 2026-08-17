@@ -1,4 +1,4 @@
-/* $Id: VBoxClipboard.cpp 115057 2026-08-17 16:48:01Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxClipboard.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxClipboard - Shared clipboard, Windows Guest Implementation.
  */
@@ -205,13 +205,13 @@ static DECLCALLBACK(int) vbtrShClTransferInitializeCallback(PSHCLTRANSFERCALLBAC
 
     switch(ShClTransferGetDir(pTransfer))
     {
-        case SHCLTRANSFERDIR_FROM_REMOTE: /* H->G */
+        case SHCLTRANSFERDIR_HOST_TO_GUEST:
         {
             rc = ShClWinTransferInitialize(&pCtx->Win, pTransfer);
             break;
         }
 
-        case SHCLTRANSFERDIR_TO_REMOTE: /* G->H */
+        case SHCLTRANSFERDIR_GUEST_TO_HOST:
         {
             rc = ShClWinTransferGetRootsFromClipboard(&pCtx->Win, pTransfer);
             break;
@@ -248,13 +248,13 @@ static DECLCALLBACK(int) vbtrShClTransferInitializedCallback(PSHCLTRANSFERCALLBA
 
     switch(ShClTransferGetDir(pTransfer))
     {
-        case SHCLTRANSFERDIR_FROM_REMOTE: /* H->G */
+        case SHCLTRANSFERDIR_HOST_TO_GUEST:
         {
             rc = ShClWinTransferStart(&pCtx->Win, pTransfer);
             break;
         }
 
-        case SHCLTRANSFERDIR_TO_REMOTE: /* G->H */
+        case SHCLTRANSFERDIR_GUEST_TO_HOST:
             break;
 
         default:
@@ -325,11 +325,11 @@ static DECLCALLBACK(void) vbtrShClTransferStartedCallback(PSHCLTRANSFERCALLBACKC
     int rc = VINF_SUCCESS;
 
     /* The guest wants to transfer data to the host. */
-    if (enmDir == SHCLTRANSFERDIR_TO_REMOTE) /* G->H */
+    if (enmDir == SHCLTRANSFERDIR_GUEST_TO_HOST)
     {
         rc = ShClWinTransferGetRootsFromClipboard(&pCtx->Win, pTransfer);
     }
-    else if (enmDir == SHCLTRANSFERDIR_FROM_REMOTE) /* H->G */
+    else if (enmDir == SHCLTRANSFERDIR_HOST_TO_GUEST)
     {
         /* Nothing to do here. */
     }
