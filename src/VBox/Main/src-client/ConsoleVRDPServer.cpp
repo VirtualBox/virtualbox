@@ -1,4 +1,4 @@
-/* $Id: ConsoleVRDPServer.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: ConsoleVRDPServer.cpp 115061 2026-08-17 17:42:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console VRDP helper class.
  */
@@ -3302,9 +3302,9 @@ void ConsoleVRDPServer::unlockConsoleVRDPServer(void)
  *
  * @returns VBox status code.
  * @param   pvCallback          ConsoleVRDPServer instance receiving the request.
- * @param   u32ClientId        Remote client ID.
- * @param   u32Function        VRDE_CLIPBOARD_FUNCTION_XXX request number.
- * @param   u32Format          Clipboard format associated with the request.
+ * @param   u32ClientId         Remote client ID.
+ * @param   u32Function         VRDE_CLIPBOARD_FUNCTION_XXX request number.
+ * @param   u32Format           Clipboard format associated with the request.
  * @param   pvData              Request data.  Optional if @a cbData is zero.
  * @param   cbData              Request data size in bytes.
  *
@@ -3317,6 +3317,8 @@ DECLCALLBACK(int) ConsoleVRDPServer::ClipboardCallback(void *pvCallback,
                                                        const void *pvData,
                                                        uint32_t cbData)
 {
+    RT_NOREF(u32Format);
+
     LogFlowFunc(("pvCallback = %p, u32ClientId = %d, u32Function = %d, u32Format = 0x%08X, pvData = %p, cbData = %d\n",
                  pvCallback, u32ClientId, u32Function, u32Format, pvData, cbData));
 
