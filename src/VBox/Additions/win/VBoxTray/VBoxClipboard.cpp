@@ -1,4 +1,4 @@
-/* $Id: VBoxClipboard.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxClipboard.cpp 115057 2026-08-17 16:48:01Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxClipboard - Shared clipboard, Windows Guest Implementation.
  */
@@ -97,7 +97,7 @@ static DECLCALLBACK(void) vbtrShClTransferCreatedCallback(PSHCLTRANSFERCALLBACKC
 static DECLCALLBACK(void) vbtrShClTransferUnregisteredCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx,
                                                                PSHCLTRANSFERCTX pTransferCtx);
 static DECLCALLBACK(void) vbtrShClTransferDestroyCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx);
-static DECLCALLBACK(void) vbtrShClTransferInitializedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx);
+static DECLCALLBACK(int)  vbtrShClTransferInitializedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx);
 static DECLCALLBACK(void) vbtrShClTransferStartedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx);
 static DECLCALLBACK(void) vbtrShClTransferErrorCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx, int rc);
 #endif
@@ -234,7 +234,7 @@ static DECLCALLBACK(int) vbtrShClTransferInitializeCallback(PSHCLTRANSFERCALLBAC
  *
  * @thread  Clipboard main thread.
  */
-static DECLCALLBACK(void) vbtrShClTransferInitializedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
+static DECLCALLBACK(int) vbtrShClTransferInitializedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
 {
     LogFlowFuncEnter();
 
@@ -262,6 +262,7 @@ static DECLCALLBACK(void) vbtrShClTransferInitializedCallback(PSHCLTRANSFERCALLB
     }
 
     LogFlowFuncLeaveRC(rc);
+    return rc;
 }
 
 /**

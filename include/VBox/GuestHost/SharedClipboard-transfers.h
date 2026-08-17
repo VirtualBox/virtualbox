@@ -1,4 +1,4 @@
-/* $Id: SharedClipboard-transfers.h 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
+/* $Id: SharedClipboard-transfers.h 115057 2026-08-17 16:48:01Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Shared transfer functions between host and guest.
  */
@@ -824,16 +824,18 @@ typedef struct _SHCLTRANSFERCALLBACKS
     /**
      * Called when the transfer gets initialized.
      *
-     * @return  VBox status code. On error the intialization will will be treated as failed.
+     * @return  VBox status code.  On error the initialization is treated as failed.
      * @param   pCbCtx              Pointer to callback context to use.
     */
     DECLCALLBACKMEMBER(int,  pfnOnInitialize,(PSHCLTRANSFERCALLBACKCTX pCbCtx));
     /**
-     * Called after the transfer got initialized.
+     * Called after the transfer entered the initialized state.
      *
+     * @return  VBox status code propagated by ShClTransferInit().  On failure
+     *          the lifecycle owner must abort or destroy the initialized transfer.
      * @param   pCbCtx              Pointer to callback context to use.
      */
-    DECLCALLBACKMEMBER(void,  pfnOnInitialized,(PSHCLTRANSFERCALLBACKCTX pCbCtx));
+    DECLCALLBACKMEMBER(int,   pfnOnInitialized,(PSHCLTRANSFERCALLBACKCTX pCbCtx));
     /**
      * Called before the transfer gets destroyed.
      *

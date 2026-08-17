@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestR3LibClipboard.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxGuestR3LibClipboard.cpp 115057 2026-08-17 16:48:01Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxGuestR3Lib - Ring-3 Support Library for VirtualBox guest additions, Shared Clipboard.
  */
@@ -2479,6 +2479,8 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                                         int rc2 = VbglR3ClipboardTransferSendStatus(pCmdCtx, pTransfer,
                                                                                     SHCLTRANSFERSTATUS_ERROR, rc);
                                         AssertRC(rc2);
+                                        if (RT_SUCCESS(rc2))
+                                            fErrorSent = true;
                                     }
                                 }
                                 else

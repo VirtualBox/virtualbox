@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMain2HostSvc.cpp 115056 2026-08-17 16:44:52Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardMain2HostSvc.cpp 115057 2026-08-17 16:48:01Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Host Service integration testcase.
  */
@@ -50,7 +50,7 @@
  *
  * The test covers registration, connect/sync/disconnect, the real service
  * transport, messages in both directions, guest-data reply ownership and one
- * transfer handshake, including initialization and destruction callbacks.  VM
+ * transfer handshake, including post-initialization error propagation.  VM
  * construction, public Main API objects, native clipboard contents and transfer
  * data providers are outside its scope.
  */
@@ -118,6 +118,8 @@ typedef struct TSTSHCLSTATE
 /** State recorded while checking the post-initialization callback contract. */
 typedef struct TSTTRANSFERINITIALIZED
 {
+    /** Result returned by the post-initialization callback. */
+    int                         vrcCallback;
     /** Number of post-initialization callback invocations. */
     uint32_t                    cInitialized;
     /** Number of destruction callback invocations. */
@@ -226,16 +228,17 @@ static int tstBackendSync(PSHCLCONTEXT pCtx)
 }
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-/** Records the state observed by the post-initialization callback. */
-static DECLCALLBACK(void) tstTransferInitializedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
+/** Records and returns the configured post-initialization result. */
+static DECLCALLBACK(int) tstTransferInitializedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
 {
     TSTTRANSFERINITIALIZED *pState = (TSTTRANSFERINITIALIZED *)pCbCtx->pvUser;
-    RTTESTI_CHECK_RETV(pState != NULL);
-    RTTESTI_CHECK_RETV(pCbCtx->cbUser == sizeof(*pState));
+    RTTESTI_CHECK_RET(pState != NULL, VERR_INVALID_POINTER);
+    RTTESTI_CHECK_RET(pCbCtx->cbUser == sizeof(*pState), VERR_INVALID_PARAMETER);
 
     pState->cInitialized++;
     pState->fLockOwned = RTCritSectIsOwner(&pCbCtx->pTransfer->CritSect);
     pState->enmStatus  = ShClTransferGetStatus(pCbCtx->pTransfer);
+    return pState->vrcCallback;
 }
 
 /** Records destruction of the transfer used by the callback contract test. */
@@ -573,17 +576,18 @@ static void tstGuestData(void *pvClient, GuestShClConn *pConn)
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 /**
- * Checks transfer initialization and destruction across Main and the Host Service.
+ * Checks post-initialization callback failure propagation across Main and the Host Service.
  *
  * @param   pvClient            Connected HGCM client state.
  * @param   pConn               Connected Main service connection.
  */
-static void tstTransferInitialized(void *pvClient, GuestShClConn *pConn)
+static void tstTransferInitializedResult(void *pvClient, GuestShClConn *pConn)
 {
-    RTTestISub("Transfer initialization");
+    RTTestISub("Transfer initialized callback result");
 
     TSTTRANSFERINITIALIZED State;
     RT_ZERO(State);
+    State.vrcCallback = VERR_SHCLPB_NO_DATA;
 
     SHCLTRANSFERCALLBACKS Callbacks;
     RT_ZERO(Callbacks);
@@ -603,7 +607,7 @@ static void tstTransferInitialized(void *pvClient, GuestShClConn *pConn)
     SHCLTRANSFERID const idTransfer = ShClTransferGetID(pTransfer);
 
     vrc = pConn->transferInit(pTransfer);
-    RTTESTI_CHECK_RC_OK(vrc);
+    RTTESTI_CHECK_RC(vrc, State.vrcCallback);
     RTTESTI_CHECK(State.cInitialized == 1);
     RTTESTI_CHECK(State.enmStatus == SHCLTRANSFERSTATUS_INITIALIZED);
     RTTESTI_CHECK(!State.fLockOwned);
@@ -619,8 +623,8 @@ static void tstTransferInitialized(void *pvClient, GuestShClConn *pConn)
     RTTESTI_CHECK(VBOX_SHCL_CONTEXTID_GET_SESSION(aStatus[0].u.uint64) == idSession);
     RTTESTI_CHECK(VBOX_SHCL_CONTEXTID_GET_TRANSFER(aStatus[0].u.uint64) == idTransfer);
     RTTESTI_CHECK(aStatus[1].u.uint32 == SHCLTRANSFERDIR_FROM_REMOTE);
-    RTTESTI_CHECK(aStatus[2].u.uint32 == SHCLTRANSFERSTATUS_INITIALIZED);
-    RTTESTI_CHECK((int32_t)aStatus[3].u.uint32 == VINF_SUCCESS);
+    RTTESTI_CHECK(aStatus[2].u.uint32 == SHCLTRANSFERSTATUS_ERROR);
+    RTTESTI_CHECK((int32_t)aStatus[3].u.uint32 == State.vrcCallback);
 
     ShClTransferRelease(pTransfer);
     pConn->transferDestroyById(idTransfer);
@@ -744,7 +748,7 @@ int main(void)
             tstFormats(pvClient, &Conn);
             tstGuestData(pvClient, &Conn);
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-            tstTransferInitialized(pvClient, &Conn);
+            tstTransferInitializedResult(pvClient, &Conn);
             tstTransfer(pvClient);
 #endif
         }

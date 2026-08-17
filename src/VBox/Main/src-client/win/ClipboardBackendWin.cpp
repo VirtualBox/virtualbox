@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendWin.cpp 115053 2026-08-17 15:54:26Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendWin.cpp 115057 2026-08-17 16:48:01Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Win32 host.
  */
@@ -330,7 +330,7 @@ static DECLCALLBACK(int) shClSvcWinTransferOnInitializeCallback(PSHCLTRANSFERCAL
  *
  * @thread  Clipboard main thread.
  */
-static DECLCALLBACK(void) shClSvcWinTransferOnInitializedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
+static DECLCALLBACK(int) shClSvcWinTransferOnInitializedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
 {
     LogFlowFuncEnter();
 
@@ -358,6 +358,7 @@ static DECLCALLBACK(void) shClSvcWinTransferOnInitializedCallback(PSHCLTRANSFERC
     }
 
     LogFlowFuncLeaveRC(vrc);
+    return vrc;
 }
 
 /**
