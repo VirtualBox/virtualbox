@@ -1,4 +1,4 @@
-/* $Id: ClipboardImpl.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardImpl.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Console clipboard API.
  */
@@ -1924,7 +1924,7 @@ HRESULT Clipboard::i_readDataForFormat(ClipboardAction_T aAction,
         {
             LogFunc(("Guest clipboard payload too large: format=%#x, cb=%RU32, max=%RU32\n",
                      uFormat, cbData, s_cbClipboardReadMax));
-            LogRelMax2(16, ("Shared Clipboard: Guest clipboard data is too large: format %#x, %RU32 bytes (limit %RU32 bytes)\n",
+            LogRelMax(16, ("Shared Clipboard: Guest clipboard data is too large: format %#x, %RU32 bytes (limit %RU32 bytes)\n",
                            uFormat, cbData, s_cbClipboardReadMax));
             RTMemFree(pvData);
             return mData->mParent->setErrorBoth(VBOX_E_SHCL_TOO_MUCH_DATA, VERR_TOO_MUCH_DATA,
@@ -1936,7 +1936,7 @@ HRESULT Clipboard::i_readDataForFormat(ClipboardAction_T aAction,
         if (RT_FAILURE(vrc2))
         {
             LogFunc(("Converting guest clipboard data failed: format=%#x, cb=%RU32, vrc=%Rrc\n", uFormat, cbData, vrc2));
-            LogRelMax2(16, ("Shared Clipboard: Failed to convert guest clipboard data: format %#x, %RU32 bytes, vrc=%Rrc\n",
+            LogRelMax(16, ("Shared Clipboard: Failed to convert guest clipboard data: format %#x, %RU32 bytes, vrc=%Rrc\n",
                            uFormat, cbData, vrc2));
             return mData->mParent->setErrorBoth(VBOX_E_SHCL_GUEST_ERROR, vrc2,
                                                 Console::tr("Converting shared clipboard data failed with %Rrc"), vrc2);
@@ -1950,13 +1950,13 @@ HRESULT Clipboard::i_readDataForFormat(ClipboardAction_T aAction,
     if (vrc == VERR_NOT_AVAILABLE)
     {
         LogFunc(("No guest clipboard client connected for read: format=%#x\n", uFormat));
-        LogRelMax2(16, ("Shared Clipboard: Cannot read guest clipboard data, no guest clipboard client is connected (format %#x)\n",
+        LogRelMax(16, ("Shared Clipboard: Cannot read guest clipboard data, no guest clipboard client is connected (format %#x)\n",
                        uFormat));
         return mData->mParent->setError(VBOX_E_SHCL_NO_DATA, Console::tr("No guest clipboard client is currently connected"));
     }
 
     LogFunc(("Reading guest clipboard data failed: format=%#x, vrc=%Rrc\n", uFormat, vrc));
-    LogRelMax2(16, ("Shared Clipboard: Reading guest clipboard data failed: format %#x, vrc=%Rrc\n", uFormat, vrc));
+    LogRelMax(16, ("Shared Clipboard: Reading guest clipboard data failed: format %#x, vrc=%Rrc\n", uFormat, vrc));
     aBuffer.clear();
     return mData->mParent->setErrorBoth(VBOX_E_SHCL_GUEST_ERROR, vrc,
                                         Console::tr("Reading shared clipboard data failed with %Rrc"), vrc);
@@ -2428,7 +2428,7 @@ HRESULT Clipboard::i_writeData(VBOXSHCLMAINCLIENTID aClientId,
     {
         LogFunc(("Rejecting oversized clipboard write: mime=%s, cb=%zu, max=%RU32\n",
                  aMimeType.c_str(), aBuffer.size(), s_cbClipboardReadMax));
-        LogRelMax2(16, ("Shared Clipboard: Refusing to write too much clipboard data: MIME '%s', %zu bytes (limit %RU32 bytes)\n",
+        LogRelMax(16, ("Shared Clipboard: Refusing to write too much clipboard data: MIME '%s', %zu bytes (limit %RU32 bytes)\n",
                        aMimeType.c_str(), aBuffer.size(), s_cbClipboardReadMax));
         return mData->mParent->setErrorBoth(VBOX_E_SHCL_TOO_MUCH_DATA, VERR_TOO_MUCH_DATA,
                                             Console::tr("Writing shared clipboard data exceeded the supported size (%RU32 bytes)"),
@@ -2449,7 +2449,7 @@ HRESULT Clipboard::i_writeData(VBOXSHCLMAINCLIENTID aClientId,
     {
         LogFunc(("Converting Main clipboard data failed: format=%#x, mime=%s, cb=%zu, vrc=%Rrc\n",
                  uFormat, aMimeType.c_str(), aBuffer.size(), vrc));
-        LogRelMax2(16, ("Shared Clipboard: Failed to convert clipboard data for guest: MIME '%s', format %#x, %zu bytes, vrc=%Rrc\n",
+        LogRelMax(16, ("Shared Clipboard: Failed to convert clipboard data for guest: MIME '%s', format %#x, %zu bytes, vrc=%Rrc\n",
                        aMimeType.c_str(), uFormat, aBuffer.size(), vrc));
         return mData->mParent->setErrorBoth(VBOX_E_SHCL_ERROR, vrc,
                                             Console::tr("Converting shared clipboard data failed with %Rrc"), vrc);
@@ -2460,7 +2460,7 @@ HRESULT Clipboard::i_writeData(VBOXSHCLMAINCLIENTID aClientId,
     {
         LogFunc(("Converted clipboard write is too large: format=%#x, cb=%zu, max=%RU32\n",
                  uFormat, abProtocolBuffer.size(), s_cbClipboardReadMax));
-        LogRelMax2(16, ("Shared Clipboard: Converted clipboard data is too large for the guest: format %#x, %zu bytes (limit %RU32 bytes)\n",
+        LogRelMax(16, ("Shared Clipboard: Converted clipboard data is too large for the guest: format %#x, %zu bytes (limit %RU32 bytes)\n",
                        uFormat, abProtocolBuffer.size(), s_cbClipboardReadMax));
         return mData->mParent->setErrorBoth(VBOX_E_SHCL_TOO_MUCH_DATA, VERR_TOO_MUCH_DATA,
                                             Console::tr("Writing shared clipboard data exceeded the supported size (%RU32 bytes)"),
@@ -2501,7 +2501,7 @@ HRESULT Clipboard::i_writeData(VBOXSHCLMAINCLIENTID aClientId,
     if (RT_FAILURE(vrc))
     {
         LogFunc(("Reporting write format to guest failed: format=%#x, vrc=%Rrc\n", uFormat, vrc));
-        LogRelMax2(16, ("Shared Clipboard: Failed to report clipboard format %#x to the guest, vrc=%Rrc\n", uFormat, vrc));
+        LogRelMax(16, ("Shared Clipboard: Failed to report clipboard format %#x to the guest, vrc=%Rrc\n", uFormat, vrc));
         return mData->mParent->setErrorBoth(VBOX_E_SHCL_GUEST_ERROR, vrc,
                                             Console::tr("Writing shared clipboard data failed with %Rrc"), vrc);
     }
@@ -2579,7 +2579,7 @@ HRESULT Clipboard::i_writeFormats(VBOXSHCLMAINCLIENTID aClientId,
     if (RT_FAILURE(vrc))
     {
         LogFunc(("Reporting formats to guest failed: fFormats=%#x, vrc=%Rrc\n", fFormats, vrc));
-        LogRelMax2(16, ("Shared Clipboard: Failed to report clipboard formats %#x to the guest, vrc=%Rrc\n", fFormats, vrc));
+        LogRelMax(16, ("Shared Clipboard: Failed to report clipboard formats %#x to the guest, vrc=%Rrc\n", fFormats, vrc));
         return mData->mParent->setErrorBoth(VBOX_E_SHCL_GUEST_ERROR, vrc,
                                             Console::tr("Writing shared clipboard formats failed with %Rrc"), vrc);
     }
@@ -2717,7 +2717,7 @@ HRESULT Clipboard::i_hostClipboardReportFormats(VBOXSHCLMAINCLIENTID aClientId,
     if (RT_FAILURE(vrc))
     {
         LogFunc(("Reporting formats to native host clipboard failed: fFormats=%#x, vrc=%Rrc\n", fFormats, vrc));
-        LogRelMax2(16, ("Shared Clipboard: Failed to report clipboard formats %#x to the native host clipboard, vrc=%Rrc\n",
+        LogRelMax(16, ("Shared Clipboard: Failed to report clipboard formats %#x to the native host clipboard, vrc=%Rrc\n",
                         fFormats, vrc));
         return setErrorBoth(VBOX_E_SHCL_ERROR, vrc,
                             tr("Reporting shared clipboard formats to the host failed with %Rrc"), vrc);
@@ -3045,7 +3045,7 @@ HRESULT Clipboard::i_hostClipboardSetData(VBOXSHCLMAINCLIENTID aClientId,
     if (RT_FAILURE(vrc))
     {
         LogFunc(("Reporting setData format to native host clipboard failed: format=%#x, vrc=%Rrc\n", uFormat, vrc));
-        LogRelMax2(16, ("Shared Clipboard: Failed to report clipboard format %#x to the native host clipboard, vrc=%Rrc\n",
+        LogRelMax(16, ("Shared Clipboard: Failed to report clipboard format %#x to the native host clipboard, vrc=%Rrc\n",
                         uFormat, vrc));
         return setErrorBoth(VBOX_E_SHCL_ERROR, vrc,
                             tr("Reporting shared clipboard formats to the host failed with %Rrc"), vrc);
@@ -3057,7 +3057,7 @@ HRESULT Clipboard::i_hostClipboardSetData(VBOXSHCLMAINCLIENTID aClientId,
     {
         LogFunc(("Writing setData payload to native host clipboard failed: format=%#x, cb=%zu, vrc=%Rrc\n",
                  uFormat, abProtocolBuffer.size(), vrc));
-        LogRelMax2(16, ("Shared Clipboard: Failed to write clipboard data to the native host clipboard, format %#x, vrc=%Rrc\n",
+        LogRelMax(16, ("Shared Clipboard: Failed to write clipboard data to the native host clipboard, format %#x, vrc=%Rrc\n",
                         uFormat, vrc));
         return setErrorBoth(VBOX_E_SHCL_ERROR, vrc,
                             tr("Writing shared clipboard data to the host failed with %Rrc"), vrc);
@@ -3117,7 +3117,7 @@ HRESULT Clipboard::i_hostClipboardClear(VBOXSHCLMAINCLIENTID aClientId)
     if (RT_FAILURE(vrc))
     {
         LogFunc(("Clearing native host clipboard failed: vrc=%Rrc\n", vrc));
-        LogRelMax2(16, ("Shared Clipboard: Failed to clear the native host clipboard, vrc=%Rrc\n", vrc));
+        LogRelMax(16, ("Shared Clipboard: Failed to clear the native host clipboard, vrc=%Rrc\n", vrc));
         return setErrorBoth(VBOX_E_SHCL_ERROR, vrc,
                             tr("Clearing the shared clipboard on the host failed with %Rrc"), vrc);
     }
@@ -3150,7 +3150,7 @@ HRESULT Clipboard::i_reset()
             if (RT_FAILURE(vrc))
             {
                 LogFunc(("Reset HGCM host call failed: vrc=%Rrc\n", vrc));
-                LogRelMax2(16, ("Shared Clipboard: Failed to reset service state, vrc=%Rrc\n", vrc));
+                LogRelMax(16, ("Shared Clipboard: Failed to reset service state, vrc=%Rrc\n", vrc));
                 return mData->mParent->setErrorBoth(VBOX_E_IPRT_ERROR, vrc,
                                                     Console::tr("Resetting shared clipboard state failed with %Rrc"), vrc);
             }
@@ -3227,7 +3227,7 @@ HRESULT Clipboard::i_transferCancel(SHCLSESSIONID aServiceSessionId, SHCLTRANSFE
     {
         LogFunc(("Cancel transfer HGCM host call failed: session=%RU16, id=%RU16, generation=%RU64, vrc=%Rrc\n",
                  aServiceSessionId, aTransferId, aGeneration, vrc));
-        LogRelMax2(16, ("Shared Clipboard: Failed to cancel transfer %RU16, vrc=%Rrc\n", aTransferId, vrc));
+        LogRelMax(16, ("Shared Clipboard: Failed to cancel transfer %RU16, vrc=%Rrc\n", aTransferId, vrc));
         return mData->mParent->setErrorBoth(VBOX_E_IPRT_ERROR, vrc,
                                             Console::tr("Canceling shared clipboard transfer failed with %Rrc"), vrc);
     }
@@ -3295,7 +3295,7 @@ HRESULT Clipboard::i_readDataForGuest(uint32_t uFormat, void *pvData, uint32_t c
     if (!pszMimeType)
     {
         LogFunc(("Service requested unsupported format: uFormat=%#x\n", uFormat));
-        LogRelMax2(16, ("Shared Clipboard: Service requested unsupported clipboard format %#x\n", uFormat));
+        LogRelMax(16, ("Shared Clipboard: Service requested unsupported clipboard format %#x\n", uFormat));
         return E_INVALIDARG;
     }
 
@@ -3461,7 +3461,7 @@ HRESULT Clipboard::i_readDataForGuest(uint32_t uFormat, void *pvData, uint32_t c
     {
         LogFunc(("Converting cached data for service request failed: format=%#x, cbMain=%zu, vrc=%Rrc\n",
                  uFormat, abMainBuffer.size(), vrc));
-        LogRelMax2(16, ("Shared Clipboard: Failed to convert cached clipboard data for service request: format %#x, %zu bytes, vrc=%Rrc\n",
+        LogRelMax(16, ("Shared Clipboard: Failed to convert cached clipboard data for service request: format %#x, %zu bytes, vrc=%Rrc\n",
                        uFormat, abMainBuffer.size(), vrc));
         return E_FAIL;
     }
@@ -3470,7 +3470,7 @@ HRESULT Clipboard::i_readDataForGuest(uint32_t uFormat, void *pvData, uint32_t c
     if (cbActual > UINT32_MAX)
     {
         LogFunc(("Cached data for service request is too large: format=%#x, cb=%zu\n", uFormat, cbActual));
-        LogRelMax2(16, ("Shared Clipboard: Cached clipboard data is too large for service request: format %#x, %zu bytes\n",
+        LogRelMax(16, ("Shared Clipboard: Cached clipboard data is too large for service request: format %#x, %zu bytes\n",
                        uFormat, cbActual));
         return E_FAIL;
     }
@@ -3635,7 +3635,7 @@ HRESULT Clipboard::i_reportData(ClipboardAction_T aAction, ClipboardSource_T aSo
     if (cbData && !pvData)
     {
         LogFunc(("Reported data has invalid pointer: fFormat=%#x, cbData=%RU32\n", fFormat, cbData));
-        LogRelMax2(16, ("Shared Clipboard: Service reported clipboard data without a buffer: formats %#x, %RU32 bytes\n",
+        LogRelMax(16, ("Shared Clipboard: Service reported clipboard data without a buffer: formats %#x, %RU32 bytes\n",
                        fFormat, cbData));
         return E_POINTER;
     }
@@ -3643,7 +3643,7 @@ HRESULT Clipboard::i_reportData(ClipboardAction_T aAction, ClipboardSource_T aSo
     {
         LogFunc(("Reported data is too large: fFormat=%#x, cbData=%RU32, max=%RU32\n",
                  fFormat, cbData, s_cbClipboardReadMax));
-        LogRelMax2(16, ("Shared Clipboard: Service reported too much clipboard data: formats %#x, %RU32 bytes (limit %RU32 bytes)\n",
+        LogRelMax(16, ("Shared Clipboard: Service reported too much clipboard data: formats %#x, %RU32 bytes (limit %RU32 bytes)\n",
                        fFormat, cbData, s_cbClipboardReadMax));
         return E_FAIL;
     }
@@ -3652,7 +3652,7 @@ HRESULT Clipboard::i_reportData(ClipboardAction_T aAction, ClipboardSource_T aSo
     if (uFormat == VBOX_SHCL_FMT_NONE)
     {
         LogFunc(("Reported data has no supported format: fFormat=%#x\n", fFormat));
-        LogRelMax2(16, ("Shared Clipboard: Service reported unsupported clipboard formats %#x\n", fFormat));
+        LogRelMax(16, ("Shared Clipboard: Service reported unsupported clipboard formats %#x\n", fFormat));
         return E_INVALIDARG;
     }
 
@@ -3664,7 +3664,7 @@ HRESULT Clipboard::i_reportData(ClipboardAction_T aAction, ClipboardSource_T aSo
     if (RT_FAILURE(vrc))
     {
         LogFunc(("Converting reported data failed: uFormat=%#x, cbData=%RU32, vrc=%Rrc\n", uFormat, cbData, vrc));
-        LogRelMax2(16, ("Shared Clipboard: Failed to convert reported clipboard data: format %#x, %RU32 bytes, vrc=%Rrc\n",
+        LogRelMax(16, ("Shared Clipboard: Failed to convert reported clipboard data: format %#x, %RU32 bytes, vrc=%Rrc\n",
                        uFormat, cbData, vrc));
         return E_FAIL;
     }
@@ -3672,7 +3672,7 @@ HRESULT Clipboard::i_reportData(ClipboardAction_T aAction, ClipboardSource_T aSo
     {
         LogFunc(("Converted reported data is too large: uFormat=%#x, cb=%zu, max=%RU32\n",
                  uFormat, abBuffer.size(), s_cbClipboardReadMax));
-        LogRelMax2(16, ("Shared Clipboard: Converted reported clipboard data is too large: format %#x, %zu bytes (limit %RU32 bytes)\n",
+        LogRelMax(16, ("Shared Clipboard: Converted reported clipboard data is too large: format %#x, %zu bytes (limit %RU32 bytes)\n",
                        uFormat, abBuffer.size(), s_cbClipboardReadMax));
         return E_FAIL;
     }

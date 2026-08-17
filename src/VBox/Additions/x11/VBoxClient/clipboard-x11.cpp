@@ -1,4 +1,4 @@
-/* $Id: clipboard-x11.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-x11.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard implementation.
  */
@@ -339,7 +339,7 @@ static DECLCALLBACK(void) vbclX11OnTransferInitializedCallback(PSHCLTRANSFERCALL
     {
         if (!vbclX11TransferStateMatches(pCtx, pTransfer))
         {
-            LogRel2(("Shared Clipboard: Rejecting unbound initialized transfer %RU16/%RU64\n",
+            LogRelMax(16, ("Shared Clipboard: Rejecting unbound initialized transfer %RU16/%RU64\n",
                      ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer)));
             int rc2 = VbglR3ClipboardTransferSendStatus(&pCtx->CmdCtx, pTransfer,
                                                         SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
@@ -538,7 +538,7 @@ static DECLCALLBACK(int) vbclX11OnRequestDataFromSourceCallback(PSHCLCONTEXT pCt
          * X11 code normally handles a miss without invoking this callback.
          * Refuse it here as well: never start or wait for a transfer from the
          * X11 event thread. */
-        LogRel2(("Shared Clipboard: X11 URI-list conversion missed its prepared URI-list data cache\n"));
+        LogRelMax(16, ("Shared Clipboard: X11 URI-list conversion missed its prepared URI-list data cache\n"));
         rc = VERR_SHCLPB_NO_DATA;
     }
     else /* Anything else */
@@ -570,7 +570,7 @@ static DECLCALLBACK(int) vbclX11ReportFormatsCallback(PSHCLCONTEXT pCtx, uint32_
 #if defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS) && !defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP)
     if (fFormats & VBOX_SHCL_FMT_URI_LIST)
     {
-        LogRel2(("Shared Clipboard: X11 guest requires HTTP transfer support for URI-list offers, masking format\n"));
+        LogRelMax(16, ("Shared Clipboard: X11 guest requires HTTP transfer support for URI-list offers, masking format\n"));
         fFormats &= ~VBOX_SHCL_FMT_URI_LIST;
     }
 #endif

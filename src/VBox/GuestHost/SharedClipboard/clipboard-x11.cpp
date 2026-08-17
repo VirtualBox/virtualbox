@@ -759,7 +759,7 @@ SHCL_X11_DECL(SHCLX11FMTIDX) clipGetURIListFormatFromTargets(PSHCLX11CTX pCtx,
         LogRelMax2(16, ("Shared Clipboard: Selected X11 URI-list target '%s' for host file transfer\n",
                        g_aFormats[idxFmtURI].pcszAtom));
     else if (fSawUnsupportedTransferMetadata)
-        LogRelMax2(16, ("Shared Clipboard: X11 clipboard had file-transfer metadata but no supported file list target "
+        LogRelMax(16, ("Shared Clipboard: X11 clipboard had file-transfer metadata but no supported file list target "
                         "(for example text/uri-list); host file transfer will not be announced\n"));
 
     return idxFmtURI;
@@ -2428,7 +2428,7 @@ int ShClX11TransferConvertFromX11(const char *pvData, size_t cbData, char **ppsz
     int rc = RTStrValidateEncodingEx((char *)pvData, cbData, 0 /* fFlags */);
     if (RT_FAILURE(rc))
     {
-        LogRelMax2(16, ("Shared Clipboard: X11 URI-list clipboard data is not valid UTF-8 (%zu bytes), rc=%Rrc\n",
+        LogRelMax(16, ("Shared Clipboard: X11 URI-list clipboard data is not valid UTF-8 (%zu bytes), rc=%Rrc\n",
                        cbData, rc));
         return rc;
     }
@@ -2460,7 +2460,7 @@ int ShClX11TransferConvertFromX11(const char *pvData, size_t cbData, char **ppsz
         if (   pchCur < pchEnd
             && *pchCur == '\0')
         {
-            LogRelMax2(16, ("Shared Clipboard: X11 URI-list clipboard data contains an embedded NUL byte; refusing file transfer\n"));
+            LogRelMax(16, ("Shared Clipboard: X11 URI-list clipboard data contains an embedded NUL byte; refusing file transfer\n"));
             rc = VERR_INVALID_PARAMETER;
             break;
         }
@@ -2517,7 +2517,7 @@ int ShClX11TransferConvertFromX11(const char *pvData, size_t cbData, char **ppsz
 
     if (!cEntries)
     {
-        LogRelMax2(16, ("Shared Clipboard: X11 URI-list clipboard data contained no file entries; refusing file transfer\n"));
+        LogRelMax(16, ("Shared Clipboard: X11 URI-list clipboard data contained no file entries; refusing file transfer\n"));
         return VERR_SHCLPB_NO_DATA;
     }
 
@@ -2719,7 +2719,7 @@ SHCL_X11_DECL(void) clipConvertDataFromX11Worker(void *pClient, void *pvSrc, uns
         {
             const char *pszTarget = pReq->Read.idxFmtX11 < RT_ELEMENTS(g_aFormats)
                                   ? g_aFormats[pReq->Read.idxFmtX11].pcszAtom : "<invalid>";
-            LogRelMax2(16, ("Shared Clipboard: Refusing to parse X11 clipboard target '%s' as a file list\n",
+            LogRelMax(16, ("Shared Clipboard: Refusing to parse X11 clipboard target '%s' as a file list\n",
                            pszTarget));
             rc = VERR_NOT_SUPPORTED;
         }
@@ -2769,7 +2769,10 @@ SHCL_X11_DECL(void) clipConvertDataFromX11Worker(void *pClient, void *pvSrc, uns
         pPayload = NULL;
     }
 
-    LogRel2(("Shared Clipboard: Converting X11 clipboard data completed with %Rrc\n", rc));
+    if (RT_FAILURE(rc))
+        LogRelMax(16, ("Shared Clipboard: Converting X11 clipboard data failed with %Rrc\n", rc));
+    else
+        LogRel2(("Shared Clipboard: Converting X11 clipboard data completed with %Rrc\n", rc));
 
     RTMemFree(pReq);
     RTMemFree(pvDst);
@@ -2979,7 +2982,10 @@ static void ShClX11ReadDataFromX11Worker(void *pvUserData, void * /* interval */
         RTMemFree(pReq);
     }
 
-    LogRel2(("Shared Clipboard: Reading X11 clipboard data completed with %Rrc\n", rc));
+    if (RT_FAILURE(rc))
+        LogRelMax(16, ("Shared Clipboard: Reading X11 clipboard data failed with %Rrc\n", rc));
+    else
+        LogRel2(("Shared Clipboard: Reading X11 clipboard data completed with %Rrc\n", rc));
 
     LogFlowFuncLeaveRC(rc);
 }

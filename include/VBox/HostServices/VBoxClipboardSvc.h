@@ -261,6 +261,7 @@
  * @retval  VERR_INVALID_CLIENT_ID
  * @retval  VERR_WRONG_PARAMETER_COUNT
  * @retval  VERR_WRONG_PARAMETER_TYPE
+ * @retval  VERR_INVALID_FLAGS if the format mask contains unknown bits.
  * @retval  VERR_NOT_SUPPORTED if all the formats are unsupported, host
  *          clipboard will be empty.
  * @retval  VERR_ACCESS_DENIED if the clipboard mode is not bi-directional or

@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-client.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-client.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Client/session and message queue handling.
  */
@@ -762,7 +762,7 @@ DECLCALLBACK(void) shClSvcClientCall(void *,
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
             rc = ShClSvcTransferMsgClientHandler(pClient, callHandle, u32Function, cParms, paParms, tsArrival);
 #else
-            LogRel2(("Shared Clipboard: Unknown guest function: %u (%#x)\n", u32Function, u32Function));
+            LogRelMax(16, ("Shared Clipboard: Unknown guest function: %u (%#x)\n", u32Function, u32Function));
             rc = VERR_NOT_IMPLEMENTED;
 #endif
             break;
@@ -1085,6 +1085,8 @@ int shClSvcClientMsgGet(PSHCLCLIENT pClient, VBOXHGCMCALLHANDLE hCall, uint32_t 
     /*
      * Validate the request.
      */
+    ASSERT_GUEST_MSG_RETURN(cParms >= 2, ("cParms=%u!\n", cParms), VERR_WRONG_PARAMETER_COUNT);
+
     uint32_t const idMsgExpected = cParms > 0 && paParms[0].type == VBOX_HGCM_SVC_PARM_32BIT ? paParms[0].u.uint32
                                  : cParms > 0 && paParms[0].type == VBOX_HGCM_SVC_PARM_64BIT ? paParms[0].u.uint64
                                  : UINT32_MAX;
@@ -1290,6 +1292,7 @@ int shClSvcClientMsgReportFormats(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCM
     }
     ASSERT_GUEST_RETURN(paParms[iParm].type == VBOX_HGCM_SVC_PARM_32BIT, VERR_WRONG_PARAMETER_TYPE);
     uint32_t fFormats = paParms[iParm].u.uint32;
+    ASSERT_GUEST_RETURN(ShClFormatsAreValid(fFormats), VERR_INVALID_FLAGS);
     iParm++;
     if (cParms == VBOX_SHCL_CPARMS_REPORT_FORMATS_61B)
     {
@@ -1407,7 +1410,7 @@ int shClSvcClientMsgDataRead(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCMSVCPA
 
     if (!ShClFormatIsValid(uFormat))
     {
-        LogRelMax2(16, ("Shared Clipboard: Rejecting host clipboard data request with invalid format %#x\n", uFormat));
+        LogRelMax(16, ("Shared Clipboard: Rejecting host clipboard data request with invalid format %#x\n", uFormat));
         return VERR_INVALID_PARAMETER;
     }
 
@@ -1418,7 +1421,7 @@ int shClSvcClientMsgDataRead(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCMSVCPA
     if (uFormat == VBOX_SHCL_FMT_URI_LIST)
 #endif
     {
-        LogRelMax2(16, ("Shared Clipboard: Rejecting guest file transfer data request without enabled and negotiated transfers\n"));
+        LogRelMax(16, ("Shared Clipboard: Rejecting guest file transfer data request without enabled and negotiated transfers\n"));
         return VERR_ACCESS_DENIED;
     }
 
@@ -1451,8 +1454,12 @@ int shClSvcClientMsgDataRead(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCMSVCPA
     /* Read data from Main, which selects the remote or local host provider. */
     int rc = shClSvcExtReadData(pClient, uFormat, pvData, cbData, &cbActual);
 
-    LogRel2(("Shared Clipboard: Read extension clipboard data (max %RU32 bytes), got %RU32 bytes: rc=%Rrc\n",
-             cbData, cbActual, rc));
+    if (RT_FAILURE(rc))
+        LogRelMax(16, ("Shared Clipboard: Reading extension clipboard data (max %RU32 bytes) failed after %RU32 bytes: %Rrc\n",
+                       cbData, cbActual, rc));
+    else
+        LogRel2(("Shared Clipboard: Read extension clipboard data (max %RU32 bytes), got %RU32 bytes: rc=%Rrc\n",
+                 cbData, cbActual, rc));
 
     if (RT_SUCCESS(rc))
     {
@@ -1542,7 +1549,7 @@ int shClSvcClientMsgDataWrite(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCMSVCP
     iParm++;
     if (!ShClFormatIsValid(uFormat))
     {
-        LogRelMax2(16, ("Shared Clipboard: Rejecting guest clipboard data with invalid format %#x\n", uFormat));
+        LogRelMax(16, ("Shared Clipboard: Rejecting guest clipboard data with invalid format %#x\n", uFormat));
         return VERR_INVALID_PARAMETER;
     }
     if (cParms == VBOX_SHCL_CPARMS_DATA_WRITE_61B)

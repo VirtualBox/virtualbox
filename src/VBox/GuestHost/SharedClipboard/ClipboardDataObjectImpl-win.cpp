@@ -1,4 +1,4 @@
-/* $Id: ClipboardDataObjectImpl-win.cpp 115052 2026-08-17 15:35:37Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardDataObjectImpl-win.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * ClipboardDataObjectImpl-win.cpp - Shared Clipboard IDataObject implementation.
  */
@@ -895,7 +895,7 @@ int ShClWinDataObject::createUnicodeTextFromTransferRoots(PSHCLTRANSFER pTransfe
     uint64_t const cRoots = ShClTransferRootsCount(pTransfer);
     if (!cRoots)
     {
-        LogRelMax2(16, ("Shared Clipboard: Cannot provide CF_UNICODETEXT for file transfer because the transfer has no root entries\n"));
+        LogRelMax(16, ("Shared Clipboard: Cannot provide CF_UNICODETEXT for file transfer because the transfer has no root entries\n"));
         return VERR_NOT_FOUND;
     }
 
@@ -911,7 +911,7 @@ int ShClWinDataObject::createUnicodeTextFromTransferRoots(PSHCLTRANSFER pTransfe
         rc = RTStrCalcUtf16LenEx(pRootEntry->pszName, RTSTR_MAX, &cwcRoot);
         if (RT_FAILURE(rc))
         {
-            LogRelMax2(16, ("Shared Clipboard: Cannot convert transfer root '%s' to UTF-16 length for CF_UNICODETEXT, rc=%Rrc\n",
+            LogRelMax(16, ("Shared Clipboard: Cannot convert transfer root '%s' to UTF-16 length for CF_UNICODETEXT, rc=%Rrc\n",
                             pRootEntry->pszName, rc));
             break;
         }
@@ -1021,7 +1021,7 @@ int ShClWinDataObject::ensureTransferListReadyLocked(void)
         if (   !m_fCallbacksEnabled
             || !m_Callbacks.pfnTransferBegin)
         {
-            LogRelMax2(16, ("Shared Clipboard: Cannot start IDataObject transfer because no transfer-begin callback is installed\n"));
+            LogRelMax(16, ("Shared Clipboard: Cannot start IDataObject transfer because no transfer-begin callback is installed\n"));
             return VERR_INVALID_POINTER;
         }
         if (m_cCallbacks != 0)
@@ -1065,13 +1065,13 @@ int ShClWinDataObject::ensureTransferListReadyLocked(void)
 
         if (RT_FAILURE(rc))
         {
-            LogRelMax2(16, ("Shared Clipboard: Waiting for IDataObject transfer to start failed, rc=%Rrc\n", rc));
+            LogRelMax(16, ("Shared Clipboard: Waiting for IDataObject transfer to start failed, rc=%Rrc\n", rc));
             return rc;
         }
 
         if (m_enmStatus != Running)
         {
-            LogRelMax2(16, ("Shared Clipboard: IDataObject transfer did not enter running state (status=%#x)\n", m_enmStatus));
+            LogRelMax(16, ("Shared Clipboard: IDataObject transfer did not enter running state (status=%#x)\n", m_enmStatus));
             return VERR_WRONG_ORDER;
         }
     }
@@ -1111,11 +1111,11 @@ int ShClWinDataObject::ensureTransferListReadyLocked(void)
             else
             {
                 Release();
-                LogRelMax2(16, ("Shared Clipboard: Starting IDataObject transfer read thread failed with %Rrc\n", rc));
+                LogRelMax(16, ("Shared Clipboard: Starting IDataObject transfer read thread failed with %Rrc\n", rc));
             }
         }
         else
-            LogRelMax2(16, ("Shared Clipboard: Starting IDataObject transfer failed with %Rrc\n", rc));
+            LogRelMax(16, ("Shared Clipboard: Starting IDataObject transfer failed with %Rrc\n", rc));
     }
 
     if (   RT_SUCCESS(rc)
@@ -1125,7 +1125,7 @@ int ShClWinDataObject::ensureTransferListReadyLocked(void)
         LogRel2(("Shared Clipboard: Waiting for IDataObject listing to arrive ...\n"));
         rc = RTSemEventWait(m_EventListComplete, RT_MS_10SEC);
         if (RT_FAILURE(rc))
-            LogRelMax2(16, ("Shared Clipboard: Timed out or failed waiting for IDataObject transfer listing, rc=%Rrc\n", rc));
+            LogRelMax(16, ("Shared Clipboard: Timed out or failed waiting for IDataObject transfer listing, rc=%Rrc\n", rc));
     }
 
     ShClTransferRelease(pTransfer);
@@ -1138,7 +1138,7 @@ int ShClWinDataObject::ensureTransferListReadyLocked(void)
             || m_enmStatus != Running
             || m_lstEntries.empty())) /* Still in running state and with a listing? */
     {
-        LogRelMax2(16, ("Shared Clipboard: IDataObject transfer listing is unavailable after wait (transfer=%p, status=%#x, entries=%zu)\n",
+        LogRelMax(16, ("Shared Clipboard: IDataObject transfer listing is unavailable after wait (transfer=%p, status=%#x, entries=%zu)\n",
                        m_pTransfer, m_enmStatus, m_lstEntries.size()));
         rc = VERR_SHCLPB_NO_DATA;
     }

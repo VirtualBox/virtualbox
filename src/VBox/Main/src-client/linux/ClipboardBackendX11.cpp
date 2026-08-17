@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendX11.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendX11.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - X11 backend.
  */
@@ -542,7 +542,7 @@ static int shClBackendX11ReportFormats(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats)
 #if defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS) && !defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP)
     if (fFormats & VBOX_SHCL_FMT_URI_LIST)
     {
-        LogRelMax2(16, ("Shared Clipboard: X11 backend cannot expose guest URI-list data because HTTP transfer support is not built in; masking format %#x\n",
+        LogRelMax(16, ("Shared Clipboard: X11 backend cannot expose guest URI-list data because HTTP transfer support is not built in; masking format %#x\n",
                         VBOX_SHCL_FMT_URI_LIST));
         fFormats &= ~VBOX_SHCL_FMT_URI_LIST;
     }
@@ -595,7 +595,7 @@ static int shClBackendX11ReportLocalFormats(GuestShClConn *pConn, SHCLFORMATS fF
 #if defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS) && !defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP)
     if (fFormats & VBOX_SHCL_FMT_URI_LIST)
     {
-        LogRelMax2(16, ("Shared Clipboard: X11 backend cannot announce host URI-list data because HTTP transfer support is not built in; masking format %#x\n",
+        LogRelMax(16, ("Shared Clipboard: X11 backend cannot announce host URI-list data because HTTP transfer support is not built in; masking format %#x\n",
                         VBOX_SHCL_FMT_URI_LIST));
         fFormats &= ~VBOX_SHCL_FMT_URI_LIST;
     }
@@ -1126,7 +1126,7 @@ static DECLCALLBACK(int) shClSvcX11RequestDataFromSourceCallback(PSHCLCONTEXT pC
     {
         /* URI targets are advertised cache-only after the worker prepared the
          * exact transfer.  Never fall back to guest I/O on the X11 thread. */
-        LogRel2(("Shared Clipboard: Host X11 URI-list conversion missed its prepared URI-list data cache\n"));
+        LogRelMax(16, ("Shared Clipboard: Host X11 URI-list conversion missed its prepared URI-list data cache\n"));
         return VERR_SHCLPB_NO_DATA;
     }
 #elif defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS)
@@ -1215,13 +1215,13 @@ static DECLCALLBACK(int) shClSvcX11TransferIfaceHGRootListRead(PSHCLTXPROVIDERCT
             LogRelMax2(16, ("Shared Clipboard: Host reported %RU64 X11 root entries for transfer to guest\n",
                             ShClTransferRootsCount(pCtx->pTransfer)));
         else
-            LogRelMax2(16, ("Shared Clipboard: Converting X11 URI-list clipboard data (%RU32 bytes) to transfer roots failed with %Rrc\n",
+            LogRelMax(16, ("Shared Clipboard: Converting X11 URI-list clipboard data (%RU32 bytes) to transfer roots failed with %Rrc\n",
                             cbData, vrc));
 
         RTMemFree(pvData);
     }
     else
-        LogRelMax2(16, ("Shared Clipboard: Reading X11 URI-list clipboard data for transfer failed with %Rrc\n", vrc));
+        LogRelMax(16, ("Shared Clipboard: Reading X11 URI-list clipboard data for transfer failed with %Rrc\n", vrc));
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;
