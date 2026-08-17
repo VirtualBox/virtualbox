@@ -1,4 +1,4 @@
-/* $Id: clipboard-x11.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-x11.cpp 115057 2026-08-17 16:48:01Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard implementation.
  */
@@ -174,16 +174,18 @@ static int vbclX11TransferStateStart(PSHCLCONTEXT pCtx)
  * If the host clipboard changed while a transfer was being initialized, a new
  * serialized request is started for the latest offer after the old transfer
  * has been canceled.
+ *
+ * @returns VBox status code for preparing and publishing the URI list.
  */
-static void vbclX11TransferStateComplete(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransfer,
-                                               const char *pszUriList, size_t cbUriList, int rcPreparation)
+static int vbclX11TransferStateComplete(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransfer,
+                                        const char *pszUriList, size_t cbUriList, int rcPreparation)
 {
     PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
     if (!vbclX11TransferStateMatches(pCtx, pTransfer))
     {
         LogRel2(("Shared Clipboard: Ignoring URI-list preparation completion for unbound transfer %RU16/%RU64\n",
                  ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer)));
-        return;
+        return VINF_SUCCESS;
     }
 
     uint64_t const uPreparingOfferGeneration = pX11TransferState->uPreparingOfferGeneration;
@@ -227,7 +229,8 @@ static void vbclX11TransferStateComplete(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTrans
                      ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer)));
 
         vbclX11TransferUnregister(pCtx, pTransfer);
-        if (ShClTransferGetStatus(pTransfer) == SHCLTRANSFERSTATUS_INITIALIZED)
+        if (   RT_SUCCESS(rcPreparation)
+            && ShClTransferGetStatus(pTransfer) == SHCLTRANSFERSTATUS_INITIALIZED)
         {
             int rc2 = VbglR3ClipboardTransferSendStatus(&pCtx->CmdCtx, pTransfer,
                                                         SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
@@ -244,6 +247,8 @@ static void vbclX11TransferStateComplete(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTrans
         if (RT_FAILURE(rc2))
             LogRel(("Shared Clipboard: Restarting X11 transfer preparation failed with %Rrc\n", rc2));
     }
+
+    return rcPreparation;
 }
 
 /**
@@ -327,13 +332,15 @@ static DECLCALLBACK(int) vbclX11OnTransferInitializeCallback(PSHCLTRANSFERCALLBA
  *
  * @thread Clipboard main thread.
  */
-static DECLCALLBACK(void) vbclX11OnTransferInitializedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
+static DECLCALLBACK(int) vbclX11OnTransferInitializedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
 {
     PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pCbCtx->pvUser;
-    AssertPtr(pCtx);
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
 
     PSHCLTRANSFER pTransfer = pCbCtx->pTransfer;
-    AssertPtr(pTransfer);
+    AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
+
+    int rc = VINF_SUCCESS;
 
     if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE)
     {
@@ -346,14 +353,14 @@ static DECLCALLBACK(void) vbclX11OnTransferInitializedCallback(PSHCLTRANSFERCALL
             if (RT_FAILURE(rc2))
                 LogRel(("Shared Clipboard: Canceling unbound transfer %RU16/%RU64 failed with %Rrc\n",
                         ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rc2));
-            return;
+            return VINF_SUCCESS;
         }
 
         /* The remote provider rejects root-list reads until ShClTransferInit()
          * has changed the transfer state to INITIALIZED.  Registering the HTTP
          * transfer from pfnOnInitialize therefore races ahead of that state
          * transition and leaves URI-list conversion waiting forever. */
-        int rc = ShClTransferHttpServerMaybeStart(&pCtx->X11.HttpCtx);
+        rc = ShClTransferHttpServerMaybeStart(&pCtx->X11.HttpCtx);
         if (RT_SUCCESS(rc))
             rc = ShClTransferRootListRead(pTransfer);
         if (RT_SUCCESS(rc))
@@ -370,9 +377,11 @@ static DECLCALLBACK(void) vbclX11OnTransferInitializedCallback(PSHCLTRANSFERCALL
             rc = ShClTransferHttpConvertToStringList(&pCtx->X11.HttpCtx.HttpServer, pTransfer,
                                                      &pszUriList, &cbUriList);
 
-        vbclX11TransferStateComplete(pCtx, pTransfer, pszUriList, cbUriList, rc);
+        rc = vbclX11TransferStateComplete(pCtx, pTransfer, pszUriList, cbUriList, rc);
         RTStrFree(pszUriList);
     }
+
+    return rc;
 }
 
 /**
