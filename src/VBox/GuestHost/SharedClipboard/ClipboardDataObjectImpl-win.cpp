@@ -1,4 +1,4 @@
-/* $Id: ClipboardDataObjectImpl-win.cpp 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardDataObjectImpl-win.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
 /** @file
  * ClipboardDataObjectImpl-win.cpp - Shared Clipboard IDataObject implementation.
  */
@@ -66,8 +66,12 @@ ShClWinDataObject::ShClWinDataObject(void)
     , m_pFormatEtc(NULL)
     , m_pStgMedium(NULL)
     , m_pTransfer(NULL)
-    , m_pStream(NULL)
     , m_uObjIdx(0)
+    , m_fCritSectInitialized(false)
+    , m_fCallbacksEnabled(false)
+    , m_cCallbacks(0)
+    , m_hCallbackThread(NIL_RTNATIVETHREAD)
+    , m_EventCallbacksDrained(NIL_RTSEMEVENTMULTI)
     , m_EventListComplete(NIL_RTSEMEVENT)
     , m_EventStatusChanged(NIL_RTSEMEVENT)
     , m_cfFileDescriptorA(0)
@@ -177,15 +181,22 @@ int ShClWinDataObject::Init(PSHCLCONTEXT pCtx, ShClWinDataObject::PCALLBACKS pCa
 
     if (RT_SUCCESS(rc))
     {
-        m_cFormats  = cAllFormats;
-        m_enmStatus = Initialized;
-
         rc = RTCritSectInit(&m_CritSect);
         if (RT_SUCCESS(rc))
         {
-            rc = RTSemEventCreate(&m_EventListComplete);
+            m_fCritSectInitialized = true;
+            rc = RTSemEventMultiCreate(&m_EventCallbacksDrained);
+            if (RT_SUCCESS(rc))
+                rc = RTSemEventCreate(&m_EventListComplete);
             if (RT_SUCCESS(rc))
                 rc = RTSemEventCreate(&m_EventStatusChanged);
+        }
+
+        if (RT_SUCCESS(rc))
+        {
+            m_fCallbacksEnabled = true;
+            m_cFormats  = cAllFormats;
+            m_enmStatus = Initialized;
         }
     }
 
@@ -200,6 +211,7 @@ void ShClWinDataObject::uninitInternal(void)
 {
     LogFlowFuncEnter();
 
+    Assert(m_fCritSectInitialized);
     lock();
 
     if (m_enmStatus != Uninitialized)
@@ -219,9 +231,13 @@ void ShClWinDataObject::uninitInternal(void)
     }
 
     /* Make sure to release the transfer in any state. */
-    setTransferLocked(NULL);
+    ShClWinDataObject *pObjToRelease = NULL;
+    setTransferLocked(NULL, &pObjToRelease);
 
     unlock();
+
+    if (pObjToRelease)
+        pObjToRelease->Release();
 }
 
 /**
@@ -231,7 +247,45 @@ void ShClWinDataObject::Uninit(void)
 {
     LogFlowFuncEnter();
 
-    uninitInternal();
+    if (m_fCritSectInitialized)
+    {
+        DisableCallbacks();
+        uninitInternal();
+        invalidateStreams();
+    }
+
+    /* No callback may retain or use its owner after the object is invalidated. */
+    m_CallbackCtx.pvUser = NULL;
+    m_CallbackCtx.pThis  = this;
+}
+
+/**
+ * Permanently disables new backend callbacks and waits for an active callback
+ * running on another thread to return.
+ */
+void ShClWinDataObject::DisableCallbacks(void)
+{
+    if (!m_fCritSectInitialized)
+        return;
+
+    for (;;)
+    {
+        lock();
+        m_fCallbacksEnabled = false;
+        m_Callbacks.pfnTransferBegin = NULL;
+        m_Callbacks.pfnTransferEnd   = NULL;
+        bool const fWaitCallbacks = m_cCallbacks != 0;
+        bool const fCallbackThread = fWaitCallbacks
+                                  && m_hCallbackThread == RTThreadNativeSelf();
+        unlock();
+
+        if (   !fWaitCallbacks
+            || fCallbackThread)
+            break;
+
+        int rc = RTSemEventMultiWait(m_EventCallbacksDrained, RT_INDEFINITE_WAIT);
+        AssertFatalMsgRC(rc, ("Draining Windows clipboard data-object callbacks failed with %Rrc\n", rc));
+    }
 }
 
 /**
@@ -241,30 +295,40 @@ void ShClWinDataObject::Destroy(void)
 {
     LogFlowFuncEnter();
 
-    if (m_enmStatus == Uninitialized) /* Crit sect not available anymore. */
-        return;
+    Uninit();
 
-    uninitInternal();
+    if (m_fCritSectInitialized)
+    {
+        int rc = RTCritSectDelete(&m_CritSect);
+        AssertRC(rc);
+        m_fCritSectInitialized = false;
+    }
 
-    int rc = RTCritSectDelete(&m_CritSect);
-    AssertRC(rc);
+    m_CallbackCtx.pvUser = NULL;
+    m_CallbackCtx.pThis  = this;
+    m_cFormats  = 0;
+    m_enmStatus = Uninitialized;
+
+    if (m_EventCallbacksDrained != NIL_RTSEMEVENTMULTI)
+    {
+        int rc = RTSemEventMultiDestroy(m_EventCallbacksDrained);
+        AssertRC(rc);
+        m_EventCallbacksDrained = NIL_RTSEMEVENTMULTI;
+    }
 
     if (m_EventListComplete != NIL_RTSEMEVENT)
     {
-        rc = RTSemEventDestroy(m_EventListComplete);
+        int rc = RTSemEventDestroy(m_EventListComplete);
         AssertRC(rc);
         m_EventListComplete = NIL_RTSEMEVENT;
     }
 
     if (m_EventStatusChanged != NIL_RTSEMEVENT)
     {
-        rc = RTSemEventDestroy(m_EventStatusChanged);
+        int rc = RTSemEventDestroy(m_EventStatusChanged);
         AssertRC(rc);
         m_EventStatusChanged = NIL_RTSEMEVENT;
     }
-
-    if (m_pStream)
-        m_pStream = NULL;
 
     if (m_pFormatEtc)
     {
@@ -576,7 +640,12 @@ DECLCALLBACK(int) ShClWinDataObject::readThread(PSHCLTRANSFER pTransfer, void *p
                     if (RT_FAILURE(rc))
                         break;
 
-                    switch (pThis->m_enmStatus)
+                    pThis->lock();
+                    Status const enmStatus = pThis->m_enmStatus;
+                    int const rcStatus = pThis->m_rcStatus;
+                    pThis->unlock();
+
+                    switch (enmStatus)
                     {
                         case Uninitialized: /* Can happen due to transfer erros. */
                             LogRel2(("Shared Clipboard: Data object was uninitialized\n"));
@@ -600,8 +669,8 @@ DECLCALLBACK(int) ShClWinDataObject::readThread(PSHCLTRANSFER pTransfer, void *p
                             break;
 
                         case Error:
-                            LogRel(("Shared Clipboard: Data object: Transfer error %Rrc occurred\n", pThis->m_rcStatus));
-                            rc = ShClTransferError(pTransfer, pThis->m_rcStatus);
+                            LogRel(("Shared Clipboard: Data object: Transfer error %Rrc occurred\n", rcStatus));
+                            rc = ShClTransferError(pTransfer, rcStatus);
                             break;
 
                         default:
@@ -609,11 +678,33 @@ DECLCALLBACK(int) ShClWinDataObject::readThread(PSHCLTRANSFER pTransfer, void *p
                             break;
                     }
 
-                    if (pThis->m_Callbacks.pfnTransferEnd)
+                    pThis->lock();
+                    PFNTRANSFEREND const pfnTransferEnd = pThis->m_fCallbacksEnabled
+                                                       ? pThis->m_Callbacks.pfnTransferEnd : NULL;
+                    CALLBACKCTX CallbackCtx = pThis->m_CallbackCtx;
+                    if (pfnTransferEnd)
                     {
-                        int rc2 = pThis->m_Callbacks.pfnTransferEnd(&pThis->m_CallbackCtx, pTransfer, pThis->m_rcStatus);
+                        Assert(pThis->m_cCallbacks == 0);
+                        pThis->m_cCallbacks = 1;
+                        pThis->m_hCallbackThread = RTThreadNativeSelf();
+                        int rc2 = RTSemEventMultiReset(pThis->m_EventCallbacksDrained);
+                        AssertFatalMsgRC(rc2, ("Resetting the Windows clipboard callback-drain event failed with %Rrc\n", rc2));
+                    }
+                    pThis->unlock();
+
+                    if (pfnTransferEnd)
+                    {
+                        int rc2 = pfnTransferEnd(&CallbackCtx, pTransfer, rcStatus);
                         if (RT_SUCCESS(rc))
                             rc = rc2;
+
+                        pThis->lock();
+                        Assert(pThis->m_cCallbacks == 1);
+                        pThis->m_cCallbacks = 0;
+                        pThis->m_hCallbackThread = NIL_RTNATIVETHREAD;
+                        rc2 = RTSemEventMultiSignal(pThis->m_EventCallbacksDrained);
+                        AssertFatalMsgRC(rc2, ("Signalling the Windows clipboard callback-drain event failed with %Rrc\n", rc2));
+                        pThis->unlock();
                     }
 
                     break;
@@ -626,6 +717,7 @@ DECLCALLBACK(int) ShClWinDataObject::readThread(PSHCLTRANSFER pTransfer, void *p
         LogRel(("Shared Clipboard: Transfer read thread failed with %Rrc\n", rc));
 
     LogFlowFuncLeaveRC(rc);
+    pThis->Release();
     return rc;
 }
 
@@ -926,16 +1018,37 @@ int ShClWinDataObject::ensureTransferListReadyLocked(void)
     {
         LogRel2(("Shared Clipboard: Requesting data for IDataObject ...\n"));
 
-        if (!m_Callbacks.pfnTransferBegin)
+        if (   !m_fCallbacksEnabled
+            || !m_Callbacks.pfnTransferBegin)
         {
             LogRelMax2(16, ("Shared Clipboard: Cannot start IDataObject transfer because no transfer-begin callback is installed\n"));
             return VERR_INVALID_POINTER;
         }
+        if (m_cCallbacks != 0)
+            return VERR_TRY_AGAIN;
+
+        PFNTRANSFERBEGIN const pfnTransferBegin = m_Callbacks.pfnTransferBegin;
+        CALLBACKCTX CallbackCtx = m_CallbackCtx;
+        m_cCallbacks = 1;
+        m_hCallbackThread = RTThreadNativeSelf();
+        rc = RTSemEventMultiReset(m_EventCallbacksDrained);
+        AssertFatalMsgRC(rc, ("Resetting the Windows clipboard callback-drain event failed with %Rrc\n", rc));
 
         /* Leave lock while requesting + waiting. */
         unlock();
 
-        rc = m_Callbacks.pfnTransferBegin(&m_CallbackCtx);
+        rc = pfnTransferBegin(&CallbackCtx);
+
+        lock();
+        Assert(m_cCallbacks > 0);
+        if (--m_cCallbacks == 0)
+        {
+            m_hCallbackThread = NIL_RTNATIVETHREAD;
+            int rc2 = RTSemEventMultiSignal(m_EventCallbacksDrained);
+            AssertFatalMsgRC(rc2, ("Signalling the Windows clipboard callback-drain event failed with %Rrc\n", rc2));
+        }
+        unlock();
+
         if (RT_SUCCESS(rc))
         {
             LogRel2(("Shared Clipboard: Waiting for IDataObject started status ...\n"));
@@ -989,11 +1102,17 @@ int ShClWinDataObject::ensureTransferListReadyLocked(void)
         rc = ShClTransferStart(pTransfer);
         if (RT_SUCCESS(rc))
         {
+            /* The transfer worker receives a raw user pointer, so retain the
+             * object until readThread() returns. */
+            AddRef();
             rc = ShClTransferRun(pTransfer, &ShClWinDataObject::readThread, this /* pvUser */);
             if (RT_SUCCESS(rc))
                 fNeedListWait = true;
             else
+            {
+                Release();
                 LogRelMax2(16, ("Shared Clipboard: Starting IDataObject transfer read thread failed with %Rrc\n", rc));
+            }
         }
         else
             LogRelMax2(16, ("Shared Clipboard: Starting IDataObject transfer failed with %Rrc\n", rc));
@@ -1115,14 +1234,17 @@ STDMETHODIMP ShClWinDataObject::GetData(LPFORMATETC pFormatEtc, LPSTGMEDIUM pMed
                 LogRel2(("Shared Clipboard: Receiving object '%s' ...\n", fsObjEntry.pszPath));
 
                 /* Hand-in the provider so that our IStream implementation can continue working with it. */
+                IStream *pStream = NULL;
                 hr = ShClWinStreamImpl::Create(this /* pParent */, m_pTransfer,
-                                                          fsObjEntry.pszPath /* File name */, &fsObjEntry.objInfo /* PSHCLFSOBJINFO */,
-                                                          &m_pStream);
+                                               fsObjEntry.pszPath /* File name */, &fsObjEntry.objInfo /* PSHCLFSOBJINFO */,
+                                               &pStream);
                 if (SUCCEEDED(hr))
                 {
                     /* Hand over the stream to the caller. */
                     pMedium->tymed = TYMED_ISTREAM;
-                    pMedium->pstm  = m_pStream;
+                    pMedium->pstm  = pStream;
+
+                    registerStreamLocked((ShClWinStreamImpl *)pStream);
                 }
             }
         }
@@ -1317,9 +1439,10 @@ STDMETHODIMP ShClWinDataObject::StartOperation(IBindCtx *pbcReserved)
  * @param   pTransfer           Transfer to assign.
  *                              When set to NULL, the transfer will be released from the object.
  */
-int ShClWinDataObject::setTransferLocked(PSHCLTRANSFER pTransfer)
+int ShClWinDataObject::setTransferLocked(PSHCLTRANSFER pTransfer, ShClWinDataObject **ppObjToRelease /* = NULL */)
 {
     AssertReturn(RTCritSectIsOwned(&m_CritSect), VERR_WRONG_ORDER);
+    AssertReturn(!ppObjToRelease || !*ppObjToRelease, VERR_INVALID_PARAMETER);
 
     LogFunc(("pTransfer=%p\n", pTransfer));
 
@@ -1331,14 +1454,26 @@ int ShClWinDataObject::setTransferLocked(PSHCLTRANSFER pTransfer)
 
         if (m_enmStatus == Initialized)
         {
-            m_pTransfer = pTransfer;
-
             ShClWinTransferCtx *pWinURITransferCtx = (ShClWinTransferCtx *)pTransfer->pvUser;
             AssertPtr(pWinURITransferCtx);
 
-            pWinURITransferCtx->pDataObj = this; /* Save a backref to this object. */
+            rc = RTCritSectEnter(&pWinURITransferCtx->CritSect);
+            if (RT_SUCCESS(rc))
+            {
+                Assert(pWinURITransferCtx->pDataObj == NULL);
+                if (!pWinURITransferCtx->pDataObj)
+                {
+                    AddRef();
+                    pWinURITransferCtx->pDataObj = this;
+                    m_pTransfer = pTransfer;
+                    ShClTransferAcquire(pTransfer);
+                }
+                else
+                    rc = VERR_WRONG_ORDER;
 
-            ShClTransferAcquire(pTransfer);
+                int rc2 = RTCritSectLeave(&pWinURITransferCtx->CritSect);
+                AssertRC(rc2);
+            }
         }
         else
             AssertFailedStmt(rc = VERR_WRONG_ORDER);
@@ -1350,7 +1485,22 @@ int ShClWinDataObject::setTransferLocked(PSHCLTRANSFER pTransfer)
             ShClWinTransferCtx *pWinURITransferCtx = (ShClWinTransferCtx *)m_pTransfer->pvUser;
             AssertPtr(pWinURITransferCtx);
 
-            pWinURITransferCtx->pDataObj = NULL; /* Release backref to this object. */
+            int rc2 = RTCritSectEnter(&pWinURITransferCtx->CritSect);
+            AssertFatalMsgRC(rc2, ("Taking the Windows transfer-context lock while detaching failed with %Rrc\n", rc2));
+
+            if (pWinURITransferCtx->pDataObj == this)
+            {
+                pWinURITransferCtx->pDataObj = NULL;
+                if (ppObjToRelease)
+                    *ppObjToRelease = this;
+                else
+                    AssertFailed();
+            }
+            else
+                Assert(pWinURITransferCtx->pDataObj == NULL);
+
+            rc2 = RTCritSectLeave(&pWinURITransferCtx->CritSect);
+            AssertFatalMsgRC(rc2, ("Releasing the Windows transfer-context lock while detaching failed with %Rrc\n", rc2));
 
             ShClTransferRelease(m_pTransfer);
             m_pTransfer = NULL;
@@ -1375,11 +1525,49 @@ int ShClWinDataObject::SetTransfer(PSHCLTRANSFER pTransfer)
 {
     lock();
 
-    int rc = setTransferLocked(pTransfer);
+    ShClWinDataObject *pObjToRelease = NULL;
+    int rc = setTransferLocked(pTransfer, &pObjToRelease);
 
     unlock();
 
+    if (pObjToRelease)
+        pObjToRelease->Release();
+
     return rc;
+}
+
+/**
+ * Registers a stream while the data-object lock is held.
+ *
+ * @param   pStream             Stream to register.
+ */
+void ShClWinDataObject::registerStreamLocked(ShClWinStreamImpl *pStream)
+{
+    Assert(RTCritSectIsOwned(&m_CritSect));
+    AssertPtr(pStream);
+
+    m_lstStreams.push_back(pStream); /** @todo Can this throw? */
+    pStream->AddRef();
+}
+
+/**
+ * Invalidates all streams and drops the references owned by this data object.
+ */
+void ShClWinDataObject::invalidateStreams(void)
+{
+    StreamList lstStreams;
+
+    lock();
+    lstStreams.swap(m_lstStreams);
+    unlock();
+
+    StreamList::const_iterator it = lstStreams.cbegin();
+    while (it != lstStreams.cend())
+    {
+        (*it)->Invalidate();
+        (*it)->Release();
+        ++it;
+    }
 }
 
 /**

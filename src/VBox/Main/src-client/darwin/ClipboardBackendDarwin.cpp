@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendDarwin.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendDarwin.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host.
  */
@@ -31,7 +31,9 @@
 *********************************************************************************************************************************/
 #define LOG_GROUP LOG_GROUP_SHARED_CLIPBOARD
 #include <VBox/HostServices/VBoxClipboardSvc.h>
-#include <VBox/HostServices/VBoxSharedClipboardSvc.h>
+#include "GuestShClBackend.h"
+#include "../GuestShClBackendPrivate.h"
+#include "GuestShClConn.h"
 
 #include <iprt/assert.h>
 #include <iprt/asm.h>
@@ -42,9 +44,6 @@
 #include <iprt/thread.h>
 
 #include "darwin-pasteboard.h"
-#ifdef VBOX_COM_INPROC
-# include "GuestShClPrivate.h"
-#endif
 
 
 /*********************************************************************************************************************************
@@ -59,9 +58,9 @@ typedef struct SHCLCONTEXT
     bool volatile           fTerminate;
     /** The reference to the current pasteboard */
     PasteboardRef           hPasteboard;
-    /** Shared clipboard client. */
-    PSHCLCLIENT             pClient;
-    /** Whether @a pClient may be used by the pasteboard poller. */
+    /** Main connection to the Shared Clipboard service. */
+    GuestShClConn          *pConn;
+    /** Whether @a pConn may be used by the pasteboard poller. */
     bool                    fClientReady;
     /** Random 64-bit number embedded into szGuestOwnershipFlavor. */
     uint64_t                idGuestOwnership;
@@ -88,10 +87,7 @@ static SHCLCONTEXT g_ctx;
 /** @copydoc SHCLTXPROVIDERIFACE::pfnRootListRead */
 static DECLCALLBACK(int) shClSvcDarwinTransferIfaceHGRootListRead(PSHCLTXPROVIDERCTX pProviderCtx)
 {
-    PSHCLCLIENT pClient = (PSHCLCLIENT)pProviderCtx->pvUser;
-    AssertPtrReturn(pClient, VERR_INVALID_POINTER);
-
-    SHCLCONTEXT *pCtx = pClient->State.pCtx;
+    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pProviderCtx->pvUser;
     AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
 
     char  *pszRoots = NULL;
@@ -117,23 +113,24 @@ static DECLCALLBACK(int) shClSvcDarwinTransferIfaceHGRootListRead(PSHCLTXPROVIDE
 /** @copydoc SHCLTRANSFERCALLBACKS::pfnOnCreated */
 static DECLCALLBACK(void) shClSvcDarwinTransferOnCreatedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
 {
-    PSHCLCLIENT pClient = (PSHCLCLIENT)pCbCtx->pvUser;
-    AssertPtrReturnVoid(pClient);
+    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pCbCtx->pvUser;
+    AssertPtrReturnVoid(pCtx);
 
     PSHCLTRANSFER pTransfer = pCbCtx->pTransfer;
     AssertPtrReturnVoid(pTransfer);
 
-    RT_ZERO(pClient->Transfers.Provider);
     if (   ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_TO_REMOTE
         && ShClTransferGetSource(pTransfer) == SHCLSOURCE_LOCAL)
     {
-        ShClTransferProviderLocalQueryInterface(&pClient->Transfers.Provider);
-        pClient->Transfers.Provider.Interface.pfnRootListRead = shClSvcDarwinTransferIfaceHGRootListRead;
-        pClient->Transfers.Provider.enmSource = SHCLSOURCE_LOCAL;
-        pClient->Transfers.Provider.pvUser    = pClient;
-        pClient->Transfers.Provider.cbUser    = sizeof(*pClient);
+        SHCLTXPROVIDER Provider;
+        RT_ZERO(Provider);
+        ShClTransferProviderLocalQueryInterface(&Provider);
+        Provider.Interface.pfnRootListRead = shClSvcDarwinTransferIfaceHGRootListRead;
+        Provider.enmSource = SHCLSOURCE_LOCAL;
+        Provider.pvUser    = pCtx;
+        Provider.cbUser    = sizeof(*pCtx);
 
-        int const vrc = ShClTransferSetProvider(pTransfer, &pClient->Transfers.Provider);
+        int const vrc = ShClTransferSetProvider(pTransfer, &Provider);
         AssertRC(vrc);
     }
 }
@@ -153,14 +150,6 @@ static DECLCALLBACK(int) shClSvcDarwinTransferOnInitializeCallback(PSHCLTRANSFER
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 
-static int shClBackendReportFormatsToGuestAndMain(PSHCLCLIENT pClient, SHCLFORMATS fFormats)
-{
-#ifdef VBOX_COM_INPROC
-    return GuestShCl::GetInst()->ReportFormatsToGuest(pClient, fFormats, SHCLSOURCE_LOCAL);
-#endif
-    return ShClBackendReportFormatsToGuest(pClient->pBackend, pClient, fFormats);
-}
-
 /**
  * Checks if something is present on the clipboard and calls shclSvcReportMsg.
  *
@@ -170,14 +159,14 @@ static int shClBackendReportFormatsToGuestAndMain(PSHCLCLIENT pClient, SHCLFORMA
  *                  its change was already observed.
  *
  */
-static int vboxClipboardChanged(SHCLCONTEXT *pCtx, bool fForce)
+static int vboxClipboardChanged(PSHCLCONTEXT pCtx, bool fForce)
 {
     int      vrc      = VINF_SUCCESS;
     uint32_t fFormats = 0;
 
     RTCritSectEnter(&pCtx->CritSect);
 
-    if (   pCtx->pClient
+    if (   pCtx->pConn
         && pCtx->fClientReady)
     {
         /* Retrieve the formats currently in the clipboard and supported by VBox. */
@@ -193,14 +182,8 @@ static int vboxClipboardChanged(SHCLCONTEXT *pCtx, bool fForce)
             if (RT_SUCCESS(vrc))
                 vrc = vrc2;
         }
-        if (   RT_SUCCESS(vrc)
-            && fChanged)
-        {
-            uint32_t const uMode = ShClSvcClientGetMode(pCtx->pClient);
-            if (   uMode == VBOX_SHCL_MODE_BIDIRECTIONAL
-                || uMode == VBOX_SHCL_MODE_HOST_TO_GUEST)
-                vrc = shClBackendReportFormatsToGuestAndMain(pCtx->pClient, fFormats);
-        }
+        if (RT_SUCCESS(vrc) && fChanged)
+            vrc = pCtx->pConn->reportLocalFormats(fFormats);
     }
 
     RTCritSectLeave(&pCtx->CritSect);
@@ -216,7 +199,7 @@ static int vboxClipboardChanged(SHCLCONTEXT *pCtx, bool fForce)
  */
 static DECLCALLBACK(int) vboxClipboardThread(RTTHREAD ThreadSelf, void *pvUser)
 {
-    SHCLCONTEXT *pCtx = (SHCLCONTEXT *)pvUser;
+    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pvUser;
     AssertPtr(pCtx);
     LogFlowFuncEnter();
     int vrc;
@@ -236,7 +219,12 @@ static DECLCALLBACK(int) vboxClipboardThread(RTTHREAD ThreadSelf, void *pvUser)
 }
 
 
-int ShClBackendInit(PSHCLBACKEND pBackend, VBOXHGCMSVCFNTABLE *pTable)
+/**
+ * Initializes the process-wide macOS clipboard backend.
+ *
+ * @returns VBox status code.
+ */
+static int shClBackendDarwinInit(void)
 {
     g_ctx.fTerminate = false;
     g_ctx.fClientReady = false;
@@ -261,8 +249,6 @@ int ShClBackendInit(PSHCLBACKEND pBackend, VBOXHGCMSVCFNTABLE *pTable)
         return vrc;
     }
 
-    pBackend->pHelpers = pTable->pHelpers;
-
     vrc = RTThreadCreate(&g_ctx.hThread, vboxClipboardThread, &g_ctx, 0,
                          RTTHREADTYPE_IO, RTTHREADFLAGS_WAITABLE, "SHCLIP");
     if (RT_FAILURE(vrc))
@@ -276,10 +262,11 @@ int ShClBackendInit(PSHCLBACKEND pBackend, VBOXHGCMSVCFNTABLE *pTable)
     return vrc;
 }
 
-void ShClBackendDestroy(PSHCLBACKEND pBackend)
+/**
+ * Destroys the process-wide macOS clipboard backend.
+ */
+static void shClBackendDarwinDestroy(void)
 {
-    RT_NOREF(pBackend);
-
     /*
      * Signal the termination of the polling thread and wait for it to respond.
      */
@@ -289,7 +276,7 @@ void ShClBackendDestroy(PSHCLBACKEND pBackend)
         int vrc = RTThreadUserSignal(g_ctx.hThread);
         AssertRC(vrc);
         vrc = RTThreadWait(g_ctx.hThread, RT_INDEFINITE_WAIT, NULL);
-        AssertRC(vrc);
+        AssertFatalMsgRC(vrc, ("Reaping the Darwin clipboard poller failed with %Rrc\n", vrc));
         g_ctx.hThread = NIL_RTTHREAD;
     }
 
@@ -297,7 +284,7 @@ void ShClBackendDestroy(PSHCLBACKEND pBackend)
      * Destroy the hPasteboard and uninitialize the global context record.
      */
     destroyPasteboard(&g_ctx.hPasteboard);
-    g_ctx.pClient = NULL;
+    g_ctx.pConn = NULL;
     g_ctx.fClientReady = false;
 
     if (RTCritSectIsInitialized(&g_ctx.CritSectPasteboard))
@@ -306,25 +293,27 @@ void ShClBackendDestroy(PSHCLBACKEND pBackend)
         RTCritSectDelete(&g_ctx.CritSect);
 }
 
-int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
+/**
+ * Connects a Main service connection to the macOS clipboard backend.
+ *
+ * @returns VBox status code.
+ * @param   pConn               Main service connection to associate.
+ * @param   ppCtx               Where to return the backend context.
+ */
+static int shClBackendDarwinConnect(GuestShClConn *pConn, PSHCLCONTEXT *ppCtx)
 {
-    RT_NOREF(pBackend);
+    AssertPtrReturn(pConn, VERR_INVALID_POINTER);
+    AssertPtrReturn(ppCtx,   VERR_INVALID_POINTER);
+    *ppCtx = NULL;
 
     RTCritSectEnter(&g_ctx.CritSect);
 
     int vrc;
-    if (g_ctx.pClient == NULL)
+    if (!g_ctx.pConn)
     {
-        pClient->State.pCtx = &g_ctx;
-        g_ctx.pClient = pClient;
+        g_ctx.pConn = pConn;
         g_ctx.fClientReady = false;
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-        RT_ZERO(pClient->Transfers.Callbacks);
-        pClient->Transfers.Callbacks.pvUser          = pClient;
-        pClient->Transfers.Callbacks.cbUser          = sizeof(*pClient);
-        pClient->Transfers.Callbacks.pfnOnCreated    = shClSvcDarwinTransferOnCreatedCallback;
-        pClient->Transfers.Callbacks.pfnOnInitialize = shClSvcDarwinTransferOnInitializeCallback;
-#endif
+        *ppCtx = &g_ctx;
         vrc = VINF_SUCCESS;
     }
     else
@@ -335,52 +324,102 @@ int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
     return vrc;
 }
 
-int ShClBackendSync(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/**
+ * Returns the macOS callbacks for a new transfer.
+ *
+ * @param   pCtx                Connected backend context.
+ * @param   pCallbacks          Where to return the callback table.
+ */
+static void shClBackendDarwinTransferGetCallbacks(PSHCLCONTEXT pCtx, PSHCLTRANSFERCALLBACKS pCallbacks)
 {
-    RT_NOREF(pBackend);
+    AssertPtrReturnVoid(pCallbacks);
+    RT_ZERO(*pCallbacks);
+    AssertPtrReturnVoid(pCtx);
+    AssertPtrReturnVoid(pCtx->pConn);
 
-    /* GuestShCl records the active client after ShClBackendConnect returns.  Do
-     * not expose it to the poller before that lifetime guard is in place. */
+    pCallbacks->pvUser          = pCtx;
+    pCallbacks->cbUser          = sizeof(*pCtx);
+    pCallbacks->pfnOnCreated    = shClSvcDarwinTransferOnCreatedCallback;
+    pCallbacks->pfnOnInitialize = shClSvcDarwinTransferOnInitializeCallback;
+}
+#endif
+
+/**
+ * Synchronizes macOS clipboard state with a connected guest.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                Connected backend context.
+ */
+static int shClBackendDarwinSync(PSHCLCONTEXT pCtx)
+{
+    AssertPtrReturn(pCtx,          VERR_INVALID_POINTER);
+    AssertPtrReturn(pCtx->pConn, VERR_INVALID_POINTER);
+
+    /* GuestShClConn publishes the connection while shClBackendDarwinConnect runs, but
+     * do not expose it to the poller until the initial service sync. */
     RTCritSectEnter(&g_ctx.CritSect);
     int vrc = VINF_SUCCESS;
-    if (pClient->State.pCtx->pClient == pClient)
-        pClient->State.pCtx->fClientReady = true;
+    if (pCtx->pConn)
+        pCtx->fClientReady = true;
     else
         vrc = VERR_NOT_SUPPORTED;
     RTCritSectLeave(&g_ctx.CritSect);
 
     /* Sync the host clipboard content with the client. */
     if (RT_SUCCESS(vrc))
-        vrc = vboxClipboardChanged(pClient->State.pCtx, true /* fForce */);
+        vrc = vboxClipboardChanged(pCtx, true /* fForce */);
     return vrc;
 }
 
-int ShClBackendDisconnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
+/**
+ * Disconnects a Main service connection from the macOS clipboard backend.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                Backend context to disconnect.
+ */
+static int shClBackendDarwinDisconnect(PSHCLCONTEXT pCtx)
 {
-    RT_NOREF(pBackend);
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+    AssertPtrReturn(pCtx->pConn, VERR_INVALID_POINTER);
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    GuestShClConn * const pConn = pCtx->pConn;
+#endif
 
     RTCritSectEnter(&g_ctx.CritSect);
 
-    if (pClient->State.pCtx->pClient == pClient)
+    if (pCtx->pConn)
     {
-        pClient->State.pCtx->fClientReady = false;
-        pClient->State.pCtx->pClient = NULL;
+        pCtx->fClientReady = false;
+        pCtx->pConn = NULL;
     }
 
     RTCritSectLeave(&g_ctx.CritSect);
 
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    /* Transfer callback tables retain pCtx as their user argument. */
+    pConn->transferDestroyAll();
+#endif
+
     return VINF_SUCCESS;
 }
 
-int ShClBackendReportFormats(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFORMATS fFormats)
+/**
+ * Reports guest clipboard formats to the macOS pasteboard.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                Connected backend context.
+ * @param   fFormats            Guest formats, VBOX_SHCL_FMT_XXX.
+ */
+static int shClBackendDarwinReportFormats(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats)
 {
-    RT_NOREF(pBackend);
+    AssertPtrReturn(pCtx,          VERR_INVALID_POINTER);
+    AssertPtrReturn(pCtx->pConn, VERR_INVALID_POINTER);
 
     LogFlowFunc(("fFormats=%02X\n", fFormats));
 
     if (fFormats == VBOX_SHCL_FMT_NONE)
     {
-        SHCLCONTEXT *pCtx = pClient->State.pCtx;
         RTCritSectEnter(&pCtx->CritSectPasteboard);
         int vrcClear = clearPasteboard(pCtx->hPasteboard, &pCtx->hStrOwnershipFlavor);
         RTCritSectLeave(&pCtx->CritSectPasteboard);
@@ -394,7 +433,6 @@ int ShClBackendReportFormats(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFOR
         fFormats &= ~VBOX_SHCL_FMT_URI_LIST;
         if (fFormats == VBOX_SHCL_FMT_NONE)
         {
-            SHCLCONTEXT *pCtx = pClient->State.pCtx;
             RTCritSectEnter(&pCtx->CritSectPasteboard);
             int vrcClear = clearPasteboard(pCtx->hPasteboard, &pCtx->hStrOwnershipFlavor);
             RTCritSectLeave(&pCtx->CritSectPasteboard);
@@ -403,7 +441,6 @@ int ShClBackendReportFormats(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFOR
     }
 #endif
 
-    SHCLCONTEXT *pCtx = pClient->State.pCtx;
     RTCritSectEnter(&pCtx->CritSectPasteboard);
 
     /*
@@ -429,73 +466,61 @@ int ShClBackendReportFormats(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFOR
     /*
      * Now, request the data from the guest.
      */
-    return ShClSvcReadDataFromGuestAsync(pClient, fFormats, NULL /* ppEvent */);
+    return pCtx->pConn->readDataFromGuestAsync(fFormats, NULL /* ppEvent */);
 }
 
 /**
- * The host reports clipboard formats to the guest clipboard.
+ * Reads clipboard data from the macOS pasteboard.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                Connected backend context.
+ * @param   fFormat             Clipboard format to read.
+ * @param   pvData              Destination buffer.
+ * @param   cbData              Destination buffer size in bytes.
+ * @param   pcbActual           Where to return the actual or required byte count.
  */
-int ShClBackendReportFormatsToGuest(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFORMATS fFormats)
+static int shClBackendDarwinReadData(PSHCLCONTEXT pCtx, SHCLFORMAT fFormat, void *pvData, uint32_t cbData, uint32_t *pcbActual)
 {
-    RT_NOREF(pBackend);
-
-    int vrc;
-
-    PSHCLCLIENTMSG pMsg = ShClSvcClientMsgAlloc(pClient, VBOX_SHCL_HOST_MSG_FORMATS_REPORT, 2);
-    if (pMsg)
-    {
-        HGCMSvcSetU32(&pMsg->aParms[0], VBOX_SHCL_HOST_MSG_FORMATS_REPORT);
-        HGCMSvcSetU32(&pMsg->aParms[1], fFormats);
-
-        ShClSvcClientLock(pClient);
-
-        vrc = shClSvcClientMsgAddAndWakeupClient(pClient, pMsg);
-
-        ShClSvcClientUnlock(pClient);
-    }
-    else
-        vrc = VERR_NO_MEMORY;
-
-    LogFlowFuncLeaveRC(vrc);
-    return vrc;
-}
-
-int ShClBackendReadData(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX pCmdCtx, SHCLFORMAT fFormat,
-                        void *pvData, uint32_t cbData, uint32_t *pcbActual)
-{
-    AssertPtrReturn(pClient,   VERR_INVALID_POINTER);
-    AssertPtrReturn(pCmdCtx,   VERR_INVALID_POINTER);
+    AssertPtrReturn(pCtx,      VERR_INVALID_POINTER);
+    AssertPtrReturn(pCtx->pConn, VERR_INVALID_POINTER);
     AssertPtrReturn(pvData,    VERR_INVALID_POINTER);
     AssertPtrReturn(pcbActual, VERR_INVALID_POINTER);
 
-    RT_NOREF(pBackend, pCmdCtx);
-
-    RTCritSectEnter(&pClient->State.pCtx->CritSectPasteboard);
+    RTCritSectEnter(&pCtx->CritSectPasteboard);
 
     /* Default to no data available. */
     *pcbActual = 0;
 
-    int vrc = readFromPasteboard(pClient->State.pCtx->hPasteboard, fFormat, pvData, cbData, pcbActual);
+    int vrc = readFromPasteboard(pCtx->hPasteboard, fFormat, pvData, cbData, pcbActual);
     if (RT_FAILURE(vrc))
         LogRel(("Shared Clipboard: Error reading host clipboard data from macOS, vrc=%Rrc\n", vrc));
 
-    RTCritSectLeave(&pClient->State.pCtx->CritSectPasteboard);
+    RTCritSectLeave(&pCtx->CritSectPasteboard);
 
     return vrc;
 }
 
-int ShClBackendWriteData(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX pCmdCtx, SHCLFORMAT fFormat, void *pvData, uint32_t cbData)
+/**
+ * Writes guest clipboard data to the macOS pasteboard.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                Connected backend context.
+ * @param   fFormat             Clipboard format to write.
+ * @param   pvData              Data buffer.
+ * @param   cbData              Data size in bytes.
+ */
+static int shClBackendDarwinWriteData(PSHCLCONTEXT pCtx, SHCLFORMAT fFormat, void *pvData, uint32_t cbData)
 {
-    RT_NOREF(pBackend, pCmdCtx);
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+    AssertPtrReturn(pCtx->pConn, VERR_INVALID_POINTER);
 
     LogFlowFuncEnter();
 
-    RTCritSectEnter(&pClient->State.pCtx->CritSectPasteboard);
+    RTCritSectEnter(&pCtx->CritSectPasteboard);
 
-    int vrc = writeToPasteboard(pClient->State.pCtx->hPasteboard, pClient->State.pCtx->idGuestOwnership,
-                                pvData, cbData, fFormat);
+    int vrc = writeToPasteboard(pCtx->hPasteboard, pCtx->idGuestOwnership, pvData, cbData, fFormat);
 
-    RTCritSectLeave(&pClient->State.pCtx->CritSectPasteboard);
+    RTCritSectLeave(&pCtx->CritSectPasteboard);
 
     if (RT_FAILURE(vrc))
         LogRel(("Shared Clipboard: Writing guest data to the macOS pasteboard failed, vrc=%Rrc\n", vrc));
@@ -505,24 +530,51 @@ int ShClBackendWriteData(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, PSHCLCLIENT
 }
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-# ifndef UNIT_TEST
 /**
  * Handles transfer status replies from the guest.
  *
  * @returns VBox status code.
- * @param   pBackend            Shared Clipboard backend.
- * @param   pClient             Shared Clipboard client context.
+ * @param   pCtx                Shared Clipboard backend context.
  * @param   pTransfer           Shared Clipboard transfer.
  * @param   enmSource           Transfer source which issued the reply.
  * @param   enmStatus           Transfer status.
  * @param   rcStatus            Transfer status code.
  */
-int ShClBackendTransferHandleStatusReply(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,
-                                         SHCLSOURCE enmSource, SHCLTRANSFERSTATUS enmStatus, int rcStatus)
+static int shClBackendDarwinTransferHandleStatusReply(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransfer, SHCLSOURCE enmSource,
+                                         SHCLTRANSFERSTATUS enmStatus, int rcStatus)
 {
-    RT_NOREF(pBackend, pClient, pTransfer, enmSource, enmStatus, rcStatus);
+    RT_NOREF(pCtx, pTransfer, enmSource, enmStatus, rcStatus);
 
     return VINF_SUCCESS;
 }
-# endif /* !UNIT_TEST */
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
+
+
+/** Native macOS Shared Clipboard backend operations. */
+static SHCLBACKENDOPS const s_ShClBackendDarwinOps =
+{
+    shClBackendDarwinInit,
+    shClBackendDarwinDestroy,
+    NULL,
+    shClBackendDarwinConnect,
+    shClBackendDarwinDisconnect,
+    shClBackendDarwinReportFormats,
+    shClBackendDarwinReadData,
+    shClBackendDarwinWriteData,
+    shClBackendDarwinSync,
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    shClBackendDarwinTransferGetCallbacks,
+    shClBackendDarwinTransferHandleStatusReply,
+#endif
+};
+
+
+/**
+ * Returns the native macOS Shared Clipboard backend operations.
+ *
+ * @returns Immutable macOS backend operation table.
+ */
+PCSHCLBACKENDOPS ShClBackendGetOps(void)
+{
+    return &s_ShClBackendDarwinOps;
+}

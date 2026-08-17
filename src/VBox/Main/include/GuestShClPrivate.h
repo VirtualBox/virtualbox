@@ -1,4 +1,4 @@
-/* $Id: GuestShClPrivate.h 114584 2026-07-01 13:24:25Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClPrivate.h 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
 /** @file
  * Private Shared Clipboard code for the Main API.
  */
@@ -32,30 +32,25 @@
 #endif
 
 #include <VBox/HostServices/VBoxClipboardExt.h>
-#include <VBox/HostServices/VBoxSharedClipboardSvc.h>
-
-#include <iprt/semaphore.h>
+#include <VBox/hgcmsvc.h>
 
 /**
  * Forward prototype declarations.
  */
 class Console;
+class GuestShClConn;
 
-/**
- * Struct for keeping a Shared Clipboard service extension.
- */
+/** Chained Shared Clipboard service extension used by the remote desktop server. */
 struct SHCLSVCEXT
 {
-    /** Service extension callback function.
-     *  Setting this to NULL deactivates the extension. */
-    PFNHGCMSVCEXT      pfnExt;
-    /** User-supplied service extension data. Might be NULL if not being used. */
-    void            *  pvExt;
-    /** Pointer to an optional extension callback.
-     *  Might be NULL if not being used. */
-    PFNSHCLEXTCALLBACK pfnExtCallback;
+    /** Chained service extension callback, or NULL. */
+    PFNHGCMSVCEXT       pfnExt;
+    /** Opaque callback argument. */
+    void               *pvExt;
+    /** Reverse callback installed by the HGCM service, or NULL. */
+    PFNSHCLEXTCALLBACK  pfnExtCallback;
 };
-/** Pointer to a Shared Clipboard service extension. */
+/** Pointer to a chained Shared Clipboard service extension. */
 typedef SHCLSVCEXT *PSHCLSVCEXT;
 
 /**
@@ -134,9 +129,6 @@ protected:
     bool i_isHostDataSeqCurrentLocked(uint64_t uSeq);
     uint64_t i_getGuestDataSeq(void);
     bool i_isGuestDataSeqCurrent(uint64_t uSeq);
-    int i_beginGuestRead(PSHCLCLIENT *ppClient);
-    void i_endGuestRead(void);
-    void i_waitForGuestReads(void);
     /** @}  */
 
 public:
@@ -149,7 +141,7 @@ public:
     int ReportFormatsToHost(SHCLFORMATS fFormats);
     int WriteDataToHost(SHCLFORMAT uFormat, void *pvData, uint32_t cbData);
     int ReportFormatsToGuest(SHCLFORMATS fFormats);
-    int ReportFormatsToGuest(PSHCLCLIENT pClient, SHCLFORMATS fFormats, SHCLSOURCE enmSource);
+    int ReportFormatsToGuest(GuestShClConn *pConn, SHCLFORMATS fFormats, SHCLSOURCE enmSource);
     int ReportError(const char *pcszId, int vrc, const char *pcszMsgFmt, ...);
     int RegisterServiceExtension(PFNHGCMSVCEXT pfnExtension, void *pvExtension);
     int UnregisterServiceExtension(PFNHGCMSVCEXT pfnExtension);
@@ -164,30 +156,28 @@ public:
 
 protected:
 
-    /** @name Service extension callback helpers.
-     * @{ */
     int i_forwardToSvcExt(uint32_t u32Function, void *pvParms, uint32_t cbParms);
-    int i_validateSvcExtParms(uint32_t u32Function, void *pvParms, uint32_t cbParms);
-    /** @}  */
+    int i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32_t cbParms);
 
 protected:
 
     /** @name Service extension callback handlers.
      * @{ */
-    int i_handleSvcExtSetCallback(PSHCLEXTPARMS pParms);
-    int i_handleSvcExtReportFormatsToHost(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
-    int i_handleSvcExtReportFormatsToGuest(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
-    int i_handleSvcExtDataRead(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
-    int i_handleSvcExtDataReadVrde(PSHCLEXTPARMS pParms);
-    int i_handleSvcExtDataWrite(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
-    int i_handleSvcExtBackendInit(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
-    int i_handleSvcExtBackendDestroy(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
-    int i_handleSvcExtBackendConnect(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
-    int i_handleSvcExtBackendDisconnect(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
-    int i_handleSvcExtBackendSync(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
-    int i_handleSvcExtError(PSHCLEXTPARMS pParms);
+    int i_svcExtSetCallback(PSHCLEXTPARMS pParms);
+    int i_svcExtReportFormatsToHostCallback(PSHCLEXTPARMS pParms);
+    int i_svcExtReportFormatsToGuestCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
+    int i_svcExtDataReadCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
+    int i_svcExtDataReadVrdeCallback(PSHCLEXTPARMS pParms);
+    int i_svcExtDataWriteCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
+    int i_svcExtBackendInitCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
+    int i_svcExtBackendDestroyCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
+    int i_svcExtBackendConnectCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
+    int i_svcExtBackendDisconnectCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
+    int i_svcExtBackendSyncCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
+    int i_svcExtErrorCallback(PSHCLEXTPARMS pParms);
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    int i_handleSvcExtFileTransfer(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
+    int i_svcExtTransferGetCallbacksCallback(PSHCLEXTPARMS pParms);
+    int i_svcExtFileTransferCallback(PSHCLEXTPARMS pParms);
 #endif
     /** @}  */
 
@@ -198,24 +188,12 @@ protected:
     Console                    *m_pConsole;
     /** Critical section to serialize access. */
     RTCRITSECT                  m_CritSect;
-    /** Pointer an additional service extension handle to serve (daisy chaining).
-     *
-     *  This currently only is being used by the Console VRDP server helper class (historical reasons).
-     *  We might want to transform this into a map later if we (ever) need more than one service extension,
-     *  or drop this concept althogether when we move the service stuff out of the VM process (later). */
+    /** Main-owned connection encapsulating the service endpoint and native backend context. */
+    GuestShClConn              *m_pConn;
+    /** Chained remote-desktop service extension. */
     SHCLSVCEXT                  m_SvcExtVRDP;
-    /** Pointer to an optional extension callback.
-     *  Might be NULL if not being used. */
+    /** Reverse callback supplied by the HGCM service, or NULL. */
     PFNSHCLEXTCALLBACK          m_pfnExtCallback;
-    /** Active guest clipboard client, if any.
-     *  Weak pointer owned by the HGCM service and protected by m_CritSect. */
-    PSHCLCLIENT                 m_pClient;
-    /** Whether new guest data reads using m_pClient are blocked. */
-    bool                        m_fGuestReadsBlocked;
-    /** Number of active guest data reads using m_pClient outside m_CritSect. */
-    uint32_t                    m_cGuestReads;
-    /** Signalled when no guest data reads are active. */
-    RTSEMEVENTMULTI             m_hGuestReadsDone;
     /** Host data sequence counter, protected by m_CritSect. */
     uint64_t                    m_uHostDataSeq;
     /** Guest data sequence counter, protected by m_CritSect. */
@@ -232,4 +210,3 @@ private:
 #define GuestShClInst() GuestShCl::GetInst()
 
 #endif /* !MAIN_INCLUDED_GuestShClPrivate_h */
-

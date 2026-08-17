@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendX11.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendX11.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - X11 backend.
  */
@@ -42,26 +42,20 @@
 #include <VBox/GuestHost/SharedClipboard.h>
 #include <VBox/GuestHost/SharedClipboard-x11.h>
 #include <VBox/HostServices/VBoxClipboardSvc.h>
-#include <VBox/HostServices/VBoxSharedClipboardSvc.h>
+#include "GuestShClBackend.h"
+#include "../GuestShClBackendPrivate.h"
+#include "GuestShClConn.h"
 #include <iprt/errcore.h>
-
-#ifdef VBOX_COM_INPROC
-# include "GuestShClPrivate.h"
-#endif
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 # include <VBox/GuestHost/SharedClipboard-transfers.h>
-# ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
-#  include <VBox/GuestHost/clipboard-transfers-http.h>
-# endif
+#endif
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+# include <VBox/GuestHost/clipboard-transfers-http.h>
 #endif
 
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-# include "VBoxSharedClipboardSvc-transfers.h"
-#endif
-
-/* Number of currently extablished connections. */
-static volatile uint32_t g_cShClConnections;
+/** Test callback overrides applied when constructing a new X11 context. */
+static SHCLCALLBACKS g_ShClCallbackOverrides;
 
 
 /*********************************************************************************************************************************
@@ -77,8 +71,10 @@ struct SHCLCONTEXT
     RTCRITSECT           CritSect;
     /** X11 context data. */
     SHCLX11CTX           X11;
-    /** Pointer to the VBox host client data structure. */
-    PSHCLCLIENT          pClient;
+    /** Main connection to the Shared Clipboard service. */
+    GuestShClConn       *pConn;
+    /** Event source used for synchronous X11 reads. */
+    SHCLEVENTSOURCE      EventSrc;
     /** We set this when we start shutting down as a hint not to post any new
      * requests. */
     bool                 fShuttingDown;
@@ -179,7 +175,7 @@ static void shClSvcX11TransferPublishedCancel(PSHCLCONTEXT pCtx)
     if (idTransfer == NIL_SHCLTRANSFERID)
         return;
 
-    PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferByIdRetained(&pCtx->pClient->Transfers.Ctx, idTransfer);
+    PSHCLTRANSFER pTransfer = pCtx->pConn->transferGetByIdRetained(idTransfer);
     if (   pTransfer
         && shClSvcX11TransferKeyMatches(idTransfer, uGeneration, pTransfer))
     {
@@ -187,7 +183,7 @@ static void shClSvcX11TransferPublishedCancel(PSHCLCONTEXT pCtx)
         if (enmStatus != SHCLTRANSFERSTATUS_STARTED)
         {
             ShClTransferRelease(pTransfer);
-            ShClSvcTransferDestroyById(pCtx->pClient, idTransfer);
+            pCtx->pConn->transferDestroyById(idTransfer);
         }
         else
         {
@@ -226,8 +222,12 @@ static int shClSvcX11TransferPreparationStart(PSHCLCONTEXT pCtx)
                 return VINF_SUCCESS;
 
             pCtx->fShuttingDown = true;
-            RTSemEventSignal(pCtx->hX11TransferPreparationEvent);
-            RTThreadWait(pCtx->hX11TransferPreparationThread, RT_INDEFINITE_WAIT, NULL);
+            int const vrcSignal = RTSemEventSignal(pCtx->hX11TransferPreparationEvent);
+            AssertFatalMsgRC(vrcSignal, ("Signalling the X11 transfer preparation worker after startup failure"
+                                         " failed with %Rrc\n", vrcSignal));
+            int const vrcWait = RTThreadWait(pCtx->hX11TransferPreparationThread, RT_INDEFINITE_WAIT, NULL);
+            AssertFatalMsgRC(vrcWait, ("Reaping the X11 transfer preparation worker after startup failure"
+                                       " failed with %Rrc\n", vrcWait));
             pCtx->hX11TransferPreparationThread = NIL_RTTHREAD;
         }
 
@@ -248,22 +248,23 @@ static int shClSvcX11TransferPreparationStop(PSHCLCONTEXT pCtx)
     }
 
     int vrc = RTCritSectEnter(&pCtx->CritSect);
-    AssertRCReturn(vrc, vrc);
+    AssertFatalMsgRC(vrc, ("Entering X11 backend critical section during shutdown failed with %Rrc\n", vrc));
     pCtx->fShuttingDown = true;
     pCtx->X11TransferState.uOfferGeneration++;
     vrc = RTCritSectLeave(&pCtx->CritSect);
-    AssertRCReturn(vrc, vrc);
+    AssertFatalMsgRC(vrc, ("Leaving the X11 backend critical section during shutdown failed with %Rrc\n", vrc));
 
     int vrc2 = RTSemEventSignal(pCtx->hX11TransferPreparationEvent);
+    AssertFatalMsgRC(vrc2, ("Signalling the X11 transfer preparation worker during shutdown failed with %Rrc\n", vrc2));
     if (RT_SUCCESS(vrc))
         vrc = vrc2;
 
     vrc2 = RTThreadWait(pCtx->hX11TransferPreparationThread, RT_INDEFINITE_WAIT, NULL);
-    if (RT_FAILURE(vrc2))
-        return vrc2;
+    AssertFatalMsgRC(vrc2, ("Reaping the X11 transfer preparation worker during shutdown failed with %Rrc\n", vrc2));
     pCtx->hX11TransferPreparationThread = NIL_RTTHREAD;
 
     vrc2 = RTSemEventDestroy(pCtx->hX11TransferPreparationEvent);
+    AssertFatalMsgRC(vrc2, ("Destroying the X11 transfer preparation event failed with %Rrc\n", vrc2));
     if (RT_SUCCESS(vrc))
         vrc = vrc2;
     pCtx->hX11TransferPreparationEvent = NIL_RTSEMEVENT;
@@ -276,38 +277,42 @@ static int shClSvcX11TransferPreparationStop(PSHCLCONTEXT pCtx)
 /*********************************************************************************************************************************
 *   Backend implementation                                                                                                       *
 *********************************************************************************************************************************/
-int ShClBackendInit(PSHCLBACKEND pBackend, VBOXHGCMSVCFNTABLE *pTable)
+/**
+ * Initializes the process-wide X11 clipboard backend.
+ *
+ * @returns VBox status code.
+ */
+static int shClBackendX11Init(void)
 {
-    RT_NOREF(pBackend);
-
     LogFlowFuncEnter();
 
-    /* Override the connection limit. */
-    for (uintptr_t i = 0; i < RT_ELEMENTS(pTable->acMaxClients); i++)
-        pTable->acMaxClients[i] = RT_MIN(VBOX_SHARED_CLIPBOARD_X11_CONNECTIONS_MAX, pTable->acMaxClients[i]);
-
-    RT_ZERO(pBackend->Callbacks);
-    /* Use internal callbacks by default. */
-    pBackend->Callbacks.pfnReportFormats           = shClSvcX11ReportFormatsCallback;
-    pBackend->Callbacks.pfnOnRequestDataFromSource = shClSvcX11RequestDataFromSourceCallback;
-
-    pBackend->pHelpers = pTable->pHelpers;
+    RT_ZERO(g_ShClCallbackOverrides);
 
     return VINF_SUCCESS;
 }
 
-void ShClBackendDestroy(PSHCLBACKEND pBackend)
+/**
+ * Destroys the process-wide X11 clipboard backend.
+ */
+static void shClBackendX11Destroy(void)
 {
-    RT_NOREF(pBackend);
-
     LogFlowFuncEnter();
 }
 
-void ShClBackendSetCallbacks(PSHCLBACKEND pBackend, PSHCLCALLBACKS pCallbacks)
+/**
+ * Replaces the X11 callback table for testing.
+ *
+ * @param   pCallbacks          Callback overrides, or NULL to restore defaults.
+ */
+static void shClBackendX11SetCallbacks(PSHCLCALLBACKS pCallbacks)
 {
+    RT_ZERO(g_ShClCallbackOverrides);
+    if (!pCallbacks)
+        return;
+
 #define SET_FN_IF_NOT_NULL(a_Fn) \
     if (pCallbacks->pfn##a_Fn) \
-        pBackend->Callbacks.pfn##a_Fn = pCallbacks->pfn##a_Fn;
+        g_ShClCallbackOverrides.pfn##a_Fn = pCallbacks->pfn##a_Fn;
 
     SET_FN_IF_NOT_NULL(ReportFormats);
     SET_FN_IF_NOT_NULL(OnClipboardRead);
@@ -319,20 +324,23 @@ void ShClBackendSetCallbacks(PSHCLBACKEND pBackend, PSHCLCALLBACKS pCallbacks)
 }
 
 /**
- * @note  On the host, we assume that some other application already owns
- *        the clipboard and leave ownership to X11.
+ * Connects a Main service connection to the X11 clipboard backend.
+ *
+ * @returns VBox status code.
+ * @param   pConn               Main service connection to associate.
+ * @param   ppCtx               Where to return the allocated backend context.
+ *
+ * @note    On the host, another application is assumed to own the clipboard;
+ *          ownership remains with X11 until guest formats are announced.
  */
-int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
+static int shClBackendX11Connect(GuestShClConn *pConn, PSHCLCONTEXT *ppCtx)
 {
-    int vrc;
+    AssertPtrReturn(pConn, VERR_INVALID_POINTER);
+    AssertPtrReturn(ppCtx, VERR_INVALID_POINTER);
 
-    /* Check if maximum allowed connections count has reached. */
-    if (ASMAtomicIncU32(&g_cShClConnections) > VBOX_SHARED_CLIPBOARD_X11_CONNECTIONS_MAX)
-    {
-        ASMAtomicDecU32(&g_cShClConnections);
-        LogRel(("Shared Clipboard: maximum amount for client connections reached\n"));
-        return VERR_OUT_OF_RESOURCES;
-    }
+    *ppCtx = NULL;
+
+    int vrc;
 
     PSHCLCONTEXT pCtx = (PSHCLCONTEXT)RTMemAllocZ(sizeof(SHCLCONTEXT));
     if (pCtx)
@@ -340,112 +348,148 @@ int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
         vrc = RTCritSectInit(&pCtx->CritSect);
         if (RT_SUCCESS(vrc))
         {
-            vrc = ShClX11Init(&pCtx->X11, &pBackend->Callbacks, pCtx);
+            vrc = ShClEventSourceInit(&pCtx->EventSrc, 0 /* idEvtSrc */);
+            if (RT_FAILURE(vrc))
+            {
+                RTCritSectDelete(&pCtx->CritSect);
+                RTMemFree(pCtx);
+                return vrc;
+            }
+
+            SHCLCALLBACKS Callbacks;
+            RT_ZERO(Callbacks);
+            Callbacks.pfnReportFormats           = shClSvcX11ReportFormatsCallback;
+            Callbacks.pfnOnRequestDataFromSource = shClSvcX11RequestDataFromSourceCallback;
+
+#define SET_FN_IF_NOT_NULL(a_Fn) \
+            if (g_ShClCallbackOverrides.pfn##a_Fn) \
+                Callbacks.pfn##a_Fn = g_ShClCallbackOverrides.pfn##a_Fn;
+
+            SET_FN_IF_NOT_NULL(ReportFormats);
+            SET_FN_IF_NOT_NULL(OnClipboardRead);
+            SET_FN_IF_NOT_NULL(OnClipboardWrite);
+            SET_FN_IF_NOT_NULL(OnRequestDataFromSource);
+            SET_FN_IF_NOT_NULL(OnSendDataToDest);
+
+#undef SET_FN_IF_NOT_NULL
+
+            vrc = ShClX11Init(&pCtx->X11, &Callbacks, pCtx);
             if (RT_SUCCESS(vrc))
             {
-                pClient->State.pCtx = pCtx;
-                pCtx->pClient = pClient;
-
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-                /*
-                 * Set callbacks.
-                 * Those will be registered within ShClSvcTransferInit() when a new transfer gets initialized.
-                 *
-                 * Used for starting / stopping the HTTP server.
-                 */
-                RT_ZERO(pClient->Transfers.Callbacks);
-
-                pClient->Transfers.Callbacks.pvUser = pCtx; /* Assign context as user-provided callback data. */
-                pClient->Transfers.Callbacks.cbUser = sizeof(SHCLCONTEXT);
-
-                pClient->Transfers.Callbacks.pfnOnCreated      = shClSvcX11TransferOnCreatedCallback;
-                pClient->Transfers.Callbacks.pfnOnInitialize   = shClSvcX11TransferOnInitCallback;
-                pClient->Transfers.Callbacks.pfnOnDestroy      = shClSvcX11TransferOnDestroyCallback;
-                pClient->Transfers.Callbacks.pfnOnUnregistered = shClSvcX11TransferOnUnregisteredCallback;
-#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
+                pCtx->pConn = pConn;
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
                 vrc = shClSvcX11TransferPreparationStart(pCtx);
 #endif
                 if (RT_SUCCESS(vrc))
+                {
                     vrc = ShClX11ThreadStart(&pCtx->X11, true /* grab shared clipboard */);
+                    if (RT_SUCCESS(vrc))
+                        *ppCtx = pCtx;
+                }
+
                 if (RT_FAILURE(vrc))
                 {
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
                     shClSvcX11TransferPreparationStop(pCtx);
+                    AssertFatal(pCtx->hX11TransferPreparationThread == NIL_RTTHREAD);
 #endif
-                    ShClX11Term(&pCtx->X11);
+                    AssertFatal(pCtx->X11.Thread == NIL_RTTHREAD);
+                    int const vrcTerm = ShClX11Term(&pCtx->X11);
+                    AssertFatalMsgRC(vrcTerm, ("Terminating X11 context after backend startup failure failed with %Rrc\n",
+                                               vrcTerm));
                 }
+            }
+            else
+            {
+                int const vrcTerm = ShClX11Term(&pCtx->X11);
+                AssertFatalMsgRC(vrcTerm, ("Terminating partially initialized X11 context failed with %Rrc\n",
+                                           vrcTerm));
             }
 
             if (RT_FAILURE(vrc))
-                RTCritSectDelete(&pCtx->CritSect);
+            {
+                ShClEventSourceTerm(&pCtx->EventSrc);
+                int const vrcDelete = RTCritSectDelete(&pCtx->CritSect);
+                AssertFatalMsgRC(vrcDelete, ("Deleting X11 backend critical section after startup failure"
+                                             " failed with %Rrc\n", vrcDelete));
+            }
         }
 
         if (RT_FAILURE(vrc))
-        {
-            pClient->State.pCtx = NULL;
             RTMemFree(pCtx);
-        }
     }
     else
         vrc = VERR_NO_MEMORY;
-
-    if (RT_FAILURE(vrc))
-    {
-        /* Restore active connections count. */
-        ASMAtomicDecU32(&g_cShClConnections);
-    }
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;
 }
 
-int ShClBackendSync(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/**
+ * Returns the X11 callbacks for a new transfer.
+ *
+ * @param   pCtx                Connected backend context.
+ * @param   pCallbacks          Where to return the callback table.
+ */
+static void shClBackendX11TransferGetCallbacks(PSHCLCONTEXT pCtx, PSHCLTRANSFERCALLBACKS pCallbacks)
 {
-    RT_NOREF(pBackend);
+    AssertPtrReturnVoid(pCallbacks);
+    RT_ZERO(*pCallbacks);
+    AssertPtrReturnVoid(pCtx);
+    AssertPtrReturnVoid(pCtx->pConn);
+
+    pCallbacks->pvUser            = pCtx;
+    pCallbacks->cbUser            = sizeof(*pCtx);
+    pCallbacks->pfnOnCreated      = shClSvcX11TransferOnCreatedCallback;
+    pCallbacks->pfnOnInitialize   = shClSvcX11TransferOnInitCallback;
+    pCallbacks->pfnOnDestroy      = shClSvcX11TransferOnDestroyCallback;
+    pCallbacks->pfnOnUnregistered = shClSvcX11TransferOnUnregisteredCallback;
+}
+#endif
+
+/**
+ * Synchronizes X11 clipboard state with a connected guest.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                Connected backend context.
+ */
+static int shClBackendX11Sync(PSHCLCONTEXT pCtx)
+{
+    AssertPtrReturn(pCtx,          VERR_INVALID_POINTER);
+    AssertPtrReturn(pCtx->pConn, VERR_INVALID_POINTER);
 
     LogFlowFuncEnter();
-
-    uint32_t uMode = ShClSvcClientGetMode(pClient);
-    if (   uMode == VBOX_SHCL_MODE_BIDIRECTIONAL
-        || uMode == VBOX_SHCL_MODE_HOST_TO_GUEST)
-    { /* likely */ }
-    else
-        return VINF_SUCCESS;
 
     /* Tell the guest we have no data in case X11 is not available.  If
      * there is data in the host clipboard it will automatically be sent to
      * the guest when the clipboard starts up. */
-    int vrc = ShClBackendReportFormatsToGuest(pClient->pBackend, pClient, VBOX_SHCL_FMT_NONE);
+    int const vrc = pCtx->pConn->reportFormatsToGuest(VBOX_SHCL_FMT_NONE);
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;
 }
 
 /**
- * Shuts down the shared clipboard service and "disconnect" the guest.
- * Note!  Host glue code
+ * Disconnects and destroys an X11 clipboard backend context.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                Backend context to disconnect.
  */
-int ShClBackendDisconnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
+static int shClBackendX11Disconnect(PSHCLCONTEXT pCtx)
 {
-    RT_NOREF(pBackend);
+    AssertPtrReturn(pCtx,        VERR_INVALID_POINTER);
+    AssertPtrReturn(pCtx->pConn, VERR_INVALID_POINTER);
 
     LogFlowFuncEnter();
-
-    PSHCLCONTEXT pCtx = pClient->State.pCtx;
-    AssertPtr(pCtx);
 
     /* Stop transfer preparation before releasing either the client or X11
      * context it uses.  This also makes later X11 data requests fail. */
     int vrc;
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
     vrc = shClSvcX11TransferPreparationStop(pCtx);
-    if (pCtx->hX11TransferPreparationThread != NIL_RTTHREAD)
-    {
-        LogRel(("Shared Clipboard: Host X11 transfer preparation worker did not terminate: %Rrc\n", vrc));
-        return vrc;
-    }
+    AssertFatal(pCtx->hX11TransferPreparationThread == NIL_RTTHREAD);
 #else
     pCtx->fShuttingDown = true;
     vrc = VINF_SUCCESS;
@@ -454,23 +498,30 @@ int ShClBackendDisconnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
     int vrc2 = ShClX11ThreadStop(&pCtx->X11);
     if (RT_SUCCESS(vrc))
         vrc = vrc2;
-    /** @todo handle this slightly more reasonably, or be really sure
-     *        it won't go wrong. */
-    AssertRC(vrc2);
+    AssertFatal(pCtx->X11.Thread == NIL_RTTHREAD);
 
-    ShClX11Term(&pCtx->X11);
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     /* Transfer callback tables retain pCtx as their user argument.  Destroy
      * all transfers before deleting that context; the service-side client
      * teardown which follows treats an already empty context as a no-op. */
-    shClSvcTransferDestroyAll(pClient);
+    pCtx->pConn->transferDestroyAll();
 #endif
-    RTCritSectDelete(&pCtx->CritSect);
+    vrc2 = ShClX11Term(&pCtx->X11);
+    AssertFatalMsgRC(vrc2, ("Terminating X11 clipboard context failed with %Rrc\n", vrc2));
+    if (RT_SUCCESS(vrc))
+        vrc = vrc2;
+
+    vrc2 = ShClEventSourceTerm(&pCtx->EventSrc);
+    AssertFatalMsgRC(vrc2, ("Terminating X11 backend event source failed with %Rrc\n", vrc2));
+    if (RT_SUCCESS(vrc))
+        vrc = vrc2;
+
+    vrc2 = RTCritSectDelete(&pCtx->CritSect);
+    AssertFatalMsgRC(vrc2, ("Deleting X11 backend critical section failed with %Rrc\n", vrc2));
+    if (RT_SUCCESS(vrc))
+        vrc = vrc2;
 
     RTMemFree(pCtx);
-
-    /* Decrease active connections count. */
-    ASMAtomicDecU32(&g_cShClConnections);
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;
@@ -478,10 +529,15 @@ int ShClBackendDisconnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
 
 /**
  * Reports clipboard formats to the host clipboard.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                Connected backend context.
+ * @param   fFormats            Guest formats, VBOX_SHCL_FMT_XXX.
  */
-int ShClBackendReportFormats(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFORMATS fFormats)
+static int shClBackendX11ReportFormats(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats)
 {
-    RT_NOREF(pBackend);
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+    AssertPtrReturn(pCtx->pConn, VERR_INVALID_POINTER);
 
 #if defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS) && !defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP)
     if (fFormats & VBOX_SHCL_FMT_URI_LIST)
@@ -493,9 +549,6 @@ int ShClBackendReportFormats(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFOR
 #endif
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
-    PSHCLCONTEXT pCtx = pClient->State.pCtx;
-    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
-
     int vrc = RTCritSectEnter(&pCtx->CritSect);
     if (RT_SUCCESS(vrc))
     {
@@ -523,7 +576,7 @@ int ShClBackendReportFormats(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFOR
             vrc = vrc2;
     }
 #else
-    int vrc = ShClX11ReportFormatsToX11Async(&pClient->State.pCtx->X11, fFormats);
+    int vrc = ShClX11ReportFormatsToX11Async(&pCtx->X11, fFormats);
 #endif
 
     LogFlowFuncLeaveRC(vrc);
@@ -531,14 +584,14 @@ int ShClBackendReportFormats(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFOR
 }
 
 /**
- * The host reports clipboard formats to the guest clipboard.
+ * Reports formats discovered by X11 to the connected guest.
+ *
+ * @returns VBox status code.
+ * @param   pConn               Main service connection to report through.
+ * @param   fFormats            Native formats, VBOX_SHCL_FMT_XXX.
  */
-int ShClBackendReportFormatsToGuest(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, SHCLFORMATS fFormats)
+static int shClBackendX11ReportLocalFormats(GuestShClConn *pConn, SHCLFORMATS fFormats)
 {
-    RT_NOREF(pBackend);
-
-    int vrc;
-
 #if defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS) && !defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP)
     if (fFormats & VBOX_SHCL_FMT_URI_LIST)
     {
@@ -548,31 +601,7 @@ int ShClBackendReportFormatsToGuest(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, 
     }
 #endif
 
-    PSHCLCLIENTMSG pMsg = ShClSvcClientMsgAlloc(pClient, VBOX_SHCL_HOST_MSG_FORMATS_REPORT, 2);
-    if (pMsg)
-    {
-        HGCMSvcSetU32(&pMsg->aParms[0], VBOX_SHCL_HOST_MSG_FORMATS_REPORT);
-        HGCMSvcSetU32(&pMsg->aParms[1], fFormats);
-
-        ShClSvcClientLock(pClient);
-
-        vrc = shClSvcClientMsgAddAndWakeupClient(pClient, pMsg);
-
-        ShClSvcClientUnlock(pClient);
-    }
-    else
-        vrc = VERR_NO_MEMORY;
-
-    LogFlowFuncLeaveRC(vrc);
-    return vrc;
-}
-
-static int shClBackendReportFormatsToGuestAndMain(PSHCLCLIENT pClient, SHCLFORMATS fFormats)
-{
-#ifdef VBOX_COM_INPROC
-    return GuestShCl::GetInst()->ReportFormatsToGuest(pClient, fFormats, SHCLSOURCE_LOCAL);
-#endif
-    return ShClBackendReportFormatsToGuest(pClient->pBackend, pClient, fFormats);
+    return pConn->reportLocalFormats(fFormats);
 }
 
 /**
@@ -580,25 +609,25 @@ static int shClBackendReportFormatsToGuestAndMain(PSHCLCLIENT pClient, SHCLFORMA
  *
  * Schedules a request to the X11 event thread.
  *
- * @note   We always fail or complete asynchronously.
+ * @returns VBox status code.
+ * @param   pCtx                Connected backend context.
+ * @param   uFormat             Clipboard format to read.
+ * @param   pvData              Destination buffer.
+ * @param   cbData              Destination buffer size in bytes.
+ * @param   pcbActual           Where to return the actual or required byte count.
  */
-int ShClBackendReadData(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX pCmdCtx, SHCLFORMAT uFormat,
-                        void *pvData, uint32_t cbData, uint32_t *pcbActual)
+static int shClBackendX11ReadData(PSHCLCONTEXT pCtx, SHCLFORMAT uFormat, void *pvData, uint32_t cbData, uint32_t *pcbActual)
 {
-    RT_NOREF(pBackend);
+    AssertPtrReturn(pCtx,        VERR_INVALID_POINTER);
+    AssertPtrReturn(pCtx->pConn, VERR_INVALID_POINTER);
+    AssertPtrReturn(pvData,      VERR_INVALID_POINTER);
+    AssertPtrReturn(pcbActual,   VERR_INVALID_POINTER);
 
-    AssertPtrReturn(pClient,   VERR_INVALID_POINTER);
-    AssertPtrReturn(pCmdCtx,   VERR_INVALID_POINTER);
-    AssertPtrReturn(pvData,    VERR_INVALID_POINTER);
-    AssertPtrReturn(pcbActual, VERR_INVALID_POINTER);
-
-    RT_NOREF(pCmdCtx);
-
-    LogFlowFunc(("pClient=%p, uFormat=%#x, pv=%p, cb=%RU32, pcbActual=%p\n",
-                 pClient, uFormat, pvData, cbData, pcbActual));
+    LogFlowFunc(("pConn=%p, uFormat=%#x, pv=%p, cb=%RU32, pcbActual=%p\n",
+                 pCtx->pConn, uFormat, pvData, cbData, pcbActual));
 
     uint32_t cbRead;
-    int vrc = ShClX11ReadDataFromX11(&pClient->State.pCtx->X11, &pClient->EventSrc,
+    int vrc = ShClX11ReadDataFromX11(&pCtx->X11, &pCtx->EventSrc,
                                      SHCL_TIMEOUT_DEFAULT_MS, uFormat, pvData, cbData, &cbRead);
     if (RT_SUCCESS(vrc))
     {
@@ -613,10 +642,18 @@ int ShClBackendReadData(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, PSHCLCLIENTC
     return vrc;
 }
 
-int ShClBackendWriteData(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX pCmdCtx,
-                         SHCLFORMAT uFormat, void *pvData, uint32_t cbData)
+/**
+ * Writes guest clipboard data through the X11 backend.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                Connected backend context.
+ * @param   uFormat             Clipboard format to write.
+ * @param   pvData              Data buffer.
+ * @param   cbData              Data size in bytes.
+ */
+static int shClBackendX11WriteData(PSHCLCONTEXT pCtx, SHCLFORMAT uFormat, void *pvData, uint32_t cbData)
 {
-    RT_NOREF(pBackend, pClient, pCmdCtx, uFormat, pvData, cbData);
+    RT_NOREF(pCtx, uFormat, pvData, cbData);
 
     LogFlowFuncEnter();
 
@@ -637,18 +674,9 @@ static DECLCALLBACK(int) shClSvcX11ReportFormatsCallback(PSHCLCONTEXT pCtx, uint
 
     LogFlowFunc(("pCtx=%p, fFormats=%#x\n", pCtx, fFormats));
 
-    int vrc = VINF_SUCCESS;
-    PSHCLCLIENT pClient = pCtx->pClient;
-    AssertPtr(pClient);
+    AssertPtrReturn(pCtx->pConn, VERR_INVALID_POINTER);
 
-    uint32_t uMode = ShClSvcClientGetMode(pClient);
-    if (   uMode == VBOX_SHCL_MODE_BIDIRECTIONAL
-        || uMode == VBOX_SHCL_MODE_HOST_TO_GUEST)
-    { /* likely */ }
-    else
-        return VINF_SUCCESS;
-
-    vrc = shClBackendReportFormatsToGuestAndMain(pClient, fFormats);
+    int const vrc = shClBackendX11ReportLocalFormats(pCtx->pConn, fFormats);
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;
@@ -668,14 +696,13 @@ static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, ui
 {
     AssertReturn(fFormats & VBOX_SHCL_FMT_URI_LIST, VERR_INVALID_PARAMETER);
 
-    PSHCLCLIENT const pClient = pCtx->pClient;
-    AssertPtrReturn(pClient, VERR_INVALID_POINTER);
+    AssertPtrReturn(pCtx->pConn, VERR_INVALID_POINTER);
 
     /* Preserve the established protocol sequence by consuming the URI-list
      * data reply before creating and initializing the file transfer. */
     void    *pvData = NULL;
     uint32_t cbData = 0;
-    int vrc = ShClSvcReadDataFromGuest(pClient, VBOX_SHCL_FMT_URI_LIST, &pvData, &cbData);
+    int vrc = pCtx->pConn->readDataFromGuest(VBOX_SHCL_FMT_URI_LIST, &pvData, &cbData);
     RTMemFree(pvData);
     if (   RT_SUCCESS(vrc)
         && !shClSvcX11TransferOfferIsCurrent(pCtx, uOfferGeneration))
@@ -683,8 +710,12 @@ static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, ui
 
     PSHCLTRANSFER pTransfer = NULL;
     if (RT_SUCCESS(vrc))
-        vrc = ShClSvcTransferCreate(pClient, SHCLTRANSFERDIR_FROM_REMOTE, SHCLSOURCE_REMOTE,
-                                    NIL_SHCLTRANSFERID, &pTransfer);
+    {
+        SHCLTRANSFERCALLBACKS Callbacks;
+        shClBackendX11TransferGetCallbacks(pCtx, &Callbacks);
+        vrc = pCtx->pConn->transferCreate(SHCLTRANSFERDIR_FROM_REMOTE, SHCLSOURCE_REMOTE, &Callbacks,
+                                          NIL_SHCLTRANSFERID, &pTransfer);
+    }
 
     SHCLTRANSFERID  idTransfer  = NIL_SHCLTRANSFERID;
     SHCLTRANSFERGEN uGeneration = NIL_SHCLTRANSFERGEN;
@@ -710,7 +741,7 @@ static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, ui
     }
 
     if (RT_SUCCESS(vrc))
-        vrc = ShClSvcTransferInit(pClient, pTransfer);
+        vrc = pCtx->pConn->transferInit(pTransfer);
     if (RT_SUCCESS(vrc))
     {
         /* Wait on this transfer object, never on global HTTP-server state. */
@@ -785,7 +816,7 @@ static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, ui
 
     if (pTransfer)
     {
-        /* ShClSvcTransferCreate returns a retained transfer.  Drop that
+        /* pfnTransferCreate returns a retained transfer.  Drop that
          * ownership before a consuming destroy can wait for users. */
         ShClTransferRelease(pTransfer);
         pTransfer = NULL;
@@ -793,7 +824,7 @@ static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, ui
 
     if (   !fPublished
         && ShClTransferIdIsValid(idTransfer))
-        ShClSvcTransferDestroyById(pClient, idTransfer);
+        pCtx->pConn->transferDestroyById(idTransfer);
 
     if (fPublished)
         LogRel2(("Shared Clipboard: Advertised cached host X11 URI list for transfer %RU16/%RU64, offer generation %RU64\n",
@@ -890,51 +921,43 @@ static DECLCALLBACK(void) shClSvcX11TransferOnCreatedCallback(PSHCLTRANSFERCALLB
     PSHCLTRANSFER pTransfer = pCbCtx->pTransfer;
     AssertPtr(pTransfer);
 
-    PSHCLCLIENT const pClient = pCtx->pClient;
-    AssertPtr(pClient);
+    AssertPtrReturnVoid(pCtx->pConn);
 
     /*
      * Set transfer provider.
-     * Those will be registered within ShClSvcTransferInit() when a new transfer gets initialized.
+     * Those will be registered when a new transfer gets initialized.
      */
 
-    /* Set the interface to the local provider by default first. */
-    RT_ZERO(pClient->Transfers.Provider);
-    ShClTransferProviderLocalQueryInterface(&pClient->Transfers.Provider);
+    SHCLTXPROVIDER Provider;
+    RT_ZERO(Provider);
 
-    PSHCLTXPROVIDERIFACE pIface = &pClient->Transfers.Provider.Interface;
-
-    pClient->Transfers.Provider.enmSource = pClient->State.enmSource;
-    pClient->Transfers.Provider.pvUser    = pClient;
+    int vrc = VINF_SUCCESS;
 
     switch (ShClTransferGetDir(pTransfer))
     {
         case SHCLTRANSFERDIR_FROM_REMOTE: /* Guest -> Host. */
         {
-            pIface->pfnRootListRead  = ShClSvcTransferIfaceGHRootListRead;
-
-            pIface->pfnListOpen      = ShClSvcTransferIfaceGHListOpen;
-            pIface->pfnListClose     = ShClSvcTransferIfaceGHListClose;
-            pIface->pfnListHdrRead   = ShClSvcTransferIfaceGHListHdrRead;
-            pIface->pfnListEntryRead = ShClSvcTransferIfaceGHListEntryRead;
-
-            pIface->pfnObjOpen       = ShClSvcTransferIfaceGHObjOpen;
-            pIface->pfnObjClose      = ShClSvcTransferIfaceGHObjClose;
-            pIface->pfnObjRead       = ShClSvcTransferIfaceGHObjRead;
+            vrc = pCtx->pConn->transferProviderInitGuest(&Provider);
             break;
         }
 
         case SHCLTRANSFERDIR_TO_REMOTE: /* Host -> Guest. */
         {
-            pIface->pfnRootListRead  = shClSvcX11TransferIfaceHGRootListRead;
+            ShClTransferProviderLocalQueryInterface(&Provider);
+            Provider.Interface.pfnRootListRead = shClSvcX11TransferIfaceHGRootListRead;
+            Provider.enmSource = SHCLSOURCE_LOCAL;
+            Provider.pvUser    = pCtx;
+            Provider.cbUser    = sizeof(*pCtx);
             break;
         }
 
         default:
-            AssertFailed();
+            AssertFailedStmt(vrc = VERR_NOT_SUPPORTED);
     }
 
-    int vrc = ShClTransferSetProvider(pTransfer, &pClient->Transfers.Provider); RT_NOREF(vrc);
+    if (RT_SUCCESS(vrc))
+        vrc = ShClTransferSetProvider(pTransfer, &Provider);
+    RT_NOREF(vrc);
 
     LogFlowFuncLeaveRC(vrc);
 }
@@ -1111,8 +1134,7 @@ static DECLCALLBACK(int) shClSvcX11RequestDataFromSourceCallback(PSHCLCONTEXT pC
         return VERR_NOT_SUPPORTED;
 #endif
 
-    PSHCLCLIENT const pClient = pCtx->pClient;
-    int vrc = ShClSvcReadDataFromGuest(pClient, uFmt, ppv, pcb);
+    int const vrc = pCtx->pConn->readDataFromGuest(uFmt, ppv, pcb);
 
     if (RT_FAILURE(vrc))
         LogRel(("Shared Clipboard: Requesting X11 data in format %#x from guest failed with %Rrc\n", uFmt, vrc));
@@ -1122,15 +1144,22 @@ static DECLCALLBACK(int) shClSvcX11RequestDataFromSourceCallback(PSHCLCONTEXT pC
 }
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-# ifndef UNIT_TEST
 /**
  * Handles transfer status replies from the guest.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                Connected backend context.
+ * @param   pTransfer           Transfer whose status changed.
+ * @param   enmSource           Endpoint which supplied the reply.
+ * @param   enmStatus           New transfer status.
+ * @param   rcStatus            Status-specific VBox status code.
  */
-int ShClBackendTransferHandleStatusReply(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer, SHCLSOURCE enmSource, SHCLTRANSFERSTATUS enmStatus, int rcStatus)
+static int shClBackendX11TransferHandleStatusReply(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransfer, SHCLSOURCE enmSource,
+                                         SHCLTRANSFERSTATUS enmStatus, int rcStatus)
 {
-    RT_NOREF(pBackend, pClient, enmSource, rcStatus);
-
-    PSHCLCONTEXT pCtx = pClient->State.pCtx; RT_NOREF(pCtx);
+    AssertPtrReturn(pCtx,      VERR_INVALID_POINTER);
+    AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
+    RT_NOREF(enmSource, rcStatus);
 
     if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE) /* Guest -> Host */
     {
@@ -1158,7 +1187,6 @@ int ShClBackendTransferHandleStatusReply(PSHCLBACKEND pBackend, PSHCLCLIENT pCli
 
     return VINF_SUCCESS;
 }
-# endif /* !UNIT_TEST */
 
 
 /*********************************************************************************************************************************
@@ -1170,16 +1198,15 @@ static DECLCALLBACK(int) shClSvcX11TransferIfaceHGRootListRead(PSHCLTXPROVIDERCT
 {
     LogFlowFuncEnter();
 
-    PSHCLCLIENT pClient = (PSHCLCLIENT)pCtx->pvUser;
-    AssertPtr(pClient);
-
-    AssertPtr(pClient->State.pCtx);
-    PSHCLX11CTX pX11 = &pClient->State.pCtx->X11;
+    PSHCLCONTEXT pBackendCtx = (PSHCLCONTEXT)pCtx->pvUser;
+    AssertPtrReturn(pBackendCtx, VERR_INVALID_POINTER);
+    AssertPtrReturn(pBackendCtx->pConn, VERR_INVALID_POINTER);
+    PSHCLX11CTX pX11 = &pBackendCtx->X11;
 
     /* X supplies the data asynchronously, so we need to wait for data to arrive first. */
     void    *pvData;
     uint32_t cbData;
-    int vrc = ShClX11ReadDataFromX11Ex(pX11, &pClient->EventSrc, SHCL_TIMEOUT_DEFAULT_MS, VBOX_SHCL_FMT_URI_LIST,
+    int vrc = ShClX11ReadDataFromX11Ex(pX11, &pBackendCtx->EventSrc, SHCL_TIMEOUT_DEFAULT_MS, VBOX_SHCL_FMT_URI_LIST,
                                        &pvData, &cbData);
     if (RT_SUCCESS(vrc))
     {
@@ -1200,3 +1227,33 @@ static DECLCALLBACK(int) shClSvcX11TransferIfaceHGRootListRead(PSHCLTXPROVIDERCT
     return vrc;
 }
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
+
+
+/** Native X11 Shared Clipboard backend operations. */
+static SHCLBACKENDOPS const s_ShClBackendX11Ops =
+{
+    shClBackendX11Init,
+    shClBackendX11Destroy,
+    shClBackendX11SetCallbacks,
+    shClBackendX11Connect,
+    shClBackendX11Disconnect,
+    shClBackendX11ReportFormats,
+    shClBackendX11ReadData,
+    shClBackendX11WriteData,
+    shClBackendX11Sync,
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    shClBackendX11TransferGetCallbacks,
+    shClBackendX11TransferHandleStatusReply,
+#endif
+};
+
+
+/**
+ * Returns the native X11 Shared Clipboard backend operations.
+ *
+ * @returns Immutable X11 backend operation table.
+ */
+PCSHCLBACKENDOPS ShClBackendGetOps(void)
+{
+    return &s_ShClBackendX11Ops;
+}

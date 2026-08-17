@@ -1,4 +1,4 @@
-/* $Id: ClipboardStreamImpl-win.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: ClipboardStreamImpl-win.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
 /** @file
  * ClipboardStreamImpl-win.cpp - Shared Clipboard IStream object implementation (guest and host side).
  */
@@ -64,13 +64,22 @@ ShClWinStreamImpl::ShClWinStreamImpl(ShClWinDataObject *pParent, PSHCLTRANSFER p
     : m_pParent(pParent)
     , m_lRefCount(1) /* Our IDataObjct *always* holds the last reference to this object; needed for the callbacks. */
     , m_pTransfer(pTransfer)
+    , m_fCritSectInitialized(false)
     , m_hObj(NIL_SHCLOBJHANDLE)
     , m_strPath(strPath)
     , m_objInfo(*pObjInfo)
     , m_cbProcessed(0)
     , m_fIsComplete(false)
 {
+    AssertPtr(m_pParent);
     AssertPtr(m_pTransfer);
+
+    int rc = RTCritSectInit(&m_CritSect);
+    AssertFatalMsgRC(rc, ("Initializing the Windows clipboard stream lock failed with %Rrc\n", rc));
+    m_fCritSectInitialized = true;
+
+    m_pParent->AddRef();
+    ShClTransferAcquire(m_pTransfer);
 
     LogFunc(("m_strPath=%s\n", m_strPath.c_str()));
 
@@ -83,6 +92,14 @@ ShClWinStreamImpl::ShClWinStreamImpl(ShClWinDataObject *pParent, PSHCLTRANSFER p
 ShClWinStreamImpl::~ShClWinStreamImpl(void)
 {
     LogFlowThisFuncEnter();
+
+    Invalidate();
+    if (m_fCritSectInitialized)
+    {
+        int rc = RTCritSectDelete(&m_CritSect);
+        AssertRC(rc);
+        m_fCritSectInitialized = false;
+    }
 
 #ifdef VBOX_SHARED_CLIPBOARD_DEBUG_OBJECT_COUNTS
     g_cDbgStreamObj--;
@@ -185,16 +202,24 @@ STDMETHODIMP ShClWinStreamImpl::Read(void *pvBuffer, ULONG nBytesToRead, ULONG *
 {
     LogFlowThisFunc(("Enter: m_cbProcessed=%RU64\n", m_cbProcessed));
 
-    /** @todo Is there any locking required so that parallel reads aren't possible? */
-
     if (!pvBuffer)
         return STG_E_INVALIDPOINTER;
+
+    int rcLock = RTCritSectEnter(&m_CritSect);
+    AssertFatalMsgRC(rcLock, ("Taking the Windows clipboard stream lock failed with %Rrc\n", rcLock));
+
+    if (!m_pTransfer)
+    {
+        RTCritSectLeave(&m_CritSect);
+        return STG_E_REVERTED;
+    }
 
     if (   nBytesToRead == 0
         || m_fIsComplete)
     {
         if (nBytesRead)
             *nBytesRead = 0;
+        RTCritSectLeave(&m_CritSect);
         return S_OK;
     }
 
@@ -246,6 +271,7 @@ STDMETHODIMP ShClWinStreamImpl::Read(void *pvBuffer, ULONG nBytesToRead, ULONG *
         if (m_fIsComplete)
         {
             rc = ShClTransferObjClose(m_pTransfer, m_hObj);
+            m_hObj = NIL_SHCLOBJHANDLE;
 
             if (m_pParent)
                 m_pParent->SetStatus(ShClWinDataObject::Completed);
@@ -263,6 +289,9 @@ STDMETHODIMP ShClWinStreamImpl::Read(void *pvBuffer, ULONG nBytesToRead, ULONG *
 
     if (nBytesRead)
         *nBytesRead = (ULONG)cbRead;
+
+    int rc2 = RTCritSectLeave(&m_CritSect);
+    AssertRC(rc2);
 
     if (nBytesToRead != cbRead)
         return S_FALSE;
@@ -389,6 +418,7 @@ HRESULT ShClWinStreamImpl::Create(ShClWinDataObject *pParent, PSHCLTRANSFER pTra
                                              const Utf8Str &strPath, PSHCLFSOBJINFO pObjInfo,
                                              IStream **ppStream)
 {
+    AssertPtrReturn(pParent, E_POINTER);
     AssertPtrReturn(pTransfer, E_POINTER);
 
     ShClWinStreamImpl *pStream = new ShClWinStreamImpl(pParent, pTransfer, strPath, pObjInfo);
@@ -401,3 +431,36 @@ HRESULT ShClWinStreamImpl::Create(ShClWinDataObject *pParent, PSHCLTRANSFER pTra
     return E_FAIL;
 }
 
+/**
+ * Invalidates this stream and drops its data-object and transfer references.
+ */
+void ShClWinStreamImpl::Invalidate(void)
+{
+    if (!m_fCritSectInitialized)
+        return;
+
+    int rc = RTCritSectEnter(&m_CritSect);
+    AssertFatalMsgRC(rc, ("Taking the Windows clipboard stream lock during invalidation failed with %Rrc\n", rc));
+
+    PSHCLTRANSFER pTransfer = m_pTransfer;
+    ShClWinDataObject *pParent = m_pParent;
+    SHCLOBJHANDLE const hObj = m_hObj;
+    m_pTransfer = NULL;
+    m_pParent   = NULL;
+    m_hObj      = NIL_SHCLOBJHANDLE;
+
+    if (   pTransfer
+        && hObj != NIL_SHCLOBJHANDLE)
+    {
+        int rc2 = ShClTransferObjClose(pTransfer, hObj);
+        AssertRC(rc2);
+    }
+
+    rc = RTCritSectLeave(&m_CritSect);
+    AssertFatalMsgRC(rc, ("Releasing the Windows clipboard stream lock during invalidation failed with %Rrc\n", rc));
+
+    if (pTransfer)
+        ShClTransferRelease(pTransfer);
+    if (pParent)
+        pParent->Release();
+}

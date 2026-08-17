@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114993 2026-08-11 14:46:01Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the Shared Clipboard Host Service.
 #
@@ -45,9 +45,10 @@ VBoxSharedClipboard_INCS.win  = \
 
 VBoxSharedClipboard_SOURCES = \
 	VBoxSharedClipboardSvc.cpp \
-	VBoxSharedClipboardSvc-backend.cpp \
+	VBoxSharedClipboardSvc-ext.cpp \
 	VBoxSharedClipboardSvc-client.cpp \
 	VBoxSharedClipboardSvc-host.cpp \
+	VBoxSharedClipboardSvc-transport.cpp \
 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-common.cpp \
 	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-helper.cpp
 VBoxSharedClipboard_SOURCES.win = \

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# $Id: tdUnitTest1.py 113466 2026-03-19 12:10:45Z brent.paulson@oracle.com $
+# $Id: tdUnitTest1.py 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $
 
 """
 VirtualBox Validation Kit - Unit Tests.
@@ -37,7 +37,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 113466 $"
+__version__ = "$Revision: 115050 $"
 
 
 # Standard Python imports.
@@ -160,7 +160,6 @@ class tdUnitTest1(vbox.TestDriver):
         'testcase/tstClipboardX11Smoke': '',            # (Old naming, deprecated) Needs X, not available on all test boxes.
         'testcase/tstClipboardGH-X11Smoke': '',         # (New name) Ditto.
         'testcase/tstClipboardHttpServerX11': '',       # Ditto.
-        'testcase/tstClipboardMockHGCM': '',            # Ditto.
         'tstClipboardQt': '',                           # Is interactive and needs Qt, needed for Qt clipboard bugfixing.
         'testcase/tstClipboardQt': '',                  # In case it moves here.
         'tstDragAndDropQt': '',                         # Is interactive and needs Qt, needed for Qt drag'n drop bugfixing.
@@ -302,7 +301,6 @@ class tdUnitTest1(vbox.TestDriver):
     kdTestCasesWhiteList = {
         'testcase/tstFile': '',
         'testcase/tstFileLock': '',
-        'testcase/tstClipboardMockHGCM': '',            # Requires X on Linux OSes. Execute on remote targets only (guests).
         'testcase/tstRTFsQueries': '',
         'testcase/tstRTLocalIpc': '',
         'testcase/tstRTPathQueryInfo': '',

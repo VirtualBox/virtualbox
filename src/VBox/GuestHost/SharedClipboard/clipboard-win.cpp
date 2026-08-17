@@ -1,4 +1,4 @@
-/* $Id: clipboard-win.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-win.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Windows-specific functions for clipboard handling.
  */
@@ -199,10 +199,57 @@ void ShClWinCtxDestroy(PSHCLWINCTX pWinCtx)
 
     if (RTCritSectIsInitialized(&pWinCtx->CritSect))
     {
-        int rc2 = RTCritSectDelete(&pWinCtx->CritSect);
-        AssertRC(rc2);
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+        int rc2 = RTCritSectEnter(&pWinCtx->CritSect);
+        AssertFatalMsgRC(rc2, ("Taking the Windows clipboard context lock during teardown failed with %Rrc\n", rc2));
+
+        /* Keep the owned reference alive while detaching it, then invalidate the
+         * object before the backend context stored in its callbacks is freed. */
+        ShClWinDataObject *pDataObjInFlight = pWinCtx->pDataObjInFlight;
+        pWinCtx->pDataObjInFlight = NULL;
+
+        rc2 = RTCritSectLeave(&pWinCtx->CritSect);
+        AssertFatalMsgRC(rc2, ("Releasing the Windows clipboard context lock during teardown failed with %Rrc\n", rc2));
+
+        if (pDataObjInFlight)
+        {
+            pDataObjInFlight->Uninit();
+            pDataObjInFlight->Release();
+        }
+#endif
+        int const rcDelete = RTCritSectDelete(&pWinCtx->CritSect);
+        AssertRC(rcDelete);
     }
 }
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/**
+ * Disables new callbacks on the current in-flight data object and waits for an
+ * active callback running on another thread to return.
+ *
+ * @param   pWinCtx             Windows context whose data-object callbacks to disable.
+ */
+void ShClWinCtxDisableDataObjectCallbacks(PSHCLWINCTX pWinCtx)
+{
+    AssertPtrReturnVoid(pWinCtx);
+
+    int rc = RTCritSectEnter(&pWinCtx->CritSect);
+    AssertFatalMsgRC(rc, ("Taking the Windows clipboard context lock while disabling callbacks failed with %Rrc\n", rc));
+
+    ShClWinDataObject *pDataObj = pWinCtx->pDataObjInFlight;
+    if (pDataObj)
+        pDataObj->AddRef();
+
+    rc = RTCritSectLeave(&pWinCtx->CritSect);
+    AssertFatalMsgRC(rc, ("Releasing the Windows clipboard context lock while disabling callbacks failed with %Rrc\n", rc));
+
+    if (pDataObj)
+    {
+        pDataObj->DisableCallbacks();
+        pDataObj->Release();
+    }
+}
+#endif
 
 /**
  * Checks and initializes function pointer which are required for using
@@ -1082,25 +1129,22 @@ int ShClWinTransferCreateAndSetDataObject(PSHCLWINCTX pWinCtx,
 
     /* Make sure to enter the critical section before setting the clipboard data, as otherwise WM_CLIPBOARDUPDATE
      * might get called *before* we had the opportunity to set pWinCtx->hWndClipboardOwnerUs below. */
+    ShClWinDataObject *pObjToRelease = NULL;
+    ShClWinDataObject *pObjReplaced  = NULL;
+
     int rc = RTCritSectEnter(&pWinCtx->CritSect);
     if (RT_SUCCESS(rc))
     {
         LogFlowFunc(("pWinCtx->pDataObjInFlight=%p\n", pWinCtx->pDataObjInFlight));
 
-        /* Create a new data object here, assign it as the the current data object in-flight and
-         * announce it to Windows below.
-         *
-         * The data object will be deleted automatically once its refcount reaches 0.
-         */
+        /* Keep an explicit reference while creating and publishing the object. */
         ShClWinDataObject *pObj = new ShClWinDataObject();
         if (pObj)
         {
+            pObj->AddRef();
             rc = pObj->Init(pCtx, pCallbacks);
-            if (RT_SUCCESS(rc))
-            {
-                if (RT_SUCCESS(rc))
-                    pWinCtx->pDataObjInFlight = pObj;
-            }
+            if (RT_FAILURE(rc))
+                pObjToRelease = pObj;
         }
         else
             rc = VERR_NO_MEMORY;
@@ -1117,10 +1161,10 @@ int ShClWinTransferCreateAndSetDataObject(PSHCLWINCTX pWinCtx,
 
             for (unsigned uTries = 0; uTries < 3; uTries++)
             {
-                hr = OleSetClipboard(pWinCtx->pDataObjInFlight);
+                hr = OleSetClipboard(pObj);
                 if (SUCCEEDED(hr))
                 {
-                    Assert(OleIsCurrentClipboard(pWinCtx->pDataObjInFlight) == S_OK); /* Sanity. */
+                    Assert(OleIsCurrentClipboard(pObj) == S_OK); /* Sanity. */
 
                     /*
                      * Calling OleSetClipboard() changed the clipboard owner, which in turn will let us receive
@@ -1128,6 +1172,11 @@ int ShClWinTransferCreateAndSetDataObject(PSHCLWINCTX pWinCtx,
                      * save a new window handle and deal with it in WM_CLIPBOARDUPDATE.
                      */
                     pWinCtx->hWndClipboardOwnerUs = GetClipboardOwner();
+
+                    /* Transfer the local reference to the context only after OLE
+                     * accepted the new object, preserving the old one on failure. */
+                    pObjReplaced                 = pWinCtx->pDataObjInFlight;
+                    pWinCtx->pDataObjInFlight    = pObj;
 
                     LogFlowFunc(("hWndClipboardOwnerUs=%p\n", pWinCtx->hWndClipboardOwnerUs));
                     break;
@@ -1140,12 +1189,25 @@ int ShClWinTransferCreateAndSetDataObject(PSHCLWINCTX pWinCtx,
             if (FAILED(hr))
             {
                 rc = VERR_ACCESS_DENIED; /** @todo Fudge; fix this. */
+                pObjToRelease = pObj;
                 LogRel(("Shared Clipboard: Failed with %Rhrc when setting data object to clipboard\n", hr));
             }
         }
 
         int rc2 = RTCritSectLeave(&pWinCtx->CritSect);
         AssertRC(rc2);
+    }
+
+    if (pObjReplaced)
+    {
+        pObjReplaced->Uninit();
+        pObjReplaced->Release();
+    }
+
+    if (pObjToRelease)
+    {
+        pObjToRelease->Uninit();
+        pObjToRelease->Release();
     }
 
     LogFlowFuncLeaveRC(rc);
@@ -1166,9 +1228,18 @@ int ShClWinTransferCreate(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer)
     AssertMsgReturn(   pTransfer->pvUser == NULL
                     && pTransfer->cbUser == 0, ("Already initialized Windows-specific data\n"), VERR_WRONG_ORDER);
 
-    pTransfer->pvUser = new ShClWinTransferCtx();  /** @todo Can this throw? */
-    AssertPtrReturn(pTransfer->pvUser, VERR_INVALID_POINTER);
-    pTransfer->cbUser = sizeof(ShClWinTransferCtx);
+    ShClWinTransferCtx *pWinTransferCtx = new ShClWinTransferCtx();  /** @todo Can this throw? */
+    AssertPtrReturn(pWinTransferCtx, VERR_NO_MEMORY);
+
+    int rc = RTCritSectInit(&pWinTransferCtx->CritSect);
+    if (RT_FAILURE(rc))
+    {
+        delete pWinTransferCtx;
+        return rc;
+    }
+
+    pTransfer->pvUser = pWinTransferCtx;
+    pTransfer->cbUser = sizeof(*pWinTransferCtx);
 
     return VINF_SUCCESS;
 }
@@ -1176,8 +1247,8 @@ int ShClWinTransferCreate(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer)
 /**
  * Unregisters the data object associated with a Windows transfer.
  *
- * This disables the data object and drops its long-lived transfer reference
- * while leaving the per-transfer context intact for temporary users.
+ * This disables its backend callbacks and drops its long-lived transfer
+ * reference while leaving the per-transfer context intact for temporary users.
  *
  * @param   pTransfer           Shared Clipboard transfer to unregister.
  */
@@ -1191,10 +1262,19 @@ void ShClWinTransferUnregister(PSHCLTRANSFER pTransfer)
         ShClWinTransferCtx *pWinURITransferCtx = (ShClWinTransferCtx *)pTransfer->pvUser;
         AssertPtr(pWinURITransferCtx);
 
-        if (pWinURITransferCtx->pDataObj)
+        int rc = RTCritSectEnter(&pWinURITransferCtx->CritSect);
+        AssertFatalMsgRC(rc, ("Taking the Windows transfer-context lock during teardown failed with %Rrc\n", rc));
+
+        ShClWinDataObject *pDataObj = pWinURITransferCtx->pDataObj;
+        pWinURITransferCtx->pDataObj = NULL;
+
+        rc = RTCritSectLeave(&pWinURITransferCtx->CritSect);
+        AssertFatalMsgRC(rc, ("Releasing the Windows transfer-context lock during teardown failed with %Rrc\n", rc));
+
+        if (pDataObj)
         {
-            pWinURITransferCtx->pDataObj->Uninit();
-            pWinURITransferCtx->pDataObj = NULL;
+            pDataObj->Uninit();
+            pDataObj->Release();
         }
     }
 }
@@ -1221,7 +1301,13 @@ void ShClWinTransferDestroy(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer)
         ShClWinTransferCtx *pWinURITransferCtx = (ShClWinTransferCtx *)pTransfer->pvUser;
         AssertPtr(pWinURITransferCtx);
 
+        /* Fallback for direct, non-context destruction. Registered consuming
+         * teardown normally disables and detaches this object in the
+         * unregistration callback. */
         ShClWinTransferUnregister(pTransfer);
+
+        int const rc = RTCritSectDelete(&pWinURITransferCtx->CritSect);
+        AssertRC(rc);
 
         delete pWinURITransferCtx;
         pWinURITransferCtx = NULL;
@@ -1303,6 +1389,8 @@ int ShClWinTransferStart(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer)
 {
     RT_NOREF(pTransfer);
 
+    ShClWinDataObject *pObjHandedOff = NULL;
+
     int rc = RTCritSectEnter(&pWinCtx->CritSect);
     if (RT_SUCCESS(rc))
     {
@@ -1311,7 +1399,10 @@ int ShClWinTransferStart(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer)
         {
             rc = shClWinTransferStartInternal(pWinCtx, pObj);
             if (RT_SUCCESS(rc))
+            {
                 pWinCtx->pDataObjInFlight = NULL; /* Hand off to Windows on success. */
+                pObjHandedOff = pObj;
+            }
         }
         else /* No current in-flight data object. */
             rc = VERR_WRONG_ORDER;
@@ -1319,6 +1410,9 @@ int ShClWinTransferStart(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer)
         int rc2 = RTCritSectLeave(&pWinCtx->CritSect);
         AssertRC(rc2);
     }
+
+    if (pObjHandedOff)
+        pObjHandedOff->Release();
 
     return rc;
 }
