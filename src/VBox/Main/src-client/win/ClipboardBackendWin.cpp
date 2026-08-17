@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendWin.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendWin.cpp 115053 2026-08-17 15:54:26Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Win32 host.
  */
@@ -85,6 +85,7 @@ static int shClBackendWinThreadStop(PSHCLCONTEXT pCtx, bool fWaitDiagnostic);
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 static DECLCALLBACK(int) shClSvcWinTransferIfaceHGRootListRead(PSHCLTXPROVIDERCTX pCtx);
+static void shClBackendWinTransferGetCallbacks(PSHCLCONTEXT pCtx, PSHCLTRANSFERCALLBACKS pCallbacks);
 #endif
 
 
