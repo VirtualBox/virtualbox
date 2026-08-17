@@ -1,4 +1,4 @@
-/* $Id: GuestShClSvcExt.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClSvcExt.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard service extension handling for Main.
  */
@@ -29,6 +29,7 @@
 #include "LoggingNew.h"
 
 #include "ConsoleImpl.h"
+#include "ConsoleVRDPServer.h"
 #include "ClipboardImpl.h"
 #include "GuestShClPrivate.h"
 #include "GuestShClConn.h"
@@ -122,23 +123,6 @@ static int shClSvcExtValidateDataBuffer(void const *pvData, uint32_t cbData)
 
 
 /**
- * Forwards a Shared Clipboard service extension request to the chained VRDP extension.
- *
- * @returns VBox status code returned by the chained extension, or VERR_NOT_SUPPORTED if no
- *          chained extension is registered.
- * @param   u32Function         Service extension function to forward.
- * @param   pvParms             Raw service extension parameters to forward.
- * @param   cbParms             Size, in bytes, of \a pvParms.
- */
-int GuestShCl::i_forwardToSvcExt(uint32_t u32Function, void *pvParms, uint32_t cbParms)
-{
-    PSHCLSVCEXT const pSvcExtVRDP = &m_SvcExtVRDP; /* Currently we have one extension only. */
-    if (pSvcExtVRDP->pfnExt)
-        return pSvcExtVRDP->pfnExt(pSvcExtVRDP->pvExt, u32Function, pvParms, cbParms);
-    return VERR_NOT_SUPPORTED;
-}
-
-/**
  * Validates Shared Clipboard service extension parameters before dispatching a request.
  *
  * @returns VBox status code.
@@ -154,11 +138,8 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
 {
     switch (u32Function)
     {
-        case VBOX_CLIPBOARD_EXT_FN_SET_CALLBACK:
         case VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_HOST:
-        case VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_GUEST:
         case VBOX_CLIPBOARD_EXT_FN_DATA_READ:
-        case VBOX_CLIPBOARD_EXT_FN_DATA_READ_VRDE:
         case VBOX_CLIPBOARD_EXT_FN_DATA_WRITE:
         case VBOX_CLIPBOARD_EXT_FN_ERROR:
         case VBOX_CLIPBOARD_EXT_FN_BACKEND_INIT:
@@ -185,9 +166,6 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
     int vrc;
     switch (u32Function)
     {
-        case VBOX_CLIPBOARD_EXT_FN_SET_CALLBACK:
-            return VINF_SUCCESS;
-
         case VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_HOST:
             SHCL_VALIDATE_ACTIVE(Transport);
             AssertReturn(ShClFormatsAreValid(pParms->u.ReportFormats.uFormats),
@@ -195,15 +173,7 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
             AssertReturn(pParms->u.ReportFormats.enmSource == SHCLSOURCE_INVALID, VERR_INVALID_PARAMETER);
             return VINF_SUCCESS;
 
-        case VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_GUEST:
-            SHCL_VALIDATE_ACTIVE(Transport);
-            AssertReturn(ShClFormatsAreValid(pParms->u.ReportFormats.uFormats),
-                         VERR_INVALID_PARAMETER);
-            AssertReturn(ShClSourceIsValid(pParms->u.ReportFormats.enmSource), VERR_INVALID_PARAMETER);
-            return VINF_SUCCESS;
-
         case VBOX_CLIPBOARD_EXT_FN_DATA_READ:
-        case VBOX_CLIPBOARD_EXT_FN_DATA_READ_VRDE:
             SHCL_VALIDATE_ACTIVE(Transport);
             vrc = shClSvcExtValidateFormat(pParms->u.ReadWriteData.uFormat, u32Function);
             if (RT_FAILURE(vrc))
@@ -291,22 +261,9 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
 
 
 /**
- * Handles VBOX_CLIPBOARD_EXT_FN_SET_CALLBACK from the Shared Clipboard host service.
- *
- * @returns VBox status code.
- * @param   pParms              Service extension parameters containing the callback to install.
- */
-int GuestShCl::i_svcExtSetCallback(PSHCLEXTPARMS pParms)
-{
-    m_pfnExtCallback = pParms->u.SetCallback.pfnCallback;
-    return VINF_SUCCESS;
-}
-
-
-/**
  * Handles VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_HOST from the Shared Clipboard host service.
  *
- * Reports guest clipboard formats to Main and forwards the notification to the chained VRDP extension.
+ * Reports guest clipboard formats to Main and connected remote-desktop clients.
  *
  * @returns VBox status code.
  * @param   pParms              Decoded service extension parameters.
@@ -320,30 +277,11 @@ int GuestShCl::i_svcExtReportFormatsToHostCallback(PSHCLEXTPARMS pParms)
     AssertPtr(m_pConsole->i_getClipboard());
     if (m_pConsole->i_getClipboard())
         m_pConsole->i_getClipboard()->i_reportFormats(VBOX_SHCL_MAIN_CLIENT_NONE,
-                                                       fFormats, ClipboardSource_Guest,
-                                                       true /* fForceNotify */);
+                                                      fFormats, ClipboardSource_Guest,
+                                                      true /* fForceNotify */);
 
-    int vrc = i_forwardToSvcExt(VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_HOST, pParms, sizeof(*pParms));
-    return vrc == VERR_NOT_SUPPORTED ? VINF_SUCCESS : vrc;
-}
-
-
-/**
- * Handles VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_GUEST from the Shared Clipboard host service.
- *
- * Forwards host or remote clipboard format notifications to the chained VRDP extension without
- * implicitly publishing them through Main or the regular backend.
- *
- * @returns VBox status code.
- * @param   pParms              Decoded service extension parameters.
- * @param   pvParms             Raw service extension parameters to forward to the chained extension.
- * @param   cbParms             Size, in bytes, of \a pvParms.
- */
-int GuestShCl::i_svcExtReportFormatsToGuestCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms)
-{
-    RT_NOREF(pParms);
-
-    int vrc = i_forwardToSvcExt(VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_GUEST, pvParms, cbParms);
+    ConsoleVRDPServer *pVrde = m_pConsole->i_consoleVRDPServer();
+    int const vrc = pVrde ? pVrde->ClipboardReportGuestFormats(fFormats) : VERR_NOT_SUPPORTED;
     return vrc == VERR_NOT_SUPPORTED ? VINF_SUCCESS : vrc;
 }
 
@@ -351,75 +289,90 @@ int GuestShCl::i_svcExtReportFormatsToGuestCallback(PSHCLEXTPARMS pParms, void *
 /**
  * Handles VBOX_CLIPBOARD_EXT_FN_DATA_READ from the Shared Clipboard host service.
  *
- * Lets the chained VRDP extension service the request first, then reads clipboard data provided
- * explicitly through Main.
+ * Reads clipboard data from the provider selected by Main.
  *
  * @returns VBox status code.
  * @param   pParms              Decoded service extension parameters.
- * @param   pvParms             Raw service extension parameters to forward to the chained extension.
- * @param   cbParms             Size, in bytes, of \a pvParms.
  */
-int GuestShCl::i_svcExtDataReadCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms)
+int GuestShCl::i_svcExtDataReadCallback(PSHCLEXTPARMS pParms)
 {
-    int vrc = i_forwardToSvcExt(VBOX_CLIPBOARD_EXT_FN_DATA_READ, pvParms, cbParms);
-    if (vrc == VERR_NOT_SUPPORTED)
-    {
-        void *pvData = pParms->u.ReadWriteData.pvData;
-        uint32_t cbData = pParms->u.ReadWriteData.cbData;
-        SHCLFORMATS fFormats = pParms->u.ReadWriteData.uFormat;
-
-        Clipboard *pClipboard = m_pConsole->i_getClipboard();
-        if (pClipboard)
-        {
-            HRESULT hrc = pClipboard->i_readDataForGuest(fFormats, pvData, cbData, &pParms->u.ReadWriteData.cbActual);
-            vrc = SUCCEEDED(hrc) ? VINF_SUCCESS : VERR_NO_DATA;
-        }
-        else
-            vrc = VERR_NOT_AVAILABLE;
-        if (RT_SUCCESS(vrc))
-            LogRel2(("Shared Clipboard: Read Main clipboard data (max %RU32 bytes), got %RU32 bytes\n", cbData,
-                     pParms->u.ReadWriteData.cbActual));
-        else
-            LogRel2(("Shared Clipboard: No explicit Main clipboard data available, vrc=%Rrc\n", vrc));
-    }
-    return vrc;
-}
-
-
-/**
- * Handles VBOX_CLIPBOARD_EXT_FN_DATA_READ_VRDE from the Shared Clipboard host service.
- *
- * Reads clipboard data asynchronously from the guest for the VRDE extension path and copies the
- * received payload into the supplied extension buffer.
- *
- * @returns VBox status code.
- * @param   pParms              Service extension parameters describing the read request.
- */
-int GuestShCl::i_svcExtDataReadVrdeCallback(PSHCLEXTPARMS pParms)
-{
-    SHCLFORMATS fFormats = pParms->u.ReadWriteData.uFormat;
-    PSHCLEVENT pEvent;
     void *pvData = pParms->u.ReadWriteData.pvData;
     uint32_t cbData = pParms->u.ReadWriteData.cbData;
+    SHCLFORMATS fFormats = pParms->u.ReadWriteData.uFormat;
+    Clipboard *pClipboard = m_pConsole->i_getClipboard();
+    ClipboardSource_T enmSource = ClipboardSource_Custom;
+    HRESULT hrc = pClipboard ? pClipboard->i_getCurrentSource(&enmSource) : E_FAIL;
 
-    int vrc = m_pConn->readDataFromGuestAsync(fFormats, &pEvent);
-    if (RT_SUCCESS(vrc))
+    int vrc;
+    if (SUCCEEDED(hrc) && enmSource == ClipboardSource_Remote)
     {
-        PSHCLEVENTPAYLOAD pPayload = NULL;
-        vrc = ShClEventWait(pEvent, SHCL_TIMEOUT_DEFAULT_MS, &pPayload);
-        if (RT_SUCCESS(vrc))
+        int vrcLock = RTCritSectEnter(&m_RemoteFormatsCritSect);
+        if (RT_FAILURE(vrcLock))
+            return vrcLock;
+        vrcLock = lock();
+        if (RT_FAILURE(vrcLock))
         {
-            if (pPayload)
+            RTCritSectLeave(&m_RemoteFormatsCritSect);
+            return vrcLock;
+        }
+        Assert(!m_fRemoteDataReadActive);
+        m_fRemoteDataReadActive = true;
+        unlock();
+        int const vrcLeave = RTCritSectLeave(&m_RemoteFormatsCritSect);
+        AssertRC(vrcLeave);
+
+        ConsoleVRDPServer *pVrde = m_pConsole->i_consoleVRDPServer();
+        vrc = pVrde ? pVrde->ClipboardReadRemoteData(fFormats, pvData, cbData,
+                                                     &pParms->u.ReadWriteData.cbActual)
+                    : VERR_NOT_AVAILABLE;
+
+        vrcLock = RTCritSectEnter(&m_RemoteFormatsCritSect);
+        if (RT_SUCCESS(vrcLock))
+        {
+            bool fHavePendingFormats = false;
+            SHCLFORMATS fPendingFormats = VBOX_SHCL_FMT_NONE;
+            int const vrcState = lock();
+            if (RT_SUCCESS(vrcState))
             {
-                memcpy(pvData, pPayload->pvData, RT_MIN(cbData, pPayload->cbData));
-                ShClPayloadDestroy(pPayload);
-                pPayload = NULL;
+                m_fRemoteDataReadActive = false;
+                if (m_fRemoteFormatsPending)
+                {
+                    fHavePendingFormats = true;
+                    fPendingFormats = m_fPendingRemoteFormats;
+                    m_fRemoteFormatsPending = false;
+                    m_fPendingRemoteFormats = VBOX_SHCL_FMT_NONE;
+                }
+                unlock();
             }
             else
-                pvData = NULL;
+                AssertRC(vrcState);
+
+            if (fHavePendingFormats)
+            {
+                int const vrcFormats = i_reportRemoteFormatsToGuestNow(fPendingFormats);
+                if (RT_FAILURE(vrcFormats))
+                    LogRel(("Shared Clipboard: Reporting formats deferred during a remote read failed with %Rrc\n",
+                            vrcFormats));
+            }
+            int const vrcLeavePending = RTCritSectLeave(&m_RemoteFormatsCritSect);
+            AssertRC(vrcLeavePending);
         }
-        ShClEventRelease(pEvent);
+        else
+            AssertRC(vrcLock);
     }
+    else if (pClipboard)
+    {
+        hrc = pClipboard->i_readDataForGuest(fFormats, pvData, cbData, &pParms->u.ReadWriteData.cbActual);
+        vrc = SUCCEEDED(hrc) ? VINF_SUCCESS : VERR_NO_DATA;
+    }
+    else
+        vrc = VERR_NOT_AVAILABLE;
+
+    if (RT_SUCCESS(vrc))
+        LogRel2(("Shared Clipboard: Read Main clipboard data (max %RU32 bytes), got %RU32 bytes\n", cbData,
+                 pParms->u.ReadWriteData.cbActual));
+    else
+        LogRel2(("Shared Clipboard: No Main clipboard data available, vrc=%Rrc\n", vrc));
     return vrc;
 }
 
@@ -427,40 +380,33 @@ int GuestShCl::i_svcExtDataReadVrdeCallback(PSHCLEXTPARMS pParms)
 /**
  * Handles VBOX_CLIPBOARD_EXT_FN_DATA_WRITE from the Shared Clipboard host service.
  *
- * Lets the chained VRDP extension service the request first, then signals pending guest-data waiters
- * without implicitly writing guest data to the host clipboard backend.
+ * Mirrors the reply to VRDE and signals pending guest-data waiters.
  *
  * @returns VBox status code.
  * @param   pParms              Decoded service extension parameters.
- * @param   pvParms             Raw service extension parameters to forward to the chained extension.
- * @param   cbParms             Size, in bytes, of \a pvParms.
  */
-int GuestShCl::i_svcExtDataWriteCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms)
+int GuestShCl::i_svcExtDataWriteCallback(PSHCLEXTPARMS pParms)
 {
-    PSHCLCLIENTCMDCTX pCmdCtx = pParms->u.ReadWriteData.pCmdCtx;
     SHCLFORMATS fFormats = pParms->u.ReadWriteData.uFormat;
-
     SHCLGUESTDATATOKEN hToken = NULL;
-    int vrc = m_pConn->guestDataBegin(pCmdCtx, fFormats, &hToken);
+    int vrc = m_pConn->guestDataBegin(pParms->u.ReadWriteData.pCmdCtx, fFormats, &hToken);
     if (RT_FAILURE(vrc) || !hToken)
         return vrc;
 
-    int const vrcChained = i_forwardToSvcExt(VBOX_CLIPBOARD_EXT_FN_DATA_WRITE, pvParms, cbParms);
-    if (vrcChained == VERR_NOT_SUPPORTED)
+    void const *pvData = pParms->u.ReadWriteData.pvData;
+    uint32_t cbData = pParms->u.ReadWriteData.cbData;
+    ConsoleVRDPServer *pVrde = m_pConsole->i_consoleVRDPServer();
+    if (pVrde)
     {
-        void *pvData = pParms->u.ReadWriteData.pvData;
-        uint32_t cbData = pParms->u.ReadWriteData.cbData;
-
-        vrc = m_pConn->guestDataComplete(hToken, pvData, cbData);
-        hToken = NULL;
-        if (RT_FAILURE(vrc))
-            LogRelMax(16, ("Shared Clipboard: Signalling host about guest clipboard data failed with %Rrc\n", vrc));
-        AssertRC(vrc);
+        int const vrcVrde = pVrde->ClipboardWriteGuestData(fFormats, pvData, cbData);
+        if (RT_FAILURE(vrcVrde) && vrcVrde != VERR_NOT_SUPPORTED)
+            LogRelMax2(16, ("Shared Clipboard: Mirroring guest clipboard data to VRDE failed with %Rrc\n", vrcVrde));
     }
-    else
-        vrc = vrcChained;
-    if (hToken)
-        m_pConn->guestDataCancel(hToken);
+
+    vrc = m_pConn->guestDataComplete(hToken, pvData, cbData);
+    if (RT_FAILURE(vrc))
+        LogRelMax(16, ("Shared Clipboard: Signalling host about guest clipboard data failed with %Rrc\n", vrc));
+    AssertRC(vrc);
     return vrc;
 }
 
@@ -468,109 +414,93 @@ int GuestShCl::i_svcExtDataWriteCallback(PSHCLEXTPARMS pParms, void *pvParms, ui
 /**
  * Handles VBOX_CLIPBOARD_EXT_FN_BACKEND_INIT from the Shared Clipboard host service.
  *
- * Lets the chained VRDP extension initialize first, then initializes the regular Shared Clipboard
- * backend if the extension did not handle the request.
+ * Initializes Main's native Shared Clipboard backend once.
  *
  * @returns VBox status code.
  * @param   pParms              Decoded service extension parameters.
- * @param   pvParms             Raw service extension parameters to forward to the chained extension.
- * @param   cbParms             Size, in bytes, of \a pvParms.
+ * @param   pvParms             Unused raw protocol parameters.
+ * @param   cbParms             Size, in bytes, of \a pvParms. Unused.
  */
 int GuestShCl::i_svcExtBackendInitCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms)
 {
-    RT_NOREF(pParms);
-    int vrc = i_forwardToSvcExt(VBOX_CLIPBOARD_EXT_FN_BACKEND_INIT, pvParms, cbParms);
-    if (vrc == VERR_NOT_SUPPORTED)
-        vrc = m_pConn->initBackend();
-    return vrc;
+    RT_NOREF(pParms, pvParms, cbParms);
+
+    return m_pConn->initBackend();
 }
 
 
 /**
  * Handles VBOX_CLIPBOARD_EXT_FN_BACKEND_DESTROY from the Shared Clipboard host service.
  *
- * Lets the chained VRDP extension tear down first, then destroys the regular Shared Clipboard backend
- * if the extension did not handle the request.
+ * Disconnects an active client, if any, and destroys Main's native backend.
  *
  * @returns VBox status code.
  * @param   pParms              Decoded service extension parameters.
- * @param   pvParms             Raw service extension parameters to forward to the chained extension.
- * @param   cbParms             Size, in bytes, of \a pvParms.
+ * @param   pvParms             Unused raw protocol parameters.
+ * @param   cbParms             Size, in bytes, of \a pvParms. Unused.
  */
 int GuestShCl::i_svcExtBackendDestroyCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms)
 {
-    RT_NOREF(pParms);
-    int vrc = i_forwardToSvcExt(VBOX_CLIPBOARD_EXT_FN_BACKEND_DESTROY, pvParms, cbParms);
-    if (vrc == VERR_NOT_SUPPORTED)
-        vrc = m_pConn->destroyBackend();
-    return vrc;
+    RT_NOREF(pParms, pvParms, cbParms);
+
+    return m_pConn->destroyBackend();
 }
 
 
 /**
  * Handles VBOX_CLIPBOARD_EXT_FN_BACKEND_CONNECT from the Shared Clipboard host service.
  *
- * Lets the chained VRDP extension connect first, then connects the regular backend and records the
- * active HGCM client when the backend connection succeeds.
+ * Connects a client to Main's native backend and records the returned context.
  *
  * @returns VBox status code.
  * @param   pParms              Decoded service extension parameters.
- * @param   pvParms             Raw service extension parameters to forward to the chained extension.
- * @param   cbParms             Size, in bytes, of \a pvParms.
+ * @param   pvParms             Unused raw protocol parameters.
+ * @param   cbParms             Size, in bytes, of \a pvParms. Unused.
  */
 int GuestShCl::i_svcExtBackendConnectCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms)
 {
-    int vrc = i_forwardToSvcExt(VBOX_CLIPBOARD_EXT_FN_BACKEND_CONNECT, pvParms, cbParms);
-    if (vrc == VERR_NOT_SUPPORTED)
-    {
-        SHCLTRANSPORT const Transport = ShClSvcExtGetTransport(pParms);
-        vrc = m_pConn->connect(&Transport);
-    }
-    return vrc;
+    RT_NOREF(pvParms, cbParms);
+    SHCLTRANSPORT const Transport = ShClSvcExtGetTransport(pParms);
+
+    return m_pConn->connect(&Transport);
 }
 
 
 /**
  * Handles VBOX_CLIPBOARD_EXT_FN_BACKEND_DISCONNECT from the Shared Clipboard host service.
  *
- * Lets the chained VRDP extension disconnect first, then disconnects the regular backend and clears
- * the active HGCM client if it matches the disconnecting client.
+ * Disconnects a client from Main's native backend and clears its context.
  *
  * @returns VBox status code.
  * @param   pParms              Decoded service extension parameters.
- * @param   pvParms             Raw service extension parameters to forward to the chained extension.
- * @param   cbParms             Size, in bytes, of \a pvParms.
+ * @param   pvParms             Unused raw protocol parameters.
+ * @param   cbParms             Size, in bytes, of \a pvParms. Unused.
  */
 int GuestShCl::i_svcExtBackendDisconnectCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms)
 {
-    int vrc = i_forwardToSvcExt(VBOX_CLIPBOARD_EXT_FN_BACKEND_DISCONNECT, pvParms, cbParms);
-    if (vrc == VERR_NOT_SUPPORTED)
-    {
-        SHCLTRANSPORT const Transport = ShClSvcExtGetTransport(pParms);
-        vrc = m_pConn->disconnect(&Transport);
-    }
-    return vrc;
+    RT_NOREF(pvParms, cbParms);
+    SHCLTRANSPORT const Transport = ShClSvcExtGetTransport(pParms);
+
+    return m_pConn->disconnect(&Transport);
 }
 
 
 /**
  * Handles VBOX_CLIPBOARD_EXT_FN_BACKEND_SYNC from the Shared Clipboard host service.
  *
- * Lets the chained VRDP extension synchronize first, then synchronizes the regular Shared Clipboard
- * backend if the extension did not handle the request.
+ * Synchronizes Main's native Shared Clipboard backend.
  *
  * @returns VBox status code.
  * @param   pParms              Decoded service extension parameters.
- * @param   pvParms             Raw service extension parameters to forward to the chained extension.
- * @param   cbParms             Size, in bytes, of \a pvParms.
+ * @param   pvParms             Unused raw protocol parameters.
+ * @param   cbParms             Size, in bytes, of \a pvParms. Unused.
  */
 int GuestShCl::i_svcExtBackendSyncCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms)
 {
-    RT_NOREF(pParms);
-    int vrc = i_forwardToSvcExt(VBOX_CLIPBOARD_EXT_FN_BACKEND_SYNC, pvParms, cbParms);
-    if (vrc == VERR_NOT_SUPPORTED)
-        vrc = m_pConn->syncBackend();
-    return vrc;
+    RT_NOREF(pvParms, cbParms);
+    SHCLTRANSPORT const Transport = ShClSvcExtGetTransport(pParms);
+
+    return m_pConn->matches(&Transport) ? m_pConn->syncBackend() : VERR_INVALID_PARAMETER;
 }
 
 
@@ -607,14 +537,14 @@ int GuestShCl::i_svcExtTransferGetCallbacksCallback(PSHCLEXTPARMS pParms)
 /**
  * Handles VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER from the Shared Clipboard host service.
  *
- * Lets the chained VRDP extension handle transfer status first, then forwards the transfer status
- * reply to the regular Shared Clipboard backend if the extension did not handle the request.
+ * Forwards a transfer status reply to the Shared Clipboard backend and Main.
  *
  * @returns VBox status code.
  * @param   pParms              Decoded service extension parameters.
  */
 int GuestShCl::i_svcExtFileTransferCallback(PSHCLEXTPARMS pParms)
 {
+    SHCLTRANSPORT const Transport = ShClSvcExtGetTransport(pParms);
     PSHCLTRANSFER pTransfer = pParms->u.FileTransferData.pTransfer;
     SHCLSOURCE const enmShClSource = pParms->u.FileTransferData.enmShClSource;
     PSHCLREPLY pReply = pParms->u.FileTransferData.pReply;
@@ -624,10 +554,10 @@ int GuestShCl::i_svcExtFileTransferCallback(PSHCLEXTPARMS pParms)
     SHCLTRANSFERSTATUS const enmStatus = pReply->u.TransferStatus.uStatus;
     int const vrcTransfer = (int)pReply->rc;
 
-    int vrc = i_forwardToSvcExt(VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER, pParms, sizeof(*pParms));
-    if (vrc == VERR_NOT_SUPPORTED)
-        vrc = m_pConn->transferHandleStatusReply(pTransfer, enmShClSource,
-                                                  pReply->u.TransferStatus.uStatus, (int)pReply->rc);
+    int vrc = m_pConn->matches(&Transport)
+            ? m_pConn->transferHandleStatusReply(pTransfer, enmShClSource,
+                                                  pReply->u.TransferStatus.uStatus, (int)pReply->rc)
+            : VERR_INVALID_PARAMETER;
 
     if (RT_SUCCESS(vrc))
     {

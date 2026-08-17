@@ -1,4 +1,4 @@
-/* $Id: ClipboardImpl.h 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardImpl.h 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Console clipboard API.
  */
@@ -97,6 +97,7 @@ public:
                                  const std::vector<ComPtr<IClipboardFormat> > &aFormats);
     HRESULT i_getCurrentStateForEvent(ClipboardSource_T *aSource,
                                       std::vector<ComPtr<IClipboardFormat> > &aFormats);
+    HRESULT i_getCurrentSource(ClipboardSource_T *aSource);
     LONG64 i_nextEventRevision();
     HRESULT i_reset();
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS

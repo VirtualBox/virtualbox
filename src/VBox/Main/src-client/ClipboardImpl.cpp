@@ -1,4 +1,4 @@
-/* $Id: ClipboardImpl.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardImpl.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Console clipboard API.
  */
@@ -2007,6 +2007,24 @@ HRESULT Clipboard::i_getCurrentStateForEvent(ClipboardSource_T *aSource,
             return hrc;
         aFormats.push_back(ptrFormat);
     }
+    return S_OK;
+}
+
+
+/**
+ * Returns the current clipboard source.
+ *
+ * @returns COM status code.
+ * @param   aSource         Where to return the current clipboard source.
+ */
+HRESULT Clipboard::i_getCurrentSource(ClipboardSource_T *aSource)
+{
+    AssertPtrReturn(aSource, E_POINTER);
+
+    AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+    AssertPtrReturn(mData, E_FAIL);
+
+    *aSource = mData->mSource;
     return S_OK;
 }
 

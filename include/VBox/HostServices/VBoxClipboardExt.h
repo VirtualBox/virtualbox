@@ -162,11 +162,11 @@ DECLINLINE(bool) ShClTransportIsEqual(PCSHCLTRANSPORT pLeft, PCSHCLTRANSPORT pRi
            && pLeft->pOps == pRight->pOps;
 }
 
-/** Sets a read / write callback. */
+/** Reserved.  Formerly installed a reverse callback into the HGCM service. */
 #define VBOX_CLIPBOARD_EXT_FN_SET_CALLBACK               (0)
 /** The guest reports clipboard formats to the extension. */
 #define VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_HOST      (1)
-/** Reports remote clipboard formats to the guest. */
+/** Reserved.  Formerly bounced remote format reports back through the service. */
 #define VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_GUEST     (2)
 /** The clipboard service requests clipboard data from the extension. */
 #define VBOX_CLIPBOARD_EXT_FN_DATA_READ                  (3)
@@ -184,7 +184,7 @@ DECLINLINE(bool) ShClTransportIsEqual(PCSHCLTRANSPORT pLeft, PCSHCLTRANSPORT pRi
 #define VBOX_CLIPBOARD_EXT_FN_BACKEND_DISCONNECT         (9)
 /** The clipboard service syncs with the backend. */
 #define VBOX_CLIPBOARD_EXT_FN_BACKEND_SYNC               (10)
-/** Requests guest clipboard data for VRDE. */
+/** Reserved.  Formerly bounced VRDE guest-data reads back through the service. */
 #define VBOX_CLIPBOARD_EXT_FN_DATA_READ_VRDE             (11)
 /** The clipboard service initiates the transfer of a file from the guest. */
 #define VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER              (12)

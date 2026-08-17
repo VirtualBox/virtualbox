@@ -1,4 +1,4 @@
-/* $Id: ConsoleImplConfigCommon.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: ConsoleImplConfigCommon.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console COM Class implementation - VM Configuration Bits.
  *
@@ -50,6 +50,7 @@
 #include "BusAssignmentManager.h"
 #ifdef VBOX_WITH_SHARED_CLIPBOARD
 # include "GuestShClPrivate.h"
+# include "ConsoleVRDPServer.h"
 #endif
 #ifdef VBOX_WITH_DRAG_AND_DROP
 # include "GuestImpl.h"
@@ -4018,7 +4019,9 @@ int Console::i_configVmmDev(ComPtr<IMachine> pMachine, BusAssignmentManager *pBu
             vrc = HGCMHostRegisterServiceExtension(&m_hHgcmSvcExtShCl, "VBoxSharedClipboard",
                                                    &GuestShCl::s_HgcmDispatcher,
                                                    pGuestShCl);
-            if (RT_FAILURE(vrc))
+            if (RT_SUCCESS(vrc))
+                i_consoleVRDPServer()->ClipboardSetGuestShClAvailable(true);
+            else
                 Log(("Cannot register VBoxSharedClipboard extension, vrc=%Rrc\n", vrc));
         }
         else

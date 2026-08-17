@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-internal.h 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-internal.h 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal service instance state.
  */
@@ -46,18 +46,6 @@ typedef struct SHCLEXTSTATE
     PFNHGCMSVCEXT  pfnExtension;
     /** Opaque extension-provided data. */
     void          *pvExtension;
-    /** HGCM client ID currently assigned to the extension. */
-    uint32_t       uClientID;
-    /** Number of in-flight reverse callbacks using the active client. */
-    uint32_t       cCallbacks;
-    /** Signalled while no reverse callback is using the active client. */
-    RTSEMEVENTMULTI hCallbacksDone;
-    /** Whether the host service is reading clipboard data currently. */
-    bool           fReadingData;
-    /** Whether the service extension announced formats while data was read. */
-    bool           fDelayedAnnouncement;
-    /** Formats announced while the host service was reading data. */
-    uint32_t       fDelayedFormats;
 } SHCLEXTSTATE;
 
 
@@ -167,10 +155,9 @@ int  shClSvcExtBackendConnect(PSHCLCLIENT pClient);
 int  shClSvcExtBackendSync(PSHCLCLIENT pClient);
 void shClSvcExtBackendDisconnect(PSHCLCLIENT pClient);
 void shClSvcExtBackendDestroy(void);
-/** Disables and drains reverse callbacks, destroys the backend while the
- *  extension remains callable, then clears the matching registration. */
+/** Destroys the backend while the extension remains callable, then clears the
+ *  matching registration. */
 int  shClSvcExtUnregisterAndDestroy(void);
-int  shClSvcExtReportFormatsToGuest(PSHCLCLIENT pClient, SHCLFORMATS fFormats, SHCLSOURCE enmSource);
 int  shClSvcExtReportFormatsToHost(PSHCLCLIENT pClient, SHCLFORMATS fFormats);
 int  shClSvcExtReadData(PSHCLCLIENT pClient, SHCLFORMAT uFormat, void *pvData, uint32_t cbData, uint32_t *pcbActual);
 int  shClSvcExtWriteData(PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX pCmdCtx, SHCLFORMAT uFormat, void *pvData, uint32_t cbData);

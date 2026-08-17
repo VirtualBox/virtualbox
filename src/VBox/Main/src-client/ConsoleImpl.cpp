@@ -1,4 +1,4 @@
-/* $Id: ConsoleImpl.cpp 114560 2026-06-29 08:32:23Z andreas.loeffler@oracle.com $ */
+/* $Id: ConsoleImpl.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console COM Class implementation
  */
@@ -1657,11 +1657,6 @@ void Console::i_VRDPClientDisconnect(uint32_t u32ClientId,
         mConsoleVRDPServer->USBBackendDelete(u32ClientId);
     }
 
-    if (fu32Intercepted & VRDE_CLIENT_INTERCEPT_CLIPBOARD)
-    {
-        mConsoleVRDPServer->ClipboardDelete(u32ClientId);
-    }
-
 #ifdef VBOX_WITH_AUDIO_VRDE
     if (fu32Intercepted & VRDE_CLIENT_INTERCEPT_AUDIO)
     {
@@ -1731,9 +1726,7 @@ void Console::i_VRDPInterceptClipboard(uint32_t u32ClientId)
     AutoCaller autoCaller(this);
     AssertComRCReturnVoid(autoCaller.hrc());
 
-    AssertReturnVoid(mConsoleVRDPServer);
-
-    mConsoleVRDPServer->ClipboardCreate(u32ClientId);
+    RT_NOREF(u32ClientId);
 
     LogFlowFuncLeave();
     return;
@@ -9272,10 +9265,13 @@ HRESULT Console::i_powerDown(IProgress *aProgress /*= NULL*/)
 # ifdef VBOX_WITH_SHARED_CLIPBOARD
         if (m_hHgcmSvcExtShCl)
         {
-            HGCMHostUnregisterServiceExtension(m_hHgcmSvcExtShCl);
-            m_hHgcmSvcExtShCl = NULL;
+            i_consoleVRDPServer()->ClipboardSetGuestShClAvailable(false);
+            int const vrcUnregister = HGCMHostUnregisterServiceExtension(m_hHgcmSvcExtShCl);
+            if (RT_SUCCESS(vrcUnregister))
+                m_hHgcmSvcExtShCl = NULL;
+            else
+                LogRel(("Shared Clipboard: Unregistering the HGCM service extension failed with %Rrc\n", vrcUnregister));
         }
-        GuestShCl::DestroyInstance();
 #endif
 
 # ifdef VBOX_WITH_DRAG_AND_DROP
@@ -9287,6 +9283,13 @@ HRESULT Console::i_powerDown(IProgress *aProgress /*= NULL*/)
 # endif
 
         m_pVMMDev->hgcmShutdown();
+
+# ifdef VBOX_WITH_SHARED_CLIPBOARD
+        m_hHgcmSvcExtShCl = NULL;
+        /* Keep the extension target alive through HGCM shutdown.  Service
+         * unloading may perform the final synchronous teardown callback. */
+        GuestShCl::DestroyInstance();
+# endif
 
         alock.acquire();
     }
@@ -11667,7 +11670,23 @@ void Console::i_powerUpThreadTask(VMPowerUpTask *pTask)
             if (pConsole->m_pVMMDev)
             {
                 alock.release(); /* just to be on the safe side... */
+#ifdef VBOX_WITH_SHARED_CLIPBOARD
+                if (pConsole->m_hHgcmSvcExtShCl)
+                {
+                    pConsole->i_consoleVRDPServer()->ClipboardSetGuestShClAvailable(false);
+                    int const vrcUnregister = HGCMHostUnregisterServiceExtension(pConsole->m_hHgcmSvcExtShCl);
+                    if (RT_SUCCESS(vrcUnregister))
+                        pConsole->m_hHgcmSvcExtShCl = NULL;
+                    else
+                        LogRel(("Shared Clipboard: Unregistering the HGCM service extension after VM creation failure"
+                                " failed with %Rrc\n", vrcUnregister));
+                }
+#endif
                 pConsole->m_pVMMDev->hgcmShutdown(true /*fUvmIsInvalid*/);
+#ifdef VBOX_WITH_SHARED_CLIPBOARD
+                pConsole->m_hHgcmSvcExtShCl = NULL;
+                GuestShCl::DestroyInstance();
+#endif
                 alock.acquire();
             }
             pVMM->pfnVMR3ReleaseUVM(pConsole->mpUVM);
@@ -12410,4 +12429,3 @@ const PDMDRVREG Console::DrvStatusReg =
     /* u32EndVersion */
     PDM_DRVREG_VERSION
 };
-

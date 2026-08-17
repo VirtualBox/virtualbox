@@ -1,4 +1,4 @@
-/* $Id: GuestShClPrivate.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClPrivate.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * Private Shared Clipboard code.
  */
@@ -60,22 +60,27 @@
 GuestShCl* GuestShCl::s_pInstance = NULL;
 
 
-
-
 GuestShCl::GuestShCl(Console *pConsole)
     : m_pConsole(pConsole)
     , m_pConn(NULL)
-    , m_pfnExtCallback(NULL)
+    , m_fRemoteDataReadActive(false)
+    , m_fRemoteFormatsPending(false)
+    , m_fPendingRemoteFormats(VBOX_SHCL_FMT_NONE)
     , m_uHostDataSeq(0)
     , m_uGuestDataSeq(0)
 {
     LogFlowFuncEnter();
 
-    RT_ZERO(m_SvcExtVRDP);
-
     int vrc = RTCritSectInit(&m_CritSect);
     if (RT_FAILURE(vrc))
         throw vrc;
+
+    vrc = RTCritSectInit(&m_RemoteFormatsCritSect);
+    if (RT_FAILURE(vrc))
+    {
+        RTCritSectDelete(&m_CritSect);
+        throw vrc;
+    }
 
     try
     {
@@ -83,6 +88,7 @@ GuestShCl::GuestShCl(Console *pConsole)
     }
     catch (...)
     {
+        RTCritSectDelete(&m_RemoteFormatsCritSect);
         RTCritSectDelete(&m_CritSect);
         throw;
     }
@@ -108,12 +114,14 @@ void GuestShCl::uninit(void)
         m_pConn = NULL;
     }
 
+    if (RTCritSectIsInitialized(&m_RemoteFormatsCritSect))
+        RTCritSectDelete(&m_RemoteFormatsCritSect);
     if (RTCritSectIsInitialized(&m_CritSect))
         RTCritSectDelete(&m_CritSect);
 
-    RT_ZERO(m_SvcExtVRDP);
-
-    m_pfnExtCallback = NULL;
+    m_fRemoteDataReadActive = false;
+    m_fRemoteFormatsPending = false;
+    m_fPendingRemoteFormats = VBOX_SHCL_FMT_NONE;
     m_uHostDataSeq = 0;
     m_uGuestDataSeq = 0;
 }
@@ -291,78 +299,6 @@ bool GuestShCl::i_isGuestDataSeqCurrent(uint64_t uSeq)
 
 
 /**
- * Registers a Shared Clipboard service extension.
- *
- * @returns VBox status code.
- * @param   pfnExtension        Service extension to register.
- * @param   pvExtension         User-supplied data pointer. Optional.
- */
-int GuestShCl::RegisterServiceExtension(PFNHGCMSVCEXT pfnExtension, void *pvExtension)
-{
-    AssertPtrReturn(pfnExtension, VERR_INVALID_POINTER);
-    /* pvExtension is optional. */
-
-    lock();
-
-    LogFlowFunc(("m_pfnExtCallback=%p\n", this->m_pfnExtCallback));
-
-    PSHCLSVCEXT pExt = &this->m_SvcExtVRDP; /* Currently we only have one extension only. */
-
-    Assert(pExt->pfnExt == NULL);
-
-    pExt->pfnExt         = pfnExtension;
-    pExt->pvExt          = pvExtension;
-    pExt->pfnExtCallback = this->m_pfnExtCallback; /* Assign callback function. Optional and can be NULL. */
-
-    if (pExt->pfnExtCallback)
-    {
-        /* Make sure to also give the extension the ability to use the callback. */
-        SHCLEXTPARMS parms;
-        RT_ZERO(parms);
-
-        parms.u.SetCallback.pfnCallback = pExt->pfnExtCallback;
-
-        /* ignore rc, callback is optional */ pExt->pfnExt(pExt->pvExt,
-                                                           VBOX_CLIPBOARD_EXT_FN_SET_CALLBACK, &parms, sizeof(parms));
-    }
-
-    unlock();
-
-    return VINF_SUCCESS;
-}
-
-/**
- * Unregisters a Shared Clipboard service extension.
- *
- * @returns VBox status code.
- * @param   pfnExtension        Service extension to unregister.
- */
-int GuestShCl::UnregisterServiceExtension(PFNHGCMSVCEXT pfnExtension)
-{
-    AssertPtrReturn(pfnExtension, VERR_INVALID_POINTER);
-
-    lock();
-
-    PSHCLSVCEXT pExt = &this->m_SvcExtVRDP; /* Currently we only have one extension only. */
-
-    AssertReturnStmt(pExt->pfnExt == pfnExtension, unlock(), VERR_INVALID_PARAMETER);
-    AssertPtr(pExt->pfnExt);
-
-    /* Unregister the callback (setting to NULL). */
-    SHCLEXTPARMS parms;
-    RT_ZERO(parms);
-
-    /* ignore rc, callback is optional */ pExt->pfnExt(pExt->pvExt,
-                                                       VBOX_CLIPBOARD_EXT_FN_SET_CALLBACK, &parms, sizeof(parms));
-
-    RT_BZERO(pExt, sizeof(SHCLSVCEXT));
-
-    unlock();
-
-    return VINF_SUCCESS;
-}
-
-/**
  * Sends a (blocking) message to the host side of the host service.
  *
  * @returns VBox status code.
@@ -468,6 +404,68 @@ int GuestShCl::ReportFormatsToGuest(SHCLFORMATS fFormats)
         return VINF_SUCCESS;
     if (RT_SUCCESS(vrc))
         i_incHostDataSeq();
+    return vrc;
+}
+
+/**
+ * Reports remote clipboard formats to the active guest clipboard client.
+ *
+ * @returns VBox status code.
+ * @param   fFormats    Formats reported by the remote clipboard peer.
+ */
+int GuestShCl::ReportRemoteFormatsToGuest(SHCLFORMATS fFormats)
+{
+    AssertReturn(ShClFormatsAreValid(fFormats), VERR_INVALID_PARAMETER);
+
+    int vrc = RTCritSectEnter(&m_RemoteFormatsCritSect);
+    AssertRCReturn(vrc, vrc);
+
+    vrc = lock();
+    if (RT_FAILURE(vrc))
+    {
+        RTCritSectLeave(&m_RemoteFormatsCritSect);
+        return vrc;
+    }
+    if (m_fRemoteDataReadActive)
+    {
+        m_fRemoteFormatsPending = true;
+        m_fPendingRemoteFormats = fFormats;
+        unlock();
+        RTCritSectLeave(&m_RemoteFormatsCritSect);
+        return VINF_SUCCESS;
+    }
+    unlock();
+
+    vrc = i_reportRemoteFormatsToGuestNow(fFormats);
+    int const vrcLeave = RTCritSectLeave(&m_RemoteFormatsCritSect);
+    AssertRC(vrcLeave);
+    return vrc;
+}
+
+/**
+ * Reports remote clipboard formats immediately.
+ *
+ * @returns VBox status code.
+ * @param   fFormats            Remote formats, VBOX_SHCL_FMT_XXX.
+ *
+ * @note    The caller must serialize remote reports and handle deferral while
+ *          a remote-data read is active.
+ */
+int GuestShCl::i_reportRemoteFormatsToGuestNow(SHCLFORMATS fFormats)
+{
+    AssertReturn(ShClFormatsAreValid(fFormats), VERR_INVALID_PARAMETER);
+
+    int const vrc = m_pConn->reportFormatsToGuest(fFormats, &fFormats);
+    if (vrc == VERR_SHCLPB_NO_DATA || vrc == VINF_NO_CHANGE)
+        return VINF_SUCCESS;
+    if (RT_SUCCESS(vrc))
+    {
+        i_incHostDataSeq();
+        Clipboard *pClipboard = m_pConsole->i_getClipboard();
+        if (pClipboard)
+            pClipboard->i_reportFormats(VBOX_SHCL_MAIN_CLIENT_NONE, fFormats, ClipboardSource_Remote,
+                                        true /* fForceNotify */);
+    }
     return vrc;
 }
 
@@ -589,28 +587,16 @@ DECLCALLBACK(int) GuestShCl::s_HgcmDispatcher(void *pvExtension, uint32_t u32Fun
 
     switch (u32Function)
     {
-        case VBOX_CLIPBOARD_EXT_FN_SET_CALLBACK:
-            vrc = pThis->i_svcExtSetCallback((PSHCLEXTPARMS)pvParms);
-            break;
-
         case VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_HOST:
             vrc = pThis->i_svcExtReportFormatsToHostCallback((PSHCLEXTPARMS)pvParms);
             break;
 
-        case VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_GUEST:
-            vrc = pThis->i_svcExtReportFormatsToGuestCallback((PSHCLEXTPARMS)pvParms, pvParms, cbParms);
-            break;
-
         case VBOX_CLIPBOARD_EXT_FN_DATA_READ:
-            vrc = pThis->i_svcExtDataReadCallback((PSHCLEXTPARMS)pvParms, pvParms, cbParms);
-            break;
-
-        case VBOX_CLIPBOARD_EXT_FN_DATA_READ_VRDE:
-            vrc = pThis->i_svcExtDataReadVrdeCallback((PSHCLEXTPARMS)pvParms);
+            vrc = pThis->i_svcExtDataReadCallback((PSHCLEXTPARMS)pvParms);
             break;
 
         case VBOX_CLIPBOARD_EXT_FN_DATA_WRITE:
-            vrc = pThis->i_svcExtDataWriteCallback((PSHCLEXTPARMS)pvParms, pvParms, cbParms);
+            vrc = pThis->i_svcExtDataWriteCallback((PSHCLEXTPARMS)pvParms);
             break;
 
         case VBOX_CLIPBOARD_EXT_FN_BACKEND_INIT:
@@ -648,7 +634,7 @@ DECLCALLBACK(int) GuestShCl::s_HgcmDispatcher(void *pvExtension, uint32_t u32Fun
 #endif
 
         default:
-            vrc = pThis->i_forwardToSvcExt(u32Function, pvParms, cbParms);
+            vrc = VERR_NOT_SUPPORTED;
             break;
     }
 

@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-host.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-host.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Host-controlled service handling.
  */
@@ -130,10 +130,6 @@ static void shClSvcHostReset(void)
     if (   pClient
         && g_ShClSvc.pActiveClient == pClient)
         shClSvcClientReset(pClient);
-
-    g_ShClSvc.ExtState.fReadingData = false;
-    g_ShClSvc.ExtState.fDelayedAnnouncement = false;
-    g_ShClSvc.ExtState.fDelayedFormats = 0;
 
     shClSvcUnlock();
 }
