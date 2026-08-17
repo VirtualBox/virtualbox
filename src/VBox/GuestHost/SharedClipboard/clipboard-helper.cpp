@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-helper.cpp 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Helper functions.
  */
@@ -29,7 +29,7 @@
 
 #include <iprt/alloc.h>
 #include <iprt/assert.h>
-#include <iprt/err.h>
+#include <iprt/errcore.h>
 #include <iprt/stream.h>
 #include <iprt/string.h>
 #include <iprt/utf16.h>
@@ -71,31 +71,6 @@ int ShClHlpUtf8ValidateExact(const char *pchSrc, size_t cbSrc, size_t *pcchText)
     if (RT_SUCCESS(rc))
         *pcchText = cbSrc - (fTerminated ? 1 : 0);
     return rc;
-}
-
-int ShClHlpUtf16DupExact(PCRTUTF16 pwszSrc, size_t cwcSrc, PRTUTF16 *ppwszDst)
-{
-    AssertPtrReturn(pwszSrc, VERR_INVALID_POINTER);
-    AssertPtrReturn(ppwszDst, VERR_INVALID_POINTER);
-    *ppwszDst = NULL;
-    AssertReturn(cwcSrc, VERR_INVALID_PARAMETER);
-
-    size_t cwcText = 0;
-    int rc = RTUtf16LenAndValidateEncoding(pwszSrc, cwcSrc, 0 /* fFlags */, NULL /* pcuc */, &cwcText);
-    if (RT_FAILURE(rc))
-        return rc;
-    if (cwcText < cwcSrc - 1)
-        return VERR_BUFFER_UNDERFLOW;
-    if (cwcText >= RTSTR_MAX / sizeof(RTUTF16))
-        return VERR_TOO_MUCH_DATA;
-
-    PRTUTF16 pwszDst = RTUtf16Alloc((cwcText + 1) * sizeof(RTUTF16));
-    if (!pwszDst)
-        return VERR_NO_UTF16_MEMORY;
-    memcpy(pwszDst, pwszSrc, cwcText * sizeof(RTUTF16));
-    pwszDst[cwcText] = '\0';
-    *ppwszDst = pwszDst;
-    return VINF_SUCCESS;
 }
 
 int ShClHlpConvUtf16CRLFToUtf8LF(PCRTUTF16 pwszSrc, size_t cwcSrc, char *pszBuf, size_t cbBuf, size_t *pcbLen)
@@ -846,31 +821,6 @@ const char *ShClHlpTransferStateToString(uint32_t uState)
         case VBOX_SHCL_CLIPBOARD_TRANSFER_STATE_CANCELED:    return "canceled";
         case VBOX_SHCL_CLIPBOARD_TRANSFER_STATE_FAILED:      return "failed";
         default:                                            break;
-    }
-
-    AssertFailedReturn("unknown");
-}
-
-
-/**
- * Converts a Main API clipboard event type value to a printable string.
- *
- * @returns Printable event type name.
- * @param   uEventType          Main API VBoxEventType value.
- */
-const char *ShClHlpVBoxEventTypeToString(uint32_t uEventType)
-{
-    switch (uEventType)
-    {
-        case 72:  return "OnClipboardModeChanged";
-        case 104: return "OnClipboardFileTransferModeChanged";
-        case 122: return "OnClipboardError";
-        case 126: return "OnClipboardSourceChanged";
-        case 127: return "OnClipboardFormatChanged";
-        case 128: return "OnClipboardDataChanged";
-        case 129: return "OnClipboardTransfer";
-        case 130: return "OnClipboardDataRequested";
-        default:  break;
     }
 
     AssertFailedReturn("unknown");

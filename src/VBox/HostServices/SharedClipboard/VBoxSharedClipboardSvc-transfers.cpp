@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 114890 2026-08-07 09:54:48Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -1556,43 +1556,6 @@ int ShClSvcTransferMsgHostHandler(uint32_t u32Function,
     return rc;
 }
 
-int shClSvcTransferHostMsgHandler(PSHCLCLIENT pClient, PSHCLCLIENTMSG pMsg)
-{
-    RT_NOREF(pClient);
-
-    int rc;
-
-    switch (pMsg->idMsg)
-    {
-        default:
-            rc = VINF_SUCCESS;
-            break;
-    }
-
-    LogFlowFuncLeaveRC(rc);
-    return rc;
-}
-
-/**
- * Reports a transfer status to the guest.
- *
- * @returns VBox status code.
- * @param   pClient             Client that owns the transfer.
- * @param   pTransfer           Transfer to report status for.
- * @param   enmSts              Status to report.
- * @param   rcTransfer          Result code to report. Optional and depending on status.
- * @param   ppEvent             Where to return the wait event on success. Optional.
- *                              Must be released by the caller with ShClEventRelease().
- */
-int ShClSvcTransferSendStatusAsync(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer, SHCLTRANSFERSTATUS enmSts,
-                                   int rcTransfer, PSHCLEVENT *ppEvent)
-{
-    return shClSvcTransferSendStatusAsync(pClient, pTransfer, enmSts, rcTransfer, ppEvent);
-}
-
-
-
-
 /**
  * Starts a transfer, communicating the status to the guest side.
  *
@@ -1618,49 +1581,6 @@ int ShClSvcTransferStart(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer)
         rc = rc2;
 
     ShClSvcClientUnlock(pClient);
-    return rc;
-}
-
-/**
- * Stops (and destroys) a transfer, communicating the status to the guest side.
- *
- * @returns VBox status code.
- * @param   pClient             Client that owns the transfer.
- * @param   pTransfer           Transfer to stop. The pointer will be invalid on success.
- * @param   fWaitForGuest       Set to \c true to wait for acknowledgement from guest, or \c false to skip waiting.
- */
-int ShClSvcTransferStop(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer, bool fWaitForGuest)
-{
-    LogRel2(("Shared Clipboard: Stopping transfer %RU16 ...\n", pTransfer->State.uID));
-
-    ShClSvcClientLock(pClient);
-
-    PSHCLEVENT pEvent;
-    int rc = shClSvcTransferSendStatusAsync(pClient, pTransfer,
-                                            SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS, &pEvent);
-    if (   RT_SUCCESS(rc)
-        && fWaitForGuest)
-    {
-        LogRel2(("Shared Clipboard: Waiting for stop of transfer %RU16 on guest ...\n", pTransfer->State.uID));
-
-        ShClSvcClientUnlock(pClient);
-
-        rc = ShClEventWait(pEvent, pTransfer->uTimeoutMs, NULL /* ppPayload */);
-        if (RT_SUCCESS(rc))
-            LogRel2(("Shared Clipboard: Stopped transfer %RU16 on guest\n", pTransfer->State.uID));
-
-        ShClEventRelease(pEvent);
-
-        ShClSvcClientLock(pClient);
-    }
-
-    if (RT_FAILURE(rc))
-        LogRelMax(16, ("Shared Clipboard: Unable to stop transfer %RU16 on guest, rc=%Rrc\n",
-                       pTransfer->State.uID, rc));
-
-    ShClSvcClientUnlock(pClient);
-
-    LogFlowFuncLeaveRC(rc);
     return rc;
 }
 

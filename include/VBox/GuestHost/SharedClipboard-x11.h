@@ -312,7 +312,6 @@ int ShClX11ReadDataFromX11Ex(PSHCLX11CTX pCtx, PSHCLEVENTSOURCE pEventSource, RT
 int ShClX11ReadDataFromX11(PSHCLX11CTX pCtx, PSHCLEVENTSOURCE pEventSource, RTMSINTERVAL msTimeout, SHCLFORMAT uFmt, void *pvBuf, uint32_t cbBuf, uint32_t *pcbBuf);
 int ShClX11WriteDataToX11Async(PSHCLX11CTX pCtx, SHCLFORMAT uFmt, const void *pvBuf, uint32_t cbBuf, PSHCLEVENT pEvent);
 int ShClX11WriteDataToX11(PSHCLX11CTX pCtx, PSHCLEVENTSOURCE pEventSource, RTMSINTERVAL msTimeout, SHCLFORMAT uFmt, const void *pvBuf, uint32_t cbBuf, uint32_t *pcbWritten);
-void ShClX11SetCallbacks(PSHCLX11CTX pCtx, PSHCLCALLBACKS pCallbacks);
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 int ShClX11TransferConvertToX11(const char *pszSrc, size_t cbSrc,  SHCLX11FMT enmFmtX11, void **ppvDst, size_t *pcbDst);
 int ShClX11TransferConvertFromX11(const char *pvData, size_t cbData, char **ppszList, size_t *pcbList);

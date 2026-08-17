@@ -338,8 +338,6 @@ protected:
     /** Vector containing file system objects with its (cached) objection information. */
     typedef std::vector<FSOBJENTRY> FsObjEntryList;
 
-    /** Shared Clipboard context to use. */
-    PSHCLCONTEXT                m_pCtx;
     /** The object's current status. */
     Status                      m_enmStatus;
     /** Last (IPRT-style) error set in conjunction with the status. */
@@ -492,7 +490,6 @@ public:
     ShClWinDataObject *pDataObj;
 };
 
-int ShClWinTransferGetRoots(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer);
 int ShClWinTransferDropFilesToStringList(DROPFILES *pDropFiles, char **papszList, uint32_t *pcbList);
 int ShClWinTransferGetRootsFromClipboard(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer);
 
@@ -504,4 +501,3 @@ int ShClWinTransferInitialize(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer);
 int ShClWinTransferStart(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer);
 # endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 #endif /* !VBOX_INCLUDED_GuestHost_SharedClipboard_win_h */
-

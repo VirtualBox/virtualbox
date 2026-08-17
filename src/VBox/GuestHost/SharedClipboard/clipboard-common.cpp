@@ -1,4 +1,4 @@
-/* $Id: clipboard-common.cpp 114907 2026-08-10 08:44:49Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-common.cpp 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common helper objects.
  */
@@ -1050,22 +1050,6 @@ VBGH_DECL(void) ShClCacheInvalidate(PSHCLCACHE pCache)
     AssertMsgReturnVoid(pCache->u32Magic == SHCLCACHE_MAGIC, ("%#x\n", pCache->u32Magic));
 
     shClCacheReInitAllEntries(pCache);
-}
-
-/**
- * Invalidates a specific cache entry.
- *
- * @param   pCache              Cache to invalidate.
- * @param   uFmt                Format to invalidate entry for.
- */
-VBGH_DECL(void) ShClCacheInvalidateEntry(PSHCLCACHE pCache, SHCLFORMAT uFmt)
-{
-    AssertPtrReturnVoid(pCache);
-    AssertMsgReturnVoid(pCache->u32Magic == SHCLCACHE_MAGIC, ("%#x\n", pCache->u32Magic));
-    int const idxFmt = ShClFormatToBitNo(uFmt);
-    AssertMsgReturnVoid((unsigned)idxFmt < RT_ELEMENTS(pCache->aEntries), ("%#x/%d\n", uFmt, idxFmt));
-
-    shClCacheEntryReInit(&pCache->aEntries[idxFmt]);
 }
 
 /**

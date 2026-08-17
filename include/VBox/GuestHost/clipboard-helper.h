@@ -1,4 +1,4 @@
-/* $Id: clipboard-helper.h 114830 2026-07-31 10:02:47Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-helper.h 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Helper functions.
  */
@@ -113,21 +113,6 @@ int ShClHlpUtf16LenUtf8(PCRTUTF16 pcwszSrc, size_t cwcSrc, size_t *pcbLenSansTer
  *                              optional final terminator.
  */
 int ShClHlpUtf8ValidateExact(const char *pchSrc, size_t cbSrc, size_t *pcchText);
-
-/**
- * Validates and duplicates an exact bounded UTF-16 payload.
- *
- * The input may omit its final terminator.  If a terminator is present, it
- * must be the final code unit; embedded terminators and trailing data are
- * rejected.  The returned copy is always terminated.
- *
- * @returns VBox status code.
- * @param   pwszSrc             UTF-16 payload to duplicate.
- * @param   cwcSrc              Exact payload size in UTF-16 code units.
- * @param   ppwszDst            Where to return the allocated terminated copy.
- *                              Free with RTUtf16Free().
- */
-int ShClHlpUtf16DupExact(PCRTUTF16 pwszSrc, size_t cwcSrc, PRTUTF16 *ppwszDst);
 
 /**
  * Converts an UTF-16 string with LF EOL to an UTF-16 string with CRLF EOL.
@@ -283,14 +268,6 @@ const char *ShClHlpModeToString(uint32_t uMode);
  * @param   uState              Clipboard transfer state value.
  */
 const char *ShClHlpTransferStateToString(uint32_t uState);
-
-/**
- * Converts a Main API clipboard event type value to a printable string.
- *
- * @returns Printable event type name.
- * @param   uEventType          Main API VBoxEventType value.
- */
-const char *ShClHlpVBoxEventTypeToString(uint32_t uEventType);
 
 /**
  * Parses a clipboard sharing mode value.

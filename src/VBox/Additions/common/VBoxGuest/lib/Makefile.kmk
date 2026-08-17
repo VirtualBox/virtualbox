@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114575 2026-06-30 15:58:06Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the common guest addition code library.
 #
@@ -164,8 +164,7 @@ ifdef VBOX_WITH_SHARED_CLIPBOARD
  	VBoxGuestR3LibClipboard.cpp
  ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
   VBoxGuestR3Lib_SOURCES  += \
-  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers-provider-local.cpp \
-  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-mime.cpp
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers-provider-local.cpp
  endif
 endif
 ifdef VBOX_WITH_SHARED_FOLDERS
