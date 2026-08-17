@@ -1,4 +1,4 @@
-/* $Id: ClipboardDataObjectImpl-win.cpp 114661 2026-07-08 10:39:13Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardDataObjectImpl-win.cpp 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * ClipboardDataObjectImpl-win.cpp - Shared Clipboard IDataObject implementation.
  */
@@ -59,8 +59,7 @@
 #endif
 
 ShClWinDataObject::ShClWinDataObject(void)
-    : m_pCtx(NULL)
-    , m_enmStatus(Uninitialized)
+    : m_enmStatus(Uninitialized)
     , m_rcStatus(VERR_IPE_UNINITIALIZED_STATUS)
     , m_lRefCount(0)
     , m_cFormats(0)
@@ -113,8 +112,6 @@ int ShClWinDataObject::Init(PSHCLCONTEXT pCtx, ShClWinDataObject::PCALLBACKS pCa
     AssertReturn(cFormats == 0 || (RT_VALID_PTR(pFormatEtc) && RT_VALID_PTR(pStgMed)), VERR_INVALID_POINTER);
 
     int rc = VINF_SUCCESS;
-
-    m_pCtx = pCtx; /* Save opaque context. */
 
     /*
      * Set up callback context + table.

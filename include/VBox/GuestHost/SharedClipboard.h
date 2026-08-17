@@ -187,21 +187,6 @@ typedef SHCLTRANSFERDIR *PSHCLTRANSFERDIR;
 VBGH_DECL(bool) ShClTransferDirIsValid(SHCLTRANSFERDIR enmDir);
 
 /**
- * Shared Clipboard data read request.
- */
-typedef struct SHCLDATAREQ
-{
-    /** In which format the data needs to be sent. */
-    SHCLFORMAT uFmt;
-    /** Read flags; currently unused. */
-    uint32_t   fFlags;
-    /** Maximum data (in byte) can be sent. */
-    uint32_t   cbSize;
-} SHCLDATAREQ;
-/** Pointer to a shared clipboard data request. */
-typedef SHCLDATAREQ *PSHCLDATAREQ;
-
-/**
  * Shared Clipboard event payload (optional).
  */
 typedef struct SHCLEVENTPAYLOAD
@@ -386,7 +371,6 @@ typedef SHCLCACHE *PSHCLCACHE;
 VBGH_DECL(void)             ShClCacheInit(PSHCLCACHE pCache);
 VBGH_DECL(void)             ShClCacheTerm(PSHCLCACHE pCache);
 VBGH_DECL(void)             ShClCacheInvalidate(PSHCLCACHE pCache);
-VBGH_DECL(void)             ShClCacheInvalidateEntry(PSHCLCACHE pCache, SHCLFORMAT uFmt);
 VBGH_DECL(PSHCLCACHEENTRY)  ShClCacheGet(PSHCLCACHE pCache, SHCLFORMAT uFmt);
 VBGH_DECL(int)              ShClCachePrep(PSHCLCACHE pCache, SHCLFORMAT uFmt, size_t cbData, void **ppvData);
 VBGH_DECL(int)              ShClCacheSet(PSHCLCACHE pCache, SHCLFORMAT uFmt, const void *pvData, size_t cbData);

@@ -1291,17 +1291,6 @@ static void shClX11SetCallbacksInternal(PSHCLX11CTX pCtx, PSHCLCALLBACKS pCallba
 }
 
 /**
- * Sets the callback table.
- *
- * @param   pCtx                The clipboard context.
- * @param   pCallbacks          Callback table to set. If NULL, the current callback table will be cleared.
- */
-void ShClX11SetCallbacks(PSHCLX11CTX pCtx, PSHCLCALLBACKS pCallbacks)
-{
-    shClX11SetCallbacksInternal(pCtx, pCallbacks);
-}
-
-/**
  * Initializes a X11 context of the Shared Clipboard.
  *
  * @returns VBox status code.

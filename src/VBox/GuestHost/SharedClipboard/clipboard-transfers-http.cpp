@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers-http.cpp 114990 2026-08-11 14:34:45Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers-http.cpp 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: HTTP server implementation for Shared Clipboard transfers on UNIX-y guests / hosts.
  */
@@ -881,9 +881,6 @@ static int shClTransferHttpServerDestroyInternal(PSHCLHTTPSERVER pSrv)
             rc = rc2;
     }
 
-    RTSemEventDestroy(pSrv->StatusEvent);
-    pSrv->StatusEvent = NIL_RTSEMEVENT;
-
     LogFlowFuncLeaveRC(rc);
     return rc;
 }
@@ -899,18 +896,10 @@ static int shClTransferHttpServerInitInternal(PSHCLHTTPSERVER pSrv)
     ASMAtomicXchgBool(&pSrv->fInitialized, false);
     ASMAtomicXchgBool(&pSrv->fRunning, false);
     pSrv->fStopping   = false;
-    pSrv->StatusEvent = NIL_RTSEMEVENT;
     pSrv->hHTTPServer = NIL_RTHTTPSERVER;
 
     int rc = RTCritSectInit(&pSrv->CritSect);
     AssertRCReturn(rc, rc);
-
-    rc = RTSemEventCreate(&pSrv->StatusEvent);
-    if (RT_FAILURE(rc))
-    {
-        RTCritSectDelete(&pSrv->CritSect);
-        return rc;
-    }
 
     pSrv->uPort       = 0;
     RTListInit(&pSrv->lstTransfers);
@@ -921,8 +910,6 @@ static int shClTransferHttpServerInitInternal(PSHCLHTTPSERVER pSrv)
     rc = RTHttpServerResponseInit(&pSrv->Resp);
     if (RT_FAILURE(rc))
     {
-        RTSemEventDestroy(pSrv->StatusEvent);
-        pSrv->StatusEvent = NIL_RTSEMEVENT;
         RTCritSectDelete(&pSrv->CritSect);
         return rc;
     }
@@ -1029,26 +1016,6 @@ int ShClTransferHttpServerStartEx(PSHCLHTTPSERVER pSrv, uint16_t uPort)
         LogRel(("Shared Clipboard: HTTP server failed to start, rc=%Rrc\n", rc));
 
     return rc;
-}
-
-/**
- * Returns a Shared Clipboard HTTP server status as a string.
- *
- * @returns Status as a string, or "Unknown" if invalid / unknown.
- * @param   enmStatus           HTTP server status to return as a string.
- */
-DECLINLINE(const char *) shClTransferHttpServerStatusToStr(SHCLHTTPSERVERSTATUS enmStatus)
-{
-    switch (enmStatus)
-    {
-        RT_CASE_RET_STR(SHCLHTTPSERVERSTATUS_NONE);
-        RT_CASE_RET_STR(SHCLHTTPSERVERSTATUS_STARTED);
-        RT_CASE_RET_STR(SHCLHTTPSERVERSTATUS_STOPPED);
-        RT_CASE_RET_STR(SHCLHTTPSERVERSTATUS_TRANSFER_REGISTERED);
-        RT_CASE_RET_STR(SHCLHTTPSERVERSTATUS_TRANSFER_UNREGISTERED);
-    }
-
-    AssertFailedReturn("Unknown");
 }
 
 /**
@@ -1488,44 +1455,7 @@ static SHCLHTTPSERVERSTATUS shclTransferHttpServerSetStatusLocked(PSHCLHTTPSERVE
     pSrv->enmStatus = enmStatus;
     LogFlowFunc(("fStatus=%#x\n", pSrv->enmStatus));
 
-    int rc2 = RTSemEventSignal(pSrv->StatusEvent);
-    AssertRC(rc2);
-
     return pSrv->enmStatus;
-}
-
-/**
- * Returns the first transfer in the list.
- *
- * @returns Pointer to first transfer if found, or NULL if not found.
- * @param   pSrv                HTTP server instance.
- */
-PSHCLTRANSFER ShClTransferHttpServerGetTransferFirst(PSHCLHTTPSERVER pSrv)
-{
-    shClTransferHttpServerLock(pSrv);
-
-    PSHCLHTTPSERVERTRANSFER pHttpTransfer = RTListGetFirst(&pSrv->lstTransfers, SHCLHTTPSERVERTRANSFER, Node);
-
-    shClTransferHttpServerUnlock(pSrv);
-
-    return pHttpTransfer ? pHttpTransfer->pTransfer : NULL;
-}
-
-/**
- * Returns the last transfer in the list.
- *
- * @returns Pointer to last transfer if found, or NULL if not found.
- * @param   pSrv                HTTP server instance.
- */
-PSHCLTRANSFER ShClTransferHttpServerGetTransferLast(PSHCLHTTPSERVER pSrv)
-{
-    shClTransferHttpServerLock(pSrv);
-
-    PSHCLHTTPSERVERTRANSFER pHttpTransfer = RTListGetLast(&pSrv->lstTransfers, SHCLHTTPSERVERTRANSFER, Node);
-
-    shClTransferHttpServerUnlock(pSrv);
-
-    return pHttpTransfer ? pHttpTransfer->pTransfer : NULL;
 }
 
 /**
@@ -1546,25 +1476,6 @@ bool ShClTransferHttpServerGetTransfer(PSHCLHTTPSERVER pSrv, SHCLTRANSFERID idTr
     shClTransferHttpServerUnlock(pSrv);
 
     return pTransfer;
-}
-
-/**
- * Returns the used TCP port number of a HTTP server instance.
- *
- * @returns TCP port number. 0 if not specified yet.
- * @param   pSrv                HTTP server instance to return port for.
- */
-uint16_t ShClTransferHttpServerGetPort(PSHCLHTTPSERVER pSrv)
-{
-    AssertPtrReturn(pSrv, 0);
-
-    shClTransferHttpServerLock(pSrv);
-
-    const uint16_t uPort = pSrv->uPort;
-
-    shClTransferHttpServerUnlock(pSrv);
-
-    return uPort;
 }
 
 /**
@@ -1789,62 +1700,6 @@ bool ShClTransferHttpServerIsRunning(PSHCLHTTPSERVER pSrv)
     AssertPtrReturn(pSrv, false);
 
     return ASMAtomicReadBool(&pSrv->fRunning);
-}
-
-/**
- * Waits for a server status change.
- *
- * @returns VBox status code.
- * @retval  VERR_STATE_CHANGED if the HTTP server was uninitialized.
- * @param   pSrv                HTTP server instance to wait for.
- * @param   fStatus             Status to wait for.
- *                              Multiple statuses are possible, @sa SHCLHTTPSERVERSTATUS.
- * @param   msTimeout           Timeout (in ms) to wait.
- */
-int ShClTransferHttpServerWaitForStatusChange(PSHCLHTTPSERVER pSrv, SHCLHTTPSERVERSTATUS fStatus, RTMSINTERVAL msTimeout)
-{
-    AssertPtrReturn(pSrv, VERR_INVALID_POINTER);
-    AssertMsgReturn(ASMAtomicReadBool(&pSrv->fInitialized), ("Server not initialized yet\n"), VERR_WRONG_ORDER);
-
-    shClTransferHttpServerLock(pSrv);
-
-    uint64_t const tsStartMs = RTTimeMilliTS();
-
-    int rc = VERR_TIMEOUT;
-
-    LogFlowFunc(("fStatus=%#x, msTimeout=%RU32 -- current is %#x\n", fStatus, msTimeout, pSrv->enmStatus));
-
-    while (RTTimeMilliTS() - tsStartMs <= msTimeout)
-    {
-        if (!pSrv->fInitialized)
-        {
-            rc = VERR_STATE_CHANGED;
-            break;
-        }
-
-        shClTransferHttpServerUnlock(pSrv); /* Leave lock before waiting. */
-
-        rc = RTSemEventWait(pSrv->StatusEvent, msTimeout);
-
-        shClTransferHttpServerLock(pSrv);
-
-        if (RT_FAILURE(rc))
-            break;
-
-        LogFlowFunc(("Current status now is: %#x\n", pSrv->enmStatus));
-        LogRel2(("Shared Clipboard: HTTP server entered status '%s'\n", shClTransferHttpServerStatusToStr(pSrv->enmStatus)));
-
-        if (pSrv->enmStatus & fStatus)
-        {
-            rc = VINF_SUCCESS;
-            break;
-        }
-    }
-
-    shClTransferHttpServerUnlock(pSrv);
-
-    LogFlowFuncLeaveRC(rc);
-    return rc;
 }
 
 

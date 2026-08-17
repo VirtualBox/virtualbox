@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 114890 2026-08-07 09:54:48Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -476,48 +476,6 @@ void ShClTransferListHandleInfoDestroy(PSHCLLISTHANDLEINFO pInfo)
 }
 
 /**
- * Allocates a transfer list header structure.
- *
- * @returns VBox status code.
- * @param   ppListHdr           Where to store the allocated transfer list header structure on success.
- */
-int ShClTransferListHdrAlloc(PSHCLLISTHDR *ppListHdr)
-{
-    int rc;
-
-    PSHCLLISTHDR pListHdr = (PSHCLLISTHDR)RTMemAllocZ(sizeof(SHCLLISTHDR));
-    if (pListHdr)
-    {
-        *ppListHdr = pListHdr;
-        rc = VINF_SUCCESS;
-    }
-    else
-        rc = VERR_NO_MEMORY;
-
-    LogFlowFuncLeaveRC(rc);
-    return rc;
-}
-
-/**
- * Frees a transfer list header structure.
- *
- * @param   pListEntry          Transfer list header structure to free.
- *                              The pointer will be invalid on return.
- */
-void ShClTransferListHdrFree(PSHCLLISTHDR pListHdr)
-{
-    if (!pListHdr)
-        return;
-
-    LogFlowFuncEnter();
-
-    ShClTransferListHdrDestroy(pListHdr);
-
-    RTMemFree(pListHdr);
-    pListHdr = NULL;
-}
-
-/**
  * Duplicates (allocates) a transfer list header structure.
  *
  * @returns Duplicated transfer list header structure on success.
@@ -641,32 +599,6 @@ int ShClTransferListOpenParmsCopy(PSHCLLISTOPENPARMS pDst, PSHCLLISTOPENPARMS pS
         ShClTransferListOpenParmsDestroy(pDst);
 
     return rc;
-}
-
-/**
- * Duplicates a transfer list open parameters structure.
- *
- * @returns Duplicated transfer list open parameters structure on success, or NULL on failure.
- * @param   pParms              Transfer list open parameters structure to duplicate.
- */
-PSHCLLISTOPENPARMS ShClTransferListOpenParmsDup(PSHCLLISTOPENPARMS pParms)
-{
-    AssertPtrReturn(pParms, NULL);
-
-    PSHCLLISTOPENPARMS pParmsDup = (PSHCLLISTOPENPARMS)RTMemAllocZ(sizeof(SHCLLISTOPENPARMS));
-    if (!pParmsDup)
-        return NULL;
-
-    int rc = ShClTransferListOpenParmsCopy(pParmsDup, pParms);
-    if (RT_FAILURE(rc))
-    {
-        ShClTransferListOpenParmsDestroy(pParmsDup);
-
-        RTMemFree(pParmsDup);
-        pParmsDup = NULL;
-    }
-
-    return pParmsDup;
 }
 
 /**
@@ -982,47 +914,6 @@ bool ShClTransferListEntryIsValid(PSHCLLISTENTRY pListEntry)
  ********************************************************************************************************************************/
 
 /**
- * Initializes a transfer object context.
- *
- * @returns VBox status code.
- * @param   pObjCtx             Transfer object context to initialize.
- */
-int ShClTransferObjCtxInit(PSHCLCLIENTTRANSFEROBJCTX pObjCtx)
-{
-    AssertPtrReturn(pObjCtx, VERR_INVALID_POINTER);
-
-    LogFlowFuncEnter();
-
-    pObjCtx->uHandle  = NIL_SHCLOBJHANDLE;
-
-    return VINF_SUCCESS;
-}
-
-/**
- * Destroys a transfer object context.
- *
- * @param   pObjCtx             Transfer object context to destroy.
- */
-void ShClTransferObjCtxDestroy(PSHCLCLIENTTRANSFEROBJCTX pObjCtx)
-{
-    AssertPtrReturnVoid(pObjCtx);
-
-    LogFlowFuncEnter();
-}
-
-/**
- * Returns if a transfer object context is valid or not.
- *
- * @returns \c true if valid, \c false if not.
- * @param   pObjCtx             Transfer object context to check.
- */
-bool ShClTransferObjCtxIsValid(PSHCLCLIENTTRANSFEROBJCTX pObjCtx)
-{
-    return (   pObjCtx
-            && pObjCtx->uHandle != NIL_SHCLOBJHANDLE);
-}
-
-/**
  * Initializes a transfer object structure.
  *
  * @returns VBox status code.
@@ -1104,37 +995,6 @@ int ShClTransferObjOpenParmsInit(PSHCLOBJOPENCREATEPARMS pParms)
     }
     else
         rc = VERR_NO_MEMORY;
-
-    LogFlowFuncLeaveRC(rc);
-    return rc;
-}
-
-/**
- * Copies a transfer object open parameters structure from source to destination.
- *
- * @returns VBox status code.
- * @param   pParmsDst           Where to copy the source transfer object open parameters to.
- * @param   pParmsSrc           Which source transfer object open parameters to copy.
- */
-int ShClTransferObjOpenParmsCopy(PSHCLOBJOPENCREATEPARMS pParmsDst, PSHCLOBJOPENCREATEPARMS pParmsSrc)
-{
-    int rc;
-
-    *pParmsDst = *pParmsSrc;
-
-    if (pParmsSrc->pszPath)
-    {
-        Assert(pParmsSrc->cbPath);
-        pParmsDst->pszPath = RTStrDup(pParmsSrc->pszPath);
-        if (pParmsDst->pszPath)
-        {
-            rc = VINF_SUCCESS;
-        }
-        else
-            rc = VERR_NO_MEMORY;
-    }
-    else
-        rc = VINF_SUCCESS;
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -1580,23 +1440,6 @@ int ShClTransferDestroy(PSHCLTRANSFER pTransfer)
 
 
 /**
- * Returns whether a transfer is in a running state or not.
- *
- * @returns @c true if in running state, or @c false if not.
- * @param   pTransfer           Clipboard transfer to return status for.
- */
-bool ShClTransferIsRunning(PSHCLTRANSFER pTransfer)
-{
-    shClTransferLock(pTransfer);
-
-    bool const fRunning = pTransfer->State.enmStatus == SHCLTRANSFERSTATUS_STARTED;
-
-    shClTransferUnlock(pTransfer);
-
-    return fRunning;
-}
-
-/**
  * Returns whether a transfer has been (successfully) completed or not.
  *
  * @returns @c true if complete, or @c false if not.
@@ -1808,28 +1651,6 @@ PSHCLLISTHANDLEINFO ShClTransferListGetByHandle(PSHCLTRANSFER pTransfer, SHCLLIS
 }
 
 /**
- * Returns the a transfer object of a transfer list.
- *
- * Currently not implemented and wil return NULL.
- *
- * @returns Pointer to transfer object, or NULL if not found / invalid.
- * @param   pTransfer           Clipboard transfer to return transfer object for.
- * @param   hList               Handle of clipboard transfer list to get object for.
- * @param   uIdx                Index of object to get.
- */
-PSHCLTRANSFEROBJ ShClTransferListGetObj(PSHCLTRANSFER pTransfer,
-                                        SHCLLISTHANDLE hList, uint64_t uIdx)
-{
-    AssertPtrReturn(pTransfer, NULL);
-
-    RT_NOREF(hList, uIdx);
-
-    LogFlowFunc(("hList=%RU64\n", hList));
-
-    return NULL;
-}
-
-/**
  * Reads a single transfer list entry.
  *
  * @returns VBox status code or VERR_NO_MORE_FILES if the end of the list has been reached.
@@ -1884,31 +1705,6 @@ int ShClTransferListWrite(PSHCLTRANSFER pTransfer, SHCLLISTHANDLE hList,
 
     LogFlowFuncLeaveRC(rc);
     return rc;
-}
-
-/**
- * Returns whether a given transfer list handle is valid or not.
- *
- * @returns \c true if list handle is valid, \c false if not.
- * @param   pTransfer           Clipboard transfer to handle.
- * @param   hList               List handle to check.
- */
-bool ShClTransferListHandleIsValid(PSHCLTRANSFER pTransfer, SHCLLISTHANDLE hList)
-{
-    bool fIsValid = false;
-
-    if (pTransfer->State.enmSource == SHCLSOURCE_LOCAL)
-    {
-        fIsValid = ShClTransferListGetByHandle(pTransfer, hList) != NULL;
-    }
-    else if (pTransfer->State.enmSource == SHCLSOURCE_REMOTE)
-    {
-        AssertFailed(); /** @todo Implement. */
-    }
-    else
-        AssertFailedStmt(fIsValid = false);
-
-    return fIsValid;
 }
 
 /**
@@ -2379,60 +2175,6 @@ int ShClTransferRootsSetFromStringList(PSHCLTRANSFER pTransfer, const char *pszR
 }
 
 /**
- * Sets the root list entries for a given clipboard transfer, UTF-16 (Unicode) version.
- *
- * @returns VBox status code.
- * @param   pTransfer           Transfer to set transfer list entries for.
- * @param   pwszRoots           Unicode string list (separated by CRLF) of root entries to set.
- *                              All entries must have the same root path.
- * @param   cbRoots             Size (in bytes) of string list. Includes zero terminator.
- *
- * @note    Accepts local paths or URI string lists (absolute only).
- */
-int ShClTransferRootsSetFromStringListUnicode(PSHCLTRANSFER pTransfer, PRTUTF16 pwszRoots, size_t cbRoots)
-{
-    AssertPtrReturn(pwszRoots, VERR_INVALID_POINTER);
-    AssertReturn(cbRoots, VERR_INVALID_PARAMETER);
-    AssertReturn(cbRoots % sizeof(RTUTF16) == 0, VERR_INVALID_PARAMETER);
-
-    size_t cwcRoots = cbRoots / sizeof(RTUTF16);
-
-    /* This may slightly overestimate the space needed. */
-#if 0
-    size_t cbDst = 0;
-    int rc = ShClHlpUtf16LenUtf8(pwszRoots, cwcRoots, &cbDst);
-    if (RT_SUCCESS(rc))
-    {
-        cbDst++; /* Add space for terminator. */
-
-        char *pszDst = (char *)RTStrAlloc(cbDst);
-        if (pszDst)
-        {
-            size_t cbActual = 0;
-            rc = ShClHlpConvUtf16CRLFToUtf8LF(pwszRoots, cwcRoots, pszDst, cbDst, &cbActual);
-            if (RT_SUCCESS(rc))
-                rc = ShClTransferRootsSetFromStringList(pTransfer, pszDst, cbActual + 1 /* Include terminator */);
-
-            RTStrFree(pszDst);
-        }
-        else
-            rc = VERR_NO_MEMORY;
-    }
-#else
-    char  *pszTmp = NULL;
-    size_t cbLenSansTerm = 0;
-    int rc = ShClHlpConvUtf16CRLFToUtf8LFA(pwszRoots, cwcRoots, &pszTmp, &cbLenSansTerm);
-    if (RT_SUCCESS(rc))
-    {
-        rc = ShClTransferRootsSetFromStringList(pTransfer, pszTmp, cbLenSansTerm + 1 /* Include terminator */);
-        RTMemFree(pszTmp);
-    }
-#endif
-
-    return rc;
-}
-
-/**
  * Sets a single path as a transfer root.
  *
  * @returns VBox status code.
@@ -2530,29 +2272,6 @@ SHCLTRANSFERDIR ShClTransferGetDir(PSHCLTRANSFER pTransfer)
     shClTransferUnlock(pTransfer);
 
     return enmDir;
-}
-
-/**
- * Returns the absolute root path of a transfer.
- *
- * @returns VBox status code.
- * @param   pTransfer           Clipboard transfer to return absolute root path for.
- * @param   pszPath             Where to store the returned path.
- * @param   cbPath              Size (in bytes) of  \a pszPath.
- */
-int ShClTransferGetRootPathAbs(PSHCLTRANSFER pTransfer, char *pszPath, size_t cbPath)
-{
-    AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
-
-    shClTransferLock(pTransfer);
-
-    AssertMsgReturn(pTransfer->pszPathRootAbs, ("Transfer has no root path set (yet)\n"), VERR_WRONG_ORDER);
-
-    int const rc = RTStrCopy(pszPath, cbPath, pTransfer->pszPathRootAbs);
-
-    shClTransferUnlock(pTransfer);
-
-    return rc;
 }
 
 /**
@@ -2981,25 +2700,6 @@ static int shClTransferWaitForStatusChangeInternal(PSHCLTRANSFER pTransfer, RTMS
 }
 
 /**
- * Waits for the transfer status to change.
- *
- * @returns VBox status code.
- * @param   pTransfer           Clipboard transfer to wait for.
- * @param   msTimeout           Timeout (in ms) to wait.
- * @param   penmStatus          Where to return the new (current) transfer status on success.
- *                              Optional and can be NULL.
- */
-int ShClTransferWaitForStatusChange(PSHCLTRANSFER pTransfer, RTMSINTERVAL msTimeout, SHCLTRANSFERSTATUS *penmStatus)
-{
-    AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
-
-    int rc = shClTransferWaitForStatusChangeInternal(pTransfer, msTimeout, penmStatus);
-
-    LogFlowFuncLeaveRC(rc);
-    return rc;
-}
-
-/**
  * Waits for a specific transfer status.
  *
  * @returns VBox status code.
@@ -3080,27 +2780,19 @@ int ShClTransferCtxInit(PSHCLTRANSFERCTX pTransferCtx)
     int rc = RTCritSectInit(&pTransferCtx->CritSect);
     if (RT_SUCCESS(rc))
     {
-        rc = RTSemEventCreate(&pTransferCtx->ChangedEvent);
-        if (RT_SUCCESS(rc))
-        {
-            RT_ZERO(pTransferCtx->ChangedEventData);
+        RTListInit(&pTransferCtx->List);
 
-            RTListInit(&pTransferCtx->List);
+        pTransferCtx->cTransfers       = 0;
+        pTransferCtx->cRunning         = 0;
+        pTransferCtx->cMaxRunning      = 64; /** @todo Make this configurable? */
+        pTransferCtx->cTransferIdsUsed = 0;
+        pTransferCtx->idSession        = NIL_SHCLSESSIONID;
+        pTransferCtx->uNextGeneration  = 1;
 
-            pTransferCtx->cTransfers       = 0;
-            pTransferCtx->cRunning         = 0;
-            pTransferCtx->cMaxRunning      = 64; /** @todo Make this configurable? */
-            pTransferCtx->cTransferIdsUsed = 0;
-            pTransferCtx->idSession        = NIL_SHCLSESSIONID;
-            pTransferCtx->uNextGeneration  = 1;
+        RT_ZERO(pTransferCtx->bmTransferIds);
+        RT_ZERO(pTransferCtx->bmTransferIdsUsed);
 
-            RT_ZERO(pTransferCtx->bmTransferIds);
-            RT_ZERO(pTransferCtx->bmTransferIdsUsed);
-
-            ShClTransferCtxReset(pTransferCtx);
-        }
-        else
-            RTCritSectDelete(&pTransferCtx->CritSect);
+        ShClTransferCtxReset(pTransferCtx);
     }
 
     return rc;
@@ -3131,9 +2823,6 @@ void ShClTransferCtxDestroy(PSHCLTRANSFERCTX pTransferCtx)
     pTransferCtx->cTransfers = 0;
 
     shClTransferCtxUnlock(pTransferCtx);
-
-    RTSemEventDestroy(pTransferCtx->ChangedEvent);
-    pTransferCtx->ChangedEvent = NIL_RTSEMEVENT;
 
     if (RTCritSectIsInitialized(&pTransferCtx->CritSect))
         RTCritSectDelete(&pTransferCtx->CritSect);
@@ -3180,7 +2869,6 @@ int ShClTransferCtxBeginSession(PSHCLTRANSFERCTX pTransferCtx, SHCLSESSIONID idS
     int rc;
     if (pTransferCtx->cTransfers == 0)
     {
-        RT_ZERO(pTransferCtx->ChangedEventData);
         RT_ZERO(pTransferCtx->bmTransferIds);
         RT_ZERO(pTransferCtx->bmTransferIdsUsed);
         pTransferCtx->idSession        = idSession;
@@ -3199,26 +2887,6 @@ int ShClTransferCtxBeginSession(PSHCLTRANSFERCTX pTransferCtx, SHCLSESSIONID idS
 
     LogFlowFuncLeaveRC(rc);
     return rc;
-}
-
-/**
- * Signals a change event.
- *
- * @returns VBox status code.
- * @param   pTransferCtx        Transfer context to return transfer for.
- * @param   fRegistered         Whether a transfer got registered or unregistered.
- * @param   pTransfer           Transfer bound to the event.
- */
-static int shClTransferCtxSignal(PSHCLTRANSFERCTX pTransferCtx, bool fRegistered, PSHCLTRANSFER pTransfer)
-{
-    Assert(RTCritSectIsOwner(&pTransferCtx->CritSect));
-
-    LogFlowFunc(("fRegistered=%RTbool, pTransfer=%p\n", fRegistered, pTransfer));
-
-    pTransferCtx->ChangedEventData.fRegistered = fRegistered;
-    pTransferCtx->ChangedEventData.pTransfer   = pTransfer;
-
-    return RTSemEventSignal(pTransferCtx->ChangedEvent);
 }
 
 /**
@@ -3363,25 +3031,6 @@ PSHCLTRANSFER ShClTransferCtxGetTransferLast(PSHCLTRANSFERCTX pTransferCtx)
 }
 
 /**
- * Returns the number of running clipboard transfers for a given transfer context.
- *
- * @returns Number of running transfers.
- * @param   pTransferCtx                Transfer context to return number for.
- */
-uint32_t ShClTransferCtxGetRunningTransfers(PSHCLTRANSFERCTX pTransferCtx)
-{
-    AssertPtrReturn(pTransferCtx, 0);
-
-    shClTransferCtxLock(pTransferCtx);
-
-    uint32_t const cRunning = pTransferCtx->cRunning;
-
-    shClTransferCtxUnlock(pTransferCtx);
-
-    return cRunning;
-}
-
-/**
  * Returns the number of total clipboard transfers for a given transfer context.
  *
  * @returns Number of total transfers.
@@ -3467,28 +3116,6 @@ static int shClTransferCreateIDInternal(PSHCLTRANSFERCTX pTransferCtx, SHCLTRANS
 }
 
 /**
- * Creates a new transfer ID for a given transfer context.
- *
- * @returns VBox status code.
- * @retval  VERR_SHCLPB_MAX_TRANSFERS_REACHED if the maximum of concurrent transfers is reached.
- * @param   pTransferCtx        Transfer context to create transfer ID for.
- * @param   pidTransfer         Where to return the transfer ID on success.
- */
-int ShClTransferCtxCreateId(PSHCLTRANSFERCTX pTransferCtx, PSHCLTRANSFERID pidTransfer)
-{
-    AssertPtrReturn(pTransferCtx, VERR_INVALID_POINTER);
-    AssertPtrReturn(pidTransfer, VERR_INVALID_POINTER);
-
-    shClTransferCtxLock(pTransferCtx);
-
-    int rc = shClTransferCreateIDInternal(pTransferCtx, pidTransfer);
-
-    shClTransferCtxUnlock(pTransferCtx);
-
-    return rc;
-}
-
-/**
  * Registers a clipboard transfer with a new transfer ID.
  *
  * @return  VBox status code.
@@ -3514,7 +3141,7 @@ static int shClTransferCtxTransferRegisterExInternal(PSHCLTRANSFERCTX pTransferC
 
     pTransferCtx->cTransfers++;
 
-    int rc = shClTransferCtxSignal(pTransferCtx, true /* fRegistered */, pTransfer);
+    int rc = VINF_SUCCESS;
 
     Log2Func(("pTransfer=%p, idTransfer=%RU32, idSession=%RU16, uGeneration=%RU64 -- now %RU16 transfer(s)\n",
               pTransfer, idTransfer, pTransferCtx->idSession, pTransfer->State.uGeneration, pTransferCtx->cTransfers));
@@ -3677,8 +3304,6 @@ int ShClTransferCtxUnregisterById(PSHCLTRANSFERCTX pTransferCtx, SHCLTRANSFERID 
     if (pTransfer)
     {
         shclTransferCtxTransferRemoveAndUnregister(pTransferCtx, pTransfer);
-
-        rc = shClTransferCtxSignal(pTransferCtx, false /* fRegistered */, pTransfer);
     }
     else if (ASMBitTest(&pTransferCtx->bmTransferIds[0], idTransfer))
     {
@@ -3692,131 +3317,6 @@ int ShClTransferCtxUnregisterById(PSHCLTRANSFERCTX pTransferCtx, SHCLTRANSFERID 
 
     LogFlowFuncLeaveRC(rc);
     return rc;
-}
-
-/**
- * Waits for a transfer context event.
- *
- * @returns VBox status code.
- * @param   pTransferCtx        Transfer context to wait for.
- * @param   msTimeout           Timeout (in ms) to wait.
- * @param   pEvent              Where to return the event data on success.
- */
-static int shClTransferCtxWaitInternal(PSHCLTRANSFERCTX pTransferCtx, RTMSINTERVAL msTimeout, PSHCLTRANSFERCTXEVENT pEvent)
-{
-    LogFlowFunc(("Waiting for transfer context change (%RU32 timeout) ...\n", msTimeout));
-
-    int rc = RTSemEventWait(pTransferCtx->ChangedEvent, msTimeout);
-    if (RT_SUCCESS(rc))
-    {
-        shClTransferCtxLock(pTransferCtx);
-
-        memcpy(pEvent, &pTransferCtx->ChangedEventData, sizeof(SHCLTRANSFERCTXEVENT));
-
-        shClTransferCtxUnlock(pTransferCtx);
-    }
-
-    LogFlowFuncLeaveRC(rc);
-    return rc;
-}
-
-/**
- * Waits for transfer to be (un-)registered.
- *
- * @returns VBox status code.
- * @param   pTransferCtx        Transfer context to wait for.
- * @param   msTimeout           Timeout (in ms) to wait.
- * @param   fRegister           Pass \c true for registering, or \c false for unregistering a transfer.
- * @param   idTransfer          Transfer ID to wait for.
- *                              Pass NIL_SHCLTRANSFERID for any transfer.
- * @param   ppTransfer          Where to return the transfer being (un-)registered. Optional and can be NULL.
- */
-int ShClTransferCtxWait(PSHCLTRANSFERCTX pTransferCtx, RTMSINTERVAL msTimeout, bool fRegister, SHCLTRANSFERID idTransfer,
-                        PSHCLTRANSFER *ppTransfer)
-{
-    AssertPtrReturn(pTransferCtx, VERR_INVALID_POINTER);
-
-    int rc = VERR_TIMEOUT;
-
-    uint64_t const tsStartMs = RTTimeMilliTS();
-    uint64_t       msLeft    = msTimeout;
-    for (;;)
-    {
-        SHCLTRANSFERCTXEVENT Event;
-        rc = shClTransferCtxWaitInternal(pTransferCtx, msLeft, &Event);
-        if (RT_FAILURE(rc))
-            break;
-
-        shClTransferCtxLock(pTransferCtx);
-
-        if (Event.fRegistered == fRegister)
-        {
-            if (   Event.pTransfer
-                && (   idTransfer == NIL_SHCLTRANSFERID
-                    || ShClTransferGetID(Event.pTransfer) == idTransfer))
-            {
-                if (ppTransfer)
-                    *ppTransfer = Event.pTransfer;
-                rc = VINF_SUCCESS;
-            }
-        }
-
-        shClTransferCtxUnlock(pTransferCtx);
-
-        if (RT_SUCCESS(rc))
-            break;
-
-        msLeft -= RT_MIN(msLeft, RTTimeMilliTS() - tsStartMs);
-        if (msLeft == 0)
-            break;
-    }
-
-    LogFlowFuncLeaveRC(rc);
-    return rc;
-}
-
-/**
- * Cleans up all associated transfers which are not needed (anymore).
- * This can be due to transfers which only have been announced but not / never being run.
- *
- * @param   pTransferCtx        Transfer context to cleanup transfers for.
- */
-void ShClTransferCtxCleanup(PSHCLTRANSFERCTX pTransferCtx)
-{
-    AssertPtrReturnVoid(pTransferCtx);
-
-    shClTransferCtxLock(pTransferCtx);
-
-    LogFlowFunc(("pTransferCtx=%p, cTransfers=%RU16 cRunning=%RU16\n",
-                 pTransferCtx, pTransferCtx->cTransfers, pTransferCtx->cRunning));
-
-    if (pTransferCtx->cTransfers == 0)
-    {
-        shClTransferCtxUnlock(pTransferCtx);
-        return;
-    }
-
-    /* Remove all transfers which are not in a running state (e.g. only announced). */
-    PSHCLTRANSFER pTransfer, pTransferNext;
-    RTListForEachSafe(&pTransferCtx->List, pTransfer, pTransferNext, SHCLTRANSFER, Node)
-    {
-        shClTransferLock(pTransfer);
-
-        SHCLTRANSFERSTATUS const enmStatus = shClTransferGetStatusLocked(pTransfer);
-        LogFlowFunc(("\tTransfer #%RU16: %s\n", pTransfer->State.uID, ShClTransferStatusToStr(enmStatus)));
-
-        if (enmStatus != SHCLTRANSFERSTATUS_STARTED)
-        {
-            shClTransferUnlock(pTransfer);
-
-            shclTransferCtxTransferRemoveAndUnregister(pTransferCtx, pTransfer);
-            ShClTransferDestroy(pTransfer);
-        }
-        else
-            shClTransferUnlock(pTransfer);
-    }
-
-    shClTransferCtxUnlock(pTransferCtx);
 }
 
 /**

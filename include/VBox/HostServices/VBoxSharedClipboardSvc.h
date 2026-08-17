@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc.h 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc.h 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - header file for shared clipboard data transfer
  * interfaces and platform-dependent backend functionality.
@@ -88,7 +88,7 @@ typedef struct SHCLCLIENTTRANSFERSTATE
 
     /** Shared Clipboard (file) transfer mode. */
     uint32_t        uTransferMode;
-} SHCLCLIENTTRANSFERSTATE, *PSHCLCLIENTTRANSFERSTATE;
+} SHCLCLIENTTRANSFERSTATE;
 
 /**
  * Structure for holding a single POD (plain old data) transfer.
@@ -107,17 +107,13 @@ typedef struct SHCLCLIENTPODSTATE
     uint64_t                cbReadWritten;
     /** Timestamp (in ms) of Last read/write operation. */
     uint64_t                tsLastReadWrittenMs;
-} SHCLCLIENTPODSTATE, *PSHCLCLIENTPODSTATE;
+} SHCLCLIENTPODSTATE;
 
 /** @name SHCLCLIENTSTATE_FLAGS_XXX
  * @note Part of saved state!
  * @{ */
 /** No Shared Clipboard client flags defined. */
 #define SHCLCLIENTSTATE_FLAGS_NONE              0
-/** Client has a guest read operation active. Currently unused. */
-#define SHCLCLIENTSTATE_FLAGS_READ_ACTIVE       RT_BIT(0)
-/** Client has a guest write operation active. Currently unused. */
-#define SHCLCLIENTSTATE_FLAGS_WRITE_ACTIVE      RT_BIT(1)
 /** @} */
 
 /**
@@ -157,9 +153,6 @@ typedef struct SHCLCLIENTLEGACYSTATE
  */
 typedef struct SHCLCLIENTSTATE
 {
-    struct SHCLCLIENTSTATE *pNext;
-    struct SHCLCLIENTSTATE *pPrev;
-
     /** Backend-dependent opaque context structure.
      *  This contains data only known to a certain backend implementation.
      *  Optional and can be NULL. */
@@ -203,7 +196,7 @@ typedef struct _SHCLIENTTRANSFERS
     SHCLTRANSFERCALLBACKS       Callbacks;
     /** Backends-specific transfers provider to use. */
     SHCLTXPROVIDER              Provider;
-} SHCLIENTTRANSFERS, *PSHCLIENTTRANSFERS;
+} SHCLIENTTRANSFERS;
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 /** Prototypes for the Shared Clipboard backend. */
@@ -563,8 +556,4 @@ int shClSvcTransferSendStatusAsync(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 /* Host unit testing interface */
-#ifdef UNIT_TEST
-uint32_t TestClipSvcGetMode(void);
-#endif
-
 #endif /* !VBOX_INCLUDED_HostServices_VBoxSharedClipboardSvc_h */
