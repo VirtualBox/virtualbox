@@ -1,4 +1,4 @@
-/* $Id: clipboard-common.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-common.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common helper objects.
  */
@@ -1184,13 +1184,12 @@ VBGH_DECL(int) ShClCacheTransferAll(PSHCLCACHE pCache, PSHCLCACHE pOtherCache)
 /**
  * Handles clipboard formats.
  *
- * This validates file transfer announcements against the negotiated transfer
- * features and keeps host-to-guest transfer offers separate from ordinary
- * clipboard formats.  Older Windows Guest Additions with transfer support
+ * This suppresses file-transfer announcements until transfers are enabled and
+ * supported by the guest, and keeps host-to-guest transfer offers separate
+ * from ordinary clipboard formats.  Older Windows Guest Additions with transfer support
  * (for example 7.2.6 and 7.2.10) expect URI-list offers to be reported on
  * their own so they can replace the normal clipboard announcement with an OLE
- * IDataObject.  Do not rely on VBOX_SHCL_GF_0_TRANSFERS_FRONTEND here, as not
- * all transfer-capable Guest Additions reliably advertise that extra bit.
+ * IDataObject.
  *
  * @returns The new Shared Clipboard formats.
  * @param   fHostToGuest        Reporting direction.
@@ -1203,28 +1202,18 @@ SHCLFORMATS shClSvcHandleFormats(bool fHostToGuest, PSHCLCLIENT pClient, SHCLFOR
 {
     SHCLFORMATS const fFormatsOrg = fFormats;
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    bool fSkipTransfers = false;
     if (fFormats & VBOX_SHCL_FMT_URI_LIST)
     {
-        uint32_t const fTransferMode = ShClSvcClientGetTransferMode(pClient);
-        if (!(fTransferMode & VBOX_SHCL_TRANSFER_MODE_F_ENABLED))
+        if (!shClSvcClientTransfersAreAllowed(pClient))
         {
-            LogRelMax(16, ("Shared Clipboard: File transfer format %#x was reported by %s, but file transfers are disabled (mode=%#x), masking it\n",
-                           VBOX_SHCL_FMT_URI_LIST, fHostToGuest ? "host" : "guest", fTransferMode));
-            fSkipTransfers = true;
-        }
-
-        uint64_t const fRequired       = VBOX_SHCL_GF_0_CONTEXT_ID | VBOX_SHCL_GF_0_TRANSFERS;
-        uint64_t const fGuestFeatures0 = ShClSvcClientGetGuestFeatures0(pClient);
-        if ((fGuestFeatures0 & fRequired) != fRequired)
-        {
-            LogRelMax(16, ("Shared Clipboard: File transfer format %#x was reported by %s, but Guest Additions did not negotiate required features (features0=%#RX64, required=%#RX64), masking it\n",
-                           VBOX_SHCL_FMT_URI_LIST, fHostToGuest ? "host" : "guest", fGuestFeatures0, fRequired));
-            fSkipTransfers = true;
-        }
-
-        if (fSkipTransfers)
+            uint32_t const fTransferMode  = ShClSvcClientGetTransferMode(pClient);
+            uint64_t const fGuestFeatures = ShClSvcClientGetGuestFeatures0(pClient);
+            uint64_t const fRequired      = VBOX_SHCL_GF_0_CONTEXT_ID | VBOX_SHCL_GF_0_TRANSFERS;
+            LogRelMax(16, ("Shared Clipboard: File transfer format %#x was reported by %s without enabled and negotiated transfers (mode=%#x, features0=%#RX64, required=%#RX64), masking it\n",
+                           VBOX_SHCL_FMT_URI_LIST, fHostToGuest ? "host" : "guest", fTransferMode,
+                           fGuestFeatures, fRequired));
             fFormats &= ~VBOX_SHCL_FMT_URI_LIST;
+        }
         else if (fHostToGuest)
         {
             if (fFormats != VBOX_SHCL_FMT_URI_LIST)
@@ -1253,6 +1242,27 @@ SHCLFORMATS shClSvcHandleFormats(bool fHostToGuest, PSHCLCLIENT pClient, SHCLFOR
 
     return fFormats;
 }
+
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/**
+ * Checks whether file transfers are enabled and supported by a client.
+ *
+ * Clipboard direction is deliberately not considered here and must be checked
+ * separately by the operation being authorized.
+ *
+ * @returns true if file transfers may be used, false otherwise.
+ * @param   pClient             Client to check.
+ */
+bool shClSvcClientTransfersAreAllowed(PSHCLCLIENT pClient)
+{
+    AssertPtrReturn(pClient, false);
+
+    uint64_t const fRequired = VBOX_SHCL_GF_0_CONTEXT_ID | VBOX_SHCL_GF_0_TRANSFERS;
+    return    (ShClSvcClientGetTransferMode(pClient) & VBOX_SHCL_TRANSFER_MODE_F_ENABLED)
+           && (ShClSvcClientGetGuestFeatures0(pClient) & fRequired) == fRequired;
+}
+#endif
 
 void ShClSvcClientLock(PSHCLCLIENT pClient)
 {

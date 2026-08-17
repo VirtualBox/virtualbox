@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-backend.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-backend.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Backend and extension bridge handling.
  */
@@ -38,7 +38,6 @@
 #include <VBox/HostServices/VBoxClipboardSvc.h>
 
 #include <iprt/assert.h>
-#include <iprt/critsect.h>
 #include <iprt/string.h>
 
 #include "VBoxSharedClipboardSvc-internal.h"
@@ -59,7 +58,7 @@ static DECLCALLBACK(int) shClSvcBackendExtensionCallback(uint32_t u32Function, u
  */
 PSHCLBACKEND ShClSvcGetBackend(void)
 {
-    return &g_ShClBackend;
+    return &g_ShClSvc.Backend;
 }
 
 
@@ -68,8 +67,8 @@ static int shClSvcBackendHostCallback(uint32_t u32Function, PSHCLEXTPARMS pvParm
     LogFlowFunc(("u32Function=%RU32, pvParms=%p, cbParms=%RU32\n", u32Function, pvParms, cbParms));
 
     int rc;
-    if (g_ExtState.pfnExtension)
-        rc = g_ExtState.pfnExtension(g_ExtState.pvExtension, u32Function, pvParms, cbParms);
+    if (g_ShClSvc.ExtState.pfnExtension)
+        rc = g_ShClSvc.ExtState.pfnExtension(g_ShClSvc.ExtState.pvExtension, u32Function, pvParms, cbParms);
     else
         rc = VERR_NOT_SUPPORTED;
 
@@ -98,7 +97,7 @@ int shClSvcBackendConnect(PSHCLCLIENT pClient)
 
     parms.u.ReadWriteData.pBackend = ShClSvcGetBackend();
     parms.u.ReadWriteData.pClient = pClient;
-    /* The backend in Main calls: ShClBackendConnect(&g_ShClBackend, pClient); */
+    /* The backend in Main calls: ShClBackendConnect(pClient->pBackend, pClient); */
     return shClSvcBackendHostCallback(VBOX_CLIPBOARD_EXT_FN_BACKEND_CONNECT, &parms, sizeof(parms));
 }
 
@@ -111,7 +110,7 @@ int shClSvcBackendSync(PSHCLCLIENT pClient)
     parms.u.ReadWriteData.pBackend = ShClSvcGetBackend();
     parms.u.ReadWriteData.pClient = pClient;
 
-    /* The backend in Main calls: ShClBackendSync(&g_ShClBackend, pClient); */
+    /* The backend in Main calls: ShClBackendSync(pClient->pBackend, pClient); */
     return shClSvcBackendHostCallback(VBOX_CLIPBOARD_EXT_FN_BACKEND_SYNC, &parms, sizeof(parms));
 }
 
@@ -123,7 +122,7 @@ void shClSvcBackendDisconnect(PSHCLCLIENT pClient)
 
     parms.u.ReadWriteData.pClient = pClient;
 
-    /* The backend in Main calls: ShClBackendDisconnect(&g_ShClBackend, pClient); */
+    /* The backend in Main calls: ShClBackendDisconnect(pClient->pBackend, pClient); */
     shClSvcBackendHostCallback(VBOX_CLIPBOARD_EXT_FN_BACKEND_DISCONNECT, &parms, sizeof(parms));
 }
 
@@ -271,25 +270,25 @@ static DECLCALLBACK(int) shClSvcBackendExtensionCallback(uint32_t u32Function, u
 
     int rc = VINF_SUCCESS;
 
+    shClSvcLock();
+
     /* Figure out if the client in charge for the service extension still is connected. */
-    ClipboardClientMap::const_iterator itClient = g_mapClients.find(g_ExtState.uClientID);
-    if (itClient != g_mapClients.end())
+    PSHCLCLIENT pClient = g_ShClSvc.pActiveClient;
+    if (pClient)
     {
-        PSHCLCLIENT pClient = itClient->second;
-        AssertPtr(pClient);
         switch (u32Function)
         {
             /* The service extension announces formats to the host. */
             case VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_HOST:
             {
-                LogFlowFunc(("VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_HOST: g_ExtState.fReadingData=%RTbool\n",
-                             g_ExtState.fReadingData));
-                if (!g_ExtState.fReadingData)
+                LogFlowFunc(("VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_HOST: fReadingData=%RTbool\n",
+                             g_ShClSvc.ExtState.fReadingData));
+                if (!g_ShClSvc.ExtState.fReadingData)
                     rc = shClSvcBackendReportFormatsToGuest(pClient, u32Format, SHCLSOURCE_REMOTE);
                 else
                 {
-                    g_ExtState.fDelayedAnnouncement = true;
-                    g_ExtState.fDelayedFormats = u32Format;
+                    g_ShClSvc.ExtState.fDelayedAnnouncement = true;
+                    g_ShClSvc.ExtState.fDelayedFormats = u32Format;
                     rc = VINF_SUCCESS;
                 }
                 break;
@@ -310,6 +309,8 @@ static DECLCALLBACK(int) shClSvcBackendExtensionCallback(uint32_t u32Function, u
     else
         rc = VERR_NOT_FOUND;
 
+    shClSvcUnlock();
+
     LogFlowFuncLeaveRC(rc);
     return rc;
 }
@@ -327,14 +328,14 @@ DECLCALLBACK(int) shClSvcRegisterExtension(void *, PFNHGCMSVCEXT pfnExtension, v
      * layers up (in ConsoleVRDPServer::ClipboardCreate()).
      */
 
-    int rc = RTCritSectEnter(&g_CritSect);
-    AssertLogRelRCReturn(rc, rc);
+    shClSvcLock();
+    int rc = VINF_SUCCESS;
 
     if (pfnExtension)
     {
         /* Install extension. */
-        g_ExtState.pfnExtension = pfnExtension;
-        g_ExtState.pvExtension  = pvExtension;
+        g_ShClSvc.ExtState.pfnExtension = pfnExtension;
+        g_ShClSvc.ExtState.pvExtension  = pvExtension;
 
         parms.u.SetCallback.pfnCallback = shClSvcBackendExtensionCallback;
 
@@ -359,13 +360,13 @@ DECLCALLBACK(int) shClSvcRegisterExtension(void *, PFNHGCMSVCEXT pfnExtension, v
         shClSvcBackendDestroy();
 
         /* Uninstall extension. */
-        g_ExtState.pvExtension  = NULL;
-        g_ExtState.pfnExtension = NULL;
+        g_ShClSvc.ExtState.pvExtension  = NULL;
+        g_ShClSvc.ExtState.pfnExtension = NULL;
 
         LogRel2(("Shared Clipboard: de-registered service extension\n"));
     }
 
-    RTCritSectLeave(&g_CritSect);
+    shClSvcUnlock();
 
     return rc;
 }

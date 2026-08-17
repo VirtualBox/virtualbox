@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-host.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-host.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Host-controlled service handling.
  */
@@ -39,7 +39,6 @@
 #include <VBox/HostServices/VBoxClipboardSvc.h>
 
 #include <iprt/assert.h>
-#include <iprt/critsect.h>
 
 #include "VBoxSharedClipboardSvc-internal.h"
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
@@ -55,9 +54,20 @@ using namespace HGCM;
 static void shClSvcHostReset(void);
 
 
+/**
+ * Sets the host-controlled Shared Clipboard mode.
+ *
+ * @returns VBox status code.
+ * @retval  VERR_NOT_SUPPORTED if @a uMode is not a VBOX_SHCL_MODE_XXX value.
+ * @param   uMode               New VBOX_SHCL_MODE_XXX value.
+ *
+ * Invalid values fail closed by switching the effective mode to
+ * VBOX_SHCL_MODE_OFF.
+ */
 int shClSvcHostModeSet(uint32_t uMode)
 {
     int rc = VERR_NOT_SUPPORTED;
+    uint32_t uModeNew = VBOX_SHCL_MODE_OFF;
 
     switch (uMode)
     {
@@ -69,18 +79,24 @@ int shClSvcHostModeSet(uint32_t uMode)
             RT_FALL_THROUGH();
         case VBOX_SHCL_MODE_BIDIRECTIONAL:
         {
-            g_uMode = uMode;
-
+            uModeNew = uMode;
             rc = VINF_SUCCESS;
             break;
         }
 
         default:
-        {
-            g_uMode = VBOX_SHCL_MODE_OFF;
             break;
-        }
     }
+
+    shClSvcLock();
+    ASMAtomicWriteU32(&g_ShClSvc.uMode, uModeNew);
+    if (g_ShClSvc.pActiveClient)
+    {
+        ShClSvcClientLock(g_ShClSvc.pActiveClient);
+        ASMAtomicWriteU32(&g_ShClSvc.pActiveClient->State.uMode, uModeNew);
+        ShClSvcClientUnlock(g_ShClSvc.pActiveClient);
+    }
+    shClSvcUnlock();
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -92,20 +108,34 @@ int shClSvcHostModeSet(uint32_t uMode)
  */
 static void shClSvcHostReset(void)
 {
-    int rc = RTCritSectEnter(&g_CritSect);
-    AssertRC(rc);
-    if (RT_FAILURE(rc))
-        return;
+    shClSvcLock();
 
-    for (ClipboardClientMap::iterator itClient = g_mapClients.begin(); itClient != g_mapClients.end(); ++itClient)
-        if (itClient->second)
-            shClSvcClientReset(itClient->second);
+    PSHCLCLIENT const pClient = g_ShClSvc.pActiveClient;
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    RTLISTANCHOR ListDestroy;
+    RTListInit(&ListDestroy);
 
-    g_ExtState.fReadingData = false;
-    g_ExtState.fDelayedAnnouncement = false;
-    g_ExtState.fDelayedFormats = 0;
+    /* Keep the client stable while claiming its transfers, but do not run
+     * platform callbacks or wait for transfer users under the service lock. */
+    if (pClient)
+        shClSvcTransferDetachAll(pClient, &ListDestroy);
 
-    RTCritSectLeave(&g_CritSect);
+    shClSvcUnlock();
+
+    shClSvcTransferDestroyDetachedAll(&ListDestroy);
+
+    shClSvcLock();
+#endif
+
+    if (   pClient
+        && g_ShClSvc.pActiveClient == pClient)
+        shClSvcClientReset(pClient);
+
+    g_ShClSvc.ExtState.fReadingData = false;
+    g_ShClSvc.ExtState.fDelayedAnnouncement = false;
+    g_ShClSvc.ExtState.fDelayedFormats = 0;
+
+    shClSvcUnlock();
 }
 
 

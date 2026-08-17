@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc.h 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc.h 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - header file for shared clipboard data transfer
  * interfaces and platform-dependent backend functionality.
@@ -41,12 +41,7 @@
 # pragma once
 #endif
 
-#include <algorithm>
-#include <list>
-#include <map>
-
 #include <iprt/asm.h>
-#include <iprt/cpp/list.h> /* For RTCList. */
 #include <iprt/list.h>
 #include <iprt/semaphore.h>
 
@@ -162,7 +157,8 @@ typedef struct SHCLCLIENTSTATE
     /** The client's session ID. */
     SHCLSESSIONID           uSessionID;
     /** Guest feature flags, VBOX_SHCL_GF_0_XXX. */
-    uint64_t                fGuestFeatures0;
+    RT_ALIGNAS_MEMB(8) uint64_t
+                            fGuestFeatures0;
     /** Guest feature flags, VBOX_SHCL_GF_1_XXX. */
     uint64_t                fGuestFeatures1;
     /** Chunk size to use for data transfers. */
@@ -245,6 +241,9 @@ typedef struct _SHCLCLIENT
     } Pending;
 } SHCLCLIENT, *PSHCLCLIENT;
 
+AssertCompileMemberAlignment(SHCLCLIENT, State.fGuestFeatures0, 8);
+AssertCompileMemberAlignment(SHCLCLIENT, State.fGuestFeatures1, 8);
+
 /**
  * Returns a client's cached Shared Clipboard mode atomically.
  *
@@ -295,55 +294,6 @@ DECLINLINE(uint32_t) ShClSvcClientGetTransferMode(PSHCLCLIENT pClient)
 }
 #endif
 
-/**
- * Structure for keeping a single event source map entry.
- * Currently empty.
- */
-typedef struct _SHCLEVENTSOURCEMAPENTRY
-{
-} SHCLEVENTSOURCEMAPENTRY;
-
-/** Map holding information about connected HGCM clients. Key is the (unique) HGCM client ID.
- *  The value is a weak pointer to PSHCLCLIENT, which is owned by HGCM. */
-typedef std::map<uint32_t, PSHCLCLIENT> ClipboardClientMap;
-
-/** Map holding information about event sources. Key is the (unique) event source ID. */
-typedef std::map<SHCLEVENTSOURCEID, SHCLEVENTSOURCEMAPENTRY> ClipboardEventSourceMap;
-
-/** Simple queue (list) which holds deferred (waiting) clients. */
-typedef std::list<uint32_t> ClipboardClientQueue;
-
-/**
- * Structure for keeping the Shared Clipboard service extension state.
- *
- * A service extension is optional, and can be installed by a host component
- * to communicate with the Shared Clipboard host service.
- */
-typedef struct _SHCLEXTSTATE
-{
-    /** Pointer to the actual service extension handle.
-     *
-     * Must return VERR_NOT_SUPPORTED if the extension didn't handle the requested function.
-     * This will invoke the regular backend then.
-     */
-    PFNHGCMSVCEXT  pfnExtension;
-    /** Opaque pointer to extension-provided data. Don't touch. */
-    void          *pvExtension;
-    /** The HGCM client ID currently assigned to this service extension.
-     *  At the moment only one HGCM client can be assigned per extension. */
-    uint32_t       uClientID;
-    /** Whether the host service is reading clipboard data currently. */
-    bool           fReadingData;
-    /** Whether the service extension has sent the clipboard formats while
-     *  the the host service is reading clipboard data from it. */
-    bool           fDelayedAnnouncement;
-    /** The actual clipboard formats announced while the host service
-     *  is reading clipboard data from the extension. */
-    uint32_t       fDelayedFormats;
-} SHCLEXTSTATE, *PSHCLEXTSTATE;
-
-extern SHCLEXTSTATE g_ExtState;
-
 /** @name Service client functions.
  * @{
  */
@@ -363,6 +313,9 @@ void shClSvcMsgSetPeekReturn(PSHCLCLIENTMSG pMsg, PVBOXHGCMSVCPARM paDstParms, u
 int shClSvcMsgSetOldWaitReturn(PSHCLCLIENTMSG pMsg, PVBOXHGCMSVCPARM paDstParms, uint32_t cDstParms);
 
 SHCLFORMATS shClSvcHandleFormats(bool fHostToGuest, PSHCLCLIENT pClient, SHCLFORMATS fFormats);
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+bool shClSvcClientTransfersAreAllowed(PSHCLCLIENT pClient);
+#endif
 /** @} */
 
 /** @name Service functions, accessible by the backends.
@@ -378,8 +331,6 @@ int ShClSvcGuestDataSignal(PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX pCmdCtx, SHCLF
 int ShClSvcReportFormats(PSHCLCLIENT pClient, SHCLFORMATS fFormats);
 PSHCLBACKEND ShClSvcGetBackend(void);
 uint32_t ShClSvcGetMode(void);
-bool ShClSvcLock(void);
-void ShClSvcUnlock(void);
 /** @} */
 
 /** @name Platform-dependent implementations for the Shared Clipboard host service ("backends"),

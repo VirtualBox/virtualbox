@@ -494,6 +494,7 @@ int ShClWinTransferDropFilesToStringList(DROPFILES *pDropFiles, char **papszList
 int ShClWinTransferGetRootsFromClipboard(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer);
 
 int ShClWinTransferCreate(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer);
+void ShClWinTransferUnregister(PSHCLTRANSFER pTransfer);
 void ShClWinTransferDestroy(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer);
 
 int ShClWinTransferCreateAndSetDataObject(PSHCLWINCTX pWinCtx, PSHCLCONTEXT pCtx, ShClWinDataObject::PCALLBACKS pCallbacks);

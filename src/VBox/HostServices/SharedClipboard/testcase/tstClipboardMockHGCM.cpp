@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMockHGCM.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardMockHGCM.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard host service test case.
  */
@@ -500,10 +500,10 @@ static void testTransferStatusContextRouting(void)
         }
         PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(&pClient->Transfers.Ctx, idTargetTransfer);
         if (pTransfer)
-            ShClSvcTransferDestroy(pClient, pTransfer);
+            ShClSvcTransferDestroyById(pClient, idTargetTransfer);
         pTransfer = ShClTransferCtxGetTransferById(&pClient->Transfers.Ctx, idAmbientTransfer);
         if (pTransfer)
-            ShClSvcTransferDestroy(pClient, pTransfer);
+            ShClSvcTransferDestroyById(pClient, idAmbientTransfer);
     }
     if (fGuestCtxInit)
     {

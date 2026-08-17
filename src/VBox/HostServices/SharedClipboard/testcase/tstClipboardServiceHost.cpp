@@ -1,4 +1,4 @@
-/* $Id: tstClipboardServiceHost.cpp 114974 2026-08-10 17:47:03Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardServiceHost.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard host service test case.
  */
@@ -692,7 +692,7 @@ static void testTransferHostCancelError(void)
     RTTESTI_CHECK(pTransferRequested != NULL);
     SHCLTRANSFERID const idTransferRequested = ShClTransferGetID(pTransferRequested);
     testGetTransferStatusMessage(&table, g_Client.State.uSessionID, idTransferRequested, SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
-    ShClSvcTransferDestroy(&g_Client, pTransferRequested);
+    ShClSvcTransferDestroyById(&g_Client, idTransferRequested);
 
     SHCLSESSIONID const idSessionBeforeReset = g_Client.State.uSessionID;
     rc = table.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_CANCEL, 0, parms);
@@ -721,6 +721,8 @@ static void testTransferHostCancelError(void)
     RTTESTI_CHECK(idSessionCancel == g_Client.State.uSessionID);
     RTTESTI_CHECK(uGenerationCancel != 0);
     RTTESTI_CHECK(uGenerationCancel != NIL_SHCLTRANSFERGEN);
+    ShClTransferRelease(pTransfer);
+    pTransfer = NULL;
 
     testSetTransferKeyParms(parms, idSessionCancel + 1, idTransferCancel, uGenerationCancel);
     rc = table.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_CANCEL, 2, parms);
@@ -764,6 +766,8 @@ static void testTransferHostCancelError(void)
     SHCLSESSIONID const idSessionError = ShClTransferGetSessionId(pTransfer);
     SHCLTRANSFERID const idTransferError = ShClTransferGetID(pTransfer);
     SHCLTRANSFERGEN const uGenerationError = ShClTransferGetGeneration(pTransfer);
+    ShClTransferRelease(pTransfer);
+    pTransfer = NULL;
 
     testSetTransferKeyParms(parms, idSessionError, idTransferError, uGenerationError);
     rc = table.pfnHostCall(NULL, VBOX_SHCL_HOST_FN_ERROR, 2, parms);

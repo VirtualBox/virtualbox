@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendDarwin.cpp 114987 2026-08-11 13:50:56Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendDarwin.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host.
  */
@@ -196,7 +196,7 @@ static int vboxClipboardChanged(SHCLCONTEXT *pCtx, bool fForce)
         if (   RT_SUCCESS(vrc)
             && fChanged)
         {
-            uint32_t const uMode = pCtx->pClient->State.uMode;
+            uint32_t const uMode = ShClSvcClientGetMode(pCtx->pClient);
             if (   uMode == VBOX_SHCL_MODE_BIDIRECTIONAL
                 || uMode == VBOX_SHCL_MODE_HOST_TO_GUEST)
                 vrc = shClBackendReportFormatsToGuestAndMain(pCtx->pClient, fFormats);

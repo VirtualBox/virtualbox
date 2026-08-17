@@ -1,4 +1,4 @@
-/* $Id: VBoxClipboard.cpp 114414 2026-06-17 21:44:21Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxClipboard.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxClipboard - Shared clipboard, Windows Guest Implementation.
  */
@@ -94,6 +94,8 @@ static char s_szClipWndClassName[] = SHCL_WIN_WNDCLASS_NAME;
 *********************************************************************************************************************************/
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 static DECLCALLBACK(void) vbtrShClTransferCreatedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx);
+static DECLCALLBACK(void) vbtrShClTransferUnregisteredCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx,
+                                                               PSHCLTRANSFERCTX pTransferCtx);
 static DECLCALLBACK(void) vbtrShClTransferDestroyCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx);
 static DECLCALLBACK(void) vbtrShClTransferInitializedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx);
 static DECLCALLBACK(void) vbtrShClTransferStartedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx);
@@ -140,6 +142,25 @@ static DECLCALLBACK(void) vbtrShClTransferCreatedCallback(PSHCLTRANSFERCALLBACKC
     int rc = ShClWinTransferCreate(&pCtx->Win, pCbCtx->pTransfer);
 
     LogRelFlowFuncLeaveRC(rc);
+}
+
+/**
+ * @copydoc SHCLTRANSFERCALLBACKS::pfnOnUnregistered
+ *
+ * Disables the IDataObject and drops its long-lived transfer reference before
+ * consuming teardown waits for temporary transfer users.
+ *
+ * @thread  Clipboard main thread.
+ */
+static DECLCALLBACK(void) vbtrShClTransferUnregisteredCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx,
+                                                               PSHCLTRANSFERCTX pTransferCtx)
+{
+    RT_NOREF(pTransferCtx);
+
+    PSHCLTRANSFER pTransfer = pCbCtx->pTransfer;
+    AssertPtr(pTransfer);
+
+    ShClWinTransferUnregister(pTransfer);
 }
 
 /**
@@ -1032,13 +1053,14 @@ DECLCALLBACK(int) vbtrShClWorker(void *pvInstance, bool volatile *pfShutdown)
     pCtx->CmdCtx.Transfers.Callbacks.pvUser = pCtx; /* Assign context as user-provided callback data. */
     pCtx->CmdCtx.Transfers.Callbacks.cbUser = sizeof(SHCLCONTEXT);
 
-    pCtx->CmdCtx.Transfers.Callbacks.pfnOnCreated     = vbtrShClTransferCreatedCallback;
-    pCtx->CmdCtx.Transfers.Callbacks.pfnOnDestroy     = vbtrShClTransferDestroyCallback;
-    pCtx->CmdCtx.Transfers.Callbacks.pfnOnInitialize  = vbtrShClTransferInitializeCallback;
-    pCtx->CmdCtx.Transfers.Callbacks.pfnOnInitialized = vbtrShClTransferInitializedCallback;
-    pCtx->CmdCtx.Transfers.Callbacks.pfnOnStarted     = vbtrShClTransferStartedCallback;
-    pCtx->CmdCtx.Transfers.Callbacks.pfnOnCompleted   = vbtrShClTransferCompletedCallback;
-    pCtx->CmdCtx.Transfers.Callbacks.pfnOnError       = vbtrShClTransferErrorCallback;
+    pCtx->CmdCtx.Transfers.Callbacks.pfnOnCreated      = vbtrShClTransferCreatedCallback;
+    pCtx->CmdCtx.Transfers.Callbacks.pfnOnUnregistered = vbtrShClTransferUnregisteredCallback;
+    pCtx->CmdCtx.Transfers.Callbacks.pfnOnDestroy      = vbtrShClTransferDestroyCallback;
+    pCtx->CmdCtx.Transfers.Callbacks.pfnOnInitialize   = vbtrShClTransferInitializeCallback;
+    pCtx->CmdCtx.Transfers.Callbacks.pfnOnInitialized  = vbtrShClTransferInitializedCallback;
+    pCtx->CmdCtx.Transfers.Callbacks.pfnOnStarted      = vbtrShClTransferStartedCallback;
+    pCtx->CmdCtx.Transfers.Callbacks.pfnOnCompleted    = vbtrShClTransferCompletedCallback;
+    pCtx->CmdCtx.Transfers.Callbacks.pfnOnError        = vbtrShClTransferErrorCallback;
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
     int rc;

@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc.cpp 115046 2026-08-17 14:58:27Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Host service entry points.
  */
@@ -274,61 +274,63 @@ SHCLSERVICE g_ShClSvc;
 
 
 /**
+ * Acquires the service-global critical section.
+ *
+ * Lock acquisition is an internal service-lifetime invariant.  Failures are
+ * reported by a debug assertion rather than propagated to callers.
+ */
+void shClSvcLock(void)
+{
+    int const rc = RTCritSectEnter(&g_ShClSvc.CritSect);
+    AssertRC(rc);
+}
+
+
+/**
+ * Releases the service-global critical section.
+ *
+ * Lock release is an internal service-lifetime invariant.  Failures are
+ * reported by a debug assertion rather than propagated to callers.
+ */
+void shClSvcUnlock(void)
+{
+    int const rc = RTCritSectLeave(&g_ShClSvc.CritSect);
+    AssertRC(rc);
+}
+
+
+/**
  * Returns the current Shared Clipboard service mode.
  *
  * @returns Current Shared Clipboard service mode.
  */
 uint32_t ShClSvcGetMode(void)
 {
-    return g_uMode;
+    return ASMAtomicReadU32(&g_ShClSvc.uMode);
 }
-
-
-
-/**
- * Takes the global Shared Clipboard service lock.
- *
- * @returns \c true if locking was successful, or \c false if not.
- */
-bool ShClSvcLock(void)
-{
-    return RT_SUCCESS(RTCritSectEnter(&g_CritSect));
-}
-
-/**
- * Unlocks the formerly locked global Shared Clipboard service lock.
- */
-void ShClSvcUnlock(void)
-{
-    int rc2 = RTCritSectLeave(&g_CritSect);
-    AssertRC(rc2);
-}
-
 
 
 static int shClSvcInit(VBOXHGCMSVCFNTABLE *pTable)
 {
-    int rc = RTCritSectInit(&g_CritSect);
+    int rc = RTCritSectInit(&g_ShClSvc.CritSect);
 
     if (RT_SUCCESS(rc))
     {
         shClSvcHostModeSet(VBOX_SHCL_MODE_OFF);
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-        g_idNextSession = 1;
-#endif
+        g_ShClSvc.idNextSession = 1;
 
         /* Normally we would call ShClBackendInit() here but the service extension
          * has not been loaded at this early stage of the Shared Clipboard service
          * bringup so thus we save the HGCM service function table now so that we can
          * pass it along to ShClBackendInit() later at shClSvcConnect() time. */
-        g_pTable = pTable;
+        g_ShClSvc.pTable = pTable;
 
         /* Clean up on failure, because 'shClSvcUnload' will not be called
          * if 'shClSvcInit' returns an error.
          */
         if (RT_FAILURE(rc))
         {
-            RTCritSectDelete(&g_CritSect);
+            RTCritSectDelete(&g_ShClSvc.CritSect);
         }
     }
 
@@ -341,7 +343,7 @@ static DECLCALLBACK(int) shClSvcUnload(void *)
 
     shClSvcBackendDestroy();
 
-    RTCritSectDelete(&g_CritSect);
+    RTCritSectDelete(&g_ShClSvc.CritSect);
 
     return VINF_SUCCESS;
 }
@@ -353,15 +355,11 @@ static DECLCALLBACK(int) shClSvcDisconnect(void *, uint32_t u32ClientID, void *p
     PSHCLCLIENT pClient = (PSHCLCLIENT)pvClient;
     AssertPtr(pClient);
 
-    /* In order to communicate with guest service, HGCM VRDP clipboard extension
-     * needs to know its connection client ID. Currently, in shClSvcConnect() we always
-     * cache ID of the first ever connected client. When client disconnects,
-     * we need to forget its ID and let shClSvcConnect() pick up the next ID when a new
-     * connection will be requested by guest service (see #10115). */
-    if (g_ExtState.uClientID == u32ClientID)
-    {
-        g_ExtState.uClientID = 0;
-    }
+    shClSvcLock();
+    Assert(g_ShClSvc.pActiveClient == pClient);
+    if (g_ShClSvc.pActiveClient == pClient)
+        g_ShClSvc.pActiveClient = NULL;
+    shClSvcUnlock();
 
     shClSvcBackendDisconnect(pClient);
 
@@ -376,19 +374,29 @@ static DECLCALLBACK(int) shClSvcConnect(void *, uint32_t u32ClientID, void *pvCl
 
     PSHCLCLIENT pClient = (PSHCLCLIENT)pvClient;
     AssertPtr(pvClient);
-    pClient->pBackend = &g_ShClBackend;
+    pClient->pBackend = &g_ShClSvc.Backend;
 
     int rc = ShClSvcClientInit(pClient, u32ClientID);
     if (RT_SUCCESS(rc))
     {
-        /* Assign weak pointer to client map. */
-        /** @todo r=bird: The g_mapClients is only there for looking up
-         *        g_ExtState.uClientID (unserialized btw), so why not use store the
-         *        pClient value directly in g_ExtState instead of the ID?  It cannot
-         *        crash any worse that racing map insertion/removal. */
-        g_mapClients[u32ClientID] = pClient; /** @todo Handle OOM / collisions? */
+        shClSvcLock();
 
-        rc = shClSvcBackendInit(g_pTable);
+        if (g_ShClSvc.pActiveClient)
+        {
+            shClSvcUnlock();
+            shClSvcClientDestroy(pClient);
+            return VERR_RESOURCE_BUSY;
+        }
+
+        /* Refresh the backend policy cache and publish the client while holding
+         * the service lock, so that policy changes cannot miss this client. */
+        ASMAtomicWriteU32(&pClient->State.uMode, ShClSvcGetMode());
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+        ASMAtomicWriteU32(&pClient->State.Transfers.uTransferMode, shClSvcTransferModeGet());
+#endif
+        g_ShClSvc.pActiveClient = pClient;
+
+        rc = shClSvcBackendInit(g_ShClSvc.pTable);
         if (RT_SUCCESS(rc))
         {
             rc = shClSvcBackendConnect(pClient);
@@ -397,18 +405,11 @@ static DECLCALLBACK(int) shClSvcConnect(void *, uint32_t u32ClientID, void *pvCl
                 rc = shClSvcBackendSync(pClient);
                 if (RT_SUCCESS(rc))
                 {
-                    /* For now we ASSUME that the first client that connects is in charge for
-                       communicating with the service extension. */
-                    /** @todo This isn't optimal, but only the guest really knows which client is in
-                     *        focus on the console. See @bugref{10115} for details. */
-                    if (g_ExtState.uClientID == 0)
-                        g_ExtState.uClientID = u32ClientID;
-
                     /* The sync could return VINF_NO_CHANGE if nothing has changed on the host, but
                        older Guest Additions didn't use RT_SUCCESS to but == VINF_SUCCESS to check for
                        success.  So just return VINF_SUCCESS here to not break older Guest Additions. */
-                    LogFunc(("Successfully connected client %#x%s\n",
-                             u32ClientID, g_ExtState.uClientID == u32ClientID ? " - Use by ExtState too" : ""));
+                    LogFunc(("Successfully connected client %#x\n", u32ClientID));
+                    shClSvcUnlock();
                     return VINF_SUCCESS;
                 }
                 LogFunc(("ShClBackendSync failed: %Rrc\n", rc));
@@ -417,6 +418,9 @@ static DECLCALLBACK(int) shClSvcConnect(void *, uint32_t u32ClientID, void *pvCl
             LogFunc(("ShClBackendConnect failed: %Rrc\n", rc));
         }
         LogFunc(("ShClBackendInit failed: %Rrc\n", rc));
+        Assert(g_ShClSvc.pActiveClient == pClient);
+        g_ShClSvc.pActiveClient = NULL;
+        shClSvcUnlock();
 
         shClSvcClientDestroy(pClient);
     }
@@ -777,18 +781,16 @@ extern "C" DECLCALLBACK(DECLEXPORT(int)) VBoxHGCMSvcLoad(VBOXHGCMSVCFNTABLE *pTa
         }
         else
         {
-            g_pHelpers = pTable->pHelpers;
+            g_ShClSvc.pHelpers = pTable->pHelpers;
 
             pTable->cbClient = sizeof(SHCLCLIENT);
 
             /* Map legacy clients to root. */
             pTable->idxLegacyClientCategory = HGCM_CLIENT_CATEGORY_ROOT;
 
-            /* Limit the number of clients to 128 in each category (should be enough),
-               but set kernel clients to 1. */
+            /* Main and the native clipboard backends support one active client. */
             for (uintptr_t i = 0; i < RT_ELEMENTS(pTable->acMaxClients); i++)
-                pTable->acMaxClients[i] = 128;
-            pTable->acMaxClients[HGCM_CLIENT_CATEGORY_KERNEL] = 1;
+                pTable->acMaxClients[i] = 1;
 
             /* Only 16 pending calls per client (1 should be enough). */
             for (uintptr_t i = 0; i < RT_ELEMENTS(pTable->acMaxClients); i++)

@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendX11.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendX11.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - X11 backend.
  */
@@ -179,20 +179,30 @@ static void shClSvcX11TransferPublishedCancel(PSHCLCONTEXT pCtx)
     if (idTransfer == NIL_SHCLTRANSFERID)
         return;
 
-    PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferById(&pCtx->pClient->Transfers.Ctx, idTransfer);
+    PSHCLTRANSFER pTransfer = ShClTransferCtxGetTransferByIdRetained(&pCtx->pClient->Transfers.Ctx, idTransfer);
     if (   pTransfer
         && shClSvcX11TransferKeyMatches(idTransfer, uGeneration, pTransfer))
     {
         SHCLTRANSFERSTATUS const enmStatus = ShClTransferGetStatus(pTransfer);
         if (enmStatus != SHCLTRANSFERSTATUS_STARTED)
-            ShClSvcTransferDestroy(pCtx->pClient, pTransfer);
+        {
+            ShClTransferRelease(pTransfer);
+            ShClSvcTransferDestroyById(pCtx->pClient, idTransfer);
+        }
         else
+        {
             LogRel2(("Shared Clipboard: Keeping superseded X11 transfer %RU16/%RU64 alive while it is in use\n",
                      idTransfer, uGeneration));
+            ShClTransferRelease(pTransfer);
+        }
     }
     else
+    {
+        if (pTransfer)
+            ShClTransferRelease(pTransfer);
         LogRel2(("Shared Clipboard: Published X11 transfer %RU16/%RU64 was already gone or replaced\n",
                  idTransfer, uGeneration));
+    }
 }
 
 /** Starts the persistent host-side X11 transfer preparation worker. */
@@ -397,7 +407,7 @@ int ShClBackendSync(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
 
     LogFlowFuncEnter();
 
-    uint32_t uMode = pClient->State.uMode;
+    uint32_t uMode = ShClSvcClientGetMode(pClient);
     if (   uMode == VBOX_SHCL_MODE_BIDIRECTIONAL
         || uMode == VBOX_SHCL_MODE_HOST_TO_GUEST)
     { /* likely */ }
@@ -631,7 +641,7 @@ static DECLCALLBACK(int) shClSvcX11ReportFormatsCallback(PSHCLCONTEXT pCtx, uint
     PSHCLCLIENT pClient = pCtx->pClient;
     AssertPtr(pClient);
 
-    uint32_t uMode = pClient->State.uMode;
+    uint32_t uMode = ShClSvcClientGetMode(pClient);
     if (   uMode == VBOX_SHCL_MODE_BIDIRECTIONAL
         || uMode == VBOX_SHCL_MODE_HOST_TO_GUEST)
     { /* likely */ }
@@ -773,8 +783,17 @@ static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, ui
 
     RTStrFree(pszUriList);
 
-    if (!fPublished && pTransfer)
-        ShClSvcTransferDestroy(pClient, pTransfer);
+    if (pTransfer)
+    {
+        /* ShClSvcTransferCreate returns a retained transfer.  Drop that
+         * ownership before a consuming destroy can wait for users. */
+        ShClTransferRelease(pTransfer);
+        pTransfer = NULL;
+    }
+
+    if (   !fPublished
+        && ShClTransferIdIsValid(idTransfer))
+        ShClSvcTransferDestroyById(pClient, idTransfer);
 
     if (fPublished)
         LogRel2(("Shared Clipboard: Advertised cached host X11 URI list for transfer %RU16/%RU64, offer generation %RU64\n",

@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.h 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.h 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal header for transfer (list) handling.
  */
@@ -35,8 +35,13 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient, VBOXHGCMCALLHANDLE call
                                     uint32_t cParms, VBOXHGCMSVCPARM paParms[], uint64_t tsArrival);
 int ShClSvcTransferMsgHostHandler(uint32_t u32Function, uint32_t cParms, VBOXHGCMSVCPARM paParms[]);
 
+/** Returns a retained transfer in @a ppTransfer; the caller must release it. */
 int ShClSvcTransferCreate(PSHCLCLIENT pClient, SHCLTRANSFERDIR enmDir, SHCLSOURCE enmSource, SHCLTRANSFERID idTransfer, PSHCLTRANSFER *ppTransfer);
 void ShClSvcTransferDestroy(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer);
+void ShClSvcTransferDestroyById(PSHCLCLIENT pClient, SHCLTRANSFERID idTransfer);
+void ShClSvcTransferDestroyByIdEx(PSHCLCLIENT pClient, SHCLTRANSFERID idTransfer, bool fNotifyGuest);
+void shClSvcTransferDetachAll(PSHCLCLIENT pClient, PRTLISTANCHOR pList);
+void shClSvcTransferDestroyDetachedAll(PRTLISTANCHOR pList);
 int ShClSvcTransferInit(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer);
 int ShClSvcTransferStart(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer);
 void shClSvcTransferDestroyAll(PSHCLCLIENT pClient);
