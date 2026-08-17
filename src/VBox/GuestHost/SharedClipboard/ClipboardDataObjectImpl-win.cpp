@@ -1,4 +1,4 @@
-/* $Id: ClipboardDataObjectImpl-win.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardDataObjectImpl-win.cpp 115052 2026-08-17 15:35:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * ClipboardDataObjectImpl-win.cpp - Shared Clipboard IDataObject implementation.
  */
@@ -1555,18 +1555,20 @@ void ShClWinDataObject::registerStreamLocked(ShClWinStreamImpl *pStream)
  */
 void ShClWinDataObject::invalidateStreams(void)
 {
-    StreamList lstStreams;
-
-    lock();
-    lstStreams.swap(m_lstStreams);
-    unlock();
-
-    StreamList::const_iterator it = lstStreams.cbegin();
-    while (it != lstStreams.cend())
+    for (;;)
     {
-        (*it)->Invalidate();
-        (*it)->Release();
-        ++it;
+        lock();
+        if (m_lstStreams.empty())
+        {
+            unlock();
+            break;
+        }
+        ShClWinStreamImpl *pStream = m_lstStreams.back();
+        m_lstStreams.pop_back();
+        unlock();
+
+        pStream->Invalidate();
+        pStream->Release();
     }
 }
 

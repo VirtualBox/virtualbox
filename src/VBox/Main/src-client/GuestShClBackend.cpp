@@ -1,4 +1,4 @@
-/* $Id: GuestShClBackend.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClBackend.cpp 115052 2026-08-17 15:35:37Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Native backend dispatcher implementation.
  */
@@ -51,7 +51,7 @@ ShClBackend::~ShClBackend(void)
 int ShClBackend::init(void)
 {
     AssertPtrReturn(m_pOps, VERR_INVALID_STATE);
-    AssertPtrReturn(m_pOps->pfnInit, VERR_INVALID_STATE);
+    AssertReturn(m_pOps->pfnInit != NULL, VERR_INVALID_STATE);
     return m_pOps->pfnInit();
 }
 
@@ -59,7 +59,7 @@ int ShClBackend::init(void)
 void ShClBackend::destroy(void)
 {
     AssertPtrReturnVoid(m_pOps);
-    AssertPtrReturnVoid(m_pOps->pfnDestroy);
+    AssertReturnVoid(m_pOps->pfnDestroy != NULL);
     m_pOps->pfnDestroy();
 }
 
@@ -76,7 +76,7 @@ int ShClBackend::connect(GuestShClConn *pConn)
 {
     AssertPtrReturn(pConn, VERR_INVALID_POINTER);
     AssertPtrReturn(m_pOps, VERR_INVALID_STATE);
-    AssertPtrReturn(m_pOps->pfnConnect, VERR_INVALID_STATE);
+    AssertReturn(m_pOps->pfnConnect != NULL, VERR_INVALID_STATE);
     AssertReturn(m_pCtx == NULL, VERR_RESOURCE_BUSY);
 
     PSHCLCONTEXT pCtx = NULL;
@@ -95,7 +95,7 @@ int ShClBackend::connect(GuestShClConn *pConn)
 int ShClBackend::disconnect(void)
 {
     AssertPtrReturn(m_pOps, VERR_INVALID_STATE);
-    AssertPtrReturn(m_pOps->pfnDisconnect, VERR_INVALID_STATE);
+    AssertReturn(m_pOps->pfnDisconnect != NULL, VERR_INVALID_STATE);
     AssertPtrReturn(m_pCtx, VERR_INVALID_STATE);
 
     PSHCLCONTEXT const pCtx = m_pCtx;
