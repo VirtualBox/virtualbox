@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 115042 2026-08-15 14:51:14Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 115059 2026-08-17 17:02:20Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -1631,9 +1631,12 @@ static int dxViewDestroy(DXVIEW *pDXView)
              pDXView->cid, pDXView->sid, pDXView->viewId, pDXView->enmViewType));
     if (pDXView->u.pView)
     {
+        pDXView->cid         = SVGA3D_INVALID_ID;
+        pDXView->sid         = SVGA3D_INVALID_ID;
+        pDXView->viewId      = SVGA3D_INVALID_ID;
+        pDXView->enmViewType = VMSVGA3D_VIEWTYPE_NONE;
         D3D_RELEASE(pDXView->u.pView);
         RTListNodeRemove(&pDXView->nodeSurfaceView);
-        RT_ZERO(*pDXView);
     }
 
     return VINF_SUCCESS;
@@ -1652,14 +1655,27 @@ static int dxViewInit(DXVIEW *pDXView, PVMSVGA3DSURFACE pSurface, VMSVGA3DDXCONT
     LogFunc(("cid = %u, sid = %u, viewId = %u, type = %u\n",
               pDXView->cid, pDXView->sid, pDXView->viewId, pDXView->enmViewType));
 
-DXVIEW *pIter, *pNext;
-RTListForEachSafe(&pSurface->pBackendSurface->listView, pIter, pNext, DXVIEW, nodeSurfaceView)
-{
-    AssertPtr(pNext);
-    LogFunc(("pIter=%p, pNext=%p\n", pIter, pNext));
-}
+#ifdef LOG_ENABLED
+    DXVIEW *pIter, *pNext;
+    RTListForEachSafe(&pSurface->pBackendSurface->listView, pIter, pNext, DXVIEW, nodeSurfaceView)
+    {
+        AssertPtr(pNext);
+        LogFunc(("pIter=%p, pNext=%p\n", pIter, pNext));
+    }
+#endif
 
     return VINF_SUCCESS;
+}
+
+
+static void dxViewInit(DXVIEW *pDXView)
+{
+    pDXView->cid         = SVGA3D_INVALID_ID;
+    pDXView->sid         = SVGA3D_INVALID_ID;
+    pDXView->viewId      = SVGA3D_INVALID_ID;
+    pDXView->enmViewType = VMSVGA3D_VIEWTYPE_NONE;
+    pDXView->u.pView     = NULL;
+    RT_ZERO(pDXView->nodeSurfaceView);
 }
 
 
@@ -11239,11 +11255,13 @@ static DECLCALLBACK(int) vmsvga3dBackDXSetCOTable(PVGASTATECC pThisCC, PVMSVGA3D
                                   sizeof(pBackendDXContext->paRenderTargetView[0]), pDXContext->cot.cRTView, cValidEntries);
             AssertRCBreak(rc);
 
-            for (uint32_t i = 0; i < cValidEntries; ++i)
+            for (uint32_t i = 0; i < pBackendDXContext->cRenderTargetView; ++i)
             {
                 DXVIEW *pDXView = &pBackendDXContext->paRenderTargetView[i];
-                if (pDXView->u.pView)
+                if (i < cValidEntries && pDXView->u.pView)
                     dxViewAddToList(pThisCC, pDXView);
+                else
+                    dxViewInit(pDXView);
             }
 #endif
             break;
@@ -11298,11 +11316,13 @@ static DECLCALLBACK(int) vmsvga3dBackDXSetCOTable(PVGASTATECC pThisCC, PVMSVGA3D
                                   sizeof(pBackendDXContext->paDepthStencilView[0]), pDXContext->cot.cDSView, cValidEntries);
             AssertRCBreak(rc);
 
-            for (uint32_t i = 0; i < cValidEntries; ++i)
+            for (uint32_t i = 0; i < pBackendDXContext->cDepthStencilView; ++i)
             {
                 DXVIEW *pDXView = &pBackendDXContext->paDepthStencilView[i];
-                if (pDXView->u.pView)
+                if (i < cValidEntries && pDXView->u.pView)
                     dxViewAddToList(pThisCC, pDXView);
+                else
+                    dxViewInit(pDXView);
             }
 #endif
             break;
@@ -11357,11 +11377,13 @@ static DECLCALLBACK(int) vmsvga3dBackDXSetCOTable(PVGASTATECC pThisCC, PVMSVGA3D
                                   sizeof(pBackendDXContext->paShaderResourceView[0]), pDXContext->cot.cSRView, cValidEntries);
             AssertRCBreak(rc);
 
-            for (uint32_t i = 0; i < cValidEntries; ++i)
+            for (uint32_t i = 0; i < pBackendDXContext->cShaderResourceView; ++i)
             {
                 DXVIEW *pDXView = &pBackendDXContext->paShaderResourceView[i];
-                if (pDXView->u.pView)
+                if (i < cValidEntries && pDXView->u.pView)
                     dxViewAddToList(pThisCC, pDXView);
+                else
+                    dxViewInit(pDXView);
             }
 #endif
             break;
@@ -11695,11 +11717,13 @@ static DECLCALLBACK(int) vmsvga3dBackDXSetCOTable(PVGASTATECC pThisCC, PVMSVGA3D
                                   sizeof(pBackendDXContext->paUnorderedAccessView[0]), pDXContext->cot.cUAView, cValidEntries);
             AssertRCBreak(rc);
 
-            for (uint32_t i = 0; i < cValidEntries; ++i)
+            for (uint32_t i = 0; i < pBackendDXContext->cUnorderedAccessView; ++i)
             {
                 DXVIEW *pDXView = &pBackendDXContext->paUnorderedAccessView[i];
-                if (pDXView->u.pView)
+                if (i < cValidEntries && pDXView->u.pView)
                     dxViewAddToList(pThisCC, pDXView);
+                else
+                    dxViewInit(pDXView);
             }
 #endif
             break;
@@ -12856,7 +12880,7 @@ static int dxCreateVideoDecoderOutputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEX
         return VERR_INVALID_PARAMETER;
 
     DXVIEW *pView = &pDXContext->pBackendDXContext->paVideoDecoderOutputView[videoDecoderOutputViewId];
-    Assert(pView->u.pView == NULL);
+    AssertStmt(pView->u.pView == NULL, dxViewDestroy(pView));
 
     D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC Desc;
     RT_ZERO(Desc);
@@ -12887,7 +12911,7 @@ static int dxCreateVideoProcessorInputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTE
         return VERR_INVALID_PARAMETER;
 
     DXVIEW *pView = &pDXContext->pBackendDXContext->paVideoProcessorInputView[videoProcessorInputViewId];
-    Assert(pView->u.pView == NULL);
+    AssertStmt(pView->u.pView == NULL, dxViewDestroy(pView));
 
     D3D11_VIDEO_PROCESSOR_CONTENT_DESC ContentDesc;
     RT_ZERO(ContentDesc);
@@ -12937,7 +12961,7 @@ static int dxCreateVideoProcessorOutputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONT
         return VERR_INVALID_PARAMETER;
 
     DXVIEW *pView = &pDXContext->pBackendDXContext->paVideoProcessorOutputView[videoProcessorOutputViewId];
-    Assert(pView->u.pView == NULL);
+    AssertStmt(pView->u.pView == NULL, dxViewDestroy(pView));
 
     D3D11_VIDEO_PROCESSOR_CONTENT_DESC ContentDesc;
     RT_ZERO(ContentDesc);
