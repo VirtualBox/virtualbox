@@ -1,4 +1,4 @@
-/* $Id: tstClipboardHttpServer.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardHttpServer.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard HTTP server test case.
  */
@@ -120,7 +120,7 @@ static int tstCreateTransferSingle(RTTEST hTest, PSHCLTRANSFERCTX pTransferCtx, 
 
     do
     {
-        RTTEST_CHECK_RC_OK_BREAK(hTest, rc = ShClTransferCreate(SHCLTRANSFERDIR_TO_REMOTE, SHCLSOURCE_LOCAL,
+        RTTEST_CHECK_RC_OK_BREAK(hTest, rc = ShClTransferCreate(SHCLTRANSFERDIR_HOST_TO_GUEST, SHCLSOURCE_LOCAL,
                                                                 NULL /* Callbacks */, &pTx));
         RTTEST_CHECK_RC_OK_BREAK(hTest, rc = ShClTransferSetProvider(pTx, pProvider));
         RTTEST_CHECK_RC_OK_BREAK(hTest, rc = ShClTransferRootsSetFromPath(pTx, pszPath));
@@ -215,7 +215,7 @@ static void tstDuplicateTransferRegistration(RTTEST hTest, PSHCLTRANSFERCTX pTra
 
     do
     {
-        RTTEST_CHECK_RC_OK_BREAK(hTest, rc = ShClTransferCreate(SHCLTRANSFERDIR_TO_REMOTE, SHCLSOURCE_LOCAL,
+        RTTEST_CHECK_RC_OK_BREAK(hTest, rc = ShClTransferCreate(SHCLTRANSFERDIR_HOST_TO_GUEST, SHCLSOURCE_LOCAL,
                                                                 NULL /* Callbacks */, &pTx));
         RTTEST_CHECK_RC_OK_BREAK(hTest, rc = ShClTransferSetProvider(pTx, pProvider));
         RTTEST_CHECK_RC_OK_BREAK(hTest, rc = ShClTransferRootsSetFromPath(pTx, pszPath));
@@ -444,7 +444,7 @@ static int tstCreateRegisteredTransfer(PSHCLTRANSFERCTX pTransferCtx, PSHCLHTTPS
     bool fCtxRegistered = false;
     bool fHttpRegistered = false;
 
-    int rc = ShClTransferCreate(SHCLTRANSFERDIR_TO_REMOTE, SHCLSOURCE_LOCAL, NULL /* Callbacks */, &pTransfer);
+    int rc = ShClTransferCreate(SHCLTRANSFERDIR_HOST_TO_GUEST, SHCLSOURCE_LOCAL, NULL /* Callbacks */, &pTransfer);
     if (RT_SUCCESS(rc))
         rc = ShClTransferSetProvider(pTransfer, pProvider);
     if (RT_SUCCESS(rc))

@@ -1,4 +1,4 @@
-/* $Id: SharedClipboard-transfers.h 115057 2026-08-17 16:48:01Z andreas.loeffler@oracle.com $ */
+/* $Id: SharedClipboard-transfers.h 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Shared transfer functions between host and guest.
  */
@@ -612,7 +612,7 @@ typedef struct _SHCLTRANSFERSTATE
     SHCLTRANSFERGEN    uGeneration;
     /** The transfer's current status. */
     SHCLTRANSFERSTATUS enmStatus;
-    /** The transfer's direction, seen from the perspective who created the transfer. */
+    /** The transfer's absolute guest/host direction. */
     SHCLTRANSFERDIR    enmDir;
     /** The transfer's source, seen from the perspective who created the transfer. */
     SHCLSOURCE         enmSource;

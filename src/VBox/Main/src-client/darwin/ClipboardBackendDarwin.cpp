@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendDarwin.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendDarwin.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host.
  */
@@ -119,7 +119,7 @@ static DECLCALLBACK(void) shClSvcDarwinTransferOnCreatedCallback(PSHCLTRANSFERCA
     PSHCLTRANSFER pTransfer = pCbCtx->pTransfer;
     AssertPtrReturnVoid(pTransfer);
 
-    if (   ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_TO_REMOTE
+    if (   ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_HOST_TO_GUEST
         && ShClTransferGetSource(pTransfer) == SHCLSOURCE_LOCAL)
     {
         SHCLTXPROVIDER Provider;
@@ -142,7 +142,7 @@ static DECLCALLBACK(int) shClSvcDarwinTransferOnInitializeCallback(PSHCLTRANSFER
     PSHCLTRANSFER pTransfer = pCbCtx->pTransfer;
     AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
 
-    if (   ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_TO_REMOTE
+    if (   ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_HOST_TO_GUEST
         && ShClTransferGetSource(pTransfer) == SHCLSOURCE_LOCAL)
         return ShClTransferRootListRead(pTransfer);
     return VERR_NOT_SUPPORTED;

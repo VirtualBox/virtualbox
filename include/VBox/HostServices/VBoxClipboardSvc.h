@@ -884,7 +884,7 @@ typedef struct _VBoxShClTransferStatusMsg
 
     /** uint64_t, out: Context ID. */
     HGCMFunctionParameter uContext;
-    /** uint32_t, out: Direction of transfer; of type SHCLTRANSFERDIR_. */
+    /** uint32_t, out: Absolute guest/host transfer direction; of type SHCLTRANSFERDIR_. */
     HGCMFunctionParameter enmDir;
     /** uint32_t, out: Status to report; of type SHCLTRANSFERSTATUS_. */
     HGCMFunctionParameter enmStatus;

@@ -163,15 +163,18 @@ enum
 
 /**
  * Shared Clipboard transfer direction.
+ *
+ * The direction is absolute and therefore has the same meaning on the host and
+ * guest.  The explicit values are part of the HGCM protocol and saved state.
  */
 typedef enum SHCLTRANSFERDIR
 {
-    /** Unknown transfer directory. */
+    /** Unknown transfer direction. */
     SHCLTRANSFERDIR_UNKNOWN = 0,
-    /** Read transfer (from source). */
-    SHCLTRANSFERDIR_FROM_REMOTE,
-    /** Write transfer (to target). */
-    SHCLTRANSFERDIR_TO_REMOTE,
+    /** Guest-to-host transfer. */
+    SHCLTRANSFERDIR_GUEST_TO_HOST = 1,
+    /** Host-to-guest transfer. */
+    SHCLTRANSFERDIR_HOST_TO_GUEST = 2,
     /** The usual 32-bit hack. */
     SHCLTRANSFERDIR_32BIT_HACK = 0x7fffffff
 } SHCLTRANSFERDIR;
@@ -489,4 +492,3 @@ typedef struct SHCLCALLBACKS
 typedef SHCLCALLBACKS *PSHCLCALLBACKS;
 
 #endif /* !VBOX_INCLUDED_GuestHost_SharedClipboard_h */
-

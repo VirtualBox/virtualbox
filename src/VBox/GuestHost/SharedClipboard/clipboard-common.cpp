@@ -1,4 +1,4 @@
-/* $Id: clipboard-common.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-common.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common helper objects.
  */
@@ -814,8 +814,8 @@ VBGH_DECL(bool) ShClFormatsAreValid(SHCLFORMATS fFormats)
  */
 VBGH_DECL(bool) ShClTransferDirIsValid(SHCLTRANSFERDIR enmDir)
 {
-    return    enmDir == SHCLTRANSFERDIR_FROM_REMOTE
-           || enmDir == SHCLTRANSFERDIR_TO_REMOTE;
+    return    enmDir == SHCLTRANSFERDIR_GUEST_TO_HOST
+           || enmDir == SHCLTRANSFERDIR_HOST_TO_GUEST;
 }
 
 
@@ -1175,4 +1175,3 @@ VBGH_DECL(int) ShClCacheTransferAll(PSHCLCACHE pCache, PSHCLCACHE pOtherCache)
     }
     return VINF_SUCCESS;
 }
-

@@ -1,4 +1,4 @@
-/* $Id: clipboard-x11.cpp 115057 2026-08-17 16:48:01Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-x11.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard implementation.
  */
@@ -298,7 +298,7 @@ static DECLCALLBACK(int) vbclX11OnTransferInitializeCallback(PSHCLTRANSFERCALLBA
      * will start reading those as soon as we report the INITIALIZED status. */
     switch (ShClTransferGetDir(pTransfer))
     {
-        case SHCLTRANSFERDIR_TO_REMOTE: /* G->H */
+        case SHCLTRANSFERDIR_GUEST_TO_HOST:
         {
             void    *pvData;
             uint32_t cbData;
@@ -312,7 +312,7 @@ static DECLCALLBACK(int) vbclX11OnTransferInitializeCallback(PSHCLTRANSFERCALLBA
             break;
         }
 
-        case SHCLTRANSFERDIR_FROM_REMOTE: /* H->G */
+        case SHCLTRANSFERDIR_HOST_TO_GUEST:
             break;
 
         default:
@@ -342,7 +342,7 @@ static DECLCALLBACK(int) vbclX11OnTransferInitializedCallback(PSHCLTRANSFERCALLB
 
     int rc = VINF_SUCCESS;
 
-    if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE)
+    if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_HOST_TO_GUEST)
     {
         if (!vbclX11TransferStateMatches(pCtx, pTransfer))
         {
@@ -406,7 +406,7 @@ static DECLCALLBACK(void) vbclX11OnTransferRegisteredCallback(PSHCLTRANSFERCALLB
     AssertPtr(pTransfer);
 
     /* We only need to start the HTTP server when we actually receive data from the remote (host). */
-    if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE) /* H->G */
+    if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_HOST_TO_GUEST)
     {
         PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
         /* H->G requests are serialized by fPreparing.  The first H->G
@@ -444,7 +444,7 @@ static DECLCALLBACK(void) vbclX11OnTransferRegisteredCallback(PSHCLTRANSFERCALLB
  */
 static void vbclX11TransferUnregister(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransfer)
 {
-    if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_FROM_REMOTE)
+    if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_HOST_TO_GUEST)
     {
         if (ShClTransferHttpServerIsInitialized(&pCtx->X11.HttpCtx.HttpServer))
         {

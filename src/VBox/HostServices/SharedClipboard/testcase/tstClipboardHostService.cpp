@@ -1,4 +1,4 @@
-/* $Id: tstClipboardHostService.cpp 115056 2026-08-17 16:44:52Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardHostService.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Host Service testcase.
  */
@@ -744,7 +744,7 @@ static void tstTransferStatusGet(void *pvClient, SHCLSESSIONID idSession, SHCLTR
     RTTESTI_CHECK(VBOX_SHCL_CONTEXTID_GET_TRANSFER(uContext) == idTransfer);
     RTTESTI_CHECK(VBOX_SHCL_CONTEXTID_GET_EVENT(uContext) != 0);
     RTTESTI_CHECK(VBOX_SHCL_CONTEXTID_GET_EVENT(uContext) != NIL_SHCLEVENTID);
-    RTTESTI_CHECK(aParms[1].u.uint32 == SHCLTRANSFERDIR_TO_REMOTE);
+    RTTESTI_CHECK(aParms[1].u.uint32 == SHCLTRANSFERDIR_HOST_TO_GUEST);
     RTTESTI_CHECK(aParms[2].u.uint32 == enmStatus);
     RTTESTI_CHECK((int32_t)aParms[3].u.uint32 == rcTransfer);
     RTTESTI_CHECK(aParms[4].u.uint32 == 0);
@@ -776,7 +776,7 @@ static void tstTransfers(void *pvClient)
     rc = g_Table.pfnHostCall(g_Table.pvService, VBOX_SHCL_HOST_FN_SET_TRANSFER_MODE, 1, &Parm);
     RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
     PSHCLTRANSFER pDeniedTransfer = (PSHCLTRANSFER)(uintptr_t)1;
-    rc = g_Ext.Transport.pOps->pfnTransferCreate(g_Ext.Transport.hClient, SHCLTRANSFERDIR_FROM_REMOTE,
+    rc = g_Ext.Transport.pOps->pfnTransferCreate(g_Ext.Transport.hClient, SHCLTRANSFERDIR_GUEST_TO_HOST,
                                                   SHCLSOURCE_REMOTE, NULL, NIL_SHCLTRANSFERID, &pDeniedTransfer);
     RTTESTI_CHECK_RC(rc, VERR_ACCESS_DENIED);
     RTTESTI_CHECK(pDeniedTransfer == NULL);
@@ -794,7 +794,7 @@ static void tstTransfers(void *pvClient)
     rc = g_Table.pfnHostCall(g_Table.pvService, VBOX_SHCL_HOST_FN_SET_TRANSFER_MODE, 1, &Parm);
     RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
     pDeniedTransfer = (PSHCLTRANSFER)(uintptr_t)1;
-    rc = g_Ext.Transport.pOps->pfnTransferCreate(g_Ext.Transport.hClient, SHCLTRANSFERDIR_FROM_REMOTE,
+    rc = g_Ext.Transport.pOps->pfnTransferCreate(g_Ext.Transport.hClient, SHCLTRANSFERDIR_GUEST_TO_HOST,
                                                   SHCLSOURCE_REMOTE, NULL, NIL_SHCLTRANSFERID, &pDeniedTransfer);
     RTTESTI_CHECK_RC(rc, VERR_ACCESS_DENIED);
     RTTESTI_CHECK(pDeniedTransfer == NULL);
@@ -835,7 +835,7 @@ static void tstTransfers(void *pvClient)
     RTTESTI_CHECK(idSession != NIL_SHCLSESSIONID);
     RTTESTI_CHECK(g_Ext.idTransfer != NIL_SHCLTRANSFERID);
     RTTESTI_CHECK(g_Ext.uTransferGeneration != NIL_SHCLTRANSFERGEN);
-    RTTESTI_CHECK(g_Ext.enmTransferDir == SHCLTRANSFERDIR_TO_REMOTE);
+    RTTESTI_CHECK(g_Ext.enmTransferDir == SHCLTRANSFERDIR_HOST_TO_GUEST);
     RTTESTI_CHECK(g_Ext.enmTransferSource == SHCLSOURCE_REMOTE);
     RTTESTI_CHECK(g_Ext.enmTransferStatus == SHCLTRANSFERSTATUS_REQUESTED);
     RTTESTI_CHECK(g_Ext.rcTransfer == VINF_SUCCESS);

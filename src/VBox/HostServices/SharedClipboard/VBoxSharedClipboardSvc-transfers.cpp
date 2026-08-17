@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -740,7 +740,7 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                                             rc = VINF_SUCCESS;
                                         }
                                         if (RT_SUCCESS(rc))
-                                            rc = ShClSvcTransferCreate(pClient, SHCLTRANSFERDIR_TO_REMOTE, SHCLSOURCE_LOCAL,
+                                            rc = ShClSvcTransferCreate(pClient, SHCLTRANSFERDIR_HOST_TO_GUEST, SHCLSOURCE_LOCAL,
                                                                        &Callbacks,
                                                                        NIL_SHCLTRANSFERID /* Creates a new transfer ID */,
                                                                        &pTransfer);
@@ -773,11 +773,11 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                             {
                                 switch (ShClTransferGetDir(pTransfer))
                                 {
-                                    case SHCLTRANSFERDIR_FROM_REMOTE: /* G->H */
+                                    case SHCLTRANSFERDIR_GUEST_TO_HOST:
                                         /* Already done locally when creating the transfer. */
                                         break;
 
-                                    case SHCLTRANSFERDIR_TO_REMOTE:   /* H->G */
+                                    case SHCLTRANSFERDIR_HOST_TO_GUEST:
                                     {
                                         /* Initialize the transfer on the host side. */
                                         rc = ShClSvcTransferInit(pClient, pTransfer);
@@ -795,7 +795,7 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                             {
                                 /* We only need to start for H->G transfers here.
                                  * For G->H transfers we start this as soon as the host clipboard requests data. */
-                                if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_TO_REMOTE)
+                                if (ShClTransferGetDir(pTransfer) == SHCLTRANSFERDIR_HOST_TO_GUEST)
                                 {
                                     /* Start the transfer on the host side. */
                                     rc = ShClSvcTransferStart(pClient, pTransfer);
