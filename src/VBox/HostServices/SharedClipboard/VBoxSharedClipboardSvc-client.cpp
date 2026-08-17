@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-client.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-client.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Client/session and message queue handling.
  */
@@ -1448,28 +1448,11 @@ int shClSvcClientMsgDataRead(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCMSVCPA
 
     shClSvcLock();
 
-    g_ShClSvc.ExtState.fReadingData = true;
-
-    /* If there is a service extension active, try reading data from it first. */
+    /* Read data from Main, which selects the remote or local host provider. */
     int rc = shClSvcExtReadData(pClient, uFormat, pvData, cbData, &cbActual);
 
-    LogRel2(("Shared Clipboard: Read extension clipboard data (fDelayedAnnouncement=%RTbool, fDelayedFormats=%#x, "
-             "max %RU32 bytes), got %RU32 bytes: rc=%Rrc\n", g_ShClSvc.ExtState.fDelayedAnnouncement,
-             g_ShClSvc.ExtState.fDelayedFormats,
+    LogRel2(("Shared Clipboard: Read extension clipboard data (max %RU32 bytes), got %RU32 bytes: rc=%Rrc\n",
              cbData, cbActual, rc));
-
-    /* Did the extension send the clipboard formats yet?
-     * Otherwise, do this now. */
-    if (g_ShClSvc.ExtState.fDelayedAnnouncement)
-    {
-        int rc2 = shClSvcExtReportFormatsToGuest(pClient, g_ShClSvc.ExtState.fDelayedFormats, SHCLSOURCE_REMOTE);
-        AssertRC(rc2);
-
-        g_ShClSvc.ExtState.fDelayedAnnouncement = false;
-        g_ShClSvc.ExtState.fDelayedFormats = 0;
-    }
-
-    g_ShClSvc.ExtState.fReadingData = false;
 
     if (RT_SUCCESS(rc))
     {

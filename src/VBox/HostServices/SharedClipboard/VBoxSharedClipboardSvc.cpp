@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc.cpp 115052 2026-08-17 15:35:37Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Host service entry points.
  */
@@ -321,26 +321,8 @@ static int shClSvcInit(void)
 
     if (RT_SUCCESS(rc))
     {
-        rc = RTSemEventMultiCreate(&g_ShClSvc.ExtState.hCallbacksDone);
-        if (RT_SUCCESS(rc))
-        {
-            rc = RTSemEventMultiSignal(g_ShClSvc.ExtState.hCallbacksDone);
-            if (RT_SUCCESS(rc))
-            {
-                shClSvcHostModeSet(VBOX_SHCL_MODE_OFF);
-                g_ShClSvc.idNextSession = 1;
-            }
-        }
-
-        if (RT_FAILURE(rc))
-        {
-            if (g_ShClSvc.ExtState.hCallbacksDone != NIL_RTSEMEVENTMULTI)
-            {
-                RTSemEventMultiDestroy(g_ShClSvc.ExtState.hCallbacksDone);
-                g_ShClSvc.ExtState.hCallbacksDone = NIL_RTSEMEVENTMULTI;
-            }
-            RTCritSectDelete(&g_ShClSvc.CritSect);
-        }
+        shClSvcHostModeSet(VBOX_SHCL_MODE_OFF);
+        g_ShClSvc.idNextSession = 1;
     }
 
     return rc;
@@ -353,8 +335,6 @@ static DECLCALLBACK(int) shClSvcUnload(void *)
     int const rc = shClSvcExtUnregisterAndDestroy();
     AssertLogRelRC(rc);
 
-    RTSemEventMultiDestroy(g_ShClSvc.ExtState.hCallbacksDone);
-    g_ShClSvc.ExtState.hCallbacksDone = NIL_RTSEMEVENTMULTI;
     RTCritSectDelete(&g_ShClSvc.CritSect);
 
     return rc;
@@ -372,13 +352,7 @@ static DECLCALLBACK(int) shClSvcDisconnect(void *, uint32_t u32ClientID, void *p
     Assert(g_ShClSvc.pActiveClient == pClient);
     if (g_ShClSvc.pActiveClient == pClient)
         g_ShClSvc.pActiveClient = NULL;
-    if (g_ShClSvc.ExtState.uClientID == u32ClientID)
-        g_ShClSvc.ExtState.uClientID = 0;
     shClSvcUnlock();
-
-    int const rcWait = RTSemEventMultiWait(g_ShClSvc.ExtState.hCallbacksDone, RT_INDEFINITE_WAIT);
-    AssertFatalMsgRC(rcWait, ("Waiting for Shared Clipboard extension callbacks during disconnect failed with %Rrc\n",
-                              rcWait));
 
     shClSvcExtBackendDisconnect(pClient);
 
@@ -422,8 +396,6 @@ static DECLCALLBACK(int) shClSvcConnect(void *, uint32_t u32ClientID, void *pvCl
                 rc = shClSvcExtBackendSync(pClient);
                 if (RT_SUCCESS(rc))
                 {
-                    if (g_ShClSvc.ExtState.uClientID == 0)
-                        g_ShClSvc.ExtState.uClientID = u32ClientID;
                     /* The sync could return VINF_NO_CHANGE if nothing has changed on the host, but
                        older Guest Additions didn't use RT_SUCCESS to but == VINF_SUCCESS to check for
                        success.  So just return VINF_SUCCESS here to not break older Guest Additions. */

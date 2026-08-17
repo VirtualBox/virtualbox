@@ -1,4 +1,4 @@
-/* $Id: GuestShClPrivate.h 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClPrivate.h 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * Private Shared Clipboard code for the Main API.
  */
@@ -39,19 +39,6 @@
  */
 class Console;
 class GuestShClConn;
-
-/** Chained Shared Clipboard service extension used by the remote desktop server. */
-struct SHCLSVCEXT
-{
-    /** Chained service extension callback, or NULL. */
-    PFNHGCMSVCEXT       pfnExt;
-    /** Opaque callback argument. */
-    void               *pvExt;
-    /** Reverse callback installed by the HGCM service, or NULL. */
-    PFNSHCLEXTCALLBACK  pfnExtCallback;
-};
-/** Pointer to a chained Shared Clipboard service extension. */
-typedef SHCLSVCEXT *PSHCLSVCEXT;
 
 /**
  * Private singleton class for managing the Shared Clipboard implementation within Main.
@@ -129,6 +116,7 @@ protected:
     bool i_isHostDataSeqCurrentLocked(uint64_t uSeq);
     uint64_t i_getGuestDataSeq(void);
     bool i_isGuestDataSeqCurrent(uint64_t uSeq);
+    int i_reportRemoteFormatsToGuestNow(SHCLFORMATS fFormats);
     /** @}  */
 
 public:
@@ -141,10 +129,9 @@ public:
     int ReportFormatsToHost(SHCLFORMATS fFormats);
     int WriteDataToHost(SHCLFORMAT uFormat, void *pvData, uint32_t cbData);
     int ReportFormatsToGuest(SHCLFORMATS fFormats);
+    int ReportRemoteFormatsToGuest(SHCLFORMATS fFormats);
     int ReportFormatsToGuest(GuestShClConn *pConn, SHCLFORMATS fFormats, SHCLSOURCE enmSource);
     int ReportError(const char *pcszId, int vrc, const char *pcszMsgFmt, ...);
-    int RegisterServiceExtension(PFNHGCMSVCEXT pfnExtension, void *pvExtension);
-    int UnregisterServiceExtension(PFNHGCMSVCEXT pfnExtension);
     /** @}  */
 
 public:
@@ -156,19 +143,15 @@ public:
 
 protected:
 
-    int i_forwardToSvcExt(uint32_t u32Function, void *pvParms, uint32_t cbParms);
     int i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32_t cbParms);
 
 protected:
 
     /** @name Service extension callback handlers.
      * @{ */
-    int i_svcExtSetCallback(PSHCLEXTPARMS pParms);
     int i_svcExtReportFormatsToHostCallback(PSHCLEXTPARMS pParms);
-    int i_svcExtReportFormatsToGuestCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
-    int i_svcExtDataReadCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
-    int i_svcExtDataReadVrdeCallback(PSHCLEXTPARMS pParms);
-    int i_svcExtDataWriteCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
+    int i_svcExtDataReadCallback(PSHCLEXTPARMS pParms);
+    int i_svcExtDataWriteCallback(PSHCLEXTPARMS pParms);
     int i_svcExtBackendInitCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
     int i_svcExtBackendDestroyCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
     int i_svcExtBackendConnectCallback(PSHCLEXTPARMS pParms, void *pvParms, uint32_t cbParms);
@@ -188,12 +171,16 @@ protected:
     Console                    *m_pConsole;
     /** Critical section to serialize access. */
     RTCRITSECT                  m_CritSect;
+    /** Serializes remote format publication and the handoff after a remote data read. */
+    RTCRITSECT                  m_RemoteFormatsCritSect;
     /** Main-owned connection encapsulating the service endpoint and native backend context. */
     GuestShClConn              *m_pConn;
-    /** Chained remote-desktop service extension. */
-    SHCLSVCEXT                  m_SvcExtVRDP;
-    /** Reverse callback supplied by the HGCM service, or NULL. */
-    PFNSHCLEXTCALLBACK          m_pfnExtCallback;
+    /** Whether Main is synchronously reading from the remote clipboard provider. */
+    bool                        m_fRemoteDataReadActive;
+    /** Whether a remote format announcement arrived during that read. */
+    bool                        m_fRemoteFormatsPending;
+    /** Latest remote formats deferred until the active read completes. */
+    SHCLFORMATS                 m_fPendingRemoteFormats;
     /** Host data sequence counter, protected by m_CritSect. */
     uint64_t                    m_uHostDataSeq;
     /** Guest data sequence counter, protected by m_CritSect. */

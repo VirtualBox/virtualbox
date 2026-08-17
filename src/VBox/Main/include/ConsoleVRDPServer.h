@@ -1,4 +1,4 @@
-/* $Id: ConsoleVRDPServer.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: ConsoleVRDPServer.h 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console VRDE Server Helper class and implementation of IVRDEServerInfo
  */
@@ -45,8 +45,9 @@
 #include <VBox/RemoteDesktop/VRDEVideoIn.h>
 #include <VBox/RemoteDesktop/VRDEInput.h>
 
-#include <VBox/HostServices/VBoxClipboardExt.h>
+#include <VBox/GuestHost/SharedClipboard.h>
 #include <VBox/HostServices/VBoxHostChannel.h>
+#include <iprt/semaphore.h>
 
 #include "SchemaDefs.h"
 
@@ -137,8 +138,10 @@ public:
     bool isRemoteUSBThreadRunning (void);
     void waitRemoteUSBThreadEvent (RTMSINTERVAL cMillies);
 
-    void ClipboardCreate (uint32_t u32ClientId);
-    void ClipboardDelete (uint32_t u32ClientId);
+    int ClipboardReportGuestFormats(SHCLFORMATS fFormats) const;
+    int ClipboardReadRemoteData(SHCLFORMAT uFormat, void *pvData, uint32_t cbData, uint32_t *pcbActual) const;
+    int ClipboardWriteGuestData(SHCLFORMAT uFormat, const void *pvData, uint32_t cbData) const;
+    void ClipboardSetGuestShClAvailable(bool fAvailable);
 
     /*
      * Forwarders to VRDP server library.
@@ -227,14 +230,17 @@ private:
 
     RTCRITSECT mCritSect;
 
+    /** Whether direct clipboard callbacks may acquire the GuestShCl singleton. */
+    bool mfClipboardGuestShClAvailable;
+    /** Number of direct clipboard callbacks currently using GuestShCl. */
+    uint32_t mcClipboardGuestShClCalls;
+    /** Signalled while no direct clipboard callback is using GuestShCl. */
+    RTSEMEVENTMULTI mhClipboardGuestShClCallsDone;
+
     int lockConsoleVRDPServer (void);
     void unlockConsoleVRDPServer (void);
 
-    int mcClipboardRefs;
-    PFNSHCLEXTCALLBACK mpfnClipboardCallback;
-
     static DECLCALLBACK(int) ClipboardCallback (void *pvCallback, uint32_t u32ClientId, uint32_t u32Function, uint32_t u32Format, const void *pvData, uint32_t cbData);
-    static DECLCALLBACK(int) ClipboardServiceExtension(void *pvExtension, uint32_t u32Function, void *pvParms, uint32_t cbParms);
 
 #ifdef VBOX_WITH_USB
     RemoteUSBBackend *usbBackendFindByUUID (const Guid *pGuid);

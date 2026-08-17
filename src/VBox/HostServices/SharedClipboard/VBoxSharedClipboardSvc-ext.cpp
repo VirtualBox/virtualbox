@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-ext.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-ext.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Service extension bridge handling.
  */
@@ -47,8 +47,6 @@
 *   Internal Functions                                                                                                           *
 *********************************************************************************************************************************/
 static int shClSvcExtCall(uint32_t u32Function, void *pvParms, uint32_t cbParms);
-static DECLCALLBACK(int) shClSvcExtCallback(uint32_t u32Function, uint32_t u32Format,
-                                            void *pvData, uint32_t cbData);
 
 
 /**
@@ -249,41 +247,6 @@ int shClSvcExtNotifyTransferStatus(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,
 
 
 /**
- * Reports remote clipboard formats to the guest through Main.
- *
- * @returns VBox status code returned by Main.
- * @param   pClient            Service client to report to.
- * @param   fFormats           Remote formats, VBOX_SHCL_FMT_XXX.
- * @param   enmSource          Source of the format announcement.
- *
- * @thread  Backend thread.
- */
-int shClSvcExtReportFormatsToGuest(PSHCLCLIENT pClient, SHCLFORMATS fFormats, SHCLSOURCE enmSource)
-{
-    AssertPtrReturn(pClient, VERR_INVALID_POINTER);
-
-    uint32_t const uMode = ShClSvcGetMode();
-    if (   uMode != VBOX_SHCL_MODE_BIDIRECTIONAL
-        && uMode != VBOX_SHCL_MODE_HOST_TO_GUEST)
-        return VINF_SUCCESS;
-
-    fFormats = shClSvcHandleFormats(true /* fHostToGuest */, pClient, fFormats);
-
-    SHCLEXTPARMS parms;
-    RT_ZERO(parms);
-    shClSvcExtSetClient(&parms, pClient);
-    parms.u.ReportFormats.uFormats  = fFormats;
-    parms.u.ReportFormats.pClient   = pClient;
-    parms.u.ReportFormats.enmSource = enmSource;
-
-    int const rc = shClSvcExtCall(VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_GUEST, &parms, sizeof(parms));
-    if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Reporting remote formats %#x to guest failed with %Rrc\n", fFormats, rc));
-    return rc;
-}
-
-
-/**
  * Reports guest clipboard formats to Main.
  *
  * @returns VBox status code returned by Main.
@@ -360,105 +323,7 @@ int shClSvcExtWriteData(PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX pCmdCtx, SHCLFORM
 
 
 /**
- * Requests guest clipboard data for the chained remote-desktop extension.
- *
- * @returns VBox status code returned by Main.
- * @param   pClient            Connected service client.
- * @param   uFormat            Clipboard format to request.
- * @param   pvData             Destination buffer.
- * @param   cbData             Destination buffer size in bytes.
- */
-static int shClSvcExtReadVrdeData(PSHCLCLIENT pClient, SHCLFORMAT uFormat, void *pvData, uint32_t cbData)
-{
-    SHCLEXTPARMS parms;
-    RT_ZERO(parms);
-    shClSvcExtSetClient(&parms, pClient);
-    parms.u.ReadWriteData.uFormat = uFormat;
-    parms.u.ReadWriteData.pvData  = pvData;
-    parms.u.ReadWriteData.cbData  = cbData;
-    parms.u.ReadWriteData.pClient = pClient;
-
-    return shClSvcExtCall(VBOX_CLIPBOARD_EXT_FN_DATA_READ_VRDE, &parms, sizeof(parms));
-}
-
-
-/**
- * Handles reverse calls from the chained remote-desktop extension.
- *
- * @returns VBox status code.
- * @param   u32Function        VBOX_CLIPBOARD_EXT_FN_XXX function number.
- * @param   u32Format          Clipboard format associated with the request.
- * @param   pvData             Optional data buffer.
- * @param   cbData             Data buffer size in bytes.
- */
-static DECLCALLBACK(int) shClSvcExtCallback(uint32_t u32Function, uint32_t u32Format,
-                                            void *pvData, uint32_t cbData)
-{
-    PSHCLCLIENT pClient = NULL;
-
-    shClSvcLock();
-    if (   g_ShClSvc.pActiveClient
-        && g_ShClSvc.ExtState.uClientID == g_ShClSvc.pActiveClient->State.uClientID)
-    {
-        pClient = g_ShClSvc.pActiveClient;
-        if (g_ShClSvc.ExtState.cCallbacks++ == 0)
-        {
-            int const rcReset = RTSemEventMultiReset(g_ShClSvc.ExtState.hCallbacksDone);
-            AssertFatalMsgRC(rcReset, ("Resetting the Shared Clipboard callback drain event failed with %Rrc\n",
-                                       rcReset));
-        }
-    }
-    shClSvcUnlock();
-
-    int rc = VERR_NOT_FOUND;
-    if (pClient)
-    {
-        switch (u32Function)
-        {
-            case VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_HOST:
-                shClSvcLock();
-                if (!g_ShClSvc.ExtState.fReadingData)
-                {
-                    shClSvcUnlock();
-                    rc = shClSvcExtReportFormatsToGuest(pClient, u32Format, SHCLSOURCE_REMOTE);
-                }
-                else
-                {
-                    g_ShClSvc.ExtState.fDelayedAnnouncement = true;
-                    g_ShClSvc.ExtState.fDelayedFormats = u32Format;
-                    shClSvcUnlock();
-                    rc = VINF_SUCCESS;
-                }
-                break;
-
-            case VBOX_CLIPBOARD_EXT_FN_DATA_READ:
-                rc = shClSvcExtReadVrdeData(pClient, u32Format, pvData, cbData);
-                break;
-
-            default:
-                rc = VERR_NOT_SUPPORTED;
-                break;
-        }
-
-        shClSvcLock();
-        Assert(g_ShClSvc.ExtState.cCallbacks > 0);
-        if (g_ShClSvc.ExtState.cCallbacks > 0 && --g_ShClSvc.ExtState.cCallbacks == 0)
-        {
-            int const rcSignal = RTSemEventMultiSignal(g_ShClSvc.ExtState.hCallbacksDone);
-            AssertFatalMsgRC(rcSignal, ("Signalling the Shared Clipboard callback drain event failed with %Rrc\n",
-                                        rcSignal));
-        }
-        shClSvcUnlock();
-    }
-
-    return rc;
-}
-
-
-/**
- * Disables new reverse callbacks, drains callbacks already in progress,
- * destroys the native backend while the extension remains callable, and then
- * clears the matching extension registration.
+ * Unregisters the Main service extension, then tears down its backend.
  *
  * @returns VBox status code.
  */
@@ -467,21 +332,10 @@ int shClSvcExtUnregisterAndDestroy(void)
     shClSvcLock();
     PFNHGCMSVCEXT const pfnExtension = g_ShClSvc.ExtState.pfnExtension;
     void * const pvExtension = g_ShClSvc.ExtState.pvExtension;
-    g_ShClSvc.ExtState.uClientID = 0;
     shClSvcUnlock();
 
     if (!pfnExtension)
         return VINF_SUCCESS;
-
-    /* Stop new reverse callbacks before waiting for calls which already
-       captured the active service client. */
-    SHCLEXTPARMS parms;
-    RT_ZERO(parms);
-    int rc = pfnExtension(pvExtension, VBOX_CLIPBOARD_EXT_FN_SET_CALLBACK, &parms, sizeof(parms));
-    AssertFatalMsgRC(rc, ("Unregistering the Shared Clipboard extension callback failed with %Rrc\n", rc));
-
-    int const rcWait = RTSemEventMultiWait(g_ShClSvc.ExtState.hCallbacksDone, RT_INDEFINITE_WAIT);
-    AssertFatalMsgRC(rcWait, ("Waiting for Shared Clipboard extension callbacks failed with %Rrc\n", rcWait));
 
     /* Console unregisters the extension before HGCM disconnects its client. */
     shClSvcExtBackendDestroy();
@@ -496,7 +350,7 @@ int shClSvcExtUnregisterAndDestroy(void)
     shClSvcUnlock();
 
     LogRel2(("Shared Clipboard: de-registered service extension\n"));
-    return rc;
+    return VINF_SUCCESS;
 }
 
 
@@ -520,25 +374,8 @@ DECLCALLBACK(int) shClSvcRegisterExtension(void *pvService, PFNHGCMSVCEXT pfnExt
         g_ShClSvc.ExtState.pvExtension  = pvExtension;
         shClSvcUnlock();
 
-        SHCLEXTPARMS parms;
-        RT_ZERO(parms);
-        parms.u.SetCallback.pfnCallback = shClSvcExtCallback;
-        int const rc = pfnExtension(pvExtension, VBOX_CLIPBOARD_EXT_FN_SET_CALLBACK, &parms, sizeof(parms));
-        if (RT_FAILURE(rc))
-        {
-            shClSvcLock();
-            if (   g_ShClSvc.ExtState.pfnExtension == pfnExtension
-                && g_ShClSvc.ExtState.pvExtension == pvExtension)
-            {
-                g_ShClSvc.ExtState.pvExtension  = NULL;
-                g_ShClSvc.ExtState.pfnExtension = NULL;
-            }
-            shClSvcUnlock();
-            return rc;
-        }
-
         LogRel2(("Shared Clipboard: registered service extension\n"));
-        return rc;
+        return VINF_SUCCESS;
     }
 
     return shClSvcExtUnregisterAndDestroy();
