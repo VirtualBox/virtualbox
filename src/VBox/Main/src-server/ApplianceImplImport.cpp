@@ -1,4 +1,4 @@
-/* $Id: ApplianceImplImport.cpp 114949 2026-08-10 13:32:24Z serkan.bayraktar@oracle.com $ */
+/* $Id: ApplianceImplImport.cpp 115044 2026-08-17 11:41:07Z serkan.bayraktar@oracle.com $ */
 /** @file
  * IAppliance and IVirtualSystem COM class implementations.
  */
@@ -6295,7 +6295,9 @@ void Appliance::i_importMachines(ImportStack &stack)
         std::list<VirtualSystemDescriptionEntry*> vsdeNvram = vsdescThis->i_findByType(VirtualSystemDescriptionType_NVRAM);
         if (!vsdeNvram.empty())
             stack.strNvramPath = vsdeNvram.front()->strVBoxCurrent;
-
+        /* Do not allow paths in nvram file name. */
+        if (RTPathHasPath(stack.strNvramPath.c_str()))
+            stack.strNvramPath.setNull();
 #ifdef VBOX_WITH_USB
         // USB controller
         std::list<VirtualSystemDescriptionEntry*> vsdeUSBController =
