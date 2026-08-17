@@ -1,4 +1,4 @@
-# $Id: .scm-settings 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: .scm-settings 115056 2026-08-17 16:44:52Z andreas.loeffler@oracle.com $
 ## @file
 # Source code massager settings for the host HGCM services.
 #
@@ -26,8 +26,3 @@
 #
 
 /*.h: --guard-relative-to-dir .
-
-# The file ends with a '\0' byte, so we need to treat it as a binary.
-# This also makes sure we use CRLF as EOL, so VBoxOrgCfHtml1.h can be recreated
-# w/o differencing between unix & windows hosts.
-/VBoxOrgCfHtml1.txt: --treat-as binary

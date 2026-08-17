@@ -1,4 +1,4 @@
-/* $Id: ClipboardSessionImpl.h 114560 2026-06-29 08:32:23Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardSessionImpl.h 115056 2026-08-17 16:44:52Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard session API object.
  */
@@ -55,6 +55,16 @@ public:
     void FinalRelease();
 
     HRESULT init(VBOXSHCLMAINCLIENTID aClientId, uint32_t fFlags, Clipboard *aParent);
+#ifdef UNIT_TEST
+    /**
+     * Initializes a parentless session for testing the public session object's own state.
+     *
+     * @returns COM status code.
+     * @param   aClientId           Main clipboard client ID represented by the session.
+     * @param   fFlags              IClipboardSessionFlag mask.
+     */
+    HRESULT initForTesting(VBOXSHCLMAINCLIENTID aClientId, uint32_t fFlags);
+#endif
     void uninit();
 
     HRESULT i_onEventSourceChanged(const ComPtr<IEventListener> &aListener, BOOL fAdded);

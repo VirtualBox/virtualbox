@@ -1,4 +1,4 @@
-/* $Id: TstHGCMMock.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: TstHGCMMock.cpp 115056 2026-08-17 16:44:52Z andreas.loeffler@oracle.com $ */
 /** @file
  * TstHGCMMock.cpp - Mocking framework for testing HGCM-based host services.
  *
@@ -52,12 +52,6 @@
 #include <VBox/err.h>
 #include <VBox/VBoxGuestLib.h>
 #include <VBox/hgcmsvc.h>
-
-#ifdef VBOX_WITH_SHARED_CLIPBOARD
-#include <VBox/HostServices/VBoxClipboardExt.h>
-#include <VBox/HostServices/VBoxClipboardSvc.h>
-#include <VBox/HostServices/VBoxSharedClipboardSvc.h>
-#endif
 
 
 /*********************************************************************************************************************************
@@ -289,122 +283,6 @@ static DECLCALLBACK(int) tstHgcmMockSvcCallComplete(VBOXHGCMCALLHANDLE callHandl
     return VERR_NOT_FOUND;
 }
 
-#ifdef VBOX_WITH_SHARED_CLIPBOARD
-DECLCALLBACK(int) tstHgcmMockSvcDispatcher(void *pvExtension, uint32_t u32Function,
-                                           void *pvParms, uint32_t cbParms)
-{
-    RT_NOREF(pvExtension, cbParms);
-    int rc = VINF_SUCCESS;
-
-    PSHCLEXTPARMS pParms = (PSHCLEXTPARMS)pvParms; /* pParms might be NULL, depending on the message. */
-
-    LogFlowFunc(("u32Function=%RU32, pvParms=%p, cbParms=%RU32\n", u32Function, pvParms, cbParms));
-
-    switch (u32Function)
-    {
-        case VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_HOST: // via VBOX_SHCL_GUEST_FN_REPORT_FORMATS in the guest
-        {
-            PSHCLCLIENT pClient = pParms->u.ReportFormats.pClient;
-            SHCLFORMATS fFormats = pParms->u.ReportFormats.uFormats;
-
-            rc = ShClBackendReportFormats(pClient->pBackend, pClient, fFormats);
-            if (RT_FAILURE(rc))
-                LogRel(("Shared Clipboard: Reporting guest clipboard formats to the host failed with %Rrc\n", rc));
-            break;
-        }
-
-        case VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_GUEST:
-        {
-            PSHCLCLIENT pClient = pParms->u.ReportFormats.pClient;
-            SHCLFORMATS fFormats = pParms->u.ReportFormats.uFormats;
-
-            rc = ShClBackendReportFormatsToGuest(pClient->pBackend, pClient, fFormats);
-            break;
-        }
-
-        case VBOX_CLIPBOARD_EXT_FN_DATA_READ: // via VBOX_SHCL_GUEST_FN_DATA_READ in the guest
-        {
-            PSHCLCLIENT pClient = pParms->u.ReadWriteData.pClient;
-            SHCLCLIENTCMDCTX cmdCtx;
-            void *pvData = pParms->u.ReadWriteData.pvData;
-            uint32_t cbData = pParms->u.ReadWriteData.cbData;
-            SHCLFORMATS fFormats = pParms->u.ReadWriteData.uFormat;
-            rc = ShClBackendReadData(pClient->pBackend, pClient, &cmdCtx, fFormats, pvData, cbData,
-                &pParms->u.ReadWriteData.cbActual);
-            if (RT_SUCCESS(rc))
-                LogRel2(("Shared Clipboard: Read host clipboard data (max %RU32 bytes), got %RU32 bytes\n", cbData,
-                    pParms->u.ReadWriteData.cbActual));
-            else
-                LogRel(("Shared Clipboard: Reading host clipboard data failed with %Rrc\n", rc));
-            break;
-        }
-
-        case VBOX_CLIPBOARD_EXT_FN_DATA_WRITE: // via VBOX_SHCL_GUEST_FN_DATA_WRITE in the guest
-        {
-            PSHCLCLIENT pClient = pParms->u.ReadWriteData.pClient;
-            PSHCLCLIENTCMDCTX pCmdCtx = pParms->u.ReadWriteData.pCmdCtx;
-            void *pvData = pParms->u.ReadWriteData.pvData;
-            uint32_t cbData = pParms->u.ReadWriteData.cbData;
-            SHCLFORMATS fFormats = pParms->u.ReadWriteData.uFormat;
-            rc = ShClBackendWriteData(pClient->pBackend, pClient, pCmdCtx, fFormats, pvData, cbData);
-            if (RT_FAILURE(rc))
-                LogRel(("Shared Clipboard: Writing guest clipboard data to the host failed with %Rrc\n", rc));
-            /* Complete any pending events. */
-            int rc2 = ShClSvcGuestDataSignal(pClient, pCmdCtx, fFormats, pvData, cbData);
-            if (RT_FAILURE(rc2))
-                LogRel(("Shared Clipboard: Signalling host about guest clipboard data failed with %Rrc\n", rc2));
-            AssertRC(rc2);
-            break;
-        }
-
-        case VBOX_CLIPBOARD_EXT_FN_BACKEND_INIT:
-        {
-            PSHCLBACKEND pBackend = pParms->u.ReadWriteData.pBackend;
-            VBOXHGCMSVCFNTABLE *pTable = pParms->u.ReadWriteData.pTable;
-            rc = ShClBackendInit(pBackend, pTable);
-            break;
-        }
-
-        // via VbglR3HGCMDisconnect()->...HGCMService::DisconnectClient()->...HGCMService::instanceDestroy()->...svcUnload()
-        case VBOX_CLIPBOARD_EXT_FN_BACKEND_DESTROY:
-        {
-            PSHCLBACKEND pBackend = pParms->u.ReadWriteData.pBackend;
-            ShClBackendDestroy(pBackend);
-            rc = VINF_SUCCESS;
-            break;
-        }
-
-        case VBOX_CLIPBOARD_EXT_FN_BACKEND_CONNECT: // via VbglR3ClipboardConnect()->VbglR3HGCMConnect() in the guest
-        {
-            PSHCLBACKEND pBackend = pParms->u.ReadWriteData.pBackend;
-            PSHCLCLIENT pClient = pParms->u.ReadWriteData.pClient;
-            rc = ShClBackendConnect(pBackend, pClient);
-            break;
-        }
-
-        case VBOX_CLIPBOARD_EXT_FN_BACKEND_DISCONNECT:  // via VbglR3ClipboardDisconnect()->VbglR3HGCMDisconnect() in the guest
-        {
-            PSHCLCLIENT pClient = pParms->u.ReadWriteData.pClient;
-            rc = ShClBackendDisconnect(pClient->pBackend, pClient);
-            break;
-        }
-
-        case VBOX_CLIPBOARD_EXT_FN_BACKEND_SYNC:
-        {
-            PSHCLBACKEND pBackend = pParms->u.ReadWriteData.pBackend;
-            PSHCLCLIENT pClient = pParms->u.ReadWriteData.pClient;
-            rc = ShClBackendSync(pBackend, pClient);
-            break;
-        }
-
-        default:
-            break;
-    }
-
-    return rc;
-}
-#endif
-
 /**
  * Main thread of HGCM mock service.
  *
@@ -430,9 +308,6 @@ static DECLCALLBACK(int) tstHgcmMockSvcThread(RTTHREAD hThread, void *pvUser)
     if (RT_FAILURE(rc))
         return rc;
 
-#ifdef VBOX_WITH_SHARED_CLIPBOARD
-    rc = pSvc->fnTable.pfnRegisterExtension(pSvc->fnTable.pvService, tstHgcmMockSvcDispatcher, NULL);
-#endif
     if (RT_SUCCESS(rc))
     {
         RTThreadUserSignal(hThread);
