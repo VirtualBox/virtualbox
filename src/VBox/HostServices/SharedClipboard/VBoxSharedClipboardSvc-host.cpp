@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-host.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-host.cpp 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Host-controlled service handling.
  */
@@ -117,7 +117,7 @@ DECLCALLBACK(int) shClSvcHostCall(void *, uint32_t u32Function, uint32_t cParms,
     int rc = VINF_SUCCESS;
 
     LogFlowFunc(("u32Function=%RU32 (%s), cParms=%RU32, paParms=%p\n",
-                 u32Function, ShClHostFunctionToStr(u32Function), cParms, paParms));
+                 u32Function, ShClSvcHostFunctionToStr(u32Function), cParms, paParms));
 
     switch (u32Function)
     {

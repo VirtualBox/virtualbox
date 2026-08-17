@@ -70,6 +70,9 @@
 # include <iprt/cpp/ministring.h>
 # include <VBox/GuestHost/SharedClipboard-transfers.h>
 #endif
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
+# include <VBox/GuestHost/clipboard-transfers-http.h>
+#endif
 
 #include <VBox/log.h>
 #include <VBox/version.h>
