@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-utils.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-utils.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Host service utility functions.
  */
@@ -266,8 +266,9 @@ int ShClSvcReadDataFromGuestAsync(PSHCLCLIENT pClient, SHCLFORMATS fFormats, PSH
         /*
          * Allocate messages, one for each format.
          */
+        uint64_t const fGuestFeatures0 = ShClSvcClientGetGuestFeatures0(pClient);
         PSHCLCLIENTMSG pMsg = ShClSvcClientMsgAlloc(pClient,
-                                                      pClient->State.fGuestFeatures0 & VBOX_SHCL_GF_0_CONTEXT_ID
+                                                      fGuestFeatures0 & VBOX_SHCL_GF_0_CONTEXT_ID
                                                     ? VBOX_SHCL_HOST_MSG_READ_DATA_CID : VBOX_SHCL_HOST_MSG_READ_DATA,
                                                     2);
         if (pMsg)
@@ -286,7 +287,7 @@ int ShClSvcReadDataFromGuestAsync(PSHCLCLIENT pClient, SHCLFORMATS fFormats, PSH
                 vrc = VINF_SUCCESS;
 
                 /* Save the context ID in our legacy cruft if we have to deal with old(er) Guest Additions (< 6.1). */
-                if (!(pClient->State.fGuestFeatures0 & VBOX_SHCL_GF_0_CONTEXT_ID))
+                if (!(fGuestFeatures0 & VBOX_SHCL_GF_0_CONTEXT_ID))
                 {
                     AssertStmt(pClient->Legacy.cCID < 4096, vrc = VERR_TOO_MUCH_DATA);
                     if (RT_SUCCESS(vrc))

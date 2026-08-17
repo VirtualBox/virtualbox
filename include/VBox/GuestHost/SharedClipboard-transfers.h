@@ -1,4 +1,4 @@
-/* $Id: SharedClipboard-transfers.h 115048 2026-08-17 15:07:54Z andreas.loeffler@oracle.com $ */
+/* $Id: SharedClipboard-transfers.h 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Shared transfer functions between host and guest.
  */
@@ -918,6 +918,10 @@ typedef struct SHCLTRANSFER
     RTCRITSECT                CritSect;
     /** Number of references to this transfer. */
     uint32_t                  cRefs;
+    /** Event signalled after the last transfer reference has been released. */
+    RTSEMEVENTMULTI           hNoRefsEvent;
+    /** Owning transfer context until the unregistration callback has completed. */
+    PSHCLTRANSFERCTX          pOwnerCtx;
     /** The transfer's state (for SSM, later). */
     SHCLTRANSFERSTATE         State;
     /** Absolute path to root entries. */
@@ -1245,11 +1249,23 @@ int ShClTransferCtxInit(PSHCLTRANSFERCTX pTransferCtx);
 void ShClTransferCtxDestroy(PSHCLTRANSFERCTX pTransferCtx);
 void ShClTransferCtxReset(PSHCLTRANSFERCTX pTransferCtx);
 int ShClTransferCtxBeginSession(PSHCLTRANSFERCTX pTransferCtx, SHCLSESSIONID idSession);
+/** @name Borrowed transfer lookups
+ *  Returned pointers must not outlive external context-lifetime serialization.
+ *  Use a retained lookup across concurrent unregistration or teardown.
+ *  @{ */
 PSHCLTRANSFER ShClTransferCtxGetTransferById(PSHCLTRANSFERCTX pTransferCtx, uint32_t uID);
 PSHCLTRANSFER ShClTransferCtxGetTransferByKey(PSHCLTRANSFERCTX pTransferCtx, SHCLSESSIONID idSession,
                                               SHCLTRANSFERID idTransfer, SHCLTRANSFERGEN uGeneration);
 PSHCLTRANSFER ShClTransferCtxGetTransferByIndex(PSHCLTRANSFERCTX pTransferCtx, uint32_t uIdx);
 PSHCLTRANSFER ShClTransferCtxGetTransferLast(PSHCLTRANSFERCTX pTransferCtx);
+/** @} */
+/** @name Retained transfer lookups
+ *  Returned pointers must be released with ShClTransferRelease().
+ *  @{ */
+PSHCLTRANSFER ShClTransferCtxGetTransferByIdRetained(PSHCLTRANSFERCTX pTransferCtx, uint32_t uID);
+PSHCLTRANSFER ShClTransferCtxGetTransferByKeyRetained(PSHCLTRANSFERCTX pTransferCtx, SHCLSESSIONID idSession,
+                                                      SHCLTRANSFERID idTransfer, SHCLTRANSFERGEN uGeneration);
+/** @} */
 uint32_t ShClTransferCtxGetTotalTransfers(PSHCLTRANSFERCTX pTransferCtx);
 bool ShClTransferCtxIsMaximumReached(PSHCLTRANSFERCTX pTransferCtx);
 int ShClTransferCtxRegister(PSHCLTRANSFERCTX pTransferCtx, PSHCLTRANSFER pTransfer, PSHCLTRANSFERID pidTransfer);

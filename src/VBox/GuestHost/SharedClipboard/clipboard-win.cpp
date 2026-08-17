@@ -1,4 +1,4 @@
-/* $Id: clipboard-win.cpp 114754 2026-07-22 21:18:51Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-win.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Windows-specific functions for clipboard handling.
  */
@@ -1174,6 +1174,32 @@ int ShClWinTransferCreate(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer)
 }
 
 /**
+ * Unregisters the data object associated with a Windows transfer.
+ *
+ * This disables the data object and drops its long-lived transfer reference
+ * while leaving the per-transfer context intact for temporary users.
+ *
+ * @param   pTransfer           Shared Clipboard transfer to unregister.
+ */
+void ShClWinTransferUnregister(PSHCLTRANSFER pTransfer)
+{
+    AssertPtrReturnVoid(pTransfer);
+
+    if (pTransfer->pvUser)
+    {
+        Assert(pTransfer->cbUser == sizeof(ShClWinTransferCtx));
+        ShClWinTransferCtx *pWinURITransferCtx = (ShClWinTransferCtx *)pTransfer->pvUser;
+        AssertPtr(pWinURITransferCtx);
+
+        if (pWinURITransferCtx->pDataObj)
+        {
+            pWinURITransferCtx->pDataObj->Uninit();
+            pWinURITransferCtx->pDataObj = NULL;
+        }
+    }
+}
+
+/**
  * Destroys implementation-specific data for a Windows Shared Clipboard transfer.
  *
  * @returns VBox status code.
@@ -1195,13 +1221,7 @@ void ShClWinTransferDestroy(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTransfer)
         ShClWinTransferCtx *pWinURITransferCtx = (ShClWinTransferCtx *)pTransfer->pvUser;
         AssertPtr(pWinURITransferCtx);
 
-        /* If the transfer has a data object assigned, uninitialize it here.
-         * Note: We don't free the object here, as other processes like the Windows Explorer still might refer to it. */
-        if (pWinURITransferCtx->pDataObj)
-        {
-            pWinURITransferCtx->pDataObj->Uninit();
-            pWinURITransferCtx->pDataObj = NULL;
-        }
+        ShClWinTransferUnregister(pTransfer);
 
         delete pWinURITransferCtx;
         pWinURITransferCtx = NULL;

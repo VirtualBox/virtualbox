@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendWin.cpp 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendWin.cpp 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Win32 host.
  */
@@ -374,6 +374,25 @@ static DECLCALLBACK(void) shClSvcWinTransferOnInitializedCallback(PSHCLTRANSFERC
 }
 
 /**
+ * @copydoc SHCLTRANSFERCALLBACKS::pfnOnUnregistered
+ *
+ * Disables the IDataObject and drops its long-lived transfer reference before
+ * consuming teardown waits for temporary transfer users.
+ *
+ * @thread  Service main thread.
+ */
+static DECLCALLBACK(void) shClSvcWinTransferOnUnregisteredCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx,
+                                                                   PSHCLTRANSFERCTX pTransferCtx)
+{
+    RT_NOREF(pTransferCtx);
+
+    PSHCLTRANSFER pTransfer = pCbCtx->pTransfer;
+    AssertPtr(pTransfer);
+
+    ShClWinTransferUnregister(pTransfer);
+}
+
+/**
  * @copydoc SHCLTRANSFERCALLBACKS::pfnOnDestroy
  *
  * @thread  Service main thread.
@@ -411,10 +430,15 @@ static DECLCALLBACK(int) shClSvcWinDataObjectTransferBeginCallback(ShClWinDataOb
                                    NIL_SHCLTRANSFERID /* Creates a new transfer ID */, &pTransfer);
     if (RT_SUCCESS(vrc))
     {
+        SHCLTRANSFERID const idTransfer = ShClTransferGetID(pTransfer);
+
         /* Initialize the transfer on the host side. */
         vrc = ShClSvcTransferInit(pCtx->pClient, pTransfer);
+        ShClTransferRelease(pTransfer);
+        pTransfer = NULL;
+
         if (RT_FAILURE(vrc))
-             ShClSvcTransferDestroy(pCtx->pClient, pTransfer);
+            ShClSvcTransferDestroyById(pCtx->pClient, idTransfer);
     }
 
     LogFlowFuncLeaveRC(vrc);
@@ -898,10 +922,11 @@ int ShClBackendConnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
         pClient->Transfers.Callbacks.pvUser = pCtx; /* Assign context as user-provided callback data. */
         pClient->Transfers.Callbacks.cbUser = sizeof(SHCLCONTEXT);
 
-        pClient->Transfers.Callbacks.pfnOnCreated     = shClSvcWinTransferOnCreatedCallback;
-        pClient->Transfers.Callbacks.pfnOnInitialize  = shClSvcWinTransferOnInitializeCallback;
-        pClient->Transfers.Callbacks.pfnOnInitialized = shClSvcWinTransferOnInitializedCallback;
-        pClient->Transfers.Callbacks.pfnOnDestroy     = shClSvcWinTransferOnDestroyCallback;
+        pClient->Transfers.Callbacks.pfnOnCreated      = shClSvcWinTransferOnCreatedCallback;
+        pClient->Transfers.Callbacks.pfnOnInitialize   = shClSvcWinTransferOnInitializeCallback;
+        pClient->Transfers.Callbacks.pfnOnInitialized  = shClSvcWinTransferOnInitializedCallback;
+        pClient->Transfers.Callbacks.pfnOnUnregistered = shClSvcWinTransferOnUnregisteredCallback;
+        pClient->Transfers.Callbacks.pfnOnDestroy      = shClSvcWinTransferOnDestroyCallback;
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
     }
     else
@@ -947,6 +972,10 @@ int ShClBackendDisconnect(PSHCLBACKEND pBackend, PSHCLCLIENT pClient)
             pCtx->hThread = NIL_RTTHREAD;
         }
 
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+        /* Transfer callback tables retain pCtx as their user argument. */
+        shClSvcTransferDestroyAll(pClient);
+#endif
         ShClWinCtxDestroy(&pCtx->Win);
 
         if (RT_SUCCESS(vrc))
@@ -990,7 +1019,7 @@ int ShClBackendReportFormatsToGuest(PSHCLBACKEND pBackend, PSHCLCLIENT pClient, 
 
     int vrc;
 
-    uint32_t uMode = pClient->State.uMode;
+    uint32_t uMode = ShClSvcClientGetMode(pClient);
     if (   uMode == VBOX_SHCL_MODE_BIDIRECTIONAL
         || uMode == VBOX_SHCL_MODE_HOST_TO_GUEST)
     { /* likely */ }

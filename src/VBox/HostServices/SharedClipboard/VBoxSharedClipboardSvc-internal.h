@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-internal.h 114971 2026-08-10 17:29:14Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-internal.h 115049 2026-08-17 15:12:59Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal service instance state.
  */
@@ -37,6 +37,24 @@
 
 
 /**
+ * State of the optional service extension installed by a host component.
+ */
+typedef struct SHCLEXTSTATE
+{
+    /** Registered service extension entry point, or NULL. */
+    PFNHGCMSVCEXT  pfnExtension;
+    /** Opaque extension-provided data. */
+    void          *pvExtension;
+    /** Whether the host service is reading clipboard data currently. */
+    bool           fReadingData;
+    /** Whether the service extension announced formats while data was read. */
+    bool           fDelayedAnnouncement;
+    /** Formats announced while the host service was reading data. */
+    uint32_t       fDelayedFormats;
+} SHCLEXTSTATE;
+
+
+/**
  * Shared Clipboard host service instance state.
  */
 typedef struct SHCLSERVICE
@@ -51,18 +69,16 @@ typedef struct SHCLSERVICE
     RTCRITSECT              CritSect;
     /** Current Shared Clipboard mode. */
     uint32_t                uMode;
+    /** Next non-zero service session ID to assign to a client. */
+    SHCLSESSIONID           idNextSession;
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     /** Current Shared Clipboard file transfer mode. */
     uint32_t                fTransferMode;
-    /** Next non-zero service session ID to assign to a client. */
-    SHCLSESSIONID           idNextSession;
 #endif
     /** Service extension state. */
     SHCLEXTSTATE            ExtState;
-    /** Connected HGCM clients keyed by client ID. */
-    ClipboardClientMap      mapClients;
-    /** Deferred clients ready to process new commands. */
-    ClipboardClientQueue    listClientsDeferred;
+    /** The one active HGCM client.  This is a weak pointer owned by HGCM. */
+    PSHCLCLIENT             pActiveClient;
     /** Host feature mask (VBOX_SHCL_HF_0_XXX). */
     uint64_t                fHostFeatures0;
 
@@ -70,10 +86,11 @@ typedef struct SHCLSERVICE
         : pHelpers(NULL)
         , pTable(NULL)
         , uMode(VBOX_SHCL_MODE_OFF)
+        , idNextSession(1)
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
         , fTransferMode(VBOX_SHCL_TRANSFER_MODE_F_NONE)
-        , idNextSession(1)
 #endif
+        , pActiveClient(NULL)
         , fHostFeatures0(VBOX_SHCL_HF_0_CONTEXT_ID
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
                          | VBOX_SHCL_HF_0_TRANSFERS
@@ -91,21 +108,18 @@ typedef SHCLSERVICE *PSHCLSERVICE;
 /** The single Shared Clipboard HGCM host service instance. */
 extern SHCLSERVICE g_ShClSvc;
 
-/* Transitional aliases.  These keep the initial instance-state patch small and
-   will be removed as client/control/state code is split into local units. */
-#define g_ShClBackend          (g_ShClSvc.Backend)
-#define g_pHelpers             (g_ShClSvc.pHelpers)
-#define g_pTable               (g_ShClSvc.pTable)
-#define g_CritSect             (g_ShClSvc.CritSect)
-#define g_uMode                (g_ShClSvc.uMode)
+/** @name Service-global locking.
+ * @{ */
+void shClSvcLock(void);
+void shClSvcUnlock(void);
+/** @} */
+
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-# define g_fTransferMode       (g_ShClSvc.fTransferMode)
-# define g_idNextSession       (g_ShClSvc.idNextSession)
+/** @name Service-global transfer policy.
+ * @{ */
+uint32_t shClSvcTransferModeGet(void);
+/** @} */
 #endif
-#define g_ExtState             (g_ShClSvc.ExtState)
-#define g_mapClients           (g_ShClSvc.mapClients)
-#define g_listClientsDeferred  (g_ShClSvc.listClientsDeferred)
-#define g_fHostFeatures0       (g_ShClSvc.fHostFeatures0)
 
 /** @name Host-controlled service handling.
  * @{ */
