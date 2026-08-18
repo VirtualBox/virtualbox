@@ -398,7 +398,7 @@ static void apicSignalNextPendingIntr(PVMCPUCC pVCpu)
              */
             if (XAPIC_PPR_GET_PP(uVector) > XAPIC_PPR_GET_PP(uIsrVec))
             {
-                Log2(("APIC%u: apicSignalNextPendingIntr: Signalling pending interrupt. uVector=%#x irr=%.*Rhxd\n", pVCpu->idCpu, uVector, sizeof(pXApicPage->irr), &pXApicPage->irr.u));
+                Log2(("APIC%u: apicSignalNextPendingIntr: Signalling pending interrupt. uVector=%#x\n", pVCpu->idCpu, uVector));
                 apicSetInterruptFF(pVCpu, PDMAPICIRQ_HARDWARE);
             }
             else
