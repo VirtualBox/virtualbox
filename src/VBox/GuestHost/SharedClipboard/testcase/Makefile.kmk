@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114650 2026-07-08 09:14:39Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 115068 2026-08-18 14:45:28Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the Shared Clipboard Guest/Host testcases.
 #
@@ -88,6 +88,33 @@ if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_ADDITIONS) && !defined(VBO
   $$(tstClipboardMimeConv_0_OUTDIR)/tstClipboardMimeConv.run: $$(tstClipboardMimeConv_1_STAGE_TARGET)
 	$(tstClipboardMimeConv_1_STAGE_TARGET) quiet
 	$(QUIET)$(APPEND) -t "$@" "done"
+
+  ifeq ($(KBUILD_TARGET),win)
+   #
+   # Shared Clipboard Windows stream testcase.
+   #
+   PROGRAMS += tstClipboardWinStream
+   tstClipboardWinStream_TEMPLATE = VBoxR3TstExe
+   tstClipboardWinStream_DEFS     = VBOX_WITH_SHARED_CLIPBOARD VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+   tstClipboardWinStream_SOURCES  = \
+   	tstClipboardWinStream.cpp \
+   	../ClipboardDataObjectImpl-win.cpp \
+   	../ClipboardEnumFormatEtcImpl-win.cpp \
+   	../ClipboardStreamImpl-win.cpp \
+   	../clipboard-common.cpp \
+   	../clipboard-helper.cpp \
+   	../clipboard-path.cpp \
+   	../clipboard-transfers.cpp
+   tstClipboardWinStream_CLEAN    = $(tstClipboardWinStream_0_OUTDIR)/tstClipboardWinStream.run
+
+   $$(tstClipboardWinStream_0_OUTDIR)/tstClipboardWinStream.run: $$(tstClipboardWinStream_1_STAGE_TARGET)
+	export VBOX_LOG_DEST=nofile; $(tstClipboardWinStream_1_STAGE_TARGET) quiet
+	$(QUIET)$(APPEND) -t "$@" "done"
+
+   ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),$(KBUILD_HOST).$(KBUILD_HOST_ARCH))
+    TESTING += $(tstClipboardWinStream_0_OUTDIR)/tstClipboardWinStream.run
+   endif
+  endif
 
   if defined(VBOX_WITH_LIBCURL) && defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP)
    PROGRAMS += tstClipboardHttpServer
