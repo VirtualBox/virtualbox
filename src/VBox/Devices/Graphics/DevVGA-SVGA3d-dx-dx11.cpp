@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 115059 2026-08-17 17:02:20Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 115066 2026-08-18 13:31:58Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -11752,6 +11752,7 @@ static DECLCALLBACK(int) vmsvga3dBackDXSetCOTable(PVGASTATECC pThisCC, PVMSVGA3D
             }
             break;
         case VBSVGA_COTABLE_VDOV:
+#ifndef DX_STATE_TRACKER
             if (pBackendDXContext->paVideoDecoderOutputView)
             {
                 /* Destroy the no longer used entries. */
@@ -11779,6 +11780,36 @@ static DECLCALLBACK(int) vmsvga3dBackDXSetCOTable(PVGASTATECC pThisCC, PVMSVGA3D
                 if (pDXView->u.pView)
                     dxViewAddToList(pThisCC, pDXView);
             }
+#else
+            if (!fGrow)
+                cValidEntries = 0;
+
+            if (pBackendDXContext->paVideoDecoderOutputView)
+            {
+                /* Destroy the no longer used entries. */
+                for (uint32_t i = 0; i < pBackendDXContext->cVideoDecoderOutputView; ++i)
+                {
+                    DXVIEW *pDXView = &pBackendDXContext->paVideoDecoderOutputView[i];
+                    if (i < cValidEntries)
+                        dxViewRemoveFromList(pDXView); /* Remove from list because DXVIEW array will be reallocated. */
+                    else
+                        dxViewDestroy(pDXView);
+                }
+            }
+
+            rc = dxCOTableRealloc((void **)&pBackendDXContext->paVideoDecoderOutputView, &pBackendDXContext->cVideoDecoderOutputView,
+                                  sizeof(pBackendDXContext->paVideoDecoderOutputView[0]), pDXContext->cot.cVideoDecoderOutputView, cValidEntries);
+            AssertRCBreak(rc);
+
+            for (uint32_t i = 0; i < pBackendDXContext->cVideoDecoderOutputView; ++i)
+            {
+                DXVIEW *pDXView = &pBackendDXContext->paVideoDecoderOutputView[i];
+                if (i < cValidEntries && pDXView->u.pView)
+                    dxViewAddToList(pThisCC, pDXView);
+                else
+                    dxViewInit(pDXView);
+            }
+#endif
             break;
         case VBSVGA_COTABLE_VIDEODECODER:
             if (pBackendDXContext->paVideoDecoder)
@@ -11804,6 +11835,7 @@ static DECLCALLBACK(int) vmsvga3dBackDXSetCOTable(PVGASTATECC pThisCC, PVMSVGA3D
             }
             break;
         case VBSVGA_COTABLE_VPIV:
+#ifndef DX_STATE_TRACKER
             if (pBackendDXContext->paVideoProcessorInputView)
             {
                 /* Destroy the no longer used entries. */
@@ -11831,8 +11863,39 @@ static DECLCALLBACK(int) vmsvga3dBackDXSetCOTable(PVGASTATECC pThisCC, PVMSVGA3D
                 if (pDXView->u.pView)
                     dxViewAddToList(pThisCC, pDXView);
             }
+#else
+            if (!fGrow)
+                cValidEntries = 0;
+
+            if (pBackendDXContext->paVideoProcessorInputView)
+            {
+                /* Destroy the no longer used entries. */
+                for (uint32_t i = 0; i < pBackendDXContext->cVideoProcessorInputView; ++i)
+                {
+                    DXVIEW *pDXView = &pBackendDXContext->paVideoProcessorInputView[i];
+                    if (i < cValidEntries)
+                        dxViewRemoveFromList(pDXView); /* Remove from list because DXVIEW array will be reallocated. */
+                    else
+                        dxViewDestroy(pDXView);
+                }
+            }
+
+            rc = dxCOTableRealloc((void **)&pBackendDXContext->paVideoProcessorInputView, &pBackendDXContext->cVideoProcessorInputView,
+                                  sizeof(pBackendDXContext->paVideoProcessorInputView[0]), pDXContext->cot.cVideoProcessorInputView, cValidEntries);
+            AssertRCBreak(rc);
+
+            for (uint32_t i = 0; i < pBackendDXContext->cVideoProcessorInputView; ++i)
+            {
+                DXVIEW *pDXView = &pBackendDXContext->paVideoProcessorInputView[i];
+                if (i < cValidEntries && pDXView->u.pView)
+                    dxViewAddToList(pThisCC, pDXView);
+                else
+                    dxViewInit(pDXView);
+            }
+#endif
             break;
         case VBSVGA_COTABLE_VPOV:
+#ifndef DX_STATE_TRACKER
             if (pBackendDXContext->paVideoProcessorOutputView)
             {
                 /* Destroy the no longer used entries. */
@@ -11860,6 +11923,36 @@ static DECLCALLBACK(int) vmsvga3dBackDXSetCOTable(PVGASTATECC pThisCC, PVMSVGA3D
                 if (pDXView->u.pView)
                     dxViewAddToList(pThisCC, pDXView);
             }
+#else
+            if (!fGrow)
+                cValidEntries = 0;
+
+            if (pBackendDXContext->paVideoProcessorOutputView)
+            {
+                /* Destroy the no longer used entries. */
+                for (uint32_t i = 0; i < pBackendDXContext->cVideoProcessorOutputView; ++i)
+                {
+                    DXVIEW *pDXView = &pBackendDXContext->paVideoProcessorOutputView[i];
+                    if (i < cValidEntries)
+                        dxViewRemoveFromList(pDXView); /* Remove from list because DXVIEW array will be reallocated. */
+                    else
+                        dxViewDestroy(pDXView);
+                }
+            }
+
+            rc = dxCOTableRealloc((void **)&pBackendDXContext->paVideoProcessorOutputView, &pBackendDXContext->cVideoProcessorOutputView,
+                                  sizeof(pBackendDXContext->paVideoProcessorOutputView[0]), pDXContext->cot.cVideoProcessorOutputView, cValidEntries);
+            AssertRCBreak(rc);
+
+            for (uint32_t i = 0; i < pBackendDXContext->cVideoProcessorOutputView; ++i)
+            {
+                DXVIEW *pDXView = &pBackendDXContext->paVideoProcessorOutputView[i];
+                if (i < cValidEntries && pDXView->u.pView)
+                    dxViewAddToList(pThisCC, pDXView);
+                else
+                    dxViewInit(pDXView);
+            }
+#endif
             break;
         case VBSVGA_COTABLE_MAX: break; /* Compiler warning */
 #ifndef DEBUG_sunlover
@@ -12865,22 +12958,11 @@ static void dxVideoProcessorSetStreamRotation(DXDEVICE *pDXDevice, DXVIDEOPROCES
 }
 
 
-static int dxCreateVideoDecoderOutputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, VBSVGA3dVideoDecoderOutputViewId videoDecoderOutputViewId, VBSVGACOTableDXVideoDecoderOutputViewEntry const *pEntry)
+static HRESULT dxCreateVideoDecoderOutputView(PVGASTATECC pThisCC, VBSVGACOTableDXVideoDecoderOutputViewEntry const *pEntry,
+                                              ID3D11Resource *pResource, ID3D11VideoDecoderOutputView **ppVDOView)
 {
     DXDEVICE *pDXDevice = dxDeviceGet(pThisCC->svga.p3dState);
     AssertReturn(pDXDevice->pVideoDevice, VERR_INVALID_STATE);
-
-    PVMSVGA3DSURFACE pSurface;
-    ID3D11Resource *pResource;
-    int rc = dxEnsureResource(pThisCC, pEntry->sid, &pSurface, &pResource);
-    AssertRCReturn(rc, rc);
-
-    videoDecoderOutputViewId = dxVideoDecoderOutputViewId(pDXContext, videoDecoderOutputViewId);
-    if (videoDecoderOutputViewId == SVGA3D_INVALID_ID)
-        return VERR_INVALID_PARAMETER;
-
-    DXVIEW *pView = &pDXContext->pBackendDXContext->paVideoDecoderOutputView[videoDecoderOutputViewId];
-    AssertStmt(pView->u.pView == NULL, dxViewDestroy(pView));
 
     D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC Desc;
     RT_ZERO(Desc);
@@ -12888,30 +12970,17 @@ static int dxCreateVideoDecoderOutputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEX
     Desc.ViewDimension        = dxVDOVDimension(pEntry->desc.ViewDimension);
     Desc.Texture2D.ArraySlice = pEntry->desc.Texture2D.ArraySlice;
 
-    ID3D11VideoDecoderOutputView *pVDOView;
-    HRESULT hr = pDXDevice->pVideoDevice->CreateVideoDecoderOutputView(pResource, &Desc, &pVDOView);
-    AssertReturn(SUCCEEDED(hr), VERR_NOT_SUPPORTED);
-
-    return dxViewInit(pView, pSurface, pDXContext, videoDecoderOutputViewId, VMSVGA3D_VIEWTYPE_VIDEODECODEROUTPUT, pVDOView);
+    HRESULT hr = pDXDevice->pVideoDevice->CreateVideoDecoderOutputView(pResource, &Desc, ppVDOView);
+    Assert(SUCCEEDED(hr));
+    return hr;
 }
 
 
-static int dxCreateVideoProcessorInputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, VBSVGA3dVideoProcessorInputViewId videoProcessorInputViewId, VBSVGACOTableDXVideoProcessorInputViewEntry const *pEntry)
+static HRESULT dxCreateVideoProcessorInputView(PVGASTATECC pThisCC, VBSVGACOTableDXVideoProcessorInputViewEntry const *pEntry,
+                                               ID3D11Resource *pResource, ID3D11VideoProcessorInputView **ppVPIView)
 {
     DXDEVICE *pDXDevice = dxDeviceGet(pThisCC->svga.p3dState);
     AssertReturn(pDXDevice->pVideoDevice, VERR_INVALID_STATE);
-
-    PVMSVGA3DSURFACE pSurface;
-    ID3D11Resource *pResource;
-    int rc = dxEnsureResource(pThisCC, pEntry->sid, &pSurface, &pResource);
-    AssertRCReturn(rc, rc);
-
-    videoProcessorInputViewId = dxVideoProcessorInputViewId(pDXContext, videoProcessorInputViewId);
-    if (videoProcessorInputViewId == SVGA3D_INVALID_ID)
-        return VERR_INVALID_PARAMETER;
-
-    DXVIEW *pView = &pDXContext->pBackendDXContext->paVideoProcessorInputView[videoProcessorInputViewId];
-    AssertStmt(pView->u.pView == NULL, dxViewDestroy(pView));
 
     D3D11_VIDEO_PROCESSOR_CONTENT_DESC ContentDesc;
     RT_ZERO(ContentDesc);
@@ -12928,7 +12997,7 @@ static int dxCreateVideoProcessorInputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTE
 
     ID3D11VideoProcessorEnumerator *pEnum;
     HRESULT hr = pDXDevice->pVideoDevice->CreateVideoProcessorEnumerator(&ContentDesc, &pEnum);
-    AssertReturn(SUCCEEDED(hr), VERR_NOT_SUPPORTED);
+    AssertReturn(SUCCEEDED(hr), hr);
 
     D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC Desc;
     RT_ZERO(Desc);
@@ -12937,31 +13006,18 @@ static int dxCreateVideoProcessorInputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTE
     Desc.Texture2D.MipSlice   = pEntry->desc.Texture2D.MipSlice;
     Desc.Texture2D.ArraySlice = pEntry->desc.Texture2D.ArraySlice;
 
-    ID3D11VideoProcessorInputView *pVPIView;
-    hr = pDXDevice->pVideoDevice->CreateVideoProcessorInputView(pResource, pEnum, &Desc, &pVPIView);
+    hr = pDXDevice->pVideoDevice->CreateVideoProcessorInputView(pResource, pEnum, &Desc, ppVPIView);
     D3D_RELEASE(pEnum);
-    AssertReturn(SUCCEEDED(hr), VERR_NOT_SUPPORTED);
-
-    return dxViewInit(pView, pSurface, pDXContext, videoProcessorInputViewId, VMSVGA3D_VIEWTYPE_VIDEOPROCESSORINPUT, pVPIView);
+    Assert(SUCCEEDED(hr));
+    return hr;
 }
 
 
-static int dxCreateVideoProcessorOutputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, VBSVGA3dVideoProcessorOutputViewId videoProcessorOutputViewId, VBSVGACOTableDXVideoProcessorOutputViewEntry const *pEntry)
+static HRESULT dxCreateVideoProcessorOutputView(PVGASTATECC pThisCC, VBSVGACOTableDXVideoProcessorOutputViewEntry const *pEntry,
+                                                ID3D11Resource *pResource, ID3D11VideoProcessorOutputView **ppVPOView)
 {
     DXDEVICE *pDXDevice = dxDeviceGet(pThisCC->svga.p3dState);
     AssertReturn(pDXDevice->pVideoDevice, VERR_INVALID_STATE);
-
-    PVMSVGA3DSURFACE pSurface;
-    ID3D11Resource *pResource;
-    int rc = dxEnsureResource(pThisCC, pEntry->sid, &pSurface, &pResource);
-    AssertRCReturn(rc, rc);
-
-    videoProcessorOutputViewId = dxVideoProcessorOutputViewId(pDXContext, videoProcessorOutputViewId);
-    if (videoProcessorOutputViewId == SVGA3D_INVALID_ID)
-        return VERR_INVALID_PARAMETER;
-
-    DXVIEW *pView = &pDXContext->pBackendDXContext->paVideoProcessorOutputView[videoProcessorOutputViewId];
-    AssertStmt(pView->u.pView == NULL, dxViewDestroy(pView));
 
     D3D11_VIDEO_PROCESSOR_CONTENT_DESC ContentDesc;
     RT_ZERO(ContentDesc);
@@ -12978,7 +13034,7 @@ static int dxCreateVideoProcessorOutputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONT
 
     ID3D11VideoProcessorEnumerator *pEnum;
     HRESULT hr = pDXDevice->pVideoDevice->CreateVideoProcessorEnumerator(&ContentDesc, &pEnum);
-    AssertReturn(SUCCEEDED(hr), VERR_NOT_SUPPORTED);
+    AssertReturn(SUCCEEDED(hr), hr);
 
     D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC Desc;
     RT_ZERO(Desc);
@@ -12994,31 +13050,40 @@ static int dxCreateVideoProcessorOutputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONT
         Desc.Texture2DArray.ArraySize       = pEntry->desc.Texture2DArray.ArraySize;
     }
 
-    ID3D11VideoProcessorOutputView *pVPOView;
-    hr = pDXDevice->pVideoDevice->CreateVideoProcessorOutputView(pResource, pEnum, &Desc, &pVPOView);
+    hr = pDXDevice->pVideoDevice->CreateVideoProcessorOutputView(pResource, pEnum, &Desc, ppVPOView);
     D3D_RELEASE(pEnum);
-    AssertReturn(SUCCEEDED(hr), VERR_NOT_SUPPORTED);
-
-    return dxViewInit(pView, pSurface, pDXContext, videoProcessorOutputViewId, VMSVGA3D_VIEWTYPE_VIDEOPROCESSOROUTPUT, pVPOView);
+    Assert(SUCCEEDED(hr));
+    return hr;
 }
 
 
 static int dxEnsureVideoDecoderOutputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, VBSVGA3dVideoDecoderOutputViewId viewId, DXVIEW **ppResult)
 {
-    ASSERT_GUEST_RETURN(viewId < pDXContext->cot.cVideoDecoderOutputView, VERR_INVALID_PARAMETER);
-
     viewId = dxVideoDecoderOutputViewId(pDXContext, viewId);
     viewId = svgaVideoDecoderOutputViewId(pDXContext, viewId);
     if (viewId == SVGA3D_INVALID_ID)
         return VERR_INVALID_PARAMETER;
 
+    VBSVGACOTableDXVideoDecoderOutputViewEntry const *pEntry = &pDXContext->cot.paVideoDecoderOutputView[viewId];
     DXVIEW *pDXView = &pDXContext->pBackendDXContext->paVideoDecoderOutputView[viewId];
+
+    /* dxEnsureResource must be always called because it makes sure that resource is up to date. */
+    PVMSVGA3DSURFACE pSurface;
+    ID3D11Resource *pResource;
+    int rc = dxEnsureResource(pThisCC, pEntry->sid, &pSurface, &pResource);
+    AssertRCReturn(rc, rc);
+
     if (!pDXView->u.pView)
     {
-        VBSVGACOTableDXVideoDecoderOutputViewEntry const *pEntry = &pDXContext->cot.paVideoDecoderOutputView[viewId];
-        int rc = dxCreateVideoDecoderOutputView(pThisCC, pDXContext, viewId, pEntry);
+        ID3D11VideoDecoderOutputView *pVDOView;
+        HRESULT hr = dxCreateVideoDecoderOutputView(pThisCC, pEntry, pResource, &pVDOView);
+        if (SUCCEEDED(hr))
+            rc = dxViewInit(pDXView, pSurface, pDXContext, viewId, VMSVGA3D_VIEWTYPE_VIDEODECODEROUTPUT, pVDOView);
+        else
+            rc = VERR_INVALID_STATE;
         AssertRCReturn(rc, rc);
     }
+
     *ppResult = pDXView;
     return VINF_SUCCESS;
 }
@@ -13031,13 +13096,26 @@ static int dxEnsureVideoProcessorInputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONTE
     if (viewId == SVGA3D_INVALID_ID)
         return VERR_INVALID_PARAMETER;
 
+    VBSVGACOTableDXVideoProcessorInputViewEntry const *pEntry = &pDXContext->cot.paVideoProcessorInputView[viewId];
     DXVIEW *pDXView = &pDXContext->pBackendDXContext->paVideoProcessorInputView[viewId];
+
+    /* dxEnsureResource must be always called because it makes sure that resource is up to date. */
+    PVMSVGA3DSURFACE pSurface;
+    ID3D11Resource *pResource;
+    int rc = dxEnsureResource(pThisCC, pEntry->sid, &pSurface, &pResource);
+    AssertRCReturn(rc, rc);
+
     if (!pDXView->u.pView)
     {
-        VBSVGACOTableDXVideoProcessorInputViewEntry const *pEntry = &pDXContext->cot.paVideoProcessorInputView[viewId];
-        int rc = dxCreateVideoProcessorInputView(pThisCC, pDXContext, viewId, pEntry);
+        ID3D11VideoProcessorInputView *pVPIView;
+        HRESULT hr = dxCreateVideoProcessorInputView(pThisCC, pEntry, pResource, &pVPIView);
+        if (SUCCEEDED(hr))
+            rc = dxViewInit(pDXView, pSurface, pDXContext, viewId, VMSVGA3D_VIEWTYPE_VIDEOPROCESSORINPUT, pVPIView);
+        else
+            rc = VERR_INVALID_STATE;
         AssertRCReturn(rc, rc);
     }
+
     *ppResult = pDXView;
     return VINF_SUCCESS;
 }
@@ -13050,13 +13128,26 @@ static int dxEnsureVideoProcessorOutputView(PVGASTATECC pThisCC, PVMSVGA3DDXCONT
     if (viewId == SVGA3D_INVALID_ID)
         return VERR_INVALID_PARAMETER;
 
+    VBSVGACOTableDXVideoProcessorOutputViewEntry const *pEntry = &pDXContext->cot.paVideoProcessorOutputView[viewId];
     DXVIEW *pDXView = &pDXContext->pBackendDXContext->paVideoProcessorOutputView[viewId];
+
+    /* dxEnsureResource must be always called because it makes sure that resource is up to date. */
+    PVMSVGA3DSURFACE pSurface;
+    ID3D11Resource *pResource;
+    int rc = dxEnsureResource(pThisCC, pEntry->sid, &pSurface, &pResource);
+    AssertRCReturn(rc, rc);
+
     if (!pDXView->u.pView)
     {
-        VBSVGACOTableDXVideoProcessorOutputViewEntry const *pEntry = &pDXContext->cot.paVideoProcessorOutputView[viewId];
-        int rc = dxCreateVideoProcessorOutputView(pThisCC, pDXContext, viewId, pEntry);
+        ID3D11VideoProcessorOutputView *pVPOView;
+        HRESULT hr = dxCreateVideoProcessorOutputView(pThisCC, pEntry, pResource, &pVPOView);
+        if (SUCCEEDED(hr))
+            rc = dxViewInit(pDXView, pSurface, pDXContext, viewId, VMSVGA3D_VIEWTYPE_VIDEOPROCESSOROUTPUT, pVPOView);
+        else
+            rc = VERR_INVALID_STATE;
         AssertRCReturn(rc, rc);
     }
+
     *ppResult = pDXView;
     return VINF_SUCCESS;
 }
