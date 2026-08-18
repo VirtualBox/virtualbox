@@ -1065,6 +1065,28 @@ static DECLCALLBACK(VBOXSTRICTRC) apicR3HvExportState(PVMCPUCC pVCpu)
 
 
 /**
+ * @interface_method_impl{PDMAPICBACKEND,pfnUpdateStateAfterWrite}
+ */
+static DECLCALLBACK(VBOXSTRICTRC) apicR3HvUpdateStateAfterWrite(PVMCPUCC pVCpu, uint16_t offApicReg)
+{
+    RT_NOREF(pVCpu, offApicReg);
+    AssertReleaseMsgFailed(("Unexpected interface call\n"));
+    return VERR_NOT_SUPPORTED;
+}
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnSetEoiFast}
+ */
+static DECLCALLBACK(VBOXSTRICTRC) apicR3HvSetEoiFast(PVMCPUCC pVCpu, uint8_t uVector)
+{
+    RT_NOREF(pVCpu, uVector);
+    AssertReleaseMsgFailed(("Unexpected interface call\n"));
+    return VERR_NOT_SUPPORTED;
+}
+
+
+/**
  * Dumps basic APIC state.
  *
  * @param   pVM         The cross context VM structure.
@@ -1753,6 +1775,8 @@ const PDMAPICBACKEND g_ApicNemBackend =
     /* .pfnSetHvCompatMode = */         apicR3HvSetHvCompatMode,
     /* .pfnImportState = */             apicR3HvImportState,
     /* .pfnExportState = */             apicR3HvExportState,
+    /* .pfnUpdateStateAfterWrite = */   apicR3HvUpdateStateAfterWrite,
+    /* .pfnSetEoiFast = */              apicR3HvSetEoiFast,
 };
 
 #endif /* !VBOX_DEVICE_STRUCT_TESTCASE */
