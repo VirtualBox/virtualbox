@@ -1,0 +1,62 @@
+/* $Id: bs3-cmn-SelSetup32BitData.c 115062 2026-08-18 07:52:42Z alexander.eichner@oracle.com $ */
+/** @file
+ * BS3Kit - Bs3SelSetup32BitData
+ */
+
+/*
+ * Copyright (C) 2026 Oracle and/or its affiliates.
+ *
+ * This file is part of VirtualBox base platform packages, as
+ * available from https://www.virtualbox.org.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation, in version 3 of the
+ * License.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <https://www.gnu.org/licenses>.
+ *
+ * The contents of this file may alternatively be used under the terms
+ * of the Common Development and Distribution License Version 1.0
+ * (CDDL), a copy of it is provided in the "COPYING.CDDL" file included
+ * in the VirtualBox distribution, in which case the provisions of the
+ * CDDL are applicable instead of those of the GPL.
+ *
+ * You may elect to license modified versions of this file under the
+ * terms and conditions of either the GPL or the CDDL or both.
+ *
+ * SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
+ */
+
+
+/*********************************************************************************************************************************
+*   Header Files                                                                                                                 *
+*********************************************************************************************************************************/
+#include <bs3kit.h>
+
+
+#undef Bs3SelSetup32BitData
+BS3_CMN_DEF(void, Bs3SelSetup32BitData,(X86DESC BS3_FAR *pDesc, uint32_t uBaseAddr, uint32_t uLimit, uint8_t bDpl))
+{
+    uint8_t const cLimitShift = uLimit <= UINT32_C(0xfffff) ? 0 : 12;
+    pDesc->Gen.u16LimitLow    = (uint16_t)(uLimit >> cLimitShift);
+    pDesc->Gen.u16BaseLow     = (uint16_t)uBaseAddr;
+    pDesc->Gen.u8BaseHigh1    = (uint8_t)(uBaseAddr >> 16);
+    pDesc->Gen.u4Type         = X86_SEL_TYPE_RW_ACC;
+    pDesc->Gen.u1DescType     = 1; /* data/code */
+    pDesc->Gen.u2Dpl          = bDpl & 3;
+    pDesc->Gen.u1Present      = 1;
+    pDesc->Gen.u4LimitHigh    = (unsigned)(uLimit >> (16 + cLimitShift));
+    pDesc->Gen.u1Available    = 0;
+    pDesc->Gen.u1Long         = 0;
+    pDesc->Gen.u1DefBig       = 1;
+    pDesc->Gen.u1Granularity  = cLimitShift != 0;
+    pDesc->Gen.u8BaseHigh2    = (uint8_t)(uBaseAddr >> 24);
+}
+

@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 115062 2026-08-18 07:52:42Z alexander.eichner@oracle.com $
 ## @file
 # VirtualBox Validation Kit - Bootsector Kit v3
 #
@@ -204,6 +204,7 @@ VBOX_BS3KIT_COMMON_SOURCES = \
 	bs3-cmn-SelLnkPtrToFlat.c \
 	bs3-cmn-SelSetup16BitData.c \
 	bs3-cmn-SelSetup16BitCode.c \
+	bs3-cmn-SelSetup32BitData.c \
 	bs3-cmn-SelSetup32BitCode.c \
 	bs3-cmn-SelSetupGate.c \
 	bs3-cmn-SelSetupGate64.c \
