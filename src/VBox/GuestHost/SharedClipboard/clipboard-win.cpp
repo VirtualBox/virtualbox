@@ -1,4 +1,4 @@
-/* $Id: clipboard-win.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-win.cpp 115067 2026-08-18 14:37:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Windows-specific functions for clipboard handling.
  */
@@ -483,13 +483,15 @@ SHCLFORMAT ShClWinClipboardFormatToVBox(UINT uFormat)
                     else if (   (RTUtf16Cmp(szFormatName, RT_LSTR("FileGroupDescriptor"))  == 0)
                              || (RTUtf16Cmp(szFormatName, RT_LSTR("FileGroupDescriptorW")) == 0)
                              || (RTUtf16Cmp(szFormatName, RT_LSTR("FileContents"))         == 0))
+                        LogRelMax(16, ("Shared Clipboard: Windows virtual-file clipboard format '%ls' is not yet supported "
+                                       "for file transfers from the local Windows clipboard\n", szFormatName));
 # else
                     else if (   (RTStrCmp(szFormatName, CFSTR_FILEDESCRIPTORA) == 0)
                              || (RTStrCmp(szFormatName, "FileGroupDescriptorW") == 0)
                              || (RTStrCmp(szFormatName, CFSTR_FILECONTENTS)    == 0))
+                        LogRelMax(16, ("Shared Clipboard: Windows virtual-file clipboard format '%s' is not yet supported "
+                                       "for file transfers from the local Windows clipboard\n", szFormatName));
 # endif
-                        LogRelMax(16, ("Shared Clipboard: Windows virtual-file clipboard format '%s' is not supported as a host file-transfer source yet\n",
-                                 szFormatName));
 #endif
                 }
             }
