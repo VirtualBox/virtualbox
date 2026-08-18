@@ -1,4 +1,4 @@
-; $Id: bs3-apic-1-asm.asm 114752 2026-07-22 16:52:58Z alexander.eichner@oracle.com $
+; $Id: bs3-apic-1-asm.asm 115063 2026-08-18 07:54:16Z alexander.eichner@oracle.com $
 ;; @file
 ; BS3Kit - bs3-apic-1
 ;
@@ -120,4 +120,27 @@ BS3_GLOBAL_LOCAL_LABEL .ap_lck_busy
         ; Never reached
         int 3
 BS3_PROC_END   NAME(bs3ApicApTrampoline)
+
+BS3_BEGIN_TEXT32
+
+;;
+; @cproto   BS3_DECL(void) bs3ApicApSetGs(uint16_t u16Gs);
+;
+BS3_PROC_BEGIN NAME(bs3ApicApSetGs)
+        push    edi
+
+        mov     di, [esp + 8]          ; u16Gs
+        mov     gs, di
+        pop     edi
+        ret
+BS3_PROC_END   NAME(bs3ApicApSetGs)
+
+
+;;
+; @cproto   BS3_DECL(PAPICCPU) bs3ApicApGetCpu(void);
+;
+BS3_PROC_BEGIN NAME(bs3ApicApGetCpu)
+        mov eax, [gs:0]
+        ret
+BS3_PROC_END   NAME(bs3ApicApGetCpu)
 

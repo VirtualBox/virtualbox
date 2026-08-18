@@ -1,4 +1,4 @@
-/* $Id: bs3-apic-1-32.c32 114765 2026-07-24 08:34:04Z alexander.eichner@oracle.com $ */
+/* $Id: bs3-apic-1-32.c32 115063 2026-08-18 07:54:16Z alexander.eichner@oracle.com $ */
 /** @file
  * BS3Kit - bs3-apic-1, 32-bit C code.
  */
@@ -90,6 +90,8 @@ typedef enum APICCPUREQ
  */
 typedef struct APICCPU
 {
+    /** Pointer to this CPU. */
+    struct APICCPU              *pThis;
     /** The stack for this CPU. */
     uint8_t                     abStack[CPU_STACK_SIZE];
     /** The MMIO base for the APIC when in xAPIC mode. */
@@ -105,13 +107,15 @@ typedef struct APICCPU
     /** Flag whether the APIC is in x2Apic mode. */
     bool                        fX2Apic;
     /** Padding. */
-    bool                        afAlignment[11];
+    bool                        afAlignment[7];
 } APICCPU;
 typedef APICCPU *PAPICCPU;
 AssertCompileSizeAlignment(APICCPU, 16);
 
 BS3_DECL_CALLBACK(void) bs3ApicApTrampoline(void);
 BS3_DECL_CALLBACK(void) bs3ApicApTrampoline_EndProc(void);
+BS3_DECL(void) bs3ApicApSetGs(uint16_t u16Gs);
+BS3_DECL(PAPICCPU) bs3ApicApGetCpu(void);
 
 /** The AP lock protecting against concurrent access to some APIs and the startup code (lives in the DATA16 segment). */
 #define g_fApLock BS3_DATA_NM(g_fApLock)
@@ -223,6 +227,7 @@ static void bs3ApicTestFailedF(const char BS3_FAR *pszFormat, ...)
 
 static PAPICCPU bs3ApicGetCpu(void)
 {
+#if 0
     uint64_t uApicBase;
 
     uApicBase = ASMRdMsr(MSR_IA32_APICBASE);
@@ -242,6 +247,9 @@ static PAPICCPU bs3ApicGetCpu(void)
     }
 
     return NULL;
+#else
+    return bs3ApicApGetCpu();
+#endif
 }
 
 
@@ -354,6 +362,10 @@ BS3_DECL(uint32_t) bs3ApicApStartup_pe32(void)
         uint32_t const idApic = pau32Apic[XAPIC_OFF_ID / sizeof(uint32_t)] >> 24;
         PAPICCPU pApicCpu = &g_paCpus[idApic];
 
+        /* Set the GS selector. */
+        bs3ApicApSetGs(BS3_SEL_FREE_PART4 + idApic * 8);
+
+        pApicCpu->pThis         = pApicCpu;
         pApicCpu->idCpu         = idApic;
         pApicCpu->pau32Apic     = pau32Apic;
         pApicCpu->enmWaitMethod = kApicCpuWaitMethod_StiHltCli;
@@ -420,10 +432,19 @@ static bool bs3ApicStartAllAps(uint32_t BS3_FAR volatile * const  pau32Apic)
         PAPICCPU pApicCpu = &g_paCpus[0];
         void BS3_FAR *pv = Bs3MemAllocZ(BS3MEMKIND_REAL, _4K);
         uintptr_t const uPtr = (uintptr_t)pv;
+        uint8_t i;
 
+        pApicCpu->pThis     = pApicCpu;
         pApicCpu->idCpu     = 0;
         pApicCpu->fX2Apic   = false;
         pApicCpu->pau32Apic = pau32Apic;
+
+        /* Setup the GDT entries for the per vCPU data. */
+        for (i = 0; i < CPUS_MAX; i++)
+            Bs3SelSetup32BitData(&Bs3GdteFreePart4[i], (uint32_t)(uintptr_t)&g_paCpus[i], sizeof(g_paCpus[0]), 0 /*bDpl*/);
+
+        /* Set the GS selector for CPU0. */
+        bs3ApicApSetGs(BS3_SEL_FREE_PART4);
 
         if (   !(uPtr & X86_PAGE_OFFSET_MASK)
             && (uPtr >> X86_PAGE_SHIFT) < UINT8_MAX)
@@ -495,6 +516,8 @@ static void bs3ApicTestWaitForResponses(uint32_t cCpusToRespond, uint64_t bmCpus
 
 static void bs3ApicTestSelfIpi(PAPICCPU pApicCpu)
 {
+    /* Set the GS selector for CPU0. */
+    bs3ApicApSetGs(BS3_SEL_FREE_PART4);
     bs3ApicTestSetIntrHandlerReq(pApicCpu, kApicCpuReq_Pong);
 
     ASMIntEnable();
