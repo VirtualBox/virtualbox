@@ -1,4 +1,4 @@
-/* $Id: ClipboardStreamImpl-win.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: ClipboardStreamImpl-win.cpp 115069 2026-08-18 14:58:07Z andreas.loeffler@oracle.com $ */
 /** @file
  * ClipboardStreamImpl-win.cpp - Shared Clipboard IStream object implementation (guest and host side).
  */
@@ -232,11 +232,25 @@ STDMETHODIMP ShClWinStreamImpl::Read(void *pvBuffer, ULONG nBytesToRead, ULONG *
     {
         if (cbToRead)
         {
-            rc = ShClTransferObjRead(m_pTransfer, m_hObj, pvBuffer, cbToRead, 0 /* fFlags */, &cbRead);
-            if (RT_SUCCESS(rc))
+            /* Windows treats a short IStream read as EOF, so satisfy it using
+             * as many transfer chunks as necessary. */
+            while (cbRead < cbToRead)
             {
-                m_cbProcessed += cbRead;
+                uint32_t const cbToReadChunk = RT_MIN(cbToRead - cbRead, m_pTransfer->cbMaxChunkSize);
+                uint32_t       cbReadChunk   = 0;
+                rc = ShClTransferObjRead(m_pTransfer, m_hObj, (uint8_t *)pvBuffer + cbRead, cbToReadChunk,
+                                         0 /* fFlags */, &cbReadChunk);
+                if (RT_FAILURE(rc))
+                    break;
+
+                AssertBreakStmt(cbReadChunk <= cbToReadChunk, rc = VERR_TOO_MUCH_DATA);
+
+                cbRead        += cbReadChunk;
+                m_cbProcessed += cbReadChunk;
                 Assert(m_cbProcessed <= cbSize);
+
+                if (cbReadChunk < cbToReadChunk)
+                    break;
             }
         }
 
