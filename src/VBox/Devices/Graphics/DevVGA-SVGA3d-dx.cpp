@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx.cpp 114713 2026-07-15 17:28:56Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx.cpp 115079 2026-08-19 11:42:29Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common code for DX backend interface.
  */
@@ -134,8 +134,42 @@ void vmsvga3dDXInitContextMobData(SVGADXContextMobFormat *p)
         p->csuaViewIds[i] = SVGA3D_INVALID_ID;
 }
 
+
+#ifdef DUMP_BITMAPS
+static void vmsvga3dDXDrawDumpRenderTargets(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, const char *pszPrefix = NULL)
+{
+    for (uint32_t i = 0; i < SVGA3D_MAX_SIMULTANEOUS_RENDER_TARGETS; ++i)
+    {
+        if (pDXContext->svgaDXContext.renderState.renderTargetViewIds[i] != SVGA3D_INVALID_ID)
+        {
+            SVGACOTableDXRTViewEntry *pRTViewEntry = &pDXContext->cot.paRTView[pDXContext->svgaDXContext.renderState.renderTargetViewIds[i]];
+            Log(("Dump RT[%u] sid = %u rtvid = %u\n", i, pRTViewEntry->sid, pDXContext->svgaDXContext.renderState.renderTargetViewIds[i]));
+
+            SVGA3dSurfaceImageId image;
+            image.sid = pRTViewEntry->sid;
+            image.face = 0;
+            image.mipmap = 0;
+            VMSVGA3D_MAPPED_SURFACE map;
+            int rc = vmsvga3dSurfaceMap(pThisCC, &image, NULL, VMSVGA3D_SURFACE_MAP_READ, VMSVGA3D_MAP_F_NONE, &map);
+            if (RT_SUCCESS(rc))
+            {
+                vmsvga3dMapWriteBmpFile(&map, pszPrefix ? pszPrefix : "rt-");
+                vmsvga3dSurfaceUnmap(pThisCC, &image, &map, /* fWritten =  */ false);
+            }
+            else
+                Log(("Map failed %Rrc\n", rc));
+        }
+    }
+}
+#endif
+
+
 DECLINLINE(void) dxPostDraw(PVMSVGA3DDXCONTEXT pDXContext)
 {
+#ifdef DUMP_BITMAPS
+    vmsvga3dDXDrawDumpRenderTargets(pThisCC, pDXContext);
+#endif
+    RT_ZERO(pDXContext->state.ia.vb.au32Modified);
     RT_ZERO(pDXContext->state.shader[0].shaderResources.au64Modified);
     RT_ZERO(pDXContext->state.shader[1].shaderResources.au64Modified);
     RT_ZERO(pDXContext->state.shader[2].shaderResources.au64Modified);
@@ -552,6 +586,12 @@ int vmsvga3dDXSetSingleConstantBuffer(PVGASTATECC pThisCC, uint32_t idDXContext,
     pCBB->offsetInBytes = pCmd->offsetInBytes;
     pCBB->sizeInBytes   = pCmd->sizeInBytes;
 
+#ifdef DX_STATE_TRACKER
+    if (pCBB->sid != SVGA3D_INVALID_ID)
+        pDXContext->state.shader[idxShaderState].constantBuffers.cMaxBound =
+            RT_MAX(pCmd->slot + 1, pDXContext->state.shader[idxShaderState].constantBuffers.cMaxBound);
+#endif
+
     rc = pSvgaR3State->pFuncsDX->pfnDXSetSingleConstantBuffer(pThisCC, pDXContext, pCmd->slot, pCmd->type, pCmd->sid, pCmd->offsetInBytes, pCmd->sizeInBytes);
     return rc;
 }
@@ -689,34 +729,6 @@ int vmsvga3dDXSetSamplers(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmdDX
 }
 
 
-#ifdef DUMP_BITMAPS
-static void vmsvga3dDXDrawDumpRenderTargets(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext, const char *pszPrefix = NULL)
-{
-    for (uint32_t i = 0; i < SVGA3D_MAX_SIMULTANEOUS_RENDER_TARGETS; ++i)
-    {
-        if (pDXContext->svgaDXContext.renderState.renderTargetViewIds[i] != SVGA3D_INVALID_ID)
-        {
-            SVGACOTableDXRTViewEntry *pRTViewEntry = &pDXContext->cot.paRTView[pDXContext->svgaDXContext.renderState.renderTargetViewIds[i]];
-            Log(("Dump RT[%u] sid = %u rtvid = %u\n", i, pRTViewEntry->sid, pDXContext->svgaDXContext.renderState.renderTargetViewIds[i]));
-
-            SVGA3dSurfaceImageId image;
-            image.sid = pRTViewEntry->sid;
-            image.face = 0;
-            image.mipmap = 0;
-            VMSVGA3D_MAPPED_SURFACE map;
-            int rc = vmsvga3dSurfaceMap(pThisCC, &image, NULL, VMSVGA3D_SURFACE_MAP_READ, VMSVGA3D_MAP_F_NONE, &map);
-            if (RT_SUCCESS(rc))
-            {
-                vmsvga3dMapWriteBmpFile(&map, pszPrefix ? pszPrefix : "rt-");
-                vmsvga3dSurfaceUnmap(pThisCC, &image, &map, /* fWritten =  */ false);
-            }
-            else
-                Log(("Map failed %Rrc\n", rc));
-        }
-    }
-}
-#endif
-
 int vmsvga3dDXDraw(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmdDXDraw const *pCmd)
 {
     int rc;
@@ -731,9 +743,6 @@ int vmsvga3dDXDraw(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmdDXDraw co
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDraw(pThisCC, pDXContext, pCmd->vertexCount, pCmd->startVertexLocation);
     dxPostDraw(pDXContext);
-#ifdef DUMP_BITMAPS
-    vmsvga3dDXDrawDumpRenderTargets(pThisCC, pDXContext);
-#endif
     return rc;
 }
 
@@ -752,9 +761,6 @@ int vmsvga3dDXDrawIndexed(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmdDX
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawIndexed(pThisCC, pDXContext, pCmd->indexCount, pCmd->startIndexLocation, pCmd->baseVertexLocation);
     dxPostDraw(pDXContext);
-#ifdef DUMP_BITMAPS
-    vmsvga3dDXDrawDumpRenderTargets(pThisCC, pDXContext);
-#endif
     return rc;
 }
 
@@ -774,9 +780,6 @@ int vmsvga3dDXDrawInstanced(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmd
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawInstanced(pThisCC, pDXContext,
              pCmd->vertexCountPerInstance, pCmd->instanceCount, pCmd->startVertexLocation, pCmd->startInstanceLocation);
     dxPostDraw(pDXContext);
-#ifdef DUMP_BITMAPS
-    vmsvga3dDXDrawDumpRenderTargets(pThisCC, pDXContext);
-#endif
     return rc;
 }
 
@@ -796,9 +799,6 @@ int vmsvga3dDXDrawIndexedInstanced(PVGASTATECC pThisCC, uint32_t idDXContext, SV
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawIndexedInstanced(pThisCC, pDXContext,
              pCmd->indexCountPerInstance, pCmd->instanceCount, pCmd->startIndexLocation, pCmd->baseVertexLocation, pCmd->startInstanceLocation);
     dxPostDraw(pDXContext);
-#ifdef DUMP_BITMAPS
-    vmsvga3dDXDrawDumpRenderTargets(pThisCC, pDXContext);
-#endif
     return rc;
 }
 
@@ -817,9 +817,6 @@ int vmsvga3dDXDrawAuto(PVGASTATECC pThisCC, uint32_t idDXContext)
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawAuto(pThisCC, pDXContext);
     dxPostDraw(pDXContext);
-#ifdef DUMP_BITMAPS
-    vmsvga3dDXDrawDumpRenderTargets(pThisCC, pDXContext);
-#endif
     return rc;
 }
 
@@ -871,6 +868,7 @@ int vmsvga3dDXSetVertexBuffers(PVGASTATECC pThisCC, uint32_t idDXContext, uint32
     ASSERT_GUEST_RETURN(cVertexBuffer <= SVGA3D_DX_MAX_VERTEXBUFFERS - startBuffer, VERR_INVALID_PARAMETER);
     RT_UNTRUSTED_VALIDATED_FENCE();
 
+#ifndef DX_STATE_TRACKER
     for (uint32_t i = 0; i < cVertexBuffer; ++i)
     {
         uint32_t const idxVertexBuffer = startBuffer + i;
@@ -879,6 +877,35 @@ int vmsvga3dDXSetVertexBuffers(PVGASTATECC pThisCC, uint32_t idDXContext, uint32
         pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].stride = paVertexBuffer[i].stride;
         pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].offset = paVertexBuffer[i].offset;
     }
+#else
+    bool fModified = false;
+    uint32_t cMaxBound = 0;
+    for (uint32_t i = 0; i < cVertexBuffer; ++i)
+    {
+        uint32_t const idxVertexBuffer = startBuffer + i;
+
+        if (   pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].bufferId != paVertexBuffer[i].sid
+            || pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].stride != paVertexBuffer[i].stride
+            || pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].offset != paVertexBuffer[i].offset)
+        {
+            pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].bufferId = paVertexBuffer[i].sid;
+            pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].stride = paVertexBuffer[i].stride;
+            pDXContext->svgaDXContext.inputAssembly.vertexBuffers[idxVertexBuffer].offset = paVertexBuffer[i].offset;
+            fModified = true;
+            ASMBitSet(pDXContext->state.ia.vb.au32Modified, idxVertexBuffer);
+        }
+
+        if (paVertexBuffer[i].sid != SVGA3D_INVALID_ID)
+            cMaxBound = idxVertexBuffer + 1;
+    }
+
+    if (fModified)
+        pDXContext->u64ContextFlags |= DX_CTX_F_STATE_VERTEXBUFFER;
+
+    /* Remember how many slots the context actually uses. */
+    if (pDXContext->state.ia.vb.cMaxBound < cMaxBound)
+        pDXContext->state.ia.vb.cMaxBound = cMaxBound;
+#endif
 
     rc = pSvgaR3State->pFuncsDX->pfnDXSetVertexBuffers(pThisCC, pDXContext, startBuffer, cVertexBuffer, paVertexBuffer);
     return rc;
@@ -897,9 +924,21 @@ int vmsvga3dDXSetIndexBuffer(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCm
     rc = vmsvga3dDXContextFromCid(p3dState, idDXContext, &pDXContext);
     AssertRCReturn(rc, rc);
 
+#ifndef DX_STATE_TRACKER
     pDXContext->svgaDXContext.inputAssembly.indexBufferSid = pCmd->sid;
     pDXContext->svgaDXContext.inputAssembly.indexBufferOffset = pCmd->offset;
     pDXContext->svgaDXContext.inputAssembly.indexBufferFormat = pCmd->format;
+#else
+    if (   pDXContext->svgaDXContext.inputAssembly.indexBufferSid != pCmd->sid
+        || pDXContext->svgaDXContext.inputAssembly.indexBufferOffset != pCmd->offset
+        || pDXContext->svgaDXContext.inputAssembly.indexBufferFormat != (uint32)pCmd->format)
+    {
+        pDXContext->svgaDXContext.inputAssembly.indexBufferSid = pCmd->sid;
+        pDXContext->svgaDXContext.inputAssembly.indexBufferOffset = pCmd->offset;
+        pDXContext->svgaDXContext.inputAssembly.indexBufferFormat = pCmd->format;
+        pDXContext->u64ContextFlags |= DX_CTX_F_STATE_INDEXBUFFER;
+    }
+#endif
 
     rc = pSvgaR3State->pFuncsDX->pfnDXSetIndexBuffer(pThisCC, pDXContext, pCmd->sid, pCmd->format, pCmd->offset);
     return rc;
@@ -2701,6 +2740,14 @@ static int dxSanitizeQueryEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXQuer
 static int dxSanitizeShaderEntry(PVMSVGA3DDXCONTEXT pDXContext, SVGACOTableDXShaderEntry *pEntry)
 {
     RT_NOREF(pDXContext);
+    if (pEntry->type == SVGA3D_SHADERTYPE_INVALID)
+    {
+        ASSERT_GUEST_RETURN(pEntry->sizeInBytes == 0, VERR_INVALID_PARAMETER);
+        ASSERT_GUEST_RETURN(pEntry->offsetInBytes == 0, VERR_INVALID_PARAMETER);
+        ASSERT_GUEST_RETURN(pEntry->mobid == SVGA3D_INVALID_ID, VERR_INVALID_PARAMETER);
+        return VINF_SUCCESS;
+    }
+
     ASSERT_GUEST_RETURN(pEntry->type >= SVGA3D_SHADERTYPE_MIN && pEntry->type < SVGA3D_SHADERTYPE_MAX, VERR_INVALID_PARAMETER);
     ASSERT_GUEST_RETURN(pEntry->sizeInBytes >= 8, VERR_INVALID_PARAMETER); /* Version Token + Length Token. */
     return VINF_SUCCESS;

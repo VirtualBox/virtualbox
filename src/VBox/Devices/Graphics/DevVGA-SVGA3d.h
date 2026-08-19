@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.h 114930 2026-08-10 12:29:28Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.h 115079 2026-08-19 11:42:29Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device - 3D part.
  */
@@ -89,6 +89,7 @@ typedef enum VMSVGA3D_SURFACE_MAP
 #define VMSVGA3D_MAP_F_DYNAMIC_INTERMEDIATE   0x00000001
 #define VMSVGA3D_MAP_F_STAGING_INTERMEDIATE   0x00000002
 #define VMSVGA3D_MAP_F_EXACT_REGION           0x00000004
+#define VMSVGA3D_MAP_F_ENSURE_RESOURCE        0x00000008
 
 typedef struct VMSVGA3D_MAPPED_SURFACE
 {
@@ -124,9 +125,12 @@ int vmsvga3dSaveExec(PPDMDEVINS pDevIns, PVGASTATECC pThisCC, PSSMHANDLE pSSM);
 void vmsvga3dUpdateHostScreenViewport(PVGASTATECC pThisCC, uint32_t idScreen, VMSVGAVIEWPORT const *pOldViewport);
 int vmsvga3dQueryCaps(PVGASTATECC pThisCC, SVGA3dDevCapIndex idx3dCaps, uint32_t *pu32Val);
 
+#define VMSVGA3D_SURFACE_DEFINE_F_NONE             0x0
+#define VMSVGA3D_SURFACE_DEFINE_F_ALLOC_MIP_LEVELS 0x1
+#define VMSVGA3D_SURFACE_DEFINE_F_GB               0x2
 int vmsvga3dSurfaceDefine(PVGASTATECC pThisCC, uint32_t sid, SVGA3dSurfaceAllFlags surfaceFlags, SVGA3dSurfaceFormat format,
                           uint32_t multisampleCount, SVGA3dMSPattern multisamplePattern, SVGA3dMSQualityLevel qualityLevel, SVGA3dTextureFilter autogenFilter,
-                          uint32_t numMipLevels, SVGA3dSize const *pMipLevel0Size, uint32_t arraySize, uint32_t bufferByteStride, bool fAllocMipLevels);
+                          uint32_t numMipLevels, SVGA3dSize const *pMipLevel0Size, uint32_t arraySize, uint32_t bufferByteStride, uint32_t defineFlags);
 int vmsvga3dSurfaceDestroy(PVGASTATECC pThisCC, uint32_t sid);
 int vmsvga3dSurfaceCopy(PVGASTATECC pThisCC, SVGA3dSurfaceImageId dest, SVGA3dSurfaceImageId src,
                         uint32_t cCopyBoxes, SVGA3dCopyBox *pBox);
@@ -185,6 +189,7 @@ int vmsvga3dSurfaceInvalidate(PVGASTATECC pThisCC, uint32_t sid, uint32_t face, 
 int vmsvga3dSurfaceMap(PVGASTATECC pThisCC, SVGA3dSurfaceImageId const *pImage, SVGA3dBox const *pBox,
                            VMSVGA3D_SURFACE_MAP enmMapType, uint32_t fMapFlags, VMSVGA3D_MAPPED_SURFACE *pMap);
 int vmsvga3dSurfaceUnmap(PVGASTATECC pThisCC, SVGA3dSurfaceImageId const *pImage, VMSVGA3D_MAPPED_SURFACE *pMap, bool fWritten);
+int vmsvga3dEnsureResource(PVGASTATECC pThisCC, SVGA3dSurfaceId sid);
 
 uint32_t vmsvga3dCalcSubresourceOffset(PVGASTATECC pThisCC, SVGA3dSurfaceImageId const *pImage);
 
@@ -478,6 +483,7 @@ typedef struct
 {
     DECLCALLBACKMEMBER(int, pfnSurfaceMap,   (PVGASTATECC pThisCC, SVGA3dSurfaceImageId const *pImage, SVGA3dBox const *pBox, VMSVGA3D_SURFACE_MAP enmMapType, uint32_t fMapFlags, VMSVGA3D_MAPPED_SURFACE *pMap));
     DECLCALLBACKMEMBER(int, pfnSurfaceUnmap, (PVGASTATECC pThisCC, SVGA3dSurfaceImageId const *pImage, VMSVGA3D_MAPPED_SURFACE *pMap, bool fWritten));
+    DECLCALLBACKMEMBER(int, pfnEnsureResource, (PVGASTATECC pThisCC, uint32_t sid));
 } VMSVGA3DBACKENDFUNCSMAP;
 
 typedef struct VMSVGA3DSHADER *PVMSVGA3DSHADER;

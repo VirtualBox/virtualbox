@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 114940 2026-08-10 12:56:03Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 115079 2026-08-19 11:42:29Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -5403,7 +5403,22 @@ static void vmsvgaR3FifoHandleExtCmd(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGAST
 # ifdef VBOX_WITH_VMSVGA3D
             if (pThis->svga.f3DEnabled || pThis->svga.fVMSVGA2dGBO)
             {
-                if (vmsvga3dIsLegacyBackend(pThisCC))
+                bool fUseLegacyLoadExec;
+                if (pThis->svga.fVMSVGA2dGBO && pLoadState->uVersion < VGA_SAVEDSTATE_VERSION_VMSVGA_GB_SURF)
+                {
+                    /* 'vmsvga3dIsLegacyBackend' was true in 'fVMSVGA2dGBO' mode, because 'vmsvga3dIsLegacyBackend'
+                     * checked pFuncsDX but 'fVMSVGA2dGBO' did not create this interface.
+                     * So 'fVMSVGA2dGBO' used the legacy saved state function even though the DX backend was used.
+                     * Now, with VGA_SAVEDSTATE_VERSION_VMSVGA_GB_SURF, 'vmsvga3dIsLegacyBackend' checks for pFuncsGBO,
+                     * which is the essential interface of the VPGU10 capable DX backend, and 'vmsvga3dIsLegacyBackend'
+                     * works correctly for 'fVMSVGA2dGBO' too.
+                     */
+                    fUseLegacyLoadExec = true;
+                }
+                else
+                    fUseLegacyLoadExec = vmsvga3dIsLegacyBackend(pThisCC);
+
+                if (fUseLegacyLoadExec)
                     vmsvga3dLoadExec(pDevIns, pThis, pThisCC, pLoadState->pSSM, pLoadState->uVersion, pLoadState->uPass);
 #  ifdef VMSVGA3D_DX
                 else

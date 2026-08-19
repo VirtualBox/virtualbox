@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-savedstate.cpp 114523 2026-06-25 10:15:20Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-savedstate.cpp 115079 2026-08-19 11:42:29Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - DX backend saved state.
  */
@@ -53,7 +53,7 @@
  * Load
  */
 
-static int vmsvga3dDXLoadSurface(PCPDMDEVHLPR3 pHlp, PVGASTATECC pThisCC, PSSMHANDLE pSSM)
+static int vmsvga3dDXLoadSurface(PCPDMDEVHLPR3 pHlp, PVGASTATECC pThisCC, PSSMHANDLE pSSM, uint32_t uVersion)
 {
     PVMSVGA3DSTATE p3dState = pThisCC->svga.p3dState;
     int rc;
@@ -65,17 +65,32 @@ static int vmsvga3dDXLoadSurface(PCPDMDEVHLPR3 pHlp, PVGASTATECC pThisCC, PSSMHA
     if (sid == SVGA3D_INVALID_ID)
         return VINF_SUCCESS;
 
+    bool fGB = true; /* DX backend uses GB surfaces. */
+    bool fHW = false;
+    if (uVersion >= VGA_SAVEDSTATE_VERSION_VMSVGA_GB_SURF)
+    {
+        pHlp->pfnSSMGetBool(pSSM, &fGB);
+        rc = pHlp->pfnSSMGetBool(pSSM, &fHW);
+        AssertRCReturn(rc, rc);
+        AssertReturn(fGB, VERR_INVALID_STATE);
+    }
+
     /* Define the surface. */
     SVGAOTableSurfaceEntry entrySurface;
     rc = vmsvgaR3OTableReadSurface(pThisCC->svga.pSvgaR3State, sid, &entrySurface);
     AssertRCReturn(rc, rc);
 
-    /** @todo fAllocMipLevels=false and alloc miplevels if there is data to be loaded. */
+    /* Alloc miplevels if there is data to be loaded. */
+    uint32_t defineFlags = 0;
+    if (fGB)
+        defineFlags |= VMSVGA3D_SURFACE_DEFINE_F_GB;
+    if (p3dState->fVMSVGA2dGBO)
+        defineFlags |= VMSVGA3D_SURFACE_DEFINE_F_ALLOC_MIP_LEVELS;
     rc = vmsvga3dSurfaceDefine(pThisCC, sid, RT_MAKE_U64(entrySurface.surface1Flags, entrySurface.surface2Flags), entrySurface.format,
                                entrySurface.multisampleCount, (SVGA3dMSPattern)entrySurface.multisamplePattern, (SVGA3dMSQualityLevel)entrySurface.qualityLevel, entrySurface.autogenFilter,
                                entrySurface.numMipLevels, &entrySurface.size,
                                entrySurface.arraySize, entrySurface.bufferByteStride,
-                               /* fAllocMipLevels = */ true);
+                               defineFlags);
     AssertRCReturn(rc, rc);
 
     PVMSVGA3DSURFACE pSurface = p3dState->papSurfaces[sid];
@@ -85,13 +100,25 @@ static int vmsvga3dDXLoadSurface(PCPDMDEVHLPR3 pHlp, PVGASTATECC pThisCC, PSSMHA
     pHlp->pfnSSMGetU32(pSSM, &pSurface->idAssociatedContext);
 
     /* Load miplevels data to the surface buffers. */
+    bool fAllocated = RT_BOOL(defineFlags & VMSVGA3D_SURFACE_DEFINE_F_ALLOC_MIP_LEVELS);
     for (uint32_t j = 0; j < pSurface->cLevels * pSurface->surfaceDesc.numArrayElements; j++)
     {
         PVMSVGA3DMIPMAPLEVEL pMipmapLevel = &pSurface->paMipmapLevels[j];
 
-        /* vmsvga3dSurfaceDefine already allocated the surface data buffer. */
-        Assert(pMipmapLevel->cbSurface);
-        AssertReturn(pMipmapLevel->pSurfaceData, VERR_INTERNAL_ERROR);
+        if (uVersion >= VGA_SAVEDSTATE_VERSION_VMSVGA_GB_SURF)
+        {
+            bool fUpdated;
+            rc = pHlp->pfnSSMGetBool(pSSM, &fUpdated);
+            AssertRCReturn(rc, rc);
+            pMipmapLevel->fUpdated = fUpdated;
+
+            pHlp->pfnSSMGetU32(pSSM, &pMipmapLevel->boxUpdated.x);
+            pHlp->pfnSSMGetU32(pSSM, &pMipmapLevel->boxUpdated.y);
+            pHlp->pfnSSMGetU32(pSSM, &pMipmapLevel->boxUpdated.z);
+            pHlp->pfnSSMGetU32(pSSM, &pMipmapLevel->boxUpdated.w);
+            pHlp->pfnSSMGetU32(pSSM, &pMipmapLevel->boxUpdated.h);
+            pHlp->pfnSSMGetU32(pSSM, &pMipmapLevel->boxUpdated.d);
+        }
 
         /* Fetch the data present boolean first. */
         bool fDataPresent;
@@ -100,6 +127,13 @@ static int vmsvga3dDXLoadSurface(PCPDMDEVHLPR3 pHlp, PVGASTATECC pThisCC, PSSMHA
 
         if (fDataPresent)
         {
+            if (!fAllocated)
+            {
+                rc = vmsvga3dSurfaceAllocMipLevels(pSurface);
+                AssertRCReturn(rc, rc);
+                fAllocated = true;
+            }
+
             rc = pHlp->pfnSSMGetMem(pSSM, pMipmapLevel->pSurfaceData, pMipmapLevel->cbSurface);
             AssertRCReturn(rc, rc);
 
@@ -109,6 +143,9 @@ static int vmsvga3dDXLoadSurface(PCPDMDEVHLPR3 pHlp, PVGASTATECC pThisCC, PSSMHA
         else
             pMipmapLevel->fDirty = false;
     }
+
+    if (fHW)
+        vmsvga3dEnsureResource(pThisCC, sid);
 
     return VINF_SUCCESS;
 }
@@ -278,7 +315,7 @@ int vmsvga3dDXLoadExec(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATECC pThisCC,
 
         for (uint32_t i = 0; i < p3dState->cSurfaces; ++i)
         {
-            rc = vmsvga3dDXLoadSurface(pHlp, pThisCC, pSSM);
+            rc = vmsvga3dDXLoadSurface(pHlp, pThisCC, pSSM, uVersion);
             AssertRCReturn(rc, rc);
         }
     }
@@ -320,14 +357,26 @@ int vmsvga3dDXLoadExec(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATECC pThisCC,
 
 static int vmsvga3dDXSaveSurface(PCPDMDEVHLPR3 pHlp, PVGASTATECC pThisCC, PSSMHANDLE pSSM, PVMSVGA3DSURFACE pSurface)
 {
-    RT_NOREF(pThisCC);
     int rc;
+
+    /* DX backend uses GB surfaces. If a non GB surface was created (which should not happen), then skip it. */
+    if (pSurface->id != SVGA3D_INVALID_ID && !pSurface->fGB)
+    {
+        AssertFailed();
+        return pHlp->pfnSSMPutU32(pSSM, SVGA3D_INVALID_ID);
+    }
 
     rc = pHlp->pfnSSMPutU32(pSSM, pSurface->id);
     AssertRCReturn(rc, rc);
 
     if (pSurface->id == SVGA3D_INVALID_ID)
         return VINF_SUCCESS;
+
+    /* VGA_SAVEDSTATE_VERSION_VMSVGA_GB_SURF begin */
+    pHlp->pfnSSMPutBool(pSSM, pSurface->fGB);
+    rc = pHlp->pfnSSMPutBool(pSSM, VMSVGA3DSURFACE_HAS_HW_SURFACE(pSurface));
+    AssertRCReturn(rc, rc);
+    /* VGA_SAVEDSTATE_VERSION_VMSVGA_GB_SURF end */
 
     /* Save the surface fields which are not part of SVGAOTableSurfaceEntry. */
     pHlp->pfnSSMPutU32(pSSM, pSurface->idAssociatedContext);
@@ -338,6 +387,17 @@ static int vmsvga3dDXSaveSurface(PCPDMDEVHLPR3 pHlp, PVGASTATECC pThisCC, PSSMHA
         {
             uint32_t idx = iMipmap + iArray * pSurface->cLevels;
             PVMSVGA3DMIPMAPLEVEL pMipmapLevel = &pSurface->paMipmapLevels[idx];
+
+            /* VGA_SAVEDSTATE_VERSION_VMSVGA_GB_SURF begin */
+            pHlp->pfnSSMPutBool(pSSM, pMipmapLevel->fUpdated);
+
+            pHlp->pfnSSMPutU32(pSSM, pMipmapLevel->boxUpdated.x);
+            pHlp->pfnSSMPutU32(pSSM, pMipmapLevel->boxUpdated.y);
+            pHlp->pfnSSMPutU32(pSSM, pMipmapLevel->boxUpdated.z);
+            pHlp->pfnSSMPutU32(pSSM, pMipmapLevel->boxUpdated.w);
+            pHlp->pfnSSMPutU32(pSSM, pMipmapLevel->boxUpdated.h);
+            pHlp->pfnSSMPutU32(pSSM, pMipmapLevel->boxUpdated.d);
+            /* VGA_SAVEDSTATE_VERSION_VMSVGA_GB_SURF end */
 
             /* Multisample surface content can't be accessed. */
             if (pSurface->surfaceDesc.multisampleCount > 1)
