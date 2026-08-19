@@ -1,4 +1,4 @@
-/* $Id: VMXAllTemplate.cpp.h 115084 2026-08-19 12:52:58Z alexander.eichner@oracle.com $ */
+/* $Id: VMXAllTemplate.cpp.h 115087 2026-08-19 13:09:55Z alexander.eichner@oracle.com $ */
 /** @file
  * HM VMX (Intel VT-x) - Code template for our own hypervisor and the NEM darwin backend using Apple's Hypervisor.framework.
  */
@@ -9348,6 +9348,7 @@ HMVMX_EXIT_DECL vmxHCExitApicWrite(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransient)
     HMVMX_VALIDATE_EXIT_HANDLER_PARAMS(pVCpu, pVmxTransient);
     STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatExitApicWrite);
 
+#ifndef IN_NEM_DARWIN
     vmxHCReadToTransient<HMVMX_READ_EXIT_QUALIFICATION>(pVCpu, pVmxTransient);
 
     /*
@@ -9359,6 +9360,10 @@ HMVMX_EXIT_DECL vmxHCExitApicWrite(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransient)
     if (rcStrict != VINF_SUCCESS)
         STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatSwitchApicWriteToR3);
     return rcStrict;
+#else
+    AssertFailed(); /** @todo */
+    return VERR_NOT_IMPLEMENTED;
+#endif
 }
 
 
