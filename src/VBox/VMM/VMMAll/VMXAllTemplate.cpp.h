@@ -1,4 +1,4 @@
-/* $Id: VMXAllTemplate.cpp.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VMXAllTemplate.cpp.h 115084 2026-08-19 12:52:58Z alexander.eichner@oracle.com $ */
 /** @file
  * HM VMX (Intel VT-x) - Code template for our own hypervisor and the NEM darwin backend using Apple's Hypervisor.framework.
  */
@@ -263,6 +263,7 @@ static FNVMXEXITHANDLER            vmxHCExitMonitor;
 static FNVMXEXITHANDLER            vmxHCExitPause;
 static FNVMXEXITHANDLERNSRC        vmxHCExitTprBelowThreshold;
 static FNVMXEXITHANDLER            vmxHCExitApicAccess;
+static FNVMXEXITHANDLER            vmxHCExitApicWrite;
 static FNVMXEXITHANDLER            vmxHCExitEptViolation;
 static FNVMXEXITHANDLER            vmxHCExitEptMisconfig;
 static FNVMXEXITHANDLER            vmxHCExitRdtscp;
@@ -671,7 +672,7 @@ static const struct CLANG11NOTHROWWEIRDNESS { PFNVMXEXITHANDLER pfn; } g_aVMExit
 #endif
     /* 54  VMX_EXIT_WBINVD                  */  { vmxHCExitWbinvd },
     /* 55  VMX_EXIT_XSETBV                  */  { vmxHCExitXsetbv },
-    /* 56  VMX_EXIT_APIC_WRITE              */  { vmxHCExitErrUnexpected },
+    /* 56  VMX_EXIT_APIC_WRITE              */  { vmxHCExitApicWrite     },
     /* 57  VMX_EXIT_RDRAND                  */  { vmxHCExitErrUnexpected },
     /* 58  VMX_EXIT_INVPCID                 */  { vmxHCExitInvpcid },
     /* 59  VMX_EXIT_VMFUNC                  */  { vmxHCExitErrUnexpected },
@@ -5955,6 +5956,7 @@ DECLINLINE(VBOXSTRICTRC) vmxHCHandleExit(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTrans
         case VMX_EXIT_RDTSC:                   VMEXIT_CALL_RET(0, vmxHCExitRdtsc(pVCpu, pVmxTransient));
         case VMX_EXIT_RDTSCP:                  VMEXIT_CALL_RET(0, vmxHCExitRdtscp(pVCpu, pVmxTransient));
         case VMX_EXIT_APIC_ACCESS:             VMEXIT_CALL_RET(0, vmxHCExitApicAccess(pVCpu, pVmxTransient));
+        case VMX_EXIT_APIC_WRITE:              VMEXIT_CALL_RET(0, vmxHCExitApicWrite(pVCpu, pVmxTransient));
         case VMX_EXIT_XCPT_OR_NMI:             VMEXIT_CALL_RET(0, vmxHCExitXcptOrNmi(pVCpu, pVmxTransient));
         case VMX_EXIT_MOV_CRX:                 VMEXIT_CALL_RET(0, vmxHCExitMovCRx(pVCpu, pVmxTransient));
         case VMX_EXIT_EXT_INT:                 VMEXIT_CALL_RET(0, vmxHCExitExtInt(pVCpu, pVmxTransient));
@@ -6022,7 +6024,6 @@ DECLINLINE(VBOXSTRICTRC) vmxHCHandleExit(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTrans
         case VMX_EXIT_VIRTUALIZED_EOI:
         case VMX_EXIT_GDTR_IDTR_ACCESS:
         case VMX_EXIT_LDTR_TR_ACCESS:
-        case VMX_EXIT_APIC_WRITE:
         case VMX_EXIT_RDRAND:
         case VMX_EXIT_RSM:
         case VMX_EXIT_VMFUNC:
@@ -9335,6 +9336,28 @@ HMVMX_EXIT_DECL vmxHCExitApicAccess(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransient)
 
     if (rcStrict != VINF_SUCCESS)
         STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatSwitchApicAccessToR3);
+    return rcStrict;
+}
+
+
+/**
+ * VM-exit handler for APIC access (VMX_EXIT_APIC_WRITE). Conditional VM-exit.
+ */
+HMVMX_EXIT_DECL vmxHCExitApicWrite(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransient)
+{
+    HMVMX_VALIDATE_EXIT_HANDLER_PARAMS(pVCpu, pVmxTransient);
+    STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatExitApicWrite);
+
+    vmxHCReadToTransient<HMVMX_READ_EXIT_QUALIFICATION>(pVCpu, pVmxTransient);
+
+    /*
+     * APIC write exits are all trap like, so the instruction has already completed and
+     * the APIC page got updated.
+     */
+    pVCpu->hm.s.offApicReg = pVmxTransient->uExitQual;
+    VBOXSTRICTRC rcStrict = PDMApicUpdateStateAfterWrite(pVCpu, pVmxTransient->uExitQual);
+    if (rcStrict != VINF_SUCCESS)
+        STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatSwitchApicWriteToR3);
     return rcStrict;
 }
 

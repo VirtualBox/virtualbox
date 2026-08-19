@@ -1,4 +1,4 @@
-/* $Id: VMXInternal.h 113496 2026-03-22 22:23:27Z knut.osmundsen@oracle.com $ */
+/* $Id: VMXInternal.h 115084 2026-08-19 12:52:58Z alexander.eichner@oracle.com $ */
 /** @file
  * VMX - Internal header file for the VMX code template.
  */
@@ -245,6 +245,7 @@ typedef struct VMXSTATISTICS
     STAMCOUNTER             StatExitTprBelowThreshold;
     STAMCOUNTER             StatExitTaskSwitch;
     STAMCOUNTER             StatExitApicAccess;
+    STAMCOUNTER             StatExitApicWrite;
     STAMCOUNTER             StatExitReasonNpf;
 
     STAMCOUNTER             StatNestedExitReasonNpf;
@@ -278,6 +279,7 @@ typedef struct VMXSTATISTICS
     STAMCOUNTER             StatSwitchMaxResumeLoops;
     STAMCOUNTER             StatSwitchHltToR3;
     STAMCOUNTER             StatSwitchApicAccessToR3;
+    STAMCOUNTER             StatSwitchApicWriteToR3;
     STAMCOUNTER             StatSwitchPreempt;
     STAMCOUNTER             StatSwitchNstGstVmexit;
 

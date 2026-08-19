@@ -1,4 +1,4 @@
-/* $Id: HMR3-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
+/* $Id: HMR3-x86.cpp 115084 2026-08-19 12:52:58Z alexander.eichner@oracle.com $ */
 /** @file
  * HM - Intel/AMD VM Hardware Support Manager.
  */
@@ -203,6 +203,61 @@ static const char *hmR3GetXcptName(uint8_t uVector)
 
 
 /**
+ * Converts the given config string for the VMX APICv level to the corresponding enum.
+ *
+ * @returns VBox status code.
+ * @param   pVM             The cross context VM structure.
+ * @param   pszVmxApicvLvl  The desired VMX APICv level.
+ */
+static int hmR3CfgVmxApicvLvlStrToEnum(PVM pVM, const char *pszVmxApicvLvl)
+{
+    if (!strcmp(pszVmxApicvLvl, "None"))
+        pVM->hm.s.vmx.enmApicvLvl = kVmxApicvLvl_None;
+    else if (!strcmp(pszVmxApicvLvl, "ApicAccessVirt"))
+        pVM->hm.s.vmx.enmApicvLvl = kVmxApicvLvl_ApicAccessVirt;
+    else if (!strcmp(pszVmxApicvLvl, "ApicRegVirt"))
+        pVM->hm.s.vmx.enmApicvLvl = kVmxApicvLvl_ApicRegVirt;
+    else if (!strcmp(pszVmxApicvLvl, "IntrDelivery"))
+        pVM->hm.s.vmx.enmApicvLvl = kVmxApicvLvl_IntrDelivery;
+    else if (!strcmp(pszVmxApicvLvl, "PostedIntrs"))
+        pVM->hm.s.vmx.enmApicvLvl = kVmxApicvLvl_PostedIntrs;
+    else if (!strcmp(pszVmxApicvLvl, "IpiVirt"))
+        pVM->hm.s.vmx.enmApicvLvl = kVmxApicvLvl_IpiVirt;
+    else if (!strcmp(pszVmxApicvLvl, "Max"))
+        pVM->hm.s.vmx.enmApicvLvl = kVmxApicvLvl_Max;
+    else
+        return VMSetError(pVM, VERR_INVALID_PARAMETER, RT_SRC_POS, "VmxApicLvl contains invalid value '%s'", pszVmxApicvLvl);
+
+    return VINF_SUCCESS;
+}
+
+
+/**
+ * Returns the string variant of the given APICv level enum.
+ *
+ * @returns VBox status code.
+ * @param   enmApicvLvl     The APICv level to convert.
+ */
+static const char *hmR3CfgVmxApicvLvlEnumToStr(HMVMXAPICVLVL enmApicvLvl)
+{
+    switch (enmApicvLvl)
+    {
+        case kVmxApicvLvl_None:           return "None";
+        case kVmxApicvLvl_ApicAccessVirt: return "ApicAccessVirt";
+        case kVmxApicvLvl_ApicRegVirt:    return "ApicRegVirt";
+        case kVmxApicvLvl_IntrDelivery:   return "Virtual Interrupt Delivery";
+        case kVmxApicvLvl_PostedIntrs:    return "Posted Interrupts";
+        case kVmxApicvLvl_IpiVirt:        return "IPI Virtualization";
+        case kVmxApicvLvl_Max:            return "Maximum";
+        default:                          break;
+    }
+
+    AssertFailed();
+    return "<UNKNOWN>";
+}
+
+
+/**
  * Initializes the HM.
  *
  * This is the very first component to really do init after CFGM so that we can
@@ -277,6 +332,7 @@ VMMR3_INT_DECL(int) HMR3Init(PVM pVM)
                               "|VmxPleWindow"
                               "|VmxLbr"
                               "|UseVmxPreemptTimer"
+                              "|VmxApicvLvl"
                               "|SvmPauseFilter"
                               "|SvmPauseFilterThreshold"
                               "|SvmVirtVmsaveVmload"
@@ -383,6 +439,16 @@ VMMR3_INT_DECL(int) HMR3Init(PVM pVM)
      * Whether to enable LBR for the guest. This is disabled by default as it's only
      * useful while debugging and enabling it causes a noticeable performance hit. */
     rc = CFGMR3QueryBoolDef(pCfgHm, "VmxLbr", &pVM->hm.s.vmx.fLbrCfg, false);
+    AssertRCReturn(rc, rc);
+
+    /** @cfgm{/HM/VmxApicvLvl, string, "Max"}
+     * The desired APIC virtualization level. Currently allows None, ApicAccessVirt, ApicRegVirt,
+     * IntrDelivery, PostedIntrs, IpiVirt, Max where Max is the default. 
+     * The actually configured level depends on supported hardware. */
+    char szVmxApicvLvl[16]; RT_ZERO(szVmxApicvLvl);
+    rc = CFGMR3QueryStringDef(pCfgHm, "VmxApicvLvl", &szVmxApicvLvl[0], sizeof(szVmxApicvLvl), "Max");
+    AssertRCReturn(rc, rc);
+    rc = hmR3CfgVmxApicvLvlStrToEnum(pVM, &szVmxApicvLvl[0]);
     AssertRCReturn(rc, rc);
 
     /** @cfgm{/HM/SvmPauseFilterCount, uint16_t, 0}
@@ -911,6 +977,7 @@ static int hmR3InitFinalizeR3(PVM pVM)
         HM_REG_COUNTER(&pHmCpu->StatExitTprBelowThreshold,  "/HM/CPU%u/Exit/TprBelowThreshold", "TPR lowered below threshold by the guest.");
         HM_REG_COUNTER(&pHmCpu->StatExitTaskSwitch,         "/HM/CPU%u/Exit/TaskSwitch", "Task switch caused through task gate in IDT.");
         HM_REG_COUNTER(&pHmCpu->StatExitApicAccess,         "/HM/CPU%u/Exit/ApicAccess", "APIC access. Guest attempted to access memory at a physical address on the APIC-access page.");
+        HM_REG_COUNTER(&pHmCpu->StatExitApicWrite,          "/HM/CPU%u/Exit/ApicWrite",  "APIC write emulation. Guest wrote APIC register which the hardware couldn't emulate.");
 
         HM_REG_COUNTER(&pHmCpu->StatSwitchTprMaskedIrq,     "/HM/CPU%u/Switch/TprMaskedIrq", "PDMGetInterrupt() signals TPR masks pending Irq.");
         HM_REG_COUNTER(&pHmCpu->StatSwitchGuestIrq,         "/HM/CPU%u/Switch/IrqPending", "PDMGetInterrupt() cleared behind our back!?!.");
@@ -924,6 +991,7 @@ static int hmR3InitFinalizeR3(PVM pVM)
         HM_REG_COUNTER(&pHmCpu->StatSwitchMaxResumeLoops,   "/HM/CPU%u/Switch/MaxResumeLoops", "Maximum VMRESUME inner-loop counter reached.");
         HM_REG_COUNTER(&pHmCpu->StatSwitchHltToR3,          "/HM/CPU%u/Switch/HltToR3", "HLT causing us to go to ring-3.");
         HM_REG_COUNTER(&pHmCpu->StatSwitchApicAccessToR3,   "/HM/CPU%u/Switch/ApicAccessToR3", "APIC access causing us to go to ring-3.");
+        HM_REG_COUNTER(&pHmCpu->StatSwitchApicWriteToR3,    "/HM/CPU%u/Switch/ApicWriteToR3",  "APIC write emulation causing us to go to ring-3.");
 #endif
         HM_REG_COUNTER(&pHmCpu->StatSwitchPreempt,          "/HM/CPU%u/Switch/Preempting", "EMT has been preempted while in HM context.");
 #ifdef VBOX_WITH_STATISTICS
@@ -1901,6 +1969,12 @@ static int hmR3InitFinalizeR0Intel(PVM pVM)
         LogRel(("HM: Enabled VMX-preemption timer (cPreemptTimerShift=%u)\n", pVM->hm.s.vmx.cPreemptTimerShift));
     else
         LogRel(("HM: Disabled VMX-preemption timer\n"));
+
+    if (pVM->hm.s.ForR3.vmx.enmApicvLvl != kVmxApicvLvl_None)
+        LogRel(("HM: Enabled APICv level: %s (configured %s)\n", hmR3CfgVmxApicvLvlEnumToStr(pVM->hm.s.ForR3.vmx.enmApicvLvl),
+                                                                 hmR3CfgVmxApicvLvlEnumToStr(pVM->hm.s.vmx.enmApicvLvl)));
+    else
+        LogRel(("HM: Disabled APICv support (configured %s)\n", hmR3CfgVmxApicvLvlEnumToStr(pVM->hm.s.vmx.enmApicvLvl)));
 
     if (pVM->hm.s.fVirtApicRegs)
         LogRel(("HM: Enabled APIC-register virtualization support\n"));
