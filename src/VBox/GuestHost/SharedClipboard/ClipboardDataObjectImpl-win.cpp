@@ -1,4 +1,4 @@
-/* $Id: ClipboardDataObjectImpl-win.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardDataObjectImpl-win.cpp 115088 2026-08-19 13:25:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * ClipboardDataObjectImpl-win.cpp - Shared Clipboard IDataObject implementation.
  */
@@ -77,6 +77,7 @@ ShClWinDataObject::ShClWinDataObject(void)
     , m_cfFileDescriptorA(0)
     , m_cfFileDescriptorW(0)
     , m_cfFileContents(0)
+    , m_cfPreferredDropEffect(0)
     , m_cfPerformedDropEffect(0)
 {
 #ifdef VBOX_SHARED_CLIPBOARD_DEBUG_OBJECT_COUNTS
@@ -127,7 +128,7 @@ int ShClWinDataObject::Init(PSHCLCONTEXT pCtx, ShClWinDataObject::PCALLBACKS pCa
     /*
      * Set up / register handled formats.
      */
-    const ULONG cFixedFormats = 5; /* CF_UNICODETEXT + CFSTR_FILEDESCRIPTORA + CFSTR_FILEDESCRIPTORW + CFSTR_FILECONTENTS + CFSTR_PERFORMEDDROPEFFECT */
+    const ULONG cFixedFormats = 5; /* CF_UNICODETEXT + CFSTR_FILEDESCRIPTORA + CFSTR_FILEDESCRIPTORW + CFSTR_FILECONTENTS + CFSTR_PREFERREDDROPEFFECT */
     const ULONG cAllFormats   = cFormats + cFixedFormats;
 
     m_pFormatEtc = new FORMATETC[cAllFormats];
@@ -159,10 +160,14 @@ int ShClWinDataObject::Init(PSHCLCONTEXT pCtx, ShClWinDataObject::PCALLBACKS pCa
     m_cfFileContents = RegisterClipboardFormat(CFSTR_FILECONTENTS);
     registerFormat(&m_pFormatEtc[uIdx++], m_cfFileContents, TYMED_ISTREAM, 0 /* lIndex */);
 
-    /* We want to know from the target what the outcome of the operation was to react accordingly (e.g. abort a transfer). */
+    /* Tell the target that the source offers a copy operation. */
+    LogFlowFunc(("Registering CFSTR_PREFERREDDROPEFFECT ...\n"));
+    m_cfPreferredDropEffect = RegisterClipboardFormat(CFSTR_PREFERREDDROPEFFECT);
+    registerFormat(&m_pFormatEtc[uIdx++], m_cfPreferredDropEffect, TYMED_HGLOBAL, -1 /* lIndex */, DVASPECT_CONTENT);
+
+    /* The target uses SetData with this format to report the operation it actually performed. */
     LogFlowFunc(("Registering CFSTR_PERFORMEDDROPEFFECT ...\n"));
     m_cfPerformedDropEffect = RegisterClipboardFormat(CFSTR_PERFORMEDDROPEFFECT);
-    registerFormat(&m_pFormatEtc[uIdx++], m_cfPerformedDropEffect, TYMED_HGLOBAL, -1 /* lIndex */, DVASPECT_CONTENT);
 
     /*
      * Registration of dynamic formats needed?
@@ -1248,18 +1253,28 @@ STDMETHODIMP ShClWinDataObject::GetData(LPFORMATETC pFormatEtc, LPSTGMEDIUM pMed
                 }
             }
         }
-        else if (pFormatEtc->cfFormat == m_cfPerformedDropEffect)
+        else if (pFormatEtc->cfFormat == m_cfPreferredDropEffect)
         {
             HGLOBAL hGlobal = GlobalAlloc(GHND, sizeof(DWORD));
+            if (hGlobal)
+            {
+                DWORD *pdwDropEffect = (DWORD *)GlobalLock(hGlobal);
+                if (pdwDropEffect)
+                {
+                    *pdwDropEffect = DROPEFFECT_COPY;
+                    GlobalUnlock(hGlobal);
 
-            DWORD* pdwDropEffect = (DWORD*)GlobalLock(hGlobal);
-            *pdwDropEffect = DROPEFFECT_COPY;
+                    pMedium->tymed          = TYMED_HGLOBAL;
+                    pMedium->hGlobal        = hGlobal;
+                    pMedium->pUnkForRelease = NULL;
+                    hr = S_OK;
+                }
+                else
+                    GlobalFree(hGlobal);
+            }
 
-            GlobalUnlock(hGlobal);
-
-            pMedium->tymed          = TYMED_HGLOBAL;
-            pMedium->hGlobal        = hGlobal;
-            pMedium->pUnkForRelease = NULL;
+            if (FAILED(hr))
+                hr = E_OUTOFMEMORY;
         }
 
         if (   FAILED(hr)

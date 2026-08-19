@@ -406,6 +406,8 @@ protected:
     UINT                        m_cfFileDescriptorW;
     /** Registered format for CFSTR_FILECONTENTS. */
     UINT                        m_cfFileContents;
+    /** Registered format for CFSTR_PREFERREDDROPEFFECT. */
+    UINT                        m_cfPreferredDropEffect;
     /** Registered format for CFSTR_PERFORMEDDROPEFFECT. */
     UINT                        m_cfPerformedDropEffect;
 };
