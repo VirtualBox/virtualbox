@@ -366,7 +366,8 @@ typedef struct PDMAPICBACKENDR3
      * Updates the APIC state after a write to the APIC page by hardware.
      *
      * @returns Strict VBox status code.
-     * @param   pVCpu   The cross context virtual CPU structure.
+     * @param   pVCpu           The cross context virtual CPU structure.
+     * @param   offApicReg      The APIC register offset in the backing page which got updated.
      *
      * @note This is a helper for AVIC/APICv when used on AMD or Intel.
      */
