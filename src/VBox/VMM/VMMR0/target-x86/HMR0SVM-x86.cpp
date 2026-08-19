@@ -1,4 +1,4 @@
-/* $Id: HMR0SVM-x86.cpp 115075 2026-08-19 10:07:31Z alexander.eichner@oracle.com $ */
+/* $Id: HMR0SVM-x86.cpp 115076 2026-08-19 10:08:30Z alexander.eichner@oracle.com $ */
 /** @file
  * HM SVM (AMD-V) - Host Context Ring-0.
  */
@@ -9380,7 +9380,7 @@ HMSVM_EXIT_DECL hmR0SvmExitAvicNoAccel(PVMCPUCC pVCpu, PSVMTRANSIENT pSvmTransie
     STAM_REL_COUNTER_INC(&pVCpu->hm.s.StatSvmExitAvicNoAccel);
 
     uint16_t const offApicReg = pSvmTransient->pVmcb->ctrl.u64ExitInfo1 & 0xfff;
-    bool const fWr = RT_BOOL(pSvmTransient->pVmcb->ctrl.u64ExitInfo1 & RT_BIT_64(32));
+    bool const fWr = RT_BOOL(pSvmTransient->pVmcb->ctrl.u64ExitInfo1 & RT_BIT_64(32)); RT_NOREF(fWr);
 
     /*
      * Determine whether the access is fault or trap like.
