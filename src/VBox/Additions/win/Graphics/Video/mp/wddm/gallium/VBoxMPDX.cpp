@@ -1,4 +1,4 @@
-/* $Id: VBoxMPDX.cpp 114529 2026-06-25 10:46:16Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPDX.cpp 115080 2026-08-19 11:45:15Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Graphics Driver - Direct3D (DX) driver function.
  */
@@ -757,6 +757,330 @@ static NTSTATUS svgaPTVRAM2SysMem(PVBOXMP_DEVEXT pDevExt, PVBOXWDDM_ALLOCATION p
 }
 
 
+NTSTATUS SvgaCommandFence(VBOXWDDM_EXT_VMSVGA *pSvga,
+                          uint64_t u64FenceValue,
+                          void *pvCmd,
+                          uint32_t cbReserved,
+                          uint32_t *pcbCmd)
+{
+    uint32_t cbRequired = sizeof(SVGA3dCmdHeader) + sizeof(SVGA3dCmdDXMobFence64);
+
+    *pcbCmd += cbRequired;
+    if (cbReserved < cbRequired)
+        return STATUS_GRAPHICS_INSUFFICIENT_DMA_BUFFER;
+
+    /* Generate commands. */
+    uint8_t *pu8Cmd = (uint8_t *)pvCmd;
+    SVGA3dCmdHeader *pHdr;
+
+    pHdr = (SVGA3dCmdHeader *)pu8Cmd;
+    pHdr->id   = SVGA_3D_CMD_DX_MOB_FENCE_64;
+    pHdr->size = sizeof(SVGA3dCmdDXMobFence64);
+    pu8Cmd += sizeof(*pHdr);
+
+    {
+    SVGA3dCmdDXMobFence64 *pCmd = (SVGA3dCmdDXMobFence64 *)pu8Cmd;
+    pCmd->value = u64FenceValue;
+    pCmd->mobId = pSvga->mobidMiniport;
+    pCmd->mobOffset = RT_OFFSETOF(VMSVGAMINIPORTMOB, u64MobFence);
+    pu8Cmd += sizeof(*pCmd);
+    }
+
+    Assert((uintptr_t)pu8Cmd - (uintptr_t)pvCmd == cbRequired);
+
+    return STATUS_SUCCESS;
+}
+
+
+DECLINLINE(int) SvgaFenceCmp64(uint64_t u64FenceA, uint64_t u64FenceB)
+{
+     if (   u64FenceA < u64FenceB
+         || u64FenceA - u64FenceB > UINT64_MAX / 2)
+         return -1; /* FenceA is newer than FenceB. */
+
+     return u64FenceA > u64FenceB;
+}
+
+
+static NTSTATUS svgaPTHost2SysMem(PVBOXMP_DEVEXT pDevExt, PVBOXWDDM_ALLOCATION pAllocation,
+                                  DXGKARG_BUILDPAGINGBUFFER *pBuildPagingBuffer, uint32_t *pcbCommands)
+{
+    GALOG(("PTHost2SysMem: MDL: offset %u, size %u, 0x%p/%u, stage %u\n",
+           pBuildPagingBuffer->Transfer.Destination.pMdl->ByteOffset,
+           pBuildPagingBuffer->Transfer.Destination.pMdl->ByteCount,
+           pBuildPagingBuffer->Transfer.Destination.pMdl,
+           pBuildPagingBuffer->Transfer.MdlOffset,
+           pBuildPagingBuffer->MultipassOffset));
+
+    /*
+     * Steps that take partial transfers into account.
+     * If MultipassOffset is 1, then wait for the MOB fence that was submitted for deleting of MOB.
+     *  - if surface was not yet read back, that is mobid != SVGA3D_INVALID_ID:
+     *    - readback surface;
+     *    - unbind and delete current mob (pGbo still exists in the guest memory);
+     *    - set mobid to SVGA3D_INVALID_ID;
+     *    - set MultipassOffset to 1 and return STATUS_GRAPHICS_INSUFFICIENT_DMA_BUFFER.
+     *
+     *  - memcpy from dx.pGbo to the MDL.
+     */
+
+    VBOXWDDM_EXT_VMSVGA *pSvga = pDevExt->pGa->hw.pSvga;
+
+    /* Segment 3 allocations have one instance. */
+    DX_ALLOCATION_INSTANCE *pInstance = svgaGetAllocationInstance(pAllocation, 0);
+    AssertReturn(pAllocation->dx.SegmentId == 3 && pInstance, STATUS_INVALID_PARAMETER);
+
+    if (!pAllocation->dx.flags.fReadbackCompleted)
+    {
+        if (pBuildPagingBuffer->MultipassOffset == 0)
+        {
+            /* Start paging transfer for this surface by reading back its content. */
+            /* MOB should be bound at this point. */
+            Assert(pInstance->mobid != SVGA3D_INVALID_ID);
+
+            /* Read back, unbind and destroy mob. */
+
+            /*
+             * How many bytes are required in the DMA buffer
+             */
+            uint32_t cbRequired = 0;
+            SvgaMobDestroy(pSvga, SVGA3D_INVALID_ID, NULL, 0, &cbRequired);
+            cbRequired += sizeof(SVGA3dCmdHeader) + sizeof(SVGA3dCmdReadbackGBSurface);
+            SvgaCommandFence(pSvga, 0, NULL, 0, &cbRequired);
+            cbRequired += sizeof(SVGA3dCmdHeader) + sizeof(SVGA3dCmdBindGBSurface);
+            cbRequired += sizeof(SVGA3dCmdHeader) + sizeof(SVGA3dCmdInvalidateGBSurface);
+
+            if (pBuildPagingBuffer->DmaSize < cbRequired)
+                return STATUS_GRAPHICS_INSUFFICIENT_DMA_BUFFER;
+
+            uint8_t *pu8Cmd = (uint8_t *)pBuildPagingBuffer->pDmaBuffer;
+            SVGA3dCmdHeader *pHdr;
+
+            /*
+             * Readback.
+             */
+            pHdr = (SVGA3dCmdHeader *)pu8Cmd;
+            pHdr->id   = SVGA_3D_CMD_READBACK_GB_SURFACE;
+            pHdr->size = sizeof(SVGA3dCmdReadbackGBSurface);
+            pu8Cmd += sizeof(*pHdr);
+
+            {
+            SVGA3dCmdReadbackGBSurface *pCmd = (SVGA3dCmdReadbackGBSurface *)pu8Cmd;
+            pCmd->sid         = pAllocation->dx.sid;
+            pu8Cmd += sizeof(*pCmd);
+            }
+
+            /*
+             * Fence that indicates that readback has been completed.
+             */
+            pAllocation->dx.u64LastReferencedCommandFence = ASMAtomicIncU64(&pSvga->u64MobFence);
+
+            uint32_t cbCmd = 0;
+            NTSTATUS Status = SvgaCommandFence(pSvga, pAllocation->dx.u64LastReferencedCommandFence, pu8Cmd,
+                                               cbRequired - ((uintptr_t)pu8Cmd - (uintptr_t)pBuildPagingBuffer->pDmaBuffer),
+                                               &cbCmd);
+            AssertReturn(NT_SUCCESS(Status), Status);
+            pu8Cmd += cbCmd;
+
+            /*
+             * Unbind the mob.
+             */
+            pHdr = (SVGA3dCmdHeader *)pu8Cmd;
+            pHdr->id   = SVGA_3D_CMD_BIND_GB_SURFACE;
+            pHdr->size = sizeof(SVGA3dCmdBindGBSurface);
+            pu8Cmd += sizeof(*pHdr);
+
+            {
+            SVGA3dCmdBindGBSurface *pCmd = (SVGA3dCmdBindGBSurface *)pu8Cmd;
+            pCmd->sid         = pAllocation->dx.sid;
+            pCmd->mobid       = SVGA3D_INVALID_ID;
+            pu8Cmd += sizeof(*pCmd);
+            }
+
+            /*
+             * Destroy the mob.
+             */
+            cbCmd = 0;
+            Status = SvgaMobDestroy(pSvga, pInstance->mobid, pu8Cmd,
+                                    cbRequired - ((uintptr_t)pu8Cmd - (uintptr_t)pBuildPagingBuffer->pDmaBuffer),
+                                    &cbCmd);
+            AssertReturn(NT_SUCCESS(Status), Status);
+            pu8Cmd += cbCmd;
+
+            pHdr = (SVGA3dCmdHeader *)pu8Cmd;
+            pHdr->id   = SVGA_3D_CMD_INVALIDATE_GB_SURFACE;
+            pHdr->size = sizeof(SVGA3dCmdInvalidateGBSurface);
+            pu8Cmd += sizeof(*pHdr);
+
+            {
+            SVGA3dCmdInvalidateGBSurface *pCmd = (SVGA3dCmdInvalidateGBSurface *)pu8Cmd;
+            pCmd->sid = pAllocation->dx.sid;
+            pu8Cmd += sizeof(*pCmd);
+            }
+
+            *pcbCommands = (uintptr_t)pu8Cmd - (uintptr_t)pBuildPagingBuffer->pDmaBuffer;
+            Assert(*pcbCommands == cbRequired);
+
+            pInstance->mobid = SVGA3D_INVALID_ID;
+
+            /* Continue with the next stage. */
+            pBuildPagingBuffer->MultipassOffset = 1;
+
+            /* Return this to submit the current commands and get to the next stage of this transfer. */
+            return STATUS_GRAPHICS_INSUFFICIENT_DMA_BUFFER;
+        }
+
+        if (pBuildPagingBuffer->MultipassOffset == 1)
+        {
+            /* Wait until submitted commands are processed by waiting for the fence. */
+            uint64_t const u64CurrentCommandFence = ASMAtomicReadU64(&pSvga->pMiniportMobData->u64MobFence);
+            if (SvgaFenceCmp64(pAllocation->dx.u64LastReferencedCommandFence, u64CurrentCommandFence) > 0)
+                return STATUS_GRAPHICS_ALLOCATION_BUSY;
+
+            pAllocation->dx.flags.fReadbackCompleted = true;
+        }
+    }
+
+    /* Surface has been already read back to its GBO. */
+    Assert(pAllocation->dx.flags.fReadbackCompleted);
+    Assert(pInstance->mobid == SVGA3D_INVALID_ID);
+
+    /* Copy data from GBO to MDL. */
+    Assert(!pInstance->pGbo->flags.fMdl); /* The GBO must be allocated by the driver. */
+
+    /* Check that transfer is within GBO memory. */
+    AssertReturn(   pBuildPagingBuffer->Transfer.TransferOffset < pInstance->pGbo->cbGbo
+                 && pBuildPagingBuffer->Transfer.TransferSize <= pInstance->pGbo->cbGbo - pBuildPagingBuffer->Transfer.TransferOffset,
+                 STATUS_INVALID_PARAMETER);
+
+    /* Src is the GBO. */
+    uint8_t const *pu8Src = (uint8_t *)RTR0MemObjAddress(pInstance->pGbo->hMemObj);
+    AssertReturn(pu8Src, STATUS_UNSUCCESSFUL);
+    pu8Src += pBuildPagingBuffer->Transfer.TransferOffset;
+
+    /* Dst is the MDL. */
+    uint8_t *pu8Dst = (uint8_t *)MmGetSystemAddressForMdlSafe(
+        pBuildPagingBuffer->Transfer.Destination.pMdl, NormalPagePriority);
+    AssertReturn(pu8Dst, STATUS_UNSUCCESSFUL);
+    pu8Dst += pBuildPagingBuffer->Transfer.MdlOffset * PAGE_SIZE;
+
+    memcpy(pu8Dst, pu8Src, pBuildPagingBuffer->Transfer.TransferSize);
+
+    /** @todo 'pInstance->pGbo' can be deallocated on 'pBuildPagingBuffer->Transfer.Flags.TransferEnd'
+     * and reallocated in svgaPTSysMem2Host.
+     */
+
+    return STATUS_SUCCESS;
+}
+
+
+static NTSTATUS svgaPTSysMem2Host(PVBOXMP_DEVEXT pDevExt, PVBOXWDDM_ALLOCATION pAllocation,
+                                  DXGKARG_BUILDPAGINGBUFFER *pBuildPagingBuffer, uint32_t *pcbCommands)
+{
+    GALOG(("PTSysMem2Host: MDL: offset %u, size %u, 0x%p/%u, stage %u\n",
+           pBuildPagingBuffer->Transfer.Source.pMdl->ByteOffset,
+           pBuildPagingBuffer->Transfer.Source.pMdl->ByteCount,
+           pBuildPagingBuffer->Transfer.Source.pMdl,
+           pBuildPagingBuffer->Transfer.MdlOffset,
+           pBuildPagingBuffer->MultipassOffset));
+
+    /* Copy data from MDL to the GBO until end of transfer (pBuildPagingBuffer->Transfer.Flags.TransferEnd).
+     * Create a mob, bind the surface and update it on TransferEnd.
+     */
+
+    VBOXWDDM_EXT_VMSVGA *pSvga = pDevExt->pGa->hw.pSvga;
+
+    /* Segment 3 allocations have one instance. */
+    DX_ALLOCATION_INSTANCE *pInstance = svgaGetAllocationInstance(pAllocation, 0);
+    AssertReturn(pAllocation->dx.SegmentId == 3 && pInstance, STATUS_INVALID_PARAMETER);
+
+    Assert(pAllocation->dx.flags.fReadbackCompleted);
+    Assert(pInstance->mobid == SVGA3D_INVALID_ID);
+
+    /* Copy data from MDL to GBO. */
+    Assert(!pInstance->pGbo->flags.fMdl); /* The GBO must be allocated by the driver. */
+
+    /* Check that transfer is within GBO memory. */
+    AssertReturn(   pBuildPagingBuffer->Transfer.TransferOffset < pInstance->pGbo->cbGbo
+                 && pBuildPagingBuffer->Transfer.TransferSize <= pInstance->pGbo->cbGbo - pBuildPagingBuffer->Transfer.TransferOffset,
+                 STATUS_INVALID_PARAMETER);
+
+    /* Src is the MDL. */
+    uint8_t const *pu8Src = (uint8_t *)MmGetSystemAddressForMdlSafe(
+        pBuildPagingBuffer->Transfer.Source.pMdl, NormalPagePriority);
+    AssertReturn(pu8Src, STATUS_UNSUCCESSFUL);
+    pu8Src += pBuildPagingBuffer->Transfer.MdlOffset * PAGE_SIZE;
+
+    /* Dst is the GBO. */
+    uint8_t *pu8Dst = (uint8_t *)RTR0MemObjAddress(pInstance->pGbo->hMemObj);
+    AssertReturn(pu8Dst, STATUS_UNSUCCESSFUL);
+    pu8Dst += pBuildPagingBuffer->Transfer.TransferOffset;
+
+    memcpy(pu8Dst, pu8Src, pBuildPagingBuffer->Transfer.TransferSize);
+
+    if (pBuildPagingBuffer->Transfer.Flags.TransferEnd)
+    {
+        /*
+         * Create a mob, bind the surface and update it.
+         */
+        uint32_t cbRequired = 0;
+        SvgaMobDefine(pSvga, SVGA3D_INVALID_ID, NULL, 0, &cbRequired);
+        cbRequired += sizeof(SVGA3dCmdHeader) + sizeof(SVGA3dCmdBindGBSurface);
+        cbRequired += sizeof(SVGA3dCmdHeader) + sizeof(SVGA3dCmdUpdateGBSurface);
+
+        if (pBuildPagingBuffer->DmaSize < cbRequired)
+            return STATUS_GRAPHICS_INSUFFICIENT_DMA_BUFFER;
+
+        uint8_t *pu8Cmd = (uint8_t *)pBuildPagingBuffer->pDmaBuffer;
+        SVGA3dCmdHeader *pHdr;
+
+        /* Create a new mob */
+        /// @todo svgaDefineMobForAllocation?
+        NTSTATUS Status = SvgaMobAlloc(pSvga, &pInstance->mobid, pInstance->pGbo);
+        AssertReturn(NT_SUCCESS(Status), Status);
+
+        uint32_t cbCmd = 0;
+        Status = SvgaMobDefine(pSvga, pInstance->mobid, pu8Cmd,
+                               cbRequired - ((uintptr_t)pu8Cmd - (uintptr_t)pBuildPagingBuffer->pDmaBuffer),
+                               &cbCmd);
+        AssertReturnStmt(NT_SUCCESS(Status), SvgaMobFree(pSvga, &pInstance->mobid), Status);
+        pu8Cmd += cbCmd;
+
+        /* Bind the surface */
+        pHdr = (SVGA3dCmdHeader *)pu8Cmd;
+        pHdr->id   = SVGA_3D_CMD_BIND_GB_SURFACE;
+        pHdr->size = sizeof(SVGA3dCmdBindGBSurface);
+        pu8Cmd += sizeof(*pHdr);
+
+        {
+        SVGA3dCmdBindGBSurface *pCmd = (SVGA3dCmdBindGBSurface *)pu8Cmd;
+        pCmd->sid         = pAllocation->dx.sid;
+        pCmd->mobid       = pInstance->mobid;
+        pu8Cmd += sizeof(*pCmd);
+        }
+
+        /* Update the surface */
+        pHdr = (SVGA3dCmdHeader *)pu8Cmd;
+        pHdr->id   = SVGA_3D_CMD_UPDATE_GB_SURFACE;
+        pHdr->size = sizeof(SVGA3dCmdUpdateGBSurface);
+        pu8Cmd += sizeof(*pHdr);
+
+        {
+        SVGA3dCmdUpdateGBSurface *pCmd = (SVGA3dCmdUpdateGBSurface *)pu8Cmd;
+        pCmd->sid = pAllocation->dx.sid;
+        pu8Cmd += sizeof(*pCmd);
+        }
+
+        *pcbCommands = (uintptr_t)pu8Cmd - (uintptr_t)pBuildPagingBuffer->pDmaBuffer;
+        Assert(*pcbCommands == cbRequired);
+
+        pAllocation->dx.flags.fReadbackCompleted = false;
+    }
+
+    return STATUS_SUCCESS;
+}
+
+
 static NTSTATUS svgaPagingTransfer(PVBOXMP_DEVEXT pDevExt, DXGKARG_BUILDPAGINGBUFFER *pBuildPagingBuffer, uint32_t *pcbCommands)
 {
     VBOXWDDM_EXT_VMSVGA *pSvga = pDevExt->pGa->hw.pSvga;
@@ -773,8 +1097,18 @@ static NTSTATUS svgaPagingTransfer(PVBOXMP_DEVEXT pDevExt, DXGKARG_BUILDPAGINGBU
                  && pBuildPagingBuffer->Transfer.TransferSize <= cbAllocation - pBuildPagingBuffer->Transfer.TransferOffset,
                  STATUS_INVALID_PARAMETER);
 
+    GALOG(("%u -> %u, offset %u, size %u, cbAllocation %u\n",
+           pBuildPagingBuffer->Transfer.Source.SegmentId,
+           pBuildPagingBuffer->Transfer.Destination.SegmentId,
+           pBuildPagingBuffer->Transfer.TransferOffset,
+           pBuildPagingBuffer->Transfer.TransferSize,
+           cbAllocation));
+
     if (pBuildPagingBuffer->Transfer.TransferSize == 0)
         return STATUS_SUCCESS;
+
+    if (!pBuildPagingBuffer->Transfer.Flags.AllocationIsIdle)
+        return STATUS_GRAPHICS_ALLOCATION_BUSY;
 
     NTSTATUS Status = STATUS_SUCCESS;
 
@@ -795,6 +1129,8 @@ static NTSTATUS svgaPagingTransfer(PVBOXMP_DEVEXT pDevExt, DXGKARG_BUILDPAGINGBU
                     Status = svgaPTSysMem2VRAM(pDevExt, pAllocation, pBuildPagingBuffer);
                 }
             }
+            else if (pBuildPagingBuffer->Transfer.Destination.SegmentId == 3) /* To Host */
+                Status = svgaPTSysMem2Host(pDevExt, pAllocation, pBuildPagingBuffer, pcbCommands);
             else
                 DEBUG_BREAKPOINT_TEST();
             break;
@@ -812,6 +1148,15 @@ static NTSTATUS svgaPagingTransfer(PVBOXMP_DEVEXT pDevExt, DXGKARG_BUILDPAGINGBU
                     Status = svgaPTVRAM2SysMem(pDevExt, pAllocation, pBuildPagingBuffer);
                 }
             }
+            else
+                DEBUG_BREAKPOINT_TEST();
+            break;
+        }
+
+        case 3: /* From a host resource. */
+        {
+            if (pBuildPagingBuffer->Transfer.Destination.SegmentId == 0) /* To system memory */
+                Status = svgaPTHost2SysMem(pDevExt, pAllocation, pBuildPagingBuffer, pcbCommands);
             else
                 DEBUG_BREAKPOINT_TEST();
             break;

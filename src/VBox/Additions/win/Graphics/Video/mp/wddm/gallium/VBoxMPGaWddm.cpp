@@ -1,4 +1,4 @@
-/* $Id: VBoxMPGaWddm.cpp 112188 2025-12-22 12:43:18Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPGaWddm.cpp 115080 2026-08-19 11:45:15Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Gallium driver interface for WDDM kernel mode driver.
  */
@@ -520,10 +520,6 @@ static void gaReportFence(PVBOXMP_DEVEXT pDevExt)
         }
     }
 }
-
-/* If there are no commands but we need to trigger fence submission anyway, then submit a buffer of this size. */
-#define GA_DMA_MIN_SUBMIT_SIZE 4
-AssertCompile(GA_DMA_MIN_SUBMIT_SIZE < sizeof(SVGA3dCmdHeader));
 
 DECLINLINE(PVBOXWDDM_ALLOCATION) getAllocationFromAllocationListEntry(DXGK_ALLOCATIONLIST *pAllocationListEntry)
 {
@@ -1135,15 +1131,8 @@ static NTSTATUS gaRenderGA3D(PVBOXWDDM_CONTEXT pContext, DXGKARG_RENDER *pRender
             void *pvTarget          = pRender->pDmaBuffer;
             uint32_t const cbTarget = pRender->DmaSize;
             GAHWRENDERDATA *pHwRenderData = NULL;
-            if (cbTarget > GA_DMA_MIN_SUBMIT_SIZE)
-            {
-                Status = SvgaRenderCommands(pGaDevExt->hw.pSvga, pContext->pSvgaContext, pvTarget, cbTarget, pvSource, cbSource,
-                                            &u32TargetLength, &u32ProcessedLength, &pHwRenderData);
-            }
-            else
-            {
-                Status = STATUS_GRAPHICS_INSUFFICIENT_DMA_BUFFER;
-            }
+            Status = SvgaRenderCommands(pGaDevExt->hw.pSvga, pContext->pSvgaContext, pvTarget, cbTarget, pvSource, cbSource,
+                                        &u32TargetLength, &u32ProcessedLength, &pHwRenderData);
 
             GAFENCEOBJECT *pFO = NULL;
             if (Status == STATUS_SUCCESS)
@@ -1267,125 +1256,119 @@ static NTSTATUS gaBuildPagingBufferOld(PVBOXMP_DEVEXT pDevExt, DXGKARG_BUILDPAGI
     if (pBuildPagingBuffer->DmaBufferPrivateDataSize >= sizeof(GARENDERDATA))
     {
         // void *pvTarget          = pBuildPagingBuffer->pDmaBuffer;
-        const uint32_t cbTarget = pBuildPagingBuffer->DmaSize;
-        if (cbTarget > GA_DMA_MIN_SUBMIT_SIZE)
+        // const uint32_t cbTarget = pBuildPagingBuffer->DmaSize;
+
+        switch (pBuildPagingBuffer->Operation)
         {
-            switch (pBuildPagingBuffer->Operation)
+            case DXGK_OPERATION_TRANSFER:
             {
-                case DXGK_OPERATION_TRANSFER:
+                GALOG(("DXGK_OPERATION_TRANSFER: %p: @0x%x, cb 0x%x; src: %d:%p; dst: %d:%p; flags 0x%x, off 0x%x\n",
+                       pBuildPagingBuffer->Transfer.hAllocation,
+                       pBuildPagingBuffer->Transfer.TransferOffset,
+                       pBuildPagingBuffer->Transfer.TransferSize,
+                       pBuildPagingBuffer->Transfer.Source.SegmentId,
+                       pBuildPagingBuffer->Transfer.Source.pMdl,
+                       pBuildPagingBuffer->Transfer.Destination.SegmentId,
+                       pBuildPagingBuffer->Transfer.Destination.pMdl,
+                       pBuildPagingBuffer->Transfer.Flags.Value,
+                       pBuildPagingBuffer->Transfer.MdlOffset));
+                if (pBuildPagingBuffer->Transfer.Source.SegmentId == 0)
                 {
-                    GALOG(("DXGK_OPERATION_TRANSFER: %p: @0x%x, cb 0x%x; src: %d:%p; dst: %d:%p; flags 0x%x, off 0x%x\n",
-                           pBuildPagingBuffer->Transfer.hAllocation,
-                           pBuildPagingBuffer->Transfer.TransferOffset,
-                           pBuildPagingBuffer->Transfer.TransferSize,
-                           pBuildPagingBuffer->Transfer.Source.SegmentId,
-                           pBuildPagingBuffer->Transfer.Source.pMdl,
-                           pBuildPagingBuffer->Transfer.Destination.SegmentId,
-                           pBuildPagingBuffer->Transfer.Destination.pMdl,
-                           pBuildPagingBuffer->Transfer.Flags.Value,
-                           pBuildPagingBuffer->Transfer.MdlOffset));
-                    if (pBuildPagingBuffer->Transfer.Source.SegmentId == 0)
+                    /* SysMem source. */
+                    if (pBuildPagingBuffer->Transfer.Destination.SegmentId == 1)
                     {
-                        /* SysMem source. */
-                        if (pBuildPagingBuffer->Transfer.Destination.SegmentId == 1)
+                        /* SysMem -> VRAM. */
+                        Status = gaSoftwarePagingTransfer(pDevExt, pBuildPagingBuffer);
+                        if (Status == STATUS_SUCCESS)
                         {
-                            /* SysMem -> VRAM. */
-                            Status = gaSoftwarePagingTransfer(pDevExt, pBuildPagingBuffer);
-                            if (Status == STATUS_SUCCESS)
-                            {
-                                /* Generate a NOP. */
-                                Status = STATUS_NOT_SUPPORTED;
-                            }
-                        }
-                        else if (pBuildPagingBuffer->Transfer.Destination.SegmentId == 0)
-                        {
-                            /* SysMem -> SysMem, should not happen, bugcheck. */
-                            AssertFailed();
-                            Status = STATUS_INVALID_PARAMETER;
-                        }
-                        else
-                        {
-                            /* SysMem -> GPU surface. Our driver probably does not need it.
-                             * SVGA_3D_CMD_SURFACE_DMA(GMR -> Surface)?
-                             */
-                            AssertFailed();
+                            /* Generate a NOP. */
                             Status = STATUS_NOT_SUPPORTED;
                         }
                     }
-                    else if (pBuildPagingBuffer->Transfer.Source.SegmentId == 1)
+                    else if (pBuildPagingBuffer->Transfer.Destination.SegmentId == 0)
                     {
-                        /* VRAM source. */
-                        if (pBuildPagingBuffer->Transfer.Destination.SegmentId == 0)
-                        {
-                            /* VRAM -> SysMem. */
-                            Status = gaSoftwarePagingTransfer(pDevExt, pBuildPagingBuffer);
-                            if (Status == STATUS_SUCCESS)
-                            {
-                                /* Generate a NOP. */
-                                Status = STATUS_NOT_SUPPORTED;
-                            }
-                        }
-                        else if (pBuildPagingBuffer->Transfer.Destination.SegmentId == 1)
-                        {
-                            /* VRAM -> VRAM, should not happen, bugcheck. */
-                            AssertFailed();
-                            Status = STATUS_INVALID_PARAMETER;
-                        }
-                        else
-                        {
-                            /* VRAM -> GPU surface. Our driver probably does not need it.
-                             * SVGA_3D_CMD_SURFACE_DMA(SVGA_GMR_FRAMEBUFFER -> Surface)?
-                             */
-                            AssertFailed();
-                            Status = STATUS_NOT_SUPPORTED;
-                        }
+                        /* SysMem -> SysMem, should not happen, bugcheck. */
+                        AssertFailed();
+                        Status = STATUS_INVALID_PARAMETER;
                     }
                     else
                     {
-                        /* GPU surface. Our driver probably does not need it.
-                         * SVGA_3D_CMD_SURFACE_DMA(Surface -> GMR)?
+                        /* SysMem -> GPU surface. Our driver probably does not need it.
+                         * SVGA_3D_CMD_SURFACE_DMA(GMR -> Surface)?
                          */
                         AssertFailed();
                         Status = STATUS_NOT_SUPPORTED;
                     }
-
-                    /** @todo Ignore for now. */
-                    if (Status == STATUS_NOT_SUPPORTED)
+                }
+                else if (pBuildPagingBuffer->Transfer.Source.SegmentId == 1)
+                {
+                    /* VRAM source. */
+                    if (pBuildPagingBuffer->Transfer.Destination.SegmentId == 0)
                     {
-                        /* NOP */
-                        Status = STATUS_SUCCESS;
+                        /* VRAM -> SysMem. */
+                        Status = gaSoftwarePagingTransfer(pDevExt, pBuildPagingBuffer);
+                        if (Status == STATUS_SUCCESS)
+                        {
+                            /* Generate a NOP. */
+                            Status = STATUS_NOT_SUPPORTED;
+                        }
                     }
-                } break;
-
-                case DXGK_OPERATION_FILL:
+                    else if (pBuildPagingBuffer->Transfer.Destination.SegmentId == 1)
+                    {
+                        /* VRAM -> VRAM, should not happen, bugcheck. */
+                        AssertFailed();
+                        Status = STATUS_INVALID_PARAMETER;
+                    }
+                    else
+                    {
+                        /* VRAM -> GPU surface. Our driver probably does not need it.
+                         * SVGA_3D_CMD_SURFACE_DMA(SVGA_GMR_FRAMEBUFFER -> Surface)?
+                         */
+                        AssertFailed();
+                        Status = STATUS_NOT_SUPPORTED;
+                    }
+                }
+                else
                 {
-                    GALOG(("DXGK_OPERATION_FILL: %p: cb 0x%x, pattern 0x%x, %d:0x%08X\n",
-                           pBuildPagingBuffer->Fill.hAllocation,
-                           pBuildPagingBuffer->Fill.FillSize,
-                           pBuildPagingBuffer->Fill.FillPattern,
-                           pBuildPagingBuffer->Fill.Destination.SegmentId,
-                           pBuildPagingBuffer->Fill.Destination.SegmentAddress.LowPart));
-                    /* NOP */
-                } break;
-
-                case DXGK_OPERATION_DISCARD_CONTENT:
-                {
-                    GALOG(("DXGK_OPERATION_DISCARD_CONTENT: %p: flags 0x%x, %d:0x%08X\n",
-                           pBuildPagingBuffer->DiscardContent.hAllocation,
-                           pBuildPagingBuffer->DiscardContent.Flags,
-                           pBuildPagingBuffer->DiscardContent.SegmentId,
-                           pBuildPagingBuffer->DiscardContent.SegmentAddress.LowPart));
-                    /* NOP */
-                } break;
-
-                default:
+                    /* GPU surface. Our driver probably does not need it.
+                     * SVGA_3D_CMD_SURFACE_DMA(Surface -> GMR)?
+                     */
                     AssertFailed();
-                    break;
-            }
-        }
-        else
-        {
-            Status = STATUS_GRAPHICS_INSUFFICIENT_DMA_BUFFER;
+                    Status = STATUS_NOT_SUPPORTED;
+                }
+
+                /** @todo Ignore for now. */
+                if (Status == STATUS_NOT_SUPPORTED)
+                {
+                    /* NOP */
+                    Status = STATUS_SUCCESS;
+                }
+            } break;
+
+            case DXGK_OPERATION_FILL:
+            {
+                GALOG(("DXGK_OPERATION_FILL: %p: cb 0x%x, pattern 0x%x, %d:0x%08X\n",
+                       pBuildPagingBuffer->Fill.hAllocation,
+                       pBuildPagingBuffer->Fill.FillSize,
+                       pBuildPagingBuffer->Fill.FillPattern,
+                       pBuildPagingBuffer->Fill.Destination.SegmentId,
+                       pBuildPagingBuffer->Fill.Destination.SegmentAddress.LowPart));
+                /* NOP */
+            } break;
+
+            case DXGK_OPERATION_DISCARD_CONTENT:
+            {
+                GALOG(("DXGK_OPERATION_DISCARD_CONTENT: %p: flags 0x%x, %d:0x%08X\n",
+                       pBuildPagingBuffer->DiscardContent.hAllocation,
+                       pBuildPagingBuffer->DiscardContent.Flags,
+                       pBuildPagingBuffer->DiscardContent.SegmentId,
+                       pBuildPagingBuffer->DiscardContent.SegmentAddress.LowPart));
+                /* NOP */
+            } break;
+
+            default:
+                AssertFailed();
+                break;
         }
 
         /* Fill RenderData description in any case, it will be ignored if the above code failed. */
