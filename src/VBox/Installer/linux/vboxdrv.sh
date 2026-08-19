@@ -821,7 +821,7 @@ Restart \"rcvboxdrv setup\" after system is rebooted
             mkdir -p /var/lib/dkms/vbox-temp
             update-secureboot-policy --enroll-key 2>/dev/null ||
                 begin_msg "Failed to enroll secure boot key." console
-            rmdir -p /var/lib/dkms/vbox-temp 2>/dev/null
+            rmdir /var/lib/dkms/vbox-temp 2>/dev/null
 
             # Indicate that key has been enrolled and reboot is needed.
             HAVE_DEB_KEY=true

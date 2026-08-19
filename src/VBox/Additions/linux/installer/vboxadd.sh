@@ -1,7 +1,7 @@
 #! /bin/sh
-# $Id: vboxadd.sh 113831 2026-04-13 09:18:54Z vadim.galitsyn@oracle.com $
+# $Id: vboxadd.sh 115092 2026-08-19 16:57:57Z vadim.galitsyn@oracle.com $
 ## @file
-# Linux Additions kernel module init script ($Revision: 113831 $)
+# Linux Additions kernel module init script ($Revision: 115092 $)
 #
 
 #
@@ -527,7 +527,7 @@ Restart \"rcvboxadd setup\" after system is rebooted.
             mkdir -p /var/lib/dkms/vbox-temp
             update-secureboot-policy --enroll-key 2>/dev/null ||
                 fail "Failed to enroll secure boot key."
-            rmdir -p /var/lib/dkms/vbox-temp 2>/dev/null
+            rmdir /var/lib/dkms/vbox-temp 2>/dev/null
 
             # Indicate that key has been enrolled and reboot is needed.
             HAVE_DEB_KEY=true
