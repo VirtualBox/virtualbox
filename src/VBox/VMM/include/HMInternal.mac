@@ -1,4 +1,4 @@
-;$Id: HMInternal.mac 115030 2026-08-13 02:46:39Z knut.osmundsen@oracle.com $
+;$Id: HMInternal.mac 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $
 ;; @file
 ; HM - Internal header file.
 ;
@@ -151,9 +151,11 @@ endstruc
 
 struc HMCPUSVM
     .fEmulateLongModeSysEnterExit   resb    1
+    .fUseAvic                       resb    1
 
     alignb 8
     .NstGstVmcbCache                resb    40
+    .u64GstMsrApicBase              resq    1
 endstruc
 
 struc HMCPU
@@ -241,6 +243,7 @@ struc HMR0CPUSVM
     alignb 8
     .pSvmTransient                  RTR0PTR_RES  1
     .u64HostTscAux                  resq    1
+    .u64PhysIdEntry                 resq    1
 
     alignb 8
     .Dis                            resb    0d8h

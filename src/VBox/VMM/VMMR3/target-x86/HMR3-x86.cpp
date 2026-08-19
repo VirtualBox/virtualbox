@@ -1,4 +1,4 @@
-/* $Id: HMR3-x86.cpp 113496 2026-03-22 22:23:27Z knut.osmundsen@oracle.com $ */
+/* $Id: HMR3-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
 /** @file
  * HM - Intel/AMD VM Hardware Support Manager.
  */
@@ -281,6 +281,7 @@ VMMR3_INT_DECL(int) HMR3Init(PVM pVM)
                               "|SvmPauseFilterThreshold"
                               "|SvmVirtVmsaveVmload"
                               "|SvmVGif"
+                              "|SvmAvic"
                               "|LovelyMesaDrvWorkaround"
                               "|MissingOS2TlbFlushWorkaround"
                               "|AlwaysInterceptVmxMovDRx"
@@ -423,6 +424,12 @@ VMMR3_INT_DECL(int) HMR3Init(PVM pVM)
      * available. This is disabled by default as it's only useful while debugging
      * and enabling it causes a small hit to performance. */
     rc = CFGMR3QueryBoolDef(pCfgHm, "SvmLbrVirt", &pVM->hm.s.svm.fLbrVirt, false);
+    AssertRCReturn(rc, rc);
+
+    /** @cfgm{/HM/SvmAvic, bool, false}
+     * Whether to make use of the AVIC virtualization feature of the CPU if it's
+     * available. */
+    rc = CFGMR3QueryBoolDef(pCfgHm, "SvmAvic", &pVM->hm.s.svm.fAvic, false);
     AssertRCReturn(rc, rc);
 
     /** @cfgm{/HM/Exclusive, bool}
@@ -990,6 +997,11 @@ static int hmR3InitFinalizeR3(PVM pVM)
             HM_REG_COUNTER(&pHmCpu->StatVmxPreemptionReusingDeadlineExpired,   "/HM/CPU%u/PreemptTimer/ReusingDeadlineExpired",   "VMX-preemption timer arming logic found previous deadline already expired (ignored)");
             HM_REG_COUNTER(&pHmCpu->StatVmxPreemptionRecalcingDeadline,        "/HM/CPU%u/PreemptTimer/RecalcingDeadline",        "VMX-preemption timer arming logic recalculating the deadline (slightly expensive)");
             HM_REG_COUNTER(&pHmCpu->StatVmxPreemptionRecalcingDeadlineExpired, "/HM/CPU%u/PreemptTimer/RecalcingDeadlineExpired", "VMX-preemption timer arming logic found recalculated deadline expired (ignored)");
+        }
+        else
+        {
+            HM_REG_COUNTER(&pHmCpu->StatSvmExitAvicIncompleteIpi,              "/HM/CPU%u/AVIC/IncompleteIpi",                    "VM exit due to an incomplete IPI.");
+            HM_REG_COUNTER(&pHmCpu->StatSvmExitAvicNoAccel,                    "/HM/CPU%u/AVIC/UnAcceleratedAccess",              "VM exit due to an unaccelerated APIC access");
         }
 #ifdef VBOX_WITH_STATISTICS
         /*
@@ -2061,6 +2073,9 @@ static int hmR3InitFinalizeR0Amd(PVM pVM)
     if (pVM->hm.s.fPostedIntrs)
         LogRel(("HM:   Enabled posted-interrupt processing support\n"));
 
+    if (pVM->apCpusR3[0]->hm.s.svm.fUseAvic)
+        LogRel(("HM:   Enabled AVIC support\n"));
+
     hmR3DisableRawMode(pVM);
 
     LogRel((pVM->hm.s.fTprPatchingAllowed ? "HM: Enabled TPR patching\n"
@@ -2943,6 +2958,26 @@ VMMR3DECL(bool) HMR3IsPostedIntrsEnabled(PUVM pUVM)
     PVM pVM = pUVM->pVM;
     VM_ASSERT_VALID_EXT_RETURN(pVM, false);
     return pVM->hm.s.fPostedIntrs;
+}
+
+
+/**
+ * Checks if the SVM AVIC feature is enabled.
+ *
+ * This returns whether the APIC should only deliver PIC-style interrupts
+ * to the guest while all other interrupts are updated to the APIC page
+ * using the posted-interrupt bitmap.
+ *
+ * @returns @c true if SVM AVIC feature is enabled, @c false otherwise.
+ * @param   pUVM        The user mode VM handle.
+ */
+VMMR3DECL(bool) HMR3IsAvicEnabled(PUVM pUVM)
+{
+    UVM_ASSERT_VALID_EXT_RETURN(pUVM, false);
+    PVM pVM = pUVM->pVM;
+    VM_ASSERT_VALID_EXT_RETURN(pVM, false);
+    PCVMCPU pVCpu0 = pVM->apCpusR3[0];
+    return pVCpu0->hm.s.svm.fUseAvic;
 }
 
 

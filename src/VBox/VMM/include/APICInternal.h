@@ -1,4 +1,4 @@
-/* $Id: APICInternal.h 112683 2026-01-25 17:23:05Z alexander.eichner@oracle.com $ */
+/* $Id: APICInternal.h 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller, Internal header.
  */
@@ -195,6 +195,8 @@ typedef struct APIC
     bool                        fVirtApicRegsEnabled;
     /** Whether posted-interrupt processing is enabled. */
     bool                        fPostedIntrsEnabled;
+    /** Whether the SVM AVIC feature is enabled. */
+    bool                        fAvicEnabled;
     /** Whether TSC-deadline timer mode is supported for the guest. */
     bool                        fSupportsTscDeadline;
     /** Whether this VM has an IO-APIC. */
@@ -211,6 +213,8 @@ typedef struct APIC
      * kernel load area and macOS kernel selector value (8), as we must not ever
      * apply this to the EFI code. */
     bool                        fMacOSWorkaround;
+    /** Alignment padding. */
+    bool                        afPadding[3];
     /** The max supported APIC mode from CFGM.  */
     PDMAPICMODE                 enmMaxMode;
     /** @} */
@@ -336,6 +340,8 @@ typedef struct APICCPU
     STAMCOUNTER                 StatTprRead;
     /** Number of times the EOI is written. */
     STAMCOUNTER                 StatEoiWrite;
+    /** Number of times the EOI is written in the fast path. */
+    STAMCOUNTER                 StatEoiWriteFast;
     /** Number of times TPR masks an interrupt in apicGetInterrupt(). */
     STAMCOUNTER                 StatMaskedByTpr;
     /** Number of times PPR masks an interrupt in apicGetInterrupt(). */

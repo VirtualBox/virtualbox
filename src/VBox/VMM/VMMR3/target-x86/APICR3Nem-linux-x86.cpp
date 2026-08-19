@@ -1,4 +1,4 @@
-/* $Id: APICR3Nem-linux-x86.cpp 113859 2026-04-14 11:43:54Z alexander.eichner@oracle.com $ */
+/* $Id: APICR3Nem-linux-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller - NEM KVM backend.
  */
@@ -503,6 +503,28 @@ static DECLCALLBACK(VBOXSTRICTRC) apicR3KvmExportState(PVMCPUCC pVCpu)
 #endif
 
     return VINF_SUCCESS;
+}
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnUpdateStateAfterWrite}
+ */
+static DECLCALLBACK(VBOXSTRICTRC) apicR3KvmUpdateStateAfterWrite(PVMCPUCC pVCpu, uint16_t offApicReg)
+{
+    RT_NOREF(pVCpu, offApicReg);
+    AssertReleaseMsgFailed(("Unexpected interface call\n"));
+    return VERR_NOT_SUPPORTED;
+}
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnSetEoiFast}
+ */
+static DECLCALLBACK(VBOXSTRICTRC) apicR3KvmSetEoiFast(PVMCPUCC pVCpu, uint8_t uVector)
+{
+    RT_NOREF(pVCpu, uVector);
+    AssertReleaseMsgFailed(("Unexpected interface call\n"));
+    return VERR_NOT_SUPPORTED;
 }
 
 
@@ -1356,6 +1378,8 @@ const PDMAPICBACKEND g_ApicNemBackend =
     /* .pfnSetHvCompatMode = */         apicR3KvmSetHvCompatMode,
     /* .pfnImportState = */             apicR3KvmImportState,
     /* .pfnExportState = */             apicR3KvmExportState,
+    /* .pfnUpdateStateAfterWrite = */   apicR3KvmUpdateStateAfterWrite,
+    /* .pfnSetEoiFast = */              apicR3KvmSetEoiFast,
 };
 
 #endif /* !VBOX_DEVICE_STRUCT_TESTCASE */

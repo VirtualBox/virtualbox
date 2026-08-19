@@ -1,4 +1,4 @@
-/* $Id: APICAll-x86.cpp 114733 2026-07-21 06:02:36Z alexander.eichner@oracle.com $ */
+/* $Id: APICAll-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller - All Contexts.
  */
@@ -608,14 +608,19 @@ static VBOXSTRICTRC apicSendIntr(PVMCC pVM, PVMCPUCC pVCpu, uint8_t uVector, XAP
         && pVCpu)
     {
         /*
-         * Flag only errors when the delivery mode is fixed and not others.
+         * Flag only errors when the delivery mode is fixed or lowest-priority and not
+         * others. This applies to ICR and self-IPI in both xAPIC and x2APIC modes.
+         *  - Intel: Documented under "Error Status Register (ESR)" in the
+         *    Intel spec. "13.5.3 Error Handling".
+         *  - AMD: Documented under "APICx280 [Error Status] (ErrorStatus)" in the CPU
+         *    specific manual (e.g. "Processor Programming Reference (PPR) for
+         *    AMD Family 17h Model 01h, Revision B1 Processors".
          *
          * Ubuntu 10.04-3 amd64 live CD with 2 VCPUs gets upset as it sends an SIPI to the
          * 2nd VCPU with vector 6 and checks the ESR for no errors, see @bugref{8245#c86}.
          */
-        /** @todo The spec says this for LVT, but not explcitly for ICR-lo
-         *        but it probably is true. */
-        if (enmDeliveryMode == XAPICDELIVERYMODE_FIXED)
+        if (   enmDeliveryMode == XAPICDELIVERYMODE_FIXED
+            || enmDeliveryMode == XAPICDELIVERYMODE_LOWEST_PRIO)
         {
             if (RT_UNLIKELY(uVector <= XAPIC_ILLEGAL_VECTOR_END))
                 apicSetError(pVCpu, XAPIC_ESR_SEND_ILLEGAL_VECTOR);
@@ -765,6 +770,7 @@ static VBOXSTRICTRC apicSetIcrLo(PVMCPUCC pVCpu, uint32_t uIcrLo, int rcRZ, bool
         STAM_COUNTER_INC(&pVCpu->apic.s.StatIcrLoWrite);
     RT_NOREF(fUpdateStat);
 
+    Assert(!(pXApicPage->icr_lo.all.u32IcrLo & XAPIC_LVT_DELIVERY_STATUS));
     return apicSendIpi(pVCpu, rcRZ);
 }
 
@@ -906,6 +912,65 @@ static int apicSetTprEx(PVMCPUCC pVCpu, uint32_t uTpr, bool fForceX2ApicBehaviou
 
 
 /**
+ * Helper for processing an EOI when the vector corresponding to the EOI is
+ * given.
+ *
+ * @param   pVCpu       The cross context virtual CPU structure.
+ * @param   uVector     The vector for attempted EOI. This is the highest
+ *                      in-service vector found in the ISR.
+ */
+static void apicProcessEoi(PVMCPUCC pVCpu, uint8_t uVector)
+{
+    /*
+    * Broadcast the EOI to the I/O APIC(s).
+    *
+    * We'll handle the EOI broadcast first as there is tiny chance we get rescheduled to
+    * ring-3 due to contention on the I/O APIC lock. This way we don't mess with the rest
+    * of the APIC state and simply restart the EOI write operation from ring-3.
+    */
+    PXAPICPAGE pXApicPage = VMCPU_TO_XAPICPAGE(pVCpu);
+    bool const fLevelTriggered = apicTestVectorInReg(&pXApicPage->tmr, uVector);
+    if (fLevelTriggered)
+    {
+        PDMIoApicBroadcastEoi(pVCpu->CTX_SUFF(pVM), uVector);
+
+        /*
+        * Clear the vector from the TMR.
+        *
+        * The broadcast to I/O APIC can re-trigger new interrupts to arrive via the bus. However,
+        * apicUpdatePendingInterrupts() which updates TMR can only be done from EMT which we
+        * currently are on, so no possibility of concurrent updates.
+        */
+        apicClearVectorInReg(&pXApicPage->tmr, uVector);
+
+        /*
+        * Clear the remote IRR bit for level-triggered, fixed mode LINT0 interrupt.
+        * The LINT1 pin does not support level-triggered interrupts.
+        * See Intel spec. 10.5.1 "Local Vector Table".
+        */
+        uint32_t const uLvtLint0 = pXApicPage->lvt_lint0.all.u32LvtLint0;
+        if (   XAPIC_LVT_GET_REMOTE_IRR(uLvtLint0)
+            && XAPIC_LVT_GET_VECTOR(uLvtLint0) == uVector
+            && XAPIC_LVT_GET_DELIVERY_MODE(uLvtLint0) == XAPICDELIVERYMODE_FIXED)
+        {
+            ASMAtomicAndU32((volatile uint32_t *)&pXApicPage->lvt_lint0.all.u32LvtLint0, ~XAPIC_LVT_REMOTE_IRR);
+            Log2(("APIC%u: apicSetEoi: Cleared remote-IRR for LINT0. uVector=%#x\n", pVCpu->idCpu, uVector));
+        }
+
+        Log2(("APIC%u: apicSetEoi: Cleared level triggered interrupt from TMR. uVector=%#x\n", pVCpu->idCpu, uVector));
+    }
+
+    /*
+    * Mark interrupt as serviced, update the PPR and signal pending interrupts.
+    */
+    Log2(("APIC%u: apicSetEoi: Clearing interrupt from ISR. uVector=%#x\n", pVCpu->idCpu, uVector));
+    apicClearVectorInReg(&pXApicPage->isr, uVector);
+    apicUpdatePpr(pVCpu);
+    apicSignalNextPendingIntr(pVCpu);
+}
+
+
+/**
  * Sets the End-Of-Interrupt (EOI) register.
  *
  * @returns Strict VBox status code.
@@ -930,53 +995,9 @@ static DECLCALLBACK(VBOXSTRICTRC) apicSetEoi(PVMCPUCC pVCpu, uint32_t uEoi, bool
     int isrv = apicGetHighestSetBitInReg(&pXApicPage->isr, -1 /* rcNotFound */);
     if (isrv >= 0)
     {
-        /*
-         * Broadcast the EOI to the I/O APIC(s).
-         *
-         * We'll handle the EOI broadcast first as there is tiny chance we get rescheduled to
-         * ring-3 due to contention on the I/O APIC lock. This way we don't mess with the rest
-         * of the APIC state and simply restart the EOI write operation from ring-3.
-         */
         Assert(isrv <= (int)UINT8_MAX);
-        uint8_t const uVector      = isrv;
-        bool const fLevelTriggered = apicTestVectorInReg(&pXApicPage->tmr, uVector);
-        if (fLevelTriggered)
-        {
-            PDMIoApicBroadcastEoi(pVCpu->CTX_SUFF(pVM), uVector);
-
-            /*
-             * Clear the vector from the TMR.
-             *
-             * The broadcast to I/O APIC can re-trigger new interrupts to arrive via the bus. However,
-             * apicUpdatePendingInterrupts() which updates TMR can only be done from EMT which we
-             * currently are on, so no possibility of concurrent updates.
-             */
-            apicClearVectorInReg(&pXApicPage->tmr, uVector);
-
-            /*
-             * Clear the remote IRR bit for level-triggered, fixed mode LINT0 interrupt.
-             * The LINT1 pin does not support level-triggered interrupts.
-             * See Intel spec. 10.5.1 "Local Vector Table".
-             */
-            uint32_t const uLvtLint0 = pXApicPage->lvt_lint0.all.u32LvtLint0;
-            if (   XAPIC_LVT_GET_REMOTE_IRR(uLvtLint0)
-                && XAPIC_LVT_GET_VECTOR(uLvtLint0) == uVector
-                && XAPIC_LVT_GET_DELIVERY_MODE(uLvtLint0) == XAPICDELIVERYMODE_FIXED)
-            {
-                ASMAtomicAndU32((volatile uint32_t *)&pXApicPage->lvt_lint0.all.u32LvtLint0, ~XAPIC_LVT_REMOTE_IRR);
-                Log2(("APIC%u: apicSetEoi: Cleared remote-IRR for LINT0. uVector=%#x\n", pVCpu->idCpu, uVector));
-            }
-
-            Log2(("APIC%u: apicSetEoi: Cleared level triggered interrupt from TMR. uVector=%#x\n", pVCpu->idCpu, uVector));
-        }
-
-        /*
-         * Mark interrupt as serviced, update the PPR and signal pending interrupts.
-         */
-        Log2(("APIC%u: apicSetEoi: Clearing interrupt from ISR. uVector=%#x\n", pVCpu->idCpu, uVector));
-        apicClearVectorInReg(&pXApicPage->isr, uVector);
-        apicUpdatePpr(pVCpu);
-        apicSignalNextPendingIntr(pVCpu);
+        uint8_t const uVector = isrv;
+        apicProcessEoi(pVCpu, uVector);
     }
     else
     {
@@ -988,6 +1009,30 @@ static DECLCALLBACK(VBOXSTRICTRC) apicSetEoi(PVMCPUCC pVCpu, uint32_t uEoi, bool
 #endif
     }
 
+    return VINF_SUCCESS;
+}
+
+
+/**
+ * Sets the End-Of-Interrupt (EOI) register when the ISR is already known.
+ *
+ * This is an optimization that lets us avoid scanning the 256-bit sparse ISR
+ * register figuring out the highest pending in-service vector.
+ *
+ * @returns Strict VBox status code.
+ * @param   pVCpu    The cross context virtual CPU structure.
+ * @param   uVector  The vector for attempted EOI. This is the vector for the
+ *                   highest in-service vector.
+ *
+ * @note    It it assumed the caller (hardware in the case of SVM AVIC) has
+ *          already validated the value written to the EOI register.
+ */
+static DECLCALLBACK(VBOXSTRICTRC) apicSetEoiFast(PVMCPUCC pVCpu, uint8_t uVector)
+{
+    VMCPU_ASSERT_EMT(pVCpu);
+    Log2(("APIC%u: apicSetEoiFast: uEoi=%#RX32 uVector=%#x\n", pVCpu->idCpu, uVector));
+    STAM_COUNTER_INC(&pVCpu->apic.s.StatEoiWriteFast);
+    apicProcessEoi(pVCpu, uVector);
     return VINF_SUCCESS;
 }
 
@@ -1554,7 +1599,7 @@ static DECLCALLBACK(VBOXSTRICTRC) apicReadMsr(PVMCPUCC pVCpu, uint32_t u32Reg, u
      * Validate.
      */
     VMCPU_ASSERT_EMT(pVCpu);
-    Assert(u32Reg >= MSR_IA32_X2APIC_ID && u32Reg <= MSR_IA32_X2APIC_SELF_IPI);
+    AssertMsg(u32Reg >= MSR_IA32_X2APIC_ID && u32Reg <= MSR_IA32_X2APIC_SELF_IPI, ("u32Reg=%#x\n", u32Reg));
     Assert(pu64Value);
 
     /*
@@ -2388,6 +2433,20 @@ static DECLCALLBACK(int) apicGetInterrupt(PVMCPUCC pVCpu, uint8_t *pu8Vector, ui
 
     LogFlow(("APIC%u: apicGetInterrupt:\n", pVCpu->idCpu));
 
+    /*
+     * When SVM AVIC is in use, we only deliver PIC-style interrupts here.
+     * Other interrupts are updated in the APIC page by the usual mechanism
+     * and picked up by the hardware without explicit event injection.
+     */
+    PVMCC  pVM   = pVCpu->CTX_SUFF(pVM);
+    PCAPIC pApic = VM_TO_APIC(pVM);
+    if (pApic->fAvicEnabled)
+    {
+        *pu8Vector = 0;
+        *puSrcTag  = 0;
+        return VERR_APIC_INTR_DEFER;
+    }
+
     PXAPICPAGE pXApicPage = VMCPU_TO_XAPICPAGE(pVCpu);
     bool const fApicHwEnabled = apicIsEnabled(pVCpu);
     if (   fApicHwEnabled
@@ -2616,7 +2675,8 @@ DECLCALLBACK(bool) apicPostInterrupt(PVMCPUCC pVCpu, uint8_t uVector, XAPICTRIGG
                                      uint32_t uSrcTag)
 {
     Assert(pVCpu);
-    Assert(uVector > XAPIC_ILLEGAL_VECTOR_END);
+    AssertMsg(uVector > XAPIC_ILLEGAL_VECTOR_END, ("uVector=%#x, IcrLo=%#RX32 IcrHi=%#RX32\n", uVector,
+        VMCPU_TO_CX2APICPAGE(pVCpu)->icr_lo.all.u32IcrLo, VMCPU_TO_CX2APICPAGE(pVCpu)->icr_hi.u32IcrHi));
     RT_NOREF(fAutoEoi);
 
     PVMCC    pVM       = pVCpu->CTX_SUFF(pVM);
@@ -2835,7 +2895,7 @@ static DECLCALLBACK(void) apicUpdatePendingInterrupts(PVMCPUCC pVCpu)
     PXAPICPAGE pXApicPage       = VMCPU_TO_XAPICPAGE(pVCpu);
     bool       fHasPendingIntrs = false;
 
-    Log3(("APIC%u: apicUpdatePendingInterrupts:\n", pVCpu->idCpu));
+    Log2(("APIC%u: apicUpdatePendingInterrupts:\n", pVCpu->idCpu));
     STAM_PROFILE_START(&pApicCpu->StatUpdatePendingIntrs, a);
 
     /* Update edge-triggered pending interrupts. */
@@ -2946,6 +3006,56 @@ static DECLCALLBACK(VBOXSTRICTRC) apicExportState(PVMCPUCC pVCpu)
 {
     RT_NOREF(pVCpu);
     return VERR_NOT_IMPLEMENTED;
+}
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKENDR0,pfnUpdateStateAfterWrite}
+ */
+static DECLCALLBACK(VBOXSTRICTRC) apicVBoxUpdateStateAfterWrite(PVMCPUCC pVCpu, uint16_t offApicReg)
+{
+    AssertReturn(pVCpu,   VERR_INVALID_PARAMETER);
+
+    Assert(PDMHasApic(pVCpu->CTX_SUFF(pVM)));
+
+    /*
+     * In SVM, vAPIC registers are 32-bits wide and currently the two 64-bit accesses
+     * (Self-IPI, and ICR) are both trap-like accesses meaning the the higher 32 bits
+     * are already updated.
+     */
+    PPDMDEVINS pDevIns  = VMCPU_TO_DEVINS(pVCpu);
+    VBOXSTRICTRC rcStrict;
+    if (XAPIC_IN_X2APIC_MODE(pVCpu->apic.s.uApicBaseMsr))
+    {
+        /* This is the conversion documented by AMD in 16.11.1 "x2APIC Register Address Space". */
+        uint32_t const idMsr = MSR_IA32_X2APIC_START + (offApicReg >> 4);
+
+        /*
+         * We shouldn't be getting called with reading just the ICR_HI bits in x2APIC mode.
+         * If we do, we just forward the error to the guest, like normal x2APIC operation.
+         * The assert is thus debug only.
+         */
+        Assert(offApicReg != XAPIC_OFF_ICR_HI);
+
+        uint64_t u64Value = 0;
+        rcStrict = apicReadMsr(pVCpu, idMsr, &u64Value);
+        if (rcStrict == VINF_SUCCESS)
+            rcStrict = apicWriteMsr(pVCpu, idMsr, u64Value);
+        if (   rcStrict == VINF_CPUM_R3_MSR_READ
+            || rcStrict == VINF_CPUM_R3_MSR_WRITE)
+            rcStrict = VINF_APIC_R3_UPDATE_STATE;
+    }
+    else
+    {
+        uint32_t u32Value = 0;
+        rcStrict = apicReadRegister(pDevIns, pVCpu, offApicReg, &u32Value);
+        if (rcStrict == VINF_SUCCESS)
+            rcStrict = apicWriteRegister(pDevIns, pVCpu, offApicReg, u32Value);
+        if (   rcStrict == VINF_IOM_R3_MMIO_READ
+            || rcStrict == VINF_IOM_R3_MMIO_WRITE)
+            rcStrict = VINF_APIC_R3_UPDATE_STATE;
+    }
+    return rcStrict;
 }
 
 
@@ -3083,5 +3193,7 @@ const PDMAPICBACKEND g_ApicBackend =
 #endif
     /* .pfnImportState = */             apicImportState,
     /* .pfnExportState = */             apicExportState,
+    /* .pfnUpdateStateAfterWrite = */   apicVBoxUpdateStateAfterWrite,
+    /* .pfnSetEoiFast = */              apicSetEoiFast,
 };
 

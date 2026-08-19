@@ -1,4 +1,4 @@
-/* $Id: HMInternal.h 115030 2026-08-13 02:46:39Z knut.osmundsen@oracle.com $ */
+/* $Id: HMInternal.h 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
 /** @file
  * HM - Internal header file.
  */
@@ -134,6 +134,8 @@ typedef struct HMPHYSCPU
     bool                fVmxeAlreadyEnabled;
     /** In use by our code. (for power suspend) */
     bool volatile       fInUse;
+    /** The APIC ID of the physical CPU associated with this entry. */
+    uint8_t             idApic;
 #ifdef VBOX_WITH_NESTED_HWVIRT_SVM
     /** Nested-guest union (put data common to SVM/VMX outside the union). */
     union
@@ -321,7 +323,9 @@ typedef struct HM
         bool                        fVGif;
         /** Whether to use LBR virtualization feature. */
         bool                        fLbrVirt;
-        bool                        afAlignment1[2];
+        /** Whether to use the AVIC feature if available. */
+        bool                        fAvic;
+        bool                        fAlignment1;
 
         /** Pause filter counter. */
         uint16_t                    cPauseFilter;
@@ -520,6 +524,16 @@ typedef struct HMR0PERVM
     {
         /** Set if erratum 170 affects the AMD cpu. */
         bool                        fAlwaysFlushTLB;
+        /** Ring-0 memory object for per-VM SVM AVIC structures. */
+        RTR0MEMOBJ                  hMemObjAvicHost;
+        /** Host physical address of the physical APIC ID table. */
+        RTHCPHYS                    HCPhysAvicPhysIdTbl;
+        /** Host physical address of the logical APIC ID table. */
+        RTHCPHYS                    HCPhysAvicLogicalIdTbl;
+        /** Host-physical address of the APIC-access page. */
+        RTHCPHYS                    HCPhysApicAccess;
+        /** R0 pointer to the physical APIC ID table. */
+        volatile uint64_t           *paAvicPhysIdTbl;
     } svm;
 
     /** VT-x specific data. */
@@ -844,11 +858,16 @@ typedef struct HMCPU
          *  long-mode and to intercept reads and writes to the SYSENTER MSRs in order to
          *  preserve the upper 32 bits written to them (AMD will ignore and discard). */
         bool                        fEmulateLongModeSysEnterExit;
-        uint8_t                     au8Alignment0[7];
+        /** Flag whether to utilize AVIC hardware. */
+        bool                        fUseAvic;
+        uint8_t                     au8Alignment0[6];
 
         /** Cache of the nested-guest's VMCB fields that we modify in order to run the
          *  nested-guest using AMD-V. This will be restored on \#VMEXIT. */
         SVMNESTEDVMCBCACHE          NstGstVmcbCache;
+
+        /** Cached guest APIC-base MSR for identifying when to enable the AVIC if supported. */
+        uint64_t                    u64GstMsrApicBase;
     } svm;
 
     /** Event injection state. */
@@ -857,7 +876,9 @@ typedef struct HMCPU
     /** Current shadow paging mode for updating CR4.
      * @todo move later (@bugref{9217}).  */
     PGMMODE                 enmShadowMode;
-    uint32_t                u32TemporaryPadding;
+    uint16_t                u16TemporaryPadding;
+    /** The APIC register offset from an unaccelerated write causing the return to R3. */
+    uint16_t                offApicReg;
 
     /** The PAE PDPEs used with Nested Paging (only valid when
      *  VMCPU_FF_HM_UPDATE_PAE_PDPES is set). */
@@ -1016,6 +1037,9 @@ typedef struct HMCPU
     STAMCOUNTER             StatVmxPreemptionReusingDeadline;
     STAMCOUNTER             StatVmxPreemptionReusingDeadlineExpired;
 
+    STAMCOUNTER             StatSvmExitAvicIncompleteIpi;
+    STAMCOUNTER             StatSvmExitAvicNoAccel;
+
 #ifdef VBOX_WITH_STATISTICS
     STAMCOUNTER             aStatExitReason[MAX_EXITREASON_STAT];
     STAMCOUNTER             aStatNestedExitReason[MAX_EXITREASON_STAT];
@@ -1162,6 +1186,9 @@ typedef struct HMR0PERVCPU
         /** Host's TSC_AUX MSR (used when RDTSCP doesn't cause VM-exits). */
         uint64_t                    u64HostTscAux;
 
+        /* The AVIC physical ID entry for this vCPU. */
+        uint64_t                    u64PhysIdEntry;
+
         /** For saving stack space, the disassembler state is allocated here
          * instead of on the stack. */
         DISSTATE                    Dis;
@@ -1172,7 +1199,6 @@ typedef HMR0PERVCPU *PHMR0PERVCPU;
 AssertCompileMemberAlignment(HMR0PERVCPU, cWorldSwitchExits, 4);
 AssertCompileMemberAlignment(HMR0PERVCPU, fForceTLBFlush,    4);
 AssertCompileMemberAlignment(HMR0PERVCPU, vmx.RestoreHost,   8);
-
 
 /** @name HM_WSF_XXX - @bugref{9453}, @bugref{9087}
  *  @note If you change these values don't forget to update the assembly

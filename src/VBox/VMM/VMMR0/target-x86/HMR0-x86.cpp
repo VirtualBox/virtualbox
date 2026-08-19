@@ -1,4 +1,4 @@
-/* $Id: HMR0-x86.cpp 115030 2026-08-13 02:46:39Z knut.osmundsen@oracle.com $ */
+/* $Id: HMR0-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
 /** @file
  * Hardware Assisted Virtualization Manager (HM) - Host Context Ring-0.
  */
@@ -861,6 +861,7 @@ static int hmR0EnableCpu(PVMCC pVM, RTCPUID idCpu)
     Assert(!RTThreadPreemptIsEnabled(NIL_RTTHREAD));
 
     pHostCpu->idCpu = idCpu;
+    pHostCpu->idApic = ASMGetApicId();
     /* Do NOT reset cTlbFlushes here, see @bugref{6255}. */
 
     int rc;
