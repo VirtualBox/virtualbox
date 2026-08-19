@@ -1,4 +1,4 @@
-/* $Id: HMR3-x86.cpp 115084 2026-08-19 12:52:58Z alexander.eichner@oracle.com $ */
+/* $Id: HMR3-x86.cpp 115085 2026-08-19 13:04:31Z alexander.eichner@oracle.com $ */
 /** @file
  * HM - Intel/AMD VM Hardware Support Manager.
  */
@@ -443,7 +443,7 @@ VMMR3_INT_DECL(int) HMR3Init(PVM pVM)
 
     /** @cfgm{/HM/VmxApicvLvl, string, "Max"}
      * The desired APIC virtualization level. Currently allows None, ApicAccessVirt, ApicRegVirt,
-     * IntrDelivery, PostedIntrs, IpiVirt, Max where Max is the default. 
+     * IntrDelivery, PostedIntrs, IpiVirt, Max where Max is the default.
      * The actually configured level depends on supported hardware. */
     char szVmxApicvLvl[16]; RT_ZERO(szVmxApicvLvl);
     rc = CFGMR3QueryStringDef(pCfgHm, "VmxApicvLvl", &szVmxApicvLvl[0], sizeof(szVmxApicvLvl), "Max");
