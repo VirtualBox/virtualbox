@@ -1,4 +1,4 @@
-/* $Id: HMR0SVM-x86.cpp 115074 2026-08-19 10:06:25Z alexander.eichner@oracle.com $ */
+/* $Id: HMR0SVM-x86.cpp 115075 2026-08-19 10:07:31Z alexander.eichner@oracle.com $ */
 /** @file
  * HM SVM (AMD-V) - Host Context Ring-0.
  */
@@ -412,21 +412,6 @@ static RTHCPHYS             g_HCPhysIOBitmap;
 /** Pointer to the IO bitmap. */
 static R0PTRTYPE(void *)    g_pvIOBitmap;
 
-#ifdef VBOX_STRICT
-# define HMSVM_LOG_RBP_RSP      RT_BIT_32(0)
-# define HMSVM_LOG_CR_REGS      RT_BIT_32(1)
-# define HMSVM_LOG_CS           RT_BIT_32(2)
-# define HMSVM_LOG_SS           RT_BIT_32(3)
-# define HMSVM_LOG_FS           RT_BIT_32(4)
-# define HMSVM_LOG_GS           RT_BIT_32(5)
-# define HMSVM_LOG_LBR          RT_BIT_32(6)
-# define HMSVM_LOG_ALL          (  HMSVM_LOG_RBP_RSP \
-                                 | HMSVM_LOG_CR_REGS \
-                                 | HMSVM_LOG_CS \
-                                 | HMSVM_LOG_SS \
-                                 | HMSVM_LOG_FS \
-                                 | HMSVM_LOG_GS \
-                                 | HMSVM_LOG_LBR)
 
 /** A list of x2APIC MSRs we don't want to intercept when using the AVIC. */
 static const uint32_t g_aX2AvicMsrs[] =
@@ -476,6 +461,23 @@ static const uint32_t g_aX2AvicMsrs[] =
     MSR_IA32_X2APIC_TIMER_DCR,
     MSR_IA32_X2APIC_SELF_IPI
 };
+
+
+#ifdef VBOX_STRICT
+# define HMSVM_LOG_RBP_RSP      RT_BIT_32(0)
+# define HMSVM_LOG_CR_REGS      RT_BIT_32(1)
+# define HMSVM_LOG_CS           RT_BIT_32(2)
+# define HMSVM_LOG_SS           RT_BIT_32(3)
+# define HMSVM_LOG_FS           RT_BIT_32(4)
+# define HMSVM_LOG_GS           RT_BIT_32(5)
+# define HMSVM_LOG_LBR          RT_BIT_32(6)
+# define HMSVM_LOG_ALL          (  HMSVM_LOG_RBP_RSP \
+                                 | HMSVM_LOG_CR_REGS \
+                                 | HMSVM_LOG_CS \
+                                 | HMSVM_LOG_SS \
+                                 | HMSVM_LOG_FS \
+                                 | HMSVM_LOG_GS \
+                                 | HMSVM_LOG_LBR)
 
 
 /**
