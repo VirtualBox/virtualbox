@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114775 2026-07-26 00:14:04Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 115090 2026-08-19 13:39:39Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the Shared Clipboard Host Service testcases.
 #
@@ -79,6 +79,7 @@ if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_ADDITIONS) && !defined(VBO
   	$(if $(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP),VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP,)
   tstClipboardMockHGCM_SOURCES += \
   	../VBoxSharedClipboardSvc-transfers.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/ClipboardPath.cpp \
   	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers.cpp \
   	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers-provider-local.cpp
   if VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP
@@ -119,6 +120,7 @@ if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_ADDITIONS) && !defined(VBO
   tstClipboardServiceHost_DEFS    += VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
   tstClipboardServiceHost_SOURCES += \
   	../VBoxSharedClipboardSvc-transfers.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/ClipboardPath.cpp \
   	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers.cpp \
   	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers-provider-local.cpp
  endif
@@ -150,6 +152,7 @@ if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_ADDITIONS) && !defined(VBO
   tstClipboardTransfers_SOURCES  = \
   	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-common.cpp \
   	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-helper.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/ClipboardPath.cpp \
   	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers.cpp \
   	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers-provider-local.cpp \
   	tstClipboardTransfers.cpp

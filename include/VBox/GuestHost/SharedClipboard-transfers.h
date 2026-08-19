@@ -1,4 +1,4 @@
-/* $Id: SharedClipboard-transfers.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: SharedClipboard-transfers.h 115090 2026-08-19 13:39:39Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Shared transfer functions between host and guest.
  */
@@ -468,7 +468,7 @@ typedef SHCLLISTENTRY *PSHCLLISTENTRY;
 /** Pointer to a const Shared Clipboard list entry. */
 typedef SHCLLISTENTRY *PCSHCLLISTENTRY;
 
-/** Maximum length (in UTF-8 characters) of a list entry name. Includes terminator. */
+/** Maximum size (in bytes) of a UTF-8 list entry name. Includes terminator. */
 #define SHCLLISTENTRY_MAX_NAME     4096
 
 /**
@@ -1270,6 +1270,7 @@ int ShClPathSanitize(char *pszPath, size_t cbPath);
 const char *ShClTransferStatusToStr(SHCLTRANSFERSTATUS enmStatus);
 int ShClTransferTransformPath(char *pszPath, size_t cbPath);
 int ShClTransferValidatePath(const char *pcszPath, bool fMustExist);
+int ShClTransferValidatePathEx(const char *pcszPath, size_t cbPath, bool fMustExist);
 int ShClTransferResolvePathAbs(PSHCLTRANSFER pTransfer, const char *pszPath, uint32_t fFlags, char **ppszResolved);
 int ShClTransferConvertFileCreateFlags(uint32_t fShClFlags, uint64_t *pfOpen);
 int ShClFsObjInfoQueryLocal(const char *pszPath, PSHCLFSOBJINFO pObjInfo);

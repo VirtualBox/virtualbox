@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114778 2026-07-26 00:59:02Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 115090 2026-08-19 13:39:39Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the Shared Clipboard Guest/Host testcases.
 #
@@ -92,10 +92,11 @@ if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_ADDITIONS) && !defined(VBO
   if defined(VBOX_WITH_LIBCURL) && defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP)
    PROGRAMS += tstClipboardHttpServer
    tstClipboardHttpServer_TEMPLATE = VBoxR3TstExe
-   tstClipboardHttpServer_SOURCES  = \
+   tstClipboardHttpServer_SOURCES   = \
    	tstClipboardHttpServer.cpp \
    	../clipboard-common.cpp \
    	../clipboard-helper.cpp \
+   	../ClipboardPath.cpp \
    	../clipboard-transfers.cpp \
    	../clipboard-transfers-http.cpp \
    	../clipboard-transfers-provider-local.cpp
