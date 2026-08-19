@@ -1,4 +1,4 @@
-/* $Id: HMR0SVM-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
+/* $Id: HMR0SVM-x86.cpp 115074 2026-08-19 10:06:25Z alexander.eichner@oracle.com $ */
 /** @file
  * HM SVM (AMD-V) - Host Context Ring-0.
  */
@@ -9318,8 +9318,8 @@ HMSVM_EXIT_DECL hmR0SvmExitAvicIncompleteIpi(PVMCPUCC pVCpu, PSVMTRANSIENT pSvmT
     STAM_REL_COUNTER_INC(&pVCpu->hm.s.StatSvmExitAvicIncompleteIpi);
 
     uint64_t const u64ExitInfo1 = pSvmTransient->pVmcb->ctrl.u64ExitInfo1;
-    uint32_t const u32ApicIcrLo = RT_LO_U32(u64ExitInfo1);
-    uint32_t const u32ApicIcrHi = RT_HI_U32(u64ExitInfo1);
+    uint32_t const u32ApicIcrLo = RT_LO_U32(u64ExitInfo1); RT_NOREF(u32ApicIcrLo);
+    uint32_t const u32ApicIcrHi = RT_HI_U32(u64ExitInfo1); RT_NOREF(u32ApicIcrHi);
 
     uint64_t const u64ExitInfo2 = pSvmTransient->pVmcb->ctrl.u64ExitInfo2;
     uint32_t const idApic       = (uint32_t)(u64ExitInfo2 & SVM_EXIT2_INC_IPI_INDEX_MASK);
