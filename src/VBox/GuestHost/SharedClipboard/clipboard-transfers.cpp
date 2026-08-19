@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 115086 2026-08-19 13:09:34Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -786,21 +786,11 @@ PSHCLLISTENTRY ShClTransferListEntryDup(PSHCLLISTENTRY pEntry)
  */
 static bool shclTransferListEntryNameIsValid(const char *pszName, size_t cbName)
 {
-    if (!pszName)
-        return false;
-
-    size_t const cchLen = RTStrNLen(pszName, cbName);
-
-    if (   !cbName
-        || cchLen == cbName
-        || cchLen == 0
-        || cchLen > SHCLLISTENTRY_MAX_NAME /* Includes zero termination */ - 1)
-    {
-        return false;
-    }
-
-    int rc = ShClTransferValidatePath(pszName, false /* fMustExist */);
+    int rc = ShClTransferValidatePathEx(pszName, cbName, false /* fMustExist */);
     if (RT_FAILURE(rc))
+        return false;
+
+    if (*pszName == '\0')
         return false;
 
     if (!shClTransferPathIsRelative(pszName))
@@ -816,7 +806,7 @@ static bool shclTransferListEntryNameIsValid(const char *pszName, size_t cbName)
  * @param   pListEntry          Clipboard list entry structure to initialize.
  * @param   fInfo               Info flags (of type VBOX_SHCL_INFO_F_XXX).
  * @param   pszName             Name (e.g. filename) to use. Can be NULL if not being used.
- *                              Up to SHCLLISTENTRY_MAX_NAME characters.
+ *                              Up to SHCLLISTENTRY_MAX_NAME bytes, including the terminator.
  * @param   pvInfo              Pointer to info data to assign. Must match \a fInfo.
  *                              The list entry takes the ownership of the data on success.
  * @param   cbInfo              Size (in bytes) of \a pvInfo data to assign.
@@ -824,17 +814,24 @@ static bool shclTransferListEntryNameIsValid(const char *pszName, size_t cbName)
 int ShClTransferListEntryInitEx(PSHCLLISTENTRY pListEntry, uint32_t fInfo, const char *pszName, void *pvInfo, uint32_t cbInfo)
 {
     AssertPtrReturn(pListEntry, VERR_INVALID_POINTER);
-    AssertReturn   (   pszName == NULL
-                    || shclTransferListEntryNameIsValid(pszName, strlen(pszName) + 1), VERR_INVALID_PARAMETER);
+
+    size_t cchName = 0;
+    if (pszName)
+    {
+        cchName = RTStrNLen(pszName, SHCLLISTENTRY_MAX_NAME);
+        if (   cchName >= SHCLLISTENTRY_MAX_NAME
+            || !shclTransferListEntryNameIsValid(pszName, cchName + 1))
+            return VERR_INVALID_PARAMETER;
+    }
     /* pvInfo + cbInfo depend on fInfo. See below. */
 
     RT_BZERO(pListEntry, sizeof(SHCLLISTENTRY));
 
     if (pszName)
     {
-        pListEntry->pszName = RTStrDupN(pszName, SHCLLISTENTRY_MAX_NAME);
+        pListEntry->pszName = RTStrDupN(pszName, cchName);
         AssertPtrReturn(pListEntry->pszName, VERR_NO_MEMORY);
-        pListEntry->cbName = (uint32_t)strlen(pListEntry->pszName) + 1 /* Include terminator */;
+        pListEntry->cbName = (uint32_t)cchName + 1 /* Include terminator */;
     }
 
     pListEntry->pvInfo = pvInfo;
@@ -3722,23 +3719,54 @@ int ShClTransferTransformPath(char *pszPath, size_t cbPath)
  * - Symbolic links are forbidden.
  *
  * @returns VBox status code.
- * @param   pcszPath            Path to validate.
+ * @param   pcszPath            Zero-terminated path to validate.
  * @param   fMustExist          Whether the path to validate also must exist.
  */
 int ShClTransferValidatePath(const char *pcszPath, bool fMustExist)
 {
     AssertPtrReturn(pcszPath, VERR_INVALID_POINTER);
 
+    size_t const cchPath = RTStrNLen(pcszPath, SHCLLISTENTRY_MAX_NAME);
+    if (cchPath >= SHCLLISTENTRY_MAX_NAME)
+        return VERR_INVALID_PARAMETER;
+
+    return ShClTransferValidatePathEx(pcszPath, cchPath + 1, fMustExist);
+}
+
+/**
+ * Validates whether a given path matches our set of rules or not, extended version.
+ *
+ * Validates the supplied size and requires the terminator to be the last byte.
+ *
+ * @returns VBox status code.
+ * @param   pcszPath            Path to validate.
+ * @param   cbPath              Size (in bytes) of @a pcszPath, including the terminator.
+ *                              Must not exceed SHCLLISTENTRY_MAX_NAME.
+ * @param   fMustExist          Whether the path to validate also must exist.
+ */
+int ShClTransferValidatePathEx(const char *pcszPath, size_t cbPath, bool fMustExist)
+{
+    if (!pcszPath)
+        return VERR_INVALID_POINTER;
+
+    if (   !cbPath
+        || cbPath > SHCLLISTENTRY_MAX_NAME)
+        return VERR_INVALID_PARAMETER;
+
+    size_t const cchPath = RTStrNLen(pcszPath, cbPath);
+    if (cchPath != cbPath - 1)
+        return VERR_INVALID_PARAMETER;
+
     int rc = VINF_SUCCESS;
 
-    if (*pcszPath == '\0')
+    if (!cchPath)
         return rc;
 
-    char *pszSanitized = RTStrDup(pcszPath);
+    char *pszSanitized = RTStrDupN(pcszPath, cchPath);
     if (!pszSanitized)
         return VERR_NO_MEMORY;
 
-    rc = ShClPathSanitize(pszSanitized, strlen(pszSanitized) + 1);
+    rc = ShClPathSanitize(pszSanitized, cbPath);
     if (   RT_SUCCESS(rc)
         && shClTransferPathIsRelative(pcszPath)
         && strcmp(pszSanitized, pcszPath))
