@@ -1,4 +1,4 @@
-/* $Id: PDMAllApic-x86.cpp 112682 2026-01-25 17:10:52Z alexander.eichner@oracle.com $ */
+/* $Id: PDMAllApic-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
 /** @file
  * PDM - APIC (Advanced Programmable Interrupt Controller) Interface.
  */
@@ -465,6 +465,39 @@ VMM_INT_DECL(VBOXSTRICTRC) PDMApicExportState(PVMCPUCC pVCpu)
 
 
 /**
+ * Updates the APIC state after a write to the APIC page by hardware.
+ *
+ * @returns Strict VBox status code.
+ * @param   pVCpu           The cross context virtual CPU structure.
+ * @param   offApicReg      The APIC register offset which was updated.
+ *
+ * @note This is a helper for AVIC/APICv when used on AMD or Intel.
+ */
+VMM_INT_DECL(VBOXSTRICTRC) PDMApicUpdateStateAfterWrite(PVMCPUCC pVCpu, uint16_t offApicReg)
+{
+    AssertReturn(PDMCPU_TO_APICBACKEND(pVCpu)->pfnUpdateStateAfterWrite, VERR_INVALID_POINTER);
+    return PDMCPU_TO_APICBACKEND(pVCpu)->pfnUpdateStateAfterWrite(pVCpu, offApicReg);
+}
+
+
+/**
+ * Sets the End-Of-Interrupt (EOI) register when the ISR is already known.
+ *
+ * This is an optimization that lets us avoid scanning the 256-bit sparse ISR
+ * register figuring out the highest pending in-service vector.
+ *
+ * @returns Strict VBox status code.
+ * @param   pVCpu       The cross context virtual CPU structure.
+ * @param   uVector     The vector (highest ISR) for the attempted EOI.
+ */
+VMM_INT_DECL(VBOXSTRICTRC) PDMApicSetEoiFast(PVMCPUCC pVCpu, uint8_t uVector)
+{
+    AssertReturn(PDMCPU_TO_APICBACKEND(pVCpu)->pfnSetEoiFast, VERR_INVALID_POINTER);
+    return PDMCPU_TO_APICBACKEND(pVCpu)->pfnSetEoiFast(pVCpu, uVector);
+}
+
+
+/**
  * Registers a PDM APIC backend.
  *
  * @returns VBox status code.
@@ -506,6 +539,8 @@ VMM_INT_DECL(int) PDMApicRegisterBackend(PVMCC pVM, PDMAPICBACKENDTYPE enmBacken
 #elif defined(IN_RING0)
     AssertPtrReturn(pBackend->pfnGetApicPageForCpu,         VERR_INVALID_POINTER);
 #endif
+    AssertPtrReturn(pBackend->pfnUpdateStateAfterWrite,     VERR_INVALID_POINTER);
+    AssertPtrReturn(pBackend->pfnSetEoiFast,                VERR_INVALID_POINTER);
 
     /*
      * Register the backend.

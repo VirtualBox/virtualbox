@@ -1,4 +1,4 @@
-/* $Id: APICR3-x86.cpp 112727 2026-01-28 17:02:49Z alexander.eichner@oracle.com $ */
+/* $Id: APICR3-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller.
  */
@@ -912,9 +912,10 @@ DECLCALLBACK(int) apicR3InitComplete(PPDMDEVINS pDevIns)
     pApic->fSupportsTscDeadline = RT_BOOL(CpuLeaf.uEcx & X86_CPUID_FEATURE_ECX_TSCDEADL);
     pApic->fPostedIntrsEnabled  = HMR3IsPostedIntrsEnabled(pVM->pUVM);
     pApic->fVirtApicRegsEnabled = HMR3AreVirtApicRegsEnabled(pVM->pUVM);
+    pApic->fAvicEnabled         = HMR3IsAvicEnabled(pVM->pUVM);
 
-    LogRel(("APIC: fPostedIntrsEnabled=%RTbool fVirtApicRegsEnabled=%RTbool fSupportsTscDeadline=%RTbool\n",
-            pApic->fPostedIntrsEnabled, pApic->fVirtApicRegsEnabled, pApic->fSupportsTscDeadline));
+    LogRel(("APIC: fPostedIntrsEnabled=%RTbool fVirtApicRegsEnabled=%RTbool fSupportsTscDeadline=%RTbool fAvicEnabled=%RTbool\n",
+            pApic->fPostedIntrsEnabled, pApic->fVirtApicRegsEnabled, pApic->fSupportsTscDeadline, pApic->fAvicEnabled));
 
     return VINF_SUCCESS;
 }
@@ -1094,6 +1095,7 @@ DECLCALLBACK(int) apicR3Construct(PPDMDEVINS pDevIns, int iInstance, PCFGMNODE p
         APIC_REG_COUNTER(&pApicCpu->StatTprWrite,      "%u/TprWrite",       "Number of TPR writes.");
         APIC_REG_COUNTER(&pApicCpu->StatTprRead,       "%u/TprRead",        "Number of TPR reads.");
         APIC_REG_COUNTER(&pApicCpu->StatEoiWrite,      "%u/EoiWrite",       "Number of EOI writes.");
+        APIC_REG_COUNTER(&pApicCpu->StatEoiWriteFast,  "%u/EoiWriteFast",   "Number of EOI writes using the fast path.");
         APIC_REG_COUNTER(&pApicCpu->StatMaskedByTpr,   "%u/MaskedByTpr",    "Number of times TPR masks an interrupt in apicGetInterrupt.");
         APIC_REG_COUNTER(&pApicCpu->StatMaskedByPpr,   "%u/MaskedByPpr",    "Number of times PPR masks an interrupt in apicGetInterrupt.");
         APIC_REG_COUNTER(&pApicCpu->StatTimerIcrWrite, "%u/TimerIcrWrite",  "Number of times the timer ICR is written.");

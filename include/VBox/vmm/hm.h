@@ -300,6 +300,7 @@ VMMR3DECL(bool)                 HMR3IsEnabled(PUVM pUVM);
 VMMR3DECL(bool)                 HMR3IsNestedPagingActive(PUVM pUVM);
 VMMR3DECL(bool)                 HMR3AreVirtApicRegsEnabled(PUVM pUVM);
 VMMR3DECL(bool)                 HMR3IsPostedIntrsEnabled(PUVM pUVM);
+VMMR3DECL(bool)                 HMR3IsAvicEnabled(PUVM pUVM);
 VMMR3DECL(bool)                 HMR3IsVpidActive(PUVM pUVM);
 VMMR3DECL(bool)                 HMR3IsUXActive(PUVM pUVM);
 VMMR3DECL(bool)                 HMR3IsSvmEnabled(PUVM pUVM);

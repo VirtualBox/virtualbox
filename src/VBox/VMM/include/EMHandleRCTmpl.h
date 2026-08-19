@@ -1,4 +1,4 @@
-/* $Id: EMHandleRCTmpl.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: EMHandleRCTmpl.h 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
 /** @file
  * EM - emR3[Raw|Hm|Nem]HandleRC template.
  */
@@ -150,6 +150,10 @@ int emR3NemHandleRC(PVM pVM, PVMCPU pVCpu, int rc)
 #ifdef EMHANDLERC_WITH_HM
         case VINF_EM_HM_PATCH_TPR_INSTR:
             rc = HMR3PatchTprInstr(pVM, pVCpu);
+            break;
+
+        case VINF_APIC_R3_UPDATE_STATE:
+            rc = VBOXSTRICTRC_TODO(PDMApicUpdateStateAfterWrite(pVCpu, pVCpu->hm.s.offApicReg));
             break;
 #endif
 

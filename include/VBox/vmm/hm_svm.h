@@ -65,6 +65,8 @@
 #define SVM_MSRPM_PAGES                 2
 /** Number of pages required for the IO permission bitmap. */
 #define SVM_IOPM_PAGES                  3
+/** Number of pages required for the AVIC per-VM (APIC access, logical, physical tables). */
+#define SVM_AVIC_PAGES                  3
 /** @} */
 
 /*
@@ -335,6 +337,20 @@
 # define SVM_EXIT_MAX                    (SVM_EXIT_AVIC_NOACCEL)
 /** @} */
 #endif /* !IN_REM_R3*/
+
+
+/** @name SVMVMCB.u64ExitInfo2 for AVIC Incomplete IPI.
+ * @{
+ */
+#define SVM_EXIT2_INC_IPI_INDEX_MASK                UINT64_C(0xfff)
+#define SVM_EXIT2_INC_IPI_ID_SHIFT                  32
+#define SVM_EXIT2_INC_IPI_INDEX_INVALID_INTR_TYPE   0
+#define SVM_EXIT2_INC_IPI_INDEX_TARGET_NOT_RUNNING  1
+#define SVM_EXIT2_INC_IPI_INDEX_INVALID_TARGET      2
+#define SVM_EXIT2_INC_IPI_INDEX_INVALID_PTR         3
+#define SVM_EXIT2_INC_IPI_INDEX_INVALID_IPI_VECTOR  4
+#define SVM_EXIT2_INC_IPI_INDEX_UNACCEL_IPI         5
+/** @} */
 
 
 /** @name SVMVMCB.u64ExitInfo2 for task switches
@@ -627,7 +643,8 @@ typedef union
         uint32_t    u3Reserved          : 3;
         uint32_t    u1VIntrMasking      : 1;    /* V_INTR_MASKING */
         uint32_t    u1VGifEnable        : 1;    /* VGIF enable */
-        uint32_t    u5Reserved          : 5;
+        uint32_t    u4Reserved          : 4;
+        uint32_t    u1X2AvicEnable      : 1;    /* X2AVIC enable */
         uint32_t    u1AvicEnable        : 1;    /* AVIC enable */
         uint32_t    u8VIntrVector       : 8;    /* V_INTR_VECTOR */
         uint32_t    u24Reserved         : 24;

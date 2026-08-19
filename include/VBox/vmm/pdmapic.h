@@ -362,6 +362,26 @@ typedef struct PDMAPICBACKENDR3
      */
     DECLR3CALLBACKMEMBER(VBOXSTRICTRC, pfnExportState, (PVMCPUCC pVCpu));
 
+    /**
+     * Updates the APIC state after a write to the APIC page by hardware.
+     *
+     * @returns Strict VBox status code.
+     * @param   pVCpu   The cross context virtual CPU structure.
+     *
+     * @note This is a helper for AVIC/APICv when used on AMD or Intel.
+     */
+    DECLR3CALLBACKMEMBER(VBOXSTRICTRC, pfnUpdateStateAfterWrite, (PVMCPUCC pVCpu, uint16_t offApicReg));
+
+    /**
+     * Sets the End-Of-Interrupt (EOI) register when the vector corresponding
+     * to the EOI is given.
+     *
+     * @returns Strict VBox status code.
+     * @param   pVCpu       The cross context virtual CPU structure.
+     * @param   uVector     The vector for the attempted EOI.
+     */
+    DECLR3CALLBACKMEMBER(VBOXSTRICTRC, pfnSetEoiFast, (PVMCPUCC pVCpu, uint8_t uVector));
+
     /** @name Reserved for future (MBZ).
      * @{ */
     DECLR3CALLBACKMEMBER(int, pfnReserved0, (void));
@@ -370,8 +390,6 @@ typedef struct PDMAPICBACKENDR3
     DECLR3CALLBACKMEMBER(int, pfnReserved3, (void));
     DECLR3CALLBACKMEMBER(int, pfnReserved4, (void));
     DECLR3CALLBACKMEMBER(int, pfnReserved5, (void));
-    DECLR3CALLBACKMEMBER(int, pfnReserved6, (void));
-    DECLR3CALLBACKMEMBER(int, pfnReserved7, (void));
     /** @} */
 } PDMAPICBACKENDR3;
 /** Pointer to ring-3 APIC backend. */
@@ -624,9 +642,30 @@ typedef struct PDMAPICBACKENDR0
      * Exports the APIC state.
      *
      * @returns Strict VBox status code.
-     * @param   pVCpu   The cross context virtual CPU structure.
+     * @param   pVCpu           The cross context virtual CPU structure.
+     * @param   offApicReg      The APIC register offset which was updated.
      */
     DECLR0CALLBACKMEMBER(VBOXSTRICTRC, pfnExportState, (PVMCPUCC pVCpu));
+
+    /**
+     * Updates the APIC state after a write to the APIC page by hardware.
+     *
+     * @returns Strict VBox status code.
+     * @param   pVCpu   The cross context virtual CPU structure.
+     *
+     * @note This is a helper for AVIC/APICv when used on AMD or Intel.
+     */
+    DECLR0CALLBACKMEMBER(VBOXSTRICTRC, pfnUpdateStateAfterWrite, (PVMCPUCC pVCpu, uint16_t offApicReg));
+
+    /**
+     * Sets the End-Of-Interrupt (EOI) register when the vector corresponding
+     * to the EOI is given.
+     *
+     * @returns Strict VBox status code.
+     * @param   pVCpu       The cross context virtual CPU structure.
+     * @param   uVector     The vector for the attempted EOI.
+     */
+    DECLR0CALLBACKMEMBER(VBOXSTRICTRC, pfnSetEoiFast, (PVMCPUCC pVCpu, uint8_t uVector));
 
     /** @name Reserved for future (MBZ).
      * @{ */
@@ -636,8 +675,6 @@ typedef struct PDMAPICBACKENDR0
     DECLR0CALLBACKMEMBER(int, pfnReserved3, (void));
     DECLR0CALLBACKMEMBER(int, pfnReserved4, (void));
     DECLR0CALLBACKMEMBER(int, pfnReserved5, (void));
-    DECLR0CALLBACKMEMBER(int, pfnReserved6, (void));
-    DECLR0CALLBACKMEMBER(int, pfnReserved7, (void));
     /** @} */
 } PDMAPICBACKENDR0;
 /** Pointer to ring-0 APIC backend. */
@@ -946,6 +983,8 @@ VMM_INT_DECL(int)           PDMApicSetBaseMsr(PVMCPUCC pVCpu, uint64_t u64BaseMs
 VMM_INT_DECL(int)           PDMApicGetInterrupt(PVMCPUCC pVCpu, uint8_t *pu8Vector, uint32_t *puSrcTag);
 VMM_INT_DECL(int)           PDMApicBusDeliver(PVMCC pVM, uint8_t uDest, uint8_t uDestMode, uint8_t uDeliveryMode, uint8_t uVector,
                                               uint8_t uPolarity, uint8_t uTriggerMode, uint8_t uIoApicPin, uint32_t uTagSrc);
+VMM_INT_DECL(VBOXSTRICTRC)  PDMApicUpdateStateAfterWrite(PVMCPUCC pVCpu, uint16_t offApicReg);
+VMM_INT_DECL(VBOXSTRICTRC)  PDMApicSetEoiFast(PVMCPUCC pVCpu, uint8_t uIsrVector);
 #ifdef IN_RING0
 VMM_INT_DECL(int)           PDMR0ApicGetApicPageForCpu(PCVMCPUCC pVCpu, PRTHCPHYS pHCPhys, PRTR0PTR pR0Ptr, PRTR3PTR pR3Ptr);
 #endif

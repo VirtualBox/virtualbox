@@ -1,4 +1,4 @@
-/* $Id: HMR0SVM-x86.cpp 115026 2026-08-13 02:15:03Z knut.osmundsen@oracle.com $ */
+/* $Id: HMR0SVM-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
 /** @file
  * HM SVM (AMD-V) - Host Context Ring-0.
  */
@@ -33,6 +33,7 @@
 #define VMCPU_INCL_CPUM_GST_CTX
 #include <iprt/asm-amd64-x86.h>
 #include <iprt/thread.h>
+#include <iprt/x86.h>
 
 #include <VBox/vmm/pdmapi.h>
 #include <VBox/vmm/dbgf.h>
@@ -380,6 +381,8 @@ static FNSVMEXITHANDLER hmR0SvmExitSwInt;
 static FNSVMEXITHANDLER hmR0SvmExitTrRead;
 static FNSVMEXITHANDLER hmR0SvmExitTrWrite;
 static FNSVMEXITHANDLER hmR0SvmExitBusLock;
+static FNSVMEXITHANDLER hmR0SvmExitAvicIncompleteIpi;
+static FNSVMEXITHANDLER hmR0SvmExitAvicNoAccel;
 #ifdef VBOX_WITH_NESTED_HWVIRT_SVM
 static FNSVMEXITHANDLER hmR0SvmExitClgi;
 static FNSVMEXITHANDLER hmR0SvmExitStgi;
@@ -424,6 +427,56 @@ static R0PTRTYPE(void *)    g_pvIOBitmap;
                                  | HMSVM_LOG_FS \
                                  | HMSVM_LOG_GS \
                                  | HMSVM_LOG_LBR)
+
+/** A list of x2APIC MSRs we don't want to intercept when using the AVIC. */
+static const uint32_t g_aX2AvicMsrs[] =
+{
+    MSR_IA32_X2APIC_ID,
+    MSR_IA32_X2APIC_VERSION,
+    MSR_IA32_X2APIC_TPR,
+    MSR_IA32_X2APIC_PPR,
+    MSR_IA32_X2APIC_EOI,
+    MSR_IA32_X2APIC_LDR,
+    MSR_IA32_X2APIC_SVR,
+    MSR_IA32_X2APIC_ISR0,
+    MSR_IA32_X2APIC_ISR1,
+    MSR_IA32_X2APIC_ISR2,
+    MSR_IA32_X2APIC_ISR3,
+    MSR_IA32_X2APIC_ISR4,
+    MSR_IA32_X2APIC_ISR5,
+    MSR_IA32_X2APIC_ISR6,
+    MSR_IA32_X2APIC_ISR7,
+    MSR_IA32_X2APIC_TMR0,
+    MSR_IA32_X2APIC_TMR1,
+    MSR_IA32_X2APIC_TMR2,
+    MSR_IA32_X2APIC_TMR3,
+    MSR_IA32_X2APIC_TMR4,
+    MSR_IA32_X2APIC_TMR5,
+    MSR_IA32_X2APIC_TMR6,
+    MSR_IA32_X2APIC_TMR7,
+    MSR_IA32_X2APIC_IRR0,
+    MSR_IA32_X2APIC_IRR1,
+    MSR_IA32_X2APIC_IRR2,
+    MSR_IA32_X2APIC_IRR3,
+    MSR_IA32_X2APIC_IRR4,
+    MSR_IA32_X2APIC_IRR5,
+    MSR_IA32_X2APIC_IRR6,
+    MSR_IA32_X2APIC_IRR7,
+    MSR_IA32_X2APIC_ESR,
+    MSR_IA32_X2APIC_LVT_CMCI,
+    MSR_IA32_X2APIC_ICR,
+    MSR_IA32_X2APIC_LVT_TIMER,
+    MSR_IA32_X2APIC_LVT_THERMAL,
+    MSR_IA32_X2APIC_LVT_PERF,
+    MSR_IA32_X2APIC_LVT_LINT0,
+    MSR_IA32_X2APIC_LVT_LINT1,
+    MSR_IA32_X2APIC_LVT_ERROR,
+    MSR_IA32_X2APIC_TIMER_ICR,
+    MSR_IA32_X2APIC_TIMER_CCR,
+    MSR_IA32_X2APIC_TIMER_DCR,
+    MSR_IA32_X2APIC_SELF_IPI
+};
+
 
 /**
  * Dumps virtual CPU state and additional info. to the logger for diagnostics.
@@ -665,6 +718,14 @@ VMMR0DECL(void) SVMR0GlobalTerm(void)
  */
 DECLINLINE(void) hmR0SvmFreeStructs(PVMCC pVM)
 {
+    if (pVM->hmr0.s.svm.hMemObjAvicHost != NIL_RTR0MEMOBJ)
+    {
+        RTR0MemObjFree(pVM->hmr0.s.svm.hMemObjAvicHost, false);
+        pVM->hmr0.s.svm.HCPhysAvicPhysIdTbl    = 0;
+        pVM->hmr0.s.svm.HCPhysAvicLogicalIdTbl = 0;
+        pVM->hmr0.s.svm.hMemObjAvicHost        = NIL_RTR0MEMOBJ;
+    }
+
     for (VMCPUID idCpu = 0; idCpu < pVM->cCpus; idCpu++)
     {
         PVMCPUCC pVCpu = VMCC_GET_CPU(pVM, idCpu);
@@ -794,6 +855,8 @@ VMMR0DECL(int) SVMR0InitVM(PVMCC pVM)
     /*
      * Initialize the R0 memory objects up-front so we can properly cleanup on allocation failures.
      */
+    pVM->hmr0.s.svm.hMemObjAvicHost = NIL_RTR0MEMOBJ;
+
     for (VMCPUID idCpu = 0; idCpu < pVM->cCpus; idCpu++)
     {
         PVMCPUCC pVCpu = VMCC_GET_CPU(pVM, idCpu);
@@ -801,6 +864,23 @@ VMMR0DECL(int) SVMR0InitVM(PVMCC pVM)
         pVCpu->hmr0.s.svm.hMemObjVmcb      = NIL_RTR0MEMOBJ;
         pVCpu->hmr0.s.svm.hMemObjMsrBitmap = NIL_RTR0MEMOBJ;
     }
+
+    /*
+     * Create the physical and logical APIC ID tables if AVIC is going to be used.
+     */
+    void *pvAvicHost = NULL;
+    size_t const cbAvicPages = SVM_AVIC_PAGES << HOST_PAGE_SHIFT;
+    rc = RTR0MemObjAllocCont(&pVM->hmr0.s.svm.hMemObjAvicHost, cbAvicPages,
+                             NIL_RTHCPHYS /*PhysHighest*/, false /* fExecutable */);
+    if (RT_FAILURE(rc))
+        goto failure_cleanup;
+
+    pvAvicHost = RTR0MemObjAddress(pVM->hmr0.s.svm.hMemObjAvicHost);
+    RT_BZERO(pvAvicHost, cbAvicPages);
+    pVM->hmr0.s.svm.HCPhysAvicPhysIdTbl    = RTR0MemObjGetPagePhysAddr(pVM->hmr0.s.svm.hMemObjAvicHost, 0 /* iPage */);
+    pVM->hmr0.s.svm.HCPhysAvicLogicalIdTbl = RTR0MemObjGetPagePhysAddr(pVM->hmr0.s.svm.hMemObjAvicHost, 1 /* iPage */);
+    pVM->hmr0.s.svm.HCPhysApicAccess       = RTR0MemObjGetPagePhysAddr(pVM->hmr0.s.svm.hMemObjAvicHost, 2 /* iPage */);
+    pVM->hmr0.s.svm.paAvicPhysIdTbl        = (volatile uint64_t *)pvAvicHost;
 
     for (VMCPUID idCpu = 0; idCpu < pVM->cCpus; idCpu++)
     {
@@ -1042,6 +1122,12 @@ VMMR0DECL(int) SVMR0SetupVM(PVMCC pVM)
     bool const fLbrVirt              = RT_BOOL(g_fHmSvmFeatures & X86_CPUID_SVM_FEATURE_EDX_LBR_VIRT);
     bool const fUseLbrVirt           = fLbrVirt && pVM->hm.s.svm.fLbrVirt; /** @todo IEM implementation etc. */
 
+    bool const fAvic                 = RT_BOOL(g_fHmSvmFeatures & X86_CPUID_SVM_FEATURE_EDX_AVIC);
+    bool const fUseAvic              = fAvic && pVM->hm.s.svm.fAvic && PDMHasApic(pVM);
+
+    //bool const fX2Avic               = RT_BOOL(g_fHmSvmFeatures & X86_CPUID_SVM_FEATURE_EDX_X2AVIC);
+    //bool const fUseX2Avic            = fX2Avic && pVM->hm.s.svm.fAvic;
+
 #ifdef VBOX_WITH_NESTED_HWVIRT_SVM
     bool const fVirtVmsaveVmload     = RT_BOOL(g_fHmSvmFeatures & X86_CPUID_SVM_FEATURE_EDX_VIRT_VMSAVE_VMLOAD);
     bool const fUseVirtVmsaveVmload  = fVirtVmsaveVmload && pVM->hm.s.svm.fVirtVmsaveVmload && fNestedPaging;
@@ -1228,6 +1314,24 @@ VMMR0DECL(int) SVMR0SetupVM(PVMCC pVM)
     /* Initially all VMCB clean bits MBZ indicating that everything should be loaded from the VMCB in memory. */
     Assert(pVmcbCtrl0->u32VmcbCleanBits == 0);
 
+    if (fUseAvic)
+    {
+        void *pvVirtApic = NULL;
+        RTHCPHYS HCPhysVirtApic = 0;
+        int rc = PDMR0ApicGetApicPageForCpu(pVCpu0, &HCPhysVirtApic, (PRTR0PTR)&pvVirtApic, NULL /*pR3Ptr*/);
+        AssertRCReturn(rc, rc);
+
+        pVmcbCtrl0->AvicBackingPagePtr.u   = HCPhysVirtApic;
+        pVmcbCtrl0->AvicLogicalTablePtr.u  = pVM->hmr0.s.svm.HCPhysAvicLogicalIdTbl;
+        pVmcbCtrl0->AvicPhysicalTablePtr.u = pVM->hmr0.s.svm.HCPhysAvicPhysIdTbl | (pVM->cCpus - 1);
+        pVmcbCtrl0->IntCtrl.n.u1AvicEnable = 1;
+
+        pVCpu0->hmr0.s.svm.u64PhysIdEntry = RT_BIT_64(63) | HCPhysVirtApic;
+        pVCpu0->hm.s.svm.fUseAvic = fUseAvic;
+    }
+    else
+        Assert(!pVCpu0->hm.s.svm.fUseAvic);
+
     for (VMCPUID idCpu = 1; idCpu < pVM->cCpus; idCpu++)
     {
         PVMCPUCC     pVCpuCur = VMCC_GET_CPU(pVM, idCpu);
@@ -1250,6 +1354,26 @@ VMMR0DECL(int) SVMR0SetupVM(PVMCC pVM)
         Assert(pVCpuCur->hm.s.fGIMTrapXcptUD == pVCpu0->hm.s.fGIMTrapXcptUD);
         /* Same for GCM, #DE trapping should be uniform across VCPUs. */
         Assert(pVCpuCur->hm.s.fGCMTrapXcptDE == pVCpu0->hm.s.fGCMTrapXcptDE);
+
+        /* Update the per-VCPU/VMCB specific fields for the AVIC. */
+        if (pVCpu0->hm.s.svm.fUseAvic)
+        {
+            void *pvVirtApic = NULL;
+            RTHCPHYS HCPhysVirtApic = 0;
+            int rc = PDMR0ApicGetApicPageForCpu(pVCpuCur, &HCPhysVirtApic, (PRTR0PTR)&pvVirtApic, NULL /*pR3Ptr*/);
+            AssertRCReturn(rc, rc);
+
+            pVmcbCtrlCur->AvicBackingPagePtr.u  = HCPhysVirtApic;
+            pVCpuCur->hmr0.s.svm.u64PhysIdEntry = RT_BIT_64(63) | HCPhysVirtApic;
+            pVCpuCur->hm.s.svm.fUseAvic         = true;
+
+            Assert(pVmcbCtrlCur->AvicLogicalTablePtr.u  == pVmcb0->ctrl.AvicLogicalTablePtr.u);
+            Assert(pVmcbCtrlCur->AvicPhysicalTablePtr.u == pVmcb0->ctrl.AvicPhysicalTablePtr.u);
+            Assert(pVmcbCtrlCur->IntCtrl.n.u1AvicEnable == pVmcb0->ctrl.IntCtrl.n.u1AvicEnable);
+            Assert(pVCpuCur->hm.s.svm.fUseAvic == pVCpu0->hm.s.svm.fUseAvic);
+        }
+        else
+            Assert(!pVCpuCur->hm.s.svm.fUseAvic);
     }
 
 #ifdef VBOX_WITH_NESTED_HWVIRT_SVM
@@ -2181,7 +2305,8 @@ static int hmR0SvmExportGuestApicTpr(PVMCPUCC pVCpu, PSVMVMCB pVmcb)
     {
         PVMCC pVM = pVCpu->CTX_SUFF(pVM);
         if (   PDMHasApic(pVM)
-            && PDMApicIsEnabled(pVCpu))
+            && PDMApicIsEnabled(pVCpu)
+            && !pVCpu->hm.s.svm.fUseAvic)
         {
             bool    fPendingIntr;
             uint8_t u8Tpr;
@@ -3182,8 +3307,8 @@ static VBOXSTRICTRC hmR0SvmExitToRing3(PVMCPUCC pVCpu, VBOXSTRICTRC rcExit)
 
     /* Please, no longjumps here (any logging shouldn't flush jump back to ring-3). NO LOGGING BEFORE THIS POINT! */
     VMMRZCallRing3Disable(pVCpu);
-    Log4Func(("rcExit=%d LocalFF=%#RX64 GlobalFF=%#RX32\n", VBOXSTRICTRC_VAL(rcExit), (uint64_t)pVCpu->fLocalForcedActions,
-              pVCpu->CTX_SUFF(pVM)->fGlobalForcedActions));
+    Log4Func(("rcExit=%d LocalFF=%#RX64 GlobalFF=%#RX32 PicInterrupt=%RTbool\n", VBOXSTRICTRC_VAL(rcExit), (uint64_t)pVCpu->fLocalForcedActions,
+              pVCpu->CTX_SUFF(pVM)->fGlobalForcedActions, VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_PIC)));
 
     /* We need to do this only while truly exiting the "inner loop" back to ring-3 and -not- for any longjmp to ring3. */
     if (pVCpu->hm.s.Event.fPending)
@@ -3695,11 +3820,11 @@ static VBOXSTRICTRC hmR0SvmEvaluatePendingEvent(PVMCPUCC pVCpu, PCSVMTRANSIENT p
      *
      * See AMD spec. 15.21.4 "Injecting Virtual (INTR) Interrupts".
      */
-    else if (   VMCPU_FF_IS_ANY_SET(pVCpu, VMCPU_FF_INTERRUPT_APIC | VMCPU_FF_INTERRUPT_PIC)
-             && !pVCpu->hm.s.fSingleInstruction)
+    if (   VMCPU_FF_IS_ANY_SET(pVCpu, VMCPU_FF_INTERRUPT_APIC | VMCPU_FF_INTERRUPT_PIC)
+        && !pVCpu->hm.s.fSingleInstruction)
     {
         bool const fBlockInt = !pSvmTransient->fIsNestedGuest ? !(pCtx->eflags.u & X86_EFL_IF)
-                                                              : CPUMIsGuestSvmPhysIntrEnabled(pVCpu, pCtx);
+                                                            : CPUMIsGuestSvmPhysIntrEnabled(pVCpu, pCtx);
         if (    fGif
             && !fBlockInt
             && !fIntShadow)
@@ -3712,28 +3837,49 @@ static VBOXSTRICTRC hmR0SvmEvaluatePendingEvent(PVMCPUCC pVCpu, PCSVMTRANSIENT p
                 return IEMExecSvmVmexit(pVCpu, SVM_EXIT_INTR, 0, 0);
             }
 #endif
-            uint8_t u8Interrupt;
-            int rc = PDMGetInterrupt(pVCpu, &u8Interrupt);
-            if (RT_SUCCESS(rc))
+            /* With the AVIC, we still need to deliver PIC style interrupts ourselves. */
+            bool fGetInterrupt = true;
+            if (pVCpu->hm.s.svm.fUseAvic)
             {
-                Log4(("Setting external interrupt %#x pending for injection\n", u8Interrupt));
-                SVMEVENT Event;
-                Event.u = 0;
-                Event.n.u1Valid  = 1;
-                Event.n.u8Vector = u8Interrupt;
-                Event.n.u3Type   = SVM_EVENT_EXTERNAL_IRQ;
-                hmR0SvmSetPendingEvent(pVCpu, &Event, 0 /* GCPtrFaultAddress */);
-            }
-            else if (rc == VERR_APIC_INTR_MASKED_BY_TPR)
-            {
+                if (!VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_PIC))
+                    fGetInterrupt = false;
                 /*
-                 * AMD-V has no TPR thresholding feature. TPR and the force-flag will be
-                 * updated eventually when the TPR is written by the guest.
+                 * We clear the interrupt flag here because we are certain that all
+                 * conditions necessary for the AVIC hardware to deliver the interrupt
+                 * are met.
                  */
-                STAM_COUNTER_INC(&pVCpu->hm.s.StatSwitchTprMaskedIrq);
+                if (VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_APIC))
+                    VMCPU_FF_CLEAR(pVCpu, VMCPU_FF_INTERRUPT_APIC);
             }
-            else
-                STAM_COUNTER_INC(&pVCpu->hm.s.StatSwitchGuestIrq);
+            if (fGetInterrupt)
+            {
+                uint8_t u8Interrupt;
+                int rc = PDMGetInterrupt(pVCpu, &u8Interrupt);
+                if (RT_SUCCESS(rc))
+                {
+                    Log4(("Setting external interrupt %#x pending for injection\n", u8Interrupt));
+                    SVMEVENT Event;
+                    Event.u = 0;
+                    Event.n.u1Valid  = 1;
+                    Event.n.u8Vector = u8Interrupt;
+                    Event.n.u3Type   = SVM_EVENT_EXTERNAL_IRQ;
+                    hmR0SvmSetPendingEvent(pVCpu, &Event, 0 /* GCPtrFaultAddress */);
+                }
+                else if (rc == VERR_APIC_INTR_MASKED_BY_TPR)
+                {
+                    /*
+                    * AMD-V has no TPR thresholding feature. TPR and the force-flag will be
+                    * updated eventually when the TPR is written by the guest.
+                    */
+                    STAM_COUNTER_INC(&pVCpu->hm.s.StatSwitchTprMaskedIrq);
+                    Log4(("External interrupt %#x masked by TPR\n", u8Interrupt));
+                }
+                else
+                {
+                    Log4(("PDMGetInterrupt failed. rc=%Rrc\n", rc));
+                    STAM_COUNTER_INC(&pVCpu->hm.s.StatSwitchGuestIrq);
+                }
+            }
         }
         else if (!fGif)
             hmR0SvmSetCtrlIntercept(pVmcb, SVM_CTRL_INTERCEPT_STGI);
@@ -3889,7 +4035,9 @@ static void hmR0SvmReportWorldSwitchError(PVMCPUCC pVCpu, int rcVMRun)
         Log4(("ctrl.IntCtrl.u3Reserved               %#x\n",      pVmcb->ctrl.IntCtrl.n.u3Reserved));
         Log4(("ctrl.IntCtrl.u1VIntrMasking           %#x\n",      pVmcb->ctrl.IntCtrl.n.u1VIntrMasking));
         Log4(("ctrl.IntCtrl.u1VGifEnable             %#x\n",      pVmcb->ctrl.IntCtrl.n.u1VGifEnable));
-        Log4(("ctrl.IntCtrl.u5Reserved1              %#x\n",      pVmcb->ctrl.IntCtrl.n.u5Reserved));
+        Log4(("ctrl.IntCtrl.u4Reserved4              %#x\n",      pVmcb->ctrl.IntCtrl.n.u4Reserved));
+        Log4(("ctrl.IntCtrl.u1X2AvicEnable           %#x\n",      pVmcb->ctrl.IntCtrl.n.u1X2AvicEnable));
+        Log4(("ctrl.IntCtrl.u1AvicEnable             %#x\n",      pVmcb->ctrl.IntCtrl.n.u1AvicEnable));
         Log4(("ctrl.IntCtrl.u8VIntrVector            %#x\n",      pVmcb->ctrl.IntCtrl.n.u8VIntrVector));
         Log4(("ctrl.IntCtrl.u24Reserved              %#x\n",      pVmcb->ctrl.IntCtrl.n.u24Reserved));
 
@@ -4084,6 +4232,47 @@ static VBOXSTRICTRC hmR0SvmCheckForceFlags(PVMCPUCC pVCpu)
 
 
 /**
+ * Unmaps the APIC-access page for virtualizing APIC accesses.
+ *
+ * @returns VBox status code.
+ * @param   pVCpu           The cross context virtual CPU structure.
+ * @param   GCPhysApicBase  The guest-physical address of the APIC access page.
+ */
+static int hmR0SvmUnmapHCApicAccessPage(PVMCPUCC pVCpu, RTGCPHYS GCPhysApicBase)
+{
+    PVMCC pVM = pVCpu->CTX_SUFF(pVM);
+    Assert(GCPhysApicBase);
+
+    Log4Func(("Unaliasing any existing mapping to the HC APIC-access page at %#RGp\n", GCPhysApicBase));
+    return PGMHandlerPhysicalReset(pVM, GCPhysApicBase);
+}
+
+
+/**
+ * Map the APIC-access page for virtualizing APIC accesses.
+ *
+ * This can cause a longjumps to R3 due to the acquisition of the PGM lock. Hence,
+ * this not done as part of exporting guest state, see @bugref{8721}.
+ *
+ * @returns VBox status code.
+ * @param   pVCpu           The cross context virtual CPU structure.
+ * @param   GCPhysApicBase  The guest-physical address of the APIC access page.
+ */
+static int hmR0SvmMapHCApicAccessPage(PVMCPUCC pVCpu, RTGCPHYS GCPhysApicBase)
+{
+    PVMCC pVM = pVCpu->CTX_SUFF(pVM);
+    Assert(GCPhysApicBase);
+
+    Log4Func(("Mapping HC APIC-access page at %#RGp\n", GCPhysApicBase));
+
+    int const rc = IOMR0MmioMapMmioHCPage(pVM, pVCpu, GCPhysApicBase, pVM->hmr0.s.svm.HCPhysApicAccess,
+                                          X86_PTE_RW | X86_PTE_P);
+    AssertRCReturn(rc, rc);
+    return VINF_SUCCESS;
+}
+
+
+/**
  * Does the preparations before executing guest code in AMD-V.
  *
  * This may cause longjmps to ring-3 and may even result in rescheduling to the
@@ -4149,6 +4338,57 @@ static VBOXSTRICTRC hmR0SvmPreRunGuest(PVMCPUCC pVCpu, PSVMTRANSIENT pSvmTransie
     Assert(!(pVCpu->cpum.GstCtx.fExtrn & HMSVM_CPUMCTX_EXTRN_ALL));
     ASMAtomicUoOrU64(&pVCpu->hm.s.fCtxChanged, HM_CHANGED_ALL_GUEST);
 #endif
+
+    /*
+     * Setup the AVIC state if enabled.
+     */
+    if (pVCpu->hm.s.svm.fUseAvic)
+    {
+        Assert(PDMHasApic(pVM));
+
+        /* Get the APIC base MSR from the virtual APIC device. */
+        uint64_t const uApicBaseMsr = PDMApicGetBaseMsrNoCheck(pVCpu);
+        Assert(   MSR_IA32_APICBASE_GET_ADDR(uApicBaseMsr) == MSR_IA32_APICBASE_ADDR
+               || !(uApicBaseMsr & MSR_IA32_APICBASE_EN));
+        if (uApicBaseMsr != pVCpu->hm.s.svm.u64GstMsrApicBase)
+        {
+            PSVMVMCB pVmcb = pVCpu->hmr0.s.svm.pVmcb;
+
+            /* Unalias any existing mapping. */
+            RTGCPHYS const GCPhysApic = uApicBaseMsr & ~(RTGCPHYS)GUEST_PAGE_OFFSET_MASK;
+            hmR0SvmUnmapHCApicAccessPage(pVCpu, GCPhysApic);
+            Log4(("Unaliasing any previous AVIC backing page mappings at %#RGp\n", GCPhysApic));
+
+            /* XAPIC. */
+            if (uApicBaseMsr & MSR_IA32_APICBASE_EN)
+            {
+                rc = hmR0SvmMapHCApicAccessPage(pVCpu, GCPhysApic);
+                AssertRCReturn(rc, rc);
+                Log4(("Mapped AVIC backing page at %#RGp\n", GCPhysApic));
+            }
+
+            /* X2APIC. */
+            {
+                /* If enabled don't intercept X2APIC MSRs as the intercept has higher priority than the AVIC hardware. */
+                bool const fX2AvicEnable = (uApicBaseMsr & (MSR_IA32_APICBASE_EN | MSR_IA32_APICBASE_EXTD))
+                                                        == (MSR_IA32_APICBASE_EN | MSR_IA32_APICBASE_EXTD);
+                SVMMSREXITREAD  const fRdPerm = fX2AvicEnable ? SVMMSREXIT_PASSTHRU_READ  : SVMMSREXIT_INTERCEPT_READ;
+                SVMMSREXITWRITE const fWrPerm = fX2AvicEnable ? SVMMSREXIT_PASSTHRU_WRITE : SVMMSREXIT_INTERCEPT_WRITE;
+
+                uint8_t *pbMsrBitmap = (uint8_t *)pVCpu->hmr0.s.svm.pvMsrBitmap;
+                for (uint32_t i = 0; i < RT_ELEMENTS(g_aX2AvicMsrs); i++)
+                    hmR0SvmSetMsrPermission(pVCpu, pbMsrBitmap, g_aX2AvicMsrs[i], fRdPerm, fWrPerm);
+                pVmcb->ctrl.IntCtrl.n.u1X2AvicEnable = fX2AvicEnable;
+            }
+
+            pVmcb->ctrl.AvicBar.u = MSR_IA32_APICBASE_GET_ADDR(uApicBaseMsr);
+            pVmcb->ctrl.u32VmcbCleanBits &= ~HMSVM_VMCB_CLEAN_AVIC;
+            /** @todo Do we need to flush the TLB with SVM_TLB_FLUSH_SINGLE_CONTEXT here? */
+
+            /* Update the per-VCPU cache of the APIC base MSR corresponding to the mapped APIC access page. */
+            pVCpu->hm.s.svm.u64GstMsrApicBase = uApicBaseMsr;
+        }
+    }
 
 #ifdef VBOX_WITH_NESTED_HWVIRT_SVM
     /*
@@ -4287,6 +4527,15 @@ static void hmR0SvmPreRunGuestCommitted(PVMCPUCC pVCpu, PSVMTRANSIENT pSvmTransi
     pSvmTransient->fWasGuestDebugStateActive = CPUMIsGuestDebugStateActive(pVCpu);
     pSvmTransient->fWasHyperDebugStateActive = CPUMIsHyperDebugStateActive(pVCpu);
 
+    /* Set AVIC state. */
+    if (   pVCpu->hm.s.svm.fUseAvic
+        && PDMHasApic(pVM)) /** @todo Check where we can merge the PDMHasApic() call into fUseAvic. */
+    {
+        ASMAtomicUoWriteU64(&pVM->hmr0.s.svm.paAvicPhysIdTbl[pVCpu->idCpu], pVCpu->hmr0.s.svm.u64PhysIdEntry /*| RT_BIT_64(62) | pHostCpu->idApic*/);
+        if (fMigratedHostCpu)
+            pVCpu->hmr0.s.fForceTLBFlush = true; /* Need to flush the TLB with SVM_TLB_FLUSH_SINGLE_CONTEXT */
+    }
+
 #ifdef VBOX_WITH_NESTED_HWVIRT_SVM
     uint8_t *pbMsrBitmap;
     if (!pSvmTransient->fIsNestedGuest)
@@ -4421,6 +4670,19 @@ static void hmR0SvmPostRunGuest(PVMCPUCC pVCpu, PSVMTRANSIENT pSvmTransient, VBO
     ASMSetFlags(pSvmTransient->fEFlags);                        /* Enable interrupts. */
     VMMRZCallRing3Enable(pVCpu);                                /* It is now safe to do longjmps to ring-3!!! */
 
+    /* Set AVIC state. */
+    if (   pVCpu->hm.s.svm.fUseAvic
+        && PDMHasApic(pVM)) /** @todo Check where we can merge the PDMHasApic() call into fUseAvic. */
+    {
+        ASMAtomicUoWriteU64(&pVM->hmr0.s.svm.paAvicPhysIdTbl[pVCpu->idCpu], pVCpu->hmr0.s.svm.u64PhysIdEntry); /* Clear IsRunning bit. */
+        /*
+         * It's possible VMCPU_FF_INTERRUPT_APIC might be pending here if interrupts were seen as disabled
+         * (or interrupt shadow was active) in hmR0SvmEvaluatePendingEvent. There is no easy way to detect
+         * if the interrupt was delivered by the AVIC hardware. Leaving the force-flag pending here should
+         * be fine (an extra check the next time around, mostly harmless).
+         */
+    }
+
     /* If VMRUN failed, we can bail out early. This does -not- cover SVM_EXIT_INVALID. */
     if (RT_UNLIKELY(rcVMRun != VINF_SUCCESS))
     {
@@ -4514,6 +4776,7 @@ static VBOXSTRICTRC hmR0SvmRunGuestCodeNormal(PVMCPUCC pVCpu, uint32_t *pcLoops)
     SvmTransient.fUpdateTscOffsetting = true;
     SvmTransient.pVmcb = pVCpu->hmr0.s.svm.pVmcb;
 
+    Log2Func(("\n"));
     VBOXSTRICTRC rc = VERR_INTERNAL_ERROR_5;
     for (;;)
     {
@@ -5421,6 +5684,8 @@ static VBOXSTRICTRC hmR0SvmHandleExit(PVMCPUCC pVCpu, PSVMTRANSIENT pSvmTransien
         case SVM_EXIT_XSETBV:       VMEXIT_CALL_RET(0, hmR0SvmExitXsetbv(pVCpu, pSvmTransient));
         case SVM_EXIT_FERR_FREEZE:  VMEXIT_CALL_RET(0, hmR0SvmExitFerrFreeze(pVCpu, pSvmTransient));
         case SVM_EXIT_BUSLOCK:      VMEXIT_CALL_RET(0, hmR0SvmExitBusLock(pVCpu, pSvmTransient));
+        case SVM_EXIT_AVIC_INCOMPLETE_IPI: VMEXIT_CALL_RET(0, hmR0SvmExitAvicIncompleteIpi(pVCpu, pSvmTransient));
+        case SVM_EXIT_AVIC_NOACCEL: VMEXIT_CALL_RET(0, hmR0SvmExitAvicNoAccel(pVCpu, pSvmTransient));
 
         default:
         {
@@ -9040,6 +9305,124 @@ HMSVM_EXIT_DECL hmR0SvmExitBusLock(PVMCPUCC pVCpu, PSVMTRANSIENT pSvmTransient)
     Log8Func(("cs:rip=%#04x:%08RX64 rflags=%#RX64 cr0=%#RX64 split-lock #AC -> VINF_EM_EMULATE_SPLIT_LOCK\n",
               pVCpu->cpum.GstCtx.cs.Sel, pVCpu->cpum.GstCtx.rip, pVCpu->cpum.GstCtx.rflags, pVCpu->cpum.GstCtx.cr0));
     return VINF_EM_EMULATE_SPLIT_LOCK;
+}
+
+
+/**
+ * \#VMEXIT handler for AVIC incomplete IPI delivery operations due to a halting vCPU.
+ * Conditional \#VMEXIT.
+ */
+HMSVM_EXIT_DECL hmR0SvmExitAvicIncompleteIpi(PVMCPUCC pVCpu, PSVMTRANSIENT pSvmTransient)
+{
+    HMSVM_VALIDATE_EXIT_HANDLER_PARAMS(pVCpu, pSvmTransient);
+    STAM_REL_COUNTER_INC(&pVCpu->hm.s.StatSvmExitAvicIncompleteIpi);
+
+    uint64_t const u64ExitInfo1 = pSvmTransient->pVmcb->ctrl.u64ExitInfo1;
+    uint32_t const u32ApicIcrLo = RT_LO_U32(u64ExitInfo1);
+    uint32_t const u32ApicIcrHi = RT_HI_U32(u64ExitInfo1);
+
+    uint64_t const u64ExitInfo2 = pSvmTransient->pVmcb->ctrl.u64ExitInfo2;
+    uint32_t const idApic       = (uint32_t)(u64ExitInfo2 & SVM_EXIT2_INC_IPI_INDEX_MASK);
+    uint32_t const idFailure    = (uint32_t)(u64ExitInfo2 >> SVM_EXIT2_INC_IPI_ID_SHIFT);
+
+    Log2Func(("\n"));
+    Log4Func(("AVICExitIncompleteIpi/%u: ICRL=%#x ICRH=%#x idApic=%#x idFailure=%#x\n",
+          pVCpu->idCpu, u32ApicIcrLo, u32ApicIcrHi, idApic, idFailure));
+    if (   idFailure == SVM_EXIT2_INC_IPI_INDEX_INVALID_INTR_TYPE
+        || idFailure == SVM_EXIT2_INC_IPI_INDEX_INVALID_TARGET)
+    {
+        pVCpu->hm.s.offApicReg = XAPIC_OFF_ICR_LO;
+        return PDMApicUpdateStateAfterWrite(pVCpu, XAPIC_OFF_ICR_LO);
+    }
+
+    if (idFailure == SVM_EXIT2_INC_IPI_INDEX_TARGET_NOT_RUNNING)
+    {
+        PVMCC    pVM      = pVCpu->CTX_SUFF(pVM);
+        PVMCPUCC pVCpuDst = pVM->CTX_SUFF(apCpus)[idApic];
+        VMCPUID  idCpu    = pVCpuDst->idCpu;
+        if (VMMGetCpuId(pVM) != idCpu)
+        {
+            switch (VMCPU_GET_STATE(pVCpuDst))
+            {
+                case VMCPUSTATE_STARTED_EXEC:
+                    Log7Func(("idCpu=%u VMCPUSTATE_STARTED_EXEC\n", idCpu));
+                    GVMMR0SchedPokeNoGVMNoLock(pVM, idCpu);
+                    break;
+
+                case VMCPUSTATE_STARTED_HALTED:
+                    Log7Func(("idCpu=%u VMCPUSTATE_STARTED_HALTED\n", idCpu));
+                    VMCPU_FF_SET(pVCpuDst, VMCPU_FF_UNHALT);
+                    GVMMR0SchedWakeUpNoGVMNoLock(pVM, idCpu);
+                    break;
+
+                default:
+                    Log7Func(("idCpu=%u enmState=%d\n", idCpu, pVCpu->enmState));
+                    break; /* nothing to do in other states. */
+            }
+        }
+        return VINF_SUCCESS;
+    }
+
+    AssertMsgFailed(("hmR0SvmExitAvicIncompleteIpi: Unexpected failure type %#x\n", idFailure));
+    return VERR_SVM_IPE_4;
+}
+
+
+/**
+ * \#VMEXIT handler for AVIC no acceleration operations.
+ * Conditional \#VMEXIT.
+ */
+HMSVM_EXIT_DECL hmR0SvmExitAvicNoAccel(PVMCPUCC pVCpu, PSVMTRANSIENT pSvmTransient)
+{
+    HMSVM_VALIDATE_EXIT_HANDLER_PARAMS(pVCpu, pSvmTransient);
+    STAM_REL_COUNTER_INC(&pVCpu->hm.s.StatSvmExitAvicNoAccel);
+
+    uint16_t const offApicReg = pSvmTransient->pVmcb->ctrl.u64ExitInfo1 & 0xfff;
+    bool const fWr = RT_BOOL(pSvmTransient->pVmcb->ctrl.u64ExitInfo1 & RT_BIT_64(32));
+
+    /*
+     * Determine whether the access is fault or trap like.
+     * Trap like exits have the value updated in the APIC page already
+     * while fault like exits need emulating the instruction.
+     *
+     * Table 15-22 in chapter 15.29.3.1 (40332_4.09_APM_PUB.pdf) gives an overview.
+     */
+    switch (offApicReg)
+    {
+        case XAPIC_OFF_ID:
+        case XAPIC_OFF_RRD:
+        case XAPIC_OFF_LDR:
+        case XAPIC_OFF_DFR:
+        case XAPIC_OFF_SVR:
+        case XAPIC_OFF_ESR:
+        case XAPIC_OFF_ICR_LO:
+        case XAPIC_OFF_LVT_TIMER:
+        case XAPIC_OFF_LVT_THERMAL:
+        case XAPIC_OFF_LVT_PERF:
+        case XAPIC_OFF_LVT_LINT0:
+        case XAPIC_OFF_LVT_LINT1:
+        case XAPIC_OFF_LVT_ERROR:
+        case XAPIC_OFF_TIMER_ICR:
+        case XAPIC_OFF_TIMER_DCR:
+        /** @todo Extended Interrupt Local Vector Table Registers when we start supporting it. */
+            Assert(fWr);
+            break;
+
+        case XAPIC_OFF_EOI:
+        {
+            uint8_t const uVector = pSvmTransient->pVmcb->ctrl.u64ExitInfo2 & 0xff;
+            return PDMApicSetEoiFast(pVCpu, uVector);
+        }
+
+        default:
+            /* These accesses fault -> emulate completely and be done with it. */
+            /** @todo Check whether we can speed things up with EMHistoryExec... */
+            return hmR0SvmExitInterpretInstruction(pVCpu, pSvmTransient, HMSVM_CPUMCTX_EXTRN_ALL, HM_CHANGED_ALL_GUEST);
+    }
+
+    Log2(("AVICNoAccelExit/%u: Trapping offApicReg=%#x\n", pVCpu->idCpu, offApicReg));
+    pVCpu->hm.s.offApicReg = offApicReg;
+    return PDMApicUpdateStateAfterWrite(pVCpu, offApicReg);
 }
 
 

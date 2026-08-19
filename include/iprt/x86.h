@@ -2395,6 +2395,8 @@ typedef const X86MTRRVAR *PCX86MTRRVAR;
 /** SVM - VM_HSAVE_PA - Physical address for saving and restoring
  *                      host state during world switch. */
 #define MSR_K8_VM_HSAVE_PA                  UINT32_C(0xc0010117)
+/** SVM - AVIC doorbell register. */
+#define MSR_AMD_AVIC_DOORBELL               UINT32_C(0xc001011b)
 
 /** Virtualized speculation control for AMD processors.
  *

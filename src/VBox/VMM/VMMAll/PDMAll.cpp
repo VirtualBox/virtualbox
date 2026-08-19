@@ -1,4 +1,4 @@
-/* $Id: PDMAll.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: PDMAll.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
 /** @file
  * PDM Critical Sections
  */
@@ -72,18 +72,23 @@ VMMDECL(int) PDMGetInterrupt(PVMCPUCC pVCpu, uint8_t *pu8Interrupt)
     int rc = VERR_NO_DATA;
     if (VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_APIC))
     {
-        VMCPU_FF_CLEAR(pVCpu, VMCPU_FF_INTERRUPT_APIC);
-
         uint32_t uTagSrc;
         rc = PDMApicGetInterrupt(pVCpu, pu8Interrupt, &uTagSrc);
         if (RT_SUCCESS(rc))
         {
             VBOXVMM_PDM_IRQ_GET(pVCpu, RT_LOWORD(uTagSrc), RT_HIWORD(uTagSrc), *pu8Interrupt);
             Log8(("PDMGetInterrupt: irq=%#x tag=%#x (apic)\n", *pu8Interrupt, uTagSrc));
+            VMCPU_FF_CLEAR(pVCpu, VMCPU_FF_INTERRUPT_APIC);
             return VINF_SUCCESS;
         }
-        /* else if it's masked by TPR/PPR/whatever, go ahead checking the PIC. Such masked
-           interrupts shouldn't prevent ExtINT from being delivered. */
+
+        /*
+         * If it's masked by TPR/PPR/whatever, go ahead checking the PIC. Such masked
+         * interrupts shouldn't prevent ExtINT from being delivered. If the interrupt is
+         * deferred for delivery by the hardware, do -not- clear the force-flag here.
+         */
+        if (rc != VERR_APIC_INTR_DEFER)
+            VMCPU_FF_CLEAR(pVCpu, VMCPU_FF_INTERRUPT_APIC);
     }
 
     PVMCC pVM = pVCpu->CTX_SUFF(pVM);
