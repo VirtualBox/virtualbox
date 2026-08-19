@@ -1,4 +1,4 @@
-/* $Id: HMR3-x86.cpp 115085 2026-08-19 13:04:31Z alexander.eichner@oracle.com $ */
+/* $Id: HMR3-x86.cpp 115091 2026-08-19 13:57:40Z alexander.eichner@oracle.com $ */
 /** @file
  * HM - Intel/AMD VM Hardware Support Manager.
  */
@@ -232,6 +232,7 @@ static int hmR3CfgVmxApicvLvlStrToEnum(PVM pVM, const char *pszVmxApicvLvl)
 }
 
 
+#if defined(RT_ARCH_AMD64)
 /**
  * Returns the string variant of the given APICv level enum.
  *
@@ -255,6 +256,7 @@ static const char *hmR3CfgVmxApicvLvlEnumToStr(HMVMXAPICVLVL enmApicvLvl)
     AssertFailed();
     return "<UNKNOWN>";
 }
+#endif
 
 
 /**
