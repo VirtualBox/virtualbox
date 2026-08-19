@@ -1,4 +1,4 @@
-/* $Id: HMInternal.h 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
+/* $Id: HMInternal.h 115084 2026-08-19 12:52:58Z alexander.eichner@oracle.com $ */
 /** @file
  * HM - Internal header file.
  */
@@ -75,6 +75,30 @@ RT_C_DECLS_BEGIN
 #define HM_VTX_TSS_SIZE                             (sizeof(VBOXTSS) + 2 * X86_PAGE_SIZE + 1)
 /** Total guest mapped memory needed. */
 #define HM_VTX_TOTAL_DEVHEAP_MEM                    (HM_EPT_IDENTITY_PG_TABLE_SIZE + HM_VTX_TSS_SIZE)
+
+
+/**
+ * The VT-x APICv level wanted/configured.
+ */
+typedef enum HMVMXAPICVLVL
+{
+    /** No APICv. */
+    kVmxApicvLvl_None = 0,
+    /** APIC access virtualization. */
+    kVmxApicvLvl_ApicAccessVirt,
+    /** APIC register virtualization. */
+    kVmxApicvLvl_ApicRegVirt,
+    /** Virtual interrupt delivery. */
+    kVmxApicvLvl_IntrDelivery,
+    /** Posted interrupt processing. */
+    kVmxApicvLvl_PostedIntrs,
+    /** IPI virtualization. */
+    kVmxApicvLvl_IpiVirt,
+    /** Max level. */
+    kVmxApicvLvl_Max,
+    /** 32-bit hack. */
+    kVmxApicvLvl_32Bit_Hack = 0x7fffffff
+} HMVMXAPICVLVL;
 
 
 /** @name Macros for enabling and disabling preemption.
@@ -294,6 +318,8 @@ typedef struct HM
          * In the default case it is only always intercepted when setting DR6 to 0 on
          * the host results in a value different from X86_DR6_RA1_MASK. */
         int8_t                      fAlwaysInterceptMovDRxCfg;
+        /** Desired APICv virtualization level. */
+        HMVMXAPICVLVL               enmApicvLvl;
         /** @} */
 
         /** Pause-loop exiting (PLE) gap in ticks. */
@@ -419,6 +445,9 @@ typedef struct HM
             VMXTLBFLUSHEPT              enmTlbFlushEpt;
             /** Flush type to use for INVVPID (only for ring-3 consumption). */
             VMXTLBFLUSHVPID             enmTlbFlushVpid;
+
+            /** Configured APICv virtualization level (only for ring-3 consumption). */
+            HMVMXAPICVLVL               enmApicvLvl;
         } vmx;
 
         struct
@@ -560,6 +589,8 @@ typedef struct HMR0PERVM
         VMXTLBFLUSHEPT              enmTlbFlushEpt;
         /** Flush type to use for INVVPID. */
         VMXTLBFLUSHVPID             enmTlbFlushVpid;
+        /** The set APICv virtualization level. */
+        HMVMXAPICVLVL               enmApicvLvl;
 
         /** The host LBR TOS (top-of-stack) MSR id. */
         uint32_t                    idLbrTosMsr;
@@ -968,6 +999,7 @@ typedef struct HMCPU
     STAMCOUNTER             StatExitTprBelowThreshold;
     STAMCOUNTER             StatExitTaskSwitch;
     STAMCOUNTER             StatExitApicAccess;
+    STAMCOUNTER             StatExitApicWrite;
     STAMCOUNTER             StatExitReasonNpf;
 
     STAMCOUNTER             StatNestedExitReasonNpf;
@@ -1001,6 +1033,7 @@ typedef struct HMCPU
     STAMCOUNTER             StatSwitchMaxResumeLoops;
     STAMCOUNTER             StatSwitchHltToR3;
     STAMCOUNTER             StatSwitchApicAccessToR3;
+    STAMCOUNTER             StatSwitchApicWriteToR3;
     STAMCOUNTER             StatSwitchPreempt;
     STAMCOUNTER             StatSwitchNstGstVmexit;
 
@@ -1120,7 +1153,9 @@ typedef struct HMR0PERVCPU
         /* Whether the nested-guest VMCS was the last current VMCS (authoritative copy).
          * @see HMCPU::vmx.fSwitchedToNstGstVmcsCopyForRing3  */
         bool                        fSwitchedToNstGstVmcs;
-        bool                        afAlignment0[7];
+        bool                        afAlignment0[3];
+        /** Active APICv virtualization level (to avoid going through pVM in hot paths). */
+        HMVMXAPICVLVL               enmApicvLvl;
         /** Pointer to the VMX transient info during VM-exit. */
         PVMXTRANSIENT               pVmxTransient;
         /** @} */

@@ -1,4 +1,4 @@
-/* $Id: HMR0VMX-x86.cpp 115030 2026-08-13 02:46:39Z knut.osmundsen@oracle.com $ */
+/* $Id: HMR0VMX-x86.cpp 115084 2026-08-19 12:52:58Z alexander.eichner@oracle.com $ */
 /** @file
  * HM VMX (Intel VT-x) - Host Context Ring-0.
  */
@@ -1061,7 +1061,7 @@ static int hmR0VmxStructsAlloc(PVMCC pVM)
     /*
      * Allocate per-VM VT-x structures.
      */
-    bool const fVirtApicAccess   = RT_BOOL(g_HmMsrs.u.vmx.ProcCtls2.n.allowed1 & VMX_PROC_CTLS2_VIRT_APIC_ACCESS);
+    bool const fVirtApicAccess   = pVM->hmr0.s.vmx.enmApicvLvl >= kVmxApicvLvl_ApicAccessVirt;
     bool const fUseVmcsShadowing = pVM->hmr0.s.vmx.fUseVmcsShadowing;
     VMXPAGEALLOCINFO aAllocInfo[] =
     {
@@ -2709,28 +2709,22 @@ static int hmR0VmxSetupVmcsProcCtls2(PVMCPUCC pVCpu, PVMXVMCSINFO pVmcsInfo)
     if (pVM->hmr0.s.vmx.fUnrestrictedGuest)
         fVal |= VMX_PROC_CTLS2_UNRESTRICTED_GUEST;
 
-#if 0
-    if (pVM->hm.s.fVirtApicRegs)
-    {
-        /* Enable APIC-register virtualization. */
-        Assert(g_HmMsrs.u.vmx.ProcCtls2.n.allowed1 & VMX_PROC_CTLS2_APIC_REG_VIRT);
-        fVal |= VMX_PROC_CTLS2_APIC_REG_VIRT;
-
-        /* Enable virtual-interrupt delivery. */
-        Assert(g_HmMsrs.u.vmx.ProcCtls2.n.allowed1 & VMX_PROC_CTLS2_VIRT_INTR_DELIVERY);
-        fVal |= VMX_PROC_CTLS2_VIRT_INTR_DELIVERY;
-    }
-#endif
-
     /* Virtualize-APIC accesses if supported by the CPU. The virtual-APIC page is
        where the TPR shadow resides. */
     /** @todo VIRT_X2APIC support, it's mutually exclusive with this. So must be
      *        done dynamically. */
-    if (g_HmMsrs.u.vmx.ProcCtls2.n.allowed1 & VMX_PROC_CTLS2_VIRT_APIC_ACCESS)
+    if (pVM->hmr0.s.vmx.enmApicvLvl >= kVmxApicvLvl_ApicAccessVirt)
     {
         fVal |= VMX_PROC_CTLS2_VIRT_APIC_ACCESS;
         hmR0VmxSetupVmcsApicAccessAddr(pVCpu);
-   }
+    }
+
+    if (pVM->hmr0.s.vmx.enmApicvLvl >= kVmxApicvLvl_ApicRegVirt)
+    {
+        /* Enable APIC-register virtualization. */
+        Assert(g_HmMsrs.u.vmx.ProcCtls2.n.allowed1 & VMX_PROC_CTLS2_APIC_REG_VIRT);
+        fVal |= VMX_PROC_CTLS2_APIC_REG_VIRT;
+    }
 
     /* Enable the RDTSCP instruction if we expose it to the guest and is supported
        by the hardware. Without this, guest executing RDTSCP would cause a #UD. */
@@ -3383,6 +3377,7 @@ VMMR0DECL(int) VMXR0SetupVM(PVMCC pVM)
         Log4Func(("pVCpu=%p idCpu=%RU32\n", pVCpu, pVCpu->idCpu));
 
         pVCpu->hmr0.s.vmx.pfnStartVm = hmR0VmxStartVmSelector;
+        pVCpu->hmr0.s.vmx.enmApicvLvl = pVM->hmr0.s.vmx.enmApicvLvl;
 
         rc = hmR0VmxSetupVmcs(pVCpu, &pVCpu->hmr0.s.vmx.VmcsInfo,  false /* fIsNstGstVmcs */);
         if (RT_SUCCESS(rc))
@@ -5950,7 +5945,7 @@ static VBOXSTRICTRC hmR0VmxPreRunGuest(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransie
      */
     PVMCC pVM = pVCpu->CTX_SUFF(pVM);
     if (   !pVCpu->hm.s.vmx.u64GstMsrApicBase
-        && (g_HmMsrs.u.vmx.ProcCtls2.n.allowed1 & VMX_PROC_CTLS2_VIRT_APIC_ACCESS)
+        && pVM->hmr0.s.vmx.enmApicvLvl >= kVmxApicvLvl_ApicAccessVirt
         && PDMHasApic(pVM))
     {
         /* Get the APIC base MSR from the virtual APIC device. */

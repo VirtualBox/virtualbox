@@ -1,4 +1,4 @@
-/* $Id: HMR0-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
+/* $Id: HMR0-x86.cpp 115084 2026-08-19 12:52:58Z alexander.eichner@oracle.com $ */
 /** @file
  * Hardware Assisted Virtualization Manager (HM) - Host Context Ring-0.
  */
@@ -1298,19 +1298,45 @@ VMMR0_INT_DECL(int) HMR0InitVM(PVMCC pVM)
         /* Use the VMCS controls for swapping the EFER MSR if supported. */
         pVM->hm.s.ForR3.vmx.fSupportsVmcsEfer = g_fHmVmxSupportsVmcsEfer;
 
-#if 0
-        /* Enable APIC register virtualization and virtual-interrupt delivery if supported. */
-        if (   (g_HmMsrs.u.vmx.ProcCtls2.n.allowed1 & VMX_PROC_CTLS2_APIC_REG_VIRT)
-            && (g_HmMsrs.u.vmx.ProcCtls2.n.allowed1 & VMX_PROC_CTLS2_VIRT_INTR_DELIVERY))
-            pVM->hm.s.fVirtApicRegs = true;
+        /* Configure the APICv level. */
+        HMVMXAPICVLVL enmApicvLvl = pVM->hm.s.vmx.enmApicvLvl;
+        if (   enmApicvLvl >= kVmxApicvLvl_ApicAccessVirt
+            && (g_HmMsrs.u.vmx.ProcCtls2.n.allowed1 & VMX_PROC_CTLS2_VIRT_APIC_ACCESS))
+        {
+            if (   enmApicvLvl >= kVmxApicvLvl_ApicRegVirt
+                && (g_HmMsrs.u.vmx.ProcCtls2.n.allowed1 & VMX_PROC_CTLS2_APIC_REG_VIRT))
+            {
+                pVM->hm.s.fVirtApicRegs = true;
 
-        /* Enable posted-interrupt processing if supported. */
-        /** @todo Add and query IPRT API for host OS support for posted-interrupt IPI
-         *        here. */
-        if (   (g_HmMsrs.u.vmx.PinCtls.n.allowed1  & VMX_PIN_CTLS_POSTED_INT)
-            && (g_HmMsrs.u.vmx.ExitCtls.n.allowed1 & VMX_EXIT_CTLS_ACK_EXT_INT))
-            pVM->hm.s.fPostedIntrs = true;
-#endif
+                if (   enmApicvLvl >= kVmxApicvLvl_IntrDelivery
+                    && (g_HmMsrs.u.vmx.ProcCtls2.n.allowed1 & VMX_PROC_CTLS2_VIRT_INT_DELIVERY))
+                {
+
+                    /* Enable posted-interrupt processing if supported. */
+                    /** @todo Add and query IPRT API for host OS support for posted-interrupt IPI
+                     *        here. */
+                    if (   enmApicvLvl >= kVmxApicvLvl_PostedIntrs
+                        && (g_HmMsrs.u.vmx.PinCtls.n.allowed1  & VMX_PIN_CTLS_POSTED_INT)
+                        && (g_HmMsrs.u.vmx.ExitCtls.n.allowed1 & VMX_EXIT_CTLS_ACK_EXT_INT))
+                        enmApicvLvl = kVmxApicvLvl_PostedIntrs;
+                    else
+                        enmApicvLvl = kVmxApicvLvl_IntrDelivery;
+                }
+                else
+                    enmApicvLvl = kVmxApicvLvl_ApicRegVirt;
+            }
+            else
+                enmApicvLvl = kVmxApicvLvl_ApicAccessVirt;
+        }
+        else
+            enmApicvLvl = kVmxApicvLvl_None;
+
+        /** @todo Update/remove as the implementation of the higher level features progresses. */
+        if (enmApicvLvl > kVmxApicvLvl_ApicRegVirt)
+            enmApicvLvl = kVmxApicvLvl_ApicRegVirt;
+
+        pVM->hmr0.s.vmx.enmApicvLvl     = enmApicvLvl;
+        pVM->hm.s.ForR3.vmx.enmApicvLvl = enmApicvLvl;
     }
     else if (pVM->hm.s.svm.fSupported)
     {
