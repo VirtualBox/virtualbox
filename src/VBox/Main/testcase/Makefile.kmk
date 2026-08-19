@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 115058 2026-08-17 16:58:23Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 115083 2026-08-19 12:04:11Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the VBox API testcases.
 #
@@ -352,6 +352,7 @@ tstClipboardAPI_SOURCES  = \
 	tstClipboardAPI.cpp
 tstClipboardAPI_LIBS     = \
 	$(PATH_STAGE_LIB)/VBoxAPIWrap$(VBOX_SUFF_LIB)
+tstClipboardAPI_INTERMEDIATES = $(VBOX_MAIN_APIWRAPPER_GEN_HDRS)
 ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
  tstClipboardAPI_DEFS    += VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
  tstClipboardAPI_SOURCES += \
