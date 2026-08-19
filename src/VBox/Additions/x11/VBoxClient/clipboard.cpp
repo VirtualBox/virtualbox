@@ -1,4 +1,4 @@
-/* $Id: clipboard.cpp 114748 2026-07-21 20:16:49Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard.cpp 115077 2026-08-19 10:14:49Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Additions - Common Shared Clipboard wrapper service.
  */
@@ -107,7 +107,7 @@ static DECLCALLBACK(int) vbclShClWorker(bool volatile *pfShutdown)
 {
     RT_NOREF(pfShutdown);
 
-    int rc;
+    int rc = VINF_SUCCESS;
     g_fVBClWayland = false;
     VBGHDISPLAYSERVERTYPE const enmDispType = VBClGetDisplayServerTypeResolveAuto();
     if (VBClClipboardShouldUseWayland(enmDispType))
