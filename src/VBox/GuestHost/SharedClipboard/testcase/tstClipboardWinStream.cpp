@@ -1,4 +1,4 @@
-/* $Id: tstClipboardWinStream.cpp 115068 2026-08-18 14:45:28Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardWinStream.cpp 115086 2026-08-19 13:09:34Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Windows stream testcase.
  */
@@ -121,6 +121,127 @@ typedef TSTWINSTREAMPROVIDER *PTSTWINSTREAMPROVIDER;
 /*********************************************************************************************************************************
 *   Internal Functions                                                                                                           *
 *********************************************************************************************************************************/
+/** Tests Windows filename sanitization and transfer-list name validation. */
+static void tstWinPathSanitizeFilename(void)
+{
+    static const char * const s_apszValid[] =
+    {
+        "test-64KiB-name-url-#%+&=,.bin",
+        "unicode-\xed\x9e\xb0-\xee\x80\x80-\xf0\x9f\x98\x80.bin",
+        "COM0.txt",
+        "COM10.txt",
+        "LPT0.txt",
+        "CONSOLE.txt",
+        "NULL.txt"
+    };
+    static const char * const s_apszReserved[] =
+    {
+        "CON",
+        "con.txt",
+        "PRN.tar.gz",
+        "AUX",
+        "NUL.txt",
+        "COM1",
+        "com9.log",
+        "LPT1",
+        "lpt9.txt",
+        "COM\xc2\xb9.txt",
+        "LPT\xc2\xb2",
+        "COM\xc2\xb3.bin",
+        "directory/CON.txt"
+    };
+    char szPath[128];
+
+    RTTestISub("Windows filename sanitization");
+    for (size_t i = 0; i < RT_ELEMENTS(s_apszValid); i++)
+    {
+        RTTESTI_CHECK_RC_OK(RTStrCopy(szPath, sizeof(szPath), s_apszValid[i]));
+        RTTESTI_CHECK_RC_OK(ShClPathSanitize(szPath, sizeof(szPath)));
+        RTTESTI_CHECK_MSG(!strcmp(szPath, s_apszValid[i]),
+                          ("Valid name '%s' was changed to '%s'\n", s_apszValid[i], szPath));
+        RTTESTI_CHECK_RC_OK(ShClTransferValidatePath(s_apszValid[i], false /* fMustExist */));
+    }
+
+    for (size_t i = 0; i < RT_ELEMENTS(s_apszReserved); i++)
+    {
+        RTTESTI_CHECK_RC_OK(RTStrCopy(szPath, sizeof(szPath), s_apszReserved[i]));
+        RTTESTI_CHECK_RC_OK(ShClPathSanitize(szPath, sizeof(szPath)));
+        RTTESTI_CHECK_MSG(strcmp(szPath, s_apszReserved[i]),
+                          ("Reserved name '%s' was not changed\n", s_apszReserved[i]));
+        RTTESTI_CHECK_RC(ShClTransferValidatePath(s_apszReserved[i], false /* fMustExist */), VERR_INVALID_PARAMETER);
+    }
+}
+
+
+/** Tests transfer-list name length and termination invariants. */
+static void tstTransferListEntryNameValidation(void)
+{
+    RTTestISub("Transfer-list entry name validation");
+
+    char szValid[] = "valid.bin";
+    RTTESTI_CHECK_RC(ShClTransferValidatePathEx(NULL, sizeof(szValid), false /* fMustExist */), VERR_INVALID_POINTER);
+    RTTESTI_CHECK_RC_OK(ShClTransferValidatePathEx(szValid, sizeof(szValid), false /* fMustExist */));
+    RTTESTI_CHECK_RC(ShClTransferValidatePathEx(szValid, 0, false /* fMustExist */), VERR_INVALID_PARAMETER);
+    RTTESTI_CHECK_RC(ShClTransferValidatePathEx(szValid, 1, false /* fMustExist */), VERR_INVALID_PARAMETER);
+    RTTESTI_CHECK_RC(ShClTransferValidatePathEx(szValid, sizeof(szValid) + 1, false /* fMustExist */),
+                     VERR_INVALID_PARAMETER);
+    RTTESTI_CHECK_RC(ShClTransferValidatePathEx(szValid, SHCLLISTENTRY_MAX_NAME + 1, false /* fMustExist */),
+                     VERR_INVALID_PARAMETER);
+
+    char szEmpty[] = "";
+    RTTESTI_CHECK_RC_OK(ShClTransferValidatePathEx(szEmpty, sizeof(szEmpty), false /* fMustExist */));
+
+    SHCLLISTENTRY Entry;
+    RT_ZERO(Entry);
+    Entry.pszName = szValid;
+    Entry.cbName  = sizeof(szValid);
+    RTTESTI_CHECK(ShClTransferListEntryIsValid(&Entry));
+
+    Entry.pszName = szEmpty;
+    Entry.cbName  = sizeof(szEmpty);
+    RTTESTI_CHECK(!ShClTransferListEntryIsValid(&Entry));
+    Entry.pszName = szValid;
+
+    Entry.cbName = 0;
+    RTTESTI_CHECK(!ShClTransferListEntryIsValid(&Entry));
+
+    Entry.cbName = 1;
+    RTTESTI_CHECK(!ShClTransferListEntryIsValid(&Entry));
+
+    Entry.cbName = sizeof(szValid) + 1;
+    RTTESTI_CHECK(!ShClTransferListEntryIsValid(&Entry));
+
+    Entry.cbName = SHCLLISTENTRY_MAX_NAME + 1;
+    RTTESTI_CHECK(!ShClTransferListEntryIsValid(&Entry));
+
+    char szEmbeddedNul[] = { 'n', 'a', 'm', 'e', '\0', 'x', '\0' };
+    Entry.pszName = szEmbeddedNul;
+    Entry.cbName  = sizeof(szEmbeddedNul);
+    RTTESTI_CHECK(!ShClTransferListEntryIsValid(&Entry));
+
+    char szNoTerminator[] = { 'n', 'a', 'm', 'e' };
+    Entry.pszName = szNoTerminator;
+    Entry.cbName  = sizeof(szNoTerminator);
+    RTTESTI_CHECK(!ShClTransferListEntryIsValid(&Entry));
+
+    char szTooLong[SHCLLISTENTRY_MAX_NAME];
+    memset(szTooLong, 'a', sizeof(szTooLong));
+    RTTESTI_CHECK_RC(ShClTransferListEntryInitEx(&Entry, VBOX_SHCL_INFO_F_NONE, szTooLong,
+                                                 NULL /* pvInfo */, 0 /* cbInfo */), VERR_INVALID_PARAMETER);
+
+    szTooLong[sizeof(szTooLong) - 1] = '\0';
+    RTTESTI_CHECK_RC_OK(ShClTransferListEntryInitEx(&Entry, VBOX_SHCL_INFO_F_NONE, szTooLong,
+                                                    NULL /* pvInfo */, 0 /* cbInfo */));
+    RTTESTI_CHECK(Entry.cbName == SHCLLISTENTRY_MAX_NAME);
+    ShClTransferListEntryDestroy(&Entry);
+
+    RTTESTI_CHECK_RC_OK(ShClTransferListEntryInitEx(&Entry, VBOX_SHCL_INFO_F_NONE, szValid,
+                                                    NULL /* pvInfo */, 0 /* cbInfo */));
+    RTTESTI_CHECK(Entry.cbName == sizeof(szValid));
+    ShClTransferListEntryDestroy(&Entry);
+}
+
+
 /** @copydoc SHCLTXPROVIDERIFACE::pfnRootListRead */
 static DECLCALLBACK(int) tstWinStreamProviderRootListRead(PSHCLTXPROVIDERCTX pCtx)
 {
@@ -498,6 +619,8 @@ int main(void)
         return rcExit;
     RTTestBanner(hTest);
 
+    tstWinPathSanitizeFilename();
+    tstTransferListEntryNameValidation();
     tstWinStreamReadsAcrossChunkBoundaries();
 
     return RTTestSummaryAndDestroy(hTest);

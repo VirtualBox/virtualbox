@@ -1,4 +1,4 @@
-/* $Id: clipboard-path.cpp 115045 2026-08-17 14:51:37Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-path.cpp 115086 2026-08-19 13:09:34Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Path handling.
  */
@@ -37,11 +37,52 @@
 #include <iprt/string.h>
 
 
+#ifdef RT_OS_WINDOWS
 /**
- * Sanitizes the file name component so that unsupported characters
- * will be replaced by an underscore ("_").
+ * Returns whether a filename uses a reserved Windows device name.
  *
- * @return  IPRT status code.
+ * Matching is case-insensitive and only considers the part before the first
+ * dot, as reserved device names remain reserved when followed by an extension.
+ *
+ * @returns Whether @a pszName is a reserved Windows device filename.
+ * @param   pszName             Zero-terminated UTF-8 filename to inspect.
+ */
+static bool shClPathIsWindowsReservedFilename(const char *pszName)
+{
+    size_t const cchBase = strcspn(pszName, ".");
+    if (cchBase == 3)
+    {
+        if (   RTStrNICmp(pszName, "CON", 3) == 0
+            || RTStrNICmp(pszName, "PRN", 3) == 0
+            || RTStrNICmp(pszName, "AUX", 3) == 0
+            || RTStrNICmp(pszName, "NUL", 3) == 0)
+            return true;
+    }
+    else if (   cchBase >= 4
+             && (   RTStrNICmp(pszName, "COM", 3) == 0
+                 || RTStrNICmp(pszName, "LPT", 3) == 0))
+    {
+        size_t const cbSuffix = cchBase - 3;
+        if (   (   cbSuffix == 1
+                && pszName[3] >= '1'
+                && pszName[3] <= '9')
+            || (   cbSuffix == 2
+                && (   !memcmp(&pszName[3], "\xc2\xb9", 2) /* SUPERSCRIPT ONE */
+                    || !memcmp(&pszName[3], "\xc2\xb2", 2) /* SUPERSCRIPT TWO */
+                    || !memcmp(&pszName[3], "\xc2\xb3", 2) /* SUPERSCRIPT THREE */)))
+            return true;
+    }
+
+    return false;
+}
+#endif /* RT_OS_WINDOWS */
+
+
+/**
+ * Sanitizes the file name component so that unsupported characters and
+ * reserved Windows device names will be replaced by an underscore ("_").
+ *
+ * @returns IPRT status code.
  * @param   pszPath             Path to sanitize.
  * @param   cbPath              Size (in bytes) of path to sanitize.
  */
@@ -50,23 +91,28 @@ int ShClPathSanitizeFilename(char *pszPath, size_t cbPath)
     int rc = VINF_SUCCESS;
 #ifdef RT_OS_WINDOWS
     RT_NOREF1(cbPath);
-    /* Replace out characters not allowed on Windows platforms, put in by RTTimeSpecToString(). */
+    /* Replace characters not allowed on Windows platforms, put in by RTTimeSpecToString(). */
     /** @todo Use something like RTPathSanitize() if available later some time. */
-    static const RTUNICP s_uszValidRangePairs[] =
+    static const RTUNICP s_aValidRangePairs[] =
     {
-        ' ', ' ',
-        '(', ')',
-        '-', '.',
+        ' ', '!',
+        '#', ')',
+        '+', '.',
         '0', '9',
-        'A', 'Z',
-        'a', 'z',
-        '_', '_',
-        0xa0, 0xd7af,
+        ';', ';',
+        '=', '=',
+        '@', '[',
+        ']', '{',
+        '}', '~',
+        0x80, 0xd7ff,
+        0xe000, 0x10ffff,
         '\0'
     };
-    ssize_t cReplaced = RTStrPurgeComplementSet(pszPath, s_uszValidRangePairs, '_' /* chReplacement */);
+    ssize_t cReplaced = RTStrPurgeComplementSet(pszPath, s_aValidRangePairs, '_' /* chReplacement */);
     if (cReplaced < 0)
         rc = VERR_INVALID_UTF8_ENCODING;
+    else if (shClPathIsWindowsReservedFilename(pszPath))
+        pszPath[0] = '_';
 #else
     RT_NOREF2(pszPath, cbPath);
 #endif
