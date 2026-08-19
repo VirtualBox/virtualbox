@@ -1,4 +1,4 @@
-/* $Id: APICAll-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
+/* $Id: APICAll-x86.cpp 115078 2026-08-19 10:21:30Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller - All Contexts.
  */
@@ -1030,7 +1030,7 @@ static DECLCALLBACK(VBOXSTRICTRC) apicSetEoi(PVMCPUCC pVCpu, uint32_t uEoi, bool
 static DECLCALLBACK(VBOXSTRICTRC) apicSetEoiFast(PVMCPUCC pVCpu, uint8_t uVector)
 {
     VMCPU_ASSERT_EMT(pVCpu);
-    Log2(("APIC%u: apicSetEoiFast: uEoi=%#RX32 uVector=%#x\n", pVCpu->idCpu, uVector));
+    Log2(("APIC%u: apicSetEoiFast: uVector=%#x\n", pVCpu->idCpu, uVector));
     STAM_COUNTER_INC(&pVCpu->apic.s.StatEoiWriteFast);
     apicProcessEoi(pVCpu, uVector);
     return VINF_SUCCESS;
