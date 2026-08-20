@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 115090 2026-08-19 13:39:39Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 115096 2026-08-20 21:45:49Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -1961,7 +1961,12 @@ int ShClTransferRootsSetFromStringListEx(PSHCLTRANSFER pTransfer, const char *ps
                     {
                         /* Calculate the relative path within the root path. */
                         Assert(RTStrNLen(pszPathCur, RTPATH_MAX) >= cchPathRootAbs); /* Sanity. */
-                        const char *pszPathRelToRoot = pszPathCur + cchPathRootAbs + 1 /* Skip slash */;
+                        /* RTPathStripFilename leaves filesystem roots slash-terminated. */
+                        const char *pszPathRelToRoot = pszPathCur + cchPathRootAbs;
+                        if (   cchPathRootAbs
+                            && !RTPATH_IS_SLASH(pszPathRootAbs[cchPathRootAbs - 1])
+                            && RTPATH_IS_SLASH(*pszPathRelToRoot))
+                            pszPathRelToRoot++;
                         if (    pszPathRelToRoot
                             && *pszPathRelToRoot != '\0')
                         {

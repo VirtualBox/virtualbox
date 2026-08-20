@@ -1,4 +1,4 @@
-/* $Id: tstClipboardTransfers.cpp 114908 2026-08-10 08:45:58Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardTransfers.cpp 115096 2026-08-20 21:45:49Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard transfers test case.
  */
@@ -514,6 +514,37 @@ static void testTransferRootsSet(RTTEST hTest)
     testTransferRootsSetSingle(hTest, lstBase, lstBreakout, VERR_INVALID_PARAMETER);
 }
 
+static void testTransferRootsSetFsRoot(void)
+{
+    RTTestISub("Testing setting a transfer root below a filesystem root");
+
+#ifdef RT_OS_WINDOWS
+    static const char s_szRoots[] = "C:\\VBoxRootFile.txt\r\n";
+#else
+    static const char s_szRoots[] = "/VBoxRootFile.txt\r\n";
+#endif
+
+    /* Use a remote transfer so that the synthetic root path need not exist. */
+    PSHCLTRANSFER pTransfer;
+    int rc = ShClTransferCreate(SHCLTRANSFERDIR_FROM_REMOTE, SHCLSOURCE_REMOTE, NULL /* Callbacks */, &pTransfer);
+    RTTESTI_CHECK_RC_OK_RETV(rc);
+
+    rc = ShClTransferRootsSetFromStringList(pTransfer, s_szRoots, sizeof(s_szRoots));
+    RTTESTI_CHECK_RC_OK(rc);
+    if (RT_SUCCESS(rc))
+    {
+        RTTESTI_CHECK(ShClTransferRootsCount(pTransfer) == 1);
+
+        PCSHCLLISTENTRY pEntry = ShClTransferRootsEntryGet(pTransfer, 0);
+        RTTESTI_CHECK(pEntry != NULL);
+        if (pEntry)
+            RTTESTI_CHECK_MSG(RTStrCmp(pEntry->pszName, "VBoxRootFile.txt") == 0,
+                              ("pszName=%s\n", pEntry->pszName));
+    }
+
+    RTTESTI_CHECK_RC_OK(ShClTransferDestroy(pTransfer));
+}
+
 static void testTransferObjOpen(RTTEST hTest)
 {
     RTTestISub("Testing setting transfer object open");
@@ -562,6 +593,7 @@ int main(int argc, char *argv[])
     testEvents();
     testTransferBasics();
     testTransferRootsSet(hTest);
+    testTransferRootsSetFsRoot();
     testTransferObjOpen(hTest);
 
     int rc = testRemoveTempDir(hTest);
