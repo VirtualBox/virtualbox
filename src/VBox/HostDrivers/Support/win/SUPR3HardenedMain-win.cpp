@@ -1,4 +1,4 @@
-/* $Id: SUPR3HardenedMain-win.cpp 113914 2026-04-16 20:53:06Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPR3HardenedMain-win.cpp 115094 2026-08-20 18:30:35Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Hardened main(), windows bits.
  */
@@ -1397,6 +1397,7 @@ supR3HardenedScreenImage(HANDLE hFile, bool fImage, bool fIgnoreArch, PULONG pfA
                            pszCaller, fImage, *pfProtect, *pfAccess);
         return rcNt;
     }
+    //SUP_DPRINTF(("supR3HardenedScreenImage/%s: hFile=%p -> '%ls'\n", pszCaller, hFile, uBuf.UniStr.Buffer));
 
     if (!RTNtPathFindPossible8dot3Name(uBuf.UniStr.Buffer))
         cbNameBuf += sizeof(WCHAR);
@@ -1769,13 +1770,14 @@ supR3HardenedMonitor_NtCreateSection(PHANDLE phSection, ACCESS_MASK fAccess, POB
                                      PLARGE_INTEGER pcbSection, ULONG fProtect, ULONG fAttribs, HANDLE hFile)
 {
     bool fNeedUncChecking = false;
+    bool const fExecProt = (fProtect & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_WRITECOPY | PAGE_EXECUTE_READWRITE)) != 0;
     if (   hFile != NULL
         && hFile != INVALID_HANDLE_VALUE)
     {
         bool const fImage    = RT_BOOL(fAttribs & (SEC_IMAGE | SEC_PROTECTED_IMAGE));
         bool const fExecMap  = RT_BOOL(fAccess & SECTION_MAP_EXECUTE);
-        bool const fExecProt = RT_BOOL(fProtect & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_WRITECOPY
-                                                   | PAGE_EXECUTE_READWRITE));
+        SUP_DPRINTF(("supR3HardenedMonitor_NtCreateSection: fAccess=%#x fProtect=%#x fAttribs=%#x hFile=%#x - fImage=%d fExecMap=%d fExecProt=%d\n",
+                     fAccess, fProtect, fAttribs, hFile, fImage, fExecMap, fExecProt));
         if (fImage || fExecMap || fExecProt)
         {
             fNeedUncChecking = true;
@@ -1794,7 +1796,6 @@ supR3HardenedMonitor_NtCreateSection(PHANDLE phSection, ACCESS_MASK fAccess, POB
             Assert(fCallRealApi);
             if (!fCallRealApi)
                 return STATUS_TRUST_FAILURE;
-
         }
     }
 
@@ -1819,7 +1820,7 @@ supR3HardenedMonitor_NtCreateSection(PHANDLE phSection, ACCESS_MASK fAccess, POB
         SIZE_T   cbView   = 0;
         PVOID    pvTmpMap = NULL;
         NTSTATUS rcNt = NtMapViewOfSection(*phSection, NtCurrentProcess(), &pvTmpMap, 0, 0, NULL /*poffSection*/, &cbView,
-                                           ViewUnmap, MEM_TOP_DOWN, PAGE_EXECUTE);
+                                           ViewUnmap, MEM_TOP_DOWN, fExecProt ? PAGE_EXECUTE : PAGE_READONLY);
         if (NT_SUCCESS(rcNt))
         {
             /* Query the name. */
@@ -1851,12 +1852,12 @@ supR3HardenedMonitor_NtCreateSection(PHANDLE phSection, ACCESS_MASK fAccess, POB
                                        uBuf.UniStr.Length / sizeof(RTUTF16), uBuf.UniStr.Buffer);
             }
             else
-                SUP_DPRINTF(("supR3HardenedMonitor_NtCreateSection: NtQueryVirtualMemory failed on %p (hFile=%p) with %#x -> STATUS_TRUST_FAILURE\n",
-                             *phSection, hFile, rcNt));
+                SUP_DPRINTF(("supR3HardenedMonitor_NtCreateSection: NtQueryVirtualMemory failed on %p (hFile=%p fAccess=%#x fProtect=%#x fAttribs=%#x) with %#x -> STATUS_TRUST_FAILURE\n",
+                             *phSection, hFile, fAccess, fProtect, fAttribs, rcNt));
         }
         else
-            SUP_DPRINTF(("supR3HardenedMonitor_NtCreateSection: NtMapViewOfSection failed on %p (hFile=%p) with %#x -> STATUS_TRUST_FAILURE\n",
-                         *phSection, hFile, rcNt));
+            SUP_DPRINTF(("supR3HardenedMonitor_NtCreateSection: NtMapViewOfSection failed on %p (hFile=%p fAccess=%#x fProtect=%#x fAttribs=%#x) with %#x -> STATUS_TRUST_FAILURE\n",
+                         *phSection, hFile, fAccess, fProtect, fAttribs, rcNt));
         if (!fOkay)
         {
             NtClose(*phSection);
