@@ -81,7 +81,14 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
-        <para></para>
+        <para>VMM: Fixed Windows 11 on ARM guests crashing with a blue screen
+          after restoring from a saved state</para>
+      </listitem>
+
+      <listitem>
+        <para>Shared Clipboard: Fixed the first character being removed from
+          filenames when copying files located directly in a filesystem
+          root</para>
       </listitem>
 
     </itemizedlist>
