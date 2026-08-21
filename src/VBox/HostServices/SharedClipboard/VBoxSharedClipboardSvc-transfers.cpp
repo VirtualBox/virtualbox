@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115104 2026-08-21 12:11:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -808,7 +808,9 @@ static int shClSvcTransferObjDataChunkPayloadCreate(SHCLEVENTID idEvent, PSHCLOB
 {
     AssertPtrReturn(pDataChunk, VERR_INVALID_POINTER);
     AssertPtrReturn(ppPayload, VERR_INVALID_POINTER);
+#if ARCH_BITS == 32
     AssertReturn(pDataChunk->cbData <= SIZE_MAX - sizeof(*pDataChunk), VERR_OUT_OF_RANGE);
+#endif
     AssertReturn(pDataChunk->cbData == 0 || pDataChunk->pvData != NULL, VERR_INVALID_POINTER);
 
     size_t const cbPayloadData = sizeof(*pDataChunk) + pDataChunk->cbData;

@@ -1,4 +1,4 @@
-/* $Id: http-server.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: http-server.cpp 115104 2026-08-21 12:11:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Simple HTTP server (RFC 7231) implementation.
  *
@@ -503,7 +503,6 @@ RTR3DECL(void) RTHttpServerResponseDestroy(PRTHTTPSERVERRESP pResp)
     rtHttpServerBodyDestroy(&pResp->Body);
 }
 
-/** @copydoc RTHttpServerRequestQueryResult */
 RTR3DECL(int) RTHttpServerRequestQueryResult(PRTHTTPSERVERREQ pReq, PRTHTTPSERVERREQRESULT pResult)
 {
     AssertPtrReturn(pReq, VERR_INVALID_POINTER);
