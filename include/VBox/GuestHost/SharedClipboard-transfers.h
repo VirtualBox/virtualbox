@@ -1,4 +1,4 @@
-/* $Id: SharedClipboard-transfers.h 115086 2026-08-19 13:09:34Z andreas.loeffler@oracle.com $ */
+/* $Id: SharedClipboard-transfers.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Shared transfer functions between host and guest.
  */
@@ -515,6 +515,21 @@ typedef struct _SHCLTRANSFEROBJSTATE
 typedef SHCLTRANSFEROBJSTATE *PSHCLTRANSFEROBJSTATE;
 
 /**
+ * Logical object payload progress shared by all streams for the same path.
+ */
+typedef struct _SHCLTRANSFERPROGRESSOBJ
+{
+    /** List linkage. */
+    RTLISTNODE Node;
+    /** Normalized transfer-relative object path. */
+    char      *pszPath;
+    /** Largest contiguous payload prefix processed for this path. */
+    uint64_t   cbProcessed;
+} SHCLTRANSFERPROGRESSOBJ;
+/** Pointer to logical Shared Clipboard object payload progress. */
+typedef SHCLTRANSFERPROGRESSOBJ *PSHCLTRANSFERPROGRESSOBJ;
+
+/**
  * Enumeration for specifying a Shared Clipboard object type.
  */
 typedef enum _SHCLOBJTYPE
@@ -548,6 +563,8 @@ typedef struct _SHCLTRANSFEROBJ
     SHCLSOURCE           enmSource;
     /** Current state. */
     SHCLTRANSFEROBJSTATE State;
+    /** Logical progress shared by every stream opened for the same path. */
+    PSHCLTRANSFERPROGRESSOBJ pProgress;
     /** Type of object handle. */
     SHCLOBJTYPE          enmType;
     /** Data union, based on \a enmType. */
@@ -619,6 +636,25 @@ typedef struct _SHCLTRANSFERSTATE
 } SHCLTRANSFERSTATE;
 /** Pointer to a Shared Clipboard transfer state. */
 typedef SHCLTRANSFERSTATE *PSHCLTRANSFERSTATE;
+
+/**
+ * Aggregate byte progress for a Shared Clipboard transfer.
+ */
+typedef struct _SHCLTRANSFERPROGRESS
+{
+    /** Number of object payload bytes processed so far. */
+    uint64_t cbProcessed;
+    /** Exact total number of object payload bytes, when known. */
+    uint64_t cbTotal;
+    /** Whether @a cbTotal is exact and may be reported to the user. */
+    bool     fTotalKnown;
+    /** Whether the first positive-byte progress snapshot was reported. */
+    bool     fReportedAny;
+    /** Last integer percentage reported while the transfer was active. */
+    uint8_t  uLastPercent;
+} SHCLTRANSFERPROGRESS;
+/** Pointer to aggregate Shared Clipboard transfer progress. */
+typedef SHCLTRANSFERPROGRESS *PSHCLTRANSFERPROGRESS;
 
 /**
  * Structure maintaining clipboard transfer provider context data.
@@ -926,6 +962,8 @@ typedef struct SHCLTRANSFER
     PSHCLTRANSFERCTX          pOwnerCtx;
     /** The transfer's state (for SSM, later). */
     SHCLTRANSFERSTATE         State;
+    /** Aggregate object payload progress. */
+    SHCLTRANSFERPROGRESS      Progress;
     /** Absolute path to root entries. */
     char                     *pszPathRootAbs;
     /** Timeout (in ms) for waiting of events. */
@@ -954,6 +992,8 @@ typedef struct SHCLTRANSFER
     SHCLOBJHANDLE             uObjHandleNext;
     /** Map of all objects handles related to this transfer. */
     RTLISTANCHOR              lstObj;
+    /** Logical per-path payload progress, retained across reopened streams. */
+    RTLISTANCHOR              lstProgressObj;
     /** The transfer's own provider context. */
     SHCLTXPROVIDERCTX         ProviderCtx;
     /** The transfer's provider interface. */
@@ -1110,6 +1150,18 @@ PSHCLTRANSFEROBJ ShClTransferObjGet(PSHCLTRANSFER pTransfer, SHCLOBJHANDLE hObj)
 PSHCLOBJDATACHUNK ShClTransferObjDataChunkDup(PSHCLOBJDATACHUNK pDataChunk);
 void ShClTransferObjDataChunkDestroy(PSHCLOBJDATACHUNK pDataChunk);
 void ShClTransferObjDataChunkFree(PSHCLOBJDATACHUNK pDataChunk);
+/** @} */
+
+/** @name Shared Clipboard transfer progress API.
+ *  @{ */
+int ShClTransferProgressSetTotal(PSHCLTRANSFER pTransfer, uint64_t cbTotal);
+int ShClTransferProgressSetTotalFromRoots(PSHCLTRANSFER pTransfer);
+int ShClTransferProgressAdd(PSHCLTRANSFER pTransfer, uint32_t cbDelta,
+                            uint64_t *pcbProcessed, uint64_t *pcbTotal, bool *pfNotify);
+int ShClTransferProgressObjRegister(PSHCLTRANSFER pTransfer, SHCLOBJHANDLE hObj, const char *pszPath);
+void ShClTransferProgressObjUnregister(PSHCLTRANSFER pTransfer, SHCLOBJHANDLE hObj);
+int ShClTransferProgressObjAdd(PSHCLTRANSFER pTransfer, SHCLOBJHANDLE hObj, uint32_t cbDelta,
+                               uint64_t *pcbProcessed, uint64_t *pcbTotal, bool *pfNotify);
 /** @} */
 
 /** @name Shared Clipboard transfer API.

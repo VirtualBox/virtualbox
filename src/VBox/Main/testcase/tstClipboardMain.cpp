@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMain.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardMain.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Connection and service-extension testcase.
  */
@@ -194,6 +194,8 @@ typedef struct TSTSHCLSTATE
     uint32_t                   cSvcTransferCreate;
     /** Transfer initialization calls. */
     uint32_t                   cSvcTransferInit;
+    /** Terminal transfer-status reports. */
+    uint32_t                   cSvcTransferReportStatus;
     /** Transfer destroy-by-ID calls. */
     uint32_t                   cSvcTransferDestroyById;
     /** Transfer destroy-all calls. */
@@ -208,6 +210,10 @@ typedef struct TSTSHCLSTATE
     SHCLTRANSFERSTATUS         enmTransferStatus;
     /** Last transfer status result. */
     int                        vrcTransferStatus;
+    /** Last terminal status passed to the service. */
+    SHCLTRANSFERSTATUS         enmSvcTransferStatus;
+    /** Last terminal result passed to the service. */
+    int                        vrcSvcTransferStatus;
 #endif
 } TSTSHCLSTATE;
 
@@ -526,6 +532,18 @@ static DECLCALLBACK(int) tstSvcTransferInit(SHCLCLIENTHANDLE hClient, PSHCLTRANS
     return VINF_SUCCESS;
 }
 
+/** @copydoc SHCLSVCOPS::pfnTransferReportStatus */
+static DECLCALLBACK(int) tstSvcTransferReportStatus(SHCLCLIENTHANDLE hClient, PSHCLTRANSFER pTransfer,
+                                                     SHCLTRANSFERSTATUS enmStatus, int vrcStatus)
+{
+    tstSvcCheckClient(hClient);
+    RTTESTI_CHECK(pTransfer == &g_State.Transfer);
+    g_State.cSvcTransferReportStatus++;
+    g_State.enmSvcTransferStatus = enmStatus;
+    g_State.vrcSvcTransferStatus = vrcStatus;
+    return VINF_SUCCESS;
+}
+
 /** @copydoc SHCLSVCOPS::pfnTransferDestroyById */
 static DECLCALLBACK(void) tstSvcTransferDestroyById(SHCLCLIENTHANDLE hClient, SHCLTRANSFERID idTransfer)
 {
@@ -570,6 +588,7 @@ static SHCLSVCOPS const g_SvcOps =
     tstSvcTransferGetByKeyRetained,
     tstSvcTransferCreate,
     tstSvcTransferInit,
+    tstSvcTransferReportStatus,
     tstSvcTransferDestroyById,
     tstSvcTransferDestroyAll,
     tstSvcTransferProviderInitGuest,
@@ -840,6 +859,46 @@ static void tstGuestDataTokens(void)
 }
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/** Tests that an acquired transport pins disconnect until its full Main dispatch finishes. */
+static void tstTransportLease(void)
+{
+    RTTestISub("Transport disconnect barrier");
+    tstStateReset();
+
+    GuestShClConn Conn(NULL);
+    SHCLTRANSPORT Transport;
+    tstConnect(Conn, &Transport);
+    RTTESTI_CHECK_RC(Conn.transportAcquire(&Transport), VINF_SUCCESS);
+
+    TSTDISCONNECTARGS Args;
+    Args.pConn = &Conn;
+    Args.Transport = Transport;
+    Args.hStarted = NIL_RTSEMEVENT;
+    Args.vrc = VERR_IPE_UNINITIALIZED_STATUS;
+    RTTESTI_CHECK_RC(RTSemEventCreate(&Args.hStarted), VINF_SUCCESS);
+    RTTHREAD hThread = NIL_RTTHREAD;
+    RTTESTI_CHECK_RC(RTThreadCreate(&hThread, tstDisconnectThread, &Args, 0, RTTHREADTYPE_DEFAULT,
+                                    RTTHREADFLAGS_WAITABLE, "shcl-cb-discon"), VINF_SUCCESS);
+    RTTESTI_CHECK_RC(RTSemEventWait(Args.hStarted, RT_MS_5SEC), VINF_SUCCESS);
+
+    for (uint32_t i = 0; i < 5000 && Conn.isConnected(); ++i)
+        RTThreadSleep(1);
+    RTTESTI_CHECK(!Conn.isConnected());
+    RTTESTI_CHECK(g_State.cBackendDisconnect == 0);
+    RTTESTI_CHECK_RC(Conn.transportAcquire(&Transport), VERR_INVALID_HANDLE);
+
+    Conn.transportRelease();
+    int vrcThread = VERR_IPE_UNINITIALIZED_STATUS;
+    RTTESTI_CHECK_RC(RTThreadWait(hThread, RT_MS_5SEC, &vrcThread), VINF_SUCCESS);
+    RTTESTI_CHECK_RC(vrcThread, VINF_SUCCESS);
+    RTTESTI_CHECK(g_State.cBackendDisconnect == 1);
+    RTTESTI_CHECK_RC(Conn.transportAcquire(&Transport), VERR_INVALID_HANDLE);
+
+    RTTESTI_CHECK_RC(RTSemEventDestroy(Args.hStarted), VINF_SUCCESS);
+    RTTESTI_CHECK_RC(Conn.destroyBackend(), VINF_SUCCESS);
+}
+
+
 /** Tests Main's transfer metadata and full-key forwarding. */
 static void tstTransfers(void)
 {
@@ -877,6 +936,11 @@ static void tstTransfers(void)
     if (pTransfer)
         ShClTransferRelease(pTransfer);
     RTTESTI_CHECK_RC(Conn.transferInit(&g_State.Transfer), VINF_SUCCESS);
+    RTTESTI_CHECK_RC(Conn.transferReportStatus(&g_State.Transfer, SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS),
+                     VINF_SUCCESS);
+    RTTESTI_CHECK(g_State.cSvcTransferReportStatus == 1);
+    RTTESTI_CHECK(g_State.enmSvcTransferStatus == SHCLTRANSFERSTATUS_COMPLETED);
+    RTTESTI_CHECK(g_State.vrcSvcTransferStatus == VINF_SUCCESS);
     RTTESTI_CHECK_RC(Conn.transferHandleStatusReply(&g_State.Transfer, SHCLSOURCE_REMOTE,
                                                    SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS), VINF_SUCCESS);
     RTTESTI_CHECK(g_State.enmTransferStatus == SHCLTRANSFERSTATUS_REQUESTED);
@@ -906,6 +970,7 @@ int main(void)
     tstConnectionAndForwarding();
     tstGuestDataTokens();
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    tstTransportLease();
     tstTransfers();
 #endif
 

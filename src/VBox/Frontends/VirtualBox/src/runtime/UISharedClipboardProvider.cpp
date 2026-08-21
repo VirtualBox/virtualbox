@@ -1,4 +1,4 @@
-/* $Id: UISharedClipboardProvider.cpp 114644 2026-07-08 06:48:21Z andreas.loeffler@oracle.com $ */
+/* $Id: UISharedClipboardProvider.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Qt GUI - UISharedClipboardProvider class implementation.
  */
@@ -137,6 +137,27 @@ static bool shclGuiFilterSupportedFormats(const QVector<CClipboardFormat> &forma
         *pstrPreferredMimeType = strBestMimeType;
     return !filteredFormats.isEmpty();
 }
+
+
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/** Returns whether a list contains a shared clipboard URI-list format.
+  * @returns @c true if a URI-list format is present, @c false otherwise.
+  * @param  formats  Brings the formats to inspect. */
+static bool shclGuiFormatsContainUriList(const QVector<CClipboardFormat> &formats)
+{
+    foreach (const CClipboardFormat &comFormat, formats)
+    {
+        if (comFormat.isNull())
+            continue;
+
+        const QString strMimeType = comFormat.GetMimeType();
+        if (   comFormat.isOk()
+            && strMimeType.compare("text/uri-list", Qt::CaseInsensitive) == 0)
+            return true;
+    }
+    return false;
+}
+#endif
 
 
 /** Marks a waitable event as processed.
@@ -343,6 +364,24 @@ private:
         return true;
     }
 
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    /** Reports guest-owned formats to the native host clipboard for lazy rendering.
+      * @returns @c true to continue serving, @c false to stop the provider.
+      * @param  comHostClipboard  Brings the session host clipboard endpoint.
+      * @param  formats           Brings the formats to report. */
+    bool reportGuestFormats(CHostClipboard &comHostClipboard, const QVector<CClipboardFormat> &formats)
+    {
+        comHostClipboard.ReportFormats(KClipboardAction_Copy, KClipboardSource_Guest, formats);
+        if (comHostClipboard.isOk())
+            return true;
+
+        LogRel(("GUI: UISharedClipboardProvider: reporting guest clipboard formats to host failed: %Rhrc\n",
+                comHostClipboard.lastRC()));
+        emit sigClipboardError(tr("Publishing guest clipboard formats to the host failed."));
+        return true;
+    }
+#endif
+
     /** Reads preferred guest-owned data and publishes it eagerly to the native host clipboard.
       * @returns @c true to continue serving, @c false to stop the provider.
       * @param  comClipboardSession  Brings the clipboard session.
@@ -403,6 +442,10 @@ private:
 
         LogRel3(("GUI: UISharedClipboardProvider: guest format event has %zu supported formats\n",
                  (size_t)filteredFormats.size()));
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+        if (shclGuiFormatsContainUriList(filteredFormats))
+            return reportGuestFormats(comHostClipboard, filteredFormats);
+#endif
         return readAndPublishGuestData(comClipboardSession, comHostClipboard, strPreferredMimeType);
     }
 
@@ -447,6 +490,14 @@ private:
 
         LogRel3(("GUI: UISharedClipboardProvider: guest source event has %zu supported formats\n",
                  (size_t)filteredFormats.size()));
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+        if (shclGuiFormatsContainUriList(filteredFormats))
+        {
+            /* Guest file-format reports always queue a matching format event.  Publish the
+             * delayed-rendering data object there so that one offer is not published twice. */
+            return true;
+        }
+#endif
         return readAndPublishGuestData(comClipboardSession, comHostClipboard, strPreferredMimeType);
     }
 
@@ -601,9 +652,13 @@ void UISharedClipboardProvider::prepareSession()
     }
 
     QVector<KIClipboardSessionFlag> flags;
-    flags << KIClipboardSessionFlag_ExcludeOwnChanges
-          << KIClipboardSessionFlag_ExcludeReflections
-          << KIClipboardSessionFlag_IncludeInitialState
+    flags << KIClipboardSessionFlag_ExcludeOwnChanges;
+    /* Windows filters native self-notifications by clipboard-owner identity.
+     * A reflection marker there could suppress the next genuine guest offer. */
+#if !defined(RT_OS_WINDOWS) || !defined(VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS)
+    flags << KIClipboardSessionFlag_ExcludeReflections;
+#endif
+    flags << KIClipboardSessionFlag_IncludeInitialState
           << KIClipboardSessionFlag_IncludePayload;
     m_comClipboardSession = comClipboard.CreateSession(flags);
     if (m_comClipboardSession.isNull() || !comClipboard.isOk())

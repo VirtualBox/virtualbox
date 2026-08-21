@@ -30,7 +30,7 @@
 ]>
 <refentry id="vboxmanage-clipboard" lang="en">
   <refentryinfo>
-    <pubdate>$Date: 2026-08-05 17:08:05 +0200 (Wed, 05 Aug 2026) $</pubdate>
+    <pubdate>$Date: 2026-08-21 13:14:19 +0200 (Fri, 21 Aug 2026) $</pubdate>
     <title>VBoxManage clipboard</title>
   </refentryinfo>
 
@@ -143,6 +143,7 @@
       <arg choice="plain">transfer</arg>
       <arg choice="plain">list</arg>
       <arg>--direction=any|to-guest|to-host</arg>
+      <arg>-v|--verbose</arg>
     </cmdsynopsis>
 
     <cmdsynopsis id="synopsis-vboxmanage-clipboard-transfer-cancel">
@@ -152,8 +153,20 @@
         <arg choice="plain"><replaceable>vmname</replaceable></arg>
       </group>
       <arg choice="plain">transfer</arg>
+      <arg><replaceable>transfer-id</replaceable></arg>
       <arg choice="plain">cancel</arg>
-      <arg choice="plain"><replaceable>transfer-id</replaceable></arg>
+    </cmdsynopsis>
+
+    <cmdsynopsis id="synopsis-vboxmanage-clipboard-transfer-status">
+      <command>VBoxManage clipboard</command>
+      <group choice="req">
+        <arg choice="plain"><replaceable>uuid</replaceable></arg>
+        <arg choice="plain"><replaceable>vmname</replaceable></arg>
+      </group>
+      <arg choice="plain">transfer</arg>
+      <arg><replaceable>transfer-id</replaceable></arg>
+      <arg choice="plain">status</arg>
+      <arg>--wait</arg>
     </cmdsynopsis>
 
     <cmdsynopsis id="synopsis-vboxmanage-clipboard-formats">
@@ -471,7 +484,7 @@ $ VBoxManage clipboard "Ubuntu VM" transfer receive --timeout=10000 ./from-guest
       <para>
         The <command>VBoxManage clipboard transfer list</command> command lists
         clipboard file transfers currently known to the live virtual machine
-        clipboard.
+        clipboard. Each transfer includes its current completion percentage.
       </para>
       <variablelist>
         <varlistentry>
@@ -481,6 +494,14 @@ $ VBoxManage clipboard "Ubuntu VM" transfer receive --timeout=10000 ./from-guest
               <literal>any</literal>.
             </para></listitem>
         </varlistentry>
+        <varlistentry>
+          <term><option>-v</option></term>
+          <term><option>--verbose</option></term>
+          <listitem><para>
+              Shows the top-level, transfer-relative file entry roots for each
+              transfer, including each root's path, type, and size.
+            </para></listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
@@ -488,11 +509,46 @@ $ VBoxManage clipboard "Ubuntu VM" transfer receive --timeout=10000 ./from-guest
       <title>Cancel a Clipboard File Transfer</title>
       <remark role="help-copy-synopsis"/>
       <para>
-        The <command>VBoxManage clipboard transfer cancel</command> command
-        cancels the clipboard file transfer with the specified transfer ID.
+        The <command>VBoxManage clipboard transfer <replaceable>transfer-id</replaceable>
+        cancel</command> command
+        requests cancellation of the clipboard file transfer with the specified
+        transfer ID.
         Transfer IDs are shown by <command>VBoxManage clipboard transfer
         list</command> and in verbose transfer event output.
+        If you omit <replaceable>transfer-id</replaceable>, the command selects
+        the transfer automatically when exactly one current transfer exists.
+        The command fails if no transfer or more than one transfer exists.
+        Cancellation is requested asynchronously by calling
+        <literal>IProgress::Cancel()</literal>. The command returns after the
+        request is accepted; use the <command>status --wait</command> action to
+        wait for backend cleanup and final completion.
       </para>
+    </refsect2>
+
+    <refsect2 id="vboxmanage-clipboard-transfer-status">
+      <title>Show Clipboard File Transfer Status</title>
+      <remark role="help-copy-synopsis"/>
+      <para>
+        The <command>VBoxManage clipboard transfer <replaceable>transfer-id</replaceable>
+        status</command> command shows the current status and completion percentage
+        of the specified clipboard file transfer.
+        If you omit <replaceable>transfer-id</replaceable>, the command selects
+        the transfer automatically when exactly one current transfer exists.
+        The command fails if no transfer or more than one transfer exists.
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term><option>--wait</option></term>
+          <listitem><para>
+              Displays the transfer's <literal>IProgress</literal> object and waits
+              for the transfer to finish. Pressing Ctrl+C calls
+              <literal>IProgress::Cancel()</literal> to request cancellation of the
+              transfer, then continues waiting until backend cleanup and progress
+              completion have finished. The <command>cancel</command> action issues
+              the same asynchronous cancellation request.
+            </para></listitem>
+        </varlistentry>
+      </variablelist>
     </refsect2>
 
     <refsect2 id="vboxmanage-clipboard-formats">

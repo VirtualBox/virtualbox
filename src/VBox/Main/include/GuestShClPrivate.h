@@ -1,4 +1,4 @@
-/* $Id: GuestShClPrivate.h 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClPrivate.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Private Shared Clipboard code for the Main API.
  */
@@ -161,6 +161,8 @@ protected:
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     int i_svcExtTransferGetCallbacksCallback(PSHCLEXTPARMS pParms);
     int i_svcExtFileTransferCallback(PSHCLEXTPARMS pParms);
+    int i_svcExtTransferProgressCallback(PSHCLEXTPARMS pParms);
+    int i_svcExtTransferResetCallback(PSHCLEXTPARMS pParms);
 #endif
     /** @}  */
 

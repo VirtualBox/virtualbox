@@ -1,4 +1,4 @@
-/* $Id: UISharedClipboardTransferMgr.cpp 114637 2026-07-07 16:21:39Z andreas.loeffler@oracle.com $ */
+/* $Id: UISharedClipboardTransferMgr.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Qt GUI - UISharedClipboardTransfer and UISharedClipboardTransferMgr class implementations.
  */
@@ -34,6 +34,8 @@
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 
 /* COM includes: */
+#include <VBox/com/VirtualBox.h>
+
 #include "CClipboardTransferEvent.h"
 #include "CEvent.h"
 
@@ -146,6 +148,7 @@ UISharedClipboardTransfer::UISharedClipboardTransfer()
     , m_enmDirection(KClipboardTransferDirection_Any)
     , m_enmSource(KClipboardSource_Custom)
     , m_enmState(KClipboardTransferState_Added)
+    , m_fProgressNotificationCreated(false)
 {
 }
 
@@ -156,6 +159,7 @@ UISharedClipboardTransfer::UISharedClipboardTransfer(const CClipboardTransfer &c
     , m_enmDirection(KClipboardTransferDirection_Any)
     , m_enmSource(KClipboardSource_Custom)
     , m_enmState(KClipboardTransferState_Added)
+    , m_fProgressNotificationCreated(false)
 {
     refreshFromTransfer();
 }
@@ -179,6 +183,22 @@ bool UISharedClipboardTransfer::isTerminal() const
            || m_enmState == KClipboardTransferState_Completed
            || m_enmState == KClipboardTransferState_Canceled
            || m_enmState == KClipboardTransferState_Failed;
+}
+
+
+bool UISharedClipboardTransfer::claimProgressNotification()
+{
+    if (m_fProgressNotificationCreated)
+        return false;
+
+    m_fProgressNotificationCreated = true;
+    return true;
+}
+
+
+bool UISharedClipboardTransfer::hasProgressNotification() const
+{
+    return m_fProgressNotificationCreated;
 }
 
 
@@ -340,14 +360,25 @@ bool UISharedClipboardTransferMgr::handleEvent(const CEvent &comEvent,
         return false;
     }
 
-    const bool fAlreadyTracked = m_transfers.contains(uId);
     UISharedClipboardTransfer *pTransfer = findOrCreateTransfer(comTransfer, enmState);
     if (!pTransfer)
         return false;
 
     pTransfer->handleStateChange(m_comTransferManager, enmState, enmInteraction, strPath, strMessage, enmError);
 
+    /* An Added event only means that the delayed-rendering offer was created.
+     * Show progress once Main reports that the transfer has actually started. */
+    const bool fNotifyProgress =    enmState == KClipboardTransferState_InProgress
+                                 && pcomNotifyTransfer
+                                 && comTransfer.isNotNull()
+                                 && pTransfer->claimProgressNotification();
+    if (fNotifyProgress)
+        *pcomNotifyTransfer = comTransfer;
+
+    /* Once a progress notification exists, its IProgress object owns the terminal
+     * error presentation.  Emitting a second generic error would duplicate it. */
     if (   pstrError
+        && !pTransfer->hasProgressNotification()
         && (   enmState == KClipboardTransferState_Failed
             || enmError != KClipboardError_None))
     {
@@ -356,10 +387,6 @@ bool UISharedClipboardTransferMgr::handleEvent(const CEvent &comEvent,
         else
             *pstrError = QCoreApplication::translate("UISharedClipboardProvider", "A shared clipboard transfer failed.");
     }
-
-    const bool fNotifyProgress = !fAlreadyTracked && pcomNotifyTransfer && comTransfer.isNotNull();
-    if (fNotifyProgress)
-        *pcomNotifyTransfer = comTransfer;
 
     if (pTransfer->isTerminal())
         m_transfers.remove(uId);

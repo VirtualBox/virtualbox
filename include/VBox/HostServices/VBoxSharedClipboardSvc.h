@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc.h 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - HGCM protocol state and data transfer interfaces.
  */
@@ -183,6 +183,8 @@ typedef struct _SHCLIENTTRANSFERS
 {
     /** Transfer context. */
     SHCLTRANSFERCTX             Ctx;
+    /** Whether a service-session reset currently blocks new transfer admission. */
+    bool volatile               fResetting;
 } SHCLIENTTRANSFERS;
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 

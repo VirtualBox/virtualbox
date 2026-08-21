@@ -1,4 +1,4 @@
-/* $Id: UISharedClipboardTransferMgr.h 114637 2026-07-07 16:21:39Z andreas.loeffler@oracle.com $ */
+/* $Id: UISharedClipboardTransferMgr.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Qt GUI - UISharedClipboardTransfer and UISharedClipboardTransferMgr class declarations.
  */
@@ -64,6 +64,12 @@ public:
     /** Returns whether the cached transfer state is terminal.
       * @returns @c true if terminal, @c false otherwise. */
     bool isTerminal() const;
+    /** Marks this transfer as having a progress notification.
+      * @returns @c true if the notification was newly marked, @c false if it was already marked. */
+    bool claimProgressNotification();
+    /** Returns whether a progress notification has been created for this transfer.
+      * @returns @c true if created, @c false otherwise. */
+    bool hasProgressNotification() const;
 
     /** Handles a transfer state change.
       * @param  comTransferManager  Brings the transfer manager to use for responses.
@@ -103,6 +109,8 @@ private:
     KClipboardSource m_enmSource;
     /** Holds the cached transfer state. */
     KClipboardTransferState m_enmState;
+    /** Holds whether a progress notification has been created for this transfer. */
+    bool m_fProgressNotificationCreated;
 };
 
 /** Shared clipboard transfer event manager for the GUI provider worker thread. */

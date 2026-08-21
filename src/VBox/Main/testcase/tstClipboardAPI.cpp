@@ -1,4 +1,4 @@
-/* $Id: tstClipboardAPI.cpp 115056 2026-08-17 16:44:52Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardAPI.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Public API object testcase.
  */
@@ -37,10 +37,14 @@
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 # include "ClipboardTransferImpl.h"
 # include "ClipboardTransferManagerImpl.h"
+# include "EventImpl.h"
+# include <VBox/com/listeners.h>
 #endif
 
 #include <iprt/string.h>
+#include <iprt/semaphore.h>
 #include <iprt/test.h>
+#include <iprt/thread.h>
 
 
 /** @name Parent Clipboard stubs for unexercised session delegation paths.
@@ -301,6 +305,262 @@ static void tstClipboardSession(void)
 
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/** State captured by the active listener reentrancy test. */
+struct ClipboardTransferReentryContext
+{
+    ClipboardTransferReentryContext()
+        : pManager(NULL)
+        , idSession(NIL_SHCLSESSIONID)
+        , idTransfer(NIL_SHCLTRANSFERID)
+        , uGeneration(NIL_SHCLTRANSFERGEN)
+        , cDepth(0)
+        , cMaxDepth(0)
+        , cEvents(0)
+        , fOverflow(false)
+        , fReentered(false)
+        , fUninitOnAdded(false)
+        , hrcReentry(E_FAIL)
+        , fCompletedAtTerminal(FALSE)
+        , uPercentAtInProgress(UINT32_MAX)
+        , hDone(NIL_RTSEMEVENT)
+    {
+        RT_ZERO(aEventStates);
+        RT_ZERO(aObjectStates);
+        int const vrc = RTSemEventCreate(&hDone);
+        AssertRC(vrc);
+    }
+
+    ~ClipboardTransferReentryContext()
+    {
+        if (hDone != NIL_RTSEMEVENT)
+        {
+            int const vrc = RTSemEventDestroy(hDone);
+            AssertRC(vrc);
+            hDone = NIL_RTSEMEVENT;
+        }
+    }
+
+    ClipboardTransferManager  *pManager;
+    SHCLSESSIONID              idSession;
+    SHCLTRANSFERID             idTransfer;
+    SHCLTRANSFERGEN            uGeneration;
+    uint32_t                   cDepth;
+    uint32_t                   cMaxDepth;
+    uint32_t                   cEvents;
+    bool                       fOverflow;
+    bool                       fReentered;
+    bool                       fUninitOnAdded;
+    HRESULT                    hrcReentry;
+    BOOL                       fCompletedAtTerminal;
+    ULONG                      uPercentAtInProgress;
+    ClipboardTransferState_T   aEventStates[8];
+    ClipboardTransferState_T   aObjectStates[8];
+    ComPtr<IClipboardTransfer> ptrHeldTransfer;
+    ComPtr<IProgress>          ptrHeldProgress;
+    RTSEMEVENT                 hDone;
+};
+
+
+/** Active test listener which completes a transfer from its InProgress callback. */
+class ClipboardTransferReentryListener
+{
+public:
+    ClipboardTransferReentryListener()
+        : mContext(NULL)
+    { }
+
+    HRESULT init(ClipboardTransferReentryContext *aContext)
+    {
+        AssertPtrReturn(aContext, E_INVALIDARG);
+        mContext = aContext;
+        return S_OK;
+    }
+
+    void uninit()
+    {
+        mContext = NULL;
+    }
+
+    virtual ~ClipboardTransferReentryListener()
+    { }
+
+    STDMETHOD(HandleEvent)(VBoxEventType_T aType, IEvent *aEvent)
+    {
+        if (aType != VBoxEventType_OnClipboardTransfer)
+            return S_OK;
+
+        ClipboardTransferReentryContext *pContext = mContext;
+        AssertPtrReturn(pContext, E_FAIL);
+        bool fSignalDone = false;
+        ++pContext->cDepth;
+        if (pContext->cMaxDepth < pContext->cDepth)
+            pContext->cMaxDepth = pContext->cDepth;
+
+        ComPtr<IClipboardTransferEvent> ptrEvent = aEvent;
+        ClipboardTransferState_T enmEventState = ClipboardTransferState_Removed;
+        ComPtr<IClipboardTransfer> ptrTransfer;
+        HRESULT hrc = ptrEvent.isNull() ? E_NOINTERFACE : ptrEvent->COMGETTER(State)(&enmEventState);
+        if (SUCCEEDED(hrc))
+            hrc = ptrEvent->COMGETTER(Transfer)(ptrTransfer.asOutParam());
+
+        ClipboardTransferState_T enmObjectState = ClipboardTransferState_Removed;
+        if (SUCCEEDED(hrc))
+            hrc = ptrTransfer->COMGETTER(State)(&enmObjectState);
+        ULONG idTransfer = 0;
+        if (SUCCEEDED(hrc))
+            hrc = ptrTransfer->COMGETTER(Id)(&idTransfer);
+        if (SUCCEEDED(hrc) && idTransfer != pContext->idTransfer)
+        {
+            --pContext->cDepth;
+            return S_OK;
+        }
+
+        if (pContext->cEvents < RT_ELEMENTS(pContext->aEventStates))
+        {
+            pContext->aEventStates[pContext->cEvents] = enmEventState;
+            pContext->aObjectStates[pContext->cEvents] = enmObjectState;
+            ++pContext->cEvents;
+        }
+        else
+            pContext->fOverflow = true;
+
+        if (   SUCCEEDED(hrc)
+            && enmEventState == ClipboardTransferState_Added
+            && pContext->fUninitOnAdded
+            && !pContext->fReentered)
+        {
+            pContext->fReentered = true;
+            pContext->ptrHeldTransfer = ptrTransfer;
+            hrc = ptrTransfer->COMGETTER(Progress)(pContext->ptrHeldProgress.asOutParam());
+            if (SUCCEEDED(hrc))
+                hrc = pContext->pManager->i_handleTransferStatus(pContext->idSession,
+                                                                 pContext->idTransfer,
+                                                                 pContext->uGeneration,
+                                                                 NULL /* pTransfer */,
+                                                                 SHCLSOURCE_REMOTE,
+                                                                 SHCLTRANSFERSTATUS_INITIALIZED,
+                                                                 VINF_SUCCESS);
+            if (SUCCEEDED(hrc))
+                hrc = pContext->pManager->i_handleTransferStatus(pContext->idSession,
+                                                                 pContext->idTransfer,
+                                                                 pContext->uGeneration,
+                                                                 NULL /* pTransfer */,
+                                                                 SHCLSOURCE_REMOTE,
+                                                                 SHCLTRANSFERSTATUS_STARTED,
+                                                                 VINF_SUCCESS);
+            if (SUCCEEDED(hrc))
+                hrc = pContext->pManager->i_handleTransferProgress(pContext->idSession,
+                                                                   pContext->idTransfer,
+                                                                   pContext->uGeneration, 50, 100);
+            if (SUCCEEDED(hrc))
+                pContext->pManager->uninit();
+            pContext->hrcReentry = hrc;
+            fSignalDone = true;
+        }
+        else if (SUCCEEDED(hrc) && enmEventState == ClipboardTransferState_InProgress)
+        {
+            ComPtr<IProgress> ptrProgress;
+            hrc = ptrTransfer->COMGETTER(Progress)(ptrProgress.asOutParam());
+            if (SUCCEEDED(hrc))
+                hrc = ptrProgress->COMGETTER(Percent)(&pContext->uPercentAtInProgress);
+            if (!pContext->fReentered)
+            {
+                pContext->fReentered = true;
+                pContext->hrcReentry = pContext->pManager->i_handleTransferStatus(pContext->idSession,
+                                                                                 pContext->idTransfer,
+                                                                                 pContext->uGeneration,
+                                                                                 NULL /* pTransfer */,
+                                                                                 SHCLSOURCE_REMOTE,
+                                                                                 SHCLTRANSFERSTATUS_COMPLETED,
+                                                                                 VINF_SUCCESS);
+            }
+        }
+        else if (SUCCEEDED(hrc) && enmEventState == ClipboardTransferState_Completed)
+        {
+            ComPtr<IProgress> ptrProgress;
+            hrc = ptrTransfer->COMGETTER(Progress)(ptrProgress.asOutParam());
+            if (SUCCEEDED(hrc))
+                hrc = ptrProgress->COMGETTER(Completed)(&pContext->fCompletedAtTerminal);
+            fSignalDone = true;
+        }
+
+        if (FAILED(hrc) && SUCCEEDED(pContext->hrcReentry))
+            pContext->hrcReentry = hrc;
+        --pContext->cDepth;
+        if (fSignalDone && pContext->hDone != NIL_RTSEMEVENT)
+        {
+            int const vrc = RTSemEventSignal(pContext->hDone);
+            AssertRC(vrc);
+        }
+        return S_OK;
+    }
+
+private:
+    ClipboardTransferReentryContext *mContext;
+};
+
+typedef ListenerImpl<ClipboardTransferReentryListener, ClipboardTransferReentryContext *>
+    ClipboardTransferReentryListenerImpl;
+
+VBOX_LISTENER_DECLARE(ClipboardTransferReentryListenerImpl)
+
+
+/** Waits for an asynchronously published transfer state. */
+static bool tstClipboardTransferWaitState(const ComPtr<IClipboardTransfer> &ptrTransfer,
+                                          ClipboardTransferState_T enmExpected)
+{
+    for (uint32_t i = 0; i < 5000; ++i)
+    {
+        ClipboardTransferState_T enmState = ClipboardTransferState_Removed;
+        if (SUCCEEDED(ptrTransfer->COMGETTER(State)(&enmState)) && enmState == enmExpected)
+            return true;
+        RTThreadSleep(1);
+    }
+    return false;
+}
+
+
+/** Waits for an asynchronously published Progress percentage. */
+static bool tstClipboardTransferWaitPercent(const ComPtr<IProgress> &ptrProgress, ULONG uExpected)
+{
+    for (uint32_t i = 0; i < 5000; ++i)
+    {
+        ULONG uPercent = UINT32_MAX;
+        if (SUCCEEDED(ptrProgress->COMGETTER(Percent)(&uPercent)) && uPercent == uExpected)
+            return true;
+        RTThreadSleep(1);
+    }
+    return false;
+}
+
+
+/** Waits for asynchronous Progress completion. */
+static bool tstClipboardTransferWaitCompleted(const ComPtr<IProgress> &ptrProgress)
+{
+    for (uint32_t i = 0; i < 5000; ++i)
+    {
+        BOOL fCompleted = FALSE;
+        if (SUCCEEDED(ptrProgress->COMGETTER(Completed)(&fCompleted)) && fCompleted)
+            return true;
+        RTThreadSleep(1);
+    }
+    return false;
+}
+
+
+/** Waits for deferred self-cleanup of the manager publication worker. */
+static bool tstClipboardTransferWaitWorkerStopped(ClipboardTransferManager *pManager)
+{
+    for (uint32_t i = 0; i < 5000; ++i)
+    {
+        if (!pManager->i_isPublicationWorkerRunning())
+            return true;
+        RTThreadSleep(1);
+    }
+    return false;
+}
+
+
 /** Tests IClipboardTransfer metadata without attaching a data-plane backend. */
 static void tstClipboardTransfer(void)
 {
@@ -373,15 +633,31 @@ static void tstClipboardTransferManager(void)
 {
     RTTestISub("Transfer manager");
 
+    ComObjPtr<EventSource> ptrEventSourceObj;
+    HRESULT hrc = ptrEventSourceObj.createObject();
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    if (FAILED(hrc))
+        return;
+    hrc = ptrEventSourceObj->init();
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    if (FAILED(hrc))
+        return;
+    ComPtr<IEventSource> ptrEventSource;
+    hrc = ptrEventSourceObj.queryInterfaceTo(ptrEventSource.asOutParam());
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    if (FAILED(hrc))
+        return;
+
     ComObjPtr<ClipboardTransferManager> ptrManagerObj;
-    HRESULT hrc = ptrManagerObj.createObject();
+    hrc = ptrManagerObj.createObject();
     RTTESTI_CHECK_RC(hrc, S_OK);
     if (FAILED(hrc))
         return;
-    hrc = ptrManagerObj->init();
+    hrc = ptrManagerObj->init(ptrEventSource);
     RTTESTI_CHECK_RC(hrc, S_OK);
     if (FAILED(hrc))
         return;
+    RTTESTI_CHECK(ptrManagerObj->i_isPublicationWorkerRunning());
 
     ComPtr<IClipboardTransferManager> ptrManager;
     hrc = ptrManagerObj.queryInterfaceTo(ptrManager.asOutParam());
@@ -400,6 +676,21 @@ static void tstClipboardTransferManager(void)
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(ptrTransfer.isNotNull());
 
+    ComPtr<IProgress> ptrManagerProgress;
+    hrc = ptrTransfer->COMGETTER(Progress)(ptrManagerProgress.asOutParam());
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(ptrManagerProgress.isNotNull());
+    if (ptrManagerProgress.isNull())
+        return;
+    ComPtr<IProgress> ptrManagerProgressAgain;
+    hrc = ptrTransfer->COMGETTER(Progress)(ptrManagerProgressAgain.asOutParam());
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(ptrManagerProgressAgain == ptrManagerProgress);
+    BOOL fManagerProgressCancelable = FALSE;
+    hrc = ptrManagerProgress->COMGETTER(Cancelable)(&fManagerProgressCancelable);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(fManagerProgressCancelable == TRUE);
+
     aTransfers.setNull();
     hrc = ptrManager->GetTransfers(ClipboardTransferDirection_ToGuest, 0, ComSafeArrayAsOutParam(aTransfers));
     RTTESTI_CHECK_RC(hrc, S_OK);
@@ -409,6 +700,11 @@ static void tstClipboardTransferManager(void)
 
     hrc = ptrManager->Remove(ptrTransfer);
     RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(tstClipboardTransferWaitCompleted(ptrManagerProgress));
+    LONG hrcManagerProgress = S_OK;
+    hrc = ptrManagerProgress->COMGETTER(ResultCode)(&hrcManagerProgress);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(hrcManagerProgress == E_ABORT);
     aTransfers.setNull();
     hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
     RTTESTI_CHECK_RC(hrc, S_OK);
@@ -418,6 +714,580 @@ static void tstClipboardTransferManager(void)
     hrc = ptrManager->Remove(ptrTransfer);
     RTTESTI_CHECK_RC(RTTestIRestoreAssertions(), VINF_SUCCESS);
     RTTESTI_CHECK(FAILED(hrc));
+
+    /* A manager-created transfer has no service key, so IProgress::Cancel()
+     * completes its lifecycle locally without attempting a backend call. */
+    ComPtr<IClipboardTransfer> ptrLocalCancelTransfer;
+    hrc = ptrManager->Create(ClipboardTransferDirection_ToGuest, ClipboardSource_Host, ClipboardAction_Copy,
+                             ptrLocalCancelTransfer.asOutParam());
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(ptrLocalCancelTransfer.isNotNull());
+    ComPtr<IProgress> ptrLocalCancelProgress;
+    hrc = ptrLocalCancelTransfer->COMGETTER(Progress)(ptrLocalCancelProgress.asOutParam());
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(ptrLocalCancelProgress.isNotNull());
+    if (ptrLocalCancelProgress.isNull())
+        return;
+    hrc = ptrLocalCancelProgress->Cancel();
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(tstClipboardTransferWaitCompleted(ptrLocalCancelProgress));
+    ClipboardTransferState_T enmLocalCancelState = ClipboardTransferState_Added;
+    hrc = ptrLocalCancelTransfer->COMGETTER(State)(&enmLocalCancelState);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(enmLocalCancelState == ClipboardTransferState_Canceled);
+    LONG hrcLocalCancel = S_OK;
+    hrc = ptrLocalCancelProgress->COMGETTER(ResultCode)(&hrcLocalCancel);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(hrcLocalCancel == E_ABORT);
+    aTransfers.setNull();
+    hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(aTransfers.size() == 0);
+
+    SHCLSESSIONID const idSession = 1;
+    SHCLTRANSFERID const idTransfer = 2;
+    SHCLTRANSFERGEN const uGeneration = 1;
+    ptrManagerObj->i_setPublicationWorkerSignalsSuppressed(true);
+    hrc = ptrManagerObj->i_handleTransferStatus(idSession, idTransfer, uGeneration, NULL /* pTransfer */,
+                                                SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferStatus(idSession, idTransfer, uGeneration, NULL /* pTransfer */,
+                                                SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferStatus(idSession, idTransfer, uGeneration, NULL /* pTransfer */,
+                                                SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+
+    aTransfers.setNull();
+    hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(aTransfers.size() == 1);
+    if (aTransfers.size() != 1)
+        return;
+
+    ClipboardTransferState_T enmTransferState = ClipboardTransferState_Removed;
+    hrc = aTransfers[0]->COMGETTER(State)(&enmTransferState);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(enmTransferState == ClipboardTransferState_Added);
+
+    ComPtr<IProgress> ptrProgress;
+    hrc = aTransfers[0]->COMGETTER(Progress)(ptrProgress.asOutParam());
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(ptrProgress.isNotNull());
+    if (ptrProgress.isNull())
+        return;
+
+    BOOL fCancelable = FALSE;
+    hrc = ptrProgress->COMGETTER(Cancelable)(&fCancelable);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(fCancelable == TRUE);
+
+    ULONG uPercent = UINT32_MAX;
+    hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(uPercent == 0);
+
+    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration + 1,
+                                                  UINT64_MAX / 2, UINT64_MAX);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = aTransfers[0]->COMGETTER(State)(&enmTransferState);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(enmTransferState == ClipboardTransferState_Added);
+
+    /* The first real payload byte exposes InProgress even when it is below one percent. */
+    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration, 1, UINT64_MAX);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(tstClipboardTransferWaitState(aTransfers[0], ClipboardTransferState_InProgress));
+    ptrManagerObj->i_setPublicationWorkerSignalsSuppressed(false);
+    hrc = aTransfers[0]->COMGETTER(State)(&enmTransferState);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(enmTransferState == ClipboardTransferState_InProgress);
+    hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(uPercent == 0);
+
+    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration,
+                                                  UINT64_MAX / 2, UINT64_MAX);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(tstClipboardTransferWaitPercent(ptrProgress, 49));
+    hrc = aTransfers[0]->COMGETTER(State)(&enmTransferState);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(enmTransferState == ClipboardTransferState_InProgress);
+    hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(uPercent == 49);
+
+    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration,
+                                                  UINT64_MAX / 2 - 1, UINT64_MAX);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration,
+                                                  UINT64_MAX / 2, UINT64_MAX - 1);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(uPercent == 49);
+
+    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration, UINT64_MAX, UINT64_MAX);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(tstClipboardTransferWaitPercent(ptrProgress, 99));
+    hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(uPercent == 99);
+
+    hrc = ptrManagerObj->i_handleTransferStatus(idSession, idTransfer, uGeneration, NULL /* pTransfer */,
+                                                SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(tstClipboardTransferWaitCompleted(ptrProgress));
+    BOOL fCompleted = FALSE;
+    hrc = ptrProgress->COMGETTER(Completed)(&fCompleted);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(fCompleted == TRUE);
+    hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(uPercent == 100);
+    fCancelable = TRUE;
+    hrc = ptrProgress->COMGETTER(Cancelable)(&fCancelable);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(fCancelable == FALSE);
+    hrc = ptrProgress->Cancel();
+    RTTESTI_CHECK(hrc == VBOX_E_INVALID_OBJECT_STATE);
+
+    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration, UINT64_MAX, UINT64_MAX);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(uPercent == 100);
+
+    /* Force Cancel to win the Progress lock before a direct service
+     * COMPLETED status.  Terminal acceptance must normalize that status to
+     * Canceled/E_ABORT before erasing the exact record. */
+    SHCLSESSIONID const idCancelFirstSession = 10;
+    SHCLTRANSFERID const idCancelFirstTransfer = 11;
+    SHCLTRANSFERGEN const uCancelFirstGeneration = 10;
+    hrc = ptrManagerObj->i_handleTransferStatus(idCancelFirstSession, idCancelFirstTransfer,
+                                                uCancelFirstGeneration, NULL /* pTransfer */,
+                                                SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferStatus(idCancelFirstSession, idCancelFirstTransfer,
+                                                uCancelFirstGeneration, NULL /* pTransfer */,
+                                                SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferStatus(idCancelFirstSession, idCancelFirstTransfer,
+                                                uCancelFirstGeneration, NULL /* pTransfer */,
+                                                SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    aTransfers.setNull();
+    hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(aTransfers.size() == 1);
+    if (aTransfers.size() != 1)
+        return;
+    ComPtr<IClipboardTransfer> ptrCancelFirstTransfer = aTransfers[0];
+    ComPtr<IProgress> ptrCancelFirstProgress;
+    hrc = ptrCancelFirstTransfer->COMGETTER(Progress)(ptrCancelFirstProgress.asOutParam());
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(ptrCancelFirstProgress.isNotNull());
+    if (ptrCancelFirstProgress.isNull())
+        return;
+
+    ptrManagerObj->i_setProgressCancellationPollingSuppressed(true);
+    ptrManagerObj->i_setPublicationWorkerSignalsSuppressed(true);
+    hrc = ptrCancelFirstProgress->Cancel();
+    RTTESTI_CHECK_RC(hrc, S_OK);
+
+    /* A canceled Progress is no longer an active manager transfer even while
+     * its exact internal record is retained for backend cleanup and terminal
+     * status arbitration. */
+    aTransfers.setNull();
+    hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(aTransfers.size() == 0);
+
+    hrc = ptrManagerObj->i_handleTransferStatus(idCancelFirstSession, idCancelFirstTransfer,
+                                                uCancelFirstGeneration, NULL /* pTransfer */,
+                                                SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    ptrManagerObj->i_setProgressCancellationPollingSuppressed(false);
+    ptrManagerObj->i_setPublicationWorkerSignalsSuppressed(false);
+
+    RTTESTI_CHECK(tstClipboardTransferWaitCompleted(ptrCancelFirstProgress));
+    hrc = ptrCancelFirstTransfer->COMGETTER(State)(&enmTransferState);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(enmTransferState == ClipboardTransferState_Canceled);
+    LONG hrcCancelFirstResult = S_OK;
+    hrc = ptrCancelFirstProgress->COMGETTER(ResultCode)(&hrcCancelFirstResult);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(hrcCancelFirstResult == E_ABORT);
+    aTransfers.setNull();
+    hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(aTransfers.size() == 0);
+
+    /* A progress snapshot preceding STARTED must become visible immediately,
+     * then expose InProgress when the lifecycle status catches up. */
+    SHCLSESSIONID const idEarlySession = 2;
+    SHCLTRANSFERID const idEarlyTransfer = 3;
+    SHCLTRANSFERGEN const uEarlyGeneration = 2;
+    hrc = ptrManagerObj->i_handleTransferStatus(idEarlySession, idEarlyTransfer, uEarlyGeneration,
+                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferStatus(idEarlySession, idEarlyTransfer, uEarlyGeneration,
+                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferProgress(idEarlySession, idEarlyTransfer, uEarlyGeneration, 50, 100);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+
+    aTransfers.setNull();
+    hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(aTransfers.size() == 1);
+    if (aTransfers.size() != 1)
+        return;
+    hrc = aTransfers[0]->COMGETTER(State)(&enmTransferState);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(enmTransferState == ClipboardTransferState_Added);
+    ptrProgress.setNull();
+    hrc = aTransfers[0]->COMGETTER(Progress)(ptrProgress.asOutParam());
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(tstClipboardTransferWaitPercent(ptrProgress, 50));
+    hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(uPercent == 50);
+
+    hrc = ptrManagerObj->i_handleTransferStatus(idEarlySession, idEarlyTransfer, uEarlyGeneration,
+                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(tstClipboardTransferWaitState(aTransfers[0], ClipboardTransferState_InProgress));
+    hrc = aTransfers[0]->COMGETTER(State)(&enmTransferState);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(enmTransferState == ClipboardTransferState_InProgress);
+    hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(uPercent == 50);
+    hrc = ptrManagerObj->i_handleTransferStatus(idEarlySession, idEarlyTransfer, uEarlyGeneration,
+                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(tstClipboardTransferWaitCompleted(ptrProgress));
+
+    /* IProgress::Cancel() is observed by the existing publication worker.  A
+     * queued byte update after cancellation is harmless, and successful exact
+     * backend dispatch completes the Progress as canceled. */
+    ptrManagerObj->i_setCancelServiceResult(S_OK);
+    SHCLSESSIONID const idCancelSession = 20;
+    SHCLTRANSFERID const idCancelTransfer = 21;
+    SHCLTRANSFERGEN const uCancelGeneration = 20;
+    hrc = ptrManagerObj->i_handleTransferStatus(idCancelSession, idCancelTransfer, uCancelGeneration,
+                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferStatus(idCancelSession, idCancelTransfer, uCancelGeneration,
+                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferStatus(idCancelSession, idCancelTransfer, uCancelGeneration,
+                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+
+    aTransfers.setNull();
+    hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(aTransfers.size() == 1);
+    if (aTransfers.size() != 1)
+        return;
+    ComPtr<IClipboardTransfer> ptrCancelTransfer = aTransfers[0];
+    ComPtr<IProgress> ptrCancelProgress;
+    hrc = ptrCancelTransfer->COMGETTER(Progress)(ptrCancelProgress.asOutParam());
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(ptrCancelProgress.isNotNull());
+    if (ptrCancelProgress.isNull())
+        return;
+    fCancelable = FALSE;
+    hrc = ptrCancelProgress->COMGETTER(Cancelable)(&fCancelable);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(fCancelable == TRUE);
+
+    ptrManagerObj->i_setPublicationWorkerSignalsSuppressed(true);
+    RTThreadSleep(150); /* Let lifecycle publications drain before arranging the cancel race. */
+    hrc = ptrCancelProgress->Cancel();
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    BOOL fCanceled = FALSE;
+    hrc = ptrCancelProgress->COMGETTER(Canceled)(&fCanceled);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(fCanceled == TRUE);
+    hrc = ptrManagerObj->i_handleTransferProgress(idCancelSession, idCancelTransfer, uCancelGeneration, 75, 100);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    ptrManagerObj->i_setPublicationWorkerSignalsSuppressed(false);
+
+    RTTESTI_CHECK(tstClipboardTransferWaitCompleted(ptrCancelProgress));
+    hrc = ptrCancelTransfer->COMGETTER(State)(&enmTransferState);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(enmTransferState == ClipboardTransferState_Canceled);
+    ClipboardError_T enmCancelError = ClipboardError_None;
+    hrc = ptrCancelTransfer->COMGETTER(Error)(&enmCancelError);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(enmCancelError == ClipboardError_None);
+    LONG hrcCancelResult = S_OK;
+    hrc = ptrCancelProgress->COMGETTER(ResultCode)(&hrcCancelResult);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(hrcCancelResult == E_ABORT);
+    aTransfers.setNull();
+    hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(aTransfers.size() == 0);
+
+    /* Cancellation is irreversible once accepted by Progress.  If backend
+     * dispatch fails, publish an explicit failure and complete it rather than
+     * clearing a marker and leaving waiters blocked forever. */
+    ptrManagerObj->i_setCancelServiceResult(E_FAIL);
+    SHCLSESSIONID const idFailedCancelSession = 21;
+    SHCLTRANSFERID const idFailedCancelTransfer = 22;
+    SHCLTRANSFERGEN const uFailedCancelGeneration = 21;
+    hrc = ptrManagerObj->i_handleTransferStatus(idFailedCancelSession, idFailedCancelTransfer,
+                                                uFailedCancelGeneration, NULL /* pTransfer */,
+                                                SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    aTransfers.setNull();
+    hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(aTransfers.size() == 1);
+    if (aTransfers.size() != 1)
+        return;
+    ComPtr<IClipboardTransfer> ptrFailedCancelTransfer = aTransfers[0];
+    ComPtr<IProgress> ptrFailedCancelProgress;
+    hrc = ptrFailedCancelTransfer->COMGETTER(Progress)(ptrFailedCancelProgress.asOutParam());
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(ptrFailedCancelProgress.isNotNull());
+    if (ptrFailedCancelProgress.isNull())
+        return;
+    hrc = ptrFailedCancelProgress->Cancel();
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(tstClipboardTransferWaitCompleted(ptrFailedCancelProgress));
+    hrc = ptrFailedCancelTransfer->COMGETTER(State)(&enmTransferState);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(enmTransferState == ClipboardTransferState_Failed);
+    enmCancelError = ClipboardError_None;
+    hrc = ptrFailedCancelTransfer->COMGETTER(Error)(&enmCancelError);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(enmCancelError == ClipboardError_OperationFailed);
+    hrcCancelResult = S_OK;
+    hrc = ptrFailedCancelProgress->COMGETTER(ResultCode)(&hrcCancelResult);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(hrcCancelResult == VBOX_E_SHCL_ERROR);
+    aTransfers.setNull();
+    hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(aTransfers.size() == 0);
+
+    /* A backend disconnect has no guaranteed terminal service status.  Its
+     * local asynchronous reset must remove every live record and complete the
+     * corresponding Progress while leaving the publication worker available. */
+    SHCLSESSIONID const idResetSession = 30;
+    SHCLTRANSFERID const idResetTransfer = 40;
+    SHCLTRANSFERGEN const uResetGeneration = 30;
+    hrc = ptrManagerObj->i_handleTransferStatus(idResetSession, idResetTransfer, uResetGeneration,
+                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferStatus(idResetSession, idResetTransfer, uResetGeneration,
+                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferStatus(idResetSession, idResetTransfer, uResetGeneration,
+                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferProgress(idResetSession, idResetTransfer, uResetGeneration, 25, 100);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+
+    aTransfers.setNull();
+    hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(aTransfers.size() == 1);
+    if (aTransfers.size() != 1)
+        return;
+    ComPtr<IClipboardTransfer> ptrResetTransfer = aTransfers[0];
+    ComPtr<IProgress> ptrResetProgress;
+    hrc = ptrResetTransfer->COMGETTER(Progress)(ptrResetProgress.asOutParam());
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(ptrResetProgress.isNotNull());
+    if (ptrResetProgress.isNull())
+        return;
+
+    ptrManagerObj->i_resetFromService();
+    RTTESTI_CHECK(tstClipboardTransferWaitState(ptrResetTransfer, ClipboardTransferState_Removed));
+    RTTESTI_CHECK(tstClipboardTransferWaitCompleted(ptrResetProgress));
+    LONG hrcResetResult = S_OK;
+    hrc = ptrResetProgress->COMGETTER(ResultCode)(&hrcResetResult);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(hrcResetResult == E_ABORT);
+    RTTESTI_CHECK(ptrManagerObj->i_isPublicationWorkerRunning());
+    aTransfers.setNull();
+    hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(aTransfers.size() == 0);
+
+    /* An active event listener reenters the manager with terminal status.  The
+     * strand must defer that publication until InProgress delivery returns. */
+    ClipboardTransferReentryContext Context;
+    Context.pManager = ptrManagerObj;
+    Context.idSession = 3;
+    Context.idTransfer = 4;
+    Context.uGeneration = 3;
+
+    ComObjPtr<ClipboardTransferReentryListenerImpl> ptrListenerObj;
+    hrc = ptrListenerObj.createObject();
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    if (FAILED(hrc))
+        return;
+    hrc = ptrListenerObj->init(new ClipboardTransferReentryListener(), &Context);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    if (FAILED(hrc))
+        return;
+
+    ComPtr<IEventListener> ptrListener;
+    hrc = ptrListenerObj.queryInterfaceTo(ptrListener.asOutParam());
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    if (FAILED(hrc))
+        return;
+    com::SafeArray<VBoxEventType_T> aEventTypes;
+    aEventTypes.push_back(VBoxEventType_OnClipboardTransfer);
+    hrc = ptrEventSource->RegisterListener(ptrListener, ComSafeArrayAsInParam(aEventTypes), TRUE /* aActive */);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    if (FAILED(hrc))
+        return;
+
+    hrc = ptrManagerObj->i_handleTransferStatus(Context.idSession, Context.idTransfer, Context.uGeneration,
+                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferStatus(Context.idSession, Context.idTransfer, Context.uGeneration,
+                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferStatus(Context.idSession, Context.idTransfer, Context.uGeneration,
+                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferProgress(Context.idSession, Context.idTransfer, Context.uGeneration, 50, 100);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK_RC(RTSemEventWait(Context.hDone, RT_MS_5SEC), VINF_SUCCESS);
+
+    RTTESTI_CHECK(!Context.fOverflow);
+    RTTESTI_CHECK(Context.fReentered);
+    RTTESTI_CHECK_RC(Context.hrcReentry, S_OK);
+    RTTESTI_CHECK(Context.cDepth == 0);
+    RTTESTI_CHECK(Context.cMaxDepth == 1);
+    RTTESTI_CHECK(Context.cEvents == 3);
+    if (Context.cEvents == 3)
+    {
+        RTTESTI_CHECK(Context.aEventStates[0] == ClipboardTransferState_Added);
+        RTTESTI_CHECK(Context.aEventStates[1] == ClipboardTransferState_InProgress);
+        RTTESTI_CHECK(Context.aEventStates[2] == ClipboardTransferState_Completed);
+        for (uint32_t i = 0; i < Context.cEvents; ++i)
+            RTTESTI_CHECK(Context.aObjectStates[i] == Context.aEventStates[i]);
+    }
+    RTTESTI_CHECK(Context.uPercentAtInProgress == 50);
+    RTTESTI_CHECK(Context.fCompletedAtTerminal == TRUE);
+
+    hrc = ptrEventSource->UnregisterListener(ptrListener);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    aTransfers.setNull();
+    hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK(aTransfers.size() == 0);
+
+    /* Manager teardown may reenter an active event listener.  Publications
+     * accepted before teardown must drain first, with Removed/E_ABORT ordered
+     * last so a queued InProgress state cannot resurrect the transfer. */
+    ClipboardTransferReentryContext TeardownContext;
+    TeardownContext.pManager = ptrManagerObj;
+    TeardownContext.idSession = 4;
+    TeardownContext.idTransfer = 5;
+    TeardownContext.uGeneration = 4;
+    TeardownContext.fUninitOnAdded = true;
+
+    ComObjPtr<ClipboardTransferReentryListenerImpl> ptrTeardownListenerObj;
+    hrc = ptrTeardownListenerObj.createObject();
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    if (FAILED(hrc))
+        return;
+    hrc = ptrTeardownListenerObj->init(new ClipboardTransferReentryListener(), &TeardownContext);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    if (FAILED(hrc))
+        return;
+
+    ComPtr<IEventListener> ptrTeardownListener;
+    hrc = ptrTeardownListenerObj.queryInterfaceTo(ptrTeardownListener.asOutParam());
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    if (FAILED(hrc))
+        return;
+    hrc = ptrEventSource->RegisterListener(ptrTeardownListener, ComSafeArrayAsInParam(aEventTypes), TRUE /* aActive */);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    if (FAILED(hrc))
+        return;
+
+    hrc = ptrManagerObj->i_handleTransferStatus(TeardownContext.idSession, TeardownContext.idTransfer,
+                                                TeardownContext.uGeneration, NULL /* pTransfer */,
+                                                SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK_RC(RTSemEventWait(TeardownContext.hDone, RT_MS_5SEC), VINF_SUCCESS);
+    RTTESTI_CHECK(TeardownContext.fReentered);
+    RTTESTI_CHECK_RC(TeardownContext.hrcReentry, S_OK);
+    RTTESTI_CHECK(TeardownContext.cDepth == 0);
+    RTTESTI_CHECK(TeardownContext.cMaxDepth == 1);
+    RTTESTI_CHECK(TeardownContext.cEvents == 1);
+    RTTESTI_CHECK(TeardownContext.ptrHeldTransfer.isNotNull());
+    RTTESTI_CHECK(TeardownContext.ptrHeldProgress.isNotNull());
+    if (TeardownContext.ptrHeldTransfer.isNotNull() && TeardownContext.ptrHeldProgress.isNotNull())
+    {
+        RTTESTI_CHECK(tstClipboardTransferWaitCompleted(TeardownContext.ptrHeldProgress));
+        RTTESTI_CHECK(tstClipboardTransferWaitWorkerStopped(ptrManagerObj));
+        hrc = TeardownContext.ptrHeldTransfer->COMGETTER(State)(&enmTransferState);
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        RTTESTI_CHECK(enmTransferState == ClipboardTransferState_Removed);
+        fCompleted = FALSE;
+        hrc = TeardownContext.ptrHeldProgress->COMGETTER(Completed)(&fCompleted);
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        RTTESTI_CHECK(fCompleted == TRUE);
+        LONG hrcResult = S_OK;
+        hrc = TeardownContext.ptrHeldProgress->COMGETTER(ResultCode)(&hrcResult);
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        RTTESTI_CHECK(hrcResult == E_ABORT);
+    }
+    hrc = ptrEventSource->UnregisterListener(ptrTeardownListener);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+
+    /* A normal caller owns no waitable RTTHREAD handle.  Ordinary teardown,
+     * suppressed worker signals and teardown with an assigned service
+     * publication must all release the completion semaphore safely. */
+    for (uint32_t i = 0; i < 3; ++i)
+    {
+        ComObjPtr<ClipboardTransferManager> ptrCleanupManager;
+        hrc = ptrCleanupManager.createObject();
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        if (FAILED(hrc))
+            break;
+        hrc = ptrCleanupManager->init(ptrEventSource);
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        if (FAILED(hrc))
+            break;
+        if (i != 0)
+            ptrCleanupManager->i_setPublicationWorkerSignalsSuppressed(true);
+        if (i == 2)
+        {
+            hrc = ptrCleanupManager->i_handleTransferStatus(idSession + 1, idTransfer, uGeneration,
+                                                             NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                             SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
+            RTTESTI_CHECK_RC(hrc, S_OK);
+        }
+        ptrCleanupManager->uninit();
+        RTTESTI_CHECK(tstClipboardTransferWaitWorkerStopped(ptrCleanupManager));
+    }
 }
 #endif
 
@@ -430,6 +1300,11 @@ int main(int argc, char **argv)
     if (rcExit != RTEXITCODE_SUCCESS)
         return rcExit;
     RTTestBanner(hTest);
+
+#ifdef RT_OS_WINDOWS
+    /* The in-process Main objects require one ATL module in this linking namespace. */
+    new ATL::CComModule;
+#endif
 
     tstClipboardValues();
     tstClipboardSession();

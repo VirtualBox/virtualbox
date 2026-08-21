@@ -1,4 +1,4 @@
-/* $Id: GuestShClConn.h 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClConn.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Service connection management.
  */
@@ -223,6 +223,26 @@ public:
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     /**
+     * Acquires the specified service transport for a transfer operation.
+     *
+     * Prevents the associated connection from completing teardown while the
+     * transport is acquired.  The call fails if @a pTransport is not the
+     * current service endpoint or connection teardown has already begun.
+     *
+     * @returns VBox status code.
+     * @param   pTransport          Service transport to acquire.
+     *
+     * On success, the caller must invoke transportRelease().
+     */
+    int transportAcquire(PCSHCLTRANSPORT pTransport);
+
+    /**
+     * Releases a service transport acquired by transportAcquire(), allowing
+     * deferred connection teardown to proceed.
+     */
+    void transportRelease(void);
+
+    /**
      * Returns the native backend callbacks for a new transfer.
      *
      * @returns VBox status code.
@@ -281,6 +301,16 @@ public:
      * @param   pTransfer           Transfer to initialize.
      */
     int transferInit(PSHCLTRANSFER pTransfer);
+
+    /**
+     * Reports a host-side terminal transfer status through the service.
+     *
+     * @returns VBox status code.
+     * @param   pTransfer           Transfer whose terminal state is being reported.
+     * @param   enmStatus           Terminal transfer status.
+     * @param   rcStatus            Status-specific result code.
+     */
+    int transferReportStatus(PSHCLTRANSFER pTransfer, SHCLTRANSFERSTATUS enmStatus, int rcStatus);
 
     /**
      * Destroys a service-owned transfer selected by ID.

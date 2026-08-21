@@ -1,4 +1,4 @@
-/* $Id: http-server.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: http-server.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Header file for HTTP server implementation.
  */
@@ -60,7 +60,38 @@ typedef RTHTTPSERVER                            *PRTHTTPSERVER;
 #define NIL_RTHTTPSERVER                         ((RTHTTPSERVER)0)
 
 /**
+ * Final result of processing an HTTP server request.
+ *
+ * The result is finalized after the request method handler has finished and
+ * can be queried by RTHTTPSERVERCALLBACKS::pfnRequestEnd using
+ * RTHttpServerRequestQueryResult().
+ */
+typedef struct RTHTTPSERVERREQRESULT
+{
+    /** Result of processing the request.  The high-level GET handler preserves
+     *  connection errors here even when legacy server behavior tolerates them. */
+    int             rcRequest;
+    /** RTHTTPSERVERREQRESULT_F_XXX. */
+    uint32_t        fFlags;
+    /** Number of response-body bytes successfully written to the client by
+     *  the high-level GET handler; zero for handlers which do not report it. */
+    uint64_t        cbBodySent;
+} RTHTTPSERVERREQRESULT;
+/** Pointer to a final HTTP server request result. */
+typedef RTHTTPSERVERREQRESULT *PRTHTTPSERVERREQRESULT;
+/** Pointer to a const final HTTP server request result. */
+typedef RTHTTPSERVERREQRESULT const *PCRTHTTPSERVERREQRESULT;
+
+/** The high-level GET handler successfully wrote the complete intended
+ *  response body and closed the resource. */
+#define RTHTTPSERVERREQRESULT_F_BODY_COMPLETE    RT_BIT_32(0)
+/** Valid RTHTTPSERVERREQRESULT::fFlags bits. */
+#define RTHTTPSERVERREQRESULT_F_VALID_MASK       UINT32_C(0x00000001)
+
+/**
  * Structure for maintaining a HTTP client request.
+ *
+ * @note The layout is part of the callback ABI and must not be changed.
  */
 typedef struct RTHTTPSERVERREQ
 {
@@ -144,7 +175,8 @@ typedef struct RTHTTPSERVERCALLBACKS
      */
     DECLCALLBACKMEMBER(int, pfnRequestBegin,(PRTHTTPCALLBACKDATA pData, PRTHTTPSERVERREQ pReq));
     /**
-     * Called after processing a request. Guaranteed.
+     * Called after processing a request. Guaranteed.  The final method result
+     * can be queried using RTHttpServerRequestQueryResult().
      *
      * @returns VBox status code.
      * @param   pData           Pointer to HTTP callback data.
@@ -231,6 +263,20 @@ typedef struct RTHTTPSERVERCALLBACKS
 } RTHTTPSERVERCALLBACKS;
 /** Pointer to a HTTP server callback data table. */
 typedef RTHTTPSERVERCALLBACKS *PRTHTTPSERVERCALLBACKS;
+
+/**
+ * Queries the final result of processing a request.
+ *
+ * This may only be called for the request passed to
+ * RTHTTPSERVERCALLBACKS::pfnRequestEnd and before that callback returns.
+ * Using a query keeps both RTHTTPSERVERREQ and the callback table ABI stable.
+ *
+ * @returns IPRT status code.
+ * @retval  VERR_WRONG_ORDER if the request result is not finalized.
+ * @param   pReq            The request passed to pfnRequestEnd.
+ * @param   pResult         Where to return the final request result.
+ */
+RTR3DECL(int) RTHttpServerRequestQueryResult(PRTHTTPSERVERREQ pReq, PRTHTTPSERVERREQRESULT pResult);
 
 /** Maximum length (in bytes) a single client request can have. */
 #define RTHTTPSERVER_MAX_REQ_LEN        _8K

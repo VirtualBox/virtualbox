@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transport.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transport.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Opaque Main transport implementation.
  */
@@ -596,6 +596,22 @@ static DECLCALLBACK(int) shClSvcOpTransferInit(SHCLCLIENTHANDLE hClient, PSHCLTR
 
 
 /**
+ * Reports a host-side terminal transfer status.
+ *
+ * @returns VBox status code.
+ * @param   hClient             Opaque service client owning the transfer.
+ * @param   pTransfer           Transfer whose terminal state is being reported.
+ * @param   enmStatus           Terminal transfer status.
+ * @param   rcStatus            Status-specific result code.
+ */
+static DECLCALLBACK(int) shClSvcOpTransferReportStatus(SHCLCLIENTHANDLE hClient, PSHCLTRANSFER pTransfer,
+                                                       SHCLTRANSFERSTATUS enmStatus, int rcStatus)
+{
+    return ShClSvcTransferReportStatus((PSHCLCLIENT)hClient, pTransfer, enmStatus, rcStatus);
+}
+
+
+/**
  * Destroys a service-owned transfer selected by ID.
  *
  * @param   hClient             Opaque service client owning the transfer.
@@ -615,6 +631,30 @@ static DECLCALLBACK(void) shClSvcOpTransferDestroyById(SHCLCLIENTHANDLE hClient,
 static DECLCALLBACK(void) shClSvcOpTransferDestroyAll(SHCLCLIENTHANDLE hClient)
 {
     shClSvcTransferDestroyAll((PSHCLCLIENT)hClient);
+}
+
+
+/**
+ * Reads guest object payload and reports the successful byte count to Main.
+ *
+ * @copydoc SHCLTXPROVIDERIFACE::pfnObjRead
+ */
+static DECLCALLBACK(int) shClSvcOpTransferProviderGuestObjRead(PSHCLTXPROVIDERCTX pCtx, SHCLOBJHANDLE hObj,
+                                                               void *pvData, uint32_t cbData, uint32_t fFlags,
+                                                               uint32_t *pcbRead)
+{
+    uint32_t cbRead = 0;
+    int const vrc = ShClSvcTransferIfaceGHObjRead(pCtx, hObj, pvData, cbData, fFlags, &cbRead);
+    if (RT_SUCCESS(vrc))
+    {
+        if (pcbRead)
+            *pcbRead = cbRead;
+
+        PSHCLCLIENT const pClient = (PSHCLCLIENT)pCtx->pvUser;
+        AssertPtr(pClient);
+        ShClSvcTransferReportProgress(pClient, pCtx->pTransfer, hObj, cbRead);
+    }
+    return vrc;
 }
 
 
@@ -640,7 +680,7 @@ static DECLCALLBACK(int) shClSvcOpTransferProviderInitGuest(SHCLCLIENTHANDLE hCl
     pProvider->Interface.pfnListEntryRead = ShClSvcTransferIfaceGHListEntryRead;
     pProvider->Interface.pfnObjOpen       = ShClSvcTransferIfaceGHObjOpen;
     pProvider->Interface.pfnObjClose      = ShClSvcTransferIfaceGHObjClose;
-    pProvider->Interface.pfnObjRead       = ShClSvcTransferIfaceGHObjRead;
+    pProvider->Interface.pfnObjRead       = shClSvcOpTransferProviderGuestObjRead;
     pProvider->enmSource = SHCLSOURCE_REMOTE;
     pProvider->pvUser    = pClient;
     pProvider->cbUser    = sizeof(*pClient);
@@ -665,6 +705,7 @@ static SHCLSVCOPS const s_ShClSvcOps =
     shClSvcOpTransferGetByKeyRetained,
     shClSvcOpTransferCreate,
     shClSvcOpTransferInit,
+    shClSvcOpTransferReportStatus,
     shClSvcOpTransferDestroyById,
     shClSvcOpTransferDestroyAll,
     shClSvcOpTransferProviderInitGuest,

@@ -1,4 +1,4 @@
-/* $Id: ClipboardImpl.h 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardImpl.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Console clipboard API.
  */
@@ -103,6 +103,8 @@ public:
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     HRESULT i_transferCancel(ULONG aTransferId);
     HRESULT i_transferCancel(SHCLSESSIONID aServiceSessionId, SHCLTRANSFERID aTransferId, SHCLTRANSFERGEN aGeneration);
+    /** Queues local transfer teardown requested by the host service. */
+    void i_resetTransfersFromService();
     /**
      * Handles a Shared Clipboard transfer lifecycle status delivered by the host service.
      *
@@ -122,6 +124,21 @@ public:
                                    SHCLSOURCE enmShClSource,
                                    SHCLTRANSFERSTATUS enmStatus,
                                    int vrcTransfer);
+    /**
+     * Updates a Shared Clipboard transfer's byte progress.
+     *
+     * @returns COM status code.
+     * @param   aServiceSessionId   Shared Clipboard service session identifier.
+     * @param   aTransferId         Shared Clipboard transfer identifier.
+     * @param   aGeneration         Host-private transfer generation.
+     * @param   cbProcessed         Number of bytes processed so far.
+     * @param   cbTotal             Total number of bytes to process.
+     */
+    HRESULT i_handleTransferProgress(SHCLSESSIONID aServiceSessionId,
+                                     SHCLTRANSFERID aTransferId,
+                                     SHCLTRANSFERGEN aGeneration,
+                                     uint64_t cbProcessed,
+                                     uint64_t cbTotal);
 #else
     HRESULT i_transferCancel(ULONG aTransferId);
 #endif

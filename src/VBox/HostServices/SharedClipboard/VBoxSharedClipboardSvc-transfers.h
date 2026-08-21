@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.h 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal header for transfer (list) handling.
  */
@@ -41,10 +41,19 @@ int ShClSvcTransferCreate(PSHCLCLIENT pClient, SHCLTRANSFERDIR enmDir, SHCLSOURC
 void ShClSvcTransferDestroy(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer);
 void ShClSvcTransferDestroyById(PSHCLCLIENT pClient, SHCLTRANSFERID idTransfer);
 void ShClSvcTransferDestroyByIdEx(PSHCLCLIENT pClient, SHCLTRANSFERID idTransfer, bool fNotifyGuest);
+PSHCLTRANSFER shClSvcTransferDetach(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer);
+void shClSvcTransferDestroyDetached(PSHCLTRANSFER pTransfer);
 void shClSvcTransferDetachAll(PSHCLCLIENT pClient, PRTLISTANCHOR pList);
 void shClSvcTransferDestroyDetachedAll(PRTLISTANCHOR pList);
+void shClSvcTransferResetAllLocked(PSHCLCLIENT pClient, PRTLISTANCHOR pList);
 int ShClSvcTransferInit(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer);
 int ShClSvcTransferStart(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer);
+int ShClSvcTransferReportStatus(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,
+                                SHCLTRANSFERSTATUS enmStatus, int rcStatus);
+int ShClSvcTransferReportDetachedStatus(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,
+                                        SHCLTRANSFERSTATUS enmStatus, int rcStatus);
+void ShClSvcTransferReportProgress(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,
+                                   SHCLOBJHANDLE hObj, uint32_t cbDelta);
 void shClSvcTransferDestroyAll(PSHCLCLIENT pClient);
 
 #endif /* !VBOX_INCLUDED_SRC_SharedClipboard_VBoxSharedClipboardSvc_transfers_h */

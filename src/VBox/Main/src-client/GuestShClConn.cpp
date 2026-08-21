@@ -1,4 +1,4 @@
-/* $Id: GuestShClConn.cpp 115050 2026-08-17 15:20:35Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClConn.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Service connection management implementation.
  */
@@ -473,6 +473,40 @@ int GuestShClConn::writeDataToBackend(SHCLFORMAT uFormat, void *pvData, uint32_t
 
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+int GuestShClConn::transportAcquire(PCSHCLTRANSPORT pTransport)
+{
+    AssertReturn(ShClTransportIsValid(pTransport), VERR_INVALID_HANDLE);
+
+    int vrc = RTCritSectEnter(&m_CritSect);
+    if (RT_FAILURE(vrc))
+        return vrc;
+
+    if (   m_enmState == State_Connected
+        && ShClTransportIsEqual(&m_Transport, pTransport))
+    {
+        if (m_cCalls++ == 0)
+        {
+            int const vrcReset = RTSemEventMultiReset(m_hCallsDone);
+            AssertFatalMsgRC(vrcReset, ("Resetting the Shared Clipboard connection call-drain event failed with %Rrc\n",
+                                        vrcReset));
+        }
+        vrc = VINF_SUCCESS;
+    }
+    else
+        vrc = VERR_INVALID_HANDLE;
+
+    int const vrcLeave = RTCritSectLeave(&m_CritSect);
+    AssertFatalMsgRC(vrcLeave, ("Releasing the Shared Clipboard connection transport lock failed with %Rrc\n", vrcLeave));
+    return vrc;
+}
+
+
+void GuestShClConn::transportRelease(void)
+{
+    i_callEnd();
+}
+
+
 int GuestShClConn::transferGetCallbacks(PSHCLTRANSFERCALLBACKS pCallbacks)
 {
     AssertPtrReturn(pCallbacks, VERR_INVALID_POINTER);
@@ -536,6 +570,15 @@ int GuestShClConn::transferInit(PSHCLTRANSFER pTransfer)
 {
     SHCL_CONN_SVC_CALL_BEGIN(Transport);
     vrc = Transport.pOps->pfnTransferInit(Transport.hClient, pTransfer);
+    i_callEnd();
+    return vrc;
+}
+
+
+int GuestShClConn::transferReportStatus(PSHCLTRANSFER pTransfer, SHCLTRANSFERSTATUS enmStatus, int rcStatus)
+{
+    SHCL_CONN_SVC_CALL_BEGIN(Transport);
+    vrc = Transport.pOps->pfnTransferReportStatus(Transport.hClient, pTransfer, enmStatus, rcStatus);
     i_callEnd();
     return vrc;
 }

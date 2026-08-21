@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Host service entry points.
  */
@@ -321,8 +321,14 @@ static int shClSvcInit(void)
 
     if (RT_SUCCESS(rc))
     {
-        shClSvcHostModeSet(VBOX_SHCL_MODE_OFF);
-        g_ShClSvc.idNextSession = 1;
+        rc = shClSvcExtInit();
+        if (RT_SUCCESS(rc))
+        {
+            shClSvcHostModeSet(VBOX_SHCL_MODE_OFF);
+            g_ShClSvc.idNextSession = 1;
+        }
+        else
+            RTCritSectDelete(&g_ShClSvc.CritSect);
     }
 
     return rc;
@@ -333,8 +339,14 @@ static DECLCALLBACK(int) shClSvcUnload(void *)
     LogFlowFuncEnter();
 
     int const rc = shClSvcExtUnregisterAndDestroy();
-    AssertLogRelRC(rc);
+    AssertFatalMsgRC(rc, ("Shared Clipboard extension teardown failed with %Rrc\n", rc));
+    if (RT_FAILURE(rc))
+        return rc;
 
+    int const rc2 = shClSvcExtTerm();
+    AssertFatalMsgRC(rc2, ("Shared Clipboard extension state teardown failed with %Rrc\n", rc2));
+    if (RT_FAILURE(rc2))
+        return rc2;
     RTCritSectDelete(&g_ShClSvc.CritSect);
 
     return rc;
@@ -387,12 +399,16 @@ static DECLCALLBACK(int) shClSvcConnect(void *, uint32_t u32ClientID, void *pvCl
 #endif
         g_ShClSvc.pActiveClient = pClient;
 
+        shClSvcUnlock();
+
+        bool fBackendConnected = false;
         rc = shClSvcExtBackendInit();
         if (RT_SUCCESS(rc))
         {
             rc = shClSvcExtBackendConnect(pClient);
             if (RT_SUCCESS(rc))
             {
+                fBackendConnected = true;
                 rc = shClSvcExtBackendSync(pClient);
                 if (RT_SUCCESS(rc))
                 {
@@ -400,18 +416,23 @@ static DECLCALLBACK(int) shClSvcConnect(void *, uint32_t u32ClientID, void *pvCl
                        older Guest Additions didn't use RT_SUCCESS to but == VINF_SUCCESS to check for
                        success.  So just return VINF_SUCCESS here to not break older Guest Additions. */
                     LogFunc(("Successfully connected client %#x\n", u32ClientID));
-                    shClSvcUnlock();
                     return VINF_SUCCESS;
                 }
                 LogFunc(("Service extension BACKEND_SYNC failed: %Rrc\n", rc));
-                shClSvcExtBackendDisconnect(pClient);
             }
-            LogFunc(("Service extension BACKEND_CONNECT failed: %Rrc\n", rc));
+            else
+                LogFunc(("Service extension BACKEND_CONNECT failed: %Rrc\n", rc));
         }
-        LogFunc(("Service extension BACKEND_INIT failed: %Rrc\n", rc));
+        else
+            LogFunc(("Service extension BACKEND_INIT failed: %Rrc\n", rc));
+
+        shClSvcLock();
         Assert(g_ShClSvc.pActiveClient == pClient);
         g_ShClSvc.pActiveClient = NULL;
         shClSvcUnlock();
+
+        if (fBackendConnected)
+            shClSvcExtBackendDisconnect(pClient);
 
         shClSvcClientDestroy(pClient);
     }

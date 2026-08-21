@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendWin.cpp 115088 2026-08-19 13:25:33Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendWin.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Win32 host.
  */
@@ -284,7 +284,7 @@ static DECLCALLBACK(void) shClSvcWinTransferOnCreatedCallback(PSHCLTRANSFERCALLB
  * For G->H: Defers binding the transfer because the transfer lock is held here.
  * For H->G: Called on transfer initialization to populate the transfer's root list.
  *
- * @thread  Service main thread.
+ * @thread  Shared Clipboard service thread.
  */
 static DECLCALLBACK(int) shClSvcWinTransferOnInitializeCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx)
 {
@@ -368,7 +368,7 @@ static DECLCALLBACK(int) shClSvcWinTransferOnInitializedCallback(PSHCLTRANSFERCA
  * Disables callbacks on the IDataObject and drops its long-lived transfer
  * reference before consuming teardown waits for temporary transfer users.
  *
- * @thread  Service main thread.
+ * @thread  Shared Clipboard service thread.
  */
 static DECLCALLBACK(void) shClSvcWinTransferOnUnregisteredCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx,
                                                                    PSHCLTRANSFERCTX pTransferCtx)
@@ -435,6 +435,47 @@ static DECLCALLBACK(int) shClSvcWinDataObjectTransferBeginCallback(ShClWinDataOb
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;
+}
+
+
+/**
+ * @copydoc ShClWinDataObject::CALLBACKS::pfnTransferEnd
+ *
+ * Publishes the terminal state after the data object has updated the native
+ * transfer.  Destruction remains with the normal service lifecycle owner.
+ *
+ * @thread  Windows data-object transfer thread or Shell COM callback thread.
+ */
+static DECLCALLBACK(int) shClSvcWinDataObjectTransferEndCallback(ShClWinDataObject::PCALLBACKCTX pCbCtx,
+                                                                 PSHCLTRANSFER pTransfer, int rcTransfer)
+{
+    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pCbCtx->pvUser;
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+    AssertPtrReturn(pCtx->pConn, VERR_INVALID_POINTER);
+    AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
+
+    SHCLTRANSFERSTATUS const enmStatus = ShClTransferGetStatus(pTransfer);
+    int vrcStatus;
+    switch (enmStatus)
+    {
+        case SHCLTRANSFERSTATUS_COMPLETED:
+            vrcStatus = VINF_SUCCESS;
+            break;
+
+        case SHCLTRANSFERSTATUS_CANCELED:
+            vrcStatus = VERR_CANCELLED;
+            break;
+
+        case SHCLTRANSFERSTATUS_ERROR:
+        case SHCLTRANSFERSTATUS_KILLED:
+            vrcStatus = RT_FAILURE(rcTransfer) ? rcTransfer : VERR_GENERAL_FAILURE;
+            break;
+
+        default:
+            return VINF_SUCCESS;
+    }
+
+    return pCtx->pConn->transferReportStatus(pTransfer, enmStatus, vrcStatus);
 }
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
@@ -640,6 +681,7 @@ static LRESULT CALLBACK vboxClipboardSvcWinWndProcMain(PSHCLCONTEXT pCtx,
                 ShClWinDataObject::CALLBACKS Callbacks;
                 RT_ZERO(Callbacks);
                 Callbacks.pfnTransferBegin = shClSvcWinDataObjectTransferBeginCallback;
+                Callbacks.pfnTransferEnd   = shClSvcWinDataObjectTransferEndCallback;
 
                 vrc = ShClWinTransferCreateAndSetDataObject(pWinCtx, pCtx, &Callbacks);
             }

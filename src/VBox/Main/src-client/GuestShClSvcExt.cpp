@@ -1,4 +1,4 @@
-/* $Id: GuestShClSvcExt.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClSvcExt.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard service extension handling for Main.
  */
@@ -150,6 +150,8 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
         case VBOX_CLIPBOARD_EXT_FN_TRANSFER_CALLBACKS:
         case VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER:
+        case VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_PROGRESS:
+        case VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_RESET:
 #endif
             AssertReturn(RT_VALID_PTR(pvParms), VERR_INVALID_POINTER);
             AssertReturn(cbParms == sizeof(SHCLEXTPARMS), VERR_INVALID_PARAMETER);
@@ -160,7 +162,17 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
     }
 
     PSHCLEXTPARMS const pParms = (PSHCLEXTPARMS)pvParms;
-    SHCLTRANSPORT const Transport = ShClSvcExtGetTransport(pParms);
+    SHCLTRANSPORT Transport;
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    if (u32Function == VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER)
+        Transport = pParms->u.FileTransferData.Transport;
+    else if (u32Function == VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_PROGRESS)
+        Transport = pParms->u.FileTransferProgress.Transport;
+    else if (u32Function == VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_RESET)
+        Transport = pParms->u.FileTransferReset.Transport;
+    else
+#endif
+        Transport = ShClSvcExtGetTransport(pParms);
 #define SHCL_VALIDATE_ACTIVE(a_Transport) \
     do { AssertReturn(m_pConn->matches(&(a_Transport)), VERR_INVALID_HANDLE); } while (0)
     int vrc;
@@ -225,32 +237,60 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
         case VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER:
         {
             SHCL_VALIDATE_ACTIVE(Transport);
-            PSHCLTRANSFER const pTransfer = pParms->u.FileTransferData.pTransfer;
-            AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
-            AssertPtrReturn(pParms->u.FileTransferData.pReply, VERR_INVALID_POINTER);
-            AssertReturn(ShClSourceIsValid(pParms->u.FileTransferData.enmShClSource), VERR_INVALID_PARAMETER);
-            PSHCLTRANSFER const pRegisteredTransfer
-                = m_pConn->transferGetByKeyRetained(ShClTransferGetSessionId(pTransfer),
-                                                     ShClTransferGetID(pTransfer),
-                                                     ShClTransferGetGeneration(pTransfer));
-            if (pRegisteredTransfer != pTransfer)
-            {
-                if (pRegisteredTransfer)
-                    ShClTransferRelease(pRegisteredTransfer);
-                return VERR_INVALID_CONTEXT;
-            }
-            ShClTransferRelease(pRegisteredTransfer);
-
-            PSHCLREPLY const pReply = pParms->u.FileTransferData.pReply;
-            AssertReturn(pReply->uType == VBOX_SHCL_TX_REPLYMSGTYPE_TRANSFER_STATUS, VERR_INVALID_PARAMETER);
-            AssertReturn(pReply->pvPayload == NULL, VERR_INVALID_PARAMETER);
-            AssertReturn(pReply->cbPayload == 0, VERR_INVALID_PARAMETER);
-            SHCLTRANSFERSTATUS const enmStatus = pReply->u.TransferStatus.uStatus;
-            AssertReturn(   enmStatus != SHCLTRANSFERSTATUS_NONE
-                         && ShClTransferStatusResultIsValid(enmStatus, (int)pReply->rc),
+            SHCLSESSIONID const idSession = pParms->u.FileTransferData.idSession;
+            SHCLTRANSFERID const idTransfer = pParms->u.FileTransferData.idTransfer;
+            SHCLTRANSFERGEN const uGeneration = pParms->u.FileTransferData.uGeneration;
+            AssertReturn(ShClTransferKeyIsValid(idSession, idTransfer, uGeneration), VERR_INVALID_PARAMETER);
+            AssertReturn(ShClTransferDirIsValid(pParms->u.FileTransferData.enmDir), VERR_INVALID_PARAMETER);
+            AssertReturn(ShClSourceIsValid(pParms->u.FileTransferData.enmTransferSource), VERR_INVALID_PARAMETER);
+            AssertReturn(ShClSourceIsValid(pParms->u.FileTransferData.enmReplySource), VERR_INVALID_PARAMETER);
+            AssertReturn(   (   pParms->u.FileTransferData.enmTransferSource == SHCLSOURCE_REMOTE
+                              && pParms->u.FileTransferData.enmDir == SHCLTRANSFERDIR_GUEST_TO_HOST)
+                         || (   pParms->u.FileTransferData.enmTransferSource == SHCLSOURCE_LOCAL
+                              && pParms->u.FileTransferData.enmDir == SHCLTRANSFERDIR_HOST_TO_GUEST),
                          VERR_INVALID_PARAMETER);
+
+            SHCLTRANSFERSTATUS const enmStatus = pParms->u.FileTransferData.enmStatus;
+            AssertReturn(   enmStatus != SHCLTRANSFERSTATUS_NONE
+                         && ShClTransferStatusResultIsValid(enmStatus, pParms->u.FileTransferData.rcStatus),
+                         VERR_INVALID_PARAMETER);
+
+            PSHCLTRANSFER const pRegisteredTransfer
+                = m_pConn->transferGetByKeyRetained(idSession, idTransfer, uGeneration);
+            if (pRegisteredTransfer)
+            {
+                bool const fMatches =    ShClTransferGetDir(pRegisteredTransfer) == pParms->u.FileTransferData.enmDir
+                                      && ShClTransferGetSource(pRegisteredTransfer)
+                                      == pParms->u.FileTransferData.enmTransferSource;
+                ShClTransferRelease(pRegisteredTransfer);
+                AssertReturn(fMatches, VERR_INVALID_CONTEXT);
+            }
+            else
+                AssertReturn(ShClTransferStatusIsTerminal(enmStatus), VERR_INVALID_CONTEXT);
             return VINF_SUCCESS;
         }
+
+        case VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_PROGRESS:
+        {
+            SHCL_VALIDATE_ACTIVE(Transport);
+            SHCLSESSIONID const idSession = pParms->u.FileTransferProgress.idSession;
+            SHCLTRANSFERID const idTransfer = pParms->u.FileTransferProgress.idTransfer;
+            SHCLTRANSFERGEN const uGeneration = pParms->u.FileTransferProgress.uGeneration;
+            AssertReturn(ShClTransferKeyIsValid(idSession, idTransfer, uGeneration), VERR_INVALID_PARAMETER);
+            AssertReturn(pParms->u.FileTransferProgress.cbTotal > 0, VERR_INVALID_PARAMETER);
+            AssertReturn(pParms->u.FileTransferProgress.cbProcessed <= pParms->u.FileTransferProgress.cbTotal,
+                         VERR_INVALID_PARAMETER);
+            PSHCLTRANSFER const pRegisteredTransfer
+                = m_pConn->transferGetByKeyRetained(idSession, idTransfer, uGeneration);
+            if (!pRegisteredTransfer)
+                return VERR_INVALID_CONTEXT;
+            ShClTransferRelease(pRegisteredTransfer);
+            return VINF_SUCCESS;
+        }
+
+        case VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_RESET:
+            SHCL_VALIDATE_ACTIVE(Transport);
+            return VINF_SUCCESS;
 #endif
 
         default:
@@ -443,7 +483,13 @@ int GuestShCl::i_svcExtBackendDestroyCallback(PSHCLEXTPARMS pParms, void *pvParm
 {
     RT_NOREF(pParms, pvParms, cbParms);
 
-    return m_pConn->destroyBackend();
+    int const vrc = m_pConn->destroyBackend();
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    Clipboard *pClipboard = m_pConsole->i_getClipboard();
+    if (pClipboard)
+        pClipboard->i_resetTransfersFromService();
+#endif
+    return vrc;
 }
 
 
@@ -481,7 +527,13 @@ int GuestShCl::i_svcExtBackendDisconnectCallback(PSHCLEXTPARMS pParms, void *pvP
     RT_NOREF(pvParms, cbParms);
     SHCLTRANSPORT const Transport = ShClSvcExtGetTransport(pParms);
 
-    return m_pConn->disconnect(&Transport);
+    int const vrc = m_pConn->disconnect(&Transport);
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    Clipboard *pClipboard = m_pConsole->i_getClipboard();
+    if (pClipboard)
+        pClipboard->i_resetTransfersFromService();
+#endif
+    return vrc;
 }
 
 
@@ -544,44 +596,113 @@ int GuestShCl::i_svcExtTransferGetCallbacksCallback(PSHCLEXTPARMS pParms)
  */
 int GuestShCl::i_svcExtFileTransferCallback(PSHCLEXTPARMS pParms)
 {
-    SHCLTRANSPORT const Transport = ShClSvcExtGetTransport(pParms);
-    PSHCLTRANSFER pTransfer = pParms->u.FileTransferData.pTransfer;
-    SHCLSOURCE const enmShClSource = pParms->u.FileTransferData.enmShClSource;
-    PSHCLREPLY pReply = pParms->u.FileTransferData.pReply;
-    SHCLSESSIONID const idSession = ShClTransferGetSessionId(pTransfer);
-    SHCLTRANSFERID const idTransfer = ShClTransferGetID(pTransfer);
-    SHCLTRANSFERGEN const uGeneration = ShClTransferGetGeneration(pTransfer);
-    SHCLTRANSFERSTATUS const enmStatus = pReply->u.TransferStatus.uStatus;
-    int const vrcTransfer = (int)pReply->rc;
+    SHCLTRANSPORT const Transport = pParms->u.FileTransferData.Transport;
+    SHCLSESSIONID const idSession = pParms->u.FileTransferData.idSession;
+    SHCLTRANSFERID const idTransfer = pParms->u.FileTransferData.idTransfer;
+    SHCLTRANSFERGEN const uGeneration = pParms->u.FileTransferData.uGeneration;
+    SHCLSOURCE const enmTransferSource = pParms->u.FileTransferData.enmTransferSource;
+    SHCLSOURCE const enmReplySource = pParms->u.FileTransferData.enmReplySource;
+    SHCLTRANSFERSTATUS const enmStatus = pParms->u.FileTransferData.enmStatus;
+    int const vrcTransfer = pParms->u.FileTransferData.rcStatus;
 
-    int vrc = m_pConn->matches(&Transport)
-            ? m_pConn->transferHandleStatusReply(pTransfer, enmShClSource,
-                                                  pReply->u.TransferStatus.uStatus, (int)pReply->rc)
-            : VERR_INVALID_PARAMETER;
+    int vrc = m_pConn->transportAcquire(&Transport);
+    if (RT_FAILURE(vrc))
+        return vrc;
 
     if (RT_SUCCESS(vrc))
+    {
+        PSHCLTRANSFER const pTransfer = m_pConn->transferGetByKeyRetained(idSession, idTransfer, uGeneration);
+        if (pTransfer)
+        {
+            if (   ShClTransferGetDir(pTransfer) == pParms->u.FileTransferData.enmDir
+                && ShClTransferGetSource(pTransfer) == enmTransferSource)
+                vrc = m_pConn->transferHandleStatusReply(pTransfer, enmReplySource, enmStatus, vrcTransfer);
+            else
+                vrc = VERR_INVALID_CONTEXT;
+            ShClTransferRelease(pTransfer);
+        }
+        else if (!ShClTransferStatusIsTerminal(enmStatus))
+            vrc = VERR_INVALID_CONTEXT;
+    }
+
+    /* A terminal guest status must always reach Main.  The native backend may
+     * already have retired the transfer, but Main still owns the public record. */
+    if (   RT_SUCCESS(vrc)
+        || ShClTransferStatusIsTerminal(enmStatus))
     {
         Clipboard *pClipboard = m_pConsole->i_getClipboard();
         if (pClipboard)
         {
-            /*
-             * enmShClSource identifies the endpoint which issued this reply
-             * and is therefore the right value for the platform backend.
-             * Main's persistent transfer object records the data source
-             * instead, which is an invariant of the backing transfer even
-             * when the opposite endpoint reports a lifecycle transition.
-             */
-            SHCLSOURCE const enmTransferSource = ShClTransferGetSource(pTransfer);
-            HRESULT const hrc = pClipboard->i_handleTransferStatus(idSession, idTransfer, uGeneration, pTransfer,
+            HRESULT const hrc = pClipboard->i_handleTransferStatus(idSession, idTransfer, uGeneration, NULL,
                                                                    enmTransferSource, enmStatus, vrcTransfer);
             if (FAILED(hrc))
             {
                 LogFunc(("Main transfer status handling failed: hrc=%Rhrc\n", hrc));
-                vrc = Global::vboxStatusCodeFromCOM(hrc);
+                if (RT_SUCCESS(vrc))
+                    vrc = Global::vboxStatusCodeFromCOM(hrc);
             }
         }
     }
 
+    m_pConn->transportRelease();
     return vrc;
+}
+
+
+/**
+ * Handles VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_PROGRESS from the Shared Clipboard host service.
+ *
+ * Forwards exact aggregate byte progress to Main.  Progress reporting remains
+ * best-effort and cannot fail the file-transfer data path.
+ *
+ * @returns VINF_SUCCESS.
+ * @param   pParms              Decoded service extension parameters.
+ */
+int GuestShCl::i_svcExtTransferProgressCallback(PSHCLEXTPARMS pParms)
+{
+    SHCLTRANSPORT const Transport = pParms->u.FileTransferProgress.Transport;
+    int const vrc = m_pConn->transportAcquire(&Transport);
+    if (RT_FAILURE(vrc))
+        return vrc;
+
+    Clipboard *pClipboard = m_pConsole->i_getClipboard();
+    if (pClipboard)
+    {
+        HRESULT const hrc = pClipboard->i_handleTransferProgress(pParms->u.FileTransferProgress.idSession,
+                                                                  pParms->u.FileTransferProgress.idTransfer,
+                                                                  pParms->u.FileTransferProgress.uGeneration,
+                                                                  pParms->u.FileTransferProgress.cbProcessed,
+                                                                  pParms->u.FileTransferProgress.cbTotal);
+        if (FAILED(hrc))
+            LogFunc(("Main transfer progress handling failed: hrc=%Rhrc, vrc=%Rrc\n",
+                     hrc, Global::vboxStatusCodeFromCOM(hrc)));
+    }
+
+    m_pConn->transportRelease();
+    return VINF_SUCCESS;
+}
+
+
+/**
+ * Handles VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_RESET from the Shared Clipboard host service.
+ *
+ * Resets Main's local transfer records without issuing a host-service call.
+ *
+ * @returns VBox status code.
+ * @param   pParms              Decoded service extension parameters.
+ */
+int GuestShCl::i_svcExtTransferResetCallback(PSHCLEXTPARMS pParms)
+{
+    SHCLTRANSPORT const Transport = pParms->u.FileTransferReset.Transport;
+    int const vrc = m_pConn->transportAcquire(&Transport);
+    if (RT_FAILURE(vrc))
+        return vrc;
+
+    Clipboard *pClipboard = m_pConsole->i_getClipboard();
+    if (pClipboard)
+        pClipboard->i_resetTransfersFromService();
+
+    m_pConn->transportRelease();
+    return VINF_SUCCESS;
 }
 #endif

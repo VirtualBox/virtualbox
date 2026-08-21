@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-ext.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-ext.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Service extension bridge handling.
  */
@@ -41,12 +41,17 @@
 #include <iprt/string.h>
 
 #include "VBoxSharedClipboardSvc-internal.h"
+#include "VBoxSharedClipboardSvc-transfers.h"
 
 
 /*********************************************************************************************************************************
 *   Internal Functions                                                                                                           *
 *********************************************************************************************************************************/
 static int shClSvcExtCall(uint32_t u32Function, void *pvParms, uint32_t cbParms);
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+static int  shClSvcExtTransferCallbackEnter(void);
+static void shClSvcExtTransferCallbackLeave(void);
+#endif
 
 
 /**
@@ -90,6 +95,33 @@ static int shClSvcExtCall(uint32_t u32Function, void *pvParms, uint32_t cbParms)
 }
 
 
+/** Initializes service-extension delivery state. */
+int shClSvcExtInit(void)
+{
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    RT_ZERO(g_ShClSvc.ExtState.CritSectTransferCallbacks);
+    return RTCritSectInit(&g_ShClSvc.ExtState.CritSectTransferCallbacks);
+#else
+    return VINF_SUCCESS;
+#endif
+}
+
+
+/** Destroys service-extension delivery state. */
+int shClSvcExtTerm(void)
+{
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    shClSvcLock();
+    bool const fRegistered = g_ShClSvc.ExtState.pfnExtension != NULL;
+    shClSvcUnlock();
+    AssertReturn(!fRegistered, VERR_WRONG_ORDER);
+    return RTCritSectDelete(&g_ShClSvc.ExtState.CritSectTransferCallbacks);
+#else
+    return VINF_SUCCESS;
+#endif
+}
+
+
 /**
  * Checks whether a Main service extension is registered.
  *
@@ -97,7 +129,10 @@ static int shClSvcExtCall(uint32_t u32Function, void *pvParms, uint32_t cbParms)
  */
 bool shClSvcExtIsRegistered(void)
 {
-    return g_ShClSvc.ExtState.pfnExtension != NULL;
+    shClSvcLock();
+    bool const fRegistered = g_ShClSvc.ExtState.pfnExtension != NULL;
+    shClSvcUnlock();
+    return fRegistered;
 }
 
 
@@ -155,6 +190,20 @@ int shClSvcExtBackendSync(PSHCLCLIENT pClient)
  */
 void shClSvcExtBackendDisconnect(PSHCLCLIENT pClient)
 {
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    /* The active-client pointer was cleared before this call.  Fence a direct
+     * transfer callback admitted just before that change.  Do not hold the
+     * serializer across BACKEND_DISCONNECT: native teardown may wait for a data
+     * plane thread which is itself reporting a terminal status. */
+    int const rcCritSect = RTCritSectEnter(&g_ShClSvc.ExtState.CritSectTransferCallbacks);
+    AssertRC(rcCritSect);
+    if (RT_SUCCESS(rcCritSect))
+    {
+        int const rcLeave = RTCritSectLeave(&g_ShClSvc.ExtState.CritSectTransferCallbacks);
+        AssertRC(rcLeave);
+    }
+#endif
+
     SHCLEXTPARMS parms;
     RT_ZERO(parms);
     shClSvcExtSetClient(&parms, pClient);
@@ -217,32 +266,285 @@ int shClSvcExtQueryTransferCallbacks(PSHCLCLIENT pClient, PSHCLTRANSFERCALLBACKS
     parms.u.TransferCallbacks.pClient    = pClient;
     parms.u.TransferCallbacks.pCallbacks = pCallbacks;
 
-    return shClSvcExtCall(VBOX_CLIPBOARD_EXT_FN_TRANSFER_CALLBACKS, &parms, sizeof(parms));
+    int rc = shClSvcExtTransferCallbackEnter();
+    if (RT_SUCCESS(rc))
+    {
+        shClSvcLock();
+        bool const fCall =    g_ShClSvc.ExtState.pfnExtension
+                           && g_ShClSvc.pActiveClient == pClient;
+        shClSvcUnlock();
+
+        if (fCall)
+            rc = shClSvcExtCall(VBOX_CLIPBOARD_EXT_FN_TRANSFER_CALLBACKS, &parms, sizeof(parms));
+        else
+            rc = VERR_NOT_SUPPORTED;
+        shClSvcExtTransferCallbackLeave();
+    }
+    return rc;
+}
+
+
+/** Checks that a captured status still belongs to the exact registered transfer. */
+static bool shClSvcExtTransferStatusIsCurrentLocked(PSHCLCLIENT pClient, PCSHCLSVCEXTTRANSFERSTATUS pStatus)
+{
+    Assert(RTCritSectIsOwner(&g_ShClSvc.CritSect));
+    AssertPtrReturn(pClient, false);
+    AssertPtrReturn(pStatus, false);
+
+    PSHCLTRANSFER const pTransfer
+        = ShClTransferCtxGetTransferByKeyRetained(&pClient->Transfers.Ctx,
+                                                  pStatus->idSession,
+                                                  pStatus->idTransfer,
+                                                  pStatus->uGeneration);
+    if (!pTransfer)
+        return false;
+
+    SHCLTRANSFERSTATUS const enmCurrentStatus = ShClTransferGetStatus(pTransfer);
+    bool const fCurrent =    ShClTransferGetDir(pTransfer) == pStatus->enmDir
+                          && ShClTransferGetSource(pTransfer) == pStatus->enmTransferSource
+                          && (   ShClTransferStatusIsTerminal(pStatus->enmStatus)
+                              || !ShClTransferStatusIsTerminal(enmCurrentStatus));
+    ShClTransferRelease(pTransfer);
+    return fCurrent;
+}
+
+
+/** Checks that captured progress still belongs to the exact active transfer. */
+static bool shClSvcExtTransferProgressIsCurrentLocked(PSHCLCLIENT pClient, PCSHCLSVCEXTTRANSFERPROGRESS pProgress)
+{
+    Assert(RTCritSectIsOwner(&g_ShClSvc.CritSect));
+    AssertPtrReturn(pClient, false);
+    AssertPtrReturn(pProgress, false);
+
+    PSHCLTRANSFER const pTransfer
+        = ShClTransferCtxGetTransferByKeyRetained(&pClient->Transfers.Ctx,
+                                                  pProgress->idSession,
+                                                  pProgress->idTransfer,
+                                                  pProgress->uGeneration);
+    if (!pTransfer)
+        return false;
+
+    SHCLTRANSFERSTATUS const enmStatus = ShClTransferGetStatus(pTransfer);
+    bool const fCurrent =    enmStatus == SHCLTRANSFERSTATUS_INITIALIZED
+                          || enmStatus == SHCLTRANSFERSTATUS_STARTED;
+    ShClTransferRelease(pTransfer);
+    return fCurrent;
+}
+
+
+/** Enters the direct transfer-callback serializer without any service-side lock held. */
+static int shClSvcExtTransferCallbackEnter(void)
+{
+    AssertReturn(!RTCritSectIsOwner(&g_ShClSvc.CritSect), VERR_WRONG_ORDER);
+    return RTCritSectEnter(&g_ShClSvc.ExtState.CritSectTransferCallbacks);
+}
+
+
+/** Leaves the direct transfer-callback serializer. */
+static void shClSvcExtTransferCallbackLeave(void)
+{
+    int const rc = RTCritSectLeave(&g_ShClSvc.ExtState.CritSectTransferCallbacks);
+    AssertRC(rc);
 }
 
 
 /**
- * Notifies Main about a transfer status reply.
+ * Directly resets Main transfer state while the transfer callback serializer is locked.
  *
- * @returns VBox status code returned by Main.
- * @param   pClient            Service client owning the transfer.
- * @param   pTransfer          Transfer whose status changed.
- * @param   enmSource          Endpoint which supplied the reply.
- * @param   pReply             Status reply.  Valid for the duration of the call.
+ * @returns VBox status code.
+ * @param   pClient            Service client whose Main transfer state is reset.
  */
-int shClSvcExtNotifyTransferStatus(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer, SHCLSOURCE enmSource,
-                                    PSHCLREPLY pReply)
+static int shClSvcExtNotifyTransferResetLocked(PSHCLCLIENT pClient)
 {
+    Assert(RTCritSectIsOwner(&g_ShClSvc.ExtState.CritSectTransferCallbacks));
+    AssertPtrReturn(pClient, VERR_INVALID_POINTER);
+
     SHCLEXTPARMS parms;
     RT_ZERO(parms);
-    shClSvcExtSetClient(&parms, pClient);
-    parms.u.FileTransferData.pClient       = pClient;
-    parms.u.FileTransferData.pTransfer     = pTransfer;
-    parms.u.FileTransferData.enmShClSource = enmSource;
-    parms.u.FileTransferData.pReply        = pReply;
+    shClSvcCreateTransport(pClient, &parms.u.FileTransferReset.Transport);
 
-    return shClSvcExtCall(VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER, &parms, sizeof(parms));
+    int rc = VERR_NOT_SUPPORTED;
+    shClSvcLock();
+    if (   g_ShClSvc.ExtState.pfnExtension
+        && g_ShClSvc.pActiveClient == pClient)
+        rc = VINF_SUCCESS;
+    shClSvcUnlock();
+
+    if (RT_SUCCESS(rc))
+        rc = shClSvcExtCall(VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_RESET, &parms, sizeof(parms));
+    return rc;
 }
+
+
+/**
+ * Directly reports an immutable transfer status to Main.
+ *
+ * The callback serializer preserves lifecycle order across service and native
+ * producers.  Main only records the snapshot here; its own COM-MTA worker
+ * publishes progress and API events after this callback returns.
+ *
+ * @returns VBox status code.
+ * @param   pClient            Service client owning the transfer.
+ * @param   pStatus            Immutable status captured while the transfer was valid.
+ * @param   fDetachedTerminal  Whether the terminal transfer is already detached.
+ */
+static int shClSvcExtNotifyTransferStatusEx(PSHCLCLIENT pClient, PCSHCLSVCEXTTRANSFERSTATUS pStatus,
+                                            bool fDetachedTerminal)
+{
+    AssertPtrReturn(pClient, VERR_INVALID_POINTER);
+    AssertPtrReturn(pStatus, VERR_INVALID_POINTER);
+    AssertReturn(ShClTransferKeyIsValid(pStatus->idSession, pStatus->idTransfer, pStatus->uGeneration),
+                 VERR_INVALID_PARAMETER);
+    AssertReturn(ShClTransferDirIsValid(pStatus->enmDir), VERR_INVALID_PARAMETER);
+    AssertReturn(ShClSourceIsValid(pStatus->enmTransferSource), VERR_INVALID_PARAMETER);
+    AssertReturn(ShClSourceIsValid(pStatus->enmReplySource), VERR_INVALID_PARAMETER);
+    AssertReturn(   (   pStatus->enmTransferSource == SHCLSOURCE_REMOTE
+                     && pStatus->enmDir == SHCLTRANSFERDIR_GUEST_TO_HOST)
+                 || (   pStatus->enmTransferSource == SHCLSOURCE_LOCAL
+                     && pStatus->enmDir == SHCLTRANSFERDIR_HOST_TO_GUEST), VERR_INVALID_PARAMETER);
+    AssertReturn(   pStatus->enmStatus != SHCLTRANSFERSTATUS_NONE
+                 && ShClTransferStatusResultIsValid(pStatus->enmStatus, pStatus->rcStatus), VERR_INVALID_PARAMETER);
+
+    bool const fTerminal = ShClTransferStatusIsTerminal(pStatus->enmStatus);
+    AssertReturn(!fDetachedTerminal || fTerminal, VERR_INVALID_PARAMETER);
+
+    int rc = shClSvcExtTransferCallbackEnter();
+    if (RT_FAILURE(rc))
+        return rc;
+
+    bool fDeliver = false;
+    shClSvcLock();
+    if (   g_ShClSvc.ExtState.pfnExtension
+        && g_ShClSvc.pActiveClient == pClient)
+    {
+        ShClSvcClientLock(pClient);
+        fDeliver =    pClient->State.uSessionID == pStatus->idSession
+                   && (   fDetachedTerminal
+                       || shClSvcExtTransferStatusIsCurrentLocked(pClient, pStatus));
+        rc = fDeliver ? VINF_SUCCESS : VINF_NO_CHANGE;
+        ShClSvcClientUnlock(pClient);
+    }
+    else
+        rc = VERR_NOT_SUPPORTED;
+    shClSvcUnlock();
+
+    if (fDeliver)
+    {
+        SHCLEXTPARMS parms;
+        RT_ZERO(parms);
+        shClSvcCreateTransport(pClient, &parms.u.FileTransferData.Transport);
+        parms.u.FileTransferData.idSession          = pStatus->idSession;
+        parms.u.FileTransferData.idTransfer         = pStatus->idTransfer;
+        parms.u.FileTransferData.uGeneration        = pStatus->uGeneration;
+        parms.u.FileTransferData.enmDir             = pStatus->enmDir;
+        parms.u.FileTransferData.enmTransferSource  = pStatus->enmTransferSource;
+        parms.u.FileTransferData.enmReplySource     = pStatus->enmReplySource;
+        parms.u.FileTransferData.enmStatus          = pStatus->enmStatus;
+        parms.u.FileTransferData.rcStatus           = pStatus->rcStatus;
+
+        rc = shClSvcExtCall(VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER, &parms, sizeof(parms));
+        if (   RT_FAILURE(rc)
+            && fTerminal)
+            shClSvcExtNotifyTransferResetLocked(pClient);
+    }
+
+    shClSvcExtTransferCallbackLeave();
+    return rc;
+}
+
+
+/** Directly reports a status while its exact transfer remains registered. */
+int shClSvcExtNotifyTransferStatus(PSHCLCLIENT pClient, PCSHCLSVCEXTTRANSFERSTATUS pStatus)
+{
+    return shClSvcExtNotifyTransferStatusEx(pClient, pStatus, false /* fDetachedTerminal */);
+}
+
+
+/** Directly reports a trusted terminal status from an already detached transfer. */
+int shClSvcExtNotifyTransferDetachedStatus(PSHCLCLIENT pClient, PCSHCLSVCEXTTRANSFERSTATUS pStatus)
+{
+    return shClSvcExtNotifyTransferStatusEx(pClient, pStatus, true /* fDetachedTerminal */);
+}
+
+
+/**
+ * Directly reports immutable exact aggregate transfer progress to Main.
+ *
+ * Native accounting already limits this to the first positive snapshot and one
+ * snapshot per changed integer percentage, so no service-side queue or
+ * coalescing is needed.
+ *
+ * @returns VBox status code.
+ * @param   pClient            Service client owning the transfer.
+ * @param   pProgress          Immutable exact aggregate progress snapshot.
+ */
+int shClSvcExtNotifyTransferProgress(PSHCLCLIENT pClient, PCSHCLSVCEXTTRANSFERPROGRESS pProgress)
+{
+    AssertPtrReturn(pClient, VERR_INVALID_POINTER);
+    AssertPtrReturn(pProgress, VERR_INVALID_POINTER);
+    AssertReturn(ShClTransferKeyIsValid(pProgress->idSession, pProgress->idTransfer,
+                                       pProgress->uGeneration), VERR_INVALID_PARAMETER);
+    AssertReturn(pProgress->cbTotal > 0, VERR_INVALID_PARAMETER);
+    AssertReturn(pProgress->cbProcessed <= pProgress->cbTotal, VERR_INVALID_PARAMETER);
+
+    int rc = shClSvcExtTransferCallbackEnter();
+    if (RT_FAILURE(rc))
+        return rc;
+
+    bool fDeliver = false;
+    shClSvcLock();
+    if (   g_ShClSvc.ExtState.pfnExtension
+        && g_ShClSvc.pActiveClient == pClient)
+    {
+        ShClSvcClientLock(pClient);
+        fDeliver =    pClient->State.uSessionID == pProgress->idSession
+                   && shClSvcExtTransferProgressIsCurrentLocked(pClient, pProgress);
+        rc = fDeliver ? VINF_SUCCESS : VINF_NO_CHANGE;
+        ShClSvcClientUnlock(pClient);
+    }
+    else
+        rc = VERR_NOT_SUPPORTED;
+    shClSvcUnlock();
+
+    if (fDeliver)
+    {
+        SHCLEXTPARMS parms;
+        RT_ZERO(parms);
+        shClSvcCreateTransport(pClient, &parms.u.FileTransferProgress.Transport);
+        parms.u.FileTransferProgress.idSession   = pProgress->idSession;
+        parms.u.FileTransferProgress.idTransfer  = pProgress->idTransfer;
+        parms.u.FileTransferProgress.uGeneration = pProgress->uGeneration;
+        parms.u.FileTransferProgress.cbProcessed = pProgress->cbProcessed;
+        parms.u.FileTransferProgress.cbTotal     = pProgress->cbTotal;
+        rc = shClSvcExtCall(VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_PROGRESS, &parms, sizeof(parms));
+    }
+
+    shClSvcExtTransferCallbackLeave();
+    return rc;
+}
+
+
+/**
+ * Directly resets all Main transfer state for a service client.
+ *
+ * @returns VBox status code.
+ * @param   pClient            Service client whose Main transfer state is reset.
+ *
+ * @thread  The caller must not hold a service, client or transfer lock.
+ */
+int shClSvcExtNotifyTransferReset(PSHCLCLIENT pClient)
+{
+    AssertPtrReturn(pClient, VERR_INVALID_POINTER);
+
+    int rc = shClSvcExtTransferCallbackEnter();
+    if (RT_SUCCESS(rc))
+    {
+        rc = shClSvcExtNotifyTransferResetLocked(pClient);
+        shClSvcExtTransferCallbackLeave();
+    }
+    return rc;
+}
+
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 
@@ -329,6 +631,28 @@ int shClSvcExtWriteData(PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX pCmdCtx, SHCLFORM
  */
 int shClSvcExtUnregisterAndDestroy(void)
 {
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    int rc = shClSvcExtTransferCallbackEnter();
+    if (RT_FAILURE(rc))
+        return rc;
+
+    shClSvcLock();
+    PFNHGCMSVCEXT const pfnExtension = g_ShClSvc.ExtState.pfnExtension;
+    void * const pvExtension = g_ShClSvc.ExtState.pvExtension;
+    g_ShClSvc.ExtState.pfnExtension = NULL;
+    g_ShClSvc.ExtState.pvExtension  = NULL;
+    shClSvcUnlock();
+    shClSvcExtTransferCallbackLeave();
+
+    if (pfnExtension)
+    {
+        SHCLEXTPARMS parms;
+        RT_ZERO(parms);
+        pfnExtension(pvExtension, VBOX_CLIPBOARD_EXT_FN_BACKEND_DESTROY, &parms, sizeof(parms));
+        LogRel2(("Shared Clipboard: de-registered service extension\n"));
+    }
+    return VINF_SUCCESS;
+#else
     shClSvcLock();
     PFNHGCMSVCEXT const pfnExtension = g_ShClSvc.ExtState.pfnExtension;
     void * const pvExtension = g_ShClSvc.ExtState.pvExtension;
@@ -336,8 +660,6 @@ int shClSvcExtUnregisterAndDestroy(void)
 
     if (!pfnExtension)
         return VINF_SUCCESS;
-
-    /* Console unregisters the extension before HGCM disconnects its client. */
     shClSvcExtBackendDestroy();
 
     shClSvcLock();
@@ -351,6 +673,7 @@ int shClSvcExtUnregisterAndDestroy(void)
 
     LogRel2(("Shared Clipboard: de-registered service extension\n"));
     return VINF_SUCCESS;
+#endif
 }
 
 

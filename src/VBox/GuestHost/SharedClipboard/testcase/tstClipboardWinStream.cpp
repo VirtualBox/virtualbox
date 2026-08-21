@@ -1,4 +1,4 @@
-/* $Id: tstClipboardWinStream.cpp 115086 2026-08-19 13:09:34Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardWinStream.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Windows stream testcase.
  */
@@ -103,6 +103,8 @@ typedef struct TSTWINSTREAMPROVIDER
     uint32_t                    offData;
     /** Maximum transfer chunk size. */
     uint32_t                    cbMaxChunkSize;
+    /** Result to return from object reads. */
+    int                         rcRead;
     /** Recorded object reads. */
     TSTWINSTREAMPROVIDERREAD    aReads[TST_WIN_STREAM_MAX_PROVIDER_READS];
     /** Number of object opens. */
@@ -117,10 +119,127 @@ typedef struct TSTWINSTREAMPROVIDER
 /** Pointer to mock transfer provider state. */
 typedef TSTWINSTREAMPROVIDER *PTSTWINSTREAMPROVIDER;
 
+/** Transfer-end callback state for native data-object cancellation. */
+typedef struct TSTWINDATAOBJECTEND
+{
+    /** Number of transfer-end callbacks. */
+    uint32_t                    cCalls;
+    /** Transfer supplied to the callback. */
+    PSHCLTRANSFER               pTransfer;
+    /** Transfer result supplied to the callback. */
+    int                         rcTransfer;
+} TSTWINDATAOBJECTEND;
+/** Pointer to native data-object transfer-end callback state. */
+typedef TSTWINDATAOBJECTEND *PTSTWINDATAOBJECTEND;
+
+/** Test wrapper exposing data-object completion state setup and inspection. */
+class TstWinDataObject : public ShClWinDataObject
+{
+public:
+    /** Adds a synthetic descriptor entry. */
+    int addEntry(const char *pszPath, RTFMODE fMode, RTFOFF cbObject)
+    {
+        FSOBJENTRY Entry;
+        Entry.pszPath = RTStrDup(pszPath);
+        AssertPtrReturn(Entry.pszPath, VERR_NO_MEMORY);
+        RT_ZERO(Entry.objInfo);
+        Entry.objInfo.Attr.fMode = fMode;
+        Entry.objInfo.cbObject   = cbObject;
+
+        lock();
+        m_lstEntries.push_back(Entry);
+        unlock();
+        return VINF_SUCCESS;
+    }
+
+    /** Initializes per-descriptor completion tracking and enters Running state. */
+    int startCompletionTracking(void)
+    {
+        lock();
+        m_afObjCompleted.assign(m_lstEntries.size(), false);
+        m_cFileEntries = 0;
+        FsObjEntryList::const_iterator itEntry = m_lstEntries.cbegin();
+        while (itEntry != m_lstEntries.end())
+        {
+            if (RTFS_IS_FILE(itEntry->objInfo.Attr.fMode))
+                m_cFileEntries++;
+            ++itEntry;
+        }
+        m_cFileEntriesCompleted = 0;
+        int rc = setStatusLocked(Running);
+        unlock();
+        return rc;
+    }
+
+    /** Returns the current status and unique completed-file count. */
+    Status queryCompletionStatus(size_t *pcCompleted, int *prcStatus = NULL)
+    {
+        lock();
+        Status const enmStatus = m_enmStatus;
+        *pcCompleted = m_cFileEntriesCompleted;
+        if (prcStatus)
+            *prcStatus = m_rcStatus;
+        unlock();
+        return enmStatus;
+    }
+
+    /** Returns the current COM reference count for focused lifetime checks. */
+    ULONG queryRefCount(void) const
+    {
+        return m_lRefCount;
+    }
+
+    /** Reports a performed drop effect through IDataObject::SetData. */
+    HRESULT reportDropEffect(DWORD dwEffect)
+    {
+        HGLOBAL hGlobal = GlobalAlloc(GHND, sizeof(DWORD));
+        AssertReturn(hGlobal != NULL, E_OUTOFMEMORY);
+        DWORD *pdwEffect = (DWORD *)GlobalLock(hGlobal);
+        if (!pdwEffect)
+        {
+            GlobalFree(hGlobal);
+            return E_OUTOFMEMORY;
+        }
+        *pdwEffect = dwEffect;
+        GlobalUnlock(hGlobal);
+
+        return reportDropEffectMedium(hGlobal, TRUE /* fRelease */);
+    }
+
+    /** Reports a caller-supplied performed-drop storage medium. */
+    HRESULT reportDropEffectMedium(HGLOBAL hGlobal, BOOL fRelease)
+    {
+
+        FORMATETC FormatEtc;
+        RT_ZERO(FormatEtc);
+        FormatEtc.cfFormat = m_cfPerformedDropEffect;
+        FormatEtc.dwAspect = DVASPECT_CONTENT;
+        FormatEtc.lindex   = -1;
+        FormatEtc.tymed    = TYMED_HGLOBAL;
+
+        STGMEDIUM Medium;
+        RT_ZERO(Medium);
+        Medium.tymed   = TYMED_HGLOBAL;
+        Medium.hGlobal = hGlobal;
+        return SetData(&FormatEtc, &Medium, fRelease);
+    }
+};
+
 
 /*********************************************************************************************************************************
 *   Internal Functions                                                                                                           *
 *********************************************************************************************************************************/
+/** Records a native data-object transfer-end callback. */
+static DECLCALLBACK(int) tstWinDataObjectTransferEnd(ShClWinDataObject::PCALLBACKCTX pCallbackCtx,
+                                                     PSHCLTRANSFER pTransfer, int rcTransfer)
+{
+    PTSTWINDATAOBJECTEND pEnd = (PTSTWINDATAOBJECTEND)pCallbackCtx->pvUser;
+    pEnd->cCalls++;
+    pEnd->pTransfer  = pTransfer;
+    pEnd->rcTransfer = rcTransfer;
+    return VINF_SUCCESS;
+}
+
 /** Tests Windows filename sanitization and transfer-list name validation. */
 static void tstWinPathSanitizeFilename(void)
 {
@@ -285,6 +404,12 @@ static DECLCALLBACK(int) tstWinStreamProviderObjRead(PSHCLTXPROVIDERCTX pCtx, SH
     AssertReturn(pThis->offData <= pThis->cbData, VERR_OUT_OF_RANGE);
     AssertReturn(cbData <= pThis->cbMaxChunkSize, VERR_BUFFER_OVERFLOW);
 
+    if (RT_FAILURE(pThis->rcRead))
+    {
+        pThis->cReads++;
+        return pThis->rcRead;
+    }
+
     uint32_t const offData     = pThis->offData;
     uint32_t const cbRemaining = pThis->cbData - offData;
     uint32_t const cbRead = RT_MIN(cbData, cbRemaining);
@@ -408,6 +533,405 @@ static bool tstWinStreamReadAndCheck(IStream *pStream, PTSTWINSTREAMPROVIDER pPr
 }
 
 
+/** Tests out-of-order and duplicate FILEGROUPDESCRIPTOR completion reports. */
+static void tstWinDataObjectCompletionOrder(void)
+{
+    RTTestISub("Out-of-order stream completion");
+
+    TstWinDataObject DataObject;
+    ShClWinDataObject::CALLBACKS Callbacks;
+    RT_ZERO(Callbacks);
+    uint8_t bFrontendCtx = 0;
+    int rc = DataObject.Init((PSHCLCONTEXT)&bFrontendCtx, &Callbacks);
+    RTTESTI_CHECK_RC_OK(rc);
+    if (RT_SUCCESS(rc))
+        rc = DataObject.addEntry("first.bin", RTFS_TYPE_FILE, 1);
+    if (RT_SUCCESS(rc))
+        rc = DataObject.addEntry("directory", RTFS_TYPE_DIRECTORY, 0);
+    if (RT_SUCCESS(rc))
+        rc = DataObject.addEntry("second.bin", RTFS_TYPE_FILE, 2);
+    if (RT_SUCCESS(rc))
+        rc = DataObject.addEntry("empty.bin", RTFS_TYPE_FILE, 0);
+    if (RT_SUCCESS(rc))
+        rc = DataObject.startCompletionTracking();
+    RTTESTI_CHECK_RC_OK(rc);
+
+    if (RT_SUCCESS(rc))
+    {
+        size_t cCompleted = 0;
+        RTTESTI_CHECK_RC_OK(DataObject.SetFileCompleted(2));
+        RTTESTI_CHECK(DataObject.queryCompletionStatus(&cCompleted) == ShClWinDataObject::Running);
+        RTTESTI_CHECK(cCompleted == 1);
+
+        RTTESTI_CHECK_RC_OK(DataObject.SetFileCompleted(2));
+        RTTESTI_CHECK(DataObject.queryCompletionStatus(&cCompleted) == ShClWinDataObject::Running);
+        RTTESTI_CHECK(cCompleted == 1);
+
+        RTTESTI_CHECK_RC(DataObject.SetFileCompleted(1), VERR_INVALID_PARAMETER);
+        RTTESTI_CHECK(DataObject.queryCompletionStatus(&cCompleted) == ShClWinDataObject::Running);
+        RTTESTI_CHECK(cCompleted == 1);
+
+        RTTESTI_CHECK_RC_OK(DataObject.SetFileCompleted(0));
+        RTTESTI_CHECK(DataObject.queryCompletionStatus(&cCompleted) == ShClWinDataObject::Running);
+        RTTESTI_CHECK(cCompleted == 2);
+
+        RTTESTI_CHECK_RC_OK(DataObject.SetFileCompleted(3));
+        RTTESTI_CHECK(DataObject.queryCompletionStatus(&cCompleted) == ShClWinDataObject::Completed);
+        RTTESTI_CHECK(cCompleted == 3);
+
+        RTTESTI_CHECK_RC_OK(DataObject.SetFileCompleted(0));
+        RTTESTI_CHECK(DataObject.queryCompletionStatus(&cCompleted) == ShClWinDataObject::Completed);
+        RTTESTI_CHECK(cCompleted == 3);
+
+        RTTESTI_CHECK_RC_OK(DataObject.SetStatus(ShClWinDataObject::Canceled));
+        RTTESTI_CHECK_RC_OK(DataObject.SetStatus(ShClWinDataObject::Error, VERR_READ_ERROR));
+        RTTESTI_CHECK(DataObject.queryCompletionStatus(&cCompleted) == ShClWinDataObject::Completed);
+    }
+
+
+    RTTestISub("Performed drop effect completion");
+
+    TstWinDataObject DirectoryObject;
+    RT_ZERO(Callbacks);
+    rc = DirectoryObject.Init((PSHCLCONTEXT)&bFrontendCtx, &Callbacks);
+    RTTESTI_CHECK_RC_OK(rc);
+    if (RT_SUCCESS(rc))
+        rc = DirectoryObject.addEntry("directory", RTFS_TYPE_DIRECTORY, 0);
+    if (RT_SUCCESS(rc))
+        rc = DirectoryObject.startCompletionTracking();
+    RTTESTI_CHECK_RC_OK(rc);
+
+    if (RT_SUCCESS(rc))
+    {
+        size_t cCompleted = 0;
+        RTTESTI_CHECK(DirectoryObject.queryCompletionStatus(&cCompleted) == ShClWinDataObject::Running);
+        RTTESTI_CHECK(DirectoryObject.reportDropEffect(DROPEFFECT_COPY) == S_OK);
+        RTTESTI_CHECK(DirectoryObject.queryCompletionStatus(&cCompleted) == ShClWinDataObject::Completed);
+        RTTESTI_CHECK(cCompleted == 0);
+    }
+
+    TstWinDataObject MixedObject;
+    RT_ZERO(Callbacks);
+    rc = MixedObject.Init((PSHCLCONTEXT)&bFrontendCtx, &Callbacks);
+    RTTESTI_CHECK_RC_OK(rc);
+    if (RT_SUCCESS(rc))
+        rc = MixedObject.addEntry("file.bin", RTFS_TYPE_FILE, 1);
+    if (RT_SUCCESS(rc))
+        rc = MixedObject.addEntry("directory", RTFS_TYPE_DIRECTORY, 0);
+    if (RT_SUCCESS(rc))
+        rc = MixedObject.startCompletionTracking();
+    RTTESTI_CHECK_RC_OK(rc);
+
+    if (RT_SUCCESS(rc))
+    {
+        size_t cCompleted = 0;
+        RTTESTI_CHECK(MixedObject.reportDropEffect(DROPEFFECT_COPY) == S_OK);
+        RTTESTI_CHECK(MixedObject.queryCompletionStatus(&cCompleted) == ShClWinDataObject::Completed);
+        RTTESTI_CHECK(cCompleted == 0);
+    }
+
+    TstWinDataObject DroppedObject;
+    RT_ZERO(Callbacks);
+    rc = DroppedObject.Init((PSHCLCONTEXT)&bFrontendCtx, &Callbacks);
+    RTTESTI_CHECK_RC_OK(rc);
+    if (RT_SUCCESS(rc))
+        rc = DroppedObject.addEntry("file.bin", RTFS_TYPE_FILE, 1);
+    if (RT_SUCCESS(rc))
+        rc = DroppedObject.startCompletionTracking();
+    RTTESTI_CHECK_RC_OK(rc);
+
+    if (RT_SUCCESS(rc))
+    {
+        size_t cCompleted = 0;
+        RTTESTI_CHECK(DroppedObject.reportDropEffect(DROPEFFECT_NONE) == S_OK);
+        RTTESTI_CHECK(DroppedObject.queryCompletionStatus(&cCompleted) == ShClWinDataObject::Canceled);
+        RTTESTI_CHECK(cCompleted == 0);
+
+        RTTESTI_CHECK(DroppedObject.reportDropEffectMedium(NULL, FALSE /* fRelease */) == DV_E_STGMEDIUM);
+
+        HGLOBAL hSmall = GlobalAlloc(GHND, sizeof(uint8_t));
+        RTTESTI_CHECK(hSmall != NULL);
+        if (hSmall)
+        {
+            RTTESTI_CHECK(DroppedObject.reportDropEffectMedium(hSmall, FALSE /* fRelease */) == DV_E_STGMEDIUM);
+            GlobalFree(hSmall);
+        }
+    }
+
+
+    RTTestISub("Canceled state remains terminal");
+
+    TstWinDataObject CanceledObject;
+    RT_ZERO(Callbacks);
+    rc = CanceledObject.Init((PSHCLCONTEXT)&bFrontendCtx, &Callbacks);
+    RTTESTI_CHECK_RC_OK(rc);
+    if (RT_SUCCESS(rc))
+        rc = CanceledObject.addEntry("file.bin", RTFS_TYPE_FILE, 1);
+    if (RT_SUCCESS(rc))
+        rc = CanceledObject.startCompletionTracking();
+    RTTESTI_CHECK_RC_OK(rc);
+
+    if (RT_SUCCESS(rc))
+    {
+        size_t cCompleted = 0;
+        int rcStatus = VERR_INTERNAL_ERROR;
+        RTTESTI_CHECK_RC_OK(CanceledObject.SetStatus(ShClWinDataObject::Canceled));
+        RTTESTI_CHECK_RC_OK(CanceledObject.SetStatus(ShClWinDataObject::Error, VERR_READ_ERROR));
+        RTTESTI_CHECK_RC(CanceledObject.SetFileCompleted(0), VERR_STATE_CHANGED);
+        RTTESTI_CHECK(CanceledObject.queryCompletionStatus(&cCompleted, &rcStatus) == ShClWinDataObject::Canceled);
+        RTTESTI_CHECK_RC_OK(rcStatus);
+        RTTESTI_CHECK(cCompleted == 0);
+    }
+
+
+    RTTestISub("Error state remains terminal");
+
+    TstWinDataObject ErrorObject;
+    RT_ZERO(Callbacks);
+    rc = ErrorObject.Init((PSHCLCONTEXT)&bFrontendCtx, &Callbacks);
+    RTTESTI_CHECK_RC_OK(rc);
+    if (RT_SUCCESS(rc))
+        rc = ErrorObject.addEntry("file.bin", RTFS_TYPE_FILE, 1);
+    if (RT_SUCCESS(rc))
+        rc = ErrorObject.startCompletionTracking();
+    RTTESTI_CHECK_RC_OK(rc);
+
+    if (RT_SUCCESS(rc))
+    {
+        size_t cCompleted = 0;
+        int rcStatus = VINF_SUCCESS;
+        RTTESTI_CHECK_RC_OK(ErrorObject.SetStatus(ShClWinDataObject::Error, VERR_READ_ERROR));
+        RTTESTI_CHECK_RC_OK(ErrorObject.SetStatus(ShClWinDataObject::Error, VERR_WRITE_ERROR));
+        RTTESTI_CHECK_RC_OK(ErrorObject.SetStatus(ShClWinDataObject::Completed));
+        RTTESTI_CHECK(ErrorObject.queryCompletionStatus(&cCompleted, &rcStatus) == ShClWinDataObject::Error);
+        RTTESTI_CHECK_RC(rcStatus, VERR_READ_ERROR);
+        RTTESTI_CHECK_RC_OK(ErrorObject.SetStatus(ShClWinDataObject::Uninitialized));
+        RTTESTI_CHECK(ErrorObject.queryCompletionStatus(&cCompleted) == ShClWinDataObject::Uninitialized);
+    }
+}
+
+
+/** Tests that Explorer-native cancellation immediately ends the native transfer. */
+static void tstWinDataObjectNativeCancellation(void)
+{
+    RTTestISub("Native data-object cancellation");
+
+    TSTWINDATAOBJECTEND EndCtx;
+    RT_ZERO(EndCtx);
+
+    ShClWinDataObject::CALLBACKS Callbacks;
+    RT_ZERO(Callbacks);
+    Callbacks.pfnTransferEnd = tstWinDataObjectTransferEnd;
+
+    PSHCLTRANSFER pTransfer = NULL;
+    TstWinDataObject *pDataObject = NULL;
+
+    int rc = ShClTransferCreate(SHCLTRANSFERDIR_GUEST_TO_HOST, SHCLSOURCE_REMOTE,
+                                NULL /* pCallbacks */, &pTransfer);
+    RTTESTI_CHECK_RC_OK(rc);
+    if (RT_SUCCESS(rc))
+    {
+        ShClWinTransferCtx *pWinTransferCtx = new ShClWinTransferCtx();
+        RTTESTI_CHECK(pWinTransferCtx != NULL);
+        if (pWinTransferCtx)
+        {
+            rc = RTCritSectInit(&pWinTransferCtx->CritSect);
+            if (RT_SUCCESS(rc))
+            {
+                pTransfer->pvUser = pWinTransferCtx;
+                pTransfer->cbUser = sizeof(*pWinTransferCtx);
+            }
+            else
+                delete pWinTransferCtx;
+        }
+        else
+            rc = VERR_NO_MEMORY;
+        RTTESTI_CHECK_RC_OK(rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        pDataObject = new TstWinDataObject();
+        RTTESTI_CHECK(pDataObject != NULL);
+        if (pDataObject)
+        {
+            pDataObject->AddRef(); /* Testcase reference. */
+            rc = pDataObject->Init((PSHCLCONTEXT)&EndCtx, &Callbacks);
+            RTTESTI_CHECK_RC_OK(rc);
+        }
+        else
+            rc = VERR_NO_MEMORY;
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = pDataObject->SetTransfer(pTransfer);
+        RTTESTI_CHECK_RC_OK(rc);
+    }
+    if (RT_SUCCESS(rc))
+        rc = pDataObject->addEntry("cancel.bin", RTFS_TYPE_FILE, 1);
+    if (RT_SUCCESS(rc))
+        rc = pDataObject->startCompletionTracking();
+    RTTESTI_CHECK_RC_OK(rc);
+
+    if (RT_SUCCESS(rc))
+    {
+        RTTESTI_CHECK(pDataObject->reportDropEffect(DROPEFFECT_NONE) == S_OK);
+        RTTESTI_CHECK(ShClTransferGetStatus(pTransfer) == SHCLTRANSFERSTATUS_CANCELED);
+        RTTESTI_CHECK(EndCtx.cCalls == 1);
+        RTTESTI_CHECK(EndCtx.pTransfer == pTransfer);
+        RTTESTI_CHECK_RC(EndCtx.rcTransfer, VERR_CANCELLED);
+
+        size_t cCompleted = 0;
+        RTTESTI_CHECK(pDataObject->queryCompletionStatus(&cCompleted) == ShClWinDataObject::Canceled);
+        RTTESTI_CHECK(cCompleted == 0);
+
+        RTTESTI_CHECK(pDataObject->reportDropEffect(DROPEFFECT_NONE) == S_OK);
+        RTTESTI_CHECK(EndCtx.cCalls == 1);
+    }
+
+    if (pDataObject)
+    {
+        RTTESTI_CHECK_RC_OK(pDataObject->SetTransfer(NULL));
+        pDataObject->Release();
+    }
+    if (pTransfer)
+    {
+        ShClWinTransferCtx *pWinTransferCtx = (ShClWinTransferCtx *)pTransfer->pvUser;
+        if (pWinTransferCtx)
+        {
+            RTTESTI_CHECK_RC_OK(RTCritSectDelete(&pWinTransferCtx->CritSect));
+            delete pWinTransferCtx;
+            pTransfer->pvUser = NULL;
+            pTransfer->cbUser = 0;
+        }
+        RTTESTI_CHECK_RC_OK(ShClTransferDestroy(pTransfer));
+    }
+}
+
+
+/**
+ * Verifies that invalidating a stream after transfer cancellation performs no
+ * further remote object operation.
+ */
+static void tstWinStreamCanceledInvalidate(void)
+{
+    RTTestISub("Canceled stream invalidation");
+
+    uint8_t abData[] = { 0x12, 0x34 };
+    TSTWINSTREAMPROVIDER ProviderCtx;
+    RT_ZERO(ProviderCtx);
+    ProviderCtx.pbData         = abData;
+    ProviderCtx.cbData         = sizeof(abData);
+    ProviderCtx.cbMaxChunkSize = _64K;
+
+    SHCLTXPROVIDER Provider;
+    RT_ZERO(Provider);
+    Provider.Interface.pfnRootListRead = tstWinStreamProviderRootListRead;
+    Provider.Interface.pfnObjOpen      = tstWinStreamProviderObjOpen;
+    Provider.Interface.pfnObjRead      = tstWinStreamProviderObjRead;
+    Provider.Interface.pfnObjClose     = tstWinStreamProviderObjClose;
+    Provider.pvUser                    = &ProviderCtx;
+    Provider.cbUser                    = sizeof(ProviderCtx);
+
+    PSHCLTRANSFER pTransfer = NULL;
+    TstWinDataObject *pParent = NULL;
+    IStream *pStream = NULL;
+
+    int rc = ShClTransferCreate(SHCLTRANSFERDIR_GUEST_TO_HOST, SHCLSOURCE_REMOTE,
+                                NULL /* pCallbacks */, &pTransfer);
+    RTTESTI_CHECK_RC_OK(rc);
+    if (RT_SUCCESS(rc))
+        rc = ShClTransferSetProvider(pTransfer, &Provider);
+    if (RT_SUCCESS(rc))
+        rc = ShClTransferRootListRead(pTransfer);
+    if (RT_SUCCESS(rc))
+        rc = ShClTransferInit(pTransfer);
+    if (RT_SUCCESS(rc))
+        rc = ShClTransferStart(pTransfer);
+    RTTESTI_CHECK_RC_OK(rc);
+
+    uint8_t bFrontendCtx = 0;
+    if (RT_SUCCESS(rc))
+    {
+        pParent = new TstWinDataObject();
+        RTTESTI_CHECK(pParent != NULL);
+        if (pParent)
+        {
+            pParent->AddRef();
+            ShClWinDataObject::CALLBACKS Callbacks;
+            RT_ZERO(Callbacks);
+            rc = pParent->Init((PSHCLCONTEXT)&bFrontendCtx, &Callbacks);
+        }
+        else
+            rc = VERR_NO_MEMORY;
+    }
+
+    if (RT_SUCCESS(rc))
+    {
+        SHCLFSOBJINFO ObjInfo;
+        RT_ZERO(ObjInfo);
+        ObjInfo.Attr.fMode = RTFS_TYPE_FILE;
+        ObjInfo.cbObject   = sizeof(abData);
+        HRESULT const hrc = ShClWinStreamImpl::Create(pParent, pTransfer, 0 /* uObjIdx */,
+                                                       Utf8Str("canceled.bin"), &ObjInfo, &pStream);
+        RTTESTI_CHECK_MSG(hrc == S_OK, ("creating stream failed: %Rhrc\n", hrc));
+        if (FAILED(hrc))
+            rc = VERR_GENERAL_FAILURE;
+    }
+
+    if (RT_SUCCESS(rc))
+    {
+        uint8_t bRead = 0;
+        ULONG cbRead = 0;
+        HRESULT const hrc = pStream->Read(&bRead, 1, &cbRead);
+        RTTESTI_CHECK_MSG(hrc == S_OK, ("initial stream read failed: %Rhrc\n", hrc));
+        RTTESTI_CHECK(cbRead == 1);
+        RTTESTI_CHECK(bRead == abData[0]);
+        RTTESTI_CHECK(ProviderCtx.cOpens == 1);
+        RTTESTI_CHECK(ProviderCtx.cCloses == 0);
+        RTTESTI_CHECK(pParent->queryRefCount() == 2);
+
+        ProviderCtx.rcRead = VERR_CANCELLED;
+        cbRead = UINT32_MAX;
+        HRESULT const hrcCanceled = pStream->Read(&bRead, 1, &cbRead);
+        RTTESTI_CHECK_MSG(hrcCanceled == COPYENGINE_E_USER_CANCELLED,
+                          ("canceled read returned %Rhrc\n", hrcCanceled));
+        RTTESTI_CHECK(cbRead == 0);
+        size_t cCompleted = UINT32_MAX;
+        RTTESTI_CHECK(pParent->queryCompletionStatus(&cCompleted) == ShClWinDataObject::Canceled);
+        ProviderCtx.rcRead = VINF_SUCCESS;
+
+        RTTESTI_CHECK_RC_OK(ShClTransferCancel(pTransfer));
+        RTTESTI_CHECK(ShClTransferGetStatus(pTransfer) == SHCLTRANSFERSTATUS_CANCELED);
+
+        uint32_t const cOpensBeforeInvalidate = ProviderCtx.cOpens;
+        uint32_t const cReadsBeforeInvalidate = ProviderCtx.cReads;
+        uint32_t const cClosesBeforeInvalidate = ProviderCtx.cCloses;
+        static_cast<ShClWinStreamImpl *>(pStream)->Invalidate();
+        RTTESTI_CHECK(ProviderCtx.cOpens == cOpensBeforeInvalidate);
+        RTTESTI_CHECK(ProviderCtx.cReads == cReadsBeforeInvalidate);
+        RTTESTI_CHECK_MSG(ProviderCtx.cCloses == cClosesBeforeInvalidate,
+                          ("terminal invalidation issued %RU32 remote close(s)\n", ProviderCtx.cCloses));
+        RTTESTI_CHECK(ASMAtomicReadU32(&pTransfer->cRefs) == 0);
+        RTTESTI_CHECK(pParent->queryRefCount() == 1);
+
+        static_cast<ShClWinStreamImpl *>(pStream)->Invalidate();
+        RTTESTI_CHECK(ProviderCtx.cCloses == 0);
+
+        cbRead = UINT32_MAX;
+        RTTESTI_CHECK(pStream->Read(&bRead, 1, &cbRead) == COPYENGINE_E_USER_CANCELLED);
+        RTTESTI_CHECK(cbRead == 0);
+        RTTESTI_CHECK(ProviderCtx.cReads == cReadsBeforeInvalidate);
+    }
+
+    if (pStream)
+        pStream->Release();
+    if (pParent)
+        pParent->Release();
+    if (pTransfer)
+        RTTESTI_CHECK_RC_OK(ShClTransferDestroy(pTransfer));
+}
+
+
 /**
  * Tests varied IStream reads which cross the default chunk boundary.
  */
@@ -469,7 +993,7 @@ static void tstWinStreamReadsAcrossChunkBoundaries(void)
     Provider.cbUser                    = sizeof(ProviderCtx);
 
     PSHCLTRANSFER pTransfer = NULL;
-    ShClWinDataObject *pParent = NULL;
+    TstWinDataObject *pParent = NULL;
     IStream *pStream = NULL;
     uint8_t bFrontendCtx = 0;
 
@@ -492,7 +1016,7 @@ static void tstWinStreamReadsAcrossChunkBoundaries(void)
     }
     if (RT_SUCCESS(rc))
     {
-        pParent = new ShClWinDataObject();
+        pParent = new TstWinDataObject();
         RTTESTI_CHECK(pParent != NULL);
         if (pParent)
         {
@@ -501,6 +1025,11 @@ static void tstWinStreamReadsAcrossChunkBoundaries(void)
             ShClWinDataObject::CALLBACKS Callbacks;
             RT_ZERO(Callbacks);
             rc = pParent->Init((PSHCLCONTEXT)&bFrontendCtx, &Callbacks);
+            RTTESTI_CHECK_RC_OK(rc);
+            if (RT_SUCCESS(rc))
+                rc = pParent->addEntry("random-boundaries.bin", RTFS_TYPE_FILE, ProviderCtx.cbData);
+            if (RT_SUCCESS(rc))
+                rc = pParent->startCompletionTracking();
             RTTESTI_CHECK_RC_OK(rc);
         }
         else
@@ -512,7 +1041,8 @@ static void tstWinStreamReadsAcrossChunkBoundaries(void)
         RT_ZERO(ObjInfo);
         ObjInfo.cbObject = ProviderCtx.cbData;
 
-        HRESULT const hrc = ShClWinStreamImpl::Create(pParent, pTransfer, Utf8Str("random-boundaries.bin"), &ObjInfo, &pStream);
+        HRESULT const hrc = ShClWinStreamImpl::Create(pParent, pTransfer, 0 /* uObjIdx */,
+                                                      Utf8Str("random-boundaries.bin"), &ObjInfo, &pStream);
         RTTESTI_CHECK_MSG(hrc == S_OK, ("hrc=%Rhrc\n", hrc));
         if (FAILED(hrc))
             rc = VERR_GENERAL_FAILURE;
@@ -595,7 +1125,71 @@ static void tstWinStreamReadsAcrossChunkBoundaries(void)
                           ("post-EOF cReads=%RU32, expected %RU32\n", ProviderCtx.cReads, cProviderReadsBefore));
         RTTESTI_CHECK_MSG(pbBuffer[0] == TST_WIN_STREAM_BUFFER_FILL,
                           ("post-EOF read modified the buffer\n"));
+
+        size_t cCompleted = 0;
+        RTTESTI_CHECK(pParent->queryCompletionStatus(&cCompleted) == ShClWinDataObject::Completed);
+        RTTESTI_CHECK(cCompleted == 1);
     }
+
+    RTTestISub("Zero-byte stream completion");
+
+    TstWinDataObject *pZeroParent = NULL;
+    IStream *pZeroStream = NULL;
+    if (RT_SUCCESS(rc))
+    {
+        pZeroParent = new TstWinDataObject();
+        RTTESTI_CHECK(pZeroParent != NULL);
+        if (pZeroParent)
+        {
+            pZeroParent->AddRef();
+            ShClWinDataObject::CALLBACKS Callbacks;
+            RT_ZERO(Callbacks);
+            rc = pZeroParent->Init((PSHCLCONTEXT)&bFrontendCtx, &Callbacks);
+            if (RT_SUCCESS(rc))
+                rc = pZeroParent->addEntry("empty.bin", RTFS_TYPE_FILE, 0);
+            if (RT_SUCCESS(rc))
+                rc = pZeroParent->startCompletionTracking();
+            RTTESTI_CHECK_RC_OK(rc);
+        }
+        else
+            rc = VERR_NO_MEMORY;
+    }
+    if (RT_SUCCESS(rc))
+    {
+        SHCLFSOBJINFO ObjInfo;
+        RT_ZERO(ObjInfo);
+        ObjInfo.Attr.fMode = RTFS_TYPE_FILE;
+        ObjInfo.cbObject = 0;
+        HRESULT const hrc = ShClWinStreamImpl::Create(pZeroParent, pTransfer, 0 /* uObjIdx */,
+                                                      Utf8Str("empty.bin"), &ObjInfo, &pZeroStream);
+        RTTESTI_CHECK_MSG(hrc == S_OK, ("creating zero-byte stream failed: %Rhrc\n", hrc));
+        if (FAILED(hrc))
+            rc = VERR_GENERAL_FAILURE;
+    }
+    if (RT_SUCCESS(rc))
+    {
+        uint32_t const cOpensBefore = ProviderCtx.cOpens;
+        uint32_t const cReadsBefore = ProviderCtx.cReads;
+        uint32_t const cClosesBefore = ProviderCtx.cCloses;
+        ULONG cbRead = UINT32_MAX;
+        HRESULT const hrc = pZeroStream->Read(pbBuffer, 1, &cbRead);
+        RTTESTI_CHECK_MSG(hrc == S_FALSE, ("zero-byte stream read hrc=%Rhrc\n", hrc));
+        RTTESTI_CHECK_MSG(cbRead == 0, ("zero-byte stream cbRead=%RU32\n", cbRead));
+        RTTESTI_CHECK_MSG(ProviderCtx.cOpens == cOpensBefore + 1,
+                          ("zero-byte stream cOpens=%RU32\n", ProviderCtx.cOpens));
+        RTTESTI_CHECK_MSG(ProviderCtx.cReads == cReadsBefore,
+                          ("zero-byte stream cReads=%RU32\n", ProviderCtx.cReads));
+        RTTESTI_CHECK_MSG(ProviderCtx.cCloses == cClosesBefore + 1,
+                          ("zero-byte stream cCloses=%RU32\n", ProviderCtx.cCloses));
+        size_t cCompleted = 0;
+        RTTESTI_CHECK(pZeroParent->queryCompletionStatus(&cCompleted) == ShClWinDataObject::Completed);
+        RTTESTI_CHECK(cCompleted == 1);
+    }
+
+    if (pZeroStream)
+        pZeroStream->Release();
+    if (pZeroParent)
+        pZeroParent->Release();
 
     if (pStream)
         pStream->Release();
@@ -621,6 +1215,9 @@ int main(void)
 
     tstWinPathSanitizeFilename();
     tstTransferListEntryNameValidation();
+    tstWinDataObjectCompletionOrder();
+    tstWinDataObjectNativeCancellation();
+    tstWinStreamCanceledInvalidate();
     tstWinStreamReadsAcrossChunkBoundaries();
 
     return RTTestSummaryAndDestroy(hTest);

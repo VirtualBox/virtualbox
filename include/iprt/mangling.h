@@ -1340,6 +1340,7 @@
 # define RTHttpUseSystemProxySettings                   RT_MANGLER(RTHttpUseSystemProxySettings)
 # define RTHttpServerCreate                             RT_MANGLER(RTHttpServerCreate)
 # define RTHttpServerDestroy                            RT_MANGLER(RTHttpServerDestroy)
+# define RTHttpServerRequestQueryResult                 RT_MANGLER(RTHttpServerRequestQueryResult)
 # define RTHttpServerResponseInitEx                     RT_MANGLER(RTHttpServerResponseInitEx)
 # define RTHttpServerResponseInit                       RT_MANGLER(RTHttpServerResponseInit)
 # define RTHttpServerResponseDestroy                    RT_MANGLER(RTHttpServerResponseDestroy)

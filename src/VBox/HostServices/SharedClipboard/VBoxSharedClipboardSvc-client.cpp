@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-client.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-client.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Client/session and message queue handling.
  */
@@ -163,7 +163,8 @@ bool shClSvcClientTransfersAreAllowed(PSHCLCLIENT pClient)
     AssertPtrReturn(pClient, false);
 
     uint64_t const fRequired = VBOX_SHCL_GF_0_CONTEXT_ID | VBOX_SHCL_GF_0_TRANSFERS;
-    return    (ShClSvcClientGetTransferMode(pClient) & VBOX_SHCL_TRANSFER_MODE_F_ENABLED)
+    return    !ASMAtomicReadBool(&pClient->Transfers.fResetting)
+           && (ShClSvcClientGetTransferMode(pClient) & VBOX_SHCL_TRANSFER_MODE_F_ENABLED)
            && (ShClSvcClientGetGuestFeatures0(pClient) & fRequired) == fRequired;
 }
 #endif
@@ -473,6 +474,7 @@ int ShClSvcClientInit(PSHCLCLIENT pClient, uint32_t uClientID)
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     /* Cache the current Shared Clipboard transfer (file) mode in the client protocol state. */
     ASMAtomicWriteU32(&pClient->State.Transfers.uTransferMode, shClSvcTransferModeGet());
+    ASMAtomicWriteBool(&pClient->Transfers.fResetting, false);
 #endif
 
     RTListInit(&pClient->MsgQueue);
@@ -569,6 +571,7 @@ void shClSvcClientDestroy(PSHCLCLIENT pClient)
     }
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    ASMAtomicWriteBool(&pClient->Transfers.fResetting, true);
     ShClSvcClientUnlock(pClient);
     shClSvcTransferDestroyAll(pClient);
     ShClSvcClientLock(pClient);
@@ -600,6 +603,14 @@ void shClSvcClientReset(PSHCLCLIENT pClient)
     if (!pClient)
         return;
 
+    /* Stop native callbacks from admitting a new transfer while the old
+     * service session is being detached and replaced. */
+    ShClSvcClientLock(pClient);
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    ASMAtomicWriteBool(&pClient->Transfers.fResetting, true);
+#endif
+    ShClSvcClientUnlock(pClient);
+
     /* Allocate outside the client lock to preserve the service -> client lock order. */
     SHCLSESSIONID const idSession = shClSvcClientAllocSessionId();
 
@@ -619,7 +630,18 @@ void shClSvcClientReset(PSHCLCLIENT pClient)
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     ShClSvcClientUnlock(pClient);
-    shClSvcTransferDestroyAll(pClient);
+    RTLISTANCHOR ListDestroy;
+    RTListInit(&ListDestroy);
+    shClSvcLock();
+    shClSvcTransferResetAllLocked(pClient, &ListDestroy);
+    shClSvcUnlock();
+
+    int const rcReset = shClSvcExtNotifyTransferReset(pClient);
+    if (   RT_FAILURE(rcReset)
+        && rcReset != VERR_NOT_SUPPORTED)
+        LogFlowFunc(("Resetting Main transfer state failed with %Rrc\n", rcReset));
+
+    shClSvcTransferDestroyDetachedAll(&ListDestroy);
     ShClSvcClientLock(pClient);
 #endif
 
@@ -633,6 +655,8 @@ void shClSvcClientReset(PSHCLCLIENT pClient)
     {
         rc2 = ShClTransferCtxBeginSession(&pClient->Transfers.Ctx, pClient->State.uSessionID);
         AssertRC(rc2);
+        if (RT_SUCCESS(rc2))
+            ASMAtomicWriteBool(&pClient->Transfers.fResetting, false);
     }
 #endif
 

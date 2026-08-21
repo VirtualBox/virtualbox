@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-internal.h 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-internal.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal service instance state.
  */
@@ -31,6 +31,7 @@
 # pragma once
 #endif
 
+#include <iprt/critsect.h>
 #include <iprt/string.h>
 
 #include <VBox/HostServices/VBoxSharedClipboardSvc.h>
@@ -46,6 +47,10 @@ typedef struct SHCLEXTSTATE
     PFNHGCMSVCEXT  pfnExtension;
     /** Opaque extension-provided data. */
     void          *pvExtension;
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+    /** Serializes direct transfer callbacks and fences extension teardown. */
+    RTCRITSECT     CritSectTransferCallbacks;
+#endif
 } SHCLEXTSTATE;
 
 
@@ -150,6 +155,8 @@ void shClSvcCreateTransport(PSHCLCLIENT pClient, PSHCLTRANSPORT pTransport);
 /** @name Service extension bridge handling.
  * @{ */
 bool shClSvcExtIsRegistered(void);
+int  shClSvcExtInit(void);
+int  shClSvcExtTerm(void);
 int  shClSvcExtBackendInit(void);
 int  shClSvcExtBackendConnect(PSHCLCLIENT pClient);
 int  shClSvcExtBackendSync(PSHCLCLIENT pClient);
@@ -163,9 +170,55 @@ int  shClSvcExtReadData(PSHCLCLIENT pClient, SHCLFORMAT uFormat, void *pvData, u
 int  shClSvcExtWriteData(PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX pCmdCtx, SHCLFORMAT uFormat, void *pvData, uint32_t cbData);
 int  shClSvcExtReportError(char *pszId, char *pszMsg, int rcError);
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+/** Immutable service-to-Main transfer-status snapshot. */
+typedef struct SHCLSVCEXTTRANSFERSTATUS
+{
+    /** Owning service session. */
+    SHCLSESSIONID       idSession;
+    /** Transfer ID within @a idSession. */
+    SHCLTRANSFERID      idTransfer;
+    /** Host-private transfer generation. */
+    SHCLTRANSFERGEN     uGeneration;
+    /** Transfer direction. */
+    SHCLTRANSFERDIR     enmDir;
+    /** Endpoint which owns the transfer data. */
+    SHCLSOURCE          enmTransferSource;
+    /** Endpoint which reported this status. */
+    SHCLSOURCE          enmReplySource;
+    /** Status to report. */
+    SHCLTRANSFERSTATUS  enmStatus;
+    /** Status-specific VBox result code. */
+    int                 rcStatus;
+} SHCLSVCEXTTRANSFERSTATUS;
+/** Pointer to a service-to-Main transfer-status snapshot. */
+typedef SHCLSVCEXTTRANSFERSTATUS *PSHCLSVCEXTTRANSFERSTATUS;
+/** Pointer to a const service-to-Main transfer-status snapshot. */
+typedef SHCLSVCEXTTRANSFERSTATUS const *PCSHCLSVCEXTTRANSFERSTATUS;
+
+/** Immutable service-to-Main transfer-progress snapshot. */
+typedef struct SHCLSVCEXTTRANSFERPROGRESS
+{
+    /** Owning service session. */
+    SHCLSESSIONID       idSession;
+    /** Transfer ID within @a idSession. */
+    SHCLTRANSFERID      idTransfer;
+    /** Host-private transfer generation. */
+    SHCLTRANSFERGEN     uGeneration;
+    /** Exact aggregate payload bytes processed. */
+    uint64_t            cbProcessed;
+    /** Exact aggregate payload bytes to process. */
+    uint64_t            cbTotal;
+} SHCLSVCEXTTRANSFERPROGRESS;
+/** Pointer to a service-to-Main transfer-progress snapshot. */
+typedef SHCLSVCEXTTRANSFERPROGRESS *PSHCLSVCEXTTRANSFERPROGRESS;
+/** Pointer to a const service-to-Main transfer-progress snapshot. */
+typedef SHCLSVCEXTTRANSFERPROGRESS const *PCSHCLSVCEXTTRANSFERPROGRESS;
+
 int  shClSvcExtQueryTransferCallbacks(PSHCLCLIENT pClient, PSHCLTRANSFERCALLBACKS pCallbacks);
-int  shClSvcExtNotifyTransferStatus(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer, SHCLSOURCE enmSource,
-                                    PSHCLREPLY pReply);
+int  shClSvcExtNotifyTransferStatus(PSHCLCLIENT pClient, PCSHCLSVCEXTTRANSFERSTATUS pStatus);
+int  shClSvcExtNotifyTransferDetachedStatus(PSHCLCLIENT pClient, PCSHCLSVCEXTTRANSFERSTATUS pStatus);
+int  shClSvcExtNotifyTransferProgress(PSHCLCLIENT pClient, PCSHCLSVCEXTTRANSFERPROGRESS pProgress);
+int  shClSvcExtNotifyTransferReset(PSHCLCLIENT pClient);
 #endif
 DECLCALLBACK(int) shClSvcRegisterExtension(void *pvService, PFNHGCMSVCEXT pfnExtension, void *pvExtension);
 /** @} */

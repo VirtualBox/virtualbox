@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendX11.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendX11.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - X11 backend.
  */
@@ -99,6 +99,7 @@ static DECLCALLBACK(int) shClSvcX11RequestDataFromSourceCallback(PSHCLCONTEXT pC
 static DECLCALLBACK(void) shClSvcX11TransferOnCreatedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx);
 static DECLCALLBACK(int)  shClSvcX11TransferOnInitCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx);
 static DECLCALLBACK(void) shClSvcX11TransferOnDestroyCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx);
+static DECLCALLBACK(void) shClSvcX11TransferOnCompletedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx, int rcCompletion);
 static DECLCALLBACK(void) shClSvcX11TransferOnUnregisteredCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx, PSHCLTRANSFERCTX pTransferCtx);
 
 static DECLCALLBACK(int) shClSvcX11TransferIfaceHGRootListRead(PSHCLTXPROVIDERCTX pCtx);
@@ -445,6 +446,7 @@ static void shClBackendX11TransferGetCallbacks(PSHCLCONTEXT pCtx, PSHCLTRANSFERC
     pCallbacks->pfnOnCreated      = shClSvcX11TransferOnCreatedCallback;
     pCallbacks->pfnOnInitialize   = shClSvcX11TransferOnInitCallback;
     pCallbacks->pfnOnDestroy      = shClSvcX11TransferOnDestroyCallback;
+    pCallbacks->pfnOnCompleted    = shClSvcX11TransferOnCompletedCallback;
     pCallbacks->pfnOnUnregistered = shClSvcX11TransferOnUnregisteredCallback;
 }
 #endif
@@ -1035,6 +1037,36 @@ static DECLCALLBACK(void) shClSvcX11TransferOnDestroyCallback(PSHCLTRANSFERCALLB
 # endif
 
     LogFlowFuncLeave();
+}
+
+/**
+ * @copydoc SHCLTRANSFERCALLBACKS::pfnOnCompleted
+ *
+ * Reports successful host-side HTTP completion to the service and Main.
+ * Non-successful terminal states remain the responsibility of their lifecycle
+ * owner.
+ *
+ * @thread HTTP server request thread.
+ */
+static DECLCALLBACK(void) shClSvcX11TransferOnCompletedCallback(PSHCLTRANSFERCALLBACKCTX pCbCtx, int rcCompletion)
+{
+    if (RT_FAILURE(rcCompletion))
+        return;
+
+    PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pCbCtx->pvUser;
+    AssertPtrReturnVoid(pCtx);
+    AssertPtrReturnVoid(pCtx->pConn);
+
+    PSHCLTRANSFER pTransfer = pCbCtx->pTransfer;
+    AssertPtrReturnVoid(pTransfer);
+
+    if (   ShClTransferGetDir(pTransfer) != SHCLTRANSFERDIR_GUEST_TO_HOST
+        || ShClTransferGetStatus(pTransfer) != SHCLTRANSFERSTATUS_COMPLETED)
+        return;
+
+    int const vrc = pCtx->pConn->transferReportStatus(pTransfer, SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
+    if (RT_FAILURE(vrc))
+        LogRel(("Shared Clipboard: Reporting completed X11 HTTP transfer failed, rc=%Rrc\n", vrc));
 }
 
 /**

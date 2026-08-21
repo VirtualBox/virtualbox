@@ -1,4 +1,4 @@
-/* $Id: VBoxManageClipboard.cpp 114858 2026-08-05 15:08:05Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxManageClipboard.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxManage - Implementation of the clipboard command.
  */
@@ -92,7 +92,7 @@ enum
     CLIPBOARD_OPT_RAW,
     /** --timeout maximum wait time. */
     CLIPBOARD_OPT_TIMEOUT,
-    /** --wait alias used by paste for waiting on guest data. */
+    /** --wait option used by commands which optionally wait. */
     CLIPBOARD_OPT_WAIT,
     /** --count maximum number of listen events. */
     CLIPBOARD_OPT_COUNT,
@@ -3615,34 +3615,175 @@ static RTEXITCODE shclParseTransferDirection(const char *pszDirection, Clipboard
 
 
 /**
- * Finds a clipboard transfer by ID.
+ * Resolves a clipboard transfer target.
  *
- * @returns COM status code.
+ * If no transfer ID is specified, the only active transfer is selected.  This
+ * keeps the omission rule common to all commands which operate on one
+ * transfer.
+ *
+ * @returns Process exit code.
  * @param   ptrManager      Transfer manager.
- * @param   idTransfer      Transfer ID to find.
- * @param   ptrTransfer     Where to return the matching transfer, if any.
+ * @param   idTransfer      Transfer ID to find, or 0 to select the only transfer.
+ * @param   ptrTransfer     Where to return the selected transfer.
+ * @param   pidTransfer     Where to return the selected transfer ID.
  */
-static HRESULT shclGetTransferById(const ComPtr<IClipboardTransferManager> &ptrManager,
-                                   ULONG idTransfer,
-                                   ComPtr<IClipboardTransfer> &ptrTransfer)
+static RTEXITCODE shclResolveTransfer(const ComPtr<IClipboardTransferManager> &ptrManager,
+                                      ULONG idTransfer,
+                                      ComPtr<IClipboardTransfer> &ptrTransfer,
+                                      ULONG *pidTransfer)
 {
+    AssertPtrReturn(pidTransfer, RTEXITCODE_FAILURE);
+
     ptrTransfer.setNull();
     SafeIfaceArray<IClipboardTransfer> aTransfers;
     HRESULT hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0 /* aFlags */, ComSafeArrayAsOutParam(aTransfers));
     if (FAILED(hrc))
-        return hrc;
-    for (size_t i = 0; i < aTransfers.size(); i++)
+        return RTMsgErrorExit(RTEXITCODE_FAILURE, Clipboard::tr("Querying clipboard file transfers failed: %Rhrc"), hrc);
+
+    if (!idTransfer)
     {
-        ULONG idThisTransfer = 0;
-        hrc = aTransfers[i]->COMGETTER(Id)(&idThisTransfer);
+        if (aTransfers.size() == 0)
+            return RTMsgErrorExit(RTEXITCODE_FAILURE, Clipboard::tr("No clipboard file transfer was found."));
+        if (aTransfers.size() > 1)
+            return RTMsgErrorExit(RTEXITCODE_FAILURE,
+                                  Clipboard::tr("More than one clipboard file transfer was found. Specify a transfer ID."));
+
+        ptrTransfer = aTransfers[0];
+        hrc = ptrTransfer->COMGETTER(Id)(&idTransfer);
+        if (FAILED(hrc))
+            return RTMsgErrorExit(RTEXITCODE_FAILURE,
+                                  Clipboard::tr("Reading clipboard transfer metadata failed: %Rhrc"), hrc);
+    }
+    else
+    {
+        for (size_t i = 0; i < aTransfers.size(); i++)
+        {
+            ULONG idThisTransfer = 0;
+            hrc = aTransfers[i]->COMGETTER(Id)(&idThisTransfer);
+            if (FAILED(hrc))
+                return RTMsgErrorExit(RTEXITCODE_FAILURE,
+                                      Clipboard::tr("Reading clipboard transfer metadata failed: %Rhrc"), hrc);
+            if (idThisTransfer == idTransfer)
+            {
+                ptrTransfer = aTransfers[i];
+                break;
+            }
+        }
+        if (ptrTransfer.isNull())
+            return RTMsgErrorExit(RTEXITCODE_FAILURE, Clipboard::tr("Clipboard transfer %RU32 was not found."), idTransfer);
+    }
+
+    *pidTransfer = idTransfer;
+    return RTEXITCODE_SUCCESS;
+}
+
+
+/**
+ * Parses a clipboard transfer ID.
+ *
+ * @returns Process exit code.
+ * @param   pszTransferId  Transfer ID string to parse.
+ * @param   pidTransfer    Where to return the parsed transfer ID.
+ */
+static RTEXITCODE shclParseTransferId(const char *pszTransferId, ULONG *pidTransfer)
+{
+    AssertPtrReturn(pidTransfer, RTEXITCODE_FAILURE);
+
+    uint32_t idTransfer = 0;
+    char *pszNext = NULL;
+    int vrc = RTStrToUInt32Ex(pszTransferId, &pszNext, 0, &idTransfer);
+    if (RT_FAILURE(vrc) || *pszNext || !idTransfer)
+        return RTMsgErrorExit(RTEXITCODE_FAILURE, Clipboard::tr("Invalid clipboard transfer ID '%s'."), pszTransferId);
+
+    *pidTransfer = idTransfer;
+    return RTEXITCODE_SUCCESS;
+}
+
+
+/**
+ * Prints the current status of a clipboard transfer.
+ *
+ * @returns COM status code.
+ * @param   ptrTransfer    Transfer to inspect.
+ * @param   pptrProgress   Where to return the progress object. Optional.
+ */
+static HRESULT shclPrintTransferStatus(const ComPtr<IClipboardTransfer> &ptrTransfer,
+                                       ComPtr<IProgress> *pptrProgress)
+{
+    ULONG idTransfer = 0;
+    ClipboardTransferDirection_T enmDirection = ClipboardTransferDirection_Any;
+    ClipboardSource_T enmSource = ClipboardSource_Host;
+    ClipboardAction_T enmAction = ClipboardAction_Copy;
+    ClipboardTransferState_T enmState = ClipboardTransferState_Added;
+    ClipboardError_T enmError = ClipboardError_None;
+    ComPtr<IProgress> ptrProgress;
+    ULONG uPercent = 0;
+    Bstr bstrMessage;
+
+    HRESULT hrc = ptrTransfer->COMGETTER(Id)(&idTransfer);
+    if (SUCCEEDED(hrc)) hrc = ptrTransfer->COMGETTER(Direction)(&enmDirection);
+    if (SUCCEEDED(hrc)) hrc = ptrTransfer->COMGETTER(Source)(&enmSource);
+    if (SUCCEEDED(hrc)) hrc = ptrTransfer->COMGETTER(Action)(&enmAction);
+    if (SUCCEEDED(hrc)) hrc = ptrTransfer->COMGETTER(State)(&enmState);
+    if (SUCCEEDED(hrc)) hrc = ptrTransfer->COMGETTER(Progress)(ptrProgress.asOutParam());
+    /* A manager-created transfer has no progress object until it is backed by a service transfer. */
+    if (SUCCEEDED(hrc) && ptrProgress.isNotNull()) hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
+    if (SUCCEEDED(hrc)) hrc = ptrTransfer->COMGETTER(Error)(&enmError);
+    if (SUCCEEDED(hrc)) hrc = ptrTransfer->COMGETTER(Message)(bstrMessage.asOutParam());
+    if (FAILED(hrc))
+        return hrc;
+
+    Utf8Str strMessage(bstrMessage);
+    RTPrintf("id=%RU32 direction=%s source=%s action=%s state=%s progress=%RU32%% error=%u message=\"%s\"\n",
+             (uint32_t)idTransfer, shclTransferDirectionToString(enmDirection), ShClHlpSourceToString(enmSource),
+             shclActionToString(enmAction), ShClHlpTransferStateToString(enmState), (uint32_t)uPercent,
+             (unsigned)enmError, strMessage.c_str());
+
+    if (pptrProgress)
+        *pptrProgress = ptrProgress;
+    return S_OK;
+}
+
+
+/**
+ * Prints the root entries of a clipboard transfer.
+ *
+ * @returns COM status code.
+ * @param   ptrTransfer    Transfer to inspect.
+ */
+static HRESULT shclPrintTransferRoots(const ComPtr<IClipboardTransfer> &ptrTransfer)
+{
+    SafeIfaceArray<IClipboardTransferFsObjInfo> aRoots;
+    HRESULT hrc = ptrTransfer->Roots(ComSafeArrayAsOutParam(aRoots));
+    /* A manager-created transfer has no roots until it is backed by a service transfer. */
+    if (hrc == E_NOTIMPL)
+    {
+        RTPrintf("  roots=unavailable\n");
+        return S_OK;
+    }
+    if (FAILED(hrc))
+        return hrc;
+
+    RTPrintf("  roots=%zu\n", aRoots.size());
+    for (size_t i = 0; i < aRoots.size(); ++i)
+    {
+        Bstr bstrPath;
+        FsObjType_T enmType = FsObjType_Unknown;
+        LONG64 cbObject = 0;
+        hrc = aRoots[i]->COMGETTER(Path)(bstrPath.asOutParam());
+        if (SUCCEEDED(hrc))
+            hrc = aRoots[i]->COMGETTER(Type)(&enmType);
+        if (SUCCEEDED(hrc))
+            hrc = aRoots[i]->COMGETTER(ObjectSize)(&cbObject);
         if (FAILED(hrc))
             return hrc;
-        if (idThisTransfer == idTransfer)
-        {
-            ptrTransfer = aTransfers[i];
-            break;
-        }
+
+        Utf8Str strPath(bstrPath);
+        RTPrintf("  root[%zu] path=\"", i);
+        ShClHlpPrintEscapedString(g_pStdOut, strPath.c_str(), strPath.length());
+        RTPrintf("\" type=%s size=%RI64\n", shclFsObjTypeToString(enmType), (int64_t)cbObject);
     }
+
     return S_OK;
 }
 
@@ -3659,10 +3800,12 @@ static RTEXITCODE shclHandleTransferList(HandlerArg *pArg, int argc, char **argv
 {
     static const RTGETOPTDEF s_aOptions[] =
     {
-        { "--direction", CLIPBOARD_OPT_DIRECTION, RTGETOPT_REQ_STRING }
+        { "--direction", CLIPBOARD_OPT_DIRECTION, RTGETOPT_REQ_STRING  },
+        { "--verbose",   'v',                     RTGETOPT_REQ_NOTHING }
     };
 
     ClipboardTransferDirection_T enmDirection = ClipboardTransferDirection_Any;
+    g_uVerbosity = 0;
 
     RTGETOPTSTATE GetState;
     RTGetOptInit(&GetState, argc, argv, s_aOptions, RT_ELEMENTS(s_aOptions), 3, RTGETOPTINIT_FLAGS_OPTS_FIRST);
@@ -3679,6 +3822,9 @@ static RTEXITCODE shclHandleTransferList(HandlerArg *pArg, int argc, char **argv
                     return rcExit;
                 break;
             }
+            case 'v':
+                g_uVerbosity++;
+                break;
             case VINF_GETOPT_NOT_OPTION:
                 return errorSyntax(Clipboard::tr("The clipboard transfer list command takes no positional operands."));
             default:
@@ -3709,31 +3855,22 @@ static RTEXITCODE shclHandleTransferList(HandlerArg *pArg, int argc, char **argv
 
     for (size_t i = 0; i < aTransfers.size(); i++)
     {
-        ULONG idTransfer = 0;
-        ClipboardTransferDirection_T enmThisDirection = ClipboardTransferDirection_Any;
-        ClipboardSource_T enmSource = ClipboardSource_Host;
-        ClipboardAction_T enmAction = ClipboardAction_Copy;
-        ClipboardTransferState_T enmState = ClipboardTransferState_Added;
-        ClipboardError_T enmError = ClipboardError_None;
-        Bstr bstrMessage;
-
-        hrc = aTransfers[i]->COMGETTER(Id)(&idTransfer);
-        if (SUCCEEDED(hrc)) hrc = aTransfers[i]->COMGETTER(Direction)(&enmThisDirection);
-        if (SUCCEEDED(hrc)) hrc = aTransfers[i]->COMGETTER(Source)(&enmSource);
-        if (SUCCEEDED(hrc)) hrc = aTransfers[i]->COMGETTER(Action)(&enmAction);
-        if (SUCCEEDED(hrc)) hrc = aTransfers[i]->COMGETTER(State)(&enmState);
-        if (SUCCEEDED(hrc)) hrc = aTransfers[i]->COMGETTER(Error)(&enmError);
-        if (SUCCEEDED(hrc)) hrc = aTransfers[i]->COMGETTER(Message)(bstrMessage.asOutParam());
+        hrc = shclPrintTransferStatus(aTransfers[i], NULL /* pptrProgress */);
         if (FAILED(hrc))
         {
             pArg->session->UnlockMachine();
             return RTMsgErrorExit(RTEXITCODE_FAILURE, Clipboard::tr("Reading clipboard transfer metadata failed: %Rhrc"), hrc);
         }
-
-        Utf8Str strMessage(bstrMessage);
-        RTPrintf("id=%RU32 direction=%s source=%s action=%s state=%s error=%u message=\"%s\"\n",
-                 (uint32_t)idTransfer, shclTransferDirectionToString(enmThisDirection), ShClHlpSourceToString(enmSource),
-                 shclActionToString(enmAction), ShClHlpTransferStateToString(enmState), (unsigned)enmError, strMessage.c_str());
+        if (g_uVerbosity)
+        {
+            hrc = shclPrintTransferRoots(aTransfers[i]);
+            if (FAILED(hrc))
+            {
+                pArg->session->UnlockMachine();
+                return RTMsgErrorExit(RTEXITCODE_FAILURE,
+                                      Clipboard::tr("Reading clipboard transfer root entries failed: %Rhrc"), hrc);
+            }
+        }
     }
 
     pArg->session->UnlockMachine();
@@ -3748,14 +3885,15 @@ static RTEXITCODE shclHandleTransferList(HandlerArg *pArg, int argc, char **argv
  * @param   pArg            Command handler arguments.
  * @param   argc            Number of command arguments.
  * @param   argv            Command argument vector.
+ * @param   idTransfer      Transfer ID to cancel, or 0 to select the only transfer.
+ * @param   iFirstArgument  Index of the first action argument.
  */
-static RTEXITCODE shclHandleTransferCancel(HandlerArg *pArg, int argc, char **argv)
+static RTEXITCODE shclHandleTransferCancel(HandlerArg *pArg, int argc, char **argv, ULONG idTransfer,
+                                           int iFirstArgument)
 {
-    uint32_t idTransfer = 0;
-    bool fHaveId = false;
-
     RTGETOPTSTATE GetState;
-    RTGetOptInit(&GetState, argc, argv, NULL /* paOptions */, 0 /* cOptions */, 3, RTGETOPTINIT_FLAGS_OPTS_FIRST);
+    RTGetOptInit(&GetState, argc, argv, NULL /* paOptions */, 0 /* cOptions */, iFirstArgument,
+                 RTGETOPTINIT_FLAGS_OPTS_FIRST);
     RTGETOPTUNION ValueUnion;
     int ch;
     while ((ch = RTGetOpt(&GetState, &ValueUnion)) != 0)
@@ -3763,24 +3901,98 @@ static RTEXITCODE shclHandleTransferCancel(HandlerArg *pArg, int argc, char **ar
         switch (ch)
         {
             case VINF_GETOPT_NOT_OPTION:
-            {
-                if (fHaveId)
-                    return errorSyntax(Clipboard::tr("Too many clipboard transfer IDs specified."));
-                char *pszNext = NULL;
-                int vrc = RTStrToUInt32Ex(ValueUnion.psz, &pszNext, 0, &idTransfer);
-                if (RT_FAILURE(vrc) || *pszNext || !idTransfer)
-                    return RTMsgErrorExit(RTEXITCODE_FAILURE, Clipboard::tr("Invalid clipboard transfer ID '%s'."),
-                                          ValueUnion.psz);
-                fHaveId = true;
-                break;
-            }
+                return errorSyntax(Clipboard::tr("The clipboard transfer cancel command takes no positional operands."));
             default:
                 return errorGetOpt(ch, &ValueUnion);
         }
     }
 
-    if (!fHaveId)
-        return errorSyntax(Clipboard::tr("Missing clipboard transfer ID."));
+    ComPtr<IClipboard> ptrClipboard;
+    HRESULT hrc = shclGet(pArg, pArg->argv[0], ptrClipboard);
+    if (FAILED(hrc))
+        return RTEXITCODE_FAILURE;
+
+    ComPtr<IClipboardTransferManager> ptrManager;
+    hrc = ptrClipboard->COMGETTER(Transfers)(ptrManager.asOutParam());
+    if (FAILED(hrc) || ptrManager.isNull())
+    {
+        pArg->session->UnlockMachine();
+        return RTMsgErrorExit(RTEXITCODE_FAILURE, Clipboard::tr("Getting clipboard transfer manager failed: %Rhrc"), hrc);
+    }
+
+    ComPtr<IClipboardTransfer> ptrTransfer;
+    RTEXITCODE rcExit = shclResolveTransfer(ptrManager, idTransfer, ptrTransfer, &idTransfer);
+    if (rcExit != RTEXITCODE_SUCCESS)
+    {
+        pArg->session->UnlockMachine();
+        return rcExit;
+    }
+
+    ComPtr<IProgress> ptrProgress;
+    hrc = ptrTransfer->COMGETTER(Progress)(ptrProgress.asOutParam());
+    if (FAILED(hrc))
+    {
+        pArg->session->UnlockMachine();
+        return RTMsgErrorExit(RTEXITCODE_FAILURE,
+                              Clipboard::tr("Getting progress for clipboard transfer %RU32 failed: %Rhrc"),
+                              idTransfer, hrc);
+    }
+    if (ptrProgress.isNull())
+    {
+        pArg->session->UnlockMachine();
+        return RTMsgErrorExit(RTEXITCODE_FAILURE,
+                              Clipboard::tr("Clipboard transfer %RU32 has no progress object to cancel."), idTransfer);
+    }
+
+    hrc = ptrProgress->Cancel();
+    pArg->session->UnlockMachine();
+    if (FAILED(hrc))
+        return RTMsgErrorExit(RTEXITCODE_FAILURE, Clipboard::tr("Requesting cancellation of clipboard transfer %RU32 failed: %Rhrc"),
+                              idTransfer, hrc);
+
+    shclInfo(Clipboard::tr("Requested cancellation of clipboard transfer %RU32."), idTransfer);
+    return RTEXITCODE_SUCCESS;
+}
+
+
+/**
+ * Handles the clipboard transfer status subcommand.
+ *
+ * @returns Process exit code.
+ * @param   pArg            Command handler arguments.
+ * @param   argc            Number of command arguments.
+ * @param   argv            Command argument vector.
+ * @param   idTransfer      Transfer ID to inspect, or 0 to select the only transfer.
+ * @param   iFirstArgument  Index of the first action argument.
+ */
+static RTEXITCODE shclHandleTransferStatus(HandlerArg *pArg, int argc, char **argv, ULONG idTransfer,
+                                           int iFirstArgument)
+{
+    static const RTGETOPTDEF s_aOptions[] =
+    {
+        { "--wait", CLIPBOARD_OPT_WAIT, RTGETOPT_REQ_NOTHING }
+    };
+
+    bool fWait = false;
+
+    RTGETOPTSTATE GetState;
+    RTGetOptInit(&GetState, argc, argv, s_aOptions, RT_ELEMENTS(s_aOptions), iFirstArgument,
+                 RTGETOPTINIT_FLAGS_OPTS_FIRST);
+    RTGETOPTUNION ValueUnion;
+    int ch;
+    while ((ch = RTGetOpt(&GetState, &ValueUnion)) != 0)
+    {
+        switch (ch)
+        {
+            case CLIPBOARD_OPT_WAIT:
+                fWait = true;
+                break;
+            case VINF_GETOPT_NOT_OPTION:
+                return errorSyntax(Clipboard::tr("The clipboard transfer status command takes no positional operands."));
+            default:
+                return errorGetOpt(ch, &ValueUnion);
+        }
+    }
 
     ComPtr<IClipboard> ptrClipboard;
     HRESULT hrc = shclGet(pArg, argv[0], ptrClipboard);
@@ -3796,27 +4008,56 @@ static RTEXITCODE shclHandleTransferCancel(HandlerArg *pArg, int argc, char **ar
     }
 
     ComPtr<IClipboardTransfer> ptrTransfer;
-    hrc = shclGetTransferById(ptrManager, idTransfer, ptrTransfer);
+    RTEXITCODE rcExit = shclResolveTransfer(ptrManager, idTransfer, ptrTransfer, &idTransfer);
+    if (rcExit != RTEXITCODE_SUCCESS)
+    {
+        pArg->session->UnlockMachine();
+        return rcExit;
+    }
+
+    ComPtr<IProgress> ptrProgress;
+    hrc = shclPrintTransferStatus(ptrTransfer, &ptrProgress);
     if (FAILED(hrc))
     {
         pArg->session->UnlockMachine();
-        return RTMsgErrorExit(RTEXITCODE_FAILURE, Clipboard::tr("Querying clipboard file transfers failed: %Rhrc"), hrc);
-    }
-    if (ptrTransfer.isNull())
-    {
-        pArg->session->UnlockMachine();
-        return RTMsgErrorExit(RTEXITCODE_FAILURE, Clipboard::tr("Clipboard transfer %RU32 was not found."), idTransfer);
+        return RTMsgErrorExit(RTEXITCODE_FAILURE, Clipboard::tr("Reading clipboard transfer metadata failed: %Rhrc"), hrc);
     }
 
-    hrc = ptrManager->Cancel(ptrTransfer);
+    if (fWait)
+    {
+        if (ptrProgress.isNull())
+        {
+            pArg->session->UnlockMachine();
+            return RTMsgErrorExit(RTEXITCODE_FAILURE,
+                                  Clipboard::tr("Clipboard transfer %RU32 has no progress object to wait for."), idTransfer);
+        }
+        RTStrmFlush(g_pStdOut);
+        hrc = showProgress(ptrProgress);
+    }
+
     pArg->session->UnlockMachine();
-    if (FAILED(hrc))
-        return RTMsgErrorExit(RTEXITCODE_FAILURE, Clipboard::tr("Canceling clipboard transfer %RU32 failed: %Rhrc"),
-                              idTransfer, hrc);
-
-    shclInfo(Clipboard::tr("Canceled clipboard transfer %RU32."), idTransfer);
-    return RTEXITCODE_SUCCESS;
+    return SUCCEEDED(hrc) ? RTEXITCODE_SUCCESS : RTEXITCODE_FAILURE;
 }
+
+
+/** Handler for an action which operates on one clipboard transfer. */
+typedef RTEXITCODE FNSHCLTRANSFERACTION(HandlerArg *pArg, int argc, char **argv, ULONG idTransfer,
+                                        int iFirstArgument);
+/** Pointer to an action handler which operates on one clipboard transfer. */
+typedef FNSHCLTRANSFERACTION *PFNSHCLTRANSFERACTION;
+
+/** Description of an action which operates on one clipboard transfer. */
+typedef struct SHCLTRANSFERACTION
+{
+    /** Action name. */
+    const char              *pszName;
+    /** Help scope for the action. */
+    uint64_t                 fHelpScope;
+    /** Action handler. */
+    PFNSHCLTRANSFERACTION    pfnHandler;
+} SHCLTRANSFERACTION;
+/** Pointer to a const single-transfer action description. */
+typedef SHCLTRANSFERACTION const *PCSHCLTRANSFERACTION;
 
 
 /**
@@ -3829,6 +4070,12 @@ static RTEXITCODE shclHandleTransferCancel(HandlerArg *pArg, int argc, char **ar
  */
 static RTEXITCODE shclHandleTransfer(HandlerArg *pArg, int argc, char **argv)
 {
+    static SHCLTRANSFERACTION const s_aActions[] =
+    {
+        { "cancel", HELP_SCOPE_CLIPBOARD_TRANSFER_CANCEL, shclHandleTransferCancel },
+        { "status", HELP_SCOPE_CLIPBOARD_TRANSFER_STATUS, shclHandleTransferStatus }
+    };
+
     if (argc <= 2)
         return errorSyntax(Clipboard::tr("Missing clipboard transfer subcommand."));
 
@@ -3850,13 +4097,41 @@ static RTEXITCODE shclHandleTransfer(HandlerArg *pArg, int argc, char **argv)
         setCurrentSubcommand(HELP_SCOPE_CLIPBOARD_TRANSFER_LIST);
         return shclHandleTransferList(pArg, argc, argv);
     }
-    if (!strcmp(pszSubcommand, "cancel"))
+
+    PCSHCLTRANSFERACTION pAction = NULL;
+    ULONG idTransfer = 0;
+    int iFirstArgument = 3;
+    for (size_t i = 0; i < RT_ELEMENTS(s_aActions); ++i)
+        if (!strcmp(pszSubcommand, s_aActions[i].pszName))
+        {
+            pAction = &s_aActions[i];
+            break;
+        }
+
+    const char *pszAction = pszSubcommand;
+    if (!pAction)
     {
-        setCurrentSubcommand(HELP_SCOPE_CLIPBOARD_TRANSFER_CANCEL);
-        return shclHandleTransferCancel(pArg, argc, argv);
+        RTEXITCODE rcExit = shclParseTransferId(pszSubcommand, &idTransfer);
+        if (rcExit != RTEXITCODE_SUCCESS)
+            return rcExit;
+        if (argc <= 3)
+            return errorSyntax(Clipboard::tr("Missing clipboard transfer action."));
+
+        pszAction = argv[3];
+        iFirstArgument = 4;
+        for (size_t i = 0; i < RT_ELEMENTS(s_aActions); ++i)
+            if (!strcmp(pszAction, s_aActions[i].pszName))
+            {
+                pAction = &s_aActions[i];
+                break;
+            }
     }
 
-    return errorSyntax(Clipboard::tr("Unknown clipboard transfer subcommand '%s'."), pszSubcommand);
+    if (!pAction)
+        return errorSyntax(Clipboard::tr("Unknown clipboard transfer action '%s'."), pszAction);
+
+    setCurrentSubcommand(pAction->fHelpScope);
+    return pAction->pfnHandler(pArg, argc, argv, idTransfer, iFirstArgument);
 }
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
@@ -5373,7 +5648,8 @@ RTEXITCODE handleClipboard(HandlerArg *pArg)
         setCurrentSubcommand(   HELP_SCOPE_CLIPBOARD_TRANSFER_OFFER
                              | HELP_SCOPE_CLIPBOARD_TRANSFER_RECEIVE
                              | HELP_SCOPE_CLIPBOARD_TRANSFER_LIST
-                             | HELP_SCOPE_CLIPBOARD_TRANSFER_CANCEL);
+                             | HELP_SCOPE_CLIPBOARD_TRANSFER_CANCEL
+                             | HELP_SCOPE_CLIPBOARD_TRANSFER_STATUS);
         return shclHandleTransfer(pArg, pArg->argc, pArg->argv);
     }
 #else

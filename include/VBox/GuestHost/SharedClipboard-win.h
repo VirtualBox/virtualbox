@@ -310,6 +310,7 @@ public:
 
     int SetTransfer(PSHCLTRANSFER pTransfer);
     int SetStatus(Status enmStatus, int rcSts = VINF_SUCCESS);
+    int SetFileCompleted(ULONG uObjIdx);
     void DisableCallbacks(void);
 
 public:
@@ -340,6 +341,8 @@ protected:
                         LONG lindex = -1, DWORD dwAspect = DVASPECT_CONTENT, DVTARGETDEVICE *pTargetDevice = NULL);
     int setTransferLocked(PSHCLTRANSFER pTransfer, ShClWinDataObject **ppObjToRelease = NULL);
     int setStatusLocked(Status enmStatus, int rc = VINF_SUCCESS);
+    int setFileCompletedLocked(ULONG uObjIdx);
+    int reportTransferEnd(PSHCLTRANSFER pTransfer, int rcTransfer);
     void registerStreamLocked(ShClWinStreamImpl *pStream);
     void invalidateStreams(void);
 
@@ -379,15 +382,20 @@ protected:
     PSHCLTRANSFER               m_pTransfer;
     /** Published streams.  Each entry owns one COM reference. */
     StreamList                  m_lstStreams;
-    /** Current object index being handled by the data object.
-     *  This is needed to create the next IStream object for e.g. the next upcoming file/dir/++ in the transfer. */
-    ULONG                       m_uObjIdx;
     /** List of (cached) file system objects. */
     FsObjEntryList              m_lstEntries;
+    /** Per-descriptor completion flags.  Directory entries always remain false. */
+    std::vector<bool>           m_afObjCompleted;
+    /** Number of regular-file entries in @a m_lstEntries. */
+    size_t                      m_cFileEntries;
+    /** Number of unique regular-file entries reported complete. */
+    size_t                      m_cFileEntriesCompleted;
     /** Whether the critical section has been initialized. */
     bool                        m_fCritSectInitialized;
     /** Whether new backend callbacks may be started. */
     bool                        m_fCallbacksEnabled;
+    /** Whether the terminal callback for the assigned transfer was issued. */
+    bool                        m_fTransferEndReported;
     /** Number of backend callbacks currently executing. */
     uint32_t                    m_cCallbacks;
     /** Native thread executing the sole admitted backend callback. */
@@ -461,7 +469,7 @@ class ShClWinStreamImpl : public IStream
 public:
 
     ShClWinStreamImpl(ShClWinDataObject *pParent, PSHCLTRANSFER pTransfer,
-                      const Utf8Str &strPath, PSHCLFSOBJINFO pObjInfo);
+                      ULONG uObjIdx, const Utf8Str &strPath, PSHCLFSOBJINFO pObjInfo);
     virtual ~ShClWinStreamImpl(void);
 
 public: /* IUnknown methods. */
@@ -486,8 +494,8 @@ public: /* IStream methods. */
 
 public: /* Own methods. */
 
-    static HRESULT Create(ShClWinDataObject *pParent, PSHCLTRANSFER pTransfer, const Utf8Str &strPath,
-                          PSHCLFSOBJINFO pObjInfo, IStream **ppStream);
+    static HRESULT Create(ShClWinDataObject *pParent, PSHCLTRANSFER pTransfer, ULONG uObjIdx,
+                          const Utf8Str &strPath, PSHCLFSOBJINFO pObjInfo, IStream **ppStream);
     void Invalidate(void);
 private:
 
@@ -497,12 +505,16 @@ private:
     LONG                           m_lRefCount;
     /** Pointer to the associated Shared Clipboard transfer. */
     PSHCLTRANSFER                  m_pTransfer;
+    /** Result returned by reads after the stream has been invalidated. */
+    HRESULT                        m_hrReadAfterInvalidation;
     /** Whether the critical section has been initialized. */
     bool                           m_fCritSectInitialized;
     /** Critical section serializing reads and invalidation. */
     RTCRITSECT                     m_CritSect;
     /** The object handle to use. */
     SHCLOBJHANDLE                  m_hObj;
+    /** Index of this stream's file in the parent's FILEGROUPDESCRIPTOR. */
+    ULONG                          m_uObjIdx;
     /** Object path. */
     Utf8Str                        m_strPath;
     /** (Cached) object information. */

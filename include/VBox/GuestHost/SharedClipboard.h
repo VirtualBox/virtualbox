@@ -251,6 +251,8 @@ typedef struct SHCLEVENT
     uint32_t            cRefs;
     /** Event semaphore for signalling the event. */
     RTSEMEVENTMULTI     hEvtMulSem;
+    /** Whether a producer already claimed and signalled this event. */
+    volatile bool       fSignalled;
     /** Payload to this event, optional (NULL). */
     PSHCLEVENTPAYLOAD   pPayload;
     /** Result code (IPRT-style) to assign. */
@@ -273,6 +275,8 @@ typedef struct SHCLEVENTSOURCE
     RTCRITSECT        CritSect;
     /** Next upcoming event ID. */
     SHCLEVENTID       idNextEvent;
+    /** Latched error used to reject and wake pending events, or success. */
+    int               rcSignal;
     /** List of events (PSHCLEVENT). */
     RTLISTANCHOR      lstEvents;
 } SHCLEVENTSOURCE;
@@ -291,6 +295,7 @@ void ShClPayloadDestroy(PSHCLEVENTPAYLOAD pPayload);
 int ShClEventSourceInit(PSHCLEVENTSOURCE pSource, SHCLEVENTSOURCEID idEvtSrc);
 int ShClEventSourceTerm(PSHCLEVENTSOURCE pSource);
 void ShClEventSourceReset(PSHCLEVENTSOURCE pSource);
+int ShClEventSourceSignalAll(PSHCLEVENTSOURCE pSource, int rc);
 int ShClEventSourceGenerateAndRegisterEvent(PSHCLEVENTSOURCE pSource, PSHCLEVENT *ppEvent);
 PSHCLEVENT ShClEventSourceGetFromId(PSHCLEVENTSOURCE pSource, SHCLEVENTID idEvent);
 PSHCLEVENT ShClEventSourceRetainFromId(PSHCLEVENTSOURCE pSource, SHCLEVENTID idEvent);

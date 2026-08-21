@@ -16089,7 +16089,14 @@
 
     <attribute name="progress" type="IProgress" readonly="yes">
       <desc>
-        Progress object used to track transfer completion.
+        Progress object used to track transfer completion. Every successfully
+        created transfer has a non-@c null, cancelable progress object, and the
+        same object remains associated with the transfer for its entire lifetime.
+        Calling <link to="IProgress::cancel"/> requests cancellation
+        asynchronously. For an active Shared Clipboard service transfer, the
+        request is forwarded to the service; otherwise the manager cancels and
+        removes the transfer locally. Wait for <link to="IProgress::completed"/>
+        before assuming that any required manager and backend cleanup has finished.
       </desc>
     </attribute>
 

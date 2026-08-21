@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-host.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-host.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Host-controlled service handling.
  */
@@ -111,27 +111,10 @@ static void shClSvcHostReset(void)
     shClSvcLock();
 
     PSHCLCLIENT const pClient = g_ShClSvc.pActiveClient;
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-    RTLISTANCHOR ListDestroy;
-    RTListInit(&ListDestroy);
+    shClSvcUnlock();
 
-    /* Keep the client stable while claiming its transfers, but do not run
-     * platform callbacks or wait for transfer users under the service lock. */
     if (pClient)
-        shClSvcTransferDetachAll(pClient, &ListDestroy);
-
-    shClSvcUnlock();
-
-    shClSvcTransferDestroyDetachedAll(&ListDestroy);
-
-    shClSvcLock();
-#endif
-
-    if (   pClient
-        && g_ShClSvc.pActiveClient == pClient)
         shClSvcClientReset(pClient);
-
-    shClSvcUnlock();
 }
 
 

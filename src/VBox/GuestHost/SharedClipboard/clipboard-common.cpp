@@ -1,4 +1,4 @@
-/* $Id: clipboard-common.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-common.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common helper objects.
  */
@@ -161,6 +161,7 @@ int ShClEventSourceInit(PSHCLEVENTSOURCE pSource, SHCLEVENTSOURCEID uID)
     pSource->uID          = uID;
     /* Choose a random event ID starting point. */
     pSource->idNextEvent  = RTRandU32Ex(1, g_idShClEventEnd - 1);
+    pSource->rcSignal     = VINF_SUCCESS;
 
     return VINF_SUCCESS;
 }
@@ -238,10 +239,49 @@ void ShClEventSourceReset(PSHCLEVENTSOURCE pSource)
     if (RT_SUCCESS(rc2))
     {
         shClEventSourceResetInternal(pSource);
+        pSource->rcSignal = VINF_SUCCESS;
 
         rc2 = RTCritSectLeave(&pSource->CritSect);
         AssertRC(rc2);
     }
+}
+
+/**
+ * Signals all pending events of an event source with an error.
+ *
+ * The error is latched while holding the source lock so that event creation
+ * racing the signal is rejected with the same result.
+ *
+ * @returns VBox status code.
+ * @param   pSource             Event source whose pending waiters to wake.
+ * @param   rc                  Error to return to the waiters.
+ */
+int ShClEventSourceSignalAll(PSHCLEVENTSOURCE pSource, int rc)
+{
+    AssertPtrReturn(pSource, VERR_INVALID_POINTER);
+    AssertReturn(RT_FAILURE(rc), VERR_INVALID_PARAMETER);
+
+    int rcRet = RTCritSectEnter(&pSource->CritSect);
+    if (RT_SUCCESS(rcRet))
+    {
+        if (RT_SUCCESS(pSource->rcSignal))
+            pSource->rcSignal = rc;
+
+        PSHCLEVENT pEvent;
+        RTListForEach(&pSource->lstEvents, pEvent, SHCLEVENT, Node)
+        {
+            int const rc2 = ShClEventSignalEx(pEvent, pSource->rcSignal, NULL /* pPayload */);
+            if (   RT_FAILURE(rc2)
+                && rc2 != VERR_WRONG_ORDER
+                && RT_SUCCESS(rcRet))
+                rcRet = rc2;
+        }
+
+        int const rc2 = RTCritSectLeave(&pSource->CritSect);
+        if (RT_SUCCESS(rcRet))
+            rcRet = rc2;
+    }
+    return rcRet;
 }
 
 /**
@@ -264,6 +304,18 @@ int ShClEventSourceGenerateAndRegisterEvent(PSHCLEVENTSOURCE pSource, PSHCLEVENT
         rc = RTCritSectEnter(&pSource->CritSect);
         if (RT_SUCCESS(rc))
         {
+            if (RT_FAILURE(pSource->rcSignal))
+            {
+                rc = pSource->rcSignal;
+                int const rc2 = RTCritSectLeave(&pSource->CritSect);
+                AssertRC(rc2);
+
+                RTSemEventMultiDestroy(pEvent->hEvtMulSem);
+                pEvent->hEvtMulSem = NIL_RTSEMEVENTMULTI;
+                RTMemFree(pEvent);
+                return rc;
+            }
+
             /*
              * Allocate an unique event ID.
              */
@@ -643,14 +695,18 @@ int ShClEventSignalEx(PSHCLEVENT pEvent, int rc, PSHCLEVENTPAYLOAD pPayload)
 {
     AssertPtrReturn(pEvent, VERR_INVALID_POINTER);
 
-    Assert(pEvent->pPayload == NULL);
+    if (!ASMAtomicCmpXchgBool(&pEvent->fSignalled, true, false))
+        return VERR_WRONG_ORDER;
 
     pEvent->rc       = rc;
     pEvent->pPayload = pPayload;
 
     int rc2 = RTSemEventMultiSignal(pEvent->hEvtMulSem);
     if (RT_FAILURE(rc2))
+    {
         pEvent->pPayload = NULL; /* (no race condition if consumer also enters the critical section) */
+        ASMAtomicWriteBool(&pEvent->fSignalled, false);
+    }
 
     LogFlowFuncLeaveRC(rc2);
     return rc2;

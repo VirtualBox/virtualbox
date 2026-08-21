@@ -1,4 +1,4 @@
-/* $Id: tstClipboardHttpServer.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardHttpServer.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard HTTP server test case.
  */
@@ -62,6 +62,28 @@ static bool         g_fManual       = false;
  /** Puts the URL on the X11 clipboard. Only works with manual mode. */
  static bool        g_fX11          = false;
 #endif
+
+/** Stable RTHTTPSERVERREQ callback ABI layout. */
+typedef struct TSTRTHTTPSERVERREQABI
+{
+    char            *pszUrl;
+    RTHTTPMETHOD     enmMethod;
+    RTHTTPHEADERLIST hHdrLst;
+    RTHTTPBODY       Body;
+    void            *pvUser;
+} TSTRTHTTPSERVERREQABI;
+
+AssertCompile(RT_UOFFSETOF(TSTRTHTTPSERVERREQABI, pszUrl)
+              == RT_UOFFSETOF(RTHTTPSERVERREQ, pszUrl));
+AssertCompile(RT_UOFFSETOF(TSTRTHTTPSERVERREQABI, enmMethod)
+              == RT_UOFFSETOF(RTHTTPSERVERREQ, enmMethod));
+AssertCompile(RT_UOFFSETOF(TSTRTHTTPSERVERREQABI, hHdrLst)
+              == RT_UOFFSETOF(RTHTTPSERVERREQ, hHdrLst));
+AssertCompile(RT_UOFFSETOF(TSTRTHTTPSERVERREQABI, Body)
+              == RT_UOFFSETOF(RTHTTPSERVERREQ, Body));
+AssertCompile(RT_UOFFSETOF(TSTRTHTTPSERVERREQABI, pvUser)
+              == RT_UOFFSETOF(RTHTTPSERVERREQ, pvUser));
+AssertCompile(sizeof(TSTRTHTTPSERVERREQABI) == sizeof(RTHTTPSERVERREQ));
 
 /** Test files to handle + download.
  *  All files reside in a common temporary directory. */
@@ -284,9 +306,31 @@ typedef struct TSTHTTPPROVIDERCTX
     volatile uint32_t   cObjReads;
     /** Number of initial reads to pause. */
     uint32_t            cReadsToPause;
+    /** One-based read ordinal which must fail, or zero for none. */
+    uint32_t            iReadToFail;
+    /** Failure returned for @a iReadToFail. */
+    int                 rcReadFailure;
 } TSTHTTPPROVIDERCTX;
 /** Pointer to an HTTP provider wrapper state. */
 typedef TSTHTTPPROVIDERCTX *PTSTHTTPPROVIDERCTX;
+
+/** Transfer completion callback state. */
+typedef struct TSTHTTPCOMPLETIONCTX
+{
+    /** Number of successful completion callbacks. */
+    volatile uint32_t cCompleted;
+} TSTHTTPCOMPLETIONCTX;
+/** Pointer to transfer completion callback state. */
+typedef TSTHTTPCOMPLETIONCTX *PTSTHTTPCOMPLETIONCTX;
+
+/** @copydoc SHCLTRANSFERCALLBACKS::pfnOnCompleted */
+static DECLCALLBACK(void) tstHttpTransferCompleted(PSHCLTRANSFERCALLBACKCTX pCbCtx, int rcCompletion)
+{
+    PTSTHTTPCOMPLETIONCTX pThis = (PTSTHTTPCOMPLETIONCTX)pCbCtx->pvUser;
+    AssertPtrReturnVoid(pThis);
+    if (RT_SUCCESS(rcCompletion))
+        ASMAtomicIncU32(&pThis->cCompleted);
+}
 
 /** @copydoc SHCLTXPROVIDERIFACE::pfnObjOpen */
 static DECLCALLBACK(int) tstHttpProviderObjOpen(PSHCLTXPROVIDERCTX pCtx, PSHCLOBJOPENCREATEPARMS pCreateParms,
@@ -336,6 +380,9 @@ static DECLCALLBACK(int) tstHttpProviderObjRead(PSHCLTXPROVIDERCTX pCtx, SHCLOBJ
             return rc;
     }
 
+    if (iRead == pThis->iReadToFail)
+        return pThis->rcReadFailure;
+
     return pThis->LocalIface.pfnObjRead(pCtx, hObj, pvData, cbData, fFlags, pcbRead);
 }
 
@@ -350,6 +397,7 @@ static int tstHttpProviderInit(PTSTHTTPPROVIDERCTX pThis, PSHCLTXPROVIDER pProvi
 {
     RT_ZERO(*pThis);
     RT_ZERO(*pProvider);
+    pThis->rcReadFailure = VERR_READ_ERROR;
 
     int rc = RTSemEventCreate(&pThis->hReadEntered);
     if (RT_SUCCESS(rc))
@@ -685,6 +733,272 @@ static void tstRepeatedRequestHandles(RTTEST hTest, const char *pszTempDir)
     if (fProviderInitialized)
         tstHttpProviderTerm(&ProviderCtx);
     RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szSrcFile));
+}
+
+/**
+ * Checks exact, per-root HTTP completion semantics.
+ *
+ * HEAD requests must not complete payload, multiple GETs for one root count
+ * only once, and a zero-byte root completes on GET.
+ *
+ * @param   hTest           The test handle.
+ * @param   pszTempDir      Temporary directory for test files.
+ */
+static void tstPerRootCompletion(RTTEST hTest, const char *pszTempDir)
+{
+    RTTestSub(hTest, "per-root completion");
+
+    char szSrcFile0[RTPATH_MAX];
+    char szSrcFile1[RTPATH_MAX];
+    char szDstFile0[RTPATH_MAX];
+    char szDstFile1[RTPATH_MAX];
+    char szDstFile2[RTPATH_MAX];
+    char szDstFileFailed[RTPATH_MAX];
+    RTTEST_CHECK_RETV(hTest, RTStrPrintf2(szSrcFile0, sizeof(szSrcFile0), "%s/root-0.bin", pszTempDir) > 0);
+    RTTEST_CHECK_RETV(hTest, RTStrPrintf2(szSrcFile1, sizeof(szSrcFile1), "%s/root-1-empty.bin", pszTempDir) > 0);
+    RTTEST_CHECK_RETV(hTest, RTStrPrintf2(szDstFile0, sizeof(szDstFile0), "%s/root-0-copy-a.bin", pszTempDir) > 0);
+    RTTEST_CHECK_RETV(hTest, RTStrPrintf2(szDstFile1, sizeof(szDstFile1), "%s/root-0-copy-b.bin", pszTempDir) > 0);
+    RTTEST_CHECK_RETV(hTest, RTStrPrintf2(szDstFile2, sizeof(szDstFile2), "%s/root-1-copy.bin", pszTempDir) > 0);
+    RTTEST_CHECK_RETV(hTest, RTStrPrintf2(szDstFileFailed, sizeof(szDstFileFailed), "%s/root-0-partial.bin", pszTempDir) > 0);
+    RTTEST_CHECK_RC_OK_RETV(hTest, tstCreatePatternFile(szSrcFile0, _128K));
+    RTTEST_CHECK_RC_OK_RETV(hTest, tstCreatePatternFile(szSrcFile1, 0));
+
+    TSTHTTPPROVIDERCTX ProviderCtx;
+    SHCLTXPROVIDER Provider;
+    bool fProviderInitialized = false;
+    bool fServerInitialized = false;
+    bool fCtxInitialized = false;
+    bool fHttpRegistered = false;
+    PSHCLTRANSFER pTransfer = NULL;
+    char *pszRoots = NULL;
+    char *pszUrl0 = NULL;
+    char *pszUrl1 = NULL;
+    RTHTTP hClient = NIL_RTHTTP;
+    RTTHREAD ahGetThreads[2] = { NIL_RTTHREAD, NIL_RTTHREAD };
+    bool afGetThreadStarted[2] = { false, false };
+
+    TSTHTTPCOMPLETIONCTX CompletionCtx;
+    RT_ZERO(CompletionCtx);
+    SHCLTRANSFERCALLBACKS TransferCallbacks;
+    RT_ZERO(TransferCallbacks);
+    TransferCallbacks.pfnOnCompleted = tstHttpTransferCompleted;
+    TransferCallbacks.pvUser         = &CompletionCtx;
+    TransferCallbacks.cbUser         = sizeof(CompletionCtx);
+
+    SHCLHTTPSERVER HttpSrv;
+    SHCLTRANSFERCTX TransferCtx;
+    uint16_t uPort = 0;
+    int rc = tstHttpProviderInit(&ProviderCtx, &Provider);
+    RTTEST_CHECK_RC_OK(hTest, rc);
+    if (RT_SUCCESS(rc))
+    {
+        fProviderInitialized = true;
+        rc = ShClTransferHttpServerInit(&HttpSrv);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        fServerInitialized = true;
+        rc = ShClTransferHttpServerStart(&HttpSrv, 32 /* cMaxAttempts */, &uPort);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferCtxInit(&TransferCtx);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        fCtxInitialized = true;
+        rc = ShClTransferCtxBeginSession(&TransferCtx, 401);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferCreate(SHCLTRANSFERDIR_GUEST_TO_HOST, SHCLSOURCE_REMOTE, &TransferCallbacks, &pTransfer);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferSetProvider(pTransfer, &Provider);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        if (RTStrAPrintf(&pszRoots, "%s%s%s%s", szSrcFile0, SHCL_TRANSFER_URI_LIST_SEP_STR,
+                         szSrcFile1, SHCL_TRANSFER_URI_LIST_SEP_STR) < 0)
+            rc = VERR_NO_MEMORY;
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferRootsSetFromStringList(pTransfer, pszRoots, strlen(pszRoots) + 1);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferInit(pTransfer);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferCtxRegister(&TransferCtx, pTransfer, NULL);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = ShClTransferHttpServerRegisterTransfer(&HttpSrv, pTransfer);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+        fHttpRegistered = RT_SUCCESS(rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        pszUrl0 = ShClTransferHttpServerGetUrlA(&HttpSrv, ShClTransferGetID(pTransfer), 0);
+        pszUrl1 = ShClTransferHttpServerGetUrlA(&HttpSrv, ShClTransferGetID(pTransfer), 1);
+        if (!pszUrl0 || !pszUrl1)
+            rc = VERR_NO_MEMORY;
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTHttpCreate(&hClient);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTHttpSetProxy(hClient, NULL /* pszProxyUrl */, 0 /* uPort */,
+                            NULL /* pszProxyUser */, NULL /* pszProxyPwd */);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+    }
+
+    if (RT_SUCCESS(rc))
+    {
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            void *pvResponse = NULL;
+            size_t cbResponse = 0;
+            rc = RTHttpGetHeaderBinary(hClient, i == 0 ? pszUrl0 : pszUrl1, &pvResponse, &cbResponse);
+            RTTEST_CHECK_RC_OK(hTest, rc);
+            RTHttpFreeResponse(pvResponse);
+            if (RT_FAILURE(rc))
+                break;
+        }
+        RTTEST_CHECK(hTest, ShClTransferGetStatus(pTransfer) == SHCLTRANSFERSTATUS_INITIALIZED);
+        RTTEST_CHECK(hTest, ASMAtomicReadU32(&CompletionCtx.cCompleted) == 0);
+    }
+
+    if (RT_SUCCESS(rc))
+    {
+        ProviderCtx.iReadToFail = ASMAtomicReadU32(&ProviderCtx.cObjReads) + 2;
+
+        RTHTTP hFailClient;
+        int rc2 = RTHttpCreate(&hFailClient);
+        RTTEST_CHECK_RC_OK(hTest, rc2);
+        if (RT_SUCCESS(rc2))
+        {
+            rc2 = RTHttpSetProxy(hFailClient, NULL /* pszProxyUrl */, 0 /* uPort */,
+                                 NULL /* pszProxyUser */, NULL /* pszProxyPwd */);
+            RTTEST_CHECK_RC_OK(hTest, rc2);
+            if (RT_SUCCESS(rc2))
+            {
+                rc2 = RTHttpGetFile(hFailClient, pszUrl0, szDstFileFailed);
+                RTTEST_CHECK(hTest, RT_FAILURE(rc2));
+                uint64_t cbPartial = UINT64_MAX;
+                RTTEST_CHECK_RC_OK(hTest, RTFileQuerySizeByPath(szDstFileFailed, &cbPartial));
+                RTTEST_CHECK(hTest, cbPartial == _64K);
+            }
+            RTTEST_CHECK_RC_OK(hTest, RTHttpDestroy(hFailClient));
+        }
+
+        ProviderCtx.iReadToFail = 0;
+        RTTEST_CHECK(hTest, ShClTransferGetStatus(pTransfer) == SHCLTRANSFERSTATUS_INITIALIZED);
+        RTTEST_CHECK(hTest, ASMAtomicReadU32(&CompletionCtx.cCompleted) == 0);
+    }
+
+    TSTHTTPGETCTX aGetCtx[2] =
+    {
+        { pszUrl0, szDstFile0, VERR_IPE_UNINITIALIZED_STATUS },
+        { pszUrl0, szDstFile1, VERR_IPE_UNINITIALIZED_STATUS }
+    };
+    if (RT_SUCCESS(rc))
+    {
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            rc = RTThreadCreate(&ahGetThreads[i], tstHttpGetThread, &aGetCtx[i], 0 /* cbStack */,
+                                RTTHREADTYPE_DEFAULT, RTTHREADFLAGS_WAITABLE, "ShClRootGet");
+            RTTEST_CHECK_RC_OK(hTest, rc);
+            if (RT_FAILURE(rc))
+                break;
+            afGetThreadStarted[i] = true;
+            rc = RTThreadUserWait(ahGetThreads[i], RT_MS_5SEC);
+            RTTEST_CHECK_RC_OK(hTest, rc);
+            if (RT_FAILURE(rc))
+                break;
+        }
+    }
+    for (uint32_t i = 0; i < 2; i++)
+        if (afGetThreadStarted[i])
+        {
+            int rcThread = VERR_IPE_UNINITIALIZED_STATUS;
+            int const rcWait = RTThreadWait(ahGetThreads[i], RT_MS_30SEC, &rcThread);
+            RTTEST_CHECK_RC_OK(hTest, rcWait);
+            if (RT_SUCCESS(rcWait))
+            {
+                RTTEST_CHECK_RC_OK(hTest, rcThread);
+                RTTEST_CHECK_RC_OK(hTest, aGetCtx[i].rc);
+            }
+        }
+
+    if (RT_SUCCESS(rc))
+    {
+        RTTEST_CHECK_RC_OK(hTest, RTFileCompare(szSrcFile0, szDstFile0));
+        RTTEST_CHECK_RC_OK(hTest, RTFileCompare(szSrcFile0, szDstFile1));
+        RTTEST_CHECK(hTest, ShClTransferGetStatus(pTransfer) == SHCLTRANSFERSTATUS_INITIALIZED);
+        RTTEST_CHECK(hTest, ASMAtomicReadU32(&CompletionCtx.cCompleted) == 0);
+
+        rc = RTHttpGetFile(hClient, pszUrl1, szDstFile2);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+        RTTEST_CHECK(hTest, ShClTransferGetStatus(pTransfer) == SHCLTRANSFERSTATUS_COMPLETED);
+        RTTEST_CHECK(hTest, ASMAtomicReadU32(&CompletionCtx.cCompleted) == 1);
+    }
+    if (RT_SUCCESS(rc))
+    {
+        rc = RTHttpGetFile(hClient, pszUrl1, szDstFile2);
+        RTTEST_CHECK_RC_OK(hTest, rc);
+        RTTEST_CHECK(hTest, ASMAtomicReadU32(&CompletionCtx.cCompleted) == 1);
+    }
+
+    if (hClient != NIL_RTHTTP)
+        RTTEST_CHECK_RC_OK(hTest, RTHttpDestroy(hClient));
+    RTStrFree(pszUrl1);
+    RTStrFree(pszUrl0);
+    RTStrFree(pszRoots);
+
+    if (pTransfer)
+    {
+        if (fHttpRegistered)
+            RTTEST_CHECK_RC_OK(hTest, ShClTransferHttpServerUnregisterTransfer(&HttpSrv, pTransfer));
+        if (fCtxInitialized && ShClTransferCtxGetTransferById(&TransferCtx, ShClTransferGetID(pTransfer)) == pTransfer)
+            RTTEST_CHECK_RC_OK(hTest, ShClTransferCtxUnregisterById(&TransferCtx, ShClTransferGetID(pTransfer)));
+        RTTEST_CHECK_RC_OK(hTest, ShClTransferDestroy(pTransfer));
+    }
+    if (fCtxInitialized)
+        ShClTransferCtxDestroy(&TransferCtx);
+    if (fServerInitialized)
+        RTTEST_CHECK_RC_OK(hTest, ShClTransferHttpServerDestroy(&HttpSrv));
+    if (fProviderInitialized)
+        tstHttpProviderTerm(&ProviderCtx);
+
+    if (RTFileExists(szDstFile2))
+        RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szDstFile2));
+    if (RTFileExists(szDstFile1))
+        RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szDstFile1));
+    if (RTFileExists(szDstFile0))
+        RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szDstFile0));
+    if (RTFileExists(szDstFileFailed))
+        RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szDstFileFailed));
+    RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szSrcFile1));
+    RTTEST_CHECK_RC_OK(hTest, RTFileDelete(szSrcFile0));
 }
 
 /**
@@ -1313,6 +1627,7 @@ int main(int argc, char *argv[])
     if (!g_fManual)
     {
         tstRepeatedRequestHandles(hTest, szTempDir);
+        tstPerRootCompletion(hTest, szTempDir);
         tstStaleKeyUnregister(hTest, szTempDir);
         tstUnregisterDuringRequest(hTest, szTempDir);
     }
@@ -1413,7 +1728,7 @@ int main(int argc, char *argv[])
                 }
                 for (size_t i = 0; i < RT_ELEMENTS(g_aTests); i++)
                 {
-                    PSHCLTRANSFER pTx = ShClTransferCtxGetTransferByIndex(&TxCtx, i);
+                    PSHCLTRANSFER pTx = ShClTransferCtxGetTransferByIndex(&TxCtx, (uint32_t)i);
                     char *pszUrlBase  = ShClTransferHttpServerGetUrlA(&HttpSrv, ShClTransferGetID(pTx), UINT64_MAX);
                     char *pszUrl      = ShClTransferHttpServerGetUrlA(&HttpSrv, ShClTransferGetID(pTx), 0 /* idxEntry */);
                     RTTEST_CHECK(hTest, pszUrlBase != NULL);

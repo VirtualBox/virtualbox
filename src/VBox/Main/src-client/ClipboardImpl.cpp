@@ -1,4 +1,4 @@
-/* $Id: ClipboardImpl.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardImpl.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Console clipboard API.
  */
@@ -3237,6 +3237,27 @@ HRESULT Clipboard::i_transferCancel(SHCLSESSIONID aServiceSessionId, SHCLTRANSFE
 
 
 /**
+ * Queues local transfer teardown after a service reset or backend teardown.
+ *
+ * This deliberately does not make an HGCM host call; it is itself invoked from
+ * the service extension callback.  Publications are assigned to the manager's
+ * COM-MTA worker so active API listeners never run on the callback thread.
+ */
+void Clipboard::i_resetTransfersFromService()
+{
+    ComObjPtr<ClipboardTransferManager> ptrTransfers;
+    {
+        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+        if (mData)
+            ptrTransfers = mData->mTransfers;
+    }
+
+    if (ptrTransfers.isNotNull())
+        ptrTransfers->i_resetFromService();
+}
+
+
+/**
  * Handles a Shared Clipboard transfer lifecycle status delivered by the host service.
  *
  * @returns COM status code.
@@ -3269,6 +3290,37 @@ HRESULT Clipboard::i_handleTransferStatus(SHCLSESSIONID aServiceSessionId,
 
     return ptrTransfers->i_handleTransferStatus(aServiceSessionId, aTransferId, aGeneration, aTransfer,
                                                 enmShClSource, enmStatus, vrcTransfer);
+}
+
+
+/**
+ * Updates a Shared Clipboard transfer's byte progress.
+ *
+ * @returns COM status code.
+ * @param   aServiceSessionId   Service session that owns the transfer.
+ * @param   aTransferId         Transfer ID that produced the progress update.
+ * @param   aGeneration         Host-private transfer generation.
+ * @param   cbProcessed         Number of bytes processed so far.
+ * @param   cbTotal             Total number of bytes to process.
+ */
+HRESULT Clipboard::i_handleTransferProgress(SHCLSESSIONID aServiceSessionId,
+                                            SHCLTRANSFERID aTransferId,
+                                            SHCLTRANSFERGEN aGeneration,
+                                            uint64_t cbProcessed,
+                                            uint64_t cbTotal)
+{
+    ComObjPtr<ClipboardTransferManager> ptrTransfers;
+    {
+        AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+        if (!mData)
+            return E_FAIL;
+        ptrTransfers = mData->mTransfers;
+    }
+
+    if (ptrTransfers.isNull())
+        return E_FAIL;
+
+    return ptrTransfers->i_handleTransferProgress(aServiceSessionId, aTransferId, aGeneration, cbProcessed, cbTotal);
 }
 # endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
@@ -4167,22 +4219,36 @@ void Clipboard::i_fireClipboardTransferEvent(VBOXSHCLMAINCLIENTID aClientId,
                                              ClipboardError_T aError)
 {
     ComPtr<IEventSource> ptrEventSource;
-    HRESULT hrc = getEventSource(ptrEventSource);
-    if (FAILED(hrc) || ptrEventSource.isNull())
+    LONG64 i64Revision;
+    std::vector<SessionEventTarget> vecTargets;
     {
-        Log3Func(("No event source for transfer event: hrc=%#x\n", hrc));
-        return;
+        /* Only retain the parent call while snapshotting COM-owned event
+         * targets.  Active listener delivery may synchronously tear down the
+         * Clipboard and therefore must not hold an AutoCaller on it. */
+        AutoCaller autoCaller(this);
+        if (FAILED(autoCaller.hrc()))
+        {
+            Log3Func(("Cannot snapshot transfer event targets: hrc=%#x\n", autoCaller.hrc()));
+            return;
+        }
+
+        HRESULT const hrc = getEventSource(ptrEventSource);
+        if (FAILED(hrc) || ptrEventSource.isNull())
+        {
+            Log3Func(("No event source for transfer event: hrc=%#x\n", hrc));
+            return;
+        }
+
+        i64Revision = i_nextEventRevision();
+        i_getSessionEventTargets(vecTargets, aClientId, true /* fPassive */, false /* fCheckReflection */,
+                                 VBOX_SHCL_FMT_NONE, ClipboardSource_Custom);
     }
 
-    LONG64 const i64Revision = i_nextEventRevision();
     Log2Func(("Firing transfer event: transfer=%p, state=%RU32, revision=%RI64, clientId=%RU32\n",
               (void *)aTransfer, (uint32_t)aState, i64Revision, aClientId));
     ::FireClipboardTransferEvent(ptrEventSource, i64Revision, aClientId, aTransfer, aState, aInteraction,
                                  Bstr(aPath).raw(), aMessage, aError);
 
-    std::vector<SessionEventTarget> vecTargets;
-    i_getSessionEventTargets(vecTargets, aClientId, true /* fPassive */, false /* fCheckReflection */,
-                             VBOX_SHCL_FMT_NONE, ClipboardSource_Custom);
     for (std::vector<SessionEventTarget>::const_iterator it = vecTargets.begin(); it != vecTargets.end(); ++it)
         ::FireClipboardTransferEvent(it->mEventSource, i64Revision, aClientId, aTransfer, aState, aInteraction,
                                      Bstr(aPath).raw(), aMessage, aError);

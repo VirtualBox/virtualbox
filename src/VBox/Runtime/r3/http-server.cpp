@@ -1,4 +1,4 @@
-/* $Id: http-server.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: http-server.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Simple HTTP server (RFC 7231) implementation.
  *
@@ -102,6 +102,28 @@ typedef struct RTHTTPSERVERINTERNAL
 } RTHTTPSERVERINTERNAL;
 /** Pointer to an internal HTTP server instance. */
 typedef RTHTTPSERVERINTERNAL *PRTHTTPSERVERINTERNAL;
+
+/**
+ * Runtime-private HTTP request state.
+ *
+ * Core must remain the first member so callbacks keep receiving a pointer with
+ * the unchanged public RTHTTPSERVERREQ layout.
+ */
+typedef struct RTHTTPSERVERREQINTERNAL
+{
+    /** Public request state passed to callbacks. */
+    RTHTTPSERVERREQ          Core;
+    /** Final method-processing result. */
+    RTHTTPSERVERREQRESULT    Result;
+    /** Whether @a Result contains method-specific details. */
+    bool                     fResultSet;
+    /** Whether @a Result may be queried by pfnRequestEnd. */
+    bool                     fResultFinalized;
+} RTHTTPSERVERREQINTERNAL;
+/** Pointer to the Runtime-private HTTP request state. */
+typedef RTHTTPSERVERREQINTERNAL *PRTHTTPSERVERREQINTERNAL;
+
+AssertCompile(RT_UOFFSETOF(RTHTTPSERVERREQINTERNAL, Core) == 0);
 
 
 /*********************************************************************************************************************************
@@ -396,8 +418,10 @@ static void rtHttpServerBodyDestroy(PRTHTTPBODY pBody)
  */
 static PRTHTTPSERVERREQ rtHttpServerReqAlloc(void)
 {
-    PRTHTTPSERVERREQ pReq = (PRTHTTPSERVERREQ)RTMemAllocZ(sizeof(RTHTTPSERVERREQ));
-    AssertPtrReturn(pReq, NULL);
+    PRTHTTPSERVERREQINTERNAL pReqInt = (PRTHTTPSERVERREQINTERNAL)RTMemAllocZ(sizeof(*pReqInt));
+    AssertPtrReturn(pReqInt, NULL);
+
+    PRTHTTPSERVERREQ pReq = &pReqInt->Core;
 
     int rc2 = RTHttpHeaderListInit(&pReq->hHdrLst);
     AssertRC(rc2);
@@ -426,7 +450,8 @@ static void rtHttpServerReqFree(PRTHTTPSERVERREQ pReq)
 
     rtHttpServerBodyDestroy(&pReq->Body);
 
-    RTMemFree(pReq);
+    PRTHTTPSERVERREQINTERNAL pReqInt = (PRTHTTPSERVERREQINTERNAL)pReq;
+    RTMemFree(pReqInt);
     pReq = NULL;
 }
 
@@ -476,6 +501,19 @@ RTR3DECL(void) RTHttpServerResponseDestroy(PRTHTTPSERVERRESP pResp)
     pResp->hHdrLst = NIL_RTHTTPHEADERLIST;
 
     rtHttpServerBodyDestroy(&pResp->Body);
+}
+
+/** @copydoc RTHttpServerRequestQueryResult */
+RTR3DECL(int) RTHttpServerRequestQueryResult(PRTHTTPSERVERREQ pReq, PRTHTTPSERVERREQRESULT pResult)
+{
+    AssertPtrReturn(pReq, VERR_INVALID_POINTER);
+    AssertPtrReturn(pResult, VERR_INVALID_POINTER);
+
+    PRTHTTPSERVERREQINTERNAL pReqInt = (PRTHTTPSERVERREQINTERNAL)pReq;
+    AssertReturn(pReqInt->fResultFinalized, VERR_WRONG_ORDER);
+
+    *pResult = pReqInt->Result;
+    return VINF_SUCCESS;
 }
 
 
@@ -731,10 +769,21 @@ static DECLCALLBACK(int) rtHttpServerHandleGET(PRTHTTPSERVERCLIENT pClient, PRTH
     RTHTTPSERVER_HANDLE_CALLBACK_VA(pfnQueryInfo, pReq, &fsObj, &pszMIMEHint);
     if (RT_FAILURE(rc))
          enmStsResponse = rtHttpServerRcToStatus(rc);
+    else if (fsObj.cbObject < 0)
+    {
+        rc = VERR_INVALID_PARAMETER;
+        enmStsResponse = rtHttpServerRcToStatus(rc);
+    }
 
     void *pvHandle = NULL;
     if (RT_SUCCESS(rc)) /* Only call open if querying information above succeeded. */
         RTHTTPSERVER_HANDLE_CALLBACK_VA(pfnOpen, pReq, &pvHandle);
+
+    int const rcResource = RT_SUCCESS(rc) && pvHandle == NULL ? VERR_INVALID_HANDLE : rc;
+    bool const fResourceReady = RT_SUCCESS(rcResource);
+    uint64_t const cbBodyExpected = RT_SUCCESS(rcResource) ? (uint64_t)fsObj.cbObject : 0;
+    uint64_t cbBodySent = 0;
+    uint64_t cbBodyLeft = cbBodyExpected;
 
     size_t cbBuf = _64K;
     void  *pvBuf = RTMemAlloc(cbBuf);
@@ -746,12 +795,12 @@ static DECLCALLBACK(int) rtHttpServerHandleGET(PRTHTTPSERVERCLIENT pClient, PRTH
         rc = RTHttpHeaderListInit(&HdrLst);
         AssertRCBreak(rc);
 
-        char szVal[16];
+        char szVal[32];
 
         /* Note: For directories fsObj.cbObject contains the actual size (in bytes)
          *       of the body data for the directory listing. */
 
-        ssize_t cch = RTStrPrintf2(szVal, sizeof(szVal), "%RU64", fsObj.cbObject);
+        ssize_t cch = RTStrPrintf2(szVal, sizeof(szVal), "%RU64", cbBodyExpected);
         AssertBreakStmt(cch, rc = VERR_BUFFER_OVERFLOW);
         rc = RTHttpHeaderListAdd(HdrLst, "Content-Length", szVal, strlen(szVal), RTHTTPHEADERLISTADD_F_BACK);
         AssertRCBreak(rc);
@@ -797,39 +846,78 @@ static DECLCALLBACK(int) rtHttpServerHandleGET(PRTHTTPSERVERCLIENT pClient, PRTH
             break;
         AssertRCBreak(rc);
 
-        size_t cbToRead  = fsObj.cbObject;
         size_t cbRead    = 0; /* Shut up GCC. */
         size_t cbWritten = 0; /* Ditto. */
-        while (cbToRead)
+        while (cbBodyLeft)
         {
-            RTHTTPSERVER_HANDLE_CALLBACK_VA(pfnRead, pReq, pvHandle, pvBuf, RT_MIN(cbBuf, cbToRead), &cbRead);
+            size_t const cbToRead = (size_t)RT_MIN((uint64_t)cbBuf, cbBodyLeft);
+            RTHTTPSERVER_HANDLE_CALLBACK_VA(pfnRead, pReq, pvHandle, pvBuf, cbToRead, &cbRead);
             if (RT_FAILURE(rc))
                 break;
+            if (cbRead == 0)
+            {
+                rc = VERR_EOF;
+                break;
+            }
+            if (cbRead > cbToRead)
+            {
+                rc = VERR_TOO_MUCH_DATA;
+                break;
+            }
+            cbWritten = 0;
             rc = rtHttpServerSendResponseBody(pClient, pvBuf, cbRead, &cbWritten);
             if (RT_FAILURE(rc))
                 break;
-            AssertBreak(cbToRead >= cbWritten);
-            cbToRead -= cbWritten;
+            AssertBreak(cbBodyLeft >= cbWritten);
+            cbBodyLeft -= cbWritten;
+            cbBodySent += cbWritten;
 #if 0 /* Disabled, VERR_BROKEN_PIPE happens too often with GVFS 1.50. */
-            AssertMsgRCBreak(rc, ("rc=%Rrc, cbRead=%zu, cbToRead=%zu, cbWritten=%zu\n", rc, cbRead, cbToRead, cbWritten));
+            AssertMsgRCBreak(rc, ("rc=%Rrc, cbRead=%zu, cbBodyLeft=%RU64, cbWritten=%zu\n",
+                                  rc, cbRead, cbBodyLeft, cbWritten));
 #endif
         }
 
         break;
     } /* for (;;) */
 
+    int const rcBody = rc; /* Preserve the unmodified delivery result for pfnRequestEnd. */
+
     if (rc == VERR_NET_CONNECTION_RESET_BY_PEER) /* Clients often apruptly abort the connection when done. */
         rc = VINF_SUCCESS;
 
     RTMemFree(pvBuf);
 
-    int rc2 = rc; /* Save rc. */
+    int const rcBeforeClose = rc; /* Save the legacy result. */
+    int rcClose = VINF_SUCCESS;
 
     if (pvHandle)
+    {
+        rc = VINF_SUCCESS;
         RTHTTPSERVER_HANDLE_CALLBACK_VA(pfnClose, pReq, pvHandle);
+        rcClose = rc;
+    }
 
-    if (RT_FAILURE(rc2)) /* Restore original rc on failure. */
-        rc = rc2;
+    if (RT_FAILURE(rcBeforeClose)) /* Restore original rc on failure. */
+        rc = rcBeforeClose;
+    else
+        rc = rcClose;
+
+    int rcRequest = rcResource;
+    if (RT_SUCCESS(rcRequest))
+        rcRequest = rcBody;
+    if (RT_SUCCESS(rcRequest))
+        rcRequest = rcClose;
+
+    PRTHTTPSERVERREQINTERNAL pReqInt = (PRTHTTPSERVERREQINTERNAL)pReq;
+    pReqInt->Result.rcRequest  = rcRequest;
+    pReqInt->Result.cbBodySent = cbBodySent;
+    pReqInt->Result.fFlags     = 0;
+    if (   fResourceReady
+        && RT_SUCCESS(rcRequest)
+        && cbBodyLeft == 0
+        && cbBodySent == cbBodyExpected)
+        pReqInt->Result.fFlags |= RTHTTPSERVERREQRESULT_F_BODY_COMPLETE;
+    pReqInt->fResultSet = true;
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -1219,9 +1307,16 @@ static int rtHttpServerProcessRequest(PRTHTTPSERVERCLIENT pClient, char *pszReq,
     int rc = rtHttpServerParseRequest(pClient, pszReq, cbReq, &pReq);
     if (RT_SUCCESS(rc))
     {
+        PRTHTTPSERVERREQINTERNAL pReqInt = (PRTHTTPSERVERREQINTERNAL)pReq;
+
         LogFlowFunc(("Request %s %s\n", RTHttpMethodToStr(pReq->enmMethod), pReq->pszUrl));
 
         RTHTTPSERVER_HANDLE_CALLBACK_VA(pfnRequestBegin, pReq);
+
+        RT_ZERO(pReqInt->Result);
+        pReqInt->Result.rcRequest = VERR_NOT_IMPLEMENTED;
+        pReqInt->fResultSet       = false;
+        pReqInt->fResultFinalized = false;
 
         unsigned i = 0;
         for (; i < RT_ELEMENTS(g_aMethodMap); i++)
@@ -1233,11 +1328,15 @@ static int rtHttpServerProcessRequest(PRTHTTPSERVERCLIENT pClient, char *pszReq,
                 int rcMethod = pMethodEntry->pfnMethod(pClient, pReq);
                 if (RT_FAILURE(rcMethod))
                     LogFunc(("Request %s %s failed with %Rrc\n", RTHttpMethodToStr(pReq->enmMethod), pReq->pszUrl, rcMethod));
+                if (!pReqInt->fResultSet)
+                    pReqInt->Result.rcRequest = rcMethod;
                 break;
             }
         }
 
+        pReqInt->fResultFinalized = true;
         RTHTTPSERVER_HANDLE_CALLBACK_VA(pfnRequestEnd, pReq);
+        pReqInt->fResultFinalized = false;
 
         if (i == RT_ELEMENTS(g_aMethodMap))
             enmSts = RTHTTPSTATUS_NOTIMPLEMENTED;

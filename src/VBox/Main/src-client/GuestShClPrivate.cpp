@@ -1,4 +1,4 @@
-/* $Id: GuestShClPrivate.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClPrivate.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
 /** @file
  * Private Shared Clipboard code.
  */
@@ -630,6 +630,14 @@ DECLCALLBACK(int) GuestShCl::s_HgcmDispatcher(void *pvExtension, uint32_t u32Fun
 
         case VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER:
             vrc = pThis->i_svcExtFileTransferCallback((PSHCLEXTPARMS)pvParms);
+            break;
+
+        case VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_PROGRESS:
+            vrc = pThis->i_svcExtTransferProgressCallback((PSHCLEXTPARMS)pvParms);
+            break;
+
+        case VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_RESET:
+            vrc = pThis->i_svcExtTransferResetCallback((PSHCLEXTPARMS)pvParms);
             break;
 #endif
 
