@@ -1,4 +1,4 @@
-/* $Id: NEMR3Native-win-armv8.cpp 115098 2026-08-21 09:46:49Z andreas.loeffler@oracle.com $ */
+/* $Id: NEMR3Native-win-armv8.cpp 115101 2026-08-21 09:59:45Z knut.osmundsen@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 Windows backend.
  *
@@ -1593,7 +1593,7 @@ static DECLCALLBACK(int) nemR3WinLoad(PVM pVM, PSSMHANDLE pSSM, uint32_t uVersio
     }
 
     /* Version 2 appends PMUSERENR_EL0 for every vCPU. */
-    if (uVersion == NEM_HV_SAVED_STATE_VERSION)
+    if (uVersion >= NEM_HV_SAVED_STATE_VERSION)
     {
         for (VMCPUID idCpu = 0; idCpu < pVM->cCpus; idCpu++)
         {
@@ -1616,8 +1616,7 @@ static DECLCALLBACK(int) nemR3WinLoad(PVM pVM, PSSMHANDLE pSSM, uint32_t uVersio
             }
             else if (uPmUserEnrEl0 != 0)
                 return SSMR3SetLoadError(pSSM, VERR_SSM_LOAD_CPUID_MISMATCH, RT_SRC_POS,
-                                         "Saved CPU %u PMUSERENR_EL0 value %#RX64 cannot be restored because "
-                                         "WHP does not expose PMUv3",
+                                         "Saved CPU %u PMUSERENR_EL0 value %#RX64 cannot be restored because WHP does not expose PMUv3",
                                          idCpu, uPmUserEnrEl0);
         }
     }
