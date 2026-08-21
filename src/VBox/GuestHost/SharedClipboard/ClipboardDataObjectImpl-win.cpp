@@ -1,4 +1,4 @@
-/* $Id: ClipboardDataObjectImpl-win.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardDataObjectImpl-win.cpp 115103 2026-08-21 11:25:07Z andreas.loeffler@oracle.com $ */
 /** @file
  * ClipboardDataObjectImpl-win.cpp - Shared Clipboard IDataObject implementation.
  */
@@ -434,7 +434,7 @@ int ShClWinDataObject::copyToHGlobal(const void *pvData, size_t cbData, UINT fFl
     return VERR_ACCESS_DENIED;
 }
 
-inline int ShClWinDataObject::lock(void)
+int ShClWinDataObject::lock(void)
 {
     int rc = RTCritSectEnter(&m_CritSect);
     AssertRCReturn(rc, rc);
@@ -442,7 +442,7 @@ inline int ShClWinDataObject::lock(void)
     return rc;
 }
 
-inline int ShClWinDataObject::unlock(void)
+int ShClWinDataObject::unlock(void)
 {
     int rc = RTCritSectLeave(&m_CritSect);
     AssertRCReturn(rc, rc);

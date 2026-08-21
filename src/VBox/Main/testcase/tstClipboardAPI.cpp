@@ -1,4 +1,4 @@
-/* $Id: tstClipboardAPI.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardAPI.cpp 115103 2026-08-21 11:25:07Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Public API object testcase.
  */
@@ -704,7 +704,7 @@ static void tstClipboardTransferManager(void)
     LONG hrcManagerProgress = S_OK;
     hrc = ptrManagerProgress->COMGETTER(ResultCode)(&hrcManagerProgress);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    RTTESTI_CHECK(hrcManagerProgress == E_ABORT);
+    RTTESTI_CHECK((HRESULT)hrcManagerProgress == E_ABORT);
     aTransfers.setNull();
     hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
     RTTESTI_CHECK_RC(hrc, S_OK);
@@ -738,7 +738,7 @@ static void tstClipboardTransferManager(void)
     LONG hrcLocalCancel = S_OK;
     hrc = ptrLocalCancelProgress->COMGETTER(ResultCode)(&hrcLocalCancel);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    RTTESTI_CHECK(hrcLocalCancel == E_ABORT);
+    RTTESTI_CHECK((HRESULT)hrcLocalCancel == E_ABORT);
     aTransfers.setNull();
     hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
     RTTESTI_CHECK_RC(hrc, S_OK);
@@ -917,7 +917,7 @@ static void tstClipboardTransferManager(void)
     LONG hrcCancelFirstResult = S_OK;
     hrc = ptrCancelFirstProgress->COMGETTER(ResultCode)(&hrcCancelFirstResult);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    RTTESTI_CHECK(hrcCancelFirstResult == E_ABORT);
+    RTTESTI_CHECK((HRESULT)hrcCancelFirstResult == E_ABORT);
     aTransfers.setNull();
     hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
     RTTESTI_CHECK_RC(hrc, S_OK);
@@ -1034,7 +1034,7 @@ static void tstClipboardTransferManager(void)
     LONG hrcCancelResult = S_OK;
     hrc = ptrCancelProgress->COMGETTER(ResultCode)(&hrcCancelResult);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    RTTESTI_CHECK(hrcCancelResult == E_ABORT);
+    RTTESTI_CHECK((HRESULT)hrcCancelResult == E_ABORT);
     aTransfers.setNull();
     hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
     RTTESTI_CHECK_RC(hrc, S_OK);
@@ -1077,7 +1077,7 @@ static void tstClipboardTransferManager(void)
     hrcCancelResult = S_OK;
     hrc = ptrFailedCancelProgress->COMGETTER(ResultCode)(&hrcCancelResult);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    RTTESTI_CHECK(hrcCancelResult == VBOX_E_SHCL_ERROR);
+    RTTESTI_CHECK((HRESULT)hrcCancelResult == VBOX_E_SHCL_ERROR);
     aTransfers.setNull();
     hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
     RTTESTI_CHECK_RC(hrc, S_OK);
@@ -1124,7 +1124,7 @@ static void tstClipboardTransferManager(void)
     LONG hrcResetResult = S_OK;
     hrc = ptrResetProgress->COMGETTER(ResultCode)(&hrcResetResult);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    RTTESTI_CHECK(hrcResetResult == E_ABORT);
+    RTTESTI_CHECK((HRESULT)hrcResetResult == E_ABORT);
     RTTESTI_CHECK(ptrManagerObj->i_isPublicationWorkerRunning());
     aTransfers.setNull();
     hrc = ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers));
@@ -1257,7 +1257,7 @@ static void tstClipboardTransferManager(void)
         LONG hrcResult = S_OK;
         hrc = TeardownContext.ptrHeldProgress->COMGETTER(ResultCode)(&hrcResult);
         RTTESTI_CHECK_RC(hrc, S_OK);
-        RTTESTI_CHECK(hrcResult == E_ABORT);
+        RTTESTI_CHECK((HRESULT)hrcResult == E_ABORT);
     }
     hrc = ptrEventSource->UnregisterListener(ptrTeardownListener);
     RTTESTI_CHECK_RC(hrc, S_OK);

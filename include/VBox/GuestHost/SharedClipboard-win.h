@@ -325,8 +325,8 @@ protected:
 
     static int Thread(RTTHREAD hThread, void *pvUser);
 
-    inline int lock(void);
-    inline int unlock(void);
+    int lock(void);
+    int unlock(void);
 
     int readDir(PSHCLTRANSFER pTransfer, const Utf8Str &strPath);
 
