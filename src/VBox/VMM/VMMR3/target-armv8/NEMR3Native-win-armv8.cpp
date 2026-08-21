@@ -1,4 +1,4 @@
-/* $Id: NEMR3Native-win-armv8.cpp 112688 2026-01-26 10:44:27Z alexander.eichner@oracle.com $ */
+/* $Id: NEMR3Native-win-armv8.cpp 115097 2026-08-21 09:07:49Z andreas.loeffler@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 Windows backend.
  *
@@ -76,8 +76,10 @@ HRESULT WINAPI WHvQueryGpaRangeDirtyBitmap(WHV_PARTITION_HANDLE, WHV_GUEST_PHYSI
 # define WHvMapGpaRangeFlagTrackDirtyPages      ((WHV_MAP_GPA_RANGE_FLAGS)0x00000008)
 #endif
 
+/** Saved state version before PMUSERENR_EL0 was saved. */
+#define NEM_HV_SAVED_STATE_VERSION_PRE_PMU     UINT32_C(1)
 /** Our saved state version for Hyper-V specific things. */
-#define NEM_HV_SAVED_STATE_VERSION 1
+#define NEM_HV_SAVED_STATE_VERSION             UINT32_C(2)
 
 
 /*
@@ -1514,11 +1516,38 @@ static DECLCALLBACK(int) nemR3WinSave(PVM pVM, PSSMHANDLE pSSM)
 
         HRESULT hrc = WHvGetVirtualProcessorRegisters(pVM->nem.s.hPartition, pVCpu->idCpu, &s_Name, 1, &Reg);
         AssertLogRelMsgReturn(SUCCEEDED(hrc),
-                              ("WHvGetVirtualProcessorRegisters(%p, 0,{WHvRegisterInternalActivityState}, 1,) -> %Rhrc (Last=%#x/%u)\n",
-                               pVM->nem.s.hPartition, pVCpu->idCpu, hrc, RTNtLastStatusValue(), RTNtLastErrorValue())
-                              , VERR_NEM_IPE_9);
+                              ("WHvGetVirtualProcessorRegisters(%p, %u,{WHvRegisterInternalActivityState}, 1,) -> %Rhrc "
+                               "(Last=%#x/%u)\n", pVM->nem.s.hPartition, pVCpu->idCpu, hrc, RTNtLastStatusValue(),
+                               RTNtLastErrorValue()),
+                              VERR_NEM_GET_REGISTERS_FAILED);
 
-        SSMR3PutU64(pSSM, Reg.Reg64);
+        int rc = SSMR3PutU64(pSSM, Reg.Reg64);
+        AssertRCReturn(rc, rc);
+    }
+
+    /*
+     * Save the EL0 PMU access control register for all vCPUs.  Keeping this in
+     * a separate block leaves the version-1 payload as an unchanged prefix.
+     */
+    for (VMCPUID idCpu = 0; idCpu < pVM->cCpus; idCpu++)
+    {
+        uint64_t uPmUserEnrEl0 = 0;
+        if (pVM->nem.s.uCpuFeatures.u.PmuV3)
+        {
+            static const WHV_REGISTER_NAME s_Name = WHvArm64RegisterPmuserenrEl0;
+            WHV_REGISTER_VALUE Reg = {};
+
+            HRESULT const hrc = WHvGetVirtualProcessorRegisters(pVM->nem.s.hPartition, idCpu, &s_Name, 1, &Reg);
+            AssertLogRelMsgReturn(SUCCEEDED(hrc),
+                                  ("WHvGetVirtualProcessorRegisters(%p, %u,{WHvArm64RegisterPmuserenrEl0}, 1,) -> %Rhrc "
+                                   "(Last=%#x/%u)\n", pVM->nem.s.hPartition, idCpu, hrc, RTNtLastStatusValue(),
+                                   RTNtLastErrorValue()),
+                                  VERR_NEM_GET_REGISTERS_FAILED);
+            uPmUserEnrEl0 = Reg.Reg64;
+        }
+
+        int rc = SSMR3PutU64(pSSM, uPmUserEnrEl0);
+        AssertRCReturn(rc, rc);
     }
 
     return SSMR3PutU32(pSSM, UINT32_MAX); /* terminator */
@@ -1530,15 +1559,18 @@ static DECLCALLBACK(int) nemR3WinSave(PVM pVM, PSSMHANDLE pSSM)
  */
 static DECLCALLBACK(int) nemR3WinLoad(PVM pVM, PSSMHANDLE pSSM, uint32_t uVersion, uint32_t uPass)
 {
-    Assert(uPass == SSM_PASS_FINAL); NOREF(uPass);
+    AssertReturn(uPass == SSM_PASS_FINAL, VERR_WRONG_ORDER);
 
     /*
      * Validate version.
      */
-    if (uVersion != 1)
+    if (   uVersion != NEM_HV_SAVED_STATE_VERSION
+        && uVersion != NEM_HV_SAVED_STATE_VERSION_PRE_PMU)
     {
         AssertMsgFailed(("nemR3WinLoad: Invalid version uVersion=%u!\n", uVersion));
-        return VERR_SSM_UNSUPPORTED_DATA_UNIT_VERSION;
+        return SSMR3SetLoadError(pSSM, VERR_SSM_UNSUPPORTED_DATA_UNIT_VERSION, RT_SRC_POS,
+                                 "Unsupported NEM/Windows ARM64 saved-state version %u (current %u)",
+                                 uVersion, NEM_HV_SAVED_STATE_VERSION);
     }
 
     /*
@@ -1557,9 +1589,42 @@ static DECLCALLBACK(int) nemR3WinLoad(PVM pVM, PSSMHANDLE pSSM, uint32_t uVersio
 
         HRESULT hrc = WHvSetVirtualProcessorRegisters(pVM->nem.s.hPartition, pVCpu->idCpu, &s_Name, 1, &Reg);
         AssertLogRelMsgReturn(SUCCEEDED(hrc),
-                              ("WHvSetVirtualProcessorRegisters(%p, 0,{WHvRegisterInternalActivityState}, 1,) -> %Rhrc (Last=%#x/%u)\n",
-                               pVM->nem.s.hPartition, pVCpu->idCpu, hrc, RTNtLastStatusValue(), RTNtLastErrorValue())
-                              , VERR_NEM_IPE_9);
+                              ("WHvSetVirtualProcessorRegisters(%p, %u,{WHvRegisterInternalActivityState}, 1,) -> %Rhrc "
+                               "(Last=%#x/%u)\n", pVM->nem.s.hPartition, pVCpu->idCpu, hrc, RTNtLastStatusValue(),
+                               RTNtLastErrorValue()),
+                              VERR_NEM_SET_REGISTERS_FAILED);
+    }
+
+    /* Version 2 appends PMUSERENR_EL0 for every vCPU. */
+    if (uVersion == NEM_HV_SAVED_STATE_VERSION)
+    {
+        for (VMCPUID idCpu = 0; idCpu < pVM->cCpus; idCpu++)
+        {
+            uint64_t uPmUserEnrEl0;
+            int rc = SSMR3GetU64(pSSM, &uPmUserEnrEl0);
+            AssertRCReturn(rc, rc);
+
+            if (pVM->nem.s.uCpuFeatures.u.PmuV3)
+            {
+                static const WHV_REGISTER_NAME s_Name = WHvArm64RegisterPmuserenrEl0;
+                WHV_REGISTER_VALUE Reg = {};
+                Reg.Reg64 = uPmUserEnrEl0;
+
+                HRESULT const hrc = WHvSetVirtualProcessorRegisters(pVM->nem.s.hPartition, idCpu, &s_Name, 1, &Reg);
+                if (FAILED(hrc))
+                    return SSMR3SetLoadError(pSSM, VERR_NEM_SET_REGISTERS_FAILED, RT_SRC_POS,
+                                             "WHvSetVirtualProcessorRegisters(%p, %u, "
+                                             "{WHvArm64RegisterPmuserenrEl0}, 1, %#RX64) failed: %Rhrc "
+                                             "(Last=%#x/%u)",
+                                             pVM->nem.s.hPartition, idCpu, uPmUserEnrEl0, hrc,
+                                             RTNtLastStatusValue(), RTNtLastErrorValue());
+            }
+            else if (uPmUserEnrEl0 != 0)
+                return SSMR3SetLoadError(pSSM, VERR_SSM_LOAD_CPUID_MISMATCH, RT_SRC_POS,
+                                         "Saved CPU %u PMUSERENR_EL0 value %#RX64 cannot be restored because "
+                                         "WHP does not expose PMUv3",
+                                         idCpu, uPmUserEnrEl0);
+        }
     }
 
     /* terminator */
@@ -1596,10 +1661,12 @@ DECLHIDDEN(int) nemR3NativeInitCompletedRing3(PVM pVM)
     //AssertLogRel(fRet);
 
     /*
-     * Register the saved state data unit.
+     * Register the saved state data unit.  The size estimate is one activity
+     * state and one PMUSERENR_EL0 value per vCPU, plus the terminator.
      */
+    size_t const cbStateGuess = (size_t)pVM->cCpus * sizeof(uint64_t) * 2 + sizeof(uint32_t);
     int rc = SSMR3RegisterInternal(pVM, "nem-win", 1, NEM_HV_SAVED_STATE_VERSION,
-                                   sizeof(uint64_t),
+                                   cbStateGuess,
                                    NULL, NULL, NULL,
                                    NULL, nemR3WinSave, NULL,
                                    NULL, nemR3WinLoad, nemR3WinLoadDone);
