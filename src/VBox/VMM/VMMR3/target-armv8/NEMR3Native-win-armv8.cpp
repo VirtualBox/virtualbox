@@ -1,4 +1,4 @@
-/* $Id: NEMR3Native-win-armv8.cpp 115097 2026-08-21 09:07:49Z andreas.loeffler@oracle.com $ */
+/* $Id: NEMR3Native-win-armv8.cpp 115098 2026-08-21 09:46:49Z andreas.loeffler@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 Windows backend.
  *
@@ -1516,10 +1516,9 @@ static DECLCALLBACK(int) nemR3WinSave(PVM pVM, PSSMHANDLE pSSM)
 
         HRESULT hrc = WHvGetVirtualProcessorRegisters(pVM->nem.s.hPartition, pVCpu->idCpu, &s_Name, 1, &Reg);
         AssertLogRelMsgReturn(SUCCEEDED(hrc),
-                              ("WHvGetVirtualProcessorRegisters(%p, %u,{WHvRegisterInternalActivityState}, 1,) -> %Rhrc "
-                               "(Last=%#x/%u)\n", pVM->nem.s.hPartition, pVCpu->idCpu, hrc, RTNtLastStatusValue(),
-                               RTNtLastErrorValue()),
-                              VERR_NEM_GET_REGISTERS_FAILED);
+                              ("WHvGetVirtualProcessorRegisters(%p, %u,{InternalActivityState},1,) -> %Rhrc (Last=%#x/%u)\n",
+                               pVM->nem.s.hPartition, pVCpu->idCpu, hrc, RTNtLastStatusValue(), RTNtLastErrorValue())
+                              , VERR_NEM_GET_REGISTERS_FAILED);
 
         int rc = SSMR3PutU64(pSSM, Reg.Reg64);
         AssertRCReturn(rc, rc);
@@ -1539,10 +1538,9 @@ static DECLCALLBACK(int) nemR3WinSave(PVM pVM, PSSMHANDLE pSSM)
 
             HRESULT const hrc = WHvGetVirtualProcessorRegisters(pVM->nem.s.hPartition, idCpu, &s_Name, 1, &Reg);
             AssertLogRelMsgReturn(SUCCEEDED(hrc),
-                                  ("WHvGetVirtualProcessorRegisters(%p, %u,{WHvArm64RegisterPmuserenrEl0}, 1,) -> %Rhrc "
-                                   "(Last=%#x/%u)\n", pVM->nem.s.hPartition, idCpu, hrc, RTNtLastStatusValue(),
-                                   RTNtLastErrorValue()),
-                                  VERR_NEM_GET_REGISTERS_FAILED);
+                                  ("WHvGetVirtualProcessorRegisters(%p, %u,{PMUSERENR_EL0},1,) -> %Rhrc (Last=%#x/%u)\n",
+                                   pVM->nem.s.hPartition, idCpu, hrc, RTNtLastStatusValue(), RTNtLastErrorValue())
+                                  , VERR_NEM_GET_REGISTERS_FAILED);
             uPmUserEnrEl0 = Reg.Reg64;
         }
 
@@ -1589,10 +1587,9 @@ static DECLCALLBACK(int) nemR3WinLoad(PVM pVM, PSSMHANDLE pSSM, uint32_t uVersio
 
         HRESULT hrc = WHvSetVirtualProcessorRegisters(pVM->nem.s.hPartition, pVCpu->idCpu, &s_Name, 1, &Reg);
         AssertLogRelMsgReturn(SUCCEEDED(hrc),
-                              ("WHvSetVirtualProcessorRegisters(%p, %u,{WHvRegisterInternalActivityState}, 1,) -> %Rhrc "
-                               "(Last=%#x/%u)\n", pVM->nem.s.hPartition, pVCpu->idCpu, hrc, RTNtLastStatusValue(),
-                               RTNtLastErrorValue()),
-                              VERR_NEM_SET_REGISTERS_FAILED);
+                              ("WHvSetVirtualProcessorRegisters(%p, %u,{InternalActivityState},1,) -> %Rhrc (Last=%#x/%u)\n",
+                               pVM->nem.s.hPartition, pVCpu->idCpu, hrc, RTNtLastStatusValue(), RTNtLastErrorValue())
+                              , VERR_NEM_SET_REGISTERS_FAILED);
     }
 
     /* Version 2 appends PMUSERENR_EL0 for every vCPU. */
@@ -1613,9 +1610,7 @@ static DECLCALLBACK(int) nemR3WinLoad(PVM pVM, PSSMHANDLE pSSM, uint32_t uVersio
                 HRESULT const hrc = WHvSetVirtualProcessorRegisters(pVM->nem.s.hPartition, idCpu, &s_Name, 1, &Reg);
                 if (FAILED(hrc))
                     return SSMR3SetLoadError(pSSM, VERR_NEM_SET_REGISTERS_FAILED, RT_SRC_POS,
-                                             "WHvSetVirtualProcessorRegisters(%p, %u, "
-                                             "{WHvArm64RegisterPmuserenrEl0}, 1, %#RX64) failed: %Rhrc "
-                                             "(Last=%#x/%u)",
+                                             "WHvSetVirtualProcessorRegisters(%p, %u,{PMUSERENR_EL0},1,%#RX64) failed: %Rhrc (Last=%#x/%u)",
                                              pVM->nem.s.hPartition, idCpu, uPmUserEnrEl0, hrc,
                                              RTNtLastStatusValue(), RTNtLastErrorValue());
             }
