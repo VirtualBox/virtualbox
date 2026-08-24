@@ -1,4 +1,4 @@
-/* $Id: ConsoleVRDPServer.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
+/* $Id: ConsoleVRDPServer.cpp 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console VRDP helper class.
  */
@@ -1022,6 +1022,16 @@ DECLCALLBACK(void) ConsoleVRDPServer::VRDPCallbackClientDisconnect(void *pvCallb
     pServer->mConsole->i_onVRDEServerInfoChange();
 }
 
+/**
+ * Handles a VRDE client interception request.
+ *
+ * @retval  VERR_INVALID_POINTER if @a pvCallback is invalid.
+ * @retval  VERR_NOT_SUPPORTED if the requested interface cannot be intercepted.
+ * @param   pvCallback          ConsoleVRDPServer instance receiving the request.
+ * @param   u32ClientId         Remote client ID.
+ * @param   fu32Intercept       VRDE_CLIENT_INTERCEPT_XXX interface to intercept.
+ * @param   ppvIntercept        Where to return the intercept context. Optional.
+ */
 DECLCALLBACK(int) ConsoleVRDPServer::VRDPCallbackIntercept(void *pvCallback, uint32_t u32ClientId, uint32_t fu32Intercept,
                                                            void **ppvIntercept)
 {
@@ -3346,7 +3356,14 @@ bool ConsoleVRDPServer::ClipboardIsRemoteProviderActive(void)
 /**
  * Handles a clipboard request received from a remote-desktop client.
  *
- * @returns VBox status code.
+ * @retval  VINF_NO_CHANGE if a remote format announcement did not change the
+ *          formats visible to the guest.
+ * @retval  VERR_INVALID_POINTER if @a pvCallback is invalid.
+ * @retval  VERR_NOT_AVAILABLE if Shared Clipboard external calls are disabled
+ *          or no VRDE clipboard provider is active.
+ * @retval  VERR_INVALID_PARAMETER if a supplied clipboard format is invalid.
+ * @retval  VERR_NOT_SUPPORTED if the function or clipboard format is not
+ *          supported by the VRDE route.
  * @param   pvCallback          ConsoleVRDPServer instance receiving the request.
  * @param   u32ClientId         Remote client ID.
  * @param   u32Function         VRDE_CLIPBOARD_FUNCTION_XXX request number.
@@ -3424,7 +3441,7 @@ DECLCALLBACK(int) ConsoleVRDPServer::ClipboardCallback(void *pvCallback,
 /**
  * Reports guest clipboard formats to all connected remote-desktop clients.
  *
- * @returns VBox status code.
+ * @retval  VERR_INVALID_PARAMETER if @a fFormats is invalid.
  * @retval  VERR_NOT_SUPPORTED if the active VRDE server has no clipboard interface.
  * @param   fFormats            Guest formats, VBOX_SHCL_FMT_XXX.
  */
@@ -3446,8 +3463,10 @@ int ConsoleVRDPServer::ClipboardReportGuestFormats(SHCLFORMATS fFormats) const
 /**
  * Reads data from the remote clipboard provider selected by the VRDE server.
  *
- * @returns VBox status code.
- * @retval  VERR_NOT_SUPPORTED if the active VRDE server has no clipboard interface.
+ * @retval  VERR_INVALID_PARAMETER if @a uFormat is invalid.
+ * @retval  VERR_INVALID_POINTER if @a pcbActual is invalid.
+ * @retval  VERR_NOT_SUPPORTED if @a uFormat is VBOX_SHCL_FMT_URI_LIST or the
+ *          active VRDE server has no clipboard interface.
  * @param   uFormat             Clipboard format to read.
  * @param   pvData              Destination buffer.  Optional if @a cbData is zero.
  * @param   cbData              Destination buffer size in bytes.
@@ -3475,8 +3494,9 @@ int ConsoleVRDPServer::ClipboardReadRemoteData(SHCLFORMAT uFormat, void *pvData,
 /**
  * Sends guest clipboard data to the remote client which requested it.
  *
- * @returns VBox status code.
- * @retval  VERR_NOT_SUPPORTED if the active VRDE server has no clipboard interface.
+ * @retval  VERR_INVALID_PARAMETER if @a uFormat is invalid.
+ * @retval  VERR_NOT_SUPPORTED if @a uFormat is VBOX_SHCL_FMT_URI_LIST or the
+ *          active VRDE server has no clipboard interface.
  * @param   uFormat             Clipboard format of the data.
  * @param   pvData              Data buffer.  Optional if @a cbData is zero.
  * @param   cbData              Data size in bytes.

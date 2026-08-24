@@ -1,4 +1,4 @@
-/* $Id: ClipboardImpl.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardImpl.cpp 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Console clipboard API.
  */
@@ -1860,7 +1860,14 @@ HRESULT Clipboard::i_readData(ClipboardAction_T aAction,
 /**
  * Reads raw data in the requested Shared Clipboard format.
  *
- * @returns COM status code.
+ * @retval  S_OK if the requested data was returned from the cache or guest.
+ * @retval  E_POINTER if @a aSource is invalid.
+ * @retval  E_FAIL if this clipboard object is not initialized or @a uFormat
+ *          has no supported MIME type.
+ * @retval  VBOX_E_SHCL_NO_DATA if the format, Shared Clipboard service, or
+ *          connected guest clipboard client is unavailable.
+ * @retval  VBOX_E_SHCL_TOO_MUCH_DATA if the guest payload exceeds the supported size.
+ * @retval  VBOX_E_SHCL_GUEST_ERROR if reading or converting guest data fails.
  * @param   aAction         Clipboard action to read for.
  * @param   uFormat         Shared Clipboard format to read.
  * @param   aSource         Where to return the clipboard source.
@@ -2382,7 +2389,16 @@ HRESULT Clipboard::i_fireSessionInitialState(VBOXSHCLMAINCLIENTID aClientId)
 /**
  * Writes raw data to the Shared Clipboard service.
  *
- * @returns COM status code.
+ * @retval  S_OK if the data was written.
+ * @retval  E_POINTER if @a aWrittenSource is invalid.
+ * @retval  E_FAIL if this clipboard object is not initialized.
+ * @retval  VBOX_E_SHCL_NO_DATA if @a aBuffer is empty.
+ * @retval  VBOX_E_SHCL_TOO_MUCH_DATA if the source or converted payload is too large.
+ * @retval  VBOX_E_SHCL_FORMAT_NOT_SUPPORTED if @a aMimeType is unsupported.
+ * @retval  VBOX_E_SHCL_GUEST_ERROR if VRDE owns the clipboard route, the
+ *          Shared Clipboard service is unavailable, or guest format publication fails.
+ * @retval  VBOX_E_SHCL_ERROR if the client is inactive, loses clipboard
+ *          ownership, or payload conversion fails.
  * @param   aClientId       Main clipboard client ID associated with the write.
  * @param   aAction         Clipboard action to write for.
  * @param   aSource         Clipboard source.
@@ -2522,7 +2538,12 @@ HRESULT Clipboard::i_writeData(VBOXSHCLMAINCLIENTID aClientId,
 /**
  * Writes raw format names to the Shared Clipboard service.
  *
- * @returns COM status code.
+ * @retval  S_OK if the formats were written.
+ * @retval  E_FAIL if this clipboard object is not initialized.
+ * @retval  VBOX_E_SHCL_FORMAT_NOT_SUPPORTED if one or more MIME types are unsupported.
+ * @retval  VBOX_E_SHCL_GUEST_ERROR if VRDE owns the clipboard route, the
+ *          Shared Clipboard service is unavailable, or guest format publication fails.
+ * @retval  VBOX_E_SHCL_ERROR if the client is inactive or loses clipboard ownership.
  * @param   aClientId       Main clipboard client ID associated with the write.
  * @param   aFormats        MIME formats to write.
  */
@@ -2602,7 +2623,14 @@ HRESULT Clipboard::i_writeFormats(VBOXSHCLMAINCLIENTID aClientId,
 /**
  * Reports guest-owned clipboard formats to the native host clipboard endpoint.
  *
- * @returns COM status code.
+ * @retval  S_OK if the formats were published to the native host clipboard.
+ * @retval  E_FAIL if clipboard state becomes unavailable while publishing.
+ * @retval  VBOX_E_SHCL_ERROR if an argument, format object, session, service,
+ *          mode query, ownership check, or native backend operation fails.
+ * @retval  VBOX_E_SHCL_ACCESS_DENIED if the source or Shared Clipboard mode
+ *          does not permit publication to the host.
+ * @retval  VBOX_E_SHCL_NO_DATA if no formats were supplied.
+ * @retval  VBOX_E_SHCL_FORMAT_NOT_SUPPORTED if a MIME type is empty or unsupported.
  * @param   aClientId       Main clipboard client ID associated with the report.
  * @param   aAction         Clipboard action associated with the formats.
  * @param   aSource         Clipboard source. Only ClipboardSource_Guest is accepted.
@@ -2927,7 +2955,15 @@ HRESULT Clipboard::i_hostClipboardProvideData(VBOXSHCLMAINCLIENTID aClientId,
 /**
  * Sets guest-owned clipboard data on the native host clipboard endpoint.
  *
- * @returns COM status code.
+ * @retval  S_OK if the data was published to the native host clipboard.
+ * @retval  E_FAIL if clipboard state becomes unavailable while publishing.
+ * @retval  VBOX_E_SHCL_ERROR if an argument, session, service, mode query,
+ *          conversion, or native backend operation fails.
+ * @retval  VBOX_E_SHCL_ACCESS_DENIED if the source or Shared Clipboard mode
+ *          does not permit publication to the host.
+ * @retval  VBOX_E_SHCL_FORMAT_NOT_SUPPORTED if the MIME type is empty or unsupported.
+ * @retval  VBOX_E_SHCL_NO_DATA if the payload is empty.
+ * @retval  VBOX_E_SHCL_TOO_MUCH_DATA if the source or converted payload is too large.
  * @param   aClientId       Main clipboard client ID associated with the data.
  * @param   aAction         Clipboard action associated with the data.
  * @param   aSource         Clipboard source. Only ClipboardSource_Guest is accepted.
@@ -3082,7 +3118,9 @@ HRESULT Clipboard::i_hostClipboardSetData(VBOXSHCLMAINCLIENTID aClientId,
 /**
  * Clears the native host clipboard endpoint.
  *
- * @returns COM status code.
+ * @retval  S_OK if the native host clipboard was cleared or its service is unavailable.
+ * @retval  E_FAIL if clipboard state becomes unavailable while clearing.
+ * @retval  VBOX_E_SHCL_ERROR if the object, session, or native backend operation fails.
  * @param   aClientId       Main clipboard client ID associated with the endpoint.
  */
 HRESULT Clipboard::i_hostClipboardClear(VBOXSHCLMAINCLIENTID aClientId)
@@ -3338,8 +3376,12 @@ HRESULT Clipboard::i_handleTransferProgress(SHCLSESSIONID aServiceSessionId,
 /**
  * Reads cached Main API clipboard data for a service data request.
  *
- * @returns COM status code. E_FAIL means no matching data is available after
- *          notifying API clients about the request.
+ * @retval  S_OK if matching cached or native host data was returned.
+ * @retval  E_POINTER if @a pcbActual is invalid, or @a pvData is invalid for
+ *          a non-empty destination buffer.
+ * @retval  E_INVALIDARG if @a uFormat is unsupported.
+ * @retval  E_FAIL if clipboard state, advertised data, the native host
+ *          provider, conversion, or the resulting data size is unsuitable.
  * @param   uFormat         Requested Shared Clipboard format.
  * @param   pvData          Destination buffer.
  * @param   cbData          Size of destination buffer.

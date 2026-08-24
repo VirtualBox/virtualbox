@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendX11.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendX11.cpp 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - X11 backend.
  */
@@ -454,7 +454,8 @@ static void shClBackendX11TransferGetCallbacks(PSHCLCONTEXT pCtx, PSHCLTRANSFERC
 /**
  * Synchronizes X11 clipboard state with a connected guest.
  *
- * @returns VBox status code.
+ * @retval  VERR_INVALID_POINTER if @a pCtx, its connection, or its X11
+ *          application context is invalid.
  * @param   pCtx                Connected backend context.
  */
 static int shClBackendX11Sync(PSHCLCONTEXT pCtx)

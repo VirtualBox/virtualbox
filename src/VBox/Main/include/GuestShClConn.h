@@ -1,4 +1,4 @@
-/* $Id: GuestShClConn.h 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClConn.h 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Service connection management.
  */
@@ -138,7 +138,8 @@ public:
      * Requests clipboard data from the guest without waiting for a reply if
      * the native backend is selected.
      *
-     * @returns VBox status code.
+     * @retval  VERR_SHCLPB_NO_DATA if the native backend is not selected or
+     *          there is no active guest clipboard connection.
      * @param   fFormats            Requested formats, VBOX_SHCL_FMT_XXX.
      * @param   ppEvent             Where to return the reply event. Optional.
      */
@@ -148,7 +149,9 @@ public:
      * Requests and waits for clipboard data from the guest if the native
      * backend is selected.
      *
-     * @returns VBox status code.
+     * @retval  VERR_INVALID_POINTER if @a ppvData or @a pcbData is invalid.
+     * @retval  VERR_SHCLPB_NO_DATA if the native backend is not selected, the
+     *          guest clipboard is disconnected, or no data is available.
      * @param   uFormat             Requested format, VBOX_SHCL_FMT_XXX.
      * @param   ppvData             Where to return the allocated data buffer.
      * @param   pcbData             Where to return the data size.
@@ -379,7 +382,9 @@ private:
      * Requests and waits for clipboard data from the guest without checking
      * which host clipboard provider is selected.
      *
-     * @returns VBox status code.
+     * @retval  VERR_INVALID_POINTER if @a ppvData or @a pcbData is invalid.
+     * @retval  VERR_SHCLPB_NO_DATA if the guest clipboard is disconnected or
+     *          no data is available.
      * @param   uFormat             Requested format, VBOX_SHCL_FMT_XXX.
      * @param   ppvData             Where to return the allocated data buffer.
      * @param   pcbData             Where to return the data size.

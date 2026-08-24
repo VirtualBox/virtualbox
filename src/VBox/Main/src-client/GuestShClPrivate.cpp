@@ -1,4 +1,4 @@
-/* $Id: GuestShClPrivate.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClPrivate.cpp 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
 /** @file
  * Private Shared Clipboard code.
  */
@@ -78,7 +78,10 @@ DECLCALLBACK(int32_t) GuestShCl::s_initInstanceLock(void *pvUser)
 /**
  * Creates the singleton without publishing it to asynchronous external calls.
  *
- * @returns Newly created singleton, or NULL on failure.
+ * @returns Newly created singleton on success.
+ * @retval  NULL if @a pConsole is invalid, synchronization initialization or
+ *          locking fails, or a singleton already exists.
+ * @throws  VBox status code if constructing the singleton fails.
  * @param   pConsole            Pointer to the parent console.
  */
 GuestShCl *GuestShCl::CreateInstance(Console *pConsole)
@@ -132,7 +135,11 @@ void GuestShCl::DestroyInstance(void)
 }
 
 
-/** Publishes the singleton to asynchronous external callers. */
+/**
+ * Publishes the singleton to asynchronous external callers.
+ *
+ * @retval  VERR_WRONG_ORDER if no singleton has been created.
+ */
 int GuestShCl::EnableExternalCalls(void)
 {
     int vrc = RTOnce(&s_InstanceOnce, s_initInstanceLock, NULL);
@@ -167,7 +174,14 @@ void GuestShCl::DisableExternalCalls(void)
 }
 
 
-/** Acquires the singleton for an asynchronous external call. */
+/**
+ * Acquires the singleton for an asynchronous external call.
+ *
+ * @returns The acquired singleton on success.
+ * @retval  NULL if external calls are disabled, the singleton is being
+ *          withdrawn, its publication lock is busy, or lock initialization
+ *          fails.
+ */
 GuestShCl *GuestShCl::Acquire(void)
 {
     int vrc = RTOnce(&s_InstanceOnce, s_initInstanceLock, NULL);
@@ -461,7 +475,9 @@ int GuestShCl::HostCall(uint32_t u32Function, uint32_t cParms, PVBOXHGCMSVCPARM 
 /**
  * Reads clipboard data from the active guest clipboard client.
  *
- * @returns VBox status code.
+ * @retval  VERR_INVALID_POINTER if @a ppvData or @a pcbData is invalid.
+ * @retval  VERR_SHCLPB_NO_DATA if the guest clipboard is disconnected or no
+ *          data is available.
  * @param   uFormat     Format to request from the guest.
  * @param   ppvData     Where to return the allocated data buffer.
  * @param   pcbData     Where to return the data size.
@@ -498,7 +514,6 @@ int GuestShCl::ReadDataFromHost(SHCLFORMAT uFormat, void *pvData, uint32_t cbDat
 /**
  * Reports guest clipboard formats to the native host clipboard backend.
  *
- * @returns VBox status code.
  * @retval  VERR_RESOURCE_BUSY if VRDE currently owns the host clipboard route.
  * @param   fFormats    Formats to report to the host.
  */
@@ -521,7 +536,9 @@ int GuestShCl::ReportFormatsToHost(SHCLFORMATS fFormats)
 /**
  * Writes guest clipboard data to the native host clipboard backend.
  *
- * @returns VBox status code.
+ * @retval  VERR_INVALID_PARAMETER if @a uFormat is VBOX_SHCL_FMT_NONE.
+ * @retval  VERR_INVALID_POINTER if @a pvData is invalid for a non-empty buffer.
+ * @retval  VERR_RESOURCE_BUSY if VRDE currently owns the host clipboard route.
  * @param   uFormat     Format of the data buffer.
  * @param   pvData      Data buffer. Optional when @a cbData is zero.
  * @param   cbData      Size of the data buffer in bytes.
@@ -542,7 +559,7 @@ int GuestShCl::WriteDataToHost(SHCLFORMAT uFormat, void *pvData, uint32_t cbData
 /**
  * Reports host clipboard formats to the active guest clipboard client.
  *
- * @returns VBox status code.
+ * @retval  VERR_RESOURCE_BUSY if VRDE currently owns the host clipboard route.
  * @param   fFormats    Formats to report to the guest.
  */
 int GuestShCl::ReportFormatsToGuest(SHCLFORMATS fFormats)
@@ -574,7 +591,7 @@ bool GuestShCl::IsNativeBackendActive(void)
  * The transition first withdraws the formats owned by the old provider.  When
  * returning to the native backend, it then republishes the native formats.
  *
- * @returns VBox status code.
+ * @retval  VINF_NO_CHANGE if @a fEnable already matches the selected route.
  * @param   fEnable             Whether VRDE should own the clipboard route.
  */
 int GuestShCl::VrdeEnable(bool fEnable)
@@ -620,7 +637,9 @@ int GuestShCl::VrdeEnable(bool fEnable)
 /**
  * Reports remote clipboard formats to the active guest clipboard client.
  *
- * @returns VBox status code.
+ * @retval  VINF_NO_CHANGE if the native backend became selected before the
+ *          remote formats could be reported.
+ * @retval  VERR_INVALID_PARAMETER if @a fFormats is invalid.
  * @param   fFormats            Formats reported by the remote clipboard peer.
  */
 int GuestShCl::ReportRemoteFormatsToGuest(SHCLFORMATS fFormats)
@@ -658,7 +677,7 @@ int GuestShCl::ReportRemoteFormatsToGuest(SHCLFORMATS fFormats)
 /**
  * Reports remote clipboard formats immediately.
  *
- * @returns VBox status code.
+ * @retval  VERR_INVALID_PARAMETER if @a fFormats is invalid.
  * @param   fFormats            Remote formats, VBOX_SHCL_FMT_XXX.
  *
  * @note    The caller must serialize remote reports and handle deferral while
@@ -687,7 +706,9 @@ int GuestShCl::i_reportRemoteFormatsToGuestNow(SHCLFORMATS fFormats)
  * Reports clipboard formats to the guest via the service backend and mirrors
  * successful reports to the console clipboard event source.
  *
- * @returns VBox status code.
+ * @retval  VERR_INVALID_POINTER if @a pConn is invalid.
+ * @retval  VERR_INVALID_HANDLE if @a pConn is not this object's connection.
+ * @retval  VERR_INVALID_PARAMETER if @a enmSource is invalid.
  * @param   pConn       Connection to report through.
  * @param   fFormats    Formats to report to the guest.
  * @param   enmSource   Source of the format report.

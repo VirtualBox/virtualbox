@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendWin.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendWin.cpp 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Win32 host.
  */
@@ -951,7 +951,9 @@ static int shClBackendWinThreadStop(PSHCLCONTEXT pCtx, bool fWaitDiagnostic)
  * Synchronizes the host and the guest clipboard formats by sending all supported host clipboard
  * formats to the guest.
  *
- * @returns VBox status code, VINF_NO_CHANGE if no synchronization was required.
+ * @retval  VINF_NO_CHANGE if there is no connected guest or its visible
+ *          formats did not change.
+ * @retval  VERR_INVALID_POINTER if @a pCtx is invalid.
  * @param   pCtx                Clipboard context to synchronize.
  */
 static int vboxClipboardSvcWinSyncInternal(PSHCLCONTEXT pCtx)

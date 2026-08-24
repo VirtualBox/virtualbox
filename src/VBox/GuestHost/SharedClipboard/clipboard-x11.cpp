@@ -582,7 +582,7 @@ static void shClX11ReportCurrentFormatsToVBoxWorker(void *pvUserData, void * /* 
 /**
  * Schedules a report of the currently tracked X11 formats to the frontend.
  *
- * @returns VBox status code.
+ * @retval  VERR_INVALID_POINTER if @a pCtx or its X11 application context is invalid.
  * @param   pCtx                The X11 clipboard context to use.
  *
  * @thread  Any thread.  The report runs on the X11 event thread.

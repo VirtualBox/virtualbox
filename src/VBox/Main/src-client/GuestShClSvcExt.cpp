@@ -1,4 +1,4 @@
-/* $Id: GuestShClSvcExt.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClSvcExt.cpp 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard service extension handling for Main.
  */
@@ -305,7 +305,7 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
  *
  * Reports guest clipboard formats to Main and connected remote-desktop clients.
  *
- * @returns VBox status code.
+ * @retval  VERR_INVALID_PARAMETER if the reported format mask is invalid.
  * @param   pParms              Decoded service extension parameters.
  */
 int GuestShCl::i_svcExtReportFormatsToHostCallback(PSHCLEXTPARMS pParms)
@@ -334,7 +334,11 @@ int GuestShCl::i_svcExtReportFormatsToHostCallback(PSHCLEXTPARMS pParms)
  *
  * Reads clipboard data from the provider selected by Main.
  *
- * @returns VBox status code.
+ * @retval  VERR_INVALID_PARAMETER if the requested format is invalid.
+ * @retval  VERR_NOT_SUPPORTED if VRDE is selected and the requested format is
+ *          VBOX_SHCL_FMT_URI_LIST, or VRDE has no clipboard interface.
+ * @retval  VERR_NOT_AVAILABLE if the selected provider is unavailable.
+ * @retval  VERR_NO_DATA if reading from Main's native clipboard fails.
  * @retval  VERR_RESOURCE_BUSY if a read from the selected VRDE clipboard provider is already in progress.
  * @param   pParms              Decoded service extension parameters.
  */
@@ -417,7 +421,9 @@ int GuestShCl::i_svcExtDataReadCallback(PSHCLEXTPARMS pParms)
  *
  * Mirrors the reply to VRDE and signals pending guest-data waiters.
  *
- * @returns VBox status code.
+ * @retval  VERR_SHCLPB_NO_DATA if there is no active guest clipboard connection.
+ * @retval  VERR_INVALID_STATE if the retained connection becomes unavailable
+ *          before the guest-data reply is completed.
  * @param   pParms              Decoded service extension parameters.
  */
 int GuestShCl::i_svcExtDataWriteCallback(PSHCLEXTPARMS pParms)
@@ -540,7 +546,8 @@ int GuestShCl::i_svcExtBackendDisconnectCallback(PSHCLEXTPARMS pParms, void *pvP
  *
  * Synchronizes Main's native Shared Clipboard backend.
  *
- * @returns VBox status code.
+ * @retval  VERR_INVALID_PARAMETER if the callback transport does not match the
+ *          active Shared Clipboard connection.
  * @param   pParms              Decoded service extension parameters.
  * @param   pvParms             Unused raw protocol parameters.
  * @param   cbParms             Size, in bytes, of \a pvParms. Unused.
