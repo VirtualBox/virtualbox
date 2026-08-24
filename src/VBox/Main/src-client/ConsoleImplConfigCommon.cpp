@@ -1,4 +1,4 @@
-/* $Id: ConsoleImplConfigCommon.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: ConsoleImplConfigCommon.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console COM Class implementation - VM Configuration Bits.
  *
@@ -50,7 +50,6 @@
 #include "BusAssignmentManager.h"
 #ifdef VBOX_WITH_SHARED_CLIPBOARD
 # include "GuestShClPrivate.h"
-# include "ConsoleVRDPServer.h"
 #endif
 #ifdef VBOX_WITH_DRAG_AND_DROP
 # include "GuestImpl.h"
@@ -4020,7 +4019,10 @@ int Console::i_configVmmDev(ComPtr<IMachine> pMachine, BusAssignmentManager *pBu
                                                    &GuestShCl::s_HgcmDispatcher,
                                                    pGuestShCl);
             if (RT_SUCCESS(vrc))
-                i_consoleVRDPServer()->ClipboardSetGuestShClAvailable(true);
+            {
+                int const vrcEnable = GuestShCl::EnableExternalCalls();
+                AssertLogRelMsg(RT_SUCCESS(vrcEnable), ("Shared Clipboard: Enabling external calls failed with %Rrc\n", vrcEnable));
+            }
             else
                 Log(("Cannot register VBoxSharedClipboard extension, vrc=%Rrc\n", vrc));
         }

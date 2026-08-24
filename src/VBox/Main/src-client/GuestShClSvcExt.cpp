@@ -1,4 +1,4 @@
-/* $Id: GuestShClSvcExt.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClSvcExt.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard service extension handling for Main.
  */
@@ -311,17 +311,20 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
 int GuestShCl::i_svcExtReportFormatsToHostCallback(PSHCLEXTPARMS pParms)
 {
     SHCLFORMATS fFormats = pParms->u.ReportFormats.uFormats;
-
     i_incGuestDataSeq();
 
-    AssertPtr(m_pConsole->i_getClipboard());
-    if (m_pConsole->i_getClipboard())
-        m_pConsole->i_getClipboard()->i_reportFormats(VBOX_SHCL_MAIN_CLIENT_NONE,
-                                                      fFormats, ClipboardSource_Guest,
-                                                      true /* fForceNotify */);
+    if (IsNativeBackendActive())
+    {
+        Clipboard *pClipboard = m_pConsole->i_getClipboard();
+        AssertPtr(pClipboard);
+        if (pClipboard)
+            pClipboard->i_reportFormats(VBOX_SHCL_MAIN_CLIENT_NONE, fFormats, ClipboardSource_Guest,
+                                        true /* fForceNotify */);
+    }
 
     ConsoleVRDPServer *pVrde = m_pConsole->i_consoleVRDPServer();
-    int const vrc = pVrde ? pVrde->ClipboardReportGuestFormats(fFormats) : VERR_NOT_SUPPORTED;
+    int const vrc = pVrde ? pVrde->ClipboardReportGuestFormats(fFormats & ~VBOX_SHCL_FMT_URI_LIST)
+                          : VERR_NOT_SUPPORTED;
     return vrc == VERR_NOT_SUPPORTED ? VINF_SUCCESS : vrc;
 }
 
@@ -332,90 +335,82 @@ int GuestShCl::i_svcExtReportFormatsToHostCallback(PSHCLEXTPARMS pParms)
  * Reads clipboard data from the provider selected by Main.
  *
  * @returns VBox status code.
+ * @retval  VERR_RESOURCE_BUSY if a read from the selected VRDE clipboard provider is already in progress.
  * @param   pParms              Decoded service extension parameters.
  */
 int GuestShCl::i_svcExtDataReadCallback(PSHCLEXTPARMS pParms)
 {
     void *pvData = pParms->u.ReadWriteData.pvData;
     uint32_t cbData = pParms->u.ReadWriteData.cbData;
-    SHCLFORMATS fFormats = pParms->u.ReadWriteData.uFormat;
-    Clipboard *pClipboard = m_pConsole->i_getClipboard();
-    ClipboardSource_T enmSource = ClipboardSource_Custom;
-    HRESULT hrc = pClipboard ? pClipboard->i_getCurrentSource(&enmSource) : E_FAIL;
+    SHCLFORMAT uFormat = pParms->u.ReadWriteData.uFormat;
+    pParms->u.ReadWriteData.cbActual = 0;
 
     int vrc;
-    if (SUCCEEDED(hrc) && enmSource == ClipboardSource_Remote)
+    if (!IsNativeBackendActive())
     {
+        if (uFormat == VBOX_SHCL_FMT_URI_LIST)
+            return VERR_NOT_SUPPORTED;
+
         int vrcLock = RTCritSectEnter(&m_RemoteFormatsCritSect);
         if (RT_FAILURE(vrcLock))
             return vrcLock;
-        vrcLock = lock();
-        if (RT_FAILURE(vrcLock))
+        if (m_fRemoteDataReadActive)
         {
             RTCritSectLeave(&m_RemoteFormatsCritSect);
-            return vrcLock;
+            return VERR_RESOURCE_BUSY;
         }
-        Assert(!m_fRemoteDataReadActive);
         m_fRemoteDataReadActive = true;
-        unlock();
         int const vrcLeave = RTCritSectLeave(&m_RemoteFormatsCritSect);
         AssertRC(vrcLeave);
 
         ConsoleVRDPServer *pVrde = m_pConsole->i_consoleVRDPServer();
-        vrc = pVrde ? pVrde->ClipboardReadRemoteData(fFormats, pvData, cbData,
+        vrc = pVrde ? pVrde->ClipboardReadRemoteData(uFormat, pvData, cbData,
                                                      &pParms->u.ReadWriteData.cbActual)
                     : VERR_NOT_AVAILABLE;
 
         vrcLock = RTCritSectEnter(&m_RemoteFormatsCritSect);
         if (RT_SUCCESS(vrcLock))
         {
-            bool fHavePendingFormats = false;
-            SHCLFORMATS fPendingFormats = VBOX_SHCL_FMT_NONE;
-            int const vrcState = lock();
-            if (RT_SUCCESS(vrcState))
+            m_fRemoteDataReadActive = false;
+            if (m_fRemoteFormatsPending)
             {
-                m_fRemoteDataReadActive = false;
-                if (m_fRemoteFormatsPending)
+                SHCLFORMATS const fPendingFormats = m_fPendingRemoteFormats;
+                m_fRemoteFormatsPending = false;
+                m_fPendingRemoteFormats = VBOX_SHCL_FMT_NONE;
+                if (!IsNativeBackendActive())
                 {
-                    fHavePendingFormats = true;
-                    fPendingFormats = m_fPendingRemoteFormats;
-                    m_fRemoteFormatsPending = false;
-                    m_fPendingRemoteFormats = VBOX_SHCL_FMT_NONE;
+                    int const vrcFormats = i_reportRemoteFormatsToGuestNow(fPendingFormats);
+                    if (RT_FAILURE(vrcFormats))
+                        LogRel(("Shared Clipboard: Reporting formats deferred during a remote read failed with %Rrc\n", vrcFormats));
                 }
-                unlock();
             }
-            else
-                AssertRC(vrcState);
 
-            if (fHavePendingFormats)
-            {
-                int const vrcFormats = i_reportRemoteFormatsToGuestNow(fPendingFormats);
-                if (RT_FAILURE(vrcFormats))
-                    LogRel(("Shared Clipboard: Reporting formats deferred during a remote read failed with %Rrc\n",
-                            vrcFormats));
-            }
             int const vrcLeavePending = RTCritSectLeave(&m_RemoteFormatsCritSect);
             AssertRC(vrcLeavePending);
         }
         else
             AssertRC(vrcLock);
     }
-    else if (pClipboard)
-    {
-        hrc = pClipboard->i_readDataForGuest(fFormats, pvData, cbData, &pParms->u.ReadWriteData.cbActual);
-        vrc = SUCCEEDED(hrc) ? VINF_SUCCESS : VERR_NO_DATA;
-    }
     else
-        vrc = VERR_NOT_AVAILABLE;
+    {
+        Clipboard *pClipboard = m_pConsole->i_getClipboard();
+        if (pClipboard)
+        {
+            HRESULT const hrc = pClipboard->i_readDataForGuest(uFormat, pvData, cbData,
+                                                               &pParms->u.ReadWriteData.cbActual);
+            vrc = SUCCEEDED(hrc) ? VINF_SUCCESS : VERR_NO_DATA;
+        }
+        else
+            vrc = VERR_NOT_AVAILABLE;
+    }
 
     if (RT_SUCCESS(vrc))
         LogRel2(("Shared Clipboard: Read Main clipboard data (max %RU32 bytes), got %RU32 bytes\n", cbData,
                  pParms->u.ReadWriteData.cbActual));
     else
-        LogRelMax(16, ("Shared Clipboard: No Main clipboard data available, vrc=%Rrc\n", vrc));
+        LogRel2(("Shared Clipboard: Reading Main clipboard data failed with %Rrc\n", vrc));
     return vrc;
 }
-
 
 /**
  * Handles VBOX_CLIPBOARD_EXT_FN_DATA_WRITE from the Shared Clipboard host service.
@@ -427,20 +422,24 @@ int GuestShCl::i_svcExtDataReadCallback(PSHCLEXTPARMS pParms)
  */
 int GuestShCl::i_svcExtDataWriteCallback(PSHCLEXTPARMS pParms)
 {
-    SHCLFORMATS fFormats = pParms->u.ReadWriteData.uFormat;
+    SHCLFORMAT uFormat = pParms->u.ReadWriteData.uFormat;
     SHCLGUESTDATATOKEN hToken = NULL;
-    int vrc = m_pConn->guestDataBegin(pParms->u.ReadWriteData.pCmdCtx, fFormats, &hToken);
+    int vrc = m_pConn->guestDataBegin(pParms->u.ReadWriteData.pCmdCtx, uFormat, &hToken);
     if (RT_FAILURE(vrc) || !hToken)
         return vrc;
 
     void const *pvData = pParms->u.ReadWriteData.pvData;
     uint32_t cbData = pParms->u.ReadWriteData.cbData;
-    ConsoleVRDPServer *pVrde = m_pConsole->i_consoleVRDPServer();
-    if (pVrde)
+    if (   !IsNativeBackendActive()
+        && uFormat != VBOX_SHCL_FMT_URI_LIST)
     {
-        int const vrcVrde = pVrde->ClipboardWriteGuestData(fFormats, pvData, cbData);
-        if (RT_FAILURE(vrcVrde) && vrcVrde != VERR_NOT_SUPPORTED)
-            LogRelMax(16, ("Shared Clipboard: Mirroring guest clipboard data to VRDE failed with %Rrc\n", vrcVrde));
+        ConsoleVRDPServer *pVrde = m_pConsole->i_consoleVRDPServer();
+        if (pVrde)
+        {
+            int const vrcVrde = pVrde->ClipboardWriteGuestData(uFormat, pvData, cbData);
+            if (RT_FAILURE(vrcVrde) && vrcVrde != VERR_NOT_SUPPORTED)
+                LogRelMax(16, ("Shared Clipboard: Mirroring guest clipboard data to VRDE failed with %Rrc\n", vrcVrde));
+        }
     }
 
     vrc = m_pConn->guestDataComplete(hToken, pvData, cbData);
@@ -449,7 +448,6 @@ int GuestShCl::i_svcExtDataWriteCallback(PSHCLEXTPARMS pParms)
     AssertRC(vrc);
     return vrc;
 }
-
 
 /**
  * Handles VBOX_CLIPBOARD_EXT_FN_BACKEND_INIT from the Shared Clipboard host service.
@@ -552,7 +550,10 @@ int GuestShCl::i_svcExtBackendSyncCallback(PSHCLEXTPARMS pParms, void *pvParms, 
     RT_NOREF(pvParms, cbParms);
     SHCLTRANSPORT const Transport = ShClSvcExtGetTransport(pParms);
 
-    return m_pConn->matches(&Transport) ? m_pConn->syncBackend() : VERR_INVALID_PARAMETER;
+    if (!m_pConn->matches(&Transport))
+        return VERR_INVALID_PARAMETER;
+
+    return IsNativeBackendActive() ? m_pConn->syncBackend() : VINF_SUCCESS;
 }
 
 

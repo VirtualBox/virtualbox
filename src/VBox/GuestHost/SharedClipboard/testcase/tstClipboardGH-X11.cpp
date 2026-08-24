@@ -1,4 +1,4 @@
-/* $Id: tstClipboardGH-X11.cpp 114972 2026-08-10 17:34:02Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardGH-X11.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard guest/host X11 code test cases.
  */
@@ -869,6 +869,14 @@ int main()
     clipReportEmpty(&X11Ctx);
     RTTEST_CHECK_MSG(hTest, tstClipQueryFormats() == 0,
                      (hTest, "Failed to send a format update (release) notification\n"));
+
+    RTTestSub(hTest, "reporting the currently tracked X11 formats");
+    tstClipSetSelectionValues("UTF8_STRING", XA_STRING, "hello world", sizeof("hello world"), 8);
+    tstClipSendTargetUpdate(&X11Ctx);
+    tstClipInvalidateFormats();
+    RTTEST_CHECK_RC_OK(hTest, ShClX11ReportCurrentFormatsToVBoxAsync(&X11Ctx));
+    RTTEST_CHECK_MSG(hTest, tstClipQueryFormats() == VBOX_SHCL_FMT_UNICODETEXT,
+                     (hTest, "Wrong replayed targets: %02X\n", tstClipQueryFormats()));
 
     /*
      * Request for an invalid VBox format from X11

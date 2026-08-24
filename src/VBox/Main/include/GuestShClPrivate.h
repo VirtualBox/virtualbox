@@ -1,4 +1,4 @@
-/* $Id: GuestShClPrivate.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClPrivate.h 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * Private Shared Clipboard code for the Main API.
  */
@@ -33,6 +33,8 @@
 
 #include <VBox/HostServices/VBoxClipboardExt.h>
 #include <VBox/hgcmsvc.h>
+#include <iprt/critsect.h>
+#include <iprt/once.h>
 
 /**
  * Forward prototype declarations.
@@ -55,25 +57,42 @@ public:
      * @returns Newly created Singleton object, or NULL on failure.
      * @param   pConsole        Pointer to parent console.
      */
-    static GuestShCl *CreateInstance(Console *pConsole)
-    {
-        AssertPtrReturn(pConsole, NULL);
-        Assert(NULL == GuestShCl::s_pInstance);
-        GuestShCl::s_pInstance = new GuestShCl(pConsole);
-        return GuestShCl::s_pInstance;
-    }
+    static GuestShCl *CreateInstance(Console *pConsole);
 
     /**
      * Destroys the Singleton GuestShCl object.
      */
-    static void DestroyInstance(void)
-    {
-        if (GuestShCl::s_pInstance)
-        {
-            delete GuestShCl::s_pInstance;
-            GuestShCl::s_pInstance = NULL;
-        }
-    }
+    static void DestroyInstance(void);
+
+    /**
+     * Publishes the singleton to asynchronous external callers.
+     *
+     * @returns VBox status code.
+     */
+    static int EnableExternalCalls(void);
+
+    /**
+     * Withdraws the singleton from asynchronous external callers and waits for
+     * all calls which previously acquired it to return.
+     */
+    static void DisableExternalCalls(void);
+
+    /**
+     * Acquires the singleton for an asynchronous external call.
+     *
+     * The returned reference must be released with Release() on the
+     * same thread.
+     *
+     * @returns Acquired singleton, or NULL if external calls are disabled.
+     */
+    static GuestShCl *Acquire(void);
+
+    /**
+     * Releases a singleton reference returned by Acquire().
+     *
+     * @thread  The thread which called Acquire().
+     */
+    static void Release(void);
 
     /**
      * Returns the Singleton GuestShCl object.
@@ -83,17 +102,6 @@ public:
     static inline GuestShCl *GetInst(void)
     {
         AssertPtr(GuestShCl::s_pInstance);
-        return GuestShCl::s_pInstance;
-    }
-
-    /**
-     * Returns the Singleton GuestShCl object if it exists.
-     *
-     * @returns Pointer to Singleton GuestShCl object, or NULL if not created or
-     *          already destroyed.
-     */
-    static inline GuestShCl *TryGetInst(void)
-    {
         return GuestShCl::s_pInstance;
     }
 
@@ -129,6 +137,8 @@ public:
     int ReportFormatsToHost(SHCLFORMATS fFormats);
     int WriteDataToHost(SHCLFORMAT uFormat, void *pvData, uint32_t cbData);
     int ReportFormatsToGuest(SHCLFORMATS fFormats);
+    bool IsNativeBackendActive(void);
+    int VrdeEnable(bool fEnable);
     int ReportRemoteFormatsToGuest(SHCLFORMATS fFormats);
     int ReportFormatsToGuest(GuestShClConn *pConn, SHCLFORMATS fFormats, SHCLSOURCE enmSource);
     int ReportError(const char *pcszId, int vrc, const char *pcszMsgFmt, ...);
@@ -177,6 +187,8 @@ protected:
     RTCRITSECT                  m_RemoteFormatsCritSect;
     /** Main-owned connection encapsulating the service endpoint and native backend context. */
     GuestShClConn              *m_pConn;
+    /** Whether VRDE currently owns the host clipboard route. */
+    volatile bool              m_fVrdeEnabled;
     /** Whether Main is synchronously reading from the remote clipboard provider. */
     bool                        m_fRemoteDataReadActive;
     /** Whether a remote format announcement arrived during that read. */
@@ -191,8 +203,17 @@ protected:
 
 private:
 
+    /** @callback_method_impl{FNRTONCE} */
+    static DECLCALLBACK(int32_t) s_initInstanceLock(void *pvUser);
+
+    /** Init-once state for the process-lifetime singleton publication lock. */
+    static RTONCE                s_InstanceOnce;
+    /** Serializes singleton publication and protects external references. */
+    static RTCRITSECTRW          s_InstanceLock;
     /** Static pointer to singleton instance. */
     static GuestShCl           *s_pInstance;
+    /** Singleton published to asynchronous external callers. */
+    static GuestShCl * volatile s_pExternalInstance;
 };
 
 /** Access to the GuestShCl's singleton instance. */

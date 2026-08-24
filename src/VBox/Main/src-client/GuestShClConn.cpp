@@ -1,4 +1,4 @@
-/* $Id: GuestShClConn.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClConn.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Service connection management implementation.
  */
@@ -348,8 +348,23 @@ int GuestShClConn::reportLocalFormats(SHCLFORMATS fFormats)
 
 int GuestShClConn::readDataFromGuestAsync(SHCLFORMATS fFormats, PSHCLEVENT *ppEvent)
 {
+#ifdef VBOX_COM_INPROC
+    if (m_pOwner && !m_pOwner->IsNativeBackendActive())
+        return VERR_SHCLPB_NO_DATA;
+#endif
     SHCL_CONN_SVC_CALL_BEGIN(Transport);
     vrc = Transport.pOps->pfnReadDataFromGuestAsync(Transport.hClient, fFormats, ppEvent);
+    i_callEnd();
+    return vrc;
+}
+
+
+int GuestShClConn::i_readDataFromGuest(SHCLFORMAT uFormat, void **ppvData, uint32_t *pcbData)
+{
+    AssertPtrReturn(ppvData, VERR_INVALID_POINTER);
+    AssertPtrReturn(pcbData, VERR_INVALID_POINTER);
+    SHCL_CONN_SVC_CALL_BEGIN(Transport);
+    vrc = Transport.pOps->pfnReadDataFromGuest(Transport.hClient, uFormat, ppvData, pcbData);
     i_callEnd();
     return vrc;
 }
@@ -359,10 +374,13 @@ int GuestShClConn::readDataFromGuest(SHCLFORMAT uFormat, void **ppvData, uint32_
 {
     AssertPtrReturn(ppvData, VERR_INVALID_POINTER);
     AssertPtrReturn(pcbData, VERR_INVALID_POINTER);
-    SHCL_CONN_SVC_CALL_BEGIN(Transport);
-    vrc = Transport.pOps->pfnReadDataFromGuest(Transport.hClient, uFormat, ppvData, pcbData);
-    i_callEnd();
-    return vrc;
+    *ppvData = NULL;
+    *pcbData = 0;
+#ifdef VBOX_COM_INPROC
+    if (m_pOwner && !m_pOwner->IsNativeBackendActive())
+        return VERR_SHCLPB_NO_DATA;
+#endif
+    return i_readDataFromGuest(uFormat, ppvData, pcbData);
 }
 
 

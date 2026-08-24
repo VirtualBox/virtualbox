@@ -1,4 +1,4 @@
-/* $Id: ConsoleImpl.cpp 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: ConsoleImpl.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console COM Class implementation
  */
@@ -9265,7 +9265,7 @@ HRESULT Console::i_powerDown(IProgress *aProgress /*= NULL*/)
 # ifdef VBOX_WITH_SHARED_CLIPBOARD
         if (m_hHgcmSvcExtShCl)
         {
-            i_consoleVRDPServer()->ClipboardSetGuestShClAvailable(false);
+            GuestShCl::DisableExternalCalls();
             int const vrcUnregister = HGCMHostUnregisterServiceExtension(m_hHgcmSvcExtShCl);
             if (RT_SUCCESS(vrcUnregister))
                 m_hHgcmSvcExtShCl = NULL;
@@ -11673,7 +11673,7 @@ void Console::i_powerUpThreadTask(VMPowerUpTask *pTask)
 #ifdef VBOX_WITH_SHARED_CLIPBOARD
                 if (pConsole->m_hHgcmSvcExtShCl)
                 {
-                    pConsole->i_consoleVRDPServer()->ClipboardSetGuestShClAvailable(false);
+                    GuestShCl::DisableExternalCalls();
                     int const vrcUnregister = HGCMHostUnregisterServiceExtension(pConsole->m_hHgcmSvcExtShCl);
                     if (RT_SUCCESS(vrcUnregister))
                         pConsole->m_hHgcmSvcExtShCl = NULL;

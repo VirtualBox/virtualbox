@@ -1,4 +1,4 @@
-/* $Id: GuestShClConn.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClConn.h 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Service connection management.
  */
@@ -135,7 +135,8 @@ public:
     int reportLocalFormats(SHCLFORMATS fFormats);
 
     /**
-     * Requests clipboard data from the guest without waiting for a reply.
+     * Requests clipboard data from the guest without waiting for a reply if
+     * the native backend is selected.
      *
      * @returns VBox status code.
      * @param   fFormats            Requested formats, VBOX_SHCL_FMT_XXX.
@@ -144,7 +145,8 @@ public:
     int readDataFromGuestAsync(SHCLFORMATS fFormats, PSHCLEVENT *ppEvent);
 
     /**
-     * Requests and waits for clipboard data from the guest.
+     * Requests and waits for clipboard data from the guest if the native
+     * backend is selected.
      *
      * @returns VBox status code.
      * @param   uFormat             Requested format, VBOX_SHCL_FMT_XXX.
@@ -338,6 +340,8 @@ public:
 #endif
 
 private:
+    friend class GuestShCl;
+
     /** Internal connection lifecycle states. */
     enum State
     {
@@ -371,6 +375,16 @@ private:
      * Waits for every operation begun by i_callBegin() to finish.
      */
     void i_waitForCalls(void);
+    /**
+     * Requests and waits for clipboard data from the guest without checking
+     * which host clipboard provider is selected.
+     *
+     * @returns VBox status code.
+     * @param   uFormat             Requested format, VBOX_SHCL_FMT_XXX.
+     * @param   ppvData             Where to return the allocated data buffer.
+     * @param   pcbData             Where to return the data size.
+     */
+    int i_readDataFromGuest(SHCLFORMAT uFormat, void **ppvData, uint32_t *pcbData);
 
     /** GuestShCl instance owning this object for the full object lifetime; immutable. */
     GuestShCl                  *m_pOwner;

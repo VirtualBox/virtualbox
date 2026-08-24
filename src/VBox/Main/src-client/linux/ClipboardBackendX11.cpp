@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendX11.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendX11.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - X11 backend.
  */
@@ -464,10 +464,7 @@ static int shClBackendX11Sync(PSHCLCONTEXT pCtx)
 
     LogFlowFuncEnter();
 
-    /* Tell the guest we have no data in case X11 is not available.  If
-     * there is data in the host clipboard it will automatically be sent to
-     * the guest when the clipboard starts up. */
-    int const vrc = pCtx->pConn->reportFormatsToGuest(VBOX_SHCL_FMT_NONE);
+    int const vrc = ShClX11ReportCurrentFormatsToVBoxAsync(&pCtx->X11);
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;

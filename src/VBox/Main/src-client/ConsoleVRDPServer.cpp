@@ -1,4 +1,4 @@
-/* $Id: ConsoleVRDPServer.cpp 115061 2026-08-17 17:42:59Z andreas.loeffler@oracle.com $ */
+/* $Id: ConsoleVRDPServer.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console VRDP helper class.
  */
@@ -971,7 +971,31 @@ DECLCALLBACK(void) ConsoleVRDPServer::VRDPCallbackClientDisconnect(void *pvCallb
     ConsoleVRDPServer *pServer = static_cast<ConsoleVRDPServer*>(pvCallback);
     AssertPtrReturnVoid(pServer);
 
+    bool fLastClipboardProvider = false;
+    if (fu32Intercepted & VRDE_CLIENT_INTERCEPT_CLIPBOARD)
+    {
+        uint32_t cProviders = ASMAtomicReadU32(&pServer->mcClipboardProviders);
+        for (;;)
+        {
+            if (!cProviders)
+            {
+                AssertFailed();
+                break;
+            }
+            if (ASMAtomicCmpXchgExU32(&pServer->mcClipboardProviders, cProviders - 1, cProviders, &cProviders))
+            {
+                --cProviders;
+                fLastClipboardProvider = cProviders == 0;
+                LogRel2(("VRDE: Clipboard provider disconnected: providers=%RU32\n", cProviders));
+                break;
+            }
+        }
+    }
+
     pServer->mConsole->i_VRDPClientDisconnect(u32ClientId, fu32Intercepted);
+
+    if (fLastClipboardProvider)
+        pServer->clipboardNotifyVrdeEnabled(false);
 
     if (ASMAtomicReadU32(&pServer->mu32AudioInputClientId) == u32ClientId)
     {
@@ -1029,11 +1053,13 @@ DECLCALLBACK(int) ConsoleVRDPServer::VRDPCallbackIntercept(void *pvCallback, uin
         case VRDE_CLIENT_INTERCEPT_CLIPBOARD:
         {
             pServer->mConsole->i_VRDPInterceptClipboard(u32ClientId);
+            uint32_t const cProviders = ASMAtomicIncU32(&pServer->mcClipboardProviders);
+            LogRel2(("VRDE: Clipboard provider connected: providers=%RU32\n", cProviders));
             if (ppvIntercept)
-            {
                 *ppvIntercept = pServer;
-            }
             vrc = VINF_SUCCESS;
+            if (cProviders == 1)
+                pServer->clipboardNotifyVrdeEnabled(true);
         } break;
 
         case VRDE_CLIENT_INTERCEPT_AUDIO_INPUT:
@@ -1357,13 +1383,7 @@ ConsoleVRDPServer::ConsoleVRDPServer(Console *console)
 
     int vrc = RTCritSectInit(&mCritSect);
     AssertFatalMsgRC(vrc, ("Initializing the VRDE server critical section failed with %Rrc\n", vrc));
-    mfClipboardGuestShClAvailable = false;
-    mcClipboardGuestShClCalls = 0;
-    mhClipboardGuestShClCallsDone = NIL_RTSEMEVENTMULTI;
-    vrc = RTSemEventMultiCreate(&mhClipboardGuestShClCallsDone);
-    AssertFatalMsgRC(vrc, ("Creating the VRDE clipboard callback event failed with %Rrc\n", vrc));
-    vrc = RTSemEventMultiSignal(mhClipboardGuestShClCallsDone);
-    AssertFatalMsgRC(vrc, ("Signalling the VRDE clipboard callback event failed with %Rrc\n", vrc));
+    mcClipboardProviders = 0;
 #ifdef VBOX_WITH_USB
     mUSBBackends.pHead = NULL;
     mUSBBackends.pTail = NULL;
@@ -1441,14 +1461,10 @@ ConsoleVRDPServer::ConsoleVRDPServer(Console *console)
 
 ConsoleVRDPServer::~ConsoleVRDPServer()
 {
-    ClipboardSetGuestShClAvailable(false);
+#ifdef VBOX_WITH_SHARED_CLIPBOARD
+    GuestShCl::DisableExternalCalls();
+#endif
     Stop();
-
-    if (mhClipboardGuestShClCallsDone != NIL_RTSEMEVENTMULTI)
-    {
-        RTSemEventMultiDestroy(mhClipboardGuestShClCallsDone);
-        mhClipboardGuestShClCallsDone = NIL_RTSEMEVENTMULTI;
-    }
 
     if (mConsoleListener)
     {
@@ -3051,6 +3067,9 @@ void ConsoleVRDPServer::Stop(void)
             mpEntryPoints->VRDEDestroy(hServer);
     }
 
+    if (ASMAtomicXchgU32(&mcClipboardProviders, 0) > 0)
+        clipboardNotifyVrdeEnabled(false);
+
 #ifndef VBOX_WITH_VRDEAUTH_IN_VBOXSVC
     AuthLibUnload(&mAuthLibCtx);
 #endif
@@ -3297,6 +3316,33 @@ void ConsoleVRDPServer::unlockConsoleVRDPServer(void)
     RTCritSectLeave(&mCritSect);
 }
 
+/** Selects or deselects VRDE as the Shared Clipboard provider. */
+void ConsoleVRDPServer::clipboardNotifyVrdeEnabled(bool fEnabled)
+{
+#ifdef VBOX_WITH_SHARED_CLIPBOARD
+    GuestShCl *pGuestShCl = GuestShCl::Acquire();
+    if (pGuestShCl)
+    {
+        int const vrc = pGuestShCl->VrdeEnable(fEnabled);
+        GuestShCl::Release();
+        if (RT_FAILURE(vrc) && vrc != VERR_NOT_AVAILABLE)
+            LogRelMax(16, ("Shared Clipboard: Changing VRDE clipboard routing failed with %Rrc\n", vrc));
+    }
+#else
+    RT_NOREF(fEnabled);
+#endif
+}
+
+/**
+ * Checks whether VRDE currently owns the clipboard route.
+ *
+ * @returns Whether at least one VRDE clipboard provider is connected.
+ */
+bool ConsoleVRDPServer::ClipboardIsRemoteProviderActive(void)
+{
+    return ASMAtomicReadU32(&mcClipboardProviders) > 0;
+}
+
 /**
  * Handles a clipboard request received from a remote-desktop client.
  *
@@ -3327,42 +3373,32 @@ DECLCALLBACK(int) ConsoleVRDPServer::ClipboardCallback(void *pvCallback,
 
     RT_NOREF(u32ClientId, pvData, cbData);
 
-    int vrc = pServer->lockConsoleVRDPServer();
-    AssertRCReturn(vrc, vrc);
-    bool const fCallGuestShCl = pServer->mfClipboardGuestShClAvailable;
-    if (fCallGuestShCl && pServer->mcClipboardGuestShClCalls++ == 0)
-    {
-        int const vrcReset = RTSemEventMultiReset(pServer->mhClipboardGuestShClCallsDone);
-        AssertFatalMsgRC(vrcReset, ("Resetting the VRDE clipboard callback event failed with %Rrc\n", vrcReset));
-    }
-    pServer->unlockConsoleVRDPServer();
-
-    if (!fCallGuestShCl)
+#ifndef VBOX_WITH_SHARED_CLIPBOARD
+    return VERR_NOT_AVAILABLE;
+#else
+    GuestShCl *pGuestShCl = GuestShCl::Acquire();
+    if (!pGuestShCl)
         return VERR_NOT_AVAILABLE;
 
-    switch (u32Function)
+    int vrc;
+    if (!pServer->ClipboardIsRemoteProviderActive())
+        vrc = VERR_NOT_AVAILABLE;
+    else switch (u32Function)
     {
         case VRDE_CLIPBOARD_FUNCTION_FORMAT_ANNOUNCE:
         {
-#ifdef VBOX_WITH_SHARED_CLIPBOARD
             if (!ShClFormatsAreValid(u32Format))
                 vrc = VERR_INVALID_PARAMETER;
             else
-            {
-                GuestShCl *pGuestShCl = GuestShCl::TryGetInst();
-                vrc = pGuestShCl ? pGuestShCl->ReportRemoteFormatsToGuest(u32Format) : VERR_NOT_AVAILABLE;
-            }
-#else
-            vrc = VERR_NOT_SUPPORTED;
-#endif
+                vrc = pGuestShCl->ReportRemoteFormatsToGuest(u32Format);
         } break;
 
         case VRDE_CLIPBOARD_FUNCTION_DATA_READ:
         {
-#ifdef VBOX_WITH_SHARED_CLIPBOARD
-            GuestShCl *pGuestShCl = GuestShCl::TryGetInst();
-            if (!pGuestShCl)
-                vrc = VERR_NOT_AVAILABLE;
+            if (!ShClFormatIsValid(u32Format))
+                vrc = VERR_INVALID_PARAMETER;
+            else if (u32Format == VBOX_SHCL_FMT_URI_LIST)
+                vrc = VERR_NOT_SUPPORTED;
             else
             {
                 void *pvGuestData = NULL;
@@ -3372,9 +3408,6 @@ DECLCALLBACK(int) ConsoleVRDPServer::ClipboardCallback(void *pvCallback,
                  * completing the read operation. */
                 RTMemFree(pvGuestData);
             }
-#else
-            vrc = VERR_NOT_SUPPORTED;
-#endif
         } break;
 
         default:
@@ -3382,39 +3415,10 @@ DECLCALLBACK(int) ConsoleVRDPServer::ClipboardCallback(void *pvCallback,
             break;
     }
 
-    int const vrcLock = pServer->lockConsoleVRDPServer();
-    AssertFatalMsgRC(vrcLock, ("Locking the VRDE server after a clipboard callback failed with %Rrc\n", vrcLock));
-    Assert(pServer->mcClipboardGuestShClCalls > 0);
-    if (pServer->mcClipboardGuestShClCalls > 0 && --pServer->mcClipboardGuestShClCalls == 0)
-    {
-        int const vrcSignal = RTSemEventMultiSignal(pServer->mhClipboardGuestShClCallsDone);
-        AssertFatalMsgRC(vrcSignal, ("Signalling the VRDE clipboard callback event failed with %Rrc\n", vrcSignal));
-    }
-    pServer->unlockConsoleVRDPServer();
+    GuestShCl::Release();
 
     return vrc;
-}
-
-/**
- * Publishes or withdraws the GuestShCl singleton from direct VRDE callbacks.
- *
- * Withdrawing it waits until every callback which previously acquired it has
- * returned, so the caller may safely destroy GuestShCl afterwards.
- *
- * @param   fAvailable         Whether GuestShCl may be acquired.
- */
-void ConsoleVRDPServer::ClipboardSetGuestShClAvailable(bool fAvailable)
-{
-    int const vrc = lockConsoleVRDPServer();
-    AssertFatalMsgRC(vrc, ("Locking the VRDE server for clipboard publication failed with %Rrc\n", vrc));
-    mfClipboardGuestShClAvailable = fAvailable;
-    unlockConsoleVRDPServer();
-
-    if (!fAvailable)
-    {
-        int const vrcWait = RTSemEventMultiWait(mhClipboardGuestShClCallsDone, RT_INDEFINITE_WAIT);
-        AssertFatalMsgRC(vrcWait, ("Waiting for direct VRDE clipboard callbacks failed with %Rrc\n", vrcWait));
-    }
+#endif /* VBOX_WITH_SHARED_CLIPBOARD */
 }
 
 /**
@@ -3426,6 +3430,10 @@ void ConsoleVRDPServer::ClipboardSetGuestShClAvailable(bool fAvailable)
  */
 int ConsoleVRDPServer::ClipboardReportGuestFormats(SHCLFORMATS fFormats) const
 {
+#ifdef VBOX_WITH_SHARED_CLIPBOARD
+    AssertReturn(ShClFormatsAreValid(fFormats), VERR_INVALID_PARAMETER);
+    fFormats &= ~VBOX_SHCL_FMT_URI_LIST;
+#endif
     if (mpEntryPoints && mhServer && mpEntryPoints->VRDEClipboard)
     {
         mpEntryPoints->VRDEClipboard(mhServer, VRDE_CLIPBOARD_FUNCTION_FORMAT_ANNOUNCE,
@@ -3448,6 +3456,11 @@ int ConsoleVRDPServer::ClipboardReportGuestFormats(SHCLFORMATS fFormats) const
 int ConsoleVRDPServer::ClipboardReadRemoteData(SHCLFORMAT uFormat, void *pvData, uint32_t cbData,
                                                uint32_t *pcbActual) const
 {
+#ifdef VBOX_WITH_SHARED_CLIPBOARD
+    AssertReturn(ShClFormatIsValid(uFormat), VERR_INVALID_PARAMETER);
+    if (uFormat == VBOX_SHCL_FMT_URI_LIST)
+        return VERR_NOT_SUPPORTED;
+#endif
     AssertPtrReturn(pcbActual, VERR_INVALID_POINTER);
     *pcbActual = 0;
     if (mpEntryPoints && mhServer && mpEntryPoints->VRDEClipboard)
@@ -3470,6 +3483,11 @@ int ConsoleVRDPServer::ClipboardReadRemoteData(SHCLFORMAT uFormat, void *pvData,
  */
 int ConsoleVRDPServer::ClipboardWriteGuestData(SHCLFORMAT uFormat, const void *pvData, uint32_t cbData) const
 {
+#ifdef VBOX_WITH_SHARED_CLIPBOARD
+    AssertReturn(ShClFormatIsValid(uFormat), VERR_INVALID_PARAMETER);
+    if (uFormat == VBOX_SHCL_FMT_URI_LIST)
+        return VERR_NOT_SUPPORTED;
+#endif
     if (mpEntryPoints && mhServer && mpEntryPoints->VRDEClipboard)
     {
         mpEntryPoints->VRDEClipboard(mhServer, VRDE_CLIPBOARD_FUNCTION_DATA_WRITE,

@@ -572,6 +572,27 @@ static void clipReportFormatsToVBox(PSHCLX11CTX pCtx)
         pCtx->Callbacks.pfnReportFormats(pCtx->pFrontend, vboxFmt, NULL /* pvUser */);
 }
 
+/** Reports the currently tracked X11 formats to the frontend. */
+static void shClX11ReportCurrentFormatsToVBoxWorker(void *pvUserData, void * /* interval */)
+{
+    AssertPtrReturnVoid(pvUserData);
+    clipReportFormatsToVBox((PSHCLX11CTX)pvUserData);
+}
+
+/**
+ * Schedules a report of the currently tracked X11 formats to the frontend.
+ *
+ * @returns VBox status code.
+ * @param   pCtx                The X11 clipboard context to use.
+ *
+ * @thread  Any thread.  The report runs on the X11 event thread.
+ */
+int ShClX11ReportCurrentFormatsToVBoxAsync(PSHCLX11CTX pCtx)
+{
+    AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
+    return clipThreadScheduleCall(pCtx, shClX11ReportCurrentFormatsToVBoxWorker, pCtx);
+}
+
 /**
  * Forgets which formats were previously in the X11 clipboard.  Called when we
  * grab the clipboard.

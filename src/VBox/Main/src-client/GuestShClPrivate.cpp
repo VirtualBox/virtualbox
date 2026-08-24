@@ -1,4 +1,4 @@
-/* $Id: GuestShClPrivate.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClPrivate.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * Private Shared Clipboard code.
  */
@@ -35,6 +35,7 @@
 # include "GuestShClConn.h"
 # include "ProgressImpl.h"
 
+# include <iprt/asm.h>
 # include <iprt/cpp/utils.h>
 
 # include <VMMDev.h>
@@ -56,13 +57,152 @@
 
 
 
+/** Init-once state for the singleton publication lock. */
+RTONCE GuestShCl::s_InstanceOnce = RTONCE_INITIALIZER;
+/** Process-lifetime singleton publication lock. */
+RTCRITSECTRW GuestShCl::s_InstanceLock;
 /** Static (Singleton) instance of the Shared Clipboard management object. */
-GuestShCl* GuestShCl::s_pInstance = NULL;
+GuestShCl *GuestShCl::s_pInstance = NULL;
+/** Singleton published to asynchronous external callers. */
+GuestShCl * volatile GuestShCl::s_pExternalInstance = NULL;
+
+
+/** @callback_method_impl{FNRTONCE} */
+DECLCALLBACK(int32_t) GuestShCl::s_initInstanceLock(void *pvUser)
+{
+    RT_NOREF(pvUser);
+    return RTCritSectRwInit(&s_InstanceLock);
+}
+
+
+/**
+ * Creates the singleton without publishing it to asynchronous external calls.
+ *
+ * @returns Newly created singleton, or NULL on failure.
+ * @param   pConsole            Pointer to the parent console.
+ */
+GuestShCl *GuestShCl::CreateInstance(Console *pConsole)
+{
+    AssertPtrReturn(pConsole, NULL);
+
+    int vrc = RTOnce(&s_InstanceOnce, s_initInstanceLock, NULL);
+    AssertRCReturn(vrc, NULL);
+
+    GuestShCl *pInstance = new GuestShCl(pConsole);
+    vrc = RTCritSectRwEnterExcl(&s_InstanceLock);
+    if (RT_FAILURE(vrc))
+    {
+        delete pInstance;
+        AssertRC(vrc);
+        return NULL;
+    }
+
+    Assert(s_pInstance == NULL);
+    if (s_pInstance == NULL)
+        s_pInstance = pInstance;
+    else
+    {
+        RTCritSectRwLeaveExcl(&s_InstanceLock);
+        delete pInstance;
+        return NULL;
+    }
+
+    vrc = RTCritSectRwLeaveExcl(&s_InstanceLock);
+    AssertRC(vrc);
+    return pInstance;
+}
+
+
+/** Destroys the singleton after draining asynchronous external calls. */
+void GuestShCl::DestroyInstance(void)
+{
+    int vrc = RTOnce(&s_InstanceOnce, s_initInstanceLock, NULL);
+    AssertRCReturnVoid(vrc);
+
+    ASMAtomicWriteNullPtr(&s_pExternalInstance);
+    vrc = RTCritSectRwEnterExcl(&s_InstanceLock);
+    AssertRCReturnVoid(vrc);
+    GuestShCl *pInstance = s_pInstance;
+    ASMAtomicWriteNullPtr(&s_pExternalInstance);
+    s_pInstance = NULL;
+    vrc = RTCritSectRwLeaveExcl(&s_InstanceLock);
+    AssertRC(vrc);
+
+    delete pInstance;
+}
+
+
+/** Publishes the singleton to asynchronous external callers. */
+int GuestShCl::EnableExternalCalls(void)
+{
+    int vrc = RTOnce(&s_InstanceOnce, s_initInstanceLock, NULL);
+    if (RT_FAILURE(vrc))
+        return vrc;
+
+    vrc = RTCritSectRwEnterExcl(&s_InstanceLock);
+    if (RT_FAILURE(vrc))
+        return vrc;
+    if (s_pInstance)
+        ASMAtomicWritePtr(&s_pExternalInstance, s_pInstance);
+    else
+        vrc = VERR_WRONG_ORDER;
+    int const vrcLeave = RTCritSectRwLeaveExcl(&s_InstanceLock);
+    AssertRC(vrcLeave);
+    return vrc;
+}
+
+
+/** Withdraws the singleton and drains asynchronous external calls. */
+void GuestShCl::DisableExternalCalls(void)
+{
+    int vrc = RTOnce(&s_InstanceOnce, s_initInstanceLock, NULL);
+    AssertRCReturnVoid(vrc);
+
+    ASMAtomicWriteNullPtr(&s_pExternalInstance);
+    vrc = RTCritSectRwEnterExcl(&s_InstanceLock);
+    AssertRCReturnVoid(vrc);
+    ASMAtomicWriteNullPtr(&s_pExternalInstance);
+    vrc = RTCritSectRwLeaveExcl(&s_InstanceLock);
+    AssertRC(vrc);
+}
+
+
+/** Acquires the singleton for an asynchronous external call. */
+GuestShCl *GuestShCl::Acquire(void)
+{
+    int vrc = RTOnce(&s_InstanceOnce, s_initInstanceLock, NULL);
+    AssertRCReturn(vrc, NULL);
+
+    GuestShCl *pInstance = ASMAtomicReadPtrT(&s_pExternalInstance, GuestShCl *);
+    if (pInstance)
+    {
+        vrc = RTCritSectRwTryEnterShared(&s_InstanceLock);
+        if (RT_SUCCESS(vrc))
+        {
+            if (pInstance == ASMAtomicReadPtrT(&s_pExternalInstance, GuestShCl *))
+                return pInstance;
+            vrc = RTCritSectRwLeaveShared(&s_InstanceLock);
+            AssertRC(vrc);
+        }
+        else
+            Assert(vrc == VERR_SEM_BUSY);
+    }
+    return NULL;
+}
+
+
+/** Releases an asynchronous external-call reference. */
+void GuestShCl::Release(void)
+{
+    int const vrc = RTCritSectRwLeaveShared(&s_InstanceLock);
+    AssertRC(vrc);
+}
 
 
 GuestShCl::GuestShCl(Console *pConsole)
     : m_pConsole(pConsole)
     , m_pConn(NULL)
+    , m_fVrdeEnabled(false)
     , m_fRemoteDataReadActive(false)
     , m_fRemoteFormatsPending(false)
     , m_fPendingRemoteFormats(VBOX_SHCL_FMT_NONE)
@@ -119,6 +259,7 @@ void GuestShCl::uninit(void)
     if (RTCritSectIsInitialized(&m_CritSect))
         RTCritSectDelete(&m_CritSect);
 
+    m_fVrdeEnabled = false;
     m_fRemoteDataReadActive = false;
     m_fRemoteFormatsPending = false;
     m_fPendingRemoteFormats = VBOX_SHCL_FMT_NONE;
@@ -332,7 +473,7 @@ int GuestShCl::ReadDataFromGuest(SHCLFORMAT uFormat, void **ppvData, uint32_t *p
     *ppvData = NULL;
     *pcbData = 0;
 
-    return m_pConn->readDataFromGuest(uFormat, ppvData, pcbData);
+    return m_pConn->i_readDataFromGuest(uFormat, ppvData, pcbData);
 }
 
 /**
@@ -358,10 +499,14 @@ int GuestShCl::ReadDataFromHost(SHCLFORMAT uFormat, void *pvData, uint32_t cbDat
  * Reports guest clipboard formats to the native host clipboard backend.
  *
  * @returns VBox status code.
+ * @retval  VERR_RESOURCE_BUSY if VRDE currently owns the host clipboard route.
  * @param   fFormats    Formats to report to the host.
  */
 int GuestShCl::ReportFormatsToHost(SHCLFORMATS fFormats)
 {
+    if (!IsNativeBackendActive())
+        return VERR_RESOURCE_BUSY;
+
     int vrc = lock();
     if (RT_FAILURE(vrc))
         return vrc;
@@ -387,6 +532,9 @@ int GuestShCl::WriteDataToHost(SHCLFORMAT uFormat, void *pvData, uint32_t cbData
     if (cbData)
         AssertPtrReturn(pvData, VERR_INVALID_POINTER);
 
+    if (!IsNativeBackendActive())
+        return VERR_RESOURCE_BUSY;
+
     int const vrc = m_pConn->writeDataToBackend(uFormat, pvData, cbData);
     return vrc == VERR_SHCLPB_NO_DATA ? VINF_SUCCESS : vrc;
 }
@@ -399,6 +547,9 @@ int GuestShCl::WriteDataToHost(SHCLFORMAT uFormat, void *pvData, uint32_t cbData
  */
 int GuestShCl::ReportFormatsToGuest(SHCLFORMATS fFormats)
 {
+    if (!IsNativeBackendActive())
+        return VERR_RESOURCE_BUSY;
+
     int const vrc = m_pConn->reportFormatsToGuest(fFormats);
     if (vrc == VERR_SHCLPB_NO_DATA || vrc == VINF_NO_CHANGE)
         return VINF_SUCCESS;
@@ -408,33 +559,95 @@ int GuestShCl::ReportFormatsToGuest(SHCLFORMATS fFormats)
 }
 
 /**
+ * Checks whether native clipboard callbacks may use the guest connection.
+ *
+ * @returns true when the native backend is selected, otherwise false.
+ */
+bool GuestShCl::IsNativeBackendActive(void)
+{
+    return !ASMAtomicReadBool(&m_fVrdeEnabled);
+}
+
+/**
+ * Selects or deselects VRDE as the host clipboard provider.
+ *
+ * The transition first withdraws the formats owned by the old provider.  When
+ * returning to the native backend, it then republishes the native formats.
+ *
+ * @returns VBox status code.
+ * @param   fEnable             Whether VRDE should own the clipboard route.
+ */
+int GuestShCl::VrdeEnable(bool fEnable)
+{
+    int vrc = RTCritSectEnter(&m_RemoteFormatsCritSect);
+    AssertRCReturn(vrc, vrc);
+
+    bool const fWasEnabled = ASMAtomicReadBool(&m_fVrdeEnabled);
+    if (fWasEnabled == fEnable)
+    {
+        RTCritSectLeave(&m_RemoteFormatsCritSect);
+        return VINF_NO_CHANGE;
+    }
+
+    /* Block the native backend before withdrawing its formats. */
+    if (fEnable)
+        ASMAtomicWriteBool(&m_fVrdeEnabled, true);
+
+    m_fRemoteFormatsPending = false;
+    m_fPendingRemoteFormats = VBOX_SHCL_FMT_NONE;
+    vrc = i_reportRemoteFormatsToGuestNow(VBOX_SHCL_FMT_NONE);
+
+    /* Keep VRDE selected until its formats have been withdrawn. */
+    if (!fEnable)
+        ASMAtomicWriteBool(&m_fVrdeEnabled, false);
+
+    int const vrcLeave = RTCritSectLeave(&m_RemoteFormatsCritSect);
+    AssertRC(vrcLeave);
+
+    if (fEnable)
+        return vrc;
+
+    int vrcSync = m_pConn->syncBackend();
+    if (   vrcSync == VERR_INVALID_STATE
+        || vrcSync == VERR_SHCLPB_NO_DATA
+        || vrcSync == VINF_NO_CHANGE)
+        vrcSync = VINF_SUCCESS;
+    if (RT_FAILURE(vrc))
+        return vrc;
+    return vrcSync;
+}
+
+/**
  * Reports remote clipboard formats to the active guest clipboard client.
  *
  * @returns VBox status code.
- * @param   fFormats    Formats reported by the remote clipboard peer.
+ * @param   fFormats            Formats reported by the remote clipboard peer.
  */
 int GuestShCl::ReportRemoteFormatsToGuest(SHCLFORMATS fFormats)
 {
     AssertReturn(ShClFormatsAreValid(fFormats), VERR_INVALID_PARAMETER);
+    /* VRDE deliberately handles ordinary clipboard data only. */
+    fFormats &= ~VBOX_SHCL_FMT_URI_LIST;
+
+    if (IsNativeBackendActive())
+        return VINF_NO_CHANGE;
 
     int vrc = RTCritSectEnter(&m_RemoteFormatsCritSect);
     AssertRCReturn(vrc, vrc);
 
-    vrc = lock();
-    if (RT_FAILURE(vrc))
+    if (IsNativeBackendActive())
     {
         RTCritSectLeave(&m_RemoteFormatsCritSect);
-        return vrc;
+        return VINF_NO_CHANGE;
     }
+
     if (m_fRemoteDataReadActive)
     {
         m_fRemoteFormatsPending = true;
         m_fPendingRemoteFormats = fFormats;
-        unlock();
         RTCritSectLeave(&m_RemoteFormatsCritSect);
         return VINF_SUCCESS;
     }
-    unlock();
 
     vrc = i_reportRemoteFormatsToGuestNow(fFormats);
     int const vrcLeave = RTCritSectLeave(&m_RemoteFormatsCritSect);
@@ -454,6 +667,7 @@ int GuestShCl::ReportRemoteFormatsToGuest(SHCLFORMATS fFormats)
 int GuestShCl::i_reportRemoteFormatsToGuestNow(SHCLFORMATS fFormats)
 {
     AssertReturn(ShClFormatsAreValid(fFormats), VERR_INVALID_PARAMETER);
+    Assert(RTCritSectIsOwner(&m_RemoteFormatsCritSect));
 
     int const vrc = m_pConn->reportFormatsToGuest(fFormats, &fFormats);
     if (vrc == VERR_SHCLPB_NO_DATA || vrc == VINF_NO_CHANGE)
@@ -497,6 +711,10 @@ int GuestShCl::ReportFormatsToGuest(GuestShClConn *pConn, SHCLFORMATS fFormats, 
         default:
             AssertFailedReturn(VERR_INVALID_PARAMETER);
     }
+
+    if (   enmSource == SHCLSOURCE_LOCAL
+        && !IsNativeBackendActive())
+        return VINF_SUCCESS;
 
     int const vrc = pConn->reportFormatsToGuest(fFormats, &fFormats);
     if (vrc == VINF_NO_CHANGE)

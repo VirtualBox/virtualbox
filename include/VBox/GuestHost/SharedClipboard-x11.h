@@ -303,6 +303,8 @@ int ShClX11Term(PSHCLX11CTX pCtx);
 int ShClX11ThreadStart(PSHCLX11CTX pCtx, bool grab);
 int ShClX11ThreadStartEx(PSHCLX11CTX pCtx, const char *pszName, bool fGrab);
 int ShClX11ThreadStop(PSHCLX11CTX pCtx);
+/** Reports the currently tracked X11 formats to the frontend on the X11 event thread. */
+int ShClX11ReportCurrentFormatsToVBoxAsync(PSHCLX11CTX pCtx);
 int ShClX11ReportFormatsToX11Async(PSHCLX11CTX pCtx, SHCLFORMATS fFormats);
 /** Reports formats after atomically seeding one X11 clipboard cache entry. */
 int ShClX11ReportFormatsToX11AsyncEx(PSHCLX11CTX pCtx, SHCLFORMATS fFormats, SHCLFORMAT uFmtCache,

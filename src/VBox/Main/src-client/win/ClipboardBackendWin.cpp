@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendWin.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendWin.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Win32 host.
  */
@@ -964,10 +964,23 @@ static int vboxClipboardSvcWinSyncInternal(PSHCLCONTEXT pCtx)
 
     if (pCtx->pConn)
     {
-        SHCLFORMATS fFormats = 0;
-        vrc = ShClWinGetFormats(&pCtx->Win, &fFormats);
+        vrc = RTCritSectEnter(&pCtx->Win.CritSect);
         if (RT_SUCCESS(vrc))
-            vrc = pCtx->pConn->reportLocalFormats(fFormats);
+        {
+            bool const fClipboardOwner = shClBackendWinIsClipboardOwner(&pCtx->Win, GetClipboardOwner());
+            int const vrcLeave = RTCritSectLeave(&pCtx->Win.CritSect);
+            AssertRC(vrcLeave);
+
+            if (fClipboardOwner)
+                vrc = pCtx->pConn->reportLocalFormats(VBOX_SHCL_FMT_NONE);
+            else
+            {
+                SHCLFORMATS fFormats = 0;
+                vrc = ShClWinGetFormats(&pCtx->Win, &fFormats);
+                if (RT_SUCCESS(vrc))
+                    vrc = pCtx->pConn->reportLocalFormats(fFormats);
+            }
+        }
     }
     else /* If we don't have any client data (yet), bail out. */
         vrc = VINF_NO_CHANGE;

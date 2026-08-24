@@ -1,4 +1,4 @@
-/* $Id: ClipboardImpl.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardImpl.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Console clipboard API.
  */
@@ -1906,7 +1906,7 @@ HRESULT Clipboard::i_readDataForFormat(ClipboardAction_T aAction,
         }
     }
 
-    GuestShCl *pShCl = GuestShCl::TryGetInst();
+    GuestShCl *pShCl = GuestShCl::GetInst();
     if (!pShCl)
     {
         LogFunc(("Cannot read guest clipboard data without Shared Clipboard service\n"));
@@ -2470,6 +2470,11 @@ HRESULT Clipboard::i_writeData(VBOXSHCLMAINCLIENTID aClientId,
     AutoCaller autoCaller(mData->mParent);
     AssertComRCReturnRC(autoCaller.hrc());
 
+    GuestShCl *pRouteShCl = GuestShCl::GetInst();
+    if (pRouteShCl && !pRouteShCl->IsNativeBackendActive())
+        return mData->mParent->setErrorBoth(VBOX_E_SHCL_GUEST_ERROR, VERR_RESOURCE_BUSY,
+                                            Console::tr("Writing shared clipboard data is unavailable while the VRDE clipboard is active"));
+
     if (!i_reportFormats(aClientId, uFormat, aSource))
         return setError(VBOX_E_SHCL_ERROR, tr("Clipboard session client ID %RU32 is no longer active"), aClientId);
     if (!i_storeDataIfCurrentClient(aClientId, aAction, aSource, aMimeType, aBuffer, uFormat))
@@ -2489,7 +2494,7 @@ HRESULT Clipboard::i_writeData(VBOXSHCLMAINCLIENTID aClientId,
         }
     }
 
-    GuestShCl *pShCl = GuestShCl::TryGetInst();
+    GuestShCl *pShCl = GuestShCl::GetInst();
     if (!pShCl)
     {
         LogFunc(("Cannot report write format to guest without Shared Clipboard service: format=%#x\n", uFormat));
@@ -2554,6 +2559,11 @@ HRESULT Clipboard::i_writeFormats(VBOXSHCLMAINCLIENTID aClientId,
     AutoCaller autoCaller(mData->mParent);
     AssertComRCReturnRC(autoCaller.hrc());
 
+    GuestShCl *pRouteShCl = GuestShCl::GetInst();
+    if (pRouteShCl && !pRouteShCl->IsNativeBackendActive())
+        return mData->mParent->setErrorBoth(VBOX_E_SHCL_GUEST_ERROR, VERR_RESOURCE_BUSY,
+                                            Console::tr("Writing shared clipboard formats is unavailable while the VRDE clipboard is active"));
+
     if (!i_reportFormats(aClientId, fFormats, ClipboardSource_Host, true /* fForceNotify */))
         return setError(VBOX_E_SHCL_ERROR, tr("Clipboard session client ID %RU32 is no longer active"), aClientId);
 
@@ -2567,7 +2577,7 @@ HRESULT Clipboard::i_writeFormats(VBOXSHCLMAINCLIENTID aClientId,
         }
     }
 
-    GuestShCl *pShCl = GuestShCl::TryGetInst();
+    GuestShCl *pShCl = GuestShCl::GetInst();
     if (!pShCl)
     {
         LogFunc(("Cannot report formats to guest without Shared Clipboard service: fFormats=%#x\n", fFormats));
@@ -2704,7 +2714,7 @@ HRESULT Clipboard::i_hostClipboardReportFormats(VBOXSHCLMAINCLIENTID aClientId,
         }
     }
 
-    GuestShCl *pShCl = GuestShCl::TryGetInst();
+    GuestShCl *pShCl = GuestShCl::GetInst();
     if (!pShCl)
     {
         LogFunc(("Cannot report formats to native host clipboard without Shared Clipboard service: fFormats=%#x\n",
@@ -3033,7 +3043,7 @@ HRESULT Clipboard::i_hostClipboardSetData(VBOXSHCLMAINCLIENTID aClientId,
         }
     }
 
-    GuestShCl *pShCl = GuestShCl::TryGetInst();
+    GuestShCl *pShCl = GuestShCl::GetInst();
     if (!pShCl)
     {
         LogFunc(("Cannot set native host clipboard data without Shared Clipboard service: format=%#x\n", uFormat));
@@ -3107,7 +3117,7 @@ HRESULT Clipboard::i_hostClipboardClear(VBOXSHCLMAINCLIENTID aClientId)
         }
     }
 
-    GuestShCl *pShCl = GuestShCl::TryGetInst();
+    GuestShCl *pShCl = GuestShCl::GetInst();
     if (!pShCl)
     {
         Log2Func(("Skipping native host clipboard clear because Shared Clipboard service is no longer available\n"));
@@ -3409,7 +3419,7 @@ HRESULT Clipboard::i_readDataForGuest(uint32_t uFormat, void *pvData, uint32_t c
         && fWantRequestPayload
         && cbData)
     {
-        pShCl = GuestShCl::TryGetInst();
+        pShCl = GuestShCl::GetInst();
         if (pShCl)
         {
             fHostReadAttempted = true;
@@ -3478,7 +3488,7 @@ HRESULT Clipboard::i_readDataForGuest(uint32_t uFormat, void *pvData, uint32_t c
         }
 
         if (!pShCl)
-            pShCl = GuestShCl::TryGetInst();
+            pShCl = GuestShCl::GetInst();
         if (!pShCl)
         {
             LogFunc(("Cannot read native host data for guest request without Shared Clipboard service: format=%#x\n",

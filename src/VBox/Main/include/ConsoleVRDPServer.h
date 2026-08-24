@@ -1,4 +1,4 @@
-/* $Id: ConsoleVRDPServer.h 115054 2026-08-17 16:27:08Z andreas.loeffler@oracle.com $ */
+/* $Id: ConsoleVRDPServer.h 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console VRDE Server Helper class and implementation of IVRDEServerInfo
  */
@@ -141,7 +141,7 @@ public:
     int ClipboardReportGuestFormats(SHCLFORMATS fFormats) const;
     int ClipboardReadRemoteData(SHCLFORMAT uFormat, void *pvData, uint32_t cbData, uint32_t *pcbActual) const;
     int ClipboardWriteGuestData(SHCLFORMAT uFormat, const void *pvData, uint32_t cbData) const;
-    void ClipboardSetGuestShClAvailable(bool fAvailable);
+    bool ClipboardIsRemoteProviderActive(void);
 
     /*
      * Forwarders to VRDP server library.
@@ -230,15 +230,13 @@ private:
 
     RTCRITSECT mCritSect;
 
-    /** Whether direct clipboard callbacks may acquire the GuestShCl singleton. */
-    bool mfClipboardGuestShClAvailable;
-    /** Number of direct clipboard callbacks currently using GuestShCl. */
-    uint32_t mcClipboardGuestShClCalls;
-    /** Signalled while no direct clipboard callback is using GuestShCl. */
-    RTSEMEVENTMULTI mhClipboardGuestShClCallsDone;
+    /** Number of connected clients which intercepted the VRDE clipboard channel. */
+    volatile uint32_t mcClipboardProviders;
 
     int lockConsoleVRDPServer (void);
     void unlockConsoleVRDPServer (void);
+
+    void clipboardNotifyVrdeEnabled(bool fEnabled);
 
     static DECLCALLBACK(int) ClipboardCallback (void *pvCallback, uint32_t u32ClientId, uint32_t u32Function, uint32_t u32Format, const void *pvData, uint32_t cbData);
 
