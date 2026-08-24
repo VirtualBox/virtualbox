@@ -1,4 +1,4 @@
-/* $Id: ConsoleVRDPServer.cpp 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
+/* $Id: ConsoleVRDPServer.cpp 115107 2026-08-24 17:38:41Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console VRDP helper class.
  */
@@ -3388,7 +3388,7 @@ DECLCALLBACK(int) ConsoleVRDPServer::ClipboardCallback(void *pvCallback,
     ConsoleVRDPServer *pServer = static_cast<ConsoleVRDPServer *>(pvCallback);
     AssertPtrReturn(pServer, VERR_INVALID_POINTER);
 
-    RT_NOREF(u32ClientId, pvData, cbData);
+    RT_NOREF(u32ClientId, u32Function, pvData, cbData);
 
 #ifndef VBOX_WITH_SHARED_CLIPBOARD
     return VERR_NOT_AVAILABLE;
