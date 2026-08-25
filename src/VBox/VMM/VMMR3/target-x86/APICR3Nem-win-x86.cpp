@@ -1,4 +1,4 @@
-/* $Id: APICR3Nem-win-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
+/* $Id: APICR3Nem-win-x86.cpp 115118 2026-08-25 10:59:20Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller - NEM Hyper-V backend.
  */
@@ -1087,6 +1087,61 @@ static DECLCALLBACK(VBOXSTRICTRC) apicR3HvSetEoiFast(PVMCPUCC pVCpu, uint8_t uVe
 
 
 /**
+ * @interface_method_impl{PDMAPICBACKEND,pfnIsLvt0ExtInt}
+ */
+static DECLCALLBACK(bool) apicR3HvIsLvt0ExtInt(PVMCPUCC pVCpu)
+{
+    RT_NOREF(pVCpu);
+    AssertReleaseMsgFailed(("Unexpected interface call\n"));
+    return false;
+}
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnGetHighestIsr}
+ */
+static DECLCALLBACK(uint8_t) apicR3HvGetHighestIsr(PVMCPUCC pVCpu)
+{
+    RT_NOREF(pVCpu);
+    AssertReleaseMsgFailed(("Unexpected interface call\n"));
+    return UINT8_MAX;
+}
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnGetHighestIrr}
+ */
+static DECLCALLBACK(uint8_t) apicR3HvGetHighestIrr(PVMCPUCC pVCpu)
+{
+    RT_NOREF(pVCpu);
+    AssertReleaseMsgFailed(("Unexpected interface call\n"));
+    return UINT8_MAX;
+}
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnQueryEoiExitBitmap}
+ */
+static DECLCALLBACK(void) apicR3HvQueryEoiExitBitmap(PVMCPUCC pVCpu, uint64_t *pau64EoiBitmap)
+{
+    RT_NOREF(pVCpu, pau64EoiBitmap);
+    AssertReleaseMsgFailed(("Unexpected interface call\n"));
+}
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnIoApicRteChanged}
+ */
+static DECLCALLBACK(int) apicR3HvIoApicRteChanged(PVMCC pVM, uint8_t u8IoApicPin, uint8_t uDest, uint8_t uDestMode, uint8_t uDeliveryMode,
+                                                  uint8_t uVector, uint8_t uTriggerMode)
+{
+    /* This is called by the I/O-APIC but a no op here. */
+    RT_NOREF(pVM, u8IoAPicPin, uDest, uDestMode, uDeliveryMode, uVector, uTriggerMode);
+    return VINF_SUCCESS;
+}
+
+
+/**
  * Dumps basic APIC state.
  *
  * @param   pVM         The cross context VM structure.
@@ -1777,6 +1832,11 @@ const PDMAPICBACKEND g_ApicNemBackend =
     /* .pfnExportState = */             apicR3HvExportState,
     /* .pfnUpdateStateAfterWrite = */   apicR3HvUpdateStateAfterWrite,
     /* .pfnSetEoiFast = */              apicR3HvSetEoiFast,
+    /* .pfnIsLvt0ExtInt = */            apicR3HvIsLvt0ExtInt,
+    /* .pfnGetHighestIsr = */           apicR3HvGetHighestIsr,
+    /* .pfnGetHighestIrr = */           apicR3HvGetHighestIrr,
+    /* .pfnQueryEoiExitBitmap = */      apicR3HvQueryEoiExitBitmap,
+    /* .pfnIoApicRteChanged = */        apicR3HvIoApicRteChanged,
 };
 
 #endif /* !VBOX_DEVICE_STRUCT_TESTCASE */

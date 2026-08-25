@@ -1,4 +1,4 @@
-/* $Id: APICR3Nem-linux-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
+/* $Id: APICR3Nem-linux-x86.cpp 115118 2026-08-25 10:59:20Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller - NEM KVM backend.
  */
@@ -376,7 +376,7 @@ static DECLCALLBACK(void) apicR3KvmUpdatePendingInterrupts(PVMCPUCC pVCpu)
 static DECLCALLBACK(int) apicR3KvmBusDeliver(PVMCC pVM, uint8_t uDest, uint8_t uDestMode, uint8_t uDeliveryMode, uint8_t uVector,
                                              uint8_t uPolarity, uint8_t uTriggerMode, uint8_t uIoApicPin, uint32_t uSrcTag)
 {
-    RT_NOREF(uPolarity, uSrcTag);
+    RT_NOREF(uPolarity, uSrcTag, uIoApicPin);
 
     Log2(("APIC/KVM: apicR3KvmBusDeliver: uDest=%u enmDestMode=%s enmTriggerMode=%s enmDeliveryMode=%s uVector=%#x uSrcTag=%#x\n",
           uDest, apicCommonGetDestModeName((XAPICDESTMODE)uDestMode), apicCommonGetTriggerModeName((XAPICTRIGGERMODE)uTriggerMode),
@@ -391,31 +391,6 @@ static DECLCALLBACK(int) apicR3KvmBusDeliver(PVMCC pVM, uint8_t uDest, uint8_t u
     KvmMsi.data       =   (uint32_t)uTriggerMode << 15
                         | (uint32_t)uDeliveryMode << 8
                         | (uint32_t)uVector;
-
-    if (uIoApicPin < IOAPIC_NUM_PINS)
-    {
-        /*
-         * Update the installed MSI routes if one of the parameters of the currently installed routes
-         * change for an IO-APIC pin based interrupt (guest configures a different vector for example).
-         * Otherwise KVM will not generate an IO-APIC EOI broadcast VM exit breaking interrupt delivery to
-         * the guest.
-         */
-        if (   pKvmApic->pMsiRoutes->entries[uIoApicPin].u.msi.address_lo != KvmMsi.address_lo
-            || pKvmApic->pMsiRoutes->entries[uIoApicPin].u.msi.data       != KvmMsi.data)
-        {
-            pKvmApic->pMsiRoutes->entries[uIoApicPin].u.msi.address_lo = KvmMsi.address_lo;
-            pKvmApic->pMsiRoutes->entries[uIoApicPin].u.msi.data       = KvmMsi.data;
-
-            int rcLnx = ioctl(pKvmApic->iFdVm, KVM_SET_GSI_ROUTING, pKvmApic->pMsiRoutes);
-            if (rcLnx == -1)
-            {
-                int rc = RTErrConvertFromErrno(errno);
-                AssertMsgFailed(("APIC/KVM: Setting IO-APIC routes failed: %Rrc", rc));
-                LogRelMax(10, ("APIC/KVM: Setting IO-APIC routes failed: %Rrc", rc));
-                return rc;
-            }
-        }
-    }
 
     //KvmMsi.address_lo |= RT_BIT_32(3);
     KvmMsi.data       |= RT_BIT_32(14);
@@ -525,6 +500,92 @@ static DECLCALLBACK(VBOXSTRICTRC) apicR3KvmSetEoiFast(PVMCPUCC pVCpu, uint8_t uV
     RT_NOREF(pVCpu, uVector);
     AssertReleaseMsgFailed(("Unexpected interface call\n"));
     return VERR_NOT_SUPPORTED;
+}
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnIsLvt0ExtInt}
+ */
+static DECLCALLBACK(bool) apicR3KvmIsLvt0ExtInt(PVMCPUCC pVCpu)
+{
+    RT_NOREF(pVCpu);
+    AssertReleaseMsgFailed(("Unexpected interface call\n"));
+    return false;
+}
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnGetHighestIsr}
+ */
+static DECLCALLBACK(uint8_t) apicR3KvmGetHighestIsr(PVMCPUCC pVCpu)
+{
+    RT_NOREF(pVCpu);
+    AssertReleaseMsgFailed(("Unexpected interface call\n"));
+    return UINT8_MAX;
+}
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnGetHighestIrr}
+ */
+static DECLCALLBACK(uint8_t) apicR3KvmGetHighestIrr(PVMCPUCC pVCpu)
+{
+    RT_NOREF(pVCpu);
+    AssertReleaseMsgFailed(("Unexpected interface call\n"));
+    return UINT8_MAX;
+}
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnQueryEoiExitBitmap}
+ */
+static DECLCALLBACK(void) apicR3KvmQueryEoiExitBitmap(PVMCPUCC pVCpu, uint64_t *pau64EoiBitmap)
+{
+    RT_NOREF(pVCpu, pau64EoiBitmap);
+    AssertReleaseMsgFailed(("Unexpected interface call\n"));
+}
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnIoApicRteChanged}
+ */
+static DECLCALLBACK(int) apicR3KvmIoApicRteChanged(PVMCC pVM, uint8_t u8IoApicPin, uint8_t uDest, uint8_t uDestMode, uint8_t uDeliveryMode,
+                                              uint8_t uVector, uint8_t uTriggerMode)
+{
+    AssertReturn(u8IoApicPin < IOAPIC_NUM_PINS, VERR_INVALID_PARAMETER);
+
+    PKVMAPIC pKvmApic = VM_TO_KVMAPIC(pVM);
+    struct kvm_msi KvmMsi; RT_ZERO(KvmMsi);
+    KvmMsi.address_lo =   VBOX_MSI_ADDR_BASE
+                        | (uint32_t)uDest << 12
+                        | (uint32_t)uDestMode << 2;
+    KvmMsi.data       =   (uint32_t)uTriggerMode << 15
+                        | (uint32_t)uDeliveryMode << 8
+                        | (uint32_t)uVector;
+
+    /*
+     * Update the installed MSI routes if one of the parameters of the currently installed routes
+     * change for an IO-APIC pin based interrupt (guest configures a different vector for example).
+     * Otherwise KVM will not generate an IO-APIC EOI broadcast VM exit breaking interrupt delivery to
+     * the guest.
+     */
+    if (   pKvmApic->pMsiRoutes->entries[u8IoApicPin].u.msi.address_lo != KvmMsi.address_lo
+        || pKvmApic->pMsiRoutes->entries[u8IoApicPin].u.msi.data       != KvmMsi.data)
+    {
+        pKvmApic->pMsiRoutes->entries[u8IoApicPin].u.msi.address_lo = KvmMsi.address_lo;
+        pKvmApic->pMsiRoutes->entries[u8IoApicPin].u.msi.data       = KvmMsi.data;
+
+        int rcLnx = ioctl(pKvmApic->iFdVm, KVM_SET_GSI_ROUTING, pKvmApic->pMsiRoutes);
+        if (rcLnx == -1)
+        {
+            int rc = RTErrConvertFromErrno(errno);
+            AssertMsgFailed(("APIC/KVM: Setting IO-APIC routes failed: %Rrc", rc));
+            LogRelMax(10, ("APIC/KVM: Setting IO-APIC routes failed: %Rrc", rc));
+            return rc;
+        }
+    }
+
+    return VINF_SUCCESS;
 }
 
 
@@ -1380,6 +1441,11 @@ const PDMAPICBACKEND g_ApicNemBackend =
     /* .pfnExportState = */             apicR3KvmExportState,
     /* .pfnUpdateStateAfterWrite = */   apicR3KvmUpdateStateAfterWrite,
     /* .pfnSetEoiFast = */              apicR3KvmSetEoiFast,
+    /* .pfnIsLvt0ExtInt = */            apicR3KvmIsLvt0ExtInt,
+    /* .pfnGetHighestIsr = */           apicR3KvmGetHighestIsr,
+    /* .pfnGetHighestIrr = */           apicR3KvmGetHighestIrr,
+    /* .pfnQueryEoiExitBitmap = */      apicR3KvmQueryEoiExitBitmap,
+    /* .pfnIoApicRteChanged = */        apicR3KvmIoApicRteChanged,
 };
 
 #endif /* !VBOX_DEVICE_STRUCT_TESTCASE */
