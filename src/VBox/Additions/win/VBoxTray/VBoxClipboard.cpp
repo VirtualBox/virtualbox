@@ -1,4 +1,4 @@
-/* $Id: VBoxClipboard.cpp 114772 2026-07-25 21:30:10Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxClipboard.cpp 115122 2026-08-25 13:14:46Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxClipboard - Shared clipboard, Windows Guest Implementation.
  */
@@ -563,18 +563,15 @@ static LRESULT vbtrShClWndProcWorker(PSHCLCONTEXT pCtx, HWND hwnd, UINT msg, WPA
                             GlobalUnlock(hMem);
 
                             HANDLE hClip = SetClipboardData(uFmtWin, hMem);
-                            if (!hClip)
-                            {
-                                /* The hMem ownership has gone to the system. Finish the processing. */
-                                break;
-                            }
+                            if (hClip)
+                                hMem = NULL; /* The system now owns the memory. */
                             else
-                                VBoxTrayError("Shared Clipboard: Setting host data buffer to clipboard failed with %Rrc\n",
-                                              RTErrConvertFromWin32(GetLastError()));
+                                VBoxTrayError("Shared Clipboard: Setting host data buffer to clipboard failed with %Rrc\n", RTErrConvertFromWin32(GetLastError()));
                         }
                         else
                             VBoxTrayError("Shared Clipboard: Failed to lock memory (%Rrc)\n", RTErrConvertFromWin32(GetLastError()));
-                        GlobalFree(hMem);
+                        if (hMem)
+                            GlobalFree(hMem);
                     }
                     else
                         VBoxTrayError("Shared Clipboard: No memory for allocating host data buffer\n");

@@ -1,4 +1,4 @@
-/* $Id: clipboard-win.cpp 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-win.cpp 115122 2026-08-25 13:14:46Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Windows-specific functions for clipboard handling.
  */
@@ -1020,6 +1020,7 @@ int ShClWinDataWrite(UINT cfFormat, void *pvData, uint32_t cbData)
             if (hClip)
             {
                 /* The hMem ownership has gone to the system. Nothing to do. */
+                hMem = NULL;
             }
             else
                 rc = RTErrConvertFromWin32(GetLastError());
@@ -1027,7 +1028,8 @@ int ShClWinDataWrite(UINT cfFormat, void *pvData, uint32_t cbData)
         else
             rc = VERR_ACCESS_DENIED;
 
-        GlobalFree(hMem);
+        if (hMem)
+            GlobalFree(hMem);
     }
     else
         rc = RTErrConvertFromWin32(GetLastError());
