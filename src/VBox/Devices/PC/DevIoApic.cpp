@@ -1,4 +1,4 @@
-/* $Id: DevIoApic.cpp 112682 2026-01-25 17:10:52Z alexander.eichner@oracle.com $ */
+/* $Id: DevIoApic.cpp 115113 2026-08-25 09:58:04Z alexander.eichner@oracle.com $ */
 /** @file
  * IO APIC - Input/Output Advanced Programmable Interrupt Controller.
  */
@@ -765,22 +765,63 @@ static VBOXSTRICTRC ioapicSetRedirTableEntry(PPDMDEVINS pDevIns, PIOAPIC pThis, 
          * otherwise, see @bugref{8386#c24}.
          */
         uint64_t const u64Rte = pThis->au64RedirTable[idxRte];
+        uint64_t u64RteNew = 0;
         if (!(uIndex & 1))
         {
             uint32_t const u32RtePreserveLo = RT_LO_U32(u64Rte) & ~RT_LO_U32(pThis->u64RteWriteMask);
             uint32_t const u32RteNewLo      = (uValue & RT_LO_U32(pThis->u64RteWriteMask)) | u32RtePreserveLo;
             uint64_t const u64RteHi         = u64Rte & UINT64_C(0xffffffff00000000);
-            pThis->au64RedirTable[idxRte]   = u64RteHi | u32RteNewLo;
+            u64RteNew                       = u64RteHi | u32RteNewLo;
         }
         else
         {
             uint32_t const u32RtePreserveHi = RT_HI_U32(u64Rte) & ~RT_HI_U32(pThis->u64RteWriteMask);
             uint32_t const u32RteLo         = RT_LO_U32(u64Rte);
             uint64_t const u64RteNewHi      = ((uint64_t)((uValue & RT_HI_U32(pThis->u64RteWriteMask)) | u32RtePreserveHi) << 32);
-            pThis->au64RedirTable[idxRte]   = u64RteNewHi | u32RteLo;
+            u64RteNew                       = u64RteNewHi | u32RteLo;
         }
 
         LogFlow(("IOAPIC: ioapicSetRedirTableEntry: uIndex=%#RX32 idxRte=%u uValue=%#RX32\n", uIndex, idxRte, uValue));
+
+        if (   u64RteNew != pThis->au64RedirTable[idxRte]
+            && IOAPIC_RTE_GET_TRIGGER_MODE(u64RteNew) == IOAPIC_RTE_TRIGGER_MODE_LEVEL)
+        {
+            IOAPIC_UNLOCK(pDevIns, pThis, pThisCC);
+
+            XAPICINTR ApicIntr;
+            RT_ZERO(ApicIntr);
+            ApicIntr.u8Vector       = IOAPIC_RTE_GET_VECTOR(u64RteNew);
+            ApicIntr.u8Dest         = IOAPIC_RTE_GET_DEST(u64RteNew);
+            ApicIntr.u8DestMode     = IOAPIC_RTE_GET_DEST_MODE(u64RteNew);
+            ApicIntr.u8DeliveryMode = IOAPIC_RTE_GET_DELIVERY_MODE(u64RteNew);
+            ApicIntr.u8Polarity     = IOAPIC_RTE_GET_POLARITY(u64RteNew);
+            ApicIntr.u8TriggerMode  = IOAPIC_RTE_GET_TRIGGER_MODE(u64RteNew);
+            //ApicIntr.u8RedirHint    = 0;
+
+            /** @todo IOMMU */
+            /*
+             * We need to be careful as this callback will make us return to R3 if called from R0, so we can't
+             * commit any new state before this succeeds.
+             */
+            rc = pThisCC->pIoApicHlp->pfnRteChanged(pDevIns,
+                                                    idxRte, /* This maps 1 to 1 to the IO-APIC pin. */
+                                                    ApicIntr.u8Dest,
+                                                    ApicIntr.u8DestMode,
+                                                    ApicIntr.u8DeliveryMode,
+                                                    ApicIntr.u8Vector,
+                                                    ApicIntr.u8TriggerMode);
+            if (rc == VINF_APIC_R3_UPDATE_STATE)
+                return VINF_IOM_R3_MMIO_WRITE;
+            else if (rc != VINF_SUCCESS)
+                return rc;
+
+            rc = IOAPIC_LOCK(pDevIns, pThis, pThisCC, VINF_IOM_R3_MMIO_WRITE);
+            if (rc != VINF_SUCCESS)
+                return rc;
+        }
+
+        /* Update our copy now. */
+        pThis->au64RedirTable[idxRte] = u64RteNew;
 
         /*
          * Signal the next pending interrupt for this RTE.

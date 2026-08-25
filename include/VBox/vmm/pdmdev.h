@@ -1938,6 +1938,25 @@ typedef struct PDMIOAPICHLP
      */
     DECLCALLBACKMEMBER(int, pfnIommuMsiRemap,(PPDMDEVINS pDevIns, uint16_t idDevice, PCMSIMSG pMsiIn, PMSIMSG pMsiOut));
 
+    /**
+     * Called by the I/O APIC whenever a redirection table entry changes.
+     * @returns VBox status code.
+     * @retval  VINF_APIC_R3_UPDATE_STATE if called from R0 and this function needs to be called again in R3 to
+     *          successfully update the state.
+     * @param   pDevIns         Device instance of the IOAPIC.
+     * @param   u8IoApicPin     See APIC implementation.
+     * @param   u8Dest          See APIC implementation.
+     * @param   u8DestMode      See APIC implementation.
+     * @param   u8DeliveryMode  See APIC implementation.
+     * @param   uVector         See APIC implementation.
+     * @param   u8TriggerMode   See APIC implementation.
+     *
+     * @note This is required with Intel VT-x and virtual interrupt delivery to properly calculate the EOI exit bitmap.
+     *       This will also be used by the NEM/KVM backend if the split chip interrupt controller is enabled.
+     */
+    DECLCALLBACKMEMBER(int, pfnRteChanged, (PPDMDEVINS pDevIns, uint8_t u8IoApicPin, uint8_t u8Dest, uint8_t u8DestMode,
+                                            uint8_t u8DeliveryMode, uint8_t uVector, uint8_t u8TriggerMode));
+
     /** Just a safety precaution. */
     uint32_t                u32TheEnd;
 } PDMIOAPICHLP;
@@ -1947,7 +1966,7 @@ typedef PDMIOAPICHLP * PPDMIOAPICHLP;
 typedef const PDMIOAPICHLP * PCPDMIOAPICHLP;
 
 /** Current PDMIOAPICHLP version number. */
-#define PDM_IOAPICHLP_VERSION                   PDM_VERSION_MAKE(0xfff0, 3, 1)
+#define PDM_IOAPICHLP_VERSION                   PDM_VERSION_MAKE(0xfff0, 4, 0)
 
 
 /**

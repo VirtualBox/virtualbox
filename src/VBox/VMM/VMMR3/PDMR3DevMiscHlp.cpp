@@ -1,4 +1,4 @@
-/* $Id: PDMR3DevMiscHlp.cpp 112682 2026-01-25 17:10:52Z alexander.eichner@oracle.com $ */
+/* $Id: PDMR3DevMiscHlp.cpp 115113 2026-08-25 09:58:04Z alexander.eichner@oracle.com $ */
 /** @file
  * PDM - Pluggable Device and Driver Manager, Misc. Device Helpers.
  */
@@ -200,6 +200,24 @@ static DECLCALLBACK(int) pdmR3IoApicHlp_IommuMsiRemap(PPDMDEVINS pDevIns, uint16
 }
 
 
+/** @interface_method_impl{PDMIOAPICHLP,pfnRteChanged} */
+static DECLCALLBACK(int) pdmR3IoApicHlp_RteChanged(PPDMDEVINS pDevIns, uint8_t u8IoApicPin, uint8_t u8Dest, uint8_t u8DestMode,
+                                                   uint8_t u8DeliveryMode, uint8_t uVector, uint8_t u8TriggerMode)
+{
+    PDMDEV_ASSERT_DEVINS(pDevIns);
+    LogFlow(("pdmR3IoApicHlp_RteChanged: caller='%s'/%d: u8IoApicPin=%RU8 u8Dest=%RX8 u8DestMode=%RX8 u8DeliveryMode=%RX8 uVector=%RX8 u8TriggerMode=%RX8 \n",
+             pDevIns->pReg->szName, pDevIns->iInstance, u8IoApicPin, u8Dest, u8DestMode, u8DeliveryMode, uVector, u8TriggerMode));
+#ifdef VBOX_VMM_TARGET_X86
+    PVM pVM = pDevIns->Internal.s.pVMR3;
+    return PDMApicIoApicRteChanged(pVM, u8IoApicPin, u8Dest, u8DestMode, u8DeliveryMode, uVector, u8TriggerMode);
+#else
+    AssertReleaseFailed();
+    RT_NOREF(pDevIns, u8IoApicPin, u8Dest, u8DestMode, u8DeliveryMode, uVector, u8TriggerMode);
+    return VERR_NOT_IMPLEMENTED;
+#endif
+}
+
+
 /**
  * I/O APIC Device Helpers.
  */
@@ -211,6 +229,7 @@ const PDMIOAPICHLP g_pdmR3DevIoApicHlp =
     pdmR3IoApicHlp_Unlock,
     pdmR3IoApicHlp_LockIsOwner,
     pdmR3IoApicHlp_IommuMsiRemap,
+    pdmR3IoApicHlp_RteChanged,
     PDM_IOAPICHLP_VERSION /* the end */
 };
 
