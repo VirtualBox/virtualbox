@@ -1,4 +1,4 @@
-/* $Id: VMXAllTemplate.cpp.h 115117 2026-08-25 10:36:44Z alexander.eichner@oracle.com $ */
+/* $Id: VMXAllTemplate.cpp.h 115120 2026-08-25 11:33:48Z alexander.eichner@oracle.com $ */
 /** @file
  * HM VMX (Intel VT-x) - Code template for our own hypervisor and the NEM darwin backend using Apple's Hypervisor.framework.
  */
@@ -5006,39 +5006,39 @@ static VBOXSTRICTRC vmxHCEvaluatePendingEvent(PVMCPUCC pVCpu, PVMXVMCSINFO pVmcs
         if (    VMCPU_FF_IS_ANY_SET(pVCpu, VMCPU_FF_INTERRUPT_APIC | VMCPU_FF_INTERRUPT_PIC)
             && !VCPU_2_VMXSTATE(pVCpu).fSingleInstruction)
         {
-                Assert(!DBGFIsStepping(pVCpu));
-                int rc = vmxHCImportGuestStateEx(pVCpu, pVmcsInfo, CPUMCTX_EXTRN_RFLAGS);
-                AssertRC(rc);
+            Assert(!DBGFIsStepping(pVCpu));
+            int rc = vmxHCImportGuestStateEx(pVCpu, pVmcsInfo, CPUMCTX_EXTRN_RFLAGS);
+            AssertRC(rc);
 
-                if (pVCpu->cpum.GstCtx.eflags.u & X86_EFL_IF)
+            if (pVCpu->cpum.GstCtx.eflags.u & X86_EFL_IF)
+            {
+                /*
+                 * Once PDMGetInterrupt() returns an interrupt we -must- deliver it.
+                 * We cannot re-request the interrupt from the controller again.
+                 */
+                uint8_t u8Interrupt;
+                rc = PDMGetInterrupt(pVCpu, &u8Interrupt);
+                if (RT_SUCCESS(rc))
+                    vmxHCSetPendingExtInt(pVCpu, u8Interrupt);
+                else if (rc == VERR_APIC_INTR_MASKED_BY_TPR)
                 {
+                    STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatSwitchTprMaskedIrq);
+                    if (pVmcsInfo->u32ProcCtls & VMX_PROC_CTLS_USE_TPR_SHADOW)
+                        vmxHCApicSetTprThreshold(pVCpu, pVmcsInfo, u8Interrupt >> 4);
                     /*
-                     * Once PDMGetInterrupt() returns an interrupt we -must- deliver it.
-                     * We cannot re-request the interrupt from the controller again.
+                     * If the CPU doesn't have TPR shadowing, we will always get a VM-exit on TPR changes and
+                     * PDMApicSetTpr() will end up setting the VMCPU_FF_INTERRUPT_APIC if required, so there is no
+                     * need to re-set this force-flag here.
                      */
-                    uint8_t u8Interrupt;
-                    rc = PDMGetInterrupt(pVCpu, &u8Interrupt);
-                    if (RT_SUCCESS(rc))
-                        vmxHCSetPendingExtInt(pVCpu, u8Interrupt);
-                    else if (rc == VERR_APIC_INTR_MASKED_BY_TPR)
-                    {
-                        STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatSwitchTprMaskedIrq);
-                        if (pVmcsInfo->u32ProcCtls & VMX_PROC_CTLS_USE_TPR_SHADOW)
-                            vmxHCApicSetTprThreshold(pVCpu, pVmcsInfo, u8Interrupt >> 4);
-                        /*
-                         * If the CPU doesn't have TPR shadowing, we will always get a VM-exit on TPR changes and
-                         * PDMApicSetTpr() will end up setting the VMCPU_FF_INTERRUPT_APIC if required, so there is no
-                         * need to re-set this force-flag here.
-                         */
-                    }
-                    else
-                        STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatSwitchGuestIrq);
-
-                    vmxHCClearIntWindowExitVmcs(pVCpu, pVmcsInfo);
-                    return VINF_SUCCESS;
                 }
                 else
-                    vmxHCSetIntWindowExitVmcs(pVCpu, pVmcsInfo);
+                    STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatSwitchGuestIrq);
+
+                vmxHCClearIntWindowExitVmcs(pVCpu, pVmcsInfo);
+                return VINF_SUCCESS;
+            }
+            else
+                vmxHCSetIntWindowExitVmcs(pVCpu, pVmcsInfo);
         }
         else
             vmxHCClearIntWindowExitVmcs(pVCpu, pVmcsInfo);
