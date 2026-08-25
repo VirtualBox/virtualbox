@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-ext.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-ext.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Service extension bridge handling.
  */
@@ -604,12 +604,11 @@ int shClSvcExtReadData(PSHCLCLIENT pClient, SHCLFORMAT uFormat, void *pvData, ui
  *
  * @returns VBox status code returned by Main.
  * @param   pClient            Service client supplying the data.
- * @param   pCmdCtx            Guest command context identifying the reply.
  * @param   uFormat            Clipboard format of the data.
  * @param   pvData             Data buffer.  Optional if @a cbData is zero.
  * @param   cbData             Data size in bytes.
  */
-int shClSvcExtWriteData(PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX pCmdCtx, SHCLFORMAT uFormat, void *pvData, uint32_t cbData)
+int shClSvcExtWriteData(PSHCLCLIENT pClient, SHCLFORMAT uFormat, void *pvData, uint32_t cbData)
 {
     SHCLEXTPARMS parms;
     RT_ZERO(parms);
@@ -618,7 +617,6 @@ int shClSvcExtWriteData(PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX pCmdCtx, SHCLFORM
     parms.u.ReadWriteData.pvData      = pvData;
     parms.u.ReadWriteData.cbData      = cbData;
     parms.u.ReadWriteData.pClient     = pClient;
-    parms.u.ReadWriteData.pCmdCtx     = pCmdCtx;
 
     return shClSvcExtCall(VBOX_CLIPBOARD_EXT_FN_DATA_WRITE, &parms, sizeof(parms));
 }

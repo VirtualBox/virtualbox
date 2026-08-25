@@ -1,4 +1,4 @@
-/* $Id: GuestShClConn.cpp 115105 2026-08-24 16:57:58Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClConn.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Service connection management implementation.
  */
@@ -381,69 +381,6 @@ int GuestShClConn::readDataFromGuest(SHCLFORMAT uFormat, void **ppvData, uint32_
         return VERR_SHCLPB_NO_DATA;
 #endif
     return i_readDataFromGuest(uFormat, ppvData, pcbData);
-}
-
-
-int GuestShClConn::guestDataBegin(PSHCLCLIENTCMDCTX pCmdCtx, SHCLFORMAT uFormat, PSHCLGUESTDATATOKEN phToken)
-{
-    AssertPtrReturn(pCmdCtx, VERR_INVALID_POINTER);
-    AssertPtrReturn(phToken, VERR_INVALID_POINTER);
-    *phToken = NULL;
-    SHCL_CONN_SVC_CALL_BEGIN(Transport);
-    vrc = Transport.pOps->pfnGuestDataBegin(Transport.hClient, pCmdCtx, uFormat, phToken);
-    if (   RT_FAILURE(vrc)
-        || !*phToken)
-        i_callEnd();
-    return vrc;
-}
-
-
-int GuestShClConn::guestDataComplete(SHCLGUESTDATATOKEN hToken, void const *pvData, uint32_t cbData)
-{
-    AssertPtrReturn(hToken, VERR_INVALID_HANDLE);
-
-    SHCLTRANSPORT Transport;
-    int vrc = RTCritSectEnter(&m_CritSect);
-    if (RT_FAILURE(vrc))
-        return vrc;
-    if (m_cCalls > 0 && ShClTransportIsValid(&m_Transport))
-        Transport = m_Transport;
-    else
-    {
-        RT_ZERO(Transport);
-        vrc = VERR_INVALID_STATE;
-    }
-    RTCritSectLeave(&m_CritSect);
-
-    if (RT_SUCCESS(vrc))
-    {
-        vrc = Transport.pOps->pfnGuestDataComplete(Transport.hClient, hToken, pvData, cbData);
-        i_callEnd();
-    }
-    return vrc;
-}
-
-
-void GuestShClConn::guestDataCancel(SHCLGUESTDATATOKEN hToken)
-{
-    AssertPtrReturnVoid(hToken);
-
-    SHCLTRANSPORT Transport;
-    int const vrc = RTCritSectEnter(&m_CritSect);
-    if (RT_SUCCESS(vrc))
-    {
-        if (m_cCalls > 0 && ShClTransportIsValid(&m_Transport))
-            Transport = m_Transport;
-        else
-            RT_ZERO(Transport);
-        RTCritSectLeave(&m_CritSect);
-
-        if (ShClTransportIsValid(&Transport))
-        {
-            Transport.pOps->pfnGuestDataCancel(Transport.hClient, hToken);
-            i_callEnd();
-        }
-    }
 }
 
 

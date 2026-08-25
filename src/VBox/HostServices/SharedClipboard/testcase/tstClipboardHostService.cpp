@@ -1,4 +1,4 @@
-/* $Id: tstClipboardHostService.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardHostService.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Host Service testcase.
  */
@@ -320,15 +320,7 @@ static DECLCALLBACK(int) tstExtension(void *pvExtension, uint32_t uFunction, voi
             SHCLTRANSPORT const Transport = ShClSvcExtGetTransport(pParms);
             RTTESTI_CHECK_RET(ShClTransportIsEqual(&pExt->Transport, &Transport), VERR_INVALID_PARAMETER);
             pExt->cDataWrites++;
-
-            SHCLGUESTDATATOKEN hToken;
-            int rc = Transport.pOps->pfnGuestDataBegin(Transport.hClient, pParms->u.ReadWriteData.pCmdCtx,
-                                                       pParms->u.ReadWriteData.uFormat, &hToken);
-            if (RT_SUCCESS(rc) && hToken)
-                rc = Transport.pOps->pfnGuestDataComplete(Transport.hClient, hToken,
-                                                           pParms->u.ReadWriteData.pvData,
-                                                           pParms->u.ReadWriteData.cbData);
-            return rc;
+            return VINF_SUCCESS;
         }
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
@@ -812,9 +804,14 @@ static void tstGuestDataReply(void *pvClient)
     static uint8_t const s_abGuestData[] = { 'g', 'u', 'e', 's', 't', '\0' };
     VBOXHGCMSVCPARM aWrite[VBOX_SHCL_CPARMS_DATA_WRITE];
     HGCMSvcSetU64(&aWrite[0], uContext);
-    HGCMSvcSetU32(&aWrite[1], VBOX_SHCL_FMT_UNICODETEXT);
+    HGCMSvcSetU32(&aWrite[1], VBOX_SHCL_FMT_HTML);
     HGCMSvcSetPv(&aWrite[2], (void *)s_abGuestData, sizeof(s_abGuestData));
     uint32_t const cDataWritesBefore = g_Ext.cDataWrites;
+    rc = tstGuestCall(pvClient, VBOX_SHCL_GUEST_FN_DATA_WRITE, RT_ELEMENTS(aWrite), aWrite);
+    RTTESTI_CHECK_RC(rc, VERR_INVALID_CONTEXT);
+    RTTESTI_CHECK(g_Ext.cDataWrites == cDataWritesBefore);
+
+    HGCMSvcSetU32(&aWrite[1], VBOX_SHCL_FMT_UNICODETEXT);
     rc = tstGuestCall(pvClient, VBOX_SHCL_GUEST_FN_DATA_WRITE, RT_ELEMENTS(aWrite), aWrite);
     RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
     RTTESTI_CHECK(g_Ext.cDataWrites == cDataWritesBefore + 1);
@@ -833,6 +830,10 @@ static void tstGuestDataReply(void *pvClient)
         }
     }
     RTTESTI_CHECK(ShClEventRelease(pEvent) == 0);
+
+    rc = tstGuestCall(pvClient, VBOX_SHCL_GUEST_FN_DATA_WRITE, RT_ELEMENTS(aWrite), aWrite);
+    RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+    RTTESTI_CHECK(g_Ext.cDataWrites == cDataWritesBefore + 1);
 }
 
 

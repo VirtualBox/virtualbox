@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-internal.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-internal.h 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal service instance state.
  */
@@ -167,7 +167,7 @@ void shClSvcExtBackendDestroy(void);
 int  shClSvcExtUnregisterAndDestroy(void);
 int  shClSvcExtReportFormatsToHost(PSHCLCLIENT pClient, SHCLFORMATS fFormats);
 int  shClSvcExtReadData(PSHCLCLIENT pClient, SHCLFORMAT uFormat, void *pvData, uint32_t cbData, uint32_t *pcbActual);
-int  shClSvcExtWriteData(PSHCLCLIENT pClient, PSHCLCLIENTCMDCTX pCmdCtx, SHCLFORMAT uFormat, void *pvData, uint32_t cbData);
+int  shClSvcExtWriteData(PSHCLCLIENT pClient, SHCLFORMAT uFormat, void *pvData, uint32_t cbData);
 int  shClSvcExtReportError(char *pszId, char *pszMsg, int rcError);
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 /** Immutable service-to-Main transfer-status snapshot. */

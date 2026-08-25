@@ -1,4 +1,4 @@
-/* $Id: GuestShClConn.h 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClConn.h 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Service connection management.
  */
@@ -157,38 +157,6 @@ public:
      * @param   pcbData             Where to return the data size.
      */
     int readDataFromGuest(SHCLFORMAT uFormat, void **ppvData, uint32_t *pcbData);
-
-    /**
-     * Validates and retains a pending guest-data reply.
-     *
-     * @returns VBox status code.
-     * @retval  VINF_SUCCESS if the reply was retained or if its event already
-     *          expired.  In the latter case @a phToken is set to NULL.
-     * @param   pCmdCtx             Command context identifying the pending reply.
-     * @param   uFormat             Format carried by the reply.
-     * @param   phToken             Where to return the retained reply token, or
-     *                              NULL if the event already expired.  A returned
-     *                              token pins the connection until it is passed to
-     *                              guestDataComplete() or guestDataCancel().
-     */
-    int guestDataBegin(PSHCLCLIENTCMDCTX pCmdCtx, SHCLFORMAT uFormat, PSHCLGUESTDATATOKEN phToken);
-
-    /**
-     * Signals and releases a retained guest-data reply.
-     *
-     * @returns VBox status code.
-     * @param   hToken              Retained reply token returned by guestDataBegin().
-     * @param   pvData              Reply data. Optional when @a cbData is zero.
-     * @param   cbData              Reply data size in bytes.
-     */
-    int guestDataComplete(SHCLGUESTDATATOKEN hToken, void const *pvData, uint32_t cbData);
-
-    /**
-     * Releases a retained guest-data reply without signalling it.
-     *
-     * @param   hToken              Retained reply token returned by guestDataBegin().
-     */
-    void guestDataCancel(SHCLGUESTDATATOKEN hToken);
 
     /**
      * Synchronizes the native clipboard backend with the guest.

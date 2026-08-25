@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMain.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardMain.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Connection and service-extension testcase.
  */
@@ -86,20 +86,6 @@ struct SHCLCLIENTOPAQUE
     uint32_t uMagic;
 };
 
-/** Fake retained guest-data token. */
-struct SHCLGUESTDATATOKENOPAQUE
-{
-    /** Identity marker. */
-    uint32_t uMagic;
-};
-
-/** Complete definition of the otherwise opaque service command context. */
-struct _SHCLCLIENTCMDCTX
-{
-    /** Guest context ID identifying the pending reply. */
-    uint64_t uContextID;
-};
-
 /** Fake native backend connection context. */
 struct SHCLCONTEXT
 {
@@ -114,19 +100,12 @@ typedef struct TSTSHCLSTATE
     SHCLCLIENTOPAQUE           Client;
     /** Fake backend context. */
     SHCLCONTEXT                BackendCtx;
-    /** Fake guest-data token. */
-    SHCLGUESTDATATOKENOPAQUE   Token;
     /** Configured backend initialization result. */
     int                        vrcBackendInit;
     /** Configured backend connection result. */
     int                        vrcBackendConnect;
     /** Configured backend synchronization result. */
     int                        vrcBackendSync;
-    /** Configured service guest-data-begin result. */
-    int                        vrcGuestDataBegin;
-    /** Whether guest-data begin returns success without a token. */
-    bool                       fGuestDataNullToken;
-
     /** Backend initialization calls. */
     uint32_t                   cBackendInit;
     /** Backend destruction calls. */
@@ -162,20 +141,10 @@ typedef struct TSTSHCLSTATE
     uint32_t                   cSvcReadAsync;
     /** Synchronous service read calls. */
     uint32_t                   cSvcRead;
-    /** Guest-data begin calls. */
-    uint32_t                   cGuestDataBegin;
-    /** Guest-data completion calls. */
-    uint32_t                   cGuestDataComplete;
-    /** Guest-data cancellation calls. */
-    uint32_t                   cGuestDataCancel;
     /** Last service format value. */
     SHCLFORMATS                fSvcFormats;
     /** Last guest-data format. */
     SHCLFORMAT                 uGuestDataFormat;
-    /** Last completed guest-data buffer. */
-    void const                *pvGuestData;
-    /** Last completed guest-data size. */
-    uint32_t                   cbGuestData;
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     /** Fake transfer known to the service. */
@@ -217,6 +186,7 @@ typedef struct TSTSHCLSTATE
 #endif
 } TSTSHCLSTATE;
 
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 /** Disconnect worker arguments. */
 typedef struct TSTDISCONNECTARGS
 {
@@ -229,6 +199,7 @@ typedef struct TSTDISCONNECTARGS
     /** Result returned by disconnect. */
     int                        vrc;
 } TSTDISCONNECTARGS;
+#endif
 
 
 /*********************************************************************************************************************************
@@ -439,39 +410,6 @@ static DECLCALLBACK(int) tstSvcReadDataFromGuest(SHCLCLIENTHANDLE hClient, SHCLF
     return VINF_SUCCESS;
 }
 
-/** @copydoc SHCLSVCOPS::pfnGuestDataBegin */
-static DECLCALLBACK(int) tstSvcGuestDataBegin(SHCLCLIENTHANDLE hClient, PSHCLCLIENTCMDCTX pCmdCtx,
-                                              SHCLFORMAT uFormat, PSHCLGUESTDATATOKEN phToken)
-{
-    tstSvcCheckClient(hClient);
-    RTTESTI_CHECK(pCmdCtx != NULL);
-    g_State.cGuestDataBegin++;
-    g_State.uGuestDataFormat = uFormat;
-    if (RT_SUCCESS(g_State.vrcGuestDataBegin) && !g_State.fGuestDataNullToken)
-        *phToken = &g_State.Token;
-    return g_State.vrcGuestDataBegin;
-}
-
-/** @copydoc SHCLSVCOPS::pfnGuestDataComplete */
-static DECLCALLBACK(int) tstSvcGuestDataComplete(SHCLCLIENTHANDLE hClient, SHCLGUESTDATATOKEN hToken,
-                                                 void const *pvData, uint32_t cbData)
-{
-    tstSvcCheckClient(hClient);
-    RTTESTI_CHECK(hToken == &g_State.Token);
-    g_State.cGuestDataComplete++;
-    g_State.pvGuestData = pvData;
-    g_State.cbGuestData = cbData;
-    return VINF_SUCCESS;
-}
-
-/** @copydoc SHCLSVCOPS::pfnGuestDataCancel */
-static DECLCALLBACK(void) tstSvcGuestDataCancel(SHCLCLIENTHANDLE hClient, SHCLGUESTDATATOKEN hToken)
-{
-    tstSvcCheckClient(hClient);
-    RTTESTI_CHECK(hToken == &g_State.Token);
-    g_State.cGuestDataCancel++;
-}
-
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 /** Retains the fake transfer without depending on the GuestHost transfer data plane. */
 static void tstTransferRetain(void)
@@ -580,9 +518,6 @@ static SHCLSVCOPS const g_SvcOps =
     tstSvcReportFormatsToGuest,
     tstSvcReadDataFromGuestAsync,
     tstSvcReadDataFromGuest,
-    tstSvcGuestDataBegin,
-    tstSvcGuestDataComplete,
-    tstSvcGuestDataCancel,
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     tstSvcTransferGetByIdRetained,
     tstSvcTransferGetByKeyRetained,
@@ -672,13 +607,12 @@ static void tstStateReset(void)
 {
     RT_ZERO(g_State);
     g_State.Client.uMagic = UINT32_C(0x434c4950);
-    g_State.Token.uMagic = UINT32_C(0x544f4b4e);
     g_State.vrcBackendInit = VINF_SUCCESS;
     g_State.vrcBackendConnect = VINF_SUCCESS;
     g_State.vrcBackendSync = VINF_SUCCESS;
-    g_State.vrcGuestDataBegin = VINF_SUCCESS;
 }
 
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 /** Initializes and connects a test connection. */
 static void tstConnect(GuestShClConn &Conn, SHCLTRANSPORT *pTransport)
 {
@@ -687,7 +621,6 @@ static void tstConnect(GuestShClConn &Conn, SHCLTRANSPORT *pTransport)
     RTTESTI_CHECK_RC(Conn.connect(pTransport), VINF_SUCCESS);
 }
 
-#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
 /** Disconnects and destroys a test connection. */
 static void tstDisconnect(GuestShClConn &Conn, PCSHCLTRANSPORT pTransport)
 {
@@ -695,7 +628,6 @@ static void tstDisconnect(GuestShClConn &Conn, PCSHCLTRANSPORT pTransport)
         RTTESTI_CHECK_RC(Conn.disconnect(pTransport), VINF_SUCCESS);
     RTTESTI_CHECK_RC(Conn.destroyBackend(), VINF_SUCCESS);
 }
-#endif
 
 /** Executes disconnect on a worker thread. */
 static DECLCALLBACK(int) tstDisconnectThread(RTTHREAD hThreadSelf, void *pvUser)
@@ -706,6 +638,7 @@ static DECLCALLBACK(int) tstDisconnectThread(RTTHREAD hThreadSelf, void *pvUser)
     pArgs->vrc = pArgs->pConn->disconnect(&pArgs->Transport);
     return pArgs->vrc;
 }
+#endif
 
 
 /*********************************************************************************************************************************
@@ -798,63 +731,6 @@ static void tstConnectionAndForwarding(void)
 
     RTTESTI_CHECK_RC(Conn.disconnect(&Transport), VINF_SUCCESS);
     RTTESTI_CHECK_RC(Conn.reportFormatsToBackend(VBOX_SHCL_FMT_UNICODETEXT), VERR_SHCLPB_NO_DATA);
-    RTTESTI_CHECK_RC(Conn.destroyBackend(), VINF_SUCCESS);
-}
-
-/** Tests retained guest-data tokens and disconnect draining. */
-static void tstGuestDataTokens(void)
-{
-    RTTestISub("Guest-data token ownership");
-    tstStateReset();
-
-    GuestShClConn Conn(NULL);
-    SHCLTRANSPORT Transport;
-    tstConnect(Conn, &Transport);
-    SHCLCLIENTCMDCTX CmdCtx = { UINT64_C(0x1234) };
-
-    SHCLGUESTDATATOKEN hToken = NULL;
-    g_State.fGuestDataNullToken = true;
-    RTTESTI_CHECK_RC(Conn.guestDataBegin(&CmdCtx, VBOX_SHCL_FMT_UNICODETEXT, &hToken), VINF_SUCCESS);
-    RTTESTI_CHECK(hToken == NULL);
-
-    g_State.fGuestDataNullToken = false;
-    g_State.vrcGuestDataBegin = VERR_INVALID_CONTEXT;
-    RTTESTI_CHECK_RC(Conn.guestDataBegin(&CmdCtx, VBOX_SHCL_FMT_UNICODETEXT, &hToken), VERR_INVALID_CONTEXT);
-
-    g_State.vrcGuestDataBegin = VINF_SUCCESS;
-    RTTESTI_CHECK_RC(Conn.guestDataBegin(&CmdCtx, VBOX_SHCL_FMT_UNICODETEXT, &hToken), VINF_SUCCESS);
-    RTTESTI_CHECK(hToken == &g_State.Token);
-    Conn.guestDataCancel(hToken);
-    RTTESTI_CHECK(g_State.cGuestDataCancel == 1);
-
-    hToken = NULL;
-    RTTESTI_CHECK_RC(Conn.guestDataBegin(&CmdCtx, VBOX_SHCL_FMT_HTML, &hToken), VINF_SUCCESS);
-
-    TSTDISCONNECTARGS Args;
-    Args.pConn = &Conn;
-    Args.Transport = Transport;
-    Args.hStarted = NIL_RTSEMEVENT;
-    Args.vrc = VERR_IPE_UNINITIALIZED_STATUS;
-    RTTESTI_CHECK_RC(RTSemEventCreate(&Args.hStarted), VINF_SUCCESS);
-    RTTHREAD hThread = NIL_RTTHREAD;
-    RTTESTI_CHECK_RC(RTThreadCreate(&hThread, tstDisconnectThread, &Args, 0, RTTHREADTYPE_DEFAULT,
-                                    RTTHREADFLAGS_WAITABLE, "shcl-discon"), VINF_SUCCESS);
-    RTTESTI_CHECK_RC(RTSemEventWait(Args.hStarted, RT_MS_5SEC), VINF_SUCCESS);
-
-    for (uint32_t i = 0; i < 5000 && Conn.isConnected(); i++)
-        RTThreadSleep(1);
-    RTTESTI_CHECK(!Conn.isConnected());
-    RTTESTI_CHECK(g_State.cBackendDisconnect == 0);
-
-    static char const s_achReply[] = "reply";
-    RTTESTI_CHECK_RC(Conn.guestDataComplete(hToken, s_achReply, sizeof(s_achReply)), VINF_SUCCESS);
-    int vrcThread = VERR_IPE_UNINITIALIZED_STATUS;
-    RTTESTI_CHECK_RC(RTThreadWait(hThread, RT_MS_5SEC, &vrcThread), VINF_SUCCESS);
-    RTTESTI_CHECK_RC(vrcThread, VINF_SUCCESS);
-    RTTESTI_CHECK(g_State.cBackendDisconnect == 1);
-    RTTESTI_CHECK(g_State.cGuestDataComplete == 1);
-    RTTESTI_CHECK(g_State.pvGuestData == s_achReply);
-    RTTESTI_CHECK_RC(RTSemEventDestroy(Args.hStarted), VINF_SUCCESS);
     RTTESTI_CHECK_RC(Conn.destroyBackend(), VINF_SUCCESS);
 }
 
@@ -968,7 +844,6 @@ int main(void)
 
     tstBackendLifecycle();
     tstConnectionAndForwarding();
-    tstGuestDataTokens();
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
     tstTransportLease();
     tstTransfers();

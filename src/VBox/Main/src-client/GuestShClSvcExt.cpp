@@ -1,4 +1,4 @@
-/* $Id: GuestShClSvcExt.cpp 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClSvcExt.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard service extension handling for Main.
  */
@@ -198,11 +198,7 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
             vrc = shClSvcExtValidateFormat(pParms->u.ReadWriteData.uFormat, u32Function);
             if (RT_FAILURE(vrc))
                 return vrc;
-            vrc = shClSvcExtValidateDataBuffer(pParms->u.ReadWriteData.pvData, pParms->u.ReadWriteData.cbData);
-            if (RT_FAILURE(vrc))
-                return vrc;
-            AssertPtrReturn(pParms->u.ReadWriteData.pCmdCtx, VERR_INVALID_POINTER);
-            return VINF_SUCCESS;
+            return shClSvcExtValidateDataBuffer(pParms->u.ReadWriteData.pvData, pParms->u.ReadWriteData.cbData);
 
         case VBOX_CLIPBOARD_EXT_FN_BACKEND_INIT:
         case VBOX_CLIPBOARD_EXT_FN_BACKEND_DESTROY:
@@ -419,40 +415,26 @@ int GuestShCl::i_svcExtDataReadCallback(PSHCLEXTPARMS pParms)
 /**
  * Handles VBOX_CLIPBOARD_EXT_FN_DATA_WRITE from the Shared Clipboard host service.
  *
- * Mirrors the reply to VRDE and signals pending guest-data waiters.
+ * Mirrors the reply to VRDE when VRDE owns the clipboard route.
  *
- * @retval  VERR_SHCLPB_NO_DATA if there is no active guest clipboard connection.
- * @retval  VERR_INVALID_STATE if the retained connection becomes unavailable
- *          before the guest-data reply is completed.
  * @param   pParms              Decoded service extension parameters.
  */
 int GuestShCl::i_svcExtDataWriteCallback(PSHCLEXTPARMS pParms)
 {
-    SHCLFORMAT uFormat = pParms->u.ReadWriteData.uFormat;
-    SHCLGUESTDATATOKEN hToken = NULL;
-    int vrc = m_pConn->guestDataBegin(pParms->u.ReadWriteData.pCmdCtx, uFormat, &hToken);
-    if (RT_FAILURE(vrc) || !hToken)
-        return vrc;
-
-    void const *pvData = pParms->u.ReadWriteData.pvData;
-    uint32_t cbData = pParms->u.ReadWriteData.cbData;
+    SHCLFORMAT const uFormat = pParms->u.ReadWriteData.uFormat;
     if (   !IsNativeBackendActive()
         && uFormat != VBOX_SHCL_FMT_URI_LIST)
     {
         ConsoleVRDPServer *pVrde = m_pConsole->i_consoleVRDPServer();
         if (pVrde)
         {
-            int const vrcVrde = pVrde->ClipboardWriteGuestData(uFormat, pvData, cbData);
+            int const vrcVrde = pVrde->ClipboardWriteGuestData(uFormat, pParms->u.ReadWriteData.pvData,
+                                                               pParms->u.ReadWriteData.cbData);
             if (RT_FAILURE(vrcVrde) && vrcVrde != VERR_NOT_SUPPORTED)
                 LogRelMax(16, ("Shared Clipboard: Mirroring guest clipboard data to VRDE failed with %Rrc\n", vrcVrde));
         }
     }
-
-    vrc = m_pConn->guestDataComplete(hToken, pvData, cbData);
-    if (RT_FAILURE(vrc))
-        LogRelMax(16, ("Shared Clipboard: Signalling host about guest clipboard data failed with %Rrc\n", vrc));
-    AssertRC(vrc);
-    return vrc;
+    return VINF_SUCCESS;
 }
 
 /**

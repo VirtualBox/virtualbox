@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-client.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-client.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Client/session and message queue handling.
  */
@@ -1505,14 +1505,64 @@ int shClSvcClientMsgDataRead(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCMSVCPA
 }
 
 /**
+ * Signals a pending host read with clipboard data received from the guest.
+ *
+ * The event is signalled even if duplicating the payload fails, so that the
+ * waiter receives the allocation error instead of timing out.
+ *
+ * @returns VBox status code returned by ShClEventSignalEx().
+ * @retval  VERR_INVALID_POINTER if @a pEvent is invalid, or if @a pvData is
+ *                               invalid while @a cbData is non-zero.
+ * @retval  VERR_NO_MEMORY       if duplicating the guest data fails.
+ * @retval  VERR_WRONG_ORDER     if the event was already signalled.
+ * @param   pEvent               Retained event to signal.
+ * @param   pvData               Guest clipboard data. Optional if @a cbData is zero.
+ * @param   cbData               Guest clipboard data size in bytes.
+ */
+static int shClSvcGuestDataSignal(PSHCLEVENT pEvent, void const *pvData, uint32_t cbData)
+{
+    LogFlowFuncEnter();
+
+    AssertPtrReturn(pEvent, VERR_INVALID_POINTER);
+    if (cbData > 0)
+        AssertPtrReturn(pvData, VERR_INVALID_POINTER);
+
+    int rc = VINF_SUCCESS;
+    PSHCLEVENTPAYLOAD pPayload = NULL;
+    if (cbData > 0)
+        rc = ShClPayloadCreateDupData(pEvent->idEvent, pvData, cbData, &pPayload);
+
+    int const rc2 = ShClEventSignalEx(pEvent, rc, pPayload);
+    if (RT_FAILURE(rc2))
+    {
+        rc = rc2;
+        ShClPayloadDestroy(pPayload);
+        LogRel(("Shared Clipboard: Signalling of guest clipboard data to the host failed: %Rrc\n", rc));
+    }
+
+    LogFlowFuncLeaveRC(rc);
+    return rc;
+}
+
+
+/**
  * Implements VBOX_SHCL_GUEST_FN_DATA_WRITE.
  *
  * Called when the guest writes clipboard data to the host.
  *
- * @returns VBox status code.
- * @param   pClient             Client that wants to read host clipboard data.
- * @param   cParms              Number of HGCM parameters supplied in \a paParms.
- * @param   paParms             Array of HGCM parameters.
+ * @returns VBox status code returned by Main or shClSvcGuestDataSignal().
+ * @retval  VERR_ACCESS_DENIED   if guest-to-host clipboard access is disabled.
+ * @retval  VERR_WRONG_PARAMETER_COUNT if the HGCM parameter count is invalid.
+ * @retval  VERR_WRONG_PARAMETER_TYPE if an HGCM parameter has the wrong type.
+ * @retval  VERR_INVALID_FLAGS   if the guest supplied unsupported flags.
+ * @retval  VERR_INVALID_PARAMETER if the clipboard format is invalid.
+ * @retval  VERR_INVALID_CONTEXT if the context does not belong to this client
+ *                               or the clipboard format does not match the event.
+ * @retval  VERR_WRONG_ORDER     if the context contains an invalid event ID.
+ * @retval  VERR_NO_MEMORY       if duplicating the guest data fails.
+ * @param   pClient              Client that wants to read host clipboard data.
+ * @param   cParms               Number of HGCM parameters supplied in \a paParms.
+ * @param   paParms              Array of HGCM parameters.
  */
 int shClSvcClientMsgDataWrite(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCMSVCPARM paParms[])
 {
@@ -1619,6 +1669,27 @@ int shClSvcClientMsgDataWrite(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCMSVCP
                             ("Wrong context ID: %#RX64, expected %#RX64\n", cmdCtx.uContextID, idCtxExpected),
                             VERR_INVALID_CONTEXT);
 
+    SHCLEVENTID const idEvent = VBOX_SHCL_CONTEXTID_GET_EVENT(cmdCtx.uContextID);
+    if (   idEvent == 0
+        || idEvent == NIL_SHCLEVENTID)
+    {
+        LogRelMax(16, ("Shared Clipboard: Rejecting guest clipboard data with invalid event %#x in context ID %#RX64\n", idEvent, cmdCtx.uContextID));
+        return VERR_WRONG_ORDER;
+    }
+
+    PSHCLEVENT const pEvent = ShClEventSourceRetainFromId(&pClient->EventSrc, idEvent);
+    if (!RT_VALID_PTR(pEvent))
+    {
+        LogRelMax(16, ("Shared Clipboard: Ignoring late guest clipboard data for expired event %#x\n", idEvent));
+        return VINF_SUCCESS;
+    }
+    if (pEvent->uUser != uFormat)
+    {
+        LogRelMax(16, ("Shared Clipboard: Rejecting guest clipboard data format %#x for event %#x, expected %#x\n", uFormat, idEvent, pEvent->uUser));
+        ShClEventRelease(pEvent);
+        return VERR_INVALID_CONTEXT;
+    }
+
     /*
      * For some reason we need to do this (makes absolutely no sense to bird).
      */
@@ -1643,8 +1714,11 @@ int shClSvcClientMsgDataWrite(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCMSVCP
      */
     shClSvcLock();
 
-    int const rc = shClSvcExtWriteData(pClient, &cmdCtx, uFormat, pvData, cbData);
+    int rc = shClSvcExtWriteData(pClient, uFormat, pvData, cbData);
+    if (RT_SUCCESS(rc))
+        rc = shClSvcGuestDataSignal(pEvent, pvData, cbData);
 
+    ShClEventRelease(pEvent);
     shClSvcUnlock();
 
     LogFlowFuncLeaveRC(rc);

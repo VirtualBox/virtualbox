@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMain2HostSvc.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardMain2HostSvc.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Host Service integration testcase.
  */
@@ -325,7 +325,6 @@ static DECLCALLBACK(int) tstMainExtension(void *pvExtension, uint32_t uFunction,
     GuestShClConn * const pConn = (GuestShClConn *)pvExtension;
     RTTESTI_CHECK_RET(cbParms == sizeof(SHCLEXTPARMS), VERR_INVALID_PARAMETER);
     PSHCLEXTPARMS const pParms = (PSHCLEXTPARMS)pvParms;
-    int vrc;
     switch (uFunction)
     {
         case VBOX_CLIPBOARD_EXT_FN_BACKEND_INIT:
@@ -347,15 +346,7 @@ static DECLCALLBACK(int) tstMainExtension(void *pvExtension, uint32_t uFunction,
         case VBOX_CLIPBOARD_EXT_FN_FORMAT_REPORT_TO_HOST:
             return pConn->reportFormatsToBackend(pParms->u.ReportFormats.uFormats);
         case VBOX_CLIPBOARD_EXT_FN_DATA_WRITE:
-        {
-            SHCLGUESTDATATOKEN hToken = NULL;
-            vrc = pConn->guestDataBegin(pParms->u.ReadWriteData.pCmdCtx,
-                                        pParms->u.ReadWriteData.uFormat, &hToken);
-            if (RT_SUCCESS(vrc))
-                vrc = pConn->guestDataComplete(hToken, pParms->u.ReadWriteData.pvData,
-                                               pParms->u.ReadWriteData.cbData);
-            return vrc;
-        }
+            return VINF_SUCCESS;
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
         case VBOX_CLIPBOARD_EXT_FN_TRANSFER_CALLBACKS:
             return pConn->transferGetCallbacks(pParms->u.TransferCallbacks.pCallbacks);
