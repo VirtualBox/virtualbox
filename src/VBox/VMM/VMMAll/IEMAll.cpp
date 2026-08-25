@@ -1,4 +1,4 @@
-/* $Id: IEMAll.cpp 115124 2026-08-25 13:23:48Z andreas.loeffler@oracle.com $ */
+/* $Id: IEMAll.cpp 115125 2026-08-25 13:25:44Z andreas.loeffler@oracle.com $ */
 /** @file
  * IEM - Interpreted Execution Manager - All Contexts.
  */
@@ -264,11 +264,9 @@ DECLINLINE(void) iemReInitDecoder(PVMCPUCC pVCpu)
     iemInitDecoderStrictTarget(pVCpu);
 #endif
 
-#ifndef DEBUG_andy
     /* ASSUMES: Anyone changing CPU state affecting the fExec bits will update them! */
     AssertMsg((ICORE(pVCpu).fExec & ~IEM_F_USER_OPTS) == iemCalcExecFlags(pVCpu),
               ("fExec=%#x iemCalcExecModeFlags=%#x\n", ICORE(pVCpu).fExec, iemCalcExecFlags(pVCpu)));
-#endif
 
 #ifdef VBOX_VMM_TARGET_X86
     IEMMODE const enmMode = IEM_GET_CPU_MODE(pVCpu);
