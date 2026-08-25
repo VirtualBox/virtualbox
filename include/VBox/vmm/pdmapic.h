@@ -425,7 +425,6 @@ typedef struct PDMAPICBACKENDR3
      * @param   uDestMode       The destination mode.
      * @param   uDeliveryMode   The delivery mode.
      * @param   uVector         The interrupt vector.
-     * @param   uPolarity       The interrupt line polarity.
      * @param   uTriggerMode    The trigger mode.
      *
      * @note This is required with Intel VT-x and virtual interrupt delivery to properly calculate the EOI exit bitmap.
@@ -760,7 +759,6 @@ typedef struct PDMAPICBACKENDR0
      * @param   uDestMode       The destination mode.
      * @param   uDeliveryMode   The delivery mode.
      * @param   uVector         The interrupt vector.
-     * @param   uPolarity       The interrupt line polarity.
      * @param   uTriggerMode    The trigger mode.
      *
      * @note This is required with Intel VT-x and virtual interrupt delivery to properly calculate the EOI exit bitmap.

@@ -1,4 +1,4 @@
-/* $Id: PDMAllApic-x86.cpp 115112 2026-08-25 09:50:41Z alexander.eichner@oracle.com $ */
+/* $Id: PDMAllApic-x86.cpp 115116 2026-08-25 10:17:29Z alexander.eichner@oracle.com $ */
 /** @file
  * PDM - APIC (Advanced Programmable Interrupt Controller) Interface.
  */
@@ -561,7 +561,6 @@ VMM_INT_DECL(void) PDMApicQueryEoiExitBitmap(PVMCPUCC pVCpu, uint64_t *pau64EoiB
  * @param   uDestMode       The destination mode.
  * @param   uDeliveryMode   The delivery mode.
  * @param   uVector         The interrupt vector.
- * @param   uPolarity       The interrupt line polarity.
  * @param   uTriggerMode    The trigger mode.
  *
  * @note This is required with Intel VT-x and virtual interrupt delivery to properly calculate the EOI exit bitmap.
