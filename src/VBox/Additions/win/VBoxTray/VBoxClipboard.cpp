@@ -1,4 +1,4 @@
-/* $Id: VBoxClipboard.cpp 115123 2026-08-25 13:23:20Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxClipboard.cpp 115127 2026-08-25 13:40:12Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxClipboard - Shared clipboard, Windows Guest Implementation.
  */
@@ -1173,6 +1173,10 @@ DECLCALLBACK(int) vbtrShClWorker(void *pvInstance, bool volatile *pfShutdown)
             break;
     }
 
+    /* Stop the window thread after all clipboard events have been queued. */
+    ASMAtomicWriteBool(&pCtx->fShutdown, true);
+    PostMessage(pWinCtx->hWnd, WM_QUIT, 0, 0);
+
     VBoxTrayVerbose(1, "Shared Clipboard: Worker loop ended\n");
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
@@ -1198,9 +1202,6 @@ DECLCALLBACK(int) vbtrShClStop(void *pvInstance)
 
     /* Set shutdown indicator. */
     ASMAtomicWriteBool(&pCtx->fShutdown, true);
-
-    /* Let our clipboard know that we're going to shut down. */
-    PostMessage(pCtx->Win.hWnd, WM_QUIT, 0, 0);
 
     /* Disconnect from the host service.
      * This will also send a VBOX_SHCL_HOST_MSG_QUIT from the host so that we can break out from our message worker. */
