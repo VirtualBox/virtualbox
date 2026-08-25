@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferManagerImpl.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferManagerImpl.cpp 115110 2026-08-25 09:25:30Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer manager object.
  */
@@ -1642,7 +1642,6 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(PCSHCLTRANSFERKEY pKey,
 {
     if (!ShClTransferKeyIsValid(pKey))
         return E_INVALIDARG;
-    SHCLSESSIONID const idSession = ShClTransferKeyGetSessionId(pKey);
     SHCLTRANSFERID const idTransfer = ShClTransferKeyGetTransferId(pKey);
     if (   enmShClSource != SHCLSOURCE_LOCAL
         && enmShClSource != SHCLSOURCE_REMOTE)
@@ -1705,7 +1704,7 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(PCSHCLTRANSFERKEY pKey,
             if (fTerminal)
             {
                 Log2Func(("Ignoring terminal status for unknown transfer: session=%RU16, id=%RU16, generation=%RU64, status=%RU32\n",
-                          idSession, idTransfer, pKey->uGeneration, (uint32_t)enmStatus));
+                          ShClTransferKeyGetSessionId(pKey), idTransfer, pKey->uGeneration, (uint32_t)enmStatus));
                 return S_OK;
             }
             if (   enmStatus != SHCLTRANSFERSTATUS_REQUESTED
