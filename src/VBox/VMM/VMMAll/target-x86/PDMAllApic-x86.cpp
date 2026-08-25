@@ -1,4 +1,4 @@
-/* $Id: PDMAllApic-x86.cpp 115111 2026-08-25 09:46:24Z alexander.eichner@oracle.com $ */
+/* $Id: PDMAllApic-x86.cpp 115112 2026-08-25 09:50:41Z alexander.eichner@oracle.com $ */
 /** @file
  * PDM - APIC (Advanced Programmable Interrupt Controller) Interface.
  */
@@ -505,7 +505,7 @@ VMM_INT_DECL(VBOXSTRICTRC) PDMApicSetEoiFast(PVMCPUCC pVCpu, uint8_t uVector)
  */
 VMM_INT_DECL(bool) PDMApicIsLvt0ExtInt(PVMCPUCC pVCpu)
 {
-    AssertReturn(PDMCPU_TO_APICBACKEND(pVCpu)->pfnIsLvt0ExtInt, VERR_INVALID_POINTER);
+    AssertReturn(PDMCPU_TO_APICBACKEND(pVCpu)->pfnIsLvt0ExtInt, false);
     return PDMCPU_TO_APICBACKEND(pVCpu)->pfnIsLvt0ExtInt(pVCpu);
 }
 
@@ -518,7 +518,7 @@ VMM_INT_DECL(bool) PDMApicIsLvt0ExtInt(PVMCPUCC pVCpu)
  */
 VMM_INT_DECL(uint8_t) PDMApicGetHighestIsr(PVMCPUCC pVCpu)
 {
-    AssertReturn(PDMCPU_TO_APICBACKEND(pVCpu)->pfnGetHighestIsr, VERR_INVALID_POINTER);
+    AssertReturn(PDMCPU_TO_APICBACKEND(pVCpu)->pfnGetHighestIsr, UINT8_MAX);
     return PDMCPU_TO_APICBACKEND(pVCpu)->pfnGetHighestIsr(pVCpu);
 }
 
@@ -531,7 +531,7 @@ VMM_INT_DECL(uint8_t) PDMApicGetHighestIsr(PVMCPUCC pVCpu)
  */
 VMM_INT_DECL(uint8_t) PDMApicGetHighestIrr(PVMCPUCC pVCpu)
 {
-    AssertReturn(PDMCPU_TO_APICBACKEND(pVCpu)->pfnGetHighestIrr, VERR_INVALID_POINTER);
+    AssertReturn(PDMCPU_TO_APICBACKEND(pVCpu)->pfnGetHighestIrr, UINT8_MAX);
     return PDMCPU_TO_APICBACKEND(pVCpu)->pfnGetHighestIrr(pVCpu);
 }
 
