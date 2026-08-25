@@ -1,4 +1,4 @@
-/* $Id: APICR3Nem-win-x86.cpp 115118 2026-08-25 10:59:20Z alexander.eichner@oracle.com $ */
+/* $Id: APICR3Nem-win-x86.cpp 115119 2026-08-25 11:11:20Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller - NEM Hyper-V backend.
  */
@@ -1136,7 +1136,7 @@ static DECLCALLBACK(int) apicR3HvIoApicRteChanged(PVMCC pVM, uint8_t u8IoApicPin
                                                   uint8_t uVector, uint8_t uTriggerMode)
 {
     /* This is called by the I/O-APIC but a no op here. */
-    RT_NOREF(pVM, u8IoAPicPin, uDest, uDestMode, uDeliveryMode, uVector, uTriggerMode);
+    RT_NOREF(pVM, u8IoApicPin, uDest, uDestMode, uDeliveryMode, uVector, uTriggerMode);
     return VINF_SUCCESS;
 }
 
