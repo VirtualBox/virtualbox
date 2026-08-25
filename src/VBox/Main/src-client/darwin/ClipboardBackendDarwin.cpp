@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendDarwin.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendDarwin.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Mac OS X host.
  */
@@ -494,8 +494,11 @@ static int shClBackendDarwinReadData(PSHCLCONTEXT pCtx, SHCLFORMAT fFormat, void
     *pcbActual = 0;
 
     int vrc = readFromPasteboard(pCtx->hPasteboard, fFormat, pvData, cbData, pcbActual);
-    if (RT_FAILURE(vrc))
-        LogRel(("Shared Clipboard: Error reading host clipboard data from macOS, vrc=%Rrc\n", vrc));
+    if (vrc == VERR_NOT_FOUND)
+        LogRel2(("Shared Clipboard: Host-to-guest macOS clipboard data in format %#x is no longer available\n", fFormat));
+    else if (RT_FAILURE(vrc))
+        LogRelMax(16, ("Shared Clipboard: Reading up to %RU32 bytes of host-to-guest macOS clipboard data in format %#x (actual or required %RU32 bytes) failed with %Rrc\n",
+                       cbData, fFormat, *pcbActual, vrc));
 
     RTCritSectLeave(&pCtx->CritSectPasteboard);
 
@@ -525,7 +528,8 @@ static int shClBackendDarwinWriteData(PSHCLCONTEXT pCtx, SHCLFORMAT fFormat, voi
     RTCritSectLeave(&pCtx->CritSectPasteboard);
 
     if (RT_FAILURE(vrc))
-        LogRel(("Shared Clipboard: Writing guest data to the macOS pasteboard failed, vrc=%Rrc\n", vrc));
+        LogRelMax(16, ("Shared Clipboard: Writing %RU32 bytes of guest-to-host clipboard data in format %#x to the macOS pasteboard failed with %Rrc\n",
+                       cbData, fFormat, vrc));
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;

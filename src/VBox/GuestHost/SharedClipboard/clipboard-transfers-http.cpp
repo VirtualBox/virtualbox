@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers-http.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers-http.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: HTTP server implementation for Shared Clipboard transfers on UNIX-y guests / hosts.
  */
@@ -470,7 +470,7 @@ DECLINLINE(PSHCLHTTPSERVERTRANSFER) shClTransferHttpGetTransferFromUrl(PSHCLHTTP
     }
 
     if (!pSrvTx)
-        LogRelMax(16, ("Shared Clipboard: HTTP URL '%s' is not valid\n", pszUrl));
+        LogRelMax(16, ("Shared Clipboard: HTTP URL '%.*s' is not valid\n", 128, pszUrl));
 
     LogFlowFunc(("pszUrl=%s, pSrvTx=%p\n", pszUrl, pSrvTx));
     return pSrvTx;
@@ -530,7 +530,7 @@ static int shClTransferHttpRequestClose(PSHCLHTTPSERVERREQUEST pHttpReq)
     int const rc = ShClTransferObjClose(pHttpReq->pSrvTx->pTransfer, hObj);
     pHttpReq->rcClose = rc;
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Error closing HTTP request object (handle %RU64), rc=%Rrc\n", hObj, rc));
+        LogRel2(("Shared Clipboard: Closing HTTP request object %RU64 failed with %Rrc\n", hObj, rc));
     return rc;
 }
 
@@ -606,7 +606,9 @@ static DECLCALLBACK(int) shClTransferHttpEnd(PRTHTTPCALLBACKDATA pData, PRTHTTPS
         {
             rc2 = ShClTransferComplete(pSrvTx->pTransfer);
             if (RT_FAILURE(rc2))
-                LogRel(("Shared Clipboard: Completing HTTP transfer %RU16 failed, rc=%Rrc\n", ShClTransferKeyGetTransferId(&pSrvTx->Key), rc2));
+                LogRelMax(16, ("Shared Clipboard: Completing HTTP transfer %RU16/%RU64 in session %RU16 failed with %Rrc\n",
+                               ShClTransferKeyGetTransferId(&pSrvTx->Key), pSrvTx->Key.uGeneration,
+                               ShClTransferKeyGetSessionId(&pSrvTx->Key), rc2));
             shClHttpTransferRelease(pSrvTx);
         }
     }
@@ -641,7 +643,7 @@ static DECLCALLBACK(int) shClTransferHttpOpen(PRTHTTPCALLBACKDATA pData, PRTHTTP
         rc = VERR_NOT_FOUND;
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Error starting HTTP transfer for '%s', rc=%Rrc\n", pReq->pszUrl, rc));
+        LogRelMax(16, ("Shared Clipboard: Starting HTTP transfer for URL '%.*s' failed with %Rrc\n", 128, pReq->pszUrl, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -663,7 +665,7 @@ static DECLCALLBACK(int) shClTransferHttpRead(PRTHTTPCALLBACKDATA pData, PRTHTTP
 
     int rc;
 
-    LogRel3(("Shared Clipboard: Reading %RU32 bytes from HTTP ...\n", cbBuf));
+    LogRel3(("Shared Clipboard: Reading %zu bytes from HTTP ...\n", cbBuf));
 
     AssertPtr(pReq->pvUser);
     PSHCLHTTPSERVERREQUEST pHttpReq = (PSHCLHTTPSERVERREQUEST)pvHandle;
@@ -679,7 +681,7 @@ static DECLCALLBACK(int) shClTransferHttpRead(PRTHTTPCALLBACKDATA pData, PRTHTTP
                 *pcbRead = (uint32_t)cbRead;
 
             if (RT_FAILURE(rc))
-                LogRel(("Shared Clipboard: Error reading HTTP transfer (handle %RU64), rc=%Rrc\n", pHttpReq->hObj, rc));
+                LogRel2(("Shared Clipboard: Reading HTTP transfer object %RU64 failed with %Rrc\n", pHttpReq->hObj, rc));
         }
         else
             rc = VERR_NOT_FOUND;
@@ -710,7 +712,7 @@ static DECLCALLBACK(int) shClTransferHttpClose(PRTHTTPCALLBACKDATA pData, PRTHTT
             if (RT_SUCCESS(rc))
                 LogRel2(("Shared Clipboard: HTTP transfer %RU16 done\n", ShClTransferKeyGetTransferId(&pHttpReq->pSrvTx->Key)));
             else
-                LogRel(("Shared Clipboard: Error closing HTTP transfer (handle %RU64), rc=%Rrc\n", hObj, rc));
+                LogRel2(("Shared Clipboard: Closing HTTP transfer object %RU64 failed with %Rrc\n", hObj, rc));
         }
         else
             rc = VERR_NOT_FOUND;
@@ -875,8 +877,8 @@ static DECLCALLBACK(int) shClTransferHttpQueryInfo(PRTHTTPCALLBACKDATA pData,
                                             rc = VERR_NOT_SUPPORTED;
                                     }
                                     else
-                                        LogRelMax(16, ("Shared Clipboard: Supplied entry information for '%s' is not supported (fInfo=%#x, cbInfo=%RU32)\n",
-                                                 pEntry->pszName, pEntry->fInfo, pEntry->cbInfo));
+                                        LogRelMax(16, ("Shared Clipboard: Supplied entry information for '%.*s' is not supported (fInfo=%#x, cbInfo=%RU32)\n",
+                                                       128, pEntry->pszName, pEntry->fInfo, pEntry->cbInfo));
                                     /* Note: Directories / symlinks or other fancy stuff is not supported here (yet) -- would require using WebDAV. */
                                     if (   RT_FAILURE(rc)
                                         && pHttpReq->hObj != NIL_SHCLOBJHANDLE)
@@ -920,7 +922,7 @@ static DECLCALLBACK(int) shClTransferHttpQueryInfo(PRTHTTPCALLBACKDATA pData,
     RTStrFree(pszUrl);
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Querying info for HTTP transfer failed with %Rrc\n", rc));
+        LogRelMax(16, ("Shared Clipboard: Querying HTTP transfer information for URL '%.*s' failed with %Rrc\n", 128, pReq->pszUrl, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -1104,7 +1106,7 @@ int ShClTransferHttpServerStartEx(PSHCLHTTPSERVER pSrv, uint16_t uPort)
     shClTransferHttpServerUnlock(pSrv);
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: HTTP server failed to start, rc=%Rrc\n", rc));
+        LogRel2(("Shared Clipboard: Starting HTTP server on port %RU16 failed with %Rrc\n", uPort, rc));
 
     return rc;
 }
@@ -1166,7 +1168,7 @@ int ShClTransferHttpServerStart(PSHCLHTTPSERVER pSrv, unsigned cMaxAttempts, uin
 
         if (   RT_FAILURE(rc)
             && i == cMaxAttempts)
-            LogRel(("Shared Clipboard: Maximum attempts to start HTTP server reached (%u), giving up\n", cMaxAttempts));
+            LogRelMax(16, ("Shared Clipboard: Starting HTTP server failed after %u attempts with %Rrc\n", cMaxAttempts, rc));
 
         RTRandAdvDestroy(hRand);
     }
@@ -1232,7 +1234,7 @@ int ShClTransferHttpServerStop(PSHCLHTTPSERVER pSrv)
     }
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: HTTP server failed to stop, rc=%Rrc\n", rc));
+        LogRelMax(16, ("Shared Clipboard: Stopping HTTP server failed with %Rrc\n", rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;

@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendWin.cpp 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendWin.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Win32 host.
  */
@@ -540,8 +540,11 @@ static LRESULT CALLBACK vboxClipboardSvcWinWndProcMain(PSHCLCONTEXT pCtx,
                 }
             }
 
-            if (RT_FAILURE(vrc))
-                LogRel(("Shared Clipboard: WM_CLIPBOARDUPDATE failed with %Rrc\n", vrc));
+            if (   vrc == VERR_SHCLPB_NO_DATA
+                || vrc == VERR_ACCESS_DENIED)
+                LogRel2(("Shared Clipboard: Processing a Windows clipboard update ended with %Rrc\n", vrc));
+            else if (RT_FAILURE(vrc))
+                LogRelMax(16, ("Shared Clipboard: Processing a Windows clipboard update and reporting host formats failed with %Rrc\n", vrc));
 
             break;
         }
@@ -599,11 +602,11 @@ static LRESULT CALLBACK vboxClipboardSvcWinWndProcMain(PSHCLCONTEXT pCtx,
             const SHCLFORMAT uFmtVBox = ShClWinClipboardFormatToVBox(uFmtWin);
 
             LogFunc(("WM_RENDERFORMAT: uFmtWin=%u -> uFmtVBox=0x%x\n", uFmtWin, uFmtVBox));
-            if (LogRelIsEnabled())
+            if (LogRelIs3Enabled())
             {
                 char *pszFmts = ShClFormatsToStrA(uFmtVBox);
-                LogRel(("Shared Clipboard: Rendering Windows format %#x as VBox format %#x/'%s'\n",
-                        uFmtWin, uFmtVBox, pszFmts ? pszFmts : "<alloc failed>"));
+                LogRel3(("Shared Clipboard: Rendering guest-to-host clipboard data for Windows format %#x from VBox format %#x/'%s'\n",
+                         uFmtWin, uFmtVBox, pszFmts ? pszFmts : "<alloc failed>"));
                 RTStrFree(pszFmts);
             }
             if (   uFmtVBox      == VBOX_SHCL_FMT_NONE
@@ -635,12 +638,14 @@ static LRESULT CALLBACK vboxClipboardSvcWinWndProcMain(PSHCLCONTEXT pCtx,
                             cbData = cbWrapped;
                         }
                         else
-                            LogRel(("Shared Clipboard: cannot convert HTML clipboard into CF_HTML format, vrc=%Rrc\n", vrc));
+                            LogRelMax(16, ("Shared Clipboard: Converting %RU32-byte guest-to-host HTML from VBox format %#x to Windows CF_HTML %#x failed with %Rrc\n",
+                                           cbData, uFmtVBox, uFmtWin, vrc));
                     }
 
                     vrc = ShClWinDataWrite(uFmtWin, pvData, cbData);
                     if (RT_FAILURE(vrc))
-                        LogRel(("Shared Clipboard: Setting clipboard data for Windows host failed with %Rrc\n", vrc));
+                        LogRelMax(16, ("Shared Clipboard: Writing %RU32 bytes of guest-to-host clipboard data in VBox format %#x to Windows format %#x failed with %Rrc\n",
+                                       cbData, uFmtVBox, uFmtWin, vrc));
 
                     RTMemFree(pvData);
                     cbData = 0;
@@ -1334,7 +1339,7 @@ static int shClBackendWinReadData(PSHCLCONTEXT pCtx, SHCLFORMAT uFmt, void *pvDa
                     vrc = RTErrConvertFromWin32(dwLastErr);
                     if (RT_SUCCESS(vrc))
                         vrc = VERR_INVALID_HANDLE;
-                    LogRel(("Shared Clipboard: Unable to lock clipboard data, last error: %ld\n", dwLastErr));
+                    LogRel2(("Shared Clipboard: Locking host-to-guest Windows CF_HDROP clipboard data failed with Win32 error %ld\n", dwLastErr));
                 }
             }
             else
@@ -1343,16 +1348,19 @@ static int shClBackendWinReadData(PSHCLCONTEXT pCtx, SHCLFORMAT uFmt, void *pvDa
                 vrc = RTErrConvertFromWin32(dwLastErr);
                 if (RT_SUCCESS(vrc))
                     vrc = VERR_NOT_FOUND;
-                LogRel(("Shared Clipboard: Unable to retrieve clipboard data from clipboard (CF_HDROP), last error: %ld\n",
-                        dwLastErr));
+                LogRel2(("Shared Clipboard: Retrieving host-to-guest Windows CF_HDROP clipboard data failed with Win32 error %ld\n", dwLastErr));
             }
         }
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
         ShClWinClose();
     }
 
-    if (RT_FAILURE(vrc))
-        LogRel(("Shared Clipboard: Error reading host clipboard data in format %#x from Windows, vrc=%Rrc\n", uFmt, vrc));
+    if (   vrc == VERR_NOT_FOUND
+        || vrc == VERR_ACCESS_DENIED)
+        LogRel2(("Shared Clipboard: Reading host-to-guest Windows clipboard data in VBox format %#x ended with %Rrc\n", uFmt, vrc));
+    else if (RT_FAILURE(vrc))
+        LogRelMax(16, ("Shared Clipboard: Reading up to %RU32 bytes of host-to-guest Windows clipboard data in VBox format %#x failed with %Rrc\n",
+                       cbData, uFmt, vrc));
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;

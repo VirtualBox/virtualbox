@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transport.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transport.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Opaque Main transport implementation.
  */
@@ -133,6 +133,7 @@ static DECLCALLBACK(int) shClSvcOpReadDataFromGuestAsync(SHCLCLIENTHANDLE hClien
     }
 #endif
 
+    SHCLFORMATS const fFormatsRequested = fFormats;
     int vrc = VERR_NOT_SUPPORTED;
 
     /* Generate a separate message for every (valid) format we support. */
@@ -255,7 +256,7 @@ static DECLCALLBACK(int) shClSvcOpReadDataFromGuestAsync(SHCLCLIENTHANDLE hClien
     }
 
     if (RT_FAILURE(vrc))
-        LogRel(("Shared Clipboard: Requesting guest clipboard data failed with %Rrc\n", vrc));
+        LogRelMax(16, ("Shared Clipboard: Requesting guest clipboard data in formats %#x failed with %Rrc\n", fFormatsRequested, vrc));
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;
@@ -309,11 +310,11 @@ static DECLCALLBACK(int) shClSvcOpReadDataFromGuest(SHCLCLIENTHANDLE hClient, SH
         }
 
         ShClEventRelease(pEvent);
-    }
 
-    if (   RT_FAILURE(vrc)
-        && vrc != VERR_SHCLPB_NO_DATA)
-        LogRel(("Shared Clipboard: Reading data from guest failed with %Rrc\n", vrc));
+        if (   RT_FAILURE(vrc)
+            && vrc != VERR_SHCLPB_NO_DATA)
+            LogRelMax(16, ("Shared Clipboard: Reading guest clipboard data in format %#x failed with %Rrc\n", fFormats, vrc));
+    }
     return vrc;
 }
 

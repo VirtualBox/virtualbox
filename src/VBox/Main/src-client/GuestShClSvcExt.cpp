@@ -1,4 +1,4 @@
-/* $Id: GuestShClSvcExt.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClSvcExt.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard service extension handling for Main.
  */
@@ -377,7 +377,8 @@ int GuestShCl::i_svcExtDataReadCallback(PSHCLEXTPARMS pParms)
                 {
                     int const vrcFormats = i_reportRemoteFormatsToGuestNow(fPendingFormats);
                     if (RT_FAILURE(vrcFormats))
-                        LogRel(("Shared Clipboard: Reporting formats deferred during a remote read failed with %Rrc\n", vrcFormats));
+                        LogRelMax(16, ("Shared Clipboard: Reporting remote-to-guest formats %#x deferred while reading format %#x failed with %Rrc\n",
+                                       fPendingFormats, uFormat, vrcFormats));
                 }
             }
 

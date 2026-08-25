@@ -1,4 +1,4 @@
-/* $Id: ClipboardImpl.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardImpl.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Console clipboard API.
  */
@@ -2450,8 +2450,8 @@ HRESULT Clipboard::i_writeData(VBOXSHCLMAINCLIENTID aClientId,
     {
         LogFunc(("Rejecting oversized clipboard write: mime=%s, cb=%zu, max=%RU32\n",
                  aMimeType.c_str(), aBuffer.size(), s_cbClipboardReadMax));
-        LogRelMax(16, ("Shared Clipboard: Refusing to write too much clipboard data: MIME '%s', %zu bytes (limit %RU32 bytes)\n",
-                       aMimeType.c_str(), aBuffer.size(), s_cbClipboardReadMax));
+        LogRelMax(16, ("Shared Clipboard: Refusing to write too much clipboard data: MIME '%.*s', %zu bytes (limit %RU32 bytes)\n",
+                       128, aMimeType.c_str(), aBuffer.size(), s_cbClipboardReadMax));
         return mData->mParent->setErrorBoth(VBOX_E_SHCL_TOO_MUCH_DATA, VERR_TOO_MUCH_DATA,
                                             Console::tr("Writing shared clipboard data exceeded the supported size (%RU32 bytes)"),
                                             s_cbClipboardReadMax);
@@ -2471,8 +2471,8 @@ HRESULT Clipboard::i_writeData(VBOXSHCLMAINCLIENTID aClientId,
     {
         LogFunc(("Converting Main clipboard data failed: format=%#x, mime=%s, cb=%zu, vrc=%Rrc\n",
                  uFormat, aMimeType.c_str(), aBuffer.size(), vrc));
-        LogRelMax(16, ("Shared Clipboard: Failed to convert clipboard data for guest: MIME '%s', format %#x, %zu bytes, vrc=%Rrc\n",
-                       aMimeType.c_str(), uFormat, aBuffer.size(), vrc));
+        LogRelMax(16, ("Shared Clipboard: Failed to convert clipboard data for guest: MIME '%.*s', format %#x, %zu bytes, vrc=%Rrc\n",
+                       128, aMimeType.c_str(), uFormat, aBuffer.size(), vrc));
         return mData->mParent->setErrorBoth(VBOX_E_SHCL_ERROR, vrc,
                                             Console::tr("Converting shared clipboard data failed with %Rrc"), vrc);
     }
@@ -3282,7 +3282,9 @@ HRESULT Clipboard::i_transferCancel(PCSHCLTRANSFERKEY pKey)
     if (RT_FAILURE(vrc))
     {
         LogFunc(("Cancel transfer HGCM host call failed: session=%RU16, id=%RU16, generation=%RU64, vrc=%Rrc\n", ShClTransferKeyGetSessionId(pKey), ShClTransferKeyGetTransferId(pKey), pKey->uGeneration, vrc));
-        LogRelMax(16, ("Shared Clipboard: Failed to cancel transfer %RU16, vrc=%Rrc\n", ShClTransferKeyGetTransferId(pKey), vrc));
+        LogRelMax(16, ("Shared Clipboard: Failed to cancel transfer %RU16/%RU64 in session %RU16, vrc=%Rrc\n",
+                       ShClTransferKeyGetTransferId(pKey), pKey->uGeneration,
+                       ShClTransferKeyGetSessionId(pKey), vrc));
         return mData->mParent->setErrorBoth(VBOX_E_IPRT_ERROR, vrc,
                                             Console::tr("Canceling shared clipboard transfer failed with %Rrc"), vrc);
     }

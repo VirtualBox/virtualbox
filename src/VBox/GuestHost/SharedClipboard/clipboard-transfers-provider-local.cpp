@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers-provider-local.cpp 115055 2026-08-17 16:40:05Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers-provider-local.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Transfers interface implementation for local file systems.
  */
@@ -203,7 +203,7 @@ static int shClTransferLocalPathEnsureNoSymlinks(const char *pszPathAbs)
             break;
         if (RTFS_IS_SYMLINK(ObjInfo.Attr.fMode))
         {
-            LogRelMax(16, ("Shared Clipboard: Path component '%s' is a symbolic link\n", szPath));
+            LogRelMax(16, ("Shared Clipboard: Path component '%.*s' is a symbolic link\n", 128, szPath));
             rc = VERR_IS_A_SYMLINK;
             break;
         }
@@ -301,7 +301,7 @@ static DECLCALLBACK(int) shclTransferIfaceLocalListOpen(PSHCLTXPROVIDERCTX pCtx,
                                 LogRel2(("Shared Clipboard: Opening directory '%s'\n", pInfo->pszPathLocalAbs));
                             }
                             else
-                                LogRel(("Shared Clipboard: Opening directory '%s' failed with %Rrc\n", pInfo->pszPathLocalAbs, rc));
+                                Log2(("Shared Clipboard: Opening local directory '%.*s' failed with %Rrc\n", 128, pInfo->pszPathLocalAbs, rc));
 
                         }
                         else if (RTFS_IS_FILE(objInfo.Attr.fMode))
@@ -315,7 +315,7 @@ static DECLCALLBACK(int) shclTransferIfaceLocalListOpen(PSHCLTXPROVIDERCTX pCtx,
                                 LogRel2(("Shared Clipboard: Opening file '%s'\n", pInfo->pszPathLocalAbs));
                             }
                             else
-                                LogRel(("Shared Clipboard: Opening file '%s' failed with %Rrc\n", pInfo->pszPathLocalAbs, rc));
+                                Log2(("Shared Clipboard: Opening local file '%.*s' failed with %Rrc\n", 128, pInfo->pszPathLocalAbs, rc));
                         }
                         else if (RTFS_IS_SYMLINK(objInfo.Attr.fMode))
                             rc = VERR_IS_A_SYMLINK;
@@ -480,7 +480,7 @@ static int shclTransferIfaceLocalListEntryInit(PSHCLLISTENTRY pEntry, const char
     }
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Initializing list entry '%s' failed: %Rrc\n", pszName, rc));
+        Log2(("Shared Clipboard: Initializing local list entry '%.*s' failed with %Rrc\n", 128, pszName, rc));
 
     return rc;
 }
@@ -638,7 +638,7 @@ static DECLCALLBACK(int) shclTransferIfaceLocalObjOpen(PSHCLTXPROVIDERCTX pCtx,
                                 }
                             }
                             else
-                                LogRel(("Shared Clipboard: Error opening file '%s': rc=%Rrc\n", pInfo->pszPathLocalAbs, rc));
+                                Log2(("Shared Clipboard: Opening local file '%.*s' failed with %Rrc\n", 128, pInfo->pszPathLocalAbs, rc));
                         }
                     }
                 }
@@ -695,7 +695,7 @@ static DECLCALLBACK(int) shclTransferIfaceLocalObjClose(PSHCLTXPROVIDERCTX pCtx,
                     LogRel2(("Shared Clipboard: Closed directory '%s'\n", pInfo->pszPathLocalAbs));
                 }
                 else
-                    LogRel(("Shared Clipboard: Closing directory '%s' failed with %Rrc\n", pInfo->pszPathLocalAbs, rc));
+                    Log2(("Shared Clipboard: Closing local directory '%.*s' failed with %Rrc\n", 128, pInfo->pszPathLocalAbs, rc));
                 break;
             }
 
@@ -709,7 +709,7 @@ static DECLCALLBACK(int) shclTransferIfaceLocalObjClose(PSHCLTXPROVIDERCTX pCtx,
                     LogRel2(("Shared Clipboard: Closed file '%s'\n", pInfo->pszPathLocalAbs));
                 }
                 else
-                    LogRel(("Shared Clipboard: Closing file '%s' failed with %Rrc\n", pInfo->pszPathLocalAbs, rc));
+                    Log2(("Shared Clipboard: Closing local file '%.*s' failed with %Rrc\n", 128, pInfo->pszPathLocalAbs, rc));
                 break;
             }
 

@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendX11.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendX11.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - X11 backend.
  */
@@ -636,8 +636,10 @@ static int shClBackendX11ReadData(PSHCLCONTEXT pCtx, SHCLFORMAT uFormat, void *p
         *pcbActual = cbRead;
     }
 
-    if (RT_FAILURE(vrc))
-        LogRel(("Shared Clipboard: Error reading host clipboard data from X11, vrc=%Rrc\n", vrc));
+    if (vrc == VERR_SHCLPB_NO_DATA)
+        LogRel2(("Shared Clipboard: Host X11 clipboard data in format %#x is no longer available\n", uFormat));
+    else if (RT_FAILURE(vrc))
+        LogRelMax(16, ("Shared Clipboard: Reading up to %RU32 bytes of host-to-guest X11 clipboard data in format %#x failed with %Rrc\n", cbData, uFormat, vrc));
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;
@@ -825,8 +827,17 @@ static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, ui
         LogRel2(("Shared Clipboard: Advertised cached host X11 URI list for transfer %RU16/%RU64, offer generation %RU64\n",
                  ShClTransferKeyGetTransferId(&TransferKey), TransferKey.uGeneration, uOfferGeneration));
     else if (vrc != VERR_CANCELLED)
-        LogRel(("Shared Clipboard: Preparing host X11 URI list for offer generation %RU64 failed with %Rrc\n",
-                uOfferGeneration, vrc));
+    {
+        if (   vrc == VERR_SHCLPB_NO_DATA
+            || vrc == VERR_ACCESS_DENIED)
+            LogRel2(("Shared Clipboard: Preparing guest-to-host X11 URI-list offer generation %RU64 ended with %Rrc\n", uOfferGeneration, vrc));
+        else if (ShClTransferKeyIsValid(&TransferKey))
+            LogRelMax(16, ("Shared Clipboard: Preparing guest-to-host X11 URI-list offer generation %RU64 for transfer session=%RU16 id=%RU16 generation=%RU64 failed with %Rrc\n",
+                           uOfferGeneration, ShClTransferKeyGetSessionId(&TransferKey), ShClTransferKeyGetTransferId(&TransferKey),
+                           TransferKey.uGeneration, vrc));
+        else
+            LogRelMax(16, ("Shared Clipboard: Preparing guest-to-host X11 URI-list offer generation %RU64 failed before creating a transfer with %Rrc\n", uOfferGeneration, vrc));
+    }
 
     return vrc;
 }
@@ -1059,7 +1070,9 @@ static DECLCALLBACK(void) shClSvcX11TransferOnCompletedCallback(PSHCLTRANSFERCAL
 
     int const vrc = pCtx->pConn->transferReportStatus(pTransfer, SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
     if (RT_FAILURE(vrc))
-        LogRel(("Shared Clipboard: Reporting completed X11 HTTP transfer failed, rc=%Rrc\n", vrc));
+        LogRelMax(16, ("Shared Clipboard: Reporting completed guest-to-host X11 HTTP transfer session=%RU16 id=%RU16 generation=%RU64 failed with %Rrc\n",
+                       ShClTransferGetSessionId(pTransfer), ShClTransferGetID(pTransfer),
+                       ShClTransferGetGeneration(pTransfer), vrc));
 }
 
 /**
@@ -1140,7 +1153,7 @@ static DECLCALLBACK(int) shClSvcX11RequestDataFromSourceCallback(PSHCLCONTEXT pC
     if (pCtx->fShuttingDown)
     {
         /* The shared clipboard is disconnecting. */
-        LogRel(("Shared Clipboard: Host requested guest clipboard data after guest had disconnected\n"));
+        LogRel2(("Shared Clipboard: Ignoring host request for guest clipboard data in format %#x after guest disconnect\n", uFmt));
         return VERR_WRONG_ORDER;
     }
 
@@ -1160,7 +1173,7 @@ static DECLCALLBACK(int) shClSvcX11RequestDataFromSourceCallback(PSHCLCONTEXT pC
     int const vrc = pCtx->pConn->readDataFromGuest(uFmt, ppv, pcb);
 
     if (RT_FAILURE(vrc))
-        LogRel(("Shared Clipboard: Requesting X11 data in format %#x from guest failed with %Rrc\n", uFmt, vrc));
+        LogRel2(("Shared Clipboard: Requesting guest-to-host X11 clipboard data in format %#x from guest ended with %Rrc\n", uFmt, vrc));
 
     LogFlowFuncLeaveRC(vrc);
     return vrc;
@@ -1198,7 +1211,9 @@ static int shClBackendX11TransferHandleStatusReply(PSHCLCONTEXT pCtx, PSHCLTRANS
                 }
 
                 if (RT_FAILURE(vrc2))
-                    LogRel(("Shared Clipboard: Registering HTTP transfer failed: %Rrc\n", vrc2));
+                    LogRelMax(16, ("Shared Clipboard: Starting HTTP server for initialized guest-to-host X11 transfer session=%RU16 id=%RU16 generation=%RU64 failed with %Rrc\n",
+                                   ShClTransferGetSessionId(pTransfer), ShClTransferGetID(pTransfer),
+                                   ShClTransferGetGeneration(pTransfer), vrc2));
 #  endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS_HTTP */
                 break;
             }

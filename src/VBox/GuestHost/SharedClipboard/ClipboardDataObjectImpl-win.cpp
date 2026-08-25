@@ -1,4 +1,4 @@
-/* $Id: ClipboardDataObjectImpl-win.cpp 115103 2026-08-21 11:25:07Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardDataObjectImpl-win.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * ClipboardDataObjectImpl-win.cpp - Shared Clipboard IDataObject implementation.
  */
@@ -514,8 +514,8 @@ int ShClWinDataObject::readDir(PSHCLTRANSFER pTransfer, const Utf8Str &strDir)
                                         unlock();
                                     }
                                     else /* Not fatal, just skip. */
-                                        LogRel(("Shared Clipboard: Warning: File system object '%s' of type %#x not supported, skipping\n",
-                                                strPath.c_str(), pFsObjInfo->Attr.fMode & RTFS_TYPE_MASK));
+                                        LogRelMax(16, ("Shared Clipboard: File system object '%.*s' of type %#x is not supported by the Windows data object, skipping\n",
+                                                       128, strPath.c_str(), pFsObjInfo->Attr.fMode & RTFS_TYPE_MASK));
 
                                     /** @todo Handle symlinks. */
                                 }
@@ -540,7 +540,9 @@ int ShClWinDataObject::readDir(PSHCLTRANSFER pTransfer, const Utf8Str &strDir)
     }
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Reading directory '%s' failed with %Rrc\n", strDir.c_str(), rc));
+        LogRelMax(16, ("Shared Clipboard: Reading directory '%.*s' for transfer %RU16/%RU64 in session %RU16 failed with %Rrc\n",
+                       128, strDir.c_str(), ShClTransferKeyGetTransferId(&pTransfer->State.Key),
+                       pTransfer->State.Key.uGeneration, ShClTransferKeyGetSessionId(&pTransfer->State.Key), rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -609,8 +611,10 @@ DECLCALLBACK(int) ShClWinDataObject::readThread(PSHCLTRANSFER pTransfer, void *p
             }
             else
             {
-                LogRel(("Shared Clipboard: Root entry '%s': File type %#x not supported\n",
-                        pRootEntry->pszName, (pFsObjInfo->Attr.fMode & RTFS_TYPE_MASK)));
+                LogRelMax(16, ("Shared Clipboard: Root entry '%.*s' of transfer %RU16/%RU64 in session %RU16 has unsupported file type %#x\n",
+                               128, pRootEntry->pszName, ShClTransferKeyGetTransferId(&pTransfer->State.Key),
+                               pTransfer->State.Key.uGeneration, ShClTransferKeyGetSessionId(&pTransfer->State.Key),
+                               pFsObjInfo->Attr.fMode & RTFS_TYPE_MASK));
                 rc = VERR_NOT_SUPPORTED;
             }
 
@@ -730,7 +734,7 @@ DECLCALLBACK(int) ShClWinDataObject::readThread(PSHCLTRANSFER pTransfer, void *p
                             break;
 
                         case Error:
-                            LogRel(("Shared Clipboard: Data object: Transfer error %Rrc occurred\n", rcStatus));
+                            Log2(("Shared Clipboard: Windows data object observed transfer error %Rrc\n", rcStatus));
                             rc = ShClTransferError(pTransfer, rcStatus);
                             break;
 
@@ -785,7 +789,9 @@ DECLCALLBACK(int) ShClWinDataObject::readThread(PSHCLTRANSFER pTransfer, void *p
     }
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Transfer read thread failed with %Rrc\n", rc));
+        LogRelMax(16, ("Shared Clipboard: Windows data-object read thread for transfer %RU16/%RU64 in session %RU16 failed with %Rrc\n",
+                       ShClTransferKeyGetTransferId(&pTransfer->State.Key), pTransfer->State.Key.uGeneration,
+                       ShClTransferKeyGetSessionId(&pTransfer->State.Key), rc));
 
     LogFlowFuncLeaveRC(rc);
     pThis->Release();
@@ -982,8 +988,7 @@ int ShClWinDataObject::createUnicodeTextFromTransferRoots(PSHCLTRANSFER pTransfe
         rc = RTStrCalcUtf16LenEx(pRootEntry->pszName, RTSTR_MAX, &cwcRoot);
         if (RT_FAILURE(rc))
         {
-            LogRelMax(16, ("Shared Clipboard: Cannot convert transfer root '%s' to UTF-16 length for CF_UNICODETEXT, rc=%Rrc\n",
-                            pRootEntry->pszName, rc));
+            LogRelMax(16, ("Shared Clipboard: Calculating the UTF-16 length of transfer root '%.*s' for CF_UNICODETEXT failed with %Rrc\n", 128, pRootEntry->pszName, rc));
             break;
         }
 
@@ -1035,8 +1040,7 @@ int ShClWinDataObject::createUnicodeTextFromTransferRoots(PSHCLTRANSFER pTransfe
         rc = RTStrToUtf16Ex(pRootEntry->pszName, RTSTR_MAX, &pwszDst, cwcLeft, &cwcWritten);
         if (RT_FAILURE(rc))
         {
-            LogRelMax(16, ("Shared Clipboard: Converting transfer root '%s' to CF_UNICODETEXT failed with %Rrc\n",
-                           pRootEntry->pszName, rc));
+            LogRelMax(16, ("Shared Clipboard: Converting transfer root '%.*s' to CF_UNICODETEXT failed with %Rrc\n", 128, pRootEntry->pszName, rc));
             break;
         }
 
@@ -1354,7 +1358,8 @@ STDMETHODIMP ShClWinDataObject::GetData(LPFORMATETC pFormatEtc, LPSTGMEDIUM pMed
         if (   FAILED(hr)
             && hr != DV_E_FORMATETC) /* Can happen if the caller queries unknown / unhandled formats. */
         {
-            LogRel(("Shared Clipboard: Error returning data from data object (%Rhrc)\n", hr));
+            LogRelMax(16, ("Shared Clipboard: Returning Windows data-object format %#x (index %RI32, tymed %#x) failed with %Rhrc\n",
+                           (uint32_t)pFormatEtc->cfFormat, pFormatEtc->lindex, (uint32_t)pFormatEtc->tymed, hr));
         }
     }
 
@@ -1889,7 +1894,7 @@ int ShClWinDataObject::setStatusLocked(Status enmStatus, int rc /* = VINF_SUCCES
     m_enmStatus = enmStatus;
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Data object received error %Rrc (status %#x)\n", rc, enmStatus));
+        LogRelMax(16, ("Shared Clipboard: Windows data object entered status %#x with error %Rrc\n", enmStatus, rc));
 
     int const rc2 = RTSemEventSignal(m_EventStatusChanged);
 

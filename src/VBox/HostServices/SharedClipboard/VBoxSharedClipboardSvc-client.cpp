@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-client.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-client.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Client/session and message queue handling.
  */
@@ -773,7 +773,7 @@ DECLCALLBACK(void) shClSvcClientCall(void *,
             rc = shClSvcClientMsgError(pClient, cParms, paParms, &rcGuest);
             if (RT_SUCCESS(rc))
             {
-                LogRel(("Shared Clipboard: Error reported from guest side: %Rrc\n", rcGuest));
+                LogRelMax(16, ("Shared Clipboard: Client %RU32 reported guest-side error %Rrc\n", pClient->State.uClientID, rcGuest));
 
                 /* Start over. */
                 shClSvcClientReset(pClient);
@@ -1434,7 +1434,7 @@ int shClSvcClientMsgDataRead(PSHCLCLIENT pClient, uint32_t cParms, VBOXHGCMSVCPA
 
     if (!ShClFormatIsValid(uFormat))
     {
-        LogRelMax(16, ("Shared Clipboard: Rejecting host clipboard data request with invalid format %#x\n", uFormat));
+        LogRelMax(16, ("Shared Clipboard: Rejecting guest request for host clipboard data with invalid format %#x\n", uFormat));
         return VERR_INVALID_PARAMETER;
     }
 
@@ -1537,7 +1537,8 @@ static int shClSvcGuestDataSignal(PSHCLEVENT pEvent, void const *pvData, uint32_
     {
         rc = rc2;
         ShClPayloadDestroy(pPayload);
-        LogRel(("Shared Clipboard: Signalling of guest clipboard data to the host failed: %Rrc\n", rc));
+        LogRelMax(16, ("Shared Clipboard: Signalling guest clipboard data event %#x (format %#x, %RU32 bytes) to the host failed with %Rrc\n",
+                       pEvent->idEvent, pEvent->uUser, cbData, rc));
     }
 
     LogFlowFuncLeaveRC(rc);

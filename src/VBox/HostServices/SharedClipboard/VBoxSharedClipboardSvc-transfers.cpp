@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -477,6 +477,7 @@ static int shClSvcTransferMsgGetReply(uint32_t cParms, VBOXHGCMSVCPARM aParms[],
                 }
 
                 default:
+                    LogRelMax(16, ("Shared Clipboard: Guest reported unknown reply type %#x\n", pReply->uType));
                     rc = VERR_NOT_SUPPORTED;
                     break;
             }
@@ -869,6 +870,8 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
         rc = shClSvcTransferMsgGetReply(cParms, aParms, pReply);
         if (RT_SUCCESS(rc))
         {
+            int const rcReply = (int32_t)pReply->rc;
+
             if (   pReply->uType                    == VBOX_SHCL_TX_REPLYMSGTYPE_TRANSFER_STATUS
                 && pReply->u.TransferStatus.uStatus == SHCLTRANSFERSTATUS_REQUESTED)
             {
@@ -909,14 +912,15 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                     {
                         bool fCaptureTransferStatus = true;
 
-                        LogRel2(("Shared Clipboard: Guest reported status %s for transfer %RU16\n",
-                                 ShClTransferStatusToStr(pReply->u.TransferStatus.uStatus), idTransfer));
-
                         /* SHCLTRANSFERSTATUS_REQUESTED is special, as it doesn't provide a transfer ID. */
                         if (SHCLTRANSFERSTATUS_REQUESTED == pReply->u.TransferStatus.uStatus)
                         {
                             LogRelMax2(16, ("Shared Clipboard: Guest requested a new host -> guest transfer\n"));
                         }
+                        else if (   pReply->u.TransferStatus.uStatus == SHCLTRANSFERSTATUS_INITIALIZED
+                                 || pReply->u.TransferStatus.uStatus == SHCLTRANSFERSTATUS_STARTED)
+                            LogRel2(("Shared Clipboard: Guest reported status %s for transfer %RU16\n",
+                                     ShClTransferStatusToStr(pReply->u.TransferStatus.uStatus), idTransfer));
 
                         switch (pReply->u.TransferStatus.uStatus)
                         {
@@ -1009,28 +1013,29 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                                 bool fAccepted = false;
                                 rc = shClSvcTransferApplyGuestTerminalStatus(pTransfer,
                                                                              pReply->u.TransferStatus.uStatus,
-                                                                             pReply->rc, &fAccepted);
+                                                                             rcReply, &fAccepted);
                                 fCaptureTransferStatus = fAccepted;
                                 if (fAccepted)
                                 {
                                     if (pReply->u.TransferStatus.uStatus == SHCLTRANSFERSTATUS_ERROR)
                                     {
-                                        LogRelMax(16, ("Shared Clipboard: Guest reported error %Rrc for transfer %RU16\n",
-                                                       pReply->rc, ShClTransferKeyGetTransferId(&pTransfer->State.Key)));
+                                        LogRelMax(16, ("Shared Clipboard: Guest reported status %s (%#x) with result %Rrc for transfer %RU16\n",
+                                                       ShClTransferStatusToStr(pReply->u.TransferStatus.uStatus),
+                                                       pReply->u.TransferStatus.uStatus, rcReply, idTransfer));
 
                                         if (shClSvcExtIsRegistered())
                                         {
                                             char *pszMsg = RTStrAPrintf2("Guest reported error %Rrc for transfer %RU16", /** @todo Make the error messages more fine-grained based on rc. */
-                                                                         pReply->rc, ShClTransferKeyGetTransferId(&pTransfer->State.Key));
+                                                                         rcReply, idTransfer);
                                             AssertPtrBreakStmt(pszMsg, rc = VERR_NO_MEMORY);
 
-                                            shClSvcExtReportError(NULL, pszMsg, pReply->rc);
+                                            shClSvcExtReportError(NULL, pszMsg, rcReply);
 
                                             RTStrFree(pszMsg);
                                         }
                                     }
                                     else
-                                        LogRel2(("Shared Clipboard: Guest has %s transfer %RU16\n",
+                                        LogRel2(("Shared Clipboard: Guest reported status %s for transfer %RU16\n",
                                                  ShClTransferStatusToStr(pReply->u.TransferStatus.uStatus), idTransfer));
                                 }
                                 break;
@@ -1038,8 +1043,8 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
 
                             default:
                             {
-                                LogRelMax(16, ("Shared Clipboard: Unknown transfer status %#x from guest received\n",
-                                               pReply->u.TransferStatus.uStatus));
+                                LogRelMax(16, ("Shared Clipboard: Guest reported unknown transfer status %#x with result %Rrc for transfer %RU16\n",
+                                               pReply->u.TransferStatus.uStatus, rcReply, idTransfer));
                                 rc = VERR_INVALID_PARAMETER;
                                 break;
                             }
@@ -1048,9 +1053,9 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                         if (   pTransfer
                             && fCaptureTransferStatus
                             && pReply->u.TransferStatus.uStatus != SHCLTRANSFERSTATUS_NONE
-                            && ShClTransferStatusResultIsValid(pReply->u.TransferStatus.uStatus, (int)pReply->rc))
+                            && ShClTransferStatusResultIsValid(pReply->u.TransferStatus.uStatus, rcReply))
                             shClSvcTransferStatusCapture(pStatus, pTransfer, SHCLSOURCE_REMOTE,
-                                                         pReply->u.TransferStatus.uStatus, (int)pReply->rc);
+                                                         pReply->u.TransferStatus.uStatus, rcReply);
                         RT_FALL_THROUGH(); /* Make sure to also signal any waiters by using the block down below. */
                     }
                     case VBOX_SHCL_TX_REPLYMSGTYPE_LIST_OPEN:
@@ -1069,9 +1074,9 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                                 = ShClEventSourceRetainFromId(&pTransfer->Events, VBOX_SHCL_CONTEXTID_GET_EVENT(uCID));
                             if (pEvent)
                             {
-                                LogFlowFunc(("uCID=%RU64 -> idEvent=%RU32, rcReply=%Rrc\n", uCID, pEvent->idEvent, pReply->rc));
+                                LogFlowFunc(("uCID=%RU64 -> idEvent=%RU32, rcReply=%Rrc\n", uCID, pEvent->idEvent, rcReply));
 
-                                rc = ShClEventSignalEx(pEvent, pReply->rc, pPayload);
+                                rc = ShClEventSignalEx(pEvent, rcReply, pPayload);
                                 if (RT_SUCCESS(rc))
                                 {
                                     pPayload = NULL; /* The event owns the payload now. */
@@ -1085,7 +1090,6 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                     }
 
                     default:
-                        LogRelMax(16, ("Shared Clipboard: Unknown reply type %#x from guest received\n", pReply->uType));
                         ShClTransferCancel(pTransfer); /* Avoid clogging up the transfer list. */
                         rc = VERR_INVALID_PARAMETER;
                         break;
@@ -1152,8 +1156,12 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
                  shClSvcExtIsRegistered()));
 
     uint64_t const fGuestFeatures0 = ShClSvcClientGetGuestFeatures0(pClient);
-    if (   u32Function > VBOX_SHCL_GUEST_FN_LAST
-        || !(fGuestFeatures0 & VBOX_SHCL_GF_0_CONTEXT_ID))
+    if (u32Function > VBOX_SHCL_GUEST_FN_LAST)
+    {
+        LogRelMax(16, ("Shared Clipboard: Unknown guest function: %u (%#x)\n", u32Function, u32Function));
+        return VERR_NOT_IMPLEMENTED;
+    }
+    if (!(fGuestFeatures0 & VBOX_SHCL_GF_0_CONTEXT_ID))
         return VERR_NOT_IMPLEMENTED;
 
     if (!(fGuestFeatures0 & VBOX_SHCL_GF_0_TRANSFERS))

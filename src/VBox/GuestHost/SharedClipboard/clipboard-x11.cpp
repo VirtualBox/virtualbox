@@ -1729,7 +1729,7 @@ static int shClX11RequestDataForX11CallbackHelper(PSHCLX11CTX pCtx, SHCLFORMAT u
             rc = VERR_SHCLPB_NO_DATA;
     }
     else
-        LogRel(("Shared Clipboard: Requesting data for X11 from source failed with %Rrc\n", rc));
+        LogRel2(("Shared Clipboard: Requesting VBox-to-X11 clipboard data in format %#x from the source ended with %Rrc\n", uFmt, rc));
 
     LogFlowFunc(("Returning pv=%p, cb=%RU32, rc=%Rrc\n", pv, cb, rc));
     return rc;
@@ -2037,8 +2037,9 @@ static int clipConvertToX11Data(PSHCLX11CTX pCtx, Atom *atomTarget,
     {
         char *pszFmts2 = ShClFormatsToStrA(pCtx->vboxFormats);
         char *pszAtomName = XGetAtomName(XtDisplay(pCtx->pWidget), *atomTarget);
-        LogRel(("Shared Clipboard: Converting VBox formats '%s' to '%s' for X11 (idxFmtX11=%u, fmtX11=%u, atomTarget='%s') failed, rc=%Rrc\n",
-                pszFmts2 ? pszFmts2 : "<alloc error>", g_aFormats[idxFmtX11].pcszAtom, idxFmtX11, fmtX11, pszAtomName ? pszAtomName : "unknown", rc));
+        LogRelMax(16, ("Shared Clipboard: VBox-to-X11 conversion failed: %RU32 bytes, VBox %#x/'%.*s', X11 idx=%u fmt=%u atom='%.*s'/'%.*s', rc=%Rrc\n",
+                       cb, pCtx->vboxFormats, 128, pszFmts2 ? pszFmts2 : "<alloc error>", idxFmtX11, fmtX11,
+                       128, g_aFormats[idxFmtX11].pcszAtom, 128, pszAtomName ? pszAtomName : "unknown", rc));
         RTStrFree(pszFmts2);
         if (pszAtomName)
             XFree(pszAtomName);
@@ -2182,8 +2183,8 @@ static void shClX11ReportFormatsToX11Worker(void *pvUserData, void * /* interval
         int rc = ShClCacheSet(&pCtx->Cache, uFmtCache, pvCache, cbCache);
         if (RT_FAILURE(rc))
         {
-            LogRel(("Shared Clipboard: Caching format %#x before advertising it to X11 failed with %Rrc; "
-                    "suppressing the format\n", uFmtCache, rc));
+            LogRelMax(16, ("Shared Clipboard: Caching %RU32 bytes in format %#x before advertising VBox-to-X11 formats %#x failed with %Rrc; suppressing the format\n",
+                           cbCache, uFmtCache, fFormats, rc));
             fFormats &= ~uFmtCache;
         }
     }
@@ -2698,7 +2699,8 @@ SHCL_X11_DECL(void) clipConvertDataFromX11Worker(void *pClient, void *pvSrc, uns
                         LogFlowFunc(("UTF-8 Unicode dest (%u bytes):\n%s\n\n", cbDst, pvDst));
                     }
                     else
-                        LogRel(("Shared Clipboard: Converting UTF-16 Unicode failed with %Rrc\n", rc));
+                        LogRelMax(16, ("Shared Clipboard: Converting %u bytes of X11 UTF-16 HTML to VBox format %#x failed with %Rrc\n",
+                                       cbSrc, pReq->Read.uFmtVBox, rc));
                 }
                 else /* Raw data. */
                 {
@@ -2740,8 +2742,7 @@ SHCL_X11_DECL(void) clipConvertDataFromX11Worker(void *pClient, void *pvSrc, uns
         {
             const char *pszTarget = pReq->Read.idxFmtX11 < RT_ELEMENTS(g_aFormats)
                                   ? g_aFormats[pReq->Read.idxFmtX11].pcszAtom : "<invalid>";
-            LogRelMax(16, ("Shared Clipboard: Refusing to parse X11 clipboard target '%s' as a file list\n",
-                           pszTarget));
+            LogRel2(("Shared Clipboard: Refusing to parse X11 clipboard target '%s' as a file list\n", pszTarget));
             rc = VERR_NOT_SUPPORTED;
         }
     }
@@ -2752,8 +2753,8 @@ SHCL_X11_DECL(void) clipConvertDataFromX11Worker(void *pClient, void *pvSrc, uns
     LogFlowFunc(("pvDst=%p, cbDst=%RU32\n", pvDst, cbDst));
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Converting X11 format index %#x to VBox format %#x failed, rc=%Rrc\n",
-                pReq->Read.idxFmtX11, pReq->Read.uFmtVBox, rc));
+        LogRel2(("Shared Clipboard: Converting X11 format index %#x to VBox format %#x failed with %Rrc\n",
+                 pReq->Read.idxFmtX11, pReq->Read.uFmtVBox, rc));
 
     PSHCLEVENTPAYLOAD pPayload = NULL;
 
@@ -2790,8 +2791,11 @@ SHCL_X11_DECL(void) clipConvertDataFromX11Worker(void *pClient, void *pvSrc, uns
         pPayload = NULL;
     }
 
-    if (RT_FAILURE(rc))
-        LogRelMax(16, ("Shared Clipboard: Converting X11 clipboard data failed with %Rrc\n", rc));
+    if (rc == VERR_SHCLPB_NO_DATA)
+        LogRel2(("Shared Clipboard: X11 clipboard selection no longer contains data for VBox format %#x\n", pReq->Read.uFmtVBox));
+    else if (RT_FAILURE(rc))
+        LogRelMax(16, ("Shared Clipboard: Converting %u bytes from X11 format index %#x/'%s' to VBox format %#x failed with %Rrc\n",
+                       cbSrc, pReq->Read.idxFmtX11, g_aFormats[pReq->Read.idxFmtX11].pcszAtom, pReq->Read.uFmtVBox, rc));
     else
         LogRel2(("Shared Clipboard: Converting X11 clipboard data completed with %Rrc\n", rc));
 
@@ -2813,16 +2817,16 @@ SHCL_X11_DECL(void) clipConvertDataFromX11(Widget widget, XtPointer pClient,
 {
     RT_NOREF(widget);
 
+    PSHCLX11REQUEST pReq = (PSHCLX11REQUEST)pClient;
     int rc = VINF_SUCCESS;
 
     if (*atomType == XT_CONVERT_FAIL) /* Xt timeout */
     {
-        LogRel(("Shared Clipboard: Reading clipboard data from X11 timed out\n"));
+        LogRel2(("Shared Clipboard: Reading clipboard data from X11 timed out\n"));
         rc = VERR_TIMEOUT;
     }
     else
     {
-        PSHCLX11REQUEST pReq = (PSHCLX11REQUEST)pClient;
         if (pReq) /* Give some more clues, if available. */
         {
             AssertReturnVoid(pReq->enmType == SHCLX11EVENTTYPE_READ);
@@ -2856,7 +2860,11 @@ SHCL_X11_DECL(void) clipConvertDataFromX11(Widget widget, XtPointer pClient,
 
     if (RT_FAILURE(rc))
     {
-        LogRel(("Shared Clipboard: Reading clipboard data from X11 failed with %Rrc\n", rc));
+        if (pReq)
+            LogRelMax(16, ("Shared Clipboard: Reading X11 clipboard data in format index %#x for VBox format %#x failed with %Rrc\n",
+                           pReq->Read.idxFmtX11, pReq->Read.uFmtVBox, rc));
+        else
+            LogRelMax(16, ("Shared Clipboard: Reading X11 clipboard data failed with %Rrc\n", rc));
 
         /* Make sure to complete the request in any case by calling the conversion worker. */
         clipConvertDataFromX11Worker(pClient, NULL, 0);
@@ -2997,14 +3005,14 @@ static void ShClX11ReadDataFromX11Worker(void *pvUserData, void * /* interval */
      */
     if (RT_FAILURE(rc))
     {
+        LogRel2(("Shared Clipboard: Starting an X11 clipboard read for VBox format %#x (X11 format index %#x, %RU32 bytes max) failed with %Rrc\n",
+                 pReq->Read.uFmtVBox, pReq->Read.idxFmtX11, pReq->Read.cbMax, rc));
+
         int rc2 = ShClEventSignalEx(pReq->pEvent, rc, NULL /* Payload */);
         AssertRC(rc2);
 
         RTMemFree(pReq);
     }
-
-    if (RT_FAILURE(rc))
-        LogRelMax(16, ("Shared Clipboard: Reading X11 clipboard data failed with %Rrc\n", rc));
     else
         LogRel2(("Shared Clipboard: Reading X11 clipboard data completed with %Rrc\n", rc));
 

@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestR3LibClipboard.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxGuestR3LibClipboard.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxGuestR3Lib - Ring-3 Support Library for VirtualBox guest additions, Shared Clipboard.
  */
@@ -85,9 +85,9 @@ VBGLR3DECL(int) VbglR3ClipboardConnect(HGCMCLIENTID *pidClient)
     if (RT_FAILURE(rc))
     {
         if (rc == VERR_HGCM_SERVICE_NOT_FOUND)
-            LogRel(("Shared Clipboard: Unabled to connect, as host service was not found, skipping\n"));
+            LogRelMax(16, ("Shared Clipboard: Unable to connect because the host service was not found, skipping\n"));
         else
-            LogRel(("Shared Clipboard: Unabled to connect to host service, rc=%Rrc\n", rc));
+            LogRelMax(16, ("Shared Clipboard: Unable to connect to the host service, rc=%Rrc\n", rc));
     }
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -482,8 +482,16 @@ VBGLR3DECL(int) VbglR3ClipboardReadData(HGCMCLIENTID idClient, uint32_t fFormat,
 /**
  * Reads clipboard data from the host clipboard.
  *
- * @returns VBox status code.
- * @retval  VINF_BUFFER_OVERFLOW If there is more data available than the caller provided buffer space for.
+ * @returns                     VBox status code.
+ * @retval  VERR_INVALID_POINTER
+ *                              if @a pCtx or @a ppvData is invalid.
+ * @retval  VERR_INVALID_PARAMETER
+ *                              if @a pcbData is invalid.
+ * @retval  VERR_NO_MEMORY      if allocating or growing the return buffer fails.
+ * @retval  VERR_SHCLPB_NO_DATA if the host returned no clipboard data.
+ * @retval  VERR_MISMATCH       if the host changes the required data size between reads.
+ * @retval  VERR_BUFFER_OVERFLOW
+ *                              if the clipboard data grows again while retrying the read.
  *
  * @param   pCtx                The command context returned by VbglR3ClipboardConnectEx().
  * @param   uFormat             Clipboard format of clipboard data to be read.
@@ -546,13 +554,15 @@ VBGLR3DECL(int) VbglR3ClipboardReadDataEx(PVBGLR3SHCLCMDCTX pCtx,
     else
         rc = VERR_NO_MEMORY;
 
-    if (!cbRead)
+    if (RT_SUCCESS(rc) && !cbRead)
         rc = VERR_SHCLPB_NO_DATA;
 
     if (RT_FAILURE(rc))
     {
         RTMemFree(pvData);
-        LogRel(("Shared Clipboard: Reading clipboard data in format %#x from host failed with %Rrc\n", uFormat, rc));
+        if (   rc != VERR_SHCLPB_NO_DATA
+            && rc != VERR_ACCESS_DENIED)
+            LogRelMax(16, ("Shared Clipboard: Reading clipboard data in format %#x from host failed with %Rrc\n", uFormat, rc));
     }
 
     return rc;
@@ -786,9 +796,6 @@ static int vbglR3ClipboardTransferRootListHdrRead(PVBGLR3SHCLCMDCTX pCtx, PSHCLL
         if (RT_SUCCESS(rc) && !ShClTransferListHdrIsValid(pRootListHdr))
             rc = VERR_INVALID_PARAMETER;
     }
-    else
-        LogRel(("Shared Clipboard: Reading root list header failed: %Rrc\n", rc));
-
     LogFlowFuncLeaveRC(rc);
     return rc;
 }
@@ -866,8 +873,6 @@ static int vbglR3ClipboardTransferRootListEntryRead(PVBGLR3SHCLCMDCTX pCtx, uint
                 }
             }
         }
-        else
-            LogRel(("Shared Clipboard: Reading root list entry failed: %Rrc\n", rc));
     }
 
     RTMemFree(pvInfo);
@@ -905,7 +910,7 @@ VBGLR3DECL(int) VbglR3ClipboardTransferRootListRead(PVBGLR3SHCLCMDCTX pCtx, PSHC
 #ifdef DEBUG_andy
             AssertFailed();
 #endif
-            LogRel(("Shared Clipboard: Warning: Transfer %RU32 has no entries\n", ShClTransferGetID(pTransfer)));
+            LogRelMax(16, ("Shared Clipboard: Warning: Transfer %RU16/%RU64 has no entries\n", ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer)));
         }
 
         for (uint64_t i = 0; i < Hdr.cEntries; i++)
@@ -926,8 +931,9 @@ VBGLR3DECL(int) VbglR3ClipboardTransferRootListRead(PVBGLR3SHCLCMDCTX pCtx, PSHC
             }
         }
     }
-    else
-        LogRel(("Shared Clipboard: Reading root list for transfer %RU16 failed: %Rrc\n", ShClTransferGetID(pTransfer), rc));
+    if (RT_FAILURE(rc))
+        LogRelMax(16, ("Shared Clipboard: Reading root list for transfer %RU16/%RU64 in context %#RX64 failed with %Rrc\n",
+                       ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), pCtx->idContext, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -1017,6 +1023,10 @@ static int vbglR3ClipboardTransferSendStatusEx(PVBGLR3SHCLCMDCTX pCtx, uint64_t 
     LogFlowFunc(("%s\n", ShClTransferStatusToStr(uStatus)));
 
     int rc = VbglR3HGCMCall(&Msg.hdr, sizeof(Msg));
+
+    if (RT_FAILURE(rc) && rc != VERR_ACCESS_DENIED)
+        LogRelMax(16, ("Shared Clipboard: Sending transfer status %s (%Rrc) for context %#RX64 to host failed with %Rrc\n",
+                       ShClTransferStatusToStr(uStatus), rcTransfer, uCID, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -1577,11 +1587,12 @@ VBGLR3DECL(int) VbglR3ClipboardTransferListEntryRead(PVBGLR3SHCLCMDCTX pCtx, SHC
                 }
             }
         }
-        else
-            LogRel(("Shared Clipboard: Reading list entry failed: %Rrc\n", rc));
     }
 
     RTMemFree(pvInfo);
+
+    if (RT_FAILURE(rc))
+        LogRelMax(16, ("Shared Clipboard: Reading list entry from handle %RU64 in context %#RX64 failed with %Rrc\n", hList, pCtx->idContext, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -2122,7 +2133,7 @@ static int vbglR3ClipboardTransferCtxRetireAll(PSHCLTRANSFERCTX pTransferCtx)
             rc = ShClTransferDestroy(pTransfer);
         if (RT_FAILURE(rc))
         {
-            LogRel(("Shared Clipboard: Retiring stale transfer %RU16 failed with %Rrc\n", idTransfer, rc));
+            LogRelMax(16, ("Shared Clipboard: Retiring stale transfer %RU16 failed with %Rrc\n", idTransfer, rc));
             return rc;
         }
     }
@@ -2142,7 +2153,10 @@ static int vbglR3ClipboardTransferCtxEnsureSession(PSHCLTRANSFERCTX pTransferCtx
     SHCLSESSIONID const idSession = VBOX_SHCL_CONTEXTID_GET_SESSION(idContext);
     if (   idSession == 0
         || idSession == NIL_SHCLSESSIONID)
+    {
+        LogRelMax(16, ("Shared Clipboard: Rejecting transfer status with invalid service session in context %#RX64\n", idContext));
         return VERR_INVALID_CONTEXT;
+    }
 
     if (pTransferCtx->idSession == idSession)
         return VINF_SUCCESS;
@@ -2152,8 +2166,8 @@ static int vbglR3ClipboardTransferCtxEnsureSession(PSHCLTRANSFERCTX pTransferCtx
     uint32_t const cTransfers = ShClTransferCtxGetTotalTransfers(pTransferCtx);
     if (cTransfers)
     {
-        LogRel(("Shared Clipboard: Service session changed from %RU16 to %RU16; retiring %RU32 stale transfer(s)\n",
-                idOldSession, idSession, cTransfers));
+        LogRelMax(16, ("Shared Clipboard: Service session changed from %RU16 to %RU16; retiring %RU32 stale transfer(s)\n",
+                       idOldSession, idSession, cTransfers));
         rc = vbglR3ClipboardTransferCtxRetireAll(pTransferCtx);
     }
     else if (idOldSession != NIL_SHCLSESSIONID)
@@ -2175,8 +2189,8 @@ static int vbglR3ClipboardTransferCtxCheckSession(PSHCLTRANSFERCTX pTransferCtx,
         || idSession == NIL_SHCLSESSIONID
         || pTransferCtx->idSession != idSession)
     {
-        LogRel(("Shared Clipboard: Rejecting transfer command for stale service session %RU16 (active %RU16)\n",
-                idSession, pTransferCtx->idSession));
+        LogRelMax(16, ("Shared Clipboard: Rejecting transfer command for stale service session %RU16 (active %RU16), context %#RX64\n",
+                       idSession, pTransferCtx->idSession, idContext));
         return VERR_INVALID_CONTEXT;
     }
 
@@ -2213,9 +2227,9 @@ static int vbglR3ClipboardTransferCreate(PVBGLR3SHCLCMDCTX pCmdCtx, PSHCLTRANSFE
     }
 
     if (RT_SUCCESS(rc))
-        LogRel2(("Shared Clipboard: Transfer %RU32 successfully created\n", idTransfer));
+        LogRel2(("Shared Clipboard: Transfer %RU16 successfully created\n", idTransfer));
     else
-        LogRel(("Shared Clipboard: Error creating transfer %RU16, rc=%Rrc\n", idTransfer, rc));
+        LogRelMax2(16, ("Shared Clipboard: Error creating transfer %RU16, rc=%Rrc\n", idTransfer, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -2273,11 +2287,11 @@ static int vbglR3ClipboardTransferInit(PVBGLR3SHCLCMDCTX pCmdCtx, PSHCLTRANSFER 
 
     if (RT_SUCCESS(rc))
     {
-        LogRel2(("Shared Clipboard: Transfer %RU32 (%s) successfully initialized\n",
+        LogRel2(("Shared Clipboard: Transfer %RU16 (%s) successfully initialized\n",
                  idTransfer, enmDir == SHCLTRANSFERDIR_HOST_TO_GUEST ? "host -> guest" : "guest -> host"));
     }
     else
-        LogRel(("Shared Clipboard: Unable to initialize transfer %RU16, rc=%Rrc\n", idTransfer, rc));
+        LogRelMax2(16, ("Shared Clipboard: Unable to initialize transfer %RU16, rc=%Rrc\n", idTransfer, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -2308,10 +2322,10 @@ static int vbglR3ClipboardTransferDestroy(PVBGLR3SHCLCMDCTX pCmdCtx, PSHCLTRANSF
 
         if (RT_SUCCESS(rc))
         {
-            LogRel(("Shared Clipboard: Transfer %RU16 successfully uninitialized\n", idTransfer));
+            LogRel2(("Shared Clipboard: Transfer %RU16 successfully uninitialized\n", idTransfer));
         }
         else
-            LogRel(("Shared Clipboard: Unable to uninitialized transfer %RU16, rc=%Rrc\n", idTransfer, rc));
+            LogRelMax2(16, ("Shared Clipboard: Unable to uninitialize transfer %RU16, rc=%Rrc\n", idTransfer, rc));
     }
 
     LogFlowFuncLeaveRC(rc);
@@ -2362,10 +2376,10 @@ static int vbglR3ClipboardTransferStart(PVBGLR3SHCLCMDCTX pCmdCtx, PSHCLTRANSFER
         rc = ShClTransferStart(pTransfer);
         if (RT_SUCCESS(rc))
         {
-            LogRel(("Shared Clipboard: Transfer %RU32 successfully started\n", uTransferID));
+            LogRel2(("Shared Clipboard: Transfer %RU16 successfully started\n", uTransferID));
         }
         else
-            LogRel(("Shared Clipboard: Unable to start transfer %RU16, rc=%Rrc\n", uTransferID, rc));
+            LogRelMax2(16, ("Shared Clipboard: Unable to start transfer %RU16, rc=%Rrc\n", uTransferID, rc));
     }
     else
         rc = VERR_SHCLPB_TRANSFER_ID_NOT_FOUND;
@@ -2522,8 +2536,8 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
                         }
 
                         default:
-                            LogRel(("Shared Clipboard: Received unknown status %#x (%Rrc) for transfer %RU16\n",
-                                    transferReport.uStatus, pEvent->u.TransferStatus.Report.rc, pEvent->u.TransferStatus.uID));
+                            LogRelMax(16, ("Shared Clipboard: Received unknown status %#x (%Rrc) for transfer %RU16\n",
+                                           transferReport.uStatus, transferReport.rc, idTransfer));
                             rc = VERR_NOT_SUPPORTED;
                             break;
                     }
@@ -2815,8 +2829,11 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNextEx(uint32_t idMsg, uint32_t cParms,
             && RT_FAILURE(rc)
             && rc != VERR_INVALID_CONTEXT)
         {
-            LogRelMax(16, ("Shared Clipboard: Handling host message %s for context %#RX64 failed with %Rrc\n",
-                           ShClSvcHostMsgToStr(idMsg), pCmdCtx->idContext, rc));
+            if (   rc != VERR_SHCLPB_NO_DATA
+                && rc != VERR_CANCELLED
+                && rc != VERR_ACCESS_DENIED)
+                LogRelMax(16, ("Shared Clipboard: Handling host message %RU32 (%s) for context %#RX64 failed with %Rrc\n",
+                               idMsg, ShClSvcHostMsgToStr(idMsg), pCmdCtx->idContext, rc));
 
             /* Report transfer-specific error back to the host. */
             int rc2 = vbglR3ClipboardTransferSendStatusEx(pCmdCtx, pCmdCtx->idContext, SHCLTRANSFERSTATUS_ERROR, rc);
@@ -2918,6 +2935,11 @@ VBGLR3DECL(int) VbglR3ClipboardEventGetNext(uint32_t idMsg, uint32_t cParms, PVB
         }
         else
         {
+            if (   rc != VERR_SHCLPB_NO_DATA
+                && rc != VERR_CANCELLED
+                && rc != VERR_ACCESS_DENIED)
+                LogRelMax(16, ("Shared Clipboard: Handling host message %RU32 (%s) for context %#RX64 failed with %Rrc\n", idMsg, ShClSvcHostMsgToStr(idMsg), pCtx->idContext, rc));
+
             /* Report error back to the host. */
             int rc2 = VbglR3ClipboardWriteError(pCtx->idClient, rc);
             AssertRC(rc2);
@@ -3010,6 +3032,9 @@ VBGLR3DECL(int) VbglR3ClipboardReportFormats(HGCMCLIENTID idClient, uint32_t fFo
 
     int rc = VbglR3HGCMCall(&Msg.Hdr, sizeof(Msg));
 
+    if (RT_FAILURE(rc) && rc != VERR_ACCESS_DENIED)
+        LogRelMax(16, ("Shared Clipboard: Reporting guest clipboard formats %#x to host failed with %Rrc\n", fFormats, rc));
+
     LogFlowFuncLeaveRC(rc);
     return rc;
 }
@@ -3087,9 +3112,12 @@ VBGLR3DECL(int) VbglR3ClipboardWriteDataEx(PVBGLR3SHCLCMDCTX pCtx, SHCLFORMAT fF
         Msg.Parms.f32Format.SetUInt32(fFormat);
         Msg.Parms.pData.SetPtr(pvData, cbData);
 
-        LogFlowFunc(("CID=%RU32\n", pCtx->idContext));
+        LogFlowFunc(("CID=%#RX64\n", pCtx->idContext));
 
         rc = VbglR3HGCMCall(&Msg.Hdr, sizeof(Msg));
+        if (RT_FAILURE(rc) && rc != VERR_ACCESS_DENIED)
+            LogRelMax(16, ("Shared Clipboard: Writing guest clipboard data to host failed: context=%#RX64, format=%#x, cbData=%RU32, rc=%Rrc\n",
+                           pCtx->idContext, fFormat, cbData, rc));
     }
 
     LogFlowFuncLeaveRC(rc);
@@ -3121,8 +3149,9 @@ VBGLR3DECL(int) VbglR3ClipboardWriteError(HGCMCLIENTID idClient, int rcErr)
     if (rc == VERR_NOT_SUPPORTED)
         rc = VINF_SUCCESS;
 
-    if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Reporting error %Rrc to the host failed with %Rrc\n", rcErr, rc));
+    if (   RT_FAILURE(rc)
+        && rc != VERR_ACCESS_DENIED)
+        LogRelMax(16, ("Shared Clipboard: Reporting error %Rrc to the host failed with %Rrc\n", rcErr, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;

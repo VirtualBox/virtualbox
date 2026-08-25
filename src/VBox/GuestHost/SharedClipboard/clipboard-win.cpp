@@ -1,4 +1,4 @@
-/* $Id: clipboard-win.cpp 115121 2026-08-25 13:13:11Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-win.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Windows-specific functions for clipboard handling.
  */
@@ -100,7 +100,8 @@ int ShClWinOpen(HWND hWnd)
     {
         const DWORD dwLastErr = GetLastError();
         rc = RTErrConvertFromWin32(dwLastErr);
-        LogRel(("Shared Clipboard: Failed to open clipboard, rc=%Rrc (0x%x)\n", rc, dwLastErr));
+        LogRel2(("Shared Clipboard: Opening the Windows clipboard for window %p failed with %Rrc (Win32 error %#x)\n",
+                 hWnd, rc, dwLastErr));
     }
 
     return rc;
@@ -483,14 +484,14 @@ SHCLFORMAT ShClWinClipboardFormatToVBox(UINT uFormat)
                     else if (   (RTUtf16Cmp(szFormatName, RT_LSTR("FileGroupDescriptor"))  == 0)
                              || (RTUtf16Cmp(szFormatName, RT_LSTR("FileGroupDescriptorW")) == 0)
                              || (RTUtf16Cmp(szFormatName, RT_LSTR("FileContents"))         == 0))
-                        LogRelMax(16, ("Shared Clipboard: Windows virtual-file clipboard format '%ls' is not yet supported "
-                                       "for file transfers from the local Windows clipboard\n", szFormatName));
+                        LogRelMax(16, ("Shared Clipboard: Windows virtual-file clipboard format '%.*ls' is not yet supported for file transfers from the local Windows clipboard\n",
+                                       128, szFormatName));
 # else
                     else if (   (RTStrCmp(szFormatName, CFSTR_FILEDESCRIPTORA) == 0)
                              || (RTStrCmp(szFormatName, "FileGroupDescriptorW") == 0)
                              || (RTStrCmp(szFormatName, CFSTR_FILECONTENTS)    == 0))
-                        LogRelMax(16, ("Shared Clipboard: Windows virtual-file clipboard format '%s' is not yet supported "
-                                       "for file transfers from the local Windows clipboard\n", szFormatName));
+                        LogRelMax(16, ("Shared Clipboard: Windows virtual-file clipboard format '%.*s' is not yet supported for file transfers from the local Windows clipboard\n",
+                                       128, szFormatName));
 # endif
 #endif
                 }
@@ -617,7 +618,8 @@ int ShClWinConvertCFHTMLToMIME(const char *pszSource, const uint32_t cch, char *
                     }
                     else
                     {
-                        LogRel(("Shared Clipboard: Unknown CF_HTML format, expected EndFragment, rc=%Rrc\n", rc));
+                        LogRel2(("Shared Clipboard: Copying CF_HTML fragment at offsets %#x-%#x from a %#x-byte source failed with %Rrc\n",
+                                 offStart, offEnd, cch, rc));
                         RTMemFree(pszResult);
                     }
                 }
@@ -627,24 +629,25 @@ int ShClWinConvertCFHTMLToMIME(const char *pszSource, const uint32_t cch, char *
             }
             else
             {
-                LogRel(("Shared Clipboard: Error: CF_HTML out of bounds - offStart=%#x, offEnd=%#x, cch=%#x\n", offStart, offEnd, cch));
+                LogRel2(("Shared Clipboard: CF_HTML fragment is out of bounds: offStart=%#x, offEnd=%#x, cch=%#x\n", offStart, offEnd, cch));
                 rc = VERR_INVALID_PARAMETER;
             }
         }
         else
         {
-            LogRel(("Shared Clipboard: Error: Unknown CF_HTML format, expected EndFragment, rc=%Rrc\n", rc));
+            LogRel2(("Shared Clipboard: CF_HTML header has no valid EndFragment value, rc=%Rrc\n", rc));
             rc = VERR_INVALID_PARAMETER;
         }
     }
     else
     {
-        LogRel(("Shared Clipboard: Error: Unknown CF_HTML format, expected StartFragment, rc=%Rrc\n", rc));
+        LogRel2(("Shared Clipboard: CF_HTML header has no valid StartFragment value, rc=%Rrc\n", rc));
         rc = VERR_INVALID_PARAMETER;
     }
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: HTML to MIME conversion failed with %Rrc\n", rc));
+        LogRel2(("Shared Clipboard: Converting %#x bytes of Windows CF_HTML data to VBox MIME HTML failed with %Rrc\n",
+                 cch, rc));
 
     return rc;
 }
@@ -692,7 +695,7 @@ int ShClWinConvertMIMEToCFHTML(const char *pszSource, size_t cb, char **ppszOutp
     { /* likely */ }
     else
     {
-        LogRelMax(16, ("Shared Clipboard: Invalid source fragment for HTML MIME data, rc=%Rrc\n", rc));
+        LogRel2(("Shared Clipboard: Invalid source fragment for HTML MIME data, rc=%Rrc\n", rc));
         return rc;
     }
     size_t const cchFragment = strlen(pszSource); /* Unfortunately the validator doesn't return the length. */
@@ -1009,8 +1012,9 @@ static int shClWinAnnounceFormats(PSHCLWINCTX pWinCtx, SHCLFORMATS fFormats)
     }
     else if (RT_SUCCESS(rc) && fFormatsLeft != 0)
     {
-        LogRel(("Shared Clipboard: Unable to announce unsupported/invalid formats: %#x (%#x)\n", fFormatsLeft, fFormats));
         rc = VERR_NOT_SUPPORTED;
+        LogRelMax(16, ("Shared Clipboard: Announcing requested VBox formats %#x to the Windows clipboard failed because formats %#x are unsupported or invalid, rc=%Rrc\n",
+                       fFormats, fFormatsLeft, rc));
     }
 
     LogFlowFuncLeaveRC(rc);
@@ -1194,7 +1198,7 @@ int ShClWinTransferCreateAndSetDataObject(PSHCLWINCTX pWinCtx,
             {
                 rc = VERR_ACCESS_DENIED; /** @todo Fudge; fix this. */
                 pObjToRelease = pObj;
-                LogRel(("Shared Clipboard: Failed with %Rhrc when setting data object to clipboard\n", hr));
+                LogRelMax(16, ("Shared Clipboard: Publishing a Windows IDataObject with OleSetClipboard failed after 3 attempts with %Rhrc (%Rrc)\n", hr, rc));
             }
         }
 
@@ -1465,7 +1469,7 @@ int ShClWinTransferGetRootsFromClipboard(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTra
                 rc = RTErrConvertFromWin32(dwLastErr);
                 if (RT_SUCCESS(rc))
                     rc = VERR_INVALID_HANDLE;
-                LogRel(("Shared Clipboard: Unable to lock clipboard data, last error: %ld\n", dwLastErr));
+                LogRel2(("Shared Clipboard: Locking local Windows CF_HDROP transfer roots failed with Win32 error %ld\n", dwLastErr));
             }
         }
         else
@@ -1474,12 +1478,19 @@ int ShClWinTransferGetRootsFromClipboard(PSHCLWINCTX pWinCtx, PSHCLTRANSFER pTra
             rc = RTErrConvertFromWin32(dwLastErr);
             if (RT_SUCCESS(rc))
                 rc = VERR_NOT_FOUND;
-            LogRel(("Shared Clipboard: Unable to retrieve clipboard data from clipboard (CF_HDROP), last error: %ld\n",
-                    dwLastErr));
+            LogRel2(("Shared Clipboard: Retrieving local Windows CF_HDROP transfer roots failed with Win32 error %ld\n", dwLastErr));
         }
 
         ShClWinClose();
     }
+
+    if (rc == VERR_NOT_FOUND)
+        LogRel2(("Shared Clipboard: Local Windows CF_HDROP roots for transfer session=%RU16 id=%RU16 generation=%RU64 are no longer available\n",
+                 ShClTransferGetSessionId(pTransfer), ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer)));
+    else if (RT_FAILURE(rc))
+        LogRelMax(16, ("Shared Clipboard: Reading local Windows CF_HDROP roots for transfer session=%RU16 id=%RU16 generation=%RU64 failed with %Rrc\n",
+                       ShClTransferGetSessionId(pTransfer), ShClTransferGetID(pTransfer),
+                       ShClTransferGetGeneration(pTransfer), rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;

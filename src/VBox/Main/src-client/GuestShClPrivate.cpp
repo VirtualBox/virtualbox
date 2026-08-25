@@ -1,4 +1,4 @@
-/* $Id: GuestShClPrivate.cpp 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClPrivate.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Private Shared Clipboard code.
  */
@@ -785,9 +785,9 @@ int GuestShCl::ReportError(const char *pcszId, int vrc, const char *pcszMsgFmt, 
     va_end(va);
 
     if (pcszId)
-        LogRel(("Shared Clipboard (%s): %s (%Rrc)\n", pcszId, strMsg.c_str(), vrc));
+        LogRel2(("Shared Clipboard (%.*s): %.*s (%Rrc)\n", 64, pcszId, 256, strMsg.c_str(), vrc));
     else
-        LogRel(("Shared Clipboard: %s (%Rrc)\n", strMsg.c_str(), vrc));
+        LogRel2(("Shared Clipboard: %.*s (%Rrc)\n", 256, strMsg.c_str(), vrc));
 
     m_pConsole->i_onClipboardError(pcszId, strMsg.c_str(), vrc);
 

@@ -1,4 +1,4 @@
-/* $Id: clipboard-x11.cpp 115110 2026-08-25 09:25:30Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-x11.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Additions - X11 Shared Clipboard implementation.
  */
@@ -122,8 +122,8 @@ static void vbclX11TransferPublishedCancel(PSHCLCONTEXT pCtx)
             int rc = VbglR3ClipboardTransferSendStatus(&pCtx->CmdCtx, pTransfer,
                                                        SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
             if (RT_FAILURE(rc))
-                LogRel(("Shared Clipboard: Canceling superseded transfer %RU16/%RU64 failed with %Rrc\n",
-                        ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rc));
+                LogRelMax2(16, ("Shared Clipboard: Canceling superseded transfer %RU16/%RU64 failed with %Rrc\n",
+                                ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rc));
         }
     }
     else
@@ -164,7 +164,7 @@ static int vbclX11TransferStateStart(PSHCLCONTEXT pCtx)
     {
         pX11TransferState->fPreparing = false;
         vbclX11TransferStateResetKey(pX11TransferState);
-        LogRel(("Shared Clipboard: Starting asynchronous X11 transfer preparation failed with %Rrc\n", rc));
+        LogRel2(("Shared Clipboard: Starting asynchronous X11 transfer preparation failed with %Rrc\n", rc));
     }
     else
         LogRel2(("Shared Clipboard: Preparing X11 URI list for clipboard offer generation %RU64\n",
@@ -226,8 +226,16 @@ static int vbclX11TransferStateComplete(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransf
     if (!fPublished)
     {
         if (RT_FAILURE(rcPreparation))
-            LogRel(("Shared Clipboard: Preparing X11 URI list for transfer %RU16/%RU64 failed with %Rrc\n",
-                    ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rcPreparation));
+        {
+            if (   rcPreparation == VERR_SHCLPB_NO_DATA
+                || rcPreparation == VERR_CANCELLED
+                || rcPreparation == VERR_ACCESS_DENIED)
+                LogRel2(("Shared Clipboard: Preparing X11 URI list for transfer %RU16/%RU64 ended with %Rrc\n",
+                         ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rcPreparation));
+            else
+                LogRelMax(16, ("Shared Clipboard: Preparing X11 URI list for transfer %RU16/%RU64 failed with %Rrc\n",
+                               ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rcPreparation));
+        }
         else
             LogRel2(("Shared Clipboard: Discarding stale X11 URI list for transfer %RU16/%RU64\n",
                      ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer)));
@@ -239,8 +247,8 @@ static int vbclX11TransferStateComplete(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransf
             int rc2 = VbglR3ClipboardTransferSendStatus(&pCtx->CmdCtx, pTransfer,
                                                         SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
             if (RT_FAILURE(rc2))
-                LogRel(("Shared Clipboard: Canceling unused transfer %RU16/%RU64 failed with %Rrc\n",
-                        ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rc2));
+                LogRelMax2(16, ("Shared Clipboard: Canceling unused transfer %RU16/%RU64 failed with %Rrc\n",
+                                ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rc2));
         }
     }
 
@@ -248,8 +256,12 @@ static int vbclX11TransferStateComplete(PSHCLCONTEXT pCtx, PSHCLTRANSFER pTransf
         && (pX11TransferState->fFormats & VBOX_SHCL_FMT_URI_LIST))
     {
         int rc2 = vbclX11TransferStateStart(pCtx);
-        if (RT_FAILURE(rc2))
-            LogRel(("Shared Clipboard: Restarting X11 transfer preparation failed with %Rrc\n", rc2));
+        if (   rc2 == VERR_SHCLPB_NO_DATA
+            || rc2 == VERR_CANCELLED
+            || rc2 == VERR_ACCESS_DENIED)
+            LogRel2(("Shared Clipboard: Restarting X11 transfer preparation ended with %Rrc\n", rc2));
+        else if (RT_FAILURE(rc2))
+            LogRelMax(16, ("Shared Clipboard: Restarting X11 transfer preparation failed with %Rrc\n", rc2));
     }
 
     return rcPreparation;
@@ -355,8 +367,8 @@ static DECLCALLBACK(int) vbclX11OnTransferInitializedCallback(PSHCLTRANSFERCALLB
             int rc2 = VbglR3ClipboardTransferSendStatus(&pCtx->CmdCtx, pTransfer,
                                                         SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
             if (RT_FAILURE(rc2))
-                LogRel(("Shared Clipboard: Canceling unbound transfer %RU16/%RU64 failed with %Rrc\n",
-                        ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rc2));
+                LogRelMax2(16, ("Shared Clipboard: Canceling unbound transfer %RU16/%RU64 failed with %Rrc\n",
+                                ShClTransferGetID(pTransfer), ShClTransferGetGeneration(pTransfer), rc2));
             return VINF_SUCCESS;
         }
 
@@ -560,9 +572,6 @@ static DECLCALLBACK(int) vbclX11OnRequestDataFromSourceCallback(PSHCLCONTEXT pCt
         rc = vbclX11ReadDataWorker(pCtx, uFmt, ppv, pcb, pvUser);
     }
 
-    if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Requesting data in format %#x from host failed with %Rrc\n", uFmt, rc));
-
     LogFlowFuncLeaveRC(rc);
     return rc;
 }
@@ -708,6 +717,10 @@ int VBClX11ClipboardMain(void)
             rc = VbglR3ClipboardEventGetNext(idMsg, cParms, &pCtx->CmdCtx, pEvent);
 #endif
         }
+        else if (   rc != VERR_TRY_AGAIN
+                 && rc != VERR_INTERRUPTED
+                 && !fShutdown)
+            LogRelMax(16, ("Shared Clipboard: Waiting for a host message failed with %Rrc\n", rc));
 
         if (RT_FAILURE(rc))
         {
@@ -737,6 +750,12 @@ int VBClX11ClipboardMain(void)
 #else
                     rc = ShClX11ReportFormatsToX11Async(&g_Ctx.X11, pEvent->u.fReportedFormats);
 #endif
+                    if (   rc == VERR_SHCLPB_NO_DATA
+                        || rc == VERR_CANCELLED
+                        || rc == VERR_ACCESS_DENIED)
+                        LogRel2(("Shared Clipboard: Announcing host clipboard formats %#x to X11 ended with %Rrc\n", pEvent->u.fReportedFormats, rc));
+                    else if (RT_FAILURE(rc))
+                        LogRelMax(16, ("Shared Clipboard: Announcing host clipboard formats %#x to X11 failed with %Rrc\n", pEvent->u.fReportedFormats, rc));
                     break;
                 }
 
@@ -751,6 +770,9 @@ int VBClX11ClipboardMain(void)
                         rc = VbglR3ClipboardWriteDataEx(&pCtx->CmdCtx, pEvent->u.fReadData, pvData, cbData);
                         RTMemFree(pvData);
                     }
+                    else if (   rc != VERR_SHCLPB_NO_DATA
+                             && rc != VERR_ACCESS_DENIED)
+                        LogRelMax(16, ("Shared Clipboard: Reading X11 clipboard data in format %#x failed with %Rrc\n", pEvent->u.fReadData, rc));
 
                     if (RT_FAILURE(rc))
                         VbglR3ClipboardWriteDataEx(&pCtx->CmdCtx, pEvent->u.fReadData, NULL, 0);

@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -1168,8 +1168,10 @@ int ShClTransferObjOpen(PSHCLTRANSFER pTransfer, PSHCLOBJOPENCREATEPARMS pOpenCr
     }
 
     if (RT_FAILURE(rc))
-         LogRel(("Shared Clipboard: Opening object '%s' (flags %#x) failed with %Rrc\n",
-                 pOpenCreateParms->pszPath, pOpenCreateParms->fCreate, rc));
+        LogRelMax(16, ("Shared Clipboard: Opening object '%.*s' for transfer %RU16/%RU64 in session %RU16 (flags %#x) failed with %Rrc\n",
+                       128, pOpenCreateParms->pszPath, ShClTransferKeyGetTransferId(&pTransfer->State.Key),
+                       pTransfer->State.Key.uGeneration, ShClTransferKeyGetSessionId(&pTransfer->State.Key),
+                       pOpenCreateParms->fCreate, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -1197,7 +1199,9 @@ int ShClTransferObjClose(PSHCLTRANSFER pTransfer, SHCLOBJHANDLE hObj)
         ShClTransferProgressObjUnregister(pTransfer, hObj);
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Reading object 0x%x failed with %Rrc\n", hObj, rc));
+        LogRelMax(16, ("Shared Clipboard: Closing object %RU64 for transfer %RU16/%RU64 in session %RU16 failed with %Rrc\n",
+                       hObj, ShClTransferKeyGetTransferId(&pTransfer->State.Key), pTransfer->State.Key.uGeneration,
+                       ShClTransferKeyGetSessionId(&pTransfer->State.Key), rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -1232,7 +1236,9 @@ int ShClTransferObjRead(PSHCLTRANSFER pTransfer,
         rc = VERR_NOT_SUPPORTED;
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Reading object 0x%x failed with %Rrc\n", hObj, rc));
+        LogRelMax(16, ("Shared Clipboard: Reading %RU32 bytes from object %RU64 for transfer %RU16/%RU64 in session %RU16 (flags %#x) failed with %Rrc\n",
+                       cbBuf, hObj, ShClTransferKeyGetTransferId(&pTransfer->State.Key),
+                       pTransfer->State.Key.uGeneration, ShClTransferKeyGetSessionId(&pTransfer->State.Key), fFlags, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -1267,7 +1273,9 @@ int ShClTransferObjWrite(PSHCLTRANSFER pTransfer,
         rc = VERR_NOT_SUPPORTED;
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Writing object 0x%x failed with %Rrc\n", hObj, rc));
+        LogRelMax(16, ("Shared Clipboard: Writing %RU32 bytes to object %RU64 for transfer %RU16/%RU64 in session %RU16 (flags %#x) failed with %Rrc\n",
+                       cbBuf, hObj, ShClTransferKeyGetTransferId(&pTransfer->State.Key),
+                       pTransfer->State.Key.uGeneration, ShClTransferKeyGetSessionId(&pTransfer->State.Key), fFlags, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -1576,8 +1584,9 @@ static void shClTransferDestroyConsume(PSHCLTRANSFER pTransfer)
     shClTransferUnlock(pTransfer);
     if (fThreadActive)
     {
-        LogRel(("Shared Clipboard: Transfer worker did not stop within the normal teardown timeout (%Rrc); "
-                "continuing to wait safely\n", rc));
+        LogRelMax(16, ("Shared Clipboard: Transfer %RU16/%RU64 in session %RU16 did not stop within the normal teardown timeout (%Rrc); continuing to wait safely\n",
+                       ShClTransferKeyGetTransferId(&pTransfer->State.Key), pTransfer->State.Key.uGeneration,
+                       ShClTransferKeyGetSessionId(&pTransfer->State.Key), rc));
         rc = shClTransferThreadDestroy(pTransfer, RT_INDEFINITE_WAIT);
 
         shClTransferLock(pTransfer);
@@ -2197,8 +2206,11 @@ int ShClTransferListOpen(PSHCLTRANSFER pTransfer, PSHCLLISTOPENPARMS pOpenParms,
         rc = VERR_NOT_SUPPORTED;
 
     if (RT_FAILURE(rc))
-         LogRel(("Shared Clipboard: Opening list '%s' (fiter '%s', flags %#x) failed with %Rrc\n",
-                 pOpenParms->pszPath, pOpenParms->pszFilter, pOpenParms->fList, rc));
+        LogRelMax(16, ("Shared Clipboard: Opening list '%.*s' (filter '%.*s') for transfer %RU16/%RU64 in session %RU16 (flags %#x) failed with %Rrc\n",
+                       128, pOpenParms->pszPath ? pOpenParms->pszPath : "",
+                       128, pOpenParms->pszFilter ? pOpenParms->pszFilter : "",
+                       ShClTransferKeyGetTransferId(&pTransfer->State.Key), pTransfer->State.Key.uGeneration,
+                       ShClTransferKeyGetSessionId(&pTransfer->State.Key), pOpenParms->fList, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -2225,7 +2237,9 @@ int ShClTransferListClose(PSHCLTRANSFER pTransfer, SHCLLISTHANDLE hList)
         rc = VERR_NOT_SUPPORTED;
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Closing list 0x%x entry failed with %Rrc\n", hList, rc));
+        LogRelMax(16, ("Shared Clipboard: Closing list %RU64 for transfer %RU16/%RU64 in session %RU16 failed with %Rrc\n",
+                       hList, ShClTransferKeyGetTransferId(&pTransfer->State.Key), pTransfer->State.Key.uGeneration,
+                       ShClTransferKeyGetSessionId(&pTransfer->State.Key), rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -2258,7 +2272,9 @@ int ShClTransferListGetHeader(PSHCLTRANSFER pTransfer, SHCLLISTHANDLE hList,
         rc = VERR_INVALID_PARAMETER;
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Reading list header list 0x%x entry failed with %Rrc\n", hList, rc));
+        LogRelMax(16, ("Shared Clipboard: Reading header of list %RU64 for transfer %RU16/%RU64 in session %RU16 failed with %Rrc\n",
+                       hList, ShClTransferKeyGetTransferId(&pTransfer->State.Key), pTransfer->State.Key.uGeneration,
+                       ShClTransferKeyGetSessionId(&pTransfer->State.Key), rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -2305,8 +2321,11 @@ int ShClTransferListRead(PSHCLTRANSFER pTransfer, SHCLLISTHANDLE hList,
     else
         rc = VERR_NOT_SUPPORTED;
 
-    if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Reading list for list 0x%x entry failed with %Rrc\n", hList, rc));
+    if (   RT_FAILURE(rc)
+        && rc != VERR_NO_MORE_FILES)
+        LogRelMax(16, ("Shared Clipboard: Reading entry from list %RU64 for transfer %RU16/%RU64 in session %RU16 failed with %Rrc\n",
+                       hList, ShClTransferKeyGetTransferId(&pTransfer->State.Key), pTransfer->State.Key.uGeneration,
+                       ShClTransferKeyGetSessionId(&pTransfer->State.Key), rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -2334,7 +2353,9 @@ int ShClTransferListWrite(PSHCLTRANSFER pTransfer, SHCLLISTHANDLE hList,
         rc = VERR_NOT_SUPPORTED;
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Writing list entry to list 0x%x failed with %Rrc\n", hList, rc));
+        LogRelMax(16, ("Shared Clipboard: Writing entry to list %RU64 for transfer %RU16/%RU64 in session %RU16 failed with %Rrc\n",
+                       hList, ShClTransferKeyGetTransferId(&pTransfer->State.Key), pTransfer->State.Key.uGeneration,
+                       ShClTransferKeyGetSessionId(&pTransfer->State.Key), rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -2721,8 +2742,10 @@ int ShClTransferRootsSetFromStringListEx(PSHCLTRANSFER pTransfer, const char *ps
                         if (   !RTFS_IS_DIRECTORY(pFsObjInfo->Attr.fMode)
                             && !RTFS_IS_FILE(pFsObjInfo->Attr.fMode))
                         {
-                            LogRelMax(16, ("Shared Clipboard: Root path '%s' is not a regular file or directory (%#x)\n",
-                                           pszPathCur, pFsObjInfo->Attr.fMode));
+                            LogRelMax(16, ("Shared Clipboard: Root path '%.*s' for transfer %RU16/%RU64 in session %RU16 is not a regular file or directory (%#x)\n",
+                                           128, pszPathCur, ShClTransferKeyGetTransferId(&pTransfer->State.Key),
+                                           pTransfer->State.Key.uGeneration,
+                                           ShClTransferKeyGetSessionId(&pTransfer->State.Key), pFsObjInfo->Attr.fMode));
                             rc = VERR_NOT_SUPPORTED;
                         }
                     }
@@ -2731,7 +2754,7 @@ int ShClTransferRootsSetFromStringListEx(PSHCLTRANSFER pTransfer, const char *ps
                     {
                         if (!shClTransferPathIsBelowRootAbs(pszPathCur, pszPathRootAbs))
                         {
-                            LogRel(("Shared Clipboard: Path '%s' does not start with root '%s'\n", pszPathCur, pszPathRootAbs));
+                            LogRelMax(16, ("Shared Clipboard: Path '%.*s' does not start with transfer root '%.*s'\n", 128, pszPathCur, 128, pszPathRootAbs));
                             rc = VERR_PATH_DOES_NOT_START_WITH_ROOT;
                         }
                     }
@@ -2762,8 +2785,7 @@ int ShClTransferRootsSetFromStringListEx(PSHCLTRANSFER pTransfer, const char *ps
                         }
                         else
                         {
-                            LogRel(("Shared Clipboard: Unable to construct relative path for '%s' (root is '%s')\n",
-                                    pszPathCur, pszPathRootAbs));
+                            LogRelMax(16, ("Shared Clipboard: Unable to construct a relative path for '%.*s' under transfer root '%.*s'\n", 128, pszPathCur, 128, pszPathRootAbs));
                             rc = VERR_PATH_DOES_NOT_START_WITH_ROOT;
                         }
                     }
@@ -2797,7 +2819,9 @@ int ShClTransferRootsSetFromStringListEx(PSHCLTRANSFER pTransfer, const char *ps
     }
     else
     {
-        LogRel(("Shared Clipboard: Unable to set roots for transfer, rc=%Rrc\n", rc));
+        LogRelMax(16, ("Shared Clipboard: Setting roots for transfer %RU16/%RU64 in session %RU16 failed with %Rrc\n",
+                       ShClTransferKeyGetTransferId(&pTransfer->State.Key), pTransfer->State.Key.uGeneration,
+                       ShClTransferKeyGetSessionId(&pTransfer->State.Key), rc));
         ShClTransferListDestroy(pLstRoots);
         RTStrFree(pszPathRootAbs);
     }
@@ -3351,7 +3375,9 @@ static int shClTransferThreadDestroy(PSHCLTRANSFER pTransfer, RTMSINTERVAL uTime
         rc = rcThread; /* Return the thread rc to the caller. */
     }
     else
-        LogRel(("Shared Clipboard: Waiting for thread of transfer %RU16 failed with %Rrc\n", ShClTransferKeyGetTransferId(&pTransfer->State.Key), rc));
+        LogRelMax(16, ("Shared Clipboard: Waiting for worker of transfer %RU16/%RU64 in session %RU16 failed with %Rrc\n",
+                       ShClTransferKeyGetTransferId(&pTransfer->State.Key), pTransfer->State.Key.uGeneration,
+                       ShClTransferKeyGetSessionId(&pTransfer->State.Key), rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -4340,8 +4366,7 @@ int ShClTransferValidatePathEx(const char *pcszPath, size_t cbPath, bool fMustEx
                     if (   !RTFS_IS_DIRECTORY(objInfo.Attr.fMode)
                         && !RTFS_IS_FILE(objInfo.Attr.fMode))
                     {
-                        LogRelMax(16, ("Shared Clipboard: Path '%s' contains a symbolic link, junction or unsupported object type (%#x)\n",
-                                       pcszPath, objInfo.Attr.fMode));
+                        LogRelMax(16, ("Shared Clipboard: Path '%.*s' contains a symbolic link, junction or unsupported object type (%#x)\n", 128, pcszPath, objInfo.Attr.fMode));
                         rc = VERR_NOT_SUPPORTED;
                     }
                 }
@@ -4350,7 +4375,7 @@ int ShClTransferValidatePathEx(const char *pcszPath, size_t cbPath, bool fMustEx
     }
 
     if (RT_FAILURE(rc))
-        LogRelMax(16, ("Shared Clipboard: Validating path '%s' failed: %Rrc\n", pcszPath, rc));
+        LogRelMax(16, ("Shared Clipboard: Validating path '%.*s' failed with %Rrc\n", 128, pcszPath, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -4434,7 +4459,9 @@ int ShClTransferResolvePathAbs(PSHCLTRANSFER pTransfer, const char *pszPath, uin
     }
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Resolving absolute path for '%s' failed, rc=%Rrc\n", pszPath, rc));
+        LogRelMax(16, ("Shared Clipboard: Resolving absolute path for '%.*s' in transfer %RU16/%RU64 session %RU16 failed with %Rrc\n",
+                       128, pszPath, ShClTransferKeyGetTransferId(&pTransfer->State.Key),
+                       pTransfer->State.Key.uGeneration, ShClTransferKeyGetSessionId(&pTransfer->State.Key), rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -5485,8 +5512,11 @@ int ShClSvcTransferCreate(PSHCLCLIENT pClient, SHCLTRANSFERDIR enmDir, SHCLSOURC
         }
     }
 
-    if (RT_FAILURE(rc))
-       LogRel(("Shared Clipboard: Creating transfer failed with %Rrc\n", rc));
+    if (   RT_FAILURE(rc)
+        && rc != VERR_ACCESS_DENIED)
+        LogRelMax(16, ("Shared Clipboard: Creating %s transfer for client %RU32 failed with %Rrc\n",
+                       enmDir == SHCLTRANSFERDIR_GUEST_TO_HOST ? "guest-to-host" : "host-to-guest",
+                       pClient->State.uClientID, rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -5815,7 +5845,9 @@ int ShClTransferInit(PSHCLTRANSFER pTransfer)
         rc = pTransfer->Callbacks.pfnOnInitialized(&pTransfer->CallbackCtx);
 
     if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Initialization of transfer failed with %Rrc\n", rc));
+        LogRel2(("Shared Clipboard: Initializing transfer %RU16/%RU64 in session %RU16 failed with %Rrc\n",
+                 ShClTransferKeyGetTransferId(&pTransfer->State.Key), pTransfer->State.Key.uGeneration,
+                 ShClTransferKeyGetSessionId(&pTransfer->State.Key), rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -5867,8 +5899,11 @@ int ShClSvcTransferInit(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer)
             rc = rc2;
     }
 
-    if (RT_FAILURE(rc))
-        LogRel(("Shared Clipboard: Initializing transfer failed with %Rrc\n", rc));
+    if (   RT_FAILURE(rc)
+        && rc != VERR_ACCESS_DENIED)
+        LogRelMax(16, ("Shared Clipboard: Initializing transfer %RU16/%RU64 in session %RU16 for client %RU32 failed with %Rrc\n",
+                       ShClTransferKeyGetTransferId(&pTransfer->State.Key), pTransfer->State.Key.uGeneration,
+                       ShClTransferKeyGetSessionId(&pTransfer->State.Key), pClient->State.uClientID, rc));
 
     ShClSvcClientUnlock(pClient);
 
