@@ -1,4 +1,4 @@
-/* $Id: VMXAllTemplate.cpp.h 115114 2026-08-25 10:12:12Z alexander.eichner@oracle.com $ */
+/* $Id: VMXAllTemplate.cpp.h 115117 2026-08-25 10:36:44Z alexander.eichner@oracle.com $ */
 /** @file
  * HM VMX (Intel VT-x) - Code template for our own hypervisor and the NEM darwin backend using Apple's Hypervisor.framework.
  */
@@ -8216,9 +8216,11 @@ HMVMX_EXIT_DECL vmxHCExitMwait(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransient)
     {
         ASMAtomicUoOrU64(&VCPU_2_VMXSTATE(pVCpu).fCtxChanged, HM_CHANGED_GUEST_RIP | HM_CHANGED_GUEST_RFLAGS);
 
+#ifndef IN_NEM_DARWIN
         /* Make sure all delivered interrupts re acknowledged and we don't have the APIC FF flag pending. */
         if (pVCpu->hmr0.s.vmx.enmApicvLvl >= kVmxApicvLvl_IntrDelivery)
             PDMApicUpdatePendingInterrupts(pVCpu);
+#endif
 
         if (EMMonitorWaitShouldContinue(pVCpu, &pVCpu->cpum.GstCtx))
             rcStrict = VINF_SUCCESS;
@@ -8249,9 +8251,11 @@ HMVMX_EXIT_DECL vmxHCExitHlt(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransient)
     int rc = vmxHCAdvanceGuestRip(pVCpu, pVmxTransient);
     AssertRCReturn(rc, rc);
 
+#ifndef IN_NEM_DARWIN
     /* Make sure all delivered interrupts are acknowledged and we don't have the APIC FF flag pending. */
     if (pVCpu->hmr0.s.vmx.enmApicvLvl >= kVmxApicvLvl_IntrDelivery)
         PDMApicUpdatePendingInterrupts(pVCpu);
+#endif
 
     HMVMX_CPUMCTX_ASSERT(pVCpu, CPUMCTX_EXTRN_RFLAGS);            /* Advancing the RIP above should've imported eflags. */
     if (EMShouldContinueAfterHalt(pVCpu, &pVCpu->cpum.GstCtx))    /* Requires eflags. */
