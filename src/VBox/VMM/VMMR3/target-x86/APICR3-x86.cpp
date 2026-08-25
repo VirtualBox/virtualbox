@@ -1,4 +1,4 @@
-/* $Id: APICR3-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
+/* $Id: APICR3-x86.cpp 115111 2026-08-25 09:46:24Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller.
  */
@@ -1060,6 +1060,12 @@ DECLCALLBACK(int) apicR3Construct(PPDMDEVINS pDevIns, int iInstance, PCFGMNODE p
     /*
      * Statistics.
      */
+
+#ifdef VBOX_WITH_STATISTICS
+    PDMDevHlpSTAMRegisterF(pDevIns, &pApic->StatRteChanged, STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, STAMUNIT_OCCURENCES,
+                           "Number of I/O-APIC RTE change", "RteChanges");
+#endif
+
 #define APIC_REG_COUNTER(a_pvReg, a_pszNameFmt, a_pszDesc) \
         PDMDevHlpSTAMRegisterF(pDevIns, a_pvReg, STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS, \
                                STAMUNIT_OCCURENCES, a_pszDesc, a_pszNameFmt, idCpu)
@@ -1107,6 +1113,7 @@ DECLCALLBACK(int) apicR3Construct(PPDMDEVINS pDevIns, int iInstance, PCFGMNODE p
         APIC_REG_COUNTER(&pApicCpu->StatDfrWrite,      "%u/DfrWrite",       "Number of times the DFR is written.");
         APIC_REG_COUNTER(&pApicCpu->StatLdrWrite,      "%u/LdrWrite",       "Number of times the LDR is written.");
         APIC_REG_COUNTER(&pApicCpu->StatLvtTimerWrite, "%u/LvtTimerWrite",  "Number of times the LVT timer is written.");
+        APIC_REG_COUNTER(&pApicCpu->StatEoiExitBitmapQuery, "%u/EoiExitBitmapQuery",  "Number of times the EOI exit bitmap is queried.");
 
         APIC_PROF_COUNTER(&pApicCpu->StatUpdatePendingIntrs,
                                                        "/PROF/CPU%u/APIC/UpdatePendingInterrupts", "Profiling of apicUpdatePendingInterrupts");

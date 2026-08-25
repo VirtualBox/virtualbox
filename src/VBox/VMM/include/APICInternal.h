@@ -1,4 +1,4 @@
-/* $Id: APICInternal.h 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
+/* $Id: APICInternal.h 115111 2026-08-25 09:46:24Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller, Internal header.
  */
@@ -41,6 +41,36 @@
  * @internal
  * @{
  */
+
+/** The number of IO-APIC pins generating interrupts. */
+#define IOAPIC_NUM_PINS 24
+
+/**
+ * I/O APIC interrupt config conveyed from the I/O APIC to the
+ * APIC on changes.
+ */
+typedef union IOAPICINTRCFG
+{
+    /** The raw 64bit view. */
+    uint64_t                u64;
+    /** The structured view. */
+    struct
+    {
+        /** The interrupt vector. */
+        uint8_t             u8Vector;
+        /** The destination (mask or ID). */
+        uint8_t             u8Dest;
+        /** The destination mode. */
+        uint8_t             u8DestMode;
+        /** Delivery mode. */
+        uint8_t             u8DeliveryMode;
+        /** Trigger mode. */
+        uint8_t             u8TriggerMode;
+        /** Padding. */
+        uint8_t             abPadding0[3];
+    } u;
+} IOAPICINTRCFG;
+AssertCompileSize(IOAPICINTRCFG, sizeof(uint64_t));
 
 #ifdef VBOX_INCLUDED_vmm_pdmapic_h
 /** The VirtualBox APIC backend table. */
@@ -217,6 +247,19 @@ typedef struct APIC
     bool                        afPadding[3];
     /** The max supported APIC mode from CFGM.  */
     PDMAPICMODE                 enmMaxMode;
+    /** The current IO-APIC configuration for each pin.
+     * Whenever it changes we need to inform the vCPUs on VMX to
+     * update their EOI exit bitmap. */
+    volatile IOAPICINTRCFG      aIoApicCfg[IOAPIC_NUM_PINS];
+    /** @} */
+
+
+    /** @name APIC statistics.
+     * @{ */
+#ifdef VBOX_WITH_STATISTICS
+    /** Number of RTE change notifications. */
+    STAMCOUNTER                 StatRteChanged;
+#endif
     /** @} */
 } APIC;
 /** Pointer to APIC VM instance data. */
@@ -364,6 +407,8 @@ typedef struct APICCPU
     STAMCOUNTER                 StatIdMsrRead;
     /** Number of times the LVT timer is written. */
     STAMCOUNTER                 StatLvtTimerWrite;
+    /** Number of EOI bitmap queries. */
+    STAMCOUNTER                 StatEoiExitBitmapQuery;
 #endif
     /** Number of apicPostInterrupt() calls. */
     STAMCOUNTER                 StatPostIntrCnt;

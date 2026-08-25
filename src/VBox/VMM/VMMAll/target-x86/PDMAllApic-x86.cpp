@@ -1,4 +1,4 @@
-/* $Id: PDMAllApic-x86.cpp 115073 2026-08-19 10:00:47Z alexander.eichner@oracle.com $ */
+/* $Id: PDMAllApic-x86.cpp 115111 2026-08-25 09:46:24Z alexander.eichner@oracle.com $ */
 /** @file
  * PDM - APIC (Advanced Programmable Interrupt Controller) Interface.
  */
@@ -498,6 +498,85 @@ VMM_INT_DECL(VBOXSTRICTRC) PDMApicSetEoiFast(PVMCPUCC pVCpu, uint8_t uVector)
 
 
 /**
+ * Checks whether LINT0 is ExtINT style and not masked.
+ *
+ * @returns Flag returning whether LINT0 is configured as ExtINT and not masked.
+ * @param   pVCpu       The cross context virtual CPU structure.
+ */
+VMM_INT_DECL(bool) PDMApicIsLvt0ExtInt(PVMCPUCC pVCpu)
+{
+    AssertReturn(PDMCPU_TO_APICBACKEND(pVCpu)->pfnIsLvt0ExtInt, VERR_INVALID_POINTER);
+    return PDMCPU_TO_APICBACKEND(pVCpu)->pfnIsLvt0ExtInt(pVCpu);
+}
+
+
+/**
+ * Returns the highest priority interrupt in the ISR.
+ *
+ * @returns Highest interrupt vector pending in the ISR, 0 if none.
+ * @param   pVCpu       The cross context virtual CPU structure.
+ */
+VMM_INT_DECL(uint8_t) PDMApicGetHighestIsr(PVMCPUCC pVCpu)
+{
+    AssertReturn(PDMCPU_TO_APICBACKEND(pVCpu)->pfnGetHighestIsr, VERR_INVALID_POINTER);
+    return PDMCPU_TO_APICBACKEND(pVCpu)->pfnGetHighestIsr(pVCpu);
+}
+
+
+/**
+ * Returns the highest priority interrupt in the IRR.
+ *
+ * @returns Highest interrupt vector pending in the IRR, 0 if none.
+ * @param   pVCpu       The cross context virtual CPU structure.
+ */
+VMM_INT_DECL(uint8_t) PDMApicGetHighestIrr(PVMCPUCC pVCpu)
+{
+    AssertReturn(PDMCPU_TO_APICBACKEND(pVCpu)->pfnGetHighestIrr, VERR_INVALID_POINTER);
+    return PDMCPU_TO_APICBACKEND(pVCpu)->pfnGetHighestIrr(pVCpu);
+}
+
+
+/**
+ * Calculates and returns the EOI exit bitmap.
+ *
+ * @param   pVCpu          The cross context virtual CPU structure to query the bitmap for.
+ * @param   pau64EoiBitmap Where to store the EOI exit bitmap.
+ */
+VMM_INT_DECL(void) PDMApicQueryEoiExitBitmap(PVMCPUCC pVCpu, uint64_t *pau64EoiBitmap)
+{
+    AssertReturnVoid(PDMCPU_TO_APICBACKEND(pVCpu)->pfnQueryEoiExitBitmap);
+    return PDMCPU_TO_APICBACKEND(pVCpu)->pfnQueryEoiExitBitmap(pVCpu, pau64EoiBitmap);
+}
+
+
+/**
+ * Notifies the APIC about a change in the redirection table entry of the I/O APIC for the given interrupt pin.
+ *
+ * @returns VBox status code.
+ * @retval  VINF_APIC_R3_UPDATE_STATE if called from R0 and this function needs to be called again in R3 to
+ *          successfully update the state.
+ * @param   pVM             The cross context VM structure.
+ * @param   u8IoApicPin     The pin for which the RTE changed.
+ * @param   uDest           The destination mask.
+ * @param   uDestMode       The destination mode.
+ * @param   uDeliveryMode   The delivery mode.
+ * @param   uVector         The interrupt vector.
+ * @param   uPolarity       The interrupt line polarity.
+ * @param   uTriggerMode    The trigger mode.
+ *
+ * @note This is required with Intel VT-x and virtual interrupt delivery to properly calculate the EOI exit bitmap.
+ *       This will also be used by the NEM/KVM backend and the split chip interrupt controller enabled.
+ */
+VMM_INT_DECL(int) PDMApicIoApicRteChanged(PVMCC pVM, uint8_t u8IoApicPin, uint8_t uDest, uint8_t uDestMode,
+                                          uint8_t uDeliveryMode, uint8_t uVector, uint8_t uTriggerMode)
+{
+    AssertReturn(PDM_TO_APICBACKEND(pVM)->pfnIoApicRteChanged, VERR_INVALID_POINTER);
+    return PDM_TO_APICBACKEND(pVM)->pfnIoApicRteChanged(pVM, u8IoApicPin, uDest, uDestMode, uDeliveryMode,
+                                                        uVector, uTriggerMode);
+}
+
+
+/**
  * Registers a PDM APIC backend.
  *
  * @returns VBox status code.
@@ -541,6 +620,11 @@ VMM_INT_DECL(int) PDMApicRegisterBackend(PVMCC pVM, PDMAPICBACKENDTYPE enmBacken
 #endif
     AssertPtrReturn(pBackend->pfnUpdateStateAfterWrite,     VERR_INVALID_POINTER);
     AssertPtrReturn(pBackend->pfnSetEoiFast,                VERR_INVALID_POINTER);
+    AssertPtrReturn(pBackend->pfnIsLvt0ExtInt,              VERR_INVALID_POINTER);
+    AssertPtrReturn(pBackend->pfnGetHighestIsr,             VERR_INVALID_POINTER);
+    AssertPtrReturn(pBackend->pfnGetHighestIrr,             VERR_INVALID_POINTER);
+    AssertPtrReturn(pBackend->pfnQueryEoiExitBitmap,        VERR_INVALID_POINTER);
+    AssertPtrReturn(pBackend->pfnIoApicRteChanged,          VERR_INVALID_POINTER);
 
     /*
      * Register the backend.

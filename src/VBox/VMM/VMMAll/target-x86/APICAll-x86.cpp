@@ -1,4 +1,4 @@
-/* $Id: APICAll-x86.cpp 115078 2026-08-19 10:21:30Z alexander.eichner@oracle.com $ */
+/* $Id: APICAll-x86.cpp 115111 2026-08-25 09:46:24Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller - All Contexts.
  */
@@ -1034,6 +1034,40 @@ static DECLCALLBACK(VBOXSTRICTRC) apicSetEoiFast(PVMCPUCC pVCpu, uint8_t uVector
     STAM_COUNTER_INC(&pVCpu->apic.s.StatEoiWriteFast);
     apicProcessEoi(pVCpu, uVector);
     return VINF_SUCCESS;
+}
+
+
+static DECLCALLBACK(bool) apicIsLvt0ExtInt(PVMCPUCC pVCpu)
+{
+    VMCPU_ASSERT_EMT(pVCpu);
+
+    PXAPICPAGE pXApicPage = VMCPU_TO_XAPICPAGE(pVCpu);
+    uint32_t const uLvtLint0 = pXApicPage->lvt_lint0.all.u32LvtLint0;
+
+    Log2(("APIC%u: apicIsLvt0ExtInt: uLvtLint0=%#x\n", pVCpu->idCpu, uLvtLint0));
+    if (   !XAPIC_LVT_IS_MASKED(uLvtLint0)
+        && XAPIC_LVT_GET_DELIVERY_MODE(uLvtLint0) == XAPICDELIVERYMODE_EXTINT)
+        return true;
+
+    return false;
+}
+
+
+static DECLCALLBACK(uint8_t) apicGetHighestIsr(PVMCPUCC pVCpu)
+{
+    VMCPU_ASSERT_EMT(pVCpu);
+
+    PXAPICPAGE pXApicPage = VMCPU_TO_XAPICPAGE(pVCpu);
+    return apicGetHighestSetBitInReg(&pXApicPage->isr, 0 /* rcNotFound */);
+}
+
+
+static DECLCALLBACK(uint8_t) apicGetHighestIrr(PVMCPUCC pVCpu)
+{
+    VMCPU_ASSERT_EMT(pVCpu);
+
+    PXAPICPAGE pXApicPage = VMCPU_TO_XAPICPAGE(pVCpu);
+    return apicGetHighestSetBitInReg(&pXApicPage->irr, 0 /* rcNotFound */);
 }
 
 
@@ -3059,6 +3093,90 @@ static DECLCALLBACK(VBOXSTRICTRC) apicVBoxUpdateStateAfterWrite(PVMCPUCC pVCpu, 
 }
 
 
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnQueryEoiExitBitmap}
+ */
+static DECLCALLBACK(void) apicQueryEoiExitBitmap(PVMCPUCC pVCpu, uint64_t *pau64EoiBitmap)
+{
+    VMCPU_ASSERT_EMT(pVCpu);
+
+    PAPIC pApic = VM_TO_APIC(pVCpu->CTX_SUFF(pVM));
+    for (uint8_t i = 0; i < RT_ELEMENTS(pApic->aIoApicCfg); i++)
+    {
+        IOAPICINTRCFG const Cfg = { ASMAtomicReadU64(&pApic->aIoApicCfg[i].u64) };
+
+        if (   (XAPICTRIGGERMODE)Cfg.u.u8TriggerMode == XAPICTRIGGERMODE_LEVEL
+            && Cfg.u.u8Vector
+            && apicCommonIsCpuPartOfDestination(pVCpu, Cfg.u.u8Dest, 0xff /*fBroadcastMask*/,
+                                                (XAPICDESTMODE)Cfg.u.u8DestMode,
+                                                (XAPICDELIVERYMODE)Cfg.u.u8DeliveryMode))
+            ASMBitSet(&pau64EoiBitmap[0], Cfg.u.u8Vector);
+    }
+
+    STAM_COUNTER_INC(&pVCpu->apic.s.StatEoiExitBitmapQuery);
+}
+
+
+#ifdef IN_RING3
+/** @callback_method_impl{FNVMMEMTRENDEZVOUS}   */
+static DECLCALLBACK(VBOXSTRICTRC) apicR3EmtRendezvous(PVM pVM, PVMCPU pVCpu, void *pvUser)
+{
+    RT_NOREF(pVM, pvUser);
+    VMCPU_FF_SET(pVCpu, VMCPU_FF_VMX_EOI_BITMAP_UPDATE);
+    return VINF_SUCCESS;
+}
+#endif
+
+
+/**
+ * @interface_method_impl{PDMAPICBACKEND,pfnIoApicRteChanged}
+ */
+static DECLCALLBACK(int) apicIoApicRteChanged(PVMCC pVM, uint8_t u8IoApicPin, uint8_t uDest, uint8_t uDestMode, uint8_t uDeliveryMode,
+                                              uint8_t uVector, uint8_t uTriggerMode)
+{
+    LogFlowFunc(("u8IoApicPin=%u\n", u8IoApicPin));
+
+    /** @todo Only do this on Intel with virtual interrupt delivery enabled. */
+
+    /*
+     * On Intel for level triggered interrupts an EOI exit needs to be generated so we can broadcast the EOI
+     * to the IO-APIC if APICv + virtual interrupt delivery is configured. This is done through an EOI exit bitmap
+     * indicating for each vector whether it should generate an EOI exit.
+     * This requires us to keep track of the IO-APIC configuration and notify all vCPUs to update their bitmap if something
+     * changes.
+     */
+    PAPIC pApic = VM_TO_APIC(pVM);
+    IOAPICINTRCFG Cfg = { 0 };
+    Cfg.u.u8Vector   = uVector;
+    Cfg.u.u8Dest     = uDest;
+    Cfg.u.u8DestMode = uDestMode;
+    Cfg.u.u8DeliveryMode = uDeliveryMode;
+    Cfg.u.u8TriggerMode  = uTriggerMode;
+    if (ASMAtomicReadU64(&pApic->aIoApicCfg[u8IoApicPin].u64) != Cfg.u64)
+    {
+#ifndef IN_RING3
+        return VINF_APIC_R3_UPDATE_STATE;
+#else
+        ASMAtomicXchgU64(&pApic->aIoApicCfg[u8IoApicPin].u64, Cfg.u64);
+
+        /*
+         * We need to rendezvous all EMTs here to make sure all have an up to date EOI exit bitmap on the next guest entry,
+         * or else we might miss an EOI on delivered interrupts.
+         */
+        /** @todo In theory we might not need to wakeup halted EMTs and could just set the VMCPU_FF_VMX_EOI_BITMAP_UPDATE flag from here
+         *        but as we don't have such functionality in the API currently and it would require careful ordering to not race
+         *        with an EMT just waking up due to an interrupt, so just go with the sledgehammer approach. After all the guest shouldn't
+         *        constantly re configure the I/O APIC after the initial setup. */
+        int rc = VMMR3EmtRendezvous(pVM, VMMEMTRENDEZVOUS_FLAGS_TYPE_ALL_AT_ONCE, apicR3EmtRendezvous, NULL);
+        AssertRC(rc);
+
+       STAM_COUNTER_INC(&pVM->apic.s.StatRteChanged);
+#endif
+    }
+
+    return VINF_SUCCESS;
+}
+
 #ifndef IN_RING3
 
 /**
@@ -3195,5 +3313,10 @@ const PDMAPICBACKEND g_ApicBackend =
     /* .pfnExportState = */             apicExportState,
     /* .pfnUpdateStateAfterWrite = */   apicVBoxUpdateStateAfterWrite,
     /* .pfnSetEoiFast = */              apicSetEoiFast,
+    /* .pfnIsLvt0ExtInt = */            apicIsLvt0ExtInt,
+    /* .pfnGetHighestIsr = */           apicGetHighestIsr,
+    /* .pfnGetHighestIrr = */           apicGetHighestIrr,
+    /* .pfnQueryEoiExitBitmap = */      apicQueryEoiExitBitmap,
+    /* .pfnIoApicRteChanged = */        apicIoApicRteChanged,
 };
 

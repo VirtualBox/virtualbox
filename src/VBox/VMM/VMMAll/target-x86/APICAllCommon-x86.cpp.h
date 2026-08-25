@@ -1,4 +1,4 @@
-/* $Id: APICAllCommon-x86.cpp.h 114733 2026-07-21 06:02:36Z alexander.eichner@oracle.com $ */
+/* $Id: APICAllCommon-x86.cpp.h 115111 2026-08-25 09:46:24Z alexander.eichner@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller - All-context and R3-context common code.
  */
@@ -295,6 +295,8 @@ static bool apicCommonIsLogicalDest(PVMCPUCC pVCpu, uint32_t fDest)
  * @param   enmDestMode         The destination mode.
  * @param   enmDeliveryMode     The delivery mode.
  * @param   pDestCpuSet         The destination CPU set to update.
+ *
+ * @sa apicCommonIsCpuPartOfDestination()
  */
 static void apicCommonGetDestCpuSet(PVMCC pVM, uint32_t fDestMask, uint32_t fBroadcastMask, XAPICDESTMODE enmDestMode,
                                     XAPICDELIVERYMODE enmDeliveryMode, PVMCPUSET pDestCpuSet)
@@ -412,6 +414,93 @@ static void apicCommonGetDestCpuSet(PVMCC pVM, uint32_t fDestMask, uint32_t fBro
                 VMCPUSET_ADD(pDestCpuSet, pVCpuDst->idCpu);
         }
     }
+}
+
+
+/**
+ * Figures out whether the given vCPU is a potential destination for the given mask and destination/delivery mode.
+ *
+ * @returns Flag whether the given vCPU is a potential destination for the given destination mask.
+ * @param   pVM                 The cross context VM structure.
+ * @param   fDestMask           The destination mask.
+ * @param   fBroadcastMask      The broadcast mask.
+ * @param   enmDestMode         The destination mode.
+ * @param   enmDeliveryMode     The delivery mode.
+ *
+ * @sa apicCommonGetDestCpuSet
+ */
+DECL_FORCE_INLINE(bool) apicCommonIsCpuPartOfDestination(PVMCPUCC pVCpu, uint32_t fDestMask, uint32_t fBroadcastMask, XAPICDESTMODE enmDestMode,
+                                                         XAPICDELIVERYMODE enmDeliveryMode)
+{
+    /*
+     * Physical destination mode only supports either a broadcast or a single target.
+     *    - Broadcast with lowest-priority delivery mode is not supported[1], we deliver it
+     *      as a regular broadcast like in fixed delivery mode.
+     *    - For a single target, lowest-priority delivery mode makes no sense. We deliver
+     *      to the target like in fixed delivery mode.
+     *
+     * [1] See Intel spec. 10.6.2.1 "Physical Destination Mode".
+     */
+    if (   enmDestMode == XAPICDESTMODE_PHYSICAL
+        && enmDeliveryMode == XAPICDELIVERYMODE_LOWEST_PRIO)
+    {
+        AssertMsgFailed(("APIC: Lowest-priority delivery using physical destination mode!"));
+        enmDeliveryMode = XAPICDELIVERYMODE_FIXED;
+    }
+
+    if (enmDeliveryMode == XAPICDELIVERYMODE_LOWEST_PRIO)
+    {
+        Assert(enmDestMode == XAPICDESTMODE_LOGICAL);
+#if XAPIC_HARDWARE_VERSION == XAPIC_HARDWARE_VERSION_P4
+        return apicCommonIsLogicalDest(pVCpu, fDestMask);
+#else
+# error "Implement Pentium and P6 family APIC architectures"
+#endif
+    }
+
+    /*
+     * x2APIC:
+     *    - In both physical and logical destination mode, a destination mask of 0xffffffff implies a broadcast[1].
+     * xAPIC:
+     *    - In physical destination mode, a destination mask of 0xff implies a broadcast[2].
+     *    - In both flat and clustered logical mode, a destination mask of 0xff implies a broadcast[3].
+     *
+     * [1] See Intel spec. 10.12.9 "ICR Operation in x2APIC Mode".
+     * [2] See Intel spec. 10.6.2.1 "Physical Destination Mode".
+     * [2] See AMD spec. 16.6.1 "Receiving System and IPI Interrupts".
+     */
+    if ((fDestMask & fBroadcastMask) == fBroadcastMask)
+        return true;
+
+    if (enmDestMode == XAPICDESTMODE_PHYSICAL)
+    {
+        /* The destination mask is interpreted as the physical APIC ID of a single target. */
+#if 1
+        /* Since our physical APIC ID is read-only to software, set the corresponding bit in the CPU set. */
+        return pVCpu->idCpu == fDestMask;
+#else
+        /* The physical APIC ID may not match our VCPU ID, search through the list of targets. */
+        if (XAPIC_IN_X2APIC_MODE(pVCpuDst))
+        {
+            PCX2APICPAGE pX2ApicPage = VMCPU_TO_CX2APICPAGE(pVCpuDst);
+            return pX2ApicPage->id.u32ApicId == fDestMask;
+        }
+        else
+        {
+            PCXAPICPAGE pXApicPage = VMCPU_TO_CXAPICPAGE(pVCpuDst);
+            return pXApicPage->id.u8ApicId == (uint8_t)fDestMask;
+        }
+#endif
+    }
+
+    Assert(enmDestMode == XAPICDESTMODE_LOGICAL);
+
+    /* A destination mask of all 0's implies no target APICs (since it's interpreted as a bitmap or partial bitmap). */
+    if (RT_UNLIKELY(!fDestMask))
+        return false;
+
+    /* The destination mask is interpreted as a bitmap of software-programmable logical APIC ID of the target APICs. */
+    return apicCommonIsLogicalDest(pVCpu, fDestMask);
 }
 #endif /* VMM_INCLUDED_SRC_include_APICKvmInternal_h */
 

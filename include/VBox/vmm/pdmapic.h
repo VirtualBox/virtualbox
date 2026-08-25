@@ -383,14 +383,61 @@ typedef struct PDMAPICBACKENDR3
      */
     DECLR3CALLBACKMEMBER(VBOXSTRICTRC, pfnSetEoiFast, (PVMCPUCC pVCpu, uint8_t uVector));
 
+    /**
+     * Checks whether LINT0 is ExtINT style and not masked.
+     *
+     * @returns Flag returning whether LINT0 is configured as ExtINT and not masked.
+     * @param   pVCpu       The cross context virtual CPU structure.
+     */
+    DECLR3CALLBACKMEMBER(bool, pfnIsLvt0ExtInt, (PVMCPUCC pVCpu));
+
+    /**
+     * Returns the highest priority interrupt in the ISR.
+     *
+     * @returns Highest interrupt vector pending in the ISR, 0 if none.
+     * @param   pVCpu       The cross context virtual CPU structure.
+     */
+    DECLR3CALLBACKMEMBER(uint8_t, pfnGetHighestIsr, (PVMCPUCC pVCpu));
+
+    /**
+     * Returns the highest priority interrupt in the IRR.
+     *
+     * @returns Highest interrupt vector pending in the IRR, 0 if none.
+     * @param   pVCpu       The cross context virtual CPU structure.
+     */
+    DECLR3CALLBACKMEMBER(uint8_t, pfnGetHighestIrr, (PVMCPUCC pVCpu));
+
+    /**
+     * Calculates and returns the EOI exit bitmap.
+     *
+     * @param   pVCpu          The cross context virtual CPU structure to query the bitmap for.
+     * @param   pau64EoiBitmap Where to store the EOI exit bitmap.
+     */
+    DECLR3CALLBACKMEMBER(void, pfnQueryEoiExitBitmap, (PVMCPUCC pVCpu, uint64_t *pau64EoiBitmap));
+
+    /**
+     * Notifies the APIC about a change in the redirection table entry of the I/O APIC for the given interrupt pin.
+     *
+     * @returns VBox status code.
+     * @param   pVM             The cross context VM structure.
+     * @param   u8IoApicPin     The pin for which the RTE changed.
+     * @param   uDest           The destination mask.
+     * @param   uDestMode       The destination mode.
+     * @param   uDeliveryMode   The delivery mode.
+     * @param   uVector         The interrupt vector.
+     * @param   uPolarity       The interrupt line polarity.
+     * @param   uTriggerMode    The trigger mode.
+     *
+     * @note This is required with Intel VT-x and virtual interrupt delivery to properly calculate the EOI exit bitmap.
+     *       This will also be used by the NEM/KVM backend and the split chip interrupt controller enabled.
+     */
+    DECLR3CALLBACKMEMBER(int, pfnIoApicRteChanged, (PVMCC pVM, uint8_t u8IoApicPin, uint8_t uDest, uint8_t uDestMode, uint8_t uDeliveryMode,
+                                                    uint8_t uVector, uint8_t uTriggerMode));
+
+
     /** @name Reserved for future (MBZ).
      * @{ */
     DECLR3CALLBACKMEMBER(int, pfnReserved0, (void));
-    DECLR3CALLBACKMEMBER(int, pfnReserved1, (void));
-    DECLR3CALLBACKMEMBER(int, pfnReserved2, (void));
-    DECLR3CALLBACKMEMBER(int, pfnReserved3, (void));
-    DECLR3CALLBACKMEMBER(int, pfnReserved4, (void));
-    DECLR3CALLBACKMEMBER(int, pfnReserved5, (void));
     /** @} */
 } PDMAPICBACKENDR3;
 /** Pointer to ring-3 APIC backend. */
@@ -669,14 +716,63 @@ typedef struct PDMAPICBACKENDR0
      */
     DECLR0CALLBACKMEMBER(VBOXSTRICTRC, pfnSetEoiFast, (PVMCPUCC pVCpu, uint8_t uVector));
 
+    /**
+     * Checks whether LINT0 is ExtINT style and not masked.
+     *
+     * @returns Flag returning whether LINT0 is configured as ExtINT and not masked.
+     * @param   pVCpu       The cross context virtual CPU structure.
+     */
+    DECLR0CALLBACKMEMBER(bool, pfnIsLvt0ExtInt, (PVMCPUCC pVCpu));
+
+    /**
+     * Returns the highest priority interrupt in the ISR.
+     *
+     * @returns Highest interrupt vector pending in the ISR, 0 if none.
+     * @param   pVCpu       The cross context virtual CPU structure.
+     */
+    DECLR0CALLBACKMEMBER(uint8_t, pfnGetHighestIsr, (PVMCPUCC pVCpu));
+
+    /**
+     * Returns the highest priority interrupt in the IRR.
+     *
+     * @returns Highest interrupt vector pending in the IRR, 0 if none.
+     * @param   pVCpu       The cross context virtual CPU structure.
+     */
+    DECLR0CALLBACKMEMBER(uint8_t, pfnGetHighestIrr, (PVMCPUCC pVCpu));
+
+    /**
+     * Calculates and returns the EOI exit bitmap.
+     *
+     * @param   pVCpu          The cross context virtual CPU structure to query the bitmap for.
+     * @param   pau64EoiBitmap Where to store the EOI exit bitmap.
+     */
+    DECLR0CALLBACKMEMBER(void, pfnQueryEoiExitBitmap, (PVMCPUCC pVCpu, uint64_t *pau64EoiBitmap));
+
+    /**
+     * Notifies the APIC about a change in the redirection table entry of the I/O APIC for the given interrupt pin.
+     *
+     * @returns VBox status code.
+     * @retval  VINF_APIC_R3_UPDATE_STATE if called from R0 and this function needs to be called again in R3 to
+     *          successfully update the state.
+     * @param   pVM             The cross context VM structure.
+     * @param   u8IoApicPin     The pin for which the RTE changed.
+     * @param   uDest           The destination mask.
+     * @param   uDestMode       The destination mode.
+     * @param   uDeliveryMode   The delivery mode.
+     * @param   uVector         The interrupt vector.
+     * @param   uPolarity       The interrupt line polarity.
+     * @param   uTriggerMode    The trigger mode.
+     *
+     * @note This is required with Intel VT-x and virtual interrupt delivery to properly calculate the EOI exit bitmap.
+     *       This will also be used by the NEM/KVM backend and the split chip interrupt controller enabled.
+     */
+    DECLR0CALLBACKMEMBER(int, pfnIoApicRteChanged, (PVMCC pVM, uint8_t u8IoApicPin, uint8_t uDest, uint8_t uDestMode, uint8_t uDeliveryMode,
+                                                    uint8_t uVector, uint8_t uTriggerMode));
+
+
     /** @name Reserved for future (MBZ).
      * @{ */
     DECLR0CALLBACKMEMBER(int, pfnReserved0, (void));
-    DECLR0CALLBACKMEMBER(int, pfnReserved1, (void));
-    DECLR0CALLBACKMEMBER(int, pfnReserved2, (void));
-    DECLR0CALLBACKMEMBER(int, pfnReserved3, (void));
-    DECLR0CALLBACKMEMBER(int, pfnReserved4, (void));
-    DECLR0CALLBACKMEMBER(int, pfnReserved5, (void));
     /** @} */
 } PDMAPICBACKENDR0;
 /** Pointer to ring-0 APIC backend. */
@@ -987,6 +1083,12 @@ VMM_INT_DECL(int)           PDMApicBusDeliver(PVMCC pVM, uint8_t uDest, uint8_t 
                                               uint8_t uPolarity, uint8_t uTriggerMode, uint8_t uIoApicPin, uint32_t uTagSrc);
 VMM_INT_DECL(VBOXSTRICTRC)  PDMApicUpdateStateAfterWrite(PVMCPUCC pVCpu, uint16_t offApicReg);
 VMM_INT_DECL(VBOXSTRICTRC)  PDMApicSetEoiFast(PVMCPUCC pVCpu, uint8_t uIsrVector);
+VMM_INT_DECL(bool)          PDMApicIsLvt0ExtInt(PVMCPUCC pVCpu);
+VMM_INT_DECL(uint8_t)       PDMApicGetHighestIsr(PVMCPUCC pVCpu);
+VMM_INT_DECL(uint8_t)       PDMApicGetHighestIrr(PVMCPUCC pVCpu);
+VMM_INT_DECL(void)          PDMApicQueryEoiExitBitmap(PVMCPUCC pVCpu, uint64_t *pau64EoiBitmap);
+VMM_INT_DECL(int)           PDMApicIoApicRteChanged(PVMCC pVM, uint8_t uIoApicPin, uint8_t uDest, uint8_t uDestMode,
+                                                    uint8_t uDeliveryMode, uint8_t uVector, uint8_t uTriggerMode);
 #ifdef IN_RING0
 VMM_INT_DECL(int)           PDMR0ApicGetApicPageForCpu(PCVMCPUCC pVCpu, PRTHCPHYS pHCPhys, PRTR0PTR pR0Ptr, PRTR3PTR pR3Ptr);
 #endif

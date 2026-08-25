@@ -624,6 +624,11 @@ AssertCompileSizeAlignment(VMCPU, 16384);
  * Same "pending" comment and todo in VMCPU_FF_VMX_INT_WINDOW. */
 #define VMCPU_FF_VMX_NMI_WINDOW             RT_BIT_64(VMCPU_FF_VMX_NMI_WINDOW_BIT)
 #define VMCPU_FF_VMX_NMI_WINDOW_BIT         35
+#if defined(VBOX_VMM_TARGET_X86) || defined(VBOX_VMM_TARGET_AGNOSTIC)
+/** VMX EOI bitmap needs to be recalculated due to a change in the IO-APIC. */
+#define VMCPU_FF_VMX_EOI_BITMAP_UPDATE      RT_BIT_64(VMCPU_FF_VMX_EOI_BITMAP_UPDATE_BIT)
+#define VMCPU_FF_VMX_EOI_BITMAP_UPDATE_BIT  36
+#endif
 
 
 /** Externally VM forced actions. Used to quit the idle/wait loop. */
@@ -1624,7 +1629,7 @@ typedef struct VM
 # ifdef VMM_INCLUDED_SRC_include_GICInternal_h
             struct GIC  s;
 # endif
-            uint8_t     padding[128];   /* multiple of 8 */
+            uint8_t     padding[320];   /* multiple of 8 */
         } gic;
 #endif
 #if defined(VBOX_VMM_TARGET_X86) || defined(VBOX_VMM_TARGET_AGNOSTIC)
@@ -1637,7 +1642,7 @@ typedef struct VM
 # elif defined(VMM_INCLUDED_SRC_include_APICKvmInternal_h)
             struct KVMAPIC s;
 # endif
-            uint8_t     padding[128];   /* multiple of 8 */
+            uint8_t     padding[320];   /* multiple of 8 */
         } apic;
 #endif
     };
@@ -1694,7 +1699,7 @@ typedef struct VM
     } gcm;
 
     /** Padding for aligning the structure size on a page boundrary. */
-    uint8_t         abAlignment2[0x3900 - sizeof(PVMCPUR3) * VMM_MAX_CPU_COUNT];
+    uint8_t         abAlignment2[0x3840 - sizeof(PVMCPUR3) * VMM_MAX_CPU_COUNT];
 
     /* ---- end small stuff ---- */
 
