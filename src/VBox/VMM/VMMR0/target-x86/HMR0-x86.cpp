@@ -1,4 +1,4 @@
-/* $Id: HMR0-x86.cpp 115084 2026-08-19 12:52:58Z alexander.eichner@oracle.com $ */
+/* $Id: HMR0-x86.cpp 115115 2026-08-25 10:12:51Z alexander.eichner@oracle.com $ */
 /** @file
  * Hardware Assisted Virtualization Manager (HM) - Host Context Ring-0.
  */
@@ -1332,8 +1332,8 @@ VMMR0_INT_DECL(int) HMR0InitVM(PVMCC pVM)
             enmApicvLvl = kVmxApicvLvl_None;
 
         /** @todo Update/remove as the implementation of the higher level features progresses. */
-        if (enmApicvLvl > kVmxApicvLvl_ApicRegVirt)
-            enmApicvLvl = kVmxApicvLvl_ApicRegVirt;
+        if (enmApicvLvl > kVmxApicvLvl_IntrDelivery)
+            enmApicvLvl = kVmxApicvLvl_IntrDelivery;
 
         pVM->hmr0.s.vmx.enmApicvLvl     = enmApicvLvl;
         pVM->hm.s.ForR3.vmx.enmApicvLvl = enmApicvLvl;
