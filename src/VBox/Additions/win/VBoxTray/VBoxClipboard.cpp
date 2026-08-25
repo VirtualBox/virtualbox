@@ -1,4 +1,4 @@
-/* $Id: VBoxClipboard.cpp 115127 2026-08-25 13:40:12Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxClipboard.cpp 115129 2026-08-25 15:04:31Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxClipboard - Shared clipboard, Windows Guest Implementation.
  */
@@ -755,7 +755,7 @@ static LRESULT vbtrShClWndProcWorker(PSHCLCONTEXT pCtx, HWND hwnd, UINT msg, WPA
 
             /* If the requested clipboard format is not available, we must send empty data. */
             if (hClip == NULL)
-                VbglR3ClipboardWriteDataEx(&pEvent->cmdCtx, VBOX_SHCL_FMT_NONE, NULL, 0);
+                VbglR3ClipboardWriteDataEx(&pEvent->cmdCtx, fFormat, NULL, 0);
             VbglR3ClipboardEventFree(pEvent);
             break;
         }
@@ -1127,10 +1127,12 @@ DECLCALLBACK(int) vbtrShClWorker(void *pvInstance, bool volatile *pfShutdown)
 
                 case VBGLR3CLIPBOARDEVENTTYPE_READ_DATA:
                 {
-                    /* The host needs data in the specified format. */
+                    /* Queue the request; if this fails, complete it before freeing the event. */
                     if (::PostMessage(pWinCtx->hWnd, SHCL_WIN_WM_READ_DATA,
                                       0 /* wParam */, (LPARAM)pEvent /* lParam */))
                         pEvent = NULL; /* Ownership transferred to the window thread. */
+                    else
+                        VbglR3ClipboardWriteDataEx(&pEvent->cmdCtx, pEvent->u.fReadData, NULL, 0);
                     break;
                 }
 
