@@ -919,8 +919,11 @@ void UIDesktopWidgetWatchdog::sltHandleHostScreenAvailableGeometryCalculated(int
             iHostScreenIndex, availableGeometry.x(), availableGeometry.y(),
             availableGeometry.width(), availableGeometry.height()));
 
-    /* Forget finished worker: */
-    pWorker->disconnect();
+    /* Forget finished worker; disconnect only our own connections, a wildcard
+     * disconnect would also sever the destroyed() connection Qt's accessibility
+     * cache relies upon to invalidate cached interfaces, causing a use-after-free
+     * in QAccessibleWidget::text later on: */
+    pWorker->disconnect(this);
     pWorker->deleteLater();
     m_availableGeometryWorkers[iHostScreenIndex] = 0;
 
@@ -1072,7 +1075,9 @@ void UIDesktopWidgetWatchdog::updateHostScreenAvailableGeometry(int iHostScreenI
         QWidget *pOldWorker = m_availableGeometryWorkers.value(iHostScreenIndex);
         if (pOldWorker)
         {
-            pOldWorker->disconnect();
+            /* Disconnect only our own connections, see
+             * sltHandleHostScreenAvailableGeometryCalculated for details: */
+            pOldWorker->disconnect(this);
             pOldWorker->deleteLater();
         }
         m_availableGeometryWorkers[iHostScreenIndex] = pWorker;
@@ -1102,7 +1107,9 @@ void UIDesktopWidgetWatchdog::cleanupExistingWorkers()
     {
         if (pWorker)
         {
-            pWorker->disconnect();
+            /* Disconnect only our own connections, see
+             * sltHandleHostScreenAvailableGeometryCalculated for details: */
+            pWorker->disconnect(this);
             pWorker->deleteLater();
         }
     }
