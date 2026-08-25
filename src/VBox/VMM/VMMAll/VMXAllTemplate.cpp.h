@@ -1,4 +1,4 @@
-/* $Id: VMXAllTemplate.cpp.h 115087 2026-08-19 13:09:55Z alexander.eichner@oracle.com $ */
+/* $Id: VMXAllTemplate.cpp.h 115114 2026-08-25 10:12:12Z alexander.eichner@oracle.com $ */
 /** @file
  * HM VMX (Intel VT-x) - Code template for our own hypervisor and the NEM darwin backend using Apple's Hypervisor.framework.
  */
@@ -263,6 +263,7 @@ static FNVMXEXITHANDLER            vmxHCExitMonitor;
 static FNVMXEXITHANDLER            vmxHCExitPause;
 static FNVMXEXITHANDLERNSRC        vmxHCExitTprBelowThreshold;
 static FNVMXEXITHANDLER            vmxHCExitApicAccess;
+static FNVMXEXITHANDLER            vmxHCExitVirtualizedEoi;
 static FNVMXEXITHANDLER            vmxHCExitApicWrite;
 static FNVMXEXITHANDLER            vmxHCExitEptViolation;
 static FNVMXEXITHANDLER            vmxHCExitEptMisconfig;
@@ -653,7 +654,7 @@ static const struct CLANG11NOTHROWWEIRDNESS { PFNVMXEXITHANDLER pfn; } g_aVMExit
     /* 42  UNDEFINED                        */  { vmxHCExitErrUnexpected },
     /* 43  VMX_EXIT_TPR_BELOW_THRESHOLD     */  { vmxHCExitTprBelowThreshold },
     /* 44  VMX_EXIT_APIC_ACCESS             */  { vmxHCExitApicAccess },
-    /* 45  VMX_EXIT_VIRTUALIZED_EOI         */  { vmxHCExitErrUnexpected },
+    /* 45  VMX_EXIT_VIRTUALIZED_EOI         */  { vmxHCExitVirtualizedEoi },
     /* 46  VMX_EXIT_GDTR_IDTR_ACCESS        */  { vmxHCExitErrUnexpected },
     /* 47  VMX_EXIT_LDTR_TR_ACCESS          */  { vmxHCExitErrUnexpected },
     /* 48  VMX_EXIT_EPT_VIOLATION           */  { vmxHCExitEptViolation },
@@ -4370,6 +4371,22 @@ static VBOXSTRICTRC vmxHCCheckForceFlags(PVMCPUCC pVCpu, bool fIsNestedGuest, bo
     if (VMCPU_FF_TEST_AND_CLEAR(pVCpu, VMCPU_FF_UPDATE_APIC))
         PDMApicUpdatePendingInterrupts(pVCpu);
 
+#ifndef IN_NEM_DARWIN
+    /*
+     * Recalculate the EOI exit bitmap if indicated.
+     */
+    if (VMCPU_FF_TEST_AND_CLEAR(pVCpu, VMCPU_FF_VMX_EOI_BITMAP_UPDATE))
+    {
+        uint64_t au64EoiBitmap[4]; RT_ZERO(au64EoiBitmap);
+        PDMApicQueryEoiExitBitmap(pVCpu, &au64EoiBitmap[0]);
+
+        int rc = VMXWriteVmcs64(VMX_VMCS64_CTRL_EOI_BITMAP_0_FULL, au64EoiBitmap[0]); AssertRC(rc);
+            rc = VMXWriteVmcs64(VMX_VMCS64_CTRL_EOI_BITMAP_1_FULL, au64EoiBitmap[1]); AssertRC(rc);
+            rc = VMXWriteVmcs64(VMX_VMCS64_CTRL_EOI_BITMAP_2_FULL, au64EoiBitmap[2]); AssertRC(rc);
+            rc = VMXWriteVmcs64(VMX_VMCS64_CTRL_EOI_BITMAP_3_FULL, au64EoiBitmap[3]); AssertRC(rc);
+    }
+#endif
+
     /*
      * Anything pending?  Should be more likely than not if we're doing a good job.
      */
@@ -4963,41 +4980,65 @@ static VBOXSTRICTRC vmxHCEvaluatePendingEvent(PVMCPUCC pVCpu, PVMXVMCSINFO pVmcs
         /*
          * External interrupts (PIC/APIC).
          */
+#ifdef IN_RING0
+        if (   pVCpu->hmr0.s.vmx.enmApicvLvl >= kVmxApicvLvl_IntrDelivery
+            && VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_APIC)
+            && !PDMApicIsLvt0ExtInt(pVCpu))
+        {
+            Assert(!VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_PIC));
+
+            /* Write to the RVI. */
+            uint16_t u16GstIntrSts = 0;
+            int rc = VMXReadVmcs16(VMX_VMCS16_GUEST_INTR_STATUS, &u16GstIntrSts);
+            AssertRC(rc);
+            uint16_t const uIrr = PDMApicGetHighestIrr(pVCpu);
+            uint16_t const uIsr = PDMApicGetHighestIsr(pVCpu);
+            uint16_t const u16IntrStsNew = (uIsr << 8) | uIrr;
+            Log4Func(("HM: Setting interrupt status to %#x u16GstIntrSts=%#x\n", u16IntrStsNew, u16GstIntrSts));
+            if (u16GstIntrSts != u16IntrStsNew)
+            {
+                rc = VMXWriteVmcs16(VMX_VMCS16_GUEST_INTR_STATUS, u16IntrStsNew);
+                AssertRC(rc);
+            }
+        }
+        else
+#endif
         if (    VMCPU_FF_IS_ANY_SET(pVCpu, VMCPU_FF_INTERRUPT_APIC | VMCPU_FF_INTERRUPT_PIC)
             && !VCPU_2_VMXSTATE(pVCpu).fSingleInstruction)
         {
-            Assert(!DBGFIsStepping(pVCpu));
-            int rc = vmxHCImportGuestStateEx(pVCpu, pVmcsInfo, CPUMCTX_EXTRN_RFLAGS);
-            AssertRC(rc);
+                Assert(!DBGFIsStepping(pVCpu));
+                int rc = vmxHCImportGuestStateEx(pVCpu, pVmcsInfo, CPUMCTX_EXTRN_RFLAGS);
+                AssertRC(rc);
 
-            if (pVCpu->cpum.GstCtx.eflags.u & X86_EFL_IF)
-            {
-                /*
-                 * Once PDMGetInterrupt() returns an interrupt we -must- deliver it.
-                 * We cannot re-request the interrupt from the controller again.
-                 */
-                uint8_t u8Interrupt;
-                rc = PDMGetInterrupt(pVCpu, &u8Interrupt);
-                if (RT_SUCCESS(rc))
-                    vmxHCSetPendingExtInt(pVCpu, u8Interrupt);
-                else if (rc == VERR_APIC_INTR_MASKED_BY_TPR)
+                if (pVCpu->cpum.GstCtx.eflags.u & X86_EFL_IF)
                 {
-                    STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatSwitchTprMaskedIrq);
-                    if (pVmcsInfo->u32ProcCtls & VMX_PROC_CTLS_USE_TPR_SHADOW)
-                        vmxHCApicSetTprThreshold(pVCpu, pVmcsInfo, u8Interrupt >> 4);
                     /*
-                     * If the CPU doesn't have TPR shadowing, we will always get a VM-exit on TPR changes and
-                     * PDMApicSetTpr() will end up setting the VMCPU_FF_INTERRUPT_APIC if required, so there is no
-                     * need to re-set this force-flag here.
+                     * Once PDMGetInterrupt() returns an interrupt we -must- deliver it.
+                     * We cannot re-request the interrupt from the controller again.
                      */
+                    uint8_t u8Interrupt;
+                    rc = PDMGetInterrupt(pVCpu, &u8Interrupt);
+                    if (RT_SUCCESS(rc))
+                        vmxHCSetPendingExtInt(pVCpu, u8Interrupt);
+                    else if (rc == VERR_APIC_INTR_MASKED_BY_TPR)
+                    {
+                        STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatSwitchTprMaskedIrq);
+                        if (pVmcsInfo->u32ProcCtls & VMX_PROC_CTLS_USE_TPR_SHADOW)
+                            vmxHCApicSetTprThreshold(pVCpu, pVmcsInfo, u8Interrupt >> 4);
+                        /*
+                         * If the CPU doesn't have TPR shadowing, we will always get a VM-exit on TPR changes and
+                         * PDMApicSetTpr() will end up setting the VMCPU_FF_INTERRUPT_APIC if required, so there is no
+                         * need to re-set this force-flag here.
+                         */
+                    }
+                    else
+                        STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatSwitchGuestIrq);
+
+                    vmxHCClearIntWindowExitVmcs(pVCpu, pVmcsInfo);
+                    return VINF_SUCCESS;
                 }
                 else
-                    STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatSwitchGuestIrq);
-
-                vmxHCClearIntWindowExitVmcs(pVCpu, pVmcsInfo);
-                return VINF_SUCCESS;
-            }
-            vmxHCSetIntWindowExitVmcs(pVCpu, pVmcsInfo);
+                    vmxHCSetIntWindowExitVmcs(pVCpu, pVmcsInfo);
         }
         else
             vmxHCClearIntWindowExitVmcs(pVCpu, pVmcsInfo);
@@ -5956,6 +5997,7 @@ DECLINLINE(VBOXSTRICTRC) vmxHCHandleExit(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTrans
         case VMX_EXIT_RDTSC:                   VMEXIT_CALL_RET(0, vmxHCExitRdtsc(pVCpu, pVmxTransient));
         case VMX_EXIT_RDTSCP:                  VMEXIT_CALL_RET(0, vmxHCExitRdtscp(pVCpu, pVmxTransient));
         case VMX_EXIT_APIC_ACCESS:             VMEXIT_CALL_RET(0, vmxHCExitApicAccess(pVCpu, pVmxTransient));
+        case VMX_EXIT_VIRTUALIZED_EOI:         VMEXIT_CALL_RET(0, vmxHCExitVirtualizedEoi(pVCpu, pVmxTransient));
         case VMX_EXIT_APIC_WRITE:              VMEXIT_CALL_RET(0, vmxHCExitApicWrite(pVCpu, pVmxTransient));
         case VMX_EXIT_XCPT_OR_NMI:             VMEXIT_CALL_RET(0, vmxHCExitXcptOrNmi(pVCpu, pVmxTransient));
         case VMX_EXIT_MOV_CRX:                 VMEXIT_CALL_RET(0, vmxHCExitMovCRx(pVCpu, pVmxTransient));
@@ -6021,7 +6063,6 @@ DECLINLINE(VBOXSTRICTRC) vmxHCHandleExit(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTrans
         case VMX_EXIT_ERR_MSR_LOAD:
         case VMX_EXIT_ERR_MACHINE_CHECK:
         case VMX_EXIT_PML_FULL:
-        case VMX_EXIT_VIRTUALIZED_EOI:
         case VMX_EXIT_GDTR_IDTR_ACCESS:
         case VMX_EXIT_LDTR_TR_ACCESS:
         case VMX_EXIT_RDRAND:
@@ -8174,6 +8215,11 @@ HMVMX_EXIT_DECL vmxHCExitMwait(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransient)
     if (RT_SUCCESS(rcStrict))
     {
         ASMAtomicUoOrU64(&VCPU_2_VMXSTATE(pVCpu).fCtxChanged, HM_CHANGED_GUEST_RIP | HM_CHANGED_GUEST_RFLAGS);
+
+        /* Make sure all delivered interrupts re acknowledged and we don't have the APIC FF flag pending. */
+        if (pVCpu->hmr0.s.vmx.enmApicvLvl >= kVmxApicvLvl_IntrDelivery)
+            PDMApicUpdatePendingInterrupts(pVCpu);
+
         if (EMMonitorWaitShouldContinue(pVCpu, &pVCpu->cpum.GstCtx))
             rcStrict = VINF_SUCCESS;
     }
@@ -8202,6 +8248,10 @@ HMVMX_EXIT_DECL vmxHCExitHlt(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransient)
 
     int rc = vmxHCAdvanceGuestRip(pVCpu, pVmxTransient);
     AssertRCReturn(rc, rc);
+
+    /* Make sure all delivered interrupts are acknowledged and we don't have the APIC FF flag pending. */
+    if (pVCpu->hmr0.s.vmx.enmApicvLvl >= kVmxApicvLvl_IntrDelivery)
+        PDMApicUpdatePendingInterrupts(pVCpu);
 
     HMVMX_CPUMCTX_ASSERT(pVCpu, CPUMCTX_EXTRN_RFLAGS);            /* Advancing the RIP above should've imported eflags. */
     if (EMShouldContinueAfterHalt(pVCpu, &pVCpu->cpum.GstCtx))    /* Requires eflags. */
@@ -8435,8 +8485,6 @@ HMVMX_EXIT_NSRC_DECL vmxHCExitErrUnexpected(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTr
      *    See Intel spec. 27.1 "Architectural State Before A VM Exit".
      *
      * VMX_EXIT_PML_FULL:
-     * VMX_EXIT_VIRTUALIZED_EOI:
-     * VMX_EXIT_APIC_WRITE:
      *    We do not currently support any of these features and thus they are all unexpected
      *    VM-exits.
      *
@@ -9336,6 +9384,28 @@ HMVMX_EXIT_DECL vmxHCExitApicAccess(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransient)
 
     if (rcStrict != VINF_SUCCESS)
         STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatSwitchApicAccessToR3);
+    return rcStrict;
+}
+
+
+/**
+ * VM-exit handler for APIC access (VMX_EXIT_VIRTUALIZED_EOI). Conditional VM-exit.
+ */
+HMVMX_EXIT_DECL vmxHCExitVirtualizedEoi(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransient)
+{
+    HMVMX_VALIDATE_EXIT_HANDLER_PARAMS(pVCpu, pVmxTransient);
+    STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatExitApicWrite);
+
+    vmxHCReadToTransient<HMVMX_READ_EXIT_QUALIFICATION>(pVCpu, pVmxTransient);
+
+    /*
+     * APIC virtualized EOIs are all trap like, so the instruction has already completed and
+     * the APIC page got updated.
+     */
+    VBOXSTRICTRC rcStrict = PDMApicSetEoiFast(pVCpu, pVmxTransient->uExitQual & 0xff);
+    if (rcStrict != VINF_SUCCESS)
+        STAM_COUNTER_INC(&VCPU_2_VMXSTATS(pVCpu).StatSwitchApicWriteToR3);
+
     return rcStrict;
 }
 

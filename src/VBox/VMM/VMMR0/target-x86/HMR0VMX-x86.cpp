@@ -1,4 +1,4 @@
-/* $Id: HMR0VMX-x86.cpp 115084 2026-08-19 12:52:58Z alexander.eichner@oracle.com $ */
+/* $Id: HMR0VMX-x86.cpp 115114 2026-08-25 10:12:12Z alexander.eichner@oracle.com $ */
 /** @file
  * HM VMX (Intel VT-x) - Host Context Ring-0.
  */
@@ -2724,6 +2724,18 @@ static int hmR0VmxSetupVmcsProcCtls2(PVMCPUCC pVCpu, PVMXVMCSINFO pVmcsInfo)
         /* Enable APIC-register virtualization. */
         Assert(g_HmMsrs.u.vmx.ProcCtls2.n.allowed1 & VMX_PROC_CTLS2_APIC_REG_VIRT);
         fVal |= VMX_PROC_CTLS2_APIC_REG_VIRT;
+    }
+
+    if (pVM->hmr0.s.vmx.enmApicvLvl >= kVmxApicvLvl_IntrDelivery)
+    {
+        /* Enable virtual-interrupt delivery. */
+        Assert(g_HmMsrs.u.vmx.ProcCtls2.n.allowed1 & VMX_PROC_CTLS2_VIRT_INT_DELIVERY);
+        fVal |= VMX_PROC_CTLS2_VIRT_INT_DELIVERY;
+
+        int rc = VMXWriteVmcs64(VMX_VMCS64_CTRL_EOI_BITMAP_0_FULL, 0);          AssertRC(rc);
+            rc = VMXWriteVmcs64(VMX_VMCS64_CTRL_EOI_BITMAP_1_FULL, 0);          AssertRC(rc);
+            rc = VMXWriteVmcs64(VMX_VMCS64_CTRL_EOI_BITMAP_2_FULL, 0);          AssertRC(rc);
+            rc = VMXWriteVmcs64(VMX_VMCS64_CTRL_EOI_BITMAP_3_FULL, 0);          AssertRC(rc);
     }
 
     /* Enable the RDTSCP instruction if we expose it to the guest and is supported
@@ -5986,6 +5998,29 @@ static VBOXSTRICTRC hmR0VmxPreRunGuest(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransie
     if (TRPMHasTrap(pVCpu))
         vmxHCTrpmTrapToPendingEvent(pVCpu);
 
+    if (   VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_APIC)
+        && pVCpu->hmr0.s.vmx.enmApicvLvl >= kVmxApicvLvl_IntrDelivery
+        && !PDMApicIsLvt0ExtInt(pVCpu))
+    {
+        Assert(!VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_PIC));
+
+        uint16_t u16GstIntrSts = 0;
+        int rc = VMXReadVmcs16(VMX_VMCS16_GUEST_INTR_STATUS, &u16GstIntrSts);
+        AssertRC(rc);
+        uint16_t const uIrr = PDMApicGetHighestIrr(pVCpu);
+        uint16_t const uIsr = PDMApicGetHighestIsr(pVCpu);
+        uint16_t const u16IntrStsNew = (uIsr << 8) | uIrr;
+        Log4Func(("HM: Setting interrupt status to %#x u16GstIntrSts=%#x uIrr=%u\n", u16IntrStsNew, u16GstIntrSts, uIrr));
+        if (u16GstIntrSts != u16IntrStsNew)
+        {
+            rc = VMXWriteVmcs16(VMX_VMCS16_GUEST_INTR_STATUS, u16IntrStsNew);
+            AssertRC(rc);
+        }
+
+        if (uIrr == 0)
+            VMCPU_FF_CLEAR(pVCpu, VMCPU_FF_INTERRUPT_APIC);
+    }
+
     uint32_t fIntrState;
 #ifdef VBOX_WITH_NESTED_HWVIRT_VMX
     if (!pVmxTransient->fIsNestedGuest)
@@ -6366,6 +6401,13 @@ static void hmR0VmxPostRunGuest(PVMCPUCC pVCpu, PVMXTRANSIENT pVmxTransient, int
     AssertRC(rc);
     pVmxTransient->uExitReason    = VMX_EXIT_REASON_BASIC(uExitReason);
     pVmxTransient->fVMEntryFailed = VMX_EXIT_REASON_HAS_ENTRY_FAILED(uExitReason);
+
+#ifdef DEBUG_aeichner
+    uint16_t u16GstIntrSts = 0;
+    rc = VMXReadVmcs16(VMX_VMCS16_GUEST_INTR_STATUS, &u16GstIntrSts);
+    AssertRC(rc);
+    Log4Func(("u16GstIntrSts=%#x\n", u16GstIntrSts));
+#endif
 
     /*
      * Log the VM-exit before logging anything else as otherwise it might be a
