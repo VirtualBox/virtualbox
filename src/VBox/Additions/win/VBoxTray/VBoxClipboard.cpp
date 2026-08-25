@@ -1,4 +1,4 @@
-/* $Id: VBoxClipboard.cpp 115122 2026-08-25 13:14:46Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxClipboard.cpp 115126 2026-08-25 13:31:14Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxClipboard - Shared clipboard, Windows Guest Implementation.
  */
@@ -630,6 +630,7 @@ static LRESULT vbtrShClWndProcWorker(PSHCLCONTEXT pCtx, HWND hwnd, UINT msg, WPA
             }
 
             LogFunc(("SHCL_WIN_WM_REPORT_FORMATS: fFormats=0x%x, lastErr=%ld\n", fFormats, GetLastError()));
+            VbglR3ClipboardEventFree(pEvent);
             break;
         }
 
@@ -733,6 +734,7 @@ static LRESULT vbtrShClWndProcWorker(PSHCLCONTEXT pCtx, HWND hwnd, UINT msg, WPA
             /* If the requested clipboard format is not available, we must send empty data. */
             if (hClip == NULL)
                 VbglR3ClipboardWriteDataEx(&pEvent->cmdCtx, VBOX_SHCL_FMT_NONE, NULL, 0);
+            VbglR3ClipboardEventFree(pEvent);
             break;
         }
 
@@ -1094,20 +1096,18 @@ DECLCALLBACK(int) vbtrShClWorker(void *pvInstance, bool volatile *pfShutdown)
                     /* The host has announced available clipboard formats.
                      * Forward the information to the window, so it can later
                      * respond to WM_RENDERFORMAT message. */
-                    ::PostMessage(pWinCtx->hWnd, SHCL_WIN_WM_REPORT_FORMATS,
-                                  0 /* wParam */, (LPARAM)pEvent /* lParam */);
-
-                    pEvent = NULL; /* Consume pointer. */
+                    if (::PostMessage(pWinCtx->hWnd, SHCL_WIN_WM_REPORT_FORMATS,
+                                      0 /* wParam */, (LPARAM)pEvent /* lParam */))
+                        pEvent = NULL; /* Ownership transferred to the window thread. */
                     break;
                 }
 
                 case VBGLR3CLIPBOARDEVENTTYPE_READ_DATA:
                 {
                     /* The host needs data in the specified format. */
-                    ::PostMessage(pWinCtx->hWnd, SHCL_WIN_WM_READ_DATA,
-                                  0 /* wParam */, (LPARAM)pEvent /* lParam */);
-
-                    pEvent = NULL; /* Consume pointer. */
+                    if (::PostMessage(pWinCtx->hWnd, SHCL_WIN_WM_READ_DATA,
+                                      0 /* wParam */, (LPARAM)pEvent /* lParam */))
+                        pEvent = NULL; /* Ownership transferred to the window thread. */
                     break;
                 }
 
