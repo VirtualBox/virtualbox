@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-ext.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-ext.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Service extension bridge handling.
  */
@@ -292,10 +292,7 @@ static bool shClSvcExtTransferStatusIsCurrentLocked(PSHCLCLIENT pClient, PCSHCLS
     AssertPtrReturn(pStatus, false);
 
     PSHCLTRANSFER const pTransfer
-        = ShClTransferCtxGetTransferByKeyRetained(&pClient->Transfers.Ctx,
-                                                  pStatus->idSession,
-                                                  pStatus->idTransfer,
-                                                  pStatus->uGeneration);
+        = ShClTransferCtxGetTransferByKeyRetained(&pClient->Transfers.Ctx, &pStatus->Key);
     if (!pTransfer)
         return false;
 
@@ -317,10 +314,7 @@ static bool shClSvcExtTransferProgressIsCurrentLocked(PSHCLCLIENT pClient, PCSHC
     AssertPtrReturn(pProgress, false);
 
     PSHCLTRANSFER const pTransfer
-        = ShClTransferCtxGetTransferByKeyRetained(&pClient->Transfers.Ctx,
-                                                  pProgress->idSession,
-                                                  pProgress->idTransfer,
-                                                  pProgress->uGeneration);
+        = ShClTransferCtxGetTransferByKeyRetained(&pClient->Transfers.Ctx, &pProgress->Key);
     if (!pTransfer)
         return false;
 
@@ -393,8 +387,7 @@ static int shClSvcExtNotifyTransferStatusEx(PSHCLCLIENT pClient, PCSHCLSVCEXTTRA
 {
     AssertPtrReturn(pClient, VERR_INVALID_POINTER);
     AssertPtrReturn(pStatus, VERR_INVALID_POINTER);
-    AssertReturn(ShClTransferKeyIsValid(pStatus->idSession, pStatus->idTransfer, pStatus->uGeneration),
-                 VERR_INVALID_PARAMETER);
+    AssertReturn(ShClTransferKeyIsValid(&pStatus->Key), VERR_INVALID_PARAMETER);
     AssertReturn(ShClTransferDirIsValid(pStatus->enmDir), VERR_INVALID_PARAMETER);
     AssertReturn(ShClSourceIsValid(pStatus->enmTransferSource), VERR_INVALID_PARAMETER);
     AssertReturn(ShClSourceIsValid(pStatus->enmReplySource), VERR_INVALID_PARAMETER);
@@ -418,7 +411,7 @@ static int shClSvcExtNotifyTransferStatusEx(PSHCLCLIENT pClient, PCSHCLSVCEXTTRA
         && g_ShClSvc.pActiveClient == pClient)
     {
         ShClSvcClientLock(pClient);
-        fDeliver =    pClient->State.uSessionID == pStatus->idSession
+        fDeliver =    pClient->State.uSessionID == ShClTransferKeyGetSessionId(&pStatus->Key)
                    && (   fDetachedTerminal
                        || shClSvcExtTransferStatusIsCurrentLocked(pClient, pStatus));
         rc = fDeliver ? VINF_SUCCESS : VINF_NO_CHANGE;
@@ -433,9 +426,7 @@ static int shClSvcExtNotifyTransferStatusEx(PSHCLCLIENT pClient, PCSHCLSVCEXTTRA
         SHCLEXTPARMS parms;
         RT_ZERO(parms);
         shClSvcCreateTransport(pClient, &parms.u.FileTransferData.Transport);
-        parms.u.FileTransferData.idSession          = pStatus->idSession;
-        parms.u.FileTransferData.idTransfer         = pStatus->idTransfer;
-        parms.u.FileTransferData.uGeneration        = pStatus->uGeneration;
+        parms.u.FileTransferData.Key                = pStatus->Key;
         parms.u.FileTransferData.enmDir             = pStatus->enmDir;
         parms.u.FileTransferData.enmTransferSource  = pStatus->enmTransferSource;
         parms.u.FileTransferData.enmReplySource     = pStatus->enmReplySource;
@@ -482,8 +473,7 @@ int shClSvcExtNotifyTransferProgress(PSHCLCLIENT pClient, PCSHCLSVCEXTTRANSFERPR
 {
     AssertPtrReturn(pClient, VERR_INVALID_POINTER);
     AssertPtrReturn(pProgress, VERR_INVALID_POINTER);
-    AssertReturn(ShClTransferKeyIsValid(pProgress->idSession, pProgress->idTransfer,
-                                       pProgress->uGeneration), VERR_INVALID_PARAMETER);
+    AssertReturn(ShClTransferKeyIsValid(&pProgress->Key), VERR_INVALID_PARAMETER);
     AssertReturn(pProgress->cbTotal > 0, VERR_INVALID_PARAMETER);
     AssertReturn(pProgress->cbProcessed <= pProgress->cbTotal, VERR_INVALID_PARAMETER);
 
@@ -497,7 +487,7 @@ int shClSvcExtNotifyTransferProgress(PSHCLCLIENT pClient, PCSHCLSVCEXTTRANSFERPR
         && g_ShClSvc.pActiveClient == pClient)
     {
         ShClSvcClientLock(pClient);
-        fDeliver =    pClient->State.uSessionID == pProgress->idSession
+        fDeliver =    pClient->State.uSessionID == ShClTransferKeyGetSessionId(&pProgress->Key)
                    && shClSvcExtTransferProgressIsCurrentLocked(pClient, pProgress);
         rc = fDeliver ? VINF_SUCCESS : VINF_NO_CHANGE;
         ShClSvcClientUnlock(pClient);
@@ -511,9 +501,7 @@ int shClSvcExtNotifyTransferProgress(PSHCLCLIENT pClient, PCSHCLSVCEXTTRANSFERPR
         SHCLEXTPARMS parms;
         RT_ZERO(parms);
         shClSvcCreateTransport(pClient, &parms.u.FileTransferProgress.Transport);
-        parms.u.FileTransferProgress.idSession   = pProgress->idSession;
-        parms.u.FileTransferProgress.idTransfer  = pProgress->idTransfer;
-        parms.u.FileTransferProgress.uGeneration = pProgress->uGeneration;
+        parms.u.FileTransferProgress.Key         = pProgress->Key;
         parms.u.FileTransferProgress.cbProcessed = pProgress->cbProcessed;
         parms.u.FileTransferProgress.cbTotal     = pProgress->cbTotal;
         rc = shClSvcExtCall(VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_PROGRESS, &parms, sizeof(parms));

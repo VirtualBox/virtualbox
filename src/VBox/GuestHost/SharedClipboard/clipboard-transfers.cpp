@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -93,17 +93,92 @@ bool ShClTransferIdIsValid(uint32_t idTransfer)
  * Checks whether a transfer key is usable for lifecycle tracking.
  *
  * @returns true if the key identifies a non-nil service transfer, false otherwise.
- * @param   idSession       Service session ID.
- * @param   idTransfer      Service transfer ID, before narrowing to SHCLTRANSFERID.
- * @param   uGeneration     Service transfer generation.
+ * @param   pKey            Transfer key to validate.
  */
-bool ShClTransferKeyIsValid(SHCLSESSIONID idSession, uint32_t idTransfer, SHCLTRANSFERGEN uGeneration)
+bool ShClTransferKeyIsValid(PCSHCLTRANSFERKEY pKey)
 {
-    return    idSession != 0
+    if (!pKey)
+        return false;
+
+    SHCLSESSIONID const idSession = VBOX_SHCL_CONTEXTID_GET_SESSION(pKey->uContextId);
+    return    VBOX_SHCL_CONTEXTID_GET_EVENT(pKey->uContextId) == 0
+           && idSession != 0
            && idSession != NIL_SHCLSESSIONID
-           && ShClTransferIdIsValid(idTransfer)
-           && uGeneration != 0
-           && uGeneration != NIL_SHCLTRANSFERGEN;
+           && ShClTransferIdIsValid(VBOX_SHCL_CONTEXTID_GET_TRANSFER(pKey->uContextId))
+           && pKey->uGeneration != 0
+           && pKey->uGeneration != NIL_SHCLTRANSFERGEN;
+}
+
+
+/**
+ * Initializes a normalized host-side transfer key.
+ *
+ * @param   pKey            Transfer key to initialize.
+ * @param   idSession       Service session ID.
+ * @param   idTransfer      Service transfer ID.
+ * @param   uGeneration     Host-private transfer generation.
+ */
+void ShClTransferKeyInit(PSHCLTRANSFERKEY pKey, SHCLSESSIONID idSession, SHCLTRANSFERID idTransfer,
+                         SHCLTRANSFERGEN uGeneration)
+{
+    AssertPtrReturnVoid(pKey);
+    pKey->uContextId  = VBOX_SHCL_CONTEXTID_MAKE(idSession, idTransfer, 0 /* idEvent */);
+    pKey->uGeneration = uGeneration;
+}
+
+
+/**
+ * Resets a host-side transfer key to its invalid value.
+ *
+ * @param   pKey            Transfer key to reset.
+ */
+void ShClTransferKeyReset(PSHCLTRANSFERKEY pKey)
+{
+    AssertPtrReturnVoid(pKey);
+    pKey->uContextId  = 0;
+    pKey->uGeneration = NIL_SHCLTRANSFERGEN;
+}
+
+
+/**
+ * Checks whether two host-side transfer keys are equal.
+ *
+ * @returns                     true if the keys are equal, false otherwise.
+ * @param   pLeft           First transfer key.
+ * @param   pRight          Second transfer key.
+ */
+bool ShClTransferKeyIsEqual(PCSHCLTRANSFERKEY pLeft, PCSHCLTRANSFERKEY pRight)
+{
+    return    pLeft
+           && pRight
+           && pLeft->uContextId == pRight->uContextId
+           && pLeft->uGeneration == pRight->uGeneration;
+}
+
+
+/**
+ * Returns the service session ID encoded in a host-side transfer key.
+ *
+ * @returns                     The encoded service session ID, or NIL_SHCLSESSIONID if @a pKey is NULL.
+ * @param   pKey            Transfer key to inspect.
+ */
+SHCLSESSIONID ShClTransferKeyGetSessionId(PCSHCLTRANSFERKEY pKey)
+{
+    AssertPtrReturn(pKey, NIL_SHCLSESSIONID);
+    return VBOX_SHCL_CONTEXTID_GET_SESSION(pKey->uContextId);
+}
+
+
+/**
+ * Returns the transfer ID encoded in a host-side transfer key.
+ *
+ * @returns                     The encoded transfer ID, or NIL_SHCLTRANSFERID if @a pKey is NULL.
+ * @param   pKey            Transfer key to inspect.
+ */
+SHCLTRANSFERID ShClTransferKeyGetTransferId(PCSHCLTRANSFERKEY pKey)
+{
+    AssertPtrReturn(pKey, NIL_SHCLTRANSFERID);
+    return VBOX_SHCL_CONTEXTID_GET_TRANSFER(pKey->uContextId);
 }
 
 
@@ -1307,12 +1382,10 @@ static int shClTransferCreateInternal(SHCLTRANSFERDIR enmDir, SHCLSOURCE enmSour
     PSHCLTRANSFER pTransfer = (PSHCLTRANSFER)RTMemAllocZ(sizeof(SHCLTRANSFER));
     AssertPtrReturn(pTransfer, VERR_NO_MEMORY);
 
-    pTransfer->State.uID         = NIL_SHCLTRANSFERID;
-    pTransfer->State.idSession   = NIL_SHCLSESSIONID;
-    pTransfer->State.uGeneration = NIL_SHCLTRANSFERGEN;
-    pTransfer->State.enmStatus   = SHCLTRANSFERSTATUS_NONE;
-    pTransfer->State.enmDir      = enmDir;
-    pTransfer->State.enmSource   = enmSource;
+    ShClTransferKeyReset(&pTransfer->State.Key);
+    pTransfer->State.enmStatus = SHCLTRANSFERSTATUS_NONE;
+    pTransfer->State.enmDir    = enmDir;
+    pTransfer->State.enmSource = enmSource;
 
     pTransfer->Thread.hThread    = NIL_RTTHREAD;
     pTransfer->Thread.fCancelled = false;
@@ -2790,7 +2863,7 @@ SHCLTRANSFERID ShClTransferGetID(PSHCLTRANSFER pTransfer)
 
     shClTransferLock(pTransfer);
 
-    SHCLTRANSFERID const uID = pTransfer->State.uID;
+    SHCLTRANSFERID const uID = ShClTransferKeyGetTransferId(&pTransfer->State.Key);
 
     shClTransferUnlock(pTransfer);
 
@@ -2809,7 +2882,7 @@ SHCLSESSIONID ShClTransferGetSessionId(PSHCLTRANSFER pTransfer)
 
     shClTransferLock(pTransfer);
 
-    SHCLSESSIONID const idSession = pTransfer->State.idSession;
+    SHCLSESSIONID const idSession = ShClTransferKeyGetSessionId(&pTransfer->State.Key);
 
     shClTransferUnlock(pTransfer);
 
@@ -2828,12 +2901,30 @@ SHCLTRANSFERGEN ShClTransferGetGeneration(PSHCLTRANSFER pTransfer)
 
     shClTransferLock(pTransfer);
 
-    SHCLTRANSFERGEN const uGeneration = pTransfer->State.uGeneration;
+    SHCLTRANSFERGEN const uGeneration = pTransfer->State.Key.uGeneration;
 
     shClTransferUnlock(pTransfer);
 
     return uGeneration;
 }
+
+
+/**
+ * Returns the clipboard transfer's host-side identity.
+ *
+ * @param   pTransfer       Clipboard transfer to inspect.
+ * @param   pKey            Where to store the transfer key.
+ */
+void ShClTransferGetKey(PSHCLTRANSFER pTransfer, PSHCLTRANSFERKEY pKey)
+{
+    AssertPtrReturnVoid(pTransfer);
+    AssertPtrReturnVoid(pKey);
+
+    shClTransferLock(pTransfer);
+    *pKey = pTransfer->State.Key;
+    shClTransferUnlock(pTransfer);
+}
+
 
 /**
  * Returns the clipboard transfer's direction.
@@ -3260,7 +3351,7 @@ static int shClTransferThreadDestroy(PSHCLTRANSFER pTransfer, RTMSINTERVAL uTime
         rc = rcThread; /* Return the thread rc to the caller. */
     }
     else
-        LogRel(("Shared Clipboard: Waiting for thread of transfer %RU16 failed with %Rrc\n", pTransfer->State.uID, rc));
+        LogRel(("Shared Clipboard: Waiting for thread of transfer %RU16 failed with %Rrc\n", ShClTransferKeyGetTransferId(&pTransfer->State.Key), rc));
 
     LogFlowFuncLeaveRC(rc);
     return rc;
@@ -3511,7 +3602,7 @@ static PSHCLTRANSFER shClTransferCtxGetTransferByIdInternal(PSHCLTRANSFERCTX pTr
     PSHCLTRANSFER pTransfer;
     RTListForEach(&pTransferCtx->List, pTransfer, SHCLTRANSFER, Node) /** @todo Slow, but works for now. */
     {
-        if (pTransfer->State.uID == idTransfer)
+        if (ShClTransferKeyGetTransferId(&pTransfer->State.Key) == idTransfer)
             return pTransfer;
     }
 
@@ -3586,19 +3677,19 @@ PSHCLTRANSFER ShClTransferCtxGetTransferByIdRetained(PSHCLTRANSFERCTX pTransferC
 }
 
 /**
- * Returns a clipboard transfer for a specific service-session/transfer/generation key.
+ * Returns a clipboard transfer for a specific host-side transfer key.
  *
  * @returns Clipboard transfer found, or NULL if not found or the key does not match.
  * @param   pTransferCtx        Transfer context to return transfer for.
- * @param   idSession           Service session ID to match.
- * @param   idTransfer          Transfer ID to match.
- * @param   uGeneration         Host-private transfer generation to match.
+ * @param   pKey                Host-side transfer key to match.
  */
-PSHCLTRANSFER ShClTransferCtxGetTransferByKey(PSHCLTRANSFERCTX pTransferCtx, SHCLSESSIONID idSession,
-                                              SHCLTRANSFERID idTransfer, SHCLTRANSFERGEN uGeneration)
+PSHCLTRANSFER ShClTransferCtxGetTransferByKey(PSHCLTRANSFERCTX pTransferCtx, PCSHCLTRANSFERKEY pKey)
 {
     AssertPtrReturn(pTransferCtx, NULL);
-    AssertReturn(ShClTransferKeyIsValid(idSession, idTransfer, uGeneration), NULL);
+    AssertReturn(ShClTransferKeyIsValid(pKey), NULL);
+
+    SHCLSESSIONID const idSession = ShClTransferKeyGetSessionId(pKey);
+    SHCLTRANSFERID const idTransfer = ShClTransferKeyGetTransferId(pKey);
 
     shClTransferCtxLock(pTransferCtx);
 
@@ -3610,9 +3701,7 @@ PSHCLTRANSFER ShClTransferCtxGetTransferByKey(PSHCLTRANSFERCTX pTransferCtx, SHC
         {
             PSHCLTRANSFER const pTransferToUnlock = pTransfer;
             shClTransferLock(pTransferToUnlock);
-            if (   pTransferToUnlock->State.idSession != idSession
-                || pTransferToUnlock->State.uID != idTransfer
-                || pTransferToUnlock->State.uGeneration != uGeneration)
+            if (!ShClTransferKeyIsEqual(&pTransferToUnlock->State.Key, pKey))
                 pTransfer = NULL;
             shClTransferUnlock(pTransferToUnlock);
         }
@@ -3624,21 +3713,21 @@ PSHCLTRANSFER ShClTransferCtxGetTransferByKey(PSHCLTRANSFERCTX pTransferCtx, SHC
 }
 
 /**
- * Returns and retains a clipboard transfer for a service-session/transfer/generation key.
+ * Returns and retains a clipboard transfer for a host-side transfer key.
  *
  * @returns Retained clipboard transfer, or NULL if not found or the key does not match.
  * @param   pTransferCtx        Transfer context to return transfer for.
- * @param   idSession           Service session ID to match.
- * @param   idTransfer          Transfer ID to match.
- * @param   uGeneration         Host-private transfer generation to match.
+ * @param   pKey                Host-side transfer key to match.
  *
  * @note    The caller must release a returned transfer with ShClTransferRelease().
  */
-PSHCLTRANSFER ShClTransferCtxGetTransferByKeyRetained(PSHCLTRANSFERCTX pTransferCtx, SHCLSESSIONID idSession,
-                                                      SHCLTRANSFERID idTransfer, SHCLTRANSFERGEN uGeneration)
+PSHCLTRANSFER ShClTransferCtxGetTransferByKeyRetained(PSHCLTRANSFERCTX pTransferCtx, PCSHCLTRANSFERKEY pKey)
 {
     AssertPtrReturn(pTransferCtx, NULL);
-    AssertReturn(ShClTransferKeyIsValid(idSession, idTransfer, uGeneration), NULL);
+    AssertReturn(ShClTransferKeyIsValid(pKey), NULL);
+
+    SHCLSESSIONID const idSession = ShClTransferKeyGetSessionId(pKey);
+    SHCLTRANSFERID const idTransfer = ShClTransferKeyGetTransferId(pKey);
 
     shClTransferCtxLock(pTransferCtx);
 
@@ -3650,9 +3739,7 @@ PSHCLTRANSFER ShClTransferCtxGetTransferByKeyRetained(PSHCLTRANSFERCTX pTransfer
         {
             PSHCLTRANSFER const pTransferToUnlock = pTransfer;
             shClTransferLock(pTransferToUnlock);
-            if (   pTransferToUnlock->State.idSession != idSession
-                || pTransferToUnlock->State.uID != idTransfer
-                || pTransferToUnlock->State.uGeneration != uGeneration)
+            if (!ShClTransferKeyIsEqual(&pTransferToUnlock->State.Key, pKey))
                 pTransfer = NULL;
             else
                 ShClTransferAcquire(pTransferToUnlock);
@@ -3802,10 +3889,9 @@ static int shClTransferCtxTransferRegisterExInternal(PSHCLTRANSFERCTX pTransferC
     Assert(ShClTransferIdIsValid(idTransfer));
 
     shClTransferLock(pTransfer);
-    pTransfer->State.uID         = idTransfer;
-    pTransfer->State.idSession   = pTransferCtx->idSession;
-    pTransfer->State.uGeneration = shClTransferCtxCreateGenerationInternal(pTransferCtx);
-    pTransfer->pOwnerCtx         = pTransferCtx;
+    ShClTransferKeyInit(&pTransfer->State.Key, pTransferCtx->idSession, idTransfer,
+                        shClTransferCtxCreateGenerationInternal(pTransferCtx));
+    pTransfer->pOwnerCtx = pTransferCtx;
     shClTransferUnlock(pTransfer);
 
     RTListAppend(&pTransferCtx->List, &pTransfer->Node);
@@ -3815,7 +3901,7 @@ static int shClTransferCtxTransferRegisterExInternal(PSHCLTRANSFERCTX pTransferC
     int rc = VINF_SUCCESS;
 
     Log2Func(("pTransfer=%p, idTransfer=%RU32, idSession=%RU16, uGeneration=%RU64 -- now %RU16 transfer(s)\n",
-              pTransfer, idTransfer, pTransferCtx->idSession, pTransfer->State.uGeneration, pTransferCtx->cTransfers));
+              pTransfer, idTransfer, pTransferCtx->idSession, pTransfer->State.Key.uGeneration, pTransferCtx->cTransfers));
 
     shClTransferCtxUnlock(pTransferCtx);
 
@@ -3847,7 +3933,7 @@ int ShClTransferCtxRegister(PSHCLTRANSFERCTX pTransferCtx, PSHCLTRANSFER pTransf
     SHCLTRANSFERID idTransfer = NIL_SHCLTRANSFERID; /* Shut up MSVC. */
 
     int rc;
-    if (ShClTransferIdIsValid(pTransfer->State.uID))
+    if (ShClTransferIdIsValid(ShClTransferKeyGetTransferId(&pTransfer->State.Key)))
         rc = VERR_ALREADY_EXISTS;
     else
         rc = shClTransferCreateIDInternal(pTransferCtx, &idTransfer);
@@ -3882,7 +3968,7 @@ int ShClTransferCtxRegisterById(PSHCLTRANSFERCTX pTransferCtx, PSHCLTRANSFER pTr
     shClTransferCtxLock(pTransferCtx);
 
     int rc;
-    if (ShClTransferIdIsValid(pTransfer->State.uID))
+    if (ShClTransferIdIsValid(ShClTransferKeyGetTransferId(&pTransfer->State.Key)))
         rc = VERR_ALREADY_EXISTS;
     else if (pTransferCtx->cTransfers < VBOX_SHCL_MAX_TRANSFERS - 2 /* First and last are not used */)
     {
@@ -4724,7 +4810,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHListOpen(PSHCLTXPROVIDERCTX pCtx,
         rc = ShClEventSourceGenerateAndRegisterEvent(&pCtx->pTransfer->Events, &pEvent);
         if (RT_SUCCESS(rc))
         {
-            pMsg->idCtx = VBOX_SHCL_CONTEXTID_MAKE(pClient->State.uSessionID, pCtx->pTransfer->State.uID,
+            pMsg->idCtx = VBOX_SHCL_CONTEXTID_MAKE(pClient->State.uSessionID, ShClTransferKeyGetTransferId(&pCtx->pTransfer->State.Key),
                                                    pEvent->idEvent);
 
             rc = ShClTransferTransformPath(pOpenParms->pszPath, pOpenParms->cbPath);
@@ -4819,7 +4905,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHListClose(PSHCLTXPROVIDERCTX pCtx, SHCLL
         rc = ShClEventSourceGenerateAndRegisterEvent(&pCtx->pTransfer->Events, &pEvent);
         if (RT_SUCCESS(rc))
         {
-            pMsg->idCtx = VBOX_SHCL_CONTEXTID_MAKE(pClient->State.uSessionID, pCtx->pTransfer->State.uID,
+            pMsg->idCtx = VBOX_SHCL_CONTEXTID_MAKE(pClient->State.uSessionID, ShClTransferKeyGetTransferId(&pCtx->pTransfer->State.Key),
                                                    pEvent->idEvent);
 
             rc = shClSvcTransferMsgSetListClose(pMsg->cParms, pMsg->aParms, pMsg->idCtx, hList);
@@ -4875,7 +4961,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHListHdrRead(PSHCLTXPROVIDERCTX pCtx,
         if (RT_SUCCESS(rc))
         {
             HGCMSvcSetU64(&pMsg->aParms[0], VBOX_SHCL_CONTEXTID_MAKE(pClient->State.uSessionID,
-                                                                     pCtx->pTransfer->State.uID, pEvent->idEvent));
+                                                                     ShClTransferKeyGetTransferId(&pCtx->pTransfer->State.Key), pEvent->idEvent));
             HGCMSvcSetU64(&pMsg->aParms[1], hList);
             HGCMSvcSetU32(&pMsg->aParms[2], 0 /* fFlags */);
 
@@ -4932,7 +5018,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHListEntryRead(PSHCLTXPROVIDERCTX pCtx,
         if (RT_SUCCESS(rc))
         {
             HGCMSvcSetU64(&pMsg->aParms[0], VBOX_SHCL_CONTEXTID_MAKE(pClient->State.uSessionID,
-                                                                     pCtx->pTransfer->State.uID, pEvent->idEvent));
+                                                                     ShClTransferKeyGetTransferId(&pCtx->pTransfer->State.Key), pEvent->idEvent));
             HGCMSvcSetU64(&pMsg->aParms[1], hList);
             HGCMSvcSetU32(&pMsg->aParms[2], 0 /* fInfo */);
 
@@ -4995,7 +5081,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHObjOpen(PSHCLTXPROVIDERCTX pCtx, PSHCLOB
                 const uint32_t cbPath = (uint32_t)strlen(pCreateParms->pszPath) + 1; /* Include terminating zero */
 
                 HGCMSvcSetU64(&pMsg->aParms[0], VBOX_SHCL_CONTEXTID_MAKE(pClient->State.uSessionID,
-                                                                         pCtx->pTransfer->State.uID, pEvent->idEvent));
+                                                                         ShClTransferKeyGetTransferId(&pCtx->pTransfer->State.Key), pEvent->idEvent));
                 HGCMSvcSetU64(&pMsg->aParms[1], 0); /* uHandle */
                 HGCMSvcSetPv (&pMsg->aParms[2], pCreateParms->pszPath, cbPath);
                 HGCMSvcSetU32(&pMsg->aParms[3], pCreateParms->fCreate);
@@ -5060,7 +5146,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHObjClose(PSHCLTXPROVIDERCTX pCtx, SHCLOB
         if (RT_SUCCESS(rc))
         {
             HGCMSvcSetU64(&pMsg->aParms[0], VBOX_SHCL_CONTEXTID_MAKE(pClient->State.uSessionID,
-                                                                     pCtx->pTransfer->State.uID, pEvent->idEvent));
+                                                                     ShClTransferKeyGetTransferId(&pCtx->pTransfer->State.Key), pEvent->idEvent));
             HGCMSvcSetU64(&pMsg->aParms[1], hObj);
 
             ShClSvcClientLock(pClient);
@@ -5121,7 +5207,7 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHObjRead(PSHCLTXPROVIDERCTX pCtx, SHCLOBJ
         if (RT_SUCCESS(rc))
         {
             HGCMSvcSetU64(&pMsg->aParms[0], VBOX_SHCL_CONTEXTID_MAKE(pClient->State.uSessionID,
-                                                                     pCtx->pTransfer->State.uID, pEvent->idEvent));
+                                                                     ShClTransferKeyGetTransferId(&pCtx->pTransfer->State.Key), pEvent->idEvent));
             HGCMSvcSetU64(&pMsg->aParms[1], hObj);
             HGCMSvcSetU32(&pMsg->aParms[2], cbData);
             HGCMSvcSetU32(&pMsg->aParms[3], fFlags);
@@ -5694,7 +5780,7 @@ int ShClTransferInit(PSHCLTRANSFER pTransfer)
                         shClTransferUnlock(pTransfer), VERR_WRONG_ORDER);
 
     LogFlowFunc(("uID=%RU32, enmDir=%RU32, enmSource=%RU32\n",
-                 pTransfer->State.uID, pTransfer->State.enmDir, pTransfer->State.enmSource));
+                 ShClTransferKeyGetTransferId(&pTransfer->State.Key), pTransfer->State.enmDir, pTransfer->State.enmSource));
 
     pTransfer->cListHandles    = 0;
     pTransfer->uListHandleNext = 1;

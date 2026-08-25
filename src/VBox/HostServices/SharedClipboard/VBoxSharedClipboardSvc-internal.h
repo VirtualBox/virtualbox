@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-internal.h 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-internal.h 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal service instance state.
  */
@@ -173,12 +173,8 @@ int  shClSvcExtReportError(char *pszId, char *pszMsg, int rcError);
 /** Immutable service-to-Main transfer-status snapshot. */
 typedef struct SHCLSVCEXTTRANSFERSTATUS
 {
-    /** Owning service session. */
-    SHCLSESSIONID       idSession;
-    /** Transfer ID within @a idSession. */
-    SHCLTRANSFERID      idTransfer;
-    /** Host-private transfer generation. */
-    SHCLTRANSFERGEN     uGeneration;
+    /** Host-side transfer identity. */
+    SHCLTRANSFERKEY     Key;
     /** Transfer direction. */
     SHCLTRANSFERDIR     enmDir;
     /** Endpoint which owns the transfer data. */
@@ -198,12 +194,8 @@ typedef SHCLSVCEXTTRANSFERSTATUS const *PCSHCLSVCEXTTRANSFERSTATUS;
 /** Immutable service-to-Main transfer-progress snapshot. */
 typedef struct SHCLSVCEXTTRANSFERPROGRESS
 {
-    /** Owning service session. */
-    SHCLSESSIONID       idSession;
-    /** Transfer ID within @a idSession. */
-    SHCLTRANSFERID      idTransfer;
-    /** Host-private transfer generation. */
-    SHCLTRANSFERGEN     uGeneration;
+    /** Host-side transfer identity. */
+    SHCLTRANSFERKEY     Key;
     /** Exact aggregate payload bytes processed. */
     uint64_t            cbProcessed;
     /** Exact aggregate payload bytes to process. */

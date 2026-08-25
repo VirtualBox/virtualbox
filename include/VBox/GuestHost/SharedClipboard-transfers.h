@@ -1,4 +1,4 @@
-/* $Id: SharedClipboard-transfers.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: SharedClipboard-transfers.h 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Shared transfer functions between host and guest.
  */
@@ -121,6 +121,28 @@ typedef uint32_t SHCLTRANSFERSTATUS;
 typedef uint64_t SHCLTRANSFERGEN;
 /** NIL transfer generation. */
 #define NIL_SHCLTRANSFERGEN UINT64_MAX
+
+/**
+ * Host-side identity of a Shared Clipboard transfer.
+ *
+ * The context ID contains the service session and transfer IDs.  Its event ID
+ * is always zero because events identify individual guest protocol operations,
+ * not the transfer itself.
+ */
+typedef struct SHCLTRANSFERKEY
+{
+    /** Normalized VBOX_SHCL_CONTEXTID with a zero event ID. */
+    uint64_t            uContextId;
+    /** Host-private generation which distinguishes reused transfer IDs. */
+    SHCLTRANSFERGEN     uGeneration;
+} SHCLTRANSFERKEY;
+/** Pointer to a Shared Clipboard transfer key. */
+typedef SHCLTRANSFERKEY *PSHCLTRANSFERKEY;
+/** Pointer to a const Shared Clipboard transfer key. */
+typedef SHCLTRANSFERKEY const *PCSHCLTRANSFERKEY;
+/** Initializer for an invalid Shared Clipboard transfer key. */
+#define SHCLTRANSFERKEY_INITIALIZER { 0, NIL_SHCLTRANSFERGEN }
+AssertCompileSize(SHCLTRANSFERKEY, 16);
 
 /** @} */
 
@@ -621,12 +643,8 @@ typedef SHCLLISTHANDLEINFO *PSHCLLISTHANDLEINFO;
  */
 typedef struct _SHCLTRANSFERSTATE
 {
-    /** The transfer's (local) ID. */
-    SHCLTRANSFERID     uID;
-    /** Service session that owns this transfer. */
-    SHCLSESSIONID      idSession;
-    /** Host-private generation assigned when the transfer is registered. */
-    SHCLTRANSFERGEN    uGeneration;
+    /** Host-side identity assigned when the transfer is registered. */
+    SHCLTRANSFERKEY    Key;
     /** The transfer's current status. */
     SHCLTRANSFERSTATUS enmStatus;
     /** The transfer's absolute guest/host direction. */
@@ -1179,11 +1197,52 @@ bool ShClTransferIdIsValid(uint32_t idTransfer);
  * Checks whether a transfer key is usable for lifecycle tracking.
  *
  * @returns true if the key identifies a non-nil service transfer, false otherwise.
- * @param   idSession           Service session ID.
- * @param   idTransfer          Service transfer ID, before narrowing to SHCLTRANSFERID.
- * @param   uGeneration         Service transfer generation.
+ * @param   pKey                Transfer key to validate.
  */
-bool ShClTransferKeyIsValid(SHCLSESSIONID idSession, uint32_t idTransfer, SHCLTRANSFERGEN uGeneration);
+bool ShClTransferKeyIsValid(PCSHCLTRANSFERKEY pKey);
+
+/**
+ * Initializes a normalized host-side transfer key.
+ *
+ * @param   pKey                Transfer key to initialize.
+ * @param   idSession           Service session ID.
+ * @param   idTransfer          Service transfer ID.
+ * @param   uGeneration         Host-private transfer generation.
+ */
+void ShClTransferKeyInit(PSHCLTRANSFERKEY pKey, SHCLSESSIONID idSession, SHCLTRANSFERID idTransfer,
+                         SHCLTRANSFERGEN uGeneration);
+
+/**
+ * Resets a host-side transfer key to its invalid value.
+ *
+ * @param   pKey                Transfer key to reset.
+ */
+void ShClTransferKeyReset(PSHCLTRANSFERKEY pKey);
+
+/**
+ * Checks whether two host-side transfer keys are equal.
+ *
+ * @returns                     true if the keys are equal, false otherwise.
+ * @param   pLeft               First transfer key.
+ * @param   pRight              Second transfer key.
+ */
+bool ShClTransferKeyIsEqual(PCSHCLTRANSFERKEY pLeft, PCSHCLTRANSFERKEY pRight);
+
+/**
+ * Returns the service session ID encoded in a host-side transfer key.
+ *
+ * @returns                     The encoded service session ID.
+ * @param   pKey                Transfer key to inspect.
+ */
+SHCLSESSIONID ShClTransferKeyGetSessionId(PCSHCLTRANSFERKEY pKey);
+
+/**
+ * Returns the transfer ID encoded in a host-side transfer key.
+ *
+ * @returns                     The encoded transfer ID.
+ * @param   pKey                Transfer key to inspect.
+ */
+SHCLTRANSFERID ShClTransferKeyGetTransferId(PCSHCLTRANSFERKEY pKey);
 
 /**
  * Checks whether a transfer status is part of the Shared Clipboard protocol.
@@ -1246,6 +1305,7 @@ uint32_t ShClTransferRelease(PSHCLTRANSFER pTransfer);
 SHCLTRANSFERID ShClTransferGetID(PSHCLTRANSFER pTransfer);
 SHCLSESSIONID ShClTransferGetSessionId(PSHCLTRANSFER pTransfer);
 SHCLTRANSFERGEN ShClTransferGetGeneration(PSHCLTRANSFER pTransfer);
+void ShClTransferGetKey(PSHCLTRANSFER pTransfer, PSHCLTRANSFERKEY pKey);
 SHCLTRANSFERDIR ShClTransferGetDir(PSHCLTRANSFER pTransfer);
 SHCLSOURCE ShClTransferGetSource(PSHCLTRANSFER pTransfer);
 SHCLTRANSFERSTATUS ShClTransferGetStatus(PSHCLTRANSFER pTransfer);
@@ -1308,8 +1368,7 @@ int ShClTransferCtxBeginSession(PSHCLTRANSFERCTX pTransferCtx, SHCLSESSIONID idS
  *  Use a retained lookup across concurrent unregistration or teardown.
  *  @{ */
 PSHCLTRANSFER ShClTransferCtxGetTransferById(PSHCLTRANSFERCTX pTransferCtx, uint32_t uID);
-PSHCLTRANSFER ShClTransferCtxGetTransferByKey(PSHCLTRANSFERCTX pTransferCtx, SHCLSESSIONID idSession,
-                                              SHCLTRANSFERID idTransfer, SHCLTRANSFERGEN uGeneration);
+PSHCLTRANSFER ShClTransferCtxGetTransferByKey(PSHCLTRANSFERCTX pTransferCtx, PCSHCLTRANSFERKEY pKey);
 PSHCLTRANSFER ShClTransferCtxGetTransferByIndex(PSHCLTRANSFERCTX pTransferCtx, uint32_t uIdx);
 PSHCLTRANSFER ShClTransferCtxGetTransferLast(PSHCLTRANSFERCTX pTransferCtx);
 /** @} */
@@ -1317,8 +1376,7 @@ PSHCLTRANSFER ShClTransferCtxGetTransferLast(PSHCLTRANSFERCTX pTransferCtx);
  *  Returned pointers must be released with ShClTransferRelease().
  *  @{ */
 PSHCLTRANSFER ShClTransferCtxGetTransferByIdRetained(PSHCLTRANSFERCTX pTransferCtx, uint32_t uID);
-PSHCLTRANSFER ShClTransferCtxGetTransferByKeyRetained(PSHCLTRANSFERCTX pTransferCtx, SHCLSESSIONID idSession,
-                                                      SHCLTRANSFERID idTransfer, SHCLTRANSFERGEN uGeneration);
+PSHCLTRANSFER ShClTransferCtxGetTransferByKeyRetained(PSHCLTRANSFERCTX pTransferCtx, PCSHCLTRANSFERKEY pKey);
 /** @} */
 uint32_t ShClTransferCtxGetTotalTransfers(PSHCLTRANSFERCTX pTransferCtx);
 bool ShClTransferCtxIsMaximumReached(PSHCLTRANSFERCTX pTransferCtx);

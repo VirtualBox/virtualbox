@@ -1,4 +1,4 @@
-/* $Id: GuestShClSvcExt.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClSvcExt.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard service extension handling for Main.
  */
@@ -233,10 +233,8 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
         case VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER:
         {
             SHCL_VALIDATE_ACTIVE(Transport);
-            SHCLSESSIONID const idSession = pParms->u.FileTransferData.idSession;
-            SHCLTRANSFERID const idTransfer = pParms->u.FileTransferData.idTransfer;
-            SHCLTRANSFERGEN const uGeneration = pParms->u.FileTransferData.uGeneration;
-            AssertReturn(ShClTransferKeyIsValid(idSession, idTransfer, uGeneration), VERR_INVALID_PARAMETER);
+            PCSHCLTRANSFERKEY const pKey = &pParms->u.FileTransferData.Key;
+            AssertReturn(ShClTransferKeyIsValid(pKey), VERR_INVALID_PARAMETER);
             AssertReturn(ShClTransferDirIsValid(pParms->u.FileTransferData.enmDir), VERR_INVALID_PARAMETER);
             AssertReturn(ShClSourceIsValid(pParms->u.FileTransferData.enmTransferSource), VERR_INVALID_PARAMETER);
             AssertReturn(ShClSourceIsValid(pParms->u.FileTransferData.enmReplySource), VERR_INVALID_PARAMETER);
@@ -252,7 +250,7 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
                          VERR_INVALID_PARAMETER);
 
             PSHCLTRANSFER const pRegisteredTransfer
-                = m_pConn->transferGetByKeyRetained(idSession, idTransfer, uGeneration);
+                = m_pConn->transferGetByKeyRetained(pKey);
             if (pRegisteredTransfer)
             {
                 bool const fMatches =    ShClTransferGetDir(pRegisteredTransfer) == pParms->u.FileTransferData.enmDir
@@ -269,15 +267,13 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
         case VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER_PROGRESS:
         {
             SHCL_VALIDATE_ACTIVE(Transport);
-            SHCLSESSIONID const idSession = pParms->u.FileTransferProgress.idSession;
-            SHCLTRANSFERID const idTransfer = pParms->u.FileTransferProgress.idTransfer;
-            SHCLTRANSFERGEN const uGeneration = pParms->u.FileTransferProgress.uGeneration;
-            AssertReturn(ShClTransferKeyIsValid(idSession, idTransfer, uGeneration), VERR_INVALID_PARAMETER);
+            PCSHCLTRANSFERKEY const pKey = &pParms->u.FileTransferProgress.Key;
+            AssertReturn(ShClTransferKeyIsValid(pKey), VERR_INVALID_PARAMETER);
             AssertReturn(pParms->u.FileTransferProgress.cbTotal > 0, VERR_INVALID_PARAMETER);
             AssertReturn(pParms->u.FileTransferProgress.cbProcessed <= pParms->u.FileTransferProgress.cbTotal,
                          VERR_INVALID_PARAMETER);
             PSHCLTRANSFER const pRegisteredTransfer
-                = m_pConn->transferGetByKeyRetained(idSession, idTransfer, uGeneration);
+                = m_pConn->transferGetByKeyRetained(pKey);
             if (!pRegisteredTransfer)
                 return VERR_INVALID_CONTEXT;
             ShClTransferRelease(pRegisteredTransfer);
@@ -587,9 +583,7 @@ int GuestShCl::i_svcExtTransferGetCallbacksCallback(PSHCLEXTPARMS pParms)
 int GuestShCl::i_svcExtFileTransferCallback(PSHCLEXTPARMS pParms)
 {
     SHCLTRANSPORT const Transport = pParms->u.FileTransferData.Transport;
-    SHCLSESSIONID const idSession = pParms->u.FileTransferData.idSession;
-    SHCLTRANSFERID const idTransfer = pParms->u.FileTransferData.idTransfer;
-    SHCLTRANSFERGEN const uGeneration = pParms->u.FileTransferData.uGeneration;
+    PCSHCLTRANSFERKEY const pKey = &pParms->u.FileTransferData.Key;
     SHCLSOURCE const enmTransferSource = pParms->u.FileTransferData.enmTransferSource;
     SHCLSOURCE const enmReplySource = pParms->u.FileTransferData.enmReplySource;
     SHCLTRANSFERSTATUS const enmStatus = pParms->u.FileTransferData.enmStatus;
@@ -601,7 +595,7 @@ int GuestShCl::i_svcExtFileTransferCallback(PSHCLEXTPARMS pParms)
 
     if (RT_SUCCESS(vrc))
     {
-        PSHCLTRANSFER const pTransfer = m_pConn->transferGetByKeyRetained(idSession, idTransfer, uGeneration);
+        PSHCLTRANSFER const pTransfer = m_pConn->transferGetByKeyRetained(pKey);
         if (pTransfer)
         {
             if (   ShClTransferGetDir(pTransfer) == pParms->u.FileTransferData.enmDir
@@ -623,7 +617,7 @@ int GuestShCl::i_svcExtFileTransferCallback(PSHCLEXTPARMS pParms)
         Clipboard *pClipboard = m_pConsole->i_getClipboard();
         if (pClipboard)
         {
-            HRESULT const hrc = pClipboard->i_handleTransferStatus(idSession, idTransfer, uGeneration, NULL,
+            HRESULT const hrc = pClipboard->i_handleTransferStatus(pKey, NULL,
                                                                    enmTransferSource, enmStatus, vrcTransfer);
             if (FAILED(hrc))
             {
@@ -658,9 +652,7 @@ int GuestShCl::i_svcExtTransferProgressCallback(PSHCLEXTPARMS pParms)
     Clipboard *pClipboard = m_pConsole->i_getClipboard();
     if (pClipboard)
     {
-        HRESULT const hrc = pClipboard->i_handleTransferProgress(pParms->u.FileTransferProgress.idSession,
-                                                                  pParms->u.FileTransferProgress.idTransfer,
-                                                                  pParms->u.FileTransferProgress.uGeneration,
+        HRESULT const hrc = pClipboard->i_handleTransferProgress(&pParms->u.FileTransferProgress.Key,
                                                                   pParms->u.FileTransferProgress.cbProcessed,
                                                                   pParms->u.FileTransferProgress.cbTotal);
         if (FAILED(hrc))

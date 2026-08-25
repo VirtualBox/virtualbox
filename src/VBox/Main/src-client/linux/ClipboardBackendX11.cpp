@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendX11.cpp 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendX11.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - X11 backend.
  */
@@ -113,25 +113,30 @@ static DECLCALLBACK(int) shClSvcX11TransferPreparationThread(RTTHREAD hThreadSel
 /** Resets the exact transfer key bound to an in-progress preparation. */
 static void shClSvcX11TransferPreparationResetKey(PSHCLX11TRANSFERSTATE pX11TransferState)
 {
-    pX11TransferState->idTransfer          = NIL_SHCLTRANSFERID;
-    pX11TransferState->uTransferGeneration = NIL_SHCLTRANSFERGEN;
+    ShClTransferKeyReset(&pX11TransferState->TransferKey);
 }
 
 /** Resets the exact transfer key backing the advertised URI-list data. */
 static void shClSvcX11TransferPublishedResetKey(PSHCLX11TRANSFERSTATE pX11TransferState)
 {
-    pX11TransferState->idPublishedTransfer          = NIL_SHCLTRANSFERID;
-    pX11TransferState->uPublishedTransferGeneration = NIL_SHCLTRANSFERGEN;
+    ShClTransferKeyReset(&pX11TransferState->PublishedTransferKey);
 }
 
-/** Checks an exact transfer ID and generation against a transfer. */
-static bool shClSvcX11TransferKeyMatches(SHCLTRANSFERID idTransfer, SHCLTRANSFERGEN uGeneration,
-                                         PSHCLTRANSFER pTransfer)
+/**
+ * Checks an exact transfer key against a transfer.
+ *
+ * @returns                     true if the key identifies the transfer, false otherwise.
+ * @param   pKey                Host-side transfer key to compare.
+ * @param   pTransfer           Transfer to compare against.
+ */
+static bool shClSvcX11TransferKeyMatches(PCSHCLTRANSFERKEY pKey, PSHCLTRANSFER pTransfer)
 {
-    return    idTransfer  != NIL_SHCLTRANSFERID
-           && uGeneration != NIL_SHCLTRANSFERGEN
-           && idTransfer  == ShClTransferGetID(pTransfer)
-           && uGeneration == ShClTransferGetGeneration(pTransfer);
+    if (!ShClTransferKeyIsValid(pKey) || !pTransfer)
+        return false;
+
+    SHCLTRANSFERKEY TransferKey;
+    ShClTransferGetKey(pTransfer, &TransferKey);
+    return ShClTransferKeyIsEqual(pKey, &TransferKey);
 }
 
 /** Checks whether a worker result still belongs to the current URI offer. */
@@ -160,25 +165,23 @@ static bool shClSvcX11TransferOfferIsCurrent(PSHCLCONTEXT pCtx, uint64_t uOfferG
  */
 static void shClSvcX11TransferPublishedCancel(PSHCLCONTEXT pCtx)
 {
-    SHCLTRANSFERID  idTransfer;
-    SHCLTRANSFERGEN uGeneration;
+    SHCLTRANSFERKEY Key;
 
     int vrc = RTCritSectEnter(&pCtx->CritSect);
     AssertRCReturnVoid(vrc);
 
-    idTransfer  = pCtx->X11TransferState.idPublishedTransfer;
-    uGeneration = pCtx->X11TransferState.uPublishedTransferGeneration;
+    Key = pCtx->X11TransferState.PublishedTransferKey;
     shClSvcX11TransferPublishedResetKey(&pCtx->X11TransferState);
 
     vrc = RTCritSectLeave(&pCtx->CritSect);
     AssertRC(vrc);
 
-    if (idTransfer == NIL_SHCLTRANSFERID)
+    if (!ShClTransferKeyIsValid(&Key))
         return;
 
-    PSHCLTRANSFER pTransfer = pCtx->pConn->transferGetByIdRetained(idTransfer);
-    if (   pTransfer
-        && shClSvcX11TransferKeyMatches(idTransfer, uGeneration, pTransfer))
+    SHCLTRANSFERID const idTransfer = ShClTransferKeyGetTransferId(&Key);
+    PSHCLTRANSFER pTransfer = pCtx->pConn->transferGetByKeyRetained(&Key);
+    if (pTransfer)
     {
         SHCLTRANSFERSTATUS const enmStatus = ShClTransferGetStatus(pTransfer);
         if (enmStatus != SHCLTRANSFERSTATUS_STARTED)
@@ -189,16 +192,14 @@ static void shClSvcX11TransferPublishedCancel(PSHCLCONTEXT pCtx)
         else
         {
             LogRel2(("Shared Clipboard: Keeping superseded X11 transfer %RU16/%RU64 alive while it is in use\n",
-                     idTransfer, uGeneration));
+                     idTransfer, Key.uGeneration));
             ShClTransferRelease(pTransfer);
         }
     }
     else
     {
-        if (pTransfer)
-            ShClTransferRelease(pTransfer);
         LogRel2(("Shared Clipboard: Published X11 transfer %RU16/%RU64 was already gone or replaced\n",
-                 idTransfer, uGeneration));
+                 idTransfer, Key.uGeneration));
     }
 }
 
@@ -717,12 +718,10 @@ static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, ui
                                           NIL_SHCLTRANSFERID, &pTransfer);
     }
 
-    SHCLTRANSFERID  idTransfer  = NIL_SHCLTRANSFERID;
-    SHCLTRANSFERGEN uGeneration = NIL_SHCLTRANSFERGEN;
+    SHCLTRANSFERKEY TransferKey = SHCLTRANSFERKEY_INITIALIZER;
     if (RT_SUCCESS(vrc))
     {
-        idTransfer  = ShClTransferGetID(pTransfer);
-        uGeneration = ShClTransferGetGeneration(pTransfer);
+        ShClTransferGetKey(pTransfer, &TransferKey);
 
         int vrc2 = RTCritSectEnter(&pCtx->CritSect);
         if (RT_SUCCESS(vrc2))
@@ -731,8 +730,7 @@ static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, ui
             if (   pX11TransferState->fPreparing
                 && pX11TransferState->uPreparingOfferGeneration == uOfferGeneration)
             {
-                pX11TransferState->idTransfer          = idTransfer;
-                pX11TransferState->uTransferGeneration = uGeneration;
+                pX11TransferState->TransferKey = TransferKey;
             }
             vrc2 = RTCritSectLeave(&pCtx->CritSect);
         }
@@ -780,9 +778,7 @@ static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, ui
         bool const fBoundTransfer =    pTransfer
                                     && pX11TransferState->fPreparing
                                     && pX11TransferState->uPreparingOfferGeneration == uOfferGeneration
-                                    && shClSvcX11TransferKeyMatches(pX11TransferState->idTransfer,
-                                                                   pX11TransferState->uTransferGeneration,
-                                                                   pTransfer);
+                                    && shClSvcX11TransferKeyMatches(&pX11TransferState->TransferKey, pTransfer);
         bool const fCurrentOffer =    !pCtx->fShuttingDown
                                    && pX11TransferState->uOfferGeneration == uOfferGeneration
                                    && (pX11TransferState->fFormats & VBOX_SHCL_FMT_URI_LIST);
@@ -796,8 +792,7 @@ static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, ui
                                                     (uint32_t)cbUriList);
             if (RT_SUCCESS(vrc))
             {
-                pX11TransferState->idPublishedTransfer          = idTransfer;
-                pX11TransferState->uPublishedTransferGeneration = uGeneration;
+                pX11TransferState->PublishedTransferKey = TransferKey;
                 fPublished = true;
             }
         }
@@ -823,12 +818,12 @@ static int shClSvcX11TransferPrepare(PSHCLCONTEXT pCtx, SHCLFORMATS fFormats, ui
     }
 
     if (   !fPublished
-        && ShClTransferIdIsValid(idTransfer))
-        pCtx->pConn->transferDestroyById(idTransfer);
+        && ShClTransferKeyIsValid(&TransferKey))
+        pCtx->pConn->transferDestroyById(ShClTransferKeyGetTransferId(&TransferKey));
 
     if (fPublished)
         LogRel2(("Shared Clipboard: Advertised cached host X11 URI list for transfer %RU16/%RU64, offer generation %RU64\n",
-                 idTransfer, uGeneration, uOfferGeneration));
+                 ShClTransferKeyGetTransferId(&TransferKey), TransferKey.uGeneration, uOfferGeneration));
     else if (vrc != VERR_CANCELLED)
         LogRel(("Shared Clipboard: Preparing host X11 URI list for offer generation %RU64 failed with %Rrc\n",
                 uOfferGeneration, vrc));
@@ -1112,11 +1107,9 @@ static DECLCALLBACK(void) shClSvcX11TransferOnUnregisteredCallback(PSHCLTRANSFER
     if (RT_SUCCESS(vrc))
     {
         PSHCLX11TRANSFERSTATE pX11TransferState = &pCtx->X11TransferState;
-        if (shClSvcX11TransferKeyMatches(pX11TransferState->idTransfer,
-                                         pX11TransferState->uTransferGeneration, pCbCtx->pTransfer))
+        if (shClSvcX11TransferKeyMatches(&pX11TransferState->TransferKey, pCbCtx->pTransfer))
             shClSvcX11TransferPreparationResetKey(pX11TransferState);
-        if (shClSvcX11TransferKeyMatches(pX11TransferState->idPublishedTransfer,
-                                         pX11TransferState->uPublishedTransferGeneration, pCbCtx->pTransfer))
+        if (shClSvcX11TransferKeyMatches(&pX11TransferState->PublishedTransferKey, pCbCtx->pTransfer))
             shClSvcX11TransferPublishedResetKey(pX11TransferState);
 
         vrc = RTCritSectLeave(&pCtx->CritSect);

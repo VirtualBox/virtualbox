@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMain.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardMain.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Connection and service-extension testcase.
  */
@@ -431,15 +431,14 @@ static DECLCALLBACK(PSHCLTRANSFER) tstSvcTransferGetByIdRetained(SHCLCLIENTHANDL
 
 /** @copydoc SHCLSVCOPS::pfnTransferGetByKeyRetained */
 static DECLCALLBACK(PSHCLTRANSFER) tstSvcTransferGetByKeyRetained(SHCLCLIENTHANDLE hClient,
-                                                                  SHCLSESSIONID idSession,
-                                                                  SHCLTRANSFERID idTransfer,
-                                                                  SHCLTRANSFERGEN uGeneration)
+                                                                  PCSHCLTRANSFERKEY pKey)
 {
     tstSvcCheckClient(hClient);
     g_State.cSvcTransferGetByKey++;
-    if (   idSession != TST_SHCL_SESSION_ID
-        || idTransfer != TST_SHCL_TRANSFER_ID
-        || uGeneration != TST_SHCL_TRANSFER_GEN)
+    if (   !pKey
+        || VBOX_SHCL_CONTEXTID_GET_SESSION(pKey->uContextId) != TST_SHCL_SESSION_ID
+        || VBOX_SHCL_CONTEXTID_GET_TRANSFER(pKey->uContextId) != TST_SHCL_TRANSFER_ID
+        || pKey->uGeneration != TST_SHCL_TRANSFER_GEN)
         return NULL;
     tstTransferRetain();
     return &g_State.Transfer;
@@ -791,11 +790,13 @@ static void tstTransfers(void)
         ShClTransferRelease(pTransfer);
     RTTESTI_CHECK(Conn.transferGetByIdRetained(TST_SHCL_TRANSFER_ID + 1) == NULL);
 
-    pTransfer = Conn.transferGetByKeyRetained(TST_SHCL_SESSION_ID, TST_SHCL_TRANSFER_ID,
-                                               TST_SHCL_TRANSFER_GEN + 1);
+    SHCLTRANSFERKEY Key;
+    Key.uContextId  = VBOX_SHCL_CONTEXTID_MAKE(TST_SHCL_SESSION_ID, TST_SHCL_TRANSFER_ID, 0 /* idEvent */);
+    Key.uGeneration = TST_SHCL_TRANSFER_GEN + 1;
+    pTransfer = Conn.transferGetByKeyRetained(&Key);
     RTTESTI_CHECK(pTransfer == NULL);
-    pTransfer = Conn.transferGetByKeyRetained(TST_SHCL_SESSION_ID, TST_SHCL_TRANSFER_ID,
-                                               TST_SHCL_TRANSFER_GEN);
+    Key.uGeneration = TST_SHCL_TRANSFER_GEN;
+    pTransfer = Conn.transferGetByKeyRetained(&Key);
     RTTESTI_CHECK(pTransfer == &g_State.Transfer);
     if (pTransfer)
         ShClTransferRelease(pTransfer);

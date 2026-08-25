@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferManagerImpl.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferManagerImpl.h 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer manager object.
  */
@@ -82,18 +82,18 @@ public:
     /**
      * Handles a Shared Clipboard transfer lifecycle status delivered by the host service.
      *
-     * @returns COM status code.
-     * @param   aServiceSessionId   Service session that owns the transfer.
-     * @param   aTransferId         Shared Clipboard transfer identifier.
-     * @param   aGeneration         Host-private transfer generation.
+     * @retval  S_OK                if the transfer status was accepted or safely ignored.
+     * @retval  E_INVALIDARG        if the key, source, status, result, direction, or transition is invalid.
+     * @retval  E_FAIL              if required transfer state is unavailable.
+     * @retval  E_OUTOFMEMORY       if a transfer record or publication cannot be allocated.
+     * @returns                     A failure status from creating or initializing the transfer's Main objects.
+     * @param   pKey                Host-side transfer key.
      * @param   aTransfer           Borrowed service transfer used to validate status metadata.
      * @param   enmShClSource       Data source recorded by the backing transfer.
      * @param   enmStatus           Transfer lifecycle status.
      * @param   vrcTransfer         Transfer result code associated with the status.
      */
-    HRESULT i_handleTransferStatus(SHCLSESSIONID aServiceSessionId,
-                                   SHCLTRANSFERID aTransferId,
-                                   SHCLTRANSFERGEN aGeneration,
+    HRESULT i_handleTransferStatus(PCSHCLTRANSFERKEY pKey,
                                    PSHCLTRANSFER aTransfer,
                                    SHCLSOURCE enmShClSource,
                                    SHCLTRANSFERSTATUS enmStatus,
@@ -101,16 +101,13 @@ public:
     /**
      * Updates the byte progress of a Shared Clipboard transfer.
      *
-     * @returns COM status code.
-     * @param   aServiceSessionId   Service session that owns the transfer.
-     * @param   aTransferId         Shared Clipboard transfer identifier.
-     * @param   aGeneration         Host-private transfer generation.
+     * @retval  S_OK                if progress was accepted or safely ignored.
+     * @retval  E_OUTOFMEMORY       if a progress publication cannot be allocated.
+     * @param   pKey                Host-side transfer key.
      * @param   cbProcessed         Number of bytes processed so far.
      * @param   cbTotal             Total number of bytes to process.
      */
-    HRESULT i_handleTransferProgress(SHCLSESSIONID aServiceSessionId,
-                                     SHCLTRANSFERID aTransferId,
-                                     SHCLTRANSFERGEN aGeneration,
+    HRESULT i_handleTransferProgress(PCSHCLTRANSFERKEY pKey,
                                      uint64_t cbProcessed,
                                      uint64_t cbTotal);
     HRESULT i_cancelTransferById(ULONG aTransferId);
@@ -191,9 +188,8 @@ private:
         {
             TransferRecord()
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-                : mServiceSessionId(NIL_SHCLSESSIONID)
+                : mServiceKey()
                 , mTransferId(0)
-                , mGeneration(NIL_SHCLTRANSFERGEN)
                 , mDirection(SHCLTRANSFERDIR_UNKNOWN)
                 , mSource(SHCLSOURCE_INVALID)
                 , mStatus(SHCLTRANSFERSTATUS_NONE)
@@ -204,12 +200,17 @@ private:
                 , mfTerminal(false)
                 , mfCancelRequested(false)
 #endif
-            { }
+            {
+#ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+                ShClTransferKeyReset(&mServiceKey);
+#endif
+            }
 
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-            SHCLSESSIONID                    mServiceSessionId;
+            /** Host-side service identity, invalid for a Main-local transfer. */
+            SHCLTRANSFERKEY                  mServiceKey;
+            /** Public Main transfer ID. */
             ULONG                            mTransferId;
-            SHCLTRANSFERGEN                  mGeneration;
             /** Shared Clipboard data-plane direction. */
             SHCLTRANSFERDIR                  mDirection;
             /** Shared Clipboard data source recorded by the backing transfer. */
@@ -238,13 +239,15 @@ private:
                 return static_cast<IClipboardTransfer *>(pTransfer) == aTransfer;
             }
 
-            /** Returns whether the service identity matches this record. */
-            bool matches(SHCLSESSIONID aServiceSessionId, ULONG aTransferId,
-                         SHCLTRANSFERGEN aGeneration) const
+            /**
+             * Returns whether the service identity matches this record.
+             *
+             * @returns                     true if the key matches, false otherwise.
+             * @param   pKey                Host-side transfer key to compare.
+             */
+            bool matches(PCSHCLTRANSFERKEY pKey) const
             {
-                return    mServiceSessionId == aServiceSessionId
-                       && mTransferId == aTransferId
-                       && mGeneration == aGeneration;
+                return ShClTransferKeyIsEqual(&mServiceKey, pKey);
             }
 
             /** Returns whether the concrete Main object matches this record. */
@@ -254,13 +257,17 @@ private:
                 return pTransfer == aTransfer;
             }
 
-            /** Returns whether both the Main object and service identity match this record. */
-            bool matches(ClipboardTransfer *aTransfer,
-                         SHCLSESSIONID aServiceSessionId, ULONG aTransferId,
-                         SHCLTRANSFERGEN aGeneration) const
+            /**
+             * Returns whether both the Main object and service identity match this record.
+             *
+             * @returns                     true if both identities match, false otherwise.
+             * @param   aTransfer           Concrete Main transfer object to compare.
+             * @param   pKey                Host-side transfer key to compare.
+             */
+            bool matches(ClipboardTransfer *aTransfer, PCSHCLTRANSFERKEY pKey) const
             {
                 return    matches(aTransfer)
-                       && matches(aServiceSessionId, aTransferId, aGeneration);
+                       && matches(pKey);
             }
 #endif
         };
@@ -364,23 +371,31 @@ private:
             return mTransfers.end();
         }
 
-        /** Finds a record by exact service identity while the caller owns the manager lock. */
-        TransferRecords::iterator findTransferRecord(SHCLSESSIONID aServiceSessionId, ULONG aTransferId,
-                                                     SHCLTRANSFERGEN aGeneration)
+        /**
+         * Finds a record by exact service identity while the caller owns the manager lock.
+         *
+         * @returns                     Matching record iterator, or mTransfers.end() if not found.
+         * @param   pKey                Host-side transfer key to find.
+         */
+        TransferRecords::iterator findTransferRecord(PCSHCLTRANSFERKEY pKey)
         {
             for (TransferRecords::iterator it = mTransfers.begin(); it != mTransfers.end(); ++it)
-                if (it->matches(aServiceSessionId, aTransferId, aGeneration))
+                if (it->matches(pKey))
                     return it;
             return mTransfers.end();
         }
 
-        /** Finds an exact transfer record while the caller owns the manager lock. */
-        TransferRecords::iterator findTransferRecord(ClipboardTransfer *aTransfer,
-                                                     SHCLSESSIONID aServiceSessionId, ULONG aTransferId,
-                                                     SHCLTRANSFERGEN aGeneration)
+        /**
+         * Finds an exact transfer record while the caller owns the manager lock.
+         *
+         * @returns                     Matching record iterator, or mTransfers.end() if not found.
+         * @param   aTransfer           Concrete Main transfer object to find.
+         * @param   pKey                Host-side transfer key to find.
+         */
+        TransferRecords::iterator findTransferRecord(ClipboardTransfer *aTransfer, PCSHCLTRANSFERKEY pKey)
         {
             for (TransferRecords::iterator it = mTransfers.begin(); it != mTransfers.end(); ++it)
-                if (it->matches(aTransfer, aServiceSessionId, aTransferId, aGeneration))
+                if (it->matches(aTransfer, pKey))
                     return it;
             return mTransfers.end();
         }
@@ -404,9 +419,7 @@ private:
     /** Processes cancel requests observed on live transfer progress objects. */
     void i_processProgressCancellations();
     /** Sends a cancellation request for one exact service-backed transfer. */
-    HRESULT i_cancelServiceTransfer(SHCLSESSIONID aServiceSessionId,
-                                    SHCLTRANSFERID aTransferId,
-                                    SHCLTRANSFERGEN aGeneration);
+    HRESULT i_cancelServiceTransfer(PCSHCLTRANSFERKEY pKey);
 #endif
 };
 

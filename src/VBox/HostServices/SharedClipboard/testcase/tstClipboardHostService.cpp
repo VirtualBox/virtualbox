@@ -1,4 +1,4 @@
-/* $Id: tstClipboardHostService.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardHostService.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Host Service testcase.
  */
@@ -107,12 +107,8 @@ typedef struct TSTCLEXT
     uint32_t                    cTransferStatuses;
     /** Number of deliberately failed transfer-status notifications. */
     uint32_t                    cTransferStatusFailures;
-    /** Session ID of the last transfer-status notification. */
-    SHCLSESSIONID               idTransferSession;
-    /** Transfer ID of the last transfer-status notification. */
-    SHCLTRANSFERID              idTransfer;
-    /** Generation of the last transfer-status notification. */
-    SHCLTRANSFERGEN             uTransferGeneration;
+    /** Exact identity in the last transfer-status notification. */
+    SHCLTRANSFERKEY             TransferKey;
     /** Direction of the last transfer-status notification. */
     SHCLTRANSFERDIR             enmTransferDir;
     /** Source of the last transfer-status notification. */
@@ -131,12 +127,8 @@ typedef struct TSTCLEXT
     uint32_t                    cTransferProgress;
     /** Number of transport-scoped transfer-reset notifications. */
     uint32_t                    cTransferResets;
-    /** Session ID in the last progress notification. */
-    SHCLSESSIONID               idProgressSession;
-    /** Transfer ID in the last progress notification. */
-    SHCLTRANSFERID              idProgressTransfer;
-    /** Generation in the last progress notification. */
-    SHCLTRANSFERGEN             uProgressGeneration;
+    /** Exact identity in the last progress notification. */
+    SHCLTRANSFERKEY             ProgressKey;
     /** Processed bytes in the last progress notification. */
     uint64_t                    cbProgressProcessed;
     /** Exact total bytes in the last progress notification. */
@@ -334,9 +326,7 @@ static DECLCALLBACK(int) tstExtension(void *pvExtension, uint32_t uFunction, voi
         {
             SHCLTRANSPORT const Transport = pParms->u.FileTransferData.Transport;
             RTTESTI_CHECK_RET(ShClTransportIsEqual(&pExt->Transport, &Transport), VERR_INVALID_PARAMETER);
-            RTTESTI_CHECK_RET(ShClTransferKeyIsValid(pParms->u.FileTransferData.idSession,
-                                                     pParms->u.FileTransferData.idTransfer,
-                                                     pParms->u.FileTransferData.uGeneration),
+            RTTESTI_CHECK_RET(ShClTransferKeyIsValid(&pParms->u.FileTransferData.Key),
                               VERR_INVALID_PARAMETER);
             RTTESTI_CHECK_RET(ShClTransferDirIsValid(pParms->u.FileTransferData.enmDir), VERR_INVALID_PARAMETER);
             RTTESTI_CHECK_RET(ShClSourceIsValid(pParms->u.FileTransferData.enmTransferSource), VERR_INVALID_PARAMETER);
@@ -364,9 +354,7 @@ static DECLCALLBACK(int) tstExtension(void *pvExtension, uint32_t uFunction, voi
                 return VERR_NO_MEMORY;
             }
 
-            pExt->idTransferSession          = pParms->u.FileTransferData.idSession;
-            pExt->idTransfer                 = pParms->u.FileTransferData.idTransfer;
-            pExt->uTransferGeneration        = pParms->u.FileTransferData.uGeneration;
+            pExt->TransferKey                 = pParms->u.FileTransferData.Key;
             pExt->enmTransferDir             = pParms->u.FileTransferData.enmDir;
             pExt->enmTransferSource          = pParms->u.FileTransferData.enmTransferSource;
             pExt->enmTransferReplySource     = pParms->u.FileTransferData.enmReplySource;
@@ -382,17 +370,13 @@ static DECLCALLBACK(int) tstExtension(void *pvExtension, uint32_t uFunction, voi
         {
             SHCLTRANSPORT const Transport = pParms->u.FileTransferProgress.Transport;
             RTTESTI_CHECK_RET(ShClTransportIsEqual(&pExt->Transport, &Transport), VERR_INVALID_PARAMETER);
-            RTTESTI_CHECK_RET(ShClTransferKeyIsValid(pParms->u.FileTransferProgress.idSession,
-                                                     pParms->u.FileTransferProgress.idTransfer,
-                                                     pParms->u.FileTransferProgress.uGeneration),
+            RTTESTI_CHECK_RET(ShClTransferKeyIsValid(&pParms->u.FileTransferProgress.Key),
                               VERR_INVALID_PARAMETER);
             RTTESTI_CHECK_RET(pParms->u.FileTransferProgress.cbTotal > 0, VERR_INVALID_PARAMETER);
             RTTESTI_CHECK_RET(pParms->u.FileTransferProgress.cbProcessed
                            <= pParms->u.FileTransferProgress.cbTotal, VERR_INVALID_PARAMETER);
 
-            pExt->idProgressSession   = pParms->u.FileTransferProgress.idSession;
-            pExt->idProgressTransfer  = pParms->u.FileTransferProgress.idTransfer;
-            pExt->uProgressGeneration = pParms->u.FileTransferProgress.uGeneration;
+            pExt->ProgressKey         = pParms->u.FileTransferProgress.Key;
             pExt->cbProgressProcessed = pParms->u.FileTransferProgress.cbProcessed;
             pExt->cbProgressTotal     = pParms->u.FileTransferProgress.cbTotal;
             pExt->cTransferProgress++;
@@ -1060,6 +1044,32 @@ static void tstTransferEventCancellation(void)
 }
 
 
+/** Checks normalized host-side transfer key helpers. */
+static void tstTransferKeyHelpers(void)
+{
+    RTTestISub("Transfer key helpers");
+
+    SHCLTRANSFERKEY Key;
+    ShClTransferKeyInit(&Key, 42, 23, 7);
+    RTTESTI_CHECK(Key.uContextId == VBOX_SHCL_CONTEXTID_MAKE(42, 23, 0));
+    RTTESTI_CHECK(Key.uGeneration == 7);
+    RTTESTI_CHECK(ShClTransferKeyIsValid(&Key));
+    RTTESTI_CHECK(ShClTransferKeyGetSessionId(&Key) == 42);
+    RTTESTI_CHECK(ShClTransferKeyGetTransferId(&Key) == 23);
+
+    SHCLTRANSFERKEY OtherKey = Key;
+    RTTESTI_CHECK(ShClTransferKeyIsEqual(&Key, &OtherKey));
+    OtherKey.uContextId = VBOX_SHCL_CONTEXTID_MAKE(42, 23, 1);
+    RTTESTI_CHECK(!ShClTransferKeyIsValid(&OtherKey));
+    RTTESTI_CHECK(!ShClTransferKeyIsEqual(&Key, &OtherKey));
+
+    ShClTransferKeyReset(&OtherKey);
+    RTTESTI_CHECK(!ShClTransferKeyIsValid(&OtherKey));
+    RTTESTI_CHECK(OtherKey.uContextId == 0);
+    RTTESTI_CHECK(OtherKey.uGeneration == NIL_SHCLTRANSFERGEN);
+}
+
+
 /** Checks native aggregate progress accounting and terminal callback lock order. */
 static void tstTransferProgressHelpers(void)
 {
@@ -1612,9 +1622,7 @@ static void tstTransferStatusInit(PSHCLSVCEXTTRANSFERSTATUS pStatus, PSHCLTRANSF
                                   SHCLTRANSFERSTATUS enmStatus, int rcStatus)
 {
     RT_ZERO(*pStatus);
-    pStatus->idSession         = ShClTransferGetSessionId(pTransfer);
-    pStatus->idTransfer        = ShClTransferGetID(pTransfer);
-    pStatus->uGeneration       = ShClTransferGetGeneration(pTransfer);
+    ShClTransferGetKey(pTransfer, &pStatus->Key);
     pStatus->enmDir            = ShClTransferGetDir(pTransfer);
     pStatus->enmTransferSource = ShClTransferGetSource(pTransfer);
     pStatus->enmReplySource    = SHCLSOURCE_LOCAL;
@@ -1723,9 +1731,9 @@ static void tstTransferLateGuestError(void *pvClient)
         rc = ShClSvcTransferReportStatus(pClient, pTransfer, SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
         RTTESTI_CHECK_RC_OK(rc);
         RTTESTI_CHECK(g_Ext.cTransferStatuses == cStatusesBeforeComplete + 1);
-        RTTESTI_CHECK(g_Ext.idTransferSession == idSession);
-        RTTESTI_CHECK(g_Ext.idTransfer == idTransfer);
-        RTTESTI_CHECK(g_Ext.uTransferGeneration == uGeneration);
+        RTTESTI_CHECK(ShClTransferKeyGetSessionId(&g_Ext.TransferKey) == idSession);
+        RTTESTI_CHECK(ShClTransferKeyGetTransferId(&g_Ext.TransferKey) == idTransfer);
+        RTTESTI_CHECK(g_Ext.TransferKey.uGeneration == uGeneration);
         RTTESTI_CHECK(g_Ext.enmTransferStatus == SHCLTRANSFERSTATUS_COMPLETED);
         RTTESTI_CHECK(g_Ext.rcTransfer == VINF_SUCCESS);
         tstTransferStatusGet(pvClient, idSession, idTransfer, SHCLTRANSFERDIR_GUEST_TO_HOST,
@@ -1794,9 +1802,9 @@ static void tstTransferNativeCancellationOrder(void *pvClient)
         RTTESTI_CHECK_RC_OK(rc);
         RTTESTI_CHECK(g_Ext.fTerminalBeforeGuest);
         RTTESTI_CHECK(g_Ext.cTransferStatuses == cStatuses + 1);
-        RTTESTI_CHECK(g_Ext.idTransferSession == idSession);
-        RTTESTI_CHECK(g_Ext.idTransfer == idTransfer);
-        RTTESTI_CHECK(g_Ext.uTransferGeneration == uGeneration);
+        RTTESTI_CHECK(ShClTransferKeyGetSessionId(&g_Ext.TransferKey) == idSession);
+        RTTESTI_CHECK(ShClTransferKeyGetTransferId(&g_Ext.TransferKey) == idTransfer);
+        RTTESTI_CHECK(g_Ext.TransferKey.uGeneration == uGeneration);
         RTTESTI_CHECK(g_Ext.enmTransferStatus == SHCLTRANSFERSTATUS_CANCELED);
         RTTESTI_CHECK(g_Ext.rcTransfer == VERR_CANCELLED);
 
@@ -1868,9 +1876,9 @@ static void tstTransferCleanupNotification(void *pvClient)
         tstTransferStatusGet(pvClient, idSession, idTransfer, SHCLTRANSFERDIR_HOST_TO_GUEST,
                              SHCLTRANSFERSTATUS_UNINITIALIZED, VINF_SUCCESS);
         RTTESTI_CHECK(g_Ext.cTransferStatuses == cStatuses + 1);
-        RTTESTI_CHECK(g_Ext.idTransferSession == idSession);
-        RTTESTI_CHECK(g_Ext.idTransfer == idTransfer);
-        RTTESTI_CHECK(g_Ext.uTransferGeneration == uGeneration);
+        RTTESTI_CHECK(ShClTransferKeyGetSessionId(&g_Ext.TransferKey) == idSession);
+        RTTESTI_CHECK(ShClTransferKeyGetTransferId(&g_Ext.TransferKey) == idTransfer);
+        RTTESTI_CHECK(g_Ext.TransferKey.uGeneration == uGeneration);
         RTTESTI_CHECK(g_Ext.enmTransferStatus == SHCLTRANSFERSTATUS_UNINITIALIZED);
         RTTESTI_CHECK(g_Ext.rcTransfer == VINF_SUCCESS);
         RTTESTI_CHECK(g_Ext.enmTransferSource == SHCLSOURCE_LOCAL);
@@ -1912,9 +1920,9 @@ static void tstTransferCleanupNotification(void *pvClient)
         RTTESTI_CHECK(ShClTransferIdIsValid(idTriggerTransfer));
         RTTESTI_CHECK(g_Ext.cTransferStatuses == cStatuses);
         RTTESTI_CHECK(g_Ext.enmTransferStatus == SHCLTRANSFERSTATUS_COMPLETED);
-        RTTESTI_CHECK(g_Ext.idTransferSession == idSession);
-        RTTESTI_CHECK(g_Ext.idTransfer == idCompletedTransfer);
-        RTTESTI_CHECK(g_Ext.uTransferGeneration == uGeneration);
+        RTTESTI_CHECK(ShClTransferKeyGetSessionId(&g_Ext.TransferKey) == idSession);
+        RTTESTI_CHECK(ShClTransferKeyGetTransferId(&g_Ext.TransferKey) == idCompletedTransfer);
+        RTTESTI_CHECK(g_Ext.TransferKey.uGeneration == uGeneration);
 
         PSHCLTRANSFER const pLookup
             = g_Ext.Transport.pOps->pfnTransferGetByIdRetained(g_Ext.Transport.hClient, idCompletedTransfer);
@@ -2025,10 +2033,10 @@ static void tstTransfers(void *pvClient)
     RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
     RTTESTI_CHECK(g_Ext.cTransferCallbackQueries == cQueriesBefore + 1);
     RTTESTI_CHECK(g_Ext.cTransferStatuses == cStatusesBefore + 1);
-    SHCLSESSIONID const idSession = g_Ext.idTransferSession;
+    SHCLSESSIONID const idSession = ShClTransferKeyGetSessionId(&g_Ext.TransferKey);
     RTTESTI_CHECK(idSession != NIL_SHCLSESSIONID);
-    RTTESTI_CHECK(g_Ext.idTransfer != NIL_SHCLTRANSFERID);
-    RTTESTI_CHECK(g_Ext.uTransferGeneration != NIL_SHCLTRANSFERGEN);
+    RTTESTI_CHECK(ShClTransferKeyGetTransferId(&g_Ext.TransferKey) != NIL_SHCLTRANSFERID);
+    RTTESTI_CHECK(g_Ext.TransferKey.uGeneration != NIL_SHCLTRANSFERGEN);
     RTTESTI_CHECK(g_Ext.enmTransferDir == SHCLTRANSFERDIR_HOST_TO_GUEST);
     RTTESTI_CHECK(g_Ext.enmTransferSource == SHCLSOURCE_LOCAL);
     RTTESTI_CHECK(g_Ext.enmTransferReplySource == SHCLSOURCE_REMOTE);
@@ -2037,25 +2045,25 @@ static void tstTransfers(void *pvClient)
 
     uint32_t const cQueriesAfterRequest = g_Ext.cTransferCallbackQueries;
     uint32_t const cStatusesAfterRequest = g_Ext.cTransferStatuses;
-    tstTransferReplyInit(aReply, VBOX_SHCL_CONTEXTID_MAKE(idSession, g_Ext.idTransfer + 1, 0),
+    tstTransferReplyInit(aReply, VBOX_SHCL_CONTEXTID_MAKE(idSession, ShClTransferKeyGetTransferId(&g_Ext.TransferKey) + 1, 0),
                          SHCLTRANSFERSTATUS_REQUESTED);
     rc = tstGuestCall(pvClient, VBOX_SHCL_GUEST_FN_REPLY, RT_ELEMENTS(aReply), aReply);
     RTTESTI_CHECK_RC(rc, VERR_INVALID_CONTEXT);
     RTTESTI_CHECK(g_Ext.cTransferCallbackQueries == cQueriesAfterRequest);
     RTTESTI_CHECK(g_Ext.cTransferStatuses == cStatusesAfterRequest);
 
-    HGCMSvcSetU64(&aObjectClose[0], VBOX_SHCL_CONTEXTID_MAKE(idSession + 1, g_Ext.idTransfer, 0));
+    HGCMSvcSetU64(&aObjectClose[0], VBOX_SHCL_CONTEXTID_MAKE(idSession + 1, ShClTransferKeyGetTransferId(&g_Ext.TransferKey), 0));
     rc = tstGuestCall(pvClient, VBOX_SHCL_GUEST_FN_OBJ_CLOSE, RT_ELEMENTS(aObjectClose), aObjectClose);
     RTTESTI_CHECK_RC(rc, VERR_INVALID_CONTEXT);
-    HGCMSvcSetU64(&aObjectClose[0], VBOX_SHCL_CONTEXTID_MAKE(idSession, g_Ext.idTransfer + 1, 0));
+    HGCMSvcSetU64(&aObjectClose[0], VBOX_SHCL_CONTEXTID_MAKE(idSession, ShClTransferKeyGetTransferId(&g_Ext.TransferKey) + 1, 0));
     rc = tstGuestCall(pvClient, VBOX_SHCL_GUEST_FN_OBJ_CLOSE, RT_ELEMENTS(aObjectClose), aObjectClose);
     RTTESTI_CHECK_RC(rc, VERR_SHCLPB_TRANSFER_ID_NOT_FOUND);
 
-    tstTransferStatusGet(pvClient, idSession, g_Ext.idTransfer, SHCLTRANSFERDIR_HOST_TO_GUEST,
+    tstTransferStatusGet(pvClient, idSession, ShClTransferKeyGetTransferId(&g_Ext.TransferKey), SHCLTRANSFERDIR_HOST_TO_GUEST,
                          SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
 
     PSHCLTRANSFER pTransfer = g_Ext.Transport.pOps->pfnTransferGetByIdRetained(g_Ext.Transport.hClient,
-                                                                               g_Ext.idTransfer);
+                                                                               ShClTransferKeyGetTransferId(&g_Ext.TransferKey));
     RTTESTI_CHECK(pTransfer != NULL);
     if (pTransfer)
     {
@@ -2067,7 +2075,8 @@ static void tstTransfers(void *pvClient)
         RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
         if (RT_SUCCESS(rc))
         {
-            pImpostor->State.uID = ShClTransferGetID(pTransfer);
+            ShClTransferKeyInit(&pImpostor->State.Key, NIL_SHCLSESSIONID, ShClTransferGetID(pTransfer),
+                                NIL_SHCLTRANSFERGEN);
             RTTESTI_CHECK(shClSvcTransferDetach((PSHCLCLIENT)g_Ext.Transport.hClient, pImpostor) == NULL);
             PSHCLTRANSFER const pStillRegistered
                 = g_Ext.Transport.pOps->pfnTransferGetByIdRetained(g_Ext.Transport.hClient,
@@ -2075,7 +2084,7 @@ static void tstTransfers(void *pvClient)
             RTTESTI_CHECK(pStillRegistered == pTransfer);
             if (pStillRegistered)
                 ShClTransferRelease(pStillRegistered);
-            pImpostor->State.uID = NIL_SHCLTRANSFERID;
+            ShClTransferKeyReset(&pImpostor->State.Key);
             RTTESTI_CHECK_RC(ShClTransferDestroy(pImpostor), VINF_SUCCESS);
         }
 
@@ -2128,9 +2137,9 @@ static void tstTransfers(void *pvClient)
                 uint32_t const cProgressBefore = g_Ext.cTransferProgress;
                 ShClSvcTransferReportProgress((PSHCLCLIENT)g_Ext.Transport.hClient, pTransfer, hProgressObj, 1);
                 RTTESTI_CHECK(g_Ext.cTransferProgress == cProgressBefore + 1);
-                RTTESTI_CHECK(g_Ext.idProgressSession == ShClTransferGetSessionId(pTransfer));
-                RTTESTI_CHECK(g_Ext.idProgressTransfer == ShClTransferGetID(pTransfer));
-                RTTESTI_CHECK(g_Ext.uProgressGeneration == ShClTransferGetGeneration(pTransfer));
+                SHCLTRANSFERKEY TransferKey;
+                ShClTransferGetKey(pTransfer, &TransferKey);
+                RTTESTI_CHECK(ShClTransferKeyIsEqual(&g_Ext.ProgressKey, &TransferKey));
                 RTTESTI_CHECK(g_Ext.cbProgressProcessed == 1);
                 RTTESTI_CHECK(g_Ext.cbProgressTotal == 1000);
                 RTTESTI_CHECK_RC(ShClTransferStart(pTransfer), VINF_SUCCESS);
@@ -2147,11 +2156,11 @@ static void tstTransfers(void *pvClient)
         RTMemFree(pProgressInfo);
     }
 
-    SHCLTRANSFERID const idCancelTransfer = g_Ext.idTransfer;
-    SHCLTRANSFERGEN const uCancelGeneration = g_Ext.uTransferGeneration;
+    SHCLTRANSFERKEY const CancelKey = g_Ext.TransferKey;
+    SHCLTRANSFERID const idCancelTransfer = ShClTransferKeyGetTransferId(&CancelKey);
     VBOXHGCMSVCPARM aCancel[2];
-    HGCMSvcSetU64(&aCancel[0], VBOX_SHCL_CONTEXTID_MAKE(idSession, idCancelTransfer, 0));
-    HGCMSvcSetU64(&aCancel[1], uCancelGeneration + 1);
+    HGCMSvcSetU64(&aCancel[0], CancelKey.uContextId);
+    HGCMSvcSetU64(&aCancel[1], CancelKey.uGeneration + 1);
     rc = g_Table.pfnHostCall(g_Table.pvService, VBOX_SHCL_HOST_FN_CANCEL, RT_ELEMENTS(aCancel), aCancel);
     RTTESTI_CHECK_RC(rc, VERR_SHCLPB_TRANSFER_ID_NOT_FOUND);
 
@@ -2161,15 +2170,14 @@ static void tstTransfers(void *pvClient)
         pTransfer = NULL;
     }
 
-    HGCMSvcSetU64(&aCancel[1], uCancelGeneration);
+    HGCMSvcSetU64(&aCancel[1], CancelKey.uGeneration);
     uint32_t const cStatusesBeforeCancel = g_Ext.cTransferStatuses;
     rc = g_Table.pfnHostCall(g_Table.pvService, VBOX_SHCL_HOST_FN_CANCEL, RT_ELEMENTS(aCancel), aCancel);
     RTTESTI_CHECK_RC_OK(rc);
     tstTransferStatusGet(pvClient, idSession, idCancelTransfer, SHCLTRANSFERDIR_HOST_TO_GUEST,
                          SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
     RTTESTI_CHECK(g_Ext.cTransferStatuses == cStatusesBeforeCancel + 1);
-    RTTESTI_CHECK(g_Ext.idTransfer == idCancelTransfer);
-    RTTESTI_CHECK(g_Ext.uTransferGeneration == uCancelGeneration);
+    RTTESTI_CHECK(ShClTransferKeyIsEqual(&g_Ext.TransferKey, &CancelKey));
     RTTESTI_CHECK(g_Ext.enmTransferStatus == SHCLTRANSFERSTATUS_CANCELED);
     RTTESTI_CHECK(g_Ext.rcTransfer == VERR_CANCELLED);
     RTTESTI_CHECK(g_Ext.enmTransferSource == SHCLSOURCE_LOCAL);
@@ -2193,9 +2201,9 @@ static void tstTransfers(void *pvClient)
     RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
     RTTESTI_CHECK(g_Ext.cTransferStatuses == cStatusesBeforeErrorRequest + 1);
 
-    SHCLSESSIONID const idErrorSession = g_Ext.idTransferSession;
-    SHCLTRANSFERID const idErrorTransfer = g_Ext.idTransfer;
-    SHCLTRANSFERGEN const uErrorGeneration = g_Ext.uTransferGeneration;
+    SHCLTRANSFERKEY const ErrorKey = g_Ext.TransferKey;
+    SHCLSESSIONID const idErrorSession = ShClTransferKeyGetSessionId(&ErrorKey);
+    SHCLTRANSFERID const idErrorTransfer = ShClTransferKeyGetTransferId(&ErrorKey);
     tstTransferStatusGet(pvClient, idErrorSession, idErrorTransfer, SHCLTRANSFERDIR_HOST_TO_GUEST,
                          SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
 
@@ -2207,9 +2215,7 @@ static void tstTransfers(void *pvClient)
     tstTransferStatusGet(pvClient, idErrorSession, idErrorTransfer, SHCLTRANSFERDIR_HOST_TO_GUEST,
                          SHCLTRANSFERSTATUS_ERROR, VERR_INVALID_PARAMETER);
     RTTESTI_CHECK(g_Ext.cTransferStatuses == cStatusesBeforeError + 2);
-    RTTESTI_CHECK(g_Ext.idTransferSession == idErrorSession);
-    RTTESTI_CHECK(g_Ext.idTransfer == idErrorTransfer);
-    RTTESTI_CHECK(g_Ext.uTransferGeneration == uErrorGeneration);
+    RTTESTI_CHECK(ShClTransferKeyIsEqual(&g_Ext.TransferKey, &ErrorKey));
     RTTESTI_CHECK(g_Ext.enmPreviousTransferStatus == SHCLTRANSFERSTATUS_ERROR);
     RTTESTI_CHECK(g_Ext.rcPreviousTransfer == VERR_INVALID_PARAMETER);
     RTTESTI_CHECK(g_Ext.enmTransferStatus == SHCLTRANSFERSTATUS_UNINITIALIZED);
@@ -2372,6 +2378,7 @@ int main(void)
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
             tstTransferRootsFsRoot();
             tstTransferEventCancellation();
+            tstTransferKeyHelpers();
             tstTransferProgressHelpers();
             tstTransfers(pvClient);
 #endif

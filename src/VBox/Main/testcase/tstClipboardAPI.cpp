@@ -1,4 +1,4 @@
-/* $Id: tstClipboardAPI.cpp 115103 2026-08-21 11:25:07Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardAPI.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Public API object testcase.
  */
@@ -151,7 +151,7 @@ bool ShClMainIsValidSource(ClipboardSource_T enmSource)
 }
 
 /** Test stub for the unexercised parent transfer-cancel callback. */
-HRESULT Clipboard::i_transferCancel(SHCLSESSIONID, SHCLTRANSFERID, SHCLTRANSFERGEN)
+HRESULT Clipboard::i_transferCancel(PCSHCLTRANSFERKEY)
 {
     return E_NOTIMPL;
 }
@@ -310,9 +310,6 @@ struct ClipboardTransferReentryContext
 {
     ClipboardTransferReentryContext()
         : pManager(NULL)
-        , idSession(NIL_SHCLSESSIONID)
-        , idTransfer(NIL_SHCLTRANSFERID)
-        , uGeneration(NIL_SHCLTRANSFERGEN)
         , cDepth(0)
         , cMaxDepth(0)
         , cEvents(0)
@@ -324,6 +321,7 @@ struct ClipboardTransferReentryContext
         , uPercentAtInProgress(UINT32_MAX)
         , hDone(NIL_RTSEMEVENT)
     {
+        ShClTransferKeyReset(&Key);
         RT_ZERO(aEventStates);
         RT_ZERO(aObjectStates);
         int const vrc = RTSemEventCreate(&hDone);
@@ -341,9 +339,7 @@ struct ClipboardTransferReentryContext
     }
 
     ClipboardTransferManager  *pManager;
-    SHCLSESSIONID              idSession;
-    SHCLTRANSFERID             idTransfer;
-    SHCLTRANSFERGEN            uGeneration;
+    SHCLTRANSFERKEY            Key;
     uint32_t                   cDepth;
     uint32_t                   cMaxDepth;
     uint32_t                   cEvents;
@@ -409,7 +405,7 @@ public:
         ULONG idTransfer = 0;
         if (SUCCEEDED(hrc))
             hrc = ptrTransfer->COMGETTER(Id)(&idTransfer);
-        if (SUCCEEDED(hrc) && idTransfer != pContext->idTransfer)
+        if (SUCCEEDED(hrc) && idTransfer != ShClTransferKeyGetTransferId(&pContext->Key))
         {
             --pContext->cDepth;
             return S_OK;
@@ -433,25 +429,19 @@ public:
             pContext->ptrHeldTransfer = ptrTransfer;
             hrc = ptrTransfer->COMGETTER(Progress)(pContext->ptrHeldProgress.asOutParam());
             if (SUCCEEDED(hrc))
-                hrc = pContext->pManager->i_handleTransferStatus(pContext->idSession,
-                                                                 pContext->idTransfer,
-                                                                 pContext->uGeneration,
+                hrc = pContext->pManager->i_handleTransferStatus(&pContext->Key,
                                                                  NULL /* pTransfer */,
                                                                  SHCLSOURCE_REMOTE,
                                                                  SHCLTRANSFERSTATUS_INITIALIZED,
                                                                  VINF_SUCCESS);
             if (SUCCEEDED(hrc))
-                hrc = pContext->pManager->i_handleTransferStatus(pContext->idSession,
-                                                                 pContext->idTransfer,
-                                                                 pContext->uGeneration,
+                hrc = pContext->pManager->i_handleTransferStatus(&pContext->Key,
                                                                  NULL /* pTransfer */,
                                                                  SHCLSOURCE_REMOTE,
                                                                  SHCLTRANSFERSTATUS_STARTED,
                                                                  VINF_SUCCESS);
             if (SUCCEEDED(hrc))
-                hrc = pContext->pManager->i_handleTransferProgress(pContext->idSession,
-                                                                   pContext->idTransfer,
-                                                                   pContext->uGeneration, 50, 100);
+                hrc = pContext->pManager->i_handleTransferProgress(&pContext->Key, 50, 100);
             if (SUCCEEDED(hrc))
                 pContext->pManager->uninit();
             pContext->hrcReentry = hrc;
@@ -466,9 +456,7 @@ public:
             if (!pContext->fReentered)
             {
                 pContext->fReentered = true;
-                pContext->hrcReentry = pContext->pManager->i_handleTransferStatus(pContext->idSession,
-                                                                                 pContext->idTransfer,
-                                                                                 pContext->uGeneration,
+                pContext->hrcReentry = pContext->pManager->i_handleTransferStatus(&pContext->Key,
                                                                                  NULL /* pTransfer */,
                                                                                  SHCLSOURCE_REMOTE,
                                                                                  SHCLTRANSFERSTATUS_COMPLETED,
@@ -744,17 +732,16 @@ static void tstClipboardTransferManager(void)
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(aTransfers.size() == 0);
 
-    SHCLSESSIONID const idSession = 1;
-    SHCLTRANSFERID const idTransfer = 2;
-    SHCLTRANSFERGEN const uGeneration = 1;
+    SHCLTRANSFERKEY Key;
+    ShClTransferKeyInit(&Key, 1, 2, 1);
     ptrManagerObj->i_setPublicationWorkerSignalsSuppressed(true);
-    hrc = ptrManagerObj->i_handleTransferStatus(idSession, idTransfer, uGeneration, NULL /* pTransfer */,
+    hrc = ptrManagerObj->i_handleTransferStatus(&Key, NULL /* pTransfer */,
                                                 SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(idSession, idTransfer, uGeneration, NULL /* pTransfer */,
+    hrc = ptrManagerObj->i_handleTransferStatus(&Key, NULL /* pTransfer */,
                                                 SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(idSession, idTransfer, uGeneration, NULL /* pTransfer */,
+    hrc = ptrManagerObj->i_handleTransferStatus(&Key, NULL /* pTransfer */,
                                                 SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
 
@@ -787,15 +774,16 @@ static void tstClipboardTransferManager(void)
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(uPercent == 0);
 
-    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration + 1,
-                                                  UINT64_MAX / 2, UINT64_MAX);
+    SHCLTRANSFERKEY StaleKey = Key;
+    StaleKey.uGeneration++;
+    hrc = ptrManagerObj->i_handleTransferProgress(&StaleKey, UINT64_MAX / 2, UINT64_MAX);
     RTTESTI_CHECK_RC(hrc, S_OK);
     hrc = aTransfers[0]->COMGETTER(State)(&enmTransferState);
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(enmTransferState == ClipboardTransferState_Added);
 
     /* The first real payload byte exposes InProgress even when it is below one percent. */
-    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration, 1, UINT64_MAX);
+    hrc = ptrManagerObj->i_handleTransferProgress(&Key, 1, UINT64_MAX);
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(tstClipboardTransferWaitState(aTransfers[0], ClipboardTransferState_InProgress));
     ptrManagerObj->i_setPublicationWorkerSignalsSuppressed(false);
@@ -806,8 +794,7 @@ static void tstClipboardTransferManager(void)
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(uPercent == 0);
 
-    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration,
-                                                  UINT64_MAX / 2, UINT64_MAX);
+    hrc = ptrManagerObj->i_handleTransferProgress(&Key, UINT64_MAX / 2, UINT64_MAX);
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(tstClipboardTransferWaitPercent(ptrProgress, 49));
     hrc = aTransfers[0]->COMGETTER(State)(&enmTransferState);
@@ -817,24 +804,22 @@ static void tstClipboardTransferManager(void)
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(uPercent == 49);
 
-    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration,
-                                                  UINT64_MAX / 2 - 1, UINT64_MAX);
+    hrc = ptrManagerObj->i_handleTransferProgress(&Key, UINT64_MAX / 2 - 1, UINT64_MAX);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration,
-                                                  UINT64_MAX / 2, UINT64_MAX - 1);
+    hrc = ptrManagerObj->i_handleTransferProgress(&Key, UINT64_MAX / 2, UINT64_MAX - 1);
     RTTESTI_CHECK_RC(hrc, S_OK);
     hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(uPercent == 49);
 
-    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration, UINT64_MAX, UINT64_MAX);
+    hrc = ptrManagerObj->i_handleTransferProgress(&Key, UINT64_MAX, UINT64_MAX);
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(tstClipboardTransferWaitPercent(ptrProgress, 99));
     hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(uPercent == 99);
 
-    hrc = ptrManagerObj->i_handleTransferStatus(idSession, idTransfer, uGeneration, NULL /* pTransfer */,
+    hrc = ptrManagerObj->i_handleTransferStatus(&Key, NULL /* pTransfer */,
                                                 SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(tstClipboardTransferWaitCompleted(ptrProgress));
@@ -852,7 +837,7 @@ static void tstClipboardTransferManager(void)
     hrc = ptrProgress->Cancel();
     RTTESTI_CHECK(hrc == VBOX_E_INVALID_OBJECT_STATE);
 
-    hrc = ptrManagerObj->i_handleTransferProgress(idSession, idTransfer, uGeneration, UINT64_MAX, UINT64_MAX);
+    hrc = ptrManagerObj->i_handleTransferProgress(&Key, UINT64_MAX, UINT64_MAX);
     RTTESTI_CHECK_RC(hrc, S_OK);
     hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
     RTTESTI_CHECK_RC(hrc, S_OK);
@@ -861,19 +846,15 @@ static void tstClipboardTransferManager(void)
     /* Force Cancel to win the Progress lock before a direct service
      * COMPLETED status.  Terminal acceptance must normalize that status to
      * Canceled/E_ABORT before erasing the exact record. */
-    SHCLSESSIONID const idCancelFirstSession = 10;
-    SHCLTRANSFERID const idCancelFirstTransfer = 11;
-    SHCLTRANSFERGEN const uCancelFirstGeneration = 10;
-    hrc = ptrManagerObj->i_handleTransferStatus(idCancelFirstSession, idCancelFirstTransfer,
-                                                uCancelFirstGeneration, NULL /* pTransfer */,
+    SHCLTRANSFERKEY CancelFirstKey;
+    ShClTransferKeyInit(&CancelFirstKey, 10, 11, 10);
+    hrc = ptrManagerObj->i_handleTransferStatus(&CancelFirstKey, NULL /* pTransfer */,
                                                 SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(idCancelFirstSession, idCancelFirstTransfer,
-                                                uCancelFirstGeneration, NULL /* pTransfer */,
+    hrc = ptrManagerObj->i_handleTransferStatus(&CancelFirstKey, NULL /* pTransfer */,
                                                 SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(idCancelFirstSession, idCancelFirstTransfer,
-                                                uCancelFirstGeneration, NULL /* pTransfer */,
+    hrc = ptrManagerObj->i_handleTransferStatus(&CancelFirstKey, NULL /* pTransfer */,
                                                 SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
     aTransfers.setNull();
@@ -903,8 +884,7 @@ static void tstClipboardTransferManager(void)
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(aTransfers.size() == 0);
 
-    hrc = ptrManagerObj->i_handleTransferStatus(idCancelFirstSession, idCancelFirstTransfer,
-                                                uCancelFirstGeneration, NULL /* pTransfer */,
+    hrc = ptrManagerObj->i_handleTransferStatus(&CancelFirstKey, NULL /* pTransfer */,
                                                 SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
     ptrManagerObj->i_setProgressCancellationPollingSuppressed(false);
@@ -925,18 +905,17 @@ static void tstClipboardTransferManager(void)
 
     /* A progress snapshot preceding STARTED must become visible immediately,
      * then expose InProgress when the lifecycle status catches up. */
-    SHCLSESSIONID const idEarlySession = 2;
-    SHCLTRANSFERID const idEarlyTransfer = 3;
-    SHCLTRANSFERGEN const uEarlyGeneration = 2;
-    hrc = ptrManagerObj->i_handleTransferStatus(idEarlySession, idEarlyTransfer, uEarlyGeneration,
+    SHCLTRANSFERKEY EarlyKey;
+    ShClTransferKeyInit(&EarlyKey, 2, 3, 2);
+    hrc = ptrManagerObj->i_handleTransferStatus(&EarlyKey,
                                                 NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                 SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(idEarlySession, idEarlyTransfer, uEarlyGeneration,
+    hrc = ptrManagerObj->i_handleTransferStatus(&EarlyKey,
                                                 NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                 SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferProgress(idEarlySession, idEarlyTransfer, uEarlyGeneration, 50, 100);
+    hrc = ptrManagerObj->i_handleTransferProgress(&EarlyKey, 50, 100);
     RTTESTI_CHECK_RC(hrc, S_OK);
 
     aTransfers.setNull();
@@ -956,7 +935,7 @@ static void tstClipboardTransferManager(void)
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(uPercent == 50);
 
-    hrc = ptrManagerObj->i_handleTransferStatus(idEarlySession, idEarlyTransfer, uEarlyGeneration,
+    hrc = ptrManagerObj->i_handleTransferStatus(&EarlyKey,
                                                 NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                 SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
@@ -967,7 +946,7 @@ static void tstClipboardTransferManager(void)
     hrc = ptrProgress->COMGETTER(Percent)(&uPercent);
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(uPercent == 50);
-    hrc = ptrManagerObj->i_handleTransferStatus(idEarlySession, idEarlyTransfer, uEarlyGeneration,
+    hrc = ptrManagerObj->i_handleTransferStatus(&EarlyKey,
                                                 NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                 SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
@@ -977,18 +956,17 @@ static void tstClipboardTransferManager(void)
      * queued byte update after cancellation is harmless, and successful exact
      * backend dispatch completes the Progress as canceled. */
     ptrManagerObj->i_setCancelServiceResult(S_OK);
-    SHCLSESSIONID const idCancelSession = 20;
-    SHCLTRANSFERID const idCancelTransfer = 21;
-    SHCLTRANSFERGEN const uCancelGeneration = 20;
-    hrc = ptrManagerObj->i_handleTransferStatus(idCancelSession, idCancelTransfer, uCancelGeneration,
+    SHCLTRANSFERKEY CancelKey;
+    ShClTransferKeyInit(&CancelKey, 20, 21, 20);
+    hrc = ptrManagerObj->i_handleTransferStatus(&CancelKey,
                                                 NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                 SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(idCancelSession, idCancelTransfer, uCancelGeneration,
+    hrc = ptrManagerObj->i_handleTransferStatus(&CancelKey,
                                                 NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                 SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(idCancelSession, idCancelTransfer, uCancelGeneration,
+    hrc = ptrManagerObj->i_handleTransferStatus(&CancelKey,
                                                 NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                 SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
@@ -1019,7 +997,7 @@ static void tstClipboardTransferManager(void)
     hrc = ptrCancelProgress->COMGETTER(Canceled)(&fCanceled);
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK(fCanceled == TRUE);
-    hrc = ptrManagerObj->i_handleTransferProgress(idCancelSession, idCancelTransfer, uCancelGeneration, 75, 100);
+    hrc = ptrManagerObj->i_handleTransferProgress(&CancelKey, 75, 100);
     RTTESTI_CHECK_RC(hrc, S_OK);
     ptrManagerObj->i_setPublicationWorkerSignalsSuppressed(false);
 
@@ -1044,11 +1022,9 @@ static void tstClipboardTransferManager(void)
      * dispatch fails, publish an explicit failure and complete it rather than
      * clearing a marker and leaving waiters blocked forever. */
     ptrManagerObj->i_setCancelServiceResult(E_FAIL);
-    SHCLSESSIONID const idFailedCancelSession = 21;
-    SHCLTRANSFERID const idFailedCancelTransfer = 22;
-    SHCLTRANSFERGEN const uFailedCancelGeneration = 21;
-    hrc = ptrManagerObj->i_handleTransferStatus(idFailedCancelSession, idFailedCancelTransfer,
-                                                uFailedCancelGeneration, NULL /* pTransfer */,
+    SHCLTRANSFERKEY FailedCancelKey;
+    ShClTransferKeyInit(&FailedCancelKey, 21, 22, 21);
+    hrc = ptrManagerObj->i_handleTransferStatus(&FailedCancelKey, NULL /* pTransfer */,
                                                 SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
     aTransfers.setNull();
@@ -1086,22 +1062,21 @@ static void tstClipboardTransferManager(void)
     /* A backend disconnect has no guaranteed terminal service status.  Its
      * local asynchronous reset must remove every live record and complete the
      * corresponding Progress while leaving the publication worker available. */
-    SHCLSESSIONID const idResetSession = 30;
-    SHCLTRANSFERID const idResetTransfer = 40;
-    SHCLTRANSFERGEN const uResetGeneration = 30;
-    hrc = ptrManagerObj->i_handleTransferStatus(idResetSession, idResetTransfer, uResetGeneration,
+    SHCLTRANSFERKEY ResetKey;
+    ShClTransferKeyInit(&ResetKey, 30, 40, 30);
+    hrc = ptrManagerObj->i_handleTransferStatus(&ResetKey,
                                                 NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                 SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(idResetSession, idResetTransfer, uResetGeneration,
+    hrc = ptrManagerObj->i_handleTransferStatus(&ResetKey,
                                                 NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                 SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(idResetSession, idResetTransfer, uResetGeneration,
+    hrc = ptrManagerObj->i_handleTransferStatus(&ResetKey,
                                                 NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                 SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferProgress(idResetSession, idResetTransfer, uResetGeneration, 25, 100);
+    hrc = ptrManagerObj->i_handleTransferProgress(&ResetKey, 25, 100);
     RTTESTI_CHECK_RC(hrc, S_OK);
 
     aTransfers.setNull();
@@ -1135,9 +1110,7 @@ static void tstClipboardTransferManager(void)
      * strand must defer that publication until InProgress delivery returns. */
     ClipboardTransferReentryContext Context;
     Context.pManager = ptrManagerObj;
-    Context.idSession = 3;
-    Context.idTransfer = 4;
-    Context.uGeneration = 3;
+    ShClTransferKeyInit(&Context.Key, 3, 4, 3);
 
     ComObjPtr<ClipboardTransferReentryListenerImpl> ptrListenerObj;
     hrc = ptrListenerObj.createObject();
@@ -1161,19 +1134,19 @@ static void tstClipboardTransferManager(void)
     if (FAILED(hrc))
         return;
 
-    hrc = ptrManagerObj->i_handleTransferStatus(Context.idSession, Context.idTransfer, Context.uGeneration,
+    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key,
                                                 NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                 SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(Context.idSession, Context.idTransfer, Context.uGeneration,
+    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key,
                                                 NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                 SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(Context.idSession, Context.idTransfer, Context.uGeneration,
+    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key,
                                                 NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                 SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferProgress(Context.idSession, Context.idTransfer, Context.uGeneration, 50, 100);
+    hrc = ptrManagerObj->i_handleTransferProgress(&Context.Key, 50, 100);
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK_RC(RTSemEventWait(Context.hDone, RT_MS_5SEC), VINF_SUCCESS);
 
@@ -1206,9 +1179,7 @@ static void tstClipboardTransferManager(void)
      * last so a queued InProgress state cannot resurrect the transfer. */
     ClipboardTransferReentryContext TeardownContext;
     TeardownContext.pManager = ptrManagerObj;
-    TeardownContext.idSession = 4;
-    TeardownContext.idTransfer = 5;
-    TeardownContext.uGeneration = 4;
+    ShClTransferKeyInit(&TeardownContext.Key, 4, 5, 4);
     TeardownContext.fUninitOnAdded = true;
 
     ComObjPtr<ClipboardTransferReentryListenerImpl> ptrTeardownListenerObj;
@@ -1231,8 +1202,7 @@ static void tstClipboardTransferManager(void)
     if (FAILED(hrc))
         return;
 
-    hrc = ptrManagerObj->i_handleTransferStatus(TeardownContext.idSession, TeardownContext.idTransfer,
-                                                TeardownContext.uGeneration, NULL /* pTransfer */,
+    hrc = ptrManagerObj->i_handleTransferStatus(&TeardownContext.Key, NULL /* pTransfer */,
                                                 SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
     RTTESTI_CHECK_RC(hrc, S_OK);
     RTTESTI_CHECK_RC(RTSemEventWait(TeardownContext.hDone, RT_MS_5SEC), VINF_SUCCESS);
@@ -1280,7 +1250,10 @@ static void tstClipboardTransferManager(void)
             ptrCleanupManager->i_setPublicationWorkerSignalsSuppressed(true);
         if (i == 2)
         {
-            hrc = ptrCleanupManager->i_handleTransferStatus(idSession + 1, idTransfer, uGeneration,
+            SHCLTRANSFERKEY CleanupKey;
+            ShClTransferKeyInit(&CleanupKey, ShClTransferKeyGetSessionId(&Key) + 1,
+                                ShClTransferKeyGetTransferId(&Key), Key.uGeneration);
+            hrc = ptrCleanupManager->i_handleTransferStatus(&CleanupKey,
                                                              NULL /* pTransfer */, SHCLSOURCE_REMOTE,
                                                              SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
             RTTESTI_CHECK_RC(hrc, S_OK);

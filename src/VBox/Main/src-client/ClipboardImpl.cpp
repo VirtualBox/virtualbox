@@ -1,4 +1,4 @@
-/* $Id: ClipboardImpl.cpp 115106 2026-08-24 17:32:24Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardImpl.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Console clipboard API.
  */
@@ -426,7 +426,11 @@ Clipboard::~Clipboard()
 /**
  * Completes construction of the console clipboard object.
  *
- * @returns COM status code.
+ * @retval  S_OK                if the transfer status was accepted or safely ignored.
+ * @retval  E_INVALIDARG        if the key, source, status, result, direction, or transition is invalid.
+ * @retval  E_FAIL              if clipboard state or required transfer state is unavailable.
+ * @retval  E_OUTOFMEMORY       if a transfer record or publication cannot be allocated.
+ * @returns                     A failure status from creating or initializing the transfer's Main objects.
  */
 HRESULT Clipboard::FinalConstruct()
 {
@@ -447,7 +451,9 @@ void Clipboard::FinalRelease()
 /**
  * Initializes the console clipboard object.
  *
- * @returns COM status code.
+ * @retval  S_OK                if progress was accepted or safely ignored.
+ * @retval  E_FAIL              if clipboard state or its transfer manager is unavailable.
+ * @retval  E_OUTOFMEMORY       if a progress publication cannot be allocated.
  * @param   aParent         Parent console.
  */
 HRESULT Clipboard::init(Console *aParent)
@@ -3242,18 +3248,20 @@ HRESULT Clipboard::i_transferCancel(ULONG aTransferId)
 /**
  * Cancels a Shared Clipboard transfer using its private service key.
  *
- * @returns COM status code.
- * @param   aServiceSessionId   Service session that owns the transfer.
- * @param   aTransferId         Transfer ID to cancel.
- * @param   aGeneration         Host-private transfer generation.
+ * @retval  E_POINTER           if @a pKey is NULL.
+ * @retval  E_INVALIDARG        if @a pKey is invalid.
+ * @retval  E_FAIL              if clipboard state is unavailable.
+ * @retval  VBOX_E_IPRT_ERROR   if the HGCM cancellation request fails.
+ * @returns                     COM status code from acquiring the parent console or VM.
+ * @param   pKey                Host-side transfer key to cancel.
  */
-HRESULT Clipboard::i_transferCancel(SHCLSESSIONID aServiceSessionId, SHCLTRANSFERID aTransferId, SHCLTRANSFERGEN aGeneration)
+HRESULT Clipboard::i_transferCancel(PCSHCLTRANSFERKEY pKey)
 {
-    LogFunc(("Canceling transfer session=%RU16 id=%RU16 generation=%RU64\n", aServiceSessionId, aTransferId, aGeneration));
+    AssertPtrReturn(pKey, E_POINTER);
+    AssertReturn(ShClTransferKeyIsValid(pKey), E_INVALIDARG);
     AssertPtrReturn(mData, E_FAIL);
-    AssertReturn(aServiceSessionId != 0 && aServiceSessionId != NIL_SHCLSESSIONID, E_INVALIDARG);
-    AssertReturn(aTransferId != NIL_SHCLTRANSFERID && aTransferId > 0 && aTransferId < VBOX_SHCL_MAX_TRANSFERS - 1, E_INVALIDARG);
-    AssertReturn(aGeneration != 0 && aGeneration != NIL_SHCLTRANSFERGEN, E_INVALIDARG);
+
+    LogFunc(("Canceling transfer session=%RU16 id=%RU16 generation=%RU64\n", ShClTransferKeyGetSessionId(pKey), ShClTransferKeyGetTransferId(pKey), pKey->uGeneration));
 
     AutoCaller autoCaller(mData->mParent);
     AssertComRCReturnRC(autoCaller.hrc());
@@ -3267,19 +3275,18 @@ HRESULT Clipboard::i_transferCancel(SHCLSESSIONID aServiceSessionId, SHCLTRANSFE
         return S_OK;
 
     VBOXHGCMSVCPARM aParms[2];
-    HGCMSvcSetU64(&aParms[0], VBOX_SHCL_CONTEXTID_MAKE(aServiceSessionId, aTransferId, 0));
-    HGCMSvcSetU64(&aParms[1], aGeneration);
+    HGCMSvcSetU64(&aParms[0], pKey->uContextId);
+    HGCMSvcSetU64(&aParms[1], pKey->uGeneration);
 
     int vrc = pVMMDev->hgcmHostCall("VBoxSharedClipboard", VBOX_SHCL_HOST_FN_CANCEL, RT_ELEMENTS(aParms), aParms);
     if (RT_FAILURE(vrc))
     {
-        LogFunc(("Cancel transfer HGCM host call failed: session=%RU16, id=%RU16, generation=%RU64, vrc=%Rrc\n",
-                 aServiceSessionId, aTransferId, aGeneration, vrc));
-        LogRelMax(16, ("Shared Clipboard: Failed to cancel transfer %RU16, vrc=%Rrc\n", aTransferId, vrc));
+        LogFunc(("Cancel transfer HGCM host call failed: session=%RU16, id=%RU16, generation=%RU64, vrc=%Rrc\n", ShClTransferKeyGetSessionId(pKey), ShClTransferKeyGetTransferId(pKey), pKey->uGeneration, vrc));
+        LogRelMax(16, ("Shared Clipboard: Failed to cancel transfer %RU16, vrc=%Rrc\n", ShClTransferKeyGetTransferId(pKey), vrc));
         return mData->mParent->setErrorBoth(VBOX_E_IPRT_ERROR, vrc,
                                             Console::tr("Canceling shared clipboard transfer failed with %Rrc"), vrc);
     }
-    Log2Func(("Canceled transfer session=%RU16 id=%RU16 generation=%RU64\n", aServiceSessionId, aTransferId, aGeneration));
+    Log2Func(("Canceled transfer session=%RU16 id=%RU16 generation=%RU64\n", ShClTransferKeyGetSessionId(pKey), ShClTransferKeyGetTransferId(pKey), pKey->uGeneration));
     return S_OK;
 }
 
@@ -3309,17 +3316,13 @@ void Clipboard::i_resetTransfersFromService()
  * Handles a Shared Clipboard transfer lifecycle status delivered by the host service.
  *
  * @returns COM status code.
- * @param   aServiceSessionId   Service session that owns the transfer.
- * @param   aTransferId         Transfer ID that produced the status.
- * @param   aGeneration         Host-private transfer generation.
+ * @param   pKey                Host-side transfer key.
  * @param   aTransfer           Borrowed service transfer backing the data plane.
  * @param   enmShClSource       Data source recorded by the backing transfer.
  * @param   enmStatus           Transfer lifecycle status.
  * @param   vrcTransfer         Transfer status result code.
  */
-HRESULT Clipboard::i_handleTransferStatus(SHCLSESSIONID aServiceSessionId,
-                                          SHCLTRANSFERID aTransferId,
-                                          SHCLTRANSFERGEN aGeneration,
+HRESULT Clipboard::i_handleTransferStatus(PCSHCLTRANSFERKEY pKey,
                                           PSHCLTRANSFER aTransfer,
                                           SHCLSOURCE enmShClSource,
                                           SHCLTRANSFERSTATUS enmStatus,
@@ -3336,8 +3339,7 @@ HRESULT Clipboard::i_handleTransferStatus(SHCLSESSIONID aServiceSessionId,
     if (ptrTransfers.isNull())
         return E_FAIL;
 
-    return ptrTransfers->i_handleTransferStatus(aServiceSessionId, aTransferId, aGeneration, aTransfer,
-                                                enmShClSource, enmStatus, vrcTransfer);
+    return ptrTransfers->i_handleTransferStatus(pKey, aTransfer, enmShClSource, enmStatus, vrcTransfer);
 }
 
 
@@ -3345,15 +3347,11 @@ HRESULT Clipboard::i_handleTransferStatus(SHCLSESSIONID aServiceSessionId,
  * Updates a Shared Clipboard transfer's byte progress.
  *
  * @returns COM status code.
- * @param   aServiceSessionId   Service session that owns the transfer.
- * @param   aTransferId         Transfer ID that produced the progress update.
- * @param   aGeneration         Host-private transfer generation.
+ * @param   pKey                Host-side transfer key.
  * @param   cbProcessed         Number of bytes processed so far.
  * @param   cbTotal             Total number of bytes to process.
  */
-HRESULT Clipboard::i_handleTransferProgress(SHCLSESSIONID aServiceSessionId,
-                                            SHCLTRANSFERID aTransferId,
-                                            SHCLTRANSFERGEN aGeneration,
+HRESULT Clipboard::i_handleTransferProgress(PCSHCLTRANSFERKEY pKey,
                                             uint64_t cbProcessed,
                                             uint64_t cbTotal)
 {
@@ -3368,7 +3366,7 @@ HRESULT Clipboard::i_handleTransferProgress(SHCLSESSIONID aServiceSessionId,
     if (ptrTransfers.isNull())
         return E_FAIL;
 
-    return ptrTransfers->i_handleTransferProgress(aServiceSessionId, aTransferId, aGeneration, cbProcessed, cbTotal);
+    return ptrTransfers->i_handleTransferProgress(pKey, cbProcessed, cbTotal);
 }
 # endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
@@ -3644,9 +3642,10 @@ HRESULT Clipboard::setTransferStatus(ULONG aServiceSessionId,
             return E_INVALIDARG;
     }
 
-    HRESULT const hrc = i_handleTransferStatus((SHCLSESSIONID)aServiceSessionId,
-                                               (SHCLTRANSFERID)aTransferId,
-                                               (SHCLTRANSFERGEN)aGeneration,
+    SHCLTRANSFERKEY Key;
+    ShClTransferKeyInit(&Key, (SHCLSESSIONID)aServiceSessionId, (SHCLTRANSFERID)aTransferId,
+                        (SHCLTRANSFERGEN)aGeneration);
+    HRESULT const hrc = i_handleTransferStatus(&Key,
                                                NULL /* pTransfer */,
                                                enmShClSource,
                                                (SHCLTRANSFERSTATUS)aStatus,

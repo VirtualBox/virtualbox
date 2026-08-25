@@ -80,9 +80,7 @@ typedef struct SHCLSVCOPS
                                                                   SHCLTRANSFERID idTransfer));
     /** Retains a transfer selected by its full generation key. */
     DECLCALLBACKMEMBER(PSHCLTRANSFER, pfnTransferGetByKeyRetained, (SHCLCLIENTHANDLE hClient,
-                                                                   SHCLSESSIONID idSession,
-                                                                   SHCLTRANSFERID idTransfer,
-                                                                   SHCLTRANSFERGEN uGeneration));
+                                                                   PCSHCLTRANSFERKEY pKey));
     /** Creates and retains a service-owned transfer. */
     DECLCALLBACKMEMBER(int, pfnTransferCreate, (SHCLCLIENTHANDLE hClient, SHCLTRANSFERDIR enmDir,
                                                 SHCLSOURCE enmSource, PSHCLTRANSFERCALLBACKS pCallbacks,
@@ -242,12 +240,8 @@ typedef struct _SHCLEXTPARMS
         {
             /** Service transport associated with the transfer. */
             SHCLTRANSPORT            Transport;
-            /** Service session which owns the transfer. */
-            SHCLSESSIONID            idSession;
-            /** Transfer ID within @a idSession. */
-            SHCLTRANSFERID           idTransfer;
-            /** Host-private generation which distinguishes reused transfer IDs. */
-            SHCLTRANSFERGEN          uGeneration;
+            /** Host-side transfer identity. */
+            SHCLTRANSFERKEY          Key;
             /** Transfer direction. */
             SHCLTRANSFERDIR          enmDir;
             /** Endpoint which owns the transferred data. */
@@ -264,12 +258,8 @@ typedef struct _SHCLEXTPARMS
         {
             /** Service transport associated with the transfer. */
             SHCLTRANSPORT            Transport;
-            /** Service session which owns the transfer. */
-            SHCLSESSIONID            idSession;
-            /** Transfer ID within @a idSession. */
-            SHCLTRANSFERID           idTransfer;
-            /** Host-private generation which distinguishes reused transfer IDs. */
-            SHCLTRANSFERGEN          uGeneration;
+            /** Host-side transfer identity. */
+            SHCLTRANSFERKEY          Key;
             /** Aggregate payload bytes processed. */
             uint64_t                 cbProcessed;
             /** Total aggregate payload bytes. */

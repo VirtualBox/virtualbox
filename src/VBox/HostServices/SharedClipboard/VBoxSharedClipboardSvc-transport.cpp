@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transport.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transport.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Opaque Main transport implementation.
  */
@@ -362,20 +362,16 @@ static DECLCALLBACK(PSHCLTRANSFER) shClSvcOpTransferGetByIdRetained(SHCLCLIENTHA
  *
  * @returns Retained transfer, or NULL if the key is stale or unknown.
  * @param   hClient             Opaque service client owning the transfer.
- * @param   idSession           Service session ID.
- * @param   idTransfer          Transfer ID.
- * @param   uGeneration         Transfer generation.
+ * @param   pKey                Host-side transfer key.
  *
  * @note    The caller must release a returned transfer with ShClTransferRelease().
  */
 static DECLCALLBACK(PSHCLTRANSFER) shClSvcOpTransferGetByKeyRetained(SHCLCLIENTHANDLE hClient,
-                                                                           SHCLSESSIONID idSession,
-                                                                           SHCLTRANSFERID idTransfer,
-                                                                           SHCLTRANSFERGEN uGeneration)
+                                                                     PCSHCLTRANSFERKEY pKey)
 {
     PSHCLCLIENT const pClient = (PSHCLCLIENT)hClient;
     AssertPtrReturn(pClient, NULL);
-    return ShClTransferCtxGetTransferByKeyRetained(&pClient->Transfers.Ctx, idSession, idTransfer, uGeneration);
+    return ShClTransferCtxGetTransferByKeyRetained(&pClient->Transfers.Ctx, pKey);
 }
 
 

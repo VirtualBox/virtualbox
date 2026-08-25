@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferManagerImpl.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferManagerImpl.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer manager object.
  */
@@ -433,15 +433,14 @@ void ClipboardTransferManager::i_signalPublicationWorker()
 /**
  * Sends a cancellation request for an exact service-backed transfer.
  *
- * @returns COM status code from the clipboard backend.
- * @param   aServiceSessionId   Service session owning the transfer.
- * @param   aTransferId         Service transfer ID.
- * @param   aGeneration         Host-private transfer generation.
+ * @retval  E_POINTER           if @a pKey is NULL.
+ * @retval  E_FAIL              if the parent clipboard is unavailable.
+ * @returns                     COM status code from acquiring or calling the parent clipboard.
+ * @param   pKey                Host-side transfer key.
  */
-HRESULT ClipboardTransferManager::i_cancelServiceTransfer(SHCLSESSIONID aServiceSessionId,
-                                                           SHCLTRANSFERID aTransferId,
-                                                           SHCLTRANSFERGEN aGeneration)
+HRESULT ClipboardTransferManager::i_cancelServiceTransfer(PCSHCLTRANSFERKEY pKey)
 {
+    AssertPtrReturn(pKey, E_POINTER);
 #ifdef UNIT_TEST
     bool fCancelServiceResultOverridden;
     HRESULT hrcCancelServiceResult;
@@ -470,7 +469,7 @@ HRESULT ClipboardTransferManager::i_cancelServiceTransfer(SHCLSESSIONID aService
     else if (FAILED(autoCaller.hrc()))
         hrc = autoCaller.hrc();
     else
-        hrc = pParent->i_transferCancel(aServiceSessionId, aTransferId, aGeneration);
+        hrc = pParent->i_transferCancel(pKey);
     return hrc;
 }
 
@@ -489,10 +488,7 @@ void ClipboardTransferManager::i_processProgressCancellations()
     for (;;)
     {
         ComObjPtr<ClipboardTransfer> ptrTransfer;
-        SHCLSESSIONID idSession = NIL_SHCLSESSIONID;
-        SHCLTRANSFERID idTransfer = NIL_SHCLTRANSFERID;
-        SHCLTRANSFERGEN uGeneration = NIL_SHCLTRANSFERGEN;
-        bool fServiceTransfer = false;
+        SHCLTRANSFERKEY Key = SHCLTRANSFERKEY_INITIALIZER;
         Data::TransferPublications Publications;
         {
             AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
@@ -544,10 +540,7 @@ void ClipboardTransferManager::i_processProgressCancellations()
                 }
 
                 ptrTransfer = it->mTransfer;
-                idSession = it->mServiceSessionId;
-                idTransfer = (SHCLTRANSFERID)it->mTransferId;
-                uGeneration = it->mGeneration;
-                fServiceTransfer = ShClTransferKeyIsValid(idSession, idTransfer, uGeneration);
+                Key = it->mServiceKey;
                 it->mfCancelRequested = true;
                 break;
             }
@@ -556,14 +549,14 @@ void ClipboardTransferManager::i_processProgressCancellations()
         if (ptrTransfer.isNull())
             return;
 
+        bool const fServiceTransfer = ShClTransferKeyIsValid(&Key);
         HRESULT const hrcCancel = fServiceTransfer
-                                ? i_cancelServiceTransfer(idSession, idTransfer, uGeneration)
+                                ? i_cancelServiceTransfer(&Key)
                                 : S_OK;
         bool fStartPublishing = false;
         {
             AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
-            Data::TransferRecords::iterator it = mData.findTransferRecord((ClipboardTransfer *)ptrTransfer,
-                                                                          idSession, idTransfer, uGeneration);
+            Data::TransferRecords::iterator it = mData.findTransferRecord((ClipboardTransfer *)ptrTransfer, &Key);
             if (it != mData.mTransfers.end())
             {
                 Data::TransferPublication &Publication = Publications.front();
@@ -577,7 +570,8 @@ void ClipboardTransferManager::i_processProgressCancellations()
 
                 mData.mTransfers.erase(it);
                 Log2Func(("Processed progress cancellation: session=%RU16, id=%RU16, generation=%RU64, hrc=%Rhrc, cTransfers=%zu\n",
-                          idSession, idTransfer, uGeneration, hrcCancel, mData.mTransfers.size()));
+                          ShClTransferKeyGetSessionId(&Key), ShClTransferKeyGetTransferId(&Key), Key.uGeneration,
+                          hrcCancel, mData.mTransfers.size()));
                 i_enqueueTransferPublications(Publications, &fStartPublishing);
                 if (fStartPublishing)
                     mData.mfPublicationWorkerAssigned = true;
@@ -587,7 +581,7 @@ void ClipboardTransferManager::i_processProgressCancellations()
         if (   fServiceTransfer
             && FAILED(hrcCancel))
             LogFunc(("Canceling transfer through the backend failed: session=%RU16, id=%RU16, generation=%RU64, hrc=%Rhrc\n",
-                     idSession, idTransfer, uGeneration, hrcCancel));
+                     ShClTransferKeyGetSessionId(&Key), ShClTransferKeyGetTransferId(&Key), Key.uGeneration, hrcCancel));
     }
 }
 
@@ -690,7 +684,9 @@ void ClipboardTransferManager::i_drainTransferPublications()
 /**
  * Initializes a clipboard transfer manager object.
  *
- * @returns COM status code.
+ * @retval  S_OK                if initialization succeeded.
+ * @retval  E_FAIL              if initialization or worker creation failed.
+ * @retval  E_OUTOFMEMORY       if the worker context could not be allocated.
  * @param   aEventSource    Optional event source used to emit anonymous transfer
  *                          events when no parent clipboard object is available.
  * @param   aParent         Optional parent clipboard object used to fire transfer
@@ -876,7 +872,11 @@ void ClipboardTransferManager::uninit()
 /**
  * Returns the current clipboard transfers.
  *
- * @returns COM status code.
+ * @retval  S_OK                if the transfer list was returned.
+ * @retval  E_INVALIDARG        if the flags or direction are invalid.
+ * @retval  E_OUTOFMEMORY       if the result list could not be allocated.
+ * @retval  E_NOTIMPL           if transfer support is not compiled in.
+ * @returns                     COM error from querying an internal transfer interface.
  * @param   aDirection      Transfer direction filter.
  * @param   aFlags          Reserved flags, must be zero.
  * @param   aTransfers      Where to return the transfer list.
@@ -1073,7 +1073,11 @@ HRESULT ClipboardTransferManager::create(ClipboardTransferDirection_T aDirection
 /**
  * Removes a clipboard transfer.
  *
- * @returns COM status code.
+ * @retval  S_OK                if the transfer status was accepted or safely ignored.
+ * @retval  E_INVALIDARG        if the key, source, status, result, direction, or transition is invalid.
+ * @retval  E_FAIL              if required transfer state is unavailable.
+ * @retval  E_OUTOFMEMORY       if a transfer record or publication cannot be allocated.
+ * @returns                     A failure status from creating or initializing the transfer's Main objects.
  * @param   aTransfer       Transfer to remove.
  */
 HRESULT ClipboardTransferManager::remove(const ComPtr<IClipboardTransfer> &aTransfer)
@@ -1099,7 +1103,7 @@ HRESULT ClipboardTransferManager::remove(const ComPtr<IClipboardTransfer> &aTran
         Data::TransferRecords::iterator it = mData.findTransferRecord(aTransfer);
         if (it != mData.mTransfers.end())
         {
-            if (ShClTransferKeyIsValid(it->mServiceSessionId, it->mTransferId, it->mGeneration))
+            if (ShClTransferKeyIsValid(&it->mServiceKey))
                 fServiceTransfer = true;
             else
             {
@@ -1146,7 +1150,8 @@ HRESULT ClipboardTransferManager::remove(const ComPtr<IClipboardTransfer> &aTran
 /**
  * Cancels a clipboard transfer.
  *
- * @returns COM status code.
+ * @retval  S_OK                if progress was accepted or safely ignored.
+ * @retval  E_OUTOFMEMORY       if a progress publication cannot be allocated.
  * @param   aTransfer       Transfer to cancel.
  */
 HRESULT ClipboardTransferManager::cancel(const ComPtr<IClipboardTransfer> &aTransfer)
@@ -1173,7 +1178,7 @@ HRESULT ClipboardTransferManager::cancel(const ComPtr<IClipboardTransfer> &aTran
         Data::TransferRecords::iterator it = mData.findTransferRecord(aTransfer);
         if (it != mData.mTransfers.end())
         {
-            fServiceTransfer = ShClTransferKeyIsValid(it->mServiceSessionId, it->mTransferId, it->mGeneration);
+            fServiceTransfer = ShClTransferKeyIsValid(&it->mServiceKey);
             if (fServiceTransfer)
                 ptrProgress = it->mProgress;
             else
@@ -1371,11 +1376,13 @@ HRESULT ClipboardTransferManager::reset()
         AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
         for (std::vector<Data::TransferRecord>::const_iterator it = mData.mTransfers.begin();
              it != mData.mTransfers.end(); ++it)
-            if (ShClTransferKeyIsValid(it->mServiceSessionId, it->mTransferId, it->mGeneration))
+        {
+            if (ShClTransferKeyIsValid(&it->mServiceKey))
             {
                 fHasServiceTransfers = true;
                 break;
             }
+        }
 
         if (!fHasServiceTransfers)
         {
@@ -1621,27 +1628,22 @@ void ClipboardTransferManager::i_fireTransferEvent(const ComObjPtr<ClipboardTran
  * Handles a Shared Clipboard transfer status from the host service.
  *
  * @returns COM status code.
- * @param   aServiceSessionId   Service session that owns the transfer.
- * @param   aTransferId         Shared Clipboard transfer ID.
- * @param   aGeneration         Host-private transfer generation.
+ * @param   pKey                Host-side transfer key.
  * @param   aTransfer           Borrowed service transfer used to validate status metadata.
  * @param   enmShClSource       Data source recorded by the backing transfer.
  * @param   enmStatus           Transfer lifecycle status.
  * @param   vrcTransfer         Transfer result code associated with the status.
  */
-HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceSessionId,
-                                                         SHCLTRANSFERID aTransferId,
-                                                         SHCLTRANSFERGEN aGeneration,
+HRESULT ClipboardTransferManager::i_handleTransferStatus(PCSHCLTRANSFERKEY pKey,
                                                          PSHCLTRANSFER aTransfer,
                                                          SHCLSOURCE enmShClSource,
                                                          SHCLTRANSFERSTATUS enmStatus,
                                                          int vrcTransfer)
 {
-    SHCLSESSIONID const idSession = aServiceSessionId;
-    SHCLTRANSFERID const idTransfer = aTransferId;
-    SHCLTRANSFERGEN const uGeneration = aGeneration;
-    if (!ShClTransferKeyIsValid(idSession, idTransfer, uGeneration))
+    if (!ShClTransferKeyIsValid(pKey))
         return E_INVALIDARG;
+    SHCLSESSIONID const idSession = ShClTransferKeyGetSessionId(pKey);
+    SHCLTRANSFERID const idTransfer = ShClTransferKeyGetTransferId(pKey);
     if (   enmShClSource != SHCLSOURCE_LOCAL
         && enmShClSource != SHCLSOURCE_REMOTE)
         return E_INVALIDARG;
@@ -1692,7 +1694,7 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceS
 
         size_t idxRecord = mData.mTransfers.size();
         for (size_t i = 0; i < mData.mTransfers.size(); ++i)
-            if (mData.mTransfers[i].matches(idSession, idTransfer, uGeneration))
+            if (mData.mTransfers[i].matches(pKey))
             {
                 idxRecord = i;
                 break;
@@ -1703,7 +1705,7 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceS
             if (fTerminal)
             {
                 Log2Func(("Ignoring terminal status for unknown transfer: session=%RU16, id=%RU16, generation=%RU64, status=%RU32\n",
-                          idSession, idTransfer, uGeneration, (uint32_t)enmStatus));
+                          idSession, idTransfer, pKey->uGeneration, (uint32_t)enmStatus));
                 return S_OK;
             }
             if (   enmStatus != SHCLTRANSFERSTATUS_REQUESTED
@@ -1749,9 +1751,8 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceS
                 return hrc;
 
             Data::TransferRecord Record;
-            Record.mServiceSessionId = idSession;
+            Record.mServiceKey = *pKey;
             Record.mTransferId = idTransfer;
-            Record.mGeneration = uGeneration;
             Record.mDirection = enmTransferDirection;
             Record.mSource = enmTransferSource;
             Record.mStatus = enmStatus;
@@ -1893,19 +1894,15 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(SHCLSESSIONID aServiceS
  * only path which completes the progress object and advances it to 100 percent.
  *
  * @returns COM status code.
- * @param   aServiceSessionId   Service session that owns the transfer.
- * @param   aTransferId         Shared Clipboard transfer ID.
- * @param   aGeneration         Host-private transfer generation.
+ * @param   pKey                Host-side transfer key.
  * @param   cbProcessed         Number of bytes processed so far.
  * @param   cbTotal             Total number of bytes to process.
  */
-HRESULT ClipboardTransferManager::i_handleTransferProgress(SHCLSESSIONID aServiceSessionId,
-                                                           SHCLTRANSFERID aTransferId,
-                                                           SHCLTRANSFERGEN aGeneration,
+HRESULT ClipboardTransferManager::i_handleTransferProgress(PCSHCLTRANSFERKEY pKey,
                                                            uint64_t cbProcessed,
                                                            uint64_t cbTotal)
 {
-    if (   !ShClTransferKeyIsValid(aServiceSessionId, aTransferId, aGeneration)
+    if (   !ShClTransferKeyIsValid(pKey)
         || !cbTotal
         || cbProcessed > cbTotal)
         return S_OK;
@@ -1918,7 +1915,7 @@ HRESULT ClipboardTransferManager::i_handleTransferProgress(SHCLSESSIONID aServic
         if (!mData.mfAcceptingPublications)
             return S_OK;
 
-        Data::TransferRecords::iterator it = mData.findTransferRecord(aServiceSessionId, aTransferId, aGeneration);
+        Data::TransferRecords::iterator it = mData.findTransferRecord(pKey);
         if (   it == mData.mTransfers.end()
             || it->mfTerminal
             || it->mfCancelRequested

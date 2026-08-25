@@ -1,4 +1,4 @@
-/* $Id: GuestShClConn.cpp 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClConn.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Service connection management implementation.
  */
@@ -495,15 +495,14 @@ PSHCLTRANSFER GuestShClConn::transferGetByIdRetained(SHCLTRANSFERID idTransfer)
 }
 
 
-PSHCLTRANSFER GuestShClConn::transferGetByKeyRetained(SHCLSESSIONID idSession, SHCLTRANSFERID idTransfer,
-                                                       SHCLTRANSFERGEN uGeneration)
+PSHCLTRANSFER GuestShClConn::transferGetByKeyRetained(PCSHCLTRANSFERKEY pKey)
 {
+    AssertPtrReturn(pKey, NULL);
     SHCLTRANSPORT Transport;
     int const vrc = i_callBegin(&Transport);
     if (RT_FAILURE(vrc))
         return NULL;
-    PSHCLTRANSFER const pTransfer = Transport.pOps->pfnTransferGetByKeyRetained(Transport.hClient,
-                                                                               idSession, idTransfer, uGeneration);
+    PSHCLTRANSFER const pTransfer = Transport.pOps->pfnTransferGetByKeyRetained(Transport.hClient, pKey);
     i_callEnd();
     return pTransfer;
 }

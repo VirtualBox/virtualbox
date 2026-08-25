@@ -1,4 +1,4 @@
-/* $Id: tstClipboardHttpServer.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardHttpServer.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard HTTP server test case.
  */
@@ -1076,10 +1076,12 @@ static void tstStaleKeyUnregister(RTTEST hTest, const char *pszTempDir)
     }
     if (RT_SUCCESS(rc))
     {
-        RTTEST_CHECK(hTest, ShClTransferKeyIsValid(ShClTransferGetSessionId(pOldTransfer), 42,
-                                                   ShClTransferGetGeneration(pOldTransfer)));
-        RTTEST_CHECK(hTest, ShClTransferKeyIsValid(ShClTransferGetSessionId(pNewTransfer), 42,
-                                                   ShClTransferGetGeneration(pNewTransfer)));
+        SHCLTRANSFERKEY OldKey;
+        SHCLTRANSFERKEY NewKey;
+        ShClTransferGetKey(pOldTransfer, &OldKey);
+        ShClTransferGetKey(pNewTransfer, &NewKey);
+        RTTEST_CHECK(hTest, ShClTransferKeyIsValid(&OldKey));
+        RTTEST_CHECK(hTest, ShClTransferKeyIsValid(&NewKey));
         RTTEST_CHECK(hTest, ShClTransferGetSessionId(pOldTransfer) != ShClTransferGetSessionId(pNewTransfer));
         RTTEST_CHECK(hTest, ShClTransferHttpServerGetTransferCount(&HttpSrv) == 2);
 

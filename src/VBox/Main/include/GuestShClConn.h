@@ -1,4 +1,4 @@
-/* $Id: GuestShClConn.h 115108 2026-08-25 07:19:33Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClConn.h 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Service connection management.
  */
@@ -247,12 +247,9 @@ public:
      * Retains a service transfer selected by its complete generation key.
      *
      * @returns Retained transfer on success, or NULL if not found or disconnected.
-     * @param   idSession           Service session ID.
-     * @param   idTransfer          Transfer ID.
-     * @param   uGeneration        Transfer generation.
+     * @param   pKey                Host-side transfer key.
      */
-    PSHCLTRANSFER transferGetByKeyRetained(SHCLSESSIONID idSession, SHCLTRANSFERID idTransfer,
-                                           SHCLTRANSFERGEN uGeneration);
+    PSHCLTRANSFER transferGetByKeyRetained(PCSHCLTRANSFERKEY pKey);
 
     /**
      * Creates and retains a service-owned transfer.
