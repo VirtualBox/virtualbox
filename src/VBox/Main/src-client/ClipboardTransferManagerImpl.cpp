@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferManagerImpl.cpp 115110 2026-08-25 09:25:30Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferManagerImpl.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer manager object.
  */
@@ -42,7 +42,8 @@
 #include <VBox/GuestHost/SharedClipboard.h>
 #include <VBox/log.h>
 
-#include <iprt/errcore.h>
+#include <iprt/err.h>
+#include <iprt/path.h>
 #include <iprt/string.h>
 
 #include <new>
@@ -91,6 +92,173 @@ struct ClipboardTransferManagerPublicationThreadCtx
 
 
 /**
+ * Checks whether an error path is safe to publish through Main and its logs.
+ *
+ * @retval  true                if @a pszPath is a normalized, relative UTF-8 path without display control characters.
+ * @retval  false               otherwise.
+ * @param   pszPath             Path to validate. Optional.
+ */
+static bool clipboardTransferManagerErrorPathIsValid(const char *pszPath)
+{
+    if (!pszPath)
+        return false;
+
+    size_t const cchPath = RTStrNLen(pszPath, SHCL_TRANSFER_PATH_MAX);
+    if (   !cchPath
+        || cchPath >= SHCL_TRANSFER_PATH_MAX
+        || RT_FAILURE(RTStrValidateEncodingEx(pszPath, cchPath + 1, RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED)))
+        return false;
+
+    size_t offComponent = 0;
+    for (size_t off = 0; off <= cchPath; ++off)
+    {
+        char const ch = pszPath[off];
+        if (ch == '\\' || ch == ':')
+            return false;
+        if (ch == '/' || ch == '\0')
+        {
+            size_t const cchComponent = off - offComponent;
+            if (   !cchComponent
+                || (cchComponent == 1 && pszPath[offComponent] == '.')
+                || (cchComponent == 2 && pszPath[offComponent] == '.' && pszPath[offComponent + 1] == '.'))
+                return false;
+            offComponent = off + 1;
+        }
+    }
+
+    const char *pszCur = pszPath;
+    while (*pszCur)
+    {
+        RTUNICP uc;
+        if (RT_FAILURE(RTStrGetCpEx(&pszCur, &uc)))
+            return false;
+        if (   uc < 0x20                              /* C0 control characters. */
+            || (uc >= 0x7f && uc <= 0x9f)            /* DELETE and C1 control characters. */
+            || uc == 0x061c                          /* ARABIC LETTER MARK. */
+            || uc == 0x200e                          /* LEFT-TO-RIGHT MARK. */
+            || uc == 0x200f                          /* RIGHT-TO-LEFT MARK. */
+            || uc == 0x2028                          /* LINE SEPARATOR. */
+            || uc == 0x2029                          /* PARAGRAPH SEPARATOR. */
+            || (uc >= 0x202a && uc <= 0x202e)        /* Bidirectional embedding, override and pop controls. */
+            || (uc >= 0x2066 && uc <= 0x2069))       /* Bidirectional isolate and pop controls. */
+            return false;
+    }
+    return true;
+}
+
+
+/**
+ * Formats a concise user-facing message for a terminal transfer error.
+ *
+ * Allocation failures use a best-effort generic fallback; they never replace
+ * the original transfer result code.
+ *
+ * @param   vrcTransfer         Transfer result code to describe.
+ * @param   strPath             Validated transfer-relative error path, if known.
+ * @param   strMessage          Where to return the formatted message.
+ */
+static void clipboardTransferManagerErrorToMessage(int vrcTransfer, const com::Utf8Str &strPath,
+                                                   com::Utf8Str &strMessage)
+{
+    const char *pszFormat;
+    bool const fHavePath = !strPath.isEmpty();
+    switch (vrcTransfer)
+    {
+        case VERR_ACCESS_DENIED:
+        case VERR_PERMISSION_DENIED:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("Access denied for '%s'") : ClipboardTransferManager::tr("Access denied");
+            break;
+        case VERR_FILE_NOT_FOUND:
+        case VERR_PATH_NOT_FOUND:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("'%s' was not found") : ClipboardTransferManager::tr("A transferred file or directory was not found");
+            break;
+        case VERR_ALREADY_EXISTS:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("'%s' already exists") : ClipboardTransferManager::tr("A destination file or directory already exists");
+            break;
+        case VERR_SHARING_VIOLATION:
+        case VERR_FILE_LOCK_VIOLATION:
+        case VERR_RESOURCE_BUSY:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("'%s' is in use") : ClipboardTransferManager::tr("A transferred file or directory is in use");
+            break;
+        case VERR_CANT_CREATE:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("Could not create '%s'") : ClipboardTransferManager::tr("Could not create a transferred file or directory");
+            break;
+        case VERR_INVALID_NAME:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("The name '%s' is invalid") : ClipboardTransferManager::tr("A transferred file or directory has an invalid name");
+            break;
+        case VERR_FILENAME_TOO_LONG:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("The path '%s' is too long") : ClipboardTransferManager::tr("A transferred path is too long");
+            break;
+        case VERR_READ_ERROR:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("Could not read '%s'") : ClipboardTransferManager::tr("A transferred file could not be read");
+            break;
+        case VERR_FILE_IO_ERROR:
+        case VERR_DEV_IO_ERROR:
+        case VERR_IO_GEN_FAILURE:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("An I/O error occurred while processing '%s'") : ClipboardTransferManager::tr("An I/O error occurred during the transfer");
+            break;
+        case VERR_WRITE_ERROR:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("Could not write '%s'") : ClipboardTransferManager::tr("A transferred file could not be written");
+            break;
+        case VERR_DISK_FULL:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("There is not enough disk space for '%s'") : ClipboardTransferManager::tr("There is not enough disk space to complete the transfer");
+            break;
+        case VERR_WRITE_PROTECT:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("The destination for '%s' is write-protected") : ClipboardTransferManager::tr("The transfer destination is write-protected");
+            break;
+        case VERR_FILE_TOO_BIG:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("'%s' is too large") : ClipboardTransferManager::tr("A transferred file is too large");
+            break;
+        case VERR_IS_A_DIRECTORY:
+        case VERR_NOT_A_FILE:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("'%s' is not a file") : ClipboardTransferManager::tr("A transferred object is not a file");
+            break;
+        case VERR_NOT_A_DIRECTORY:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("'%s' is not a directory") : ClipboardTransferManager::tr("A transferred object is not a directory");
+            break;
+        case VERR_DIR_NOT_EMPTY:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("Directory '%s' is not empty") : ClipboardTransferManager::tr("A destination directory is not empty");
+            break;
+        case VERR_NO_MEMORY:
+        case VERR_OUT_OF_RESOURCES:
+        case VERR_TOO_MANY_OPEN_FILES:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("Not enough system resources to transfer '%s'") : ClipboardTransferManager::tr("Not enough system resources to complete the transfer");
+            break;
+        case VERR_NOT_SUPPORTED:
+        case VERR_NOT_IMPLEMENTED:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("Transferring '%s' is not supported") : ClipboardTransferManager::tr("The requested transfer operation is not supported");
+            break;
+        case VERR_TIMEOUT:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("The operation on '%s' timed out") : ClipboardTransferManager::tr("The transfer timed out");
+            break;
+        case VERR_INTERRUPTED:
+        case VERR_BROKEN_PIPE:
+        case VERR_NET_CONNECTION_RESET:
+        case VERR_NET_CONNECTION_RESET_BY_PEER:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("The transfer was interrupted while processing '%s'") : ClipboardTransferManager::tr("The transfer was interrupted");
+            break;
+        case VERR_EOF:
+            pszFormat = fHavePath ? ClipboardTransferManager::tr("'%s' ended unexpectedly while being transferred") : ClipboardTransferManager::tr("The transferred data ended unexpectedly");
+            break;
+        default:
+            if (fHavePath)
+            {
+                if (RT_SUCCESS(strMessage.printfNoThrow(ClipboardTransferManager::tr("Shared Clipboard transfer failed for '%s' (%Rrc)"), strPath.c_str(), vrcTransfer)))
+                    return;
+            }
+            else if (RT_SUCCESS(strMessage.printfNoThrow(ClipboardTransferManager::tr("Shared Clipboard transfer failed (%Rrc)"), vrcTransfer)))
+                return;
+            (void)strMessage.assignNoThrow(ClipboardTransferManager::tr("Shared Clipboard transfer failed"));
+            return;
+    }
+
+    int const vrc = fHavePath ? strMessage.printfNoThrow(pszFormat, strPath.c_str()) : strMessage.assignNoThrow(pszFormat);
+    if (RT_FAILURE(vrc))
+        (void)strMessage.assignNoThrow(ClipboardTransferManager::tr("Shared Clipboard transfer failed"));
+}
+
+
+/**
  * Converts a transfer status to the corresponding public Main transfer state.
  *
  * @returns Public Main transfer state.
@@ -122,17 +290,22 @@ static ClipboardTransferState_T clipboardTransferManagerStatusToState(SHCLTRANSF
 /**
  * Converts a failed transfer status to the public Main clipboard error value.
  *
- * @returns Public Main clipboard error value.
- * @param   enmStatus       Transfer status to convert.
- * @param   vrcTransfer     Transfer result code.
+ * @retval  ClipboardError_None             if @a enmStatus is not a failure status.
+ * @retval  ClipboardError_AccessDenied     for access and permission errors.
+ * @retval  ClipboardError_NotSupported     for unsupported or unimplemented operations.
+ * @retval  ClipboardError_OperationFailed  for all other failure result codes.
+ * @param   enmStatus                       Transfer status to convert.
+ * @param   vrcTransfer                     Transfer result code.
  */
 static ClipboardError_T clipboardTransferManagerStatusToError(SHCLTRANSFERSTATUS enmStatus, int vrcTransfer)
 {
     if (enmStatus == SHCLTRANSFERSTATUS_ERROR || enmStatus == SHCLTRANSFERSTATUS_KILLED)
     {
-        if (vrcTransfer == VERR_ACCESS_DENIED)
+        if (  vrcTransfer == VERR_ACCESS_DENIED
+           || vrcTransfer == VERR_PERMISSION_DENIED)
             return ClipboardError_AccessDenied;
-        if (vrcTransfer == VERR_NOT_SUPPORTED)
+        if (  vrcTransfer == VERR_NOT_SUPPORTED
+           || vrcTransfer == VERR_NOT_IMPLEMENTED)
             return ClipboardError_NotSupported;
         return ClipboardError_OperationFailed;
     }
@@ -143,9 +316,12 @@ static ClipboardError_T clipboardTransferManagerStatusToError(SHCLTRANSFERSTATUS
 /**
  * Converts a transfer status to a progress completion HRESULT.
  *
- * @returns Progress completion HRESULT.
- * @param   enmStatus       Transfer status to convert.
- * @param   vrcTransfer     Transfer result code.
+ * @retval  S_OK                        if the transfer completed.
+ * @retval  E_ABORT                     if the transfer was canceled or removed.
+ * @retval  VBOX_E_SHCL_ACCESS_DENIED   if the transfer failed because access was denied.
+ * @retval  VBOX_E_SHCL_ERROR           for all other statuses and errors.
+ * @param   enmStatus                   Transfer status to convert.
+ * @param   vrcTransfer                 Transfer result code.
  */
 static HRESULT clipboardTransferManagerStatusToProgressHrc(SHCLTRANSFERSTATUS enmStatus, int vrcTransfer)
 {
@@ -158,7 +334,8 @@ static HRESULT clipboardTransferManagerStatusToProgressHrc(SHCLTRANSFERSTATUS en
             return E_ABORT;
         case SHCLTRANSFERSTATUS_KILLED:
         case SHCLTRANSFERSTATUS_ERROR:
-            if (vrcTransfer == VERR_ACCESS_DENIED)
+            if (   vrcTransfer == VERR_ACCESS_DENIED
+                || vrcTransfer == VERR_PERMISSION_DENIED)
                 return VBOX_E_SHCL_ACCESS_DENIED;
             return VBOX_E_SHCL_ERROR;
         default:
@@ -173,9 +350,11 @@ static HRESULT clipboardTransferManagerStatusToProgressHrc(SHCLTRANSFERSTATUS en
  * @param   ptrProgressControl  Internal progress control to complete. Optional.
  * @param   enmStatus           Terminal service transfer status.
  * @param   vrcTransfer         Service transfer result code.
+ * @param   strMessage          Formatted terminal error message, if any.
  */
 static void clipboardTransferManagerCompleteProgress(const ComPtr<IInternalProgressControl> &ptrProgressControl,
-                                                     SHCLTRANSFERSTATUS enmStatus, int vrcTransfer)
+                                                     SHCLTRANSFERSTATUS enmStatus, int vrcTransfer,
+                                                     const com::Utf8Str &strMessage)
 {
     if (ptrProgressControl.isNull())
         return;
@@ -192,17 +371,27 @@ static void clipboardTransferManagerCompleteProgress(const ComPtr<IInternalProgr
         HRESULT hrc = ptrErrorInfoImpl.createObject();
         if (SUCCEEDED(hrc))
         {
-            const char *pszText;
+            const com::Utf8Str *pstrText = &strMessage;
+            com::Utf8Str strFallback;
             if (enmStatus == SHCLTRANSFERSTATUS_CANCELED)
-                pszText = ClipboardTransferManager::tr("Shared Clipboard transfer was canceled");
+            {
+                (void)strFallback.assignNoThrow(ClipboardTransferManager::tr("Shared Clipboard transfer was canceled"));
+                pstrText = &strFallback;
+            }
             else if (enmStatus == SHCLTRANSFERSTATUS_UNINITIALIZED)
-                pszText = ClipboardTransferManager::tr("Shared Clipboard transfer was removed before completion");
-            else
-                pszText = ClipboardTransferManager::tr("Shared Clipboard transfer failed");
+            {
+                (void)strFallback.assignNoThrow(ClipboardTransferManager::tr("Shared Clipboard transfer was removed before completion"));
+                pstrText = &strFallback;
+            }
+            else if (strMessage.isEmpty())
+            {
+                (void)strFallback.assignNoThrow(ClipboardTransferManager::tr("Shared Clipboard transfer failed"));
+                pstrText = &strFallback;
+            }
             try
             {
                 hrc = ptrErrorInfoImpl->initEx(hrcProgress, (LONG)vrcTransfer, COM_IIDOF(IClipboardTransferManager),
-                                              "ClipboardTransferManager", com::Utf8Str(pszText));
+                                               "ClipboardTransferManager", *pstrText);
             }
             catch (std::bad_alloc &)
             {
@@ -634,7 +823,8 @@ void ClipboardTransferManager::i_drainTransferPublications()
                 if (it->mTransfer.isNotNull())
                     it->mTransfer->i_setState(ClipboardTransferState_Removed, com::Utf8Str(), ClipboardError_None);
                 clipboardTransferManagerCompleteProgress(it->mProgressControl,
-                                                         SHCLTRANSFERSTATUS_UNINITIALIZED, VERR_WRONG_ORDER);
+                                                         SHCLTRANSFERSTATUS_UNINITIALIZED, VERR_WRONG_ORDER,
+                                                         com::Utf8Str());
             }
             {
                 AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
@@ -648,8 +838,11 @@ void ClipboardTransferManager::i_drainTransferPublications()
             return;
 
         Data::TransferPublication const &Publication = Current.front();
+        com::Utf8Str strMessage;
+        if (Publication.mState == ClipboardTransferState_Failed)
+            clipboardTransferManagerErrorToMessage(Publication.mrcTransfer, Publication.mPath, strMessage);
         if (Publication.mfSetState)
-            Publication.mTransfer->i_setState(Publication.mState, com::Utf8Str(), Publication.mError);
+            Publication.mTransfer->i_setState(Publication.mState, strMessage, Publication.mError);
         if (Publication.mfSetProgress)
         {
             HRESULT const hrcSetProgress = Publication.mProgressControl->SetCurrentOperationProgress(
@@ -669,10 +862,10 @@ void ClipboardTransferManager::i_drainTransferPublications()
         }
         if (Publication.mfCompleteProgress)
             clipboardTransferManagerCompleteProgress(Publication.mProgressControl,
-                                                     Publication.mStatus, Publication.mrcTransfer);
+                                                     Publication.mStatus, Publication.mrcTransfer, strMessage);
         if (Publication.mfFireEvent)
             i_fireTransferEvent(Publication.mTransfer, Publication.mState, ClipboardTransferInteraction_None,
-                                com::Utf8Str(), com::Utf8Str(), Publication.mError);
+                                Publication.mPath, strMessage, Publication.mError);
 
         Current.clear();
     }
@@ -863,7 +1056,8 @@ void ClipboardTransferManager::uninit()
         if (it->mTransfer.isNotNull())
             it->mTransfer->i_setState(ClipboardTransferState_Removed, com::Utf8Str(), ClipboardError_None);
         clipboardTransferManagerCompleteProgress(it->mProgressControl,
-                                                 SHCLTRANSFERSTATUS_UNINITIALIZED, VERR_WRONG_ORDER);
+                                                 SHCLTRANSFERSTATUS_UNINITIALIZED, VERR_WRONG_ORDER,
+                                                 com::Utf8Str());
     }
 #endif
 }
@@ -1562,12 +1756,12 @@ void ClipboardTransferManager::i_resetInternal(bool fFromService)
  * If there is no parent clipboard object, emits an anonymous event directly on
  * the stored event source.
  *
- * @param   aTransfer       Transfer associated with the event.
- * @param   aState          Transfer state.
- * @param   aInteraction    Transfer interaction type.
- * @param   aPath           Transfer-relative path associated with the event, if any.
- * @param   aMessage        Optional event message.
- * @param   aError          Clipboard transfer error code.
+ * @param   aTransfer           Transfer associated with the event.
+ * @param   aState              Transfer state.
+ * @param   aInteraction        Transfer interaction type.
+ * @param   aPath               Transfer-relative path associated with the event, if any.
+ * @param   aMessage            Optional event message.
+ * @param   aError              Clipboard transfer error code.
  */
 void ClipboardTransferManager::i_fireTransferEvent(const ComObjPtr<ClipboardTransfer> &aTransfer,
                                                    ClipboardTransferState_T aState,
@@ -1619,7 +1813,7 @@ void ClipboardTransferManager::i_fireTransferEvent(const ComObjPtr<ClipboardTran
          * fan-out context. Keep this legacy event anonymous.
          */
         ::FireClipboardTransferEvent(ptrEventSource, 0 /* anonymous revision */, VBOX_SHCL_MAIN_CLIENT_NONE,
-                                     ptrTransfer, aState, aInteraction, Bstr(aPath).raw(), aMessage, aError);
+                                     ptrTransfer, aState, aInteraction, aPath, aMessage, aError);
     }
 }
 
@@ -1627,18 +1821,24 @@ void ClipboardTransferManager::i_fireTransferEvent(const ComObjPtr<ClipboardTran
 /**
  * Handles a Shared Clipboard transfer status from the host service.
  *
- * @returns COM status code.
+ * @retval  S_OK                if the transfer status was accepted or safely ignored.
+ * @retval  E_INVALIDARG        if the key, source, status, result, direction, or transition is invalid.
+ * @retval  E_FAIL              if required transfer state is unavailable.
+ * @retval  E_OUTOFMEMORY       if a transfer record or publication cannot be allocated.
+ * @returns                     A failure status from creating or initializing the transfer's Main objects.
  * @param   pKey                Host-side transfer key.
  * @param   aTransfer           Borrowed service transfer used to validate status metadata.
  * @param   enmShClSource       Data source recorded by the backing transfer.
  * @param   enmStatus           Transfer lifecycle status.
  * @param   vrcTransfer         Transfer result code associated with the status.
+ * @param   pszPath             Optional transfer-relative path associated with an error.
  */
 HRESULT ClipboardTransferManager::i_handleTransferStatus(PCSHCLTRANSFERKEY pKey,
                                                          PSHCLTRANSFER aTransfer,
                                                          SHCLSOURCE enmShClSource,
                                                          SHCLTRANSFERSTATUS enmStatus,
-                                                         int vrcTransfer)
+                                                         int vrcTransfer,
+                                                         const char *pszPath)
 {
     if (!ShClTransferKeyIsValid(pKey))
         return E_INVALIDARG;
@@ -1683,6 +1883,8 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(PCSHCLTRANSFERKEY pKey,
     ClipboardTransferState_T enmState = clipboardTransferManagerStatusToState(enmPublishedStatus);
     ClipboardError_T enmError = clipboardTransferManagerStatusToError(enmPublishedStatus, vrcPublished);
     bool const fTerminal = ShClTransferStatusIsTerminal(enmStatus);
+    bool const fErrorPathValid =    (enmStatus == SHCLTRANSFERSTATUS_ERROR || enmStatus == SHCLTRANSFERSTATUS_KILLED)
+                                 && clipboardTransferManagerErrorPathIsValid(pszPath);
 
     bool fStartPublishing = false;
     Data::TransferPublications Publications;
@@ -1830,6 +2032,11 @@ HRESULT ClipboardTransferManager::i_handleTransferStatus(PCSHCLTRANSFERKEY pKey,
                 TerminalPublication.mError = enmError;
                 TerminalPublication.mStatus = enmPublishedStatus;
                 TerminalPublication.mrcTransfer = vrcPublished;
+                if (   fErrorPathValid
+                    && (   enmPublishedStatus == SHCLTRANSFERSTATUS_ERROR
+                        || enmPublishedStatus == SHCLTRANSFERSTATUS_KILLED)
+                   )
+                    TerminalPublication.mPath.assignNoThrow(pszPath);
                 TerminalPublication.mfSetState = true;
                 TerminalPublication.mfCompleteProgress = true;
                 TerminalPublication.mfFireEvent = true;

@@ -1,4 +1,4 @@
-/* $Id: UINotificationMessage.cpp 113937 2026-04-17 09:26:37Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationMessage.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationMessage implementations.
  */
@@ -273,12 +273,18 @@ void UINotificationMessage::warnAboutInvalidEncryptionPassword(const QString &st
         pParent);
 }
 
+/**
+ * Shows a Shared Clipboard error without interpreting transfer-controlled text as rich text.
+ *
+ * @param   strMsg              Error message to show.
+ */
 /* static */
 void UINotificationMessage::warnAboutClipboardError(const QString &strMsg)
 {
+    const QString strEscaped = strMsg.toHtmlEscaped();
     createMessage(
         QApplication::translate("UIMessageCenter", "Shared clipboard error ..."),
-        strMsg.toUtf8().constData());
+        strEscaped.toUtf8().constData());
 }
 
 /* static */

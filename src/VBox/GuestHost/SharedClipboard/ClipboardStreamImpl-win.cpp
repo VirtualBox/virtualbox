@@ -1,4 +1,4 @@
-/* $Id: ClipboardStreamImpl-win.cpp 115132 2026-08-27 08:32:32Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardStreamImpl-win.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * ClipboardStreamImpl-win.cpp - Shared Clipboard IStream object implementation (guest and host side).
  */
@@ -347,7 +347,7 @@ STDMETHODIMP ShClWinStreamImpl::Read(void *pvBuffer, ULONG nBytesToRead, ULONG *
         else if (rc == VERR_CANCELLED)
             pParentNotify->SetStatus(ShClWinDataObject::Canceled);
         else
-            pParentNotify->SetStatus(ShClWinDataObject::Error, rc /* Propagate rc */);
+            pParentNotify->SetStatus(ShClWinDataObject::Error, rc /* Propagate rc */, m_uObjIdx);
         pParentNotify->Release();
     }
 

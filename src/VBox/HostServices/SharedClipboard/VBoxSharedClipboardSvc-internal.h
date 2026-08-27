@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-internal.h 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-internal.h 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal service instance state.
  */
@@ -32,6 +32,7 @@
 #endif
 
 #include <iprt/critsect.h>
+#include <iprt/path.h>
 #include <iprt/string.h>
 
 #include <VBox/HostServices/VBoxSharedClipboardSvc.h>
@@ -185,6 +186,8 @@ typedef struct SHCLSVCEXTTRANSFERSTATUS
     SHCLTRANSFERSTATUS  enmStatus;
     /** Status-specific VBox result code. */
     int                 rcStatus;
+    /** Optional failing transfer-relative path, or an empty string if unknown. */
+    char                szPath[SHCL_TRANSFER_PATH_MAX];
 } SHCLSVCEXTTRANSFERSTATUS;
 /** Pointer to a service-to-Main transfer-status snapshot. */
 typedef SHCLSVCEXTTRANSFERSTATUS *PSHCLSVCEXTTRANSFERSTATUS;

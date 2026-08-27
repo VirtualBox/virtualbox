@@ -30955,7 +30955,7 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
 
     <attribute name="message" type="wstring" readonly="yes">
       <desc>
-        Optional user interaction message, for example to ask whether an existing file should be overwritten.
+        Optional transfer status, error, or user interaction message.
       </desc>
     </attribute>
 

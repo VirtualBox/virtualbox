@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transport.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transport.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Opaque Main transport implementation.
  */
@@ -411,16 +411,21 @@ static DECLCALLBACK(int) shClSvcOpTransferInit(SHCLCLIENTHANDLE hClient, PSHCLTR
 /**
  * Reports a host-side terminal transfer status.
  *
- * @returns VBox status code.
- * @param   hClient             Opaque service client owning the transfer.
- * @param   pTransfer           Transfer whose terminal state is being reported.
- * @param   enmStatus           Terminal transfer status.
- * @param   rcStatus            Status-specific result code.
+ * @retval  VERR_INVALID_POINTER    if @a hClient or @a pTransfer is NULL.
+ * @retval  VERR_INVALID_PARAMETER  if @a enmStatus or @a rcStatus is invalid.
+ * @retval  VERR_WRONG_ORDER        if @a pTransfer has not entered @a enmStatus.
+ * @retval  VERR_INVALID_CONTEXT    if @a pTransfer is not registered with @a hClient.
+ * @returns                         Status from queuing the terminal status for the guest.
+ * @param   hClient                 Opaque service client owning the transfer.
+ * @param   pTransfer               Transfer whose terminal state is being reported.
+ * @param   enmStatus               Terminal transfer status.
+ * @param   rcStatus                Status-specific result code.
+ * @param   pszPath                 Optional failing transfer-relative path.
  */
 static DECLCALLBACK(int) shClSvcOpTransferReportStatus(SHCLCLIENTHANDLE hClient, PSHCLTRANSFER pTransfer,
-                                                       SHCLTRANSFERSTATUS enmStatus, int rcStatus)
+                                                       SHCLTRANSFERSTATUS enmStatus, int rcStatus, const char *pszPath)
 {
-    return ShClSvcTransferReportStatus((PSHCLCLIENT)hClient, pTransfer, enmStatus, rcStatus);
+    return ShClSvcTransferReportStatus((PSHCLCLIENT)hClient, pTransfer, enmStatus, rcStatus, pszPath);
 }
 
 

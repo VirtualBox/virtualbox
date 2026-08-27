@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.h 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal header for transfer (list) handling.
  */
@@ -49,7 +49,7 @@ void shClSvcTransferResetAllLocked(PSHCLCLIENT pClient, PRTLISTANCHOR pList);
 int ShClSvcTransferInit(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer);
 int ShClSvcTransferStart(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer);
 int ShClSvcTransferReportStatus(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,
-                                SHCLTRANSFERSTATUS enmStatus, int rcStatus);
+                                SHCLTRANSFERSTATUS enmStatus, int rcStatus, const char *pszPath);
 int ShClSvcTransferReportDetachedStatus(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,
                                         SHCLTRANSFERSTATUS enmStatus, int rcStatus);
 void ShClSvcTransferReportProgress(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,

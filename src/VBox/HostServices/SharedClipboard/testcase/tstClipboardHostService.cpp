@@ -1,4 +1,4 @@
-/* $Id: tstClipboardHostService.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardHostService.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Host Service testcase.
  */
@@ -123,6 +123,8 @@ typedef struct TSTCLEXT
     int                         rcTransfer;
     /** Transfer result immediately preceding the last notification. */
     int                         rcPreviousTransfer;
+    /** Failing transfer-relative path in the last status notification. */
+    char                        szTransferPath[SHCL_TRANSFER_PATH_MAX];
     /** Number of exact aggregate transfer-progress notifications. */
     uint32_t                    cTransferProgress;
     /** Number of transport-scoped transfer-reset notifications. */
@@ -239,11 +241,13 @@ static DECLCALLBACK(int) tstCallComplete(VBOXHGCMCALLHANDLE hCall, int32_t rc)
  * The test records the transport contract and provides fixed POD clipboard data;
  * platform policy and Main behavior deliberately stay outside this testcase.
  *
- * @returns VBox status code.
- * @param   pvExtension        Test extension state.
- * @param   uFunction          VBOX_CLIPBOARD_EXT_FN_XXX function number.
- * @param   pvParms            Service-extension parameters.
- * @param   cbParms            Size of @a pvParms in bytes.
+ * @retval  VERR_INVALID_PARAMETER  if the callback parameters violate the test contract.
+ * @retval  VERR_NO_MEMORY          when the test requests a simulated status-publication failure.
+ * @retval  VERR_NOT_SUPPORTED      if @a uFunction is not implemented by the test extension.
+ * @param   pvExtension             Test extension state.
+ * @param   uFunction               VBOX_CLIPBOARD_EXT_FN_XXX function number.
+ * @param   pvParms                 Service-extension parameters.
+ * @param   cbParms                 Size of @a pvParms in bytes.
  */
 static DECLCALLBACK(int) tstExtension(void *pvExtension, uint32_t uFunction, void *pvParms, uint32_t cbParms)
 {
@@ -362,6 +366,13 @@ static DECLCALLBACK(int) tstExtension(void *pvExtension, uint32_t uFunction, voi
             pExt->rcPreviousTransfer         = pExt->rcTransfer;
             pExt->enmTransferStatus          = pParms->u.FileTransferData.enmStatus;
             pExt->rcTransfer                 = pParms->u.FileTransferData.rcStatus;
+            pExt->szTransferPath[0]          = '\0';
+            if (pParms->u.FileTransferData.pszPath)
+                RTTESTI_CHECK_RC_RET(RTStrCopy(pExt->szTransferPath, sizeof(pExt->szTransferPath),
+                                               pParms->u.FileTransferData.pszPath),
+                                     VINF_SUCCESS, VERR_INVALID_PARAMETER);
+            if (pParms->u.FileTransferData.enmReplySource == SHCLSOURCE_REMOTE)
+                RTTESTI_CHECK_RET(pParms->u.FileTransferData.pszPath == NULL, VERR_INVALID_PARAMETER);
             pExt->cTransferStatuses++;
             return VINF_SUCCESS;
         }
@@ -1728,7 +1739,7 @@ static void tstTransferLateGuestError(void *pvClient)
         RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
 
         uint32_t const cStatusesBeforeComplete = g_Ext.cTransferStatuses;
-        rc = ShClSvcTransferReportStatus(pClient, pTransfer, SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
+        rc = ShClSvcTransferReportStatus(pClient, pTransfer, SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS, NULL /* pszPath */);
         RTTESTI_CHECK_RC_OK(rc);
         RTTESTI_CHECK(g_Ext.cTransferStatuses == cStatusesBeforeComplete + 1);
         RTTESTI_CHECK(ShClTransferKeyGetSessionId(&g_Ext.TransferKey) == idSession);
@@ -1770,6 +1781,46 @@ static void tstTransferLateGuestError(void *pvClient)
 }
 
 
+/**
+ * Checks that a native transfer error path survives the immutable extension snapshot.
+ *
+ * @param   pvClient            Synthetic guest client.
+ */
+static void tstTransferNativeErrorPath(void *pvClient)
+{
+    RTTestISub("Native transfer error path");
+
+    PSHCLCLIENT const pClient = (PSHCLCLIENT)g_Ext.Transport.hClient;
+    PSHCLTRANSFER pTransfer = NULL;
+    SHCLTRANSFERID const idTransfer
+        = tstTransferStartedCreateRetained(SHCLTRANSFERDIR_GUEST_TO_HOST, SHCLSOURCE_REMOTE, &pTransfer);
+    RTTESTI_CHECK(ShClTransferIdIsValid(idTransfer));
+    if (pTransfer)
+    {
+        SHCLSESSIONID const idSession = ShClTransferGetSessionId(pTransfer);
+        tstTransferStatusNotify(pTransfer);
+
+        int rc = ShClTransferError(pTransfer, VERR_ACCESS_DENIED);
+        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+        uint32_t const cStatuses = g_Ext.cTransferStatuses;
+        rc = ShClSvcTransferReportStatus(pClient, pTransfer, SHCLTRANSFERSTATUS_ERROR, VERR_ACCESS_DENIED, "dir/denied.bin");
+        RTTESTI_CHECK_RC_OK(rc);
+        RTTESTI_CHECK(g_Ext.cTransferStatuses == cStatuses + 1);
+        RTTESTI_CHECK(g_Ext.enmTransferReplySource == SHCLSOURCE_LOCAL);
+        RTTESTI_CHECK(g_Ext.enmTransferStatus == SHCLTRANSFERSTATUS_ERROR);
+        RTTESTI_CHECK(g_Ext.rcTransfer == VERR_ACCESS_DENIED);
+        RTTESTI_CHECK(strcmp(g_Ext.szTransferPath, "dir/denied.bin") == 0);
+
+        tstTransferStatusGet(pvClient, idSession, idTransfer, SHCLTRANSFERDIR_GUEST_TO_HOST,
+                             SHCLTRANSFERSTATUS_ERROR, VERR_ACCESS_DENIED);
+
+        ShClTransferRelease(pTransfer);
+        pTransfer = NULL;
+        ShClSvcTransferDestroyByIdEx(pClient, idTransfer, false /* fNotifyGuest */);
+    }
+}
+
+
 /** Checks that native cancellation reaches Main before its guest acknowledgement can detach the transfer. */
 static void tstTransferNativeCancellationOrder(void *pvClient)
 {
@@ -1797,7 +1848,7 @@ static void tstTransferNativeCancellationOrder(void *pvClient)
         uint32_t const cStatuses = g_Ext.cTransferStatuses;
         g_Ext.fTerminalBeforeGuest = false;
         g_Ext.fCheckTerminalBeforeGuest = true;
-        rc = ShClSvcTransferReportStatus(pClient, pTransfer, SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED);
+        rc = ShClSvcTransferReportStatus(pClient, pTransfer, SHCLTRANSFERSTATUS_CANCELED, VERR_CANCELLED, NULL /* pszPath */);
         g_Ext.fCheckTerminalBeforeGuest = false;
         RTTESTI_CHECK_RC_OK(rc);
         RTTESTI_CHECK(g_Ext.fTerminalBeforeGuest);
@@ -1905,7 +1956,7 @@ static void tstTransferCleanupNotification(void *pvClient)
         int rc = ShClTransferComplete(pTransfer);
         RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
         if (RT_SUCCESS(rc))
-            rc = ShClSvcTransferReportStatus(pClient, pTransfer, SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
+            rc = ShClSvcTransferReportStatus(pClient, pTransfer, SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS, NULL /* pszPath */);
         RTTESTI_CHECK_RC_OK(rc);
         tstTransferStatusGet(pvClient, idSession, idCompletedTransfer, SHCLTRANSFERDIR_GUEST_TO_HOST,
                              SHCLTRANSFERSTATUS_COMPLETED, VINF_SUCCESS);
@@ -2003,6 +2054,7 @@ static void tstTransfers(void *pvClient)
     tstTransferLegacyAggregateObjRead(pvClient);
     tstTransferObjWritePayload(pvClient);
     tstTransferLateGuestError(pvClient);
+    tstTransferNativeErrorPath(pvClient);
     tstTransferNativeCancellationOrder(pvClient);
     tstTransferLateCancellationReply(pvClient);
     tstTransferNotificationFailure();

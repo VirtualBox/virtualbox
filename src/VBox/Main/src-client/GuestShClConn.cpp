@@ -1,4 +1,4 @@
-/* $Id: GuestShClConn.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClConn.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Service connection management implementation.
  */
@@ -529,10 +529,11 @@ int GuestShClConn::transferInit(PSHCLTRANSFER pTransfer)
 }
 
 
-int GuestShClConn::transferReportStatus(PSHCLTRANSFER pTransfer, SHCLTRANSFERSTATUS enmStatus, int rcStatus)
+int GuestShClConn::transferReportStatus(PSHCLTRANSFER pTransfer, SHCLTRANSFERSTATUS enmStatus, int rcStatus,
+                                        const char *pszPath /* = NULL */)
 {
     SHCL_CONN_SVC_CALL_BEGIN(Transport);
-    vrc = Transport.pOps->pfnTransferReportStatus(Transport.hClient, pTransfer, enmStatus, rcStatus);
+    vrc = Transport.pOps->pfnTransferReportStatus(Transport.hClient, pTransfer, enmStatus, rcStatus, pszPath);
     i_callEnd();
     return vrc;
 }

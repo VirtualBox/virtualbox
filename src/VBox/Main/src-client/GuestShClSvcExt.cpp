@@ -1,4 +1,4 @@
-/* $Id: GuestShClSvcExt.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClSvcExt.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard service extension handling for Main.
  */
@@ -125,14 +125,15 @@ static int shClSvcExtValidateDataBuffer(void const *pvData, uint32_t cbData)
 /**
  * Validates Shared Clipboard service extension parameters before dispatching a request.
  *
- * @returns VBox status code.
- * @retval  VERR_INVALID_POINTER if a required pointer is NULL or not a valid host pointer.
- * @retval  VERR_INVALID_PARAMETER if a parameter is invalid.
- * @retval  VERR_RESOURCE_BUSY if a backend connection is requested while a client is active.
- * @param   u32Function         Service extension function being dispatched.
- * @param   pvParms             Raw service extension parameters to validate. Optional for unknown
- *                              function IDs.
- * @param   cbParms             Size, in bytes, of \a pvParms.
+ * @retval  VERR_INVALID_POINTER    if a required pointer is NULL or not a valid host pointer.
+ * @retval  VERR_INVALID_PARAMETER  if a parameter is invalid.
+ * @retval  VERR_RESOURCE_BUSY      if a backend connection is requested while a client is active.
+ * @retval  VERR_INVALID_HANDLE     if the request's transport is not the active service transport.
+ * @retval  VERR_INVALID_CONTEXT    if transfer metadata does not match the registered transfer.
+ * @param   u32Function             Service extension function being dispatched.
+ * @param   pvParms                 Raw service extension parameters to validate. Optional for unknown
+ *                                  function IDs.
+ * @param   cbParms                 Size, in bytes, of \a pvParms.
  */
 int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32_t cbParms)
 {
@@ -248,6 +249,19 @@ int GuestShCl::i_svcExtParmsValidate(uint32_t u32Function, void *pvParms, uint32
             AssertReturn(   enmStatus != SHCLTRANSFERSTATUS_NONE
                          && ShClTransferStatusResultIsValid(enmStatus, pParms->u.FileTransferData.rcStatus),
                          VERR_INVALID_PARAMETER);
+
+            const char *pszPath = pParms->u.FileTransferData.pszPath;
+            if (pszPath)
+            {
+                AssertReturn(RT_VALID_PTR(pszPath), VERR_INVALID_POINTER);
+                size_t cchPath = 0;
+                vrc = RTStrNLenEx(pszPath, SHCL_TRANSFER_PATH_MAX, &cchPath);
+                AssertReturn(RT_SUCCESS(vrc) && cchPath, VERR_INVALID_PARAMETER);
+                vrc = RTStrValidateEncodingEx(pszPath, cchPath + 1,
+                                                RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED
+                                              | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
+                AssertReturn(RT_SUCCESS(vrc), VERR_INVALID_PARAMETER);
+            }
 
             PSHCLTRANSFER const pRegisteredTransfer
                 = m_pConn->transferGetByKeyRetained(pKey);
@@ -578,8 +592,11 @@ int GuestShCl::i_svcExtTransferGetCallbacksCallback(PSHCLEXTPARMS pParms)
  *
  * Forwards a transfer status reply to the Shared Clipboard backend and Main.
  *
- * @returns VBox status code.
- * @param   pParms              Decoded service extension parameters.
+ * @retval  VERR_INVALID_HANDLE     if the service transport is no longer active.
+ * @retval  VERR_INVALID_CONTEXT    if a non-terminal status does not match a live transfer.
+ * @retval  VERR_INVALID_STATE      if the native backend is unavailable for a live transfer.
+ * @returns                         Status from native backend or Main status handling.
+ * @param   pParms                  Decoded service extension parameters.
  */
 int GuestShCl::i_svcExtFileTransferCallback(PSHCLEXTPARMS pParms)
 {
@@ -589,6 +606,7 @@ int GuestShCl::i_svcExtFileTransferCallback(PSHCLEXTPARMS pParms)
     SHCLSOURCE const enmReplySource = pParms->u.FileTransferData.enmReplySource;
     SHCLTRANSFERSTATUS const enmStatus = pParms->u.FileTransferData.enmStatus;
     int const vrcTransfer = pParms->u.FileTransferData.rcStatus;
+    const char *pszPath = pParms->u.FileTransferData.pszPath;
 
     int vrc = m_pConn->transportAcquire(&Transport);
     if (RT_FAILURE(vrc))
@@ -619,7 +637,7 @@ int GuestShCl::i_svcExtFileTransferCallback(PSHCLEXTPARMS pParms)
         if (pClipboard)
         {
             HRESULT const hrc = pClipboard->i_handleTransferStatus(pKey, NULL,
-                                                                   enmTransferSource, enmStatus, vrcTransfer);
+                                                                   enmTransferSource, enmStatus, vrcTransfer, pszPath);
             if (FAILED(hrc))
             {
                 LogFunc(("Main transfer status handling failed: hrc=%Rhrc\n", hrc));

@@ -1,4 +1,4 @@
-/* $Id: tstClipboardMain.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardMain.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Connection and service-extension testcase.
  */
@@ -471,13 +471,14 @@ static DECLCALLBACK(int) tstSvcTransferInit(SHCLCLIENTHANDLE hClient, PSHCLTRANS
 
 /** @copydoc SHCLSVCOPS::pfnTransferReportStatus */
 static DECLCALLBACK(int) tstSvcTransferReportStatus(SHCLCLIENTHANDLE hClient, PSHCLTRANSFER pTransfer,
-                                                     SHCLTRANSFERSTATUS enmStatus, int vrcStatus)
+                                                     SHCLTRANSFERSTATUS enmStatus, int vrcStatus, const char *pszPath)
 {
     tstSvcCheckClient(hClient);
     RTTESTI_CHECK(pTransfer == &g_State.Transfer);
     g_State.cSvcTransferReportStatus++;
     g_State.enmSvcTransferStatus = enmStatus;
     g_State.vrcSvcTransferStatus = vrcStatus;
+    RTTESTI_CHECK(pszPath == NULL);
     return VINF_SUCCESS;
 }
 

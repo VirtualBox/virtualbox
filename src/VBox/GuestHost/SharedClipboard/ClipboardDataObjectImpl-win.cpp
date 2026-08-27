@@ -1,4 +1,4 @@
-/* $Id: ClipboardDataObjectImpl-win.cpp 115132 2026-08-27 08:32:32Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardDataObjectImpl-win.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * ClipboardDataObjectImpl-win.cpp - Shared Clipboard IDataObject implementation.
  */
@@ -66,6 +66,7 @@
 ShClWinDataObject::ShClWinDataObject(void)
     : m_enmStatus(Uninitialized)
     , m_rcStatus(VERR_IPE_UNINITIALIZED_STATUS)
+    , m_uErrorObjIdx(UINT32_MAX)
     , m_lRefCount(0)
     , m_cFormats(0)
     , m_pFormatEtc(NULL)
@@ -1689,9 +1690,13 @@ STDMETHODIMP ShClWinDataObject::StartOperation(IBindCtx *pbcReserved)
 /**
  * Assigns a transfer object for the data object, internal version.
  *
- * @returns VBox status code.
- * @param   pTransfer           Transfer to assign.
- *                              When set to NULL, the transfer will be released from the object.
+ * @retval  VERR_INVALID_PARAMETER  if @a ppObjToRelease already contains an object.
+ * @retval  VERR_WRONG_ORDER        if the critical section is not owned, the data object is not initialized, or a transfer is
+ *                                  already assigned.
+ * @returns                         Status from entering the transfer-context critical section or signaling the list-complete event.
+ * @param   pTransfer               Transfer to assign.
+ *                                  When set to NULL, the transfer will be released from the object.
+ * @param   ppObjToRelease          Where to return the data-object reference to release after unlocking. Optional.
  */
 int ShClWinDataObject::setTransferLocked(PSHCLTRANSFER pTransfer, ShClWinDataObject **ppObjToRelease /* = NULL */)
 {
@@ -1721,6 +1726,7 @@ int ShClWinDataObject::setTransferLocked(PSHCLTRANSFER pTransfer, ShClWinDataObj
                     pWinURITransferCtx->pDataObj = this;
                     m_pTransfer = pTransfer;
                     m_fTransferEndReported = false;
+                    m_uErrorObjIdx = UINT32_MAX;
                     ShClTransferAcquire(pTransfer);
                 }
                 else
@@ -1830,17 +1836,21 @@ void ShClWinDataObject::invalidateStreams(void)
 /**
  * Sets a new status to the data object and signals its waiter.
  *
- * @returns VBox status code.
- * @param   enmStatus           New status to signal.
- * @param   rcSts               Result code. Optional.
+ * @retval  VERR_INVALID_PARAMETER  if @a rcSts is an error and @a enmStatus is not Error.
+ * @retval  VERR_WRONG_ORDER        if the data-object critical section is not owned.
+ * @returns                         Status returned by RTSemEventSignal().
+ * @param   enmStatus               New status to signal.
+ * @param   rcSts                   Result code. Optional.
+ * @param   uObjIdx                 Index of the object which supplied @a rcSts when @a enmStatus is Error, or UINT32_MAX if not
+ *                                  known.
  *
- * @note    Called by the main clipboard thread + ShClWinStreamImpl.
+ * @note                            Called by the main clipboard thread + ShClWinStreamImpl.
  */
-int ShClWinDataObject::SetStatus(Status enmStatus, int rcSts /* = VINF_SUCCESS */)
+int ShClWinDataObject::SetStatus(Status enmStatus, int rcSts /* = VINF_SUCCESS */, ULONG uObjIdx /* = UINT32_MAX */)
 {
     lock();
 
-    int rc = setStatusLocked(enmStatus, rcSts);
+    int rc = setStatusLocked(enmStatus, rcSts, uObjIdx);
 
     unlock();
     return rc;
@@ -1850,10 +1860,12 @@ int ShClWinDataObject::SetStatus(Status enmStatus, int rcSts /* = VINF_SUCCESS *
  * Reports the terminal native transfer status to the Windows backend exactly
  * once for the currently assigned transfer.
  *
- * @returns VBox status code, or VINF_NO_CHANGE if the terminal callback was
- *          already reported or callbacks have been disabled.
- * @param   pTransfer           Transfer which reached a terminal state.
- * @param   rcTransfer          Terminal transfer result.
+ * @retval  VINF_NO_CHANGE          if the terminal callback was already reported or callbacks have been disabled.
+ * @retval  VERR_INVALID_POINTER    if @a pTransfer is NULL.
+ * @retval  VERR_TRY_AGAIN          if another callback is active.
+ * @returns                         Status returned by the transfer-end callback.
+ * @param   pTransfer               Transfer which reached a terminal state.
+ * @param   rcTransfer              Terminal transfer result.
  */
 int ShClWinDataObject::reportTransferEnd(PSHCLTRANSFER pTransfer, int rcTransfer)
 {
@@ -1862,6 +1874,8 @@ int ShClWinDataObject::reportTransferEnd(PSHCLTRANSFER pTransfer, int rcTransfer
     PFNTRANSFEREND pfnTransferEnd = NULL;
     CALLBACKCTX CallbackCtx;
     RT_ZERO(CallbackCtx);
+    char szPath[SHCL_TRANSFER_PATH_MAX];
+    szPath[0] = '\0';
 
     lock();
     if (   !m_fTransferEndReported
@@ -1881,13 +1895,34 @@ int ShClWinDataObject::reportTransferEnd(PSHCLTRANSFER pTransfer, int rcTransfer
         m_hCallbackThread = RTThreadNativeSelf();
         int const rc2 = RTSemEventMultiReset(m_EventCallbacksDrained);
         AssertFatalMsgRC(rc2, ("Resetting the Windows clipboard callback-drain event failed with %Rrc\n", rc2));
+
+        if (   m_enmStatus == Error
+            && m_uErrorObjIdx < m_lstEntries.size()
+            && m_lstEntries[m_uErrorObjIdx].pszPath)
+        {
+            int const rcPath = RTStrCopy(szPath, sizeof(szPath), m_lstEntries[m_uErrorObjIdx].pszPath);
+            if (RT_FAILURE(rcPath))
+                szPath[0] = '\0';
+        }
     }
     unlock();
 
     if (!pfnTransferEnd)
         return VINF_NO_CHANGE;
 
-    int const rc = pfnTransferEnd(&CallbackCtx, pTransfer, rcTransfer);
+    if (szPath[0])
+    {
+        int rcPath = ShClTransferTransformPath(szPath, sizeof(szPath));
+        if (   RT_SUCCESS(rcPath)
+            && RTPathStartsWithRoot(szPath))
+            rcPath = VERR_PATH_IS_NOT_RELATIVE;
+        if (RT_SUCCESS(rcPath))
+            rcPath = ShClTransferValidatePath(szPath, false /* fMustExist */);
+        if (RT_FAILURE(rcPath))
+            szPath[0] = '\0';
+    }
+
+    int const rc = pfnTransferEnd(&CallbackCtx, pTransfer, rcTransfer, szPath[0] ? szPath : NULL);
 
     lock();
     Assert(m_cCallbacks == 1);
@@ -1976,14 +2011,18 @@ void ShClWinDataObject::registerFormat(LPFORMATETC pFormatEtc, CLIPFORMAT clipFo
 /**
  * Sets a new status to the data object and signals its waiter.
  *
- * @returns VBox status code.
- * @param   enmStatus           New status to signal.
- * @param   rc                  Result code. Optional.
- *                              Errors only accepted when status also is 'Error'.
+ * @retval  VERR_INVALID_PARAMETER  if @a rc is an error and @a enmStatus is not Error.
+ * @retval  VERR_WRONG_ORDER        if the data-object critical section is not owned.
+ * @returns                         Status returned by RTSemEventSignal().
+ * @param   enmStatus               New status to signal.
+ * @param   rc                      Result code. Optional.
+ *                                  Errors only accepted when status also is 'Error'.
+ * @param   uObjIdx                 Index of the object which supplied @a rc when @a enmStatus is Error, or UINT32_MAX if not
+ *                                  known.
  *
- * @note    Caller must have taken the critical section.
+ * @note                            Caller must have taken the critical section.
  */
-int ShClWinDataObject::setStatusLocked(Status enmStatus, int rc /* = VINF_SUCCESS */)
+int ShClWinDataObject::setStatusLocked(Status enmStatus, int rc /* = VINF_SUCCESS */, ULONG uObjIdx /* = UINT32_MAX */)
 {
     AssertReturn(enmStatus == Error || RT_SUCCESS(rc), VERR_INVALID_PARAMETER);
     AssertReturn(RTCritSectIsOwned(&m_CritSect), VERR_WRONG_ORDER);
@@ -2002,9 +2041,9 @@ int ShClWinDataObject::setStatusLocked(Status enmStatus, int rc /* = VINF_SUCCES
         && enmStatus != Initialized)
         return VINF_SUCCESS;
 
-    m_rcStatus = rc;
-
-    m_enmStatus = enmStatus;
+    m_rcStatus     = rc;
+    m_enmStatus    = enmStatus;
+    m_uErrorObjIdx = enmStatus == Error ? uObjIdx : UINT32_MAX;
 
     if (RT_FAILURE(rc))
         LogRelMax(16, ("Shared Clipboard: Windows data object entered status %#x with error %Rrc\n", enmStatus, rc));

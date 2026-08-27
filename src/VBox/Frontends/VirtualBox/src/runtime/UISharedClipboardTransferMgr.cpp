@@ -1,4 +1,4 @@
-/* $Id: UISharedClipboardTransferMgr.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: UISharedClipboardTransferMgr.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Qt GUI - UISharedClipboardTransfer and UISharedClipboardTransferMgr class implementations.
  */
@@ -367,8 +367,10 @@ bool UISharedClipboardTransferMgr::handleEvent(const CEvent &comEvent,
     pTransfer->handleStateChange(m_comTransferManager, enmState, enmInteraction, strPath, strMessage, enmError);
 
     /* An Added event only means that the delayed-rendering offer was created.
-     * Show progress once Main reports that the transfer has actually started. */
-    const bool fNotifyProgress =    enmState == KClipboardTransferState_InProgress
+     * Show progress once Main reports that the transfer has actually started,
+     * or reuse its completed progress if it failed before reaching that state. */
+    const bool fNotifyProgress =    (   enmState == KClipboardTransferState_InProgress
+                                     || enmState == KClipboardTransferState_Failed)
                                  && pcomNotifyTransfer
                                  && comTransfer.isNotNull()
                                  && pTransfer->claimProgressNotification();

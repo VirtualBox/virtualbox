@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjects.cpp 114637 2026-07-07 16:21:39Z andreas.loeffler@oracle.com $ */
+/* $Id: UINotificationObjects.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationObjects implementations.
  */
@@ -49,8 +49,11 @@
 #include "CRangedIntegerFormValue.h"
 #include "CRangedInteger64FormValue.h"
 #include "CStringFormValue.h"
+#include "CVirtualBoxErrorInfo.h"
 
 /* Other VBox stuff: */
+#include <iprt/errcore.h>
+#include <iprt/string.h>
 #ifdef VBOX_WS_NIX
 # include <iprt/env.h>
 #endif
@@ -644,6 +647,47 @@ static QString shclTransferSourceName(KClipboardSource enmSource)
 }
 
 
+/**
+ * Returns the symbolic IPRT result associated with a failed transfer.
+ *
+ * @returns                     Symbolic IPRT result, or an empty string if no known failure result is
+ *                              available.
+ * @param   comTransfer         Brings the clipboard transfer to inspect.
+ */
+static QString shclTransferRuntimeErrorName(const CClipboardTransfer &comTransfer)
+{
+    if (comTransfer.isNull())
+        return QString();
+
+    CProgress comProgress = comTransfer.GetProgress();
+    if (!comTransfer.isOk() || comProgress.isNull())
+        return QString();
+
+    const BOOL fCompleted = comProgress.GetCompleted();
+    if (!comProgress.isOk() || !fCompleted)
+        return QString();
+
+    const LONG hrcResult = comProgress.GetResultCode();
+    if (!comProgress.isOk() || SUCCEEDED(hrcResult))
+        return QString();
+
+    CVirtualBoxErrorInfo comErrorInfo = comProgress.GetErrorInfo();
+    if (!comProgress.isOk() || comErrorInfo.isNull())
+        return QString();
+
+    const int32_t vrcResult = (int32_t)comErrorInfo.GetResultDetail();
+    if (!comErrorInfo.isOk() || !RT_FAILURE(vrcResult) || !RTErrIsKnown(vrcResult))
+        return QString();
+
+    char *pszResult = RTStrAPrintf2("%Rrc", vrcResult);
+    if (!pszResult)
+        return QString();
+    const QString strResult = QString::fromUtf8(pszResult);
+    RTStrFree(pszResult);
+    return strResult;
+}
+
+
 UINotificationProgressSharedClipboardTransfer::UINotificationProgressSharedClipboardTransfer(const CClipboardTransfer &comTransfer)
     : m_comTransfer(comTransfer)
 {
@@ -665,10 +709,14 @@ QString UINotificationProgressSharedClipboardTransfer::details() const
     if (!m_comTransfer.isOk())
         return UINotificationProgress::tr("<b>Transfer:</b> unavailable");
 
-    return UINotificationProgress::tr("<b>Transfer ID:</b> %1<br><b>Direction:</b> %2<br><b>Source:</b> %3")
-                                  .arg(uId)
-                                  .arg(shclTransferDirectionName(enmDirection))
-                                  .arg(shclTransferSourceName(enmSource));
+    QString strDetails = UINotificationProgress::tr("<b>Transfer ID:</b> %1<br><b>Direction:</b> %2<br><b>Source:</b> %3")
+                                                     .arg(uId)
+                                                     .arg(shclTransferDirectionName(enmDirection))
+                                                     .arg(shclTransferSourceName(enmSource));
+    const QString strRuntimeError = shclTransferRuntimeErrorName(m_comTransfer);
+    if (!strRuntimeError.isEmpty())
+        strDetails += UINotificationProgress::tr("<br><b>IPRT Error:</b> %1").arg(strRuntimeError.toHtmlEscaped());
+    return strDetails;
 }
 
 CProgress UINotificationProgressSharedClipboardTransfer::createProgress(COMResult &comResult)

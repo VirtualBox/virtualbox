@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferManagerImpl.h 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferManagerImpl.h 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer manager object.
  */
@@ -92,12 +92,14 @@ public:
      * @param   enmShClSource       Data source recorded by the backing transfer.
      * @param   enmStatus           Transfer lifecycle status.
      * @param   vrcTransfer         Transfer result code associated with the status.
+     * @param   pszPath             Optional transfer-relative path associated with an error.
      */
     HRESULT i_handleTransferStatus(PCSHCLTRANSFERKEY pKey,
                                    PSHCLTRANSFER aTransfer,
                                    SHCLSOURCE enmShClSource,
                                    SHCLTRANSFERSTATUS enmStatus,
-                                   int vrcTransfer);
+                                   int vrcTransfer,
+                                   const char *pszPath = NULL);
     /**
      * Updates the byte progress of a Shared Clipboard transfer.
      *
@@ -305,6 +307,8 @@ private:
             SHCLTRANSFERSTATUS               mStatus;
             /** Native terminal result used to complete the progress object. */
             int                              mrcTransfer;
+            /** Validated transfer-relative path associated with a terminal error. */
+            com::Utf8Str                     mPath;
             /** Percentage to publish while the transfer remains active. */
             ULONG                            muPercent;
             /** Whether to update the transfer object's public state. */

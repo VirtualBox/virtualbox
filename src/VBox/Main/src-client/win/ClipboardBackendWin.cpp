@@ -1,4 +1,4 @@
-/* $Id: ClipboardBackendWin.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardBackendWin.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Win32 host.
  */
@@ -444,10 +444,11 @@ static DECLCALLBACK(int) shClSvcWinDataObjectTransferBeginCallback(ShClWinDataOb
  * Publishes the terminal state after the data object has updated the native
  * transfer.  Destruction remains with the normal service lifecycle owner.
  *
- * @thread  Windows data-object transfer thread or Shell COM callback thread.
+ * @thread                      Windows data-object transfer thread or Shell COM callback thread.
  */
 static DECLCALLBACK(int) shClSvcWinDataObjectTransferEndCallback(ShClWinDataObject::PCALLBACKCTX pCbCtx,
-                                                                 PSHCLTRANSFER pTransfer, int rcTransfer)
+                                                                 PSHCLTRANSFER pTransfer, int rcTransfer,
+                                                                 const char *pszPath)
 {
     PSHCLCONTEXT pCtx = (PSHCLCONTEXT)pCbCtx->pvUser;
     AssertPtrReturn(pCtx, VERR_INVALID_POINTER);
@@ -475,7 +476,7 @@ static DECLCALLBACK(int) shClSvcWinDataObjectTransferEndCallback(ShClWinDataObje
             return VINF_SUCCESS;
     }
 
-    return pCtx->pConn->transferReportStatus(pTransfer, enmStatus, vrcStatus);
+    return pCtx->pConn->transferReportStatus(pTransfer, enmStatus, vrcStatus, pszPath);
 }
 #endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 

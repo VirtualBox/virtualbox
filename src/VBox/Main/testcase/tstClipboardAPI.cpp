@@ -1,4 +1,4 @@
-/* $Id: tstClipboardAPI.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardAPI.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Public API object testcase.
  */
@@ -351,6 +351,7 @@ struct ClipboardTransferReentryContext
     ULONG                      uPercentAtInProgress;
     ClipboardTransferState_T   aEventStates[8];
     ClipboardTransferState_T   aObjectStates[8];
+    ComPtr<IClipboardTransferEvent> ptrHeldEvent;
     ComPtr<IClipboardTransfer> ptrHeldTransfer;
     ComPtr<IProgress>          ptrHeldProgress;
     RTSEMEVENT                 hDone;
@@ -380,6 +381,14 @@ public:
     virtual ~ClipboardTransferReentryListener()
     { }
 
+    /**
+     * Handles a transfer event for the active-listener publication tests.
+     *
+     * @retval  S_OK                if the event was handled or ignored.
+     * @retval  E_FAIL              if the listener context is unavailable.
+     * @param   aType               Event type.
+     * @param   aEvent              Event object.
+     */
     STDMETHOD(HandleEvent)(VBoxEventType_T aType, IEvent *aEvent)
     {
         if (aType != VBoxEventType_OnClipboardTransfer)
@@ -463,12 +472,15 @@ public:
                                                                                  VINF_SUCCESS);
             }
         }
-        else if (SUCCEEDED(hrc) && enmEventState == ClipboardTransferState_Completed)
+        else if (   SUCCEEDED(hrc)
+                 && (   enmEventState == ClipboardTransferState_Completed
+                     || enmEventState == ClipboardTransferState_Failed))
         {
-            ComPtr<IProgress> ptrProgress;
-            hrc = ptrTransfer->COMGETTER(Progress)(ptrProgress.asOutParam());
+            pContext->ptrHeldEvent = ptrEvent;
+            pContext->ptrHeldTransfer = ptrTransfer;
+            hrc = ptrTransfer->COMGETTER(Progress)(pContext->ptrHeldProgress.asOutParam());
             if (SUCCEEDED(hrc))
-                hrc = ptrProgress->COMGETTER(Completed)(&pContext->fCompletedAtTerminal);
+                hrc = pContext->ptrHeldProgress->COMGETTER(Completed)(&pContext->fCompletedAtTerminal);
             fSignalDone = true;
         }
 
@@ -1166,6 +1178,126 @@ static void tstClipboardTransferManager(void)
     }
     RTTESTI_CHECK(Context.uPercentAtInProgress == 50);
     RTTESTI_CHECK(Context.fCompletedAtTerminal == TRUE);
+
+    /* A terminal service error publishes one validated path and one formatted
+     * message consistently through the transfer, event and Progress objects. */
+    Context.cEvents = 0;
+    Context.fOverflow = false;
+    Context.fCompletedAtTerminal = FALSE;
+    Context.ptrHeldEvent.setNull();
+    Context.ptrHeldTransfer.setNull();
+    Context.ptrHeldProgress.setNull();
+    ShClTransferKeyInit(&Context.Key, 3, 5, 4);
+    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key, NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key, NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_ERROR, VERR_ACCESS_DENIED, "dir/denied.bin");
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK_RC(RTSemEventWait(Context.hDone, RT_MS_5SEC), VINF_SUCCESS);
+
+    RTTESTI_CHECK(!Context.fOverflow);
+    RTTESTI_CHECK(Context.cEvents == 2);
+    if (Context.cEvents == 2)
+    {
+        RTTESTI_CHECK(Context.aEventStates[0] == ClipboardTransferState_Added);
+        RTTESTI_CHECK(Context.aEventStates[1] == ClipboardTransferState_Failed);
+        RTTESTI_CHECK(Context.aObjectStates[0] == ClipboardTransferState_Added);
+        RTTESTI_CHECK(Context.aObjectStates[1] == ClipboardTransferState_Failed);
+    }
+    RTTESTI_CHECK(Context.fCompletedAtTerminal == TRUE);
+    RTTESTI_CHECK(Context.ptrHeldEvent.isNotNull());
+    RTTESTI_CHECK(Context.ptrHeldTransfer.isNotNull());
+    RTTESTI_CHECK(Context.ptrHeldProgress.isNotNull());
+    if (   Context.ptrHeldEvent.isNotNull()
+        && Context.ptrHeldTransfer.isNotNull()
+        && Context.ptrHeldProgress.isNotNull())
+    {
+        const char *pszExpectedMessage = "Access denied for 'dir/denied.bin'";
+        ClipboardTransferState_T enmFailedState = ClipboardTransferState_Added;
+        ClipboardError_T enmFailedError = ClipboardError_None;
+        com::Bstr bstrFailedMessage;
+        hrc = Context.ptrHeldTransfer->COMGETTER(State)(&enmFailedState);
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        hrc = Context.ptrHeldTransfer->COMGETTER(Error)(&enmFailedError);
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        hrc = Context.ptrHeldTransfer->COMGETTER(Message)(bstrFailedMessage.asOutParam());
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        RTTESTI_CHECK(enmFailedState == ClipboardTransferState_Failed);
+        RTTESTI_CHECK(enmFailedError == ClipboardError_AccessDenied);
+        RTTESTI_CHECK(!RTStrCmp(com::Utf8Str(bstrFailedMessage).c_str(), pszExpectedMessage));
+
+        ClipboardError_T enmEventError = ClipboardError_None;
+        com::Bstr bstrEventPath;
+        com::Bstr bstrEventMessage;
+        hrc = Context.ptrHeldEvent->COMGETTER(Path)(bstrEventPath.asOutParam());
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        hrc = Context.ptrHeldEvent->COMGETTER(Message)(bstrEventMessage.asOutParam());
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        hrc = Context.ptrHeldEvent->COMGETTER(Error)(&enmEventError);
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        RTTESTI_CHECK(!RTStrCmp(com::Utf8Str(bstrEventPath).c_str(), "dir/denied.bin"));
+        RTTESTI_CHECK(!RTStrCmp(com::Utf8Str(bstrEventMessage).c_str(), pszExpectedMessage));
+        RTTESTI_CHECK(enmEventError == ClipboardError_AccessDenied);
+
+        LONG hrcFailedProgress = S_OK;
+        hrc = Context.ptrHeldProgress->COMGETTER(ResultCode)(&hrcFailedProgress);
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        RTTESTI_CHECK((HRESULT)hrcFailedProgress == VBOX_E_SHCL_ACCESS_DENIED);
+        ComPtr<IVirtualBoxErrorInfo> ptrErrorInfo;
+        hrc = Context.ptrHeldProgress->COMGETTER(ErrorInfo)(ptrErrorInfo.asOutParam());
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        RTTESTI_CHECK(ptrErrorInfo.isNotNull());
+        if (ptrErrorInfo.isNotNull())
+        {
+            LONG vrcDetail = VINF_SUCCESS;
+            com::Bstr bstrErrorText;
+            hrc = ptrErrorInfo->COMGETTER(ResultDetail)(&vrcDetail);
+            RTTESTI_CHECK_RC(hrc, S_OK);
+            hrc = ptrErrorInfo->COMGETTER(Text)(bstrErrorText.asOutParam());
+            RTTESTI_CHECK_RC(hrc, S_OK);
+            RTTESTI_CHECK(vrcDetail == VERR_ACCESS_DENIED);
+            RTTESTI_CHECK(!RTStrCmp(com::Utf8Str(bstrErrorText).c_str(), pszExpectedMessage));
+        }
+    }
+
+    /* Display-control characters make an otherwise valid UTF-8 path unsafe to
+     * show.  Keep the exact transfer error but publish it without that path. */
+    Context.cEvents = 0;
+    Context.fOverflow = false;
+    Context.fCompletedAtTerminal = FALSE;
+    Context.ptrHeldEvent.setNull();
+    Context.ptrHeldTransfer.setNull();
+    Context.ptrHeldProgress.setNull();
+    ShClTransferKeyInit(&Context.Key, 3, 6, 4);
+    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key, NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key, NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                SHCLTRANSFERSTATUS_ERROR, VERR_ACCESS_DENIED,
+                                                "dir/\xe2\x80\x8ehidden.bin" /* U+200E */);
+    RTTESTI_CHECK_RC(hrc, S_OK);
+    RTTESTI_CHECK_RC(RTSemEventWait(Context.hDone, RT_MS_5SEC), VINF_SUCCESS);
+
+    RTTESTI_CHECK(!Context.fOverflow);
+    RTTESTI_CHECK(Context.cEvents == 2);
+    RTTESTI_CHECK(Context.ptrHeldEvent.isNotNull());
+    RTTESTI_CHECK(Context.ptrHeldTransfer.isNotNull());
+    if (Context.ptrHeldEvent.isNotNull() && Context.ptrHeldTransfer.isNotNull())
+    {
+        com::Bstr bstrEventPath;
+        com::Bstr bstrEventMessage;
+        com::Bstr bstrTransferMessage;
+        hrc = Context.ptrHeldEvent->COMGETTER(Path)(bstrEventPath.asOutParam());
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        hrc = Context.ptrHeldEvent->COMGETTER(Message)(bstrEventMessage.asOutParam());
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        hrc = Context.ptrHeldTransfer->COMGETTER(Message)(bstrTransferMessage.asOutParam());
+        RTTESTI_CHECK_RC(hrc, S_OK);
+        RTTESTI_CHECK(com::Utf8Str(bstrEventPath).isEmpty());
+        RTTESTI_CHECK(!RTStrCmp(com::Utf8Str(bstrEventMessage).c_str(), "Access denied"));
+        RTTESTI_CHECK(!RTStrCmp(com::Utf8Str(bstrTransferMessage).c_str(), "Access denied"));
+    }
 
     hrc = ptrEventSource->UnregisterListener(ptrListener);
     RTTESTI_CHECK_RC(hrc, S_OK);

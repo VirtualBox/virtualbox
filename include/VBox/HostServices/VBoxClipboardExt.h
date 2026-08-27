@@ -87,9 +87,22 @@ typedef struct SHCLSVCOPS
                                                 SHCLTRANSFERID idTransfer, PSHCLTRANSFER *ppTransfer));
     /** Initializes a service-owned transfer. */
     DECLCALLBACKMEMBER(int, pfnTransferInit, (SHCLCLIENTHANDLE hClient, PSHCLTRANSFER pTransfer));
-    /** Reports a host-side transfer terminal status without destroying it. */
+    /**
+     * Reports a host-side transfer terminal status without destroying it.
+     *
+     * @retval  VERR_INVALID_POINTER    if @a hClient or @a pTransfer is NULL.
+     * @retval  VERR_INVALID_PARAMETER  if @a enmStatus or @a rcStatus is invalid.
+     * @retval  VERR_WRONG_ORDER        if @a pTransfer has not entered @a enmStatus.
+     * @retval  VERR_INVALID_CONTEXT    if @a pTransfer is not registered with @a hClient.
+     * @returns                         Status from queuing the terminal status for the guest.
+     * @param   hClient                 Opaque service client owning the transfer.
+     * @param   pTransfer               Transfer whose terminal state is being reported.
+     * @param   enmStatus               Terminal transfer status.
+     * @param   rcStatus                Status-specific result code.
+     * @param   pszPath                 Optional failing transfer-relative path.
+     */
     DECLCALLBACKMEMBER(int, pfnTransferReportStatus, (SHCLCLIENTHANDLE hClient, PSHCLTRANSFER pTransfer,
-                                                      SHCLTRANSFERSTATUS enmStatus, int rcStatus));
+                                                      SHCLTRANSFERSTATUS enmStatus, int rcStatus, const char *pszPath));
     /** Destroys a transfer selected by ID. */
     DECLCALLBACKMEMBER(void, pfnTransferDestroyById, (SHCLCLIENTHANDLE hClient, SHCLTRANSFERID idTransfer));
     /** Destroys all transfers for a disconnecting client. */
@@ -252,6 +265,8 @@ typedef struct _SHCLEXTPARMS
             SHCLTRANSFERSTATUS       enmStatus;
             /** Status-specific VBox result code. */
             int                      rcStatus;
+            /** Optional callback-scoped failing transfer-relative path. */
+            const char              *pszPath;
         } FileTransferData;
         /** Reports exact aggregate file-transfer progress to Main. */
         struct

@@ -1,4 +1,4 @@
-/* $Id: ClipboardImpl.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardImpl.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Console clipboard API.
  */
@@ -3317,18 +3317,24 @@ void Clipboard::i_resetTransfersFromService()
 /**
  * Handles a Shared Clipboard transfer lifecycle status delivered by the host service.
  *
- * @returns COM status code.
+ * @retval  S_OK                if the transfer status was accepted or safely ignored.
+ * @retval  E_INVALIDARG        if the key, source, status, result, direction, or transition is invalid.
+ * @retval  E_FAIL              if clipboard state or required transfer state is unavailable.
+ * @retval  E_OUTOFMEMORY       if a transfer record or publication cannot be allocated.
+ * @returns                     A failure status from creating or initializing the transfer's Main objects.
  * @param   pKey                Host-side transfer key.
  * @param   aTransfer           Borrowed service transfer backing the data plane.
  * @param   enmShClSource       Data source recorded by the backing transfer.
  * @param   enmStatus           Transfer lifecycle status.
  * @param   vrcTransfer         Transfer status result code.
+ * @param   pszPath             Optional failing transfer-relative path.
  */
 HRESULT Clipboard::i_handleTransferStatus(PCSHCLTRANSFERKEY pKey,
                                           PSHCLTRANSFER aTransfer,
                                           SHCLSOURCE enmShClSource,
                                           SHCLTRANSFERSTATUS enmStatus,
-                                          int vrcTransfer)
+                                          int vrcTransfer,
+                                          const char *pszPath /* = NULL */)
 {
     ComObjPtr<ClipboardTransferManager> ptrTransfers;
     {
@@ -3341,7 +3347,7 @@ HRESULT Clipboard::i_handleTransferStatus(PCSHCLTRANSFERKEY pKey,
     if (ptrTransfers.isNull())
         return E_FAIL;
 
-    return ptrTransfers->i_handleTransferStatus(pKey, aTransfer, enmShClSource, enmStatus, vrcTransfer);
+    return ptrTransfers->i_handleTransferStatus(pKey, aTransfer, enmShClSource, enmStatus, vrcTransfer, pszPath);
 }
 
 
@@ -4255,13 +4261,13 @@ void Clipboard::i_fireClipboardFileTransferModeChanged(bool fEnabled)
 /**
  * Fires a clipboard transfer event.
  *
- * @param   aClientId       Originating client identifier.
- * @param   aTransfer       Transfer associated with the event.
- * @param   aState          Transfer state.
- * @param   aInteraction    Requested transfer interaction.
- * @param   aPath           Optional transfer-relative event path.
- * @param   aMessage        Optional event message.
- * @param   aError          Clipboard transfer error code.
+ * @param   aClientId           Originating client identifier.
+ * @param   aTransfer           Transfer associated with the event.
+ * @param   aState              Transfer state.
+ * @param   aInteraction        Requested transfer interaction.
+ * @param   aPath               Optional transfer-relative event path.
+ * @param   aMessage            Optional event message.
+ * @param   aError              Clipboard transfer error code.
  */
 void Clipboard::i_fireClipboardTransferEvent(VBOXSHCLMAINCLIENTID aClientId,
                                              IClipboardTransfer *aTransfer,
@@ -4300,11 +4306,11 @@ void Clipboard::i_fireClipboardTransferEvent(VBOXSHCLMAINCLIENTID aClientId,
     Log2Func(("Firing transfer event: transfer=%p, state=%RU32, revision=%RI64, clientId=%RU32\n",
               (void *)aTransfer, (uint32_t)aState, i64Revision, aClientId));
     ::FireClipboardTransferEvent(ptrEventSource, i64Revision, aClientId, aTransfer, aState, aInteraction,
-                                 Bstr(aPath).raw(), aMessage, aError);
+                                 aPath, aMessage, aError);
 
     for (std::vector<SessionEventTarget>::const_iterator it = vecTargets.begin(); it != vecTargets.end(); ++it)
         ::FireClipboardTransferEvent(it->mEventSource, i64Revision, aClientId, aTransfer, aState, aInteraction,
-                                     Bstr(aPath).raw(), aMessage, aError);
+                                     aPath, aMessage, aError);
 }
 
 

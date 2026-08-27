@@ -1,4 +1,4 @@
-/* $Id: GuestShClConn.h 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestShClConn.h 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Service connection management.
  */
@@ -275,12 +275,19 @@ public:
     /**
      * Reports a host-side terminal transfer status through the service.
      *
-     * @returns VBox status code.
-     * @param   pTransfer           Transfer whose terminal state is being reported.
-     * @param   enmStatus           Terminal transfer status.
-     * @param   rcStatus            Status-specific result code.
+     * @retval  VERR_SHCLPB_NO_DATA     if the service connection is unavailable.
+     * @retval  VERR_INVALID_POINTER    if @a pTransfer is NULL.
+     * @retval  VERR_INVALID_PARAMETER  if @a enmStatus or @a rcStatus is invalid.
+     * @retval  VERR_WRONG_ORDER        if @a pTransfer has not entered @a enmStatus.
+     * @retval  VERR_INVALID_CONTEXT    if @a pTransfer is not registered with the service client.
+     * @returns                         Status from queuing the terminal status for the guest.
+     * @param   pTransfer               Transfer whose terminal state is being reported.
+     * @param   enmStatus               Terminal transfer status.
+     * @param   rcStatus                Status-specific result code.
+     * @param   pszPath                 Optional failing transfer-relative path.
      */
-    int transferReportStatus(PSHCLTRANSFER pTransfer, SHCLTRANSFERSTATUS enmStatus, int rcStatus);
+    int transferReportStatus(PSHCLTRANSFER pTransfer, SHCLTRANSFERSTATUS enmStatus, int rcStatus,
+                             const char *pszPath = NULL);
 
     /**
      * Destroys a service-owned transfer selected by ID.

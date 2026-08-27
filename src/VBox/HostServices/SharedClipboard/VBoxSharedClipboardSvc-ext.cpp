@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-ext.cpp 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-ext.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Service extension bridge handling.
  */
@@ -377,10 +377,15 @@ static int shClSvcExtNotifyTransferResetLocked(PSHCLCLIENT pClient)
  * producers.  Main only records the snapshot here; its own COM-MTA worker
  * publishes progress and API events after this callback returns.
  *
- * @returns VBox status code.
- * @param   pClient            Service client owning the transfer.
- * @param   pStatus            Immutable status captured while the transfer was valid.
- * @param   fDetachedTerminal  Whether the terminal transfer is already detached.
+ * @retval  VINF_NO_CHANGE          if the status no longer belongs to the current transfer.
+ * @retval  VERR_INVALID_POINTER    if @a pClient or @a pStatus is NULL.
+ * @retval  VERR_INVALID_PARAMETER  if the status snapshot is invalid.
+ * @retval  VERR_WRONG_ORDER        if the service lock is held by the caller.
+ * @retval  VERR_NOT_SUPPORTED      if Main is not connected to this service client.
+ * @returns                         Status returned by the registered Main extension callback.
+ * @param   pClient                 Service client owning the transfer.
+ * @param   pStatus                 Immutable status captured while the transfer was valid.
+ * @param   fDetachedTerminal       Whether the terminal transfer is already detached.
  */
 static int shClSvcExtNotifyTransferStatusEx(PSHCLCLIENT pClient, PCSHCLSVCEXTTRANSFERSTATUS pStatus,
                                             bool fDetachedTerminal)
@@ -432,6 +437,7 @@ static int shClSvcExtNotifyTransferStatusEx(PSHCLCLIENT pClient, PCSHCLSVCEXTTRA
         parms.u.FileTransferData.enmReplySource     = pStatus->enmReplySource;
         parms.u.FileTransferData.enmStatus          = pStatus->enmStatus;
         parms.u.FileTransferData.rcStatus           = pStatus->rcStatus;
+        parms.u.FileTransferData.pszPath            = pStatus->szPath[0] ? pStatus->szPath : NULL;
 
         rc = shClSvcExtCall(VBOX_CLIPBOARD_EXT_FN_FILE_TRANSFER, &parms, sizeof(parms));
         if (   RT_FAILURE(rc)

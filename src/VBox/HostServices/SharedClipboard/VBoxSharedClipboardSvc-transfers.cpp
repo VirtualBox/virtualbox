@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -57,9 +57,22 @@
 static int shClSvcTransferModeSet(uint32_t fMode);
 
 
-/** Captures immutable transfer status metadata while the transfer is valid. */
+/**
+ * Captures immutable transfer status metadata while the transfer is valid.
+ *
+ * An invalid, empty, or overlong optional path is silently omitted because it
+ * must never replace the authoritative terminal result.
+ *
+ * @param   pStatus             Destination status snapshot.
+ * @param   pTransfer           Transfer whose status is being captured.
+ * @param   enmReplySource      Endpoint which reported the status.
+ * @param   enmStatus           Transfer lifecycle status.
+ * @param   rcStatus            Status-specific VBox result code.
+ * @param   pszPath             Optional failing transfer-relative path.
+ */
 static void shClSvcTransferStatusCapture(PSHCLSVCEXTTRANSFERSTATUS pStatus, PSHCLTRANSFER pTransfer,
-                                         SHCLSOURCE enmReplySource, SHCLTRANSFERSTATUS enmStatus, int rcStatus)
+                                         SHCLSOURCE enmReplySource, SHCLTRANSFERSTATUS enmStatus, int rcStatus,
+                                         const char *pszPath)
 {
     AssertPtrReturnVoid(pStatus);
     AssertPtrReturnVoid(pTransfer);
@@ -70,6 +83,16 @@ static void shClSvcTransferStatusCapture(PSHCLSVCEXTTRANSFERSTATUS pStatus, PSHC
     pStatus->enmReplySource    = enmReplySource;
     pStatus->enmStatus         = enmStatus;
     pStatus->rcStatus          = rcStatus;
+    pStatus->szPath[0]         = '\0';
+    if (   pszPath
+        && (enmStatus == SHCLTRANSFERSTATUS_ERROR || enmStatus == SHCLTRANSFERSTATUS_KILLED))
+    {
+        size_t cchPath = 0;
+        if (   RT_SUCCESS(RTStrNLenEx(pszPath, sizeof(pStatus->szPath), &cchPath))
+            && cchPath
+            && RT_SUCCESS(ShClTransferValidatePathEx(pszPath, cchPath + 1, false /* fMustExist */)))
+            memcpy(pStatus->szPath, pszPath, cchPath + 1);
+    }
 }
 
 
@@ -229,13 +252,12 @@ void ShClSvcTransferReportProgress(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,
  * existing worker pool and therefore does not block the GUI event thread.
  *
  * @retval  VERR_INVALID_PARAMETER
- *                              if @a enmStatus is not a supported host abort status.
+ *                              if @a enmStatus is not a supported host abort status or @a rcTransfer is not a failure.
  * @retval  VERR_INVALID_CONTEXT
  *                              if @a pKey is invalid.
  * @retval  VERR_SHCLPB_TRANSFER_ID_NOT_FOUND
  *                              if the keyed transfer is not registered.
  * @retval  VERR_WRONG_ORDER    if the transfer cannot enter the requested terminal state.
- * @returns                     Status code returned by updating or reporting the terminal transfer state.
  * @param   pKey                Host-side transfer key to abort.
  * @param   enmStatus           Terminal abort status to report.
  * @param   rcTransfer          Transfer result code to report.
@@ -264,7 +286,7 @@ static int shClSvcTransferAbortByHostKey(PCSHCLTRANSFERKEY pKey,
 
     SHCLSVCEXTTRANSFERSTATUS Status;
     if (RT_SUCCESS(rcState))
-        shClSvcTransferStatusCapture(&Status, pTransfer, SHCLSOURCE_LOCAL, enmStatus, rcTransfer);
+        shClSvcTransferStatusCapture(&Status, pTransfer, SHCLSOURCE_LOCAL, enmStatus, rcTransfer, NULL /* pszPath */);
 
     int rcStatus = VINF_SUCCESS;
     if (RT_SUCCESS(rcState))
@@ -838,16 +860,24 @@ static int shClSvcTransferObjDataChunkPayloadCreate(SHCLEVENTID idEvent, PSHCLOB
 /**
  * Handles a guest reply (VBOX_SHCL_GUEST_FN_REPLY) message.
  *
- * @returns VBox status code.
- * @param   pClient             Pointer to associated client.
- * @param   pTransfer           Transfer to handle reply for.
- * @param   cParms              Number of function parameters supplied.
- * @param   aParms              Array function parameters supplied.
- * @param   fZeroContext        Whether the guest supplied the special zero context ID.
- * @param   pfDestroyTransfer   Where to return whether the caller must destroy
- *                              the retained transfer after releasing it.
- * @param   pStatus             Where to return a status snapshot for subsequent
- *                              Main delivery, or NONE when there is none.
+ * @retval  VERR_INVALID_POINTER            if @a pfDestroyTransfer or @a pStatus is NULL.
+ * @retval  VERR_INVALID_CONTEXT            if a guest reply does not match its transfer context.
+ * @retval  VERR_INVALID_PARAMETER          if the reply type, payload, status, or state transition is invalid.
+ * @retval  VERR_NO_MEMORY                  if reply or event payload storage cannot be allocated.
+ * @retval  VERR_NOT_SUPPORTED              if the reply type is not supported.
+ * @retval  VERR_SHCLPB_TRANSFER_ID_NOT_FOUND
+ *                                          if the reply references an unknown transfer.
+ * @retval  VERR_WRONG_ORDER                if the transfer cannot enter the reported state.
+ * @returns                                 Status from decoding or applying the guest reply.
+ * @param   pClient                         Pointer to associated client.
+ * @param   pTransfer                       Transfer to handle reply for.
+ * @param   cParms                          Number of function parameters supplied.
+ * @param   aParms                          Array function parameters supplied.
+ * @param   fZeroContext                    Whether the guest supplied the special zero context ID.
+ * @param   pfDestroyTransfer               Where to return whether the caller must destroy
+ *                                          the retained transfer after releasing it.
+ * @param   pStatus                         Where to return a status snapshot for subsequent
+ *                                          Main delivery, or NONE when there is none.
  */
 static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer, uint32_t cParms,
                                          VBOXHGCMSVCPARM aParms[], bool fZeroContext, bool *pfDestroyTransfer,
@@ -1023,16 +1053,6 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                                                        ShClTransferStatusToStr(pReply->u.TransferStatus.uStatus),
                                                        pReply->u.TransferStatus.uStatus, rcReply, idTransfer));
 
-                                        if (shClSvcExtIsRegistered())
-                                        {
-                                            char *pszMsg = RTStrAPrintf2("Guest reported error %Rrc for transfer %RU16", /** @todo Make the error messages more fine-grained based on rc. */
-                                                                         rcReply, idTransfer);
-                                            AssertPtrBreakStmt(pszMsg, rc = VERR_NO_MEMORY);
-
-                                            shClSvcExtReportError(NULL, pszMsg, rcReply);
-
-                                            RTStrFree(pszMsg);
-                                        }
                                     }
                                     else
                                         LogRel2(("Shared Clipboard: Guest reported status %s for transfer %RU16\n",
@@ -1055,7 +1075,7 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
                             && pReply->u.TransferStatus.uStatus != SHCLTRANSFERSTATUS_NONE
                             && ShClTransferStatusResultIsValid(pReply->u.TransferStatus.uStatus, rcReply))
                             shClSvcTransferStatusCapture(pStatus, pTransfer, SHCLSOURCE_REMOTE,
-                                                         pReply->u.TransferStatus.uStatus, rcReply);
+                                                         pReply->u.TransferStatus.uStatus, rcReply, NULL /* pszPath */);
                         RT_FALL_THROUGH(); /* Make sure to also signal any waiters by using the block down below. */
                     }
                     case VBOX_SHCL_TX_REPLYMSGTYPE_LIST_OPEN:
@@ -1134,13 +1154,29 @@ static int shClSvcTransferMsgHandleReply(PSHCLCLIENT pClient, PSHCLTRANSFER pTra
 /**
  * Transfer message client (guest) handler for the Shared Clipboard host service.
  *
- * @returns VBox status code, or VINF_HGCM_ASYNC_EXECUTE if returning to the client will be deferred.
- * @param   pClient             Pointer to associated client.
- * @param   callHandle          The client's call handle of this call.
- * @param   u32Function         Function number being called.
- * @param   cParms              Number of function parameters supplied.
- * @param   aParms              Array function parameters supplied.
- * @param   tsArrival           Timestamp of arrival.
+ * @retval  VERR_NOT_IMPLEMENTED            if the function or required context-ID protocol is unsupported.
+ * @retval  VERR_NOT_SUPPORTED              if the requested reply or transfer operation is unsupported.
+ * @retval  VERR_ACCESS_DENIED              if file transfers are unavailable under the negotiated features,
+ *                                          policy, or clipboard mode.
+ * @retval  VERR_INVALID_CONTEXT            if the guest supplies a zero, stale, or foreign transfer context.
+ * @retval  VERR_SHCLPB_TRANSFER_ID_NOT_FOUND
+ *                                          if the request references an unknown transfer.
+ * @retval  VERR_WRONG_PARAMETER_COUNT      if the request contains the wrong number of HGCM parameters.
+ * @retval  VERR_WRONG_PARAMETER_TYPE       if an HGCM parameter has the wrong type.
+ * @retval  VERR_INVALID_PARAMETER          if a parameter value or requested transfer operation is invalid.
+ * @retval  VERR_NO_MEMORY                  if transfer reply or payload storage cannot be allocated.
+ * @retval  VERR_BUFFER_OVERFLOW            if a supplied output buffer is too small.
+ * @retval  VERR_TOO_MUCH_DATA              if supplied input exceeds the negotiated transfer limit.
+ * @retval  VERR_NOT_FOUND                  if a requested transfer list or object handle is not open.
+ * @retval  VERR_SHCLPB_EVENT_ID_NOT_FOUND  if a reply references an unknown transfer event.
+ * @retval  VERR_WRONG_ORDER                if the requested operation is not valid in the current transfer state.
+ * @returns                                 Status returned by the requested transfer operation.
+ * @param   pClient                         Pointer to associated client.
+ * @param   callHandle                      The client's call handle of this call.
+ * @param   u32Function                     Function number being called.
+ * @param   cParms                          Number of function parameters supplied.
+ * @param   aParms                          Array function parameters supplied.
+ * @param   tsArrival                       Timestamp of arrival.
  */
 int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
                                     VBOXHGCMCALLHANDLE callHandle,
@@ -1686,7 +1722,7 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
         /* Replace a previously captured non-terminal reply with the terminal
          * failure which actually ends this transfer. */
         shClSvcTransferStatusCapture(&Status, pTransfer, SHCLSOURCE_LOCAL,
-                                     SHCLTRANSFERSTATUS_ERROR, rc);
+                                     SHCLTRANSFERSTATUS_ERROR, rc, NULL /* pszPath */);
         fDestroyTransfer = true;
     }
 
@@ -1835,14 +1871,19 @@ int ShClSvcTransferStart(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer)
  * publishes that state and deliberately leaves transfer destruction to the
  * normal lifecycle owner.
  *
- * @returns VBox status code from queuing the guest status.
- * @param   pClient            Service client owning the transfer.
- * @param   pTransfer          Transfer whose terminal state is being reported.
- * @param   enmStatus          Terminal transfer status.
- * @param   rcStatus           Status-specific result code.
+ * @retval  VERR_INVALID_POINTER    if @a pClient or @a pTransfer is NULL.
+ * @retval  VERR_INVALID_PARAMETER  if @a enmStatus or @a rcStatus is invalid.
+ * @retval  VERR_WRONG_ORDER        if @a pTransfer has not entered @a enmStatus.
+ * @retval  VERR_INVALID_CONTEXT    if @a pTransfer is not registered with @a pClient.
+ * @returns                         Status from queuing the terminal status for the guest.
+ * @param   pClient                 Service client owning the transfer.
+ * @param   pTransfer               Transfer whose terminal state is being reported.
+ * @param   enmStatus               Terminal transfer status.
+ * @param   rcStatus                Status-specific result code.
+ * @param   pszPath                 Optional failing transfer-relative path.
  */
 int ShClSvcTransferReportStatus(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,
-                                SHCLTRANSFERSTATUS enmStatus, int rcStatus)
+                                SHCLTRANSFERSTATUS enmStatus, int rcStatus, const char *pszPath)
 {
     AssertPtrReturn(pClient, VERR_INVALID_POINTER);
     AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
@@ -1861,7 +1902,7 @@ int ShClSvcTransferReportStatus(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,
     }
 
     SHCLSVCEXTTRANSFERSTATUS Status;
-    shClSvcTransferStatusCapture(&Status, pTransfer, SHCLSOURCE_LOCAL, enmStatus, rcStatus);
+    shClSvcTransferStatusCapture(&Status, pTransfer, SHCLSOURCE_LOCAL, enmStatus, rcStatus, pszPath);
 
     /* Main owns the user-visible lifecycle record, so publish there before
      * making the terminal status visible to the guest.  Otherwise the guest
@@ -1890,11 +1931,16 @@ int ShClSvcTransferReportStatus(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,
  * immutable generation key prevents a delayed detached status from matching a
  * newer Main record which reuses the transfer ID.
  *
- * @returns VBox status code from reporting the status to Main.
- * @param   pClient            Service client which owned the transfer.
- * @param   pTransfer          Detached transfer whose metadata remains valid.
- * @param   enmStatus          Terminal transfer status.
- * @param   rcStatus           Status-specific result code.
+ * @retval  VINF_NO_CHANGE          if the status no longer belongs to the active service client.
+ * @retval  VERR_INVALID_POINTER    if @a pClient or @a pTransfer is NULL.
+ * @retval  VERR_INVALID_PARAMETER  if @a enmStatus or @a rcStatus is invalid.
+ * @retval  VERR_WRONG_ORDER        if the service lock is held by the caller.
+ * @retval  VERR_NOT_SUPPORTED      if Main is not connected to this service client.
+ * @returns                         Status from entering the callback serializer or invoking the registered Main extension.
+ * @param   pClient                 Service client which owned the transfer.
+ * @param   pTransfer               Detached transfer whose metadata remains valid.
+ * @param   enmStatus               Terminal transfer status.
+ * @param   rcStatus                Status-specific result code.
  */
 int ShClSvcTransferReportDetachedStatus(PSHCLCLIENT pClient, PSHCLTRANSFER pTransfer,
                                         SHCLTRANSFERSTATUS enmStatus, int rcStatus)
@@ -1908,7 +1954,7 @@ int ShClSvcTransferReportDetachedStatus(PSHCLCLIENT pClient, PSHCLTRANSFER pTran
         return VINF_SUCCESS;
 
     SHCLSVCEXTTRANSFERSTATUS Status;
-    shClSvcTransferStatusCapture(&Status, pTransfer, SHCLSOURCE_LOCAL, enmStatus, rcStatus);
+    shClSvcTransferStatusCapture(&Status, pTransfer, SHCLSOURCE_LOCAL, enmStatus, rcStatus, NULL /* pszPath */);
     return shClSvcExtNotifyTransferDetachedStatus(pClient, &Status);
 }
 

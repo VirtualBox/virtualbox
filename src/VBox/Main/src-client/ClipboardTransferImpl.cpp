@@ -1,4 +1,4 @@
-/* $Id: ClipboardTransferImpl.cpp 115060 2026-08-17 17:28:06Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardTransferImpl.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
 /** @file
  * VirtualBox Main - Clipboard transfer object.
  */
@@ -577,9 +577,9 @@ PSHCLTRANSFER ClipboardTransfer::i_getTransfer() const
 /**
  * Updates the public transfer state fields.
  *
- * @param   aState          New public transfer state.
- * @param   aMessage        Optional transfer status message.
- * @param   aError          Transfer error code.
+ * @param   aState              New public transfer state.
+ * @param   aMessage            Optional transfer status message.
+ * @param   aError              Transfer error code.
  */
 void ClipboardTransfer::i_setState(ClipboardTransferState_T aState,
                                    const com::Utf8Str &aMessage,
@@ -587,7 +587,8 @@ void ClipboardTransfer::i_setState(ClipboardTransferState_T aState,
 {
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
     mData.mState = aState;
-    mData.mMessage = aMessage;
+    mData.mMessage.setNull();
+    mData.mMessage.assignNoThrow(aMessage);
     mData.mError = aError;
 }
 

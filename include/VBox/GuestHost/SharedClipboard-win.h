@@ -236,12 +236,15 @@ public:
         /**
          * Called by the data object if a transfer has been ended (succeeded or failed).
          *
-         * @returns VBox status code.
-         * @param   pCbCtx          Pointer to callback context.
-         * @param   pTransfer       Pointer to transfer being completed.
-         * @param   rcTransfer      Result (IPRT-style) code.
+         * @returns                     Status from reporting the terminal transfer state.
+         * @param   pCbCtx              Pointer to callback context.
+         * @param   pTransfer           Pointer to transfer being completed.
+         * @param   rcTransfer          Result (IPRT-style) code.
+         * @param   pszPath             Normalized transfer-relative path of the object which failed, or NULL if not known. The
+         *                              pointer is valid for the duration of the callback only.
          */
-        DECLCALLBACKMEMBER(int, pfnTransferEnd, (PCALLBACKCTX pCbCtx, PSHCLTRANSFER pTransfer, int rcTransfer));
+        DECLCALLBACKMEMBER(int, pfnTransferEnd, (PCALLBACKCTX pCbCtx, PSHCLTRANSFER pTransfer, int rcTransfer,
+                                                const char *pszPath));
     };
     /** Pointer to a Shared Clipboard Windows data object callback table. */
     typedef CALLBACKS *PCALLBACKS;
@@ -309,7 +312,7 @@ public: /* IDataObjectAsyncCapability methods. */
 public:
 
     int SetTransfer(PSHCLTRANSFER pTransfer);
-    int SetStatus(Status enmStatus, int rcSts = VINF_SUCCESS);
+    int SetStatus(Status enmStatus, int rcSts = VINF_SUCCESS, ULONG uObjIdx = UINT32_MAX);
     int SetFileCompleted(ULONG uObjIdx);
     void DisableCallbacks(void);
 
@@ -340,7 +343,7 @@ protected:
     void registerFormat(LPFORMATETC pFormatEtc, CLIPFORMAT clipFormat, TYMED tyMed = TYMED_HGLOBAL,
                         LONG lindex = -1, DWORD dwAspect = DVASPECT_CONTENT, DVTARGETDEVICE *pTargetDevice = NULL);
     int setTransferLocked(PSHCLTRANSFER pTransfer, ShClWinDataObject **ppObjToRelease = NULL);
-    int setStatusLocked(Status enmStatus, int rc = VINF_SUCCESS);
+    int setStatusLocked(Status enmStatus, int rc = VINF_SUCCESS, ULONG uObjIdx = UINT32_MAX);
     int setFileCompletedLocked(ULONG uObjIdx);
     int reportTransferEnd(PSHCLTRANSFER pTransfer, int rcTransfer);
     void registerStreamLocked(ShClWinStreamImpl *pStream);
@@ -368,6 +371,9 @@ protected:
     Status                      m_enmStatus;
     /** Last (IPRT-style) error set in conjunction with the status. */
     int                         m_rcStatus;
+    /** Index of the file-system object which supplied the error, or UINT32_MAX
+     *  if not known. */
+    ULONG                       m_uErrorObjIdx;
     /** Data object callback table to use. */
     CALLBACKS                   m_Callbacks;
     /** Data object callback table context to use. */
