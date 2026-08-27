@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 115068 2026-08-18 14:45:28Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 115132 2026-08-27 08:32:32Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the Shared Clipboard Guest/Host testcases.
 #
@@ -104,7 +104,8 @@ if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_ADDITIONS) && !defined(VBO
    	../clipboard-common.cpp \
    	../clipboard-helper.cpp \
    	../clipboard-path.cpp \
-   	../clipboard-transfers.cpp
+   	../clipboard-transfers.cpp \
+   	../clipboard-transfers-provider-local.cpp
    tstClipboardWinStream_CLEAN    = $(tstClipboardWinStream_0_OUTDIR)/tstClipboardWinStream.run
 
    $$(tstClipboardWinStream_0_OUTDIR)/tstClipboardWinStream.run: $$(tstClipboardWinStream_1_STAGE_TARGET)

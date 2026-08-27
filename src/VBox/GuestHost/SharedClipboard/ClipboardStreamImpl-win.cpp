@@ -1,4 +1,4 @@
-/* $Id: ClipboardStreamImpl-win.cpp 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: ClipboardStreamImpl-win.cpp 115132 2026-08-27 08:32:32Z andreas.loeffler@oracle.com $ */
 /** @file
  * ClipboardStreamImpl-win.cpp - Shared Clipboard IStream object implementation (guest and host side).
  */
@@ -199,7 +199,22 @@ STDMETHODIMP ShClWinStreamImpl::LockRegion(ULARGE_INTEGER nStart, ULARGE_INTEGER
     return STG_E_INVALIDFUNCTION;
 }
 
-/* Note: Windows seems to assume EOF if nBytesRead < nBytesToRead. */
+/**
+ * Reads data from the transferred file represented by this stream.
+ *
+ * @retval  S_OK                Requested data was read, no data was requested, or the stream already reached EOF.
+ * @retval  S_FALSE             Fewer bytes than requested were read.
+ * @retval  STG_E_INVALIDPOINTER
+ *                              @a pvBuffer is NULL.
+ * @retval  STG_E_REVERTED      The incomplete stream was invalidated.
+ * @retval  COPYENGINE_E_USER_CANCELLED
+ *                              The transfer was canceled.
+ * @param   pvBuffer            Destination buffer.
+ * @param   nBytesToRead        Number of bytes requested.
+ * @param   nBytesRead          Where to return the number of bytes read. Optional.
+ *
+ * @note                        Windows assumes EOF when fewer bytes than requested are returned.
+ */
 STDMETHODIMP ShClWinStreamImpl::Read(void *pvBuffer, ULONG nBytesToRead, ULONG *nBytesRead)
 {
     LogFlowThisFunc(("Enter: m_cbProcessed=%RU64\n", m_cbProcessed));
@@ -210,6 +225,16 @@ STDMETHODIMP ShClWinStreamImpl::Read(void *pvBuffer, ULONG nBytesToRead, ULONG *
     int rcLock = RTCritSectEnter(&m_CritSect);
     AssertFatalMsgRC(rcLock, ("Taking the Windows clipboard stream lock failed with %Rrc\n", rcLock));
 
+    /* A completed stream no longer needs its transfer.  Teardown can detach it
+     * before Windows issues the additional read with which it observes EOF. */
+    if (m_fIsComplete)
+    {
+        if (nBytesRead)
+            *nBytesRead = 0;
+        RTCritSectLeave(&m_CritSect);
+        return S_OK;
+    }
+
     if (!m_pTransfer)
     {
         if (nBytesRead)
@@ -219,8 +244,7 @@ STDMETHODIMP ShClWinStreamImpl::Read(void *pvBuffer, ULONG nBytesToRead, ULONG *
         return hrc;
     }
 
-    if (   nBytesToRead == 0
-        || m_fIsComplete)
+    if (nBytesToRead == 0)
     {
         if (nBytesRead)
             *nBytesRead = 0;
