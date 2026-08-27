@@ -3971,10 +3971,82 @@ DECLINLINE(int) dxFenceCmp64(uint64_t u64FenceA, uint64_t u64FenceB)
 }
 
 
+DECLINLINE(SVGASignedRect) dxScreenRectUnion(SVGASignedRect const &a, SVGASignedRect const &b)
+{
+    SVGASignedRect u;
+    u.left   = RT_MIN(a.left, b.left);
+    u.top    = RT_MIN(a.top, b.top);
+    u.right  = RT_MAX(a.right, b.right);
+    u.bottom = RT_MAX(a.bottom, b.bottom);
+    return u;
+}
+
+
+DECLINLINE(bool) dxScreenRectsTouchOrOverlap(SVGASignedRect const &a, SVGASignedRect const &b)
+{
+    return    a.left   <= b.right
+           && b.left   <= a.right
+           && a.top    <= b.bottom
+           && b.top    <= a.bottom;
+}
+
+
+DECLINLINE(uint64_t) dxScreenRectArea(SVGASignedRect const &r)
+{
+    if (   r.right <= r.left
+        || r.bottom <= r.top)
+        return 0;
+    return (uint64_t)(r.right - r.left) * (uint64_t)(r.bottom - r.top);
+}
+
+
+DECLINLINE(bool) dxShouldMergeScreenRects(SVGASignedRect const &a, SVGASignedRect const &b)
+{
+    if (dxScreenRectsTouchOrOverlap(a, b))
+        return true;
+
+    SVGASignedRect const u = dxScreenRectUnion(a, b);
+    uint64_t const cbUseful = dxScreenRectArea(a) + dxScreenRectArea(b);
+    uint64_t const cbUnion  = dxScreenRectArea(u);
+
+    /*
+     * A readback/update pair has fixed overhead. Merge nearby small rects when
+     * the extra copied area is bounded; keep far apart large rects separate.
+     */
+    return    cbUnion <= _256K
+           || cbUnion <= cbUseful * 4;
+}
+
+
+static SVGASignedRect dxPendingScreenUpdateUnion(VMSVGAHWSCREEN *p)
+{
+    SVGASignedRect dirtyRect;
+    dirtyRect.left   = 0;
+    dirtyRect.top    = 0;
+    dirtyRect.right  = (int32_t)p->cHwScreenWidth;
+    dirtyRect.bottom = (int32_t)p->cHwScreenHeight;
+
+    bool fHaveDirtyRect = false;
+    for (uint32_t i = 0; i < p->cUpdates; ++i)
+    {
+        uint32_t const idx = (p->idxLastUpdate + i) % RT_ELEMENTS(p->aUpdates);
+        if (p->aUpdates[idx].u64ReadbackFence != p->u64ReadbackFence)
+            continue;
+
+        dirtyRect = fHaveDirtyRect ? dxScreenRectUnion(dirtyRect, p->aUpdates[idx].rect)
+                                   : p->aUpdates[idx].rect;
+        fHaveDirtyRect = true;
+    }
+
+    return dirtyRect;
+}
+
+
 static void dxStartScreenReadback(VMSVGASCREENOBJECT *pScreen, DXDEVICE *pDXDevice)
 {
     /* Get the screen data to the system memory. */
     VMSVGAHWSCREEN *p = pScreen->pHwScreen;
+    SVGASignedRect const dirtyRect = dxPendingScreenUpdateUnion(p);
 
     /* Check targets. Targets are created and deleted on FIFO thread so it is ok to access them without a lock. */
     VMSVGAOUTPUTTARGET *pOutputTarget;
@@ -3984,7 +4056,7 @@ static void dxStartScreenReadback(VMSVGASCREENOBJECT *pScreen, DXDEVICE *pDXDevi
         AssertContinue(pHwOutputTarget);
 
         dxHwOutputTargetConvert(pOutputTarget, pDXDevice->pImmediateContext,
-                                p->pScreenTextureSRV, p->cHwScreenWidth, p->cHwScreenHeight);
+                                p->pScreenTextureSRV, p->cHwScreenWidth, p->cHwScreenHeight, dirtyRect);
     }
 
     /* Submit all the work: target conversion and readback to staging resources. */
@@ -4026,13 +4098,20 @@ static void dxProcessPendingUpdates(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pSc
                 SVGASignedRect const &updateRect = p->aUpdates[p->idxLastUpdate].rect;
 
                 /* Check targets. Targets are created and deleted on FIFO thread so it is ok to access them. */
+                bool fAnyOutputTargetChanged = false;
                 VMSVGAOUTPUTTARGET *pOutputTarget;
                 RTListForEach(&pScreen->listOutputTargets, pOutputTarget, VMSVGAOUTPUTTARGET, nodeOutputTarget)
                 {
                     VMSVGAHWOUTPUTTARGET *pHwOutputTarget = pOutputTarget->pHwOutputTarget;
                     AssertContinue(pHwOutputTarget);
 
-                    dxHwOutputTargetReadback(pOutputTarget, pDXDevice->pImmediateContext, updateRect);
+                    bool fOutputTargetChanged = false;
+                    int rc = dxHwOutputTargetReadback(pOutputTarget, pDXDevice->pImmediateContext,
+                                                      updateRect, &fOutputTargetChanged);
+                    AssertRC(rc);
+                    if (!fOutputTargetChanged)
+                        continue;
+                    fAnyOutputTargetChanged = true;
 
                     /* Increment u64UpdateSequenceNumber, skipping 0 on rollover. */
                     uint64_t u64 = pOutputTarget->u64UpdateSequenceNumber + 1;
@@ -4043,9 +4122,10 @@ static void dxProcessPendingUpdates(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pSc
 
                 p->aUpdates[p->idxLastUpdate].u64ReadbackFence = 0;
 
-                vmsvgaR3UpdateScreen(pThisCC, pScreen,
-                                     updateRect.left, updateRect.top,
-                                     updateRect.right - updateRect.left, updateRect.bottom - updateRect.top);
+                if (fAnyOutputTargetChanged)
+                    vmsvgaR3UpdateScreen(pThisCC, pScreen,
+                                         updateRect.left, updateRect.top,
+                                         updateRect.right - updateRect.left, updateRect.bottom - updateRect.top);
 
                 /* Next update. */
                 p->idxLastUpdate = (p->idxLastUpdate + 1) % RT_ELEMENTS(p->aUpdates);
@@ -4053,7 +4133,9 @@ static void dxProcessPendingUpdates(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pSc
             }
 
             if (p->cUpdates > 0)
+            {
                 dxStartScreenReadback(pScreen, pDXDevice); /* There were screen updates since the last readback. */
+            }
             else
                 p->fReadingBack = false;
         }
@@ -4061,9 +4143,32 @@ static void dxProcessPendingUpdates(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pSc
 }
 
 
+static bool dxMergePendingScreenUpdate(VMSVGAHWSCREEN *p, SVGASignedRect const &updateRect)
+{
+    for (uint32_t i = 0; i < p->cUpdates; ++i)
+    {
+        uint32_t const idx = (p->idxLastUpdate + i) % RT_ELEMENTS(p->aUpdates);
+        if (p->aUpdates[idx].u64ReadbackFence != p->u64ReadbackFence)
+            continue;
+
+        SVGASignedRect const &pendingRect = p->aUpdates[idx].rect;
+        if (!dxShouldMergeScreenRects(pendingRect, updateRect))
+            continue;
+
+        p->aUpdates[idx].rect = dxScreenRectUnion(pendingRect, updateRect);
+        return true;
+    }
+
+    return false;
+}
+
+
 static void dxStoreScreenUpdate(PVGASTATECC pThisCC, VMSVGASCREENOBJECT *pScreen, SVGASignedRect const &updateRect)
 {
     VMSVGAHWSCREEN *p = pScreen->pHwScreen;
+
+    if (dxMergePendingScreenUpdate(p, updateRect))
+        return;
 
     if (p->cUpdates >= RT_ELEMENTS(p->aUpdates))
     {

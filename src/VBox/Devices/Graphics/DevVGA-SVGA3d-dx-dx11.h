@@ -54,10 +54,12 @@ void dxHwOutputTargetDestroy(VMSVGAOUTPUTTARGET *pOutputTarget);
 int dxHwOutputTargetConvert(VMSVGAOUTPUTTARGET *pOutputTarget,
                             ID3D11DeviceContext1 *pDeviceContext,
                             ID3D11ShaderResourceView *pSrcSrv,
-                            UINT srcW, UINT srcH);
+                            UINT srcW, UINT srcH,
+                            SVGASignedRect const &dirtyRect);
 int dxHwOutputTargetReadback(VMSVGAOUTPUTTARGET *pOutputTarget,
                              ID3D11DeviceContext1 *pDeviceContext,
-                             SVGASignedRect const &updateRect);
+                             SVGASignedRect const &updateRect,
+                             bool *pfChanged);
 
 /* A buffer which accumulates data. If the buffer is full (offFree == cbBuffer),
  * then a query is issued. The buffer can be reused when the query finishes.
