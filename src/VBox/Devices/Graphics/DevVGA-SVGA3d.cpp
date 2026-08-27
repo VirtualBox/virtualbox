@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d.cpp 114945 2026-08-10 13:06:53Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d.cpp 115136 2026-08-27 20:40:38Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common core code.
  */
@@ -118,7 +118,8 @@ static void vmsvgaSurfaceStatsLog(PVGASTATECC pThisCC)
             vmsvgaSurfaceStatsSampleUpdate(&textures, pSurface);
     }
 
-    LogRel6(("VMSVGA: surface stats begin\n"));
+    LogRel6(("VMSVGA: surface stats begin: available %RU64 bytes, %RU64 MB\n",
+             pThisCC->svga.p3dState->cbSurfacesAvailable, pThisCC->svga.p3dState->cbSurfacesAvailable / _1M));
     vmsvgaSurfaceStatsSampleLog("buffers", &buffers);
     vmsvgaSurfaceStatsSampleLog("textures", &textures);
     LogRel6(("VMSVGA: surface stats end\n"));
@@ -161,6 +162,28 @@ void vmsvga3dSurfaceFreeMipLevels(PVMSVGA3DSURFACE pSurface)
         PVMSVGA3DMIPMAPLEVEL pMipmapLevel = &pSurface->paMipmapLevels[i];
         RTMemFreeZ(pMipmapLevel->pSurfaceData, pMipmapLevel->cbSurface);
         pMipmapLevel->pSurfaceData = NULL;
+    }
+}
+
+
+static void vmsvga3dSurfaceOnMemoryReserved(PVMSVGA3DSTATE p3dState, PVMSVGA3DSURFACE pSurface)
+{
+    if (!pSurface->fAccounted)
+    {
+        AssertReturnVoidStmt(p3dState->cbSurfacesAvailable >= pSurface->cbSurfaceTotal,
+                             p3dState->cbSurfacesAvailable = 0);
+        p3dState->cbSurfacesAvailable -= pSurface->cbSurfaceTotal;
+        pSurface->fAccounted = true;
+    }
+}
+
+
+static void vmsvga3dSurfaceOnMemoryReleased(PVMSVGA3DSTATE p3dState, PVMSVGA3DSURFACE pSurface)
+{
+    if (pSurface->fAccounted)
+    {
+        p3dState->cbSurfacesAvailable += pSurface->cbSurfaceTotal;
+        pSurface->fAccounted = false;
     }
 }
 
@@ -363,7 +386,8 @@ int vmsvga3dSurfaceDefine(PVGASTATECC pThisCC, uint32_t sid, SVGA3dSurfaceAllFla
     pSurface->cbBlock = vmsvga3dSurfaceFormatSize(format, &pSurface->cxBlock, &pSurface->cyBlock, &pSurface->cbPitchBlock);
     AssertReturn(pSurface->cbBlock, VERR_INVALID_PARAMETER);
 
-    uint32_t cbMemRemaining = SVGA3D_MAX_SURFACE_MEM_SIZE; /* Do not allow more than this for a surface. */
+    uint64_t cbMemRemaining = RT_MIN(pState->cbSurfacesAvailable, SVGA3D_MAX_SURFACE_MEM_SIZE); /* Do not allow more than this for a surface. */
+    uint64_t cbSurfaceTotal = 0;
     SVGA3dSize mipmapSize = *pMipLevel0Size;
     int rc = VINF_SUCCESS;
 
@@ -383,7 +407,8 @@ int vmsvga3dSurfaceDefine(PVGASTATECC pThisCC, uint32_t sid, SVGA3dSurfaceAllFla
             uint32_t cbSurface;
             vmsvga3dSurfaceMipBufferSize(format, mipmapSize, pSurface->surfaceDesc.multisampleCount,
                                          &cBlocksX, &cBlocksY, &cbSurfacePitch, &cbSurfacePlane, &cbSurface);
-            AssertBreakStmt(cbMemRemaining >= cbSurface, rc = VERR_INVALID_PARAMETER);
+            AssertBreakStmt(cbMemRemaining - cbSurfaceTotal >= cbSurface, rc = VERR_INVALID_PARAMETER);
+            cbSurfaceTotal += cbSurface;
 
             PVMSVGA3DMIPMAPLEVEL pMipmapLevel = &pSurface->paMipmapLevels[iMipmap];
             pMipmapLevel->mipmapSize     = mipmapSize;
@@ -394,8 +419,6 @@ int vmsvga3dSurfaceDefine(PVGASTATECC pThisCC, uint32_t sid, SVGA3dSurfaceAllFla
             pMipmapLevel->cbSurfacePlane = cbSurfacePlane;
             pMipmapLevel->cbSurface      = cbSurface;
             pMipmapLevel->pSurfaceData   = NULL;
-
-            cbMemRemaining -= cbSurface;
         }
 
         AssertRCBreak(rc);
@@ -506,6 +529,9 @@ int vmsvga3dSurfaceDefine(PVGASTATECC pThisCC, uint32_t sid, SVGA3dSurfaceAllFla
         AssertRCReturn(rc, rc);
     }
 
+    pSurface->cbSurfaceTotal = cbSurfaceTotal;
+    vmsvga3dSurfaceOnMemoryReserved(pState, pSurface);
+
     pSurface->id = sid;
     return VINF_SUCCESS;
 }
@@ -554,10 +580,18 @@ int vmsvga3dSurfaceDestroy(PVGASTATECC pThisCC, uint32_t sid)
         RTMemFree(pSurface->paMipmapLevels);
     }
 
+    vmsvga3dSurfaceOnMemoryReleased(pState, pSurface);
+
     memset(pSurface, 0, sizeof(*pSurface));
     pSurface->id = SVGA3D_INVALID_ID;
 
     return VINF_SUCCESS;
+}
+
+
+void vmsvga3dSurfaceOnResourceCreated(PVMSVGA3DSTATE p3dState, PVMSVGA3DSURFACE pSurface)
+{
+    vmsvga3dSurfaceOnMemoryReserved(p3dState, pSurface);
 }
 
 
@@ -1557,6 +1591,8 @@ int vmsvga3dSurfaceInvalidate(PVGASTATECC pThisCC, uint32_t sid, uint32_t face, 
         }
 
         vmsvga3dSurfaceFreeMipLevels(pSurface);
+
+        vmsvga3dSurfaceOnMemoryReleased(pState, pSurface);
     }
     else
     {
@@ -2251,6 +2287,8 @@ int vmsvga3dInit(PPDMDEVINS pDevIns, PVGASTATE pThis, PVGASTATECC pThisCC)
     PVMSVGA3DSTATE p3dState = (PVMSVGA3DSTATE)RTMemAllocZ(sizeof(VMSVGA3DSTATE));
     AssertReturn(p3dState, VERR_NO_MEMORY);
     pThisCC->svga.p3dState = p3dState;
+
+    p3dState->cbSurfacesAvailable = pThis->svga.cbGBObjectMemSize;
 
     p3dState->fVMSVGA2dGBO = pThis->svga.fVMSVGA2dGBO;
     if (pThis->svga.fVMSVGA2dGBO)

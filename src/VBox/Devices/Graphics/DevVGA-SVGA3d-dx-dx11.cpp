@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 115066 2026-08-18 13:31:58Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-dx11.cpp 115136 2026-08-27 20:40:38Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device
  */
@@ -3318,6 +3318,7 @@ static int vmsvga3dBackSurfaceCreateResource(PVGASTATECC pThisCC, PVMSVGA3DSURFA
         /*
          * Success.
          */
+        vmsvga3dSurfaceOnResourceCreated(pThisCC->svga.p3dState, pSurface);
         pSurface->pBackendSurface = pBackendSurface;
         return VINF_SUCCESS;
     }
@@ -8211,7 +8212,7 @@ static void dxUpdateScissorRects(DXDEVICE *pDXDevice, PVMSVGA3DDXCONTEXT pDXCont
 {
     UINT NumRects = pDXContext->svgaDXContext.numScissorRects;
     /* D3D11_RECT is identical to SVGASignedRect. */
-    D3D11_RECT *pRects = (D3D11_RECT *)pDXContext->svgaDXContext.scissorRects;
+    D3D11_RECT *pRects = NumRects ? (D3D11_RECT *)pDXContext->svgaDXContext.scissorRects : NULL;
 
     pDXDevice->pImmediateContext->RSSetScissorRects(NumRects, pRects);
 }
@@ -8332,6 +8333,11 @@ static void dxCheckState(DXDEVICE *pDXDevice, PVMSVGA3DDXCONTEXT pDXContext)
         } vp;
         struct
         {
+            UINT                        NumRects;
+            D3D11_RECT                  aRect[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+        } scissor;
+        struct
+        {
             ID3D11RasterizerState      *pRasterizerState;
         } rs;
         struct
@@ -8416,6 +8422,25 @@ static void dxCheckState(DXDEVICE *pDXDevice, PVMSVGA3DDXCONTEXT pDXContext)
                       && v1->Height == v2->Height
                       && v1->MinDepth == v2->MinDepth
                       && v1->MaxDepth == v2->MaxDepth
+                     );
+    }
+
+    /* Scissor rects */
+    RT_ZERO(p);
+    p.scissor.NumRects = RT_ELEMENTS(p.scissor.aRect);
+    pImmediateContext->RSGetScissorRects(&p.scissor.NumRects, p.scissor.aRect);
+    UINT NumRects = pDXContext->svgaDXContext.numScissorRects;
+    /* D3D11_RECT is identical to SVGASignedRect. */
+    D3D11_RECT *pRects = NumRects ? (D3D11_RECT *)pDXContext->svgaDXContext.scissorRects : NULL;
+    AssertRelease(p.scissor.NumRects == NumRects);
+    for (UINT i = 0; i < NumRects; ++i)
+    {
+        D3D11_RECT const *r1 = &p.scissor.aRect[i];
+        D3D11_RECT const *r2 = &pRects[i];
+        AssertRelease(   r1->left == r2->left
+                      && r1->top == r2->top
+                      && r1->right == r2->right
+                      && r1->bottom == r2->bottom
                      );
     }
 
