@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx.cpp 115047 2026-08-17 15:05:08Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx.cpp 115135 2026-08-27 20:36:40Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevSVGA3d - VMWare SVGA device, 3D parts - Common code for DX backend interface.
  */
@@ -164,10 +164,12 @@ static void vmsvga3dDXDrawDumpRenderTargets(PVGASTATECC pThisCC, PVMSVGA3DDXCONT
 #endif
 
 
-DECLINLINE(void) dxPostDraw(PVMSVGA3DDXCONTEXT pDXContext)
+DECLINLINE(void) dxPostDraw(PVGASTATECC pThisCC, PVMSVGA3DDXCONTEXT pDXContext)
 {
 #ifdef DUMP_BITMAPS
     vmsvga3dDXDrawDumpRenderTargets(pThisCC, pDXContext);
+#else
+    RT_NOREF(pThisCC);
 #endif
     RT_ZERO(pDXContext->state.ia.vb.au32Modified);
     RT_ZERO(pDXContext->state.shader[0].shaderResources.au64Modified);
@@ -742,7 +744,7 @@ int vmsvga3dDXDraw(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmdDXDraw co
     AssertRCReturn(rc, rc);
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDraw(pThisCC, pDXContext, pCmd->vertexCount, pCmd->startVertexLocation);
-    dxPostDraw(pDXContext);
+    dxPostDraw(pThisCC, pDXContext);
     return rc;
 }
 
@@ -760,7 +762,7 @@ int vmsvga3dDXDrawIndexed(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmdDX
     AssertRCReturn(rc, rc);
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawIndexed(pThisCC, pDXContext, pCmd->indexCount, pCmd->startIndexLocation, pCmd->baseVertexLocation);
-    dxPostDraw(pDXContext);
+    dxPostDraw(pThisCC, pDXContext);
     return rc;
 }
 
@@ -779,7 +781,7 @@ int vmsvga3dDXDrawInstanced(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmd
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawInstanced(pThisCC, pDXContext,
              pCmd->vertexCountPerInstance, pCmd->instanceCount, pCmd->startVertexLocation, pCmd->startInstanceLocation);
-    dxPostDraw(pDXContext);
+    dxPostDraw(pThisCC, pDXContext);
     return rc;
 }
 
@@ -798,7 +800,7 @@ int vmsvga3dDXDrawIndexedInstanced(PVGASTATECC pThisCC, uint32_t idDXContext, SV
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawIndexedInstanced(pThisCC, pDXContext,
              pCmd->indexCountPerInstance, pCmd->instanceCount, pCmd->startIndexLocation, pCmd->baseVertexLocation, pCmd->startInstanceLocation);
-    dxPostDraw(pDXContext);
+    dxPostDraw(pThisCC, pDXContext);
     return rc;
 }
 
@@ -816,7 +818,7 @@ int vmsvga3dDXDrawAuto(PVGASTATECC pThisCC, uint32_t idDXContext)
     AssertRCReturn(rc, rc);
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawAuto(pThisCC, pDXContext);
-    dxPostDraw(pDXContext);
+    dxPostDraw(pThisCC, pDXContext);
     return rc;
 }
 
@@ -3648,7 +3650,7 @@ int vmsvga3dDXDrawIndexedInstancedIndirect(PVGASTATECC pThisCC, uint32_t idDXCon
     AssertRCReturn(rc, rc);
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawIndexedInstancedIndirect(pThisCC, pDXContext, pCmd->argsBufferSid, pCmd->byteOffsetForArgs);
-    dxPostDraw(pDXContext);
+    dxPostDraw(pThisCC, pDXContext);
     return rc;
 }
 
@@ -3666,7 +3668,7 @@ int vmsvga3dDXDrawInstancedIndirect(PVGASTATECC pThisCC, uint32_t idDXContext, S
     AssertRCReturn(rc, rc);
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDrawInstancedIndirect(pThisCC, pDXContext, pCmd->argsBufferSid, pCmd->byteOffsetForArgs);
-    dxPostDraw(pDXContext);
+    dxPostDraw(pThisCC, pDXContext);
     return rc;
 }
 
@@ -3684,7 +3686,7 @@ int vmsvga3dDXDispatch(PVGASTATECC pThisCC, uint32_t idDXContext, SVGA3dCmdDXDis
     AssertRCReturn(rc, rc);
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDispatch(pThisCC, pDXContext, pCmd->threadGroupCountX, pCmd->threadGroupCountY, pCmd->threadGroupCountZ);
-    dxPostDraw(pDXContext);
+    dxPostDraw(pThisCC, pDXContext);
     return rc;
 }
 
@@ -3702,7 +3704,7 @@ int vmsvga3dDXDispatchIndirect(PVGASTATECC pThisCC, uint32_t idDXContext)
     AssertRCReturn(rc, rc);
 
     rc = pSvgaR3State->pFuncsDX->pfnDXDispatchIndirect(pThisCC, pDXContext);
-    dxPostDraw(pDXContext);
+    dxPostDraw(pThisCC, pDXContext);
     return rc;
 }
 
