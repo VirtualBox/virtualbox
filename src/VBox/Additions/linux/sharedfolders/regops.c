@@ -1,4 +1,4 @@
-/* $Id: regops.c 114052 2026-04-30 10:29:58Z vadim.galitsyn@oracle.com $ */
+/* $Id: regops.c 115138 2026-08-28 10:35:04Z vadim.galitsyn@oracle.com $ */
 /** @file
  * vboxsf - VBox Linux Shared Folders VFS, regular file inode and file operations.
  */
@@ -84,7 +84,7 @@
 # define PageUptodate(a_pPage) Page_Uptodate(a_pPage)
 #endif
 
-#if RTLNX_VER_MIN(6,16,0)
+#if RTLNX_VER_MIN(6,16,0) || RTLNX_RHEL_RANGE(10,3, 10,99)
 # define VBOX_PAGE_INDEX(_page) (_page->__folio_index)
 #else
 # define VBOX_PAGE_INDEX(_page) (_page->index)
@@ -3703,7 +3703,7 @@ static int vbsf_readpage(struct file *file, struct page *page)
  * Needed for mmap and writes when the file is mmapped in a shared+writeable
  * fashion.
  */
-#if RTLNX_VER_MAX(6,16,0)
+#if RTLNX_VER_MAX(6,16,0) && !RTLNX_RHEL_RANGE(10,3, 10,99)
 # if RTLNX_VER_MIN(2,5,52)
 static int vbsf_writepage(struct page *page, struct writeback_control *wbc)
 # else
@@ -3808,7 +3808,7 @@ static inline void vbsf_write_begin_warn(loff_t pos, unsigned len, unsigned flag
     }
 }
 
-# if RTLNX_VER_MIN(6,17,0)
+# if RTLNX_VER_MIN(6,17,0) || RTLNX_RHEL_RANGE(10,3, 10,99)
 static int vbsf_write_begin(const struct kiocb *iocb, struct address_space *mapping, loff_t pos,
                      unsigned len, struct folio **foliop, void **fsdata)
 {
@@ -3845,7 +3845,7 @@ static int vbsf_write_begin(struct file *file, struct address_space *mapping, lo
  * Companion to vbsf_write_begin (i.e. shouldn't be called).
  */
 
-# if RTLNX_VER_MIN(6,17,0)
+# if RTLNX_VER_MIN(6,17,0) || RTLNX_RHEL_RANGE(10,3, 10,99)
 static int vbsf_write_end(const struct kiocb *iocb, struct address_space *mapping,
                           loff_t pos, unsigned int len, unsigned int copied,
                           struct folio *folio, void *fsdata)
@@ -3927,7 +3927,7 @@ struct address_space_operations vbsf_reg_aops = {
 #else
     .readpage       = vbsf_readpage,
 #endif
-#if RTLNX_VER_MAX(6,16,0)
+#if RTLNX_VER_MAX(6,16,0) && !RTLNX_RHEL_RANGE(10,3, 10,99)
     .writepage      = vbsf_writepage,
 #endif
     /** @todo Need .writepages if we want msync performance...  */
