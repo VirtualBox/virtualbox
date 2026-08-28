@@ -40,6 +40,7 @@
 #include <iprt/getopt.h>
 #include <iprt/initterm.h>
 #include <iprt/list.h>
+#include <iprt/md5.h>
 #include <iprt/mem.h>
 #include <iprt/message.h>
 #include <iprt/path.h>
@@ -215,6 +216,15 @@ static const char          *g_pszProbeFnName            = "SUPR0TracerFireProbe"
 static bool                 g_fProbeFnImported          = true;
 static bool                 g_fPic                      = false;
 /** @} */
+
+
+/** The namespace UUID used for the name-based VTG object UUIDs.  In RFC-4122
+ *  byte order, not the little endian field order IPRT uses internally.  Do not
+ *  ever change this, it would change the UUID of every VTG object. */
+static const uint8_t        g_abVtgUuidNamespace[16]    =
+{
+    0xe8, 0x24, 0x92, 0x75, 0xd6, 0xde, 0x44, 0x51, 0x8a, 0x4d, 0x0b, 0xd7, 0x39, 0xca, 0xe2, 0x5a
+};
 
 
 
@@ -433,6 +443,87 @@ static DECLCALLBACK(int) generateAssemblyStrTabCallback(PRTSTRSPACECORE pStr, vo
 
 
 /**
+ * Calculates the UUID identifying the VTG object.
+ *
+ * The UUID identifies the tracepoint data of a module and must stay the same
+ * when the same script is translated again, or builds won't be reproducible.
+ * We therefore hash the script name, the code generation options and the script
+ * content into a name-based (RFC-4122 version 3) UUID rather than using a
+ * random one.
+ *
+ * The options are included because the same script is used for more than one
+ * module (Devices/build/VBoxDD.d is used by both VBoxDD and VBoxDDR0) and the
+ * generated code and data differ between contexts, bitness and object formats.
+ * Only the script name is hashed, not the path, and neither the output nor the
+ * temporary file names, as those depend on where the tree is being built.
+ *
+ * @returns IPRT status code.
+ * @param   pUuid               Where to return the UUID.
+ *
+ * @note    Modules generated from the same script with the same options get the
+ *          same UUID, e.g. VBoxVMM and VBoxVMMArm both use VMM/VBoxVMM.d (and
+ *          both register with the tracer as "VBoxVMM" anyway).  That is what
+ *          VTGOBJHDR::Uuid is there for: supdrvVtgFindObjectCopy() uses it to
+ *          share one ring-0 copy of the data.  Before doing so it also compares
+ *          the module type flags, the sizes and offsets in the rest of the
+ *          header, and the size of the ring-3 probe location string table - the
+ *          latter and VTGOBJHDR::cbProbeLocs are module specific.
+ */
+static int generateUuid(PRTUUID pUuid)
+{
+    char    szNumbers[64];
+    ssize_t cchNumbers = RTStrPrintf2(szNumbers, sizeof(szNumbers), "%u:%u:%#x:%RTbool:%RTbool",
+                                      g_cBits, g_cHostBits, g_fTypeContext, g_fProbeFnImported, g_fPic);
+    AssertReturn(cchNumbers > 0, VERR_BUFFER_OVERFLOW);
+
+    void   *pvScript;
+    size_t  cbScript;
+    int     rc = RTFileReadAll(g_pszScript, &pvScript, &cbScript);
+    if (RT_FAILURE(rc))
+        return rc;
+
+    /*
+     * The strings are hashed with their terminators, so that no combination of
+     * them can be confused with another one.
+     */
+    const char  *pszName = RTPathFilename(g_pszScript);
+    RTMD5CONTEXT Ctx;
+    RTMd5Init(&Ctx);
+    RTMd5Update(&Ctx, g_abVtgUuidNamespace, sizeof(g_abVtgUuidNamespace));
+    RTMd5Update(&Ctx, pszName, strlen(pszName) + 1);
+    RTMd5Update(&Ctx, szNumbers, (size_t)cchNumbers + 1);
+    RTMd5Update(&Ctx, g_pszContextDefine, strlen(g_pszContextDefine) + 1);
+    if (g_pszContextDefine2)
+        RTMd5Update(&Ctx, g_pszContextDefine2, strlen(g_pszContextDefine2) + 1);
+    RTMd5Update(&Ctx, g_pszAssemblerFmtVal, strlen(g_pszAssemblerFmtVal) + 1);
+    RTMd5Update(&Ctx, g_pszProbeFnName, strlen(g_pszProbeFnName) + 1);
+    RTMd5Update(&Ctx, pvScript, cbScript);
+
+    uint8_t abDigest[RTMD5_HASH_SIZE];
+    RTMd5Final(abDigest, &Ctx);
+
+    RTFileReadAllFree(pvScript, cbScript);
+
+    /*
+     * Set the version (3 - name-based using MD5) and the RFC-4122 variant, then
+     * convert the digest from RFC-4122 byte order into the little endian field
+     * order IPRT uses (see RTUuidFromStr), so that we end up with the very same
+     * UUID any other version 3 implementation would produce.  The version and
+     * variant bits also keep it from ever being null, which SUPDrv rejects.
+     */
+    abDigest[6] = (abDigest[6] & 0x0f) | 0x30;
+    abDigest[8] = (abDigest[8] & 0x3f) | 0x80;
+
+    AssertCompile(sizeof(pUuid->au8) == sizeof(abDigest));
+    pUuid->Gen.u32TimeLow          = RT_H2LE_U32(RT_MAKE_U32_FROM_MSB_U8(abDigest[0], abDigest[1], abDigest[2], abDigest[3]));
+    pUuid->Gen.u16TimeMid          = RT_H2LE_U16(RT_MAKE_U16(abDigest[5], abDigest[4]));
+    pUuid->Gen.u16TimeHiAndVersion = RT_H2LE_U16(RT_MAKE_U16(abDigest[7], abDigest[6]));
+    memcpy(&pUuid->au8[8], &abDigest[8], sizeof(abDigest) - 8);
+    return VINF_SUCCESS;
+}
+
+
+/**
  * Generate assembly source that can be turned into an object file.
  *
  * (This is a generateFile callback.)
@@ -618,9 +709,9 @@ static RTEXITCODE generateAssembly(PSCMSTREAM pStrm)
                     ,
                     g_pszScript, g_cBits);
     RTUUID Uuid;
-    int rc = RTUuidCreate(&Uuid);
+    int rc = generateUuid(&Uuid);
     if (RT_FAILURE(rc))
-        return RTMsgErrorExit(RTEXITCODE_FAILURE, "RTUuidCreate failed: %Rrc", rc);
+        return RTMsgErrorExit(RTEXITCODE_FAILURE, "Failed to generate the UUID for '%s': %Rrc", g_pszScript, rc);
     ScmStreamPrintf(pStrm,
                     "    dd 0%08xh, 0%08xh, 0%08xh, 0%08xh\n"
                     "%%ifdef VTG_NEW_MACHO_LINKER\n"
