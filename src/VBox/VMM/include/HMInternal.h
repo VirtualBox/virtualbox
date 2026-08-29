@@ -731,6 +731,7 @@ AssertCompileSizeAlignment(SVMNESTEDVMCBCACHE, 8);
 #define VMX_RESTORE_HOST_GDT_READ_ONLY                          RT_BIT(7)
 #define VMX_RESTORE_HOST_GDT_NEED_WRITABLE                      RT_BIT(8)
 #define VMX_RESTORE_HOST_CAN_USE_WRFSBASE_AND_WRGSBASE          RT_BIT(9)
+#define VMX_RESTORE_HOST_CET_ENABLED                            RT_BIT(10)
 /**
  * This _must_ be the top most bit, so that we can easily check that it and
  * something else is set w/o having to do two checks like this:
@@ -743,7 +744,7 @@ AssertCompileSizeAlignment(SVMNESTEDVMCBCACHE, 8);
  *     if (pVCpu->hm.s.vmx.fRestoreHostFlags > VMX_RESTORE_HOST_REQUIRED)
  * @endcode
  */
-#define VMX_RESTORE_HOST_REQUIRED                               RT_BIT(10)
+#define VMX_RESTORE_HOST_REQUIRED                               RT_BIT(11)
 /** @} */
 
 /**
