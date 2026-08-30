@@ -920,7 +920,10 @@ void UIDesktopWidgetWatchdog::sltHandleHostScreenAvailableGeometryCalculated(int
             availableGeometry.width(), availableGeometry.height()));
 
     /* Forget finished worker: */
-    pWorker->disconnect();
+    disconnect(static_cast<UIInvisibleWindow *>(pWorker),
+               &UIInvisibleWindow::sigHostScreenAvailableGeometryCalculated,
+               this,
+               &UIDesktopWidgetWatchdog::sltHandleHostScreenAvailableGeometryCalculated);
     pWorker->deleteLater();
     m_availableGeometryWorkers[iHostScreenIndex] = 0;
 
@@ -1072,7 +1075,10 @@ void UIDesktopWidgetWatchdog::updateHostScreenAvailableGeometry(int iHostScreenI
         QWidget *pOldWorker = m_availableGeometryWorkers.value(iHostScreenIndex);
         if (pOldWorker)
         {
-            pOldWorker->disconnect();
+            disconnect(static_cast<UIInvisibleWindow *>(pOldWorker),
+                       &UIInvisibleWindow::sigHostScreenAvailableGeometryCalculated,
+                       this,
+                       &UIDesktopWidgetWatchdog::sltHandleHostScreenAvailableGeometryCalculated);
             pOldWorker->deleteLater();
         }
         m_availableGeometryWorkers[iHostScreenIndex] = pWorker;
@@ -1102,7 +1108,10 @@ void UIDesktopWidgetWatchdog::cleanupExistingWorkers()
     {
         if (pWorker)
         {
-            pWorker->disconnect();
+            disconnect(static_cast<UIInvisibleWindow *>(pWorker),
+                       &UIInvisibleWindow::sigHostScreenAvailableGeometryCalculated,
+                       this,
+                       &UIDesktopWidgetWatchdog::sltHandleHostScreenAvailableGeometryCalculated);
             pWorker->deleteLater();
         }
     }
