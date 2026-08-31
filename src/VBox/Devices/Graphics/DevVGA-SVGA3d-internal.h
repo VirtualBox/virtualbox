@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-internal.h 115079 2026-08-19 11:42:29Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-internal.h 115140 2026-08-31 16:16:14Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device - 3D part, internal header.
  */
@@ -572,9 +572,19 @@ typedef struct VMSVGA3DSURFACE
      */
     uint32_t                idAssociatedContext;
 
+    /* Size of all mip levels. */
+    uint64_t                cbSurfaceTotal;
+
     /** @todo Only numArrayElements field is used currently. The code uses old fields cLevels, etc for anything else. */
     VMSVGA3D_SURFACE_DESC   surfaceDesc;
     bool                    fGB : 1; /* Whether this is a guest backed surface. */
+    bool                    fAccounted : 1; /* The memory required by the surface data has been factored in
+                                             * p3dState->cbSurfacesAvailable. The flag is true on surface creation,
+                                             * even though the memory is not allocated immediately. It is set
+                                             * to false when the guest invalidates the surface and is set to
+                                             * true again when the 3D backend surface or shadow buffer is
+                                             * re-allocated after invalidation.
+                                             */
 
     union
     {
@@ -1165,6 +1175,9 @@ typedef struct VMSVGA3DSTATE
     /** Reserved. */
     uint32_t                u32Reserved;
 #endif
+    /** Amount of available surface memory. */
+    uint64_t                cbSurfacesAvailable;
+
     /** Contexts indexed by ID.  Grown as needed. */
     PVMSVGA3DCONTEXT       *papContexts;
     /** Surfaces indexed by ID.  Grown as needed. */
@@ -1534,6 +1547,8 @@ DECLINLINE(uint32_t) vmsvga3dClampedUMul32(uint32_t a, uint32_t b)
 
 int vmsvga3dSurfaceAllocMipLevels(PVMSVGA3DSURFACE pSurface); /* For saved state. */
 void vmsvga3dSurfaceFreeMipLevels(PVMSVGA3DSURFACE pSurface); /* For backend. */
+
+void vmsvga3dSurfaceOnResourceCreated(PVMSVGA3DSTATE p3dState, PVMSVGA3DSURFACE pSurface); /* For accounting. */
 
 #if defined(VMSVGA3D_DIRECT3D)
 HRESULT D3D9UpdateTexture(PVMSVGA3DCONTEXT pContext,

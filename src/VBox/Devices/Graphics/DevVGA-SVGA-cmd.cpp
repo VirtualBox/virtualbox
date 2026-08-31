@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA-cmd.cpp 115079 2026-08-19 11:42:29Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA-cmd.cpp 115140 2026-08-31 16:16:14Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VMware SVGA device - implementation of VMSVGA commands.
  */
@@ -1875,6 +1875,7 @@ void vmsvgaR3InstallColorCursor(PVGASTATE pThis, PVGASTATECC pThisCC, SVGAGBColo
 static void vmsvga3dCmdDefineSurface(PVGASTATECC pThisCC, SVGA3dCmdDefineSurface_v2 const *pCmd,
                                      uint32_t cMipLevelSizes, SVGA3dSize *paMipLevelSizes)
 {
+    ASSERT_GUEST_RETURN_VOID(vmsvga3dIsLegacyBackend(pThisCC));
     ASSERT_GUEST_RETURN_VOID(pCmd->sid < SVGA3D_MAX_SURFACE_IDS);
     ASSERT_GUEST_RETURN_VOID(cMipLevelSizes >= 1);
     RT_UNTRUSTED_VALIDATED_FENCE();
