@@ -1178,7 +1178,7 @@ struct wmtcmd_render_draw_indexed {
   obj_handle_t index_buffer;
   uint64_t index_buffer_offset;
   uint32_t instance_count;
-  uint32_t base_vertex;
+  int32_t base_vertex;
   uint32_t base_instance;
 };
 
