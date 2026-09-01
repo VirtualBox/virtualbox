@@ -1441,31 +1441,25 @@ void UIFrameBufferPrivate::drawImageRect(QPainter &painter, const QImage &image,
                                          int iContentsShiftX, int iContentsShiftY,
                                          double dDevicePixelRatio)
 {
-    /* Calculate offset: */
-    const size_t offset = (rect.x() + iContentsShiftX) * image.depth() / 8 +
-                          (rect.y() + iContentsShiftY) * image.bytesPerLine();
-
     /* Restrain boundaries: */
     const int iSubImageWidth = qMin(rect.width(), image.width() - rect.x() - iContentsShiftX);
     const int iSubImageHeight = qMin(rect.height(), image.height() - rect.y() - iContentsShiftY);
+    if (   iSubImageWidth <= 0
+        || iSubImageHeight <= 0)
+        return;
 
-    /* Create sub-image (no copy involved): */
-    QImage subImage = QImage(image.bits() + offset,
-                             iSubImageWidth, iSubImageHeight,
-                             image.bytesPerLine(), image.format());
-
-    /* Create sub-pixmap on the basis of sub-image above (1st copy involved): */
-    QPixmap subPixmap = QPixmap::fromImage(subImage);
-    /* Take the device-pixel-ratio into account: */
-    subPixmap.setDevicePixelRatio(dDevicePixelRatio);
-
-    /* Which point we should draw corresponding sub-pixmap? */
+    /* Which point we should draw the image at? */
     QPoint paintPoint = rect.topLeft();
     /* Take the device-pixel-ratio into account: */
     paintPoint /= dDevicePixelRatio;
 
-    /* Draw sub-pixmap: */
-    painter.drawPixmap(paintPoint, subPixmap);
+    /* Draw directly from the source image to avoid materializing a temporary pixmap for every update rectangle. */
+    const QRect sourceRect(rect.x() + iContentsShiftX, rect.y() + iContentsShiftY,
+                           iSubImageWidth, iSubImageHeight);
+    const QRectF targetRect(QPointF(paintPoint),
+                            QSizeF((double)iSubImageWidth / dDevicePixelRatio,
+                                   (double)iSubImageHeight / dDevicePixelRatio));
+    painter.drawImage(targetRect, image, sourceRect);
 }
 
 /* static */
