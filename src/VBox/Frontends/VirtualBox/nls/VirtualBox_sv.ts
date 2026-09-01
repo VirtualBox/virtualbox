@@ -81,7 +81,7 @@
     </message>
     <message>
         <source>The VirtualBox Linux kernel driver is either not loaded or not set up correctly. Please try setting it up again by executing&lt;br/&gt;&lt;br/&gt;  &lt;font color=blue&gt;&apos;/sbin/vboxconfig&apos;&lt;/font&gt;&lt;br/&gt;&lt;br/&gt;as root.&lt;br/&gt;&lt;br/&gt;If your system has EFI Secure Boot enabled you may also need to sign the kernel modules (vboxdrv, vboxnetflt, vboxnetadp, vboxpci) before you can load them. Please see your Linux system&apos;s documentation for more information.</source>
-        <translation>VirtualBox Linux-kärndrivrutin är antingen inte inläst eller inte konfigurerad korrekt. Konfigurera den igen genom att köra &lt;br/&gt;&lt;br/&gt;  &lt;font color=blue&gt;&apos;/sbin/vboxconfig&apos;&lt;/font&gt;&lt;br/&gt;&lt;br/&gt;som root.&lt;br/&gt;&lt;br/&gt;Om ditt system har EFI Secure Boot aktiverat kan du också behöva signera kärnmodulerna (vboxdrv, vboxnetflt, vboxnetadp, vboxpci) innan du kan läsa in dem. Se dokumentationen för ditt Linux-system för mer information.</translation>
+        <translation>VirtualBox Linux-kärndrivrutin är antingen inte inläst eller inte konfigurerad korrekt. Konfigurera den igen genom att köra &lt;br/&gt;&lt;br/&gt;  &lt;font color=blue&gt;&apos;/sbin/vboxconfig&apos;&lt;/font&gt;&lt;br/&gt;&lt;br/&gt;som root.&lt;br/&gt;&lt;br/&gt;Om ditt system har säker UEFI-start aktiverad kan du också behöva signera kärnmodulerna (vboxdrv, vboxnetflt, vboxnetadp, vboxpci) innan du kan läsa in dem. Se dokumentationen för ditt Linux-system för mer information.</translation>
     </message>
     <message>
         <source>The VirtualBox kernel modules do not match this version of VirtualBox. The installation of VirtualBox was apparently not successful. Executing&lt;br/&gt;&lt;br/&gt;  &lt;font color=blue&gt;&apos;/sbin/vboxconfig&apos;&lt;/font&gt;&lt;br/&gt;&lt;br/&gt;may correct this. Make sure that you are not mixing builds of VirtualBox from different sources.</source>
@@ -3704,7 +3704,7 @@
     <message>
         <source>Multi-attach</source>
         <comment>MediumType</comment>
-        <translation>Multi-attach</translation>
+        <translation>Fleransluten</translation>
     </message>
     <message>
         <source>Dynamically allocated storage</source>
@@ -3944,7 +3944,7 @@
     <message>
         <source>Nearest Neighbor</source>
         <comment>RecordingVideoScalingMode</comment>
-        <translation>Närmsta granne</translation>
+        <translation>Närmaste granne</translation>
     </message>
     <message>
         <source>Bilinear</source>
@@ -4543,17 +4543,17 @@
     <message>
         <source>Null Audio</source>
         <comment>AudioDriverType</comment>
-        <translation>Null Audio</translation>
+        <translation>Inget ljud</translation>
     </message>
     <message>
         <source>OSS Audio</source>
         <comment>AudioDriverType</comment>
-        <translation>OSS Audio</translation>
+        <translation>OSS-ljud</translation>
     </message>
     <message>
         <source>ALSA Audio</source>
         <comment>AudioDriverType</comment>
-        <translation>ALSA Audio</translation>
+        <translation>ALSA-ljud</translation>
     </message>
     <message>
         <source>Windows Audio Session</source>
@@ -4923,7 +4923,7 @@
     <message>
         <source>Nested Paging</source>
         <comment>details (system)</comment>
-        <translation>Nested Paging</translation>
+        <translation>Nästlad sidindelning</translation>
     </message>
     <message>
         <source>PAE/NX</source>
@@ -5261,7 +5261,7 @@
     <message>
         <source>Secure Boot</source>
         <comment>details (system)</comment>
-        <translation>Secure Boot</translation>
+        <translation>Säker start</translation>
     </message>
     <message>
         <source>Enabled</source>
@@ -10257,7 +10257,7 @@
     </message>
     <message>
         <source>Can&apos;t start Manager UI ...</source>
-        <translation>Kan inte starta hanterargränssnittet ...</translation>
+        <translation>Kan inte starta hanteringsgränssnittet ...</translation>
     </message>
     <message>
         <source>Can&apos;t start Runtime UI ...</source>
@@ -11051,19 +11051,19 @@
     </message>
     <message>
         <source>&amp;Secure Boot</source>
-        <translation>&amp;Secure Boot</translation>
+        <translation>&amp;Säker start</translation>
     </message>
     <message>
         <source>Use secure boot emulation</source>
-        <translation>Använd emulering för secure boot</translation>
+        <translation>Använd emulering av säker start</translation>
     </message>
     <message>
         <source>&amp;Reset Secure Boot Keys</source>
-        <translation>Å&amp;terställ Secure Boot-nycklar</translation>
+        <translation>Å&amp;terställ nycklar för säker start</translation>
     </message>
     <message>
         <source>Reset secure boot keys to default</source>
-        <translation>Återställ nycklar för secure boot till standard</translation>
+        <translation>Återställ standardnycklarna för säker start</translation>
     </message>
 </context>
 <context>
@@ -12859,7 +12859,7 @@
     </message>
     <message>
         <source>Bitrate in kilobits per second. Increasing this value will make the video look better at the cost of an increased file size.</source>
-        <translation>Bitfrekvens i kilobit per sekund. Om du ökar detta värde blir videon bättre, men filstorleken blir större.</translation>
+        <translation>Bithastighet i kilobit per sekund. Ett högre värde ger bättre bildkvalitet men ökar filstorleken.</translation>
     </message>
     <message>
         <source>low</source>
@@ -13662,7 +13662,7 @@
     </message>
     <message>
         <source>Scan Code</source>
-        <translation>Scan Code</translation>
+        <translation>Tangentkod</translation>
     </message>
     <message>
         <source>The scan code the key produces. Not editable</source>
@@ -14049,7 +14049,7 @@
     </message>
     <message>
         <source>&amp;Hot-pluggable</source>
-        <translation>&amp;Hot-pluggable</translation>
+        <translation>Kan anslutas under &amp;drift</translation>
     </message>
     <message>
         <source>Type (Format):</source>
@@ -15720,7 +15720,7 @@
     </message>
     <message>
         <source>Nested Paging</source>
-        <translation>Nested Paging</translation>
+        <translation>Nästlad sidindelning</translation>
     </message>
     <message>
         <source>Unrestricted Execution</source>
