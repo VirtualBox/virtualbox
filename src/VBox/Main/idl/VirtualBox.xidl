@@ -26622,6 +26622,26 @@ Snapshot 1 (B.vdi)            Snapshot 1 (B.vdi)
       </desc>
     </attribute>
 
+    <method name="getVRDECertificate">
+      <desc>
+        Returns an ICertificate structure for the VRDE Server.
+        <result name="VERR_FILE_NOT_FOUND">
+          Certificate file was not found.
+        </result>
+        <result name="VBOX_E_FILE_ERROR">
+          Error reading certificate file.
+        </result>
+      </desc>
+      <param name="getCACert" type="boolean" dir="in">
+        <desc>
+          return ICertificate structure for CA certificate
+        </desc>
+      </param>
+      <param name="CertificateInfo" type="ICertificate" dir="return">
+        <desc></desc>
+      </param>
+    </method>
+
     <method name="setVRDEProperty">
       <desc>
         Sets a VRDE specific property string.

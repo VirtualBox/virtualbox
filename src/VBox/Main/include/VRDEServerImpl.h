@@ -83,6 +83,7 @@ private:
      HRESULT getAuthLibrary(com::Utf8Str &aAuthLibrary);
      HRESULT setAuthLibrary(const com::Utf8Str &aAuthLibrary);
      HRESULT getVRDEProperties(std::vector<com::Utf8Str> &aVRDEProperties);
+     HRESULT getVRDECertificate(BOOL getCACert, ComPtr<ICertificate> &aCertificateInfo);
 
     // wrapped IVRDEServer methods
     HRESULT setVRDEProperty(const com::Utf8Str &aKey,
