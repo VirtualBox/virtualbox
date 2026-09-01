@@ -250,6 +250,13 @@ my %globals;
 		$self->{op} = $1;
 		$self->{sz} = $2;
 	    }
+
+	    # TODO: Remove endbranch instructions in favor of the .type annotation.
+	    if ($self->{op} eq "endbranch") {
+		die "Missing function annotation for 'endbranch' instruction." if (!defined($current_function->{endbr}));
+		die "Found 'endbranch' instruction outside the prologue." if ($cfi_state ne 'prologue');
+		$self->{op} = ""; # suppress it as we emit endbranch from label.
+	    }
 	}
 	$ret;
     }
@@ -511,9 +518,9 @@ my %globals;
 	    my $func;
 	    if ($win64	&& $current_function->{name} eq $self->{value}
 			&& $current_function->{abi} eq "svr4") {
-		die "unexpected cfi state for proc label: $cfi_state" if (defined($cfi_state));
 		$cfi_state = 'prologue'; # indicate that we've already emitted SEH64_PROC_FRAME.
 		$func  = 'SEH64_PROC_FRAME ' . ($globals{$self->{value}} or $self->{value}) . "\n";
+		$func .= "	.byte	0xf3,0x0f,0x1e,0xfa # endbr\n" if (defined($current_function->{endbr}));
 		$func .= "	movq	%rdi,8(%rsp)\n";
 		$func .= "SEH64_SAVEREG rdi, 8\n";
 		$func .= "	movq	%rsi,16(%rsp)\n";
@@ -527,6 +534,14 @@ my %globals;
 		$func .= "	movq	%r9,%rcx\n"  if ($narg>3);
 		$func .= "	movq	40(%rsp),%r8\n" if ($narg>4);
 		$func .= "	movq	48(%rsp),%r9\n" if ($narg>5);
+	    } elsif (defined($current_function->{endbr}) && $current_function->{name} eq $self->{value}) {
+		$cfi_state = 'prologue'; # indicate that we've already emitted SEH64_PROC_FRAME and/or endbr.
+		if (!$win64) {
+		    $func = ($globals{$self->{value}} or $self->{value}) . ":";
+		} else {
+		    $func = 'SEH64_PROC_FRAME ' . ($globals{$self->{value}} or $self->{value}) . "\n";
+		}
+		$func .= "	.byte	0xf3,0x0f,0x1e,0xfa # endbr\n";
 	    } else {
 		$func = ($globals{$self->{value}} or $self->{value}) . ":";
 	    }
@@ -539,6 +554,7 @@ my %globals;
 	    die "unexpected cfi state for proc label: $cfi_state" if (defined($cfi_state));
             $cfi_state = 'prologue'; # indicate that we've already emitted SEH64_PROC_FRAME.
             my $func = "SEH64_PROC_FRAME $current_function->{name},$current_function->{scope}\n";
+	    $func .= "	db 	0f3h,0fh,1eh,0fah ; endbr\n" if (defined($current_function->{endbr}));
 	    $func .= "	mov	QWORD$PTR\[8+rsp\],rdi\t;WIN64 prologue\n";
 	    $func .= "SEH64_SAVEREG rdi, 8\n";
 	    $func .= "	mov	QWORD$PTR\[16+rsp\],rsi\n";
@@ -555,8 +571,10 @@ my %globals;
 	    $func .= "\n";
 	} else {
 	    die "unexpected cfi state for proc label: $cfi_state" if (defined($cfi_state));
-	    $cfi_state = 'prologue'; # indicate that we've already emitted PROC_FRAME.
-	    "SEH64_PROC_FRAME $current_function->{name},$current_function->{scope}";
+	    $cfi_state = 'prologue'; # indicate that we've already emitted SEH64_PROC_FRAME.
+	    my $func = "SEH64_PROC_FRAME $current_function->{name},$current_function->{scope}\n";
+	    $func .= "	db	0f3h,0fh,1eh,0fah ; endbr\n" if (defined($current_function->{endbr}));
+	    $func;
 	}
     }
 }
@@ -774,11 +792,14 @@ my %globals;
 	    # why it starts with -8. Recall that CFA is top of caller's
 	    # stack...
 	    /startproc/	&& do {	($cfa_reg, $cfa_reg_offset, $cfa_rsp) = ("%rsp", 8, -8);
-				if (defined($cfi_state) && $cfi_state ne 'prologue') {
+				if (defined($cfi_state) && $cfi_state ne 'prologue' && (!$elf || $cfi_state ne 'endproc')) {
 				    die "invalid cfi state for cfi_startproc: $cfi_state";
 				}
 			        if ($win64 && !defined($cfi_state)) {
 				    $self->{value} = "SEH64_PROC_FRAME\t$current_function->{name},$current_function->{scope}";
+				    if (defined($current_function->{endbr})) {
+					die "Need explicit label for endbranch tagged function: ". $current_function->{name};
+				}
 				}
 				$cfi_state = 'prologue';
 				last;
@@ -788,8 +809,12 @@ my %globals;
 				# matched with .cfi_restore_state are
 				# unnecessary.
 				die "unpaired .cfi_remember_state" if (@cfa_stack);
+				die ".cfi_endproc without .cfi_endprolog in $current_function->{name}" if ($cfi_state eq 'prologue');
 				die "bogus .cfi_endproc (state: $cfi_state)" if ($cfi_state ne 'body');
-                                $self->{value} = "SEH64_ENDPROC_FRAME\t$current_function->{name}" if ($win64);
+				if ($win64) {
+				    $self->{value}  = "SEH64_ENDPROC_FRAME\t$current_function->{name}";
+				    $self->{value} .= defined($current_function->{endbr}) ? ",1" : ",0";
+				}
 				$cfi_state = 'endproc';
 				last;
 			      };
@@ -961,7 +986,7 @@ my %globals;
 				    $self->{value} .= " $current_function->{name}" if ($gas);
 				    $self->{value} .= "\t$comment_ch cfa_reg=$cfa_reg cfa_reg_offset=$cfa_reg_offset cfa_rsp=$cfa_rsp";
 				} else {
-				    $self->{value} = "// .cfi_endprolog";
+				    $self->{value} = "# .cfi_endprolog";
 				}
 				last;
 			      };
@@ -1003,19 +1028,22 @@ my %globals;
 				    $$line = $globals{$$line} if ($prefix);
 				    last;
 				  };
-		/\.type/    && do { my ($sym,$type,$narg) = split(',',$$line);
+		/\.type/    && do { my ($sym,$type,$narg,$endbr) = split(',',$$line);
+				    die "Unexpected endbr .type arg: $endbr" if (defined($endbr) && $endbr ne "endbranch");
 				    if ($type eq "\@function") {
 					undef $current_function;
 					$current_function->{name} = $sym;
 					$current_function->{abi}  = "svr4";
 					$current_function->{narg} = $narg;
 					$current_function->{scope} = defined($globals{$sym})?"PUBLIC":"PRIVATE";
+					$current_function->{endbr} = $endbr if (defined($endbr) && $endbr eq "endbranch");
 				    } elsif ($type eq "\@abi-omnipotent") {
 					undef $current_function;
 					$current_function->{name} = $sym;
 					$current_function->{scope} = defined($globals{$sym})?"PUBLIC":"PRIVATE";
+					$current_function->{endbr} = $endbr if (defined($endbr) && $endbr eq "endbranch");
 				    }
-				    $$line =~ s/\@abi\-omnipotent/\@function/;
+				    $$line =~ s/\@abi\-omnipotent.*/\@function/;
 				    $$line =~ s/\@function.*/\@function/;
 				    last;
 				  };
@@ -1230,11 +1258,8 @@ my %globals;
 				  };
 		/\.size/    && do { if (defined($current_function)) {
 					undef $self->{value};
-					if ($current_function->{abi} eq "svr4") {
-					    $self->{value}="${decor}SEH_end_$current_function->{name}:";
-					    $self->{value}.=":\n" if($masm);
-					}
-					$self->{value}.="$current_function->{name}\tENDP" if($masm && $current_function->{name} && $cfi_state ne 'endproc');
+					die "Missing .cfi_endprolog and .cfi_endproc: $current_function->{name}" if ($cfi_state eq 'prologue');
+					die "Missing .cfi_endproc: $current_function->{name}" if ($cfi_state eq 'body');
 					undef $current_function;
 					undef $cfi_state;
 				    }
@@ -1614,6 +1639,24 @@ ___
 %define SEH64_DOT_LABEL(a_DotLabel) SEH64_CONCAT(asm_seh64_proc,a_DotLabel)
 
 %macro SEH64_PROC_FRAME 2
+ %ifidni %2,PUBLIC
+  %ifdef __YASM_MAJOR__
+   global %1:function
+  %elifdef OPENSSL_CET_ENABLED_ASSEMBLY ; (Requires nasm 3.02rc8 (pr #233 / commit c8be7b7).)
+   global %1:function
+  %else
+   global %1
+  %endif
+ %elifidni %2,PRIVATE
+  %ifdef OPENSSL_CET_ENABLED_ASSEMBLY   ; (Requires nasm 3.02rc8 (pr #233 / commit c8be7b7).)
+   %ifndef __YASM_MAJOR__
+    static %1:function
+   %endif
+  %endif
+ %else
+  %error "SEH64_PROC_FRAME: unknown scope keyword (%2), expected PRIVATE or PUBLIC."
+ %endif
+
  %define asm_seh64_proc %1
  %ifdef __YASM_MAJOR__
         proc_frame %1
@@ -1628,7 +1671,7 @@ ___
  %endif
 %endmacro
 
-%macro SEH64_ENDPROC_FRAME 1
+%macro SEH64_ENDPROC_FRAME 2
 SEH64_DOT_LABEL(.end_proc):
  %ifdef __YASM_MAJOR__
 	[endproc_frame]
@@ -1643,6 +1686,21 @@ SEH64_DOT_LABEL(.end_proc):
         dd      %1                              wrt ..imagebase
         dd      SEH64_DOT_LABEL(.end_proc)      wrt ..imagebase
         dd      SEH64_DOT_LABEL(.unwind_info)   wrt ..imagebase
+
+  %if %2 != 0
+   %ifdef OPENSSL_CET_ENABLED_ASSEMBLY ; (Requires nasm 3.02rc8 (pr #235 / commit f1e4e6f).)
+	; Emit the indirect jump table entry.
+    %ifndef ASM_DEFINED_GIFDS_Y_SECTION
+     %define ASM_DEFINED_GIFDS_Y_SECTION
+	\@feat.00 equ 0x800 ; Required for the above table to have any effect.
+	section	.gfids\$y rdata align=4
+	__guard_fids__:
+    %else
+	section	.gfids\$y
+    %endif
+	dd	%1 wrt ..symtab
+   %endif
+  %endif
 
         ; Restore code section.
         section .text
@@ -1776,6 +1834,21 @@ SEH64_OP_LABEL(seh64_idxOps):
   %assign seh64_idxOps seh64_idxOps + 1
  %endif
 %endmacro
+
+%macro CET_ADD_FUNCTION_TO_GFIDS 2
+ %ifdef OPENSSL_CET_ENABLED_ASSEMBLY ; (Requires nasm 3.02rc8 (pr #235 / commit f1e4e6f).)
+  %ifndef ASM_DEFINED_GIFDS_Y_SECTION
+   %define ASM_DEFINED_GIFDS_Y_SECTION
+	\@feat.00 equ 0x800 ; Required for the above table to have any effect.
+	section .gfids\$y rdata align=4
+	__guard_fids__:
+  %else
+	section	.gfids\$y
+  %endif
+	dd	%1 wrt ..symtab
+	section %2 ; Switch back to the original section.
+ %endif
+%endmacro
 ___
     }
 } elsif ($masm) {
@@ -1787,7 +1860,7 @@ ___
 SEH64_PROC_FRAME MACRO a_Name, a_Scope
     a_Name PROC a_Scope FRAME
 ENDM
-SEH64_ENDPROC_FRAME MACRO a_Name
+SEH64_ENDPROC_FRAME MACRO a_Name, a_IndirBranchTarget
     a_Name ENDP
 ENDM
 SEH64_ENDPROLOG MACRO
@@ -1889,7 +1962,7 @@ ___
 
 .endm
 
-.macro SEH64_ENDPROC_FRAME a_Name
+.macro SEH64_ENDPROC_FRAME a_Name, a_IndirBranchTarget
 \\a_Name\\().end_proc:
 
 # Emit the RUNTIME_FUNCTION entry.  The linker is picky here, no label.
@@ -2091,6 +2164,9 @@ while(defined(my $line=<>)) {
 		@args = reverse(@args);
 		undef $sz if ($nasm && $opcode->mnemonic() eq "lea");
 		printf "\t%s\t%s",$insn,join(",",map($_->out($sz),@args));
+		if ($current_segment eq ".CRT\$XCU" && $nasm) {
+		    printf "\nCET_ADD_FUNCTION_TO_GFIDS ". $args[0]->out($sz) . ",.CRT\$XCU";
+		}
 	    }
 	} else {
 	    printf "\t%s",$opcode->out();
@@ -2172,7 +2248,7 @@ close STDOUT or die "error closing STDOUT: $!;"
 #	ret
 #
 #################################################
-# Win64 SEH, Structured Exception Handling.
+# Win64 Unwind Instructions
 #
 # Unlike on Unix systems(*) lack of Win64 stack unwinding information
 # has undesired side-effect at run-time: if an exception is raised in
@@ -2180,8 +2256,54 @@ close STDOUT or die "error closing STDOUT: $!;"
 # referring to segmentation violations caused by malformed input
 # parameters), the application is briskly terminated without invoking
 # any exception handlers, most notably without generating memory dump
-# or any user notification whatsoever. This poses a problem. It's
-# possible to address it by registering custom language-specific
+# or any user notification whatsoever. This poses a problem. This was
+# previously dealth with using custom exception handlers, which were
+# difficult to maintain and offered zero help in a debugger. These days,
+# Win64 piggy backs on the dwarf unwind directives (.cfi_startproc,
+# .cfi_cfa_expression, .cfi_offset, ..., .cfi_endproc).
+#
+# The Windows x86_64 unwind information is very basic and inflexible
+# compared to DWARF.  For starters, it only covers the prologue and
+# just assumes RtlVirtualUnwind and others will figure out how to
+# unwind the epilogue.  A requirement is that the end of the prologue
+# is marked.  Since DWARF/gas doesn't have an .cfi_ directive for this
+# we have introduced our own pseudo directive .cfi_endprolog.
+#
+# .cfi_endprolog: Marks the end of the prologue, i.e. where a reliable
+# stack frame has been established.  For Win64 the frame register and
+# offset is established with this directive rather than when any of
+# the .cfa_def_cfa* directives was used earlier in the prologue.  This
+# is different from the way DWARF works and must be kept in mind.
+#
+# Any function with a .cfi_startproc must have both a .cfi_endprolog
+# as well as a .cfi_endproc directive. The .cfi_endproc directive must
+# be followed by a .size directive.
+#
+# .cfi_stackalloc <bytes>: This pseudo directive indicates that %rsp
+# has been adjusted, irrespective of whether it is the register for
+# the frame or not.  If %rsp is defined as the CFA register, it will
+# also update the CFA offset.
+#
+# Since the CFA register is only established at .cfi_endprolog in the
+# Win64 unwind instructions, this directive is necessary to keep
+# track of %rsp changes as these are always relevant to unwinding on
+# Win64 before that point.
+#
+# .cfi_sp_offset <reg>,<offset>: Same as .cfi_offset, only it is
+# relative to the current %rsp rather than the CFA.  This can be a
+# lot simpler to use when the instruction doing the register saving
+# is using %rsp for addressing.
+#
+# For an exact reference of the x86_64 Windows unwind handling, wine's
+# implementation of RtlVirtualUnwind2 can be very helpful, see:
+# https://gitlab.winehq.org/wine/wine/-/blob/b9f5aa42b1532a80963583cabeaeec2a4b479d9f/dlls/ntdll/unwind.c#L2053
+#
+#
+#################################################
+# HISTORICAL - Win64 SEH, Structured Exception Handling
+# This is left here for explaining the %rax=%rsp coding pattern.
+#
+# It's possible to address it by registering custom language-specific
 # handler that would restore processor context to the state at
 # subroutine entry point and return "exception is not handled, keep
 # unwinding" code. Writing such handler can be a challenge... But it's
@@ -2333,3 +2455,5 @@ close STDOUT or die "error closing STDOUT: $!;"
 #	Unix. "Unlike" refers to the fact that on Unix signal handler
 #	will always be invoked, core dumped and appropriate exit code
 #	returned to parent (for user notification).
+#
+# HISTORICAL END

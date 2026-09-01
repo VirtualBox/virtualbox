@@ -689,7 +689,7 @@ $_rsp="48(%rsp)";
 $code.=<<___;
 .text
 .globl	Camellia_cbc_encrypt
-.type	Camellia_cbc_encrypt,\@function,6
+.type	Camellia_cbc_encrypt,\@function,6,endbranch
 .align	16
 Camellia_cbc_encrypt:
 .cfi_startproc

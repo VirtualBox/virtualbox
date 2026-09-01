@@ -1872,8 +1872,11 @@ rsaz_1024_norm2red_avx2:
 rsaz_1024_red2norm_avx2:
 rsaz_1024_scatter5_avx2:
 rsaz_1024_gather5_avx2:
+.cfi_startproc
+.cfi_endprolog
 	.byte	0x0f,0x0b	# ud2
 	ret
+.cfi_endproc
 .size	rsaz_1024_sqr_avx2,.-rsaz_1024_sqr_avx2
 ___
 }}}

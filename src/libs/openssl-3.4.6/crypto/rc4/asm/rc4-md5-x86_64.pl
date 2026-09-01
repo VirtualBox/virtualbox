@@ -529,8 +529,11 @@ RC4_set_key:
 .type	RC4_options,\@abi-omnipotent
 .align	16
 RC4_options:
+.cfi_startproc
+.cfi_endprolog
 	lea	.Lopts(%rip),%rax
 	ret
+.cfi_endproc
 .align	64
 .Lopts:
 .asciz	"rc4(64x,int)"

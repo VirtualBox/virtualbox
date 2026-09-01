@@ -1071,6 +1071,8 @@ $code.=<<___;
 .type	bsaes_enc_key_convert,\@function,2
 .align	16
 bsaes_enc_key_convert:
+.cfi_startproc
+.cfi_endprolog
 	mov	240($inp),%r10d		# pass rounds
 	mov	$inp,%rcx		# pass key
 	mov	$out,%rax		# pass key schedule
@@ -1078,12 +1080,15 @@ bsaes_enc_key_convert:
 	pxor	%xmm6,%xmm7		# fix up last round key
 	movdqa	%xmm7,(%rax)		# save last round key
 	ret
+.cfi_endproc
 .size	bsaes_enc_key_convert,.-bsaes_enc_key_convert
 
 .globl	bsaes_encrypt_128
 .type	bsaes_encrypt_128,\@function,4
 .align	16
 bsaes_encrypt_128:
+.cfi_startproc
+.cfi_endprolog
 .Lenc128_loop:
 	movdqu	0x00($inp), @XMM[0]	# load input
 	movdqu	0x10($inp), @XMM[1]
@@ -1111,12 +1116,15 @@ bsaes_encrypt_128:
 	sub	\$0x80,$len
 	ja	.Lenc128_loop
 	ret
+.cfi_endproc
 .size	bsaes_encrypt_128,.-bsaes_encrypt_128
 
 .globl	bsaes_dec_key_convert
 .type	bsaes_dec_key_convert,\@function,2
 .align	16
 bsaes_dec_key_convert:
+.cfi_startproc
+.cfi_endprolog
 	mov	240($inp),%r10d		# pass rounds
 	mov	$inp,%rcx		# pass key
 	mov	$out,%rax		# pass key schedule
@@ -1125,12 +1133,15 @@ bsaes_dec_key_convert:
 	movdqa	%xmm6,(%rax)		# save last round key
 	movdqa	%xmm7,($out)
 	ret
+.cfi_endproc
 .size	bsaes_dec_key_convert,.-bsaes_dec_key_convert
 
 .globl	bsaes_decrypt_128
 .type	bsaes_decrypt_128,\@function,4
 .align	16
 bsaes_decrypt_128:
+.cfi_startproc
+.cfi_endprolog
 .Ldec128_loop:
 	movdqu	0x00($inp), @XMM[0]	# load input
 	movdqu	0x10($inp), @XMM[1]
@@ -1158,6 +1169,7 @@ bsaes_decrypt_128:
 	sub	\$0x80,$len
 	ja	.Ldec128_loop
 	ret
+.cfi_endproc
 .size	bsaes_decrypt_128,.-bsaes_decrypt_128
 ___
 }
@@ -1633,7 +1645,7 @@ ___
 $code.=<<___;
 .extern	asm_AES_cbc_encrypt
 .globl	ossl_bsaes_cbc_encrypt
-.type	ossl_bsaes_cbc_encrypt,\@abi-omnipotent
+.type	ossl_bsaes_cbc_encrypt,\@abi-omnipotent,,endbranch
 .align	16
 ossl_bsaes_cbc_encrypt:
 .cfi_startproc
@@ -1948,7 +1960,7 @@ $code.=<<___;
 .size	ossl_bsaes_cbc_encrypt,.-ossl_bsaes_cbc_encrypt
 
 .globl	ossl_bsaes_ctr32_encrypt_blocks
-.type	ossl_bsaes_ctr32_encrypt_blocks,\@abi-omnipotent
+.type	ossl_bsaes_ctr32_encrypt_blocks,\@abi-omnipotent,,endbranch
 .align	16
 ossl_bsaes_ctr32_encrypt_blocks:
 .cfi_startproc
@@ -2217,7 +2229,7 @@ $arg6=~s/d$//;
 
 $code.=<<___;
 .globl	ossl_bsaes_xts_encrypt
-.type	ossl_bsaes_xts_encrypt,\@abi-omnipotent
+.type	ossl_bsaes_xts_encrypt,\@abi-omnipotent,,endbranch
 .align	16
 ossl_bsaes_xts_encrypt:
 .cfi_startproc
@@ -2626,7 +2638,7 @@ $code.=<<___;
 .size	ossl_bsaes_xts_encrypt,.-ossl_bsaes_xts_encrypt
 
 .globl	ossl_bsaes_xts_decrypt
-.type	ossl_bsaes_xts_decrypt,\@abi-omnipotent
+.type	ossl_bsaes_xts_decrypt,\@abi-omnipotent,,endbranch
 .align	16
 ossl_bsaes_xts_decrypt:
 .cfi_startproc

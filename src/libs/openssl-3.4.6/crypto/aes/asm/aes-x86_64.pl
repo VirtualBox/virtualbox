@@ -601,7 +601,7 @@ ___
 # void AES_encrypt (const void *inp,void *out,const AES_KEY *key);
 $code.=<<___;
 .globl	AES_encrypt
-.type	AES_encrypt,\@function,3
+.type	AES_encrypt,\@function,3,endbranch
 .align	16
 .globl	asm_AES_encrypt
 .hidden	asm_AES_encrypt
@@ -1223,7 +1223,7 @@ ___
 # void AES_decrypt (const void *inp,void *out,const AES_KEY *key);
 $code.=<<___;
 .globl	AES_decrypt
-.type	AES_decrypt,\@function,3
+.type	AES_decrypt,\@function,3,endbranch
 .align	16
 .globl	asm_AES_decrypt
 .hidden	asm_AES_decrypt
@@ -1343,7 +1343,7 @@ ___
 #                        AES_KEY *key)
 $code.=<<___;
 .globl	AES_set_encrypt_key
-.type	AES_set_encrypt_key,\@function,3
+.type	AES_set_encrypt_key,\@function,3,endbranch
 .align	16
 AES_set_encrypt_key:
 .cfi_startproc
@@ -1624,7 +1624,7 @@ ___
 #                        AES_KEY *key)
 $code.=<<___;
 .globl	AES_set_decrypt_key
-.type	AES_set_decrypt_key,\@function,3
+.type	AES_set_decrypt_key,\@function,3,endbranch
 .align	16
 AES_set_decrypt_key:
 .cfi_startproc
@@ -1734,7 +1734,7 @@ my $mark="80+240(%rsp)";	# copy of aes_key->rounds
 
 $code.=<<___;
 .globl	AES_cbc_encrypt
-.type	AES_cbc_encrypt,\@function,6
+.type	AES_cbc_encrypt,\@function,6,endbranch
 .align	16
 .extern	OPENSSL_ia32cap_P
 .globl	asm_AES_cbc_encrypt

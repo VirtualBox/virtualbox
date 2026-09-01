@@ -589,9 +589,10 @@ $code.=<<___ if ($win64);	# (%rax is initialized in win64 abi conversion glue)
 .cfi_offset	%xmm9,-8-2*16-8
 	movaps	%xmm10,-8-1*16(%rax)
 .cfi_offset	%xmm10,-8-1*16-8
-.cfi_endprolog
 ___
 $code.=<<___;
+.cfi_endprolog
+
 	lea		K256+0x80(%rip),$Tbl
 	movdqu		($ctx),$ABEF		# DCBA
 	movdqu		16($ctx),$CDGH		# HGFE

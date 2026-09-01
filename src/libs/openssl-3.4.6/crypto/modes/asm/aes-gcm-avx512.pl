@@ -4313,7 +4313,7 @@ $code .= ".text\n";
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   $code .= <<___;
 .globl ossl_aes_gcm_init_avx512
-.type ossl_aes_gcm_init_avx512,\@abi-omnipotent
+.type ossl_aes_gcm_init_avx512,\@abi-omnipotent,,endbranch
 .align 32
 ossl_aes_gcm_init_avx512:
 .cfi_startproc
@@ -4377,7 +4377,7 @@ ___
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 $code .= <<___;
 .globl ossl_aes_gcm_setiv_avx512
-.type ossl_aes_gcm_setiv_avx512,\@abi-omnipotent
+.type ossl_aes_gcm_setiv_avx512,\@abi-omnipotent,,endbranch
 .align 32
 ossl_aes_gcm_setiv_avx512:
 .cfi_startproc
@@ -4432,7 +4432,7 @@ ___
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 $code .= <<___;
 .globl ossl_aes_gcm_update_aad_avx512
-.type ossl_aes_gcm_update_aad_avx512,\@abi-omnipotent
+.type ossl_aes_gcm_update_aad_avx512,\@abi-omnipotent,,endbranch
 .align 32
 ossl_aes_gcm_update_aad_avx512:
 .cfi_startproc
@@ -4487,7 +4487,7 @@ ___
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 $code .= <<___;
 .globl ossl_aes_gcm_encrypt_avx512
-.type ossl_aes_gcm_encrypt_avx512,\@abi-omnipotent
+.type ossl_aes_gcm_encrypt_avx512,\@abi-omnipotent,,endbranch
 .align 32
 ossl_aes_gcm_encrypt_avx512:
 .cfi_startproc
@@ -4570,7 +4570,7 @@ ___
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 $code .= <<___;
 .globl ossl_aes_gcm_decrypt_avx512
-.type ossl_aes_gcm_decrypt_avx512,\@abi-omnipotent
+.type ossl_aes_gcm_decrypt_avx512,\@abi-omnipotent,,endbranch
 .align 32
 ossl_aes_gcm_decrypt_avx512:
 .cfi_startproc
@@ -4649,7 +4649,7 @@ ___
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 $code .= <<___;
 .globl ossl_aes_gcm_finalize_avx512
-.type ossl_aes_gcm_finalize_avx512,\@abi-omnipotent
+.type ossl_aes_gcm_finalize_avx512,\@abi-omnipotent,,endbranch
 .align 32
 ossl_aes_gcm_finalize_avx512:
 .cfi_startproc
@@ -4682,7 +4682,7 @@ ___
 $code .= <<___;
 .globl ossl_gcm_gmult_avx512
 .hidden ossl_gcm_gmult_avx512
-.type ossl_gcm_gmult_avx512,\@abi-omnipotent
+.type ossl_gcm_gmult_avx512,\@abi-omnipotent,,endbranch
 .align 32
 ossl_gcm_gmult_avx512:
 .cfi_startproc
