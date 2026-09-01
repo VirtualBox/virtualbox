@@ -374,10 +374,12 @@ nsGenericModule::GetClassObject(nsIComponentManager *aCompMgr,
     const nsModuleComponentInfo* desc = mComponents;
     for (PRUint32 i = 0; i < mComponentCount; i++) {
         if (desc->mCID.Equals(aClass)) {
-            nsCOMPtr<nsIGenericFactory> fact;
-            rv = NS_NewGenericFactory(getter_AddRefs(fact), desc);
+            nsIGenericFactory *fact = NULL;
+            rv = NS_NewGenericFactory(&fact, desc);
             if (NS_FAILED(rv)) return rv;
-            return fact->QueryInterface(aIID, r_classObj);
+            rv = fact->QueryInterface(aIID, r_classObj);
+            NS_RELEASE(fact);
+            return rv;
         }
         desc++;
     }
