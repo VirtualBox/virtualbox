@@ -86,6 +86,11 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
+        <para>Graphics: Fixed a VM process crash that could occur on Linux hosts
+          with 3D acceleration enabled (github:gh-829)</para>
+      </listitem>
+
+      <listitem>
         <para>Shared Clipboard: Fixed the first character being removed from
           filenames when copying files located directly in a filesystem
           root</para>

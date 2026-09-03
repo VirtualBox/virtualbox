@@ -324,6 +324,11 @@ namespace dxvk {
 
 
   bool D3D11CommonTexture::CheckViewCompatibility(UINT BindFlags, DXGI_FORMAT Format, UINT Plane) const {
+#ifdef VBOX
+    if (!HasImage())
+      return false;
+#endif
+
     const DxvkImageCreateInfo& imageInfo = m_image->info();
 
     // Check whether the given bind flags are supported
