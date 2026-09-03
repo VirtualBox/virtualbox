@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c 114846 2026-08-03 12:55:23Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPDrv-linux.c 115151 2026-09-03 08:15:31Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -261,14 +261,16 @@ static __typeof__(cr4_read_shadow)              *g_pfnCr4ReadShadow;
 #if defined(CONFIG_X86_FRED)
 /** Flag whether the system is running with FRED enabled. */
 static bool                                      g_fFredActive = false;
-# if RTLNX_VER_MIN(7,1,0)
+# if IS_ENABLED(CONFIG_KVM_INTEL)
+#  if RTLNX_VER_MIN(7,1,0)
 /** Function pointer to x86_entry_from_kvm(). */
 static __typeof__(x86_entry_from_kvm)           *g_pfnX86EntryFromKvm = NULL;
-#  define MY_FRED_ENTRY_FROM_KVM                "x86_entry_from_kvm"
-# else
+#   define MY_FRED_ENTRY_FROM_KVM               "x86_entry_from_kvm"
+#  else
 /** Function pointer to asm_fred_entry_from_kvm(). */
 static __typeof__(asm_fred_entry_from_kvm)      *g_pfnX86EntryFromKvm = NULL;
-#  define MY_FRED_ENTRY_FROM_KVM                "asm_fred_entry_from_kvm"
+#   define MY_FRED_ENTRY_FROM_KVM               "asm_fred_entry_from_kvm"
+#  endif
 # endif
 #endif
 
