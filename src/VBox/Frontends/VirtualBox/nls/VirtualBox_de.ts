@@ -2265,7 +2265,7 @@
     </message>
     <message>
         <source>Sh&amp;ut Down</source>
-        <translation>Aus&amp;schalten</translation>
+        <translation>Herunter&amp;fahren</translation>
     </message>
     <message>
         <source>Send ACPI shutdown signal to selected virtual machines</source>
