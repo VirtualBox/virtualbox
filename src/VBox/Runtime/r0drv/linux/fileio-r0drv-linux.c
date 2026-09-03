@@ -1,4 +1,4 @@
-/* $Id: fileio-r0drv-linux.c 114810 2026-07-28 12:27:15Z vadim.galitsyn@oracle.com $ */
+/* $Id: fileio-r0drv-linux.c 115153 2026-09-03 10:43:42Z andreas.loeffler@oracle.com $ */
 /** @file
  * IPRT - File I/O, R0 Driver, Linux.
  */
@@ -152,11 +152,14 @@ RTDECL(int) RTFileOpen(PRTFILE phFile, const char *pszFilename, uint64_t fOpen)
     if (!rc)
     {
         /*
-         * Open it.
+         * Open it.  RHEL 9.8 replaced open_with_fake_path() with
+         * kernel_file_open() between kernel releases 5.14.0-687.17.1 and
+         * 5.14.0-687.19.1.  The newer API also defines FMODE_BACKING, so use
+         * that macro to distinguish the two APIs.
          */
 # if RTLNX_VER_MIN(6,10,0)
         struct file *pFile = kernel_file_open(&Path, fOpenMode, current_cred());
-# elif RTLNX_VER_MIN(6,5,0) || RTLNX_RHEL_RANGE(9,8, 9,99)
+# elif RTLNX_VER_MIN(6,5,0) || (RTLNX_RHEL_RANGE(9,8, 9,99) && defined(FMODE_BACKING))
         struct file *pFile = kernel_file_open(&Path, fOpenMode, d_inode(Path.dentry), current_cred());
 # elif RTLNX_VER_MIN(4,19,0)
         struct file *pFile = open_with_fake_path(&Path, fOpenMode, d_inode(Path.dentry), current_cred());
