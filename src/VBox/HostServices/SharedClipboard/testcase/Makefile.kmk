@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 115090 2026-08-19 13:39:39Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 115146 2026-09-03 07:06:30Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the Shared Clipboard Host Service testcases.
 #
@@ -160,20 +160,21 @@ if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_ADDITIONS) && !defined(VBO
   #
   # Windows IDataObject tests.
   #
-  #PROGRAMS.win += tstClipboardDataObjectWin
-  #tstClipboardDataObjectWin_TEMPLATE = VBoxR3TstExe
-  #tstClipboardDataObjectWin_DEFS    += UNICODE VBOX_WITH_HGCM UNIT_TEST VBOX_WITH_SHARED_CLIPBOARD VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
-  #tstClipboardDataObjectWin_SOURCES  = \
-  #	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-common.cpp \
-  #	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-helper.cpp \
-  #	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-win.cpp \
-  #	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers.cpp \
-  #	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers-provider-local.cpp \
-  #	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/ClipboardDataObjectImpl-win.cpp \
-  #	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/ClipboardEnumFormatEtcImpl-win.cpp \
-  #	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/ClipboardStreamImpl-win.cpp \
-  #	tstClipboardDataObjectWin.cpp
-  #tstClipboardDataObjectWin_LIBS     = $(LIB_RUNTIME)
+  PROGRAMS.win += tstClipboardDataObjectWin
+  tstClipboardDataObjectWin_TEMPLATE = VBoxR3TstExe
+  tstClipboardDataObjectWin_DEFS    += VBOX_WITH_HGCM UNIT_TEST VBOX_WITH_SHARED_CLIPBOARD VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+  tstClipboardDataObjectWin_SOURCES  = \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-common.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-helper.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-win.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/ClipboardPath.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/clipboard-transfers-provider-local.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/ClipboardDataObjectImpl-win.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/ClipboardEnumFormatEtcImpl-win.cpp \
+  	$(PATH_ROOT)/src/VBox/GuestHost/SharedClipboard/ClipboardStreamImpl-win.cpp \
+  	tstClipboardDataObjectWin.cpp
+  tstClipboardDataObjectWin_LIBS     = $(LIB_RUNTIME)
  endif
 endif
 

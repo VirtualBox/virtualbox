@@ -1,4 +1,4 @@
-/* $Id: dirops.c 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: dirops.c 115146 2026-09-03 07:06:30Z andreas.loeffler@oracle.com $ */
 /** @file
  * vboxsf - VBox Linux Shared Folders VFS, directory inode and file operations.
  */
@@ -1043,10 +1043,11 @@ static int vbsf_inode_atomic_open(struct inode *pDirInode, struct dentry *dentry
  * @param   parent  inode of the directory
  * @param   dentry  directory cache entry
  * @param   mode    file mode
- * @param   excl    Possible O_EXCL...
  * @returns 0 on success, Linux error code otherwise
  */
-#if RTLNX_VER_MIN(6,3,0) || RTLNX_RHEL_RANGE(9,6, 9,99) || defined(DOXYGEN_RUNNING)
+#if RTLNX_VER_MIN(7,3,0) || defined(DOXYGEN_RUNNING)
+static int vbsf_inode_create(struct mnt_idmap *idmap, struct inode *parent, struct dentry *dentry, umode_t mode)
+#elif RTLNX_VER_MIN(6,3,0) || RTLNX_RHEL_RANGE(9,6, 9,99)
 static int vbsf_inode_create(struct mnt_idmap *idmap, struct inode *parent, struct dentry *dentry, umode_t mode, bool excl)
 #elif RTLNX_VER_MIN(5,12,0)
 static int vbsf_inode_create(struct user_namespace *ns, struct inode *parent, struct dentry *dentry, umode_t mode, bool excl)

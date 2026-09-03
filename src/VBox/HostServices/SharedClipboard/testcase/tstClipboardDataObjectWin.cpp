@@ -1,4 +1,4 @@
-/* $Id: tstClipboardDataObjectWin.cpp 114600 2026-07-03 10:23:59Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardDataObjectWin.cpp 115146 2026-09-03 07:06:30Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Windows IDataObject testcase.
  */
@@ -261,6 +261,33 @@ typedef struct TESTCTX
 } TESTCTX;
 
 
+/** Exposes the protected data-object helpers needed by focused tests. */
+class TstWinDataObject : public ShClWinDataObject
+{
+public:
+    using ShClWinDataObject::createFileGroupDescriptorFromTransfer;
+    using ShClWinDataObject::readDir;
+
+    /**
+     * Adds a descriptor entry.
+     *
+     * @retval  VERR_NO_MEMORY      if duplicating the entry path fails.
+     */
+    int addEntry(const char *pszPath, RTFMODE fMode, RTFOFF cbObject)
+    {
+        FSOBJENTRY objEntry;
+        RT_ZERO(objEntry);
+        objEntry.pszPath = RTStrDup(pszPath);
+        if (!objEntry.pszPath)
+            return VERR_NO_MEMORY;
+        objEntry.objInfo.Attr.fMode = fMode;
+        objEntry.objInfo.cbObject   = cbObject;
+        m_lstEntries.push_back(objEntry);
+        return VINF_SUCCESS;
+    }
+};
+
+
 static DECLCALLBACK(int) testTransferBegin(ShClWinDataObject::PCALLBACKCTX pCbCtx)
 {
     AssertPtrReturn(pCbCtx, VERR_INVALID_POINTER);
@@ -463,6 +490,147 @@ static int testCreateTransfer(const char * const *papszRoots, unsigned cRoots,
     }
 
     return rc;
+}
+
+
+/** Tests recursive enumeration of a directory containing only a nested directory. */
+static void testNestedDirectoryEnumeration(void)
+{
+    RTTestISub("Nested directory enumeration");
+
+    char szTempDir[RTPATH_MAX] = "";
+    char szRootDir[RTPATH_MAX] = "";
+    char szChildDir[RTPATH_MAX] = "";
+    char szNestedFile[RTPATH_MAX] = "";
+    RTFILE hFile = NIL_RTFILE;
+    HGLOBAL hGlobal = NULL;
+    PSHCLTRANSFER pTransfer = NULL;
+    bool fDataObjectInitialized = false;
+
+    uint8_t bFrontendCtx = 0;
+    TstWinDataObject DataObject;
+    ShClWinDataObject::CALLBACKS Callbacks;
+    RT_ZERO(Callbacks);
+
+    SHCLTXPROVIDER Provider;
+    RT_ZERO(Provider);
+
+    int rc;
+    do
+    {
+        rc = testCreateTempDir(szTempDir, sizeof(szTempDir));
+        if (RT_FAILURE(rc))
+            break;
+
+        rc = RTPathJoin(szRootDir, sizeof(szRootDir), szTempDir, "root");
+        if (RT_SUCCESS(rc))
+            rc = RTDirCreate(szRootDir, 0700, 0);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        rc = RTPathJoin(szChildDir, sizeof(szChildDir), szRootDir, "child");
+        if (RT_SUCCESS(rc))
+            rc = RTDirCreate(szChildDir, 0700, 0);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        rc = RTPathJoin(szNestedFile, sizeof(szNestedFile), szChildDir, "nested.bin");
+        if (RT_SUCCESS(rc))
+            rc = RTFileOpen(&hFile, szNestedFile, RTFILE_O_WRITE | RTFILE_O_CREATE_REPLACE | RTFILE_O_DENY_NONE);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        uint8_t const abContents[] = { 0x42, 0x69, 0x6e };
+        rc = RTFileWrite(hFile, abContents, sizeof(abContents), NULL);
+        int rc2 = RTFileClose(hFile);
+        hFile = NIL_RTFILE;
+        if (RT_SUCCESS(rc))
+            rc = rc2;
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        RTTESTI_CHECK(ShClTransferProviderLocalQueryInterface(&Provider) != NULL);
+        if (!Provider.Interface.pfnListOpen)
+            break;
+        rc = ShClTransferCreate(SHCLTRANSFERDIR_TO_REMOTE, SHCLSOURCE_LOCAL, NULL, &pTransfer);
+        if (RT_SUCCESS(rc))
+            rc = ShClTransferSetProvider(pTransfer, &Provider);
+        if (RT_SUCCESS(rc))
+            rc = ShClTransferRootsSetFromPath(pTransfer, szRootDir);
+        if (RT_SUCCESS(rc))
+            rc = ShClTransferInit(pTransfer);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        rc = DataObject.Init((PSHCLCONTEXT)&bFrontendCtx, &Callbacks);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+        fDataObjectInitialized = true;
+
+        PCSHCLLISTENTRY pRootEntry = ShClTransferRootsEntryGet(pTransfer, 0);
+        RTTESTI_CHECK(pRootEntry != NULL);
+        if (!pRootEntry)
+            break;
+        bool const fRootEntryValid =    pRootEntry->pszName
+                                    && pRootEntry->fInfo == VBOX_SHCL_INFO_F_FSOBJINFO
+                                    && pRootEntry->pvInfo
+                                    && pRootEntry->cbInfo == sizeof(SHCLFSOBJINFO);
+        RTTESTI_CHECK(fRootEntryValid);
+        if (!fRootEntryValid)
+            break;
+
+        PCSHCLFSOBJINFO pRootInfo = (PCSHCLFSOBJINFO)pRootEntry->pvInfo;
+        rc = DataObject.addEntry(pRootEntry->pszName, pRootInfo->Attr.fMode, pRootInfo->cbObject);
+        if (RT_SUCCESS(rc))
+            rc = DataObject.readDir(pTransfer, Utf8Str(pRootEntry->pszName));
+        if (RT_SUCCESS(rc))
+            rc = DataObject.createFileGroupDescriptorFromTransfer(pTransfer, true /* fUnicode */, &hGlobal);
+        RTTESTI_CHECK_RC_OK(rc);
+        if (RT_FAILURE(rc))
+            break;
+
+        FILEGROUPDESCRIPTORW const *pDescriptor = (FILEGROUPDESCRIPTORW const *)GlobalLock(hGlobal);
+        RTTESTI_CHECK(pDescriptor != NULL);
+        if (!pDescriptor)
+            break;
+
+        Utf8Str const strRoot(pRootEntry->pszName);
+        Utf8Str const strChild = strRoot + Utf8Str("\\child");
+        Utf8Str const strNested = strChild + Utf8Str("\\nested.bin");
+        bool fFoundRoot = false;
+        bool fFoundChild = false;
+        bool fFoundNested = false;
+        for (UINT i = 0; i < pDescriptor->cItems; ++i)
+        {
+            PCRTUTF16 const pwszName = (PCRTUTF16)pDescriptor->fgd[i].cFileName;
+            fFoundRoot   |= RTUtf16CmpUtf8(pwszName, strRoot.c_str()) == 0;
+            fFoundChild  |= RTUtf16CmpUtf8(pwszName, strChild.c_str()) == 0;
+            fFoundNested |= RTUtf16CmpUtf8(pwszName, strNested.c_str()) == 0;
+        }
+
+        RTTESTI_CHECK_MSG(pDescriptor->cItems == 3, ("cItems=%RU32, expected 3\n", pDescriptor->cItems));
+        RTTESTI_CHECK_MSG(fFoundRoot, ("Missing root descriptor '%s'\n", strRoot.c_str()));
+        RTTESTI_CHECK_MSG(fFoundChild, ("Missing child directory descriptor '%s'\n", strChild.c_str()));
+        RTTESTI_CHECK_MSG(fFoundNested, ("Missing nested file descriptor '%s'\n", strNested.c_str()));
+        GlobalUnlock(hGlobal);
+    } while (0);
+
+    if (hGlobal)
+        GlobalFree(hGlobal);
+    if (fDataObjectInitialized)
+        DataObject.Uninit();
+    if (pTransfer)
+        RTTESTI_CHECK_RC_OK(ShClTransferDestroy(pTransfer));
+    if (hFile != NIL_RTFILE)
+        RTTESTI_CHECK_RC_OK(RTFileClose(hFile));
+    if (szTempDir[0])
+        RTTESTI_CHECK_RC_OK(RTDirRemoveRecursive(szTempDir, RTDIRRMREC_F_CONTENT_AND_DIR));
 }
 
 
@@ -929,10 +1097,10 @@ static void testFileDescriptorW(void)
             break;
         }
 
-        CLIPFORMAT const cfFileDescriptorW = (CLIPFORMAT)RegisterClipboardFormatW(CFSTR_FILEDESCRIPTORW);
+        CLIPFORMAT const cfFileDescriptorW = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORW);
         if (!cfFileDescriptorW)
         {
-            RTTestIFailed("RegisterClipboardFormatW(CFSTR_FILEDESCRIPTORW) failed, lasterr=%u",
+            RTTestIFailed("RegisterClipboardFormat(CFSTR_FILEDESCRIPTORW) failed, lasterr=%u",
                           GetLastError());
             rc = VERR_INTERNAL_ERROR;
             break;
@@ -1024,6 +1192,7 @@ int main(int argc, char **argv)
     bool const fMayPanic = RTAssertSetMayPanic(false);
     bool const fQuiet    = RTAssertSetQuiet(true);
 
+    testNestedDirectoryEnumeration();
     testFileDescriptorW();
 
     RTAssertSetQuiet(fQuiet);

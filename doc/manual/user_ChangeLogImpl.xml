@@ -91,6 +91,11 @@ Rules for adding a changelog entry to make them look more uniform:
           root</para>
       </listitem>
 
+      <listitem>
+        <para>Shared Clipboard: Fixed copying files contained in nested
+          directories to Windows hosts and guests</para>
+      </listitem>
+
     </itemizedlist>
   </sect1>
 
