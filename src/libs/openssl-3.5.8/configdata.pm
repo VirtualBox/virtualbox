@@ -168,7 +168,7 @@ our %config = (
         "afalg"
     ],
     "ex_libs" => [],
-    "full_version" => "3.4.1",
+    "full_version" => "3.5.8",
     "includes" => [],
     "lflags" => [],
     "lib_defines" => [
@@ -177,7 +177,7 @@ our %config = (
     "libdir" => "",
     "major" => "3",
     "makedep_scheme" => "gcc",
-    "minor" => "4",
+    "minor" => "5",
     "openssl_api_defines" => [
         "OPENSSL_CONFIGURED_API=10101"
     ],
@@ -239,7 +239,7 @@ our %config = (
     "openssl_sys_defines" => [],
     "openssldir" => "",
     "options" => "--api=1.1.1 enable-md2 no-acvp-tests no-asan no-brotli no-brotli-dynamic no-buildtest-c++ no-crypto-mdebug no-crypto-mdebug-backtrace no-default-thread-pool no-demos no-devcryptoeng no-ec_nistp_64_gcc_128 no-ecdh no-ecdsa no-egd no-external-tests no-fips no-fips-post no-fips-securitychecks no-fuzz-afl no-fuzz-libfuzzer no-h3demo no-idea no-jitter no-ktls no-md4 no-msan no-pie no-rc2 no-rc5 no-rmd160 no-sctp no-sm2 no-sm4 no-ssl3 no-ssl3-method no-tfo no-thread-pool no-trace no-ubsan no-unit-test no-uplink no-weak-ssl-ciphers no-whirlpool no-winstore no-zlib no-zlib-dynamic no-zstd no-zstd-dynamic",
-    "patch" => "1",
+    "patch" => "8",
     "perl_archname" => "x86_64-linux-gnu-thread-multi",
     "perl_cmd" => "/usr/bin/perl",
     "perl_version" => "5.38.2",
@@ -300,11 +300,11 @@ our %config = (
     "prerelease" => "",
     "processor" => "",
     "rc4_int" => "unsigned int",
-    "release_date" => "11 Feb 2025",
+    "release_date" => "25 Aug 2026",
     "shlib_version" => "3",
     "sourcedir" => ".",
     "target" => "linux-x86_64",
-    "version" => "3.4.1"
+    "version" => "3.5.8"
 );
 our %target = (
     "AR" => "ar",
