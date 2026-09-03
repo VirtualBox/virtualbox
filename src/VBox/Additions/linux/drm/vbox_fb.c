@@ -1,4 +1,4 @@
-/* $Id: vbox_fb.c 114659 2026-07-08 10:38:01Z vadim.galitsyn@oracle.com $ */
+/* $Id: vbox_fb.c 115161 2026-09-03 12:38:53Z vadim.galitsyn@oracle.com $ */
 /** @file
  * VirtualBox Additions Linux kernel video driver
  */
@@ -335,7 +335,7 @@ int vboxfb_create(struct drm_fb_helper *helper,
 		return ret;
 	}
 
-#if RTLNX_VER_MIN(6,19,0) || RTLNX_RHEL_RANGE(9,9, 9,99)
+#if RTLNX_VER_MIN(6,19,0) || RTLNX_VER_RANGE(6,12,103, 6,13,0) || RTLNX_RHEL_RANGE(9,9, 9,99)
 	info = helper->info;
 #elif RTLNX_VER_MIN(6,2,0) || RTLNX_RHEL_RANGE(8,9, 8,99) || RTLNX_RHEL_RANGE(9,3, 9,99)
 	info = drm_fb_helper_alloc_info(helper);
