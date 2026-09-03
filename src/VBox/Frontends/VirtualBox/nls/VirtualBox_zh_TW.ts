@@ -996,7 +996,7 @@
     </message>
     <message>
         <source>Take Sn&amp;apshot...</source>
-        <translation>取得螢幕快照(&amp;A)...</translation>
+        <translation>取得快照(&amp;A)...</translation>
     </message>
     <message>
         <source>Take a snapshot of the virtual machine</source>
@@ -1084,7 +1084,7 @@
     </message>
     <message>
         <source>Take guest display screenshot</source>
-        <translation>取得客體顯示幕幕快照</translation>
+        <translation>取得客體顯示幕的螢幕快照</translation>
     </message>
     <message>
         <source>&amp;Recording</source>
@@ -3230,7 +3230,7 @@
     <message>
         <source>Taking Online Snapshot</source>
         <comment>MachineState</comment>
-        <translation>取得線上快照</translation>
+        <translation>取得快照</translation>
     </message>
     <message>
         <source>Taking Live Snapshot</source>
@@ -8469,7 +8469,7 @@
     </message>
     <message>
         <source>Ok</source>
-        <translation>正常</translation>
+        <translation>確定</translation>
     </message>
     <message>
         <source>&lt;p&gt;The Virtual Machine reports that the guest OS supports &lt;b&gt;mouse pointer integration&lt;/b&gt;. This means that you do not need to &lt;i&gt;capture&lt;/i&gt; the mouse pointer to be able to use it in your guest OS -- all mouse actions you perform when the mouse pointer is over the Virtual Machine&apos;s display are directly sent to the guest OS. If the mouse is currently captured, it will be automatically uncaptured.&lt;/p&gt;&lt;p&gt;The mouse icon on the status bar will look like&amp;nbsp;&lt;img src=:/mouse_seamless_16px.png/&gt;&amp;nbsp;to inform you that mouse pointer integration is supported by the guest OS and is currently turned on.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Note&lt;/b&gt;: Some applications may behave incorrectly in mouse pointer integration mode. You can always disable it for the current session (and enable it again) by selecting the corresponding action from the menu bar.&lt;/p&gt;</source>
@@ -8940,7 +8940,7 @@
     </message>
     <message>
         <source>Snapshot failure ...</source>
-        <translation>快照名稱 ...</translation>
+        <translation>快照失敗 ...</translation>
     </message>
     <message>
         <source>Failed to acquire snapshot parameter.</source>
@@ -9288,11 +9288,11 @@
     </message>
     <message>
         <source>Can&apos;t find snapshot ...</source>
-        <translation>找不到螢幕快照 ...</translation>
+        <translation>找不到快照 ...</translation>
     </message>
     <message>
         <source>Can&apos;t change snapshot ...</source>
-        <translation>無法變更螢幕快照 ...</translation>
+        <translation>無法變更快照 ...</translation>
     </message>
     <message>
         <source>Can&apos;t run guest install ...</source>
@@ -10816,7 +10816,7 @@
     </message>
     <message>
         <source>&lt;b&gt;VM Name:&lt;/b&gt; %1&lt;br&gt;&lt;b&gt;Snapshot Name:&lt;/b&gt; %2</source>
-        <translation>&lt;b&gt;VM 名稱:&lt;/b&gt; %1&lt;br&gt;&lt;b&gt;螢幕快照名稱:&lt;/b&gt; %2</translation>
+        <translation>&lt;b&gt;VM 名稱:&lt;/b&gt; %1&lt;br&gt;&lt;b&gt;快照名稱:&lt;/b&gt; %2</translation>
     </message>
     <message>
         <source>Restoring snapshot ...</source>
@@ -11597,7 +11597,7 @@
     </message>
     <message>
         <source>Take</source>
-        <translation>拍照</translation>
+        <translation>取得</translation>
     </message>
     <message>
         <source>Take snapshot on the basis of current machine state</source>
@@ -11652,12 +11652,12 @@
     <message>
         <source>online</source>
         <comment>snapshot</comment>
-        <translation>線上</translation>
+        <translation>含執行狀態</translation>
     </message>
     <message>
         <source>offline</source>
         <comment>snapshot</comment>
-        <translation>離線</translation>
+        <translation>不含執行狀態</translation>
     </message>
     <message>
         <source>Taken at %1</source>
@@ -12323,7 +12323,7 @@
     </message>
     <message>
         <source>Ok</source>
-        <translation>正常</translation>
+        <translation>確定</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -12339,7 +12339,7 @@
     </message>
     <message>
         <source>Close dialog without taking a snapshot</source>
-        <translation>關閉對話方塊而不取得螢幕快照</translation>
+        <translation>關閉對話方塊而不取得快照</translation>
     </message>
     <message>
         <source>Show dialog help</source>
