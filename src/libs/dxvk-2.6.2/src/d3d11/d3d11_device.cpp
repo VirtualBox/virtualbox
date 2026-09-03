@@ -2325,6 +2325,11 @@ namespace dxvk {
     if (!texture)
       return 0;
 
+#ifdef VBOX
+    if (!texture->HasImage())
+      return 0;
+#endif
+
     uint32_t planeCount = texture->GetPlaneCount();
 
     if (planeCount == 1)
