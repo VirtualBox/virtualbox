@@ -1,4 +1,4 @@
-/* $Id: dirops.c 115146 2026-09-03 07:06:30Z andreas.loeffler@oracle.com $ */
+/* $Id: dirops.c 115159 2026-09-03 12:37:21Z vadim.galitsyn@oracle.com $ */
 /** @file
  * vboxsf - VBox Linux Shared Folders VFS, directory inode and file operations.
  */
@@ -1089,7 +1089,7 @@ static int vbsf_inode_create(struct inode *parent, struct dentry *dentry, int mo
  * @param   mode    file mode
  * @returns 0 on success, Linux error code otherwise
  */
-#if RTLNX_VER_MIN(6,15,0)
+#if RTLNX_VER_MIN(6,15,0) || RTLNX_RHEL_RANGE(10,3, 10,99)
 static struct dentry *vbsf_inode_mkdir(struct mnt_idmap *idmap, struct inode *parent, struct dentry *dentry, umode_t mode)
 #elif RTLNX_VER_MIN(6,3,0) || RTLNX_RHEL_RANGE(9,6, 9,99) || defined(DOXYGEN_RUNNING)
 static int vbsf_inode_mkdir(struct mnt_idmap *idmap, struct inode *parent, struct dentry *dentry, umode_t mode)
@@ -1112,7 +1112,7 @@ static int vbsf_inode_mkdir(struct inode *parent, struct dentry *dentry, int mod
                             | SHFL_CF_ACCESS_READWRITE
                             | SHFL_CF_DIRECTORY,
                             false /*fStashHandle*/, false /*fDoLookup*/, NULL /*phHandle*/, NULL /*fCreated*/);
-#if RTLNX_VER_MIN(6,15,0)
+#if RTLNX_VER_MIN(6,15,0) || RTLNX_RHEL_RANGE(10,3, 10,99)
     return ERR_PTR(rc);
 #else
     return rc;
