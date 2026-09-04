@@ -86,6 +86,12 @@ Rules for adding a changelog entry to make them look more uniform:
       </listitem>
 
       <listitem>
+        <para>Storage: Fixed data corruption in VDI differencing images after
+          writing full blocks of zeroes and reopening the image
+          (github:gh-850)</para>
+      </listitem>
+
+      <listitem>
         <para>Graphics: Fixed a VM process crash that could occur on Linux hosts
           with 3D acceleration enabled (github:gh-829)</para>
       </listitem>

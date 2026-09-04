@@ -1,4 +1,4 @@
-/* $Id: VDI.cpp 114722 2026-07-17 10:30:19Z alexander.eichner@oracle.com $ */
+/* $Id: VDI.cpp 115165 2026-09-04 09:00:07Z andreas.loeffler@oracle.com $ */
 /** @file
  * Virtual Disk Image (VDI), Core Code.
  */
@@ -1725,15 +1725,19 @@ static DECLCALLBACK(int) vdiWrite(void *pBackendData, uint64_t uOffset, size_t c
                     && (   pImage->paBlocks[uBlock] == VDI_IMAGE_BLOCK_ZERO
                         || cbToWrite == getImageBlockSize(&pImage->Header)))
                 {
-                    /* If the destination block is unallocated at this point, it's
-                     * either a zero block or a block which hasn't been used so far
-                     * (which also means that it's a zero block. Don't need to write
-                     * anything to this block  if the data consists of just zeroes. */
+                    /* An unallocated block needs no physical storage if its
+                     * data consists only of zeroes. In a differencing image a
+                     * free block inherits from the parent, so persist an
+                     * explicit zero marker.  See github:gh-850 */
                     if (vdIfIoIntIoCtxIsZero(pImage->pIfIo, pIoCtx, cbToWrite, true))
                     {
-                        pImage->paBlocks[uBlock] = VDI_IMAGE_BLOCK_ZERO;
                         *pcbPreRead = 0;
                         *pcbPostRead = 0;
+                        if (pImage->paBlocks[uBlock] != VDI_IMAGE_BLOCK_ZERO)
+                        {
+                            pImage->paBlocks[uBlock] = VDI_IMAGE_BLOCK_ZERO;
+                            rc = vdiUpdateBlockInfoAsync(pImage, uBlock, pIoCtx, false /* fUpdateHdr */);
+                        }
                         break;
                     }
                 }
