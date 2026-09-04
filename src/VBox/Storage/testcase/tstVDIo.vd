@@ -1,4 +1,4 @@
-/* $Id: tstVDIo.vd 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: tstVDIo.vd 115164 2026-09-04 08:49:00Z andreas.loeffler@oracle.com $ */
 /**
  * Storage: Simple I/O testing for most backends.
  */
@@ -56,6 +56,59 @@ void tstIoUnaligned(string strMessage, string strBackend)
     destroydisk("test");
 }
 
+/**
+ * Tests that full zero blocks in a differencing image are persisted.
+ *
+ * A free block in a differencing image inherits data from its parent, whereas
+ * an explicit zero block masks the parent data.  The VDI backend optimizes a
+ * full-block zero write by storing an explicit zero entry in the block table
+ * instead of allocating data storage.  This test verifies that the entry is
+ * persisted for synchronous and asynchronous writes, survives closing and
+ * reopening the image chain, and remains correct after merging the child into
+ * the base image.  See github:gh-850.
+ */
+void tstVDIZeroBlocks(string strMessage, string strBackend)
+{
+    print(strMessage);
+
+    /* Create nonzero and zero data patterns. */
+    iopatterncreatefromnumber("parent", 1M, 0x5a5a5a5a);
+    iopatterncreatefromnumber("zero", 1M, 0);
+
+    /* Create a verified base image and fill two blocks with nonzero data. */
+    createdisk("test", true /* fVerify */);
+    create("test", "base", "tstZero.vdi", "dynamic", strBackend, 4M, false /* fIgnoreFlush */, false);
+    io("test", false, 1, "seq", 1M, 0, 2M, 2M, 100, "parent");
+
+    /* Create a differencing image and zero one block synchronously and
+     * one asynchronously. */
+    create("test", "diff", "tstZeroDiff.vdi", "dynamic", strBackend, 4M, false /* fIgnoreFlush */, false);
+    io("test", false, 1, "seq", 1M, 0, 1M, 1M, 100, "zero");
+    io("test", true, 1, "seq", 1M, 1M, 2M, 1M, 100, "zero");
+    io("test", false, 1, "seq", 1M, 0, 2M, 2M,   0, "none");
+
+    /* Reopen the image chain and verify that the zero blocks persisted. */
+    close("test", "all", false /* fDelete */);
+    open("test", "tstZero.vdi", strBackend, false, false, false, false, false, false);
+    open("test", "tstZeroDiff.vdi", strBackend, false, false, false, false, false, false);
+    io("test", false, 1, "seq", 1M, 0, 2M, 2M,   0, "none");
+
+    /* Merge the differencing image into the base and verify the result. */
+    merge("test", 1, 0);
+    io("test", false, 1, "seq", 1M, 0, 2M, 2M,   0, "none");
+
+    /* Reopen the surviving base image and verify it again. */
+    close("test", "all", false /* fDelete */);
+    open("test", "tstZero.vdi", strBackend, false, false, false, false, false, false);
+    io("test", false, 1, "seq", 1M, 0, 2M, 2M,   0, "none");
+
+    /* Cleanup. */
+    close("test", "single", true /* fDelete */);
+    destroydisk("test");
+    iopatterndestroy("zero");
+    iopatterndestroy("parent");
+}
+
 void main()
 {
     /* Init I/O RNG for generating random data for writes */
@@ -67,6 +120,8 @@ void main()
     tstIo("Testing Parallels", "Parallels");
     tstIo("Testing QED", "QED");
     tstIo("Testing QCOW", "QCOW");
+
+    tstVDIZeroBlocks("Testing VDI zero blocks in a differencing image", "VDI");
 
     iorngdestroy();
 }
