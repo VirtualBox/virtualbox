@@ -1,4 +1,4 @@
-/* $Id: SUPR3HardenedMain-win.cpp 115181 2026-09-07 16:27:35Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPR3HardenedMain-win.cpp 115182 2026-09-07 16:28:20Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Hardened main(), windows bits.
  */
@@ -1311,9 +1311,19 @@ static NTSTATUS supR3HardenedScreenImageCalcStatus(int rc) RT_NOTHROW_DEF
 
        NtCreateSection probably returns something different, possibly a warning,
        we currently don't distinguish between the too, so we stick with the
-       LdrLoadDll one as it's definitely an error.*/
+       LdrLoadDll one as it's definitely an error.
+
+       Update 2026-08-20: We should not return anything that can be translated
+       to ERROR_BAD_EXE_FORMAT here, because .NET may take an unsafe fallback
+       path (FlatImageLayout) which maps the file as data and interprets the
+       content without strict certificate checking.
+
+       Should this backfire for some other images (resource, whatever), we will
+       need to detect these images in IPRT and return a slightly different error
+       code for them (IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR -> CLI header ->
+       Metadata root (0x424a5342/BSJB magic)). */
     if (rc == VERR_LDR_ARCH_MISMATCH)
-        return STATUS_INVALID_IMAGE_FORMAT;
+        return STATUS_FILE_NOT_SUPPORTED; /* not STATUS_INVALID_IMAGE_FORMAT!  */
 
     return STATUS_TRUST_FAILURE;
 }
@@ -1747,8 +1757,18 @@ supR3HardenedMonitor_NtCreateSection(PHANDLE phSection, ACCESS_MASK fAccess, POB
     {
         bool const fImage    = RT_BOOL(fAttribs & (SEC_IMAGE | SEC_PROTECTED_IMAGE));
         bool const fExecMap  = RT_BOOL(fAccess & SECTION_MAP_EXECUTE);
-        SUP_DPRINTF(("supR3HardenedMonitor_NtCreateSection: fAccess=%#x fProtect=%#x fAttribs=%#x hFile=%#x - fImage=%d fExecMap=%d fExecProt=%d\n",
-                     fAccess, fProtect, fAttribs, hFile, fImage, fExecMap, fExecProt));
+#if 0
+        union
+        {
+            UNICODE_STRING UniStr;
+            uint8_t abBuffer[sizeof(UNICODE_STRING) + 1024 * sizeof(WCHAR)];
+        } uBuf;
+        RT_ZERO(uBuf);
+        ULONG cbNameBuf;
+        NTSTATUS rcNt2 = NtQueryObject(hFile, ObjectNameInformation, &uBuf, sizeof(uBuf) - sizeof(WCHAR) - 16, &cbNameBuf);
+        SUP_DPRINTF(("supR3HardenedMonitor_NtCreateSection: fAccess=%#x fProtect=%#x fAttribs=%#x hFile=%#x - fImage=%d fExecMap=%d fExecProt=%d - '%ls' (name query rcNt=%#x)\n",
+                     fAccess, fProtect, fAttribs, hFile, fImage, fExecMap, fExecProt, NT_SUCCESS(rcNt2) ? uBuf.UniStr.Buffer  : L"", rcNt2));
+#endif
         if (fImage || fExecMap || fExecProt)
         {
             fNeedUncChecking = true;
