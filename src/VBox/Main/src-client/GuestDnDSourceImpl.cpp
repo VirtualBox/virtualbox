@@ -1,4 +1,4 @@
-/* $Id: GuestDnDSourceImpl.cpp 114608 2026-07-03 12:59:42Z andreas.loeffler@oracle.com $ */
+/* $Id: GuestDnDSourceImpl.cpp 115171 2026-09-07 15:42:36Z andreas.loeffler@oracle.com $ */
 /** @file
  * VBox Console COM Class implementation - Guest drag and drop source.
  */
@@ -45,6 +45,7 @@
 #include <iprt/dir.h>
 #include <iprt/file.h>
 #include <iprt/path.h>
+#include <iprt/string.h>
 #include <iprt/uri.h>
 
 #include <iprt/cpp/utils.h> /* For unconst(). */
@@ -856,6 +857,12 @@ int GuestDnDSource::i_onReceiveDir(GuestDnDRecvCtx *pCtx, const char *pszPath, u
     AssertPtrReturn(pszPath, VERR_INVALID_POINTER);
     AssertReturn(cbPath,     VERR_INVALID_PARAMETER);
 
+    if (   cbPath > RTPATH_MAX + 1
+        || RT_FAILURE(RTStrValidateEncodingEx(pszPath, cbPath,
+                                                RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED
+                                              | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH)))
+        return VERR_INVALID_PARAMETER;
+
     LogFlowFunc(("pszPath=%s, cbPath=%RU32, fMode=0x%x\n", pszPath, cbPath, fMode));
 
     const PDNDTRANSFEROBJECT pObj = &pCtx->Transfer.ObjCur;
@@ -911,6 +918,12 @@ int GuestDnDSource::i_onReceiveFileHdr(GuestDnDRecvCtx *pCtx, const char *pszPat
     AssertReturn(cbPath,     VERR_INVALID_PARAMETER);
     AssertReturn(fMode,      VERR_INVALID_PARAMETER);
     /* fFlags are optional. */
+
+    if (   cbPath > RTPATH_MAX + 1
+        || RT_FAILURE(RTStrValidateEncodingEx(pszPath, cbPath,
+                                                RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED
+                                              | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH)))
+        return VERR_INVALID_PARAMETER;
 
     RT_NOREF(fFlags);
 
