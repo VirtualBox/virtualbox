@@ -1,4 +1,4 @@
-/* $Id: tstHGCMSvc.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: tstHGCMSvc.cpp 115169 2026-09-07 15:16:40Z andreas.loeffler@oracle.com $ */
 /** @file
  * HGCM Service Testcase.
  */
@@ -30,6 +30,7 @@
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
 #include <VBox/hgcmsvc.h>
+#include <VBox/HostServices/Service.h>
 #include <iprt/initterm.h>
 #include <iprt/test.h>
 
@@ -94,6 +95,92 @@ static void testGetString(VBOXHGCMSVCPARM *pParm, RTTEST hTest)
     RTTestSubDone(hTest);
 }
 
+/** Tests copying queued HGCM message parameters to caller-provided storage. */
+static void testMessageCopyParms(RTTEST hTest)
+{
+    RTTestSub(hTest, "HGCM message parameter copying");
+
+    /* Verify that a queued pointer is copied into a matching retrieval buffer. */
+    static const uint8_t s_abMessageData[] = { 0x42, 0x43, 0x44, 0x45 };
+    VBOXHGCMSVCPARM ParmSrc;
+    HGCMSvcSetPv(&ParmSrc, (void *)&s_abMessageData[0], sizeof(s_abMessageData)); /* Queued pointer. */
+    HGCM::Message Message(42, 1, &ParmSrc);
+
+    uint8_t abDst[sizeof(s_abMessageData)] = { 0 };
+    VBOXHGCMSVCPARM ParmDst;
+    HGCMSvcSetPv(&ParmDst, &abDst[0], sizeof(abDst)); /* Retrieval buffer. */
+    RTTEST_CHECK_RC(hTest, Message.GetData(42, 1, &ParmDst), VINF_SUCCESS);
+    RTTEST_CHECK(hTest, memcmp(&abDst[0], &s_abMessageData[0], sizeof(abDst)) == 0);
+
+    /* Verify that pointer retrieval rejects page-list storage without changing it. */
+    static const uint8_t s_abPageData[] = { 0x11, 0x22, 0x33, 0x44,
+                                            0x55, 0x66, 0x77, 0x88 };
+    uint8_t abPage[sizeof(s_abPageData)];
+    memcpy(&abPage[0], &s_abPageData[0], sizeof(abPage));
+    void *apvPages[1] = { &abPage[0] };
+
+    VBOXHGCMSVCPARM ParmPages;
+    RT_ZERO(ParmPages);
+    ParmPages.type              = VBOX_HGCM_SVC_PARM_PAGES; /* Retrieval buffer. */
+    ParmPages.u.Pages.cb        = sizeof(abPage);
+    ParmPages.u.Pages.cPages    = 1;
+    ParmPages.u.Pages.papvPages = &apvPages[0];
+
+    /* Suppress the expected strict guest assertion for the invalid type. */
+    bool const fQuiet    = RTAssertSetQuiet(true);
+    bool const fMayPanic = RTAssertSetMayPanic(false);
+    int const rc = Message.GetData(42, 1, &ParmPages);
+    RTAssertSetMayPanic(fMayPanic);
+    RTAssertSetQuiet(fQuiet);
+    RTTEST_CHECK_RC(hTest, rc, VERR_WRONG_PARAMETER_TYPE);
+    RTTEST_CHECK(hTest, ParmPages.type == VBOX_HGCM_SVC_PARM_PAGES); /* Retrieval buffer. */
+    RTTEST_CHECK(hTest, ParmPages.u.Pages.cb == sizeof(abPage));
+    RTTEST_CHECK(hTest, ParmPages.u.Pages.cPages == 1);
+    RTTEST_CHECK(hTest, ParmPages.u.Pages.papvPages == &apvPages[0]);
+    RTTEST_CHECK(hTest, apvPages[0] == &abPage[0]);
+    RTTEST_CHECK(hTest, memcmp(&abPage[0], &s_abPageData[0], sizeof(abPage)) == 0);
+
+    RTTestSubDone(hTest);
+}
+
+/** Tests setting the result of a deferred message-information request. */
+static void testClientSetDeferredMsgInfo(RTTEST hTest)
+{
+    RTTestSub(hTest, "HGCM deferred message information");
+
+    HGCM::Client Client(1);
+    VBOXHGCMSVCPARM aParms[2];
+    HGCMSvcSetU32(&aParms[0], 0); /* uMsg */
+    HGCMSvcSetU32(&aParms[1], 0); /* cParms */
+    Client.SetDeferred((VBOXHGCMCALLHANDLE)(uintptr_t)1, 0, RT_ELEMENTS(aParms), aParms);
+    RTTEST_CHECK_RC(hTest, Client.SetDeferredMsgInfo(42, 7), VINF_SUCCESS);
+    RTTEST_CHECK(hTest, aParms[0].type == VBOX_HGCM_SVC_PARM_32BIT); /* uMsg */
+    RTTEST_CHECK(hTest, aParms[0].u.uint32 == 42); /* uMsg */
+    RTTEST_CHECK(hTest, aParms[1].type == VBOX_HGCM_SVC_PARM_32BIT); /* cParms */
+    RTTEST_CHECK(hTest, aParms[1].u.uint32 == 7); /* cParms */
+
+    void *apvPages[1] = { (void *)(uintptr_t)0x1234 };
+    RT_ZERO(aParms[0]);
+    aParms[0].type              = VBOX_HGCM_SVC_PARM_PAGES; /* uMsg */
+    aParms[0].u.Pages.cb        = 4096;
+    aParms[0].u.Pages.cPages    = 1;
+    aParms[0].u.Pages.papvPages = &apvPages[0];
+    HGCMSvcSetU32(&aParms[1], 0); /* cParms */
+
+    bool const fQuiet     = RTAssertSetQuiet(true);
+    bool const fMayPanic  = RTAssertSetMayPanic(false);
+    int const rc = Client.SetDeferredMsgInfo(42, 7);
+    RTAssertSetMayPanic(fMayPanic);
+    RTAssertSetQuiet(fQuiet);
+    RTTEST_CHECK_RC(hTest, rc, VERR_WRONG_PARAMETER_TYPE);
+    RTTEST_CHECK(hTest, aParms[0].type == VBOX_HGCM_SVC_PARM_PAGES); /* uMsg */
+    RTTEST_CHECK(hTest, aParms[0].u.Pages.cb == 4096);
+    RTTEST_CHECK(hTest, aParms[0].u.Pages.cPages == 1);
+    RTTEST_CHECK(hTest, aParms[0].u.Pages.papvPages == &apvPages[0]);
+
+    RTTestSubDone(hTest);
+}
+
 int main()
 {
     /*
@@ -110,6 +197,8 @@ int main()
      */
     VBOXHGCMSVCPARM parm;
     testGetString(&parm, hTest);
+    testMessageCopyParms(hTest);
+    testClientSetDeferredMsgInfo(hTest);
 
     /*
      * Summary

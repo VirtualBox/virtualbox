@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 115169 2026-09-07 15:16:40Z andreas.loeffler@oracle.com $
 ## @file
 # Sub-Makefile for the HGCM service testcase.
 #
@@ -39,7 +39,10 @@ if defined(VBOX_WITH_TESTCASES) && !defined(VBOX_ONLY_ADDITIONS) && !defined(VBO
  TESTING   += $(tstHGCMSvc_0_OUTDIR)/tstHGCMSvc.run
  tstHGCMSvc_TEMPLATE  = VBoxR3TstExe
  tstHGCMSvc_DEFS      = VBOX_WITH_HGCM VBOX_TEST_HGCM_PARMS
- tstHGCMSvc_SOURCES   = tstHGCMSvc.cpp
+ tstHGCMSvc_SOURCES   = \
+ 	tstHGCMSvc.cpp \
+ 	../common/client.cpp \
+ 	../common/message.cpp
  tstHGCMSvc_CLEAN     = $(tstHGCMSvc_0_OUTDIR)/tstHGCMSvc.run
 
  $$(tstHGCMSvc_0_OUTDIR)/tstHGCMSvc.run: $$(tstHGCMSvc_1_STAGE_TARGET)

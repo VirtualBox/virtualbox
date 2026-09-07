@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestPropSvc.cpp 114647 2026-07-08 08:46:28Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxGuestPropSvc.cpp 115169 2026-09-07 15:16:40Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Property Service: Host service entry points.
  */
@@ -605,6 +605,8 @@ int Service::getProperty(uint32_t cParms, VBOXHGCMSVCPARM paParms[])
     if (   cParms != 4  /* Hardcoded value as the next lines depend on it. */
         || RT_FAILURE(HGCMSvcGetCStr(&paParms[0], &pcszName, &cbName))  /* name */
         || RT_FAILURE(HGCMSvcGetBuf(&paParms[1], (void **)&pchBuf, &cbBuf))  /* buffer */
+        || paParms[2].type != VBOX_HGCM_SVC_PARM_64BIT  /* timestamp */
+        || paParms[3].type != VBOX_HGCM_SVC_PARM_32BIT  /* size */
        )
         rc = VERR_INVALID_PARAMETER;
     else
@@ -614,6 +616,8 @@ int Service::getProperty(uint32_t cParms, VBOXHGCMSVCPARM paParms[])
         LogFlowThisFunc(("rc = %Rrc\n", rc));
         return rc;
     }
+
+    RT_UNTRUSTED_VALIDATED_FENCE();
 
     /*
      * Read and set the values we will return
@@ -958,10 +962,14 @@ int Service::enumProps(uint32_t cParms, VBOXHGCMSVCPARM paParms[])
     if (   (cParms != 3)  /* Hardcoded value as the next lines depend on it. */
         || RT_FAILURE(HGCMSvcGetCStr(&paParms[0], &pchPatterns, &cbPatterns))  /* patterns */
         || RT_FAILURE(HGCMSvcGetBuf(&paParms[1], (void **)&pchBuf, &cbBuf))  /* return buffer */
+        || paParms[2].type != VBOX_HGCM_SVC_PARM_32BIT  /* size */
        )
         rc = VERR_INVALID_PARAMETER;
     if (RT_SUCCESS(rc) && cbPatterns > GUEST_PROP_MAX_PATTERN_LEN)
         rc = VERR_TOO_MUCH_DATA;
+
+    if (RT_SUCCESS(rc))
+        RT_UNTRUSTED_VALIDATED_FENCE();
 
     /*
      * First repack the patterns into the format expected by RTStrSimplePatternMatch()
@@ -1060,6 +1068,8 @@ int Service::getOldNotificationInternal(const char *pszPatterns, uint64_t nsTime
 int Service::getNotificationWriteOut(uint32_t cParms, VBOXHGCMSVCPARM paParms[], Property const &rProp, bool fWasDeleted)
 {
     AssertReturn(cParms == 4, VERR_INVALID_PARAMETER); /* Basic sanity checking. */
+    AssertReturn(paParms[1].type == VBOX_HGCM_SVC_PARM_64BIT, VERR_INVALID_PARAMETER); /* timestamp */
+    AssertReturn(paParms[3].type == VBOX_HGCM_SVC_PARM_32BIT, VERR_INVALID_PARAMETER); /* size */
 
     /* Format the data to write to the buffer. */
     char    *pchBuf;
@@ -1128,10 +1138,13 @@ int Service::getNotification(uint32_t u32ClientId, VBOXHGCMCALLHANDLE callHandle
         || RT_FAILURE(HGCMSvcGetStr(&paParms[0], &pszPatterns, &cchPatterns))  /* patterns */
         || RT_FAILURE(HGCMSvcGetU64(&paParms[1], &nsTimestamp))  /* timestamp */
         || RT_FAILURE(HGCMSvcGetBuf(&paParms[2], (void **)&pchBuf, &cbBuf))  /* return buffer */
+        || paParms[3].type != VBOX_HGCM_SVC_PARM_32BIT  /* size */
        )
         rc = VERR_INVALID_PARAMETER;
     else
     {
+        RT_UNTRUSTED_VALIDATED_FENCE();
+
         LogFlow(("pszPatterns=%s, nsTimestamp=%llu\n", pszPatterns, nsTimestamp));
 
         /*

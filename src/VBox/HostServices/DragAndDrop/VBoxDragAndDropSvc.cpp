@@ -1,4 +1,4 @@
-/* $Id: VBoxDragAndDropSvc.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxDragAndDropSvc.cpp 115169 2026-09-07 15:16:40Z andreas.loeffler@oracle.com $ */
 /** @file
  * Drag and Drop Service.
  */
@@ -566,6 +566,12 @@ do { \
             {
                 if (cParms == 3)
                 {
+                    ASSERT_GUEST_BREAK(paParms[0].type == VBOX_HGCM_SVC_PARM_32BIT); /* uMsg */
+                    ASSERT_GUEST_BREAK(paParms[1].type == VBOX_HGCM_SVC_PARM_32BIT); /* cParms */
+                    ASSERT_GUEST_BREAK(paParms[2].type == VBOX_HGCM_SVC_PARM_32BIT); /* fBlock */
+
+                    RT_UNTRUSTED_VALIDATED_FENCE();
+
                     /* Make sure to increase the reference count so that the next message doesn't get removed between
                      * the guest's GUEST_DND_FN_GET_NEXT_HOST_MSG call and the actual message retrieval call. */
                     rc = m_pManager->GetNextMsgInfo(true /* fAddRef */,
