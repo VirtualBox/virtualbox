@@ -1,4 +1,4 @@
-/* $Id: SUPHardenedVerify-win.h 115168 2026-09-07 13:52:28Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPHardenedVerify-win.h 115176 2026-09-07 16:15:17Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library/Driver - Hardened Verification, Windows.
  */
@@ -52,8 +52,8 @@
 
 RT_C_DECLS_BEGIN
 
-#ifndef SUP_CERTIFICATES_ONLY
-# ifdef RT_OS_WINDOWS
+#if !defined(SUP_CERTIFICATES_ONLY) || defined(DOXYGEN_RUNNING)
+# if defined(RT_OS_WINDOWS) || defined(DOXYGEN_RUNNING)
 DECLHIDDEN(int)     supHardenedWinInitImageVerifier(PRTERRINFO pErrInfo);
 DECLHIDDEN(void)    supHardenedWinTermImageVerifier(void);
 DECLHIDDEN(void)    supR3HardenedWinVerifyCacheScheduleImports(RTLDRMOD hLdrMod, PCRTUTF16 pwszName);
@@ -329,7 +329,7 @@ extern uint32_t         g_uNtVerCombined;
 #define SUP_NT_VER_W81      SUP_MAKE_NT_VER_SIMPLE(6,3)
 /** @} */
 
-# endif
+# endif /* RT_OS_WINDOWS || DOXYGEN_RUNNING */
 
 # ifndef IN_SUP_HARDENED_R3
 #  include <iprt/mem.h>
@@ -357,7 +357,7 @@ extern uint32_t         g_uNtVerCombined;
 #  endif
 # endif  /* IN_SUP_HARDENED_R3 */
 
-#endif /* SUP_CERTIFICATES_ONLY */
+#endif /* !SUP_CERTIFICATES_ONLY || DOXYGEN_RUNNING */
 
 RT_C_DECLS_END
 
