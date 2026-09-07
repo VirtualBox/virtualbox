@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 114771 2026-07-25 21:20:37Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115174 2026-09-07 15:59:24Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -286,6 +286,9 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHRootListRead(PSHCLTXPROVIDERCTX pCtx)
 
     SHCLLISTHDR Hdr;
     int rc = ShClSvcTransferGHRootListReadHdr(pClient, pCtx->pTransfer, &Hdr);
+    if (   RT_SUCCESS(rc)
+        && Hdr.cEntries > SHCL_TRANSFER_MAX_ROOT_ENTRIES)
+        rc = VERR_TOO_MUCH_DATA;
     if (RT_SUCCESS(rc))
     {
         for (uint64_t i = 0; i < Hdr.cEntries; i++)
@@ -999,7 +1002,7 @@ static int shClSvcTransferMsgGetRootListEntry(uint32_t cParms, VBOXHGCMSVCPARM a
         rc = HGCMSvcGetU32(&aParms[1], &pListEntry->fInfo);
         /* Note: aParms[2] contains the entry index, currently being ignored. */
         if (RT_SUCCESS(rc))
-            rc = HGCMSvcGetPv(&aParms[3], (void **)&pListEntry->pszName, &pListEntry->cbName);
+            rc = HGCMSvcGetStr(&aParms[3], &pListEntry->pszName, &pListEntry->cbName);
         if (RT_SUCCESS(rc))
         {
             uint32_t cbInfo;
@@ -1195,7 +1198,7 @@ static int shClSvcTransferMsgGetListEntry(uint32_t cParms, VBOXHGCMSVCPARM aParm
         if (RT_SUCCESS(rc))
             rc = HGCMSvcGetU32(&aParms[2], &pListEntry->fInfo);
         if (RT_SUCCESS(rc))
-            rc = HGCMSvcGetPv(&aParms[3], (void **)&pListEntry->pszName, &pListEntry->cbName);
+            rc = HGCMSvcGetStr(&aParms[3], &pListEntry->pszName, &pListEntry->cbName);
         if (RT_SUCCESS(rc))
         {
             uint32_t cbInfo;
