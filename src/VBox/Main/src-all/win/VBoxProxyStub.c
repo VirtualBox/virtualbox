@@ -1,4 +1,4 @@
-/* $Id: VBoxProxyStub.c 113992 2026-04-23 21:38:42Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxProxyStub.c 115180 2026-09-07 16:24:12Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxProxyStub - Proxy Stub and Typelib, COM DLL exports and DLL init/term.
  *
@@ -357,6 +357,11 @@ typedef struct VBPSREGSTATE
     /** Alternative delete locations. */
     uint32_t cAltDeletes;
 
+    /** Number of deletes.
+     * This is a HACK to trigger a re-run when updating so we remove unwated keys
+     * from both the HKCU and HKLM. */
+    uint32_t cDeletes;
+
     /** The current total result. */
     LSTATUS lrc;
 
@@ -409,6 +414,7 @@ static LSTATUS vbpsRegInit(VBPSREGSTATE *pState, HKEY hkeyRoot, const char *pszS
         pState->aAltDeletes[i].hkeyInterface = NULL;
     }
     pState->cAltDeletes                 = 0;
+    pState->cDeletes                    = 0;
     pState->lrc                         = ERROR_SUCCESS;
     pState->fDelete                     = fDelete;
     pState->fUpdate                     = fUpdate;
@@ -957,6 +963,50 @@ static LSTATUS vbpsCreateRegKeyWithDefaultValueAAEx(VBPSREGSTATE *pState, HKEY h
 
 
 /**
+ * Recursively deletes a registry key - common worker.
+ *
+ * @returns See SHDeleteKeyA (errors are remembered in the state).
+ * @param   pState              The registry modifier state.
+ * @param   hkeyParent          The parent key.
+ * @param   pszKey              The key under @a hkeyParent that should be
+ *                              deleted.
+ * @param   uLine               The line we're called from.
+ */
+static LSTATUS vbpsDeleteKeyRecursiveWorkerA(VBPSREGSTATE *pState, HKEY hkeyParent, const char *pszKey, unsigned uLine)
+{
+    LSTATUS lrc;
+
+    Assert(pszKey);
+    AssertReturn(*pszKey != '\0', pState->lrc = ERROR_INVALID_PARAMETER);
+
+#ifdef VBSP_LOG_ENABLED
+    {
+        HKEY hkeyLog;
+        lrc = RegOpenKeyExA(hkeyParent, pszKey, 0 /*fOptions*/,
+                            KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE | STANDARD_RIGHTS_READ, &hkeyLog);
+        if (lrc == ERROR_SUCCESS)
+            VBSP_LOG_DEL_KEY(("vbpsDeleteKeyRecursiveWorkerA: %ls (at %d)\n", vbpsDebugKeyToWSZ(hkeyLog), uLine));
+        else if (lrc != ERROR_FILE_NOT_FOUND)
+            VBSP_LOG_DEL_KEY(("vbpsDeleteKeyRecursiveWorkerA: %ls/%s (at %d, lrc=%u)\n", vbpsDebugKeyToWSZ(hkeyParent), pszKey, uLine, lrc));
+        if (lrc == ERROR_SUCCESS)
+            RegCloseKey(hkeyLog);
+    }
+#endif
+
+    lrc = SHDeleteKeyA(hkeyParent, pszKey);
+    if (lrc == ERROR_SUCCESS)
+        pState->cDeletes += 1;
+    if (lrc == ERROR_SUCCESS || lrc == ERROR_FILE_NOT_FOUND)
+        return ERROR_SUCCESS;
+
+    AssertLogRelMsg(VBPS_LOGREL_NO_ASSERT(lrc == ERROR_ACCESS_DENIED),
+                    ("%d: delete key '%s' -> %u\n", uLine, pszKey, lrc));
+    pState->lrc = lrc;
+    return lrc;
+}
+
+
+/**
  * Recursively deletes a registry key.
  *
  * @returns See SHDeleteKeyA (errors are remembered in the state).
@@ -968,31 +1018,8 @@ static LSTATUS vbpsCreateRegKeyWithDefaultValueAAEx(VBPSREGSTATE *pState, HKEY h
  */
 static LSTATUS vbpsDeleteKeyRecursiveA(VBPSREGSTATE *pState, HKEY hkeyParent, const char *pszKey, unsigned uLine)
 {
-    LSTATUS lrc;
-
     Assert(pState->fDelete);
-    Assert(pszKey);
-    AssertReturn(*pszKey != '\0', pState->lrc = ERROR_INVALID_PARAMETER);
-
-#ifdef VBSP_LOG_ENABLED
-    {
-        HKEY hkeyLog;
-        lrc = RegOpenKeyExA(hkeyParent, pszKey, 0 /*fOptions*/, pState->fSamDelete, &hkeyLog);
-        if (lrc != ERROR_FILE_NOT_FOUND)
-            VBSP_LOG_DEL_KEY(("vbpsDeleteKeyRecursiveA: %ls/%s (at %d)\n", vbpsDebugKeyToWSZ(hkeyParent), pszKey, uLine));
-        if (lrc == ERROR_SUCCESS)
-            RegCloseKey(hkeyLog);
-    }
-#endif
-
-    lrc = SHDeleteKeyA(hkeyParent, pszKey);
-    if (lrc == ERROR_SUCCESS || lrc == ERROR_FILE_NOT_FOUND)
-        return ERROR_SUCCESS;
-
-    AssertLogRelMsg(VBPS_LOGREL_NO_ASSERT(lrc == ERROR_ACCESS_DENIED),
-                    ("%d: delete key '%s' -> %u\n", uLine, pszKey, lrc));
-    pState->lrc = lrc;
-    return lrc;
+    return vbpsDeleteKeyRecursiveWorkerA(pState, hkeyParent, pszKey, uLine);
 }
 
 
@@ -1017,21 +1044,57 @@ static LSTATUS vbpsDeleteKeyRecursiveW(VBPSREGSTATE *pState, HKEY hkeyParent, PC
 #ifdef VBSP_LOG_ENABLED
     {
         HKEY hkeyLog;
-        lrc = RegOpenKeyExW(hkeyParent, pwszKey, 0 /*fOptions*/, pState->fSamDelete, &hkeyLog);
-        if (lrc != ERROR_FILE_NOT_FOUND)
-            VBSP_LOG_DEL_KEY(("vbpsDeleteKeyRecursiveW: %ls/%ls (at %d)\n", vbpsDebugKeyToWSZ(hkeyParent), pwszKey, uLine));
+        lrc = RegOpenKeyExW(hkeyParent, pwszKey, 0 /*fOptions*/,
+                            KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE | STANDARD_RIGHTS_READ, &hkeyLog);
+        if (lrc == ERROR_SUCCESS)
+            VBSP_LOG_DEL_KEY(("vbpsDeleteKeyRecursiveW: %ls (at %d)\n", vbpsDebugKeyToWSZ(hkeyLog), uLine));
+        else if (lrc != ERROR_FILE_NOT_FOUND)
+            VBSP_LOG_DEL_KEY(("vbpsDeleteKeyRecursiveW: %ls/%ls (at %d, lrc=%u)\n", vbpsDebugKeyToWSZ(hkeyParent), pwszKey, uLine, lrc));
         if (lrc == ERROR_SUCCESS)
             RegCloseKey(hkeyLog);
     }
 #endif
 
     lrc = SHDeleteKeyW(hkeyParent, pwszKey);
+    if (lrc == ERROR_SUCCESS)
+        pState->cDeletes += 1;
     if (lrc == ERROR_SUCCESS || lrc == ERROR_FILE_NOT_FOUND)
         return ERROR_SUCCESS;
 
     AssertLogRelMsg(VBPS_LOGREL_NO_ASSERT(lrc == ERROR_ACCESS_DENIED),
                     ("%d: delete key '%ls' -> %u\n", uLine, pwszKey, lrc));
     pState->lrc = lrc;
+    return lrc;
+}
+
+
+/**
+ * Recursively deletes undesirable registry keys, even in update mode.
+ *
+ * @returns See SHDeleteKeyA (errors are remembered in the state).
+ * @param   pState              The registry modifier state.
+ * @param   hkeyParent          The parent key.
+ * @param   uLine               The line we're called from.
+ * @param   cKeys               Number of keys.
+ * @param   ...                 One or more keys under @a hkeyParent that are to
+ *                              be deleted.
+ */
+static LSTATUS vbpsDeleteUndesirableRegKeysA(VBPSREGSTATE *pState, HKEY hkeyParent, unsigned uLine, unsigned cKeys, ...)
+{
+    LSTATUS  lrc = ERROR_SUCCESS;
+    unsigned iKey;
+    va_list  va;
+
+    va_start(va, cKeys);
+    for (iKey = 0; iKey < cKeys; iKey++)
+    {
+        const char * const pszKey = va_arg(va, const char *);
+        LSTATUS lrc2 = vbpsDeleteKeyRecursiveWorkerA(pState, hkeyParent, pszKey, uLine);
+        if (lrc2 != ERROR_SUCCESS && lrc == ERROR_SUCCESS)
+            lrc = lrc2;
+    }
+    va_end(va);
+
     return lrc;
 }
 
@@ -1180,6 +1243,8 @@ LSTATUS VbpsRegisterClassName(VBPSREGSTATE *pState, const char *pszClassName, co
                 if (lrc == ERROR_SUCCESS)
                     vbpsCreateRegKeyWithDefaultValueAA(pState, hkeyClass, "CurVer", szCurClassNameVer, __LINE__);
             }
+            else
+                vbpsDeleteUndesirableRegKeysA(pState, hkeyClass, __LINE__, 1, "CurVer");
 
             vbpsCloseKey(pState, hkeyClass, __LINE__);
         }
@@ -1222,6 +1287,7 @@ LSTATUS VbpsRegisterClassId(VBPSREGSTATE *pState, const CLSID *pClsId, const cha
 
     Assert(!pszAppId || *pszAppId == '{');
     Assert((pwszVBoxDir == NULL && !pState->fUpdate) || (pwszVBoxDir && pwszVBoxDir[RTUtf16Len(pwszVBoxDir) - 1] == '\\'));
+    Assert(strcmp(pszServerType, "LocalServer32") == 0 || strcmp(pszServerType, "InprocServer32") == 0);
 
     /*
      * We need this, whatever we end up having to do.
@@ -1254,6 +1320,11 @@ LSTATUS VbpsRegisterClassId(VBPSREGSTATE *pState, const CLSID *pClsId, const cha
             HKEY hkeyServerType;
             char szCurClassNameVer[128];
 
+            /* Remove unwanted stuff. */
+            vbpsDeleteUndesirableRegKeysA(pState, hkeyClass, __LINE__, 9, "TreatAs", "AutoTreatAs", "AutoConvertTo",
+                                          "LocalServer", "InprocServer", "InprocHandler", "InprocHandler32", "Control",
+                                          fIsLocalServer32 ? "InprocServer32" : "LocalServer32");
+
             /* pszServerType/Default = module. */
             lrc = vbpsCreateRegKeyA(pState, hkeyClass, pszServerType, &hkeyServerType, __LINE__);
             if (lrc == ERROR_SUCCESS)
@@ -1277,6 +1348,8 @@ LSTATUS VbpsRegisterClassId(VBPSREGSTATE *pState, const CLSID *pClsId, const cha
                 /* pszServerType/ThreadingModel = pszThreading Model. */
                 if (pszThreadingModel)
                     vbpsSetRegValueAA(pState, hkeyServerType, "ThreadingModel", pszThreadingModel, __LINE__);
+                else
+                    vbpsDeleteUndesirableRegKeysA(pState, hkeyServerType, __LINE__, 1, "ThreadingModel");
 
                 vbpsCloseKey(pState, hkeyServerType, __LINE__);
             }
@@ -1302,10 +1375,14 @@ LSTATUS VbpsRegisterClassId(VBPSREGSTATE *pState, const CLSID *pClsId, const cha
                 vbpsCreateRegKeyWithDefaultValueAA(pState, hkeyClass, "TypeLib",
                                                    vbpsFormatUuidInCurly(szTypeLibId, pTypeLibId), __LINE__);
             }
+            else
+                vbpsDeleteUndesirableRegKeysA(pState, hkeyClass, __LINE__, 1, "TypeLib");
 
             /* AppID = pszAppId */
             if (pszAppId && fIsLocalServer32)
                 vbpsSetRegValueAA(pState, hkeyClass, "AppID", pszAppId, __LINE__);
+            else
+                vbpsDeleteUndesirableRegKeysA(pState, hkeyClass, __LINE__, 1, "AppID");
 
             vbpsCloseKey(pState, hkeyClass, __LINE__);
         }
@@ -1542,6 +1619,7 @@ static void vbpsUpdateInterfaceRegistrations(VBPSREGSTATE *pState)
             if (lrc == ERROR_SUCCESS)
             {
                 HKEY hkeyTypeLib;
+                vbpsDeleteUndesirableRegKeysA(pState, hkeyIfId, __LINE__, 1, "ProxyStubClsid");
                 vbpsCreateRegKeyWithDefaultValueAA(pState, hkeyIfId, "ProxyStubClsid32", szProxyClsId, __LINE__);
                 vbpsCreateRegKeyWithDefaultValueAA(pState, hkeyIfId, "NumMethods", szMethods, __LINE__);
 
@@ -2566,6 +2644,7 @@ DECLEXPORT(uint32_t) VbpsUpdateRegistrations(void)
 {
     LSTATUS         lrc;
     VBPSREGSTATE    State;
+    unsigned        iRedo;
 #ifdef VBOX_IN_32_ON_64_MAIN_API
     bool const      fIs32On64 = true;
 #else
@@ -2589,15 +2668,18 @@ DECLEXPORT(uint32_t) VbpsUpdateRegistrations(void)
     lrc = vbpsRegInit(&State, HKEY_CLASSES_ROOT, NULL, false /*fDelete*/, true /*fUpdate*/, 0);
     if (lrc == ERROR_SUCCESS && !vbpsIsUpToDate(&State))
     {
-
+        iRedo = 0;
+        do
+        {
 #ifdef VBOX_WITH_SDS
-        vbpsUpdateWindowsService(&State, wszVBoxDir, L"VBoxSDS.exe", L"VBoxSDS",
-                                 L"VirtualBox system service", L"Used as a COM server for VirtualBox API.");
+            vbpsUpdateWindowsService(&State, wszVBoxDir, L"VBoxSDS.exe", L"VBoxSDS",
+                                     L"VirtualBox system service", L"Used as a COM server for VirtualBox API.");
 #endif
-        vbpsUpdateTypeLibRegistration(&State, wszVBoxDir, fIs32On64);
-        vbpsUpdateProxyStubRegistration(&State, wszVBoxDir, fIs32On64);
-        vbpsUpdateInterfaceRegistrations(&State);
-        RegisterXidlModulesAndClassesGenerated(&State, wszVBoxDir, fIs32On64);
+            vbpsUpdateTypeLibRegistration(&State, wszVBoxDir, fIs32On64);
+            vbpsUpdateProxyStubRegistration(&State, wszVBoxDir, fIs32On64);
+            vbpsUpdateInterfaceRegistrations(&State);
+            RegisterXidlModulesAndClassesGenerated(&State, wszVBoxDir, fIs32On64);
+        } while (++iRedo < 2 && State.cDeletes > 0);
         vbpsMarkUpToDate(&State);
         lrc = State.lrc;
     }
@@ -2614,10 +2696,15 @@ DECLEXPORT(uint32_t) VbpsUpdateRegistrations(void)
                           !fIs32On64 ? KEY_WOW64_32KEY : KEY_WOW64_64KEY);
         if (lrc == ERROR_SUCCESS && !vbpsIsUpToDate(&State))
         {
-            vbpsUpdateTypeLibRegistration(&State, wszVBoxDir, !fIs32On64);
-            vbpsUpdateProxyStubRegistration(&State, wszVBoxDir, !fIs32On64);
-            vbpsUpdateInterfaceRegistrations(&State);
-            RegisterXidlModulesAndClassesGenerated(&State, wszVBoxDir, !fIs32On64);
+            iRedo = 0;
+            do
+            {
+                vbpsUpdateTypeLibRegistration(&State, wszVBoxDir, !fIs32On64);
+                vbpsUpdateProxyStubRegistration(&State, wszVBoxDir, !fIs32On64);
+                vbpsUpdateInterfaceRegistrations(&State);
+                RegisterXidlModulesAndClassesGenerated(&State, wszVBoxDir, !fIs32On64);
+            } while (++iRedo < 2 && State.cDeletes > 0);
+
             vbpsMarkUpToDate(&State);
             lrc = State.lrc;
         }
