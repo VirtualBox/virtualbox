@@ -1,4 +1,4 @@
-/* $Id: SharedClipboard-transfers.h 115109 2026-08-25 09:04:04Z andreas.loeffler@oracle.com $ */
+/* $Id: SharedClipboard-transfers.h 115173 2026-09-07 15:53:51Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard - Shared transfer functions between host and guest.
  */
@@ -75,6 +75,8 @@ typedef struct SHCLTRANSFER *PSHCLTRANSFER;
 #define SHCL_TRANSFER_PATH_MAX                  RTPATH_MAX
 /** Defines the default maximum transfer chunk size (in bytes) of a Shared Clipboard transfer. */
 #define SHCL_TRANSFER_DEFAULT_MAX_CHUNK_SIZE    _64K
+/** Maximum number of guest-provided root entries accepted for one transfer. */
+#define SHCL_TRANSFER_MAX_ROOT_ENTRIES          _4K
 /** Defines the default maximum list handles a Shared Clipboard transfer can have. */
 #define SHCL_TRANSFER_DEFAULT_MAX_LIST_HANDLES  _4K
 /** Defines the default maximum object handles a Shared Clipboard transfer can have. */

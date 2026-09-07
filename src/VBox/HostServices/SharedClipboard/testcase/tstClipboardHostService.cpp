@@ -1,4 +1,4 @@
-/* $Id: tstClipboardHostService.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
+/* $Id: tstClipboardHostService.cpp 115173 2026-09-07 15:53:51Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Host Service testcase.
  */
@@ -173,6 +173,17 @@ typedef struct TSTTRANSFEREVENTWAITER
 } TSTTRANSFEREVENTWAITER;
 /** Pointer to a transfer-event waiter result. */
 typedef TSTTRANSFEREVENTWAITER *PTSTTRANSFEREVENTWAITER;
+
+/** State for an asynchronous guest root-list provider call. */
+typedef struct TSTROOTLISTREAD
+{
+    /** Provider context passed to ShClSvcTransferIfaceGHRootListRead(). */
+    SHCLTXPROVIDERCTX           ProviderCtx;
+    /** Result returned by ShClSvcTransferIfaceGHRootListRead(). */
+    int                         rcRead;
+} TSTROOTLISTREAD;
+/** Pointer to asynchronous root-list provider state. */
+typedef TSTROOTLISTREAD *PTSTROOTLISTREAD;
 
 /** Mock local provider state for an aggregate object-read request. */
 typedef struct TSTOBJREADPROVIDER
@@ -914,6 +925,20 @@ static DECLCALLBACK(int) tstTransferEventWaiter(RTTHREAD hThreadSelf, void *pvUs
 }
 
 
+/** Runs the guest root-list provider call while the main test thread supplies its reply. */
+static DECLCALLBACK(int) tstTransferRootListReadWorker(RTTHREAD hThreadSelf, void *pvUser)
+{
+    PTSTROOTLISTREAD const pState = (PTSTROOTLISTREAD)pvUser;
+    AssertPtrReturn(pState, VERR_INVALID_POINTER);
+
+    int rc = RTThreadUserSignal(hThreadSelf);
+    AssertRCReturn(rc, rc);
+
+    pState->rcRead = ShClSvcTransferIfaceGHRootListRead(&pState->ProviderCtx);
+    return VINF_SUCCESS;
+}
+
+
 /** Checks that a transfer root immediately below a filesystem root keeps its full name. */
 static void tstTransferRootsFsRoot(void)
 {
@@ -1334,6 +1359,149 @@ static SHCLTRANSFERID tstTransferStartedCreateRetained(SHCLTRANSFERDIR enmDir, S
     *ppTransfer = NULL;
     g_Ext.Transport.pOps->pfnTransferDestroyById(g_Ext.Transport.hClient, idTransfer);
     return NIL_SHCLTRANSFERID;
+}
+
+
+/** Checks the guest-provided root-entry count before any entry requests are issued. */
+static void tstTransferRootEntryLimit(void *pvClient)
+{
+    RTTestISub("Guest transfer root-entry limit");
+
+    PSHCLTRANSFER pTransfer = NULL;
+    SHCLTRANSFERID const idTransfer
+        = tstTransferCreateRetained(SHCLTRANSFERDIR_GUEST_TO_HOST, SHCLSOURCE_REMOTE, &pTransfer);
+    if (!ShClTransferIdIsValid(idTransfer) || !pTransfer)
+        return;
+
+    SHCLSESSIONID const idSession = ShClTransferGetSessionId(pTransfer);
+    pTransfer->uTimeoutMs = RT_MS_1SEC;
+
+    TSTROOTLISTREAD State;
+    RT_ZERO(State);
+    State.ProviderCtx.pTransfer = pTransfer;
+    State.ProviderCtx.pvUser    = g_Ext.Transport.hClient;
+    State.ProviderCtx.cbUser    = sizeof(*(PSHCLCLIENT)g_Ext.Transport.hClient);
+    State.rcRead                = VERR_IPE_UNINITIALIZED_STATUS;
+
+    RTTHREAD hThread = NIL_RTTHREAD;
+    int rc = RTThreadCreate(&hThread, tstTransferRootListReadWorker, &State, 0 /* cbStack */,
+                            RTTHREADTYPE_DEFAULT, RTTHREADFLAGS_WAITABLE, "shclroots");
+    RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+    if (RT_SUCCESS(rc))
+        rc = RTThreadUserWait(hThread, RT_MS_1SEC);
+    RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+
+    VBOXHGCMSVCPARM aPeek[2];
+    if (RT_SUCCESS(rc))
+    {
+        for (uint32_t i = 0; i < 1000; i++)
+        {
+            HGCMSvcSetU32(&aPeek[0], 0);
+            HGCMSvcSetU32(&aPeek[1], 0);
+            rc = tstGuestCall(pvClient, VBOX_SHCL_GUEST_FN_MSG_PEEK_NOWAIT, RT_ELEMENTS(aPeek), aPeek);
+            if (rc != VERR_TRY_AGAIN)
+                break;
+            RTThreadSleep(1);
+        }
+        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+    }
+
+    if (RT_SUCCESS(rc))
+    {
+        RTTESTI_CHECK(aPeek[0].u.uint32 == VBOX_SHCL_HOST_MSG_TRANSFER_ROOT_LIST_HDR_READ);
+        RTTESTI_CHECK(aPeek[1].u.uint32 == VBOX_SHCL_CPARMS_ROOT_LIST_HDR_READ_REQ);
+
+        VBOXHGCMSVCPARM aGet[VBOX_SHCL_CPARMS_ROOT_LIST_HDR_READ_REQ];
+        HGCMSvcSetU64(&aGet[0], VBOX_SHCL_HOST_MSG_TRANSFER_ROOT_LIST_HDR_READ);
+        HGCMSvcSetU32(&aGet[1], 0);
+        rc = tstGuestCall(pvClient, VBOX_SHCL_GUEST_FN_MSG_GET, RT_ELEMENTS(aGet), aGet);
+        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+        if (RT_SUCCESS(rc))
+        {
+            uint64_t const uContext = aGet[0].u.uint64;
+            RTTESTI_CHECK(VBOX_SHCL_CONTEXTID_GET_SESSION(uContext) == idSession);
+            RTTESTI_CHECK(VBOX_SHCL_CONTEXTID_GET_TRANSFER(uContext) == idTransfer);
+
+            VBOXHGCMSVCPARM aHdr[VBOX_SHCL_CPARMS_ROOT_LIST_HDR_WRITE];
+            HGCMSvcSetU64(&aHdr[0], uContext);
+            HGCMSvcSetU32(&aHdr[1], 0);
+            HGCMSvcSetU64(&aHdr[2], SHCL_TRANSFER_MAX_ROOT_ENTRIES + 1);
+            rc = tstGuestCall(pvClient, VBOX_SHCL_GUEST_FN_ROOT_LIST_HDR_WRITE, RT_ELEMENTS(aHdr), aHdr);
+            RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+        }
+    }
+
+    int rcThread = VERR_IPE_UNINITIALIZED_STATUS;
+    if (hThread != NIL_RTTHREAD)
+    {
+        rc = RTThreadWait(hThread, RT_MS_5SEC, &rcThread);
+        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+        RTTESTI_CHECK_RC(rcThread, VINF_SUCCESS);
+    }
+    RTTESTI_CHECK_RC(State.rcRead, VERR_TOO_MUCH_DATA);
+    RTTESTI_CHECK(ShClTransferRootsCount(pTransfer) == 0);
+
+    ShClTransferRelease(pTransfer);
+    ShClSvcTransferDestroyByIdEx((PSHCLCLIENT)g_Ext.Transport.hClient, idTransfer, false /* fNotifyGuest */);
+}
+
+
+/** Checks that both guest entry-name parsers reject a buffer without a terminator. */
+static void tstTransferUnterminatedEntryNames(void *pvClient)
+{
+    RTTestISub("Guest transfer entry-name validation");
+
+    char achName[] = { 'b', 'a', 'd' };
+    VBOXHGCMSVCPARM NameParm;
+    HGCMSvcSetPv(&NameParm, achName, sizeof(achName));
+    char *pszName = NULL;
+    uint32_t cbName = 0;
+    int const rcExpected = HGCMSvcGetStr(&NameParm, &pszName, &cbName);
+    RTTESTI_CHECK(RT_FAILURE(rcExpected));
+
+    static uint32_t const s_auFunctions[] =
+    {
+        VBOX_SHCL_GUEST_FN_ROOT_LIST_ENTRY_WRITE,
+        VBOX_SHCL_GUEST_FN_LIST_ENTRY_WRITE
+    };
+    for (uint32_t i = 0; i < RT_ELEMENTS(s_auFunctions); i++)
+    {
+        PSHCLTRANSFER pTransfer = NULL;
+        SHCLTRANSFERID const idTransfer
+            = tstTransferCreateRetained(SHCLTRANSFERDIR_GUEST_TO_HOST, SHCLSOURCE_REMOTE, &pTransfer);
+        if (!ShClTransferIdIsValid(idTransfer) || !pTransfer)
+            continue;
+
+        SHCLSESSIONID const idSession = ShClTransferGetSessionId(pTransfer);
+        uint64_t const uContext = VBOX_SHCL_CONTEXTID_MAKE(idSession, idTransfer, 1);
+        ShClTransferRelease(pTransfer);
+        pTransfer = NULL;
+
+        SHCLFSOBJINFO ObjInfo;
+        RT_ZERO(ObjInfo);
+        VBOXHGCMSVCPARM aEntry[VBOX_SHCL_CPARMS_LIST_ENTRY];
+        HGCMSvcSetU64(&aEntry[0], uContext);
+        if (s_auFunctions[i] == VBOX_SHCL_GUEST_FN_ROOT_LIST_ENTRY_WRITE)
+        {
+            HGCMSvcSetU32(&aEntry[1], VBOX_SHCL_INFO_F_FSOBJINFO);
+            HGCMSvcSetU64(&aEntry[2], 0 /* idxEntry */);
+        }
+        else
+        {
+            HGCMSvcSetU64(&aEntry[1], 1 /* hList */);
+            HGCMSvcSetU32(&aEntry[2], VBOX_SHCL_INFO_F_FSOBJINFO);
+        }
+        HGCMSvcSetPv (&aEntry[3], achName, sizeof(achName));
+        HGCMSvcSetU32(&aEntry[4], sizeof(ObjInfo));
+        HGCMSvcSetPv (&aEntry[5], &ObjInfo, sizeof(ObjInfo));
+
+        int const rc = tstGuestCallUntrusted(pvClient, s_auFunctions[i], RT_ELEMENTS(aEntry), aEntry);
+        RTTESTI_CHECK_RC(rc, rcExpected);
+        tstTransferStatusGet(pvClient, idSession, idTransfer, SHCLTRANSFERDIR_GUEST_TO_HOST,
+                             SHCLTRANSFERSTATUS_ERROR, rcExpected);
+        tstTransferStatusGet(pvClient, idSession, idTransfer, SHCLTRANSFERDIR_GUEST_TO_HOST,
+                             SHCLTRANSFERSTATUS_UNINITIALIZED, VINF_SUCCESS);
+    }
 }
 
 
@@ -2049,6 +2217,19 @@ static void tstTransfers(void *pvClient)
 
     HGCMSvcSetU32(&Parm, VBOX_SHCL_TRANSFER_MODE_F_ENABLED);
     rc = g_Table.pfnHostCall(g_Table.pvService, VBOX_SHCL_HOST_FN_SET_TRANSFER_MODE, 1, &Parm);
+    RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+
+    uint32_t const uOldMode = ShClSvcGetMode();
+    HGCMSvcSetU32(&Parm, VBOX_SHCL_MODE_BIDIRECTIONAL);
+    rc = g_Table.pfnHostCall(g_Table.pvService, VBOX_SHCL_HOST_FN_SET_MODE, 1, &Parm);
+    RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+    if (RT_SUCCESS(rc))
+    {
+        tstTransferRootEntryLimit(pvClient);
+        tstTransferUnterminatedEntryNames(pvClient);
+    }
+    HGCMSvcSetU32(&Parm, uOldMode);
+    rc = g_Table.pfnHostCall(g_Table.pvService, VBOX_SHCL_HOST_FN_SET_MODE, 1, &Parm);
     RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
 
     tstTransferLegacyAggregateObjRead(pvClient);

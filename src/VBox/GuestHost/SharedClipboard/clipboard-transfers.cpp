@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 115173 2026-09-07 15:53:51Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -4769,6 +4769,9 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHRootListRead(PSHCLTXPROVIDERCTX pCtx)
 
     SHCLLISTHDR Hdr;
     int rc = ShClSvcTransferGHRootListReadHdr(pClient, pCtx->pTransfer, &Hdr);
+    if (   RT_SUCCESS(rc)
+        && Hdr.cEntries > SHCL_TRANSFER_MAX_ROOT_ENTRIES)
+        rc = VERR_TOO_MUCH_DATA;
     if (RT_SUCCESS(rc))
     {
         for (uint64_t i = 0; i < Hdr.cEntries; i++)

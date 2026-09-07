@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115134 2026-08-27 15:09:45Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115173 2026-09-07 15:53:51Z andreas.loeffler@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -562,7 +562,7 @@ static int shClSvcTransferMsgGetRootListEntry(uint32_t cParms, VBOXHGCMSVCPARM a
         rc = HGCMSvcGetU32(&aParms[1], &pListEntry->fInfo);
         /* Note: aParms[2] contains the entry index, currently being ignored. */
         if (RT_SUCCESS(rc))
-            rc = HGCMSvcGetPv(&aParms[3], (void **)&pListEntry->pszName, &pListEntry->cbName);
+            rc = HGCMSvcGetStr(&aParms[3], &pListEntry->pszName, &pListEntry->cbName);
         if (RT_SUCCESS(rc))
         {
             uint32_t cbInfo;
@@ -715,7 +715,7 @@ static int shClSvcTransferMsgGetListEntry(uint32_t cParms, VBOXHGCMSVCPARM aParm
         if (RT_SUCCESS(rc))
             rc = HGCMSvcGetU32(&aParms[2], &pListEntry->fInfo);
         if (RT_SUCCESS(rc))
-            rc = HGCMSvcGetPv(&aParms[3], (void **)&pListEntry->pszName, &pListEntry->cbName);
+            rc = HGCMSvcGetStr(&aParms[3], &pListEntry->pszName, &pListEntry->cbName);
         if (RT_SUCCESS(rc))
         {
             uint32_t cbInfo;
