@@ -1,4 +1,4 @@
-/* $Id: GuestDnDPrivate.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: GuestDnDPrivate.cpp 115172 2026-09-07 15:48:23Z andreas.loeffler@oracle.com $ */
 /** @file
  * Private guest drag and drop code, used by GuestDnDTarget + GuestDnDSource.
  */
@@ -673,7 +673,8 @@ int GuestDnDState::onDispatch(uint32_t u32Function, void *pvParms, uint32_t cbPa
                 || pCBData->cbFormat  > _64K /** @todo Make this configurable? */
                 || pCBData->pszFormat == NULL)
                 vrc = VERR_INVALID_PARAMETER;
-            else if (!RTStrIsValidEncoding(pCBData->pszFormat))
+            else if (RT_FAILURE(RTStrValidateEncodingEx(pCBData->pszFormat, pCBData->cbFormat,
+                                                        RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED)))
                 vrc = VERR_INVALID_PARAMETER;
             else
             {
@@ -716,7 +717,8 @@ int GuestDnDState::onDispatch(uint32_t u32Function, void *pvParms, uint32_t cbPa
                 || pCBData->cbFormat  > _64K /** @todo Make the maximum size configurable? */
                 || pCBData->pszFormat == NULL)
                 vrc = VERR_INVALID_PARAMETER;
-            else if (!RTStrIsValidEncoding(pCBData->pszFormat))
+            else if (RT_FAILURE(RTStrValidateEncodingEx(pCBData->pszFormat, pCBData->cbFormat,
+                                                        RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED)))
                 vrc = VERR_INVALID_PARAMETER;
             else
             {

@@ -1,4 +1,4 @@
-/* $Id: VBoxHostChannelSvc.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxHostChannelSvc.cpp 115172 2026-09-07 15:48:23Z andreas.loeffler@oracle.com $ */
 /* @file
  * Host Channel: Host service entry points.
  */
@@ -256,10 +256,11 @@ static DECLCALLBACK(void) svcCall(void *pvService,
                 const char *pszName;
                 uint32_t cbName;
 
-                rc = VBoxHGCMParmPtrGet(&paParms[0], (void **)&pszName, &cbName);
-                if (   RT_SUCCESS(rc)
-                    && pszName[cbName - 1] != '\0')
-                    rc = VERR_INVALID_PARAMETER;
+                rc = HGCMSvcGetCStr(&paParms[0], &pszName, &cbName);
+                if (RT_SUCCESS(rc))
+                    rc = RTStrValidateEncodingEx(pszName, cbName,
+                                                   RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED
+                                                 | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
                 if (RT_SUCCESS(rc))
                     rc = VBoxHGCMParmUInt32Get(&paParms[1], &u32Flags);
                 if (RT_SUCCESS(rc))
@@ -513,10 +514,11 @@ static DECLCALLBACK(void) svcCall(void *pvService,
                 void *pvData = NULL;  /* Shut up msvc*/
                 uint32_t cbData = 0;  /* Shut up msvc*/
 
-                rc = VBoxHGCMParmPtrGet(&paParms[0], (void **)&pszName, &cbName);
-                if (   RT_SUCCESS(rc)
-                    && pszName[cbName - 1] != '\0')
-                    rc = VERR_INVALID_PARAMETER;
+                rc = HGCMSvcGetCStr(&paParms[0], &pszName, &cbName);
+                if (RT_SUCCESS(rc))
+                    rc = RTStrValidateEncodingEx(pszName, cbName,
+                                                   RTSTR_VALIDATE_ENCODING_ZERO_TERMINATED
+                                                 | RTSTR_VALIDATE_ENCODING_EXACT_LENGTH);
 
                 if (RT_SUCCESS(rc))
                     rc = VBoxHGCMParmUInt32Get(&paParms[1], &u32Code);
