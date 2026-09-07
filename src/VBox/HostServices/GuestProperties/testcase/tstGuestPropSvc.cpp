@@ -1,4 +1,4 @@
-/* $Id: tstGuestPropSvc.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: tstGuestPropSvc.cpp 115170 2026-09-07 15:37:07Z andreas.loeffler@oracle.com $ */
 /** @file
  *
  * Testcase for the guest property service.
@@ -375,6 +375,7 @@ static void testEnumPropsHost(VBOXHGCMSVCFNTABLE *ptable)
         /* Check that we get buffer overflow with a too small buffer. */
         HGCMSvcSetPv(&aParms[0], (void *)g_aEnumStrings[i].pszPatterns, g_aEnumStrings[i].cbPatterns);
         HGCMSvcSetPv(&aParms[1], (void *)abBuffer, g_aEnumStrings[i].cbBuffer - 1);
+        HGCMSvcSetU32(&aParms[2], 0); /* size */
         memset(abBuffer, 0x55, sizeof(abBuffer));
         int rc2 = ptable->pfnHostCall(ptable->pvService, GUEST_PROP_FN_HOST_ENUM_PROPS, 3, aParms);
         if (rc2 == VERR_BUFFER_OVERFLOW)
@@ -391,6 +392,7 @@ static void testEnumPropsHost(VBOXHGCMSVCFNTABLE *ptable)
         /* Make a successfull call. */
         HGCMSvcSetPv(&aParms[0], (void *)g_aEnumStrings[i].pszPatterns, g_aEnumStrings[i].cbPatterns);
         HGCMSvcSetPv(&aParms[1], (void *)abBuffer, g_aEnumStrings[i].cbBuffer);
+        HGCMSvcSetU32(&aParms[2], 0); /* size */
         memset(abBuffer, 0x55, sizeof(abBuffer));
         rc2 = ptable->pfnHostCall(ptable->pvService, GUEST_PROP_FN_HOST_ENUM_PROPS, 3, aParms);
         if (rc2 == VINF_SUCCESS)
@@ -642,6 +644,8 @@ static void testGetProp(VBOXHGCMSVCFNTABLE *pTable)
         HGCMSvcSetStr(&aParms[0], s_aGetProperties[i].pcszName);
         memset(szBuffer, 0x55, sizeof(szBuffer));
         HGCMSvcSetPv(&aParms[1], szBuffer, sizeof(szBuffer));
+        HGCMSvcSetU64(&aParms[2], 0); /* timestamp */
+        HGCMSvcSetU32(&aParms[3], 0); /* size */
         int rc2 = pTable->pfnHostCall(pTable->pvService, GUEST_PROP_FN_HOST_GET_PROP, 4, aParms);
 
         if (s_aGetProperties[i].exists && RT_FAILURE(rc2))
@@ -737,6 +741,7 @@ static void testGetNotification(VBOXHGCMSVCFNTABLE *pTable)
         HGCMSvcSetStr(&aParms[0], s_szPattern);
         HGCMSvcSetU64(&aParms[1], 1);
         HGCMSvcSetPv(&aParms[2], pvBuf, cbBuf);
+        HGCMSvcSetU32(&aParms[3], 0); /* size */
         pTable->pfnCall(pTable->pvService, &callHandle, 0, NULL, GUEST_PROP_FN_GET_NOTIFICATION, 4, aParms, 0);
 
         if (   callHandle.rc != VERR_BUFFER_OVERFLOW
@@ -761,6 +766,7 @@ static void testGetNotification(VBOXHGCMSVCFNTABLE *pTable)
         HGCMSvcSetStr(&aParms[0], s_szPattern);
         HGCMSvcSetU64(&aParms[1], u64Timestamp);
         HGCMSvcSetPv(&aParms[2], pvBuf, cbBuf);
+        HGCMSvcSetU32(&aParms[3], 0); /* size */
         pTable->pfnCall(pTable->pvService, &callHandle, 0, NULL, GUEST_PROP_FN_GET_NOTIFICATION, 4, aParms, 0);
         if (   RT_FAILURE(callHandle.rc)
             || (i == 0 && callHandle.rc != VWRN_NOT_FOUND)
@@ -778,6 +784,59 @@ static void testGetNotification(VBOXHGCMSVCFNTABLE *pTable)
         }
         RTTestGuardedFree(g_hTest, pvBuf);
     }
+}
+
+/** Tests rejection of non-scalar storage for scalar output parameters. */
+static void testOutputParmTypes(VBOXHGCMSVCFNTABLE *pTable)
+{
+    RTTestISub("Output parameter types");
+
+    uint8_t abBuffer[256];
+    void *apvPages[1] = { &abBuffer[0] };
+    VBOXHGCMSVCPARM ParmPages;
+    RT_ZERO(ParmPages);
+    ParmPages.type              = VBOX_HGCM_SVC_PARM_PAGES; /* Scalar output under test. */
+    ParmPages.u.Pages.cb        = sizeof(abBuffer);
+    ParmPages.u.Pages.cPages    = 1;
+    ParmPages.u.Pages.papvPages = &apvPages[0];
+
+    VBOXHGCMSVCPARM aGetParms[4];
+    HGCMSvcSetStr(&aGetParms[0], "Green");                           /* name */
+    HGCMSvcSetPv(&aGetParms[1], &abBuffer[0], sizeof(abBuffer));     /* buffer */
+    aGetParms[2] = ParmPages;                                       /* timestamp */
+    HGCMSvcSetU32(&aGetParms[3], 0);                                /* size */
+    RTTESTI_CHECK_RC(pTable->pfnHostCall(pTable->pvService, GUEST_PROP_FN_HOST_GET_PROP,
+                                         RT_ELEMENTS(aGetParms), aGetParms), VERR_INVALID_PARAMETER);
+    RTTESTI_CHECK(aGetParms[2].type == VBOX_HGCM_SVC_PARM_PAGES); /* timestamp */
+    RTTESTI_CHECK(aGetParms[2].u.Pages.papvPages == &apvPages[0]);
+
+    HGCMSvcSetU64(&aGetParms[2], 0); /* timestamp */
+    aGetParms[3] = ParmPages;       /* size */
+    RTTESTI_CHECK_RC(pTable->pfnHostCall(pTable->pvService, GUEST_PROP_FN_HOST_GET_PROP,
+                                         RT_ELEMENTS(aGetParms), aGetParms), VERR_INVALID_PARAMETER);
+    RTTESTI_CHECK(aGetParms[3].type == VBOX_HGCM_SVC_PARM_PAGES); /* size */
+    RTTESTI_CHECK(aGetParms[3].u.Pages.papvPages == &apvPages[0]);
+
+    VBOXHGCMSVCPARM aEnumParms[3];
+    HGCMSvcSetStr(&aEnumParms[0], "*");                              /* patterns */
+    HGCMSvcSetPv(&aEnumParms[1], &abBuffer[0], sizeof(abBuffer));    /* strings */
+    aEnumParms[2] = ParmPages;                                      /* size */
+    RTTESTI_CHECK_RC(pTable->pfnHostCall(pTable->pvService, GUEST_PROP_FN_HOST_ENUM_PROPS,
+                                         RT_ELEMENTS(aEnumParms), aEnumParms), VERR_INVALID_PARAMETER);
+    RTTESTI_CHECK(aEnumParms[2].type == VBOX_HGCM_SVC_PARM_PAGES); /* size */
+    RTTESTI_CHECK(aEnumParms[2].u.Pages.papvPages == &apvPages[0]);
+
+    VBOXHGCMCALLHANDLE_TYPEDEF CallHandle = { VINF_SUCCESS };
+    VBOXHGCMSVCPARM aNotifyParms[4];
+    HGCMSvcSetStr(&aNotifyParms[0], "*");                            /* patterns */
+    HGCMSvcSetU64(&aNotifyParms[1], 1);                              /* timestamp */
+    HGCMSvcSetPv(&aNotifyParms[2], &abBuffer[0], sizeof(abBuffer));  /* buffer */
+    aNotifyParms[3] = ParmPages;                                    /* size */
+    pTable->pfnCall(pTable->pvService, &CallHandle, 0, NULL, GUEST_PROP_FN_GET_NOTIFICATION,
+                    RT_ELEMENTS(aNotifyParms), aNotifyParms, 0);
+    RTTESTI_CHECK_RC(CallHandle.rc, VERR_INVALID_PARAMETER);
+    RTTESTI_CHECK(aNotifyParms[3].type == VBOX_HGCM_SVC_PARM_PAGES); /* size */
+    RTTESTI_CHECK(aNotifyParms[3].u.Pages.papvPages == &apvPages[0]);
 }
 
 /** Parameters for the asynchronous guest notification call */
@@ -802,6 +861,7 @@ static void setupAsyncNotification(VBOXHGCMSVCFNTABLE *pTable)
     HGCMSvcSetStr(&g_AsyncNotification.aParms[0], s_szPattern);
     HGCMSvcSetU64(&g_AsyncNotification.aParms[1], 0);
     HGCMSvcSetPv(&g_AsyncNotification.aParms[2], g_AsyncNotification.abBuffer, sizeof(g_AsyncNotification.abBuffer));
+    HGCMSvcSetU32(&g_AsyncNotification.aParms[3], 0); /* size */
     g_AsyncNotification.callHandle.rc = VINF_HGCM_ASYNC_EXECUTE;
     pTable->pfnCall(pTable->pvService, &g_AsyncNotification.callHandle, 0, NULL,
                     GUEST_PROP_FN_GET_NOTIFICATION, 4, g_AsyncNotification.aParms, 0);
@@ -856,6 +916,7 @@ static void test2(void)
     testDelProp(&svcTable);
     testGetProp(&svcTable);
     testGetNotification(&svcTable);
+    testOutputParmTypes(&svcTable);
 
     /* Cleanup */
     RTTESTI_CHECK_RC_OK(svcTable.pfnUnload(svcTable.pvService));
@@ -1062,6 +1123,8 @@ static void test4(void)
             VBOXHGCMSVCPARM aParms[4];
             HGCMSvcSetStr(&aParms[0], s_szProp);
             HGCMSvcSetPv(&aParms[1], pvBuf, cbBuf);
+            HGCMSvcSetU64(&aParms[2], 0); /* timestamp */
+            HGCMSvcSetU32(&aParms[3], 0); /* size */
             svcTable.pfnHostCall(svcTable.pvService, GUEST_PROP_FN_HOST_GET_PROP, RT_ELEMENTS(aParms), aParms);
 
             RTTestGuardedFree(g_hTest, pvBuf);
@@ -1098,6 +1161,7 @@ static void test5(void)
             VBOXHGCMSVCPARM aParms[3];
             HGCMSvcSetStr(&aParms[0], "*");
             HGCMSvcSetPv(&aParms[1], pvBuf, cbBuf);
+            HGCMSvcSetU32(&aParms[2], 0); /* size */
             svcTable.pfnHostCall(svcTable.pvService, GUEST_PROP_FN_HOST_ENUM_PROPS, RT_ELEMENTS(aParms), aParms);
 
             RTTestGuardedFree(g_hTest, pvBuf);
@@ -1167,6 +1231,8 @@ static void test6(void)
             char            szBuffer[256];
             HGCMSvcSetPv(&aParms[0], szProp, (uint32_t)cchProp + 1);
             HGCMSvcSetPv(&aParms[1], szBuffer, sizeof(szBuffer));
+            HGCMSvcSetU64(&aParms[2], 0); /* timestamp */
+            HGCMSvcSetU32(&aParms[3], 0); /* size */
             RTTESTI_CHECK_RC_BREAK(svcTable.pfnHostCall(svcTable.pvService, GUEST_PROP_FN_HOST_GET_PROP, 4, aParms), VINF_SUCCESS);
         }
         cNsElapsed = RTTimeNanoTS() - cNsElapsed;

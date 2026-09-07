@@ -1,4 +1,4 @@
-/* $Id: message.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: message.cpp 115170 2026-09-07 15:37:07Z andreas.loeffler@oracle.com $ */
 /** @file
  * Base class for wrapping HCGM messages.
  */
@@ -26,6 +26,7 @@
  */
 
 #include <VBox/HostServices/Service.h>
+#include <VBox/AssertGuest.h>
 #include <VBox/VMMDev.h> /* For VMMDEV_MAX_HGCM_PARMS. */
 
 using namespace HGCM;
@@ -203,6 +204,18 @@ int Message::CopyParms(PVBOXHGCMSVCPARM paParmsDst, uint32_t cParmsDst,
 
     if (cParmsSrc > cParmsDst)
         return VERR_BUFFER_OVERFLOW;
+
+    if (!fDeepCopy)
+    {
+        /* The role of parameter i is defined by the API for the queued message. */
+        for (uint32_t i = 0; i < cParmsSrc; i++)
+            ASSERT_GUEST_MSG_RETURN(paParmsDst[i].type == paParmsSrc[i].type,
+                                    ("Parameter %RU32 has type %RU32, expected %RU32\n",
+                                     i, paParmsDst[i].type, paParmsSrc[i].type),
+                                    VERR_WRONG_PARAMETER_TYPE);
+
+        RT_UNTRUSTED_VALIDATED_FENCE();
+    }
 
     for (uint32_t i = 0; i < cParmsSrc; i++)
     {

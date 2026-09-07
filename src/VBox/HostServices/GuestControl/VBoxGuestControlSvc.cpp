@@ -1,4 +1,4 @@
-/* $Id: VBoxGuestControlSvc.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxGuestControlSvc.cpp 115170 2026-09-07 15:37:07Z andreas.loeffler@oracle.com $ */
 /** @file
  * Guest Control Service: Controlling the guest.
  */
@@ -314,58 +314,57 @@ typedef struct HostMsg
 
         if (RT_SUCCESS(rc))
         {
+            /* The role of parameter i is defined by the API for the queued message. */
+            for (uint32_t i = 0; i < mParmCount; i++)
+                if (paDstParms[i].type != mpParms[i].type)
+                    return VERR_INVALID_PARAMETER;
+
+            RT_UNTRUSTED_VALIDATED_FENCE();
+
             for (uint32_t i = 0; i < mParmCount; i++)
             {
-                if (paDstParms[i].type != mpParms[i].type)
+                switch (mpParms[i].type)
                 {
-                    LogFunc(("Parameter %RU32 type mismatch (got %RU32, expected %RU32)\n", i, paDstParms[i].type, mpParms[i].type));
-                    rc = VERR_INVALID_PARAMETER;
-                }
-                else
-                {
-                    switch (mpParms[i].type)
+                    case VBOX_HGCM_SVC_PARM_32BIT:
+#ifdef DEBUG_andy
+                        LogFlowFunc(("\tmpParms[%RU32] = %RU32 (uint32_t)\n",
+                                     i, mpParms[i].u.uint32));
+#endif
+                        paDstParms[i].u.uint32 = mpParms[i].u.uint32;
+                        break;
+
+                    case VBOX_HGCM_SVC_PARM_64BIT:
+#ifdef DEBUG_andy
+                        LogFlowFunc(("\tmpParms[%RU32] = %RU64 (uint64_t)\n",
+                                     i, mpParms[i].u.uint64));
+#endif
+                        paDstParms[i].u.uint64 = mpParms[i].u.uint64;
+                        break;
+
+                    case VBOX_HGCM_SVC_PARM_PTR:
                     {
-                        case VBOX_HGCM_SVC_PARM_32BIT:
 #ifdef DEBUG_andy
-                            LogFlowFunc(("\tmpParms[%RU32] = %RU32 (uint32_t)\n",
-                                         i, mpParms[i].u.uint32));
+                        LogFlowFunc(("\tmpParms[%RU32] = %p (ptr), size = %RU32\n",
+                                     i, mpParms[i].u.pointer.addr, mpParms[i].u.pointer.size));
 #endif
-                            paDstParms[i].u.uint32 = mpParms[i].u.uint32;
-                            break;
+                        if (!mpParms[i].u.pointer.size)
+                            continue; /* Only copy buffer if there actually is something to copy. */
 
-                        case VBOX_HGCM_SVC_PARM_64BIT:
-#ifdef DEBUG_andy
-                            LogFlowFunc(("\tmpParms[%RU32] = %RU64 (uint64_t)\n",
-                                         i, mpParms[i].u.uint64));
-#endif
-                            paDstParms[i].u.uint64 = mpParms[i].u.uint64;
-                            break;
-
-                        case VBOX_HGCM_SVC_PARM_PTR:
-                        {
-#ifdef DEBUG_andy
-                            LogFlowFunc(("\tmpParms[%RU32] = %p (ptr), size = %RU32\n",
-                                         i, mpParms[i].u.pointer.addr, mpParms[i].u.pointer.size));
-#endif
-                            if (!mpParms[i].u.pointer.size)
-                                continue; /* Only copy buffer if there actually is something to copy. */
-
-                            if (!paDstParms[i].u.pointer.addr)
-                                rc = VERR_INVALID_PARAMETER;
-                            else if (paDstParms[i].u.pointer.size < mpParms[i].u.pointer.size)
-                                rc = VERR_BUFFER_OVERFLOW;
-                            else
-                                memcpy(paDstParms[i].u.pointer.addr,
-                                       mpParms[i].u.pointer.addr,
-                                       mpParms[i].u.pointer.size);
-                            break;
-                        }
-
-                        default:
-                            LogFunc(("Parameter %RU32 of type %RU32 is not supported yet\n", i, mpParms[i].type));
-                            rc = VERR_NOT_SUPPORTED;
-                            break;
+                        if (!paDstParms[i].u.pointer.addr)
+                            rc = VERR_INVALID_PARAMETER;
+                        else if (paDstParms[i].u.pointer.size < mpParms[i].u.pointer.size)
+                            rc = VERR_BUFFER_OVERFLOW;
+                        else
+                            memcpy(paDstParms[i].u.pointer.addr,
+                                   mpParms[i].u.pointer.addr,
+                                   mpParms[i].u.pointer.size);
+                        break;
                     }
+
+                    default:
+                        LogFunc(("Parameter %RU32 of type %RU32 is not supported yet\n", i, mpParms[i].type));
+                        rc = VERR_NOT_SUPPORTED;
+                        break;
                 }
 
                 if (RT_FAILURE(rc))
@@ -1435,12 +1434,14 @@ int GstCtrlService::clientMsgGet(ClientState *pClient, VBOXHGCMCALLHANDLE hCall,
                                  idMsgExpected, GstCtrlHostMsgtoStr((eHostMsg)idMsgExpected), cParms),
                                 VERR_WRONG_PARAMETER_COUNT);
 
-        /* Check the parameter types. */
+        /* Each parameter index has the role defined by the queued message ID. */
         for (uint32_t i = 0; i < cParms; i++)
             ASSERT_GUEST_MSG_RETURN(pFirstMsg->mpParms[i].type == paParms[i].type,
                                     ("param #%u: type %u, caller expected %u (idMsg=%u %s)\n", i, pFirstMsg->mpParms[i].type,
                                      paParms[i].type, pFirstMsg->mType, GstCtrlHostMsgtoStr((eHostMsg)pFirstMsg->mType)),
                                     VERR_WRONG_PARAMETER_TYPE);
+
+        RT_UNTRUSTED_VALIDATED_FENCE();
 
         /*
          * Copy out the parameters.

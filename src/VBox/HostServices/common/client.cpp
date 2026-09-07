@@ -1,4 +1,4 @@
-/* $Id: client.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: client.cpp 115170 2026-09-07 15:37:07Z andreas.loeffler@oracle.com $ */
 /** @file
  * Base class for a host-guest service.
  */
@@ -27,6 +27,7 @@
 
 #include <VBox/log.h>
 #include <VBox/hgcmsvc.h>
+#include <VBox/AssertGuest.h>
 
 #include <iprt/assert.h>
 #include <iprt/alloc.h>
@@ -214,6 +215,10 @@ int Client::SetDeferredMsgInfo(uint32_t uMsg, uint32_t cParms) RT_NOEXCEPT
             return VERR_INVALID_PARAMETER;
 
         AssertPtrReturn(m_Deferred.paParms, VERR_BUFFER_OVERFLOW);
+        ASSERT_GUEST_RETURN(m_Deferred.paParms[0].type == VBOX_HGCM_SVC_PARM_32BIT, VERR_WRONG_PARAMETER_TYPE); /* uMsg */
+        ASSERT_GUEST_RETURN(m_Deferred.paParms[1].type == VBOX_HGCM_SVC_PARM_32BIT, VERR_WRONG_PARAMETER_TYPE); /* cParms */
+
+        RT_UNTRUSTED_VALIDATED_FENCE();
 
         HGCMSvcSetU32(&m_Deferred.paParms[0], uMsg);
         HGCMSvcSetU32(&m_Deferred.paParms[1], cParms);
