@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114828 2026-07-31 09:19:37Z alexander.eichner@oracle.com $
+# $Id: Makefile.kmk 115167 2026-09-07 13:16:12Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for the support library and the drivers/modules/kexts it uses.
 #
@@ -738,6 +738,9 @@ if   !defined(VBOX_ONLY_DOCS) \
   ifdef VBOX_WITH_MINIMAL_HARDENING
    VBoxDrv_DEFS          += VBOX_WITH_MINIMAL_HARDENING
   endif
+  ifdef VBOX_WITH_HARDENING
+   VBoxDrv_DEFS          += IN_DIS IN_DIS_STATIC DIS_CORE_ONLY
+  endif
   ifdef VBOX_WITH_DTRACE_R0DRV
    VBoxDrv_DEFS          += VBOX_WITH_DTRACE VBOX_WITH_DTRACE_R0DRV
   endif
@@ -789,6 +792,10 @@ if   !defined(VBOX_ONLY_DOCS) \
   	$(PATH_STAGE_LIB)/RuntimeR0Drv$(VBOX_SUFF_LIB) \
   	$(PATH_SDK_$(VBOX_WINDDK)_LIB)/ntoskrnl.lib \
   	$(PATH_SDK_$(VBOX_WINDDK)_LIB)/hal.lib
+  ifdef VBOX_WITH_HARDENING
+   VBoxDrv_LIBS.win      += \
+   	$(PATH_STAGE_LIB)/DisasmR0Drv$(VBOX_SUFF_LIB)
+  endif
   ifn1of ($(VBOX_WINDDK), WINDDK80 WINDDK71)
    VBoxDrv_LIBS.win.x86   = \
    	$(PATH_SDK_$(VBOX_WINDDK)_LIB)/BufferOverflowK.lib

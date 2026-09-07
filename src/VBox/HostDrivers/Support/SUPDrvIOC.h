@@ -1,4 +1,4 @@
-/* $Id: SUPDrvIOC.h 114828 2026-07-31 09:19:37Z alexander.eichner@oracle.com $ */
+/* $Id: SUPDrvIOC.h 115167 2026-09-07 13:16:12Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Driver - IOCtl definitions.
  */
@@ -137,6 +137,8 @@
 #define SUP_IOCTL_FAST_DO_NOP                   SUP_CTL_CODE_FAST(66)
 /** First fast path IOCtl number. */
 #define SUP_IOCTL_FAST_DO_FIRST                 SUP_IOCTL_FAST_DO_HM_RUN
+/** Window specific IOCtl: Verify the RWX page. */
+#define SUP_IOCTL_WIN_VERIFY_RWX_PG             SUP_CTL_CODE_FAST(127)
 /** @} */
 
 

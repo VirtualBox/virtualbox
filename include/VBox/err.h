@@ -2058,6 +2058,8 @@
 /** Unexpected instruction encountered for which there is no patch strategy
  * implemented (hardening). */
 #define VERR_SUPLIB_UNEXPECTED_INSTRUCTION          (-3778)
+/** The RWX page has been corrupted. */
+#define VERR_SUPLIB_RWXPG_CORRUPTED                 (-3779)
 /** @} */
 
 
@@ -2983,7 +2985,10 @@
 /** The image is required to be signed with the same certificate as the rest
  * of VirtualBox or one of the special trusted (Oracle) certificates. */
 #define VERR_SUP_VP_NOT_SIGNED_WITH_SPECIALLY_TRUSTED_CERT (-5679)
-
+/** Process Verification Failure: Malformed RWX section. */
+#define VERR_SUP_VP_EXE_MALFORMED_RWX_SECTION       (-5680)
+/** The RWX page has been corrupted. */
+#define VERR_SUP_VP_EXE_CORRUPTED_RWX_SECTION       (-5681)
 /** We are in driverless mode. */
 #define VERR_SUP_DRIVERLESS                         (-5699)
 /** We are in driverless mode. */

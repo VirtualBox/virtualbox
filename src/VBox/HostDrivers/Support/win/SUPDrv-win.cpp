@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-win.cpp 113872 2026-04-15 00:00:01Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPDrv-win.cpp 115167 2026-09-07 13:16:12Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Windows NT specifics.
  */
@@ -301,6 +301,8 @@ typedef struct SUPDRVNTPROTECT
          * reference the parent has to it. */
         struct SUPDRVNTPROTECT *pParent;
     } u;
+    /** Verification information for the RWX page (non-zero address if valid). */
+    SUPHARDNTVPRWXPGINFO RwxPgInfo;
 } SUPDRVNTPROTECT;
 /** Pointer to a NT process protection record. */
 typedef SUPDRVNTPROTECT *PSUPDRVNTPROTECT;
@@ -1268,7 +1270,8 @@ NTSTATUS _stdcall VBoxDrvNtCreate(PDEVICE_OBJECT pDevObj, PIRP pIrp)
              */
             PRTERRINFOSTATIC pErrInfo = (PRTERRINFOSTATIC)RTMemAllocZ(sizeof(*pErrInfo));
             rc = supHardenedWinVerifyProcess(NtCurrentProcess(), NtCurrentThread(), SUPHARDNTVPKIND_VERIFY_ONLY, 0 /*fFlags*/,
-                                             NULL, pErrInfo ? RTErrInfoInitStatic(pErrInfo) : NULL);
+                                             NULL /*pRwxPgInfo*/, NULL /*pcFixes*/,
+                                             pErrInfo ? RTErrInfoInitStatic(pErrInfo) : NULL);
             if (RT_FAILURE(rc))
                 SUPR0Printf("VBoxDrv: Checking process failed: %Rrc%#RTeim\n", rc, &pErrInfo->Core);
             RTMemFree(pErrInfo);
@@ -1396,6 +1399,64 @@ NTSTATUS _stdcall VBoxDrvNtClose(PDEVICE_OBJECT pDevObj, PIRP pIrp)
 }
 
 
+#ifdef VBOX_WITH_HARDENING
+/**
+ * Common part of the SUP_IOCTL_WIN_VERIFY_RWX_PG handling.
+ */
+static NTSTATUS supdrvNtIOCtlVerifyRwxPgCommon(PSUPDRVNTPROTECT pNtProtect)
+{
+    NTSTATUS rcNt = STATUS_SUCCESS;
+    if (pNtProtect->RwxPgInfo.pvRwxPgR3Ptr != NIL_RTR3PTR)
+    {
+# if 0
+        POOL_TYPE const enmPoolType = g_uNtVerCombined >= SUP_NT_VER_W80 ? NonPagedPoolNx : NonPagedPool;
+        uint8_t * const pbPage      = (uint8_t *)ExAllocatePoolWithTag(enmPoolType, PAGE_SIZE, 'VBox');
+        if (pbPage)
+        {
+            int rc = RTR0MemUserCopyFrom(pbPage, pNtProtect->RwxPgInfo.pvRwxPgR3Ptr, PAGE_SIZE);
+            if (RT_SUCCESS(rc))
+                rcNt = RTSha384Check(pbPage, PAGE_SIZE, pNtProtect->RwxPgInfo.abSha384)
+                     ? STATUS_SUCCESS : STATUS_CRC_ERROR;
+            else
+                rcNt = STATUS_ACCESS_VIOLATION;
+            ExFreePoolWithTag(pbPage, 'VBox');
+        }
+        else
+            rcNt = STATUS_NO_MEMORY;
+# else
+        __try
+        {
+            ProbeForRead((void *)pNtProtect->RwxPgInfo.pvRwxPgR3Ptr, PAGE_SIZE, 1);
+            rcNt = RTSha384Check((void *)pNtProtect->RwxPgInfo.pvRwxPgR3Ptr, PAGE_SIZE, pNtProtect->RwxPgInfo.abSha384)
+                 ? STATUS_SUCCESS : STATUS_CRC_ERROR;
+        }
+        __except(EXCEPTION_EXECUTE_HANDLER)
+        {
+            return STATUS_ACCESS_VIOLATION;
+        }
+# endif
+    }
+    return rcNt;
+}
+#endif /* VBOX_WITH_HARDENING */
+
+
+/**
+ * Handles SUP_IOCTL_WIN_VERIFY_RWX_PG for regular sessions.
+ */
+static NTSTATUS supdrvNtIOCtlVerifyRwxPg(PSUPDRVSESSION pSession)
+{
+#ifdef VBOX_WITH_HARDENING
+    PSUPDRVNTPROTECT const pNtProtect = pSession->pNtProtect;
+    if (pNtProtect)
+        return supdrvNtIOCtlVerifyRwxPgCommon(pNtProtect);
+#else
+    RT_NOREF(pSession);
+#endif
+    return STATUS_SUCCESS;
+}
+
+
 #ifdef VBOXDRV_WITH_FAST_IO
 /**
  * Fast I/O device control callback.
@@ -1427,6 +1488,14 @@ static BOOLEAN _stdcall VBoxDrvNtFastIoDeviceControl(PFILE_OBJECT pFileObj, BOOL
     {
         pIoStatus->Status      = STATUS_NOT_SUPPORTED;
         pIoStatus->Information = 0;
+# ifdef VBOX_WITH_HARDENING
+        if (pDevObj == g_pDevObjStub && uCmd == SUP_IOCTL_WIN_VERIFY_RWX_PG)
+        {
+            PSUPDRVNTPROTECT const pNtProtect = (PSUPDRVNTPROTECT)pFileObj->FsContext;
+            if (pNtProtect && pNtProtect->u32Magic == SUPDRVNTPROTECT_MAGIC)
+                pIoStatus->Status = supdrvNtIOCtlVerifyRwxPgCommon(pNtProtect);
+        }
+# endif
         return TRUE;
     }
 
@@ -1460,13 +1529,20 @@ static BOOLEAN _stdcall VBoxDrvNtFastIoDeviceControl(PFILE_OBJECT pFileObj, BOOL
          * the session and iCmd, and does not return anything.
          */
         if (   (uCmd & 3) == METHOD_NEITHER
-            && (uint32_t)((uCmd - SUP_IOCTL_FAST_DO_FIRST) >> 2) < (uint32_t)32)
+            && (uint32_t)((uCmd - SUP_IOCTL_FAST_DO_FIRST) >> 2) < (uint32_t)32) /* (Excludes SUP_IOCTL_WIN_VERIFY_RWX_PG.) */
         {
             int rc = supdrvIOCtlFast((uCmd - SUP_IOCTL_FAST_DO_FIRST) >> 2,
                                      (unsigned)(uintptr_t)pvOutput/* VMCPU id */,
                                      pDevExt, pSession);
             pIoStatus->Status      = RT_SUCCESS(rc) ? STATUS_SUCCESS : STATUS_INVALID_PARAMETER;
             pIoStatus->Information = 0; /* Could be used to pass rc if we liked. */
+            supdrvSessionRelease(pSession);
+            return TRUE;
+        }
+        if (uCmd == SUP_IOCTL_WIN_VERIFY_RWX_PG)
+        {
+            pIoStatus->Status      = supdrvNtIOCtlVerifyRwxPg(pSession);
+            pIoStatus->Information = 0;
             supdrvSessionRelease(pSession);
             return TRUE;
         }
@@ -1625,13 +1701,28 @@ static BOOLEAN _stdcall VBoxDrvNtFastIoDeviceControl(PFILE_OBJECT pFileObj, BOOL
  */
 NTSTATUS _stdcall VBoxDrvNtDeviceControl(PDEVICE_OBJECT pDevObj, PIRP pIrp)
 {
+    PIO_STACK_LOCATION const pStack = IoGetCurrentIrpStackLocation(pIrp);
+
+    /*
+     * With one exception, this is not accessible on stub or error devices.
+     */
+#ifdef VBOX_WITH_HARDENING
+    if (   pDevObj == g_pDevObjStub
+        && pStack->Parameters.DeviceIoControl.IoControlCode == SUP_IOCTL_WIN_VERIFY_RWX_PG)
+    {
+        PSUPDRVNTPROTECT const pNtProtect = (PSUPDRVNTPROTECT)pStack->FileObject->FsContext;
+        if (pNtProtect && pNtProtect->u32Magic == SUPDRVNTPROTECT_MAGIC)
+            return supdrvNtCompleteRequest(supdrvNtIOCtlVerifyRwxPgCommon(pNtProtect), pIrp);
+    }
+#endif
     VBOXDRV_COMPLETE_IRP_AND_RETURN_IF_STUB_OR_ERROR_INFO_DEV(pDevObj, pIrp);
 
-    PSUPDRVDEVEXT       pDevExt  = SUPDRVNT_GET_DEVEXT(pDevObj);
-    PIO_STACK_LOCATION  pStack   = IoGetCurrentIrpStackLocation(pIrp);
-    PSUPDRVSESSION      pSession = supdrvSessionHashTabLookup(pDevExt, RTProcSelf(), RTR0ProcHandleSelf(),
-                                                              (PSUPDRVSESSION *)&pStack->FileObject->FsContext);
-
+    /*
+     * Check the input a little bit and get a the session references.
+     */
+    PSUPDRVDEVEXT const  pDevExt  = SUPDRVNT_GET_DEVEXT(pDevObj);
+    PSUPDRVSESSION const pSession = supdrvSessionHashTabLookup(pDevExt, RTProcSelf(), RTR0ProcHandleSelf(),
+                                                               (PSUPDRVSESSION *)&pStack->FileObject->FsContext);
     if (!RT_VALID_PTR(pSession))
         return supdrvNtCompleteRequest(STATUS_TRUST_FAILURE, pIrp);
 
@@ -1660,6 +1751,12 @@ NTSTATUS _stdcall VBoxDrvNtDeviceControl(PDEVICE_OBJECT pDevObj, PIRP pIrp)
             /* Complete the I/O request. */
             supdrvSessionRelease(pSession);
             return supdrvNtCompleteRequest(RT_SUCCESS(rc) ? STATUS_SUCCESS : STATUS_INVALID_PARAMETER, pIrp);
+        }
+        if (uCmd == SUP_IOCTL_WIN_VERIFY_RWX_PG)
+        {
+            NTSTATUS rcNt = supdrvNtIOCtlVerifyRwxPg(pSession);
+            supdrvSessionRelease(pSession);
+            return supdrvNtCompleteRequest(rcNt, pIrp);
         }
     }
 
@@ -4877,6 +4974,7 @@ static int supdrvNtProtectCreate(PSUPDRVNTPROTECT *ppNtProtect, HANDLE hPid, SUP
     pNtProtect->hOpenTid                     = NULL;
     pNtProtect->hCsrssPid                    = NULL;
     pNtProtect->pCsrssProcess                = NULL;
+    pNtProtect->RwxPgInfo.pvRwxPgR3Ptr       = NIL_RTR3PTR;
 
     if (fLink)
     {
@@ -5394,7 +5492,7 @@ static int supdrvNtProtectVerifyProcess(PSUPDRVNTPROTECT pNtProtect)
         if (RT_SUCCESS(rc))
         {
             rc = supHardenedWinVerifyProcess(NtCurrentProcess(), NtCurrentThread(), SUPHARDNTVPKIND_VERIFY_ONLY, 0 /*fFlags*/,
-                                             NULL /*pcFixes*/, &ErrInfo);
+                                             &pNtProtect->RwxPgInfo, NULL /*pcFixes*/, &ErrInfo);
             if (RT_SUCCESS(rc) && pNtProtect->enmProcessKind >= kSupDrvNtProtectKind_VmProcessUnconfirmed)
                 rc = supdrvNtProtectVerifyStubForVmProcess(pNtProtect, &ErrInfo);
         }

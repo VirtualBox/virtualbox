@@ -1,4 +1,4 @@
-/* $Id: SUPLibInternal.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPLibInternal.h 115167 2026-09-07 13:16:12Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Internal header.
  */
@@ -394,6 +394,7 @@ extern DECL_HIDDEN_DATA(PSUPGLOBALINFOPAGE)     g_pSUPGlobalInfoPageR0;
 extern DECL_HIDDEN_DATA(PSUPQUERYFUNCS)         g_pSupFunctions;
 #endif
 extern DECL_HIDDEN_DATA(SUPR3HARDENEDMAINSTATE) g_enmSupR3HardenedMainState;
+extern DECL_HIDDEN_DATA(SUPPREINITDATA)         g_SupPreInitData;
 #ifdef RT_OS_WINDOWS
 extern DECL_HIDDEN_DATA(bool)                   g_fSupEarlyProcessInit;
 #endif
@@ -523,6 +524,7 @@ DECLHIDDEN(void)    supR3HardenedWinGetVeryEarlyImports(uintptr_t uNtDllAddr, PF
 DECLHIDDEN(void)    supR3HardenedWinInitImportsEarly(uintptr_t uNtDllAddr);
 DECLHIDDEN(void)    supR3HardenedWinInitSyscalls(bool fReportErrors, PRTERRINFO pErrInfo);
 DECLHIDDEN(PFNRT)   supR3HardenedWinGetRealDllSymbol(const char *pszDll, const char *pszProcedure);
+DECLHIDDEN(uintptr_t) supR3HardenedWinGetDllRange(const char *pszDll, uint32_t *pcbImage);
 DECLHIDDEN(void)    supR3HardenedWinEnableThreadCreation(void);
 DECLHIDDEN(void)    supR3HardenedWinResolveVerifyTrustApiAndHookThreadCreation(const char *pszProgName);
 DECLHIDDEN(void)    supR3HardenedWinFlushLoaderCache();
@@ -531,6 +533,7 @@ DECLHIDDEN(int)     supR3HardenedWinReSpawn(int iWhich);
 # ifdef _WINDEF_
 DECLHIDDEN(void)    supR3HardenedWinCreateParentWatcherThread(HMODULE hVBoxRT);
 # endif
+DECLHIDDEN(void)    supR3HardenedWinCheckRwxPage(void);
 DECLHIDDEN(void *)  supR3HardenedWinLoadLibrary(const char *pszName, bool fSystem32Only, uint32_t fMainFlags);
 extern RTUTF16      g_wszSupLibHardenedExePath[1024];
 # ifdef RTPATH_MAX

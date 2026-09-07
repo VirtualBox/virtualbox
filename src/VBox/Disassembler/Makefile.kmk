@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 115167 2026-09-07 13:16:12Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for the VBox Disassembler.
 #
@@ -101,6 +101,24 @@ ifndef VBOX_ONLY_VALIDATIONKIT
   	DisasmTables-x86-amd64.cpp \
   	DisasmTablesX64.cpp \
   	DisasmMisc.cpp
+ endif
+
+ if defined(VBOX_WITH_VBOXDRV) && defined(VBOX_WITH_HARDENING)
+  LIBRARIES.win.amd64    += DisasmR0Drv
+  DisasmR0Drv_TEMPLATE    = VBoxR0Drv
+  DisasmR0Drv_DEFS        = IN_DIS IN_RT_R0 DIS_CORE_ONLY
+  DisasmR0Drv_DEFS.amd64  = VBOX_DIS_WITH_X86_AMD64
+  DisasmR0Drv_DEFS.arm64  = VBOX_DIS_WITH_ARMV8
+  DisasmR0Drv_SOURCES     = \
+  	Disasm.cpp \
+  	DisasmMisc.cpp
+  DisasmR0Drv_SOURCES.amd64 = \
+  	DisasmCore-x86-amd64.cpp \
+  	DisasmTables-x86-amd64.cpp \
+  	DisasmTablesX64.cpp
+  DisasmR0Drv_SOURCES.arm64 = \
+ 	DisasmCore-armv8.cpp \
+ 	DisasmTables-armv8-a64.cpp
  endif
 
 endif # !VBOX_ONLY_VALIDATIONKIT

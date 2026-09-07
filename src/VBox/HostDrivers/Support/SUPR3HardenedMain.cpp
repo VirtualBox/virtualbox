@@ -1,4 +1,4 @@
-/* $Id: SUPR3HardenedMain.cpp 113914 2026-04-16 20:53:06Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPR3HardenedMain.cpp 115167 2026-09-07 13:16:12Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Hardened main().
  */
@@ -545,7 +545,7 @@ typedef const SUPARGPURGEDESC *PCSUPARGPURGEDESC;
 *   Global Variables                                                                                                             *
 *********************************************************************************************************************************/
 /** The pre-init data we pass on to SUPR3 (residing in VBoxRT). */
-static SUPPREINITDATA   g_SupPreInitData;
+DECL_HIDDEN_DATA(SUPPREINITDATA) g_SupPreInitData;
 /** The program executable path. */
 #ifndef RT_OS_WINDOWS
 static
