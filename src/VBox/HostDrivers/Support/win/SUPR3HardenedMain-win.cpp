@@ -1,4 +1,4 @@
-/* $Id: SUPR3HardenedMain-win.cpp 115167 2026-09-07 13:16:12Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPR3HardenedMain-win.cpp 115168 2026-09-07 13:52:28Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Hardened main(), windows bits.
  */
@@ -5784,7 +5784,7 @@ static bool supR3HardenedWinDriverExists(const char *pszDriver)
 /**
  * Open the stub device before the 2nd respawn.
  */
-static void supR3HardenedWinOpenStubDevice(void)
+DECLHIDDEN(void) supR3HardenedWinOpenStubDevice(int iWhich)
 {
     RT_STACK_CHECK_RET_ADDR();
     if (g_hSubStubDevice != NULL)
@@ -5813,7 +5813,8 @@ static void supR3HardenedWinOpenStubDevice(void)
 
         hFile = RTNT_INVALID_HANDLE_VALUE;
 
-        supR3HardenedWinCheckRwxPage();
+        if (iWhich >= 2)
+            supR3HardenedWinCheckRwxPage();
         rcNt = NtCreateFile(&hFile,
                             GENERIC_READ | GENERIC_WRITE, /* No SYNCHRONIZE. */
                             &ObjAttr,
@@ -5976,7 +5977,7 @@ DECLHIDDEN(int) supR3HardenedWinReSpawn(int iWhich)
      * have kernel32.dll and others to pull in for better diagnostics.)
      */
     if (iWhich == 2)
-        supR3HardenedWinOpenStubDevice();
+        supR3HardenedWinOpenStubDevice(iWhich);
 
     /*
      * Make sure we're alone in the stub process before creating the VM process
@@ -6157,6 +6158,12 @@ DECLHIDDEN(void) supR3HardenedWinInit(uint32_t fFlags, bool fAvastKludge)
     }
     else if (fFlags & SUPSECMAIN_FLAGS_FIRST_PROCESS)
     {
+        /*
+         * Wipe and seal the RXW page.
+         */
+        memset(g_abSupHardReadWriteExecPage, 0xcc, PAGE_SIZE);
+        SUPR3HARDENED_ASSERT_NT_SUCCESS(supR3HardenedWinProtectMemory(g_abSupHardReadWriteExecPage, PAGE_SIZE, PAGE_EXECUTE_READ));
+
         /*
          * Try shake anyone (e.g. easyhook) patching process creation code in
          * kernelbase, kernel32 or ntdll so they won't so easily cause the child
@@ -7700,7 +7707,7 @@ DECLASM(uintptr_t) supR3HardenedEarlyProcessInit(void)
     if (cArgs >= 1 && suplibHardenedStrCmp(papszArgs[0], SUPR3_RESPAWN_1_ARG0) == 0)
     {
         SUP_DPRINTF(("supR3HardenedVmProcessInit: Opening vboxsup stub...\n"));
-        supR3HardenedWinOpenStubDevice();
+        supR3HardenedWinOpenStubDevice(1 /*iWhich*/);
         g_enmSupR3HardenedMainState = SUPR3HARDENEDMAINSTATE_WIN_EARLY_STUB_DEVICE_OPENED;
     }
     else if (cArgs >= 1 && suplibHardenedStrCmp(papszArgs[0], SUPR3_RESPAWN_2_ARG0) == 0)

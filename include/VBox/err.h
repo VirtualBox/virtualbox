@@ -2955,18 +2955,18 @@
 #define VERR_SUP_VP_NOT_OWNED_BY_TRUSTED_INSTALLER  (-5667)
 /** The image is outside the expected range. */
 #define VERR_SUP_VP_IMAGE_TOO_BIG                   (-5668)
-/** Stub process not found so it cannot be revalidated when vboxdrv is opened
- * by the VM process. */
-#define VERR_SUP_VP_STUB_NOT_FOUND                  (-5669)
-/** Error opening the stub process for revalidation when vboxdrv is opened by
- *  the VM process. */
-#define VERR_SUP_VP_STUB_OPEN_ERROR                 (-5670)
-/** Stub process thread not found during revalidation upon vboxdrv opening by
- * the VM process. */
-#define VERR_SUP_VP_STUB_THREAD_NOT_FOUND           (-5671)
-/** Error opening the stub process thread for revalidation when vboxdrv is
- * opened by the VM process. */
-#define VERR_SUP_VP_STUB_THREAD_OPEN_ERROR          (-5672)
+/** Parent process not found so it cannot be revalidated when VBoxDrv or
+ * VBoxDrvStub is opened. */
+#define VERR_SUP_VP_PARENT_NOT_FOUND                (-5669)
+/** Error opening the parent process for revalidation when VBoxDrv or
+ *  VBoxDrvStub is opened. */
+#define VERR_SUP_VP_PARENT_OPEN_ERROR               (-5670)
+/** Parent process thread not found during revalidation upon VBoxDrv or
+ *  VBoxDrvStub opening. */
+#define VERR_SUP_VP_PARENT_THREAD_NOT_FOUND         (-5671)
+/** Error opening the parent process thread for revalidation when VBoxDrv or
+ * VBoxDrvStub is opened. */
+#define VERR_SUP_VP_PARENT_THREAD_OPEN_ERROR          (-5672)
 /** Process Purification Failure: NtAllocateVirtualMemory failed to get us
  * suitable replacement memory for a chunk of executable memory that
  * shouldn't be present in our process.  (You will only see this message if you

@@ -1,4 +1,4 @@
-/* $Id: SUPLibInternal.h 115167 2026-09-07 13:16:12Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPLibInternal.h 115168 2026-09-07 13:52:28Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Internal header.
  */
@@ -541,6 +541,7 @@ extern char         g_szSupLibHardenedExePath[RTPATH_MAX];
 # endif
 DECLHIDDEN(void)    supR3HardenedWinCompactHeaps(void);
 DECLHIDDEN(void)    supR3HardenedMainOpenDevice(void);
+DECLHIDDEN(void)    supR3HardenedWinOpenStubDevice(int iWhich);
 DECLHIDDEN(char *)  supR3HardenedWinReadErrorInfoDevice(char *pszErrorInfo, size_t cbErrorInfo, const char *pszPrefix);
 DECLHIDDEN(void)    supR3HardenedWinReportErrorToParent(const char *pszWhere, SUPINITOP enmWhat, int rc,
                                                         const char *pszFormat, va_list va);

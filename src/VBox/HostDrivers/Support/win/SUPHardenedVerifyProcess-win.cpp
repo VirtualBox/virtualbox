@@ -1,4 +1,4 @@
-/* $Id: SUPHardenedVerifyProcess-win.cpp 115167 2026-09-07 13:16:12Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPHardenedVerifyProcess-win.cpp 115168 2026-09-07 13:52:28Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library/Driver - Hardened Process Verification, Windows.
  */
@@ -39,6 +39,7 @@
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
 #ifdef IN_RING0
+# define LOG_GROUP LOG_GROUP_SUP_DRV
 # ifndef IPRT_NT_MAP_TO_ZW
 #  define IPRT_NT_MAP_TO_ZW
 # endif
@@ -1305,6 +1306,12 @@ static int supHardNtVpVerifyImageMemoryCompare(PSUPHNTVPSTATE pThis, PSUPHNTVPIM
     }
 
     /*
+     * This is as far as we go for the initial process.
+     */
+    if (pThis->enmKind == SUPHARDNTVPKIND_LIMITED_VERIFY_ONLY)
+        return VINF_SUCCESS;
+
+    /*
      * Get relocated bits.
      */
     uint8_t *pbBits;
@@ -1882,11 +1889,23 @@ static int supHardNtVpNewImage(PSUPHNTVPSTATE pThis, PSUPHNTVPIMAGE pImage, PMEM
         /*
          * Unknown image.
          *
-         * If we're cleaning up a child process, we can unmap the offending
-         * DLL...  Might have interesting side effects, or at least interesting
-         * as in "may you live in interesting times".
+         * We ignore these when performing limited self-purifications or limited
+         * verifications, as these are for the initial process where we are not
+         * able to limit the DLLs loaded so strictly.
          */
+        if (   pThis->enmKind == SUPHARDNTVPKIND_SELF_PURIFICATION_LIMITED
+            || pThis->enmKind == SUPHARDNTVPKIND_LIMITED_VERIFY_ONLY)
+        {
+            SUP_DPRINTF(("supHardNtVpScanVirtualMemory: Ignoring unknown mem at %p LB %#zx (base %p) - '%ls'\n",
+                         pMemInfo->BaseAddress, pMemInfo->RegionSize, pMemInfo->AllocationBase, pwszFilename));
+            return VINF_OBJECT_DESTROYED;
+        }
+
 # ifdef IN_RING3
+        /*
+         * If we're in ring-3 and doing child purification, we can unmap the
+         * offending DLL ...  but this could have interesting side effects.
+         */
         if (   pMemInfo->AllocationBase == pMemInfo->BaseAddress
             && pThis->enmKind == SUPHARDNTVPKIND_CHILD_PURIFICATION)
         {
@@ -1898,15 +1917,10 @@ static int supHardNtVpNewImage(PSUPHNTVPSTATE pThis, PSUPHNTVPIMAGE pImage, PMEM
             pThis->cFixes++;
             SUP_DPRINTF(("supHardNtVpScanVirtualMemory: NtUnmapViewOfSection(,%p) failed: %#x\n", pMemInfo->AllocationBase, rcNt));
         }
-        else if (pThis->enmKind == SUPHARDNTVPKIND_SELF_PURIFICATION_LIMITED)
-        {
-            SUP_DPRINTF(("supHardNtVpScanVirtualMemory: Ignoring unknown mem at %p LB %#zx (base %p) - '%ls'\n",
-                         pMemInfo->BaseAddress, pMemInfo->RegionSize, pMemInfo->AllocationBase, pwszFilename));
-            return VINF_OBJECT_DESTROYED;
-        }
 # endif
+
         /*
-         * Special error message if we can.
+         * Fail. Produce a special error message if we can.
          */
         if (   pMemInfo->AllocationBase == pMemInfo->BaseAddress
             && (   supHardNtVpAreNamesEqual("sysfer.dll", pwszFilename)
@@ -2280,6 +2294,7 @@ static int supHardNtVpScanVirtualMemory(PSUPHNTVPSTATE pThis, HANDLE hProcess)
 {
     SUP_DPRINTF(("supHardNtVpScanVirtualMemory: enmKind=%s\n",
                  pThis->enmKind == SUPHARDNTVPKIND_VERIFY_ONLY ? "VERIFY_ONLY" :
+                 pThis->enmKind == SUPHARDNTVPKIND_LIMITED_VERIFY_ONLY ? "LIMITED_VERIFY_ONLY" :
                  pThis->enmKind == SUPHARDNTVPKIND_CHILD_PURIFICATION ? "CHILD_PURIFICATION" : "SELF_PURIFICATION"));
 
     uint32_t    cXpExceptions = 0;
@@ -3193,7 +3208,8 @@ DECLHIDDEN(int) supHardenedWinVerifyProcess(HANDLE hProcess, HANDLE hThread, SUP
     int rc = VINF_SUCCESS;
 #ifndef VBOX_WITH_MINIMAL_HARDENING
     if (   enmKind != SUPHARDNTVPKIND_CHILD_PURIFICATION
-        && enmKind != SUPHARDNTVPKIND_SELF_PURIFICATION_LIMITED)
+        && enmKind != SUPHARDNTVPKIND_SELF_PURIFICATION_LIMITED
+        && enmKind != SUPHARDNTVPKIND_LIMITED_VERIFY_ONLY)
        rc = supHardNtVpThread(hProcess, hThread, pErrInfo);
     if (RT_SUCCESS(rc))
         rc = supHardNtVpDebugger(hProcess, pErrInfo);

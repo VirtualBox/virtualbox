@@ -1,4 +1,4 @@
-/* $Id: SUPHardenedVerify-win.h 115167 2026-09-07 13:16:12Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPHardenedVerify-win.h 115168 2026-09-07 13:52:28Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library/Driver - Hardened Verification, Windows.
  */
@@ -76,6 +76,7 @@ typedef SUPHARDNTVPRWXPGINFO *PSUPHARDNTVPRWXPGINFO;
 typedef enum SUPHARDNTVPKIND
 {
     SUPHARDNTVPKIND_VERIFY_ONLY = 1,
+    SUPHARDNTVPKIND_LIMITED_VERIFY_ONLY,
     SUPHARDNTVPKIND_CHILD_PURIFICATION,
     SUPHARDNTVPKIND_SELF_PURIFICATION,
     SUPHARDNTVPKIND_SELF_PURIFICATION_LIMITED,
