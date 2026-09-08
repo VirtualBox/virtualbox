@@ -1,4 +1,4 @@
-/* $Id: DevATA.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: DevATA.cpp 115191 2026-09-08 09:55:21Z michal.necasek@oracle.com $ */
 /** @file
  * VBox storage devices: ATA/ATAPI controller device (disk and cdrom).
  */
@@ -302,9 +302,9 @@ typedef struct ATADEVSTATE
     uint8_t                             abATAPICmd[ATAPI_PACKET_SIZE];
     /** ATAPI sense data. */
     uint8_t                             abATAPISense[ATAPI_SENSE_SIZE];
-    /** HACK: Countdown till we report a newly unmounted drive as mounted. */
-    uint8_t                             cNotifiedMediaChange;
-    /** The same for GET_EVENT_STATUS for mechanism */
+    /** Flag indicating that media was removed or newly inserted. */
+    bool                                fNotifyMediaChange;
+    /** Pending status change for GET_EVENT_STATUS mechanism */
     volatile uint32_t                   MediaEventStatus;
 
     /** Media type if known. */
@@ -3057,13 +3057,18 @@ static bool atapiR3GetEventStatusNotificationSS(PPDMDEVINS pDevIns, PATACONTROLL
                 pbBuf[7] = 0x00;
                 break;
 
+            /* Mechanical drives cannot "change" a medium; the old one has to be removed
+             * first and then a new one inserted.
+             * Technically we should perhaps first report an eject request event but that
+             * does not appear necessary.
+             */
             case ATA_EVENT_STATUS_MEDIA_CHANGED:
             case ATA_EVENT_STATUS_MEDIA_REMOVED:
                 /* umount */
                 scsiH2BE_U16(pbBuf + 0, 6);
                 pbBuf[2] = 0x04; /* media */
                 pbBuf[3] = 0x5e; /* supported = busy|media|external|power|operational */
-                pbBuf[4] = OldStatus == ATA_EVENT_STATUS_MEDIA_CHANGED ? 0x04 /* media changed */ : 0x03; /* media removed */
+                pbBuf[4] = 0x03; /* media removed */
                 pbBuf[5] = 0x00; /* medium absent / door closed */
                 pbBuf[6] = 0x00;
                 pbBuf[7] = 0x00;
@@ -3092,7 +3097,13 @@ static bool atapiR3GetEventStatusNotificationSS(PPDMDEVINS pDevIns, PATACONTROLL
                 pbBuf[7] = 0x00;
                 break;
         }
+
+        LogFlowFunc(("OldStatus=%u NewStatus=%u\n", OldStatus, NewStatus));
+        Log2(("%s: pbBuf: %.*Rhxs\n", __FUNCTION__, 8, pbBuf));
+
     } while (!ASMAtomicCmpXchgU32(&s->MediaEventStatus, NewStatus, OldStatus));
+
+    LogFlowFunc(("MediaEventStatus advanced to %d\n", s->MediaEventStatus));
 
     s->iSourceSink = ATAFN_SS_NULL;
     atapiR3CmdOK(pCtl, s);
@@ -3495,440 +3506,384 @@ static bool atapiR3ReadTOCRawSS(PPDMDEVINS pDevIns, PATACONTROLLER pCtl, PATADEV
 
 static void atapiR3ParseCmdVirtualATAPI(PPDMDEVINS pDevIns, PATACONTROLLER pCtl, PATADEVSTATE s, PATADEVSTATER3 pDevR3)
 {
-    const uint8_t *pbPacket = s->abATAPICmd;
-    uint32_t cbMax;
-    uint32_t cSectors, iATAPILBA;
+    const uint8_t   *pbPacket = s->abATAPICmd;
+    uint32_t        cbMax;
+    uint32_t        cSectors, iATAPILBA;
+    unsigned        uCmd = pbPacket[0];
 
-    switch (pbPacket[0])
+    /* If a unit attention condition exists, commands other than INQUIRY, REQUEST SENSE,
+     * GET CONFIGURATION, and GET EVENT STATUS NOTIFICATION are not allowed to execute
+     * and report either a NOT READY error until a medium is present, or UNIT ATTENTION
+     * with MEDIUM MAY HAVE CHANGED (once) when a meidum is present.
+     * NB: The GET EVENT STATUS NOTIFICATION and GET CONFIGURATION commands were defined
+     * in MMC-2 circa 1999 and do not exist in SCSI-2 or any of the SFF ATAPI specs.
+     */
+    if (s->fNotifyMediaChange
+        && uCmd != SCSI_INQUIRY
+        && uCmd != SCSI_REQUEST_SENSE
+        && uCmd != SCSI_GET_CONFIGURATION
+        && uCmd != SCSI_GET_EVENT_STATUS_NOTIFICATION)
     {
-        case SCSI_TEST_UNIT_READY:
-            if (s->cNotifiedMediaChange > 0)
-            {
-                if (s->cNotifiedMediaChange-- > 2)
-                    atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIUM_NOT_PRESENT);
-                else
-                    atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_UNIT_ATTENTION, SCSI_ASC_MEDIUM_MAY_HAVE_CHANGED); /* media changed */
-            }
-            else
-            {
-                PPDMIMOUNT const pDrvMount = pDevR3->pDrvMount;
-                if (pDrvMount && pDrvMount->pfnIsMounted(pDrvMount))
-                    atapiR3CmdOK(pCtl, s);
-                else
-                    atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIUM_NOT_PRESENT);
-            }
-            break;
-        case SCSI_GET_EVENT_STATUS_NOTIFICATION:
-            cbMax = scsiBE2H_U16(pbPacket + 7);
-            ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 8), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_GET_EVENT_STATUS_NOTIFICATION, true);
-            break;
-        case SCSI_MODE_SENSE_10:
+        /*
+         * A note on media changes: As long as a medium is not present, the unit remains in
+         * the 'not ready' state. Technically the unit becomes 'ready' soon after a medium
+         * is inserted; however, fNotifyMediaChange remains true until we've had
+         * a chance to report the UNIT ATTENTION status indicating a media change.
+         */
+        if (pDevR3->pDrvMount && pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount))
         {
-            uint8_t uPageControl, uPageCode;
-            cbMax = scsiBE2H_U16(pbPacket + 7);
-            uPageControl = pbPacket[2] >> 6;
-            uPageCode = pbPacket[2] & 0x3f;
-            switch (uPageControl)
-            {
-                case SCSI_PAGECONTROL_CURRENT:
-                    switch (uPageCode)
-                    {
-                        case SCSI_MODEPAGE_ERROR_RECOVERY:
-                            ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 16), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_MODE_SENSE_ERROR_RECOVERY, true);
-                            break;
-                        case SCSI_MODEPAGE_CD_STATUS:
-                            ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 28), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_MODE_SENSE_CD_STATUS, true);
-                            break;
-                        default:
-                            goto error_cmd;
-                    }
-                    break;
-                case SCSI_PAGECONTROL_CHANGEABLE:
-                    goto error_cmd;
-                case SCSI_PAGECONTROL_DEFAULT:
-                    goto error_cmd;
-                default:
-                case SCSI_PAGECONTROL_SAVED:
-                    atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_SAVING_PARAMETERS_NOT_SUPPORTED);
-                    break;
-            }
-            break;
+            atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_UNIT_ATTENTION, SCSI_ASC_MEDIUM_MAY_HAVE_CHANGED); /* media changed */
+            s->fNotifyMediaChange = false;
         }
-        case SCSI_REQUEST_SENSE:
-            cbMax = pbPacket[4];
-            ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 18), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_REQUEST_SENSE, true);
-            break;
-        case SCSI_PREVENT_ALLOW_MEDIUM_REMOVAL:
+        else
+            atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIUM_NOT_PRESENT);
+    }
+    else
+    {
+        switch (uCmd)
         {
-            PPDMIMOUNT const pDrvMount = pDevR3->pDrvMount;
-            if (pDrvMount && pDrvMount->pfnIsMounted(pDrvMount))
-            {
-                if (pbPacket[4] & 1)
-                    pDrvMount->pfnLock(pDrvMount);
-                else
-                    pDrvMount->pfnUnlock(pDrvMount);
-                atapiR3CmdOK(pCtl, s);
-            }
-            else
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIUM_NOT_PRESENT);
-            break;
-        }
-        case SCSI_READ_10:
-        case SCSI_READ_12:
-        {
-            if (s->cNotifiedMediaChange > 0)
-            {
-                s->cNotifiedMediaChange-- ;
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_UNIT_ATTENTION, SCSI_ASC_MEDIUM_MAY_HAVE_CHANGED); /* media changed */
-                break;
-            }
-            if (!pDevR3->pDrvMount || !pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount))
-            {
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIUM_NOT_PRESENT);
-                break;
-            }
-            if (pbPacket[0] == SCSI_READ_10)
-                cSectors = scsiBE2H_U16(pbPacket + 7);
-            else
-                cSectors = scsiBE2H_U32(pbPacket + 6);
-            iATAPILBA = scsiBE2H_U32(pbPacket + 2);
-
-            if (cSectors == 0)
-            {
+            case SCSI_TEST_UNIT_READY:
+                Assert(pDevR3->pDrvMount && pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount));
                 atapiR3CmdOK(pCtl, s);
                 break;
-            }
-
-            /* Check that the sector size is valid. */
-            VDREGIONDATAFORM enmDataForm = VDREGIONDATAFORM_INVALID;
-            int rc = pDevR3->pDrvMedia->pfnQueryRegionPropertiesForLba(pDevR3->pDrvMedia, iATAPILBA,
-                                                                       NULL, NULL, NULL, &enmDataForm);
-            if (RT_UNLIKELY(   rc == VERR_NOT_FOUND
-                            || ((uint64_t)iATAPILBA + cSectors > s->cTotalSectors)))
+            case SCSI_GET_EVENT_STATUS_NOTIFICATION:
+                cbMax = scsiBE2H_U16(pbPacket + 7);
+                ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 8), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_GET_EVENT_STATUS_NOTIFICATION, true);
+                break;
+            case SCSI_MODE_SENSE_10:
             {
-                /* Rate limited logging, one log line per second. For
-                 * guests that insist on reading from places outside the
-                 * valid area this often generates too many release log
-                 * entries otherwise. */
-                static uint64_t uLastLogTS = 0;
-                if (RTTimeMilliTS() >= uLastLogTS + 1000)
+                uint8_t uPageControl, uPageCode;
+                cbMax = scsiBE2H_U16(pbPacket + 7);
+                uPageControl = pbPacket[2] >> 6;
+                uPageCode = pbPacket[2] & 0x3f;
+                switch (uPageControl)
                 {
-                    LogRel(("PIIX3 ATA: LUN#%d: CD-ROM block number %Ld invalid (READ)\n", s->iLUN, (uint64_t)iATAPILBA + cSectors));
-                    uLastLogTS = RTTimeMilliTS();
+                    case SCSI_PAGECONTROL_CURRENT:
+                        switch (uPageCode)
+                        {
+                            case SCSI_MODEPAGE_ERROR_RECOVERY:
+                                ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 16), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_MODE_SENSE_ERROR_RECOVERY, true);
+                                break;
+                            case SCSI_MODEPAGE_CD_STATUS:
+                                ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 28), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_MODE_SENSE_CD_STATUS, true);
+                                break;
+                            default:
+                                goto error_cmd;
+                        }
+                        break;
+                    case SCSI_PAGECONTROL_CHANGEABLE:
+                        goto error_cmd;
+                    case SCSI_PAGECONTROL_DEFAULT:
+                        goto error_cmd;
+                    default:
+                    case SCSI_PAGECONTROL_SAVED:
+                        atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_SAVING_PARAMETERS_NOT_SUPPORTED);
+                        break;
                 }
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_LOGICAL_BLOCK_OOR);
                 break;
             }
-            else if (   enmDataForm != VDREGIONDATAFORM_MODE1_2048
-                     && enmDataForm != VDREGIONDATAFORM_MODE1_2352
-                     && enmDataForm != VDREGIONDATAFORM_MODE2_2336
-                     && enmDataForm != VDREGIONDATAFORM_MODE2_2352
-                     && enmDataForm != VDREGIONDATAFORM_RAW)
+            case SCSI_REQUEST_SENSE:
+                cbMax = pbPacket[4];
+                ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 18), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_REQUEST_SENSE, true);
+                break;
+            case SCSI_PREVENT_ALLOW_MEDIUM_REMOVAL:
             {
-                uint8_t abATAPISense[ATAPI_SENSE_SIZE];
-                RT_ZERO(abATAPISense);
-
-                abATAPISense[0] = 0x70 | (1 << 7);
-                abATAPISense[2] = (SCSI_SENSE_ILLEGAL_REQUEST & 0x0f) | SCSI_SENSE_FLAG_ILI;
-                scsiH2BE_U32(&abATAPISense[3], iATAPILBA);
-                abATAPISense[7] = 10;
-                abATAPISense[12] = SCSI_ASC_ILLEGAL_MODE_FOR_THIS_TRACK;
-                atapiR3CmdError(pCtl, s, &abATAPISense[0], sizeof(abATAPISense));
+                Assert(pDevR3->pDrvMount && pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount));
+                if (pbPacket[4] & 1)
+                    pDevR3->pDrvMount->pfnLock(pDevR3->pDrvMount);
+                else
+                    pDevR3->pDrvMount->pfnUnlock(pDevR3->pDrvMount);
+                atapiR3CmdOK(pCtl, s);
                 break;
             }
-            atapiR3ReadSectors(pDevIns, pCtl, s, iATAPILBA, cSectors, 2048);
-            break;
-        }
-        case SCSI_READ_CD_MSF:
-        case SCSI_READ_CD:
-        {
-            if (s->cNotifiedMediaChange > 0)
+            case SCSI_READ_10:
+            case SCSI_READ_12:
             {
-                s->cNotifiedMediaChange-- ;
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_UNIT_ATTENTION, SCSI_ASC_MEDIUM_MAY_HAVE_CHANGED); /* media changed */
-                break;
-            }
-            if (!pDevR3->pDrvMount || !pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount))
-            {
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIUM_NOT_PRESENT);
-                break;
-            }
-            if ((pbPacket[10] & 0x7) != 0)
-            {
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_INV_FIELD_IN_CMD_PACKET);
-                break;
-            }
-            if (pbPacket[0] == SCSI_READ_CD)
-            {
-                cSectors = (pbPacket[6] << 16) | (pbPacket[7] << 8) | pbPacket[8];
+                Assert(pDevR3->pDrvMount && pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount));
+                if (uCmd == SCSI_READ_10)
+                    cSectors = scsiBE2H_U16(pbPacket + 7);
+                else
+                    cSectors = scsiBE2H_U32(pbPacket + 6);
                 iATAPILBA = scsiBE2H_U32(pbPacket + 2);
-            }
-            else    /* READ CD MSF */
-            {
-                iATAPILBA = scsiMSF2LBA(pbPacket + 3);
-                if (iATAPILBA > scsiMSF2LBA(pbPacket + 6))
+
+                if (cSectors == 0)
                 {
-                    Log2(("Start MSF %02u:%02u:%02u > end MSF  %02u:%02u:%02u!\n", *(pbPacket + 3), *(pbPacket + 4), *(pbPacket + 5),
-                          *(pbPacket + 6), *(pbPacket + 7), *(pbPacket + 8)));
+                    atapiR3CmdOK(pCtl, s);
+                    break;
+                }
+
+                /* Check that the sector size is valid. */
+                VDREGIONDATAFORM enmDataForm = VDREGIONDATAFORM_INVALID;
+                int rc = pDevR3->pDrvMedia->pfnQueryRegionPropertiesForLba(pDevR3->pDrvMedia, iATAPILBA,
+                                                                           NULL, NULL, NULL, &enmDataForm);
+                if (RT_UNLIKELY(   rc == VERR_NOT_FOUND
+                                || ((uint64_t)iATAPILBA + cSectors > s->cTotalSectors)))
+                {
+                    /* Rate limited logging, one log line per second. For
+                     * guests that insist on reading from places outside the
+                     * valid area this often generates too many release log
+                     * entries otherwise. */
+                    static uint64_t uLastLogTS = 0;
+                    if (RTTimeMilliTS() >= uLastLogTS + 1000)
+                    {
+                        LogRel(("PIIX3 ATA: LUN#%d: CD-ROM block number %Ld invalid (READ)\n", s->iLUN, (uint64_t)iATAPILBA + cSectors));
+                        uLastLogTS = RTTimeMilliTS();
+                    }
+                    atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_LOGICAL_BLOCK_OOR);
+                    break;
+                }
+                else if (   enmDataForm != VDREGIONDATAFORM_MODE1_2048
+                         && enmDataForm != VDREGIONDATAFORM_MODE1_2352
+                         && enmDataForm != VDREGIONDATAFORM_MODE2_2336
+                         && enmDataForm != VDREGIONDATAFORM_MODE2_2352
+                         && enmDataForm != VDREGIONDATAFORM_RAW)
+                {
+                    uint8_t abATAPISense[ATAPI_SENSE_SIZE];
+                    RT_ZERO(abATAPISense);
+
+                    abATAPISense[0] = 0x70 | (1 << 7);
+                    abATAPISense[2] = (SCSI_SENSE_ILLEGAL_REQUEST & 0x0f) | SCSI_SENSE_FLAG_ILI;
+                    scsiH2BE_U32(&abATAPISense[3], iATAPILBA);
+                    abATAPISense[7] = 10;
+                    abATAPISense[12] = SCSI_ASC_ILLEGAL_MODE_FOR_THIS_TRACK;
+                    atapiR3CmdError(pCtl, s, &abATAPISense[0], sizeof(abATAPISense));
+                    break;
+                }
+                atapiR3ReadSectors(pDevIns, pCtl, s, iATAPILBA, cSectors, 2048);
+                break;
+            }
+            case SCSI_READ_CD_MSF:
+            case SCSI_READ_CD:
+            {
+                Assert(pDevR3->pDrvMount && pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount));
+                if ((pbPacket[10] & 0x7) != 0)
+                {
                     atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_INV_FIELD_IN_CMD_PACKET);
                     break;
                 }
-                cSectors = scsiMSF2LBA(pbPacket + 6) - iATAPILBA;
-                Log2(("Start MSF %02u:%02u:%02u -> LBA %u\n", *(pbPacket + 3), *(pbPacket + 4), *(pbPacket + 5), iATAPILBA));
-                Log2(("End   MSF %02u:%02u:%02u -> %u sectors\n", *(pbPacket + 6), *(pbPacket + 7), *(pbPacket + 8), cSectors));
-            }
-            if (cSectors == 0)
-            {
-                atapiR3CmdOK(pCtl, s);
-                break;
-            }
-            if ((uint64_t)iATAPILBA + cSectors > s->cTotalSectors)
-            {
-                /* Rate limited logging, one log line per second. For
-                 * guests that insist on reading from places outside the
-                 * valid area this often generates too many release log
-                 * entries otherwise. */
-                static uint64_t uLastLogTS = 0;
-                if (RTTimeMilliTS() >= uLastLogTS + 1000)
+                if (uCmd == SCSI_READ_CD)
                 {
-                    LogRel(("PIIX3 ATA: LUN#%d: CD-ROM block number %Ld invalid (READ CD)\n", s->iLUN, (uint64_t)iATAPILBA + cSectors));
-                    uLastLogTS = RTTimeMilliTS();
+                    cSectors = (pbPacket[6] << 16) | (pbPacket[7] << 8) | pbPacket[8];
+                    iATAPILBA = scsiBE2H_U32(pbPacket + 2);
                 }
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_LOGICAL_BLOCK_OOR);
-                break;
-            }
-            /*
-             * If the LBA is in an audio track we are required to ignore pretty much all
-             * of the channel selection values (except 0x00) and map everything to 0x10
-             * which means read user data with a sector size of 2352 bytes.
-             *
-             * (MMC-6 chapter 6.19.2.6)
-             */
-            uint8_t uChnSel = pbPacket[9] & 0xf8;
-            VDREGIONDATAFORM enmDataForm;
-            int rc = pDevR3->pDrvMedia->pfnQueryRegionPropertiesForLba(pDevR3->pDrvMedia, iATAPILBA,
-                                                                       NULL, NULL, NULL, &enmDataForm);
-            AssertRC(rc);
-
-            if (enmDataForm == VDREGIONDATAFORM_CDDA)
-            {
-                if (uChnSel == 0)
+                else    /* READ CD MSF */
                 {
-                    /* nothing */
+                    iATAPILBA = scsiMSF2LBA(pbPacket + 3);
+                    if (iATAPILBA > scsiMSF2LBA(pbPacket + 6))
+                    {
+                        Log2(("Start MSF %02u:%02u:%02u > end MSF  %02u:%02u:%02u!\n", *(pbPacket + 3), *(pbPacket + 4), *(pbPacket + 5),
+                              *(pbPacket + 6), *(pbPacket + 7), *(pbPacket + 8)));
+                        atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_INV_FIELD_IN_CMD_PACKET);
+                        break;
+                    }
+                    cSectors = scsiMSF2LBA(pbPacket + 6) - iATAPILBA;
+                    Log2(("Start MSF %02u:%02u:%02u -> LBA %u\n", *(pbPacket + 3), *(pbPacket + 4), *(pbPacket + 5), iATAPILBA));
+                    Log2(("End   MSF %02u:%02u:%02u -> %u sectors\n", *(pbPacket + 6), *(pbPacket + 7), *(pbPacket + 8), cSectors));
+                }
+                if (cSectors == 0)
+                {
                     atapiR3CmdOK(pCtl, s);
+                    break;
                 }
-                else
-                    atapiR3ReadSectors(pDevIns, pCtl, s, iATAPILBA, cSectors, 2352);
-            }
-            else
-            {
-                switch (uChnSel)
+                if ((uint64_t)iATAPILBA + cSectors > s->cTotalSectors)
                 {
-                    case 0x00:
+                    /* Rate limited logging, one log line per second. For
+                     * guests that insist on reading from places outside the
+                     * valid area this often generates too many release log
+                     * entries otherwise. */
+                    static uint64_t uLastLogTS = 0;
+                    if (RTTimeMilliTS() >= uLastLogTS + 1000)
+                    {
+                        LogRel(("PIIX3 ATA: LUN#%d: CD-ROM block number %Ld invalid (READ CD)\n", s->iLUN, (uint64_t)iATAPILBA + cSectors));
+                        uLastLogTS = RTTimeMilliTS();
+                    }
+                    atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_LOGICAL_BLOCK_OOR);
+                    break;
+                }
+                /*
+                 * If the LBA is in an audio track we are required to ignore pretty much all
+                 * of the channel selection values (except 0x00) and map everything to 0x10
+                 * which means read user data with a sector size of 2352 bytes.
+                 *
+                 * (MMC-6 chapter 6.19.2.6)
+                 */
+                uint8_t uChnSel = pbPacket[9] & 0xf8;
+                VDREGIONDATAFORM enmDataForm;
+                int rc = pDevR3->pDrvMedia->pfnQueryRegionPropertiesForLba(pDevR3->pDrvMedia, iATAPILBA,
+                                                                           NULL, NULL, NULL, &enmDataForm);
+                AssertRC(rc);
+
+                if (enmDataForm == VDREGIONDATAFORM_CDDA)
+                {
+                    if (uChnSel == 0)
+                    {
                         /* nothing */
                         atapiR3CmdOK(pCtl, s);
-                        break;
-                    case 0x10:
-                        /* normal read */
-                        atapiR3ReadSectors(pDevIns, pCtl, s, iATAPILBA, cSectors, 2048);
-                        break;
-                    case 0xf8:
-                        /* read all data */
+                    }
+                    else
                         atapiR3ReadSectors(pDevIns, pCtl, s, iATAPILBA, cSectors, 2352);
+                }
+                else
+                {
+                    switch (uChnSel)
+                    {
+                        case 0x00:
+                            /* nothing */
+                            atapiR3CmdOK(pCtl, s);
+                            break;
+                        case 0x10:
+                            /* normal read */
+                            atapiR3ReadSectors(pDevIns, pCtl, s, iATAPILBA, cSectors, 2048);
+                            break;
+                        case 0xf8:
+                            /* read all data */
+                            atapiR3ReadSectors(pDevIns, pCtl, s, iATAPILBA, cSectors, 2352);
+                            break;
+                        default:
+                            LogRel(("PIIX3 ATA: LUN#%d: CD-ROM sector format not supported (%#x)\n", s->iLUN, pbPacket[9] & 0xf8));
+                            atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_INV_FIELD_IN_CMD_PACKET);
+                            break;
+                    }
+                }
+                break;
+            }
+            case SCSI_SEEK_10:
+            {
+                Assert(pDevR3->pDrvMount && pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount));
+                iATAPILBA = scsiBE2H_U32(pbPacket + 2);
+                if (iATAPILBA > s->cTotalSectors)
+                {
+                    /* Rate limited logging, one log line per second. For
+                     * guests that insist on seeking to places outside the
+                     * valid area this often generates too many release log
+                     * entries otherwise. */
+                    static uint64_t uLastLogTS = 0;
+                    if (RTTimeMilliTS() >= uLastLogTS + 1000)
+                    {
+                        LogRel(("PIIX3 ATA: LUN#%d: CD-ROM block number %Ld invalid (SEEK)\n", s->iLUN, (uint64_t)iATAPILBA));
+                        uLastLogTS = RTTimeMilliTS();
+                    }
+                    atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_LOGICAL_BLOCK_OOR);
+                    break;
+                }
+                atapiR3CmdOK(pCtl, s);
+                ataSetStatus(pCtl, s, ATA_STAT_SEEK); /* Linux expects this. Required by ATAPI 2.x when seek completes. */
+                break;
+            }
+            case SCSI_START_STOP_UNIT:
+            {
+                int rc = VINF_SUCCESS;
+                switch (pbPacket[4] & 3)
+                {
+                    case 0: /* 00 - Stop motor */
+                    case 1: /* 01 - Start motor */
+                        break;
+                    case 2: /* 10 - Eject media */
+                    {
+                        /* This must be done from EMT. */
+                        PATASTATER3 pThisCC = PDMDEVINS_2_DATA_CC(pDevIns, PATASTATER3);
+                        PPDMIMOUNT  pDrvMount = pDevR3->pDrvMount;
+                        if (pDrvMount)
+                        {
+                            ataR3LockLeave(pDevIns, pCtl);
+
+                            rc = PDMDevHlpVMReqPriorityCallWait(pDevIns, VMCPUID_ANY,
+                                                                (PFNRT)pDrvMount->pfnUnmount, 3,
+                                                                pDrvMount, false /*=fForce*/, true /*=fEject*/);
+                            Assert(RT_SUCCESS(rc) || rc == VERR_PDM_MEDIA_LOCKED || rc == VERR_PDM_MEDIA_NOT_MOUNTED);
+                            if (RT_SUCCESS(rc) && pThisCC->pMediaNotify)
+                            {
+                                rc = PDMDevHlpVMReqCallNoWait(pDevIns, VMCPUID_ANY,
+                                                              (PFNRT)pThisCC->pMediaNotify->pfnEjected, 2,
+                                                              pThisCC->pMediaNotify, s->iLUN);
+                                AssertRC(rc);
+                            }
+
+                            ataR3LockEnter(pDevIns, pCtl);
+                        }
+                        else
+                            rc = VINF_SUCCESS;
+                        break;
+                    }
+                    case 3: /* 11 - Load media */
+                        /** @todo rc = pDevR3->pDrvMount->pfnLoadMedia(pDevR3->pDrvMount) */
+                        break;
+                }
+                if (RT_SUCCESS(rc))
+                {
+                    atapiR3CmdOK(pCtl, s);
+                    ataSetStatus(pCtl, s, ATA_STAT_SEEK);   /* Needed by NT 3.51/4.0, see @bugref{5869}. */
+                }
+                else
+                    atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIA_LOAD_OR_EJECT_FAILED);
+                break;
+            }
+            case SCSI_MECHANISM_STATUS:
+            {
+                cbMax = scsiBE2H_U16(pbPacket + 8);
+                ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 8), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_MECHANISM_STATUS, true);
+                break;
+            }
+            case SCSI_READ_TOC_PMA_ATIP:
+            {
+                Assert(pDevR3->pDrvMount && pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount));
+                uint8_t format;
+
+                cbMax = scsiBE2H_U16(pbPacket + 7);
+                /* SCSI MMC-3 spec says format is at offset 2 (lower 4 bits),
+                 * but Linux kernel uses offset 9 (topmost 2 bits). Hope that
+                 * the other field is clear... */
+                format = (pbPacket[2] & 0xf) | (pbPacket[9] >> 6);
+                switch (format)
+                {
+                    case 0:
+                        ataR3StartTransfer(pDevIns, pCtl, s, cbMax, PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_TOC_NORMAL, true);
+                        break;
+                    case 1:
+                        ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 12), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_TOC_MULTI, true);
+                        break;
+                    case 2:
+                        ataR3StartTransfer(pDevIns, pCtl, s, cbMax, PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_TOC_RAW, true);
                         break;
                     default:
-                        LogRel(("PIIX3 ATA: LUN#%d: CD-ROM sector format not supported (%#x)\n", s->iLUN, pbPacket[9] & 0xf8));
+                      error_cmd:
                         atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_INV_FIELD_IN_CMD_PACKET);
                         break;
                 }
+                break;
             }
-            break;
+            case SCSI_READ_CAPACITY:
+                Assert(pDevR3->pDrvMount && pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount));
+                ataR3StartTransfer(pDevIns, pCtl, s, 8, PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_CAPACITY, true);
+                break;
+            case SCSI_READ_DISC_INFORMATION:
+                Assert(pDevR3->pDrvMount && pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount));
+                cbMax = scsiBE2H_U16(pbPacket + 7);
+                ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 34), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_DISC_INFORMATION, true);
+                break;
+            case SCSI_READ_TRACK_INFORMATION:
+                Assert(pDevR3->pDrvMount && pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount));
+                cbMax = scsiBE2H_U16(pbPacket + 7);
+                ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 36), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_TRACK_INFORMATION, true);
+                break;
+            case SCSI_GET_CONFIGURATION:
+                cbMax = scsiBE2H_U16(pbPacket + 7);
+                ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 80), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_GET_CONFIGURATION, true);
+                break;
+            case SCSI_INQUIRY:
+                /* INQUIRY works regardless of any unit attention conditions etc. */
+                cbMax = scsiBE2H_U16(pbPacket + 3);
+                ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 36), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_INQUIRY, true);
+                break;
+            case SCSI_READ_DVD_STRUCTURE:
+                Assert(pDevR3->pDrvMount && pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount));
+                cbMax = scsiBE2H_U16(pbPacket + 8);
+                ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 4), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_DVD_STRUCTURE, true);
+                break;
+            default:
+                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_ILLEGAL_OPCODE);
+                break;
         }
-        case SCSI_SEEK_10:
-        {
-            if (s->cNotifiedMediaChange > 0)
-            {
-                s->cNotifiedMediaChange-- ;
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_UNIT_ATTENTION, SCSI_ASC_MEDIUM_MAY_HAVE_CHANGED); /* media changed */
-                break;
-            }
-            if (!pDevR3->pDrvMount || !pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount))
-            {
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIUM_NOT_PRESENT);
-                break;
-            }
-            iATAPILBA = scsiBE2H_U32(pbPacket + 2);
-            if (iATAPILBA > s->cTotalSectors)
-            {
-                /* Rate limited logging, one log line per second. For
-                 * guests that insist on seeking to places outside the
-                 * valid area this often generates too many release log
-                 * entries otherwise. */
-                static uint64_t uLastLogTS = 0;
-                if (RTTimeMilliTS() >= uLastLogTS + 1000)
-                {
-                    LogRel(("PIIX3 ATA: LUN#%d: CD-ROM block number %Ld invalid (SEEK)\n", s->iLUN, (uint64_t)iATAPILBA));
-                    uLastLogTS = RTTimeMilliTS();
-                }
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_LOGICAL_BLOCK_OOR);
-                break;
-            }
-            atapiR3CmdOK(pCtl, s);
-            ataSetStatus(pCtl, s, ATA_STAT_SEEK); /* Linux expects this. Required by ATAPI 2.x when seek completes. */
-            break;
-        }
-        case SCSI_START_STOP_UNIT:
-        {
-            int rc = VINF_SUCCESS;
-            switch (pbPacket[4] & 3)
-            {
-                case 0: /* 00 - Stop motor */
-                case 1: /* 01 - Start motor */
-                    break;
-                case 2: /* 10 - Eject media */
-                {
-                    /* This must be done from EMT. */
-                    PATASTATER3 pThisCC = PDMDEVINS_2_DATA_CC(pDevIns, PATASTATER3);
-                    PPDMIMOUNT  pDrvMount = pDevR3->pDrvMount;
-                    if (pDrvMount)
-                    {
-                        ataR3LockLeave(pDevIns, pCtl);
-
-                        rc = PDMDevHlpVMReqPriorityCallWait(pDevIns, VMCPUID_ANY,
-                                                            (PFNRT)pDrvMount->pfnUnmount, 3,
-                                                            pDrvMount, false /*=fForce*/, true /*=fEject*/);
-                        Assert(RT_SUCCESS(rc) || rc == VERR_PDM_MEDIA_LOCKED || rc == VERR_PDM_MEDIA_NOT_MOUNTED);
-                        if (RT_SUCCESS(rc) && pThisCC->pMediaNotify)
-                        {
-                            rc = PDMDevHlpVMReqCallNoWait(pDevIns, VMCPUID_ANY,
-                                                          (PFNRT)pThisCC->pMediaNotify->pfnEjected, 2,
-                                                          pThisCC->pMediaNotify, s->iLUN);
-                            AssertRC(rc);
-                        }
-
-                        ataR3LockEnter(pDevIns, pCtl);
-                    }
-                    else
-                        rc = VINF_SUCCESS;
-                    break;
-                }
-                case 3: /* 11 - Load media */
-                    /** @todo rc = pDevR3->pDrvMount->pfnLoadMedia(pDevR3->pDrvMount) */
-                    break;
-            }
-            if (RT_SUCCESS(rc))
-            {
-                atapiR3CmdOK(pCtl, s);
-                ataSetStatus(pCtl, s, ATA_STAT_SEEK);   /* Needed by NT 3.51/4.0, see @bugref{5869}. */
-            }
-            else
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIA_LOAD_OR_EJECT_FAILED);
-            break;
-        }
-        case SCSI_MECHANISM_STATUS:
-        {
-            cbMax = scsiBE2H_U16(pbPacket + 8);
-            ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 8), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_MECHANISM_STATUS, true);
-            break;
-        }
-        case SCSI_READ_TOC_PMA_ATIP:
-        {
-            uint8_t format;
-
-            if (s->cNotifiedMediaChange > 0)
-            {
-                s->cNotifiedMediaChange-- ;
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_UNIT_ATTENTION, SCSI_ASC_MEDIUM_MAY_HAVE_CHANGED); /* media changed */
-                break;
-            }
-            if (!pDevR3->pDrvMount || !pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount))
-            {
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIUM_NOT_PRESENT);
-                break;
-            }
-            cbMax = scsiBE2H_U16(pbPacket + 7);
-            /* SCSI MMC-3 spec says format is at offset 2 (lower 4 bits),
-             * but Linux kernel uses offset 9 (topmost 2 bits). Hope that
-             * the other field is clear... */
-            format = (pbPacket[2] & 0xf) | (pbPacket[9] >> 6);
-            switch (format)
-            {
-                case 0:
-                    ataR3StartTransfer(pDevIns, pCtl, s, cbMax, PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_TOC_NORMAL, true);
-                    break;
-                case 1:
-                    ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 12), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_TOC_MULTI, true);
-                    break;
-                case 2:
-                    ataR3StartTransfer(pDevIns, pCtl, s, cbMax, PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_TOC_RAW, true);
-                    break;
-                default:
-                  error_cmd:
-                    atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_INV_FIELD_IN_CMD_PACKET);
-                    break;
-            }
-            break;
-        }
-        case SCSI_READ_CAPACITY:
-            if (s->cNotifiedMediaChange > 0)
-            {
-                s->cNotifiedMediaChange-- ;
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_UNIT_ATTENTION, SCSI_ASC_MEDIUM_MAY_HAVE_CHANGED); /* media changed */
-                break;
-            }
-            if (!pDevR3->pDrvMount || !pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount))
-            {
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIUM_NOT_PRESENT);
-                break;
-            }
-            ataR3StartTransfer(pDevIns, pCtl, s, 8, PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_CAPACITY, true);
-            break;
-        case SCSI_READ_DISC_INFORMATION:
-            if (s->cNotifiedMediaChange > 0)
-            {
-                s->cNotifiedMediaChange-- ;
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_UNIT_ATTENTION, SCSI_ASC_MEDIUM_MAY_HAVE_CHANGED); /* media changed */
-                break;
-            }
-            if (!pDevR3->pDrvMount || !pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount))
-            {
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIUM_NOT_PRESENT);
-                break;
-            }
-            cbMax = scsiBE2H_U16(pbPacket + 7);
-            ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 34), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_DISC_INFORMATION, true);
-            break;
-        case SCSI_READ_TRACK_INFORMATION:
-            if (s->cNotifiedMediaChange > 0)
-            {
-                s->cNotifiedMediaChange-- ;
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_UNIT_ATTENTION, SCSI_ASC_MEDIUM_MAY_HAVE_CHANGED); /* media changed */
-                break;
-            }
-            if (!pDevR3->pDrvMount || !pDevR3->pDrvMount->pfnIsMounted(pDevR3->pDrvMount))
-            {
-                atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_NOT_READY, SCSI_ASC_MEDIUM_NOT_PRESENT);
-                break;
-            }
-            cbMax = scsiBE2H_U16(pbPacket + 7);
-            ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 36), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_TRACK_INFORMATION, true);
-            break;
-        case SCSI_GET_CONFIGURATION:
-            /* No media change stuff here, it can confuse Linux guests. */
-            cbMax = scsiBE2H_U16(pbPacket + 7);
-            ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 80), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_GET_CONFIGURATION, true);
-            break;
-        case SCSI_INQUIRY:
-            cbMax = scsiBE2H_U16(pbPacket + 3);
-            ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 36), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_INQUIRY, true);
-            break;
-        case SCSI_READ_DVD_STRUCTURE:
-            cbMax = scsiBE2H_U16(pbPacket + 8);
-            ataR3StartTransfer(pDevIns, pCtl, s, RT_MIN(cbMax, 4), PDMMEDIATXDIR_FROM_DEVICE, ATAFN_BT_ATAPI_CMD, ATAFN_SS_ATAPI_READ_DVD_STRUCTURE, true);
-            break;
-        default:
-            atapiR3CmdErrorSimple(pCtl, s, SCSI_SENSE_ILLEGAL_REQUEST, SCSI_ASC_ILLEGAL_OPCODE);
-            break;
     }
 }
 
@@ -4047,6 +4002,7 @@ static bool ataR3PacketSS(PPDMDEVINS pDevIns, PATACONTROLLER pCtl, PATADEVSTATE 
 static void ataR3MediumRemoved(PATADEVSTATE s)
 {
     ASMAtomicWriteU32(&s->MediaEventStatus, ATA_EVENT_STATUS_MEDIA_REMOVED);
+    LogFlowFunc(("MediaEventStatus set to %d\n", s->MediaEventStatus));
 }
 
 
@@ -4073,6 +4029,7 @@ static void ataR3MediumInserted(PATADEVSTATE s)
                 break;
         }
     } while (!ASMAtomicCmpXchgU32(&s->MediaEventStatus, NewStatus, OldStatus));
+    LogFlowFunc(("MediaEventStatus set to %d\n", s->MediaEventStatus));
 }
 
 
@@ -4101,9 +4058,8 @@ static DECLCALLBACK(void) ataR3MountNotify(PPDMIMOUNTNOTIFY pInterface)
 
     LogRel(("PIIX3 ATA: LUN#%d: CD/DVD, total number of sectors %Ld, passthrough unchanged\n", pIf->iLUN, pIf->cTotalSectors));
 
-    /* Report media changed in TEST UNIT and other (probably incorrect) places. */
-    if (pIf->cNotifiedMediaChange < 2)
-        pIf->cNotifiedMediaChange = 1;
+    /* Generate media change unit attention. */
+    pIf->fNotifyMediaChange = true;
     ataR3MediumInserted(pIf);
     ataR3MediumTypeSet(pIf, ATA_MEDIA_TYPE_UNKNOWN);
 }
@@ -4119,13 +4075,8 @@ static DECLCALLBACK(void) ataR3UnmountNotify(PPDMIMOUNTNOTIFY pInterface)
     Log(("%s:\n", __FUNCTION__));
     pIf->cTotalSectors = 0;
 
-    /*
-     * Whatever I do, XP will not use the GET MEDIA STATUS nor the EVENT stuff.
-     * However, it will respond to TEST UNIT with a 0x6 0x28 (media changed) sense code.
-     * So, we'll give it 4 TEST UNIT command to catch up, two which the media is not
-     * present and 2 in which it is changed.
-     */
-    pIf->cNotifiedMediaChange = 1;
+    /* Report media status change (not ready) in TEST UNIT READY and elsewhere */
+    pIf->fNotifyMediaChange = true;
     ataR3MediumRemoved(pIf);
     ataR3MediumTypeSet(pIf, ATA_MEDIA_NO_DISC);
 }
@@ -4147,8 +4098,10 @@ static void ataR3ResetDevice(PPDMDEVINS pDevIns, PATACONTROLLER pCtl, PATADEVSTA
 {
     LogFlowFunc(("\n"));
     s->cMultSectors = ATA_MAX_MULT_SECTORS;
-    s->cNotifiedMediaChange = 0;
+    /* After a reset, always generate media change unit attention */
+    s->fNotifyMediaChange = true;
     ASMAtomicWriteU32(&s->MediaEventStatus, ATA_EVENT_STATUS_UNCHANGED);
+    LogFlowFunc(("MediaEventStatus set to %d\n", s->MediaEventStatus));
     ASMAtomicWriteU32(&s->MediaTrackType, ATA_MEDIA_TYPE_UNKNOWN);
     ataUnsetIRQ(pDevIns, pCtl, s);
 
@@ -4558,6 +4511,11 @@ static void ataR3ParseCmd(PPDMDEVINS pDevIns, PATACONTROLLER pCtl, PATADEVSTATE 
                     /* As per the ATA/ATAPI-6 specs, a write cache disable
                      * command MUST flush the write buffers to disc. */
                     ataR3StartTransfer(pDevIns, pCtl, s, 0, PDMMEDIATXDIR_NONE, ATAFN_BT_NULL, ATAFN_SS_FLUSH, false);
+                    break;
+                case 0x85: /* disable advanced power management */
+                    Log2(("%s: disable advanced power management\n", __FUNCTION__));
+                    ataR3CmdOK(pCtl, s, ATA_STAT_SEEK);
+                    ataHCSetIRQ(pDevIns, pCtl, s); /* Shortcut, do not use AIO thread. */
                     break;
                 case 0x03: { /* set transfer mode */
                     Log2(("%s: transfer mode %#04x\n", __FUNCTION__, s->uATARegNSector));
@@ -6864,6 +6822,7 @@ static DECLCALLBACK(void) ataR3Detach(PPDMDEVINS pDevIns, unsigned iLUN, uint32_
 {
     PATASTATE   pThis   = PDMDEVINS_2_DATA(pDevIns, PATASTATE);
     PATASTATER3 pThisCC = PDMDEVINS_2_DATA_CC(pDevIns, PATASTATECC);
+    LogFlowFunc(("\n"));
     AssertMsg(fFlags & PDM_TACH_FLAGS_NOT_HOT_PLUG,
               ("PIIX3IDE: Device does not support hotplugging\n")); RT_NOREF(fFlags);
 
@@ -6973,7 +6932,7 @@ static int ataR3ConfigLun(PATADEVSTATE pIf, PATADEVSTATER3 pIfR3)
                           VERR_BUFFER_OVERFLOW);
 
     /*
-     * Init geometry (only for non-CD/DVD media).
+     * Figure out the total number of sectors (possibly in multiple regions).
      */
     int rc = VINF_SUCCESS;
     uint32_t cRegions = pIfR3->pDrvMedia->pfnGetRegionCount(pIfR3->pDrvMedia);
@@ -6986,6 +6945,9 @@ static int ataR3ConfigLun(PATADEVSTATE pIf, PATADEVSTATER3 pIfR3)
         pIf->cTotalSectors += cBlocks;
     }
 
+    /*
+     * Init geometry (only for non-CD/DVD media).
+     */
     if (pIf->fATAPI)
     {
         pIf->PCHSGeometry.cCylinders = 0; /* dummy */
@@ -7082,7 +7044,7 @@ static DECLCALLBACK(int)  ataR3Attach(PPDMDEVINS pDevIns, unsigned iLUN, uint32_
 {
     PATASTATE   pThis = PDMDEVINS_2_DATA(pDevIns, PATASTATE);
     PATASTATER3 pThisCC = PDMDEVINS_2_DATA_CC(pDevIns, PATASTATECC);
-
+    LogFlowFunc(("\n"));
     AssertMsgReturn(fFlags & PDM_TACH_FLAGS_NOT_HOT_PLUG,
                     ("PIIX3IDE: Device does not support hotplugging\n"),
                     VERR_INVALID_PARAMETER);
@@ -7115,8 +7077,13 @@ static DECLCALLBACK(int)  ataR3Attach(PPDMDEVINS pDevIns, unsigned iLUN, uint32_
         /*
          * In case there is a medium inserted.
          */
-        ataR3MediumInserted(pIf);
-        ataR3MediumTypeSet(pIf, ATA_MEDIA_TYPE_UNKNOWN);
+        /// @todo call MountNotify/UnmountNotify instead?
+        if (pIfR3->pDrvMount && pIfR3->pDrvMount->pfnIsMounted(pIfR3->pDrvMount))
+        {
+            pIf->fNotifyMediaChange = true;
+            ataR3MediumInserted(pIf);
+            ataR3MediumTypeSet(pIf, ATA_MEDIA_TYPE_UNKNOWN);
+        }
     }
     else
         AssertMsgFailed(("Failed to attach LUN#%d. rc=%Rrc\n", pIf->iLUN, rc));
@@ -7311,7 +7278,7 @@ static DECLCALLBACK(int) ataR3SaveExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM)
             pHlp->pfnSSMPutU32(pSSM, pThis->aCts[i].aIfs[j].cbATAPISector);
             pHlp->pfnSSMPutMem(pSSM, &pThis->aCts[i].aIfs[j].abATAPICmd, sizeof(pThis->aCts[i].aIfs[j].abATAPICmd));
             pHlp->pfnSSMPutMem(pSSM, &pThis->aCts[i].aIfs[j].abATAPISense, sizeof(pThis->aCts[i].aIfs[j].abATAPISense));
-            pHlp->pfnSSMPutU8(pSSM, pThis->aCts[i].aIfs[j].cNotifiedMediaChange);
+            pHlp->pfnSSMPutU8(pSSM, pThis->aCts[i].aIfs[j].fNotifyMediaChange);
             pHlp->pfnSSMPutU32(pSSM, pThis->aCts[i].aIfs[j].MediaEventStatus);
             pHlp->pfnSSMPutMem(pSSM, &pThis->aCts[i].aIfs[j].Led, sizeof(pThis->aCts[i].aIfs[j].Led));
             pHlp->pfnSSMPutU32(pSSM, pThis->aCts[i].aIfs[j].cbIOBuffer);
@@ -7330,10 +7297,10 @@ static const char *ataR3StringifyLun(unsigned iLun)
 {
     switch (iLun)
     {
-        case 0:  return "primary master";
-        case 1:  return "primary slave";
-        case 2:  return "secondary master";
-        case 3:  return "secondary slave";
+        case 0:  return "primary device 0";
+        case 1:  return "primary device 1";
+        case 2:  return "secondary device 0";
+        case 3:  return "secondary device 1";
         default: AssertFailedReturn("unknown lun");
     }
 }
@@ -7519,8 +7486,10 @@ static DECLCALLBACK(int) ataR3LoadExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, uint
                 pThis->aCts[i].aIfs[j].abATAPISense[2] = uATAPISenseKey & 0x0f;
                 pThis->aCts[i].aIfs[j].abATAPISense[12] = uATAPIASC;
             }
+            uint8_t u8Tmp;  // was formerly uint8_t, now bool
+            pHlp->pfnSSMGetU8(pSSM, &u8Tmp);
+            pThis->aCts[i].aIfs[j].fNotifyMediaChange = !!u8Tmp;
             /** @todo triple-check this hack after passthrough is working */
-            pHlp->pfnSSMGetU8(pSSM, &pThis->aCts[i].aIfs[j].cNotifiedMediaChange);
             if (uVersion > ATA_SAVED_STATE_VERSION_WITHOUT_EVENT_STATUS)
                 pHlp->pfnSSMGetU32V(pSSM, &pThis->aCts[i].aIfs[j].MediaEventStatus);
             else
