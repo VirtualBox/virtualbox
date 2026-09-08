@@ -1,4 +1,4 @@
-/* $Id: DevVGA_VBVA.cpp 114933 2026-08-10 12:39:58Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA_VBVA.cpp 115189 2026-09-08 09:45:33Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Video Acceleration (VBVA).
  */
@@ -977,6 +977,7 @@ int vboxVBVALoadStateExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, uint32_t uVersion
             uint32_t cViews = 0;
             rc = pHlp->pfnSSMGetU32 (pSSM, &cViews);
             AssertRCReturn(rc, rc);
+            AssertReturn(cViews <= pThis->cMonitors, VERR_INVALID_STATE);
 
             uint32_t iView;
             for (iView = 0; iView < cViews; iView++)
