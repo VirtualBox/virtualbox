@@ -1,4 +1,4 @@
-/* $Id: VBoxMPGaWddm.cpp 115043 2026-08-16 20:32:42Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPGaWddm.cpp 115198 2026-09-08 10:10:03Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Gallium driver interface for WDDM kernel mode driver.
  */
@@ -2179,6 +2179,7 @@ NTSTATUS APIENTRY GaDxgkDdiPresentDisplayOnly(const HANDLE hAdapter,
     /*
      * Copy the image to the corresponding VidPn source allocation.
      */
+    AssertReturn(pPresentDisplayOnly->VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt)->cDisplays, STATUS_INVALID_PARAMETER);
     PVBOXWDDM_SOURCE pSource = &pDevExt->aSources[pPresentDisplayOnly->VidPnSourceId];
     AssertReturn(pSource->AllocData.Addr.SegmentId == 1, STATUS_SUCCESS); /* Ignore such VidPn sources. */
 

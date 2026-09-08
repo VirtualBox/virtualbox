@@ -1,4 +1,4 @@
-/* $Id: VBoxMPWddm.cpp 115093 2026-08-19 18:19:30Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPWddm.cpp 115198 2026-09-08 10:10:03Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox WDDM Miniport driver
  */
@@ -2044,6 +2044,7 @@ VOID vboxWddmAllocationCleanupAssignment(PVBOXMP_DEVEXT pDevExt, PVBOXWDDM_ALLOC
             if (pAllocation->bAssigned)
             {
                 /** @todo do we need to notify host? */
+                AssertReturnVoid(pAllocation->AllocData.SurfDesc.VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt)->cDisplays);
                 vboxWddmAssignPrimary(&pDevExt->aSources[pAllocation->AllocData.SurfDesc.VidPnSourceId], NULL, pAllocation->AllocData.SurfDesc.VidPnSourceId);
             }
             break;
@@ -2425,9 +2426,10 @@ DxgkDdiDestroyAllocation(
 
     for (UINT i = 0; i < pDestroyAllocation->NumAllocations; ++i)
     {
-        PVBOXWDDM_ALLOCATION pAllocation = (PVBOXWDDM_ALLOCATION)pDestroyAllocation->pAllocationList[0];
+        PVBOXWDDM_ALLOCATION pAllocation = (PVBOXWDDM_ALLOCATION)pDestroyAllocation->pAllocationList[i];
         if (pAllocation->CurVidPnSourceId != -1)
         {
+            AssertContinue(pAllocation->CurVidPnSourceId < VBoxCommonFromDeviceExt(pDevExt)->cDisplays);
             VBOXWDDM_SOURCE *pSource = &pDevExt->aSources[pAllocation->CurVidPnSourceId];
             vboxWddmAssignPrimary(pSource, NULL, pAllocation->CurVidPnSourceId);
         }
@@ -3172,6 +3174,7 @@ DxgkDdiSetPointerPosition(
 
     /* mouse integration is ON */
     PVBOXMP_DEVEXT pDevExt = (PVBOXMP_DEVEXT)hAdapter;
+    AssertReturn(pSetPointerPosition->VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt)->cDisplays, STATUS_INVALID_PARAMETER);
     PVBOXWDDM_POINTER_INFO pPointerInfo = &pDevExt->aSources[pSetPointerPosition->VidPnSourceId].PointerInfo;
     PVBOXWDDM_GLOBAL_POINTER_INFO pGlobalPointerInfo = &pDevExt->PointerInfo;
     PVIDEO_POINTER_ATTRIBUTES pPointerAttributes = &pPointerInfo->Attributes.data;
@@ -3247,6 +3250,7 @@ DxgkDdiSetPointerShape(
     {
         /* mouse integration is ON */
         PVBOXMP_DEVEXT pDevExt = (PVBOXMP_DEVEXT)hAdapter;
+        AssertReturn(pSetPointerShape->VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt)->cDisplays, STATUS_INVALID_PARAMETER);
         PVBOXWDDM_POINTER_INFO pPointerInfo = &pDevExt->aSources[pSetPointerShape->VidPnSourceId].PointerInfo;
         bool const fDwordAlignScanlines = pDevExt->enmHwType != VBOXVIDEO_HWTYPE_VBOX;
         /** @todo to avoid extra data copy and extra heap allocation,
@@ -3652,7 +3656,7 @@ DxgkDdiEscape(
                 if (pAlloc->bAssigned)
                 {
                     PVBOXMP_DEVEXT pDevExt2 = pDevice->pAdapter;
-                    Assert(pAlloc->AllocData.SurfDesc.VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt2)->cDisplays);
+                    AssertBreakStmt(pAlloc->AllocData.SurfDesc.VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt2)->cDisplays, Status = STATUS_INVALID_PARAMETER);
                     PVBOXWDDM_SOURCE pSource = &pDevExt2->aSources[pAlloc->AllocData.SurfDesc.VidPnSourceId];
                     if (pSource->AllocData.hostID != pAlloc->AllocData.hostID)
                     {
@@ -4983,6 +4987,7 @@ static NTSTATUS APIENTRY DxgkDdiPresentDisplayOnly(
         return GaDxgkDdiPresentDisplayOnly(hAdapter, pPresentDisplayOnly);
     }
 #endif
+    AssertReturn(pPresentDisplayOnly->VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt)->cDisplays, STATUS_INVALID_PARAMETER);
     PVBOXWDDM_SOURCE pSource = &pDevExt->aSources[pPresentDisplayOnly->VidPnSourceId];
     Assert(pSource->AllocData.Addr.SegmentId == 1);
     VBOXWDDM_ALLOC_DATA SrcAllocData;

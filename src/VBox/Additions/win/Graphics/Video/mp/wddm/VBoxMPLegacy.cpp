@@ -1,4 +1,4 @@
-/* $Id: VBoxMPLegacy.cpp 111825 2025-11-20 15:08:34Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxMPLegacy.cpp 115198 2026-09-08 10:10:03Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox WDDM Miniport driver. The legacy VBoxVGA adapter support with 2D software unaccelerated
  * framebuffer operations.
@@ -557,7 +557,8 @@ static NTSTATUS vboxVdmaGgDmaColorFill(PVBOXMP_DEVEXT pDevExt, VBOXVDMA_CLRFILL 
                         && pAlloc->bVisible
                         )
                 {
-                    if (!vboxWddmRectIsEmpty(&UnionRect))
+                    if (  !vboxWddmRectIsEmpty(&UnionRect)
+                       && pCF->Alloc.pAlloc->AllocData.SurfDesc.VidPnSourceId < (UINT)VBoxCommonFromDeviceExt(pDevExt)->cDisplays)
                     {
                         PVBOXWDDM_SOURCE pSource = &pDevExt->aSources[pCF->Alloc.pAlloc->AllocData.SurfDesc.VidPnSourceId];
                         uint32_t cUnlockedVBVADisabled = ASMAtomicReadU32(&pDevExt->cUnlockedVBVADisabled);
@@ -662,7 +663,8 @@ static NTSTATUS vboxVdmaProcessBltCmd(PVBOXMP_DEVEXT pDevExt, VBOXWDDM_CONTEXT *
         /* the allocations contain a real data in VRAM, do blitting */
         vboxVdmaGgDmaBlt(pDevExt, &pBlt->Blt);
 
-        if (pDstAlloc->bAssigned && pDstAlloc->bVisible)
+        if (   pDstAlloc->bAssigned && pDstAlloc->bVisible
+            && pDstAlloc->AllocData.SurfDesc.VidPnSourceId < (UINT)VBoxCommonFromDeviceExt(pDevExt)->cDisplays)
         {
             /* Only for visible framebuffer allocations. */
             VBOXWDDM_SOURCE *pSource = &pDevExt->aSources[pDstAlloc->AllocData.SurfDesc.VidPnSourceId];
@@ -680,6 +682,7 @@ static NTSTATUS vboxVdmaProcessFlipCmd(PVBOXMP_DEVEXT pDevExt, VBOXWDDM_CONTEXT 
     RT_NOREF(pContext);
     NTSTATUS Status = STATUS_SUCCESS;
     PVBOXWDDM_ALLOCATION pAlloc = pFlip->Flip.Alloc.pAlloc;
+    AssertReturn(pAlloc->AllocData.SurfDesc.VidPnSourceId < (UINT)VBoxCommonFromDeviceExt(pDevExt)->cDisplays, STATUS_SUCCESS);
     VBOXWDDM_SOURCE *pSource = &pDevExt->aSources[pAlloc->AllocData.SurfDesc.VidPnSourceId];
     vboxWddmAssignPrimary(pSource, pAlloc, pAlloc->AllocData.SurfDesc.VidPnSourceId);
     {
@@ -1415,6 +1418,7 @@ DxgkDdiSubmitCommandLegacy(
         {
             VBOXWDDM_DMA_PRIVATEDATA_FLIP *pFlip = (VBOXWDDM_DMA_PRIVATEDATA_FLIP*)pPrivateDataBase;
             PVBOXWDDM_ALLOCATION pAlloc = pFlip->Flip.Alloc.pAlloc;
+            AssertReturn(pAlloc->AllocData.SurfDesc.VidPnSourceId < (UINT)VBoxCommonFromDeviceExt(pDevExt)->cDisplays, STATUS_INVALID_PARAMETER);
             VBOXWDDM_SOURCE *pSource = &pDevExt->aSources[pAlloc->AllocData.SurfDesc.VidPnSourceId];
             vboxWddmAddrSetVram(&pAlloc->AllocData.Addr, pFlip->Flip.Alloc.segmentIdAlloc, pFlip->Flip.Alloc.offAlloc);
             vboxWddmAssignPrimary(pSource, pAlloc, pAlloc->AllocData.SurfDesc.VidPnSourceId);
