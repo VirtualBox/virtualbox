@@ -1,4 +1,4 @@
-/* $Id: VSCSILunMmc.cpp 112474 2026-01-13 12:47:27Z michal.necasek@oracle.com $ */
+/* $Id: VSCSILunMmc.cpp 115206 2026-09-08 12:06:22Z michal.necasek@oracle.com $ */
 /** @file
  * Virtual SCSI driver: MMC LUN implementation (CD/DVD-ROM)
  */
@@ -513,7 +513,7 @@ static DECLCALLBACK(size_t) vscsiLunMmcGetConfigurationFillFeatureTimeout(uint8_
  */
 static int vscsiLunMmcGetConfiguration(PVSCSILUNMMC pVScsiLunMmc, PVSCSIREQINT pVScsiReq, size_t cbMaxTransfer)
 {
-    uint8_t aReply[80];
+    uint8_t aReply[80]; RT_ZERO(aReply); /* Large enough to hold multiple feature descriptors. */
     uint8_t *pbBuf = &aReply[0];
     size_t cbBuf = sizeof(aReply);
     size_t cbCopied = 0;
