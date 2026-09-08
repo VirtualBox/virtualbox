@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-shader.cpp 114078 2026-05-05 17:59:21Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-shader.cpp 115201 2026-09-08 10:18:25Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device - VGPU10+ (DX) shader utilities.
  */
@@ -2107,6 +2107,7 @@ int DXShaderParse(void const *pvShaderCode, uint32_t cbShaderCode, DXShaderInfo 
     uint32_t const cToken = paToken[1];
     Log6(("Shader version %d.%d type %s(%d) Length %d\n",
           pProgramToken->majorVersion, pProgramToken->minorVersion, dxbcShaderTypeToString(pProgramToken->programType), pProgramToken->programType, cToken));
+    ASSERT_GUEST_RETURN(cToken >= 2, VERR_INVALID_PARAMETER); /* At least program and length tokens. */
     ASSERT_GUEST_RETURN(cbShaderCode / 4 >= cToken, VERR_INVALID_PARAMETER); /* Declared length should be less or equal to the actual. */
 
     /* Write the parsed (and possibly modified) shader to a memory buffer. */
