@@ -1,4 +1,4 @@
-/* $Id: vrdpvideoin.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: vrdpvideoin.cpp 115184 2026-09-08 09:27:13Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Remote Desktop Protocol.
  */
@@ -800,7 +800,7 @@ void VRDPVideoIn::viChannelCleanup(VIDEOINCHANNEL *pChannel)
         }
 
         /* CancelIO. */
-        fetchIO(pIterIO->u32CompletionId, NULL);
+        RTListNodeRemove(&pIterIO->nodeIO);
         VRDPPktRelease(&pCtx->pkt);
     }
 
@@ -1540,16 +1540,19 @@ int VRDPVideoIn::fetchIO(uint32_t u32CompletionId,
                                                               const VRDPOUTPUTGENERICHDR *pHdr)
 {
     RT_NOREF1(pClient);
-    VIDEOINIOCTX *pCtx = (VIDEOINIOCTX *)pHdr->pvUser;
+    VRDPVideoIn *pThis = (VRDPVideoIn *)pHdr->pvUser;
+    AssertReturnVoid(pThis);
+    uint32_t const u32CompletionId = pHdr->u32Parm;
 
-    int rc = pCtx->pChannel->pClientChannel->SendData(&pCtx->hdr, pCtx->hdr.u32Length);
+    VIDEOINIOCTX *pCtx = NULL;
+    int rc = pThis->fetchIO(u32CompletionId, (void **)&pCtx);
+    AssertRCReturnVoid(rc);
+    AssertReturnVoid(pCtx);
+    AssertReturnVoidStmt(u32CompletionId == pCtx->u32CompletionId, VRDPPktRelease(&pCtx->pkt));
 
-    if (RT_FAILURE(rc))
-    {
-        /* Cancel IO. */
-        pCtx->pThis->fetchIO(pCtx->u32CompletionId, NULL);
-        VRDPPktRelease(&pCtx->pkt);
-    }
+    pCtx->pChannel->pClientChannel->SendData(&pCtx->hdr, pCtx->hdr.u32Length);
+
+    VRDPPktRelease(&pCtx->pkt);
 }
 
 int VRDPVideoIn::viSubmitMsg(uint16_t u16FunctionId,
@@ -1603,9 +1606,9 @@ int VRDPVideoIn::viSubmitMsg(uint16_t u16FunctionId,
             VRDPOUTPUTGENERICHDR pkt;
 
             pkt.pfnCallback = processSubmitMsg;
-            pkt.pvUser      = pCtx;
+            pkt.pvUser      = this;
             pkt.u32Size     = sizeof(pkt);
-            pkt.u32Parm     = 0;
+            pkt.u32Parm     = u32CompletionId;
 
             rc = m_pServer->PostOutput(VRDP_OUTPUT_GENERIC, pDev->u32ClientId, &pkt, sizeof(pkt));
 
@@ -1616,6 +1619,8 @@ int VRDPVideoIn::viSubmitMsg(uint16_t u16FunctionId,
                 VRDPPktRelease(&pCtx->pkt);
             }
         }
+        else
+            VRDPPktRelease(&pCtx->pkt);
     }
     else
     {
