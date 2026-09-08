@@ -1,4 +1,4 @@
-/* $Id: UsbWebcamDesc.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: UsbWebcamDesc.cpp 115187 2026-09-08 09:36:23Z vitali.pelenjow@oracle.com $ */
 /** @file
  * USB Webcam Device Emulation - USB descriptors.
  */
@@ -196,19 +196,21 @@ static WEBCAMDEVICEDESCDEFAULT g_defaultDeviceDesc =
 #undef UW_DECL_DEFAULT_FRAME
 
 static int uwcDeviceDescFindFormat(const VRDEVIDEOINFORMATDESC **ppFormatFound,
+                                   uint32_t *pcbFormatFound,
                                    const VRDEVIDEOINDEVICEDESC *pDeviceDesc,
                                    uint32_t cbDeviceDesc,
                                    uint8_t u8FormatType)
 {
     int rc = VINF_SUCCESS;
     const VRDEVIDEOINFORMATDESC *pFormatFound = NULL;
+    uint32_t cbFormatFound = 0;
 
     const uint8_t *pu8Data = (uint8_t *)pDeviceDesc;
     const uint8_t *pu8End = pu8Data + cbDeviceDesc;
 
     /* Verify the data and find the format description. */
     if (   (uintptr_t)pu8End - (uintptr_t)pu8Data < (uintptr_t)sizeof(VRDEVIDEOINDEVICEDESC)
-        || (uintptr_t)pu8End - (uintptr_t)pu8Data < (uintptr_t)pDeviceDesc->cbExt)
+        || (uintptr_t)pu8End - (uintptr_t)pu8Data < (uintptr_t)(sizeof(VRDEVIDEOINDEVICEDESC) + pDeviceDesc->cbExt))
     {
         UWLOG(("DEVICEDESC: %d\n", pu8End - pu8Data));
         rc = VERR_INVALID_PARAMETER;
@@ -259,6 +261,7 @@ static int uwcDeviceDescFindFormat(const VRDEVIDEOINFORMATDESC **ppFormatFound,
                 if (pFormat->u8FormatType == u8FormatType)
                 {
                     pFormatFound = pFormat;
+                    cbFormatFound = pFormat->cbFormat;
                 }
             }
 
@@ -278,6 +281,9 @@ static int uwcDeviceDescFindFormat(const VRDEVIDEOINFORMATDESC **ppFormatFound,
 
                 /** @todo Verify pFrame content. */
                 pu8Data += pFrame->cbFrame;
+
+                if (pFormat == pFormatFound)
+                    cbFormatFound += pFrame->cbFrame;
             }
         }
     }
@@ -288,6 +294,7 @@ static int uwcDeviceDescFindFormat(const VRDEVIDEOINFORMATDESC **ppFormatFound,
         {
             UWLOG(("Found format: id %d\n", pFormatFound->u8FormatId));
             *ppFormatFound = pFormatFound;
+            *pcbFormatFound = cbFormatFound;
         }
         else
         {
@@ -300,15 +307,15 @@ static int uwcDeviceDescFindFormat(const VRDEVIDEOINFORMATDESC **ppFormatFound,
 }
 
 
-static int usbWebcamBuildVSClassDescriptor(uint32_t u32MinFrameInterval, const VRDEVIDEOINFORMATDESC *pFormatMJPEG,
+static int usbWebcamBuildVSClassDescriptor(uint32_t u32MinFrameInterval, const VRDEVIDEOINFORMATDESC *pFormatMJPEG, uint32_t cbFormatMJPEG,
                                            uint8_t *pu8Desc, uint32_t cbDesc, uint32_t *pcbDesc)
 {
     UWLOG(("cbDesc %d\n", cbDesc));
 
     const uint8_t *pu8Src = (const uint8_t *)pFormatMJPEG;
+    const uint8_t *pu8SrcEnd = pu8Src + cbFormatMJPEG;
     uint8_t *pu8Dst = pu8Desc;
-    /// @todo for now assume that there is enough space uint8_t *pu8End = pu8Dst + cbDesc;
-    /// @todo cleanup
+    uint8_t *pu8DstEnd = pu8Dst + cbDesc;
 
     /* VS class descriptor consists of:
      *   WEBCAMDESCVSINPUTHEADER  InputHeader;
@@ -317,6 +324,10 @@ static int usbWebcamBuildVSClassDescriptor(uint32_t u32MinFrameInterval, const V
      *   VUSBVDESCVSCOLORMATCHING ColorMatching;
      */
 
+    AssertReturn((uintptr_t)pu8SrcEnd - (uintptr_t)pu8Src >= (uintptr_t)sizeof(VRDEVIDEOINFORMATDESC), VERR_INVALID_PARAMETER);
+    AssertReturn((uintptr_t)pu8SrcEnd - (uintptr_t)pu8Src >= (uintptr_t)pFormatMJPEG->cbFormat, VERR_INVALID_PARAMETER);
+
+    AssertReturn((uintptr_t)pu8DstEnd - (uintptr_t)pu8Dst >= (uintptr_t)sizeof(WEBCAMDESCVSINPUTHEADER), VERR_INVALID_PARAMETER);
     WEBCAMDESCVSINPUTHEADER *pInputHeader = (WEBCAMDESCVSINPUTHEADER *)pu8Dst;
 
     pInputHeader->Core.bLength             = sizeof(WEBCAMDESCVSINPUTHEADER);
@@ -335,6 +346,7 @@ static int usbWebcamBuildVSClassDescriptor(uint32_t u32MinFrameInterval, const V
 
     pu8Dst += sizeof(WEBCAMDESCVSINPUTHEADER);
 
+    AssertReturn((uintptr_t)pu8DstEnd - (uintptr_t)pu8Dst >= (uintptr_t)sizeof(VUSBVDESCVSMJPEGFMT), VERR_INVALID_PARAMETER);
     VUSBVDESCVSMJPEGFMT *pJpegFormat = (VUSBVDESCVSMJPEGFMT *)pu8Dst;
 
     pJpegFormat->bLength                = sizeof(VUSBVDESCVSMJPEGFMT);
@@ -356,6 +368,7 @@ static int usbWebcamBuildVSClassDescriptor(uint32_t u32MinFrameInterval, const V
     uint8_t i;
     for (i = 1; i <= pJpegFormat->bNumFrameDescriptors; i++)
     {
+        AssertReturn((uintptr_t)pu8SrcEnd - (uintptr_t)pu8Src >= (uintptr_t)sizeof(VRDEVIDEOINFRAMEDESC), VERR_INVALID_PARAMETER);
         const VRDEVIDEOINFRAMEDESC *pFrameSrc = (const VRDEVIDEOINFRAMEDESC *)pu8Src;
 
         if (pFrameSrc->u32NumFrameIntervals == 0)
@@ -363,6 +376,7 @@ static int usbWebcamBuildVSClassDescriptor(uint32_t u32MinFrameInterval, const V
             return VERR_INVALID_PARAMETER;
         }
 
+        AssertReturn((uintptr_t)pu8DstEnd - (uintptr_t)pu8Dst >= (uintptr_t)sizeof(VUSBVDESCVSMJPEGFRAME), VERR_INVALID_PARAMETER);
         VUSBVDESCVSMJPEGFRAME *pFrameDst = (VUSBVDESCVSMJPEGFRAME *)pu8Dst;
 
         pFrameDst->bLength                = 0; /* Updated later */
@@ -397,15 +411,20 @@ static int usbWebcamBuildVSClassDescriptor(uint32_t u32MinFrameInterval, const V
             /* Discrete frame intervals. */
             if (pFrameSrc->u8FrameFlags & VRDE_VIDEOIN_F_FRM_SIZE_OF_FIELDS)
             {
+                AssertReturn((uintptr_t)pu8SrcEnd - (uintptr_t)pu8Src >= (uintptr_t)sizeof(uint16_t), VERR_INVALID_PARAMETER);
                 cbField = *(uint16_t *)pu8Src;
                 pu8Src += sizeof(uint16_t);
+                AssertReturn(cbField / sizeof(uint32_t) >= pFrameSrc->u32NumFrameIntervals, VERR_INVALID_PARAMETER);
             }
             else
             {
                 cbField = (uint16_t)(pFrameSrc->u32NumFrameIntervals * sizeof(uint32_t));
             }
+            AssertReturn((uintptr_t)pu8SrcEnd - (uintptr_t)pu8Src >= (uintptr_t)cbField, VERR_INVALID_PARAMETER);
 
             UWLOG(("%u discrete intervals\n", pFrameSrc->u32NumFrameIntervals));
+
+            AssertReturn((uintptr_t)pu8DstEnd - (uintptr_t)pu8Dst >= (uintptr_t)pFrameSrc->u32NumFrameIntervals * sizeof(uint32_t), VERR_INVALID_PARAMETER);
 
             /* Sort pau32IntervalsDst, shortest interval first, as required by UVC spec. */
             const uint32_t *pau32IntervalsSrc = (const uint32_t *)pu8Src;
@@ -474,6 +493,7 @@ static int usbWebcamBuildVSClassDescriptor(uint32_t u32MinFrameInterval, const V
         else
         {
             /* Continuous frame intervals. */
+            AssertReturn((uintptr_t)pu8DstEnd - (uintptr_t)pu8Dst >= (uintptr_t)3 * sizeof(uint32_t), VERR_INVALID_PARAMETER);
             pau32IntervalsDst[0] = pFrameSrc->u32MinFrameInterval; /* dwMinFrameInterval */
             pau32IntervalsDst[1] = pFrameSrc->u32MaxFrameInterval; /* dwMaxFrameInterval */
 
@@ -504,13 +524,17 @@ static int usbWebcamBuildVSClassDescriptor(uint32_t u32MinFrameInterval, const V
         {
             if (pFrameSrc->u8FrameFlags & VRDE_VIDEOIN_F_FRM_SIZE_OF_FIELDS)
             {
+                AssertReturn((uintptr_t)pu8SrcEnd - (uintptr_t)pu8Src >= (uintptr_t)sizeof(uint16_t), VERR_INVALID_PARAMETER);
                 cbField = *(uint16_t *)pu8Src;
                 pu8Src += sizeof(uint16_t);
+                AssertReturn(cbField / sizeof(uint32_t) >= 2, VERR_INVALID_PARAMETER);
             }
             else
             {
                 cbField = (uint16_t)(2 * sizeof(uint32_t));
             }
+            AssertReturn((uintptr_t)pu8SrcEnd - (uintptr_t)pu8Src >= (uintptr_t)cbField, VERR_INVALID_PARAMETER);
+
             const uint32_t *pau32BitRatesSrc = (const uint32_t *)pu8Src;
             pFrameDst->dwMinBitRate = pau32BitRatesSrc[0];
             pFrameDst->dwMaxBitRate = pau32BitRatesSrc[1];
@@ -522,6 +546,7 @@ static int usbWebcamBuildVSClassDescriptor(uint32_t u32MinFrameInterval, const V
         pu8Src = (uint8_t *)pFrameSrc + pFrameSrc->cbFrame;
     }
 
+    AssertReturn((uintptr_t)pu8DstEnd - (uintptr_t)pu8Dst >= (uintptr_t)sizeof(VUSBVDESCVSCOLORMATCHING), VERR_INVALID_PARAMETER);
     VUSBVDESCVSCOLORMATCHING *pColorMatching = (VUSBVDESCVSCOLORMATCHING *)pu8Dst;
 
     pColorMatching->bLength                  = sizeof(VUSBVDESCVSCOLORMATCHING);
@@ -533,6 +558,7 @@ static int usbWebcamBuildVSClassDescriptor(uint32_t u32MinFrameInterval, const V
 
     pu8Dst += sizeof(VUSBVDESCVSCOLORMATCHING);
 
+    AssertReturn((uintptr_t)pu8DstEnd - (uintptr_t)pu8Dst <= (uintptr_t)UINT16_MAX, VERR_INVALID_PARAMETER);
     pInputHeader->Core.wTotalLenght = (uint16_t)(pu8Dst - pu8Desc);
 
     UWLOG(("Built descriptor %d bytes\n%.*Rhxd\n",
@@ -546,6 +572,7 @@ static int usbWebcamBuildVSClassDescriptor(uint32_t u32MinFrameInterval, const V
 
 static int uwcBuildClassDescVS(uint32_t u32MinFrameInterval,
                                const VRDEVIDEOINFORMATDESC *pFormatMJPEG,
+                               uint32_t cbFormatMJPEG,
                                void **ppvClassVC,
                                uint32_t *pcbClassVC)
 {
@@ -557,7 +584,7 @@ static int uwcBuildClassDescVS(uint32_t u32MinFrameInterval,
     if (pu8DescAlloc)
     {
         uint32_t cbDesc = 0;
-        rc = usbWebcamBuildVSClassDescriptor(u32MinFrameInterval, pFormatMJPEG, pu8DescAlloc, cbDescAlloc, &cbDesc);
+        rc = usbWebcamBuildVSClassDescriptor(u32MinFrameInterval, pFormatMJPEG, cbFormatMJPEG, pu8DescAlloc, cbDescAlloc, &cbDesc);
 
         if (RT_SUCCESS(rc))
         {
@@ -866,7 +893,8 @@ int usbWebcamDescriptorsBuild(PPDMUSBDESCCACHE *ppDescCache,
     }
 
     const VRDEVIDEOINFORMATDESC *pFormatMJPEG = NULL;
-    int rc = uwcDeviceDescFindFormat(&pFormatMJPEG, pDeviceDesc, cbDeviceDesc, VRDE_VIDEOIN_FORMAT_MJPEG);
+    uint32_t cbFormatMJPEG = 0;
+    int rc = uwcDeviceDescFindFormat(&pFormatMJPEG, &cbFormatMJPEG, pDeviceDesc, cbDeviceDesc, VRDE_VIDEOIN_FORMAT_MJPEG);
 
     if (RT_SUCCESS(rc))
     {
@@ -879,7 +907,7 @@ int usbWebcamDescriptorsBuild(PPDMUSBDESCCACHE *ppDescCache,
         rc = uwcBuildClassDescVC(&pvClassVC, &cbClassVC);
         if (RT_SUCCESS(rc))
         {
-            rc = uwcBuildClassDescVS(u32MinFrameInterval, pFormatMJPEG, &pvClassVS, &cbClassVS);
+            rc = uwcBuildClassDescVS(u32MinFrameInterval, pFormatMJPEG, cbFormatMJPEG, &pvClassVS, &cbClassVS);
         }
 
         if (RT_SUCCESS(rc))
