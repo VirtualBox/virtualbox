@@ -1,4 +1,4 @@
-/* $Id: Svga.cpp 114730 2026-07-19 19:29:29Z vitali.pelenjow@oracle.com $ */
+/* $Id: Svga.cpp 115195 2026-09-08 10:01:43Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - VMSVGA.
  */
@@ -946,6 +946,14 @@ NTSTATUS SvgaRenderComplete(PVBOXWDDM_EXT_VMSVGA pSvga,
     return Status;
 }
 
+/** Update command if necessary: currently only update surface ids (sids) for shared surfaces.
+ *
+ * @param pSvga    .
+ * @param u32CmdId Identifier of the command.
+ * @param pu8Cmd   Pointer to the command structure (excluding any headers like the command id or SVGA3dCmdHeader).
+ * @param cbCmd    Size of the command structure.
+ * @param pHOA     .
+ */
 static NTSTATUS svgaUpdateCommand(VBOXWDDM_EXT_VMSVGA *pSvga,
                                   uint32_t u32CmdId,
                                   uint8_t *pu8Cmd,
@@ -954,8 +962,7 @@ static NTSTATUS svgaUpdateCommand(VBOXWDDM_EXT_VMSVGA *pSvga,
 {
     NTSTATUS Status = STATUS_SUCCESS;
 
-    const SVGA3dCmdHeader *pHeader = (SVGA3dCmdHeader *)pu8Cmd;
-    uint8_t *pCommand = (uint8_t *)&pHeader[1];
+    uint8_t *pCommand = pu8Cmd;
 
     uint32_t iStart = pHOA->cObjects;
 
@@ -965,16 +972,19 @@ static NTSTATUS svgaUpdateCommand(VBOXWDDM_EXT_VMSVGA *pSvga,
         case SVGA_3D_CMD_PRESENT_READBACK:
         {
             SVGA3dCmdPresent *p = (SVGA3dCmdPresent *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->sid, pHOA);
         } break;
         case SVGA_3D_CMD_SETRENDERTARGET:
         {
             SVGA3dCmdSetRenderTarget *p = (SVGA3dCmdSetRenderTarget *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->target.sid, pHOA);
         } break;
         case SVGA_3D_CMD_SURFACE_COPY:
         {
             SVGA3dCmdSurfaceCopy *p = (SVGA3dCmdSurfaceCopy *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->src.sid, pHOA);
             if (Status == STATUS_SUCCESS)
                 Status = SvgaProcessSurface(pSvga, &p->dest.sid, pHOA);
@@ -982,6 +992,7 @@ static NTSTATUS svgaUpdateCommand(VBOXWDDM_EXT_VMSVGA *pSvga,
         case SVGA_3D_CMD_SURFACE_STRETCHBLT:
         {
             SVGA3dCmdSurfaceStretchBlt *p = (SVGA3dCmdSurfaceStretchBlt *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->src.sid, pHOA);
             if (Status == STATUS_SUCCESS)
                 Status = SvgaProcessSurface(pSvga, &p->dest.sid, pHOA);
@@ -990,32 +1001,42 @@ static NTSTATUS svgaUpdateCommand(VBOXWDDM_EXT_VMSVGA *pSvga,
         {
             /// @todo gmrid?
             SVGA3dCmdSurfaceDMA *p = (SVGA3dCmdSurfaceDMA *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->host.sid, pHOA);
         } break;
         case SVGA_3D_CMD_BLIT_SURFACE_TO_SCREEN:
         {
             SVGA3dCmdBlitSurfaceToScreen *p = (SVGA3dCmdBlitSurfaceToScreen *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->srcImage.sid, pHOA);
         } break;
         case SVGA_3D_CMD_GENERATE_MIPMAPS:
         {
             SVGA3dCmdGenerateMipmaps *p = (SVGA3dCmdGenerateMipmaps *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->sid, pHOA);
         } break;
         case SVGA_3D_CMD_ACTIVATE_SURFACE:
         {
             SVGA3dCmdActivateSurface *p = (SVGA3dCmdActivateSurface *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->sid, pHOA);
         } break;
         case SVGA_3D_CMD_DEACTIVATE_SURFACE:
         {
             SVGA3dCmdDeactivateSurface *p = (SVGA3dCmdDeactivateSurface *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->sid, pHOA);
         } break;
         case SVGA_3D_CMD_SETTEXTURESTATE:
         {
             SVGA3dCmdSetTextureState *p = (SVGA3dCmdSetTextureState *)pCommand;
-            uint32_t cStates = (pHeader->size - sizeof(SVGA3dCmdSetTextureState)) / sizeof(SVGA3dTextureState);
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
+
+            uint32_t const cbStates = cbCmd - sizeof(*p);
+            AssertBreakStmt(cbStates % sizeof(SVGA3dTextureState) == 0, Status = STATUS_ILLEGAL_INSTRUCTION);
+
+            uint32_t cStates = cbStates / sizeof(SVGA3dTextureState);
             SVGA3dTextureState *pState = (SVGA3dTextureState *)&p[1];
             while (cStates > 0)
             {
@@ -1033,7 +1054,7 @@ static NTSTATUS svgaUpdateCommand(VBOXWDDM_EXT_VMSVGA *pSvga,
         case SVGA_3D_CMD_DRAW_PRIMITIVES:
         {
             SVGA3dCmdDrawPrimitives *p = (SVGA3dCmdDrawPrimitives *)pCommand;
-            AssertBreakStmt(cbCmd >= sizeof(SVGA3dCmdDrawPrimitives), Status = STATUS_ILLEGAL_INSTRUCTION);
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             AssertBreakStmt(   p->numVertexDecls <= SVGA3D_MAX_VERTEX_ARRAYS
                             && p->numRanges <= SVGA3D_MAX_DRAW_PRIMITIVE_RANGES, Status = STATUS_ILLEGAL_INSTRUCTION);
             AssertBreakStmt(cbCmd >= p->numVertexDecls * sizeof(SVGA3dVertexDecl)
@@ -1065,6 +1086,7 @@ static NTSTATUS svgaUpdateCommand(VBOXWDDM_EXT_VMSVGA *pSvga,
         case SVGA_3D_CMD_READBACK_GB_SURFACE:
         {
             SVGA3dCmdReadbackGBSurface *p = (SVGA3dCmdReadbackGBSurface *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->sid, pHOA);
         } break;
 
@@ -1102,11 +1124,13 @@ static NTSTATUS svgaUpdateCommand(VBOXWDDM_EXT_VMSVGA *pSvga,
         case SVGA_3D_CMD_DX_SET_SINGLE_CONSTANT_BUFFER:
         {
             SVGA3dCmdDXSetSingleConstantBuffer *p = (SVGA3dCmdDXSetSingleConstantBuffer *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->sid, pHOA);
         } break;
         case SVGA_3D_CMD_DX_PRED_COPY_REGION:
         {
             SVGA3dCmdDXPredCopyRegion *p = (SVGA3dCmdDXPredCopyRegion *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->srcSid, pHOA);
             if (Status == STATUS_SUCCESS)
                 Status = SvgaProcessSurface(pSvga, &p->dstSid, pHOA);
@@ -1114,11 +1138,13 @@ static NTSTATUS svgaUpdateCommand(VBOXWDDM_EXT_VMSVGA *pSvga,
         case SVGA_3D_CMD_DX_DEFINE_RENDERTARGET_VIEW:
         {
             SVGA3dCmdDXDefineRenderTargetView *p = (SVGA3dCmdDXDefineRenderTargetView *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->sid, pHOA);
         } break;
         case SVGA_3D_CMD_DX_DEFINE_SHADERRESOURCE_VIEW:
         {
             SVGA3dCmdDXDefineShaderResourceView *p = (SVGA3dCmdDXDefineShaderResourceView *)pCommand;
+            AssertBreakStmt(cbCmd >= sizeof(*p), Status = STATUS_ILLEGAL_INSTRUCTION);
             Status = SvgaProcessSurface(pSvga, &p->sid, pHOA);
         } break;
         default:
@@ -1202,6 +1228,9 @@ NTSTATUS SvgaRenderCommands(PVBOXWDDM_EXT_VMSVGA pSvga,
             cbCmd = sizeof(SVGA3dCmdHeader) + pHeader->size;
             AssertBreakStmt(cbCmd % sizeof(uint32_t) == 0, Status = STATUS_ILLEGAL_INSTRUCTION);
             AssertBreakStmt(cbSrcLeft >= cbCmd, Status = STATUS_ILLEGAL_INSTRUCTION);
+
+            /* Update the command in source place if necessary. */
+            Status = svgaUpdateCommand(pSvga, u32CmdId, pu8Src + sizeof(SVGA3dCmdHeader), pHeader->size, pHO);
         }
         else
         {
@@ -1211,8 +1240,6 @@ NTSTATUS SvgaRenderCommands(PVBOXWDDM_EXT_VMSVGA pSvga,
             AssertBreakStmt(0, Status = STATUS_ILLEGAL_INSTRUCTION);
         }
 
-        /* Update the command in source place if necessary. */
-        Status = svgaUpdateCommand(pSvga, u32CmdId, pu8Src, cbCmd, pHO);
         if (Status != STATUS_SUCCESS)
         {
             Assert(Status == STATUS_GRAPHICS_INSUFFICIENT_DMA_BUFFER);
