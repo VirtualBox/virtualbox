@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA3d-dx-shader.cpp 115199 2026-09-08 10:16:21Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA3d-dx-shader.cpp 115202 2026-09-08 10:22:36Z vitali.pelenjow@oracle.com $ */
 /** @file
  * DevVMWare - VMWare SVGA device - VGPU10+ (DX) shader utilities.
  */
@@ -1545,9 +1545,18 @@ static int dxbcParseOperand(DXBCTokenReader *r, VGPUOperand *paOperand, uint32_t
 
 
 /* Parse an instruction. */
-static int dxbcParseOpcode(DXBCTokenReader *r, VGPUOpcode *pOpcode)
+static int dxbcParseOpcode(DXBCTokenReader *rShader, VGPUOpcode *pOpcode)
 {
     RT_ZERO(*pOpcode);
+
+    /* Wrap instruction into a separate reader. */
+    DXBCTokenReader rInstr;
+    RT_ZERO(rInstr);
+
+    DXBCTokenReader *r = &rInstr;
+    r->pToken = dxbcTokenReaderPtr(rShader);
+    r->cToken = r->cRemainingToken = rShader->cRemainingToken; /* Will be set later to the number of tokens in the instruction. */
+
     ASSERT_GUEST_RETURN(dxbcTokenReaderCanRead(r, 1), VERR_INVALID_PARAMETER);
 
     pOpcode->paOpcodeToken = dxbcTokenReaderPtr(r);
@@ -1566,6 +1575,7 @@ static int dxbcParseOpcode(DXBCTokenReader *r, VGPUOpcode *pOpcode)
     {
         ASSERT_GUEST_RETURN(cOperand < RT_ELEMENTS(pOpcode->aIdxOperand), VERR_INVALID_PARAMETER);
 
+        /* Determine the number of tokens in the instruction. */
         pOpcode->cOpcodeToken = opcode.instructionLength;
         uint32_t cOpcode = 1; /* Opcode token + extended opcode tokens. */
         if (opcode.extended)
@@ -1597,7 +1607,12 @@ static int dxbcParseOpcode(DXBCTokenReader *r, VGPUOpcode *pOpcode)
         }
 
         ASSERT_GUEST_RETURN(pOpcode->cOpcodeToken >= 1 && pOpcode->cOpcodeToken < 256, VERR_INVALID_PARAMETER);
+        ASSERT_GUEST_RETURN(pOpcode->cOpcodeToken >= cOpcode, VERR_INVALID_PARAMETER);
         ASSERT_GUEST_RETURN(dxbcTokenReaderCanRead(r, pOpcode->cOpcodeToken - cOpcode), VERR_INVALID_PARAMETER);
+        AssertReturn(r->cToken - r->cRemainingToken == cOpcode, VERR_INVALID_STATE);
+
+        r->cToken = pOpcode->cOpcodeToken;
+        r->cRemainingToken = pOpcode->cOpcodeToken - cOpcode;
 
 #ifdef LOG_ENABLED
         Log6(("  %08X", opcode.value));
@@ -1771,6 +1786,14 @@ static int dxbcParseOpcode(DXBCTokenReader *r, VGPUOpcode *pOpcode)
         else if (pOpcode->opcodeType == VGPU10_OPCODE_VMWARE)
         {
             pOpcode->cOpcodeToken = opcode.instructionLength;
+
+            ASSERT_GUEST_RETURN(pOpcode->cOpcodeToken >= 1 && pOpcode->cOpcodeToken < 256, VERR_INVALID_PARAMETER);
+            ASSERT_GUEST_RETURN(dxbcTokenReaderCanRead(r, pOpcode->cOpcodeToken - 1), VERR_INVALID_PARAMETER);
+            AssertReturn(r->cToken - r->cRemainingToken == 1, VERR_INVALID_STATE);
+
+            r->cToken = pOpcode->cOpcodeToken;
+            r->cRemainingToken = pOpcode->cOpcodeToken - 1;
+
             pOpcode->opcodeSubtype = opcode.vmwareOpcodeType;
 
 #ifdef LOG_ENABLED
@@ -1819,6 +1842,9 @@ static int dxbcParseOpcode(DXBCTokenReader *r, VGPUOpcode *pOpcode)
 
         // pOpcode->cOperand = 0;
     }
+
+    /* Advance the shader reader to the next instruction. */
+    dxbcTokenReaderSkip(rShader, pOpcode->cOpcodeToken);
 
     return VINF_SUCCESS;
 }
