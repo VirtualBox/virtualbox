@@ -1,4 +1,4 @@
-/* $Id: VBoxMPWddm.cpp 114529 2026-06-25 10:46:16Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPWddm.cpp 115197 2026-09-08 10:09:48Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox WDDM Miniport driver
  */
@@ -2179,6 +2179,7 @@ VOID vboxWddmAllocationCleanupAssignment(PVBOXMP_DEVEXT pDevExt, PVBOXWDDM_ALLOC
             if (pAllocation->bAssigned)
             {
                 /** @todo do we need to notify host? */
+                AssertReturnVoid(pAllocation->AllocData.SurfDesc.VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt)->cDisplays);
                 vboxWddmAssignPrimary(&pDevExt->aSources[pAllocation->AllocData.SurfDesc.VidPnSourceId], NULL, pAllocation->AllocData.SurfDesc.VidPnSourceId);
             }
             break;
@@ -2538,9 +2539,10 @@ DxgkDdiDestroyAllocation(
 
     for (UINT i = 0; i < pDestroyAllocation->NumAllocations; ++i)
     {
-        PVBOXWDDM_ALLOCATION pAllocation = (PVBOXWDDM_ALLOCATION)pDestroyAllocation->pAllocationList[0];
+        PVBOXWDDM_ALLOCATION pAllocation = (PVBOXWDDM_ALLOCATION)pDestroyAllocation->pAllocationList[i];
         if (pAllocation->CurVidPnSourceId != -1)
         {
+            AssertContinue(pAllocation->CurVidPnSourceId < VBoxCommonFromDeviceExt(pDevExt)->cDisplays);
             VBOXWDDM_SOURCE *pSource = &pDevExt->aSources[pAllocation->CurVidPnSourceId];
             vboxWddmAssignPrimary(pSource, NULL, pAllocation->CurVidPnSourceId);
         }
@@ -3319,6 +3321,7 @@ static int vboxWddmReportCursorPosition(PVBOXMP_DEVEXT pDevExt, D3DDDI_VIDEO_PRE
     return VBoxMPCmnReportCursorPosition(VBoxCommonFromDeviceExt(pDevExt), &Pos);
 #else
     /* Use VMSVGA cursor interface */
+    AssertReturn(VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt)->cDisplays, VERR_INVALID_PARAMETER);
     PVBOXWDDM_SOURCE pSource = &pDevExt->aSources[VidPnSourceId];
     SvgaCursorUpdatePosition(pDevExt, pSource->VScreenPos.x + xPos, pSource->VScreenPos.y + yPos);
     return VINF_SUCCESS;
@@ -3337,6 +3340,7 @@ DxgkDdiSetPointerPosition(
 
     /* mouse integration is ON */
     PVBOXMP_DEVEXT pDevExt = (PVBOXMP_DEVEXT)hAdapter;
+    AssertReturn(pSetPointerPosition->VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt)->cDisplays, STATUS_INVALID_PARAMETER);
     PVBOXWDDM_POINTER_INFO pPointerInfo = &pDevExt->aSources[pSetPointerPosition->VidPnSourceId].PointerInfo;
     PVBOXWDDM_GLOBAL_POINTER_INFO pGlobalPointerInfo = &pDevExt->PointerInfo;
     PVIDEO_POINTER_ATTRIBUTES pPointerAttributes = &pPointerInfo->Attributes.data;
@@ -3426,6 +3430,7 @@ DxgkDdiSetPointerShape(
     {
         /* mouse integration is ON */
         PVBOXMP_DEVEXT pDevExt = (PVBOXMP_DEVEXT)hAdapter;
+        AssertReturn(pSetPointerShape->VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt)->cDisplays, STATUS_INVALID_PARAMETER);
         PVBOXWDDM_POINTER_INFO pPointerInfo = &pDevExt->aSources[pSetPointerShape->VidPnSourceId].PointerInfo;
         bool const fDwordAlignScanlines = pDevExt->enmHwType != VBOXVIDEO_HWTYPE_VBOX;
         /** @todo to avoid extra data copy and extra heap allocation,
@@ -3822,7 +3827,7 @@ DxgkDdiEscape(
                 if (pAlloc->bAssigned)
                 {
                     PVBOXMP_DEVEXT pDevExt2 = pDevice->pAdapter;
-                    Assert(pAlloc->AllocData.SurfDesc.VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt2)->cDisplays);
+                    AssertBreakStmt(pAlloc->AllocData.SurfDesc.VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt2)->cDisplays, Status = STATUS_INVALID_PARAMETER);
                     PVBOXWDDM_SOURCE pSource = &pDevExt2->aSources[pAlloc->AllocData.SurfDesc.VidPnSourceId];
                     if (pSource->AllocData.hostID != pAlloc->AllocData.hostID)
                     {
@@ -5090,6 +5095,7 @@ static NTSTATUS APIENTRY DxgkDdiPresentDisplayOnly(
     }
 #endif
 #if defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86)
+    AssertReturn(pPresentDisplayOnly->VidPnSourceId < (D3DDDI_VIDEO_PRESENT_SOURCE_ID)VBoxCommonFromDeviceExt(pDevExt)->cDisplays, STATUS_INVALID_PARAMETER);
     PVBOXWDDM_SOURCE pSource = &pDevExt->aSources[pPresentDisplayOnly->VidPnSourceId];
     Assert(pSource->AllocData.Addr.SegmentId == 1);
     VBOXWDDM_ALLOC_DATA SrcAllocData;
