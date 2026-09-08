@@ -1,4 +1,4 @@
-/* $Id: SUPR3HardenedMain-win.cpp 115177 2026-09-07 16:20:29Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPR3HardenedMain-win.cpp 115205 2026-09-08 11:35:50Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Hardened main(), windows bits.
  */
@@ -5331,6 +5331,120 @@ static void supR3HardNtChildGatherData(PSUPR3HARDNTCHILD pThis)
     supR3HardNtChildFindNtdll(pThis);
 }
 
+#define VBOX_WITH_SUPNTHARD_JOB_OBJECT
+#ifdef VBOX_WITH_SUPNTHARD_JOB_OBJECT
+
+# ifdef VBOX_WITH_SUPNTHARD_CTRL_HANDLER
+/** The job object handle. */
+static HANDLE g_hJob = NULL;
+/** The first stub child process. */
+static HANDLE g_idChildProcess = NULL;
+
+DECL_NOTHROW(static BOOL) WINAPI supR3HardenedWinConsoleCtrlHandler(DWORD dwCtrlType)
+{
+    SUP_DPRINTF(("supR3HardenedWinConsoleCtrlHandler: dwCtrlType=%#x\n", dwCtrlType));
+    RT_NOREF(dwCtrlType);
+#  if 1
+    /*
+     * Signal all children except the immediate stub process.
+     */
+    union
+    {
+        JOBOBJECT_BASIC_PROCESS_ID_LIST JobList;
+        uint8_t abBuf[4096];
+    } u;
+    u.JobList.NumberOfAssignedProcesses = u.JobList.NumberOfProcessIdsInList = 0;
+    DWORD cbActual = 0;
+    if (QueryInformationJobObject(g_hJob, JobObjectBasicProcessIdList, u, sizeof(u), &cbActual))
+    {
+        PTEB const pTeb = RTNtCurrentTeb();
+        for (i = 0; i < u.JobList.NumberOfProcessIdsInList; i++)
+            if (   u.JobList.ProcessIdList[i] != pTeb->ClientId.UniqueProcess
+                && u.JobList.ProcessIdList[i] != g_idChildProcess)
+            {
+                /** @todo this doesn't work, as we don't allow threads to be created in the
+                 * stub and VM processes.  Would need some other mechanism to signal this... */
+                GenerateConsoleCtrlEvent(dwCtrlType, (DWORD)(uintptr_t)u.JobList.ProcessIdList[i])
+            }
+    }
+#  endif
+#  if 0
+    LARGE_INTEGER Time;
+    Time.QuadPart = -52560000; /* 5256ms in 100ns units, relative time. */
+    NtDelayExecution(TRUE, &Time);
+#  endif
+    return FALSE;
+}
+
+
+/**
+ * Adds a console handler for the intial process, if it is a console process.
+ */
+static void supR3HardenedWinInitCtrlHandler(void)
+{
+    PPEB pPeb = NtCurrentPeb();
+    if (   !pPeb->ProcessParameters
+        || pPeb->ProcessParameters->ConsoleHandle == NULL
+        || pPeb->ProcessParameters->ConsoleHandle == RTNT_INVALID_HANDLE_VALUE)
+    {
+        SUP_DPRINTF(("supR3HardenedWinInitCtrlHandler: not console app\n"));
+        return;
+    }
+    if (!SetConsoleCtrlHandler(supR3HardenedWinConsoleCtrlHandler, TRUE))
+        SUP_DPRINTF(("supR3HardenedWinInitCtrlHandler: SetConsoleCtrlHandler failed: %u\n", RtlGetLastWin32Error()));
+}
+
+# endif /* VBOX_WITH_SUPNTHARD_CTRL_HANDLER */
+
+
+/**
+ * Creates a kill-on-exit job object and associates with the initial process.
+ */
+static void supR3HardenedWinInitJobObject(void)
+{
+    PTEB const pTeb = RTNtCurrentTeb();
+    SYSTEMTIME Now = {0};
+    GetSystemTime(&Now);
+    char szJobName[128];
+    RTStrPrintf(szJobName, sizeof(szJobName), "VirtualBox-obj-%04u-%02u-%02uT%02u-%02u-%02uZ%zx:%zx",
+                Now.wYear, Now.wMonth, Now.wDay, Now.wHour, Now.wMinute, Now.wSecond,
+                pTeb->ClientId.UniqueProcess, pTeb->ClientId.UniqueThread);
+
+    HANDLE hJob = CreateJobObjectA(NULL, szJobName);
+    if (hJob)
+    {
+        /* We try set JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE and JOB_OBJECT_LIMIT_BREAKAWAY_OK.
+           The first is the whole purpose, really, of the job object.  The latter is just
+           playing it safe. */
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION Info = {};
+        DWORD cbActual = 0;
+        if (QueryInformationJobObject(hJob, JobObjectExtendedLimitInformation, &Info, sizeof(Info), &cbActual))
+        {
+            Info.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_BREAKAWAY_OK | JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+            if (SetInformationJobObject(hJob, JobObjectExtendedLimitInformation, &Info, sizeof(Info)))
+            {
+                if (AssignProcessToJobObject(hJob, NtCurrentProcess()))
+                {
+# ifdef VBOX_WITH_SUPNTHARD_CTRL_HANDLER
+                    g_hJob = hJob;
+                    supR3HardenedWinInitCtrlHandler();
+# endif
+                    return;
+                }
+                SUP_DPRINTF(("supR3HardenedWinInitJobObject: AssignProcessToJobObject failed: %u\n", RtlGetLastWin32Error()));
+            }
+            else
+                SUP_DPRINTF(("supR3HardenedWinInitJobObject: SetInformationJobObject failed: %u\n", RtlGetLastWin32Error()));
+        }
+        else
+            SUP_DPRINTF(("supR3HardenedWinInitJobObject: QueryInformationJobObject failed: %u\n", RtlGetLastWin32Error()));
+        NtClose(hJob);
+    }
+    else
+        SUP_DPRINTF(("supR3HardenedWinInitJobObject: CreateJobObjectA failed: %u\n", RtlGetLastWin32Error()));
+}
+
+#endif /* VBOX_WITH_SUPNTHARD_JOB_OBJECT */
 
 /**
  * Does the actually respawning.
@@ -5346,6 +5460,14 @@ static DECL_NO_RETURN(void) supR3HardenedWinDoReSpawn(int iWhich)
     PRTL_USER_PROCESS_PARAMETERS    pParentProcParams = pPeb->ProcessParameters;
 
     SUPR3HARDENED_ASSERT(g_cSuplibHardenedWindowsMainCalls == 1);
+
+#ifdef VBOX_WITH_SUPNTHARD_JOB_OBJECT
+    /*
+     * Associate a kill-on-exit job object with the initial process.
+     */
+    if (iWhich == 1)
+        supR3HardenedWinInitJobObject();
+#endif
 
     /*
      * Init the child process data structure, creating the child communication
@@ -5432,6 +5554,9 @@ static DECL_NO_RETURN(void) supR3HardenedWinDoReSpawn(int iWhich)
         supR3HardenedWinCheckRwxPage();
     This.hProcess = ProcessInfoW32.hProcess;
     This.hThread  = ProcessInfoW32.hThread;
+# if defined(VBOX_WITH_SUPNTHARD_JOB_OBJECT) && defined(VBOX_WITH_SUPNTHARD_CTRL_HANDLER)
+    g_idChildProcess = (HANDLE)(uintptr_t)ProcessInfoW32.dwProcessId;
+# endif
 
 #else
 
