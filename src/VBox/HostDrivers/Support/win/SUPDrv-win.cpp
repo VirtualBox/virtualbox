@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-win.cpp 115168 2026-09-07 13:52:28Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPDrv-win.cpp 115208 2026-09-08 13:30:23Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Windows NT specifics.
  */
@@ -4608,6 +4608,7 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
             else
             {
                 ACCESS_MASK const fDesiredAccess = pOpInfo->Parameters->CreateHandleInformation.DesiredAccess;
+                unsigned cHacks = 0;
 
                 /* Special case 1 on Vista, 7 & 8:
                    The CreateProcess code passes the handle over to CSRSS.EXE
@@ -4638,6 +4639,7 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
                                            | PROCESS_SET_LIMITED_INFORMATION
                                            | 0;
                         pOpInfo->CallContext = NULL; /* don't assert this. */
+                        cHacks++;
                     }
                     pNtProtect->fFirstProcessCreateHandle = false;
                 }
@@ -4666,6 +4668,7 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
                                        | PROCESS_DUP_HANDLE /* Needed for CreateProcess/VBoxTestOGL. */
                                        | 0;
                         pOpInfo->CallContext = NULL; /* don't assert this. */
+                        cHacks++;
                     }
                 }
 
@@ -4685,6 +4688,7 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
                     pNtProtect->fThemesFirstProcessCreateHandle = true; /* Only once! */
                     fAllowedRights |= PROCESS_DUP_HANDLE;
                     pOpInfo->CallContext = NULL; /* don't assert this. */
+                    cHacks++;
                 }
 
                 /* Special case 6a, Windows 10+: AudioDG.exe opens the process with the
@@ -4704,7 +4708,21 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
                 {
                     fAllowedRights |= PROCESS_SET_LIMITED_INFORMATION;
                     pOpInfo->CallContext = NULL; /* don't assert this. */
+                    cHacks++;
                 }
+
+#if 1 /* Disable this to allow process dumps of the stub process and VM process. */
+                /* Strip VM_READ from the stub process opens not subject to any of the above
+                   hacks or originating from CSRSS. */
+                if (  !cHacks
+                    && ExGetPreviousMode() == UserMode
+                    && !supdrvNtProtectIsAssociatedCsrss(pNtProtect, PsGetCurrentProcess())
+#if 0 /* Enable this to allow for process dumps of VM processes. */
+                    && SUPDRVNTPROTECTKIND_IS_STUB(pNtProtect->enmProcessKind)
+#endif
+                   )
+                    fAllowedRights &= ~PROCESS_VM_READ;
+#endif
 
                 pOpInfo->Parameters->CreateHandleInformation.DesiredAccess &= fAllowedRights;
                 Log(("vboxdrv/ProcessHandlePre: %sctx=%04zx/%p wants %#x to %p/pid=%04zx [%d], allow %#x => %#x; %s [prev=%#x]\n",
@@ -4712,6 +4730,7 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
                      fDesiredAccess, pOpInfo->Object, pNtProtect->AvlCore.Key, pNtProtect->enmProcessKind,
                      fAllowedRights, fDesiredAccess & fAllowedRights,
                      PsGetProcessImageFileName(PsGetCurrentProcess()), ExGetPreviousMode() ));
+                RT_NOREF(cHacks);
             }
         }
         else
