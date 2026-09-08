@@ -1,4 +1,4 @@
-/* $Id: VBoxMPMisc.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxMPMisc.cpp 115196 2026-09-08 10:05:49Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox WDDM Miniport driver
  */
@@ -500,6 +500,8 @@ NTSTATUS vboxWddmDisplaySettingsQueryPos(IN PVBOXMP_DEVEXT pDevExt, D3DDDI_VIDEO
 #if defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86)
 void vboxWddmDisplaySettingsCheckPos(IN PVBOXMP_DEVEXT pDevExt, D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId)
 {
+    AssertReturnVoid(VidPnSourceId < (UINT)VBoxCommonFromDeviceExt(pDevExt)->cDisplays);
+
     POINT Pos = {0};
     NTSTATUS Status = vboxWddmDisplaySettingsQueryPos(pDevExt, VidPnSourceId, &Pos);
     if (!NT_SUCCESS(Status))
@@ -1423,7 +1425,7 @@ NTSTATUS VBoxWddmSlEnableVSyncNotification(PVBOXMP_DEVEXT pDevExt, BOOLEAN fEnab
 
 NTSTATUS VBoxWddmSlGetScanLine(PVBOXMP_DEVEXT pDevExt, DXGKARG_GETSCANLINE *pGetScanLine)
 {
-    Assert((UINT)VBoxCommonFromDeviceExt(pDevExt)->cDisplays > pGetScanLine->VidPnTargetId);
+    AssertReturn((UINT)VBoxCommonFromDeviceExt(pDevExt)->cDisplays >= pGetScanLine->VidPnTargetId, STATUS_INVALID_PARAMETER);
     VBOXWDDM_TARGET *pTarget = &pDevExt->aTargets[pGetScanLine->VidPnTargetId];
     Assert(pTarget->Size.cx);
     Assert(pTarget->Size.cy);
@@ -1577,6 +1579,7 @@ void vboxWddmDiToAllocData(PVBOXMP_DEVEXT pDevExt, const DXGK_DISPLAY_INFORMATIO
 void vboxWddmDmSetupDefaultVramLocation(PVBOXMP_DEVEXT pDevExt, D3DDDI_VIDEO_PRESENT_SOURCE_ID ModifiedVidPnSourceId,
                                         VBOXWDDM_SOURCE *paSources)
 {
+    AssertReturnVoid(ModifiedVidPnSourceId < (UINT)VBoxCommonFromDeviceExt(pDevExt)->cDisplays);
     PVBOXWDDM_SOURCE pSource = &paSources[ModifiedVidPnSourceId];
     AssertRelease(g_VBoxDisplayOnly);
     ULONG offVram = vboxWddmVramCpuVisibleSegmentSize(pDevExt);
