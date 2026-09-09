@@ -1,4 +1,4 @@
-/* $Id: SUPLibInternal.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: SUPLibInternal.h 115212 2026-09-09 12:02:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Internal header.
  */
@@ -394,6 +394,7 @@ extern DECL_HIDDEN_DATA(PSUPGLOBALINFOPAGE)     g_pSUPGlobalInfoPageR0;
 extern DECL_HIDDEN_DATA(PSUPQUERYFUNCS)         g_pSupFunctions;
 #endif
 extern DECL_HIDDEN_DATA(SUPR3HARDENEDMAINSTATE) g_enmSupR3HardenedMainState;
+extern DECL_HIDDEN_DATA(SUPPREINITDATA)         g_SupPreInitData;
 #ifdef RT_OS_WINDOWS
 extern DECL_HIDDEN_DATA(bool)                   g_fSupEarlyProcessInit;
 #endif
@@ -523,6 +524,7 @@ DECLHIDDEN(void)    supR3HardenedWinGetVeryEarlyImports(uintptr_t uNtDllAddr, PF
 DECLHIDDEN(void)    supR3HardenedWinInitImportsEarly(uintptr_t uNtDllAddr);
 DECLHIDDEN(void)    supR3HardenedWinInitSyscalls(bool fReportErrors, PRTERRINFO pErrInfo);
 DECLHIDDEN(PFNRT)   supR3HardenedWinGetRealDllSymbol(const char *pszDll, const char *pszProcedure);
+DECLHIDDEN(uintptr_t) supR3HardenedWinGetDllRange(const char *pszDll, uint32_t *pcbImage);
 DECLHIDDEN(void)    supR3HardenedWinEnableThreadCreation(void);
 DECLHIDDEN(void)    supR3HardenedWinResolveVerifyTrustApiAndHookThreadCreation(const char *pszProgName);
 DECLHIDDEN(void)    supR3HardenedWinFlushLoaderCache();
@@ -531,6 +533,7 @@ DECLHIDDEN(int)     supR3HardenedWinReSpawn(int iWhich);
 # ifdef _WINDEF_
 DECLHIDDEN(void)    supR3HardenedWinCreateParentWatcherThread(HMODULE hVBoxRT);
 # endif
+DECLHIDDEN(void)    supR3HardenedWinCheckRwxPage(void);
 DECLHIDDEN(void *)  supR3HardenedWinLoadLibrary(const char *pszName, bool fSystem32Only, uint32_t fMainFlags);
 extern RTUTF16      g_wszSupLibHardenedExePath[1024];
 # ifdef RTPATH_MAX
@@ -538,6 +541,7 @@ extern char         g_szSupLibHardenedExePath[RTPATH_MAX];
 # endif
 DECLHIDDEN(void)    supR3HardenedWinCompactHeaps(void);
 DECLHIDDEN(void)    supR3HardenedMainOpenDevice(void);
+DECLHIDDEN(void)    supR3HardenedWinOpenStubDevice(int iWhich);
 DECLHIDDEN(char *)  supR3HardenedWinReadErrorInfoDevice(char *pszErrorInfo, size_t cbErrorInfo, const char *pszPrefix);
 DECLHIDDEN(void)    supR3HardenedWinReportErrorToParent(const char *pszWhere, SUPINITOP enmWhat, int rc,
                                                         const char *pszFormat, va_list va);

@@ -1,4 +1,4 @@
-/* $Id: SUPR3HardenedMainImports-win.cpp 113917 2026-04-16 21:00:53Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPR3HardenedMainImports-win.cpp 115212 2026-09-09 12:02:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Hardened Main, Windows Import Trickery.
  */
@@ -894,9 +894,8 @@ DECLHIDDEN(PFNRT) supR3HardenedWinGetRealDllSymbol(const char *pszDll, const cha
      * Look the DLL up in the import DLL table.
      */
     for (uint32_t iDll = 0; iDll < RT_ELEMENTS(g_aSupNtImpDlls); iDll++)
-        if (RTStrICmp(g_aSupNtImpDlls[iDll].pszName, pszDll) == 0)
+        if (RTStrICmpAscii(g_aSupNtImpDlls[iDll].pszName, pszDll) == 0)
         {
-
             PSUPHNTLDRCACHEENTRY pLdrEntry;
             int rc = supHardNtLdrCacheOpen(g_aSupNtImpDlls[iDll].pszName, &pLdrEntry, RTErrInfoInitStatic(&ErrInfo));
             if (RT_SUCCESS(rc))
@@ -928,6 +927,31 @@ DECLHIDDEN(PFNRT) supR3HardenedWinGetRealDllSymbol(const char *pszDll, const cha
         }
 
     supR3HardenedFatal("supR3HardenedWinGetRealDllSymbol: Unknown DLL %s (proc: %s)\n", pszDll, pszProcedure);
+    /* not reached */
+}
+
+
+/**
+ * Gets mapping range info for NTDLL or KERNEL32.
+ *
+ * @returns The mapping address.
+ * @param   pszDll          The DLL name.
+ * @param   pcbImage        Where to return the image size. Optional.
+ */
+DECLHIDDEN(uintptr_t) supR3HardenedWinGetDllRange(const char *pszDll, uint32_t *pcbImage)
+{
+    /*
+     * Look the DLL up in the import DLL table.
+     */
+    for (uint32_t iDll = 0; iDll < RT_ELEMENTS(g_aSupNtImpDlls); iDll++)
+        if (RTStrICmpAscii(g_aSupNtImpDlls[iDll].pszName, pszDll) == 0)
+        {
+            if (pcbImage)
+                *pcbImage = g_aSupNtImpDlls[iDll].cbImage;
+            return (uintptr_t)g_aSupNtImpDlls[iDll].pbImageBase;
+        }
+
+    supR3HardenedFatal("supR3HardenedWinGetDllRange: Unknown DLL %s\n", pszDll);
     /* not reached */
 }
 

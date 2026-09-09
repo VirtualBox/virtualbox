@@ -1,4 +1,4 @@
-/* $Id: SUPHardenedVerifyProcess-win.cpp 115210 2026-09-09 11:56:54Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPHardenedVerifyProcess-win.cpp 115212 2026-09-09 12:02:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library/Driver - Hardened Process Verification, Windows.
  */
@@ -39,6 +39,7 @@
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
 #ifdef IN_RING0
+# define LOG_GROUP LOG_GROUP_SUP_DRV
 # ifndef IPRT_NT_MAP_TO_ZW
 #  define IPRT_NT_MAP_TO_ZW
 # endif
@@ -50,9 +51,11 @@
 
 #include <VBox/sup.h>
 #include <VBox/err.h>
+#include <VBox/dis.h>
 #include <iprt/alloca.h>
 #include <iprt/ctype.h>
 #include <iprt/param.h>
+#include <iprt/sha.h>
 #include <iprt/stackcheck.h>
 #include <iprt/string.h>
 #include <iprt/utf16.h>
@@ -217,6 +220,8 @@ typedef struct SUPHNTVPSTATE
     IMAGE_SECTION_HEADER    aSecHdrs[24];
     /** Pointer to the error info. */
     PRTERRINFO              pErrInfo;
+    /** Pointer to RWX page verification information (can be NULL). */
+    PSUPHARDNTVPRWXPGINFO   pRwxPgInfo;
 } SUPHNTVPSTATE;
 /** Pointer to stat information of a virtual address space scan. */
 typedef SUPHNTVPSTATE *PSUPHNTVPSTATE;
@@ -319,6 +324,15 @@ static SUPHNTLDRCACHEENTRY      g_aSupNtVpLdrCacheEntries[RT_ELEMENTS(g_aSupNtVp
 #endif
 
 
+/*********************************************************************************************************************************
+*   Internal Functions                                                                                                           *
+*********************************************************************************************************************************/
+#ifndef VBOX_WITH_MINIMAL_HARDENING
+static PSUPHNTVPIMAGE supHardNtVpFindModule(PSUPHNTVPSTATE pThis, const char *pszModule);
+#endif
+
+
+
 /**
  * Fills in error information.
  *
@@ -384,19 +398,18 @@ static int supHardNtVpAddInfo1(PRTERRINFO pErrInfo, int rc, const char *pszMsg, 
  * @param   pThis               The process validator instance.
  * @param   rc                  The status to return.
  * @param   pszMsg              The format string for the message.
- * @param   ...                 The arguments for the format string.
+ * @param   va                  The arguments for the format string.
  */
-static int supHardNtVpSetInfo2(PSUPHNTVPSTATE pThis, int rc, const char *pszMsg, ...)
+static int supHardNtVpSetInfo2V(PSUPHNTVPSTATE pThis, int rc, const char *pszMsg, va_list va)
 {
-    va_list va;
 #ifdef IN_RING3
-    va_start(va, pszMsg);
-    supR3HardenedError(rc, false /*fFatal*/, "%N\n", pszMsg, &va);
-    va_end(va);
+    va_list va2;
+    va_copy(va2, va);
+    supR3HardenedError(rc, false /*fFatal*/, "%N\n", pszMsg, &va2);
+    va_end(va2);
 #endif
 
-    va_start(va, pszMsg);
-#ifdef IN_RING0
+#if 0 //def IN_RING0
     RTErrInfoSetV(pThis->pErrInfo, rc, pszMsg, va);
     pThis->rcResult = rc;
 #else
@@ -411,9 +424,26 @@ static int supHardNtVpSetInfo2(PSUPHNTVPSTATE pThis, int rc, const char *pszMsg,
         RTErrInfoAddV(pThis->pErrInfo, rc, pszMsg, va);
     }
 #endif
-    va_end(va);
 
-    return pThis->rcResult;
+    return rc;
+}
+
+/**
+ * Fills in error information.
+ *
+ * @returns @a rc.
+ * @param   pThis               The process validator instance.
+ * @param   rc                  The status to return.
+ * @param   pszMsg              The format string for the message.
+ * @param   ...                 The arguments for the format string.
+ */
+static int supHardNtVpSetInfo2(PSUPHNTVPSTATE pThis, int rc, const char *pszMsg, ...)
+{
+    va_list va;
+    va_start(va, pszMsg);
+    rc = supHardNtVpSetInfo2V(pThis, rc, pszMsg, va);
+    va_end(va);
+    return rc;
 }
 
 
@@ -442,6 +472,297 @@ static NTSTATUS supHardNtVpReadMem(HANDLE hProcess, uintptr_t uPtr, void *pvBuf,
 #endif
 }
 
+
+#if defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86)
+/**
+ * Checks if a disassembled instruction can move patched (moved).
+ */
+DECLHIDDEN(bool) supHardNtRwxPageIsPrologInstrPatchable(PDISSTATE pDis)
+{
+    if (pDis->pCurInstr->fOpType & DISOPTYPE_CONTROLFLOW)
+        return false;
+# ifdef RT_ARCH_AMD64
+    if (pDis->x86.ModRM.Bits.Mod == 0 && pDis->x86.ModRM.Bits.Rm == 5 /* wrt RIP */)
+        return false;
+# endif
+    return true;
+}
+#endif
+
+
+/**
+ * Checks one entry in the rwx page.
+ *
+ * @returns true if it seems okay, false if it isn't okay.
+ * @param   pbEntry             Pointer to the entry.
+ * @param   iEntry              The entry number.
+ * @param   fOptional           Whether the entry is optional.
+ * @param   pfnVerifyJumpTarget Jump target validation callback.
+ * @param   pfnSetError         For reporting errors.
+ * @param   pvUser              User argument for @a pfnVerifyJumpTarget.
+ */
+static bool supHardNtRwxPageVerifyEntry(uint8_t const *pbEntry, uint32_t iEntry, bool fOptional,
+                                        PFNSUPHARDNTRWXPAGEVERIFYJUMPTARGET pfnVerifyJumpTarget,
+                                        PFNSUPHARDNTRWXPAGESETERROR pfnSetError, void *pvUser)
+{
+    /* Check trailing 0xcc padding. */
+    uint32_t cb = SUPHARDNT_RWXPG_ENTRY_SIZE;
+    while (cb > 0 && pbEntry[cb - 1] == 0xcc)
+        cb--;
+    if (cb == 0)
+        return fOptional ? true : pfnSetError(pvUser, "RWX Page Entry #%u: All 0xcc!", iEntry);
+
+#ifdef RT_ARCH_AMD64
+    /* Check max and min length. */
+    if (cb < 8 /*ptr*/ + 4 /*endbr64*/ + 12 /*copy*/ + 7 /*notrack jmp */ + 0 /*int3*/)
+        return pfnSetError(pvUser, "RWX Page Entry #%u: %u bytes is below minimum", iEntry, cb);
+    if (cb > 8 /*ptr*/ + 4 /*endbr64*/ + 12 /*copy*/ + 14 /* long last instruction */ + 7 /*notrack jmp */ + 0 /*int3*/)
+        return pfnSetError(pvUser, "RWX Page Entry #%u: %u bytes is above maximum", iEntry, cb);
+
+    /* These all start with a pointer to somewhere inside ntdll. */
+    if (!pfnVerifyJumpTarget(*(uint64_t const *)pbEntry, iEntry, pvUser))
+        return pfnSetError(pvUser, "RWX Page Entry #%u: Invalid jump target %p", iEntry, *(uint64_t const *)pbEntry);
+
+    /* Followed by 'endbr64' */
+    if (*(uint32_t const *)&pbEntry[8] != RT_MAKE_U32_FROM_U8(0xf3, 0x0f, 0x1e, 0xfa))
+        return pfnSetError(pvUser, "RWX Page Entry #%u: endbr64", iEntry);
+
+    /* And ending with 'notrack jmp [pbEntry wrt RIP]' */
+    if (   pbEntry[cb - 7] != 0x3e /*notrack*/
+        || pbEntry[cb - 6] != 0xff /* jmp qword [pbEntry wrt RIP] */
+        || pbEntry[cb - 5] != 0x25)
+        return pfnSetError(pvUser, "RWX Page Entry #%u: notrack jmp (opcode)", iEntry);
+    if (*(int32_t const *)&pbEntry[cb - 4] != -(int32_t)cb)
+        return pfnSetError(pvUser, "RWX Page Entry #%u: notrack jmp (slot)", iEntry);
+
+    /* Check the instructions in the body. */
+    uint32_t const offBodyEnd   = cb - 7 /*notrack jmp*/;
+    uint32_t const offBodyBegin = 8 /*ptr*/ + 4 /*endbr64*/;
+    uint32_t       offBody      = offBodyBegin;
+    while (offBody < offBodyEnd && offBody - offBodyBegin < 12)
+    {
+        DISSTATE Dis;
+        uint32_t cbInstr = 1;
+        int rc = DISInstr(&pbEntry[offBody], DISCPUMODE_64BIT, &Dis, &cbInstr);
+        if (RT_FAILURE(rc))
+            return pfnSetError(pvUser, "RWX Page Entry #%u: DISInstr failure at %#x in %.*Rhxs: %Rrc",
+                               iEntry, offBody - offBodyBegin, cb - offBodyBegin, &pbEntry[offBodyBegin], rc);
+        if (!supHardNtRwxPageIsPrologInstrPatchable(&Dis))
+            return pfnSetError(pvUser, "RWX Page Entry #%u: unwanted/illegal instruction at %#x in %.*Rhxs: fOpType=%#x uOpcode=%#x",
+                               iEntry, offBody - offBodyBegin, cb - offBodyBegin, &pbEntry[offBodyBegin],
+                               Dis.pCurInstr->fOpType, Dis.pCurInstr->uOpcode);
+        offBody += cbInstr;
+    }
+    if (offBody != offBodyEnd)
+        return pfnSetError(pvUser, "RWX Page Entry #%u: bogus end of body: %#x, expected %#x (%.*Rhxs)",
+                           iEntry, offBody - offBodyBegin, offBodyEnd - offBodyBegin, cb - offBodyBegin, &pbEntry[offBodyBegin]);
+
+#elif defined(RT_ARCH_X86)
+    /* Check max and min length. */
+    if (cb < 4 /*endbr32*/ + 5 /*copy*/ + 5 /*jmp*/ + 0 /*int3*/)
+        return false;
+    if (cb > 4 /*endbr32*/ + 5 /*copy*/ + 14 /* long last instruction */ + 5 /*jmp*/ + 0 /*int3*/)
+        return false;
+
+    /* Check 'endbr32'. */
+    if (*(uint32_t const *)pbEntry != RT_MAKE_U32_FROM_U8(0xf3, 0x0f, 0x1e, 0xfb))
+        return false;
+
+    /* Check 'jmp rel32'. */
+    if (pbEntry[cb - 5] != 0xe9)
+        return false;
+
+    /* Check the jump target. */
+# ifdef IN_RING3
+    uintptr_t const uJmpTarget = *(int32_t const *)&pbEntry[cb - 4] + (intptr_t)&pbEntry[cb];
+    if (!pfnVerifyJumpTarget(uJmpTarget, iEntry, pvUser))
+        return false;
+# endif
+
+    /* Check the instructions in the body. */
+    uint32_t const offBodyEnd   = cb - 5 /*jmp rel*/;
+    uint32_t const offBodyBegin = 4 /*endbr32*/;
+    uint32_t       offBody      = offBodyBegin;
+    while (offBody < offBodyEnd && offBody - offBodyBegin < 5)
+    {
+        DISSTATE Dis;
+        uint32_t cbInstr = 1;
+        int rc = DISInstr(&pbEntry[offBody], DISCPUMODE_32BIT, &Dis, &cbInstr);
+        if (RT_FAILURE(rc) || !supHardNtRwxPageIsPrologInstrPatchable(&Dis))
+            return false;
+        offBody += cbInstr;
+    }
+    if (offBody != offBodyEnd)
+        return false;
+
+#elif defined(RT_ARCH_ARM64)
+    /* Check the length (fixed). */
+    if (cb != 16 /* org opcodes */ + 16 /*load addr*/ + 4 /*br x17*/ + 4 /*brk #0x06a1*/ )
+        return false;
+    uint32_t const * const pu32Entry = (uint32_t const *)pbEntry;
+
+    /* Check EXEC_PAGE_LOAD_ADDR_IN_X17 sequence */
+    uintptr_t uJmpTarget = (pu32Entry[4] >> 5) & 0xffff;
+    if ((pu32Entry[4] & UINT32_C(0xffe0001f)) != UINT32_C(0xd2800011)) /* movz x17, const16 */
+        return false;
+    uJmpTarget |= ((pu32Entry[5] >> 5) & 0xffff) << 16;
+    if ((pu32Entry[5] & UINT32_C(0xffe0001f)) != UINT32_C(0xf2a00011)) /* movk x17, const16 lsl 16 */
+        return false;
+    uJmpTarget |= (uintptr_t)((pu32Entry[6] >> 5) & 0xffff) << 32;
+    if ((pu32Entry[6] & UINT32_C(0xffe0001f)) != UINT32_C(0xf2c00011)) /* movk x17, const16 lsl 32 */
+        return false;
+    uJmpTarget |= (uintptr_t)((pu32Entry[7] >> 5) & 0xffff) << 48;
+    if ((pu32Entry[7] & UINT32_C(0xffe0001f)) != UINT32_C(0xf2e00011)) /* movk x17, const16 lsl 48 */
+        return false;
+
+    /* Validate the target address. */
+    if (!pfnVerifyJumpTarget(uJmpTarget, iEntry, pvUser))
+        return false;
+
+    /* Check EXEC_PAGE_LOAD_ADDR_IN_X17 (br & brk).  */
+    if (pu32Entry[8] != UINT32_C(0xd61f0220)) /* br x17 */
+        return false;
+    if (pu32Entry[8] != UINT32_C(0x20d420d4)) /* brk #0x06a1 */
+        return false;
+
+#else
+    RT_NOREF(pbEntry, iEntry, pfnVerifyJumpTarget, pvUser);
+#endif
+    return true;
+}
+
+
+/**
+ * Verifies the content of the rwx page.
+ *
+ * @returns true if it seems okay, false if it isn't.
+ * @param   pbPage              The rwx page content.
+ * @param   pfnVerifyJumpTarget Jump target validation callback.
+ * @param   pfnSetError         For reporting errors.
+ * @param   pvUser              User argument for @a pfnVerifyJumpTarget.
+ */
+DECLHIDDEN(bool) supHardNtRwxPageVerify(uint8_t const *pbPage, PFNSUPHARDNTRWXPAGEVERIFYJUMPTARGET pfnVerifyJumpTarget,
+                                        PFNSUPHARDNTRWXPAGESETERROR pfnSetError, void *pvUser)
+{
+#if SUPHARDNT_RWXPG_MIN_ENTRIES == 2
+    if (!supHardNtRwxPageVerifyEntry(&pbPage[SUPHARDNT_RWXPG_ENTRY_SIZE * 0], 0, false, pfnVerifyJumpTarget, pfnSetError, pvUser))
+        return false;
+    if (!supHardNtRwxPageVerifyEntry(&pbPage[SUPHARDNT_RWXPG_ENTRY_SIZE * 1], 1, false, pfnVerifyJumpTarget, pfnSetError, pvUser))
+        return false;
+# if SUPHARDNT_RWXPG_MAX_ENTRIES == 3
+    if (!supHardNtRwxPageVerifyEntry(&pbPage[SUPHARDNT_RWXPG_ENTRY_SIZE * 2], 2, true,  pfnVerifyJumpTarget, pfnSetError, pvUser))
+        return false;
+# elif SUPHARDNT_RWXPG_MAX_ENTRIES != 2
+#  error "fixme"
+# endif
+#else
+# error "fixme"
+#endif
+
+    /* Check that the remainder is all 0xcc. */
+    if (!ASMMemIsAllU8(&pbPage[SUPHARDNT_RWXPG_ENTRY_SIZE * SUPHARDNT_RWXPG_MAX_ENTRIES],
+                       PAGE_SIZE - (SUPHARDNT_RWXPG_ENTRY_SIZE * SUPHARDNT_RWXPG_MAX_ENTRIES) - RTSHA256_HASH_SIZE,
+                       0xcc))
+        return pfnSetError(pvUser, "RWX Page: Unused parts not padded with 0xcc.");
+
+    /* Check the SHA256 checksum at the very end of the page. */
+    if (!RTSha256Check(pbPage, PAGE_SIZE - RTSHA256_HASH_SIZE, &pbPage[PAGE_SIZE - RTSHA256_HASH_SIZE]))
+        return pfnSetError(pvUser, "RWX Page: SHA-256 mismatch.");
+    return true;
+}
+
+
+#if defined(IN_RING0) && !defined(VBOX_WITH_MINIMAL_HARDENING)
+
+/**
+ * @callback_method_impl{FNSUPHARDNTRWXPAGESETERROR,
+ *      Helper for supHardNtVpVerifyImageMemoryRwxPage (ring-0 only).}
+ */
+static DECLCALLBACK(bool) supHardNtVpVerifyImageMemoryRwxPageSetError(void *pvUser, const char *pszMsg, ...)
+{
+    va_list va;
+    va_start(va, pszMsg);
+    supHardNtVpSetInfo2V((PSUPHNTVPSTATE)pvUser, VERR_SUP_VP_EXE_CORRUPTED_RWX_SECTION, pszMsg, va);
+    va_end(va);
+    return false;
+}
+
+
+/**
+ * @callback_method_impl{FNSUPHARDNTRWXPAGEVERIFYJUMPTARGET,
+ *      Helper for supHardNtVpVerifyImageMemoryRwxPage (ring-0 only).}
+ */
+static DECLCALLBACK(bool) supHardNtVpVerifyImageMemoryRwxPageJumpTarget(uintptr_t uTarget, uint32_t iEntry, void *pvUser)
+{
+    PSUPHNTVPSTATE const pThis = (PSUPHNTVPSTATE)pvUser;
+    PSUPHNTVPIMAGE pNtDll = supHardNtVpFindModule(pThis, "ntdll.dll");
+    if (!pNtDll)
+        return false;
+    if (uTarget - pNtDll->uImageBase >= pNtDll->cbImage)
+        return false;
+
+    /** @todo narrow it down to the three possible entry points as well like we
+     *        do in ring-3. */
+
+    RT_NOREF(iEntry);
+    return true;
+}
+
+
+/**
+ * Called in ring-0 to verify the RWX page in the executable image.
+ */
+static int supHardNtVpVerifyImageMemoryRwxPage(PSUPHNTVPSTATE pThis, PSUPHNTVPIMAGE pImage, uint32_t uRva, uint32_t iSh)
+{
+    /*
+     * The section is exactly one page (caller checked already), make sure we
+     * can buffer that much.
+     */
+    AssertCompile(sizeof(pThis->abMemory) >= sizeof(PAGE_SIZE));
+    NTSTATUS rcNt = supHardNtVpReadMem(pThis->hProcess, pImage->uImageBase + uRva, pThis->abMemory, PAGE_SIZE);
+    if (!NT_SUCCESS(rcNt))
+        return supHardNtVpSetInfo2(pThis, VERR_SUP_VP_MEMORY_READ_ERROR,
+                                   IMAGE_LOG_NAME_FMT ": Error reading %#x bytes at %p (rva %#x, #%u, .rwxpg) from memory: %#x",
+                                   IMAGE_LOG_NAME(pImage), PAGE_SIZE, pImage->uImageBase + uRva, uRva, iSh + 1, rcNt);
+
+    /*
+     * Calc the SHA-384 before we start.
+     *
+     * We're using SHA-384 rather than SHA-512 because userland is already
+     * using it and this way we save a few bytes of kernel heap.
+     */
+    if (pThis->pRwxPgInfo)
+    {
+        pThis->pRwxPgInfo->pvRwxPgR3Ptr = pImage->uImageBase + uRva;
+        RTSha384(pThis->abMemory, PAGE_SIZE, pThis->pRwxPgInfo->abSha384);
+    }
+
+    /*
+     * Do the verification.
+     */
+    if (!supHardNtRwxPageVerify(pThis->abMemory, supHardNtVpVerifyImageMemoryRwxPageJumpTarget,
+                                supHardNtVpVerifyImageMemoryRwxPageSetError, pThis))
+    {
+        pThis->pRwxPgInfo->abSha384[0] ^= 0xff;
+        return supHardNtVpSetInfo2(pThis, VERR_SUP_VP_EXE_CORRUPTED_RWX_SECTION,
+                                   IMAGE_LOG_NAME_FMT ": Corrupted RWX page.", IMAGE_LOG_NAME(pImage));
+    }
+
+    /*
+     * Re-check the SHA-384 we calculated above.
+     */
+    if (   pThis->pRwxPgInfo
+        && !RTSha384Check(pThis->abMemory, PAGE_SIZE, pThis->pRwxPgInfo->abSha384))
+    {
+        pThis->pRwxPgInfo->abSha384[0] ^= 0xff;
+        return supHardNtVpSetInfo2(pThis, VERR_SUP_VP_EXE_CORRUPTED_RWX_SECTION,
+                                   IMAGE_LOG_NAME_FMT ": In-flight RWX page corruption.", IMAGE_LOG_NAME(pImage));
+    }
+
+    return VINF_SUCCESS;
+}
+
+#endif /* IN_RING0 && !defined(VBOX_WITH_MINIMAL_HARDENING) */
 
 #ifdef IN_RING3
 static NTSTATUS supHardNtVpFileMemRestore(PSUPHNTVPSTATE pThis, PVOID pvRestoreAddr, uint8_t const *pbFile, uint32_t cbToRestore,
@@ -985,6 +1306,12 @@ static int supHardNtVpVerifyImageMemoryCompare(PSUPHNTVPSTATE pThis, PSUPHNTVPIM
     }
 
     /*
+     * This is as far as we go for the initial process.
+     */
+    if (pThis->enmKind == SUPHARDNTVPKIND_LIMITED_VERIFY_ONLY)
+        return VINF_SUCCESS;
+
+    /*
      * Get relocated bits.
      */
     uint8_t *pbBits;
@@ -1176,12 +1503,29 @@ static int supHardNtVpVerifyImageMemoryCompare(PSUPHNTVPSTATE pThis, PSUPHNTVPIM
                        and it's protected after we're done patching. */
                     if (!pImage->fDll)
                     {
+                        if (   cbMap != PAGE_SIZE
+                            || memcmp(pThis->aSecHdrs[i].Name, ".rwxpg\0", sizeof(".rwxpg\0")) != 0)
+                            return supHardNtVpSetInfo2(pThis, VERR_SUP_VP_EXE_MALFORMED_RWX_SECTION,
+                                                       IMAGE_LOG_NAME_FMT ": Section %u: uSectRva=%#x cbMap=%#x szName=%8.8s Characteristics=%#x",
+                                                       IMAGE_LOG_NAME(pImage), i, uSectRva, cbMap, &pThis->aSecHdrs[i].Name[0],
+                                                       pThis->aSecHdrs[i].Characteristics);
                         if (pThis->enmKind == SUPHARDNTVPKIND_CHILD_PURIFICATION)
                             fProt = PAGE_EXECUTE_READWRITE;
                         else
+                        {
+#if defined(IN_RING0) && !defined(VBOX_WITH_MINIMAL_HARDENING)
+                            if (pThis->enmKind == SUPHARDNTVPKIND_VERIFY_ONLY)
+                            {
+                                rc = supHardNtVpVerifyImageMemoryRwxPage(pThis, pImage, uRva, i);
+                                if (RT_FAILURE(rc))
+                                    return rc;
+                            }
+#endif
                             fProt = PAGE_EXECUTE_READ;
+                        }
                         break;
                     }
+                    RT_FALL_THRU();
                 default:
                     return supHardNtVpSetInfo2(pThis, VERR_SUP_VP_UNEXPECTED_SECTION_FLAGS,
                                                IMAGE_LOG_NAME_FMT ": Section %u: Unexpected characteristics: %#x (uSectRva=%#x, cbMap=%#x)",
@@ -1545,11 +1889,23 @@ static int supHardNtVpNewImage(PSUPHNTVPSTATE pThis, PSUPHNTVPIMAGE pImage, PMEM
         /*
          * Unknown image.
          *
-         * If we're cleaning up a child process, we can unmap the offending
-         * DLL...  Might have interesting side effects, or at least interesting
-         * as in "may you live in interesting times".
+         * We ignore these when performing limited self-purifications or limited
+         * verifications, as these are for the initial process where we are not
+         * able to limit the DLLs loaded so strictly.
          */
+        if (   pThis->enmKind == SUPHARDNTVPKIND_SELF_PURIFICATION_LIMITED
+            || pThis->enmKind == SUPHARDNTVPKIND_LIMITED_VERIFY_ONLY)
+        {
+            SUP_DPRINTF(("supHardNtVpScanVirtualMemory: Ignoring unknown mem at %p LB %#zx (base %p) - '%ls'\n",
+                         pMemInfo->BaseAddress, pMemInfo->RegionSize, pMemInfo->AllocationBase, pwszFilename));
+            return VINF_OBJECT_DESTROYED;
+        }
+
 # ifdef IN_RING3
+        /*
+         * If we're in ring-3 and doing child purification, we can unmap the
+         * offending DLL ...  but this could have interesting side effects.
+         */
         if (   pMemInfo->AllocationBase == pMemInfo->BaseAddress
             && pThis->enmKind == SUPHARDNTVPKIND_CHILD_PURIFICATION)
         {
@@ -1561,15 +1917,10 @@ static int supHardNtVpNewImage(PSUPHNTVPSTATE pThis, PSUPHNTVPIMAGE pImage, PMEM
             pThis->cFixes++;
             SUP_DPRINTF(("supHardNtVpScanVirtualMemory: NtUnmapViewOfSection(,%p) failed: %#x\n", pMemInfo->AllocationBase, rcNt));
         }
-        else if (pThis->enmKind == SUPHARDNTVPKIND_SELF_PURIFICATION_LIMITED)
-        {
-            SUP_DPRINTF(("supHardNtVpScanVirtualMemory: Ignoring unknown mem at %p LB %#zx (base %p) - '%ls'\n",
-                         pMemInfo->BaseAddress, pMemInfo->RegionSize, pMemInfo->AllocationBase, pwszFilename));
-            return VINF_OBJECT_DESTROYED;
-        }
 # endif
+
         /*
-         * Special error message if we can.
+         * Fail. Produce a special error message if we can.
          */
         if (   pMemInfo->AllocationBase == pMemInfo->BaseAddress
             && (   supHardNtVpAreNamesEqual("sysfer.dll", pwszFilename)
@@ -1943,6 +2294,7 @@ static int supHardNtVpScanVirtualMemory(PSUPHNTVPSTATE pThis, HANDLE hProcess)
 {
     SUP_DPRINTF(("supHardNtVpScanVirtualMemory: enmKind=%s\n",
                  pThis->enmKind == SUPHARDNTVPKIND_VERIFY_ONLY ? "VERIFY_ONLY" :
+                 pThis->enmKind == SUPHARDNTVPKIND_LIMITED_VERIFY_ONLY ? "LIMITED_VERIFY_ONLY" :
                  pThis->enmKind == SUPHARDNTVPKIND_CHILD_PURIFICATION ? "CHILD_PURIFICATION" : "SELF_PURIFICATION"));
 
     uint32_t    cXpExceptions = 0;
@@ -2834,17 +3186,21 @@ static int supHardNtVpCheckHandles(PSUPHNTVPSTATE pThis)
  * @param   hThread             A thread in the process (the caller).
  * @param   enmKind             The kind of process verification to perform.
  * @param   fFlags              Valid combination of SUPHARDNTVP_F_XXX flags.
+ * @param   pRwxPgInfo          Where to return verfication information for the
+ *                              RWX page (in the executable image). Optional.
  * @param   pErrInfo            Pointer to error info structure. Optional.
  * @param   pcFixes             Where to return the number of fixes made during
  *                              purification.  Optional.
  */
 DECLHIDDEN(int) supHardenedWinVerifyProcess(HANDLE hProcess, HANDLE hThread, SUPHARDNTVPKIND enmKind, uint32_t fFlags,
-                                            uint32_t *pcFixes, PRTERRINFO pErrInfo)
+                                            PSUPHARDNTVPRWXPGINFO pRwxPgInfo, uint32_t *pcFixes, PRTERRINFO pErrInfo)
 {
     RT_NOREF(hThread);
     RT_STACK_CHECK_RET_ADDR();
     if (pcFixes)
         *pcFixes = 0;
+    if (pRwxPgInfo)
+        pRwxPgInfo->pvRwxPgR3Ptr = NIL_RTR3PTR;
 
     /*
      * Some basic checks regarding threads and debuggers. We don't need
@@ -2853,7 +3209,8 @@ DECLHIDDEN(int) supHardenedWinVerifyProcess(HANDLE hProcess, HANDLE hThread, SUP
     int rc = VINF_SUCCESS;
 #ifndef VBOX_WITH_MINIMAL_HARDENING
     if (   enmKind != SUPHARDNTVPKIND_CHILD_PURIFICATION
-        && enmKind != SUPHARDNTVPKIND_SELF_PURIFICATION_LIMITED)
+        && enmKind != SUPHARDNTVPKIND_SELF_PURIFICATION_LIMITED
+        && enmKind != SUPHARDNTVPKIND_LIMITED_VERIFY_ONLY)
        rc = supHardNtVpThread(hProcess, hThread, pErrInfo);
     if (RT_SUCCESS(rc))
         rc = supHardNtVpDebugger(hProcess, pErrInfo);
@@ -2866,11 +3223,12 @@ DECLHIDDEN(int) supHardenedWinVerifyProcess(HANDLE hProcess, HANDLE hThread, SUP
         PSUPHNTVPSTATE pThis = (PSUPHNTVPSTATE)RTMemAllocZ(sizeof(*pThis));
         if (pThis)
         {
-            pThis->enmKind  = enmKind;
-            pThis->fFlags   = fFlags;
-            pThis->rcResult = VINF_SUCCESS;
-            pThis->hProcess = hProcess;
-            pThis->pErrInfo = pErrInfo;
+            pThis->enmKind    = enmKind;
+            pThis->fFlags     = fFlags;
+            pThis->rcResult   = VINF_SUCCESS;
+            pThis->hProcess   = hProcess;
+            pThis->pErrInfo   = pErrInfo;
+            pThis->pRwxPgInfo = pRwxPgInfo;
 
             /*
              * Perform the verification.

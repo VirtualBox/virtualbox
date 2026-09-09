@@ -1,4 +1,4 @@
-/* $Id: SUPR3HardenedMain.cpp 113916 2026-04-16 21:00:28Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPR3HardenedMain.cpp 115212 2026-09-09 12:02:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Hardened main().
  */
@@ -545,7 +545,7 @@ typedef const SUPARGPURGEDESC *PCSUPARGPURGEDESC;
 *   Global Variables                                                                                                             *
 *********************************************************************************************************************************/
 /** The pre-init data we pass on to SUPR3 (residing in VBoxRT). */
-static SUPPREINITDATA   g_SupPreInitData;
+DECL_HIDDEN_DATA(SUPPREINITDATA) g_SupPreInitData;
 /** The program executable path. */
 #ifndef RT_OS_WINDOWS
 static
@@ -2584,7 +2584,9 @@ DECLHIDDEN(int) SUPR3HardenedMain(const char *pszProgName, uint32_t fFlags, int 
     /*
      * Windows: First respawn. On Windows we will respawn the process twice to establish
      * something we can put some kind of reliable trust in.  The first respawning aims
-     * at dropping compatibility layers and process "security" solutions.
+     * at dropping compatibility layers and process "security" solutions.  We also make
+     * a special arrangement with the vboxdrv to monitor access to the new process from
+     * its inception.
      */
     if (   !g_fSupEarlyProcessInit
         && !(fFlags & SUPSECMAIN_FLAGS_DONT_OPEN_DEV)
@@ -2593,6 +2595,10 @@ DECLHIDDEN(int) SUPR3HardenedMain(const char *pszProgName, uint32_t fFlags, int 
         SUP_DPRINTF(("SUPR3HardenedMain: Respawn #1\n"));
         supR3HardenedWinInit(SUPSECMAIN_FLAGS_DONT_OPEN_DEV | SUPSECMAIN_FLAGS_FIRST_PROCESS, false /*fAvastKludge*/);
         supR3HardenedVerifyAll(true /* fFatal */, pszProgName, g_szSupLibHardenedExePath, fFlags);
+
+        SUP_DPRINTF(("SUPR3HardenedMain: Respawn #1 - opening vboxsup stub...\n"));
+        supR3HardenedWinOpenStubDevice(1 /*iWhich*/);
+
         return supR3HardenedWinReSpawn(1 /*iWhich*/);
     }
 
@@ -2626,8 +2632,8 @@ DECLHIDDEN(int) SUPR3HardenedMain(const char *pszProgName, uint32_t fFlags, int 
                                   "Early process init was somehow skipped.");
 
         /*
-         * Windows: The second respawn.  This time we make a special arrangement
-         * with vboxdrv to monitor access to the new process from its inception.
+         * Windows: The second respawn.  We need more distance from the untrusted
+         * initial process.
          */
         if (supR3HardenedWinIsReSpawnNeeded(2 /* iWhich*/, argc, argv))
         {

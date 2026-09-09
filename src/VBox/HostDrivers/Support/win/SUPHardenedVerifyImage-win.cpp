@@ -1,4 +1,4 @@
-/* $Id: SUPHardenedVerifyImage-win.cpp 113916 2026-04-16 21:00:28Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPHardenedVerifyImage-win.cpp 115212 2026-09-09 12:02:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library/Driver - Hardened Image Verification, Windows.
  */
@@ -39,6 +39,7 @@
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
 #ifdef IN_RING0
+# define LOG_GROUP LOG_GROUP_SUP_DRV
 # ifndef IPRT_NT_MAP_TO_ZW
 #  define IPRT_NT_MAP_TO_ZW
 # endif

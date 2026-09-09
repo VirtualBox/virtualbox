@@ -1,4 +1,4 @@
-/* $Id: nt.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: nt.h 115212 2026-09-09 12:02:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Header for code using the Native NT API.
  */
@@ -3601,6 +3601,7 @@ RT_DECL_NTAPI(NTSTATUS) ObReferenceObjectByName(PUNICODE_STRING pObjectPath, ULO
                                                 KPROCESSOR_MODE enmAccessMode, PVOID pvParseContext, PVOID *ppvObject);
 RT_DECL_NTAPI(HANDLE)   PsGetProcessInheritedFromUniqueProcessId(PEPROCESS);
 RT_DECL_NTAPI(UCHAR *)  PsGetProcessImageFileName(PEPROCESS);
+RT_DECL_NTAPI(NTSTATUS) PsReferenceProcessFilePointer(PEPROCESS, PFILE_OBJECT *ppFileObj);
 RT_DECL_NTAPI(BOOLEAN)  PsIsProcessBeingDebugged(PEPROCESS);
 RT_DECL_NTAPI(ULONG)    PsGetProcessSessionId(PEPROCESS);
 extern DECLIMPORT(POBJECT_TYPE *) LpcPortObjectType;            /**< In vista+ this is the ALPC port object type. */
