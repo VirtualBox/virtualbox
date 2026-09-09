@@ -1,4 +1,4 @@
-/* $Id: SUPHardenedVerify-win.h 107180 2024-11-26 14:50:02Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPHardenedVerify-win.h 115213 2026-09-09 13:47:29Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library/Driver - Hardened Verification, Windows.
  */
@@ -41,6 +41,7 @@
 #endif
 
 #include <iprt/types.h>
+#include <iprt/sha.h>
 #include <iprt/crypto/x509.h>
 #ifndef SUP_CERTIFICATES_ONLY
 # ifdef RT_OS_WINDOWS
@@ -51,22 +52,37 @@
 
 RT_C_DECLS_BEGIN
 
-#ifndef SUP_CERTIFICATES_ONLY
-# ifdef RT_OS_WINDOWS
+#if !defined(SUP_CERTIFICATES_ONLY) || defined(DOXYGEN_RUNNING)
+# if defined(RT_OS_WINDOWS) || defined(DOXYGEN_RUNNING)
 DECLHIDDEN(int)     supHardenedWinInitImageVerifier(PRTERRINFO pErrInfo);
 DECLHIDDEN(void)    supHardenedWinTermImageVerifier(void);
 DECLHIDDEN(void)    supR3HardenedWinVerifyCacheScheduleImports(RTLDRMOD hLdrMod, PCRTUTF16 pwszName);
 DECLHIDDEN(void)    supR3HardenedWinVerifyCachePreload(PCRTUTF16 pwszName);
 
 
+/**
+ * Verification info for the RWX page returned by
+ * supHardenedWinVerifyProcess. */
+typedef struct SUPHARDNTVPRWXPGINFO
+{
+    /** The address of the page. */
+    RTR3PTR         pvRwxPgR3Ptr;
+    /** The SHA-384 of the page. */
+    uint8_t         abSha384[RTSHA384_HASH_SIZE];
+} SUPHARDNTVPRWXPGINFO;
+/** Pointer to verification info for the RWX page. */
+typedef SUPHARDNTVPRWXPGINFO *PSUPHARDNTVPRWXPGINFO;
+
 typedef enum SUPHARDNTVPKIND
 {
     SUPHARDNTVPKIND_VERIFY_ONLY = 1,
+    SUPHARDNTVPKIND_LIMITED_VERIFY_ONLY,
     SUPHARDNTVPKIND_CHILD_PURIFICATION,
     SUPHARDNTVPKIND_SELF_PURIFICATION,
     SUPHARDNTVPKIND_SELF_PURIFICATION_LIMITED,
     SUPHARDNTVPKIND_32BIT_HACK = 0x7fffffff
 } SUPHARDNTVPKIND;
+
 /** @name SUPHARDNTVP_F_XXX - Flags for supHardenedWinVerifyProcess
  * @{ */
 /** Replace unwanted executable memory allocations with a new one that's filled
@@ -85,10 +101,51 @@ typedef enum SUPHARDNTVPKIND
  */
 #define SUPHARDNTVP_F_EXEC_ALLOC_REPLACE_WITH_RW        RT_BIT_32(0)
 /** @} */
-DECLHIDDEN(int)     supHardenedWinVerifyProcess(HANDLE hProcess, HANDLE hThread, SUPHARDNTVPKIND enmKind,
-                                                uint32_t fFlags, uint32_t *pcFixes, PRTERRINFO pErrInfo);
+DECLHIDDEN(int)     supHardenedWinVerifyProcess(HANDLE hProcess, HANDLE hThread, SUPHARDNTVPKIND enmKind, uint32_t fFlags,
+                                                PSUPHARDNTVPRWXPGINFO pRwxPgInfo, uint32_t *pcFixes, PRTERRINFO pErrInfo);
 DECLHIDDEN(int)     supHardNtVpThread(HANDLE hProcess, HANDLE hThread, PRTERRINFO pErrInfo);
 DECLHIDDEN(int)     supHardNtVpDebugger(HANDLE hProcess, PRTERRINFO pErrInfo);
+
+/** @def SUPHARDNT_RWXPG_MAX_ENTRIES
+ * Max rwx page entries. */
+/** @def SUPHARDNT_RWXPG_MAX_ENTRIES
+ * Min rwx page entries. */
+#ifdef RT_ARCH_AMD64
+# define SUPHARDNT_RWXPG_MAX_ENTRIES        2
+# define SUPHARDNT_RWXPG_MIN_ENTRIES        2
+#elif defined(RT_ARCH_X86)
+# define SUPHARDNT_RWXPG_MAX_ENTRIES        3
+# define SUPHARDNT_RWXPG_MIN_ENTRIES        2
+#elif defined(RT_ARCH_ARM64)
+# define SUPHARDNT_RWXPG_MAX_ENTRIES        2
+# define SUPHARDNT_RWXPG_MIN_ENTRIES        2
+#else
+# define SUPHARDNT_RWXPG_MAX_ENTRIES        0
+# define SUPHARDNT_RWXPG_MIN_ENTRIES        0
+#endif
+/** @def SUPHARDNT_RWXPG_ENTRY_SIZE
+ * Number of bytes per rwx page entry. */
+#define SUPHARDNT_RWXPG_ENTRY_SIZE          64
+
+/**
+ * Callback for supHardNtRwxPageVerify to validate jump targets.
+ *
+ * @returns true if okay, false if not.
+ * @param   uTarget     The jump target.
+ * @param   iEntry      The entry number.
+ * @param   pvUser      User argument.
+ */
+typedef DECLCALLBACKTYPE(bool, FNSUPHARDNTRWXPAGEVERIFYJUMPTARGET,(uintptr_t uTarget, uint32_t iEntry, void *pvUser));
+/** Pointer to a FNSUPHARDNTRWXPAGEVERIFYJUMPTARGET function. */
+typedef FNSUPHARDNTRWXPAGEVERIFYJUMPTARGET *PFNSUPHARDNTRWXPAGEVERIFYJUMPTARGET;
+
+typedef DECLCALLBACKTYPE(bool, FNSUPHARDNTRWXPAGESETERROR,(void *pvUser, const char *pszMsg, ...));
+/** Pointer to a FNSUPHARDNTRWXPAGESETERROR function. */
+typedef FNSUPHARDNTRWXPAGESETERROR *PFNSUPHARDNTRWXPAGESETERROR;
+
+DECLHIDDEN(bool)    supHardNtRwxPageVerify(uint8_t const *pbPage, PFNSUPHARDNTRWXPAGEVERIFYJUMPTARGET pfnVerifyJumpTarget,
+                                           FNSUPHARDNTRWXPAGESETERROR pfnSetError, void *pvUser);
+DECLHIDDEN(bool)    supHardNtRwxPageIsPrologInstrPatchable(PDISSTATE pDis);
 
 DECLHIDDEN(bool)    supHardViUtf16PathIsEqualEx(PCRTUTF16 pawcLeft, size_t cwcLeft, const char *pszRight);
 DECLHIDDEN(bool)    supHardViUniStrPathStartsWithUniStr(UNICODE_STRING const *pUniStrLeft,
@@ -272,7 +329,7 @@ extern uint32_t         g_uNtVerCombined;
 #define SUP_NT_VER_W81      SUP_MAKE_NT_VER_SIMPLE(6,3)
 /** @} */
 
-# endif
+# endif /* RT_OS_WINDOWS || DOXYGEN_RUNNING */
 
 # ifndef IN_SUP_HARDENED_R3
 #  include <iprt/mem.h>
@@ -300,7 +357,7 @@ extern uint32_t         g_uNtVerCombined;
 #  endif
 # endif  /* IN_SUP_HARDENED_R3 */
 
-#endif /* SUP_CERTIFICATES_ONLY */
+#endif /* !SUP_CERTIFICATES_ONLY || DOXYGEN_RUNNING */
 
 RT_C_DECLS_END
 

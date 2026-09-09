@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-win.cpp 113874 2026-04-15 00:12:29Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPDrv-win.cpp 115213 2026-09-09 13:47:29Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Windows NT specifics.
  */
@@ -217,9 +217,21 @@ typedef enum SUPDRVNTPROTECTKIND
 {
     kSupDrvNtProtectKind_Invalid = 0,
 
-    /** Stub process protection while performing process verification.
-     * Next: StubSpawning (or free)  */
-    kSupDrvNtProtectKind_StubUnverified,
+    /** Initial process protection while performing process verification.
+     * Next: InitialSpawning (or free)  */
+    kSupDrvNtProtectKind_InitialUnverified,
+    /** Initial process protection before it creates the first stub process.
+     * Next: InitialParent, InitialDead. */
+    kSupDrvNtProtectKind_InitialSpawning,
+    /** Initial process protection while having the first stub process as child.
+     * Next: InitialDead  */
+    kSupDrvNtProtectKind_InitialParent,
+    /** Dead initial process. */
+    kSupDrvNtProtectKind_InitialDead,
+
+    /** Potential stub process.
+     * Next: StubUnverified (or free)  */
+    kSupDrvNtProtectKind_StubUnconfirmed,
     /** Stub process protection before it creates the VM process.
      * Next: StubParent, StubDead. */
     kSupDrvNtProtectKind_StubSpawning,
@@ -241,6 +253,12 @@ typedef enum SUPDRVNTPROTECTKIND
     /** End of valid protection kinds. */
     kSupDrvNtProtectKind_End
 } SUPDRVNTPROTECTKIND;
+
+#define SUPDRVNTPROTECTKIND_IS_INITIAL(a_enmKind)  ((unsigned)((a_enmKind) - kSupDrvNtProtectKind_InitialUnverified)    <= 3)
+#define SUPDRVNTPROTECTKIND_IS_STUB(a_enmKind)     ((unsigned)((a_enmKind) - kSupDrvNtProtectKind_StubUnconfirmed)      <= 3)
+#define SUPDRVNTPROTECTKIND_IS_VM(a_enmKind)       ((unsigned)((a_enmKind) - kSupDrvNtProtectKind_VmProcessUnconfirmed) <= 2)
+#define SUPDRVNTPROTECTKIND_HAS_VM_CHILD(a_enmKind, a_pNtProtect)   SUPDRVNTPROTECTKIND_IS_STUB(a_enmKind)
+#define SUPDRVNTPROTECTKIND_IS_FIRST_STUB(a_enmKind, a_pNtProtect)  SUPDRVNTPROTECTKIND_IS_STUB(a_enmKind)
 
 /**
  * A NT process protection structure.
@@ -295,6 +313,8 @@ typedef struct SUPDRVNTPROTECT
          * reference the parent has to it. */
         struct SUPDRVNTPROTECT *pParent;
     } u;
+    /** Verification information for the RWX page (non-zero address if valid). */
+    SUPHARDNTVPRWXPGINFO RwxPgInfo;
 } SUPDRVNTPROTECT;
 /** Pointer to a NT process protection record. */
 typedef SUPDRVNTPROTECT *PSUPDRVNTPROTECT;
@@ -1135,31 +1155,48 @@ NTSTATUS _stdcall VBoxDrvNtCreate(PDEVICE_OBJECT pDevObj, PIRP pIrp)
 
 #ifdef VBOX_WITH_HARDENING
             /*
-             * Access to the stub device is only granted to processes which
-             * passes verification.
+             * The stub device is first opened by the initial process to set up
+             * protection of the 2nd process.  The 2nd process will automatically
+             * have a stub entry assigned to it when it is created, just like the
+             * final VM process.  Therefore, only the first process will need a
+             * fresh SUPDRVNTPROTECT instance.
+             *
+             * Nobody gets access to the stub device without checking, but the
+             * checks for the first process aren't that tough, compared to the rest.
              *
              * Note! The stub device has no need for a SUPDRVSESSION structure,
              *       so the it uses the SUPDRVNTPROTECT directly instead.
              */
             if (pDevObj == g_pDevObjStub)
             {
-                PSUPDRVNTPROTECT pNtProtect = NULL;
-                rc = supdrvNtProtectCreate(&pNtProtect, PsGetProcessId(PsGetCurrentProcess()),
-                                           kSupDrvNtProtectKind_StubUnverified, true /*fLink*/);
+                HANDLE const     hPid       = PsGetProcessId(PsGetCurrentProcess());
+                PSUPDRVNTPROTECT pNtProtect = supdrvNtProtectLookup(hPid);
+                if (!pNtProtect)
+                    rc = supdrvNtProtectCreate(&pNtProtect, hPid, kSupDrvNtProtectKind_InitialUnverified, true /*fLink*/);
+                else if (pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubUnconfirmed)
+                    rc = VINF_SUCCESS;
+                else
+                {
+                    supdrvNtProtectRelease(pNtProtect);
+                    rc = VERR_INVALID_STATE;
+                }
                 if (RT_SUCCESS(rc))
                 {
-                    rc = supdrvNtProtectFindAssociatedCsrss(pNtProtect);
-                    if (RT_SUCCESS(rc))
-                        rc = supdrvNtProtectVerifyProcess(pNtProtect);
+                    if (pNtProtect->enmProcessKind == kSupDrvNtProtectKind_InitialUnverified)
+                        rc = supdrvNtProtectFindAssociatedCsrss(pNtProtect);
                     if (RT_SUCCESS(rc))
                     {
-                        pFileObj->FsContext = pNtProtect; /* Keeps reference. */
-                        return supdrvNtCompleteRequestEx(STATUS_SUCCESS, FILE_OPENED, pIrp);
+                        rc = supdrvNtProtectVerifyProcess(pNtProtect);
+                        if (RT_SUCCESS(rc))
+                        {
+                            pFileObj->FsContext = pNtProtect; /* Keeps reference. */
+                            return supdrvNtCompleteRequestEx(STATUS_SUCCESS, FILE_OPENED, pIrp);
+                        }
                     }
 
                     supdrvNtProtectRelease(pNtProtect);
                 }
-                LogRel(("vboxdrv: Declined %p access to VBoxDrvStub: rc=%d\n", PsGetProcessId(PsGetCurrentProcess()), rc));
+                LogRel(("vboxdrv: Declined %p access to VBoxDrvStub: rc=%d\n", hPid, rc));
             }
             /*
              * Unrestricted access is only granted to a process in the
@@ -1367,6 +1404,64 @@ NTSTATUS _stdcall VBoxDrvNtClose(PDEVICE_OBJECT pDevObj, PIRP pIrp)
 }
 
 
+#ifdef VBOX_WITH_HARDENING
+/**
+ * Common part of the SUP_IOCTL_WIN_VERIFY_RWX_PG handling.
+ */
+static NTSTATUS supdrvNtIOCtlVerifyRwxPgCommon(PSUPDRVNTPROTECT pNtProtect)
+{
+    NTSTATUS rcNt = STATUS_SUCCESS;
+    if (pNtProtect->RwxPgInfo.pvRwxPgR3Ptr != NIL_RTR3PTR)
+    {
+# if 0
+        POOL_TYPE const enmPoolType = g_uNtVerCombined >= SUP_NT_VER_W80 ? NonPagedPoolNx : NonPagedPool;
+        uint8_t * const pbPage      = (uint8_t *)ExAllocatePoolWithTag(enmPoolType, PAGE_SIZE, 'VBox');
+        if (pbPage)
+        {
+            int rc = RTR0MemUserCopyFrom(pbPage, pNtProtect->RwxPgInfo.pvRwxPgR3Ptr, PAGE_SIZE);
+            if (RT_SUCCESS(rc))
+                rcNt = RTSha384Check(pbPage, PAGE_SIZE, pNtProtect->RwxPgInfo.abSha384)
+                     ? STATUS_SUCCESS : STATUS_CRC_ERROR;
+            else
+                rcNt = STATUS_ACCESS_VIOLATION;
+            ExFreePoolWithTag(pbPage, 'VBox');
+        }
+        else
+            rcNt = STATUS_NO_MEMORY;
+# else
+        __try
+        {
+            ProbeForRead((void *)pNtProtect->RwxPgInfo.pvRwxPgR3Ptr, PAGE_SIZE, 1);
+            rcNt = RTSha384Check((void *)pNtProtect->RwxPgInfo.pvRwxPgR3Ptr, PAGE_SIZE, pNtProtect->RwxPgInfo.abSha384)
+                 ? STATUS_SUCCESS : STATUS_CRC_ERROR;
+        }
+        __except(EXCEPTION_EXECUTE_HANDLER)
+        {
+            return STATUS_ACCESS_VIOLATION;
+        }
+# endif
+    }
+    return rcNt;
+}
+#endif /* VBOX_WITH_HARDENING */
+
+
+/**
+ * Handles SUP_IOCTL_WIN_VERIFY_RWX_PG for regular sessions.
+ */
+static NTSTATUS supdrvNtIOCtlVerifyRwxPg(PSUPDRVSESSION pSession)
+{
+#ifdef VBOX_WITH_HARDENING
+    PSUPDRVNTPROTECT const pNtProtect = pSession->pNtProtect;
+    if (pNtProtect)
+        return supdrvNtIOCtlVerifyRwxPgCommon(pNtProtect);
+#else
+    RT_NOREF(pSession);
+#endif
+    return STATUS_SUCCESS;
+}
+
+
 #ifdef VBOXDRV_WITH_FAST_IO
 /**
  * Fast I/O device control callback.
@@ -1398,6 +1493,14 @@ static BOOLEAN _stdcall VBoxDrvNtFastIoDeviceControl(PFILE_OBJECT pFileObj, BOOL
     {
         pIoStatus->Status      = STATUS_NOT_SUPPORTED;
         pIoStatus->Information = 0;
+# ifdef VBOX_WITH_HARDENING
+        if (pDevObj == g_pDevObjStub && uCmd == SUP_IOCTL_WIN_VERIFY_RWX_PG)
+        {
+            PSUPDRVNTPROTECT const pNtProtect = (PSUPDRVNTPROTECT)pFileObj->FsContext;
+            if (pNtProtect && pNtProtect->u32Magic == SUPDRVNTPROTECT_MAGIC)
+                pIoStatus->Status = supdrvNtIOCtlVerifyRwxPgCommon(pNtProtect);
+        }
+# endif
         return TRUE;
     }
 
@@ -1431,13 +1534,20 @@ static BOOLEAN _stdcall VBoxDrvNtFastIoDeviceControl(PFILE_OBJECT pFileObj, BOOL
          * the session and iCmd, and does not return anything.
          */
         if (   (uCmd & 3) == METHOD_NEITHER
-            && (uint32_t)((uCmd - SUP_IOCTL_FAST_DO_FIRST) >> 2) < (uint32_t)32)
+            && (uint32_t)((uCmd - SUP_IOCTL_FAST_DO_FIRST) >> 2) < (uint32_t)32) /* (Excludes SUP_IOCTL_WIN_VERIFY_RWX_PG.) */
         {
             int rc = supdrvIOCtlFast((uCmd - SUP_IOCTL_FAST_DO_FIRST) >> 2,
                                      (unsigned)(uintptr_t)pvOutput/* VMCPU id */,
                                      pDevExt, pSession);
             pIoStatus->Status      = RT_SUCCESS(rc) ? STATUS_SUCCESS : STATUS_INVALID_PARAMETER;
             pIoStatus->Information = 0; /* Could be used to pass rc if we liked. */
+            supdrvSessionRelease(pSession);
+            return TRUE;
+        }
+        if (uCmd == SUP_IOCTL_WIN_VERIFY_RWX_PG)
+        {
+            pIoStatus->Status      = supdrvNtIOCtlVerifyRwxPg(pSession);
+            pIoStatus->Information = 0;
             supdrvSessionRelease(pSession);
             return TRUE;
         }
@@ -1596,13 +1706,28 @@ static BOOLEAN _stdcall VBoxDrvNtFastIoDeviceControl(PFILE_OBJECT pFileObj, BOOL
  */
 NTSTATUS _stdcall VBoxDrvNtDeviceControl(PDEVICE_OBJECT pDevObj, PIRP pIrp)
 {
+    PIO_STACK_LOCATION const pStack = IoGetCurrentIrpStackLocation(pIrp);
+
+    /*
+     * With one exception, this is not accessible on stub or error devices.
+     */
+#ifdef VBOX_WITH_HARDENING
+    if (   pDevObj == g_pDevObjStub
+        && pStack->Parameters.DeviceIoControl.IoControlCode == SUP_IOCTL_WIN_VERIFY_RWX_PG)
+    {
+        PSUPDRVNTPROTECT const pNtProtect = (PSUPDRVNTPROTECT)pStack->FileObject->FsContext;
+        if (pNtProtect && pNtProtect->u32Magic == SUPDRVNTPROTECT_MAGIC)
+            return supdrvNtCompleteRequest(supdrvNtIOCtlVerifyRwxPgCommon(pNtProtect), pIrp);
+    }
+#endif
     VBOXDRV_COMPLETE_IRP_AND_RETURN_IF_STUB_OR_ERROR_INFO_DEV(pDevObj, pIrp);
 
-    PSUPDRVDEVEXT       pDevExt  = SUPDRVNT_GET_DEVEXT(pDevObj);
-    PIO_STACK_LOCATION  pStack   = IoGetCurrentIrpStackLocation(pIrp);
-    PSUPDRVSESSION      pSession = supdrvSessionHashTabLookup(pDevExt, RTProcSelf(), RTR0ProcHandleSelf(),
-                                                              (PSUPDRVSESSION *)&pStack->FileObject->FsContext);
-
+    /*
+     * Check the input a little bit and get a the session references.
+     */
+    PSUPDRVDEVEXT const  pDevExt  = SUPDRVNT_GET_DEVEXT(pDevObj);
+    PSUPDRVSESSION const pSession = supdrvSessionHashTabLookup(pDevExt, RTProcSelf(), RTR0ProcHandleSelf(),
+                                                               (PSUPDRVSESSION *)&pStack->FileObject->FsContext);
     if (!RT_VALID_PTR(pSession))
         return supdrvNtCompleteRequest(STATUS_TRUST_FAILURE, pIrp);
 
@@ -1631,6 +1756,12 @@ NTSTATUS _stdcall VBoxDrvNtDeviceControl(PDEVICE_OBJECT pDevObj, PIRP pIrp)
             /* Complete the I/O request. */
             supdrvSessionRelease(pSession);
             return supdrvNtCompleteRequest(RT_SUCCESS(rc) ? STATUS_SUCCESS : STATUS_INVALID_PARAMETER, pIrp);
+        }
+        if (uCmd == SUP_IOCTL_WIN_VERIFY_RWX_PG)
+        {
+            NTSTATUS rcNt = supdrvNtIOCtlVerifyRwxPg(pSession);
+            supdrvSessionRelease(pSession);
+            return supdrvNtCompleteRequest(rcNt, pIrp);
         }
     }
 
@@ -3913,41 +4044,75 @@ static void supdrvNtErrorInfoCleanupProcess(HANDLE hProcessId)
 
 /**
  * Common worker used by the process creation hooks as well as the process
- * handle creation hooks to check if a VM process is being created.
+ * handle creation hooks to check if a stub or VM child process is being
+ * created.
  *
  * @returns true if likely to be a VM process, false if not.
- * @param   pNtStub             The NT protection structure for the possible
- *                              stub process.
+ * @param   pNtParent           The NT protection structure for the possible
+ *                              parent process.
  * @param   hParentPid          The parent pid.
  * @param   hChildPid           The child pid.
  */
-static bool supdrvNtProtectIsSpawningStubProcess(PSUPDRVNTPROTECT pNtStub, HANDLE hParentPid, HANDLE hChildPid)
+static bool supdrvNtProtectIsSpawningProcessChild(PSUPDRVNTPROTECT pNtParent, HANDLE hParentPid, HANDLE hChildPid)
 {
     bool fRc = false;
-    if (pNtStub->AvlCore.Key == hParentPid) /* paranoia */
+    if (pNtParent->AvlCore.Key == hParentPid) /* paranoia */
     {
-        if (pNtStub->enmProcessKind == kSupDrvNtProtectKind_StubSpawning)
+        if (   pNtParent->enmProcessKind == kSupDrvNtProtectKind_InitialSpawning
+            || pNtParent->enmProcessKind == kSupDrvNtProtectKind_StubSpawning)
         {
-            /* Compare short names. */
-            PEPROCESS pStubProcess;
-            NTSTATUS rcNt = PsLookupProcessByProcessId(hParentPid, &pStubProcess);
+            /*
+             * The get process objects.
+             */
+            PEPROCESS pParentProcess;
+            NTSTATUS rcNt = PsLookupProcessByProcessId(hParentPid, &pParentProcess);
             if (NT_SUCCESS(rcNt))
             {
                 PEPROCESS pChildProcess;
                 rcNt = PsLookupProcessByProcessId(hChildPid, &pChildProcess);
                 if (NT_SUCCESS(rcNt))
                 {
-                    const char *pszStub  = (const char *)PsGetProcessImageFileName(pStubProcess);
-                    const char *pszChild = (const char *)PsGetProcessImageFileName(pChildProcess);
-                    fRc = pszStub != NULL
-                       && pszChild != NULL
-                       && strcmp(pszStub, pszChild) == 0;
-
-                    /** @todo check that the full image names matches. */
-
+# if 1
+                    /*
+                     * They should have the same image file objects, so get those
+                     * if we can (Vista+).
+                     */
+                    if (g_pfnPsReferenceProcessFilePointer)
+                    {
+                        PFILE_OBJECT pParentFileObj = NULL;
+                        rcNt = g_pfnPsReferenceProcessFilePointer(pParentProcess, &pParentFileObj);
+                        if (NT_SUCCESS(rcNt))
+                        {
+                            PFILE_OBJECT pChildFileObj = NULL;
+                            rcNt = g_pfnPsReferenceProcessFilePointer(pChildProcess, &pChildFileObj);
+                            if (NT_SUCCESS(rcNt))
+                            {
+                                if (pParentFileObj && pChildFileObj)
+                                    fRc = pParentFileObj == pChildFileObj;
+                                else
+                                    rcNt = STATUS_UNEXPECTED_IO_ERROR;
+                                ObDereferenceObject(pChildFileObj);
+                            }
+                            ObDereferenceObject(pParentFileObj);
+                        }
+                    }
+                    else
+                        rcNt = STATUS_UNEXPECTED_IO_ERROR;
+                    if (!NT_SUCCESS(rcNt))
+# endif
+                    {
+                        /*
+                         * Fallback on comparing the shortish ANSI process names.
+                         */
+                        const char *pszStub  = (const char *)PsGetProcessImageFileName(pParentProcess);
+                        const char *pszChild = (const char *)PsGetProcessImageFileName(pChildProcess);
+                        fRc = pszStub != NULL
+                           && pszChild != NULL
+                           && strcmp(pszStub, pszChild) == 0;
+                    }
                     ObDereferenceObject(pChildProcess);
                 }
-                ObDereferenceObject(pStubProcess);
+                ObDereferenceObject(pParentProcess);
             }
         }
     }
@@ -3959,16 +4124,20 @@ static bool supdrvNtProtectIsSpawningStubProcess(PSUPDRVNTPROTECT pNtStub, HANDL
  * Common code used by the notifies to protect a child process.
  *
  * @returns VBox status code.
- * @param   pNtStub             The NT protect structure for the parent.
+ * @param   pNtParent           The NT protect structure for the parent.
  * @param   hChildPid           The child pid.
  */
-static int supdrvNtProtectProtectNewStubChild(PSUPDRVNTPROTECT pNtParent, HANDLE hChildPid)
+static int supdrvNtProtectDoProtectNewChild(PSUPDRVNTPROTECT pNtParent, HANDLE hChildPid)
 {
     /*
      * Create a child protection struction.
      */
     PSUPDRVNTPROTECT pNtChild;
-    int rc = supdrvNtProtectCreate(&pNtChild, hChildPid, kSupDrvNtProtectKind_VmProcessUnconfirmed, false /*fLink*/);
+    int rc = supdrvNtProtectCreate(&pNtChild, hChildPid,
+                                   SUPDRVNTPROTECTKIND_HAS_VM_CHILD(pNtParent->enmProcessKind, pNtParent)
+                                   ? kSupDrvNtProtectKind_VmProcessUnconfirmed
+                                   : kSupDrvNtProtectKind_StubUnconfirmed,
+                                   false /*fLink*/);
     if (RT_SUCCESS(rc))
     {
         pNtChild->fFirstProcessCreateHandle = true;
@@ -3986,14 +4155,16 @@ static int supdrvNtProtectProtectNewStubChild(PSUPDRVNTPROTECT pNtParent, HANDLE
          * Take the spinlock, recheck parent conditions and link things.
          */
         RTSpinlockAcquire(g_hNtProtectLock);
-        if (pNtParent->enmProcessKind == kSupDrvNtProtectKind_StubSpawning)
+        if (   pNtParent->enmProcessKind == kSupDrvNtProtectKind_InitialSpawning
+            || pNtParent->enmProcessKind == kSupDrvNtProtectKind_StubSpawning)
         {
             bool fSuccess = RTAvlPVInsert(&g_NtProtectTree, &pNtChild->AvlCore);
             if (fSuccess)
             {
                 pNtChild->fInTree         = true;
                 pNtParent->u.pChild       = pNtChild; /* Parent keeps the initial reference. */
-                pNtParent->enmProcessKind = kSupDrvNtProtectKind_StubParent;
+                pNtParent->enmProcessKind = SUPDRVNTPROTECTKIND_IS_INITIAL(pNtParent->enmProcessKind)
+                                          ? kSupDrvNtProtectKind_InitialParent : kSupDrvNtProtectKind_StubParent;
                 pNtChild->u.pParent       = pNtParent;
 
                 RTSpinlockRelease(g_hNtProtectLock);
@@ -4004,7 +4175,8 @@ static int supdrvNtProtectProtectNewStubChild(PSUPDRVNTPROTECT pNtParent, HANDLE
         }
         else
             rc = VERR_WRONG_ORDER;
-        pNtChild->enmProcessKind = kSupDrvNtProtectKind_VmProcessDead;
+        pNtChild->enmProcessKind = SUPDRVNTPROTECTKIND_IS_VM(pNtChild->enmProcessKind)
+                                 ? kSupDrvNtProtectKind_VmProcessDead : kSupDrvNtProtectKind_StubDead;
         RTSpinlockRelease(g_hNtProtectLock);
 
         supdrvNtProtectRelease(pNtChild);
@@ -4031,10 +4203,11 @@ static void supdrvNtProtectUnprotectDeadProcess(HANDLE hDeadPid)
         RTSpinlockAcquire(g_hNtProtectLock);
 
         /*
-         * If this is an unconfirmed VM process, we must release the reference
-         * the parent structure holds.
+         * If this is an unconfirmed stub or VM process, we must release the
+         * reference the parent structure holds.
          */
-        if (pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed)
+        if (   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubUnconfirmed
+            || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed)
         {
             PSUPDRVNTPROTECT pNtParent = pNtProtect->u.pParent;
             AssertRelease(pNtParent); AssertRelease(pNtParent->u.pChild == pNtProtect);
@@ -4043,30 +4216,31 @@ static void supdrvNtProtectUnprotectDeadProcess(HANDLE hDeadPid)
             pNtChild = pNtProtect;
         }
         /*
-         * If this is a stub exitting before the VM process gets confirmed,
-         * release the protection of the potential VM process as this is not
-         * the prescribed behavior.
+         * If this is an initial or stub exitting before the child process gets
+         * confirmed, release the protection of the potential VM process as this
+         * is not the prescribed behavior.
          */
-        else if (   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubParent
+        else if (   (   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_InitialParent
+                     || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubParent)
                  && pNtProtect->u.pChild)
         {
             pNtChild = pNtProtect->u.pChild;
             pNtProtect->u.pChild = NULL;
             pNtChild->u.pParent  = NULL;
-            pNtChild->enmProcessKind = kSupDrvNtProtectKind_VmProcessDead;
+            pNtChild->enmProcessKind = SUPDRVNTPROTECTKIND_IS_VM(pNtChild->enmProcessKind)
+                                     ? kSupDrvNtProtectKind_VmProcessDead : kSupDrvNtProtectKind_StubDead;
         }
 
         /*
          * Transition it to the dead state to prevent it from opening the
-         * support driver again or be posthumously abused as a vm process parent.
+         * support driver again or be posthumously abused as a parent process.
          */
-        if (   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed
-            || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessConfirmed)
+        if (SUPDRVNTPROTECTKIND_IS_VM(pNtProtect->enmProcessKind))
             pNtProtect->enmProcessKind = kSupDrvNtProtectKind_VmProcessDead;
-        else if (   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubParent
-                 || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubSpawning
-                 || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubUnverified)
+        else if (SUPDRVNTPROTECTKIND_IS_STUB(pNtProtect->enmProcessKind))
             pNtProtect->enmProcessKind = kSupDrvNtProtectKind_StubDead;
+        else if (SUPDRVNTPROTECTKIND_IS_INITIAL(pNtProtect->enmProcessKind))
+            pNtProtect->enmProcessKind = kSupDrvNtProtectKind_InitialDead;
 
         RTSpinlockRelease(g_hNtProtectLock);
 
@@ -4096,28 +4270,31 @@ static void supdrvNtProtectUnprotectDeadProcess(HANDLE hDeadPid)
  * Common worker for the process creation callback that verifies a new child
  * being created by the handle creation callback code.
  *
- * @param   pNtStub         The parent.
- * @param   pNtVm           The child.
+ * @param   pNtParent       The parent.
+ * @param   pNtChild        The child.
  * @param   fCallerChecks   The result of any additional tests the caller made.
  *                          This is in order to avoid duplicating the failure
  *                          path code.
  */
-static void supdrvNtProtectVerifyNewChildProtection(PSUPDRVNTPROTECT pNtStub, PSUPDRVNTPROTECT pNtVm, bool fCallerChecks)
+static void supdrvNtProtectVerifyNewChildProtection(PSUPDRVNTPROTECT pNtParent, PSUPDRVNTPROTECT pNtChild, bool fCallerChecks)
 {
     if (   fCallerChecks
-        && pNtStub->enmProcessKind == kSupDrvNtProtectKind_StubParent
-        && pNtVm->enmProcessKind   == kSupDrvNtProtectKind_VmProcessUnconfirmed
-        && pNtVm->u.pParent        == pNtStub
-        && pNtStub->u.pChild       == pNtVm)
+        && (   pNtParent->enmProcessKind == kSupDrvNtProtectKind_InitialParent
+            || pNtParent->enmProcessKind == kSupDrvNtProtectKind_StubParent)
+        && pNtChild->enmProcessKind == (pNtParent->enmProcessKind == kSupDrvNtProtectKind_InitialParent
+                                        ? kSupDrvNtProtectKind_StubUnconfirmed : kSupDrvNtProtectKind_VmProcessUnconfirmed)
+        && pNtChild->u.pParent       == pNtParent
+        && pNtParent->u.pChild       == pNtChild)
     {
         /* Fine, reset the CSRSS hack (fixes ViRobot APT Shield 2.0 issue). */
-        pNtVm->fFirstProcessCreateHandle = true;
+        pNtChild->fFirstProcessCreateHandle = true;
         return;
     }
 
-    LogRel(("vboxdrv: Misdetected vm stub; hParentPid=%p hChildPid=%p\n", pNtStub->AvlCore.Key, pNtVm->AvlCore.Key));
-    if (pNtStub->enmProcessKind != kSupDrvNtProtectKind_VmProcessConfirmed)
-        supdrvNtProtectUnprotectDeadProcess(pNtVm->AvlCore.Key);
+    LogRel(("vboxdrv: Misdetected vm stub; hParentPid=%p hChildPid=%p\n", pNtParent->AvlCore.Key, pNtChild->AvlCore.Key));
+    if (   pNtParent->enmProcessKind != kSupDrvNtProtectKind_StubSpawning  /** @todo kSupDrvNtProtectKind_StubSpawning? */
+        && pNtParent->enmProcessKind != kSupDrvNtProtectKind_VmProcessConfirmed)
+        supdrvNtProtectUnprotectDeadProcess(pNtChild->AvlCore.Key);
 }
 
 
@@ -4138,21 +4315,21 @@ supdrvNtProtectCallback_ProcessCreateNotify(HANDLE hParentPid, HANDLE hNewPid, B
      */
     if (fCreated)
     {
-        PSUPDRVNTPROTECT pNtStub = supdrvNtProtectLookup(hParentPid);
-        if (pNtStub)
+        PSUPDRVNTPROTECT pNtParent = supdrvNtProtectLookup(hParentPid);
+        if (pNtParent)
         {
-            PSUPDRVNTPROTECT pNtVm = supdrvNtProtectLookup(hNewPid);
-            if (!pNtVm)
+            PSUPDRVNTPROTECT pNtChild = supdrvNtProtectLookup(hNewPid);
+            if (!pNtChild)
             {
-                if (supdrvNtProtectIsSpawningStubProcess(pNtStub, hParentPid, hNewPid))
-                    supdrvNtProtectProtectNewStubChild(pNtStub, hNewPid);
+                if (supdrvNtProtectIsSpawningProcessChild(pNtParent, hParentPid, hNewPid))
+                    supdrvNtProtectDoProtectNewChild(pNtParent, hNewPid);
             }
             else
             {
-                supdrvNtProtectVerifyNewChildProtection(pNtStub, pNtVm, true);
-                supdrvNtProtectRelease(pNtVm);
+                supdrvNtProtectVerifyNewChildProtection(pNtParent, pNtChild, true /*fCallerChecks*/);
+                supdrvNtProtectRelease(pNtChild);
             }
-            supdrvNtProtectRelease(pNtStub);
+            supdrvNtProtectRelease(pNtParent);
         }
     }
     /*
@@ -4185,7 +4362,7 @@ supdrvNtProtectCallback_ProcessCreateNotifyEx(PEPROCESS pNewProcess, HANDLE hNew
      */
     if (pInfo)
     {
-        PSUPDRVNTPROTECT pNtStub = supdrvNtProtectLookup(pInfo->CreatingThreadId.UniqueProcess);
+        PSUPDRVNTPROTECT pNtParent = supdrvNtProtectLookup(pInfo->CreatingThreadId.UniqueProcess);
 
         Log(("vboxdrv/NewProcessEx: ctx=%04zx/%p pid=%04zx ppid=%04zx ctor=%04zx/%04zx rcNt=%#x %.*ls\n",
              PsGetProcessId(PsGetCurrentProcess()), PsGetCurrentProcess(),
@@ -4194,26 +4371,26 @@ supdrvNtProtectCallback_ProcessCreateNotifyEx(PEPROCESS pNewProcess, HANDLE hNew
              pInfo->FileOpenNameAvailable && pInfo->ImageFileName ? (size_t)pInfo->ImageFileName->Length / 2 : 0,
              pInfo->FileOpenNameAvailable && pInfo->ImageFileName ? pInfo->ImageFileName->Buffer : NULL));
 
-        if (pNtStub)
+        if (pNtParent)
         {
-            PSUPDRVNTPROTECT pNtVm = supdrvNtProtectLookup(hNewPid);
-            if (!pNtVm)
+            PSUPDRVNTPROTECT pNtChild = supdrvNtProtectLookup(hNewPid);
+            if (!pNtChild)
             {
                 /* Parent must be creator. */
                 if (pInfo->CreatingThreadId.UniqueProcess == pInfo->ParentProcessId)
                 {
-                    if (supdrvNtProtectIsSpawningStubProcess(pNtStub, pInfo->ParentProcessId, hNewPid))
-                        supdrvNtProtectProtectNewStubChild(pNtStub, hNewPid);
+                    if (supdrvNtProtectIsSpawningProcessChild(pNtParent, pInfo->ParentProcessId, hNewPid))
+                        supdrvNtProtectDoProtectNewChild(pNtParent, hNewPid);
                 }
             }
             else
             {
                 /* Parent must be creator (as above). */
-                supdrvNtProtectVerifyNewChildProtection(pNtStub, pNtVm,
+                supdrvNtProtectVerifyNewChildProtection(pNtParent, pNtChild,
                                                         pInfo->CreatingThreadId.UniqueProcess == pInfo->ParentProcessId);
-                supdrvNtProtectRelease(pNtVm);
+                supdrvNtProtectRelease(pNtChild);
             }
-            supdrvNtProtectRelease(pNtStub);
+            supdrvNtProtectRelease(pNtParent);
         }
     }
     /*
@@ -4269,20 +4446,20 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
      * Protected?  Kludge required for NtOpenProcess calls comming in before
      * the create process hook triggers on Windows 8.1 (possibly others too).
      */
-    HANDLE           hObjPid    = PsGetProcessId((PEPROCESS)pOpInfo->Object);
+    HANDLE const     hObjPid    = PsGetProcessId((PEPROCESS)pOpInfo->Object);
     PSUPDRVNTPROTECT pNtProtect = supdrvNtProtectLookup(hObjPid);
     if (!pNtProtect)
     {
-        HANDLE           hParentPid = PsGetProcessInheritedFromUniqueProcessId((PEPROCESS)pOpInfo->Object);
-        PSUPDRVNTPROTECT pNtStub = supdrvNtProtectLookup(hParentPid);
-        if (pNtStub)
+        HANDLE const            hParentPid = PsGetProcessInheritedFromUniqueProcessId((PEPROCESS)pOpInfo->Object);
+        PSUPDRVNTPROTECT const  pNtParent  = supdrvNtProtectLookup(hParentPid);
+        if (pNtParent)
         {
-            if (supdrvNtProtectIsSpawningStubProcess(pNtStub, hParentPid, hObjPid))
+            if (supdrvNtProtectIsSpawningProcessChild(pNtParent, hParentPid, hObjPid))
             {
-                supdrvNtProtectProtectNewStubChild(pNtStub, hObjPid);
+                supdrvNtProtectDoProtectNewChild(pNtParent, hObjPid);
                 pNtProtect = supdrvNtProtectLookup(hObjPid);
             }
-            supdrvNtProtectRelease(pNtStub);
+            supdrvNtProtectRelease(pNtParent);
         }
     }
     pOpInfo->CallContext = pNtProtect; /* Just for reference. */
@@ -4325,6 +4502,7 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
             else
             {
                 ACCESS_MASK const fDesiredAccess = pOpInfo->Parameters->CreateHandleInformation.DesiredAccess;
+                unsigned cHacks = 0;
 
                 /* Special case 1 on Vista, 7 & 8:
                    The CreateProcess code passes the handle over to CSRSS.EXE
@@ -4335,7 +4513,8 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
                    Special case 2 on 8.1:
                    The CreateProcess code requires additional rights for
                    something, we'll drop these in the stub code. */
-                if (   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed
+                if (   (   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubUnconfirmed
+                        || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed)
                     && pNtProtect->fFirstProcessCreateHandle
                     && pOpInfo->KernelHandle == 0
                     && pNtProtect->hParentPid == PsGetProcessId(PsGetCurrentProcess())
@@ -4354,6 +4533,7 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
                                            | PROCESS_SET_LIMITED_INFORMATION
                                            | 0;
                         pOpInfo->CallContext = NULL; /* don't assert this. */
+                        cHacks++;
                     }
                     pNtProtect->fFirstProcessCreateHandle = false;
                 }
@@ -4364,7 +4544,8 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
                    longer duplicates the process (thread too) handle, but opens
                    it, thus allowing us to do our job. */
                 if (   g_uNtVerCombined >= SUP_MAKE_NT_VER_SIMPLE(6, 3)
-                    && pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed
+                    && (   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubUnconfirmed
+                        || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed)
                     && pNtProtect->fCsrssFirstProcessCreateHandle
                     && pOpInfo->KernelHandle == 0
                     && ExGetPreviousMode() == UserMode
@@ -4381,6 +4562,7 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
                                        | PROCESS_DUP_HANDLE /* Needed for CreateProcess/VBoxTestOGL. */
                                        | 0;
                         pOpInfo->CallContext = NULL; /* don't assert this. */
+                        cHacks++;
                     }
                 }
 
@@ -4400,6 +4582,7 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
                     pNtProtect->fThemesFirstProcessCreateHandle = true; /* Only once! */
                     fAllowedRights |= PROCESS_DUP_HANDLE;
                     pOpInfo->CallContext = NULL; /* don't assert this. */
+                    cHacks++;
                 }
 
                 /* Special case 6a, Windows 10+: AudioDG.exe opens the process with the
@@ -4419,15 +4602,29 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
                 {
                     fAllowedRights |= PROCESS_SET_LIMITED_INFORMATION;
                     pOpInfo->CallContext = NULL; /* don't assert this. */
+                    cHacks++;
                 }
 
+#if 1 /* Disable this to allow process dumps of the stub process and VM process. */
+                /* Strip VM_READ from the stub process opens not subject to any of the above
+                   hacks or originating from CSRSS. */
+                if (  !cHacks
+                    && ExGetPreviousMode() == UserMode
+                    && !supdrvNtProtectIsAssociatedCsrss(pNtProtect, PsGetCurrentProcess())
+#if 0 /* Enable this to allow for process dumps of VM processes. */
+                    && SUPDRVNTPROTECTKIND_IS_STUB(pNtProtect->enmProcessKind)
+#endif
+                   )
+                    fAllowedRights &= ~PROCESS_VM_READ;
+#endif
+
+                pOpInfo->Parameters->CreateHandleInformation.DesiredAccess &= fAllowedRights;
                 Log(("vboxdrv/ProcessHandlePre: %sctx=%04zx/%p wants %#x to %p/pid=%04zx [%d], allow %#x => %#x; %s [prev=%#x]\n",
                      pOpInfo->KernelHandle ? "k" : "", PsGetProcessId(PsGetCurrentProcess()), PsGetCurrentProcess(),
                      fDesiredAccess, pOpInfo->Object, pNtProtect->AvlCore.Key, pNtProtect->enmProcessKind,
                      fAllowedRights, fDesiredAccess & fAllowedRights,
                      PsGetProcessImageFileName(PsGetCurrentProcess()), ExGetPreviousMode() ));
-
-                pOpInfo->Parameters->CreateHandleInformation.DesiredAccess &= fAllowedRights;
+                RT_NOREF(cHacks);
             }
         }
         else
@@ -4454,7 +4651,8 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
                 /* Special case 5 on Vista, 7 & 8:
                    This is the CSRSS.EXE end of special case #1. */
                 if (   g_uNtVerCombined < SUP_MAKE_NT_VER_SIMPLE(6, 3)
-                    && pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed
+                    && (   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubUnconfirmed
+                        || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed)
                     && pNtProtect->cCsrssFirstProcessDuplicateHandle > 0
                     && pOpInfo->KernelHandle == 0
                     && fDesiredAccess == s_fCsrssStupidDesires
@@ -4491,16 +4689,17 @@ supdrvNtProtectCallback_ProcessHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMA
                     pOpInfo->CallContext = NULL; /* don't assert this. */
                 }
 
-                Log(("vboxdrv/ProcessHandlePre: %sctx=%04zx/%p[%p] dup from %04zx/%p with %#x to %p in pid=%04zx [%d] %s\n",
+                pOpInfo->Parameters->DuplicateHandleInformation.DesiredAccess &= fAllowedRights;
+                Log(("vboxdrv/ProcessHandlePre: %sctx=%04zx/%p[%p] dup from %04zx/%p with %#x to %p in pid=%04zx [%d], allow %#x -> %#x; %s\n",
                      pOpInfo->KernelHandle ? "k" : "", PsGetProcessId(PsGetCurrentProcess()), PsGetCurrentProcess(),
                      pOpInfo->Parameters->DuplicateHandleInformation.TargetProcess,
                      PsGetProcessId((PEPROCESS)pOpInfo->Parameters->DuplicateHandleInformation.SourceProcess),
                      pOpInfo->Parameters->DuplicateHandleInformation.SourceProcess,
                      fDesiredAccess,
                      pOpInfo->Object, pNtProtect->AvlCore.Key, pNtProtect->enmProcessKind,
-                     PsGetProcessImageFileName(PsGetCurrentProcess()) ));
-
-                pOpInfo->Parameters->DuplicateHandleInformation.DesiredAccess &= fAllowedRights;
+                     fAllowedRights,
+                     pOpInfo->Parameters->DuplicateHandleInformation.DesiredAccess,
+                     PsGetProcessImageFileName(PsGetCurrentProcess())));
             }
         }
         supdrvNtProtectRelease(pNtProtect);
@@ -4619,7 +4818,8 @@ supdrvNtProtectCallback_ThreadHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMAT
                    handle with 0x1fffff as access mask.  NtDuplicateObject will
                    fail this call before it ever gets down here.  */
                 if (   g_uNtVerCombined < SUP_MAKE_NT_VER_SIMPLE(6, 3)
-                    && pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed
+                    && (   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubUnconfirmed
+                        || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed)
                     && pNtProtect->fFirstThreadCreateHandle
                     && pOpInfo->KernelHandle == 0
                     && ExGetPreviousMode() == UserMode
@@ -4639,10 +4839,14 @@ supdrvNtProtectCallback_ThreadHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMAT
                    CSRSS.EXE will try talk to the calling thread and, it
                    appears, impersonate it.  We unfortunately need to allow
                    this or there will be no 3D support.  Typical DbgPrint:
-                        "SXS: BasepCreateActCtx() Calling csrss server failed. Status = 0xc00000a5" */
+                        "SXS: BasepCreateActCtx() Calling csrss server failed. Status = 0xc00000a5"
+                   Update 2026-09-06: This is also in some way applicable to the stub when spawning
+                        the VM process after we started protecting the initial process. */
                 SUPDRVNTPROTECTKIND enmProcessKind;
                 if (   g_uNtVerCombined >= SUP_MAKE_NT_VER_COMBINED(6, 0, 0, 0, 0)
-                    && (   (enmProcessKind = pNtProtect->enmProcessKind) == kSupDrvNtProtectKind_VmProcessConfirmed
+                    && (   (enmProcessKind = pNtProtect->enmProcessKind) == kSupDrvNtProtectKind_StubSpawning
+                        || enmProcessKind == kSupDrvNtProtectKind_StubUnconfirmed
+                        || enmProcessKind == kSupDrvNtProtectKind_VmProcessConfirmed
                         || enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed)
                     && pOpInfo->KernelHandle == 0
                     && ExGetPreviousMode() == UserMode
@@ -4653,7 +4857,6 @@ supdrvNtProtectCallback_ThreadHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMAT
                     //fAllowedRights |= THREAD_SET_LIMITED_INFORMATION; - try without this one
                     pOpInfo->CallContext = NULL; /* don't assert this. */
                 }
-
                 Log(("vboxdrv/ThreadHandlePre: %sctx=%04zx/%p wants %#x to %p in pid=%04zx [%d], allow %#x => %#x; %s [prev=%#x]\n",
                      pOpInfo->KernelHandle ? "k" : "", PsGetProcessId(PsGetCurrentProcess()), PsGetCurrentProcess(),
                      pOpInfo->Parameters->CreateHandleInformation.DesiredAccess,
@@ -4686,7 +4889,9 @@ supdrvNtProtectCallback_ThreadHandlePre(PVOID pvUser, POB_PRE_OPERATION_INFORMAT
                    This is the follow up to special case 1. */
                 SUPDRVNTPROTECTKIND enmProcessKind;
                 if (   g_uNtVerCombined >= SUP_MAKE_NT_VER_COMBINED(6, 0, 0, 0, 0)
-                    && (   (enmProcessKind = pNtProtect->enmProcessKind) == kSupDrvNtProtectKind_VmProcessConfirmed
+                    && (   (enmProcessKind = pNtProtect->enmProcessKind) == kSupDrvNtProtectKind_StubSpawning
+                        || enmProcessKind == kSupDrvNtProtectKind_StubUnconfirmed
+                        || enmProcessKind == kSupDrvNtProtectKind_VmProcessConfirmed
                         || enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed)
                     && pOpInfo->Parameters->DuplicateHandleInformation.TargetProcess == PsGetCurrentProcess()
                     && pOpInfo->KernelHandle == 0
@@ -4772,6 +4977,7 @@ static int supdrvNtProtectCreate(PSUPDRVNTPROTECT *ppNtProtect, HANDLE hPid, SUP
     pNtProtect->hOpenTid                     = NULL;
     pNtProtect->hCsrssPid                    = NULL;
     pNtProtect->pCsrssProcess                = NULL;
+    pNtProtect->RwxPgInfo.pvRwxPgR3Ptr       = NIL_RTR3PTR;
 
     if (fLink)
     {
@@ -4826,14 +5032,17 @@ static void supdrvNtProtectRelease(PSUPDRVNTPROTECT pNtProtect)
         }
 
         PSUPDRVNTPROTECT pChild = NULL;
-        if (pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubParent)
+        if (   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_InitialParent
+            || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubParent)
         {
             pChild = pNtProtect->u.pChild;
             if (pChild)
             {
                 pNtProtect->u.pChild   = NULL;
                 pChild->u.pParent      = NULL;
-                pChild->enmProcessKind = kSupDrvNtProtectKind_VmProcessDead;
+                pChild->enmProcessKind = SUPDRVNTPROTECTKIND_IS_VM(pChild->enmProcessKind)
+                                       ? kSupDrvNtProtectKind_VmProcessDead
+                                       : kSupDrvNtProtectKind_StubDead;
                 uint32_t cChildRefs = ASMAtomicDecU32(&pChild->cRefs);
                 if (!cChildRefs)
                 {
@@ -4850,7 +5059,8 @@ static void supdrvNtProtectRelease(PSUPDRVNTPROTECT pNtProtect)
             }
         }
         else
-            AssertRelease(pNtProtect->enmProcessKind != kSupDrvNtProtectKind_VmProcessUnconfirmed);
+            AssertRelease(   pNtProtect->enmProcessKind != kSupDrvNtProtectKind_StubUnconfirmed
+                          && pNtProtect->enmProcessKind != kSupDrvNtProtectKind_VmProcessUnconfirmed);
 
         RTSpinlockRelease(g_hNtProtectLock);
 
@@ -4886,8 +5096,8 @@ static PSUPDRVNTPROTECT supdrvNtProtectLookup(HANDLE hPid)
 
 
 /**
- * Validates a few facts about the stub process when the VM process opens
- * vboxdrv.
+ * Validates a few facts about the parent process when the VM process opens
+ * vboxdrv or a stub process opens the vboxdrv stub device.
  *
  * This makes sure the stub process is still around and that it has neither
  * debugger nor extra threads in it.
@@ -4897,27 +5107,29 @@ static PSUPDRVNTPROTECT supdrvNtProtectLookup(HANDLE hPid)
  *                              open vboxdrv.
  * @param   pErrInfo            Additional error information.
  */
-static int supdrvNtProtectVerifyStubForVmProcess(PSUPDRVNTPROTECT pNtProtect, PRTERRINFO pErrInfo)
+static int supdrvNtProtectVerifyParentForUnconfirmed(PSUPDRVNTPROTECT pNtProtect, PRTERRINFO pErrInfo)
 {
     /*
      * Grab a reference to the parent stub process.
      */
-    SUPDRVNTPROTECTKIND enmStub = kSupDrvNtProtectKind_Invalid;
-    PSUPDRVNTPROTECT    pNtStub = NULL;
+    SUPDRVNTPROTECTKIND enmParent = kSupDrvNtProtectKind_Invalid;
+    PSUPDRVNTPROTECT    pNtParent = NULL;
     RTSpinlockAcquire(g_hNtProtectLock);
-    if (pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed)
+    if (   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubUnconfirmed
+        || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed)
     {
-        pNtStub = pNtProtect->u.pParent; /* weak reference. */
-        if (pNtStub)
+        pNtParent = pNtProtect->u.pParent; /* weak reference. */
+        if (pNtParent)
         {
-            enmStub = pNtStub->enmProcessKind;
-            if (enmStub == kSupDrvNtProtectKind_StubParent)
+            enmParent = pNtParent->enmProcessKind;
+            if (enmParent == (  SUPDRVNTPROTECTKIND_IS_STUB(pNtProtect->enmProcessKind)
+                              ? kSupDrvNtProtectKind_InitialParent : kSupDrvNtProtectKind_StubParent))
             {
-                uint32_t cRefs = ASMAtomicIncU32(&pNtStub->cRefs);
+                uint32_t cRefs = ASMAtomicIncU32(&pNtParent->cRefs);
                 Assert(cRefs > 0 && cRefs < 1024); RT_NOREF_PV(cRefs);
             }
             else
-                pNtStub = NULL;
+                pNtParent = NULL;
         }
     }
     RTSpinlockRelease(g_hNtProtectLock);
@@ -4925,61 +5137,61 @@ static int supdrvNtProtectVerifyStubForVmProcess(PSUPDRVNTPROTECT pNtProtect, PR
     /*
      * We require the stub process to be present.
      */
-    if (!pNtStub)
-        return RTErrInfoSetF(pErrInfo, VERR_SUP_VP_STUB_NOT_FOUND, "Missing stub process (enmStub=%d).", enmStub);
+    if (!pNtParent)
+        return RTErrInfoSetF(pErrInfo, VERR_SUP_VP_PARENT_NOT_FOUND, "Missing initial/stub process (enmParent=%d).", enmParent);
 
     /*
      * Open the parent process and thread so we can check for debuggers and unwanted threads.
      */
     int rc;
-    PEPROCESS pStubProcess;
-    NTSTATUS rcNt = PsLookupProcessByProcessId(pNtStub->AvlCore.Key, &pStubProcess);
+    PEPROCESS pParentProcess;
+    NTSTATUS rcNt = PsLookupProcessByProcessId(pNtParent->AvlCore.Key, &pParentProcess);
     if (NT_SUCCESS(rcNt))
     {
-        HANDLE hStubProcess;
-        rcNt = ObOpenObjectByPointer(pStubProcess, OBJ_KERNEL_HANDLE, NULL /*PassedAccessState*/,
-                                     0 /*DesiredAccess*/, *PsProcessType, KernelMode, &hStubProcess);
+        HANDLE hParentProcess;
+        rcNt = ObOpenObjectByPointer(pParentProcess, OBJ_KERNEL_HANDLE, NULL /*PassedAccessState*/,
+                                     0 /*DesiredAccess*/, *PsProcessType, KernelMode, &hParentProcess);
         if (NT_SUCCESS(rcNt))
         {
-            PETHREAD pStubThread;
-            rcNt = PsLookupThreadByThreadId(pNtStub->hOpenTid, &pStubThread);
+            PETHREAD pParentThread;
+            rcNt = PsLookupThreadByThreadId(pNtParent->hOpenTid, &pParentThread);
             if (NT_SUCCESS(rcNt))
             {
-                HANDLE hStubThread;
-                rcNt = ObOpenObjectByPointer(pStubThread, OBJ_KERNEL_HANDLE, NULL /*PassedAccessState*/,
-                                             0 /*DesiredAccess*/, *PsThreadType, KernelMode, &hStubThread);
+                HANDLE hParentThread;
+                rcNt = ObOpenObjectByPointer(pParentThread, OBJ_KERNEL_HANDLE, NULL /*PassedAccessState*/,
+                                             0 /*DesiredAccess*/, *PsThreadType, KernelMode, &hParentThread);
                 if (NT_SUCCESS(rcNt))
                 {
                     /*
                      * Do some simple sanity checking.
                      */
-                    rc = supHardNtVpDebugger(hStubProcess, pErrInfo);
+                    rc = supHardNtVpDebugger(hParentProcess, pErrInfo);
                     if (RT_SUCCESS(rc))
-                        rc = supHardNtVpThread(hStubProcess, hStubThread, pErrInfo);
+                        rc = supHardNtVpThread(hParentProcess, hParentThread, pErrInfo);
 
                     /* Clean up. */
-                    rcNt = NtClose(hStubThread); AssertMsg(NT_SUCCESS(rcNt), ("%#x\n", rcNt));
+                    rcNt = NtClose(hParentThread); AssertMsg(NT_SUCCESS(rcNt), ("%#x\n", rcNt));
                 }
                 else
-                    rc = RTErrInfoSetF(pErrInfo, VERR_SUP_VP_STUB_THREAD_OPEN_ERROR,
-                                       "Error opening stub thread %p (tid %p, pid %p): %#x",
-                                       pStubThread, pNtStub->hOpenTid, pNtStub->AvlCore.Key, rcNt);
+                    rc = RTErrInfoSetF(pErrInfo, VERR_SUP_VP_PARENT_THREAD_OPEN_ERROR,
+                                       "Error opening parent thread %p (tid %p, pid %p): %#x",
+                                       pParentThread, pNtParent->hOpenTid, pNtParent->AvlCore.Key, rcNt);
             }
             else
-                rc = RTErrInfoSetF(pErrInfo, VERR_SUP_VP_STUB_THREAD_NOT_FOUND,
-                                   "Failed to locate thread %p in %p: %#x", pNtStub->hOpenTid, pNtStub->AvlCore.Key, rcNt);
-            rcNt = NtClose(hStubProcess); AssertMsg(NT_SUCCESS(rcNt), ("%#x\n", rcNt));
+                rc = RTErrInfoSetF(pErrInfo, VERR_SUP_VP_PARENT_THREAD_NOT_FOUND,
+                                   "Failed to locate thread %p in %p: %#x", pNtParent->hOpenTid, pNtParent->AvlCore.Key, rcNt);
+            rcNt = NtClose(hParentProcess); AssertMsg(NT_SUCCESS(rcNt), ("%#x\n", rcNt));
         }
         else
-            rc = RTErrInfoSetF(pErrInfo, VERR_SUP_VP_STUB_OPEN_ERROR,
-                               "Error opening stub process %p (pid %p): %#x", pStubProcess, pNtStub->AvlCore.Key, rcNt);
-        ObDereferenceObject(pStubProcess);
+            rc = RTErrInfoSetF(pErrInfo, VERR_SUP_VP_PARENT_OPEN_ERROR,
+                               "Error opening parent process %p (pid %p): %#x", pParentProcess, pNtParent->AvlCore.Key, rcNt);
+        ObDereferenceObject(pParentProcess);
     }
     else
-        rc = RTErrInfoSetF(pErrInfo, VERR_SUP_VP_STUB_NOT_FOUND,
-                           "Failed to locate stub process %p: %#x", pNtStub->AvlCore.Key, rcNt);
+        rc = RTErrInfoSetF(pErrInfo, VERR_SUP_VP_PARENT_NOT_FOUND,
+                           "Failed to locate parent process %p: %#x", pNtParent->AvlCore.Key, rcNt);
 
-    supdrvNtProtectRelease(pNtStub);
+    supdrvNtProtectRelease(pNtParent);
     return rc;
 }
 
@@ -5272,8 +5484,10 @@ static int supdrvNtProtectVerifyProcess(PSUPDRVNTPROTECT pNtProtect)
     AssertReturn(PsGetProcessId(PsGetCurrentProcess()) == pNtProtect->AvlCore.Key, VERR_INTERNAL_ERROR_3);
 
     /*
-     * Do the verification.  The handle restriction checks are only preformed
-     * on VM processes.
+     * Do the verification.
+     *
+     * The handle restriction checks are performed on both stub and VM processes
+     * now athat the stub also gets handle protection from the momemnt it's created.
      */
     int rc = VINF_SUCCESS;
     PSUPDRVNTERRORINFO pErrorInfo = (PSUPDRVNTERRORINFO)RTMemAllocZ(sizeof(*pErrorInfo));
@@ -5284,14 +5498,17 @@ static int supdrvNtProtectVerifyProcess(PSUPDRVNTPROTECT pNtProtect)
         RTERRINFO ErrInfo;
         RTErrInfoInit(&ErrInfo, pErrorInfo->szErrorInfo, sizeof(pErrorInfo->szErrorInfo));
 
-        if (pNtProtect->enmProcessKind >= kSupDrvNtProtectKind_VmProcessUnconfirmed)
+        if (   SUPDRVNTPROTECTKIND_IS_STUB(pNtProtect->enmProcessKind)
+            || SUPDRVNTPROTECTKIND_IS_VM(pNtProtect->enmProcessKind))
             rc = supdrvNtProtectRestrictHandlesToProcessAndThread(pNtProtect, &ErrInfo);
         if (RT_SUCCESS(rc))
         {
-            rc = supHardenedWinVerifyProcess(NtCurrentProcess(), NtCurrentThread(), SUPHARDNTVPKIND_VERIFY_ONLY, 0 /*fFlags*/,
-                                             NULL /*pcFixes*/, &ErrInfo);
-            if (RT_SUCCESS(rc) && pNtProtect->enmProcessKind >= kSupDrvNtProtectKind_VmProcessUnconfirmed)
-                rc = supdrvNtProtectVerifyStubForVmProcess(pNtProtect, &ErrInfo);
+            rc = supHardenedWinVerifyProcess(NtCurrentProcess(), NtCurrentThread(),
+                                             SUPDRVNTPROTECTKIND_IS_INITIAL(pNtProtect->enmProcessKind)
+                                             ? SUPHARDNTVPKIND_LIMITED_VERIFY_ONLY : SUPHARDNTVPKIND_VERIFY_ONLY,
+                                             0 /*fFlags*/, &pNtProtect->RwxPgInfo, NULL /*pcFixes*/, &ErrInfo);
+            if (RT_SUCCESS(rc) && SUPDRVNTPROTECTKIND_IS_VM(pNtProtect->enmProcessKind))
+                rc = supdrvNtProtectVerifyParentForUnconfirmed(pNtProtect, &ErrInfo);
         }
     }
     else
@@ -5303,21 +5520,23 @@ static int supdrvNtProtectVerifyProcess(PSUPDRVNTPROTECT pNtProtect)
     HANDLE hOpenTid = PsGetCurrentThreadId();
     RTSpinlockAcquire(g_hNtProtectLock);
 
-    /* Stub process verficiation is pretty much straight forward. */
-    if (pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubUnverified)
+    /* Initial process verficiation is pretty much straight forward. */
+    if (pNtProtect->enmProcessKind == kSupDrvNtProtectKind_InitialUnverified)
     {
-        pNtProtect->enmProcessKind = RT_SUCCESS(rc) ? kSupDrvNtProtectKind_StubSpawning : kSupDrvNtProtectKind_StubDead;
+        pNtProtect->enmProcessKind = RT_SUCCESS(rc) ? kSupDrvNtProtectKind_InitialSpawning : kSupDrvNtProtectKind_InitialDead;
         pNtProtect->hOpenTid       = hOpenTid;
     }
-    /* The VM process verification is a little bit more complicated
+    /* The stub and VM process verification is a little bit more complicated
        because we need to drop the parent process reference as well. */
-    else if (pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed)
+    else if (   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubUnconfirmed
+             || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessUnconfirmed)
     {
         AssertRelease(pNtProtect->cRefs >= 2); /* Parent + Caller */
         PSUPDRVNTPROTECT pParent = pNtProtect->u.pParent;
         AssertRelease(pParent);
         AssertRelease(pParent->u.pParent == pNtProtect);
-        AssertRelease(pParent->enmProcessKind == kSupDrvNtProtectKind_StubParent);
+        AssertRelease(pParent->enmProcessKind == (SUPDRVNTPROTECTKIND_IS_FIRST_STUB(pNtProtect->enmProcessKind, pNtProtect)
+                                                  ? kSupDrvNtProtectKind_InitialParent : kSupDrvNtProtectKind_StubParent));
         pParent->u.pParent = NULL;
 
         pNtProtect->u.pParent = NULL;
@@ -5325,28 +5544,32 @@ static int supdrvNtProtectVerifyProcess(PSUPDRVNTPROTECT pNtProtect)
 
         if (RT_SUCCESS(rc))
         {
-            pNtProtect->enmProcessKind = kSupDrvNtProtectKind_VmProcessConfirmed;
+            pNtProtect->enmProcessKind = SUPDRVNTPROTECTKIND_IS_VM(pNtProtect->enmProcessKind)
+                                       ? kSupDrvNtProtectKind_VmProcessConfirmed
+                                       : kSupDrvNtProtectKind_StubSpawning;
             pNtProtect->hOpenTid       = hOpenTid;
         }
         else
-            pNtProtect->enmProcessKind = kSupDrvNtProtectKind_VmProcessDead;
+            pNtProtect->enmProcessKind = SUPDRVNTPROTECTKIND_IS_VM(pNtProtect->enmProcessKind)
+                                       ? kSupDrvNtProtectKind_VmProcessDead
+                                       : kSupDrvNtProtectKind_StubDead;
     }
 
     /* Since the stub and VM processes are only supposed to have one thread,
        we're not supposed to be subject to any races from within the processes.
 
        There is a race between VM process verification and the stub process
-       exiting, though.  We require the stub process to be alive until the new
-       VM process has made it thru the validation.  So, when the stub
-       terminates the notification handler will change the state of both stub
-       and VM process to dead.
+       exiting, though.  We require the first process and stub process to be
+       alive until the new VM process or stub has made it thru the validation.
+       So, when the parent terminates the notification handler will change the
+       state of all processes to dead.
 
-       Also, I'm not entirely certain where the process
-       termination notification is triggered from, so that can theorically
-       create a race in both cases.  */
+       Also, I'm not entirely certain where the process termination notification
+       is triggered from, so that can theorically create a race in both cases.  */
     else
     {
-        AssertReleaseMsg(   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubDead
+        AssertReleaseMsg(   pNtProtect->enmProcessKind == kSupDrvNtProtectKind_InitialDead
+                         || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_StubDead
                          || pNtProtect->enmProcessKind == kSupDrvNtProtectKind_VmProcessDead,
                          ("enmProcessKind=%d rc=%Rrc\n", pNtProtect->enmProcessKind, rc));
         if (RT_SUCCESS(rc))

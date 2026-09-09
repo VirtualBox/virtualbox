@@ -1,4 +1,4 @@
-/* $Id: SUPLib-win.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: SUPLib-win.cpp 115213 2026-09-09 13:47:29Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Windows NT specific parts.
  */
@@ -184,6 +184,9 @@ DECLHIDDEN(int) suplibOsInit(PSUPLIBDATA pThis, bool fPreInited, uint32_t fFlags
 
         hDevice = RTNT_INVALID_HANDLE_VALUE;
 
+#ifdef IN_SUP_HARDENED_R3
+        supR3HardenedWinCheckRwxPage();
+#endif
         NTSTATUS rcNt = NtCreateFile(&hDevice,
                                      GENERIC_READ | GENERIC_WRITE, /* No SYNCHRONIZE. */
                                      &ObjAttr,
@@ -195,6 +198,9 @@ DECLHIDDEN(int) suplibOsInit(PSUPLIBDATA pThis, bool fPreInited, uint32_t fFlags
                                      FILE_NON_DIRECTORY_FILE, /* No FILE_SYNCHRONOUS_IO_NONALERT! */
                                      NULL /*EaBuffer*/,
                                      0 /*EaLength*/);
+#ifdef IN_SUP_HARDENED_R3
+        supR3HardenedWinCheckRwxPage();
+#endif
         if (NT_SUCCESS(rcNt))
             rcNt = Ios.Status;
         if (NT_SUCCESS(rcNt))
