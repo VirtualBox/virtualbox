@@ -12106,6 +12106,10 @@
         <translation>&lt;b&gt;Överförings-ID:&lt;/b&gt; %1&lt;br&gt;&lt;b&gt;Riktning:&lt;/b&gt; %2&lt;br&gt;&lt;b&gt;Källa:&lt;/b&gt; %3</translation>
     </message>
     <message>
+        <source>&lt;br&gt;&lt;b&gt;IPRT Error:&lt;/b&gt; %1</source>
+        <translation>&lt;br&gt;&lt;b&gt;IPRT-fel:&lt;/b&gt; %1</translation>
+    </message>
+    <message>
         <source>Moving machine ...</source>
         <translation>Flyttar maskin ...</translation>
     </message>
