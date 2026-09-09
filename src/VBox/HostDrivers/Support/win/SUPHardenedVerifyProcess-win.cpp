@@ -1,4 +1,4 @@
-/* $Id: SUPHardenedVerifyProcess-win.cpp 113920 2026-04-16 21:25:06Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPHardenedVerifyProcess-win.cpp 115211 2026-09-09 11:57:34Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library/Driver - Hardened Process Verification, Windows.
  */
@@ -1993,7 +1993,8 @@ static int supHardNtVpScanVirtualMemory(PSUPHNTVPSTATE pThis, HANDLE hProcess)
                                         MemInfo.Type, MemInfo.AllocationBase, MemInfo.BaseAddress, MemInfo.RegionSize);
                 pThis->cFixes++;
             }
-            else if (pThis->enmKind != SUPHARDNTVPKIND_SELF_PURIFICATION_LIMITED)
+            else if (   pThis->enmKind != SUPHARDNTVPKIND_SELF_PURIFICATION_LIMITED
+                     && pThis->enmKind != SUPHARDNTVPKIND_LIMITED_VERIFY_ONLY)
 # endif /* IN_RING3 */
                 supHardNtVpSetInfo2(pThis, VERR_SUP_VP_FOUND_EXEC_MEMORY,
                                     "Found executable memory at %p (%p LB %#zx): type=%#x prot=%#x state=%#x aprot=%#x abase=%p",
