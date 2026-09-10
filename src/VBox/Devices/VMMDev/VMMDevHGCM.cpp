@@ -1,4 +1,4 @@
-/* $Id: VMMDevHGCM.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: VMMDevHGCM.cpp 115216 2026-09-10 10:11:37Z knut.osmundsen@oracle.com $ */
 /** @file
  * VMMDev - HGCM - Host-Guest Communication Manager Device.
  */
@@ -1956,8 +1956,10 @@ DECLCALLBACK(uint64_t) hgcmR3GetVMMDevSessionId(PPDMIHGCMPORT pInterface)
 int vmmdevR3HgcmSaveState(PVMMDEVCC pThisCC, PSSMHANDLE pSSM)
 {
     PCPDMDEVHLPR3 pHlp = pThisCC->pDevIns->pHlpR3;
-
     LogFlowFunc(("\n"));
+
+    int rc = vmmdevR3HgcmCmdListLock(pThisCC);
+    AssertRCReturn(rc, rc);
 
     /* Compute how many commands are pending. */
     uint32_t cCmds = 0;
@@ -1970,8 +1972,7 @@ int vmmdevR3HgcmSaveState(PVMMDEVCC pThisCC, PSSMHANDLE pSSM)
     LogFlowFunc(("cCmds = %d\n", cCmds));
 
     /* Save number of commands. */
-    int rc = pHlp->pfnSSMPutU32(pSSM, cCmds);
-    AssertRCReturn(rc, rc);
+    pHlp->pfnSSMPutU32(pSSM, cCmds);
 
     if (cCmds > 0)
     {
@@ -1981,29 +1982,27 @@ int vmmdevR3HgcmSaveState(PVMMDEVCC pThisCC, PSSMHANDLE pSSM)
 
             /** @todo Don't save cancelled requests! It serves no purpose.  See restore and
              *        @bugref{4032#c4} for details. */
-            pHlp->pfnSSMPutU32     (pSSM, (uint32_t)pCmd->enmCmdType);
+            VBOXHGCMCMDTYPE const enmCmdType = (VBOXHGCMCMDTYPE)pCmd->enmCmdType;
+            pHlp->pfnSSMPutU32     (pSSM, (uint32_t)enmCmdType);
             pHlp->pfnSSMPutBool    (pSSM, pCmd->fCancelled);
             pHlp->pfnSSMPutGCPhys  (pSSM, pCmd->GCPhys);
             pHlp->pfnSSMPutU32     (pSSM, pCmd->cbRequest);
             pHlp->pfnSSMPutU32     (pSSM, (uint32_t)pCmd->enmRequestType);
             const uint32_t cParms = pCmd->enmCmdType == VBOXHGCMCMDTYPE_CALL ? pCmd->u.call.cParms : 0;
-            rc = pHlp->pfnSSMPutU32(pSSM, cParms);
-            AssertRCReturn(rc, rc);
+            pHlp->pfnSSMPutU32(pSSM, cParms);
 
-            if (pCmd->enmCmdType == VBOXHGCMCMDTYPE_CALL)
+            if (enmCmdType == VBOXHGCMCMDTYPE_CALL)
             {
                 pHlp->pfnSSMPutU32     (pSSM, pCmd->u.call.u32ClientID);
                 rc = pHlp->pfnSSMPutU32(pSSM, pCmd->u.call.u32Function);
-                AssertRCReturn(rc, rc);
 
                 /* Guest parameters. */
                 uint32_t i;
-                for (i = 0; i < pCmd->u.call.cParms; ++i)
+                for (i = 0; i < pCmd->u.call.cParms && RT_SUCCESS(rc); ++i)
                 {
                     VBOXHGCMGUESTPARM * const pGuestParm = &pCmd->u.call.paGuestParms[i];
 
                     rc = pHlp->pfnSSMPutU32(pSSM, (uint32_t)pGuestParm->enmType);
-                    AssertRCReturn(rc, rc);
 
                     if (   pGuestParm->enmType == VMMDevHGCMParmType_32bit
                         || pGuestParm->enmType == VMMDevHGCMParmType_64bit)
@@ -2037,36 +2036,35 @@ int vmmdevR3HgcmSaveState(PVMMDEVCC pThisCC, PSSMHANDLE pSSM)
                            use with services which won't survive a save/restore anyway. */
                     }
                     else
-                    {
                         AssertFailedStmt(rc = VERR_INTERNAL_ERROR);
-                    }
-                    AssertRCReturn(rc, rc);
                 }
             }
-            else if (pCmd->enmCmdType == VBOXHGCMCMDTYPE_CONNECT)
+            else if (enmCmdType == VBOXHGCMCMDTYPE_CONNECT)
             {
                 pHlp->pfnSSMPutU32(pSSM, pCmd->u.connect.u32ClientID);
                 pHlp->pfnSSMPutMem(pSSM, pCmd->u.connect.pLoc, sizeof(*pCmd->u.connect.pLoc));
             }
-            else if (pCmd->enmCmdType == VBOXHGCMCMDTYPE_DISCONNECT)
-            {
+            else if (enmCmdType == VBOXHGCMCMDTYPE_DISCONNECT)
                 pHlp->pfnSSMPutU32(pSSM, pCmd->u.disconnect.u32ClientID);
-            }
             else
-            {
-                AssertFailedReturn(VERR_INTERNAL_ERROR);
-            }
+                AssertLogRelMsgFailedReturnStmt(("enmCmdType=%d (%#x)\n", enmCmdType, enmCmdType),
+                                                vmmdevR3HgcmCmdListUnlock(pThisCC), VERR_INTERNAL_ERROR);
 
             /* A reserved field, will allow to extend saved data for a command. */
-            rc = pHlp->pfnSSMPutU32(pSSM, 0);
-            AssertRCReturn(rc, rc);
+            if (RT_SUCCESS(rc))
+                rc = pHlp->pfnSSMPutU32(pSSM, 0);
+            AssertRCBreak(rc); /* (Not in if-block!) */
         }
     }
 
     /* A reserved field, will allow to extend saved data for VMMDevHGCM. */
-    rc = pHlp->pfnSSMPutU32(pSSM, 0);
-    AssertRCReturn(rc, rc);
+    if (RT_SUCCESS(rc))
+    {
+        rc = pHlp->pfnSSMPutU32(pSSM, 0);
+        AssertRC(rc);
+    }
 
+    vmmdevR3HgcmCmdListUnlock(pThisCC);
     return rc;
 }
 
