@@ -1,4 +1,4 @@
-/* $Id: VBoxControl.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxControl.cpp 115218 2026-09-10 10:12:48Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxControl - Guest Additions Command Line Management Interface.
  */
@@ -45,6 +45,7 @@
 #include <VBox/log.h>
 #include <VBox/version.h>
 #include <VBox/VBoxGuestLib.h>
+#include <VBox/VBoxGuestLibHGCMInline.h>
 #ifdef VBOX_WITH_GUEST_PROPS
 # include <VBox/VBoxGuestLibGuestProp.h>
 #endif
@@ -1810,6 +1811,113 @@ static DECLCALLBACK(RTEXITCODE) handleDpc(int argc, char *argv[])
 }
 #endif /* VBOX_WITH_DPC_LATENCY_CHECKER */
 
+/**
+ * @callback_method_impl{FNVBOXCTRLCMDHANDLER, Command: hgcmperf}
+ */
+static DECLCALLBACK(RTEXITCODE) handleHgcmPerf(int argc, char *argv[])
+{
+    /*
+     * Parse options.
+     */
+    static const RTGETOPTDEF s_aOptions[] =
+    {
+        { "--interval", 'i', RTGETOPT_REQ_UINT32 },
+    };
+    uint64_t nsInterval = RT_NS_10SEC;
+
+    RTGETOPTSTATE GetOptState;
+    int rc = RTGetOptInit(&GetOptState, argc, argv, s_aOptions, RT_ELEMENTS(s_aOptions),
+                          0 /*iFirst*/, RTGETOPTINIT_FLAGS_OPTS_FIRST);
+    if (RT_FAILURE(rc))
+        return VBoxControlError("RTGetOptInit: %Rrc", rc);
+
+    RTGETOPTUNION   ValueUnion;
+    int             ch;
+    while ((ch = RTGetOpt(&GetOptState, &ValueUnion)) != 0)
+    {
+        switch (ch)
+        {
+            case 'i':
+                nsInterval = ValueUnion.u32 * RT_NS_1SEC_64;
+                break;
+
+            case 'h': return usage(WRITE_LOG, RTEXITCODE_SUCCESS);
+            case 'V': return printVersion();
+            default:
+                return VBoxCtrlGetOptError(ch, &ValueUnion);
+        }
+    }
+
+#ifndef VBOX_CONTROL_TEST
+    /*
+     * Shared folders / SHFL_FN_QUERY_FEATURES
+     */
+    HGCMCLIENTID idClient  = ~(HGCMCLIENTID)0;
+    uint64_t     nsElapsed = 0;
+    uint64_t     cCalls    = 0;
+    if (1)
+    {
+        rc = VbglR3SharedFolderConnect(&idClient);
+        if (RT_FAILURE(rc))
+            return VBoxControlError("VbglR3SharedFolderConnect failed: %Rrc", rc);
+
+        RTPrintf("Connected to shared folders, profiling SHFL_FN_QUERY_FEATURES...\n");
+        uint64_t const nsStart = RTTimeNanoTS();
+        for (;;)
+        {
+            struct
+            {
+                VBGLIOCHGCMCALL         Hdr;
+                VBoxSFParmQueryFeatures Params;
+            } Msg;
+            VBGL_HGCM_HDR_INIT(&Msg.Hdr, idClient, SHFL_FN_QUERY_FEATURES, 2);
+            VbglHGCMParmUInt64Set(&Msg.Params.f64Features, 0);
+            VbglHGCMParmUInt32Set(&Msg.Params.u32LastFunction, 0);
+
+            rc = VbglR3HGCMCall(&Msg.Hdr, sizeof(Msg));
+            if (RT_SUCCESS(rc))
+            {
+                if (RT_LIKELY(Msg.Params.f64Features.type == VMMDevHGCMParmType_64bit))
+                {
+                    if (RT_LIKELY(Msg.Params.u32LastFunction.type == VMMDevHGCMParmType_32bit))
+                    {
+                        cCalls++;
+                        if ((cCalls & 0xff) != 0)
+                        { /* likely */ }
+                        else
+                        {
+                            nsElapsed = RTTimeNanoTS() - nsStart;
+                            if (nsElapsed < nsInterval)
+                            { /* likely */ }
+                            else
+                                break;
+                        }
+                    }
+                    else
+                        return VBoxControlError("VbglR3HGCMCall/SHFL_FN_QUERY_FEATURES #%RU64 return wrong u32LastFunction.type: %u",
+                                                cCalls, Msg.Params.u32LastFunction.type);
+                }
+                else
+                    return VBoxControlError("VbglR3HGCMCall/SHFL_FN_QUERY_FEATURES #%RU64 return wrong f64Features.type: %u",
+                                            cCalls, Msg.Params.f64Features.type);
+            }
+            else
+                return VBoxControlError("VbglR3HGCMCall/SHFL_FN_QUERY_FEATURES #%RU64 failed: %Rrc", cCalls, rc);
+        }
+
+        VbglR3SharedFolderDisconnect(idClient);
+    }
+
+    /*
+     * Report the result.
+     */
+    RTPrintf("%'RU64 calls in %'RU64 ns\n", cCalls, nsElapsed);
+    RTPrintf("%'RU64 ns per call\n", nsElapsed / cCalls);
+#else
+    RT_NOREF(nsInterval);
+#endif
+    return RTEXITCODE_SUCCESS;
+}
 
 /**
  * @callback_method_impl{FNVBOXCTRLCMDHANDLER, Command: writelog}
@@ -1996,6 +2104,7 @@ struct COMMANDHANDLER
 #ifdef VBOX_WITH_DPC_LATENCY_CHECKER
     { "dpc",                    handleDpc,                  true  },
 #endif
+    { "hgcmperf",               handleHgcmPerf,             true  },
     { "writelog",               handleWriteLog,             true  },
     { "takesnapshot",           handleTakeSnapshot,         true  },
     { "savestate",              handleSaveState,            true  },
