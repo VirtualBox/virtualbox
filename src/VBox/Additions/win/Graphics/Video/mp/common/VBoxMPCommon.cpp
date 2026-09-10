@@ -1,4 +1,4 @@
-/* $Id: VBoxMPCommon.cpp 115093 2026-08-19 18:19:30Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPCommon.cpp 115219 2026-09-10 12:10:25Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Miniport common utils
  */
@@ -128,8 +128,6 @@ bool VBoxMPCmnUpdatePointerShape(PVBOXMP_COMMON pCommon, PVIDEO_POINTER_ATTRIBUT
                                          fFlags, cHotX, cHotY,
                                          cWidth, cHeight, pPixels,
                                          cbLength - sizeof(VIDEO_POINTER_ATTRIBUTES));
-    if (RT_FAILURE(rc))
-        LogRel(("WDDM: mouse pointer: VBVA_MOUSE_POINTER_SHAPE rc=%#x\n", rc));
     return RT_SUCCESS(rc);
 }
 

@@ -1,4 +1,4 @@
-/* $Id: VBoxMPWddm.cpp 115198 2026-09-08 10:10:03Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPWddm.cpp 115219 2026-09-10 12:10:25Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox WDDM Miniport driver
  */
@@ -2899,7 +2899,6 @@ BOOL vboxWddmPointerCopyColorData(CONST DXGKARG_SETPOINTERSHAPE* pSetPointerShap
     if (VBOXWDDM_POINTER_ATTRIBUTES_SIZE < cbPointerAttributes)
     {
         LOGREL(("VBOXWDDM_POINTER_ATTRIBUTES_SIZE(%d) < cbPointerAttributes(%d)", VBOXWDDM_POINTER_ATTRIBUTES_SIZE, cbPointerAttributes));
-        LogRel4(("WDDM: mouse pointer: VBOXWDDM_POINTER_ATTRIBUTES_SIZE(%d) < cbPointerAttributes(%d)\n", VBOXWDDM_POINTER_ATTRIBUTES_SIZE, cbPointerAttributes));
         return FALSE;
     }
 
@@ -3013,7 +3012,6 @@ static BOOLEAN vboxVddmPointerShapeToAttributes(CONST DXGKARG_SETPOINTERSHAPE* p
         else
         {
             LOGREL(("vboxWddmPointerCopyColorData failed"));
-            LogRel4(("WDDM: mouse pointer: vboxWddmPointerCopyColorData failed\n"));
             AssertBreakpoint();
             return FALSE;
         }
@@ -3028,7 +3026,6 @@ static BOOLEAN vboxVddmPointerShapeToAttributes(CONST DXGKARG_SETPOINTERSHAPE* p
         else
         {
             LOGREL(("vboxWddmPointerCopyMonoData failed"));
-            LogRel4(("WDDM: mouse pointer: vboxWddmPointerCopyMonoData failed\n"));
             AssertBreakpoint();
             return FALSE;
         }
@@ -3036,7 +3033,6 @@ static BOOLEAN vboxVddmPointerShapeToAttributes(CONST DXGKARG_SETPOINTERSHAPE* p
     else
     {
         LOGREL(("unsupported pointer type Flags.Value(0x%x)", pSetPointerShape->Flags.Value));
-        LogRel4(("WDDM: mouse pointer: unsupported pointer type Flags.Value(%#x)\n", pSetPointerShape->Flags.Value));
         AssertBreakpoint();
         return FALSE;
     }
@@ -3087,8 +3083,6 @@ bool vboxWddmUpdatePointerShape(PVBOXMP_DEVEXT pDevExt, PVIDEO_POINTER_ATTRIBUTE
                                              cHeight,
                                              pvImage,
                                              cbXorMask);
-                if (Status != STATUS_SUCCESS)
-                    LogRel4(("WDDM: mouse pointer: GaDefineAlphaCursor status %#x\n", Status));
             }
             else
             {
@@ -3108,8 +3102,6 @@ bool vboxWddmUpdatePointerShape(PVBOXMP_DEVEXT pDevExt, PVIDEO_POINTER_ATTRIBUTE
                                         cbAndMask,
                                         pvXorMask,
                                         cbXorMask);
-                if (Status != STATUS_SUCCESS)
-                    LogRel4(("WDDM: mouse pointer: GaDefineCursor status %#x\n", Status));
             }
         }
 
@@ -3121,7 +3113,6 @@ bool vboxWddmUpdatePointerShape(PVBOXMP_DEVEXT pDevExt, PVIDEO_POINTER_ATTRIBUTE
         attrs.Enable = pAttrs->Enable & VBOX_MOUSE_POINTER_VISIBLE;
         if (!VBoxMPCmnUpdatePointerShape(VBoxCommonFromDeviceExt(pDevExt), &attrs, sizeof(attrs)))
         {
-            LogRel4(("WDDM: mouse pointer: VBoxMPCmnUpdatePointerShape failed\n"));
             Status = STATUS_INVALID_PARAMETER;
         }
 
@@ -3264,17 +3255,8 @@ DxgkDdiSetPointerShape(
             {
                 // tell the host to use the guest's pointer
                 vboxWddmHostPointerEnable(pDevExt, FALSE);
-                LogRel4(("WDDM: mouse pointer: tell the host to use the guest's pointer\n"));
             }
         }
-        else
-        {
-            LogRel4(("WDDM: mouse pointer: vboxVddmPointerShapeToAttributes failed\n"));
-        }
-    }
-    else
-    {
-        LogRel4(("WDDM: mouse pointer: HostWantsAbsolute is false\n"));
     }
 
 //    LOGF(("LEAVE, hAdapter(0x%x)", hAdapter));

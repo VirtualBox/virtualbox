@@ -1,4 +1,4 @@
-/* $Id: VBoxMPUtils.cpp 115093 2026-08-19 18:19:30Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxMPUtils.cpp 115219 2026-09-10 12:10:25Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBox Miniport utils
  */
@@ -240,7 +240,6 @@ static bool VBoxQueryPointerPosInternal(uint16_t *pPosX, uint16_t *pPosY)
     if (RT_FAILURE(rc))
     {
         LOG(("ERROR allocating request, rc = %#xrc", rc));
-        LogRel4(("WDDM: Mouse pointer: allocating VMMDevReq_GetMouseStatus error rc=%#x\n", rc));
     }
     else
     {
@@ -262,13 +261,10 @@ static bool VBoxQueryPointerPosInternal(uint16_t *pPosX, uint16_t *pPosY)
 
                 bRC = TRUE;
             }
-            else
-                LogRel4(("WDDM: Mouse pointer: VMMDevReq_GetMouseStatus HOST_WANTS_ABSOLUTE is false, features %#x\n", req->mouseFeatures));
         }
         else
         {
             LOG(("ERROR querying mouse capabilities from VMMDev. rc = %#xrc", rc));
-            LogRel4(("WDDM: Mouse pointer: querying VMMDevReq_GetMouseStatus error rc=%#x\n", rc));
         }
 
         VbglR0GRFree(&req->header);

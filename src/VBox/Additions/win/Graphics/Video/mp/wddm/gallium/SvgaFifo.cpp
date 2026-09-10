@@ -1,4 +1,4 @@
-/* $Id: SvgaFifo.cpp 115043 2026-08-16 20:32:42Z vitali.pelenjow@oracle.com $ */
+/* $Id: SvgaFifo.cpp 115219 2026-09-10 12:10:25Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - VMSVGA FIFO.
  */
@@ -585,9 +585,6 @@ static NTSTATUS svgaCBSubmitLocked(PVBOXWDDM_EXT_VMSVGA pSvga, PVMSVGACB pCB, PV
 
     uintptr_t const off = (uintptr_t)pCBHeader - (uintptr_t)&pCBHeaders->aContext0CBHeaders[0];
     svgaCBSubmitHeaderLocked(pSvga, cbStateHeadersPA(pCBState, (uint32_t)off), SVGA_CB_CONTEXT_0);
-
-    LogRel3(("WDDM: cb: submit @%u %u\n", (uint32_t)off, pCB->cbCommand));
-
     return STATUS_SUCCESS;
 }
 
@@ -921,10 +918,6 @@ void SvgaCmdBufProcess(PVBOXWDDM_EXT_VMSVGA pSvga)
             /* Remove the command buffer from the submitted queue and add to the local queue. */
             RTListNodeRemove(&pIter->nodeQueue);
             RTListAppend(&listCompleted, &pIter->nodeQueue);
-
-            PVMSVGACBHEADERS pCBHeaders = cbStateHeaders(pCBState);
-            uintptr_t const off = (uintptr_t)pIter->pCBHeader - (uintptr_t)&pCBHeaders->aContext0CBHeaders[0];
-            LogRel3(("WDDM: cb: finish @%u %u\n", (uint32_t)off, pIter->cbCommand));
 
             /* Disassociate from CB header which can be used for another CB after spinlock is released. */
             pIter->pCBHeader = NULL;
