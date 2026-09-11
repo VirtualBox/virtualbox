@@ -1,4 +1,4 @@
-/* $Id: VirtualBoxSDSImpl.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VirtualBoxSDSImpl.cpp 115230 2026-09-11 19:14:10Z klaus.espenlaub@oracle.com $ */
 /** @file
  * VBox Global COM Class implementation.
  */
@@ -52,6 +52,7 @@
 #include <rpcdcep.h>
 #include <sddl.h>
 #include <lmcons.h> /* UNLEN */
+#include <psapi.h> /* for GetProcessImageFileNameW */
 
 #include "MachineLaunchVMCommonWorker.h"
 
@@ -177,7 +178,8 @@ public:
 *********************************************************************************************************************************/
 
 VirtualBoxSDS::VirtualBoxSDS()
-    : m_cVBoxSvcProcesses(0)
+    : m_cwszDirSDS(0)
+    , m_cVBoxSvcProcesses(0)
 #ifdef WITH_WATCHER
     , m_cWatchers(0)
     , m_papWatchers(NULL)
@@ -208,6 +210,33 @@ HRESULT VirtualBoxSDS::FinalConstruct()
     vrc = RTCritSectInit(&m_WatcherCritSect);
     AssertLogRelRCReturn(vrc, E_FAIL);
 #endif
+
+    RT_ZERO(m_wszProcessImageFilenameSDS);
+    if (GetProcessImageFileNameW(NULL, m_wszProcessImageFilenameSDS, RT_ELEMENTS(m_wszProcessImageFilenameSDS) - 1) != 0)
+    {
+        m_wszProcessImageFilenameSDS[RT_ELEMENTS(m_wszProcessImageFilenameSDS) - 1] = 0;
+        PRTUTF16 pwszFilename = RTPathFilenameExUtf16(m_wszProcessImageFilenameSDS, RTPATH_STR_F_STYLE_DOS);
+        if (pwszFilename)
+        {
+            m_cwszDirSDS = RT_MAX(pwszFilename - m_wszProcessImageFilenameSDS, RT_ELEMENTS(m_wszProcessImageFilenameSDS) - 1);
+            LogRel(("VirtualBoxSDS init: directory length %d, SDS path \"%ls\"", m_cwszDirSDS, m_wszProcessImageFilenameSDS));
+        }
+        else
+        {
+            LogRel(("VirtualBoxSDS init: unexpected status from GetProcessImageFileNameW %#x, \"%ls\"", GetLastError(), m_wszProcessImageFilenameSDS));
+            /* Something failed, make sure the comparison fails. */
+            RT_ZERO(m_wszProcessImageFilenameSDS);
+            m_cwszDirSDS = 0;
+        }
+    }
+    else
+    {
+        m_wszProcessImageFilenameSDS[RT_ELEMENTS(m_wszProcessImageFilenameSDS) - 1] = 0;
+        LogRel(("VirtualBoxSDS init: unexpected status from GetProcessImageFileNameW %#x, \"%ls\"", GetLastError(), m_wszProcessImageFilenameSDS));
+        /* Something failed, make sure the comparison fails. */
+        RT_ZERO(m_wszProcessImageFilenameSDS);
+        m_cwszDirSDS = 0;
+    }
 
     LogRelFlowThisFuncLeave();
     return S_OK;
@@ -288,7 +317,8 @@ STDMETHODIMP VirtualBoxSDS::RegisterVBoxSVC(IVBoxSVCRegistration *aVBoxSVC, LONG
     if (   RT_VALID_PTR(aVBoxSVC)
         && RT_VALID_PTR(aExistingVirtualBox)
         && rcRpc == RPC_S_OK
-        && (intptr_t)CallAttribs.ClientPID == aPid)
+        && (intptr_t)CallAttribs.ClientPID == aPid
+        && i_checkClientImagePath((DWORD)(intptr_t)aPid))
     {
         *aExistingVirtualBox = NULL;
 
@@ -630,6 +660,55 @@ STDMETHODIMP VirtualBoxSDS::LaunchVMProcess(IN_BSTR aMachine, IN_BSTR aComment, 
 /*********************************************************************************************************************************
 *   VirtualBoxSDS - Internal Methods                                                                                             *
 *********************************************************************************************************************************/
+
+bool VirtualBoxSDS::i_checkClientImagePath(DWORD aPid)
+{
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, aPid);
+    if (hProcess)
+    {
+        RTUTF16 wszProcessImageFilenameClient[1024];
+        RT_ZERO(wszProcessImageFilenameClient);
+        if (GetProcessImageFileNameW(hProcess, wszProcessImageFilenameClient, RT_ELEMENTS(wszProcessImageFilenameClient) - 1) != 0)
+        {
+            CloseHandle(hProcess);
+            wszProcessImageFilenameClient[RT_ELEMENTS(wszProcessImageFilenameClient) - 1] = 0;
+            PRTUTF16 pwszFilename = RTPathFilenameExUtf16(wszProcessImageFilenameClient, RTPATH_STR_F_STYLE_DOS);
+            if (pwszFilename)
+            {
+                size_t cwszDirClient;
+                cwszDirClient = RT_MAX(pwszFilename - wszProcessImageFilenameClient, RT_ELEMENTS(wszProcessImageFilenameClient) - 1);
+                if (cwszDirClient != m_cwszDirSDS || RTUtf16NICmp(wszProcessImageFilenameClient, m_wszProcessImageFilenameSDS, cwszDirClient) != 0)
+                {
+                    LogRel(("VirtualBoxSDS client check failed: directory length %d, client path \"%ls\"", cwszDirClient, wszProcessImageFilenameClient));
+                    return false;
+                }
+                else
+                {
+                    LogRel(("VirtualBoxSDS client check succeeded: directory length %d, SDS path \"%ls\"", cwszDirClient, wszProcessImageFilenameClient));
+                    return true;
+                }
+            }
+            else
+            {
+                LogRel(("VirtualBoxSDS client check failed: client path \"%ls\" could not be split", wszProcessImageFilenameClient));
+                return false;
+            }
+        }
+        else
+        {
+            CloseHandle(hProcess);
+            wszProcessImageFilenameClient[RT_ELEMENTS(wszProcessImageFilenameClient) - 1] = 0;
+            LogRel(("VirtualBoxSDS client check failed: unexpected status from GetProcessImageFileNameW %#x, \"%ls\"", GetLastError(), wszProcessImageFilenameClient));
+            return false;
+        }
+    }
+    else
+    {
+        LogRel(("VirtualBoxSDS client check failed: unexpected status from OpenProcess %#x, pid %u", GetLastError(), aPid));
+        return false;
+    }
+    /* never reached: return false; */
+}
 
 /*static*/ bool VirtualBoxSDS::i_getClientUserSid(com::Utf8Str *a_pStrSid, com::Utf8Str *a_pStrUsername)
 {
