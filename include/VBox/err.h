@@ -1981,7 +1981,24 @@
 #define VERR_SUPDRV_NOT_BUDDING_VM_PROCESS_2        (-3749)
 
 /** Raw-mode is unavailable courtesy of Hyper-V. */
-#define VERR_SUPDRV_NO_RAW_MODE_HYPER_V_ROOT        (-7000)
+#define VERR_SUPDRV_NO_RAW_MODE_HYPER_V_ROOT                (-7000)
+/** Failed setting TokenVirtualizationAllowed to zero. */
+#define VERR_SUPDRV_TOKEN_VIRTUALIZATION_ALLOWED_ZEROING    (-7001)
+/** Failed setting TokenVirtualizationEnabled to zero. */
+#define VERR_SUPDRV_TOKEN_VIRTUALIZATION_ENABLED_ZEROING    (-7002)
+/** Failed to reference the primary process token. */
+#define VERR_SUPDRV_REF_PRIMARY_PROCESS_TOKEN_FAILED        (-7003)
+/** Failed open the primary process token object. */
+#define VERR_SUPDRV_OPEN_PRIMARY_PROCESS_TOKEN_FAILED       (-7004)
+/** Failed create the token adjustment thread. */
+#define VERR_SUPDRV_TOKEN_ADJ_THREAD_CREATE_FAILED          (-7005)
+/** Failed waiting for the token adjustment thread. */
+#define VERR_SUPDRV_TOKEN_ADJ_THREAD_WAIT_ERROR             (-7006)
+/** Token virtualization is still allowed after attempting to disallowing it. */
+#define VERR_SUPDRV_TOKEN_VIRTUALIZATION_STILL_ALLOWED      (-7007)
+/** Token virtualization is still enabled after attempting to disable and
+ *  disallowing it. */
+#define VERR_SUPDRV_TOKEN_VIRTUALIZATION_STILL_ENABLED      (-7008)
 /** @} */
 
 
