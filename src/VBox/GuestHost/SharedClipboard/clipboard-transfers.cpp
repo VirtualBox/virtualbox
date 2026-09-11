@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 115173 2026-09-07 15:53:51Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 115228 2026-09-11 15:55:28Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -3424,13 +3424,13 @@ int ShClTransferWaitForStatus(PSHCLTRANSFER pTransfer, RTMSINTERVAL msTimeout, S
 {
     AssertPtrReturn(pTransfer, VERR_INVALID_POINTER);
 
-    int rc = VINF_SUCCESS;
+    int rc;
 
     uint64_t const tsStartMs = RTTimeMilliTS();
     uint64_t       msLeft    = msTimeout;
     for (;;)
     {
-        SHCLTRANSFERSTATUS enmCurStatus;
+        SHCLTRANSFERSTATUS enmCurStatus = SHCLTRANSFERSTATUS_NONE; /* older gcc */
         rc = shClTransferWaitForStatusChangeInternal(pTransfer, msLeft, &enmCurStatus);
         if (RT_FAILURE(rc))
             break;
@@ -4769,21 +4769,21 @@ DECLCALLBACK(int) ShClSvcTransferIfaceGHRootListRead(PSHCLTXPROVIDERCTX pCtx)
 
     SHCLLISTHDR Hdr;
     int rc = ShClSvcTransferGHRootListReadHdr(pClient, pCtx->pTransfer, &Hdr);
-    if (   RT_SUCCESS(rc)
-        && Hdr.cEntries > SHCL_TRANSFER_MAX_ROOT_ENTRIES)
-        rc = VERR_TOO_MUCH_DATA;
     if (RT_SUCCESS(rc))
     {
-        for (uint64_t i = 0; i < Hdr.cEntries; i++)
-        {
-            PSHCLLISTENTRY pEntry;
-            rc = ShClSvcTransferGHRootListReadEntry(pClient, pCtx->pTransfer, i, &pEntry);
-            if (RT_SUCCESS(rc))
-                rc = ShClTransferListAddEntry(&pCtx->pTransfer->lstRoots, pEntry, true /* fAppend */);
+        if (Hdr.cEntries <= SHCL_TRANSFER_MAX_ROOT_ENTRIES)
+            for (uint64_t i = 0; i < Hdr.cEntries; i++)
+            {
+                PSHCLLISTENTRY pEntry = NULL;
+                rc = ShClSvcTransferGHRootListReadEntry(pClient, pCtx->pTransfer, i, &pEntry);
+                if (RT_SUCCESS(rc))
+                    rc = ShClTransferListAddEntry(&pCtx->pTransfer->lstRoots, pEntry, true /* fAppend */);
 
-            if (RT_FAILURE(rc))
-                break;
-        }
+                if (RT_FAILURE(rc))
+                    break;
+            }
+        else
+            rc = VERR_TOO_MUCH_DATA;
     }
 
     LogFlowFuncLeave();
