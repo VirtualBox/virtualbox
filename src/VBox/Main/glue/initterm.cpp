@@ -1,4 +1,4 @@
-/* $Id: initterm.cpp 114550 2026-06-26 09:55:31Z andreas.loeffler@oracle.com $ */
+/* $Id: initterm.cpp 115223 2026-09-11 11:08:28Z knut.osmundsen@oracle.com $ */
 /** @file
  * MS COM / XPCOM Abstraction Layer - Initialization and Termination.
  */
@@ -509,6 +509,25 @@ HRESULT Initialize(uint32_t fInitFlags /*=VBOX_COM_INIT_F_DEFAULT*/)
     /* the overall result must be either S_OK or S_FALSE (S_FALSE means
      * "already initialized using the same apartment model") */
     AssertMsg(hrc == S_OK || hrc == S_FALSE, ("hrc=%08X\n", hrc));
+
+# if 1
+    /* For security reasons, try avoid using KHEY_CURRENT_USER/Software/Classes
+       for anything, only use the HKLM bits. Must be done at once. */
+    IGlobalOptions *pGlobalOptions;
+    HRESULT hrc2 = CoCreateInstance(CLSID_GlobalOptions, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pGlobalOptions));
+    if (SUCCEEDED(hrc2))
+    {
+        ULONG_PTR fValue = 0;
+        hrc2 = pGlobalOptions->Query(COMGLB_RO_SETTINGS, &fValue);
+        if (!(fValue & COMGLB_RESERVED4))
+        {
+            fValue |= COMGLB_RESERVED4;
+            hrc2 = pGlobalOptions->Set(COMGLB_RO_SETTINGS, fValue);
+            pGlobalOptions->Release();
+        }
+    }
+    AssertLogRelMsg(SUCCEEDED(hrc2) || hrc != S_OK, ("hrc2=%Rhrc\n", hrc2));
+# endif
 
 #if defined(VBOX_WITH_SDS)
     // Setup COM Security to enable impersonation
