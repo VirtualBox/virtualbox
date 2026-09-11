@@ -1,4 +1,4 @@
-/* $Id: VBoxControl.cpp 115217 2026-09-10 10:12:29Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxControl.cpp 115226 2026-09-11 14:49:30Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxControl - Guest Additions Command Line Management Interface.
  */
@@ -1857,9 +1857,9 @@ static DECLCALLBACK(RTEXITCODE) handleHgcmPerf(int argc, char *argv[])
     uint64_t     cCalls    = 0;
     if (1)
     {
-        rc = VbglR3SharedFolderConnect(&idClient);
+        rc = VbglR3HGCMConnect("VBoxSharedFolders", &idClient);
         if (RT_FAILURE(rc))
-            return VBoxControlError("VbglR3SharedFolderConnect failed: %Rrc", rc);
+            return VBoxControlError("VbglR3HGCMConnect/VBoxSharedFolders failed: %Rrc", rc);
 
         RTPrintf("Connected to shared folders, profiling SHFL_FN_QUERY_FEATURES...\n");
         uint64_t const nsStart = RTTimeNanoTS();
@@ -1905,7 +1905,7 @@ static DECLCALLBACK(RTEXITCODE) handleHgcmPerf(int argc, char *argv[])
                 return VBoxControlError("VbglR3HGCMCall/SHFL_FN_QUERY_FEATURES #%RU64 failed: %Rrc", cCalls, rc);
         }
 
-        VbglR3SharedFolderDisconnect(idClient);
+        VbglR3HGCMDisconnect(idClient);
     }
 
     /*
