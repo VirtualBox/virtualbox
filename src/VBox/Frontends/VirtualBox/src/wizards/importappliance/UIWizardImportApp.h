@@ -1,4 +1,4 @@
-/* $Id: UIWizardImportApp.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: UIWizardImportApp.h 115229 2026-09-11 18:56:34Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardImportApp class declaration.
  */
@@ -86,6 +86,8 @@ public:
         bool isImportHDsAsVDI() const { return m_fImportHDsAsVDI; }
         /** Defines whether hard disks should be imported @a fAsVDI. */
         void setImportHDsAsVDI(bool fAsVDI) { m_fImportHDsAsVDI = fAsVDI; }
+        bool keepExtraData() const { return m_fKeepExtraData; }
+        void setKeepExtraData(bool fKeepExtraData) { m_fKeepExtraData = fKeepExtraData; }
     /** @} */
 
     /** @name Cloud import fields.
@@ -152,6 +154,7 @@ private:
 
         /** Holds whether hard disks should be imported as VDIs. */
         bool  m_fImportHDsAsVDI;
+        bool  m_fKeepExtraData;
     /** @} */
 
     /** @name Cloud import fields.

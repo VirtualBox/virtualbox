@@ -4500,6 +4500,10 @@
       <desc>Import all disks to VDI format</desc>
     </const>
 
+    <const name="KeepExtraData"     value="4">
+      <desc>Import machine extra-data from the appliance.</desc>
+    </const>
+
   </enum>
 
   <enum

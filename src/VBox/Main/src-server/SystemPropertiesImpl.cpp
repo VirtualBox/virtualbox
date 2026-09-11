@@ -1,4 +1,4 @@
-/* $Id: SystemPropertiesImpl.cpp 113542 2026-03-24 15:42:24Z andreas.loeffler@oracle.com $ */
+/* $Id: SystemPropertiesImpl.cpp 115229 2026-09-11 18:56:34Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation
  */
@@ -1162,6 +1162,7 @@ HRESULT SystemProperties::getSupportedImportOptions(std::vector<ImportOptions_T>
         ImportOptions_KeepAllMACs,
         ImportOptions_KeepNATMACs,
         ImportOptions_ImportToVDI,
+        ImportOptions_KeepExtraData,
     };
     RT_CPP_VECTOR_ASSIGN_ARRAY(aSupportedImportOptions, s_aImportOptions);
     return S_OK;

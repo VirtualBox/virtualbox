@@ -1,4 +1,4 @@
-/* $Id: UIWizardImportAppPageExpert.cpp 114761 2026-07-23 16:27:11Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIWizardImportAppPageExpert.cpp 115229 2026-09-11 18:56:34Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardImportAppPageExpert class implementation.
  */
@@ -89,6 +89,7 @@ UIWizardImportAppPageExpert::UIWizardImportAppPageExpert(bool fImportFromOCIByDe
     , m_pComboMACImportPolicy(0)
     , m_pLabelAdditionalOptions(0)
     , m_pCheckboxImportHDsAsVDI(0)
+    , m_pCheckboxKeepExtraData(0)
     , m_pFormEditor(0)
 {
     /* Prepare main layout: */
@@ -320,6 +321,11 @@ UIWizardImportAppPageExpert::UIWizardImportAppPageExpert(bool fImportFromOCIByDe
                             m_pCheckboxImportHDsAsVDI->setCheckState(Qt::Checked);
                             pLayoutAppliance->addWidget(m_pCheckboxImportHDsAsVDI, 3, 1);
                         }
+                        m_pCheckboxKeepExtraData = new QCheckBox(pContainerAppliance);
+                        {
+                            m_pCheckboxKeepExtraData->setCheckState(Qt::Unchecked);
+                            pLayoutAppliance->addWidget(m_pCheckboxKeepExtraData, 4, 1);
+                        }
                     }
 
                     /* Add into layout: */
@@ -379,6 +385,8 @@ UIWizardImportAppPageExpert::UIWizardImportAppPageExpert(bool fImportFromOCIByDe
             this, &UIWizardImportAppPageExpert::sltHandleMACImportPolicyComboChange);
     connect(m_pCheckboxImportHDsAsVDI, &QCheckBox::stateChanged,
             this, &UIWizardImportAppPageExpert::sltHandleImportHDsAsVDICheckBoxChange);
+    connect(m_pCheckboxKeepExtraData, &QCheckBox::stateChanged,
+            this, &UIWizardImportAppPageExpert::sltHandleKeepExtraDataCheckBoxChange);
 
     /* Parse passed full group name if any: */
     if (   m_fImportFromOCIByDefault
@@ -472,7 +480,12 @@ void UIWizardImportAppPageExpert::sltRetranslateUI()
         m_pCheckboxImportHDsAsVDI->setToolTip(UIWizardImportApp::tr("When checked, all the hard drives that belong to this "
                                                                     "appliance will be imported in VDI format."));
     }
-
+    if (m_pCheckboxKeepExtraData)
+    {
+        m_pCheckboxKeepExtraData->setText(UIWizardImportApp::tr("Import &extra data"));
+        m_pCheckboxKeepExtraData->setToolTip(UIWizardImportApp::tr("When checked, all the extra data settings that may be "
+                                                                    "present in appliance file are imported."));
+    }
     /* Adjust label widths: */
     QList<QWidget*> labels;
     if (m_pSourceLabel)
@@ -619,6 +632,7 @@ void UIWizardImportAppPageExpert::sltHandleSourceComboChange()
                                     wizard()->isSourceCloudOne());
     sltHandleMACImportPolicyComboChange();
     sltHandleImportHDsAsVDICheckBoxChange();
+    sltHandleKeepExtraDataCheckBoxChange();
 
     /* Refresh cloud stuff: */
     refreshProfileCombo(m_pProfileComboBox,
@@ -719,6 +733,11 @@ void UIWizardImportAppPageExpert::sltHandleImportHDsAsVDICheckBoxChange()
 {
     /* Update wizard fields: */
     wizard()->setImportHDsAsVDI(isImportHDsAsVDI(m_pCheckboxImportHDsAsVDI));
+}
+
+void UIWizardImportAppPageExpert::sltHandleKeepExtraDataCheckBoxChange()
+{
+    wizard()->setKeepExtraData(keepExtraData(m_pCheckboxKeepExtraData));
 }
 
 void UIWizardImportAppPageExpert::sltImportWarningShown()
