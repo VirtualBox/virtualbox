@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-win.cpp 115212 2026-09-09 12:02:21Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPDrv-win.cpp 115221 2026-09-11 09:39:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Windows NT specifics.
  */
@@ -57,6 +57,7 @@
 #include <iprt/semaphore.h>
 #include <iprt/spinlock.h>
 #include <iprt/string.h>
+#include <iprt/thread.h>
 #include <iprt/utf16.h>
 #include <iprt/x86.h>
 #include <VBox/log.h>
@@ -5577,9 +5578,164 @@ static int supdrvNtProtectRestrictHandlesToProcessAndThread(PSUPDRVNTPROTECT pNt
     return rc;
 }
 
+/** Arguments for supdrvNtProtectAdjustTokenThread. */
+typedef struct SUPDRVNTPROTTOKENTHREADARGS
+{
+    HANDLE      hToken;
+    PRTERRINFO  pErrInfo;
+} SUPDRVNTPROTTOKENTHREADARGS;
+
 
 /**
- * Checks if the current process checks out as a VM process stub.
+ * Kernel thread function assisting supdrvNtProtectVerifyAndAdjustToken.
+ */
+static VOID supdrvNtProtectAdjustTokenThread(PVOID pvArg)
+{
+    HANDLE      const hToken   = ((SUPDRVNTPROTTOKENTHREADARGS volatile *)pvArg)->hToken;
+    PRTERRINFO  const pErrInfo = ((SUPDRVNTPROTTOKENTHREADARGS volatile *)pvArg)->pErrInfo;
+
+    ULONG ulZero = 0;
+    NTSTATUS rcNt = NtSetInformationToken(hToken, TokenVirtualizationAllowed, &ulZero, sizeof(ulZero));
+    if (NT_SUCCESS(rcNt))
+    {
+        ulZero = 0;
+        rcNt = NtSetInformationToken(hToken, TokenVirtualizationEnabled, &ulZero, sizeof(ulZero));
+        if (!NT_SUCCESS(rcNt))
+            RTErrInfoAddF(pErrInfo, VERR_SUPDRV_TOKEN_VIRTUALIZATION_ENABLED_ZEROING,
+                          "NtSetInformationToken/TokenVirtualizationEnabled failed: %#x!", rcNt);
+    }
+    else
+         RTErrInfoAddF(pErrInfo, VERR_SUPDRV_TOKEN_VIRTUALIZATION_ALLOWED_ZEROING,
+                       "NtSetInformationToken/TokenVirtualizationAllowed failed: %#x!", rcNt);
+    PsTerminateSystemThread(rcNt);
+}
+
+
+/**
+ * Checks the primary token of the protected process, adjusting it if necessary.
+ */
+static int supdrvNtProtectVerifyAndAdjustToken(PSUPDRVNTPROTECT pNtProtect, PRTERRINFO pErrInfo)
+{
+    /*
+     * Get the process object.
+     */
+    PEPROCESS pProcess = NULL;
+    NTSTATUS rcNt = PsLookupProcessByProcessId(pNtProtect->AvlCore.Key, &pProcess);
+    if (!NT_SUCCESS(rcNt))
+        return RTErrInfoAddF(pErrInfo, VERR_OPEN_FAILED, "PsLookupProcessByProcessId failed on %#zx: %#x",
+                             pNtProtect->AvlCore.Key, rcNt);
+
+    /*
+     * Get its token and check the virtualization settings, as these are not safe.
+     *
+     * We require ulVirtualizationAllowed to be zero, so as to prevent anyone to
+     * trigger registry virtualization within our stub and VM processes at will.
+     */
+    int rc;
+    PACCESS_TOKEN pToken = PsReferencePrimaryToken(pProcess);
+    if (pToken)
+    {
+        ULONG ulVirtualizationAllowed = 1;
+        rcNt = SeQueryInformationToken(pToken, TokenVirtualizationAllowed, (PVOID *)&ulVirtualizationAllowed);
+        if (!NT_SUCCESS(rcNt))
+            ulVirtualizationAllowed = 3;
+
+        ULONG ulVirtualizationEnabled = 1;
+        rcNt = SeQueryInformationToken(pToken, TokenVirtualizationEnabled, (PVOID *)&ulVirtualizationEnabled);
+        if (!NT_SUCCESS(rcNt))
+            ulVirtualizationEnabled = 3;
+
+        if (!ulVirtualizationAllowed && !ulVirtualizationEnabled)
+            rc = VINF_SUCCESS;
+        else
+        {
+            Log(("supdrvNtProtectVerifyAndAdjustToken: ulVirtualizationAllowed=%d ulVirtualizationEnabled=%d\n",
+                 ulVirtualizationAllowed, ulVirtualizationEnabled));
+
+            /*
+             * There isn't a SeSetInformationToken API, we have to use NtSetInformationToken
+             * instead, so we need a handle to the token.  Modifying TokenVirtualizationAllowed
+             * requires SeCreateTokenPrivilege, so we'll use a kernel thread for that.
+             */
+            HANDLE hToken;
+            rcNt = ObOpenObjectByPointer(pToken, OBJ_KERNEL_HANDLE, NULL /*PassedAccessState*/,
+                                         TOKEN_ADJUST_DEFAULT, *SeTokenObjectType, KernelMode, &hToken);
+            if (NT_SUCCESS(rcNt))
+            {
+                SUPDRVNTPROTTOKENTHREADARGS ThreadArgs = { hToken, pErrInfo };
+                HANDLE                      hThread    = NULL;
+                OBJECT_ATTRIBUTES           ObjAttr;
+                InitializeObjectAttributes(&ObjAttr, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
+
+                rcNt = PsCreateSystemThread(&hThread,
+                                            THREAD_ALL_ACCESS,
+                                            &ObjAttr,
+                                            NULL /* ProcessHandle - kernel */,
+                                            NULL /* ClientID - kernel */,
+                                            supdrvNtProtectAdjustTokenThread,
+                                            &ThreadArgs);
+                if (NT_SUCCESS(rcNt))
+                {
+                    rcNt = ZwWaitForSingleObject(hThread, FALSE /*Alertable*/, NULL);
+                    if (NT_SUCCESS(rcNt))
+                    {
+                        /*
+                         * Re-check.
+                         */
+                        ulVirtualizationAllowed = 1;
+                        rcNt = SeQueryInformationToken(pToken, TokenVirtualizationAllowed, (PVOID *)&ulVirtualizationAllowed);
+                        if (!NT_SUCCESS(rcNt))
+                            ulVirtualizationAllowed = 3;
+
+                        ulVirtualizationEnabled = 1;
+                        rcNt = SeQueryInformationToken(pToken, TokenVirtualizationEnabled, (PVOID *)&ulVirtualizationEnabled);
+                        if (!NT_SUCCESS(rcNt))
+                            ulVirtualizationEnabled = 3;
+
+                        if (!ulVirtualizationAllowed && !ulVirtualizationEnabled)
+                            rc = VINF_SUCCESS;
+                        else if (ulVirtualizationAllowed)
+                            rc = RTErrInfoAddF(pErrInfo, VERR_SUPDRV_TOKEN_VIRTUALIZATION_STILL_ALLOWED,
+                                               "supdrvNtProtectVerifyAndAdjustToken failed to disallow virtualization on %#zx's token!",
+                                               pNtProtect->AvlCore.Key);
+                        else
+                            rc = RTErrInfoAddF(pErrInfo, VERR_SUPDRV_TOKEN_VIRTUALIZATION_STILL_ENABLED,
+                                               "supdrvNtProtectVerifyAndAdjustToken failed to disable virtualization on %#zx's token!",
+                                               pNtProtect->AvlCore.Key);
+                    }
+                    else
+                    {
+                        rc = RTErrInfoAddF(pErrInfo, VERR_SUPDRV_TOKEN_ADJ_THREAD_WAIT_ERROR,
+                                           "ZwWaitForSingleObject failed on %#zx's token adjust thread: %#x!",
+                                           pNtProtect->AvlCore.Key, rcNt);
+                        RTThreadSleep(2000);
+                    }
+                    rcNt = ZwClose(hThread);
+                    AssertLogRelMsg(NT_SUCCESS(rcNt), ("ZwClose/thread: %#x\n", rcNt));
+                }
+                else
+                    rc = RTErrInfoAddF(pErrInfo, VERR_SUPDRV_TOKEN_ADJ_THREAD_CREATE_FAILED,
+                                       "ObOpenObjectByPointer failed on %#zx's token: %#x!", pNtProtect->AvlCore.Key, rcNt);
+                rcNt = ZwClose(hToken);
+                AssertLogRelMsg(NT_SUCCESS(rcNt), ("ZwClose/token: %#x\n", rcNt));
+            }
+            else
+                rc = RTErrInfoAddF(pErrInfo, VERR_SUPDRV_OPEN_PRIMARY_PROCESS_TOKEN_FAILED,
+                                   "ObOpenObjectByPointer failed on %#zx's token: %#x!", pNtProtect->AvlCore.Key, rcNt);
+        }
+        ObDereferenceObject(pToken);
+    }
+    else
+        rc = RTErrInfoAddF(pErrInfo, VERR_SUPDRV_REF_PRIMARY_PROCESS_TOKEN_FAILED,
+                           "PsReferencePrimaryToken failed on %#zx!", pNtProtect->AvlCore.Key);
+    ObDereferenceObject(pProcess);
+    return rc;
+}
+
+
+/**
+ * Checks if the current process should be allowed to access the stub or full
+ * device nodes.
  *
  * @returns VBox status code.
  * @param   pNtProtect          The NT protect structure.  This is upgraded to a
@@ -5615,6 +5771,8 @@ static int supdrvNtProtectVerifyProcess(PSUPDRVNTPROTECT pNtProtect)
                                              0 /*fFlags*/, &pNtProtect->RwxPgInfo, NULL /*pcFixes*/, &ErrInfo);
             if (RT_SUCCESS(rc) && SUPDRVNTPROTECTKIND_IS_VM(pNtProtect->enmProcessKind))
                 rc = supdrvNtProtectVerifyParentForUnconfirmed(pNtProtect, &ErrInfo);
+            if (RT_SUCCESS(rc))
+                rc = supdrvNtProtectVerifyAndAdjustToken(pNtProtect, &ErrInfo);
         }
     }
     else
