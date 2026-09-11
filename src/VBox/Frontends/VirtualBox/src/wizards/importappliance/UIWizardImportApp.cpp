@@ -1,4 +1,4 @@
-/* $Id: UIWizardImportApp.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIWizardImportApp.cpp 115232 2026-09-11 20:26:06Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardImportApp class implementation.
  */
@@ -162,6 +162,7 @@ UIWizardImportApp::UIWizardImportApp(QWidget *pParent,
     , m_fSourceCloudOne(false)
     , m_enmMacAddressImportPolicy(MACAddressImportPolicy_MAX)
     , m_fImportHDsAsVDI(false)
+    , m_fKeepExtraData(false)
 {
 #ifndef VBOX_WS_MAC
     /* Assign watermark: */
@@ -254,6 +255,8 @@ bool UIWizardImportApp::importAppliance()
         }
         if (isImportHDsAsVDI())
             options.append(KImportOptions_ImportToVDI);
+        if (keepExtraData())
+            options.append(KImportOptions_KeepExtraData);
 
         /* Import appliance: */
         UINotificationProgressApplianceImport *pNotification = new UINotificationProgressApplianceImport(m_comLocalAppliance,

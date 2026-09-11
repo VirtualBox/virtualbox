@@ -1,4 +1,4 @@
-/* $Id: ApplianceImplImport.cpp 114951 2026-08-10 13:39:50Z serkan.bayraktar@oracle.com $ */
+/* $Id: ApplianceImplImport.cpp 115232 2026-09-11 20:26:06Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * IAppliance and IVirtualSystem COM class implementations.
  */
@@ -6147,6 +6147,8 @@ l_skipped:
     config.sanitizeImportedSerialPorts();
     config.sanitizeSharedFolderSettings();
     config.sanitizeImportedNvramSettings();
+    if (!m->optListImport.contains(ImportOptions_KeepExtraData))
+        config.sanitizeImportedExtraData();
 
     // this magic constructor fills the new machine object with the MachineConfig
     // instance that we created from the vbox:Machine

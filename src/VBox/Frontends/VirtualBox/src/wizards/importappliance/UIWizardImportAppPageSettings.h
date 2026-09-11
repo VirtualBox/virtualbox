@@ -1,4 +1,4 @@
-/* $Id: UIWizardImportAppPageSettings.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIWizardImportAppPageSettings.h 115232 2026-09-11 20:26:06Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardImportAppPageSettings class declaration.
  */
@@ -82,6 +82,7 @@ namespace UIWizardImportAppSettings
     MACAddressImportPolicy macAddressImportPolicy(QComboBox *pCombo);
     /** Returns whether hard disks should be imported as VDIs. */
     bool isImportHDsAsVDI(QCheckBox *pCheckBox);
+    bool keepExtraData(QCheckBox *pCheckBox);
 
     /** Translates MAC import policy combo. */
     void retranslateMACImportPolicyCombo(QComboBox *pCombo);
@@ -126,6 +127,7 @@ private slots:
     void sltHandleMACImportPolicyComboChange();
     /** Handles import HDs as VDI check-box change. */
     void sltHandleImportHDsAsVDICheckBoxChange();
+    void sltHandleKeepExtraDataCheckBoxChange();
     /** Handles translation event. */
     virtual void sltRetranslateUI() RT_OVERRIDE RT_FINAL;
 
@@ -157,6 +159,7 @@ private:
     QLabel                        *m_pLabelAdditionalOptions;
     /** Holds the 'import HDs as VDI' checkbox instance. */
     QCheckBox                     *m_pCheckboxImportHDsAsVDI;
+    QCheckBox                     *m_pCheckboxKeepExtraData;
     /** Holds the signature/certificate info label instance. */
     QLabel                        *m_pCertLabel;
 

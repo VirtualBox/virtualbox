@@ -1,4 +1,4 @@
-/* $Id: UIWizardImportAppPageSettings.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: UIWizardImportAppPageSettings.cpp 115232 2026-09-11 20:26:06Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardImportAppPageSettings class implementation.
  */
@@ -210,6 +210,15 @@ bool UIWizardImportAppSettings::isImportHDsAsVDI(QCheckBox *pCheckBox)
     return pCheckBox->isChecked();
 }
 
+bool UIWizardImportAppSettings::keepExtraData(QCheckBox *pCheckBox)
+{
+    /* Sanity check: */
+    AssertPtrReturn(pCheckBox, false);
+
+    /* Give the actual result: */
+    return pCheckBox->isChecked();
+}
+
 void UIWizardImportAppSettings::retranslateMACImportPolicyCombo(QComboBox *pCombo)
 {
     /* Sanity check: */
@@ -312,6 +321,7 @@ UIWizardImportAppPageSettings::UIWizardImportAppPageSettings(const QString &strF
     , m_pComboMACImportPolicy(0)
     , m_pLabelAdditionalOptions(0)
     , m_pCheckboxImportHDsAsVDI(0)
+    , m_pCheckboxKeepExtraData(0)
     , m_pCertLabel(0)
     , m_enmCertText(kCertText_Uninitialized)
     , m_pFormEditor(0)
@@ -396,11 +406,16 @@ UIWizardImportAppPageSettings::UIWizardImportAppPageSettings(const QString &strF
                         m_pCheckboxImportHDsAsVDI->setCheckState(Qt::Checked);
                         pLayoutAppliance->addWidget(m_pCheckboxImportHDsAsVDI, 3, 1);
                     }
+                    m_pCheckboxKeepExtraData = new QCheckBox(pContainerAppliance);
+                    {
+                        m_pCheckboxKeepExtraData->setCheckState(Qt::Unchecked);
+                        pLayoutAppliance->addWidget(m_pCheckboxKeepExtraData, 4, 1);
+                    }
 
                     /* Prepare certificate label: */
                     m_pCertLabel = new QLabel(pContainerAppliance);
                     if (m_pCertLabel)
-                        pLayoutAppliance->addWidget(m_pCertLabel, 4, 0, 1, 3);
+                        pLayoutAppliance->addWidget(m_pCertLabel, 5, 0, 1, 3);
                 }
 
                 /* Add into widget: */
@@ -439,6 +454,8 @@ UIWizardImportAppPageSettings::UIWizardImportAppPageSettings(const QString &strF
             this, &UIWizardImportAppPageSettings::sltHandleMACImportPolicyComboChange);
     connect(m_pCheckboxImportHDsAsVDI, &QCheckBox::stateChanged,
             this, &UIWizardImportAppPageSettings::sltHandleImportHDsAsVDICheckBoxChange);
+    connect(m_pCheckboxKeepExtraData, &QCheckBox::stateChanged,
+            this, &UIWizardImportAppPageSettings::sltHandleKeepExtraDataCheckBoxChange);
 }
 
 UIWizardImportApp *UIWizardImportAppPageSettings::wizard() const
@@ -487,7 +504,12 @@ void UIWizardImportAppPageSettings::sltRetranslateUI()
         m_pCheckboxImportHDsAsVDI->setToolTip(UIWizardImportApp::tr("When checked, all the hard drives that belong to this "
                                                                     "appliance will be imported in VDI format."));
     }
-
+    if (m_pCheckboxKeepExtraData)
+    {
+        m_pCheckboxKeepExtraData->setText(UIWizardImportApp::tr("Import &extra data"));
+        m_pCheckboxKeepExtraData->setToolTip(UIWizardImportApp::tr("When checked, all the extra data settings that may be "
+                                                                    "present in appliance file are imported."));
+    }
     /* Translate separate stuff: */
     retranslateMACImportPolicyCombo(m_pComboMACImportPolicy);
     retranslateCertificateLabel(m_pCertLabel, m_enmCertText, m_strSignedBy);
@@ -579,6 +601,7 @@ void UIWizardImportAppPageSettings::sltAsyncInit()
     sltHandleImportPathEditorChange();
     sltHandleMACImportPolicyComboChange();
     sltHandleImportHDsAsVDICheckBoxChange();
+    sltHandleKeepExtraDataCheckBoxChange();
 
     /* Handle appliance certificate: */
     if (!wizard()->isSourceCloudOne())
@@ -605,6 +628,11 @@ void UIWizardImportAppPageSettings::sltHandleImportHDsAsVDICheckBoxChange()
 {
     /* Update wizard fields: */
     wizard()->setImportHDsAsVDI(isImportHDsAsVDI(m_pCheckboxImportHDsAsVDI));
+}
+
+void UIWizardImportAppPageSettings::sltHandleKeepExtraDataCheckBoxChange()
+{
+    wizard()->setKeepExtraData(keepExtraData(m_pCheckboxKeepExtraData));
 }
 
 void UIWizardImportAppPageSettings::handleApplianceCertificate()

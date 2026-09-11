@@ -30,7 +30,7 @@
 ]>
 <refentry id="vboxmanage-import" lang="en">
   <refentryinfo>
-    <pubdate>$Date: 2025-11-14 17:43:28 +0100 (Fri, 14 Nov 2025) $</pubdate>
+    <pubdate>$Date: 2026-09-11 22:26:06 +0200 (Fri, 11 Sep 2026) $</pubdate>
     <title>VBoxManage import</title>
   </refentryinfo>
 
@@ -58,6 +58,7 @@
           <arg choice="plain">keepallmacs</arg>
           <arg choice="plain">keepnatmacs</arg>
           <arg choice="plain">importtovdi</arg>
+          <arg choice="plain">keepextradata</arg>
         </group></arg>
       <arg>--vsys=<replaceable>n</replaceable></arg>
       <arg>--ostype=<replaceable>ostype</replaceable></arg>
@@ -165,7 +166,7 @@
             </para></listitem>
         </varlistentry>
         <varlistentry>
-          <term><option>--options=keepallmacs | keepnatmacs | importtovdi</option></term>
+          <term><option>--options=keepallmacs | keepnatmacs | importtovdi | keepextradata</option></term>
           <!-- Does this option really work for cloud import? -->
           <listitem><para>
               Enables you to fine-tune the import operation.
@@ -185,6 +186,10 @@
               <listitem><para>
                   <literal>importtovdi</literal>: Specifies that all new
                   disk images are to be created using the VDI file format.
+                </para></listitem>
+               <listitem><para>
+                  <literal>keepextradata</literal>: Specifies whether extra data settings
+                  that may be present in the .ovf file are imported.
                 </para></listitem>
             </itemizedlist></listitem>
         </varlistentry>

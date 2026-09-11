@@ -1,4 +1,4 @@
-/* $Id: VBoxManageAppliance.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxManageAppliance.cpp 115232 2026-09-11 20:26:06Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBoxManage - The appliance-related commands.
  */
@@ -116,6 +116,8 @@ static int parseImportOptions(const char *psz, com::SafeArray<ImportOptions_T> *
                 options->push_back(ImportOptions_KeepNATMACs);
             else if (!RTStrNICmp(psz, "ImportToVDI", len))
                 options->push_back(ImportOptions_ImportToVDI);
+            else if (!RTStrNICmp(psz, "KeepExtraData", len))
+                options->push_back(ImportOptions_KeepExtraData);
             else
                 vrc = VERR_PARSE_ERROR;
         }

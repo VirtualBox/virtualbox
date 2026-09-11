@@ -1,4 +1,4 @@
-/* $Id: UIWizardImportAppPageExpert.h 114847 2026-08-04 09:37:31Z serkan.bayraktar@oracle.com $ */
+/* $Id: UIWizardImportAppPageExpert.h 115232 2026-09-11 20:26:06Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIWizardImportAppPageExpert class declaration.
  */
@@ -99,6 +99,7 @@ private slots:
     void sltHandleMACImportPolicyComboChange();
     /** Handles import HDs as VDI check-box change. */
     void sltHandleImportHDsAsVDICheckBoxChange();
+    void sltHandleKeepExtraDataCheckBoxChange();
     /** Handles translation event. */
     virtual void sltRetranslateUI() RT_OVERRIDE RT_FINAL;
     void sltImportWarningShown();
@@ -170,6 +171,7 @@ private:
     QLabel                        *m_pLabelAdditionalOptions;
     /** Holds the 'import HDs as VDI' checkbox instance. */
     QCheckBox                     *m_pCheckboxImportHDsAsVDI;
+    QCheckBox                     *m_pCheckboxKeepExtraData;
     /** Holds the signature/certificate info label instance. */
     QLabel                        *m_pCertLabel;
 
