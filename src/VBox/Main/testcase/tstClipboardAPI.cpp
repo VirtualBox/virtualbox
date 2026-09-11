@@ -1,4 +1,4 @@
-/* $Id: tstClipboardAPI.cpp 115231 2026-09-11 19:21:02Z knut.osmundsen@oracle.com $ */
+/* $Id: tstClipboardAPI.cpp 115233 2026-09-11 21:50:40Z knut.osmundsen@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Public API object testcase.
  */
@@ -285,8 +285,8 @@ static void tstClipboardSession(void)
     RTTESTI_CHECK(ptrEventSource.isNull());
 }
 
-
 #ifdef VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+
 /** State captured by the active listener reentrancy test. */
 struct ClipboardTransferReentryContext
 {
@@ -852,18 +852,15 @@ static void tstClipboardTransferManager(void)
     ptrManagerObj->i_setCancelServiceResult(S_OK);
     SHCLTRANSFERKEY CancelKey;
     ShClTransferKeyInit(&CancelKey, 20, 21, 20);
-    hrc = ptrManagerObj->i_handleTransferStatus(&CancelKey,
-                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
-    RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(&CancelKey,
-                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
-    RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(&CancelKey,
-                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
-    RTTESTI_CHECK_RC(hrc, S_OK);
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&CancelKey,
+                                                       NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                       SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS));
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&CancelKey,
+                                                       NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                       SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS));
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&CancelKey,
+                                                       NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                       SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS));
 
     aTransfers.setNull();
     CHECK_HRC_OK(ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers)));
@@ -908,9 +905,8 @@ static void tstClipboardTransferManager(void)
     ptrManagerObj->i_setCancelServiceResult(E_FAIL);
     SHCLTRANSFERKEY FailedCancelKey;
     ShClTransferKeyInit(&FailedCancelKey, 21, 22, 21);
-    hrc = ptrManagerObj->i_handleTransferStatus(&FailedCancelKey, NULL /* pTransfer */,
-                                                SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
-    RTTESTI_CHECK_RC(hrc, S_OK);
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&FailedCancelKey, NULL /* pTransfer */,
+                                                       SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS));
     aTransfers.setNull();
     CHECK_HRC_OK(ptrManager->GetTransfers(ClipboardTransferDirection_Any, 0, ComSafeArrayAsOutParam(aTransfers)));
     RTTESTI_CHECK(aTransfers.size() == 1);
@@ -941,18 +937,15 @@ static void tstClipboardTransferManager(void)
      * corresponding Progress while leaving the publication worker available. */
     SHCLTRANSFERKEY ResetKey;
     ShClTransferKeyInit(&ResetKey, 30, 40, 30);
-    hrc = ptrManagerObj->i_handleTransferStatus(&ResetKey,
-                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
-    RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(&ResetKey,
-                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
-    RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(&ResetKey,
-                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
-    RTTESTI_CHECK_RC(hrc, S_OK);
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&ResetKey,
+                                                       NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                       SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS));
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&ResetKey,
+                                                       NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                       SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS));
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&ResetKey,
+                                                       NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                       SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS));
     CHECK_HRC_OK(ptrManagerObj->i_handleTransferProgress(&ResetKey, 25, 100));
 
     aTransfers.setNull();
@@ -985,41 +978,30 @@ static void tstClipboardTransferManager(void)
     ShClTransferKeyInit(&Context.Key, 3, 4, 3);
 
     ComObjPtr<ClipboardTransferReentryListenerImpl> ptrListenerObj;
-    CHECK_HRC_OK(ptrListenerObj.createObject());
-    if (FAILED(hrc))
-        return;
-    CHECK_HRC_OK(ptrListenerObj->init(new ClipboardTransferReentryListener(), &Context));
-    if (FAILED(hrc))
-        return;
+    CHECK_HRC_OK_RETV(ptrListenerObj.createObject());
+    CHECK_HRC_OK_RETV(ptrListenerObj->init(new ClipboardTransferReentryListener(), &Context));
 
     ComPtr<IEventListener> ptrListener;
-    CHECK_HRC_OK(ptrListenerObj.queryInterfaceTo(ptrListener.asOutParam()));
-    if (FAILED(hrc))
-        return;
+    CHECK_HRC_OK_RETV(ptrListenerObj.queryInterfaceTo(ptrListener.asOutParam()));
     com::SafeArray<VBoxEventType_T> aEventTypes;
     aEventTypes.push_back(VBoxEventType_OnClipboardTransfer);
-    CHECK_HRC_OK(ptrEventSource->RegisterListener(ptrListener, ComSafeArrayAsInParam(aEventTypes), TRUE /* aActive */));
-    if (FAILED(hrc))
-        return;
+    CHECK_HRC_OK_RETV(ptrEventSource->RegisterListener(ptrListener, ComSafeArrayAsInParam(aEventTypes), TRUE /* aActive */));
 
-    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key,
-                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
-    RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key,
-                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS);
-    RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key,
-                                                NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS);
-    RTTESTI_CHECK_RC(hrc, S_OK);
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&Context.Key,
+                                                       NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                       SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS));
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&Context.Key,
+                                                       NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                       SHCLTRANSFERSTATUS_INITIALIZED, VINF_SUCCESS));
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&Context.Key,
+                                                       NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                       SHCLTRANSFERSTATUS_STARTED, VINF_SUCCESS));
     CHECK_HRC_OK(ptrManagerObj->i_handleTransferProgress(&Context.Key, 50, 100));
     RTTESTI_CHECK_RC(RTSemEventWait(Context.hDone, RT_MS_5SEC), VINF_SUCCESS);
 
     RTTESTI_CHECK(!Context.fOverflow);
     RTTESTI_CHECK(Context.fReentered);
-    RTTESTI_CHECK_RC(Context.hrcReentry, S_OK);
+    CHECK_HRC_OK(Context.hrcReentry);
     RTTESTI_CHECK(Context.cDepth == 0);
     RTTESTI_CHECK(Context.cMaxDepth == 1);
     RTTESTI_CHECK(Context.cEvents == 3);
@@ -1043,12 +1025,10 @@ static void tstClipboardTransferManager(void)
     Context.ptrHeldTransfer.setNull();
     Context.ptrHeldProgress.setNull();
     ShClTransferKeyInit(&Context.Key, 3, 5, 4);
-    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key, NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
-    RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key, NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                SHCLTRANSFERSTATUS_ERROR, VERR_ACCESS_DENIED, "dir/denied.bin");
-    RTTESTI_CHECK_RC(hrc, S_OK);
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&Context.Key, NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                       SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS));
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&Context.Key, NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                       SHCLTRANSFERSTATUS_ERROR, VERR_ACCESS_DENIED, "dir/denied.bin"));
     RTTESTI_CHECK_RC(RTSemEventWait(Context.hDone, RT_MS_5SEC), VINF_SUCCESS);
 
     RTTESTI_CHECK(!Context.fOverflow);
@@ -1072,12 +1052,9 @@ static void tstClipboardTransferManager(void)
         ClipboardTransferState_T enmFailedState = ClipboardTransferState_Added;
         ClipboardError_T enmFailedError = ClipboardError_None;
         com::Bstr bstrFailedMessage;
-        hrc = Context.ptrHeldTransfer->COMGETTER(State)(&enmFailedState);
-        RTTESTI_CHECK_RC(hrc, S_OK);
-        hrc = Context.ptrHeldTransfer->COMGETTER(Error)(&enmFailedError);
-        RTTESTI_CHECK_RC(hrc, S_OK);
-        hrc = Context.ptrHeldTransfer->COMGETTER(Message)(bstrFailedMessage.asOutParam());
-        RTTESTI_CHECK_RC(hrc, S_OK);
+        CHECK_HRC_OK(Context.ptrHeldTransfer->COMGETTER(State)(&enmFailedState));
+        CHECK_HRC_OK(Context.ptrHeldTransfer->COMGETTER(Error)(&enmFailedError));
+        CHECK_HRC_OK(Context.ptrHeldTransfer->COMGETTER(Message)(bstrFailedMessage.asOutParam()));
         RTTESTI_CHECK(enmFailedState == ClipboardTransferState_Failed);
         RTTESTI_CHECK(enmFailedError == ClipboardError_AccessDenied);
         RTTESTI_CHECK(!RTStrCmp(com::Utf8Str(bstrFailedMessage).c_str(), pszExpectedMessage));
@@ -1085,23 +1062,18 @@ static void tstClipboardTransferManager(void)
         ClipboardError_T enmEventError = ClipboardError_None;
         com::Bstr bstrEventPath;
         com::Bstr bstrEventMessage;
-        hrc = Context.ptrHeldEvent->COMGETTER(Path)(bstrEventPath.asOutParam());
-        RTTESTI_CHECK_RC(hrc, S_OK);
-        hrc = Context.ptrHeldEvent->COMGETTER(Message)(bstrEventMessage.asOutParam());
-        RTTESTI_CHECK_RC(hrc, S_OK);
-        hrc = Context.ptrHeldEvent->COMGETTER(Error)(&enmEventError);
-        RTTESTI_CHECK_RC(hrc, S_OK);
+        CHECK_HRC_OK(Context.ptrHeldEvent->COMGETTER(Path)(bstrEventPath.asOutParam()));
+        CHECK_HRC_OK(Context.ptrHeldEvent->COMGETTER(Message)(bstrEventMessage.asOutParam()));
+        CHECK_HRC_OK(Context.ptrHeldEvent->COMGETTER(Error)(&enmEventError));
         RTTESTI_CHECK(!RTStrCmp(com::Utf8Str(bstrEventPath).c_str(), "dir/denied.bin"));
         RTTESTI_CHECK(!RTStrCmp(com::Utf8Str(bstrEventMessage).c_str(), pszExpectedMessage));
         RTTESTI_CHECK(enmEventError == ClipboardError_AccessDenied);
 
         LONG hrcFailedProgress = S_OK;
-        hrc = Context.ptrHeldProgress->COMGETTER(ResultCode)(&hrcFailedProgress);
-        RTTESTI_CHECK_RC(hrc, S_OK);
+        CHECK_HRC_OK(Context.ptrHeldProgress->COMGETTER(ResultCode)(&hrcFailedProgress));
         RTTESTI_CHECK((HRESULT)hrcFailedProgress == VBOX_E_SHCL_ACCESS_DENIED);
         ComPtr<IVirtualBoxErrorInfo> ptrErrorInfo;
-        hrc = Context.ptrHeldProgress->COMGETTER(ErrorInfo)(ptrErrorInfo.asOutParam());
-        RTTESTI_CHECK_RC(hrc, S_OK);
+        CHECK_HRC_OK(Context.ptrHeldProgress->COMGETTER(ErrorInfo)(ptrErrorInfo.asOutParam()));
         RTTESTI_CHECK(ptrErrorInfo.isNotNull());
         if (ptrErrorInfo.isNotNull())
         {
@@ -1123,13 +1095,11 @@ static void tstClipboardTransferManager(void)
     Context.ptrHeldTransfer.setNull();
     Context.ptrHeldProgress.setNull();
     ShClTransferKeyInit(&Context.Key, 3, 6, 4);
-    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key, NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
-    RTTESTI_CHECK_RC(hrc, S_OK);
-    hrc = ptrManagerObj->i_handleTransferStatus(&Context.Key, NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                SHCLTRANSFERSTATUS_ERROR, VERR_ACCESS_DENIED,
-                                                "dir/\xe2\x80\x8ehidden.bin" /* U+200E */);
-    RTTESTI_CHECK_RC(hrc, S_OK);
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&Context.Key, NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                       SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS));
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&Context.Key, NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                       SHCLTRANSFERSTATUS_ERROR, VERR_ACCESS_DENIED,
+                                                       "dir/\xe2\x80\x8ehidden.bin" /* U+200E */));
     RTTESTI_CHECK_RC(RTSemEventWait(Context.hDone, RT_MS_5SEC), VINF_SUCCESS);
 
     RTTESTI_CHECK(!Context.fOverflow);
@@ -1141,12 +1111,9 @@ static void tstClipboardTransferManager(void)
         com::Bstr bstrEventPath;
         com::Bstr bstrEventMessage;
         com::Bstr bstrTransferMessage;
-        hrc = Context.ptrHeldEvent->COMGETTER(Path)(bstrEventPath.asOutParam());
-        RTTESTI_CHECK_RC(hrc, S_OK);
-        hrc = Context.ptrHeldEvent->COMGETTER(Message)(bstrEventMessage.asOutParam());
-        RTTESTI_CHECK_RC(hrc, S_OK);
-        hrc = Context.ptrHeldTransfer->COMGETTER(Message)(bstrTransferMessage.asOutParam());
-        RTTESTI_CHECK_RC(hrc, S_OK);
+        CHECK_HRC_OK(Context.ptrHeldEvent->COMGETTER(Path)(bstrEventPath.asOutParam()));
+        CHECK_HRC_OK(Context.ptrHeldEvent->COMGETTER(Message)(bstrEventMessage.asOutParam()));
+        CHECK_HRC_OK(Context.ptrHeldTransfer->COMGETTER(Message)(bstrTransferMessage.asOutParam()));
         RTTESTI_CHECK(com::Utf8Str(bstrEventPath).isEmpty());
         RTTESTI_CHECK(!RTStrCmp(com::Utf8Str(bstrEventMessage).c_str(), "Access denied"));
         RTTESTI_CHECK(!RTStrCmp(com::Utf8Str(bstrTransferMessage).c_str(), "Access denied"));
@@ -1166,27 +1133,19 @@ static void tstClipboardTransferManager(void)
     TeardownContext.fUninitOnAdded = true;
 
     ComObjPtr<ClipboardTransferReentryListenerImpl> ptrTeardownListenerObj;
-    CHECK_HRC_OK(ptrTeardownListenerObj.createObject());
-    if (FAILED(hrc))
-        return;
-    CHECK_HRC_OK(ptrTeardownListenerObj->init(new ClipboardTransferReentryListener(), &TeardownContext));
-    if (FAILED(hrc))
-        return;
+    CHECK_HRC_OK_RETV(ptrTeardownListenerObj.createObject());
+    CHECK_HRC_OK_RETV(ptrTeardownListenerObj->init(new ClipboardTransferReentryListener(), &TeardownContext));
 
     ComPtr<IEventListener> ptrTeardownListener;
-    CHECK_HRC_OK(ptrTeardownListenerObj.queryInterfaceTo(ptrTeardownListener.asOutParam()));
-    if (FAILED(hrc))
-        return;
-    CHECK_HRC_OK(ptrEventSource->RegisterListener(ptrTeardownListener, ComSafeArrayAsInParam(aEventTypes), TRUE /* aActive */));
-    if (FAILED(hrc))
-        return;
+    CHECK_HRC_OK_RETV(ptrTeardownListenerObj.queryInterfaceTo(ptrTeardownListener.asOutParam()));
+    CHECK_HRC_OK_RETV(ptrEventSource->RegisterListener(ptrTeardownListener, ComSafeArrayAsInParam(aEventTypes),
+                                                       TRUE /* aActive */));
 
-    hrc = ptrManagerObj->i_handleTransferStatus(&TeardownContext.Key, NULL /* pTransfer */,
-                                                SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
-    RTTESTI_CHECK_RC(hrc, S_OK);
+    CHECK_HRC_OK(ptrManagerObj->i_handleTransferStatus(&TeardownContext.Key, NULL /* pTransfer */,
+                                                       SHCLSOURCE_REMOTE, SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS));
     RTTESTI_CHECK_RC(RTSemEventWait(TeardownContext.hDone, RT_MS_5SEC), VINF_SUCCESS);
     RTTESTI_CHECK(TeardownContext.fReentered);
-    RTTESTI_CHECK_RC(TeardownContext.hrcReentry, S_OK);
+    CHECK_HRC_OK(TeardownContext.hrcReentry);
     RTTESTI_CHECK(TeardownContext.cDepth == 0);
     RTTESTI_CHECK(TeardownContext.cMaxDepth == 1);
     RTTESTI_CHECK(TeardownContext.cEvents == 1);
@@ -1196,16 +1155,13 @@ static void tstClipboardTransferManager(void)
     {
         RTTESTI_CHECK(tstClipboardTransferWaitCompleted(TeardownContext.ptrHeldProgress));
         RTTESTI_CHECK(tstClipboardTransferWaitWorkerStopped(ptrManagerObj));
-        hrc = TeardownContext.ptrHeldTransfer->COMGETTER(State)(&enmTransferState);
-        RTTESTI_CHECK_RC(hrc, S_OK);
+        CHECK_HRC_OK(TeardownContext.ptrHeldTransfer->COMGETTER(State)(&enmTransferState));
         RTTESTI_CHECK(enmTransferState == ClipboardTransferState_Removed);
         fCompleted = FALSE;
-        hrc = TeardownContext.ptrHeldProgress->COMGETTER(Completed)(&fCompleted);
-        RTTESTI_CHECK_RC(hrc, S_OK);
+        CHECK_HRC_OK(TeardownContext.ptrHeldProgress->COMGETTER(Completed)(&fCompleted));
         RTTESTI_CHECK(fCompleted == TRUE);
         LONG hrcResult = S_OK;
-        hrc = TeardownContext.ptrHeldProgress->COMGETTER(ResultCode)(&hrcResult);
-        RTTESTI_CHECK_RC(hrc, S_OK);
+        CHECK_HRC_OK(TeardownContext.ptrHeldProgress->COMGETTER(ResultCode)(&hrcResult));
         RTTESTI_CHECK((HRESULT)hrcResult == E_ABORT);
     }
     CHECK_HRC_OK(ptrEventSource->UnregisterListener(ptrTeardownListener));
@@ -1216,12 +1172,8 @@ static void tstClipboardTransferManager(void)
     for (uint32_t i = 0; i < 3; ++i)
     {
         ComObjPtr<ClipboardTransferManager> ptrCleanupManager;
-        CHECK_HRC_OK(ptrCleanupManager.createObject());
-        if (FAILED(hrc))
-            break;
-        CHECK_HRC_OK(ptrCleanupManager->init(ptrEventSource));
-        if (FAILED(hrc))
-            break;
+        CHECK_HRC_OK_RETV(ptrCleanupManager.createObject());
+        CHECK_HRC_OK_RETV(ptrCleanupManager->init(ptrEventSource));
         if (i != 0)
             ptrCleanupManager->i_setPublicationWorkerSignalsSuppressed(true);
         if (i == 2)
@@ -1229,16 +1181,16 @@ static void tstClipboardTransferManager(void)
             SHCLTRANSFERKEY CleanupKey;
             ShClTransferKeyInit(&CleanupKey, ShClTransferKeyGetSessionId(&Key) + 1,
                                 ShClTransferKeyGetTransferId(&Key), Key.uGeneration);
-            hrc = ptrCleanupManager->i_handleTransferStatus(&CleanupKey,
-                                                             NULL /* pTransfer */, SHCLSOURCE_REMOTE,
-                                                             SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS);
-            RTTESTI_CHECK_RC(hrc, S_OK);
+            CHECK_HRC_OK(ptrCleanupManager->i_handleTransferStatus(&CleanupKey,
+                                                                   NULL /* pTransfer */, SHCLSOURCE_REMOTE,
+                                                                   SHCLTRANSFERSTATUS_REQUESTED, VINF_SUCCESS));
         }
         ptrCleanupManager->uninit();
         RTTESTI_CHECK(tstClipboardTransferWaitWorkerStopped(ptrCleanupManager));
     }
 }
-#endif
+
+#endif /* VBOX_WITH_SHARED_CLIPBOARD_TRANSFERS */
 
 
 int main(int argc, char **argv)
