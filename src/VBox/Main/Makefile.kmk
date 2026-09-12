@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 113545 2026-03-24 17:35:10Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 115243 2026-09-12 22:53:32Z knut.osmundsen@oracle.com $
 ## @file
 # Makefile for the VBox Main module.
 #
@@ -503,6 +503,8 @@ if !defined(VBOX_ONLY_SDK) && !defined(VBOX_ONLY_EXTPACKS) # Note this goes on f
   	src-global/win/VirtualBoxSDSImpl.cpp \
   	src-global/win/VBoxSDS.rc \
   	src-all/MachineLaunchVMCommonWorker.cpp
+  VBoxSDS_LDFLAGS = \
+  	$(PATH_SDK_$(VBOX_WINPSDK)_LIB)/psapi.lib
   $(call KB_FN_DO_PASS0_ON_TARGET,VBoxSDS) # Sets VBoxSDS_0_OUTDIR
 
   src-global/win/VBoxSDS.rc_INCS = $(VBoxSDS_0_OUTDIR)
