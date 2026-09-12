@@ -1,4 +1,4 @@
-/* $Id: VirtioCore.cpp 114283 2026-06-09 09:57:21Z michal.necasek@oracle.com $ */
+/* $Id: VirtioCore.cpp 115241 2026-09-12 19:21:48Z aleksey.ilyushin@oracle.com $ */
 
 /** @file
  * VirtioCore - Virtio Core (PCI, feature & config mgt, queue mgt & proxy, notification mgt)
@@ -1190,6 +1190,11 @@ DECLHIDDEN(int) virtioCoreR3VirtqAvailBufGet(PPDMDEVINS pDevIns, PVIRTIOCORE pVi
         STAM_REL_COUNTER_ADD(&pVirtio->StatDescChainsSegsIn, cSegsIn);
 #endif
     }
+    else
+    {
+        pVirtqBuf->pSgPhysReturn = NULL;
+        pVirtqBuf->cbPhysReturn  = 0;
+    }
 
     if (cSegsOut)
     {
@@ -1199,6 +1204,11 @@ DECLHIDDEN(int) virtioCoreR3VirtqAvailBufGet(PPDMDEVINS pDevIns, PVIRTIOCORE pVi
 #ifdef VBOX_WITH_STATISTICS
         STAM_REL_COUNTER_ADD(&pVirtio->StatDescChainsSegsOut, cSegsOut);
 #endif
+    }
+    else
+    {
+        pVirtqBuf->pSgPhysSend   = NULL;
+        pVirtqBuf->cbPhysSend    = 0;
     }
 
 #ifdef VBOX_WITH_STATISTICS
