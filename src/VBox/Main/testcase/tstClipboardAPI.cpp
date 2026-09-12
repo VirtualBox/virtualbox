@@ -1,4 +1,4 @@
-/* $Id: tstClipboardAPI.cpp 115233 2026-09-11 21:50:40Z knut.osmundsen@oracle.com $ */
+/* $Id: tstClipboardAPI.cpp 115236 2026-09-12 11:38:50Z knut.osmundsen@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Public API object testcase.
  */
@@ -698,9 +698,7 @@ static void tstClipboardTransferManager(void)
 
     ComPtr<IProgress> ptrProgress;
     CHECK_HRC_OK(aTransfers[0]->COMGETTER(Progress)(ptrProgress.asOutParam()));
-    RTTESTI_CHECK(ptrProgress.isNotNull());
-    if (ptrProgress.isNull())
-        return;
+    RTTESTI_CHECK_RETV(ptrProgress.isNotNull());
 
     BOOL fCancelable = FALSE;
     CHECK_HRC_OK(ptrProgress->COMGETTER(Cancelable)(&fCancelable));
@@ -1201,6 +1199,7 @@ int main(int argc, char **argv)
     if (rcExit != RTEXITCODE_SUCCESS)
         return rcExit;
     RTTestBanner(hTest);
+    com::Initialize();
 
 #ifdef RT_OS_WINDOWS
     /* The in-process Main objects require one ATL module in this linking namespace. */
@@ -1213,5 +1212,7 @@ int main(int argc, char **argv)
     tstClipboardTransfer();
     tstClipboardTransferManager();
 #endif
+
+    com::Shutdown();
     return RTTestSummaryAndDestroy(hTest);
 }
