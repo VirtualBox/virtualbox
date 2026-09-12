@@ -1,4 +1,4 @@
-/* $Id: tstClipboardAPI.cpp 115236 2026-09-12 11:38:50Z knut.osmundsen@oracle.com $ */
+/* $Id: tstClipboardAPI.cpp 115237 2026-09-12 11:50:54Z knut.osmundsen@oracle.com $ */
 /** @file
  * Main Shared Clipboard - Public API object testcase.
  */
@@ -40,6 +40,7 @@
 # include "EventImpl.h"
 # include <VBox/com/listeners.h>
 #endif
+#include <VBox/com/com.h>
 
 #include <iprt/string.h>
 #include <iprt/semaphore.h>
