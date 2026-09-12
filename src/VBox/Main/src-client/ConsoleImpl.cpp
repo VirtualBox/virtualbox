@@ -1,4 +1,4 @@
-/* $Id: ConsoleImpl.cpp 114286 2026-06-09 12:49:23Z vadim.galitsyn@oracle.com $ */
+/* $Id: ConsoleImpl.cpp 115239 2026-09-12 12:58:56Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBox Console COM Class implementation
  */
@@ -5599,49 +5599,52 @@ DECLCALLBACK(int) Console::i_changeSerialPortAttachment(Console *pThis, PUVM pUV
     if (SUCCEEDED(hrc))
     {
         /* Check whether the port mode changed and act accordingly. */
-        Assert(ulSlot < 4);
-
-        PortMode_T eHostMode;
-        hrc = pSerialPort->COMGETTER(HostMode)(&eHostMode);
-        if (SUCCEEDED(hrc))
+        if (ulSlot < 4)
         {
-            PCFGMNODE pInst = pVMM->pfnCFGMR3GetChildF(pVMM->pfnCFGMR3GetRootU(pUVM), "Devices/serial/%d/", ulSlot);
-            AssertRelease(pInst);
-
-            /* Remove old driver. */
-            if (pThis->m_aeSerialPortMode[ulSlot] != PortMode_Disconnected)
+            PortMode_T eHostMode;
+            hrc = pSerialPort->COMGETTER(HostMode)(&eHostMode);
+            if (SUCCEEDED(hrc))
             {
-                vrc = pVMM->pfnPDMR3DeviceDetach(pUVM, "serial", ulSlot, 0, 0);
-                PCFGMNODE pLunL0 = pVMM->pfnCFGMR3GetChildF(pInst, "LUN#0");
-                pVMM->pfnCFGMR3RemoveNode(pLunL0);
-            }
+                PCFGMNODE pInst = pVMM->pfnCFGMR3GetChildF(pVMM->pfnCFGMR3GetRootU(pUVM), "Devices/serial/%d/", ulSlot);
+                AssertRelease(pInst);
 
-            if (RT_SUCCESS(vrc))
-            {
-                BOOL fServer;
-                Bstr bstrPath;
-                hrc = pSerialPort->COMGETTER(Server)(&fServer);
-                if (SUCCEEDED(hrc))
-                    hrc = pSerialPort->COMGETTER(Path)(bstrPath.asOutParam());
-
-                /* Configure new driver. */
-                if (   SUCCEEDED(hrc)
-                    && eHostMode != PortMode_Disconnected)
+                /* Remove old driver. */
+                if (pThis->m_aeSerialPortMode[ulSlot] != PortMode_Disconnected)
                 {
-                    vrc = pThis->i_configSerialPort(pInst, eHostMode, Utf8Str(bstrPath).c_str(), RT_BOOL(fServer));
-                    if (RT_SUCCESS(vrc))
-                    {
-                        /*
-                         * Attach the driver.
-                         */
-                        PPDMIBASE pBase;
-                        vrc = pVMM->pfnPDMR3DeviceAttach(pUVM, "serial", ulSlot, 0, 0, &pBase);
+                    vrc = pVMM->pfnPDMR3DeviceDetach(pUVM, "serial", ulSlot, 0, 0);
+                    PCFGMNODE pLunL0 = pVMM->pfnCFGMR3GetChildF(pInst, "LUN#0");
+                    pVMM->pfnCFGMR3RemoveNode(pLunL0);
+                }
 
-                        pVMM->pfnCFGMR3Dump(pInst);
+                if (RT_SUCCESS(vrc))
+                {
+                    BOOL fServer;
+                    Bstr bstrPath;
+                    hrc = pSerialPort->COMGETTER(Server)(&fServer);
+                    if (SUCCEEDED(hrc))
+                        hrc = pSerialPort->COMGETTER(Path)(bstrPath.asOutParam());
+
+                    /* Configure new driver. */
+                    if (   SUCCEEDED(hrc)
+                        && eHostMode != PortMode_Disconnected)
+                    {
+                        vrc = pThis->i_configSerialPort(pInst, eHostMode, Utf8Str(bstrPath).c_str(), RT_BOOL(fServer));
+                        if (RT_SUCCESS(vrc))
+                        {
+                            /*
+                             * Attach the driver.
+                             */
+                            PPDMIBASE pBase;
+                            vrc = pVMM->pfnPDMR3DeviceAttach(pUVM, "serial", ulSlot, 0, 0, &pBase);
+
+                            pVMM->pfnCFGMR3Dump(pInst);
+                        }
                     }
                 }
             }
         }
+        else
+            vrc = VERR_BUFFER_OVERFLOW;
     }
 
     if (RT_SUCCESS(vrc) && FAILED(hrc))
@@ -5676,35 +5679,38 @@ HRESULT Console::i_onSerialPortChange(ISerialPort *aSerialPort)
         if (SUCCEEDED(hrc) && fEnabled)
         {
             /* Check whether the port mode changed and act accordingly. */
-            Assert(ulSlot < 4);
-
-            PortMode_T eHostMode;
-            hrc = aSerialPort->COMGETTER(HostMode)(&eHostMode);
-            if (SUCCEEDED(hrc) && m_aeSerialPortMode[ulSlot] != eHostMode)
+            if (ulSlot < 4)
             {
-                /*
-                 * Suspend the VM first.
-                 */
-                bool fResume = false;
-                hrc = i_suspendBeforeConfigChange(ptrVM.rawUVM(), ptrVM.vtable(), NULL, &fResume);
-                if (FAILED(hrc))
-                    return hrc;
+                PortMode_T eHostMode;
+                hrc = aSerialPort->COMGETTER(HostMode)(&eHostMode);
+                if (SUCCEEDED(hrc) && m_aeSerialPortMode[ulSlot] != eHostMode)
+                {
+                    /*
+                     * Suspend the VM first.
+                     */
+                    bool fResume = false;
+                    hrc = i_suspendBeforeConfigChange(ptrVM.rawUVM(), ptrVM.vtable(), NULL, &fResume);
+                    if (FAILED(hrc))
+                        return hrc;
 
-                /*
-                 * Call worker in EMT, that's faster and safer than doing everything
-                 * using VM3ReqCallWait.
-                 */
-                int vrc = ptrVM.vtable()->pfnVMR3ReqCallWaitU(ptrVM.rawUVM(), 0 /*idDstCpu*/,
-                                                              (PFNRT)i_changeSerialPortAttachment, 4,
-                                                              this, ptrVM.rawUVM(), ptrVM.vtable(), aSerialPort);
+                    /*
+                     * Call worker in EMT, that's faster and safer than doing everything
+                     * using VM3ReqCallWait.
+                     */
+                    int vrc = ptrVM.vtable()->pfnVMR3ReqCallWaitU(ptrVM.rawUVM(), 0 /*idDstCpu*/,
+                                                                  (PFNRT)i_changeSerialPortAttachment, 4,
+                                                                  this, ptrVM.rawUVM(), ptrVM.vtable(), aSerialPort);
 
-                if (fResume)
-                    i_resumeAfterConfigChange(ptrVM.rawUVM(), ptrVM.vtable());
-                if (RT_SUCCESS(vrc))
-                    m_aeSerialPortMode[ulSlot] = eHostMode;
-                else
-                    hrc = setErrorBoth(E_FAIL, vrc, tr("Failed to change the serial port attachment (%Rrc)"), vrc);
+                    if (fResume)
+                        i_resumeAfterConfigChange(ptrVM.rawUVM(), ptrVM.vtable());
+                    if (RT_SUCCESS(vrc))
+                        m_aeSerialPortMode[ulSlot] = eHostMode;
+                    else
+                        hrc = setErrorBoth(E_FAIL, vrc, tr("Failed to change the serial port attachment (%Rrc)"), vrc);
+                }
             }
+            else
+                hrc = setErrorBoth(E_FAIL, VERR_BUFFER_OVERFLOW, tr("The slot index exceeds the maximum allowed (%u vs 4)"), ulSlot);
         }
     }
 
