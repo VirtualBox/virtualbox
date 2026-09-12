@@ -1,4 +1,4 @@
-/* $Id: VirtualBoxSDSImpl.cpp 115234 2026-09-12 08:37:39Z aleksey.ilyushin@oracle.com $ */
+/* $Id: VirtualBoxSDSImpl.cpp 115242 2026-09-12 22:52:04Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBox Global COM Class implementation.
  */
@@ -52,6 +52,7 @@
 #include <rpcdcep.h>
 #include <sddl.h>
 #include <lmcons.h> /* UNLEN */
+#include <psapi.h> /* for GetProcessImageFileNameW */
 
 #include "MachineLaunchVMCommonWorker.h"
 
@@ -177,7 +178,8 @@ public:
 *********************************************************************************************************************************/
 
 VirtualBoxSDS::VirtualBoxSDS()
-    : m_cVBoxSvcProcesses(0)
+    : m_offNtPathSDSFilename(0)
+    , m_cVBoxSvcProcesses(0)
 #ifdef WITH_WATCHER
     , m_cWatchers(0)
     , m_papWatchers(NULL)
@@ -208,6 +210,29 @@ HRESULT VirtualBoxSDS::FinalConstruct()
     vrc = RTCritSectInit(&m_WatcherCritSect);
     AssertLogRelRCReturn(vrc, E_FAIL);
 #endif
+
+    /* Get the NT path of the VBoxSDS.exe file we're running. */
+    m_offNtPathSDSFilename = 0;
+    RT_ZERO(m_wszNtPathSDS);
+    UINT const  cwcNtPathSDS = GetProcessImageFileNameW(GetCurrentProcess(), m_wszNtPathSDS, RT_ELEMENTS(m_wszNtPathSDS) - 1);
+    DWORD const dwErr        = GetLastError();
+    m_wszNtPathSDS[RT_ELEMENTS(m_wszNtPathSDS) - 1] = '\0'; /* paranoia */
+    if (cwcNtPathSDS != 0 && cwcNtPathSDS < RT_ELEMENTS(m_wszNtPathSDS))
+    {
+        m_wszNtPathSDS[cwcNtPathSDS] = '\0'; /* paranoia */
+
+        PRTUTF16 const pwszFilename = RTPathFilenameExUtf16(m_wszNtPathSDS, RTPATH_STR_F_STYLE_DOS);
+        if (pwszFilename)
+        {
+            m_offNtPathSDSFilename = (size_t)(pwszFilename - m_wszNtPathSDS);
+            LogRel(("VirtualBoxSDS init: directory length %d, SDS path \"%ls\"\n", m_offNtPathSDSFilename, m_wszNtPathSDS));
+        }
+        else /** @todo this is actually fatal. */
+            LogRel(("ERROR! VirtualBoxSDS init: client path \"%ls\" could not be split!\n", m_wszNtPathSDS));
+    }
+    else /** @todo this is actually fatal. */
+        LogRel(("ERROR! VirtualBoxSDS init: unexpected status from GetProcessImageFileNameW %d (%#x), \"%ls\"\n",
+                dwErr, dwErr, m_wszNtPathSDS));
 
     LogRelFlowThisFuncLeave();
     return S_OK;
@@ -283,12 +308,37 @@ STDMETHODIMP VirtualBoxSDS::RegisterVBoxSVC(IVBoxSVCRegistration *aVBoxSVC, LONG
         CallAttribs.ClientPID = (HANDLE)(intptr_t)aPid;
         rcRpc = RPC_S_OK;
     }
-
     HRESULT hrc;
-    if (   RT_VALID_PTR(aVBoxSVC)
-        && RT_VALID_PTR(aExistingVirtualBox)
-        && rcRpc == RPC_S_OK
-        && (intptr_t)CallAttribs.ClientPID == aPid)
+    if (rcRpc != RPC_S_OK)
+    {
+        LogRel(("registerVBoxSVC: rcRpc=%d (%#x)!\n", rcRpc, rcRpc));
+        hrc = E_UNEXPECTED;
+    }
+    else if ((intptr_t)CallAttribs.ClientPID != aPid)
+    {
+        LogRel(("registerVBoxSVC: Client PID mismatch: aPid=%d (%#x), RPC ClientPID=%zd (%#zx)\n",
+                aPid, aPid, CallAttribs.ClientPID, CallAttribs.ClientPID));
+        hrc = E_INVALIDARG;
+    }
+    /*
+     * Argument checking.
+     */
+    else if (   !RT_VALID_PTR(aVBoxSVC)
+             || !RT_VALID_PTR(aExistingVirtualBox))
+    {
+        LogRel(("registerVBoxSVC: Invalid pointer argument(s)! %p %p\n", aVBoxSVC, aExistingVirtualBox));
+        hrc = E_INVALIDARG;
+    }
+    /*
+     * Check that the alleged VBoxSVC process image lives in the same directory as
+     * the image of our process.
+     */
+    else if (!i_checkClientImagePath((DWORD)(intptr_t)aPid))
+    {
+        LogRel(("registerVBoxSVC: Client image path check failed! Rejecting.\n"));
+        hrc = E_ACCESSDENIED;
+    }
+    else
     {
         *aExistingVirtualBox = NULL;
 
@@ -502,20 +552,6 @@ STDMETHODIMP VirtualBoxSDS::RegisterVBoxSVC(IVBoxSVCRegistration *aVBoxSVC, LONG
         else
             hrc = E_FAIL;
     }
-    else if (   !RT_VALID_PTR(aVBoxSVC)
-             || !RT_VALID_PTR(aExistingVirtualBox))
-        hrc = E_INVALIDARG;
-    else if (rcRpc != RPC_S_OK)
-    {
-        LogRel(("registerVBoxSVC: rcRpc=%d (%#x)!\n", rcRpc, rcRpc));
-        hrc = E_UNEXPECTED;
-    }
-    else
-    {
-        LogRel(("registerVBoxSVC: Client PID mismatch: aPid=%d (%#x), RPC ClientPID=%zd (%#zx)\n",
-                aPid, aPid, CallAttribs.ClientPID, CallAttribs.ClientPID));
-        hrc = E_INVALIDARG;
-    }
     LogRel2(("VirtualBoxSDS::registerVBoxSVC: returns %Rhrc\n", hrc));
     return hrc;
 }
@@ -630,6 +666,58 @@ STDMETHODIMP VirtualBoxSDS::LaunchVMProcess(IN_BSTR aMachine, IN_BSTR aComment, 
 /*********************************************************************************************************************************
 *   VirtualBoxSDS - Internal Methods                                                                                             *
 *********************************************************************************************************************************/
+
+/**
+ * Worker for RegisterVBoxSVC() to check the image file of the alleged
+ * VBoxSVC process.
+ */
+bool VirtualBoxSDS::i_checkClientImagePath(DWORD aPid)
+{
+    /*
+     * Open the client process and query the NT path of the process image.
+     */
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, aPid);
+    if (hProcess)
+    {
+        RTUTF16     wszClientImage[RTPATH_MAX] = {};
+        UINT const  cwcClientImage = GetProcessImageFileNameW(hProcess, wszClientImage, RT_ELEMENTS(wszClientImage) - 1);
+        DWORD const dwErr          = GetLastError();
+        CloseHandle(hProcess);
+        wszClientImage[RT_ELEMENTS(wszClientImage) - 1] = '\0';  /* paranoia */
+
+        if (cwcClientImage != 0 && cwcClientImage < RT_ELEMENTS(wszClientImage))
+        {
+            wszClientImage[cwcClientImage] = '\0'; /* paranoia */
+
+            /*
+             * Compare the path up to the filename with that of our own process image
+             * (VBoxSDS.exe), making sure they are both in the same directory.
+             */
+            PRTUTF16 const pwszFilename = RTPathFilenameExUtf16(wszClientImage, RTPATH_STR_F_STYLE_DOS);
+            if (pwszFilename)
+            {
+                size_t const offFilename = pwszFilename - wszClientImage;
+                if (   offFilename == m_offNtPathSDSFilename
+                    && RTUtf16NICmp(wszClientImage, m_wszNtPathSDS, offFilename) == 0)
+                {
+                    LogRel(("VirtualBoxSDS client check succeeded: directory length %d, SDS path \"%ls\"\n", offFilename, wszClientImage));
+                    return true;
+                }
+
+                LogRel(("VirtualBoxSDS client check failed: directory length %d vs %d, client path \"%ls\"\n",
+                        offFilename, m_offNtPathSDSFilename, wszClientImage));
+            }
+            else
+                LogRel(("VirtualBoxSDS client check failed: client path \"%ls\" could not be split\n", wszClientImage));
+        }
+        else
+            LogRel(("VirtualBoxSDS client check failed: unexpected status from GetProcessImageFileNameW: %d (%#x), \"%ls\"\n",
+                    dwErr, dwErr, wszClientImage));
+    }
+    else
+        LogRel(("VirtualBoxSDS client check failed: unexpected status from OpenProcess %#x, pid %u\n", GetLastError(), aPid));
+    return false;
+}
 
 /*static*/ bool VirtualBoxSDS::i_getClientUserSid(com::Utf8Str *a_pStrSid, com::Utf8Str *a_pStrUsername)
 {

@@ -1,4 +1,4 @@
-/* $Id: VirtualBoxSDSImpl.h 115234 2026-09-12 08:37:39Z aleksey.ilyushin@oracle.com $ */
+/* $Id: VirtualBoxSDSImpl.h 115242 2026-09-12 22:52:04Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBox Global COM Class definition
  */
@@ -32,6 +32,8 @@
 #endif
 
 #include "VirtualBoxBase.h"
+#include <iprt/types.h>
+#include <iprt/path.h> /* RTPATH_MAX */
 
 /* Enable the watcher code in debug builds. */
 #ifdef DEBUG
@@ -66,6 +68,10 @@ class VirtualBoxSDS
     , public ATL::CComCoClass<VirtualBoxSDS, &CLSID_VirtualBoxSDS>
 {
 private:
+    /** NT path to the VBoxSDS.exe image we're running. */
+    RTUTF16                 m_wszNtPathSDS[RTPATH_MAX];
+    /** The offset into m_wszNtPathSDS of the filename. */
+    size_t                  m_offNtPathSDSFilename;
     typedef std::map<com::Utf8Str, VBoxSDSPerUserData *> UserDataMap_T;
     /** Per user data map (key is SID string).
      * This is an insert-only map! */
@@ -73,14 +79,14 @@ private:
     /** Number of registered+watched VBoxSVC processes. */
     uint32_t                m_cVBoxSvcProcesses;
 #ifdef WITH_WATCHER
-    /** Number of watcher threads.   */
+    /** Number of watcher threads. */
     uint32_t                m_cWatchers;
     /** Pointer to an array of watcher pointers. */
     VBoxSDSWatcher        **m_papWatchers;
     /** Lock protecting m_papWatchers and associated structures. */
     RTCRITSECT              m_WatcherCritSect;
 #endif
-    /** Lock protecting m_UserDataMap . */
+    /** Lock protecting m_UserDataMap. */
     RTCRITSECTRW            m_MapCritSect;
 
 public:
@@ -111,6 +117,13 @@ private:
 
     /** @name Private methods
      * @{ */
+    /**
+     * Returns if client EXE path is in the expected directory.
+     *
+     * @returns \c true if OK, \c false if not.
+     */
+    bool i_checkClientImagePath(DWORD aPid);
+
     /**
      * Gets the client user SID of the
      */
