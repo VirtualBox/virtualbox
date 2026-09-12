@@ -1,4 +1,4 @@
-/* $Id: DevVirtioNet.cpp 113840 2026-04-13 12:48:59Z aleksey.ilyushin@oracle.com $ */
+/* $Id: DevVirtioNet.cpp 115240 2026-09-12 19:19:05Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBox storage devices - Virtio NET Driver
  *
@@ -2863,6 +2863,18 @@ static int virtioNetR3TransmitPkts(PPDMDEVINS pDevIns, PVIRTIONET pThis, PVIRTIO
         Log10Func(("[%s] fetched descriptor chain from %s\n", pThis->szInst, pTxVirtq->szName));
 
         PVIRTIOSGBUF pSgPhysSend = pVirtqBuf->pSgPhysSend;
+
+        if (!pSgPhysSend)
+        {
+            LogFunc(("[%s] TX descriptor chain has no OUT segment, skipping it...\n", pThis->szInst));
+            virtioCoreR3VirtqAvailBufNext(pVirtio, pTxVirtq->uIdx);
+
+            /* No data to return to guest, but necessary to put elem (e.g. desc chain head idx) on used ring */
+            virtioCoreR3VirtqUsedBufPut(pVirtio->pDevInsR3, pVirtio, pTxVirtq->uIdx, NULL, pVirtqBuf, true /* fFence */);
+            virtioCoreVirtqUsedRingSync(pVirtio->pDevInsR3, pVirtio, pTxVirtq->uIdx);
+            break;
+        }
+
         PVIRTIOSGSEG paSegsFromGuest = pSgPhysSend->paSegs;
         uint32_t cSegsFromGuest = pSgPhysSend->cSegs;
         size_t uFrameSize = 0;
