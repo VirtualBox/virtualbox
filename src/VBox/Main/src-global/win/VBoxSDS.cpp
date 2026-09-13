@@ -1,4 +1,4 @@
-/* $Id: VBoxSDS.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxSDS.cpp 115246 2026-09-13 12:47:32Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBoxSDS - COM global service main entry (System Directory Service)
  */
@@ -113,6 +113,7 @@
 #include <iprt/string.h>
 
 #include <VBox/com/microatl.h>
+#include <VBox/sup.h>
 
 #include <package-generated.h>
 #include "product-generated.h"
@@ -1029,6 +1030,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             return RTMsgErrorExit(RTEXITCODE_FAILURE, "failed to open release log (%s, %Rrc)", ErrInfo.Core.pszMsg, vrc);
     }
 
+    /*
+     * Initialize the hardened image verification (nop in non-hardened builds).
+     * We need this later for verfiying alleged VBoxSVC processes.
+     */
+    int rc = SUPR3HardenedVerifyInit();
+    if (RT_FAILURE(rc))
+        LogRel(("ERROR: SUPR3HardenedVerifyInit failed: %Rrc\n", rc));
 
     /*
      * Initialize COM.
@@ -1105,6 +1113,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     else
         LogRelFunc(("VBoxSDS: COM initialization failed: %Rrc\n", hrcExit));
 
+    SUPR3HardenedVerifyTerm();
     LogRelFunc(("VBoxSDS: COM service process ends: hrcExit=%Rhrc (%#x)\n", hrcExit, hrcExit));
     return (int)hrcExit;
 }

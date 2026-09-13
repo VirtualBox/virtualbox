@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 115212 2026-09-09 12:02:21Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 115246 2026-09-13 12:47:32Z knut.osmundsen@oracle.com $
 ## @file
 # Sub-Makefile for the support library and the drivers/modules/kexts it uses.
 #
@@ -193,6 +193,7 @@ SUPR3_DEFS          = \
 	IN_SUP_R3 IN_RT_R3 \
 	$(if $(VBOX_WITH_SUPSVC),VBOX_WITH_SUPSVC) \
 	$(if $(VBOX_WITH_MAIN),VBOX_WITH_MAIN,) \
+	$(if $(VBOX_WITH_SDS),VBOX_WITH_SDS,) \
 	$(if $(VBOX_WITH_RAW_MODE),VBOX_WITH_RAW_MODE,) \
 	$(if $(VBOX_WITH_DRIVERLESS_NEM_FALLBACK),VBOX_WITH_DRIVERLESS_NEM_FALLBACK,) \
 	$(if $(VBOX_WITH_R0_MODULES),VBOX_WITH_R0_MODULES,) \
@@ -240,6 +241,7 @@ SUPR3HardenedStatic_DEFS     = IN_SUP_HARDENED_R3
 SUPR3HardenedStatic_DEFS    += \
 	$(if $(VBOX_WITH_SUPSVC),VBOX_WITH_SUPSVC,) \
 	$(if $(VBOX_WITH_MAIN),VBOX_WITH_MAIN,) \
+	$(if $(VBOX_WITH_SDS),VBOX_WITH_SDS,) \
 	$(if $(VBOX_WITH_RAW_MODE),VBOX_WITH_RAW_MODE,) \
 	$(if $(VBOX_WITH_DRIVERLESS_NEM_FALLBACK),VBOX_WITH_DRIVERLESS_NEM_FALLBACK,) \
 	$(if $(VBOX_WITH_R0_MODULES),VBOX_WITH_R0_MODULES,) \
