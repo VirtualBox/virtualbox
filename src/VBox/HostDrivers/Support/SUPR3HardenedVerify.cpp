@@ -1,4 +1,4 @@
-/* $Id: SUPR3HardenedVerify.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPR3HardenedVerify.cpp 115245 2026-09-13 12:46:47Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library - Verification of Hardened Installation.
  */
@@ -182,16 +182,19 @@ static SUPINSTFILE const    g_aSupInstallFiles[] =
 
 #ifdef VBOX_WITH_MAIN
     {   kSupIFT_Exe,  kSupID_AppBin,            false, "VBoxSVC" SUPLIB_EXE_SUFF },
- #ifdef RT_OS_WINDOWS
+# ifdef RT_OS_WINDOWS
     {   kSupIFT_Dll,  kSupID_AppSharedLib,      false, "VBoxC" SUPLIB_DLL_SUFF },
- #else
+#  ifdef VBOX_WITH_SDS
+    {   kSupIFT_Exe,  kSupID_AppBin,            false, "VBoxSDS" SUPLIB_EXE_SUFF },
+#  endif
+# else
     {   kSupIFT_Dll,  kSupID_AppPrivArch,       false, "VBoxXPCOMIPCD" SUPLIB_DLL_SUFF },
     {   kSupIFT_Dll,  kSupID_AppSharedLib,      false, "VBoxXPCOM" SUPLIB_DLL_SUFF },
     {   kSupIFT_Dll,  kSupID_AppPrivArchComp,   false, "VBoxXPCOMIPCC" SUPLIB_DLL_SUFF },
     {   kSupIFT_Dll,  kSupID_AppPrivArchComp,   false, "VBoxC" SUPLIB_DLL_SUFF },
     {   kSupIFT_Dll,  kSupID_AppPrivArchComp,   false, "VBoxSVCM" SUPLIB_DLL_SUFF },
     {   kSupIFT_Data, kSupID_AppPrivArchComp,   false, "VBoxXPCOMBase.xpt" },
- #endif
+# endif
 #endif
 
     {   kSupIFT_Dll,  kSupID_AppSharedLib,       true, "VRDPAuth" SUPLIB_DLL_SUFF },
