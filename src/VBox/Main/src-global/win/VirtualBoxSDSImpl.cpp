@@ -1,4 +1,4 @@
-/* $Id: VirtualBoxSDSImpl.cpp 115242 2026-09-12 22:52:04Z knut.osmundsen@oracle.com $ */
+/* $Id: VirtualBoxSDSImpl.cpp 115244 2026-09-13 12:46:13Z knut.osmundsen@oracle.com $ */
 /** @file
  * VBox Global COM Class implementation.
  */
@@ -32,6 +32,7 @@
 #define LOG_GROUP LOG_GROUP_MAIN_VIRTUALBOXSDS
 #include <VBox/com/VirtualBox.h>
 #include <VBox/com/utils.h>
+#include <VBox/sup.h>
 #include "VirtualBoxSDSImpl.h"
 
 #include "AutoCaller.h"
@@ -333,9 +334,9 @@ STDMETHODIMP VirtualBoxSDS::RegisterVBoxSVC(IVBoxSVCRegistration *aVBoxSVC, LONG
      * Check that the alleged VBoxSVC process image lives in the same directory as
      * the image of our process.
      */
-    else if (!i_checkClientImagePath((DWORD)(intptr_t)aPid))
+    else if (!i_checkClientImage((DWORD)(intptr_t)aPid))
     {
-        LogRel(("registerVBoxSVC: Client image path check failed! Rejecting.\n"));
+        LogRel(("registerVBoxSVC: Client image check failed! Rejecting.\n"));
         hrc = E_ACCESSDENIED;
     }
     else
@@ -667,11 +668,7 @@ STDMETHODIMP VirtualBoxSDS::LaunchVMProcess(IN_BSTR aMachine, IN_BSTR aComment, 
 *   VirtualBoxSDS - Internal Methods                                                                                             *
 *********************************************************************************************************************************/
 
-/**
- * Worker for RegisterVBoxSVC() to check the image file of the alleged
- * VBoxSVC process.
- */
-bool VirtualBoxSDS::i_checkClientImagePath(DWORD aPid)
+bool VirtualBoxSDS::i_checkClientImage(DWORD aPid)
 {
     /*
      * Open the client process and query the NT path of the process image.
@@ -698,14 +695,52 @@ bool VirtualBoxSDS::i_checkClientImagePath(DWORD aPid)
             {
                 size_t const offFilename = pwszFilename - wszClientImage;
                 if (   offFilename == m_offNtPathSDSFilename
-                    && RTUtf16NICmp(wszClientImage, m_wszNtPathSDS, offFilename) == 0)
+                    && RTUtf16NICmp(wszClientImage, m_wszNtPathSDS, offFilename) == 0
+                    && RTUtf16ICmpAscii(pwszFilename, "VBoxSVC.exe") == 0)
                 {
-                    LogRel(("VirtualBoxSDS client check succeeded: directory length %d, SDS path \"%ls\"\n", offFilename, wszClientImage));
-                    return true;
+                    /*
+                     * Since SUPLib doesn't work with NT paths when verfiying files, and
+                     * converting from NT to Win32 path isn't entirely straight forward,
+                     * we join the client filename part here with our win32 exec dir path.
+                     */
+                    char   szWin32Path[RTPATH_MAX + 128];
+                    int rc = RTPathExecDir(szWin32Path, RTPATH_MAX);
+                    if (RT_SUCCESS(rc))
+                    {
+                        size_t cchWin32Path = RTPathEnsureTrailingSeparator(szWin32Path, sizeof(szWin32Path));
+                        if (cchWin32Path > 0)
+                        {
+                            char  *pszDst = &szWin32Path[cchWin32Path];
+                            size_t cchDst = sizeof(szWin32Path) - cchWin32Path;
+                            rc = RTUtf16ToUtf8Ex(pwszFilename, RTSTR_MAX, &pszDst, cchDst, &cchDst);
+                            if (RT_SUCCESS(rc))
+                            {
+                                /*
+                                 * Verify the file.
+                                 */
+                                rc = SUPR3HardenedVerifyFile(szWin32Path, "VirtualBoxSDS client check", NULL);
+                                if (RT_SUCCESS(rc))
+                                {
+                                    LogRel(("VirtualBoxSDS client check succeeded: directory length %d, SVC path \"%ls\"\n",
+                                            offFilename, wszClientImage));
+                                    return true;
+                                }
+                                LogRel(("VirtualBoxSDS client check failed: SUPR3HardenedVerifyFile returned %Rrc on '%s' (%ls)\n",
+                                        rc, szWin32Path, wszClientImage));
+                            }
+                            else
+                                LogRel(("VirtualBoxSDS client check failed: RTUtf16ToUtf8Ex failed: %Rrc (cchDst=%#zx, cchWin32Path=%#zx)",
+                                        rc, cchDst, cchWin32Path));
+                        }
+                        else
+                            LogRel(("VirtualBoxSDS client check failed: RTPathEnsureTrailingSeparator failed!"));
+                    }
+                    else
+                        LogRel(("VirtualBoxSDS client check failed: RTPathExecDir failed: %Rrc", rc));
                 }
-
-                LogRel(("VirtualBoxSDS client check failed: directory length %d vs %d, client path \"%ls\"\n",
-                        offFilename, m_offNtPathSDSFilename, wszClientImage));
+                else
+                    LogRel(("VirtualBoxSDS client check failed: directory length %d vs %d, client path \"%ls\"\n",
+                            offFilename, m_offNtPathSDSFilename, wszClientImage));
             }
             else
                 LogRel(("VirtualBoxSDS client check failed: client path \"%ls\" could not be split\n", wszClientImage));
