@@ -305,7 +305,11 @@ xmllintResourceLoader(void *ctxt, const char *URL,
 	xmlChar *newURL;
 
 	newURL = xmlStrdup((const xmlChar *) lint->paths[i]);
+	if (newURL == NULL)
+	    return(XML_ERR_NO_MEMORY);
 	newURL = xmlStrcat(newURL, (const xmlChar *) "/");
+	if (newURL == NULL)
+	    return(XML_ERR_NO_MEMORY);
 	newURL = xmlStrcat(newURL, (const xmlChar *) lastsegment);
 	if (newURL != NULL) {
             if (lint->defaultResourceLoader != NULL)
@@ -2494,6 +2498,11 @@ parseInteger(unsigned long *result, FILE *errStream, const char *ctxt,
     char *strEnd;
     unsigned long val;
 
+    if (str != NULL && *str == '-') {
+        fprintf(errStream, "%s: value not allowed: %s\n", ctxt, str);
+        return(-1);
+    }
+
     errno = 0;
     val = strtoul(str, &strEnd, 10);
     if (errno == EINVAL || *strEnd != 0) {
@@ -3075,8 +3084,9 @@ xmllintMain(int argc, const char **argv, FILE *errStream,
      * Note that we must not make any memory allocations through xmlMalloc
      * before calling xmlMemSetup.
      */
+    xmllintMaxmem = 0;
     if (lint->maxmem != 0) {
-        xmllintMaxmem = 0;
+        xmllintMaxmem = lint->maxmem;
         xmllintMaxmemReached = 0;
         xmllintOom = 0;
         xmlMemSetup(myFreeFunc, myMallocFunc, myReallocFunc, myStrdupFunc);

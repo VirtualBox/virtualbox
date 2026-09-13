@@ -36,6 +36,7 @@
 #include <libxml/xmlschemastypes.h>
 
 #include "private/error.h"
+#include "private/memory.h"
 #include "private/regexp.h"
 #include "private/string.h"
 #include "private/threads.h"
@@ -843,11 +844,9 @@ xmlRelaxNGNewDefine(xmlRelaxNGParserCtxtPtr ctxt, xmlNodePtr node)
     } else if (ctxt->defMax <= ctxt->defNr) {
         xmlRelaxNGDefinePtr *tmp;
 
-        ctxt->defMax *= 2;
-        tmp = (xmlRelaxNGDefinePtr *) xmlRealloc(ctxt->defTab,
-                                                 ctxt->defMax *
-                                                 sizeof
-                                                 (xmlRelaxNGDefinePtr));
+        tmp = (xmlRelaxNGDefinePtr *) xmlGrowArray(ctxt->defTab,
+                sizeof(xmlRelaxNGDefinePtr), &ctxt->defMax,
+                16, XML_MAX_ITEMS);
         if (tmp == NULL) {
             xmlRngPErrMemory(ctxt);
             return (NULL);
@@ -993,19 +992,15 @@ xmlRelaxNGAddStatesUniq(xmlRelaxNGValidCtxtPtr ctxt,
     }
     if (states->nbState >= states->maxState) {
         xmlRelaxNGValidStatePtr *tmp;
-        int size;
 
-        size = states->maxState * 2;
-        tmp = (xmlRelaxNGValidStatePtr *) xmlRealloc(states->tabState,
-                                                     (size) *
-                                                     sizeof
-                                                     (xmlRelaxNGValidStatePtr));
+        tmp = (xmlRelaxNGValidStatePtr *) xmlGrowArray(states->tabState,
+                sizeof(xmlRelaxNGValidStatePtr), &states->maxState,
+                4, XML_MAX_ITEMS);
         if (tmp == NULL) {
             xmlRngVErrMemory(ctxt);
             return (-1);
         }
         states->tabState = tmp;
-        states->maxState = size;
     }
     states->tabState[states->nbState++] = state;
     return (1);
@@ -1031,19 +1026,15 @@ xmlRelaxNGAddStates(xmlRelaxNGValidCtxtPtr ctxt,
     }
     if (states->nbState >= states->maxState) {
         xmlRelaxNGValidStatePtr *tmp;
-        int size;
 
-        size = states->maxState * 2;
-        tmp = (xmlRelaxNGValidStatePtr *) xmlRealloc(states->tabState,
-                                                     (size) *
-                                                     sizeof
-                                                     (xmlRelaxNGValidStatePtr));
+        tmp = (xmlRelaxNGValidStatePtr *) xmlGrowArray(states->tabState,
+                sizeof(xmlRelaxNGValidStatePtr), &states->maxState,
+                4, XML_MAX_ITEMS);
         if (tmp == NULL) {
             xmlRngVErrMemory(ctxt);
             return (-1);
         }
         states->tabState = tmp;
-        states->maxState = size;
     }
     for (i = 0; i < states->nbState; i++) {
         if (xmlRelaxNGEqualValidState(ctxt, state, states->tabState[i])) {
@@ -1079,10 +1070,9 @@ xmlRelaxNGFreeStates(xmlRelaxNGValidCtxtPtr ctxt,
                && (ctxt->freeStatesNr >= ctxt->freeStatesMax)) {
         xmlRelaxNGStatesPtr *tmp;
 
-        tmp = (xmlRelaxNGStatesPtr *) xmlRealloc(ctxt->freeStates,
-                                                 2 * ctxt->freeStatesMax *
-                                                 sizeof
-                                                 (xmlRelaxNGStatesPtr));
+        tmp = (xmlRelaxNGStatesPtr *) xmlGrowArray(ctxt->freeStates,
+                sizeof(xmlRelaxNGStatesPtr), &ctxt->freeStatesMax,
+                40, XML_MAX_ITEMS);
         if (tmp == NULL) {
             xmlRngVErrMemory(ctxt);
             xmlFree(states->tabState);
@@ -1090,7 +1080,6 @@ xmlRelaxNGFreeStates(xmlRelaxNGValidCtxtPtr ctxt,
             return;
         }
         ctxt->freeStates = tmp;
-        ctxt->freeStatesMax *= 2;
     }
     if ((ctxt == NULL) || (ctxt->freeStates == NULL)) {
         xmlFree(states->tabState);
@@ -1447,15 +1436,16 @@ xmlRelaxNGIncludePush(xmlRelaxNGParserCtxtPtr ctxt,
     }
 
     if (ctxt->incNr >= ctxt->incMax) {
-        ctxt->incMax *= 2;
-        ctxt->incTab =
-            (xmlRelaxNGIncludePtr *) xmlRealloc(ctxt->incTab,
-                                                ctxt->incMax *
-                                                sizeof(ctxt->incTab[0]));
-        if (ctxt->incTab == NULL) {
+        xmlRelaxNGIncludePtr *tmp;
+
+        tmp = (xmlRelaxNGIncludePtr *) xmlGrowArray(ctxt->incTab,
+                sizeof(xmlRelaxNGIncludePtr), &ctxt->incMax,
+                4, XML_MAX_ITEMS);
+        if (tmp == NULL) {
             xmlRngPErrMemory(ctxt);
             return (-1);
         }
+        ctxt->incTab = tmp;
     }
     ctxt->incTab[ctxt->incNr] = value;
     ctxt->inc = value;
@@ -1741,16 +1731,16 @@ xmlRelaxNGValidErrorPush(xmlRelaxNGValidCtxtPtr ctxt,
         ctxt->err = NULL;
     }
     if (ctxt->errNr >= ctxt->errMax) {
-        ctxt->errMax *= 2;
-        ctxt->errTab =
-            (xmlRelaxNGValidErrorPtr) xmlRealloc(ctxt->errTab,
-                                                 ctxt->errMax *
-                                                 sizeof
-                                                 (xmlRelaxNGValidError));
-        if (ctxt->errTab == NULL) {
+        xmlRelaxNGValidErrorPtr tmp;
+
+        tmp = (xmlRelaxNGValidErrorPtr) xmlGrowArray(ctxt->errTab,
+                sizeof(xmlRelaxNGValidError), &ctxt->errMax,
+                8, XML_MAX_ITEMS);
+        if (tmp == NULL) {
             xmlRngVErrMemory(ctxt);
             return (0);
         }
+        ctxt->errTab = tmp;
         ctxt->err = &ctxt->errTab[ctxt->errNr - 1];
     }
     if ((ctxt->err != NULL) && (ctxt->state != NULL) &&
@@ -1832,15 +1822,16 @@ xmlRelaxNGDocumentPush(xmlRelaxNGParserCtxtPtr ctxt,
         }
     }
     if (ctxt->docNr >= ctxt->docMax) {
-        ctxt->docMax *= 2;
-        ctxt->docTab =
-            (xmlRelaxNGDocumentPtr *) xmlRealloc(ctxt->docTab,
-                                                 ctxt->docMax *
-                                                 sizeof(ctxt->docTab[0]));
-        if (ctxt->docTab == NULL) {
+        xmlRelaxNGDocumentPtr *tmp;
+
+        tmp = (xmlRelaxNGDocumentPtr *) xmlGrowArray(ctxt->docTab,
+                sizeof(xmlRelaxNGDocumentPtr), &ctxt->docMax,
+                4, XML_MAX_ITEMS);
+        if (tmp == NULL) {
             xmlRngPErrMemory(ctxt);
             return (0);
         }
+        ctxt->docTab = tmp;
     }
     ctxt->docTab[ctxt->docNr] = value;
     ctxt->doc = value;
@@ -3874,23 +3865,22 @@ xmlRelaxNGGetElements(xmlRelaxNGParserCtxtPtr ctxt,
             if (ret == NULL) {
                 max = 10;
                 ret = (xmlRelaxNGDefinePtr *)
-                    xmlMalloc((max + 1) * sizeof(xmlRelaxNGDefinePtr));
+                    xmlMalloc(max * sizeof(xmlRelaxNGDefinePtr));
                 if (ret == NULL) {
                     xmlRngPErrMemory(ctxt);
                     return (NULL);
                 }
-            } else if (max <= len) {
-	        xmlRelaxNGDefinePtr *temp;
+            } else if (max <= len + 1) {
+                xmlRelaxNGDefinePtr *temp;
 
-                max *= 2;
-                temp = xmlRealloc(ret,
-                               (max + 1) * sizeof(xmlRelaxNGDefinePtr));
+                temp = xmlGrowArray(ret, sizeof(xmlRelaxNGDefinePtr),
+                                    &max, 10, XML_MAX_ITEMS);
                 if (temp == NULL) {
                     xmlRngPErrMemory(ctxt);
-		    xmlFree(ret);
+                    xmlFree(ret);
                     return (NULL);
                 }
-		ret = temp;
+                ret = temp;
             }
             ret[len++] = cur;
             ret[len] = NULL;
@@ -7926,15 +7916,16 @@ xmlRelaxNGElemPush(xmlRelaxNGValidCtxtPtr ctxt, xmlRegExecCtxtPtr exec)
         }
     }
     if (ctxt->elemNr >= ctxt->elemMax) {
-        ctxt->elemMax *= 2;
-        ctxt->elemTab = (xmlRegExecCtxtPtr *) xmlRealloc(ctxt->elemTab,
-                                                         ctxt->elemMax *
-                                                         sizeof
-                                                         (xmlRegExecCtxtPtr));
-        if (ctxt->elemTab == NULL) {
+        xmlRegExecCtxtPtr *tmp;
+
+        tmp = (xmlRegExecCtxtPtr *) xmlGrowArray(ctxt->elemTab,
+                sizeof(xmlRegExecCtxtPtr), &ctxt->elemMax,
+                10, XML_MAX_ITEMS);
+        if (tmp == NULL) {
             xmlRngVErrMemory(ctxt);
             return (-1);
         }
+        ctxt->elemTab = tmp;
     }
     ctxt->elemTab[ctxt->elemNr++] = exec;
     ctxt->elem = exec;

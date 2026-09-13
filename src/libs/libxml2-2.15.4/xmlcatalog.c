@@ -135,6 +135,12 @@ static void usershell(void) {
 	       (*cur != '\n') && (*cur != '\r')) {
 	    if (*cur == 0)
 		break;
+            /* Do not read beyond the command array capacity */
+            if (i >= (int)sizeof(command) - 2) {
+                printf("Invalid command %s\n", cur);
+                i = 0;
+                break;
+            }
 	    command[i++] = *cur++;
 	}
 	command[i] = 0;
@@ -152,6 +158,11 @@ static void usershell(void) {
 	while ((*cur != '\n') && (*cur != '\r') && (*cur != 0)) {
 	    if (*cur == 0)
 		break;
+            if (i >= (int)sizeof(arg) - 2) {
+                printf("Invalid arg %s\n", arg);
+                i = 0;
+                break;
+            }
 	    arg[i++] = *cur++;
 	}
 	arg[i] = 0;
@@ -164,6 +175,11 @@ static void usershell(void) {
 	cur = arg;
 	memset(argv, 0, sizeof(argv));
 	while (*cur != 0) {
+            if (i >= (int)sizeof(argv) / (int)sizeof(char*)) {
+                printf("Too much arguments\n");
+                break;
+            }
+
 	    while ((*cur == ' ') || (*cur == '\t')) cur++;
 	    if (*cur == '\'') {
 		cur++;
@@ -399,6 +415,11 @@ int main(int argc, char **argv) {
 	    del++;
 	} else {
 	    fprintf(stderr, "Unknown option %s\n", argv[i]);
+	    usage(argv[0]);
+	    return(1);
+	}
+	if (i > argc) {
+	    fprintf(stderr, "Missing arguments for option\n");
 	    usage(argv[0]);
 	    return(1);
 	}

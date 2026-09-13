@@ -520,7 +520,7 @@ if(LIBXML2_WITH_TESTS)
         add_test(NAME runxmlconf COMMAND runxmlconf WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     endif()
     add_test(NAME testapi COMMAND testapi)
-    add_test(NAME testcatalog COMMAND testcatalog)
+    add_test(NAME testcatalog COMMAND testcatalog WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     add_test(NAME testchar COMMAND testchar)
     add_test(NAME testdict COMMAND testdict)
     add_test(NAME testparser COMMAND testparser WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -569,17 +569,19 @@ if(LIBXML2_WITH_TESTS)
         endforeach()
     endfunction()
 
-    add_suite("scripts" xmllint)
-    add_suite("catalogs" xmlcatalog)
+    if(LIBXML2_WITH_PROGRAMS)
+        add_suite("scripts" xmllint)
+        add_suite("catalogs" xmlcatalog)
 
-    add_test(
-        NAME catalog_add_del
-        COMMAND ${CMAKE_COMMAND}
-                -DXMLCAT=$<TARGET_FILE:xmlcatalog>
-                -DEXPECTED_FULL=${CMAKE_CURRENT_SOURCE_DIR}/result/catalogs/mycatalog.full
-                -DEXPECTED_EMPTY=${CMAKE_CURRENT_SOURCE_DIR}/result/catalogs/mycatalog.empty
-                -P ${CMAKE_CURRENT_SOURCE_DIR}/test_xmlcatalog_add_del.cmake
-    )
+        add_test(
+            NAME catalog_add_del
+            COMMAND ${CMAKE_COMMAND}
+                    -DXMLCAT=$<TARGET_FILE:xmlcatalog>
+                    -DEXPECTED_FULL=${CMAKE_CURRENT_SOURCE_DIR}/result/catalogs/mycatalog.full
+                    -DEXPECTED_EMPTY=${CMAKE_CURRENT_SOURCE_DIR}/result/catalogs/mycatalog.empty
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/test_xmlcatalog_add_del.cmake
+        )
+    endif()
 
 endif()
 

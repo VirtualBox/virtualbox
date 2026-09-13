@@ -387,7 +387,7 @@
 #define PACKAGE_TARNAME ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "2.6.30"
+#define PACKAGE_VERSION "2.15.4"
 
 /* Define to 1 if the C compiler supports function prototypes. */
 #define PROTOTYPES 1
@@ -399,7 +399,7 @@
 #undef SUPPORT_IP6
 
 /* Version number of package */
-#define VERSION "2.6.30"
+#define VERSION "2.15.4"
 
 /* Determine what socket length (socklen_t) data type is */
 #if defined(RT_OS_WINDOWS) || defined(RT_OS_OS2)

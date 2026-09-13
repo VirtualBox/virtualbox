@@ -36,6 +36,7 @@
 #include <libxml/schematron.h>
 
 #include "private/error.h"
+#include "private/memory.h"
 
 #define SCHEMATRON_PARSE_OPTIONS XML_PARSE_NOENT
 
@@ -777,15 +778,14 @@ xmlSchematronPushInclude(xmlSchematronParserCtxtPtr ctxt,
     } else if (ctxt->nbIncludes + 2 >= ctxt->maxIncludes) {
         xmlNodePtr *tmp;
 
-        tmp = (xmlNodePtr *)
-            xmlRealloc(ctxt->includes, ctxt->maxIncludes * 4 *
-                       sizeof(xmlNodePtr));
+        tmp = (xmlNodePtr *) xmlGrowArray(ctxt->includes,
+                2 * sizeof(xmlNodePtr), &ctxt->maxIncludes,
+                10, XML_MAX_ITEMS);
         if (tmp == NULL) {
             xmlSchematronPErrMemory(NULL);
             return;
         }
         ctxt->includes = tmp;
-        ctxt->maxIncludes *= 2;
     }
     ctxt->includes[2 * ctxt->nbIncludes] = cur;
     ctxt->includes[2 * ctxt->nbIncludes + 1] = (xmlNodePtr) doc;
@@ -842,15 +842,14 @@ xmlSchematronAddNamespace(xmlSchematronParserCtxtPtr ctxt,
     } else if (ctxt->nbNamespaces + 2 >= ctxt->maxNamespaces) {
         const xmlChar **tmp;
 
-        tmp = (const xmlChar **)
-            xmlRealloc((xmlChar **) ctxt->namespaces, ctxt->maxNamespaces * 4 *
-                       sizeof(const xmlChar *));
+        tmp = (const xmlChar **) xmlGrowArray((xmlChar **) ctxt->namespaces,
+                2 * sizeof(const xmlChar *), &ctxt->maxNamespaces,
+                10, XML_MAX_ITEMS);
         if (tmp == NULL) {
             xmlSchematronPErrMemory(NULL);
             return;
         }
         ctxt->namespaces = tmp;
-        ctxt->maxNamespaces *= 2;
     }
     ctxt->namespaces[2 * ctxt->nbNamespaces] =
         xmlDictLookup(ctxt->dict, ns, -1);

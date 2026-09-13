@@ -48,7 +48,9 @@
     xmlRegexpErrCompile(ctxt, str);
 #define NEXT ctxt->cur++
 #define CUR (*(ctxt->cur))
-#define NXT(index) (ctxt->cur[index])
+#define NXT(index)									\
+    (((size_t)(ctxt->cur + index - ctxt->string) < ctxt->len)				\
+      ? ctxt->cur[index] : 0)
 
 #define NEXTL(l) ctxt->cur += l;
 #define XML_REG_STRING_SEPARATOR '|'
@@ -288,6 +290,7 @@ typedef xmlRegParserCtxt *xmlRegParserCtxtPtr;
 struct _xmlAutomata {
     xmlChar *string;
     xmlChar *cur;
+    size_t len;
 
     int error;
     int neg;
@@ -733,11 +736,12 @@ xmlRegNewParserCtxt(const xmlChar *string) {
 	return(NULL);
     memset(ret, 0, sizeof(xmlRegParserCtxt));
     if (string != NULL) {
-	ret->string = xmlStrdup(string);
+        ret->string = xmlStrdup(string);
         if (ret->string == NULL) {
             xmlFree(ret);
             return(NULL);
         }
+        ret->len = strlen((const char *) ret->string);
     }
     ret->cur = ret->string;
     ret->neg = 0;

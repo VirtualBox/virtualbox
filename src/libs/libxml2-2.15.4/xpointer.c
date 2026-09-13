@@ -263,6 +263,13 @@ xmlXPtrEvalXPtrPart(xmlXPathParserContextPtr ctxt, xmlChar *name) {
     level = 1;
 
     len = xmlStrlen(ctxt->cur);
+    /* Overflow in xmlStrlen */
+    if (len == 0 && ctxt->cur != NULL && *ctxt->cur != 0) {
+        xmlXPathPErrMemory(ctxt);
+        xmlFree(name);
+        return;
+    }
+
     len++;
     buffer = xmlMalloc(len);
     if (buffer == NULL) {

@@ -2477,6 +2477,75 @@ noentParseTest(const char *filename, const char *result,
     return(res);
 }
 
+#ifdef LIBXML_XINCLUDE_ENABLED
+/**
+ * Parse a file and run xmlXIncludeProcess() to verify that doc->parseFlags
+ * is propagated properly.
+ *
+ * @param filename  the file to parse
+ * @param result  the file with expected result
+ * @param err  the file with error messages
+ * @returns 0 in case of success, an error code otherwise
+ */
+static int
+xincludeProcessTest(const char *filename, const char *result, const char *err,
+                    int options) {
+    xmlParserCtxtPtr ctxt;
+    xmlDocPtr doc;
+    xmlChar *base = NULL;
+    int size, res;
+    int ret = 0;
+
+    nb_tests++;
+
+    /* Create a new parser context */
+    ctxt = xmlNewParserCtxt();
+    if (ctxt == NULL)
+        return(-1);
+
+    /* Load the data from `filename` into a parser context */
+    xmlCtxtSetErrorHandler(ctxt, testStructuredErrorHandler, NULL);
+    doc = xmlCtxtReadFile(ctxt, filename, NULL, options);
+    xmlFreeParserCtxt(ctxt);
+
+    /* Check if `doc` was created successfully */
+    if (doc == NULL) {
+        testErrorHandler(NULL, "%s : failed to parse\n", filename);
+        return(-1);
+    }
+
+    /*
+     * Run xmlXIncludeProcess() with a structured error handler to check that
+     * the parse flags are propagated.
+     */
+    xmlSetStructuredErrorFunc(NULL, testStructuredErrorHandler);
+    xmlXIncludeProcess(doc);
+    xmlSetStructuredErrorFunc(NULL, NULL);
+
+    /* Check the result and for any errors */
+    if (result) {
+        xmlDocDumpMemory(doc, &base, &size);
+        res = compareFileMem(result, (char *) base, size);
+        xmlFree(base);
+        if (res != 0) {
+            fprintf(stderr, "Result for %s failed in %s\n", filename, result);
+            ret = -1;
+        }
+    }
+
+    if ((ret == 0) && (err != NULL)) {
+        res = compareFileMem(err, testErrors, testErrorsSize);
+        if (res != 0) {
+            fprintf(stderr, "Error for %s failed\n", filename);
+            ret = -1;
+        }
+    }
+
+    xmlFreeDoc(doc);
+    return(ret);
+}
+#endif
+
 /**
  * Parse a file using the #xmlReadFile API and check for errors.
  *
@@ -2882,6 +2951,50 @@ xmlReaderForFdGzTest(const char *filename, const char *result ATTRIBUTE_UNUSED,
 }
 #endif
 
+#endif
+
+#ifdef LIBXML_READER_ENABLED
+/**
+ * Checking that xmlTextReaderReadOuterXml copy the XML_DTD_NODE
+ *
+ * xmlTextReaderReadOuterXml does not copy XML_DTD_NODE since libxml2 2.13.0
+ * https://gitlab.gnome.org/GNOME/libxml2/-/issues/1108
+ */
+static int
+xmlTextReaderReadOuterXmlTest(const char *filename ATTRIBUTE_UNUSED,
+                              const char *result ATTRIBUTE_UNUSED,
+                              const char *err ATTRIBUTE_UNUSED,
+                              int options ATTRIBUTE_UNUSED) {
+    xmlTextReaderPtr reader = NULL;
+    int ret = 0;
+    int res = 1;
+    xmlChar *out = NULL;
+
+    const char *doc = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                      "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\""
+                      "  \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">"
+                      "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\">"
+                      "  <rect width=\"400\" height=\"300\" fill=\"white\"/>"
+                      "</svg>";
+
+    reader = xmlReaderForMemory(doc, strlen(doc), "doc.svg", NULL, XML_PARSE_NOENT);
+
+    while (res == 1) {
+        res = xmlTextReaderRead(reader);
+        if (xmlTextReaderNodeType(reader) == XML_READER_TYPE_DOCUMENT_TYPE) {
+            out = xmlTextReaderReadOuterXml(reader);
+            ret = xmlStrEqual(out, BAD_CAST "<!DOCTYPE svg PUBLIC \"-//W3C//DTD //SVG //1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">") == 1;
+            if (out != NULL) {
+                xmlFree(out);
+                out = NULL;
+            }
+            break;
+        }
+    }
+
+    xmlFreeTextReader(reader);
+    return(ret);
+}
 #endif
 
 /**
@@ -5322,6 +5435,48 @@ done:
     return ret;
 }
 
+static int
+xmlEntityValueNormTest(const char *filename ATTRIBUTE_UNUSED,
+                       const char *result ATTRIBUTE_UNUSED,
+                       const char *err ATTRIBUTE_UNUSED,
+                       int options ATTRIBUTE_UNUSED) {
+    int ret = 0;
+    xmlAttrPtr prop = NULL;
+    const char *str = "<!DOCTYPE doc [\n"
+        "<!ENTITY d  '&#xD;'>\n"
+        "<!ENTITY a  '&#xA;'>\n"
+        "<!ENTITY da '&#xD;&#xA;'>\n"
+        "<!ENTITY b  '&#10;'>\n"
+        "]>\n"
+        "<doc a1='&d;' a2='&a;' a3='&da;'\n"
+        "a4='&d;&d;A&a;&#x20;&a;B&da;'\n"
+        "a5='&#xd;&#xd;A&#xa;&#xa;B&#xd;&#xa;'\n"
+        "a6='&b;'\n"
+        "a7='\n\n&b;xyz'/>";
+    xmlDoc *doc1 = xmlReadDoc(BAD_CAST str, NULL, NULL, 0);
+    xmlDoc *doc2 = xmlReadDoc(BAD_CAST str, NULL, NULL, XML_PARSE_NOENT);
+
+    prop = doc1->children->next->properties;
+    while (prop != NULL) {
+        xmlChar *content1 = xmlGetProp(doc1->children->next, BAD_CAST prop->name);
+        xmlChar *content2 = xmlGetProp(doc2->children->next, BAD_CAST prop->name);
+
+        if (!xmlStrEqual(content1, content2)) {
+            ret = 1;
+            fprintf(stderr, "entity resolution differs %s\n", prop->name);
+        }
+
+        xmlFree(content1);
+        xmlFree(content2);
+
+        prop = prop->next;
+    }
+
+    xmlFreeDoc(doc1);
+    xmlFreeDoc(doc2);
+
+    return ret;
+}
 
 /************************************************************************
  *									*
@@ -5458,6 +5613,12 @@ testDesc testDescriptions[] = {
     { "XInclude regression tests without reader",
       errParseTest, "./test/XInclude/without-reader/*", "result/XInclude/", "",
       ".err", XML_PARSE_XINCLUDE },
+    { "XInclude issue1120 regression tests",
+      errParseTest, "./test/XInclude/issue1120/*", "result/XInclude/", "",
+      ".err", XML_PARSE_XINCLUDE | XML_PARSE_NONET },
+    { "XInclude xmlXIncludeProcess() issue1120 regression tests",
+      xincludeProcessTest, "./test/XInclude/issue1120/*", "result/XInclude/",
+      "", ".err", XML_PARSE_NONET },
 #endif
 #ifdef LIBXML_XPATH_ENABLED
 #ifdef LIBXML_DEBUG_ENABLED
@@ -5560,8 +5721,12 @@ testDesc testDescriptions[] = {
       xmlReaderForFdGzTest, "./test/slashdot.xml", NULL, NULL, NULL, 0 },
 #endif
 #endif
-
+#if defined(LIBXML_OUTPUT_ENABLED) && defined(LIBXML_READER_ENABLED)
+    { "xmlTextReaderReadOuterXml copy XML_DTD_NODE",
+      xmlTextReaderReadOuterXmlTest, NULL, NULL, NULL, NULL, 0 },
+#endif
     { "xmlCopyEntity children test" , xmlCopyEntityTest, NULL, NULL, NULL, NULL, 0 },
+    { "xml Entity values normalization" , xmlEntityValueNormTest, NULL, NULL, NULL, NULL, 0 },
 
     {NULL, NULL, NULL, NULL, NULL, NULL, 0}
 };

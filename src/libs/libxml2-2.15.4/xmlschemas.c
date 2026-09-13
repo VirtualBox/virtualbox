@@ -2123,8 +2123,8 @@ xmlSchemaErr4Line(xmlSchemaAbstractCtxtPtr ctxt,
 	    }
 	    if (vctxt->locFunc != NULL) {
 	        if ((file == NULL) || (line == 0)) {
-		    unsigned long l;
-		    const char *f;
+		    unsigned long l = 0;
+		    const char *f = NULL;
 		    vctxt->locFunc(vctxt->locCtxt, &f, &l);
 		    if (file == NULL)
 		        file = f;

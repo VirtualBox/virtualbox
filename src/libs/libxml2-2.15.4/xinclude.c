@@ -1409,6 +1409,8 @@ xmlXIncludeLoadTxt(xmlXIncludeCtxtPtr ctxt, xmlXIncludeRefPtr ref) {
         xmlCtxtSetResourceLoader(pctxt, ctxt->resourceLoader,
                                  ctxt->resourceCtxt);
 
+    xmlCtxtUseOptions(pctxt, ctxt->parseFlags);
+
     inputStream = xmlLoadResource(pctxt, (const char*) url, NULL,
                                   XML_RESOURCE_XINCLUDE_TEXT);
     if (inputStream == NULL) {
@@ -1419,7 +1421,8 @@ xmlXIncludeLoadTxt(xmlXIncludeCtxtPtr ctxt, xmlXIncludeRefPtr ref) {
             xmlXIncludeErrMemory(ctxt);
         else if ((pctxt->errNo != XML_ERR_OK) &&
                  (pctxt->errNo != XML_IO_ENOENT) &&
-                 (pctxt->errNo != XML_IO_UNKNOWN))
+                 (pctxt->errNo != XML_IO_UNKNOWN) &&
+                 (pctxt->errNo != XML_IO_NETWORK_ATTEMPT))
             xmlXIncludeErr(ctxt, NULL, pctxt->errNo, "load error", NULL);
 	goto error;
     }
@@ -2121,7 +2124,7 @@ xmlXIncludeProcessFlags(xmlDoc *doc, int flags) {
  */
 int
 xmlXIncludeProcess(xmlDoc *doc) {
-    return(xmlXIncludeProcessFlags(doc, 0));
+    return(xmlXIncludeProcessFlags(doc, doc ? doc->parseFlags : 0));
 }
 
 /**
@@ -2161,7 +2164,7 @@ xmlXIncludeProcessTreeFlags(xmlNode *tree, int flags) {
  */
 int
 xmlXIncludeProcessTree(xmlNode *tree) {
-    return(xmlXIncludeProcessTreeFlags(tree, 0));
+    return(xmlXIncludeProcessTreeFlags(tree, (tree && tree->doc) ? tree->doc->parseFlags : 0));
 }
 
 /**

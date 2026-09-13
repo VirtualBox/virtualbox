@@ -313,6 +313,8 @@ xmlC14NVisibleNsStackAdd(xmlC14NVisibleNsStackPtr cur, xmlNsPtr ns, xmlNodePtr n
         newSize = xmlGrowCapacity(cur->nsMax,
                                   sizeof(tmp1[0]) + sizeof(tmp2[0]),
                                   XML_NAMESPACES_DEFAULT, XML_MAX_ITEMS);
+        if (newSize < 0)
+            return (-1);
 
 	tmp1 = xmlRealloc(cur->nsTab, newSize * sizeof(tmp1[0]));
 	if (tmp1 == NULL)

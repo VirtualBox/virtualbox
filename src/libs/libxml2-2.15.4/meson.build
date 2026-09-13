@@ -529,6 +529,7 @@ foreach check, deps : checks
         files(check + '.c'),
         dependencies: [deps, xml_dep],
         include_directories: config_dir,
+        build_by_default: false,
     )
     if check != 'testlimits'
         test(check, exe, timeout: 0, workdir: meson.current_source_dir())
