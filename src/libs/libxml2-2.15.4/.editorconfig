@@ -1,0 +1,11 @@
+# EditorConfig : http://EditorConfig.org
+
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+tab_width = 8
+
+[Makefile*]
+indent_style = tab
