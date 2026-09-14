@@ -1,4 +1,4 @@
-/* $Id: VBoxSDS.cpp 115246 2026-09-13 12:47:32Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxSDS.cpp 115252 2026-09-14 07:31:59Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBoxSDS - COM global service main entry (System Directory Service)
  */
@@ -1034,9 +1034,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
      * Initialize the hardened image verification (nop in non-hardened builds).
      * We need this later for verfiying alleged VBoxSVC processes.
      */
-    int rc = SUPR3HardenedVerifyInit();
-    if (RT_FAILURE(rc))
-        LogRel(("ERROR: SUPR3HardenedVerifyInit failed: %Rrc\n", rc));
+    int vrc = SUPR3HardenedVerifyInit();
+    if (RT_FAILURE(vrc))
+        LogRel(("ERROR: SUPR3HardenedVerifyInit failed: %Rrc\n", vrc));
 
     /*
      * Initialize COM.

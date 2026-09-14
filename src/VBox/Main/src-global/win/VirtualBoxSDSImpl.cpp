@@ -1,4 +1,4 @@
-/* $Id: VirtualBoxSDSImpl.cpp 115246 2026-09-13 12:47:32Z knut.osmundsen@oracle.com $ */
+/* $Id: VirtualBoxSDSImpl.cpp 115252 2026-09-14 07:31:59Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBox Global COM Class implementation.
  */
@@ -704,39 +704,39 @@ bool VirtualBoxSDS::i_checkClientImage(DWORD aPid)
                      * we join the client filename part here with our win32 exec dir path.
                      */
                     char   szWin32Path[RTPATH_MAX + 128];
-                    int rc = RTPathExecDir(szWin32Path, RTPATH_MAX);
-                    if (RT_SUCCESS(rc))
+                    int vrc = RTPathExecDir(szWin32Path, RTPATH_MAX);
+                    if (RT_SUCCESS(vrc))
                     {
                         size_t cchWin32Path = RTPathEnsureTrailingSeparator(szWin32Path, sizeof(szWin32Path));
                         if (cchWin32Path > 0)
                         {
                             char  *pszDst = &szWin32Path[cchWin32Path];
                             size_t cchDst = sizeof(szWin32Path) - cchWin32Path;
-                            rc = RTUtf16ToUtf8Ex(pwszFilename, RTSTR_MAX, &pszDst, cchDst, &cchDst);
-                            if (RT_SUCCESS(rc))
+                            vrc = RTUtf16ToUtf8Ex(pwszFilename, RTSTR_MAX, &pszDst, cchDst, &cchDst);
+                            if (RT_SUCCESS(vrc))
                             {
                                 /*
                                  * Verify the file.
                                  */
-                                rc = SUPR3HardenedVerifyFile(szWin32Path, "VirtualBoxSDS client check", NULL);
-                                if (RT_SUCCESS(rc))
+                                vrc = SUPR3HardenedVerifyFile(szWin32Path, "VirtualBoxSDS client check", NULL);
+                                if (RT_SUCCESS(vrc))
                                 {
                                     LogRel(("VirtualBoxSDS client check succeeded: directory length %d, SVC path \"%ls\"\n",
                                             offFilename, wszClientImage));
                                     return true;
                                 }
                                 LogRel(("VirtualBoxSDS client check failed: SUPR3HardenedVerifyFile returned %Rrc on '%s' (%ls)\n",
-                                        rc, szWin32Path, wszClientImage));
+                                        vrc, szWin32Path, wszClientImage));
                             }
                             else
                                 LogRel(("VirtualBoxSDS client check failed: RTUtf16ToUtf8Ex failed: %Rrc (cchDst=%#zx, cchWin32Path=%#zx)",
-                                        rc, cchDst, cchWin32Path));
+                                        vrc, cchDst, cchWin32Path));
                         }
                         else
                             LogRel(("VirtualBoxSDS client check failed: RTPathEnsureTrailingSeparator failed!"));
                     }
                     else
-                        LogRel(("VirtualBoxSDS client check failed: RTPathExecDir failed: %Rrc", rc));
+                        LogRel(("VirtualBoxSDS client check failed: RTPathExecDir failed: %Rrc", vrc));
                 }
                 else
                     LogRel(("VirtualBoxSDS client check failed: directory length %d vs %d, client path \"%ls\"\n",
