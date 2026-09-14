@@ -73,7 +73,7 @@ Rules for adding a changelog entry to make them look more uniform:
                            So, we use chapter and xpointer="xpointer(/chapter/)" with xi:include. -->
   <sect1>
 
-    <title>Version X.Y.Z (date tbd)</title>
+    <title>Version 7.2.18 (2026-09-15)</title>
 
     <para>This is a maintenance release. The following items were fixed or
       added:</para>
@@ -83,6 +83,11 @@ Rules for adding a changelog entry to make them look more uniform:
       <listitem>
         <para>VMM: Fixed Windows 11 on ARM guests crashing with a blue screen
           after restoring from a saved state</para>
+      </listitem>
+
+      <listitem>
+        <para>GUI: Fixed German and Traditional Chinese translations
+          (github:gh-847, github:gh-809)</para>
       </listitem>
 
       <listitem>
@@ -100,6 +105,35 @@ Rules for adding a changelog entry to make them look more uniform:
         <para>Shared Clipboard: Fixed the first character being removed from
           filenames when copying files located directly in a filesystem
           root</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host: Fixed builds across the RHEL 9.8 file-open API
+          transition (github:gh-830)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host: Fixed builds for AMD systems where FRED is not
+          available (Intel KVM only, github:gh-784, github:gh-835)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host: Fixed issues with Kernel 7.3 compilation</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host: Preserved the shared DKMS directory during
+          uninstallation (github:gh-826)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Host and Guest: Added support for RHEL 10.3 kernel
+          (github:gh-833)</para>
+      </listitem>
+
+      <listitem>
+        <para>Linux Guest: Fixed builds for kernel 6.12.103 (github:gh-845)
+          </para>
       </listitem>
 
     </itemizedlist>
