@@ -1,4 +1,4 @@
-/* $Id: VirtualBoxSDSImpl.h 115243 2026-09-12 22:53:32Z knut.osmundsen@oracle.com $ */
+/* $Id: VirtualBoxSDSImpl.h 115250 2026-09-14 06:45:37Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VBox Global COM Class definition
  */
@@ -118,11 +118,11 @@ private:
     /** @name Private methods
      * @{ */
     /**
-     * Returns if client EXE path is in the expected directory.
+     * Returns if client EXE path is in the expected directory and its image is verified.
      *
      * @returns \c true if OK, \c false if not.
      */
-    bool i_checkClientImagePath(DWORD aPid);
+    bool i_checkClientImage(DWORD aPid);
 
     /**
      * Gets the client user SID of the
