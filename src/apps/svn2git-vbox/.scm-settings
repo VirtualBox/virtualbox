@@ -1,4 +1,4 @@
-# $Id: .scm-settings 112290 2026-01-06 17:30:55Z knut.osmundsen@oracle.com $
+# $Id: .scm-settings 115269 2026-09-16 18:50:06Z aleksey.ilyushin@oracle.com $
 ## @file
 # Source code massager settings for the src/apps/svn2git.
 #
@@ -25,6 +25,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 
+/readme-update-svn2git.txt: --svn-sync-process-export none
 /update-github: --svn-sync-process-export none
 /*.json:        --svn-sync-process-export none --external-copyright
 
