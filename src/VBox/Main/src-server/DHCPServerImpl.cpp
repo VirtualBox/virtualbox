@@ -477,6 +477,14 @@ HRESULT DHCPServer::setEnabled(BOOL aEnabled)
 }
 
 
+HRESULT DHCPServer::getRunning(BOOL *aRunning)
+{
+    AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
+    *aRunning = m->dhcp.isRunning();
+    return S_OK;
+}
+
+
 HRESULT DHCPServer::getIPAddress(com::Utf8Str &aIPAddress)
 {
     AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
