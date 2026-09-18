@@ -1,4 +1,4 @@
-/* $Id: SUPHardenedVerifyProcess-win.cpp 115278 2026-09-18 17:27:54Z knut.osmundsen@oracle.com $ */
+/* $Id: SUPHardenedVerifyProcess-win.cpp 115279 2026-09-18 17:31:12Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox Support Library/Driver - Hardened Process Verification, Windows.
  */
@@ -1807,6 +1807,14 @@ static int supHardNtVpNewImage(PSUPHNTVPSTATE pThis, PSUPHNTVPIMAGE pImage, PMEM
          * verifications, as these are for the initial process where we are not
          * able to limit the DLLs loaded so strictly.
          */
+        if (   pThis->enmKind == SUPHARDNTVPKIND_SELF_PURIFICATION_LIMITED
+            || pThis->enmKind == SUPHARDNTVPKIND_LIMITED_VERIFY_ONLY)
+        {
+            SUP_DPRINTF(("supHardNtVpScanVirtualMemory: Ignoring unknown mem at %p LB %#zx (base %p) - '%ls'\n",
+                         pMemInfo->BaseAddress, pMemInfo->RegionSize, pMemInfo->AllocationBase, pwszFilename));
+            return VINF_OBJECT_DESTROYED;
+        }
+
 # ifdef IN_RING3
         /*
          * If we're in ring-3 and doing child purification, we can unmap the
