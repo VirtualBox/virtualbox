@@ -1,4 +1,4 @@
-/* $Id: VirtualBoxBase.cpp 114038 2026-04-28 04:53:52Z valery.portnyagin@oracle.com $ */
+/* $Id: VirtualBoxBase.cpp 115280 2026-09-18 17:42:27Z knut.osmundsen@oracle.com $ */
 /** @file
  * VirtualBox COM base classes implementation
  */
@@ -424,7 +424,7 @@ HRESULT VirtualBoxBase::setErrorInternalV(HRESULT aResultCode,
     {
         va_list va2;
         va_copy(va2, aArgs);
-        strText = com::Utf8StrFmt("%N", aText, &va2);
+        strText.printfV(aText, va2);
         va_end(va2);
     }
 
