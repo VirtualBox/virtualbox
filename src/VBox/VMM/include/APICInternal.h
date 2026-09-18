@@ -155,21 +155,57 @@ typedef enum APICMSRACCESS
  */
 #define APIC_CACHE_LINE_SIZE              128
 
-/**
- * APIC Pending-Interrupt Bitmap (PIB).
+/** @def APIC_PIB_INTR_XXX.
+ * The interrupt state of each vector is represented by 2 bits.
+ * This is used only for edge-triggered interrupts.
  */
-typedef struct APICPIB
+/** The interrupt is not pending. */
+#define APIC_PIB_INTR_NOT_PENDING         0x0
+/** The interrupt is pending. */
+#define APIC_PIB_INTR_PENDING             0x1
+/** The interrupt is pending and requires Hyper-V AutoEoi handling. */
+#define APIC_PIB_INTR_PENDING_AUTO_EOI    0x2
+/** Reserved/invalid - not currently used. */
+#define APIC_PIB_INTR_RSVD                0x3
+/** The mask of the per-vector edge-triggered PIB interrupt state. */
+#define APIC_PIB_INTR_MASK                0x3
+
+
+/**
+ * APIC Pending-Interrupt Bitmap (PIB) for edge-triggered interrupts.
+ */
+typedef struct APICEDGEPIB
+{
+    /** Interrupt state for each vector, see APIC_PIB_INTR_XXX. */
+    uint64_t volatile au64VectorStates[8];
+    uint32_t volatile fOutstandingNotification;
+    uint8_t           au8Reserved[APIC_CACHE_LINE_SIZE - sizeof(uint32_t) - (sizeof(uint64_t) * 8)];
+} APICEDGEPIB;
+AssertCompileMemberOffset(APICEDGEPIB, fOutstandingNotification, 512 / 8);
+AssertCompileSize(APICEDGEPIB, APIC_CACHE_LINE_SIZE);
+/** Pointer to a pending-interrupt bitmap. */
+typedef APICEDGEPIB *PAPICEDGEPIB;
+/** Pointer to a const pending-interrupt bitmap. */
+typedef const APICEDGEPIB *PCAPICEDGEPIB;
+
+/**
+ * APIC Pending-Interrupt Bitmap (PIB) for level-sensitive interrupts.
+ */
+typedef struct APICLEVELPIB
 {
     uint64_t volatile au64VectorBitmap[4];
     uint32_t volatile fOutstandingNotification;
     uint8_t           au8Reserved[APIC_CACHE_LINE_SIZE - sizeof(uint32_t) - (sizeof(uint64_t) * 4)];
-} APICPIB;
-AssertCompileMemberOffset(APICPIB, fOutstandingNotification, 256 / 8);
-AssertCompileSize(APICPIB, APIC_CACHE_LINE_SIZE);
+} APICLEVELPIB;
+AssertCompileMemberOffset(APICLEVELPIB, fOutstandingNotification, 256 / 8);
+AssertCompileSize(APICLEVELPIB, APIC_CACHE_LINE_SIZE);
 /** Pointer to a pending-interrupt bitmap. */
-typedef APICPIB *PAPICPIB;
+typedef APICLEVELPIB *PAPICLEVELPIB;
 /** Pointer to a const pending-interrupt bitmap. */
-typedef const APICPIB *PCAPICPIB;
+typedef const APICLEVELPIB *PCAPICLEVELPIB;
+/* Size must be identical since we alloc all per-VCPU PIBs contiguously per-VM
+   and point at the right offsets for each VCPU. */
+AssertCompile(sizeof(APICLEVELPIB) == sizeof(APICEDGEPIB));
 
 /**
  * APIC PDM instance data (per-VM).
@@ -203,7 +239,7 @@ typedef struct APIC
     /** The ring-3 device instance. */
     PPDMDEVINSR3                pDevInsR3;
 
-    /** @name The APIC pending-interrupt bitmap (PIB).
+    /** @name The contiguous pending-interrupt bitmaps (PIB) of all VCPUs.
      * @{ */
     /** The host-context physical address of the PIB. */
     RTHCPHYS                    HCPhysApicPib;
@@ -307,7 +343,7 @@ typedef struct APICCPU
     /** The APIC PIB virtual address - R3 ptr. */
     R3PTRTYPE(void *)           pvApicPibR3;
     /** The APIC PIB for level-sensitive interrupts. */
-    APICPIB                     ApicPibLevel;
+    APICLEVELPIB                ApicPibLevel;
     /** @} */
 
     /** @name Other miscellaneous data.
@@ -321,7 +357,7 @@ typedef struct APICCPU
     /** The source tags corresponding to each interrupt vector (debugging). */
     uint32_t                    auSrcTags[256];
     /** Hyper-V Auto EOI vectors. */
-    uint8_t                     auAutoEoiVectors[32];
+    uint32_t                    auAutoEoiVectors[8];
     /** @} */
 
     /** @name The APIC timer.
@@ -423,6 +459,7 @@ typedef APICCPU *PAPICCPU;
 /** Pointer to a const APIC VMCPU instance data. */
 typedef APICCPU const *PCAPICCPU;
 AssertCompileMemberAlignment(APICCPU, uApicBaseMsr, 8);
+AssertCompileMemberSize(APICCPU, auAutoEoiVectors, 32 /* =256 bits, one per vector */);
 
 void                          apicHintTimerFreq(PPDMDEVINS pDevIns, PAPICCPU pApicCpu, uint32_t uInitialCount, uint8_t uTimerShift);
 
