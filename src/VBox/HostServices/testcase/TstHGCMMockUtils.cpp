@@ -1,4 +1,4 @@
-/* $Id: TstHGCMMockUtils.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: TstHGCMMockUtils.cpp 115281 2026-09-18 23:04:39Z knut.osmundsen@oracle.com $ */
 /** @file
  * TstHGCMMockUtils.cpp - Utility functions for the HGCM Mocking framework.
  */
@@ -261,8 +261,8 @@ int TstHGCMUtilsHostThreadStart(PTSTHGCMUTILSCTX pCtx, PTSTHGCMUTILSHOSTCALLBACK
     memcpy(&pCtx->Host.Callbacks, pCallbacks, sizeof(TSTHGCMUTILSHOSTCALLBACKS));
     pCtx->Host.pvUser = pvUser;
 
-    int rc = RTThreadCreate(&pCtx->Host.hThread, tstHGCMUtilsHostThreadWorker, pCtx, 0, RTTHREADTYPE_DEFAULT, RTTHREADFLAGS_WAITABLE,
-                            "tstShClHst");
+    int rc = RTThreadCreate(&pCtx->Host.hThread, tstHGCMUtilsHostThreadWorker, pCtx, 0, RTTHREADTYPE_DEFAULT,
+                            RTTHREADFLAGS_WAITABLE | RTTHREADFLAGS_COM_MTA, "tstShClHst");
     if (RT_SUCCESS(rc))
         rc = RTThreadUserWait(pCtx->Host.hThread, RT_MS_30SEC);
 
