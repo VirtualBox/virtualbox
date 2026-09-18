@@ -1,4 +1,4 @@
-/* $Id: initterm.cpp 115223 2026-09-11 11:08:28Z knut.osmundsen@oracle.com $ */
+/* $Id: initterm.cpp 115273 2026-09-18 17:04:56Z knut.osmundsen@oracle.com $ */
 /** @file
  * MS COM / XPCOM Abstraction Layer - Initialization and Termination.
  */
@@ -205,6 +205,18 @@ static unsigned int gXPCOMInitCount = 0;
 
 #else /* !defined(VBOX_WITH_XPCOM) */
 
+# if __RPCPROXY_H_VERSION__ < 477 /* possibly 476 */
+typedef struct tagCInterfaceStubVtblTag
+{
+    CInterfaceStubHeader    header;
+    void                   *tag;
+} CInterfaceStubVtblTag;
+#  define CStdStubBuffer_METHODS_TAG                    ((void *)(intptr_t)-1)
+#  define CStdStubBuffer_DELEGATING_METHODS_TAG         ((void *)(intptr_t)-2)
+#  define CStdAsyncStubBuffer_METHODS_TAG               ((void *)(intptr_t)-3)
+#  define CStdAsyncStubBuffer_DELEGATING_METHODS_TAG    ((void *)(intptr_t)-4)
+# endif
+
 /**
  * Replacement function for the InvokeStub method for the IRundown stub.
  */
@@ -272,6 +284,18 @@ DLLHost_InvokeStub(IRpcStubBuffer *pThis, RPCOLEMESSAGE *pMsg, IRpcChannelBuffer
 }
 
 /**
+ * Release() method for use in our replacement VTables on newer W11.
+ */
+DECLSPEC_XFGVIRT(IUnknown, Release)
+ULONG STDMETHODCALLTYPE MyCStdStubBuffer_Release(IRpcStubBuffer *pIThis)
+{
+    /* ASSUMES that this is a correct cast and that there is always a factory. */
+    CStdStubBuffer *pThis = (CStdStubBuffer *)pIThis;
+    AssertPtr(pThis->pPSFactory);
+    return NdrCStdStubBuffer_Release(pIThis, pThis->pPSFactory);
+}
+
+/**
  * Replaces the IRundown InvokeStub method with Rundown_InvokeStub so we can
  * reject remote calls to a couple of misdesigned methods.
  *
@@ -287,7 +311,8 @@ void PatchComBugs(void)
      * The combase.dll / ole32.dll is exporting a DllGetClassObject function
      * that is implemented using NdrDllGetClassObject just like our own
      * proxy/stub DLL.  This means we can get at the stub interface lists,
-     * since what NdrDllGetClassObject has CStdPSFactoryBuffer as layout.
+     * since what NdrDllGetClassObject returns has CStdPSFactoryBuffer as
+     * layout.
      *
      * Note! Tried using CoRegisterPSClsid instead of this mess, but no luck.
      */
@@ -324,7 +349,110 @@ void PatchComBugs(void)
     {
         ProxyFileInfo const *pCur = *ppCur;
 
-        if (pCur->pStubVtblList)
+        /*
+         * With the /target:NT1012 (~22H2) or higher, the stub vtable list format
+         * changes, requiring a different patching stragety (as well as enum loop).
+         *
+         * We have to replace the *ppCurStub (CInterfaceStubVtblTag *) with a pointer
+         * to an old-style InterfaceStubVtbl structure with a full vtable.  The
+         * combase!NdrOleCreateStubFromFileInfo function will only translate known tag
+         * values to internal vtables (-4=CStdAsyncStubBuffer2Vtbl, -3=CStdAsyncStubBufferVtbl,
+         * -2=CStdStubBuffer2Vtbl, -1=CStdStubBufferVtbl) and will otherwise use the table as-it.
+         */
+        if (pCur->pStubVtblList && pCur->TableVersion >= 16 /* /target:NT1012 or higher */)
+        {
+            for (CInterfaceStubVtblTag const **ppCurStub = (CInterfaceStubVtblTag const **)pCur->pStubVtblList;
+                 *ppCurStub != NULL; ppCurStub++)
+            {
+                CInterfaceStubVtblTag const * const pCurStub = *ppCurStub;
+                IID const *piid = pCurStub->header.piid;
+                if (piid)
+                {
+                    CInterfaceStubVtbl *pReplacement = NULL;
+                    if (IsEqualIID(*piid, s_IID_Rundown))
+                    {
+                        if (pCurStub->tag == CStdStubBuffer_METHODS_TAG)
+                        {
+                            static CInterfaceStubVtbl s_RundownReplacementVtbl =
+                            {
+                                {},
+                                {
+                                    /* QueryInterface = */              CStdStubBuffer_QueryInterface,
+                                    /* AddRef = */                      CStdStubBuffer_AddRef,
+                                    /* Release = */                     MyCStdStubBuffer_Release,
+                                    /* Connect = */                     CStdStubBuffer_Connect,
+                                    /* Disconnect = */                  CStdStubBuffer_Disconnect,
+                                    /* Invoke = */                      Rundown_InvokeStub,
+                                    /* IsIIDSupported = */              CStdStubBuffer_IsIIDSupported,
+                                    /* CountRefs = */                   CStdStubBuffer_CountRefs,
+                                    /* DebugServerQueryInterface = */   CStdStubBuffer_DebugServerQueryInterface,
+                                    /* DebugServerRelease = */          CStdStubBuffer_DebugServerRelease,
+                                }
+                            };
+                            s_RundownReplacementVtbl.header = pCurStub->header;
+                            s_RundownReplacementVtbl.header = pCurStub->header;
+                            pReplacement = &s_RundownReplacementVtbl;
+                        }
+                        else if (   pCurStub->tag == CStdStubBuffer_DELEGATING_METHODS_TAG
+                                 && pCurStub->tag == CStdAsyncStubBuffer_METHODS_TAG
+                                 && pCurStub->tag == CStdAsyncStubBuffer_DELEGATING_METHODS_TAG)
+                            AssertLogRelMsgFailed(("tag=%p\n", pCurStub->tag));
+                        else
+                            cAlreadyPatched++;
+                        //RTAssertMsg2("%p IID_Rundown - tag=%p; ba r 8 %p\n", pCurStub, pCurStub->tag, &pCurStub->tag);
+                    }
+                    else if (IsEqualIID(*piid, s_IID_DLLHost))
+                    {
+                        if (pCurStub->tag == CStdStubBuffer_METHODS_TAG)
+                        {
+                            static CInterfaceStubVtbl s_DLLHostReplacementVtbl =
+                            {
+                                {},
+                                {
+                                    /* QueryInterface = */              CStdStubBuffer_QueryInterface,
+                                    /* AddRef = */                      CStdStubBuffer_AddRef,
+                                    /* Release = */                     MyCStdStubBuffer_Release,
+                                    /* Connect = */                     CStdStubBuffer_Connect,
+                                    /* Disconnect = */                  CStdStubBuffer_Disconnect,
+                                    /* Invoke = */                      DLLHost_InvokeStub,
+                                    /* IsIIDSupported = */              CStdStubBuffer_IsIIDSupported,
+                                    /* CountRefs = */                   CStdStubBuffer_CountRefs,
+                                    /* DebugServerQueryInterface = */   CStdStubBuffer_DebugServerQueryInterface,
+                                    /* DebugServerRelease = */          CStdStubBuffer_DebugServerRelease,
+                                }
+                            };
+                            s_DLLHostReplacementVtbl.header = pCurStub->header;
+                            s_DLLHostReplacementVtbl.header = pCurStub->header;
+                            pReplacement = &s_DLLHostReplacementVtbl;
+                        }
+                        else if (   pCurStub->tag == CStdStubBuffer_DELEGATING_METHODS_TAG
+                                 && pCurStub->tag == CStdAsyncStubBuffer_METHODS_TAG
+                                 && pCurStub->tag == CStdAsyncStubBuffer_DELEGATING_METHODS_TAG)
+                            AssertLogRelMsgFailed(("tag=%p\n", pCurStub->tag));
+                        else
+                            cAlreadyPatched++;
+                        //RTAssertMsg2("%p IID_DLLHost - tag=%p; ba r 8 %p\n", pCurStub, pCurStub->tag, &pCurStub->tag);
+                        cAlreadyPatched++;
+                    }
+                    if (pReplacement)
+                    {
+                        DWORD fOld = 0;
+                        if (VirtualProtect(ppCurStub, sizeof(ppCurStub), PAGE_READWRITE, &fOld))
+                        {
+                            *(CInterfaceStubVtbl **)ppCurStub = pReplacement;
+                            VirtualProtect(ppCurStub, sizeof(ppCurStub), fOld, &fOld);
+                            cPatched++;
+                        }
+                        else
+                            AssertMsgFailed(("%d\n", GetLastError()));
+                    }
+                }
+            }
+        }
+        /*
+         * Tranditional format.
+         */
+        else if (pCur->pStubVtblList)
         {
             for (PCInterfaceStubVtblList const *ppCurStub = pCur->pStubVtblList; *ppCurStub != NULL; ppCurStub++)
             {
