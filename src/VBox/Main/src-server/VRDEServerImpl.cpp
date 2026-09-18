@@ -29,6 +29,7 @@
 #include "VRDEServerImpl.h"
 #include "MachineImpl.h"
 #include "VirtualBoxImpl.h"
+#include "CertificateImpl.h"
 #ifdef VBOX_WITH_EXTPACK
 # include "ExtPackManagerImpl.h"
 #endif
@@ -1043,6 +1044,56 @@ HRESULT VRDEServer::getVRDEExtPack(com::Utf8Str &aExtPack)
                 aExtPack = bstr;
         }
     }
+    return hrc;
+}
+
+HRESULT VRDEServer::getVRDECertificate(BOOL getCACert, ComPtr<ICertificate> &aCertificateInfo)
+{
+
+    RTERRINFOSTATIC ErrInfo;
+    RTCRX509CERTIFICATE x509certificate;
+    HRESULT hrc;
+    ComObjPtr<Certificate> ptrCertificateInfo;
+    Utf8Str strServerCertificate;
+
+    if (getCACert)
+    {
+        strServerCertificate = mData->mapProperties["Security/CACertificate"];
+    }
+    else
+    {
+        strServerCertificate = mData->mapProperties["Security/ServerCertificate"];
+    }
+
+    int vrc = mParent->i_calculateFullPath(strServerCertificate, strServerCertificate);
+    AssertRCReturn(vrc, VBOX_E_IPRT_ERROR);
+
+    if (RTFileExists(strServerCertificate.c_str()))
+    {
+        vrc = RTCrX509Certificate_ReadFromFile(&x509certificate, strServerCertificate.c_str(),
+                                                   RTCRX509CERT_READ_F_PEM_ONLY, &g_RTAsn1DefaultAllocator,
+                                                   RTErrInfoInitStatic(&ErrInfo));
+        if (RT_FAILURE(vrc))
+        {
+            RTCrX509Certificate_Delete(&x509certificate);
+            return setError(VBOX_E_FILE_ERROR, tr("Failed to read certificate '%s': %Rrc%#RTeim\n"),
+                            strServerCertificate.c_str(), vrc, &ErrInfo.Core);
+        }
+
+        ptrCertificateInfo.createObject();
+        hrc = ptrCertificateInfo->initCertificate(&x509certificate, false, false);
+        if (SUCCEEDED(hrc))
+        {
+            /* set the return value */
+            ptrCertificateInfo.queryInterfaceTo(aCertificateInfo.asOutParam());
+        }
+        RTCrX509Certificate_Delete(&x509certificate);
+    }
+    else
+    {
+        hrc = VERR_FILE_NOT_FOUND;
+    }
+
     return hrc;
 }
 
