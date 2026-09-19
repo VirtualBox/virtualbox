@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc.h 115102 2026-08-21 11:14:19Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc.h 115284 2026-09-19 00:53:49Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard Service - HGCM protocol state and data transfer interfaces.
  */
@@ -58,7 +58,7 @@ struct SHCLCLIENTSTATE;
 /**
  * A queued message for the guest.
  */
-typedef struct _SHCLCLIENTMSG
+typedef struct SHCLCLIENTMSG
 {
     /** The queue list entry. */
     RTLISTNODE          ListEntry;
@@ -170,7 +170,7 @@ typedef struct SHCLCLIENTSTATE
     uint32_t                uMode;
 } SHCLCLIENTSTATE, *PSHCLCLIENTSTATE;
 
-typedef struct _SHCLCLIENTCMDCTX
+typedef struct SHCLCLIENTCMDCTX
 {
     uint64_t uContextID;
 } SHCLCLIENTCMDCTX, *PSHCLCLIENTCMDCTX;
@@ -179,7 +179,7 @@ typedef struct _SHCLCLIENTCMDCTX
 /**
  * Structure for keeping transfer-related data per HGCM client.
  */
-typedef struct _SHCLIENTTRANSFERS
+typedef struct SHCLIENTTRANSFERS
 {
     /** Transfer context. */
     SHCLTRANSFERCTX             Ctx;
@@ -191,7 +191,7 @@ typedef struct _SHCLIENTTRANSFERS
 /**
  * Structure for keeping data per (connected) HGCM client.
  */
-typedef struct _SHCLCLIENT
+typedef struct SHCLCLIENT
 {
     /** HGCM service helpers used to complete deferred guest calls. */
     PVBOXHGCMSVCHELPERS         pHelpers;

@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 115228 2026-09-11 15:55:28Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 115284 2026-09-19 00:53:49Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -2772,7 +2772,8 @@ int ShClTransferRootsSetFromStringListEx(PSHCLTRANSFER pTransfer, const char *ps
                         if (    pszPathRelToRoot
                             && *pszPathRelToRoot != '\0')
                         {
-                            LogRel2(("Shared Clipboard: Adding list entry '%s'\n", pszPathRelToRoot));
+                            LogRel2(("Shared Clipboard: Adding list entry '%s' %s fMode=%#x\n", pszPathRelToRoot,
+                                     pTransfer->State.enmSource == SHCLSOURCE_LOCAL ? "local" : "remote", pFsObjInfo->Attr.fMode));
 
                             rc = ShClTransferListEntryInitEx(pEntry, VBOX_SHCL_INFO_F_FSOBJINFO, pszPathRelToRoot,
                                                              pFsObjInfo, sizeof(SHCLFSOBJINFO));
@@ -3231,7 +3232,7 @@ int ShClTransferError(PSHCLTRANSFER pTransfer, int rc)
 /**
  * Internal struct for keeping a transfer thread context.
  */
-typedef struct _SHCLTRANSFERTHREADCTX
+typedef struct SHCLTRANSFERTHREADCTX
 {
     /** Pointer to transfer. */
     PSHCLTRANSFER         pTransfer;

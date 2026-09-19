@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers-http.cpp 115131 2026-08-25 17:30:42Z andreas.loeffler@oracle.com $ */
+/* $Id: clipboard-transfers-http.cpp 115284 2026-09-19 00:53:49Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard: HTTP server implementation for Shared Clipboard transfers on UNIX-y guests / hosts.
  */
@@ -73,7 +73,7 @@
 # define VBOX_SHCL_DEBUG_HTTPSERVER
 #endif
 
-typedef struct _SHCLHTTPSERVERTRANSFER
+typedef struct SHCLHTTPSERVERTRANSFER
 {
     /** The node list. */
     RTLISTNODE          Node;
@@ -110,7 +110,7 @@ typedef struct _SHCLHTTPSERVERTRANSFER
 typedef SHCLHTTPSERVERTRANSFER *PSHCLHTTPSERVERTRANSFER;
 
 /** Per-request state.  In particular, object handles must never be shared by two HTTP requests. */
-typedef struct _SHCLHTTPSERVERREQUEST
+typedef struct SHCLHTTPSERVERREQUEST
 {
     /** Retained registration used by this request. */
     PSHCLHTTPSERVERTRANSFER pSrvTx;
@@ -847,8 +847,6 @@ static DECLCALLBACK(int) shClTransferHttpQueryInfo(PRTHTTPCALLBACKDATA pData,
                                 rc = ShClTransferObjOpen(pTx, &openParms, &pHttpReq->hObj);
                                 if (RT_SUCCESS(rc))
                                 {
-                                    rc = VERR_NOT_SUPPORTED; /* Play safe by default. */
-
                                     if (   pEntry->fInfo & VBOX_SHCL_INFO_F_FSOBJINFO
                                         && pEntry->cbInfo == sizeof(SHCLFSOBJINFO)
                                         && pEntry->pvInfo)
@@ -877,8 +875,11 @@ static DECLCALLBACK(int) shClTransferHttpQueryInfo(PRTHTTPCALLBACKDATA pData,
                                             rc = VERR_NOT_SUPPORTED;
                                     }
                                     else
+                                    {
                                         LogRelMax(16, ("Shared Clipboard: Supplied entry information for '%.*s' is not supported (fInfo=%#x, cbInfo=%RU32)\n",
                                                        128, pEntry->pszName, pEntry->fInfo, pEntry->cbInfo));
+                                        rc = VERR_NOT_SUPPORTED;
+                                    }
                                     /* Note: Directories / symlinks or other fancy stuff is not supported here (yet) -- would require using WebDAV. */
                                     if (   RT_FAILURE(rc)
                                         && pHttpReq->hObj != NIL_SHCLOBJHANDLE)

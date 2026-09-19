@@ -93,7 +93,7 @@ typedef FNREMOVECLIPBOARDFORMATLISTENER *PFNREMOVECLIPBOARDFORMATLISTENER;
  * Structure for keeping function pointers for the new clipboard API.
  * If the new API is not available, those function pointer are NULL.
  */
-typedef struct _SHCLWINAPINEW
+typedef struct SHCLWINAPINEW
 {
     PFNADDCLIPBOARDFORMATLISTENER    pfnAddClipboardFormatListener;
     PFNREMOVECLIPBOARDFORMATLISTENER pfnRemoveClipboardFormatListener;
@@ -102,7 +102,7 @@ typedef struct _SHCLWINAPINEW
 /**
  * Structure for keeping variables which are needed to drive the old clipboard API.
  */
-typedef struct _SHCLWINAPIOLD
+typedef struct SHCLWINAPIOLD
 {
     /** Timer ID for the refresh timer. */
     UINT                   timerRefresh;
@@ -120,7 +120,7 @@ class ShClWinStreamImpl;
 /**
  * Structure for maintaining a Shared Clipboard context on Windows platforms.
  */
-typedef struct _SHCLWINCTX
+typedef struct SHCLWINCTX
 {
     /** Critical section to serialize access. */
     RTCRITSECT         CritSect;

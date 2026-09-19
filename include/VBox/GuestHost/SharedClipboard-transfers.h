@@ -1,4 +1,4 @@
-/* $Id: SharedClipboard-transfers.h 115173 2026-09-07 15:53:51Z andreas.loeffler@oracle.com $ */
+/* $Id: SharedClipboard-transfers.h 115284 2026-09-19 00:53:49Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard - Shared transfer functions between host and guest.
  */
@@ -210,7 +210,7 @@ typedef SHCLOBJHANDLE *PSHCLOBJHANDLE;
  * The available additional information in a SHCLFSOBJATTR object.
  * @sa RTFSOBJATTRADD
  */
-typedef enum _SHCLFSOBJATTRADD
+typedef enum SHCLFSOBJATTRADD
 {
     /** No additional information is available / requested. */
     SHCLFSOBJATTRADD_NOTHING = 1,
@@ -242,7 +242,7 @@ AssertCompileSize(RTUID,        4);
  *
  * @sa RTFSOBJATTR
  */
-typedef struct _SHCLFSOBJATTR
+typedef struct SHCLFSOBJATTR
 {
     /** Mode flags (st_mode). RTFS_UNIX_*, RTFS_TYPE_*, and RTFS_DOS_*.
      * @remarks We depend on a number of RTFS_ defines to remain unchanged.
@@ -328,7 +328,7 @@ typedef const SHCLFSOBJATTR *PCSHCLFSOBJATTR;
  *
  * @sa RTFSOBJINFO
  */
-typedef struct _SHCLFSOBJINFO
+typedef struct SHCLFSOBJINFO
 {
    /** Logical size (st_size).
     * For normal files this is the size of the file.
@@ -373,7 +373,7 @@ typedef const SHCLFSOBJINFO *PCSHCLFSOBJINFO;
 /**
  * Structure for keeping object open/create parameters.
  */
-typedef struct _SHCLOBJOPENCREATEPARMS
+typedef struct SHCLOBJOPENCREATEPARMS
 {
     /** Path to object to open / create.
      *  Always stored as UNIX-style paths ('/').
@@ -395,7 +395,7 @@ typedef SHCLOBJOPENCREATEPARMS *PSHCLOBJOPENCREATEPARMS;
 /**
  * Structure for keeping a reply message.
  */
-typedef struct _SHCLREPLY
+typedef struct SHCLREPLY
 {
     /** Message type (of type VBOX_SHCL_TX_REPLYMSGTYPE_TRANSFER_XXX). */
     uint32_t uType;
@@ -437,13 +437,13 @@ typedef struct _SHCLREPLY
 /** Pointer to a Shared Clipboard reply. */
 typedef SHCLREPLY *PSHCLREPLY;
 
-struct _SHCLLISTENTRY;
-typedef _SHCLLISTENTRY SHCLLISTENTRY;
+struct SHCLLISTENTRY;
+typedef struct SHCLLISTENTRY SHCLLISTENTRY;
 
 /**
  * Structure for maintaining Shared Clipboard list open parameters.
  */
-typedef struct _SHCLLISTOPENPARMS
+typedef struct SHCLLISTOPENPARMS
 {
     /** Listing flags (see VBOX_SHCL_LIST_FLAG_XXX). */
     uint32_t fList;
@@ -463,7 +463,7 @@ typedef SHCLLISTOPENPARMS *PSHCLLISTOPENPARMS;
 /**
  * Structure for keeping a Shared Clipboard list header.
  */
-typedef struct _SHCLLISTHDR
+typedef struct SHCLLISTHDR
 {
     /** Feature flag(s) of type SHCL_TRANSFER_LIST_FEATURE_F_XXX. */
     uint32_t fFeatures;
@@ -478,7 +478,7 @@ typedef SHCLLISTHDR *PSHCLLISTHDR;
 /**
  * Structure for a generic Shared Clipboard list entry.
  */
-typedef struct _SHCLLISTENTRY
+typedef struct SHCLLISTENTRY
 {
     /** List node. */
     RTLISTNODE Node;
@@ -505,7 +505,7 @@ typedef SHCLLISTENTRY *PCSHCLLISTENTRY;
 /**
  * Structure for a generic Shared Clipboard list.
  */
-typedef struct _SHCLLIST
+typedef struct SHCLLIST
 {
     /** List header. */
     SHCLLISTHDR    Hdr;
@@ -518,7 +518,7 @@ typedef SHCLLIST *PSHCLLIST;
 /**
  * Structure for keeping a Shared Clipboard object data chunk.
  */
-typedef struct _SHCLOBJDATACHUNK
+typedef struct SHCLOBJDATACHUNK
 {
     /** Handle of object this data chunk is related to. */
     uint64_t  uHandle;
@@ -530,7 +530,7 @@ typedef struct _SHCLOBJDATACHUNK
 /** Pointer to a Shared Clipboard transfer object data chunk. */
 typedef SHCLOBJDATACHUNK *PSHCLOBJDATACHUNK;
 
-typedef struct _SHCLTRANSFEROBJSTATE
+typedef struct SHCLTRANSFEROBJSTATE
 {
     /** How many bytes were processed (read / write) so far. */
     uint64_t cbProcessed;
@@ -541,7 +541,7 @@ typedef SHCLTRANSFEROBJSTATE *PSHCLTRANSFEROBJSTATE;
 /**
  * Logical object payload progress shared by all streams for the same path.
  */
-typedef struct _SHCLTRANSFERPROGRESSOBJ
+typedef struct SHCLTRANSFERPROGRESSOBJ
 {
     /** List linkage. */
     RTLISTNODE Node;
@@ -556,7 +556,7 @@ typedef SHCLTRANSFERPROGRESSOBJ *PSHCLTRANSFERPROGRESSOBJ;
 /**
  * Enumeration for specifying a Shared Clipboard object type.
  */
-typedef enum _SHCLOBJTYPE
+typedef enum SHCLOBJTYPE
 {
     /** Invalid object type. */
     SHCLOBJTYPE_INVALID = 0,
@@ -573,7 +573,7 @@ typedef enum _SHCLOBJTYPE
 /**
  * Structure for a single Shared Clipboard transfer object.
  */
-typedef struct _SHCLTRANSFEROBJ
+typedef struct SHCLTRANSFEROBJ
 {
     /** The list node. */
     RTLISTNODE           Node;
@@ -613,7 +613,7 @@ typedef SHCLTRANSFEROBJ *PSHCLTRANSFEROBJ;
  *
  * This is using to map own (local) handles to the underlying file system.
  */
-typedef struct _SHCLLISTHANDLEINFO
+typedef struct SHCLLISTHANDLEINFO
 {
     /** The list node. */
     RTLISTNODE      Node;
@@ -643,7 +643,7 @@ typedef SHCLLISTHANDLEINFO *PSHCLLISTHANDLEINFO;
  * Structure for maintaining an Shared Clipboard transfer state.
  * Everything in here will be part of a saved state (later).
  */
-typedef struct _SHCLTRANSFERSTATE
+typedef struct SHCLTRANSFERSTATE
 {
     /** Host-side identity assigned when the transfer is registered. */
     SHCLTRANSFERKEY    Key;
@@ -660,7 +660,7 @@ typedef SHCLTRANSFERSTATE *PSHCLTRANSFERSTATE;
 /**
  * Aggregate byte progress for a Shared Clipboard transfer.
  */
-typedef struct _SHCLTRANSFERPROGRESS
+typedef struct SHCLTRANSFERPROGRESS
 {
     /** Number of object payload bytes processed so far. */
     uint64_t cbProcessed;
@@ -681,7 +681,7 @@ typedef SHCLTRANSFERPROGRESS *PSHCLTRANSFERPROGRESS;
  *
  * This is handed-in to the provider interface implementations.
  */
-typedef struct _SHCLTXPROVIDERCTX
+typedef struct SHCLTXPROVIDERCTX
 {
     /** Pointer to the related Shared Clipboard transfer. */
     PSHCLTRANSFER pTransfer;
@@ -693,8 +693,8 @@ typedef struct _SHCLTXPROVIDERCTX
 /** Pointer to Shared Clipboard transfer provider context data. */
 typedef SHCLTXPROVIDERCTX *PSHCLTXPROVIDERCTX;
 
-struct _SHCLTRANSFERCTX;
-typedef struct _SHCLTRANSFERCTX *PSHCLTRANSFERCTX;
+struct SHCLTRANSFERCTX;
+typedef struct SHCLTRANSFERCTX *PSHCLTRANSFERCTX;
 
 /**
  * Shared Clipboard transfer provider interface table.
@@ -702,7 +702,7 @@ typedef struct _SHCLTRANSFERCTX *PSHCLTRANSFERCTX;
  * A transfer provider inteface implementation realizes all low level functions
  * needed for making a Shared Clipboard transfer happen.
  */
-typedef struct _SHCLTXPROVIDERIFACE
+typedef struct SHCLTXPROVIDERIFACE
 {
     /**
      * Reads the clipboard transfer root list.
@@ -834,7 +834,7 @@ typedef SHCLTXPROVIDERIFACE *PSHCLTXPROVIDERIFACE;
 /**
  * Structure for Shared Clipboard transfer provider.
  */
-typedef struct _SHCLTXPROVIDER
+typedef struct SHCLTXPROVIDER
 {
     /** Specifies what the source of the provider is. */
     SHCLSOURCE           enmSource;
@@ -851,7 +851,7 @@ typedef SHCLTXPROVIDER *PSHCLTXPROVIDER;
 /**
  * Structure maintaining clipboard transfer callback context data.
  */
-typedef struct _SHCLTRANSFERCALLBACKCTX
+typedef struct SHCLTRANSFERCALLBACKCTX
 {
     /** Pointer to the related Shared Clipboard transfer. */
     PSHCLTRANSFER pTransfer;
@@ -869,7 +869,7 @@ typedef SHCLTRANSFERCALLBACKCTX *PSHCLTRANSFERCALLBACKCTX;
  * All callbacks are optional.
  * Callbacks which can veto the caller have a return value.
  */
-typedef struct _SHCLTRANSFERCALLBACKS
+typedef struct SHCLTRANSFERCALLBACKS
 {
     /**
      * Called after the transfer got created.
@@ -948,7 +948,7 @@ typedef DECLCALLBACKPTR(int, PFNSHCLTRANSFERTHREAD,(PSHCLTRANSFER pTransfer, voi
 /**
  * Structure for thread-related members for a single Shared Clipboard transfer.
  */
-typedef struct _SHCLTRANSFERTHREAD
+typedef struct SHCLTRANSFERTHREAD
 {
     /** Thread handle for the reading / writing thread.
      *  Can be NIL_RTTHREAD if not being used. */
@@ -1035,7 +1035,7 @@ typedef SHCLTRANSFER *PSHCLTRANSFER;
 /**
  * Structure for keeping an Shared Clipboard transfer status report.
  */
-typedef struct _SHCLTRANSFERREPORT
+typedef struct SHCLTRANSFERREPORT
 {
     /** Actual status to report. */
     SHCLTRANSFERSTATUS    uStatus;
@@ -1053,7 +1053,7 @@ typedef SHCLTRANSFERREPORT *PSHCLTRANSFERREPORT;
  *
  * Keep those as flags, so that we can wait for multiple statuses, if ever needed.
  */
-typedef enum _SHCLHTTPSERVERSTATUS
+typedef enum SHCLHTTPSERVERSTATUS
 {
     /** No status set yet. */
     SHCLHTTPSERVERSTATUS_NONE                  = 0x0,
@@ -1070,7 +1070,7 @@ typedef enum _SHCLHTTPSERVERSTATUS
 /**
  * Structure for keeping a Shared Clipboard HTTP server instance.
  */
-typedef struct _SHCLHTTPSERVER
+typedef struct SHCLHTTPSERVER
 {
     /** Critical section for serializing access. */
     RTCRITSECT           CritSect;
@@ -1105,7 +1105,7 @@ typedef SHCLHTTPSERVER *PSHCLHTTPSERVER;
  *
  * This contains the HTTP server instance, among other things.
  */
-typedef struct _SHCLHTTPCONTEXT
+typedef struct SHCLHTTPCONTEXT
 {
     /** HTTP server instance data. */
     SHCLHTTPSERVER      HttpServer;
@@ -1120,7 +1120,7 @@ typedef SHCLHTTPCONTEXT *PSHCLHTTPCONTEXT;
  *
  * A transfer context contains a list of (grouped) transfers for book keeping.
  */
-typedef struct _SHCLTRANSFERCTX
+typedef struct SHCLTRANSFERCTX
 {
     /** Critical section for serializing access. */
     RTCRITSECT                  CritSect;

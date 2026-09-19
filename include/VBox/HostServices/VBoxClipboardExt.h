@@ -46,7 +46,7 @@
 #endif
 
 /** Opaque declaration of an HGCM Shared Clipboard client. */
-typedef struct _SHCLCLIENT SHCLCLIENT, *PSHCLCLIENT;
+typedef struct SHCLCLIENT SHCLCLIENT, *PSHCLCLIENT;
 /** Opaque declaration of a Shared Clipboard transfer. */
 typedef struct SHCLTRANSFER *PSHCLTRANSFER;
 /** Opaque identity of a client owned exclusively by the HGCM service. */
@@ -196,7 +196,7 @@ typedef DECLCALLBACKTYPE(int, FNSHCLEXTCALLBACK,(uint32_t u32Function, uint32_t 
 typedef FNSHCLEXTCALLBACK *PFNSHCLEXTCALLBACK;
 
 /** Structure for holding Shared Clipboard service extension parameters. */
-typedef struct _SHCLEXTPARMS
+typedef struct SHCLEXTPARMS
 {
     /** Operation-specific payload selected by the VBOX_CLIPBOARD_EXT_FN_XXX function number. */
     union
