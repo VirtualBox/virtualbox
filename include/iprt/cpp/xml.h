@@ -64,7 +64,7 @@
  * @{
  */
 
-/* Forwards */
+/* libxml typedefs */
 typedef struct _xmlParserInput xmlParserInput;
 typedef xmlParserInput *xmlParserInputPtr;
 typedef struct _xmlParserCtxt xmlParserCtxt;
