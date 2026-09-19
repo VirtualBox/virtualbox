@@ -1,4 +1,4 @@
-/* $Id: TstHGCMMock.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: TstHGCMMock.cpp 115283 2026-09-19 00:14:26Z knut.osmundsen@oracle.com $ */
 /** @file
  * TstHGCMMock.cpp - Mocking framework for testing HGCM-based host services.
  *
@@ -476,8 +476,8 @@ int TstHgcmMockSvcDestroy(PTSTHGCMMOCKSVC pSvc)
  */
 int TstHgcmMockSvcStart(PTSTHGCMMOCKSVC pSvc)
 {
-    int rc = RTThreadCreate(&pSvc->hThread, tstHgcmMockSvcThread, pSvc, 0, RTTHREADTYPE_DEFAULT, RTTHREADFLAGS_WAITABLE,
-                            "MockSvc");
+    int rc = RTThreadCreate(&pSvc->hThread, tstHgcmMockSvcThread, pSvc, 0, RTTHREADTYPE_DEFAULT,
+                            RTTHREADFLAGS_WAITABLE | RTTHREADFLAGS_COM_MTA, "MockSvc");
     if (RT_SUCCESS(rc))
         rc = RTThreadUserWait(pSvc->hThread, RT_MS_30SEC);
 
