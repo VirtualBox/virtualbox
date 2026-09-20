@@ -310,6 +310,10 @@ static void vmmdevLogGuestOsInfo(VBoxGuestInfo *pGuestInfo)
             case VBOXOSTYPE_Ubuntu24_arm64:               pszOs = "Ubuntu 24.10";   break;
             case VBOXOSTYPE_Ubuntu25_x64:                 pszOs = "Ubuntu 25.04";   break;
             case VBOXOSTYPE_Ubuntu25_arm64:               pszOs = "Ubuntu 25.04";   break;
+            case VBOXOSTYPE_Ubuntu251_x64:                pszOs = "Ubuntu 25.10";   break;
+            case VBOXOSTYPE_Ubuntu251_arm64:              pszOs = "Ubuntu 25.10";   break;
+            case VBOXOSTYPE_Ubuntu26_LTS_x64:             pszOs = "Ubuntu 26.04 LTS"; break;
+            case VBOXOSTYPE_Ubuntu26_LTS_arm64:           pszOs = "Ubuntu 26.04 LTS"; break;
             case VBOXOSTYPE_RedHat7_x64:                  pszOs = "Red Hat 7";      break;
             case VBOXOSTYPE_RedHat7_arm64:                pszOs = "Red Hat 7";      break;
             case VBOXOSTYPE_RedHat8_x64:                  pszOs = "Red Hat 8";      break;
