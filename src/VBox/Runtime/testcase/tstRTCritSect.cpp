@@ -1,4 +1,4 @@
-/* $Id: tstRTCritSect.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: tstRTCritSect.cpp 115294 2026-09-21 09:48:41Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT Testcase - Critical Sections.
  */
@@ -232,7 +232,11 @@ static int Test1(unsigned cThreads)
         /* wait for it to get into waiting. */
         while (LOCKERS(CritSect) == iLock)
             RTThreadSleep(10);
+#ifdef TRY_WIN32_CRIT
+        RTThreadSleep(42); /* increased fudge to try combat sporadic failurs... */
+#else
         RTThreadSleep(20);
+#endif
     }
 
     /*
@@ -504,7 +508,7 @@ int main(int argc, char **argv)
                 return 1;
 
             case 'V':
-                RTPrintf("$Revision: 106320 $\n");
+                RTPrintf("$Revision: 115294 $\n");
                 return 0;
 
             default:
