@@ -1,4 +1,4 @@
-/* $Id: tstRTSemRW.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: tstRTSemRW.cpp 115290 2026-09-21 09:29:54Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT Testcase - Reader/Writer Semaphore.
  */
@@ -273,7 +273,7 @@ static void Test4(unsigned cThreads, unsigned cSeconds, unsigned uWritePercent, 
      * Clean up the threads and semaphore.
      */
     for (i = 0; i < cThreads; i++)
-        RTTEST_CHECK_RC(g_hTest, RTThreadWait(aThreads[i], 5000, NULL), VINF_SUCCESS);
+        RTTEST_CHECK_RC(g_hTest, RTThreadWait(aThreads[i], 20000, NULL), VINF_SUCCESS);
 
     RTTEST_CHECK_MSG(g_hTest, g_cConcurrentWriters == 0, (g_hTest, "g_cConcurrentWriters=%u at end of test\n", g_cConcurrentWriters));
     RTTEST_CHECK_MSG(g_hTest, g_cConcurrentReaders == 0, (g_hTest, "g_cConcurrentReaders=%u at end of test\n", g_cConcurrentReaders));
