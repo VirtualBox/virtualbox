@@ -1,4 +1,4 @@
-/* $Id: SharedClipboard-transfers.h 115284 2026-09-19 00:53:49Z knut.osmundsen@oracle.com $ */
+/* $Id: SharedClipboard-transfers.h 115288 2026-09-21 09:26:48Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard - Shared transfer functions between host and guest.
  */
@@ -1329,7 +1329,7 @@ int ShClTransferListAddEntry(PSHCLLIST pList, PSHCLLISTENTRY pEntry, bool fAppen
 int ShClTransferListHandleInfoInit(PSHCLLISTHANDLEINFO pInfo);
 void ShClTransferListHandleInfoDestroy(PSHCLLISTHANDLEINFO pInfo);
 
-PSHCLLISTHDR ShClTransferListHdrDup(PSHCLLISTHDR pListHdr);
+/* PSHCLLISTHDR ShClTransferListHdrDup(PSHCLLISTHDR pListHdr); - unused, no corresponding free function */
 int ShClTransferListHdrInit(PSHCLLISTHDR pListHdr);
 void ShClTransferListHdrDestroy(PSHCLLISTHDR pListHdr);
 void ShClTransferListHdrReset(PSHCLLISTHDR pListHdr);

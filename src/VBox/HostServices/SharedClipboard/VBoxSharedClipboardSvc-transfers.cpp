@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115173 2026-09-07 15:53:51Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-transfers.cpp 115288 2026-09-21 09:26:48Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Internal code for transfer (list) handling.
  */
@@ -1312,15 +1312,11 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
             rc = shClSvcTransferMsgGetRootListHdr(cParms, aParms, &lstHdr);
             if (RT_SUCCESS(rc))
             {
-                void    *pvData = ShClTransferListHdrDup(&lstHdr);
-                uint32_t cbData = sizeof(SHCLLISTHDR);
-
-                PSHCLEVENT pEvent
-                    = ShClEventSourceRetainFromId(&pTransfer->Events, VBOX_SHCL_CONTEXTID_GET_EVENT(uCID));
+                PSHCLEVENT pEvent = ShClEventSourceRetainFromId(&pTransfer->Events, VBOX_SHCL_CONTEXTID_GET_EVENT(uCID));
                 if (pEvent)
                 {
-                    PSHCLEVENTPAYLOAD pPayload;
-                    rc = ShClPayloadCreateDupData(pEvent->idEvent, pvData, cbData, &pPayload);
+                    PSHCLEVENTPAYLOAD pPayload = NULL;
+                    rc = ShClPayloadCreateDupData(pEvent->idEvent, &lstHdr, sizeof(lstHdr), &pPayload);
                     if (RT_SUCCESS(rc))
                     {
                         rc = ShClEventSignal(pEvent, pPayload);
@@ -1470,15 +1466,11 @@ int ShClSvcTransferMsgClientHandler(PSHCLCLIENT pClient,
                 rc = shClSvcTransferMsgGetListHdr(cParms, aParms, &hList, &hdrList);
                 if (RT_SUCCESS(rc))
                 {
-                    void    *pvData = ShClTransferListHdrDup(&hdrList);
-                    uint32_t cbData = sizeof(SHCLLISTHDR);
-
-                    PSHCLEVENT pEvent
-                        = ShClEventSourceRetainFromId(&pTransfer->Events, VBOX_SHCL_CONTEXTID_GET_EVENT(uCID));
+                    PSHCLEVENT pEvent = ShClEventSourceRetainFromId(&pTransfer->Events, VBOX_SHCL_CONTEXTID_GET_EVENT(uCID));
                     if (pEvent)
                     {
-                        PSHCLEVENTPAYLOAD pPayload;
-                        rc = ShClPayloadCreateDupData(pEvent->idEvent, pvData, cbData, &pPayload);
+                        PSHCLEVENTPAYLOAD pPayload = NULL;
+                        rc = ShClPayloadCreateDupData(pEvent->idEvent, &hdrList, sizeof(hdrList), &pPayload);
                         if (RT_SUCCESS(rc))
                         {
                             rc = ShClEventSignal(pEvent, pPayload);

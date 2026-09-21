@@ -1,4 +1,4 @@
-/* $Id: clipboard-transfers.cpp 115284 2026-09-19 00:53:49Z knut.osmundsen@oracle.com $ */
+/* $Id: clipboard-transfers.cpp 115288 2026-09-21 09:26:48Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard: Common clipboard transfer handling code.
  */
@@ -562,6 +562,7 @@ void ShClTransferListHandleInfoDestroy(PSHCLLISTHANDLEINFO pInfo)
     }
 }
 
+#if 0 /* unused */
 /**
  * Duplicates (allocates) a transfer list header structure.
  *
@@ -571,13 +572,9 @@ void ShClTransferListHandleInfoDestroy(PSHCLLISTHANDLEINFO pInfo)
 PSHCLLISTHDR ShClTransferListHdrDup(PSHCLLISTHDR pListHdr)
 {
     AssertPtrReturn(pListHdr, NULL);
-
-    PSHCLLISTHDR pListHdrDup = (PSHCLLISTHDR)RTMemAlloc(sizeof(SHCLLISTHDR));
-    if (pListHdrDup)
-        *pListHdrDup = *pListHdr;
-
-    return pListHdrDup;
+    return (PSHCLLISTHDR)RTMemDup(pListHdr, sizeof(SHCLLISTHDR));
 }
+#endif
 
 /**
  * Initializes a transfer list header structure.

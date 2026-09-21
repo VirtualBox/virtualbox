@@ -1,4 +1,4 @@
-/* $Id: VBoxSharedClipboardSvc-client.cpp 115169 2026-09-07 15:16:40Z andreas.loeffler@oracle.com $ */
+/* $Id: VBoxSharedClipboardSvc-client.cpp 115288 2026-09-21 09:26:48Z knut.osmundsen@oracle.com $ */
 /** @file
  * Shared Clipboard Service - Client/session and message queue handling.
  */
@@ -580,6 +580,7 @@ void shClSvcClientDestroy(PSHCLCLIENT pClient)
 
     ShClEventSourceTerm(&pClient->EventSrc);
     shClSvcClientStateTerm(&pClient->State);
+    shClSvcClientMsgQueueReset(pClient);
 
     ShClSvcClientUnlock(pClient);
 
