@@ -1,4 +1,4 @@
-/* $Id: localipc-win.cpp 115307 2026-09-22 23:25:40Z knut.osmundsen@oracle.com $ */
+/* $Id: localipc-win.cpp 115308 2026-09-22 23:27:04Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Local IPC, Windows Implementation Using Named Pipes.
  *
@@ -44,6 +44,7 @@
 #define LOG_GROUP RTLOGGROUP_LOCALIPC
 #include <iprt/nt/nt-and-windows.h> /* Need NtCancelIoFile and a few Rtl functions. */
 #include <sddl.h>
+#include <aclapi.h>
 
 #include "internal/iprt.h"
 #include <iprt/localipc.h>
@@ -53,9 +54,9 @@
 #include <iprt/critsect.h>
 #include <iprt/ctype.h>
 #include <iprt/err.h>
+#include <iprt/ldr.h>
 #include <iprt/log.h>
 #include <iprt/mem.h>
-#include <iprt/once.h>
 #include <iprt/param.h>
 #include <iprt/stackcheck.h>
 #include <iprt/string.h>
@@ -73,12 +74,6 @@
 *********************************************************************************************************************************/
 /** Pipe prefix string. */
 #define RTLOCALIPC_WIN_PREFIX   L"\\\\.\\pipe\\IPRT-"
-/** Pipe prefix string in the caller's protected login-session namespace. */
-#define RTLOCALIPC_WIN_USER_PREFIX L"\\\\.\\pipe\\LOCAL\\IPRT-"
-/** Number of UTF-16 units in the hexadecimal session ID and trailing dash. */
-#define RTLOCALIPC_WIN_SESSION_ID_CWC 9
-/** Number of UTF-16 units in the hexadecimal logon LUID and trailing dash. */
-#define RTLOCALIPC_WIN_LOGON_ID_CWC   17
 
 
 /*********************************************************************************************************************************
@@ -134,8 +129,6 @@ typedef struct RTLOCALIPCSESSIONINT
     bool volatile       fCancelled;
     /** Set if this is the server side, clear if the client. */
     bool                fServerSide;
-    /** Set if the session must remain in the current Windows logon session. */
-    bool                fRestricted;
     /** The named pipe handle. */
     HANDLE              hNmPipe;
     struct
@@ -166,492 +159,18 @@ typedef struct RTLOCALIPCSESSIONINT
 typedef RTLOCALIPCSESSIONINT *PRTLOCALIPCSESSIONINT;
 
 
-/** Pointer to a GetNamedPipeClientProcessId or GetNamedPipeServerProcessId function. */
-typedef BOOL (WINAPI *PFNRTLOCALIPCWINQUERYPIPEPROCESS)(HANDLE hPipe, PULONG pidProcess);
-/** Pointer to a GetNamedPipeClientSessionId or GetNamedPipeServerSessionId function. */
-typedef BOOL (WINAPI *PFNRTLOCALIPCWINQUERYPIPESESSION)(HANDLE hPipe, PULONG pidSession);
-
-
-/*********************************************************************************************************************************
-*   Global Variables                                                                                                             *
-*********************************************************************************************************************************/
-/** Init once structure for resolving the named pipe process query APIs. */
-static RTONCE                               g_rtLocalIpcWinQueryProcessResolveOnce = RTONCE_INITIALIZER;
-/** GetNamedPipeClientProcessId, introduced with Windows Vista. */
-static PFNRTLOCALIPCWINQUERYPIPEPROCESS     g_pfnGetNamedPipeClientProcessId       = NULL;
-/** GetNamedPipeServerProcessId, introduced with Windows Vista. */
-static PFNRTLOCALIPCWINQUERYPIPEPROCESS     g_pfnGetNamedPipeServerProcessId       = NULL;
-/** Init once structure for resolving the named pipe session query APIs. */
-static RTONCE                               g_rtLocalIpcWinQuerySessionResolveOnce = RTONCE_INITIALIZER;
-/** GetNamedPipeClientSessionId, introduced with Windows Vista. */
-static PFNRTLOCALIPCWINQUERYPIPESESSION     g_pfnGetNamedPipeClientSessionId       = NULL;
-/** GetNamedPipeServerSessionId, introduced with Windows Vista. */
-static PFNRTLOCALIPCWINQUERYPIPESESSION     g_pfnGetNamedPipeServerSessionId       = NULL;
-
-
 /*********************************************************************************************************************************
 *   Internal Functions                                                                                                           *
 *********************************************************************************************************************************/
-static int rtLocalIpcWinCreateSession(PRTLOCALIPCSESSIONINT *ppSession, HANDLE hNmPipeSession, bool fRestricted);
-static int rtLocalIpcWinVerifyUserSid(PSID pSid);
-
-
-/** Queries the current process token's Windows session ID. */
-static int rtLocalIpcWinQuerySelfSessionId(uint32_t *pidSession)
-{
-    AssertPtrReturn(pidSession, VERR_INVALID_POINTER);
-    *pidSession = 0;
-
-    HANDLE hToken = NULL;
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
-        return RTErrConvertFromWin32(GetLastError());
-
-    DWORD idSession = 0;
-    DWORD cbSession = 0;
-    BOOL const fRc = GetTokenInformation(hToken, TokenSessionId, &idSession, sizeof(idSession), &cbSession);
-    DWORD const dwErr = fRc ? ERROR_SUCCESS : GetLastError();
-    CloseHandle(hToken);
-    if (!fRc)
-        return RTErrConvertFromWin32(dwErr);
-    AssertReturn(cbSession == sizeof(idSession), VERR_INVALID_PARAMETER);
-
-    *pidSession = idSession;
-    return VINF_SUCCESS;
-}
-
-
-/** Queries the current process token's Windows logon LUID. */
-static int rtLocalIpcWinQuerySelfLogonId(uint32_t *pidLogonHigh, uint32_t *pidLogonLow)
-{
-    AssertPtrReturn(pidLogonHigh, VERR_INVALID_POINTER);
-    AssertPtrReturn(pidLogonLow, VERR_INVALID_POINTER);
-    *pidLogonHigh = 0;
-    *pidLogonLow  = 0;
-
-    HANDLE hToken = NULL;
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
-        return RTErrConvertFromWin32(GetLastError());
-
-    TOKEN_STATISTICS TokenStats;
-    DWORD cbTokenStats = 0;
-    BOOL const fRc = GetTokenInformation(hToken, TokenStatistics, &TokenStats, sizeof(TokenStats), &cbTokenStats);
-    DWORD const dwErr = fRc ? ERROR_SUCCESS : GetLastError();
-    CloseHandle(hToken);
-    if (!fRc)
-        return RTErrConvertFromWin32(dwErr);
-    AssertReturn(cbTokenStats == sizeof(TokenStats), VERR_INVALID_PARAMETER);
-
-    *pidLogonHigh = (uint32_t)TokenStats.AuthenticationId.HighPart;
-    *pidLogonLow  = TokenStats.AuthenticationId.LowPart;
-    return VINF_SUCCESS;
-}
+static int rtLocalIpcWinCreateSession(PRTLOCALIPCSESSIONINT *ppSession, HANDLE hNmPipeSession);
 
 
 /**
- * Resolves the optional named pipe process query APIs.
- *
- * @returns IPRT status code.
- * @param   pvUser              Ignored.
- */
-static DECLCALLBACK(int) rtLocalIpcWinQueryProcessResolveOnce(void *pvUser)
-{
-    RT_NOREF(pvUser);
-
-    g_pfnGetNamedPipeClientProcessId = (PFNRTLOCALIPCWINQUERYPIPEPROCESS)GetProcAddress(g_hModKernel32,
-                                                                                       "GetNamedPipeClientProcessId");
-    g_pfnGetNamedPipeServerProcessId = (PFNRTLOCALIPCWINQUERYPIPEPROCESS)GetProcAddress(g_hModKernel32,
-                                                                                       "GetNamedPipeServerProcessId");
-    if (   g_pfnGetNamedPipeClientProcessId
-        && g_pfnGetNamedPipeServerProcessId)
-        return VINF_SUCCESS;
-    return VERR_NOT_SUPPORTED;
-}
-
-
-/**
- * Resolves the optional named pipe session query APIs.
- *
- * @returns IPRT status code.
- * @param   pvUser              Ignored.
- */
-static DECLCALLBACK(int) rtLocalIpcWinQuerySessionResolveOnce(void *pvUser)
-{
-    RT_NOREF(pvUser);
-
-    g_pfnGetNamedPipeClientSessionId = (PFNRTLOCALIPCWINQUERYPIPESESSION)GetProcAddress(g_hModKernel32,
-                                                                                       "GetNamedPipeClientSessionId");
-    g_pfnGetNamedPipeServerSessionId = (PFNRTLOCALIPCWINQUERYPIPESESSION)GetProcAddress(g_hModKernel32,
-                                                                                       "GetNamedPipeServerSessionId");
-    if (   g_pfnGetNamedPipeClientSessionId
-        && g_pfnGetNamedPipeServerSessionId)
-        return VINF_SUCCESS;
-    return VERR_NOT_SUPPORTED;
-}
-
-
-/**
- * Queries the user information carried by a Windows access token.
- *
- * @returns IPRT status code.
- * @param   hToken              The token to query.
- * @param   ppTokenUser         Where to return the allocated token user
- *                              information.  Free with RTMemTmpFree().
- */
-static int rtLocalIpcWinQueryTokenUser(HANDLE hToken, PTOKEN_USER *ppTokenUser)
-{
-    AssertReturn(hToken != NULL && hToken != INVALID_HANDLE_VALUE, VERR_INVALID_HANDLE);
-    AssertPtrReturn(ppTokenUser, VERR_INVALID_POINTER);
-    *ppTokenUser = NULL;
-
-    DWORD cbTokenUser = 0;
-    if (GetTokenInformation(hToken, TokenUser, NULL, 0, &cbTokenUser))
-        return VERR_INTERNAL_ERROR;
-    DWORD const dwErr = GetLastError();
-    if (dwErr != ERROR_INSUFFICIENT_BUFFER)
-        return RTErrConvertFromWin32(dwErr);
-    AssertReturn(cbTokenUser >= sizeof(TOKEN_USER), VERR_INVALID_PARAMETER);
-
-    PTOKEN_USER pTokenUser = (PTOKEN_USER)RTMemTmpAlloc(cbTokenUser);
-    if (!pTokenUser)
-        return VERR_NO_TMP_MEMORY;
-    if (!GetTokenInformation(hToken, TokenUser, pTokenUser, cbTokenUser, &cbTokenUser))
-    {
-        int const rc = RTErrConvertFromWin32(GetLastError());
-        RTMemTmpFree(pTokenUser);
-        return rc;
-    }
-    if (!IsValidSid(pTokenUser->User.Sid))
-    {
-        RTMemTmpFree(pTokenUser);
-        return VERR_INVALID_PARAMETER;
-    }
-
-    *ppTokenUser = pTokenUser;
-    return VINF_SUCCESS;
-}
-
-
-/**
- * Queries the logon SID carried by a Windows access token.
- *
- * @returns IPRT status code.
- * @param   hToken              The token to query.
- * @param   ppLogonSid          Where to return the allocated logon SID.  Free
- *                              with RTMemTmpFree().
- */
-static int rtLocalIpcWinQueryTokenLogonSid(HANDLE hToken, PSID *ppLogonSid)
-{
-    AssertReturn(hToken != NULL && hToken != INVALID_HANDLE_VALUE, VERR_INVALID_HANDLE);
-    AssertPtrReturn(ppLogonSid, VERR_INVALID_POINTER);
-    *ppLogonSid = NULL;
-
-    DWORD cbTokenGroups = 0;
-    if (GetTokenInformation(hToken, TokenGroups, NULL, 0, &cbTokenGroups))
-        return VERR_INTERNAL_ERROR;
-    DWORD const dwErr = GetLastError();
-    if (dwErr != ERROR_INSUFFICIENT_BUFFER)
-        return RTErrConvertFromWin32(dwErr);
-    AssertReturn(cbTokenGroups >= sizeof(TOKEN_GROUPS), VERR_INVALID_PARAMETER);
-
-    PTOKEN_GROUPS pTokenGroups = (PTOKEN_GROUPS)RTMemTmpAlloc(cbTokenGroups);
-    if (!pTokenGroups)
-        return VERR_NO_TMP_MEMORY;
-    if (!GetTokenInformation(hToken, TokenGroups, pTokenGroups, cbTokenGroups, &cbTokenGroups))
-    {
-        int const rc = RTErrConvertFromWin32(GetLastError());
-        RTMemTmpFree(pTokenGroups);
-        return rc;
-    }
-
-    int rc = VERR_ACCESS_DENIED;
-    for (DWORD i = 0; i < pTokenGroups->GroupCount; i++)
-        if ((pTokenGroups->Groups[i].Attributes & SE_GROUP_LOGON_ID) == SE_GROUP_LOGON_ID)
-        {
-            PSID const pTokenLogonSid = pTokenGroups->Groups[i].Sid;
-            if (IsValidSid(pTokenLogonSid))
-            {
-                DWORD const cbLogonSid = GetLengthSid(pTokenLogonSid);
-                PSID const pLogonSid = (PSID)RTMemTmpAlloc(cbLogonSid);
-                if (pLogonSid)
-                {
-                    if (CopySid(cbLogonSid, pLogonSid, pTokenLogonSid))
-                    {
-                        *ppLogonSid = pLogonSid;
-                        rc = VINF_SUCCESS;
-                    }
-                    else
-                    {
-                        rc = RTErrConvertFromWin32(GetLastError());
-                        RTMemTmpFree(pLogonSid);
-                    }
-                }
-                else
-                    rc = VERR_NO_TMP_MEMORY;
-            }
-            else
-                rc = VERR_INVALID_PARAMETER;
-            break;
-        }
-
-    RTMemTmpFree(pTokenGroups);
-    return rc;
-}
-
-
-/** Returns whether @a pSid is the LocalSystem SID. */
-static bool rtLocalIpcWinIsLocalSystemSid(PSID pSid)
-{
-    AssertReturn(pSid && IsValidSid(pSid), false);
-
-    static SID_IDENTIFIER_AUTHORITY s_NtAuth = SECURITY_NT_AUTHORITY;
-    union
-    {
-        SID     Sid;
-        uint8_t abPadding[SECURITY_MAX_SID_SIZE];
-    } LocalSystem;
-
-    NTSTATUS const rcNt = RtlInitializeSid(&LocalSystem.Sid, &s_NtAuth, 1);
-    AssertReturn(NT_SUCCESS(rcNt), false);
-    *RtlSubAuthoritySid(&LocalSystem.Sid, 0) = SECURITY_LOCAL_SYSTEM_RID;
-    return EqualSid(pSid, &LocalSystem.Sid) != FALSE;
-}
-
-
-/** Returns whether @a dwErr means that a named pipe peer disconnected. */
-static bool rtLocalIpcWinIsPeerGoneError(DWORD dwErr)
-{
-    return    dwErr == ERROR_BROKEN_PIPE
-           || dwErr == ERROR_NO_DATA
-           || dwErr == ERROR_PIPE_NOT_CONNECTED;
-}
-
-
-/**
- * Verifies that the named pipe peer belongs to the current Windows session.
- *
- * @todo r=bird: The session ID of the client used to be settable on ancient
- *       windows, which makes this a slightly unreliable check if this still is
- *       the case.  In the server case where we can impersonate the client,
- *       we should probably query TokenSessionId like we do in
- *       rtLocalIpcWinQuerySelfSessionId to be on the safe side.
- */
-static int rtLocalIpcWinVerifyPeerSession(HANDLE hPipe, bool fServerSide)
-{
-    AssertReturn(hPipe != NULL && hPipe != INVALID_HANDLE_VALUE, VERR_INVALID_HANDLE);
-
-    uint32_t idSelfSession = 0;
-    int rc = rtLocalIpcWinQuerySelfSessionId(&idSelfSession);
-    if (RT_SUCCESS(rc))
-    {
-/** @todo r=bird: The client session ID is accessible on older versions too,
- * via the FSCTL_PIPE_QUERY_CLIENT_PROCESS / FILE_PIPE_CLIENT_PROCESS_BUFFER
- * interface. */
-        rc = RTOnce(&g_rtLocalIpcWinQuerySessionResolveOnce, rtLocalIpcWinQuerySessionResolveOnce, NULL);
-        if (RT_SUCCESS(rc))
-        {
-            ULONG idPeerSession = 0;
-            BOOL const fRc = fServerSide
-                           ? g_pfnGetNamedPipeClientSessionId(hPipe, &idPeerSession)
-                           : g_pfnGetNamedPipeServerSessionId(hPipe, &idPeerSession);
-            if (fRc)
-                rc = idPeerSession == idSelfSession ? VINF_SUCCESS : VERR_ACCESS_DENIED;
-            else
-            {
-                DWORD const dwErr = GetLastError();
-                rc = fServerSide && rtLocalIpcWinIsPeerGoneError(dwErr) ? VERR_ACCESS_DENIED : RTErrConvertFromWin32(dwErr);
-            }
-        }
-    }
-    return rc;
-}
-
-
-/** Compares two tokens - wrapper around EqualSid w/ logging. */
-static bool rtLocalIpcWinAreSidsEqual(PSID pSid1, PSID pSid2)
-{
-    AssertReturn(pSid1, false);
-    AssertReturn(pSid2, false);
-    AssertReturn(IsValidSid(pSid1), false);
-    AssertReturn(IsValidSid(pSid2), false);
-
-    bool const fReturn = EqualSid(pSid1, pSid2) != FALSE;
-
-#if defined(LOG_ENABLED) && (!defined(IN_GUEST) || !defined(RT_ARCH_X86)) /* ConvertSidToStringSidW was added in w2k. */
-    if (fReturn ? LogIs2Enabled() : LogIsEnabled())
-    {
-        LPWSTR pwszSid1 = NULL;
-        ConvertSidToStringSidW(pSid1, &pwszSid1);
-        LPWSTR pwszSid2 = NULL;
-        ConvertSidToStringSidW(pSid2, &pwszSid2);
-        if (!fReturn)
-            Log(("rtLocalIpcWinAreSidsEqual: returns false: %ls != %ls\n", pwszSid1, pwszSid2));
-        else
-            Log2(("rtLocalIpcWinAreSidsEqual: returns true: %ls == %ls\n", pwszSid1, pwszSid2));
-        LocalFree(pwszSid1);
-        LocalFree(pwszSid2);
-    }
-#endif
-
-    return fReturn;
-}
-
-
-/**
- * Verifies that the named pipe owner is the current process token's user.
- */
-static int rtLocalIpcWinVerifySameUserByClientSide(HANDLE hPipe)
-{
-    AssertReturn(hPipe != NULL && hPipe != INVALID_HANDLE_VALUE, VERR_INVALID_HANDLE);
-
-    /*
-     * First, get our user from the process token.
-     */
-    HANDLE hSelfToken = NULL;
-    AssertReturn(OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hSelfToken),
-                 RTErrConvertFromWin32(GetLastError()));
-    PTOKEN_USER pSelfTokenUser = NULL;
-    int rc = rtLocalIpcWinQueryTokenUser(hSelfToken, &pSelfTokenUser);
-    CloseHandle(hSelfToken);
-    AssertRCReturn(rc, rc);
-
-    /*
-     * Getting the server process owner is a bit tricky these days.  If the
-     * server is running as an elevated process on Windows 11 25H2 (build 26200),
-     * the owner isn't set to the user but to the builtin Administrator account.
-     * The user appears in the ACL, though, but it's going to be annoying to dig out.
-     *
-     * So, instead, we first try query the server process ID, open it, get its token,
-     * and compare the user from the token.
-     */
-    rc = RTOnce(&g_rtLocalIpcWinQueryProcessResolveOnce, rtLocalIpcWinQueryProcessResolveOnce, NULL);
-    if (RT_SUCCESS(rc))
-    {
-        ULONG ulServerPid = 0;
-        if (g_pfnGetNamedPipeServerProcessId(hPipe, &ulServerPid))
-        {
-            HANDLE hServerProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, ulServerPid);
-            if (hServerProcess == NULL)
-                hServerProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, ulServerPid);
-            if (hServerProcess != NULL)
-            {
-                HANDLE hServerToken = NULL;
-                if (OpenProcessToken(hServerProcess, TOKEN_QUERY, &hServerToken))
-                {
-                    PTOKEN_USER pServerTokenUser = NULL;
-                    rc = rtLocalIpcWinQueryTokenUser(hServerToken, &pServerTokenUser);
-                    AssertRC(rc);
-                    CloseHandle(hServerToken);
-                    if (RT_SUCCESS(rc))
-                    {
-                        /*
-                         * Compare.
-                         */
-                        if (rtLocalIpcWinAreSidsEqual(pSelfTokenUser->User.Sid, pServerTokenUser->User.Sid))
-                            rc = VINF_SUCCESS;
-                        else
-                        {
-                            rc = VERR_ACCESS_DENIED; /** @todo inconvienient return code! */
-                            Log(("rtLocalIpcWinVerifySameUserByClientSide: mismatch! (#1)\n"));
-                        }
-                        RTMemTmpFree(pServerTokenUser);
-                        CloseHandle(hServerProcess);
-                        RTMemTmpFree(pSelfTokenUser);
-                        return rc;
-                    }
-                }
-                CloseHandle(hServerProcess);
-            }
-        }
-    }
-
-    /*
-     * If we cannot get the server user via the server token, fall back on the
-     * OWNER_SECURITY_INFORMATION.
-     *
-     * Note! GetKernelObjectSecurity is a thin wrapper around NtQueryInformationSecurity
-     *       and is available all the way back to NT 3.1.
-     */
-    DWORD cbSecDesc = 0;
-    if (   !GetKernelObjectSecurity(hPipe, OWNER_SECURITY_INFORMATION, NULL, 0, &cbSecDesc)
-        && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
-    {
-        PSECURITY_DESCRIPTOR pSecDesc = (PSECURITY_DESCRIPTOR)RTMemTmpAlloc(cbSecDesc);
-        if (pSecDesc)
-        {
-            if (GetKernelObjectSecurity(hPipe, OWNER_SECURITY_INFORMATION, pSecDesc, cbSecDesc, &cbSecDesc))
-            {
-                PSID pOwner = NULL;
-                BOOL fOwnerDefaulted = FALSE;
-                if (GetSecurityDescriptorOwner(pSecDesc, &pOwner, &fOwnerDefaulted))
-                {
-                    RT_NOREF(fOwnerDefaulted);
-
-                    /*
-                     * Compare.
-                     */
-                    if (rtLocalIpcWinAreSidsEqual(pSelfTokenUser->User.Sid, pOwner))
-                        rc = VINF_SUCCESS;
-                    else
-                    {
-                        rc = VERR_ACCESS_DENIED; /** @todo inconvienient return code! */
-                        Log(("rtLocalIpcWinVerifySameUserByClientSide: mismatch! (#2)\n"));
-                    }
-                }
-                else
-                    rc = RTErrConvertFromWin32(GetLastError());
-            }
-            else
-                rc = RTErrConvertFromWin32(GetLastError());
-            RTMemTmpFree(pSecDesc);
-        }
-        else
-            rc = VERR_NO_TMP_MEMORY;
-    }
-    else
-        rc = VERR_INTERNAL_ERROR;
-    RTMemTmpFree(pSelfTokenUser);
-    return rc;
-}
-
-
-/** Verifies that @a pSid is the current process token's user SID. */
-static int rtLocalIpcWinVerifyUserSid(PSID pSid)
-{
-    if (!pSid || !IsValidSid(pSid))
-        return VERR_INVALID_PARAMETER;
-
-    int rc;
-    HANDLE hSelfToken = NULL;
-    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hSelfToken))
-    {
-        PTOKEN_USER pSelfTokenUser = NULL;
-        rc = rtLocalIpcWinQueryTokenUser(hSelfToken, &pSelfTokenUser);
-        if (RT_SUCCESS(rc))
-        {
-            if (rtLocalIpcWinAreSidsEqual(pSid, pSelfTokenUser->User.Sid))
-                rc = VINF_SUCCESS;
-            else
-            {
-                rc = VERR_ACCESS_DENIED; /// @todo r=bird: VERR_PERMISSION_DENIED is probably more appropriate here...
-                Log(("rtLocalIpcWinVerifyUserSid: Not equal -> %Rrc\n", rc));
-            }
-            RTMemTmpFree(pSelfTokenUser);
-        }
-        CloseHandle(hSelfToken);
-    }
-    else
-        rc = RTErrConvertFromWin32(GetLastError());
-    return rc;
-}
-
-
-/**
- * DACL blocking network access while permitting the creating logon session
- * and LocalSystem.
+ * DACL for block all network access and local users other than the creator/owner.
  *
  * ACE format: (ace_type;ace_flags;rights;object_guid;inherit_object_guid;account_sid)
  *
- * Note! FILE_GENERIC_WRITE is evil here because it includes
+ * Note! FILE_GENERIC_WRITE (SDDL_FILE_WRITE) is evil here because it includes
  *       the FILE_CREATE_PIPE_INSTANCE(=FILE_APPEND_DATA) flag. Thus the hardcoded
  *       value 0x0012019b in the client ACE. The server-side still needs
  *       setting FILE_CREATE_PIPE_INSTANCE although.
@@ -669,24 +188,36 @@ static int rtLocalIpcWinVerifyUserSid(PSID pSid)
  *          0x00000004 - FILE_CREATE_PIPE_INSTANCE
  *       =  0x0012019f
  *
- * @returns NT status code.
- * @param   pDacl               The initialized ACL to populate.
- * @param   pAccessSid          The creating process token's logon SID.
- * @param   fServer             Whether the ACL is for a server pipe end.
+ * @todo Triple check this!
+ * @todo EVERYONE -> AUTHENTICATED USERS or something more appropriate?
+ * @todo Have trouble allowing the owner FILE_CREATE_PIPE_INSTANCE access, so for now I'm hacking
+ *       it just to get progress - the service runs as local system.
+ *       The CREATOR OWNER and PERSONAL SELF works (the former is only involved in inheriting
+ *       it seems, which is why it won't work. The latter I've no idea about. Perhaps the solution
+ *       is to go the annoying route of OpenProcessToken, QueryTokenInformation,
+ *          ConvertSidToStringSid and then use the result... Suggestions are very welcome
  */
-static NTSTATUS rtLocalIpcBuildDacl(PACL pDacl, PSID pAccessSid, bool fServer)
+#define RTLOCALIPC_WIN_SDDL_BASE \
+        SDDL_DACL SDDL_DELIMINATOR \
+        SDDL_ACE_BEGIN SDDL_ACCESS_DENIED L";;" SDDL_GENERIC_ALL L";;;" SDDL_NETWORK SDDL_ACE_END \
+        SDDL_ACE_BEGIN SDDL_ACCESS_ALLOWED L";;" SDDL_FILE_ALL   L";;;" SDDL_LOCAL_SYSTEM SDDL_ACE_END
+#define RTLOCALIPC_WIN_SDDL_SERVER \
+        RTLOCALIPC_WIN_SDDL_BASE \
+        SDDL_ACE_BEGIN SDDL_ACCESS_ALLOWED L";;" L"0x0012019f"   L";;;" SDDL_EVERYONE SDDL_ACE_END
+#define RTLOCALIPC_WIN_SDDL_CLIENT \
+        RTLOCALIPC_WIN_SDDL_BASE \
+        SDDL_ACE_BEGIN SDDL_ACCESS_ALLOWED L";;" L"0x0012019b"   L";;;" SDDL_EVERYONE SDDL_ACE_END
+static NTSTATUS rtLocalIpcBuildDacl(PACL pDacl, bool fServer)
 {
-    AssertReturn(pAccessSid && IsValidSid(pAccessSid), STATUS_INVALID_PARAMETER);
-
     static SID_IDENTIFIER_AUTHORITY s_NtAuth = SECURITY_NT_AUTHORITY;
     union
     {
         SID     Sid;
         uint8_t abPadding[SECURITY_MAX_SID_SIZE];
-    } Network, LocalSystem, OwnerRights;
+    } Network, LocalSystem, Everyone;
 
 
-    /* 1. Deny all access from network logons. */
+    /* 1. SDDL_ACCESS_DENIED L";;" SDDL_GENERIC_ALL L";;;" SDDL_NETWORK */
     NTSTATUS rcNt = RtlInitializeSid(&Network.Sid, &s_NtAuth, 1);
     AssertReturn(NT_SUCCESS(rcNt), rcNt);
     *RtlSubAuthoritySid(&Network.Sid, 0) = SECURITY_NETWORK_RID;
@@ -694,24 +225,21 @@ static NTSTATUS rtLocalIpcBuildDacl(PACL pDacl, PSID pAccessSid, bool fServer)
     rcNt = RtlAddAccessDeniedAce(pDacl, ACL_REVISION, GENERIC_ALL, &Network.Sid);
     AssertReturn(NT_SUCCESS(rcNt), rcNt);
 
-    /* 2. Suppress the account owner's implicit WRITE_DAC access. */
-    static SID_IDENTIFIER_AUTHORITY s_CreatorAuth = SECURITY_CREATOR_SID_AUTHORITY;
-    rcNt = RtlInitializeSid(&OwnerRights.Sid, &s_CreatorAuth, 1);
-    AssertReturn(NT_SUCCESS(rcNt), rcNt);
-    *RtlSubAuthoritySid(&OwnerRights.Sid, 0) = SECURITY_CREATOR_OWNER_RIGHTS_RID;
-
-    rcNt = RtlAddAccessDeniedAce(pDacl, ACL_REVISION, WRITE_DAC | WRITE_OWNER, &OwnerRights.Sid);
-    AssertReturn(NT_SUCCESS(rcNt), rcNt);
-
-    /* 3. Grant LocalSystem full access. */
+    /* 2. SDDL_ACCESS_ALLOWED L";;" SDDL_FILE_ALL   L";;;" SDDL_LOCAL_SYSTEM */
     rcNt = RtlInitializeSid(&LocalSystem.Sid, &s_NtAuth, 1);
     AssertReturn(NT_SUCCESS(rcNt), rcNt);
     *RtlSubAuthoritySid(&LocalSystem.Sid, 0) = SECURITY_LOCAL_SYSTEM_RID;
 
-    rcNt = RtlAddAccessAllowedAce(pDacl, ACL_REVISION, FILE_ALL_ACCESS, &LocalSystem.Sid);
+    rcNt = RtlAddAccessAllowedAce(pDacl, ACL_REVISION, FILE_ALL_ACCESS, &Network.Sid);
     AssertReturn(NT_SUCCESS(rcNt), rcNt);
 
-    /* 4. Grant the creating logon session the access required by this pipe end. */
+
+    /* 3. server: SDDL_ACCESS_ALLOWED L";;" L"0x0012019f"   L";;;" SDDL_EVERYONE
+          client: SDDL_ACCESS_ALLOWED L";;" L"0x0012019b"   L";;;" SDDL_EVERYONE */
+    rcNt = RtlInitializeSid(&Everyone.Sid, &s_NtAuth, 1);
+    AssertReturn(NT_SUCCESS(rcNt), rcNt);
+    *RtlSubAuthoritySid(&Everyone.Sid, 0) = SECURITY_WORLD_RID;
+
     DWORD const fAccess = FILE_READ_DATA                       /* 0x00000001 */
                         | FILE_WRITE_DATA                      /* 0x00000002 */
                         | FILE_CREATE_PIPE_INSTANCE * fServer  /* 0x00000004 */
@@ -723,10 +251,10 @@ static NTSTATUS rtLocalIpcBuildDacl(PACL pDacl, PSID pAccessSid, bool fServer)
                         | SYNCHRONIZE;                         /* 0x00100000*/
     Assert(fAccess == (fServer ? 0x0012019fU : 0x0012019bU));
 
-    rcNt = RtlAddAccessAllowedAce(pDacl, ACL_REVISION, fAccess, pAccessSid);
+    rcNt = RtlAddAccessAllowedAce(pDacl, ACL_REVISION, fAccess, &Network.Sid);
     AssertReturn(NT_SUCCESS(rcNt), rcNt);
 
-    return STATUS_SUCCESS;
+    return true;
 }
 
 
@@ -737,21 +265,56 @@ static NTSTATUS rtLocalIpcBuildDacl(PACL pDacl, PSID pAccessSid, bool fServer)
  * @param   ppDesc              Where to store the allocated security descriptor on success.
  *                              Must be free'd using LocalFree().
  * @param   fServer             Whether it's for a server or client instance.
- * @param   fRestrictToUser     Whether to restrict access to the creating logon
- *                              session and LocalSystem.
  */
-static int rtLocalIpcServerWinAllocSecurityDescriptor(PSECURITY_DESCRIPTOR *ppDesc, bool fServer,
-                                                      bool fRestrictToUser)
+static int rtLocalIpcServerWinAllocSecurityDescriptor(PSECURITY_DESCRIPTOR *ppDesc, bool fServer)
 {
     int rc;
     PSECURITY_DESCRIPTOR pSecDesc = NULL;
 
-    if (!fRestrictToUser)
+#if 0
+    /*
+     * Resolve the API the first time around.
+     */
+    static bool volatile s_fResolvedApis = false;
+    /** advapi32.dll API ConvertStringSecurityDescriptorToSecurityDescriptorW. */
+    static decltype(ConvertStringSecurityDescriptorToSecurityDescriptorW) *s_pfnSSDLToSecDescW = NULL;
+
+    if (!s_fResolvedApis)
+    {
+        s_pfnSSDLToSecDescW
+            = (decltype(s_pfnSSDLToSecDescW))RTLdrGetSystemSymbol("advapi32.dll",
+                                                                  "ConvertStringSecurityDescriptorToSecurityDescriptorW");
+        ASMCompilerBarrier();
+        s_fResolvedApis = true;
+    }
+    if (s_pfnSSDLToSecDescW)
     {
         /*
-         * Preserve the legacy descriptor behavior.  The initialized ACL was
-         * historically not attached to the descriptor, so Windows selected
-         * the creating token's default DACL.
+         * We'll create a security descriptor from a SDDL that denies
+         * access to network clients (this is local IPC after all), it
+         * makes some further restrictions to prevent non-authenticated
+         * users from screwing around.
+         */
+        PCRTUTF16 pwszSDDL  = fServer ? RTLOCALIPC_WIN_SDDL_SERVER : RTLOCALIPC_WIN_SDDL_CLIENT;
+        ULONG     cbSecDesc = 0;
+        SetLastError(0);
+        if (s_pfnSSDLToSecDescW(pwszSDDL, SDDL_REVISION_1, &pSecDesc, &cbSecDesc))
+        {
+            DWORD dwErr = GetLastError(); RT_NOREF(dwErr);
+            AssertPtr(pSecDesc);
+            *ppDesc = pSecDesc;
+            return VINF_SUCCESS;
+        }
+
+        rc = RTErrConvertFromWin32(GetLastError());
+    }
+    else
+#endif
+    {
+        /*
+         * Manually construct the descriptor.
+         *
+         * This is a bit crude. The 8KB is probably 50+ times more than what we need.
          */
         uint32_t const cbAlloc = SECURITY_DESCRIPTOR_MIN_LENGTH * 2 + _8K;
         pSecDesc = LocalAlloc(LMEM_FIXED, cbAlloc);
@@ -765,107 +328,15 @@ static int rtLocalIpcServerWinAllocSecurityDescriptor(PSECURITY_DESCRIPTOR *ppDe
         if (   InitializeSecurityDescriptor(pSecDesc, SECURITY_DESCRIPTOR_REVISION)
             && InitializeAcl(pDacl, cbDacl, ACL_REVISION))
         {
-            *ppDesc = pSecDesc;
-            return VINF_SUCCESS;
-        }
-
-        rc = RTErrConvertFromWin32(GetLastError());
-        LocalFree(pSecDesc);
-        return rc;
-    }
-
-    {
-        /*
-         * Manually construct the descriptor.
-         *
-         * This is a bit crude. The 8KB is probably 50+ times more than what we need.
-         */
-        HANDLE hSelfToken = NULL;
-        if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hSelfToken))
-            return RTErrConvertFromWin32(GetLastError());
-
-        PTOKEN_USER pSelfTokenUser = NULL;
-        rc = rtLocalIpcWinQueryTokenUser(hSelfToken, &pSelfTokenUser);
-        PSID pSelfLogonSid = NULL;
-        if (RT_SUCCESS(rc))
-        {
-            rc = rtLocalIpcWinQueryTokenLogonSid(hSelfToken, &pSelfLogonSid);
-            if (   rc == VERR_ACCESS_DENIED
-                && rtLocalIpcWinIsLocalSystemSid(pSelfTokenUser->User.Sid))
+            if (rtLocalIpcBuildDacl(pDacl, fServer))
             {
-                DWORD const cbSystemSid = GetLengthSid(pSelfTokenUser->User.Sid);
-                pSelfLogonSid = (PSID)RTMemTmpAlloc(cbSystemSid);
-                if (!pSelfLogonSid)
-                    rc = VERR_NO_TMP_MEMORY;
-                else if (CopySid(cbSystemSid, pSelfLogonSid, pSelfTokenUser->User.Sid))
-                    rc = VINF_SUCCESS;
-                else
-                {
-                    rc = RTErrConvertFromWin32(GetLastError());
-                    RTMemTmpFree(pSelfLogonSid);
-                    pSelfLogonSid = NULL;
-                }
+                *ppDesc = pSecDesc;
+                return VINF_SUCCESS;
             }
-        }
-        CloseHandle(hSelfToken);
-        if (RT_FAILURE(rc))
-        {
-            RTMemTmpFree(pSelfLogonSid);
-            RTMemTmpFree(pSelfTokenUser);
-            return rc;
-        }
-
-        DWORD const cbOwnerSid = GetLengthSid(pSelfTokenUser->User.Sid);
-        AssertReturnStmt(cbOwnerSid > 0 && cbOwnerSid <= SECURITY_MAX_SID_SIZE,
-                         RTMemTmpFree(pSelfLogonSid); RTMemTmpFree(pSelfTokenUser), VERR_INVALID_PARAMETER);
-        DWORD const cbLogonSid = GetLengthSid(pSelfLogonSid);
-        AssertReturnStmt(cbLogonSid > 0 && cbLogonSid <= SECURITY_MAX_SID_SIZE,
-                         RTMemTmpFree(pSelfLogonSid); RTMemTmpFree(pSelfTokenUser), VERR_INVALID_PARAMETER);
-
-        uint32_t const cbDacl  = _8K;
-        uint32_t const cbAlloc = SECURITY_DESCRIPTOR_MIN_LENGTH * 2 + cbDacl + SECURITY_MAX_SID_SIZE * 2;
-        pSecDesc = LocalAlloc(LMEM_FIXED, cbAlloc);
-        if (!pSecDesc)
-        {
-            RTMemTmpFree(pSelfLogonSid);
-            RTMemTmpFree(pSelfTokenUser);
-            return VERR_NO_MEMORY;
-        }
-        RT_BZERO(pSecDesc, cbAlloc);
-
-        PACL const     pDacl  = (PACL)((uint8_t *)pSecDesc + SECURITY_DESCRIPTOR_MIN_LENGTH * 2);
-        PSID const     pOwner = (PSID)((uint8_t *)pDacl + cbDacl);
-        PSID const     pAccessSid = (PSID)((uint8_t *)pOwner + SECURITY_MAX_SID_SIZE);
-
-        if (   CopySid(SECURITY_MAX_SID_SIZE, pOwner, pSelfTokenUser->User.Sid)
-            && CopySid(SECURITY_MAX_SID_SIZE, pAccessSid, pSelfLogonSid)
-            && InitializeSecurityDescriptor(pSecDesc, SECURITY_DESCRIPTOR_REVISION)
-            && InitializeAcl(pDacl, cbDacl, ACL_REVISION))
-        {
-            NTSTATUS rcNt = rtLocalIpcBuildDacl(pDacl, pAccessSid, fServer);
-            if (NT_SUCCESS(rcNt))
-            {
-                rcNt = RtlSetDaclSecurityDescriptor(pSecDesc, TRUE /*fDaclPresent*/, pDacl, FALSE /*fDaclDefaulted*/);
-                if (   NT_SUCCESS(rcNt)
-                    && SetSecurityDescriptorOwner(pSecDesc, pOwner, FALSE /*bOwnerDefaulted*/))
-                {
-                    *ppDesc = pSecDesc;
-                    RTMemTmpFree(pSelfLogonSid);
-                    RTMemTmpFree(pSelfTokenUser);
-                    return VINF_SUCCESS;
-                }
-                if (NT_SUCCESS(rcNt))
-                    rc = RTErrConvertFromWin32(GetLastError());
-                else
-                    rc = RTErrConvertFromNtStatus(rcNt);
-            }
-            else
-                rc = RTErrConvertFromNtStatus(rcNt);
+            rc = VERR_GENERAL_FAILURE;
         }
         else
             rc = RTErrConvertFromWin32(GetLastError());
-        RTMemTmpFree(pSelfLogonSid);
-        RTMemTmpFree(pSelfTokenUser);
         LocalFree(pSecDesc);
     }
     return rc;
@@ -881,22 +352,19 @@ static int rtLocalIpcServerWinAllocSecurityDescriptor(PSECURITY_DESCRIPTOR *ppDe
  * @param   phNmPipe        Where to store the named pipe handle on success.
  *                          This will be set to INVALID_HANDLE_VALUE on failure.
  * @param   pwszPipeName    The named pipe name, full, UTF-16 encoded.
- * @param   fFlags          The RTLOCALIPC_FLAGS_* used to create the server.
  * @param   fFirst          Set on the first call (from RTLocalIpcServerCreate),
  *                          otherwise clear. Governs the
  *                          FILE_FLAG_FIRST_PIPE_INSTANCE flag.
  */
-static int rtLocalIpcServerWinCreatePipeInstance(PHANDLE phNmPipe, PCRTUTF16 pwszPipeName, uint32_t fFlags, bool fFirst)
+static int rtLocalIpcServerWinCreatePipeInstance(PHANDLE phNmPipe, PCRTUTF16 pwszPipeName, bool fFirst)
 {
     *phNmPipe = INVALID_HANDLE_VALUE;
 
     /*
-     * Create the legacy descriptor or, when requested, one blocking network
-     * and other-user access.
+     * Create a security descriptor blocking access to the pipe via network.
      */
     PSECURITY_DESCRIPTOR pSecDesc;
-    int rc = rtLocalIpcServerWinAllocSecurityDescriptor(&pSecDesc, fFirst /* Server? */,
-                                                        RT_BOOL(fFlags & RTLOCALIPC_FLAGS_RESTRICT_TO_USER));
+    int rc = rtLocalIpcServerWinAllocSecurityDescriptor(&pSecDesc, fFirst /* Server? */);
     if (RT_SUCCESS(rc))
     {
 #if 0
@@ -930,7 +398,7 @@ static int rtLocalIpcServerWinCreatePipeInstance(PHANDLE phNmPipe, PCRTUTF16 pws
                         | PIPE_WAIT
                         | FILE_FLAG_OVERLAPPED;
         if (   fFirst
-            && (   g_enmWinVer > kRTWinOSType_2K
+            && (   g_enmWinVer >= kRTWinOSType_XP
                 || (   g_enmWinVer == kRTWinOSType_2K
                     && g_WinOsInfoEx.wServicePackMajor >= 2) ) )
             fOpenMode |= FILE_FLAG_FIRST_PIPE_INSTANCE; /* Introduced with W2K SP2 */
@@ -978,20 +446,15 @@ static int rtLocalIpcServerWinCreatePipeInstance(PHANDLE phNmPipe, PCRTUTF16 pws
  * @param   pszName         The name to validate.
  * @param   pcwcFullName    Where to return the UTF-16 length of the full name.
  * @param   fNative         Whether it's a native name or a portable name.
- * @param   fRestrictToUser Whether portable names use the login-session
- *                          namespace.
  */
-static int rtLocalIpcWinValidateName(const char *pszName, size_t *pcwcFullName, bool fNative, bool fRestrictToUser)
+static int rtLocalIpcWinValidateName(const char *pszName, size_t *pcwcFullName, bool fNative)
 {
     AssertPtrReturn(pszName, VERR_INVALID_POINTER);
     AssertReturn(*pszName, VERR_INVALID_NAME);
 
     if (!fNative)
     {
-        size_t cwcName = fRestrictToUser ? RT_ELEMENTS(RTLOCALIPC_WIN_USER_PREFIX) - 1
-                                         : RT_ELEMENTS(RTLOCALIPC_WIN_PREFIX) - 1;
-        if (fRestrictToUser)
-            cwcName += RTLOCALIPC_WIN_SESSION_ID_CWC + RTLOCALIPC_WIN_LOGON_ID_CWC;
+        size_t cwcName = RT_ELEMENTS(RTLOCALIPC_WIN_PREFIX) - 1;
         for (;;)
         {
             char ch = *pszName++;
@@ -1025,50 +488,16 @@ static int rtLocalIpcWinValidateName(const char *pszName, size_t *pcwcFullName, 
  * @param   cwcFullName     The output buffer size excluding the terminator.
  * @param   fNative         Whether the user supplied name is a native or
  *                          portable one.
- * @param   fRestrictToUser Whether portable names use the login-session
- *                          namespace.
  */
-static int rtLocalIpcWinConstructName(const char *pszName, PRTUTF16 pwszFullName, size_t cwcFullName,
-                                      bool fNative, bool fRestrictToUser)
+static int rtLocalIpcWinConstructName(const char *pszName, PRTUTF16 pwszFullName, size_t cwcFullName, bool fNative)
 {
     if (!fNative)
     {
-        static RTUTF16 const s_wszPrefix[]     = RTLOCALIPC_WIN_PREFIX;
-        static RTUTF16 const s_wszUserPrefix[] = RTLOCALIPC_WIN_USER_PREFIX;
-        PCRTUTF16 const pwszPrefix = fRestrictToUser ? s_wszUserPrefix : s_wszPrefix;
-        size_t const    cwcPrefix  = fRestrictToUser ? RT_ELEMENTS(s_wszUserPrefix) - 1
-                                                     : RT_ELEMENTS(s_wszPrefix) - 1;
-        Assert(cwcFullName > cwcPrefix);
-        memcpy(pwszFullName, pwszPrefix, cwcPrefix * sizeof(RTUTF16));
-        cwcFullName  -= cwcPrefix;
-        pwszFullName += cwcPrefix;
-
-        if (fRestrictToUser)
-        {
-            /** @todo r=bird: Why do we open the token twice?!?   */
-            uint32_t idSession = 0;
-            int rc = rtLocalIpcWinQuerySelfSessionId(&idSession);
-            if (RT_FAILURE(rc))
-                return rc;
-            uint32_t idLogonHigh = 0;
-            uint32_t idLogonLow  = 0;
-            rc = rtLocalIpcWinQuerySelfLogonId(&idLogonHigh, &idLogonLow);
-            if (RT_FAILURE(rc))
-                return rc;
-            AssertReturn(cwcFullName >= RTLOCALIPC_WIN_SESSION_ID_CWC, VERR_BUFFER_OVERFLOW);
-            ssize_t const cwcSession = RTUtf16Printf(pwszFullName, RTLOCALIPC_WIN_SESSION_ID_CWC + 1,
-                                                     "%08RX32-", idSession);
-            AssertReturn(cwcSession == RTLOCALIPC_WIN_SESSION_ID_CWC, VERR_INTERNAL_ERROR);
-            cwcFullName  -= RTLOCALIPC_WIN_SESSION_ID_CWC;
-            pwszFullName += RTLOCALIPC_WIN_SESSION_ID_CWC;
-
-            AssertReturn(cwcFullName >= RTLOCALIPC_WIN_LOGON_ID_CWC, VERR_BUFFER_OVERFLOW);
-            ssize_t const cwcLogon = RTUtf16Printf(pwszFullName, RTLOCALIPC_WIN_LOGON_ID_CWC + 1,
-                                                   "%08RX32%08RX32-", idLogonHigh, idLogonLow);
-            AssertReturn(cwcLogon == RTLOCALIPC_WIN_LOGON_ID_CWC, VERR_INTERNAL_ERROR);
-            cwcFullName  -= RTLOCALIPC_WIN_LOGON_ID_CWC;
-            pwszFullName += RTLOCALIPC_WIN_LOGON_ID_CWC;
-        }
+        static RTUTF16 const s_wszPrefix[] = RTLOCALIPC_WIN_PREFIX;
+        Assert(cwcFullName * sizeof(RTUTF16) > sizeof(s_wszPrefix));
+        memcpy(pwszFullName, s_wszPrefix, sizeof(s_wszPrefix));
+        cwcFullName  -= RT_ELEMENTS(s_wszPrefix) - 1;
+        pwszFullName += RT_ELEMENTS(s_wszPrefix) - 1;
     }
     return RTStrToUtf16Ex(pszName, RTSTR_MAX, &pwszFullName, cwcFullName + 1, NULL);
 }
@@ -1083,9 +512,7 @@ RTDECL(int) RTLocalIpcServerCreate(PRTLOCALIPCSERVER phServer, const char *pszNa
     *phServer = NIL_RTLOCALIPCSERVER;
     AssertReturn(!(fFlags & ~RTLOCALIPC_FLAGS_VALID_MASK), VERR_INVALID_FLAGS);
     size_t cwcFullName;
-    int rc = rtLocalIpcWinValidateName(pszName, &cwcFullName,
-                                       RT_BOOL(fFlags & RTLOCALIPC_FLAGS_NATIVE_NAME),
-                                       RT_BOOL(fFlags & RTLOCALIPC_FLAGS_RESTRICT_TO_USER));
+    int rc = rtLocalIpcWinValidateName(pszName, &cwcFullName, RT_BOOL(fFlags & RTLOCALIPC_FLAGS_NATIVE_NAME));
     if (RT_SUCCESS(rc))
     {
         /*
@@ -1096,13 +523,10 @@ RTDECL(int) RTLocalIpcServerCreate(PRTLOCALIPCSERVER phServer, const char *pszNa
         AssertReturn(pThis, VERR_NO_MEMORY);
 
         pThis->u32Magic   = RTLOCALIPCSERVER_MAGIC;
-        pThis->fFlags     = fFlags;
         pThis->cRefs      = 1; /* the one we return */
         pThis->fCancelled = false;
 
-        rc = rtLocalIpcWinConstructName(pszName, pThis->wszName, cwcFullName,
-                                        RT_BOOL(fFlags & RTLOCALIPC_FLAGS_NATIVE_NAME),
-                                        RT_BOOL(fFlags & RTLOCALIPC_FLAGS_RESTRICT_TO_USER));
+        rc = rtLocalIpcWinConstructName(pszName, pThis->wszName, cwcFullName, RT_BOOL(fFlags & RTLOCALIPC_FLAGS_NATIVE_NAME));
         if (RT_SUCCESS(rc))
         {
             rc = RTCritSectInit(&pThis->CritSect);
@@ -1116,8 +540,7 @@ RTDECL(int) RTLocalIpcServerCreate(PRTLOCALIPCSERVER phServer, const char *pszNa
                     pThis->OverlappedIO.Internal = STATUS_PENDING;
                     pThis->OverlappedIO.hEvent   = pThis->hEvent;
 
-                    rc = rtLocalIpcServerWinCreatePipeInstance(&pThis->hNmPipe, pThis->wszName, pThis->fFlags,
-                                                               true /* fFirst */);
+                    rc = rtLocalIpcServerWinCreatePipeInstance(&pThis->hNmPipe, pThis->wszName, true /* fFirst */);
                     if (RT_SUCCESS(rc))
                     {
                         *phServer = pThis;
@@ -1320,13 +743,12 @@ RTDECL(int) RTLocalIpcServerListen(RTLOCALIPCSERVER hServer, PRTLOCALIPCSESSION 
                 || dwErr == ERROR_PIPE_CONNECTED)
             {
                 HANDLE hNmPipe;
-                rc = rtLocalIpcServerWinCreatePipeInstance(&hNmPipe, pThis->wszName, pThis->fFlags, false /* fFirst */);
+                rc = rtLocalIpcServerWinCreatePipeInstance(&hNmPipe, pThis->wszName, false /* fFirst */);
                 if (RT_SUCCESS(rc))
                 {
                     HANDLE hNmPipeSession = pThis->hNmPipe; /* consumed */
                     pThis->hNmPipe = hNmPipe;
-                    rc = rtLocalIpcWinCreateSession(phClientSession, hNmPipeSession,
-                                                    RT_BOOL(pThis->fFlags & RTLOCALIPC_FLAGS_RESTRICT_TO_USER));
+                    rc = rtLocalIpcWinCreateSession(phClientSession, hNmPipeSession);
                 }
                 else
                 {
@@ -1336,35 +758,6 @@ RTDECL(int) RTLocalIpcServerListen(RTLOCALIPCSERVER hServer, PRTLOCALIPCSESSION 
                      */
                     fRc = DisconnectNamedPipe(pThis->hNmPipe);
                     AssertMsg(fRc, ("%d\n", GetLastError()));
-                }
-            }
-            else if (   (pThis->fFlags & RTLOCALIPC_FLAGS_RESTRICT_TO_USER)
-                     && rtLocalIpcWinIsPeerGoneError(dwErr))
-            {
-#if 1 /* bird 2026-09-22: fixes tstRTLocalIpc/Restricted namespace properties VERR_PIPE_BUSY issue. */
-                /* Replace it, like we do in the success case. */
-                HANDLE hNmPipe;
-                rc = rtLocalIpcServerWinCreatePipeInstance(&hNmPipe, pThis->wszName, pThis->fFlags, false /* fFirst */);
-                AssertRC(rc);
-                if (RT_SUCCESS(rc))
-                {
-                    HANDLE hNmPipeDeadSession = pThis->hNmPipe; /* consumed */
-                    pThis->hNmPipe = hNmPipe;
-                    fRc = DisconnectNamedPipe(hNmPipeDeadSession);
-                    AssertMsg(fRc, ("DisconnectNamedPipe/%p failed: %u\n", hNmPipeDeadSession, GetLastError())); RT_NOREF(fRc);
-                    fRc = CloseHandle(hNmPipeDeadSession);
-                    AssertMsg(fRc, ("CloseHandle/%p failed: %u\n", hNmPipeDeadSession, GetLastError())); RT_NOREF(fRc);
-                    rc = VERR_TRY_AGAIN;
-                }
-                else
-#endif
-                {
-                    fRc = DisconnectNamedPipe(pThis->hNmPipe);
-                    DWORD const dwDisconnectErr = fRc ? ERROR_SUCCESS : GetLastError();
-                    if (fRc || rtLocalIpcWinIsPeerGoneError(dwDisconnectErr))
-                        rc = VERR_TRY_AGAIN;
-                    else
-                        rc = RTErrConvertFromWin32(dwDisconnectErr);
                 }
             }
             else
@@ -1451,29 +844,15 @@ RTDECL(int) RTLocalIpcServerCancel(RTLOCALIPCSERVER hServer)
  *                          INVALID_HANDLE_VALUE if client connect.  This will
  *                          be consumed by this session, meaning on failure to
  *                          create the session it will be closed.
- * @param   fRestricted     Whether to enforce matching Windows session IDs.
  */
-static int rtLocalIpcWinCreateSession(PRTLOCALIPCSESSIONINT *ppSession, HANDLE hNmPipeSession, bool fRestricted)
+static int rtLocalIpcWinCreateSession(PRTLOCALIPCSESSIONINT *ppSession, HANDLE hNmPipeSession)
 {
     AssertPtr(ppSession);
-
-    int rc;
-    if (fRestricted && hNmPipeSession != INVALID_HANDLE_VALUE)
-    {
-        rc = rtLocalIpcWinVerifyPeerSession(hNmPipeSession, true /*fServerSide*/);
-        if (RT_FAILURE(rc))
-        {
-            BOOL const fRc = CloseHandle(hNmPipeSession);
-            AssertMsg(fRc, ("%d\n", GetLastError())); NOREF(fRc);
-            if (rc == VERR_ACCESS_DENIED)
-                rc = VERR_TRY_AGAIN;
-            return rc;
-        }
-    }
 
     /*
      * Allocate and initialize the session instance data.
      */
+    int rc;
     PRTLOCALIPCSESSIONINT pThis = (PRTLOCALIPCSESSIONINT)RTMemAllocZ(sizeof(*pThis));
     if (pThis)
     {
@@ -1482,7 +861,6 @@ static int rtLocalIpcWinCreateSession(PRTLOCALIPCSESSIONINT *ppSession, HANDLE h
         pThis->fCancelled       = false;
         pThis->fZeroByteRead    = false;
         pThis->fServerSide      = hNmPipeSession != INVALID_HANDLE_VALUE;
-        pThis->fRestricted      = fRestricted;
         pThis->hNmPipe          = hNmPipeSession;
 #if 0 /* Non-blocking writes are not yet supported. */
         pThis->pbBounceBuf      = NULL;
@@ -1542,34 +920,27 @@ RTDECL(int) RTLocalIpcSessionConnect(PRTLOCALIPCSESSION phSession, const char *p
     AssertReturn(!(fFlags & ~RTLOCALIPC_C_FLAGS_VALID_MASK), VERR_INVALID_FLAGS);
 
     size_t cwcFullName;
-    int rc = rtLocalIpcWinValidateName(pszName, &cwcFullName,
-                                       RT_BOOL(fFlags & RTLOCALIPC_C_FLAGS_NATIVE_NAME),
-                                       RT_BOOL(fFlags & RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER));
+    int rc = rtLocalIpcWinValidateName(pszName, &cwcFullName, RT_BOOL(fFlags & RTLOCALIPC_C_FLAGS_NATIVE_NAME));
     if (RT_SUCCESS(rc))
     {
         /*
          * Create a session (shared with server client session creation).
          */
         PRTLOCALIPCSESSIONINT pThis;
-        rc = rtLocalIpcWinCreateSession(&pThis, INVALID_HANDLE_VALUE,
-                                        RT_BOOL(fFlags & RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER));
+        rc = rtLocalIpcWinCreateSession(&pThis, INVALID_HANDLE_VALUE);
         if (RT_SUCCESS(rc))
         {
             /*
              * Try open the pipe.
              */
-            /** @todo r=bird: Why do we need a security descriptor when opening an existing
-             *        pipe?  MS docs states "CreateFile ignores the lpSecurityDescriptor
-             *        member when opening an existing file or device". */
             PSECURITY_DESCRIPTOR pSecDesc;
-            rc = rtLocalIpcServerWinAllocSecurityDescriptor(&pSecDesc, false /*fServer*/, false /*fRestrictToUser*/);
+            rc = rtLocalIpcServerWinAllocSecurityDescriptor(&pSecDesc, false /*fServer*/);
             if (RT_SUCCESS(rc))
             {
                 PRTUTF16 pwszFullName = RTUtf16Alloc((cwcFullName + 1) * sizeof(RTUTF16));
                 if (pwszFullName)
                     rc = rtLocalIpcWinConstructName(pszName, pwszFullName, cwcFullName,
-                                                    RT_BOOL(fFlags & RTLOCALIPC_C_FLAGS_NATIVE_NAME),
-                                                    RT_BOOL(fFlags & RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER));
+                                                    RT_BOOL(fFlags & RTLOCALIPC_C_FLAGS_NATIVE_NAME));
                 else
                     rc = VERR_NO_UTF16_MEMORY;
                 if (RT_SUCCESS(rc))
@@ -1579,45 +950,30 @@ RTDECL(int) RTLocalIpcSessionConnect(PRTLOCALIPCSESSION phSession, const char *p
                     SecAttrs.lpSecurityDescriptor = pSecDesc;
                     SecAttrs.bInheritHandle       = FALSE;
 
-                    /* Default to an anonymous security context.  Callers that explicitly need same-user
-                       verification may permit the server to identify, but not impersonate, the client. */
-                    DWORD const fSecurityQos = fFlags & RTLOCALIPC_C_FLAGS_ALLOW_IDENTIFICATION
-                                             ? SECURITY_IDENTIFICATION : SECURITY_ANONYMOUS;
+                    /* The SECURITY_XXX flags are needed in order to prevent the server from impersonating with
+                       this thread's security context (supported at least back to NT 3.51). See @bugref{9773}. */
                     HANDLE hPipe = CreateFileW(pwszFullName,
                                                GENERIC_READ | GENERIC_WRITE,
                                                0 /*no sharing*/,
                                                &SecAttrs,
                                                OPEN_EXISTING,
-                                               FILE_FLAG_OVERLAPPED | SECURITY_SQOS_PRESENT | fSecurityQos,
+                                               FILE_FLAG_OVERLAPPED | SECURITY_SQOS_PRESENT | SECURITY_ANONYMOUS,
                                                NULL /*no template handle*/);
                     if (hPipe != INVALID_HANDLE_VALUE)
                     {
-                        if (!(fFlags & RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER))
-                            rc = VINF_SUCCESS;
-                        else
-                            rc = rtLocalIpcWinVerifyPeerSession(hPipe, false /*fServerSide*/);
-                        if (   RT_SUCCESS(rc)
-                            && (fFlags & RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER))
-                            rc = rtLocalIpcWinVerifySameUserByClientSide(hPipe);
-                        if (RT_SUCCESS(rc))
-                        {
-                            pThis->hNmPipe = hPipe;
+                        pThis->hNmPipe = hPipe;
 
-                            LocalFree(pSecDesc);
-                            RTUtf16Free(pwszFullName);
+                        LocalFree(pSecDesc);
+                        RTUtf16Free(pwszFullName);
 
-                            /*
-                             * We're done!
-                             */
-                            *phSession = pThis;
-                            return VINF_SUCCESS;
-                        }
-
-                        BOOL const fRc = CloseHandle(hPipe);
-                        AssertMsg(fRc, ("%d\n", GetLastError())); NOREF(fRc);
+                        /*
+                         * We're done!
+                         */
+                        *phSession = pThis;
+                        return VINF_SUCCESS;
                     }
-                    else
-                        rc = RTErrConvertFromWin32(GetLastError());
+
+                    rc = RTErrConvertFromWin32(GetLastError());
                 }
 
                 RTUtf16Free(pwszFullName);
@@ -2409,112 +1765,8 @@ RTDECL(int) RTLocalIpcSessionCancel(RTLOCALIPCSESSION hSession)
 
 RTDECL(int) RTLocalIpcSessionQueryProcess(RTLOCALIPCSESSION hSession, PRTPROCESS pProcess)
 {
-    PRTLOCALIPCSESSIONINT pThis = (PRTLOCALIPCSESSIONINT)hSession;
-    AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
-    AssertReturn(pThis->u32Magic == RTLOCALIPCSESSION_MAGIC, VERR_INVALID_HANDLE);
-    AssertPtrReturn(pProcess, VERR_INVALID_POINTER);
-    *pProcess = NIL_RTPROCESS;
-
-    int rc = RTCritSectEnter(&pThis->CritSect);
-    if (RT_SUCCESS(rc))
-    {
-        rtLocalIpcSessionRetain(pThis);
-        if (!pThis->fCancelled)
-        {
-            rc = RTOnce(&g_rtLocalIpcWinQueryProcessResolveOnce, rtLocalIpcWinQueryProcessResolveOnce, NULL);
-            if (RT_SUCCESS(rc))
-            {
-                ULONG idProcess = 0;
-                BOOL const fRc = pThis->fServerSide
-                               ? g_pfnGetNamedPipeClientProcessId(pThis->hNmPipe, &idProcess)
-                               : g_pfnGetNamedPipeServerProcessId(pThis->hNmPipe, &idProcess);
-                if (fRc)
-                {
-                    *pProcess = (RTPROCESS)idProcess;
-                    rc = VINF_SUCCESS;
-                }
-                else
-                    rc = RTErrConvertFromWin32(GetLastError());
-            }
-        }
-        else
-            rc = VERR_CANCELLED;
-        rtLocalIpcSessionReleaseAndUnlock(pThis);
-    }
-
-    return rc;
-}
-
-
-/** Helper for RTLocalIpcSessionVerifySameUser. */
-static int rtLocalIpcWinVerifySameUserByServerSide(HANDLE hNmPipe)
-{
-    int rc;
-    if (ImpersonateNamedPipeClient(hNmPipe))
-    {
-        HANDLE hPeerToken = NULL;
-        if (OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, TRUE /*OpenAsSelf*/, &hPeerToken))
-            rc = VINF_SUCCESS;
-        else
-        {
-            hPeerToken = NULL;
-            rc = VERR_ACCESS_DENIED;
-        }
-
-        if (!RevertToSelf())
-        {
-            DWORD const dwErr = GetLastError();
-            BOOL const fCleared = SetThreadToken(NULL, NULL);
-            AssertMsg(fCleared, ("SetThreadToken failed: %u (RevertToSelf: %u)\n", GetLastError(), dwErr));
-            RT_NOREF(fCleared);
-            rc = RTErrConvertFromWin32(dwErr);
-        }
-
-        if (RT_SUCCESS(rc))
-        {
-            PTOKEN_USER pPeerTokenUser = NULL;
-            rc = rtLocalIpcWinQueryTokenUser(hPeerToken, &pPeerTokenUser);
-            if (RT_SUCCESS(rc))
-                rc = rtLocalIpcWinVerifyUserSid(pPeerTokenUser->User.Sid);
-            RTMemTmpFree(pPeerTokenUser);
-        }
-
-        if (hPeerToken != NULL)
-            CloseHandle(hPeerToken);
-    }
-    else
-        rc = VERR_ACCESS_DENIED;
-    return rc;
-}
-
-
-RTDECL(int) RTLocalIpcSessionVerifySameUser(RTLOCALIPCSESSION hSession)
-{
-    PRTLOCALIPCSESSIONINT pThis = (PRTLOCALIPCSESSIONINT)hSession;
-    AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
-    AssertReturn(pThis->u32Magic == RTLOCALIPCSESSION_MAGIC, VERR_INVALID_HANDLE);
-
-    int rc = RTCritSectEnter(&pThis->CritSect);
-    if (RT_SUCCESS(rc))
-    {
-        rtLocalIpcSessionRetain(pThis);
-        if (!pThis->fCancelled)
-        {
-            if (pThis->fRestricted)
-                rc = rtLocalIpcWinVerifyPeerSession(pThis->hNmPipe, pThis->fServerSide);
-            if (RT_SUCCESS(rc))
-            {
-                if (pThis->fServerSide)
-                    rc = rtLocalIpcWinVerifySameUserByServerSide(pThis->hNmPipe);
-                else
-                    rc = rtLocalIpcWinVerifySameUserByClientSide(pThis->hNmPipe);
-            }
-        }
-        else
-            rc = VERR_CANCELLED;
-        rtLocalIpcSessionReleaseAndUnlock(pThis);
-    }
-    return rc;
+    RT_NOREF_PV(hSession); RT_NOREF_PV(pProcess);
+    return VERR_NOT_SUPPORTED;
 }
 
 
@@ -2530,3 +1782,4 @@ RTDECL(int) RTLocalIpcSessionQueryGroupId(RTLOCALIPCSESSION hSession, PRTGID pGi
     RT_NOREF_PV(hSession); RT_NOREF_PV(pGid);
     return VERR_NOT_SUPPORTED;
 }
+
