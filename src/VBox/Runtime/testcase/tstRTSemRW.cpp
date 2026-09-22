@@ -1,4 +1,4 @@
-/* $Id: tstRTSemRW.cpp 115290 2026-09-21 09:29:54Z knut.osmundsen@oracle.com $ */
+/* $Id: tstRTSemRW.cpp 115298 2026-09-22 07:11:07Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT Testcase - Reader/Writer Semaphore.
  */
@@ -80,21 +80,15 @@ static DECLCALLBACK(int) Test4Thread(RTTHREAD ThreadSelf, void *pvUser)
     unsigned c100 = RTRandAdvU32Ex(hRand, 0, 99);
 
     uint64_t *pcItr = (uint64_t *)pvUser;
-    bool fWrite;
     for (;;)
     {
-        unsigned readrec = RTRandAdvU32Ex(hRand, 0, 3);
-        unsigned writerec = RTRandAdvU32Ex(hRand, 0, 3);
-        /* Don't overdo recursion testing. */
-        if (readrec > 1)
-            readrec--;
-        if (writerec > 1)
-            writerec--;
-
-        fWrite = (c100 < g_uWritePercent);
+        bool const     fWrite           = c100 < g_uWritePercent;
+        uint32_t const cReadRecursions  = RTRandAdvU32Ex(hRand, 0, 2);  /* extra recursions */
+        uint32_t const cWriteRequests   = fWrite ? RTRandAdvU32Ex(hRand, 1, 3) : 1;
         if (fWrite)
         {
-            for (unsigned i = 0; i <= writerec; i++)
+            Assert(cWriteRequests > 0);
+            for (unsigned i = 0; i < cWriteRequests; i++)
             {
                 rc = RTSemRWRequestWriteNoResume(g_hSemRW, RT_INDEFINITE_WAIT);
                 if (RT_FAILURE(rc))
@@ -117,6 +111,7 @@ static DECLCALLBACK(int) Test4Thread(RTTHREAD ThreadSelf, void *pvUser)
                              g_cConcurrentReaders, RTThreadSelfName());
                 break;
             }
+            (*pcItr)++;
         }
         else
         {
@@ -127,6 +122,7 @@ static DECLCALLBACK(int) Test4Thread(RTTHREAD ThreadSelf, void *pvUser)
                 break;
             }
             ASMAtomicIncU32(&g_cConcurrentReaders);
+            ASMAtomicIncU64(pcItr);
             if (g_cConcurrentWriters != 0)
             {
                 RTTestFailed(g_hTest, "g_cConcurrentWriters=%u on %s after read locking it",
@@ -134,7 +130,7 @@ static DECLCALLBACK(int) Test4Thread(RTTHREAD ThreadSelf, void *pvUser)
                 break;
             }
         }
-        for (unsigned i = 0; i < readrec; i++)
+        for (unsigned i = 0; i < cReadRecursions; i++)
         {
             rc = RTSemRWRequestReadNoResume(g_hSemRW, RT_INDEFINITE_WAIT);
             if (RT_FAILURE(rc))
@@ -147,18 +143,13 @@ static DECLCALLBACK(int) Test4Thread(RTTHREAD ThreadSelf, void *pvUser)
             break;
 
         /*
-         * Check for fairness: The values of the threads should not differ too much
-         */
-        (*pcItr)++;
-
-        /*
          * Check for correctness: Give other threads a chance. If the implementation is
          * correct, no other thread will be able to enter this lock now.
          */
         if (g_fYield)
             RTThreadYield();
 
-        for (unsigned i = 0; i < readrec; i++)
+        for (unsigned i = 0; i < cReadRecursions; i++)
         {
             rc = RTSemRWReleaseRead(g_hSemRW);
             if (RT_FAILURE(rc))
@@ -184,7 +175,7 @@ static DECLCALLBACK(int) Test4Thread(RTTHREAD ThreadSelf, void *pvUser)
                              g_cConcurrentReaders, RTThreadSelfName());
                 break;
             }
-            for (unsigned i = 0; i <= writerec; i++)
+            for (unsigned i = 0; i < cWriteRequests; i++)
             {
                 rc = RTSemRWReleaseWrite(g_hSemRW);
                 if (RT_FAILURE(rc))
@@ -273,7 +264,12 @@ static void Test4(unsigned cThreads, unsigned cSeconds, unsigned uWritePercent, 
      * Clean up the threads and semaphore.
      */
     for (i = 0; i < cThreads; i++)
-        RTTEST_CHECK_RC(g_hTest, RTThreadWait(aThreads[i], 20000, NULL), VINF_SUCCESS);
+    {
+        int rc = RTThreadWait(aThreads[i], 20000, NULL);
+        if (RT_FAILURE(rc))
+            RTTestIFailed("RTThreadWait on thread #%u (of %u) failed: %Rrc, state %d",
+                          i, cThreads, rc, RTThreadGetState(aThreads[i]));
+    }
 
     RTTEST_CHECK_MSG(g_hTest, g_cConcurrentWriters == 0, (g_hTest, "g_cConcurrentWriters=%u at end of test\n", g_cConcurrentWriters));
     RTTEST_CHECK_MSG(g_hTest, g_cConcurrentReaders == 0, (g_hTest, "g_cConcurrentReaders=%u at end of test\n", g_cConcurrentReaders));
