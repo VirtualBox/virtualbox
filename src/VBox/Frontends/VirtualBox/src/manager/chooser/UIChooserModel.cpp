@@ -916,14 +916,30 @@ void UIChooserModel::startOrShowSelectedItems()
 
 void UIChooserModel::refreshSelectedMachineItems()
 {
+    /* Remember selected items */
+    QStringList selectedItemDefinitions;
+    foreach (UIChooserItem *pSelectedItem, selectedItems())
+    {
+        AssertPtrReturnVoid(pSelectedItem);
+        selectedItemDefinitions << pSelectedItem->definition();
+    }
+
+    /* Remember current item */
+    UIChooserItem *pCurItem = currentItem();
+    AssertPtrReturnVoid(pCurItem);
+    QString currentItemDefinition = pCurItem->definition();
+
+    /* Remember scrolling location */
+    const int iScrollLocation = m_pRoot ? m_pRoot->toGroupItem()->scrollingValue() : 0;
+
     /* Gather list of current unique inaccessible machine-items: */
     QList<UIChooserItemMachine*> inaccessibleMachineItemList;
     UIChooserItemMachine::enumerateMachineItems(selectedItems(), inaccessibleMachineItemList,
                                                 UIChooserItemMachineEnumerationFlag_Unique |
                                                 UIChooserItemMachineEnumerationFlag_Inaccessible);
 
-    /* Prepare item to be selected: */
-    UIChooserItem *pSelectedItem = 0;
+    /* Ids of all local machines to refresh */
+    QList<QUuid> localMachineItemIds;
 
     /* For each machine-item: */
     foreach (UIChooserItemMachine *pItem, inaccessibleMachineItemList)
@@ -939,15 +955,10 @@ void UIChooserModel::refreshSelectedMachineItems()
                 /* Became accessible? */
                 if (pItem->accessible())
                 {
-                    /* Acquire machine ID: */
-                    const QUuid uId = pItem->id();
-                    /* Reload this machine: */
-                    sltReloadMachine(uId);
-                    /* Select first of reloaded items: */
-                    if (!pSelectedItem)
-                        pSelectedItem = root()->searchForItem(uId.toString(),
-                                                              UIChooserItemSearchFlag_Machine |
-                                                              UIChooserItemSearchFlag_ExactId);
+                    /* Call to the sltReloadMachine method have to be delayed because after the first call to this
+                     * method, cache type of remaining items become UIVirtualMachineItemType_Invalid so related
+                     * machines are not refreshed. */
+                    localMachineItemIds << pItem->id();
                 }
 
                 break;
@@ -978,12 +989,33 @@ void UIChooserModel::refreshSelectedMachineItems()
         }
     }
 
-    /* Some item to be selected? */
-    if (pSelectedItem)
-    {
-        pSelectedItem->makeSureItsVisible();
-        setSelectedItem(pSelectedItem);
+    foreach (QUuid uId, localMachineItemIds) {
+        sltReloadMachine(uId);
     }
+
+    /* Restore selected items */
+    QList<UIChooserItem*> itemsToSelect;
+    foreach (const QString &strSelectedItemDefinition, selectedItemDefinitions)
+    {
+        UIChooserItem *pItemToSelect = searchItemByDefinition(strSelectedItemDefinition);
+        if (pItemToSelect)
+        {
+            itemsToSelect << pItemToSelect;
+        }
+    }
+    setSelectedItems(itemsToSelect);
+    makeSureAtLeastOneItemSelected();
+
+    /* Restore current item */
+    pCurItem = searchItemByDefinition(currentItemDefinition);
+    if (!pCurItem || !selectedItems().contains(pCurItem))
+    {
+        pCurItem = firstSelectedItem();
+    }
+    setCurrentItem(pCurItem);
+
+    /* Restore scrolling location: */
+    m_pRoot->toGroupItem()->setScrollingValue(iScrollLocation);
 }
 
 void UIChooserModel::sortSelectedGroupItem()
