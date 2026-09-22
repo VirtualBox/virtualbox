@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# $Id: tdUnitTest1.py 115295 2026-09-21 18:14:07Z knut.osmundsen@oracle.com $
+# $Id: tdUnitTest1.py 115296 2026-09-22 06:31:42Z knut.osmundsen@oracle.com $
 
 """
 VirtualBox Validation Kit - Unit Tests.
@@ -37,7 +37,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 115295 $"
+__version__ = "$Revision: 115296 $"
 
 
 # Standard Python imports.
@@ -267,8 +267,8 @@ class tdUnitTest1(vbox.TestDriver):
                                                         # introduces a memory leak.
     };
 
-    ## List of testcases that requires X11.
-    kdTestCasesNeedingX11 = {
+    ## List of testcases that requires X11 and Xt.
+    kdTestCasesNeedingX11AndXt = {
         'testcase/tstClipboardMockHGCM': '',            # 7.2 and earlier.
     };
 
@@ -1240,10 +1240,11 @@ class tdUnitTest1(vbox.TestDriver):
         dTestCasesBuggyForHostOs.update(self.kdTestCasesBuggyPerOs.get(utils.getHostOsDotArch(), []));
 
         # Exclude because of missing library.
+        ## @todo make this more flexible...
         dTestCaseMissingDep = {};
         if not self.isRemoteMode() and sHostOs not in ('freebsd', 'os2', 'win',):
-            if not ct_util.find_library('X11'):
-                dTestCaseMissingDep.update(self.kdTestCasesNeedingX11);
+            if not ct_util.find_library('X11') or not ct_util.find_library('Xt'):
+                dTestCaseMissingDep.update(self.kdTestCasesNeedingX11AndXt);
 
         #
         # Process the file list and run everything looking like a testcase.
