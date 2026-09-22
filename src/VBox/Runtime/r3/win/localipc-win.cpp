@@ -1,4 +1,4 @@
-/* $Id: localipc-win.cpp 115304 2026-09-22 23:01:03Z knut.osmundsen@oracle.com $ */
+/* $Id: localipc-win.cpp 115306 2026-09-22 23:25:21Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Local IPC, Windows Implementation Using Named Pipes.
  *
@@ -476,7 +476,7 @@ static bool rtLocalIpcWinAreSidsEqual(PSID pSid1, PSID pSid2)
 
     bool const fReturn = EqualSid(pSid1, pSid2) != FALSE;
 
-#ifdef LOG_ENABLED
+#if defined(LOG_ENABLED) && (!defined(IN_GUEST) || !defined(RT_ARCH_X86)) /* ConvertSidToStringSidW was added in w2k. */
     if (fReturn ? LogIs2Enabled() : LogIsEnabled())
     {
         LPWSTR pwszSid1 = NULL;
