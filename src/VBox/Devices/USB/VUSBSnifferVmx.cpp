@@ -1,4 +1,4 @@
-/* $Id: VUSBSnifferVmx.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VUSBSnifferVmx.cpp 115299 2026-09-22 07:22:28Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * Virtual USB Sniffer facility - VMX USBIO format.
  */
@@ -177,12 +177,15 @@ static DECLCALLBACK(int) vusbSnifferFmtVmxRecordEvent(PVUSBSNIFFERFMTINT pThis, 
         }
         else
         {
-            if (   enmEvent == VUSBSNIFFEREVENT_SUBMIT
-                && pUrb->enmDir == VUSBDIRECTION_OUT)
-                rc = vusbSnifferFmtVmxLogData(pThis, &Time, &pUrb->pbData[0], pUrb->cbData);
-            else if (   enmEvent == VUSBSNIFFEREVENT_COMPLETE
-                     && pUrb->enmDir == VUSBDIRECTION_IN)
-                rc = vusbSnifferFmtVmxLogData(pThis, &Time, &pUrb->pbData[0], pUrb->cbData);
+            if (pUrb->cbData)
+            {
+                if (   enmEvent == VUSBSNIFFEREVENT_SUBMIT
+                    && pUrb->enmDir == VUSBDIRECTION_OUT)
+                    rc = vusbSnifferFmtVmxLogData(pThis, &Time, &pUrb->pbData[0], pUrb->cbData);
+                else if (   enmEvent == VUSBSNIFFEREVENT_COMPLETE
+                         && pUrb->enmDir == VUSBDIRECTION_IN)
+                    rc = vusbSnifferFmtVmxLogData(pThis, &Time, &pUrb->pbData[0], pUrb->cbData);
+            }
         }
     }
 

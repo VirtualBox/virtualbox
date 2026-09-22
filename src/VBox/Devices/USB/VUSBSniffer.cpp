@@ -1,4 +1,4 @@
-/* $Id: VUSBSniffer.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VUSBSniffer.cpp 115299 2026-09-22 07:22:28Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * Virtual USB - Sniffer facility.
  */
@@ -230,6 +230,11 @@ DECLHIDDEN(void) VUSBSnifferDestroy(VUSBSNIFFER hSniffer)
  */
 DECLHIDDEN(int) VUSBSnifferRecordEvent(VUSBSNIFFER hSniffer, PVUSBURB pUrb, VUSBSNIFFEREVENT enmEvent)
 {
+    if (   (   pUrb->enmType == VUSBXFERTYPE_CTRL
+            || pUrb->enmType == VUSBXFERTYPE_MSG)
+        && pUrb->cbData < sizeof(VUSBSETUP))
+        return VERR_BUFFER_OVERFLOW;
+
     int rc = VINF_SUCCESS;
     PVUSBSNIFFERINT pThis = hSniffer;
 
