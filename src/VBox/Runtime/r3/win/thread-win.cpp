@@ -1,4 +1,4 @@
-/* $Id: thread-win.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: thread-win.cpp 115305 2026-09-22 23:06:43Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Threads, Windows.
  */
@@ -61,6 +61,7 @@
 #include <iprt/log.h>
 #include <iprt/mem.h>
 #include <iprt/param.h>
+#include <iprt/stackcheck.h>
 #include "internal/thread.h"
 #include "internal-r3-win.h"
 
@@ -370,6 +371,7 @@ static DWORD __stdcall rtThreadNativeMain(void *pvArgs) RT_NOTHROW_DEF
 {
     DWORD           dwThreadId = GetCurrentThreadId();
     PRTTHREADINT    pThread = (PRTTHREADINT)pvArgs;
+    RT_STACK_CHECK_RET_ADDR();
 
     if (!TlsSetValue(g_dwSelfTLS, pThread))
         AssertReleaseMsgFailed(("failed to set self TLS. lasterr=%d thread '%s'\n", GetLastError(), pThread->szName));
@@ -379,7 +381,9 @@ static DWORD __stdcall rtThreadNativeMain(void *pvArgs) RT_NOTHROW_DEF
     if (fUninitCom)
         fUninitCom = rtThreadNativeWinCoInitialize(pThread->fFlags);
 
+    RT_STACK_CHECK_RET_ADDR_VERIFY();
     int rc = rtThreadMain(pThread, dwThreadId, &pThread->szName[0]);
+    RT_STACK_CHECK_RET_ADDR_VERIFY();
 
     TlsSetValue(g_dwSelfTLS, NULL); /* rtThreadMain already released the structure. */
 
@@ -387,6 +391,7 @@ static DWORD __stdcall rtThreadNativeMain(void *pvArgs) RT_NOTHROW_DEF
         g_pfnCoUninitialize();
 
     rtThreadNativeUninitComAndOle();
+    RT_STACK_CHECK_RET_ADDR_VERIFY();
 #ifndef IPRT_NO_CRT
     _endthreadex(rc);
     return rc; /* not reached */
@@ -400,6 +405,7 @@ static DWORD __stdcall rtThreadNativeMain(void *pvArgs) RT_NOTHROW_DEF
 DECLHIDDEN(int) rtThreadNativeCreate(PRTTHREADINT pThread, PRTNATIVETHREAD pNativeThread)
 {
     AssertReturn(pThread->cbStack < ~(unsigned)0, VERR_INVALID_PARAMETER);
+    RT_STACK_CHECK_RET_ADDR();
 
     /*
      * If a stack size is given, make sure it's not a multiple of 64KB so that we
@@ -439,6 +445,7 @@ DECLHIDDEN(int) rtThreadNativeCreate(PRTTHREADINT pThread, PRTNATIVETHREAD pNati
 
 DECLHIDDEN(bool) rtThreadNativeIsAliveKludge(PRTTHREADINT pThread)
 {
+    RT_STACK_CHECK_RET_ADDR();
     PPEB_COMMON pPeb = NtCurrentPeb();
     if (!pPeb || !pPeb->Ldr || !pPeb->Ldr->ShutdownInProgress)
         return true;
@@ -481,6 +488,8 @@ static int rtThreadGetCurrentProcessorNumber(void)
 
 RTR3DECL(int) RTThreadSetAffinity(PCRTCPUSET pCpuSet)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /* The affinity functionality was added in NT 3.50, so we resolve the APIs
        dynamically to be able to run on NT 3.1. */
     if (g_pfnSetThreadAffinityMask)
@@ -500,6 +509,8 @@ RTR3DECL(int) RTThreadSetAffinity(PCRTCPUSET pCpuSet)
 
 RTR3DECL(int) RTThreadGetAffinity(PRTCPUSET pCpuSet)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /* The affinity functionality was added in NT 3.50, so we resolve the APIs
        dynamically to be able to run on NT 3.1. */
     if (   g_pfnSetThreadAffinityMask
@@ -534,8 +545,9 @@ RTR3DECL(int) RTThreadGetAffinity(PRTCPUSET pCpuSet)
 
 RTR3DECL(int) RTThreadGetExecutionTimeMilli(uint64_t *pcMsKernelTime, uint64_t *pcMsUserTime)
 {
-    uint64_t u64CreationTime, u64ExitTime, u64KernelTime, u64UserTime;
+    RT_STACK_CHECK_RET_ADDR();
 
+    uint64_t u64CreationTime, u64ExitTime, u64KernelTime, u64UserTime;
     if (GetThreadTimes(GetCurrentThread(), (LPFILETIME)&u64CreationTime, (LPFILETIME)&u64ExitTime, (LPFILETIME)&u64KernelTime, (LPFILETIME)&u64UserTime))
     {
         *pcMsKernelTime = u64KernelTime / 10000;    /* GetThreadTimes returns time in 100 ns units */
@@ -574,6 +586,7 @@ RT_EXPORT_SYMBOL(RTThreadGetNativeHandle);
 
 RTDECL(int) RTThreadPoke(RTTHREAD hThread)
 {
+    RT_STACK_CHECK_RET_ADDR();
     AssertReturn(hThread != RTThreadSelf(), VERR_INVALID_PARAMETER);
     if (g_pfnNtAlertThread)
     {

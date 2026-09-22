@@ -1,4 +1,4 @@
-/* $Id: localipc-win.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: localipc-win.cpp 115305 2026-09-22 23:06:43Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Local IPC, Windows Implementation Using Named Pipes.
  *
@@ -58,6 +58,7 @@
 #include <iprt/log.h>
 #include <iprt/mem.h>
 #include <iprt/param.h>
+#include <iprt/stackcheck.h>
 #include <iprt/string.h>
 #include <iprt/thread.h>
 #include <iprt/time.h>
@@ -696,6 +697,7 @@ RTDECL(int) RTLocalIpcServerListen(RTLOCALIPCSERVER hServer, PRTLOCALIPCSESSION 
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTLOCALIPCSERVER_MAGIC, VERR_INVALID_HANDLE);
     AssertPtrReturn(phClientSession, VERR_INVALID_POINTER);
+    RT_STACK_CHECK_RET_ADDR();
 
     /*
      * Enter the critsect before inspecting the object further.
@@ -1163,6 +1165,7 @@ RTDECL(int) RTLocalIpcSessionClose(RTLOCALIPCSESSION hSession)
  */
 static int rtLocalIpcWinGetZeroReadResult(PRTLOCALIPCSESSIONINT pThis, DWORD rcWait)
 {
+    RT_STACK_CHECK_RET_ADDR();
     int rc;
     DWORD cbRead = 42;
     if (rcWait == WAIT_OBJECT_0)
@@ -1206,6 +1209,7 @@ RTDECL(int) RTLocalIpcSessionRead(RTLOCALIPCSESSION hSession, void *pvBuf, size_
     AssertReturn(pThis->u32Magic == RTLOCALIPCSESSION_MAGIC, VERR_INVALID_HANDLE);
     AssertPtrReturn(pvBuf, VERR_INVALID_POINTER);
     /* pcbRead is optional. */
+    RT_STACK_CHECK_RET_ADDR();
 
     int rc = RTCritSectEnter(&pThis->CritSect);
     if (RT_SUCCESS(rc))
@@ -1316,6 +1320,7 @@ RTDECL(int) RTLocalIpcSessionReadNB(RTLOCALIPCSESSION hSession, void *pvBuf, siz
     AssertPtrReturn(pvBuf, VERR_INVALID_POINTER);
     AssertPtrReturn(pcbRead, VERR_INVALID_POINTER);
     *pcbRead = 0;
+    RT_STACK_CHECK_RET_ADDR();
 
     int rc = RTCritSectEnter(&pThis->CritSect);
     if (RT_SUCCESS(rc))
@@ -1438,6 +1443,7 @@ RTDECL(int) RTLocalIpcSessionReadNB(RTLOCALIPCSESSION hSession, void *pvBuf, siz
  */
 static int rtLocalIpcSessionWriteCheckCompletion(PRTLOCALIPCSESSIONINT pThis)
 {
+    RT_STACK_CHECK_RET_ADDR();
     int rc;
     DWORD rcWait = WaitForSingleObject(pThis->OverlappedIO.hEvent, 0);
     if (rcWait == WAIT_OBJECT_0)
@@ -1504,6 +1510,7 @@ RTDECL(int) RTLocalIpcSessionWrite(RTLOCALIPCSESSION hSession, const void *pvBuf
     AssertReturn(pThis->u32Magic == RTLOCALIPCSESSION_MAGIC, VERR_INVALID_HANDLE);
     AssertPtrReturn(pvBuf, VERR_INVALID_POINTER);
     AssertReturn(cbToWrite, VERR_INVALID_PARAMETER);
+    RT_STACK_CHECK_RET_ADDR();
 
     int rc = RTCritSectEnter(&pThis->CritSect);
     if (RT_SUCCESS(rc))
@@ -1616,6 +1623,7 @@ RTDECL(int) RTLocalIpcSessionWaitForData(RTLOCALIPCSESSION hSession, uint32_t cM
     PRTLOCALIPCSESSIONINT pThis = (PRTLOCALIPCSESSIONINT)hSession;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTLOCALIPCSESSION_MAGIC, VERR_INVALID_HANDLE);
+    RT_STACK_CHECK_RET_ADDR();
 
     uint64_t const msStart = RTTimeMilliTS();
 

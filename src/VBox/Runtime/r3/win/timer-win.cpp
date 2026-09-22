@@ -1,4 +1,4 @@
-/* $Id: timer-win.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: timer-win.cpp 115305 2026-09-22 23:06:43Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Timer.
  */
@@ -51,6 +51,7 @@
 #include <iprt/thread.h>
 #include <iprt/log.h>
 #include <iprt/asm.h>
+#include <iprt/stackcheck.h>
 #include <iprt/semaphore.h>
 #include <iprt/err.h>
 #include "internal/magics.h"
@@ -124,6 +125,7 @@ static DECLCALLBACK(int) rttimerCallback(RTTHREAD hThreadSelf, void *pvArg)
 {
     PRTTIMER pTimer = (PRTTIMER)(void *)pvArg;
     Assert(pTimer->u32Magic == RTTIMER_MAGIC);
+    RT_STACK_CHECK_RET_ADDR();
 
     /*
      * Bounce our priority up quite a bit.
@@ -257,6 +259,8 @@ static DECLCALLBACK(int) rttimerCallback(RTTHREAD hThreadSelf, void *pvArg)
  */
 static int rtTimerNtSetTimerResolution(uint64_t u64NanoInterval)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * On windows we'll have to set the timer resolution before
      * we start the timer.
@@ -293,6 +297,8 @@ static int rtTimerNtSetTimerResolution(uint64_t u64NanoInterval)
 
 RTDECL(int) RTTimerCreateEx(PRTTIMER *ppTimer, uint64_t u64NanoInterval, uint32_t fFlags, PFNRTTIMER pfnTimer, void *pvUser)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * We don't support the fancy MP features.
      */
@@ -384,6 +390,8 @@ RTDECL(int) RTTimerCreateEx(PRTTIMER *ppTimer, uint64_t u64NanoInterval, uint32_
 
 RTR3DECL(int)     RTTimerDestroy(PRTTIMER pTimer)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /* NULL is ok. */
     if (!pTimer)
         return VINF_SUCCESS;
@@ -443,6 +451,7 @@ RTDECL(int) RTTimerStart(PRTTIMER pTimer, uint64_t u64First)
     AssertPtrReturn(pTimer, VERR_INVALID_POINTER);
     AssertReturn(pTimer->u32Magic == RTTIMER_MAGIC, VERR_INVALID_MAGIC);
     AssertReturn(pTimer->Thread != RTThreadSelf(), VERR_INTERNAL_ERROR);
+    RT_STACK_CHECK_RET_ADDR();
 
     RTThreadUserReset(pTimer->Thread);
 
@@ -482,6 +491,7 @@ RTDECL(int) RTTimerStop(PRTTIMER pTimer)
      */
     AssertPtrReturn(pTimer, VERR_INVALID_POINTER);
     AssertReturn(pTimer->u32Magic == RTTIMER_MAGIC, VERR_INVALID_MAGIC);
+    RT_STACK_CHECK_RET_ADDR();
 
     RTThreadUserReset(pTimer->Thread);
 

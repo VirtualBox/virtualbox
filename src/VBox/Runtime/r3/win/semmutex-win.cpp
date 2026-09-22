@@ -1,4 +1,4 @@
-/* $Id: semmutex-win.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: semmutex-win.cpp 115305 2026-09-22 23:06:43Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Mutex Semaphores, Windows.
  */
@@ -49,6 +49,7 @@
 #include <iprt/err.h>
 #include <iprt/lockvalidator.h>
 #include <iprt/mem.h>
+#include <iprt/stackcheck.h>
 #include <iprt/thread.h>
 #include "internal/magics.h"
 #include "internal/strict.h"
@@ -200,6 +201,7 @@ DECL_FORCE_INLINE(int) rtSemMutexRequestNoResume(RTSEMMUTEX hMutexSem, RTMSINTER
     RTSEMMUTEXINTERNAL *pThis = hMutexSem;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTSEMMUTEX_MAGIC, VERR_INVALID_HANDLE);
+    RT_STACK_CHECK_RET_ADDR();
 
     /*
      * Check for recursive entry.

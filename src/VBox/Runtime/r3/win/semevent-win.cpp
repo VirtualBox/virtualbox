@@ -1,4 +1,4 @@
-/* $Id: semevent-win.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: semevent-win.cpp 115305 2026-09-22 23:06:43Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Event Semaphore, Windows.
  */
@@ -49,6 +49,7 @@
 #include <iprt/err.h>
 #include <iprt/lockvalidator.h>
 #include <iprt/mem.h>
+#include <iprt/stackcheck.h>
 #include <iprt/thread.h>
 #include "internal/magics.h"
 #include "internal/mem.h"
@@ -238,6 +239,7 @@ RTDECL(int)   RTSemEventWaitNoResume(RTSEMEVENT hEventSem, RTMSINTERVAL cMillies
     struct RTSEMEVENTINTERNAL *pThis = hEventSem;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTSEMEVENT_MAGIC, VERR_INVALID_HANDLE);
+    RT_STACK_CHECK_RET_ADDR();
 
     /*
      * Wait for condition.

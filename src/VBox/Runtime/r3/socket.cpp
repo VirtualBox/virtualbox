@@ -1,4 +1,4 @@
-/* $Id: socket.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: socket.cpp 115305 2026-09-22 23:06:43Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Network Sockets.
  */
@@ -74,6 +74,7 @@
 #include <iprt/err.h>
 #include <iprt/mempool.h>
 #include <iprt/poll.h>
+#include <iprt/stackcheck.h>
 #include <iprt/string.h>
 #include <iprt/thread.h>
 #include <iprt/time.h>
@@ -254,6 +255,7 @@ static int rtSocketInitWinsock(void)
         || !g_pfnsocket
         || !g_pfnclosesocket)
         return VERR_NET_INIT_FAILED;
+    RT_STACK_CHECK_RET_ADDR();
 
     /*
      * Initialize winsock. Try with 2.2 and back down till we get something that works.
@@ -657,6 +659,7 @@ DECLHIDDEN(int) rtSocketCreate(PRTSOCKET phSocket, int iDomain, int iType, int i
  */
 static int rtSocketCreateNativeTcpPair(RTSOCKETNATIVE *phServer, RTSOCKETNATIVE *phClient)
 {
+    RT_STACK_CHECK_RET_ADDR();
 #ifdef RT_OS_WINDOWS
     /*
      * Initialize WinSock and make sure we got the necessary APIs.
@@ -775,6 +778,7 @@ static int rtSocketCreateNativeTcpPair(RTSOCKETNATIVE *phServer, RTSOCKETNATIVE 
  */
 DECLHIDDEN(int) rtSocketCreateTcpPair(RTSOCKET *phServer, RTSOCKET *phClient)
 {
+    RT_STACK_CHECK_RET_ADDR();
     RTSOCKETNATIVE hServer = NIL_RTSOCKETNATIVE;
     RTSOCKETNATIVE hClient = NIL_RTSOCKETNATIVE;
     int rc = rtSocketCreateNativeTcpPair(&hServer, &hClient);
@@ -827,6 +831,8 @@ RTDECL(uint32_t) RTSocketRetain(RTSOCKET hSocket)
  */
 static int rtSocketCloseIt(RTSOCKETINT *pThis, bool fDestroy)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * Invalidate the handle structure on destroy.
      */
@@ -1247,6 +1253,7 @@ RTDECL(int) RTSocketRead(RTSOCKET hSocket, void *pvBuffer, size_t cbBuffer, size
     /*
      * Validate input.
      */
+    RT_STACK_CHECK_RET_ADDR();
     RTSOCKETINT *pThis = hSocket;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTSOCKET_MAGIC, VERR_INVALID_HANDLE);
@@ -1322,6 +1329,7 @@ RTDECL(int) RTSocketReadFrom(RTSOCKET hSocket, void *pvBuffer, size_t cbBuffer, 
     /*
      * Validate input.
      */
+    RT_STACK_CHECK_RET_ADDR();
     RTSOCKETINT *pThis = hSocket;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTSOCKET_MAGIC, VERR_INVALID_HANDLE);
@@ -1383,6 +1391,7 @@ RTDECL(int) RTSocketWrite(RTSOCKET hSocket, const void *pvBuffer, size_t cbBuffe
     /*
      * Validate input.
      */
+    RT_STACK_CHECK_RET_ADDR();
     RTSOCKETINT *pThis = hSocket;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTSOCKET_MAGIC, VERR_INVALID_HANDLE);
@@ -1459,6 +1468,7 @@ RTDECL(int) RTSocketWriteTo(RTSOCKET hSocket, const void *pvBuffer, size_t cbBuf
     /*
      * Validate input.
      */
+    RT_STACK_CHECK_RET_ADDR();
     RTSOCKETINT *pThis = hSocket;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTSOCKET_MAGIC, VERR_INVALID_HANDLE);
@@ -1520,6 +1530,7 @@ RTDECL(int) RTSocketWriteToNB(RTSOCKET hSocket, const void *pvBuffer, size_t cbB
     /*
      * Validate input.
      */
+    RT_STACK_CHECK_RET_ADDR();
     RTSOCKETINT *pThis = hSocket;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTSOCKET_MAGIC, VERR_INVALID_HANDLE);
@@ -1581,6 +1592,7 @@ RTDECL(int) RTSocketSgWrite(RTSOCKET hSocket, PCRTSGBUF pSgBuf)
     /*
      * Validate input.
      */
+    RT_STACK_CHECK_RET_ADDR();
     RTSOCKETINT *pThis = hSocket;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTSOCKET_MAGIC, VERR_INVALID_HANDLE);
@@ -1982,6 +1994,7 @@ RTDECL(int) RTSocketSelectOne(RTSOCKET hSocket, RTMSINTERVAL cMillies)
     /*
      * Validate input.
      */
+    RT_STACK_CHECK_RET_ADDR();
     RTSOCKETINT *pThis = hSocket;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTSOCKET_MAGIC, VERR_INVALID_HANDLE);
@@ -2037,6 +2050,7 @@ RTDECL(int) RTSocketSelectOne(RTSOCKET hSocket, RTMSINTERVAL cMillies)
  */
 static int rtSocketSelectOneEx(RTSOCKET pThis, uint32_t fEvents, uint32_t *pfEvents, RTMSINTERVAL cMillies)
 {
+    RT_STACK_CHECK_RET_ADDR();
     RTSOCKETNATIVE hNative = pThis->hNative;
     if (hNative == NIL_RTSOCKETNATIVE)
     {
@@ -2138,6 +2152,7 @@ RTDECL(int) RTSocketShutdown(RTSOCKET hSocket, bool fRead, bool fWrite)
      * Validate input, don't lock it because we might want to interrupt a call
      * active on a different thread.
      */
+    RT_STACK_CHECK_RET_ADDR();
     RTSOCKETINT *pThis = hSocket;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTSOCKET_MAGIC, VERR_INVALID_HANDLE);
@@ -2313,6 +2328,7 @@ DECLHIDDEN(int) rtSocketListen(RTSOCKET hSocket, int cMaxPending)
     /*
      * Validate input.
      */
+    RT_STACK_CHECK_RET_ADDR();
     RTSOCKETINT *pThis = hSocket;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTSOCKET_MAGIC, VERR_INVALID_HANDLE);
@@ -2353,6 +2369,7 @@ DECLHIDDEN(int) rtSocketAccept(RTSOCKET hSocket, PRTSOCKET phClient, struct sock
      * Only lock the socket temporarily while we get the native handle, so that
      * we can safely shutdown and destroy the socket from a different thread.
      */
+    RT_STACK_CHECK_RET_ADDR();
     RTSOCKETINT *pThis = hSocket;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTSOCKET_MAGIC, VERR_INVALID_HANDLE);
@@ -2415,6 +2432,8 @@ DECLHIDDEN(int) rtSocketAccept(RTSOCKET hSocket, PRTSOCKET phClient, struct sock
  */
 DECLHIDDEN(int) rtSocketConnect(RTSOCKET hSocket, PCRTNETADDR pAddr, RTMSINTERVAL cMillies)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * Validate input.
      */
@@ -2525,6 +2544,8 @@ DECLHIDDEN(int) rtSocketConnect(RTSOCKET hSocket, PCRTNETADDR pAddr, RTMSINTERVA
  */
 DECLHIDDEN(int) rtSocketConnectRaw(RTSOCKET hSocket, void const *pvAddr, size_t cbAddr)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * Validate input.
      */

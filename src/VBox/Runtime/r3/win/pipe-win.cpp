@@ -1,4 +1,4 @@
-/* $Id: pipe-win.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: pipe-win.cpp 115305 2026-09-22 23:06:43Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Anonymous Pipes, Windows Implementation.
  */
@@ -49,6 +49,7 @@
 #include <iprt/err.h>
 #include <iprt/log.h>
 #include <iprt/mem.h>
+#include <iprt/stackcheck.h>
 #include <iprt/string.h>
 #include <iprt/poll.h>
 #include <iprt/process.h>
@@ -336,6 +337,7 @@ RTDECL(int)  RTPipeCreate(PRTPIPE phPipeRead, PRTPIPE phPipeWrite, uint32_t fFla
  */
 static int rtPipeWriteCheckCompletion(RTPIPEINTERNAL *pThis)
 {
+    RT_STACK_CHECK_RET_ADDR();
     int rc;
     DWORD dwRc = WaitForSingleObject(pThis->Overlapped.hEvent, 0);
     if (dwRc == WAIT_OBJECT_0)
@@ -611,6 +613,7 @@ RTDECL(int) RTPipeRead(RTPIPE hPipe, void *pvBuf, size_t cbToRead, size_t *pcbRe
     AssertReturn(pThis->fRead, VERR_ACCESS_DENIED);
     AssertPtr(pcbRead);
     AssertPtr(pvBuf);
+    RT_STACK_CHECK_RET_ADDR();
 
     int rc = RTCritSectEnter(&pThis->CritSect);
     if (RT_SUCCESS(rc))
@@ -686,6 +689,7 @@ RTDECL(int) RTPipeReadBlocking(RTPIPE hPipe, void *pvBuf, size_t cbToRead, size_
     AssertReturn(pThis->u32Magic == RTPIPE_MAGIC, VERR_INVALID_HANDLE);
     AssertReturn(pThis->fRead, VERR_ACCESS_DENIED);
     AssertPtr(pvBuf);
+    RT_STACK_CHECK_RET_ADDR();
 
     int rc = RTCritSectEnter(&pThis->CritSect);
     if (RT_SUCCESS(rc))
@@ -764,6 +768,7 @@ RTDECL(int) RTPipeWrite(RTPIPE hPipe, const void *pvBuf, size_t cbToWrite, size_
     AssertReturn(!pThis->fRead, VERR_ACCESS_DENIED);
     AssertPtr(pcbWritten);
     AssertPtr(pvBuf);
+    RT_STACK_CHECK_RET_ADDR();
 
     int rc = RTCritSectEnter(&pThis->CritSect);
     if (RT_SUCCESS(rc))
@@ -882,6 +887,7 @@ RTDECL(int) RTPipeWriteBlocking(RTPIPE hPipe, const void *pvBuf, size_t cbToWrit
     AssertReturn(!pThis->fRead, VERR_ACCESS_DENIED);
     AssertPtr(pvBuf);
     AssertPtrNull(pcbWritten);
+    RT_STACK_CHECK_RET_ADDR();
 
     int rc = RTCritSectEnter(&pThis->CritSect);
     if (RT_SUCCESS(rc))
@@ -1015,6 +1021,7 @@ RTDECL(int) RTPipeFlush(RTPIPE hPipe)
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTPIPE_MAGIC, VERR_INVALID_HANDLE);
     AssertReturn(!pThis->fRead, VERR_ACCESS_DENIED);
+    RT_STACK_CHECK_RET_ADDR();
 
     if (!FlushFileBuffers(pThis->hPipe))
     {
@@ -1032,6 +1039,7 @@ RTDECL(int) RTPipeSelectOne(RTPIPE hPipe, RTMSINTERVAL cMillies)
     RTPIPEINTERNAL *pThis = hPipe;
     AssertPtrReturn(pThis, VERR_INVALID_HANDLE);
     AssertReturn(pThis->u32Magic == RTPIPE_MAGIC, VERR_INVALID_HANDLE);
+    RT_STACK_CHECK_RET_ADDR();
 
     uint64_t const StartMsTS = RTTimeMilliTS();
 
@@ -1223,6 +1231,7 @@ RTDECL(int) RTPipeQueryReadable(RTPIPE hPipe, size_t *pcbReadable)
     AssertReturn(pThis->u32Magic == RTPIPE_MAGIC, VERR_INVALID_HANDLE);
     AssertReturn(pThis->fRead, VERR_PIPE_NOT_READ);
     AssertPtrReturn(pcbReadable, VERR_INVALID_POINTER);
+    RT_STACK_CHECK_RET_ADDR();
 
     int rc = RTCritSectEnter(&pThis->CritSect);
     if (RT_FAILURE(rc))
@@ -1314,6 +1323,7 @@ RTDECL(int) RTPipeQueryInfo(RTPIPE hPipe, PRTFSOBJINFO pObjInfo, RTFSOBJATTRADD 
     RTPIPEINTERNAL *pThis = hPipe;
     AssertPtrReturn(pThis, 0);
     AssertReturn(pThis->u32Magic == RTPIPE_MAGIC, 0);
+    RT_STACK_CHECK_RET_ADDR();
 
     int rc = RTCritSectEnter(&pThis->CritSect);
     AssertRCReturn(rc, 0);
@@ -1445,6 +1455,7 @@ uint32_t rtPipePollStart(RTPIPE hPipe, RTPOLLSET hPollSet, uint32_t fEvents, boo
     AssertPtrReturn(pThis, UINT32_MAX);
     AssertReturn(pThis->u32Magic == RTPIPE_MAGIC, UINT32_MAX);
     RT_NOREF_PV(fFinalEntry);
+    RT_STACK_CHECK_RET_ADDR();
 
     int rc = RTCritSectEnter(&pThis->CritSect);
     AssertRCReturn(rc, UINT32_MAX);
@@ -1527,6 +1538,7 @@ uint32_t rtPipePollDone(RTPIPE hPipe, uint32_t fEvents, bool fFinalEntry, bool f
     AssertReturn(pThis->u32Magic == RTPIPE_MAGIC, 0);
     RT_NOREF_PV(fFinalEntry);
     RT_NOREF_PV(fHarvestEvents);
+    RT_STACK_CHECK_RET_ADDR();
 
     int rc = RTCritSectEnter(&pThis->CritSect);
     AssertRCReturn(rc, 0);

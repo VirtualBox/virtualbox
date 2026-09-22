@@ -1,4 +1,4 @@
-/* $Id: fileio-win.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: fileio-win.cpp 115305 2026-09-22 23:06:43Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - File I/O, native implementation for the Windows host platform.
  */
@@ -53,6 +53,7 @@
 #include <iprt/err.h>
 #include <iprt/ldr.h>
 #include <iprt/log.h>
+#include <iprt/stackcheck.h>
 #include <iprt/utf16.h>
 #include "internal/file.h"
 #include "internal/fs.h"
@@ -183,6 +184,8 @@ RTR3DECL(int) RTFileOpen(PRTFILE pFile, const char *pszFilename, uint64_t fOpen)
 
 RTDECL(int) RTFileOpenEx(const char *pszFilename, uint64_t fOpen, PRTFILE phFile, PRTFILEACTION penmActionTaken)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * Validate input.
      */
@@ -407,6 +410,7 @@ RTDECL(int) RTFileOpenEx(const char *pszFilename, uint64_t fOpen, PRTFILE phFile
 
 RTR3DECL(int)  RTFileOpenBitBucket(PRTFILE phFile, uint64_t fAccess)
 {
+    RT_STACK_CHECK_RET_ADDR();
     AssertReturn(   fAccess == RTFILE_O_READ
                  || fAccess == RTFILE_O_WRITE
                  || fAccess == RTFILE_O_READWRITE,
@@ -417,6 +421,8 @@ RTR3DECL(int)  RTFileOpenBitBucket(PRTFILE phFile, uint64_t fAccess)
 
 RTDECL(int)  RTFileDup(RTFILE hFileSrc, uint64_t fFlags, PRTFILE phFileNew)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * Validate input.
      */
@@ -441,6 +447,7 @@ RTDECL(int)  RTFileDup(RTFILE hFileSrc, uint64_t fFlags, PRTFILE phFileNew)
 
 RTR3DECL(int)  RTFileClose(RTFILE hFile)
 {
+    RT_STACK_CHECK_RET_ADDR();
     if (hFile == NIL_RTFILE)
         return VINF_SUCCESS;
     if (CloseHandle((HANDLE)RTFileToNative(hFile)))
@@ -451,6 +458,7 @@ RTR3DECL(int)  RTFileClose(RTFILE hFile)
 
 RTFILE rtFileGetStandard(RTHANDLESTD enmStdHandle)
 {
+    RT_STACK_CHECK_RET_ADDR();
     DWORD dwStdHandle;
     switch (enmStdHandle)
     {
@@ -473,6 +481,7 @@ RTFILE rtFileGetStandard(RTHANDLESTD enmStdHandle)
 
 RTR3DECL(int)  RTFileSeek(RTFILE hFile, int64_t offSeek, unsigned uMethod, uint64_t *poffActual)
 {
+    RT_STACK_CHECK_RET_ADDR();
     static ULONG aulSeekRecode[] =
     {
         FILE_BEGIN,
@@ -500,6 +509,7 @@ RTR3DECL(int)  RTFileSeek(RTFILE hFile, int64_t offSeek, unsigned uMethod, uint6
 
 RTR3DECL(int)  RTFileRead(RTFILE hFile, void *pvBuf, size_t cbToRead, size_t *pcbRead)
 {
+    RT_STACK_CHECK_RET_ADDR();
     if (cbToRead <= 0)
     {
         if (pcbRead)
@@ -583,6 +593,7 @@ RTR3DECL(int)  RTFileRead(RTFILE hFile, void *pvBuf, size_t cbToRead, size_t *pc
 
 RTDECL(int)  RTFileReadAt(RTFILE hFile, RTFOFF off, void *pvBuf, size_t cbToRead, size_t *pcbRead)
 {
+    RT_STACK_CHECK_RET_ADDR();
     ULONG cbToReadAdj = (ULONG)cbToRead;
     AssertReturn(cbToReadAdj == cbToRead, VERR_NUMBER_TOO_BIG);
 
@@ -636,6 +647,7 @@ RTDECL(int)  RTFileReadAt(RTFILE hFile, RTFOFF off, void *pvBuf, size_t cbToRead
 
 RTR3DECL(int)  RTFileWrite(RTFILE hFile, const void *pvBuf, size_t cbToWrite, size_t *pcbWritten)
 {
+    RT_STACK_CHECK_RET_ADDR();
     if (cbToWrite <= 0)
         return VINF_SUCCESS;
     ULONG const cbToWriteAdj = (ULONG)cbToWrite;
@@ -727,6 +739,7 @@ RTR3DECL(int)  RTFileWrite(RTFILE hFile, const void *pvBuf, size_t cbToWrite, si
 
 RTDECL(int)  RTFileWriteAt(RTFILE hFile, RTFOFF off, const void *pvBuf, size_t cbToWrite, size_t *pcbWritten)
 {
+    RT_STACK_CHECK_RET_ADDR();
     ULONG const cbToWriteAdj = (ULONG)cbToWrite;
     AssertReturn(cbToWriteAdj == cbToWrite, VERR_NUMBER_TOO_BIG);
 
@@ -780,6 +793,7 @@ RTDECL(int)  RTFileWriteAt(RTFILE hFile, RTFOFF off, const void *pvBuf, size_t c
 
 RTR3DECL(int)  RTFileFlush(RTFILE hFile)
 {
+    RT_STACK_CHECK_RET_ADDR();
     if (!FlushFileBuffers((HANDLE)RTFileToNative(hFile)))
     {
         int rc = GetLastError();
@@ -800,6 +814,8 @@ RTR3DECL(int)  RTFileFlush(RTFILE hFile)
  */
 static bool rtFileIsSame(HANDLE hFile1, HANDLE hFile2)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * We retry in case CreationTime or the Object ID is being modified and there
      * aren't any IndexNumber (file ID) on this kind of file system.
@@ -904,6 +920,7 @@ static bool rtFileIsSame(HANDLE hFile1, HANDLE hFile2)
  */
 static HANDLE rtFileReOpenAppendOnlyWithFullWriteAccess(HANDLE hFile)
 {
+    RT_STACK_CHECK_RET_ADDR();
     OBJECT_BASIC_INFORMATION BasicInfo = {0};
     ULONG                    cbActual  = 0;
     NTSTATUS rcNt = NtQueryObject(hFile, ObjectBasicInformation, &BasicInfo, sizeof(BasicInfo), &cbActual);
@@ -960,6 +977,7 @@ static HANDLE rtFileReOpenAppendOnlyWithFullWriteAccess(HANDLE hFile)
 
 RTR3DECL(int) RTFileSetSize(RTFILE hFile, uint64_t cbSize)
 {
+    RT_STACK_CHECK_RET_ADDR();
 #if 1
     HANDLE hNtFile  = (HANDLE)RTFileToNative(hFile);
     HANDLE hDupFile = INVALID_HANDLE_VALUE;
@@ -1071,6 +1089,8 @@ RTR3DECL(int) RTFileSetSize(RTFILE hFile, uint64_t cbSize)
 
 RTR3DECL(int)  RTFileQuerySize(RTFILE hFile, uint64_t *pcbSize)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * GetFileSize works for most handles.
      */
@@ -1164,6 +1184,7 @@ RTR3DECL(bool) RTFileIsValid(RTFILE hFile)
 
 RTR3DECL(int)  RTFileLock(RTFILE hFile, unsigned fLock, int64_t offLock, uint64_t cbLock)
 {
+    RT_STACK_CHECK_RET_ADDR();
     Assert(offLock >= 0);
 
     /* Check arguments. */
@@ -1196,6 +1217,7 @@ RTR3DECL(int)  RTFileLock(RTFILE hFile, unsigned fLock, int64_t offLock, uint64_
 
 RTR3DECL(int)  RTFileChangeLock(RTFILE hFile, unsigned fLock, int64_t offLock, uint64_t cbLock)
 {
+    RT_STACK_CHECK_RET_ADDR();
     Assert(offLock >= 0);
 
     /* Check arguments. */
@@ -1227,6 +1249,7 @@ RTR3DECL(int)  RTFileChangeLock(RTFILE hFile, unsigned fLock, int64_t offLock, u
 
 RTR3DECL(int)  RTFileUnlock(RTFILE hFile, int64_t offLock, uint64_t cbLock)
 {
+    RT_STACK_CHECK_RET_ADDR();
     Assert(offLock >= 0);
 
     if (UnlockFile((HANDLE)RTFileToNative(hFile),
@@ -1241,6 +1264,8 @@ RTR3DECL(int)  RTFileUnlock(RTFILE hFile, int64_t offLock, uint64_t cbLock)
 
 RTR3DECL(int) RTFileQueryInfo(RTFILE hFile, PRTFSOBJINFO pObjInfo, RTFSOBJATTRADD enmAdditionalAttribs)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * Validate input.
      */
@@ -1422,6 +1447,7 @@ RTR3DECL(int) RTFileSetTimes(RTFILE hFile, PCRTTIMESPEC pAccessTime, PCRTTIMESPE
                              PCRTTIMESPEC pChangeTime, PCRTTIMESPEC pBirthTime)
 {
     RT_NOREF_PV(pChangeTime); /* Not exposed thru the windows API we're using. */
+    RT_STACK_CHECK_RET_ADDR();
 
     if (!pAccessTime && !pModificationTime && !pBirthTime)
         return VINF_SUCCESS;    /* NOP */
@@ -1462,6 +1488,8 @@ extern int rtFileNativeSetAttributes(HANDLE FileHandle, ULONG FileAttributes);
 
 RTR3DECL(int) RTFileSetMode(RTFILE hFile, RTFMODE fMode)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * Normalize the mode and call the API.
      */
@@ -1488,6 +1516,7 @@ RTR3DECL(int) RTFileSetMode(RTFILE hFile, RTFMODE fMode)
 #if 0 /* RTFileDelete is implemented by ../nt/RTFileDelete-r3-nt.cpp */
 RTR3DECL(int)  RTFileDelete(const char *pszFilename)
 {
+    RT_STACK_CHECK_RET_ADDR();
     PRTUTF16 pwszFilename;
     int rc = RTPathWinFromUtf8(&pwszFilename, pszFilename, 0 /*fFlags*/);
     if (RT_SUCCESS(rc))
@@ -1504,6 +1533,8 @@ RTR3DECL(int)  RTFileDelete(const char *pszFilename)
 
 RTDECL(int) RTFileRename(const char *pszSrc, const char *pszDst, unsigned fRename)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * Validate input.
      */
@@ -1527,6 +1558,8 @@ RTDECL(int) RTFileRename(const char *pszSrc, const char *pszDst, unsigned fRenam
 
 RTDECL(int) RTFileMove(const char *pszSrc, const char *pszDst, unsigned fMove)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * Validate input.
      */

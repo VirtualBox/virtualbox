@@ -1,4 +1,4 @@
-/* $Id: process-win.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: process-win.cpp 115305 2026-09-22 23:06:43Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Process, Windows.
  */
@@ -71,6 +71,7 @@
 #include <iprt/once.h>
 #include <iprt/path.h>
 #include <iprt/pipe.h>
+#include <iprt/stackcheck.h>
 #include <iprt/string.h>
 #include <iprt/socket.h>
 #include <iprt/utf16.h>
@@ -233,6 +234,7 @@ static DECLCALLBACK(int32_t) rtProcWinInitOnce(void *pvUser)
  */
 static HANDLE rtProcWinFindPid(RTPROCESS pid)
 {
+    RT_STACK_CHECK_RET_ADDR();
     HANDLE hProcess = NULL;
 
     RTCritSectEnter(&g_CritSect);
@@ -256,6 +258,7 @@ static HANDLE rtProcWinFindPid(RTPROCESS pid)
  */
 static void rtProcWinRemovePid(RTPROCESS pid)
 {
+    RT_STACK_CHECK_RET_ADDR();
     RTCritSectEnter(&g_CritSect);
     uint32_t i = g_cProcesses;
     while (i-- > 0)
@@ -285,6 +288,7 @@ static void rtProcWinRemovePid(RTPROCESS pid)
  */
 static int rtProcWinAddPid(RTPROCESS pid, HANDLE hProcess)
 {
+    RT_STACK_CHECK_RET_ADDR();
     RTCritSectEnter(&g_CritSect);
 
     uint32_t i = g_cProcesses;
@@ -317,6 +321,7 @@ static int rtProcWinAddPid(RTPROCESS pid, HANDLE hProcess)
  */
 static DECLCALLBACK(int) rtProcWinResolveOnce(void *pvUser)
 {
+    RT_STACK_CHECK_RET_ADDR();
     int      rc;
     RTLDRMOD hMod;
     RT_NOREF_PV(pvUser);
@@ -417,6 +422,7 @@ static DECLCALLBACK(int) rtProcWinResolveOnce(void *pvUser)
 
 RTR3DECL(int) RTProcCreate(const char *pszExec, const char * const *papszArgs, RTENV Env, unsigned fFlags, PRTPROCESS pProcess)
 {
+    RT_STACK_CHECK_RET_ADDR();
     return RTProcCreateEx(pszExec, papszArgs, Env, fFlags,
                           NULL, NULL, NULL,  /* standard handles */
                           NULL /*pszAsUser*/, NULL /* pszPassword*/,
@@ -431,6 +437,7 @@ RTR3DECL(int) RTProcCreate(const char *pszExec, const char * const *papszArgs, R
  */
 static int rtProcWinDuplicateToken(HANDLE hSrcToken, PHANDLE phToken)
 {
+    RT_STACK_CHECK_RET_ADDR();
     int rc;
     if (g_pfnNtDuplicateToken)
     {
@@ -469,6 +476,7 @@ static int rtProcWinDuplicateToken(HANDLE hSrcToken, PHANDLE phToken)
  */
 static int rtProcWinGetThreadTokenHandle(HANDLE hThread, PHANDLE phToken)
 {
+    RT_STACK_CHECK_RET_ADDR();
     AssertPtr(phToken);
 
     int     rc;
@@ -501,6 +509,7 @@ static int rtProcWinGetThreadTokenHandle(HANDLE hThread, PHANDLE phToken)
  */
 static int rtProcWinGetProcessTokenHandle(HANDLE hProcess, PHANDLE phToken)
 {
+    RT_STACK_CHECK_RET_ADDR();
     AssertPtr(phToken);
 
     int     rc;
@@ -534,6 +543,7 @@ static int rtProcWinGetProcessTokenHandle(HANDLE hProcess, PHANDLE phToken)
  */
 static int rtProcWinGetProcessTokenHandle(DWORD dwPid, PSID pSid, DWORD idDesiredSession, PHANDLE phToken)
 {
+    RT_STACK_CHECK_RET_ADDR();
     AssertPtr(pSid);
     AssertPtr(phToken);
 
@@ -632,6 +642,8 @@ static int rtProcWinGetProcessTokenHandle(DWORD dwPid, PSID pSid, DWORD idDesire
  */
 static bool rtProcWinFindTokenByProcessAndPsApi(const char * const *papszNames, PSID pSid, PHANDLE phToken)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * Load PSAPI.DLL and resolve the two symbols we need.
      */
@@ -717,6 +729,7 @@ static bool rtProcWinFindTokenByProcessAndPsApi(const char * const *papszNames, 
  */
 static bool rtProcWinFindTokenByProcess(const char * const *papszNames, PSID pSid, uint32_t idDesiredSession, PHANDLE phToken)
 {
+    RT_STACK_CHECK_RET_ADDR();
     AssertPtr(papszNames);
     AssertPtr(pSid);
     AssertPtr(phToken);
@@ -781,6 +794,7 @@ static bool rtProcWinFindTokenByProcess(const char * const *papszNames, PSID pSi
  */
 static int rtProcWinUserLogon(PRTUTF16 pwszUser, PRTUTF16 pwszPassword, HANDLE *phToken)
 {
+    RT_STACK_CHECK_RET_ADDR();
     AssertPtrReturn(pwszUser,     VERR_INVALID_POINTER);
     AssertPtrReturn(pwszPassword, VERR_INVALID_POINTER);
     AssertPtrReturn(phToken,      VERR_INVALID_POINTER);
@@ -832,6 +846,7 @@ static int rtProcWinUserLogon(PRTUTF16 pwszUser, PRTUTF16 pwszPassword, HANDLE *
  */
 static int rtProcWinCreateEnvFromToken(HANDLE hToken, RTENV hEnv, uint32_t fFlags, PRTENV phEnv)
 {
+    RT_STACK_CHECK_RET_ADDR();
     int rc;
 
     /*
@@ -898,6 +913,7 @@ static int rtProcWinCreateEnvFromToken(HANDLE hToken, RTENV hEnv, uint32_t fFlag
  */
 static int rtProcWinFigureWhichPrivilegeNotHeld2(void)
 {
+    RT_STACK_CHECK_RET_ADDR();
     HANDLE hToken;
     if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, &hToken))
     {
@@ -1043,6 +1059,7 @@ static bool rtProcWinLogSecAttr(HANDLE hUserObj)
  */
 static PSID rtProcWinGetTokenUserSid(HANDLE hToken, int *prc)
 {
+    RT_STACK_CHECK_RET_ADDR();
     int rcIgn;
     if (!prc)
         prc = &rcIgn;
@@ -1148,6 +1165,8 @@ static PSID rtProcWinGetTokenLogonSid(HANDLE hToken)
 static PSECURITY_DESCRIPTOR rtProcWinGetUserObjDacl(HANDLE hUserObj, uint32_t *pcbSecDesc, PACL *ppDacl,
                                                     BOOL *pfDaclPresent, ACL_SIZE_INFORMATION *pDaclSizeInfo)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * Get the security descriptor for the user interface object.
      */
@@ -1202,6 +1221,7 @@ static PSECURITY_DESCRIPTOR rtProcWinGetUserObjDacl(HANDLE hUserObj, uint32_t *p
  */
 static bool rtProcWinCopyAces(PACL pDst, PACL pSrc, uint32_t cAces)
 {
+    RT_STACK_CHECK_RET_ADDR();
     for (uint32_t i = 0; i < cAces; i++)
     {
         PACE_HEADER pAceHdr;
@@ -1224,6 +1244,7 @@ static bool rtProcWinCopyAces(PACL pDst, PACL pSrc, uint32_t cAces)
  */
 static bool rtProcWinAddAccessAllowedAce(PACL pDstAcl, uint32_t fAceFlags, uint32_t fMask, PSID pSid, uint32_t cbSid)
 {
+    RT_STACK_CHECK_RET_ADDR();
     struct
     {
         ACCESS_ALLOWED_ACE  Core;
@@ -1276,6 +1297,7 @@ static bool rtProcWinAddAccessAllowedAce(PACL pDstAcl, uint32_t fAceFlags, uint3
  */
 static bool rtProcWinAddSidToWinStation(HWINSTA hWinStation, PSID pSid)
 {
+    RT_STACK_CHECK_RET_ADDR();
     bool fRet = false;
     AssertReturn(g_pfnSetUserObjectSecurity, fRet);
 
@@ -1349,6 +1371,7 @@ static bool rtProcWinAddSidToWinStation(HWINSTA hWinStation, PSID pSid)
  */
 static bool rtProcWinAddSidToDesktop(HDESK hDesktop, PSID pSid)
 {
+    RT_STACK_CHECK_RET_ADDR();
     bool fRet = false;
     AssertReturn(g_pfnSetUserObjectSecurity, fRet);
 
@@ -1423,6 +1446,7 @@ static bool rtProcWinAddSidToDesktop(HDESK hDesktop, PSID pSid)
  */
 static void rtProcWinStationPrep(HANDLE hTokenToUse, STARTUPINFOW *pStartupInfo, HWINSTA *phWinStationOld)
 {
+    RT_STACK_CHECK_RET_ADDR();
     /** @todo Always mess with the interactive one? Maybe it's not there...  */
     *phWinStationOld = GetProcessWindowStation();
     HWINSTA hWinStation0;
@@ -1473,6 +1497,7 @@ static void rtProcWinStationPrep(HANDLE hTokenToUse, STARTUPINFOW *pStartupInfo,
  */
 static int rtProcWinSidToName(PSID pSid, PRTUTF16 *ppwszName)
 {
+    RT_STACK_CHECK_RET_ADDR();
     *ppwszName = NULL;
 
     /*
@@ -1517,6 +1542,7 @@ static int rtProcWinSidToName(PSID pSid, PRTUTF16 *ppwszName)
  */
 static int rtProcWinTokenToUsername(HANDLE hToken, PRTUTF16 *ppwszUser)
 {
+    RT_STACK_CHECK_RET_ADDR();
     int rc = VINF_SUCCESS;
     PSID pSid = rtProcWinGetTokenUserSid(hToken, &rc);
     if (pSid)
@@ -1541,6 +1567,8 @@ static int rtProcWinCreateAsUser2(PRTUTF16 pwszUser, PRTUTF16 pwszPassword, PRTU
                                   uint32_t fFlags, const char *pszExec, uint32_t idDesiredSession,
                                   HANDLE hUserToken, PRTUTF16 pwszCwd)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * So if we want to start a process from a service (RTPROC_FLAGS_SERVICE),
      * we have to do the following:
@@ -1806,6 +1834,7 @@ static int rtProcWinCreateAsUser2(PRTUTF16 pwszUser, PRTUTF16 pwszPassword, PRTU
 static void rtProcWinDupStdHandleIntoChild(HANDLE hSrcHandle, HANDLE hDstProcess, uint32_t offProcParamMember,
                                            PVOID *ppvDstProcParamCache)
 {
+    RT_STACK_CHECK_RET_ADDR();
     if (hSrcHandle != NULL && hSrcHandle != INVALID_HANDLE_VALUE)
     {
         HANDLE hDstHandle;
@@ -1870,6 +1899,8 @@ static int rtProcWinCreateAsUser1(PRTUTF16 pwszUser, PRTUTF16 pwszPassword, PRTU
                                   STARTUPINFOW *pStartupInfo, PROCESS_INFORMATION *pProcInfo,
                                   uint32_t fFlags, const char *pszExec, PRTUTF16 pwszCwd)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /* The CreateProcessWithLogonW API was introduced with W2K and later.  It uses a service
        for launching the process. */
     if (!g_pfnCreateProcessWithLogonW)
@@ -2021,6 +2052,8 @@ static int rtProcWinCreateAsUser(PRTUTF16 pwszUser, PRTUTF16 pwszPassword, PRTUT
                                  uint32_t fFlags, const char *pszExec, uint32_t idDesiredSession,
                                  HANDLE hUserToken, PRTUTF16 pwszCwd)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * If we run as a service CreateProcessWithLogon will fail, so don't even
      * try it (because of Local System context).  If we got an impersonated token
@@ -2046,6 +2079,7 @@ static int rtProcWinCreateAsUser(PRTUTF16 pwszUser, PRTUTF16 pwszPassword, PRTUT
  */
 static DECLCALLBACK(int) rtPathFindExec(char const *pchPath, size_t cchPath, void *pvUser1, void *pvUser2)
 {
+    RT_STACK_CHECK_RET_ADDR();
     const char *pszExec     = (const char *)pvUser1;
     char       *pszRealExec = (char *)pvUser2;
     int rc = RTPathJoinEx(pszRealExec, RTPATH_MAX, pchPath, cchPath, pszExec, RTSTR_MAX, RTPATH_STR_F_STYLE_HOST);
@@ -2071,6 +2105,8 @@ static DECLCALLBACK(int) rtPathFindExec(char const *pchPath, size_t cchPath, voi
  */
 static int rtProcWinFindExe(uint32_t fFlags, RTENV hEnv, const char *pszExec, PRTUTF16 *ppwszExec)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * Return immediately if we're not asked to search, or if the file has a
      * path already or if it actually exists in the current directory.
@@ -2122,6 +2158,7 @@ static int rtProcWinFindExe(uint32_t fFlags, RTENV hEnv, const char *pszExec, PR
 static int rtProcWinCreateEnvBlockAndFindExe(uint32_t fFlags, RTENV hEnv, const char *pszExec,
                                              PRTUTF16 *ppwszzBlock, PRTUTF16 *ppwszExec)
 {
+    RT_STACK_CHECK_RET_ADDR();
     int rc;
 
     /*
@@ -2188,6 +2225,8 @@ RTR3DECL(int)   RTProcCreateEx(const char *pszExec, const char * const *papszArg
                                PCRTHANDLE phStdIn, PCRTHANDLE phStdOut, PCRTHANDLE phStdErr, const char *pszAsUser,
                                const char *pszPassword, void *pvExtraData, PRTPROCESS phProcess)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     /*
      * Input validation
      */
@@ -2508,6 +2547,7 @@ RTR3DECL(int)   RTProcCreateEx(const char *pszExec, const char * const *papszArg
 
 RTR3DECL(int) RTProcWait(RTPROCESS Process, unsigned fFlags, PRTPROCSTATUS pProcStatus)
 {
+    RT_STACK_CHECK_RET_ADDR();
     AssertReturn(!(fFlags & ~(RTPROCWAIT_FLAGS_BLOCK | RTPROCWAIT_FLAGS_NOBLOCK)), VERR_INVALID_PARAMETER);
     int rc = RTOnce(&g_rtProcWinInitOnce, rtProcWinInitOnce, NULL);
     AssertRCReturn(rc, rc);
@@ -2595,6 +2635,7 @@ RTR3DECL(int) RTProcWait(RTPROCESS Process, unsigned fFlags, PRTPROCSTATUS pProc
 
 RTR3DECL(int) RTProcWaitNoResume(RTPROCESS Process, unsigned fFlags, PRTPROCSTATUS pProcStatus)
 {
+    RT_STACK_CHECK_RET_ADDR();
     /** @todo this isn't quite right. */
     return RTProcWait(Process, fFlags, pProcStatus);
 }
@@ -2602,6 +2643,7 @@ RTR3DECL(int) RTProcWaitNoResume(RTPROCESS Process, unsigned fFlags, PRTPROCSTAT
 
 RTR3DECL(int) RTProcTerminate(RTPROCESS Process)
 {
+    RT_STACK_CHECK_RET_ADDR();
     if (Process == NIL_RTPROCESS)
         return VINF_SUCCESS;
 
@@ -2636,6 +2678,7 @@ RTR3DECL(int) RTProcTerminate(RTPROCESS Process)
 
 RTR3DECL(uint64_t) RTProcGetAffinityMask(void)
 {
+    RT_STACK_CHECK_RET_ADDR();
     DWORD_PTR dwProcessAffinityMask = 0xffffffff;
     DWORD_PTR dwSystemAffinityMask;
 
@@ -2648,6 +2691,7 @@ RTR3DECL(uint64_t) RTProcGetAffinityMask(void)
 
 RTR3DECL(int) RTProcQueryUsername(RTPROCESS hProcess, char *pszUser, size_t cbUser, size_t *pcbUser)
 {
+    RT_STACK_CHECK_RET_ADDR();
     AssertReturn(   (pszUser && cbUser > 0)
                  || (!pszUser && !cbUser), VERR_INVALID_PARAMETER);
     AssertReturn(pcbUser || pszUser, VERR_INVALID_PARAMETER);
@@ -2683,6 +2727,7 @@ RTR3DECL(int) RTProcQueryUsername(RTPROCESS hProcess, char *pszUser, size_t cbUs
 
 RTR3DECL(int) RTProcQueryUsernameA(RTPROCESS hProcess, char **ppszUser)
 {
+    RT_STACK_CHECK_RET_ADDR();
     AssertPtrReturn(ppszUser, VERR_INVALID_POINTER);
     int rc;
     if (   hProcess == NIL_RTPROCESS

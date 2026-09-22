@@ -1,4 +1,4 @@
-/* $Id: serialport-win.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: serialport-win.cpp 115305 2026-09-22 23:06:43Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Serial Port API, Windows Implementation.
  */
@@ -46,6 +46,7 @@
 #include <iprt/cdefs.h>
 #include <iprt/errcore.h>
 #include <iprt/mem.h>
+#include <iprt/stackcheck.h>
 #include <iprt/string.h>
 #include <iprt/thread.h>
 #include <iprt/time.h>
@@ -132,8 +133,9 @@ typedef RTSERIALPORTINTERNAL *PRTSERIALPORTINTERNAL;
  */
 static int rtSerialPortWinUpdateEvtMask(PRTSERIALPORTINTERNAL pThis, uint32_t fEvtMask)
 {
-    DWORD dwEvtMask = EV_ERR;
+    RT_STACK_CHECK_RET_ADDR();
 
+    DWORD dwEvtMask = EV_ERR;
     if (fEvtMask & RTSERIALPORT_EVT_F_DATA_RX)
         dwEvtMask |= EV_RXCHAR;
     if (fEvtMask & RTSERIALPORT_EVT_F_DATA_TX)
@@ -161,6 +163,8 @@ static int rtSerialPortWinUpdateEvtMask(PRTSERIALPORTINTERNAL pThis, uint32_t fE
  */
 static int rtSerialPortSetDefaultCfg(PRTSERIALPORTINTERNAL pThis)
 {
+    RT_STACK_CHECK_RET_ADDR();
+
     if (!PurgeComm(pThis->hDev, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR))
         return RTErrConvertFromWin32(GetLastError());
 
@@ -219,6 +223,7 @@ static int rtSerialPortSetDefaultCfg(PRTSERIALPORTINTERNAL pThis)
  */
 static int rtSerialPortWriteCheckCompletion(PRTSERIALPORTINTERNAL pThis)
 {
+    RT_STACK_CHECK_RET_ADDR();
     int rc = VINF_SUCCESS;
     DWORD dwRc = WaitForSingleObject(pThis->OverlappedWrite.hEvent, 0);
     if (dwRc == WAIT_OBJECT_0)
@@ -283,6 +288,7 @@ static int rtSerialPortWriteCheckCompletion(PRTSERIALPORTINTERNAL pThis)
  */
 static int rtSerialPortEvtFlagsProcess(PRTSERIALPORTINTERNAL pThis, DWORD dwEventMask, uint32_t *pfEvtsRecv)
 {
+    RT_STACK_CHECK_RET_ADDR();
     int rc = VINF_SUCCESS;
 
     if (dwEventMask & EV_RXCHAR)
@@ -318,6 +324,7 @@ static int rtSerialPortEvtFlagsProcess(PRTSERIALPORTINTERNAL pThis, DWORD dwEven
  */
 static int rtSerialPortEvtWaitWorker(PRTSERIALPORTINTERNAL pThis, RTMSINTERVAL msTimeout)
 {
+    RT_STACK_CHECK_RET_ADDR();
     int rc = VINF_SUCCESS;
     HANDLE ahWait[2];
     ahWait[0] = pThis->hEvtDev;
@@ -347,6 +354,7 @@ RTDECL(int)  RTSerialPortOpen(PRTSERIALPORT phSerialPort, const char *pszPortAdd
     AssertReturn(!(fFlags & ~RTSERIALPORT_OPEN_F_VALID_MASK), VERR_INVALID_PARAMETER);
     AssertReturn((fFlags & RTSERIALPORT_OPEN_F_READ) || (fFlags & RTSERIALPORT_OPEN_F_WRITE),
                  VERR_INVALID_PARAMETER);
+    RT_STACK_CHECK_RET_ADDR();
 
     int rc = VINF_SUCCESS;
     PRTSERIALPORTINTERNAL pThis = (PRTSERIALPORTINTERNAL)RTMemAllocZ(sizeof(*pThis));
@@ -436,6 +444,7 @@ RTDECL(int)  RTSerialPortClose(RTSERIALPORT hSerialPort)
         return VINF_SUCCESS;
     AssertPtrReturn(pThis, VERR_INVALID_PARAMETER);
     AssertReturn(pThis->u32Magic == RTSERIALPORT_MAGIC, VERR_INVALID_HANDLE);
+    RT_STACK_CHECK_RET_ADDR();
 
     /*
      * Do the cleanup.
@@ -477,6 +486,7 @@ RTDECL(int) RTSerialPortRead(RTSERIALPORT hSerialPort, void *pvBuf, size_t cbToR
     AssertReturn(pThis->u32Magic == RTSERIALPORT_MAGIC, VERR_INVALID_HANDLE);
     AssertPtrReturn(pvBuf, VERR_INVALID_POINTER);
     AssertReturn(cbToRead > 0, VERR_INVALID_PARAMETER);
+    RT_STACK_CHECK_RET_ADDR();
 
     /*
      * Kick of an overlapped read.
@@ -545,6 +555,7 @@ RTDECL(int) RTSerialPortReadNB(RTSERIALPORT hSerialPort, void *pvBuf, size_t cbT
     AssertPtrReturn(pvBuf, VERR_INVALID_POINTER);
     AssertReturn(cbToRead > 0, VERR_INVALID_PARAMETER);
     AssertPtrReturn(pcbRead, VERR_INVALID_POINTER);
+    RT_STACK_CHECK_RET_ADDR();
 
     *pcbRead = 0;
 
@@ -591,6 +602,7 @@ RTDECL(int) RTSerialPortWrite(RTSERIALPORT hSerialPort, const void *pvBuf, size_
     AssertReturn(pThis->u32Magic == RTSERIALPORT_MAGIC, VERR_INVALID_HANDLE);
     AssertPtrReturn(pvBuf, VERR_INVALID_POINTER);
     AssertReturn(cbToWrite > 0, VERR_INVALID_PARAMETER);
+    RT_STACK_CHECK_RET_ADDR();
 
     /* If I/O is pending, check if it has completed. */
     int rc = VINF_SUCCESS;
@@ -662,6 +674,7 @@ RTDECL(int) RTSerialPortWriteNB(RTSERIALPORT hSerialPort, const void *pvBuf, siz
     AssertPtrReturn(pvBuf, VERR_INVALID_POINTER);
     AssertReturn(cbToWrite > 0, VERR_INVALID_PARAMETER);
     AssertPtrReturn(pcbWritten, VERR_INVALID_POINTER);
+    RT_STACK_CHECK_RET_ADDR();
 
     /* If I/O is pending, check if it has completed. */
     int rc = VINF_SUCCESS;
@@ -794,6 +807,7 @@ RTDECL(int) RTSerialPortCfgSet(RTSERIALPORT hSerialPort, PCRTSERIALPORTCFG pCfg,
     PRTSERIALPORTINTERNAL pThis = hSerialPort;
     AssertPtrReturn(pThis, VERR_INVALID_PARAMETER);
     AssertReturn(pThis->u32Magic == RTSERIALPORT_MAGIC, VERR_INVALID_HANDLE);
+    RT_STACK_CHECK_RET_ADDR();
 
     RT_NOREF(pErrInfo);
 
@@ -875,6 +889,7 @@ RTDECL(int) RTSerialPortEvtPoll(RTSERIALPORT hSerialPort, uint32_t fEvtMask, uin
     AssertReturn(pThis->u32Magic == RTSERIALPORT_MAGIC, VERR_INVALID_HANDLE);
     AssertReturn(!(fEvtMask & ~RTSERIALPORT_EVT_F_VALID_MASK), VERR_INVALID_PARAMETER);
     AssertPtrReturn(pfEvtsRecv, VERR_INVALID_POINTER);
+    RT_STACK_CHECK_RET_ADDR();
 
     *pfEvtsRecv = 0;
 
@@ -972,6 +987,7 @@ RTDECL(int) RTSerialPortEvtPollInterrupt(RTSERIALPORT hSerialPort)
     PRTSERIALPORTINTERNAL pThis = hSerialPort;
     AssertPtrReturn(pThis, VERR_INVALID_PARAMETER);
     AssertReturn(pThis->u32Magic == RTSERIALPORT_MAGIC, VERR_INVALID_HANDLE);
+    RT_STACK_CHECK_RET_ADDR();
 
     if (!SetEvent(pThis->hEvtIntr))
         return RTErrConvertFromWin32(GetLastError());
@@ -985,6 +1001,7 @@ RTDECL(int) RTSerialPortChgBreakCondition(RTSERIALPORT hSerialPort, bool fSet)
     PRTSERIALPORTINTERNAL pThis = hSerialPort;
     AssertPtrReturn(pThis, VERR_INVALID_PARAMETER);
     AssertReturn(pThis->u32Magic == RTSERIALPORT_MAGIC, VERR_INVALID_HANDLE);
+    RT_STACK_CHECK_RET_ADDR();
 
     BOOL fSucc = FALSE;
     if (fSet)
@@ -1005,6 +1022,7 @@ RTDECL(int) RTSerialPortChgStatusLines(RTSERIALPORT hSerialPort, uint32_t fClear
     PRTSERIALPORTINTERNAL pThis = hSerialPort;
     AssertPtrReturn(pThis, VERR_INVALID_PARAMETER);
     AssertReturn(pThis->u32Magic == RTSERIALPORT_MAGIC, VERR_INVALID_HANDLE);
+    RT_STACK_CHECK_RET_ADDR();
 
     BOOL fSucc = TRUE;
     if (fSet & RTSERIALPORT_CHG_STS_LINES_F_DTR)
@@ -1034,6 +1052,7 @@ RTDECL(int) RTSerialPortQueryStatusLines(RTSERIALPORT hSerialPort, uint32_t *pfS
     AssertPtrReturn(pThis, VERR_INVALID_PARAMETER);
     AssertReturn(pThis->u32Magic == RTSERIALPORT_MAGIC, VERR_INVALID_HANDLE);
     AssertPtrReturn(pfStsLines, VERR_INVALID_POINTER);
+    RT_STACK_CHECK_RET_ADDR();
 
     *pfStsLines = 0;
 
