@@ -1,4 +1,4 @@
-/* $Id: tstRTLocalIpc.cpp 114978 2026-08-11 08:33:42Z andreas.loeffler@oracle.com $ */
+/* $Id: tstRTLocalIpc.cpp 115304 2026-09-22 23:01:03Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT Testcase - RTLocalIpc API.
  */
@@ -230,42 +230,48 @@ static void testRestrictedNamespaceProperties(void)
 {
     RTTestISub("Restricted namespace properties");
 
+    /*
+     * Get TokenSessionId & TokenStatistics.
+     */
     HANDLE hToken = NULL;
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
-    {
-        RTTestIFailed("OpenProcessToken failed: %u", GetLastError());
-        return;
-    }
+    RTTESTI_CHECK_MSG_RETV(OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken),
+                           ("OpenProcessToken failed: %u", GetLastError()));
 
     DWORD idSession = 0;
-    DWORD cbTokenInfo = 0;
-    if (!GetTokenInformation(hToken, TokenSessionId, &idSession, sizeof(idSession), &cbTokenInfo))
-    {
-        DWORD const dwErr = GetLastError();
-        CloseHandle(hToken);
-        RTTestIFailed("Querying TokenSessionId failed: %u", dwErr);
-        return;
-    }
-
-    TOKEN_STATISTICS TokenStats;
-    cbTokenInfo = 0;
-    if (!GetTokenInformation(hToken, TokenStatistics, &TokenStats, sizeof(TokenStats), &cbTokenInfo))
-    {
-        DWORD const dwErr = GetLastError();
-        CloseHandle(hToken);
-        RTTestIFailed("Querying TokenStatistics failed: %u", dwErr);
-        return;
-    }
+    DWORD cbIgnore = 0;
+    BOOL  fOkay;
+    RTTESTI_CHECK_MSG(fOkay = GetTokenInformation(hToken, TokenSessionId, &idSession, sizeof(idSession), &cbIgnore),
+                      ("Querying TokenSessionId failed: %u", GetLastError()));
+    TOKEN_STATISTICS TokenStats = {};
+    if (fOkay)
+        RTTESTI_CHECK_MSG(fOkay = GetTokenInformation(hToken, TokenStatistics, &TokenStats, sizeof(TokenStats), &cbIgnore),
+                          ("Querying TokenSessionId failed: %u", GetLastError()));
     CloseHandle(hToken);
+    if (!fOkay)
+        return;
     uint32_t const idLogonHigh = (uint32_t)TokenStats.AuthenticationId.HighPart;
     uint32_t const idLogonLow  = TokenStats.AuthenticationId.LowPart;
 
+    /*
+     * The IPRT name.
+     */
     char szName[128];
     ssize_t cch = RTStrPrintf2(szName, sizeof(szName), "tstRTLocalIpcNamespace-%RU32", (uint32_t)RTProcSelf());
     RTTESTI_CHECK_RETV(cch > 0 && (size_t)cch < sizeof(szName));
 
+    /*
+     * Do the name mangling that RTLOCALIPC_FLAGS_RESTRICT_TO_USER does,
+     * the one it used to do, and two variants with single-bit differences.
+     */
+    char szExpectedName[RTPATH_MAX];
+    cch = RTStrPrintf2(szExpectedName, sizeof(szExpectedName),
+                      "\\\\.\\pipe\\LOCAL\\IPRT-%08RX32-%08RX32%08RX32-%s",
+                      (uint32_t)idSession, idLogonHigh, idLogonLow, szName);
+    RTTESTI_CHECK_RETV(cch > 0 && (size_t)cch < sizeof(szExpectedName));
+
     char szOldName[RTPATH_MAX];
-    cch = RTStrPrintf2(szOldName, sizeof(szOldName), "\\\\.\\pipe\\LOCAL\\IPRT-%s", szName);
+    cch = RTStrPrintf2(szOldName, sizeof(szOldName),
+                       "\\\\.\\pipe\\LOCAL\\IPRT-%s", szName);
     RTTESTI_CHECK_RETV(cch > 0 && (size_t)cch < sizeof(szOldName));
 
     char szOtherSessionName[RTPATH_MAX];
@@ -276,56 +282,62 @@ static void testRestrictedNamespaceProperties(void)
 
     char szOtherLogonName[RTPATH_MAX];
     cch = RTStrPrintf2(szOtherLogonName, sizeof(szOtherLogonName),
-                      "\\\\.\\pipe\\LOCAL\\IPRT-%08RX32-%08RX32%08RX32-%s",
+                       "\\\\.\\pipe\\LOCAL\\IPRT-%08RX32-%08RX32%08RX32-%s",
                       (uint32_t)idSession, idLogonHigh ^ RT_BIT_32(31), idLogonLow, szName);
     RTTESTI_CHECK_RETV(cch > 0 && (size_t)cch < sizeof(szOtherLogonName));
 
-    char szExpectedName[RTPATH_MAX];
-    cch = RTStrPrintf2(szExpectedName, sizeof(szExpectedName),
-                      "\\\\.\\pipe\\LOCAL\\IPRT-%08RX32-%08RX32%08RX32-%s",
-                      (uint32_t)idSession, idLogonHigh, idLogonLow, szName);
-    RTTESTI_CHECK_RETV(cch > 0 && (size_t)cch < sizeof(szExpectedName));
-
+    /*
+     * Create IPC servers for the odd ones (old, single bit difference).
+     */
+    int rc;
     RTLOCALIPCSERVER hOldName = NIL_RTLOCALIPCSERVER;
-    int rc = RTLocalIpcServerCreate(&hOldName, szOldName, RTLOCALIPC_FLAGS_NATIVE_NAME);
-    RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
+    RTTESTI_CHECK_RC_RETV(rc = RTLocalIpcServerCreate(&hOldName, szOldName, RTLOCALIPC_FLAGS_NATIVE_NAME), VINF_SUCCESS);
 
     RTLOCALIPCSERVER hOtherSession = NIL_RTLOCALIPCSERVER;
-    if (RT_SUCCESS(rc))
-    {
-        rc = RTLocalIpcServerCreate(&hOtherSession, szOtherSessionName, RTLOCALIPC_FLAGS_NATIVE_NAME);
-        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
-    }
+    RTTESTI_CHECK_RC(rc = RTLocalIpcServerCreate(&hOtherSession, szOtherSessionName, RTLOCALIPC_FLAGS_NATIVE_NAME), VINF_SUCCESS);
 
     RTLOCALIPCSERVER hOtherLogon = NIL_RTLOCALIPCSERVER;
     if (RT_SUCCESS(rc))
-    {
-        rc = RTLocalIpcServerCreate(&hOtherLogon, szOtherLogonName, RTLOCALIPC_FLAGS_NATIVE_NAME);
-        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
-    }
+        RTTESTI_CHECK_RC(rc = RTLocalIpcServerCreate(&hOtherLogon, szOtherLogonName, RTLOCALIPC_FLAGS_NATIVE_NAME), VINF_SUCCESS);
 
+    /*
+     * Create the real server and let IPRT do the name mangling.
+     */
     RTLOCALIPCSERVER hRestricted = NIL_RTLOCALIPCSERVER;
     if (RT_SUCCESS(rc))
-    {
-        rc = RTLocalIpcServerCreate(&hRestricted, szName, RTLOCALIPC_FLAGS_RESTRICT_TO_USER);
-        RTTESTI_CHECK_RC(rc, VINF_SUCCESS);
-    }
+        RTTESTI_CHECK_RC(rc = RTLocalIpcServerCreate(&hRestricted, szName, RTLOCALIPC_FLAGS_RESTRICT_TO_USER), VINF_SUCCESS);
 
-    RTLOCALIPCSERVER hExpectedCollision = NIL_RTLOCALIPCSERVER;
+    /*
+     * Now, check that IPRT produced the expected name.
+     */
     if (RT_SUCCESS(rc))
     {
-        int const rcCollision = RTLocalIpcServerCreate(&hExpectedCollision, szExpectedName,
-                                                       RTLOCALIPC_FLAGS_NATIVE_NAME);
-        RTTESTI_CHECK_RC(rcCollision, VERR_ACCESS_DENIED);
+        RTLOCALIPCSERVER hExpectedCollision = NIL_RTLOCALIPCSERVER;
+        RTTESTI_CHECK_RC(RTLocalIpcServerCreate(&hExpectedCollision, szExpectedName, RTLOCALIPC_FLAGS_NATIVE_NAME),
+                         VERR_ACCESS_DENIED);
+        if (hExpectedCollision != NIL_RTLOCALIPCSERVER)
+            RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hExpectedCollision), VINF_OBJECT_DESTROYED);
     }
 
     if (hRestricted != NIL_RTLOCALIPCSERVER)
     {
+        /*
+         * Use the Windows API to open the expected name directly.
+         */
         PRTUTF16 pwszExpectedName = NULL;
-        int rcRaw = RTStrToUtf16(szExpectedName, &pwszExpectedName);
-        RTTESTI_CHECK_RC(rcRaw, VINF_SUCCESS);
-        if (RT_SUCCESS(rcRaw))
+        RTTESTI_CHECK_RC(rc = RTStrToUtf16(szExpectedName, &pwszExpectedName), VINF_SUCCESS);
+        if (RT_SUCCESS(rc))
         {
+# if 0
+            RTTestIPrintf(RTTESTLVL_ALWAYS,
+                          "              name: %s\n"
+                          "          old name: %s\n"
+                          "other session name: %s\n"
+                          "  other logon name: %s\n"
+                          "     expected name: %s\n"
+                          "wide expected name: %ls\n",
+                          szName, szOldName, szOtherSessionName, szOtherLogonName, szExpectedName);
+# endif
             HANDLE hVanishedClient = CreateFileW((LPCWSTR)pwszExpectedName,
                                                  GENERIC_READ | GENERIC_WRITE,
                                                  0 /*dwShareMode*/, NULL /*pSecurityAttributes*/, OPEN_EXISTING,
@@ -337,16 +349,23 @@ static void testRestrictedNamespaceProperties(void)
             {
                 RTTESTI_CHECK(CloseHandle(hVanishedClient));
 
+                /*
+                 * Cleanup on the server side
+                 */
                 RTLOCALIPCSESSION hGoneSession = NIL_RTLOCALIPCSESSION;
                 int const rcGone = RTLocalIpcServerListen(hRestricted, &hGoneSession);
                 RTTESTI_CHECK(rcGone == VERR_TRY_AGAIN || rcGone == VINF_SUCCESS);
+                RTTestIPrintf(RTTESTLVL_ALWAYS, "rcGone=%Rrc\n", rcGone);
                 if (hGoneSession != NIL_RTLOCALIPCSESSION)
                     RTTESTI_CHECK_RC(RTLocalIpcSessionClose(hGoneSession), VINF_OBJECT_DESTROYED);
 
+                /*
+                 * Connect to the IPC server using IPRT.
+                 */
                 RTLOCALIPCSESSION hClientSession = NIL_RTLOCALIPCSESSION;
                 int const rcClient = RTLocalIpcSessionConnect(&hClientSession, szName,
-                                                               RTLOCALIPC_C_FLAGS_ALLOW_IDENTIFICATION
-                                                             | RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER);
+                                                                RTLOCALIPC_C_FLAGS_ALLOW_IDENTIFICATION
+                                                              | RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER);
                 RTTESTI_CHECK_RC(rcClient, VINF_SUCCESS);
                 if (RT_SUCCESS(rcClient))
                 {
@@ -358,12 +377,10 @@ static void testRestrictedNamespaceProperties(void)
                     RTTESTI_CHECK_RC(RTLocalIpcSessionClose(hClientSession), VINF_OBJECT_DESTROYED);
                 }
             }
+            RTUtf16Free(pwszExpectedName);
         }
-        RTUtf16Free(pwszExpectedName);
     }
 
-    if (hExpectedCollision != NIL_RTLOCALIPCSERVER)
-        RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hExpectedCollision), VINF_OBJECT_DESTROYED);
     if (hRestricted != NIL_RTLOCALIPCSERVER)
         RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hRestricted), VINF_OBJECT_DESTROYED);
     if (hOtherLogon != NIL_RTLOCALIPCSERVER)
@@ -1187,6 +1204,7 @@ static void testSessionData(const char *pszExecPath)
                 RTTESTI_CHECK_RC(rcThread, VINF_SUCCESS);
         }
     }
+
 }
 
 
