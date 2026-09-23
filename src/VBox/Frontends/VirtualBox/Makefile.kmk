@@ -1916,6 +1916,13 @@ ifeq ($(KBUILD_TARGET),darwin)
  	src/platform/darwin/VM-PkgInfo=>PkgInfo \
  	$(VirtualBoxVM.app_0_OUTDIR)/VM-Info.plist=>Info.plist \
  	$(foreach mysrc,$(VirtualBox.app_SOURCES),$(if-expr $(pos =>Resources/,$(mysrc)) > 0,$(mysrc),))
+
+ # The VM application has its own bundle, so it needs the language directories
+ # as well or macOS will leave its application menu untranslated.
+ INSTALLS += VirtualBoxVM.lproj
+ VirtualBoxVM.lproj_INST = $(VirtualBoxVM.app_INST)Resources/
+ VirtualBoxVM.lproj_MODE = 755
+ VirtualBoxVM.lproj_DIRS := $(addsuffix .lproj,$(VBOX_APPROVED_GUI_LANGUAGES))
  ifdef VBOX_WITH_INTNET_SERVICE_IN_R3
   VirtualBoxVM.app_SYMLINKS = \
   	XPCServices=>../../../XPCServices

@@ -5981,7 +5981,7 @@ Stäng av ett av alternativen.</translation>
     <message>
         <source>equation</source>
         <extracomment>Role of an accessible object</extracomment>
-        <translation></translation>
+        <translation>ekvation</translation>
     </message>
     <message>
         <source>button with drop down</source>
