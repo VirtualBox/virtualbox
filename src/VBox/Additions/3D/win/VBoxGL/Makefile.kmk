@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 115312 2026-09-23 19:10:46Z vitali.pelenjow@oracle.com $
 ## @file
 # Sub-Makefile for VBoxGL OpenGL state tracker.
 #
@@ -32,11 +32,10 @@ DLLS       += VBoxGL
 DLLS.amd64 += VBoxGL-x86
 
 VBoxGL_TEMPLATE = VBoxMesa3DGuestR3DllMinVista
-VBoxGL_DEFS     = VBOXGL
-if $(VBOX_MESA_V_MAJOR) >= 24
- VBoxGL_DEFS    += \
- 	VBOX_MESA_STATIC_DRIVER
-endif
+VBoxGL_DEFS     = \
+	VBOXGL \
+	VBOX_MESA_STATIC_DRIVER
+
 # -wd4005: '__useHeader' : redefinition
 VBOXGL_DISABLED_WARNINGS := -wd4005
 # -wd4100: 'api': unreferenced formal parameter
@@ -57,40 +56,28 @@ VBoxGL_INCS     = \
 	$(PATH_ROOT)/src/VBox/Additions/win/Graphics/Video \
 	$(PATH_ROOT)/src/VBox/Runtime/common/table \
 	$(VBOX_PATH_VMSVGA_INC) \
-	$(VBOX_GRAPHICS_INCS)
-if $(VBOX_MESA_V_MAJOR) >= 24
- VBoxGL_INCS    += \
- 	$(VBOX_PATH_3D)/win/VBoxSVGA \
- 	$(VBOX_PATH_MESA)/src/mapi \
- 	$(VBOX_PATH_MESA)/src/gallium/drivers/svga \
- 	$(VBOX_PATH_MESA)/src/gallium/winsys/svga/drm
-endif
+	$(VBOX_GRAPHICS_INCS) \
+	$(VBOX_PATH_3D)/win/VBoxSVGA \
+	$(VBOX_PATH_MESA)/src/mapi \
+	$(VBOX_PATH_MESA)/src/gallium/drivers/svga \
+	$(VBOX_PATH_MESA)/src/gallium/winsys/svga/drm
 VBoxGL_SOURCES  = \
 	GaDrvEnvKMT.cpp \
 	VBoxGL.c \
-	VBoxGL.rc
-if $(VBOX_MESA_V_MAJOR) >= 24
- VBoxGL_SOURCES += \
- 	../VBoxSVGA/VBoxSVGA.c \
- 	../VBoxSVGA/winsys/vmw_screen.c \
- 	../VBoxSVGA/winsys/vmw_screen_wddm.c \
- 	../VBoxSVGA/winsys/vmw_screen_ioctl.c \
- 	$(VBoxGL_0_OUTDIR)/opengl32.def
-else
- VBoxGL_SOURCES  += \
- 	$(VBOX_PATH_MESA)/src/gallium/targets/libgl-gdi/opengl32.def
-endif
+	VBoxGL.rc \
+	../VBoxSVGA/VBoxSVGA.c \
+	../VBoxSVGA/winsys/vmw_screen.c \
+	../VBoxSVGA/winsys/vmw_screen_wddm.c \
+	../VBoxSVGA/winsys/vmw_screen_ioctl.c \
+	$(VBoxGL_0_OUTDIR)/opengl32.def
 VBoxGL_LIBS     = \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxWddmUmHlp$(VBOX_SUFF_LIB) \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaGalliumAuxLib$(VBOX_SUFF_LIB) \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaWglLib$(VBOX_SUFF_LIB) \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaUtilLib$(VBOX_SUFF_LIB) \
-	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaLib$(VBOX_SUFF_LIB)
-if $(VBOX_MESA_V_MAJOR) >= 24
- VBoxGL_LIBS     += \
- 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGAWinsysLib$(VBOX_SUFF_LIB) \
- 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGALib$(VBOX_SUFF_LIB)
-endif
+	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaLib$(VBOX_SUFF_LIB) \
+	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGAWinsysLib$(VBOX_SUFF_LIB) \
+	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGALib$(VBOX_SUFF_LIB)
 
 $$(VBoxGL_0_OUTDIR)/opengl32.def: \
 		$(PATH_SUB_CURRENT)/opengl32_defs.py \
@@ -114,12 +101,9 @@ VBoxGL-x86_LIBS         = \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaGalliumAuxLib-x86$(VBOX_SUFF_LIB) \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaWglLib-x86$(VBOX_SUFF_LIB) \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaUtilLib-x86$(VBOX_SUFF_LIB) \
-	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaLib-x86$(VBOX_SUFF_LIB)
-if $(VBOX_MESA_V_MAJOR) >= 24
- VBoxGL-x86_LIBS     += \
- 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGAWinsysLib-x86$(VBOX_SUFF_LIB) \
- 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGALib-x86$(VBOX_SUFF_LIB)
-endif
+	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaLib-x86$(VBOX_SUFF_LIB) \
+	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGAWinsysLib-x86$(VBOX_SUFF_LIB) \
+	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGALib-x86$(VBOX_SUFF_LIB)
 
 include $(FILE_KBUILD_SUB_FOOTER)
 

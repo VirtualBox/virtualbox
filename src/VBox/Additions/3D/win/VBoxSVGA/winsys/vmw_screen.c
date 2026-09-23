@@ -53,11 +53,7 @@
 
 #include "util/os_file.h"
 #include "util/u_memory.h"
-#if VBOX_MESA_V_MAJOR < 24
-#include "pipe/p_compiler.h"
-#else
 #include "util/compiler.h"
-#endif
 #include "util/u_hash_table.h"
 
 /* Called from vmw_drm_create_screen(), creates and initializes the
@@ -96,15 +92,11 @@ vmw_winsys_create_wddm(const WDDMGalliumDriverEnv *pEnv)
    vws->base.have_gb_dma = !vws->force_coherent;
    vws->base.need_to_rebind_resources = false;
    vws->base.have_transfer_from_buffer_cmd = vws->base.have_vgpu10;
-#if VBOX_MESA_V_MAJOR < 24
-   vws->base.have_constant_buffer_offset_cmd = false;
-#else
    vws->base.have_constant_buffer_offset_cmd =
       vws->ioctl.have_drm_2_20 && vws->base.have_sm5;
    vws->base.have_index_vertex_buffer_offset_cmd = false;
    vws->base.have_rasterizer_state_v2_cmd =
       vws->ioctl.have_drm_2_20 && vws->base.have_sm5;
-#endif
 
    vws->cache_maps = false;
    vws->fence_ops = vmw_fence_ops_create(vws);

@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: Makefile.kmk 115312 2026-09-23 19:10:46Z vitali.pelenjow@oracle.com $
 ## @file
 # Sub-Makefile for VBoxNine D3D9 state tracker.
 #
@@ -32,10 +32,9 @@ DLLS       += VBoxNine
 DLLS.amd64 += VBoxNine-x86
 
 VBoxNine_TEMPLATE = VBoxMesa3DGuestR3DllMinVista
-if $(VBOX_MESA_V_MAJOR) >= 24
- VBoxNine_DEFS     = \
- 	VBOX_MESA_STATIC_DRIVER
-endif
+VBoxNine_DEFS     = \
+	VBOX_MESA_STATIC_DRIVER
+
 #  -wd4100: unreferenced formal parameter
 #  -wd4200: nonstandard extension used : zero-sized array in struct/union
 #  -wd4245: 'return' : conversion from 'int' to 'unsigned int', signed/unsigned mismatch
@@ -43,41 +42,29 @@ endif
 #  -wd4668: 'something' is not defined as a preprocessor macro, replacing with '0' for '#if/#elif'
 VBoxNine_CFLAGS   = -wd4100 -wd4200 -wd4245 -wd4255 -wd4668
 VBoxNine_INCS     = \
-	$(VBOX_PATH_MESA)/src/gallium/frontends/nine
-if $(VBOX_MESA_V_MAJOR) >= 24
- VBoxNine_INCS    += \
- 	$(VBOX_PATH_3D)/win/include \
- 	$(VBOX_PATH_3D)/win/VBoxSVGA \
- 	$(VBOX_PATH_MESA)/src/gallium/drivers/svga \
- 	$(VBOX_PATH_MESA)/src/gallium/drivers/svga/include \
- 	$(VBOX_PATH_MESA)/src/gallium/winsys/svga/drm
-endif
+	$(VBOX_PATH_MESA)/src/gallium/frontends/nine \
+	$(VBOX_PATH_3D)/win/include \
+	$(VBOX_PATH_3D)/win/VBoxSVGA \
+	$(VBOX_PATH_MESA)/src/gallium/drivers/svga \
+	$(VBOX_PATH_MESA)/src/gallium/drivers/svga/include \
+	$(VBOX_PATH_MESA)/src/gallium/winsys/svga/drm
 VBoxNine_SOURCES  = \
 	nine/nine_memory_helper.c \
 	VBoxNine.c \
-	VBoxNine.rc
-if $(VBOX_MESA_V_MAJOR) < 24
- VBoxNine_SOURCES += \
- 	VBoxNine.def
-else
- VBoxNine_SOURCES += \
- 	VBoxNine_static_drv.def \
- 	../VBoxSVGA/VBoxSVGA.c \
- 	../VBoxSVGA/winsys/vmw_screen.c \
- 	../VBoxSVGA/winsys/vmw_screen_wddm.c \
- 	../VBoxSVGA/winsys/vmw_screen_ioctl.c
-endif
+	VBoxNine.rc \
+	VBoxNine_static_drv.def \
+	../VBoxSVGA/VBoxSVGA.c \
+	../VBoxSVGA/winsys/vmw_screen.c \
+	../VBoxSVGA/winsys/vmw_screen_wddm.c \
+	../VBoxSVGA/winsys/vmw_screen_ioctl.c
 VBoxNine_LIBS     = \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaGalliumAuxLib$(VBOX_SUFF_LIB) \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaLib$(VBOX_SUFF_LIB) \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaUtilLib$(VBOX_SUFF_LIB) \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaNineLib$(VBOX_SUFF_LIB) \
-	$(VBOX_PATH_ADDITIONS_LIB)/VBoxWddmUmHlp$(VBOX_SUFF_LIB)
-if $(VBOX_MESA_V_MAJOR) >= 24
- VBoxNine_LIBS    += \
- 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGAWinsysLib$(VBOX_SUFF_LIB) \
- 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGALib$(VBOX_SUFF_LIB)
-endif
+	$(VBOX_PATH_ADDITIONS_LIB)/VBoxWddmUmHlp$(VBOX_SUFF_LIB) \
+	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGAWinsysLib$(VBOX_SUFF_LIB) \
+	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGALib$(VBOX_SUFF_LIB)
 
 if defined(VBOX_SIGNING_MODE) && defined(VBOX_SIGN_ADDITIONS)
  VBoxNine_INSTTYPE       = none
@@ -94,12 +81,9 @@ VBoxNine-x86_LIBS         = \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaGalliumAuxLib-x86$(VBOX_SUFF_LIB) \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaLib-x86$(VBOX_SUFF_LIB) \
 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaUtilLib-x86$(VBOX_SUFF_LIB) \
-	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaNineLib-x86$(VBOX_SUFF_LIB)
-if $(VBOX_MESA_V_MAJOR) >= 24
- VBoxNine-x86_LIBS    += \
- 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGAWinsysLib-x86$(VBOX_SUFF_LIB) \
- 	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGALib-x86$(VBOX_SUFF_LIB)
-endif
+	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaNineLib-x86$(VBOX_SUFF_LIB) \
+	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGAWinsysLib-x86$(VBOX_SUFF_LIB) \
+	$(VBOX_PATH_ADDITIONS_LIB)/VBoxMesaSVGALib-x86$(VBOX_SUFF_LIB)
 VBoxNine-x86_DEFS         = $(VBoxNine_DEFS) VBOX_WOW64
 
 include $(FILE_KBUILD_SUB_FOOTER)

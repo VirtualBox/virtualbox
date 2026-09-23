@@ -1,4 +1,4 @@
-# $Id: Config.kmk 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $
+# $Id: Config.kmk 115312 2026-09-23 19:10:46Z vitali.pelenjow@oracle.com $
 ## @file
 # kBuild Configuration file for the Mesa3D.
 #
@@ -94,17 +94,12 @@ endif
 TEMPLATE_VBoxMesa3DGuestR3Dll_DEFS.win = $(TEMPLATE_NewerVccVBoxGuestR3Dll_DEFS.win) \
 	_USE_MATH_DEFINES \
 	WINAPI=__stdcall \
-	_WIN32
-if $(VBOX_MESA_V_MAJOR) >= 24
- TEMPLATE_VBoxMesa3DGuestR3Dll_DEFS.win += \
- 	WINDOWS_NO_FUTEX \
- 	HAVE_STRUCT_TIMESPEC
-endif
+	_WIN32 \
+	WINDOWS_NO_FUTEX \
+	HAVE_STRUCT_TIMESPEC
 TEMPLATE_VBoxMesa3DGuestR3Dll_CFLAGS.win = $(TEMPLATE_NewerVccVBoxGuestR3Dll_CFLAGS.win)
-if $(VBOX_MESA_V_MAJOR) >= 24
- # Mesa 24+ needs -std:c11 for 'alignas', etc
- TEMPLATE_VBoxMesa3DGuestR3Dll_CFLAGS.win += -std:c11
-endif
+# Mesa 24+ needs -std:c11 for 'alignas', etc
+TEMPLATE_VBoxMesa3DGuestR3Dll_CFLAGS.win += -std:c11
 ifdef VBOX_WITH_VMSVGA
  # treat as error: warning C4013: 'close' undefined; assuming extern returning int
  TEMPLATE_VBoxMesa3DGuestR3Dll_CFLAGS.win += -we4013

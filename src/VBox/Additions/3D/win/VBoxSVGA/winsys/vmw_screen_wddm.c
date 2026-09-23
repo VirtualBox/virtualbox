@@ -46,11 +46,7 @@
  **********************************************************/
 
 
-#if VBOX_MESA_V_MAJOR < 24
-#include "pipe/p_compiler.h"
-#else
 #include "util/compiler.h"
-#endif
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 
@@ -78,11 +74,7 @@ static struct svga_winsys_surface *
 vmw_drm_gb_surface_from_handle(struct svga_winsys_screen *sws,
                                struct winsys_handle *whandle,
                                SVGA3dSurfaceFormat *format);
-#if VBOX_MESA_V_MAJOR < 24
-static boolean
-#else
 static bool
-#endif
 vmw_drm_surface_get_handle(struct svga_winsys_screen *sws,
 			   struct svga_winsys_surface *surface,
 			   unsigned stride,
@@ -143,11 +135,7 @@ vmw_drm_surface_from_handle(struct svga_winsys_screen *sws,
  * This function is supposed to convert the sid to a handle (file descriptor)
  * which can be used to access the surface.
  */
-#if VBOX_MESA_V_MAJOR < 24
-static boolean
-#else
 static bool
-#endif
 vmw_drm_surface_get_handle(struct svga_winsys_screen *sws,
 			   struct svga_winsys_surface *surface,
 			   unsigned stride,
@@ -162,11 +150,7 @@ vmw_drm_surface_get_handle(struct svga_winsys_screen *sws,
 	return false;
 
     vsrf = vmw_svga_winsys_surface(surface);
-#if VBOX_MESA_V_MAJOR < 24
-    whandle->handle = vsrf->sid;
-#else
     whandle->handle = (HANDLE)(uintptr_t)vsrf->sid;
-#endif
     whandle->stride = stride;
     whandle->offset = 0;
 

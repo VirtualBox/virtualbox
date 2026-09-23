@@ -1,4 +1,4 @@
-/* $Id: VBoxGL.c 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxGL.c 115312 2026-09-23 19:10:46Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - OpenGL driver.
  */
@@ -32,9 +32,7 @@
 #include "stw_context.h"
 
 #include "pipe/p_state.h"
-#if VBOX_MESA_V_MAJOR >= 24
 #include "state_tracker/st_context.h"
-#endif
 #include "svga3d_reg.h"
 
 #include <iprt/asm.h>
@@ -43,16 +41,6 @@
 #include <common/wddm/VBoxMPIf.h>
 
 #include <Psapi.h>
-
-#if VBOX_MESA_V_MAJOR < 24
-static const char *g_pszSvgaDll =
-#ifdef VBOX_WOW64
-    "VBoxSVGA-x86.dll"
-#else
-    "VBoxSVGA.dll"
-#endif
-;
-#endif
 
 static struct GaDrvFunctions
 {
@@ -65,28 +53,6 @@ static struct GaDrvFunctions
 } g_drvfuncs;
 
 
-#if VBOX_MESA_V_MAJOR < 24
-static HMODULE gaDrvLoadSVGA(struct GaDrvFunctions *pDrvFuncs)
-{
-    struct VBOXWDDMDLLPROC aDrvProcs[] =
-    {
-        { "GaDrvScreenCreate",  (FARPROC *)&pDrvFuncs->pfnGaDrvScreenCreate },
-        { "GaDrvScreenDestroy", (FARPROC *)&pDrvFuncs->pfnGaDrvScreenDestroy },
-        { "GaDrvGetWDDMEnv",    (FARPROC *)&pDrvFuncs->pfnGaDrvGetWDDMEnv },
-        { "GaDrvGetContextId",  (FARPROC *)&pDrvFuncs->pfnGaDrvGetContextId },
-        { "GaDrvGetSurfaceId",  (FARPROC *)&pDrvFuncs->pfnGaDrvGetSurfaceId },
-        { "GaDrvContextFlush",  (FARPROC *)&pDrvFuncs->pfnGaDrvContextFlush },
-        { NULL, NULL }
-    };
-
-    HMODULE hmod = VBoxWddmLoadSystemDll(g_pszSvgaDll);
-    if (hmod)
-    {
-        VBoxWddmLoadAdresses(hmod, aDrvProcs);
-    }
-    return hmod;
-}
-#else
 struct pipe_screen * WINAPI GaDrvScreenCreate(const WDDMGalliumDriverEnv *pEnv);
 void WINAPI GaDrvScreenDestroy(struct pipe_screen *s);
 uint32_t WINAPI GaDrvGetSurfaceId(struct pipe_screen *pScreen, struct pipe_resource *pResource);
@@ -103,7 +69,6 @@ static void initDrvFuncs(void)
     g_drvfuncs.pfnGaDrvGetSurfaceId = GaDrvGetSurfaceId;
     g_drvfuncs.pfnGaDrvContextFlush = GaDrvContextFlush;
 }
-#endif
 
 struct stw_shared_surface
 {
@@ -276,11 +241,8 @@ wddm_screen_create(HDC hDC)
     RT_NOREF(hDC); /** @todo Use it? */
     struct pipe_screen *screen = NULL;
 
-#if VBOX_MESA_V_MAJOR < 24
-    if (gaDrvLoadSVGA(&g_drvfuncs))
-#else
     initDrvFuncs();
-#endif
+
     {
         WDDMGalliumDriverEnv const *pEnv = GaDrvEnvKmtCreate();
         if (pEnv)
@@ -319,11 +281,7 @@ wddm_present(struct pipe_screen *screen,
     }
 }
 
-#if VBOX_MESA_V_MAJOR < 24
-static boolean
-#else
 static bool
-#endif
 wddm_get_adapter_luid(struct pipe_screen *screen,
                       HDC hDC,
                       LUID *pAdapterLuid)

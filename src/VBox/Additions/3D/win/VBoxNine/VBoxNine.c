@@ -1,4 +1,4 @@
-/* $Id: VBoxNine.c 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxNine.c 115312 2026-09-23 19:10:46Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Direct3D9 state tracker.
  */
@@ -29,9 +29,7 @@
 #include <iprt/win/d3d9.h>
 //#include <d3dumddi.h>
 
-#if VBOX_MESA_V_MAJOR >= 24
 #include <VBoxGaDriver.h>
-#endif
 #include <VBoxWddmUmHlp.h>
 
 //#include <windef.h>
@@ -59,14 +57,12 @@
 
 // #include "VBoxNine.h"
 
-#if VBOX_MESA_V_MAJOR >= 24
 struct pipe_screen * WINAPI GaDrvScreenCreate(const WDDMGalliumDriverEnv *pEnv);
 void WINAPI GaDrvScreenDestroy(struct pipe_screen *s);
 uint32_t WINAPI GaDrvGetSurfaceId(struct pipe_screen *pScreen, struct pipe_resource *pResource);
 const WDDMGalliumDriverEnv *WINAPI GaDrvGetWDDMEnv(struct pipe_screen *pScreen);
 uint32_t WINAPI GaDrvGetContextId(struct pipe_context *pPipeContext);
 void WINAPI GaDrvContextFlush(struct pipe_context *pPipeContext);
-#endif
 
 struct d3dadapter9_context_wddm
 {
@@ -121,47 +117,6 @@ d3dadapter9_context_wddm_create(struct d3dadapter9_context_wddm **ppCtx, struct 
     *ppCtx = ctx;
     return D3D_OK;
 }
-
-#if VBOX_MESA_V_MAJOR < 24
-HRESULT WINAPI
-GaNineD3DAdapter9Create(struct pipe_screen *s, ID3DAdapter9 **ppOut)
-{
-    HRESULT hr;
-    struct d3dadapter9_context_wddm *pCtx = NULL;
-    hr = d3dadapter9_context_wddm_create(&pCtx, s);
-    if (SUCCEEDED(hr))
-    {
-        hr = NineAdapter9_new(&pCtx->base, (struct NineAdapter9 **)ppOut);
-        if (FAILED(hr))
-        {
-            /// @todo NineAdapter9_new calls this as ctx->base.destroy,
-            //       and will not call if memory allocation fails.
-            // wddm_destroy(&pCtx->base);
-        }
-    }
-    return hr;
-}
-
-struct pipe_resource * WINAPI
-GaNinePipeResourceFromSurface(IUnknown *pSurface)
-{
-    /// @todo QueryInterface?
-    struct NineResource9 *pResource = (struct NineResource9 *)pSurface;
-    return pResource->resource;
-}
-
-extern struct pipe_context *
-NineDevice9_GetPipe( struct NineDevice9 *This );
-
-struct pipe_context * WINAPI
-GaNinePipeContextFromDevice(IDirect3DDevice9 *pDevice)
-{
-    /// @todo Verify that this is a NineDevice?
-    struct pipe_context *pPipeContext = NineDevice9_GetPipe((struct NineDevice9 *)pDevice);
-    return pPipeContext;
-}
-
-#else /* VBOX_MESA_V_MAJOR >= 24 */
 
 HRESULT WINAPI
 GaNineD3DAdapter9Create(const WDDMGalliumDriverEnv *pEnv, ID3DAdapter9 **ppOut)
@@ -232,7 +187,6 @@ GaNineFlush(IDirect3DDevice9 *pDevice)
     if (pipe)
         GaDrvContextFlush(pipe);
 }
-#endif /* VBOX_MESA_V_MAJOR >= 24 */
 
 BOOL WINAPI DllMain(HINSTANCE hDLLInst,
                     DWORD fdwReason,
