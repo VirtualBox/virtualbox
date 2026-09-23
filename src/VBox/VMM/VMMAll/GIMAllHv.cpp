@@ -50,6 +50,9 @@
 # include <iprt/mem.h>
 #endif
 
+#ifdef IN_RING0
+# include <iprt/string.h>   /* for RT_ZERO. */
+#endif
 
 #ifdef IN_RING3
 /**
@@ -313,9 +316,9 @@ VMM_INT_DECL(VBOXSTRICTRC) gimHvHypercall(PVMCPUCC pVCpu, PCPUMCTX pCtx)
                                  */
                                 GIMHVMSG HvMsg;
                                 RT_ZERO(HvMsg);
-                                HvMsg.MsgHdr.enmMessageType = GIMHVMSGTYPE_VMBUS;
-                                HvMsg.MsgHdr.cbPayload = 0xf;
-                                HvMsg.aPayload[0]      = 0xf;
+                                HvMsg.Header.enmMessageType = GIMHVMSGTYPE_VMBUS;
+                                HvMsg.Header.cbPayload = 0xf;
+                                HvMsg.u.aPayload[0]    = 0xf;
                                 uint16_t const offMsg = GIM_HV_VMBUS_MSG_SINT * sizeof(GIMHVMSG);
                                 int rc2 = PGMPhysSimpleWriteGCPhys(pVM, GCPhysSimp + offMsg, &HvMsg, sizeof(HvMsg));
                                 if (RT_SUCCESS(rc2))
@@ -493,7 +496,7 @@ static const char *gimHvGetGuestOsIdVariantName(uint64_t uGuestOsIdMsr)
  * @returns The time reference count.
  * @param   pVCpu       The cross context virtual CPU structure.
  */
-DECLINLINE(uint64_t) gimHvGetTimeRefCount(PVMCPUCC pVCpu)
+static uint64_t gimHvGetTimeRefCount(PVMCPUCC pVCpu)
 {
     /* Hyper-V reports the time in 100 ns units (10 MHz). */
     VMCPU_ASSERT_EMT_OR_NOT_RUNNING(pVCpu);
@@ -509,42 +512,46 @@ DECLINLINE(uint64_t) gimHvGetTimeRefCount(PVMCPUCC pVCpu)
 /**
  * Starts the synthetic timer.
  *
- * @param   pVCpu       The cross context virtual CPU structure.
- * @param   pHvStimer   Pointer to the Hyper-V synthetic timer.
+ * @param   pVCpu           The cross context virtual CPU structure.
+ * @param   pHvStimer       Pointer to the Hyper-V synthetic timer.
  *
  * @remarks Caller needs to hold the timer critical section.
  * @thread  Any.
  */
-VMM_INT_DECL(void) gimHvStartStimer(PVMCPUCC pVCpu, PCGIMHVSTIMER pHvStimer)
+static void gimHvStartStimer(PVMCPUCC pVCpu, PGIMHVSTIMER pHvStimer)
 {
     PVMCC pVM = pVCpu->CTX_SUFF(pVM);
     TMTIMERHANDLE hTimer = pHvStimer->hTimer;
     Assert(TMTimerIsLockOwner(pVM, hTimer));
 
-    uint64_t const uTimerCount = pHvStimer->uStimerCountMsr;
-    if (uTimerCount)
+    if (pHvStimer->uStimerCountMsr)
     {
-        uint64_t const uTimerCountNS = uTimerCount * 100;
+        uint64_t const uTimerCount = pHvStimer->uStimerCountMsr;  /* in 100-ns units. */
+        uint64_t const uCurRefTime = gimHvGetTimeRefCount(pVCpu); /* in 100-ns units. */
 
-        /* For periodic timers, 'uTimerCountNS' represents the relative interval. */
         if (MSR_GIM_HV_STIMER_IS_PERIODIC(pHvStimer->uStimerConfigMsr))
         {
-            TMTimerSetNano(pVM, hTimer, uTimerCountNS);
-            LogFlow(("GIM%u: HyperV: Started relative periodic STIMER%u with uTimerCountNS=%RU64\n", pVCpu->idCpu,
-                     pHvStimer->idxStimer, uTimerCountNS));
+            /* For periodic timers, 'uTimerCount' represents the relative interval in 100-ns units. */
+            pHvStimer->uExpirationTime  = uCurRefTime + uTimerCount;    /* absolute 100-ns timestamp. */
+            uint64_t const cNanosToNext = uTimerCount * 100 /* ns */;   /* number of nanos to expiry. */
+            TMTimerSetNano(pVM, hTimer, cNanosToNext);
+            LogFlow(("GIM%u: HyperV: Started relative periodic STIMER%u with cNanosToNext=%RU64\n",
+                    pVCpu->idCpu, pHvStimer->idxStimer, cNanosToNext));
         }
         else
         {
-            /* For one-shot timers, 'uTimerCountNS' represents an absolute expiration wrt to Hyper-V reference time,
-               we convert it to a relative time and program the timer. */
-            uint64_t const uCurRefTimeNS = gimHvGetTimeRefCount(pVCpu) * 100;
-            if (uTimerCountNS > uCurRefTimeNS)
-            {
-                uint64_t const uRelativeNS = uTimerCountNS - uCurRefTimeNS;
-                TMTimerSetNano(pVM, hTimer, uRelativeNS);
-                LogFlow(("GIM%u: HyperV: Started one-shot relative STIMER%u with uRelativeNS=%RU64\n", pVCpu->idCpu,
-                         pHvStimer->idxStimer, uRelativeNS));
-            }
+            /* For one-shot timers, 'uTimerCount' represents an absolute expiration (in 100-ns units)
+               wrt to Hyper-V reference time. */
+            pHvStimer->uExpirationTime  = uTimerCount;  /* absolute 100-ns timestamp. */
+
+            /* Use a signed delta to ensure expiration is in the future as Hyper-V allows the counter to wrap. */
+            int64_t const  cTicksToNext = (int64_t)(uTimerCount - uCurRefTime);
+            uint64_t const cNanosToNext = cTicksToNext > 0
+                                        ? (uint64_t)cTicksToNext * 100
+                                        : 1; /** @todo not ideal, should call gimR3HvTimerCallback here */
+            TMTimerSetNano(pVM, hTimer, cNanosToNext);
+            LogFlow(("GIM%u: HyperV: Started one-shot relative STIMER%u with cNanosToNext=%RU64\n",
+                    pVCpu->idCpu, pHvStimer->idxStimer, cNanosToNext));
         }
         /** @todo frequency hinting? */
     }
@@ -569,7 +576,105 @@ static void gimHvStopStimer(PVMCPUCC pVCpu, PGIMHVSTIMER pHvStimer)
     Assert(TMTimerIsLockOwner(pVM, hTimer));
 
     if (TMTimerIsActive(pVM, hTimer))
+    {
         TMTimerStop(pVM, hTimer);
+        LogFlow(("GIM%u: HyperV: Stopped STIMER%u\n", pVCpu->idCpu, pHvStimer->idxStimer));
+    }
+}
+
+
+/**
+ * Delivery a synthetic timer message.
+ *
+ * @param   pVCpu       The cross context virtual CPU structure.
+ * @param   pHvStimer   Pointer to the Hyper-V synthetic timer.
+ */
+VMM_INT_DECL(void) gimHvDeliverTimerMsg(PVMCPUCC pVCpu, PGIMHVSTIMER pHvStimer)
+{
+    VMCPU_ASSERT_EMT_OR_NOT_RUNNING(pVCpu);
+    Assert(pHvStimer->idCpu == pVCpu->idCpu);
+    PGIMHVCPU pHvCpu = &pVCpu->gim.s.u.HvCpu;
+
+    /* Get the VCPU's synthetic timer config and timer index.  */
+    uint64_t const uStimerConfig = pHvStimer->uStimerConfigMsr;
+    uint16_t const idxStimer     = pHvStimer->idxStimer;
+
+    /* Sanity. */
+    Assert(idxStimer < RT_ELEMENTS(pHvCpu->aStatStimerFired));
+    Assert(idxStimer < RT_ELEMENTS(pHvCpu->aStimers));
+    AssertCompile(MSR_GIM_HV_STIMER_SINT_MASK < RT_ELEMENTS(pHvCpu->auSintMsrs));
+    AssertCompile(RT_ELEMENTS(pHvCpu->auSintMsrs) * GIM_HV_MSG_SIZE == GIM_HV_PAGE_SIZE);
+
+    STAM_COUNTER_INC(&pHvCpu->aStatStimerFired[idxStimer]);
+
+    /* For direct mode, send the interrupt directly, no messing with the SIM page. */
+    if (MSR_GIM_HV_STIMER_IS_DIRECT_MODE(uStimerConfig))
+    {
+        uint8_t const uVector = MSR_GIM_HV_STIMER_GET_VECTOR(uStimerConfig);
+        PDMApicHvSendInterrupt(pVCpu, uVector, false /* fAutoEoi */, XAPICTRIGGERMODE_EDGE);
+    }
+    else if (MSR_GIM_HV_SIMP_IS_ENABLED(pHvCpu->uSimpMsr))
+    {
+        /* For indirect mode, send the interrupt via a message slot in the SIM page. */
+        uint8_t const  idxSint    = MSR_GIM_HV_STIMER_GET_SINTX(uStimerConfig);
+        RTGCPHYS const GCPhysSimp = MSR_GIM_HV_SIMP_GPA(pHvCpu->uSimpMsr);
+        RTGCPHYS const GCPhysMsg  = GCPhysSimp + idxSint * GIM_HV_MSG_SIZE;
+        GIMHVMSG Msg;
+        PVMCC pVM = pVCpu->CTX_SUFF(pVM);
+        int rc = PGMPhysSimpleReadGCPhys(pVM, &Msg, GCPhysMsg, sizeof(Msg));
+        if (RT_SUCCESS(rc))
+        {
+            if (Msg.Header.enmMessageType == GIMHVMSGTYPE_NONE)
+            {
+                /* The SINT message slot is free, update the timer message in the slot. */
+                RT_ZERO(Msg);
+                Msg.Header.enmMessageType   = GIMHVMSGTYPE_TIMEREXPIRED;
+                Msg.Header.cbPayload        = sizeof(Msg.u.timer);
+                Msg.u.timer.idxStimer       = pHvStimer->idxStimer;
+                Msg.u.timer.uExpirationTime = pHvStimer->uExpirationTime;
+                /** @todo We cannot call gimHvGetTimeRefCount(pVCpu) as we're not on the EMT corresponding to the timer */
+                Msg.u.timer.uDeliveryTime   = pHvStimer->uExpirationTime; /* Not really correct but see todo above. */
+                rc = PGMPhysSimpleWriteGCPhys(pVM, GCPhysMsg, &Msg, sizeof(Msg));
+                if (RT_SUCCESS(rc))
+                {
+                    pHvStimer->fMsgPending = false;
+                    uint64_t const uSint = pHvCpu->auSintMsrs[idxSint];
+                    if (!MSR_GIM_HV_SINT_IS_MASKED(uSint))
+                    {
+                        uint8_t const uVector  = MSR_GIM_HV_SINT_GET_VECTOR(uSint);
+                        bool const    fAutoEoi = MSR_GIM_HV_SINT_IS_AUTOEOI(uSint);
+                        Assert(fAutoEoi == false);
+                        PDMApicHvSendInterrupt(pVCpu, uVector, fAutoEoi, XAPICTRIGGERMODE_EDGE);
+                    }
+                }
+                else
+                {
+                    LogRelMax(10, ("GIM%u: HyperV: WARNING! Failed to write STIMER%u in SIM page. rc=%Rrc\n",
+                              pVCpu->idCpu, pHvStimer->idxStimer, rc));
+                }
+            }
+            else
+            {
+                /* The SINT message slot is not free, queue the timer as pending. */
+                if (!Msg.Header.MessageFlags.n.u1Pending)
+                {
+                    pHvStimer->fMsgPending = true;
+                    Msg.Header.MessageFlags.n.u1Pending = 1;
+                    rc = PGMPhysSimpleWriteGCPhys(pVM, GCPhysMsg, &Msg, sizeof(Msg));
+                    if (RT_FAILURE(rc))
+                        LogRelMax(10, ("GIM%u: HyperV: WARNING! Failed to update STIMER%u in SIM page. rc=%Rrc\n",
+                                    pVCpu->idCpu, pHvStimer->idxStimer, rc));
+                }
+            }
+        }
+        else
+        {
+            LogRelMax(10, ("GIM%u: HyperV: WARNING! Failed to read STIMER%u in SIM page. rc=%Rrc\n",
+                        pVCpu->idCpu, pHvStimer->idxStimer, rc));
+        }
+    }
+    else
+        pHvStimer->fMsgPending = true;
 }
 
 
@@ -902,34 +1007,35 @@ VMM_INT_DECL(VBOXSTRICTRC) gimHvWriteMsr(PVMCPUCC pVCpu, uint32_t idMsr, PCCPUMM
 #endif /* IN_RING3 */
         }
 
-        case MSR_GIM_HV_APIC_ASSIST_PAGE:
+        case MSR_GIM_HV_VP_ASSIST:
         {
 #ifndef IN_RING3
             return VINF_CPUM_R3_MSR_WRITE;
 #else  /* IN_RING3 */
             PGIMHVCPU pHvCpu = &pVCpu->gim.s.u.HvCpu;
-            pHvCpu->uApicAssistPageMsr = uRawValue;
+            pHvCpu->uVpAssistMsr = uRawValue;
 
-            if (MSR_GIM_HV_APICASSIST_PAGE_IS_ENABLED(uRawValue))
+            if (MSR_GIM_HV_VP_ASSIST_PAGE_IS_ENABLED(uRawValue))
             {
-                RTGCPHYS GCPhysApicAssistPage = MSR_GIM_HV_APICASSIST_GUEST_PFN(uRawValue) << GUEST_PAGE_SHIFT;
-                if (PGMPhysIsGCPhysNormal(pVM, GCPhysApicAssistPage))
+                RTGCPHYS GCPhysVpAssistPage = MSR_GIM_HV_VP_ASSIST_GUEST_PFN(uRawValue) << GUEST_PAGE_SHIFT;
+                if (PGMPhysIsGCPhysNormal(pVM, GCPhysVpAssistPage))
                 {
-                    int rc = gimR3HvEnableApicAssistPage(pVCpu, GCPhysApicAssistPage);
+                    int rc = gimR3HvEnableVpAssistPage(pVCpu, GCPhysVpAssistPage);
                     if (RT_SUCCESS(rc))
                     {
-                        pHvCpu->uApicAssistPageMsr = uRawValue;
+                        pHvCpu->uVpAssistMsr = uRawValue;
+                        LogRel(("GIM%u: HyperV: Enabled VP Assist page at %#RGp\n", pVCpu->idCpu, GCPhysVpAssistPage));
                         return VINF_SUCCESS;
                     }
                 }
                 else
                 {
-                    LogRelMax(5, ("GIM%u: HyperV: APIC-assist page address %#RGp invalid!\n", pVCpu->idCpu,
-                                  GCPhysApicAssistPage));
+                    LogRelMax(10, ("GIM%u: HyperV: VP Assist page address %#RGp invalid!\n", pVCpu->idCpu,
+                              GCPhysVpAssistPage));
                 }
             }
             else
-                gimR3HvDisableApicAssistPage(pVCpu);
+                gimR3HvDisableVpAssistPage(pVCpu);
 
             return VERR_CPUM_RAISE_GP_0;
 #endif /* IN_RING3 */
@@ -1156,66 +1262,55 @@ VMM_INT_DECL(VBOXSTRICTRC) gimHvWriteMsr(PVMCPUCC pVCpu, uint32_t idMsr, PCCPUMM
         {
             PGIMHVCPU     pHvCpu    = &pVCpu->gim.s.u.HvCpu;
             uint8_t const idxStimer = (idMsr - MSR_GIM_HV_STIMER0_CONFIG) >> 1;
+            int const     rcBusy    = VINF_CPUM_R3_MSR_WRITE;
 
             /* Validate the writable bits. */
             if (RT_LIKELY(!(uRawValue & ~MSR_GIM_HV_STIMER_RW_VALID)))
             {
-                Assert(idxStimer < RT_ELEMENTS(pHvCpu->aStimers));
-                PGIMHVSTIMER pHvStimer = &pHvCpu->aStimers[idxStimer];
-
-                /* Lock to prevent concurrent access from the timer callback. */
-                int rc = TMTimerLock(pVM, pHvStimer->hTimer, VERR_IGNORED);
-                if (rc == VINF_SUCCESS)
+                if (RT_LIKELY(idxStimer < RT_ELEMENTS(pHvCpu->aStimers)))
                 {
-                    /* Update the MSR value. */
-                    pHvStimer->uStimerConfigMsr = uRawValue;
-                    Log(("GIM%u: HyperV: Set STIMER_CONFIG%u=%#RX64\n", pVCpu->idCpu, idxStimer, uRawValue));
+                    PGIMHVSTIMER pHvStimer = &pHvCpu->aStimers[idxStimer];
 
-                    /* Process the MSR bits. */
-                    if (   !MSR_GIM_HV_STIMER_GET_SINTX(uRawValue)   /* Writing SINTx as 0 causes the timer to be disabled. */
-                        || !MSR_GIM_HV_STIMER_IS_ENABLED(uRawValue))
+                    /* Lock to prevent concurrent access from the timer callback. */
+                    int rc = TMTimerLock(pVM, pHvStimer->hTimer, rcBusy);
+                    if (rc == VINF_SUCCESS)
                     {
-                        pHvStimer->uStimerConfigMsr &= ~MSR_GIM_HV_STIMER_ENABLE;
-                        gimHvStopStimer(pVCpu, pHvStimer);
-                        Log(("GIM%u: HyperV: Disabled STIMER_CONFIG%u\n", pVCpu->idCpu, idxStimer));
-                    }
-                    else if (MSR_GIM_HV_STIMER_IS_ENABLED(uRawValue))
-                    {
-                        /* Auto-enable implies writing to the STIMERx_COUNT MSR is what starts the timer. */
-                        if (!MSR_GIM_HV_STIMER_IS_AUTO_ENABLED(uRawValue))
+                        /* Update the MSR value. */
+                        pHvStimer->uStimerConfigMsr = uRawValue;
+                        Log(("GIM%u: HyperV: Set STIMER_CONFIG%u=%#RX64\n", pVCpu->idCpu, idxStimer, uRawValue));
+
+                        /* Writing SINTx as 0 or the enabled bit causes the timer to be disabled. */
+                        if (   !MSR_GIM_HV_STIMER_GET_SINTX(uRawValue)
+                            || !MSR_GIM_HV_STIMER_IS_ENABLED(uRawValue))
                         {
-                            if (!TMTimerIsActive(pVM, pHvStimer->hTimer))
-                            {
-                                gimHvStartStimer(pVCpu, pHvStimer);
-                                Log(("GIM%u: HyperV: Started STIMER%u\n", pVCpu->idCpu, idxStimer));
-                            }
-                            else
-                            {
-                                /*
-                                 * Enabling a timer that's already enabled is undefined behaviour,
-                                 * see Hyper-V spec. 15.3.1 "Synthetic Timer Configuration Register".
-                                 *
-                                 * Our implementation just re-starts the timer. Guests that comform to
-                                 * the Hyper-V specs. should not be doing this anyway.
-                                 */
-                                AssertFailed();
-                                gimHvStopStimer(pVCpu, pHvStimer);
-                                gimHvStartStimer(pVCpu, pHvStimer);
-                            }
+                            pHvStimer->uStimerConfigMsr &= ~MSR_GIM_HV_STIMER_ENABLE;
+                            gimHvStopStimer(pVCpu, pHvStimer);
                         }
+                        else if (    MSR_GIM_HV_STIMER_IS_ENABLED(uRawValue)
+                                 && !MSR_GIM_HV_STIMER_IS_AUTO_ENABLED(uRawValue))
+                        {
+                            /*
+                            * Enabling a timer that's already enabled is undefined behaviour,
+                            * see Hyper-V spec. 15.3.1 "Synthetic Timer Configuration Register".
+                            *
+                            * Our implementation just re-starts the timer. Guests that comform to
+                            * the Hyper-V specs. should not be changing timer properties without
+                            * explicitly disabling and enabling the timer.
+                            */
+                            Assert(MSR_GIM_HV_STIMER_GET_SINTX(uRawValue));
+                            gimHvStopStimer(pVCpu, pHvStimer);
+                            gimHvStartStimer(pVCpu, pHvStimer);
+                        }
+                        TMTimerUnlock(pVM, pHvStimer->hTimer);
                     }
-
-                    TMTimerUnlock(pVM, pHvStimer->hTimer);
+                    return rc;
                 }
-                return rc;
+                LogRel(("GIM%u: HyperV: Invalid STIMER_CONFIG index %#RX32 -> #GP(0)\n", pVCpu->idCpu, idxStimer));
             }
-#ifndef IN_RING3
-            return VINF_CPUM_R3_MSR_WRITE;
-#else
-            LogRel(("GIM%u: HyperV: Setting reserved bits of STIMER%u MSR (uRawValue=%#RX64) -> #GP(0)\n", pVCpu->idCpu,
-                    idxStimer, uRawValue));
+            else
+                LogRel(("GIM%u: HyperV: Setting reserved bits in STIMER%u_CONFIG MSR (uRawValue=%#RX64) -> #GP(0)\n",
+                    pVCpu->idCpu, idxStimer, uRawValue));
             return VERR_CPUM_RAISE_GP_0;
-#endif
         }
 
         case MSR_GIM_HV_STIMER0_COUNT:
@@ -1229,46 +1324,44 @@ VMM_INT_DECL(VBOXSTRICTRC) gimHvWriteMsr(PVMCPUCC pVCpu, uint32_t idMsr, PCCPUMM
             PGIMHVSTIMER  pHvStimer = &pHvCpu->aStimers[idxStimer];
             int const     rcBusy    = VINF_CPUM_R3_MSR_WRITE;
 
-            /*
-             * Writing zero to this MSR disables the timer regardless of whether the auto-enable
-             * flag is set in the config MSR corresponding to the timer.
-             */
-            if (!uRawValue)
+            int rc = TMTimerLock(pVM, pHvStimer->hTimer, rcBusy);
+            if (rc == VINF_SUCCESS)
             {
+                /*
+                 * The timer may have changed from one-shot to periodic mode and vice versa,
+                 * so we always stop/start the timer using the regular start/stop machinery
+                 * which takes into account the type of timer rather than just updating the
+                 * interval directly using TMTimerSetNano().
+                 */
                 gimHvStopStimer(pVCpu, pHvStimer);
-                pHvStimer->uStimerCountMsr = 0;
-                Log(("GIM%u: HyperV: Set STIMER_COUNT%u=%RU64, stopped timer\n", pVCpu->idCpu, idxStimer, uRawValue));
-                return VINF_SUCCESS;
-            }
+                pHvStimer->uStimerCountMsr = uRawValue;
 
-            /*
-             * Concurrent writes to the config. MSR can't happen as it's serialized by way
-             * of being done on the same EMT as this.
-             */
-            if (MSR_GIM_HV_STIMER_IS_AUTO_ENABLED(pHvStimer->uStimerConfigMsr))
-            {
-                int rc = TMTimerLock(pVM, pHvStimer->hTimer, rcBusy);
-                if (rc == VINF_SUCCESS)
+                /*
+                 * Writing zero to this MSR disables the timer regardless of whether the
+                 * auto-enable flag is set in the config MSR corresponding to the timer.
+                 * When auto-enable flag is set, writing should start the timer.
+                 */
+                if (   uRawValue
+                    && MSR_GIM_HV_STIMER_IS_AUTO_ENABLED(pHvStimer->uStimerConfigMsr))
                 {
-                    pHvStimer->uStimerCountMsr = uRawValue;
+                    pHvStimer->uStimerConfigMsr |= MSR_GIM_HV_STIMER_ENABLE;
                     gimHvStartStimer(pVCpu, pHvStimer);
-                    TMTimerUnlock(pVM, pHvStimer->hTimer);
-                    Log(("GIM%u: HyperV: Set STIMER_COUNT%u=%RU64 %RU64 msec, auto-started timer\n", pVCpu->idCpu, idxStimer,
-                         uRawValue, (uRawValue * 100) / RT_NS_1MS_64));
                 }
-                return rc;
+                TMTimerUnlock(pVM, pHvStimer->hTimer);
             }
-
-            /* Simple update of the counter without any timer start/stop side-effects. */
-            pHvStimer->uStimerCountMsr = uRawValue;
-            Log(("GIM%u: HyperV: Set STIMER_COUNT%u=%RU64\n", pVCpu->idCpu, idxStimer, uRawValue));
-            return VINF_SUCCESS;
+            return rc;
         }
 
         case MSR_GIM_HV_EOM:
         {
-            /** @todo implement EOM. */
             Log(("GIM%u: HyperV: EOM\n", pVCpu->idCpu));
+            PGIMHVCPU pHvCpu = &pVCpu->gim.s.u.HvCpu;
+            for (uint8_t idxStimer = 0; idxStimer < RT_ELEMENTS(pHvCpu->aStimers); idxStimer++)
+            {
+                PGIMHVSTIMER pHvStimer = &pHvCpu->aStimers[idxStimer];
+                if (pHvStimer->fMsgPending)
+                    gimHvDeliverTimerMsg(pVCpu, pHvStimer);
+            }
             return VINF_SUCCESS;
         }
 
@@ -1306,38 +1399,22 @@ VMM_INT_DECL(VBOXSTRICTRC) gimHvWriteMsr(PVMCPUCC pVCpu, uint32_t idMsr, PCCPUMM
 
         case MSR_GIM_HV_SIMP:
         {
-#ifndef IN_RING3
-            return VINF_CPUM_R3_MSR_WRITE;
-#else
             PGIMHVCPU pHvCpu = &pVCpu->gim.s.u.HvCpu;
             pHvCpu->uSimpMsr = uRawValue;
             if (MSR_GIM_HV_SIMP_IS_ENABLED(uRawValue))
             {
-                RTGCPHYS GCPhysSimp = MSR_GIM_HV_SIMP_GPA(uRawValue);
+                RTGCPHYS const GCPhysSimp = MSR_GIM_HV_SIMP_GPA(uRawValue);
                 if (PGMPhysIsGCPhysNormal(pVM, GCPhysSimp))
-                {
-                    uint8_t abSimp[GIM_HV_PAGE_SIZE];
-                    RT_ZERO(abSimp);
-                    int rc2 = PGMPhysSimpleWriteGCPhys(pVM, GCPhysSimp, &abSimp[0], sizeof(abSimp));
-                    if (RT_SUCCESS(rc2))
-                        LogRel(("GIM%u: HyperV: Enabled synthetic interrupt message page at %#RGp\n", pVCpu->idCpu, GCPhysSimp));
-                    else
-                    {
-                        LogRel(("GIM%u: HyperV: Failed to update synthetic interrupt message page at %#RGp. uSimpMsr=%#RX64 rc=%Rrc\n",
-                                pVCpu->idCpu, pHvCpu->uSimpMsr, GCPhysSimp, rc2));
-                        return VERR_CPUM_RAISE_GP_0;
-                    }
-                }
+                    LogRel(("GIM%u: HyperV: Enabled SIM page at %#RGp\n", pVCpu->idCpu, GCPhysSimp));
                 else
                 {
-                    LogRel(("GIM%u: HyperV: Enabled synthetic interrupt message page at invalid address %#RGp\n", pVCpu->idCpu,
-                            GCPhysSimp));
+                    LogRel(("GIM%u: HyperV: SIM page at invalid address %#RGp\n", pVCpu->idCpu, GCPhysSimp));
+                    pHvCpu->uSimpMsr &= ~MSR_GIM_HV_SIMP_ENABLE;
                 }
             }
             else
-                LogRel(("GIM%u: HyperV: Disabled synthetic interrupt message page\n", pVCpu->idCpu));
+                LogRel(("GIM%u: HyperV: Disabled SIM page\n", pVCpu->idCpu));
             return VINF_SUCCESS;
-#endif
         }
 
         case MSR_GIM_HV_CRASH_P0:  pHv->uCrashP0Msr = uRawValue;  return VINF_SUCCESS;

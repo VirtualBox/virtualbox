@@ -299,6 +299,7 @@ VMMR3_INT_DECL(int) gimR3HvInit(PVM pVM, PCFGMNODE pGimCfg)
                          | GIM_HV_MISC_FEAT_TIMER_FREQ
                          | GIM_HV_MISC_FEAT_GUEST_CRASH_MSRS
                        //| GIM_HV_MISC_FEAT_DEBUG_MSRS
+                       //| GIM_HV_MISC_FEAT_USE_DIRECT_SYNTH_MSRS
                          ;
 
         /* Hypervisor recommendations to the guest. */
@@ -700,7 +701,7 @@ VMMR3_INT_DECL(void) gimR3HvReset(PVM pVM)
         pHvCpu->uSControlMsr = 0;
         pHvCpu->uSimpMsr  = 0;
         pHvCpu->uSiefpMsr = 0;
-        pHvCpu->uApicAssistPageMsr = 0;
+        pHvCpu->uVpAssistMsr = 0;
 
         for (uint8_t idxSint = 0; idxSint < RT_ELEMENTS(pHvCpu->auSintMsrs); idxSint++)
             pHvCpu->auSintMsrs[idxSint] = MSR_GIM_HV_SINT_MASKED;
@@ -1045,30 +1046,29 @@ VMMR3_INT_DECL(int) gimR3HvLoadDone(PVM pVM, PSSMHANDLE pSSM)
 
 
 /**
- * Enables the Hyper-V APIC-assist page.
+ * Enables the Hyper-V VP Assist page.
  *
  * @returns VBox status code.
  * @param   pVCpu                   The cross context virtual CPU structure.
- * @param   GCPhysApicAssistPage    Where to map the APIC-assist page.
+ * @param   GCPhysVpAssistPage    Where to map the VP ssist page.
  */
-VMMR3_INT_DECL(int) gimR3HvEnableApicAssistPage(PVMCPU pVCpu, RTGCPHYS GCPhysApicAssistPage)
+VMMR3_INT_DECL(int) gimR3HvEnableVpAssistPage(PVMCPU pVCpu, RTGCPHYS GCPhysVpAssistPage)
 {
     PVM             pVM     = pVCpu->CTX_SUFF(pVM);
     PPDMDEVINSR3    pDevIns = pVM->gim.s.pDevInsR3;
     AssertPtrReturn(pDevIns, VERR_GIM_DEVICE_NOT_REGISTERED);
 
     /*
-     * Map the APIC-assist-page at the specified address.
+     * Map the VP Assist page at the specified address.
      */
     /** @todo this is buggy when large pages are used due to a PGM limitation, see
      *        @bugref{7532}. Instead of the overlay style mapping, we just
      *        rewrite guest memory directly. */
-    AssertCompile(sizeof(g_abRTZero64K) >= GUEST_PAGE_SIZE);
-    int rc = PGMPhysSimpleWriteGCPhys(pVM, GCPhysApicAssistPage, g_abRTZero64K, GUEST_PAGE_SIZE);
+    int rc = PGMPhysSimpleWriteGCPhys(pVM, GCPhysVpAssistPage, g_abRTZero64K, GUEST_PAGE_SIZE);
     if (RT_SUCCESS(rc))
     {
         /** @todo Inform APIC. */
-        LogRel(("GIM%u: HyperV: Enabled APIC-assist page at %#RGp\n", pVCpu->idCpu, GCPhysApicAssistPage));
+        LogRel(("GIM%u: HyperV: Enabled VP Assist page at %#RGp\n", pVCpu->idCpu, GCPhysVpAssistPage));
     }
     else
     {
@@ -1080,14 +1080,14 @@ VMMR3_INT_DECL(int) gimR3HvEnableApicAssistPage(PVMCPU pVCpu, RTGCPHYS GCPhysApi
 
 
 /**
- * Disables the Hyper-V APIC-assist page.
+ * Disables the Hyper-V VP Assist page.
  *
  * @returns VBox status code.
  * @param   pVCpu   The cross context virtual CPU structure.
  */
-VMMR3_INT_DECL(int) gimR3HvDisableApicAssistPage(PVMCPU pVCpu)
+VMMR3_INT_DECL(int) gimR3HvDisableVpAssistPage(PVMCPU pVCpu)
 {
-    LogRel(("GIM%u: HyperV: Disabled APIC-assist page\n", pVCpu->idCpu));
+    LogRel(("GIM%u: HyperV: Disabled VP Assist page\n", pVCpu->idCpu));
     /** @todo inform APIC */
     return VINF_SUCCESS;
 }
@@ -1105,28 +1105,25 @@ static DECLCALLBACK(void) gimR3HvTimerCallback(PVM pVM, TMTIMERHANDLE hTimer, vo
     Assert(pHvStimer->hTimer == hTimer);
     RT_NOREF(hTimer);
 
-    PVMCPU    pVCpu  = pVM->apCpusR3[pHvStimer->idCpu];
-    PGIMHVCPU pHvCpu = &pVCpu->gim.s.u.HvCpu;
-    Assert(pHvStimer->idxStimer < RT_ELEMENTS(pHvCpu->aStatStimerFired));
+    /** @todo This is currently broken for SMP and single-VCPU only because
+     *        this callback NEEDS to be executed on the VCPU EMT owning the
+     *        timer. Hence the release assertion below.
+     */
+    if (pVM->cCpus > 1)
+        AssertReleaseMsgFailed(("Hyper-V Synthetic Timers not yet implemented for SMP VMs!"));
+    PVMCPU pVCpu = pVM->apCpusR3[pHvStimer->idCpu];
+    gimHvDeliverTimerMsg(pVCpu, pHvStimer);
 
-    STAM_COUNTER_INC(&pHvCpu->aStatStimerFired[pHvStimer->idxStimer]);
-
+    /* Re-arm the timer if it's periodic. Disable the timer if it's one-shot. */
     uint64_t const uStimerConfig = pHvStimer->uStimerConfigMsr;
-    uint16_t const idxSint       = MSR_GIM_HV_STIMER_GET_SINTX(uStimerConfig);
-    if (RT_LIKELY(idxSint < RT_ELEMENTS(pHvCpu->auSintMsrs)))
-    {
-        uint64_t const uSint = pHvCpu->auSintMsrs[idxSint];
-        if (!MSR_GIM_HV_SINT_IS_MASKED(uSint))
-        {
-            uint8_t const uVector  = MSR_GIM_HV_SINT_GET_VECTOR(uSint);
-            bool const    fAutoEoi = MSR_GIM_HV_SINT_IS_AUTOEOI(uSint);
-            PDMApicHvSendInterrupt(pVCpu, uVector, fAutoEoi, XAPICTRIGGERMODE_EDGE);
-        }
-    }
-
-    /* Re-arm the timer if it's periodic. */
     if (MSR_GIM_HV_STIMER_IS_PERIODIC(uStimerConfig))
-        gimHvStartStimer(pVCpu, pHvStimer);
+    {
+        uint64_t const uTimerCount  = pHvStimer->uStimerCountMsr;    /* in 100-ns units. */
+        uint64_t const cNanosToNext = uTimerCount * 100 /* ns */;   /* number of nanos to expiry. */
+        TMTimerSetNano(pVM, hTimer, cNanosToNext);
+    }
+    else
+        pHvStimer->uStimerConfigMsr &= ~MSR_GIM_HV_STIMER_ENABLE;
 }
 
 
@@ -1293,56 +1290,6 @@ VMMR3_INT_DECL(int) gimR3HvEnableTscPage(PVM pVM, RTGCPHYS GCPhysTscPage, bool f
     return rc;
 #endif
 }
-
-
-/**
- * Enables the Hyper-V SIM page.
- *
- * @returns VBox status code.
- * @param   pVCpu           The cross context virtual CPU structure.
- * @param   GCPhysSimPage   Where to map the SIM page.
- */
-VMMR3_INT_DECL(int) gimR3HvEnableSimPage(PVMCPU pVCpu, RTGCPHYS GCPhysSimPage)
-{
-    PVM             pVM     = pVCpu->CTX_SUFF(pVM);
-    PPDMDEVINSR3    pDevIns = pVM->gim.s.pDevInsR3;
-    AssertPtrReturn(pDevIns, VERR_GIM_DEVICE_NOT_REGISTERED);
-
-    /*
-     * Map the SIMP page at the specified address.
-     */
-    /** @todo this is buggy when large pages are used due to a PGM limitation, see
-     *        @bugref{7532}. Instead of the overlay style mapping, we just
-     *        rewrite guest memory directly. */
-    AssertCompile(sizeof(g_abRTZero64K) >= GUEST_PAGE_SIZE);
-    int rc = PGMPhysSimpleWriteGCPhys(pVM, GCPhysSimPage, g_abRTZero64K, GUEST_PAGE_SIZE);
-    if (RT_SUCCESS(rc))
-    {
-        /** @todo SIM setup. */
-        LogRel(("GIM%u: HyperV: Enabled SIM page at %#RGp\n", pVCpu->idCpu, GCPhysSimPage));
-    }
-    else
-    {
-        LogRelFunc(("GIM%u: HyperV: PGMPhysSimpleWriteGCPhys failed. rc=%Rrc\n", pVCpu->idCpu, rc));
-        rc = VERR_GIM_OPERATION_FAILED;
-    }
-    return rc;
-}
-
-
-/**
- * Disables the Hyper-V SIM page.
- *
- * @returns VBox status code.
- * @param   pVCpu   The cross context virtual CPU structure.
- */
-VMMR3_INT_DECL(int) gimR3HvDisableSimPage(PVMCPU pVCpu)
-{
-    LogRel(("GIM%u: HyperV: Disabled SIM page\n", pVCpu->idCpu));
-    /** @todo SIM teardown. */
-    return VINF_SUCCESS;
-}
-
 
 
 /**
