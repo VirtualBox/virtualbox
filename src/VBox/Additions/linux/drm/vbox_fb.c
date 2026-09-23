@@ -216,8 +216,10 @@ static struct fb_ops vboxfb_ops = {
 	.fb_pan_display = drm_fb_helper_pan_display,
 	.fb_blank = drm_fb_helper_blank,
 	.fb_setcmap = drm_fb_helper_setcmap,
+#if RTLNX_VER_MAX(7,0,0)
 	.fb_debug_enter = drm_fb_helper_debug_enter,
 	.fb_debug_leave = drm_fb_helper_debug_leave,
+#endif
 };
 
 static int vboxfb_create_object(struct vbox_fbdev *fbdev,
