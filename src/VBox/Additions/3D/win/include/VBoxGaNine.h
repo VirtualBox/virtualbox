@@ -1,4 +1,4 @@
-/* $Id: VBoxGaNine.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: VBoxGaNine.h 115313 2026-09-23 19:15:10Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Gallium driver interface for WDDM user mode driver.
  */
@@ -37,23 +37,8 @@
 extern "C" {
 #endif
 
-#if VBOX_MESA_V_MAJOR < 24
-struct pipe_screen;
-struct pipe_resource;
-struct pipe_context;
-#endif
 typedef struct ID3DAdapter9 ID3DAdapter9;
 
-#if VBOX_MESA_V_MAJOR < 24
-typedef HRESULT WINAPI FNGaNineD3DAdapter9Create(struct pipe_screen *s, ID3DAdapter9 **ppOut);
-typedef FNGaNineD3DAdapter9Create *PFNGaNineD3DAdapter9Create;
-
-typedef struct pipe_resource * WINAPI FNGaNinePipeResourceFromSurface(IUnknown *pSurface);
-typedef FNGaNinePipeResourceFromSurface *PFNGaNinePipeResourceFromSurface;
-
-typedef struct pipe_context * WINAPI FNGaNinePipeContextFromDevice(IDirect3DDevice9 *pDevice);
-typedef FNGaNinePipeContextFromDevice *PFNGaNinePipeContextFromDevice;
-#else
 typedef HRESULT WINAPI FNGaNineD3DAdapter9Create(const WDDMGalliumDriverEnv *pEnv, ID3DAdapter9 **ppOut);
 typedef FNGaNineD3DAdapter9Create *PFNGaNineD3DAdapter9Create;
 
@@ -65,7 +50,6 @@ typedef FNGaNineGetContextId *PFNGaNineGetContextId;
 
 typedef void WINAPI FNGaNineFlush(IDirect3DDevice9 *pDevice);
 typedef FNGaNineFlush *PFNGaNineFlush;
-#endif
 
 #ifdef __cplusplus
 }
