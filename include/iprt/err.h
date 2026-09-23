@@ -415,6 +415,10 @@
 #define VERR_INSTALLATION_FAILED            (-22429)
 /** Windows system integrity policy violation (device guard). */
 #define VERR_SYSTEM_INTEGRITY_POLICY_VIOLATION  (-22430)
+/** User is not the same. */
+#define VERR_DIFFERENT_USER                 (-22431)
+/** Session is not the same. */
+#define VERR_DIFFERENT_SESSION              (-22432)
 /** @} */
 
 

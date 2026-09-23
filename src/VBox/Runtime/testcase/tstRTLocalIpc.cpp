@@ -1,4 +1,4 @@
-/* $Id: tstRTLocalIpc.cpp 115309 2026-09-22 23:28:31Z knut.osmundsen@oracle.com $ */
+/* $Id: tstRTLocalIpc.cpp 115311 2026-09-23 00:44:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT Testcase - RTLocalIpc API.
  */
@@ -485,8 +485,7 @@ static DECLCALLBACK(int) tstRTLocalIpcSessionConnectionChild(RTTHREAD hSelf, voi
 
     RTTEST_CHECK_RC_OK_RET(g_hTest, RTTestSetDefault(g_hTest, NULL), rcCheck);
 
-    RTTEST_CHECK_RC_RET(g_hTest, RTLocalIpcSessionConnect(&hClientSession, "tstRTLocalIpcSessionConnection",
-                                                         fConnect),
+    RTTEST_CHECK_RC_RET(g_hTest, RTLocalIpcSessionConnect(&hClientSession, "tstRTLocalIpcSessionConnection", fConnect),
                         VINF_SUCCESS, rcCheck);
     uint8_t const bIdentity = UINT8_C(0x42);
     RTTEST_CHECK_RC_OK_RET(g_hTest, RTLocalIpcSessionWrite(hClientSession, &bIdentity, sizeof(bIdentity)), rcCheck);
@@ -682,8 +681,8 @@ static void testSessionConnection(const char *pszExecPath, uint32_t fServerFlags
 #endif
 }
 
-
 #ifdef RT_OS_WINDOWS
+
 static DECLCALLBACK(int) testServerListenAnonymousThread(RTTHREAD hSelf, void *pvUser)
 {
     RTLOCALIPCSERVER hIpcServer = (RTLOCALIPCSERVER)pvUser;
@@ -696,7 +695,7 @@ static DECLCALLBACK(int) testServerListenAnonymousThread(RTTHREAD hSelf, void *p
     uint8_t bIdentity = 0;
     RTTEST_CHECK_RC_OK_RET(g_hTest, RTLocalIpcSessionRead(hIpcSession, &bIdentity, sizeof(bIdentity), NULL), rcCheck);
     RTTEST_CHECK_RET(g_hTest, bIdentity == UINT8_C(0x24), VERR_GENERAL_FAILURE);
-    RTTESTI_CHECK_RC(RTLocalIpcSessionVerifySameUser(hIpcSession), VERR_ACCESS_DENIED);
+    RTTESTI_CHECK_RC(RTLocalIpcSessionVerifySameUser(hIpcSession), VERR_DIFFERENT_USER); /* This is the whole point. */
     RTTESTI_CHECK_RC(RTLocalIpcSessionClose(hIpcSession), VINF_OBJECT_DESTROYED);
     return VINF_SUCCESS;
 }
@@ -706,6 +705,11 @@ static void testSessionAnonymousClient(void)
 {
     RTTestISub("Anonymous client identification");
 
+    /*
+     * The deal here is that the client does not use the
+     * RTLOCALIPC_C_FLAGS_ALLOW_IDENTIFICATION flag, so the server isn't able to
+     * open the impersonation token in the RTLocalIpcSessionVerifySameUser call.
+     */
     RTLOCALIPCSERVER hIpcServer;
     RTTESTI_CHECK_RC_RETV(RTLocalIpcServerCreate(&hIpcServer, "tstRTLocalIpcSessionAnonymous", 0), VINF_SUCCESS);
 
@@ -746,6 +750,7 @@ static void testSessionAnonymousClient(void)
 
     RTTESTI_CHECK_RC(RTLocalIpcServerDestroy(hIpcServer), VINF_OBJECT_DESTROYED);
 }
+
 #endif /* RT_OS_WINDOWS */
 
 
