@@ -1,4 +1,4 @@
-/* $Id: localipc-posix.cpp 114874 2026-08-06 21:28:04Z andreas.loeffler@oracle.com $ */
+/* $Id: localipc-posix.cpp 115310 2026-09-23 00:44:03Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Local IPC Server & Client, Posix.
  */
@@ -1349,7 +1349,7 @@ RTDECL(int) RTLocalIpcSessionVerifySameUser(RTLOCALIPCSESSION hSession)
     RTUID uidPeer = NIL_RTUID;
     int rc = rtLocalIpcSessionQueryUcred(hSession, NULL, &uidPeer, NULL);
     if (RT_SUCCESS(rc) && uidPeer != (RTUID)geteuid())
-        rc = VERR_ACCESS_DENIED;
+        rc = VERR_DIFFERENT_USER;
     return rc;
 }
 

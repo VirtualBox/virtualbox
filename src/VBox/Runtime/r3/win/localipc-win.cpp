@@ -1,4 +1,4 @@
-/* $Id: localipc-win.cpp 115306 2026-09-22 23:25:21Z knut.osmundsen@oracle.com $ */
+/* $Id: localipc-win.cpp 115310 2026-09-23 00:44:03Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Local IPC, Windows Implementation Using Named Pipes.
  *
@@ -193,7 +193,6 @@ static PFNRTLOCALIPCWINQUERYPIPESESSION     g_pfnGetNamedPipeServerSessionId    
 *   Internal Functions                                                                                                           *
 *********************************************************************************************************************************/
 static int rtLocalIpcWinCreateSession(PRTLOCALIPCSESSIONINT *ppSession, HANDLE hNmPipeSession, bool fRestricted);
-static int rtLocalIpcWinVerifyUserSid(PSID pSid);
 
 
 /** Queries the current process token's Windows session ID. */
@@ -454,11 +453,11 @@ static int rtLocalIpcWinVerifyPeerSession(HANDLE hPipe, bool fServerSide)
                            ? g_pfnGetNamedPipeClientSessionId(hPipe, &idPeerSession)
                            : g_pfnGetNamedPipeServerSessionId(hPipe, &idPeerSession);
             if (fRc)
-                rc = idPeerSession == idSelfSession ? VINF_SUCCESS : VERR_ACCESS_DENIED;
+                rc = idPeerSession == idSelfSession ? VINF_SUCCESS : VERR_DIFFERENT_SESSION;
             else
             {
                 DWORD const dwErr = GetLastError();
-                rc = fServerSide && rtLocalIpcWinIsPeerGoneError(dwErr) ? VERR_ACCESS_DENIED : RTErrConvertFromWin32(dwErr);
+                rc = fServerSide && rtLocalIpcWinIsPeerGoneError(dwErr) ? VERR_DIFFERENT_SESSION : RTErrConvertFromWin32(dwErr);
             }
         }
     }
@@ -550,8 +549,8 @@ static int rtLocalIpcWinVerifySameUserByClientSide(HANDLE hPipe)
                             rc = VINF_SUCCESS;
                         else
                         {
-                            rc = VERR_ACCESS_DENIED; /** @todo inconvienient return code! */
-                            Log(("rtLocalIpcWinVerifySameUserByClientSide: mismatch! (#1)\n"));
+                            Log(("rtLocalIpcWinVerifySameUserByClientSide: VERR_DIFFERENT_USER! (#1)\n"));
+                            rc = VERR_DIFFERENT_USER;
                         }
                         RTMemTmpFree(pServerTokenUser);
                         CloseHandle(hServerProcess);
@@ -593,8 +592,8 @@ static int rtLocalIpcWinVerifySameUserByClientSide(HANDLE hPipe)
                         rc = VINF_SUCCESS;
                     else
                     {
-                        rc = VERR_ACCESS_DENIED; /** @todo inconvienient return code! */
-                        Log(("rtLocalIpcWinVerifySameUserByClientSide: mismatch! (#2)\n"));
+                        Log(("rtLocalIpcWinVerifySameUserByClientSide: VERR_DIFFERENT_USER! (#2)\n"));
+                        rc = VERR_DIFFERENT_USER;
                     }
                 }
                 else
@@ -610,37 +609,6 @@ static int rtLocalIpcWinVerifySameUserByClientSide(HANDLE hPipe)
     else
         rc = VERR_INTERNAL_ERROR;
     RTMemTmpFree(pSelfTokenUser);
-    return rc;
-}
-
-
-/** Verifies that @a pSid is the current process token's user SID. */
-static int rtLocalIpcWinVerifyUserSid(PSID pSid)
-{
-    if (!pSid || !IsValidSid(pSid))
-        return VERR_INVALID_PARAMETER;
-
-    int rc;
-    HANDLE hSelfToken = NULL;
-    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hSelfToken))
-    {
-        PTOKEN_USER pSelfTokenUser = NULL;
-        rc = rtLocalIpcWinQueryTokenUser(hSelfToken, &pSelfTokenUser);
-        if (RT_SUCCESS(rc))
-        {
-            if (rtLocalIpcWinAreSidsEqual(pSid, pSelfTokenUser->User.Sid))
-                rc = VINF_SUCCESS;
-            else
-            {
-                rc = VERR_ACCESS_DENIED; /// @todo r=bird: VERR_PERMISSION_DENIED is probably more appropriate here...
-                Log(("rtLocalIpcWinVerifyUserSid: Not equal -> %Rrc\n", rc));
-            }
-            RTMemTmpFree(pSelfTokenUser);
-        }
-        CloseHandle(hSelfToken);
-    }
-    else
-        rc = RTErrConvertFromWin32(GetLastError());
     return rc;
 }
 
@@ -1465,7 +1433,7 @@ static int rtLocalIpcWinCreateSession(PRTLOCALIPCSESSIONINT *ppSession, HANDLE h
         {
             BOOL const fRc = CloseHandle(hNmPipeSession);
             AssertMsg(fRc, ("%d\n", GetLastError())); NOREF(fRc);
-            if (rc == VERR_ACCESS_DENIED)
+            if (rc == VERR_DIFFERENT_USER)
                 rc = VERR_TRY_AGAIN;
             return rc;
         }
@@ -1595,10 +1563,15 @@ RTDECL(int) RTLocalIpcSessionConnect(PRTLOCALIPCSESSION phSession, const char *p
                         if (!(fFlags & RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER))
                             rc = VINF_SUCCESS;
                         else
+                        {
+                            /** @todo r=bird: Posix doesn't do this.   */
+                            /** @todo r=bird: combine these two, as both opens the token.  Better still,
+                             * query the info at the top of the function since rtLocalIpcWinConstructName
+                             * also opens the token twice. */
                             rc = rtLocalIpcWinVerifyPeerSession(hPipe, false /*fServerSide*/);
-                        if (   RT_SUCCESS(rc)
-                            && (fFlags & RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER))
-                            rc = rtLocalIpcWinVerifySameUserByClientSide(hPipe);
+                            if (RT_SUCCESS(rc))
+                                rc = rtLocalIpcWinVerifySameUserByClientSide(hPipe);
+                        }
                         if (RT_SUCCESS(rc))
                         {
                             pThis->hNmPipe = hPipe;
@@ -2449,6 +2422,9 @@ RTDECL(int) RTLocalIpcSessionQueryProcess(RTLOCALIPCSESSION hSession, PRTPROCESS
 /** Helper for RTLocalIpcSessionVerifySameUser. */
 static int rtLocalIpcWinVerifySameUserByServerSide(HANDLE hNmPipe)
 {
+    /*
+     * Get the client user via impersonation token.
+     */
     int rc;
     if (ImpersonateNamedPipeClient(hNmPipe))
     {
@@ -2458,15 +2434,18 @@ static int rtLocalIpcWinVerifySameUserByServerSide(HANDLE hNmPipe)
         else
         {
             hPeerToken = NULL;
-            rc = VERR_ACCESS_DENIED;
+            Log(("rtLocalIpcWinVerifySameUserByServerSide: VERR_DIFFERENT_USER (OpenThreadToken -> %u)\n", GetLastError()));
+            rc = VERR_DIFFERENT_USER;
         }
 
-        if (!RevertToSelf())
+        if (RevertToSelf())
+        { /* likely */ }
+        else
         {
             DWORD const dwErr = GetLastError();
-            BOOL const fCleared = SetThreadToken(NULL, NULL);
-            AssertMsg(fCleared, ("SetThreadToken failed: %u (RevertToSelf: %u)\n", GetLastError(), dwErr));
-            RT_NOREF(fCleared);
+            Log(("rtLocalIpcWinVerifySameUserByServerSide: RevertToSelf failed: %u\n", dwErr));
+            BOOL const fCleared = SetThreadToken(NULL, NULL); RT_NOREF(fCleared);
+            AssertLogRelMsg(fCleared, ("SetThreadToken failed: %u (RevertToSelf: %u)\n", GetLastError(), dwErr));
             rc = RTErrConvertFromWin32(dwErr);
         }
 
@@ -2475,7 +2454,34 @@ static int rtLocalIpcWinVerifySameUserByServerSide(HANDLE hNmPipe)
             PTOKEN_USER pPeerTokenUser = NULL;
             rc = rtLocalIpcWinQueryTokenUser(hPeerToken, &pPeerTokenUser);
             if (RT_SUCCESS(rc))
-                rc = rtLocalIpcWinVerifyUserSid(pPeerTokenUser->User.Sid);
+            {
+                /*
+                 * Get our own user from the process token.
+                 */
+                HANDLE hSelfToken = NULL;
+                if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hSelfToken))
+                {
+                    PTOKEN_USER pSelfTokenUser = NULL;
+                    rc = rtLocalIpcWinQueryTokenUser(hSelfToken, &pSelfTokenUser);
+                    if (RT_SUCCESS(rc))
+                    {
+                        /*
+                         * Compare.
+                         */
+                        if (rtLocalIpcWinAreSidsEqual(pPeerTokenUser->User.Sid, pSelfTokenUser->User.Sid))
+                            rc = VINF_SUCCESS;
+                        else
+                        {
+                            rc = VERR_DIFFERENT_USER;
+                            Log(("rtLocalIpcWinVerifySameUserByServerSide: VERR_DIFFERENT_USER\n"));
+                        }
+                        RTMemTmpFree(pSelfTokenUser);
+                    }
+                    CloseHandle(hSelfToken);
+                }
+                else
+                    rc = RTErrConvertFromWin32(GetLastError());
+            }
             RTMemTmpFree(pPeerTokenUser);
         }
 
@@ -2483,7 +2489,10 @@ static int rtLocalIpcWinVerifySameUserByServerSide(HANDLE hNmPipe)
             CloseHandle(hPeerToken);
     }
     else
-        rc = VERR_ACCESS_DENIED;
+    {
+        Log(("rtLocalIpcWinVerifySameUserByServerSide: VERR_DIFFERENT_USER (ImpersonateNamedPipeClient -> %u)\n", GetLastError()));
+        rc = VERR_DIFFERENT_USER;
+    }
     return rc;
 }
 

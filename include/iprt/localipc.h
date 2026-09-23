@@ -82,15 +82,6 @@ typedef RTLOCALIPCSESSION              *PRTLOCALIPCSESSION;
  *                      any special chars or slashes. It will be morphed into a
  *                      unique platform specific identifier.
  * @param   fFlags      Flags, see RTLOCALIPC_FLAGS_*.
- *
- * @remarks For portable names, RTLOCALIPC_FLAGS_RESTRICT_TO_USER places the
- *          endpoint in a protected per-user or per-login-session namespace.
- *          The client must use RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER as well.
- *          On Windows, the portable pipe name includes the token session ID
- *          and logon LUID, while pipe access is limited to LocalSystem and the
- *          creating token's logon SID.  Restricted connections also verify
- *          the peer session and account.  Without the flag, the legacy global
- *          namespace and security behavior are used.
  */
 RTDECL(int) RTLocalIpcServerCreate(PRTLOCALIPCSERVER phServer, const char *pszName, uint32_t fFlags);
 
@@ -98,10 +89,13 @@ RTDECL(int) RTLocalIpcServerCreate(PRTLOCALIPCSERVER phServer, const char *pszNa
  * @{ */
 /** Native name, as apposed to a portable one. */
 #define RTLOCALIPC_FLAGS_NATIVE_NAME        RT_BIT_32(0)
-/** Restrict the portable namespace and access to the login session creating the server.
+/** The server name is mangled so it is unique for the user.
  *
- * On Windows, the portable name is tagged with the token session ID and logon
- * LUID, and the pipe DACL grants access to the token logon SID and LocalSystem. */
+ * On Windows, this means adding the session ID & logon LUID to the name and
+ * placing them in the 'LOCAL' pipe namespace. The pipe DACL grants access to
+ * the token logon SID and LocalSystem.
+ *
+ * @note Clients must use RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER to connect. */
 #define RTLOCALIPC_FLAGS_RESTRICT_TO_USER   RT_BIT_32(1)
 /** The mask of valid flags. */
 #define RTLOCALIPC_FLAGS_VALID_MASK         UINT32_C(0x00000003)
@@ -142,7 +136,6 @@ RTDECL(int) RTLocalIpcServerSetAccessMode(RTLOCALIPCSERVER hServer, RTFMODE fMod
  * Listen for clients.
  *
  * @returns IPRT status code.
- * @retval  VINF_SUCCESS on success and *phClientSession containing the session handle.
  * @retval  VERR_CANCELLED if the listening was interrupted by RTLocalIpcServerCancel().
  * @retval  VERR_TRY_AGAIN if a restricted Windows peer was rejected before a
  *          session could be returned.  The server remains usable.
@@ -168,7 +161,11 @@ RTDECL(int) RTLocalIpcServerCancel(RTLOCALIPCSERVER hServer);
  * This is used a client process (or thread).
  *
  * @returns IPRT status code.
- * @retval  VINF_SUCCESS on success and *phSession holding the session handle.
+ * @retval  VERR_DIFFERENT_USER if RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER is given
+ *          and the peer belongs to another user or cannot present an identity
+ *          accepted by this session. Windows only.
+ * @retval  VERR_DIFFERENT_SESSION if RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER is
+ *          given the peer belongs to another session. Windows only.
  *
  * @param   phSession           Where to store the sesson handle on success.
  * @param   pszName             The server name (see RTLocalIpcServerCreate for details).
@@ -182,13 +179,19 @@ RTDECL(int) RTLocalIpcSessionConnect(PRTLOCALIPCSESSION phSession, const char *p
 #define RTLOCALIPC_C_FLAGS_NATIVE_NAME      RT_BIT_32(0)
 /** Allow the server to identify the client.
  *
- * On Windows this selects the SECURITY_IDENTIFICATION quality-of-service
+ * Windows: This selects the SECURITY_IDENTIFICATION quality-of-service
  * level instead of the default SECURITY_ANONYMOUS level. */
 #define RTLOCALIPC_C_FLAGS_ALLOW_IDENTIFICATION RT_BIT_32(1)
-/** Resolve a portable name in the protected per-user or per-login-session
- * namespace.  On Windows, this uses the current token session ID and logon
- * LUID and verifies the server's session and account.  The server must use
- * RTLOCALIPC_FLAGS_RESTRICT_TO_USER. */
+/** The server name is mangled so it is unique for the user.
+ *
+ * Windows: This means adding the session ID & logon LUID to the name and
+ * placing them in the 'LOCAL' pipe namespace, in addition to checking that the
+ * server runs in the same session and under the same user.
+ *
+ * @note The server must use RTLOCALIPC_FLAGS_RESTRICT_TO_USER.
+ * @todo r=bird: On windows we automatically perform a
+ *       RTLocalIpcSessionVerifySameUser check in RTLocalIpcSessionConnect,
+ *       where as the posix variant does not. */
 #define RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER RT_BIT_32(2)
 /** The mask of valid flags. */
 #define RTLOCALIPC_C_FLAGS_VALID_MASK       UINT32_C(0x00000007)
@@ -348,15 +351,17 @@ RTDECL(int) RTLocalIpcSessionQueryProcess(RTLOCALIPCSESSION hSession, PRTPROCESS
  *
  * @returns IPRT status code.
  * @retval  VINF_SUCCESS if the peer belongs to the same user.
- * @retval  VERR_ACCESS_DENIED if the peer belongs to another user or cannot
+ * @retval  VERR_DIFFERENT_USER if the peer belongs to another user or cannot
  *          present an identity accepted by this session.
+ * @retval  VERR_DIFFERENT_SESSION if the peer belongs to another session
+ *          (windows only).
  * @retval  VERR_CANCELLED if the operation was cancelled by RTLocalIpcSessionCancel.
  * @retval  VERR_NOT_SUPPORTED if this is not implemented on the host platform.
  *
  * @param   hSession            The session handle.
  *
- * @remarks On Windows, the server must first read data sent by the client on
- *          the session, and the client must connect with
+ * @remarks Windows: The server must first read data sent by the client on the
+ *          session, and the client must connect with
  *          RTLOCALIPC_C_FLAGS_ALLOW_IDENTIFICATION, for the server-side check
  *          to succeed.  The client-side check verifies the named-pipe owner.
  */
