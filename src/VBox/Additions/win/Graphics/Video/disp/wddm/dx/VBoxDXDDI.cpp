@@ -1,4 +1,4 @@
-/* $Id: VBoxDXDDI.cpp 115080 2026-08-19 11:45:15Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxDXDDI.cpp 115315 2026-09-23 19:20:02Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox D3D11 user mode DDI interface.
  */
@@ -1528,6 +1528,19 @@ static const char* ResourceMap2Str(D3D10_DDI_MAP  map)
     }
 }
 
+static const char * ResourceCpuAccess2Str(UINT /*D3D10_DDI_CPU_ACCESS*/ MapFlags)
+{
+    MapFlags &= D3D10_DDI_CPU_ACCESS_MASK;
+    if (MapFlags == 0)
+        return "none";
+    if (MapFlags == D3D10_DDI_CPU_ACCESS_WRITE)
+        return "W";
+    if (MapFlags == D3D10_DDI_CPU_ACCESS_READ)
+        return "R";
+    if (MapFlags == (D3D10_DDI_CPU_ACCESS_WRITE | D3D10_DDI_CPU_ACCESS_READ))
+        return "RW";
+    return "UNKNOWN";
+}
 
 static void APIENTRY ddi11CreateResource(
     D3D10DDI_HDEVICE hDevice,
@@ -1549,7 +1562,7 @@ static void APIENTRY ddi11CreateResource(
         pCreateResource->ResourceDimension,
         pCreateResource->Usage, ResourceUsage2Str((D3D10_DDI_RESOURCE_USAGE)pCreateResource->Usage),
         pCreateResource->BindFlags,
-        pCreateResource->MapFlags, ResourceMap2Str((D3D10_DDI_MAP) pCreateResource->MapFlags),
+        pCreateResource->MapFlags, ResourceCpuAccess2Str(pCreateResource->MapFlags),
         pCreateResource->MiscFlags,
         pCreateResource->Format,
         pCreateResource->MipLevels,
@@ -1580,7 +1593,7 @@ static void APIENTRY ddi10CreateResource(
         pCreateResource->ResourceDimension,
         pCreateResource->Usage, ResourceUsage2Str((D3D10_DDI_RESOURCE_USAGE)pCreateResource->Usage),
         pCreateResource->BindFlags,
-        pCreateResource->MapFlags, ResourceMap2Str((D3D10_DDI_MAP) pCreateResource->MapFlags),
+        pCreateResource->MapFlags, ResourceCpuAccess2Str(pCreateResource->MapFlags),
         pCreateResource->MiscFlags,
         pCreateResource->Format,
         pCreateResource->MipLevels,
