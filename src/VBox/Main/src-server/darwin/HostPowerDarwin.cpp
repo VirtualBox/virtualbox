@@ -229,7 +229,7 @@ void HostPowerServiceDarwin::checkBatteryCriticalLevel(bool *pfCriticalChanged)
                 result = CFDictionaryGetValueIfPresent(pSource, CFSTR(kIOPSDeadWarnLevelKey), &psValue);
                 if (result)
                     CFNumberGetValue((CFNumberRef)psValue, kCFNumberSInt32Type, &criticalValue);
-                critical = remCapacity < criticalValue;
+                critical = remCapacity < (float)criticalValue;
 
                 /* We have to take action only if we are on battery, the
                  * previous state wasn't critical, the state has changed & the
@@ -249,4 +249,3 @@ void HostPowerServiceDarwin::checkBatteryCriticalLevel(bool *pfCriticalChanged)
     CFRelease(pBlob);
     CFRelease(pSources);
 }
-
