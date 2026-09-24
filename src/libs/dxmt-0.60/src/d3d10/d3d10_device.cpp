@@ -136,7 +136,7 @@ MTLD3D10Device::DrawIndexedInstanced(
     UINT StartInstanceLocation
 ) {
   d3d11_context_->DrawIndexedInstanced(
-      IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartIndexLocation
+      IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation
   );
 }
 
