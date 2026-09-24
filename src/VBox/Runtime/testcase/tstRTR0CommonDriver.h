@@ -1,4 +1,4 @@
-/* $Id: tstRTR0CommonDriver.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: tstRTR0CommonDriver.h 115316 2026-09-24 07:21:04Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT R0 Testcase - Common header for the testcase drivers.
  */
@@ -45,6 +45,7 @@
 *   Header Files                                                               *
 *******************************************************************************/
 #include <iprt/ctype.h>
+#include <iprt/err.h>
 #include <iprt/string.h>
 #include <VBox/sup.h>
 #include "tstRTR0CommonReq.h"
@@ -136,6 +137,11 @@ static RTEXITCODE RTR3TestR0CommonDriverInit(const char *pszTestServiceName)
     rc = SUPR3LoadServiceModule(szPath, pszTestServiceName, szSrvReqHandler, &g_pvImageBase);
     if (RT_FAILURE(rc))
     {
+#ifdef RT_OS_WINDOWS
+        if (rc == VERR_LDR_IMAGE_HASH) /* incorrectly signed seems to end up here as well.  */
+            return RTTestSkipAndDestroy(g_hTest, "SUPR3LoadServiceModule(%s,%s,%s,) -> %Rrc",
+                                        szPath, pszTestServiceName, szSrvReqHandler, rc);
+#endif
         RTTestFailed(g_hTest, "SUPR3LoadServiceModule(%s,%s,%s,) failed with rc=%Rrc\n",
                      szPath, pszTestServiceName, szSrvReqHandler, rc);
         return RTTestSummaryAndDestroy(g_hTest);
