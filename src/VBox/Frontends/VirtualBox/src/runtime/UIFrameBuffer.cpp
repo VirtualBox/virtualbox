@@ -77,8 +77,8 @@ signals:
 
     /** Notifies listener about guest-screen resolution changes. */
     void sigNotifyChange(int iWidth, int iHeight);
-    /** Notifies listener about guest-screen updates. */
-    void sigNotifyUpdate(int iX, int iY, int iWidth, int iHeight);
+    /** Notifies listener that one or more guest-screen updates are pending. */
+    void sigNotifyUpdatePending();
     /** Notifies listener about guest-screen visible-region changes. */
     void sigSetVisibleRegion(QRegion region);
 
@@ -262,6 +262,8 @@ public:
 
 protected slots:
 
+    /** Handles coalesced guest-screen updates. */
+    void sltHandlePendingNotifyUpdate();
     /** Handles guest requests to change mouse pointer shape or position. */
     void sltMousePointerShapeOrPositionChange();
 
@@ -274,6 +276,8 @@ protected:
 
     /** Updates coordinate-system: */
     void updateCoordinateSystem();
+    /** Queues a guest-screen update rectangle for asynchronous GUI-thread processing. */
+    void queueNotifyUpdate(ULONG uX, ULONG uY, ULONG uWidth, ULONG uHeight);
 
     /** Default paint routine. */
     void paintDefault(QPaintEvent *pEvent);
@@ -312,6 +316,10 @@ protected:
     CDisplaySourceBitmap m_pendingSourceBitmap;
     /** Holds whether there is a pending source bitmap which must be applied. */
     bool m_fPendingSourceBitmap;
+    /** Holds the coalesced pending guest-screen update region. */
+    QRegion m_pendingUpdateRegion;
+    /** Holds whether a pending-update flush has already been queued. */
+    bool m_fNotifyUpdatePending;
 
     /** Holds machine-view this frame-buffer is bounded to. */
     UIMachineView *m_pMachineView;
@@ -391,6 +399,7 @@ UIFrameBufferPrivate::UIFrameBufferPrivate()
     : m_uScreenId(0)
     , m_iWidth(0), m_iHeight(0)
     , m_fPendingSourceBitmap(false)
+    , m_fNotifyUpdatePending(false)
     , m_pMachineView(NULL)
     , m_iWinId(0)
     , m_fUpdatesAllowed(false)
@@ -695,7 +704,7 @@ STDMETHODIMP UIFrameBufferPrivate::NotifyUpdate(ULONG uX, ULONG uY, ULONG uWidth
     LogRel3(("GUI: UIFrameBufferPrivate::NotifyUpdate: Origin=%lux%lu, Size=%lux%lu, Sending to async-handler\n",
              (unsigned long)uX, (unsigned long)uY,
              (unsigned long)uWidth, (unsigned long)uHeight));
-    emit sigNotifyUpdate(uX, uY, uWidth, uHeight);
+    queueNotifyUpdate(uX, uY, uWidth, uHeight);
 
     /* Unlock access to frame-buffer: */
     unlock();
@@ -748,7 +757,7 @@ STDMETHODIMP UIFrameBufferPrivate::NotifyUpdateImage(ULONG uX, ULONG uY,
         LogRel3(("GUI: UIFrameBufferPrivate::NotifyUpdateImage: Origin=%lux%lu, Size=%lux%lu, Sending to async-handler\n",
                  (unsigned long)uX, (unsigned long)uY,
                  (unsigned long)uWidth, (unsigned long)uHeight));
-        emit sigNotifyUpdate(uX, uY, uWidth, uHeight);
+        queueNotifyUpdate(uX, uY, uWidth, uHeight);
     }
 
     /* Unlock access to frame-buffer: */
@@ -1221,8 +1230,8 @@ void UIFrameBufferPrivate::prepareConnections()
     connect(this, &UIFrameBufferPrivate::sigNotifyChange,
             m_pMachineView, &UIMachineView::sltHandleNotifyChange,
             Qt::QueuedConnection);
-    connect(this, &UIFrameBufferPrivate::sigNotifyUpdate,
-            m_pMachineView, &UIMachineView::sltHandleNotifyUpdate,
+    connect(this, &UIFrameBufferPrivate::sigNotifyUpdatePending,
+            this, &UIFrameBufferPrivate::sltHandlePendingNotifyUpdate,
             Qt::QueuedConnection);
     connect(this, &UIFrameBufferPrivate::sigSetVisibleRegion,
             m_pMachineView, &UIMachineView::sltHandleSetVisibleRegion,
@@ -1240,8 +1249,8 @@ void UIFrameBufferPrivate::cleanupConnections()
     /* Detach EMT connections: */
     disconnect(this, &UIFrameBufferPrivate::sigNotifyChange,
                m_pMachineView, &UIMachineView::sltHandleNotifyChange);
-    disconnect(this, &UIFrameBufferPrivate::sigNotifyUpdate,
-               m_pMachineView, &UIMachineView::sltHandleNotifyUpdate);
+    disconnect(this, &UIFrameBufferPrivate::sigNotifyUpdatePending,
+               this, &UIFrameBufferPrivate::sltHandlePendingNotifyUpdate);
     disconnect(this, &UIFrameBufferPrivate::sigSetVisibleRegion,
                m_pMachineView, &UIMachineView::sltHandleSetVisibleRegion);
 
@@ -1264,6 +1273,52 @@ void UIFrameBufferPrivate::updateCoordinateSystem()
     /* Take the device-pixel-ratio into account: */
     if (useUnscaledHiDPIOutput())
         m_transform = m_transform.scale(1.0 / devicePixelRatio(), 1.0 / devicePixelRatio());
+}
+
+void UIFrameBufferPrivate::queueNotifyUpdate(ULONG uX, ULONG uY, ULONG uWidth, ULONG uHeight)
+{
+    const QRect rect((int)uX, (int)uY, (int)uWidth, (int)uHeight);
+    if (rect.isEmpty())
+        return;
+
+    m_pendingUpdateRegion |= rect;
+    if (!m_fNotifyUpdatePending)
+    {
+        m_fNotifyUpdatePending = true;
+        emit sigNotifyUpdatePending();
+    }
+}
+
+void UIFrameBufferPrivate::sltHandlePendingNotifyUpdate()
+{
+    if (!m_pMachineView)
+    {
+        lock();
+        m_pendingUpdateRegion = QRegion();
+        m_fNotifyUpdatePending = false;
+        unlock();
+        return;
+    }
+
+    lock();
+
+    if (   m_fUnused
+        || m_pendingUpdateRegion.isEmpty())
+    {
+        m_pendingUpdateRegion = QRegion();
+        m_fNotifyUpdatePending = false;
+        unlock();
+        return;
+    }
+
+    const QRegion updateRegion = m_pendingUpdateRegion;
+    m_pendingUpdateRegion = QRegion();
+    m_fNotifyUpdatePending = false;
+
+    unlock();
+
+    for (QRegion::const_iterator it = updateRegion.begin(); it != updateRegion.end(); ++it)
+        m_pMachineView->sltHandleNotifyUpdate(it->x(), it->y(), it->width(), it->height());
 }
 
 void UIFrameBufferPrivate::paintDefault(QPaintEvent *pEvent)
