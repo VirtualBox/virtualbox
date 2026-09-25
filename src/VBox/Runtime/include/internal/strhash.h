@@ -1,4 +1,4 @@
-/* $Id: strhash.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: strhash.h 115328 2026-09-25 17:55:14Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Internal header containing inline string hashing functions.
  */
@@ -81,10 +81,13 @@ DECLINLINE(uint32_t) sdbmN(const char *str, size_t cchMax, size_t *pcch)
     uint32_t hash = 0;
     int c;
 
-    while ((c = *pu8++) && cchMax-- > 0)
+    while ((cchMax-- > 0) && (c = *pu8))
+    {
         hash = c + (hash << 6) + (hash << 16) - hash;
+        pu8++;
+    }
 
-    *pcch = (uintptr_t)pu8 - (uintptr_t)str - 1;
+    *pcch = (uintptr_t)pu8 - (uintptr_t)str;
     return hash;
 }
 
@@ -111,7 +114,7 @@ DECLINLINE(uint32_t) sdbmIncN(const char *psz, size_t cchMax, uint32_t uHash)
     uint8_t *pu8 = (uint8_t *)psz;
     int      c;
 
-    while ((c = *pu8++) && cchMax-- > 0)
+    while ((cchMax-- > 0) && (c = *pu8++))
         uHash = c + (uHash << 6) + (uHash << 16) - uHash;
 
     return uHash;
