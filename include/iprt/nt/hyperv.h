@@ -1121,7 +1121,7 @@ typedef HV_X64_DELIVERABILITY_NOTIFICATIONS_REGISTER *PHV_X64_DELIVERABILITY_NOT
 
 /** Value format for HvX64RegisterEs..Tr.
  * @sa WHV_X64_SEGMENT_REGISTER  */
-typedef struct _HV_X64_SEGMENT_REGISTER
+typedef struct
 {
     uint64_t            Base;
     uint32_t            Limit;
@@ -1526,7 +1526,7 @@ typedef HV_X64_MEMORY_INTERCEPT_MESSAGE const *PCHV_X64_MEMORY_INTERCEPT_MESSAGE
 
 
 /** The payload format for HvMessageTypeX64MsrIntercept. */
-typedef struct _HV_X64_MSR_INTERCEPT_MESSAGE
+typedef struct
 {
     HV_X64_INTERCEPT_MESSAGE_HEADER     Header;                 /**< 0x00 */
     uint32_t                            MsrNumber;              /**< 0x28 (ecx) */
@@ -1563,7 +1563,7 @@ typedef union HV_X64_IO_PORT_ACCESS_INFO
 AssertCompileSize(HV_X64_IO_PORT_ACCESS_INFO, 1);
 
 /** The payload format for HvMessageTypeX64IoPortIntercept.  */
-typedef struct _HV_X64_IO_PORT_INTERCEPT_MESSAGE
+typedef struct
 {
     HV_X64_INTERCEPT_MESSAGE_HEADER     Header;                 /**< 0x00 */
     uint16_t                            PortNumber;             /**< 0x28 */
