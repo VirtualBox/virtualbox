@@ -1,4 +1,4 @@
-; $Id: VBoxRTImp-gcc.def 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+; $Id: VBoxRTImp-gcc.def 115334 2026-09-25 18:45:56Z knut.osmundsen@oracle.com $
 ;; @file
 ; VirtualBox Runtime DLL - Stable C++ Interface Definition file, 64-bit Visual C++.
 
@@ -379,7 +379,7 @@ EXPORTS
     _ZN22RTCRestBinaryParameter16xmitHttpCallbackEP14RTHTTPINTERNALPvmyPmS2_ ; int64=llong
     _ZN22RTCRestBinaryParameter19setProducerCallbackEPFiPS_PvmmPmES1_m   ; before-noexcept int64=long
     _ZN22RTCRestBinaryParameter19setProducerCallbackEPFiPS_PvmyPmES1_y   ; before-noexcept int64=llong
-    _ZN22RTCRestBinaryParameter19setProducerCallbackEPDoFiPS_PvmyPmES1_m ; after-noexcept  int64=long
+    _ZN22RTCRestBinaryParameter19setProducerCallbackEPDoFiPS_PvmmPmES1_m ; after-noexcept  int64=long
     _ZN22RTCRestBinaryParameter19setProducerCallbackEPDoFiPS_PvmyPmES1_y ; after-noexcept  int64=llong
     _ZN22RTCRestBinaryParameterC1Ev
     _ZN22RTCRestBinaryParameterC2Ev
