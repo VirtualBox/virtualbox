@@ -1,4 +1,4 @@
-/* $Id: isomakercmd.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: isomakercmd.cpp 115342 2026-09-25 18:57:50Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - ISO Image Maker Command.
  */
@@ -126,6 +126,9 @@ typedef enum RTFSISOMAKERCMDOPT
     RTFSISOMAKERCMD_OPT_POP,
 
     RTFSISOMAKERCMD_OPT_RENAME,
+
+    RTFSISOMAKERCMD_OPT_IGNORE_SYMLINKS,
+    RTFSISOMAKERCMD_OPT_NO_IGNORE_SYMLINKS,
 
     RTFSISOMAKERCMD_OPT_ELTORITO_NEW_ENTRY,
     RTFSISOMAKERCMD_OPT_ELTORITO_ADD_IMAGE,
@@ -410,6 +413,9 @@ typedef struct RTFSISOMAKERCMDOPTS
      * @{ */
     /** The trans.tbl filename when enabled.  We must not import these files. */
     const char         *pszTransTbl;
+    /** Whether to just ignore symbolic links or fail because we don't implement
+     *  them yet. */
+    bool                fIgnoreSymlinks;
     /** @} */
 
     /** Number of items (files, directories, images, whatever) we've added. */
@@ -505,6 +511,9 @@ static const RTGETOPTDEF g_aRtFsIsoMakerOptions[] =
     { "--chmod",                        RTFSISOMAKERCMD_OPT_CHMOD,                          RTGETOPT_REQ_STRING  },
     { "--chown",                        RTFSISOMAKERCMD_OPT_CHOWN,                          RTGETOPT_REQ_STRING  },
     { "--chgrp",                        RTFSISOMAKERCMD_OPT_CHGRP,                          RTGETOPT_REQ_STRING  },
+
+    { "--ignore-symlinks",              RTFSISOMAKERCMD_OPT_IGNORE_SYMLINKS,                RTGETOPT_REQ_NOTHING  },
+    { "--no-ignore-symlinks",           RTFSISOMAKERCMD_OPT_NO_IGNORE_SYMLINKS,             RTGETOPT_REQ_NOTHING  },
 
     { "--eltorito-new-entry",           RTFSISOMAKERCMD_OPT_ELTORITO_NEW_ENTRY,             RTGETOPT_REQ_NOTHING },
     { "--eltorito-add-image",           RTFSISOMAKERCMD_OPT_ELTORITO_ADD_IMAGE,             RTGETOPT_REQ_STRING },
@@ -1936,8 +1945,9 @@ static int rtFsIsoMakerCmdAddVfsDirRecursive(PRTFSISOMAKERCMDOPTS pOpts, RTVFSDI
                     /*
                      * TODO: ISO FS symlink support.
                      */
-                    rc = rtFsIsoMakerCmdErrorRc(pOpts, VERR_NOT_IMPLEMENTED,
-                                                "Adding symlink '%s' failed: not yet implemented", pszSrc);
+                    if (!pOpts->fIgnoreSymlinks)
+                        rc = rtFsIsoMakerCmdErrorRc(pOpts, VERR_NOT_IMPLEMENTED,
+                                                    "Adding symlink '%s' failed: not yet implemented", pszSrc);
                 }
                 else
                     rc = rtFsIsoMakerCmdErrorRc(pOpts, VERR_NOT_IMPLEMENTED,
@@ -2252,10 +2262,10 @@ static int rtFsIsoMakerCmdAddSomething(PRTFSISOMAKERCMDOPTS pOpts, const char *p
             return rtFsIsoMakerCmdAddDir(pOpts, &Parsed, &ObjInfo);
         }
 
-        if (RTFS_IS_SYMLINK(ObjInfo.Attr.fMode))
+        if (!RTFS_IS_SYMLINK(ObjInfo.Attr.fMode))
+            return rtFsIsoMakerCmdErrorRc(pOpts, VERR_NOT_IMPLEMENTED, "Adding special file '%s' failed: not implemented", pszSpec);
+        if (!pOpts->fIgnoreSymlinks)
             return rtFsIsoMakerCmdErrorRc(pOpts, VERR_NOT_IMPLEMENTED, "Adding symlink '%s' failed: not yet implemented", pszSpec);
-
-        return rtFsIsoMakerCmdErrorRc(pOpts, VERR_NOT_IMPLEMENTED, "Adding special file '%s' failed: not implemented", pszSpec);
     }
 
     return VINF_SUCCESS;
@@ -3465,6 +3475,17 @@ static int rtFsIsoMakerCmdParse(PRTFSISOMAKERCMDOPTS pOpts, unsigned cArgs, char
 
 
             /*
+             * File selection / hacks.
+             */
+            case RTFSISOMAKERCMD_OPT_IGNORE_SYMLINKS:
+                pOpts->fIgnoreSymlinks = true;
+                break;
+
+            case RTFSISOMAKERCMD_OPT_NO_IGNORE_SYMLINKS:
+                pOpts->fIgnoreSymlinks = false;
+                break;
+
+            /*
              * File manipulation.
              */
             case RTFSISOMAKERCMD_OPT_RENAME:
@@ -3751,6 +3772,7 @@ RTDECL(int) RTFsIsoMakerCmdEx(unsigned cArgs, char **papszArgs, RTVFSDIR hVfsCwd
     Opts.afNameSpecifiers[0]    = RTFSISOMAKERCMDNAME_MAJOR_MASK;
     Opts.fDstNamespaces         = RTFSISOMAKERCMDNAME_MAJOR_MASK;
     Opts.pszTransTbl            = "TRANS.TBL"; /** @todo query this below */
+    Opts.fIgnoreSymlinks        = false;
     for (uint32_t i = 0; i < RT_ELEMENTS(Opts.aBootCatEntries); i++)
         Opts.aBootCatEntries[i].u.Section.idxImageObj = UINT32_MAX;
 

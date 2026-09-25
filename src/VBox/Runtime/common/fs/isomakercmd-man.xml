@@ -36,7 +36,7 @@
 <refentry id="viso" lang="en">
 
   <refentryinfo>
-    <pubdate>$Date: 2025-11-14 17:43:28 +0100 (Fri, 14 Nov 2025) $</pubdate>
+    <pubdate>$Date: 2026-09-25 20:57:50 +0200 (Fri, 25 Sep 2026) $</pubdate>
     <title>VISO file format / RTIsoMaker</title>
   </refentryinfo>
 
@@ -281,6 +281,19 @@
           </listitem>
         </varlistentry>
 
+      </variablelist>
+    </refsect2>
+
+    <refsect2 id="viso-options-filtering">
+      <title>Filtering</title>
+      <variablelist>
+
+        <varlistentry>
+          <term><option>--ignore-symlinks</option>,<option>--no-ignore-symlinks</option></term>
+          <listitem><para>Whether to ignore symbolic links or not (default). This is a hack for
+            missing symblic links support.</para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
