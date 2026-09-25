@@ -49,9 +49,7 @@ __RCSID("$NetBSD: ashldi3.c,v 1.9 2005/12/11 12:24:37 christos Exp $");
  * This is the same as logical shift left!
  */
 quad_t
-__ashldi3(a, shift)
-	quad_t a;
-	qshift_t shift;
+__ashldi3(quad_t a, qshift_t shift)
 {
 	union uu aa;
 

@@ -49,8 +49,7 @@ __RCSID("$NetBSD: ucmpdi2.c,v 1.8 2005/12/11 12:24:37 christos Exp $");
  * Neither a nor b are considered signed.
  */
 int
-__ucmpdi2(a, b)
-	u_quad_t a, b;
+__ucmpdi2(u_quad_t a, u_quad_t b)
 {
 	union uu aa, bb;
 

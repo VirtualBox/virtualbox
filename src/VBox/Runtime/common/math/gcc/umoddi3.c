@@ -48,8 +48,7 @@ __RCSID("$NetBSD: umoddi3.c,v 1.8 2005/12/11 12:24:37 christos Exp $");
  * Return remainder after dividing two unsigned quads.
  */
 u_quad_t
-__umoddi3(a, b)
-	u_quad_t a, b;
+__umoddi3(u_quad_t a, u_quad_t b)
 {
 	u_quad_t r;
 

@@ -49,8 +49,7 @@ __RCSID("$NetBSD: notdi2.c,v 1.8 2005/12/11 12:24:37 christos Exp $");
  * than `not'.
  */
 quad_t
-__one_cmpldi2(a)
-	quad_t a;
+__one_cmpldi2(quad_t a)
 {
 	union uu aa;
 

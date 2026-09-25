@@ -61,7 +61,7 @@ typedef unsigned short digit;
 typedef u_int digit;
 #endif
 
-static void shl __P((digit *p, int len, int sh));
+static void shl __P((digit *p, int len, unsigned sh));
 
 /*
  * __qdivrem(u, v, rem) returns u/v and, optionally, sets *rem to u%v.
@@ -72,14 +72,14 @@ static void shl __P((digit *p, int len, int sh));
  * leading zeros).
  */
 u_quad_t
-__qdivrem(uq, vq, arq)
-	u_quad_t uq, vq, *arq;
+__qdivrem(u_quad_t uq, u_quad_t vq, u_quad_t *arq)
 {
 	union uu tmp;
 	digit *u, *v, *q;
 	digit v1, v2;
 	u_int qhat, rhat, t;
-	int m, n, d, j, i;
+	int m, n, j, i;
+	unsigned d;
 	digit uspace[5], vspace[5], qspace[5];
 
 	/*
@@ -92,7 +92,7 @@ __qdivrem(uq, vq, arq)
 		tmp.ul[H] = tmp.ul[L] = 1 / zero;
 		if (arq)
 			*arq = uq;
-		return (tmp.q);
+		return (tmp.uq);
 	}
 	if (uq < vq) {
 		if (arq)
@@ -152,7 +152,7 @@ __qdivrem(uq, vq, arq)
 				*arq = rbj % t;
 			tmp.ul[H] = COMBINE(q1, q2);
 			tmp.ul[L] = COMBINE(q3, q4);
-			return (tmp.q);
+			return (tmp.uq);
 		}
 	}
 
@@ -260,12 +260,12 @@ __qdivrem(uq, vq, arq)
 		}
 		tmp.ul[H] = COMBINE(uspace[1], uspace[2]);
 		tmp.ul[L] = COMBINE(uspace[3], uspace[4]);
-		*arq = tmp.q;
+		*arq = tmp.uq;
 	}
 
 	tmp.ul[H] = COMBINE(qspace[1], qspace[2]);
 	tmp.ul[L] = COMBINE(qspace[3], qspace[4]);
-	return (tmp.q);
+	return (tmp.uq);
 }
 
 /*
@@ -274,7 +274,7 @@ __qdivrem(uq, vq, arq)
  * We may assume len >= 0.  NOTE THAT THIS WRITES len+1 DIGITS.
  */
 static void
-shl(digit *p, int len, int sh)
+shl(digit *p, int len, unsigned sh)
 {
 	int i;
 

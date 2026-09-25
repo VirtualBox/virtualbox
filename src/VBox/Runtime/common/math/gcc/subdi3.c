@@ -49,8 +49,7 @@ __RCSID("$NetBSD: subdi3.c,v 1.9 2005/12/11 12:24:37 christos Exp $");
  * from a single u_int difference x-y occurs if and only if (x-y) > x.
  */
 quad_t
-__subdi3(a, b)
-	quad_t a, b;
+__subdi3(quad_t a, quad_t b)
 {
 	union uu aa, bb, diff;
 

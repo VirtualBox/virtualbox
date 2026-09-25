@@ -48,8 +48,7 @@ __RCSID("$NetBSD: anddi3.c,v 1.8 2005/12/11 12:24:37 christos Exp $");
  * Return a & b, in quad.
  */
 quad_t
-__anddi3(a, b)
-	quad_t a, b;
+__anddi3(quad_t a, quad_t b)
 {
 	union uu aa, bb;
 

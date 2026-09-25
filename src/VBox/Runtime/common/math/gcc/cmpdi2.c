@@ -50,8 +50,7 @@ __RCSID("$NetBSD: cmpdi2.c,v 1.8 2005/12/11 12:24:37 christos Exp $");
  * signed.
  */
 int
-__cmpdi2(a, b)
-	quad_t a, b;
+__cmpdi2(quad_t a, quad_t b)
 {
 	union uu aa, bb;
 

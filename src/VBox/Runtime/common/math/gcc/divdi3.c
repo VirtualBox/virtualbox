@@ -49,14 +49,13 @@ __RCSID("$NetBSD: divdi3.c,v 1.8 2005/12/11 12:24:37 christos Exp $");
  * ??? if -1/2 should produce -1 on this machine, this code is wrong
  */
 quad_t
-__divdi3(a, b)
-	quad_t a, b;
+__divdi3(quad_t a, quad_t b)
 {
 	u_quad_t ua, ub, uq;
 	int neg = 0;
 
-	ua = a;
-	ub = b;
+	ua = (u_quad_t)a;
+	ub = (u_quad_t)b;
 
 	if (a < 0)
 		ua = -ua, neg ^= 1;
@@ -66,5 +65,5 @@ __divdi3(a, b)
 	uq = __qdivrem(ua, ub, (u_quad_t *)0);
 	if (neg)
 		uq = - uq;
-	return uq;
+	return (quad_t)uq;
 }

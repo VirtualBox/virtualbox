@@ -48,9 +48,7 @@ __RCSID("$NetBSD: lshrdi3.c,v 1.9 2005/12/11 12:24:37 christos Exp $");
  * Shift an (unsigned) quad value right (logical shift right).
  */
 quad_t
-__lshrdi3(a, shift)
-	quad_t a;
-	qshift_t shift;
+__lshrdi3(quad_t a, qshift_t shift)
 {
 	union uu aa;
 

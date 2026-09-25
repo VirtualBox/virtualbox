@@ -48,8 +48,7 @@ __RCSID("$NetBSD: udivdi3.c,v 1.8 2005/12/11 12:24:37 christos Exp $");
  * Divide two unsigned quads.
  */
 u_quad_t
-__udivdi3(a, b)
-	u_quad_t a, b;
+__udivdi3(u_quad_t a, u_quad_t b)
 {
 
 	return (__qdivrem(a, b, (u_quad_t *)0));
