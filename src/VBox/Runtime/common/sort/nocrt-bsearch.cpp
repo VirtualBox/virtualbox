@@ -1,4 +1,4 @@
-/* $Id: nocrt-bsearch.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: nocrt-bsearch.cpp 115320 2026-09-25 11:35:03Z vitali.pelenjow@oracle.com $ */
 /** @file
  * IPRT - No-CRT - bsearch().
  */
@@ -58,7 +58,7 @@ void *RT_NOCRT(bsearch)(const void *pvKey, const void *pvBase, size_t cEntries, 
         size_t const        i       = (iEnd - iStart) / 2 + iStart;
         const void * const  pvEntry = (const char *)pvBase + cbEntry * i;
         int const           iDiff   = pfnCompare(pvKey, pvEntry);
-        if (iDiff > 0)       /* target is before i */
+        if (iDiff < 0)       /* target is before i */
         {
             if (i > iStart)
                 iEnd = i;
