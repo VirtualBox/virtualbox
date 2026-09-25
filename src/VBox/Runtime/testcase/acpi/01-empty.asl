@@ -1,4 +1,4 @@
-/* $Id: 01-empty.asl 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: 01-empty.asl 115333 2026-09-25 18:38:00Z knut.osmundsen@oracle.com $ */
 /** @file
  * Runtime ACPI testcase - Empty body.
  */
@@ -22,7 +22,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, see <https://www.gnu.org/licenses>.
  *
- * SPDX-License-Identifier: GPL-3.0-only
+ * The contents of this file may alternatively be used under the terms
+ * of the Common Development and Distribution License Version 1.0
+ * (CDDL), a copy of it is provided in the "COPYING.CDDL" file included
+ * in the VirtualBox distribution, in which case the provisions of the
+ * CDDL are applicable instead of those of the GPL.
+ *
+ * You may elect to license modified versions of this file under the
+ * terms and conditions of either the GPL or the CDDL or both.
+ *
+ * SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
  */
 DefinitionBlock ("", "SSDT", 1, "VBOX  ", "VBOXTEST", 2)
 {

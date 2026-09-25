@@ -1,4 +1,4 @@
-# $Id: .scm-settings 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $
+# $Id: .scm-settings 115333 2026-09-25 18:38:00Z knut.osmundsen@oracle.com $
 ## @file
 # Source code massager settings for Runtime.
 #
@@ -34,21 +34,21 @@
 # SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 #
 
+# All should be exported.
+#--svn-sync-process-export all
+
+
 --license-ose-dual
 
 /common/asn1/oiddb.cfg: --treat-as Makefile
 /common/err/errmsg.cpp: --no-fix-err-h
 
-# Skip test certificates.
---filter-out-files /testcase/tstRTCrX509*.pem
---filter-out-files /testcase/tstRTCrX509*.der
-
-# Skip test binaries and other output/input files.
---filter-out-files /testcase/*.bin
---filter-out-files /testcase/*.o
---filter-out-files /testcase/tstRTLdrMachORelocs-1.o
---filter-out-files /testcase/tstRTLdrMachORelocs-1.S
---filter-out-files /testcase/tstRTLdrMachORelocs-1.disas
+# Testcase data:
+/testcase/tstRTCrX509*.pem:                     --treat-as plaintext
+/testcase/tstRTCrX509*.der:                     --treat-as binary
+/testcase/tstRTLdrMachORelocs-1.o:              --treat-as binary
+/testcase/tstRTLdrMachORelocs-1.S:              --treat-as gas
+/testcase/tstRTLdrMachORelocs-1.disas:          --treat-as plaintext
 
 # Small C and ASM headers, no copyright, license text or header guards.
 /r3/win/vcc-fakes-kernel32-*.h: --external-copyright --no-update-license --no-fix-header-guards
