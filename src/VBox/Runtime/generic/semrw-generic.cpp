@@ -1,4 +1,4 @@
-/* $Id: semrw-generic.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: semrw-generic.cpp 115339 2026-09-25 18:53:24Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Read-Write Semaphore, Generic.
  *
@@ -746,9 +746,26 @@ DECL_FORCE_INLINE(int) rtSemRWRequestWrite(RTSEMRW hRWSem, RTMSINTERVAL cMillies
      */
     if (pThis->u32Magic == RTSEMRW_MAGIC)
     {
-        RTCritSectEnter(&pThis->CritSect);
-        /* Adjust this counter, whether we got the critsect or not. */
+        int rc2 = RTCritSectEnter(&pThis->CritSect);
+        AssertRCReturn(rc2, rc2);
+
+        /* Adjust the waiting-writer count. */
+        Assert(pThis->cWritesWaiting > 0);
         pThis->cWritesWaiting--;
+
+        /*
+         * If this was the final waiting writer, we may have consumed the
+         * wakeup which kept readers blocked. So signal remaining readers to
+         * not run into waiting timeouts.
+         */
+        if (    !pThis->cWritesWaiting
+            &&  !pThis->cWrites
+            &&  !pThis->cReads)
+        {
+            rc2 = RTSemEventMultiSignal(pThis->ReadEvent);
+            AssertMsgRC(rc2, ("Failed to signal readers on rwsem %p, rc=%Rrc\n", hRWSem, rc2));
+            pThis->fNeedResetReadEvent = true;
+        }
         RTCritSectLeave(&pThis->CritSect);
     }
     return rc;
