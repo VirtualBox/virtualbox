@@ -1,4 +1,4 @@
-/* $Id: isomaker.cpp 106320 2024-10-15 12:08:41Z klaus.espenlaub@oracle.com $ */
+/* $Id: isomaker.cpp 115331 2026-09-25 17:56:55Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - ISO Image Maker.
  */
@@ -2018,10 +2018,10 @@ static int rtFsIsoMakerNormalizeNameForPrimaryIso9660(PRTFSISOMAKERINT pThis, PR
                 {
                     size_t cchBasename = rtFsIsoMakerCopyIso9660Name(pszDst, ISO9660_MAX_NAME_LEN - 2,
                                                                      pchSrc, offLastDot);
-                    if (cchBasename + 1 + cchDstExt <= ISO9660_MAX_NAME_LEN)
+                    if (cchBasename + 1 + RT_MIN(cchDstExt, 3) + (fIsDir ? 0 : 2) <= ISO9660_MAX_NAME_LEN)
                         cchDst = cchBasename;
                     else
-                        cchDst = ISO9660_MAX_NAME_LEN - 1 - RT_MIN(cchDstExt, 4);
+                        cchDst = ISO9660_MAX_NAME_LEN - 1 - RT_MIN(cchDstExt, 3) - (fIsDir ? 0 : 2);
                     offDstDot = cchDst;
                     pszDst[cchDst++] = '.';
                     cchDst += rtFsIsoMakerCopyIso9660Name(&pszDst[cchDst], ISO9660_MAX_NAME_LEN - 1 - cchDst,
