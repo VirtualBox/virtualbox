@@ -1,4 +1,4 @@
-/* $Id: thread.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: thread.h 115325 2026-09-25 17:49:50Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Internal RTThread header.
  */
@@ -112,9 +112,9 @@ typedef struct RTTHREADINT
     /** Actual stack size. */
     size_t                  cbStack;
 #ifdef IN_RING3
-    /** The best stack top we can get.
+    /** The best stack base we can get.
      * This is not valid before rtThreadMain has been called by the new thread.  */
-    void                    *pvStackTop;
+    void                   *pvStackBase;
     /** The lock validator data. */
     RTLOCKVALPERTHREAD      LockValidator;
 #endif /* IN_RING3 */
@@ -295,12 +295,20 @@ DECLHIDDEN(bool) rtThreadPosixPriorityProxyStart(void);
 DECLHIDDEN(int)  rtThreadPosixPriorityProxyCall(PRTTHREADINT pTargetThread, PFNRT pfnFunction,
                                                 int cArgs, ...) RT_IPRT_CALLREQ_ATTR(2, 3, 4);
 # endif
-
-DECLINLINE(void *) rtThreadGetStackTop(PRTTHREADINT pThread)
-{
-    return pThread->pvStackTop;
-}
 #endif
+
+#ifdef IN_RING3
+/**
+ * Gets the (approximate) stack base address.
+ *
+ * On x86, amd64 and arm64, the stack grows with decreasing address, so the base
+ * address is the highest address in the stack memory block.
+ */
+DECLINLINE(void *) rtThreadGetStackBase(PRTTHREADINT pThread)
+{
+    return pThread->pvStackBase;
+}
+#endif /* IN_RING3 */
 
 #ifdef IPRT_INCLUDED_asm_h
 

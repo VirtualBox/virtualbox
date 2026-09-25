@@ -1,4 +1,4 @@
-/* $Id: init-darwin.cpp 112599 2026-01-15 10:57:56Z alexander.eichner@oracle.com $ */
+/* $Id: init-darwin.cpp 115325 2026-09-25 17:49:50Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Init Ring-3, POSIX Specific Code.
  */
@@ -513,7 +513,7 @@ static void rtR3DarwinSigSegvBusHandler(int iSignum, siginfo_t *pSigInfo, void *
             {
                 if (!(pThread->fIntFlags & (RTTHREADINT_FLAGS_ALIEN | RTTHREADINT_FLAGS_MAIN)))
                 {
-                    uTop = (uintptr_t)rtThreadGetStackTop(pThread);
+                    uTop = (uintptr_t)rtThreadGetStackBase(pThread);
                     cbToDump = uTop - uStack;
                 }
                 rtThreadRelease(pThread);

@@ -1,4 +1,4 @@
-/* $Id: thread-win.cpp 113928 2026-04-16 23:39:20Z knut.osmundsen@oracle.com $ */
+/* $Id: thread-win.cpp 115325 2026-09-25 17:49:50Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Threads, Windows.
  */
@@ -374,8 +374,8 @@ static DWORD __stdcall rtThreadNativeMain(void *pvArgs) RT_NOTHROW_DEF
     PRTTHREADINT    pThread = (PRTTHREADINT)pvArgs;
     RT_STACK_CHECK_RET_ADDR();
 
-    /* Set the stack top to the best value we can. */
-    pThread->pvStackTop = ASMReadStackPointer();
+    /* Set the stack base to the best value we can. */
+    pThread->pvStackBase = ASMReadStackPointer();
 
     if (!TlsSetValue(g_dwSelfTLS, pThread))
         AssertReleaseMsgFailed(("failed to set self TLS. lasterr=%d thread '%s'\n", GetLastError(), pThread->szName));

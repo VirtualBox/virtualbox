@@ -1,4 +1,4 @@
-/* $Id: init-linux.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: init-linux.cpp 115325 2026-09-25 17:49:50Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Init Ring-3, POSIX Specific Code.
  */
@@ -250,7 +250,7 @@ static void rtR3LnxSigSegvBusHandler(int iSignum, siginfo_t *pSigInfo, void *pvC
             {
                 if (!(pThread->fIntFlags & (RTTHREADINT_FLAGS_ALIEN | RTTHREADINT_FLAGS_MAIN)))
                 {
-                    uTop = (uintptr_t)rtThreadGetStackTop(pThread);
+                    uTop = (uintptr_t)rtThreadGetStackBase(pThread);
                     cbToDump = uTop - uStack;
                 }
                 rtThreadRelease(pThread);
