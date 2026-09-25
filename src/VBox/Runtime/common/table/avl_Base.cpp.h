@@ -1,4 +1,4 @@
-/* $Id: avl_Base.cpp.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: avl_Base.cpp.h 115340 2026-09-25 18:54:13Z knut.osmundsen@oracle.com $ */
 /** @file
  * kAVLBase - basic routines for all AVL trees.
  */
@@ -151,13 +151,13 @@
 /*
  * A stack used to avoid recursive calls...
  */
-typedef struct _kAvlStack
+typedef struct kAvlStack
 {
     unsigned        cEntries;
     PPKAVLNODECORE  aEntries[KAVL_MAX_STACK];
 } KAVLSTACK, *PKAVLSTACK;
 
-typedef struct _kAvlStack2
+typedef struct kAvlStack2
 {
     unsigned        cEntries;
     PKAVLNODECORE   aEntries[KAVL_MAX_STACK];

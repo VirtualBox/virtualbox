@@ -62,11 +62,11 @@ typedef void *  AVLPVKEY;
 /**
  * AVL Core node.
  */
-typedef struct _AVLPVNodeCore
+typedef struct AVLPVNodeCore
 {
     AVLPVKEY                Key;        /** Key value. */
-    struct _AVLPVNodeCore  *pLeft;      /** Pointer to left leaf node. */
-    struct _AVLPVNodeCore  *pRight;     /** Pointer to right leaf node. */
+    struct AVLPVNodeCore   *pLeft;      /** Pointer to left leaf node. */
+    struct AVLPVNodeCore   *pRight;     /** Pointer to right leaf node. */
     unsigned char           uchHeight;  /** Height of this tree: max(height(left), height(right)) + 1 */
 } AVLPVNODECORE, *PAVLPVNODECORE, **PPAVLPVNODECORE;
 
@@ -107,11 +107,11 @@ typedef unsigned long   AVLULKEY;
 /**
  * AVL Core node.
  */
-typedef struct _AVLULNodeCore
+typedef struct AVLULNodeCore
 {
     AVLULKEY                Key;        /** Key value. */
-    struct _AVLULNodeCore  *pLeft;      /** Pointer to left leaf node. */
-    struct _AVLULNodeCore  *pRight;     /** Pointer to right leaf node. */
+    struct AVLULNodeCore   *pLeft;      /** Pointer to left leaf node. */
+    struct AVLULNodeCore   *pRight;     /** Pointer to right leaf node. */
     unsigned char           uchHeight;  /** Height of this tree: max(height(left), height(right)) + 1 */
 } AVLULNODECORE, *PAVLULNODECORE, **PPAVLULNODECORE;
 
@@ -195,10 +195,10 @@ RTDECL(int)             RTAvlrPVDestroy(PAVLRPVTREE ppTree, PAVLRPVCALLBACK pfnC
 typedef uint32_t    AVLU32KEY;
 
 /** AVL Core node. */
-typedef struct _AVLU32NodeCore
+typedef struct AVLU32NodeCore
 {
-    struct _AVLU32NodeCore *pLeft;      /**< Pointer to left leaf node. */
-    struct _AVLU32NodeCore *pRight;     /**< Pointer to right leaf node. */
+    struct AVLU32NodeCore  *pLeft;      /**< Pointer to left leaf node. */
+    struct AVLU32NodeCore  *pRight;     /**< Pointer to right leaf node. */
     AVLU32KEY               Key;        /**< Key value. */
     unsigned char           uchHeight;  /**< Height of this tree: max(height(left), height(right)) + 1 */
 } AVLU32NODECORE, *PAVLU32NODECORE, **PPAVLU32NODECORE;
@@ -242,7 +242,7 @@ typedef uint32_t     AVLOU32KEY;
 /**
  * AVL Core node.
  */
-typedef struct _AVLOU32NodeCore
+typedef struct AVLOU32NodeCore
 {
     /** Key value. */
     AVLOU32KEY          Key;
@@ -288,13 +288,13 @@ RTDECL(int)                   RTAvloU32Destroy(PAVLOU32TREE pTree, PAVLOU32CALLB
 typedef uint32_t    AVLLU32KEY;
 
 /** AVL Core node. */
-typedef struct _AVLLU32NodeCore
+typedef struct AVLLU32NodeCore
 {
     AVLLU32KEY                  Key;        /**< Key value. */
     unsigned char               uchHeight;  /**< Height of this tree: max(height(left), height(right)) + 1 */
-    struct _AVLLU32NodeCore    *pLeft;      /**< Pointer to left leaf node. */
-    struct _AVLLU32NodeCore    *pRight;     /**< Pointer to right leaf node. */
-    struct _AVLLU32NodeCore    *pList;      /**< Pointer to next node with the same key. */
+    struct AVLLU32NodeCore     *pLeft;      /**< Pointer to left leaf node. */
+    struct AVLLU32NodeCore     *pRight;     /**< Pointer to right leaf node. */
+    struct AVLLU32NodeCore     *pList;      /**< Pointer to next node with the same key. */
 } AVLLU32NODECORE, *PAVLLU32NODECORE, **PPAVLLU32NODECORE;
 
 /** Callback function for RTAvllU32DoWithAll() & RTAvllU32Destroy().
@@ -327,10 +327,10 @@ RTDECL(int)                 RTAvllU32Destroy(PPAVLLU32NODECORE pTree, PAVLLU32CA
 typedef uint64_t    AVLU64KEY;
 
 /** AVL Core node. */
-typedef struct _AVLU64NodeCore
+typedef struct AVLU64NodeCore
 {
-    struct _AVLU64NodeCore *pLeft;      /**< Pointer to left leaf node. */
-    struct _AVLU64NodeCore *pRight;     /**< Pointer to right leaf node. */
+    struct AVLU64NodeCore  *pLeft;      /**< Pointer to left leaf node. */
+    struct AVLU64NodeCore  *pRight;     /**< Pointer to right leaf node. */
     AVLU64KEY               Key;        /**< Key value. */
     unsigned char           uchHeight;  /**< Height of this tree: max(height(left), height(right)) + 1 */
 } AVLU64NODECORE, *PAVLU64NODECORE, **PPAVLU64NODECORE;
@@ -422,7 +422,7 @@ typedef int32_t     AVLOGCPHYS;
 /**
  * AVL Core node.
  */
-typedef struct _AVLOGCPhysNodeCore
+typedef struct AVLOGCPhysNodeCore
 {
     /** Key value. */
     RTGCPHYS            Key;
@@ -474,7 +474,7 @@ typedef int32_t     AVLROGCPHYS;
 /**
  * AVL Core node.
  */
-typedef struct _AVLROGCPhysNodeCore
+typedef struct AVLROGCPhysNodeCore
 {
     /** First key value in the range (inclusive). */
     RTGCPHYS            Key;
@@ -527,14 +527,14 @@ RTDECL(PAVLROGCPHYSNODECORE)    RTAvlroGCPhysGetRight(PAVLROGCPHYSNODECORE pNode
 /**
  * AVL Core node.
  */
-typedef struct _AVLGCPtrNodeCore
+typedef struct AVLGCPtrNodeCore
 {
     /** Key value. */
     RTGCPTR             Key;
     /** Pointer to the left node. */
-    struct _AVLGCPtrNodeCore *pLeft;
+    struct AVLGCPtrNodeCore  *pLeft;
     /** Pointer to the right node. */
-    struct _AVLGCPtrNodeCore *pRight;
+    struct AVLGCPtrNodeCore  *pRight;
     /** Height of this tree: max(height(left), height(right)) + 1 */
     unsigned char       uchHeight;
 } AVLGCPTRNODECORE, *PAVLGCPTRNODECORE, **PPAVLGCPTRNODECORE;
@@ -573,7 +573,7 @@ typedef int32_t     AVLOGCPTR;
 /**
  * AVL Core node.
  */
-typedef struct _AVLOGCPtrNodeCore
+typedef struct AVLOGCPtrNodeCore
 {
     /** Key value. */
     RTGCPTR             Key;
@@ -619,16 +619,16 @@ RTDECL(int)                     RTAvloGCPtrDestroy(PAVLOGCPTRTREE pTree, PAVLOGC
 /**
  * AVL Core node.
  */
-typedef struct _AVLRGCPtrNodeCore
+typedef struct AVLRGCPtrNodeCore
 {
     /** First key value in the range (inclusive). */
     RTGCPTR             Key;
     /** Last key value in the range (inclusive). */
     RTGCPTR             KeyLast;
     /** Offset to the left leaf node, relative to this field. */
-    struct _AVLRGCPtrNodeCore  *pLeft;
+    struct AVLRGCPtrNodeCore   *pLeft;
     /** Offset to the right leaf node, relative to this field. */
-    struct _AVLRGCPtrNodeCore  *pRight;
+    struct AVLRGCPtrNodeCore   *pRight;
     /** Height of this tree: max(height(left), height(right)) + 1 */
     unsigned char       uchHeight;
 } AVLRGCPTRNODECORE, *PAVLRGCPTRNODECORE;
@@ -675,7 +675,7 @@ typedef int32_t     AVLROGCPTR;
 /**
  * AVL Core node.
  */
-typedef struct _AVLROGCPtrNodeCore
+typedef struct AVLROGCPtrNodeCore
 {
     /** First key value in the range (inclusive). */
     RTGCPTR             Key;
@@ -733,7 +733,7 @@ typedef int32_t     AVLROOGCPTR;
 /**
  * AVL Core node.
  */
-typedef struct _AVLROOGCPtrNodeCore
+typedef struct AVLROOGCPtrNodeCore
 {
     /** First key value in the range (inclusive). */
     RTGCPTR             Key;
@@ -787,14 +787,14 @@ RTDECL(PAVLROOGCPTRNODECORE)    RTAvlrooGCPtrGetNextEqual(PAVLROOGCPTRNODECORE p
 /**
  * AVL RTUINTPTR node core.
  */
-typedef struct _AVLUIntPtrNodeCore
+typedef struct AVLUIntPtrNodeCore
 {
     /** Key value. */
     RTUINTPTR                   Key;
     /** Offset to the left leaf node, relative to this field. */
-    struct _AVLUIntPtrNodeCore *pLeft;
+    struct AVLUIntPtrNodeCore  *pLeft;
     /** Offset to the right leaf node, relative to this field. */
-    struct _AVLUIntPtrNodeCore *pRight;
+    struct AVLUIntPtrNodeCore  *pRight;
     /** Height of this tree: max(height(left), height(right)) + 1 */
     unsigned char               uchHeight;
 } AVLUINTPTRNODECORE;
@@ -836,16 +836,16 @@ RTDECL(PAVLUINTPTRNODECORE)     RTAvlUIntPtrGetRight(  PAVLUINTPTRNODECORE pNode
 /**
  * AVL RTUINTPTR range node core.
  */
-typedef struct _AVLRUIntPtrNodeCore
+typedef struct AVLRUIntPtrNodeCore
 {
     /** First key value in the range (inclusive). */
     RTUINTPTR                       Key;
     /** Last key value in the range (inclusive). */
     RTUINTPTR                       KeyLast;
     /** Offset to the left leaf node, relative to this field. */
-    struct _AVLRUIntPtrNodeCore    *pLeft;
+    struct AVLRUIntPtrNodeCore     *pLeft;
     /** Offset to the right leaf node, relative to this field. */
-    struct _AVLRUIntPtrNodeCore    *pRight;
+    struct AVLRUIntPtrNodeCore     *pRight;
     /** Height of this tree: max(height(left), height(right)) + 1 */
     unsigned char                   uchHeight;
 } AVLRUINTPTRNODECORE;
@@ -894,7 +894,7 @@ typedef int32_t     AVLOHCPHYS;
 /**
  * AVL Core node.
  */
-typedef struct _AVLOHCPhysNodeCore
+typedef struct AVLOHCPhysNodeCore
 {
     /** Key value. */
     RTHCPHYS            Key;
@@ -946,7 +946,7 @@ typedef int32_t     AVLOIOPORTPTR;
 /**
  * AVL Core node.
  */
-typedef struct _AVLOIOPortNodeCore
+typedef struct AVLOIOPortNodeCore
 {
     /** Offset to the left leaf node, relative to this field. */
     AVLOIOPORTPTR       pLeft;
@@ -996,7 +996,7 @@ typedef int32_t     AVLROIOPORTPTR;
 /**
  * AVL Core node.
  */
-typedef struct _AVLROIOPortNodeCore
+typedef struct AVLROIOPortNodeCore
 {
     /** First key value in the range (inclusive). */
     RTIOPORT            Key;
@@ -1043,12 +1043,12 @@ RTDECL(int)                     RTAvlroIOPortDestroy(PAVLROIOPORTTREE pTree, PAV
 /**
  * AVL 'pointer' type for the relative offset pointer scheme.
  */
-typedef struct _AVLHCPhysNodeCore  *AVLHCPHYSPTR;
+typedef struct AVLHCPhysNodeCore   *AVLHCPHYSPTR;
 
 /**
  * AVL Core node.
  */
-typedef struct _AVLHCPhysNodeCore
+typedef struct AVLHCPhysNodeCore
 {
     /** Offset to the left leaf node, relative to this field. */
     AVLHCPHYSPTR        pLeft;
@@ -1092,12 +1092,12 @@ RTDECL(int)                     RTAvlHCPhysDestroy(PAVLHCPHYSTREE pTree, PAVLHCP
 /**
  * AVL 'pointer' type for the relative offset pointer scheme.
  */
-typedef struct _AVLGCPhysNodeCore  *AVLGCPHYSPTR;
+typedef struct AVLGCPhysNodeCore   *AVLGCPHYSPTR;
 
 /**
  * AVL Core node.
  */
-typedef struct _AVLGCPhysNodeCore
+typedef struct AVLGCPhysNodeCore
 {
     /** Offset to the left leaf node, relative to this field. */
     AVLGCPHYSPTR        pLeft;
@@ -1142,16 +1142,16 @@ RTDECL(int)                     RTAvlGCPhysDestroy(PAVLGCPHYSTREE pTree, PAVLGCP
 /**
  * AVL Core node.
  */
-typedef struct _AVLRFOFFNodeCore
+typedef struct AVLRFOFFNodeCore
 {
     /** First key value in the range (inclusive). */
     RTFOFF             Key;
     /** Last key value in the range (inclusive). */
     RTFOFF             KeyLast;
     /** Offset to the left leaf node, relative to this field. */
-    struct _AVLRFOFFNodeCore  *pLeft;
+    struct AVLRFOFFNodeCore   *pLeft;
     /** Offset to the right leaf node, relative to this field. */
-    struct _AVLRFOFFNodeCore  *pRight;
+    struct AVLRFOFFNodeCore   *pRight;
     /** Height of this tree: max(height(left), height(right)) + 1 */
     unsigned char       uchHeight;
 } AVLRFOFFNODECORE, *PAVLRFOFFNODECORE;
