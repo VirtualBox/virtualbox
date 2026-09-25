@@ -158,14 +158,9 @@ RTDECL(int) RTLocalIpcServerCancel(RTLOCALIPCSERVER hServer);
 /**
  * Connects to a local IPC server.
  *
- * This is used a client process (or thread).
+ * This is used by an client.
  *
  * @returns IPRT status code.
- * @retval  VERR_DIFFERENT_USER if RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER is given
- *          and the peer belongs to another user or cannot present an identity
- *          accepted by this session. Windows only.
- * @retval  VERR_DIFFERENT_SESSION if RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER is
- *          given the peer belongs to another session. Windows only.
  *
  * @param   phSession           Where to store the sesson handle on success.
  * @param   pszName             The server name (see RTLocalIpcServerCreate for details).
@@ -176,7 +171,7 @@ RTDECL(int) RTLocalIpcSessionConnect(PRTLOCALIPCSESSION phSession, const char *p
 /** @name RTLOCALIPC_C_FLAGS_XXX - RTLocalIpcSessionConnect flags
  * @{ */
 /** Native name, as apposed to a portable one. */
-#define RTLOCALIPC_C_FLAGS_NATIVE_NAME      RT_BIT_32(0)
+#define RTLOCALIPC_C_FLAGS_NATIVE_NAME          RT_BIT_32(0)
 /** Allow the server to identify the client.
  *
  * Windows: This selects the SECURITY_IDENTIFICATION quality-of-service
@@ -185,16 +180,14 @@ RTDECL(int) RTLocalIpcSessionConnect(PRTLOCALIPCSESSION phSession, const char *p
 /** The server name is mangled so it is unique for the user.
  *
  * Windows: This means adding the session ID & logon LUID to the name and
- * placing them in the 'LOCAL' pipe namespace, in addition to checking that the
- * server runs in the same session and under the same user.
+ * placing them in the 'LOCAL' pipe namespace.
  *
  * @note The server must use RTLOCALIPC_FLAGS_RESTRICT_TO_USER.
- * @todo r=bird: On windows we automatically perform a
- *       RTLocalIpcSessionVerifySameUser check in RTLocalIpcSessionConnect,
- *       where as the posix variant does not. */
-#define RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER RT_BIT_32(2)
+ * @note Client should call RTLocalIpcSessionVerifySameUser to actually check
+ *       that the user is the same, this option only does the name mangling. */
+#define RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER     RT_BIT_32(2)
 /** The mask of valid flags. */
-#define RTLOCALIPC_C_FLAGS_VALID_MASK       UINT32_C(0x00000007)
+#define RTLOCALIPC_C_FLAGS_VALID_MASK           UINT32_C(0x00000007)
 /** @} */
 
 /**
