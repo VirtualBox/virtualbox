@@ -1,4 +1,4 @@
-/* $Id: krnlmod-linux.cpp 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: krnlmod-linux.cpp 115335 2026-09-25 18:47:07Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Kernel module, Linux.
  */
@@ -188,7 +188,8 @@ RTDECL(uint32_t) RTKrnlModLoadedGetCount(void)
         rc = RTDirRead(hDir, &DirEnt, NULL);
         while (RT_SUCCESS(rc))
         {
-            if (!RTDirEntryIsStdDotLink(&DirEnt))
+            if (   !RTDirEntryIsStdDotLink(&DirEnt)
+                && DirEnt.enmType == RTDIRENTRYTYPE_DIRECTORY) /* Newer kernels have a file called compression */
                 cKmodsLoaded++;
             rc = RTDirRead(hDir, &DirEnt, NULL);
         }
@@ -225,7 +226,8 @@ RTDECL(int) RTKrnlModLoadedQueryInfoAll(PRTKRNLMODINFO pahKrnlModInfo, uint32_t 
         rc = RTDirRead(hDir, &DirEnt, NULL);
         while (RT_SUCCESS(rc))
         {
-            if (!RTDirEntryIsStdDotLink(&DirEnt))
+            if (   !RTDirEntryIsStdDotLink(&DirEnt)
+                && DirEnt.enmType == RTDIRENTRYTYPE_DIRECTORY) /* Newer kernels have a file called compression */
             {
                 rc = rtKrnlModLinuxInfoCreate(DirEnt.szName, &pahKrnlModInfo[idxKrnlModInfo]);
                 if (RT_SUCCESS(rc))
