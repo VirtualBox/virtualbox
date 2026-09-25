@@ -1,4 +1,4 @@
-/* $Id: localipc-win.cpp 115344 2026-09-25 19:11:08Z knut.osmundsen@oracle.com $ */
+/* $Id: localipc-win.cpp 115345 2026-09-25 19:12:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Local IPC, Windows Implementation Using Named Pipes.
  *
@@ -1560,23 +1560,37 @@ RTDECL(int) RTLocalIpcSessionConnect(PRTLOCALIPCSESSION phSession, const char *p
                                                NULL /*no template handle*/);
                     if (hPipe != INVALID_HANDLE_VALUE)
                     {
-                        /* Note! We do not perform a session or user check here when
-                                 RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER is set as the user is
-                                 expected to call RTLocalIpcSessionVerifySameUser to that himself.
-                                 This limits the failure reasons and whatnot.  */
+                        if (!(fFlags & RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER))
+                            rc = VINF_SUCCESS;
+                        else
+                        {
+                            /** @todo r=bird: Posix doesn't do this.   */
+                            /** @todo r=bird: combine these two, as both opens the token.  Better still,
+                             * query the info at the top of the function since rtLocalIpcWinConstructName
+                             * also opens the token twice. */
+                            rc = rtLocalIpcWinVerifyPeerSession(hPipe, false /*fServerSide*/);
+                            if (RT_SUCCESS(rc))
+                                rc = rtLocalIpcWinVerifySameUserByClientSide(hPipe);
+                        }
+                        if (RT_SUCCESS(rc))
+                        {
+                            pThis->hNmPipe = hPipe;
 
-                        pThis->hNmPipe = hPipe;
+                            LocalFree(pSecDesc);
+                            RTUtf16Free(pwszFullName);
 
-                        LocalFree(pSecDesc);
-                        RTUtf16Free(pwszFullName);
+                            /*
+                             * We're done!
+                             */
+                            *phSession = pThis;
+                            return VINF_SUCCESS;
+                        }
 
-                        /*
-                         * We're done!
-                         */
-                        *phSession = pThis;
-                        return VINF_SUCCESS;
+                        BOOL const fRc = CloseHandle(hPipe);
+                        AssertMsg(fRc, ("%d\n", GetLastError())); NOREF(fRc);
                     }
-                    rc = RTErrConvertFromWin32(GetLastError());
+                    else
+                        rc = RTErrConvertFromWin32(GetLastError());
                 }
 
                 RTUtf16Free(pwszFullName);

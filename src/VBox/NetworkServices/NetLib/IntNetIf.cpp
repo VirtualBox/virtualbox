@@ -1,4 +1,4 @@
-/* $Id: IntNetIf.cpp 115344 2026-09-25 19:11:08Z knut.osmundsen@oracle.com $ */
+/* $Id: IntNetIf.cpp 115345 2026-09-25 19:12:52Z knut.osmundsen@oracle.com $ */
 /** @file
  * IntNetIfCtx - Abstract API implementing an IntNet connection using the R0 support driver or some R3 IPC variant.
  */
@@ -697,8 +697,8 @@ static int intnetR3IfLocalIpcConnect(PINTNETIFCTXINT pThis, const char *pszServi
     if (RT_SUCCESS(rc))
     {
         rc = RTLocalIpcSessionConnect(&pThis->hIpcSession, pszService,
-                                        RTLOCALIPC_C_FLAGS_ALLOW_IDENTIFICATION
-                                      | RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER);
+                                      RTLOCALIPC_C_FLAGS_ALLOW_IDENTIFICATION
+                                    | RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER);
 # ifndef VBOX_INTNET_TESTCASE_EMBEDDED_SWITCH
         if (intnetR3IfLocalIpcIsServiceAbsent(rc))
         {
@@ -710,8 +710,8 @@ static int intnetR3IfLocalIpcConnect(PINTNETIFCTXINT pThis, const char *pszServi
                 {
                     RTThreadSleep(10);
                     rc = RTLocalIpcSessionConnect(&pThis->hIpcSession, pszService,
-                                                    RTLOCALIPC_C_FLAGS_ALLOW_IDENTIFICATION
-                                                  | RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER);
+                                                  RTLOCALIPC_C_FLAGS_ALLOW_IDENTIFICATION
+                                                | RTLOCALIPC_C_FLAGS_RESTRICT_TO_USER);
                 } while (   (   intnetR3IfLocalIpcIsServiceAbsent(rc)
                              || rc == VERR_ACCESS_DENIED /* Endpoint security setup may still be completing. */)
                          && RTTimeMilliTS() - msStart < RT_MS_5SEC);
