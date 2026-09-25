@@ -1,4 +1,4 @@
-/* $Id: the-linux-kernel.h 114150 2026-05-19 11:56:11Z knut.osmundsen@oracle.com $ */
+/* $Id: the-linux-kernel.h 115327 2026-09-25 17:53:49Z knut.osmundsen@oracle.com $ */
 /** @file
  * IPRT - Include all necessary headers for the Linux kernel.
  */
@@ -528,7 +528,7 @@ extern void (*g_pfnLinuxFlushTlbAll)(void);
  * @param a_pfn         The function being called.
  * @param a_CallExpr    The call expression.
  */
-#if (defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86)) && defined(CONFIG_X86_CET)
+#if (defined(RT_ARCH_AMD64) || defined(RT_ARCH_X86)) && (defined(CONFIG_X86_CET) || defined(CONFIG_X86_KERNEL_IBT))
 # define RTLNX_CET_UNSAFE_CALL(a_pfn, a_CallExpr) do { \
         RTTHREADPREEMPTSTATE Preempt = RTTHREADPREEMPTSTATE_INITIALIZER; \
         RTThreadPreemptDisable(&Preempt); \
