@@ -1,4 +1,4 @@
-/* $Id: VBoxDX.cpp 115080 2026-08-19 11:45:15Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxDX.cpp 115352 2026-09-26 19:16:40Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox D3D user mode driver.
  */
@@ -849,7 +849,10 @@ static void vboxDXEmitSetIndexBuffer(PVBOXDX_DEVICE pDevice)
 
     PVBOXDXKMRESOURCE const pKMResource = vboxDXGetKMResource(pIBS->pBuffer);
     SVGA3dSurfaceFormat const svgaFormat = vboxDXDxgiToSvgaFormat(pIBS->Format);
-    vgpu10SetIndexBuffer(pDevice, pKMResource, svgaFormat, pIBS->Offset);
+    if (svgaFormat != SVGA3D_FORMAT_INVALID)
+        vgpu10SetIndexBuffer(pDevice, pKMResource, svgaFormat, pIBS->Offset);
+    else
+        vgpu10SetIndexBuffer(pDevice, NULL, SVGA3D_FORMAT_INVALID, 0);
 }
 
 
@@ -995,7 +998,7 @@ SVGA3dSurfaceFormat vboxDXDxgiToSvgaFormat(DXGI_FORMAT enmDxgiFormat)
             break;
     }
     DEBUG_BREAKPOINT_TEST();
-    return SVGA3D_BUFFER;
+    return SVGA3D_FORMAT_INVALID;
 }
 
 
@@ -1050,7 +1053,8 @@ PVBOXDXKMRESOURCE vboxDXAllocateKMResource(PVBOXDX_DEVICE pDevice, HANDLE hResou
     PVBOXDXKMRESOURCE pKMResource = (PVBOXDXKMRESOURCE)RTMemAllocZ(sizeof(VBOXDXKMRESOURCE));
     AssertReturnStmt(pKMResource, vboxDXDeviceSetError(pDevice, E_OUTOFMEMORY), NULL);
 
-    pfnInitAllocationDesc(&pKMResource->AllocationDesc, pvInitData);
+    if (!pfnInitAllocationDesc(&pKMResource->AllocationDesc, pvInitData))
+        AssertFailedReturnStmt(vboxDXDeviceSetError(pDevice, E_INVALIDARG), NULL);
 
     D3DDDI_ALLOCATIONINFO2 ddiAllocationInfo;
     RT_ZERO(ddiAllocationInfo);
@@ -1268,13 +1272,15 @@ static D3D10DDIRESOURCE_TYPE vboxDXSurfaceFlagsToResourceDimension(SVGA3dSurface
 }
 
 
-static void resourceAllocationDesc(VBOXDXALLOCATIONDESC *pDesc, void const *pvInitData)
+static bool resourceAllocationDesc(VBOXDXALLOCATIONDESC *pDesc, void const *pvInitData)
 {
     const D3D11DDIARG_CREATERESOURCE *pCreateResource = (const D3D11DDIARG_CREATERESOURCE *)pvInitData;
 
     /* Init surface information which will be used by the miniport to define the surface. */
     pDesc->surfaceInfo.surfaceFlags       = vboxDXCalcSurfaceFlags(pCreateResource);
     pDesc->surfaceInfo.format             = vboxDXDxgiToSvgaFormat(pCreateResource->Format);
+    if (pDesc->surfaceInfo.format == SVGA3D_FORMAT_INVALID)
+        return false;
     pDesc->surfaceInfo.numMipLevels       = pCreateResource->MipLevels;
     pDesc->surfaceInfo.multisampleCount   = pCreateResource->SampleDesc.Count;
     if (pDesc->surfaceInfo.multisampleCount > 1)
@@ -1310,6 +1316,7 @@ static void resourceAllocationDesc(VBOXDXALLOCATIONDESC *pDesc, void const *pvIn
     /* Finally set the allocation type and compute the size. */
     pDesc->enmAllocationType = VBOXDXALLOCATIONTYPE_SURFACE;
     pDesc->cbAllocation = vboxDXCalcResourceAllocationSize(pDesc);
+    return true;
 }
 
 
@@ -1869,6 +1876,10 @@ void vboxDXCreateElementLayout(PVBOXDX_DEVICE pDevice, PVBOXDXELEMENTLAYOUT pEle
         pDst->inputSlot            = pSrc->InputSlot;
         pDst->alignedByteOffset    = pSrc->AlignedByteOffset;
         pDst->format               = vboxDXDxgiToSvgaFormat(pSrc->Format);
+        AssertReturnVoidStmt(pDst->format != SVGA3D_FORMAT_INVALID,
+            RTMemTmpFree(paDesc);
+            RTHandleTableFree(pDevice->hHTElementLayout, pElementLayout->uElementLayoutId);
+            vboxDXDeviceSetError(pDevice, E_INVALIDARG));
         pDst->inputSlotClass       = pSrc->InputSlotClass;
         pDst->instanceDataStepRate = pSrc->InstanceDataStepRate;
         pDst->inputRegister        = pSrc->InputRegister;
@@ -2074,10 +2085,11 @@ static void vboxDXDestroyCOAllocation(PVBOXDX_DEVICE pDevice, PVBOXDXKMRESOURCE 
 }
 
 
-static void coAllocationDesc(VBOXDXALLOCATIONDESC *pDesc, void const *pvInitData)
+static bool coAllocationDesc(VBOXDXALLOCATIONDESC *pDesc, void const *pvInitData)
 {
     pDesc->enmAllocationType = VBOXDXALLOCATIONTYPE_CO; /* Context Object allocation. */
     pDesc->cbAllocation      = *(uint32_t *)pvInitData;
+    return true;
 }
 
 
@@ -2181,10 +2193,11 @@ static void vboxDXCOABlockFree(PVBOXDXKMRESOURCE pCOAllocation, uint32_t offBloc
 }
 
 
-static void shadersAllocationDesc(VBOXDXALLOCATIONDESC *pDesc, void const *pvInitData)
+static bool shadersAllocationDesc(VBOXDXALLOCATIONDESC *pDesc, void const *pvInitData)
 {
     pDesc->enmAllocationType = VBOXDXALLOCATIONTYPE_SHADERS;
     pDesc->cbAllocation      = *(uint32_t *)pvInitData;
+    return true;
 }
 
 
@@ -3487,6 +3500,9 @@ void vboxDXCreateShaderResourceView(PVBOXDX_DEVICE pDevice, PVBOXDXSHADERRESOURC
     AssertRCReturnVoidStmt(rc, vboxDXDeviceSetError(pDevice, E_OUTOFMEMORY));
 
     pShaderResourceView->svga.format            = vboxDXDxgiToSvgaFormat(pShaderResourceView->Format);
+    AssertReturnVoidStmt(pShaderResourceView->svga.format != SVGA3D_FORMAT_INVALID,
+        RTHandleTableFree(pDevice->hHTShaderResourceView, pShaderResourceView->uShaderResourceViewId);
+        vboxDXDeviceSetError(pDevice, E_INVALIDARG));
     pShaderResourceView->svga.resourceDimension = d3dToSvgaResourceDimension(pShaderResourceView->ResourceDimension);
     SVGA3dShaderResourceViewDesc *pDesc         = &pShaderResourceView->svga.desc;
     RT_ZERO(*pDesc);
@@ -3563,6 +3579,9 @@ void vboxDXCreateRenderTargetView(PVBOXDX_DEVICE pDevice, PVBOXDXRENDERTARGETVIE
     AssertRCReturnVoidStmt(rc, vboxDXDeviceSetError(pDevice, E_OUTOFMEMORY));
 
     pRenderTargetView->svga.format            = vboxDXDxgiToSvgaFormat(pRenderTargetView->Format);
+    AssertReturnVoidStmt(pRenderTargetView->svga.format != SVGA3D_FORMAT_INVALID,
+        RTHandleTableFree(pDevice->hHTRenderTargetView, pRenderTargetView->uRenderTargetViewId);
+        vboxDXDeviceSetError(pDevice, E_INVALIDARG));
     pRenderTargetView->svga.resourceDimension = d3dToSvgaResourceDimension(pRenderTargetView->ResourceDimension);
     SVGA3dRenderTargetViewDesc *pDesc         = &pRenderTargetView->svga.desc;
     RT_ZERO(*pDesc);
@@ -3645,6 +3664,9 @@ void vboxDXCreateDepthStencilView(PVBOXDX_DEVICE pDevice, PVBOXDXDEPTHSTENCILVIE
     AssertRCReturnVoidStmt(rc, vboxDXDeviceSetError(pDevice, E_OUTOFMEMORY));
 
     pDepthStencilView->svga.format           = vboxDXDxgiToSvgaFormat(pDepthStencilView->Format);
+    AssertReturnVoidStmt(pDepthStencilView->svga.format != SVGA3D_FORMAT_INVALID,
+        RTHandleTableFree(pDevice->hHTDepthStencilView, pDepthStencilView->uDepthStencilViewId);
+        vboxDXDeviceSetError(pDevice, E_INVALIDARG));
     pDepthStencilView->svga.resourceDimension = d3dToSvgaResourceDimension(pDepthStencilView->ResourceDimension);
     switch (pDepthStencilView->ResourceDimension)
     {
@@ -3884,6 +3906,8 @@ void vboxDXResourceResolveSubresource(PVBOXDX_DEVICE pDevice, PVBOXDX_RESOURCE p
                                       PVBOXDX_RESOURCE pSrcResource, UINT SrcSubresource, DXGI_FORMAT ResolveFormat)
 {
     SVGA3dSurfaceFormat const copyFormat = vboxDXDxgiToSvgaFormat(ResolveFormat);
+    AssertReturnVoidStmt(copyFormat != SVGA3D_FORMAT_INVALID,
+        vboxDXDeviceSetError(pDevice, E_INVALIDARG));
     vgpu10ResolveCopy(pDevice, vboxDXGetKMResource(pDstResource), DstSubresource,
                       vboxDXGetKMResource(pSrcResource), SrcSubresource, copyFormat);
 }
@@ -4365,6 +4389,9 @@ void vboxDXCreateUnorderedAccessView(PVBOXDX_DEVICE pDevice, PVBOXDXUNORDEREDACC
     AssertRCReturnVoidStmt(rc, vboxDXDeviceSetError(pDevice, E_OUTOFMEMORY));
 
     pUnorderedAccessView->svga.format            = vboxDXDxgiToSvgaFormat(pUnorderedAccessView->Format);
+    AssertReturnVoidStmt(pUnorderedAccessView->svga.format != SVGA3D_FORMAT_INVALID,
+        RTHandleTableFree(pDevice->hHTUnorderedAccessView, pUnorderedAccessView->uUnorderedAccessViewId);
+        vboxDXDeviceSetError(pDevice, E_INVALIDARG));
     pUnorderedAccessView->svga.resourceDimension = d3dToSvgaResourceDimension(pUnorderedAccessView->ResourceDimension);
     SVGA3dUAViewDesc *pDesc                      = &pUnorderedAccessView->svga.desc;
     RT_ZERO(*pDesc);

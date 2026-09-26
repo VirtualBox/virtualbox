@@ -1,4 +1,4 @@
-/* $Id: VBoxDX.h 115080 2026-08-19 11:45:15Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxDX.h 115352 2026-09-26 19:16:40Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VBoxVideo Display D3D User mode dll
  */
@@ -784,7 +784,7 @@ void vboxDXCommandBufferCommit(PVBOXDX_DEVICE pDevice);
 void vboxDXStorePatchLocation(PVBOXDX_DEVICE pDevice, void *pvPatch, PVBOXDXKMRESOURCE pKMResource,
                               uint32_t offAllocation, bool fWriteOperation, uint32_t DriverId = 0);
 
-typedef void FNVBOXDXINITALLOCATIONDESC(VBOXDXALLOCATIONDESC *pDesc, void const *pvInitData);
+typedef bool FNVBOXDXINITALLOCATIONDESC(VBOXDXALLOCATIONDESC *pDesc, void const *pvInitData);
 typedef FNVBOXDXINITALLOCATIONDESC *PFNVBOXDXINITALLOCATIONDESC;
 PVBOXDXKMRESOURCE vboxDXAllocateKMResource(PVBOXDX_DEVICE pDevice, HANDLE hResource,
                                            PFNVBOXDXINITALLOCATIONDESC pfnInitAllocationDesc,

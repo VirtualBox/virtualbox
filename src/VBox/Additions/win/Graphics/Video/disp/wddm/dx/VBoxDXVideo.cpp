@@ -1,4 +1,4 @@
-/* $Id: VBoxDXVideo.cpp 115080 2026-08-19 11:45:15Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxDXVideo.cpp 115352 2026-09-26 19:16:40Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox D3D user mode driver.
  */
@@ -50,10 +50,11 @@ static void vboxDXDestroyVideoDeviceAllocation(PVBOXDX_DEVICE pDevice)
 }
 
 
-static void videoDeviceAllocationDesc(VBOXDXALLOCATIONDESC *pDesc, void const *pvInitData)
+static bool videoDeviceAllocationDesc(VBOXDXALLOCATIONDESC *pDesc, void const *pvInitData)
 {
     pDesc->enmAllocationType = VBOXDXALLOCATIONTYPE_CO; /* Context Object allocation. */
     pDesc->cbAllocation      = *(uint32_t *)pvInitData;
+    return true;
 }
 
 
@@ -272,6 +273,8 @@ void vboxDXGetVideoDecoderConfigCount(PVBOXDX_DEVICE pDevice, D3D11_1DDI_VIDEO_D
 {
     VBSVGA3dVideoDecoderDesc svgaDesc;
     vboxDXVideoDecoderDescToSvga(&svgaDesc, *pDecodeDesc);
+    AssertReturnVoidStmt(svgaDesc.OutputFormat != SVGA3D_FORMAT_INVALID,
+        vboxDXDeviceSetError(pDevice, E_INVALIDARG));
 
     if (   !pDevice->VideoDevice.config.pConfigInfo
         || memcmp(&svgaDesc, &pDevice->VideoDevice.config.pConfigInfo->desc, sizeof(VBSVGA3dVideoDecoderDesc)) != 0)
@@ -286,6 +289,8 @@ void vboxDXGetVideoDecoderConfig(PVBOXDX_DEVICE pDevice, D3D11_1DDI_VIDEO_DECODE
 {
     VBSVGA3dVideoDecoderDesc svgaDesc;
     vboxDXVideoDecoderDescToSvga(&svgaDesc, *pDecodeDesc);
+    AssertReturnVoidStmt(svgaDesc.OutputFormat != SVGA3D_FORMAT_INVALID,
+        vboxDXDeviceSetError(pDevice, E_INVALIDARG));
 
     if (   !pDevice->VideoDevice.config.pConfigInfo
         || memcmp(&svgaDesc, &pDevice->VideoDevice.config.pConfigInfo->desc, sizeof(VBSVGA3dVideoDecoderDesc)) != 0)
@@ -481,6 +486,9 @@ HRESULT vboxDXCreateVideoDecoder(PVBOXDX_DEVICE pDevice, PVBOXDXVIDEODECODER pVi
     AssertRCReturnStmt(rc, vboxDXDeviceSetError(pDevice, E_OUTOFMEMORY), E_OUTOFMEMORY);
 
     vboxDXVideoDecoderDescToSvga(&pVideoDecoder->svga.Desc, Desc);
+    AssertReturnStmt(pVideoDecoder->svga.Desc.OutputFormat != SVGA3D_FORMAT_INVALID,
+        RTHandleTableFree(pDevice->hHTVideoDecoder, pVideoDecoder->uVideoDecoderId);
+        vboxDXDeviceSetError(pDevice, E_INVALIDARG), E_INVALIDARG);
 
     memcpy(&pVideoDecoder->svga.Config.guidConfigBitstreamEncryption, &Config.guidConfigBitstreamEncryption, sizeof(VBSVGA3dGuid));
     memcpy(&pVideoDecoder->svga.Config.guidConfigMBcontrolEncryption, &Config.guidConfigMBcontrolEncryption, sizeof(VBSVGA3dGuid));
