@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 115349 2026-09-26 15:08:54Z vitali.pelenjow@oracle.com $
+# $Id: Makefile.kmk 115350 2026-09-26 15:56:57Z vitali.pelenjow@oracle.com $
 ## @file
 # Sub-Makefile for VBoxGL OpenGL state tracker.
 #
@@ -62,8 +62,8 @@ VBoxGL_INCS     = \
 	$(VBOX_PATH_MESA)/src/gallium/drivers/svga \
 	$(VBOX_PATH_MESA)/src/gallium/winsys/svga/drm
 if $(VBOX_MESA_V_MAJOR) >= 25
-VBoxGL_INCS    += \
-	$(VBoxGL_0_OUTDIR)/../VBoxMesaUtilLib/$(VBOX_MESA)/src
+ VBoxGL_INCS    += \
+ 	$(VBoxGL_0_OUTDIR)/../VBoxMesaUtilLib/$(VBOX_MESA)/src
 endif
 VBoxGL_SOURCES  = \
 	GaDrvEnvKMT.cpp \

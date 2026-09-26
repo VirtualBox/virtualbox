@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 115349 2026-09-26 15:08:54Z vitali.pelenjow@oracle.com $
+# $Id: Makefile.kmk 115350 2026-09-26 15:56:57Z vitali.pelenjow@oracle.com $
 ## @file
 # Sub-Makefile for VBoxNine D3D9 state tracker.
 #
@@ -49,8 +49,8 @@ VBoxNine_INCS     = \
 	$(VBOX_PATH_MESA)/src/gallium/drivers/svga/include \
 	$(VBOX_PATH_MESA)/src/gallium/winsys/svga/drm
 if $(VBOX_MESA_V_MAJOR) >= 25
-VBoxNine_INCS    += \
-	$(VBoxNine_0_OUTDIR)/../VBoxMesaUtilLib/$(VBOX_MESA)/src
+ VBoxNine_INCS    += \
+ 	$(VBoxNine_0_OUTDIR)/../VBoxMesaUtilLib/$(VBOX_MESA)/src
 endif
 VBoxNine_SOURCES  = \
 	nine/nine_memory_helper.c \
