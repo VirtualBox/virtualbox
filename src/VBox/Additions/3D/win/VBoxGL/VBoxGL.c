@@ -1,4 +1,4 @@
-/* $Id: VBoxGL.c 115312 2026-09-23 19:10:46Z vitali.pelenjow@oracle.com $ */
+/* $Id: VBoxGL.c 115349 2026-09-26 15:08:54Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - OpenGL driver.
  */
@@ -386,12 +386,14 @@ wddm_compose(struct pipe_screen *screen,
     }
 }
 
+#if VBOX_MESA_V_MAJOR < 25
 static unsigned
 wddm_get_pfd_flags(struct pipe_screen *screen)
 {
     (void)screen;
     return stw_pfd_gdi_support | stw_pfd_double_buffer;
 }
+#endif
 
 static const char *
 wddm_get_name(void)
@@ -406,7 +408,9 @@ static const struct stw_winsys stw_winsys = {
    wddm_shared_surface_open,
    wddm_shared_surface_close,
    wddm_compose,
+#if VBOX_MESA_V_MAJOR < 25
    wddm_get_pfd_flags,
+#endif
    NULL, /* create_framebuffer */
    wddm_get_name,
 };

@@ -1,4 +1,4 @@
-/* $Id: VBoxGaTypes.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: VBoxGaTypes.h 115349 2026-09-26 15:08:54Z vitali.pelenjow@oracle.com $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - Gallium driver interface.
  */
@@ -34,7 +34,6 @@
 #include <iprt/types.h>
 
 #pragma pack(1) /* VMSVGA structures are '__packed'. */
-#include <svga3d_caps.h>
 #include <svga3d_reg.h>
 #pragma pack()
 

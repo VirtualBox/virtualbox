@@ -64,7 +64,11 @@
 #include "vmw_context.h"
 #include "vmw_fence.h"
 #include "vmwgfx_drm.h"
+#if VBOX_MESA_V_MAJOR >= 25
+#include "vmw_surf_defs.h"
+#else
 #include "svga3d_caps.h"
+#endif
 #include "svga3d_reg.h"
 #include "svga3d_surfacedefs.h"
 
@@ -222,10 +226,17 @@ vmw_ioctl_gb_surface_create(struct vmw_winsys_screen *vws,
     createParms.u64UserAddress = 0; /* out */
     createParms.u32Sid = 0; /* out */
 
+#if VBOX_MESA_V_MAJOR >= 25
+    createParms.cbGB = vmw_surf_get_serialized_size(format,
+                                                    size,
+                                                    numMipLevels,
+                                                    numFaces);
+#else
     createParms.cbGB = svga3dsurface_get_serialized_size(format,
                                                          size,
                                                          numMipLevels,
                                                          numFaces);
+#endif
 
     int ret = vws_wddm->pEnv->pfnGBSurfaceDefine(vws_wddm->pEnv->pvEnv, &createParms);
     if (ret)
@@ -551,6 +562,18 @@ vmw_ioctl_shader_destroy(struct vmw_winsys_screen *vws, uint32 shid)
    return;
 }
 
+#if VBOX_MESA_V_MAJOR >= 25
+typedef struct SVGA3dCapsRecord {
+   SVGA3dFifoCapsRecordHeader header;
+   uint32 data[1];
+} SVGA3dCapsRecord;
+
+typedef SVGA3dFifoCapPair SVGA3dCapPair;
+
+#define SVGA3DCAPS_RECORD_DEVCAPS_MIN SVGA3D_FIFO_CAPS_RECORD_DEVCAPS
+#define SVGA3DCAPS_RECORD_DEVCAPS_MAX SVGA3D_FIFO_CAPS_RECORD_DEVCAPS
+#endif /* VBOX_MESA_V_MAJOR >= 25 */
+
 static int
 vmw_ioctl_parse_caps(struct vmw_winsys_screen *vws,
 		     const uint32_t *cap_buffer)
@@ -630,7 +653,11 @@ static enum SVGASHADERMODEL vboxGetShaderModel(struct vmw_winsys_screen_wddm *vw
    enum SVGASHADERMODEL enmResult = SVGA_SM_LEGACY;
 
    if (   (vws_wddm->HwInfo.au32Regs[SVGA_REG_CAPABILITIES] & SVGA_CAP_GBOBJECTS)
+#if VBOX_MESA_V_MAJOR >= 25
+       && (vws_wddm->HwInfo.au32Regs[SVGA_REG_CAPABILITIES] & SVGA_CAP_DX)
+#else
        && (vws_wddm->HwInfo.au32Regs[SVGA_REG_CAPABILITIES] & SVGA_CAP_CMD_BUFFERS_3 /*=SVGA_CAP_DX*/)
+#endif
        && vws_wddm->HwInfo.au32Caps[SVGA3D_DEVCAP_DXCONTEXT])
    {
       enmResult = SVGA_SM_4;
@@ -677,7 +704,11 @@ vboxGetParam(struct vmw_winsys_screen_wddm *vws_wddm, struct drm_vmw_getparam_ar
             gp_arg->value = vws_wddm->HwInfo.au32Fifo[SVGA_FIFO_CAPABILITIES];
             break;
         case DRM_VMW_PARAM_MAX_FB_SIZE:
+#if VBOX_MESA_V_MAJOR >= 25
+            gp_arg->value = vws_wddm->HwInfo.au32Regs[SVGA_REG_MAX_PRIMARY_MEM];
+#else
             gp_arg->value = vws_wddm->HwInfo.au32Regs[SVGA_REG_MAX_PRIMARY_BOUNDING_BOX_MEM];
+#endif
             break;
         case DRM_VMW_PARAM_FIFO_HW_VERSION:
             if (vws_wddm->HwInfo.au32Fifo[SVGA_FIFO_CAPABILITIES] & SVGA_FIFO_CAP_3D_HWVERSION_REVISED)
@@ -920,6 +951,10 @@ vmw_ioctl_init(struct vmw_winsys_screen *vws)
 
       size = SVGA_FIFO_3D_CAPS_SIZE * sizeof(uint32_t);
    }
+
+#if VBOX_MESA_V_MAJOR >= 25
+   vws->userspace_surface = false;
+#endif
 
    debug_printf("VGPU10 interface is %s.\n",
                 vws->base.have_vgpu10 ? "on" : "off");
