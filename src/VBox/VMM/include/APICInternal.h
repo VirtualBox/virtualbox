@@ -1,4 +1,4 @@
-/* $Id: APICInternal.h 115354 2026-09-28 08:46:00Z aleksey.ilyushin@oracle.com $ */
+/* $Id: APICInternal.h 115357 2026-09-28 11:39:44Z knut.osmundsen@oracle.com $ */
 /** @file
  * APIC - Advanced Programmable Interrupt Controller, Internal header.
  */
@@ -155,10 +155,10 @@ typedef enum APICMSRACCESS
  */
 #define APIC_CACHE_LINE_SIZE              128
 
-/**
- * APIC_PIB_INTR_XXX.
+/** @name APIC_PIB_INTR_XXX
  * The interrupt state of each vector is represented by 2 bits.
  * This is used only for edge-triggered interrupts.
+ * @{
  */
 /** The interrupt is not pending. */
 #define APIC_PIB_INTR_NOT_PENDING         0x0
@@ -170,6 +170,7 @@ typedef enum APICMSRACCESS
 #define APIC_PIB_INTR_RSVD                0x3
 /** The mask of the per-vector edge-triggered PIB interrupt state. */
 #define APIC_PIB_INTR_MASK                0x3
+/** @} */
 
 
 /**
