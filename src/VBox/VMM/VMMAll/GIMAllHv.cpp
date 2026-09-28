@@ -1,4 +1,4 @@
-/* $Id: GIMAllHv.cpp 115355 2026-09-28 08:58:40Z aleksey.ilyushin@oracle.com $ */
+/* $Id: GIMAllHv.cpp 115356 2026-09-28 09:31:36Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * GIM - Guest Interface Manager, Microsoft Hyper-V, All Contexts.
  */
@@ -597,7 +597,7 @@ VMM_INT_DECL(void) gimHvDeliverTimerMsg(PVMCPUCC pVCpu, PGIMHVSTIMER pHvStimer)
 
     /* Get the VCPU's synthetic timer config and timer index.  */
     uint64_t const uStimerConfig = pHvStimer->uStimerConfigMsr;
-#if defined(DEBUG) || defined(VBOX_WITH_STATISTICS)
+#if defined(RT_STRICT) || defined(VBOX_WITH_STATISTICS)
     uint16_t const idxStimer     = pHvStimer->idxStimer;
 #endif
 
