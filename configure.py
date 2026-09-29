@@ -725,6 +725,9 @@ def compileAndRun(sName, asIncPaths, asLibPaths, asIncFiles, asLibFiles, \
         asCmd.extend( [ sFileSource ] );
         asCmd.extend( [ '/Fe:' + sFileImage ] );
     else: # Non-Windows
+        if    enmBuildTarget == BuildTarget.DARWIN \
+          and g_oEnv['VBOX_PATH_MACOSX_SDK']:
+            asCmd.extend([ '-isysroot', g_oEnv['VBOX_PATH_MACOSX_SDK'] ]);
         if asIncPaths:
             for sIncPath in asIncPaths:
                 asCmd.extend( [ f'-I{sIncPath}' ] );
@@ -1433,8 +1436,8 @@ class LibraryCheck(CheckBase):
         # macOS (Darwin)
         #
         elif self.enmBuildTarget == BuildTarget.DARWIN:
-            asPaths.extend([ '/opt/homebrew/include',
-                             os.path.join(g_oEnv['VBOX_PATH_MACOSX_SDK'], 'usr', 'include', 'c++', 'v1') ]);
+            asPaths.extend([ os.path.join(g_oEnv['VBOX_PATH_MACOSX_SDK'], 'usr', 'include', 'c++', 'v1'),
+                             '/opt/homebrew/include' ]);
 
         #
         # Linux
@@ -1764,8 +1767,12 @@ class LibraryCheck(CheckBase):
         sPathBin = None;
         sPathLibExec = None;
 
-        # Check if we have our own pre-compiled Qt in tools first.
-        sPathBase = self.getToolPath();
+        # Check if we have our own pre-compiled Qt in tools first.  A custom
+        # Darwin path may point at a normal framework installation instead.
+        if self.enmBuildTarget == BuildTarget.DARWIN and self.sRootPath:
+            sPathBase = None;
+        else:
+            sPathBase = self.getToolPath();
         if sPathBase:
             self.asLibFiles = [ 'libQt6CoreVBox' ];
             g_oEnv.set('VBOX_WITH_ORACLE_QT', '1');
@@ -1803,10 +1810,11 @@ class LibraryCheck(CheckBase):
 
                 # Search for the library file.
                 # Note: Ordered by precedence. Do not change!
-                asPath = [ sPathBase,
-                        getPackagePath('qt@6')[1],
-                        '/System/Library',
-                        '/Library' ];
+                asPath = [ self.sRootPath,
+                           sPathBase,
+                           getPackagePath('qt@6')[1],
+                           '/System/Library',
+                           '/Library' ];
                 sPathFramework = None;
                 for sPathBase in asPath:
                     if not sPathBase: # No custom path? Skip.
@@ -1825,23 +1833,33 @@ class LibraryCheck(CheckBase):
                         break;
 
                 if sPathFramework:
+                    sPathFrameworkParent = os.path.dirname(sPathFramework);
                     # We need to clear the library defined the the LibraryCheck definition
                     # -- macOS uses the framework concept instead.
                     self.asLibFiles = [];
-                    self.asLibPaths.insert(0, sPathFramework);
+                    self.asLibPaths.insert(0, sPathFrameworkParent);
                     # Include the framework headers.
-                    self.asIncPaths.insert(0, f'{sPathBase}/lib/QtCore.framework/Headers');
+                    self.asIncPaths.insert(0, os.path.join(sPathFramework, 'Headers'));
                     # More stuff needed in order to get it linked.
-                    self.asLinkerArgs.extend([ '-std=c++17', '-framework', 'QtCore', '-F', f'{sPathBase}/lib', '-g', '-O', '-Wall' ]);
+                    self.asCompilerArgs.extend([ '-F', sPathFrameworkParent ]);
+                    self.asLinkerArgs.extend([ '-std=c++17', '-framework', 'QtCore', '-F', sPathFrameworkParent, '-g', '-O', '-Wall' ]);
 
         sPkgName = 'Qt6Core'; ## @todo Make the code generic once we have similar SDKs.
         if sPathBase:
             g_oEnv.set( 'VBOX_PATH_QT', sPathBase);
-            g_oEnv.set(f'PATH_SDK_{self.sSdkName}', sPathBase);
+            sPathSdk     = sPathBase;
             sPathBin     = os.path.join(sPathBase, 'bin');
             sPathInc     = os.path.join(sPathBase, 'include');
             sPathLib     = os.path.join(sPathBase, 'lib');
             sPathLibExec = os.path.join(sPathBase, 'libexec');
+            if self.enmBuildTarget == BuildTarget.DARWIN:
+                sPathQtData = os.path.join(sPathBase, 'share', 'qt');
+                if isDir(os.path.join(sPathQtData, 'plugins')):
+                    sPathSdk = sPathQtData;
+                sPathQtLibExec = os.path.join(sPathQtData, 'libexec');
+                if isDir(sPathQtLibExec):
+                    sPathLibExec = sPathQtLibExec;
+            g_oEnv.set(f'PATH_SDK_{self.sSdkName}', sPathSdk);
 
             if self.enmBuildTarget != BuildTarget.WINDOWS:
                 # Tell g++ that we need C++17 -- otherwise Qt6 won't compile.

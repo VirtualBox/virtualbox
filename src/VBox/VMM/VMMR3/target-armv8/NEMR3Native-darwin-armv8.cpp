@@ -73,7 +73,7 @@
 *   Structures and Typedefs                                                                                                      *
 *********************************************************************************************************************************/
 
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 150000
+#if !__has_include(<Hypervisor/hv_gic_types.h>)
 
 /* Since 15.0+ */
 typedef enum hv_gic_distributor_reg_t : uint16_t
@@ -138,10 +138,15 @@ typedef enum hv_gic_intid_t : uint16_t
     HV_GIC_INT_PERFORMANCE_MONITOR = 30
 } hv_gic_intid_t;
 
-# define HV_SYS_REG_ACTLR_EL1   (hv_sys_reg_t)0xc081
-
 #else
 # define HV_GIC_ICC_REG_INVALID (hv_gic_icc_reg_t)UINT16_MAX
+#endif
+
+#define VBOX_HV_SYS_REG_ACTLR_EL1   (hv_sys_reg_t)0xc081
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED < 150000
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wunguarded-availability-new"
 #endif
 
 typedef hv_vm_config_t  FN_HV_VM_CONFIG_CREATE(void);
@@ -192,6 +197,10 @@ typedef hv_return_t     FN_HV_GIC_SET_ICV_REG(hv_vcpu_t vcpu, hv_gic_icv_reg_t r
 typedef hv_return_t     FN_HV_GIC_SET_REDISTRIBUTOR_REG(hv_vcpu_t vcpu, hv_gic_redistributor_reg_t reg, uint64_t value);
 
 typedef hv_return_t     FN_HV_GIC_GET_INTID(hv_gic_intid_t interrupt, uint32_t *intid);
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED < 150000
+# pragma clang diagnostic pop
+#endif
 
 
 /**
@@ -559,7 +568,7 @@ static const struct
     uint32_t        offCpumCtx;
 } s_aCpumSysRegsSequioa[] =
 {
-    { HV_SYS_REG_ACTLR_EL1,         CPUMCTX_EXTRN_SYSREG_MISC,      RT_UOFFSETOF(CPUMCTX, Actlr.u64)        }
+    { VBOX_HV_SYS_REG_ACTLR_EL1,    CPUMCTX_EXTRN_SYSREG_MISC,      RT_UOFFSETOF(CPUMCTX, Actlr.u64)        }
 };
 /** EL2 support system registers. */
 static const struct
@@ -1045,7 +1054,7 @@ static int nemR3DarwinCopyStateFromHv(PVMCC pVM, PVMCPUCC pVCpu, uint64_t fWhat)
              * https://github.com/AsahiLinux/docs/blob/main/docs/hw/cpu/system-registers.md#actlr_el1-arm-standard-not-standard
              * But the ones being set are not documented. Maybe they are always set by the Hypervisor...
              */
-            if (s_aCpumSysRegsSequioa[i].enmHvReg == HV_SYS_REG_ACTLR_EL1)
+            if (s_aCpumSysRegsSequioa[i].enmHvReg == VBOX_HV_SYS_REG_ACTLR_EL1)
                 *pu64 &= RT_BIT_64(1);
         }
     }
@@ -3476,4 +3485,3 @@ VMM_INT_DECL(uint32_t) NEMHCGetFeatures(PVMCC pVM)
  *
  * @todo Add notes as the implementation progresses...
  */
-
