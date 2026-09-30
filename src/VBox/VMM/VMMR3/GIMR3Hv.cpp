@@ -38,6 +38,7 @@
 #include <VBox/vmm/hm.h>
 #include <VBox/vmm/pdmapi.h>
 #include <VBox/vmm/em.h>
+#include <VBox/vmm/dbgf.h>
 #include "GIMInternal.h"
 #include <VBox/vmm/vm.h>
 
@@ -221,7 +222,11 @@ VMMR3_INT_DECL(int) gimR3HvInit(PVM pVM, PCFGMNODE pGimCfg)
         PVMCPU       pVCpu     = pVM->apCpusR3[idCpu];
         PGIMHVCPU    pHvCpu    = &pVCpu->gim.s.u.HvCpu;
         for (uint8_t idxStimer = 0; idxStimer < RT_ELEMENTS(pHvCpu->aStimers); idxStimer++)
+        {
             pHvCpu->aStimers[idxStimer].hTimer = NIL_TMTIMERHANDLE;
+            pHvCpu->aStimers[idxStimer].idCpu     = idCpu;
+            pHvCpu->aStimers[idxStimer].idxStimer = idxStimer;
+        }
     }
 
     /*
@@ -524,9 +529,9 @@ VMMR3_INT_DECL(int) gimR3HvInit(PVM pVM, PCFGMNODE pGimCfg)
             {
                 PGIMHVSTIMER pHvStimer = &pHvCpu->aStimers[idxStimer];
 
-                /* Associate the synthetic timer with its corresponding VCPU. */
-                pHvStimer->idCpu     = pVCpu->idCpu;
-                pHvStimer->idxStimer = idxStimer;
+                /* Paranoia. */
+                Assert(pHvStimer->idCpu     == pVCpu->idCpu);
+                Assert(pHvStimer->idxStimer == idxStimer);
 
                 /* Create the timer and associate the context pointers. */
                 char szName[32];
@@ -709,8 +714,12 @@ VMMR3_INT_DECL(void) gimR3HvReset(PVM pVM)
         for (uint8_t idxStimer = 0; idxStimer < RT_ELEMENTS(pHvCpu->aStimers); idxStimer++)
         {
             PGIMHVSTIMER pHvStimer = &pHvCpu->aStimers[idxStimer];
+            Assert(pHvStimer->idCpu == idCpu);
+            Assert(pHvStimer->idxStimer == idxStimer);
             pHvStimer->uStimerConfigMsr = 0;
             pHvStimer->uStimerCountMsr  = 0;
+            pHvStimer->uExpirationTime  = 0;
+            pHvStimer->fMsgPending      = false;
         }
     }
 }
@@ -2220,3 +2229,69 @@ VMMR3_INT_DECL(int) gimR3HvHypercallExtGetBootZeroedMem(PVM pVM, int *prcHv)
     return rc;
 }
 
+
+/**
+ * Dumps Hyper-V GIM state.
+ *
+ * @param   pVCpu   The cross context virtual CPU structure.
+ * @param   pHlp    The info helpers.
+ */
+VMMR3_INT_DECL(void) gimR3HvDbgInfo(PVMCPU pVCpu, PCDBGFINFOHLP pHlp)
+{
+    AssertPtrReturnVoid(pVCpu);
+    AssertPtrReturnVoid(pHlp);
+
+    PCVM    pVM = pVCpu->CTX_SUFF(pVM);
+    PCGIMHV pHv = &pVM->gim.s.u.Hv;
+    pHlp->pfnPrintf(pHlp, "  Guest OS ID MSR    = %#RX64\n", pHv->u64GuestOsIdMsr);
+    pHlp->pfnPrintf(pHlp, "  Hypercall MSR      = %#RX64\n", pHv->u64HypercallMsr);
+    pHlp->pfnPrintf(pHlp, "  TSC Page MSR       = %#RX64\n", pHv->u64TscPageMsr);
+    pHlp->pfnPrintf(pHlp, "  Crash Control MSR  = %#RX64\n", pHv->uCrashCtlMsr);
+    pHlp->pfnPrintf(pHlp, "  Crash P0 MSR       = %#RX64\n", pHv->uCrashP0Msr);
+    pHlp->pfnPrintf(pHlp, "  Crash P1 MSR       = %#RX64\n", pHv->uCrashP1Msr);
+    pHlp->pfnPrintf(pHlp, "  Crash P2 MSR       = %#RX64\n", pHv->uCrashP2Msr);
+    pHlp->pfnPrintf(pHlp, "  Crash P3 MSR       = %#RX64\n", pHv->uCrashP3Msr);
+    pHlp->pfnPrintf(pHlp, "  Crash P4 MSR       = %#RX64\n", pHv->uCrashP4Msr);
+    pHlp->pfnPrintf(pHlp, "  TSC ticks/sec      = %#RX64\n", pHv->cTscTicksPerSecond);
+    pHlp->pfnPrintf(pHlp, "  Hypercall IN Page  = %#RX64\n", pHv->GCPhysHypercallIn);
+    pHlp->pfnPrintf(pHlp, "  Hypercall OUT Page = %#RX64\n", pHv->GCPhysHypercallOut);
+    pHlp->pfnPrintf(pHlp, "  Debug Enabled      = %RTbool\n", pHv->fDbgEnabled);
+    if (pHv->fDbgEnabled)
+        pHlp->pfnPrintf(pHlp, "  Debug Interface    = %s\n", pHv->fDbgHypercallInterface ? "Hypercall" : "MSR");
+
+    PCGIMHVCPU pHvCpu = &pVCpu->gim.s.u.HvCpu;
+    pHlp->pfnPrintf(pHlp, "  SIMP MSR           = %#RX64\n", pHvCpu->uSimpMsr);
+    pHlp->pfnPrintf(pHlp, "  SIEFP MSR          = %#RX64\n", pHvCpu->uSiefpMsr);
+    pHlp->pfnPrintf(pHlp, "  VP Assist MSR      = %#RX64\n", pHvCpu->uVpAssistMsr);
+    pHlp->pfnPrintf(pHlp, "  SCONTROL MSR       = %#RX64\n", pHvCpu->uSControlMsr);
+    pHlp->pfnPrintf(pHlp, "  SIEFP MSR          = %#RX64\n", pHvCpu->uSiefpMsr);
+
+    /* Synthetic interrupt sources. */
+    uint32_t const cSintMsrs = RT_ELEMENTS(pHvCpu->auSintMsrs);
+    pHlp->pfnPrintf(pHlp, "  SINT Sources       = %u\n", cSintMsrs);
+    for (uint32_t i = 0; i < cSintMsrs; i++)
+    {
+        uint64_t const uSintMsr = pHvCpu->auSintMsrs[i];
+        bool const fPolling   = MSR_GIM_HV_SINT_IS_POLLING(uSintMsr);
+        bool const fAutoEoi   = MSR_GIM_HV_SINT_IS_AUTOEOI(uSintMsr);
+        bool const fMasked    = MSR_GIM_HV_SINT_IS_MASKED(uSintMsr);
+        uint8_t const uVector = MSR_GIM_HV_SINT_GET_VECTOR(uSintMsr);
+        pHlp->pfnPrintf(pHlp, "    SINT[%2u] MSR = %#016RX64 (masked=%#RTbool vector=%#04x auto-eoi=%#RTbool polling=%#RTbool)\n",
+                        i, uSintMsr, fMasked, uVector, fAutoEoi, fPolling);
+    }
+
+    /* Synthetic interrupt timers. */
+    uint32_t const cStimers = RT_ELEMENTS(pHvCpu->aStimers);
+    pHlp->pfnPrintf(pHlp, "  STIMER Count       = %u\n", cStimers);
+    for (uint32_t i = 0; i < cStimers; i++)
+    {
+        PCGIMHVSTIMER pHvStimer = &pHvCpu->aStimers[i];
+        Assert(pHvStimer->idCpu == pVCpu->idCpu);
+        Assert(pHvStimer->idxStimer == i);
+        pHlp->pfnPrintf(pHlp, "  STIMER%2u:\n", i);
+        pHlp->pfnPrintf(pHlp, "    CONFIG MSR      = %#RX64\n", pHvStimer->uStimerConfigMsr);
+        pHlp->pfnPrintf(pHlp, "    COUNT  MSR      = %#RX64\n", pHvStimer->uStimerCountMsr);
+        pHlp->pfnPrintf(pHlp, "    Expiration      = %#RX64 (100-ns units)\n", pHvStimer->uExpirationTime);
+        pHlp->pfnPrintf(pHlp, "    Message Pending = %RTbool\n", pHvStimer->fMsgPending);
+    }
+}

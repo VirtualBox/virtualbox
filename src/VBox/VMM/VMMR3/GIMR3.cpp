@@ -89,6 +89,65 @@ static FNSSMINTLOADEXEC  gimR3Load;
 static FNSSMINTLOADDONE  gimR3LoadDone;
 
 
+#if defined(VBOX_VMM_TARGET_X86)
+
+/**
+ * Gets the GIM provider's descriptive name.
+ *
+ * @returns The descriptive name or "Unknown/Invalid" if out of range.
+ * @param   enmProviderId   The GIM provider ID.
+ */
+const char *gimR3GetProviderName(GIMPROVIDERID enmProviderId)
+{
+    switch (enmProviderId)
+    {
+        case GIMPROVIDERID_NONE:    return "None";
+        case GIMPROVIDERID_MINIMAL: return "Minimal";
+        case GIMPROVIDERID_HYPERV:  return "HyperV";
+        case GIMPROVIDERID_KVM:     return "KVM";
+        default:
+            return "Unknown/Invalid";
+    }
+}
+
+
+/**
+ * Dumps basic GIM state.
+ *
+ * @param   pVM         The cross context VM structure.
+ * @param   pHlp        The info helpers.
+ * @param   pszArgs     Arguments, ignored.
+ */
+static DECLCALLBACK(void) gimR3DbgInfo(PVM pVM, PCDBGFINFOHLP pHlp, const char *pszArgs)
+{
+    NOREF(pszArgs);
+    PVMCPU pVCpu = VMMGetCpu(pVM);
+    if (!pVCpu)
+        pVCpu = pVM->apCpusR3[0];
+
+    GIMPROVIDERID const enmProviderId = pVM->gim.s.enmProviderId;
+    const char *pszProviderName = gimR3GetProviderName(enmProviderId);
+    pHlp->pfnPrintf(pHlp, "Provider: %s\n", pszProviderName);
+    switch (enmProviderId)
+    {
+        case GIMPROVIDERID_NONE:
+            break;
+        case GIMPROVIDERID_HYPERV:
+            gimR3HvDbgInfo(pVCpu, pHlp);
+            break;
+        case GIMPROVIDERID_MINIMAL:
+        case GIMPROVIDERID_KVM:
+            /** @todo Implement this when required. */
+            pHlp->pfnPrintf(pHlp, "Dumping info for this provider is not yet supported\n");
+            break;
+        default:
+            AssertMsgFailed(("GIM: Invalid provider ID %#x\n", pVM->gim.s.enmProviderId));
+            break;
+    }
+}
+
+#endif /* VBOX_VMM_TARGET_X86 */
+
 /**
  * Initializes the GIM.
  *
@@ -182,6 +241,13 @@ VMMR3_INT_DECL(int) GIMR3Init(PVM pVM)
 #endif
             rc = VMR3SetError(pVM->pUVM, VERR_GIM_INVALID_PROVIDER, RT_SRC_POS, "Provider '%s' unknown.", szProvider);
     }
+
+#if defined(VBOX_VMM_TARGET_X86)
+    /*
+     * Debugger info callbacks.
+     */
+    DBGFR3InfoRegisterInternalEx(pVM, "gim", "Dumps GIM basic information.", gimR3DbgInfo, DBGFINFO_FLAGS_ALL_EMTS);
+#endif
 
     /*
      * Statistics.
