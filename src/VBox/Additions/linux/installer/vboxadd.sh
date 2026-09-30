@@ -640,18 +640,18 @@ create_udev_rule()
         udev_call=""
         udev_app=`which udevadm 2> /dev/null`
         if [ $? -eq 0 ]; then
-            udev_call="${udev_app} version 2> /dev/null"
+            udev_call="${udev_app} version"
         else
             udev_app=`which udevinfo 2> /dev/null`
             if [ $? -eq 0 ]; then
-                udev_call="${udev_app} -V 2> /dev/null"
+                udev_call="${udev_app} -V"
             fi
         fi
         udev_fix="="
         if [ "${udev_call}" != "" ]; then
             udev_out=`${udev_call}`
             udev_ver=`expr "$udev_out" : '[^0-9]*\([0-9]*\)'`
-            if [ "$udev_ver" = "" -o "$udev_ver" -lt 55 ]; then
+            if [ -z "$udev_ver" ] || [ "$udev_ver" -lt 55 ]; then
                udev_fix=""
             fi
         fi
