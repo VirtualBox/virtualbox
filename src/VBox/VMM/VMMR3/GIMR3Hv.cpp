@@ -555,7 +555,17 @@ VMMR3_INT_DECL(int) gimR3HvInit(PVM pVM, PCFGMNODE pGimCfg)
         {
             int rc2 = STAMR3RegisterF(pVM, &pHvCpu->aStatStimerFired[idxStimer], STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS,
                                      STAMUNIT_OCCURENCES, "Number of times the synthetic timer fired.",
-                                     "/GIM/HyperV/%u/Stimer%u_Fired", idCpu, idxStimer);
+                                     "/GIM/HyperV/%u/Stimer%u/Fired", idCpu, idxStimer);
+            AssertLogRelRCReturn(rc2, rc2);
+
+            rc2 = STAMR3RegisterF(pVM, &pHvCpu->aStatStimerConfigWrite[idxStimer], STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS,
+                                     STAMUNIT_OCCURENCES, "Number of times the STIMER_CONFIG MSR was written.",
+                                     "/GIM/HyperV/%u/Stimer%u/ConfigWrite", idCpu, idxStimer);
+            AssertLogRelRCReturn(rc2, rc2);
+
+            rc2 = STAMR3RegisterF(pVM, &pHvCpu->aStatStimerCountWrite[idxStimer], STAMTYPE_COUNTER, STAMVISIBILITY_ALWAYS,
+                                     STAMUNIT_OCCURENCES, "Number of times the STIMER_COUNT MSR was written.",
+                                     "/GIM/HyperV/%u/Stimer%u/CountWrite", idCpu, idxStimer);
             AssertLogRelRCReturn(rc2, rc2);
         }
     }
@@ -2288,8 +2298,17 @@ VMMR3_INT_DECL(void) gimR3HvDbgInfo(PVMCPU pVCpu, PCDBGFINFOHLP pHlp)
         PCGIMHVSTIMER pHvStimer = &pHvCpu->aStimers[i];
         Assert(pHvStimer->idCpu == pVCpu->idCpu);
         Assert(pHvStimer->idxStimer == i);
+        uint64_t const uCfgMsg  = pHvStimer->uStimerConfigMsr;
+        bool const fEnabled     = MSR_GIM_HV_STIMER_IS_ENABLED(uCfgMsg);
+        bool const fPeriodic    = MSR_GIM_HV_STIMER_IS_PERIODIC(uCfgMsg);
+        bool const fLazy        = MSR_GIM_HV_STIMER_IS_LAZY(uCfgMsg);
+        bool const fAutoEnabled = MSR_GIM_HV_STIMER_IS_AUTO_ENABLED(uCfgMsg);
+        uint8_t const uDmVector = MSR_GIM_HV_STIMER_GET_VECTOR(uCfgMsg);
+        uint8_t const idxSint   = MSR_GIM_HV_STIMER_GET_SINTX(uCfgMsg);
+        bool const fDirectMode  = MSR_GIM_HV_STIMER_IS_DIRECT_MODE(uCfgMsg);
         pHlp->pfnPrintf(pHlp, "  STIMER%2u:\n", i);
-        pHlp->pfnPrintf(pHlp, "    CONFIG MSR      = %#RX64\n", pHvStimer->uStimerConfigMsr);
+        pHlp->pfnPrintf(pHlp, "    CONFIG MSR      = %#RX64 (en=%u periodic=%u lazy=%u auto_enabled=%u direct=%u direct_vec=%#x sintx=%u)\n",
+                              uCfgMsg, fEnabled, fPeriodic, fLazy, fAutoEnabled, fDirectMode, uDmVector, idxSint);
         pHlp->pfnPrintf(pHlp, "    COUNT  MSR      = %#RX64\n", pHvStimer->uStimerCountMsr);
         pHlp->pfnPrintf(pHlp, "    Expiration      = %#RX64 (100-ns units)\n", pHvStimer->uExpirationTime);
         pHlp->pfnPrintf(pHlp, "    Message Pending = %RTbool\n", pHvStimer->fMsgPending);

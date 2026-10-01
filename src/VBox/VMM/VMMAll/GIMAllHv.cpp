@@ -1281,6 +1281,8 @@ VMM_INT_DECL(VBOXSTRICTRC) gimHvWriteMsr(PVMCPUCC pVCpu, uint32_t idMsr, PCCPUMM
                         pHvStimer->uStimerConfigMsr = uRawValue;
                         Log(("GIM%u: HyperV: Set STIMER_CONFIG%u=%#RX64\n", pVCpu->idCpu, idxStimer, uRawValue));
 
+                        STAM_COUNTER_INC(&pHvCpu->aStatStimerConfigWrite[idxStimer]);
+
                         /* Writing SINTx as 0 or the enabled bit causes the timer to be disabled. */
                         if (   !MSR_GIM_HV_STIMER_GET_SINTX(uRawValue)
                             || !MSR_GIM_HV_STIMER_IS_ENABLED(uRawValue))
@@ -1337,6 +1339,8 @@ VMM_INT_DECL(VBOXSTRICTRC) gimHvWriteMsr(PVMCPUCC pVCpu, uint32_t idMsr, PCCPUMM
                  */
                 gimHvStopStimer(pVCpu, pHvStimer);
                 pHvStimer->uStimerCountMsr = uRawValue;
+
+                STAM_COUNTER_INC(&pHvCpu->aStatStimerCountWrite[idxStimer]);
 
                 /*
                  * Writing zero to this MSR disables the timer regardless of whether the

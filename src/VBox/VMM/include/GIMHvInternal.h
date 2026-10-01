@@ -1368,6 +1368,10 @@ typedef struct GIMHVCPU
     /** @name Statistics.
      * @{ */
     STAMCOUNTER                 aStatStimerFired[GIM_HV_STIMER_COUNT];
+    /** Number of STIMERN_CONFIG writes. */
+    STAMCOUNTER                 aStatStimerConfigWrite[GIM_HV_STIMER_COUNT];
+    /** Number of STIMERN_COUNT writes. */
+    STAMCOUNTER                 aStatStimerCountWrite[GIM_HV_STIMER_COUNT];
     /** @} */
 } GIMHVCPU;
 /** Pointer to per-VCPU GIM Hyper-V instance data. */
