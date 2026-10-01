@@ -851,8 +851,12 @@ typedef enum GIMHVHYPERCALLPARAM
 #define MSR_GIM_HV_SINT_GET_VECTOR(a)                  ((a) & UINT64_C(0xff))
 /** The AutoEoi mask. */
 #define MSR_GIM_HV_SINT_AUTOEOI                        RT_BIT_64(17)
+/** The polling mask. */
+#define MSR_GIM_HV_SINT_POLLING                        RT_BIT_64(18)
 /** Gets whether AutoEoi is enabled for the synthetic interrupt. */
 #define MSR_GIM_HV_SINT_IS_AUTOEOI(a)                  RT_BOOL((a) & MSR_GIM_HV_SINT_AUTOEOI)
+/** Gets whether polling is enabled for the synthetic interrupt. */
+#define MSR_GIM_HV_SINT_IS_POLLING(a)                  RT_BOOL((a) & MSR_GIM_HV_SINT_POLLING)
 /** @} */
 
 
@@ -1364,6 +1368,10 @@ typedef struct GIMHVCPU
     /** @name Statistics.
      * @{ */
     STAMCOUNTER                 aStatStimerFired[GIM_HV_STIMER_COUNT];
+    /** Number of STIMERN_CONFIG writes. */
+    STAMCOUNTER                 aStatStimerConfigWrite[GIM_HV_STIMER_COUNT];
+    /** Number of STIMERN_COUNT writes. */
+    STAMCOUNTER                 aStatStimerCountWrite[GIM_HV_STIMER_COUNT];
     /** @} */
 } GIMHVCPU;
 /** Pointer to per-VCPU GIM Hyper-V instance data. */
@@ -1409,6 +1417,7 @@ VMMR3_INT_DECL(int)             gimR3HvDebugRead(PVM pVM, void *pvBuf, uint32_t 
                                                  uint32_t cMsTimeout, bool fUdpPkt);
 VMMR3_INT_DECL(int)             gimR3HvHypercallExtQueryCap(PVM pVM, int *prcHv);
 VMMR3_INT_DECL(int)             gimR3HvHypercallExtGetBootZeroedMem(PVM pVM, int *prcHv);
+VMMR3_INT_DECL(void)            gimR3HvDbgInfo(PVMCPU pVCpu, PCDBGFINFOHLP pHlp);
 
 #endif /* IN_RING3 */
 

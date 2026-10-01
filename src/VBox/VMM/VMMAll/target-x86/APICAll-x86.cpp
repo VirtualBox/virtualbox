@@ -1012,6 +1012,7 @@ static void apicProcessEoi(PVMCPUCC pVCpu, uint8_t uVector)
     bool const fLevelTriggered = apicTestVectorInReg(&pXApicPage->tmr, uVector);
     if (fLevelTriggered)
     {
+        STAM_COUNTER_INC(&pVCpu->apic.s.StatEoiLevel);
         PDMIoApicBroadcastEoi(pVCpu->CTX_SUFF(pVM), uVector);
 
         /*
@@ -1039,6 +1040,8 @@ static void apicProcessEoi(PVMCPUCC pVCpu, uint8_t uVector)
 
         Log2(("APIC%u: apicSetEoi: Cleared level triggered interrupt from TMR. uVector=%#x\n", pVCpu->idCpu, uVector));
     }
+    else
+        STAM_COUNTER_INC(&pVCpu->apic.s.StatEoiEdge);
 
     /*
     * Mark interrupt as serviced, update the PPR and signal pending interrupts.
