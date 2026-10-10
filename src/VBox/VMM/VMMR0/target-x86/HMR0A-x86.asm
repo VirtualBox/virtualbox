@@ -406,6 +406,7 @@ BEGINPROC VMXRestoreHostState
         pushfq
         cli                                   ; (see above)
 
+.restore_fs_after_cli:
         test    edi, VMX_RESTORE_HOST_CAN_USE_WRFSBASE_AND_WRGSBASE
         jz      .restore_fs_using_wrmsr
 
@@ -442,6 +443,8 @@ ALIGNCODE(8)
 .gdt_readonly_or_need_writable:
         test    edi, VMX_RESTORE_HOST_GDT_NEED_WRITABLE
         jnz     .gdt_readonly_need_writable
+        test    edi, VMX_RESTORE_HOST_CET_ENABLED
+        jnz     .gdt_readonly_cet
 .gdt_readonly:
         mov     rcx, cr0
         mov     r9, rcx
@@ -453,6 +456,36 @@ ALIGNCODE(8)
         mov     cr0, r9
         jmp     .restore_fs
         int3
+
+.gdt_readonly_cet:
+        ;
+        ; CR4.CET, when enabled, needs to be disabled around toggling CR0.WP to
+        ; not #GP(0).
+        ;
+        ; We need to disable interrupts while doing so to ensure the kernel
+        ; sees a consistent state, i.e. no intermediate values of CR4 which
+        ; will be in conflict with the CR4 shadow.
+        ;
+        pushfq
+        cli
+        mov     rcx, cr4
+        mov     r8, rcx
+        and     rcx, ~X86_CR4_CET
+        mov     cr4, rcx
+        mov     rcx, cr0
+        mov     r9, rcx
+        add     rax, qword [rsi + VMXRESTOREHOST.HostGdtr + 2]  ; xAX <- descriptor offset + GDTR.pGdt.
+        and     rcx, ~X86_CR0_WP
+        mov     cr0, rcx
+        and     dword [rax + 4], ~RT_BIT(9)                     ; clear the busy flag in TSS desc (bits 0-7=base, bit 9=busy bit)
+        ltr     dx
+        mov     cr0, r9
+        mov     cr4, r8
+        ;
+        ; Keep in sync with test at .restore_fs!
+        test    edi, VMX_RESTORE_HOST_SEL_FS | VMX_RESTORE_HOST_SEL_GS
+        jnz     .restore_fs_after_cli
+        jmp     .restore_flags
 
 ALIGNCODE(8)
 .gdt_readonly_need_writable:

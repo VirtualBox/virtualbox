@@ -3621,7 +3621,12 @@ static int hmR0VmxExportHostSegmentRegs(PVMCPUCC pVCpu, uint64_t uHostCr4)
 
         /* If the host has made GDT read-only, we would need to temporarily toggle CR0.WP before writing the GDT. */
         if (g_fHmHostKernelFeatures & SUPKERNELFEATURES_GDT_READ_ONLY)
+        {
             fRestoreHostFlags |= VMX_RESTORE_HOST_GDT_READ_ONLY;
+            /* If CET is enabled, it needs to be disabled around toggling CR0.WP. */
+            if (uHostCr4 & X86_CR4_CET)
+                fRestoreHostFlags |= VMX_RESTORE_HOST_CET_ENABLED;
+        }
         if (g_fHmHostKernelFeatures & SUPKERNELFEATURES_GDT_NEED_WRITABLE)
         {
             /* The GDT is read-only but the writable GDT is available. */
