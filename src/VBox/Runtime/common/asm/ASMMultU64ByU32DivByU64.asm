@@ -44,7 +44,7 @@
 ; @returns (u64A * u32B) / u64C.
 ; @param   u64A/rcx/rdi     The 64-bit value.
 ; @param   u32B/edx/esi     The 32-bit value to multiple by A.
-; @param   u64C/r8d/rdx     The 64-bit value to divide A*B by.
+; @param   u64C/r8/rdx      The 64-bit value to divide A*B by.
 ;
 ; @cproto  DECLASM(uint64_t) ASMMultU64ByU32DivByU64(uint64_t u64A, uint32_t u32B, uint64_t u64C);
 ;
@@ -57,12 +57,12 @@ RT_BEGINPROC ASMMultU64ByU32DivByU64
  %else
     mov     rax, rdi                    ; rax = u64A
     mov     r9d, esi                    ; r9d = u32B
-    mov     r8d, rdx                    ; r8d = u64C
+    mov     r8, rdx                     ; r8  = u64C
  %endif
     mul     r9
     div     r8
 %else
-% error "Implement me"
+%error "Implement me"
 %endif
     ret
 ENDPROC ASMMultU64ByU32DivByU64

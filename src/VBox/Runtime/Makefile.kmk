@@ -300,7 +300,6 @@ RuntimeWin32ASM_SOURCES = \
 	common/asm/ASMAtomicXchgU16.asm \
 	common/asm/ASMMultU32ByU32DivByU32.asm \
 	common/asm/ASMMultU64ByU32DivByU32.asm \
-	common/asm/ASMMultU64ByU32DivByU64.asm \
 	common/asm/ASMCpuId_Idx_ECX.asm \
 	common/asm/ASMGetSegAttr.asm
 
@@ -1023,7 +1022,7 @@ RuntimeBaseR3_SOURCES.arm64 += \
 RuntimeBaseR3_SOURCES.sparc32 += \
 	common/string/RTStrEnd.cpp \
 	common/asm/ASMMultU64ByU32DivByU32-generic.cpp \
-	common/asm/ASMMultU64ByU32DivByU32-generic.cpp
+	common/asm/ASMMultU64ByU32DivByU64-generic.cpp
 RuntimeBaseR3_SOURCES.sparc64 += \
 	common/string/RTStrEnd.cpp \
 	common/asm/ASMMultU64ByU32DivByU32-generic.cpp \
