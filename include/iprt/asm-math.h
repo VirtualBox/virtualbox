@@ -534,6 +534,7 @@ DECLINLINE(uint64_t) ASMMultU64ByU32DivByU64(uint64_t u64A, uint32_t u32B, uint6
     uint64_t u64Rem;
     uint64_t u64Dividend = ASMMult2xU64Ret2xU64(u64A, u32B, &u64Rem);
     uint64_t u64Result   = 0;
+    unsigned i;
 
      /* Not sure if we should assert here because ASMMultU64ByU32DivByU32() has the same requirement for divisor. */
 #if 0
@@ -542,7 +543,7 @@ DECLINLINE(uint64_t) ASMMultU64ByU32DivByU64(uint64_t u64A, uint32_t u32B, uint6
 #endif
 
     /* Binary long division. */
-    for (unsigned i = 0; i < 64; i++)
+    for (i = 0; i < 64; i++)
     {
         /* Reminder * 2 + next-divident-bit can require 65-bits, fCarry holds the 65th bit here. */
         bool const fCarry = RT_BOOL(u64Rem & RT_BIT_64(63));
