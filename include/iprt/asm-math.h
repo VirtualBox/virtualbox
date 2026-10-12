@@ -499,6 +499,68 @@ DECLINLINE(uint64_t) ASMMultU64ByU32DivByU32(uint64_t u64A, uint32_t u32B, uint3
 }
 #endif
 
+
+/**
+ * Multiple a 64-bit by a 32-bit integer and divide the result by a 64-bit integer
+ * using a 96 bit intermediate result.
+ *
+ * @returns (u64A * u32B) / u64C.
+ * @param   u64A    The 64-bit value.
+ * @param   u32B    The 32-bit value to multiple by A.
+ * @param   u64C    The 64-bit value to divide A*B by.
+ *
+ * @remarks Architecture specific.
+ * @remarks Make sure the result won't ever exceed 64-bit, because hardware
+ *          exception may be raised if it does.
+ * @remarks On x86 this may be used to avoid dragging in 64-bit builtin
+ *          arithmetics function.
+ */
+#if (defined(RT_ARCH_AMD64) && RT_INLINE_ASM_EXTERNAL) || (!defined(RT_ARCH_AMD64) && !defined(RT_ARCH_X86))
+RT_DECL_ASM(uint64_t) ASMMultU64ByU32DivByU64(uint64_t u64A, uint32_t u32B, uint64_t u64C);
+#else
+DECLINLINE(uint64_t) ASMMultU64ByU32DivByU64(uint64_t u64A, uint32_t u32B, uint64_t u64C)
+{
+# if RT_INLINE_ASM_GNU_STYLE && defined(RT_ARCH_AMD64)
+    uint64_t u64Result, u64Spill;
+    __asm__ __volatile__("mulq %2\n\t"
+                         "divq %3\n\t"
+                         : "=&a" (u64Result),
+                           "=&d" (u64Spill)
+                         : "r" ((uint64_t)u32B),
+                           "r" (u64C),
+                           "0" (u64A));
+    return u64Result;
+# else
+    uint64_t u64Rem;
+    uint64_t u64Dividend = ASMMult2xU64Ret2xU64(u64A, u32B, &u64Rem);
+    uint64_t u64Result   = 0;
+
+     /* Not sure if we should assert here because ASMMultU64ByU32DivByU32() has the same requirement for divisor. */
+#if 0
+    Assert(u64C);
+    Assert(u64Rem < u64C); /* Result must fit in 64 bits. */
+#endif
+
+    /* Binary long division. */
+    for (unsigned i = 0; i < 64; i++)
+    {
+        /* Reminder * 2 + next-divident-bit can require 65-bits, fCarry holds the 65th bit here. */
+        bool const fCarry = RT_BOOL(u64Rem & RT_BIT_64(63));
+        u64Rem = (u64Rem << 1) | (u64Dividend >> 63);
+        u64Dividend <<= 1;
+        u64Result   <<= 1;
+        if (   fCarry
+            || u64Rem >= u64C)
+        {
+            u64Rem    -= u64C;
+            u64Result |= 1;
+        }
+    }
+    return u64Result;
+# endif
+}
+#endif
+
 /** @} */
 
 /*

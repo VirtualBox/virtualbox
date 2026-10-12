@@ -275,6 +275,7 @@ RuntimeWin64ASM_SOURCES = \
 	common/asm/ASMBitNextSet.asm \
 	common/asm/ASMMultU32ByU32DivByU32.asm \
 	common/asm/ASMMultU64ByU32DivByU32.asm \
+	common/asm/ASMMultU64ByU32DivByU64.asm \
 	common/asm/ASMCpuId_Idx_ECX.asm \
 	common/asm/ASMNopPause.asm \
 	common/asm/ASMGetIDTR.asm \
@@ -1012,16 +1013,20 @@ RuntimeBaseR3_SOURCES.x86 += \
 # Some non-assembly for non-AMD64 / non-x86 targets:
 RuntimeBaseR3_SOURCES.arm32 += \
 	common/string/RTStrEnd.cpp \
-	common/asm/ASMMultU64ByU32DivByU32-generic.cpp
+	common/asm/ASMMultU64ByU32DivByU32-generic.cpp \
+	common/asm/ASMMultU64ByU32DivByU64-generic.cpp
 RuntimeBaseR3_SOURCES.arm64 += \
 	common/string/RTStrEnd.cpp \
-	common/asm/ASMMultU64ByU32DivByU32-generic.cpp
+	common/asm/ASMMultU64ByU32DivByU32-generic.cpp \
+	common/asm/ASMMultU64ByU32DivByU64-generic.cpp
 RuntimeBaseR3_SOURCES.sparc32 += \
 	common/string/RTStrEnd.cpp \
-	common/asm/ASMMultU64ByU32DivByU32-generic.cpp
+	common/asm/ASMMultU64ByU32DivByU32-generic.cpp \
+	common/asm/ASMMultU64ByU32DivByU64-generic.cpp
 RuntimeBaseR3_SOURCES.sparc64 += \
 	common/string/RTStrEnd.cpp \
-	common/asm/ASMMultU64ByU32DivByU32-generic.cpp
+	common/asm/ASMMultU64ByU32DivByU32-generic.cpp \
+	common/asm/ASMMultU64ByU32DivByU64-generic.cpp
 
 # VBox specific stuff.
 RuntimeBaseR3_SOURCES += \
@@ -3790,17 +3795,21 @@ RuntimeR0Drv_SOURCES.x86   = \
 	VBox/RTLogWriteVmm-amd64-x86.asm
 RuntimeR0Drv_SOURCES.arm32 += \
 	common/string/RTStrEnd.cpp \
-	common/asm/ASMMultU64ByU32DivByU32-generic.cpp
+	common/asm/ASMMultU64ByU32DivByU32-generic.cpp \
+	common/asm/ASMMultU64ByU32DivByU64-generic.cpp
 RuntimeR0Drv_SOURCES.arm64 += \
 	common/string/RTStrEnd.cpp \
 	common/asm/ASMMultU64ByU32DivByU32-generic.cpp \
+	common/asm/ASMMultU64ByU32DivByU64-generic.cpp \
 	common/asm/ASMMemFirstMismatchingU8-generic.cpp
 RuntimeR0Drv_SOURCES.sparc32 += \
 	common/string/RTStrEnd.cpp \
-	common/asm/ASMMultU64ByU32DivByU32-generic.cpp
+	common/asm/ASMMultU64ByU32DivByU32-generic.cpp \
+	common/asm/ASMMultU64ByU32DivByU64-generic.cpp
 RuntimeR0Drv_SOURCES.sparc64 += \
 	common/string/RTStrEnd.cpp \
-	common/asm/ASMMultU64ByU32DivByU32-generic.cpp
+	common/asm/ASMMultU64ByU32DivByU32-generic.cpp \
+	common/asm/ASMMultU64ByU32DivByU64-generic.cpp
 
 RuntimeR0Drv_SOURCES.linux = \
 	common/misc/thread.cpp \
