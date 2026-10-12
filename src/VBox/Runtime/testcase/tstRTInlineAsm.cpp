@@ -1,4 +1,4 @@
-/* $Id: tstRTInlineAsm.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: tstRTInlineAsm.cpp 115362 2026-10-12 19:05:06Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * IPRT Testcase - inline assembly.
  */
@@ -536,6 +536,8 @@ static void tstASMCpuId(void)
             continue;   /* Invalid extended functions seems change the value if ECX changes */
         if (iExt == 0x8000001d)
             continue;   /* Takes cache level in ecx. */
+        if (iExt == 0x80000026)
+            continue;   /* Takes topology level in ecx. */
 
         u32 = ASMCpuId_EAX(iExt);
         CHECKVAL(u32, s.uEAX, "%x");
@@ -3009,6 +3011,54 @@ static void tstASMMath(void)
        * the operands are in a valid range.
        */
     u64 = ASMMultU64ByU32DivByU32(UINT64_C(0xfffffff8c65d6731), UINT32_C(0x77d7daf8), UINT32_C(0x3b9aca00));
+    CHECKVAL(u64, UINT64_C(0x02b8f9a2aa74e3dc), "%#018RX64");
+# endif
+
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0x0000000000000001), UINT32_C(0x00000001), UINT64_C(0x0000000000000001));
+    CHECKVAL(u64, UINT64_C(0x0000000000000001), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0x0000000100000000), UINT32_C(0x80000000), UINT64_C(0x0000000000000002));
+    CHECKVAL(u64, UINT64_C(0x4000000000000000), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0xfedcba9876543210), UINT32_C(0xffffffff), UINT64_C(0x00000000ffffffff));
+    CHECKVAL(u64, UINT64_C(0xfedcba9876543210), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0xffffffffffffffff), UINT32_C(0xffffffff), UINT64_C(0x00000000ffffffff));
+    CHECKVAL(u64, UINT64_C(0xffffffffffffffff), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0xffffffffffffffff), UINT32_C(0xfffffff0), UINT64_C(0x00000000ffffffff));
+    CHECKVAL(u64, UINT64_C(0xfffffff0fffffff0), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0x3415934810359583), UINT32_C(0x58734981), UINT64_C(0x00000000f8694045));
+    CHECKVAL(u64, UINT64_C(0x128b9c3d43184763), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0x3415934810359583), UINT32_C(0xf8694045), UINT64_C(0x0000000058734981));
+    CHECKVAL(u64, UINT64_C(0x924719355cd35a27), "%#018RX64");
+
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0xffffffffffffffff), UINT32_C(0x00000000), UINT64_C(0xffffffffffffffff));
+    CHECKVAL(u64, UINT64_C(0x0000000000000000), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0x0000010000000000), UINT32_C(0x10000000), UINT64_C(0x0000000100000000));
+    CHECKVAL(u64, UINT64_C(0x0000001000000000), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0xffffffffffffffff), UINT32_C(0xffffffff), UINT64_C(0x0000000100000000));
+    CHECKVAL(u64, UINT64_C(0xfffffffeffffffff), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0xfedcba9876543210), UINT32_C(0xfedcba98), UINT64_C(0x0000000123456789));
+    CHECKVAL(u64, UINT64_C(0xdf0123458389abce), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0xf123456789abcdef), UINT32_C(0xffffffff), UINT64_C(0x8000000000000001));
+    CHECKVAL(u64, UINT64_C(0x00000001e2468acd), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0xffffffffffffffff), UINT32_C(0x7fffffff), UINT64_C(0xffffffffffffffff));
+    CHECKVAL(u64, UINT64_C(0x000000007fffffff), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0xffffffffffffffff), UINT32_C(0x00000001), UINT64_C(0x0000000100000001));
+    CHECKVAL(u64, UINT64_C(0x00000000ffffffff), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0xffffffffffffffff), UINT32_C(0xffffffff), UINT64_C(0xffffffffffffffff));
+    CHECKVAL(u64, UINT64_C(0x00000000ffffffff), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0x5050505050505050), UINT32_C(0xcdcdcdcd), UINT64_C(0x00000000800000001));
+    CHECKVAL(u64, UINT64_C(0x08121c262725e4a3), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0xffffffff00000000), UINT32_C(0x80000000), UINT64_C(0x8000000000000000));
+    CHECKVAL(u64, UINT64_C(0x00000000ffffffff), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0x7fffffffffffffff), UINT32_C(0x00000001), UINT64_C(0x8000000000000000));
+    CHECKVAL(u64, UINT64_C(0x0000000000000000), "%#018RX64");
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0x0000000100000001), UINT32_C(0x00000001), UINT64_C(0x0000000100000000));
+    CHECKVAL(u64, UINT64_C(0x0000000000000001), "%#018RX64");
+# if 0
+    /*
+     * Like ASMMultU64ByU32DivByU32 this would still cause #DE on the divq because the quotient
+     * is (0x202b8f9a2aa74e3dc) 66-bits. Extending the divisor to 64-bit doesn't change anything.
+     */
+    u64 = ASMMultU64ByU32DivByU64(UINT64_C(0xfffffff8c65d6731), UINT32_C(0x77d7daf8), UINT64_C(0x3b9aca00));
     CHECKVAL(u64, UINT64_C(0x02b8f9a2aa74e3dc), "%#018RX64");
 # endif
 #endif /* AMD64 || X86 */
