@@ -1,4 +1,4 @@
-/* $Id: GIMAllHv.cpp 115361 2026-10-08 09:58:15Z aleksey.ilyushin@oracle.com $ */
+/* $Id: GIMAllHv.cpp 115364 2026-10-13 10:02:01Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * GIM - Guest Interface Manager, Microsoft Hyper-V, All Contexts.
  */
@@ -53,6 +53,8 @@
 #ifdef IN_RING0
 # include <iprt/string.h>   /* for RT_ZERO. */
 #endif
+
+#include <iprt/asm-math.h>  /* for ASMMultU64ByU32DivByU64. */
 
 #ifdef IN_RING3
 /**
@@ -503,8 +505,7 @@ static uint64_t gimHvGetTimeRefCount(PVMCPUCC pVCpu)
     PCGIMHV pHv = &pVCpu->CTX_SUFF(pVM)->gim.s.u.Hv;
     uint64_t const u64Tsc        = TMCpuTickGet(pVCpu);     /** @todo should we be passing VCPU0 always? */
     uint64_t const u64TscHz      = pHv->cTscTicksPerSecond;
-    uint64_t const u64Tsc100NS   = u64TscHz / UINT64_C(10000000); /* 100 ns */
-    uint64_t const uTimeRefCount = (u64Tsc / u64Tsc100NS);
+    uint64_t const uTimeRefCount = ASMMultU64ByU32DivByU64(u64Tsc, UINT32_C(10000000) /*100ns*/, u64TscHz);
     return uTimeRefCount;
 }
 
