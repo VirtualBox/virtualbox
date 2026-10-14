@@ -145,6 +145,8 @@ static int systemTableAcpiMmioDevResourceNoIrq(RTACPITBL hDsdt, RTACPIRES hAcpiR
 int SystemTableBuilderAcpi::initInstance(void)
 {
     m_fTpm20 = false;
+    m_fPsciUseHvc = true;
+    m_u32MaintenanceGsiv = 0;
 
     int vrc = RTAcpiTblCreate(&m_hAcpiDsdt, ACPI_TABLE_HDR_SIGNATURE_DSDT, 6, "ORCL  ", "VBOXDSDT", 1, "VBOX", 1);
     AssertRCReturn(vrc, vrc);
@@ -370,6 +372,14 @@ int SystemTableBuilderAcpi::configureGic(uint32_t cCpus, RTGCPHYS GCPhysIntcDist
 }
 
 
+int SystemTableBuilderAcpi::configureArmVirtualization(bool fPsciUseHvc, uint32_t u32MaintenanceGsiv)
+{
+    m_fPsciUseHvc = fPsciUseHvc;
+    m_u32MaintenanceGsiv = u32MaintenanceGsiv;
+    return VINF_SUCCESS;
+}
+
+
 int SystemTableBuilderAcpi::configureClock(void)
 {
     return VINF_SUCCESS;
@@ -577,6 +587,7 @@ int SystemTableBuilderAcpi::buildMadt(RTVFSIOSTREAM hVfsIos, size_t *pcbMadt)
         pGicc->u32AcpiCpuUid       = i;
         pGicc->fGicc               = ACPI_MADT_GICC_F_ENABLED;
         pGicc->u64Mpidr            = i;
+        pGicc->u32VGicMaintenanceGsiv = m_u32MaintenanceGsiv;
 
         cbMadt += sizeof(*pGicc);
         pGicc++;
@@ -676,11 +687,11 @@ int SystemTableBuilderAcpi::buildGtdt(RTVFSIOSTREAM hVfsIos, size_t *pcbGtdt)
     Gtdt.u32Rsvd                   = 0;
     Gtdt.u32El1SecTimerGsiv        = 0;
     Gtdt.fEl1SecTimer              = 0;
-    Gtdt.u32El1NonSecTimerGsiv     = 0x1a; /** @todo */
+    Gtdt.u32El1NonSecTimerGsiv     = 0x1e; /* Same physical timer INTID as the FDT. */
     Gtdt.fEl1NonSecTimer           = ACPI_GTDT_TIMER_F_INTR_MODE_LEVEL | ACPI_GTDT_TIMER_F_INTR_POLARITY_ACTIVE_HIGH | ACPI_GTDT_TIMER_F_ALWAYS_ON_CAP;
     Gtdt.u32El1VirtTimerGsiv       = 0x1b; /** @todo */
     Gtdt.fEl1VirtTimer             = ACPI_GTDT_TIMER_F_INTR_MODE_LEVEL | ACPI_GTDT_TIMER_F_INTR_POLARITY_ACTIVE_HIGH;
-    Gtdt.u32El2TimerGsiv           = 0x1e;
+    Gtdt.u32El2TimerGsiv           = 0x1a;
     Gtdt.fEl2Timer                 = ACPI_GTDT_TIMER_F_INTR_MODE_LEVEL | ACPI_GTDT_TIMER_F_INTR_POLARITY_ACTIVE_HIGH;
     Gtdt.u64PhysAddrCndReadBase    = UINT64_MAX;
     Gtdt.cPlatformTimers           = 0;
@@ -728,8 +739,9 @@ int SystemTableBuilderAcpi::buildFadt(RTVFSIOSTREAM hVfsIos, RTGCPHYS GCPhysXDsd
     ACPIFADT Fadt; RT_ZERO(Fadt);
 
     Fadt.fFeatures         = ACPI_FADT_F_HW_REDUCED_ACPI;
-    Fadt.fArmBootArch      =   ACPI_FADT_ARM_BOOT_ARCH_F_PSCI_COMP
-                             | ACPI_FADT_ARM_BOOT_ARCH_F_PSCI_USE_HVC;
+    Fadt.fArmBootArch      = ACPI_FADT_ARM_BOOT_ARCH_F_PSCI_COMP;
+    if (m_fPsciUseHvc)
+        Fadt.fArmBootArch |= ACPI_FADT_ARM_BOOT_ARCH_F_PSCI_USE_HVC;
     Fadt.bFadtVersionMinor = 3;
     Fadt.u64AddrXDsdt      = GCPhysXDsdt;
 
@@ -1537,6 +1549,13 @@ int SystemTableBuilder::configureGic(uint32_t cCpus, RTGCPHYS GCPhysIntcDist, RT
 {
     RT_NOREF(cCpus, GCPhysIntcDist, cbMmioIntcDist, GCPhysIntcReDist, cbMmioIntcReDist, GCPhysIntcIts, cbMmioIntcIts);
     return VERR_NOT_IMPLEMENTED;
+}
+
+
+int SystemTableBuilder::configureArmVirtualization(bool fPsciUseHvc, uint32_t u32MaintenanceGsiv)
+{
+    RT_NOREF(fPsciUseHvc, u32MaintenanceGsiv);
+    return VINF_SUCCESS;
 }
 
 

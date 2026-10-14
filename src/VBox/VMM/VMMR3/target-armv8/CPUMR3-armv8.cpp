@@ -104,6 +104,14 @@
  */
 static CPUMSYSREGRANGE const g_aSysRegRanges[] =
 {
+    /* Firmware and nested hypervisors access these registers through trapped MSR/MRS. */
+    RINT(ARMV8_AARCH64_SYSREG_CNTHCTL_EL2, ARMV8_AARCH64_SYSREG_CNTHCTL_EL2,
+         kCpumSysRegRdFn_ReadCpumOff, kCpumSysRegWrFn_WriteCpumOff,
+         RT_UOFFSETOF(CPUMCTX, CntHCtlEl2), 0, 0, 0, "CNTHCTL_EL2"),
+    RINT(ARMV8_AARCH64_SYSREG_MDCCINT_EL1, ARMV8_AARCH64_SYSREG_MDCCINT_EL1,
+         kCpumSysRegRdFn_ReadCpumOff, kCpumSysRegWrFn_WriteCpumOff,
+         RT_UOFFSETOF(CPUMCTX, MDccInt), 0, 0, 0, "MDCCINT_EL1"),
+    MVI(ARMV8_AARCH64_SYSREG_ID_CREATE(3, 0, 10, 4, 3), "LORC_EL1", 0),
     MFX(ARMV8_AARCH64_SYSREG_OSLAR_EL1, "OSLAR_EL1", WriteOnly, OslarEl1, 0, UINT64_C(0xfffffffffffffffe), UINT64_C(0xfffffffffffffffe)),
     MFO(ARMV8_AARCH64_SYSREG_OSLSR_EL1, "OSLSR_EL1", OslsrEl1),
     MVI(ARMV8_AARCH64_SYSREG_OSDLR_EL1, "OSDLR_EL1", 0),
