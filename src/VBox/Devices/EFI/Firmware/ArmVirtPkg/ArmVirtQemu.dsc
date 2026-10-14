@@ -105,6 +105,9 @@
   ArmMonitorLib|ArmVirtPkg/Library/ArmVirtMonitorLib/ArmVirtMonitorLib.inf
 
 [LibraryClasses.AARCH64]
+!ifdef $(VBOX)
+  ArmGenericTimerCounterLib|VBoxPkg/Library/VBoxArmGenericTimerLib/VBoxArmGenericTimerLib.inf
+!endif
 !ifndef $(VBOX)
   ArmPlatformLib|ArmVirtPkg/Library/ArmPlatformLibQemu/ArmPlatformLibQemu.inf
 !else

@@ -131,11 +131,11 @@ typedef enum hv_gic_redistributor_reg_t : uint16_t
 
 typedef enum hv_gic_intid_t : uint16_t
 {
-    HV_GIC_INT_EL1_PHYSICAL_TIMER  = 23,
-    HV_GIC_INT_EL1_VIRTUAL_TIMER   = 25,
+    HV_GIC_INT_EL1_PHYSICAL_TIMER  = 30,
+    HV_GIC_INT_EL1_VIRTUAL_TIMER   = 27,
     HV_GIC_INT_EL2_PHYSICAL_TIMER  = 26,
-    HV_GIC_INT_MAINTENANCE         = 27,
-    HV_GIC_INT_PERFORMANCE_MONITOR = 30
+    HV_GIC_INT_MAINTENANCE         = 25,
+    HV_GIC_INT_PERFORMANCE_MONITOR = 23
 } hv_gic_intid_t;
 
 # define HV_SYS_REG_ACTLR_EL1   (hv_sys_reg_t)0xc081
@@ -1455,6 +1455,18 @@ DECLHIDDEN(int) nemR3NativeInit(PVM pVM, bool fFallback, bool fForced)
                 fNestedHWVirt ? "so had to disable it for the VM!" : ", but is not configured and therefore harmless."));
     }
 
+    /* The frontend selected native GIC and SMC PSCI for nested EL2.  Do not
+       silently continue with a different CPU/platform configuration. */
+    if (   fNestedHWVirt
+        && CFGMR3GetChild(CFGMR3GetRoot(pVM), "Devices/gic-nem/0")
+        && !pVM->nem.s.fEl2Enabled)
+    {
+        if (hVmCfg)
+            os_release(hVmCfg);
+        return VMSetError(pVM, VERR_CPUM_INVALID_HWVIRT_CONFIG, RT_SRC_POS,
+                          "Nested virtualization requires host EL2 support and macOS 15 or later");
+    }
+
     hv_return_t hrc = hv_vm_create(hVmCfg);
     os_release(hVmCfg);
     if (hrc == HV_SUCCESS)
@@ -1750,12 +1762,15 @@ DECLHIDDEN(int) nemR3NativeInitAfterCPUM(PVM pVM)
      * Need to create the GIC here if the NEM variant is configured
      * before any vCPU is created according to the Apple docs.
      */
-    if (   hv_gic_create
-        && CFGMR3GetChild(CFGMR3GetRoot(pVM), "Devices/gic-nem/0"))
+    if (CFGMR3GetChild(CFGMR3GetRoot(pVM), "Devices/gic-nem/0"))
     {
+        if (!hv_gic_create)
+            return VMSetError(pVM, VERR_NEM_NOT_AVAILABLE, RT_SRC_POS,
+                              "Native GIC requires macOS 15 or later");
         int rc = nemR3DarwinGicCreate(pVM);
         if (RT_FAILURE(rc))
             return VMSetError(pVM, VERR_NEM_VM_CREATE_FAILED, RT_SRC_POS, "Creating the GIC failed: %Rrc", rc);
+        pVM->nem.s.fNativeGic = true;
     }
 
     /*
@@ -2648,34 +2663,38 @@ static VBOXSTRICTRC nemR3DarwinPreRunGuest(PVM pVM, PVMCPU pVCpu, bool fSingleSt
         }
     }
 
-    /* Set the pending interrupt state. */
-    hv_return_t hrc = HV_SUCCESS;
-    if (VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_IRQ))
+    /* With native GIC, HVF owns the IRQ/FIQ lines and timer PPIs. */
+    if (!pVM->nem.s.fNativeGic)
     {
-        hrc = hv_vcpu_set_pending_interrupt(pVCpu->nem.s.hVCpu, HV_INTERRUPT_TYPE_IRQ, true);
-        AssertReturn(hrc == HV_SUCCESS, VERR_NEM_IPE_9);
+        /* Set the pending interrupt state. */
+        hv_return_t hrc = HV_SUCCESS;
+        if (VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_IRQ))
+        {
+            hrc = hv_vcpu_set_pending_interrupt(pVCpu->nem.s.hVCpu, HV_INTERRUPT_TYPE_IRQ, true);
+            AssertReturn(hrc == HV_SUCCESS, VERR_NEM_IPE_9);
 #ifdef LOG_ENABLED
-        fIrq = true;
+            fIrq = true;
 #endif
-    }
-    else
-    {
-        hrc = hv_vcpu_set_pending_interrupt(pVCpu->nem.s.hVCpu, HV_INTERRUPT_TYPE_IRQ, false);
-        AssertReturn(hrc == HV_SUCCESS, VERR_NEM_IPE_9);
-    }
+        }
+        else
+        {
+            hrc = hv_vcpu_set_pending_interrupt(pVCpu->nem.s.hVCpu, HV_INTERRUPT_TYPE_IRQ, false);
+            AssertReturn(hrc == HV_SUCCESS, VERR_NEM_IPE_9);
+        }
 
-    if (VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_FIQ))
-    {
-        hrc = hv_vcpu_set_pending_interrupt(pVCpu->nem.s.hVCpu, HV_INTERRUPT_TYPE_FIQ, true);
-        AssertReturn(hrc == HV_SUCCESS, VERR_NEM_IPE_9);
+        if (VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_FIQ))
+        {
+            hrc = hv_vcpu_set_pending_interrupt(pVCpu->nem.s.hVCpu, HV_INTERRUPT_TYPE_FIQ, true);
+            AssertReturn(hrc == HV_SUCCESS, VERR_NEM_IPE_9);
 #ifdef LOG_ENABLED
-        fFiq = true;
+            fFiq = true;
 #endif
-    }
-    else
-    {
-        hrc = hv_vcpu_set_pending_interrupt(pVCpu->nem.s.hVCpu, HV_INTERRUPT_TYPE_FIQ, false);
-        AssertReturn(hrc == HV_SUCCESS, VERR_NEM_IPE_9);
+        }
+        else
+        {
+            hrc = hv_vcpu_set_pending_interrupt(pVCpu->nem.s.hVCpu, HV_INTERRUPT_TYPE_FIQ, false);
+            AssertReturn(hrc == HV_SUCCESS, VERR_NEM_IPE_9);
+        }
     }
 
     LogFlowFunc(("Running vCPU [%s,%s]\n", fIrq ? "I" : "nI", fFiq ? "F" : "nF"));

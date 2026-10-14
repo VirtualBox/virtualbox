@@ -1108,6 +1108,11 @@ it unless this changes. -->
               Enables or disables nested virtualization. Enabling makes
               hardware virtualization features available to the VM. See
               <xref linkend="nested-virt" />.
+            </para><para>
+              On macOS Arm hosts, nested virtualization requires macOS 15
+              or later and hardware that supports guest EL2. Enabling it
+              selects the native Apple interrupt controller. A GIC ITS
+              cannot be enabled with this configuration.
             </para></listitem>
         </varlistentry>
         <varlistentry>
