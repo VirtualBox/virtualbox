@@ -28,6 +28,7 @@ void ip6_input(struct mbuf *m)
     M_DUP_DEBUG(slirp, m, 1, TCPIPHDR_DELTA + 2 + ETH_HLEN);
 
     struct ip6 *ip6;
+    int ip6_len;
 
     if (!slirp->in6_enabled) {
         goto bad;
@@ -47,10 +48,12 @@ void ip6_input(struct mbuf *m)
         goto bad;
     }
 
+    ip6_len = ntohs(ip6->ip_pl) + sizeof(struct ip6);
+
 #ifdef VBOX
-    if (ntohs(ip6->ip_pl) + sizeof(struct ip6) > slirp->if_mtu_v6) {
+    if (ip6_len > slirp->if_mtu_v6) {
 #else
-    if (ntohs(ip6->ip_pl) + sizeof(struct ip6) > slirp->if_mtu) {
+    if (ip6_len > slirp->if_mtu) {
 #endif
         icmp6_send_error(m, ICMP6_TOOBIG, 0);
         goto bad;
@@ -59,9 +62,13 @@ void ip6_input(struct mbuf *m)
     // Check if the message size is big enough to hold what's
     // set in the payload length header. If not this is an invalid
     // packet
-    if (m->m_len < ntohs(ip6->ip_pl) + sizeof(struct ip6)) {
+    if (m->m_len < ip6_len) {
         goto bad;
     }
+
+    /* Should drop packet if mbuf too long? hmmm... */
+    if (m->m_len > ip6_len)
+        m_adj(m, ip6_len - m->m_len);
 
     /* check ip_ttl for a correct ICMP reply */
     if (ip6->ip_hl == 0) {

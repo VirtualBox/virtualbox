@@ -418,11 +418,7 @@ int sowrite(struct socket *so)
 
     if (so->so_urgc) {
         uint32_t expected = so->so_urgc;
-#ifdef VBOX
         noob = sosendoob(so);
-#else /* warning C4456: declaration of 'noob' hides previous local declaration */
-        int noob = sosendoob(so);
-#endif
 
         if (noob <= 0)
             goto err_disconnected;

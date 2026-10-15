@@ -187,6 +187,7 @@ void ip_input(struct mbuf *m)
             if (ip == NULL)
                 return;
             m = dtom(slirp, ip);
+            hlen = ip->ip_hl << 2;
         } else if (q)
             ip_freef(slirp, q);
 

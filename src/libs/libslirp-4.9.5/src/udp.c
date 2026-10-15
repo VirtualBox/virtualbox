@@ -340,8 +340,9 @@ slirp_os_socket udp_attach(struct socket *so, unsigned short af)
 
         so->so_expire = curtime + SO_EXPIRE;
         slirp_insque(so, &so->slirp->udb);
+        slirp_set_nonblock(so->s);
+        slirp_register_poll_socket(so);
     }
-    slirp_register_poll_socket(so);
     return (so->s);
 }
 
@@ -412,6 +413,7 @@ struct socket *udpx_listen(Slirp *slirp,
         so->so_expire = 0;
     so->so_state &= SS_PERSISTENT_MASK;
     so->so_state |= SS_ISFCONNECTED | flags;
+    slirp_set_nonblock(so->s);
     slirp_register_poll_socket(so);
 
     return so;

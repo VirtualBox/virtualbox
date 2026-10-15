@@ -45,6 +45,10 @@ running CI etc.
 Alternatively, you may send patches to slirp@lists.freedesktop.org
 mailing list.
 
+Security reports can be sent to samuel.thibault@ens-lyon.org
+with pgp key 900CB024B67931D40F82304BD0178C767D069EE6 (it can be found
+in the debian keyring for instance)
+
 ## Debugging
 
 To make slirp emit debugging prints, one can use for instance:

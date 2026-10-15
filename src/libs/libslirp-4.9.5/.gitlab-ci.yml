@@ -108,3 +108,22 @@ integration-slirp4netns:
   - make benchmark MTU=1500
   - make benchmark MTU=512
   - make benchmark MTU=65520
+
+migration-test:
+  variables:
+    QEMU_VERSION: "11.0.0"
+  script:
+  # Install libslirp
+  - meson build
+  - ninja -C build install
+  # Register the path of libslirp.so.0
+  - echo /usr/local/lib64 >/etc/ld.so.conf.d/libslirp.conf
+  - ldconfig
+  # Build and run qemu
+  - dnf install -y wget diff
+  - wget "https://download.qemu.org/qemu-${QEMU_VERSION}.tar.xz"
+  - tar xvf "qemu-${QEMU_VERSION}.tar.xz"
+  - cd "qemu-${QEMU_VERSION}"
+  - ./configure --target-list=x86_64-softmmu
+  - make
+  - QTEST_QEMU_BINARY=./build/qemu-system-x86_64 ./build/tests/qtest/migration-test

@@ -1685,9 +1685,12 @@ static bool check_guestfwd(Slirp *slirp, struct in_addr *guest_addr,
                              (htonl(0x0204) & ~slirp->vnetwork_mask.s_addr);
     }
     if ((guest_addr->s_addr & slirp->vnetwork_mask.s_addr) !=
-            slirp->vnetwork_addr.s_addr ||
-        guest_addr->s_addr == slirp->vhost_addr.s_addr ||
-        guest_addr->s_addr == slirp->vnameserver_addr.s_addr) {
+            slirp->vnetwork_addr.s_addr) {
+        return false;
+    }
+    if (!slirp->disable_dns &&
+        guest_addr->s_addr == slirp->vnameserver_addr.s_addr &&
+        guest_port == 53) {
         return false;
     }
 

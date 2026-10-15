@@ -1,5 +1,5 @@
 project('libslirp', 'c',
-  version : '4.9.3',
+  version : '4.9.5',
   license : 'BSD-3-Clause',
   default_options : ['warning_level=1', 'c_std=gnu99'],
   meson_version : '>= 0.60',
@@ -237,6 +237,16 @@ ncsitest = executable('ncsitest', 'test/ncsitest.c',
 )
 
 test('ncsi', ncsitest)
+
+guestfwdtest = executable('guestfwdtest', 'test/guestfwdtest.c',
+  link_with: [lib],
+  c_args : cargs,
+  link_args : vflag,
+  include_directories: ['src'],
+  dependencies: libslirp_deps
+)
+
+test('guestfwd', guestfwdtest)
 
 if install_devel
   install_headers(['src/libslirp.h'], subdir : 'slirp')

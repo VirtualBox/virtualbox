@@ -157,6 +157,11 @@ static void dhcpv6_info_request(Slirp *slirp, struct sockaddr_in6 *srcsas,
     *resp++ = (uint8_t)xid;
 
     if (ri.client_id) {
+        if (resp + 4 + ri.client_id_len >
+            (uint8_t *)m->m_data + slirp->if_mtu) {
+            m_free(m); /* response would overflow the interface-MTU-sized mbuf */
+            return;
+        }
         *resp++ = OPTION_CLIENTID >> 8; /* option-code high byte */
         *resp++ = OPTION_CLIENTID; /* option-code low byte */
         *resp++ = ri.client_id_len >> 8; /* option-len high byte */
@@ -165,6 +170,10 @@ static void dhcpv6_info_request(Slirp *slirp, struct sockaddr_in6 *srcsas,
         resp += ri.client_id_len;
     }
     if (ri.want_dns) {
+        if (resp + 4 + 16 > (uint8_t *)m->m_data + slirp->if_mtu) {
+            m_free(m); /* reply would not fit the interface-MTU-sized mbuf */
+            return;
+        }
         *resp++ = OPTION_DNS_SERVERS >> 8; /* option-code high byte */
         *resp++ = OPTION_DNS_SERVERS; /* option-code low byte */
 #ifdef VBOX
@@ -192,9 +201,14 @@ static void dhcpv6_info_request(Slirp *slirp, struct sockaddr_in6 *srcsas,
         uint8_t *sa = slirp->vhost_addr6.s6_addr;
         int slen, smaxlen;
 
+        smaxlen = (uint8_t *)m->m_data + slirp->if_mtu - (resp + 4);
+        if (smaxlen < 0) {
+            m_free(m); /* boot-url would not fit the interface-MTU-sized mbuf */
+            return;
+        }
+
         *resp++ = OPTION_BOOTFILE_URL >> 8; /* option-code high byte */
         *resp++ = OPTION_BOOTFILE_URL; /* option-code low byte */
-        smaxlen = (uint8_t *)m->m_data + slirp->if_mtu - (resp + 2);
         slen = slirp_fmt((char *)resp + 2, smaxlen,
                          "tftp://[%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
                          "%02x%02x:%02x%02x:%02x%02x:%02x%02x]/%s",
