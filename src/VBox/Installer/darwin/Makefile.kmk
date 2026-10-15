@@ -768,7 +768,8 @@ $(VBOX_PATH_PACK_TMP)/Packages/VirtualBox.pkg: \
 		)
 # Create the .lproj language directories
 	$(MKDIR) -p -m 0755 \
-		$(addprefix $(VBOX_PATH_VBOX_APP_TMP)/Contents/Resources/,$(VBOX_INSTALL_LANG_LPROJ))
+		$(addprefix $(VBOX_PATH_VBOX_APP_TMP)/Contents/Resources/,$(VBOX_INSTALL_LANG_LPROJ)) \
+		$(addprefix $(VBOX_PATH_VBOX_APP_TMP)/Contents/Resources/VirtualBoxVM.app/Contents/Resources/,$(VBOX_INSTALL_LANG_LPROJ))
 # Install all supported language files
 	$(foreach f, $(VBOX_INSTALL_LANG_FILES) \
 		,$(INSTALL) -m 0644 $(VBOX_PATH_DIST)/VirtualBox.app/Contents/MacOS/nls/$(f)    $(VBOX_PATH_VBOX_APP_TMP)/Contents/MacOS/nls/$(f)$(NLTAB))
