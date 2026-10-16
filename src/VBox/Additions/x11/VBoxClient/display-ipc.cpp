@@ -1,4 +1,4 @@
-/* $Id: display-ipc.cpp 114777 2026-07-26 00:43:57Z knut.osmundsen@oracle.com $ */
+/* $Id: display-ipc.cpp 115380 2026-10-16 16:57:33Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * Guest Additions - DRM IPC communication core functions.
  */
@@ -100,7 +100,19 @@ int vbDrmIpcClientInit(PVBOX_DRMIPC_CLIENT pClient, RTTHREAD hThread, RTLOCALIPC
 
     pClient->pfnRxCb = pfnRxCb;
 
-    return RTCritSectInit(&pClient->CritSect);
+    pClient->pRxBuffer = (uint8_t*)RTMemAllocZ(VBOX_DRMIPC_RX_BUFFER_SIZE);
+    if (!pClient->pRxBuffer)
+    {
+        VBClLogInfo("cannot allocate receive buffer\n");
+        return VERR_NO_MEMORY;
+    }
+    int rc = RTCritSectInit(&pClient->CritSect);
+    if (RT_FAILURE(rc))
+    {
+        RTMemFree(pClient->pRxBuffer);
+        pClient->pRxBuffer = NULL;
+    }
+    return rc;
 }
 
 /**
@@ -143,6 +155,7 @@ int vbDrmIpcClientReleaseResources(PVBOX_DRMIPC_CLIENT pClient)
 
     Assert(ASMAtomicReadU32(&pClient->cTxListSize) == 0);
 
+    RTMemFree(pClient->pRxBuffer);
     RT_ZERO(*pClient);
 
     return rc;
@@ -229,15 +242,25 @@ int vbDrmIpcAuth(RTLOCALIPCSESSION hClientSession)
     int rc = RTLocalIpcSessionQueryUserId(hClientSession, &uUid);
     if (RT_SUCCESS(rc))
     {
+        /* Allow root access. */
+        if (uUid == 0)
+        {
+            VBClLogVerbose(2, "vbDrmIpcAuth: root access\n");
+            return VINF_SUCCESS;
+        }
         /* Get user record from system database and look for it in group's members list. */
         struct passwd *pUserRecord = getpwuid(uUid);
 
         if (pUserRecord && pUserRecord->pw_name)
         {
+            VBClLogVerbose(2, "vbDrmIpcAuth: Checking if %s belongs to " VBOX_DRMIPC_USER_GROUP "\n", pUserRecord->pw_name);
+
             for (unsigned iGrp = 0; pAllowedGroup->gr_mem[iGrp] != NULL; iGrp++)
                 if (RTStrCmp(pAllowedGroup->gr_mem[iGrp], pUserRecord->pw_name) == 0)
                     return VINF_SUCCESS;
         }
+        VBClLogError("vbDrmIpcAuth: user does not belong to " VBOX_DRMIPC_USER_GROUP " group!\n");
+        return VERR_ACCESS_DENIED;
     }
 
     return rc;
@@ -339,11 +362,13 @@ int vbDrmIpcReportDisplayOffsets(PVBOX_DRMIPC_CLIENT pClient, uint32_t cDisplays
 int vbDrmIpcConnectionHandler(PVBOX_DRMIPC_CLIENT pClient)
 {
     int                 rc;
-    static uint8_t      aInputBuf[VBOX_DRMIPC_RX_BUFFER_SIZE];
+    uint8_t             *aInputBuf;
     size_t              cbRead = 0;
     PVBOX_DRMIPC_TX_LIST_ENTRY  pTxListEntry;
 
     AssertReturn(pClient, VERR_INVALID_PARAMETER);
+    aInputBuf = pClient->pRxBuffer;
+    AssertReturn(aInputBuf, VERR_NO_MEMORY);
 
     /* Make sure we are still connected to IPC server. */
     if (!pClient->hClientSession)
@@ -371,11 +396,15 @@ int vbDrmIpcConnectionHandler(PVBOX_DRMIPC_CLIENT pClient)
                 PVBOX_DRMIPC_COMMAND_HEADER pHdr = (PVBOX_DRMIPC_COMMAND_HEADER)aInputBuf;
                 if (pHdr)
                 {
-                    AssertReturn(pHdr->cbData <= sizeof(aInputBuf) - sizeof(VBOX_DRMIPC_COMMAND_HEADER), VERR_INVALID_PARAMETER);
+                    AssertReturn(pHdr->cbData <= VBOX_DRMIPC_RX_BUFFER_SIZE - sizeof(VBOX_DRMIPC_COMMAND_HEADER), VERR_INVALID_PARAMETER);
+                    AssertReturn(pHdr->cbData > sizeof(VBOX_DRMIPC_COMMAND_HEADER), VERR_INVALID_PARAMETER);
+
+                    VBClLogVerbose(2, "vbDrmIpcConnectionHandler: Reading %llu bytes of message payload\n", pHdr->cbData - sizeof(VBOX_DRMIPC_COMMAND_HEADER));
 
                     /* Read the rest of a message. */
                     rc = RTLocalIpcSessionRead(pClient->hClientSession, aInputBuf + sizeof(VBOX_DRMIPC_COMMAND_HEADER), pHdr->cbData - sizeof(VBOX_DRMIPC_COMMAND_HEADER), &cbRead);
                     AssertRCReturn(rc, rc);
+                    VBClLogVerbose(2, "vbDrmIpcConnectionHandler: Read %llu bytes of message payload\n", cbRead);
                     AssertReturn(cbRead == (pHdr->cbData - sizeof(VBOX_DRMIPC_COMMAND_HEADER)), VERR_INVALID_PARAMETER);
 
                     uint64_t u64Crc = pHdr->u64Crc;
