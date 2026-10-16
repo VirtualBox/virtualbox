@@ -1,0 +1,11 @@
+# Copyright (C) 2023 Cosmin Truta
+# SPDX-License-Identifier: MIT
+
+export CI_TARGET_ARCH=arm64
+export CI_TARGET_SYSTEM=darwin
+
+export CI_CMAKE_VARS="
+    -DCMAKE_SYSTEM_NAME=Darwin
+    -DCMAKE_SYSTEM_PROCESSOR=$CI_TARGET_ARCH
+    -DCMAKE_OSX_ARCHITECTURES=$CI_TARGET_ARCH
+"
