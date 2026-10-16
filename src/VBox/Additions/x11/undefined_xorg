@@ -81,6 +81,7 @@ memalign
 memchr
 memcmp
 __memcpy_chk
+__memset_chk
 memmove
 miPointerGetScreen
 mmap64

@@ -1,4 +1,4 @@
-/* $Id: display-ipc.h 114802 2026-07-27 19:09:39Z knut.osmundsen@oracle.com $ */
+/* $Id: display-ipc.h 115379 2026-10-16 14:13:16Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * Guest Additions - DRM IPC communication core function definitions.
  *
@@ -173,13 +173,15 @@ typedef struct VBOX_DRMIPC_CLIENT
     uint32_t cTxListSize;
     /** IPC RX callback. */
     PFNDRMIPCRXCB pfnRxCb;
+    /** Per-client receive buffer. */
+    uint8_t *pRxBuffer;
 } VBOX_DRMIPC_CLIENT;
 
 /** Pointer to IPC session private data. */
 typedef VBOX_DRMIPC_CLIENT *PVBOX_DRMIPC_CLIENT;
 
 /** Static initializer for VBOX_DRMIPC_CLIENT. */
-#define VBOX_DRMIPC_CLIENT_INITIALIZER  { NIL_RTTHREAD, 0, { 0 }, { NULL, NULL }, 0, 0, NULL }
+#define VBOX_DRMIPC_CLIENT_INITIALIZER  { NIL_RTTHREAD, 0, { 0 }, { NULL, NULL }, 0, 0, NULL, NULL }
 
 /**
  * Initialize IPC client private data.
