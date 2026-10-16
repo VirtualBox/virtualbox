@@ -202,6 +202,8 @@ static const osTypePattern gs_OSTypePattern[] =
     { QRegularExpression("((questing)|(quokka)).*64",                                           QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_ARM64("Ubuntu251") },
     { QRegularExpression("((resolute)|(raccoon)).*64",                                          QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_X64("Ubuntu26_LTS") },
     { QRegularExpression("((resolute)|(raccoon)).*64",                                          QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_ARM64("Ubuntu26_LTS") },
+    { QRegularExpression("((stonking)|(stingray)).*64",                                         QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_X64("Ubuntu261") },
+    { QRegularExpression("((stonking)|(stingray)).*64",                                         QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_ARM64("Ubuntu261") },
     { QRegularExpression("sarge.*32",                         QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_X86("Debian31") },
     { QRegularExpression("^etch.*64",                         QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_X64("Debian4") },
     { QRegularExpression("debian.*4.*64",                     QRegularExpression::CaseInsensitiveOption), GUEST_OS_ID_STR_X64("Debian4") },

@@ -238,6 +238,8 @@ static struct
     { ovf::CIMOSType_CIMOS_Ubuntu_64,                            VBOXOSTYPE_Ubuntu251_arm64 },
     { ovf::CIMOSType_CIMOS_Ubuntu_64,                            VBOXOSTYPE_Ubuntu26_LTS_x64 },
     { ovf::CIMOSType_CIMOS_Ubuntu_64,                            VBOXOSTYPE_Ubuntu26_LTS_arm64 },
+    { ovf::CIMOSType_CIMOS_Ubuntu_64,                            VBOXOSTYPE_Ubuntu261_x64 },
+    { ovf::CIMOSType_CIMOS_Ubuntu_64,                            VBOXOSTYPE_Ubuntu261_arm64 },
     { ovf::CIMOSType_CIMOS_Ubuntu,                               VBOXOSTYPE_Lubuntu },
     { ovf::CIMOSType_CIMOS_Ubuntu_64,                            VBOXOSTYPE_Lubuntu_x64 },
     { ovf::CIMOSType_CIMOS_Ubuntu,                               VBOXOSTYPE_Xubuntu },
