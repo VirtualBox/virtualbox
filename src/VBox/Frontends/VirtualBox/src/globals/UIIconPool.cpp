@@ -498,6 +498,8 @@ UIIconPoolGeneral::UIIconPoolGeneral()
     m_guestOSTypeIconNames.insert(GUEST_OS_ID_STR_A64("Ubuntu251"),             ":/os_ubuntu.png");
     m_guestOSTypeIconNames.insert(GUEST_OS_ID_STR_X64("Ubuntu26_LTS"),          ":/os_ubuntu.png");
     m_guestOSTypeIconNames.insert(GUEST_OS_ID_STR_A64("Ubuntu26_LTS"),          ":/os_ubuntu.png");
+    m_guestOSTypeIconNames.insert(GUEST_OS_ID_STR_X64("Ubuntu261"),             ":/os_ubuntu.png");
+    m_guestOSTypeIconNames.insert(GUEST_OS_ID_STR_A64("Ubuntu261"),             ":/os_ubuntu.png");
     m_guestOSTypeIconNames.insert(GUEST_OS_ID_STR_X86("Lubuntu"),               ":/os_ubuntu.png");
     m_guestOSTypeIconNames.insert(GUEST_OS_ID_STR_X64("Lubuntu"),               ":/os_ubuntu.png");
     m_guestOSTypeIconNames.insert(GUEST_OS_ID_STR_X86("Xubuntu"),               ":/os_ubuntu.png");
