@@ -58,6 +58,7 @@
 # include <iprt/mem.h>
 # include <iprt/time.h>
 # include <iprt/thread.h>
+# include <iprt/utf16.h>
 
 # include <VBox/log.h>
 #endif /* VBOX */
@@ -390,7 +391,7 @@ SerializeParam(PIPCMSGWRITER pMsgWriter, const nsXPTType &t, const nsXPTCMiniVar
       {
         if (v.val.p)
         {
-          int len = 2 * nsCRT::strlen((const PRUnichar *) v.val.p);
+          PRUint32 len = (PRUint32)(RTUtf16Len((PCRTUTF16)v.val.p) * sizeof(RTUTF16));
           IPCMsgWriterPutU32(pMsgWriter, len);
           IPCMsgWriterPutBytes(pMsgWriter, v.val.p, len);
         }
@@ -538,11 +539,11 @@ DeserializeParam(PIPCMSGREADER pMsgReader, const nsXPTType &t, nsXPTCVariant &v)
         }
         else
         {
-          PRUnichar *buf = (PRUnichar *)RTMemAlloc(len + 2);
+          PRTUTF16 buf = (PRTUTF16)RTMemAlloc(len + sizeof(RTUTF16));
           IPCMsgReaderReadBytes(pMsgReader, buf, len);
-          buf[len / 2] = PRUnichar(0);
+          buf[len / sizeof(RTUTF16)] = RTUTF16(0);
 
-          v.val.p = buf;
+          v.val.p = (PRUnichar *)buf;
           v.SetValIsAllocated();
         }
       }
@@ -786,11 +787,11 @@ DeserializeResult(PIPCMSGREADER pMsgReader, const nsXPTType &t, nsXPTCMiniVarian
         }
         else
         {
-          PRUnichar *buf = (PRUnichar *)RTMemAlloc(len + 2);
+          PRTUTF16 buf = (PRTUTF16)RTMemAlloc(len + sizeof(RTUTF16));
           IPCMsgReaderReadBytes(pMsgReader, buf, len);
-          buf[len / 2] = PRUnichar(0);
+          buf[len / sizeof(RTUTF16)] = RTUTF16(0);
 
-          *((PRUnichar **) v.val.p) = buf;
+          *((PRUnichar **) v.val.p) = (PRUnichar *)buf;
         }
       }
       break;
