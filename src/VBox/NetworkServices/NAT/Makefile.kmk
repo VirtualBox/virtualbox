@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114270 2026-06-09 05:37:44Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 115377 2026-10-16 10:22:34Z aleksey.ilyushin@oracle.com $
 ## @file
 # Sub-makefile for NAT Networking
 #
@@ -61,7 +61,7 @@ VBoxNetNAT_DEFS     = \
 	$(if $(VBOX_WITH_INTNET_SERVICE_IN_R3),VBOX_WITH_INTNET_SERVICE_IN_R3,)
 VBoxNetNAT_DEFS.win = VBOX_COM_OUTOFPROC_MODULE
 VBoxNetNAT_INCS += \
-	$(PATH_ROOT)/src/libs/libslirp-4.9.3/include
+	$(PATH_ROOT)/src/libs/libslirp-4.9.5/include
 VBoxNetNAT_SOURCES = \
 	VBoxNetSlirpNAT.cpp \
 	../NetLib/IntNetIf.cpp \
