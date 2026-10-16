@@ -23,6 +23,15 @@
 #define SLIRP_MSIZE(mtu) \
     (offsetof(struct mbuf, m_dat) + IF_MAXLINKHDR + TCPIPHDR_DELTA + (mtu))
 
+#ifdef VBOX
+/*
+ * Both IPv4 and IPv6 share the list of re-usable mbufs, but use different MTUs.
+ */
+#define VBOX_MTU(slirp) MAX((slirp)->if_mtu, (slirp)->if_mtu_v6)
+#else
+#define VBOX_MTU(slirp) ((slirp)->if_mtu)
+#endif
+
 void m_init(Slirp *slirp)
 {
     slirp->m_freelist.qh_link = slirp->m_freelist.qh_rlink = &slirp->m_freelist;
@@ -90,7 +99,7 @@ struct mbuf *m_get(Slirp *slirp)
     DEBUG_CALL("m_get");
 
     if (MBUF_DEBUG || slirp->m_freelist.qh_link == &slirp->m_freelist) {
-        m = g_malloc(SLIRP_MSIZE(slirp->if_mtu));
+        m = g_malloc(SLIRP_MSIZE(VBOX_MTU(slirp)));
         slirp->mbuf_alloced++;
         if (MBUF_DEBUG || slirp->mbuf_alloced > MBUF_THRESH)
             flags = M_DOFREE;
@@ -105,7 +114,7 @@ struct mbuf *m_get(Slirp *slirp)
     m->m_flags = (flags | M_USEDLIST);
 
     /* Initialise it */
-    m->m_size = SLIRP_MSIZE(slirp->if_mtu) - offsetof(struct mbuf, m_dat);
+    m->m_size = SLIRP_MSIZE(VBOX_MTU(slirp)) - offsetof(struct mbuf, m_dat);
     m->m_data = m->m_dat;
     m->m_len = 0;
     m->m_nextpkt = NULL;
@@ -131,7 +140,7 @@ struct mbuf *m_get_v6(Slirp *slirp)
     DEBUG_CALL("m_get_v6");
 
     if (MBUF_DEBUG || slirp->m_freelist.qh_link == &slirp->m_freelist) {
-        m = g_malloc(SLIRP_MSIZE(slirp->if_mtu_v6));
+        m = g_malloc(SLIRP_MSIZE(VBOX_MTU(slirp)));
         slirp->mbuf_alloced++;
         if (MBUF_DEBUG || slirp->mbuf_alloced > MBUF_THRESH)
             flags = M_DOFREE;
@@ -146,7 +155,7 @@ struct mbuf *m_get_v6(Slirp *slirp)
     m->m_flags = (flags | M_USEDLIST);
 
     /* Initialise it */
-    m->m_size = SLIRP_MSIZE(slirp->if_mtu_v6) - offsetof(struct mbuf, m_dat);
+    m->m_size = SLIRP_MSIZE(VBOX_MTU(slirp)) - offsetof(struct mbuf, m_dat);
     m->m_data = m->m_dat;
     m->m_len = 0;
     m->m_nextpkt = NULL;

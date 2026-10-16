@@ -163,8 +163,8 @@ void icmp6_forward_error(struct mbuf *m, uint8_t type, uint8_t code, struct in6_
 
     rip->ip_nh = IPPROTO_ICMPV6;
 #ifdef VBOX
-    const int error_data_len = MIN(
-        m->m_len, slirp->if_mtu_v6 - (sizeof(struct ip6) + ICMP6_ERROR_MINLEN));
+    const int error_data_len = MIN(M_FREEROOM(t), MIN(
+        m->m_len, slirp->if_mtu_v6 - (sizeof(struct ip6) + ICMP6_ERROR_MINLEN)));
 #else
     const int error_data_len = MIN(
         m->m_len, slirp->if_mtu - (sizeof(struct ip6) + ICMP6_ERROR_MINLEN));
