@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114960 2026-08-10 14:50:43Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 115374 2026-10-16 09:45:55Z aleksey.ilyushin@oracle.com $
 ## @file
 # Network Services testcases.
 #
@@ -47,7 +47,7 @@ if defined(VBOX_WITH_TESTCASES) && defined(VBOX_WITH_INTNET_SERVICE_IN_R3_LOCALI
   	$(PATH_SUB_CURRENT) \
   	$(PATH_SUB_CURRENT)/../NetLib \
   	$(PATH_SUB_CURRENT)/../IntNetSwitch \
-  	$(PATH_ROOT)/src/libs/libslirp-4.9.3/include
+  	$(PATH_ROOT)/src/libs/libslirp-4.9.5/include
   tstVBoxNatGuestSide_SOURCES = \
   	tstVBoxNatGuestSide.cpp \
   	VBoxNetSlirpNATTest.cpp \

@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 114518 2026-06-25 08:29:23Z andreas.loeffler@oracle.com $
+# $Id: Makefile.kmk 115374 2026-10-16 09:45:55Z aleksey.ilyushin@oracle.com $
 ## @file
 # Sub-Makefile for NAT Network testcases.
 #
@@ -34,7 +34,7 @@ ifdef VBOX_WITH_TESTCASES
 
  tstNATLibslirpVBox_TEMPLATE = VBoxR3TstExe
  tstNATLibslirpVBox_INCS = \
- 	$(PATH_ROOT)/src/libs/libslirp-4.9.3/include
+ 	$(PATH_ROOT)/src/libs/libslirp-4.9.5/include
  tstNATLibslirpVBox_SOURCES = tstNATLibslirpVBox.cpp
  tstNATLibslirpVBox_LIBS = \
  	$(PATH_STAGE_LIB)/VBox-libslirp$(VBOX_SUFF_LIB) \
