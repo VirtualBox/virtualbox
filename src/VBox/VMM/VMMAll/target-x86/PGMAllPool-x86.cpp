@@ -1,4 +1,4 @@
-/* $Id: PGMAllPool-x86.cpp 112884 2026-02-09 09:33:45Z knut.osmundsen@oracle.com $ */
+/* $Id: PGMAllPool-x86.cpp 115383 2026-10-17 13:20:01Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * PGM Shadow Page Pool.
  */
@@ -1412,7 +1412,7 @@ flushPage:
  */
 DECLCALLBACK(VBOXSTRICTRC)
 pgmPoolAccessHandler(PVMCC pVM, PVMCPUCC pVCpu, RTGCPHYS GCPhys, void *pvPhys, void *pvBuf, size_t cbBuf,
-                     PGMACCESSTYPE enmAccessType, PGMACCESSORIGIN enmOrigin, uint64_t uUser)
+                     PGMACCESSTYPE enmAccessType, PGMACCESSORIGIN fOrigin, uint64_t uUser)
 {
     PPGMPOOL const      pPool = pVM->pgm.s.CTX_SUFF(pPool);
     STAM_PROFILE_START(&pPool->CTX_SUFF_Z(StatMonitor), a);
@@ -1483,7 +1483,7 @@ pgmPoolAccessHandler(PVMCC pVM, PVMCPUCC pVCpu, RTGCPHYS GCPhys, void *pvPhys, v
          */
         if (   (   pPage->cModifications < cMaxModifications
                 || pgmPoolIsPageLocked(pPage) )
-            && enmOrigin != PGMACCESSORIGIN_DEVICE
+            && (fOrigin & PGMACCESSORIGIN_MAIN_MASK) != PGMACCESSORIGIN_DEVICE
             && cbBuf <= 16)
         {
             /* Clear the shadow entry. */

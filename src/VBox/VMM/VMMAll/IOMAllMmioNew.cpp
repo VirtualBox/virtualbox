@@ -1,4 +1,4 @@
-/* $Id: IOMAllMmioNew.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: IOMAllMmioNew.cpp 115383 2026-10-17 13:20:01Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * IOM - Input / Output Monitor - Any Context, MMIO & String I/O.
  */
@@ -810,15 +810,15 @@ VMM_INT_DECL(VBOXSTRICTRC) IOMR0MmioPhysHandler(PVMCC pVM, PVMCPUCC pVCpu, uint3
  * @remarks The @a uUser argument is the MMIO handle.
  */
 DECLCALLBACK(VBOXSTRICTRC) iomMmioHandlerNew(PVMCC pVM, PVMCPUCC pVCpu, RTGCPHYS GCPhysFault, void *pvPhys, void *pvBuf,
-                                             size_t cbBuf, PGMACCESSTYPE enmAccessType, PGMACCESSORIGIN enmOrigin, uint64_t uUser)
+                                             size_t cbBuf, PGMACCESSTYPE enmAccessType, PGMACCESSORIGIN fOrigin, uint64_t uUser)
 {
     STAM_PROFILE_START(UnusedMacroArg, Prf);
     STAM_COUNTER_INC(&pVM->iom.s.CTX_SUFF(StatMmioHandler));
-    Log4(("iomMmioHandlerNew: GCPhysFault=%RGp cbBuf=%#x enmAccessType=%d enmOrigin=%d uUser=%p\n", GCPhysFault, cbBuf, enmAccessType, enmOrigin, uUser));
+    Log4(("iomMmioHandlerNew: GCPhysFault=%RGp cbBuf=%#x enmAccessType=%d fOrigin=%#zx uUser=%p\n", GCPhysFault, cbBuf, enmAccessType, fOrigin, uUser));
 
     Assert(enmAccessType == PGMACCESSTYPE_READ || enmAccessType == PGMACCESSTYPE_WRITE);
     AssertMsg(cbBuf >= 1, ("%zu\n", cbBuf));
-    NOREF(pvPhys); NOREF(enmOrigin);
+    NOREF(pvPhys); 
 
 #ifdef IN_RING3
     int const rcToRing3 = VERR_IOM_MMIO_IPE_3;
@@ -915,8 +915,18 @@ DECLCALLBACK(VBOXSTRICTRC) iomMmioHandlerNew(PVMCC pVM, PVMCPUCC pVCpu, RTGCPHYS
 
     /*
      * Guard against device configurations causing recursive MMIO accesses
-     * (see @bugref{10315}).
+     * (see @bugref{10315}) and accesses to itself (see @bugref{11175}).
      */
+    if (RT_LIKELY(fOrigin != PGMACCESSORIGIN_DEVICE_AND_INS(pDevIns)))
+    { /* likely */ }
+    else
+    {
+        STAM_REL_COUNTER_INC(&pVM->iom.s.StatMmioWithSelf);
+        LogRelMax(64, ("iomMmioHandlerNew: Device accessing its own MMIO regions: %RGp LB %#zx!: %p (%s)\n",
+                       GCPhysFault, cbBuf, pDevIns, pDevIns->pReg->szName));
+        return VINF_PGM_HANDLER_DO_DEFAULT;
+    }
+
     uint8_t const idxDepth = pVCpu->iom.s.cMmioRecursionDepth;
     if (RT_LIKELY(idxDepth < RT_ELEMENTS(pVCpu->iom.s.apMmioRecursionStack)))
     {
@@ -941,7 +951,6 @@ DECLCALLBACK(VBOXSTRICTRC) iomMmioHandlerNew(PVMCC pVM, PVMCPUCC pVCpu, RTGCPHYS
 #endif
         return VINF_PGM_HANDLER_DO_DEFAULT;
     }
-
 
     /*
      * Perform locking and the access.

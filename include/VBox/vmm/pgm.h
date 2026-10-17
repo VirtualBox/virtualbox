@@ -90,34 +90,50 @@ typedef DECLCALLBACKTYPE(bool, FNPGMRELOCATE,(PVM pVM, RTGCPTR GCPtrOld, RTGCPTR
 typedef FNPGMRELOCATE *PFNPGMRELOCATE;
 
 
-/**
- * Memory access origin.
+/** Memory access origin.
+ *
+ * @note This used to be an enum, but we needed to include info detailing
+ *       exactly which device made the request, so it was converted to an
+ *       uintptr_t and the original enum value placed in the lower 4 bits.
+ *       When these are PGMACCESSORIGIN_DEVICE, the other bits contains the
+ *       pDevIns value of the originating device.
+ * @{
  */
-typedef enum PGMACCESSORIGIN
-{
-    /** Invalid zero value. */
-    PGMACCESSORIGIN_INVALID = 0,
-    /** IEM is access memory. */
-    PGMACCESSORIGIN_IEM,
-    /** HM is access memory. */
-    PGMACCESSORIGIN_HM,
-    /** Some device is access memory. */
-    PGMACCESSORIGIN_DEVICE,
-    /** Someone debugging is access memory. */
-    PGMACCESSORIGIN_DEBUGGER,
-    /** SELM is access memory. */
-    PGMACCESSORIGIN_SELM,
-    /** FTM is access memory. */
-    PGMACCESSORIGIN_FTM,
-    /** REM is access memory. */
-    PGMACCESSORIGIN_REM,
-    /** IOM is access memory. */
-    PGMACCESSORIGIN_IOM,
-    /** End of valid values. */
-    PGMACCESSORIGIN_END,
-    /** Type size hack. */
-    PGMACCESSORIGIN_32BIT_HACK = 0x7fffffff
-} PGMACCESSORIGIN;
+typedef uintptr_t PGMACCESSORIGIN;
+/** Invalid zero value. */
+#define PGMACCESSORIGIN_INVALID         0
+/** IEM is accessing memory.
+ * @note Sub-category is unused and set to zero. */
+#define PGMACCESSORIGIN_IEM             1
+/** HM is accessing memory.
+ * @note Sub-category is unused and set to zero. */
+#define PGMACCESSORIGIN_HM              2
+/** Some device is accessing memory.
+ * @note Sub-category is the PDMDEVINS pointer of the originating device. */
+#define PGMACCESSORIGIN_DEVICE          3
+/** Someone debugging is accessing memory.
+ * @note Sub-category is unused and set to zero. */
+#define PGMACCESSORIGIN_DEBUGGER        4
+/** SELM is accessing memory.
+ * @note Sub-category is unused and set to zero. */
+#define PGMACCESSORIGIN_SELM            5
+/** REM is accessing memory.
+ * @note Sub-category is unused and set to zero. */
+#define PGMACCESSORIGIN_REM             6
+/** IOM is accessing memory.
+ * @note Sub-category is unused and set to zero. */
+#define PGMACCESSORIGIN_IOM             7
+/** The category mask.   */
+#define PGMACCESSORIGIN_MAIN_MASK       ((uintptr_t)0xf)
+/** The sub-category mask.   */
+#define PGMACCESSORIGIN_SUB_MASK        (~(uintptr_t)0xf)
+/** The sub-category shift.   */
+#define PGMACCESSORIGIN_SUB_SHIFT       4
+/** Combines PGMACCESSORIGIN_DEVICE with the device instance address.
+ * @note The device instance is currently page aligned, but we still
+ *       apply the mask to be on the safe side here. */
+#define PGMACCESSORIGIN_DEVICE_AND_INS(a_pDevIns) (PGMACCESSORIGIN_DEVICE | ((uintptr_t)(a_pDevIns) & PGMACCESSORIGIN_SUB_MASK))
+/** @} */
 
 
 /**
@@ -238,13 +254,13 @@ typedef FNPGMRZPHYSPFHANDLER *PFNPGMRZPHYSPFHANDLER;
  * @param   pvBuf           What the guest is reading/writing.
  * @param   cbBuf           How much it's reading/writing.
  * @param   enmAccessType   The access type.
- * @param   enmOrigin       The origin of this call.
+ * @param   fOrigin         The origin of this call.
  * @param   uUser           User argument (not a pointer).
  * @thread  EMT(pVCpu)
  */
 typedef DECLCALLBACKTYPE(VBOXSTRICTRC, FNPGMPHYSHANDLER,(PVMCC pVM, PVMCPUCC pVCpu, RTGCPHYS GCPhys, void *pvPhys,
                                                          void *pvBuf, size_t cbBuf, PGMACCESSTYPE enmAccessType,
-                                                         PGMACCESSORIGIN enmOrigin, uint64_t uUser));
+                                                         PGMACCESSORIGIN fOrigin, uint64_t uUser));
 /** Pointer to PGM access callback. */
 typedef FNPGMPHYSHANDLER *PFNPGMPHYSHANDLER;
 
@@ -1197,10 +1213,10 @@ VMMDECL(void)       PGMPhysBulkReleasePageMappingLocks(PVMCC pVM, uint32_t cPage
     } while (0)
 #endif
 
-VMMDECL(VBOXSTRICTRC) PGMPhysRead(PVMCC pVM, RTGCPHYS GCPhys, void *pvBuf, size_t cbRead, PGMACCESSORIGIN enmOrigin);
-VMMDECL(VBOXSTRICTRC) PGMPhysWrite(PVMCC pVM, RTGCPHYS GCPhys, const void *pvBuf, size_t cbWrite, PGMACCESSORIGIN enmOrigin);
-VMMDECL(VBOXSTRICTRC) PGMPhysReadGCPtr(PVMCPUCC pVCpu, void *pvDst, RTGCPTR GCPtrSrc, size_t cb, PGMACCESSORIGIN enmOrigin);
-VMMDECL(VBOXSTRICTRC) PGMPhysWriteGCPtr(PVMCPUCC pVCpu, RTGCPTR GCPtrDst, const void *pvSrc, size_t cb, PGMACCESSORIGIN enmOrigin);
+VMMDECL(VBOXSTRICTRC) PGMPhysRead(PVMCC pVM, RTGCPHYS GCPhys, void *pvBuf, size_t cbRead, PGMACCESSORIGIN fOrigin);
+VMMDECL(VBOXSTRICTRC) PGMPhysWrite(PVMCC pVM, RTGCPHYS GCPhys, const void *pvBuf, size_t cbWrite, PGMACCESSORIGIN fOrigin);
+VMMDECL(VBOXSTRICTRC) PGMPhysReadGCPtr(PVMCPUCC pVCpu, void *pvDst, RTGCPTR GCPtrSrc, size_t cb, PGMACCESSORIGIN fOrigin);
+VMMDECL(VBOXSTRICTRC) PGMPhysWriteGCPtr(PVMCPUCC pVCpu, RTGCPTR GCPtrDst, const void *pvSrc, size_t cb, PGMACCESSORIGIN fOrigin);
 
 VMMDECL(int)        PGMPhysSimpleReadGCPhys(PVMCC pVM, void *pvDst, RTGCPHYS GCPhysSrc, size_t cb);
 VMMDECL(int)        PGMPhysSimpleWriteGCPhys(PVMCC pVM, RTGCPHYS GCPhysDst, const void *pvSrc, size_t cb);
@@ -1544,16 +1560,16 @@ VMMR3_INT_DECL(int) PGMR3HandlerPhysicalTypeRegister(PVM pVM, PGMPHYSHANDLERKIND
 VMMR3_INT_DECL(int) PGMR3PoolGrow(PVM pVM, PVMCPU pVCpu);
 
 VMMR3DECL(int)      PGMR3PhysTlbGCPhys2Ptr(PVM pVM, RTGCPHYS GCPhys, bool fWritable, void **ppv);
-VMMR3DECL(uint8_t)  PGMR3PhysReadU8(PVM pVM, RTGCPHYS GCPhys, PGMACCESSORIGIN enmOrigin);
-VMMR3DECL(uint16_t) PGMR3PhysReadU16(PVM pVM, RTGCPHYS GCPhys, PGMACCESSORIGIN enmOrigin);
-VMMR3DECL(uint32_t) PGMR3PhysReadU32(PVM pVM, RTGCPHYS GCPhys, PGMACCESSORIGIN enmOrigin);
-VMMR3DECL(uint64_t) PGMR3PhysReadU64(PVM pVM, RTGCPHYS GCPhys, PGMACCESSORIGIN enmOrigin);
-VMMR3DECL(void)     PGMR3PhysWriteU8(PVM pVM, RTGCPHYS GCPhys, uint8_t Value, PGMACCESSORIGIN enmOrigin);
-VMMR3DECL(void)     PGMR3PhysWriteU16(PVM pVM, RTGCPHYS GCPhys, uint16_t Value, PGMACCESSORIGIN enmOrigin);
-VMMR3DECL(void)     PGMR3PhysWriteU32(PVM pVM, RTGCPHYS GCPhys, uint32_t Value, PGMACCESSORIGIN enmOrigin);
-VMMR3DECL(void)     PGMR3PhysWriteU64(PVM pVM, RTGCPHYS GCPhys, uint64_t Value, PGMACCESSORIGIN enmOrigin);
-VMMR3DECL(int)      PGMR3PhysReadExternal(PVM pVM, RTGCPHYS GCPhys, void *pvBuf, size_t cbRead, PGMACCESSORIGIN enmOrigin);
-VMMR3DECL(int)      PGMR3PhysWriteExternal(PVM pVM, RTGCPHYS GCPhys, const void *pvBuf, size_t cbWrite, PGMACCESSORIGIN enmOrigin);
+VMMR3DECL(uint8_t)  PGMR3PhysReadU8(PVM pVM, RTGCPHYS GCPhys, PGMACCESSORIGIN fOrigin);
+VMMR3DECL(uint16_t) PGMR3PhysReadU16(PVM pVM, RTGCPHYS GCPhys, PGMACCESSORIGIN fOrigin);
+VMMR3DECL(uint32_t) PGMR3PhysReadU32(PVM pVM, RTGCPHYS GCPhys, PGMACCESSORIGIN fOrigin);
+VMMR3DECL(uint64_t) PGMR3PhysReadU64(PVM pVM, RTGCPHYS GCPhys, PGMACCESSORIGIN fOrigin);
+VMMR3DECL(void)     PGMR3PhysWriteU8(PVM pVM, RTGCPHYS GCPhys, uint8_t Value, PGMACCESSORIGIN fOrigin);
+VMMR3DECL(void)     PGMR3PhysWriteU16(PVM pVM, RTGCPHYS GCPhys, uint16_t Value, PGMACCESSORIGIN fOrigin);
+VMMR3DECL(void)     PGMR3PhysWriteU32(PVM pVM, RTGCPHYS GCPhys, uint32_t Value, PGMACCESSORIGIN fOrigin);
+VMMR3DECL(void)     PGMR3PhysWriteU64(PVM pVM, RTGCPHYS GCPhys, uint64_t Value, PGMACCESSORIGIN fOrigin);
+VMMR3DECL(int)      PGMR3PhysReadExternal(PVM pVM, RTGCPHYS GCPhys, void *pvBuf, size_t cbRead, PGMACCESSORIGIN fOrigin);
+VMMR3DECL(int)      PGMR3PhysWriteExternal(PVM pVM, RTGCPHYS GCPhys, const void *pvBuf, size_t cbWrite, PGMACCESSORIGIN fOrigin);
 VMMR3DECL(int)      PGMR3PhysGCPhys2CCPtrExternal(PVM pVM, RTGCPHYS GCPhys, void **ppv, PPGMPAGEMAPLOCK pLock);
 VMMR3DECL(int)      PGMR3PhysGCPhys2CCPtrReadOnlyExternal(PVM pVM, RTGCPHYS GCPhys, void const **ppv, PPGMPAGEMAPLOCK pLock);
 VMMR3DECL(int)      PGMR3PhysBulkGCPhys2CCPtrExternal(PVM pVM, uint32_t cPages, PCRTGCPHYS paGCPhysPages,

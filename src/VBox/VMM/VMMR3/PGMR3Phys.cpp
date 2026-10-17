@@ -1,4 +1,4 @@
-/* $Id: PGMR3Phys.cpp 114027 2026-04-26 00:50:27Z knut.osmundsen@oracle.com $ */
+/* $Id: PGMR3Phys.cpp 115383 2026-10-17 13:20:01Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * PGM - Page Manager and Monitor, Physical Memory Addressing.
  */
@@ -104,9 +104,9 @@
  * EMT worker for PGMR3PhysReadExternal.
  */
 static DECLCALLBACK(int) pgmR3PhysReadExternalEMT(PVM pVM, PRTGCPHYS pGCPhys, void *pvBuf, size_t cbRead,
-                                                  PGMACCESSORIGIN enmOrigin)
+                                                  PGMACCESSORIGIN fOrigin)
 {
-    VBOXSTRICTRC rcStrict = PGMPhysRead(pVM, *pGCPhys, pvBuf, cbRead, enmOrigin);
+    VBOXSTRICTRC rcStrict = PGMPhysRead(pVM, *pGCPhys, pvBuf, cbRead, fOrigin);
     AssertMsg(rcStrict == VINF_SUCCESS, ("%Rrc\n", VBOXSTRICTRC_VAL(rcStrict))); NOREF(rcStrict);
     return VINF_SUCCESS;
 }
@@ -122,11 +122,11 @@ static DECLCALLBACK(int) pgmR3PhysReadExternalEMT(PVM pVM, PRTGCPHYS pGCPhys, vo
  * @param   GCPhys          Physical address to read from.
  * @param   pvBuf           Where to read into.
  * @param   cbRead          How many bytes to read.
- * @param   enmOrigin       Who is calling.
+ * @param   fOrigin         Who is calling.
  *
  * @thread  Any but EMTs.
  */
-VMMR3DECL(int) PGMR3PhysReadExternal(PVM pVM, RTGCPHYS GCPhys, void *pvBuf, size_t cbRead, PGMACCESSORIGIN enmOrigin)
+VMMR3DECL(int) PGMR3PhysReadExternal(PVM pVM, RTGCPHYS GCPhys, void *pvBuf, size_t cbRead, PGMACCESSORIGIN fOrigin)
 {
     VM_ASSERT_OTHER_THREAD(pVM);
 
@@ -164,7 +164,7 @@ VMMR3DECL(int) PGMR3PhysReadExternal(PVM pVM, RTGCPHYS GCPhys, void *pvBuf, size
                     PGM_UNLOCK(pVM);
 
                     return VMR3ReqPriorityCallWait(pVM, VMCPUID_ANY, (PFNRT)pgmR3PhysReadExternalEMT, 5,
-                                                   pVM, &GCPhys, pvBuf, cbRead, enmOrigin);
+                                                   pVM, &GCPhys, pvBuf, cbRead, fOrigin);
                 }
                 Assert(!PGM_PAGE_IS_MMIO_OR_SPECIAL_ALIAS(pPage));
 
@@ -232,10 +232,10 @@ VMMR3DECL(int) PGMR3PhysReadExternal(PVM pVM, RTGCPHYS GCPhys, void *pvBuf, size
  * EMT worker for PGMR3PhysWriteExternal.
  */
 static DECLCALLBACK(int) pgmR3PhysWriteExternalEMT(PVM pVM, PRTGCPHYS pGCPhys, const void *pvBuf, size_t cbWrite,
-                                                   PGMACCESSORIGIN enmOrigin)
+                                                   PGMACCESSORIGIN fOrigin)
 {
     /** @todo VERR_EM_NO_MEMORY */
-    VBOXSTRICTRC rcStrict = PGMPhysWrite(pVM, *pGCPhys, pvBuf, cbWrite, enmOrigin);
+    VBOXSTRICTRC rcStrict = PGMPhysWrite(pVM, *pGCPhys, pvBuf, cbWrite, fOrigin);
     AssertMsg(rcStrict == VINF_SUCCESS, ("%Rrc\n", VBOXSTRICTRC_VAL(rcStrict))); NOREF(rcStrict);
     return VINF_SUCCESS;
 }
@@ -252,17 +252,17 @@ static DECLCALLBACK(int) pgmR3PhysWriteExternalEMT(PVM pVM, PRTGCPHYS pGCPhys, c
  * @param   GCPhys          Physical address to write to.
  * @param   pvBuf           What to write.
  * @param   cbWrite         How many bytes to write.
- * @param   enmOrigin       Who is calling.
+ * @param   fOrigin         Who is calling.
  *
  * @thread  Any but EMTs.
  */
-VMMDECL(int) PGMR3PhysWriteExternal(PVM pVM, RTGCPHYS GCPhys, const void *pvBuf, size_t cbWrite, PGMACCESSORIGIN enmOrigin)
+VMMDECL(int) PGMR3PhysWriteExternal(PVM pVM, RTGCPHYS GCPhys, const void *pvBuf, size_t cbWrite, PGMACCESSORIGIN fOrigin)
 {
     VM_ASSERT_OTHER_THREAD(pVM);
 
     AssertMsg(!pVM->pgm.s.fNoMorePhysWrites,
-              ("Calling PGMR3PhysWriteExternal after pgmR3Save()! GCPhys=%RGp cbWrite=%#x enmOrigin=%d\n",
-               GCPhys, cbWrite, enmOrigin));
+              ("Calling PGMR3PhysWriteExternal after pgmR3Save()! GCPhys=%RGp cbWrite=%#x fOrigin=%#zx\n",
+               GCPhys, cbWrite, fOrigin));
     AssertMsgReturn(cbWrite > 0, ("don't even think about writing zero bytes!\n"), VINF_SUCCESS);
     LogFlow(("PGMR3PhysWriteExternal: %RGp %d\n", GCPhys, cbWrite));
 
@@ -306,7 +306,7 @@ VMMDECL(int) PGMR3PhysWriteExternal(PVM pVM, RTGCPHYS GCPhys, const void *pvBuf,
                         PGM_UNLOCK(pVM);
 
                         return VMR3ReqPriorityCallWait(pVM, VMCPUID_ANY, (PFNRT)pgmR3PhysWriteExternalEMT, 5,
-                                                       pVM, &GCPhys, pvBuf, cbWrite, enmOrigin);
+                                                       pVM, &GCPhys, pvBuf, cbWrite, fOrigin);
                     }
                 }
                 Assert(!PGM_PAGE_IS_MMIO_OR_SPECIAL_ALIAS(pPage));

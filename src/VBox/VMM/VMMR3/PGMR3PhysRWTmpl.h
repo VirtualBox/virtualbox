@@ -1,4 +1,4 @@
-/* $Id: PGMR3PhysRWTmpl.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: PGMR3PhysRWTmpl.h 115383 2026-10-17 13:20:01Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * PGM - Page Manager and Monitor, Physical Memory Access Template.
  */
@@ -34,13 +34,13 @@
  *
  * @param   pVM             The cross context VM structure.
  * @param   GCPhys          Physical address start reading from.
- * @param   enmOrigin       Who is calling.
+ * @param   fOrigin         Who is calling.
  */
-VMMDECL(PGMPHYS_DATATYPE) PGMPHYSFN_READNAME(PVM pVM, RTGCPHYS GCPhys, PGMACCESSORIGIN enmOrigin)
+VMMDECL(PGMPHYS_DATATYPE) PGMPHYSFN_READNAME(PVM pVM, RTGCPHYS GCPhys, PGMACCESSORIGIN fOrigin)
 {
     Assert(VM_IS_EMT(pVM));
     PGMPHYS_DATATYPE val;
-    VBOXSTRICTRC rcStrict = PGMPhysRead(pVM, GCPhys, &val, sizeof(val), enmOrigin);
+    VBOXSTRICTRC rcStrict = PGMPhysRead(pVM, GCPhys, &val, sizeof(val), fOrigin);
     AssertMsg(rcStrict == VINF_SUCCESS, ("%Rrc\n", VBOXSTRICTRC_VAL(rcStrict))); NOREF(rcStrict);
     return val;
 }
@@ -55,12 +55,12 @@ VMMDECL(PGMPHYS_DATATYPE) PGMPHYSFN_READNAME(PVM pVM, RTGCPHYS GCPhys, PGMACCESS
  * @param   pVM             The cross context VM structure.
  * @param   GCPhys          Physical address to write to.
  * @param   val             What to write.
- * @param   enmOrigin       Who is calling.
+ * @param   fOrigin       Who is calling.
  */
-VMMDECL(void) PGMPHYSFN_WRITENAME(PVM pVM, RTGCPHYS GCPhys, PGMPHYS_DATATYPE val, PGMACCESSORIGIN enmOrigin)
+VMMDECL(void) PGMPHYSFN_WRITENAME(PVM pVM, RTGCPHYS GCPhys, PGMPHYS_DATATYPE val, PGMACCESSORIGIN fOrigin)
 {
     Assert(VM_IS_EMT(pVM));
-    VBOXSTRICTRC rcStrict = PGMPhysWrite(pVM, GCPhys, &val, sizeof(val), enmOrigin);
+    VBOXSTRICTRC rcStrict = PGMPhysWrite(pVM, GCPhys, &val, sizeof(val), fOrigin);
     AssertMsg(rcStrict == VINF_SUCCESS, ("%Rrc\n", VBOXSTRICTRC_VAL(rcStrict))); NOREF(rcStrict);
 }
 

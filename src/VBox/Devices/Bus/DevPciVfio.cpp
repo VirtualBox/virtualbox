@@ -1,4 +1,4 @@
-/* $Id: DevPciVfio.cpp 114588 2026-07-01 17:38:49Z alexander.eichner@oracle.com $ */
+/* $Id: DevPciVfio.cpp 115383 2026-10-17 13:20:01Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * PCI passthrough device emulation using VFIO/IOMMUFD.
  */
@@ -970,14 +970,14 @@ static int pciVfioSetupVga(PVFIOPCI pThis, PVFIOPCIFUN pFun, PPDMDEVINS pDevIns)
  * @param   pvBuf           What the guest is reading/writing.
  * @param   cbBuf           How much it's reading/writing.
  * @param   enmAccessType   The access type.
- * @param   enmOrigin       Who is making the access.
+ * @param   fOrigin         Who is making the access.
  * @param   uUser           User argument.
  */
 static DECLCALLBACK(VBOXSTRICTRC)
 pciVfioRomWriteHandler(PVM pVM, PVMCPU pVCpu, RTGCPHYS GCPhys, void *pvPhys, void *pvBuf, size_t cbBuf,
-                          PGMACCESSTYPE enmAccessType, PGMACCESSORIGIN enmOrigin, uint64_t uUser)
+                          PGMACCESSTYPE enmAccessType, PGMACCESSORIGIN fOrigin, uint64_t uUser)
 {
-    RT_NOREF(pVM, pVCpu, GCPhys, pvPhys, pvBuf, cbBuf, enmAccessType, enmOrigin, uUser);
+    RT_NOREF(pVM, pVCpu, GCPhys, pvPhys, pvBuf, cbBuf, enmAccessType, fOrigin, uUser);
 
     LogRelMax(10, ("VFIO: Attempted write access to ROM region\n"));
     return VINF_SUCCESS;

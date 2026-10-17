@@ -1,4 +1,4 @@
-/* $Id: IOMR3.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: IOMR3.cpp 115383 2026-10-17 13:20:01Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * IOM - Input / Output Monitor.
  */
@@ -199,6 +199,7 @@ VMMR3_INT_DECL(int) IOMR3Init(PVM pVM)
     STAM_REG(pVM, &pVM->iom.s.StatMmioCommitsPgm,   STAMTYPE_COUNTER, "/IOM/MmioCommitsPgm",    STAMUNIT_OCCURENCES, "Number of ring-3 MMIO commits via PGM.");
     STAM_REL_REG(pVM, &pVM->iom.s.StatMmioStaleMappings,   STAMTYPE_COUNTER, "/IOM/MmioMappingsStale",              STAMUNIT_TICKS_PER_CALL, "Number of times iomMmioHandlerNew got a call for a remapped range at the old mapping.");
     STAM_REL_REG(pVM, &pVM->iom.s.StatMmioTooDeepRecursion, STAMTYPE_COUNTER, "/IOM/MmioTooDeepRecursion",          STAMUNIT_OCCURENCES,     "Number of times iomMmioHandlerNew detected too deep recursion and took default action.");
+    STAM_REL_REG(pVM, &pVM->iom.s.StatMmioWithSelf, STAMTYPE_COUNTER, "/IOM/MmioWithSelf",      STAMUNIT_OCCURENCES, "Number of times iomMmioHandlerNew detected a device accessing its own MMIO regions and took default action.");
     STAM_REG(pVM, &pVM->iom.s.StatMmioDevLockContentionR0, STAMTYPE_COUNTER, "/IOM/MmioDevLockContentionR0",        STAMUNIT_OCCURENCES,     "Number of device lock contention force return to ring-3.");
 
     LogFlow(("IOMR3Init: returns VINF_SUCCESS\n"));

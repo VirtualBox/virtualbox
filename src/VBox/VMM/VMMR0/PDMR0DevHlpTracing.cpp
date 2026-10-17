@@ -1,4 +1,4 @@
-/* $Id: PDMR0DevHlpTracing.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: PDMR0DevHlpTracing.cpp 115383 2026-10-17 13:20:01Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * PDM - Pluggable Device and Driver Manager, Device Helper variants when tracing is enabled.
  */
@@ -264,7 +264,7 @@ pdmR0DevHlpTracing_PhysRead(PPDMDEVINS pDevIns, RTGCPHYS GCPhys, void *pvBuf, si
     LogFlow(("pdmR0DevHlp_PhysRead: caller=%p/%d: GCPhys=%RGp pvBuf=%p cbRead=%#x\n",
              pDevIns, pDevIns->iInstance, GCPhys, pvBuf, cbRead));
 
-    VBOXSTRICTRC rcStrict = PGMPhysRead(pDevIns->Internal.s.pGVM, GCPhys, pvBuf, cbRead, PGMACCESSORIGIN_DEVICE);
+    VBOXSTRICTRC rcStrict = PGMPhysRead(pDevIns->Internal.s.pGVM, GCPhys, pvBuf, cbRead, PGMACCESSORIGIN_DEVICE_AND_INS(pDevIns));
     AssertMsg(rcStrict == VINF_SUCCESS, ("%Rrc\n", VBOXSTRICTRC_VAL(rcStrict))); /** @todo track down the users for this bugger. */
 
     if (!(fFlags & PDM_DEVHLP_PHYS_RW_F_DATA_USER))
@@ -285,7 +285,7 @@ pdmR0DevHlpTracing_PhysWrite(PPDMDEVINS pDevIns, RTGCPHYS GCPhys, const void *pv
     LogFlow(("pdmR0DevHlp_PhysWrite: caller=%p/%d: GCPhys=%RGp pvBuf=%p cbWrite=%#x\n",
              pDevIns, pDevIns->iInstance, GCPhys, pvBuf, cbWrite));
 
-    VBOXSTRICTRC rcStrict = PGMPhysWrite(pDevIns->Internal.s.pGVM, GCPhys, pvBuf, cbWrite, PGMACCESSORIGIN_DEVICE);
+    VBOXSTRICTRC rcStrict = PGMPhysWrite(pDevIns->Internal.s.pGVM, GCPhys, pvBuf, cbWrite, PGMACCESSORIGIN_DEVICE_AND_INS(pDevIns));
     AssertMsg(rcStrict == VINF_SUCCESS, ("%Rrc\n", VBOXSTRICTRC_VAL(rcStrict))); /** @todo track down the users for this bugger. */
 
     if (!(fFlags & PDM_DEVHLP_PHYS_RW_F_DATA_USER))

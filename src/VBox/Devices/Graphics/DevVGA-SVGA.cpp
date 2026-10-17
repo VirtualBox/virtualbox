@@ -1,4 +1,4 @@
-/* $Id: DevVGA-SVGA.cpp 114945 2026-08-10 13:06:53Z vitali.pelenjow@oracle.com $ */
+/* $Id: DevVGA-SVGA.cpp 115383 2026-10-17 13:20:01Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * VMware SVGA device.
  *
@@ -3249,14 +3249,14 @@ static int vmsvgaR3DebugFifoAccess(PVM pVM, PVGASTATE pThis, RTGCPHYS GCPhys, bo
  * @param   pvBuf           What the guest is reading/writing.
  * @param   cbBuf           How much it's reading/writing.
  * @param   enmAccessType   The access type.
- * @param   enmOrigin       Who is making the access.
+ * @param   fOrigin         Who is making the access.
  * @param   pvUser          User argument.
  */
 static DECLCALLBACK(VBOXSTRICTRC)
 vmsvgaR3FifoAccessHandler(PVM pVM, PVMCPU pVCpu, RTGCPHYS GCPhys, void *pvPhys, void *pvBuf, size_t cbBuf,
-                          PGMACCESSTYPE enmAccessType, PGMACCESSORIGIN enmOrigin, void *pvUser)
+                          PGMACCESSTYPE enmAccessType, PGMACCESSORIGIN fOrigin, void *pvUser)
 {
-    NOREF(pVCpu); NOREF(pvPhys); NOREF(pvBuf); NOREF(cbBuf); NOREF(enmOrigin); NOREF(enmAccessType); NOREF(GCPhys);
+    NOREF(pVCpu); NOREF(pvPhys); NOREF(pvBuf); NOREF(cbBuf); NOREF(fOrigin); NOREF(enmAccessType); NOREF(GCPhys);
     PVGASTATE pThis = (PVGASTATE)pvUser;
     AssertPtr(pThis);
 
@@ -3306,17 +3306,17 @@ vmsvgaR3FifoAccessHandler(PVM pVM, PVMCPU pVCpu, RTGCPHYS GCPhys, void *pvPhys, 
  * @param   pvBuf           What the guest is reading/writing.
  * @param   cbBuf           How much it's reading/writing.
  * @param   enmAccessType   The access type.
- * @param   enmOrigin       Who is making the access.
+ * @param   fOrigin         Who is making the access.
  * @param   pvUser          User argument.
  */
 static DECLCALLBACK(VBOXSTRICTRC)
 vmsvgaR3GmrAccessHandler(PVM pVM, PVMCPU pVCpu, RTGCPHYS GCPhys, void *pvPhys, void *pvBuf, size_t cbBuf,
-                         PGMACCESSTYPE enmAccessType, PGMACCESSORIGIN enmOrigin, void *pvUser)
+                         PGMACCESSTYPE enmAccessType, PGMACCESSORIGIN fOrigin, void *pvUser)
 {
     PVGASTATE   pThis = (PVGASTATE)pvUser;
     Assert(pThis);
     PVMSVGAR3STATE pSVGAState = pThisCC->svga.pSvgaR3State;
-    NOREF(pVCpu); NOREF(pvPhys); NOREF(pvBuf); NOREF(cbBuf); NOREF(enmAccessType); NOREF(enmOrigin);
+    NOREF(pVCpu); NOREF(pvPhys); NOREF(pvBuf); NOREF(cbBuf); NOREF(enmAccessType); NOREF(fOrigin);
 
     Log(("vmsvgaR3GmrAccessHandler: GMR access to page %RGp\n", GCPhys));
 

@@ -1,4 +1,4 @@
-/* $Id: PDMR3DevHlpTracing.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: PDMR3DevHlpTracing.cpp 115383 2026-10-17 13:20:01Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * PDM - Pluggable Device and Driver Manager, Device Helper variants when tracing is enabled.
  */
@@ -358,9 +358,9 @@ pdmR3DevHlpTracing_PhysRead(PPDMDEVINS pDevIns, RTGCPHYS GCPhys, void *pvBuf, si
 
     VBOXSTRICTRC rcStrict;
     if (VM_IS_EMT(pVM))
-        rcStrict = PGMPhysRead(pVM, GCPhys, pvBuf, cbRead, PGMACCESSORIGIN_DEVICE);
+        rcStrict = PGMPhysRead(pVM, GCPhys, pvBuf, cbRead, PGMACCESSORIGIN_DEVICE_AND_INS(pDevIns));
     else
-        rcStrict = PGMR3PhysReadExternal(pVM, GCPhys, pvBuf, cbRead, PGMACCESSORIGIN_DEVICE);
+        rcStrict = PGMR3PhysReadExternal(pVM, GCPhys, pvBuf, cbRead, PGMACCESSORIGIN_DEVICE_AND_INS(pDevIns));
     AssertMsg(rcStrict == VINF_SUCCESS, ("%Rrc\n", VBOXSTRICTRC_VAL(rcStrict))); /** @todo track down the users for this bugger. */
 
     if (!(fFlags & PDM_DEVHLP_PHYS_RW_F_DATA_USER))
@@ -393,9 +393,9 @@ pdmR3DevHlpTracing_PhysWrite(PPDMDEVINS pDevIns, RTGCPHYS GCPhys, const void *pv
 
     VBOXSTRICTRC rcStrict;
     if (VM_IS_EMT(pVM))
-        rcStrict = PGMPhysWrite(pVM, GCPhys, pvBuf, cbWrite, PGMACCESSORIGIN_DEVICE);
+        rcStrict = PGMPhysWrite(pVM, GCPhys, pvBuf, cbWrite, PGMACCESSORIGIN_DEVICE_AND_INS(pDevIns));
     else
-        rcStrict = PGMR3PhysWriteExternal(pVM, GCPhys, pvBuf, cbWrite, PGMACCESSORIGIN_DEVICE);
+        rcStrict = PGMR3PhysWriteExternal(pVM, GCPhys, pvBuf, cbWrite, PGMACCESSORIGIN_DEVICE_AND_INS(pDevIns));
     AssertMsg(rcStrict == VINF_SUCCESS, ("%Rrc\n", VBOXSTRICTRC_VAL(rcStrict))); /** @todo track down the users for this bugger. */
 
     if (!(fFlags & PDM_DEVHLP_PHYS_RW_F_DATA_USER))

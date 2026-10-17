@@ -1,4 +1,4 @@
-/* $Id: PGMAllHandler.cpp 112945 2026-02-11 13:13:32Z alexander.eichner@oracle.com $ */
+/* $Id: PGMAllHandler.cpp 115383 2026-10-17 13:20:01Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * PGM - Page Manager / Monitor, Access Handlers.
  */
@@ -104,9 +104,9 @@ static void pgmHandlerPhysicalResetRamFlags(PVMCC pVM, PPGMPHYSHANDLER pCur);
  */
 DECLCALLBACK(VBOXSTRICTRC)
 pgmR0HandlerPhysicalHandlerToRing3(PVMCC pVM, PVMCPUCC pVCpu, RTGCPHYS GCPhys, void *pvPhys, void *pvBuf, size_t cbBuf,
-                                   PGMACCESSTYPE enmAccessType, PGMACCESSORIGIN enmOrigin, uint64_t uUser)
+                                   PGMACCESSTYPE enmAccessType, PGMACCESSORIGIN fOrigin, uint64_t uUser)
 {
-    RT_NOREF(pVM, pVCpu, GCPhys, pvPhys, pvBuf, cbBuf, enmAccessType, enmOrigin, uUser);
+    RT_NOREF(pVM, pVCpu, GCPhys, pvPhys, pvBuf, cbBuf, enmAccessType, fOrigin, uUser);
     return VINF_EM_RAW_EMULATE_INSTR;
 }
 
