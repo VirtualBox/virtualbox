@@ -1,4 +1,4 @@
-/* $Id: IEMAllCImplVmxInstr-x86.cpp 112435 2026-01-13 08:49:25Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMAllCImplVmxInstr-x86.cpp 115384 2026-10-17 13:31:43Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * IEM - VT-x instruction implementation (x86 target).
  */
@@ -9925,9 +9925,9 @@ IEM_CIMPL_DEF_0(iemCImpl_vmx_pause)
  */
 DECLCALLBACK(VBOXSTRICTRC) iemVmxApicAccessPageHandler(PVMCC pVM, PVMCPUCC pVCpu, RTGCPHYS GCPhysFault, void *pvPhys,
                                                        void *pvBuf, size_t cbBuf, PGMACCESSTYPE enmAccessType,
-                                                       PGMACCESSORIGIN enmOrigin, uint64_t uUser)
+                                                       PGMACCESSORIGIN fOrigin, uint64_t uUser)
 {
-    RT_NOREF3(pvPhys, enmOrigin, uUser);
+    RT_NOREF3(pvPhys, fOrigin, uUser);
 
     RTGCPHYS const GCPhysAccessBase = GCPhysFault & ~(RTGCPHYS)GUEST_PAGE_OFFSET_MASK;
     if (CPUMIsGuestInVmxNonRootMode(IEM_GET_CTX(pVCpu)))

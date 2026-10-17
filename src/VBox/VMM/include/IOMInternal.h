@@ -1,4 +1,4 @@
-/* $Id: IOMInternal.h 111747 2025-11-14 16:43:28Z klaus.espenlaub@oracle.com $ */
+/* $Id: IOMInternal.h 115384 2026-10-17 13:31:43Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * IOM - Internal header file.
  */
@@ -489,6 +489,7 @@ typedef struct IOM
     STAMCOUNTER                     StatMmioStaleMappings;
     STAMCOUNTER                     StatMmioDevLockContentionR0;
     STAMCOUNTER                     StatMmioTooDeepRecursion;
+    STAMCOUNTER                     StatMmioWithSelf;
     /** @} */
 } IOM;
 #ifdef IOM_WITH_CRIT_SECT_RW

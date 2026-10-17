@@ -1,4 +1,4 @@
-/* $Id: pdmpcidevint.h 112438 2026-01-13 09:00:11Z knut.osmundsen@oracle.com $ */
+/* $Id: pdmpcidevint.h 115384 2026-10-17 13:31:43Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * DevPCI - PDM PCI Internal header - Only for hiding bits of PDMPCIDEV.
  */
@@ -163,9 +163,9 @@ typedef struct PDMPCIDEVINT
      * This also works as the internal sub-device ordinal with MMIOEx.
      * @note Same value as idxSubDev, can therefore be removed later. */
     uint8_t                         idxDevCfg;
-    /** Set if the it can be reassigned to a different PCI device number. */
+    /** Set if it can be reassigned to a different PCI device number. */
     bool                            fReassignableDevNo;
-    /** Set if the it can be reassigned to a different PCI function number. */
+    /** Set if it can be reassigned to a different PCI function number. */
     bool                            fReassignableFunNo;
     /** Alignment padding - used by ICH9 for region swapping (DevVGA hack).   */
     uint8_t                         bPadding0;
