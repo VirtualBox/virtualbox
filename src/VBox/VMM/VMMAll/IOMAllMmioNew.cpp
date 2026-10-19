@@ -1,4 +1,4 @@
-/* $Id: IOMAllMmioNew.cpp 115384 2026-10-17 13:31:43Z aleksey.ilyushin@oracle.com $ */
+/* $Id: IOMAllMmioNew.cpp 115386 2026-10-19 18:22:22Z aleksey.ilyushin@oracle.com $ */
 /** @file
  * IOM - Input / Output Monitor - Any Context, MMIO & String I/O.
  */
@@ -818,7 +818,7 @@ DECLCALLBACK(VBOXSTRICTRC) iomMmioHandlerNew(PVMCC pVM, PVMCPUCC pVCpu, RTGCPHYS
 
     Assert(enmAccessType == PGMACCESSTYPE_READ || enmAccessType == PGMACCESSTYPE_WRITE);
     AssertMsg(cbBuf >= 1, ("%zu\n", cbBuf));
-    NOREF(pvPhys); 
+    NOREF(pvPhys);
 
 #ifdef IN_RING3
     int const rcToRing3 = VERR_IOM_MMIO_IPE_3;
