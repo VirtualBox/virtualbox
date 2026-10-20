@@ -1544,6 +1544,7 @@ static void vmsvgaR3InstallNewCursor(PVGASTATECC pThisCC, PVMSVGAR3STATE pSVGASt
         RTMemFreeZ(pSVGAState->Cursor.pData, pSVGAState->Cursor.cbData);
 
     pSVGAState->Cursor.fActive  = true;
+    pSVGAState->Cursor.fAlpha   = fAlpha;
     pSVGAState->Cursor.xHotspot = xHot;
     pSVGAState->Cursor.yHotspot = yHot;
     pSVGAState->Cursor.width    = cx;

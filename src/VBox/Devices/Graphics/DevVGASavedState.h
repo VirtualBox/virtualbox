@@ -56,7 +56,8 @@
         } \
     } while (0)
 
-#define VGA_SAVEDSTATE_VERSION                   34
+#define VGA_SAVEDSTATE_VERSION                   35
+#define VGA_SAVEDSTATE_VERSION_VMSVGA_CURSOR_ALPHA 35 /* Explicit cursor format. */
 #define VGA_SAVEDSTATE_VERSION_VMSVGA_GB_SURF    34 /* Manage host shadow buffers for GB surfaces. @bugref{10934} */
 #define VGA_SAVEDSTATE_VERSION_VMSVGA_HOST_CMDS  33 /* Host commands. See @bugref{11042}. */
 #define VGA_SAVEDSTATE_VERSION_VMSVGA_CURSOR_MOB 32 /* Cursor MOB support. See @bugref{11042}. */

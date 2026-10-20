@@ -94,6 +94,11 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
+        <para>Graphics: Fixed invisible mouse pointers after restoring saved
+          states with VBoxSVGA and VMSVGA graphics controllers</para>
+      </listitem>
+
+      <listitem>
         <para>NAT: Fixed ICMP traceroute missing intermediate hops when using
           NAT networking</para>
       </listitem>

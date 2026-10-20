@@ -259,6 +259,7 @@ static SSMFIELD const g_aVMSVGAR3STATEFields[] =
     SSMFIELD_ENTRY_IGNORE(      VMSVGAR3STATE, paGMR),
     SSMFIELD_ENTRY(             VMSVGAR3STATE, GMRFB),
     SSMFIELD_ENTRY(             VMSVGAR3STATE, Cursor.fActive),
+    SSMFIELD_ENTRY_VER(         VMSVGAR3STATE, Cursor.fAlpha, VGA_SAVEDSTATE_VERSION_VMSVGA_CURSOR_ALPHA),
     SSMFIELD_ENTRY(             VMSVGAR3STATE, Cursor.xHotspot),
     SSMFIELD_ENTRY(             VMSVGAR3STATE, Cursor.yHotspot),
     SSMFIELD_ENTRY(             VMSVGAR3STATE, Cursor.width),
@@ -7366,7 +7367,8 @@ int vmsvgaR3LoadExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, uint32_t uVersion, uin
     else if (cbVgaFramebuffer < VMSVGA_VGA_FB_BACKUP_SIZE)
         RT_BZERO(&pThisCC->svga.pbVgaFrameBufferR3[cbVgaFramebuffer], VMSVGA_VGA_FB_BACKUP_SIZE - cbVgaFramebuffer);
 
-    /* Load the VMSVGA state. */
+    /* Load the VMSVGA state.  Older versions omit the cursor format. */
+    pSVGAState->Cursor.fAlpha = false;
     rc = pHlp->pfnSSMGetStructEx(pSSM, pSVGAState, sizeof(*pSVGAState), 0, g_aVMSVGAR3STATEFields, NULL);
     AssertRCReturn(rc, rc);
 
@@ -7378,6 +7380,17 @@ int vmsvgaR3LoadExec(PPDMDEVINS pDevIns, PSSMHANDLE pSSM, uint32_t uVersion, uin
 
         rc = pHlp->pfnSSMGetMem(pSSM, pSVGAState->Cursor.pData, pSVGAState->Cursor.cbData);
         AssertRCReturn(rc, rc);
+        /* New state versions store the format explicitly.  Older versions require
+         * bitmap recovery, falling back to the legacy visibility-register heuristic
+         * when the bitmap is ambiguous or cannot be safely inspected. */
+        bool const fFormatSaved = uVersion >= VGA_SAVEDSTATE_VERSION_VMSVGA_CURSOR_ALPHA;
+        void const *pvCursor =    pSVGAState->Cursor.width  <= VMSVGA_CURSOR_MAX_DIMENSION
+                               && pSVGAState->Cursor.height <= VMSVGA_CURSOR_MAX_DIMENSION
+                             ? pSVGAState->Cursor.pData : NULL;
+        pSVGAState->Cursor.fAlpha = vmsvgaR3CursorUsesAlpha(fFormatSaved, pSVGAState->Cursor.fAlpha,
+                                                            pThis->svga.uCursorOn, pvCursor,
+                                                            pSVGAState->Cursor.cbData, pSVGAState->Cursor.width,
+                                                            pSVGAState->Cursor.height);
     }
 
     /* Load the GMR state. */
@@ -7545,10 +7558,10 @@ int vmsvgaR3LoadDone(PPDMDEVINS pDevIns)
     /* Set the active cursor. */
     if (pSVGAState->Cursor.fActive)
     {
-        /* We don't store the alpha flag, but we can take a guess that if
-         * the old register interface was used, the cursor was B&W.
-         */
-        bool    fAlpha = pThis->svga.uCursorOn ? false : true;
+        /* The format was loaded or recovered in vmsvgaR3LoadExec.  Do not infer
+         * it from uCursorOn here: guests using FIFO cursor controls can have a
+         * visible non-alpha cursor while the legacy visibility register is zero. */
+        bool const fAlpha = pSVGAState->Cursor.fAlpha;
 
         int rc = pThisCC->pDrv->pfnVBVAMousePointerShape(pThisCC->pDrv,
                                                          true /*fVisible*/,

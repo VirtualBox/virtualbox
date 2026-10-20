@@ -92,6 +92,17 @@ ifdef VBOX_WITH_RAW_MODE
 endif # VBOX_WITH_RAW_MODE
 
 #
+# SVGA saved cursor format selection.
+#
+ifdef VBOX_WITH_VMSVGA
+ PROGRAMS += tstVMSVGACursor
+ tstVMSVGACursor_TEMPLATE = VBoxR3AutoTest
+ tstVMSVGACursor_DEFS     = VBOX_WITH_VMSVGA
+ tstVMSVGACursor_INCS     = $(VBOX_PATH_VMSVGA_DEVICE_INC)
+ tstVMSVGACursor_SOURCES  = tstVMSVGACursor.cpp
+endif # VBOX_WITH_VMSVGA
+
+#
 # The testcase it self.
 #
 PROGRAMS += tstDeviceStructSize
