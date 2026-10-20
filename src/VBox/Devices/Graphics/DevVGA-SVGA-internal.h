@@ -146,6 +146,8 @@ typedef struct VMSVGAR3STATE
     struct
     {
         bool                fActive;
+        /** Whether the pixel alpha bytes, rather than the AND/XOR masks, define the shape. */
+        bool                fAlpha;
         /** The current cursor MOB ID. See @bugref{11042}.
          *  Set to SVGA_ID_INVALID if not set (yet). */
         SVGAMobId volatile  mobId;

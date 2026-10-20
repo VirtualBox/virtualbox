@@ -839,6 +839,53 @@ DECLINLINE(uint32_t) vmsvgaR3MobId(PVMSVGAMOB pMob)
     return SVGA_ID_INVALID;
 }
 
+/**
+ * Selects the cursor format, preserving the old heuristic if recovery is inconclusive.
+ *
+ * Alpha cursors have an all-ones placeholder AND mask.  A mask with a clear
+ * pixel bit and zero pixel alpha bytes therefore identifies a non-alpha cursor.
+ * An all-ones mask is ambiguous: it can also describe an AND/XOR invert cursor.
+ *
+ * @returns Whether to interpret the pixel alpha bytes.
+ * @param   fFormatSaved    Whether fAlpha was explicitly serialized.
+ * @param   fAlpha          The explicitly saved format, if present.
+ * @param   uCursorOn       The legacy visibility register used by the old heuristic.
+ * @param   pvData          Normalized bitmap, or NULL if unavailable or dimensions are unsupported.
+ * @param   cbData          Accessible size of pvData.
+ * @param   cx              Width in pixels.
+ * @param   cy              Height in pixels.
+ */
+DECLINLINE(bool) vmsvgaR3CursorUsesAlpha(bool fFormatSaved, bool fAlpha, uint32_t uCursorOn,
+                                         void const *pvData, uint32_t cbData, uint32_t cx, uint32_t cy)
+{
+    if (fFormatSaved)
+        return fAlpha;
+    if (uCursorOn)
+        return false;
+
+    uint64_t const cPixels = (uint64_t)cx * cy;
+    if (!pvData || !cx || !cy || cPixels > cbData / 4)
+        return true;
+
+    uint32_t const cbAndLine = (uint32_t)(((uint64_t)cx + 7) / 8);
+    uint64_t const offPixels = RT_ALIGN_64((uint64_t)cbAndLine * cy, 4);
+    if (offPixels > cbData || cPixels * 4 > cbData - offPixels)
+        return true;
+
+    uint8_t const *pbData = (uint8_t const *)pvData;
+    uint8_t const *pbPixels = pbData + (size_t)offPixels;
+    for (uint32_t i = 0; i < cPixels; i++)
+        if (pbPixels[i * 4 + 3])
+            return true;
+
+    for (uint32_t y = 0; y < cy; y++)
+        for (uint32_t x = 0; x < cx; x++)
+            if (!(pbData[y * cbAndLine + x / 8] & (0x80 >> (x & 7))))
+                return false;
+    return true;
+}
+
+
 #ifdef DEBUG_sunlover
 #define DEBUG_BREAKPOINT_TEST() do { ASMBreakpoint(); } while (0)
 #else
