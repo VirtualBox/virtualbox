@@ -1,0 +1,18 @@
+# $Id$
+# VirtualBox ARM timer selection. SPDX-License-Identifier: BSD-2-Clause-Patent
+[Defines]
+  INF_VERSION = 0x00010005
+  BASE_NAME = VBoxArmGenericTimerLib
+  FILE_GUID = 8E18401B-3943-4DCC-8925-E9F72BFD92A7
+  MODULE_TYPE = BASE
+  VERSION_STRING = 1.0
+  LIBRARY_CLASS = ArmGenericTimerCounterLib
+[Sources.AARCH64]
+  VBoxArmGenericTimerLib.c
+  VBoxArmTimerAccess.S
+[Packages]
+  MdePkg/MdePkg.dec
+  ArmPkg/ArmPkg.dec
+[LibraryClasses]
+  ArmLib
+  BaseLib

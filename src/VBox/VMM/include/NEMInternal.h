@@ -344,6 +344,8 @@ typedef struct NEM
     bool                        fCreatedVm   : 1;
     /** Set if EL2 is enabled. */
     bool                        fEl2Enabled  : 1;
+    /** Set after successfully creating the native Apple GIC. */
+    bool                        fNativeGic   : 1;
     /** Set if we are running at least on macOS Sequioa 15.0. */
     bool                        fMacOsSequia : 1;
 # ifdef VBOX_VMM_TARGET_ARMV8

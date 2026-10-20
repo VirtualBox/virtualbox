@@ -194,6 +194,14 @@ int Console::i_configConstructorArmV8(PUVM pUVM, PVM pVM, PCVMMR3VTABLE pVMM, Au
                                                                                    _4G); /* Start looking for free MMIO regions at 4GiB downwards. */
     SystemTableBuilder *pSysTblsBldAcpi = NULL;
 
+    BOOL fNestedHWVirt = FALSE;
+    hrc = platformARM->GetCPUProperty(CPUPropertyTypeARM_HWVirt, &fNestedHWVirt); H();
+#if defined(RT_OS_DARWIN) && defined(RT_ARCH_ARM64)
+    bool const fDarwinNested = fNestedHWVirt != FALSE;
+#else
+    bool const fDarwinNested = false;
+#endif
+
     /*
      * ACPI
      */
@@ -271,7 +279,7 @@ int Console::i_configConstructorArmV8(PUVM pUVM, PVM pVM, PCVMMR3VTABLE pVMM, Au
         vrc = RTFdtNodePropertyAddU32(   hFdt, "cpu_on",           ARM_PSCI_FUNC_ID_CREATE_FAST_32(ARM_PSCI_FUNC_ID_CPU_ON));              VRC();
         vrc = RTFdtNodePropertyAddU32(   hFdt, "cpu_off",          ARM_PSCI_FUNC_ID_CREATE_FAST_32(ARM_PSCI_FUNC_ID_CPU_OFF));             VRC();
         vrc = RTFdtNodePropertyAddU32(   hFdt, "cpu_suspend",      ARM_PSCI_FUNC_ID_CREATE_FAST_32(ARM_PSCI_FUNC_ID_CPU_SUSPEND));         VRC();
-        vrc = RTFdtNodePropertyAddString(hFdt, "method",           "hvc");                  VRC();
+        vrc = RTFdtNodePropertyAddString(hFdt, "method",           fDarwinNested ? "smc" : "hvc");                  VRC();
         vrc = RTFdtNodePropertyAddStringList(hFdt, "compatible",   3,
                                              "arm,psci-1.0", "arm,psci-0.2", "arm,psci");   VRC();
         vrc = RTFdtNodeFinalize(hFdt);                                                      VRC();
@@ -432,8 +440,6 @@ int Console::i_configConstructorArmV8(PUVM pUVM, PVM pVM, PCVMMR3VTABLE pVMM, Au
         InsertConfigNode(pRoot, "CPUM", &pCpum);
 
         /* Nested Virtualization. */
-        BOOL fNestedHWVirt = FALSE;
-        hrc = platformARM->GetCPUProperty(CPUPropertyTypeARM_HWVirt, &fNestedHWVirt); H();
         InsertConfigInteger(pCpum, "NestedHWVirt", fNestedHWVirt ? true : false);
 
         /* GIC. */
@@ -443,6 +449,10 @@ int Console::i_configConstructorArmV8(PUVM pUVM, PVM pVM, PCVMMR3VTABLE pVMM, Au
         /* GIC ITS. */
         BOOL fGicIts = FALSE;
         hrc = platformARM->GetCPUProperty(CPUPropertyTypeARM_GICITS, &fGicIts); H();
+
+        if (fDarwinNested && fGicIts)
+            return pVMM->pfnVMR3SetError(pUVM, VERR_NOT_SUPPORTED, RT_SRC_POS,
+                                        N_("Native Apple GIC does not support the configured GIC ITS"));
 
         /*
          * PDM config.
@@ -535,7 +545,8 @@ int Console::i_configConstructorArmV8(PUVM pUVM, PVM pVM, PCVMMR3VTABLE pVMM, Au
         hrc = pResMgr->assignMmioRegion("gic-its", 2 * _64K, &GCPhysIntcIts, &cbMmioIntcIts);             H();
 
 #if defined(RT_OS_DARWIN) || !defined(RT_ARCH_ARM64)
-        InsertConfigNode(pDevices, "gic",                   &pDev);
+        /* Native GIC is required for HVF's EL2 physical timer registers. */
+        InsertConfigNode(pDevices, fDarwinNested ? "gic-nem" : "gic", &pDev);
 #else
         /* On Linux we default to the KVM in-kernel GIC and on Windows we are forced to the Hyper-V GIC for now. */
         InsertConfigNode(pDevices, "gic-nem",               &pDev);
@@ -568,8 +579,16 @@ int Console::i_configConstructorArmV8(PUVM pUVM, PVM pVM, PCVMMR3VTABLE pVMM, Au
         vrc = RTFdtNodePropertyAddEmpty(   hFdt, "interrupt-controller");                               VRC();
         vrc = RTFdtNodePropertyAddU32(     hFdt, "#interrupt-cells", 3);                                VRC();
 
+        if (fDarwinNested)
+        {
+            /* Native Apple GIC maintenance INTID 25 is PPI 9, level high. */
+            vrc = RTFdtNodePropertyAddCellsU32(hFdt, "interrupts", 3, 1, 9, 4); VRC();
+        }
+
         if (pSysTblsBldAcpi)
         {
+            vrc = pSysTblsBldAcpi->configureArmVirtualization(!fDarwinNested, fDarwinNested ? 25 : 0);
+            VRC();
             vrc = pSysTblsBldAcpi->configureGic(cCpus, GCPhysIntcDist, cbMmioIntcDist,
                                                 GCPhysIntcReDist, cbMmioIntcReDist, GCPhysIntcIts, cbMmioIntcIts);
             VRC();
