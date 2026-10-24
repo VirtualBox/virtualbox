@@ -3000,23 +3000,25 @@ static int nemHCWinCopyStateToHyperV(PVMCC pVM, PVMCPUCC pVCpu)
 /**
  * Updates the APIC TPR from the guest CR8 value Hyper-V reports.
  *
- * CR8 only holds TPR bits 7:4.  When it still matches the TPR, the TPR bits 3:0
- * written through the APIC are kept, otherwise the guest executed a MOV to CR8,
- * which clears them (as on real hardware).  The TPR is always set, as setting it
- * also updates the PPR and signals the next deliverable pending interrupt.
+ * CR8 only holds TPR bits 7:4, so the TPR bits 3:0 written through the APIC
+ * are kept as long as CR8 matches TPR bits 7:4.  If CR8 differs, the guest
+ * wrote CR8 and bits 3:0 are cleared, as on real hardware.  A CR8 write that
+ * leaves bits 7:4 unchanged can't be detected and keeps bits 3:0 (HM on AMD-V
+ * has the same limitation).  The TPR is set even when unchanged, as that also
+ * updates the PPR and signals the next deliverable pending interrupt.
  *
  * @param   pVCpu   The cross context per CPU structure.
  * @param   uCr8    The guest CR8 value.
  */
 DECLINLINE(void) nemHCWinSetApicTprFromCr8(PVMCPUCC pVCpu, uint64_t uCr8)
 {
-    uint8_t const uTprHi = (uint8_t)(uCr8 & 0xf);
-    uint8_t       u8Tpr  = 0;
-    int const     rc     = PDMApicGetTpr(pVCpu, &u8Tpr, NULL /*pfPending*/, NULL /*pu8PendingIntr*/);
-    if (RT_SUCCESS(rc) && (u8Tpr >> 4) == uTprHi)
+    uint8_t const u8Cr8 = (uint8_t)(uCr8 & 0xf);
+    uint8_t       u8Tpr = 0;
+    int const     rc    = PDMApicGetTpr(pVCpu, &u8Tpr, NULL /*pfPending*/, NULL /*pu8PendingIntr*/);
+    if (RT_SUCCESS(rc) && (u8Tpr >> 4) == u8Cr8)
         PDMApicSetTpr(pVCpu, u8Tpr);
     else
-        PDMApicSetTpr(pVCpu, (uint8_t)(uTprHi << 4));
+        PDMApicSetTpr(pVCpu, (uint8_t)(u8Cr8 << 4));
 }
 
 
