@@ -74,7 +74,7 @@
  * OpMask-kx    | Ey\| ---    ---    ---    ---    ---    ---    ---    ---    k0     k1     k2     k3     k4     k5     k6     k7    |
  * SEGREG       | Fy/| CS     DS     ES     FS     GS     SS     ---    ---    ---    ---    ---    ---    ---    ---    ---    ---   |
  * 8-bit-H      | Fy|| ---    ---    ---    ---    ---    ---    ---    ---    AH     CH     DH     BH     ---    ---    ---    ---   |
- * Other/MEMREF | Fy\| ---    ---    ---    ---    ---    ---    xIP    xFL    ---    ---    ---    ---    NOREG (avail) FSxDI  FSxBX |
+ * Other/MEMREF | Fy\| ---    ---    ---    ---    ---    ---    xIP    xFL    ---    ---    ---    ---    NOREG  RIPREL FSxDI  FSxBX |
  *                   \======  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====*/
 
 /** These values are used in uint8_t fields; the TODO values are *intended* to break compilation. */
@@ -384,6 +384,9 @@
 #define BH      (BS3_REGISTER_FAMILY_8BIT_H     | 3)
 
 #define NOREG                                    0xFC
+/** Memory operand addressed relative to RIP (64-bit code only); the test
+ *  harness supplies the buffer, there is no address register to set up. */
+#define RIPREL                                   0xFD
 
 #define          BS3_REGISTER_FAMILY_MEMREF      0xFE
 #define FSxDI   (BS3_REGISTER_FAMILY_MEMREF     | 0)
@@ -391,7 +394,7 @@
 
 #define          BS3_REGISTER_FLAG_MEMREF        0x100
 #define          BS3_FSxREG(reg)                 (((reg) == FSxBX || (reg) == FSxDI) ? reg : ((reg) & BS3_REGISTER_REGISTER_MASK) | BS3_REGISTER_FLAG_MEMREF)
-#define          BS3_REGISTER_IS_MEMREF(reg)     (((reg) & BS3_REGISTER_FLAG_MEMREF) || (((reg) & BS3_REGISTER_FAMILY_MEMREF) == BS3_REGISTER_FAMILY_MEMREF))
+#define          BS3_REGISTER_IS_MEMREF(reg)     (((reg) & BS3_REGISTER_FLAG_MEMREF) || (((reg) & BS3_REGISTER_FAMILY_MEMREF) == BS3_REGISTER_FAMILY_MEMREF) || (reg) == RIPREL)
 #define          BS3_REGISTER_MEMREF_TO(reg)     (((reg) == FSxBX ? BX : (reg) == FSxDI ? DI : (reg)) & BS3_REGISTER_REGISTER_MASK)
 
 #define BS3_REGISTER_NAME_MAXSIZE sizeof("FSx(avail)")
@@ -415,7 +418,7 @@ static size_t bs3CpuInstrXGetRegisterName(char BS3_FAR *pszBuf, size_t cchBuf, u
                                                      "CS",  "DS",  "ES",  "FS",  "GS",  "SS",
                                                                                                "xIP", "xFL",
                                                      "AH",  "CH",  "DH",  "BH",
-                                                                       "NOREG", "(avail)", "FSxDI", "FSxBX" };
+                                                                       "NOREG", "RIPREL",  "FSxDI", "FSxBX" };
     BS3_ASSERT(cchBuf >= BS3_REGISTER_NAME_MAXSIZE);
 
     if (uReg & BS3_REGISTER_FLAG_MEMREF)

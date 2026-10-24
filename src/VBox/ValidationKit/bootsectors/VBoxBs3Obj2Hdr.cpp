@@ -146,9 +146,12 @@ static RTEXITCODE ProcessObjectFile(FILE *pOutput, uint8_t const *pbFile, size_t
                         cch     -= 1;
                         pchName += 1;
 
+                        /* Skip the procedure end markers and global variables (g_xxx), the
+                           C code declares the variables with their proper types itself. */
                         static const char s_szEndProc[] = "_EndProc";
-                        if (   cch < sizeof(s_szEndProc)
-                            || memcmp(&pchName[cch - sizeof(s_szEndProc) + 1], RT_STR_TUPLE(s_szEndProc)) != 0)
+                        if (   (   cch < sizeof(s_szEndProc)
+                                || memcmp(&pchName[cch - sizeof(s_szEndProc) + 1], RT_STR_TUPLE(s_szEndProc)) != 0)
+                            && (cch < 2 || pchName[0] != 'g' || pchName[1] != '_'))
                             fprintf(pOutput,  "extern FNBS3FAR %-*.*s;\n", cch, cch, pchName);
                     }
                 }

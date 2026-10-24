@@ -94,6 +94,11 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
+        <para>VMM: Fixed ADCX/ADOX and several AVX instructions accessing the
+          wrong memory with RIP-relative operands when emulated (github:gh-930)</para>
+      </listitem>
+
+      <listitem>
         <para>NAT: Fixed ICMP traceroute missing intermediate hops when using
           NAT networking</para>
       </listitem>

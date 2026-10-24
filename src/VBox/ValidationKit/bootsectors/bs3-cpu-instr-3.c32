@@ -153,6 +153,16 @@ static uint8_t BS3_FAR *g_pbBufAlias;
 /** RW alias for the memory at g_pbBuf. */
 static uint8_t BS3_FAR *g_pbBufAliasAlloc;
 
+/** Offset of the RIP relative memory operand (RIPREL) in g_abBs3CpuInstr3RipRelBuf,
+ * must match bs3-cpu-instr-3-asm.asm. */
+#define BS3CPUINSTR3_RIPREL_OFF     32
+/** The guard byte value around the RIP relative memory operand. */
+#define BS3CPUINSTR3_RIPREL_GUARD   UINT8_C(0xa5)
+/** Buffer for the RIP relative memory operand (bs3-cpu-instr-3-asm.asm): guard
+ * bytes, the operand at BS3CPUINSTR3_RIPREL_OFF, more guard bytes. */
+#define g_abBs3CpuInstr3RipRelBuf   BS3_DATA_NM(g_abBs3CpuInstr3RipRelBuf)
+extern uint8_t                      g_abBs3CpuInstr3RipRelBuf[96];
+
 /** Exception type \#1 test configurations, 16 & 32 bytes strictly aligned. */
 static const BS3CPUINSTR3_CONFIG_T g_aXcptConfig1[] =
 {
@@ -556,6 +566,46 @@ DECLINLINE(PRTUINT256U) bs3CpuInstr3BufForOperand(uint8_t BS3_FAR *pbBuf, uint32
 
 
 /**
+ * Gets the RIP relative memory operand (RIPREL, 64-bit code only).
+ */
+DECLINLINE(PRTUINT256U) bs3CpuInstr3RipRelOperand(void)
+{
+    return (PRTUINT256U)&g_abBs3CpuInstr3RipRelBuf[BS3CPUINSTR3_RIPREL_OFF];
+}
+
+
+/**
+ * Fills the RIP relative memory operand buffer with guard bytes, so that
+ * accessing the wrong address (instruction length miscalculation) changes
+ * the result of the instruction.
+ */
+static void bs3CpuInstr3RipRelInit(void)
+{
+    Bs3MemSet(g_abBs3CpuInstr3RipRelBuf, BS3CPUINSTR3_RIPREL_GUARD, sizeof(g_abBs3CpuInstr3RipRelBuf));
+}
+
+
+/**
+ * Checks that the instruction didn't write the guard bytes around the RIP
+ * relative memory operand.
+ *
+ * @param   cbMemOp     The memory operand size.
+ */
+static void bs3CpuInstr3RipRelCheckGuards(uint8_t cbMemOp)
+{
+    unsigned off;
+    for (off = 0; off < sizeof(g_abBs3CpuInstr3RipRelBuf); off++)
+        if (   (off < BS3CPUINSTR3_RIPREL_OFF || off >= BS3CPUINSTR3_RIPREL_OFF + (unsigned)cbMemOp)
+            && g_abBs3CpuInstr3RipRelBuf[off] != BS3CPUINSTR3_RIPREL_GUARD)
+        {
+            Bs3TestFailedF("RIPREL guard byte modified at operand offset %d: %#04x",
+                           (int)off - BS3CPUINSTR3_RIPREL_OFF, g_abBs3CpuInstr3RipRelBuf[off]);
+            break;
+        }
+}
+
+
+/**
  * Determins the size of memory operands.
  */
 DECLINLINE(uint8_t) bs3CpuInstr3MemOpSize(uint8_t cbOperand, uint8_t enmRm)
@@ -800,8 +850,11 @@ static uint8_t bs3CpuInstr3_WorkerTestType1(uint8_t bMode, unsigned cTests, BS3C
                                                 : paTests[iTest].enmType < T_256BITS ? 128/8 : 256/8;
                     uint8_t const   cbMemOp     = bs3CpuInstr3MemOpSize(cbOperand, paTests[iTest].enmRm);
                     uint8_t const   cbAlign     = cbMemOp;
-                    PRTUINT256U     puMemOp     = bs3CpuInstr3BufForOperand(pbBuf, cbBuf, cbMemOp, cbAlign, &paConfigs[iCfg], fPf);
-                    PRTUINT256U     puMemOpAlias = (PRTUINT256U)&g_pbBufAlias[(uintptr_t)puMemOp - (uintptr_t)pbBuf];
+                    bool const      fRipRel     = paTests[iTest].iRegDst == RIPREL || paTests[iTest].iRegSrc1 == RIPREL
+                                                || paTests[iTest].iRegSrc2 == RIPREL;
+                    PRTUINT256U     puMemOp     = fRipRel ? bs3CpuInstr3RipRelOperand()
+                                                : bs3CpuInstr3BufForOperand(pbBuf, cbBuf, cbMemOp, cbAlign, &paConfigs[iCfg], fPf);
+                    PRTUINT256U     puMemOpAlias = fRipRel ? puMemOp : (PRTUINT256U)&g_pbBufAlias[(uintptr_t)puMemOp - (uintptr_t)pbBuf];
                     uint8_t         bXcptExpect = !g_afTypeSupports[paTests[iTest].enmType] ? X86_XCPT_UD
                                                 : fMmxInstr ? paConfigs[iCfg].bXcptMmx
                                                 : fSseInstr ? paConfigs[iCfg].bXcptSse
@@ -816,8 +869,9 @@ static uint8_t bs3CpuInstr3_WorkerTestType1(uint8_t bMode, unsigned cTests, BS3C
                         continue;
 
                     /* If testing unaligned memory accesses (or #PF), skip register-only tests.  This
-                       allows setting bXcptMmx, bXcptSse and bXcptAvx to reflect the misaligned exceptions.  */
-                    if ((paTests[iTest].enmRm == RM_REG || paTests[iTest].enmRm == RM_MEM8) && (!paConfigs[iCfg].fAligned || paConfigs[iCfg].fAlignCheck || fPf))
+                       allows setting bXcptMmx, bXcptSse and bXcptAvx to reflect the misaligned exceptions.
+                       Same for RIP relative operands, they always use the same aligned buffer.  */
+                    if ((paTests[iTest].enmRm == RM_REG || paTests[iTest].enmRm == RM_MEM8 || fRipRel) && (!paConfigs[iCfg].fAligned || paConfigs[iCfg].fAlignCheck || fPf))
                         continue;
 
                     BS3_ASSERT((fMemOp && (cMemOps == 1)) || (!fMemOp && (cMemOps == 0)));
@@ -858,6 +912,8 @@ static uint8_t bs3CpuInstr3_WorkerTestType1(uint8_t bMode, unsigned cTests, BS3C
                              * Set up the context and some expectations.
                              */
                             SetRegCtx.enmTop = BS3EXTCTXTOPMM_ZERO;
+                            if (fRipRel)
+                                bs3CpuInstr3RipRelInit();
 
                             /* dest */
                             if (BS3_REGISTER_IS_MEMREF(paTests[iTest].iRegDst))
@@ -893,8 +949,8 @@ static uint8_t bs3CpuInstr3_WorkerTestType1(uint8_t bMode, unsigned cTests, BS3C
                             else
                                 Bs3ExtCtxSetReg(&SetRegCtx, paTests[iTest].iRegSrc2, &paValues[iVal].uSrc2);
 
-                            /* Memory pointer. */
-                            if (fMemOp)
+                            /* Memory pointer (RIP relative operands need none). */
+                            if (fMemOp && !fRipRel)
                                 Bs3ExtCtxSetReg(&SetRegCtx, (paTests[iTest].enmRm == RM_MEM_DI) ? FSxDI : FSxBX, (void *)puMemOp);
 
                             /*
@@ -951,6 +1007,9 @@ static uint8_t bs3CpuInstr3_WorkerTestType1(uint8_t bMode, unsigned cTests, BS3C
                             if (   fMemOp
                                 && Bs3MemCmp(puMemOpAlias, &uMemOpExpect, cbMemOp) != 0)
                                 Bs3TestFailedF("Expected uMemOp %.*Rhxs, got %.*Rhxs", cbMemOp, &uMemOpExpect, cbMemOp, puMemOpAlias);
+
+                            if (fRipRel)
+                                bs3CpuInstr3RipRelCheckGuards(cbMemOp);
 
                             if (cErrors != Bs3TestSubErrorCount())
                             {
@@ -4321,10 +4380,12 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_v_palignr(uint8_t bMode)
         {  BS3_INSTR3_ALL(vpalignr_XMM1_XMM2_FSxBX_000h), X86_XCPT_DB, RM_MEM, T_AVX_128,   XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValues00)      },
         {  BS3_INSTR3_C64(vpalignr_XMM8_XMM9_XMM10_000h), 255,         RM_REG, T_AVX_128,   XMM8, XMM9, XMM10, PASS_ARRAY(s_aValues00)      },
         {  BS3_INSTR3_C64(vpalignr_XMM8_XMM9_FSxBX_000h), X86_XCPT_DB, RM_MEM, T_AVX_128,   XMM8, XMM9, FSxBX, PASS_ARRAY(s_aValues00)      },
+        {  BS3_INSTR3_C64(vpalignr_XMM8_XMM9_RIPREL_000h), X86_XCPT_DB, RM_MEM, T_AVX_128,   XMM8, XMM9, RIPREL, PASS_ARRAY(s_aValues00)      },
         {  BS3_INSTR3_ALL(vpalignr_YMM1_YMM2_YMM3_000h),  255,         RM_REG, T_AVX2_256,  YMM1, YMM2, YMM3,  PASS_ARRAY(s_aValues00)      },
         {  BS3_INSTR3_ALL(vpalignr_YMM1_YMM2_FSxBX_000h), X86_XCPT_DB, RM_MEM, T_AVX2_256,  YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValues00)      },
         {  BS3_INSTR3_C64(vpalignr_YMM8_YMM9_YMM10_000h), 255,         RM_REG, T_AVX2_256,  YMM8, YMM9, YMM10, PASS_ARRAY(s_aValues00)      },
         {  BS3_INSTR3_C64(vpalignr_YMM8_YMM9_FSxBX_000h), X86_XCPT_DB, RM_MEM, T_AVX2_256,  YMM8, YMM9, FSxBX, PASS_ARRAY(s_aValues00)      },
+        {  BS3_INSTR3_C64(vpalignr_YMM8_YMM9_RIPREL_000h), X86_XCPT_DB, RM_MEM, T_AVX2_256,  YMM8, YMM9, RIPREL, PASS_ARRAY(s_aValues00)      },
 
         {  BS3_INSTR3_ALL(vpalignr_XMM1_XMM2_XMM3_003h),  255,         RM_REG, T_AVX_128,   XMM1, XMM2, XMM3,  PASS_ARRAY(s_aValues128B_03) },
         {  BS3_INSTR3_ALL(vpalignr_XMM1_XMM2_FSxBX_003h), X86_XCPT_DB, RM_MEM, T_AVX_128,   XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValues128B_03) },
@@ -4411,10 +4472,12 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_v_pblendw(uint8_t bMode)
         {  BS3_INSTR3_ALL(vpblendw_XMM1_XMM2_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vpblendw_XMM8_XMM9_XMM10_0FFh), 255,         RM_REG, T_AVX_128,  XMM8, XMM9, XMM10, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vpblendw_XMM8_XMM9_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, FSxBX, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vpblendw_XMM8_XMM9_RIPREL_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, RIPREL, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_ALL(vpblendw_YMM1_YMM2_YMM3_0FFh),  255,         RM_REG, T_AVX2_256, YMM1, YMM2, YMM3,  PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_ALL(vpblendw_YMM1_YMM2_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vpblendw_YMM8_YMM9_YMM10_0FFh), 255,         RM_REG, T_AVX2_256, YMM8, YMM9, YMM10, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vpblendw_YMM8_YMM9_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, FSxBX, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vpblendw_YMM8_YMM9_RIPREL_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, RIPREL, PASS_ARRAY(s_aValuesFF) },
 
         {  BS3_INSTR3_ALL(vpblendw_XMM1_XMM2_XMM3_000h),  255,         RM_REG, T_AVX_128,  XMM1, XMM2, XMM3,  PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_ALL(vpblendw_XMM1_XMM2_FSxBX_000h), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValues00) },
@@ -4486,10 +4549,12 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_vpblendd(uint8_t bMode)
         {  BS3_INSTR3_ALL(vpblendd_XMM1_XMM2_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vpblendd_XMM8_XMM9_XMM10_0FFh), 255,         RM_REG, T_AVX_128,  XMM8, XMM9, XMM10, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vpblendd_XMM8_XMM9_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, FSxBX, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vpblendd_XMM8_XMM9_RIPREL_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, RIPREL, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_ALL(vpblendd_YMM1_YMM2_YMM3_0FFh),  255,         RM_REG, T_AVX2_256, YMM1, YMM2, YMM3,  PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_ALL(vpblendd_YMM1_YMM2_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vpblendd_YMM8_YMM9_YMM10_0FFh), 255,         RM_REG, T_AVX2_256, YMM8, YMM9, YMM10, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vpblendd_YMM8_YMM9_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, FSxBX, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vpblendd_YMM8_YMM9_RIPREL_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, RIPREL, PASS_ARRAY(s_aValuesFF) },
 
         {  BS3_INSTR3_ALL(vpblendd_XMM1_XMM2_XMM3_000h),  255,         RM_REG, T_AVX_128,  XMM1, XMM2, XMM3,  PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_ALL(vpblendd_XMM1_XMM2_FSxBX_000h), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValues00) },
@@ -4576,10 +4641,12 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_v_blendps(uint8_t bMode)
         {  BS3_INSTR3_ALL(vblendps_XMM1_XMM2_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vblendps_XMM8_XMM9_XMM10_0FFh), 255,         RM_REG, T_AVX_128,  XMM8, XMM9, XMM10, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vblendps_XMM8_XMM9_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, FSxBX, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vblendps_XMM8_XMM9_RIPREL_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, RIPREL, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_ALL(vblendps_YMM1_YMM2_YMM3_0FFh),  255,         RM_REG, T_AVX2_256, YMM1, YMM2, YMM3,  PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_ALL(vblendps_YMM1_YMM2_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vblendps_YMM8_YMM9_YMM10_0FFh), 255,         RM_REG, T_AVX2_256, YMM8, YMM9, YMM10, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vblendps_YMM8_YMM9_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, FSxBX, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vblendps_YMM8_YMM9_RIPREL_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, RIPREL, PASS_ARRAY(s_aValuesFF) },
 
         {  BS3_INSTR3_ALL(vblendps_XMM1_XMM2_XMM3_000h),  255,         RM_REG, T_AVX_128,  XMM1, XMM2, XMM3,  PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_ALL(vblendps_XMM1_XMM2_FSxBX_000h), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValues00) },
@@ -4666,10 +4733,12 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_v_blendpd(uint8_t bMode)
         {  BS3_INSTR3_ALL(vblendpd_XMM1_XMM2_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vblendpd_XMM8_XMM9_XMM10_0FFh), 255,         RM_REG, T_AVX_128,  XMM8, XMM9, XMM10, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vblendpd_XMM8_XMM9_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, FSxBX, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vblendpd_XMM8_XMM9_RIPREL_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, RIPREL, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_ALL(vblendpd_YMM1_YMM2_YMM3_0FFh),  255,         RM_REG, T_AVX2_256, YMM1, YMM2, YMM3,  PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_ALL(vblendpd_YMM1_YMM2_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vblendpd_YMM8_YMM9_YMM10_0FFh), 255,         RM_REG, T_AVX2_256, YMM8, YMM9, YMM10, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vblendpd_YMM8_YMM9_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, FSxBX, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vblendpd_YMM8_YMM9_RIPREL_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, RIPREL, PASS_ARRAY(s_aValuesFF) },
 
         {  BS3_INSTR3_ALL(vblendpd_XMM1_XMM2_XMM3_000h),  255,         RM_REG, T_AVX_128,  XMM1, XMM2, XMM3,  PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_ALL(vblendpd_XMM1_XMM2_FSxBX_000h), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValues00) },
@@ -4739,6 +4808,7 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_v_pclmulqdq(uint8_t bMode)
         {  BS3_INSTR3_ALL(vpclmulqdq_XMM1_XMM2_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_PCLMUL, XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vpclmulqdq_XMM8_XMM9_XMM10_0FFh), 255,         RM_REG, T_AVX_PCLMUL, XMM8, XMM9, XMM10, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vpclmulqdq_XMM8_XMM9_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_PCLMUL, XMM8, XMM9, FSxBX, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vpclmulqdq_XMM8_XMM9_RIPREL_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_PCLMUL, XMM8, XMM9, RIPREL, PASS_ARRAY(s_aValuesFF) },
 
         {  BS3_INSTR3_ALL(vpclmulqdq_XMM1_XMM2_XMM3_000h),  255,         RM_REG, T_AVX_PCLMUL, XMM1, XMM2, XMM3,  PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_ALL(vpclmulqdq_XMM1_XMM2_FSxBX_000h), X86_XCPT_DB, RM_MEM, T_AVX_PCLMUL, XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValues00) },
@@ -4960,10 +5030,12 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_v_mpsadbw(uint8_t bMode)
         {  BS3_INSTR3_ALL(vmpsadbw_XMM1_XMM2_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vmpsadbw_XMM8_XMM9_XMM10_0FFh), 255,         RM_REG, T_AVX_128,  XMM8, XMM9, XMM10, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vmpsadbw_XMM8_XMM9_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, FSxBX, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vmpsadbw_XMM8_XMM9_RIPREL_0FFh), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, RIPREL, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_ALL(vmpsadbw_YMM1_YMM2_YMM3_0FFh),  255,         RM_REG, T_AVX2_256, YMM1, YMM2, YMM3,  PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_ALL(vmpsadbw_YMM1_YMM2_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vmpsadbw_YMM8_YMM9_YMM10_0FFh), 255,         RM_REG, T_AVX2_256, YMM8, YMM9, YMM10, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vmpsadbw_YMM8_YMM9_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, FSxBX, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vmpsadbw_YMM8_YMM9_RIPREL_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, RIPREL, PASS_ARRAY(s_aValuesFF) },
 
         {  BS3_INSTR3_ALL(vmpsadbw_XMM1_XMM2_XMM3_000h),  255,         RM_REG, T_AVX_128,  XMM1, XMM2, XMM3,  PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_ALL(vmpsadbw_XMM1_XMM2_FSxBX_000h), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM1, XMM2, FSxBX, PASS_ARRAY(s_aValues00) },
@@ -5008,6 +5080,7 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_vinserti128_vinsertf128(uint8_t bMode)
         {  BS3_INSTR3_ALL(vinserti128_YMM1_YMM2_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vinserti128_YMM8_YMM9_XMM10_0FFh), 255,         RM_REG, T_AVX2_256, YMM8, YMM9, XMM10, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vinserti128_YMM8_YMM9_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, FSxBX, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vinserti128_YMM8_YMM9_RIPREL_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, RIPREL, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_ALL(vinserti128_YMM1_YMM2_XMM3_000h),  255,         RM_REG, T_AVX2_256, YMM1, YMM2, XMM3,  PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_ALL(vinserti128_YMM1_YMM2_FSxBX_000h), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_C64(vinserti128_YMM8_YMM9_XMM10_000h), 255,         RM_REG, T_AVX2_256, YMM8, YMM9, XMM10, PASS_ARRAY(s_aValues00) },
@@ -5017,6 +5090,7 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_vinserti128_vinsertf128(uint8_t bMode)
         {  BS3_INSTR3_ALL(vinsertf128_YMM1_YMM2_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vinsertf128_YMM8_YMM9_XMM10_0FFh), 255,         RM_REG, T_AVX2_256, YMM8, YMM9, XMM10, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vinsertf128_YMM8_YMM9_FSxBX_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, FSxBX, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vinsertf128_YMM8_YMM9_RIPREL_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, RIPREL, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_ALL(vinsertf128_YMM1_YMM2_XMM3_000h),  255,         RM_REG, T_AVX2_256, YMM1, YMM2, XMM3,  PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_ALL(vinsertf128_YMM1_YMM2_FSxBX_000h), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_C64(vinsertf128_YMM8_YMM9_XMM10_000h), 255,         RM_REG, T_AVX2_256, YMM8, YMM9, XMM10, PASS_ARRAY(s_aValues00) },
@@ -6261,6 +6335,7 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_vperm2i128_vperm2f128(uint8_t bMode)
         {  BS3_INSTR3_ALL(vperm2i128_YMM1_YMM2_FSxBX_002h), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValues02) },
         {  BS3_INSTR3_C64(vperm2i128_YMM8_YMM9_YMM10_002h), 255,         RM_REG, T_AVX2_256, YMM8, YMM9, YMM10, PASS_ARRAY(s_aValues02) },
         {  BS3_INSTR3_C64(vperm2i128_YMM8_YMM9_FSxBX_002h), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, FSxBX, PASS_ARRAY(s_aValues02) },
+        {  BS3_INSTR3_C64(vperm2i128_YMM8_YMM9_RIPREL_002h), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, YMM9, RIPREL, PASS_ARRAY(s_aValues02) },
         {  BS3_INSTR3_ALL(vperm2i128_YMM1_YMM2_YMM3_003h),  255,         RM_REG, T_AVX2_256, YMM1, YMM2, YMM3,  PASS_ARRAY(s_aValues03) },
         {  BS3_INSTR3_ALL(vperm2i128_YMM1_YMM2_FSxBX_003h), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValues03) },
         {  BS3_INSTR3_C64(vperm2i128_YMM8_YMM9_YMM10_003h), 255,         RM_REG, T_AVX2_256, YMM8, YMM9, YMM10, PASS_ARRAY(s_aValues03) },
@@ -6302,6 +6377,7 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_vperm2i128_vperm2f128(uint8_t bMode)
         {  BS3_INSTR3_ALL(vperm2f128_YMM1_YMM2_FSxBX_002h), X86_XCPT_DB, RM_MEM, T_AVX_256,  YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValues02) },
         {  BS3_INSTR3_C64(vperm2f128_YMM8_YMM9_YMM10_002h), 255,         RM_REG, T_AVX_256,  YMM8, YMM9, YMM10, PASS_ARRAY(s_aValues02) },
         {  BS3_INSTR3_C64(vperm2f128_YMM8_YMM9_FSxBX_002h), X86_XCPT_DB, RM_MEM, T_AVX_256,  YMM8, YMM9, FSxBX, PASS_ARRAY(s_aValues02) },
+        {  BS3_INSTR3_C64(vperm2f128_YMM8_YMM9_RIPREL_002h), X86_XCPT_DB, RM_MEM, T_AVX_256,  YMM8, YMM9, RIPREL, PASS_ARRAY(s_aValues02) },
         {  BS3_INSTR3_ALL(vperm2f128_YMM1_YMM2_YMM3_003h),  255,         RM_REG, T_AVX_256,  YMM1, YMM2, YMM3,  PASS_ARRAY(s_aValues03) },
         {  BS3_INSTR3_ALL(vperm2f128_YMM1_YMM2_FSxBX_003h), X86_XCPT_DB, RM_MEM, T_AVX_256,  YMM1, YMM2, FSxBX, PASS_ARRAY(s_aValues03) },
         {  BS3_INSTR3_C64(vperm2f128_YMM8_YMM9_YMM10_003h), 255,         RM_REG, T_AVX_256,  YMM8, YMM9, YMM10, PASS_ARRAY(s_aValues03) },
@@ -6622,6 +6698,7 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_vpermq_vpermpd(uint8_t bMode)
         {  BS3_INSTR3_C64(vpermq_YMM8_FSxBX_091h),  X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, FSxBX, NOREG, PASS_ARRAY(s_aValues91) },
         {  BS3_INSTR3_C64(vpermq_YMM8_YMM9_0E7h),   255,         RM_REG, T_AVX2_256, YMM8, YMM9,  NOREG, PASS_ARRAY(s_aValuesE7) },
         {  BS3_INSTR3_C64(vpermq_YMM8_FSxBX_0E7h),  X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, FSxBX, NOREG, PASS_ARRAY(s_aValuesE7) },
+        {  BS3_INSTR3_C64(vpermq_YMM8_RIPREL_0E7h), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, RIPREL, NOREG, PASS_ARRAY(s_aValuesE7) },
 
         {  BS3_INSTR3_ALL(vpermq_YMM1_YMM1_000h),   255,         RM_REG, T_AVX2_256, YMM1, YMM1,  NOREG, PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_ALL(vpermq_YMM1_YMM1_091h),   255,         RM_REG, T_AVX2_256, YMM1, YMM1,  NOREG, PASS_ARRAY(s_aValues91) },
@@ -6640,6 +6717,7 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_vpermq_vpermpd(uint8_t bMode)
         {  BS3_INSTR3_C64(vpermpd_YMM8_FSxBX_091h), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, FSxBX, NOREG, PASS_ARRAY(s_aValues91) },
         {  BS3_INSTR3_C64(vpermpd_YMM8_YMM9_0E7h),  255,         RM_REG, T_AVX2_256, YMM8, YMM9,  NOREG, PASS_ARRAY(s_aValuesE7) },
         {  BS3_INSTR3_C64(vpermpd_YMM8_FSxBX_0E7h), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, FSxBX, NOREG, PASS_ARRAY(s_aValuesE7) },
+        {  BS3_INSTR3_C64(vpermpd_YMM8_RIPREL_0E7h), X86_XCPT_DB, RM_MEM, T_AVX2_256, YMM8, RIPREL, NOREG, PASS_ARRAY(s_aValuesE7) },
 
         {  BS3_INSTR3_ALL(vpermpd_YMM1_YMM1_000h),  255,         RM_REG, T_AVX2_256, YMM1, YMM1,  NOREG, PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_ALL(vpermpd_YMM1_YMM1_091h),  255,         RM_REG, T_AVX2_256, YMM1, YMM1,  NOREG, PASS_ARRAY(s_aValues91) },
@@ -6848,8 +6926,10 @@ static uint8_t bs3CpuInstr3_WorkerTestType2(uint8_t bMode, unsigned cTests, BS3C
                                                 : paTests[iTest].enmType < T_256BITS ? 128/8 : 256/8;
                     uint8_t const   cbMemOp     = bs3CpuInstr3MemOpSize(cbOperand, paTests[iTest].enmRm);
                     uint8_t const   cbAlign     = RT_MIN(cbOperand, 16);
-                    PRTUINT256U     puMemOp     = bs3CpuInstr3BufForOperand(pbBuf, cbBuf, cbMemOp, cbAlign, &paConfigs[iCfg], fPf);
-                    PRTUINT256U     puMemOpAlias = (PRTUINT256U)&g_pbBufAlias[(uintptr_t)puMemOp - (uintptr_t)pbBuf];
+                    bool const      fRipRel     = paTests[iTest].iRegDst == RIPREL || paTests[iTest].iRegSrc == RIPREL;
+                    PRTUINT256U     puMemOp     = fRipRel ? bs3CpuInstr3RipRelOperand()
+                                                : bs3CpuInstr3BufForOperand(pbBuf, cbBuf, cbMemOp, cbAlign, &paConfigs[iCfg], fPf);
+                    PRTUINT256U     puMemOpAlias = fRipRel ? puMemOp : (PRTUINT256U)&g_pbBufAlias[(uintptr_t)puMemOp - (uintptr_t)pbBuf];
                     uint8_t         bXcptExpect = !g_afTypeSupports[paTests[iTest].enmType] ? X86_XCPT_UD
                                                 : paTests[iTest].bAltXcpt & BS3_XCPT_ALWAYS && paTests[iTest].bAltXcpt != 255 ? paTests[iTest].bAltXcpt & ~BS3_XCPT_ALWAYS
                                                 : fMmxInstr ? paConfigs[iCfg].bXcptMmx
@@ -6865,8 +6945,9 @@ static uint8_t bs3CpuInstr3_WorkerTestType2(uint8_t bMode, unsigned cTests, BS3C
                         continue;
 
                     /* If testing unaligned memory accesses (or #PF), skip register-only tests.  This
-                       allows setting bXcptMmx, bXcptSse and bXcptAvx to reflect the misaligned exceptions.  */
-                    if ((paTests[iTest].enmRm == RM_REG || paTests[iTest].enmRm == RM_MEM8) && (!paConfigs[iCfg].fAligned || paConfigs[iCfg].fAlignCheck || fPf))
+                       allows setting bXcptMmx, bXcptSse and bXcptAvx to reflect the misaligned exceptions.
+                       Same for RIP relative operands, they always use the same aligned buffer.  */
+                    if ((paTests[iTest].enmRm == RM_REG || paTests[iTest].enmRm == RM_MEM8 || fRipRel) && (!paConfigs[iCfg].fAligned || paConfigs[iCfg].fAlignCheck || fPf))
                         continue;
 
                     BS3_ASSERT((fMemOp && (cMemOps == 1)) || (!fMemOp && (cMemOps == 0)));
@@ -6906,6 +6987,8 @@ static uint8_t bs3CpuInstr3_WorkerTestType2(uint8_t bMode, unsigned cTests, BS3C
                              * Set up the context and some expectations.
                              */
                             SetRegCtx.enmTop = BS3EXTCTXTOPMM_ZERO;
+                            if (fRipRel)
+                                bs3CpuInstr3RipRelInit();
 
                             Bs3MemCpy(&uDstVal, &paValues[iVal].uDstOut, paTests[iTest].cbGpr);
 
@@ -6928,8 +7011,8 @@ static uint8_t bs3CpuInstr3_WorkerTestType2(uint8_t bMode, unsigned cTests, BS3C
                             else
                                 Bs3ExtCtxSetReg(&SetRegCtx, paTests[iTest].iRegSrc, &paValues[iVal].uSrc);
 
-                            /* Memory pointer. */
-                            if (fMemOp)
+                            /* Memory pointer (RIP relative operands need none). */
+                            if (fMemOp && !fRipRel)
                                 Bs3ExtCtxSetReg(&SetRegCtx, (paTests[iTest].enmRm == RM_MEM_DI) ? FSxDI : FSxBX, (void *)puMemOp);
 
                             /*
@@ -6975,6 +7058,9 @@ static uint8_t bs3CpuInstr3_WorkerTestType2(uint8_t bMode, unsigned cTests, BS3C
                             if (   fMemOp
                                 && Bs3MemCmp(puMemOpAlias, &uMemOpExpect, cbMemOp) != 0)
                                 Bs3TestFailedF("Expected uMemOp %.*Rhxs, got %.*Rhxs", cbMemOp, &uMemOpExpect, cbMemOp, puMemOpAlias);
+
+                            if (fRipRel)
+                                bs3CpuInstr3RipRelCheckGuards(cbMemOp);
 
                             if (cErrors != Bs3TestSubErrorCount())
                             {
@@ -7257,6 +7343,7 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_v_pextrb_pextrw_pextrd_pextrq(uint8_t bMode)
         {  BS3_INSTR3_C64(vpextrb_R9D_XMM8_0FFh),      255,         RM_REG,   T_AVX_128, 4, R9D,   XMM8, PASS_ARRAY(s_aValuesFF_b)    },
         {  BS3_INSTR3_C64(vpextrb_R9D_XMM8_000h),      255,         RM_REG,   T_AVX_128, 4, R9D,   XMM8, PASS_ARRAY(s_aValues00_b)    },
         {  BS3_INSTR3_C64(vpextrb_FSxBX_XMM8_0FFh),    X86_XCPT_DB, RM_MEM8,  T_AVX_128, 1, FSxBX, XMM8, PASS_ARRAY(s_aValuesFF_b)    },
+        {  BS3_INSTR3_C64(vpextrb_RIPREL_XMM8_0FFh),   X86_XCPT_DB, RM_MEM8,  T_AVX_128, 1, RIPREL, XMM8, PASS_ARRAY(s_aValuesFF_b)    },
         {  BS3_INSTR3_C64(vpextrb_FSxBX_XMM8_000h),    X86_XCPT_DB, RM_MEM8,  T_AVX_128, 1, FSxBX, XMM8, PASS_ARRAY(s_aValues00_b)    },
         {  BS3_INSTR3_386(vpextrb_w0b0_EDX_XMM1_0FFh), 255,         RM_REG,   T_AVX_128, 4, EDX,   XMM1, PASS_ARRAY(s_aValuesFF_b)    }, /* EDX despite forced VEX.B; VEX.W ignored */
         {  BS3_INSTR3_C64(vpextrb_w0b0_EDX_XMM1_0FFh), 255,         RM_REG,   T_AVX_128, 4, R10D,  XMM1, PASS_ARRAY(s_aValuesFF_b)    }, /* VEX.B forces EDX to R10D; VEX.W ignored */
@@ -7293,6 +7380,7 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_v_pextrb_pextrw_pextrd_pextrq(uint8_t bMode)
         {  BS3_INSTR3_C64(pextrw_FSxBX_XMM8_0FFh),     255,         RM_MEM16, T_SSE4_1,  2, FSxBX, XMM8, PASS_ARRAY(s_aValuesFF_w)    },
         {  BS3_INSTR3_C64(vpextrw_R9D_XMM8_0FFh),      255,         RM_REG,   T_AVX_128, 4, R9D,   XMM8, PASS_ARRAY(s_aValuesFF_w)    },
         {  BS3_INSTR3_C64(vpextrw_FSxBX_XMM8_0FFh),    X86_XCPT_AC, RM_MEM16, T_AVX_128, 2, FSxBX, XMM8, PASS_ARRAY(s_aValuesFF_w)    },
+        {  BS3_INSTR3_C64(vpextrw_RIPREL_XMM8_0FFh),   X86_XCPT_AC, RM_MEM16, T_AVX_128, 2, RIPREL, XMM8, PASS_ARRAY(s_aValuesFF_w)    },
 
         {  BS3_INSTR3_C64(pextrw_R9_XMM8_000h),        255,         RM_REG,   T_SSE2,    8, R9,    XMM8, PASS_ARRAY(s_aValues00_w)    },
         {  BS3_INSTR3_C64(pextrw_alt_RDX_XMM1_000h),   255,         RM_REG,   T_SSE4_1,  8, RDX,   XMM1, PASS_ARRAY(s_aValues00_w)    },
@@ -7319,6 +7407,7 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_v_pextrb_pextrw_pextrd_pextrq(uint8_t bMode)
         {  BS3_INSTR3_C64(vpextrd_R9D_XMM8_0FFh),      255,         RM_REG,   T_AVX_128, 4, R9D,   XMM8, PASS_ARRAY(s_aValuesFF_d)    },
         {  BS3_INSTR3_C64(vpextrd_R9D_XMM8_000h),      255,         RM_REG,   T_AVX_128, 4, R9D,   XMM8, PASS_ARRAY(s_aValues00_d)    },
         {  BS3_INSTR3_C64(vpextrd_FSxBX_XMM8_0FFh),    X86_XCPT_AC, RM_MEM32, T_AVX_128, 4, FSxBX, XMM8, PASS_ARRAY(s_aValuesFF_d)    },
+        {  BS3_INSTR3_C64(vpextrd_RIPREL_XMM8_0FFh),   X86_XCPT_AC, RM_MEM32, T_AVX_128, 4, RIPREL, XMM8, PASS_ARRAY(s_aValuesFF_d)    },
         {  BS3_INSTR3_C64(vpextrd_FSxBX_XMM8_000h),    X86_XCPT_AC, RM_MEM32, T_AVX_128, 4, FSxBX, XMM8, PASS_ARRAY(s_aValues00_d)    },
 
         {  BS3_INSTR3_C64(pextrq_RDX_XMM1_0FFh),       255,         RM_REG,   T_SSE4_1,  8, RDX,   XMM1, PASS_ARRAY(s_aValuesFF_q)    },
@@ -7332,6 +7421,7 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_v_pextrb_pextrw_pextrd_pextrq(uint8_t bMode)
         {  BS3_INSTR3_C64(vpextrq_R9_XMM8_0FFh),       255,         RM_REG,   T_AVX_128, 8, R9,    XMM8, PASS_ARRAY(s_aValuesFF_q)    },
         {  BS3_INSTR3_C64(vpextrq_R9_XMM8_000h),       255,         RM_REG,   T_AVX_128, 8, R9,    XMM8, PASS_ARRAY(s_aValues00_q)    },
         {  BS3_INSTR3_C64(vpextrq_FSxBX_XMM8_0FFh),    X86_XCPT_AC, RM_MEM64, T_AVX_128, 8, FSxBX, XMM8, PASS_ARRAY(s_aValuesFF_q)    },
+        {  BS3_INSTR3_C64(vpextrq_RIPREL_XMM8_0FFh),   X86_XCPT_AC, RM_MEM64, T_AVX_128, 8, RIPREL, XMM8, PASS_ARRAY(s_aValuesFF_q)    },
         {  BS3_INSTR3_C64(vpextrq_FSxBX_XMM8_000h),    X86_XCPT_AC, RM_MEM64, T_AVX_128, 8, FSxBX, XMM8, PASS_ARRAY(s_aValues00_q)    },
     };
     return bs3CpuInstr3_WorkerTestType2(bMode, PASS_ARRAY(s_aTests), PASS_ARRAY(g_aXcptConfig5));
@@ -7603,8 +7693,10 @@ static uint8_t bs3CpuInstr3_WorkerTestType3(uint8_t bMode, unsigned cTests, BS3C
                                                 : paTests[iTest].enmType < T_256BITS ? 128/8 : 256/8;
                     uint8_t const   cbMemOp     = cbOperand;
                     uint8_t const   cbAlign     = RT_MIN(cbOperand, !cbMaxAlign ? 16 : cbMaxAlign);
-                    PRTUINT256U     puMemOp     = bs3CpuInstr3BufForOperand(pbBuf, cbBuf, cbMemOp, cbAlign, &paConfigs[iCfg], fPf);
-                    PRTUINT256U     puMemOpAlias = (PRTUINT256U)&g_pbBufAlias[(uintptr_t)puMemOp - (uintptr_t)pbBuf];
+                    bool const      fRipRel     = paTests[iTest].iRegDst == RIPREL || paTests[iTest].iRegSrc == RIPREL;
+                    PRTUINT256U     puMemOp     = fRipRel ? bs3CpuInstr3RipRelOperand()
+                                                : bs3CpuInstr3BufForOperand(pbBuf, cbBuf, cbMemOp, cbAlign, &paConfigs[iCfg], fPf);
+                    PRTUINT256U     puMemOpAlias = fRipRel ? puMemOp : (PRTUINT256U)&g_pbBufAlias[(uintptr_t)puMemOp - (uintptr_t)pbBuf];
                     uint8_t         bXcptExpect = !g_afTypeSupports[paTests[iTest].enmType] ? X86_XCPT_UD
                                                 : fMmxInstr ? paConfigs[iCfg].bXcptMmx
                                                 : fSseInstr ? paConfigs[iCfg].bXcptSse
@@ -7619,8 +7711,9 @@ static uint8_t bs3CpuInstr3_WorkerTestType3(uint8_t bMode, unsigned cTests, BS3C
                         continue;
 
                     /* If testing unaligned memory accesses (or #PF), skip register-only tests.  This
-                       allows setting bXcptMmx, bXcptSse and bXcptAvx to reflect the misaligned exceptions.  */
-                    if ((paTests[iTest].enmRm == RM_REG || paTests[iTest].enmRm == RM_MEM8) && (!paConfigs[iCfg].fAligned || paConfigs[iCfg].fAlignCheck || fPf))
+                       allows setting bXcptMmx, bXcptSse and bXcptAvx to reflect the misaligned exceptions.
+                       Same for RIP relative operands, they always use the same aligned buffer.  */
+                    if ((paTests[iTest].enmRm == RM_REG || paTests[iTest].enmRm == RM_MEM8 || fRipRel) && (!paConfigs[iCfg].fAligned || paConfigs[iCfg].fAlignCheck || fPf))
                         continue;
 
                     BS3_ASSERT((fMemOp && (cMemOps == 1)) || (!fMemOp && (cMemOps == 0)));
@@ -7661,6 +7754,8 @@ static uint8_t bs3CpuInstr3_WorkerTestType3(uint8_t bMode, unsigned cTests, BS3C
                              * Set up the context and some expectations.
                              */
                             SetRegCtx.enmTop = BS3EXTCTXTOPMM_ZERO;
+                            if (fRipRel)
+                                bs3CpuInstr3RipRelInit();
 
                             /* dest */
                             if (BS3_REGISTER_IS_MEMREF(paTests[iTest].iRegDst))
@@ -7686,8 +7781,8 @@ static uint8_t bs3CpuInstr3_WorkerTestType3(uint8_t bMode, unsigned cTests, BS3C
                             else
                                 Bs3ExtCtxSetReg(&SetRegCtx, paTests[iTest].iRegSrc, &paValues[iVal].uSrc);
 
-                            /* Memory pointer. */
-                            if (fMemOp)
+                            /* Memory pointer (RIP relative operands need none). */
+                            if (fMemOp && !fRipRel)
                                 Bs3ExtCtxSetReg(&SetRegCtx, (paTests[iTest].enmRm == RM_MEM_DI) ? FSxDI : FSxBX, (void *)puMemOp);
 
                             /*
@@ -7733,6 +7828,9 @@ static uint8_t bs3CpuInstr3_WorkerTestType3(uint8_t bMode, unsigned cTests, BS3C
                             if (   fMemOp
                                 && Bs3MemCmp(puMemOpAlias, &uMemOpExpect, cbMemOp) != 0)
                                 Bs3TestFailedF("Expected uMemOp %.*Rhxs, got %.*Rhxs", cbMemOp, &uMemOpExpect, cbMemOp, puMemOpAlias);
+
+                            if (fRipRel)
+                                bs3CpuInstr3RipRelCheckGuards(cbMemOp);
 
                             if (cErrors != Bs3TestSubErrorCount())
                             {
@@ -8980,6 +9078,7 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_vextracti128_vextractf128(uint8_t bMode)
 
         {  BS3_INSTR3_C64(vextracti128_XMM8_YMM9_0FFh),  255,         RM_REG, T_AVX2_128, XMM8,  YMM9, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vextracti128_FSxBX_YMM9_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_128, FSxBX, YMM9, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vextracti128_RIPREL_YMM9_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_128, RIPREL, YMM9, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vextracti128_XMM8_YMM9_000h),  255,         RM_REG, T_AVX2_128, XMM8,  YMM9, PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_C64(vextracti128_FSxBX_YMM9_000h), X86_XCPT_DB, RM_MEM, T_AVX2_128, FSxBX, YMM9, PASS_ARRAY(s_aValues00) },
 
@@ -8990,6 +9089,7 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_vextracti128_vextractf128(uint8_t bMode)
 
         {  BS3_INSTR3_C64(vextractf128_XMM8_YMM9_0FFh),  255,         RM_REG, T_AVX2_128, XMM8,  YMM9, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vextractf128_FSxBX_YMM9_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_128, FSxBX, YMM9, PASS_ARRAY(s_aValuesFF) },
+        {  BS3_INSTR3_C64(vextractf128_RIPREL_YMM9_0FFh), X86_XCPT_DB, RM_MEM, T_AVX2_128, RIPREL, YMM9, PASS_ARRAY(s_aValuesFF) },
         {  BS3_INSTR3_C64(vextractf128_XMM8_YMM9_000h),  255,         RM_REG, T_AVX2_128, XMM8,  YMM9, PASS_ARRAY(s_aValues00) },
         {  BS3_INSTR3_C64(vextractf128_FSxBX_YMM9_000h), X86_XCPT_DB, RM_MEM, T_AVX2_128, FSxBX, YMM9, PASS_ARRAY(s_aValues00) },
     };
@@ -9532,8 +9632,11 @@ static uint8_t bs3CpuInstr3_WorkerTestType5(uint8_t bMode, unsigned cTests, BS3C
                                                 : paTests[iTest].enmType < T_256BITS ? 128/8 : 256/8;
                     uint8_t const   cbMemOp     = bs3CpuInstr3MemOpSize(cbOperand, paTests[iTest].enmRm);
                     uint8_t const   cbAlign     = cbMemOp;
-                    PRTUINT256U     puMemOp     = bs3CpuInstr3BufForOperand(pbBuf, cbBuf, cbMemOp, cbAlign, &paConfigs[iCfg], fPf);
-                    PRTUINT256U     puMemOpAlias = (PRTUINT256U)&g_pbBufAlias[(uintptr_t)puMemOp - (uintptr_t)pbBuf];
+                    bool const      fRipRel     = paTests[iTest].iRegDst == RIPREL || paTests[iTest].iRegSrc1 == RIPREL
+                                                || paTests[iTest].iRegSrc2 == RIPREL || paTests[iTest].iRegSrc3 == RIPREL;
+                    PRTUINT256U     puMemOp     = fRipRel ? bs3CpuInstr3RipRelOperand()
+                                                : bs3CpuInstr3BufForOperand(pbBuf, cbBuf, cbMemOp, cbAlign, &paConfigs[iCfg], fPf);
+                    PRTUINT256U     puMemOpAlias = fRipRel ? puMemOp : (PRTUINT256U)&g_pbBufAlias[(uintptr_t)puMemOp - (uintptr_t)pbBuf];
                     uint8_t         bXcptExpect = !g_afTypeSupports[paTests[iTest].enmType] ? X86_XCPT_UD
                                                 : fSseInstr ? paConfigs[iCfg].bXcptSse
                                                 : BS3_MODE_IS_RM_OR_V86(bMode) ? X86_XCPT_UD : paConfigs[iCfg].bXcptAvx;
@@ -9547,8 +9650,9 @@ static uint8_t bs3CpuInstr3_WorkerTestType5(uint8_t bMode, unsigned cTests, BS3C
                         continue;
 
                     /* If testing unaligned memory accesses (or #PF), skip register-only tests.  This
-                       allows setting bXcptMmx, bXcptSse and bXcptAvx to reflect the misaligned exceptions.  */
-                    if ((paTests[iTest].enmRm == RM_REG || paTests[iTest].enmRm == RM_MEM8) && (!paConfigs[iCfg].fAligned || paConfigs[iCfg].fAlignCheck || fPf))
+                       allows setting bXcptMmx, bXcptSse and bXcptAvx to reflect the misaligned exceptions.
+                       Same for RIP relative operands, they always use the same aligned buffer.  */
+                    if ((paTests[iTest].enmRm == RM_REG || paTests[iTest].enmRm == RM_MEM8 || fRipRel) && (!paConfigs[iCfg].fAligned || paConfigs[iCfg].fAlignCheck || fPf))
                         continue;
 
                     BS3_ASSERT(!fMemOp || (cMemOps == 1 || (cMemOps == 2 && BS3_REGISTER_IS_MEMREF(paTests[iTest].iRegDst) && BS3_REGISTER_IS_MEMREF(paTests[iTest].iRegSrc1))));
@@ -9594,6 +9698,8 @@ static uint8_t bs3CpuInstr3_WorkerTestType5(uint8_t bMode, unsigned cTests, BS3C
                              * Set up the context and some expectations.
                              */
                             SetRegCtx.enmTop = BS3EXTCTXTOPMM_ZERO;
+                            if (fRipRel)
+                                bs3CpuInstr3RipRelInit();
 
                             /* dest */
                             if (BS3_REGISTER_IS_MEMREF(paTests[iTest].iRegDst))
@@ -9633,8 +9739,8 @@ static uint8_t bs3CpuInstr3_WorkerTestType5(uint8_t bMode, unsigned cTests, BS3C
                             else
                                 Bs3ExtCtxSetReg(&SetRegCtx, paTests[iTest].iRegSrc3, &paValues[iVal].uSrc3);
 
-                            /* Memory pointer. */
-                            if (fMemOp)
+                            /* Memory pointer (RIP relative operands need none). */
+                            if (fMemOp && !fRipRel)
                                 Bs3ExtCtxSetReg(&SetRegCtx, (paTests[iTest].enmRm == RM_MEM_DI) ? FSxDI : FSxBX, (void *)puMemOp);
 
                             /*
@@ -9687,6 +9793,9 @@ static uint8_t bs3CpuInstr3_WorkerTestType5(uint8_t bMode, unsigned cTests, BS3C
                                 /* Instructions which access memory haphazardly may or may not complete their work */
                                 if (paTests[iTest].enmRm != RM_RANGE || TrapFrame.bXcpt != X86_XCPT_PF)
                                     Bs3TestFailedF("Expected uMemOp %.*Rhxs, got %.*Rhxs", cbMemOp, &uMemOpExpect, cbMemOp, puMemOpAlias);
+
+                            if (fRipRel)
+                                bs3CpuInstr3RipRelCheckGuards(cbMemOp);
 
                             if (cErrors != Bs3TestSubErrorCount())
                             {
@@ -9771,11 +9880,13 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_v_pblendvb(uint8_t bMode)
         {  BS3_INSTR3_ALL(vpblendvb_XMM1_XMM2_FSxBX_XMM4),   X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM1, XMM2, FSxBX, XMM4,  PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_C64(vpblendvb_XMM8_XMM9_XMM10_XMM11),  255,         RM_REG, T_AVX_128,  XMM8, XMM9, XMM10, XMM11, PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_C64(vpblendvb_XMM8_XMM9_FSxBX_XMM11),  X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, FSxBX, XMM11, PASS_ARRAY(s_aValues) },
+        {  BS3_INSTR3_C64(vpblendvb_XMM8_XMM9_RIPREL_XMM11), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, RIPREL, XMM11, PASS_ARRAY(s_aValues) },
 
         {  BS3_INSTR3_ALL(vpblendvb_YMM1_YMM2_YMM3_YMM4),    255,         RM_REG, T_AVX_256,  YMM1, YMM2, YMM3,  YMM4,  PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_ALL(vpblendvb_YMM1_YMM2_FSxBX_YMM4),   X86_XCPT_DB, RM_MEM, T_AVX_256,  YMM1, YMM2, FSxBX, YMM4,  PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_C64(vpblendvb_YMM8_YMM9_YMM10_YMM11),  255,         RM_REG, T_AVX_256,  YMM8, YMM9, YMM10, YMM11, PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_C64(vpblendvb_YMM8_YMM9_FSxBX_YMM11),  X86_XCPT_DB, RM_MEM, T_AVX_256,  YMM8, YMM9, FSxBX, YMM11, PASS_ARRAY(s_aValues) },
+        {  BS3_INSTR3_C64(vpblendvb_YMM8_YMM9_RIPREL_YMM11), X86_XCPT_DB, RM_MEM, T_AVX_256,  YMM8, YMM9, RIPREL, YMM11, PASS_ARRAY(s_aValues) },
     };
     return bs3CpuInstr3_WorkerTestType5(bMode, PASS_ARRAY(s_aTests), PASS_ARRAY(g_aXcptConfig4));
 }
@@ -9826,11 +9937,13 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_v_blendvps(uint8_t bMode)
         {  BS3_INSTR3_ALL(vblendvps_XMM1_XMM2_FSxBX_XMM4),   X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM1, XMM2, FSxBX, XMM4,  PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_C64(vblendvps_XMM8_XMM9_XMM10_XMM11),  255,         RM_REG, T_AVX_128,  XMM8, XMM9, XMM10, XMM11, PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_C64(vblendvps_XMM8_XMM9_FSxBX_XMM11),  X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, FSxBX, XMM11, PASS_ARRAY(s_aValues) },
+        {  BS3_INSTR3_C64(vblendvps_XMM8_XMM9_RIPREL_XMM11), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, RIPREL, XMM11, PASS_ARRAY(s_aValues) },
 
         {  BS3_INSTR3_ALL(vblendvps_YMM1_YMM2_YMM3_YMM4),    255,         RM_REG, T_AVX_256,  YMM1, YMM2, YMM3,  YMM4,  PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_ALL(vblendvps_YMM1_YMM2_FSxBX_YMM4),   X86_XCPT_DB, RM_MEM, T_AVX_256,  YMM1, YMM2, FSxBX, YMM4,  PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_C64(vblendvps_YMM8_YMM9_YMM10_YMM11),  255,         RM_REG, T_AVX_256,  YMM8, YMM9, YMM10, YMM11, PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_C64(vblendvps_YMM8_YMM9_FSxBX_YMM11),  X86_XCPT_DB, RM_MEM, T_AVX_256,  YMM8, YMM9, FSxBX, YMM11, PASS_ARRAY(s_aValues) },
+        {  BS3_INSTR3_C64(vblendvps_YMM8_YMM9_RIPREL_YMM11), X86_XCPT_DB, RM_MEM, T_AVX_256,  YMM8, YMM9, RIPREL, YMM11, PASS_ARRAY(s_aValues) },
     };
     return bs3CpuInstr3_WorkerTestType5(bMode, PASS_ARRAY(s_aTests), PASS_ARRAY(g_aXcptConfig4));
 }
@@ -9881,11 +9994,13 @@ BS3_DECL_FAR(uint8_t) bs3CpuInstr3_v_blendvpd(uint8_t bMode)
         {  BS3_INSTR3_ALL(vblendvpd_XMM1_XMM2_FSxBX_XMM4),   X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM1, XMM2, FSxBX, XMM4,  PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_C64(vblendvpd_XMM8_XMM9_XMM10_XMM11),  255,         RM_REG, T_AVX_128,  XMM8, XMM9, XMM10, XMM11, PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_C64(vblendvpd_XMM8_XMM9_FSxBX_XMM11),  X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, FSxBX, XMM11, PASS_ARRAY(s_aValues) },
+        {  BS3_INSTR3_C64(vblendvpd_XMM8_XMM9_RIPREL_XMM11), X86_XCPT_DB, RM_MEM, T_AVX_128,  XMM8, XMM9, RIPREL, XMM11, PASS_ARRAY(s_aValues) },
 
         {  BS3_INSTR3_ALL(vblendvpd_YMM1_YMM2_YMM3_YMM4),    255,         RM_REG, T_AVX_256,  YMM1, YMM2, YMM3,  YMM4,  PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_ALL(vblendvpd_YMM1_YMM2_FSxBX_YMM4),   X86_XCPT_DB, RM_MEM, T_AVX_256,  YMM1, YMM2, FSxBX, YMM4,  PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_C64(vblendvpd_YMM8_YMM9_YMM10_YMM11),  255,         RM_REG, T_AVX_256,  YMM8, YMM9, YMM10, YMM11, PASS_ARRAY(s_aValues) },
         {  BS3_INSTR3_C64(vblendvpd_YMM8_YMM9_FSxBX_YMM11),  X86_XCPT_DB, RM_MEM, T_AVX_256,  YMM8, YMM9, FSxBX, YMM11, PASS_ARRAY(s_aValues) },
+        {  BS3_INSTR3_C64(vblendvpd_YMM8_YMM9_RIPREL_YMM11), X86_XCPT_DB, RM_MEM, T_AVX_256,  YMM8, YMM9, RIPREL, YMM11, PASS_ARRAY(s_aValues) },
     };
     return bs3CpuInstr3_WorkerTestType5(bMode, PASS_ARRAY(s_aTests), PASS_ARRAY(g_aXcptConfig4));
 }

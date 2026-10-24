@@ -40,6 +40,19 @@
 ;*********************************************************************************************************************************
 %include "bs3kit.mac"
 
+
+;*********************************************************************************************************************************
+;*  Global Variables                                                                                                             *
+;*********************************************************************************************************************************
+BS3_BEGIN_DATA16 16
+;; Memory operand of the RIP relative tests (RIPREL, 64-bit code only): guard
+; bytes, the operand (up to 32 bytes) at BS3CPUINSTR3_RIPREL_OFF and more guard
+; bytes.  See bs3CpuInstr3_WorkerTestType1.
+%define BS3CPUINSTR3_RIPREL_OFF 32
+BS3_GLOBAL_DATA g_abBs3CpuInstr3RipRelBuf, 96
+        times 96 db 0
+
+
 ;
 ; Instantiate code templates.
 ;
