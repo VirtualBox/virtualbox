@@ -54,6 +54,12 @@
  *  BS3CPUINSTR3_TEST2_MODES_INIT, BS3CPUINSTR3_TEST3_MODES_INIT, ... . */
 #define BS3CPUINSTR3_TEST_MODES_INDEX(a_bMode) (BS3_MODE_IS_16BIT_CODE(bMode) ? 0 : BS3_MODE_IS_32BIT_CODE(bMode) ? 1 : 2)
 
+/** Offset of the RIP relative memory operand (RIPREL) in g_abBs3CpuInstr3RipRelBuf,
+ * must match bs3-cpu-instr-3-asm.asm. */
+#define BS3CPUINSTR3_RIPREL_OFF     32
+/** The guard byte value around the RIP relative memory operand. */
+#define BS3CPUINSTR3_RIPREL_GUARD   UINT8_C(0xa5)
+
 
 /*********************************************************************************************************************************
 *   Structures and Typedefs                                                                                                      *
@@ -153,11 +159,6 @@ static uint8_t BS3_FAR *g_pbBufAlias;
 /** RW alias for the memory at g_pbBuf. */
 static uint8_t BS3_FAR *g_pbBufAliasAlloc;
 
-/** Offset of the RIP relative memory operand (RIPREL) in g_abBs3CpuInstr3RipRelBuf,
- * must match bs3-cpu-instr-3-asm.asm. */
-#define BS3CPUINSTR3_RIPREL_OFF     32
-/** The guard byte value around the RIP relative memory operand. */
-#define BS3CPUINSTR3_RIPREL_GUARD   UINT8_C(0xa5)
 /** Buffer for the RIP relative memory operand (bs3-cpu-instr-3-asm.asm): guard
  * bytes, the operand at BS3CPUINSTR3_RIPREL_OFF, more guard bytes. */
 #define g_abBs3CpuInstr3RipRelBuf   BS3_DATA_NM(g_abBs3CpuInstr3RipRelBuf)
@@ -567,6 +568,8 @@ DECLINLINE(PRTUINT256U) bs3CpuInstr3BufForOperand(uint8_t BS3_FAR *pbBuf, uint32
 
 /**
  * Gets the RIP relative memory operand (RIPREL, 64-bit code only).
+ *
+ * @returns Pointer to the operand in g_abBs3CpuInstr3RipRelBuf.
  */
 DECLINLINE(PRTUINT256U) bs3CpuInstr3RipRelOperand(void)
 {
@@ -870,7 +873,7 @@ static uint8_t bs3CpuInstr3_WorkerTestType1(uint8_t bMode, unsigned cTests, BS3C
 
                     /* If testing unaligned memory accesses (or #PF), skip register-only tests.  This
                        allows setting bXcptMmx, bXcptSse and bXcptAvx to reflect the misaligned exceptions.
-                       Same for RIP relative operands, they always use the same aligned buffer.  */
+                       Same for RIP relative operands, they always use the same fixed buffer.  */
                     if ((paTests[iTest].enmRm == RM_REG || paTests[iTest].enmRm == RM_MEM8 || fRipRel) && (!paConfigs[iCfg].fAligned || paConfigs[iCfg].fAlignCheck || fPf))
                         continue;
 
@@ -6946,7 +6949,7 @@ static uint8_t bs3CpuInstr3_WorkerTestType2(uint8_t bMode, unsigned cTests, BS3C
 
                     /* If testing unaligned memory accesses (or #PF), skip register-only tests.  This
                        allows setting bXcptMmx, bXcptSse and bXcptAvx to reflect the misaligned exceptions.
-                       Same for RIP relative operands, they always use the same aligned buffer.  */
+                       Same for RIP relative operands, they always use the same fixed buffer.  */
                     if ((paTests[iTest].enmRm == RM_REG || paTests[iTest].enmRm == RM_MEM8 || fRipRel) && (!paConfigs[iCfg].fAligned || paConfigs[iCfg].fAlignCheck || fPf))
                         continue;
 
@@ -7712,7 +7715,7 @@ static uint8_t bs3CpuInstr3_WorkerTestType3(uint8_t bMode, unsigned cTests, BS3C
 
                     /* If testing unaligned memory accesses (or #PF), skip register-only tests.  This
                        allows setting bXcptMmx, bXcptSse and bXcptAvx to reflect the misaligned exceptions.
-                       Same for RIP relative operands, they always use the same aligned buffer.  */
+                       Same for RIP relative operands, they always use the same fixed buffer.  */
                     if ((paTests[iTest].enmRm == RM_REG || paTests[iTest].enmRm == RM_MEM8 || fRipRel) && (!paConfigs[iCfg].fAligned || paConfigs[iCfg].fAlignCheck || fPf))
                         continue;
 
@@ -9651,7 +9654,7 @@ static uint8_t bs3CpuInstr3_WorkerTestType5(uint8_t bMode, unsigned cTests, BS3C
 
                     /* If testing unaligned memory accesses (or #PF), skip register-only tests.  This
                        allows setting bXcptMmx, bXcptSse and bXcptAvx to reflect the misaligned exceptions.
-                       Same for RIP relative operands, they always use the same aligned buffer.  */
+                       Same for RIP relative operands, they always use the same fixed buffer.  */
                     if ((paTests[iTest].enmRm == RM_REG || paTests[iTest].enmRm == RM_MEM8 || fRipRel) && (!paConfigs[iCfg].fAligned || paConfigs[iCfg].fAlignCheck || fPf))
                         continue;
 

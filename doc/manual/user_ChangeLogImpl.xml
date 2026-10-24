@@ -95,7 +95,9 @@ Rules for adding a changelog entry to make them look more uniform:
 
       <listitem>
         <para>VMM: Fixed ADCX/ADOX and several AVX instructions accessing the
-          wrong memory with RIP-relative operands when emulated (github:gh-930)</para>
+          wrong memory when emulated with RIP-relative operands, and VPEXTRB,
+          VPEXTRW, VPEXTRD and VPEXTRQ storing to the wrong address with most
+          memory operands (github:gh-930)</para>
       </listitem>
 
       <listitem>

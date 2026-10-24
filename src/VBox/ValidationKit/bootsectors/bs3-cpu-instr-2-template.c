@@ -68,9 +68,12 @@ typedef struct BS3CI2FSGSBASE
 *********************************************************************************************************************************/
 #ifdef BS3_INSTANTIATING_CMN
 # if ARCH_BITS == 64
-/** Source operand of the RIP relative adcx/adox tests (bs3-cpu-instr-2-asm.asm). */
+/** Source operand of the RIP relative adcx/adox tests (bs3-cpu-instr-2-asm.asm):
+ * the operand followed by guard bytes. */
 #  define g_abBs3CpuInstr2RipRelSrc BS3_DATA_NM(g_abBs3CpuInstr2RipRelSrc)
 extern uint8_t g_abBs3CpuInstr2RipRelSrc[16];
+/** The guard byte value after the RIP relative operand. */
+#  define BS3CPUINSTR2_RIPREL_GUARD UINT8_C(0x5a)
 
 static BS3CI2FSGSBASE const s_aWrFsBaseWorkers[] =
 {
@@ -3812,7 +3815,8 @@ BS3_DECL_FAR(uint8_t) BS3_CMN_NM(bs3CpuInstr2_adcx_adox)(uint8_t bMode)
                     /* The guard bytes make reading from the wrong address change the result. */
                     uMemSrcExpect = uMemSrc = paValues[iValue].uSrc | uSrcGarbage;
                     Bs3MemCpy(&g_abBs3CpuInstr2RipRelSrc[0], &uMemSrc, sizeof(uMemSrc));
-                    Bs3MemSet(&g_abBs3CpuInstr2RipRelSrc[8], 0x5a, 8);
+                    Bs3MemSet(&g_abBs3CpuInstr2RipRelSrc[sizeof(uMemSrc)], BS3CPUINSTR2_RIPREL_GUARD,
+                              sizeof(g_abBs3CpuInstr2RipRelSrc) - sizeof(uMemSrc));
                 }
 #endif
                 else
