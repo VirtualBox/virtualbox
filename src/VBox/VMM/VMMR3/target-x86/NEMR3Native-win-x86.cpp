@@ -2997,6 +2997,29 @@ static int nemHCWinCopyStateToHyperV(PVMCC pVM, PVMCPUCC pVCpu)
 }
 
 
+/**
+ * Updates the APIC TPR from the guest CR8 value Hyper-V reports.
+ *
+ * CR8 only holds TPR bits 7:4.  When it still matches the TPR, the TPR bits 3:0
+ * written through the APIC are kept, otherwise the guest executed a MOV to CR8,
+ * which clears them (as on real hardware).  The TPR is always set, as setting it
+ * also updates the PPR and signals the next deliverable pending interrupt.
+ *
+ * @param   pVCpu   The cross context per CPU structure.
+ * @param   uCr8    The guest CR8 value.
+ */
+DECLINLINE(void) nemHCWinSetApicTprFromCr8(PVMCPUCC pVCpu, uint64_t uCr8)
+{
+    uint8_t const uTprHi = (uint8_t)(uCr8 & 0xf);
+    uint8_t       u8Tpr  = 0;
+    int const     rc     = PDMApicGetTpr(pVCpu, &u8Tpr, NULL /*pfPending*/, NULL /*pu8PendingIntr*/);
+    if (RT_SUCCESS(rc) && (u8Tpr >> 4) == uTprHi)
+        PDMApicSetTpr(pVCpu, u8Tpr);
+    else
+        PDMApicSetTpr(pVCpu, (uint8_t)(uTprHi << 4));
+}
+
+
 static int nemHCWinCopyStateFromHyperV(PVMCC pVM, PVMCPUCC pVCpu, uint64_t fWhat)
 {
     WHV_REGISTER_NAME  aenmNames[128];
@@ -3399,7 +3422,7 @@ static int nemHCWinCopyStateFromHyperV(PVMCC pVM, PVMCPUCC pVCpu, uint64_t fWhat
     {
         Assert(aenmNames[iReg] == WHvX64RegisterCr8);
         if (!pVCpu->CTX_SUFF(pVM)->nem.s.fLocalApicEmulation)
-            PDMApicSetTpr(pVCpu, (uint8_t)aValues[iReg].Reg64 << 4);
+            nemHCWinSetApicTprFromCr8(pVCpu, aValues[iReg].Reg64);
         iReg++;
     }
 
@@ -4139,7 +4162,7 @@ DECLINLINE(void) nemR3WinCopyStateFromX64Header(PVMCPUCC pVCpu, WHV_VP_EXIT_CONT
                                                                     pExitCtx->ExecutionState.InterruptShadow,
                                                                     pExitCtx->Rip);
     if (!pVCpu->CTX_SUFF(pVM)->nem.s.fLocalApicEmulation)
-        PDMApicSetTpr(pVCpu, pExitCtx->Cr8 << 4);
+        nemHCWinSetApicTprFromCr8(pVCpu, pExitCtx->Cr8);
     else
         PDMApicImportState(pVCpu);
 

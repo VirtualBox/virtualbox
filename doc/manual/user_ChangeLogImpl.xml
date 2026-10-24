@@ -94,6 +94,11 @@ Rules for adding a changelog entry to make them look more uniform:
     <itemizedlist>
 
       <listitem>
+        <para>VMM: Fixed the guest's APIC task priority losing its low 4 bits
+          when Hyper-V is used as the virtualization engine (github:gh-932)</para>
+      </listitem>
+
+      <listitem>
         <para>NAT: Fixed ICMP traceroute missing intermediate hops when using
           NAT networking</para>
       </listitem>
