@@ -68,6 +68,13 @@ typedef struct BS3CI2FSGSBASE
 *********************************************************************************************************************************/
 #ifdef BS3_INSTANTIATING_CMN
 # if ARCH_BITS == 64
+/** Source operand of the RIP relative adcx/adox tests (bs3-cpu-instr-2-asm.asm):
+ * the operand followed by guard bytes. */
+#  define g_abBs3CpuInstr2RipRelSrc BS3_DATA_NM(g_abBs3CpuInstr2RipRelSrc)
+extern uint8_t g_abBs3CpuInstr2RipRelSrc[16];
+/** The guard byte value after the RIP relative operand. */
+#  define BS3CPUINSTR2_RIPREL_GUARD UINT8_C(0x5a)
+
 static BS3CI2FSGSBASE const s_aWrFsBaseWorkers[] =
 {
     { "wrfsbase rbx", true,  BS3_CMN_NM(bs3CpuInstr2_wrfsbase_rbx_ud2), 5, BS3_CMN_NM(bs3CpuInstr2_wrfsbase_rbx_rdfsbase_rcx_ud2), 15 },
@@ -3721,6 +3728,7 @@ BS3_DECL_FAR(uint8_t) BS3_CMN_NM(bs3CpuInstr2_adcx_adox)(uint8_t bMode)
         uint8_t         cValues;
         BS3CPUINSTR2_ADX_VALUES_T const BS3_FAR *paValues;
         uint32_t        fEFlagsMod;
+        bool            fRipRel;    /**< Memory source is g_abBs3CpuInstr2RipRelSrc, addressed relative to RIP. */
     } s_aTests[] =
     {
         /* 32-bit register width */
@@ -3736,6 +3744,12 @@ BS3_DECL_FAR(uint8_t) BS3_CMN_NM(bs3CpuInstr2_adcx_adox)(uint8_t bMode)
 
         {   BS3_CMN_NM(bs3CpuInstr2_adox_RAX_RBX_icebp),           false,  8, RT_ELEMENTS(s_aValues8), s_aValues8, X86_EFL_OF },
         {   BS3_CMN_NM(bs3CpuInstr2_adox_RAX_qword_FSxBX_icebp),   true,   8, RT_ELEMENTS(s_aValues8), s_aValues8, X86_EFL_OF },
+
+        /* RIP relative memory source (the instructions have no immediate) */
+        {   BS3_CMN_NM(bs3CpuInstr2_adcx_EAX_dword_RIPREL_icebp),  true,   4, RT_ELEMENTS(s_aValues4), s_aValues4, X86_EFL_CF, true },
+        {   BS3_CMN_NM(bs3CpuInstr2_adcx_RAX_qword_RIPREL_icebp),  true,   8, RT_ELEMENTS(s_aValues8), s_aValues8, X86_EFL_CF, true },
+        {   BS3_CMN_NM(bs3CpuInstr2_adox_EAX_dword_RIPREL_icebp),  true,   4, RT_ELEMENTS(s_aValues4), s_aValues4, X86_EFL_OF, true },
+        {   BS3_CMN_NM(bs3CpuInstr2_adox_RAX_qword_RIPREL_icebp),  true,   8, RT_ELEMENTS(s_aValues8), s_aValues8, X86_EFL_OF, true },
 #endif
     };
 
@@ -3795,6 +3809,16 @@ BS3_DECL_FAR(uint8_t) BS3_CMN_NM(bs3CpuInstr2_adcx_adox)(uint8_t bMode)
                     Ctx.rbx.u64 = paValues[iValue].uSrc | uSrcGarbage;
                     uMemSrcExpect = uMemSrc = ~(paValues[iValue].uSrc | uSrcGarbage);
                 }
+#if ARCH_BITS >= 64
+                else if (s_aTests[i].fRipRel)
+                {
+                    /* The guard bytes make reading from the wrong address change the result. */
+                    uMemSrcExpect = uMemSrc = paValues[iValue].uSrc | uSrcGarbage;
+                    Bs3MemCpy(&g_abBs3CpuInstr2RipRelSrc[0], &uMemSrc, sizeof(uMemSrc));
+                    Bs3MemSet(&g_abBs3CpuInstr2RipRelSrc[sizeof(uMemSrc)], BS3CPUINSTR2_RIPREL_GUARD,
+                              sizeof(g_abBs3CpuInstr2RipRelSrc) - sizeof(uMemSrc));
+                }
+#endif
                 else
                 {
                     uMemSrcExpect = uMemSrc = paValues[iValue].uSrc | uSrcGarbage;
@@ -3806,6 +3830,10 @@ BS3_DECL_FAR(uint8_t) BS3_CMN_NM(bs3CpuInstr2_adcx_adox)(uint8_t bMode)
                     Ctx.rflags.u16 |= fEFlagsMod;
 
                 Bs3TrapSetJmpAndRestore(&Ctx, &TrapFrame);
+#if ARCH_BITS >= 64
+                if (s_aTests[i].fRipRel)
+                    Bs3MemCpy(&uMemSrc, &g_abBs3CpuInstr2RipRelSrc[0], sizeof(uMemSrc));
+#endif
 
                 if (fOkay)
                 {

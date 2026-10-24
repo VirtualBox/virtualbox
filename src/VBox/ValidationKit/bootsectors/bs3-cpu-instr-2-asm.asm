@@ -48,6 +48,12 @@
 ;BS3_GLOBAL_DATA g_bs3CpuBasic2_ud2_FlatAddr, 4
 ;        dd  _bs3CpuBasic2_ud2 wrt FLAT
 
+BS3_BEGIN_DATA16 16
+;; Source operand of the RIP relative adcx/adox tests (64-bit only): 8 bytes
+; for the value followed by 8 guard bytes, see bs3CpuInstr2_adcx_adox.
+BS3_GLOBAL_DATA g_abBs3CpuInstr2RipRelSrc, 16
+        times 16 db 0
+
 
 
 ;

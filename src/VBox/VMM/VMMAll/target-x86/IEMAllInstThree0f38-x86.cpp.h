@@ -2054,7 +2054,7 @@ FNIEMOP_DEF(iemOp_crc32_Gv_Ev)
             { \
                 IEM_MC_BEGIN(IEM_MC_F_64BIT, 0); \
                 IEM_MC_LOCAL(RTGCPTR,   GCPtrEffSrc); \
-                IEM_MC_CALC_RM_EFF_ADDR(GCPtrEffSrc, bRm, 1); \
+                IEM_MC_CALC_RM_EFF_ADDR(GCPtrEffSrc, bRm, 0); \
                 IEMOP_HLP_DONE_DECODING_NO_LOCK_PREFIX(); \
                 \
                 IEM_MC_ARG(uint64_t,    u64Src,     2); \
@@ -2092,7 +2092,7 @@ FNIEMOP_DEF(iemOp_crc32_Gv_Ev)
             { \
                 IEM_MC_BEGIN(IEM_MC_F_NOT_286_OR_OLDER, 0); \
                 IEM_MC_LOCAL(RTGCPTR,   GCPtrEffSrc); \
-                IEM_MC_CALC_RM_EFF_ADDR(GCPtrEffSrc, bRm, 1); \
+                IEM_MC_CALC_RM_EFF_ADDR(GCPtrEffSrc, bRm, 0); \
                 IEMOP_HLP_DONE_DECODING_NO_LOCK_PREFIX(); \
                 \
                 IEM_MC_ARG(uint32_t,    u32Src,     2); \

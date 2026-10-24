@@ -1084,6 +1084,22 @@ BS3CPUINSTR2_PROC_BEGIN_CMN bs3CpuInstr2_adcx_RAX_qword_FSxBX_icebp
         icebp
         jmp     .again
 BS3_PROC_END_CMN            bs3CpuInstr2_adcx_RAX_qword_FSxBX_icebp
+
+; RIP relative source operand, the effective address depends on the
+; instruction length.
+BS3CPUINSTR2_PROC_BEGIN_CMN bs3CpuInstr2_adcx_EAX_dword_RIPREL_icebp
+        adcx    eax, dword [BS3_DATA16_WRT(BS3_DATA_NM(g_abBs3CpuInstr2RipRelSrc))]
+.again:
+        icebp
+        jmp     .again
+BS3_PROC_END_CMN            bs3CpuInstr2_adcx_EAX_dword_RIPREL_icebp
+
+BS3CPUINSTR2_PROC_BEGIN_CMN bs3CpuInstr2_adcx_RAX_qword_RIPREL_icebp
+        adcx    rax, qword [BS3_DATA16_WRT(BS3_DATA_NM(g_abBs3CpuInstr2RipRelSrc))]
+.again:
+        icebp
+        jmp     .again
+BS3_PROC_END_CMN            bs3CpuInstr2_adcx_RAX_qword_RIPREL_icebp
  %endif
 
 
@@ -1120,6 +1136,22 @@ BS3CPUINSTR2_PROC_BEGIN_CMN bs3CpuInstr2_adox_RAX_qword_FSxBX_icebp
         icebp
         jmp     .again
 BS3_PROC_END_CMN            bs3CpuInstr2_adox_RAX_qword_FSxBX_icebp
+
+; RIP relative source operand, the effective address depends on the
+; instruction length.
+BS3CPUINSTR2_PROC_BEGIN_CMN bs3CpuInstr2_adox_EAX_dword_RIPREL_icebp
+        adox    eax, dword [BS3_DATA16_WRT(BS3_DATA_NM(g_abBs3CpuInstr2RipRelSrc))]
+.again:
+        icebp
+        jmp     .again
+BS3_PROC_END_CMN            bs3CpuInstr2_adox_EAX_dword_RIPREL_icebp
+
+BS3CPUINSTR2_PROC_BEGIN_CMN bs3CpuInstr2_adox_RAX_qword_RIPREL_icebp
+        adox    rax, qword [BS3_DATA16_WRT(BS3_DATA_NM(g_abBs3CpuInstr2RipRelSrc))]
+.again:
+        icebp
+        jmp     .again
+BS3_PROC_END_CMN            bs3CpuInstr2_adox_RAX_qword_RIPREL_icebp
  %endif
 
 
